@@ -23,7 +23,7 @@ static void serial_con_bh_handler(u16 portn)
    }
 }
 
-static enum irq_action serial_con_irq_handler(regs *r, u16 portn)
+static enum irq_action serial_con_irq_handler(regs_t *r, u16 portn)
 {
    if (!serial_read_ready(com_ports[portn]))
       return IRQ_UNHANDLED; /* Not an IRQ from this "device" [irq sharing] */
@@ -37,22 +37,22 @@ static enum irq_action serial_con_irq_handler(regs *r, u16 portn)
    return IRQ_REQUIRES_BH;
 }
 
-static enum irq_action serial_com1_irq_handler(regs *r)
+static enum irq_action serial_com1_irq_handler(regs_t *r)
 {
    return serial_con_irq_handler(r, 0);
 }
 
-static enum irq_action serial_com2_irq_handler(regs *r)
+static enum irq_action serial_com2_irq_handler(regs_t *r)
 {
    return serial_con_irq_handler(r, 1);
 }
 
-static enum irq_action serial_com3_irq_handler(regs *r)
+static enum irq_action serial_com3_irq_handler(regs_t *r)
 {
    return serial_con_irq_handler(r, 2);
 }
 
-static enum irq_action serial_com4_irq_handler(regs *r)
+static enum irq_action serial_com4_irq_handler(regs_t *r)
 {
    return serial_con_irq_handler(r, 3);
 }
@@ -65,7 +65,7 @@ void early_init_serial_ports(void)
    init_serial_port(COM4);
 }
 
-static irq_handler_node serial_irq_handler_nodes[4] =
+static struct irq_handler_node serial_irq_handler_nodes[4] =
 {
    {
       .node = make_list_node(serial_irq_handler_nodes[0].node),

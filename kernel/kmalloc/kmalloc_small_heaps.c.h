@@ -14,7 +14,7 @@
 #define SMALL_HEAP_MAX_ALLOC (SMALL_HEAP_SIZE / 16 - 1)
 
 #define SMALL_HEAP_NODE_ALLOC_SZ \
-   MAX(sizeof(small_heap_node), SMALL_HEAP_MAX_ALLOC + 1)
+   MAX(sizeof(struct small_heap_node), SMALL_HEAP_MAX_ALLOC + 1)
 
 /*
  * Be careful with this: incrementing its value to 2 does not reduce with any of
@@ -25,30 +25,29 @@
  */
 #define MAX_EMPTY_SMALL_HEAPS    1
 
-typedef struct {
+struct small_heap_node {
 
-   list_node node;          /* all nodes */
-   list_node avail_node;    /* non-full nodes, including empty ones */
-   kmalloc_heap heap;
+   struct list_node node;          /* all nodes */
+   struct list_node avail_node;    /* non-full nodes, including empty ones */
+   struct kmalloc_heap heap;
+};
 
-} small_heap_node;
+static struct kmalloc_small_heaps_stats shs;
+static struct list small_heaps_list;
+static struct list avail_small_heaps_list;
 
-static kmalloc_small_heaps_stats shs;
-static list small_heaps_list;
-static list avail_small_heaps_list;
-
-static inline small_heap_node *alloc_small_heap_node(void)
+static inline struct small_heap_node *alloc_small_heap_node(void)
 {
    return kzmalloc(SMALL_HEAP_NODE_ALLOC_SZ);
 }
 
-static inline void free_small_heap_node(small_heap_node *obj)
+static inline void free_small_heap_node(struct small_heap_node *obj)
 {
    kfree2(obj, SMALL_HEAP_NODE_ALLOC_SZ);
 }
 
 static inline void
-add_in_avail_list(small_heap_node *node)
+add_in_avail_list(struct small_heap_node *node)
 {
    ASSERT(node->heap.mem_allocated < node->heap.size);
    shs.not_full_count++;
@@ -60,7 +59,7 @@ add_in_avail_list(small_heap_node *node)
 }
 
 static inline void
-remove_from_avail_list(small_heap_node *node)
+remove_from_avail_list(struct small_heap_node *node)
 {
    ASSERT(!list_node_is_empty(&node->avail_node));
 
@@ -78,7 +77,7 @@ remove_from_avail_list(small_heap_node *node)
 }
 
 static inline void
-register_small_heap_node(small_heap_node *node)
+register_small_heap_node(struct small_heap_node *node)
 {
    ASSERT(node->heap.mem_allocated < node->heap.size);
 
@@ -93,7 +92,7 @@ register_small_heap_node(small_heap_node *node)
 }
 
 static inline void
-unregister_small_heap_node(small_heap_node *node)
+unregister_small_heap_node(struct small_heap_node *node)
 {
    ASSERT(!list_node_is_empty(&node->avail_node));
    remove_from_avail_list(node);
@@ -107,9 +106,9 @@ unregister_small_heap_node(small_heap_node *node)
    ASSERT(list_node_is_empty(&node->avail_node));
 }
 
-static small_heap_node *alloc_new_small_heap(void)
+static struct small_heap_node *alloc_new_small_heap(void)
 {
-   small_heap_node *new_node;
+   struct small_heap_node *new_node;
    void *heap_data, *metadata;
    size_t actual_metadata_size;
    size_t small_heap_sz = SMALL_HEAP_SIZE;
@@ -169,7 +168,7 @@ static small_heap_node *alloc_new_small_heap(void)
    return new_node;
 }
 
-static void destroy_small_heap(small_heap_node *node)
+static void destroy_small_heap(struct small_heap_node *node)
 {
    unregister_small_heap_node(node);
    kfree2((void *)node->heap.vaddr, SMALL_HEAP_SIZE);
@@ -178,8 +177,8 @@ static void destroy_small_heap(small_heap_node *node)
 
 static void *small_heaps_kmalloc(size_t *size, u32 flags)
 {
-   small_heap_node *new_node;
-   small_heap_node *pos;
+   struct small_heap_node *new_node;
+   struct small_heap_node *pos;
    void *ret;
    bool was_empty;
 
@@ -198,7 +197,7 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
 
          /*
           * The alloc succeeded. If now the heap is full, remove it from the
-          * 'avail' list.
+          * 'avail' struct list.
           */
 
          if (was_empty) {
@@ -229,7 +228,7 @@ static void
 small_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    ASSERT(!is_preemption_enabled());
-   small_heap_node *pos, *node = NULL;
+   struct small_heap_node *pos, *node = NULL;
    const uptr vaddr = (uptr) ptr;
    bool was_full;
 

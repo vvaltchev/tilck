@@ -15,7 +15,7 @@
 #include <sys/mman.h>     // system header
 
 static ssize_t total_fb_pages_mapped;
-static list mappings_list = make_list(mappings_list);
+static struct list mappings_list = make_list(mappings_list);
 
 static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
 {
@@ -61,7 +61,7 @@ static int fb_ioctl(fs_handle h, uptr request, void *argp)
 }
 
 static int
-fbdev_mmap(user_mapping *um, bool register_only)
+fbdev_mmap(struct user_mapping *um, bool register_only)
 {
    ASSERT(IS_PAGE_ALIGNED(um->len));
 
@@ -115,9 +115,11 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 }
 
 static int
-create_fb_device(int minor, const file_ops **fops_ref, enum vfs_entry_type *t)
+create_fb_device(int minor,
+                 const struct file_ops **fops_ref,
+                 enum vfs_entry_type *t)
 {
-   static const file_ops static_ops_fb = {
+   static const struct file_ops static_ops_fb = {
       .read = fb_read,
       .write = fb_write,
       .ioctl = fb_ioctl,
@@ -135,7 +137,7 @@ void init_fbdev(void)
    if (!use_framebuffer())
       return;
 
-   driver_info *di = kmalloc(sizeof(driver_info));
+   struct driver_info *di = kmalloc(sizeof(struct driver_info));
 
    if (!di)
       panic("TTY: no enough memory for init_tty()");

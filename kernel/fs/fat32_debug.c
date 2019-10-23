@@ -23,7 +23,7 @@ static void dump_fixed_str(const char *what, char *str, u32 len)
 
 void fat_dump_common_header(void *data)
 {
-   fat_header *bpb = data;
+   struct fat_hdr *bpb = data;
 
    dump_fixed_str("EOM name", bpb->BS_OEMName, sizeof(bpb->BS_OEMName));
    printk("Bytes per sec: %u\n", bpb->BPB_BytsPerSec);
@@ -41,9 +41,9 @@ void fat_dump_common_header(void *data)
 }
 
 
-static void dump_fat16_headers(fat_header *common_hdr)
+static void dump_fat16_headers(struct fat_hdr *common_hdr)
 {
-   fat16_header2 *hdr = (fat16_header2*) (common_hdr+1);
+   struct fat16_header2 *hdr = (struct fat16_header2*) (common_hdr+1);
 
    printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
    printk("BS_BootSig: %u\n", hdr->BS_BootSig);
@@ -53,9 +53,9 @@ static void dump_fat16_headers(fat_header *common_hdr)
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
 
-static void dump_fat32_headers(fat_header *common_hdr)
+static void dump_fat32_headers(struct fat_hdr *common_hdr)
 {
-   fat32_header2 *hdr = (fat32_header2*) (common_hdr+1);
+   struct fat32_header2 *hdr = (struct fat32_header2*) (common_hdr+1);
    printk("BPB_FATSz32: %u\n", hdr->BPB_FATSz32);
    printk("BPB_ExtFlags: %u\n", hdr->BPB_ExtFlags);
    printk("BPB_FSVer: %u\n", hdr->BPB_FSVer);
@@ -70,7 +70,7 @@ static void dump_fat32_headers(fat_header *common_hdr)
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
 }
 
-static void dump_entry_attrs(fat_entry *entry)
+static void dump_entry_attrs(struct fat_entry *entry)
 {
    printk("readonly:  %u\n", entry->readonly);
    printk("hidden:    %u\n", entry->hidden);
@@ -80,22 +80,21 @@ static void dump_entry_attrs(fat_entry *entry)
    printk("archive:   %u\n", entry->archive);
 }
 
-typedef struct {
+struct debug_fat_walk_ctx {
 
-   fat_walk_dir_ctx walk_ctx;
+   struct fat_walk_dir_ctx walk_ctx;
    int level;
+};
 
-} debug_fat_walk_ctx;
-
-static int dump_dir_entry(fat_header *hdr,
-                          fat_type ft,
-                          fat_entry *entry,
+static int dump_dir_entry(struct fat_hdr *hdr,
+                          enum fat_type ft,
+                          struct fat_entry *entry,
                           const char *long_name,
                           void *arg)
 {
    char shortname[16];
    fat_get_short_name(entry, shortname);
-   debug_fat_walk_ctx *ctx = arg;
+   struct debug_fat_walk_ctx *ctx = arg;
 
    char indentbuf[4*16] = {0};
    for (int i = 0; i < 4 * ctx->level; i++)
@@ -134,12 +133,12 @@ static int dump_dir_entry(fat_header *hdr,
 
 void fat_dump_info(void *fatpart_begin)
 {
-   fat_header *hdr = fatpart_begin;
+   struct fat_hdr *hdr = fatpart_begin;
    fat_dump_common_header(fatpart_begin);
 
    printk("\n");
 
-   fat_type ft = fat_get_type(hdr);
+   enum fat_type ft = fat_get_type(hdr);
    ASSERT(ft != fat12_type);
 
    if (ft == fat16_type) {
@@ -150,9 +149,9 @@ void fat_dump_info(void *fatpart_begin)
    printk("\n");
 
    u32 root_dir_cluster;
-   fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
+   struct fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
 
-   debug_fat_walk_ctx ctx;
+   struct debug_fat_walk_ctx ctx;
    ctx.level = 0;
 
    fat_walk_directory(&ctx.walk_ctx,

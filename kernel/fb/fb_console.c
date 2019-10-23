@@ -31,11 +31,11 @@ static u16 cursor_row;
 static u16 cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
-static task_info *blink_thread_ti;
+static struct task *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 45)/100;
 static u32 cursor_color;
 
-static video_interface framebuffer_vi;
+static struct video_interface framebuffer_vi;
 
 static void fb_save_under_cursor_buf(void)
 {
@@ -72,7 +72,7 @@ static void fb_reset_blink_timer(void)
    task_update_wakeup_timer_if_any(blink_thread_ti, blink_half_period);
 }
 
-/* video_interface */
+/*video_interface */
 
 static void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
@@ -198,7 +198,7 @@ static void fb_enable_banner_refresh(void)
 
 // ---------------------------------------------
 
-static video_interface framebuffer_vi =
+static struct video_interface framebuffer_vi =
 {
    fb_set_char_at_failsafe,
    fb_set_row_failsafe,
@@ -277,7 +277,7 @@ static void fb_draw_banner(void)
    }
 
    u32 llen, rlen, padding, i;
-   datetime_t d;
+   struct datetime d;
    int rc, ttynum = 1;
 
    ASSERT(fb_offset_y >= font_h);

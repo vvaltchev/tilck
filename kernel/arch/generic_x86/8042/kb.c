@@ -28,7 +28,7 @@ static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock = true;
 static bool capsLock = false;
-static list keypress_handlers = make_list(keypress_handlers);
+static struct list keypress_handlers = make_list(keypress_handlers);
 
 bool kb_is_pressed(u32 key)
 {
@@ -72,7 +72,7 @@ static u8 translate_printable_key(u32 key)
    return c;
 }
 
-void kb_register_keypress_handler(keypress_handler_elem *e)
+void kb_register_keypress_handler(struct keypress_handler_elem *e)
 {
    list_add_tail(&keypress_handlers, &e->node);
 }
@@ -80,7 +80,7 @@ void kb_register_keypress_handler(keypress_handler_elem *e)
 static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
 {
    int count = 0;
-   keypress_handler_elem *pos;
+   struct keypress_handler_elem *pos;
 
    list_for_each_ro(pos, &keypress_handlers, node) {
 
@@ -202,7 +202,7 @@ static void kb_process_scancode(u8 scancode)
    }
 }
 
-static enum irq_action keyboard_irq_handler(regs *context)
+static enum irq_action keyboard_irq_handler(regs_t *context)
 {
    int count = 0;
 
@@ -284,7 +284,7 @@ int kb_get_fn_key_pressed(u32 key)
    return fn_table[(u8) key];
 }
 
-static irq_handler_node kb_irq_handler_node = {
+static struct irq_handler_node kb_irq_handler_node = {
    .node = make_list_node(kb_irq_handler_node.node),
    .handler = keyboard_irq_handler,
 };

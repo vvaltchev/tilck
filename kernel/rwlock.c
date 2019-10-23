@@ -3,7 +3,7 @@
 #include <tilck/kernel/rwlock.h>
 #include <tilck/kernel/sched.h>
 
-void rwlock_rp_init(rwlock_rp *r)
+void rwlock_rp_init(struct rwlock_rp *r)
 {
    kmutex_init(&r->readers_lock, 0);
    ksem_init(&r->writers_sem);
@@ -11,7 +11,7 @@ void rwlock_rp_init(rwlock_rp *r)
    DEBUG_ONLY(r->ex_owner = NULL);
 }
 
-void rwlock_rp_destroy(rwlock_rp *r)
+void rwlock_rp_destroy(struct rwlock_rp *r)
 {
    DEBUG_ONLY(r->ex_owner = NULL);
    r->readers_count = 0;
@@ -19,7 +19,7 @@ void rwlock_rp_destroy(rwlock_rp *r)
    kmutex_destroy(&r->readers_lock);
 }
 
-void rwlock_rp_shlock(rwlock_rp *r)
+void rwlock_rp_shlock(struct rwlock_rp *r)
 {
    kmutex_lock(&r->readers_lock);
    {
@@ -29,7 +29,7 @@ void rwlock_rp_shlock(rwlock_rp *r)
    kmutex_unlock(&r->readers_lock);
 }
 
-void rwlock_rp_shunlock(rwlock_rp *r)
+void rwlock_rp_shunlock(struct rwlock_rp *r)
 {
    kmutex_lock(&r->readers_lock);
    {
@@ -39,7 +39,7 @@ void rwlock_rp_shunlock(rwlock_rp *r)
    kmutex_unlock(&r->readers_lock);
 }
 
-void rwlock_rp_exlock(rwlock_rp *r)
+void rwlock_rp_exlock(struct rwlock_rp *r)
 {
    ksem_wait(&r->writers_sem);
 
@@ -47,7 +47,7 @@ void rwlock_rp_exlock(rwlock_rp *r)
    DEBUG_ONLY(r->ex_owner = get_curr_task());
 }
 
-void rwlock_rp_exunlock(rwlock_rp *r)
+void rwlock_rp_exunlock(struct rwlock_rp *r)
 {
    ASSERT(r->ex_owner == get_curr_task());
    DEBUG_ONLY(r->ex_owner = NULL);
@@ -57,7 +57,7 @@ void rwlock_rp_exunlock(rwlock_rp *r)
 
 /* ---------------------------------------------- */
 
-void rwlock_wp_init(rwlock_wp *rw, bool recursive)
+void rwlock_wp_init(struct rwlock_wp *rw, bool recursive)
 {
    kmutex_init(&rw->m, 0);
    kcond_init(&rw->c);
@@ -67,7 +67,7 @@ void rwlock_wp_init(rwlock_wp *rw, bool recursive)
    rw->rec = recursive;
 }
 
-void rwlock_wp_destroy(rwlock_wp *rw)
+void rwlock_wp_destroy(struct rwlock_wp *rw)
 {
    rw->ex_owner = NULL;
    rw->w = false;
@@ -76,7 +76,7 @@ void rwlock_wp_destroy(rwlock_wp *rw)
    kmutex_destroy(&rw->m);
 }
 
-void rwlock_wp_shlock(rwlock_wp *rw)
+void rwlock_wp_shlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -95,7 +95,7 @@ void rwlock_wp_shlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-void rwlock_wp_shunlock(rwlock_wp *rw)
+void rwlock_wp_shunlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -109,7 +109,7 @@ void rwlock_wp_shunlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-static void rwlock_wp_exlock_int(rwlock_wp *rw)
+static void rwlock_wp_exlock_int(struct rwlock_wp *rw)
 {
    if (rw->rec) {
       if (rw->ex_owner == get_curr_task()) {
@@ -153,7 +153,7 @@ static void rwlock_wp_exlock_int(rwlock_wp *rw)
    }
 }
 
-void rwlock_wp_exlock(rwlock_wp *rw)
+void rwlock_wp_exlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -162,7 +162,7 @@ void rwlock_wp_exlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-static void rwlock_wp_exunlock_int(rwlock_wp *rw)
+static void rwlock_wp_exunlock_int(struct rwlock_wp *rw)
 {
    ASSERT(rw->ex_owner == get_curr_task());
 
@@ -189,7 +189,7 @@ static void rwlock_wp_exunlock_int(rwlock_wp *rw)
    kcond_signal_all(&rw->c);
 }
 
-void rwlock_wp_exunlock(rwlock_wp *rw)
+void rwlock_wp_exunlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {

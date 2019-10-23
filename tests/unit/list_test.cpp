@@ -11,7 +11,7 @@ using namespace std;
 struct my_struct {
 
    const char *data;
-   list_node node;
+   struct list_node node;
 
    my_struct(const char *d) : data(d) {
       list_node_init(&node);
@@ -20,16 +20,16 @@ struct my_struct {
 
 extern "C" {
 
-   my_struct *debug_list_test_get_struct(list_node *n) {
+   my_struct *debug_list_test_get_struct(struct list_node *n) {
       my_struct *s = list_to_obj(n, my_struct, node);
       return s;
    }
 
-   const char *debug_list_test_dump_data(list_node *n) {
+   const char *debug_list_test_dump_data(struct list_node *n) {
       return debug_list_test_get_struct(n)->data;
    }
 
-   void debug_list_test_dump(list *l) {
+   void debug_list_test_dump(struct list *l) {
 
       my_struct *pos, *temp;
 
@@ -41,7 +41,7 @@ extern "C" {
 
 using tvec = vector<const char *>;
 
-void check_list_elems(list& list_var, const tvec& exp)
+void check_list_elems(struct list& list_var, const tvec& exp)
 {
    size_t i = 0;
    my_struct *pos, *temp;
@@ -63,18 +63,18 @@ void check_list_elems(list& list_var, const tvec& exp)
 
 TEST(list_adt, initialization)
 {
-   list list_var = make_list(list_var);
+   struct list list_var = make_list(list_var);
 
    ASSERT_TRUE(list_is_empty(&list_var));
 
-   ASSERT_TRUE(list_var.first == (list_node*)&list_var);
-   ASSERT_TRUE(list_var.last == (list_node*)&list_var);
+   ASSERT_TRUE(list_var.first == (struct list_node*)&list_var);
+   ASSERT_TRUE(list_var.last == (struct list_node*)&list_var);
 
    bzero(&list_var, sizeof(list_var));
 
    list_init(&list_var);
-   ASSERT_TRUE(list_var.first == (list_node*)&list_var);
-   ASSERT_TRUE(list_var.last == (list_node*)&list_var);
+   ASSERT_TRUE(list_var.first == (struct list_node*)&list_var);
+   ASSERT_TRUE(list_var.last == (struct list_node*)&list_var);
 
    check_list_elems(list_var, tvec{});
 }
@@ -88,17 +88,17 @@ TEST(list_adt, add)
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
    ASSERT_TRUE(list_to_obj(&e2.node, my_struct, node) == &e2);
 
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
    ASSERT_TRUE(list_is_empty(&list_var));
 
-   list_add_after((list_node *)&list_var, &e1.node);
+   list_add_after((struct list_node *)&list_var, &e1.node);
    list_add_after(&e1.node, &e2.node);
 
    ASSERT_TRUE(e1.node.next == &e2.node);
-   ASSERT_TRUE(e1.node.next->next == (list_node *)&list_var);
+   ASSERT_TRUE(e1.node.next->next == (struct list_node *)&list_var);
 
-   ASSERT_TRUE(e1.node.prev == (list_node *)&list_var);
+   ASSERT_TRUE(e1.node.prev == (struct list_node *)&list_var);
    ASSERT_TRUE(e2.node.prev == &e1.node);
 
    check_list_elems(list_var, tvec{"head", "tail"});
@@ -109,10 +109,10 @@ TEST(list_adt, add)
    ASSERT_TRUE(e1.node.next == &e12.node);
    ASSERT_TRUE(e1.node.next->next == &e2.node);
 
-   ASSERT_TRUE(e1.node.prev == (list_node *)&list_var);
+   ASSERT_TRUE(e1.node.prev == (struct list_node *)&list_var);
    ASSERT_TRUE(e2.node.prev == &e12.node);
 
-   ASSERT_TRUE(e2.node.next == (list_node *)&list_var);
+   ASSERT_TRUE(e2.node.next == (struct list_node *)&list_var);
    ASSERT_TRUE(list_var.last == &e2.node);
 
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
@@ -130,7 +130,7 @@ TEST(list_adt, add_tail)
    ASSERT_TRUE(list_to_obj(&e1.node, my_struct, node) == &e1);
    ASSERT_TRUE(list_to_obj(&e2.node, my_struct, node) == &e2);
 
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    ASSERT_TRUE(list_is_empty(&list_var));
@@ -143,7 +143,7 @@ TEST(list_adt, add_tail)
    list_add_tail(&list_var, &ne.node);
 
    EXPECT_TRUE(list_var.last == &ne.node);
-   EXPECT_TRUE(ne.node.next == (list_node *)&list_var);
+   EXPECT_TRUE(ne.node.next == (struct list_node *)&list_var);
    EXPECT_TRUE(e2.node.next == &ne.node);
    EXPECT_TRUE(ne.node.prev == &e2.node);
 
@@ -152,7 +152,7 @@ TEST(list_adt, add_tail)
 
 TEST(list_adt, remove_elem)
 {
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    my_struct e1("e1"), e2("e2"), e3("e3");
@@ -173,14 +173,14 @@ TEST(list_adt, remove_elem)
    check_list_elems(list_var, tvec{"e1", "e3"});
    ASSERT_FALSE(list_is_node_in_list(&e2.node));
 
-   list_node a_node;
+   struct list_node a_node;
    list_node_init(&a_node);
    ASSERT_FALSE(list_is_node_in_list(&a_node));
 }
 
 TEST(list_adt, add_head)
 {
-   list list_var;
+   struct list list_var;
    list_init(&list_var);
 
    my_struct e1("e1"), e2("e2"), e3("e3");

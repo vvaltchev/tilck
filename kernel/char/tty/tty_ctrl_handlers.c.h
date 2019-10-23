@@ -3,12 +3,11 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
 
-typedef struct {
+struct tty_and_sig_num {
 
    int tty_num;
    int sig_num;
-
-} tty_and_sig_num;
+};
 
 static void tty_send_signal(int tid, int signum)
 {
@@ -18,9 +17,9 @@ static void tty_send_signal(int tid, int signum)
 
 static int per_task_cb(void *obj, void *arg)
 {
-   tty_and_sig_num *ctx = arg;
-   tty *t = ttys[ctx->tty_num];
-   task_info *ti = obj;
+   struct tty_and_sig_num *ctx = arg;
+   struct tty *t = ttys[ctx->tty_num];
+   struct task *ti = obj;
 
    if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
 
@@ -36,9 +35,9 @@ static int per_task_cb(void *obj, void *arg)
    return 0;
 }
 
-static void tty_async_send_signal_to_fg_group(tty *t, int signum)
+static void tty_async_send_signal_to_fg_group(struct tty *t, int signum)
 {
-   tty_and_sig_num ctx = (tty_and_sig_num) {
+   struct tty_and_sig_num ctx = (struct tty_and_sig_num) {
       .tty_num = t->minor,
       .sig_num = signum,
    };
@@ -50,7 +49,7 @@ static void tty_async_send_signal_to_fg_group(tty *t, int signum)
    enable_preemption();
 }
 
-static bool tty_ctrl_stop(tty *t)
+static bool tty_ctrl_stop(struct tty *t)
 {
    if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -60,7 +59,7 @@ static bool tty_ctrl_stop(tty *t)
    return false;
 }
 
-static bool tty_ctrl_start(tty *t)
+static bool tty_ctrl_start(struct tty *t)
 {
    if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -70,7 +69,7 @@ static bool tty_ctrl_start(tty *t)
    return false;
 }
 
-static bool tty_ctrl_intr(tty *t)
+static bool tty_ctrl_intr(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
@@ -82,7 +81,7 @@ static bool tty_ctrl_intr(tty *t)
    return false;
 }
 
-static bool tty_ctrl_susp(tty *t)
+static bool tty_ctrl_susp(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VSUSP]);
@@ -93,7 +92,7 @@ static bool tty_ctrl_susp(tty *t)
    return false;
 }
 
-static bool tty_ctrl_quit(tty *t)
+static bool tty_ctrl_quit(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
@@ -105,7 +104,7 @@ static bool tty_ctrl_quit(tty *t)
    return false;
 }
 
-static bool tty_ctrl_eof(tty *t)
+static bool tty_ctrl_eof(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
@@ -117,7 +116,7 @@ static bool tty_ctrl_eof(tty *t)
    return false;
 }
 
-static bool tty_ctrl_eol(tty *t)
+static bool tty_ctrl_eol(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
@@ -128,7 +127,7 @@ static bool tty_ctrl_eol(tty *t)
    return false;
 }
 
-static bool tty_ctrl_eol2(tty *t)
+static bool tty_ctrl_eol2(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
@@ -139,7 +138,7 @@ static bool tty_ctrl_eol2(tty *t)
    return false;
 }
 
-static bool tty_ctrl_reprint(tty *t)
+static bool tty_ctrl_reprint(struct tty *t)
 {
    if (t->c_term.c_lflag & (ICANON | IEXTEN)) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VREPRINT]);
@@ -150,7 +149,7 @@ static bool tty_ctrl_reprint(tty *t)
    return false;
 }
 
-static bool tty_ctrl_discard(tty *t)
+static bool tty_ctrl_discard(struct tty *t)
 {
    /*
     * From termios' man page:
@@ -166,7 +165,7 @@ static bool tty_ctrl_discard(tty *t)
    return false;
 }
 
-static bool tty_ctrl_lnext(tty *t)
+static bool tty_ctrl_lnext(struct tty *t)
 {
    if (t->c_term.c_lflag & IEXTEN) {
       printk("LNEXT not supported yet\n");
@@ -176,7 +175,8 @@ static bool tty_ctrl_lnext(tty *t)
    return false;
 }
 
-static void tty_set_ctrl_handler(tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
+static void
+tty_set_ctrl_handler(struct tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
 {
    u8 c = t->c_term.c_cc[ctrl_type];
 
@@ -193,7 +193,7 @@ static void tty_set_ctrl_handler(tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
    t->special_ctrl_handlers[c] = h;
 }
 
-static inline bool tty_handle_special_controls(tty *t, u8 c)
+static inline bool tty_handle_special_controls(struct tty *t, u8 c)
 {
    tty_ctrl_sig_func handler = t->special_ctrl_handlers[c];
 

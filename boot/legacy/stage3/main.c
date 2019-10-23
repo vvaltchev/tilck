@@ -40,9 +40,9 @@ u32 cylinders_count;
 
 static u32 ramdisk_max_size;
 static u32 ramdisk_first_data_sector;
-static mem_area_t ma_buf[64];
+static struct mem_area ma_buf[64];
 
-static void calculate_ramdisk_fat_size(fat_header *hdr)
+static void calculate_ramdisk_fat_size(struct fat_hdr *hdr)
 {
    const u32 sector_size = fat_get_sector_size(hdr);
 
@@ -51,15 +51,15 @@ static void calculate_ramdisk_fat_size(fat_header *hdr)
 }
 
 static void
-load_elf_kernel(mem_info *mi,
+load_elf_kernel(struct mem_info *mi,
                 uptr ramdisk,
                 uptr ramdisk_size,
                 const char *filepath,
                 void **entry)
 {
-   fat_header *hdr = (fat_header *)ramdisk;
+   struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    uptr free_space;
-   fat_entry *e;
+   struct fat_entry *e;
 
    free_space = get_usable_mem(mi, ramdisk + ramdisk_size, KERNEL_MAX_SIZE);
 
@@ -83,7 +83,7 @@ load_elf_kernel(mem_info *mi,
 }
 
 static multiboot_info_t *
-setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
+setup_multiboot_info(struct mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 {
    uptr free_mem;
    multiboot_info_t *mbi;
@@ -151,7 +151,7 @@ setup_multiboot_info(mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
 
    for (u32 i = 0; i < mi->count; i++) {
 
-      mem_area_t *ma = mi->mem_areas + i;
+      struct mem_area *ma = mi->mem_areas + i;
 
       if (ma->type == MEM_USABLE) {
          if (ma->base < mbi->mem_lower * KB)
@@ -181,7 +181,7 @@ void bootloader_main(void)
    uptr free_mem;
    void *entry;
    bool success;
-   mem_info mi;
+   struct mem_info mi;
 
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();

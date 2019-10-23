@@ -19,7 +19,7 @@
  */
 
 static inline u32
-fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
+fat_get_first_cluster_generic(struct fat_fs_device_data *d, struct fat_entry *e)
 {
    return e == d->root_entry ? d->root_cluster : fat_get_first_cluster(e);
 }
@@ -27,15 +27,15 @@ fat_get_first_cluster_generic(fat_fs_device_data *d, fat_entry *e)
 STATIC void
 fat_close(fs_handle handle)
 {
-   fat_handle *h = (fat_handle *)handle;
-   kfree2(h, sizeof(fat_handle));
+   struct fat_handle *h = (struct fat_handle *)handle;
+   kfree2(h, sizeof(struct fat_handle));
 }
 
 STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
-   fat_handle *h = (fat_handle *) handle;
-   fat_fs_device_data *d = h->fs->device_data;
+   struct fat_handle *h = (struct fat_handle *) handle;
+   struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt written_to_buf = 0;
 
@@ -96,7 +96,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 STATIC int
 fat_rewind(fs_handle handle)
 {
-   fat_handle *h = (fat_handle *) handle;
+   struct fat_handle *h = (struct fat_handle *) handle;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(h->e);
    return 0;
@@ -105,8 +105,8 @@ fat_rewind(fs_handle handle)
 STATIC offt
 fat_seek_forward(fs_handle handle, offt dist)
 {
-   fat_handle *h = (fat_handle *) handle;
-   fat_fs_device_data *d = h->fs->device_data;
+   struct fat_handle *h = (struct fat_handle *) handle;
+   struct fat_fs_device_data *d = h->fs->device_data;
    offt fsize = (offt)h->e->DIR_FileSize;
    offt moved_distance = 0;
 
@@ -155,9 +155,9 @@ fat_seek_forward(fs_handle handle, offt dist)
 }
 
 static int
-fat_count_dirents_cb(fat_header *hdr,
-                     fat_type ft,
-                     fat_entry *entry,
+fat_count_dirents_cb(struct fat_hdr *hdr,
+                     enum fat_type ft,
+                     struct fat_entry *entry,
                      const char *long_name,
                      void *arg)
 {
@@ -170,9 +170,9 @@ fat_count_dirents_cb(fat_header *hdr,
  *
  * TODO: implement fat_count_dirents() in a more efficient way.
  */
-STATIC offt fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
+STATIC offt fat_count_dirents(struct fat_fs_device_data *d, struct fat_entry *e)
 {
-   fat_walk_dir_ctx walk_ctx = {0};
+   struct fat_walk_dir_ctx walk_ctx = {0};
    offt count = 0;
    int rc;
 
@@ -190,7 +190,7 @@ STATIC offt fat_count_dirents(fat_fs_device_data *d, fat_entry *e)
    return rc ? rc : count;
 }
 
-static offt fat_seek_dir(fat_handle *fh, offt off)
+static offt fat_seek_dir(struct fat_handle *fh, offt off)
 {
    if (off < 0)
       return -EINVAL;
@@ -205,7 +205,7 @@ static offt fat_seek_dir(fat_handle *fh, offt off)
 STATIC offt
 fat_seek(fs_handle handle, offt off, int whence)
 {
-   fat_handle *fh = handle;
+   struct fat_handle *fh = handle;
 
    if (fh->e->directory) {
 
@@ -232,7 +232,7 @@ fat_seek(fs_handle handle, offt off, int whence)
          if (off >= 0)
             break;
 
-         fat_handle *h = (fat_handle *) handle;
+         struct fat_handle *h = (struct fat_handle *) handle;
          off = (offt) h->e->DIR_FileSize + off;
 
          if (off < 0)
@@ -262,10 +262,10 @@ fat_seek(fs_handle handle, offt off, int whence)
    return fat_seek_forward(handle, off);
 }
 
-datetime_t
+struct datetime
 fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 {
-   datetime_t d;
+   struct datetime d;
 
    d.day = date & 0b11111;           // 5 bits: [0..4]
    d.month = (date >> 5) & 0b1111;   // 4 bits: [5..8]
@@ -281,15 +281,15 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 }
 
 static inline tilck_inode_t
-fat_entry_to_inode(fat_header *hdr, fat_entry *e)
+fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
 {
    return (tilck_inode_t)((sptr)e - (sptr)hdr);
 }
 
-STATIC int fat_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
-   fat_entry *e = i;
-   datetime_t crt_time, wrt_time;
+   struct fat_entry *e = i;
+   struct datetime crt_time, wrt_time;
 
    if (!e)
       return -ENOENT;
@@ -328,30 +328,29 @@ STATIC int fat_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    return 0;
 }
 
-typedef struct {
+struct fat_getdents_ctx {
 
-   fat_handle *fh;
+   struct fat_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
    int rc;
-
-} fat_getdents_ctx;
+};
 
 static int
-fat_getdents_cb(fat_header *hdr,
-                fat_type ft,
-                fat_entry *entry,
+fat_getdents_cb(struct fat_hdr *hdr,
+                enum fat_type ft,
+                struct fat_entry *entry,
                 const char *long_name,
                 void *arg)
 {
    char short_name[16];
    const char *entname = long_name ? long_name : short_name;
-   fat_getdents_ctx *ctx = arg;
+   struct fat_getdents_ctx *ctx = arg;
 
    if (entname == short_name)
       fat_get_short_name(entry, short_name);
 
-   vfs_dent64 dent = {
+   struct vfs_dent64 dent = {
       .ino  = fat_entry_to_inode(hdr, entry),
       .type = entry->directory ? VFS_DIR : VFS_FILE,
       .name_len = (u8) strlen(entname) + 1,
@@ -363,15 +362,15 @@ fat_getdents_cb(fat_header *hdr,
 
 static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
-   fat_handle *fh = h;
-   fat_fs_device_data *d = fh->fs->device_data;
-   fat_walk_dir_ctx walk_ctx = {0};
+   struct fat_handle *fh = h;
+   struct fat_fs_device_data *d = fh->fs->device_data;
+   struct fat_walk_dir_ctx walk_ctx = {0};
    int rc;
 
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
 
-   fat_getdents_ctx ctx = {
+   struct fat_getdents_ctx ctx = {
       .fh = fh,
       .vfs_cb = cb,
       .vfs_ctx = arg,
@@ -391,7 +390,7 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
    return rc ? rc : ctx.rc;
 }
 
-STATIC void fat_exclusive_lock(filesystem *fs)
+STATIC void fat_exclusive_lock(struct fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -399,7 +398,7 @@ STATIC void fat_exclusive_lock(filesystem *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_exclusive_unlock(filesystem *fs)
+STATIC void fat_exclusive_unlock(struct fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -407,7 +406,7 @@ STATIC void fat_exclusive_unlock(filesystem *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_shared_lock(filesystem *fs)
+STATIC void fat_shared_lock(struct fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -415,7 +414,7 @@ STATIC void fat_shared_lock(filesystem *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_shared_unlock(filesystem *fs)
+STATIC void fat_shared_unlock(struct fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -425,7 +424,7 @@ STATIC void fat_shared_unlock(filesystem *fs)
 
 STATIC void fat_file_exlock(fs_handle h)
 {
-   filesystem *fs = get_fs(h);
+   struct fs *fs = get_fs(h);
 
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -435,7 +434,7 @@ STATIC void fat_file_exlock(fs_handle h)
 
 STATIC void fat_file_exunlock(fs_handle h)
 {
-   filesystem *fs = get_fs(h);
+   struct fs *fs = get_fs(h);
 
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -445,7 +444,7 @@ STATIC void fat_file_exunlock(fs_handle h)
 
 STATIC void fat_file_shlock(fs_handle h)
 {
-   filesystem *fs = get_fs(h);
+   struct fs *fs = get_fs(h);
 
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -455,7 +454,7 @@ STATIC void fat_file_shlock(fs_handle h)
 
 STATIC void fat_file_shunlock(fs_handle h)
 {
-   filesystem *fs = get_fs(h);
+   struct fs *fs = get_fs(h);
 
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -465,7 +464,7 @@ STATIC void fat_file_shunlock(fs_handle h)
 
 STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
 {
-   filesystem *fs = get_fs(h);
+   struct fs *fs = get_fs(h);
 
    if (!(fs->flags & VFS_FS_RW))
       return -EBADF; /* read-only file system: can't write */
@@ -483,7 +482,7 @@ STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
    return -EINVAL;
 }
 
-static const file_ops static_ops_fat =
+static const struct file_ops static_ops_fat =
 {
    .read = fat_read,
    .seek = fat_seek,
@@ -497,12 +496,12 @@ static const file_ops static_ops_fat =
 };
 
 STATIC int
-fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
+fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
-   fat_handle *h;
-   filesystem *fs = p->fs;
-   fat_fs_path *fp = (fat_fs_path *)&p->fs_path;
-   fat_entry *e = fp->entry;
+   struct fat_handle *h;
+   struct fs *fs = p->fs;
+   struct fat_fs_path *fp = (struct fat_fs_path *)&p->fs_path;
+   struct fat_entry *e = fp->entry;
 
    if (!e) {
 
@@ -520,7 +519,7 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzmalloc(sizeof(fat_handle))))
+   if (!(h = kzmalloc(sizeof(struct fat_handle))))
       return -ENOMEM;
 
    h->fs = fs;
@@ -536,20 +535,20 @@ fat_open(vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   fat_handle *new_h = kmalloc(sizeof(fat_handle));
+   struct fat_handle *new_h = kmalloc(sizeof(struct fat_handle));
 
    if (!new_h)
       return -ENOMEM;
 
-   memcpy(new_h, h, sizeof(fat_handle));
+   memcpy(new_h, h, sizeof(struct fat_handle));
    *dup_h = new_h;
    return 0;
 }
 
 static inline void
-fat_get_root_entry(fat_fs_device_data *d, fat_fs_path *fp)
+fat_get_root_entry(struct fat_fs_device_data *d, struct fat_fs_path *fp)
 {
-   *fp = (fat_fs_path) {
+   *fp = (struct fat_fs_path) {
       .entry            = d->root_entry,
       .parent_entry     = d->root_entry,
       .unused           = NULL,
@@ -558,17 +557,17 @@ fat_get_root_entry(fat_fs_device_data *d, fat_fs_path *fp)
 }
 
 static void
-fat_get_entry(filesystem *fs,
+fat_get_entry(struct fs *fs,
               void *dir_inode,
               const char *name,
               ssize_t name_len,
-              fs_path_struct *fs_path)
+              struct fs_path *fs_path)
 {
-   fat_fs_device_data *d = fs->device_data;
-   fat_fs_path *fp = (fat_fs_path *)fs_path;
-   fat_entry *dir_entry;
+   struct fat_fs_device_data *d = fs->device_data;
+   struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
+   struct fat_entry *dir_entry;
    u32 dir_cluster;
-   fat_search_ctx ctx;
+   struct fat_search_ctx ctx;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:
       return fat_get_root_entry(d, fp);  // getting a path to the root dir
@@ -589,7 +588,7 @@ fat_get_entry(filesystem *fs,
                       &fat_search_entry_cb,
                       &ctx);
 
-   fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
+   struct fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
    enum vfs_entry_type type = VFS_NONE;
 
    if (res) {
@@ -603,7 +602,7 @@ fat_get_entry(filesystem *fs,
       }
    }
 
-   *fp = (fat_fs_path) {
+   *fp = (struct fat_fs_path) {
       .entry         = res,
       .parent_entry  = dir_entry,
       .unused        = NULL,
@@ -613,10 +612,10 @@ fat_get_entry(filesystem *fs,
 
 static vfs_inode_ptr_t fat_get_inode(fs_handle h)
 {
-   return ((fat_handle *)h)->e;
+   return ((struct fat_handle *)h)->e;
 }
 
-static int fat_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
+static int fat_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    if (fs->flags & VFS_FS_RW)
       NOT_IMPLEMENTED();
@@ -624,7 +623,7 @@ static int fat_retain_inode(filesystem *fs, vfs_inode_ptr_t inode)
    return 1;
 }
 
-static int fat_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
+static int fat_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    if (fs->flags & VFS_FS_RW)
       NOT_IMPLEMENTED();
@@ -632,7 +631,7 @@ static int fat_release_inode(filesystem *fs, vfs_inode_ptr_t inode)
    return 1;
 }
 
-static const fs_ops static_fsops_fat =
+static const struct fs_ops static_fsops_fat =
 {
    .get_inode = fat_get_inode,
    .open = fat_open,
@@ -657,25 +656,25 @@ static const fs_ops static_fsops_fat =
    .fs_shunlock = fat_shared_unlock,
 };
 
-filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
+struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
 {
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
-   fat_fs_device_data *d = kmalloc(sizeof(fat_fs_device_data));
+   struct fat_fs_device_data *d = kmalloc(sizeof(struct fat_fs_device_data));
 
    if (!d)
       return NULL;
 
-   d->hdr = (fat_header *) vaddr;
+   d->hdr = (struct fat_hdr *) vaddr;
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
    d->root_entry = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
-   filesystem *fs = kzmalloc(sizeof(filesystem));
+   struct fs *fs = kzmalloc(sizeof(struct fs));
 
    if (!fs) {
-      kfree2(d, sizeof(fat_fs_device_data));
+      kfree2(d, sizeof(struct fat_fs_device_data));
       return NULL;
    }
 
@@ -689,8 +688,8 @@ filesystem *fat_mount_ramdisk(void *vaddr, u32 flags)
    return fs;
 }
 
-void fat_umount_ramdisk(filesystem *fs)
+void fat_umount_ramdisk(struct fs *fs)
 {
-   kfree2(fs->device_data, sizeof(fat_fs_device_data));
-   kfree2(fs, sizeof(filesystem));
+   kfree2(fs->device_data, sizeof(struct fat_fs_device_data));
+   kfree2(fs, sizeof(struct fs));
 }

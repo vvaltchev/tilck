@@ -15,14 +15,14 @@
 #include "tty_int.h"
 
 /* tty_output internal functions */
-static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c);
-static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state);
-static enum term_fret tty_state_default(u8*, u8*, term_action*, void*);
-static enum term_fret tty_state_esc1(u8*, u8*, term_action*, void*);
-static enum term_fret tty_state_esc2_par0(u8*, u8*, term_action*, void*);
-static enum term_fret tty_state_esc2_par1(u8*, u8*, term_action*, void*);
-static enum term_fret tty_state_esc2_csi(u8*, u8*, term_action*, void*);
-static enum term_fret tty_state_esc2_unknown(u8*, u8*, term_action*, void*);
+static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c);
+static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state);
+static enum term_fret tty_state_default(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc1(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc2_par0(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc2_par1(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc2_csi(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc2_unknown(u8*,u8*,struct term_action*,void*);
 
 #include "tty_output_default_state.c.h"
 #pragma GCC diagnostic push
@@ -119,9 +119,9 @@ const s16 tty_gfx_trans_table[256] =
 
 #pragma GCC diagnostic pop
 
-void tty_reset_filter_ctx(tty *t)
+void tty_reset_filter_ctx(struct tty *t)
 {
-   twfilter_ctx_t *ctx = &t->filter_ctx;
+   struct twfilter_ctx_t *ctx = &t->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
    tty_set_state(ctx, &tty_state_default);
@@ -132,13 +132,13 @@ tty_filter_handle_csi_ABCD(u32 *params,
                            int pc,
                            u8 c,
                            u8 *color,
-                           term_action *a,
-                           twfilter_ctx_t *ctx)
+                           struct term_action *a,
+                           struct twfilter_ctx_t *ctx)
 {
    int d[4] = {0};
    d[c - 'A'] = (int) MAX(1u, params[0]);
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = LO_BITS((u32)(-d[0] + d[1]), 8, u32),
       .arg2 = LO_BITS((u32)( d[2] - d[3]), 8, u32),
@@ -146,9 +146,9 @@ tty_filter_handle_csi_ABCD(u32 *params,
 }
 
 static void
-tty_filter_handle_csi_m_param(u32 p, u8 *color, twfilter_ctx_t *ctx)
+tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    u8 fg = get_color_fg(t->user_color);
    u8 bg = get_color_bg(t->user_color);
@@ -219,8 +219,8 @@ tty_filter_handle_csi_m(u32 *params,
                         int pc,
                         u8 c,
                         u8 *color,
-                        term_action *a,
-                        twfilter_ctx_t *ctx)
+                        struct term_action *a,
+                        struct twfilter_ctx_t *ctx)
 {
    if (!pc) {
       /*
@@ -236,13 +236,13 @@ tty_filter_handle_csi_m(u32 *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(tty *t, term_action *a, u32 row)
+tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
 {
    u32 new_row =
       MIN(term_get_curr_row(t->term_inst) + row,
           term_get_rows(t->term_inst) - 1u);
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = new_row,
       .arg2 = 0,
@@ -254,10 +254,10 @@ tty_csi_EF_handler(u32 *params,
                    int pc,
                    u8 c,
                    u8 *color,
-                   term_action *a,
-                   twfilter_ctx_t *ctx)
+                   struct term_action *a,
+                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
    ASSERT(c == 'E' || c == 'F');
 
    if (c == 'E') {
@@ -277,15 +277,15 @@ tty_csi_G_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* Move the cursor to the column 'n' (absolute, 1-based) */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = term_get_curr_row(t->term_inst),
       .arg2 = MIN((u32)params[0], term_get_cols(t->term_inst) - 1u),
@@ -297,16 +297,16 @@ tty_csi_fH_handler(u32 *params,
                    int pc,
                    u8 c,
                    u8 *color,
-                   term_action *a,
-                   twfilter_ctx_t *ctx)
+                   struct term_action *a,
+                   struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* Move the cursor to (n, m) (absolute, 1-based) */
    params[0] = MAX(1u, params[0]) - 1;
    params[1] = MAX(1u, params[1]) - 1;
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
       .arg2 = UNSAFE_MIN((u32)params[1], term_get_cols(t->term_inst)-1u),
@@ -318,10 +318,10 @@ tty_csi_J_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_del_generic,
       .arg1 = TERM_DEL_ERASE_IN_DISPLAY,
       .arg2 = params[0],
@@ -333,10 +333,10 @@ tty_csi_K_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_del_generic,
       .arg1 = TERM_DEL_ERASE_IN_LINE,
       .arg2 = params[0],
@@ -348,10 +348,10 @@ tty_csi_S_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_non_buf_scroll,
       .arg1 = UNSAFE_MAX(1, params[0]),
       .arg2 = non_buf_scroll_up,
@@ -363,10 +363,10 @@ tty_csi_T_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_non_buf_scroll,
       .arg1 = UNSAFE_MAX(1, params[0]),
       .arg2 = non_buf_scroll_down,
@@ -378,10 +378,10 @@ tty_csi_n_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    if (params[0] == 6) {
 
@@ -402,10 +402,10 @@ tty_csi_s_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* SCP (Save Cursor Position) */
    ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
@@ -417,13 +417,13 @@ tty_csi_u_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* RCP (Restore Cursor Position) */
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = t->saved_cur_row,
       .arg2 = t->saved_cur_col,
@@ -435,15 +435,15 @@ tty_csi_d_handler(u32 *params,
                   int pc,
                   u8 c,
                   u8 *color,
-                  term_action *a,
-                  twfilter_ctx_t *ctx)
+                  struct term_action *a,
+                  struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* VPA: Move cursor to the indicated row, current column */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = UNSAFE_MIN((u32)params[0], term_get_rows(t->term_inst)-1u),
       .arg2 = term_get_curr_col(t->term_inst),
@@ -455,15 +455,15 @@ tty_csi_hpa_handler(u32 *params,
                     int pc,
                     u8 c,
                     u8 *color,
-                    term_action *a,
-                    twfilter_ctx_t *ctx)
+                    struct term_action *a,
+                    struct twfilter_ctx_t *ctx)
 {
-   tty *const t = ctx->t;
+   struct tty *const t = ctx->t;
 
    /* HPA: Move cursor to the indicated column, current row */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = term_get_curr_row(t->term_inst),
       .arg2 = UNSAFE_MIN((u32)params[0], term_get_cols(t->term_inst)-1u),
@@ -475,8 +475,8 @@ tty_csi_pvt_ext_handler(u32 *params,
                         int pc,
                         u8 c,
                         u8 *color,
-                        term_action *a,
-                        twfilter_ctx_t *ctx)
+                        struct term_action *a,
+                        struct twfilter_ctx_t *ctx)
 {
    switch (params[0]) {
 
@@ -485,14 +485,14 @@ tty_csi_pvt_ext_handler(u32 *params,
 
             /* Show the cursor */
 
-            *a = (term_action) {
+            *a = (struct term_action) {
                .type1 = a_enable_cursor,
                .arg = true,
             };
 
          } else if (c == 'l') {
 
-            *a = (term_action) {
+            *a = (struct term_action) {
                .type1 = a_enable_cursor,
                .arg = false,
             };
@@ -502,14 +502,14 @@ tty_csi_pvt_ext_handler(u32 *params,
       case 1049:
          if (c == 'h') {
 
-            *a = (term_action) {
+            *a = (struct term_action) {
                .type1 = a_use_alt_buffer,
                .arg = true,
             };
 
          } else if (c == 'l') {
 
-            *a = (term_action) {
+            *a = (struct term_action) {
                .type1 = a_use_alt_buffer,
                .arg = false,
             };
@@ -527,8 +527,8 @@ typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
                                 u8 *color,
-                                term_action *a,
-                                twfilter_ctx_t *ctx);
+                                struct term_action *a,
+                                struct twfilter_ctx_t *ctx);
 
 static csi_seq_handler csi_handlers[256] =
 {
@@ -556,8 +556,8 @@ static csi_seq_handler csi_handlers[256] =
 static enum term_fret
 tty_filter_end_csi_seq(u8 c,
                        u8 *color,
-                       term_action *a,
-                       twfilter_ctx_t *ctx)
+                       struct term_action *a,
+                       struct twfilter_ctx_t *ctx)
 {
    const char *endptr;
    u32 params[NPAR] = {0};
@@ -597,9 +597,9 @@ tty_filter_end_csi_seq(u8 c,
 }
 
 static enum term_fret
-tty_state_esc2_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx_t *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -650,9 +650,9 @@ tty_state_esc2_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_state_esc2_unknown(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_unknown(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx_t *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -667,9 +667,9 @@ tty_state_esc2_unknown(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx_t *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -684,8 +684,8 @@ tty_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
       case 'c':
          {
-            tty *t = ctx->t;
-            *a = (term_action) { .type1 = a_reset };
+            struct tty *t = ctx->t;
+            *a = (struct term_action) { .type1 = a_reset };
 
             tty_kb_buf_reset(t);
             t->c_set = 0;
@@ -735,7 +735,7 @@ tty_state_esc1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
+tty_change_translation_table(struct twfilter_ctx_t *ctx, u8 *c, int c_set)
 {
    switch (*c) {
 
@@ -759,9 +759,9 @@ tty_change_translation_table(twfilter_ctx_t *ctx, u8 *c, int c_set)
 }
 
 static enum term_fret
-tty_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par0(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx_t *const ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -771,9 +771,9 @@ tty_state_esc2_par0(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_esc2_par1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx_t *const ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -782,13 +782,13 @@ tty_state_esc2_par1(u8 *c, u8 *color, term_action *a, void *ctx_arg)
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
-static void tty_set_state(twfilter_ctx_t *ctx, term_filter new_state)
+static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state)
 {
    ctx->non_default_state = new_state != &tty_state_default;
    term_set_filter(ctx->t->term_inst, new_state, ctx);
 }
 
-static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
+static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
 {
    if (ctx->non_default_state) {
 
@@ -809,7 +809,8 @@ static int tty_pre_filter(twfilter_ctx_t *ctx, u8 *c)
    return -1;
 }
 
-ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
@@ -818,14 +819,14 @@ ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size)
 }
 
 enum term_fret
-serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   twfilter_ctx_t *ctx = ctx_arg;
-   tty *t = ctx->t;
+   struct twfilter_ctx_t *ctx = ctx_arg;
+   struct tty *t = ctx->t;
 
    if (*c == t->c_term.c_cc[VERASE]) {
 
-      *a = (term_action) {
+      *a = (struct term_action) {
          .type3 = a_dwrite_no_filter,
          .len = 3,
          .col = *color,

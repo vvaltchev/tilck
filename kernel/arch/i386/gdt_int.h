@@ -70,8 +70,8 @@
 /* An useful shortcut for saving some space */
 #define GDT_ACC_REG (GDT_ACCESS_PRESENT | GDT_ACCESS_S)
 
-typedef struct
-{
+struct gdt_entry {
+
    u16 limit_low;
    u16 base_low;
    u8 base_middle;
@@ -106,12 +106,12 @@ typedef struct
 
    u8 base_high;
 
-} PACKED gdt_entry;
+} PACKED;
 
 #define INVALID_ENTRY_NUM ((u32) -1)
 #define USER_DESC_FLAGS_EMPTY ((1 << 3) | (1 << 5))
 
-typedef struct {
+struct user_desc {
 
    u32 entry_number;
    uptr base_addr;
@@ -131,16 +131,15 @@ typedef struct {
 
       u32 flags;
    };
-
-} user_desc;
+};
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
-void gdt_set_entry(gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
-int gdt_add_entry(gdt_entry *e);
+void gdt_set_entry(struct gdt_entry *e, uptr base, uptr lim, u8 accs, u8 flags);
+int gdt_add_entry(struct gdt_entry *e);
 void gdt_clear_entry(u32 index);
 void gdt_entry_inc_ref_count(u32 n);
 
 #define TSS_MAIN                   0
 #define TSS_DOUBLE_FAULT           1
 
-extern tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
+extern struct tss_entry tss_array[2] ALIGNED_AT(PAGE_SIZE);

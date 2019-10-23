@@ -16,7 +16,7 @@ using namespace std;
 struct int_struct {
 
    int val;
-   bintree_node node;
+   struct bintree_node node;
 
    int_struct() = default;
 
@@ -53,7 +53,7 @@ static void node_dump(int_struct *obj, int level)
    if (!obj) return;
 
    indent(level);
-   bintree_node *n = &obj->node;
+   struct bintree_node *n = &obj->node;
 
    printf("%i [%i]\n", obj->val, n->height);
 
@@ -121,7 +121,7 @@ sbs_in_order_visit(int_struct *obj,
                    bool reverse = false)
 {
    visit_ctx ctx = {arr, arr_size, 0};
-   bintree_walk_ctx walk_ctx;
+   struct bintree_walk_ctx walk_ctx;
 
    bintree_in_order_visit_start(&walk_ctx, obj, int_struct, node, reverse);
 

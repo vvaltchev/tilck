@@ -37,18 +37,17 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
    return ptr < buf_end;
 }
 
-typedef struct {
+struct snprintk_ctx {
 
    int left_padding;
    int right_padding;
    char *buf;
    char *buf_end;
    bool zero_lpad;
-
-} snprintk_ctx;
+};
 
 static void
-snprintk_ctx_reset_per_argument_state(snprintk_ctx *ctx)
+snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
 {
    ctx->left_padding = 0;
    ctx->right_padding = 0;
@@ -64,7 +63,7 @@ snprintk_ctx_reset_per_argument_state(snprintk_ctx *ctx)
 #define WRITE_STR(s) if (!write_str(ctx, s)) goto out;
 
 static bool
-write_str(snprintk_ctx *ctx, const char *str)
+write_str(struct snprintk_ctx *ctx, const char *str)
 {
    int sl = (int) strlen(str);
    int lpad = MAX(0, ctx->left_padding - sl);
@@ -92,7 +91,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 {
    char intbuf[64];
 
-   snprintk_ctx __ctx = {
+   struct snprintk_ctx __ctx = {
       .left_padding = 0,
       .right_padding = 0,
       .zero_lpad = false,
@@ -101,7 +100,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
    };
 
    /* ctx has to be a pointer because of macros shared with WRITE_STR */
-   snprintk_ctx *ctx = &__ctx;
+   struct snprintk_ctx *ctx = &__ctx;
 
    while (*fmt) {
 
@@ -250,7 +249,7 @@ int snprintk(char *buf, size_t size, const char *fmt, ...)
    return written;
 }
 
-typedef struct {
+struct ringbuf_stat {
 
    union {
 
@@ -264,11 +263,10 @@ typedef struct {
 
       ATOMIC(u32) raw;
    };
-
-} ringbuf_stat;
+};
 
 static char printk_rbuf[1024];
-static volatile ringbuf_stat printk_rbuf_stat;
+static volatile struct ringbuf_stat printk_rbuf_stat;
 
 /*
  * NOTE: the ring buf cannot be larger than 1024 elems because the fields
@@ -303,7 +301,7 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 
 void printk_flush_ringbuf(void)
 {
-   ringbuf_stat cs, ns;
+   struct ringbuf_stat cs, ns;
 
    char minibuf[80];
    u32 to_read = 0;
@@ -348,7 +346,7 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
 {
    static const char err_msg[] = "{_DROPPED_}\n";
 
-   ringbuf_stat cs, ns;
+   struct ringbuf_stat cs, ns;
 
    do {
       cs = printk_rbuf_stat;
@@ -431,7 +429,7 @@ void vprintk(const char *fmt, va_list args)
 
    disable_preemption();
    {
-      ringbuf_stat cs, ns;
+      struct ringbuf_stat cs, ns;
 
       do {
          cs = printk_rbuf_stat;

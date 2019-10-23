@@ -3,8 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-typedef struct
-{
+struct tss_entry {
+
    u32 prev_tss;   /* ptr to the previous TSS: unused in Tilck */
 
    u32 esp0;       /* ESP to use when we change to kernel mode */
@@ -36,4 +36,4 @@ typedef struct
    u16 trap;
    u16 iomap_base;
 
-} PACKED tss_entry_t;
+} PACKED;

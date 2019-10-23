@@ -106,16 +106,15 @@ phdr_adjust_page_access(pdir_t *pdir, Elf_Phdr *phdr)
          set_page_rw(pdir, vaddr, false);
 }
 
-typedef struct {
+struct elf_headers {
 
    char *header_buf;
    Elf_Ehdr *header;
    Elf_Phdr *phdrs;
    size_t total_phdrs_size;
+};
 
-} elf_headers;
-
-static void free_elf_headers(elf_headers *eh)
+static void free_elf_headers(struct elf_headers *eh)
 {
    if (!eh)
       return;
@@ -124,7 +123,8 @@ static void free_elf_headers(elf_headers *eh)
       kfree2(eh->phdrs, eh->total_phdrs_size);
 }
 
-static int load_elf_headers(fs_handle elf_file, char *hdr_buf, elf_headers *eh)
+static int
+load_elf_headers(fs_handle elf_file, char *hdr_buf, struct elf_headers *eh)
 {
    ssize_t rc;
    bzero(eh, sizeof(*eh));
@@ -190,7 +190,7 @@ int load_elf_program(const char *filepath,
 {
    fs_handle elf_file = NULL;
    struct stat64 statbuf;
-   elf_headers eh;
+   struct elf_headers eh;
    uptr brk = 0;
    int rc;
 

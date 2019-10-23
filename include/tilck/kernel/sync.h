@@ -6,7 +6,7 @@
 #include <tilck/common/atomics.h>
 #include <tilck/kernel/list.h>
 
-struct task_info;
+struct task;
 
 enum wo_type {
 
@@ -18,51 +18,48 @@ enum wo_type {
 
    /* Special "meta-object" types */
 
-   WOBJ_MWO_WAITER, /* multi_obj_waiter */
+   WOBJ_MWO_WAITER, /* struct multi_obj_waiter */
    WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
 
 /*
- * wait_obj is used internally in task_info for referring to an object that
+ * wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
  */
 
-typedef struct {
+struct wait_obj {
 
    ATOMIC(void *) __ptr;      /* pointer to the object we're waiting for */
    enum wo_type type;         /* type of the object we're waiting for */
-   list_node wait_list_node;  /* node in waited object's waiting list */
-
-} wait_obj;
+   struct list_node wait_list_node;  /* node in waited object's waiting list */
+};
 
 /*
  * Struct used as element in `multi_obj_waiter` using `wait_obj` through
  * composition.
  */
-typedef struct {
+struct mwobj_elem {
 
-   wait_obj wobj;
-   struct task_info *ti;    /* Task owning this wait obj */
+   struct wait_obj wobj;
+   struct task *ti;         /* Task owning this wait obj */
    enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
                              * used because it have to be equal to
                              * WOBJ_MULTI_ELEM. */
-
-} mwobj_elem;
+};
 
 /*
- * Heap-allocated object on which task_info->wobj "waits" when the task is
+ * Heap-allocated object on which struct task->wobj "waits" when the task is
  * waiting on multiple objects.
  *
  * How it works
  * ---------------
  *
  */
-typedef struct {
+struct multi_obj_waiter {
 
-   u32 count;             /* number of `mwobj_elem` elements */
-   mwobj_elem elems[];    /* variable-size array */
-
-} multi_obj_waiter;
+   u32 count;                    /* number of `struct mwobj_elem` elements */
+   struct mwobj_elem elems[];    /* variable-size array */
+};
 
 /*
  * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
@@ -71,47 +68,46 @@ typedef struct {
  */
 #define WOBJ_TASK_PTR_ANY_CHILD ((void *) -1)
 
-void wait_obj_set(wait_obj *wo,
+void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  list *wait_list);
+                  struct list *wait_list);
 
-void *wait_obj_reset(wait_obj *wo);
+void *wait_obj_reset(struct wait_obj *wo);
 
-static inline void *wait_obj_get_ptr(wait_obj *wo)
+static inline void *wait_obj_get_ptr(struct wait_obj *wo)
 {
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
-void task_set_wait_obj(struct task_info *ti,
+void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr,
-                       list *wait_list);
+                       struct list *wait_list);
 
-void *task_reset_wait_obj(struct task_info *ti);
+void *task_reset_wait_obj(struct task *ti);
 
-multi_obj_waiter *allocate_mobj_waiter(u32 elems);
-void free_mobj_waiter(multi_obj_waiter *w);
-void mobj_waiter_reset(mwobj_elem *e);
-void mobj_waiter_reset2(multi_obj_waiter *w, u32 index);
-void mobj_waiter_set(multi_obj_waiter *w,
+struct multi_obj_waiter *allocate_mobj_waiter(u32 elems);
+void free_mobj_waiter(struct multi_obj_waiter *w);
+void mobj_waiter_reset(struct mwobj_elem *e);
+void mobj_waiter_reset2(struct multi_obj_waiter *w, u32 index);
+void mobj_waiter_set(struct multi_obj_waiter *w,
                      u32 index,
                      enum wo_type type,
                      void *ptr,
-                     list *wait_list);
+                     struct list *wait_list);
 
-void kernel_sleep_on_waiter(multi_obj_waiter *w);
+void kernel_sleep_on_waiter(struct multi_obj_waiter *w);
 
 /*
  * The semaphore implementation used for locking in kernel mode.
  */
 
-typedef struct {
+struct ksem {
 
    int counter;
-   list wait_list;
-
-} ksem;
+   struct list wait_list;
+};
 
 #define STATIC_KSEM_INIT(s, val)                 \
    {                                             \
@@ -119,28 +115,27 @@ typedef struct {
       .wait_list = make_list(s.wait_list),       \
    }
 
-void ksem_init(ksem *s);
-void ksem_destroy(ksem *s);
-void ksem_wait(ksem *s);
-void ksem_signal(ksem *s);
+void ksem_init(struct ksem *s);
+void ksem_destroy(struct ksem *s);
+void ksem_wait(struct ksem *s);
+void ksem_signal(struct ksem *s);
 
 /*
  * The mutex implementation used for locking in kernel mode.
  */
 
-typedef struct {
+struct kmutex {
 
-   struct task_info *owner_task;
+   struct task *owner_task;
    u32 flags;
    u32 lock_count; // Valid when the mutex is recursive
-   list wait_list;
+   struct list wait_list;
 
 #if KMUTEX_STATS_ENABLED
    u32 num_waiters;
    u32 max_num_waiters;
 #endif
-
-} kmutex;
+};
 
 #define STATIC_KMUTEX_INIT(m, fl)                 \
    {                                              \
@@ -162,25 +157,24 @@ typedef struct {
    #define KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED      (1 << 1)
 #endif
 
-void kmutex_init(kmutex *m, u32 flags);
-void kmutex_lock(kmutex *m);
-bool kmutex_trylock(kmutex *m);
-void kmutex_unlock(kmutex *m);
-void kmutex_destroy(kmutex *m);
+void kmutex_init(struct kmutex *m, u32 flags);
+void kmutex_lock(struct kmutex *m);
+bool kmutex_trylock(struct kmutex *m);
+void kmutex_unlock(struct kmutex *m);
+void kmutex_destroy(struct kmutex *m);
 
 #ifdef DEBUG
-bool kmutex_is_curr_task_holding_lock(kmutex *m);
+bool kmutex_is_curr_task_holding_lock(struct kmutex *m);
 #endif
 
 /*
  * A basic implementation of condition variables similar to the pthread ones.
  */
 
-typedef struct {
+struct kcond {
 
-   list wait_list;
-
-} kcond;
+   struct list wait_list;
+};
 
 #define STATIC_KCOND_INIT(s)                     \
    {                                             \
@@ -189,17 +183,17 @@ typedef struct {
 
 #define KCOND_WAIT_FOREVER 0
 
-void kcond_init(kcond *c);
-void kcond_destory(kcond *c);
-void kcond_signal_int(kcond *c, bool all);
-bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);
+void kcond_init(struct kcond *c);
+void kcond_destory(struct kcond *c);
+void kcond_signal_int(struct kcond *c, bool all);
+bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks);
 
-static inline void kcond_signal_one(kcond *c)
+static inline void kcond_signal_one(struct kcond *c)
 {
    kcond_signal_int(c, false);
 }
 
-static inline void kcond_signal_all(kcond *c)
+static inline void kcond_signal_all(struct kcond *c)
 {
    kcond_signal_int(c, true);
 }

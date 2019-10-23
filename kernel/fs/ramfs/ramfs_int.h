@@ -20,15 +20,13 @@
 #include <dirent.h> // system header
 
 struct ramfs_inode;
-typedef struct ramfs_inode ramfs_inode;
 
-typedef struct {
+struct ramfs_block {
 
-   bintree_node node;
+   struct bintree_node node;
    offt offset;                  /* MUST BE divisible by PAGE_SIZE */
    void *vaddr;
-
-} ramfs_block;
+};
 
 /*
  * Ramfs entries do not *necessarily* need to have a fixed size, as they are
@@ -39,23 +37,22 @@ typedef struct {
 #define RAMFS_ENTRY_SIZE 256
 #define RAMFS_ENTRY_MAX_LEN (                   \
    RAMFS_ENTRY_SIZE                             \
-   - sizeof(bintree_node)                       \
-   - sizeof(list_node)                          \
+   - sizeof(struct bintree_node)                \
+   - sizeof(struct list_node)                   \
    - sizeof(struct ramfs_inode *)               \
    - sizeof(u8)                                 \
 )
 
-typedef struct {
+struct ramfs_entry {
 
-   bintree_node node;
-   list_node lnode;
+   struct bintree_node node;
+   struct list_node lnode;
    struct ramfs_inode *inode;
    u8 name_len;                     /* NOTE: includes the final \0 */
    char name[RAMFS_ENTRY_MAX_LEN];
+};
 
-} ramfs_entry;
-
-STATIC_ASSERT(sizeof(ramfs_entry) == RAMFS_ENTRY_SIZE);
+STATIC_ASSERT(sizeof(struct ramfs_entry) == RAMFS_ENTRY_SIZE);
 
 struct ramfs_inode {
 
@@ -67,27 +64,27 @@ struct ramfs_inode {
 
    tilck_inode_t ino;
    enum vfs_entry_type type;
-   rwlock_wp rwlock;
+   struct rwlock_wp rwlock;
    nlink_t nlink;
    mode_t mode;
    size_t blocks_count;                /* count of page-size blocks */
    struct ramfs_inode *parent_dir;
-   list mappings_list;
+   struct list mappings_list;
 
    union {
 
       /* valid when type == VFS_FILE */
       struct {
          offt fsize;
-         ramfs_block *blocks_tree_root;
+         struct ramfs_block *blocks_tree_root;
       };
 
       /* valid when type == VFS_DIR */
       struct {
          offt num_entries;
-         ramfs_entry *entries_tree_root;
-         list entries_list;
-         list handles_list;
+         struct ramfs_entry *entries_tree_root;
+         struct list entries_list;
+         struct list handles_list;
       };
 
       /* valid when type == VFS_SYMLINK */
@@ -101,29 +98,27 @@ struct ramfs_inode {
    time_t mtime;
 };
 
-typedef struct {
+struct ramfs_handle {
 
-   /* fs_handle_base */
+   /* struct fs_handle_base */
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */
-   ramfs_inode *inode;
+   struct ramfs_inode *inode;
 
    /* valid only if inode->type == VFS_DIR */
    struct {
-      list_node node;               /* node in inode->handles_list */
-      ramfs_entry *dpos;            /* current entry position */
+      struct list_node node;        /* node in inode->handles_list */
+      struct ramfs_entry *dpos;     /* current entry position */
    };
+};
 
-} ramfs_handle;
+struct ramfs_data {
 
-typedef struct {
-
-   rwlock_wp rwlock;
+   struct rwlock_wp rwlock;
 
    tilck_inode_t next_inode_num;
-   ramfs_inode *root;
+   struct ramfs_inode *root;
+};
 
-} ramfs_data;
-
-CREATE_FS_PATH_STRUCT(ramfs_path, ramfs_inode *, ramfs_entry *);
+CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, struct ramfs_entry *);

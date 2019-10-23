@@ -8,7 +8,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sync.h>
 
-static kcond conds[2];
+static struct kcond conds[2];
 static ATOMIC(int) mobj_se_test_signal_counter;
 static bool mobj_se_test_assumption_failed;
 
@@ -35,7 +35,7 @@ static void mobj_waiter_wait_thread(void *arg)
       return;
    }
 
-   multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
+   struct multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
    VERIFY(w != NULL);
 
    for (u32 j = 0; j < ARRAY_SIZE(conds); j++)
@@ -50,7 +50,7 @@ static void mobj_waiter_wait_thread(void *arg)
 
       for (size_t j = 0; j < w->count; j++) {
 
-         mwobj_elem *me = &w->elems[j];
+         struct mwobj_elem *me = &w->elems[j];
 
          if (me->type && !me->wobj.type) {
             printk("[wait th ]    -> condition #%u was signaled\n", j);

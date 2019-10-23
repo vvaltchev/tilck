@@ -16,8 +16,8 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/list.h>
 
-STATIC kmalloc_heap first_heap_struct;
-STATIC kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
+STATIC struct kmalloc_heap first_heap_struct;
+STATIC struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC u32 used_heaps;
 STATIC size_t max_tot_heap_mem_free;
 
@@ -37,7 +37,7 @@ void *kmalloc_get_first_heap(size_t *size)
 
 #include "kmalloc_leak_detector.c.h"
 
-bool kmalloc_create_heap(kmalloc_heap *h,
+bool kmalloc_create_heap(struct kmalloc_heap *h,
                          uptr vaddr,
                          size_t size,
                          size_t min_block_size,
@@ -96,28 +96,28 @@ bool kmalloc_create_heap(kmalloc_heap *h,
    return true;
 }
 
-void kmalloc_destroy_heap(kmalloc_heap *h)
+void kmalloc_destroy_heap(struct kmalloc_heap *h)
 {
    kfree2(h->metadata_nodes, h->metadata_size);
-   bzero(h, sizeof(kmalloc_heap));
+   bzero(h, sizeof(struct kmalloc_heap));
 }
 
-kmalloc_heap *kmalloc_heap_dup(kmalloc_heap *h)
+struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
 {
    if (!h)
       return NULL;
 
-   kmalloc_heap *new_heap = kmalloc(sizeof(kmalloc_heap));
+   struct kmalloc_heap *new_heap = kmalloc(sizeof(struct kmalloc_heap));
 
    if (!new_heap)
       return NULL;
 
-   memcpy(new_heap, h, sizeof(kmalloc_heap));
+   memcpy(new_heap, h, sizeof(struct kmalloc_heap));
 
    new_heap->metadata_nodes = kmalloc(h->metadata_size);
 
    if (!new_heap->metadata_nodes) {
-      kfree2(new_heap, sizeof(kmalloc_heap));
+      kfree2(new_heap, sizeof(struct kmalloc_heap));
       return NULL;
    }
 
@@ -159,10 +159,10 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    } else {
 
       heaps[used_heaps] =
-         kmalloc(MAX(sizeof(kmalloc_heap), SMALL_HEAP_MAX_ALLOC + 1));
+         kmalloc(MAX(sizeof(struct kmalloc_heap), SMALL_HEAP_MAX_ALLOC + 1));
 
       if (!heaps[used_heaps])
-         panic("Unable to alloc memory for struct kmalloc_heap");
+         panic("Unable to alloc memory for struct struct kmalloc_heap");
    }
 
    bool success =
@@ -204,11 +204,11 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
 static sptr greater_than_heap_cmp(const void *a, const void *b)
 {
-   const kmalloc_heap *const *ha_ref = a;
-   const kmalloc_heap *const *hb_ref = b;
+   const struct kmalloc_heap *const *ha_ref = a;
+   const struct kmalloc_heap *const *hb_ref = b;
 
-   const kmalloc_heap *ha = *ha_ref;
-   const kmalloc_heap *hb = *hb_ref;
+   const struct kmalloc_heap *ha = *ha_ref;
+   const struct kmalloc_heap *hb = *hb_ref;
 
    if (ha->size < hb->size)
       return 1;
@@ -278,7 +278,7 @@ void init_kmalloc(void)
 
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *r = mem_regions + i;
+      struct mem_region *r = mem_regions + i;
       uptr vbegin, vend;
 
       if (!linear_map_mem_region(r, &vbegin, &vend))
@@ -299,7 +299,7 @@ void init_kmalloc(void)
 
    for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
 
-      kmalloc_heap *h = heaps[i];
+      struct kmalloc_heap *h = heaps[i];
 
       if (!h)
          continue;
@@ -314,14 +314,14 @@ size_t kmalloc_get_max_tot_heap_free(void)
 }
 
 bool
-debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
+debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
 {
-   kmalloc_heap *h = heaps[heap_num];
+   struct kmalloc_heap *h = heaps[heap_num];
 
    if (!h)
       return false;
 
-   *i = (debug_kmalloc_heap_info) {
+   *i = (struct debug_kmalloc_heap_info) {
       .vaddr = h->vaddr,
       .size = h->size,
       .mem_allocated = h->mem_allocated,
@@ -334,9 +334,9 @@ debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
 }
 
 void
-debug_kmalloc_get_stats(debug_kmalloc_stats *stats)
+debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats)
 {
-   *stats = (debug_kmalloc_stats) {
+   *stats = (struct debug_kmalloc_stats) {
       .small_heaps = shs,
       .chunk_sizes_count =
          KMALLOC_HEAVY_STATS ? alloc_arr_used : 0,

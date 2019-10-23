@@ -14,7 +14,7 @@ class vfs_misc : public vfs_test_base {
 
 protected:
 
-   filesystem *fat_fs;
+   struct fs *fat_fs;
    size_t fatpart_size;
 
    void SetUp() override {
@@ -25,7 +25,7 @@ protected:
       fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
       ASSERT_TRUE(fat_fs != NULL);
 
-      mp2_init(fat_fs);
+      mp_init(fat_fs);
    }
 
    void TearDown() override {

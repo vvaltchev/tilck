@@ -19,7 +19,7 @@ static void test_tasklet_func()
 
 static void end_test(void *arg)
 {
-   kcond *c = arg;
+   struct kcond *c = arg;
 
    const u32 max_tasklets = get_tasklet_runner_limit(0);
    const u32 tot_iters = max_tasklets * 10;
@@ -53,7 +53,7 @@ void selftest_tasklet_short(void)
 
    }
 
-   kcond c;
+   struct kcond c;
    kcond_init(&c);
 
    do {

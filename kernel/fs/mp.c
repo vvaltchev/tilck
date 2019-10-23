@@ -8,7 +8,7 @@
 int
 sys_mount(const char *user_source,
           const char *user_target,
-          const char *user_filesystemtype,
+          const char *user_fstype,
           unsigned long mountflags,
           const void *user_data)
 {

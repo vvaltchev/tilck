@@ -13,11 +13,11 @@
 #include "gdt_int.h"
 #include "double_fault.h"
 
-static gdt_entry initial_gdt_in_bss[8];
+static struct gdt_entry initial_gdt_in_bss[8];
 static s32 initial_gdt_refcount_in_bss[ARRAY_SIZE(initial_gdt_in_bss)];
 
 static u32 gdt_size = ARRAY_SIZE(initial_gdt_in_bss);
-static gdt_entry *gdt = initial_gdt_in_bss;
+static struct gdt_entry *gdt = initial_gdt_in_bss;
 static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
 
 /*
@@ -41,13 +41,13 @@ static s32 *gdt_refcount = initial_gdt_refcount_in_bss;
  * >>
  */
 
-tss_entry_t tss_array[2] ALIGNED_AT(PAGE_SIZE);
+struct tss_entry tss_array[2] ALIGNED_AT(PAGE_SIZE);
 
-static void load_gdt(gdt_entry *gdt, u32 entries_count);
+static void load_gdt(struct gdt_entry *gdt, u32 entries_count);
 
 
 void
-gdt_set_entry(gdt_entry *e,
+gdt_set_entry(struct gdt_entry *e,
               uptr base,
               uptr limit,
               u8 access,
@@ -55,7 +55,7 @@ gdt_set_entry(gdt_entry *e,
 {
    /*
     * This function is supposed to be used only for gdt_entry elements NOT in
-    * gdt (like &gdt[3]). Usually, gdt_entry is pointer to variable on the stack
+    * gdt (like &gdt[3]). Usually, `e` is just pointer to variable on the stack
     * later passed as argument to set_entry_num().
     */
 
@@ -76,7 +76,7 @@ gdt_set_entry(gdt_entry *e,
 }
 
 static void
-set_entry_num(u32 n, gdt_entry *e)
+set_entry_num(u32 n, struct gdt_entry *e)
 {
    uptr var;
    disable_interrupts(&var);
@@ -99,7 +99,7 @@ void gdt_clear_entry(u32 n)
       ASSERT(gdt_refcount[n] > 0);
 
       if (--gdt_refcount[n] == 0) {
-         bzero(&gdt[n], sizeof(gdt_entry));
+         bzero(&gdt[n], sizeof(struct gdt_entry));
       }
    }
    enable_interrupts(&var);
@@ -126,7 +126,7 @@ set_entry_num2(u32 n,
                u8 access,
                u8 flags)
 {
-   gdt_entry e;
+   struct gdt_entry e;
    gdt_set_entry(&e, base, limit, access, flags);
    set_entry_num(n, &e);
 }
@@ -151,7 +151,7 @@ static NODISCARD int gdt_expand(void)
          return -ENOMEM;
       }
 
-      void *new_gdt = kzmalloc(sizeof(gdt_entry) * new_size);
+      void *new_gdt = kzmalloc(sizeof(struct gdt_entry) * new_size);
       void *new_gdt_refcount;
 
       if (!new_gdt) {
@@ -167,7 +167,7 @@ static NODISCARD int gdt_expand(void)
          return -1;
       }
 
-      memcpy(new_gdt, gdt, sizeof(gdt_entry) * gdt_size);
+      memcpy(new_gdt, gdt, sizeof(struct gdt_entry) * gdt_size);
       memcpy(new_gdt_refcount, gdt_refcount, sizeof(s32) * gdt_size);
 
       disable_interrupts(&var);
@@ -185,14 +185,14 @@ static NODISCARD int gdt_expand(void)
 
       ASSERT(old_gdt_refcount_ptr != initial_gdt_refcount_in_bss);
 
-      kfree2(old_gdt_ptr, sizeof(gdt_entry) * old_gdt_size);
+      kfree2(old_gdt_ptr, sizeof(struct gdt_entry) * old_gdt_size);
       kfree2(old_gdt_refcount_ptr, sizeof(s32) * old_gdt_size);
    }
 
    return 0;
 }
 
-int gdt_add_entry(gdt_entry *e)
+int gdt_add_entry(struct gdt_entry *e)
 {
    int rc = -1;
 
@@ -212,7 +212,7 @@ int gdt_add_entry(gdt_entry *e)
 
 static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
 {
-   gdt_entry e;
+   struct gdt_entry e;
 
    gdt_set_entry(&e,
                  (uptr) ldt_ptr,
@@ -236,7 +236,7 @@ void set_kernel_stack(u32 stack)
    enable_interrupts(&var);
 }
 
-static void load_gdt(gdt_entry *g, u32 entries_count)
+static void load_gdt(struct gdt_entry *g, u32 entries_count)
 {
    ASSERT(!are_interrupts_enabled());
    ASSERT(entries_count <= 64 * KB);
@@ -244,11 +244,11 @@ static void load_gdt(gdt_entry *g, u32 entries_count)
    struct {
 
       u16 size_minus_one;
-      gdt_entry *gdt_vaddr;
+      struct gdt_entry *gdt_vaddr;
 
    } PACKED gdt_ptr = {
 
-      (u16)(sizeof(gdt_entry) * entries_count - 1),
+      (u16)(sizeof(struct gdt_entry) * entries_count - 1),
       g,
    };
 
@@ -325,7 +325,7 @@ void init_segmentation(void)
    load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
 }
 
-static void DEBUG_set_thread_area(user_desc *d)
+static void DEBUG_set_thread_area(struct user_desc *d)
 {
    printk(NO_PREFIX "set_thread_area(e: %i,\n"
                     "                base: %p,\n"
@@ -351,7 +351,7 @@ static void DEBUG_set_thread_area(user_desc *d)
 
 static int find_available_slot_in_user_task(void)
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (!curr->arch.gdt_entries[i])
          return (int)i;
@@ -361,7 +361,7 @@ static int find_available_slot_in_user_task(void)
 
 static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    for (u32 i = 0; i < ARRAY_SIZE(curr->arch.gdt_entries); i++)
       if (curr->arch.gdt_entries[i] == gdt_entry_num)
          return (int)i;
@@ -369,7 +369,7 @@ static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
    return -1;
 }
 
-static void gdt_set_slot_in_task(task_info *ti, u16 slot, u16 gdt_index)
+static void gdt_set_slot_in_task(struct task *ti, u16 slot, u16 gdt_index)
 {
    ti->arch.gdt_entries[slot] = gdt_index;
 }
@@ -377,11 +377,11 @@ static void gdt_set_slot_in_task(task_info *ti, u16 slot, u16 gdt_index)
 int sys_set_thread_area(void *arg)
 {
    int rc = 0;
-   gdt_entry e = {0};
-   user_desc dc;
-   user_desc *ud = arg;
+   struct gdt_entry e = {0};
+   struct user_desc dc;
+   struct user_desc *ud = arg;
 
-   rc = copy_from_user(&dc, ud, sizeof(user_desc));
+   rc = copy_from_user(&dc, ud, sizeof(struct user_desc));
 
    if (rc != 0)
       return -EFAULT;
@@ -451,7 +451,7 @@ int sys_set_thread_area(void *arg)
       slot = find_available_slot_in_user_task();
 
       if (slot < 0) {
-         /* Unable to find a free slot in this task_info struct */
+         /* Unable to find a free slot in this struct task struct */
          rc = -ESRCH;
          goto out;
       }
@@ -475,9 +475,9 @@ out:
 
       /*
        * Positive case: we get here with rc = SUCCESS, now flush back the
-       * the user_desc struct (we might have changed its entry_number).
+       * the struct user_desc (we might have changed its entry_number).
        */
-      rc = copy_to_user(ud, &dc, sizeof(user_desc));
+      rc = copy_to_user(ud, &dc, sizeof(struct user_desc));
 
       if (rc < 0)
          rc = -EFAULT;
@@ -486,9 +486,9 @@ out:
    return rc;
 }
 
-void copy_main_tss_on_regs(regs *ctx)
+void copy_main_tss_on_regs(regs_t *ctx)
 {
-   *ctx = (regs) {
+   *ctx = (regs_t) {
       .kernel_resume_eip   = 0,
       .custom_flags        = 0,
       .gs                  = tss_array[TSS_MAIN].gs,

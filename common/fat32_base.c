@@ -146,8 +146,8 @@ bool fat32_is_valid_filename_character(char c)
 /*
  * WARNING: this implementation supports only the ASCII subset of UTF16.
  */
-static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
-                                      fat_long_entry *le)
+static void fat_handle_long_dir_entry(struct fat_walk_dir_ctx *ctx,
+                                      struct fat_long_entry *le)
 {
    char entrybuf[13] = {0};
    int ebuf_size=0;
@@ -225,16 +225,16 @@ static void fat_handle_long_dir_entry(fat_walk_dir_ctx *ctx,
    }
 }
 
-int fat_walk_directory(fat_walk_dir_ctx *ctx,
-                       fat_header *hdr,
-                       fat_type ft,
-                       fat_entry *entry,
+int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
+                       struct fat_hdr *h,
+                       enum fat_type ft,
+                       struct fat_entry *entry,
                        u32 cluster,
                        fat_dentry_cb cb,
                        void *arg)
 {
    const u32 entries_per_cluster =
-      ((u32)hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus) / sizeof(fat_entry);
+      ((u32)h->BPB_BytsPerSec * h->BPB_SecPerClus) / sizeof(struct fat_entry);
 
    ASSERT(ft == fat16_type || ft == fat32_type);
 
@@ -257,7 +257,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
           * In that case, fat_get_rootdir() returns 0 as cluster. In all the
           * other cases, we need only the cluster.
           */
-         entry = fat_get_pointer_to_cluster_data(hdr, cluster);
+         entry = fat_get_pointer_to_cluster_data(h, cluster);
       }
 
       ASSERT(entry != NULL);
@@ -265,7 +265,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
       for (u32 i = 0; i < entries_per_cluster; i++) {
 
          if (is_long_name_entry(&entry[i])) {
-            fat_handle_long_dir_entry(ctx, (fat_long_entry*)&entry[i]);
+            fat_handle_long_dir_entry(ctx, (struct fat_long_entry*)&entry[i]);
             continue;
          }
 
@@ -296,7 +296,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
             }
          }
 
-         int ret = cb(hdr, ft, entry + i, long_name_ptr, arg);
+         int ret = cb(h, ft, entry + i, long_name_ptr, arg);
 
          ctx->lname_sz = 0;
          ctx->lname_chksum = -1;
@@ -320,7 +320,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(hdr, ft, cluster, 0);
+      u32 val = fat_read_fat_entry(h, ft, cluster, 0);
 
       if (fat_is_end_of_clusterchain(ft, val))
          break; // that's it: we hit an exactly full cluster.
@@ -334,7 +334,7 @@ int fat_walk_directory(fat_walk_dir_ctx *ctx,
    return 0;
 }
 
-fat_type fat_get_type(fat_header *hdr)
+enum fat_type fat_get_type(struct fat_hdr *hdr)
 {
    u32 FATSz = fat_get_FATSz(hdr);
    u32 TotSec = fat_get_TotSec(hdr);
@@ -361,13 +361,14 @@ fat_type fat_get_type(fat_header *hdr)
 }
 
 /*
- * Reads the entry in the FAT 'fatNum' for cluster 'clusterN'.
+ * Reads the entry in the FAT 'fatN' for cluster 'clusterN'.
  * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
  */
-u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, u32 clusterN, u32 fatNum)
+u32
+fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 clusterN, u32 fatN)
 {
    if (ft == fat_unknown) {
-      ft = fat_get_type(hdr);
+      ft = fat_get_type(h);
    }
 
    if (ft == fat12_type) {
@@ -375,28 +376,28 @@ u32 fat_read_fat_entry(fat_header *hdr, fat_type ft, u32 clusterN, u32 fatNum)
       NOT_REACHED();
    }
 
-   ASSERT(fatNum < hdr->BPB_NumFATs);
+   ASSERT(fatN < h->BPB_NumFATs);
 
-   u32 FATSz = fat_get_FATSz(hdr);
+   u32 FATSz = fat_get_FATSz(h);
    u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
 
    u32 ThisFATSecNum =
-      fatNum * FATSz + hdr->BPB_RsvdSecCnt + (FATOffset / hdr->BPB_BytsPerSec);
+      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
 
-   u32 ThisFATEntOffset = FATOffset % hdr->BPB_BytsPerSec;
+   u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
 
-   u8 *SecBuf = (u8*)hdr + ThisFATSecNum * hdr->BPB_BytsPerSec;
+   u8 *SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
 
    if (ft == fat16_type) {
-      return *(u16*)(SecBuf+ThisFATEntOffset);
+      return *(u16 *)(SecBuf + ThisFATEntOffset);
    }
 
    // FAT32
    // Note: FAT32 "FAT" entries are 28-bit. The 4 higher bits are reserved.
-   return (*(u32*)(SecBuf+ThisFATEntOffset)) & 0x0FFFFFFF;
+   return (*(u32 *)(SecBuf + ThisFATEntOffset)) & 0x0FFFFFFF;
 }
 
-u32 fat_get_first_data_sector(fat_header *hdr)
+u32 fat_get_first_data_sector(struct fat_hdr *hdr)
 {
    u32 RootDirSectors = fat_get_RootDirSectors(hdr);
    u32 FATSz;
@@ -404,7 +405,7 @@ u32 fat_get_first_data_sector(fat_header *hdr)
    if (hdr->BPB_FATSz16 != 0) {
       FATSz = hdr->BPB_FATSz16;
    } else {
-      fat32_header2 *h32 = (fat32_header2*) (hdr+1);
+      struct fat32_header2 *h32 = (struct fat32_header2*) (hdr+1);
       FATSz = h32->BPB_FATSz32;
    }
 
@@ -414,7 +415,7 @@ u32 fat_get_first_data_sector(fat_header *hdr)
    return FirstDataSector;
 }
 
-u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
+u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N)
 {
    u32 FirstDataSector = fat_get_first_data_sector(hdr);
 
@@ -422,7 +423,8 @@ u32 fat_get_sector_for_cluster(fat_header *hdr, u32 N)
    return ((N - 2) * hdr->BPB_SecPerClus) + FirstDataSector;
 }
 
-fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
+struct fat_entry *
+fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
 {
    ASSERT(ft != fat12_type);
    ASSERT(ft != fat_unknown);
@@ -440,15 +442,15 @@ fat_entry *fat_get_rootdir(fat_header *hdr, fat_type ft, u32 *cluster /* out */)
    } else {
 
       /* FAT32 case */
-      fat32_header2 *h32 = (fat32_header2 *) (hdr + 1);
+      struct fat32_header2 *h32 = (struct fat32_header2 *) (hdr + 1);
       *cluster = h32->BPB_RootClus;
       sector = fat_get_sector_for_cluster(hdr, *cluster);
    }
 
-   return (fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * sector));
+   return (struct fat_entry*) ((u8*)hdr + (hdr->BPB_BytsPerSec * sector));
 }
 
-void fat_get_short_name(fat_entry *entry, char *destbuf)
+void fat_get_short_name(struct fat_entry *entry, char *destbuf)
 {
    u32 i = 0;
    u32 d = 0;
@@ -483,7 +485,7 @@ void fat_get_short_name(fat_entry *entry, char *destbuf)
    destbuf[d] = 0;
 }
 
-static bool fat_fetch_next_component(fat_search_ctx *ctx)
+static bool fat_fetch_next_component(struct fat_search_ctx *ctx)
 {
    ASSERT(ctx->pcl == 0);
 
@@ -501,13 +503,13 @@ static bool fat_fetch_next_component(fat_search_ctx *ctx)
    return ctx->pcl != 0;
 }
 
-int fat_search_entry_cb(fat_header *hdr,
-                        fat_type ft,
-                        fat_entry *entry,
+int fat_search_entry_cb(struct fat_hdr *hdr,
+                        enum fat_type ft,
+                        struct fat_entry *entry,
                         const char *long_name,
                         void *arg)
 {
-   fat_search_ctx *ctx = arg;
+   struct fat_search_ctx *ctx = arg;
 
    if (ctx->pcl == 0) {
       if (!fat_fetch_next_component(ctx)) {
@@ -592,9 +594,11 @@ int fat_search_entry_cb(fat_header *hdr,
 }
 
 void
-fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp)
+fat_init_search_ctx(struct fat_search_ctx *ctx,
+                    const char *path,
+                    bool single_comp)
 {
-   bzero(ctx, sizeof(fat_search_ctx));
+   bzero(ctx, sizeof(struct fat_search_ctx));
 
 #ifdef __clang_analyzer__
    ctx->pcl = 0;       /* SA: make it sure ctx.pcl is zeroed */
@@ -605,11 +609,14 @@ fat_init_search_ctx(fat_search_ctx *ctx, const char *path, bool single_comp)
    ctx->single_comp = single_comp;
 }
 
-fat_entry *
-fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
+struct fat_entry *
+fat_search_entry(struct fat_hdr *hdr,
+                 enum fat_type ft,
+                 const char *abspath,
+                 int *err)
 {
-   fat_search_ctx ctx;
-   fat_entry *root;
+   struct fat_search_ctx ctx;
+   struct fat_entry *root;
    u32 root_dir_cluster;
 
    if (ft == fat_unknown) {
@@ -649,14 +656,16 @@ fat_search_entry(fat_header *hdr, fat_type ft, const char *abspath, int *err)
    return ctx.result;
 }
 
-size_t fat_get_file_size(fat_entry *entry)
+size_t fat_get_file_size(struct fat_entry *entry)
 {
    return entry->DIR_FileSize;
 }
 
 void
-fat_read_whole_file(fat_header *hdr,
-                    fat_entry *entry, char *dest_buf, size_t dest_buf_size)
+fat_read_whole_file(struct fat_hdr *hdr,
+                    struct fat_entry *entry,
+                    char *dest_buf,
+                    size_t dest_buf_size)
 {
    ASSERT(entry->DIR_FileSize <= dest_buf_size);
 
@@ -667,7 +676,7 @@ fat_read_whole_file(fat_header *hdr,
    size_t written = 0;
    size_t fsize = entry->DIR_FileSize;
 
-   fat_type ft = fat_get_type(hdr);
+   enum fat_type ft = fat_get_type(hdr);
 
    cluster = fat_get_first_cluster(entry);
 
@@ -707,7 +716,7 @@ fat_read_whole_file(fat_header *hdr,
 }
 
 u32
-fat_get_used_bytes(fat_header *hdr)
+fat_get_used_bytes(struct fat_hdr *hdr)
 {
    u32 clusterN;
    const u32 cluster_count = fat_get_TotSec(hdr) / hdr->BPB_SecPerClus;

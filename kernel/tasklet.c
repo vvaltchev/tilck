@@ -16,18 +16,18 @@
 #include "tasklet_int.h"
 
 u32 tasklet_threads_count;
-tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
+struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
 
 u32 get_tasklet_runner_limit(u32 tn)
 {
    ASSERT(tn < MAX_TASKLET_THREADS);
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
    return t ? t->limit : 0;
 }
 
-task_info *get_tasklet_runner(u32 tn)
+struct task *get_tasklet_runner(u32 tn)
 {
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
 
    if (!t)
       return NULL;
@@ -38,22 +38,22 @@ task_info *get_tasklet_runner(u32 tn)
 
 bool any_tasklets_to_run(u32 tn)
 {
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
 
    if (!t)
       return false;
 
-   return !safe_ringbuf_is_empty(&t->safe_ringbuf);
+   return !safe_ringbuf_is_empty(&t->rb);
 }
 
 bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 {
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
    bool success, was_empty;
 
    ASSERT(t != NULL);
 
-   tasklet new_tasklet = {
+   struct tasklet new_tasklet = {
       .fptr = func,
       .ctx = {
          .arg1 = arg1,
@@ -68,7 +68,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
    /*
     * Trying to enqueue a tasklet from the same tasklet thread can cause
-    * a deadlock when the safe_ringbuf is full if the caller waits in a loop for
+    * a deadlock when the ringbuf is full if the caller waits in a loop for
     * the enqueue to succeed: the runner function won't get the control back
     * until it gets the control to execute a tasklet and, clearly, this is a
     * contradiction, leading to an endless loop. Exception: if we're running
@@ -89,7 +89,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 #endif
 
    success =
-      safe_ringbuf_write_elem_ex(&t->safe_ringbuf, &new_tasklet, &was_empty);
+      safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -113,11 +113,11 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 bool run_one_tasklet(int tn)
 {
    bool success;
-   tasklet tasklet_to_run;
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet tasklet_to_run;
+   struct tasklet_thread *t = tasklet_threads[tn];
 
    ASSERT(t != NULL);
-   success = safe_ringbuf_read_elem(&t->safe_ringbuf, &tasklet_to_run);
+   success = safe_ringbuf_read_elem(&t->rb, &tasklet_to_run);
 
    if (success) {
       /* Run the tasklet with preemption enabled */
@@ -161,7 +161,7 @@ bool run_one_tasklet(int tn)
 void tasklet_runner(void *arg)
 {
    int tn = (int)(uptr)arg;
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
    bool tasklet_run, yield;
    uptr var;
 
@@ -181,7 +181,7 @@ void tasklet_runner(void *arg)
 
       disable_interrupts(&var);
       {
-         if (safe_ringbuf_is_empty(&t->safe_ringbuf)) {
+         if (safe_ringbuf_is_empty(&t->rb)) {
             t->task->state = TASK_STATE_SLEEPING;
             yield = true;
          }
@@ -193,14 +193,14 @@ void tasklet_runner(void *arg)
    }
 }
 
-task_info *get_hi_prio_ready_tasklet_runner(void)
+struct task *get_hi_prio_ready_tasklet_runner(void)
 {
    ASSERT(!is_preemption_enabled());
-   tasklet_thread_info *selected = NULL;
+   struct tasklet_thread *selected = NULL;
 
    for (u32 i = 0; i < tasklet_threads_count; i++) {
 
-      tasklet_thread_info *t = tasklet_threads[i];
+      struct tasklet_thread *t = tasklet_threads[i];
 
       if (!any_tasklets_to_run(i))
          continue;
@@ -215,7 +215,7 @@ task_info *get_hi_prio_ready_tasklet_runner(void)
 
 int create_tasklet_thread(int priority, u16 limit)
 {
-   tasklet_thread_info *t;
+   struct tasklet_thread *t;
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -223,7 +223,7 @@ int create_tasklet_thread(int priority, u16 limit)
    if (tasklet_threads_count >= ARRAY_SIZE(tasklet_threads))
       return -ENFILE; /* too many tasklet runners */
 
-   t = kzmalloc(sizeof(tasklet_thread_info));
+   t = kzmalloc(sizeof(struct tasklet_thread));
 
    if (!t)
       return -ENOMEM;
@@ -231,22 +231,25 @@ int create_tasklet_thread(int priority, u16 limit)
    u32 tn = tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
-   t->tasklets = kzmalloc(sizeof(tasklet) * limit);
+   t->tasklets = kzmalloc(sizeof(struct tasklet) * limit);
 
    if (!t->tasklets) {
-      kfree2(t, sizeof(tasklet_thread_info));
+      kfree2(t, sizeof(struct tasklet_thread));
       return -ENOMEM;
    }
 
-   safe_ringbuf_init(&t->safe_ringbuf, limit, sizeof(tasklet), t->tasklets);
+   safe_ringbuf_init(&t->rb,
+                     limit,
+                     sizeof(struct tasklet),
+                     t->tasklets);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
    int tid = kthread_create(tasklet_runner, TO_PTR(tn));
 
    if (tid < 0) {
-      kfree2(t->tasklets, sizeof(tasklet) * limit);
-      kfree2(t, sizeof(tasklet_thread_info));
+      kfree2(t->tasklets, sizeof(struct tasklet) * limit);
+      kfree2(t, sizeof(struct tasklet_thread));
       return -ENOMEM;
    }
 
@@ -269,16 +272,16 @@ void destroy_last_tasklet_thread(void)
    DEBUG_ONLY(check_not_in_irq_handler());
 
    u32 tn = --tasklet_threads_count;
-   tasklet_thread_info *t = tasklet_threads[tn];
+   struct tasklet_thread *t = tasklet_threads[tn];
    ASSERT(t != NULL);
 
 #ifndef UNIT_TEST_ENVIRONMENT
-   ASSERT(safe_ringbuf_is_empty(&t->safe_ringbuf));
+   ASSERT(safe_ringbuf_is_empty(&t->rb));
 #endif
 
-   safe_ringbuf_destory(&t->safe_ringbuf);
-   kfree2(t->tasklets, sizeof(tasklet) * t->limit);
-   kfree2(t, sizeof(tasklet_thread_info));
+   safe_ringbuf_destory(&t->rb);
+   kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
+   kfree2(t, sizeof(struct tasklet_thread));
    bzero(t, sizeof(*t));
    tasklet_threads[tn] = NULL;
 }

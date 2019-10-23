@@ -44,86 +44,75 @@
 #define PAGE_FAULT_FL_COW (PAGE_FAULT_FL_PRESENT | PAGE_FAULT_FL_RW)
 
 // A page table entry
-typedef struct {
 
-   union {
+union x86_page {
 
-      struct {
-         u32 present : 1;
-         u32 rw : 1;        // read only = 0, read/write = 1
-         u32 us : 1;        // user/supervisor
-         u32 wt : 1;        // write-through
-         u32 cd : 1;        // cache-disabled
-         u32 accessed : 1;
-         u32 dirty : 1;
-         u32 pat : 1;
-         u32 global : 1;
-         u32 avail : 3;
-         u32 pageAddr : 20; // the first 20 bits of the physical addr.
-      };
-
-      u32 raw;
+   struct {
+      u32 present : 1;
+      u32 rw : 1;        // read only = 0, read/write = 1
+      u32 us : 1;        // user/supervisor
+      u32 wt : 1;        // write-through
+      u32 cd : 1;        // cache-disabled
+      u32 accessed : 1;
+      u32 dirty : 1;
+      u32 pat : 1;
+      u32 global : 1;
+      u32 avail : 3;
+      u32 pageAddr : 20; // the first 20 bits of the physical addr.
    };
 
-} page_t;
-
-
-// A page table
-typedef struct {
-
-   page_t pages[1024];
-
-} page_table_t;
-
-
-// A page directory entry
-typedef struct {
-
-   union {
-
-      struct {
-         u32 present : 1;
-         u32 rw : 1;             // read only = 0, read/write = 1
-         u32 us : 1;             // us = 0 -> supervisor only, 1 -> user also
-         u32 wt : 1;             // write-through
-         u32 cd : 1;             // cache-disabled
-         u32 accessed : 1;
-         u32 zero : 1;
-         u32 psize : 1;          // page size; 0 = 4 KB, 1 = 4 MB
-         u32 ignored : 1;
-         u32 avail : 3;
-         u32 ptaddr : 20;        // the paddr of 'page_table_t *'
-      };
-
-      struct {
-         u32 present : 1;
-         u32 rw : 1;             // read only = 0, read/write = 1
-         u32 us : 1;             // us = 0 -> supervisor only, 1 -> user also
-         u32 wt : 1;             // write-through
-         u32 cd : 1;             // cache-disabled
-         u32 accessed : 1;
-         u32 zero : 1;
-         u32 one : 1;            // psize must be = 1 (4 MB)
-         u32 ignored : 1;
-         u32 avail : 3;
-         u32 pat : 1;
-         u32 paddr_zero : 9;
-         u32 paddr : 10;         // 4-MB pageframe paddr
-
-      } big_4mb_page;
-
-      u32 raw;
-   };
-
-} page_dir_entry_t;
-
-
-// A page directory
-struct pdir_t {
-   page_dir_entry_t entries[1024];
+   u32 raw;
 };
 
-STATIC_ASSERT(sizeof(pdir_t) == PAGE_DIR_SIZE);
+// A page table
+struct x86_page_table {
+
+   union x86_page pages[1024];
+};
+
+// A page directory entry
+union x86_page_dir_entry {
+
+   struct {
+      u32 present : 1;
+      u32 rw : 1;             // read only = 0, read/write = 1
+      u32 us : 1;             // us = 0 -> supervisor only, 1 -> user also
+      u32 wt : 1;             // write-through
+      u32 cd : 1;             // cache-disabled
+      u32 accessed : 1;
+      u32 zero : 1;
+      u32 psize : 1;          // page size; 0 = 4 KB, 1 = 4 MB
+      u32 ignored : 1;
+      u32 avail : 3;
+      u32 ptaddr : 20;        // the paddr of 'page_table_t *'
+   };
+
+   struct {
+      u32 present : 1;
+      u32 rw : 1;             // read only = 0, read/write = 1
+      u32 us : 1;             // us = 0 -> supervisor only, 1 -> user also
+      u32 wt : 1;             // write-through
+      u32 cd : 1;             // cache-disabled
+      u32 accessed : 1;
+      u32 zero : 1;
+      u32 one : 1;            // psize must be = 1 (4 MB)
+      u32 ignored : 1;
+      u32 avail : 3;
+      u32 pat : 1;
+      u32 paddr_zero : 9;
+      u32 paddr : 10;         // 4-MB pageframe paddr
+
+   } big_4mb_page;
+
+   u32 raw;
+};
+
+// A page directory
+struct x86_pdir {
+   union x86_page_dir_entry entries[1024];
+};
+
+STATIC_ASSERT(sizeof(struct x86_pdir) == PAGE_DIR_SIZE);
 
 void map_4mb_page_int(pdir_t *pdir,
                       void *vaddr,

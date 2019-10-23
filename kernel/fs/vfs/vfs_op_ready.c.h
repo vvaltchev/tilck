@@ -2,7 +2,7 @@
 
 bool vfs_read_ready(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    bool r;
 
    if (!hb->fops->read_ready)
@@ -18,7 +18,7 @@ bool vfs_read_ready(fs_handle h)
 
 bool vfs_write_ready(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    bool r;
 
    if (!hb->fops->write_ready)
@@ -34,7 +34,7 @@ bool vfs_write_ready(fs_handle h)
 
 bool vfs_except_ready(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    bool r;
 
    if (!hb->fops->except_ready)
@@ -48,9 +48,9 @@ bool vfs_except_ready(fs_handle h)
    return r;
 }
 
-kcond *vfs_get_rready_cond(fs_handle h)
+struct kcond *vfs_get_rready_cond(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->get_rready_cond)
       return NULL;
@@ -58,9 +58,9 @@ kcond *vfs_get_rready_cond(fs_handle h)
    return hb->fops->get_rready_cond(h);
 }
 
-kcond *vfs_get_wready_cond(fs_handle h)
+struct kcond *vfs_get_wready_cond(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->get_wready_cond)
       return NULL;
@@ -68,9 +68,9 @@ kcond *vfs_get_wready_cond(fs_handle h)
    return hb->fops->get_wready_cond(h);
 }
 
-kcond *vfs_get_except_cond(fs_handle h)
+struct kcond *vfs_get_except_cond(fs_handle h)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->get_except_cond)
       return NULL;

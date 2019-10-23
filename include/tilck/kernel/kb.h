@@ -12,16 +12,15 @@
 
 typedef int (*keypress_func)(u32, u8);
 
-typedef struct {
+struct keypress_handler_elem {
 
-   list_node node;
+   struct list_node node;
    keypress_func handler;
-
-} keypress_handler_elem;
+};
 
 void init_kb(void);
 bool kb_is_pressed(u32 key);
-void kb_register_keypress_handler(keypress_handler_elem *e);
+void kb_register_keypress_handler(struct keypress_handler_elem *e);
 bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq);
 u8 kb_get_current_modifiers(void);
 int kb_get_fn_key_pressed(u32 key);

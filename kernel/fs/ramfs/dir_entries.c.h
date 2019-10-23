@@ -2,29 +2,31 @@
 
 static sptr ramfs_insert_remove_entry_cmp(const void *a, const void *b)
 {
-   const ramfs_entry *e1 = a;
-   const ramfs_entry *e2 = b;
+   const struct ramfs_entry *e1 = a;
+   const struct ramfs_entry *e2 = b;
    return strcmp(e1->name, e2->name);
 }
 
 static sptr ramfs_find_entry_cmp(const void *obj, const void *valptr)
 {
-   const ramfs_entry *e = obj;
+   const struct ramfs_entry *e = obj;
    const char *searched_str = valptr;
    return strcmp(e->name, searched_str);
 }
 
 static int
-ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
+ramfs_dir_add_entry(struct ramfs_inode *idir,
+                    const char *iname,
+                    struct ramfs_inode *ie)
 {
-   ramfs_entry *e;
+   struct ramfs_entry *e;
    size_t enl = strlen(iname) + 1;
    ASSERT(idir->type == VFS_DIR);
 
    if (enl > sizeof(e->name))
       return -ENAMETOOLONG;
 
-   if (!(e = kmalloc(sizeof(ramfs_entry))))
+   if (!(e = kmalloc(sizeof(struct ramfs_entry))))
       return -ENOSPC;
 
    ASSERT(ie->parent_dir != NULL);
@@ -45,7 +47,7 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
    bintree_insert(&idir->entries_tree_root,
                   e,
                   ramfs_insert_remove_entry_cmp,
-                  ramfs_entry,
+                  struct ramfs_entry,
                   node);
 
    list_add_tail(&idir->entries_list, &e->lnode);
@@ -56,10 +58,10 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 }
 
 static void
-ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
+ramfs_dir_remove_entry(struct ramfs_inode *idir, struct ramfs_entry *e)
 {
-   ramfs_handle *pos;
-   ramfs_inode *ie = e->inode;
+   struct ramfs_handle *pos;
+   struct ramfs_inode *ie = e->inode;
    ASSERT(idir->type == VFS_DIR);
 
    /*
@@ -77,7 +79,7 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
    bintree_remove(&idir->entries_tree_root,
                   e,
                   ramfs_insert_remove_entry_cmp,
-                  ramfs_entry,
+                  struct ramfs_entry,
                   node);
 
    list_remove(&e->lnode);
@@ -85,11 +87,13 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
    ASSERT(ie->nlink > 0);
    ie->nlink--;
    idir->num_entries--;
-   kfree2(e, sizeof(ramfs_entry));
+   kfree2(e, sizeof(struct ramfs_entry));
 }
 
-static ramfs_entry *
-ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
+static struct ramfs_entry *
+ramfs_dir_get_entry_by_name(struct ramfs_inode *idir,
+                            const char *name,
+                            ssize_t len)
 {
    char buf[RAMFS_ENTRY_MAX_LEN];
    memcpy(buf, name, (size_t) len);
@@ -98,6 +102,6 @@ ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
    return bintree_find(idir->entries_tree_root,
                        buf,
                        ramfs_find_entry_cmp,
-                       ramfs_entry,
+                       struct ramfs_entry,
                        node);
 }

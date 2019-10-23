@@ -238,7 +238,9 @@ def run_the_vm():
 
    if g_params.type == 'shellcmd':
 
-      raw_print("Running the VM with shell command '{}'...".format(g_params.name))
+      raw_print(
+         "Running the VM with shell command '{}'...".format(g_params.name)
+      )
       cmdline += ' -c ' + g_params.name
 
    elif g_params.type == 'selftest':

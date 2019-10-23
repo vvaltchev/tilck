@@ -7,7 +7,7 @@ using namespace std;
 class ramfs_perf : public vfs_test_base {
 
 protected:
-   filesystem *fs;
+   struct fs *fs;
 
    void SetUp() override {
 
@@ -15,7 +15,7 @@ protected:
 
       fs = ramfs_create();
       ASSERT_TRUE(fs != NULL);
-      mp2_init(fs);
+      mp_init(fs);
    }
 
    void TearDown() override {

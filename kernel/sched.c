@@ -11,40 +11,39 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
 
-task_info *__current;
+struct task *__current;
 ATOMIC(u32) disable_preemption_count = 1;
 
-task_info *kernel_process;
-process_info *kernel_process_pi;
+struct task *kernel_process;
+struct process *kernel_process_pi;
 
-list runnable_tasks_list;
-list sleeping_tasks_list;
-list zombie_tasks_list;
+struct list runnable_tasks_list;
+struct list sleeping_tasks_list;
+struct list zombie_tasks_list;
 
-static task_info *tree_by_tid_root;
+static struct task *tree_by_tid_root;
 
 static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid = -1;
-static task_info *idle_task;
+static struct task *idle_task;
 
 int get_curr_task_tid(void)
 {
-   task_info *c = get_curr_task();
+   struct task *c = get_curr_task();
    return c ? c->tid : 0;
 }
 
-typedef struct {
+struct create_pid_visit_ctx {
 
    int lowest_available;
    int lowest_after_current_max;
-
-} create_pid_visit_ctx;
+};
 
 static int create_new_pid_visit_cb(void *obj, void *arg)
 {
-   task_info *ti = obj;
-   create_pid_visit_ctx *ctx = arg;
+   struct task *ti = obj;
+   struct create_pid_visit_ctx *ctx = arg;
 
    if (!is_main_thread(ti))
       return 0; /* skip threads */
@@ -77,7 +76,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
 int create_new_pid(void)
 {
    ASSERT(!is_preemption_enabled());
-   create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
+   struct create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
    int r;
 
    iterate_over_tasks(&create_new_pid_visit_cb, &ctx);
@@ -99,7 +98,7 @@ int iterate_over_tasks(bintree_visit_cb func, void *arg)
    return bintree_in_order_visit(tree_by_tid_root,
                                  func,
                                  arg,
-                                 task_info,
+                                 struct task,
                                  tree_by_tid_node);
 }
 
@@ -119,10 +118,12 @@ static void idle(void)
 
 void create_kernel_process(void)
 {
-   static char kernel_proc_buf[sizeof(process_info) + sizeof(task_info)];
+   static char kernel_proc_buf[
+      sizeof(struct process) + sizeof(struct task)
+   ];
 
-   task_info *s_kernel_ti = (task_info *)kernel_proc_buf;
-   process_info *s_kernel_pi = (process_info *)(s_kernel_ti + 1);
+   struct task *s_kernel_ti = (struct task *)kernel_proc_buf;
+   struct process *s_kernel_pi = (struct process *)(s_kernel_ti + 1);
 
    list_init(&runnable_tasks_list);
    list_init(&sleeping_tasks_list);
@@ -162,7 +163,7 @@ void create_kernel_process(void)
    set_curr_task(kernel_process);
 }
 
-process_info *task_get_pi_opaque(task_info *ti)
+struct process *task_get_pi_opaque(struct task *ti)
 {
    if (ti != NULL)
       return ti->pi;
@@ -170,7 +171,7 @@ process_info *task_get_pi_opaque(task_info *ti)
    return NULL;
 }
 
-void process_set_tty(process_info *pi, void *t)
+void process_set_tty(struct process *pi, void *t)
 {
    pi->proc_tty = t;
 }
@@ -194,7 +195,7 @@ void set_current_task_in_kernel(void)
    get_curr_task()->running_in_kernel = true;
 }
 
-static void task_add_to_state_list(task_info *ti)
+static void task_add_to_state_list(struct task *ti)
 {
    if (is_tasklet_runner(ti))
       return;
@@ -223,7 +224,7 @@ static void task_add_to_state_list(task_info *ti)
    }
 }
 
-static void task_remove_from_state_list(task_info *ti)
+static void task_remove_from_state_list(struct task *ti)
 {
    if (is_tasklet_runner(ti))
       return;
@@ -252,7 +253,7 @@ static void task_remove_from_state_list(task_info *ti)
    }
 }
 
-void task_change_state(task_info *ti, enum task_state new_state)
+void task_change_state(struct task *ti, enum task_state new_state)
 {
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
@@ -267,7 +268,7 @@ void task_change_state(task_info *ti, enum task_state new_state)
    enable_preemption();
 }
 
-void add_task(task_info *ti)
+void add_task(struct task *ti)
 {
    disable_preemption();
    {
@@ -275,14 +276,14 @@ void add_task(task_info *ti)
 
       bintree_insert_ptr(&tree_by_tid_root,
                          ti,
-                         task_info,
+                         struct task,
                          tree_by_tid_node,
                          tid);
    }
    enable_preemption();
 }
 
-void remove_task(task_info *ti)
+void remove_task(struct task *ti)
 {
    disable_preemption();
    {
@@ -292,7 +293,7 @@ void remove_task(task_info *ti)
 
       bintree_remove_ptr(&tree_by_tid_root,
                          ti,
-                         task_info,
+                         struct task,
                          tree_by_tid_node,
                          tid);
 
@@ -303,7 +304,7 @@ void remove_task(task_info *ti)
 
 void account_ticks(void)
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    ASSERT(curr != NULL);
 
    curr->time_slot_ticks++;
@@ -315,8 +316,8 @@ void account_ticks(void)
 
 bool need_reschedule(void)
 {
-   task_info *curr = get_curr_task();
-   task_info *tasklet_runner = get_hi_prio_ready_tasklet_runner();
+   struct task *curr = get_curr_task();
+   struct task *tasklet_runner = get_hi_prio_ready_tasklet_runner();
 
    if (tasklet_runner && tasklet_runner != curr)
       return true;
@@ -337,8 +338,8 @@ void schedule_outside_interrupt_context(void)
 
 void schedule(int curr_int)
 {
-   task_info *selected = NULL;
-   task_info *pos;
+   struct task *selected = NULL;
+   struct task *pos;
 
    ASSERT(!is_preemption_enabled());
 
@@ -382,15 +383,15 @@ void schedule(int curr_int)
    switch_to_task(selected, curr_int);
 }
 
-task_info *get_task(int tid)
+struct task *get_task(int tid)
 {
    sptr ltid = tid;
-   task_info *res = NULL;
+   struct task *res = NULL;
    ASSERT(!is_preemption_enabled());
 
    res = bintree_find_ptr(tree_by_tid_root,
                           ltid,
-                          task_info,
+                          struct task,
                           tree_by_tid_node,
                           tid);
 

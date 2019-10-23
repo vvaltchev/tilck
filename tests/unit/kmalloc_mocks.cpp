@@ -41,7 +41,7 @@ void initialize_test_kernel_heap()
    kernel_va = aligned_alloc(MB, test_mem_size);
 
    mem_regions_count = 1;
-   mem_regions[0] = (memory_region_t) {
+   mem_regions[0] = (struct mem_region) {
       .addr = 0,
       .len = test_mem_size,
       .type = MULTIBOOT_MEMORY_AVAILABLE,

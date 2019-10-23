@@ -38,7 +38,7 @@ static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
 static uptr phys_mem_lim;
-static kmalloc_heap *hi_vmem_heap;
+static struct kmalloc_heap *hi_vmem_heap;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
@@ -73,7 +73,7 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
 
 bool handle_potential_cow(void *context)
 {
-   regs *r = context;
+   regs_t *r = context;
 
    if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
       return false;
@@ -132,7 +132,7 @@ bool handle_potential_cow(void *context)
    return true;
 }
 
-static void kernel_page_fault_panic(regs *r, u32 vaddr, bool rw, bool p)
+static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 {
    ptrdiff_t off = 0;
    const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
@@ -144,7 +144,7 @@ static void kernel_page_fault_panic(regs *r, u32 vaddr, bool rw, bool p)
          r->eip, sym_name ? sym_name : "???", off);
 }
 
-void handle_page_fault_int(regs *r)
+void handle_page_fault_int(regs_t *r)
 {
    u32 vaddr;
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
@@ -153,7 +153,7 @@ void handle_page_fault_int(regs *r)
    bool rw = !!(r->err_code & PAGE_FAULT_FL_RW);
    bool us = !!(r->err_code & PAGE_FAULT_FL_US);
    int sig = SIGSEGV;
-   user_mapping *um;
+   struct user_mapping *um;
 
    if (!us) {
       /*
@@ -193,7 +193,7 @@ void handle_page_fault_int(regs *r)
 }
 
 
-void handle_page_fault(regs *r)
+void handle_page_fault(regs_t *r)
 {
    if (in_panic()) {
 
@@ -604,7 +604,7 @@ pdir_deep_clone(pdir_t *pdir)
    STATIC_ASSERT(sizeof(pdir_t) == PAGE_SIZE);
    STATIC_ASSERT(sizeof(page_table_t) == PAGE_SIZE);
 
-   kmalloc_accelerator acc;
+   struct kmalloc_acc acc;
    kmalloc_create_accelerator(&acc, PAGE_SIZE, 4);
 
    pdir_t *new_pdir = kmalloc_accelerator_get_elem(&acc);

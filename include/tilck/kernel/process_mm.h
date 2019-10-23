@@ -7,9 +7,9 @@
 
 struct user_mapping {
 
-   list_node pi_node;
-   list_node inode_node;
-   process_info *pi;
+   struct list_node pi_node;
+   struct list_node inode_node;
+   struct process *pi;
 
    fs_handle h;
    size_t len;
@@ -24,14 +24,12 @@ struct user_mapping {
 
 };
 
-typedef struct user_mapping user_mapping;
-
-user_mapping *
+struct user_mapping *
 process_add_user_mapping(fs_handle h, void *v, size_t ln, size_t off, int prot);
-void process_remove_user_mapping(user_mapping *um);
-void full_remove_user_mapping(process_info *pi, user_mapping *um);
-void remove_all_mappings_of_handle(process_info *pi, fs_handle h);
-user_mapping *process_get_user_mapping(void *vaddr);
+void process_remove_user_mapping(struct user_mapping *um);
+void full_remove_user_mapping(struct process *pi, struct user_mapping *um);
+void remove_all_mappings_of_handle(struct process *pi, fs_handle h);
+struct user_mapping *process_get_user_mapping(void *vaddr);
 
 /* Internal functions */
 bool user_valloc_and_map(uptr user_vaddr, size_t page_count);

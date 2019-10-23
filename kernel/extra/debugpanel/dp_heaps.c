@@ -9,8 +9,8 @@
 #include "dp_int.h"
 
 static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
-static debug_kmalloc_heap_info hi;
-static debug_kmalloc_stats stats;
+static struct debug_kmalloc_heap_info hi;
+static struct debug_kmalloc_stats stats;
 static size_t tot_usable_mem_kb;
 static size_t tot_used_mem_kb;
 static sptr tot_diff;
@@ -133,7 +133,7 @@ static void dp_heaps_on_exit(void)
    }
 }
 
-static dp_screen dp_heaps_screen =
+static struct dp_screen dp_heaps_screen =
 {
    .index = 2,
    .label = "Heaps",

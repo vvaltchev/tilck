@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static const file_ops static_ops_ramfs =
+static const struct file_ops static_ops_ramfs =
 {
    .read = ramfs_read,
    .write = ramfs_write,
@@ -17,11 +17,11 @@ static const file_ops static_ops_ramfs =
 };
 
 static int
-ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
+ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
 {
-   ramfs_handle *h;
+   struct ramfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(ramfs_handle))))
+   if (!(h = kzmalloc(sizeof(struct ramfs_handle))))
       return -ENOMEM;
 
    h->inode = inode;
@@ -39,7 +39,7 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
        */
       list_node_init(&h->node);
       list_add_tail(&inode->handles_list, &h->node);
-      h->dpos = list_first_obj(&inode->entries_list, ramfs_entry, lnode);
+      h->dpos = list_first_obj(&inode->entries_list, struct ramfs_entry, lnode);
    }
 
    if (fl & O_TRUNC) {
@@ -50,7 +50,7 @@ ramfs_open_int(filesystem *fs, ramfs_inode *inode, fs_handle *out, int fl)
    return 0;
 }
 
-static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
+static int ramfs_open_existing_checks(int fl, struct ramfs_inode *i)
 {
    if (!(fl & O_WRONLY) && !(i->mode & 0400))
       return -EACCES;
@@ -82,12 +82,12 @@ static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
 }
 
 static int
-ramfs_open(vfs_path *p, fs_handle *out, int fl, mode_t mod)
+ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
-   ramfs_path *rp = (ramfs_path *) &p->fs_path;
-   ramfs_data *d = p->fs->device_data;
-   ramfs_inode *i = rp->inode;
-   ramfs_inode *idir = rp->dir_inode;
+   struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
+   struct ramfs_data *d = p->fs->device_data;
+   struct ramfs_inode *i = rp->inode;
+   struct ramfs_inode *idir = rp->dir_inode;
    int rc;
 
    if (!i) {

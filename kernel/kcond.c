@@ -6,17 +6,17 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-void kcond_init(kcond *c)
+void kcond_init(struct kcond *c)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    list_init(&c->wait_list);
 }
 
-bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
+bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    disable_preemption();
    {
@@ -47,15 +47,15 @@ bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
 }
 
 static void
-kcond_signal_single(kcond *c, wait_obj *wo)
+kcond_signal_single(struct kcond *c, struct wait_obj *wo)
 {
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   task_info *ti =
+   struct task *ti =
       wo->type != WOBJ_MWO_ELEM
-         ? CONTAINER_OF(wo, task_info, wobj)
-         : CONTAINER_OF(wo, mwobj_elem, wobj)->ti;
+         ? CONTAINER_OF(wo, struct task, wobj)
+         : CONTAINER_OF(wo, struct mwobj_elem, wobj)->ti;
 
    if (ti->state != TASK_STATE_SLEEPING) {
 
@@ -72,16 +72,16 @@ kcond_signal_single(kcond *c, wait_obj *wo)
       ASSERT(wo->type == WOBJ_KCOND);
       task_cancel_wakeup_timer(ti);
    } else {
-      ASSERT(CONTAINER_OF(wo, mwobj_elem, wobj)->type == WOBJ_KCOND);
+      ASSERT(CONTAINER_OF(wo, struct mwobj_elem, wobj)->type == WOBJ_KCOND);
    }
 
    wait_obj_reset(wo);
    task_reset_wait_obj(ti);
 }
 
-void kcond_signal_int(kcond *c, bool all)
+void kcond_signal_int(struct kcond *c, bool all)
 {
-   wait_obj *wo_pos, *temp;
+   struct wait_obj *wo_pos, *temp;
    disable_preemption();
    {
       DEBUG_ONLY(check_not_in_irq_handler());
@@ -97,7 +97,7 @@ void kcond_signal_int(kcond *c, bool all)
    enable_preemption();
 }
 
-void kcond_destory(kcond *c)
+void kcond_destory(struct kcond *c)
 {
-   bzero(c, sizeof(kcond));
+   bzero(c, sizeof(struct kcond));
 }

@@ -1,32 +1,32 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static kmutex mp2_mutex = STATIC_KMUTEX_INIT(mp2_mutex, 0);
-static mountpoint2 mps2[MAX_MOUNTPOINTS];
-static filesystem *mp2_root;
+static struct kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
+static struct mountpoint mps2[MAX_MOUNTPOINTS];
+static struct fs *mp_root;
 
-int mp2_init(filesystem *root_fs)
+int mp_init(struct fs *root_fs)
 {
-   /* do not support changing the root filesystem */
-   NO_TEST_ASSERT(!mp2_root);
+   /* do not support changing the root struct fs */
+   NO_TEST_ASSERT(!mp_root);
 
 #ifdef UNIT_TEST_ENVIRONMENT
    bzero(mps2, sizeof(mps2));
 #endif
 
-   mp2_root = root_fs;
-   retain_obj(mp2_root);
+   mp_root = root_fs;
+   retain_obj(mp_root);
    return 0;
 }
 
-filesystem *mp2_get_root(void)
+struct fs *mp_get_root(void)
 {
-   ASSERT(mp2_root != NULL);
-   return mp2_root;
+   ASSERT(mp_root != NULL);
+   return mp_root;
 }
 
-filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
+struct fs *mp_get_at_nolock(struct fs *host_fs, vfs_inode_ptr_t inode)
 {
-   ASSERT(kmutex_is_curr_task_holding_lock(&mp2_mutex));
+   ASSERT(kmutex_is_curr_task_holding_lock(&mp_mutex));
 
    for (u32 i = 0; i < ARRAY_SIZE(mps2); i++)
       if (mps2[i].host_fs_inode == inode && mps2[i].host_fs == host_fs)
@@ -35,24 +35,24 @@ filesystem *mp2_get_at_nolock(filesystem *host_fs, vfs_inode_ptr_t inode)
    return NULL;
 }
 
-filesystem *mp2_get_retained_at(filesystem *host_fs, vfs_inode_ptr_t inode)
+struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
 {
-   filesystem *ret;
-   kmutex_lock(&mp2_mutex);
+   struct fs *ret;
+   kmutex_lock(&mp_mutex);
    {
-      if ((ret = mp2_get_at_nolock(host_fs, inode)))
+      if ((ret = mp_get_at_nolock(host_fs, inode)))
          retain_obj(ret);
    }
-   kmutex_unlock(&mp2_mutex);
+   kmutex_unlock(&mp_mutex);
    return ret;
 }
 
-mountpoint2 *mp2_get_retained_mp_of(filesystem *target_fs)
+struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
 {
    uptr i;
-   mountpoint2 *res = NULL;
+   struct mountpoint *res = NULL;
 
-   kmutex_lock(&mp2_mutex);
+   kmutex_lock(&mp_mutex);
    {
       for (i = 0; i < ARRAY_SIZE(mps2); i++)
          if (mps2[i].target_fs == target_fs)
@@ -63,13 +63,13 @@ mountpoint2 *mp2_get_retained_mp_of(filesystem *target_fs)
          retain_obj(res);
       }
    }
-   kmutex_unlock(&mp2_mutex);
+   kmutex_unlock(&mp_mutex);
    return res;
 }
 
-int mp2_add(filesystem *target_fs, const char *target_path)
+int mp_add(struct fs *target_fs, const char *target_path)
 {
-   vfs_path p;
+   struct vfs_path p;
    int rc;
    u32 i;
 
@@ -95,21 +95,21 @@ int mp2_add(filesystem *target_fs, const char *target_path)
     * `target_fs`.
     */
    vfs_fs_shunlock(p.fs);
-   kmutex_lock(&mp2_mutex);
+   kmutex_lock(&mp_mutex);
 
-   /* we need to have the root filesystem set */
-   ASSERT(mp2_root != NULL);
+   /* we need to have the root struct fs set */
+   ASSERT(mp_root != NULL);
 
-   if (mp2_get_at_nolock(p.fs, p.fs_path.inode)) {
+   if (mp_get_at_nolock(p.fs, p.fs_path.inode)) {
       vfs_release_inode_at(&p);
-      kmutex_unlock(&mp2_mutex);
+      kmutex_unlock(&mp_mutex);
       return -EBUSY; /* the target path is already a mount-point */
    }
 
    for (i = 0; i < ARRAY_SIZE(mps2); i++) {
       if (mps2[i].target_fs == target_fs) {
          vfs_release_inode_at(&p);
-         kmutex_unlock(&mp2_mutex);
+         kmutex_unlock(&mp_mutex);
          return -EPERM; /* mounting multiple times a FS is NOT permitted */
       }
    }
@@ -123,7 +123,7 @@ int mp2_add(filesystem *target_fs, const char *target_path)
 
       /* we've found a free slot */
 
-      mps2[i] = (mountpoint2) {
+      mps2[i] = (struct mountpoint) {
          .host_fs = p.fs,
          .host_fs_inode = p.fs_path.inode,
          .target_fs = target_fs,
@@ -142,11 +142,11 @@ int mp2_add(filesystem *target_fs, const char *target_path)
       release_obj(p.fs);
    }
 
-   kmutex_unlock(&mp2_mutex);
+   kmutex_unlock(&mp_mutex);
    return rc;
 }
 
-int mp2_remove(const char *target_path)
+int mp_remove(const char *target_path)
 {
    NOT_IMPLEMENTED();
 }

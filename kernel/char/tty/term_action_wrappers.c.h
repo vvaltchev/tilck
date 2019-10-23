@@ -6,7 +6,7 @@
 
 #define ENTRY(func, n) { (action_func)(func), n }
 
-static const actions_table_item actions_table[] = {
+static const struct actions_table_item actions_table[] = {
    [a_write]                = ENTRY(term_action_write, 3),
    [a_dwrite_no_filter]     = ENTRY(term_action_dwrite_no_filter, 3),
    [a_del_generic]          = ENTRY(term_action_del, 2),
@@ -24,11 +24,11 @@ static const actions_table_item actions_table[] = {
 
 #undef ENTRY
 
-static void term_execute_action(term *t, term_action *a)
+static void term_execute_action(struct term *t, struct term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
-   const actions_table_item *it = &actions_table[a->type3];
+   const struct actions_table_item *it = &actions_table[a->type3];
 
    switch (it->args_count) {
       case 3:
@@ -46,15 +46,15 @@ static void term_execute_action(term *t, term_action *a)
 }
 
 
-static void term_execute_or_enqueue_action(term *t, term_action a)
+static void term_execute_or_enqueue_action(struct term *t, struct term_action a)
 {
    bool written;
    bool was_empty;
 
-   written = safe_ringbuf_write_elem_ex(&t->safe_ringbuf, &a, &was_empty);
+   written = safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty);
 
    /*
-    * written would be false only if the safe_ringbuf was full. In order that to
+    * written would be false only if the ringbuf was full. In order that to
     * happen, we'll need ARRAY_SIZE(actions_buf) nested interrupts and
     * all of them need to issue a term_* call. Virtually "impossible".
     */
@@ -62,17 +62,17 @@ static void term_execute_or_enqueue_action(term *t, term_action a)
 
    if (was_empty) {
 
-      while (safe_ringbuf_read_elem(&t->safe_ringbuf, &a))
+      while (safe_ringbuf_read_elem(&t->ringb, &a))
          term_execute_action(t, &a);
 
    }
 }
 
-void term_write(term *t, const char *buf, size_t len, u8 color)
+void term_write(struct term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
-   term_action a = {
+   struct term_action a = {
 
       .type3 = a_write,
       .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
@@ -83,9 +83,9 @@ void term_write(term *t, const char *buf, size_t len, u8 color)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_up(term *t, u32 lines)
+void term_scroll_up(struct term *t, u32 lines)
 {
-   term_action a = {
+   struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
       .arg2 = 0,
@@ -94,9 +94,9 @@ void term_scroll_up(term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_down(term *t, u32 lines)
+void term_scroll_down(struct term *t, u32 lines)
 {
-   term_action a = {
+   struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
       .arg2 = 1,
@@ -105,9 +105,9 @@ void term_scroll_down(term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_col_offset(term *t, u32 off)
+void term_set_col_offset(struct term *t, u32 off)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_set_col_offset,
       .arg = off,
    };
@@ -115,9 +115,9 @@ void term_set_col_offset(term *t, u32 off)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_pause_video_output(term *t)
+void term_pause_video_output(struct term *t)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_pause_video_output,
       .arg = 0,
    };
@@ -125,9 +125,9 @@ void term_pause_video_output(term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_restart_video_output(term *t)
+void term_restart_video_output(struct term *t)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_restart_video_output,
       .arg = 0,
    };
@@ -135,9 +135,9 @@ void term_restart_video_output(term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_cursor_enabled(term *t, bool value)
+void term_set_cursor_enabled(struct term *t, bool value)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_enable_cursor,
       .arg = value,
    };
@@ -147,43 +147,43 @@ void term_set_cursor_enabled(term *t, bool value)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u16 term_get_tab_size(term *t)
+u16 term_get_tab_size(struct term *t)
 {
    return t->tabsize;
 }
 
-u16 term_get_rows(term *t)
+u16 term_get_rows(struct term *t)
 {
    return t->rows;
 }
 
-u16 term_get_cols(term *t)
+u16 term_get_cols(struct term *t)
 {
    return t->cols;
 }
 
-u16 term_get_curr_row(term *t)
+u16 term_get_curr_row(struct term *t)
 {
    return t->r;
 }
 
-u16 term_get_curr_col(term *t)
+u16 term_get_curr_col(struct term *t)
 {
    return t->c;
 }
 
-void term_set_filter(term *t, term_filter func, void *ctx)
+void term_set_filter(struct term *t, term_filter func, void *ctx)
 {
    t->filter = func;
    t->filter_ctx = ctx;
 }
 
-term_filter term_get_filter(term *t)
+term_filter term_get_filter(struct term *t)
 {
    return t->filter;
 }
 
-bool term_is_initialized(term *t)
+bool term_is_initialized(struct term *t)
 {
    return t->initialized;
 }

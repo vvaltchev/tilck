@@ -93,13 +93,13 @@ select_count_cond_per_set(struct select_ctx *c,
 
 static int
 select_set_kcond(int nfds,
-                 multi_obj_waiter *w,
+                 struct multi_obj_waiter *w,
                  u32 *idx,
                  fd_set *set,
                  func_get_rwe_cond get_cond)
 {
    fs_handle h;
-   kcond *c;
+   struct kcond *c;
 
    if (!set)
       return 0;
@@ -149,13 +149,13 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
 }
 
 static u32
-count_signaled_conds(multi_obj_waiter *w)
+count_signaled_conds(struct multi_obj_waiter *w)
 {
    u32 count = 0;
 
    for (u32 j = 0; j < w->count; j++) {
 
-      mwobj_elem *me = &w->elems[j];
+      struct mwobj_elem *me = &w->elems[j];
 
       if (me->type && !me->wobj.type) {
          count++;
@@ -203,8 +203,8 @@ count_ready_streams(int nfds, fd_set *sets[3])
 static int
 select_wait_on_cond(struct select_ctx *c)
 {
-   task_info *curr = get_curr_task();
-   multi_obj_waiter *waiter = NULL;
+   struct task *curr = get_curr_task();
+   struct multi_obj_waiter *waiter = NULL;
    u32 idx = 0;
    int rc = 0;
 
@@ -270,7 +270,7 @@ out:
 static int
 select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    for (int i = 0; i < 3; i++) {
 
@@ -291,7 +291,7 @@ select_read_user_tv(struct timeval *user_tv,
                     struct timeval **tv_ref,
                     u32 *timeout)
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct timeval *tv = NULL;
 
    if (user_tv) {

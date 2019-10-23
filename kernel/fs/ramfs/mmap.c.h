@@ -2,7 +2,7 @@
 
 static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
-   process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
    uptr vaddr = (uptr)vaddrp;
    uptr vend = vaddr + len;
    ASSERT(IS_PAGE_ALIGNED(len));
@@ -14,14 +14,14 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return 0;
 }
 
-static int ramfs_mmap(user_mapping *um, bool register_only)
+static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
-   process_info *pi = get_curr_task()->pi;
-   ramfs_handle *rh = um->h;
-   ramfs_inode *i = rh->inode;
+   struct process *pi = get_curr_task()->pi;
+   struct ramfs_handle *rh = um->h;
+   struct ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
-   bintree_walk_ctx ctx;
-   ramfs_block *b;
+   struct bintree_walk_ctx ctx;
+   struct ramfs_block *b;
    int rc;
 
    const size_t off_begin = um->off;
@@ -37,7 +37,7 @@ static int ramfs_mmap(user_mapping *um, bool register_only)
 
    bintree_in_order_visit_start(&ctx,
                                 i->blocks_tree_root,
-                                ramfs_block,
+                                struct ramfs_block,
                                 node,
                                 false);
 
@@ -76,17 +76,17 @@ register_mapping:
 }
 
 static bool
-ramfs_handle_fault_int(process_info *pi,
-                       ramfs_handle *rh,
+ramfs_handle_fault_int(struct process *pi,
+                       struct ramfs_handle *rh,
                        void *vaddrp,
                        bool p,
                        bool rw)
 {
    uptr vaddr = (uptr) vaddrp;
    uptr abs_off;
-   ramfs_block *block;
+   struct ramfs_block *block;
    int rc;
-   user_mapping *um = process_get_user_mapping(vaddrp);
+   struct user_mapping *um = process_get_user_mapping(vaddrp);
 
    if (!um)
       return false; /* Weird, but it's OK */
@@ -112,7 +112,7 @@ ramfs_handle_fault_int(process_info *pi,
       return false; /* Read/write past EOF */
 
    if (rw) {
-      /* Create and map on-the-fly a ramfs_block */
+      /* Create and map on-the-fly a struct ramfs_block */
       if (!(block = ramfs_new_block((offt)(abs_off & PAGE_MASK))))
          panic("Out-of-memory: unable to alloc a ramfs_block. No OOM killer");
 
@@ -137,7 +137,7 @@ static bool
 ramfs_handle_fault(fs_handle h, void *vaddrp, bool p, bool rw)
 {
    bool ret;
-   process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
 
    disable_preemption();
    {

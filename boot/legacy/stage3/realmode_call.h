@@ -28,14 +28,14 @@ extern u32 realmode_int_16h;
 
 void test_rm_call_working(void);
 
-typedef struct {
+struct VbeFarPtr {
 
    u16 off;
    u16 seg;
 
-} PACKED VbeFarPtr;
+} PACKED;
 
-static ALWAYS_INLINE void *get_flat_ptr(VbeFarPtr fp)
+static ALWAYS_INLINE void *get_flat_ptr(struct VbeFarPtr fp)
 {
    return (void *)((u32)fp.off + ((u32)fp.seg) * 16);
 }

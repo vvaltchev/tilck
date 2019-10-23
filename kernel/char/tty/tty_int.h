@@ -18,9 +18,9 @@
 #define TTY_ATTR_BOLD             (1 << 0)
 #define TTY_ATTR_REVERSE          (1 << 1)
 
-typedef struct {
+struct twfilter_ctx_t {
 
-   tty *t;
+   struct tty *t;
 
    char param_bytes[64];
    char interm_bytes[64];
@@ -29,40 +29,48 @@ typedef struct {
    bool non_default_state;
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
+};
 
-} twfilter_ctx_t;
-
-void tty_input_init(tty *t);
-void tty_kb_buf_reset(tty *t);
+void tty_input_init(struct tty *t);
+void tty_kb_buf_reset(struct tty *t);
 int tty_keypress_handler(u32 key, u8 c);
-void tty_reset_filter_ctx(tty *t);
+void tty_reset_filter_ctx(struct tty *t);
 
 enum term_fret
-serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
+serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg);
 
-void tty_update_special_ctrl_handlers(tty *t);
-void tty_update_default_state_tables(tty *t);
+void tty_update_special_ctrl_handlers(struct tty *t);
+void tty_update_default_state_tables(struct tty *t);
 
-ssize_t tty_read_int(tty *t, devfs_handle *h, char *buf, size_t size);
-ssize_t tty_write_int(tty *t, devfs_handle *h, char *buf, size_t size);
-int tty_ioctl_int(tty *t, devfs_handle *h, uptr request, void *argp);
-int tty_fcntl_int(tty *t, devfs_handle *h, int cmd, int arg);
-bool tty_read_ready_int(tty *t, devfs_handle *h);
+ssize_t
+tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
+
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
+
+int
+tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp);
+
+int
+tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg);
+
+bool
+tty_read_ready_int(struct tty *t, struct devfs_handle *h);
 
 void init_ttyaux(void);
 void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 
-typedef bool (*tty_ctrl_sig_func)(tty *);
+typedef bool (*tty_ctrl_sig_func)(struct tty *);
 
 struct tty {
 
-   term *term_inst;
+   struct term *term_inst;
    int minor;
    char dev_filename[16];
 
    /* tty input */
-   ringbuf input_ringbuf;
-   kcond input_cond;
+   struct ringbuf input_ringbuf;
+   struct kcond input_cond;
    int end_line_delim_count;
 
    /* tty output */
@@ -72,7 +80,7 @@ struct tty {
 
    u8 c_set; // 0 = G0, 1 = G1.
    const s16 *c_sets_tables[2];
-   twfilter_ctx_t filter_ctx;
+   struct twfilter_ctx_t filter_ctx;
 
    /* tty ioctl */
    struct termios c_term;
@@ -90,7 +98,7 @@ struct tty {
 };
 
 extern const struct termios default_termios;
-extern tty *ttys[128]; /* tty0 is not a real tty */
+extern struct tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
 extern const s16 tty_default_trans_table[256];
 extern const s16 tty_gfx_trans_table[256];

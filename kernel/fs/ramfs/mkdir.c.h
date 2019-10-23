@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_mkdir(vfs_path *p, mode_t mode)
+static int ramfs_mkdir(struct vfs_path *p, mode_t mode)
 {
-   ramfs_path *rp = (ramfs_path *) &p->fs_path;
-   ramfs_data *d = p->fs->device_data;
-   ramfs_inode *new_dir;
+   struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
+   struct ramfs_data *d = p->fs->device_data;
+   struct ramfs_inode *new_dir;
    int rc;
 
    if (rp->inode)
@@ -24,11 +24,11 @@ static int ramfs_mkdir(vfs_path *p, mode_t mode)
    return rc;
 }
 
-static int ramfs_rmdir(vfs_path *p)
+static int ramfs_rmdir(struct vfs_path *p)
 {
-   ramfs_path *rp = (ramfs_path *) &p->fs_path;
-   ramfs_data *d = p->fs->device_data;
-   ramfs_inode *i = rp->inode;
+   struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
+   struct ramfs_data *d = p->fs->device_data;
+   struct ramfs_inode *i = rp->inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 

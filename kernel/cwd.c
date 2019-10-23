@@ -7,7 +7,7 @@
 #include <tilck/kernel/fs/vfs.h>
 
 static void
-set_process_str_cwd(process_info *pi, const char *path)
+set_process_str_cwd(struct process *pi, const char *path)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
 
@@ -26,7 +26,7 @@ set_process_str_cwd(process_info *pi, const char *path)
 }
 
 static int
-getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
+getcwd_nolock(struct process *pi, char *user_buf, size_t buf_size)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
    const size_t cl = strlen(pi->str_cwd) + 1;
@@ -53,7 +53,7 @@ getcwd_nolock(process_info *pi, char *user_buf, size_t buf_size)
  * used ONLY directly once during the initialization in main.c and during
  * fork(). For all the other cases, call process_set_cwd2_nolock().
  */
-void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp)
+void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp)
 {
    ASSERT(tp->fs != NULL);
    ASSERT(tp->fs_path.inode != NULL);
@@ -63,9 +63,9 @@ void process_set_cwd2_nolock_raw(process_info *pi, vfs_path *tp)
    pi->cwd = *tp;
 }
 
-void process_set_cwd2_nolock(vfs_path *tp)
+void process_set_cwd2_nolock(struct vfs_path *tp)
 {
-   process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
    ASSERT(pi->cwd.fs != NULL);
    ASSERT(pi->cwd.fs_path.inode != NULL);
@@ -83,9 +83,9 @@ void process_set_cwd2_nolock(vfs_path *tp)
 int sys_chdir(const char *user_path)
 {
    int rc = 0;
-   vfs_path p;
-   task_info *curr = get_curr_task();
-   process_info *pi = curr->pi;
+   struct vfs_path p;
+   struct task *curr = get_curr_task();
+   struct process *pi = curr->pi;
    char *orig_path = curr->args_copybuf;
    char *path = curr->args_copybuf + ARGS_COPYBUF_SIZE / 2;
 
@@ -148,7 +148,7 @@ out:
 int sys_getcwd(char *user_buf, size_t buf_size)
 {
    int rc;
-   process_info *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
    {

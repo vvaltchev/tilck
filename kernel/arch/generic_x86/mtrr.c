@@ -82,19 +82,18 @@ static void cache_enable(uptr *saved_cr0)
    write_cr0(*saved_cr0);
 }
 
-typedef struct {
+struct mtrr_change_ctx {
 
    uptr eflags;
    uptr cr4;
    uptr cr0;
-
-} mtrr_change_ctx;
+};
 
 /*
  * As described in:
  * Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
  */
-static void pre_mtrr_change(mtrr_change_ctx *ctx)
+static void pre_mtrr_change(struct mtrr_change_ctx *ctx)
 {
    disable_interrupts(&ctx->eflags);
 
@@ -116,7 +115,7 @@ static void pre_mtrr_change(mtrr_change_ctx *ctx)
  * As described in:
  * Intel's System Programming Guide (Vol. 3A), Section 11.11.7.2
  */
-static void post_mtrr_change(mtrr_change_ctx *ctx)
+static void post_mtrr_change(struct mtrr_change_ctx *ctx)
 {
    /* Flush all the WB entries in the cache and invalidate the rest */
    write_back_and_invl_cache();
@@ -142,7 +141,7 @@ void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type)
    ASSERT(round_up_at64(paddr, pow2size) == paddr);
    ASSERT(x86_cpu_features.edx1.mtrr);
 
-   mtrr_change_ctx ctx;
+   struct mtrr_change_ctx ctx;
 
    pre_mtrr_change(&ctx);
    {
@@ -161,7 +160,7 @@ void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type)
 
 void reset_mtrr(u32 num)
 {
-   mtrr_change_ctx ctx;
+   struct mtrr_change_ctx ctx;
    ASSERT(num < get_var_mttrs_count());
 
    pre_mtrr_change(&ctx);

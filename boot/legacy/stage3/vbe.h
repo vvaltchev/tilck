@@ -15,12 +15,13 @@
  *         Date: September 16, 1998
  */
 
-typedef struct {
+struct VbeInfoBlock {
+
    char VbeSignature[4];
    u16 VbeVersion;
-   VbeFarPtr OemStringPtr;
+   struct VbeFarPtr OemStringPtr;
    u8 Capabilities[4];
-   VbeFarPtr VideoModePtr;
+   struct VbeFarPtr VideoModePtr;
    u16 TotalMemory;        /* in number of 64KB blocks */
 
    /* VBE 2.0+ */
@@ -31,9 +32,9 @@ typedef struct {
    u8 reserved[222];
    u8 OemData[256];
 
-} PACKED VbeInfoBlock;
+} PACKED;
 
-typedef struct {
+struct ModeInfoBlock {
 
    u16 ModeAttributes;
    u8 WinAAttributes;
@@ -42,7 +43,7 @@ typedef struct {
    u16 WinSize;
    u16 WinASegment;
    u16 WinBSegment;
-   VbeFarPtr WinFuncPtr;
+   struct VbeFarPtr WinFuncPtr;
    u16 BytesPerScanLine;
 
    /* VBE 1.2+ */
@@ -76,7 +77,7 @@ typedef struct {
    /* VBE 3.0+ */
    u16 LinBytesPerScanLine;
 
-} PACKED ModeInfoBlock;
+} PACKED;
 
 /*
  * NOTE: the VGA standard modes (0x00 .. 0x13) are reliable, BUT the old
@@ -100,10 +101,10 @@ typedef struct {
 #define VB_MEM_MODEL_DIRECT_COLOR  (0x6)
 
 void vga_set_video_mode(u8 mode);
-bool vbe_get_info_block(VbeInfoBlock *vb);
-bool vbe_get_mode_info(u16 mode, ModeInfoBlock *mi);
+bool vbe_get_info_block(struct VbeInfoBlock *vb);
+bool vbe_get_mode_info(u16 mode, struct ModeInfoBlock *mi);
 bool vbe_set_video_mode(u16 mode);
 bool vbe_get_current_mode(u16 *mode);
 
 /* Implemented in setup_graphics.c */
-void ask_user_video_mode(mem_info *mi);
+void ask_user_video_mode(struct mem_info *mi);

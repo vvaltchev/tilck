@@ -14,8 +14,8 @@
 #define RWLOCK_WRITERS       20
 #define RETRY_COUNT           4
 
-static rwlock_rp test_rwlrp;
-static rwlock_wp test_rwlwp;
+static struct rwlock_rp test_rwlrp;
+static struct rwlock_wp test_rwlwp;
 
 static int se_rwlock_vars[3];
 static const int se_rwlock_set_1[3] = {1, 2, 3};
@@ -23,17 +23,16 @@ static const int se_rwlock_set_2[3] = {10, 20, 30};
 static ATOMIC(int) readers_running;
 static ATOMIC(int) writers_running;
 
-typedef struct {
+struct se_rwlock_ctx {
 
    void (*shlock)(void *);
    void (*shunlock)(void *);
    void (*exlock)(void *);
    void (*exunlock)(void *);
    void *arg;
+};
 
-} se_rwlock_ctx;
-
-static se_rwlock_ctx se_rp_ctx =
+static struct se_rwlock_ctx se_rp_ctx =
 {
    .shlock = (void *) rwlock_rp_shlock,
    .shunlock = (void *) rwlock_rp_shunlock,
@@ -42,7 +41,7 @@ static se_rwlock_ctx se_rp_ctx =
    .arg = (void *) &test_rwlrp,
 };
 
-static se_rwlock_ctx se_wp_ctx =
+static struct se_rwlock_ctx se_wp_ctx =
 {
    .shlock = (void *) rwlock_wp_shlock,
    .shunlock = (void *) rwlock_wp_shunlock,
@@ -70,7 +69,7 @@ static void se_rwlock_check_set_eq(const int *set)
 
 static void se_rwlock_read_thread(void *arg)
 {
-   se_rwlock_ctx *ctx = arg;
+   struct se_rwlock_ctx *ctx = arg;
    readers_running++;
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
@@ -90,7 +89,7 @@ static void se_rwlock_read_thread(void *arg)
 
 static void se_rwlock_write_thread(void *arg)
 {
-   se_rwlock_ctx *ctx = arg;
+   struct se_rwlock_ctx *ctx = arg;
    writers_running++;
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
@@ -118,7 +117,7 @@ static void se_rwlock_write_thread(void *arg)
    writers_running--;
 }
 
-static void se_rwlock_common(int *rt, int *wt, se_rwlock_ctx *ctx)
+static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
 {
    se_rwlock_set_vars(se_rwlock_set_1);
 

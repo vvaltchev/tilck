@@ -18,9 +18,9 @@ u64 __ticks; /* ticks since the timer started */
 u32 slow_timer_irq_handler_count;
 #endif
 
-static list timer_wakeup_list = make_list(timer_wakeup_list);
+static struct list timer_wakeup_list = make_list(timer_wakeup_list);
 
-void task_set_wakeup_timer(task_info *ti, u32 ticks)
+void task_set_wakeup_timer(struct task *ti, u32 ticks)
 {
    uptr var;
    ASSERT(ticks > 0);
@@ -37,7 +37,7 @@ void task_set_wakeup_timer(task_info *ti, u32 ticks)
    }
 }
 
-void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
+void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
 {
    u32 curr;
    ASSERT(new_ticks > 0);
@@ -53,15 +53,15 @@ void task_update_wakeup_timer_if_any(task_info *ti, u32 new_ticks)
                              &curr, new_ticks, mo_relaxed, mo_relaxed));
 }
 
-u32 task_cancel_wakeup_timer(task_info *ti)
+u32 task_cancel_wakeup_timer(struct task *ti)
 {
    return atomic_exchange_explicit(&ti->ticks_before_wake_up, 0, mo_relaxed);
 }
 
-static task_info *tick_all_timers(void)
+static struct task *tick_all_timers(void)
 {
-   task_info *pos, *temp;
-   task_info *last_ready_task = NULL;
+   struct task *pos, *temp;
+   struct task *last_ready_task = NULL;
    uptr var;
 
    list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
@@ -104,7 +104,7 @@ void kernel_sleep(u64 ticks)
     *    }
     *    kernel_yield();
     *
-    * And it worked, but it required task_info->ticks_before_wake_up to be
+    * And it worked, but it required struct task->ticks_before_wake_up to be
     * actually 64-bit wide, which that lead to inefficiency of 32-bit systems,
     * in particular because 'ticks_before_wake_up' is now atomic and it's used
     * atomically even when we don't want to (see tick_all_timers()). Pointer
@@ -211,7 +211,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return false;
 }
 
-enum irq_action timer_irq_handler(regs *context)
+enum irq_action timer_irq_handler(regs_t *context)
 {
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
@@ -227,7 +227,7 @@ enum irq_action timer_irq_handler(regs *context)
    __ticks++;
 
    account_ticks();
-   task_info *last_ready_task = tick_all_timers();
+   struct task *last_ready_task = tick_all_timers();
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
@@ -260,7 +260,7 @@ enum irq_action timer_irq_handler(regs *context)
    return IRQ_FULLY_HANDLED;
 }
 
-static irq_handler_node timer_irq_handler_node = {
+static struct irq_handler_node timer_irq_handler_node = {
    .node = make_list_node(timer_irq_handler_node.node),
    .handler = timer_irq_handler,
 };

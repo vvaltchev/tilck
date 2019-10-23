@@ -12,7 +12,7 @@
 
 #define KMUTEX_SEK_TH_ITERS 100000
 
-static kmutex test_mutex;
+static struct kmutex test_mutex;
 static int sek_vars[3];
 static const int sek_set_1[3] = {1, 2, 3};
 static const int sek_set_2[3] = {10, 20, 30};
@@ -197,7 +197,7 @@ static int tid_by_idx1[128];
 static int tid_by_idx2[128];
 static int idx1, idx2;
 
-static kmutex order_mutex;
+static struct kmutex order_mutex;
 
 static void kmutex_ord_th()
 {

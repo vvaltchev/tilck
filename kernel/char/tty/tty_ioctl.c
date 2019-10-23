@@ -45,7 +45,7 @@ const struct termios default_termios =
    },
 };
 
-static int tty_ioctl_tcgets(tty *t, void *argp)
+static int tty_ioctl_tcgets(struct tty *t, void *argp)
 {
    int rc = copy_to_user(argp, &t->c_term, sizeof(struct termios));
 
@@ -55,7 +55,7 @@ static int tty_ioctl_tcgets(tty *t, void *argp)
    return 0;
 }
 
-static int tty_ioctl_tcsets(tty *t, void *argp)
+static int tty_ioctl_tcsets(struct tty *t, void *argp)
 {
    struct termios saved = t->c_term;
    int rc = copy_from_user(&t->c_term, argp, sizeof(struct termios));
@@ -70,7 +70,7 @@ static int tty_ioctl_tcsets(tty *t, void *argp)
    return 0;
 }
 
-static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
+static int tty_ioctl_tiocgwinsz(struct tty *t, void *argp)
 {
    struct winsize sz = {
       .ws_row = term_get_rows(t->term_inst),
@@ -87,7 +87,7 @@ static int tty_ioctl_tiocgwinsz(tty *t, void *argp)
    return 0;
 }
 
-void tty_setup_for_panic(tty *t)
+void tty_setup_for_panic(struct tty *t)
 {
    if (t->kd_mode != KD_TEXT) {
 
@@ -104,7 +104,7 @@ void tty_setup_for_panic(tty *t)
    }
 }
 
-void tty_restore_kd_text_mode(tty *t)
+void tty_restore_kd_text_mode(struct tty *t)
 {
    if (t->kd_mode == KD_TEXT)
       return;
@@ -113,7 +113,7 @@ void tty_restore_kd_text_mode(tty *t)
    t->kd_mode = KD_TEXT;
 }
 
-static int tty_ioctl_kdsetmode(tty *t, void *argp)
+static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
 {
    uptr opt = (uptr) argp;
 
@@ -131,7 +131,7 @@ static int tty_ioctl_kdsetmode(tty *t, void *argp)
    return -EINVAL;
 }
 
-static int tty_ioctl_KDGKBMODE(tty *t, void *argp)
+static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 {
    int mode = K_XLATE; /* The only supported mode, at the moment */
 
@@ -141,7 +141,7 @@ static int tty_ioctl_KDGKBMODE(tty *t, void *argp)
    return -EFAULT;
 }
 
-static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
+static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 {
    uptr mode = (uptr) argp;
 
@@ -151,9 +151,9 @@ static int tty_ioctl_KDSKBMODE(tty *t, void *argp)
    return -EINVAL;
 }
 
-static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
+static int tty_ioctl_TIOCSCTTY(struct tty *t, void *argp)
 {
-   task_info *ti = get_curr_task();
+   struct task *ti = get_curr_task();
 
    if (!ti->pi->proc_tty) {
 
@@ -177,18 +177,19 @@ static int tty_ioctl_TIOCSCTTY(tty *t, void *argp)
 }
 
 /* get foreground process group */
-static int tty_ioctl_TIOCGPGRP(tty *t, int *user_pgrp)
+static int tty_ioctl_TIOCGPGRP(struct tty *t, int *user_pgrp)
 {
    return -EINVAL;
 }
 
 /* set foregroup process group */
-static int tty_ioctl_TIOCSPGRP(tty *t, const int *user_pgrp)
+static int tty_ioctl_TIOCSPGRP(struct tty *t, const int *user_pgrp)
 {
    return -EINVAL;
 }
 
-int tty_ioctl_int(tty *t, devfs_handle *h, uptr request, void *argp)
+int
+tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
 {
    switch (request) {
 
@@ -232,7 +233,7 @@ int tty_ioctl_int(tty *t, devfs_handle *h, uptr request, void *argp)
    }
 }
 
-int tty_fcntl_int(tty *t, devfs_handle *h, int cmd, int arg)
+int tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg)
 {
    return -EINVAL;
 }

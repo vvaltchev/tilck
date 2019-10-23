@@ -95,7 +95,7 @@ poll_count_conds(struct pollfd *fds, nfds_t nfds)
 }
 
 static void
-poll_set_conds(multi_obj_waiter *w,
+poll_set_conds(struct multi_obj_waiter *w,
                struct pollfd *fds,
                nfds_t nfds,
                u32 cond_cnt)
@@ -113,7 +113,7 @@ poll_set_conds(multi_obj_waiter *w,
 
       if (fds[i].events & POLLIN) {
 
-         kcond *c = vfs_get_rready_cond(h);
+         struct kcond *c = vfs_get_rready_cond(h);
 
          if (c != NULL) {
 
@@ -124,7 +124,7 @@ poll_set_conds(multi_obj_waiter *w,
 
       if (fds[i].events & POLLOUT) {
 
-         kcond *c = vfs_get_wready_cond(h);
+         struct kcond *c = vfs_get_wready_cond(h);
 
          if (c != NULL) {
 
@@ -140,7 +140,7 @@ poll_set_conds(multi_obj_waiter *w,
           * for symmetry with the other cases
           */
 
-         kcond *c = vfs_get_except_cond(h);
+         struct kcond *c = vfs_get_except_cond(h);
 
          if (c != NULL) {
 
@@ -200,8 +200,8 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 static int
 poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 {
-   task_info *curr = get_curr_task();
-   multi_obj_waiter *waiter = NULL;
+   struct task *curr = get_curr_task();
+   struct multi_obj_waiter *waiter = NULL;
    int ready_fds_cnt = 0;
 
    if (!(waiter = allocate_mobj_waiter(cond_cnt)))
@@ -274,7 +274,7 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 
 int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
 {
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
    int rc, ready_fds_cnt;
    u32 cond_cnt = 0;

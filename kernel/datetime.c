@@ -52,8 +52,8 @@ u32 days_per_month[12] =
    31, // dec
 };
 
-static datetime_t __current_datetime;
-void cmos_read_datetime(datetime_t *out);
+static struct datetime __current_datetime;
+void cmos_read_datetime(struct datetime *out);
 
 /*
  * The purpose of this thread is to keep the real date-time cheap to access,
@@ -89,10 +89,10 @@ void cmos_read_datetime(datetime_t *out);
  *       complex to implement correctly.
  *
  *    2) In order to "interpolate" time, we'd need to use a timestamp instead of
- *       datetime_t. But, unfortunately, our fb_console needs to know the date
- *       and time. Support that would mean implementing a "hairy" function to
- *       convert timestamp to datetime_t considering all the tricky leap years
- *       stuff and maybe leap seconds too?
+ *       struct datetime. But, unfortunately, our fb_console needs to know the
+ *       date and time. Support that would mean implementing a "hairy" function
+ *       to convert timestamp to struct datetime considering all the tricky
+ *       leap years stuff and maybe leap seconds too?
  *
  *    3) Other problems.
  *
@@ -101,7 +101,7 @@ void cmos_read_datetime(datetime_t *out);
  */
 static void clock_update_thread()
 {
-   datetime_t tmp;
+   struct datetime tmp;
 
    while (true) {
 
@@ -121,7 +121,7 @@ void init_system_clock(void)
       panic("Unable to create the clock update kthread");
 }
 
-void read_system_clock_datetime(datetime_t *out)
+void read_system_clock_datetime(struct datetime *out)
 {
    if (UNLIKELY(__current_datetime.year == 0)) {
 
@@ -148,7 +148,7 @@ void read_system_clock_datetime(datetime_t *out)
    enable_preemption();
 }
 
-time_t datetime_to_timestamp(datetime_t d)
+time_t datetime_to_timestamp(struct datetime d)
 {
    time_t result = 0;
    u32 year_day = 0;
@@ -177,14 +177,14 @@ time_t datetime_to_timestamp(datetime_t d)
 
 time_t read_system_clock_timestamp(void)
 {
-   datetime_t dt;
+   struct datetime dt;
    read_system_clock_datetime(&dt);
    return datetime_to_timestamp(dt);
 }
 
 static void real_time_get_timeval(struct timeval *tv)
 {
-   datetime_t d;
+   struct datetime d;
    read_system_clock_datetime(&d);
    tv->tv_sec = datetime_to_timestamp(d);
 

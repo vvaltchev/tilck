@@ -6,17 +6,17 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 
-extern inline void ringbuf_reset(ringbuf *rb);
-extern inline bool ringbuf_write_elem1(ringbuf *rb, u8 val);
-extern inline bool ringbuf_read_elem1(ringbuf *rb, u8 *elem_ptr);
-extern inline bool ringbuf_is_empty(ringbuf *rb);
-extern inline bool ringbuf_is_full(ringbuf *rb);
-extern inline u32 ringbuf_get_elems(ringbuf *rb);
+extern inline void ringbuf_reset(struct ringbuf *rb);
+extern inline bool ringbuf_write_elem1(struct ringbuf *rb, u8 val);
+extern inline bool ringbuf_read_elem1(struct ringbuf *rb, u8 *elem_ptr);
+extern inline bool ringbuf_is_empty(struct ringbuf *rb);
+extern inline bool ringbuf_is_full(struct ringbuf *rb);
+extern inline u32 ringbuf_get_elems(struct ringbuf *rb);
 
 void
-ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
+ringbuf_init(struct ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
 {
-   *rb = (ringbuf) {
+   *rb = (struct ringbuf) {
       .read_pos = 0,
       .write_pos = 0,
       .elems = 0,
@@ -26,12 +26,12 @@ ringbuf_init(ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
    };
 }
 
-void ringbuf_destory(ringbuf *rb)
+void ringbuf_destory(struct ringbuf *rb)
 {
-   bzero(rb, sizeof(ringbuf));
+   bzero(rb, sizeof(struct ringbuf));
 }
 
-bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
+bool ringbuf_write_elem(struct ringbuf *rb, void *elem_ptr)
 {
    if (ringbuf_is_full(rb))
       return false;
@@ -42,7 +42,7 @@ bool ringbuf_write_elem(ringbuf *rb, void *elem_ptr)
    return true;
 }
 
-bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
+bool ringbuf_read_elem(struct ringbuf *rb, void *elem_ptr /* out */)
 {
    if (ringbuf_is_empty(rb))
       return false;
@@ -53,7 +53,7 @@ bool ringbuf_read_elem(ringbuf *rb, void *elem_ptr /* out */)
    return true;
 }
 
-bool ringbuf_unwrite_elem(ringbuf *rb, void *elem_ptr /* out */)
+bool ringbuf_unwrite_elem(struct ringbuf *rb, void *elem_ptr /* out */)
 {
    if (ringbuf_is_empty(rb))
       return false;

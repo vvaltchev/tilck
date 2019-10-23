@@ -7,22 +7,21 @@
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096
 
-typedef struct {
+struct devfs_file {
 
    enum vfs_entry_type type;
-   list_node dir_node;
+   struct list_node dir_node;
 
    u16 dev_major;
    u16 dev_minor;
    const char *name;
-   const file_ops *fops;
+   const struct file_ops *fops;
    tilck_inode_t inode;
+};
 
-} devfs_file;
+struct devfs_handle {
 
-typedef struct {
-
-   /* fs_handle_base */
+   /* struct fs_handle_base */
    FS_HANDLE_BASE_FIELDS
 
    /* devfs-specific fields */
@@ -30,10 +29,10 @@ typedef struct {
 
    union {
 
-      devfs_file *dpos;                /* valid only if type == VFS_DIR */
+      struct devfs_file *dpos;               /* valid only if type == VFS_DIR */
 
       struct {
-         devfs_file *file;             /* valid only if type != VFS_DIR */
+         struct devfs_file *file;            /* valid only if type != VFS_DIR */
 
          offt read_pos;
          offt write_pos;
@@ -49,25 +48,25 @@ typedef struct {
       };
    };
 
-} devfs_handle;
-
+};
 
 typedef int
-(*func_create_device_file)(int, const file_ops **, enum vfs_entry_type *);
+(*func_create_device_file)(int,
+                           const struct file_ops **,
+                           enum vfs_entry_type *);
 
-typedef struct {
+struct driver_info {
 
    u16 major;
    const char *name;
    func_create_device_file create_dev_file;
+};
 
-} driver_info;
 
-
-filesystem *create_devfs(void);
+struct fs *create_devfs(void);
 void init_devfs(void);
-int register_driver(driver_info *info, int major);
+int register_driver(struct driver_info *info, int major);
 
 int create_dev_file(const char *filename, u16 major, u16 minor);
-filesystem *get_devfs(void);
-driver_info *get_driver_info(u16 major);
+struct fs *get_devfs(void);
+struct driver_info *get_driver_info(u16 major);

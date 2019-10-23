@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static int
-ramfs_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    if (!i)
       return -ENOENT;
 
-   ramfs_inode *inode = i;
+   struct ramfs_inode *inode = i;
 
    if (!(inode->parent_dir->mode & 0500)) /* read + execute */
       return -EACCES;
@@ -29,7 +29,7 @@ ramfs_stat(filesystem *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 
       case VFS_DIR:
          statbuf->st_size = (typeof(statbuf->st_size))
-            (inode->num_entries * (offt) sizeof(ramfs_entry));
+            (inode->num_entries * (offt) sizeof(struct ramfs_entry));
          break;
 
       case VFS_SYMLINK:

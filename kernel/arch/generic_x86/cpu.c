@@ -15,7 +15,7 @@ extern const char *x86_exception_names[32];
 void asm_enable_osxsave(void);
 void asm_enable_sse(void);
 void asm_enable_avx(void);
-static void handle_no_coproc_fault(regs *r);
+static void handle_no_coproc_fault(regs_t *r);
 
 #define CPU_FXSAVE_AREA_SIZE   512
 
@@ -153,7 +153,7 @@ out:
     *    2. This prevents user space to access any such register without the
     *       kernel knowing about it. When FPU regs are used with TS = 0, the
     *       CPU triggers a "No coprocessor" fault. If the kernel wants to allow
-    *       this to happen[1], it will set a flag in the task_info struct,
+    *       this to happen[1], it will set a flag in the struct task struct,
     *       enable the FPU and resume the process (thread) as if nothing
     *       happened (like for the COW case). Otherwise, the kernel will send
     *       a SIGFPE to the "guilty" process.
@@ -189,7 +189,7 @@ void save_current_fpu_regs(bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_info_members *arch_fields = &get_curr_task()->arch;
+   arch_task_members_t *arch_fields = &get_curr_task()->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);
@@ -223,7 +223,7 @@ void restore_fpu_regs(void *task, bool in_kernel)
    if (UNLIKELY(in_panic()))
       return;
 
-   arch_task_info_members *arch_fields = &((task_info *)task)->arch;
+   arch_task_members_t *arch_fields = &((struct task *)task)->arch;
    void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
 
    ASSERT(buf != NULL);
@@ -249,7 +249,7 @@ void restore_current_fpu_regs(bool in_kernel)
    restore_fpu_regs(get_curr_task(), in_kernel);
 }
 
-bool allocate_fpu_regs(arch_task_info_members *arch_fields)
+bool allocate_fpu_regs(arch_task_members_t *arch_fields)
 {
    ASSERT(arch_fields->aligned_fpu_regs == NULL);
 
@@ -276,7 +276,7 @@ bool allocate_fpu_regs(arch_task_info_members *arch_fields)
 }
 
 static void
-handle_no_coproc_fault(regs *r)
+handle_no_coproc_fault(regs_t *r)
 {
    enable_interrupts_forced();
 
@@ -299,7 +299,7 @@ handle_no_coproc_fault(regs *r)
        panic("x87 FPU instructions not supported on CPUs without SSE");
    }
 
-   arch_task_info_members *arch_fields = &get_curr_task()->arch;
+   arch_task_members_t *arch_fields = &get_curr_task()->arch;
    ASSERT(!(r->custom_flags & REGS_FL_FPU_ENABLED));
 
 #if FORK_NO_COW

@@ -1,16 +1,15 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-typedef struct {
+struct vfs_getdents_ctx {
 
-   fs_handle_base *h;
+   struct fs_handle_base *h;
    struct linux_dirent64 *user_dirp;
    u32 buf_size;
    u32 offset;
    u32 fs_flags;
    offt off;
    struct linux_dirent64 ent;
-
-} vfs_getdents_ctx;
+};
 
 static inline unsigned char
 vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
@@ -30,18 +29,18 @@ vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
    return table[t];
 }
 
-static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
+static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
 {
    const u16 entry_size = sizeof(struct linux_dirent64) + vde->name_len;
    struct linux_dirent64 *user_ent;
-   vfs_getdents_ctx *ctx = arg;
+   struct vfs_getdents_ctx *ctx = arg;
 
    if (ctx->fs_flags & VFS_FS_RQ_DE_SKIP) {
 
       /*
-       * Pseudo-hack used fortunately *only* by the FAT32 filesystem: it
+       * Pseudo-hack used fortunately *only* by the FAT32 struct fs: it
        * implements here in the VFS layer a trivial mechanism to skip the first
-       * `pos` entries of a directory in case the filesystem does not have a
+       * `pos` entries of a directory in case the struct fs does not have a
        * way to just "save" the current position and resume from there in each
        * call of the fs-op getdents().
        *
@@ -94,13 +93,13 @@ static int vfs_getdents_cb(vfs_dent64 *vde, void *arg)
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    int rc;
 
    ASSERT(hb != NULL);
    ASSERT(hb->fs->fsops->getdents);
 
-   vfs_getdents_ctx ctx = {
+   struct vfs_getdents_ctx ctx = {
       .h             = hb,
       .user_dirp     = user_dirp,
       .buf_size      = buf_size,

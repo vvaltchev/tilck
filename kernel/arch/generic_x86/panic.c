@@ -16,14 +16,14 @@
 #include <tilck/kernel/fault_resumable.h>
 
 void panic_save_current_state(); /* defined in kernel_yield.S */
-regs panic_state_regs;
+regs_t panic_state_regs;
 
 /* Called by the assembly function panic_save_current_state() */
-void panic_save_current_task_state(regs *r)
+void panic_save_current_task_state(regs_t *r)
 {
    /*
     * Clear the higher (unused) bits of the segment registers for a nicer
-    * panic regs dump.
+    * panic regs_t dump.
     */
    r->ss &= 0xffff;
    r->cs &= 0xffff;
@@ -36,11 +36,11 @@ void panic_save_current_task_state(regs *r)
     * Since in panic we need just to save the state without doing a context
     * switch, just saving the ESP in state_regs won't work, because
     * we'll going to continue using the same stack. In this particular corner
-    * case, just store the regs a static regs instance.
+    * case, just store the regs in a static regs_t instance.
     */
 
-   memcpy(&panic_state_regs, r, sizeof(regs));
-   task_info *curr = get_curr_task();
+   memcpy(&panic_state_regs, r, sizeof(regs_t));
+   struct task *curr = get_curr_task();
 
    if (curr)
       curr->state_regs = &panic_state_regs;
@@ -54,7 +54,7 @@ static void disable_fpu_features(void)
    x86_cpu_features.can_use_avx2 = false;
 }
 
-static void panic_print_task_info(task_info *curr)
+static void panic_print_task_info(struct task *curr)
 {
    const char *str;
 
@@ -83,7 +83,7 @@ NORETURN void panic(const char *fmt, ...)
 
    uptr rc;
    va_list args;
-   task_info *curr;
+   struct task *curr;
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 

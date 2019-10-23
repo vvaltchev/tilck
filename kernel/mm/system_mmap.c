@@ -13,10 +13,10 @@
 u32 __mem_lower_kb;
 u32 __mem_upper_kb;
 
-memory_region_t mem_regions[MAX_MEM_REGIONS];
+struct mem_region mem_regions[MAX_MEM_REGIONS];
 int mem_regions_count;
 
-void append_mem_region(memory_region_t r)
+void append_mem_region(struct mem_region r)
 {
    if (mem_regions_count >= (int)ARRAY_SIZE(mem_regions))
       panic("Too many memory regions (limit: %u)", ARRAY_SIZE(mem_regions));
@@ -26,8 +26,8 @@ void append_mem_region(memory_region_t r)
 
 STATIC sptr less_than_cmp_mem_region(const void *a, const void *b)
 {
-   const memory_region_t *m1 = a;
-   const memory_region_t *m2 = b;
+   const struct mem_region *m1 = a;
+   const struct mem_region *m2 = b;
 
    if (m1->addr < m2->addr)
       return -1;
@@ -41,14 +41,14 @@ STATIC sptr less_than_cmp_mem_region(const void *a, const void *b)
 STATIC void sort_mem_regions(void)
 {
    insertion_sort_generic(mem_regions,
-                          sizeof(memory_region_t),
+                          sizeof(struct mem_region),
                           (u32)mem_regions_count,
                           less_than_cmp_mem_region);
 }
 
 void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr)
 {
-   append_mem_region((memory_region_t) {
+   append_mem_region((struct mem_region) {
       .addr = start_paddr,
       .len = end_paddr - start_paddr,
       .type = MULTIBOOT_MEMORY_RESERVED,
@@ -64,7 +64,7 @@ void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
 
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *m = mem_regions + i;
+      struct mem_region *m = mem_regions + i;
 
       if (m->extra & MEM_REG_EXTRA_RAMDISK) {
          if (rd_count == ramdisk_index)
@@ -79,10 +79,10 @@ void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
 
 STATIC void remove_mem_region(int i)
 {
-   memory_region_t *ma = mem_regions + i;
+   struct mem_region *ma = mem_regions + i;
    const int rem = mem_regions_count - i - 1;
 
-   memcpy(ma, ma + 1, (size_t) rem * sizeof(memory_region_t));
+   memcpy(ma, ma + 1, (size_t) rem * sizeof(struct mem_region));
    mem_regions_count--; /* decrease the number of memory regions */
 }
 
@@ -91,7 +91,7 @@ STATIC void swap_mem_regions(int i, int j)
    ASSERT(IN_RANGE(i, 0, mem_regions_count));
    ASSERT(IN_RANGE(j, 0, mem_regions_count));
 
-   memory_region_t temp = mem_regions[i];
+   struct mem_region temp = mem_regions[i];
    mem_regions[i] = mem_regions[j];
    mem_regions[j] = temp;
 }
@@ -107,7 +107,7 @@ STATIC void align_mem_regions_to_page_boundary(void)
 {
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *ma = mem_regions + i;
+      struct mem_region *ma = mem_regions + i;
 
       /*
        * Unfortunately, in general we cannot rely on the memory regions to be
@@ -125,8 +125,8 @@ STATIC void merge_adj_mem_regions(void)
 {
    for (int i = 0; i < mem_regions_count - 1; i++) {
 
-      memory_region_t *ma = mem_regions + i;
-      memory_region_t *ma_next = ma + 1;
+      struct mem_region *ma = mem_regions + i;
+      struct mem_region *ma_next = ma + 1;
 
       if (ma_next->type != ma->type || ma_next->extra != ma->extra)
          continue;
@@ -147,8 +147,8 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
    if (r1_index == r2_index)
       return false;
 
-   memory_region_t *r1 = mem_regions + r1_index;
-   memory_region_t *r2 = mem_regions + r2_index;
+   struct mem_region *r1 = mem_regions + r1_index;
+   struct mem_region *r2 = mem_regions + r2_index;
 
    u64 s1 = r1->addr;
    u64 s2 = r2->addr;
@@ -274,7 +274,7 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
 
             r1->len = s2 - s1;
 
-            append_mem_region((memory_region_t) {
+            append_mem_region((struct mem_region) {
                .addr = e2,
                .len = (e1 - e2),
                .type = r1->type,
@@ -391,7 +391,7 @@ STATIC void add_kernel_phdrs_to_mmap(void)
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      append_mem_region((memory_region_t) {
+      append_mem_region((struct mem_region) {
          .addr = phdr->p_paddr,
          .len = phdr->p_memsz,
          .type = MULTIBOOT_MEMORY_RESERVED,
@@ -407,7 +407,7 @@ STATIC void set_lower_and_upper_kb(void)
 
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *m = mem_regions + i;
+      struct mem_region *m = mem_regions + i;
 
       if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
          __mem_lower_kb = (u32) (m->addr / KB);
@@ -417,7 +417,7 @@ STATIC void set_lower_and_upper_kb(void)
 
    for (int i = mem_regions_count - 1; i >= 0; i--) {
 
-      memory_region_t *m = mem_regions + i;
+      struct mem_region *m = mem_regions + i;
 
       if (m->type == MULTIBOOT_MEMORY_AVAILABLE) {
          __mem_upper_kb = (u32) ((m->addr + m->len) / KB);
@@ -431,7 +431,7 @@ void system_mmap_set(multiboot_info_t *mbi)
    uptr ma_addr = mbi->mmap_addr;
 
    /* We want to keep the first 64 KB as reserved */
-   append_mem_region((memory_region_t) {
+   append_mem_region((struct mem_region) {
       .addr = 0,
       .len = 64 * KB,
       .type = MULTIBOOT_MEMORY_RESERVED,
@@ -441,7 +441,7 @@ void system_mmap_set(multiboot_info_t *mbi)
    while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
 
       multiboot_memory_map_t *ma = (void *)ma_addr;
-      append_mem_region((memory_region_t) {
+      append_mem_region((struct mem_region) {
          .addr = ma->addr,
          .len = ma->len,
          .type = ma->type,
@@ -459,7 +459,7 @@ int system_mmap_get_region_of(uptr paddr)
 {
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *m = mem_regions + i;
+      struct mem_region *m = mem_regions + i;
 
       if (IN_RANGE(paddr, m->addr, m->addr + m->len))
          return i;
@@ -469,7 +469,7 @@ int system_mmap_get_region_of(uptr paddr)
 }
 
 bool
-linear_map_mem_region(memory_region_t *r, uptr *vbegin, uptr *vend)
+linear_map_mem_region(struct mem_region *r, uptr *vbegin, uptr *vend)
 {
    if (r->addr >= LINEAR_MAPPING_SIZE)
       return false;

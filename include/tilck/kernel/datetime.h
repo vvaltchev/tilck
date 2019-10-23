@@ -6,7 +6,7 @@
 
 #include <time.h> // system header
 
-typedef struct {
+struct datetime {
 
    union {
 
@@ -22,8 +22,7 @@ typedef struct {
 
       u64 raw;
    };
-
-} datetime_t;
+};
 
 extern const char *weekdays[7];
 extern const char *months3[12];
@@ -33,7 +32,7 @@ static inline bool is_leap_year(u32 year)
    return (!(year % 4) && (year % 100)) || !(year % 400);
 }
 
-void read_system_clock_datetime(datetime_t *out);
+void read_system_clock_datetime(struct datetime *out);
 time_t read_system_clock_timestamp(void);
-time_t datetime_to_timestamp(datetime_t d);
+time_t datetime_to_timestamp(struct datetime d);
 void init_system_clock(void);

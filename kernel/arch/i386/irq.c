@@ -16,7 +16,7 @@
 
 extern void (*irq_entry_points[16])(void);
 
-static list irq_handlers_lists[16] = {
+static struct list irq_handlers_lists[16] = {
    make_list(irq_handlers_lists[ 0]),
    make_list(irq_handlers_lists[ 1]),
    make_list(irq_handlers_lists[ 2]),
@@ -41,14 +41,14 @@ u32 spur_irq_count;
 void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 
 /* This installs a custom IRQ handler for the given IRQ */
-void irq_install_handler(u8 irq, irq_handler_node *n)
+void irq_install_handler(u8 irq, struct irq_handler_node *n)
 {
    list_add_tail(&irq_handlers_lists[irq], &n->node);
    irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
-void irq_uninstall_handler(u8 irq, irq_handler_node *n)
+void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
 {
    list_remove(&n->node);
 }
@@ -182,7 +182,7 @@ static inline bool is_spur_irq(int irq)
    return false;
 }
 
-static inline void run_sched_if_possible(regs *r)
+static inline void run_sched_if_possible(regs_t *r)
 {
    disable_preemption();
 
@@ -212,7 +212,7 @@ static inline void run_sched_if_possible(regs *r)
    enable_preemption();
 }
 
-void handle_irq(regs *r)
+void handle_irq(regs_t *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
    const int irq = r->int_num - 32;
@@ -235,7 +235,7 @@ void handle_irq(regs *r)
    enable_interrupts_forced();
 
    {
-      irq_handler_node *pos;
+      struct irq_handler_node *pos;
 
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 
@@ -257,12 +257,12 @@ void handle_irq(regs *r)
    }
 }
 
-int get_irq_num(regs *context)
+int get_irq_num(regs_t *context)
 {
    return int_to_irq(context->int_num);
 }
 
-int get_int_num(regs *context)
+int get_int_num(regs_t *context)
 {
    return context->int_num;
 }

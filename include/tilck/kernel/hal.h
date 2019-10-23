@@ -4,6 +4,7 @@
 #define __TILCK_HAL__
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/hal_types.h>
 
 #if defined(__i386__) && !defined(__x86_64__)
 
@@ -38,8 +39,8 @@ enum irq_action {
    IRQ_REQUIRES_BH = 1         /* requires a botton half (tasklet) to run */
 };
 
-typedef void (*soft_int_handler_t)(regs *);
-typedef enum irq_action (*irq_handler_t)(regs *);
+typedef void (*soft_int_handler_t)(regs_t *);
+typedef enum irq_action (*irq_handler_t)(regs_t *);
 
 void reboot();
 void init_segmentation(void);
@@ -52,9 +53,9 @@ void fpu_context_end(void);
 void save_current_fpu_regs(bool in_kernel);
 void restore_fpu_regs(void *task, bool in_kernel);
 void restore_current_fpu_regs(bool in_kernel);
-int get_irq_num(regs *context);
-int get_int_num(regs *context);
+int get_irq_num(regs_t *context);
+int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
 
-bool allocate_fpu_regs(arch_task_info_members *arch_fields);
-void copy_main_tss_on_regs(regs *ctx);
+bool allocate_fpu_regs(arch_task_members_t *arch_fields);
+void copy_main_tss_on_regs(regs_t *ctx);

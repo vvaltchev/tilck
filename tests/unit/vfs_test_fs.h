@@ -40,16 +40,16 @@ struct tfs_entry {
 #define N_DIR(name, ...) make_pair(name, _NODE(name, VFS_DIR, 0, __VA_ARGS__))
 #define ROOT_NODE(...) (_NODE("", VFS_DIR, 0, __VA_ARGS__))->set_parents()
 
-extern const fs_ops static_fsops_testfs;
+extern const struct fs_ops static_fsops_testfs;
 
 void test_fs_register_mp(tfs_entry *where, tfs_entry *target);
 void test_fs_clear_mps();
 bool test_fs_is_mountpoint(tfs_entry *e);
 void test_fs_check_refcounts(tfs_entry *node);
 
-inline filesystem create_test_fs(const char *name, tfs_entry *root)
+inline struct fs create_test_fs(const char *name, tfs_entry *root)
 {
-   filesystem fs {
+   struct fs fs {
 
       .ref_count        = 1,
       .fs_type_name     = name,

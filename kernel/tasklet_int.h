@@ -5,23 +5,21 @@
 
 typedef void (*tasklet_func)(uptr, uptr);
 
-typedef struct {
+struct tasklet {
 
    tasklet_func fptr;
-   tasklet_context ctx;
+   struct tasklet_context ctx;
+};
 
-} tasklet;
+struct tasklet_thread {
 
-typedef struct {
-
-   tasklet *tasklets;
-   safe_ringbuf safe_ringbuf;
-   task_info *task;
+   struct tasklet *tasklets;
+   struct safe_ringbuf rb;
+   struct task *task;
    int priority; /* 0 => max priority */
    u32 limit;
+};
 
-} tasklet_thread_info;
-
-extern tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
+extern struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
 
 bool run_one_tasklet(int tn);

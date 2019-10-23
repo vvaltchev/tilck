@@ -13,7 +13,7 @@
 
 #include "tty_int.h"
 
-static inline tty *get_curr_process_tty(void)
+static inline struct tty *get_curr_process_tty(void)
 {
    return get_curr_task()->pi->proc_tty;
 }
@@ -38,7 +38,7 @@ static int ttyaux_fcntl(fs_handle h, int cmd, int arg)
    return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
 }
 
-static kcond *ttyaux_get_rready_cond(fs_handle h)
+static struct kcond *ttyaux_get_rready_cond(fs_handle h)
 {
    return &get_curr_process_tty()->input_cond;
 }
@@ -50,10 +50,10 @@ static bool ttyaux_read_ready(fs_handle h)
 
 static int
 ttyaux_create_device_file(int minor,
-                          const file_ops **fops,
+                          const struct file_ops **fops,
                           enum vfs_entry_type *t)
 {
-   static const file_ops static_ops_ttyaux = {
+   static const struct file_ops static_ops_ttyaux = {
 
       .read = ttyaux_read,
       .write = ttyaux_write,
@@ -80,10 +80,10 @@ ttyaux_create_device_file(int minor,
  */
 void init_ttyaux(void)
 {
-   driver_info *di = kzmalloc(sizeof(driver_info));
+   struct driver_info *di = kzmalloc(sizeof(struct driver_info));
 
    if (!di)
-      panic("TTY: no enough memory for driver_info");
+      panic("TTY: no enough memory for struct driver_info");
 
    di->name = "ttyaux";
    di->create_dev_file = ttyaux_create_device_file;

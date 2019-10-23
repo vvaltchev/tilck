@@ -7,9 +7,9 @@
 #define DP_W   76
 #define DP_H   23
 
-typedef struct {
+struct dp_screen {
 
-   list_node node;
+   struct list_node node;
 
    int index;
    int row_off;
@@ -19,8 +19,7 @@ typedef struct {
    void (*on_dp_enter)(void);
    void (*on_dp_exit)(void);
    keypress_func on_keypress_func;
-
-} dp_screen;
+};
 
 extern int dp_rows;
 extern int dp_cols;
@@ -30,10 +29,10 @@ extern int dp_start_col;
 extern int dp_screen_start_row;
 extern int dp_screen_rows;
 extern bool ui_need_update;
-extern dp_screen *dp_ctx;
+extern struct dp_screen *dp_ctx;
 
 static inline sptr dp_int_abs(sptr val) {
    return val >= 0 ? val : -val;
 }
 
-void dp_register_screen(dp_screen *screen);
+void dp_register_screen(struct dp_screen *screen);

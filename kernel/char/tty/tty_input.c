@@ -18,12 +18,12 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static inline bool kb_buf_write_elem(tty *t, u8 c);
-static void tty_keypress_echo(tty *t, char c);
+static inline bool kb_buf_write_elem(struct tty *t, u8 c);
+static void tty_keypress_echo(struct tty *t, char c);
 
 #include "tty_ctrl_handlers.c.h"
 
-static void tty_keypress_echo(tty *t, char c)
+static void tty_keypress_echo(struct tty *t, char c)
 {
    struct termios *const c_term = &t->c_term;
 
@@ -109,7 +109,7 @@ static void tty_keypress_echo(tty *t, char c)
    term_write(t->term_inst, &c, 1, t->curr_color);
 }
 
-static inline bool kb_buf_is_empty(tty *t)
+static inline bool kb_buf_is_empty(struct tty *t)
 {
    bool ret;
    disable_preemption();
@@ -120,7 +120,7 @@ static inline bool kb_buf_is_empty(tty *t)
    return ret;
 }
 
-void tty_kb_buf_reset(tty *t)
+void tty_kb_buf_reset(struct tty *t)
 {
    disable_preemption();
    {
@@ -130,7 +130,7 @@ void tty_kb_buf_reset(tty *t)
    enable_preemption();
 }
 
-static inline u8 kb_buf_read_elem(tty *t)
+static inline u8 kb_buf_read_elem(struct tty *t)
 {
    u8 ret = 0;
    disable_preemption();
@@ -142,7 +142,7 @@ static inline u8 kb_buf_read_elem(tty *t)
    return ret;
 }
 
-static inline bool kb_buf_drop_last_written_elem(tty *t)
+static inline bool kb_buf_drop_last_written_elem(struct tty *t)
 {
    bool ret;
    tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
@@ -155,7 +155,7 @@ static inline bool kb_buf_drop_last_written_elem(tty *t)
    return ret;
 }
 
-static inline bool kb_buf_write_elem(tty *t, u8 c)
+static inline bool kb_buf_write_elem(struct tty *t, u8 c)
 {
    bool ret;
    tty_keypress_echo(t, (char)c);
@@ -168,7 +168,7 @@ static inline bool kb_buf_write_elem(tty *t, u8 c)
    return ret;
 }
 
-static int tty_handle_non_printable_key(tty *t, u32 key)
+static int tty_handle_non_printable_key(struct tty *t, u32 key)
 {
    char seq[16];
    bool found = kb_scancode_to_ansi_seq(key, kb_get_current_modifiers(), seq);
@@ -189,7 +189,7 @@ static int tty_handle_non_printable_key(tty *t, u32 key)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-static inline bool tty_is_line_delim_char(tty *t, u8 c)
+static inline bool tty_is_line_delim_char(struct tty *t, u8 c)
 {
    return c == '\n' ||
           c == t->c_term.c_cc[VEOF] ||
@@ -197,7 +197,7 @@ static inline bool tty_is_line_delim_char(tty *t, u8 c)
           c == t->c_term.c_cc[VEOL2];
 }
 
-static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
+static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
 {
    if (c == t->c_term.c_cc[VERASE]) {
 
@@ -216,7 +216,7 @@ static int tty_keypress_handle_canon_mode(tty *t, u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
+int tty_keypress_handler_int(struct tty *t, u32 key, u8 c, bool check_mods)
 {
    if (!c)
       return tty_handle_non_printable_key(t, key);
@@ -259,7 +259,7 @@ int tty_keypress_handler_int(tty *t, u32 key, u8 c, bool check_mods)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-int set_curr_tty(tty *t)
+int set_curr_tty(struct tty *t)
 {
    int res = -EPERM;
    disable_preemption();
@@ -276,7 +276,7 @@ int set_curr_tty(tty *t)
 
 int tty_keypress_handler(u32 key, u8 c)
 {
-   tty *const t = get_curr_tty();
+   struct tty *const t = get_curr_tty();
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
@@ -290,7 +290,7 @@ int tty_keypress_handler(u32 key, u8 c)
 
    if (kb_is_alt_pressed()) {
 
-      tty *other_tty;
+      struct tty *other_tty;
       int fn = kb_get_fn_key_pressed(key);
 
       if (fn > 0 && get_curr_tty()->kd_mode == KD_TEXT) {
@@ -313,7 +313,7 @@ int tty_keypress_handler(u32 key, u8 c)
    return tty_keypress_handler_int(t, key, c, true);
 }
 
-static size_t tty_flush_read_buf(devfs_handle *h, char *buf, size_t size)
+static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
 {
    ssize_t rem = h->read_buf_used - h->read_pos;
    ASSERT(rem >= 0);
@@ -336,8 +336,8 @@ static size_t tty_flush_read_buf(devfs_handle *h, char *buf, size_t size)
  *    - FALSE when caller's read loop should STOP
  */
 static bool
-tty_internal_read_single_char_from_kb(tty *t,
-                                      devfs_handle *h,
+tty_internal_read_single_char_from_kb(struct tty *t,
+                                      struct devfs_handle *h,
                                       bool *delim_break)
 {
    u8 c = kb_buf_read_elem(t);
@@ -366,8 +366,8 @@ tty_internal_read_single_char_from_kb(tty *t,
 }
 
 static inline bool
-tty_internal_should_read_return(tty *t,
-                                devfs_handle *h,
+tty_internal_should_read_return(struct tty *t,
+                                struct devfs_handle *h,
                                 size_t read_cnt,
                                 bool delim_break)
 {
@@ -382,7 +382,7 @@ tty_internal_should_read_return(tty *t,
    return read_cnt >= t->c_term.c_cc[VMIN];
 }
 
-bool tty_read_ready_int(tty *t, devfs_handle *h)
+bool tty_read_ready_int(struct tty *t, struct devfs_handle *h)
 {
    if (t->c_term.c_lflag & ICANON) {
       return h->read_allowed_to_return || t->end_line_delim_count > 0;
@@ -392,7 +392,8 @@ bool tty_read_ready_int(tty *t, devfs_handle *h)
    return ringbuf_get_elems(&t->input_ringbuf) >= t->c_term.c_cc[VMIN];
 }
 
-ssize_t tty_read_int(tty *t, devfs_handle *h, char *buf, size_t size)
+ssize_t
+tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    size_t read_count = 0;
    bool delim_break;
@@ -479,7 +480,7 @@ ssize_t tty_read_int(tty *t, devfs_handle *h, char *buf, size_t size)
    return (ssize_t) read_count;
 }
 
-void tty_update_special_ctrl_handlers(tty *t)
+void tty_update_special_ctrl_handlers(struct tty *t)
 {
    bzero(t->special_ctrl_handlers, sizeof(t->special_ctrl_handlers));
    tty_set_ctrl_handler(t, VSTOP, tty_ctrl_stop);
@@ -495,7 +496,7 @@ void tty_update_special_ctrl_handlers(tty *t)
    tty_set_ctrl_handler(t, VLNEXT, tty_ctrl_lnext);
 }
 
-void tty_input_init(tty *t)
+void tty_input_init(struct tty *t)
 {
    kcond_init(&t->input_cond);
    ringbuf_init(&t->input_ringbuf, TTY_INPUT_BS, 1, t->input_buf);

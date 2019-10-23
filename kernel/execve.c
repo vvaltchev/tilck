@@ -21,25 +21,26 @@ static const char *const default_env[] =
    NULL,
 };
 
-typedef struct {
+struct execve_ctx {
 
-   task_info *curr_user_task;
+   struct task *curr_user_task;
    const char *const *env;
    int reclvl;
 
    char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
    const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
-
-} execve_ctx;
+};
 
 static int
-do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv);
+do_execve_int(struct execve_ctx *ctx,
+              const char *path,
+              const char *const *argv);
 
 static int
 execve_get_path(const char *user_path, char **path_ref)
 {
    int rc = 0;
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    char *path = curr->io_copybuf;
    size_t written = 0;
    STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH);
@@ -60,7 +61,7 @@ execve_get_args(const char *const *user_argv,
    int rc = 0;
    char *const *argv = NULL;
    char *const *env = NULL;
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
 
    char *dest = (char *)curr->args_copybuf;
    size_t written = 0;
@@ -93,7 +94,7 @@ out:
 }
 
 static inline void
-execve_prepare_process(process_info *pi, void *brk, const char *path)
+execve_prepare_process(struct process *pi, void *brk, const char *path)
 {
    /*
     * Close the CLOEXEC handles. Note: we couldn't do that before because they
@@ -113,7 +114,7 @@ execve_prepare_process(process_info *pi, void *brk, const char *path)
 }
 
 static inline int
-execve_handle_script(execve_ctx *ctx, const char *const *argv)
+execve_handle_script(struct execve_ctx *ctx, const char *const *argv)
 {
    const char **new_argv = ctx->argv_stack[ctx->reclvl];
    char *hdr = ctx->hdr_stack[ctx->reclvl];
@@ -163,11 +164,11 @@ execve_handle_script(execve_ctx *ctx, const char *const *argv)
 }
 
 static int
-do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv)
+do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 {
    int rc;
    pdir_t *pdir = NULL;
-   task_info *ti = NULL;
+   struct task *ti = NULL;
    void *entry, *stack_addr, *brk;
    char *hdr = ctx->hdr_stack[ctx->reclvl];
 
@@ -230,15 +231,15 @@ do_execve_int(execve_ctx *ctx, const char *path, const char *const *argv)
 }
 
 static int
-do_execve(task_info *curr_user_task,
+do_execve(struct task *curr_user_task,
           const char *path,
           const char *const *argv,
           const char *const *env)
 {
-   task_info *ti = get_curr_task();
+   struct task *ti = get_curr_task();
    const char *const default_argv[] = { path, NULL };
-   execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
-   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(execve_ctx));
+   struct execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
+   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(struct execve_ctx));
 
    ctx->curr_user_task = curr_user_task;
    ctx->env = env ? env : default_env;
@@ -261,7 +262,7 @@ int sys_execve(const char *user_filename,
    char *const *argv = NULL;
    char *const *env = NULL;
 
-   task_info *curr = get_curr_task();
+   struct task *curr = get_curr_task();
    ASSERT(curr != NULL);
 
    if ((rc = execve_get_path(user_filename, &path)))

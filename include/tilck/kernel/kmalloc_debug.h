@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/bintree.h>
 
-typedef struct {
+struct debug_kmalloc_heap_info {
 
    uptr vaddr;
    size_t size;
@@ -12,10 +12,9 @@ typedef struct {
    size_t min_block_size;
    size_t alloc_block_size;
    int region;
+};
 
-} debug_kmalloc_heap_info;
-
-typedef struct {
+struct kmalloc_small_heaps_stats {
 
    int tot_count;
    int peak_count;
@@ -23,27 +22,34 @@ typedef struct {
    int peak_not_full_count;
    int empty_count;
    int lifetime_created_heaps_count;
+};
 
-} kmalloc_small_heaps_stats;
+struct debug_kmalloc_chunks_ctx {
+   struct bintree_walk_ctx ctx;
+};
 
-typedef struct {
+struct debug_kmalloc_stats {
 
-   bintree_walk_ctx ctx;
-
-} debug_kmalloc_chunks_ctx;
-
-typedef struct {
-
-   kmalloc_small_heaps_stats small_heaps;
+   struct kmalloc_small_heaps_stats small_heaps;
    size_t chunk_sizes_count;
+};
 
-} debug_kmalloc_stats;
+bool
+debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
 
-bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
-void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
-void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx);
-bool debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
-                                     size_t *size, size_t *count);
+void
+debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats);
+
+void
+debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx);
+
+bool
+debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
+                                size_t *size,
+                                size_t *count);
+
+
+/* Leak-detector and kmalloc logging */
 
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);
