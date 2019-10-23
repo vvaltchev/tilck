@@ -14,7 +14,7 @@
 #define RWLOCK_WRITERS       20
 #define RETRY_COUNT           4
 
-static rwlock_rp test_rwlrp;
+static struct rwlock_rp test_rwlrp;
 static rwlock_wp test_rwlwp;
 
 static int se_rwlock_vars[3];

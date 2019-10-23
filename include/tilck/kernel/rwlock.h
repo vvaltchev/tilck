@@ -7,7 +7,7 @@
 
 /* Reader-preferring rwlock */
 
-typedef struct {
+struct rwlock_rp {
 
    kmutex readers_lock;
    ksem writers_sem;
@@ -17,23 +17,23 @@ typedef struct {
    struct task *ex_owner;
 #endif
 
-} rwlock_rp;
+};
 
-void rwlock_rp_init(rwlock_rp *r);
-void rwlock_rp_destroy(rwlock_rp *r);
-void rwlock_rp_shlock(rwlock_rp *r);
-void rwlock_rp_shunlock(rwlock_rp *r);
-void rwlock_rp_exlock(rwlock_rp *r);
-void rwlock_rp_exunlock(rwlock_rp *r);
+void rwlock_rp_init(struct rwlock_rp *r);
+void rwlock_rp_destroy(struct rwlock_rp *r);
+void rwlock_rp_shlock(struct rwlock_rp *r);
+void rwlock_rp_shunlock(struct rwlock_rp *r);
+void rwlock_rp_exlock(struct rwlock_rp *r);
+void rwlock_rp_exunlock(struct rwlock_rp *r);
 
 #ifdef DEBUG
 
-   static inline bool rwlock_rp_is_shlocked(rwlock_rp *r)
+   static inline bool rwlock_rp_is_shlocked(struct rwlock_rp *r)
    {
       return r->readers_count > 0;
    }
 
-   static inline bool rwlock_rp_holding_exlock(rwlock_rp *r)
+   static inline bool rwlock_rp_holding_exlock(struct rwlock_rp *r)
    {
       return r->ex_owner == get_curr_task();
    }

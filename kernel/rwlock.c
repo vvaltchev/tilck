@@ -3,7 +3,7 @@
 #include <tilck/kernel/rwlock.h>
 #include <tilck/kernel/sched.h>
 
-void rwlock_rp_init(rwlock_rp *r)
+void rwlock_rp_init(struct rwlock_rp *r)
 {
    kmutex_init(&r->readers_lock, 0);
    ksem_init(&r->writers_sem);
@@ -11,7 +11,7 @@ void rwlock_rp_init(rwlock_rp *r)
    DEBUG_ONLY(r->ex_owner = NULL);
 }
 
-void rwlock_rp_destroy(rwlock_rp *r)
+void rwlock_rp_destroy(struct rwlock_rp *r)
 {
    DEBUG_ONLY(r->ex_owner = NULL);
    r->readers_count = 0;
@@ -19,7 +19,7 @@ void rwlock_rp_destroy(rwlock_rp *r)
    kmutex_destroy(&r->readers_lock);
 }
 
-void rwlock_rp_shlock(rwlock_rp *r)
+void rwlock_rp_shlock(struct rwlock_rp *r)
 {
    kmutex_lock(&r->readers_lock);
    {
@@ -29,7 +29,7 @@ void rwlock_rp_shlock(rwlock_rp *r)
    kmutex_unlock(&r->readers_lock);
 }
 
-void rwlock_rp_shunlock(rwlock_rp *r)
+void rwlock_rp_shunlock(struct rwlock_rp *r)
 {
    kmutex_lock(&r->readers_lock);
    {
@@ -39,7 +39,7 @@ void rwlock_rp_shunlock(rwlock_rp *r)
    kmutex_unlock(&r->readers_lock);
 }
 
-void rwlock_rp_exlock(rwlock_rp *r)
+void rwlock_rp_exlock(struct rwlock_rp *r)
 {
    ksem_wait(&r->writers_sem);
 
@@ -47,7 +47,7 @@ void rwlock_rp_exlock(rwlock_rp *r)
    DEBUG_ONLY(r->ex_owner = get_curr_task());
 }
 
-void rwlock_rp_exunlock(rwlock_rp *r)
+void rwlock_rp_exunlock(struct rwlock_rp *r)
 {
    ASSERT(r->ex_owner == get_curr_task());
    DEBUG_ONLY(r->ex_owner = NULL);
