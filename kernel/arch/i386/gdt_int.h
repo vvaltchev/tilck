@@ -134,7 +134,7 @@ struct user_desc {
 };
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
-void gdt_set_entry(struct gdt_entry *e, uptr base, uptr limit, u8 access, u8 flags);
+void gdt_set_entry(struct gdt_entry *e, uptr base, uptr lim, u8 accs, u8 flags);
 int gdt_add_entry(struct gdt_entry *e);
 void gdt_clear_entry(u32 index);
 void gdt_entry_inc_ref_count(u32 n);

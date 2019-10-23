@@ -74,7 +74,9 @@ void *task_reset_wait_obj(struct task *ti)
 
 struct multi_obj_waiter *allocate_mobj_waiter(u32 elems)
 {
-   size_t s = sizeof(struct multi_obj_waiter) + sizeof(struct mwobj_elem) * elems;
+   size_t s =
+      sizeof(struct multi_obj_waiter) + sizeof(struct mwobj_elem) * elems;
+
    struct multi_obj_waiter *w = task_temp_kernel_alloc(s);
 
    if (!w)

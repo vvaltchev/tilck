@@ -175,7 +175,8 @@ static bool tty_ctrl_lnext(struct tty *t)
    return false;
 }
 
-static void tty_set_ctrl_handler(struct tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
+static void
+tty_set_ctrl_handler(struct tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
 {
    u8 c = t->c_term.c_cc[ctrl_type];
 

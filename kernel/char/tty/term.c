@@ -91,12 +91,14 @@ static const struct video_interface no_output_vi =
 
 /* --------------------------------------------------------- */
 
-static ALWAYS_INLINE void buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
+static ALWAYS_INLINE void
+buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
    t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col] = e;
 }
 
-static ALWAYS_INLINE u16 buffer_get_entry(struct term *t, u16 row, u16 col)
+static ALWAYS_INLINE
+u16 buffer_get_entry(struct term *t, u16 row, u16 col)
 {
    return t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col];
 }
@@ -577,8 +579,8 @@ static void term_action_erase_in_line(struct term *t, int mode, ...)
       t->vi->flush_buffers();
 }
 
-
-static void term_action_del(struct term *t, enum term_del_type del_type, int m, ...)
+static void
+term_action_del(struct term *t, enum term_del_type del_type, int m, ...)
 {
    switch (del_type) {
 

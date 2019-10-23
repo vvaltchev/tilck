@@ -123,7 +123,8 @@ static void free_elf_headers(struct elf_headers *eh)
       kfree2(eh->phdrs, eh->total_phdrs_size);
 }
 
-static int load_elf_headers(fs_handle elf_file, char *hdr_buf, struct elf_headers *eh)
+static int
+load_elf_headers(fs_handle elf_file, char *hdr_buf, struct elf_headers *eh)
 {
    ssize_t rc;
    bzero(eh, sizeof(*eh));

@@ -22,7 +22,8 @@ void kmutex_destroy(struct kmutex *m)
    bzero(m, sizeof(struct kmutex));
 }
 
-static ALWAYS_INLINE void kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
+static ALWAYS_INLINE void
+kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
 {
 #if KERNEL_SELFTESTS
 

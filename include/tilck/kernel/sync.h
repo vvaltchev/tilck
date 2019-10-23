@@ -19,11 +19,11 @@ enum wo_type {
    /* Special "meta-object" types */
 
    WOBJ_MWO_WAITER, /* struct multi_obj_waiter */
-   WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to struct mwobj_elem */
+   WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
 
 /*
- * struct wait_obj is used internally in struct task for referring to an object that
+ * wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
  */
 
@@ -35,7 +35,7 @@ struct wait_obj {
 };
 
 /*
- * Struct used as element in `struct multi_obj_waiter` using `struct wait_obj` through
+ * Struct used as element in `multi_obj_waiter` using `wait_obj` through
  * composition.
  */
 struct mwobj_elem {
@@ -150,7 +150,7 @@ struct kmutex {
 #if KERNEL_SELFTESTS
 
    /*
-    * Magic struct kmutex flag, existing only when self tests are compiled-in and
+    * Magic kmutex flag, existing only when self tests are compiled-in and
     * designed specifically for selftest_kmutex_ord_med(). See the comments
     * in se_kmutex.c for more about it.
     */

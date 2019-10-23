@@ -23,7 +23,9 @@ static struct ramfs_inode *ramfs_new_inode(struct ramfs_data *d)
 }
 
 static struct ramfs_inode *
-ramfs_create_inode_dir(struct ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
+ramfs_create_inode_dir(struct ramfs_data *d,
+                       mode_t mode,
+                       struct ramfs_inode *parent)
 {
    struct ramfs_inode *i = ramfs_new_inode(d);
 
@@ -62,7 +64,9 @@ ramfs_create_inode_dir(struct ramfs_data *d, mode_t mode, struct ramfs_inode *pa
 }
 
 static struct ramfs_inode *
-ramfs_create_inode_file(struct ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
+ramfs_create_inode_file(struct ramfs_data *d,
+                        mode_t mode,
+                        struct ramfs_inode *parent)
 {
    struct ramfs_inode *i = ramfs_new_inode(d);
 

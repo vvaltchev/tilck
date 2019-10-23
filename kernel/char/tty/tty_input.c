@@ -392,7 +392,8 @@ bool tty_read_ready_int(struct tty *t, struct devfs_handle *h)
    return ringbuf_get_elems(&t->input_ringbuf) >= t->c_term.c_cc[VMIN];
 }
 
-ssize_t tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
+ssize_t
+tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    size_t read_count = 0;
    bool delim_break;

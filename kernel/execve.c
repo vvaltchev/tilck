@@ -32,7 +32,9 @@ struct execve_ctx {
 };
 
 static int
-do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv);
+do_execve_int(struct execve_ctx *ctx,
+              const char *path,
+              const char *const *argv);
 
 static int
 execve_get_path(const char *user_path, char **path_ref)

@@ -42,11 +42,20 @@ serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg);
 void tty_update_special_ctrl_handlers(struct tty *t);
 void tty_update_default_state_tables(struct tty *t);
 
-ssize_t tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
-ssize_t tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
-int tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp);
-int tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg);
-bool tty_read_ready_int(struct tty *t, struct devfs_handle *h);
+ssize_t
+tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
+
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
+
+int
+tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp);
+
+int
+tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg);
+
+bool
+tty_read_ready_int(struct tty *t, struct devfs_handle *h);
 
 void init_ttyaux(void);
 void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);

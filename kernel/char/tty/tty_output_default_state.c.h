@@ -176,7 +176,10 @@ void tty_update_default_state_tables(struct tty *t)
 }
 
 static enum term_fret
-tty_def_print_untrasl_char(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
+tty_def_print_untrasl_char(u8 *c,
+                           u8 *color,
+                           struct term_action *a,
+                           void *ctx_arg)
 {
    struct twfilter_ctx_t *const ctx = ctx_arg;
    int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);

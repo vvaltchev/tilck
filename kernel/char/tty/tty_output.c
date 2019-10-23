@@ -22,7 +22,7 @@ static enum term_fret tty_state_esc1(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_par0(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_par1(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_csi(u8*, u8*, struct term_action*, void*);
-static enum term_fret tty_state_esc2_unknown(u8*, u8*, struct term_action*, void*);
+static enum term_fret tty_state_esc2_unknown(u8*,u8*,struct term_action*,void*);
 
 #include "tty_output_default_state.c.h"
 #pragma GCC diagnostic push
@@ -809,7 +809,8 @@ static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
    return -1;
 }
 
-ssize_t tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
