@@ -28,15 +28,14 @@ struct debug_kmalloc_chunks_ctx {
    struct bintree_walk_ctx ctx;
 };
 
-typedef struct {
+struct debug_kmalloc_stats {
 
    struct kmalloc_small_heaps_stats small_heaps;
    size_t chunk_sizes_count;
-
-} debug_kmalloc_stats;
+};
 
 bool debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
-void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
+void debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats);
 void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx);
 bool debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
                                      size_t *size, size_t *count);

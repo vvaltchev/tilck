@@ -334,9 +334,9 @@ debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
 }
 
 void
-debug_kmalloc_get_stats(debug_kmalloc_stats *stats)
+debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats)
 {
-   *stats = (debug_kmalloc_stats) {
+   *stats = (struct debug_kmalloc_stats) {
       .small_heaps = shs,
       .chunk_sizes_count =
          KMALLOC_HEAVY_STATS ? alloc_arr_used : 0,

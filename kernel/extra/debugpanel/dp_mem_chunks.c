@@ -19,7 +19,7 @@ typedef struct {
    u32 max_waste_p;
 } chunk_info;
 
-static debug_kmalloc_stats stats;
+static struct debug_kmalloc_stats stats;
 static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
