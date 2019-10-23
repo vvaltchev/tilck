@@ -57,13 +57,13 @@ struct mwobj_elem {
  */
 struct multi_obj_waiter {
 
-   u32 count;             /* number of `struct mwobj_elem` elements */
+   u32 count;                    /* number of `struct mwobj_elem` elements */
    struct mwobj_elem elems[];    /* variable-size array */
 };
 
 /*
- * For a struct wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
- * value for __ptr meaning that the task owning the struct wait_obj is going to wait
+ * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
+ * value for __ptr meaning that the task owning the wait_obj is going to wait
  * for any of its children to change state (usually, = to die).
  */
 #define WOBJ_TASK_PTR_ANY_CHILD ((void *) -1)

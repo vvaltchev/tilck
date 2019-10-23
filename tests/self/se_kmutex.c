@@ -121,7 +121,7 @@ void selftest_kmutex_rec_med()
    bool success;
    int tids[3];
 
-   printk("struct kmutex recursive test\n");
+   printk("kmutex recursive test\n");
    kmutex_init(&test_mutex, KMUTEX_FL_RECURSIVE);
 
    kmutex_lock(&test_mutex);

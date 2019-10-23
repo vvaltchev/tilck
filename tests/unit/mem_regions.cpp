@@ -20,7 +20,7 @@ using namespace testing;
 
 extern "C" {
    #include <tilck/kernel/system_mmap.h>
-   void append_mem_region(memory_region_t r);
+   void append_mem_region(struct memory_region_t r);
    void fix_mem_regions(void);
    void align_mem_regions_to_page_boundary(void);
    void sort_mem_regions(void);
@@ -63,7 +63,7 @@ public:
    }
 
 private:
-   memory_region_t saved_mem_regions[MAX_MEM_REGIONS];
+   struct memory_region_t saved_mem_regions[MAX_MEM_REGIONS];
    int saved_mem_regions_count;
 };
 

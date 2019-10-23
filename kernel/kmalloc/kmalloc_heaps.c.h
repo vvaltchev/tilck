@@ -278,7 +278,7 @@ void init_kmalloc(void)
 
    for (int i = 0; i < mem_regions_count; i++) {
 
-      memory_region_t *r = mem_regions + i;
+      struct memory_region_t *r = mem_regions + i;
       uptr vbegin, vend;
 
       if (!linear_map_mem_region(r, &vbegin, &vend))

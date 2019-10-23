@@ -22,7 +22,7 @@
 
 #include "fb_int.h"
 
-void append_mem_region(memory_region_t r);
+void append_mem_region(struct memory_region_t r);
 
 static uptr fb_paddr;
 static u32 fb_pitch;
@@ -165,7 +165,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 
    fb_init_colors();
 
-   append_mem_region((memory_region_t) {
+   append_mem_region((struct memory_region_t) {
       .addr = fb_paddr,
       .len = fb_size,
       .type = MULTIBOOT_MEMORY_RESERVED,
