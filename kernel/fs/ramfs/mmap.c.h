@@ -21,7 +21,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
    ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
-   ramfs_block *b;
+   struct ramfs_block *b;
    int rc;
 
    const size_t off_begin = um->off;
@@ -37,7 +37,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
 
    bintree_in_order_visit_start(&ctx,
                                 i->blocks_tree_root,
-                                ramfs_block,
+                                struct ramfs_block,
                                 node,
                                 false);
 
@@ -84,7 +84,7 @@ ramfs_handle_fault_int(struct process *pi,
 {
    uptr vaddr = (uptr) vaddrp;
    uptr abs_off;
-   ramfs_block *block;
+   struct ramfs_block *block;
    int rc;
    struct user_mapping *um = process_get_user_mapping(vaddrp);
 
@@ -112,7 +112,7 @@ ramfs_handle_fault_int(struct process *pi,
       return false; /* Read/write past EOF */
 
    if (rw) {
-      /* Create and map on-the-fly a ramfs_block */
+      /* Create and map on-the-fly a struct ramfs_block */
       if (!(block = ramfs_new_block((offt)(abs_off & PAGE_MASK))))
          panic("Out-of-memory: unable to alloc a ramfs_block. No OOM killer");
 

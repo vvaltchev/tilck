@@ -191,8 +191,8 @@ static int ramfs_inode_truncate(ramfs_inode *i, offt len)
 
    while (true) {
 
-      ramfs_block *b =
-         bintree_get_last_obj(i->blocks_tree_root, ramfs_block, node);
+      struct ramfs_block *b =
+         bintree_get_last_obj(i->blocks_tree_root, struct ramfs_block, node);
 
       if (!b || b->offset < len)
          break;
@@ -200,7 +200,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, offt len)
       /* Remove the block object from the tree */
       bintree_remove_ptr(&i->blocks_tree_root,
                          b,
-                         ramfs_block,
+                         struct ramfs_block,
                          node,
                          offset);
 
@@ -208,7 +208,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, offt len)
       kfree2(b->vaddr, PAGE_SIZE);
 
       /* Free the memory used by the block object itself */
-      kfree2(b, sizeof(ramfs_block));
+      kfree2(b, sizeof(struct ramfs_block));
    }
 
    i->fsize = len;
@@ -256,7 +256,7 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 
    while (buf_rem > 0) {
 
-      ramfs_block *block;
+      struct ramfs_block *block;
       const offt page     = rh->pos & (offt)PAGE_MASK;
       const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
       const offt page_rem = (offt)PAGE_SIZE - page_off;
@@ -273,7 +273,7 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 
       block = bintree_find_ptr(inode->blocks_tree_root,
                                page,
-                               ramfs_block,
+                               struct ramfs_block,
                                node,
                                offset);
 
@@ -308,7 +308,7 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 
    while (buf_rem > 0) {
 
-      ramfs_block *block;
+      struct ramfs_block *block;
       const offt page     = rh->pos & (offt)PAGE_MASK;
       const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
       const offt page_rem = (offt)PAGE_SIZE - page_off;
@@ -318,7 +318,7 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 
       block = bintree_find_ptr(inode->blocks_tree_root,
                                page,
-                               ramfs_block,
+                               struct ramfs_block,
                                node,
                                offset);
 

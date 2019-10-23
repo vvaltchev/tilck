@@ -22,13 +22,12 @@
 struct ramfs_inode;
 typedef struct ramfs_inode ramfs_inode;
 
-typedef struct {
+struct ramfs_block {
 
    struct bintree_node node;
    offt offset;                  /* MUST BE divisible by PAGE_SIZE */
    void *vaddr;
-
-} ramfs_block;
+};
 
 /*
  * Ramfs entries do not *necessarily* need to have a fixed size, as they are
@@ -79,7 +78,7 @@ struct ramfs_inode {
       /* valid when type == VFS_FILE */
       struct {
          offt fsize;
-         ramfs_block *blocks_tree_root;
+         struct ramfs_block *blocks_tree_root;
       };
 
       /* valid when type == VFS_DIR */
