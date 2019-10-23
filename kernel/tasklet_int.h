@@ -11,16 +11,15 @@ struct tasklet {
    tasklet_context ctx;
 };
 
-typedef struct {
+struct tasklet_thread_info {
 
    struct tasklet *tasklets;
    safe_ringbuf safe_ringbuf;
    struct task *task;
    int priority; /* 0 => max priority */
    u32 limit;
+};
 
-} tasklet_thread_info;
-
-extern tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
+extern struct tasklet_thread_info *tasklet_threads[MAX_TASKLET_THREADS];
 
 bool run_one_tasklet(int tn);
