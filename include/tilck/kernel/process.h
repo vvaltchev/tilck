@@ -47,7 +47,7 @@ struct process {
    bool did_call_execve;
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 
-   kmutex fslock;                         /* protects `handles` and `cwd` */
+   struct kmutex fslock;                  /* protects `handles` and `cwd` */
    mode_t umask;
 
    struct vfs_path cwd;                   /* CWD as a struct vfs_path */

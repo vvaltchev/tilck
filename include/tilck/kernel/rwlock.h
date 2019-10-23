@@ -9,7 +9,7 @@
 
 struct rwlock_rp {
 
-   kmutex readers_lock;
+   struct kmutex readers_lock;
    struct ksem writers_sem;
    int readers_count;
 
@@ -45,7 +45,7 @@ void rwlock_rp_exunlock(struct rwlock_rp *r);
 struct rwlock_wp {
 
    struct task *ex_owner;
-   kmutex m;
+   struct kmutex m;
    kcond c;
    int r;     /* readers count */
    bool w;    /* writer waiting */

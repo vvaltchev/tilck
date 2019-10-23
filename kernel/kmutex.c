@@ -4,25 +4,25 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 
-bool kmutex_is_curr_task_holding_lock(kmutex *m)
+bool kmutex_is_curr_task_holding_lock(struct kmutex *m)
 {
    return m->owner_task == get_curr_task();
 }
 
-void kmutex_init(kmutex *m, u32 flags)
+void kmutex_init(struct kmutex *m, u32 flags)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
-   bzero(m, sizeof(kmutex));
+   bzero(m, sizeof(struct kmutex));
    m->flags = flags;
    list_init(&m->wait_list);
 }
 
-void kmutex_destroy(kmutex *m)
+void kmutex_destroy(struct kmutex *m)
 {
-   bzero(m, sizeof(kmutex));
+   bzero(m, sizeof(struct kmutex));
 }
 
-static ALWAYS_INLINE void kmutex_lock_enable_preemption_wrapper(kmutex *m)
+static ALWAYS_INLINE void kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
 {
 #if KERNEL_SELFTESTS
 
@@ -40,7 +40,7 @@ static ALWAYS_INLINE void kmutex_lock_enable_preemption_wrapper(kmutex *m)
 #endif
 }
 
-void kmutex_lock(kmutex *m)
+void kmutex_lock(struct kmutex *m)
 {
    disable_preemption();
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -100,7 +100,7 @@ void kmutex_lock(kmutex *m)
    }
 }
 
-bool kmutex_trylock(kmutex *m)
+bool kmutex_trylock(struct kmutex *m)
 {
    bool success = false;
 
@@ -136,7 +136,7 @@ bool kmutex_trylock(kmutex *m)
    return success;
 }
 
-void kmutex_unlock(kmutex *m)
+void kmutex_unlock(struct kmutex *m)
 {
    disable_preemption();
 

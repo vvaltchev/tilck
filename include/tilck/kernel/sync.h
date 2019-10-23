@@ -124,7 +124,7 @@ void ksem_signal(struct ksem *s);
  * The mutex implementation used for locking in kernel mode.
  */
 
-typedef struct {
+struct kmutex {
 
    struct task *owner_task;
    u32 flags;
@@ -135,8 +135,7 @@ typedef struct {
    u32 num_waiters;
    u32 max_num_waiters;
 #endif
-
-} kmutex;
+};
 
 #define STATIC_KMUTEX_INIT(m, fl)                 \
    {                                              \
@@ -151,21 +150,21 @@ typedef struct {
 #if KERNEL_SELFTESTS
 
    /*
-    * Magic kmutex flag, existing only when self tests are compiled-in and
+    * Magic struct kmutex flag, existing only when self tests are compiled-in and
     * designed specifically for selftest_kmutex_ord_med(). See the comments
     * in se_kmutex.c for more about it.
     */
    #define KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED      (1 << 1)
 #endif
 
-void kmutex_init(kmutex *m, u32 flags);
-void kmutex_lock(kmutex *m);
-bool kmutex_trylock(kmutex *m);
-void kmutex_unlock(kmutex *m);
-void kmutex_destroy(kmutex *m);
+void kmutex_init(struct kmutex *m, u32 flags);
+void kmutex_lock(struct kmutex *m);
+bool kmutex_trylock(struct kmutex *m);
+void kmutex_unlock(struct kmutex *m);
+void kmutex_destroy(struct kmutex *m);
 
 #ifdef DEBUG
-bool kmutex_is_curr_task_holding_lock(kmutex *m);
+bool kmutex_is_curr_task_holding_lock(struct kmutex *m);
 #endif
 
 /*
@@ -188,7 +187,7 @@ typedef struct {
 void kcond_init(kcond *c);
 void kcond_destory(kcond *c);
 void kcond_signal_int(kcond *c, bool all);
-bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks);
+bool kcond_wait(kcond *c, struct kmutex *m, u32 timeout_ticks);
 
 static inline void kcond_signal_one(kcond *c)
 {

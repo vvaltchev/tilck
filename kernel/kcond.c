@@ -12,7 +12,7 @@ void kcond_init(kcond *c)
    list_init(&c->wait_list);
 }
 
-bool kcond_wait(kcond *c, kmutex *m, u32 timeout_ticks)
+bool kcond_wait(kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));

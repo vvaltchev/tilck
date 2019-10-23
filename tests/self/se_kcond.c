@@ -11,7 +11,7 @@
 #include <tilck/kernel/self_tests.h>
 
 static kcond cond = { 0 };
-static kmutex cond_mutex = { 0 };
+static struct kmutex cond_mutex = { 0 };
 
 static void kcond_thread_test(void *arg)
 {

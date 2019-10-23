@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
+static struct kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
 static struct mountpoint mps2[MAX_MOUNTPOINTS];
 static struct fs *mp_root;
 
