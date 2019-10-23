@@ -18,7 +18,7 @@
 #define TTY_ATTR_BOLD             (1 << 0)
 #define TTY_ATTR_REVERSE          (1 << 1)
 
-typedef struct {
+struct twfilter_ctx_t {
 
    tty *t;
 
@@ -29,8 +29,7 @@ typedef struct {
    bool non_default_state;
    u8 pbc; /* param bytes count */
    u8 ibc; /* intermediate bytes count */
-
-} twfilter_ctx_t;
+};
 
 void tty_input_init(tty *t);
 void tty_kb_buf_reset(tty *t);
@@ -72,7 +71,7 @@ struct tty {
 
    u8 c_set; // 0 = G0, 1 = G1.
    const s16 *c_sets_tables[2];
-   twfilter_ctx_t filter_ctx;
+   struct twfilter_ctx_t filter_ctx;
 
    /* tty ioctl */
    struct termios c_term;
