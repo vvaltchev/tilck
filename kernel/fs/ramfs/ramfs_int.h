@@ -103,7 +103,7 @@ struct ramfs_inode {
 
 typedef struct {
 
-   /* fs_handle_base */
+   /* struct fs_handle_base */
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */

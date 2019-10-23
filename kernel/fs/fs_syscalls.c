@@ -616,7 +616,7 @@ void close_cloexec_handles(struct process *pi)
 
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 
-      fs_handle_base *h = pi->handles[i];
+      struct fs_handle_base *h = pi->handles[i];
 
       if (h && (h->fd_flags & FD_CLOEXEC)) {
          vfs_close(h);
@@ -631,7 +631,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
 {
    int rc = 0;
    struct task *curr = get_curr_task();
-   fs_handle_base *hb;
+   struct fs_handle_base *hb;
 
    hb = get_fs_handle(fd);
 
@@ -655,7 +655,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
             int new_fd = get_free_handle_num_ge(curr->pi, arg);
             rc = sys_dup2(fd, new_fd);
             if (!rc) {
-               fs_handle_base *h2 = get_fs_handle(new_fd);
+               struct fs_handle_base *h2 = get_fs_handle(new_fd);
                ASSERT(h2 != NULL);
                h2->fd_flags |= FD_CLOEXEC;
             }
@@ -718,7 +718,7 @@ int sys_lchown(const char *u_path, int owner, int group)
 
 int sys_fchown(int fd, uid_t owner, gid_t group)
 {
-   fs_handle_base *hb;
+   struct fs_handle_base *hb;
    hb = get_fs_handle(fd);
 
    if (!hb)
@@ -755,7 +755,7 @@ int sys_chmod(const char *u_path, mode_t mode)
 
 int sys_fchmod(int fd, mode_t mode)
 {
-   fs_handle_base *hb;
+   struct fs_handle_base *hb;
    hb = get_fs_handle(fd);
 
    if (!hb)

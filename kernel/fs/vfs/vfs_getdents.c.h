@@ -2,7 +2,7 @@
 
 typedef struct {
 
-   fs_handle_base *h;
+   struct fs_handle_base *h;
    struct linux_dirent64 *user_dirp;
    u32 buf_size;
    u32 offset;
@@ -94,7 +94,7 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    int rc;
 
    ASSERT(hb != NULL);

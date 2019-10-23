@@ -5,7 +5,7 @@ void vfs_exlock(fs_handle h)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (hb->fops->exlock)
       hb->fops->exlock(h);
@@ -16,7 +16,7 @@ void vfs_exunlock(fs_handle h)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (hb->fops->exunlock)
       hb->fops->exunlock(h);
@@ -27,7 +27,7 @@ void vfs_shlock(fs_handle h)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (hb->fops->shlock)
       hb->fops->shlock(h);
@@ -38,7 +38,7 @@ void vfs_shunlock(fs_handle h)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (hb->fops->shunlock)
       hb->fops->shunlock(h);

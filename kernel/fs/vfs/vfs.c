@@ -37,7 +37,7 @@ void vfs_close2(struct process *pi, fs_handle h)
     */
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
 
 #ifndef UNIT_TEST_ENVIRONMENT
@@ -60,7 +60,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    int rc;
 
    if (!hb)
@@ -70,7 +70,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
       return rc;
 
    /* The new file descriptor does NOT share old file descriptor's fd_flags */
-   ((fs_handle_base*) *dup_h)->fd_flags = 0;
+   ((struct fs_handle_base*) *dup_h)->fd_flags = 0;
 
    retain_obj(hb->fs);
    ASSERT(*dup_h != NULL);
@@ -82,7 +82,7 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    ssize_t ret;
 
    if (!hb->fops->read)
@@ -104,7 +104,7 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    ssize_t ret;
 
    if (!hb->fops->write)
@@ -130,7 +130,7 @@ offt vfs_seek(fs_handle h, s64 off, int whence)
    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
       return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->seek)
       return -ESPIPE;
@@ -149,7 +149,7 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    int ret;
 
    if (!hb->fops->ioctl)
@@ -166,7 +166,7 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
 int vfs_fcntl(fs_handle h, int cmd, int arg)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    int ret;
 
    if (!hb->fops->fcntl)
@@ -182,7 +182,7 @@ int vfs_fcntl(fs_handle h, int cmd, int arg)
 
 int vfs_ftruncate(fs_handle h, offt length)
 {
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    const struct fs_ops *fsops = hb->fs->fsops;
 
    if (!fsops->truncate)
@@ -196,7 +196,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
-   fs_handle_base *hb = (fs_handle_base *) h;
+   struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
    const struct fs_ops *fsops = fs->fsops;
    int ret;
@@ -253,10 +253,10 @@ vfs_open_impl(struct fs *fs, struct vfs_path *p,
       return rc;
 
    /* open() succeeded, the FS is already retained */
-   ((fs_handle_base *) *out)->fl_flags = flags;
+   ((struct fs_handle_base *) *out)->fl_flags = flags;
 
    if (flags & O_CLOEXEC)
-      ((fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+      ((struct fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
 
    /* file handles retain their struct fs */
    retain_obj(fs);
@@ -639,14 +639,14 @@ int vfs_link(const char *oldpath, const char *newpath)
 
 int vfs_fchmod(fs_handle h, mode_t mode)
 {
-   fs_handle_base *hb = h;
+   struct fs_handle_base *hb = h;
    const struct fs_ops *fsops = hb->fs->fsops;
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 
 int vfs_mmap(struct user_mapping *um, bool register_only)
 {
-   fs_handle_base *hb = um->h;
+   struct fs_handle_base *hb = um->h;
    const struct file_ops *fops = hb->fops;
 
    if (!fops->mmap)
@@ -658,7 +658,7 @@ int vfs_mmap(struct user_mapping *um, bool register_only)
 
 int vfs_munmap(fs_handle h, void *vaddr, size_t len)
 {
-   fs_handle_base *hb = h;
+   struct fs_handle_base *hb = h;
    const struct file_ops *fops = hb->fops;
 
    if (!fops->munmap)
@@ -670,7 +670,7 @@ int vfs_munmap(fs_handle h, void *vaddr, size_t len)
 
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
 {
-   fs_handle_base *hb = h;
+   struct fs_handle_base *hb = h;
    const struct file_ops *fops = hb->fops;
 
    if (!fops->handle_fault)

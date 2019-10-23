@@ -22,7 +22,7 @@ struct fat_fs_device_data {
 
 struct fat_handle {
 
-   /* fs_handle_base */
+   /* struct fs_handle_base */
    FS_HANDLE_BASE_FIELDS
 
    /* fs-specific members */

@@ -178,7 +178,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    u32 per_heap_kmalloc_flags = KMALLOC_FL_MULTI_STEP | PAGE_SIZE;
    struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
-   fs_handle_base *handle = NULL;
+   struct fs_handle_base *handle = NULL;
    struct user_mapping *um = NULL;
    size_t actual_len;
    int rc, fl;

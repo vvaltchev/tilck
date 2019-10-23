@@ -232,11 +232,9 @@ struct file_ops {
    int fl_flags;                 \
    offt pos;                        /* file: offset, dir: opaque entry index */
 
-typedef struct {
-
+struct fs_handle_base {
    FS_HANDLE_BASE_FIELDS
-
-} fs_handle_base;
+};
 
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
@@ -299,7 +297,7 @@ static inline void vfs_release_inode_at(struct vfs_path *p)
 static ALWAYS_INLINE struct fs *get_fs(fs_handle h)
 {
    ASSERT(h != NULL);
-   return ((fs_handle_base *)h)->fs;
+   return ((struct fs_handle_base *)h)->fs;
 }
 
 static ALWAYS_INLINE void
