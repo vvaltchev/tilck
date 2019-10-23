@@ -15,7 +15,7 @@ static sptr ramfs_find_entry_cmp(const void *obj, const void *valptr)
 }
 
 static int
-ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
+ramfs_dir_add_entry(struct ramfs_inode *idir, const char *iname, struct ramfs_inode *ie)
 {
    ramfs_entry *e;
    size_t enl = strlen(iname) + 1;
@@ -56,10 +56,10 @@ ramfs_dir_add_entry(ramfs_inode *idir, const char *iname, ramfs_inode *ie)
 }
 
 static void
-ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
+ramfs_dir_remove_entry(struct ramfs_inode *idir, ramfs_entry *e)
 {
    ramfs_handle *pos;
-   ramfs_inode *ie = e->inode;
+   struct ramfs_inode *ie = e->inode;
    ASSERT(idir->type == VFS_DIR);
 
    /*
@@ -89,7 +89,7 @@ ramfs_dir_remove_entry(ramfs_inode *idir, ramfs_entry *e)
 }
 
 static ramfs_entry *
-ramfs_dir_get_entry_by_name(ramfs_inode *idir, const char *name, ssize_t len)
+ramfs_dir_get_entry_by_name(struct ramfs_inode *idir, const char *name, ssize_t len)
 {
    char buf[RAMFS_ENTRY_MAX_LEN];
    memcpy(buf, name, (size_t) len);

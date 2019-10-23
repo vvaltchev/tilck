@@ -20,7 +20,6 @@
 #include <dirent.h> // system header
 
 struct ramfs_inode;
-typedef struct ramfs_inode ramfs_inode;
 
 struct ramfs_block {
 
@@ -106,7 +105,7 @@ typedef struct {
    FS_HANDLE_BASE_FIELDS
 
    /* ramfs-specific fields */
-   ramfs_inode *inode;
+   struct ramfs_inode *inode;
 
    /* valid only if inode->type == VFS_DIR */
    struct {
@@ -121,8 +120,8 @@ typedef struct {
    rwlock_wp rwlock;
 
    tilck_inode_t next_inode_num;
-   ramfs_inode *root;
+   struct ramfs_inode *root;
 
 } ramfs_data;
 
-CREATE_FS_PATH_STRUCT(ramfs_path, ramfs_inode *, ramfs_entry *);
+CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, ramfs_entry *);

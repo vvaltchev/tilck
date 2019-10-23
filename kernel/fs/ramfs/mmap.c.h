@@ -18,7 +18,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
    struct process *pi = get_curr_task()->pi;
    ramfs_handle *rh = um->h;
-   ramfs_inode *i = rh->inode;
+   struct ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
    struct ramfs_block *b;

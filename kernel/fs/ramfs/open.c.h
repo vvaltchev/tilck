@@ -17,7 +17,7 @@ static const struct file_ops static_ops_ramfs =
 };
 
 static int
-ramfs_open_int(struct fs *fs, ramfs_inode *inode, fs_handle *out, int fl)
+ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
 {
    ramfs_handle *h;
 
@@ -50,7 +50,7 @@ ramfs_open_int(struct fs *fs, ramfs_inode *inode, fs_handle *out, int fl)
    return 0;
 }
 
-static int ramfs_open_existing_checks(int fl, ramfs_inode *i)
+static int ramfs_open_existing_checks(int fl, struct ramfs_inode *i)
 {
    if (!(fl & O_WRONLY) && !(i->mode & 0400))
       return -EACCES;
@@ -86,8 +86,8 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
-   ramfs_inode *i = rp->inode;
-   ramfs_inode *idir = rp->dir_inode;
+   struct ramfs_inode *i = rp->inode;
+   struct ramfs_inode *idir = rp->dir_inode;
    int rc;
 
    if (!i) {

@@ -20,8 +20,8 @@ static int ramfs_unlink(struct vfs_path *p)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
-   ramfs_inode *i = rp->inode;
-   ramfs_inode *idir = rp->dir_inode;
+   struct ramfs_inode *i = rp->inode;
+   struct ramfs_inode *idir = rp->dir_inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 
@@ -68,7 +68,7 @@ static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 static void ramfs_close(fs_handle h)
 {
    ramfs_handle *rh = h;
-   ramfs_inode *i = rh->inode;
+   struct ramfs_inode *i = rh->inode;
 
    if (i->type == VFS_DIR) {
       /* Remove this handle from h->inode->handles_list */
@@ -128,7 +128,7 @@ ramfs_get_entry(struct fs *fs,
                 struct fs_path *fs_path)
 {
    ramfs_data *d = fs->device_data;
-   ramfs_inode *idir = dir_inode;
+   struct ramfs_inode *idir = dir_inode;
    ramfs_entry *re;
 
    if (!dir_inode) {
@@ -161,7 +161,7 @@ static vfs_inode_ptr_t ramfs_getinode(fs_handle h)
 static int ramfs_symlink(const char *target, struct vfs_path *lp)
 {
    ramfs_data *d = lp->fs->device_data;
-   ramfs_inode *n;
+   struct ramfs_inode *n;
 
    n = ramfs_create_inode_symlink(d, lp->fs_path.dir_inode, target);
 
@@ -174,7 +174,7 @@ static int ramfs_symlink(const char *target, struct vfs_path *lp)
 /* NOTE: `buf` is guaranteed to have room for at least MAX_PATH chars */
 static int ramfs_readlink(struct vfs_path *p, char *buf)
 {
-   ramfs_inode *i = p->fs_path.inode;
+   struct ramfs_inode *i = p->fs_path.inode;
 
    if (i->type != VFS_SYMLINK)
       return -EINVAL;
@@ -190,7 +190,7 @@ static int ramfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
    if (!(fs->flags & VFS_FS_RW))
       return 1;
 
-   return retain_obj((ramfs_inode *)inode);
+   return retain_obj((struct ramfs_inode *)inode);
 }
 
 static int ramfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
@@ -200,12 +200,12 @@ static int ramfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
    if (!(fs->flags & VFS_FS_RW))
       return 1;
 
-   return release_obj((ramfs_inode *)inode);
+   return release_obj((struct ramfs_inode *)inode);
 }
 
 static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 {
-   ramfs_inode *i = inode;
+   struct ramfs_inode *i = inode;
    int rc;
 
    rwlock_wp_exlock(&i->rwlock);

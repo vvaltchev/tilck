@@ -19,7 +19,7 @@ static struct ramfs_block *ramfs_new_block(offt page)
    return block;
 }
 
-static void ramfs_append_new_block(ramfs_inode *inode, struct ramfs_block *block)
+static void ramfs_append_new_block(struct ramfs_inode *inode, struct ramfs_block *block)
 {
    DEBUG_ONLY_UNSAFE(bool success =)
       bintree_insert_ptr(&inode->blocks_tree_root,
@@ -32,7 +32,7 @@ static void ramfs_append_new_block(ramfs_inode *inode, struct ramfs_block *block
    inode->blocks_count++;
 }
 
-static int ramfs_inode_extend(ramfs_inode *i, offt new_len)
+static int ramfs_inode_extend(struct ramfs_inode *i, offt new_len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
    ASSERT(new_len > i->fsize);

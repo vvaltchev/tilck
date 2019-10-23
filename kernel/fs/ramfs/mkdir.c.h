@@ -4,7 +4,7 @@ static int ramfs_mkdir(struct vfs_path *p, mode_t mode)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
-   ramfs_inode *new_dir;
+   struct ramfs_inode *new_dir;
    int rc;
 
    if (rp->inode)
@@ -28,7 +28,7 @@ static int ramfs_rmdir(struct vfs_path *p)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;
    ramfs_data *d = p->fs->device_data;
-   ramfs_inode *i = rp->inode;
+   struct ramfs_inode *i = rp->inode;
 
    ASSERT(rwlock_wp_holding_exlock(&d->rwlock));
 

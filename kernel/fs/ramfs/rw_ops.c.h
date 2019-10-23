@@ -12,7 +12,7 @@ static int ramfs_fcntl(fs_handle h, int cmd, int arg)
 
 static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 {
-   ramfs_inode *i = rh->inode;
+   struct ramfs_inode *i = rh->inode;
    ramfs_entry *dpos;
    offt off = 0;
 
@@ -33,7 +33,7 @@ static offt ramfs_dir_seek(ramfs_handle *rh, offt target_off)
 static offt ramfs_seek(fs_handle h, offt off, int whence)
 {
    ramfs_handle *rh = h;
-   ramfs_inode *i = rh->inode;
+   struct ramfs_inode *i = rh->inode;
 
    if (i->type == VFS_DIR) {
 
@@ -143,7 +143,7 @@ static offt ramfs_seek(fs_handle h, offt off, int whence)
  * Case 3) is the same as case 2) with the exception that `voff` is just 0.
  */
 
-static void ramfs_unmap_past_eof_mappings(ramfs_inode *i, size_t len)
+static void ramfs_unmap_past_eof_mappings(struct ramfs_inode *i, size_t len)
 {
    const size_t rlen = round_up_at(len, PAGE_SIZE);
    struct user_mapping *um;
@@ -165,7 +165,7 @@ static void ramfs_unmap_past_eof_mappings(ramfs_inode *i, size_t len)
    }
 }
 
-static int ramfs_inode_truncate(ramfs_inode *i, offt len)
+static int ramfs_inode_truncate(struct ramfs_inode *i, offt len)
 {
    ASSERT(rwlock_wp_holding_exlock(&i->rwlock));
 
@@ -216,7 +216,7 @@ static int ramfs_inode_truncate(ramfs_inode *i, offt len)
    return 0;
 }
 
-static int ramfs_inode_truncate_safe(ramfs_inode *i, offt len)
+static int ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len)
 {
    int rc;
    rwlock_wp_exlock(&i->rwlock);
@@ -246,7 +246,7 @@ static int ramfs_truncate(struct fs *fs, vfs_inode_ptr_t i, offt len)
 static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
-   ramfs_inode *inode = rh->inode;
+   struct ramfs_inode *inode = rh->inode;
    offt tot_read = 0;
    offt buf_rem = (offt) len;
    ASSERT(inode->type == VFS_FILE);
@@ -296,7 +296,7 @@ static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
 static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
 {
    ramfs_handle *rh = h;
-   ramfs_inode *inode = rh->inode;
+   struct ramfs_inode *inode = rh->inode;
    offt tot_written = 0;
    offt buf_rem = (offt)len;
 

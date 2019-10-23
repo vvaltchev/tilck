@@ -6,7 +6,7 @@ ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    if (!i)
       return -ENOENT;
 
-   ramfs_inode *inode = i;
+   struct ramfs_inode *inode = i;
 
    if (!(inode->parent_dir->mode & 0500)) /* read + execute */
       return -EACCES;

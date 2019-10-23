@@ -2,9 +2,9 @@
 
 #define DEBUG_RAMFS_CREATE_INODE_PRINTK      0
 
-static ramfs_inode *ramfs_new_inode(ramfs_data *d)
+static struct ramfs_inode *ramfs_new_inode(ramfs_data *d)
 {
-   ramfs_inode *i = kzmalloc(sizeof(ramfs_inode));
+   struct ramfs_inode *i = kzmalloc(sizeof(struct ramfs_inode));
 
    if (!i)
       return NULL;
@@ -22,10 +22,10 @@ static ramfs_inode *ramfs_new_inode(ramfs_data *d)
    return i;
 }
 
-static ramfs_inode *
-ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
+static struct ramfs_inode *
+ramfs_create_inode_dir(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 {
-   ramfs_inode *i = ramfs_new_inode(d);
+   struct ramfs_inode *i = ramfs_new_inode(d);
 
    if (!i)
       return NULL;
@@ -43,7 +43,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    i->parent_dir = parent;
 
    if (ramfs_dir_add_entry(i, ".", i) < 0) {
-      kfree2(i, sizeof(ramfs_inode));
+      kfree2(i, sizeof(struct ramfs_inode));
       return NULL;
    }
 
@@ -52,7 +52,7 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
       ramfs_entry *e = i->entries_tree_root;
       ramfs_dir_remove_entry(i, e);
 
-      kfree2(i, sizeof(ramfs_inode));
+      kfree2(i, sizeof(struct ramfs_inode));
       return NULL;
    }
 
@@ -61,10 +61,10 @@ ramfs_create_inode_dir(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    return i;
 }
 
-static ramfs_inode *
-ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
+static struct ramfs_inode *
+ramfs_create_inode_file(ramfs_data *d, mode_t mode, struct ramfs_inode *parent)
 {
-   ramfs_inode *i = ramfs_new_inode(d);
+   struct ramfs_inode *i = ramfs_new_inode(d);
 
    if (!i)
       return NULL;
@@ -78,7 +78,7 @@ ramfs_create_inode_file(ramfs_data *d, mode_t mode, ramfs_inode *parent)
    return i;
 }
 
-static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
+static int ramfs_destroy_inode(ramfs_data *d, struct ramfs_inode *i)
 {
    /*
     * We can destroy only inodes referring to NO blocks (= data) in case of
@@ -111,16 +111,16 @@ static int ramfs_destroy_inode(ramfs_data *d, ramfs_inode *i)
    }
 
    rwlock_wp_destroy(&i->rwlock);
-   kfree2(i, sizeof(ramfs_inode));
+   kfree2(i, sizeof(struct ramfs_inode));
    return 0;
 }
 
-static ramfs_inode *
+static struct ramfs_inode *
 ramfs_create_inode_symlink(ramfs_data *d,
-                           ramfs_inode *parent,
+                           struct ramfs_inode *parent,
                            const char *target)
 {
-   ramfs_inode *i = ramfs_new_inode(d);
+   struct ramfs_inode *i = ramfs_new_inode(d);
    char *path;
    size_t pl;
 

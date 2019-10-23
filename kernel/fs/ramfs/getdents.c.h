@@ -3,7 +3,7 @@
 static int ramfs_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    ramfs_handle *rh = h;
-   ramfs_inode *inode = rh->inode;
+   struct ramfs_inode *inode = rh->inode;
    int rc = 0;
 
    if (inode->type != VFS_DIR)
