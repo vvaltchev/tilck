@@ -233,7 +233,7 @@ static int dp_keypress_handler(u32 key, u8 c)
    return KB_HANDLER_OK_AND_STOP;
 }
 
-static keypress_handler_elem debugpanel_handler_elem =
+static struct keypress_handler_elem debugpanel_handler_elem =
 {
    .handler = &dp_keypress_handler
 };

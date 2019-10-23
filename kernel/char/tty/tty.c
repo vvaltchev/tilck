@@ -25,7 +25,7 @@ tty *__curr_tty;
 int tty_tasklet_runner;
 static const video_interface *first_term_initial_vi;
 
-static keypress_handler_elem tty_keypress_handler_elem =
+static struct keypress_handler_elem tty_keypress_handler_elem =
 {
    .handler = &tty_keypress_handler
 };

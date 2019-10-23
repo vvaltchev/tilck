@@ -72,7 +72,7 @@ static u8 translate_printable_key(u32 key)
    return c;
 }
 
-void kb_register_keypress_handler(keypress_handler_elem *e)
+void kb_register_keypress_handler(struct keypress_handler_elem *e)
 {
    list_add_tail(&keypress_handlers, &e->node);
 }
@@ -80,7 +80,7 @@ void kb_register_keypress_handler(keypress_handler_elem *e)
 static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
 {
    int count = 0;
-   keypress_handler_elem *pos;
+   struct keypress_handler_elem *pos;
 
    list_for_each_ro(pos, &keypress_handlers, node) {
 
