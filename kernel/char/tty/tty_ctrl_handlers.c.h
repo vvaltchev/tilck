@@ -3,12 +3,11 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
 
-typedef struct {
+struct tty_and_sig_num {
 
    int tty_num;
    int sig_num;
-
-} tty_and_sig_num;
+};
 
 static void tty_send_signal(int tid, int signum)
 {
@@ -18,7 +17,7 @@ static void tty_send_signal(int tid, int signum)
 
 static int per_task_cb(void *obj, void *arg)
 {
-   tty_and_sig_num *ctx = arg;
+   struct tty_and_sig_num *ctx = arg;
    tty *t = ttys[ctx->tty_num];
    struct task *ti = obj;
 
@@ -38,7 +37,7 @@ static int per_task_cb(void *obj, void *arg)
 
 static void tty_async_send_signal_to_fg_group(tty *t, int signum)
 {
-   tty_and_sig_num ctx = (tty_and_sig_num) {
+   struct tty_and_sig_num ctx = (struct tty_and_sig_num) {
       .tty_num = t->minor,
       .sig_num = signum,
    };
