@@ -69,7 +69,7 @@ static void dp_show_irq_stats(void)
    debug_dump_unhandled_irq_count();
 }
 
-static dp_screen dp_irqs_screen =
+static struct dp_screen dp_irqs_screen =
 {
    .index = 4,
    .label = "IRQs",

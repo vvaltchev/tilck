@@ -133,7 +133,7 @@ static void dp_heaps_on_exit(void)
    }
 }
 
-static dp_screen dp_heaps_screen =
+static struct dp_screen dp_heaps_screen =
 {
    .index = 2,
    .label = "Heaps",

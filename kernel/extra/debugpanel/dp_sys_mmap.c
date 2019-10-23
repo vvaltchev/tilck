@@ -116,7 +116,7 @@ static void dp_show_sys_mmap(void)
    dp_writeln("");
 }
 
-static dp_screen dp_memmap_screen =
+static struct dp_screen dp_memmap_screen =
 {
    .index = 1,
    .label = "MemMap",

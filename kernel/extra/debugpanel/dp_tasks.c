@@ -174,7 +174,7 @@ static void dp_show_tasks(void)
    dp_writeln("");
 }
 
-static dp_screen dp_tasks_screen =
+static struct dp_screen dp_tasks_screen =
 {
    .index = 3,
    .label = "Tasks",

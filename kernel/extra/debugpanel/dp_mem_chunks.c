@@ -208,7 +208,7 @@ static void dp_show_chunks(void)
    dp_writeln("");
 }
 
-static dp_screen dp_chunks_screen =
+static struct dp_screen dp_chunks_screen =
 {
    .index = 5,
    .label = "MemChunks",

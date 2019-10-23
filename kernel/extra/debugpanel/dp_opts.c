@@ -81,7 +81,7 @@ static void dp_show_opts(void)
                 dp_screen_start_row, col - 2, max_rows+2, 29);
 }
 
-static dp_screen dp_opts_screen =
+static struct dp_screen dp_opts_screen =
 {
    .index = 0,
    .label = "Options",

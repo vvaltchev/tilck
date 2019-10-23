@@ -38,7 +38,7 @@ int dp_start_col;
 int dp_screen_start_row;
 int dp_screen_rows;
 bool ui_need_update;
-dp_screen *dp_ctx;
+struct dp_screen *dp_ctx;
 
 static bool in_debug_panel;
 static tty *dp_tty;
@@ -47,7 +47,7 @@ static struct list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
 {
-   dp_screen *pos;
+   struct dp_screen *pos;
    term *t = get_curr_term();
    term_set_cursor_enabled(t, false);
 
@@ -72,7 +72,7 @@ static void dp_enter(void)
 
 static void dp_exit(void)
 {
-   dp_screen *pos;
+   struct dp_screen *pos;
    in_debug_panel = false;
 
    list_for_each_ro(pos, &dp_screens_list, node) {
@@ -84,9 +84,9 @@ static void dp_exit(void)
    term_set_cursor_enabled(get_curr_term(), true);
 }
 
-void dp_register_screen(dp_screen *screen)
+void dp_register_screen(struct dp_screen *screen)
 {
-   dp_screen *pos;
+   struct dp_screen *pos;
    struct list_node *pred = (struct list_node *)&dp_screens_list;
 
    list_for_each_ro(pos, &dp_screens_list, node) {
@@ -115,7 +115,7 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
             return KB_HANDLER_OK_AND_STOP;
          }
 
-         dp_ctx = list_first_obj(&dp_screens_list, dp_screen, node);
+         dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
       }
 
       saved_tty = get_curr_tty();
@@ -131,7 +131,7 @@ static int dp_debug_panel_off_keypress(u32 key, u8 c)
 
 static void redraw_screen(void)
 {
-   dp_screen *pos;
+   struct dp_screen *pos;
    char buf[64];
    int rc;
 
@@ -190,7 +190,7 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    if (rc > 0) {
 
-      dp_screen *pos;
+      struct dp_screen *pos;
       list_for_each_ro(pos, &dp_screens_list, node) {
 
          if (pos->index == rc - 1 && pos != dp_ctx) {
