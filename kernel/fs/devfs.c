@@ -83,16 +83,15 @@ struct devfs_dir {
    tilck_inode_t inode;
 };
 
-typedef struct {
+struct devfs_data {
 
    struct devfs_dir root_dir;
    struct rwlock_wp rwlock;
    time_t wrt_time;
    tilck_inode_t next_inode;
+};
 
-} devfs_data;
-
-static inline tilck_inode_t devfs_get_next_inode(devfs_data *d)
+static inline tilck_inode_t devfs_get_next_inode(struct devfs_data *d)
 {
    return d->next_inode++;
 }
@@ -107,7 +106,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    if (!dinfo)
       return -EINVAL;
 
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    struct devfs_file *f = kmalloc(sizeof(struct devfs_file));
 
    if (!f)
@@ -143,7 +142,7 @@ static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
 static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
    struct devfs_handle *dh = h;
-   devfs_data *d = dh->fs->device_data;
+   struct devfs_data *d = dh->fs->device_data;
    struct devfs_file *pos;
    offt off = 0;
 
@@ -180,7 +179,7 @@ static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
 int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    struct devfs_file *df = i;
-   devfs_data *ddata = fs->device_data;
+   struct devfs_data *ddata = fs->device_data;
 
    bzero(statbuf, sizeof(struct stat64));
 
@@ -345,32 +344,32 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
 
 static void devfs_exclusive_lock(struct fs *fs)
 {
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    rwlock_wp_exlock(&d->rwlock);
 }
 
 static void devfs_exclusive_unlock(struct fs *fs)
 {
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    rwlock_wp_exunlock(&d->rwlock);
 }
 
 static void devfs_shared_lock(struct fs *fs)
 {
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    rwlock_wp_shlock(&d->rwlock);
 }
 
 static void devfs_shared_unlock(struct fs *fs)
 {
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    rwlock_wp_shunlock(&d->rwlock);
 }
 
 static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    struct devfs_handle *dh = h;
-   devfs_data *d = dh->fs->device_data;
+   struct devfs_data *d = dh->fs->device_data;
    int rc = 0;
 
    if (dh->type != VFS_DIR)
@@ -405,7 +404,7 @@ devfs_get_entry(struct fs *fs,
                 ssize_t nl,
                 struct fs_path *fs_path)
 {
-   devfs_data *d = fs->device_data;
+   struct devfs_data *d = fs->device_data;
    struct devfs_dir *dir;
    struct devfs_file *pos;
 
@@ -485,7 +484,7 @@ static const struct fs_ops static_fsops_devfs =
 struct fs *create_devfs(void)
 {
    struct fs *fs;
-   devfs_data *d;
+   struct devfs_data *d;
 
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
@@ -493,7 +492,7 @@ struct fs *create_devfs(void)
    if (!(fs = kzmalloc(sizeof(struct fs))))
       return NULL;
 
-   if (!(d = kzmalloc(sizeof(devfs_data)))) {
+   if (!(d = kzmalloc(sizeof(struct devfs_data)))) {
       kfree2(fs, sizeof(struct fs));
       return NULL;
    }
