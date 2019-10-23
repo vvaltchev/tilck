@@ -47,7 +47,7 @@ struct term {
 
    bool *term_tabs_buf;
 
-   struct safe_ringbuf safe_ringbuf;
+   struct safe_ringbuf ringb;
    term_action actions_buf[32];
 
    term_filter filter;
@@ -852,7 +852,7 @@ init_term(term *t,
    t->saved_vi = intf;
    t->vi = (t == &first_instance) ? intf : &no_output_vi;
 
-   safe_ringbuf_init(&t->safe_ringbuf,
+   safe_ringbuf_init(&t->ringb,
                      ARRAY_SIZE(t->actions_buf),
                      sizeof(term_action),
                      t->actions_buf);
