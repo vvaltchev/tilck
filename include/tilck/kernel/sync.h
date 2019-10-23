@@ -18,7 +18,7 @@ enum wo_type {
 
    /* Special "meta-object" types */
 
-   WOBJ_MWO_WAITER, /* multi_obj_waiter */
+   WOBJ_MWO_WAITER, /* struct multi_obj_waiter */
    WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to struct mwobj_elem */
 };
 
@@ -35,7 +35,7 @@ struct wait_obj {
 };
 
 /*
- * Struct used as element in `multi_obj_waiter` using `struct wait_obj` through
+ * Struct used as element in `struct multi_obj_waiter` using `struct wait_obj` through
  * composition.
  */
 struct mwobj_elem {
@@ -55,12 +55,11 @@ struct mwobj_elem {
  * ---------------
  *
  */
-typedef struct {
+struct multi_obj_waiter {
 
    u32 count;             /* number of `struct mwobj_elem` elements */
    struct mwobj_elem elems[];    /* variable-size array */
-
-} multi_obj_waiter;
+};
 
 /*
  * For a struct wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
@@ -88,17 +87,17 @@ void task_set_wait_obj(struct task *ti,
 
 void *task_reset_wait_obj(struct task *ti);
 
-multi_obj_waiter *allocate_mobj_waiter(u32 elems);
-void free_mobj_waiter(multi_obj_waiter *w);
+struct multi_obj_waiter *allocate_mobj_waiter(u32 elems);
+void free_mobj_waiter(struct multi_obj_waiter *w);
 void mobj_waiter_reset(struct mwobj_elem *e);
-void mobj_waiter_reset2(multi_obj_waiter *w, u32 index);
-void mobj_waiter_set(multi_obj_waiter *w,
+void mobj_waiter_reset2(struct multi_obj_waiter *w, u32 index);
+void mobj_waiter_set(struct multi_obj_waiter *w,
                      u32 index,
                      enum wo_type type,
                      void *ptr,
                      struct list *wait_list);
 
-void kernel_sleep_on_waiter(multi_obj_waiter *w);
+void kernel_sleep_on_waiter(struct multi_obj_waiter *w);
 
 /*
  * The semaphore implementation used for locking in kernel mode.

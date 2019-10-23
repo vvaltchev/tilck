@@ -93,7 +93,7 @@ select_count_cond_per_set(struct select_ctx *c,
 
 static int
 select_set_kcond(int nfds,
-                 multi_obj_waiter *w,
+                 struct multi_obj_waiter *w,
                  u32 *idx,
                  fd_set *set,
                  func_get_rwe_cond get_cond)
@@ -149,7 +149,7 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
 }
 
 static u32
-count_signaled_conds(multi_obj_waiter *w)
+count_signaled_conds(struct multi_obj_waiter *w)
 {
    u32 count = 0;
 
@@ -204,7 +204,7 @@ static int
 select_wait_on_cond(struct select_ctx *c)
 {
    struct task *curr = get_curr_task();
-   multi_obj_waiter *waiter = NULL;
+   struct multi_obj_waiter *waiter = NULL;
    u32 idx = 0;
    int rc = 0;
 

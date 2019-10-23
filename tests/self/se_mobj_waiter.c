@@ -35,7 +35,7 @@ static void mobj_waiter_wait_thread(void *arg)
       return;
    }
 
-   multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
+   struct multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
    VERIFY(w != NULL);
 
    for (u32 j = 0; j < ARRAY_SIZE(conds); j++)
