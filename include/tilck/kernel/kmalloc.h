@@ -56,18 +56,17 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h);
 void *per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags);
 void per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
 
-typedef struct {
+struct kmalloc_accelerator {
 
    u32 elem_size;
    u32 elem_count;
    u32 curr_elem;
    char *buf;
+};
 
-} kmalloc_accelerator;
-
-void kmalloc_create_accelerator(kmalloc_accelerator *a, u32 elem_s, u32 elem_c);
-void *kmalloc_accelerator_get_elem(kmalloc_accelerator *a);
-void kmalloc_destroy_accelerator(kmalloc_accelerator *a);
+void kmalloc_create_accelerator(struct kmalloc_accelerator *a, u32 elem_s, u32 elem_c);
+void *kmalloc_accelerator_get_elem(struct kmalloc_accelerator *a);
+void kmalloc_destroy_accelerator(struct kmalloc_accelerator *a);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
