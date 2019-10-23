@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static enum term_fret
-tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_esc(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    tty_set_state(ctx, &tty_state_esc1);
@@ -9,13 +9,13 @@ tty_def_state_esc(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
    if ((ctx->t->c_term.c_oflag & (OPOST | ONLCR)) == (OPOST | ONLCR)) {
 
-      *a = (term_action) {
+      *a = (struct term_action) {
          .type3 = a_dwrite_no_filter,
          .len = 2,
          .col = *color,
@@ -29,13 +29,13 @@ tty_def_state_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_ri(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
    if (term_get_curr_row(ctx->t->term_inst) > 0) {
 
-      *a = (term_action) {
+      *a = (struct term_action) {
          .type2 = a_move_ch_and_cur_rel,
          .arg1 = LO_BITS((u32)-1, 8, u32),
          .arg2 = 0,
@@ -43,7 +43,7 @@ tty_def_state_ri(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 
    } else {
 
-      *a = (term_action) {
+      *a = (struct term_action) {
          .type2 = a_non_buf_scroll,
          .arg1 = 1,
          .arg2 = non_buf_scroll_down,
@@ -55,19 +55,19 @@ tty_def_state_ri(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_keep(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_keep(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    return TERM_FILTER_WRITE_C;
 }
 
 static enum term_fret
-tty_def_state_ignore(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_ignore(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_shift_out(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
@@ -78,7 +78,7 @@ tty_def_state_shift_out(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_shift_in(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_shift_in(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
@@ -89,9 +89,9 @@ tty_def_state_shift_in(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_verase(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_CHAR,
    };
@@ -100,9 +100,9 @@ tty_def_state_verase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_vwerase(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type1 = a_del_generic,
       .arg = TERM_DEL_PREV_WORD,
    };
@@ -111,14 +111,14 @@ tty_def_state_vwerase(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_vkill(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_vkill(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    /* TODO: add support for VKILL */
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
-tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
 
@@ -128,9 +128,9 @@ tty_def_state_csi(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_backspace(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type2 = a_move_ch_and_cur_rel,
       .arg1 = LO_BITS((u32)  0, 8, u32),
       .arg2 = LO_BITS((u32) -1, 8, u32),
@@ -140,7 +140,7 @@ tty_def_state_backspace(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_def_state_raw_lf(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_state_raw_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    /*
     * Typically, terminal emulators just treat \f and \v like a raw linefeed.
@@ -176,12 +176,12 @@ void tty_update_default_state_tables(tty *t)
 }
 
 static enum term_fret
-tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_def_print_untrasl_char(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);
 
-   *a = (term_action) {
+   *a = (struct term_action) {
       .type3 = a_dwrite_no_filter,
       .len = (u32)len,
       .col = *color,
@@ -192,7 +192,7 @@ tty_def_print_untrasl_char(u8 *c, u8 *color, term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_state_default(u8 *c, u8 *color, term_action *a, void *ctx_arg)
+tty_state_default(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    twfilter_ctx_t *const ctx = ctx_arg;
    tty *const t = ctx->t;

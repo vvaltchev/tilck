@@ -24,7 +24,7 @@ static const struct actions_table_item actions_table[] = {
 
 #undef ENTRY
 
-static void term_execute_action(term *t, term_action *a)
+static void term_execute_action(term *t, struct term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
@@ -46,7 +46,7 @@ static void term_execute_action(term *t, term_action *a)
 }
 
 
-static void term_execute_or_enqueue_action(term *t, term_action a)
+static void term_execute_or_enqueue_action(term *t, struct term_action a)
 {
    bool written;
    bool was_empty;
@@ -72,7 +72,7 @@ void term_write(term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
-   term_action a = {
+   struct term_action a = {
 
       .type3 = a_write,
       .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
@@ -85,7 +85,7 @@ void term_write(term *t, const char *buf, size_t len, u8 color)
 
 void term_scroll_up(term *t, u32 lines)
 {
-   term_action a = {
+   struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
       .arg2 = 0,
@@ -96,7 +96,7 @@ void term_scroll_up(term *t, u32 lines)
 
 void term_scroll_down(term *t, u32 lines)
 {
-   term_action a = {
+   struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
       .arg2 = 1,
@@ -107,7 +107,7 @@ void term_scroll_down(term *t, u32 lines)
 
 void term_set_col_offset(term *t, u32 off)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_set_col_offset,
       .arg = off,
    };
@@ -117,7 +117,7 @@ void term_set_col_offset(term *t, u32 off)
 
 void term_pause_video_output(term *t)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_pause_video_output,
       .arg = 0,
    };
@@ -127,7 +127,7 @@ void term_pause_video_output(term *t)
 
 void term_restart_video_output(term *t)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_restart_video_output,
       .arg = 0,
    };
@@ -137,7 +137,7 @@ void term_restart_video_output(term *t)
 
 void term_set_cursor_enabled(term *t, bool value)
 {
-   term_action a = {
+   struct term_action a = {
       .type1 = a_enable_cursor,
       .arg = value,
    };

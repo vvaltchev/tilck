@@ -48,7 +48,7 @@ struct term {
    bool *term_tabs_buf;
 
    struct safe_ringbuf ringb;
-   term_action actions_buf[32];
+   struct term_action actions_buf[32];
 
    term_filter filter;
    void *filter_ctx;
@@ -207,7 +207,7 @@ static void ts_clear_row(term *t, u16 row, u8 color)
 
 /* ---------------- term actions --------------------- */
 
-static void term_execute_action(term *t, term_action *a);
+static void term_execute_action(term *t, struct term_action *a);
 
 static void term_int_scroll_up(term *t, u32 lines)
 {
@@ -404,7 +404,7 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
          continue;
       }
 
-      term_action a = { .type1 = a_none };
+      struct term_action a = { .type1 = a_none };
       enum term_fret r = t->filter((u8 *)&buf[i], &color, &a, t->filter_ctx);
 
       if (LIKELY(r == TERM_FILTER_WRITE_C))
@@ -854,7 +854,7 @@ init_term(term *t,
 
    safe_ringbuf_init(&t->ringb,
                      ARRAY_SIZE(t->actions_buf),
-                     sizeof(term_action),
+                     sizeof(struct term_action),
                      t->actions_buf);
 
    if (!in_panic() && !serial_port_fwd) {

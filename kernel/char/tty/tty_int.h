@@ -38,7 +38,7 @@ int tty_keypress_handler(u32 key, u8 c);
 void tty_reset_filter_ctx(tty *t);
 
 enum term_fret
-serial_tty_write_filter(u8 *c, u8 *color, term_action *a, void *ctx_arg);
+serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg);
 
 void tty_update_special_ctrl_handlers(tty *t);
 void tty_update_default_state_tables(tty *t);
