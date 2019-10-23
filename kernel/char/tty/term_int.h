@@ -30,7 +30,7 @@ enum term_action_type {
                         */
 };
 
-typedef void (*action_func)(term *t, ...);
+typedef void (*action_func)(struct term *t, ...);
 
 struct actions_table_item {
 
@@ -86,13 +86,13 @@ typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
                                       struct term_action *a, /*  out   */
                                       void *ctx);            /*   in   */
 
-void term_set_filter(term *t, term_filter func, void *ctx);
-term_filter term_get_filter(term *t);
+void term_set_filter(struct term *t, term_filter func, void *ctx);
+term_filter term_get_filter(struct term *t);
 
 /* --- */
 
-term *alloc_term_struct(void);
-void free_term_struct(term *t);
-void dispose_term(term *t);
+struct term *alloc_term_struct(void);
+void free_term_struct(struct term *t);
+void dispose_term(struct term *t);
 
-void set_curr_term(term *t);
+void set_curr_term(struct term *t);

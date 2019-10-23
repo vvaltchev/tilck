@@ -14,7 +14,6 @@
 #include <tilck/kernel/errno.h>
 
 #define _TERM_C_
-
 #include "term_int.h"
 
 struct term {
@@ -56,10 +55,10 @@ struct term {
    u16 serial_port_fwd;
 };
 
-static term first_instance;
+static struct term first_instance;
 static u16 failsafe_buffer[80 * 25];
 
-term *__curr_term = &first_instance;
+struct term *__curr_term = &first_instance;
 
 /* ------------ No-output video-interface ------------------ */
 
@@ -92,22 +91,22 @@ static const struct video_interface no_output_vi =
 
 /* --------------------------------------------------------- */
 
-static ALWAYS_INLINE void buffer_set_entry(term *t, u16 row, u16 col, u16 e)
+static ALWAYS_INLINE void buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
    t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col] = e;
 }
 
-static ALWAYS_INLINE u16 buffer_get_entry(term *t, u16 row, u16 col)
+static ALWAYS_INLINE u16 buffer_get_entry(struct term *t, u16 row, u16 col)
 {
    return t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col];
 }
 
-static ALWAYS_INLINE bool ts_is_at_bottom(term *t)
+static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
 {
    return t->scroll == t->max_scroll;
 }
 
-static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
+static ALWAYS_INLINE u8 get_curr_cell_color(struct term *t)
 {
    if (!t->buffer)
       return 0;
@@ -115,7 +114,7 @@ static ALWAYS_INLINE u8 get_curr_cell_color(term *t)
    return vgaentry_get_color(buffer_get_entry(t, t->r, t->c));
 }
 
-static void term_action_enable_cursor(term *t, u16 val, ...)
+static void term_action_enable_cursor(struct term *t, u16 val, ...)
 {
    if (val == 0) {
 
@@ -130,7 +129,7 @@ static void term_action_enable_cursor(term *t, u16 val, ...)
       t->cursor_enabled = true;
    }
 }
-static void term_redraw(term *t)
+static void term_redraw(struct term *t)
 {
    if (!t->buffer)
       return;
@@ -145,7 +144,7 @@ static void term_redraw(term *t)
    fpu_context_end();
 }
 
-static void ts_set_scroll(term *t, u32 requested_scroll)
+static void ts_set_scroll(struct term *t, u32 requested_scroll)
 {
    /*
     * 1. scroll cannot be > max_scroll
@@ -170,7 +169,7 @@ static void ts_set_scroll(term *t, u32 requested_scroll)
    term_redraw(t);
 }
 
-static ALWAYS_INLINE void ts_scroll_up(term *t, u32 lines)
+static ALWAYS_INLINE void ts_scroll_up(struct term *t, u32 lines)
 {
    if (lines > t->scroll)
       ts_set_scroll(t, 0);
@@ -178,19 +177,19 @@ static ALWAYS_INLINE void ts_scroll_up(term *t, u32 lines)
       ts_set_scroll(t, t->scroll - lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_down(term *t, u32 lines)
+static ALWAYS_INLINE void ts_scroll_down(struct term *t, u32 lines)
 {
    ts_set_scroll(t, t->scroll + lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_to_bottom(term *t)
+static ALWAYS_INLINE void ts_scroll_to_bottom(struct term *t)
 {
    if (t->scroll != t->max_scroll) {
       ts_set_scroll(t, t->max_scroll);
    }
 }
 
-static void ts_buf_clear_row(term *t, u16 row, u8 color)
+static void ts_buf_clear_row(struct term *t, u16 row, u8 color)
 {
    if (!t->buffer)
       return;
@@ -199,7 +198,7 @@ static void ts_buf_clear_row(term *t, u16 row, u8 color)
    memset16(rowb, make_vgaentry(' ', color), t->cols);
 }
 
-static void ts_clear_row(term *t, u16 row, u8 color)
+static void ts_clear_row(struct term *t, u16 row, u8 color)
 {
    ts_buf_clear_row(t, row, color);
    t->vi->clear_row(row, color);
@@ -207,9 +206,9 @@ static void ts_clear_row(term *t, u16 row, u8 color)
 
 /* ---------------- term actions --------------------- */
 
-static void term_execute_action(term *t, struct term_action *a);
+static void term_execute_action(struct term *t, struct term_action *a);
 
-static void term_int_scroll_up(term *t, u32 lines)
+static void term_int_scroll_up(struct term *t, u32 lines)
 {
    ts_scroll_up(t, lines);
 
@@ -230,7 +229,7 @@ static void term_int_scroll_up(term *t, u32 lines)
       t->vi->flush_buffers();
 }
 
-static void term_int_scroll_down(term *t, u32 lines)
+static void term_int_scroll_down(struct term *t, u32 lines)
 {
    ts_scroll_down(t, lines);
 
@@ -245,7 +244,7 @@ static void term_int_scroll_down(term *t, u32 lines)
       t->vi->flush_buffers();
 }
 
-static void term_action_scroll(term *t, u32 lines, bool down, ...)
+static void term_action_scroll(struct term *t, u32 lines, bool down, ...)
 {
    if (!down)
       term_int_scroll_up(t, lines);
@@ -253,7 +252,7 @@ static void term_action_scroll(term *t, u32 lines, bool down, ...)
       term_int_scroll_down(t, lines);
 }
 
-static void term_internal_incr_row(term *t, u8 color)
+static void term_internal_incr_row(struct term *t, u8 color)
 {
    t->col_offset = 0;
 
@@ -274,7 +273,7 @@ static void term_internal_incr_row(term *t, u8 color)
    ts_clear_row(t, t->rows - 1, color);
 }
 
-static void term_internal_write_printable_char(term *t, u8 c, u8 color)
+static void term_internal_write_printable_char(struct term *t, u8 c, u8 color)
 {
    u16 entry = make_vgaentry(c, color);
    buffer_set_entry(t, t->r, t->c, entry);
@@ -282,7 +281,7 @@ static void term_internal_write_printable_char(term *t, u8 c, u8 color)
    t->c++;
 }
 
-static void term_internal_write_tab(term *t, u8 color)
+static void term_internal_write_tab(struct term *t, u8 color)
 {
    int rem = t->cols - t->c - 1;
 
@@ -299,7 +298,7 @@ static void term_internal_write_tab(term *t, u8 color)
    t->c = (u16)(tab_col + 1);
 }
 
-static void term_internal_write_backspace(term *t, u8 color)
+static void term_internal_write_backspace(struct term *t, u8 color)
 {
    if (!t->c || t->c <= t->col_offset)
       return;
@@ -331,7 +330,7 @@ static void term_internal_write_backspace(term *t, u8 color)
    }
 }
 
-static void term_internal_delete_last_word(term *t, u8 color)
+static void term_internal_delete_last_word(struct term *t, u8 color)
 {
    u8 c;
 
@@ -356,7 +355,7 @@ static void term_internal_delete_last_word(term *t, u8 color)
    }
 }
 
-static void term_internal_write_char2(term *t, char c, u8 color)
+static void term_internal_write_char2(struct term *t, char c, u8 color)
 {
    if (t->serial_port_fwd) {
       serial_write(t->serial_port_fwd, c);
@@ -389,7 +388,7 @@ static void term_internal_write_char2(term *t, char c, u8 color)
    }
 }
 
-static void term_action_write(term *t, char *buf, u32 len, u8 color)
+static void term_action_write(struct term *t, char *buf, u32 len, u8 color)
 {
    const struct video_interface *const vi = t->vi;
 
@@ -425,19 +424,19 @@ static void term_action_write(term *t, char *buf, u32 len, u8 color)
  * Direct write w/o any filter nor scroll/move_cursor/flush.
  */
 static void
-term_action_dwrite_no_filter(term *t, char *buf, u32 len, u8 color)
+term_action_dwrite_no_filter(struct term *t, char *buf, u32 len, u8 color)
 {
    for (u32 i = 0; i < len; i++) {
       term_internal_write_char2(t, buf[i], color);
    }
 }
 
-static void term_action_set_col_offset(term *t, u16 off, ...)
+static void term_action_set_col_offset(struct term *t, u16 off, ...)
 {
    t->col_offset = off;
 }
 
-static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
+static void term_action_move_ch_and_cur(struct term *t, int row, int col, ...)
 {
    if (!t->buffer)
       return;
@@ -452,7 +451,7 @@ static void term_action_move_ch_and_cur(term *t, int row, int col, ...)
       t->vi->flush_buffers();
 }
 
-static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
+static void term_action_move_ch_and_cur_rel(struct term *t, s8 dr, s8 dc, ...)
 {
    if (!t->buffer)
       return;
@@ -467,7 +466,7 @@ static void term_action_move_ch_and_cur_rel(term *t, s8 dr, s8 dc, ...)
       t->vi->flush_buffers();
 }
 
-static void term_action_reset(term *t, ...)
+static void term_action_reset(struct term *t, ...)
 {
    t->vi->enable_cursor();
    term_action_move_ch_and_cur(t, 0, 0);
@@ -480,7 +479,7 @@ static void term_action_reset(term *t, ...)
       memset(t->term_tabs_buf, 0, t->cols * t->rows);
 }
 
-static void term_action_erase_in_display(term *t, int mode, ...)
+static void term_action_erase_in_display(struct term *t, int mode, ...)
 {
    static const u16 entry =
       make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
@@ -545,7 +544,7 @@ static void term_action_erase_in_display(term *t, int mode, ...)
       t->vi->flush_buffers();
 }
 
-static void term_action_erase_in_line(term *t, int mode, ...)
+static void term_action_erase_in_line(struct term *t, int mode, ...)
 {
    static const u16 entry =
       make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
@@ -579,7 +578,7 @@ static void term_action_erase_in_line(term *t, int mode, ...)
 }
 
 
-static void term_action_del(term *t, enum term_del_type del_type, int m, ...)
+static void term_action_del(struct term *t, enum term_del_type del_type, int m, ...)
 {
    switch (del_type) {
 
@@ -604,7 +603,7 @@ static void term_action_del(term *t, enum term_del_type del_type, int m, ...)
    }
 }
 
-static void term_action_non_buf_scroll_up(term *t, u16 n, ...)
+static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
 {
    if (!t->buffer)
       return;
@@ -624,7 +623,7 @@ static void term_action_non_buf_scroll_up(term *t, u16 n, ...)
    term_redraw(t);
 }
 
-static void term_action_non_buf_scroll_down(term *t, u16 n, ...)
+static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
 {
    if (!t->buffer)
       return;
@@ -644,7 +643,7 @@ static void term_action_non_buf_scroll_down(term *t, u16 n, ...)
    term_redraw(t);
 }
 
-static void term_action_non_buf_scroll(term *t, u16 n, u16 dir, ...)
+static void term_action_non_buf_scroll(struct term *t, u16 n, u16 dir, ...)
 {
    if (dir == non_buf_scroll_up) {
 
@@ -657,7 +656,7 @@ static void term_action_non_buf_scroll(term *t, u16 n, u16 dir, ...)
    }
 }
 
-static void term_action_pause_video_output(term *t, ...)
+static void term_action_pause_video_output(struct term *t, ...)
 {
    if (t->vi->disable_static_elems_refresh)
       t->vi->disable_static_elems_refresh();
@@ -667,7 +666,7 @@ static void term_action_pause_video_output(term *t, ...)
    t->vi = &no_output_vi;
 }
 
-static void term_action_restart_video_output(term *t, ...)
+static void term_action_restart_video_output(struct term *t, ...)
 {
    t->vi = t->saved_vi;
 
@@ -681,7 +680,7 @@ static void term_action_restart_video_output(term *t, ...)
       t->vi->enable_static_elems_refresh();
 }
 
-static void term_action_use_alt_buffer(term *t, bool use_alt_buffer, ...)
+static void term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 {
    u16 *b = &t->buffer[t->scroll % t->total_buffer_rows * t->cols];
 
@@ -721,7 +720,7 @@ static void term_action_use_alt_buffer(term *t, bool use_alt_buffer, ...)
 
 #ifdef DEBUG
 
-void debug_term_dump_font_table(term *t)
+void debug_term_dump_font_table(struct term *t)
 {
    static const u8 hex_digits[] = "0123456789abcdef";
 
@@ -768,18 +767,18 @@ void debug_term_dump_font_table(term *t)
 
 #endif
 
-term *alloc_term_struct(void)
+struct term *alloc_term_struct(void)
 {
-   return kzmalloc(sizeof(term));
+   return kzmalloc(sizeof(struct term));
 }
 
-void free_term_struct(term *t)
+void free_term_struct(struct term *t)
 {
    ASSERT(t != &first_instance);
-   kfree2(t, sizeof(term));
+   kfree2(t, sizeof(struct term));
 }
 
-void dispose_term(term *t)
+void dispose_term(struct term *t)
 {
    ASSERT(t != &first_instance);
 
@@ -799,12 +798,12 @@ void dispose_term(term *t)
    }
 }
 
-const struct video_interface *term_get_vi(term *t)
+const struct video_interface *term_get_vi(struct term *t)
 {
    return t->vi;
 }
 
-void set_curr_term(term *t)
+void set_curr_term(struct term *t)
 {
    ASSERT(!is_preemption_enabled());
 
@@ -832,7 +831,7 @@ static u32 term_calc_opt_buf_rows(u16 rows, u16 cols)
 }
 
 int
-init_term(term *t,
+init_term(struct term *t,
           const struct video_interface *intf,
           u16 rows,
           u16 cols,

@@ -24,7 +24,7 @@ static const struct actions_table_item actions_table[] = {
 
 #undef ENTRY
 
-static void term_execute_action(term *t, struct term_action *a)
+static void term_execute_action(struct term *t, struct term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
@@ -46,7 +46,7 @@ static void term_execute_action(term *t, struct term_action *a)
 }
 
 
-static void term_execute_or_enqueue_action(term *t, struct term_action a)
+static void term_execute_or_enqueue_action(struct term *t, struct term_action a)
 {
    bool written;
    bool was_empty;
@@ -68,7 +68,7 @@ static void term_execute_or_enqueue_action(term *t, struct term_action a)
    }
 }
 
-void term_write(term *t, const char *buf, size_t len, u8 color)
+void term_write(struct term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
@@ -83,7 +83,7 @@ void term_write(term *t, const char *buf, size_t len, u8 color)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_up(term *t, u32 lines)
+void term_scroll_up(struct term *t, u32 lines)
 {
    struct term_action a = {
       .type2 = a_scroll,
@@ -94,7 +94,7 @@ void term_scroll_up(term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_down(term *t, u32 lines)
+void term_scroll_down(struct term *t, u32 lines)
 {
    struct term_action a = {
       .type2 = a_scroll,
@@ -105,7 +105,7 @@ void term_scroll_down(term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_col_offset(term *t, u32 off)
+void term_set_col_offset(struct term *t, u32 off)
 {
    struct term_action a = {
       .type1 = a_set_col_offset,
@@ -115,7 +115,7 @@ void term_set_col_offset(term *t, u32 off)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_pause_video_output(term *t)
+void term_pause_video_output(struct term *t)
 {
    struct term_action a = {
       .type1 = a_pause_video_output,
@@ -125,7 +125,7 @@ void term_pause_video_output(term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_restart_video_output(term *t)
+void term_restart_video_output(struct term *t)
 {
    struct term_action a = {
       .type1 = a_restart_video_output,
@@ -135,7 +135,7 @@ void term_restart_video_output(term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_cursor_enabled(term *t, bool value)
+void term_set_cursor_enabled(struct term *t, bool value)
 {
    struct term_action a = {
       .type1 = a_enable_cursor,
@@ -147,43 +147,43 @@ void term_set_cursor_enabled(term *t, bool value)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u16 term_get_tab_size(term *t)
+u16 term_get_tab_size(struct term *t)
 {
    return t->tabsize;
 }
 
-u16 term_get_rows(term *t)
+u16 term_get_rows(struct term *t)
 {
    return t->rows;
 }
 
-u16 term_get_cols(term *t)
+u16 term_get_cols(struct term *t)
 {
    return t->cols;
 }
 
-u16 term_get_curr_row(term *t)
+u16 term_get_curr_row(struct term *t)
 {
    return t->r;
 }
 
-u16 term_get_curr_col(term *t)
+u16 term_get_curr_col(struct term *t)
 {
    return t->c;
 }
 
-void term_set_filter(term *t, term_filter func, void *ctx)
+void term_set_filter(struct term *t, term_filter func, void *ctx)
 {
    t->filter = func;
    t->filter_ctx = ctx;
 }
 
-term_filter term_get_filter(term *t)
+term_filter term_get_filter(struct term *t)
 {
    return t->filter;
 }
 
-bool term_is_initialized(term *t)
+bool term_is_initialized(struct term *t)
 {
    return t->initialized;
 }

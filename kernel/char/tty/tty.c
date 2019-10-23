@@ -145,10 +145,10 @@ tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
       panic("TTY: unable to create devfile /dev/%s (error: %d)", filename, rc);
 }
 
-static term *
+static struct term *
 tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
 {
-   term *new_term = alloc_term_struct();
+   struct term *new_term = alloc_term_struct();
 
    if (!new_term)
       panic("TTY: no enough memory a new term instance");
@@ -177,7 +177,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 
    init_tty_struct(t, minor, serial_port_fwd);
 
-   term *new_term =
+   struct term *new_term =
       (minor == 1 || kopt_serial_console)
          ? get_curr_term()
          : tty_allocate_and_init_new_term(serial_port_fwd, rows_buf);

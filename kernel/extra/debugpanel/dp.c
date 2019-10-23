@@ -48,7 +48,7 @@ static struct list dp_screens_list = make_list(dp_screens_list);
 static void dp_enter(void)
 {
    struct dp_screen *pos;
-   term *t = get_curr_term();
+   struct term *t = get_curr_term();
    term_set_cursor_enabled(t, false);
 
    in_debug_panel = true;
