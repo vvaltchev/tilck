@@ -34,11 +34,22 @@ struct debug_kmalloc_stats {
    size_t chunk_sizes_count;
 };
 
-bool debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
-void debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats);
-void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx);
-bool debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
-                                     size_t *size, size_t *count);
+bool
+debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
+
+void
+debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats);
+
+void
+debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx);
+
+bool
+debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
+                                size_t *size,
+                                size_t *count);
+
+
+/* Leak-detector and kmalloc logging */
 
 void debug_kmalloc_start_leak_detector(bool save_metadata);
 void debug_kmalloc_stop_leak_detector(bool show_leaks);

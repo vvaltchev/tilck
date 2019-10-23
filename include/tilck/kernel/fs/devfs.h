@@ -50,9 +50,10 @@ struct devfs_handle {
 
 };
 
-
 typedef int
-(*func_create_device_file)(int, const struct file_ops **, enum vfs_entry_type *);
+(*func_create_device_file)(int,
+                           const struct file_ops **,
+                           enum vfs_entry_type *);
 
 struct driver_info {
 
