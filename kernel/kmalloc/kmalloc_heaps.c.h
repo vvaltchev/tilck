@@ -314,14 +314,14 @@ size_t kmalloc_get_max_tot_heap_free(void)
 }
 
 bool
-debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i)
+debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
 {
    struct kmalloc_heap *h = heaps[heap_num];
 
    if (!h)
       return false;
 
-   *i = (debug_kmalloc_heap_info) {
+   *i = (struct debug_kmalloc_heap_info) {
       .vaddr = h->vaddr,
       .size = h->size,
       .mem_allocated = h->mem_allocated,

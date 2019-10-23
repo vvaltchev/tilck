@@ -9,7 +9,7 @@
 #include "dp_int.h"
 
 static size_t heaps_alloc[KMALLOC_HEAPS_COUNT];
-static debug_kmalloc_heap_info hi;
+static struct debug_kmalloc_heap_info hi;
 static debug_kmalloc_stats stats;
 static size_t tot_usable_mem_kb;
 static size_t tot_used_mem_kb;

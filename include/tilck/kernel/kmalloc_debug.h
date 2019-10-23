@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/bintree.h>
 
-typedef struct {
+struct debug_kmalloc_heap_info {
 
    uptr vaddr;
    size_t size;
@@ -12,8 +12,7 @@ typedef struct {
    size_t min_block_size;
    size_t alloc_block_size;
    int region;
-
-} debug_kmalloc_heap_info;
+};
 
 typedef struct {
 
@@ -39,7 +38,7 @@ typedef struct {
 
 } debug_kmalloc_stats;
 
-bool debug_kmalloc_get_heap_info(int heap_num, debug_kmalloc_heap_info *i);
+bool debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
 void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
 void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx);
 bool debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
