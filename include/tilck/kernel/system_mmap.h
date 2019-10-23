@@ -11,7 +11,7 @@
 #define MEM_REG_EXTRA_LOWMEM       4
 #define MEM_REG_EXTRA_FRAMEBUFFER  8
 
-struct memory_region_t {
+struct mem_region {
 
    u64 addr;
    u64 len;
@@ -19,14 +19,14 @@ struct memory_region_t {
    u32 extra; /* bit mask */
 };
 
-extern struct memory_region_t mem_regions[MAX_MEM_REGIONS];
+extern struct mem_region mem_regions[MAX_MEM_REGIONS];
 extern int mem_regions_count;
 
 void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr);
 void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
 void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(uptr paddr);
-bool linear_map_mem_region(struct memory_region_t *r, uptr *vbegin, uptr *vend);
+bool linear_map_mem_region(struct mem_region *r, uptr *vbegin, uptr *vend);
 
 extern u32 __mem_upper_kb;
 

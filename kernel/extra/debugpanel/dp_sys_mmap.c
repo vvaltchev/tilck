@@ -28,13 +28,13 @@ static const char *mem_region_extra_to_str(u32 e)
    }
 }
 
-static void dump_memory_map(struct memory_region_t *regions, int count)
+static void dump_memory_map(struct mem_region *regions, int count)
 {
    dp_writeln("           START                 END        (T, Extr)");
 
    for (int i = 0; i < count; i++) {
 
-      struct memory_region_t *ma = regions + i;
+      struct mem_region *ma = regions + i;
 
       dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
                  ma->addr, ma->addr + ma->len,
