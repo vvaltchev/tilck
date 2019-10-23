@@ -328,14 +328,13 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    return 0;
 }
 
-typedef struct {
+struct fat_getdents_ctx {
 
    struct fat_handle *fh;
    get_dents_func_cb vfs_cb;
    void *vfs_ctx;
    int rc;
-
-} fat_getdents_ctx;
+};
 
 static int
 fat_getdents_cb(struct fat_hdr *hdr,
@@ -346,7 +345,7 @@ fat_getdents_cb(struct fat_hdr *hdr,
 {
    char short_name[16];
    const char *entname = long_name ? long_name : short_name;
-   fat_getdents_ctx *ctx = arg;
+   struct fat_getdents_ctx *ctx = arg;
 
    if (entname == short_name)
       fat_get_short_name(entry, short_name);
@@ -371,7 +370,7 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
 
-   fat_getdents_ctx ctx = {
+   struct fat_getdents_ctx ctx = {
       .fh = fh,
       .vfs_cb = cb,
       .vfs_ctx = arg,
