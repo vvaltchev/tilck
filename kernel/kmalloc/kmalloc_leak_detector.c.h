@@ -96,12 +96,12 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks)
 
    for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
 
-      block_node *md_copy = metadata_copies[i];
+      struct block_node *md_copy = metadata_copies[i];
 
       if (!md_copy)
          continue;
 
-      block_node *md = heaps[i].metadata_nodes;
+      struct block_node *md = heaps[i].metadata_nodes;
       size_t len = heaps[i].metadata_size;
 
       for (u32 j = 0; j < len; j++) {

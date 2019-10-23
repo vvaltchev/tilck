@@ -21,10 +21,10 @@ size_t kmalloc_get_heap_struct_size(void)
    return sizeof(struct kmalloc_heap);
 }
 
-STATIC_ASSERT(sizeof(block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
+STATIC_ASSERT(sizeof(struct block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
 STATIC bool kmalloc_initialized;
-static const block_node s_new_node; // Just zeros.
+static const struct block_node s_new_node; // Just zeros.
 
 #define HALF(x) ((x) >> 1)
 #define TWICE(x) ((x) << 1)
@@ -61,14 +61,14 @@ STATIC_INLINE void *node_to_ptr(struct kmalloc_heap *h, int node, size_t size)
    return (void *)(offset + h->vaddr);
 }
 
-CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(block_node n)
+CONSTEXPR static ALWAYS_INLINE bool is_block_node_free(struct block_node n)
 {
    return !(n.raw & (FL_NODE_FULL | FL_NODE_SPLIT));
 }
 
 static size_t set_free_uplevels(struct kmalloc_heap *h, int *node, size_t size)
 {
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
 
    size_t curr_size = size << 1;
    int n = *node;
@@ -80,8 +80,8 @@ static size_t set_free_uplevels(struct kmalloc_heap *h, int *node, size_t size)
 
    while (!is_block_node_free(nodes[n])) {
 
-      block_node left = nodes[NODE_LEFT(n)];
-      block_node right = nodes[NODE_RIGHT(n)];
+      struct block_node left = nodes[NODE_LEFT(n)];
+      struct block_node right = nodes[NODE_RIGHT(n)];
 
       if (!is_block_node_free(left) || !is_block_node_free(right)) {
          DEBUG_stop_coaleshe;
@@ -126,7 +126,7 @@ actual_allocate_node(struct kmalloc_heap *h,
                      bool do_actual_alloc)
 {
    bool alloc_failed = false;
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
    nodes[node].full = true;
 
    const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
@@ -213,7 +213,7 @@ internal_kmalloc_split_block(struct kmalloc_heap *h,
    ASSERT(roundup_next_power_of_2(leaf_node_size) == leaf_node_size);
    ASSERT(roundup_next_power_of_2(block_size) == block_size);
 
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
 
    size_t s;
    int n = ptr_to_node(h, vaddr, block_size);
@@ -252,7 +252,7 @@ internal_kmalloc_coalesce_block(struct kmalloc_heap *h,
                                 void *const vaddr,
                                 const size_t block_size)
 {
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
    const int block_node_num = ptr_to_node(h, vaddr, block_size);
 
    size_t s;
@@ -306,7 +306,7 @@ internal_kmalloc(struct kmalloc_heap *h,
     */
    ASSERT(!do_actual_alloc || mark_node_as_allocated);
 
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
    int stack_size = 0;
 
    if (!start_node_size)
@@ -325,7 +325,7 @@ internal_kmalloc(struct kmalloc_heap *h,
       // Handle a SIMULATED "call"
       DEBUG_kmalloc_call_begin;
 
-      block_node n = nodes[node];
+      struct block_node n = nodes[node];
 
       if (n.full) {
          DEBUG_already_full;
@@ -529,7 +529,7 @@ internal_kfree(struct kmalloc_heap *h,
    ASSERT(roundup_next_power_of_2(size) == size);
    ASSERT(size >= h->min_block_size);
 
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
 
    if (allow_split && nodes[node].split) {
       free_size_correction = internal_kmalloc_coalesce_block(h, ptr, size);
@@ -602,7 +602,7 @@ internal_kfree(struct kmalloc_heap *h,
 
 static size_t calculate_block_size(struct kmalloc_heap *h, uptr vaddr)
 {
-   block_node *nodes = h->metadata_nodes;
+   struct block_node *nodes = h->metadata_nodes;
    int n = 0; /* root's node index */
    uptr va = h->vaddr; /* root's node data address == heap's address */
    size_t size = h->size; /* root's node size == heap's size */

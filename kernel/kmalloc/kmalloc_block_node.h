@@ -11,7 +11,7 @@
 #define FL_NODE_ALLOCATED_AND_FULL  (FL_NODE_ALLOCATED | FL_NODE_FULL)
 #define FL_NODE_ALLOCATED_AND_SPLIT (FL_NODE_ALLOCATED | FL_NODE_SPLIT)
 
-typedef struct {
+struct block_node {
 
    union {
 
@@ -31,5 +31,4 @@ typedef struct {
 
       u8 raw;
    };
-
-} block_node;
+};

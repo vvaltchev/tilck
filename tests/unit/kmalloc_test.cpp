@@ -182,7 +182,7 @@ TEST_F(kmalloc_test, chaos_test)
 #define RESET_ATTRS         "\033[0m"
 
 static void
-dump_heap_node_head(block_node n, int w)
+dump_heap_node_head(struct block_node n, int w)
 {
    printf("%s", ATTR_FAINT);
    printf("+");
@@ -200,7 +200,7 @@ dump_heap_node_head_end(void)
 }
 
 static void
-dump_heap_node_tail(block_node n, int w)
+dump_heap_node_tail(struct block_node n, int w)
 {
    dump_heap_node_head(n, w);
 }
@@ -212,7 +212,7 @@ dump_heap_node_tail_end(void)
 }
 
 static void
-dump_heap_node(block_node n, int w)
+dump_heap_node(struct block_node n, int w)
 {
    int i;
    printf(ATTR_FAINT "|" RESET_ATTRS);
@@ -237,7 +237,7 @@ dump_heap_subtree(struct kmalloc_heap *h, int node, int levels)
    int level_width = 1;
    int n = node;
 
-   block_node *nodes = (block_node *)h->metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h->metadata_nodes;
 
    for (int i = 0; i < levels; i++) {
 
@@ -267,7 +267,7 @@ dump_heap_subtree(struct kmalloc_heap *h, int node, int levels)
 }
 
 
-static void check_metadata_row(block_node *nodes, const char *row, int &cn)
+static void check_metadata_row(struct block_node *nodes, const char *row, int &cn)
 {
    const char *p = row;
    assert(*p == '|');
@@ -313,7 +313,7 @@ static void check_metadata_row(block_node *nodes, const char *row, int &cn)
 }
 
 static void
-check_metadata(block_node *nodes, vector<const char *> expected_vec)
+check_metadata(struct block_node *nodes, vector<const char *> expected_vec)
 {
    int cn = 0;
 
@@ -340,7 +340,7 @@ TEST_F(kmalloc_test, split_block)
                        true, /* linear mapping */
                        NULL, NULL, NULL);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = h.size / 2;
    ptr = per_heap_kmalloc(&h, &s, 0);
@@ -432,7 +432,7 @@ TEST_F(kmalloc_test, coalesce_block)
                        true, /* linear mapping */
                        NULL, NULL, NULL);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = h.size / 2;
    ptr = per_heap_kmalloc(&h, &s, 0);
@@ -507,7 +507,7 @@ TEST_F(kmalloc_test, multi_step_alloc)
                        fake_alloc_and_map_func,
                        fake_free_and_map_func);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
    ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP);
@@ -551,7 +551,7 @@ TEST_F(kmalloc_test, multi_step_alloc2)
                        fake_alloc_and_map_func,
                        fake_free_and_map_func);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = 11 * h.min_block_size;
    ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP);
@@ -594,7 +594,7 @@ TEST_F(kmalloc_test, multi_step_and_split)
                        fake_alloc_and_map_func,
                        fake_free_and_map_func);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
    ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP | h.min_block_size);
@@ -637,7 +637,7 @@ TEST_F(kmalloc_test, multi_step_free)
                        fake_alloc_and_map_func,
                        fake_free_and_map_func);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = 15 * h.min_block_size;
    ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP | h.min_block_size);
@@ -706,7 +706,7 @@ TEST_F(kmalloc_test, partial_free)
                        fake_alloc_and_map_func,
                        fake_free_and_map_func);
 
-   block_node *nodes = (block_node *)h.metadata_nodes;
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
 
    s = h.size;
    ptr = per_heap_kmalloc(&h, &s, h.min_block_size);
