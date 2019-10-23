@@ -125,6 +125,25 @@ struct task {
     */
    void *what;
 
+   /*
+    * The purpose of having this opaque `arch_fields` member here is to avoid
+    * including hal.h in this header. The general idea is that, while it is OK
+    * to have architecture-specific fields in this struct, all the non-arch code
+    * should be able to work with this structure without needing to understand
+    * the arch-specific fields. It's all about trying to isolate as much as
+    * possible non-arch code from arch-specific code.
+    *
+    * NOTE: a simpler solution here might be just using a void * pointer and
+    * having those fields stored elsewhere in the kernel heap. That will
+    * certainly work, but it will require an additional kmalloc/kfree call for
+    * each task creation/destruction _and_ it will increase the likelihood of
+    * a cache miss when trying to access those fields as they won't be in a
+    * memory location contiguous with the current struct.
+    *
+    * Therefore, this approach, at the price of some complexity, achieves
+    * separation of arch from non-arch code without introducing any runtime
+    * cost for that.
+    */
    char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
 
