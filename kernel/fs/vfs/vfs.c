@@ -240,7 +240,7 @@ __vfs_path_funcs_wrapper(const char *path,
    __vfs_path_funcs_wrapper(path,                                             \
                             exlock,                                           \
                             rsl,                                              \
-                            (vfs_func_impl)func,                              \
+                            (vfs_func_impl)(void *)func,                      \
                             (uptr)a1, (uptr)a2, (uptr)a3)
 
 static ALWAYS_INLINE int
