@@ -15,7 +15,7 @@ protected:
 
       fs = ramfs_create();
       ASSERT_TRUE(fs != NULL);
-      mp2_init(fs);
+      mp_init(fs);
    }
 
    void TearDown() override {

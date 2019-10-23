@@ -14,7 +14,7 @@
 #include <dirent.h> // system header
 
 #include "../fs_int.h"
-#include "vfs_mp2.c.h"
+#include "vfs_mp.c.h"
 #include "vfs_locking.c.h"
 #include "vfs_resolve.c.h"
 #include "vfs_getdents.c.h"

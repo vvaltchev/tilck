@@ -523,6 +523,6 @@ void init_devfs(void)
    if (!devfs)
       panic("Unable to create devfs");
 
-   if ((rc = mp2_add(devfs, "/dev/")))
-      panic("mp2_add() failed with error: %d", rc);
+   if ((rc = mp_add(devfs, "/dev/")))
+      panic("mp_add() failed with error: %d", rc);
 }

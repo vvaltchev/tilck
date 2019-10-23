@@ -25,7 +25,7 @@ protected:
       fat_fs = fat_mount_ramdisk((void *) buf, VFS_FS_RO);
       ASSERT_TRUE(fat_fs != NULL);
 
-      mp2_init(fat_fs);
+      mp_init(fat_fs);
    }
 
    void TearDown() override {

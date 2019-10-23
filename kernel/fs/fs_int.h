@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/kernel/fs/vfs.h>
 
-struct mountpoint2 {
+struct mountpoint {
 
    REF_COUNTED_OBJECT;
 

@@ -351,8 +351,8 @@ vfs_resolve(const char *path,
             bool exlock,
             bool res_last_sl);
 
-int mp2_init(struct fs *root_fs);
-int mp2_add(struct fs *fs, const char *target_path);
-int mp2_remove(const char *target_path);
-struct fs *mp2_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode);
-struct fs *mp2_get_root(void);
+int mp_init(struct fs *root_fs);
+int mp_add(struct fs *fs, const char *target_path);
+int mp_remove(const char *target_path);
+struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode);
+struct fs *mp_get_root(void);

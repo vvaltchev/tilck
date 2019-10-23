@@ -73,7 +73,7 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
    vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
-   struct fs *target_fs = mp2_get_retained_at(rp->fs, rp->fs_path.inode);
+   struct fs *target_fs = mp_get_retained_at(rp->fs, rp->fs_path.inode);
 
    if (target_fs) {
 
@@ -92,7 +92,7 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
 
 static void get_locked_retained_root(struct vfs_path *rp, bool exlock)
 {
-   rp->fs = mp2_get_root();
+   rp->fs = mp_get_root();
    retain_obj(rp->fs);
    vfs_smart_fs_lock(rp->fs, exlock);
    vfs_get_root_entry(rp->fs, &rp->fs_path);
@@ -181,7 +181,7 @@ vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
                            struct vfs_path *np)
 {
    struct fs_path root_fsp;
-   struct mountpoint2 *mp;
+   struct mountpoint *mp;
 
    if (!vfs_is_path_dotdot(path))
       return false;
@@ -194,14 +194,14 @@ vfs_handle_cross_fs_dotdot(vfs_resolve_int_ctx *ctx,
    if (root_fsp.inode != np->fs_path.inode)
       return false; /* we can go further up: no need for special handling */
 
-   if (np->fs == mp2_get_root())
+   if (np->fs == mp_get_root())
       return true; /* there's nowhere to go further */
 
    /*
     * Here we've at the root of a FS mounted somewhere other than the absolute
     * root. Going to '..' from here means going beyond its mount-point.
     */
-   mp = mp2_get_retained_mp_of(np->fs);
+   mp = mp_get_retained_mp_of(np->fs);
 
    ASSERT(mp != NULL);
    ASSERT(mp->host_fs != np->fs);

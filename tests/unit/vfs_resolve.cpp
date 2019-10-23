@@ -109,9 +109,9 @@ protected:
 
       vfs_test_base::SetUp();
 
-      mp2_init(&fs1);
-      mp2_add(&fs2, "/a/b/c2");
-      mp2_add(&fs3, "/dev");
+      mp_init(&fs1);
+      mp_add(&fs2, "/a/b/c2");
+      mp_add(&fs3, "/dev");
 
       test_fs_register_mp(path(root1, {"a", "b", "c2"}), root2);
       test_fs_register_mp(path(root1, {"dev"}), root3);
@@ -123,7 +123,7 @@ protected:
           * TODO: make `cwd` to be always set.
           */
          struct vfs_path *tp = &get_curr_task()->pi->cwd;
-         tp->fs = mp2_get_root();
+         tp->fs = mp_get_root();
          vfs_get_root_entry(tp->fs, &tp->fs_path);
          retain_obj(tp->fs);
          vfs_retain_inode_at(tp);
@@ -136,16 +136,16 @@ protected:
 
       ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
-      release_obj(mp2_get_root());
+      release_obj(mp_get_root());
 
       /*
-       * Compensate the effect of mp2_init, mp2_add etc.
-       * TODO: implement and call mp2_remove() for each fs instead.
+       * Compensate the effect of mp_init, mp_add etc.
+       * TODO: implement and call mp_remove() for each fs instead.
        */
 
-      release_obj(&fs1); /* mp2_init(&fs1) */
-      release_obj(&fs1); /* mp2_add(&fs2,...) */
-      release_obj(&fs1); /* mp2_add(&fs3,...) */
+      release_obj(&fs1); /* mp_init(&fs1) */
+      release_obj(&fs1); /* mp_add(&fs2,...) */
+      release_obj(&fs1); /* mp_add(&fs3,...) */
       release_obj(&fs2);
       release_obj(&fs3);
 

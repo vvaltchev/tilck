@@ -113,8 +113,8 @@ static void mount_initrd(void)
    if (!(ramfs = ramfs_create()))
       panic("Unable to create ramfs");
 
-   if ((rc = mp2_init(ramfs)))
-      panic("mp2_init() failed with error: %d", rc);
+   if ((rc = mp_init(ramfs)))
+      panic("mp_init() failed with error: %d", rc);
 
    if ((rc = vfs_mkdir("/dev", 0777)))
       panic("vfs_mkdir(\"/dev\") failed with error: %d", rc);
@@ -128,7 +128,7 @@ static void mount_initrd(void)
       struct process *pi = kernel_process_pi;
       ASSERT(pi == get_curr_task()->pi);
 
-      tp.fs = mp2_get_root();
+      tp.fs = mp_get_root();
       vfs_get_root_entry(tp.fs, &tp.fs_path);
       process_set_cwd2_nolock_raw(pi, &tp);
    }
@@ -141,8 +141,8 @@ static void mount_initrd(void)
       if ((rc = vfs_mkdir("/initrd", 0777)))
          panic("vfs_mkdir(\"/initrd\") failed with error: %d", rc);
 
-      if ((rc = mp2_add(initrd, "/initrd")))
-         panic("mp2_add() failed with error: %d", rc);
+      if ((rc = mp_add(initrd, "/initrd")))
+         panic("mp_add() failed with error: %d", rc);
 
    } else {
 
