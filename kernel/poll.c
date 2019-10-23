@@ -113,7 +113,7 @@ poll_set_conds(struct multi_obj_waiter *w,
 
       if (fds[i].events & POLLIN) {
 
-         kcond *c = vfs_get_rready_cond(h);
+         struct kcond *c = vfs_get_rready_cond(h);
 
          if (c != NULL) {
 
@@ -124,7 +124,7 @@ poll_set_conds(struct multi_obj_waiter *w,
 
       if (fds[i].events & POLLOUT) {
 
-         kcond *c = vfs_get_wready_cond(h);
+         struct kcond *c = vfs_get_wready_cond(h);
 
          if (c != NULL) {
 
@@ -140,7 +140,7 @@ poll_set_conds(struct multi_obj_waiter *w,
           * for symmetry with the other cases
           */
 
-         kcond *c = vfs_get_except_cond(h);
+         struct kcond *c = vfs_get_except_cond(h);
 
          if (c != NULL) {
 

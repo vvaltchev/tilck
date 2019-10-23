@@ -8,7 +8,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sync.h>
 
-static kcond conds[2];
+static struct kcond conds[2];
 static ATOMIC(int) mobj_se_test_signal_counter;
 static bool mobj_se_test_assumption_failed;
 

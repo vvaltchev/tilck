@@ -38,7 +38,7 @@ static int ttyaux_fcntl(fs_handle h, int cmd, int arg)
    return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
 }
 
-static kcond *ttyaux_get_rready_cond(fs_handle h)
+static struct kcond *ttyaux_get_rready_cond(fs_handle h)
 {
    return &get_curr_process_tty()->input_cond;
 }

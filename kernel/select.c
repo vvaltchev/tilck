@@ -99,7 +99,7 @@ select_set_kcond(int nfds,
                  func_get_rwe_cond get_cond)
 {
    fs_handle h;
-   kcond *c;
+   struct kcond *c;
 
    if (!set)
       return 0;

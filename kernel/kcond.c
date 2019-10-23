@@ -6,13 +6,13 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 
-void kcond_init(kcond *c)
+void kcond_init(struct kcond *c)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    list_init(&c->wait_list);
 }
 
-bool kcond_wait(kcond *c, struct kmutex *m, u32 timeout_ticks)
+bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
@@ -47,7 +47,7 @@ bool kcond_wait(kcond *c, struct kmutex *m, u32 timeout_ticks)
 }
 
 static void
-kcond_signal_single(kcond *c, struct wait_obj *wo)
+kcond_signal_single(struct kcond *c, struct wait_obj *wo)
 {
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -79,7 +79,7 @@ kcond_signal_single(kcond *c, struct wait_obj *wo)
    task_reset_wait_obj(ti);
 }
 
-void kcond_signal_int(kcond *c, bool all)
+void kcond_signal_int(struct kcond *c, bool all)
 {
    struct wait_obj *wo_pos, *temp;
    disable_preemption();
@@ -97,7 +97,7 @@ void kcond_signal_int(kcond *c, bool all)
    enable_preemption();
 }
 
-void kcond_destory(kcond *c)
+void kcond_destory(struct kcond *c)
 {
-   bzero(c, sizeof(kcond));
+   bzero(c, sizeof(struct kcond));
 }

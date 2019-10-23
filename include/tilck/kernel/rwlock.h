@@ -46,7 +46,7 @@ struct rwlock_wp {
 
    struct task *ex_owner;
    struct kmutex m;
-   kcond c;
+   struct kcond c;
    int r;     /* readers count */
    bool w;    /* writer waiting */
    bool rec;  /* is exlock operation recursive */

@@ -68,7 +68,7 @@ static int tty_fcntl(fs_handle h, int cmd, int arg)
    return tty_fcntl_int(t, dh, cmd, arg);
 }
 
-static kcond *tty_get_rready_cond(fs_handle h)
+static struct kcond *tty_get_rready_cond(fs_handle h)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;

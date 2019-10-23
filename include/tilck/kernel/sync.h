@@ -171,11 +171,10 @@ bool kmutex_is_curr_task_holding_lock(struct kmutex *m);
  * A basic implementation of condition variables similar to the pthread ones.
  */
 
-typedef struct {
+struct kcond {
 
    struct list wait_list;
-
-} kcond;
+};
 
 #define STATIC_KCOND_INIT(s)                     \
    {                                             \
@@ -184,17 +183,17 @@ typedef struct {
 
 #define KCOND_WAIT_FOREVER 0
 
-void kcond_init(kcond *c);
-void kcond_destory(kcond *c);
-void kcond_signal_int(kcond *c, bool all);
-bool kcond_wait(kcond *c, struct kmutex *m, u32 timeout_ticks);
+void kcond_init(struct kcond *c);
+void kcond_destory(struct kcond *c);
+void kcond_signal_int(struct kcond *c, bool all);
+bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks);
 
-static inline void kcond_signal_one(kcond *c)
+static inline void kcond_signal_one(struct kcond *c)
 {
    kcond_signal_int(c, false);
 }
 
-static inline void kcond_signal_all(kcond *c)
+static inline void kcond_signal_all(struct kcond *c)
 {
    kcond_signal_int(c, true);
 }

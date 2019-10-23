@@ -114,17 +114,17 @@ typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
 typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
 
 /* file ops */
-typedef ssize_t (*func_read)         (fs_handle, char *, size_t);
-typedef ssize_t (*func_write)        (fs_handle, char *, size_t);
-typedef offt    (*func_seek)         (fs_handle, offt, int);
-typedef int     (*func_ioctl)        (fs_handle, uptr, void *);
-typedef int     (*func_mmap)         (struct user_mapping *, bool);
-typedef int     (*func_munmap)       (fs_handle, void *, size_t);
-typedef bool    (*func_handle_fault) (fs_handle, void *, bool, bool);
-typedef int     (*func_fcntl)        (fs_handle, int, int);
-typedef void    (*func_hlock_t)      (fs_handle);
-typedef bool    (*func_rwe_ready)    (fs_handle);
-typedef kcond  *(*func_get_rwe_cond) (fs_handle);
+typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
+typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
+typedef offt           (*func_seek)         (fs_handle, offt, int);
+typedef int            (*func_ioctl)        (fs_handle, uptr, void *);
+typedef int            (*func_mmap)         (struct user_mapping *, bool);
+typedef int            (*func_munmap)       (fs_handle, void *, size_t);
+typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
+typedef int            (*func_fcntl)        (fs_handle, int, int);
+typedef void           (*func_hlock_t)      (fs_handle);
+typedef bool           (*func_rwe_ready)    (fs_handle);
+typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 
 /* Used by the devices when want to remove any locking from a file */
 #define vfs_file_nolock           NULL
@@ -266,9 +266,9 @@ bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 bool vfs_read_ready(fs_handle h);
 bool vfs_write_ready(fs_handle h);
 bool vfs_except_ready(fs_handle h);
-kcond *vfs_get_rready_cond(fs_handle h);
-kcond *vfs_get_wready_cond(fs_handle h);
-kcond *vfs_get_except_cond(fs_handle h);
+struct kcond *vfs_get_rready_cond(fs_handle h);
+struct kcond *vfs_get_wready_cond(fs_handle h);
+struct kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
