@@ -15,15 +15,15 @@ void handle_cpf(regs_t *r);
 
 extern void (*fault_entry_points[32])(void);
 
-static idt_entry idt[256];
+static struct idt_entry idt[256];
 static soft_int_handler_t fault_handlers[32];
 
-void load_idt(idt_entry *entries, u16 entries_count)
+void load_idt(struct idt_entry *entries, u16 entries_count)
 {
    struct {
       u16 size_minus_one;
-      idt_entry *idt_addr;
-   } PACKED idt_ptr = { sizeof(idt_entry) * entries_count - 1, entries };
+      struct idt_entry *idt_addr;
+   } PACKED idt_ptr = { sizeof(struct idt_entry) * entries_count - 1, entries };
 
    asmVolatile("lidt (%0)"
                : /* no output */

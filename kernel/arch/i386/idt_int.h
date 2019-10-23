@@ -29,8 +29,7 @@
 #define IDT_FLAG_DPL3      (3 << 5)
 #define IDT_FLAG_PRESENT   (1 << 7)
 
-typedef struct
-{
+struct idt_entry {
 
    u16 offset_low;
    u16 selector;
@@ -38,7 +37,7 @@ typedef struct
    u8 flags;
    u16 offset_high;
 
-} PACKED idt_entry;
+} PACKED;
 
-void load_idt(idt_entry *entries, u16 entries_count);
+void load_idt(struct idt_entry *entries, u16 entries_count);
 void idt_set_entry(u8 num, void *handler, u16 selector, u8 flags);
