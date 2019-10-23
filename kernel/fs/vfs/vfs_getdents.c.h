@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-typedef struct {
+struct vfs_getdents_ctx {
 
    struct fs_handle_base *h;
    struct linux_dirent64 *user_dirp;
@@ -9,8 +9,7 @@ typedef struct {
    u32 fs_flags;
    offt off;
    struct linux_dirent64 ent;
-
-} vfs_getdents_ctx;
+};
 
 static inline unsigned char
 vfs_type_to_linux_dirent_type(enum vfs_entry_type t)
@@ -34,7 +33,7 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
 {
    const u16 entry_size = sizeof(struct linux_dirent64) + vde->name_len;
    struct linux_dirent64 *user_ent;
-   vfs_getdents_ctx *ctx = arg;
+   struct vfs_getdents_ctx *ctx = arg;
 
    if (ctx->fs_flags & VFS_FS_RQ_DE_SKIP) {
 
@@ -100,7 +99,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
    ASSERT(hb != NULL);
    ASSERT(hb->fs->fsops->getdents);
 
-   vfs_getdents_ctx ctx = {
+   struct vfs_getdents_ctx ctx = {
       .h             = hb,
       .user_dirp     = user_dirp,
       .buf_size      = buf_size,
