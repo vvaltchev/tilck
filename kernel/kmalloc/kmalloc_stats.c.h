@@ -15,27 +15,26 @@
 
 #include <tilck/kernel/bintree.h>
 
-typedef struct {
+struct kmalloc_acc_alloc {
 
    struct bintree_node node;
    size_t size;
    size_t count;
-
-} kmalloc_acc_alloc;
+};
 
 static size_t alloc_arr_elems;
 static size_t alloc_arr_used;
-static kmalloc_acc_alloc *alloc_arr;
-static kmalloc_acc_alloc *alloc_tree_root;
+static struct kmalloc_acc_alloc *alloc_arr;
+static struct kmalloc_acc_alloc *alloc_tree_root;
 
 static void kmalloc_account_alloc(size_t size)
 {
-   kmalloc_acc_alloc *obj;
+   struct kmalloc_acc_alloc *obj;
 
    if (!alloc_arr)
       return;
 
-   obj = bintree_find_ptr(alloc_tree_root, size, kmalloc_acc_alloc, node, size);
+   obj = bintree_find_ptr(alloc_tree_root, size, struct kmalloc_acc_alloc, node, size);
 
    if (obj) {
       obj->count++;
@@ -63,7 +62,7 @@ static void kmalloc_account_alloc(size_t size)
    obj->count = 1;
 
    DEBUG_CHECKED_SUCCESS(
-      bintree_insert_ptr(&alloc_tree_root, obj, kmalloc_acc_alloc, node, size)
+      bintree_insert_ptr(&alloc_tree_root, obj, struct kmalloc_acc_alloc, node, size)
    );
 }
 
@@ -77,7 +76,7 @@ static void kmalloc_init_heavy_stats(void)
    }
 
    const size_t alloc_arr_bytes = 4 * PAGE_SIZE;
-   alloc_arr_elems = alloc_arr_bytes / sizeof(kmalloc_acc_alloc);
+   alloc_arr_elems = alloc_arr_bytes / sizeof(struct kmalloc_acc_alloc);
    alloc_arr_used = 0;
 
    alloc_arr = kmalloc(alloc_arr_bytes);
@@ -97,7 +96,7 @@ void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx)
    ASSERT(!is_preemption_enabled());
    bintree_in_order_visit_start(&ctx->ctx,
                                 alloc_tree_root,
-                                kmalloc_acc_alloc,
+                                struct kmalloc_acc_alloc,
                                 node,
                                 true);
 }
@@ -111,7 +110,7 @@ debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
 
    ASSERT(!is_preemption_enabled());
 
-   kmalloc_acc_alloc *obj;
+   struct kmalloc_acc_alloc *obj;
    obj = bintree_in_order_visit_next(&ctx->ctx);
 
    if (!obj)
