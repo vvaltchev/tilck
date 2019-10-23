@@ -34,7 +34,11 @@ static void kmalloc_account_alloc(size_t size)
    if (!alloc_arr)
       return;
 
-   obj = bintree_find_ptr(alloc_tree_root, size, struct kmalloc_acc_alloc, node, size);
+   obj = bintree_find_ptr(alloc_tree_root,
+                          size,
+                          struct kmalloc_acc_alloc,
+                          node,
+                          size);
 
    if (obj) {
       obj->count++;
@@ -62,7 +66,11 @@ static void kmalloc_account_alloc(size_t size)
    obj->count = 1;
 
    DEBUG_CHECKED_SUCCESS(
-      bintree_insert_ptr(&alloc_tree_root, obj, struct kmalloc_acc_alloc, node, size)
+      bintree_insert_ptr(&alloc_tree_root,
+                         obj,
+                         struct kmalloc_acc_alloc,
+                         node,
+                         size)
    );
 }
 

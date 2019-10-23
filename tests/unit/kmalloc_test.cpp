@@ -267,7 +267,8 @@ dump_heap_subtree(struct kmalloc_heap *h, int node, int levels)
 }
 
 
-static void check_metadata_row(struct block_node *nodes, const char *row, int &cn)
+static void
+check_metadata_row(struct block_node *nodes, const char *row, int &cn)
 {
    const char *p = row;
    assert(*p == '|');

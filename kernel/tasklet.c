@@ -238,7 +238,10 @@ int create_tasklet_thread(int priority, u16 limit)
       return -ENOMEM;
    }
 
-   safe_ringbuf_init(&t->safe_ringbuf, limit, sizeof(struct tasklet), t->tasklets);
+   safe_ringbuf_init(&t->safe_ringbuf,
+                     limit,
+                     sizeof(struct tasklet),
+                     t->tasklets);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
