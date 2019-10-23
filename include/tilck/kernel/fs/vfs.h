@@ -338,20 +338,6 @@ void close_cloexec_handles(struct process *pi);
 
 /* ------------ Current mount point interface ------------- */
 
-typedef struct {
-
-   struct fs *fs;
-   u32 path_len;
-   char path[0];
-
-} mountpoint;
-
-int mountpoint_add(struct fs *fs, const char *path);
-void mountpoint_remove(struct fs *fs);
-u32 mp_check_match(const char *mp, u32 lm, const char *path, u32 lp);
-
-/* ------------ NEW mount point interface ------------- */
-
 /*
  * Resolves `path` and returns in `rp` the corresponding VFS path with the
  * struct fs retained and locked, in case of success (return 0).
