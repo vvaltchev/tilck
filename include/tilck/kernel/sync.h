@@ -42,7 +42,7 @@ typedef struct {
 typedef struct {
 
    wait_obj wobj;
-   struct task *ti;    /* Task owning this wait obj */
+   struct task *ti;         /* Task owning this wait obj */
    enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
                              * used because it have to be equal to
                              * WOBJ_MULTI_ELEM. */
