@@ -50,7 +50,7 @@ static void mobj_waiter_wait_thread(void *arg)
 
       for (size_t j = 0; j < w->count; j++) {
 
-         mwobj_elem *me = &w->elems[j];
+         struct mwobj_elem *me = &w->elems[j];
 
          if (me->type && !me->wobj.type) {
             printk("[wait th ]    -> condition #%u was signaled\n", j);

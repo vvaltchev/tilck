@@ -155,7 +155,7 @@ count_signaled_conds(multi_obj_waiter *w)
 
    for (u32 j = 0; j < w->count; j++) {
 
-      mwobj_elem *me = &w->elems[j];
+      struct mwobj_elem *me = &w->elems[j];
 
       if (me->type && !me->wobj.type) {
          count++;

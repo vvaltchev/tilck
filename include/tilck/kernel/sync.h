@@ -19,7 +19,7 @@ enum wo_type {
    /* Special "meta-object" types */
 
    WOBJ_MWO_WAITER, /* multi_obj_waiter */
-   WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
+   WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to struct mwobj_elem */
 };
 
 /*
@@ -38,15 +38,14 @@ struct wait_obj {
  * Struct used as element in `multi_obj_waiter` using `struct wait_obj` through
  * composition.
  */
-typedef struct {
+struct mwobj_elem {
 
    struct wait_obj wobj;
    struct task *ti;         /* Task owning this wait obj */
    enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
                              * used because it have to be equal to
                              * WOBJ_MULTI_ELEM. */
-
-} mwobj_elem;
+};
 
 /*
  * Heap-allocated object on which struct task->wobj "waits" when the task is
@@ -58,8 +57,8 @@ typedef struct {
  */
 typedef struct {
 
-   u32 count;             /* number of `mwobj_elem` elements */
-   mwobj_elem elems[];    /* variable-size array */
+   u32 count;             /* number of `struct mwobj_elem` elements */
+   struct mwobj_elem elems[];    /* variable-size array */
 
 } multi_obj_waiter;
 
@@ -91,7 +90,7 @@ void *task_reset_wait_obj(struct task *ti);
 
 multi_obj_waiter *allocate_mobj_waiter(u32 elems);
 void free_mobj_waiter(multi_obj_waiter *w);
-void mobj_waiter_reset(mwobj_elem *e);
+void mobj_waiter_reset(struct mwobj_elem *e);
 void mobj_waiter_reset2(multi_obj_waiter *w, u32 index);
 void mobj_waiter_set(multi_obj_waiter *w,
                      u32 index,

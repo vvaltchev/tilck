@@ -55,7 +55,7 @@ kcond_signal_single(kcond *c, struct wait_obj *wo)
    struct task *ti =
       wo->type != WOBJ_MWO_ELEM
          ? CONTAINER_OF(wo, struct task, wobj)
-         : CONTAINER_OF(wo, mwobj_elem, wobj)->ti;
+         : CONTAINER_OF(wo, struct mwobj_elem, wobj)->ti;
 
    if (ti->state != TASK_STATE_SLEEPING) {
 
@@ -72,7 +72,7 @@ kcond_signal_single(kcond *c, struct wait_obj *wo)
       ASSERT(wo->type == WOBJ_KCOND);
       task_cancel_wakeup_timer(ti);
    } else {
-      ASSERT(CONTAINER_OF(wo, mwobj_elem, wobj)->type == WOBJ_KCOND);
+      ASSERT(CONTAINER_OF(wo, struct mwobj_elem, wobj)->type == WOBJ_KCOND);
    }
 
    wait_obj_reset(wo);

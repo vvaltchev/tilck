@@ -74,7 +74,7 @@ void *task_reset_wait_obj(struct task *ti)
 
 multi_obj_waiter *allocate_mobj_waiter(u32 elems)
 {
-   size_t s = sizeof(multi_obj_waiter) + sizeof(mwobj_elem) * elems;
+   size_t s = sizeof(multi_obj_waiter) + sizeof(struct mwobj_elem) * elems;
    multi_obj_waiter *w = task_temp_kernel_alloc(s);
 
    if (!w)
@@ -110,13 +110,13 @@ mobj_waiter_set(multi_obj_waiter *w,
     */
    ASSERT(type != WOBJ_MWO_WAITER && type != WOBJ_MWO_ELEM);
 
-   mwobj_elem *e = &w->elems[index];
+   struct mwobj_elem *e = &w->elems[index];
    wait_obj_set(&e->wobj, WOBJ_MWO_ELEM, ptr, wait_list);
    e->ti = get_curr_task();
    e->type = type;
 }
 
-void mobj_waiter_reset(mwobj_elem *e)
+void mobj_waiter_reset(struct mwobj_elem *e)
 {
    wait_obj_reset(&e->wobj);
    e->ti = NULL;
@@ -125,7 +125,7 @@ void mobj_waiter_reset(mwobj_elem *e)
 
 void mobj_waiter_reset2(multi_obj_waiter *w, u32 index)
 {
-   mwobj_elem *e = &w->elems[index];
+   struct mwobj_elem *e = &w->elems[index];
    mobj_waiter_reset(e);
 }
 
