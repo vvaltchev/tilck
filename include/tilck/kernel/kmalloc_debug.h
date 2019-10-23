@@ -24,11 +24,9 @@ struct kmalloc_small_heaps_stats {
    int lifetime_created_heaps_count;
 };
 
-typedef struct {
-
+struct debug_kmalloc_chunks_ctx {
    struct bintree_walk_ctx ctx;
-
-} debug_kmalloc_chunks_ctx;
+};
 
 typedef struct {
 
@@ -39,8 +37,8 @@ typedef struct {
 
 bool debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
 void debug_kmalloc_get_stats(debug_kmalloc_stats *stats);
-void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx);
-bool debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
+void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx);
+bool debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
                                      size_t *size, size_t *count);
 
 void debug_kmalloc_start_leak_detector(bool save_metadata);

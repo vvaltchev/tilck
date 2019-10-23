@@ -89,7 +89,7 @@ static void kmalloc_init_heavy_stats(void)
    kmalloc_account_alloc(alloc_arr_bytes);
 }
 
-void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx)
+void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx)
 {
    if (!KMALLOC_HEAVY_STATS)
       return;
@@ -103,7 +103,7 @@ void debug_kmalloc_chunks_stats_start_read(debug_kmalloc_chunks_ctx *ctx)
 }
 
 bool
-debug_kmalloc_chunks_stats_next(debug_kmalloc_chunks_ctx *ctx,
+debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
                                 size_t *size, size_t *count)
 {
    if (!KMALLOC_HEAVY_STATS)

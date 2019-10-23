@@ -56,7 +56,7 @@ static sptr dp_chunks_cmpf_waste_p(const void *a, const void *b)
 
 static void dp_chunks_enter(void)
 {
-   debug_kmalloc_chunks_ctx ctx;
+   struct debug_kmalloc_chunks_ctx ctx;
    size_t s, c;
 
    if (!KMALLOC_HEAVY_STATS)
