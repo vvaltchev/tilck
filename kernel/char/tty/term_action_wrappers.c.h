@@ -6,7 +6,7 @@
 
 #define ENTRY(func, n) { (action_func)(func), n }
 
-static const actions_table_item actions_table[] = {
+static const struct actions_table_item actions_table[] = {
    [a_write]                = ENTRY(term_action_write, 3),
    [a_dwrite_no_filter]     = ENTRY(term_action_dwrite_no_filter, 3),
    [a_del_generic]          = ENTRY(term_action_del, 2),
@@ -28,7 +28,7 @@ static void term_execute_action(term *t, term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
-   const actions_table_item *it = &actions_table[a->type3];
+   const struct actions_table_item *it = &actions_table[a->type3];
 
    switch (it->args_count) {
       case 3:

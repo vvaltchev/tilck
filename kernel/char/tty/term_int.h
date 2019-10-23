@@ -32,12 +32,11 @@ enum term_action {
 
 typedef void (*action_func)(term *t, ...);
 
-typedef struct {
+struct actions_table_item {
 
    action_func func;
    u32 args_count;
-
-} actions_table_item;
+};
 
 enum term_del_type {
 
