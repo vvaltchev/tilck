@@ -5,16 +5,15 @@
 
 typedef void (*tasklet_func)(uptr, uptr);
 
-typedef struct {
+struct tasklet {
 
    tasklet_func fptr;
    tasklet_context ctx;
-
-} tasklet;
+};
 
 typedef struct {
 
-   tasklet *tasklets;
+   struct tasklet *tasklets;
    safe_ringbuf safe_ringbuf;
    struct task *task;
    int priority; /* 0 => max priority */

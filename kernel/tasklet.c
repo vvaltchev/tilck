@@ -53,7 +53,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
    ASSERT(t != NULL);
 
-   tasklet new_tasklet = {
+   struct tasklet new_tasklet = {
       .fptr = func,
       .ctx = {
          .arg1 = arg1,
@@ -113,7 +113,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 bool run_one_tasklet(int tn)
 {
    bool success;
-   tasklet tasklet_to_run;
+   struct tasklet tasklet_to_run;
    tasklet_thread_info *t = tasklet_threads[tn];
 
    ASSERT(t != NULL);
@@ -231,21 +231,21 @@ int create_tasklet_thread(int priority, u16 limit)
    u32 tn = tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
-   t->tasklets = kzmalloc(sizeof(tasklet) * limit);
+   t->tasklets = kzmalloc(sizeof(struct tasklet) * limit);
 
    if (!t->tasklets) {
       kfree2(t, sizeof(tasklet_thread_info));
       return -ENOMEM;
    }
 
-   safe_ringbuf_init(&t->safe_ringbuf, limit, sizeof(tasklet), t->tasklets);
+   safe_ringbuf_init(&t->safe_ringbuf, limit, sizeof(struct tasklet), t->tasklets);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
    int tid = kthread_create(tasklet_runner, TO_PTR(tn));
 
    if (tid < 0) {
-      kfree2(t->tasklets, sizeof(tasklet) * limit);
+      kfree2(t->tasklets, sizeof(struct tasklet) * limit);
       kfree2(t, sizeof(tasklet_thread_info));
       return -ENOMEM;
    }
@@ -277,7 +277,7 @@ void destroy_last_tasklet_thread(void)
 #endif
 
    safe_ringbuf_destory(&t->safe_ringbuf);
-   kfree2(t->tasklets, sizeof(tasklet) * t->limit);
+   kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
    kfree2(t, sizeof(tasklet_thread_info));
    bzero(t, sizeof(*t));
    tasklet_threads[tn] = NULL;
