@@ -12,45 +12,46 @@
 #include "termutil.h"
 #include "dp_int.h"
 
-typedef struct {
+struct chunk_info {
+
    size_t size;
    size_t count;
    u64 max_waste;
    u32 max_waste_p;
-} chunk_info;
+};
 
 static struct debug_kmalloc_stats stats;
 static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
-static chunk_info chunks_arr[1024];
+static struct chunk_info chunks_arr[1024];
 static u8 chunks_order_by;
 
 static sptr dp_chunks_cmpf_size(const void *a, const void *b)
 {
-   const chunk_info *x = a;
-   const chunk_info *y = b;
+   const struct chunk_info *x = a;
+   const struct chunk_info *y = b;
    return (sptr)y->size - (sptr)x->size;
 }
 
 static sptr dp_chunks_cmpf_count(const void *a, const void *b)
 {
-   const chunk_info *x = a;
-   const chunk_info *y = b;
+   const struct chunk_info *x = a;
+   const struct chunk_info *y = b;
    return (sptr)y->count - (sptr)x->count;
 }
 
 static sptr dp_chunks_cmpf_waste(const void *a, const void *b)
 {
-   const chunk_info *x = a;
-   const chunk_info *y = b;
+   const struct chunk_info *x = a;
+   const struct chunk_info *y = b;
    return (sptr)y->max_waste - (sptr)x->max_waste;
 }
 
 static sptr dp_chunks_cmpf_waste_p(const void *a, const void *b)
 {
-   const chunk_info *x = a;
-   const chunk_info *y = b;
+   const struct chunk_info *x = a;
+   const struct chunk_info *y = b;
    return (sptr)y->max_waste_p - (sptr)x->max_waste_p;
 }
 
@@ -80,7 +81,7 @@ static void dp_chunks_enter(void)
             UNSAFE_MAX(SMALL_HEAP_MBS, roundup_next_power_of_2(s)) - s
          ) * c;
 
-         chunks_arr[chunks_count++] = (chunk_info) {
+         chunks_arr[chunks_count++] = (struct chunk_info) {
             .size = s,
             .count = c,
             .max_waste = waste,
