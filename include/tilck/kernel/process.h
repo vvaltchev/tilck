@@ -65,18 +65,19 @@ struct process {
 
 struct task {
 
-   int tid;                 /* User/kernel task ID (pid in the Linux kernel) */
+   union {
 
-#ifdef BITS64
+      int tid;               /* User/kernel task ID (pid in the Linux kernel) */
 
-   /*
-    * For the moment, `tid` has everywhere `int` as type, while the field is
-    * used as key with the bintree_*_int functions which use pointer-sized
-    * integers. Therefore, in case sizeof(sptr) > sizeof(int), we need some
-    * padding.
-    */
-   int padding_0;
-#endif
+      /*
+       * For the moment, `tid` has everywhere `int` as type, while the field is
+       * used as key with the bintree_*_int functions which use pointer-sized
+       * integers. Therefore, in case sizeof(sptr) > sizeof(int), we need some
+       * padding.
+       */
+
+      uptr padding_0;
+   };
 
    struct process *pi;
 
