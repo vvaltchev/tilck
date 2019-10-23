@@ -15,7 +15,7 @@
 #define RETRY_COUNT           4
 
 static struct rwlock_rp test_rwlrp;
-static rwlock_wp test_rwlwp;
+static struct rwlock_wp test_rwlwp;
 
 static int se_rwlock_vars[3];
 static const int se_rwlock_set_1[3] = {1, 2, 3};

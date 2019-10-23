@@ -57,7 +57,7 @@ void rwlock_rp_exunlock(struct rwlock_rp *r)
 
 /* ---------------------------------------------- */
 
-void rwlock_wp_init(rwlock_wp *rw, bool recursive)
+void rwlock_wp_init(struct rwlock_wp *rw, bool recursive)
 {
    kmutex_init(&rw->m, 0);
    kcond_init(&rw->c);
@@ -67,7 +67,7 @@ void rwlock_wp_init(rwlock_wp *rw, bool recursive)
    rw->rec = recursive;
 }
 
-void rwlock_wp_destroy(rwlock_wp *rw)
+void rwlock_wp_destroy(struct rwlock_wp *rw)
 {
    rw->ex_owner = NULL;
    rw->w = false;
@@ -76,7 +76,7 @@ void rwlock_wp_destroy(rwlock_wp *rw)
    kmutex_destroy(&rw->m);
 }
 
-void rwlock_wp_shlock(rwlock_wp *rw)
+void rwlock_wp_shlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -95,7 +95,7 @@ void rwlock_wp_shlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-void rwlock_wp_shunlock(rwlock_wp *rw)
+void rwlock_wp_shunlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -109,7 +109,7 @@ void rwlock_wp_shunlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-static void rwlock_wp_exlock_int(rwlock_wp *rw)
+static void rwlock_wp_exlock_int(struct rwlock_wp *rw)
 {
    if (rw->rec) {
       if (rw->ex_owner == get_curr_task()) {
@@ -153,7 +153,7 @@ static void rwlock_wp_exlock_int(rwlock_wp *rw)
    }
 }
 
-void rwlock_wp_exlock(rwlock_wp *rw)
+void rwlock_wp_exlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {
@@ -162,7 +162,7 @@ void rwlock_wp_exlock(rwlock_wp *rw)
    kmutex_unlock(&rw->m);
 }
 
-static void rwlock_wp_exunlock_int(rwlock_wp *rw)
+static void rwlock_wp_exunlock_int(struct rwlock_wp *rw)
 {
    ASSERT(rw->ex_owner == get_curr_task());
 
@@ -189,7 +189,7 @@ static void rwlock_wp_exunlock_int(rwlock_wp *rw)
    kcond_signal_all(&rw->c);
 }
 
-void rwlock_wp_exunlock(rwlock_wp *rw)
+void rwlock_wp_exunlock(struct rwlock_wp *rw)
 {
    kmutex_lock(&rw->m);
    {

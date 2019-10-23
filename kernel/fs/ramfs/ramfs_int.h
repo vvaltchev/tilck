@@ -67,7 +67,7 @@ struct ramfs_inode {
 
    tilck_inode_t ino;
    enum vfs_entry_type type;
-   rwlock_wp rwlock;
+   struct rwlock_wp rwlock;
    nlink_t nlink;
    mode_t mode;
    size_t blocks_count;                /* count of page-size blocks */
@@ -119,7 +119,7 @@ typedef struct {
 
 typedef struct {
 
-   rwlock_wp rwlock;
+   struct rwlock_wp rwlock;
 
    tilck_inode_t next_inode_num;
    ramfs_inode *root;
