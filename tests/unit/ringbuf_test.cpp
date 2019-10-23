@@ -16,7 +16,7 @@ TEST(ringbuf, basicTest)
    int buffer[3] = {0};
    int values[] = {1,2,3,4};
    int val;
-   ringbuf rb;
+   struct ringbuf rb;
    bool success;
 
    ringbuf_init(&rb, ARRAY_SIZE(buffer), sizeof(buffer[0]), buffer);
@@ -49,7 +49,7 @@ TEST(ringbuf, basicTest_1)
    u8 buffer[3] = {0};
    u8 values[] = {1,2,3,4};
    u8 val;
-   ringbuf rb;
+   struct ringbuf rb;
    bool success;
 
    ringbuf_init(&rb, ARRAY_SIZE(buffer), sizeof(buffer[0]), buffer);
@@ -82,7 +82,7 @@ TEST(ringbuf, rotation)
    int buffer[3] = {0};
    int values[] = {1,2,3,4,5,6,7,8,9};
    int val;
-   ringbuf rb;
+   struct ringbuf rb;
    bool success;
 
    ringbuf_init(&rb, ARRAY_SIZE(buffer), sizeof(buffer[0]), buffer);
@@ -126,7 +126,7 @@ TEST(ringbuf, rotation_1)
    u8 buffer[3] = {0};
    u8 values[] = {1,2,3,4,5,6,7,8,9};
    u8 val;
-   ringbuf rb;
+   struct ringbuf rb;
    bool success;
 
    ringbuf_init(&rb, ARRAY_SIZE(buffer), sizeof(buffer[0]), buffer);
@@ -169,7 +169,7 @@ TEST(ringbuf, unwrite)
    int buffer[3] = {0};
    int values[] = {10, 20, 30};
    int val;
-   ringbuf rb;
+   struct ringbuf rb;
    bool success;
 
    ringbuf_init(&rb, ARRAY_SIZE(buffer), sizeof(buffer[0]), buffer);
