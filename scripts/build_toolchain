@@ -266,8 +266,15 @@ function build_gnuefi {
 
       show_work_on_component_msg "GNU-EFI"
 
+      # Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
+      #
+      #     git://git.code.sf.net/p/gnu-efi/code
+      #
+      # exclusively for performance reasons: SF sometimes is too slow for
+      # CI builds.
+
       local url="https://github.com/vvaltchev/gnu-efi-fork.git"
-      git clone --branch 3.0.8 --depth 1 "$url" gnu-efi
+      git clone --branch 3.0.10 --depth 1 "$url" gnu-efi
       cd gnu-efi
 
       if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
