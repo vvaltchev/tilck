@@ -29,6 +29,7 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/fs/kernelfs.h>
 
 void init_console(void)
 {
@@ -223,6 +224,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_tasklets();
    init_timer();
    init_system_clock();
+   init_kernelfs();
 
    async_init();
    schedule_outside_interrupt_context();

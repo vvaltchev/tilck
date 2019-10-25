@@ -109,7 +109,9 @@
       "fault_resumable.h": "c",
       "stdbool.h": "c",
       "limits.h": "c",
-      "climits": "c"
+      "climits": "c",
+      "pipe.h": "c",
+      "vfs_locking.c.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }
