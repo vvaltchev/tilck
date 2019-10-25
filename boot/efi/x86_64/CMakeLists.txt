@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 3.2)
 
 set(EFI_ARCH x86_64)
 
-CHECK_C_COMPILER_FLAG(-maccumulate-outgoing-args MS_ABI_SUPPORTED)
+CHECK_C_COMPILER_FLAG(-maccumulate-outgoing-args ACC_OUTGOING_ARGS_SUPPORTED)
 
-if (${MS_ABI_SUPPORTED})
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND ACC_OUTGOING_ARGS_SUPPORTED)
 
    file(GLOB SOURCES "../*.c" "*.S")
    include (../GenericBuild.cmake)
@@ -14,13 +14,11 @@ else()
 
    file(RELATIVE_PATH relPath ${CMAKE_BINARY_DIR} ${EFI_${EFI_ARCH}_FILE})
 
-   set(msg "")
-   string(CONCAT msg "Unable to build `${relPath}`: "
-                     "the system compiler does not support MS_ABI. "
-                     "If you really need to use EFI boot on x86_64 machines "
-                     "please use GCC as C compiler.")
-
-   message(WARNING "\n${msg}")
+   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      show_no_ms_abi_support_warning(${relPath})
+   else()
+      show_clang_not_supported_for_efi_warning(${relPath})
+   endif()
 
    add_custom_command(
       OUTPUT

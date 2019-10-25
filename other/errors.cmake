@@ -100,3 +100,26 @@ macro (no_googletest_lib_fake_error_target)
    )
 
 endmacro()
+
+function (show_no_ms_abi_support_warning relPath)
+
+   set(msg "")
+   string(CONCAT msg "Unable to build `${relPath}`: "
+                     "the system compiler does not support MS_ABI. "
+                     "If you need to use EFI boot on x86_64 machines "
+                     "please use a non-ancient GCC compiler.")
+
+   message(WARNING "\n${msg}\n")
+
+endfunction()
+
+function (show_clang_not_supported_for_efi_warning)
+
+   set(msg "")
+   string(CONCAT msg "Build `${relPath}` with clang is not supported.\n"
+                     "If you need to use EFI boot on x86_64 machines "
+                     "please use a GCC as system compiler.")
+
+   message(WARNING "\n${msg}\n")
+
+endfunction()

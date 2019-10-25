@@ -17,7 +17,7 @@ add_library(
 set(
    COMPILE_FLAGS_LIST
 
-   -maccumulate-outgoing-args  # necessary in order to use MS_ABI
+   -maccumulate-outgoing-args  # necessary for MS_ABI with older GCC compilers
    -std=c99
    -fno-stack-protector
    -fpic
