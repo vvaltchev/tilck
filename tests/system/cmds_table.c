@@ -54,6 +54,7 @@ DECL_CMD(fmmap6);
 DECL_CMD(fmmap7);
 DECL_CMD(fs_perf1);
 DECL_CMD(fs_perf2);
+DECL_CMD(pipe1);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -102,6 +103,10 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fmmap5,       TT_SHORT,  true),
    CMD_ENTRY(fmmap6,       TT_SHORT,  true),
    CMD_ENTRY(fmmap7,       TT_SHORT,  true),
+
+   // The `pipe1` test cannot be enabled by default yet, because kernel's
+   // implementation of pipes is not ready.
+   CMD_ENTRY(pipe1,       TT_SHORT,  false),
 
    /*
     * For the moment these tests can be run only manually because they require
