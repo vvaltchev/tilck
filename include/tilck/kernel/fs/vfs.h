@@ -192,12 +192,12 @@ struct file_ops {
 
    /* mandatory */
    func_read read;
-   func_write write;
-   func_seek seek;
-   func_ioctl ioctl;
-   func_fcntl fcntl;
 
    /* optional funcs */
+   func_ioctl ioctl;      /* if NULL -> -ENOTTY */
+   func_fcntl fcntl;      /* if NULL -> -EINVAL */
+   func_write write;      /* if NULL -> -EBADF  */
+   func_seek seek;        /* if NULL -> -ESPIPE */
    func_mmap mmap;
    func_munmap munmap;
    func_handle_fault handle_fault;

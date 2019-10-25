@@ -800,3 +800,16 @@ int sys_link(const char *u_oldpath, const char *u_newpath)
 {
    return call_rename_or_link(u_oldpath, u_newpath, &vfs_link);
 }
+
+int sys_pipe(int pipefd[2])
+{
+   return sys_pipe2(pipefd, 0);
+}
+
+int sys_pipe2(int pipefd[2], int flags)
+{
+   if (flags != 0)
+      return -EINVAL;
+
+   return -ENOSYS;
+}
