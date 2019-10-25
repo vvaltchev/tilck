@@ -87,7 +87,7 @@ int sys_mkdir(const char *u_path, mode_t mode);
 int sys_rmdir(const char *u_path);
 int sys_dup(int oldfd);
 
-int sys_pipe(int pipefd[2]);
+int sys_pipe(int u_pipefd[2]);
 
 uptr sys_times(struct tms *u_buf);
 void *sys_brk(void *vaddr);
@@ -440,7 +440,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_eventfd2)
 CREATE_STUB_SYSCALL_IMPL(sys_epoll_create1)
 CREATE_STUB_SYSCALL_IMPL(sys_dup3)
 
-int sys_pipe2(int pipefd[2], int flags);
+int sys_pipe2(int u_pipefd[2], int flags);
 
 CREATE_STUB_SYSCALL_IMPL(sys_inotify_init1)
 CREATE_STUB_SYSCALL_IMPL(sys_preadv)

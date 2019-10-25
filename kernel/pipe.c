@@ -22,12 +22,58 @@ struct pipe {
 
 static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 {
-   return 0;
+   struct kernel_fs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   size_t rc = 0;
+
+   kmutex_lock(&p->mutex);
+   {
+   again:
+
+      /*
+       * NOTE: this is a proof-of-concept implementation, reading byte by byte.
+       * TODO: implement pipe_read() in a more efficient way.
+       */
+      while (rc < size && ringbuf_read_elem1(&p->rb, (u8 *)buf + rc))
+         rc++;
+
+      if (rc == 0) {
+         kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
+         goto again;
+      }
+
+      kcond_signal_one(&p->cond);
+   }
+   kmutex_unlock(&p->mutex);
+   return (ssize_t)rc;
 }
 
 static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 {
-   return 0;
+   struct kernel_fs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   size_t rc = 0;
+
+   kmutex_lock(&p->mutex);
+   {
+   again:
+
+      /*
+       * NOTE: this is a proof-of-concept implementation, writing byte by byte.
+       * TODO: implement pipe_write() in a more efficient way.
+       */
+      while (rc < size && ringbuf_write_elem1(&p->rb, (u8) buf[rc]))
+         rc++;
+
+      if (rc == 0) {
+         kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
+         goto again;
+      }
+
+      kcond_signal_one(&p->cond);
+   }
+   kmutex_unlock(&p->mutex);
+   return (ssize_t)rc;
 }
 
 static const struct file_ops static_ops_pipe_read_end =
@@ -40,10 +86,8 @@ static const struct file_ops static_ops_pipe_write_end =
    .write = pipe_write,
 };
 
-static void destory_pipe(struct kobj_base *obj)
+void destroy_pipe(struct pipe *p)
 {
-   struct pipe *p = (void *)obj;
-
    kcond_destory(&p->cond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
@@ -63,7 +107,7 @@ struct pipe *create_pipe(void)
       return NULL;
    }
 
-   p->destory = &destory_pipe;
+   p->destory = (void *)&destroy_pipe;
    ringbuf_init(&p->rb, PIPE_BUF_SIZE, 1, p->buf);
    kmutex_init(&p->mutex, 0);
    kcond_init(&p->cond);
@@ -72,18 +116,28 @@ struct pipe *create_pipe(void)
 
 fs_handle pipe_create_read_handle(struct pipe *p)
 {
-   struct kernel_fs_handle *h = kfs_create_new_handle();
+   struct kernel_fs_handle *h;
+
+   if (!(h = kfs_create_new_handle()))
+      return NULL;
+
    h->fops = &static_ops_pipe_read_end;
    h->kobj = (void *)p;
+   h->fl_flags = O_RDONLY;
    retain_obj(p);
    return h;
 }
 
 fs_handle pipe_create_write_handle(struct pipe *p)
 {
-   struct kernel_fs_handle *h = kfs_create_new_handle();
+   struct kernel_fs_handle *h;
+
+   if (!(h = kfs_create_new_handle()))
+      return NULL;
+
    h->fops = &static_ops_pipe_write_end;
    h->kobj = (void *)p;
+   h->fl_flags = O_WRONLY;
    retain_obj(p);
    return h;
 }

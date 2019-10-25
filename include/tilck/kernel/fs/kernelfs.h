@@ -20,3 +20,4 @@ struct kernel_fs_handle {
 
 void init_kernelfs(void);
 struct kernel_fs_handle *kfs_create_new_handle(void);
+void kfs_destroy_handle(struct kernel_fs_handle *h);

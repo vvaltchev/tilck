@@ -6,10 +6,12 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/pipe.h>
 
 #include <fcntl.h>      // system header
 
@@ -801,15 +803,78 @@ int sys_link(const char *u_oldpath, const char *u_newpath)
    return call_rename_or_link(u_oldpath, u_newpath, &vfs_link);
 }
 
-int sys_pipe(int pipefd[2])
+int sys_pipe(int u_pipefd[2])
 {
-   return sys_pipe2(pipefd, 0);
+   return sys_pipe2(u_pipefd, 0);
 }
 
-int sys_pipe2(int pipefd[2], int flags)
+int sys_pipe2(int u_pipefd[2], int flags)
 {
+   struct task *curr = get_curr_task();
+   fs_handle read_h = NULL;
+   fs_handle write_h = NULL;
+   struct pipe *p = NULL;
+   int fds[2];
+   int ret = 0;
+
    if (flags != 0)
       return -EINVAL;
 
-   return -ENOSYS;
+   kmutex_lock(&curr->pi->fslock);
+
+   if (!(p = create_pipe()))
+      goto no_mem;
+
+   if ((fds[0] = get_free_handle_num(curr->pi)) < 0)
+      goto no_fds;
+
+   if (!(read_h = pipe_create_read_handle(p)))
+      goto fault;
+
+   curr->pi->handles[fds[0]] = read_h;
+
+   if ((fds[1] = get_free_handle_num(curr->pi)) < 0)
+      goto no_fds;
+
+   if (!(write_h = pipe_create_write_handle(p)))
+      goto fault;
+
+   curr->pi->handles[fds[1]] = write_h;
+
+   if (copy_to_user(u_pipefd, fds, sizeof(fds)))
+      goto fault;
+
+end:
+   kmutex_unlock(&curr->pi->fslock);
+   return ret;
+
+err_end:
+
+   if (read_h) {
+      curr->pi->handles[fds[0]] = NULL;
+      kfs_destroy_handle(read_h);
+   }
+
+   if (write_h) {
+      curr->pi->handles[fds[1]] = NULL;
+      kfs_destroy_handle(write_h);
+   }
+
+   if (p) {
+      destroy_pipe(p);
+   }
+
+   goto end;
+
+fault:
+   ret = -EFAULT;
+   goto err_end;
+
+no_mem:
+   ret = -ENOMEM;
+   goto err_end;
+
+no_fds:
+   ret = -EMFILE;
+   goto err_end;
 }

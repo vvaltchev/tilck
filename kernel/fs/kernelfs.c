@@ -26,6 +26,8 @@ kernelfs_close(fs_handle h)
 
    if (release_obj(kh->kobj) == 0)
       kh->kobj->destory(kh->kobj);
+
+   kfree2(h, sizeof(struct kernel_fs_handle));
 }
 
 int
@@ -69,7 +71,18 @@ kfs_create_new_handle(void)
       return NULL;
 
    h->fs = kernelfs;
+   retain_obj(kernelfs);
    return h;
+}
+
+void
+kfs_destroy_handle(struct kernel_fs_handle *h)
+{
+   if (h->kobj)
+      release_obj(h->kobj);
+
+   kfree2(h, sizeof(struct kernel_fs_handle));
+   release_obj(kernelfs);
 }
 
 static const struct fs_ops static_fsops_kernelfs =
@@ -100,6 +113,7 @@ static struct fs *create_kernelfs(void)
    if (!(fs = kzmalloc(sizeof(struct fs))))
       return NULL;
 
+   fs->ref_count = 1;
    fs->fs_type_name = "kernelfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;

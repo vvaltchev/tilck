@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "devshell.h"
 
@@ -35,6 +37,7 @@ int cmd_pipe1(int argc, char **argv)
 {
    char buf[64];
    int rfd, wfd;
+   int wstatus;
    int rc;
    pid_t childpid;
 
@@ -74,5 +77,13 @@ int cmd_pipe1(int argc, char **argv)
    }
 
    printf("[parent] Done.\n");
+   rc = waitpid(childpid, &wstatus, 0);
+
+   if (rc < 0) {
+      printf("[parent] waitpid() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("[parent] Child done.\n");
    return 0;
 }

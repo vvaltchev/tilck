@@ -190,14 +190,13 @@ struct fs {
 
 struct file_ops {
 
-   /* mandatory */
-   func_read read;
-
-   /* optional funcs */
+   /* main funcs, all optional */
+   func_read read;        /* if NULL -> -EBADF  */
+   func_write write;      /* if NULL -> -EBADF  */
    func_ioctl ioctl;      /* if NULL -> -ENOTTY */
    func_fcntl fcntl;      /* if NULL -> -EINVAL */
-   func_write write;      /* if NULL -> -EBADF  */
    func_seek seek;        /* if NULL -> -ESPIPE */
+
    func_mmap mmap;
    func_munmap munmap;
    func_handle_fault handle_fault;

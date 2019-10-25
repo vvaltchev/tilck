@@ -6,5 +6,6 @@
 struct pipe;
 
 struct pipe *create_pipe(void);
+void destroy_pipe(struct pipe *p);
 fs_handle pipe_create_read_handle(struct pipe *p);
 fs_handle pipe_create_write_handle(struct pipe *p);
