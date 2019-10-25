@@ -56,6 +56,14 @@ void vfs_close(fs_handle h)
    vfs_close2(get_curr_task()->pi, h);
 }
 
+/*
+ * Note: because of the way file handles are allocated on Tilck, dup() can
+ * fail with -ENOMEM, while on POSIX systems that is not allowed.
+ *
+ * TODO: fix the file-handles allocation mechanism in order to make impossible
+ * dup() failing with -ENOMEM, by substantially pre-allocating the memory for
+ * the file handle objects.
+ */
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    ASSERT(h != NULL);
