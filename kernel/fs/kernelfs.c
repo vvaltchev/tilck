@@ -32,9 +32,6 @@ kernelfs_close(fs_handle h)
 {
    struct kfs_handle *kh = h;
 
-   // printk("[kernelfs] Close handle on kobj at %p [rc: %d]\n", kh->kobj,
-   //        get_ref_count(kh->kobj));
-
    if (kh->kobj->on_handle_close)
       kh->kobj->on_handle_close(kh);
 
@@ -73,6 +70,9 @@ kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
    retain_obj(n->kobj);
    *dup_h = n;
 
+   if (n->kobj->on_handle_dup)
+      n->kobj->on_handle_dup(n);
+
    return 0;
 }
 
@@ -93,8 +93,6 @@ kfs_create_new_handle(const struct file_ops *fops,
       .fl_flags = fl_flags,
       .fd_flags = 0
    };
-
-   // printk("Create handle for kobj at %p\n", kobj);
 
    /* Retain the object, as, in general, each file-handle retains the inode */
    retain_obj(h->kobj);

@@ -6,6 +6,7 @@
 #define KOBJ_BASE_FIELDS                    \
    REF_COUNTED_OBJECT;                      \
    void (*on_handle_close)(fs_handle h);    \
+   void (*on_handle_dup)(fs_handle h);      \
    void (*destory_obj)(struct kobj_base *);
 
 struct kobj_base {
