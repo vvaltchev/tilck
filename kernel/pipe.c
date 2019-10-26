@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/atomics.h>
 
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
@@ -60,7 +61,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 
    kmutex_lock(&p->mutex);
    {
-      if (p->read_handles == 0) {
+      if (atomic_load_explicit(&p->read_handles, mo_relaxed) == 0) {
 
          /* Broken pipe */
 
@@ -118,11 +119,18 @@ static void pipe_on_handle_close(fs_handle h)
    struct pipe *p = (void *)kh->kobj;
 
    if (kh->fl_flags & O_WRONLY) {
-      p->write_handles--;
-      ASSERT(p->write_handles >= 0);
+
+      DEBUG_ONLY_UNSAFE(int old =)
+         atomic_fetch_sub_explicit(&p->write_handles, 1, mo_relaxed);
+
+      ASSERT(old > 0);
+
    } else {
-      p->read_handles--;
-      ASSERT(p->read_handles >= 0);
+
+      DEBUG_ONLY_UNSAFE(int old =)
+         atomic_fetch_sub_explicit(&p->read_handles, 1, mo_relaxed);
+
+      ASSERT(old > 0);
    }
 }
 
@@ -132,9 +140,9 @@ static void pipe_on_handle_dup(fs_handle h)
    struct pipe *p = (void *)kh->kobj;
 
    if (kh->fl_flags & O_WRONLY) {
-      p->write_handles++;
+      atomic_fetch_add_explicit(&p->write_handles, 1, mo_relaxed);
    } else {
-      p->read_handles++;
+      atomic_fetch_add_explicit(&p->read_handles, 1, mo_relaxed);
    }
 }
 
@@ -166,7 +174,7 @@ fs_handle pipe_create_read_handle(struct pipe *p)
    res = kfs_create_new_handle(&static_ops_pipe_read_end, (void *)p, O_RDONLY);
 
    if (res != NULL)
-      p->read_handles++;
+      atomic_fetch_add_explicit(&p->read_handles, 1, mo_relaxed);
 
    return res;
 }
@@ -178,7 +186,7 @@ fs_handle pipe_create_write_handle(struct pipe *p)
    res = kfs_create_new_handle(&static_ops_pipe_write_end, (void*)p, O_WRONLY);
 
    if (res != NULL)
-      p->write_handles++;
+      atomic_fetch_add_explicit(&p->write_handles, 1, mo_relaxed);
 
    return res;
 }
