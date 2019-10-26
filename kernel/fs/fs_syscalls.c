@@ -834,13 +834,16 @@ int sys_pipe(int u_pipefd[2])
 int sys_pipe2(int u_pipefd[2], int flags)
 {
    struct task *curr = get_curr_task();
-   fs_handle read_h = NULL;
-   fs_handle write_h = NULL;
+   struct fs_handle_base *read_h = NULL;
+   struct fs_handle_base *write_h = NULL;
    struct pipe *p = NULL;
    int fds[2];
    int ret = 0;
 
-   if (flags != 0)
+   if (flags & O_DIRECT)
+      return -EINVAL;
+
+   if (flags & O_NONBLOCK)
       return -EINVAL;
 
    kmutex_lock(&curr->pi->fslock);
@@ -889,6 +892,11 @@ int sys_pipe2(int u_pipefd[2], int flags)
    if (copy_to_user(u_pipefd, fds, sizeof(fds)))
       goto fault;
 
+   if (flags & O_CLOEXEC) {
+      read_h->fd_flags |= FD_CLOEXEC;
+      write_h->fd_flags |= FD_CLOEXEC;
+   }
+
 end:
    kmutex_unlock(&curr->pi->fslock);
    return ret;
@@ -897,12 +905,12 @@ err_end:
 
    if (read_h) {
       curr->pi->handles[fds[0]] = NULL;
-      kfs_destroy_handle(read_h);
+      kfs_destroy_handle((void *)read_h);
    }
 
    if (write_h) {
       curr->pi->handles[fds[1]] = NULL;
-      kfs_destroy_handle(write_h);
+      kfs_destroy_handle((void *)write_h);
    }
 
    if (p) {
