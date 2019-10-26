@@ -150,7 +150,7 @@ void init_task_lists(struct task *ti)
 
 void init_process_lists(struct process *pi)
 {
-   list_init(&pi->children_list);
+   list_init(&pi->children);
    list_init(&pi->mappings);
    list_node_init(&pi->siblings_node);
 
@@ -201,7 +201,7 @@ struct task *allocate_new_process(struct task *parent, int pid)
 
    init_task_lists(ti);
    init_process_lists(pi);
-   list_add_tail(&parent->pi->children_list, &pi->siblings_node);
+   list_add_tail(&parent->pi->children, &pi->siblings_node);
 
    pi->proc_tty = parent->pi->proc_tty;
    return ti;
@@ -483,7 +483,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
       disable_preemption();
 
-      list_for_each_ro(pos, &curr->pi->children_list, siblings_node) {
+      list_for_each_ro(pos, &curr->pi->children, siblings_node) {
 
          struct task *ti = get_process_task(pos);
          child_count++;
@@ -704,10 +704,10 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
       struct process *pos, *temp;
       struct process *child_reaper = get_child_reaper(pi);
 
-      list_for_each(pos, temp, &pi->children_list, siblings_node) {
+      list_for_each(pos, temp, &pi->children, siblings_node) {
 
          list_remove(&pos->siblings_node);
-         list_add_tail(&child_reaper->children_list, &pos->siblings_node);
+         list_add_tail(&child_reaper->children, &pos->siblings_node);
          pos->parent_pid = child_reaper->pid;
       }
 
