@@ -148,7 +148,7 @@ typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
  * the overall throughput of the system (fine-grain per-directory locking is
  * pretty expensive).
  */
-struct fs_ops{
+struct fs_ops {
 
    func_get_entry get_entry;
    func_get_inode get_inode;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#define PIPE_BUF_SIZE   1024
+#define PIPE_BUF_SIZE   4096
 
 struct pipe;
 

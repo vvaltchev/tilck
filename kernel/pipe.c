@@ -86,7 +86,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
          goto again;
       }
 
-      kcond_signal_one(&p->cond);
+      kcond_signal_all(&p->cond);
 
    end:;
    }
