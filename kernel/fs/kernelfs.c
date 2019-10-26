@@ -16,18 +16,18 @@ static void no_lock(struct fs *fs) { }
 static vfs_inode_ptr_t
 kernelfs_get_inode(fs_handle h)
 {
-   return ((struct kernel_fs_handle *)h)->kobj;
+   return ((struct kfs_handle *)h)->kobj;
 }
 
 static void
 kernelfs_close(fs_handle h)
 {
-   struct kernel_fs_handle *kh = h;
+   struct kfs_handle *kh = h;
 
    if (release_obj(kh->kobj) == 0)
       kh->kobj->destory(kh->kobj);
 
-   kfree2(h, sizeof(struct kernel_fs_handle));
+   kfree2(h, sizeof(struct kfs_handle));
 }
 
 int
@@ -50,24 +50,24 @@ static int kernelfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 static int
 kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
-   struct kernel_fs_handle *n;
+   struct kfs_handle *n;
 
-   if (!(n = (void *)kmalloc(sizeof(struct kernel_fs_handle))))
+   if (!(n = (void *)kmalloc(sizeof(struct kfs_handle))))
       return -ENOMEM;
 
-   memcpy(n, fsh, sizeof(struct kernel_fs_handle));
+   memcpy(n, fsh, sizeof(struct kfs_handle));
    retain_obj(n->kobj);
    *dup_h = n;
 
    return 0;
 }
 
-struct kernel_fs_handle *
+struct kfs_handle *
 kfs_create_new_handle(void)
 {
-   struct kernel_fs_handle *h;
+   struct kfs_handle *h;
 
-   if (!(h = (void *)kzmalloc(sizeof(struct kernel_fs_handle))))
+   if (!(h = (void *)kzmalloc(sizeof(struct kfs_handle))))
       return NULL;
 
    h->fs = kernelfs;
@@ -76,12 +76,12 @@ kfs_create_new_handle(void)
 }
 
 void
-kfs_destroy_handle(struct kernel_fs_handle *h)
+kfs_destroy_handle(struct kfs_handle *h)
 {
    if (h->kobj)
       release_obj(h->kobj);
 
-   kfree2(h, sizeof(struct kernel_fs_handle));
+   kfree2(h, sizeof(struct kfs_handle));
    release_obj(kernelfs);
 }
 

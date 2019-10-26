@@ -12,12 +12,12 @@ struct kobj_base {
    KOBJ_BASE_FIELDS
 };
 
-struct kernel_fs_handle {
+struct kfs_handle {
 
    FS_HANDLE_BASE_FIELDS
    struct kobj_base *kobj;
 };
 
 void init_kernelfs(void);
-struct kernel_fs_handle *kfs_create_new_handle(void);
-void kfs_destroy_handle(struct kernel_fs_handle *h);
+struct kfs_handle *kfs_create_new_handle(void);
+void kfs_destroy_handle(struct kfs_handle *h);

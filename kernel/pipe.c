@@ -22,7 +22,7 @@ struct pipe {
 
 static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 {
-   struct kernel_fs_handle *kh = h;
+   struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
    size_t rc = 0;
 
@@ -50,7 +50,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 
 static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 {
-   struct kernel_fs_handle *kh = h;
+   struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
    size_t rc = 0;
 
@@ -116,7 +116,7 @@ struct pipe *create_pipe(void)
 
 fs_handle pipe_create_read_handle(struct pipe *p)
 {
-   struct kernel_fs_handle *h;
+   struct kfs_handle *h;
 
    if (!(h = kfs_create_new_handle()))
       return NULL;
@@ -130,7 +130,7 @@ fs_handle pipe_create_read_handle(struct pipe *p)
 
 fs_handle pipe_create_write_handle(struct pipe *p)
 {
-   struct kernel_fs_handle *h;
+   struct kfs_handle *h;
 
    if (!(h = kfs_create_new_handle()))
       return NULL;
