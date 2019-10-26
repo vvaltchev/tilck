@@ -19,8 +19,8 @@ struct pipe {
    struct kmutex mutex;
    struct kcond cond;
 
-   int read_handles;
-   int write_handles;
+   ATOMIC(int) read_handles;
+   ATOMIC(int) write_handles;
 };
 
 static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
@@ -158,11 +158,8 @@ fs_handle pipe_create_read_handle(struct pipe *p)
 
    res = kfs_create_new_handle(&static_ops_pipe_read_end, (void *)p, O_RDONLY);
 
-   if (res != NULL) {
-      kmutex_lock(&p->mutex);
+   if (res != NULL)
       p->read_handles++;
-      kmutex_unlock(&p->mutex);
-   }
 
    return res;
 }
@@ -173,11 +170,8 @@ fs_handle pipe_create_write_handle(struct pipe *p)
 
    res = kfs_create_new_handle(&static_ops_pipe_write_end, (void*)p, O_WRONLY);
 
-   if (res != NULL) {
-      kmutex_lock(&p->mutex);
+   if (res != NULL)
       p->write_handles++;
-      kmutex_unlock(&p->mutex);
-   }
 
    return res;
 }
