@@ -87,3 +87,7 @@ struct k_rusage {
 #ifndef O_TMPFILE
    #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
 #endif
+
+#ifndef O_DIRECT
+   #define O_DIRECT __O_DIRECT
+#endif
