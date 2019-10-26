@@ -34,6 +34,12 @@ int get_curr_task_tid(void)
    return c ? c->tid : 0;
 }
 
+int get_curr_pid(void)
+{
+   struct task *c = get_curr_task();
+   return c ? c->pi->pid : 0;
+}
+
 struct create_pid_visit_ctx {
 
    int lowest_available;

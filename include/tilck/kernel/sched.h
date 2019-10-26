@@ -110,6 +110,7 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 }
 
 int get_curr_task_tid(void);
+int get_curr_pid(void);
 void schedule(int curr_int);
 void schedule_outside_interrupt_context(void);
 
