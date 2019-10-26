@@ -510,6 +510,10 @@ int sys_access(const char *pathname, int mode)
    return 0;
 }
 
+/*
+ * NOTE: on Tilck, this syscall _can_ return -ENOMEM, while Linux would return
+ * -EBADF or -EMFILE in the same case. See the comment below.
+ */
 int sys_dup2(int oldfd, int newfd)
 {
    int rc;
@@ -546,8 +550,27 @@ int sys_dup2(int oldfd, int newfd)
       new_h = NULL;
    }
 
-   if ((rc = vfs_dup(old_h, &new_h)))
+   if ((rc = vfs_dup(old_h, &new_h))) {
+
+      /*
+       * if (rc == -ENOMEM)
+       *    rc = -EBADF;
+       *
+       * [BE_NICE] Creating a new file handle means allocating memory, no matter
+       * if that happens every time like in Tilck or it's deferred using a sort
+       * of dynamic array like the Linux kernel does. A memory allocation can
+       * always fail, even when that's highly unlikely. In such cases, the
+       * kernel _must_ return -ENOMEM.
+       *
+       * Unfortunately, according to the POSIX standard dup() and dup2() cannot
+       * fail with -ENOMEM. Just, it's not part of the POSIX interface and it's
+       * not clear to me why. In the Linux kernel, in the out-of-memory case,
+       * dup() returns -EMFILE while dup2() returns -EBADF.
+       *
+       * Tilck tries to be more honest and returns -ENOMEM.
+       */
       goto out;
+   }
 
    curr->pi->handles[newfd] = new_h;
    rc = newfd;
@@ -563,12 +586,12 @@ int sys_dup(int oldfd)
    struct process *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
+   {
+      free_fd = get_free_handle_num(pi);
 
-   free_fd = get_free_handle_num(pi);
-
-   if (is_fd_in_valid_range(free_fd))
-      rc = sys_dup2(oldfd, free_fd);
-
+      if (is_fd_in_valid_range(free_fd))
+         rc = sys_dup2(oldfd, free_fd);
+   }
    kmutex_unlock(&pi->fslock);
    return rc;
 }
@@ -822,8 +845,30 @@ int sys_pipe2(int u_pipefd[2], int flags)
 
    kmutex_lock(&curr->pi->fslock);
 
-   if (!(p = create_pipe()))
+   if (!(p = create_pipe())) {
+
+      /*
+       * [BE_NICE] According to the POSIX standard, pipe() cannot fail with
+       * -ENOMEM. However, it can fail with -ENFILE or -EMFILE, both of which
+       * are about numeric limits, system-wide or per-process, it doesn't
+       * matter. Also -ENFILE might mean, according to POSIX, that:
+       *
+       * << The user hard limit on memory that can be allocated for pipes has
+       *    been reached and the caller is not privileged. >>
+       *
+       * That implies that there _must be_ such a hard limit and, because we
+       * cannot fail with -ENOMEM, such memory for pipes must be also allocated
+       * in advance, which is very bad practically.
+       *
+       * The situation is similar to the case of dup() and dup2() [see the
+       * comment in sys_dup2()] and what the Linux kernel does in case of real
+       * out-of-memory it's simply lying by failing with -ENFILE here.
+       *
+       * Tilck tries to be more honest even at the price of breaking a little
+       * the POSIX standard, by returning -ENOMEM here.
+       */
       goto no_mem;
+   }
 
    if ((fds[0] = get_free_handle_num(curr->pi)) < 0)
       goto no_fds;

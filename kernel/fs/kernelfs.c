@@ -9,6 +9,14 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/sys_types.h>
 
+/*
+ * KernelFS is a special, unmounted, file-system designed for special kernel
+ * objects like pipes. It's existence cannot be avoided since all handles must
+ * have a valid `fs` pointer.
+ *
+ * Currently, only pipes use it.
+ */
+
 static struct fs *kernelfs;
 
 static void no_lock(struct fs *fs) { }
