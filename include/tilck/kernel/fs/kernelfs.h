@@ -5,7 +5,8 @@
 
 #define KOBJ_BASE_FIELDS                    \
    REF_COUNTED_OBJECT;                      \
-   void (*destory)(struct kobj_base *);
+   void (*on_handle_close)(fs_handle h);    \
+   void (*destory_obj)(struct kobj_base *);
 
 struct kobj_base {
 
@@ -19,5 +20,8 @@ struct kfs_handle {
 };
 
 void init_kernelfs(void);
-struct kfs_handle *kfs_create_new_handle(void);
 void kfs_destroy_handle(struct kfs_handle *h);
+struct kfs_handle *
+kfs_create_new_handle(const struct file_ops *fops,
+                      struct kobj_base *kobj,
+                      int fl_flags);

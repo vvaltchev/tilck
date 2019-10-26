@@ -32,8 +32,14 @@ kernelfs_close(fs_handle h)
 {
    struct kfs_handle *kh = h;
 
+   // printk("[kernelfs] Close handle on kobj at %p [rc: %d]\n", kh->kobj,
+   //        get_ref_count(kh->kobj));
+
+   if (kh->kobj->on_handle_close)
+      kh->kobj->on_handle_close(kh);
+
    if (release_obj(kh->kobj) == 0)
-      kh->kobj->destory(kh->kobj);
+      kh->kobj->destory_obj(kh->kobj);
 
    kfree2(h, sizeof(struct kfs_handle));
 }
@@ -71,15 +77,34 @@ kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
 }
 
 struct kfs_handle *
-kfs_create_new_handle(void)
+kfs_create_new_handle(const struct file_ops *fops,
+                      struct kobj_base *kobj,
+                      int fl_flags)
 {
    struct kfs_handle *h;
 
    if (!(h = (void *)kzmalloc(sizeof(struct kfs_handle))))
       return NULL;
 
-   h->fs = kernelfs;
-   retain_obj(kernelfs);
+   *h = (struct kfs_handle) {
+      .fs = kernelfs,
+      .fops = fops,
+      .kobj = kobj,
+      .fl_flags = fl_flags,
+      .fd_flags = 0
+   };
+
+   // printk("Create handle for kobj at %p\n", kobj);
+
+   /* Retain the object, as, in general, each file-handle retains the inode */
+   retain_obj(h->kobj);
+
+   /*
+    * Usually, VFS's open() retains the FS, but in this case, there is no open,
+    * because we're creating and "opening" the "file" at the same time.
+    * Therefore the retain on the FS has to be done here.
+    */
+   retain_obj(h->fs);
    return h;
 }
 

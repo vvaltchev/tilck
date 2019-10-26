@@ -18,6 +18,9 @@ struct pipe {
    struct ringbuf rb;
    struct kmutex mutex;
    struct kcond cond;
+
+   int read_handles;
+   int write_handles;
 };
 
 static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
@@ -52,17 +55,33 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   size_t rc = 0;
+   ssize_t rc = 0;
 
    kmutex_lock(&p->mutex);
    {
+      if (p->read_handles == 0) {
+
+         /*
+          * Broken pipe.
+          *
+          * NOTE: in theory, we should send SIGPIPE to the current process and
+          * return -EPIPE only if the signal is ignored, but since Tilck does
+          * not support signal delivery yet, maybe it's better for now to return
+          * always -EPIPE?
+          *
+          * TODO: think about the broken pipe behavior.
+          */
+         rc = -EPIPE;
+         goto end;
+      }
+
    again:
 
       /*
        * NOTE: this is a proof-of-concept implementation, writing byte by byte.
        * TODO: implement pipe_write() in a more efficient way.
        */
-      while (rc < size && ringbuf_write_elem1(&p->rb, (u8) buf[rc]))
+      while ((size_t)rc < size && ringbuf_write_elem1(&p->rb, (u8) buf[rc]))
          rc++;
 
       if (rc == 0) {
@@ -71,9 +90,11 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
       }
 
       kcond_signal_one(&p->cond);
+
+   end:;
    }
    kmutex_unlock(&p->mutex);
-   return (ssize_t)rc;
+   return rc;
 }
 
 static const struct file_ops static_ops_pipe_read_end =
@@ -88,11 +109,25 @@ static const struct file_ops static_ops_pipe_write_end =
 
 void destroy_pipe(struct pipe *p)
 {
+   // printk("Destroy pipe at %p\n", p);
+
    kcond_destory(&p->cond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
    kfree2(p->buf, PIPE_BUF_SIZE);
    kfree2(p, sizeof(struct pipe));
+}
+
+static void on_pipe_handle_close(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+
+   if (kh->fl_flags & O_RDONLY)
+      p->read_handles--;
+
+   if (kh->fl_flags & O_WRONLY)
+      p->write_handles--;
 }
 
 struct pipe *create_pipe(void)
@@ -107,7 +142,10 @@ struct pipe *create_pipe(void)
       return NULL;
    }
 
-   p->destory = (void *)&destroy_pipe;
+   // printk("Create pipe at %p\n", p);
+
+   p->on_handle_close = &on_pipe_handle_close;
+   p->destory_obj = (void *)&destroy_pipe;
    ringbuf_init(&p->rb, PIPE_BUF_SIZE, 1, p->buf);
    kmutex_init(&p->mutex, 0);
    kcond_init(&p->cond);
@@ -116,28 +154,30 @@ struct pipe *create_pipe(void)
 
 fs_handle pipe_create_read_handle(struct pipe *p)
 {
-   struct kfs_handle *h;
+   fs_handle res = NULL;
 
-   if (!(h = kfs_create_new_handle()))
-      return NULL;
+   res = kfs_create_new_handle(&static_ops_pipe_read_end, (void *)p, O_RDONLY);
 
-   h->fops = &static_ops_pipe_read_end;
-   h->kobj = (void *)p;
-   h->fl_flags = O_RDONLY;
-   retain_obj(p);
-   return h;
+   if (res != NULL) {
+      kmutex_lock(&p->mutex);
+      p->read_handles++;
+      kmutex_unlock(&p->mutex);
+   }
+
+   return res;
 }
 
 fs_handle pipe_create_write_handle(struct pipe *p)
 {
-   struct kfs_handle *h;
+   fs_handle res = NULL;
 
-   if (!(h = kfs_create_new_handle()))
-      return NULL;
+   res = kfs_create_new_handle(&static_ops_pipe_write_end, (void*)p, O_WRONLY);
 
-   h->fops = &static_ops_pipe_write_end;
-   h->kobj = (void *)p;
-   h->fl_flags = O_WRONLY;
-   retain_obj(p);
-   return h;
+   if (res != NULL) {
+      kmutex_lock(&p->mutex);
+      p->write_handles++;
+      kmutex_unlock(&p->mutex);
+   }
+
+   return res;
 }
