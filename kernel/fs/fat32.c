@@ -422,46 +422,6 @@ STATIC void fat_shared_unlock(struct fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_file_exlock(fs_handle h)
-{
-   struct fs *fs = get_fs(h);
-
-   if (!(fs->flags & VFS_FS_RW))
-      return; /* read-only: no lock is needed */
-
-   NOT_IMPLEMENTED();
-}
-
-STATIC void fat_file_exunlock(fs_handle h)
-{
-   struct fs *fs = get_fs(h);
-
-   if (!(fs->flags & VFS_FS_RW))
-      return; /* read-only: no lock is needed */
-
-   NOT_IMPLEMENTED();
-}
-
-STATIC void fat_file_shlock(fs_handle h)
-{
-   struct fs *fs = get_fs(h);
-
-   if (!(fs->flags & VFS_FS_RW))
-      return; /* read-only: no lock is needed */
-
-   NOT_IMPLEMENTED();
-}
-
-STATIC void fat_file_shunlock(fs_handle h)
-{
-   struct fs *fs = get_fs(h);
-
-   if (!(fs->flags & VFS_FS_RW))
-      return; /* read-only: no lock is needed */
-
-   NOT_IMPLEMENTED();
-}
-
 STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
 {
    struct fs *fs = get_fs(h);
@@ -489,10 +449,11 @@ static const struct file_ops static_ops_fat =
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
-   .exlock = fat_file_exlock,
-   .exunlock = fat_file_exunlock,
-   .shlock = fat_file_shlock,
-   .shunlock = fat_file_shunlock,
+
+   .exlock = vfs_file_nolock,
+   .exunlock = vfs_file_nolock,
+   .shlock = vfs_file_nolock,
+   .shunlock = vfs_file_nolock,
 };
 
 STATIC int
