@@ -9,6 +9,7 @@
 #include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/signal.h>
 
 struct pipe {
 
@@ -61,16 +62,11 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    {
       if (p->read_handles == 0) {
 
-         /*
-          * Broken pipe.
-          *
-          * NOTE: in theory, we should send SIGPIPE to the current process and
-          * return -EPIPE only if the signal is ignored, but since Tilck does
-          * not support signal delivery yet, maybe it's better for now to return
-          * always -EPIPE?
-          *
-          * TODO: think about the broken pipe behavior.
-          */
+         /* Broken pipe */
+
+         int pid = get_curr_pid();
+         send_signal(pid, SIGPIPE, true);
+
          rc = -EPIPE;
          goto end;
       }
@@ -109,8 +105,6 @@ static const struct file_ops static_ops_pipe_write_end =
 
 void destroy_pipe(struct pipe *p)
 {
-   // printk("Destroy pipe at %p\n", p);
-
    kcond_destory(&p->cond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
@@ -118,16 +112,30 @@ void destroy_pipe(struct pipe *p)
    kfree2(p, sizeof(struct pipe));
 }
 
-static void on_pipe_handle_close(fs_handle h)
+static void pipe_on_handle_close(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
 
-   if (kh->fl_flags & O_RDONLY)
-      p->read_handles--;
-
-   if (kh->fl_flags & O_WRONLY)
+   if (kh->fl_flags & O_WRONLY) {
       p->write_handles--;
+      ASSERT(p->write_handles >= 0);
+   } else {
+      p->read_handles--;
+      ASSERT(p->read_handles >= 0);
+   }
+}
+
+static void pipe_on_handle_dup(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+
+   if (kh->fl_flags & O_WRONLY) {
+      p->write_handles++;
+   } else {
+      p->read_handles++;
+   }
 }
 
 struct pipe *create_pipe(void)
@@ -142,9 +150,8 @@ struct pipe *create_pipe(void)
       return NULL;
    }
 
-   // printk("Create pipe at %p\n", p);
-
-   p->on_handle_close = &on_pipe_handle_close;
+   p->on_handle_close = &pipe_on_handle_close;
+   p->on_handle_dup = &pipe_on_handle_dup;
    p->destory_obj = (void *)&destroy_pipe;
    ringbuf_init(&p->rb, PIPE_BUF_SIZE, 1, p->buf);
    kmutex_init(&p->mutex, 0);
