@@ -227,12 +227,27 @@ int sys_ioctl(int fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
+static bool iov_len_overflow(const struct iovec *iov, int iovcnt)
+{
+   ssize_t tot_len = 0;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      tot_len += iov[i].iov_len;
+
+      if (tot_len < 0)
+         return true; /* overflow detected */
+   }
+
+   return false;
+}
+
 int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    struct task *curr = get_curr_task();
+   struct iovec *iov = (void *)curr->args_copybuf;
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -240,26 +255,24 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf,
-                       u_iov,
-                       sizeof(struct iovec) * iovcnt);
-
-   if (rc != 0)
+   if (copy_from_user(iov, u_iov, sizeof(struct iovec) * iovcnt))
       return -EFAULT;
+
+   if (iov_len_overflow(iov, u_iovcnt))
+      return -EINVAL;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
    return (int)vfs_writev(handle, iov, u_iovcnt);
 }
 
 int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    struct task *curr = get_curr_task();
+   struct iovec *iov = (void *)curr->args_copybuf;
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -267,17 +280,15 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf,
-                       u_iov,
-                       sizeof(struct iovec) * iovcnt);
-
-   if (rc != 0)
+   if (copy_from_user(iov, u_iov, sizeof(struct iovec) * iovcnt))
       return -EFAULT;
+
+   if (iov_len_overflow(iov, u_iovcnt))
+      return -EINVAL;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
    return (int)vfs_readv(handle, iov, u_iovcnt);
 }
 
