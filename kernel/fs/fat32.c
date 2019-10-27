@@ -449,11 +449,6 @@ static const struct file_ops static_ops_fat =
    .write = fat_write,
    .ioctl = fat_ioctl,
    .fcntl = fat_fcntl,
-
-   .exlock = vfs_file_nolock,
-   .exunlock = vfs_file_nolock,
-   .shlock = vfs_file_nolock,
-   .shunlock = vfs_file_nolock,
 };
 
 STATIC int

@@ -61,12 +61,6 @@ ttyaux_create_device_file(int minor,
       .fcntl = ttyaux_fcntl,
       .get_rready_cond = ttyaux_get_rready_cond,
       .read_ready = ttyaux_read_ready,
-
-      /* the tty device-file requires NO locking */
-      .exlock = vfs_file_nolock,
-      .exunlock = vfs_file_nolock,
-      .shlock = vfs_file_nolock,
-      .shunlock = vfs_file_nolock,
    };
 
    *t = VFS_CHAR_DEV;

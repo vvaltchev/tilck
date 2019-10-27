@@ -229,10 +229,6 @@ static const struct file_ops static_ops_devfs =
    .fcntl = devfs_dir_fcntl,
    .mmap = NULL,
    .munmap = NULL,
-   .exlock = vfs_file_nolock,
-   .exunlock = vfs_file_nolock,
-   .shlock = vfs_file_nolock,
-   .shunlock = vfs_file_nolock,
 };
 
 static int devfs_open_root_dir(struct fs *fs, fs_handle *out)

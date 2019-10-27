@@ -250,8 +250,6 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   vfs_exlock(handle);
-
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
    for (u32 i = 0; i < iovcnt; i++) {
@@ -272,7 +270,6 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
       }
    }
 
-   vfs_exunlock(handle);
    return ret;
 }
 
@@ -299,8 +296,6 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   vfs_shlock(handle);
-
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
 
    for (u32 i = 0; i < iovcnt; i++) {
@@ -318,7 +313,6 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
          break; // Not enough data to fill all the user buffers.
    }
 
-   vfs_shunlock(handle);
    return ret;
 }
 

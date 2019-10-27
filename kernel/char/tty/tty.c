@@ -104,12 +104,6 @@ tty_create_device_file(int minor,
        * IMPORTANT: remember to add any NEW ops func also to ttyaux's
        * ttyaux_create_device_file() function, in ttyaux.c.
        */
-
-      /* the tty device-file requires NO locking */
-      .exlock = vfs_file_nolock,
-      .exunlock = vfs_file_nolock,
-      .shlock = vfs_file_nolock,
-      .shunlock = vfs_file_nolock,
    };
 
    *t = VFS_CHAR_DEV;

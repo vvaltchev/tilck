@@ -122,12 +122,8 @@ typedef int            (*func_mmap)         (struct user_mapping *, bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int            (*func_fcntl)        (fs_handle, int, int);
-typedef void           (*func_hlock_t)      (fs_handle);
 typedef bool           (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
-
-/* Used by the devices when want to remove any locking from a file */
-#define vfs_file_nolock           NULL
 
 #define VFS_FS_RO                  (0)  /* struct fs mounted in RO mode */
 #define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
@@ -208,12 +204,6 @@ struct file_ops {
    func_get_rwe_cond get_rready_cond;
    func_get_rwe_cond get_wready_cond;
    func_get_rwe_cond get_except_cond;
-
-   /* optional, per-file locks (use vfs_file_nolock, when appropriate) */
-   func_hlock_t exlock;
-   func_hlock_t exunlock;
-   func_hlock_t shlock;
-   func_hlock_t shunlock;
 };
 
 /*
@@ -314,12 +304,6 @@ vfs_get_root_entry(struct fs *fs, struct fs_path *fs_path)
 {
    vfs_get_entry(fs, NULL, NULL, 0, fs_path);
 }
-
-/* Per-file locks */
-void vfs_exlock(fs_handle h);
-void vfs_exunlock(fs_handle h);
-void vfs_shlock(fs_handle h);
-void vfs_shunlock(fs_handle h);
 
 /* Whole-struct fs locks */
 void vfs_fs_exlock(struct fs *fs);
