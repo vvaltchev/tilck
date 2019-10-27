@@ -10,10 +10,11 @@ static const struct file_ops static_ops_ramfs =
    .mmap = ramfs_mmap,
    .munmap = ramfs_munmap,
    .handle_fault = ramfs_handle_fault,
-   .exlock = ramfs_file_exlock,
-   .exunlock = ramfs_file_exunlock,
-   .shlock = ramfs_file_shlock,
-   .shunlock = ramfs_file_shunlock,
+
+   .exlock = vfs_file_nolock,
+   .exunlock = vfs_file_nolock,
+   .shlock = vfs_file_nolock,
+   .shunlock = vfs_file_nolock,
 };
 
 static int
