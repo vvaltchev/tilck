@@ -40,6 +40,8 @@ bool ringbuf_read_elem(struct ringbuf *rb, void *elem_ptr /* out */);
 bool ringbuf_unwrite_elem(struct ringbuf *rb, void *elem_ptr /* out */);
 
 u32 ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, u32 len);
+u32 ringbuf_read_bytes(struct ringbuf *rb, u8 *buf, u32 len);
+
 
 inline bool ringbuf_write_elem1(struct ringbuf *rb, u8 val)
 {
