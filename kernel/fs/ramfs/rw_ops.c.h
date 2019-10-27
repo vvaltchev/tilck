@@ -386,3 +386,92 @@ static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
    ramfs_file_exunlock(h);
    return ret;
 }
+
+static ssize_t
+ramfs_readv_nolock(struct ramfs_handle *rh, const struct iovec *iov, int iovcnt)
+{
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+      rc = ramfs_read_nolock(rh, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      if (copy_to_user(iov[i].iov_base, curr->io_copybuf, len))
+         return -EFAULT;
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len)
+         break; // Not enough data to fill all the user buffers.
+   }
+
+   return ret;
+}
+
+static ssize_t
+ramfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct ramfs_handle *rh = h;
+   ssize_t ret;
+
+   ramfs_file_shlock(h);
+   {
+      ret = ramfs_readv_nolock(rh, iov, iovcnt);
+   }
+   ramfs_file_shunlock(h);
+   return ret;
+}
+
+static ssize_t
+ramfs_writev_nolock(struct ramfs_handle *h, const struct iovec *iov, int iovcnt)
+{
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+
+      if (copy_from_user(curr->io_copybuf, iov[i].iov_base, len))
+         return -EFAULT;
+
+      rc = ramfs_write_nolock(h, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len)
+         break;
+   }
+
+   return ret;
+}
+
+static ssize_t
+ramfs_writev(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct ramfs_handle *rh = h;
+   ssize_t ret;
+
+   ramfs_file_exlock(h);
+   {
+      ret = ramfs_writev_nolock(rh, iov, iovcnt);
+   }
+   ramfs_file_exunlock(h);
+   return ret;
+}

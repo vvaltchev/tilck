@@ -4,6 +4,8 @@ static const struct file_ops static_ops_ramfs =
 {
    .read = ramfs_read,
    .write = ramfs_write,
+   .readv = ramfs_readv,
+   .writev = ramfs_writev,
    .seek = ramfs_seek,
    .ioctl = ramfs_ioctl,
    .fcntl = ramfs_fcntl,
