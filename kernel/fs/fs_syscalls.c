@@ -232,7 +232,7 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
    struct task *curr = get_curr_task();
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc, ret = 0;
+   int rc;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -251,26 +251,7 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
       return -EBADF;
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
-
-   for (u32 i = 0; i < iovcnt; i++) {
-
-      rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
-
-      if (rc < 0) {
-         ret = rc;
-         break;
-      }
-
-      ret += rc;
-
-      if (rc < (sptr)iov[i].iov_len) {
-         // For some reason (perfectly legit) we couldn't write the whole
-         // user data (i.e. network card's buffers are full).
-         break;
-      }
-   }
-
-   return ret;
+   return (int)vfs_writev(handle, iov, u_iovcnt);
 }
 
 int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
@@ -278,7 +259,7 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
    struct task *curr = get_curr_task();
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc, ret = 0;
+   int rc;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -297,23 +278,7 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
       return -EBADF;
 
    const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
-
-   for (u32 i = 0; i < iovcnt; i++) {
-
-      rc = sys_read(fd, iov[i].iov_base, iov[i].iov_len);
-
-      if (rc < 0) {
-         ret = rc;
-         break;
-      }
-
-      ret += rc;
-
-      if (rc < (sptr)iov[i].iov_len)
-         break; // Not enough data to fill all the user buffers.
-   }
-
-   return ret;
+   return (int)vfs_readv(handle, iov, u_iovcnt);
 }
 
 static int

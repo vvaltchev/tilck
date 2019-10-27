@@ -125,6 +125,15 @@ typedef int            (*func_fcntl)        (fs_handle, int, int);
 typedef bool           (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 
+typedef ssize_t        (*func_readv)        (fs_handle,
+                                             const struct iovec *,
+                                             int);
+
+typedef ssize_t        (*func_writev)       (fs_handle,
+                                             const struct iovec *,
+                                             int);
+
+
 #define VFS_FS_RO                  (0)  /* struct fs mounted in RO mode */
 #define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
 #define VFS_FS_RQ_DE_SKIP     (1 << 1)  /* FS requires vfs dents skip */
@@ -187,14 +196,17 @@ struct fs {
 struct file_ops {
 
    /* main funcs, all optional */
-   func_read read;        /* if NULL -> -EBADF  */
-   func_write write;      /* if NULL -> -EBADF  */
-   func_ioctl ioctl;      /* if NULL -> -ENOTTY */
-   func_fcntl fcntl;      /* if NULL -> -EINVAL */
-   func_seek seek;        /* if NULL -> -ESPIPE */
+   func_read read;                     /* if NULL -> -EBADF  */
+   func_write write;                   /* if NULL -> -EBADF  */
+   func_ioctl ioctl;                   /* if NULL -> -ENOTTY */
+   func_fcntl fcntl;                   /* if NULL -> -EINVAL */
+   func_seek seek;                     /* if NULL -> -ESPIPE */
+   func_mmap mmap;                     /* if NULL -> -ENODEV */
+   func_munmap munmap;                 /* if NULL -> -ENODEV */
 
-   func_mmap mmap;
-   func_munmap munmap;
+   func_readv readv;                   /* if NULL, emulated in non-atomic way */
+   func_writev writev;                 /* if NULL, emulated in non-atomic way */
+
    func_handle_fault handle_fault;
 
    /* optional, r/w/e ready funcs */
@@ -261,6 +273,9 @@ struct kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
+ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
+ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
+
 offt vfs_seek(fs_handle h, s64 off, int whence);
 
 static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)

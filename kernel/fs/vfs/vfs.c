@@ -651,6 +651,101 @@ bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
    return fops->handle_fault(h, va, p, rw);
 }
 
+ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct fs_handle_base *hb = h;
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   if (hb->fops->readv)
+      return hb->fops->readv(h, iov, iovcnt);
+
+   /*
+    * readv() is not implemented in the file system: implement here it in a
+    * generic but non-atomic way. There's nothing more we can do. Also, the
+    * POSIX standard does not require readv() to be atomic:
+    *
+    *    https://pubs.opengroup.org/onlinepubs/9699919799/
+    *
+    * Note: Linux's man page claims that readv/writev must be atomic: that's
+    * possible now because all of the Linux file systems support internally the
+    * scatter/gather I/O. On Tilck, not all the file systems will support it.
+    */
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+
+      rc = vfs_read(h, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      if (copy_to_user(iov[i].iov_base, curr->io_copybuf, len))
+         return -EFAULT;
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len)
+         break; // Not enough data to fill all the user buffers.
+   }
+
+   return ret;
+}
+
+ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct fs_handle_base *hb = h;
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   if (hb->fops->writev)
+      return hb->fops->writev(h, iov, iovcnt);
+
+   /*
+    * writev() is not implemented in the file system: implement here it in a
+    * generic but non-atomic way. There's nothing more we can do. Also, the
+    * POSIX standard does not require writev() to be atomic:
+    *
+    *    https://pubs.opengroup.org/onlinepubs/9699919799/
+    *
+    * Note: Linux's man page claims that readv/writev must be atomic: that's
+    * possible now because all of the Linux file systems support internally the
+    * scatter/gather I/O. On Tilck, not all the file systems will support it.
+    */
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+
+      if (copy_from_user(curr->io_copybuf, iov[i].iov_base, len))
+         return -EFAULT;
+
+      rc = vfs_write(h, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len) {
+         // For some reason (perfectly legit) we couldn't write the whole
+         // user data (i.e. network card's buffers are full).
+         break;
+      }
+   }
+
+   return ret;
+}
+
 u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
