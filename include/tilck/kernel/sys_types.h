@@ -31,7 +31,7 @@
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
 
-typedef u64 tilck_inode_t;
+typedef u64 tilck_ino_t;
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

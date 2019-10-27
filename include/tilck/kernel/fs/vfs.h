@@ -72,7 +72,7 @@ struct vfs_path {
 
 struct vfs_dent64 {
 
-   tilck_inode_t ino;
+   tilck_ino_t ino;
    enum vfs_entry_type type;
    u8 name_len;               /* NODE: includes the final '\0' */
    const char *name;

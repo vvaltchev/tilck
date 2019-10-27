@@ -16,7 +16,7 @@ struct devfs_file {
    u16 dev_minor;
    const char *name;
    const struct file_ops *fops;
-   tilck_inode_t inode;
+   tilck_ino_t inode;
 };
 
 struct devfs_handle {

@@ -80,7 +80,7 @@ struct devfs_dir {
     */
    enum vfs_entry_type type;
    struct list files_list;
-   tilck_inode_t inode;
+   tilck_ino_t inode;
 };
 
 struct devfs_data {
@@ -88,10 +88,10 @@ struct devfs_data {
    struct devfs_dir root_dir;
    struct rwlock_wp rwlock;
    time_t wrt_time;
-   tilck_inode_t next_inode;
+   tilck_ino_t next_inode;
 };
 
-static inline tilck_inode_t devfs_get_next_inode(struct devfs_data *d)
+static inline tilck_ino_t devfs_get_next_inode(struct devfs_data *d)
 {
    return d->next_inode++;
 }

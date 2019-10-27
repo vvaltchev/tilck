@@ -280,10 +280,10 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
    return d;
 }
 
-static inline tilck_inode_t
+static inline tilck_ino_t
 fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
 {
-   return (tilck_inode_t)((sptr)e - (sptr)hdr);
+   return (tilck_ino_t)((sptr)e - (sptr)hdr);
 }
 
 STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
