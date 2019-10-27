@@ -42,6 +42,73 @@ bool ringbuf_write_elem(struct ringbuf *rb, void *elem_ptr)
    return true;
 }
 
+u32 ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, u32 len)
+{
+   u32 actual_len;
+   u32 len2;
+   ASSERT(rb->elem_size == 1);
+
+   if (ringbuf_is_full(rb))
+      return 0;
+
+   /*
+    * Three cases:
+    *
+    * 1) +-----------------------------------------------------------+
+    *              ^                       ^
+    *          write_pos                read_pos
+    *
+    * 2) +-----------------------------------------------------------+
+    *              ^                       ^
+    *          read_pos                write_pos
+    *
+    * 3) +-----------------------------------------------------------+
+    *                          ^
+    *                read_pos == write_pos
+    *
+    * Case 1:
+    *    We can write at most (read_pos - write_pos) bytes and set at the end
+    *    write_pos == read_pos.
+    *
+    * Case 2:
+    *    We can write the data in two chunks.
+    *    First, write (max_elems - write_pos) bytes, moving write_pos to the
+    *    end of the buffer. Second, we can start from the beginning of the buf
+    *    and write `read_pos` bytes, until write_pos == read_pos.
+    *
+    * Case 3:
+    *    Because we checked that the ringbuffer is *not* full, it is just a
+    *    special variant of case 2.
+    *
+    */
+
+   if (rb->write_pos < rb->read_pos) {
+
+      actual_len = MIN(len, rb->read_pos - rb->write_pos);
+      memcpy(rb->buf + rb->write_pos, buf, actual_len);
+      rb->write_pos += actual_len;
+      rb->elems += actual_len;
+      return actual_len;
+   }
+
+   /* Part one */
+   actual_len = MIN(len, rb->max_elems - rb->write_pos);
+   memcpy(rb->buf + rb->write_pos, buf, actual_len);
+   rb->write_pos = (rb->write_pos + actual_len) % rb->max_elems;
+   rb->elems += actual_len;
+
+   if (len <= actual_len)
+      return actual_len;
+
+   ASSERT(rb->write_pos == 0);
+   len2 = MIN(len - actual_len, rb->read_pos);
+   memcpy(rb->buf, buf + actual_len, len2);
+   rb->write_pos += len2;
+   rb->elems += len2;
+
+   return actual_len + len2;
+}
+
 bool ringbuf_read_elem(struct ringbuf *rb, void *elem_ptr /* out */)
 {
    if (ringbuf_is_empty(rb))
