@@ -11,17 +11,17 @@ extern inline bool ringbuf_write_elem1(struct ringbuf *rb, u8 val);
 extern inline bool ringbuf_read_elem1(struct ringbuf *rb, u8 *elem_ptr);
 extern inline bool ringbuf_is_empty(struct ringbuf *rb);
 extern inline bool ringbuf_is_full(struct ringbuf *rb);
-extern inline u32 ringbuf_get_elems(struct ringbuf *rb);
+extern inline size_t ringbuf_get_elems(struct ringbuf *rb);
 
 void
-ringbuf_init(struct ringbuf *rb, u32 max_elems, u32 elem_size, void *buf)
+ringbuf_init(struct ringbuf *rb, size_t max_elems, size_t elem_size, void *buf)
 {
    *rb = (struct ringbuf) {
       .read_pos = 0,
       .write_pos = 0,
       .elems = 0,
-      .max_elems = max_elems,
-      .elem_size = elem_size,
+      .max_elems = (u32) max_elems,
+      .elem_size = (u32) elem_size,
       .buf = buf,
    };
 }
@@ -42,10 +42,10 @@ bool ringbuf_write_elem(struct ringbuf *rb, void *elem_ptr)
    return true;
 }
 
-u32 ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, u32 len)
+size_t ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, size_t len)
 {
-   u32 actual_len;
-   u32 actual_len2;
+   size_t actual_len;
+   size_t actual_len2;
    ASSERT(rb->elem_size == 1);
 
    if (ringbuf_is_full(rb))
@@ -113,10 +113,10 @@ u32 ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, u32 len)
    return actual_len + actual_len2;
 }
 
-u32 ringbuf_read_bytes(struct ringbuf *rb, u8 *buf, u32 len)
+size_t ringbuf_read_bytes(struct ringbuf *rb, u8 *buf, size_t len)
 {
-   u32 actual_len;
-   u32 actual_len2;
+   size_t actual_len;
+   size_t actual_len2;
    ASSERT(rb->elem_size == 1);
 
    if (ringbuf_is_empty(rb))
