@@ -35,14 +35,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    {
    again:
 
-      /*
-       * NOTE: this is a proof-of-concept implementation, reading byte by byte.
-       * TODO: implement pipe_read() in a more efficient way.
-       */
-      while (rc < size && ringbuf_read_elem1(&p->rb, (u8 *)buf + rc))
-         rc++;
-
-      if (rc == 0) {
+      if (!(rc = ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
          kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
@@ -74,14 +67,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 
    again:
 
-      /*
-       * NOTE: this is a proof-of-concept implementation, writing byte by byte.
-       * TODO: implement pipe_write() in a more efficient way.
-       */
-      while ((size_t)rc < size && ringbuf_write_elem1(&p->rb, (u8) buf[rc]))
-         rc++;
-
-      if (rc == 0) {
+      if (!(rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size))) {
          kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
