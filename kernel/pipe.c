@@ -19,7 +19,8 @@ struct pipe {
    char *buf;
    struct ringbuf rb;
    struct kmutex mutex;
-   struct kcond cond;
+   struct kcond rcond;
+   struct kcond wcond;
 
    ATOMIC(int) read_handles;
    ATOMIC(int) write_handles;
@@ -36,11 +37,11 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    again:
 
       if (!(rc = ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
-         kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
+         kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
 
-      kcond_signal_one(&p->cond);
+      kcond_signal_one(&p->rcond);
    }
    kmutex_unlock(&p->mutex);
    return (ssize_t)rc;
@@ -68,11 +69,11 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    again:
 
       if (!(rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size))) {
-         kcond_wait(&p->cond, &p->mutex, KCOND_WAIT_FOREVER);
+         kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
 
-      kcond_signal_all(&p->cond);
+      kcond_signal_one(&p->wcond);
 
    end:;
    }
@@ -80,19 +81,66 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    return rc;
 }
 
+static bool pipe_read_ready(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   bool ret;
+
+   kmutex_lock(&p->mutex);
+   {
+      ret = !ringbuf_is_empty(&p->rb);
+   }
+   kmutex_unlock(&p->mutex);
+   return ret;
+}
+
+static struct kcond *pipe_get_rready_cond(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   return &p->rcond;
+}
+
+static bool pipe_write_ready(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   bool ret;
+
+   kmutex_lock(&p->mutex);
+   {
+      ret = !ringbuf_is_full(&p->rb);
+   }
+   kmutex_unlock(&p->mutex);
+   return ret;
+}
+
+static struct kcond *pipe_get_wready_cond(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   return &p->wcond;
+}
+
 static const struct file_ops static_ops_pipe_read_end =
 {
    .read = pipe_read,
+   .read_ready = pipe_read_ready,
+   .get_rready_cond = pipe_get_rready_cond,
 };
 
 static const struct file_ops static_ops_pipe_write_end =
 {
    .write = pipe_write,
+   .write_ready = pipe_write_ready,
+   .get_wready_cond = pipe_get_wready_cond,
 };
 
 void destroy_pipe(struct pipe *p)
 {
-   kcond_destory(&p->cond);
+   kcond_destory(&p->wcond);
+   kcond_destory(&p->rcond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
    kfree2(p->buf, PIPE_BUF_SIZE);
@@ -149,7 +197,8 @@ struct pipe *create_pipe(void)
    p->destory_obj = (void *)&destroy_pipe;
    ringbuf_init(&p->rb, PIPE_BUF_SIZE, 1, p->buf);
    kmutex_init(&p->mutex, 0);
-   kcond_init(&p->cond);
+   kcond_init(&p->rcond);
+   kcond_init(&p->wcond);
    return p;
 }
 

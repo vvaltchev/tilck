@@ -5,7 +5,7 @@ bool vfs_read_ready(fs_handle h)
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->read_ready)
-      return true;
+      return !!(hb->fl_flags & (O_RDWR | O_RDONLY));
 
    return hb->fops->read_ready(h);
 }
@@ -15,7 +15,7 @@ bool vfs_write_ready(fs_handle h)
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
    if (!hb->fops->write_ready)
-      return true;
+      return !!(hb->fl_flags & (O_RDWR | O_WRONLY));
 
    return hb->fops->write_ready(h);
 }

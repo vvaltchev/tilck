@@ -195,7 +195,7 @@ struct fs {
 
 struct file_ops {
 
-   /* main funcs, all optional */
+   /* Main funcs, all optional */
    func_read read;                     /* if NULL -> -EBADF  */
    func_write write;                   /* if NULL -> -EBADF  */
    func_ioctl ioctl;                   /* if NULL -> -ENOTTY */
@@ -209,13 +209,21 @@ struct file_ops {
 
    func_handle_fault handle_fault;
 
-   /* optional, r/w/e ready funcs */
-   func_rwe_ready read_ready;
-   func_rwe_ready write_ready;
-   func_rwe_ready except_ready;       /* unfetched exceptional condition */
-   func_get_rwe_cond get_rready_cond;
-   func_get_rwe_cond get_wready_cond;
-   func_get_rwe_cond get_except_cond;
+   /*
+    * Optional, r/w/e ready funcs
+    *
+    * NOTE[1]: implementing at least the read and write ones is essential in
+    * order to support select() and poll().
+    *
+    * NOTE[2]: `except` here stands for `unfetched exceptional condition`.
+    */
+   func_rwe_ready read_ready;          /* if NULL, return true */
+   func_rwe_ready write_ready;         /* if NULL, return true */
+   func_rwe_ready except_ready;        /* if NULL, return true */
+
+   func_get_rwe_cond get_rready_cond;  /* if NULL, return NULL */
+   func_get_rwe_cond get_wready_cond;  /* if NULL, return NULL */
+   func_get_rwe_cond get_except_cond;  /* if NULL, return NULL */
 };
 
 /*
