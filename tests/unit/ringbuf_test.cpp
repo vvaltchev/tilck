@@ -195,3 +195,50 @@ TEST(ringbuf, unwrite)
    ASSERT_TRUE(ringbuf_is_empty(&rb));
    ringbuf_destory(&rb);
 }
+
+TEST(ringbuf, read_write_bytes)
+{
+   struct ringbuf rb;
+   char buffer[9] = "--------";
+   char rbuf[9] = {0};
+   u32 rc;
+
+   ringbuf_init(&rb, 8, 1, buffer);
+   ASSERT_TRUE(ringbuf_is_empty(&rb));
+
+   rc = ringbuf_write_bytes(&rb, (u8 *)"12345", 5);
+   ASSERT_EQ(rc, 5U);
+
+   ASSERT_STREQ(buffer, "12345---");
+
+   rc = ringbuf_read_bytes(&rb, (u8 *)rbuf, 3);
+   ASSERT_EQ(rc, 3U);
+   rbuf[rc] = 0;
+
+   ASSERT_STREQ(rbuf, "123");
+
+   rc = ringbuf_write_bytes(&rb, (u8 *)"6789abcdef", 10);
+   ASSERT_EQ(rc, 6U);
+
+   ASSERT_STREQ(buffer, "9ab45678");
+
+   rc = ringbuf_read_bytes(&rb, (u8 *)rbuf, 4);
+   ASSERT_EQ(rc, 4U);
+   rbuf[rc] = 0;
+
+   ASSERT_STREQ(rbuf, "4567");
+
+   rc = ringbuf_write_bytes(&rb, (u8 *)"qwerty", 6);
+   ASSERT_EQ(rc, 4U);
+
+   ASSERT_STREQ(buffer, "9abqwer8");
+
+   rc = ringbuf_read_bytes(&rb, (u8 *)rbuf, 8);
+   ASSERT_EQ(rc, 8U);
+   rbuf[rc] = 0;
+
+   ASSERT_STREQ(rbuf, "89abqwer");
+
+   ASSERT_TRUE(ringbuf_is_empty(&rb));
+   ringbuf_destory(&rb);
+}

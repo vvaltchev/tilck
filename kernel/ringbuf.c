@@ -173,7 +173,7 @@ u32 ringbuf_read_bytes(struct ringbuf *rb, u8 *buf, u32 len)
    /* Part two */
    ASSERT(rb->read_pos == 0);
    actual_len2 = MIN(len - actual_len, rb->write_pos);
-   memcpy(buf, rb->buf, actual_len2);
+   memcpy(buf + actual_len, rb->buf, actual_len2);
    rb->read_pos += actual_len2;
    rb->elems -= actual_len2;
 
