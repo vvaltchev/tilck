@@ -22,6 +22,8 @@ struct pipe {
    struct kcond rcond;
    struct kcond wcond;
 
+   bool read_must_block;
+
    ATOMIC(int) read_handles;
    ATOMIC(int) write_handles;
 };
@@ -32,16 +34,34 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    struct pipe *p = (void *)kh->kobj;
    size_t rc = 0;
 
+   if (!size)
+      return 0;
+
    kmutex_lock(&p->mutex);
    {
    again:
 
       if (!(rc = ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
-         kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
-         goto again;
+
+         if (atomic_load_explicit(&p->write_handles, mo_relaxed) == 0) {
+            /* No more writers, always return 0, no matter what. */
+            goto end;
+         }
+
+         if (p->read_must_block) {
+
+            kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
+            goto again;
+
+         } else {
+
+            p->read_must_block = true;
+            goto end;
+         }
       }
 
       kcond_signal_one(&p->rcond);
+   end:;
    }
    kmutex_unlock(&p->mutex);
    return (ssize_t)rc;
@@ -53,8 +73,13 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    struct pipe *p = (void *)kh->kobj;
    ssize_t rc = 0;
 
+   if (!size)
+      return 0;
+
    kmutex_lock(&p->mutex);
    {
+   again:
+
       if (atomic_load_explicit(&p->read_handles, mo_relaxed) == 0) {
 
          /* Broken pipe */
@@ -66,13 +91,12 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
          goto end;
       }
 
-   again:
-
       if (!(rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size))) {
          kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
 
+      p->read_must_block = false;
       kcond_signal_one(&p->wcond);
 
    end:;
@@ -192,6 +216,7 @@ struct pipe *create_pipe(void)
       return NULL;
    }
 
+   p->read_must_block = true;
    p->on_handle_close = &pipe_on_handle_close;
    p->on_handle_dup = &pipe_on_handle_dup;
    p->destory_obj = (void *)&destroy_pipe;
