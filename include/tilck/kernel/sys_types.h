@@ -91,3 +91,7 @@ struct k_rusage {
 #ifndef O_DIRECT
    #define O_DIRECT __O_DIRECT
 #endif
+
+#ifndef O_NOATIME
+   #define O_NOATIME __O_NOATIME
+#endif

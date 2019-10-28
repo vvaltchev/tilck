@@ -121,7 +121,6 @@ typedef int            (*func_ioctl)        (fs_handle, uptr, void *);
 typedef int            (*func_mmap)         (struct user_mapping *, bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
-typedef int            (*func_fcntl)        (fs_handle, int, int);
 typedef bool           (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 
@@ -199,7 +198,6 @@ struct file_ops {
    func_read read;                     /* if NULL -> -EBADF  */
    func_write write;                   /* if NULL -> -EBADF  */
    func_ioctl ioctl;                   /* if NULL -> -ENOTTY */
-   func_fcntl fcntl;                   /* if NULL -> -EINVAL */
    func_seek seek;                     /* if NULL -> -ESPIPE */
    func_mmap mmap;                     /* if NULL -> -ENODEV */
    func_munmap munmap;                 /* if NULL -> -ENODEV */
@@ -264,7 +262,6 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_fcntl(fs_handle h, int cmd, int arg);
 int vfs_mmap(struct user_mapping *um, bool register_only);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);

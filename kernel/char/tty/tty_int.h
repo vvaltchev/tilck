@@ -51,9 +51,6 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
 int
 tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp);
 
-int
-tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg);
-
 bool
 tty_read_ready_int(struct tty *t, struct devfs_handle *h);
 

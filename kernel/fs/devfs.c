@@ -171,11 +171,6 @@ static int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
    return -EINVAL;
 }
 
-static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
-{
-   return -EINVAL;
-}
-
 int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    struct devfs_file *df = i;
@@ -226,7 +221,6 @@ static const struct file_ops static_ops_devfs =
    .write = devfs_dir_write,
    .seek = devfs_dir_seek,
    .ioctl = devfs_dir_ioctl,
-   .fcntl = devfs_dir_fcntl,
    .mmap = NULL,
    .munmap = NULL,
 };

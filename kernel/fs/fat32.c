@@ -437,18 +437,12 @@ STATIC int fat_ioctl(fs_handle h, uptr request, void *arg)
    return -EINVAL;
 }
 
-STATIC int fat_fcntl(fs_handle h, int cmd, int arg)
-{
-   return -EINVAL;
-}
-
 static const struct file_ops static_ops_fat =
 {
    .read = fat_read,
    .seek = fat_seek,
    .write = fat_write,
    .ioctl = fat_ioctl,
-   .fcntl = fat_fcntl,
 };
 
 STATIC int

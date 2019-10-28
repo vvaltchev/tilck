@@ -232,8 +232,3 @@ tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
          return -EINVAL;
    }
 }
-
-int tty_fcntl_int(struct tty *t, struct devfs_handle *h, int cmd, int arg)
-{
-   return -EINVAL;
-}

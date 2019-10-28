@@ -628,9 +628,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
    struct task *curr = get_curr_task();
    struct fs_handle_base *hb;
 
-   hb = get_fs_handle(fd);
-
-   if (!hb)
+   if (!(hb = get_fs_handle(fd)))
       return -EBADF;
 
    switch (cmd) {
@@ -648,8 +646,8 @@ int sys_fcntl64(int fd, int cmd, int arg)
          {
             kmutex_lock(&curr->pi->fslock);
             int new_fd = get_free_handle_num_ge(curr->pi, arg);
-            rc = sys_dup2(fd, new_fd);
-            if (!rc) {
+            if (!(rc = sys_dup2(fd, new_fd))) {
+               /* dup2 succeeded */
                struct fs_handle_base *h2 = get_fs_handle(new_fd);
                ASSERT(h2 != NULL);
                h2->fd_flags |= FD_CLOEXEC;
@@ -666,6 +664,10 @@ int sys_fcntl64(int fd, int cmd, int arg)
          return hb->fd_flags;
 
       case F_SETFL:
+
+         if (arg & (O_ASYNC | O_DIRECT))
+            NOT_IMPLEMENTED();
+
          hb->fl_flags = arg;
          break;
 
@@ -673,11 +675,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          return hb->fl_flags;
 
       default:
-         rc = vfs_fcntl(hb, cmd, arg);
-   }
-
-   if (rc == -EINVAL) {
-      printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
+         printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
    }
 
    return rc;

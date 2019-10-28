@@ -5,11 +5,6 @@ static int ramfs_ioctl(fs_handle h, uptr cmd, void *argp)
    return -EINVAL;
 }
 
-static int ramfs_fcntl(fs_handle h, int cmd, int arg)
-{
-   return -EINVAL;
-}
-
 static offt ramfs_dir_seek(struct ramfs_handle *rh, offt target_off)
 {
    struct ramfs_inode *i = rh->inode;

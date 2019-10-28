@@ -147,17 +147,6 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    return hb->fops->ioctl(h, request, argp);
 }
 
-int vfs_fcntl(fs_handle h, int cmd, int arg)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-
-   if (!hb->fops->fcntl)
-      return -EINVAL;
-
-   return hb->fops->fcntl(h, cmd, arg);
-}
-
 int vfs_ftruncate(fs_handle h, offt length)
 {
    struct fs_handle_base *hb = (struct fs_handle_base *) h;

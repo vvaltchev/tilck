@@ -8,7 +8,6 @@ static const struct file_ops static_ops_ramfs =
    .writev = ramfs_writev,
    .seek = ramfs_seek,
    .ioctl = ramfs_ioctl,
-   .fcntl = ramfs_fcntl,
    .mmap = ramfs_mmap,
    .munmap = ramfs_munmap,
    .handle_fault = ramfs_handle_fault,
