@@ -206,6 +206,9 @@ TEST(ringbuf, read_write_bytes)
    ringbuf_init(&rb, 8, 1, buffer);
    ASSERT_TRUE(ringbuf_is_empty(&rb));
 
+   rc = ringbuf_read_bytes(&rb, (u8 *)rbuf, 8);
+   ASSERT_EQ(rc, 0U);
+
    rc = ringbuf_write_bytes(&rb, (u8 *)"12345", 5);
    ASSERT_EQ(rc, 5U);
 
@@ -219,6 +222,9 @@ TEST(ringbuf, read_write_bytes)
 
    rc = ringbuf_write_bytes(&rb, (u8 *)"6789abcdef", 10);
    ASSERT_EQ(rc, 6U);
+
+   rc = ringbuf_write_bytes(&rb, (u8 *)"XYZ", 3);
+   ASSERT_EQ(rc, 0U);
 
    ASSERT_STREQ(buffer, "9ab45678");
 
