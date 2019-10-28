@@ -34,13 +34,13 @@ struct process {
    int pid;                   /* process id (tgid in the Linux kernel) */
    int parent_pid;
    pdir_t *pdir;
-   struct list_node siblings_node;   /* nodes in parent's pi's children_list */
+   struct list_node siblings_node;   /* nodes in parent's pi's children list */
 
    void *brk;
    void *initial_brk;
    struct kmalloc_heap *mmap_heap;
 
-   struct list children_list;
+   struct list children;
    struct list mappings;
 
    void *proc_tty;

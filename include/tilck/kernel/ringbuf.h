@@ -23,7 +23,7 @@ inline bool ringbuf_is_full(struct ringbuf *rb)
    return rb->elems == rb->max_elems;
 }
 
-inline u32 ringbuf_get_elems(struct ringbuf *rb)
+inline size_t ringbuf_get_elems(struct ringbuf *rb)
 {
    return rb->elems;
 }
@@ -33,11 +33,14 @@ inline void ringbuf_reset(struct ringbuf *rb)
    rb->read_pos = rb->write_pos = rb->elems = 0;
 }
 
-void ringbuf_init(struct ringbuf *rb, u32 max_elems, u32 elem_size, void *b);
+void ringbuf_init(struct ringbuf *rb, size_t elems, size_t elem_size, void *b);
 void ringbuf_destory(struct ringbuf *rb);
 bool ringbuf_write_elem(struct ringbuf *rb, void *elem_ptr);
 bool ringbuf_read_elem(struct ringbuf *rb, void *elem_ptr /* out */);
 bool ringbuf_unwrite_elem(struct ringbuf *rb, void *elem_ptr /* out */);
+size_t ringbuf_write_bytes(struct ringbuf *rb, u8 *buf, size_t len);
+size_t ringbuf_read_bytes(struct ringbuf *rb, u8 *buf, size_t len);
+
 
 inline bool ringbuf_write_elem1(struct ringbuf *rb, u8 val)
 {

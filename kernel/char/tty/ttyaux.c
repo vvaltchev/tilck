@@ -33,11 +33,6 @@ static int ttyaux_ioctl(fs_handle h, uptr request, void *argp)
    return tty_ioctl_int(get_curr_process_tty(), h, request, argp);
 }
 
-static int ttyaux_fcntl(fs_handle h, int cmd, int arg)
-{
-   return tty_fcntl_int(get_curr_process_tty(), h, cmd, arg);
-}
-
 static struct kcond *ttyaux_get_rready_cond(fs_handle h)
 {
    return &get_curr_process_tty()->input_cond;
@@ -58,15 +53,8 @@ ttyaux_create_device_file(int minor,
       .read = ttyaux_read,
       .write = ttyaux_write,
       .ioctl = ttyaux_ioctl,
-      .fcntl = ttyaux_fcntl,
       .get_rready_cond = ttyaux_get_rready_cond,
       .read_ready = ttyaux_read_ready,
-
-      /* the tty device-file requires NO locking */
-      .exlock = vfs_file_nolock,
-      .exunlock = vfs_file_nolock,
-      .shlock = vfs_file_nolock,
-      .shunlock = vfs_file_nolock,
    };
 
    *t = VFS_CHAR_DEV;

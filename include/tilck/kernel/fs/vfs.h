@@ -72,7 +72,7 @@ struct vfs_path {
 
 struct vfs_dent64 {
 
-   tilck_inode_t ino;
+   tilck_ino_t ino;
    enum vfs_entry_type type;
    u8 name_len;               /* NODE: includes the final '\0' */
    const char *name;
@@ -121,13 +121,17 @@ typedef int            (*func_ioctl)        (fs_handle, uptr, void *);
 typedef int            (*func_mmap)         (struct user_mapping *, bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
-typedef int            (*func_fcntl)        (fs_handle, int, int);
-typedef void           (*func_hlock_t)      (fs_handle);
 typedef bool           (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 
-/* Used by the devices when want to remove any locking from a file */
-#define vfs_file_nolock           NULL
+typedef ssize_t        (*func_readv)        (fs_handle,
+                                             const struct iovec *,
+                                             int);
+
+typedef ssize_t        (*func_writev)       (fs_handle,
+                                             const struct iovec *,
+                                             int);
+
 
 #define VFS_FS_RO                  (0)  /* struct fs mounted in RO mode */
 #define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
@@ -148,7 +152,7 @@ typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
  * the overall throughput of the system (fine-grain per-directory locking is
  * pretty expensive).
  */
-struct fs_ops{
+struct fs_ops {
 
    func_get_entry get_entry;
    func_get_inode get_inode;
@@ -190,31 +194,34 @@ struct fs {
 
 struct file_ops {
 
-   /* mandatory */
-   func_read read;
-   func_write write;
-   func_seek seek;
-   func_ioctl ioctl;
-   func_fcntl fcntl;
+   /* Main funcs, all optional */
+   func_read read;                     /* if NULL -> -EBADF  */
+   func_write write;                   /* if NULL -> -EBADF  */
+   func_ioctl ioctl;                   /* if NULL -> -ENOTTY */
+   func_seek seek;                     /* if NULL -> -ESPIPE */
+   func_mmap mmap;                     /* if NULL -> -ENODEV */
+   func_munmap munmap;                 /* if NULL -> -ENODEV */
 
-   /* optional funcs */
-   func_mmap mmap;
-   func_munmap munmap;
+   func_readv readv;                   /* if NULL, emulated in non-atomic way */
+   func_writev writev;                 /* if NULL, emulated in non-atomic way */
+
    func_handle_fault handle_fault;
 
-   /* optional, r/w/e ready funcs */
-   func_rwe_ready read_ready;
-   func_rwe_ready write_ready;
-   func_rwe_ready except_ready;       /* unfetched exceptional condition */
-   func_get_rwe_cond get_rready_cond;
-   func_get_rwe_cond get_wready_cond;
-   func_get_rwe_cond get_except_cond;
+   /*
+    * Optional, r/w/e ready funcs
+    *
+    * NOTE[1]: implementing at least the read and write ones is essential in
+    * order to support select() and poll().
+    *
+    * NOTE[2]: `except` here stands for `unfetched exceptional condition`.
+    */
+   func_rwe_ready read_ready;          /* if NULL, return true */
+   func_rwe_ready write_ready;         /* if NULL, return true */
+   func_rwe_ready except_ready;        /* if NULL, return true */
 
-   /* optional, per-file locks (use vfs_file_nolock, when appropriate) */
-   func_hlock_t exlock;
-   func_hlock_t exunlock;
-   func_hlock_t shlock;
-   func_hlock_t shunlock;
+   func_get_rwe_cond get_rready_cond;  /* if NULL, return NULL */
+   func_get_rwe_cond get_wready_cond;  /* if NULL, return NULL */
+   func_get_rwe_cond get_except_cond;  /* if NULL, return NULL */
 };
 
 /*
@@ -255,7 +262,6 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_fcntl(fs_handle h, int cmd, int arg);
 int vfs_mmap(struct user_mapping *um, bool register_only);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
@@ -272,6 +278,9 @@ struct kcond *vfs_get_except_cond(fs_handle h);
 
 ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
+ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
+ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
+
 offt vfs_seek(fs_handle h, s64 off, int whence);
 
 static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
@@ -315,12 +324,6 @@ vfs_get_root_entry(struct fs *fs, struct fs_path *fs_path)
 {
    vfs_get_entry(fs, NULL, NULL, 0, fs_path);
 }
-
-/* Per-file locks */
-void vfs_exlock(fs_handle h);
-void vfs_exunlock(fs_handle h);
-void vfs_shlock(fs_handle h);
-void vfs_shunlock(fs_handle h);
 
 /* Whole-struct fs locks */
 void vfs_fs_exlock(struct fs *fs);

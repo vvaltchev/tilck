@@ -80,7 +80,7 @@ struct devfs_dir {
     */
    enum vfs_entry_type type;
    struct list files_list;
-   tilck_inode_t inode;
+   tilck_ino_t inode;
 };
 
 struct devfs_data {
@@ -88,10 +88,10 @@ struct devfs_data {
    struct devfs_dir root_dir;
    struct rwlock_wp rwlock;
    time_t wrt_time;
-   tilck_inode_t next_inode;
+   tilck_ino_t next_inode;
 };
 
-static inline tilck_inode_t devfs_get_next_inode(struct devfs_data *d)
+static inline tilck_ino_t devfs_get_next_inode(struct devfs_data *d)
 {
    return d->next_inode++;
 }
@@ -171,11 +171,6 @@ static int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
    return -EINVAL;
 }
 
-static int devfs_dir_fcntl(fs_handle h, int cmd, int arg)
-{
-   return -EINVAL;
-}
-
 int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    struct devfs_file *df = i;
@@ -226,13 +221,8 @@ static const struct file_ops static_ops_devfs =
    .write = devfs_dir_write,
    .seek = devfs_dir_seek,
    .ioctl = devfs_dir_ioctl,
-   .fcntl = devfs_dir_fcntl,
    .mmap = NULL,
    .munmap = NULL,
-   .exlock = vfs_file_nolock,
-   .exunlock = vfs_file_nolock,
-   .shlock = vfs_file_nolock,
-   .shunlock = vfs_file_nolock,
 };
 
 static int devfs_open_root_dir(struct fs *fs, fs_handle *out)

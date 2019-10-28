@@ -6,10 +6,12 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/pipe.h>
 
 #include <fcntl.h>      // system header
 
@@ -225,12 +227,27 @@ int sys_ioctl(int fd, uptr request, void *argp)
    return vfs_ioctl(handle, request, argp);
 }
 
+static bool iov_len_overflow(const struct iovec *iov, int iovcnt)
+{
+   ssize_t tot_len = 0;
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      tot_len += iov[i].iov_len;
+
+      if (tot_len < 0)
+         return true; /* overflow detected */
+   }
+
+   return false;
+}
+
 int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    struct task *curr = get_curr_task();
+   struct iovec *iov = (void *)curr->args_copybuf;
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc, ret = 0;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -238,48 +255,24 @@ int sys_writev(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf,
-                       u_iov,
-                       sizeof(struct iovec) * iovcnt);
-
-   if (rc != 0)
+   if (copy_from_user(iov, u_iov, sizeof(struct iovec) * iovcnt))
       return -EFAULT;
+
+   if (iov_len_overflow(iov, u_iovcnt))
+      return -EINVAL;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   vfs_exlock(handle);
-
-   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
-
-   for (u32 i = 0; i < iovcnt; i++) {
-
-      rc = sys_write(fd, iov[i].iov_base, iov[i].iov_len);
-
-      if (rc < 0) {
-         ret = rc;
-         break;
-      }
-
-      ret += rc;
-
-      if (rc < (sptr)iov[i].iov_len) {
-         // For some reason (perfectly legit) we couldn't write the whole
-         // user data (i.e. network card's buffers are full).
-         break;
-      }
-   }
-
-   vfs_exunlock(handle);
-   return ret;
+   return (int)vfs_writev(handle, iov, u_iovcnt);
 }
 
 int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 {
    struct task *curr = get_curr_task();
+   struct iovec *iov = (void *)curr->args_copybuf;
    const u32 iovcnt = (u32) u_iovcnt;
    fs_handle handle;
-   int rc, ret = 0;
 
    if (u_iovcnt <= 0)
       return -EINVAL;
@@ -287,37 +280,16 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
    if (sizeof(struct iovec) * iovcnt > ARGS_COPYBUF_SIZE)
       return -EINVAL;
 
-   rc = copy_from_user(curr->args_copybuf,
-                       u_iov,
-                       sizeof(struct iovec) * iovcnt);
-
-   if (rc != 0)
+   if (copy_from_user(iov, u_iov, sizeof(struct iovec) * iovcnt))
       return -EFAULT;
+
+   if (iov_len_overflow(iov, u_iovcnt))
+      return -EINVAL;
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   vfs_shlock(handle);
-
-   const struct iovec *iov = (const struct iovec *)curr->args_copybuf;
-
-   for (u32 i = 0; i < iovcnt; i++) {
-
-      rc = sys_read(fd, iov[i].iov_base, iov[i].iov_len);
-
-      if (rc < 0) {
-         ret = rc;
-         break;
-      }
-
-      ret += rc;
-
-      if (rc < (sptr)iov[i].iov_len)
-         break; // Not enough data to fill all the user buffers.
-   }
-
-   vfs_shunlock(handle);
-   return ret;
+   return (int)vfs_readv(handle, iov, u_iovcnt);
 }
 
 static int
@@ -508,6 +480,10 @@ int sys_access(const char *pathname, int mode)
    return 0;
 }
 
+/*
+ * NOTE: on Tilck, this syscall _can_ return -ENOMEM, while Linux would return
+ * -EBADF or -EMFILE in the same case. See the comment below.
+ */
 int sys_dup2(int oldfd, int newfd)
 {
    int rc;
@@ -544,8 +520,27 @@ int sys_dup2(int oldfd, int newfd)
       new_h = NULL;
    }
 
-   if ((rc = vfs_dup(old_h, &new_h)))
+   if ((rc = vfs_dup(old_h, &new_h))) {
+
+      /*
+       * if (rc == -ENOMEM)
+       *    rc = -EBADF;
+       *
+       * [BE_NICE] Creating a new file handle means allocating memory, no matter
+       * if that happens every time like in Tilck or it's deferred using a sort
+       * of dynamic array like the Linux kernel does. A memory allocation can
+       * always fail, even when that's highly unlikely. In such cases, the
+       * kernel _must_ return -ENOMEM.
+       *
+       * Unfortunately, according to the POSIX standard dup() and dup2() cannot
+       * fail with -ENOMEM. Just, it's not part of the POSIX interface and it's
+       * not clear to me why. In the Linux kernel, in the out-of-memory case,
+       * dup() returns -EMFILE while dup2() returns -EBADF.
+       *
+       * Tilck tries to be more honest and returns -ENOMEM.
+       */
       goto out;
+   }
 
    curr->pi->handles[newfd] = new_h;
    rc = newfd;
@@ -561,12 +556,12 @@ int sys_dup(int oldfd)
    struct process *pi = get_curr_task()->pi;
 
    kmutex_lock(&pi->fslock);
+   {
+      free_fd = get_free_handle_num(pi);
 
-   free_fd = get_free_handle_num(pi);
-
-   if (is_fd_in_valid_range(free_fd))
-      rc = sys_dup2(oldfd, free_fd);
-
+      if (is_fd_in_valid_range(free_fd))
+         rc = sys_dup2(oldfd, free_fd);
+   }
    kmutex_unlock(&pi->fslock);
    return rc;
 }
@@ -633,9 +628,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
    struct task *curr = get_curr_task();
    struct fs_handle_base *hb;
 
-   hb = get_fs_handle(fd);
-
-   if (!hb)
+   if (!(hb = get_fs_handle(fd)))
       return -EBADF;
 
    switch (cmd) {
@@ -653,8 +646,8 @@ int sys_fcntl64(int fd, int cmd, int arg)
          {
             kmutex_lock(&curr->pi->fslock);
             int new_fd = get_free_handle_num_ge(curr->pi, arg);
-            rc = sys_dup2(fd, new_fd);
-            if (!rc) {
+            if (!(rc = sys_dup2(fd, new_fd))) {
+               /* dup2 succeeded */
                struct fs_handle_base *h2 = get_fs_handle(new_fd);
                ASSERT(h2 != NULL);
                h2->fd_flags |= FD_CLOEXEC;
@@ -671,6 +664,10 @@ int sys_fcntl64(int fd, int cmd, int arg)
          return hb->fd_flags;
 
       case F_SETFL:
+
+         if (arg & (O_ASYNC | O_DIRECT))
+            NOT_IMPLEMENTED();
+
          hb->fl_flags = arg;
          break;
 
@@ -678,11 +675,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          return hb->fl_flags;
 
       default:
-         rc = vfs_fcntl(hb, cmd, arg);
-   }
-
-   if (rc == -EINVAL) {
-      printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
+         printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
    }
 
    return rc;
@@ -799,4 +792,110 @@ int sys_rename(const char *u_oldpath, const char *u_newpath)
 int sys_link(const char *u_oldpath, const char *u_newpath)
 {
    return call_rename_or_link(u_oldpath, u_newpath, &vfs_link);
+}
+
+int sys_pipe(int u_pipefd[2])
+{
+   return sys_pipe2(u_pipefd, 0);
+}
+
+int sys_pipe2(int u_pipefd[2], int flags)
+{
+   struct task *curr = get_curr_task();
+   struct fs_handle_base *read_h = NULL;
+   struct fs_handle_base *write_h = NULL;
+   struct pipe *p = NULL;
+   int fds[2];
+   int ret = 0;
+
+   if (flags & O_DIRECT)
+      return -EINVAL;
+
+   if (flags & O_NONBLOCK)
+      return -EINVAL;
+
+   kmutex_lock(&curr->pi->fslock);
+
+   if (!(p = create_pipe())) {
+
+      /*
+       * [BE_NICE] According to the POSIX standard, pipe() cannot fail with
+       * -ENOMEM. However, it can fail with -ENFILE or -EMFILE, both of which
+       * are about numeric limits, system-wide or per-process, it doesn't
+       * matter. Also -ENFILE might mean, according to POSIX, that:
+       *
+       * << The user hard limit on memory that can be allocated for pipes has
+       *    been reached and the caller is not privileged. >>
+       *
+       * That implies that there _must be_ such a hard limit and, because we
+       * cannot fail with -ENOMEM, such memory for pipes must be also allocated
+       * in advance, which is very bad practically.
+       *
+       * The situation is similar to the case of dup() and dup2() [see the
+       * comment in sys_dup2()] and what the Linux kernel does in case of real
+       * out-of-memory it's simply lying by failing with -ENFILE here.
+       *
+       * Tilck tries to be more honest even at the price of breaking a little
+       * the POSIX standard, by returning -ENOMEM here.
+       */
+      goto no_mem;
+   }
+
+   if ((fds[0] = get_free_handle_num(curr->pi)) < 0)
+      goto no_fds;
+
+   if (!(read_h = pipe_create_read_handle(p)))
+      goto fault;
+
+   curr->pi->handles[fds[0]] = read_h;
+
+   if ((fds[1] = get_free_handle_num(curr->pi)) < 0)
+      goto no_fds;
+
+   if (!(write_h = pipe_create_write_handle(p)))
+      goto fault;
+
+   curr->pi->handles[fds[1]] = write_h;
+
+   if (copy_to_user(u_pipefd, fds, sizeof(fds)))
+      goto fault;
+
+   if (flags & O_CLOEXEC) {
+      read_h->fd_flags |= FD_CLOEXEC;
+      write_h->fd_flags |= FD_CLOEXEC;
+   }
+
+end:
+   kmutex_unlock(&curr->pi->fslock);
+   return ret;
+
+err_end:
+
+   if (read_h) {
+      curr->pi->handles[fds[0]] = NULL;
+      kfs_destroy_handle((void *)read_h);
+   }
+
+   if (write_h) {
+      curr->pi->handles[fds[1]] = NULL;
+      kfs_destroy_handle((void *)write_h);
+   }
+
+   if (p) {
+      destroy_pipe(p);
+   }
+
+   goto end;
+
+fault:
+   ret = -EFAULT;
+   goto err_end;
+
+no_mem:
+   ret = -ENOMEM;
+   goto err_end;
+
+no_fds:
+   ret = -EMFILE;
+   goto err_end;
 }

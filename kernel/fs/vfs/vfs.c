@@ -56,6 +56,14 @@ void vfs_close(fs_handle h)
    vfs_close2(get_curr_task()->pi, h);
 }
 
+/*
+ * Note: because of the way file handles are allocated on Tilck, dup() can
+ * fail with -ENOMEM, while on POSIX systems that is not allowed.
+ *
+ * TODO: fix the file-handles allocation mechanism in order to make impossible
+ * dup() failing with -ENOMEM, by substantially pre-allocating the memory for
+ * the file handle objects.
+ */
 int vfs_dup(fs_handle h, fs_handle *dup_h)
 {
    ASSERT(h != NULL);
@@ -83,7 +91,6 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   ssize_t ret;
 
    if (!hb->fops->read)
       return -EBADF;
@@ -91,12 +98,7 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    if ((hb->fl_flags & O_WRONLY) && !(hb->fl_flags & O_RDWR))
       return -EBADF; /* file not opened for reading */
 
-   vfs_shlock(h);
-   {
-      ret = hb->fops->read(h, buf, buf_size);
-   }
-   vfs_shunlock(h);
-   return ret;
+   return hb->fops->read(h, buf, buf_size);
 }
 
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
@@ -105,7 +107,6 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   ssize_t ret;
 
    if (!hb->fops->write)
       return -EBADF;
@@ -113,19 +114,13 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    if (!(hb->fl_flags & (O_WRONLY | O_RDWR)))
       return -EBADF; /* file not opened for writing */
 
-   vfs_exlock(h);
-   {
-      ret = hb->fops->write(h, buf, buf_size);
-   }
-   vfs_exunlock(h);
-   return ret;
+   return hb->fops->write(h, buf, buf_size);
 }
 
 offt vfs_seek(fs_handle h, s64 off, int whence)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
-   offt ret;
 
    if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
       return -EINVAL; /* Tilck does NOT support SEEK_DATA and SEEK_HOLE */
@@ -135,13 +130,8 @@ offt vfs_seek(fs_handle h, s64 off, int whence)
    if (!hb->fops->seek)
       return -ESPIPE;
 
-   vfs_shlock(h);
-   {
-      // NOTE: this won't really work for big offsets in case offt is 32-bit.
-      ret = hb->fops->seek(h, (offt) off, whence);
-   }
-   vfs_shunlock(h);
-   return ret;
+   // NOTE: this won't really work for big offsets in case offt is 32-bit.
+   return hb->fops->seek(h, (offt) off, whence);
 }
 
 int vfs_ioctl(fs_handle h, uptr request, void *argp)
@@ -150,34 +140,11 @@ int vfs_ioctl(fs_handle h, uptr request, void *argp)
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   int ret;
 
    if (!hb->fops->ioctl)
       return -ENOTTY; // Yes, ENOTTY *IS* the right error. See the man page.
 
-   vfs_exlock(h);
-   {
-      ret = hb->fops->ioctl(h, request, argp);
-   }
-   vfs_exunlock(h);
-   return ret;
-}
-
-int vfs_fcntl(fs_handle h, int cmd, int arg)
-{
-   NO_TEST_ASSERT(is_preemption_enabled());
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   int ret;
-
-   if (!hb->fops->fcntl)
-      return -EINVAL;
-
-   vfs_exlock(h);
-   {
-      ret = hb->fops->fcntl(h, cmd, arg);
-   }
-   vfs_exunlock(h);
-   return ret;
+   return hb->fops->ioctl(h, request, argp);
 }
 
 int vfs_ftruncate(fs_handle h, offt length)
@@ -199,14 +166,8 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
    const struct fs_ops *fsops = fs->fsops;
-   int ret;
 
-   vfs_shlock(h);
-   {
-      ret = fsops->stat(fs, fsops->get_inode(h), statbuf);
-   }
-   vfs_shunlock(h);
-   return ret;
+   return fsops->stat(fs, fsops->get_inode(h), statbuf);
 }
 
 /* ----------- path-based functions -------------- */
@@ -677,6 +638,101 @@ bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
       return false;
 
    return fops->handle_fault(h, va, p, rw);
+}
+
+ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct fs_handle_base *hb = h;
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   if (hb->fops->readv)
+      return hb->fops->readv(h, iov, iovcnt);
+
+   /*
+    * readv() is not implemented in the file system: implement here it in a
+    * generic but non-atomic way. There's nothing more we can do. Also, the
+    * POSIX standard does not require readv() to be atomic:
+    *
+    *    https://pubs.opengroup.org/onlinepubs/9699919799/
+    *
+    * Note: Linux's man page claims that readv/writev must be atomic: that's
+    * possible now because all of the Linux file systems support internally the
+    * scatter/gather I/O. On Tilck, not all the file systems will support it.
+    */
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+
+      rc = vfs_read(h, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      if (copy_to_user(iov[i].iov_base, curr->io_copybuf, len))
+         return -EFAULT;
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len)
+         break; // Not enough data to fill all the user buffers.
+   }
+
+   return ret;
+}
+
+ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt)
+{
+   struct fs_handle_base *hb = h;
+   struct task *curr = get_curr_task();
+   ssize_t ret = 0;
+   ssize_t rc;
+   size_t len;
+
+   if (hb->fops->writev)
+      return hb->fops->writev(h, iov, iovcnt);
+
+   /*
+    * writev() is not implemented in the file system: implement here it in a
+    * generic but non-atomic way. There's nothing more we can do. Also, the
+    * POSIX standard does not require writev() to be atomic:
+    *
+    *    https://pubs.opengroup.org/onlinepubs/9699919799/
+    *
+    * Note: Linux's man page claims that readv/writev must be atomic: that's
+    * possible now because all of the Linux file systems support internally the
+    * scatter/gather I/O. On Tilck, not all the file systems will support it.
+    */
+
+   for (int i = 0; i < iovcnt; i++) {
+
+      len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
+
+      if (copy_from_user(curr->io_copybuf, iov[i].iov_base, len))
+         return -EFAULT;
+
+      rc = vfs_write(h, curr->io_copybuf, len);
+
+      if (rc < 0) {
+         ret = rc;
+         break;
+      }
+
+      ret += rc;
+
+      if (rc < (ssize_t)iov[i].iov_len) {
+         // For some reason (perfectly legit) we couldn't write the whole
+         // user data (i.e. network card's buffers are full).
+         break;
+      }
+   }
+
+   return ret;
 }
 
 u32 vfs_get_new_device_id(void)

@@ -31,7 +31,7 @@
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
 
-typedef u64 tilck_inode_t;
+typedef u64 tilck_ino_t;
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {
@@ -86,4 +86,12 @@ struct k_rusage {
 
 #ifndef O_TMPFILE
    #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
+#endif
+
+#ifndef O_DIRECT
+   #define O_DIRECT __O_DIRECT
+#endif
+
+#ifndef O_NOATIME
+   #define O_NOATIME __O_NOATIME
 #endif

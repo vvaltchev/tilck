@@ -4,16 +4,13 @@ static const struct file_ops static_ops_ramfs =
 {
    .read = ramfs_read,
    .write = ramfs_write,
+   .readv = ramfs_readv,
+   .writev = ramfs_writev,
    .seek = ramfs_seek,
    .ioctl = ramfs_ioctl,
-   .fcntl = ramfs_fcntl,
    .mmap = ramfs_mmap,
    .munmap = ramfs_munmap,
    .handle_fault = ramfs_handle_fault,
-   .exlock = ramfs_file_exlock,
-   .exunlock = ramfs_file_exunlock,
-   .shlock = ramfs_file_shlock,
-   .shunlock = ramfs_file_shunlock,
 };
 
 static int
@@ -40,10 +37,16 @@ ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
       list_node_init(&h->node);
       list_add_tail(&inode->handles_list, &h->node);
       h->dpos = list_first_obj(&inode->entries_list, struct ramfs_entry, lnode);
-   }
 
-   if (fl & O_TRUNC) {
-      ramfs_inode_truncate_safe(inode, 0);
+   } else {
+
+      if (fl & O_TRUNC) {
+
+         DEBUG_ONLY_UNSAFE(int rc =)
+            ramfs_inode_truncate_safe(inode, 0, false);
+
+         ASSERT(rc == 0);
+      }
    }
 
    *out = h;

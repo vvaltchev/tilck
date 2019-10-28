@@ -59,15 +59,6 @@ static int tty_ioctl(fs_handle h, uptr request, void *argp)
    return tty_ioctl_int(t, dh, request, argp);
 }
 
-static int tty_fcntl(fs_handle h, int cmd, int arg)
-{
-   struct devfs_handle *dh = h;
-   struct devfs_file *df = dh->file;
-   struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
-
-   return tty_fcntl_int(t, dh, cmd, arg);
-}
-
 static struct kcond *tty_get_rready_cond(fs_handle h)
 {
    struct devfs_handle *dh = h;
@@ -96,7 +87,6 @@ tty_create_device_file(int minor,
       .read = tty_read,
       .write = tty_write,
       .ioctl = tty_ioctl,
-      .fcntl = tty_fcntl,
       .get_rready_cond = tty_get_rready_cond,
       .read_ready = tty_read_ready,
 
@@ -104,12 +94,6 @@ tty_create_device_file(int minor,
        * IMPORTANT: remember to add any NEW ops func also to ttyaux's
        * ttyaux_create_device_file() function, in ttyaux.c.
        */
-
-      /* the tty device-file requires NO locking */
-      .exlock = vfs_file_nolock,
-      .exunlock = vfs_file_nolock,
-      .shlock = vfs_file_nolock,
-      .shunlock = vfs_file_nolock,
    };
 
    *t = VFS_CHAR_DEV;

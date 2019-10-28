@@ -1,12 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static int
-ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+ramfs_stat_nolock(struct fs *fs,
+                  struct ramfs_inode *inode,
+                  struct stat64 *statbuf)
 {
-   if (!i)
-      return -ENOENT;
-
-   struct ramfs_inode *inode = i;
+   ASSERT(inode);
 
    if (!(inode->parent_dir->mode & 0500)) /* read + execute */
       return -EACCES;
@@ -50,4 +49,21 @@ ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    statbuf->st_atim = statbuf->st_mtim;
 
    return 0;
+}
+
+static int
+ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+{
+   struct ramfs_inode *inode = i;
+   int rc;
+
+   if (!inode)
+      return -ENOENT;
+
+   rwlock_wp_shlock(&inode->rwlock);
+   {
+      rc = ramfs_stat_nolock(fs, inode, statbuf);
+   }
+   rwlock_wp_shunlock(&inode->rwlock);
+   return rc;
 }
