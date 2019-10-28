@@ -32,7 +32,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   size_t rc = 0;
+   ssize_t rc = 0;
 
    if (!size)
       return 0;
@@ -41,7 +41,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    {
    again:
 
-      if (!(rc = ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
+      if (!(rc = (ssize_t)ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
 
          if (atomic_load_explicit(&p->write_handles, mo_relaxed) == 0) {
             /* No more writers, always return 0, no matter what. */
@@ -49,6 +49,11 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
          }
 
          if (p->read_must_block) {
+
+            if (kh->fl_flags & O_NONBLOCK) {
+               rc = -EAGAIN;
+               goto end;
+            }
 
             kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
             goto again;
@@ -65,7 +70,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    end:;
    }
    kmutex_unlock(&p->mutex);
-   return (ssize_t)rc;
+   return rc;
 }
 
 static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
@@ -93,6 +98,12 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
       }
 
       if (!(rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size))) {
+
+         if (kh->fl_flags & O_NONBLOCK) {
+            rc = -EAGAIN;
+            goto end;
+         }
+
          kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }

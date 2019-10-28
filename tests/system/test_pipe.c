@@ -31,6 +31,19 @@ static void pipe_cmd1_child(int rfd, int wfd)
    buf[rc] = 0;
 
    printf("[child] got: '%s'\n", buf);
+   printf("[child] now reading again, expecting to get 0..\n");
+
+   rc = read(rfd, buf, sizeof(buf));
+
+   if (rc != 0) {
+
+      printf("[child] read() returned %d [expected: 0], error: %s\n",
+             rc, strerror(errno));
+
+      exit(1);
+   }
+
+   printf("[child] Done.\n");
    exit(0);
 }
 
@@ -209,4 +222,91 @@ int cmd_pipe3(int argc, char **argv)
    printf("Try the broken pipe case with SIGPIPE ignored...\n");
    rc = test_sig(&pipe_cmd3_child, 0, 0);
    DEVSHELL_CMD_ASSERT(rc == 0);
+}
+
+/* Test pipes with O_NONBLOCK */
+int cmd_pipe4(int argc, char **argv)
+{
+   char buf[64];
+   int pipefd[2];
+   int rc;
+   int tot;
+
+   printf("Calling pipe()\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("Set the read fd in NONBLOCK mode\n");
+   rc = fcntl(pipefd[0], F_GETFL);
+
+   if (rc < 0) {
+      printf("fcntl(pipefd[0], F_GETFL) failed: %s\n", strerror(errno));
+      return 1;
+   }
+
+   rc = fcntl(pipefd[0], F_SETFL, rc | O_NONBLOCK);
+
+   if (rc < 0) {
+      printf("fcntl(pipefd[0], F_SETFL) failed: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("read() expecting to get EAGAIN\n");
+
+   rc = read(pipefd[0], buf, sizeof(buf));
+   DEVSHELL_CMD_ASSERT(rc == -1);
+   DEVSHELL_CMD_ASSERT(errno == EAGAIN);
+
+   printf("write() hello\n");
+   rc = write(pipefd[1], "hello", 5);
+   DEVSHELL_CMD_ASSERT(rc == 5);
+
+   printf("read() expecting to get 'hello'\n");
+   rc = read(pipefd[0], buf, sizeof(buf));
+   DEVSHELL_CMD_ASSERT(rc == 5);
+   buf[rc] = 0;
+
+   DEVSHELL_CMD_ASSERT(!strcmp(buf, "hello"));
+
+   printf("Set the write fd in NONBLOCK mode\n");
+
+   rc = fcntl(pipefd[1], F_GETFL);
+
+   if (rc < 0) {
+      printf("fcntl(pipefd[0], F_GETFL) failed: %s\n", strerror(errno));
+      return 1;
+   }
+
+   rc = fcntl(pipefd[1], F_SETFL, rc | O_NONBLOCK);
+
+   if (rc < 0) {
+      printf("fcntl(pipefd[0], F_SETFL) failed: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("write until EAGAIN is hit\n");
+
+   for (tot = 0; ; tot++) {
+
+      rc = write(pipefd[1], buf, 1);
+
+      if (rc < 0)
+         break;
+   }
+
+   rc = errno;
+
+   printf("write() failed [expected] with: %s\n", strerror(rc));
+   printf("bytes written: %d\n", tot);
+
+   DEVSHELL_CMD_ASSERT(rc == EAGAIN);
+
+   printf("Done.\n");
+   close(pipefd[0]);
+   close(pipefd[1]);
+   return 0;
 }
