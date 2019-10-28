@@ -43,8 +43,12 @@ static int ramfs_unlink(struct vfs_path *p)
    /* Trucate and delete the inode, if it's not used */
    if (!i->nlink && !get_ref_count(i)) {
 
-      if (i->type == VFS_FILE)
-         ramfs_inode_truncate_safe(i, 0);
+      if (i->type == VFS_FILE) {
+         DEBUG_ONLY_UNSAFE(int rc =)
+            ramfs_inode_truncate_safe(i, 0, true /* no_perm_check */);
+
+         ASSERT(rc == 0);
+      }
 
       ramfs_destroy_inode(d, i);
    }
@@ -90,7 +94,7 @@ static void ramfs_close(fs_handle h)
        */
 
       if (i->type == VFS_FILE)
-         ramfs_inode_truncate_safe(i, 0);
+         ramfs_inode_truncate_safe(i, 0, true);
 
       ramfs_destroy_inode(rh->fs->device_data, i);
    }

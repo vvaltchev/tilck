@@ -224,12 +224,13 @@ static int ramfs_inode_truncate(struct ramfs_inode *i, offt len)
    return 0;
 }
 
-static int ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len)
+static int
+ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len, bool no_perm_check)
 {
    int rc;
    rwlock_wp_exlock(&i->rwlock);
    {
-      if (i->mode & 0200) { /* write permission */
+      if ((i->mode & 0200) || no_perm_check) { /* write permission */
 
          if (len < i->fsize)
             rc = ramfs_inode_truncate(i, len);
@@ -248,7 +249,7 @@ static int ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len)
 
 static int ramfs_truncate(struct fs *fs, vfs_inode_ptr_t i, offt len)
 {
-   return ramfs_inode_truncate_safe(i, len);
+   return ramfs_inode_truncate_safe(i, len, false);
 }
 
 static ssize_t
