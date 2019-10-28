@@ -60,7 +60,8 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
          }
       }
 
-      kcond_signal_one(&p->rcond);
+      kcond_signal_all(&p->rcond);
+
    end:;
    }
    kmutex_unlock(&p->mutex);
@@ -97,7 +98,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
       }
 
       p->read_must_block = false;
-      kcond_signal_one(&p->wcond);
+      kcond_signal_all(&p->wcond);
 
    end:;
    }
@@ -113,7 +114,9 @@ static bool pipe_read_ready(fs_handle h)
 
    kmutex_lock(&p->mutex);
    {
-      ret = !ringbuf_is_empty(&p->rb);
+      ret = !ringbuf_is_empty(&p->rb) ||
+            !p->read_must_block       ||
+            atomic_load_explicit(&p->write_handles, mo_relaxed) == 0;
    }
    kmutex_unlock(&p->mutex);
    return ret;
@@ -134,7 +137,8 @@ static bool pipe_write_ready(fs_handle h)
 
    kmutex_lock(&p->mutex);
    {
-      ret = !ringbuf_is_full(&p->rb);
+      ret = !ringbuf_is_full(&p->rb) ||
+            atomic_load_explicit(&p->read_handles, mo_relaxed) == 0;
    }
    kmutex_unlock(&p->mutex);
    return ret;
@@ -182,6 +186,8 @@ static void pipe_on_handle_close(fs_handle h)
          atomic_fetch_sub_explicit(&p->write_handles, 1, mo_relaxed);
 
       ASSERT(old > 0);
+      kcond_signal_all(&p->rcond);
+      kcond_signal_all(&p->wcond);
 
    } else {
 
@@ -189,6 +195,8 @@ static void pipe_on_handle_close(fs_handle h)
          atomic_fetch_sub_explicit(&p->read_handles, 1, mo_relaxed);
 
       ASSERT(old > 0);
+      kcond_signal_all(&p->rcond);
+      kcond_signal_all(&p->wcond);
    }
 }
 
