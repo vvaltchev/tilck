@@ -100,13 +100,13 @@ int cmd_poll3(int argc, char **argv)
    return 0;
 }
 
-static void cmd_pollerr_child(int rfd)
+static void cmd_pollerr_child(int fd)
 {
    printf("[child] Sleep 100 ms\n");
    usleep(100 * 1000);
 
-   printf("[child] Close the read side of the pipe [fd: %d]\n", rfd);
-   close(rfd);
+   printf("[child] Close the other side of the pipe [fd: %d]\n", fd);
+   close(fd);
 
    printf("[child] exit(0)\n");
    exit(0);
@@ -150,7 +150,7 @@ int cmd_pollerr(int argc, char **argv)
       .events = 0        /* wait for errors */
    };
 
-   printf("[parent] poll({pipefd[1], POLLOUT}, ...)\n");
+   printf("[parent] poll({pipefd[1], 0}, ...)\n");
    rc = poll(fds, 1, -1);
 
    if (rc < 0) {
@@ -193,6 +193,95 @@ int cmd_pollerr(int argc, char **argv)
    } else {
       printf("[parent] write() ret %d, err: %s\n", rc, strerror(saved_errno));
       DEVSHELL_CMD_ASSERT(saved_errno == EPIPE);
+   }
+
+   return fail;
+}
+
+
+/*
+ * Use a pipe to communicate with child, expect POLLHUP in parent after closing
+ * the write side of the pipe.
+ */
+
+int cmd_pollhup(int argc, char **argv)
+{
+   struct pollfd fds[1];
+   int pipefd[2];
+   int wstatus;
+   int rc;
+   int saved_errno;
+   pid_t childpid;
+   int fail = 0;
+
+   printf("[parent] Calling pipe()\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("[parent] pipe() failed. Error: %s\n", strerror(errno));
+      exit(1);
+   }
+
+   printf("[parent] fork()..\n");
+   childpid = fork();
+   DEVSHELL_CMD_ASSERT(childpid >= 0);
+
+   if (!childpid)
+      cmd_pollerr_child(pipefd[1]);
+
+   printf("[parent] Close the write side of the pipe [fd: %d]\n", pipefd[1]);
+   close(pipefd[1]);
+
+   fds[0] = (struct pollfd) {
+      .fd = pipefd[0],   /* read side of the pipe */
+      .events = 0        /* wait for errors */
+   };
+
+   printf("[parent] poll({pipefd[0], 0}, ...)\n");
+   rc = poll(fds, 1, -1);
+
+   if (rc < 0) {
+      printf("[parent] poll() failed with: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("[parent] poll() returned: %d [expected: 0]\n", rc);
+
+   if (fds[0].revents & POLLIN)
+      printf("[parent] POLLIN in revents\n");
+
+   if (fds[0].revents & POLLERR)
+      printf("[parent] POLLERR in revents\n");
+
+   if (fds[0].revents & POLLHUP) {
+      printf("[parent] POLLHUP in revents\n");
+   } else {
+      printf("[parent] FAIL: No POLLHUP in revents\n");
+      fail = 1;
+   }
+
+   printf("[parent] waitpid()..\n");
+   rc = waitpid(childpid, &wstatus, 0);
+
+   if (rc < 0) {
+      printf("[parent] waitpid() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf("[parent] waitpid() done\n");
+   printf("[parent] read()...\n");
+
+   rc = read(pipefd[0], &wstatus, sizeof(wstatus));
+   saved_errno = errno;
+
+   if (rc > 0) {
+      printf("[parent] read() did NOT fail as expected. Ret: %d\n", rc);
+      fail = 1;
+   } else if (rc < 0) {
+      printf("[parent] read() ret %d, err: %s\n", rc, strerror(saved_errno));
+      fail = 1;
+   } else {
+      printf("[parent] read() returned 0, as expected\n");
    }
 
    return fail;

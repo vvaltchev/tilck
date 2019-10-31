@@ -160,11 +160,15 @@ static int pipe_except_ready(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   bool ret;
+   int ret = 0;
 
    kmutex_lock(&p->mutex);
    {
-      ret = atomic_load_explicit(&p->read_handles, mo_relaxed) == 0;
+      if (atomic_load_explicit(&p->read_handles, mo_relaxed) == 0)
+         ret |= POLLERR;
+
+      if (atomic_load_explicit(&p->write_handles, mo_relaxed) == 0)
+         ret |= POLLHUP;
    }
    kmutex_unlock(&p->mutex);
    return ret;
@@ -188,6 +192,7 @@ static const struct file_ops static_ops_pipe_read_end =
 {
    .read = pipe_read,
    .read_ready = pipe_read_ready,
+   .except_ready = pipe_except_ready,
    .get_rready_cond = pipe_get_rready_cond,
    .get_except_cond = pipe_get_except_cond,
 };
