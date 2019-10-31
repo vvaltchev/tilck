@@ -187,7 +187,7 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
       if (true) { /* just for symmetry */
          if (vfs_except_ready(h)) {
 
-            fds[i].revents |= POLL_ERR;
+            fds[i].revents |= POLLERR;
             cnt++;
             continue;
          }
