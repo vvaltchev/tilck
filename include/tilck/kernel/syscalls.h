@@ -231,7 +231,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_sched_setparam)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_getparam)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_setscheduler)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_getscheduler)
-CREATE_STUB_SYSCALL_IMPL(sys_sched_yield)
+
+int sys_sched_yield(void);
+
 CREATE_STUB_SYSCALL_IMPL(sys_sched_get_priority_max)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_set_priority_min)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_rr_get_interval)
