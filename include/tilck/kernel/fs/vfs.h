@@ -121,7 +121,7 @@ typedef int            (*func_ioctl)        (fs_handle, uptr, void *);
 typedef int            (*func_mmap)         (struct user_mapping *, bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
-typedef bool           (*func_rwe_ready)    (fs_handle);
+typedef int            (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 
 typedef ssize_t        (*func_readv)        (fs_handle,
@@ -269,9 +269,9 @@ void vfs_close(fs_handle h);
 void vfs_close2(struct process *pi, fs_handle h);
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 
-bool vfs_read_ready(fs_handle h);
-bool vfs_write_ready(fs_handle h);
-bool vfs_except_ready(fs_handle h);
+int vfs_read_ready(fs_handle h);
+int vfs_write_ready(fs_handle h);
+int vfs_except_ready(fs_handle h);
 struct kcond *vfs_get_rready_cond(fs_handle h);
 struct kcond *vfs_get_wready_cond(fs_handle h);
 struct kcond *vfs_get_except_cond(fs_handle h);

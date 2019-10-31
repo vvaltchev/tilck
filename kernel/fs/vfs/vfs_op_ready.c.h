@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-bool vfs_read_ready(fs_handle h)
+int vfs_read_ready(fs_handle h)
 {
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
@@ -10,7 +10,7 @@ bool vfs_read_ready(fs_handle h)
    return hb->fops->read_ready(h);
 }
 
-bool vfs_write_ready(fs_handle h)
+int vfs_write_ready(fs_handle h)
 {
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
 
@@ -20,7 +20,7 @@ bool vfs_write_ready(fs_handle h)
    return hb->fops->write_ready(h);
 }
 
-bool vfs_except_ready(fs_handle h)
+int vfs_except_ready(fs_handle h)
 {
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
 

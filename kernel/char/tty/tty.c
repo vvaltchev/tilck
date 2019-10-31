@@ -68,7 +68,7 @@ static struct kcond *tty_get_rready_cond(fs_handle h)
    return &t->input_cond;
 }
 
-static bool tty_read_ready(fs_handle h)
+static int tty_read_ready(fs_handle h)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;

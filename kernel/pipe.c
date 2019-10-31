@@ -118,7 +118,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    return rc;
 }
 
-static bool pipe_read_ready(fs_handle h)
+static int pipe_read_ready(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
@@ -141,7 +141,7 @@ static struct kcond *pipe_get_rready_cond(fs_handle h)
    return &p->rcond;
 }
 
-static bool pipe_write_ready(fs_handle h)
+static int pipe_write_ready(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
@@ -156,7 +156,7 @@ static bool pipe_write_ready(fs_handle h)
    return ret;
 }
 
-static bool pipe_except_ready(fs_handle h)
+static int pipe_except_ready(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
