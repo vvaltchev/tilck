@@ -21,6 +21,7 @@ struct pipe {
    struct kmutex mutex;
    struct kcond rcond;
    struct kcond wcond;
+   struct kcond errcond;
 
    bool read_must_block;
 
@@ -155,6 +156,20 @@ static bool pipe_write_ready(fs_handle h)
    return ret;
 }
 
+static bool pipe_except_ready(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   bool ret;
+
+   kmutex_lock(&p->mutex);
+   {
+      ret = atomic_load_explicit(&p->read_handles, mo_relaxed) == 0;
+   }
+   kmutex_unlock(&p->mutex);
+   return ret;
+}
+
 static struct kcond *pipe_get_wready_cond(fs_handle h)
 {
    struct kfs_handle *kh = h;
@@ -162,22 +177,33 @@ static struct kcond *pipe_get_wready_cond(fs_handle h)
    return &p->wcond;
 }
 
+static struct kcond *pipe_get_except_cond(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   return &p->errcond;
+}
+
 static const struct file_ops static_ops_pipe_read_end =
 {
    .read = pipe_read,
    .read_ready = pipe_read_ready,
    .get_rready_cond = pipe_get_rready_cond,
+   .get_except_cond = pipe_get_except_cond,
 };
 
 static const struct file_ops static_ops_pipe_write_end =
 {
    .write = pipe_write,
+   .except_ready = pipe_except_ready,
    .write_ready = pipe_write_ready,
    .get_wready_cond = pipe_get_wready_cond,
+   .get_except_cond = pipe_get_except_cond,
 };
 
 void destroy_pipe(struct pipe *p)
 {
+   kcond_destory(&p->errcond);
    kcond_destory(&p->wcond);
    kcond_destory(&p->rcond);
    kmutex_destroy(&p->mutex);
@@ -203,6 +229,7 @@ static void pipe_on_handle_close(fs_handle h)
    if (old == 1) {
       kcond_signal_all(&p->rcond);
       kcond_signal_all(&p->wcond);
+      kcond_signal_all(&p->errcond);
    }
 }
 
@@ -238,6 +265,7 @@ struct pipe *create_pipe(void)
    kmutex_init(&p->mutex, 0);
    kcond_init(&p->rcond);
    kcond_init(&p->wcond);
+   kcond_init(&p->errcond);
    return p;
 }
 
