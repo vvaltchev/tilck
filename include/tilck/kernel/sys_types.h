@@ -84,6 +84,10 @@ struct k_rusage {
    STATIC_ASSERT(sizeof(struct k_rusage) == 136);
 #endif
 
+#ifndef O_DIRECTORY
+   #define O_DIRECTORY __O_DIRECTORY
+#endif
+
 #ifndef O_TMPFILE
    #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
 #endif

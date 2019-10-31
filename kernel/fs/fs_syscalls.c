@@ -69,6 +69,12 @@ int sys_open(const char *u_path, int flags, mode_t mode)
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
+   if (flags & (O_ASYNC | O_DIRECT))
+      return -EINVAL;
+
+   if ((flags & O_TMPFILE) == O_TMPFILE)
+      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
+
    /* Apply the umask upfront */
    mode &= ~curr->pi->umask;
 
@@ -667,6 +673,8 @@ int sys_fcntl64(int fd, int cmd, int arg)
 
          if (arg & (O_ASYNC | O_DIRECT))
             NOT_IMPLEMENTED();
+
+
 
          hb->fl_flags = arg;
          break;
