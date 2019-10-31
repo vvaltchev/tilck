@@ -69,7 +69,12 @@ int sys_open(const char *u_path, int flags, mode_t mode)
 
    STATIC_ASSERT((ARGS_COPYBUF_SIZE / 2) >= MAX_PATH);
 
-   if (flags & (O_ASYNC | O_DIRECT))
+   /*
+    * NOTE: O_DIRECT for regular files (not pipes!) is supported out-of-the-box
+    * because Tilck has no I/O cache.
+    */
+
+   if (flags & O_ASYNC)
       return -EINVAL;
 
    if ((flags & O_TMPFILE) == O_TMPFILE)
@@ -671,12 +676,23 @@ int sys_fcntl64(int fd, int cmd, int arg)
 
       case F_SETFL:
 
+         /*
+          * In general, O_DIRECT is implicitly supported by Tilck, but for
+          * pipes O_DIRECT has a different meaning: it makes the pipes to work
+          * in a "packet" mode, which is not supported by Tilck, at the moment.
+          *
+          * Therefore, in order to avoid debugging weird stuff, while in
+          * development, just crash the kernel with NOT_IMPLEMENTED() making the
+          * problem evident. At some point, all the NOT_IMPLEMENTED() statements
+          * will need to be replaced somehow for non-dev builds, where crashing
+          * is certainly not acceptable.
+          */
+
          if (arg & (O_ASYNC | O_DIRECT))
             NOT_IMPLEMENTED();
 
-
-
-         hb->fl_flags = arg;
+         int unchangeable = hb->fl_flags & ~FCNTL_CHANGEABLE_FL;
+         hb->fl_flags = (arg & FCNTL_CHANGEABLE_FL) | unchangeable;
          break;
 
       case F_GETFL:
