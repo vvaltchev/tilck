@@ -190,22 +190,17 @@ static void pipe_on_handle_close(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
+   int old;
 
-   if (kh->fl_flags & O_WRONLY) {
+   old = atomic_fetch_sub_explicit(
+      (kh->fl_flags & O_WRONLY) ? &p->write_handles : &p->read_handles,
+      1,
+      mo_relaxed
+   );
 
-      DEBUG_ONLY_UNSAFE(int old =)
-         atomic_fetch_sub_explicit(&p->write_handles, 1, mo_relaxed);
+   ASSERT(old > 0);
 
-      ASSERT(old > 0);
-      kcond_signal_all(&p->rcond);
-      kcond_signal_all(&p->wcond);
-
-   } else {
-
-      DEBUG_ONLY_UNSAFE(int old =)
-         atomic_fetch_sub_explicit(&p->read_handles, 1, mo_relaxed);
-
-      ASSERT(old > 0);
+   if (old == 1) {
       kcond_signal_all(&p->rcond);
       kcond_signal_all(&p->wcond);
    }
