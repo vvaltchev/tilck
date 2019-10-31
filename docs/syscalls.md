@@ -82,6 +82,9 @@ considered as *not implemented yet*.
  sys_fchmod          | full
  sys_rename          | full
  sys_link            | full
+ sys_pipe            | full
+ sys_pipe2           | partial++ [14]
+ sys_sched_yield     | compliant
 
 Definitions:
 
@@ -137,3 +140,5 @@ Notes:
 
 13. Since there is no disk cache nor disk support in general, `sync()` just
     does nothing.
+
+14. The O_DIRECT mode is not supported.
