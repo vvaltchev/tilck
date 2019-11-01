@@ -404,6 +404,19 @@ struct task *get_task(int tid)
    return res;
 }
 
+struct process *get_process(int pid)
+{
+   struct task *ti;
+   ASSERT(!is_preemption_enabled());
+
+   ti = get_task(pid);
+
+   if (ti && !is_kernel_thread(ti))
+      return ti->pi;
+
+   return NULL;
+}
+
 bool in_currently_dying_task(void)
 {
    return get_curr_task()->state == TASK_STATE_ZOMBIE;

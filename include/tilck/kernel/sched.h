@@ -32,6 +32,7 @@ enum task_state {
 
 void init_sched(void);
 struct task *get_task(int tid);
+struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
 
 static ALWAYS_INLINE void disable_preemption(void)
