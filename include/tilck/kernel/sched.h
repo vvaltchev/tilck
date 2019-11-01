@@ -110,6 +110,9 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
    return __current;
 }
 
+/* Hack: it works only if the C file includes process.h, but that's fine. */
+#define get_curr_proc() (get_curr_task()->pi)
+
 int get_curr_tid(void);
 int get_curr_pid(void);
 void schedule(int curr_int);
