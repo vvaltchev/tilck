@@ -176,7 +176,12 @@ static void report_process_exit(pid_t pid, int wstatus)
       return;
 
    const int status = WEXITSTATUS(wstatus);
-   printf("[init] process %d exited with status: %d\n", pid, status);
+   const int term_sig = WTERMSIG(wstatus);
+
+   if (term_sig)
+      printf("[init] process %d killed by signal: %d\n", pid, term_sig);
+   else
+      printf("[init] process %d exited with status: %d\n", pid, status);
 }
 
 static void show_help_and_exit(void)
