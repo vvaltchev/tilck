@@ -146,6 +146,8 @@ u32 task_cancel_wakeup_timer(struct task *ti);
 typedef void (*kthread_func_ptr)();
 NODISCARD int kthread_create(kthread_func_ptr fun, int fl, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
+int sched_count_proc_in_group(int pgid);
+int sched_get_session_of_group(int pgid);
 
 struct process *task_get_pi_opaque(struct task *ti);
 void process_set_tty(struct process *pi, void *t);

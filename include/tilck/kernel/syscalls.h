@@ -105,7 +105,9 @@ int sys_umount(const char *target, int flags);
 int sys_ioctl(int fd, uptr request, void *argp);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fcntl)
-CREATE_STUB_SYSCALL_IMPL(sys_setpgid)
+
+int sys_setpgid(int pid, int pgid);
+
 CREATE_STUB_SYSCALL_IMPL(sys_olduname)
 
 mode_t sys_umask(mode_t mask);
@@ -115,8 +117,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_ustat)
 
 int sys_dup2(int oldfd, int newfd);
 int sys_getppid();
-
-CREATE_STUB_SYSCALL_IMPL(sys_getpgrp)
+int sys_getpgrp(void);
 
 int sys_setsid(void);
 int sys_sigaction(uptr a1, uptr a2, uptr a3); // deprecated interface
@@ -199,7 +200,9 @@ int sys_sigprocmask(uptr a1, uptr a2, uptr a3); // deprecated interface
 CREATE_STUB_SYSCALL_IMPL(sys_init_module)
 CREATE_STUB_SYSCALL_IMPL(sys_delete_module)
 CREATE_STUB_SYSCALL_IMPL(sys_quotactl)
-CREATE_STUB_SYSCALL_IMPL(sys_getpgid)
+
+int sys_getpgid(int pid);
+
 CREATE_STUB_SYSCALL_IMPL(sys_fchdir)
 CREATE_STUB_SYSCALL_IMPL(sys_bdflush)
 CREATE_STUB_SYSCALL_IMPL(sys_sysfs)

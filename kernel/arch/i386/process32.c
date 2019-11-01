@@ -30,6 +30,8 @@ STATIC_ASSERT(
    OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
 );
 
+STATIC_ASSERT(sizeof(struct task) + sizeof(struct process) <= 1024);
+
 void task_info_reset_kernel_stack(struct task *ti)
 {
    uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
@@ -263,6 +265,8 @@ int setup_usermode_task(pdir_t *pdir,
    u32 argv_elems = 0;
    u32 env_elems = 0;
    pdir_t *old_pdir;
+   struct process *pi = NULL;
+
    *ti_ref = NULL;
 
    ASSERT(!is_preemption_enabled());
@@ -290,10 +294,13 @@ int setup_usermode_task(pdir_t *pdir,
          goto out;
       }
 
-      ti->pi->umask = 0022;
+      pi = ti->pi;
+      pi->pgid = 1;
+      pi->sid = 1;
+      pi->umask = 0022;
       ti->state = TASK_STATE_RUNNABLE;
       add_task(ti);
-      memcpy(ti->pi->str_cwd, "/", 2);
+      memcpy(pi->str_cwd, "/", 2);
 
    } else {
 
@@ -305,11 +312,12 @@ int setup_usermode_task(pdir_t *pdir,
        * directory and free all GDT and LDT entries used by the current (forked)
        * child since we're creating a totally new process now.
        */
-      ASSERT(old_pdir == ti->pi->pdir);
-      pdir_destroy(ti->pi->pdir);
-      ti->pi->pdir = pdir;
-      old_pdir = NULL;
 
+      pi = ti->pi;
+      ASSERT(old_pdir == pi->pdir);
+      pdir_destroy(pi->pdir);
+      pi->pdir = pdir;
+      old_pdir = NULL;
       arch_specific_free_task(ti);
       arch_specific_new_task_setup(ti, NULL);
 

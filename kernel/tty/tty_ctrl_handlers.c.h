@@ -37,7 +37,7 @@ static int per_task_cb(void *obj, void *arg)
 
 static void tty_async_send_signal_to_fg_group(struct tty *t, int signum)
 {
-   struct tty_and_sig_num ctx = (struct tty_and_sig_num) {
+   struct tty_and_sig_num ctx = {
       .tty_num = t->minor,
       .sig_num = signum,
    };

@@ -31,7 +31,9 @@ struct process {
 
    REF_COUNTED_OBJECT;
 
-   int pid;                   /* process id (tgid in the Linux kernel) */
+   int pid;                          /* process id (tgid in the Linux kernel) */
+   int pgid;                         /* process group ID (same as in Linux)   */
+   int sid;                          /* process session ID (as in Linux)      */
    int parent_pid;
    pdir_t *pdir;
    struct list_node siblings_node;   /* nodes in parent's pi's children list */

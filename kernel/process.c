@@ -874,29 +874,123 @@ out:
 
 int sys_getppid()
 {
-   return get_curr_task()->pi->parent_pid;
+   return get_curr_proc()->parent_pid;
 }
 
 /* create new session */
 int sys_setsid(void)
 {
-   /*
-    * This is a stub implementation of setsid(): the controlling terminal
-    * of the current process is reset and the current pid is returned AS IF
-    * it became the session leader process.
-    *
-    * TODO (future): consider actually implementing setsid()
-    */
+   struct process *pi = get_curr_proc();
+   int rc = -EPERM;
+   int pgroup_cnt;
 
-   struct task *ti = get_curr_task();
-   ti->pi->proc_tty = NULL;
-   return ti->pi->pid;
+   disable_preemption();
+
+   pgroup_cnt = sched_count_proc_in_group(pi->pid);
+
+   if (pgroup_cnt != 0)
+      goto out;
+
+   pi->pgid = pi->pid;
+   pi->sid = pi->pid;
+   pi->proc_tty = NULL;
+   rc = pi->sid;
+
+out:
+   enable_preemption();
+   return rc;
 }
 
 /* get current session id */
 int sys_getsid(int pid)
 {
-   return -ENOSYS;
+   return get_curr_proc()->sid;
+}
+
+int sys_setpgid(int pid, int pgid)
+{
+   struct process *pi;
+   int sid;
+   int rc = 0;
+
+   if (pgid < 0)
+      return -EINVAL;
+
+   disable_preemption();
+
+   if (!pid) {
+
+      pi = get_curr_proc();
+
+   } else {
+
+      pi = get_process(pid);
+
+      if (!pi) {
+         rc = -ESRCH;
+         goto out;
+      }
+
+      if (pi->did_call_execve) {
+         rc = -EACCES;
+         goto out;
+      }
+
+      /* Cannot move processes in other sessions */
+      if (pi->sid != get_curr_proc()->sid) {
+         rc = -EPERM;
+         goto out;
+      }
+   }
+
+   if (pgid) {
+
+      sid = sched_get_session_of_group(pgid);
+
+      /*
+      * If the process group exists (= there's at least one process with
+      * pi->pgid == pgid), it must be in the same session as `pid` and the
+      * calling process.
+      */
+      if (sid >= 0 && sid != pi->sid) {
+         rc = -EPERM;
+         goto out;
+      }
+
+      /* Set process' pgid to `pgid` */
+      pi->pgid = pgid;
+
+   } else {
+
+      /* pgid is 0: make the process a group leader */
+      pi->pgid = pi->pid;
+   }
+
+out:
+   enable_preemption();
+   return rc;
+}
+
+int sys_getpgid(int pid)
+{
+   struct process *pi;
+   int ret = -ESRCH;
+
+   if (!pid)
+      return get_curr_proc()->pgid;
+
+   disable_preemption();
+   {
+      if ((pi = get_process(pid)))
+         ret = pi->pgid;
+   }
+   enable_preemption();
+   return ret;
+}
+
+int sys_getpgrp(void)
+{
+   return get_curr_proc()->pgid;
 }
 
 int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)

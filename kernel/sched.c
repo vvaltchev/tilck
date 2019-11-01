@@ -10,6 +10,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/errno.h>
 
 struct task *__current;
 ATOMIC(u32) disable_preemption_count = 1;
@@ -27,6 +28,56 @@ static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid = -1;
 static struct task *idle_task;
+
+int sched_count_proc_in_group(int pgid)
+{
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int count = 0;
+
+   disable_preemption();
+   {
+      bintree_in_order_visit_start(&ctx,
+                                   tree_by_tid_root,
+                                   struct task,
+                                   tree_by_tid_node,
+                                   false);
+
+      while ((ti = bintree_in_order_visit_next(&ctx))) {
+
+         if (ti->pi->pgid == pgid)
+            count++;
+      }
+   }
+   enable_preemption();
+   return count;
+}
+
+int sched_get_session_of_group(int pgid)
+{
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int sid = -ESRCH;
+
+   disable_preemption();
+   {
+      bintree_in_order_visit_start(&ctx,
+                                   tree_by_tid_root,
+                                   struct task,
+                                   tree_by_tid_node,
+                                   false);
+
+      while ((ti = bintree_in_order_visit_next(&ctx))) {
+
+         if (ti->pi->pgid == pgid) {
+            sid = ti->pi->sid;
+            break;
+         }
+      }
+   }
+   enable_preemption();
+   return sid;
+}
 
 int get_curr_tid(void)
 {
