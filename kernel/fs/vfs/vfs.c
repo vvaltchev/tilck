@@ -210,6 +210,11 @@ vfs_open_impl(struct fs *fs, struct vfs_path *p,
 {
    int rc;
 
+   if (flags & O_DIRECTORY) {
+      if (p->fs_path.type != VFS_DIR)
+         return -ENOTDIR;
+   }
+
    if ((rc = fs->fsops->open(p, out, flags, mode)))
       return rc;
 
@@ -226,12 +231,6 @@ vfs_open_impl(struct fs *fs, struct vfs_path *p,
 
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 {
-   if (flags & O_ASYNC)
-      return -EINVAL; /* TODO: Tilck does not support ASYNC I/O yet */
-
-   if ((flags & O_TMPFILE) == O_TMPFILE)
-      return -EOPNOTSUPP; /* TODO: Tilck does not support O_TMPFILE yet */
-
    return vfs_path_funcs_wrapper(
       path,
       true,             /* exlock */

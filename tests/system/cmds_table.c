@@ -58,6 +58,8 @@ DECL_CMD(pipe1);
 DECL_CMD(pipe2);
 DECL_CMD(pipe3);
 DECL_CMD(pipe4);
+DECL_CMD(pollerr);
+DECL_CMD(pollhup);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -110,6 +112,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(pipe2,        TT_SHORT,  true),
    CMD_ENTRY(pipe3,        TT_SHORT,  true),
    CMD_ENTRY(pipe4,        TT_SHORT,  true),
+   CMD_ENTRY(pollerr,      TT_SHORT,  true),
+   CMD_ENTRY(pollhup,      TT_SHORT,  true),
 
    /*
     * For the moment these tests can be run only manually because they require

@@ -173,6 +173,12 @@ int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
    return -EINVAL;
 }
 
+int sys_sched_yield(void)
+{
+   kernel_yield();
+   return 0;
+}
+
 /* *************************************************************** */
 /*          Tilck-specific syscalls & helper functions             */
 /* *************************************************************** */

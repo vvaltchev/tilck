@@ -38,7 +38,7 @@ static struct kcond *ttyaux_get_rready_cond(fs_handle h)
    return &get_curr_process_tty()->input_cond;
 }
 
-static bool ttyaux_read_ready(fs_handle h)
+static int ttyaux_read_ready(fs_handle h)
 {
    return tty_read_ready_int(get_curr_process_tty(), h);
 }

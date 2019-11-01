@@ -84,6 +84,10 @@ struct k_rusage {
    STATIC_ASSERT(sizeof(struct k_rusage) == 136);
 #endif
 
+#ifndef O_DIRECTORY
+   #define O_DIRECTORY __O_DIRECTORY
+#endif
+
 #ifndef O_TMPFILE
    #define O_TMPFILE (__O_TMPFILE | O_DIRECTORY)
 #endif
@@ -95,3 +99,11 @@ struct k_rusage {
 #ifndef O_NOATIME
    #define O_NOATIME __O_NOATIME
 #endif
+
+#define FCNTL_CHANGEABLE_FL (         \
+   O_APPEND      |                    \
+   O_ASYNC       |                    \
+   O_DIRECT      |                    \
+   O_NOATIME     |                    \
+   O_NONBLOCK                         \
+)

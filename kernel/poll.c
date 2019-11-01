@@ -156,6 +156,7 @@ static int
 poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 {
    int cnt = 0;
+   int rc;
 
    for (nfds_t i = 0; i < nfds; i++) {
 
@@ -185,9 +186,8 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
       }
 
       if (true) { /* just for symmetry */
-         if (vfs_except_ready(h)) {
-
-            fds[i].revents |= POLL_ERR;
+         if ((rc = vfs_except_ready(h))) {
+            fds[i].revents |= rc > 0 ? rc : POLLERR;
             cnt++;
             continue;
          }
