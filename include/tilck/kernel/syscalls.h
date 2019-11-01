@@ -17,7 +17,7 @@
       int name()                                           \
       {                                                    \
          printk("[TID: %d] NOT IMPLEMENTED: %s()\n",       \
-                get_curr_task_tid(), #name);               \
+                get_curr_tid(), #name);                    \
          return -ENOSYS;                                   \
       }
 

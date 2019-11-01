@@ -28,7 +28,7 @@ static int runnable_tasks_count;
 static int current_max_pid = -1;
 static struct task *idle_task;
 
-int get_curr_task_tid(void)
+int get_curr_tid(void)
 {
    struct task *c = get_curr_task();
    return c ? c->tid : 0;

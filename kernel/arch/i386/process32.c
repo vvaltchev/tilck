@@ -574,7 +574,7 @@ void handle_gpf(regs_t *r)
       panic("General protection fault. Error: %p\n", r->err_code);
 
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGSEGV, true);
+   send_signal(get_curr_tid(), SIGSEGV, true);
 }
 
 /* Illegal instruction fault handler */
@@ -584,7 +584,7 @@ void handle_ill(regs_t *r)
       panic("Illegal instruction fault. Error: %p\n", r->err_code);
 
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGILL, true);
+   send_signal(get_curr_tid(), SIGILL, true);
 }
 
 /* Division by zero fault handler */
@@ -594,7 +594,7 @@ void handle_div0(regs_t *r)
       panic("Division by zero fault. Error: %p\n", r->err_code);
 
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGFPE, true);
+   send_signal(get_curr_tid(), SIGFPE, true);
 }
 
 /* Coproc fault handler */
@@ -604,5 +604,5 @@ void handle_cpf(regs_t *r)
       panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);
 
    end_fault_handler_state();
-   send_signal(get_curr_task_tid(), SIGFPE, true);
+   send_signal(get_curr_tid(), SIGFPE, true);
 }
