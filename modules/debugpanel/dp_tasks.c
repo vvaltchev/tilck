@@ -9,7 +9,7 @@
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
-#define MAX_EXEC_PATH_LEN     36
+#define MAX_EXEC_PATH_LEN     28
 
 static int row;
 
@@ -60,7 +60,8 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[120];
    static char hfmt[120];
    static char header[120];
-   static char hline_sep[120] = "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
+   static char hline_sep[120] =
+      "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
@@ -72,8 +73,9 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                " %%-9d "
                TERM_VLINE " %%-5d "
                TERM_VLINE " %%-5d "
+               TERM_VLINE " %%-5d "
                TERM_VLINE " %%-1s "
-               TERM_VLINE " %%-3d "
+               TERM_VLINE "  %%-2d "
                TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
 
@@ -81,13 +83,22 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                " %%-9s "
                TERM_VLINE " %%-5s "
                TERM_VLINE " %%-5s "
+               TERM_VLINE " %%-5s "
                TERM_VLINE " %%-1s "
                TERM_VLINE " %%-3s "
                TERM_VLINE " %%-%ds",
                path_field_len);
 
-      snprintk(header, sizeof(header), hfmt,
-               "tid", "pid", "ppid", "S", "tty", "path or kernel thread");
+      snprintk(header,
+               sizeof(header),
+               hfmt,
+               "tid/pid",
+               "pgid",
+               "sid",
+               "ppid",
+               "S",
+               "tty",
+               "path or kernel thread");
 
       char *p = hline_sep + strlen(hline_sep);
 
@@ -118,44 +129,52 @@ static int debug_per_task_cb(void *obj, void *arg)
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
    struct task *ti = obj;
    struct process *pi = ti->pi;
-   char buf[128];
-   char path[MAX_EXEC_PATH_LEN + 1];
-   char path2[MAX_EXEC_PATH_LEN + 1];
+   char buf[128] = {0};
+   char *path = buf;
+   char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
    const char *orig_path = pi->debug_filepath;
+
+   STATIC_ASSERT(sizeof(buf) >= (2 * MAX_EXEC_PATH_LEN + 2));
 
    if (!ti->tid)
       return 0; /* skip the main kernel task */
 
    if (strlen(orig_path) < MAX_EXEC_PATH_LEN - 2) {
-      snprintk(path, sizeof(path), "%s", orig_path);
+      snprintk(path, MAX_EXEC_PATH_LEN + 1, "%s", orig_path);
    } else {
-      snprintk(path2, sizeof(path) - 6, "%s", orig_path);
-      snprintk(path, sizeof(path), "%s...", path2);
+      snprintk(path2, MAX_EXEC_PATH_LEN + 1 - 6, "%s", orig_path);
+      snprintk(path, MAX_EXEC_PATH_LEN + 1, "%s...", path2);
    }
 
    const char *state = debug_get_state_name(ti->state);
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
-   if (!is_kernel_thread(ti)) {
-      dp_writeln(fmt, ti->tid, pi->pid,
-                 pi->parent_pid, state, ttynum, path);
-      return 0;
-   }
+   if (is_kernel_thread(ti)) {
 
-   const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
+      ttynum = 0;
+      const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
 
-   if (kfunc) {
-      if (!is_tasklet_runner(ti)) {
-         snprintk(buf, sizeof(buf), "<%s>", kfunc);
+      if (kfunc) {
+         if (!is_tasklet_runner(ti)) {
+            snprintk(buf, sizeof(buf), "<%s>", kfunc);
+         } else {
+            snprintk(buf, sizeof(buf), "<%s[%d]>",
+                     kfunc, debug_get_tn_for_tasklet_runner(ti));
+         }
       } else {
-         snprintk(buf, sizeof(buf), "<%s[%d]>",
-                  kfunc, debug_get_tn_for_tasklet_runner(ti));
+         snprintk(buf, sizeof(buf), "<func: %p>", ti->what);
       }
-   } else {
-      snprintk(buf, sizeof(buf), "<func: %p>", ti->what);
    }
 
-   dp_writeln(fmt, ti->tid, pi->pid, pi->parent_pid, state, 0, buf);
+   dp_writeln(fmt,
+              ti->tid,
+              pi->pgid,
+              pi->sid,
+              pi->parent_pid,
+              state,
+              ttynum,
+              buf);
+
    return 0;
 }
 
