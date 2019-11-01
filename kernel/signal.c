@@ -78,20 +78,8 @@ static void do_send_signal(struct task *ti, int signum)
 
    if (h != SIG_DFL) {
 
-      /* DIRTY HACK: treat custom signal handlers except SIGINT as SIG_IGN */
-      if (signum != SIGINT)
-         return;
-
-      /*
-       * DIRTY HACK: when SIGINT has a custom handler, treat it as SIG_DFL.
-       *
-       * This allows we to terminate processes by pressing Ctrl+C, even when
-       * they set a custom signal handler. Of course, both of these HACKS are
-       * pretty bad and far from the correct behavior, but they allow several
-       * console applications like `ash`, `vi` and `more` to behave as the user
-       * would expect (with the exception that `vi` will terminate on Ctrl+C).
-       */
-      h = SIG_DFL;
+      /* DIRTY HACK: treat custom signal handlers as SIG_IGN */
+      return;
    }
 
    /*
