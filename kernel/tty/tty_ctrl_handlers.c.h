@@ -3,52 +3,6 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
 
-struct tty_and_sig_num {
-
-   int tty_num;
-   int sig_num;
-};
-
-static void tty_send_signal(int tid, int signum)
-{
-   send_signal(tid, signum, true);
-   ASSERT(is_preemption_enabled());
-}
-
-static int per_task_cb(void *obj, void *arg)
-{
-   struct tty_and_sig_num *ctx = arg;
-   struct tty *t = ttys[ctx->tty_num];
-   struct task *ti = obj;
-
-   if (!is_kernel_thread(ti) && ti->pi->proc_tty == t) {
-
-      bool ok = enqueue_tasklet2(tty_tasklet_runner,
-                                 tty_send_signal,
-                                 ti->tid,
-                                 ctx->sig_num);
-
-      if (!ok)
-         panic("Unable to enqueue tasklet for sending signal");
-   }
-
-   return 0;
-}
-
-static void tty_async_send_signal_to_fg_group(struct tty *t, int signum)
-{
-   struct tty_and_sig_num ctx = {
-      .tty_num = t->minor,
-      .sig_num = signum,
-   };
-
-   disable_preemption();
-   {
-      iterate_over_tasks(per_task_cb, &ctx);
-   }
-   enable_preemption();
-}
-
 static bool tty_ctrl_stop(struct tty *t)
 {
    if (t->c_term.c_iflag & IXON) {
@@ -74,7 +28,7 @@ static bool tty_ctrl_intr(struct tty *t)
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
       tty_inbuf_reset(t);
-      tty_async_send_signal_to_fg_group(t, SIGINT);
+      send_signal_to_group(t->fg_pgid, SIGINT);
       return true;
    }
 
@@ -97,7 +51,7 @@ static bool tty_ctrl_quit(struct tty *t)
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
       tty_inbuf_reset(t);
-      tty_async_send_signal_to_fg_group(t, SIGQUIT);
+      send_signal_to_group(t->fg_pgid, SIGQUIT);
       return true;
    }
 

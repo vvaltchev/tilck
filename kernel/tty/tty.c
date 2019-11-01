@@ -25,7 +25,6 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 
 struct tty *ttys[128];
 struct tty *__curr_tty;
-int tty_tasklet_runner;
 static struct term_params first_term_i;
 
 static struct keypress_handler_elem tty_keypress_handler_elem =
@@ -352,11 +351,6 @@ static void init_tty(void)
    {
       if (!kopt_serial_console)
          register_keypress_handler(&tty_keypress_handler_elem);
-
-      tty_tasklet_runner = create_tasklet_thread(100, TTY_TASKLETS_QUEUE_SIZE);
-
-      if (tty_tasklet_runner < 0)
-         panic("TTY: unable to create tasklet runner");
    }
    enable_preemption();
 
