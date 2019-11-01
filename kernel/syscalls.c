@@ -102,16 +102,34 @@ int sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    return send_signal2(pid, tid, sig, false);
 }
 
+
 int sys_kill(int pid, int sig)
 {
-   if (pid <= 0) {
-      printk("sys_kill: pid <= 0 NOT SUPPORTED yet.\n");
+   if (!IN_RANGE(sig, 0, _NSIG))
       return -EINVAL;
+
+   if (pid == 0)
+      return send_signal_to_group(get_curr_proc()->pgid, sig);
+
+   if (pid == -1) {
+
+      /*
+       * In theory, pid == -1, means:
+       *    "sig is sent to every process for which the calling process has
+       *     permission to send signals, except for process 1 (init)".
+       *
+       * But Tilck does not have a permission model nor multi-user support.
+       * So, what to do here? Kill everything except init? Mmh, not sure.
+       * It looks acceptable for the moment to just kill all the processes in
+       * the current session.
+       */
+      return send_signal_to_session(get_curr_proc()->sid, sig);
    }
 
-   if (!IN_RANGE(sig, 0, _NSIG) || pid <= 0)
-      return -EINVAL;
+   if (pid < -1)
+      return send_signal_to_group(-pid, sig);
 
+   /* pid > 0 */
    return send_signal(pid, sig, true);
 }
 

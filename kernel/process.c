@@ -882,21 +882,16 @@ int sys_setsid(void)
 {
    struct process *pi = get_curr_proc();
    int rc = -EPERM;
-   int pgroup_cnt;
 
    disable_preemption();
 
-   pgroup_cnt = sched_count_proc_in_group(pi->pid);
+   if (!sched_count_proc_in_group(pi->pid)) {
+      pi->pgid = pi->pid;
+      pi->sid = pi->pid;
+      pi->proc_tty = NULL;
+      rc = pi->sid;
+   }
 
-   if (pgroup_cnt != 0)
-      goto out;
-
-   pi->pgid = pi->pid;
-   pi->sid = pi->pid;
-   pi->proc_tty = NULL;
-   rc = pi->sid;
-
-out:
    enable_preemption();
    return rc;
 }

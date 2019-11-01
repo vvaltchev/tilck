@@ -23,11 +23,13 @@ static void action_ignore(struct task *ti, int signum)
 static void action_continue(struct task *ti, int signum)
 {
    NOT_IMPLEMENTED();
+   // printk("Send CONTINUE to pid %d\n", ti->tid);
 }
 
 static void action_stop(struct task *ti, int signum)
 {
    NOT_IMPLEMENTED();
+   // printk("Send STOP to pid %d\n", ti->tid);
 }
 
 static const action_type signal_default_actions[32] =

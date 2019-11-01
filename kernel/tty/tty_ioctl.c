@@ -205,41 +205,96 @@ static int tty_ioctl_KDGKBTYPE(struct tty *t, void *argp)
    return 0;
 }
 
-static int tty_ioctl_TIOCSCTTY(struct tty *t, void *argp)
+static int tty_ioctl_TIOCNOTTY(struct tty *t, void *argp)
 {
-   struct task *ti = get_curr_task();
+   struct process *pi = get_curr_proc();
 
-   if (!ti->pi->proc_tty) {
+   if (pi->proc_tty != t)
+      return -EPERM; /* that's not our controlling terminal */
 
-      ti->pi->proc_tty = t;
-
-   } else {
-
-      // TODO: support this case
+   if (pi->sid == pi->pid) {
 
       /*
-      If this terminal is already the controlling terminal of a different
-      session group, then the ioctl fails with EPERM, unless the caller has the
-      CAP_SYS_ADMIN capability and arg equals 1, in which case the terminal is
-      stolen, and all processes that had it as controlling terminal lose it.
-      */
+       * The session leader gives up his controlling terminal.
+       *
+       * TODO: send SIGHUP to all the processes in the foreground process group
+       * and make all the processes in the current session to lose their
+       * controlling terminal.
+       */
+   }
+
+   pi->proc_tty = NULL;
+   return 0;
+}
+
+static int tty_ioctl_TIOCSCTTY(struct tty *t, void *argp)
+{
+   struct process *pi = get_curr_proc();
+
+   if (pi->proc_tty) {
+
+      /*
+       * The current process has already a controlling terminal.
+       *
+       * On Linux, if the caller process has the CAP_SYS_ADMIN capability and
+       * arg equals 1, the terminal is stolen, and all processes that had it as
+       * controlling terminal lose it.
+       *
+       * On Tilck, at least for the moment, that won't be supported.
+       */
 
       return -EPERM;
    }
 
+   if (pi->sid != pi->pid)
+      return -EPERM; /* not a session leader */
+
+   pi->proc_tty = t;
    return 0;
 }
 
 /* get foreground process group */
 static int tty_ioctl_TIOCGPGRP(struct tty *t, int *user_pgrp)
 {
-   return -EINVAL;
+   int rc;
+   disable_preemption();
+   {
+      rc = t->fg_pgid;
+   }
+   enable_preemption();
+   return rc;
 }
 
 /* set foregroup process group */
 static int tty_ioctl_TIOCSPGRP(struct tty *t, const int *user_pgrp)
 {
-   return -EINVAL;
+   struct process *pi = get_curr_proc();
+   int pgid;
+   int sid;
+
+   if (pi->proc_tty != t)
+      return -ENOTTY;
+
+   if (copy_from_user(&pgid, user_pgrp, sizeof(int)))
+      return -EFAULT;
+
+   if (pgid < 0)
+      return -EINVAL;
+
+   sid = sched_get_session_of_group(pgid);
+
+   if (sid < 0)
+      return -EPERM; /* no such process group */
+
+   if (sid != pi->sid)
+      return -EPERM; /* progress group in a different session */
+
+   disable_preemption();
+   {
+      t->fg_pgid = pgid;
+   }
+   enable_preemption();
+   return 0;
 }
 
 int
@@ -277,6 +332,9 @@ tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
 
       case TIOCSCTTY:
          return tty_ioctl_TIOCSCTTY(t, argp);
+
+      case TIOCNOTTY:
+         return tty_ioctl_TIOCNOTTY(t, argp);
 
       case TIOCGPGRP:
          return tty_ioctl_TIOCGPGRP(t, argp);

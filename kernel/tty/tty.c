@@ -345,6 +345,9 @@ static void init_tty(void)
    if (serial_term_intf)
       init_serial_ttys();
 
+   /* Make init's process group to be the fg process group for the first tty */
+   ttys[kopt_serial_console ? TTYS0_MINOR : 1]->fg_pgid = 1;
+
    disable_preemption();
    {
       if (!kopt_serial_console)

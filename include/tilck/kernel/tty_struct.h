@@ -23,6 +23,7 @@ struct tty {
    void *console_data;
 
    int minor;
+   int fg_pgid;
    char dev_filename[16];
 
    struct ringbuf input_ringbuf;

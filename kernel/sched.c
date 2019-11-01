@@ -473,3 +473,94 @@ bool in_currently_dying_task(void)
 {
    return get_curr_task()->state == TASK_STATE_ZOMBIE;
 }
+
+int send_signal_to_group(int pgid, int sig)
+{
+   struct process *curr_pi = get_curr_proc();
+   struct process *leader = NULL;
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int count = 0;
+
+   disable_preemption();
+
+   bintree_in_order_visit_start(&ctx,
+                                tree_by_tid_root,
+                                struct task,
+                                tree_by_tid_node,
+                                false);
+
+   while ((ti = bintree_in_order_visit_next(&ctx))) {
+
+      struct process *pi = ti->pi;
+
+      if (pi->pgid == pgid && pi != curr_pi && pi->pid != 1) {
+
+         if (pi->pid != pgid)
+            send_signal(pi->pid, sig, true);
+         else
+            leader = pi;
+
+         count++;
+      }
+   }
+
+   if (leader)
+      send_signal(leader->pid, sig, true); /* kill the leader last */
+
+   enable_preemption();
+
+   if (curr_pi->pgid == pgid) {
+
+      /* kill the current process, as _very_ last */
+      send_signal(curr_pi->pid, sig, true);
+      count++;
+   }
+
+   return count > 0 ? 0 : -ESRCH;
+}
+
+int send_signal_to_session(int sid, int sig)
+{
+   struct process *curr_pi = get_curr_proc();
+   struct process *leader = NULL;
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int count = 0;
+
+   disable_preemption();
+
+   bintree_in_order_visit_start(&ctx,
+                                tree_by_tid_root,
+                                struct task,
+                                tree_by_tid_node,
+                                false);
+
+   while ((ti = bintree_in_order_visit_next(&ctx))) {
+
+      struct process *pi = ti->pi;
+
+      if (pi->pgid == sid && pi != curr_pi && pi->pid != 1) {
+
+         if (pi->pid != sid)
+            send_signal(pi->pid, sig, true);
+         else
+            leader = pi;
+
+         count++;
+      }
+   }
+
+   if (leader)
+      send_signal(leader->pid, sig, true); /* kill the leader last */
+
+   enable_preemption();
+
+   /* kill the current process, as _very_ last */
+   if (curr_pi->pgid == sid) {
+      send_signal(curr_pi->pid, sig, true);
+      count++;
+   }
+
+   return count > 0 ? 0 : -ESRCH;
+}

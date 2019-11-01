@@ -437,10 +437,30 @@ bool tty_read_ready_int(struct tty *t, struct devfs_handle *h)
 ssize_t
 tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
+   struct process *pi = get_curr_proc();
    size_t read_count = 0;
    bool delim_break;
 
    ASSERT(is_preemption_enabled());
+
+   if (pi->proc_tty != t) {
+
+      /*
+       * Cannot read from this TTY, as it is not the process' controlling
+       * terminal.
+       */
+      return -EIO;
+   }
+
+   if (pi->pgid != t->fg_pgid) {
+
+      /*
+       * Cannot read from TTY, as the process is not in the terminal's
+       * foreground process group.
+       */
+
+      return -EIO;
+   }
 
    if (!size)
       return 0;

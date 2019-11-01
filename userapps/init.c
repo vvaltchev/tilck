@@ -284,9 +284,10 @@ static void setup_console_for_shell(int tty)
    close(1);
    close(0);
 
-   setsid();                /* Reset the controlling terminal */
-   open_std_handles(tty);   /* Open /dev/ttyN as stdin, stdout and stderr */
-   ioctl(0, TIOCSCTTY, 0);  /* Make ttyN to be the controlling terminal */
+   setsid();                 /* Reset the controlling terminal */
+   open_std_handles(tty);    /* Open /dev/ttyN as stdin, stdout and stderr */
+   ioctl(0, TIOCSCTTY, 0);   /* Make ttyN to be the controlling terminal */
+   tcsetpgrp(0, getpgid(0)); /* Make this pgid the foreground process group */
 }
 
 static int fork_and_run_shell_on_tty(int tty)
