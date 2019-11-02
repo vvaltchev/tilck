@@ -14,12 +14,17 @@ char strtab_buf[STRTAB_MAX_SIZE] __attribute__ ((section (".Strtab"))) = {0};
 
 #ifdef DEBUG
 
+const uptr init_st_begin = (uptr)&kernel_initial_stack;
+const uptr init_st_end   = (uptr)&kernel_initial_stack + KERNEL_STACK_SIZE;
+
 void validate_stack_pointer_int(const char *file, int line)
 {
    uptr stack_var = 123;
    const uptr stack_var_page = (uptr)&stack_var & PAGE_MASK;
+   const uptr st_begin = (uptr)get_curr_task()->kernel_stack;
+   const uptr st_end = st_begin + KERNEL_STACK_SIZE;
 
-   if (stack_var_page == (uptr)&kernel_initial_stack) {
+   if (IN_RANGE(stack_var_page, init_st_begin, init_st_end)) {
 
       /*
        * That's fine: we are in the initialization or in task_switch() called
@@ -28,7 +33,7 @@ void validate_stack_pointer_int(const char *file, int line)
       return;
    }
 
-   if (stack_var_page != (uptr)get_curr_task()->kernel_stack) {
+   if (!IN_RANGE(stack_var_page, st_begin, st_end)) {
 
       panic("Invalid kernel stack pointer.\n"
             "File %s at line %i\n"

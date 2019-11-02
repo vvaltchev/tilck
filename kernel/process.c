@@ -27,6 +27,8 @@
 #define CONTINUED                           0xffff
 #define COREFLAG                              0x80
 
+#define ISOLATED_STACK_HI_VMEM_SPACE   (KERNEL_STACK_SIZE + (2 * PAGE_SIZE))
+
 static void *alloc_kernel_isolated_stack(struct process *pi)
 {
    void *vaddr_in_block;
@@ -43,7 +45,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
       return NULL;
 
    direct_pa = KERNEL_VA_TO_PA(direct_va);
-   block_vaddr = hi_vmem_reserve(4 * KERNEL_STACK_SIZE);
+   block_vaddr = hi_vmem_reserve(ISOLATED_STACK_HI_VMEM_SPACE);
 
    if (!block_vaddr) {
       kfree2(direct_va, KERNEL_STACK_SIZE);
@@ -62,7 +64,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
 
    if (count != KERNEL_STACK_SIZE / PAGE_SIZE) {
       unmap_pages(pi->pdir, vaddr_in_block, count, false);
-      hi_vmem_release(block_vaddr, 4 * KERNEL_STACK_SIZE);
+      hi_vmem_release(block_vaddr, ISOLATED_STACK_HI_VMEM_SPACE);
       kfree2(direct_va, KERNEL_STACK_SIZE);
       return NULL;
    }
@@ -78,7 +80,7 @@ free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
    void *direct_va = KERNEL_PA_TO_VA(direct_pa);
 
    unmap_pages(pi->pdir, vaddr_in_block, KERNEL_STACK_SIZE / PAGE_SIZE, false);
-   hi_vmem_release(block_vaddr, 4 * KERNEL_STACK_SIZE);
+   hi_vmem_release(block_vaddr, ISOLATED_STACK_HI_VMEM_SPACE);
    kfree2(direct_va, KERNEL_STACK_SIZE);
 }
 
@@ -126,8 +128,9 @@ void free_mem_for_zombie_task(struct task *ti)
 #ifdef DEBUG
 
    if (ti == get_curr_task()) {
+
       uptr stack_var = 123;
-      if (((uptr)&stack_var & PAGE_MASK) != (uptr)&kernel_initial_stack)
+      if (!IN_RANGE((uptr)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
          panic("free_mem_for_zombie_task() called w/o switch to initial stack");
    }
 

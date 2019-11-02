@@ -5,6 +5,9 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/hal.h>
 
+extern const uptr init_st_begin;
+extern const uptr init_st_end;
+
 size_t stackwalk32(void **frames, size_t count,
                    void *ebp, pdir_t *pdir);
 
