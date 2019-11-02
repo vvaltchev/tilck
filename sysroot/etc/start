@@ -1,9 +1,13 @@
 #!/initrd/bin/busybox ash
 
 # Symlink the essential directories from /initrd to /
-dirs="bin etc usr"
+dirs="bin etc usr lib"
 
 for d in $dirs; do
+
+   if ! [ -d /initrd/$d ]; then
+      continue
+   fi
 
    mkdir $d
    for x in /initrd/$d/*; do
