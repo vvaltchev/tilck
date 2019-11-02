@@ -149,6 +149,7 @@ function add_tcc {
    ln $tc/tcc/tcclib.h lib/tcc/include
    ln $tc/tcc/@ARCH@-libtcc1.a lib/tcc
    ln $tc/tcc/@ARCH@-tcc bin/tcc
+   cp -r $tc/tcc/examples lib/tcc-examples
 
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
 }
