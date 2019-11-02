@@ -29,6 +29,7 @@ process_add_user_mapping(fs_handle h, void *v, size_t ln, size_t off, int prot);
 void process_remove_user_mapping(struct user_mapping *um);
 void full_remove_user_mapping(struct process *pi, struct user_mapping *um);
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h);
+void remove_all_user_zero_mem_mappings(struct process *pi);
 struct user_mapping *process_get_user_mapping(void *vaddr);
 
 /* Internal functions */

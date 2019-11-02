@@ -20,6 +20,7 @@ DECL_CMD(fpu);
 DECL_CMD(fpu_loop);
 DECL_CMD(brk);
 DECL_CMD(mmap);
+DECL_CMD(mmap2);
 DECL_CMD(kcow);
 DECL_CMD(wpid1);
 DECL_CMD(wpid2);
@@ -79,6 +80,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(fpu_loop,     TT_LONG,  false),
    CMD_ENTRY(brk,          TT_SHORT,  true),
    CMD_ENTRY(mmap,         TT_MED,    true),
+   CMD_ENTRY(mmap2,        TT_SHORT,  true),
    CMD_ENTRY(kcow,         TT_SHORT,  true),
    CMD_ENTRY(wpid1,        TT_SHORT,  true),
    CMD_ENTRY(wpid2,        TT_SHORT,  true),

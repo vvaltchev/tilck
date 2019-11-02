@@ -15,6 +15,7 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/process_mm.h>
 
 #include <sys/prctl.h>        // system header
 #include <sys/wait.h>         // system header
@@ -693,6 +694,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
 
    close_all_handles(pi);
    task_free_all_kernel_allocs(ti);
+   remove_all_user_zero_mem_mappings(pi);
    ASSERT(list_is_empty(&pi->mappings));
 
 

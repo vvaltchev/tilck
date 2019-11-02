@@ -121,3 +121,37 @@ int cmd_mmap(int argc, char **argv)
 
    return 0;
 }
+
+static void no_munmap_bad_child(void)
+{
+   const size_t alloc_size = 128 * KB;
+
+   void *res = mmap(NULL,
+                    alloc_size,
+                    PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE,
+                    -1,
+                    0);
+
+   if (res == (void*) -1) {
+      printf("[child] mmap 128 KB failed!\n");
+      exit(1);
+   }
+
+   /* DO NOT munmap the memory, expecting the kernel to do that! */
+   exit(0);
+}
+
+int cmd_mmap2(int argc, char **argv)
+{
+   int child;
+   int wstatus;
+
+   child = fork();
+
+   if (!child)
+      no_munmap_bad_child();
+
+   waitpid(child, &wstatus, 0);
+   return 0;
+}

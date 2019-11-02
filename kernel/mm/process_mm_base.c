@@ -61,6 +61,19 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
    return NULL;
 }
 
+void remove_all_user_zero_mem_mappings(struct process *pi)
+{
+   ASSERT(!is_preemption_enabled());
+
+   struct user_mapping *um;
+
+   list_for_each_ro(um, &pi->mappings, pi_node) {
+
+      if (!um->h)
+         full_remove_user_mapping(pi, um);
+   }
+}
+
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
 {
    struct user_mapping *pos, *temp;
@@ -78,7 +91,9 @@ void remove_all_mappings_of_handle(struct process *pi, fs_handle h)
 void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
 {
    size_t actual_len = um->len;
-   vfs_munmap(um->h, um->vaddrp, actual_len);
+
+   if (um->h)
+      vfs_munmap(um->h, um->vaddrp, actual_len);
 
    per_heap_kfree(pi->mmap_heap,
                   um->vaddrp,
