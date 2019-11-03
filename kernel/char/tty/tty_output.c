@@ -392,8 +392,17 @@ tty_csi_n_handler(u32 *params,
                term_get_curr_row(t->term_inst) + 1,
                term_get_curr_col(t->term_inst) + 1);
 
-      for (u8 *p = (u8 *)dsr; *p; p++)
-         tty_keypress_handler_int(t, *p, *p, false);
+      for (char *p = dsr; *p; p++) {
+         tty_keypress_handler_int(
+            t,
+            (struct key_event) {
+               .key = (u32) *p,
+               .print_char = *p,
+               .pressed = true,
+            },
+            false
+         );
+      }
    }
 }
 

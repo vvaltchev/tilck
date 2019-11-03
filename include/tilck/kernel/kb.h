@@ -13,8 +13,8 @@
 struct key_event {
 
    u32 key;
-   bool pressed;
    char print_char;
+   bool pressed;
 };
 
 typedef int (*keypress_func)(struct key_event);

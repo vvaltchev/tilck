@@ -216,10 +216,13 @@ static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
    return KB_HANDLER_OK_AND_CONTINUE;
 }
 
-int tty_keypress_handler_int(struct tty *t, u32 key, u8 c, bool check_mods)
+int
+tty_keypress_handler_int(struct tty *t, struct key_event ke, bool check_mods)
 {
+   u8 c = (u8)ke.print_char;
+
    if (!c)
-      return tty_handle_non_printable_key(t, key);
+      return tty_handle_non_printable_key(t, ke.key);
 
    if (check_mods && kb_is_alt_pressed())
       kb_buf_write_elem(t, '\033');
@@ -250,7 +253,7 @@ int tty_keypress_handler_int(struct tty *t, u32 key, u8 c, bool check_mods)
       return KB_HANDLER_OK_AND_CONTINUE;
 
    if (t->c_term.c_lflag & ICANON)
-      return tty_keypress_handle_canon_mode(t, key, c);
+      return tty_keypress_handle_canon_mode(t, ke.key, c);
 
    /* raw mode input handling */
    kb_buf_write_elem(t, c);
@@ -281,7 +284,6 @@ int tty_keypress_handler(struct key_event ke)
 
    struct tty *const t = get_curr_tty();
    const u32 key = ke.key;
-   const u8 c = (u8)ke.print_char;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
@@ -315,7 +317,7 @@ int tty_keypress_handler(struct key_event ke)
       }
    }
 
-   return tty_keypress_handler_int(t, key, c, true);
+   return tty_keypress_handler_int(t, ke, true);
 }
 
 static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
