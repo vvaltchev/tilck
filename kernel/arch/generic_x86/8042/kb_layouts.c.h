@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static u8 numkey[128] = {
+static char numkey[128] = {
    [71] = '7', '8', '9',
    [75] = '4', '5', '6',
    [79] = '1', '2', '3',
    [82] = '0', '.',
 };
 
-static u8 kbd_us[128] =
+static char kbd_us[128] =
 {
    0,  '\033', '1', '2', '3', '4', '5', '6', '7', '8',
    '9', '0', '-', '=', '\x7f',  /* Backspace key => ASCII DEL */
@@ -49,7 +49,7 @@ static u8 kbd_us[128] =
    0, /* All other keys are undefined */
 };
 
-static u8 kbd_us_up[128] =
+static char kbd_us_up[128] =
 {
    0,  27, '!', '@', '#', '$', '%', '^', '&', '*',
    '(', ')', '_', '+', '\b',
@@ -91,7 +91,7 @@ static u8 kbd_us_up[128] =
    0, /* All other keys are undefined */
 };
 
-static u8 *us_kb_layouts[2] = {
+static char *us_kb_layouts[2] = {
    kbd_us, kbd_us_up
 };
 

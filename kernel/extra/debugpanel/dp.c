@@ -107,9 +107,9 @@ void dp_register_screen(struct dp_screen *screen)
    list_add_after(pred, &screen->node);
 }
 
-static int dp_debug_panel_off_keypress(u32 key, u8 c)
+static int dp_debug_panel_off_keypress(struct key_event ke)
 {
-   if (kb_is_ctrl_pressed() && key == KEY_F12) {
+   if (kb_is_ctrl_pressed() && ke.key == KEY_F12) {
 
       if (!dp_tty) {
 
@@ -166,16 +166,19 @@ static void redraw_screen(void)
    ui_need_update = false;
 }
 
-static int dp_keypress_handler(u32 key, u8 c)
+static int dp_keypress_handler(struct key_event ke)
 {
    int rc;
 
    if (kopt_serial_console)
       return KB_HANDLER_NAK;
 
+   if (!ke.pressed)
+      return KB_HANDLER_NAK; /* ignore key-release events */
+
    if (!in_debug_panel) {
 
-      if (dp_debug_panel_off_keypress(key, c) == KB_HANDLER_NAK)
+      if (dp_debug_panel_off_keypress(ke) == KB_HANDLER_NAK)
          return KB_HANDLER_NAK;
 
       ui_need_update = true;
@@ -183,7 +186,7 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    ASSERT(in_debug_panel);
 
-   if (c == 'q' || (!kb_is_ctrl_pressed() && key == KEY_F12)) {
+   if (ke.print_char == 'q' || (!kb_is_ctrl_pressed() && ke.key == KEY_F12)) {
 
       if (set_curr_tty(saved_tty) == 0)
          dp_exit();
@@ -191,7 +194,7 @@ static int dp_keypress_handler(u32 key, u8 c)
       return KB_HANDLER_OK_AND_STOP;
    }
 
-   rc = kb_get_fn_key_pressed(key);
+   rc = kb_get_fn_key_pressed(ke.key);
 
    if (rc > 0) {
 
@@ -205,14 +208,14 @@ static int dp_keypress_handler(u32 key, u8 c)
          }
       }
 
-   } else if (key == KEY_DOWN) {
+   } else if (ke.key == KEY_DOWN) {
 
       if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
          dp_ctx->row_off++;
          ui_need_update = true;
       }
 
-   } else if (key == KEY_UP) {
+   } else if (ke.key == KEY_UP) {
 
       if (dp_ctx->row_off > 0) {
          dp_ctx->row_off--;
@@ -222,7 +225,7 @@ static int dp_keypress_handler(u32 key, u8 c)
 
    if (!ui_need_update && dp_ctx->on_keypress_func) {
 
-      rc = dp_ctx->on_keypress_func(key, c);
+      rc = dp_ctx->on_keypress_func(ke);
 
       if (rc == KB_HANDLER_OK_AND_STOP)
          return rc; /* skip redraw_screen() */

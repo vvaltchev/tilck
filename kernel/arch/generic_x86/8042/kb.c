@@ -19,8 +19,7 @@ enum kb_state {
    KB_DEFAULT_STATE = 0,
    KB_READ_E0_SCANCODE_STATE,
    KB_READ_E1_SCANCODE_STATE,
-   KB_READ_FIRST_SCANCODE_AFTER_E1_STATE
-
+   KB_READ_FIRST_SCANCODE_AFTER_E1_STATE,
 };
 
 int kb_tasklet_runner = -1;
@@ -41,7 +40,7 @@ static inline void kb_led_update(void)
    kb_led_set((u8)(capsLock << 2 | numLock << 1));
 }
 
-static u8 translate_printable_key(u32 key)
+static char translate_printable_key(u32 key)
 {
    if (key >= 256) {
 
@@ -58,16 +57,16 @@ static u8 translate_printable_key(u32 key)
       }
    }
 
-   u8 *layout =
+   char *layout =
       us_kb_layouts[kb_is_pressed(KEY_L_SHIFT) || kb_is_pressed(KEY_R_SHIFT)];
 
-   u8 c = layout[key];
+   char c = layout[key];
 
    if (numLock)
       c |= numkey[key];
 
    if (capsLock)
-      c = (u8) toupper(c);
+      c = (char)toupper(c);
 
    return c;
 }
@@ -77,14 +76,14 @@ void kb_register_keypress_handler(struct keypress_handler_elem *e)
    list_add_tail(&keypress_handlers, &e->node);
 }
 
-static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
+static int kb_call_keypress_handlers(struct key_event ke)
 {
    int count = 0;
    struct keypress_handler_elem *pos;
 
    list_for_each_ro(pos, &keypress_handlers, node) {
 
-      int rc = pos->handler(raw_key, printable_char);
+      int rc = pos->handler(ke);
 
       switch (rc) {
          case KB_HANDLER_OK_AND_STOP:
@@ -106,32 +105,38 @@ static int kb_call_keypress_handlers(u32 raw_key, u8 printable_char)
    return count;
 }
 
-void handle_key_pressed(u32 key)
+void handle_key_pressed(u32 key, bool pressed)
 {
-   switch(key) {
+   switch (key) {
 
-   case KEY_DEL:
+      case KEY_DEL:
 
-      if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
-         printk("Ctrl + Alt + Del: Reboot!\n");
-         reboot();
-      }
+         if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
+            printk("Ctrl + Alt + Del: Reboot!\n");
+            reboot();
+         }
 
-      break;
+         break;
 
-   case KEY_NUM_LOCK:
-      numLock = !numLock;
-      kb_led_update();
-      return;
+      case KEY_NUM_LOCK:
+         numLock = !numLock;
+         kb_led_update();
+         return;
 
-   case KEY_CAPS_LOCK:
-      capsLock = !capsLock;
-      kb_led_update();
-      return;
+      case KEY_CAPS_LOCK:
+         capsLock = !capsLock;
+         kb_led_update();
+         return;
    }
 
    //int hc =
-   kb_call_keypress_handlers(key, translate_printable_key(key));
+   kb_call_keypress_handlers(
+      (struct key_event) {
+         .key = key,
+         .pressed = pressed,
+         .print_char = translate_printable_key(key),
+      }
+   );
 
    // if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
    //    if (key != KEY_LEFT_CTRL && key != KEY_RIGHT_CTRL)
@@ -143,10 +148,7 @@ static void key_int_handler(u32 key, bool kb_is_pressed)
 {
    bool e0 = (key >> 8) == 0xE0;
    key_pressed_state[e0][key & 0xFF] = kb_is_pressed;
-
-   if (kb_is_pressed) {
-      handle_key_pressed(key);
-   }
+   handle_key_pressed(key, kb_is_pressed);
 }
 
 static void kb_handle_default_state(u8 scancode)

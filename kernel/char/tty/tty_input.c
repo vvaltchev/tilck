@@ -274,9 +274,14 @@ int set_curr_tty(struct tty *t)
    return res;
 }
 
-int tty_keypress_handler(u32 key, u8 c)
+int tty_keypress_handler(struct key_event ke)
 {
+   if (!ke.pressed)
+      return KB_HANDLER_NAK;
+
    struct tty *const t = get_curr_tty();
+   const u32 key = ke.key;
+   const u8 c = (u8)ke.print_char;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);

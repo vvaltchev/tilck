@@ -10,7 +10,14 @@
 #define KB_HANDLER_OK_AND_CONTINUE   0
 #define KB_HANDLER_NAK              -1
 
-typedef int (*keypress_func)(u32, u8);
+struct key_event {
+
+   u32 key;
+   bool pressed;
+   char print_char;
+};
+
+typedef int (*keypress_func)(struct key_event);
 
 struct keypress_handler_elem {
 

@@ -25,7 +25,7 @@ static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
 static struct chunk_info chunks_arr[1024];
-static u8 chunks_order_by;
+static char chunks_order_by;
 
 static sptr dp_chunks_cmpf_size(const void *a, const void *b)
 {
@@ -101,8 +101,10 @@ static void dp_chunks_exit(void)
       return;
 }
 
-static int dp_chunks_keypress(u32 key, u8 c)
+static int dp_chunks_keypress(struct key_event ke)
 {
+   const char c = ke.print_char;
+
    switch (c) {
 
       case 's':
