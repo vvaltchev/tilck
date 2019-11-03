@@ -91,7 +91,30 @@ static char kbd_us_up[128] =
    0, /* All other keys are undefined */
 };
 
-static char *us_kb_layouts[2] = {
-   kbd_us, kbd_us_up
+static char *us_kb_layouts[2] =
+{
+   kbd_us,
+   kbd_us_up
 };
 
+static u8 mediumraw_e0_keys[256] =
+{
+   [KEY_NUMPAD_UP]         = 0x67,    // non-numpad up
+   [KEY_NUMPAD_DOWN]       = 0x6c,    // non-numpad down
+   [KEY_NUMPAD_RIGHT]      = 0x6a,    // non-numpad right
+   [KEY_NUMPAD_LEFT]       = 0x69,    // non-numpad left
+
+   [KEY_LEFT_CTRL]         = 0x61,    // right ctrl
+   [KEY_LEFT_ALT]          = 0x64,    // right alt
+
+   [KEY_NUMPAD_INS]        = 0x6e,    // non-numpad INS
+   [KEY_NUMPAD_HOME]       = 0x66,    // non-numpad HOME
+   [KEY_NUMPAD_DEL]        = 0x6f,    // non-numpad DEL
+   [KEY_NUMPAD_END]        = 0x6b,    // non-numpad END
+
+   [KEY_NUMPAD_PAGE_UP]    = 0x68,    // non-numpad page up
+   [KEY_NUMPAD_PAGE_DOWN]  = 0x6d,    // non-numpad page down
+
+   [0x1c]                  = 0x60,    // numpad enter
+   [0x35]                  = 0x62,    // numpad slash
+};

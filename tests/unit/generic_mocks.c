@@ -94,6 +94,7 @@ void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
 void set_page_rw() { }
 void kb_register_keypress_handler() { }
+u8 kb_translate_to_mediumraw() { return 0; }
 int get_irq_num(void *ctx) { return -1; }
 int get_int_num(void *ctx) { return -1; }
 

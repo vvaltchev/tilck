@@ -227,6 +227,16 @@ static enum irq_action keyboard_irq_handler(regs_t *context)
    return count > 0 ? IRQ_REQUIRES_BH : IRQ_FULLY_HANDLED;
 }
 
+u8 kb_translate_to_mediumraw(struct key_event ke)
+{
+   const u32 key = ke.key;
+
+   if ((key & 0xff) == key)
+      return (u8)(key | (u8)(ke.pressed << 7));
+
+   return mediumraw_e0_keys[key & 0xff] | (u8)(!ke.pressed << 7);
+}
+
 u8 kb_get_current_modifiers(void)
 {
    u8 shift = 1u * kb_is_shift_pressed();

@@ -133,7 +133,7 @@ static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
 
 static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 {
-   int mode = K_XLATE; /* The only supported mode, at the moment */
+   int mode = t->mediumraw_mode ? K_MEDIUMRAW : K_XLATE;
 
    if (!copy_to_user(argp, &mode, sizeof(int)))
       return 0;
@@ -145,10 +145,21 @@ static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 {
    uptr mode = (uptr) argp;
 
-   if (mode == K_XLATE)
-      return 0;  /* K_XLATE is the only supported mode, at the moment */
+   switch (mode) {
 
-   return -EINVAL;
+      case K_XLATE:
+         t->mediumraw_mode = false;
+         break;
+
+      case K_MEDIUMRAW:
+         t->mediumraw_mode = true;
+         break;
+
+      default:
+         return -EINVAL;
+   }
+
+   return 0;
 }
 
 static int tty_ioctl_KDGKBTYPE(struct tty *t, void *argp)

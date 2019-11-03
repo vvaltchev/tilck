@@ -279,11 +279,29 @@ int set_curr_tty(struct tty *t)
 
 int tty_keypress_handler(struct key_event ke)
 {
-   if (!ke.pressed)
-      return KB_HANDLER_NAK;
-
    struct tty *const t = get_curr_tty();
    const u32 key = ke.key;
+
+   if (t->mediumraw_mode) {
+
+      const u8 mr = kb_translate_to_mediumraw(ke);
+
+      if (!mr) {
+
+         /*
+          * For any reason, we don't have a MEDIUMRAW translation for that key.
+          * Just ignore the key press/release, that's it.
+          */
+         return KB_HANDLER_OK_AND_STOP;
+      }
+
+      kb_buf_write_elem(t, mr);
+      kcond_signal_one(&t->input_cond);
+      return KB_HANDLER_OK_AND_STOP;
+   }
+
+   if (!ke.pressed)
+      return KB_HANDLER_NAK;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);

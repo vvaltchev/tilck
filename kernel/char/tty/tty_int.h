@@ -70,6 +70,7 @@ struct tty {
    struct ringbuf input_ringbuf;
    struct kcond input_cond;
    int end_line_delim_count;
+   bool mediumraw_mode;
 
    /* tty output */
    u16 saved_cur_row;

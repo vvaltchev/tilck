@@ -31,6 +31,7 @@ void kb_register_keypress_handler(struct keypress_handler_elem *e);
 bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq);
 u8 kb_get_current_modifiers(void);
 int kb_get_fn_key_pressed(u32 key);
+u8 kb_translate_to_mediumraw(struct key_event ke);
 
 static inline bool kb_is_ctrl_pressed(void)
 {
