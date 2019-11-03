@@ -104,15 +104,24 @@
 #define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
 #define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)
 
+
+
 #define MAX_PID                                             32768
 #define MAX_PATH                                              256
 #define MAX_HANDLES                                            16
 #define USER_ARGS_PAGE_COUNT                                    1
-#define IO_COPYBUF_PAGE_COUNT                                   3
-#define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
-#define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
 #define USERAPP_MAX_ARGS_COUNT                                 32
 #define MAX_SCRIPT_REC                                          2
+
+#if KERNEL_BIG_IO_BUF
+   #define IO_COPYBUF_PAGE_COUNT                               63
+#else
+   #define IO_COPYBUF_PAGE_COUNT                                3
+#endif
+
+#define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
+#define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
+
 
 /* Bootloader-specific constants */
 

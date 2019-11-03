@@ -106,6 +106,8 @@ set(KERNEL_STACK_ISOLATION ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
+set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
+
 set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
