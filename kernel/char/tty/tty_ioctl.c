@@ -151,6 +151,16 @@ static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
    return -EINVAL;
 }
 
+static int tty_ioctl_KDGKBTYPE(struct tty *t, void *argp)
+{
+   const int kb_type = KB_101;
+
+   if (copy_to_user(argp, &kb_type, sizeof(kb_type)))
+      return -EFAULT;
+
+   return 0;
+}
+
 static int tty_ioctl_TIOCSCTTY(struct tty *t, void *argp)
 {
    struct task *ti = get_curr_task();
@@ -217,6 +227,9 @@ tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
 
       case KDSKBMODE:
          return tty_ioctl_KDSKBMODE(t, argp);
+
+      case KDGKBTYPE:
+         return tty_ioctl_KDGKBTYPE(t, argp);
 
       case TIOCSCTTY:
          return tty_ioctl_TIOCSCTTY(t, argp);
