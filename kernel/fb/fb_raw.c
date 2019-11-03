@@ -42,11 +42,11 @@ u32 fb_red_mask;
 u32 fb_green_mask;
 u32 fb_blue_mask;
 
-static u32 fb_size;
+u32 fb_size;
 static u32 fb_bytes_per_pixel;
 static u32 fb_line_length;
 
-static uptr fb_vaddr;
+uptr fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
 u32 font_w;

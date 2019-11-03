@@ -15,17 +15,63 @@
 #include <linux/major.h>  // system header
 #include <sys/mman.h>     // system header
 
+extern uptr fb_vaddr;
+extern u32 fb_size;
+
 static ssize_t total_fb_pages_mapped;
 static struct list mappings_list = make_list(mappings_list);
 
-static ssize_t fb_read(fs_handle fsh, char *buf, size_t size)
+static ssize_t fb_read(fs_handle h, char *buf, size_t size)
 {
-   return 0;
+   struct devfs_handle *dh = h;
+   ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
+
+   memcpy(buf,
+          (char *)fb_vaddr + dh->pos,
+          (size_t)actual_size);
+
+   dh->pos += actual_size;
+   return actual_size;
 }
 
 static ssize_t fb_write(fs_handle h, char *buf, size_t size)
 {
-   return -ENOSPC;
+   struct devfs_handle *dh = h;
+   ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
+
+   memcpy((char *)fb_vaddr + dh->pos,
+          buf,
+          (size_t)actual_size);
+
+   dh->pos += actual_size;
+   return actual_size;
+}
+
+static offt fb_seek(fs_handle h, offt off, int whence)
+{
+   struct devfs_handle *dh = h;
+   offt new_pos = -1;
+
+   switch (whence) {
+
+      case SEEK_SET:
+         new_pos = off;
+         break;
+
+      case SEEK_CUR:
+         new_pos = dh->pos + off;
+         break;
+
+      case SEEK_END:
+         new_pos = dh->pos - off;
+         break;
+   }
+
+   if (new_pos < 0 || (size_t)new_pos > fb_size)
+      return -EINVAL;
+
+   dh->pos = new_pos;
+   return dh->pos;
 }
 
 static int fb_ioctl(fs_handle h, uptr request, void *argp)
@@ -123,6 +169,7 @@ create_fb_device(int minor,
    static const struct file_ops static_ops_fb = {
       .read = fb_read,
       .write = fb_write,
+      .seek = fb_seek,
       .ioctl = fb_ioctl,
       .mmap = fbdev_mmap,
       .munmap = fbdev_munmap,
