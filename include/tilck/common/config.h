@@ -108,7 +108,8 @@
 #define MAX_PATH                                              256
 #define MAX_HANDLES                                            16
 #define USER_ARGS_PAGE_COUNT                                    1
-#define IO_COPYBUF_SIZE        (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
+#define IO_COPYBUF_PAGE_COUNT                                   3
+#define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
 #define USERAPP_MAX_ARGS_COUNT                                 32
 #define MAX_SCRIPT_REC                                          2

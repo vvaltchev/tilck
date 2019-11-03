@@ -85,6 +85,20 @@ free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
    kfree2(direct_va, KERNEL_STACK_SIZE);
 }
 
+
+#define TOT_IOBUF_AND_ARGS_BUF_PG (USER_ARGS_PAGE_COUNT + USER_ARGS_PAGE_COUNT)
+
+STATIC_ASSERT(
+   TOT_IOBUF_AND_ARGS_BUF_PG ==  2     ||
+   TOT_IOBUF_AND_ARGS_BUF_PG ==  4     ||
+   TOT_IOBUF_AND_ARGS_BUF_PG ==  8     ||
+   TOT_IOBUF_AND_ARGS_BUF_PG == 16     ||
+   TOT_IOBUF_AND_ARGS_BUF_PG == 32     ||
+   TOT_IOBUF_AND_ARGS_BUF_PG == 64
+);
+
+#undef TOT_IOBUF_AND_ARGS_BUF_PG
+
 static bool do_common_task_allocations(struct task *ti)
 {
    if (KERNEL_STACK_ISOLATION) {
