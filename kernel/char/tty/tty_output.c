@@ -692,7 +692,7 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
             t->c_sets_tables[0] = tty_default_trans_table;
             t->c_sets_tables[1] = tty_gfx_trans_table;
             t->c_term = default_termios;
-            t->kd_mode = KD_TEXT;
+            t->kd_gfx_mode = KD_TEXT;
             t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
             t->user_color = t->curr_color;
             tty_update_default_state_tables(t);

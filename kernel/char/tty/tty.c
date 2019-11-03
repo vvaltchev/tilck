@@ -106,7 +106,7 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
    t->minor = minor;
    t->filter_ctx.t = t;
    t->c_term = default_termios;
-   t->kd_mode = KD_TEXT;
+   t->kd_gfx_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
    t->user_color = t->curr_color;
    t->serial_port_fwd = serial_port_fwd;

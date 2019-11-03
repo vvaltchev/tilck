@@ -81,7 +81,7 @@ struct tty {
 
    /* tty ioctl */
    struct termios c_term;
-   u32 kd_mode;
+   u32 kd_gfx_mode;
 
    /* tty input & output */
    u8 curr_color; /* actual color after applying attrs */

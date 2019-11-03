@@ -30,7 +30,7 @@ static void tty_keypress_echo(struct tty *t, char c)
    if (t->serial_port_fwd)
       return;
 
-   if (t->kd_mode == KD_GRAPHICS)
+   if (t->kd_gfx_mode == KD_GRAPHICS)
       return;
 
    if (c == '\n' && (c_term->c_lflag & ECHONL)) {
@@ -264,7 +264,7 @@ int set_curr_tty(struct tty *t)
    int res = -EPERM;
    disable_preemption();
    {
-      if (__curr_tty->kd_mode == KD_TEXT) {
+      if (__curr_tty->kd_gfx_mode == KD_TEXT) {
          __curr_tty = t;
          set_curr_term(t->term_inst);
          res = 0;
@@ -293,7 +293,7 @@ int tty_keypress_handler(u32 key, u8 c)
       struct tty *other_tty;
       int fn = kb_get_fn_key_pressed(key);
 
-      if (fn > 0 && get_curr_tty()->kd_mode == KD_TEXT) {
+      if (fn > 0 && get_curr_tty()->kd_gfx_mode == KD_TEXT) {
 
          if (fn > kopt_tty_count)
             return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
