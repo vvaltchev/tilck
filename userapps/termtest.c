@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/kd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
@@ -52,6 +53,7 @@ void save_termios(void)
 void restore_termios(void)
 {
    tcsetattr(0, TCSAFLUSH, &orig_termios);
+   ioctl(0, KDSKBMODE, K_XLATE);
 }
 
 void one_read(void)
@@ -385,6 +387,35 @@ static void poll_and_read(void)
    }
 }
 
+static void medium_raw_read(void)
+{
+   char c;
+   int rc;
+
+   if (ioctl(0, KDSKBMODE, K_MEDIUMRAW) != 0) {
+      printf("Unable to set mediumraw mode.\r\n");
+      return;
+   }
+
+   term_set_raw_mode();
+
+   do {
+
+      rc = read(0, &c, 1);
+
+      if (!rc)
+         break;
+
+      if (c & 0x80)
+         printf("released 0x%x", (unsigned char)(c & ~0x80));
+      else
+         printf("PRESSED 0x%x", (unsigned char)(c & ~0x80));
+
+      printf("\r\n");
+
+   } while (c != 0x10 /* q */);
+}
+
 #ifdef USERMODE_APP
 static void dump_termios(void)
 {
@@ -419,7 +450,8 @@ static struct {
    CMD_ENTRY("-sr", sleep_then_read),
    CMD_ENTRY("-mr", sym_read),
    CMD_ENTRY("-cs", read_ttys0_canon_mode),
-   CMD_ENTRY("-pr", poll_and_read)
+   CMD_ENTRY("-pr", poll_and_read),
+   CMD_ENTRY("-xmr", medium_raw_read),
 };
 
 static void show_help(void)
