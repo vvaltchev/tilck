@@ -177,11 +177,9 @@ int sys_read(int fd, void *u_buf, size_t count)
 {
    int ret;
    struct task *curr = get_curr_task();
-   fs_handle handle;
+   struct fs_handle_base *h;
 
-   handle = get_fs_handle(fd);
-
-   if (!handle)
+   if (!(h = get_fs_handle(fd)))
       return -EBADF;
 
    /*
@@ -197,35 +195,39 @@ int sys_read(int fd, void *u_buf, size_t count)
     * return type of sys_read().
     */
 
+   if (h->spec_flags & VFS_SPFL_NO_USER_COPY)
+      return (int) vfs_read(h, u_buf, count);
+
    count = MIN(count, IO_COPYBUF_SIZE);
-   ret = (int) vfs_read(handle, curr->io_copybuf, count);
+   ret = (int) vfs_read(h, curr->io_copybuf, count);
 
    if (ret > 0) {
       if (copy_to_user(u_buf, curr->io_copybuf, (size_t)ret) < 0) {
          // Do we have to rewind the stream in this case? It don't think so.
          ret = -EFAULT;
-         goto end;
       }
    }
 
-end:
    return ret;
 }
 
 int sys_write(int fd, const void *u_buf, size_t count)
 {
    struct task *curr = get_curr_task();
-   fs_handle handle;
+   struct fs_handle_base *h;
 
-   if (!(handle = get_fs_handle(fd)))
+   if (!(h = get_fs_handle(fd)))
       return -EBADF;
+
+   if (h->spec_flags & VFS_SPFL_NO_USER_COPY)
+      return (int)vfs_write(h, (void *)u_buf, count);
 
    count = MIN(count, IO_COPYBUF_SIZE);
 
    if (copy_from_user(curr->io_copybuf, u_buf, count))
       return -EFAULT;
 
-   return (int)vfs_write(handle, (char *)curr->io_copybuf, count);
+   return (int)vfs_write(h, (char *)curr->io_copybuf, count);
 }
 
 int sys_ioctl(int fd, uptr request, void *argp)

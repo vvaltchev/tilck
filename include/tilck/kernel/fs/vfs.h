@@ -237,12 +237,14 @@ struct file_ops {
    const struct file_ops *fops;  \
    int fd_flags;                 \
    int fl_flags;                 \
+   int spec_flags;               \
    offt pos;                        /* file: offset, dir: opaque entry index */
 
 struct fs_handle_base {
    FS_HANDLE_BASE_FIELDS
 };
 
+#define VFS_SPFL_NO_USER_COPY         (1 << 0)
 
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);

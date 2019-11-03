@@ -21,29 +21,30 @@ extern u32 fb_size;
 static ssize_t total_fb_pages_mapped;
 static struct list mappings_list = make_list(mappings_list);
 
-static ssize_t fb_read(fs_handle h, char *buf, size_t size)
+static ssize_t fb_read(fs_handle h, char *user_buf, size_t size)
 {
    struct devfs_handle *dh = h;
    ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
-
-   memcpy(buf,
-          (char *)fb_vaddr + dh->pos,
-          (size_t)actual_size);
+   void *src = (char *)fb_vaddr + dh->pos;
 
    dh->pos += actual_size;
+
+   if (copy_to_user(user_buf, src, (size_t)actual_size))
+      return -EFAULT;
+
    return actual_size;
 }
 
-static ssize_t fb_write(fs_handle h, char *buf, size_t size)
+static ssize_t fb_write(fs_handle h, char *user_buf, size_t size)
 {
    struct devfs_handle *dh = h;
    ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
+   void *dest = (char *)fb_vaddr + dh->pos;
+   dh->pos += (offt)actual_size;
 
-   memcpy((char *)fb_vaddr + dh->pos,
-          buf,
-          (size_t)actual_size);
+   if (copy_from_user(dest, user_buf, (size_t)actual_size))
+      return -EFAULT;
 
-   dh->pos += actual_size;
    return actual_size;
 }
 
@@ -164,7 +165,8 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
 static int
 create_fb_device(int minor,
                  const struct file_ops **fops_ref,
-                 enum vfs_entry_type *t)
+                 enum vfs_entry_type *t,
+                 int *spec_flags_ref)
 {
    static const struct file_ops static_ops_fb = {
       .read = fb_read,
@@ -177,6 +179,7 @@ create_fb_device(int minor,
 
    *t = VFS_CHAR_DEV;
    *fops_ref = &static_ops_fb;
+   *spec_flags_ref = VFS_SPFL_NO_USER_COPY;
    return 0;
 }
 

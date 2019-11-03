@@ -118,7 +118,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    f->dev_major = major;
    f->dev_minor = minor;
 
-   int res = dinfo->create_dev_file(minor, &f->fops, &f->type);
+   int res = dinfo->create_dev_file(minor, &f->fops, &f->type, &f->spec_flags);
 
    if (res < 0) {
       kfree2(f, sizeof(struct devfs_file));
@@ -253,10 +253,11 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
       return -ENOMEM;
    }
 
-   h->type  = pos->type;
-   h->file  = pos;
-   h->fs    = fs;
-   h->fops  = pos->fops;
+   h->type       = pos->type;
+   h->file       = pos;
+   h->fs         = fs;
+   h->fops       = pos->fops;
+   h->spec_flags = pos->spec_flags;
 
    *out = h;
    return 0;
