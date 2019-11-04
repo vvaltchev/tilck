@@ -15,8 +15,8 @@ if [[ "$1" == "--contrib" ]]; then
 
    export CC='clang'
    export CXX='clang++'
-   export CMAKE_ARGS='-DKERNEL_SYSCC=1 -DWCONV=1 -DKMALLOC_HEAVY_STATS=1'
-
+   export CMAKE_ARGS="-DKERNEL_SYSCC=1 -DWCONV=1 -DKMALLOC_HEAVY_STATS=1"
+   export CMAKE_ARGS="$CMAKE_ARGS -DTIMER_HZ=250"
    echo
    echo -e "${YELLOW}Contributor mode${RATTRS}: "
    echo
