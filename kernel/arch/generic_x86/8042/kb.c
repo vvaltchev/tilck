@@ -131,11 +131,7 @@ void handle_key_pressed(u32 key, bool pressed)
 
    //int hc =
    kb_call_keypress_handlers(
-      (struct key_event) {
-         .key = key,
-         .pressed = pressed,
-         .print_char = translate_printable_key(key),
-      }
+      make_key_event(key, translate_printable_key(key), pressed)
    );
 
    // if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)

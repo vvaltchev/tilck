@@ -12,10 +12,22 @@
 
 struct key_event {
 
-   u32 key;
-   char print_char;
-   bool pressed;
+   bool pressed : 1;
+   u32 key : 23;
+   char print_char : 8;
 };
+
+STATIC_ASSERT(sizeof(struct key_event) == sizeof(u32));
+
+static ALWAYS_INLINE struct key_event
+make_key_event(u32 key, char print_char, bool pressed)
+{
+   return (struct key_event) {
+      .pressed = pressed,
+      .key = key,
+      .print_char = print_char,
+   };
+}
 
 typedef int (*keypress_func)(struct key_event);
 
