@@ -125,10 +125,10 @@ static int dp_debug_panel_off_keypress(struct key_event ke)
 
       saved_tty = get_curr_tty();
 
-      if (set_curr_tty(dp_tty) == 0)
+      if (set_curr_tty(dp_tty) == 0) {
          dp_enter();
-
-      return KB_HANDLER_OK_AND_STOP;
+         return KB_HANDLER_OK_AND_STOP;
+      }
    }
 
    return KB_HANDLER_NAK;
