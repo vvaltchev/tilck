@@ -21,35 +21,6 @@ ubuntu_pkg_list+=(rpm2cpio)
 ubuntu_pkg_list+=(cpio)
 ubuntu_pkg_list+=(qemu-system-x86)
 
-function install_ubuntu_family {
-
-   packages_list=( "${ubuntu_pkg_list[@]}" )
-   to_install=()
-
-   echo Checking the packages that need to be installed
-
-   for x in ${packages_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   echo
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-      run_command "sudo apt install $tmp"
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
 function install_debian_family {
 
    packages_list=( "${ubuntu_pkg_list[@]}" )
@@ -71,11 +42,19 @@ function install_debian_family {
    echo
 
    if [ ${#to_install[@]} -ne 0 ]; then
+
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
-      echo Running the command:
-      echo su -c \"apt install $tmp\"
-      su -c "apt install $tmp"
+
+      if ! which sudo &> /dev/null; then
+         cmd="su -c \"apt install $tmp\""
+      else
+         cmd="sudo apt install $tmp"
+      fi
+
+      echo "Running the command: $cmd"
+      eval $cmd
+
    else
       echo "You are all set, no packages need to be installed."
    fi
@@ -168,24 +147,28 @@ function install_packages {
    # a solution since in /etc/upstream-release/* on Mint, Ubuntu is mentioned.
    if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
 
-      install_ubuntu_family
+      echo "Distribution detected: Ubuntu (any) or Mint"
+      echo ""
+      install_debian_family
 
-   # Debian does not contain the lsb-release file. Also, it needs a special
-   # handling since it does not have 'sudo' by default. Installing sudo is not
-   # a solution since the current use still won't be a sudoer and in general
-   # does not make sense in such a script. The ubuntu script cannot made to use
-   # su -c since by default the login to root is disabled. Only sudo -i works.
+   # Debian does not contain the lsb-release file.
    elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
 
+      echo "Distribution detected: Debian"
+      echo ""
       install_debian_family
 
    # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
    elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
 
+      echo "Distribution detected: Fedora"
+      echo ""
       install_fedora
 
    elif echo $rel_files | grep -Ei 'arch|manjaro' - &> /dev/null; then
 
+      echo "Distribution detected: Arch or Manjaro"
+      echo ""
       install_arch
 
    else
