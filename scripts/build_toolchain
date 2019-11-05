@@ -348,7 +348,7 @@ function busybox_fix_config_file {
    sed -i '/CONFIG_/!d' .config
 
    # Sort all the lines
-   sort -s .config > .config_sorted
+   LC_ALL=C sort -sr .config > .config_sorted
    mv .config_sorted .config
 }
 
