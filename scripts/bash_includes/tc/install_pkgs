@@ -24,6 +24,9 @@ ubuntu_pkg_list+=(qemu-system-x86)
 
 function install_debian_family {
 
+   echo debian > $TC/.distro
+   echo gcc-multilib > $TC/.32bit_libs_pkg
+
    pkg_list=( "${ubuntu_pkg_list[@]}" )
    to_install=()
 
@@ -42,19 +45,18 @@ function install_debian_family {
 
    echo
 
+   # Install the packages
+
    if [ ${#to_install[@]} -ne 0 ]; then
 
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
 
       if ! which sudo &> /dev/null; then
-         cmd="su -c \"apt install $tmp\""
+         run_command "su -c \"apt install $tmp\""
       else
-         cmd="sudo apt install $tmp"
+         run_command "sudo apt install $tmp"
       fi
-
-      echo "Running the command: $cmd"
-      eval $cmd
 
    else
       echo "You are all set, no packages need to be installed."
@@ -62,6 +64,9 @@ function install_debian_family {
 }
 
 function install_fedora {
+
+   echo fedora > $TC/.distro
+   echo glibc-devel.i686 > $TC/.32bit_libs_pkg
 
    pkg_list=()
    pkg_list+=(wget)
@@ -101,6 +106,9 @@ function install_fedora {
 
 function install_arch {
 
+   echo arch > $TC/.distro
+   echo lib32-glibc > $TC/.32bit_libs_pkg
+
    pkg_list=()
    pkg_list+=(wget)
    pkg_list+=(git)
@@ -138,6 +146,9 @@ function install_arch {
 }
 
 function install_openSUSE {
+
+   echo opensuse > $TC/.distro
+   echo glibc-devel-32bit > $TC/.32bit_libs_pkg
 
    pkg_list=()
    pkg_list+=(wget)

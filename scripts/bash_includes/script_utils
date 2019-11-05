@@ -128,3 +128,25 @@ function extract_cachefile_tar_bz {
    mv "$internalDirName" "$newDirName"
    echo "Extracting completed."
 }
+
+function install_32bit_libs {
+
+   if ! [ -f $TC/.distro ]; then
+
+      echo "Unable to check the presence of 32-bit glibc on this system: "
+      echo "Linux distribution not fully supported by this script"
+      echo "WARNING: the current operation might fail"
+      return
+   fi
+
+   if ! [ -f $TC/.32bit_libs_pkg ]; then
+      echo "Internal error: $TC/.32bit_libs_pkg does not exist"
+      return
+   fi
+
+   distro=`cat $TC/.distro`
+   pkg=`cat $TC/.32bit_libs_pkg`
+   install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
+
+   $install_pkg $pkg
+}

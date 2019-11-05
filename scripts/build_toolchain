@@ -557,6 +557,8 @@ function build_tcc {
 
    if [ ! -d tcc ]; then
 
+      install_32bit_libs
+
       DOWNLOAD_IGNORING_SYSCC="1"
       download_x86_gcc_toolchain
       DOWNLOAD_IGNORING_SYSCC=""
