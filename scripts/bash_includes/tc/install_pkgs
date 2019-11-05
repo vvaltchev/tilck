@@ -15,6 +15,7 @@ ubuntu_pkg_list+=(git)
 ubuntu_pkg_list+=(gcc)
 ubuntu_pkg_list+=(g++)
 ubuntu_pkg_list+=(make)
+ubuntu_pkg_list+=(cmake)
 ubuntu_pkg_list+=(binutils)
 ubuntu_pkg_list+=(bzip2)
 ubuntu_pkg_list+=(rpm2cpio)
@@ -68,6 +69,7 @@ function install_fedora {
    packages_list+=(gcc)
    packages_list+=(gcc-c++)
    packages_list+=(make)
+   packages_list+=(cmake)
    packages_list+=(binutils)
    packages_list+=(bzip2)
    packages_list+=(cpio)
@@ -104,6 +106,7 @@ function install_arch {
    pkg_list+=(git)
    pkg_list+=(gcc)
    pkg_list+=(make)
+   pkg_list+=(cmake)
    pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(rpmextract)
@@ -195,6 +198,10 @@ function install_packages {
          pkg_list+=(make)
       fi
 
+      if ! which cmake &> /dev/null; then
+         pkg_list+=(cmake)
+      fi
+
       if ! which objdump &> /dev/null; then
          pkg_list+=(binutils)
       fi
@@ -211,7 +218,7 @@ function install_packages {
          pkg_list+=(bzip2)
       fi
 
-      if ! which qemu-system-x86_64 &> /dev/null; then
+      if ! which qemu-system-i386 &> /dev/null; then
          pkg_list+=(qemu-system-x86)
       fi
 
