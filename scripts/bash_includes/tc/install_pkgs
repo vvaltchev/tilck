@@ -24,12 +24,12 @@ ubuntu_pkg_list+=(qemu-system-x86)
 
 function install_debian_family {
 
-   packages_list=( "${ubuntu_pkg_list[@]}" )
+   pkg_list=( "${ubuntu_pkg_list[@]}" )
    to_install=()
 
    echo Checking the packages that need to be installed
 
-   for x in ${packages_list[@]}; do
+   for x in ${pkg_list[@]}; do
       echo -ne "Checking $x... "
 
       if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
@@ -63,23 +63,23 @@ function install_debian_family {
 
 function install_fedora {
 
-   packages_list=()
-   packages_list+=(wget)
-   packages_list+=(git)
-   packages_list+=(gcc)
-   packages_list+=(gcc-c++)
-   packages_list+=(make)
-   packages_list+=(cmake)
-   packages_list+=(binutils)
-   packages_list+=(bzip2)
-   packages_list+=(cpio)
-   packages_list+=(qemu-system-x86)
+   pkg_list=()
+   pkg_list+=(wget)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(gcc-c++)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(binutils)
+   pkg_list+=(bzip2)
+   pkg_list+=(cpio)
+   pkg_list+=(qemu-system-x86)
 
    to_install=()
 
    echo Checking the packages that need to be installed
 
-   for x in ${packages_list[@]}; do
+   for x in ${pkg_list[@]}; do
       echo -ne "Checking $x... "
 
       if dnf list installed $x &> /dev/null; then
@@ -115,7 +115,6 @@ function install_arch {
    pkg_list+=(qemu-arch-extra)
 
    to_install=()
-
    echo Checking the packages that need to be installed
 
    for x in ${pkg_list[@]}; do
@@ -133,6 +132,43 @@ function install_arch {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
       run_command "sudo pacman -S $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_openSUSE {
+
+   pkg_list=()
+   pkg_list+=(wget)
+   pkg_list+=(git-core)
+   pkg_list+=(gcc)
+   pkg_list+=(gcc-c++)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(binutils)
+   pkg_list+=(bzip2)
+   pkg_list+=(cpio)
+   pkg_list+=(qemu-x86)
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if rpm -q $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "sudo zypper install $tmp"
    else
       echo "You are all set, no packages need to be installed."
    fi
@@ -173,6 +209,12 @@ function install_packages {
       echo "Distribution detected: Arch or Manjaro"
       echo ""
       install_arch
+
+   elif [ -f $os_rel ] && [ "$(grep -Ei 'openSUSE' $os_rel)" ]; then
+
+      echo "Distribution detected: openSUSE"
+      echo ""
+      install_openSUSE
 
    else
 
@@ -232,7 +274,8 @@ function install_packages {
          echo "  * Fedora"
          echo "  * Arch"
          echo "  * Manjaro"
-         echo "In order to compile Tilck on this distro, please make sure the "
+         echo "  * openSUSE"
+         echo "In order to build Tilck on this distro, please make sure the "
          echo "following packages (ubuntu package names) are installed:"
 
          for x in ${pkg_list[@]}; do
