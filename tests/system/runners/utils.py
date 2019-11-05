@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
+import re
+import os
 import sys
+import subprocess
 from enum import Enum
 
 # Constants
@@ -33,3 +36,62 @@ def raw_print(msg):
 
 def msg_print(msg):
    raw_print("[system test runner] {}".format(msg))
+
+# Environment flags
+in_travis = os.environ.get('TRAVIS', False)
+in_circleci = os.environ.get('CIRCLECI', False)
+dump_coverage = os.environ.get('DUMP_COV', False)
+report_coverage = os.environ.get('REPORT_COV', False)
+verbose = os.environ.get('VERBOSE', False)
+
+kvm_installed = False
+qemu_kvm_version = None
+
+def is_kvm_installed():
+   return kvm_installed
+
+def get_qemu_kvm_version():
+
+   if not kvm_installed:
+      return ""
+
+   if not qemu_kvm_version:
+      return "<unknown>"
+
+   return qemu_kvm_version
+
+def set_qemu_kvm_version(version):
+
+   global kvm_installed, qemu_kvm_version
+
+   kvm_installed = True
+   qemu_kvm_version = version
+
+def detect_kvm():
+
+   global kvm_installed, qemu_kvm_version
+
+   try:
+      r = subprocess.check_output(['kvm', '--version']).decode('utf-8')
+      kvm_installed = True
+
+      m = re.search('QEMU.*version +((?:[0-9]+[.])+[0-9]+)', r)
+
+      if m:
+         qemu_kvm_version = m.groups(0)[0]
+         raw_print("Detected qemu-kvm, version: {}".format(qemu_kvm_version))
+      else:
+         raw_print("Detected qemu-kvm, but UNKNOWN version. Version string:")
+         raw_print(r)
+
+   except:
+      if not in_circleci and not in_travis:
+         raw_print(
+            "\n"
+            "*** WARNING: qemu-kvm not found on the system ***\n"
+            "Running the tests without hardware virtualization is slow and "
+            "inefficient.\n"
+            "Install qemu-kvm on your system for a better performance."
+            "\n"
+         )
+      pass

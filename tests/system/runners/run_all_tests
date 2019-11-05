@@ -122,7 +122,8 @@ def internal_run_test(test_type, test, timeout, show_output = False):
             '@CMAKE_BINARY_DIR@/st/single_test_run',
             test_type,
             test,
-            str(timeout)
+            str(timeout),
+            get_qemu_kvm_version()
          ],
          stderr=subprocess.STDOUT
       ).decode('utf-8')
@@ -283,6 +284,8 @@ def main():
             max_test_timeout = int(sys.argv[2])
          except:
             show_help_and_exit()
+
+   detect_kvm()
 
    run_all_tests(max_test_timeout,
                  show_output,
