@@ -42,7 +42,7 @@ extern u64 __time_us;
 
 void cmos_read_datetime(struct datetime *out);
 
-void init_system_clock(void)
+void init_system_time(void)
 {
    struct datetime d;
    cmos_read_datetime(&d);
