@@ -105,7 +105,7 @@ void init_system_clock(void)
       panic("Unable to create the clock update kthread");
 }
 
-void read_system_clock_datetime(struct datetime *out)
+static void read_system_clock_datetime(struct datetime *out)
 {
    if (UNLIKELY(__current_datetime.year == 0)) {
 

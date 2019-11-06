@@ -278,11 +278,13 @@ static void fb_draw_banner(void)
 
    u32 llen, rlen, padding, i;
    struct datetime d;
+   s64 timestamp;
    int rc, ttynum = 1;
 
    ASSERT(fb_offset_y >= font_h);
 
-   read_system_clock_datetime(&d);
+   timestamp = read_system_clock_timestamp();
+   timestamp_to_datetime(timestamp, &d);
 
    if (get_curr_tty())
       ttynum = get_curr_tty_num();
