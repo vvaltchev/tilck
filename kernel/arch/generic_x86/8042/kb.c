@@ -228,7 +228,7 @@ u8 kb_translate_to_mediumraw(struct key_event ke)
    const u32 key = ke.key;
 
    if ((key & 0xff) == key)
-      return (u8)(key | (u8)(ke.pressed << 7));
+      return (u8)(key | (u8)(!ke.pressed << 7));
 
    return mediumraw_e0_keys[key & 0xff] | (u8)(!ke.pressed << 7);
 }
