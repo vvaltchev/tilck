@@ -66,7 +66,7 @@ u64 get_sys_time(void)
    return ts;
 }
 
-s64 read_system_clock_timestamp(void)
+s64 get_timestamp(void)
 {
    u64 ts = get_sys_time();
    return __boot_time_s + (s64)(ts / TS_SCALE);

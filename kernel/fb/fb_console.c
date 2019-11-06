@@ -283,7 +283,7 @@ static void fb_draw_banner(void)
 
    ASSERT(fb_offset_y >= font_h);
 
-   timestamp = read_system_clock_timestamp();
+   timestamp = get_timestamp();
    timestamp_to_datetime(timestamp, &d);
 
    if (get_curr_tty())

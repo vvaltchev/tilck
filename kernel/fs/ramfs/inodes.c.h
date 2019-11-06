@@ -58,7 +58,7 @@ ramfs_create_inode_dir(struct ramfs_data *d,
       return NULL;
    }
 
-   i->ctime = (time_t)read_system_clock_timestamp();
+   i->ctime = (time_t)get_timestamp();
    i->mtime = i->ctime;
    return i;
 }
@@ -77,7 +77,7 @@ ramfs_create_inode_file(struct ramfs_data *d,
    i->mode = (mode & 0777) | S_IFREG;
 
    i->parent_dir = parent;
-   i->ctime = (time_t)read_system_clock_timestamp();
+   i->ctime = (time_t)get_timestamp();
    i->mtime = i->ctime;
    return i;
 }
@@ -145,7 +145,7 @@ ramfs_create_inode_symlink(struct ramfs_data *d,
    i->parent_dir = parent;
    i->path_len = pl;
    i->path = path;
-   i->ctime = (time_t)read_system_clock_timestamp();
+   i->ctime = (time_t)get_timestamp();
    i->mtime = i->ctime;
    return i;
 }
