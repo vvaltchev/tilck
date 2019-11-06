@@ -18,6 +18,7 @@ file(
 
    "*.c"
    "*.cpp"
+   "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
    "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 

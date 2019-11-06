@@ -37,6 +37,7 @@ set(
    "${CMAKE_SOURCE_DIR}/kernel/char/*/*.c"
    "${CMAKE_SOURCE_DIR}/kernel/fs/*/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
+   "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
 )
 
 if (KERNEL_DEBUG_PANEL)

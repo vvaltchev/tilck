@@ -36,22 +36,6 @@ const char *months3[12] =
    "Dec",
 };
 
-u32 days_per_month[12] =
-{
-   31, // jan
-   28, // feb
-   31, // mar
-   30, // apr
-   31, // may
-   30, // jun
-   31, // jul
-   31, // aug
-   30, // sep
-   31, // oct
-   30, // nov
-   31, // dec
-};
-
 static struct datetime __current_datetime;
 void cmos_read_datetime(struct datetime *out);
 
@@ -148,34 +132,7 @@ void read_system_clock_datetime(struct datetime *out)
    enable_preemption();
 }
 
-time_t datetime_to_timestamp(struct datetime d)
-{
-   time_t result = 0;
-   u32 year_day = 0;
-   u32 year = d.year - 1900;
-
-   d.month--;
-   d.day--;
-
-   for (int i = 0; i < d.month; i++)
-      year_day += days_per_month[i];
-
-   year_day += d.day;
-
-   if (is_leap_year(d.year) && d.month > 1 /* 1 = feb */)
-      year_day++;
-
-   result += d.sec + d.min * 60 + d.hour * 3600 + year_day * 86400;
-   result += (year - 70) * 31536000;
-
-   /* fixes for the leap years */
-   result += ((year - 69) / 4) * 86400 - ((year - 1) / 100) * 86400;
-   result += ((year + 399) / 400) * 86400;
-
-   return result;
-}
-
-time_t read_system_clock_timestamp(void)
+s64 read_system_clock_timestamp(void)
 {
    struct datetime dt;
    read_system_clock_datetime(&dt);
@@ -186,7 +143,7 @@ static void real_time_get_timeval(struct timeval *tv)
 {
    struct datetime d;
    read_system_clock_datetime(&d);
-   tv->tv_sec = datetime_to_timestamp(d);
+   tv->tv_sec = (time_t)datetime_to_timestamp(d);
 
    /*
     * Yes, in Tilck we're NOT going to support any time soon a higher precision

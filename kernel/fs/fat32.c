@@ -322,8 +322,8 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
                                        e->DIR_WrtTime,
                                        0 /* No WrtTimeTenth */);
 
-   statbuf->st_ctim.tv_sec = datetime_to_timestamp(crt_time);
-   statbuf->st_mtim.tv_sec = datetime_to_timestamp(wrt_time);
+   statbuf->st_ctim.tv_sec = (time_t)datetime_to_timestamp(crt_time);
+   statbuf->st_mtim.tv_sec = (time_t)datetime_to_timestamp(wrt_time);
    statbuf->st_atim = statbuf->st_mtim;
    return 0;
 }

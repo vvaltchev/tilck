@@ -14,6 +14,7 @@
 #include <sys/times.h>  // system header
 #include <sys/uio.h>    // system header
 #include <sys/select.h> // system header
+#include <time.h>       // system header
 #include <poll.h>       // system header
 
 #ifndef __GLIBC__
