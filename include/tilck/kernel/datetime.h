@@ -6,6 +6,11 @@
 
 #include <tilck/kernel/sys_types.h>
 
+#define MILLION                   (1000 * 1000)
+#define BILLION            (1000 * 1000 * 1000)
+
+#define TS_SCALE                        MILLION
+
 extern const char *weekdays[7];
 extern const char *months3[12];
 
@@ -14,5 +19,6 @@ static inline bool is_leap_year(u32 year)
    return (!(year % 4) && (year % 100)) || !(year % 400);
 }
 
+u64 get_sys_time(void);
 s64 read_system_clock_timestamp(void);
 void init_system_clock(void);

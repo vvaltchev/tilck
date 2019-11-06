@@ -111,7 +111,9 @@
       "limits.h": "c",
       "climits": "c",
       "pipe.h": "c",
-      "vfs_locking.c.h": "c"
+      "vfs_locking.c.h": "c",
+      "elf_utils.h": "c",
+      "tasklet.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }
