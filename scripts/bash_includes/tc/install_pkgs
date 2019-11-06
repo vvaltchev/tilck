@@ -9,27 +9,25 @@
 #
 # ---------------------------------------------------------------
 
-ubuntu_pkg_list=()
-ubuntu_pkg_list+=(wget)
-ubuntu_pkg_list+=(git)
-ubuntu_pkg_list+=(gcc)
-ubuntu_pkg_list+=(g++)
-ubuntu_pkg_list+=(make)
-ubuntu_pkg_list+=(cmake)
-ubuntu_pkg_list+=(binutils)
-ubuntu_pkg_list+=(bzip2)
-ubuntu_pkg_list+=(rpm2cpio)
-ubuntu_pkg_list+=(cpio)
-ubuntu_pkg_list+=(qemu-system-x86)
-
 function install_debian_family {
 
    echo debian > $TC/.distro
    echo gcc-multilib > $TC/.32bit_libs_pkg
 
-   pkg_list=( "${ubuntu_pkg_list[@]}" )
-   to_install=()
+   pkg_list=()
+   pkg_list+=(wget)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(g++)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(binutils)
+   pkg_list+=(bzip2)
+   pkg_list+=(rpm2cpio)
+   pkg_list+=(cpio)
+   pkg_list+=(qemu-system-x86)
 
+   to_install=()
    echo Checking the packages that need to be installed
 
    for x in ${pkg_list[@]}; do
@@ -81,7 +79,6 @@ function install_fedora {
    pkg_list+=(qemu-system-x86)
 
    to_install=()
-
    echo Checking the packages that need to be installed
 
    for x in ${pkg_list[@]}; do
@@ -287,7 +284,7 @@ function install_packages {
          echo "  * Manjaro"
          echo "  * openSUSE"
          echo "In order to build Tilck on this distro, please make sure the "
-         echo "following packages (ubuntu package names) are installed:"
+         echo "following packages (debian package names) are installed:"
 
          for x in ${pkg_list[@]}; do
             echo "  * $x"
