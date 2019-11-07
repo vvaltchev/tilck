@@ -55,7 +55,7 @@ void __wrap_not_implemented(const char *file, int line)
    abort();
 }
 
-void cmos_read_datetime(struct datetime *out)
+void hw_read_clock(struct datetime *out)
 {
    memset(out, 0, sizeof(*out));
 }

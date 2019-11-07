@@ -49,7 +49,7 @@ static void cmod_read_datetime_raw(struct datetime *d)
    d->year = (u16) cmos_read_reg(REG_YEAR);
 }
 
-void cmos_read_datetime(struct datetime *out)
+void hw_read_clock(struct datetime *out)
 {
    struct datetime d, dlast;
    u32 reg_b;

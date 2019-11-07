@@ -40,12 +40,10 @@ const char *months3[12] =
 static s64 boot_timestamp;
 extern u64 __time_us;
 
-void cmos_read_datetime(struct datetime *out);
-
 void init_system_time(void)
 {
    struct datetime d;
-   cmos_read_datetime(&d);
+   hw_read_clock(&d);
    boot_timestamp = datetime_to_timestamp(d);
 
    if (boot_timestamp < 0)

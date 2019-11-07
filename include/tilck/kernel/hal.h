@@ -4,6 +4,7 @@
 #define __TILCK_HAL__
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/datetime.h>
 #include <tilck/kernel/hal_types.h>
 
 #if defined(__i386__) || defined(__x86_64__)
@@ -50,6 +51,7 @@ void restore_current_fpu_regs(bool in_kernel);
 int get_irq_num(regs_t *context);
 int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
+void hw_read_clock(struct datetime *out);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);
