@@ -14,15 +14,12 @@ extern "C" {
 using namespace std;
 using namespace testing;
 
-TEST(datetime, biconv)
+static void biconv_test(int64_t min, int64_t max)
 {
    random_device rdev;
    const auto seed = rdev();
    default_random_engine e(seed);
-   uniform_int_distribution<> dist(
-      numeric_limits<int>::min(),
-      numeric_limits<int>::max()
-   );
+   uniform_int_distribution<int64_t> dist(min, max);
 
    cout << "[ INFO     ] random seed: " << seed << endl;
 
@@ -38,6 +35,20 @@ TEST(datetime, biconv)
       ASSERT_EQ(convT, t);
    }
 }
+
+TEST(datetime, biconv_32bit)
+{
+   biconv_test(numeric_limits<int>::min(), numeric_limits<int>::max());
+}
+
+TEST(datetime, biconv_ext)
+{
+   biconv_test(
+      -59011459200ull,     /* Friday, January 1, 0100 00:00:00   */
+       253402300799ull     /* Friday, December 31, 9999 23:59:59 */
+   );
+}
+
 
 TEST(datetime, timestamp_to_datetime)
 {
@@ -55,7 +66,6 @@ TEST(datetime, timestamp_to_datetime)
 
       datetime d;
       struct tm tm;
-
       const time_t t = dist(e);
 
       const int rc = timestamp_to_datetime((int64_t)t, &d);
