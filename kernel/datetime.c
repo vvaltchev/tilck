@@ -37,7 +37,7 @@ const char *months3[12] =
    "Dec",
 };
 
-static s64 __boot_time_s;
+static s64 boot_timestamp;
 extern u64 __time_us;
 
 void cmos_read_datetime(struct datetime *out);
@@ -46,10 +46,10 @@ void init_system_time(void)
 {
    struct datetime d;
    cmos_read_datetime(&d);
-   __boot_time_s = datetime_to_timestamp(d);
+   boot_timestamp = datetime_to_timestamp(d);
 
-   if (__boot_time_s < 0)
-      panic("Invalid boot-time UNIX timestamp: %d\n", __boot_time_s);
+   if (boot_timestamp < 0)
+      panic("Invalid boot-time UNIX timestamp: %d\n", boot_timestamp);
 
    __time_us = 0;
 }
@@ -68,20 +68,20 @@ u64 get_sys_time(void)
 
 s64 get_timestamp(void)
 {
-   u64 ts = get_sys_time();
-   return __boot_time_s + (s64)(ts / TS_SCALE);
+   const u64 ts = get_sys_time();
+   return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
 static void real_time_get_timeval(struct timeval *tv)
 {
-   u64 ts = ((u64)__boot_time_s) * TS_SCALE + get_sys_time();
+   const u64 t = get_sys_time();
 
-   tv->tv_sec = (time_t)(ts / TS_SCALE);
+   tv->tv_sec = (time_t)boot_timestamp + (time_t)(t / TS_SCALE);
 
    if (TS_SCALE <= MILLION)
-      tv->tv_usec = (ts % TS_SCALE) * (MILLION / TS_SCALE);
+      tv->tv_usec = (t % TS_SCALE) * (MILLION / TS_SCALE);
    else
-      tv->tv_usec = (ts % TS_SCALE) / (TS_SCALE / MILLION);
+      tv->tv_usec = (t % TS_SCALE) / (TS_SCALE / MILLION);
 }
 
 static void monotonic_time_get_timeval(struct timeval *tv)
