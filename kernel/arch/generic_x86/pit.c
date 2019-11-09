@@ -4,6 +4,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/timer.h>
 
+#define PIT_FREQ           1193182
+
 #define PIT_CMD_PORT          0x43
 #define PIT_CH0_PORT          0x40
 #define PIT_CH1_PORT          0x41
@@ -34,7 +36,7 @@ void timer_set_freq(u32 hz)
 {
    ASSERT(IN_RANGE_INC(hz, 18, 1000));
 
-   u32 divisor = 1193180 / hz;
+   u32 divisor = PIT_FREQ / hz;
 
    outb(PIT_CMD_PORT, PIT_MODE_BIN | PIT_MODE_3 | PIT_ACC_LOHI | PIT_CH0);
    outb(PIT_CH0_PORT, divisor & 0xff);            /* Set low byte of divisor */
