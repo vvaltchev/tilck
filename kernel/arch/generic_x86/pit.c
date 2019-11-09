@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/datetime.h>
 
 #define PIT_FREQ           1193182
 
@@ -32,8 +33,16 @@
 
 #define PIT_READ_BACK   0b11000000   // read-back command (8254 only)
 
-void hw_timer_setup(u32 hz)
+/*
+ * Set the time between ticks to be `interval`, where 1 means 1/TS_SCALE sec.
+ * Typically, TS_SCALE = 1,000,000 which means `interval` is expected to be in
+ * microseconds.
+ *
+ * Returns the _real_ interval between ticks, which is hw-specific.
+ */
+u32 hw_timer_setup(u32 interval)
 {
+   const u32 hz = TS_SCALE / interval;
    ASSERT(IN_RANGE_INC(hz, 18, 1000));
 
    u32 divisor = PIT_FREQ / hz;
@@ -41,4 +50,7 @@ void hw_timer_setup(u32 hz)
    outb(PIT_CMD_PORT, PIT_MODE_BIN | PIT_MODE_3 | PIT_ACC_LOHI | PIT_CH0);
    outb(PIT_CH0_PORT, divisor & 0xff);            /* Set low byte of divisor */
    outb(PIT_CH0_PORT, (divisor >> 8) & 0xff);     /* Set high byte of divisor */
+
+   // TODO: calculate the real interval, accounting the errors.
+   return interval;
 }

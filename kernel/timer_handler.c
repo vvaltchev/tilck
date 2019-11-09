@@ -13,8 +13,9 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/datetime.h>
 
-u64 __ticks;         /* ticks since the timer started */
-u64 __time_us;       /* microseconds since the timer started */
+u64 __ticks;               /* ticks since the timer started */
+u64 __time_us;             /* microseconds since the timer started */
+static u32 tick_duration;  /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
 
 #if KRN_TRACK_NESTED_INTERR
 u32 slow_timer_irq_handler_count;
@@ -240,7 +241,7 @@ enum irq_action timer_irq_handler(regs_t *context)
     * handler as you can see above.
     */
    __ticks++;
-   __time_us += TS_SCALE / TIMER_HZ;
+   __time_us += tick_duration;
 
    account_ticks();
    struct task *last_ready_task = tick_all_timers();
@@ -283,6 +284,6 @@ static struct irq_handler_node timer_irq_handler_node = {
 
 void init_timer(void)
 {
-   hw_timer_setup(TIMER_HZ);
+   tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
    irq_install_handler(X86_PC_TIMER_IRQ, &timer_irq_handler_node);
 }
