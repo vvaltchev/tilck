@@ -283,6 +283,6 @@ static struct irq_handler_node timer_irq_handler_node = {
 
 void init_timer(void)
 {
-   timer_set_freq(TIMER_HZ);
+   hw_timer_setup(TIMER_HZ);
    irq_install_handler(X86_PC_TIMER_IRQ, &timer_irq_handler_node);
 }

@@ -32,7 +32,7 @@
 
 #define PIT_READ_BACK   0b11000000   // read-back command (8254 only)
 
-void timer_set_freq(u32 hz)
+void hw_timer_setup(u32 hz)
 {
    ASSERT(IN_RANGE_INC(hz, 18, 1000));
 
