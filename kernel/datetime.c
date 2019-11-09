@@ -38,7 +38,7 @@ const char *months3[12] =
 };
 
 static s64 boot_timestamp;
-extern u64 __time_us;
+extern u64 __time_ns;
 
 void init_system_time(void)
 {
@@ -49,7 +49,7 @@ void init_system_time(void)
    if (boot_timestamp < 0)
       panic("Invalid boot-time UNIX timestamp: %d\n", boot_timestamp);
 
-   __time_us = 0;
+   __time_ns = 0;
 }
 
 u64 get_sys_time(void)
@@ -58,7 +58,7 @@ u64 get_sys_time(void)
    uptr var;
    disable_interrupts(&var);
    {
-      ts = __time_us;
+      ts = __time_ns;
    }
    enable_interrupts(&var);
    return ts;

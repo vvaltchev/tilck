@@ -35,8 +35,8 @@
 
 /*
  * Set the time between ticks to be `interval`, where 1 means 1/TS_SCALE sec.
- * Typically, TS_SCALE = 1,000,000 which means `interval` is expected to be in
- * microseconds.
+ * Typically, TS_SCALE = 1,000,000,000 which means `interval` is expected to be
+ * in nanoseconds.
  *
  * Returns the _real_ interval between ticks, which is hw-specific.
  */

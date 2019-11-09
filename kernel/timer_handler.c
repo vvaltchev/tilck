@@ -14,7 +14,7 @@
 #include <tilck/kernel/datetime.h>
 
 u64 __ticks;               /* ticks since the timer started */
-u64 __time_us;             /* microseconds since the timer started */
+u64 __time_ns;             /* nanoseconds since the timer started */
 static u32 tick_duration;  /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
 
 #if KRN_TRACK_NESTED_INTERR
@@ -241,7 +241,7 @@ enum irq_action timer_irq_handler(regs_t *context)
     * handler as you can see above.
     */
    __ticks++;
-   __time_us += tick_duration;
+   __time_ns += tick_duration;
 
    account_ticks();
    struct task *last_ready_task = tick_all_timers();
