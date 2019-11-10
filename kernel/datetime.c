@@ -70,33 +70,39 @@ s64 get_timestamp(void)
    return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
-static void real_time_get_timeval(struct timeval *tv)
+static void real_time_get_timeval(struct timespec *tp)
 {
    const u64 t = get_sys_time();
 
-   tv->tv_sec = (time_t)boot_timestamp + (time_t)(t / TS_SCALE);
+   tp->tv_sec = (time_t)boot_timestamp + (time_t)(t / TS_SCALE);
 
-   if (TS_SCALE <= MILLION)
-      tv->tv_usec = (t % TS_SCALE) * (MILLION / TS_SCALE);
+   if (TS_SCALE <= BILLION)
+      tp->tv_nsec = (t % TS_SCALE) * (BILLION / TS_SCALE);
    else
-      tv->tv_usec = (t % TS_SCALE) / (TS_SCALE / MILLION);
+      tp->tv_nsec = (t % TS_SCALE) / (TS_SCALE / BILLION);
 }
 
-static void monotonic_time_get_timeval(struct timeval *tv)
+static void monotonic_time_get_timeval(struct timespec *tp)
 {
    /* Same as the real_time clock, for the moment */
-   real_time_get_timeval(tv);
+   real_time_get_timeval(tp);
 }
 
 int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 {
    struct timeval tv;
+   struct timespec tp;
    struct timezone tz = {
       .tz_minuteswest = 0,
       .tz_dsttime = 0,
    };
 
-   real_time_get_timeval(&tv);
+   real_time_get_timeval(&tp);
+
+   tv = (struct timeval) {
+      .tv_sec = tp.tv_sec,
+      .tv_usec = tp.tv_nsec / 1000,
+   };
 
    if (user_tv)
       if (copy_to_user(user_tv, &tv, sizeof(tv)) < 0)
@@ -111,7 +117,6 @@ int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 
 int sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
 {
-   struct timeval tv;
    struct timespec tp;
 
    if (!user_tp)
@@ -119,20 +124,17 @@ int sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
 
    switch (clk_id) {
       case CLOCK_REALTIME:
-         real_time_get_timeval(&tv);
+         real_time_get_timeval(&tp);
          break;
 
       case CLOCK_MONOTONIC:
-         monotonic_time_get_timeval(&tv);
+         monotonic_time_get_timeval(&tp);
          break;
 
       default:
          printk("WARNING: unsupported clk_id: %d\n", clk_id);
          return -EINVAL;
    }
-
-   tp.tv_sec = tv.tv_sec;
-   tp.tv_nsec = tv.tv_usec * 1000;
 
    if (copy_to_user(user_tp, &tp, sizeof(tp)) < 0)
       return -EFAULT;
