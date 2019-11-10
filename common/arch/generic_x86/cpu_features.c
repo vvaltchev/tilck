@@ -41,6 +41,10 @@ void get_cpu_features(void)
    f->max_ext_cpuid_cmd = a;
 
    if (f->max_ext_cpuid_cmd >= 0x80000008) {
+
+      cpuid(0x80000007, &a, &b, &c, &d);
+      f->invariant_TSC = !!(d & (1 << 8));
+
       cpuid(0x80000008, &a, &b, &c, &d);
       f->phys_addr_bits = a & 0xff;
       f->virt_addr_bits = (a >> 8) & 0xff;
