@@ -112,3 +112,13 @@ CONSTEXPR static ALWAYS_INLINE u64 pow2_round_up_at64(u64 n, u64 pow2unit)
 {
    return (n + pow2unit - 1) & -pow2unit;
 }
+
+CONSTEXPR static ALWAYS_INLINE uptr round_up_at(uptr n, uptr unit)
+{
+   return ((n + unit - 1) / unit) * unit;
+}
+
+CONSTEXPR static ALWAYS_INLINE u64 round_up_at64(u64 n, u64 unit)
+{
+   return ((n + unit - 1) / unit) * unit;
+}

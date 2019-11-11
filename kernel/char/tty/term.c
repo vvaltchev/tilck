@@ -295,7 +295,7 @@ static void term_internal_write_tab(struct term *t, u8 color)
       return;
    }
 
-   u32 tab_col = (u32) MIN(pow2_round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
+   u32 tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
    t->term_tabs_buf[t->r * t->cols + tab_col] = 1;
    t->c = (u16)(tab_col + 1);
 }
