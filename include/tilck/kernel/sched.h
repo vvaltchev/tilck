@@ -79,16 +79,16 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
  * as if kernel_yield() returned and nothing else happened.
  */
 
-void asm_kernel_yield(void);
+bool asm_kernel_yield(void);
 
 /*
  * This wrapper is useful for adding ASSERTs and getting a backtrace containing
  * the caller's EIP in case of a failure.
  */
-static inline void kernel_yield(void)
+static inline bool kernel_yield(void)
 {
    ASSERT(is_preemption_enabled());
-   asm_kernel_yield();
+   return asm_kernel_yield();
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)
