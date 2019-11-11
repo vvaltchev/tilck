@@ -107,7 +107,7 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
       return -EINVAL;
 
    struct devfs_data *d = fs->device_data;
-   struct devfs_file *f = kmalloc(sizeof(struct devfs_file));
+   struct devfs_file *f = kzmalloc(sizeof(struct devfs_file));
 
    if (!f)
       return -ENOMEM;
