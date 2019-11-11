@@ -203,7 +203,7 @@ int sys_tilck_run_selftest(const char *user_selftest)
 
    printk("Running function: %s()\n", buf);
 
-   if ((tid = kthread_create((void *)addr, NULL)) < 0)
+   if ((tid = kthread_create((void *)addr, KTH_ALLOC_BUFS, NULL)) < 0)
       return tid;
 
    kthread_join(tid);

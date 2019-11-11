@@ -61,7 +61,7 @@ void simple_test_kthread(void *arg)
 
 void selftest_kthread_med(void)
 {
-   int tid = kthread_create(simple_test_kthread, (void *)1);
+   int tid = kthread_create(simple_test_kthread, 0, (void *)1);
 
    if (tid < 0)
       panic("Unable to create the simple test kthread");
@@ -94,7 +94,7 @@ void selftest_join_med()
 
    printk("[selftest join] create the simple thread\n");
 
-   if ((tid = kthread_create(simple_test_kthread, (void *)0xAA0011FF)) < 0)
+   if ((tid = kthread_create(simple_test_kthread, 0, (void *)0xAA0011FF)) < 0)
       panic("Unable to create simple_test_kthread");
 
    printk("[selftest join] join()\n");

@@ -206,7 +206,7 @@ void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 
 struct task *allocate_new_process(struct task *parent, int pid);
-struct task *allocate_new_thread(struct process *pi);
+struct task *allocate_new_thread(struct process *pi, bool alloc_bufs);
 void free_task(struct task *ti);
 void free_mem_for_zombie_task(struct task *ti);
 bool arch_specific_new_task_setup(struct task *ti, struct task *parent);

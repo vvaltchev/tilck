@@ -33,7 +33,7 @@ static void sched_alive_thread()
 void init_extra_debug_features()
 {
    if (kopt_sched_alive_thread)
-      if (kthread_create(&sched_alive_thread, NULL) < 0)
+      if (kthread_create(&sched_alive_thread, 0, NULL) < 0)
          panic("Unable to create a kthread for sched_alive_thread()");
 }
 

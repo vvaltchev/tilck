@@ -66,7 +66,7 @@ void selftest_kmutex_short()
    sek_set_vars(sek_set_1);
 
    for (int i = 0; i < 3; i++) {
-      tids[i] = kthread_create(sek_thread, NULL);
+      tids[i] = kthread_create(sek_thread, 0, NULL);
       VERIFY(tids[i] > 0);
    }
 
@@ -138,7 +138,7 @@ void selftest_kmutex_rec_med()
 
    printk("Locked 3 times (last with trylock)\n");
 
-   tids[0] = kthread_create(test_kmutex_thread_trylock, NULL);
+   tids[0] = kthread_create(test_kmutex_thread_trylock, 0, NULL);
    VERIFY(tids[0] > 0);
    kthread_join(tids[0]);
 
@@ -151,13 +151,13 @@ void selftest_kmutex_rec_med()
    kmutex_unlock(&test_mutex);
    printk("Unlocked 3 times\n");
 
-   tids[0] = kthread_create(&test_kmutex_thread, (void*) 1);
+   tids[0] = kthread_create(&test_kmutex_thread, 0, (void*) 1);
    VERIFY(tids[0] > 0);
 
-   tids[1] = kthread_create(&test_kmutex_thread, (void*) 2);
+   tids[1] = kthread_create(&test_kmutex_thread, 0, (void*) 2);
    VERIFY(tids[1] > 0);
 
-   tids[2] = kthread_create(&test_kmutex_thread_trylock, NULL);
+   tids[2] = kthread_create(&test_kmutex_thread_trylock, 0, NULL);
    VERIFY(tids[2] > 0);
 
    kthread_join_all(tids, ARRAY_SIZE(tids));
@@ -284,7 +284,7 @@ void selftest_kmutex_ord_med()
 
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
 
-      if ((tid = kthread_create(&kmutex_ord_th, NULL)) < 0)
+      if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
       tids[i] = tid;

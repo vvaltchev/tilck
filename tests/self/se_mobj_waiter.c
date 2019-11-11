@@ -74,11 +74,11 @@ retry:
 
    for (size_t i = 0; i < ARRAY_SIZE(conds); i++) {
       kcond_init(&conds[i]);
-      tids[i] = kthread_create(&mobj_waiter_sig_thread, (void*) i);
+      tids[i] = kthread_create(&mobj_waiter_sig_thread, 0, (void*) i);
       VERIFY(tids[i] > 0);
    }
 
-   w_tid = kthread_create(&mobj_waiter_wait_thread, NULL);
+   w_tid = kthread_create(&mobj_waiter_wait_thread, 0, NULL);
    VERIFY(w_tid > 0);
 
    kthread_join_all(tids, ARRAY_SIZE(tids));

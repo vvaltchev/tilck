@@ -99,7 +99,7 @@ STATIC_ASSERT(
 
 #undef TOT_IOBUF_AND_ARGS_BUF_PG
 
-static bool do_common_task_allocations(struct task *ti)
+static bool do_common_task_allocations(struct task *ti, bool alloc_bufs)
 {
    if (KERNEL_STACK_ISOLATION) {
       ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
@@ -110,14 +110,16 @@ static bool do_common_task_allocations(struct task *ti)
    if (!ti->kernel_stack)
       return false;
 
-   ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
+   if (alloc_bufs) {
+      ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
 
-   if (!ti->io_copybuf) {
-      kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
-      return false;
+      if (!ti->io_copybuf) {
+         kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
+         return false;
+      }
+
+      ti->args_copybuf = (void *)((uptr)ti->io_copybuf + IO_COPYBUF_SIZE);
    }
-
-   ti->args_copybuf = (void *)((uptr)ti->io_copybuf + IO_COPYBUF_SIZE);
    return true;
 }
 
@@ -205,7 +207,7 @@ struct task *allocate_new_process(struct task *parent, int pid)
    /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
    process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
 
-   if (!do_common_task_allocations(ti) ||
+   if (!do_common_task_allocations(ti, true) ||
        !arch_specific_new_task_setup(ti, parent))
    {
       if (pi->mmap_heap) {
@@ -225,12 +227,12 @@ struct task *allocate_new_process(struct task *parent, int pid)
    return ti;
 }
 
-struct task *allocate_new_thread(struct process *pi)
+struct task *allocate_new_thread(struct process *pi, bool alloc_bufs)
 {
    struct task *process_task = get_process_task(pi);
    struct task *ti = kzmalloc(sizeof(struct task));
 
-   if (!ti || !(ti->pi=pi) || !do_common_task_allocations(ti)) {
+   if (!ti || !(ti->pi=pi) || !do_common_task_allocations(ti, alloc_bufs)) {
       kfree2(ti, sizeof(struct task));
       return NULL;
    }
