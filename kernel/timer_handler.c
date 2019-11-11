@@ -17,6 +17,8 @@ static u64 __ticks;        /* ticks since the timer started */
 
 u64 __time_ns;             /* nanoseconds since the timer started */
 u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
+int __tick_adj_val;
+int __tick_adj_ticks_rem;
 
 #if KRN_TRACK_NESTED_INTERR
 u32 slow_timer_irq_handler_count;
@@ -242,7 +244,13 @@ enum irq_action timer_irq_handler(regs_t *context)
     * handler as you can see above.
     */
    __ticks++;
-   __time_ns += __tick_duration;
+
+   if (UNLIKELY(__tick_adj_ticks_rem)) {
+      __time_ns += (u32)((s32)__tick_duration + __tick_adj_val);
+      __tick_adj_ticks_rem--;
+   } else {
+      __time_ns += __tick_duration;
+   }
 
    account_ticks();
    struct task *last_ready_task = tick_all_timers();
