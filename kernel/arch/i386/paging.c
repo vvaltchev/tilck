@@ -907,7 +907,7 @@ static void *failsafe_map_framebuffer(uptr paddr, uptr size)
    uptr vaddr = FAILSAFE_FB_VADDR;
    kernel_page_dir = (pdir_t *)page_size_buf;
 
-   u32 big_pages_to_use = round_up_at(size, 4 * MB) / (4 * MB);
+   u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
 
    for (u32 i = 0; i < big_pages_to_use; i++) {
       map_4mb_page_int(kernel_page_dir,
@@ -925,7 +925,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       return failsafe_map_framebuffer(paddr, size);
 
    pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
-   size_t page_count = round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
    u32 mmap_flags = PG_RW_BIT | (user_mmap ? PG_US_BIT : PG_GLOBAL_BIT);
    size_t count;
 
@@ -977,7 +977,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
    }
 
    if (x86_cpu_features.edx1.pat) {
-      size = round_up_at(size, PAGE_SIZE);
+      size = pow2_round_up_at(size, PAGE_SIZE);
       set_pages_pat_wc(pdir, (void *) vaddr, size);
       return (void *)vaddr;
    }
@@ -1001,7 +1001,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
       return (void *)vaddr;
    }
 
-   if (round_up_at(paddr, pow2size) != paddr) {
+   if (pow2_round_up_at(paddr, pow2size) != paddr) {
       /* As above, show the error, but DO NOT fail */
       printk("ERROR: fb_paddr (%p) not aligned at power-of-two address", paddr);
       return (void *)vaddr;

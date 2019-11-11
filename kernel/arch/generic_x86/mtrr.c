@@ -138,7 +138,7 @@ void set_mtrr(u32 num, u64 paddr, u32 pow2size, u8 mem_type)
    ASSERT(num < get_var_mttrs_count());
    ASSERT(pow2size > 0);
    ASSERT(roundup_next_power_of_2(pow2size) == pow2size);
-   ASSERT(round_up_at64(paddr, pow2size) == paddr);
+   ASSERT(pow2_round_up_at64(paddr, pow2size) == paddr);
    ASSERT(x86_cpu_features.edx1.mtrr);
 
    struct mtrr_change_ctx ctx;

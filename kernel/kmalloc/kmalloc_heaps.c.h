@@ -222,7 +222,10 @@ static sptr greater_than_heap_cmp(const void *a, const void *b)
 static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 {
    int heap_index;
-   vaddr = round_up_at(vaddr, MIN(KMALLOC_MIN_HEAP_SIZE, KMALLOC_MAX_ALIGN));
+   vaddr = pow2_round_up_at(
+      vaddr,
+      MIN(KMALLOC_MIN_HEAP_SIZE, KMALLOC_MAX_ALIGN)
+   );
 
    if (vaddr >= limit)
       return;

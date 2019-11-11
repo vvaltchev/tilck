@@ -198,7 +198,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!(prot & PROT_READ))
       return -EINVAL;
 
-   actual_len = round_up_at(len, PAGE_SIZE);
+   actual_len = pow2_round_up_at(len, PAGE_SIZE);
 
    if (fd == -1) {
 
@@ -261,7 +261,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    if (!um)
       return -ENOMEM;
 
-   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
+   ASSERT(actual_len == pow2_round_up_at(len, PAGE_SIZE));
 
    if (handle) {
 
@@ -302,7 +302,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 
    ASSERT(!is_preemption_enabled());
 
-   actual_len = round_up_at(len, PAGE_SIZE);
+   actual_len = pow2_round_up_at(len, PAGE_SIZE);
    um = process_get_user_mapping(vaddrp);
 
    if (!um) {
@@ -390,7 +390,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
                   &actual_len,
                   kfree_flags);
 
-   ASSERT(actual_len == round_up_at(len, PAGE_SIZE));
+   ASSERT(actual_len == pow2_round_up_at(len, PAGE_SIZE));
    return 0;
 }
 
