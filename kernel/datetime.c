@@ -60,7 +60,7 @@ void clock_drift_adj()
    int adj_val, adj_ticks;
    int drift, abs_drift;
    uptr var;
-   bool preempted;
+   u32 attempts_cnt = 0;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
@@ -91,6 +91,7 @@ void clock_drift_adj()
 
       hw_read_clock(&d);
       ts = datetime_to_timestamp(d);
+      attempts_cnt++;
 
       if (ts != hw_ts) {
 
@@ -99,17 +100,40 @@ void clock_drift_adj()
           * the timestamp (seconds). Now, we have to be super quick about
           * calculating the adjustments.
           *
-          * NOTE: we're leaving the loop with preemption enabled!
+          * NOTE: we're leaving the loop with preemption disabled!
           */
          break;
       }
 
-      enable_preemption();
-      preempted = kernel_yield();
-      disable_preemption();
+      /*
+       * From time to time we _have to_ allow other tasks to get some job done,
+       * not stealing the CPU for a whole 1 second.
+       */
+      if (!(attempts_cnt % 100)) {
 
-      if (preempted) {
-         /* We have been preempted: we must re-read the HW clock */
+         enable_preemption();
+         {
+            /* Sleep for a 1/5 of a second */
+            kernel_sleep(TIMER_HZ / 5);
+         }
+         disable_preemption();
+
+         /*
+          * Now that we're back, we have to re-read the "old" clock value
+          * because time passed and it's very likely that we're in a new second.
+          * Without re-reading this "old" value, on the next iteration we might
+          * hit the condition `ts != hw_ts` thinking that we've found the second
+          * edge, while just too much time passed.
+          *
+          * Therefore, re-reading the old value (hw_ts) fully restarts our
+          * search for the bleeding edge of the second, hoping that in the next
+          * burst of attempts we'll be lucky enough to find the exact moment
+          * when the HW clock changes the second.
+          *
+          * NOTE: this code has been tested with an infinite loop in `init`
+          * stealing competing for the CPU with this kernel thread and,
+          * reliably, in a few seconds we had been able to end this loop.
+          */
          hw_read_clock(&d);
          hw_ts = datetime_to_timestamp(d);
       }
