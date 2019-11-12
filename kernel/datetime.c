@@ -42,7 +42,7 @@ const char *months3[12] =
 static s64 boot_timestamp;
 
 // Regular value
-u32 clock_drift_adj_loop_delay = 3600 * TIMER_HZ;
+u32 clock_drift_adj_loop_delay = 600 * TIMER_HZ;
 
 // Value suitable for the `time` selftest
 // u32 clock_drift_adj_loop_delay = 60 * TIMER_HZ;
@@ -58,9 +58,9 @@ void clock_drift_adj()
    s64 sys_ts, hw_ts, ts;
    u64 hw_time_ns;
    int adj_val, adj_ticks;
-   int drift, abs_drift;
+   int drift, abs_drift, adj_cnt;
+   u32 attempts_cnt;
    uptr var;
-   u32 attempts_cnt = 0;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
@@ -83,6 +83,8 @@ void clock_drift_adj()
     * this way, the initial clock drift.
     */
 
+full_resync:
+   attempts_cnt = 0;
    disable_preemption();
    hw_read_clock(&d);
    hw_ts = datetime_to_timestamp(d);
@@ -187,6 +189,7 @@ void clock_drift_adj()
     * occur as Tilck runs for a long time.
     */
    kernel_sleep(clock_drift_adj_loop_delay);
+   adj_cnt = 0;
 
    while (true) {
 
@@ -196,21 +199,37 @@ void clock_drift_adj()
       hw_ts = datetime_to_timestamp(d);
       drift = (int)(sys_ts - hw_ts);
 
-      if (!drift)
-         goto sleep_some_time;
+      if (drift) {
 
-      abs_drift = (drift > 0 ? drift : -drift);
-      adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
-      adj_ticks = abs_drift * TIMER_HZ * 10;
+         if (++adj_cnt > 6) {
 
-      disable_interrupts(&var);
-      {
-         __tick_adj_val = adj_val;
-         __tick_adj_ticks_rem = adj_ticks;
+            /*
+             * The periodic drift compensation works great even in the
+             * "long run" but it's expected very slowly to accumulate with
+             * time some sub-second drift that cannot be measured directly,
+             * because of HW clock's 1s resolution. We'll inevitably end up
+             * introducing some error while compensating the "apprently" 1s
+             * drift (which, in reality was 1.01s, for example).
+             *
+             * To compensate even this 2nd-order problem, it's worth from time
+             * to time to do a full-resync. This should happen less then once
+             * every 24 h, depending on how precise the PIT is.
+             */
+            goto full_resync;
+         }
+
+         abs_drift = (drift > 0 ? drift : -drift);
+         adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
+         adj_ticks = abs_drift * TIMER_HZ * 10;
+
+         disable_interrupts(&var);
+         {
+            __tick_adj_val = adj_val;
+            __tick_adj_ticks_rem = adj_ticks;
+         }
+         enable_interrupts(&var);
       }
-      enable_interrupts(&var);
 
-   sleep_some_time:
       enable_preemption();
       kernel_sleep(clock_drift_adj_loop_delay);
    }

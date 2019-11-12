@@ -124,13 +124,13 @@ void kernel_sleep(u64 ticks)
     *    kernel_yield();
     *
     * And it worked, but it required struct task->ticks_before_wake_up to be
-    * actually 64-bit wide, which that lead to inefficiency of 32-bit systems,
-    * in particular because 'ticks_before_wake_up' is now atomic and it's used
-    * atomically even when we don't want to (see tick_all_timers()). Pointer
-    * size relaxed atomics are pretty cheap, but double-pointer size are not.
-    * In order to use a 32-bit value for 'ticks_before_wake_up' and, at the same
-    * time being able to sleep for more than 2^32-1 ticks, we needed a more
-    * tricky implementation (below).
+    * actually 64-bit wide, and that was a problem on 32-bit systems because
+    * we wanted it to make it atomic too. (Sure, the are tricks possible with
+    * 64-bit CAS even on 32-bit systems, but it's pretty expensive.)
+    *
+    * Therefore, in order to use a 32-bit value for 'ticks_before_wake_up' and,
+    * at the same time being able to sleep for more than 2^32-1 ticks, we needed
+    * a more tricky implementation (below).
     *
     * Implementation: how
     * ----------------------
