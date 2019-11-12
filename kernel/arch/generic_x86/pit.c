@@ -3,6 +3,9 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/datetime.h>
+
+#define PIT_FREQ           1193182
 
 #define PIT_CMD_PORT          0x43
 #define PIT_CH0_PORT          0x40
@@ -30,13 +33,55 @@
 
 #define PIT_READ_BACK   0b11000000   // read-back command (8254 only)
 
-void timer_set_freq(u32 hz)
+/*
+ * Set the time between ticks to be `interval`, where 1 means 1/TS_SCALE sec.
+ * Typically, TS_SCALE = 1,000,000,000 which means `interval` is expected to be
+ * in nanoseconds.
+ *
+ * Returns the _real_ interval between ticks, which is hw-specific.
+ */
+u32 hw_timer_setup(u32 interval)
 {
+   const u32 hz = TS_SCALE / interval;
+   const u32 divisor = PIT_FREQ / hz;
+   u64 actual_interval;
+
    ASSERT(IN_RANGE_INC(hz, 18, 1000));
 
-   u32 divisor = 1193180 / hz;
+   /*
+    * Actual interval calculation.
+    *
+    * Let's define F = PIT_FREQ.
+    * We want `hz`, but at most we can get:
+    *
+    *               F
+    *    HZ = -------------
+    *          ceil(F/hz)
+    *
+    * Therefore, our actual interval (I) will be: 1/HZ seconds.
+    * Now, if we scale everything with TS_SCALE (S) we get:
+    *
+    *                 S
+    * I  =   ----------------------- units (typically nanoseconds)
+    *                 F
+    *            --------------
+    *             ceil(F/hz)
+    *
+    * which is equivalent to:
+    *
+    *              S * ceil(F/hz)
+    * I =    ---------------------------- units
+    *                    F
+    */
+
+   actual_interval = TS_SCALE;
+   actual_interval *= PIT_FREQ / hz;
+   actual_interval /= PIT_FREQ;
+   ASSERT(actual_interval < UINT32_MAX);
 
    outb(PIT_CMD_PORT, PIT_MODE_BIN | PIT_MODE_3 | PIT_ACC_LOHI | PIT_CH0);
    outb(PIT_CH0_PORT, divisor & 0xff);            /* Set low byte of divisor */
    outb(PIT_CH0_PORT, (divisor >> 8) & 0xff);     /* Set high byte of divisor */
+
+   return (u32)actual_interval;
 }

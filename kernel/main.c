@@ -198,7 +198,7 @@ static void do_async_init()
 
 static void async_init(void)
 {
-   if (kthread_create(&do_async_init, NULL) < 0)
+   if (kthread_create(&do_async_init, KTH_ALLOC_BUFS, NULL) < 0)
       panic("Unable to create a kthread for do_async_init()");
 }
 

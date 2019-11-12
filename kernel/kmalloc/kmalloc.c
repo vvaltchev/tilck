@@ -675,7 +675,7 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
                        */
 
    ASSERT(vaddr + size - 1 <= h->heap_last_byte);
-   ASSERT(round_up_at(size, h->min_block_size) == size);
+   ASSERT(pow2_round_up_at(size, h->min_block_size) == size);
 
    size_t tot = 0;
 

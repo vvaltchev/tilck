@@ -399,7 +399,7 @@ static void fb_use_optimized_funcs_if_possible(void)
       return;
    }
 
-   if (kthread_create(async_pre_render_scanlines, NULL) < 0)
+   if (kthread_create(async_pre_render_scanlines, 0, NULL) < 0)
       printk("[fb_console] WARNING: unable to create a kthread for "
              "async_pre_render_scanlines\n");
 }
@@ -453,7 +453,7 @@ void init_framebuffer_console(void)
    if (in_panic())
       return;
 
-   int tid = kthread_create(fb_blink_thread, NULL);
+   int tid = kthread_create(fb_blink_thread, 0, NULL);
 
    if (tid > 0) {
       disable_preemption();
@@ -467,7 +467,7 @@ void init_framebuffer_console(void)
    }
 
    if (fb_offset_y) {
-      if (kthread_create(fb_update_banner, NULL) < 0)
+      if (kthread_create(fb_update_banner, 0, NULL) < 0)
          printk("WARNING: unable to create the fb_update_banner\n");
    }
 }

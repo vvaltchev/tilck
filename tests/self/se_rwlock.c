@@ -122,12 +122,12 @@ static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
    se_rwlock_set_vars(se_rwlock_set_1);
 
    for (u32 i = 0; i < RWLOCK_READERS; i++) {
-      rt[i] = kthread_create(se_rwlock_read_thread, ctx);
+      rt[i] = kthread_create(se_rwlock_read_thread, 0, ctx);
       VERIFY(rt[i] > 0);
    }
 
    for (u32 i = 0; i < RWLOCK_WRITERS; i++) {
-      wt[i] = kthread_create(se_rwlock_write_thread, ctx);
+      wt[i] = kthread_create(se_rwlock_write_thread, 0, ctx);
       VERIFY(wt[i] > 0);
    }
 }

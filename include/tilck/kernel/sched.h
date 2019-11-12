@@ -22,6 +22,8 @@ extern struct list zombie_tasks_list;
 
 extern ATOMIC(u32) disable_preemption_count;
 
+#define KTH_ALLOC_BUFS                           (1 << 0)
+
 enum task_state {
    TASK_STATE_INVALID   = 0,
    TASK_STATE_RUNNABLE  = 1,
@@ -77,16 +79,16 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
  * as if kernel_yield() returned and nothing else happened.
  */
 
-void asm_kernel_yield(void);
+bool asm_kernel_yield(void);
 
 /*
  * This wrapper is useful for adding ASSERTs and getting a backtrace containing
  * the caller's EIP in case of a failure.
  */
-static inline void kernel_yield(void)
+static inline bool kernel_yield(void)
 {
    ASSERT(is_preemption_enabled());
-   asm_kernel_yield();
+   return asm_kernel_yield();
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)
@@ -142,7 +144,7 @@ void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
 u32 task_cancel_wakeup_timer(struct task *ti);
 
 typedef void (*kthread_func_ptr)();
-NODISCARD int kthread_create(kthread_func_ptr fun, void *arg);
+NODISCARD int kthread_create(kthread_func_ptr fun, int fl, void *arg);
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 
 struct process *task_get_pi_opaque(struct task *ti);

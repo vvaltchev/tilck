@@ -92,6 +92,7 @@ struct x86_cpu_features {
    } ecx1;
 
    bool avx2;
+   bool invariant_TSC;
    u8 phys_addr_bits;
    u8 virt_addr_bits;
 

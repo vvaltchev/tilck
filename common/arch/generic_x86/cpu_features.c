@@ -11,6 +11,9 @@ volatile struct x86_cpu_features x86_cpu_features;
 
 void get_cpu_features(void)
 {
+   STATIC_ASSERT(sizeof(x86_cpu_features.edx1) == 32);
+   STATIC_ASSERT(sizeof(x86_cpu_features.ecx1) == 32);
+
    u32 a = 0, b = 0, c = 0, d = 0;
    struct x86_cpu_features *f = (void *)&x86_cpu_features;
 
@@ -22,6 +25,7 @@ void get_cpu_features(void)
    memcpy(f->vendor_id + 4, &d, 4);
    memcpy(f->vendor_id + 8, &c, 4);
 
+   /* If CPUID is supported, CPUID[1] is always supported */
    cpuid(1, &a, &b, &c, &d);
 
    for (u32 bit = 0; bit < 32; bit++)
@@ -30,21 +34,34 @@ void get_cpu_features(void)
    for (u32 bit = 0; bit < 32; bit++)
       ((bool *)&f->ecx1)[bit] = !!(c & (1u << bit));
 
-   if (f->max_basic_cpuid_cmd >= 7) {
-      if (f->ecx1.avx) {
-         cpuid(7, &a, &b, &c, &d);
-         f->avx2 = !!(b & (1 << 5)) && !!(b & (1 << 3)) && !!(b & (1 << 8));
-      }
+   if (f->max_basic_cpuid_cmd < 7)
+      goto ext_features;
+
+   /* CPUID[7] supported */
+   if (f->ecx1.avx) {
+      cpuid(7, &a, &b, &c, &d);
+      f->avx2 = !!(b & (1 << 5)) && !!(b & (1 << 3)) && !!(b & (1 << 8));
    }
+
+ext_features:
 
    cpuid(0x80000000, &a, &b, &c, &d);
    f->max_ext_cpuid_cmd = a;
 
-   if (f->max_ext_cpuid_cmd >= 0x80000008) {
-      cpuid(0x80000008, &a, &b, &c, &d);
-      f->phys_addr_bits = a & 0xff;
-      f->virt_addr_bits = (a >> 8) & 0xff;
-   }
+   if (f->max_ext_cpuid_cmd < 0x80000007)
+      return;
+
+   /* CPUID[0x80000007] supported */
+   cpuid(0x80000007, &a, &b, &c, &d);
+   f->invariant_TSC = !!(d & (1 << 8));
+
+   if (f->max_ext_cpuid_cmd < 0x80000008)
+      return;
+
+   /* CPUID[0x80000008] supported */
+   cpuid(0x80000008, &a, &b, &c, &d);
+   f->phys_addr_bits = a & 0xff;
+   f->virt_addr_bits = (a >> 8) & 0xff;
 }
 
 #ifdef __TILCK_KERNEL__

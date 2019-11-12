@@ -153,7 +153,7 @@ static offt ramfs_seek(fs_handle h, offt off, int whence)
 
 static void ramfs_unmap_past_eof_mappings(struct ramfs_inode *i, size_t len)
 {
-   const size_t rlen = round_up_at(len, PAGE_SIZE);
+   const size_t rlen = pow2_round_up_at(len, PAGE_SIZE);
    struct user_mapping *um;
    uptr va;
    ASSERT(!is_preemption_enabled());
@@ -220,7 +220,7 @@ static int ramfs_inode_truncate(struct ramfs_inode *i, offt len)
    }
 
    i->fsize = len;
-   i->blocks_count = round_up_at((uptr) len, PAGE_SIZE);
+   i->blocks_count = pow2_round_up_at((uptr) len, PAGE_SIZE);
    return 0;
 }
 

@@ -13,6 +13,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/self_tests.h>
 
 #define LINUX_REBOOT_MAGIC1         0xfee1dead
 #define LINUX_REBOOT_MAGIC2          672274793
@@ -203,7 +204,7 @@ int sys_tilck_run_selftest(const char *user_selftest)
 
    printk("Running function: %s()\n", buf);
 
-   if ((tid = kthread_create((void *)addr, NULL)) < 0)
+   if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, (void*)addr)) < 0)
       return tid;
 
    kthread_join(tid);

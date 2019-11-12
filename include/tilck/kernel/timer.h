@@ -6,5 +6,4 @@
 
 u64 get_ticks(void);
 int timer_irq_handler(regs_t *r);
-void timer_set_freq(u32 hz);
 void init_timer(void);

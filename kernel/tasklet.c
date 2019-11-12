@@ -245,7 +245,7 @@ int create_tasklet_thread(int priority, u16 limit)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-   int tid = kthread_create(tasklet_runner, TO_PTR(tn));
+   int tid = kthread_create(tasklet_runner, 0, TO_PTR(tn));
 
    if (tid < 0) {
       kfree2(t->tasklets, sizeof(struct tasklet) * limit);

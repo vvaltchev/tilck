@@ -405,11 +405,18 @@ static void term_action_write(struct term *t, char *buf, u32 len, u8 color)
          continue;
       }
 
+      /*
+       * NOTE: We MUST store buf[i] in a local variable because the filter
+       * function is absolutely allowed to modify its contents!!
+       *
+       * (Of course, buf is *not* required to point to writable memory.)
+       */
+      char c = buf[i];
       struct term_action a = { .type1 = a_none };
-      enum term_fret r = t->filter((u8 *)&buf[i], &color, &a, t->filter_ctx);
+      enum term_fret r = t->filter((u8 *)&c, &color, &a, t->filter_ctx);
 
       if (LIKELY(r == TERM_FILTER_WRITE_C))
-         term_internal_write_char2(t, buf[i], color);
+         term_internal_write_char2(t, c, color);
 
       if (UNLIKELY(a.type1 != a_none))
          term_execute_action(t, &a);

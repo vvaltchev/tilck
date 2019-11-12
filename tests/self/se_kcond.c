@@ -64,7 +64,7 @@ static void kcond_thread_signal_generator()
 
    printk("Run thread kcond_thread_wait_ticks\n");
 
-   if ((tid = kthread_create(&kcond_thread_wait_ticks, NULL)) < 0)
+   if ((tid = kthread_create(&kcond_thread_wait_ticks, 0, NULL)) < 0)
       panic("Unable to create a thread for kcond_thread_wait_ticks()");
 
    kthread_join(tid);
@@ -76,13 +76,13 @@ void selftest_kcond_short()
    kmutex_init(&cond_mutex, 0);
    kcond_init(&cond);
 
-   tids[0] = kthread_create(&kcond_thread_test, (void*) 1);
+   tids[0] = kthread_create(&kcond_thread_test, 0, (void*) 1);
    VERIFY(tids[0] > 0);
 
-   tids[1] = kthread_create(&kcond_thread_test, (void*) 2);
+   tids[1] = kthread_create(&kcond_thread_test, 0, (void*) 2);
    VERIFY(tids[1] > 0);
 
-   tids[2] = kthread_create(&kcond_thread_signal_generator, NULL);
+   tids[2] = kthread_create(&kcond_thread_signal_generator, 0, NULL);
    VERIFY(tids[2] > 0);
 
    kthread_join_all(tids, ARRAY_SIZE(tids));

@@ -296,10 +296,10 @@ static ALWAYS_INLINE uptr get_stack_ptr(void)
 
 static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)
 {
-    asmVolatile("cpuid"
-                : "=a"(*a), "=b" (*b), "=c" (*c), "=d"(*d)
-                : "a"(code), "b" (0), "c" (0), "d" (0)
-                : "memory");
+    asm("cpuid"
+        : "=a"(*a), "=b" (*b), "=c" (*c), "=d"(*d)
+        : "a"(code), "b" (0), "c" (0), "d" (0)
+        : "memory");
 }
 
 static ALWAYS_INLINE uptr read_cr0(void)

@@ -9,7 +9,7 @@
 #define MILLION                   (1000 * 1000)
 #define BILLION            (1000 * 1000 * 1000)
 
-#define TS_SCALE                        MILLION
+#define TS_SCALE                        BILLION
 
 extern const char *weekdays[7];
 extern const char *months3[12];

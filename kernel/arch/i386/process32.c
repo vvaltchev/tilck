@@ -122,7 +122,7 @@ push_args_on_user_stack(regs_t *r,
 }
 
 NODISCARD int
-kthread_create(kthread_func_ptr fun, void *arg)
+kthread_create(kthread_func_ptr fun, int fl, void *arg)
 {
    regs_t r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
@@ -142,7 +142,11 @@ kthread_create(kthread_func_ptr fun, void *arg)
       .ss = X86_KERNEL_DATA_SEL,
    };
 
-   struct task *ti = allocate_new_thread(kernel_process->pi);
+   struct task *ti = allocate_new_thread(
+      kernel_process->pi,
+      !!(fl & KTH_ALLOC_BUFS)
+   );
+
    int ret = -ENOMEM;
 
    if (!ti)

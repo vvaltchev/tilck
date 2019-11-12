@@ -76,7 +76,7 @@ void setup_usermode_task() { }
 void gdt_install() { }
 void idt_install() { }
 void irq_install() { }
-void timer_set_freq() { }
+void hw_timer_setup() { }
 void irq_install_handler() { }
 void setup_sysenter_interface() { }
 void save_current_task_state() { }

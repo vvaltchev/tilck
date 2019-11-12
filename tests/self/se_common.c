@@ -16,6 +16,68 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/kb.h>
+
+static volatile bool se_stop_requested;
+static void (*se_running_func)(void);
+
+bool se_is_stop_requested(void)
+{
+   return se_stop_requested;
+}
+
+void se_internal_run(void (*se_func)(void))
+{
+   /* Common self test setup code */
+   disable_preemption();
+   {
+      se_stop_requested = false;
+      se_running_func = se_func;
+   }
+   enable_preemption();
+
+   /* Run the actual self test */
+   se_func();
+
+   /* Common self test tear down code */
+   disable_preemption();
+   {
+      se_stop_requested = false;
+      se_running_func = NULL;
+   }
+   enable_preemption();
+}
+
+static int se_keypress_handler(struct key_event ke)
+{
+   int ret = KB_HANDLER_NAK;
+
+   if (!se_running_func)
+      return ret;
+
+   disable_preemption();
+
+   if (se_running_func) {
+      if (ke.print_char == 'c' && kb_is_ctrl_pressed()) {
+         se_stop_requested = true;
+         ret = KB_HANDLER_OK_AND_STOP;
+      }
+   }
+
+   enable_preemption();
+   return ret;
+}
+
+static struct keypress_handler_elem se_handler =
+{
+   .handler = &se_keypress_handler
+};
+
+__attribute__((constructor))
+static void init_self_tests_infrastructure()
+{
+   kb_register_keypress_handler(&se_handler);
+}
 
 void regular_self_test_end(void)
 {
@@ -61,7 +123,7 @@ void simple_test_kthread(void *arg)
 
 void selftest_kthread_med(void)
 {
-   int tid = kthread_create(simple_test_kthread, (void *)1);
+   int tid = kthread_create(simple_test_kthread, 0, (void *)1);
 
    if (tid < 0)
       panic("Unable to create the simple test kthread");
@@ -94,7 +156,7 @@ void selftest_join_med()
 
    printk("[selftest join] create the simple thread\n");
 
-   if ((tid = kthread_create(simple_test_kthread, (void *)0xAA0011FF)) < 0)
+   if ((tid = kthread_create(simple_test_kthread, 0, (void *)0xAA0011FF)) < 0)
       panic("Unable to create simple_test_kthread");
 
    printk("[selftest join] join()\n");

@@ -47,6 +47,7 @@ FUNC(asm_kernel_yield):
                                 # +4 : compensate the last push eax above
 
    lock dec dword ptr [disable_preemption_count]
+   mov eax, 0      # No context-switch return value
    ret
 
 .kernel_yield_resume:
@@ -55,6 +56,7 @@ FUNC(asm_kernel_yield):
    resume_base_regs
    add esp, 16     # Discard int_num, err_code, eip, cs
    popf
+   mov eax, 1      # Context-switch return value
    ret
 
 END_FUNC(asm_kernel_yield)
