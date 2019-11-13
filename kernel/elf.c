@@ -54,15 +54,13 @@ load_phdr(fs_handle *elf_file,
 
       if (!is_mapped(pdir, vaddr)) {
 
-         p = kzmalloc(PAGE_SIZE);
-
-         if (!p)
+         if (!(p = kzmalloc(PAGE_SIZE)))
             return -ENOMEM;
 
-         rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true);
-
-         if (rc != 0)
+         if ((rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true))) {
+            kfree2(p, PAGE_SIZE);
             return rc;
+         }
 
       } else {
 
@@ -117,8 +115,7 @@ struct elf_headers {
 
 static void free_elf_headers(struct elf_headers *eh)
 {
-   if (!eh)
-      return;
+   ASSERT(eh != NULL);
 
    if (eh->total_phdrs_size)
       kfree2(eh->phdrs, eh->total_phdrs_size);
@@ -208,8 +205,10 @@ int load_elf_program(const char *filepath,
       return -EACCES;
    }
 
-   if ((rc = load_elf_headers(elf_file, header_buf, &eh)))
+   if ((rc = load_elf_headers(elf_file, header_buf, &eh))) {
+      vfs_close(elf_file);
       return rc;
+   }
 
    ASSERT(*pdir_ref == NULL);
 
