@@ -22,7 +22,6 @@
 #define PIT_MODE_4      0b00001000   // software triggered strobe
 #define PIT_MODE_5      0b00001010   // hardware triggered strobe
 
-#define PIT_LATCH_CMD   0b00000000   // latch count value command
 #define PIT_ACC_LO      0b00010000   // access mode: lobyte only
 #define PIT_ACC_HI      0b00100000   // access mode: hibyte only
 #define PIT_ACC_LOHI    0b00110000   // access mode: lobyte/hibyte
@@ -79,7 +78,7 @@ u32 hw_timer_setup(u32 interval)
    actual_interval /= PIT_FREQ;
    ASSERT(actual_interval < UINT32_MAX);
 
-   outb(PIT_CMD_PORT, PIT_MODE_BIN | PIT_MODE_3 | PIT_ACC_LOHI | PIT_CH0);
+   outb(PIT_CMD_PORT, PIT_MODE_BIN | PIT_MODE_2 | PIT_ACC_LOHI | PIT_CH0);
    outb(PIT_CH0_PORT, divisor & 0xff);            /* Set low byte of divisor */
    outb(PIT_CH0_PORT, (divisor >> 8) & 0xff);     /* Set high byte of divisor */
 
