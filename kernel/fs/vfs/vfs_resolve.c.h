@@ -376,28 +376,40 @@ vfs_resolve(const char *path,
             bool res_last_sl)
 {
    int rc;
-   bzero(rp, sizeof(*rp));
 
-   struct vfs_resolve_int_ctx ctx = {
-      .ss = 0,
-      .exlock = exlock,
-   };
+#ifndef KERNEL_TEST
+
+   struct task *curr = get_curr_task();
+   struct vfs_resolve_int_ctx *ctx = (void *)curr->misc_buf->resolve_ctx;
+   STATIC_ASSERT(sizeof(*ctx) <= sizeof(curr->misc_buf->resolve_ctx));
+
+#else
+
+   /* For the unit tests, just allocate the ctx on the stack */
+   struct vfs_resolve_int_ctx __stack_allocated_ctx;
+   struct vfs_resolve_int_ctx *ctx = &__stack_allocated_ctx;
+
+#endif
+
+   bzero(rp, sizeof(*rp));
+   ctx->ss = 0;
+   ctx->exlock = exlock;
 
    if (*path == '/')
       get_locked_retained_root(rp, exlock);
    else
       get_locked_retained_cwd(rp, exlock);
 
-   rc = vfs_resolve_stack_push(&ctx, path, rp);
+   rc = vfs_resolve_stack_push(ctx, path, rp);
    ASSERT(rc == 0);
 
-   rc = __vfs_resolve(&ctx, res_last_sl);
+   rc = __vfs_resolve(ctx, res_last_sl);
 
    /* At the end, resolve() must use exactly 1 stack frame */
-   ASSERT(ctx.ss == 1);
+   ASSERT(ctx->ss == 1);
 
    /* Store out the last frame in the caller-provided vfs_path */
-   *rp = ctx.paths[0];
+   *rp = ctx->paths[0];
 
    if (rp->fs_path.inode)
       vfs_release_inode_at(rp);

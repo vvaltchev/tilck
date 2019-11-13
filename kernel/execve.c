@@ -41,9 +41,8 @@ execve_get_path(const char *user_path, char **path_ref)
 {
    int rc = 0;
    struct task *curr = get_curr_task();
-   char *path = curr->io_copybuf;
+   char *path = curr->misc_buf->path_buf;
    size_t written = 0;
-   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH);
 
    if (!(rc = duplicate_user_path(path, user_path, MAX_PATH, &written)))
       *path_ref = path;
@@ -238,8 +237,9 @@ do_execve(struct task *curr_user_task,
 {
    struct task *ti = get_curr_task();
    const char *const default_argv[] = { path, NULL };
-   struct execve_ctx *ctx = (void *) ti->io_copybuf + MAX_PATH;
-   STATIC_ASSERT(IO_COPYBUF_SIZE > MAX_PATH + sizeof(struct execve_ctx));
+
+   struct execve_ctx *ctx = (void *) ti->misc_buf->execve_ctx;
+   STATIC_ASSERT(sizeof(*ctx) <= sizeof(ti->misc_buf->execve_ctx));
 
    ctx->curr_user_task = curr_user_task;
    ctx->env = env ? env : default_env;

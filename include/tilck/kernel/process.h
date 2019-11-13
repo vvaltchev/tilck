@@ -63,6 +63,16 @@ struct process {
    uptr sa_flags;
 };
 
+struct misc_buf {
+
+   char path_buf[MAX_PATH];
+   char unused[1024 - MAX_PATH];
+   char execve_ctx[1024];
+   char resolve_ctx[2048];
+};
+
+STATIC_ASSERT(sizeof(struct misc_buf) <= PAGE_SIZE);
+
 struct task {
 
    union {
@@ -108,8 +118,12 @@ struct task {
    u64 total_kernel_ticks;
 
    void *kernel_stack;
-   void *io_copybuf;
    void *args_copybuf;
+
+   union {
+      void *io_copybuf;
+      struct misc_buf *misc_buf;
+   };
 
    struct wait_obj wobj;
 
