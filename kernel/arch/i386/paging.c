@@ -338,8 +338,9 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
 {
    page_table_t *pt;
    const uptr vaddr = (uptr)vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   const u32 page_dir_index = (vaddr >> 22) & 0x3FF;
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
+   const u32 pd_index = (vaddr >> 22) & 0x3FF;
+   uptr pageframe_paddr;
 
    /*
     * This function shall be never called for the linear-mapped zone of the
@@ -347,11 +348,13 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
     */
    ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(pt) != 0);
 
-   ASSERT(pt->pages[page_table_index].present);
-   return (uptr) pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
+   ASSERT(pt->pages[pt_index].present);
+
+   pageframe_paddr = (uptr) pt->pages[pt_index].pageAddr << PAGE_SHIFT;
+   return pageframe_paddr | (vaddr & OFFSET_IN_PAGE_MASK);
 }
 
 NODISCARD int

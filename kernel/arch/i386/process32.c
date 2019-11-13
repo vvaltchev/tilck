@@ -124,6 +124,11 @@ push_args_on_user_stack(regs_t *r,
 NODISCARD int
 kthread_create(kthread_func_ptr fun, int fl, void *arg)
 {
+   regs_t *safe_state_regs_ptr;
+   sptr safe_regs_off;
+   struct task *ti;
+   int ret = -ENOMEM;
+
    regs_t r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
       .custom_flags = 0,
@@ -142,12 +147,7 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
       .ss = X86_KERNEL_DATA_SEL,
    };
 
-   struct task *ti = allocate_new_thread(
-      kernel_process->pi,
-      !!(fl & KTH_ALLOC_BUFS)
-   );
-
-   int ret = -ENOMEM;
+   ti = allocate_new_thread(kernel_process->pi, !!(fl & KTH_ALLOC_BUFS));
 
    if (!ti)
       return ret;
@@ -159,7 +159,32 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
    ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
+   if (KERNEL_STACK_ISOLATION && !is_kernel_thread(get_curr_task())) {
+
+      /*
+       * If stack isolation is enabled and we're not running in a kernel thread,
+       * we cannot access the hi_vmem area, because it's not mapped in our pdir.
+       *
+       * Therefore, we have to translate that pointer back to something always
+       * accessible, in the linear mapping zone of the kernel.
+       *
+       * Also, since at the end we must restore ti->state_regs to its hi_vmem
+       * value, we have to save the offset between the two pointers.
+       */
+
+      safe_state_regs_ptr = KERNEL_PA_TO_VA(
+         get_mapping(get_kernel_pdir(), ti->state_regs)
+      );
+
+      safe_regs_off = (char *)ti->state_regs - (char *)safe_state_regs_ptr;
+
+   } else {
+
+      safe_state_regs_ptr = ti->state_regs;
+      safe_regs_off = 0;
+   }
+
+   push_on_stack((uptr **)&safe_state_regs_ptr, (uptr)arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
@@ -169,7 +194,7 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
     * jump in the begging of kthread_exit().
     */
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
+   push_on_stack((uptr **)&safe_state_regs_ptr, (uptr)&kthread_exit);
 
    /*
     * Overall, with these pushes + the iret of asm_kernel_context_switch_x86()
@@ -181,8 +206,10 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
     *       <other instructions of kthread_exit>
     */
 
-   ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
-   memcpy(ti->state_regs, &r, sizeof(r) - 8);
+   safe_state_regs_ptr = (void *)safe_state_regs_ptr - sizeof(regs_t) + 8;
+   memcpy(safe_state_regs_ptr, &r, sizeof(r) - 8);
+
+   ti->state_regs = (void *)safe_state_regs_ptr + safe_regs_off;
    ret = ti->tid;
 
    /*
@@ -446,6 +473,26 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
          restore_fpu_regs(ti, false);
          /* leave FPU enabled */
       }
+
+   } else {
+
+      /*
+       * Switch to kernel thread case.
+       *
+       * In general, we should have nothing to do here, because the page
+       * directory of each process share kernel's pdir. BUT, in case the debug
+       * feature KERNEL_STACK_ISOLATION is enabled, things change: when creating
+       * a kernel thread (where pdir == kernel's single pdir), we'll going to
+       * reserve some memory in the hi_vmem area and map the kernel stack there.
+       * Doing that means that both the current kthread and the new kthread need
+       * to access that hi_vmem area, not mapped by default. In order that to
+       * always work, when switching to a kernel thread we need also to actually
+       * change the current PDIR, like it happens for user processes.
+       */
+
+      if (KERNEL_STACK_ISOLATION)
+         if (get_curr_pdir() != ti->pi->pdir)
+            set_curr_pdir(ti->pi->pdir);
    }
 
    /* From here until the end, we have to be as fast as possible */
