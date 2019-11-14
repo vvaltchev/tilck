@@ -80,11 +80,11 @@ void invalidate_page(uptr vaddr)
 bool handle_potential_cow(void *context)
 {
    regs_t *r = context;
+   u32 vaddr;
 
    if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
       return false;
 
-   u32 vaddr;
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
@@ -111,7 +111,7 @@ bool handle_potential_cow(void *context)
    pf_ref_count_dec(orig_page_paddr);
 
    // Copy the whole page to our temporary buffer.
-   memcpy(page_size_buf, page_vaddr, PAGE_SIZE);
+   memcpy32(page_size_buf, page_vaddr, PAGE_SIZE / 4);
 
    // Allocate and set a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
@@ -134,7 +134,7 @@ bool handle_potential_cow(void *context)
    invalidate_page_hw(vaddr);
 
    // Copy back the page.
-   memcpy(page_vaddr, page_size_buf, PAGE_SIZE);
+   memcpy32(page_vaddr, page_size_buf, PAGE_SIZE / 4);
    return true;
 }
 
