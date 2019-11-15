@@ -797,27 +797,32 @@ int sys_fork(void)
    int rc = -EAGAIN;
    struct task *child = NULL;
    struct task *curr = get_curr_task();
+   struct process *curr_pi = curr->pi;
+   pdir_t *new_pdir = NULL;
 
    disable_preemption();
 
    if ((pid = create_new_pid()) < 0)
       goto out; /* NOTE: is already set to -EAGAIN */
 
+   if (FORK_NO_COW)
+      new_pdir = pdir_deep_clone(curr_pi->pdir);
+   else
+      new_pdir = pdir_clone(curr_pi->pdir);
+
+   if (!new_pdir)
+      goto no_mem_exit;
+
    if (!(child = allocate_new_process(curr, pid)))
       goto no_mem_exit;
+
+   child->pi->pdir = new_pdir;
+   new_pdir = NULL;
 
    ASSERT(child->kernel_stack != NULL);
 
    if (child->state == TASK_STATE_RUNNING)
       child->state = TASK_STATE_RUNNABLE;
-
-   if (FORK_NO_COW)
-      child->pi->pdir = pdir_deep_clone(curr->pi->pdir);
-   else
-      child->pi->pdir = pdir_clone(curr->pi->pdir);
-
-   if (!child->pi->pdir)
-      goto no_mem_exit;
 
    child->running_in_kernel = false;
    task_info_reset_kernel_stack(child);
@@ -841,7 +846,7 @@ int sys_fork(void)
     * That is better than invalidating all the pages affected, one by one.
     */
 
-   set_curr_pdir(curr->pi->pdir);
+   set_curr_pdir(curr_pi->pdir);
    enable_preemption();
    return child->tid;
 
@@ -849,6 +854,9 @@ int sys_fork(void)
 no_mem_exit:
 
    rc = -ENOMEM;
+
+   if (new_pdir)
+      pdir_destroy(new_pdir);
 
    if (child) {
       child->state = TASK_STATE_ZOMBIE;
