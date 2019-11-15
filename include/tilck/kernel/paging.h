@@ -14,6 +14,7 @@
 #define OFFSET_IN_PAGE_MASK                      (PAGE_SIZE - 1)
 #define PAGE_MASK                         (~OFFSET_IN_PAGE_MASK)
 #define IS_PAGE_ALIGNED(x)    (!((uptr)x & OFFSET_IN_PAGE_MASK))
+#define IS_PTR_ALIGNED(x)        (!((uptr)x & (sizeof(uptr)-1)))
 
 #define INVALID_PADDR                                 ((uptr)-1)
 
@@ -105,3 +106,5 @@ void *hi_vmem_reserve(size_t size);
  * callers. The function just releases the allocated block in the virtual space.
  */
 void hi_vmem_release(void *ptr, size_t size);
+
+int virtual_read(pdir_t *pdir, void *va, uptr *dest);
