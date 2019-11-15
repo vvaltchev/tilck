@@ -149,18 +149,17 @@ NORETURN void panic(const char *fmt, ...)
    panic_print_task_info(curr);
    panic_dump_nested_interrupts();
 
-   if (!__in_double_fault) {
-
-      if (PANIC_SHOW_REGS)
-         dump_regs(&panic_state_regs);
-
-      if (PANIC_SHOW_STACKTRACE)
-         dump_stacktrace();
-
-   } else {
-
+   if (__in_double_fault)
       copy_main_tss_on_regs(&panic_state_regs);
+
+   if (PANIC_SHOW_REGS)
       dump_regs(&panic_state_regs);
+
+   if (PANIC_SHOW_STACKTRACE) {
+      dump_stacktrace(
+         __in_double_fault ? (void*)panic_state_regs.ebp : NULL,
+         curr->pi->pdir
+      );
    }
 
    if (DEBUG_QEMU_EXIT_ON_PANIC)

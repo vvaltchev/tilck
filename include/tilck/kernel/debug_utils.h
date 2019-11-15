@@ -11,7 +11,7 @@ extern const uptr init_st_end;
 size_t stackwalk32(void **frames, size_t count,
                    void *ebp, pdir_t *pdir);
 
-void dump_stacktrace(void);
+void dump_stacktrace(void *ebp, pdir_t *pdir);
 void dump_regs(regs_t *r);
 
 void validate_stack_pointer_int(const char *file, int line);

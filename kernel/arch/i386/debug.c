@@ -34,6 +34,7 @@ size_t stackwalk32(void **frames,
                    void *ebp,
                    pdir_t *pdir)
 {
+   bool curr_pdir = false;
    void *retAddr;
    size_t i;
 
@@ -42,25 +43,28 @@ size_t stackwalk32(void **frames,
    }
 
    if (!pdir) {
-      pdir = get_kernel_pdir();
+      pdir = get_curr_pdir();
+      curr_pdir = true;
    }
 
    for (i = 0; i < count; i++) {
 
-      void *addrs_to_deref[2] = { ebp, ebp + 1 };
+      if (curr_pdir) {
 
-      if (!mapped_in_pdir(pdir, addrs_to_deref[0]))
-         break;
+         retAddr = *((void **)ebp + 1);
+         ebp = *((void **)ebp);
 
-      if (!mapped_in_pdir(pdir, addrs_to_deref[1]))
-         break;
+      } else {
 
-      retAddr = *((void **)ebp + 1);
-      ebp = *(void **)ebp;
+         if (virtual_read(pdir, (void **)ebp + 1, (void *)&retAddr) < 0)
+            break;
 
-      if (!ebp || !retAddr) {
-         break;
+         if (virtual_read(pdir, (void **)ebp, (void *)&ebp) < 0)
+            break;
       }
+
+      if (!ebp || !retAddr)
+         break;
 
       frames[i] = retAddr;
    }
@@ -69,10 +73,10 @@ size_t stackwalk32(void **frames,
 }
 
 
-void dump_stacktrace(void)
+void dump_stacktrace(void *ebp, pdir_t *pdir)
 {
    void *frames[32] = {0};
-   size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
+   size_t c = stackwalk32(frames, ARRAY_SIZE(frames), ebp, pdir);
 
    printk("Stacktrace (%u frames):\n", c);
 
