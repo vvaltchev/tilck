@@ -177,7 +177,8 @@ void init_process_lists(struct process *pi)
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
 }
 
-struct task *allocate_new_process(struct task *parent, int pid)
+struct task *
+allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 {
    struct process *pi, *parent_pi = parent->pi;
    struct task *ti = kmalloc(
@@ -197,6 +198,7 @@ struct task *allocate_new_process(struct task *parent, int pid)
    pi->parent_pid = parent_pi->pid;
    pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
 
+   pi->pdir = new_pdir;
    pi->ref_count = 1;
    pi->pid = pid;
    ti->tid = pid;
@@ -813,12 +815,13 @@ int sys_fork(void)
    if (!new_pdir)
       goto no_mem_exit;
 
-   if (!(child = allocate_new_process(curr, pid)))
+   if (!(child = allocate_new_process(curr, pid, new_pdir)))
       goto no_mem_exit;
 
-   child->pi->pdir = new_pdir;
+   /* Set new_pdir in order to avoid its double-destruction */
    new_pdir = NULL;
 
+   /* Child's kernel stack must be set */
    ASSERT(child->kernel_stack != NULL);
 
    if (child->state == TASK_STATE_RUNNING)

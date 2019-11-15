@@ -309,7 +309,7 @@ int setup_usermode_task(pdir_t *pdir,
 
       VERIFY(create_new_pid() == 1);
 
-      if (!(ti = allocate_new_process(kernel_process, 1)))
+      if (!(ti = allocate_new_process(kernel_process, 1, pdir)))
          return -ENOMEM;
 
       ti->pi->umask = 0022;
@@ -332,11 +332,10 @@ int setup_usermode_task(pdir_t *pdir,
 
       ASSERT(ti->state == TASK_STATE_RUNNING);
       task_change_state(ti, TASK_STATE_RUNNABLE);
+      ti->pi->pdir = pdir;
    }
 
-   ti->pi->pdir = pdir;
    ti->running_in_kernel = false;
-
    ASSERT(ti->kernel_stack != NULL);
 
    task_info_reset_kernel_stack(ti);
