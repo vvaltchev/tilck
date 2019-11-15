@@ -149,8 +149,12 @@ NORETURN void panic(const char *fmt, ...)
    panic_print_task_info(curr);
    panic_dump_nested_interrupts();
 
-   if (__in_double_fault)
+   if (__in_double_fault) {
       copy_main_tss_on_regs(&panic_state_regs);
+
+      if (!PANIC_SHOW_REGS)
+         printk("ESP: %p\n", panic_state_regs.esp);
+   }
 
    if (PANIC_SHOW_REGS)
       dump_regs(&panic_state_regs);
