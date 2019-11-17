@@ -206,10 +206,10 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
          ASSERT(ti == ctx->curr_user_task);
 
          /*
-          * This is 2nd `if` handling the difference between the first execve()
-          * and all the others. In case of a regular execve(), curr_user_task
-          * will always be != NULL and we can switch again to its 'new image'
-          * with switch_to_task().
+          * Handling the difference between the first execve() and all the
+          * others. In case of a regular execve(), curr_user_task will always
+          * be != NULL and we can switch again to its 'new image' with
+          * switch_to_task().
           */
          switch_to_task(ti, SYSCALL_SOFT_INTERRUPT);
 

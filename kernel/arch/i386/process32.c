@@ -285,21 +285,23 @@ int setup_usermode_task(pdir_t *pdir,
       .ss = X86_USER_DATA_SEL,
    };
 
-   int rc;
+   int rc = 0;
    u32 argv_elems = 0;
    u32 env_elems = 0;
+   pdir_t *old_pdir;
    *ti_ref = NULL;
 
    ASSERT(!is_preemption_enabled());
 
    /* Switch to the new page directory (we're going to write on user's stack) */
+   old_pdir = get_curr_pdir();
    set_curr_pdir(pdir);
 
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
 
    if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
-      return rc;
+      goto out;
 
    if (UNLIKELY(!ti)) {
 
@@ -309,8 +311,10 @@ int setup_usermode_task(pdir_t *pdir,
 
       VERIFY(create_new_pid() == 1);
 
-      if (!(ti = allocate_new_process(kernel_process, 1, pdir)))
-         return -ENOMEM;
+      if (!(ti = allocate_new_process(kernel_process, 1, pdir))) {
+         rc = -ENOMEM;
+         goto out;
+      }
 
       ti->pi->umask = 0022;
       ti->state = TASK_STATE_RUNNABLE;
@@ -327,12 +331,16 @@ int setup_usermode_task(pdir_t *pdir,
        * directory and free all GDT and LDT entries used by the current (forked)
        * child since we're creating a totally new process now.
        */
+      ASSERT(old_pdir == ti->pi->pdir);
       pdir_destroy(ti->pi->pdir);
+      ti->pi->pdir = pdir;
+      old_pdir = NULL;
+
       arch_specific_free_task(ti);
+      arch_specific_new_task_setup(ti, NULL);
 
       ASSERT(ti->state == TASK_STATE_RUNNING);
       task_change_state(ti, TASK_STATE_RUNNABLE);
-      ti->pi->pdir = pdir;
    }
 
    ti->running_in_kernel = false;
@@ -342,7 +350,17 @@ int setup_usermode_task(pdir_t *pdir,
    ti->state_regs--;    // make room for a regs_t struct in the stack
    *ti->state_regs = r; // copy the regs_t struct we just prepared
    *ti_ref = ti;
-   return 0;
+
+out:
+
+   if (UNLIKELY(rc != 0)) {
+      if (old_pdir) {
+         set_curr_pdir(old_pdir);
+         pdir_destroy(pdir);
+      }
+   }
+
+   return rc;
 }
 
 void save_current_task_state(regs_t *r)
