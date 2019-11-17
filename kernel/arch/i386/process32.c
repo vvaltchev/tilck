@@ -41,6 +41,15 @@ static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
    **stack_ptr_ref = val;  // *stack_ptr = val
 }
 
+static void push_on_stack2(pdir_t *pdir, uptr **stack_ptr_ref, uptr val)
+{
+   // Decrease the value of the stack pointer
+   (*stack_ptr_ref)--;
+
+   // *stack_ptr = val
+   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(uptr));
+}
+
 static inline void push_on_user_stack(regs_t *r, uptr val)
 {
    push_on_stack((uptr **)&r->useresp, val);
@@ -124,8 +133,8 @@ push_args_on_user_stack(regs_t *r,
 NODISCARD int
 kthread_create(kthread_func_ptr fun, int fl, void *arg)
 {
-   regs_t *safe_state_regs_ptr;
-   sptr safe_regs_off;
+   const bool in_kthread = is_kernel_thread(get_curr_task());
+   pdir_t *const kpd = get_kernel_pdir();
    struct task *ti;
    int ret = -ENOMEM;
 
@@ -159,57 +168,36 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
    ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
 
-   if (KERNEL_STACK_ISOLATION && !is_kernel_thread(get_curr_task())) {
-
-      /*
-       * If stack isolation is enabled and we're not running in a kernel thread,
-       * we cannot access the hi_vmem area, because it's not mapped in our pdir.
-       *
-       * Therefore, we have to translate that pointer back to something always
-       * accessible, in the linear mapping zone of the kernel.
-       *
-       * Also, since at the end we must restore ti->state_regs to its hi_vmem
-       * value, we have to save the offset between the two pointers.
-       */
-
-      safe_state_regs_ptr = KERNEL_PA_TO_VA(
-         get_mapping(get_kernel_pdir(), ti->state_regs)
-      );
-
-      safe_regs_off = (char *)ti->state_regs - (char *)safe_state_regs_ptr;
-
-   } else {
-
-      safe_state_regs_ptr = ti->state_regs;
-      safe_regs_off = 0;
-   }
-
-   push_on_stack((uptr **)&safe_state_regs_ptr, (uptr)arg);
+   if (KERNEL_STACK_ISOLATION && !in_kthread)
+      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)arg);
+   else
+      push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
 
    /*
     * Pushes the address of kthread_exit() into thread's stack in order to
     * it to be called after thread's function returns.
     * This is AS IF kthread_exit() called the thread 'fun' with a CALL
     * instruction before doing anything else. That allows the RET by 'fun' to
-    * jump in the begging of kthread_exit().
+    * jump at the begging of kthread_exit().
     */
 
-   push_on_stack((uptr **)&safe_state_regs_ptr, (uptr)&kthread_exit);
+   if (KERNEL_STACK_ISOLATION && !in_kthread)
+      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)&kthread_exit);
+   else
+      push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
 
-   /*
-    * Overall, with these pushes + the iret of asm_kernel_context_switch_x86()
-    * the stack will look to 'fun' as if the following happened:
-    *
-    *    kthread_exit:
-    *       push arg
-    *       call fun
-    *       <other instructions of kthread_exit>
-    */
+   /* Move the state_regs ptr to reseve space for the actual regs */
+   ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
 
-   safe_state_regs_ptr = (void *)safe_state_regs_ptr - sizeof(regs_t) + 8;
-   memcpy(safe_state_regs_ptr, &r, sizeof(r) - 8);
+   if (KERNEL_STACK_ISOLATION && !in_kthread) {
+      debug_checked_virtual_write(kpd,
+                                  ti->state_regs,
+                                  &r,
+                                  sizeof(r) - 8);
+   } else {
+      memcpy(ti->state_regs, &r, sizeof(r) - 8);
+   }
 
-   ti->state_regs = (void *)safe_state_regs_ptr + safe_regs_off;
    ret = ti->tid;
 
    /*
