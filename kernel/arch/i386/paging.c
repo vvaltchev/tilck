@@ -1035,85 +1035,35 @@ void hi_vmem_release(void *ptr, size_t size)
    enable_preemption();
 }
 
-static int virtual_read_unsafe(pdir_t *pdir, void *vaddrp, uptr *dest)
+static int
+virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 {
-   uptr pa;
-   uptr vpage1;
-   uptr vpage2;
-   uptr page_off;
-   size_t len;
-   uptr tmp;
+   uptr pgoff, pa;
+   size_t tot, to_read;
    void *va;
 
-   if (!is_mapped(pdir, vaddrp))
-      return -EFAULT;
+   for (tot = 0; tot < len; extern_va += to_read, tot += to_read) {
 
-   pa = get_mapping(pdir, vaddrp);
-   va = KERNEL_PA_TO_VA(pa);
+      if (!is_mapped(pdir, extern_va))
+         return -EFAULT;
 
-   if (UNLIKELY(!IS_PTR_ALIGNED(pa))) {
+      pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
+      to_read = MIN(PAGE_SIZE - pgoff, len - tot);
 
-      vpage1 = (uptr)vaddrp & PAGE_MASK;
-      vpage2 = ((uptr)vaddrp + sizeof(uptr) + 1) & PAGE_MASK;
-
-      if (UNLIKELY(vpage1 != vpage2)) {
-
-         /*
-          * Let's say vaddrp is: 0xaabbcfff (unaligned and cross-page).
-          * Its page is 0xaabbc000.
-          * Let's say its pageframe is: 0x11223000.
-          *
-          * vpage1 = 0xaabbc000
-          * vpage2 = 0xaabbd000 (because vaddrp + 4 + 1 == 0xaabbd004).
-          *
-          * Now, page_off is: 0xfff (4095), therefore len = 4096-4095 = 1.
-          * We copy in &tmp, the first `len` bytes of `vaddrp` (1 in this case).
-          *
-          * Now, we have to check if vpage2 is mapped as well. If it's not,
-          * we return -EFAULT.
-          *
-          * But if it is, we have to get the mapping of vpage2 as well.
-          * Let's say it is: 0x55667000.
-          *
-          * Now, after calculating it's VA in our linear space, we have to copy
-          * the rest of the pointer-wide integer in &tmp.
-          *
-          * 1. Cast &tmp to (char*)
-          * 2. Add `len` bytes to it (we already wrote `len` there)
-          * 3. Use `va` as source
-          * 4. The copy length must be pointer-size (4) - len (1), 3.
-          * 5. Make our `va` to point to the address of `tmp`.
-          *
-          * This way, at the end, we'll store in *dest the value pointed at
-          * `va`, or, in other words:
-          *
-          *    *((uptr *) va) == *((uptr *) &tmp) == *&tmp == tmp.
-          */
-
-         page_off = vpage1 & OFFSET_IN_PAGE_MASK;
-         len = PAGE_SIZE - page_off;
-         memcpy((char *)&tmp, va, len);
-
-         if (!is_mapped(pdir, (void *)vpage2))
-            return -EFAULT;
-
-         pa = get_mapping(pdir, (void *)vpage2);
-         va = KERNEL_PA_TO_VA(pa);
-         memcpy((char *)&tmp + len, va, sizeof(uptr) - len);
-         va = &tmp;
-      }
+      pa = get_mapping(pdir, extern_va);
+      va = KERNEL_PA_TO_VA(pa);
+      memcpy(dest + tot, va, to_read);
    }
 
-   *dest = *((uptr *) va);
-   return 0;
+   return (int)tot;
 }
 
-int virtual_read(pdir_t *pdir, void *va, uptr *dest)
+int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 {
    int rc;
    disable_preemption();
    {
-      rc = virtual_read_unsafe(pdir, va, dest);
+      rc = virtual_read_unsafe(pdir, extern_va, dest, len);
    }
    enable_preemption();
    return rc;

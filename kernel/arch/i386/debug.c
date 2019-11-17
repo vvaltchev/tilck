@@ -56,10 +56,10 @@ size_t stackwalk32(void **frames,
 
       } else {
 
-         if (virtual_read(pdir, (void **)ebp + 1, (void *)&retAddr) < 0)
+         if (virtual_read(pdir, (void **)ebp + 1, &retAddr, 4) < 0)
             break;
 
-         if (virtual_read(pdir, (void **)ebp, (void *)&ebp) < 0)
+         if (virtual_read(pdir, (void **)ebp, &ebp, 4) < 0)
             break;
       }
 

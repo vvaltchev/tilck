@@ -107,4 +107,4 @@ void *hi_vmem_reserve(size_t size);
  */
 void hi_vmem_release(void *ptr, size_t size);
 
-int virtual_read(pdir_t *pdir, void *va, uptr *dest);
+int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len);
