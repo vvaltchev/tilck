@@ -1042,6 +1042,8 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
    size_t tot, to_read;
    void *va;
 
+   ASSERT(len <= INT32_MAX);
+
    for (tot = 0; tot < len; extern_va += to_read, tot += to_read) {
 
       if (!is_mapped(pdir, extern_va))
@@ -1058,12 +1060,48 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
    return (int)tot;
 }
 
+static int
+virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
+{
+   uptr pgoff, pa;
+   size_t tot, to_write;
+   void *va;
+
+   ASSERT(len <= INT32_MAX);
+
+   for (tot = 0; tot < len; extern_va += to_write, tot += to_write) {
+
+      if (!is_mapped(pdir, extern_va))
+         return -EFAULT;
+
+      pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
+      to_write = MIN(PAGE_SIZE - pgoff, len - tot);
+
+      pa = get_mapping(pdir, extern_va);
+      va = KERNEL_PA_TO_VA(pa);
+      memcpy(va, src + tot, to_write);
+   }
+
+   return (int)tot;
+}
+
 int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 {
    int rc;
    disable_preemption();
    {
       rc = virtual_read_unsafe(pdir, extern_va, dest, len);
+   }
+   enable_preemption();
+   return rc;
+}
+
+int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len)
+{
+   int rc;
+   disable_preemption();
+   {
+      rc = virtual_write_unsafe(pdir, extern_va, src, len);
    }
    enable_preemption();
    return rc;
