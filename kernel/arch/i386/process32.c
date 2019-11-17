@@ -447,7 +447,19 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
     * Make sure in NO WAY we'll switch to a user task keeping interrupts
     * disabled. That would be a disaster.
     */
-   ASSERT(state->eflags & EFLAGS_IF);
+   if (KERNEL_STACK_ISOLATION) {
+
+      DEBUG_ONLY_UNSAFE(u32 eflags);
+
+      DEBUG_ONLY_UNSAFE(int rc =)
+         virtual_read(ti->pi->pdir, &state->eflags, &eflags, sizeof(eflags));
+
+      ASSERT(rc == sizeof(eflags));
+      ASSERT(eflags & EFLAGS_IF);
+
+   } else {
+      ASSERT(state->eflags & EFLAGS_IF);
+   }
 
    /* Do as much as possible work before disabling the interrupts */
    task_change_state(ti, TASK_STATE_RUNNING);
