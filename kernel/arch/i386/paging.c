@@ -690,7 +690,7 @@ oom_exit:
 void pdir_destroy(pdir_t *pdir)
 {
    // Kernel's pdir cannot be destroyed!
-   ASSERT(pdir != kernel_page_dir);
+   ASSERT(pdir != __kernel_pdir);
 
    for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
 
@@ -806,8 +806,8 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
 void init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
-   kernel_page_dir = (pdir_t *) kpdir_buf;
-   set_kernel_process_pdir(kernel_page_dir);
+   __kernel_pdir = (pdir_t *) kpdir_buf;
+   set_kernel_process_pdir(__kernel_pdir);
 }
 
 static void init_hi_vmem_heap(void)
@@ -889,7 +889,7 @@ void init_paging_cow(void)
     * Map a special vdso-like page used for the sysenter interface.
     * This is the only user-mapped page with a vaddr in the kernel space.
     */
-   rc = map_page(kernel_page_dir,
+   rc = map_page(__kernel_pdir,
                  user_vsdo_like_page_vaddr,
                  KERNEL_VA_TO_PA(&vsdo_like_page),
                  true,   /* user-visible */
@@ -908,15 +908,15 @@ static void *failsafe_map_framebuffer(uptr paddr, uptr size)
     */
 
    uptr vaddr = FAILSAFE_FB_VADDR;
-   kernel_page_dir = (pdir_t *)page_size_buf;
+   __kernel_pdir = (pdir_t *)page_size_buf;
 
    u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
 
    for (u32 i = 0; i < big_pages_to_use; i++) {
-      map_4mb_page_int(kernel_page_dir,
-                        (void *)vaddr + i * 4 * MB,
-                        paddr + i * 4 * MB,
-                        PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
+      map_4mb_page_int(__kernel_pdir,
+                       (void *)vaddr + i * 4 * MB,
+                       paddr + i * 4 * MB,
+                       PG_PRESENT_BIT | PG_RW_BIT | PG_4MB_BIT);
    }
 
    return (void *)vaddr;

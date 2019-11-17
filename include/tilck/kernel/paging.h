@@ -72,17 +72,15 @@ pdir_t *pdir_clone(pdir_t *pdir);
 pdir_t *pdir_deep_clone(pdir_t *pdir);
 void pdir_destroy(pdir_t *pdir);
 void invalidate_page(uptr vaddr);
-
-// Temporary function, until get/set page flags is made available.
 void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
 
-extern pdir_t *kernel_page_dir;
+extern pdir_t *__kernel_pdir;
 extern char page_size_buf[PAGE_SIZE];
 extern char zero_page[PAGE_SIZE];
 
 static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
 {
-   return kernel_page_dir;
+   return __kernel_pdir;
 }
 
 void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap);
