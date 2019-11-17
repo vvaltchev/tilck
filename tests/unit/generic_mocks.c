@@ -60,6 +60,18 @@ void hw_read_clock(struct datetime *out)
    memset(out, 0, sizeof(*out));
 }
 
+int virtual_read(void *pdir, void *extern_va, void *dest, size_t len)
+{
+   memcpy(dest, extern_va, len);
+   return 0;
+}
+
+int virtual_write(void *pdir, void *extern_va, void *src, size_t len)
+{
+   memcpy(extern_va, src, len);
+   return 0;
+}
+
 void invalidate_page() {}
 void init_serial_port() { }
 void serial_write() { }
