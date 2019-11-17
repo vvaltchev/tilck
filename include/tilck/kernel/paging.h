@@ -107,3 +107,22 @@ void hi_vmem_release(void *ptr, size_t size);
 
 int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len);
 int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len);
+
+static ALWAYS_INLINE void
+debug_checked_virtual_read(pdir_t *pdir, void *ext_va, void *dest, size_t len)
+{
+   DEBUG_ONLY_UNSAFE(int rc =)
+      virtual_read(pdir, ext_va, dest, len);
+
+   ASSERT((size_t)rc == len);
+}
+
+static ALWAYS_INLINE void
+debug_checked_virtual_write(pdir_t *pdir, void *ext_va, void *src, size_t len)
+{
+   DEBUG_ONLY_UNSAFE(int rc =)
+      virtual_write(pdir, ext_va, src, len);
+
+   ASSERT((size_t)rc == len);
+}
+
