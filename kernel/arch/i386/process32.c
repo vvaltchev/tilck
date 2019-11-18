@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process.h>
@@ -57,12 +58,11 @@ static inline void push_on_user_stack(regs_t *r, uptr val)
 
 static void push_string_on_user_stack(regs_t *r, const char *str)
 {
-   size_t len = strlen(str) + 1; // count also the '\0'
-   size_t aligned_len = (len / sizeof(uptr)) * sizeof(uptr);
+   const size_t len = strlen(str) + 1; // count also the '\0'
+   const size_t aligned_len = round_down_at(len, sizeof(uptr));
+   const size_t rem = len - aligned_len;
 
-   size_t rem = len - aligned_len;
    r->useresp -= aligned_len + (rem > 0 ? sizeof(uptr) : 0);
-
    memcpy((void *)r->useresp, str, aligned_len);
 
    if (rem > 0) {
