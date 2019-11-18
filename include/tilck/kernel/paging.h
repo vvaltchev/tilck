@@ -68,6 +68,7 @@ int unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool do_free);
 void unmap_pages(pdir_t *pdir, void *vaddr, size_t count, bool do_free);
 size_t unmap_pages_permissive(pdir_t *pd, void *va, size_t count, bool do_free);
 uptr get_mapping(pdir_t *pdir, void *vaddr);
+int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref);
 pdir_t *pdir_clone(pdir_t *pdir);
 pdir_t *pdir_deep_clone(pdir_t *pdir);
 void pdir_destroy(pdir_t *pdir);

@@ -340,7 +340,8 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
    const uptr vaddr = (uptr)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 pd_index = (vaddr >> 22) & 0x3FF;
-   uptr pageframe_paddr;
+   page_dir_entry_t e;
+   page_t p;
 
    /*
     * This function shall be never called for the linear-mapped zone of the
@@ -348,13 +349,46 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
     */
    ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(pt) != 0);
+   e.raw = pdir->entries[pd_index].raw;
+   ASSERT(e.present);
+   ASSERT(e.ptaddr != 0);
 
-   ASSERT(pt->pages[pt_index].present);
+   pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
+   p.raw = pt->pages[pt_index].raw;
+   ASSERT(p.present);
 
-   pageframe_paddr = (uptr) pt->pages[pt_index].pageAddr << PAGE_SHIFT;
-   return pageframe_paddr | (vaddr & OFFSET_IN_PAGE_MASK);
+   return ((uptr) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
+}
+
+int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref)
+{
+   page_table_t *pt;
+   const uptr vaddr = (uptr)vaddrp;
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
+   const u32 pd_index = (vaddr >> 22) & 0x3FF;
+   union x86_page_dir_entry e;
+   union x86_page p;
+
+   /*
+    * This function shall be never called for the linear-mapped zone of the
+    * the kernel virtual memory.
+    */
+   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
+
+   e.raw = pdir->entries[pd_index].raw;
+
+   if (!e.present)
+      return -EFAULT;
+
+   ASSERT(e.ptaddr != 0);
+   pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
+   p.raw = pt->pages[pt_index].raw;
+
+   if (!p.present)
+      return -EFAULT;
+
+   *pa_ref = ((uptr) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
+   return 0;
 }
 
 NODISCARD int
@@ -1046,13 +1080,12 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 
    for (tot = 0; tot < len; extern_va += to_read, tot += to_read) {
 
-      if (!is_mapped(pdir, extern_va))
+      if (get_mapping2(pdir, extern_va, &pa) < 0)
          return -EFAULT;
 
       pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
       to_read = MIN(PAGE_SIZE - pgoff, len - tot);
 
-      pa = get_mapping(pdir, extern_va);
       va = KERNEL_PA_TO_VA(pa);
       memcpy(dest + tot, va, to_read);
    }
@@ -1071,13 +1104,12 @@ virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
 
    for (tot = 0; tot < len; extern_va += to_write, tot += to_write) {
 
-      if (!is_mapped(pdir, extern_va))
+      if (get_mapping2(pdir, extern_va, &pa) < 0)
          return -EFAULT;
 
       pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
       to_write = MIN(PAGE_SIZE - pgoff, len - tot);
 
-      pa = get_mapping(pdir, extern_va);
       va = KERNEL_PA_TO_VA(pa);
       memcpy(va, src + tot, to_write);
    }
