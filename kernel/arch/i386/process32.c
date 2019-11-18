@@ -133,8 +133,6 @@ push_args_on_user_stack(regs_t *r,
 NODISCARD int
 kthread_create(kthread_func_ptr func, int fl, void *arg)
 {
-   const bool in_kthread = is_kernel_thread(get_curr_task());
-   pdir_t *const kpd = get_kernel_pdir();
    struct task *ti;
    int ret = -ENOMEM;
 
@@ -181,20 +179,10 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
     * 4) Copy the actual regs to the new stack
     */
 
-   if (KERNEL_STACK_ISOLATION && !in_kthread) {
-
-      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)arg);
-      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)&kthread_exit);
-      ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
-      debug_checked_virtual_write(kpd, ti->state_regs, &r, sizeof(r) - 8);
-
-   } else {
-
-      push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
-      push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
-      ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
-      memcpy(ti->state_regs, &r, sizeof(r) - 8);
-   }
+   push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
+   push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
+   ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
+   memcpy(ti->state_regs, &r, sizeof(r) - 8);
 
    ret = ti->tid;
 
@@ -451,19 +439,7 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
     * Make sure in NO WAY we'll switch to a user task keeping interrupts
     * disabled. That would be a disaster.
     */
-   if (KERNEL_STACK_ISOLATION) {
-
-      DEBUG_ONLY_UNSAFE(u32 eflags);
-
-      DEBUG_ONLY_UNSAFE(int rc =)
-         virtual_read(ti->pi->pdir, &state->eflags, &eflags, sizeof(eflags));
-
-      ASSERT(rc == sizeof(eflags));
-      ASSERT(eflags & EFLAGS_IF);
-
-   } else {
-      ASSERT(state->eflags & EFLAGS_IF);
-   }
+   ASSERT(state->eflags & EFLAGS_IF);
 
    /* Do as much as possible work before disabling the interrupts */
    task_change_state(ti, TASK_STATE_RUNNING);
@@ -488,26 +464,6 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
          restore_fpu_regs(ti, false);
          /* leave FPU enabled */
       }
-
-   } else {
-
-      /*
-       * Switch to kernel thread case.
-       *
-       * In general, we should have nothing to do here, because the page
-       * directory of each process share kernel's pdir. BUT, in case the debug
-       * feature KERNEL_STACK_ISOLATION is enabled, things change: when creating
-       * a kernel thread (where pdir == kernel's single pdir), we'll going to
-       * reserve some memory in the hi_vmem area and map the kernel stack there.
-       * Doing that means that both the current kthread and the new kthread need
-       * to access that hi_vmem area, not mapped by default. In order that to
-       * always work, when switching to a kernel thread we need also to actually
-       * change the current PDIR, like it happens for user processes.
-       */
-
-      if (KERNEL_STACK_ISOLATION)
-         if (get_curr_pdir() != ti->pi->pdir)
-            set_curr_pdir(ti->pi->pdir);
    }
 
    /* From here until the end, we have to be as fast as possible */

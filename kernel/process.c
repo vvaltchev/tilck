@@ -831,24 +831,8 @@ int sys_fork(void)
    task_info_reset_kernel_stack(child);
 
    child->state_regs--; // make room for a regs_t struct in child's stack
-
-   if (KERNEL_STACK_ISOLATION) {
-
-      regs_t tmp_regs;
-      memcpy(&tmp_regs, curr->state_regs, sizeof(regs_t));
-      set_return_register(&tmp_regs, 0);
-
-      rc = virtual_write(child->pi->pdir,
-                         child->state_regs,
-                         &tmp_regs,
-                         sizeof(regs_t));
-
-      ASSERT(rc == sizeof(regs_t));
-
-   } else {
-      *child->state_regs = *curr->state_regs; // copy parent's regs_t
-      set_return_register(child->state_regs, 0);
-   }
+   *child->state_regs = *curr->state_regs; // copy parent's regs_t
+   set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.
    set_return_register(curr->state_regs, (uptr) child->tid);
