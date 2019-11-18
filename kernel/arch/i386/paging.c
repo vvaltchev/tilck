@@ -366,8 +366,8 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref)
    const uptr vaddr = (uptr)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 pd_index = (vaddr >> 22) & 0x3FF;
-   union x86_page_dir_entry e;
-   union x86_page p;
+   page_dir_entry_t e;
+   page_t p;
 
    /*
     * This function shall be never called for the linear-mapped zone of the
@@ -849,6 +849,8 @@ static void init_hi_vmem_heap(void)
    size_t hi_vmem_size;
    size_t metadata_size;
    size_t min_block_size = 4 * PAGE_SIZE;
+   uptr hi_vmem_start;
+   u32 hi_vmem_end_pdir_index;
    void *metadata;
    bool success;
 
@@ -869,9 +871,12 @@ static void init_hi_vmem_heap(void)
    if (!metadata)
       panic("No enough memory for hi vmem heap's metadata");
 
+   hi_vmem_start = LINEAR_MAPPING_END;
+   hi_vmem_end_pdir_index = (hi_vmem_start >> 22) + (hi_vmem_size >> 22);
+
    success =
       kmalloc_create_heap(hi_vmem_heap,
-                          LINEAR_MAPPING_END,
+                          hi_vmem_start,
                           hi_vmem_size,
                           min_block_size,
                           0,
@@ -882,6 +887,20 @@ static void init_hi_vmem_heap(void)
 
    if (!success)
       panic("Failed to create the hi vmem heap");
+
+   for (u32 i = hi_vmem_start >> 22; i < hi_vmem_end_pdir_index; i++) {
+
+      page_table_t *pt;
+      page_dir_entry_t *e = &__kernel_pdir->entries[i];
+
+      ASSERT(!e->present);
+
+      if (!(pt = kzmalloc(sizeof(page_table_t))))
+         panic("Unable to alloc ptable for hi_vmem at %p", i << 22);
+
+      ASSERT(IS_PAGE_ALIGNED(pt));
+      e->raw = PG_PRESENT_BIT | PG_RW_BIT | PG_US_BIT | KERNEL_VA_TO_PA(pt);
+   }
 }
 
 void init_paging_cow(void)
