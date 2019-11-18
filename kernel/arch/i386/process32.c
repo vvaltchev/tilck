@@ -131,7 +131,7 @@ push_args_on_user_stack(regs_t *r,
 }
 
 NODISCARD int
-kthread_create(kthread_func_ptr fun, int fl, void *arg)
+kthread_create(kthread_func_ptr func, int fl, void *arg)
 {
    const bool in_kthread = is_kernel_thread(get_curr_task());
    pdir_t *const kpd = get_kernel_pdir();
@@ -149,7 +149,7 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
       .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
       .int_num = 0,
       .err_code = 0,
-      .eip = (uptr)fun,
+      .eip = (uptr)func,
       .cs = X86_KERNEL_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
       .useresp = 0,
@@ -163,38 +163,36 @@ kthread_create(kthread_func_ptr fun, int fl, void *arg)
 
    ASSERT(is_kernel_thread(ti));
 
-   ti->what = fun;
+   ti->what = func;
    ti->state = TASK_STATE_RUNNABLE;
    ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
 
-   if (KERNEL_STACK_ISOLATION && !in_kthread)
-      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)arg);
-   else
-      push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
-
    /*
-    * Pushes the address of kthread_exit() into thread's stack in order to
-    * it to be called after thread's function returns.
-    * This is AS IF kthread_exit() called the thread 'fun' with a CALL
-    * instruction before doing anything else. That allows the RET by 'fun' to
-    * jump at the begging of kthread_exit().
+    * 1) Push into the stack, function's argument, `arg`.
+    *
+    * 2) Push the address of kthread_exit() into thread's stack in order to it
+    *    to be called after thread's function returns. It's AS IF kthread_exit
+    *    called the thread `func` with a CALL instruction before doing anything
+    *    else. That allows the RET by `func` to jump at the begging of
+    *    kthread_exit().
+    *
+    * 3) Reserve space for the regs on the stack
+    * 4) Copy the actual regs to the new stack
     */
 
-   if (KERNEL_STACK_ISOLATION && !in_kthread)
-      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)&kthread_exit);
-   else
-      push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
-
-   /* Move the state_regs ptr to reseve space for the actual regs */
-   ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
-
    if (KERNEL_STACK_ISOLATION && !in_kthread) {
-      debug_checked_virtual_write(kpd,
-                                  ti->state_regs,
-                                  &r,
-                                  sizeof(r) - 8);
+
+      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)arg);
+      push_on_stack2(kpd, (uptr **)&ti->state_regs, (uptr)&kthread_exit);
+      ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
+      debug_checked_virtual_write(kpd, ti->state_regs, &r, sizeof(r) - 8);
+
    } else {
+
+      push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
+      push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
+      ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
       memcpy(ti->state_regs, &r, sizeof(r) - 8);
    }
 
