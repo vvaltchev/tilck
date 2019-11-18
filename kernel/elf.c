@@ -179,6 +179,24 @@ errend:
    return (int) rc;
 }
 
+static int
+alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
+{
+   int rc;
+   void *p = kzmalloc(PAGE_SIZE);
+
+   if (!p)
+      return -ENOMEM;
+
+   rc = map_page(pdir,
+                 (void *)stack_top + (i << PAGE_SHIFT),
+                 KERNEL_VA_TO_PA(p),
+                 true,
+                 true);
+
+   return rc;
+}
+
 int load_elf_program(const char *filepath,
                      char *header_buf,
                      pdir_t **pdir_ref,
@@ -247,41 +265,26 @@ int load_elf_program(const char *filepath,
    const size_t pages_for_stack = USER_STACK_PAGES;
    const uptr stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
 
-#if MMAP_NO_COW
+   if (MMAP_NO_COW) {
 
-   for (u32 i = 0; i < pages_for_stack; i++) {
+      for (u32 i = 0; i < pages_for_stack; i++) {
+         if ((rc = alloc_and_map_stack_page(*pdir_ref, (void *)stack_top, i)))
+            goto out;
+      }
 
-      void *p = kzmalloc(PAGE_SIZE);
+   } else {
 
-      if (!p) {
+      size_t count = map_zero_pages(*pdir_ref,
+                                    (void *)stack_top,
+                                    pages_for_stack,
+                                    true, true);
+
+      if (count != pages_for_stack) {
+         unmap_pages(*pdir_ref, (void *)stack_top, count, true);
          rc = -ENOMEM;
          goto out;
       }
-
-      rc = map_page(*pdir_ref,
-                    (void *)stack_top + (i << PAGE_SHIFT),
-                    KERNEL_VA_TO_PA(p),
-                    true,
-                    true);
-
-      if (rc != 0)
-         goto out;
    }
-
-#else
-
-   size_t count = map_zero_pages(*pdir_ref,
-                                 (void *)stack_top,
-                                 pages_for_stack,
-                                 true, true);
-
-   if (count != pages_for_stack) {
-      unmap_pages(*pdir_ref, (void *)stack_top, count, true);
-      rc = -ENOMEM;
-      goto out;
-   }
-
-#endif
 
    // Finally setting the output-params.
 
