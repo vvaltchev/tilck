@@ -208,6 +208,7 @@ int load_elf_program(const char *filepath,
    struct stat64 statbuf;
    struct elf_headers eh;
    uptr brk = 0;
+   size_t count;
    int rc;
 
    if ((rc = vfs_open(filepath, &elf_file, O_RDONLY, 0)))
@@ -260,31 +261,37 @@ int load_elf_program(const char *filepath,
          phdr_adjust_page_access(*pdir_ref, phdr);
    }
 
-   // Allocating memory for the user stack.
+   /*
+    * Mapping the user stack.
+    *
+    * In the "NOCOW" case, all the pages are pre-allocated.
+    * In the default case instead, most of the pages are zero-mapped and so,
+    * therefore, allocated on-demand. But, `USER_ARGS_PAGE_COUNT` pages are
+    * pre-allocated anyway.
+    */
 
-   const size_t pages_for_stack = USER_STACK_PAGES;
+   const size_t pre_allocated_pages =
+      MMAP_NO_COW ? USER_STACK_PAGES : USER_ARGS_PAGE_COUNT;
+
+   const size_t zero_mapped_pages = USER_STACK_PAGES - pre_allocated_pages;
    const uptr stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
 
-   if (MMAP_NO_COW) {
+   count = map_zero_pages(*pdir_ref,
+                          (void *)stack_top,
+                          zero_mapped_pages,
+                          true, true);
 
-      for (u32 i = 0; i < pages_for_stack; i++) {
-         if ((rc = alloc_and_map_stack_page(*pdir_ref, (void *)stack_top, i)))
-            goto out;
-      }
-
-   } else {
-
-      size_t count = map_zero_pages(*pdir_ref,
-                                    (void *)stack_top,
-                                    pages_for_stack,
-                                    true, true);
-
-      if (count != pages_for_stack) {
-         unmap_pages(*pdir_ref, (void *)stack_top, count, true);
-         rc = -ENOMEM;
-         goto out;
-      }
+   if (count != zero_mapped_pages) {
+      unmap_pages(*pdir_ref, (void *)stack_top, count, true);
+      rc = -ENOMEM;
+      goto out;
    }
+
+   for (u32 i = zero_mapped_pages; i < USER_STACK_PAGES; i++) {
+      if ((rc = alloc_and_map_stack_page(*pdir_ref, (void *)stack_top, i)))
+         goto out;
+   }
+
 
    // Finally setting the output-params.
 
