@@ -217,8 +217,8 @@ You can run kernel's system tests this way:
 
     ./build/st/run_all_tests
 
-**NOTE**: in order the script to work, you need to have `python` 2.7.x
-installed as `/usr/bin/python`.
+**NOTE**: in order the script to work, you need to have `python` 3
+installed as `/usr/bin/python3`.
 
 A comment about user experience
 ----------------------------------
