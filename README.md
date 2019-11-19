@@ -32,22 +32,19 @@ the following two questions:
 > 2) How fast a given syscall / kernel subsystem can get if we get rid of its most
 > complex features?
 
-While as per today `Tilck` is not quite ready yet to provide some answers to the
-first question, some progress has been made with the second one: as shown in
-this [article], thanks to several simplifications, `Tilck`'s console is faster
-than the Linux one.
-
 What Tilck is NOT ?
 ----------------------------------------
 
 An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
-take advantage of the programs (and toolchains) already written for it. But,
-having a fair amount of Linux programs working on it is just a starting point.
-After that, Tilck will evolve in a different way and it will have its own unique
-set of features. Tilck is fundamentally different from Linux in its design and
-its trade-offs as it **does not** aim to target multi-user server or
-desktop-class machines.
+take advantage of the programs (and toolchains) already written for it. Also,
+that allows to validate its correctness: if a program works correctly on Linux,
+it must work the same way on Tilck as well (except for not-implemented features).
+**But**, having a fair amount of Linux programs working on it, is just a starting
+point: after that, Tilck will evolve in a different way and it will have its own
+unique set of features. Tilck is fundamentally different from Linux in its design
+and its trade-offs as it **does not** aim to target multi-user server or desktop
+machines.
 
 [article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
 
