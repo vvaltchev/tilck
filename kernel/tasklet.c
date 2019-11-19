@@ -88,8 +88,7 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
 
 #endif
 
-   success =
-      safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
+   success = safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
@@ -101,6 +100,12 @@ bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
                         &exp_state,
                         TASK_STATE_RUNNABLE,
                         mo_relaxed, mo_relaxed);
+
+      /*
+       * Note: we don't care whether atomic_cas_strong() succeeded or not.
+       * Reason: if it didn't succeed, that's because an IRQ preempted us
+       * and made its state to be runnable.
+       */
    }
 
 #endif
