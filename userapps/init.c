@@ -20,7 +20,7 @@
 
 #define BUSYBOX         "/initrd/bin/busybox"
 #define START_SCRIPT    "/initrd/etc/start"
-#define DEFAULT_SHELL   "/initrd/usr/bin/devshell"
+#define DEFAULT_SHELL   "/bin/ash"
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
