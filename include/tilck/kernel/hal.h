@@ -9,7 +9,7 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 
-   #define __arch__x86__
+   #define arch_x86_family
 
    #include <tilck/common/arch/generic_x86/x86_utils.h>
    #include <tilck/common/arch/generic_x86/cpu_features.h>
@@ -18,10 +18,12 @@
 
    #if defined(__x86_64__)
 
+      #include <tilck/common/arch/x86_64/utils.h>
       #include <tilck/kernel/arch/x86_64/arch_utils.h>
 
    #else
 
+      #include <tilck/common/arch/i386/utils.h>
       #include <tilck/kernel/arch/i386/asm_defs.h>
       #include <tilck/kernel/arch/i386/arch_utils.h>
       #include <tilck/kernel/arch/i386/tss.h>

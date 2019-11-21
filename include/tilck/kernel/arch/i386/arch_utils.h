@@ -23,6 +23,11 @@ STATIC_ASSERT(SIZEOF_REGS == sizeof(regs_t));
 STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(regs_t, eip));
 STATIC_ASSERT(REGS_USERESP_OFF == OFFSET_OF(regs_t, useresp));
 
+STATIC_ASSERT(X86_KERNEL_CODE_SEL == X86_SELECTOR(1, TABLE_GDT, 0));
+STATIC_ASSERT(X86_KERNEL_DATA_SEL == X86_SELECTOR(2, TABLE_GDT, 0));
+STATIC_ASSERT(X86_USER_CODE_SEL == X86_SELECTOR(3, TABLE_GDT, 3));
+STATIC_ASSERT(X86_USER_DATA_SEL == X86_SELECTOR(4, TABLE_GDT, 3));
+
 struct x86_arch_task_members {
 
    void *ldt;
@@ -41,18 +46,6 @@ static ALWAYS_INLINE int regs_intnum(regs_t *r)
 static ALWAYS_INLINE void set_return_register(regs_t *r, uptr value)
 {
    r->eax = value;
-}
-
-static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
-{
-   uptr esp;
-
-   asmVolatile("mov %%esp, %0"
-               : "=r" (esp)
-               : /* no input */
-               : /* no clobber */);
-
-   return esp;
 }
 
 NORETURN void context_switch(regs_t *r);

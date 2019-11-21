@@ -1,11 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/common/basic_defs.h>
 
 #if !defined(__i386__) && !defined(__x86_64__)
-#error This header can be used only for x86 and x86-64 architectures.
+   #error This header can be used only for x86 and x86-64 architectures.
 #endif
+
+#include <tilck/common/basic_defs.h>
+#include <x86intrin.h>
 
 #define X86_PC_TIMER_IRQ           0
 #define X86_PC_KEYBOARD_IRQ        1
@@ -142,18 +144,7 @@
 #define ALL_FAULTS_MASK (0xFFFFFFFF)
 #define PAGE_FAULT_MASK (1 << FAULT_PAGE_FAULT)
 
-#ifdef __i386__
-
-#include <tilck/kernel/arch/i386/asm_defs.h>
-
-STATIC_ASSERT(X86_KERNEL_CODE_SEL == X86_SELECTOR(1, TABLE_GDT, 0));
-STATIC_ASSERT(X86_KERNEL_DATA_SEL == X86_SELECTOR(2, TABLE_GDT, 0));
-STATIC_ASSERT(X86_USER_CODE_SEL == X86_SELECTOR(3, TABLE_GDT, 3));
-STATIC_ASSERT(X86_USER_DATA_SEL == X86_SELECTOR(4, TABLE_GDT, 3));
-
-#endif
-
-#define RDTSC() __builtin_ia32_rdtsc()
+#define RDTSC() __rdtsc()
 
 static ALWAYS_INLINE void outb(u16 port, u8 val)
 {
@@ -264,34 +255,6 @@ static ALWAYS_INLINE void invalidate_page_hw(uptr vaddr)
 static ALWAYS_INLINE void write_back_and_invl_cache(void)
 {
    asmVolatile("wbinvd");
-}
-
-static ALWAYS_INLINE uptr get_stack_ptr(void)
-{
-
-#ifndef __clang__
-
-#ifdef BITS32
-   register uptr res asm("esp");
-#else
-   register uptr res asm("rsp");
-#endif
-
-   return res;
-
-#else
-
-   /*
-    * With clang, the avoid code results in the following Werror:
-    * error: variable 'res' is uninitialized when used here [-Werror,
-    * -Wuninitialized]
-    *
-    * TODO: fix this clang-compatibility issue.
-    */
-
-   return 0;
-
-#endif
 }
 
 static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)

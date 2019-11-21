@@ -114,7 +114,10 @@
       "vfs_locking.c.h": "c",
       "elf_utils.h": "c",
       "tasklet.h": "c",
-      "string_util.h": "c"
+      "string_util.h": "c",
+      "intrin.h": "c",
+      "x86intrin.h": "c",
+      "ia32intrin.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

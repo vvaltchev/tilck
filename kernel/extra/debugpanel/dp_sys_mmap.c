@@ -44,7 +44,7 @@ static void dump_memory_map(struct mem_region *regions, int count)
    dp_writeln("");
 }
 
-#ifdef __arch__x86__
+#ifdef arch_x86_family
 
 static const char *mtrr_mem_type_str[8] =
 {
@@ -109,7 +109,7 @@ static void dp_show_sys_mmap(void)
    row = dp_screen_start_row;
    dump_memory_map(mem_regions, mem_regions_count);
 
-#ifdef __arch__x86__
+#ifdef arch_x86_family
    dump_var_mtrrs();
 #endif
 

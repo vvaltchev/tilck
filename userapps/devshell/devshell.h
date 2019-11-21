@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <x86intrin.h>    /* for __rdtsc() */
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/syscalls.h>
@@ -14,7 +15,7 @@
 #define FORK_TEST_ITERS (250 * MB)
 
 /* utils */
-#define RDTSC() __builtin_ia32_rdtsc()
+#define RDTSC() __rdtsc()
 #define DEVSHELL_CMD_ASSERT(x)                                              \
    do {                                                                     \
       if (!(x)) {                                                           \

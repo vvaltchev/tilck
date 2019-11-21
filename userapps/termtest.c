@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
+#include <x86intrin.h>    /* for __rdtsc() */
 
 #ifdef USERMODE_APP
    /* The application is compiled with Tilck's build system */
@@ -23,7 +24,7 @@
    #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 #endif
 
-#define RDTSC() __builtin_ia32_rdtsc()
+#define RDTSC() __rdtsc()
 
 #define CSI_ERASE_DISPLAY          "\033[2J"
 #define CSI_MOVE_CURSOR_TOP_LEFT   "\033[1;1H"

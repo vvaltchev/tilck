@@ -89,7 +89,7 @@ void simple_test_kthread(void *arg)
    u32 i;
 #if !defined(NDEBUG) && !defined(RELEASE)
    uptr esp;
-   uptr saved_esp = get_curr_stack_ptr();
+   uptr saved_esp = get_stack_ptr();
 #endif
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);
@@ -105,7 +105,7 @@ void simple_test_kthread(void *arg)
        * in RELEASE (= optimized) builds because the compiler plays with the
        * stack pointer and 'esp' and 'saved_esp' differ by a constant value.
        */
-      esp = get_curr_stack_ptr();
+      esp = get_stack_ptr();
 
       if (esp != saved_esp)
          panic("esp: %p != saved_esp: %p [curr-saved: %d], i = %u",
