@@ -16,14 +16,13 @@
 static void do_bigargv_test(size_t len)
 {
    char *big_arg = malloc(len);
-   char *argv[] = { shell_argv[0], big_arg, NULL };
+   char *argv[] = { "devshell", big_arg, NULL };
 
    memset(big_arg, 'a', len);
    big_arg[len-1] = 0;
 
    close(0); close(1); close(2);
-
-   execvpe(argv[0], argv, shell_env);
+   execvpe("devshell", argv, shell_env);
 
    /* If we got here, execve() failed */
    if (errno == E2BIG)
@@ -100,7 +99,7 @@ int cmd_bigargv(int argc, char **argv)
    assert(!fails_with_e2big(v));
    assert(fails_with_e2big(v + 1));
 
-   a0 = strlen(shell_argv[0]) + 1;
+   a0 = strlen("devshell") + 1;
 
    for (char **e = shell_env; *e; e++) {
       env_len += strlen(*e) + 1 + sizeof(void *);

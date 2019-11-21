@@ -30,3 +30,8 @@ done
 
 # Create symlinks for all the busybox's applets
 /initrd/bin/busybox --install -s /bin
+
+# Create symlinks for some devshell cmds
+cd /usr/bin
+ln -s devshell runall
+ln -s devshell selftest

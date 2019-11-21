@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <pwd.h>
+#include <libgen.h>
 
 #include "devshell.h"
 
@@ -290,6 +291,7 @@ int main(int argc, char **argv, char **env)
    static char cmdline_buf[256];
    static char cwd_buf[256];
    static struct termios orig_termios;
+   const char *cmdname;
 
    char uc = '#';
    int rc;
@@ -302,6 +304,21 @@ int main(int argc, char **argv, char **env)
 
    shell_argv = argv;
    shell_env = env;
+
+   if (!argc) {
+      fprintf(stderr, PFX "Weird error: argc == 0\n");
+      return 1;
+   }
+
+   strncpy(cwd_buf, argv[0], sizeof(cwd_buf) - 1);
+   cmdname = basename(cwd_buf);
+
+   if (strcmp(cmdname, "devshell")) {
+      printf(PFX "Executing built-in command '%s'\n", cmdname);
+      run_if_known_command(cmdname, argc - 1, argv + 1);
+      printf(PFX "Unknown built-in command '%s'\n", cmdname);
+      return 1;
+   }
 
    if (argc > 1) {
       parse_opt(argc - 1, argv + 1);
