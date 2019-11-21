@@ -228,7 +228,7 @@ int cmd_cloexec(int argc, char **argv)
    }
 
    if (!pid) {
-      char *argv[] = { "devshell", "-c", "cloexec", "do_exec", NULL };
+      char *argv[] = { DEVSHELL_PATH, "-c", "cloexec", "do_exec", NULL };
 
       int flags = fcntl(2 /* stderr */, F_GETFD);
       int rc = fcntl(2 /* stderr */, F_SETFD, flags | FD_CLOEXEC);
@@ -239,8 +239,8 @@ int cmd_cloexec(int argc, char **argv)
       }
 
       fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
-      execvpe("devshell", argv, shell_env);
-      fprintf(stderr, "execvpe('%s') failed\n", "devshell");
+      execvpe(DEVSHELL_PATH, argv, shell_env);
+      fprintf(stderr, "execvpe('%s') failed\n", DEVSHELL_PATH);
       exit(1);
    }
 
