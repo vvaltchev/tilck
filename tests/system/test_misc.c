@@ -239,8 +239,8 @@ int cmd_cloexec(int argc, char **argv)
       }
 
       fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
-      execve(shell_argv[0], argv, shell_env);
-      perror("execve() failed");
+      execvpe(shell_argv[0], argv, shell_env);
+      fprintf(stderr, "execve('%s') failed\n", shell_argv[0]);
       exit(1);
    }
 

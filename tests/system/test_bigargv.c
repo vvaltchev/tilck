@@ -23,7 +23,7 @@ static void do_bigargv_test(size_t len)
 
    close(0); close(1); close(2);
 
-   execve(argv[0], argv, shell_env);
+   execvpe(argv[0], argv, shell_env);
 
    /* If we got here, execve() failed */
    if (errno == E2BIG)
