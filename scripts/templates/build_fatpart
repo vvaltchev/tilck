@@ -40,6 +40,14 @@ function popd {
    command popd "$@" > /dev/null
 }
 
+function link_or_copy {
+   if [ -n "$AZURE_HTTP_USER_AGENT" ]; then
+      cp $1 $2
+   else
+      ln $1 $2
+   fi
+}
+
 function create_fatpart_if_necessary {
    if [ ! -f $dest ]; then
       # If the 'fatpart' file does not already exist
@@ -94,22 +102,22 @@ function add_efi_files {
    # hard-link EFI files
 
    if [ -s "@EFI_x86_64_FILE@" ]; then
-      ln "@EFI_x86_64_FILE@" EFI/BOOT/
+      link_or_copy "@EFI_x86_64_FILE@" EFI/BOOT/
    fi
 
    if [ -s "@EFI_ia32_FILE@" ]; then
-      ln "@EFI_ia32_FILE@" EFI/BOOT/
+      link_or_copy "@EFI_ia32_FILE@" EFI/BOOT/
    fi
 }
 
 function add_tilck_kernel {
    # hard-link the kernel file (used also by the legacy bootloader)
-   ln @KERNEL_FILE@ @KERNEL_FATPART_PATH@
+   link_or_copy @KERNEL_FILE@ @KERNEL_FATPART_PATH@
 }
 
 function add_busybox {
    if [ -d $tc/busybox ]; then
-      ln $tc/busybox/busybox bin/
+      link_or_copy $tc/busybox/busybox bin/
    fi
 }
 
@@ -146,9 +154,9 @@ function add_tcc {
 
    mkdir -p lib/tcc
    cp -r $tc/tcc/include lib/tcc
-   ln $tc/tcc/tcclib.h lib/tcc/include
-   ln $tc/tcc/@ARCH@-libtcc1.a lib/tcc
-   ln $tc/tcc/@ARCH@-tcc bin/tcc
+   link_or_copy $tc/tcc/tcclib.h lib/tcc/include
+   link_or_copy $tc/tcc/@ARCH@-libtcc1.a lib/tcc
+   link_or_copy $tc/tcc/@ARCH@-tcc bin/tcc
    cp -r $tc/tcc/examples lib/tcc-examples
 
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
