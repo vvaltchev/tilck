@@ -2,6 +2,7 @@ Tilck (Tiny Linux-Compatible Kernel)
 -------------------------------------
 
 [![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)](https://circleci.com/gh/vvaltchev/tilck)
+[![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status/vvaltchev.tilck?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=1&branchName=master)
 [![TravisCI](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)](https://travis-ci.org/vvaltchev/tilck)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
@@ -73,7 +74,7 @@ the `toolchain` directory.
 In case of any problems with the build system, please don't hesitate to file an
 issue describing your problem.
 
-#### Screenshots 
+#### Screenshots
 
 <p align="center">
     <a href="https://github.com/vvaltchev/tilck/wiki/Screenshots">
