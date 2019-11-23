@@ -226,7 +226,7 @@ def run_the_vm():
       cmdline += ' -dcov'
       init_opts += ' -q'
 
-   if in_circleci:
+   if in_any_ci:
       kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
    if g_params.type == 'shellcmd':
