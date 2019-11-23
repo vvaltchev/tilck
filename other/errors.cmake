@@ -52,7 +52,7 @@ endfunction()
 function (show_wconv_warning)
 
    set(msg "")
-   string(APPEND msg "WCONV (-Wconversion) is supported ONLY when the "
+   string(CONCAT msg "WCONV (-Wconversion) is supported ONLY when the "
                      "kernel is built with Clang: "
                      "(CC=clang and CMAKE_ARGS='-DKERNEL_SYSCC=1')")
 
@@ -63,7 +63,7 @@ endfunction()
 function (show_clang_and_syscc_error)
 
    set(msg "")
-   string(APPEND msg "USE_SYSCC=1 is not supported with Clang. "
+   string(CONCAT msg "USE_SYSCC=1 is not supported with Clang. "
                      "Please use GCC. Note[1]: it is possible to build just "
                      "the kernel with Clang by setting CC=clang the CMake "
                      "variable KERNEL_SYSCC=1. However, the i686 gcc "
