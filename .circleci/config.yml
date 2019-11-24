@@ -5,16 +5,13 @@ jobs:
     docker:
       - image: vvaltchev/tilck_build:latest
     environment:
-      - RELEASE: 0
-      - CMAKE_ARGS:
       - GTEST_SHUFFLE: 0
-      - KERNEL_GCOV: 1
-      - TEST_GCOV: 1
       - DUMP_COV: 1
       - REPORT_COV: 1
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
+      - run: ./scripts/build_generators/gcc
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
@@ -26,12 +23,11 @@ jobs:
     docker:
       - image: vvaltchev/tilck_build:latest
     environment:
-      - RELEASE: 1
-      - CMAKE_ARGS: -DDEBUG_CHECKS_IN_RELEASE_BUILD=0 -DKERNEL_STACK_ISOLATION=0
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
+      - run: ./scripts/build_generators/gcc_rel
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests
@@ -42,11 +38,11 @@ jobs:
       - image: vvaltchev/tilck_build:latest
     environment:
       - RELEASE: 0
-      - CMAKE_ARGS: -DARCH_GTESTS=1
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
+      - run: ./scripts/build_generators/gcc_arch_gtests
       - run: make -j gtests
       - run: ./build/gtests
 
@@ -54,16 +50,12 @@ jobs:
     docker:
       - image: vvaltchev/tilck_build:latest
     environment:
-      - RELEASE: 0
-      - CMAKE_ARGS:
-      - USE_SYSCC: 1
-      - CC: gcc
-      - CXX: g++
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
       - run: ./scripts/build_toolchain -s build_libmusl
+      - run: ./scripts/build_generators/gcc_syscc
       - run: make -j
       - run: make -j gtests
       - run: ./build/st/run_all_tests -c
@@ -72,14 +64,11 @@ jobs:
     docker:
       - image: vvaltchev/tilck_build:latest
     environment:
-      - RELEASE: 0
-      - CMAKE_ARGS: -DKERNEL_SYSCC=1 -DWCONV=1
-      - CC: clang
-      - CXX: clang++
       - GTEST_SHUFFLE: 0
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain
+      - run: ./scripts/build_generators/clang_wconv
       - run: make -j
       - run: make -j gtests
       - run: ./build/gtests

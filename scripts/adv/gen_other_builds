@@ -10,59 +10,6 @@ MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
 # Include files
 source $MAIN_DIR/scripts/bash_includes/script_utils
 
-# CONSTANTS
-
-CM=$MAIN_DIR/scripts/cmake_run
-
-builds=(gcc gcc_rel gcc_gcov nocow no_nested_irq_tracking syscc clang_wconv)
-builds+=(arch_gtests tc_isystem_with_syscc_clang gcc_fast_rel)
-
-#############################################
-# FUNCTIONS
-
-function do_build_gcc {
-   $CM
-}
-
-function do_build_gcc_rel {
-   RELEASE=1 $CM
-}
-
-function do_build_gcc_gcov {
-   TEST_GCOV=1 KERNEL_GCOV=1 $CM
-}
-
-function do_build_nocow {
-   $CM -DFORK_NO_COW=1 -DMMAP_NO_COW=1
-}
-
-function do_build_no_nested_irq_tracking {
-   $CM -DKERNEL_TRACK_NESTED_INTERRUPTS=0
-}
-
-function do_build_syscc {
-   USE_SYSCC=1 $CM
-}
-
-function do_build_clang_wconv {
-   CC=clang CXX=clang++ $CM -DKERNEL_SYSCC=1 -DWCONV=1
-}
-
-function do_build_arch_gtests {
-   $CM -DARCH_GTESTS=1
-}
-
-function do_build_tc_isystem_with_syscc_clang {
-   CC=clang $CM -DKERNEL_SYSCC=1 -DKERNEL_FORCE_TC_ISYSTEM=1
-}
-
-function do_build_gcc_fast_rel {
-   RELEASE=1 $CM                              \
-      -DKERNEL_TRACK_NESTED_INTERRUPTS=0      \
-      -DDEBUG_CHECKS_IN_RELEASE_BUILD=0       \
-      -DKERNEL_STACK_ISOLATION=0
-}
-
 function show_help {
 
    echo ""
@@ -137,13 +84,16 @@ fi
 mkdir -p $MAIN_DIR/other_builds
 cd $MAIN_DIR/other_builds
 
-for x in ${builds[@]}; do
-   echo "************ Build: $x ************"
-   mkdir -p $x
-   pushd $x
-   eval do_build_$x
+for gen_script in $MAIN_DIR/scripts/build_generators/*; do
+
+   name=$(basename $gen_script)
+   echo "************ Build: $name ************"
+   mkdir -p $name
+   pushd $name
+   $gen_script
    make -j
    make -j gtests
    popd
+
 done
 
