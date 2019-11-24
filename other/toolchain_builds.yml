@@ -1,0 +1,46 @@
+
+trigger:
+  none
+
+pool:
+  vmImage: 'ubuntu-18.04'
+
+strategy:
+  matrix:
+    debian:
+      img: 'vvaltchev/debian:latest'
+    fedora:
+      img: 'vvaltchev/fedora:latest'
+    arch:
+      img: 'vvaltchev/archlinux:latest'
+    opensuse:
+      img: 'vvaltchev/opensuse:latest'
+
+
+container: $[ variables['img'] ]
+
+variables:
+  GTEST_SHUFFLE: 0
+
+steps:
+  - script: printenv
+    displayName: Dump env
+  - script: sudo ./scripts/build_toolchain
+    displayName: "[toolchain] Default run"
+  - script: sudo ./scripts/build_toolchain -s build_gtest
+    displayName: "[toolchain] Build gtest"
+  - script: sudo ./scripts/build_toolchain -s build_lcov
+    displayName: "[toolchain] Build lcov"
+  - script: sudo ./scripts/build_toolchain -s build_libmusl
+    displayName: "[toolchain] Build libmusl"
+  - script: sudo ./scripts/build_toolchain -s build_ncurses
+    displayName: "[toolchain] Build ncurses"
+  - script: sudo ./scripts/build_toolchain -s build_tcc
+    displayName: "[toolchain] Build tcc"
+  - script: make -j
+    displayName: Build the kernel
+  - script: make -j gtests
+    displayName: Build the unit tests
+  - script: ./build/gtests
+    displayName: Run the unit tests
+

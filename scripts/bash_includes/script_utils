@@ -23,10 +23,10 @@ LCYAN='\033[1;36m'
 WHITE='\033[1;37m'
 RATTRS='\033[0m'
 
-RUNNING_IN_CI=0
+export RUNNING_IN_CI=0
 
 if [ -n "TRAVIS" ] || [ -n "CIRCLECI" ] || [ -n "AZURE_HTTP_USER_AGENT" ]; then
-   RUNNING_IN_CI=1
+   export RUNNING_IN_CI=1
 fi
 
 ############################################

@@ -36,12 +36,11 @@ function download_cmake {
 
    if ! [ -d cmake ]; then
 
-      if ! which cmake &> /dev/null || [[ "$NO_SYS_CMAKE" == 1 ]]; then
+      if ! cmake --version &> /dev/null || [[ "$NO_SYS_CMAKE" == 1 ]]; then
 
          if [[ "$NO_SYS_CMAKE" == 1 ]] && which cmake &> /dev/null; then
             echo "Note: NO_SYS_CMAKE=1"
          fi
-
 
          if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
             # Default case: we have to download CMake.

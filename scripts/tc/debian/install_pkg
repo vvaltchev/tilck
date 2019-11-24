@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 
 if ! [ "`dpkg -s $1 2>&1 | grep Status`" ]; then
+
    echo "We need to install the package $1"
-   if ! which sudo &> /dev/null; then
-      cmd="su -c \"apt install $1\""
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      cmd="apt install -y $1"
    else
-      cmd="sudo apt install $1"
+      if ! which sudo &> /dev/null; then
+         cmd="su -c \"apt install $1\""
+      else
+         cmd="sudo apt install $1"
+      fi
    fi
+
    echo "Running the command: $cmd"
    eval $cmd
 fi
