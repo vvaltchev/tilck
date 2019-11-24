@@ -1,15 +1,11 @@
 
 jobs:
-  - job: debug
+  - job: coverage_build
     container: 'vvaltchev/tilck_build:latest'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
-      RELEASE: 0
-      CMAKE_ARGS:
       GTEST_SHUFFLE: 0
-      KERNEL_GCOV: 1
-      TEST_GCOV: 1
       DUMP_COV: 1
       REPORT_COV: 1
     steps:
@@ -17,7 +13,7 @@ jobs:
         displayName: Dump env
       - script: sudo mv /tilck_toolchain ./toolchain
         displayName: Move toolchain
-      - script: ./scripts/cmake_run
+      - script: ./scripts/build_generators/gcc_gcov
         displayName: Run CMake
       - script: make -j
         displayName: Build the kernel
@@ -30,96 +26,42 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
-        displayName: Gen kernel cov report and upload to codecov
+        displayName: Gen kernel gcov report and upload to codecov
         env:
           CODECOV_TOKEN: $(CODECOV_TOKEN)
 
-  - job: release
+  - job: build
     container: 'vvaltchev/tilck_build:latest'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
-      RELEASE: 1
-      CMAKE_ARGS:
-        -DDEBUG_CHECKS_IN_RELEASE_BUILD=0
-        -DKERNEL_STACK_ISOLATION=0
       GTEST_SHUFFLE: 0
+    strategy:
+      matrix:
+        release:
+          GEN: 'gcc_rel'
+        fast_release:
+          GEN: 'gcc_fast_rel'
+        arch_gtests:
+          GEN: 'gcc_arch_gtests'
+        nocow:
+          GEN: 'gcc_nocow'
+        no_nested_irq_tracking:
+          GEN: 'gcc_no_nested_irq_tracking'
+        syscc:
+          GEN: 'gcc_syscc'
+        clang:
+          GEN: 'clang_wconv'
+        clang_tc_isystem:
+          GEN: 'clang_tc_isystem'
+      maxParallel: 10
     steps:
       - script: printenv
         displayName: Dump env
       - script: sudo mv /tilck_toolchain ./toolchain
         displayName: Move toolchain
-      - script: make -j
-        displayName: Build the kernel
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-      - script: ./build/st/run_all_tests -c
-        displayName: Run the system tests
-
-  - job: debug_arch_gtests
-    container: 'vvaltchev/tilck_build:latest'
-    pool:
-      vmImage: 'ubuntu-18.04'
-    variables:
-      RELEASE: 0
-      CMAKE_ARGS: -DARCH_GTESTS=1
-      GTEST_SHUFFLE: 0
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: sudo mv /tilck_toolchain ./toolchain
-        displayName: Move toolchain
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-
-  - job: debug_gcc_syscc
-    container: 'vvaltchev/tilck_build:latest'
-    pool:
-      vmImage: 'ubuntu-18.04'
-    variables:
-      RELEASE: 0
-      CMAKE_ARGS:
-      USE_SYSCC: 1
-      CC: gcc
-      CXX: g++
-      GTEST_SHUFFLE: 0
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: sudo mv /tilck_toolchain ./toolchain
-        displayName: Move toolchain
-      - script: sudo ./scripts/build_toolchain -s build_libmusl
-        displayName: Build libmusl
-      - script: make -j
-        displayName: Build the kernel
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-      - script: ./build/st/run_all_tests -c
-        displayName: Run the system tests
-
-  - job: debug_clang_syscc
-    container: 'vvaltchev/tilck_build:latest'
-    pool:
-      vmImage: 'ubuntu-18.04'
-    variables:
-      RELEASE: 0
-      CMAKE_ARGS: -DKERNEL_SYSCC=1 -DWCONV=1
-      CC: clang
-      CXX: clang++
-      GTEST_SHUFFLE: 0
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: sudo mv /tilck_toolchain ./toolchain
-        displayName: Move toolchain
-      - script: sudo ./scripts/build_toolchain -s build_libmusl
-        displayName: Build libmusl
+      - script: ./scripts/build_generators/$(GEN)
+        displayName: Run CMake
       - script: make -j
         displayName: Build the kernel
       - script: make -j gtests
