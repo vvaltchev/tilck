@@ -50,10 +50,14 @@ function install_debian_family {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
 
-      if ! which sudo &> /dev/null; then
-         run_command "su -c \"apt install $tmp\""
+      if [ "$RUNNING_IN_CI" == 1 ]; then
+         run_command "apt install -y $tmp"
       else
-         run_command "sudo apt install $tmp"
+         if ! which sudo &> /dev/null; then
+            run_command "su -c \"apt install $tmp\""
+         else
+            run_command "sudo apt install $tmp"
+         fi
       fi
 
    else
@@ -93,9 +97,16 @@ function install_fedora {
    done
 
    if [ ${#to_install[@]} -ne 0 ]; then
+
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
-      run_command "sudo dnf install $tmp"
+
+      if [ "$RUNNING_IN_CI" == 1 ]; then
+         run_command "dnf install -y $tmp"
+      else
+         run_command "sudo dnf install $tmp"
+      fi
+
    else
       echo "You are all set, no packages need to be installed."
    fi
@@ -134,9 +145,16 @@ function install_arch {
    done
 
    if [ ${#to_install[@]} -ne 0 ]; then
+
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
-      run_command "sudo pacman -S $tmp"
+
+      if [ "$RUNNING_IN_CI" == 1 ]; then
+         run_command "pacman -S --noconfirm $tmp"
+      else
+         run_command "sudo pacman -S $tmp"
+      fi
+
    else
       echo "You are all set, no packages need to be installed."
    fi
@@ -174,9 +192,16 @@ function install_openSUSE {
    done
 
    if [ ${#to_install[@]} -ne 0 ]; then
+
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
-      run_command "sudo zypper install $tmp"
+
+      if [ "$RUNNING_IN_CI" == 1 ]; then
+         run_command "zypper install -y $tmp"
+      else
+         run_command "sudo zypper install $tmp"
+      fi
+
    else
       echo "You are all set, no packages need to be installed."
    fi
