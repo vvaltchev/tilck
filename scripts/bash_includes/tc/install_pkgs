@@ -186,6 +186,7 @@ function install_openSUSE {
    pkg_list+=(grep)
    pkg_list+=(gzip)
    pkg_list+=(gawk)
+   pkg_list+=(glibc-locale-base)
    pkg_list+=(wget)
    pkg_list+=(git-core)
    pkg_list+=(gcc)
