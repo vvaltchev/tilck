@@ -234,6 +234,16 @@ function install_packages {
    lsb="/etc/lsb-release"
    os_rel="/etc/os-release"
 
+   if ! [ -f /bin/grep ] && ! [ -f /usr/bin/grep ]; then
+      if ! echo 'aaa bbb' | grep aaa &> /dev/null; then
+
+         echo "The command 'grep' has not been found on the system."
+         echo "We cannot even detect the current linux distribution."
+         echo "Please, install at least grep."
+         exit 1
+      fi
+   fi
+
    # Where lsb-release exists, use only it.
    # On Mint doing grep /etc/*release reports an error because there is an
    # upstream-release directory matching that wildcard. Using grep -r is not
@@ -272,69 +282,43 @@ function install_packages {
 
    else
 
-      pkg_list=()
+      full_list=()
+      full_list+=(wget)
+      full_list+=(tar)
+      full_list+=(grep)
+      full_list+=(gzip)
+      full_list+=(gawk)
+      full_list+=(git)
+      full_list+=(gcc)
+      full_list+=(g++)
+      full_list+=(make)
+      full_list+=(cmake)
+      full_list+=(objdump)
+      full_list+=(rpm2cpio)
+      full_list+=(cpio)
+      full_list+=(bzip2)
+      full_list+=(qemu-system-i386)
 
-      if ! which wget &> /dev/null; then
-         pkg_list+=(wget)
+      to_install_list=()
+      which_installed=0
+
+      if which bash &> /dev/null; then
+         which_installed=1
+      else
+         to_install_list+=(which)
       fi
 
-      if ! which tar &> /dev/null; then
-         pkg_list+=(tar)
-      fi
+      for x in ${full_list[@]}; do
+         if [ "$which_installed" == 1 ]; then
+            if ! which $x &> /dev/null; then
+               to_install_list+=($x)
+            fi
+         else
+            to_install_list+=($x)
+         fi
+      done
 
-      if ! which grep &> /dev/null; then
-         pkg_list+=(grep)
-      fi
-
-      if ! which gzip &> /dev/null; then
-         pkg_list+=(gzip)
-      fi
-
-      if ! which gawk &> /dev/null; then
-         pkg_list+=(gawk)
-      fi
-
-      if ! which git &> /dev/null; then
-         pkg_list+=(git)
-      fi
-
-      if ! which gcc &> /dev/null; then
-         pkg_list+=(gcc)
-      fi
-
-      if ! which g++ &> /dev/null; then
-         pkg_list+=(g++)
-      fi
-
-      if ! which make &> /dev/null; then
-         pkg_list+=(make)
-      fi
-
-      if ! which cmake &> /dev/null; then
-         pkg_list+=(cmake)
-      fi
-
-      if ! which objdump &> /dev/null; then
-         pkg_list+=(binutils)
-      fi
-
-      if ! which rpm2cpio &> /dev/null; then
-         pkg_list+=(rpm2cpio)
-      fi
-
-      if ! which cpio &> /dev/null; then
-         pkg_list+=(cpio)
-      fi
-
-      if ! which bzip2 &> /dev/null; then
-         pkg_list+=(bzip2)
-      fi
-
-      if ! which qemu-system-i386 &> /dev/null; then
-         pkg_list+=(qemu-system-x86)
-      fi
-
-      if [ ${#pkg_list[@]} -ne 0 ]; then
+      if [ ${#to_install_list[@]} -ne 0 ]; then
 
          echo "Your distribution is not fully supported by this script."
          echo "The supported distros are:"
@@ -346,9 +330,9 @@ function install_packages {
          echo "  * Manjaro"
          echo "  * openSUSE"
          echo "In order to build Tilck on this distro, please make sure the "
-         echo "following packages (debian package names) are installed:"
+         echo "following programs are installed:"
 
-         for x in ${pkg_list[@]}; do
+         for x in ${to_install_list[@]}; do
             echo "  * $x"
          done
 
