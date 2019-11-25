@@ -278,6 +278,22 @@ function install_packages {
          pkg_list+=(wget)
       fi
 
+      if ! which tar &> /dev/null; then
+         pkg_list+=(tar)
+      fi
+
+      if ! which grep &> /dev/null; then
+         pkg_list+=(grep)
+      fi
+
+      if ! which gzip &> /dev/null; then
+         pkg_list+=(gzip)
+      fi
+
+      if ! which gawk &> /dev/null; then
+         pkg_list+=(gawk)
+      fi
+
       if ! which git &> /dev/null; then
          pkg_list+=(git)
       fi
