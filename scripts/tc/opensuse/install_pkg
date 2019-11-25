@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
-if ! rpm -q $1 &> /dev/null; then
+pkg="$1"
+ci=
+
+if [ "$1" == "-ci" ]; then
+   pkg="$2"
+   ci=1
+fi
+
+if ! rpm -q $pkg &> /dev/null; then
 
    echo "We need to install the package $1"
 
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      cmd="zypper install -y $1"
+   if [ "$ci" == 1 ]; then
+      cmd="zypper install -y $pkg"
    else
-      cmd="sudo zypper install $1"
+      cmd="sudo zypper install $pkg"
    fi
 
    echo "Running the command: $cmd"

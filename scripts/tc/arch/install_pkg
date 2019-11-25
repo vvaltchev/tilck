@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
-if ! pacman -Q $1 &> /dev/null; then
+pkg="$1"
+ci=
 
-   echo "We need to install the package $1"
+if [ "$1" == "-ci" ]; then
+   pkg="$2"
+   ci=1
+fi
 
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      cmd="pacman -S --noconfirm $1"
+if ! pacman -Q $pkg &> /dev/null; then
+
+   echo "We need to install the package $pkg"
+
+   if [ "$ci" == 1 ]; then
+      cmd="pacman -S --noconfirm $pkg"
    else
-      cmd="sudo pacman -S $1"
+      cmd="sudo pacman -S $pkg"
    fi
 
    echo "Running the command: $cmd"

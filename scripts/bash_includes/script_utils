@@ -154,5 +154,9 @@ function install_32bit_libs {
    pkg=`cat $TC/.32bit_libs_pkg`
    install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
 
-   $install_pkg $pkg
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $install_pkg -ci $pkg
+   else
+      $install_pkg $pkg
+   fi
 }

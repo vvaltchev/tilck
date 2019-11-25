@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 
-if ! [ "`dpkg -s $1 2>&1 | grep Status`" ]; then
+pkg="$1"
+ci=
 
-   echo "We need to install the package $1"
+if [ "$1" == "-ci" ]; then
+   pkg="$2"
+   ci=1
+fi
 
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      cmd="apt install -y $1"
+if ! [ "`dpkg -s $pkg 2>&1 | grep Status`" ]; then
+
+   echo "We need to install the package $pkg"
+
+   if [ "$ci" == 1 ]; then
+      cmd="apt install -y $pkg"
    else
       if ! which sudo &> /dev/null; then
-         cmd="su -c \"apt install $1\""
+         cmd="su -c \"apt install $pkg\""
       else
-         cmd="sudo apt install $1"
+         cmd="sudo apt install $pkg"
       fi
    fi
 
