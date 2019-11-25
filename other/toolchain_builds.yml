@@ -20,6 +20,7 @@ strategy:
 container: $[ variables['img'] ]
 
 variables:
+  RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
 
 steps:
@@ -27,6 +28,8 @@ steps:
     displayName: Dump env
   - script: sudo ./scripts/build_toolchain
     displayName: "[toolchain] Default run"
+  - bash: sudo ./scripts/tc/$(cat ./toolchain/.distro)/install_pkg -ci python3
+    displayName: Install Python 3
   - script: sudo ./scripts/build_toolchain -s build_gtest
     displayName: "[toolchain] Build gtest"
   - script: sudo ./scripts/build_toolchain -s build_lcov
@@ -43,4 +46,5 @@ steps:
     displayName: Build the unit tests
   - script: ./build/gtests
     displayName: Run the unit tests
-
+  - script: ./tests/system/runners/ci_run_all_tests_wrapper -c
+    displayName: Run the system tests
