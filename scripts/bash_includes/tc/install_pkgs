@@ -15,6 +15,11 @@ function install_debian_family {
    echo gcc-multilib > $TC/.32bit_libs_pkg
 
    pkg_list=()
+   pkg_list+=(debianutils)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
    pkg_list+=(wget)
    pkg_list+=(git)
    pkg_list+=(gcc)
@@ -71,6 +76,11 @@ function install_fedora {
    echo glibc-devel.i686 > $TC/.32bit_libs_pkg
 
    pkg_list=()
+   pkg_list+=(which)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
    pkg_list+=(wget)
    pkg_list+=(git)
    pkg_list+=(gcc)
@@ -118,6 +128,11 @@ function install_arch {
    echo lib32-glibc > $TC/.32bit_libs_pkg
 
    pkg_list=()
+   pkg_list+=(which)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
    pkg_list+=(wget)
    pkg_list+=(git)
    pkg_list+=(gcc)
@@ -166,6 +181,11 @@ function install_openSUSE {
    echo glibc-devel-32bit > $TC/.32bit_libs_pkg
 
    pkg_list=()
+   pkg_list+=(which)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
    pkg_list+=(wget)
    pkg_list+=(git-core)
    pkg_list+=(gcc)
