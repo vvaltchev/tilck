@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/../../.. && pwd)"
+DISTRO_FILE="$MAIN_DIR/toolchain/.distro"
+
+if ! [ "$RUNNING_IN_CI" == 1 ]; then
+   echo "This script was meant to be run in CI (toolchain_builds.yml)."
+   echo "Outside CI, please use directly the run_all_tests script."
+   exit 1
+fi
+
+if ! [ -f $DISTRO_FILE ]; then
+   echo "ERROR: file $DISTRO_FILE not found."
+   exit 1
+fi
+
+distro=$(cat $DISTRO_FILE)
+
+if [ "$distro" == "opensuse" ]; then
+
+   err="$(qemu-system-i386 --help 2>&1)"
+   if echo "$err" | grep membarrier &> /dev/null; then
+      echo "WARNING: skipping the system tests because the QEMU version"
+      echo "on OpenSUSE requires the membarrier syscall, not available on"
+      echo "the current Linux kernel."
+      exit 0
+   fi
+fi
+
+exec $MAIN_DIR/build/st/run_all_tests "$@"
