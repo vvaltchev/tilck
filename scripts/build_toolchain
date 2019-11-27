@@ -683,6 +683,57 @@ function build_micropython {
 }
 
 
+all_funcs_list+=(build_fbdoom)
+function build_fbdoom {
+
+   pushd .
+
+   if ! [ -d fbDOOM ]; then
+
+      show_work_on_component_msg "FBDOOM"
+
+      git clone --depth 1 https://github.com/maximevince/fbDOOM.git
+      cd fbDOOM
+
+      local freedoom="https://github.com/freedoom/freedoom/releases/download"
+      wget $freedoom/v0.12.1/freedoom-0.12.1.zip
+      unzip freedoom-0.12.1.zip
+      mv freedoom-0.12.1 freedoom
+      rm freedoom-0.12.1.zip
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         #
+         # Note: NOT TESTED yet.
+         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # supported.
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+      fi
+
+      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      export LDFLAGS="-static"
+
+      pushd fbdoom
+      run_command2 "make NOSDL=1 -j" build.log
+      ${ARCH_GCC_TC}-linux-strip --strip-all fbdoom
+      popd
+
+      export LDFLAGS=""
+      export CROSS_COMPILE=""
+
+   else
+      show_skip_component_msg "FBDOOM"
+   fi
+
+   popd
+}
+
+
 function arch_checks {
 
    if [[ "$HOST_ARCH" != *"$BUILD_ARCH"* ]]; then

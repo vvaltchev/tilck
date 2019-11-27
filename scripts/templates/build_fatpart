@@ -171,6 +171,17 @@ function add_micropython {
    link_or_copy $tc/micropython/ports/unix/micropython usr/bin
 }
 
+function add_fbdoom {
+
+   if [ ! -d $tc/fbDOOM ]; then
+      return
+   fi
+
+   link_or_copy $tc/fbDOOM/fbdoom/fbdoom usr/bin
+   link_or_copy $tc/fbDOOM/freedoom/freedoom1.wad usr/bin
+}
+
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -205,5 +216,6 @@ add_fat_test_dir
 add_busybox
 add_tcc
 add_micropython
+add_fbdoom
 
 make_fatpart
