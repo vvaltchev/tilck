@@ -38,6 +38,23 @@ static void call_exit(int code)
    exit(code);
 }
 
+static void
+init_set_signal_mask(void)
+{
+   /* Ignore SIGINT, SIGQUIT, SIGTERM */
+   signal(SIGINT, SIG_IGN);
+   signal(SIGQUIT, SIG_IGN);
+   signal(SIGTERM, SIG_IGN);
+}
+
+static void
+init_reset_signal_mask(void)
+{
+   signal(SIGINT, SIG_DFL);
+   signal(SIGQUIT, SIG_DFL);
+   signal(SIGTERM, SIG_DFL);
+}
+
 static int get_tty_count(void)
 {
    static int count = 0;
@@ -123,8 +140,11 @@ static void run_start_script(void)
 
    if (!pid) {
 
-      rc = execve(start_script_args[0], start_script_args, NULL);
-      printf("[init] execve(%s) failed with %d\n", start_script_args[0], rc);
+      init_reset_signal_mask();
+      execve(start_script_args[0], start_script_args, NULL);
+      printf("[init] execve(%s) failed with: %s\n",
+             start_script_args[0],
+             strerror(errno));
       exit(1);
    }
 
@@ -284,11 +304,7 @@ int main(int argc, char **argv, char **env)
       return 1;
    }
 
-   /* Ignore SIGINT, SIGQUIT, SIGTERM */
-   signal(SIGINT, SIG_IGN);
-   signal(SIGQUIT, SIG_IGN);
-   signal(SIGTERM, SIG_IGN);
-
+   init_set_signal_mask();
    do_initial_setup();
    parse_opts(argc - 1, argv + 1);
 
@@ -310,11 +326,15 @@ int main(int argc, char **argv, char **env)
       if (!pid) {
 
          setup_console_for_shell(tty);
+         init_reset_signal_mask();
 
-         if (execve(shell_args[0], shell_args, NULL) < 0) {
-            perror("[init] execve failed");
-            call_exit(1);
-         }
+         execve(shell_args[0], shell_args, NULL);
+
+         printf("[init] execve(%s) failed with: %s\n",
+                shell_args[0],
+                strerror(errno));
+
+         call_exit(1);
       }
 
       shell_pids[tty - 1] = pid;
