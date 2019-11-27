@@ -162,6 +162,15 @@ function add_tcc {
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
 }
 
+function add_micropython {
+
+   if [ ! -d $tc/micropython ]; then
+      return
+   fi
+
+   link_or_copy $tc/micropython/ports/unix/micropython usr/bin
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -195,5 +204,6 @@ add_tilck_kernel
 add_fat_test_dir
 add_busybox
 add_tcc
+add_micropython
 
 make_fatpart
