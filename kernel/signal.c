@@ -143,7 +143,7 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
       return -EFAULT;
 
    if (act.sa_flags & SA_SIGINFO) {
-      printk("rt_sigaction: SA_SIGINFO not supported");
+      //printk("rt_sigaction: SA_SIGINFO not supported");
       return -EINVAL;
    }
 
