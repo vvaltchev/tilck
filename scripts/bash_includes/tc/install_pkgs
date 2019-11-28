@@ -14,6 +14,10 @@ function install_debian_family {
    echo debian > $TC/.distro
    echo gcc-multilib > $TC/.32bit_libs_pkg
 
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/debian/update
+   fi
+
    pkg_list=()
    pkg_list+=(debianutils)
    pkg_list+=(tar)
@@ -75,6 +79,10 @@ function install_fedora {
    echo fedora > $TC/.distro
    echo glibc-devel.i686 > $TC/.32bit_libs_pkg
 
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/fedora/update
+   fi
+
    pkg_list=()
    pkg_list+=(which)
    pkg_list+=(tar)
@@ -126,6 +134,10 @@ function install_arch {
 
    echo arch > $TC/.distro
    echo lib32-glibc > $TC/.32bit_libs_pkg
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/arch/update
+   fi
 
    pkg_list=()
    pkg_list+=(which)
@@ -179,6 +191,10 @@ function install_openSUSE {
 
    echo opensuse > $TC/.distro
    echo glibc-devel-32bit > $TC/.32bit_libs_pkg
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/opensuse/update
+   fi
 
    pkg_list=()
    pkg_list+=(which)
