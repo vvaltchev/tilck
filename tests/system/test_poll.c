@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <poll.h>
@@ -17,8 +18,9 @@ regular_poll1_child(int rfd, int wfd)
 {
    const static char msg[] = "hello from poll1!";
    int rc;
+   char buf[64];
 
-   printf("[child] Hello from child\n");
+   printf("[child] Hello from child, wait 100ms\n");
    usleep(100 * 1000);
 
    printf("[child] write() on the pipe\n");
@@ -28,6 +30,22 @@ regular_poll1_child(int rfd, int wfd)
       printf("[child] write() returned %d -> %s\n", rc, strerror(errno));
       exit(1);
    }
+
+   printf("[child] wait 200ms\n");
+   usleep(200 * 1000);
+
+   printf("[child] read from rfd\n");
+
+   for (int i = 0; i < 64; i++) {
+
+      rc = read(rfd, buf, sizeof(buf));
+
+      if (rc <= 0) {
+         printf("[child] read() returned %d -> %s\n", rc, strerror(errno));
+         exit(1);
+      }
+   }
+
    exit(0);
 }
 
@@ -37,7 +55,7 @@ int cmd_poll1(int argc, char **argv)
    struct pollfd fds[1];
    int pipefd[2];
    int wstatus;
-   int rc;
+   int rc, fl, tot;
    int failed = 0;
    char buf[64];
    pid_t childpid;
@@ -60,7 +78,7 @@ int cmd_poll1(int argc, char **argv)
       regular_poll1_child(pipefd[0], pipefd[1]);
 
    fds[0] = (struct pollfd) {
-      .fd = pipefd[0],    /* read end of the pipe */
+      .fd = pipefd[0],        /* read end of the pipe */
       .events = POLLIN
    };
 
@@ -104,6 +122,69 @@ int cmd_poll1(int argc, char **argv)
 
    buf[rc] = 0;
    printf("[parent] Got: '%s' from child\n");
+   printf("[parent] Now make wfd nonblock and fill the buffer\n");
+
+   fl = fcntl(pipefd[1], F_GETFL, 0);
+
+   if (fl < 0) {
+      printf("[parent] fcntl(pipefd[1]) failed with: %s\n", strerror(errno));
+      goto wait_child_and_return;
+   }
+
+   fl |= O_NONBLOCK;
+   rc = fcntl(pipefd[1], F_SETFL, fl);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   tot = 0;
+
+   do {
+
+      if ((rc = write(pipefd[1], &buf[0], 1)) > 0)
+         tot += rc;
+
+   } while (rc > 0);
+
+   printf("[parent] Restore the blocking mode on wfd\n");
+   rc = fcntl(pipefd[1], F_SETFL, fl & ~O_NONBLOCK);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   printf("[parent] The pipe buffer is full after writing %d bytes\n", tot);
+   printf("[parent] Now poll() wfd with POLLOUT\n");
+
+   fds[0] = (struct pollfd) {
+      .fd = pipefd[1],        /* write end of the pipe */
+      .events = POLLOUT
+   };
+
+   do {
+      rc = poll(fds, 1, 3000 /* ms */);
+   } while (rc < 0 && errno == EINTR);
+
+   if (rc < 0) {
+      printf("[parent] ERROR: poll() failed with: %s\n", strerror(errno));
+      failed = 1;
+      goto wait_child_and_return;
+   }
+
+   if (rc == 0) {
+      printf("[parent] ERROR: poll() timed out (unexpected)\n");
+      failed = 1;
+      goto wait_child_and_return;
+   }
+
+   if (rc != 1) {
+      printf("[parent] ERROR: poll() returned %d (expected: 1)\n", rc);
+      failed = 1;
+      goto wait_child_and_return;
+   }
+
+   if (!(fds[0].revents & POLLOUT)) {
+      printf("[parent] ERROR: no POLLOUT in fds[0].revents\n");
+      failed = 1;
+      goto wait_child_and_return;
+   }
+
+   printf("[parent] poll() completed with POLLOUT as expected\n");
 
 wait_child_and_return:
 
