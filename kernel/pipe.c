@@ -33,6 +33,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
+   bool was_buffer_full;
    ssize_t rc = 0;
 
    if (!size)
@@ -41,6 +42,7 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    kmutex_lock(&p->mutex);
    {
    again:
+      was_buffer_full = ringbuf_is_full(&p->rb);
 
       if (!(rc = (ssize_t)ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
 
@@ -66,7 +68,15 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
          }
       }
 
-      kcond_signal_all(&p->rcond);
+      if (!ringbuf_is_empty(&p->rb)) {
+         /* Notify other readers that's possible to read from the pipe */
+         kcond_signal_all(&p->rcond);
+      }
+
+      if (was_buffer_full) {
+         /* Notify all writers that now is possible to write to the pipe */
+         kcond_signal_all(&p->wcond);
+      }
 
    end:;
    }
@@ -79,6 +89,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
    ssize_t rc = 0;
+   bool was_buffer_empty;
 
    if (!size)
       return 0;
@@ -86,6 +97,7 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    kmutex_lock(&p->mutex);
    {
    again:
+      was_buffer_empty = ringbuf_is_empty(&p->rb);
 
       if (atomic_load_explicit(&p->read_handles, mo_relaxed) == 0) {
 
@@ -110,7 +122,16 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
       }
 
       p->read_must_block = false;
-      kcond_signal_all(&p->wcond);
+
+      if (!ringbuf_is_full(&p->rb)) {
+         /* Notify other writers that now it possible to write on the pipe */
+         kcond_signal_all(&p->wcond);
+      }
+
+      if (was_buffer_empty) {
+         /* Notify all readers that now is possible to read from the pipe */
+         kcond_signal_all(&p->rcond);
+      }
 
    end:;
    }
