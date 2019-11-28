@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+pkg="$1"
+ci=
+
+if [ "$1" == "-ci" ]; then
+   pkg="$2"
+   ci=1
+fi
+
+if [ "$ci" == 1 ]; then
+   cmd="pacman -Sy"
+else
+   cmd="sudo pacman -Sy"
+fi
+
+echo "Running the command: $cmd"
+eval $cmd
+

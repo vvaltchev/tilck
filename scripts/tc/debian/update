@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+pkg="$1"
+ci=
+
+if [ "$1" == "-ci" ]; then
+   pkg="$2"
+   ci=1
+fi
+
+
+if [ "$ci" == 1 ]; then
+   cmd="apt update"
+else
+   if ! which sudo &> /dev/null; then
+      cmd="su -c \"apt update\""
+   else
+      cmd="sudo apt update"
+   fi
+fi
+
+echo "Running the command: $cmd"
+eval $cmd
+
