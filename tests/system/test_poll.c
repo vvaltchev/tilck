@@ -220,27 +220,36 @@ int cmd_poll2(int argc, char **argv)
 
    printf("poll() returned: %d\n", rc);
 
-   if (!rc)
-      printf("poll() timed out\n");
-
-   for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
-      if (fds[i].revents & POLLIN) {
-         printf("fd %d -> POLLIN\n", fds[i].fd);
-         cnt++;
-      }
+   if (rc != 0) {
+      printf("poll() did *not* timeout as expected\n");
+      return 1;
    }
 
+   printf("poll() timed out, as expected\n");
    return 0;
 }
 
 int cmd_poll3(int argc, char **argv)
 {
-   int rc, cnt = 0;
-   struct pollfd fds[] = {
-      { .fd = 0, .events = POLLIN }
+   struct pollfd fds[1];
+   int pipefd[2];
+   char buf[64];
+   int rc;
+
+   printf("Creating a pipe...\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   fds[0] = (struct pollfd) {
+      .fd = pipefd[0],
+      .events = POLLIN
    };
 
-   printf("Running poll(fd, ..., 0 ms)\n");
+   printf("Running poll(rfd, ..., 0 ms)\n");
    rc = poll(fds, ARRAY_SIZE(fds), 0);
 
    if (rc < 0) {
@@ -250,13 +259,48 @@ int cmd_poll3(int argc, char **argv)
 
    printf("poll() returned (immediately): %d\n", rc);
 
-   for (u32 i = 0; i < ARRAY_SIZE(fds); i++) {
-      if (fds[i].revents & POLLIN) {
-         printf("fd %d -> POLLIN\n", fds[i].fd);
-         cnt++;
-      }
+   if (rc != 0) {
+      printf("poll() did return 0 as expected\n");
+      return 1;
    }
 
+   printf("Write something on the pipe\n");
+
+   rc = write(pipefd[1], "hello", 5);
+   DEVSHELL_CMD_ASSERT(rc == 5);
+
+   printf("Running poll(rfd, ..., 0 ms)\n");
+   rc = poll(fds, ARRAY_SIZE(fds), 0);
+
+   if (rc < 0) {
+      perror("poll");
+      return 1;
+   }
+
+   printf("poll() returned (immediately): %d\n", rc);
+
+   if (rc != 1) {
+      printf("poll() did return 1 as expected\n");
+      return 1;
+   }
+
+   printf("fds[0].revents = %p\n", fds[0].revents);
+
+   if (!(fds[0].revents & POLLIN)) {
+      printf("ERROR: fds[0].revents did *not* contain POLLIN, as expected\n");
+      return 1;
+   }
+
+   printf("Everything is alright, got POLLIN\n");
+
+   rc = read(fds[0].fd, buf, sizeof(buf));
+   DEVSHELL_CMD_ASSERT(rc > 0);
+
+   buf[rc] = 0;
+   printf("Got from the pipe: '%s'\n", buf);
+
+   close(pipefd[0]);
+   close(pipefd[1]);
    return 0;
 }
 
@@ -291,7 +335,7 @@ static int common_pollerr_pollhup_test(const bool close_read)
 
    if (rc < 0) {
       printf("[parent] pipe() failed. Error: %s\n", strerror(errno));
-      exit(1);
+      return 1;
    }
 
    printf("[parent] fork()..\n");
