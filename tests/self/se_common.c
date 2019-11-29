@@ -145,8 +145,7 @@ void selftest_sleep_short()
    printk("[sleeping_kthread] elapsed ticks: %llu (expected: %llu)\n",
           elapsed, wait_ticks);
 
-   VERIFY((elapsed - wait_ticks) <= 2);
-
+   VERIFY((elapsed - wait_ticks) <= TIMER_HZ/10);
    regular_self_test_end();
 }
 
