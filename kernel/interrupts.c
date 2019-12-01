@@ -51,7 +51,7 @@ bool in_nested_irq_num(int irq_num)
    ASSERT(!are_interrupts_enabled());
 
    for (int i = nested_interrupts_count - 2; i >= 0; i--)
-      if (nested_interrupts[i] == irq_num)
+      if (int_to_irq(nested_interrupts[i]) == irq_num)
          return true;
 
    return false;
