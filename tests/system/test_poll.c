@@ -13,11 +13,10 @@
 
 #include "devshell.h"
 
-static void
-regular_poll1_child(int rfd, int wfd)
+void regular_poll_or_select_on_pipe_child(int rfd, int wfd)
 {
    const static char msg[] = "hello from poll1!";
-   int rc;
+   int rc, tot = 0;
    char buf[64];
 
    printf("[child] Hello from child, wait 100ms\n");
@@ -27,7 +26,7 @@ regular_poll1_child(int rfd, int wfd)
    rc = write(wfd, msg, sizeof(msg));
 
    if (rc <= 0) {
-      printf("[child] write() returned %d -> %s\n", rc, strerror(errno));
+      printf("[child] ERR: write() returned %d -> %s\n", rc, strerror(errno));
       exit(1);
    }
 
@@ -40,12 +39,19 @@ regular_poll1_child(int rfd, int wfd)
 
       rc = read(rfd, buf, sizeof(buf));
 
-      if (rc <= 0) {
-         printf("[child] read() returned %d -> %s\n", rc, strerror(errno));
+      if (rc < 0) {
+         printf("[child] ERR: read() returned %d -> %s\n", rc, strerror(errno));
          exit(1);
       }
+
+      if (rc == 0)
+         break;
+
+      tot += rc;
    }
 
+   printf("[child] tot read: %d\n", tot);
+   printf("[child] exit(0)\n");
    exit(0);
 }
 
@@ -75,7 +81,7 @@ int cmd_poll1(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(childpid >= 0);
 
    if (!childpid)
-      regular_poll1_child(pipefd[0], pipefd[1]);
+      regular_poll_or_select_on_pipe_child(pipefd[0], pipefd[1]);
 
    fds[0] = (struct pollfd) {
       .fd = pipefd[0],        /* read end of the pipe */
@@ -260,7 +266,7 @@ int cmd_poll3(int argc, char **argv)
    printf("poll() returned (immediately): %d\n", rc);
 
    if (rc != 0) {
-      printf("poll() did return 0 as expected\n");
+      printf("poll() did *not* return 0 as expected\n");
       return 1;
    }
 

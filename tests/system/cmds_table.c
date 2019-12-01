@@ -119,14 +119,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(poll1,        TT_SHORT,  true),
    CMD_ENTRY(poll2,        TT_SHORT,  true),
    CMD_ENTRY(poll3,        TT_SHORT,  true),
-
-   /*
-    * For the moment these tests can be run only manually because they require
-    * human interaction (tty input). After the support for pipes is introduced,
-    * those tests will be updated and made automatically runnable.
-    */
-   CMD_ENTRY(select1, TT_SHORT, false),
-   CMD_ENTRY(select2, TT_SHORT, false),
+   CMD_ENTRY(select1,      TT_SHORT,  true),
+   CMD_ENTRY(select2,      TT_SHORT,  true),
 
    CMD_END(),
 };
