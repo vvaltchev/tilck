@@ -109,17 +109,17 @@ static inline void list_remove(struct list_node *elem)
 #define list_for_each(pos, tp, list_ptr, member)                     \
    for (pos = list_first_obj(list_ptr, typeof(*pos), member),        \
         tp = list_next_obj(pos, member);                             \
-        &pos->member != (struct list_node *)(list_ptr);                     \
+        &pos->member != (struct list_node *)(list_ptr);              \
         pos = tp, tp = list_next_obj(tp, member))
 
 #define list_for_each_ro(pos, list_ptr, member)                      \
    for (pos = list_first_obj(list_ptr, typeof(*pos), member);        \
-        &pos->member != (struct list_node *)(list_ptr);                     \
+        &pos->member != (struct list_node *)(list_ptr);              \
         pos = list_next_obj(pos, member))
 
 /* Same as list_for_each_ro(), but the orig. value of `pos` is kept */
 #define list_for_each_ro_kp(pos, list_ptr, member)                   \
-   for (; &pos->member != (struct list_node *)(list_ptr);                   \
+   for (; &pos->member != (struct list_node *)(list_ptr);            \
         pos = list_next_obj(pos, member))
 
 #define list_for_each_reverse(pos, tp, list_ptr, member)             \
