@@ -126,8 +126,7 @@ struct task {
    };
 
    struct wait_obj wobj;
-
-   ATOMIC(u32) ticks_before_wake_up;
+   u32 ticks_before_wake_up;
 
    /* Temp kernel allocations for user requests */
    struct kernel_alloc *kallocs_tree_root;

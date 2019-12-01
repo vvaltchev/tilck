@@ -44,37 +44,50 @@ void task_set_wakeup_timer(struct task *ti, u32 ticks)
    uptr var;
    ASSERT(ticks > 0);
 
-   if (atomic_exchange_explicit(&ti->ticks_before_wake_up,
-                                ticks, mo_relaxed) == 0)
+   disable_interrupts(&var);
    {
-      disable_interrupts(&var);
-
-      if (!list_is_node_in_list(&ti->wakeup_timer_node))
+      if (ti->ticks_before_wake_up == 0) {
+         ASSERT(!list_is_node_in_list(&ti->wakeup_timer_node));
          list_add_tail(&timer_wakeup_list, &ti->wakeup_timer_node);
+      } else {
+         ASSERT(list_is_node_in_list(&ti->wakeup_timer_node));
+      }
 
-      enable_interrupts(&var);
+      ti->ticks_before_wake_up = ticks;
    }
+   enable_interrupts(&var);
 }
 
 void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
 {
-   u32 curr;
+   uptr var;
    ASSERT(new_ticks > 0);
 
-   do {
-
-      curr = ti->ticks_before_wake_up;
-
-      if (curr == 0)
-         break; // we do NOTHING if there is NO current wake-up timer.
-
-   } while (!atomic_cas_weak(&ti->ticks_before_wake_up,
-                             &curr, new_ticks, mo_relaxed, mo_relaxed));
+   disable_interrupts(&var);
+   {
+      if (ti->ticks_before_wake_up > 0) {
+         ASSERT(list_is_node_in_list(&ti->wakeup_timer_node));
+         ti->ticks_before_wake_up = new_ticks;
+      }
+   }
+   enable_interrupts(&var);
 }
 
 u32 task_cancel_wakeup_timer(struct task *ti)
 {
-   return atomic_exchange_explicit(&ti->ticks_before_wake_up, 0, mo_relaxed);
+   uptr var;
+   u32 old;
+   disable_interrupts(&var);
+   {
+      old = ti->ticks_before_wake_up;
+
+      if (old > 0) {
+         ti->ticks_before_wake_up = 0;
+         list_remove(&ti->wakeup_timer_node);
+      }
+   }
+   enable_interrupts(&var);
+   return old;
 }
 
 static struct task *tick_all_timers(void)
@@ -83,15 +96,37 @@ static struct task *tick_all_timers(void)
    struct task *last_ready_task = NULL;
    uptr var;
 
+   /*
+    * This is *NOT* the best we can do. In particular, it's terrible to keep
+    * the interrupts disabled while iterating the _whole_ timer_wakeup_list.
+    * A better solution is to keep the tasks to wake-up in a sort of ordered
+    * list and then use relative timers. This way, at each tick we'll have to
+    * decrement just one single counter. We'll start decrement the next counter
+    * only when the first counter reaches 0 and the list node is removed.
+    *
+    * Of course, if we cannot use kmalloc() in case of sleep, it gets much
+    * harder to create such an ordered list and make it live inside a member
+    * of struct task. Maybe a BST will do the job, but that would require
+    * paying O(logN) per tick for finding the earliest timer. Not sure how
+    * better would be now for N < 50 (typical), given the huge added constant
+    * for the BST functions. Also, the cancellation of a timer would require
+    * some extra effort in order to re-calculate the relative timer values,
+    * while we want the cancellation to be light-fast because it's run by IRQ
+    * handlers.
+    *
+    * In conclusion, for the moment, given the very limited scale of Tilck (tens
+    * of tasks at most running on the whole system), this solution is safe and
+    * good-enough but, at some point a smarter ad-hoc solution for Tilck should
+    * be devised.
+    */
+   disable_interrupts(&var);
+
    list_for_each(pos, temp, &timer_wakeup_list, wakeup_timer_node) {
 
-      disable_interrupts(&var);
+      /* If task is part of this list, it's counter must be > 0 */
+      ASSERT(pos->ticks_before_wake_up > 0);
 
-      if (pos->ticks_before_wake_up == 0) {
-
-         list_remove(&pos->wakeup_timer_node);
-
-      } else if (--pos->ticks_before_wake_up == 0) {
+      if (UNLIKELY(--pos->ticks_before_wake_up == 0)) {
 
          list_remove(&pos->wakeup_timer_node);
 
@@ -100,10 +135,9 @@ static struct task *tick_all_timers(void)
             last_ready_task = pos;
          }
       }
-
-      enable_interrupts(&var);
    }
 
+   enable_interrupts(&var);
    return last_ready_task;
 }
 
@@ -115,7 +149,7 @@ void kernel_sleep(u64 ticks)
     * Implementation: why
     * ---------------------
     *
-    * This function was previously implemented as just:
+    * In theory, the function could be implemented just as:
     *
     *    if (ticks) {
     *       task_set_wakeup_timer(get_curr_task(), ticks);
@@ -123,14 +157,17 @@ void kernel_sleep(u64 ticks)
     *    }
     *    kernel_yield();
     *
-    * And it worked, but it required struct task->ticks_before_wake_up to be
-    * actually 64-bit wide, and that was a problem on 32-bit systems because
-    * we wanted it to make it atomic too. (Sure, the are tricks possible with
-    * 64-bit CAS even on 32-bit systems, but it's pretty expensive.)
+    * But that would require task->ticks_before_wake_up to be actually 64-bit,
+    * wide and that's bad on 32-bit systems because:
+    *
+    *    - it would require using the soft 64-bit integers (slow)
+    *    - it would make impossible, in the case we wanted that, the counter
+    *      to be atomic.
     *
     * Therefore, in order to use a 32-bit value for 'ticks_before_wake_up' and,
-    * at the same time being able to sleep for more than 2^32-1 ticks, we needed
-    * a more tricky implementation (below).
+    * at the same time being able to sleep for more than 2^32-1 ticks, we need
+    * a more tricky implementation (below), and the little extra runtime price
+    * for it is totally fine, since we're going to sleep anyways!
     *
     * Implementation: how
     * ----------------------
