@@ -20,7 +20,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/mods/fb_console.h>
-#include <tilck/kernel/serial.h>
+#include <tilck/mods/serial.h>
 #include <tilck/kernel/arch/generic_x86/textmode_video.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/elf_utils.h>
