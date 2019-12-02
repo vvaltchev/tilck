@@ -5,7 +5,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/mods/serial.h>
-#include <tilck/kernel/tty.h>
+#include <tilck/mods/tty.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/cmdline.h>
 #include "tty/tty_int.h"

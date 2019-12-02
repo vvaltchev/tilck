@@ -11,7 +11,7 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/tty.h>
+#include <tilck/mods/tty.h>
 #include <tilck/mods/fb_console.h>
 #include <tilck/kernel/cmdline.h>
 

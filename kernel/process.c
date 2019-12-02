@@ -11,7 +11,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/tty.h>
+#include <tilck/mods/tty.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>

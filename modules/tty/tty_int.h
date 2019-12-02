@@ -2,7 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
-#include <tilck/kernel/tty.h>
+#include <tilck/mods/tty.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/term.h>

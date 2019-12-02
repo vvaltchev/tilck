@@ -10,7 +10,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/tty.h>
+#include <tilck/mods/tty.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/fault_resumable.h>
