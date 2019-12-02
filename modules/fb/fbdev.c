@@ -4,7 +4,7 @@
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
-#include <tilck/kernel/fb_console.h>
+#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/tty.h>

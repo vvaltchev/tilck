@@ -117,7 +117,8 @@
       "string_util.h": "c",
       "intrin.h": "c",
       "x86intrin.h": "c",
-      "ia32intrin.h": "c"
+      "ia32intrin.h": "c",
+      "simple_elf_loader.c.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

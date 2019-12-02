@@ -3,7 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/term.h>
-#include <tilck/kernel/fb_console.h>
+#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"

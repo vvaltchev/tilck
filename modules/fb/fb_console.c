@@ -4,7 +4,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/color_defs.h>
 
-#include <tilck/kernel/fb_console.h>
+#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
