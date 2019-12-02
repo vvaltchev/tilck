@@ -99,7 +99,8 @@ static void show_system_info(void)
           1000 / (TIMER_HZ / TIME_SLOT_TICKS),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
-   show_tilck_logo();
+   if (KERNEL_SHOW_LOGO)
+      show_tilck_logo();
 }
 
 static void mount_initrd(void)
