@@ -59,7 +59,7 @@ static void print_banner_line(const u8 *s)
    printk(NO_PREFIX "\n");
 }
 
-void show_banner(void)
+void show_tilck_logo(void)
 {
    char *banner[] =
    {
@@ -73,8 +73,8 @@ void show_banner(void)
       "",
    };
 
-   const u32 padding = (u32)
-      (term_get_cols(get_curr_term()) / 2 - strlen(banner[1]) / 2);
+   const u32 cols = term_get_cols(get_curr_term());
+   const u32 padding = (u32)(cols / 2 - strlen(banner[1]) / 2);
 
    for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
 

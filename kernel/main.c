@@ -92,14 +92,14 @@ static void show_hello_message(void)
 
 static void show_system_info(void)
 {
-   void show_banner(void);
+   void show_tilck_logo(void);
 
    printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
           TIMER_HZ,
           1000 / (TIMER_HZ / TIME_SLOT_TICKS),
           in_hypervisor() ? "[IN HYPERVISOR]" : "");
 
-   show_banner();
+   show_tilck_logo();
 }
 
 static void mount_initrd(void)
