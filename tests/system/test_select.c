@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/select.h>
@@ -254,5 +255,87 @@ int cmd_select2(int argc, char **argv)
 
    close(pipefd[0]);
    close(pipefd[1]);
+   return 0;
+}
+
+/* Trigger the timeout case */
+int cmd_select3(int argc, char **argv)
+{
+   struct timeval tv;
+   fd_set readfds;
+   int rc;
+
+   FD_ZERO(&readfds);
+   FD_SET(0 /* stdin */, &readfds);
+   tv.tv_sec = 0;
+   tv.tv_usec = 100 * 1000;
+
+   printf("Running select()\n");
+   rc = select(1, &readfds, NULL, NULL, &tv);
+
+   if (rc < 0) {
+      perror("select");
+      return 1;
+   }
+
+   if (rc > 0) {
+      printf("ERROR: unexpected return value %d > 0\n", rc);
+      return 1;
+   }
+
+   printf("select() returned 0 (timeout), as expected\n");
+   return 0;
+}
+
+/* Select as nanosleep() */
+int cmd_select4(int argc, char **argv)
+{
+   struct timeval tv, rtv1, rtv2;
+   u64 ts1, ts2, elapsed;
+   int rc, attempts_cnt = 1;
+   int sleep_ms = 100;
+   const int max_attempts = 5;
+
+again:
+
+   printf("Running select(0, NULL, NULL, NULL, &tv /* %d ms */)\n", sleep_ms);
+
+   gettimeofday(&rtv1, NULL);
+   {
+      tv.tv_sec = 0;
+      tv.tv_usec = sleep_ms * 1000;
+      rc = select(0, NULL, NULL, NULL, &tv);
+
+      if (rc != 0) {
+         printf("ERROR: selected returned %d instead of 0 [err: %s]\n",
+                rc, strerror(errno));
+         return 1;
+      }
+   }
+   gettimeofday(&rtv2, NULL);
+
+   ts1 = (u64)rtv1.tv_sec * 1000 + rtv1.tv_usec / 1000;
+   ts2 = (u64)rtv2.tv_sec * 1000 + rtv2.tv_usec / 1000;
+   elapsed = ts2 - ts1;
+   printf("Elapsed: %llu ms\n", elapsed);
+
+   if ((elapsed < 90 * sleep_ms / 100) || (elapsed > 110 * sleep_ms / 100)) {
+      printf("Elapsed was more than expected (%d <= t <= %d ms)\n",
+             90 * sleep_ms / 100, 110 * sleep_ms / 100);
+
+      if (attempts_cnt >= max_attempts) {
+         printf("We failed already %d times. STOP\n", max_attempts);
+         return 1;
+      }
+
+      printf("Probably that was caused by the load of the host machine\n");
+      printf("Re-running the test again...\n");
+
+      attempts_cnt++;
+      sleep_ms *= 2;
+      printf("\n\n[attempt %d of %d] ...\n", attempts_cnt, max_attempts);
+      goto again;
+   }
+
    return 0;
 }

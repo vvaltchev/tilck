@@ -34,6 +34,8 @@ DECL_CMD(sigabrt);
 DECL_CMD(sig1);
 DECL_CMD(select1);
 DECL_CMD(select2);
+DECL_CMD(select3);
+DECL_CMD(select4);
 DECL_CMD(poll1);
 DECL_CMD(poll2);
 DECL_CMD(poll3);
@@ -121,6 +123,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(poll3,        TT_SHORT,  true),
    CMD_ENTRY(select1,      TT_SHORT,  true),
    CMD_ENTRY(select2,      TT_SHORT,  true),
+   CMD_ENTRY(select3,      TT_SHORT,  true),
+   CMD_ENTRY(select4,      TT_SHORT,  true),
 
    CMD_END(),
 };
