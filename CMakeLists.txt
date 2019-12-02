@@ -156,6 +156,9 @@ set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
 set(CONSOLE_DEFAULT_BRIGHT_WHITE OFF CACHE BOOL
     "Use 'bright white' as default text color instead of 'white' (light gray)")
 
+set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
+    "Use the fonts in other/alt_fonts instead of the default ones")
+
 list(
    APPEND kernel_opts_list
 
@@ -175,6 +178,8 @@ list(
    KERNEL_SELFTESTS
    KERNEL_DEBUG_PANEL
    KERNEL_STACK_ISOLATION
+   KERNEL_FB_BANNER
+   KERNEL_SHOW_LOGO
 
    # Boolean options DISABLED by default
    TEST_GCOV
@@ -192,6 +197,8 @@ list(
    WCONV
    FAT_TEST_DIR
    KERNEL_DO_PS2_SELFTEST
+   CONSOLE_DEFAULT_BRIGHT_WHITE
+   FB_CONSOLE_USE_ALT_FONTS
 )
 
 ###########################################################

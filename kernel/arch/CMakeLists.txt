@@ -39,7 +39,20 @@ configure_file(
 # B2O = Binary to Object file [options]
 list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH} -I binary)
 
-file(GLOB font_files "${CMAKE_SOURCE_DIR}/kernel/fb/*.psf")
+set(HAVE_ALT_FONTS 0)
+
+if (EXISTS ${CMAKE_SOURCE_DIR}/other/alt_fonts/font16x32.psf)
+   if (EXISTS ${CMAKE_SOURCE_DIR}/other/alt_fonts/font8x16.psf)
+      set(HAVE_ALT_FONTS 1)
+   endif()
+endif()
+
+if (${HAVE_ALT_FONTS} AND ${FB_CONSOLE_USE_ALT_FONTS})
+   file(GLOB font_files "${CMAKE_SOURCE_DIR}/other/alt_fonts/*.psf")
+else()
+   file(GLOB font_files "${CMAKE_SOURCE_DIR}/kernel/fb/*.psf")
+endif()
+
 foreach(font_file ${font_files})
 
    get_filename_component(font_name ${font_file} NAME_WE)

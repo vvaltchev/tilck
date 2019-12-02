@@ -1,0 +1,8 @@
+In order to use a different pair of fonts, copy or symlink in this directory
+two PSF font files named exactly:
+
+   font8x16.psf
+   font16x32.psf
+
+If Tilck's build system finds those two files here, it will use them instead of
+the default ones.
