@@ -59,14 +59,19 @@ static u8 *font_glyph_data;
 #define BRIGHT  (252 /* vga */ + 0)
 
 u32 vga_rgb_colors[16];
-extern inline u32 fb_make_color(u32 r, u32 g, u32 b);
+
+static inline u32 fb_make_color(u32 r, u32 g, u32 b)
+{
+   return ((r << fb_red_pos) & fb_red_mask) |
+          ((g << fb_green_pos) & fb_green_mask) |
+          ((b << fb_blue_pos) & fb_blue_mask);
+}
 
 u32 fb_get_res_x(void) { return fb_width; }
 u32 fb_get_res_y(void) { return fb_height; }
 u32 fb_get_bbp(void) { return fb_bpp; }
 u32 fb_get_font_w(void) { return font_w; }
 u32 fb_get_font_h(void) { return font_h; }
-
 
 static void fb_init_colors(void)
 {
