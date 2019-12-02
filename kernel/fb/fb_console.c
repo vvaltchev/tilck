@@ -253,7 +253,7 @@ static void fb_draw_banner(void)
    static char *lbuf;
    static char *rbuf;
 
-   if (oom)
+   if (oom || !fb_offset_y)
       return;
 
    if (!lbuf) {
@@ -422,7 +422,9 @@ void init_framebuffer_console(void)
 
    fb_set_font(font);
    fb_map_in_kernel_space();
-   fb_setup_banner();
+
+   if (KERNEL_FB_BANNER)
+      fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / font_h;
    fb_term_cols = fb_get_width() / font_w;

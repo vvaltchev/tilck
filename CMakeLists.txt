@@ -104,6 +104,9 @@ set(KERNEL_DEBUG_PANEL ON CACHE BOOL
 set(KERNEL_STACK_ISOLATION ON CACHE BOOL
     "Put the kernel stack in hi the vmem in isolated pages")
 
+set(KERNEL_FB_BANNER ON CACHE BOOL
+    "Show a top banner when using fb_console")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
