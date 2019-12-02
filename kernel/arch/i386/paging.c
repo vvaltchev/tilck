@@ -1019,7 +1019,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
                          (void *)vaddr,
                          paddr,
                          page_count,
-                         !user_mmap, /* big pages allowed when !user_mmap */
+                         false, /* big pages not allowed */
                          mmap_flags);
 
    if (count < page_count) {
