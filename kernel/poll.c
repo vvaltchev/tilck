@@ -7,51 +7,6 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/process.h>
 
-static void
-debug_poll_events_dump(struct pollfd *fd)
-{
-   printk(NO_PREFIX "( ");
-
-   if (fd->events & POLLIN)
-      printk(NO_PREFIX "IN ");
-
-   if (fd->events & POLLRDNORM)
-      printk(NO_PREFIX "RDNORM ");
-
-   if (fd->events & POLLRDBAND)
-      printk(NO_PREFIX "RDBAND ");
-
-   if (fd->events & POLLPRI)
-      printk(NO_PREFIX "PRI ");
-
-   if (fd->events & POLLOUT)
-      printk(NO_PREFIX "OUT ");
-
-   if (fd->events & POLLWRNORM)
-      printk(NO_PREFIX "WRNORM ");
-
-   if (fd->events & POLLWRBAND)
-      printk(NO_PREFIX "WRBAND ");
-
-   if (fd->events & POLL_MSG)
-      printk(NO_PREFIX "MSG ");
-
-   printk(NO_PREFIX ") ");
-}
-
-static void
-debug_poll_args_dump(struct pollfd *fds, u32 nfds, int timeout)
-{
-   printk("poll(fds: [ ");
-
-   for (u32 i = 0; i < nfds; i++) {
-      printk(NO_PREFIX "%d: ", fds[i].fd);
-      debug_poll_events_dump(fds + i);
-   }
-
-   printk(NO_PREFIX "], timeout: %d ms)\n", timeout);
-}
-
 static u32
 poll_count_conds(struct pollfd *fds, nfds_t nfds)
 {

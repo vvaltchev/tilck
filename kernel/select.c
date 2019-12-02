@@ -7,43 +7,6 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/process.h>
 
-static void
-debug_dump_fds(const char *name, int nfds, fd_set *s)
-{
-   if (s) {
-
-      printk("    %s: [ ", name);
-
-      for (int i = 0; i < nfds; i++)
-         if (FD_ISSET(i, s))
-            printk(NO_PREFIX "%d ", i);
-
-      printk(NO_PREFIX "]\n");
-
-   } else {
-      printk("    %s: NULL,\n", name);
-   }
-}
-
-static void
-debug_dump_select_args(int nfds, fd_set *rfds, fd_set *wfds,
-                       fd_set *efds, struct timeval *tv)
-{
-   printk("sys_select(\n");
-   printk("    nfds: %d,\n", nfds);
-
-   debug_dump_fds("rfds", nfds, rfds);
-   debug_dump_fds("wfds", nfds, wfds);
-   debug_dump_fds("efds", nfds, efds);
-
-   if (tv)
-      printk("    tv: %u secs, %u usecs\n", tv->tv_sec, tv->tv_usec);
-   else
-      printk("    tv: NULL\n");
-
-   printk(")\n");
-}
-
 struct select_ctx {
    int nfds;
    fd_set *sets[3];
@@ -146,24 +109,6 @@ select_set_ready(int nfds, fd_set *set, func_rwe_ready is_ready)
    }
 
    return tot;
-}
-
-static u32
-count_signaled_conds(struct multi_obj_waiter *w)
-{
-   u32 count = 0;
-
-   for (u32 j = 0; j < w->count; j++) {
-
-      struct mwobj_elem *me = &w->elems[j];
-
-      if (me->type && !me->wobj.type) {
-         count++;
-         mobj_waiter_reset(me);
-      }
-   }
-
-   return count;
 }
 
 static int
@@ -387,11 +332,8 @@ int sys_select(int user_nfds,
    if ((rc = select_read_user_tv(user_tv, &ctx.tv, &ctx.timeout_ticks)))
       return rc;
 
-   if ((rc = count_ready_streams(ctx.nfds, ctx.sets)) > 0) {
+   if ((rc = count_ready_streams(ctx.nfds, ctx.sets)) > 0)
       return select_write_user_sets(&ctx);
-   }
-
-   //debug_dump_select_args(nfds, sets[0], sets[1], sets[2], tv);
 
    if ((rc = select_compute_cond_cnt(&ctx)))
       return rc;
