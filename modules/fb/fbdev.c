@@ -15,6 +15,8 @@
 #include <linux/major.h>  // system header
 #include <sys/mman.h>     // system header
 
+#include "fb_int.h"
+
 extern uptr fb_vaddr;
 extern u32 fb_size;
 

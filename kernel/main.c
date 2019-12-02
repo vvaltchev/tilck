@@ -36,7 +36,7 @@ void init_console(void)
    if (!kopt_serial_console) {
 
       if (use_framebuffer())
-         init_framebuffer_console();
+         init_fb_console();
       else
          init_textmode_console();
 

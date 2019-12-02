@@ -407,7 +407,7 @@ bool fb_is_using_opt_funcs(void)
    return use_optimized;
 }
 
-void init_framebuffer_console(void)
+void init_fb_console(void)
 {
    ASSERT(use_framebuffer());
    ASSERT(fb_get_width() > 0);

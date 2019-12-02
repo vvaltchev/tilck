@@ -23,3 +23,7 @@ bool fb_pre_render_char_scanlines(void);
 bool fb_alloc_shadow_buffer(void);
 void fb_raw_perf_screen_redraw(u32 color, bool use_fpu);
 void fb_set_font(void *font);
+
+void fb_fill_fix_info(void *fix_info);
+void fb_fill_var_info(void *var_info);
+void fb_user_mmap(void *vaddr, size_t mmap_len);
