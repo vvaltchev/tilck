@@ -18,8 +18,6 @@
 extern char _binary_font8x16_psf_start;
 extern char _binary_font16x32_psf_start;
 
-bool __use_framebuffer;
-
 static bool use_optimized;
 static u32 fb_term_rows;
 static u32 fb_term_cols;
