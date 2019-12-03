@@ -5,7 +5,6 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
-#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 #include <multiboot.h>
 
@@ -19,7 +18,6 @@
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/fs/fat32.h>
 #include <tilck/kernel/fs/devfs.h>
-#include <tilck/kernel/kb.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/system_mmap.h>
@@ -184,7 +182,6 @@ static void do_async_init()
 {
    mount_initrd();
    init_devfs();
-   init_kb();
    init_modules();
    init_extra_debug_features();
 

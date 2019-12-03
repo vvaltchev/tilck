@@ -7,6 +7,7 @@
 
 #pragma once
 
+#cmakedefine01    MOD_kb8042
 #cmakedefine01    MOD_tty
 #cmakedefine01    MOD_fb
 #cmakedefine01    MOD_serial

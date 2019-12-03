@@ -48,8 +48,6 @@ void register_keypress_handler(struct keypress_handler_elem *e);
 u8 kb_get_current_modifiers(struct kb_dev *kb);
 int kb_get_fn_key_pressed(u32 key);
 
-void init_kb(void); // TODO: remove
-
 static ALWAYS_INLINE struct key_event
 make_key_event(u32 key, char print_char, bool pressed)
 {

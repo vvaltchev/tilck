@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kb.h>
@@ -291,3 +292,12 @@ void init_kb(void)
    register_keyboard_device(&ps2_keyboard);
    enable_preemption();
 }
+
+static struct module kb_ps2_module = {
+
+   .name = "kbps2",
+   .priority = 50,
+   .init = &init_kb,
+};
+
+REGISTER_MODULE(&kb_ps2_module);

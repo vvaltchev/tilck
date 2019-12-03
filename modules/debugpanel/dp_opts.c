@@ -36,6 +36,7 @@ static void dp_show_opts(void)
    DUMP_INT_OPT(USER_STACK_PAGES);
 
    DUMP_LABEL("Kernel modules");
+   DUMP_BOOL_OPT(MOD_kb8042);
    DUMP_BOOL_OPT(MOD_tty);
    DUMP_BOOL_OPT(MOD_fb);
    DUMP_BOOL_OPT(MOD_serial);
