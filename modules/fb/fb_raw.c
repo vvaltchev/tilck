@@ -67,11 +67,16 @@ static inline u32 fb_make_color(u32 r, u32 g, u32 b)
           ((b << fb_blue_pos) & fb_blue_mask);
 }
 
-u32 fb_get_res_x(void) { return fb_width; }
-u32 fb_get_res_y(void) { return fb_height; }
-u32 fb_get_bbp(void) { return fb_bpp; }
-u32 fb_get_font_w(void) { return font_w; }
-u32 fb_get_font_h(void) { return font_h; }
+void fb_console_get_info(struct fb_console_info *i)
+{
+   *i = (struct fb_console_info) {
+      .res_x  = (u16)fb_width,
+      .res_y  = (u16)fb_height,
+      .bpp    = (u16)fb_bpp,
+      .font_w = (u16)font_w,
+      .font_h = (u16)font_h,
+   };
+}
 
 static void fb_init_colors(void)
 {

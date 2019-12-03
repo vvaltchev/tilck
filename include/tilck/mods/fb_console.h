@@ -19,9 +19,15 @@ void init_fb_console(void);
 void debug_dump_glyph(u32 n);
 
 // Runtime debug info funcs [debugpanel]
+
+struct fb_console_info {
+
+   u16 res_x;
+   u16 res_y;
+   u16 bpp;
+   u16 font_h;
+   u16 font_w;
+};
+
 bool fb_is_using_opt_funcs(void);
-u32 fb_get_res_x(void);
-u32 fb_get_res_y(void);
-u32 fb_get_bbp(void);
-u32 fb_get_font_w(void);
-u32 fb_get_font_h(void);
+void fb_console_get_info(struct fb_console_info *i);
