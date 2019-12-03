@@ -31,8 +31,6 @@
 #cmakedefine01 DEBUG_CHECKS_IN_RELEASE
 #cmakedefine01 KERNEL_SELFTESTS
 #cmakedefine01 KERNEL_STACK_ISOLATION
-#cmakedefine01 KERNEL_FB_BANNER
-#cmakedefine01 KERNEL_SHOW_LOGO
 
 /* disabled by default */
 #cmakedefine01 KERNEL_GCOV

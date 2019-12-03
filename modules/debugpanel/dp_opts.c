@@ -9,13 +9,14 @@
 
 #include "termutil.h"
 
-#define DUMP_INT(name, val)  dp_write(row++, col, "%-16s: %d", name, val)
-#define DUMP_STR_OPT(opt)    dp_write(row++, col, "%-30s: %s", #opt, opt)
-#define DUMP_INT_OPT(opt)    dp_write(row++, col, "%-30s: %d", #opt, opt)
+#define DUMP_LABEL(name)     dp_write(row++, col, "%-16s", name)
+#define DUMP_INT(name, val)  dp_write(row++, col, "  %-16s: %d", name, val)
+#define DUMP_STR_OPT(opt)    dp_write(row++, col, "  %-30s: %s", #opt, opt)
+#define DUMP_INT_OPT(opt)    dp_write(row++, col, "  %-30s: %d", #opt, opt)
 #define DUMP_BOOL_OPT(opt)                               \
    dp_write(row++,                                       \
             col,                                         \
-            "%-30s: %s%u" RESET_ATTRS,                   \
+            "  %-30s: %s%u" RESET_ATTRS,                 \
             #opt,                                        \
             opt ? ESC_COLOR_GREEN : DP_ESC_COLOR,        \
             opt)
@@ -28,23 +29,30 @@ static void dp_show_opts(void)
    int rows_right;
    int max_rows;
 
+   DUMP_LABEL("Main");
    DUMP_INT_OPT(IS_RELEASE_BUILD);
    DUMP_STR_OPT(BUILDTYPE_STR);
-
-   // Non-boolean kernel options
    DUMP_INT_OPT(TIMER_HZ);
    DUMP_INT_OPT(USER_STACK_PAGES);
 
-   // Boolean options ENABLED by default
+   DUMP_LABEL("Kernel modules");
+   DUMP_BOOL_OPT(MOD_tty);
+   DUMP_BOOL_OPT(MOD_fb);
+   DUMP_BOOL_OPT(MOD_serial);
+   DUMP_BOOL_OPT(MOD_debugpanel);
+
+   DUMP_LABEL("Modules config");
+   DUMP_BOOL_OPT(KERNEL_FB_BANNER);
+   DUMP_BOOL_OPT(KERNEL_SHOW_LOGO);
+
+   DUMP_LABEL("Enabled by default");
    DUMP_BOOL_OPT(KRN_TRACK_NESTED_INTERR);
    DUMP_BOOL_OPT(PANIC_SHOW_STACKTRACE);
    DUMP_BOOL_OPT(DEBUG_CHECKS_IN_RELEASE);
    DUMP_BOOL_OPT(KERNEL_SELFTESTS);
    DUMP_BOOL_OPT(KERNEL_STACK_ISOLATION);
-   DUMP_BOOL_OPT(KERNEL_FB_BANNER);
-   DUMP_BOOL_OPT(KERNEL_SHOW_LOGO);
 
-   // Boolean options DISABLED by default
+   DUMP_LABEL("Disabled by default");
    DUMP_BOOL_OPT(KERNEL_BIG_IO_BUF);
    DUMP_BOOL_OPT(KERNEL_DO_PS2_SELFTEST);
    DUMP_BOOL_OPT(KERNEL_GCOV);
@@ -61,12 +69,15 @@ static void dp_show_opts(void)
    row = dp_screen_start_row+1;
    col = dp_start_col + 48;
 
+   DUMP_LABEL("Main");
    DUMP_INT("HYPERVISOR", in_hypervisor());
+
+   DUMP_LABEL("Console");
    DUMP_INT("TERM_ROWS", term_get_rows(get_curr_term()));
    DUMP_INT("TERM_COLS", term_get_cols(get_curr_term()));
    DUMP_INT("USE_FRAMEBUFFER", use_framebuffer());
 
-   if (MOD_fb) {
+   if (MOD_fb && use_framebuffer()) {
       struct fb_console_info fbi;
       fb_console_get_info(&fbi);
 
