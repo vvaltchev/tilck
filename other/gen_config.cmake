@@ -15,7 +15,12 @@ dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/include/tilck/common/generated_config.h
-   ${CMAKE_BINARY_DIR}/generated_config.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config.h
+)
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/include/tilck/kernel/config_modules.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_modules.h
 )
 
 configure_file(

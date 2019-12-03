@@ -26,7 +26,6 @@ static void dp_show_opts(void)
    int rows_left;
    int rows_right;
    int max_rows;
-   struct fb_console_info fbi;
 
    DUMP_INT_OPT(IS_RELEASE_BUILD);
    DUMP_STR_OPT(BUILDTYPE_STR);
@@ -66,14 +65,15 @@ static void dp_show_opts(void)
    DUMP_INT("TERM_COLS", term_get_cols(get_curr_term()));
    DUMP_INT("USE_FRAMEBUFFER", use_framebuffer());
 
-   DUMP_INT("FB_OPT_FUNCS", fb_is_using_opt_funcs());
+   struct fb_console_info fbi;
    fb_console_get_info(&fbi);
 
-    DUMP_INT("FB_RES_X", fbi.res_x);
-    DUMP_INT("FB_RES_Y", fbi.res_y);
-    DUMP_INT("FB_BBP", fbi.bpp);
-    DUMP_INT("FB_FONT_W", fbi.font_w);
-    DUMP_INT("FB_FONT_H", fbi.font_h);
+   DUMP_INT("FB_OPT_FUNCS", fb_is_using_opt_funcs());
+   DUMP_INT("FB_RES_X", fbi.res_x);
+   DUMP_INT("FB_RES_Y", fbi.res_y);
+   DUMP_INT("FB_BBP", fbi.bpp);
+   DUMP_INT("FB_FONT_W", fbi.font_w);
+   DUMP_INT("FB_FONT_H", fbi.font_h);
 
    DUMP_INT("TTY_COUNT", kopt_tty_count);
 

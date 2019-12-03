@@ -7,7 +7,7 @@
 #define KB (1024u)
 #define MB (1024u * 1024u)
 
-#include <generated_config.h>
+#include <tilck_gen_headers/config.h>
 
 /* Constants that have no reason to be changed */
 #define KMALLOC_FREE_MEM_POISON_VAL    0xFAABCAFE
