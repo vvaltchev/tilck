@@ -32,7 +32,6 @@
 
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/serial.h>
-#include <tilck/mods/tty.h>
 
 void init_console(void)
 {
@@ -203,7 +202,10 @@ static void async_init(void)
 void kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    call_kernel_global_ctors();
-   early_init_serial_ports();
+
+   if (MOD_serial)
+      early_init_serial_ports();
+
    create_kernel_process();
    init_cpu_exception_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);

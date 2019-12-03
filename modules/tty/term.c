@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/color_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
@@ -360,7 +361,10 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 static void term_internal_write_char2(struct term *t, char c, u8 color)
 {
    if (t->serial_port_fwd) {
-      serial_write(t->serial_port_fwd, c);
+
+      if (MOD_serial)
+         serial_write(t->serial_port_fwd, c);
+
       return;
    }
 

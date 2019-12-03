@@ -157,7 +157,6 @@ list(
    APPEND mandatory_modules
 
    tty
-   serial
 )
 
 file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
