@@ -1,35 +1,31 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/string_util.h>
 #include <tilck/kernel/modules.h>
+#include <tilck/kernel/sort.h>
 
-static struct list modules_list = make_list(modules_list);
+static u32 mods_count;
+static struct module *modules[32];
 
 void register_module(struct module *m)
 {
-   list_add_tail(&modules_list, &m->node);
+   ASSERT(mods_count < ARRAY_SIZE(modules) - 1);
+   modules[mods_count++] = m;
+}
+
+static sptr mod_cmp_func(const void *a, const void *b)
+{
+   const struct module * const *ma = a;
+   const struct module * const *mb = b;
+   return (*ma)->priority - (*mb)->priority;
 }
 
 void init_modules(void)
 {
-   struct module *mod;
+   insertion_sort_ptr(modules, mods_count, &mod_cmp_func);
 
-   /*
-    * This might be the stupidest way O(P * N) to initialize the modules in
-    * order but, for a very few modules, it's totally good enough.
-    *
-    * Of course, in order to have more granularity for priorities and more
-    * modules P * N starts to become too bad (e.g. P = 1000, N = 20), even if,
-    * given that we're in the initialization, we will still be fast enough, it
-    * will be worth implementing something better.
-    *
-    * TODO: improve init_modules().
-    */
-   for (int p = 0; p < LOWEST_MOD_PRIORITY; p++) {
-
-      list_for_each_ro(mod, &modules_list, node) {
-
-         if (mod->priority == p)
-            mod->init();
-      }
+   for (u32 i = 0; i < mods_count; i++) {
+      struct module *m = modules[i];
+      m->init();
    }
 }

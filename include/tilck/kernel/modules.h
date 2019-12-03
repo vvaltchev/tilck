@@ -7,8 +7,6 @@
 
 struct module {
 
-   struct list_node node;
-
    const char *name;
    int priority;
    void (*init)(void);
@@ -16,8 +14,6 @@ struct module {
 
 void init_modules(void);
 void register_module(struct module *m);
-
-#define LOWEST_MOD_PRIORITY                            3
 
 #define REGISTER_MODULE(m)                             \
    __attribute__((constructor))                        \

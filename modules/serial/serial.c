@@ -114,7 +114,7 @@ static void init_serial_comm(void)
 static struct module serial_module = {
 
    .name = "serial",
-   .priority = 1,
+   .priority = 400,
    .init = &init_serial_comm,
 };
 

@@ -303,7 +303,7 @@ static void init_tty(void)
 static struct module tty_module = {
 
    .name = "tty",
-   .priority = 1,
+   .priority = 200,
    .init = &init_tty,
 };
 
