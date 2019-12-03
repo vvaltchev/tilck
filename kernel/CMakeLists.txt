@@ -39,13 +39,6 @@ set(
    "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
 )
 
-if (true)
-   list(
-         APPEND
-         KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/serial.c"
-   )
-endif()
 
 if (true)
    list(
@@ -63,7 +56,15 @@ if (true)
    )
 endif()
 
-if (KERNEL_DEBUG_PANEL)
+if (true)
+   list(
+         APPEND
+         KERNEL_NOARCH_SOURCES_GLOB
+         "${CMAKE_SOURCE_DIR}/modules/serial.c"
+   )
+endif()
+
+if (MOD_DEBUG_PANEL)
    list(
          APPEND
          KERNEL_NOARCH_SOURCES_GLOB
