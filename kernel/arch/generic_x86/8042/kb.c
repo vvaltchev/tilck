@@ -84,18 +84,18 @@ static int kb_call_keypress_handlers(struct key_event ke)
 
    list_for_each_ro(pos, &keypress_handlers, node) {
 
-      int rc = pos->handler(ke);
+      enum kb_handler_action a = pos->handler(ke);
 
-      switch (rc) {
-         case KB_HANDLER_OK_AND_STOP:
+      switch (a) {
+         case kb_handler_ok_and_stop:
             count++;
             return count;
 
-         case KB_HANDLER_OK_AND_CONTINUE:
+         case kb_handler_ok_and_continue:
             count++;
             break;
 
-         case KB_HANDLER_NAK:
+         case kb_handler_nak:
             break;
 
          default:

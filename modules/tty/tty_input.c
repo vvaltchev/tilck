@@ -176,7 +176,7 @@ static int tty_handle_non_printable_key(struct tty *t, u32 key)
 
    if (!found) {
       /* Unknown/unsupported sequence: just do nothing avoiding weird effects */
-      return KB_HANDLER_NAK;
+      return kb_handler_nak;
    }
 
    while (*p) {
@@ -186,7 +186,7 @@ static int tty_handle_non_printable_key(struct tty *t, u32 key)
    if (!(t->c_term.c_lflag & ICANON))
       kcond_signal_one(&t->input_cond);
 
-   return KB_HANDLER_OK_AND_CONTINUE;
+   return kb_handler_ok_and_continue;
 }
 
 static inline bool tty_is_line_delim_char(struct tty *t, u8 c)
@@ -213,7 +213,7 @@ static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
       }
    }
 
-   return KB_HANDLER_OK_AND_CONTINUE;
+   return kb_handler_ok_and_continue;
 }
 
 int
@@ -237,7 +237,7 @@ tty_keypress_handler_int(struct tty *t, struct key_event ke, bool check_mods)
    if (c == '\r') {
 
       if (t->c_term.c_iflag & IGNCR)
-         return KB_HANDLER_OK_AND_CONTINUE; /* ignore the carriage return */
+         return kb_handler_ok_and_continue; /* ignore the carriage return */
 
       if (t->c_term.c_iflag & ICRNL)
          c = '\n';
@@ -250,7 +250,7 @@ tty_keypress_handler_int(struct tty *t, struct key_event ke, bool check_mods)
 
    /* Ctrl+C, Ctrl+D, Ctrl+Z etc.*/
    if (tty_handle_special_controls(t, c))
-      return KB_HANDLER_OK_AND_CONTINUE;
+      return kb_handler_ok_and_continue;
 
    if (t->c_term.c_lflag & ICANON)
       return tty_keypress_handle_canon_mode(t, ke.key, c);
@@ -259,7 +259,7 @@ tty_keypress_handler_int(struct tty *t, struct key_event ke, bool check_mods)
    kb_buf_write_elem(t, c);
 
    kcond_signal_one(&t->input_cond);
-   return KB_HANDLER_OK_AND_CONTINUE;
+   return kb_handler_ok_and_continue;
 }
 
 int set_curr_tty(struct tty *t)
@@ -277,7 +277,8 @@ int set_curr_tty(struct tty *t)
    return res;
 }
 
-int tty_keypress_handler(struct key_event ke)
+enum kb_handler_action
+tty_keypress_handler(struct key_event ke)
 {
    struct tty *const t = get_curr_tty();
    const u32 key = ke.key;
@@ -292,25 +293,25 @@ int tty_keypress_handler(struct key_event ke)
           * For any reason, we don't have a MEDIUMRAW translation for that key.
           * Just ignore the key press/release, that's it.
           */
-         return KB_HANDLER_OK_AND_STOP;
+         return kb_handler_ok_and_stop;
       }
 
       kb_buf_write_elem(t, mr);
       kcond_signal_one(&t->input_cond);
-      return KB_HANDLER_OK_AND_STOP;
+      return kb_handler_ok_and_stop;
    }
 
    if (!ke.pressed)
-      return KB_HANDLER_NAK;
+      return kb_handler_nak;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
-      return KB_HANDLER_OK_AND_STOP;
+      return kb_handler_ok_and_stop;
    }
 
    if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
       term_scroll_down(t->term_inst, TERM_SCROLL_LINES);
-      return KB_HANDLER_OK_AND_STOP;
+      return kb_handler_ok_and_stop;
    }
 
    if (kb_is_alt_pressed()) {
@@ -321,17 +322,17 @@ int tty_keypress_handler(struct key_event ke)
       if (fn > 0 && get_curr_tty()->kd_gfx_mode == KD_TEXT) {
 
          if (fn > kopt_tty_count)
-            return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
+            return kb_handler_ok_and_stop; /* just ignore the key stroke */
 
          other_tty = ttys[fn];
 
          if (other_tty == get_curr_tty())
-            return KB_HANDLER_OK_AND_STOP; /* just ignore the key stroke */
+            return kb_handler_ok_and_stop; /* just ignore the key stroke */
 
          ASSERT(other_tty != NULL);
 
          set_curr_tty(other_tty);
-         return KB_HANDLER_OK_AND_STOP;
+         return kb_handler_ok_and_stop;
       }
    }
 

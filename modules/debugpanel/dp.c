@@ -118,7 +118,7 @@ static int dp_debug_panel_off_keypress(struct key_event ke)
 
          if (!dp_tty) {
             printk("ERROR: no enough memory for debug panel's TTY\n");
-            return KB_HANDLER_OK_AND_STOP;
+            return kb_handler_ok_and_stop;
          }
 
          dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
@@ -128,11 +128,11 @@ static int dp_debug_panel_off_keypress(struct key_event ke)
 
       if (set_curr_tty(dp_tty) == 0) {
          dp_enter();
-         return KB_HANDLER_OK_AND_STOP;
+         return kb_handler_ok_and_stop;
       }
    }
 
-   return KB_HANDLER_NAK;
+   return kb_handler_nak;
 }
 
 static void redraw_screen(void)
@@ -167,20 +167,21 @@ static void redraw_screen(void)
    ui_need_update = false;
 }
 
-static int dp_keypress_handler(struct key_event ke)
+static enum kb_handler_action
+dp_keypress_handler(struct key_event ke)
 {
    int rc;
 
    if (kopt_serial_console)
-      return KB_HANDLER_NAK;
+      return kb_handler_nak;
 
    if (!ke.pressed)
-      return KB_HANDLER_NAK; /* ignore key-release events */
+      return kb_handler_nak; /* ignore key-release events */
 
    if (!in_debug_panel) {
 
-      if (dp_debug_panel_off_keypress(ke) == KB_HANDLER_NAK)
-         return KB_HANDLER_NAK;
+      if (dp_debug_panel_off_keypress(ke) == kb_handler_nak)
+         return kb_handler_nak;
 
       ui_need_update = true;
    }
@@ -192,7 +193,7 @@ static int dp_keypress_handler(struct key_event ke)
       if (set_curr_tty(saved_tty) == 0)
          dp_exit();
 
-      return KB_HANDLER_OK_AND_STOP;
+      return kb_handler_ok_and_stop;
    }
 
    rc = kb_get_fn_key_pressed(ke.key);
@@ -228,7 +229,7 @@ static int dp_keypress_handler(struct key_event ke)
 
       rc = dp_ctx->on_keypress_func(ke);
 
-      if (rc == KB_HANDLER_OK_AND_STOP)
+      if (rc == kb_handler_ok_and_stop)
          return rc; /* skip redraw_screen() */
    }
 
@@ -239,7 +240,7 @@ static int dp_keypress_handler(struct key_event ke)
       term_restart_video_output(get_curr_term());
    }
 
-   return KB_HANDLER_OK_AND_STOP;
+   return kb_handler_ok_and_stop;
 }
 
 static struct keypress_handler_elem debugpanel_handler_elem =

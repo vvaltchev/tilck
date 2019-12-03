@@ -34,8 +34,8 @@ struct twfilter_ctx_t {
 
 void tty_input_init(struct tty *t);
 void tty_kb_buf_reset(struct tty *t);
-int tty_keypress_handler(struct key_event ke);
 void tty_reset_filter_ctx(struct tty *t);
+enum kb_handler_action tty_keypress_handler(struct key_event ke);
 
 enum term_fret
 serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg);

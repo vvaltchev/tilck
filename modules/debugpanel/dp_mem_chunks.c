@@ -114,7 +114,7 @@ static int dp_chunks_keypress(struct key_event ke)
                                 dp_chunks_cmpf_size);
          ui_need_update = true;
          chunks_order_by = c;
-         return KB_HANDLER_OK_AND_CONTINUE;
+         return kb_handler_ok_and_continue;
 
       case 'c':
          insertion_sort_generic(chunks_arr,
@@ -123,7 +123,7 @@ static int dp_chunks_keypress(struct key_event ke)
                                 dp_chunks_cmpf_count);
          ui_need_update = true;
          chunks_order_by = c;
-         return KB_HANDLER_OK_AND_CONTINUE;
+         return kb_handler_ok_and_continue;
 
       case 'w':
          insertion_sort_generic(chunks_arr,
@@ -132,7 +132,7 @@ static int dp_chunks_keypress(struct key_event ke)
                                 dp_chunks_cmpf_waste);
          ui_need_update = true;
          chunks_order_by = c;
-         return KB_HANDLER_OK_AND_CONTINUE;
+         return kb_handler_ok_and_continue;
 
       case 't':
          insertion_sort_generic(chunks_arr,
@@ -141,10 +141,10 @@ static int dp_chunks_keypress(struct key_event ke)
                                 dp_chunks_cmpf_waste_p);
          ui_need_update = true;
          chunks_order_by = c;
-         return KB_HANDLER_OK_AND_CONTINUE;
+         return kb_handler_ok_and_continue;
 
       default:
-         return KB_HANDLER_NAK;
+         return kb_handler_nak;
    }
 }
 

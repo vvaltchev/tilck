@@ -6,10 +6,6 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kb_scancode_set1_keys.h>
 
-#define KB_HANDLER_OK_AND_STOP       1
-#define KB_HANDLER_OK_AND_CONTINUE   0
-#define KB_HANDLER_NAK              -1
-
 struct key_event {
 
    bool pressed : 1;
@@ -29,7 +25,13 @@ make_key_event(u32 key, char print_char, bool pressed)
    };
 }
 
-typedef int (*keypress_func)(struct key_event);
+enum kb_handler_action {
+   kb_handler_ok_and_stop = 1,
+   kb_handler_ok_and_continue = 0,
+   kb_handler_nak = -1,
+};
+
+typedef enum kb_handler_action (*keypress_func)(struct key_event);
 
 struct keypress_handler_elem {
 

@@ -48,9 +48,10 @@ void se_internal_run(void (*se_func)(void))
    enable_preemption();
 }
 
-static int se_keypress_handler(struct key_event ke)
+static enum kb_handler_action
+se_keypress_handler(struct key_event ke)
 {
-   int ret = KB_HANDLER_NAK;
+   enum kb_handler_action ret = kb_handler_nak;
 
    if (!se_running_func)
       return ret;
@@ -60,7 +61,7 @@ static int se_keypress_handler(struct key_event ke)
    if (se_running_func) {
       if (ke.print_char == 'c' && kb_is_ctrl_pressed()) {
          se_stop_requested = true;
-         ret = KB_HANDLER_OK_AND_STOP;
+         ret = kb_handler_ok_and_stop;
       }
    }
 
