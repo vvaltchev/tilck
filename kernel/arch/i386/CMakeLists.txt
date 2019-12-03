@@ -39,12 +39,14 @@ set(ARCH_SOURCES_GLOB "*.S" "*.c")
 
 foreach (mod ${modules_list})
    if (MOD_${mod})
+
       list(
          APPEND
          ARCH_SOURCES_GLOB
          "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH}/*.c"
          "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH_FAMILY}/*.c"
       )
+
    endif()
 endforeach()
 
@@ -93,12 +95,13 @@ set_target_properties(
       LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 
-add_dependencies(tilck_unstripped fonts)
-
-if (MOD_fb)
-target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
-target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
-endif()
+foreach (mod ${modules_list})
+   if (MOD_${mod})
+      if (EXISTS ${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+         include(${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+      endif()
+   endif()
+endforeach()
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
