@@ -60,7 +60,7 @@ if (true)
    list(
          APPEND
          KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/serial.c"
+         "${CMAKE_SOURCE_DIR}/modules/serial/*.c"
    )
 endif()
 

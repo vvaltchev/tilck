@@ -8,7 +8,7 @@
 #include <tilck/mods/tty.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/cmdline.h>
-#include "tty/tty_int.h"
+#include "../tty/tty_int.h"
 
 /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
 static const u16 com_ports[] = {COM1, COM2, COM3, COM4};
