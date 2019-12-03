@@ -157,7 +157,6 @@ list(
    APPEND mandatory_modules
 
    tty
-   fb
    serial
 )
 

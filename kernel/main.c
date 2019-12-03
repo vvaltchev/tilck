@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
@@ -20,30 +22,35 @@
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/syscalls.h>
-#include <tilck/mods/fb_console.h>
-#include <tilck/mods/serial.h>
-#include <tilck/kernel/arch/generic_x86/textmode_video.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/self_tests.h>
-#include <tilck/mods/tty.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/fs/kernelfs.h>
 
+#include <tilck/mods/fb_console.h>
+#include <tilck/mods/serial.h>
+#include <tilck/mods/tty.h>
+
 void init_console(void)
 {
-   if (!kopt_serial_console) {
+   if (kopt_serial_console) {
+      init_term(get_curr_term(), NULL, 25, 80, COM1, 0);
+      printk_flush_ringbuf();
+      return;
+   }
 
-      if (use_framebuffer())
+   if (use_framebuffer()) {
+
+      if (MOD_fb)
          init_fb_console();
       else
-         init_textmode_console();
+         init_term(get_curr_term(), NULL, 25, 80, 0, 0);
 
    } else {
-
-      init_term(get_curr_term(), NULL, 25, 80, COM1, 0);
+      init_textmode_console();
    }
 
    printk_flush_ringbuf();
@@ -67,9 +74,11 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
          system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
    }
 
-   if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
-      if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
-         set_framebuffer_info_from_mbi(mbi);
+   if (MOD_fb) {
+      if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
+         if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
+            set_framebuffer_info_from_mbi(mbi);
+   }
 
    if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
       panic("Tilck requires the bootloader to provide a full memory map");

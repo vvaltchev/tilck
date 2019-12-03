@@ -82,8 +82,11 @@ set_target_properties(
 )
 
 add_dependencies(tilck_unstripped fonts)
+
+if (MOD_fb)
 target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
 target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
+endif()
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
