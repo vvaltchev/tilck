@@ -42,9 +42,9 @@ set(
 foreach (mod ${modules_list})
    if (MOD_${mod})
       list(
-            APPEND
-            KERNEL_NOARCH_SOURCES_GLOB
-            "${CMAKE_SOURCE_DIR}/modules/${mod}/*.c"
+         APPEND
+         KERNEL_NOARCH_SOURCES_GLOB
+         "${CMAKE_SOURCE_DIR}/modules/${mod}/*.c"
       )
    endif()
 endforeach()

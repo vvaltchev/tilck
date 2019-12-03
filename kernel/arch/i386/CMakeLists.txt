@@ -35,16 +35,28 @@ endif()
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
 set(ARCH_START_FILE "start.S")
+set(ARCH_SOURCES_GLOB "*.S" "*.c")
 
-file(GLOB ARCH_SOURCES "*.S" "*.c")
+foreach (mod ${modules_list})
+   if (MOD_${mod})
+      list(
+         APPEND
+         ARCH_SOURCES_GLOB
+         "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH}/*.c"
+         "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH_FAMILY}/*.c"
+      )
+   endif()
+endforeach()
+
+file(GLOB ARCH_SOURCES ${ARCH_SOURCES_GLOB})
 
 file(
-      GLOB
-      ARCH_FAMILY_SOURCES
+   GLOB
+   ARCH_FAMILY_SOURCES
 
-      "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*.c"
-      "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*/*.c"
-      "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
+   "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*.c"
+   "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*/*.c"
+   "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
