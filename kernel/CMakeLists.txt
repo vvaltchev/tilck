@@ -39,38 +39,15 @@ set(
    "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
 )
 
-
-if (true)
-   list(
-         APPEND
-         KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/tty/*.c"
-   )
-endif()
-
-if (true)
-   list(
-         APPEND
-         KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/fb/*.c"
-   )
-endif()
-
-if (true)
-   list(
-         APPEND
-         KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/serial/*.c"
-   )
-endif()
-
-if (MOD_DEBUG_PANEL)
-   list(
-         APPEND
-         KERNEL_NOARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/debugpanel/*.c"
-   )
-endif()
+foreach (mod ${modules_list})
+   if (MOD_${mod})
+      list(
+            APPEND
+            KERNEL_NOARCH_SOURCES_GLOB
+            "${CMAKE_SOURCE_DIR}/modules/${mod}/*.c"
+      )
+   endif()
+endforeach()
 
 if (KERNEL_SELFTESTS)
    list(

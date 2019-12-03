@@ -98,9 +98,6 @@ set(DEBUG_CHECKS_IN_RELEASE ON CACHE BOOL
 set(KERNEL_SELFTESTS ON CACHE BOOL
     "Compile-in self-tests in the kernel")
 
-set(MOD_DEBUG_PANEL ON CACHE BOOL
-    "Compile-in the debug panel in the kernel")
-
 set(KERNEL_STACK_ISOLATION ON CACHE BOOL
     "Put the kernel stack in hi the vmem in isolated pages")
 
@@ -158,6 +155,21 @@ set(CONSOLE_DEFAULT_BRIGHT_WHITE OFF CACHE BOOL
 
 set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
     "Use the fonts in other/alt_fonts instead of the default ones")
+
+file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
+
+foreach(modpath ${modules})
+
+   get_filename_component(modname ${modpath} NAME_WE)
+
+   if (IS_DIRECTORY ${modpath})
+
+      list(APPEND modules_list ${modname})
+      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+
+   endif()
+
+endforeach()
 
 list(
    APPEND kernel_opts_list
@@ -296,6 +308,14 @@ endif()
 foreach (opt ${kernel_opts_list})
    message(STATUS "${opt} = ${${opt}}")
 endforeach()
+
+message(STATUS "****************** KERNEL MODULES *******************")
+
+foreach (mod ${modules_list})
+   message(STATUS "Module ${mod} = ${MOD_${mod}}")
+endforeach()
+
+message(STATUS "**************** END KERNEL MODULES *****************")
 
 set(
    OTHER_CFLAGS_LIST
