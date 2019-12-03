@@ -153,6 +153,14 @@ set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
 set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
     "Use the fonts in other/alt_fonts instead of the default ones")
 
+list(
+   APPEND mandatory_modules
+
+   tty
+   fb
+   serial
+)
+
 file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
 
 foreach(modpath ${modules})
@@ -162,7 +170,13 @@ foreach(modpath ${modules})
    if (IS_DIRECTORY ${modpath})
 
       list(APPEND modules_list ${modname})
-      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+      list(FIND mandatory_modules ${modname} _index)
+
+      if (${_index} GREATER -1)
+         set(MOD_${modname} ON)
+      else()
+         set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+      endif()
 
    endif()
 
