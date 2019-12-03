@@ -108,9 +108,10 @@ void dp_register_screen(struct dp_screen *screen)
    list_add_after(pred, &screen->node);
 }
 
-static int dp_debug_panel_off_keypress(struct key_event ke)
+static enum kb_handler_action
+dp_debug_panel_off_keypress(struct kb_dev *kb, struct key_event ke)
 {
-   if (kb_is_ctrl_pressed() && ke.key == KEY_F12) {
+   if (kb_is_ctrl_pressed(kb) && ke.key == KEY_F12) {
 
       if (!dp_tty) {
 
@@ -168,7 +169,7 @@ static void redraw_screen(void)
 }
 
 static enum kb_handler_action
-dp_keypress_handler(struct key_event ke)
+dp_keypress_handler(struct kb_dev *kb, struct key_event ke)
 {
    int rc;
 
@@ -180,7 +181,7 @@ dp_keypress_handler(struct key_event ke)
 
    if (!in_debug_panel) {
 
-      if (dp_debug_panel_off_keypress(ke) == kb_handler_nak)
+      if (dp_debug_panel_off_keypress(kb, ke) == kb_handler_nak)
          return kb_handler_nak;
 
       ui_need_update = true;
@@ -188,7 +189,7 @@ dp_keypress_handler(struct key_event ke)
 
    ASSERT(in_debug_panel);
 
-   if (ke.print_char == 'q' || (!kb_is_ctrl_pressed() && ke.key == KEY_F12)) {
+   if (ke.print_char == 'q' || (!kb_is_ctrl_pressed(kb) && ke.key == KEY_F12)) {
 
       if (set_curr_tty(saved_tty) == 0)
          dp_exit();
@@ -227,7 +228,7 @@ dp_keypress_handler(struct key_event ke)
 
    if (!ui_need_update && dp_ctx->on_keypress_func) {
 
-      rc = dp_ctx->on_keypress_func(ke);
+      rc = dp_ctx->on_keypress_func(kb, ke);
 
       if (rc == kb_handler_ok_and_stop)
          return rc; /* skip redraw_screen() */
@@ -250,7 +251,7 @@ static struct keypress_handler_elem debugpanel_handler_elem =
 
 static void dp_init(void)
 {
-   kb_register_keypress_handler(&debugpanel_handler_elem);
+   register_keypress_handler(&debugpanel_handler_elem);
 }
 
 static struct module dp_module = {

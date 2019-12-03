@@ -105,15 +105,8 @@ void fpu_context_end() { }
 void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
 void set_page_rw() { }
-void kb_register_keypress_handler() { }
-u8 kb_translate_to_mediumraw() { return 0; }
 int get_irq_num(void *ctx) { return -1; }
 int get_int_num(void *ctx) { return -1; }
-
-bool kb_is_pressed() { return false; }
-u32 kb_get_current_modifiers(void) { return 0; }
-bool kb_scancode_to_ansi_seq() { return false; }
-int kb_get_fn_key_pressed() { return 0; }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }

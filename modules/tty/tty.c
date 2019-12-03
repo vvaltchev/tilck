@@ -291,7 +291,7 @@ static void init_tty(void)
    disable_preemption();
    {
       if (!kopt_serial_console)
-         kb_register_keypress_handler(&tty_keypress_handler_elem);
+         register_keypress_handler(&tty_keypress_handler_elem);
 
       tty_tasklet_runner = create_tasklet_thread(100, TTY_TASKLETS_QUEUE_SIZE);
 

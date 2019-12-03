@@ -168,10 +168,12 @@ static inline bool kb_buf_write_elem(struct tty *t, u8 c)
    return ret;
 }
 
-static int tty_handle_non_printable_key(struct tty *t, u32 key)
+static int
+tty_handle_non_printable_key(struct kb_dev *kb, struct tty *t, u32 key)
 {
    char seq[16];
-   bool found = kb_scancode_to_ansi_seq(key, kb_get_current_modifiers(), seq);
+   const u8 modifiers = kb_get_current_modifiers(kb);
+   const bool found = kb->scancode_to_ansi_seq(key, modifiers, seq);
    const char *p = seq;
 
    if (!found) {
@@ -217,20 +219,25 @@ static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
 }
 
 int
-tty_keypress_handler_int(struct tty *t, struct key_event ke, bool check_mods)
+tty_keypress_handler_int(struct kb_dev *kb,
+                         struct tty *t,
+                         struct key_event ke)
 {
    u8 c = (u8)ke.print_char;
 
-   if (!c)
-      return tty_handle_non_printable_key(t, ke.key);
+   if (kb != NULL) {
 
-   if (check_mods && kb_is_alt_pressed())
-      kb_buf_write_elem(t, '\033');
+      if (!c)
+         return tty_handle_non_printable_key(kb, t, ke.key);
 
-   if (check_mods && kb_is_ctrl_pressed()) {
-      if (isalpha(c) || c == '\\' || c == '[') {
-         /* ctrl ignores the case of the letter */
-         c = (u8)(toupper(c) - 'A' + 1);
+      if (kb_is_alt_pressed(kb))
+         kb_buf_write_elem(t, '\033');
+
+      if (kb_is_ctrl_pressed(kb)) {
+         if (isalpha(c) || c == '\\' || c == '[') {
+            /* ctrl ignores the case of the letter */
+            c = (u8)(toupper(c) - 'A' + 1);
+         }
       }
    }
 
@@ -278,14 +285,14 @@ int set_curr_tty(struct tty *t)
 }
 
 enum kb_handler_action
-tty_keypress_handler(struct key_event ke)
+tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
 {
    struct tty *const t = get_curr_tty();
    const u32 key = ke.key;
 
    if (t->mediumraw_mode) {
 
-      const u8 mr = kb_translate_to_mediumraw(ke);
+      const u8 mr = kb->translate_to_mediumraw(ke);
 
       if (!mr) {
 
@@ -304,17 +311,17 @@ tty_keypress_handler(struct key_event ke)
    if (!ke.pressed)
       return kb_handler_nak;
 
-   if (key == KEY_PAGE_UP && kb_is_shift_pressed()) {
+   if (key == KEY_PAGE_UP && kb_is_shift_pressed(kb)) {
       term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 
-   if (key == KEY_PAGE_DOWN && kb_is_shift_pressed()) {
+   if (key == KEY_PAGE_DOWN && kb_is_shift_pressed(kb)) {
       term_scroll_down(t->term_inst, TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 
-   if (kb_is_alt_pressed()) {
+   if (kb_is_alt_pressed(kb)) {
 
       struct tty *other_tty;
       int fn = kb_get_fn_key_pressed(key);
@@ -336,7 +343,7 @@ tty_keypress_handler(struct key_event ke)
       }
    }
 
-   return tty_keypress_handler_int(t, ke, true);
+   return tty_keypress_handler_int(kb, t, ke);
 }
 
 static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)

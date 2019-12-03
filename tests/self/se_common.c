@@ -49,7 +49,7 @@ void se_internal_run(void (*se_func)(void))
 }
 
 static enum kb_handler_action
-se_keypress_handler(struct key_event ke)
+se_keypress_handler(struct kb_dev *kb, struct key_event ke)
 {
    enum kb_handler_action ret = kb_handler_nak;
 
@@ -59,7 +59,7 @@ se_keypress_handler(struct key_event ke)
    disable_preemption();
 
    if (se_running_func) {
-      if (ke.print_char == 'c' && kb_is_ctrl_pressed()) {
+      if (ke.print_char == 'c' && kb_is_ctrl_pressed(kb)) {
          se_stop_requested = true;
          ret = kb_handler_ok_and_stop;
       }
@@ -77,7 +77,7 @@ static struct keypress_handler_elem se_handler =
 __attribute__((constructor))
 static void init_self_tests_infrastructure()
 {
-   kb_register_keypress_handler(&se_handler);
+   register_keypress_handler(&se_handler);
 }
 
 void regular_self_test_end(void)

@@ -29,8 +29,9 @@ static bool key_pressed_state[2][128];
 static bool numLock = true;
 static bool capsLock = false;
 static struct list keypress_handlers = make_list(keypress_handlers);
+static struct kb_dev ps2_keyboard;
 
-bool kb_is_pressed(u32 key)
+static bool kb_is_pressed(u32 key)
 {
    bool e0 = (key >> 8) == 0xE0;
    return key_pressed_state[e0][key & 0xFF];
@@ -72,7 +73,7 @@ static char translate_printable_key(u32 key)
    return c;
 }
 
-void kb_register_keypress_handler(struct keypress_handler_elem *e)
+static void kb_register_keypress_handler(struct keypress_handler_elem *e)
 {
    list_add_tail(&keypress_handlers, &e->node);
 }
@@ -84,7 +85,7 @@ static int kb_call_keypress_handlers(struct key_event ke)
 
    list_for_each_ro(pos, &keypress_handlers, node) {
 
-      enum kb_handler_action a = pos->handler(ke);
+      enum kb_handler_action a = pos->handler(&ps2_keyboard, ke);
 
       switch (a) {
          case kb_handler_ok_and_stop:
@@ -224,7 +225,7 @@ static enum irq_action keyboard_irq_handler(regs_t *context)
    return count > 0 ? IRQ_REQUIRES_BH : IRQ_FULLY_HANDLED;
 }
 
-u8 kb_translate_to_mediumraw(struct key_event ke)
+static u8 kb_translate_to_mediumraw(struct key_event ke)
 {
    const u32 key = ke.key;
 
@@ -232,26 +233,6 @@ u8 kb_translate_to_mediumraw(struct key_event ke)
       return (u8)(key | (u8)(!ke.pressed << 7));
 
    return mediumraw_e0_keys[key & 0xff] | (u8)(!ke.pressed << 7);
-}
-
-u8 kb_get_current_modifiers(void)
-{
-   u8 shift = 1u * kb_is_shift_pressed();
-   u8 alt   = 2u * kb_is_alt_pressed();
-   u8 ctrl  = 4u * kb_is_ctrl_pressed();
-
-   /*
-    * 0 nothing
-    * 1 shift
-    * 2 alt
-    * 3 shift + alt
-    * 4 ctrl
-    * 5 shift + ctrl
-    * 6 alt + ctrl
-    * 7 shift + alt + ctrl
-    */
-
-   return shift + alt + ctrl;
 }
 
 static void create_kb_tasklet_runner(void)
@@ -263,39 +244,18 @@ static void create_kb_tasklet_runner(void)
       panic("KB: Unable to create a tasklet runner thread for IRQs");
 }
 
-/* NOTE: returns 0 if `key` not in [F1 ... F12] */
-int kb_get_fn_key_pressed(u32 key)
-{
-   /*
-    * We know that on the PC architecture, in the PS/2 set 1, keys F1-F12 have
-    * all a scancode long 1 byte.
-    */
-
-   if (key >= 256)
-      return 0;
-
-   static const char fn_table[256] =
-   {
-      [KEY_F1]  =  1,
-      [KEY_F2]  =  2,
-      [KEY_F3]  =  3,
-      [KEY_F4]  =  4,
-      [KEY_F5]  =  5,
-      [KEY_F6]  =  6,
-      [KEY_F7]  =  7,
-      [KEY_F8]  =  8,
-      [KEY_F9]  =  9,
-      [KEY_F10] = 10,
-      [KEY_F11] = 11,
-      [KEY_F12] = 12,
-   };
-
-   return fn_table[(u8) key];
-}
-
 static struct irq_handler_node kb_irq_handler_node = {
    .node = make_list_node(kb_irq_handler_node.node),
    .handler = keyboard_irq_handler,
+};
+
+static struct kb_dev ps2_keyboard = {
+
+   .driver_name = "ps2",
+   .is_pressed = kb_is_pressed,
+   .register_handler = kb_register_keypress_handler,
+   .scancode_to_ansi_seq = kb_scancode_to_ansi_seq,
+   .translate_to_mediumraw = kb_translate_to_mediumraw,
 };
 
 /* This will be executed in a kernel thread */
@@ -326,7 +286,8 @@ void init_kb(void)
    kb_set_typematic_byte(0);
 
    create_kb_tasklet_runner();
-
    irq_install_handler(X86_PC_KEYBOARD_IRQ, &kb_irq_handler_node);
+
+   register_keyboard_device(&ps2_keyboard);
    enable_preemption();
 }
