@@ -183,9 +183,6 @@ static void do_async_init()
    init_devfs();
    init_kb();
    init_modules();
-   init_tty();
-   init_fbdev();
-   init_serial_comm();
    init_extra_debug_features();
 
    show_hello_message();

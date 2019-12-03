@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/mods/serial.h>
@@ -92,7 +93,7 @@ static struct irq_handler_node serial_irq_handler_nodes[4] =
    }
 };
 
-void init_serial_comm(void)
+static void init_serial_comm(void)
 {
    disable_preemption();
    {
@@ -109,3 +110,12 @@ void init_serial_comm(void)
    irq_install_handler(X86_PC_COM2_COM4_IRQ, &serial_irq_handler_nodes[1]);
    irq_install_handler(X86_PC_COM2_COM4_IRQ, &serial_irq_handler_nodes[3]);
 }
+
+static struct module serial_module = {
+
+   .name = "serial",
+   .priority = 1,
+   .init = &init_serial_comm,
+};
+
+REGISTER_MODULE(&serial_module);

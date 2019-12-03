@@ -255,7 +255,7 @@ static void dp_init(void)
 static struct module dp_module = {
 
    .name = "debugpanel",
-   .priority = 0,
+   .priority = 1,
    .init = &dp_init,
 };
 

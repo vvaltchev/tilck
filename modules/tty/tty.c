@@ -4,6 +4,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/color_defs.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
@@ -258,7 +259,7 @@ static void init_serial_ttys(void)
    }
 }
 
-void init_tty(void)
+static void init_tty(void)
 {
    first_term_initial_vi = term_get_vi(get_curr_term());
    struct driver_info *di = kzmalloc(sizeof(struct driver_info));
@@ -298,3 +299,13 @@ void init_tty(void)
 
    process_set_tty(kernel_process_pi, get_curr_tty());
 }
+
+static struct module tty_module = {
+
+   .name = "tty",
+   .priority = 1,
+   .init = &init_tty,
+};
+
+REGISTER_MODULE(&tty_module);
+

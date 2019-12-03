@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
@@ -185,7 +186,7 @@ create_fb_device(int minor,
    return 0;
 }
 
-void init_fbdev(void)
+static void init_fbdev(void)
 {
    if (!use_framebuffer())
       return;
@@ -203,3 +204,13 @@ void init_fbdev(void)
    if (rc != 0)
       panic("TTY: unable to create /dev/fb0 (error: %d)", rc);
 }
+
+static struct module fb_module = {
+
+   .name = "fb",
+   .priority = 1,
+   .init = &init_fbdev,
+};
+
+REGISTER_MODULE(&fb_module);
+

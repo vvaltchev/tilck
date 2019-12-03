@@ -12,7 +12,6 @@ static ALWAYS_INLINE struct tty *get_curr_tty(void)
    return __curr_tty;
 }
 
-void init_tty(void);
 void tty_setup_for_panic(struct tty *t);
 int tty_keypress_handler_int(struct tty *t, struct key_event, bool check_mods);
 int tty_get_num(struct tty *t);

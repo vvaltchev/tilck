@@ -14,7 +14,6 @@ static ALWAYS_INLINE bool use_framebuffer(void)
 
 void set_framebuffer_info_from_mbi(multiboot_info_t *mbi);
 void init_fb_console(void);
-void init_fbdev(void);
 
 // Debug/devel function
 void debug_dump_glyph(u32 n);

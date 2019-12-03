@@ -14,4 +14,3 @@ void serial_wait_for_write(u16 port);
 void serial_write(u16 port, char c);
 
 void early_init_serial_ports(void);
-void init_serial_comm(void);
