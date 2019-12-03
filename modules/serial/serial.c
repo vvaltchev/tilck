@@ -5,15 +5,16 @@
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
-#include <tilck/mods/serial.h>
-#include <tilck/mods/tty.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/cmdline.h>
-#include "../tty/tty_int.h"
+
+#include <tilck/mods/serial.h>
+#include <tilck/mods/tty.h>
 
 /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
 static const u16 com_ports[] = {COM1, COM2, COM3, COM4};
 static int serial_port_tasklet_runner;
+static struct tty *serial_ttys[4];
 
 static void serial_con_bh_handler(u16 portn)
 {
@@ -21,7 +22,7 @@ static void serial_con_bh_handler(u16 portn)
 
       char c = serial_read(com_ports[portn]);
       tty_keypress_handler_int(
-         ttys[64 + portn],
+         serial_ttys[portn],
          make_key_event((u32)c, c, true),
          false
       );
@@ -104,6 +105,9 @@ static void init_serial_comm(void)
          panic("Serial: Unable to create a tasklet runner thread for IRQs");
    }
    enable_preemption();
+
+   for (int i = 0; i < 4; i++)
+      serial_ttys[i] = get_serial_tty(i);
 
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &serial_irq_handler_nodes[0]);
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &serial_irq_handler_nodes[2]);

@@ -16,6 +16,7 @@ void tty_setup_for_panic(struct tty *t);
 int tty_keypress_handler_int(struct tty *t, struct key_event, bool check_mods);
 int tty_get_num(struct tty *t);
 void tty_restore_kd_text_mode(struct tty *t);
+struct tty *get_serial_tty(int n);
 
 static inline int get_curr_tty_num(void)
 {

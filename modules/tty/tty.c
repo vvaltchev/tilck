@@ -259,6 +259,12 @@ static void init_serial_ttys(void)
    }
 }
 
+struct tty *get_serial_tty(int n)
+{
+   ASSERT(IN_RANGE(n, 0, 4));
+   return ttys[TTYS0_MINOR + n];
+}
+
 static void init_tty(void)
 {
    first_term_initial_vi = term_get_vi(get_curr_term());
