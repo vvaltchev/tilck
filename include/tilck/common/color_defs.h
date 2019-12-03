@@ -32,12 +32,7 @@ enum vga_color {
 #define get_color_fg(color) ((color) & 0xF)
 #define get_color_bg(color) (((color) >> 4) & 0xF)
 
-#if CONSOLE_DEFAULT_BRIGHT_WHITE
-   #define DEFAULT_FG_COLOR COLOR_BRIGHT_WHITE
-#else
-   #define DEFAULT_FG_COLOR COLOR_WHITE
-#endif
-
+#define DEFAULT_FG_COLOR COLOR_WHITE
 #define DEFAULT_BG_COLOR COLOR_BLACK
 
 /*
