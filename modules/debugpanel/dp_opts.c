@@ -44,6 +44,7 @@ static void dp_show_opts(void)
    DUMP_LABEL("Modules config");
    DUMP_BOOL_OPT(KERNEL_FB_BANNER);
    DUMP_BOOL_OPT(KERNEL_SHOW_LOGO);
+   DUMP_BOOL_OPT(FB_CONSOLE_USE_ALT_FONTS);
 
    DUMP_LABEL("Enabled by default");
    DUMP_BOOL_OPT(KRN_TRACK_NESTED_INTERR);
