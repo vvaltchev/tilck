@@ -60,10 +60,13 @@ void clock_drift_adj()
    int adj_val, adj_ticks;
    int drift, abs_drift, adj_cnt;
    u32 attempts_cnt;
+   u32 full_resync_failed_attempts;
    uptr var;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
+   abs_drift = 0;
+   full_resync_failed_attempts = 0;
 
    /*
     * When Tilck starts, in init_system_time() we register system clock's time.
@@ -109,9 +112,9 @@ full_resync:
 
       /*
        * From time to time we _have to_ allow other tasks to get some job done,
-       * not stealing the CPU for a whole 1 second.
+       * not stealing the CPU for a whole full second.
        */
-      if (!(attempts_cnt % 100)) {
+      if (!(attempts_cnt % 300)) {
 
          enable_preemption();
          {
@@ -180,8 +183,21 @@ full_resync:
    hw_ts = datetime_to_timestamp(d);
    drift = (int)(sys_ts - hw_ts);
 
-   if (drift)
-      panic("Time-management fail: drift(%d) must be zero after sync", drift);
+   if (drift) {
+
+      /* Something gone wrong, but don't give up on the first try */
+      if (++full_resync_failed_attempts > 3)
+         panic("Time-management: drift(%d) must be zero after sync", drift);
+
+      printk("WARNING: full re-sync failed (attempt %d of 3)\n",
+             full_resync_failed_attempts);
+
+      printk("WARNING: the drift is now: %d, abs_drift on re-sync was: %d\n",
+             drift, abs_drift / (TS_SCALE / 1000));
+
+      printk("WARNING: re-trying...\n");
+      goto full_resync;
+   }
 
    /*
     * Everything is alright. Sleep some time and then start the actual infinite
@@ -190,6 +206,7 @@ full_resync:
     */
    kernel_sleep(clock_drift_adj_loop_delay);
    adj_cnt = 0;
+   full_resync_failed_attempts = 0;
 
    while (true) {
 
