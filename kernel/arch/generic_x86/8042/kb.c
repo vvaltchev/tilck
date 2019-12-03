@@ -9,6 +9,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/irq.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"
@@ -300,6 +301,9 @@ static struct irq_handler_node kb_irq_handler_node = {
 /* This will be executed in a kernel thread */
 void init_kb(void)
 {
+   if (kopt_serial_console)
+      return;
+
    disable_preemption();
 
    if (KERNEL_DO_PS2_SELFTEST) {

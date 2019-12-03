@@ -7,6 +7,7 @@
 
 #include <multiboot.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/kmalloc.h>
@@ -176,17 +177,12 @@ static void run_init_or_selftest(void)
    }
 }
 
-static void init_kb_if_necessary()
-{
-   if (!kopt_serial_console)
-      init_kb();
-}
-
 static void do_async_init()
 {
    mount_initrd();
    init_devfs();
-   init_kb_if_necessary();
+   init_kb();
+   init_modules();
    init_tty();
    init_fbdev();
    init_serial_comm();

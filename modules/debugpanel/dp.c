@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/process.h>
@@ -246,8 +247,15 @@ static struct keypress_handler_elem debugpanel_handler_elem =
    .handler = &dp_keypress_handler
 };
 
-__attribute__((constructor))
-static void init_debug_panel()
+static void dp_init(void)
 {
    kb_register_keypress_handler(&debugpanel_handler_elem);
 }
+
+static struct module dp_module = {
+
+   .name = "debugpanel",
+   .init = &dp_init,
+};
+
+REGISTER_MODULE(&dp_module);
