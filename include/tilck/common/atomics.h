@@ -13,7 +13,7 @@
 
 /*
  * Because of Travis' old compiler (GCC 4.8), that we use to build the
- * 64-bit kernel_noarch_static_for_test target, does not support C11's atomics
+ * 64-bit kernel_noarch_for_test target, does not support C11's atomics
  * we have to implement them somehow, EVEN IF the implementation is not
  * efficient. On all the other environments, we use a newer GCC so that the
  * unit tests can actually test kernel's code with the proper C11 atomics.

@@ -29,11 +29,11 @@ endif()
 file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
 
 # Create a static library target for kernel's arch-independent code.
-add_library(kernel_noarch_static_for_test STATIC EXCLUDE_FROM_ALL ${SOURCES})
+add_library(kernel_noarch_for_test STATIC EXCLUDE_FROM_ALL ${SOURCES})
 
 set_target_properties(
 
-   kernel_noarch_static_for_test
+   kernel_noarch_for_test
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_NO_ARCH_FLAGS}"
