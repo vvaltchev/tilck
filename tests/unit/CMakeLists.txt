@@ -41,14 +41,11 @@ add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
-# if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-#    set(CLANG_OPTS "-fsanitize=address")
-#    message(STATUS "Using CLANG_OPTS: ${CLANG_OPTS}")
-# endif()
-
-string(CONCAT gtests_flags
-         "-DTESTING -fPIC "
-         " ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}")
+string(
+   CONCAT gtests_flags
+   "-DTESTING -fPIC "
+   " ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
+)
 
 set_target_properties(
 
@@ -73,12 +70,10 @@ set(
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
 JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
-# if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-#    target_link_libraries(gtests asan)
-# endif()
-
 target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest.a)
 target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest_main.a)
 target_link_libraries(gtests pthread)
-target_link_libraries(gtests kernel_noarch_static_for_test "${WRAPPINGS}")
-
+target_link_libraries(gtests "${WRAPPINGS}")
+target_link_libraries(gtests kernel_noarch_static_for_test)
+build_all_modules(gtests "_noarch")
+target_link_libraries(gtests kernel_noarch_static_for_test)

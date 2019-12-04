@@ -43,14 +43,17 @@ foreach(font_file ${font_files})
 
 endforeach()
 
+
 add_custom_target(
 
-   fonts
+   fonts${TARGET_VARIANT}
 
    DEPENDS
       ${FONT_OBJ_FILES_LIST}
 )
 
-add_dependencies(tilck_unstripped fonts)
-target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
-target_link_libraries(tilck_unstripped ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
+add_dependencies(${TARGET_NAME} fonts${TARGET_VARIANT})
+target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/font8x16.o)
+target_link_libraries(${TARGET_NAME} ${CMAKE_CURRENT_BINARY_DIR}/font16x32.o)
+
+build_and_link_module(${TARGET_NAME} "fb" ${TARGET_VARIANT})

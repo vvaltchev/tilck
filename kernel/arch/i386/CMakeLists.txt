@@ -37,19 +37,6 @@ JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 set(ARCH_START_FILE "start.S")
 set(ARCH_SOURCES_GLOB "*.S" "*.c")
 
-foreach (mod ${modules_list})
-   if (MOD_${mod})
-
-      list(
-         APPEND
-         ARCH_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH}/*.c"
-         "${CMAKE_SOURCE_DIR}/modules/${mod}/${ARCH_FAMILY}/*.c"
-      )
-
-   endif()
-endforeach()
-
 file(GLOB ARCH_SOURCES ${ARCH_SOURCES_GLOB})
 
 file(
@@ -95,13 +82,7 @@ set_target_properties(
       LINK_DEPENDS ${KERNEL_SCRIPT}
 )
 
-foreach (mod ${modules_list})
-   if (MOD_${mod})
-      if (EXISTS ${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
-         include(${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
-      endif()
-   endif()
-endforeach()
+build_all_modules(tilck_unstripped)
 
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)

@@ -153,8 +153,17 @@ set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
 set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
     "Use the fonts in other/alt_fonts instead of the default ones")
 
+# The mandatory modules are not proper modules, as they cannot be excluded
+# from the build.
+
 list(
    APPEND mandatory_modules
+
+   tty
+)
+
+list(
+   APPEND no_arch_modules_whitelist
 
    tty
 )
@@ -379,6 +388,45 @@ JOIN("${OPT_FLAGS_LIST}"    ${SPACE} OPT_FLAGS)
 JOIN("${WARN_FLAGS_LIST}"   ${SPACE} WARN_FLAGS)
 
 set(COMMON_FLAGS "${GENERAL_DEFS} ${OTHER_CFLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
+
+# Kernel flags
+
+set(
+   GENERAL_KERNEL_FLAGS_LIST
+
+   -D__TILCK_KERNEL__
+
+   -mno-red-zone
+   -ffreestanding
+   -fno-builtin
+   -fno-omit-frame-pointer
+   -fwrapv
+   -Wno-unused-label
+   -Wvla
+)
+
+if (WCONV)
+   list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
+endif()
+
+JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
+set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
+
+set(
+   KERNEL_NO_ARCH_FLAGS_LIST
+
+   -DKERNEL_TEST
+   -fPIC
+   ${KERNEL_FLAGS}
+   ${GCOV_COMPILE_FLAGS}
+)
+
+JOIN("${KERNEL_NO_ARCH_FLAGS_LIST}" ${SPACE} KERNEL_NO_ARCH_FLAGS)
+
+# Funcs for building the kernel modules, used both by the kernel and the
+# gtests targets.
+
+include(${CMAKE_SOURCE_DIR}/modules/build_modules.cmake)
 
 ################################################################################
 
