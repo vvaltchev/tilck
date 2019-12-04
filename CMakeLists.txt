@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.2)
 project(tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
-include(other/utils.cmake)
-include(other/errors.cmake)
+include(other/cmake/utils.cmake)
+include(other/cmake/errors.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
@@ -296,12 +296,12 @@ message(STATUS "SYS CC compiler name: ${CMAKE_C_COMPILER_ID}")
 message(STATUS "SYS CXX compiler name: ${CMAKE_CXX_COMPILER_ID}")
 
 # Include the main lists of compiler flags used in the project
-include(other/compiler_flags.cmake)
+include(other/cmake/compiler_flags.cmake)
 
 # Include the funcs for building the kernel modules, used both by the kernel
 # and the gtests targets.
 
-include(modules/build_modules.cmake)
+include(other/cmake/build_modules.cmake)
 
 foreach (opt ${kernel_opts_list})
    message(STATUS "${opt} = ${${opt}}")
@@ -348,7 +348,7 @@ set(KERNEL_PADDR       0x00100000)
 set(LINEAR_MAPPING_MB         896)
 
 # Generate config files & build scripts
-include(other/gen_config.cmake)
+include(other/cmake/gen_config.cmake)
 
 ################################################################################
 # Include sub-directories
