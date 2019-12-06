@@ -369,11 +369,10 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref)
    page_dir_entry_t e;
    page_t p;
 
-   /*
-    * This function shall be never called for the linear-mapped zone of the
-    * the kernel virtual memory.
-    */
-   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
+   if (IN_RANGE(vaddr, KERNEL_BASE_VA, LINEAR_MAPPING_MB)) {
+      *pa_ref = KERNEL_VA_TO_PA(vaddr);
+      return 0;
+   }
 
    e.raw = pdir->entries[pd_index].raw;
 
