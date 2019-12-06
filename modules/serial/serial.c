@@ -21,9 +21,8 @@ static void serial_con_bh_handler(u16 portn)
    while (serial_read_ready(com_ports[portn])) {
 
       char c = serial_read(com_ports[portn]);
-      tty_keypress_handler_int(
+      tty_send_keyevent(
          serial_ttys[portn],
-         NULL,
          make_key_event((u32)c, c, true)
       );
    }

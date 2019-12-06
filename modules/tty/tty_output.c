@@ -393,11 +393,7 @@ tty_csi_n_handler(u32 *params,
                term_get_curr_col(t->term_inst) + 1);
 
       for (char *p = dsr; *p; p++) {
-         tty_keypress_handler_int(
-            t,
-            NULL,
-            make_key_event((u32) *p, *p, true)
-         );
+         tty_send_keyevent(t, make_key_event((u32) *p, *p, true));
       }
    }
 }

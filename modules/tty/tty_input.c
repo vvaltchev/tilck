@@ -199,7 +199,8 @@ static inline bool tty_is_line_delim_char(struct tty *t, u8 c)
           c == t->c_term.c_cc[VEOL2];
 }
 
-static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
+static void
+tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
 {
    if (c == t->c_term.c_cc[VERASE]) {
 
@@ -214,37 +215,16 @@ static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
          kcond_signal_one(&t->input_cond);
       }
    }
-
-   return kb_handler_ok_and_continue;
 }
 
-int
-tty_keypress_handler_int(struct tty *t,
-                         struct kb_dev *kb,
-                         struct key_event ke)
+void tty_send_keyevent(struct tty *t, struct key_event ke)
 {
    u8 c = (u8)ke.print_char;
-
-   if (kb != NULL) {
-
-      if (!c)
-         return tty_handle_non_printable_key(kb, t, ke.key);
-
-      if (kb_is_alt_pressed(kb))
-         kb_buf_write_elem(t, '\033');
-
-      if (kb_is_ctrl_pressed(kb)) {
-         if (isalpha(c) || c == '\\' || c == '[') {
-            /* ctrl ignores the case of the letter */
-            c = (u8)(toupper(c) - 'A' + 1);
-         }
-      }
-   }
 
    if (c == '\r') {
 
       if (t->c_term.c_iflag & IGNCR)
-         return kb_handler_ok_and_continue; /* ignore the carriage return */
+         return; /* ignore the carriage return */
 
       if (t->c_term.c_iflag & ICRNL)
          c = '\n';
@@ -257,15 +237,41 @@ tty_keypress_handler_int(struct tty *t,
 
    /* Ctrl+C, Ctrl+D, Ctrl+Z etc.*/
    if (tty_handle_special_controls(t, c))
-      return kb_handler_ok_and_continue;
+      return;
 
-   if (t->c_term.c_lflag & ICANON)
-      return tty_keypress_handle_canon_mode(t, ke.key, c);
+   if (t->c_term.c_lflag & ICANON) {
+      tty_keypress_handle_canon_mode(t, ke.key, c);
+      return;
+   }
 
    /* raw mode input handling */
    kb_buf_write_elem(t, c);
-
    kcond_signal_one(&t->input_cond);
+}
+
+static int
+tty_keypress_handler_int(struct tty *t,
+                         struct kb_dev *kb,
+                         struct key_event ke)
+{
+   u8 c = (u8)ke.print_char;
+   ASSERT(kb != NULL);
+
+   if (!c)
+      return tty_handle_non_printable_key(kb, t, ke.key);
+
+   if (kb_is_alt_pressed(kb))
+      kb_buf_write_elem(t, '\033');
+
+   if (kb_is_ctrl_pressed(kb)) {
+      if (isalpha(c) || c == '\\' || c == '[') {
+         /* ctrl ignores the case of the letter */
+         c = (u8)(toupper(c) - 'A' + 1);
+      }
+   }
+
+   ke.print_char = (char)c;
+   tty_send_keyevent(t, ke);
    return kb_handler_ok_and_continue;
 }
 
