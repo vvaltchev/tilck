@@ -219,8 +219,8 @@ static int tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
 }
 
 int
-tty_keypress_handler_int(struct kb_dev *kb,
-                         struct tty *t,
+tty_keypress_handler_int(struct tty *t,
+                         struct kb_dev *kb,
                          struct key_event ke)
 {
    u8 c = (u8)ke.print_char;
@@ -343,7 +343,7 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
       }
    }
 
-   return tty_keypress_handler_int(kb, t, ke);
+   return tty_keypress_handler_int(t, kb, ke);
 }
 
 static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
