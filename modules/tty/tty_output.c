@@ -819,23 +819,3 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
    return (ssize_t) size;
 }
 
-enum term_fret
-serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
-{
-   struct twfilter_ctx_t *ctx = ctx_arg;
-   struct tty *t = ctx->t;
-
-   if (*c == t->c_term.c_cc[VERASE]) {
-
-      *a = (struct term_action) {
-         .type3 = a_dwrite_no_filter,
-         .len = 3,
-         .col = *color,
-         .ptr = (uptr)"\b \b",
-      };
-
-      return TERM_FILTER_WRITE_BLANK;
-   }
-
-   return TERM_FILTER_WRITE_C;
-}
