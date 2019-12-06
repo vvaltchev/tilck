@@ -75,8 +75,13 @@ static void dp_show_opts(void)
    DUMP_INT("HYPERVISOR", in_hypervisor());
 
    DUMP_LABEL("Console");
-   DUMP_INT("TERM_ROWS", term_get_rows(get_curr_term()));
-   DUMP_INT("TERM_COLS", term_get_cols(get_curr_term()));
+   {
+      struct tilck_term_info info;
+      term_read_info(get_curr_term(), &info);
+      DUMP_INT("TERM_ROWS", info.rows);
+      DUMP_INT("TERM_COLS", info.cols);
+   }
+
    DUMP_INT("USE_FRAMEBUFFER", use_framebuffer());
 
    if (MOD_fb && use_framebuffer()) {

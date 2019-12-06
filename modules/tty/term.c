@@ -811,11 +811,6 @@ void dispose_term(struct term *t)
    }
 }
 
-const struct video_interface *term_get_vi(struct term *t)
-{
-   return t->vi;
-}
-
 void set_curr_term(struct term *t)
 {
    ASSERT(!is_preemption_enabled());
@@ -823,6 +818,16 @@ void set_curr_term(struct term *t)
    term_pause_video_output(get_curr_term());
    __curr_term = t;
    term_restart_video_output(get_curr_term());
+}
+
+void term_read_info(struct term *t, struct tilck_term_info *out)
+{
+   *out = (struct tilck_term_info) {
+      .tab_size = t->tabsize,
+      .rows = t->rows,
+      .cols = t->cols,
+      .vi = t->vi,
+   };
 }
 
 /*

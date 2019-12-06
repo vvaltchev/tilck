@@ -53,13 +53,16 @@ static struct list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
 {
+   struct tilck_term_info term_i;
    struct dp_screen *pos;
    struct term *t = get_curr_term();
+
+   term_read_info(t, &term_i);
    term_set_cursor_enabled(t, false);
 
    in_debug_panel = true;
-   dp_rows = term_get_rows(t);
-   dp_cols = term_get_cols(t);
+   dp_rows = term_i.rows;
+   dp_cols = term_i.cols;
    dp_start_row = (dp_rows - DP_H) / 2 + 1;
    dp_start_col = (dp_cols - DP_W) / 2 + 1;
    dp_end_row = dp_start_row + DP_H;

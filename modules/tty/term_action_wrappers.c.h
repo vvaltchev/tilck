@@ -147,21 +147,6 @@ void term_set_cursor_enabled(struct term *t, bool value)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u16 term_get_tab_size(struct term *t)
-{
-   return t->tabsize;
-}
-
-u16 term_get_rows(struct term *t)
-{
-   return t->rows;
-}
-
-u16 term_get_cols(struct term *t)
-{
-   return t->cols;
-}
-
 u16 term_get_curr_row(struct term *t)
 {
    return t->r;

@@ -24,7 +24,7 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 struct tty *ttys[128];
 struct tty *__curr_tty;
 int tty_tasklet_runner;
-static const struct video_interface *first_term_initial_vi;
+static struct tilck_term_info first_term_i;
 
 static struct keypress_handler_elem tty_keypress_handler_elem =
 {
@@ -140,9 +140,9 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
       panic("TTY: no enough memory a new term instance");
 
    if (init_term(new_term,
-                 first_term_initial_vi,
-                 term_get_rows(ttys[1]->term_inst),
-                 term_get_cols(ttys[1]->term_inst),
+                 first_term_i.vi,
+                 first_term_i.rows,
+                 first_term_i.cols,
                  serial_port_fwd,
                  rows_buf) < 0)
    {
@@ -174,6 +174,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    t->term_inst = new_term;
+   term_read_info(t->term_inst, &t->term_i);
    tty_reset_filter_ctx(t);
 
    if (serial_port_fwd)
@@ -267,7 +268,7 @@ struct tty *get_serial_tty(int n)
 
 static void init_tty(void)
 {
-   first_term_initial_vi = term_get_vi(get_curr_term());
+   term_read_info(get_curr_term(), &first_term_i);
    struct driver_info *di = kzmalloc(sizeof(struct driver_info));
 
    if (!di)

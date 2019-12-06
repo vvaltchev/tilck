@@ -73,8 +73,8 @@ static int tty_ioctl_tcsets(struct tty *t, void *argp)
 static int tty_ioctl_tiocgwinsz(struct tty *t, void *argp)
 {
    struct winsize sz = {
-      .ws_row = term_get_rows(t->term_inst),
-      .ws_col = term_get_cols(t->term_inst),
+      .ws_row = t->term_i.rows,
+      .ws_col = t->term_i.cols,
       .ws_xpixel = 0,
       .ws_ypixel = 0,
    };

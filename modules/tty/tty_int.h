@@ -65,6 +65,8 @@ typedef bool (*tty_ctrl_sig_func)(struct tty *);
 struct tty {
 
    struct term *term_inst;
+   struct tilck_term_info term_i;
+
    int minor;
    char dev_filename[16];
 

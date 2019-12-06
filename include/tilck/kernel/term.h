@@ -28,6 +28,15 @@ struct video_interface {
    void (*enable_static_elems_refresh)(void);
 };
 
+struct tilck_term_info {
+
+   u16 tab_size;
+   u16 rows;
+   u16 cols;
+
+   const struct video_interface *vi;
+};
+
 int init_term(struct term *t,
               const struct video_interface *vi,
               u16 rows,
@@ -36,11 +45,7 @@ int init_term(struct term *t,
               int rows_buf); /* note: < 0 means default value */
 
 bool term_is_initialized(struct term *t);
-const struct video_interface *term_get_vi(struct term *t);
-
-u16 term_get_tab_size(struct term *t);
-u16 term_get_rows(struct term *t);
-u16 term_get_cols(struct term *t);
+void term_read_info(struct term *t, struct tilck_term_info *out);
 
 u16 term_get_curr_row(struct term *t);
 u16 term_get_curr_col(struct term *t);
