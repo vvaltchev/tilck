@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
 
 import os
@@ -33,6 +33,8 @@ extToType = {
 excludedDirs = [
    "docs",
    "build",
+   "other_builds",
+   "tcci_builds",
    "sysroot",
    "toolchain",
    "system_headers",
@@ -56,7 +58,7 @@ nonUnixLeFiles = set()
 
 def GetNoExtFileType(fpath):
 
-   out = subprocess.check_output(['file', fpath])
+   out = subprocess.check_output(['file', fpath]).decode('utf-8')
 
    if out.find("shell script") != -1:
       return "Shell script"
@@ -89,7 +91,7 @@ def CountLinesInFile(f, ft):
    res = [0, 0]  # tot lines, empty lines
 
    if optPrintFileNames:
-      print("file: {0}   -> {1}".format(f, ft))
+      print(("file: {0}   -> {1}".format(f, ft)))
 
    with open(f, 'r') as fd:
 
@@ -158,8 +160,9 @@ def PrintCounters(arr, eArr, total, eTot):
       if vals[0] > 0:
          PrintRow([ft] + vals + [GetEmptyPercStr(vals[0], vals[1])])
 
-   print("-" * 50)
+   print(("-" * 50))
    PrintRow(["Total:", total, eTot, GetEmptyPercStr(total, eTot)])
+   print("")
 
 def main():
 
@@ -222,7 +225,7 @@ def main():
                   gEmptyTotal += c[1]
 
 
-      print("Number of lines in '{0}':".format(destDir))
+      print(("Number of lines in '{0}':".format(destDir)))
       AccumulateCounters(gLinesCount, linesByType)
       AccumulateCounters(gEmptyLinesCount, emptyLinesByType)
       PrintCounters(linesByType, emptyLinesByType, total, emptyTotal)
@@ -234,11 +237,11 @@ def main():
    if optShowLongLines:
       if longLines:
          print("\nLong lines")
-         print("-" * 80)
+         print(("-" * 80))
          for f in longLines:
             for lines in longLines[f]:
-               print("{0: <69} [{1: >3} cols]".\
-                     format(f + ":" + str(lines[0]), lines[1]))
+               print(("{0: <69} [{1: >3} cols]".\
+                     format(f + ":" + str(lines[0]), lines[1])))
       else:
          print("\nLong lines: NONE")
 
@@ -246,7 +249,7 @@ def main():
       if nonUnixLeFiles:
          print("\nFiles with non-UNIX line ending:")
          for f in nonUnixLeFiles:
-            print("  - {0}".format(f))
+            print(("  - {0}".format(f)))
          print("")
       else:
          print("\nFiles with non-UNIX line ending: NONE")
