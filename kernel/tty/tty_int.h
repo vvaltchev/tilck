@@ -98,7 +98,7 @@ struct tty {
    u16 serial_port_fwd;
 
    /* large fields */
-   char input_buf[TTY_INPUT_BS];                  /* tty input */
+   char *input_buf;                               /* tty input */
    tty_ctrl_sig_func special_ctrl_handlers[256];  /* tty input */
 
 #if MOD_console

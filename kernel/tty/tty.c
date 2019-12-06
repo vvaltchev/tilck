@@ -160,10 +160,15 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
 static struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
-   struct tty *t = kzmalloc(sizeof(struct tty));
+   struct tty *t;
 
-   if (!t)
+   if (!(t = kzmalloc(sizeof(struct tty))))
       return NULL;
+
+   if (!(t->input_buf = kzmalloc(TTY_INPUT_BS))) {
+      kfree2(t, sizeof(struct tty));
+      return NULL;
+   }
 
    init_tty_struct(t, minor, serial_port_fwd);
 
