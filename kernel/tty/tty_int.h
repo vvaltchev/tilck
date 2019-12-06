@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+
+#include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/mods/tty.h>
 #include <tilck/kernel/ringbuf.h>
@@ -76,14 +78,16 @@ struct tty {
    int end_line_delim_count;
    bool mediumraw_mode;
 
-   /* tty output */
+#if MOD_console
    u16 saved_cur_row;
    u16 saved_cur_col;
    u32 attrs;
 
-   u8 c_set; // 0 = G0, 1 = G1.
+   u8 user_color;       /* color before attrs */
+   u8 c_set;            /* 0 = G0, 1 = G1     */
    const s16 *c_sets_tables[2];
    struct twfilter_ctx_t filter_ctx;
+#endif
 
    /* tty ioctl */
    struct termios c_term;
@@ -91,13 +95,15 @@ struct tty {
 
    /* tty input & output */
    u8 curr_color; /* actual color after applying attrs */
-   u8 user_color; /* color before attrs */
    u16 serial_port_fwd;
 
    /* large fields */
    char input_buf[TTY_INPUT_BS];                  /* tty input */
    tty_ctrl_sig_func special_ctrl_handlers[256];  /* tty input */
+
+#if MOD_console
    term_filter default_state_funcs[256];          /* tty output */
+#endif
 };
 
 extern const struct termios default_termios;

@@ -11,8 +11,8 @@
 
 #include <termios.h>      // system header
 
-#include "term_int.h"
-#include "tty_int.h"
+#include "../../kernel/tty/term_int.h" // HACK!!!
+#include "../../kernel/tty/tty_int.h"  // HACK!!!
 
 /* tty_output internal functions */
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c);

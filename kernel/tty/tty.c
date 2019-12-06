@@ -106,15 +106,19 @@ tty_create_device_file(int minor,
 static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
 {
    t->minor = minor;
-   t->filter_ctx.t = t;
+   t->serial_port_fwd = serial_port_fwd;
    t->c_term = default_termios;
    t->kd_gfx_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+
+#if MOD_console
    t->user_color = t->curr_color;
-   t->serial_port_fwd = serial_port_fwd;
+   t->filter_ctx.t = t;
    t->c_set = 0;
    t->c_sets_tables[0] = tty_default_trans_table;
    t->c_sets_tables[1] = tty_gfx_trans_table;
+#endif
+
 }
 
 int tty_get_num(struct tty *t)
@@ -316,3 +320,27 @@ static struct module tty_module = {
 
 REGISTER_MODULE(&tty_module);
 
+/* No console funcs */
+
+#if !MOD_console
+
+void tty_update_default_state_tables(struct tty *t)
+{
+   /* do nothing */
+}
+
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
+{
+   /* term_write's size is limited to 2^20 - 1 */
+   size = MIN(size, (size_t)MB - 1);
+   term_write(t->term_inst, buf, size, t->curr_color);
+   return (ssize_t) size;
+}
+
+void tty_reset_filter_ctx(struct tty *t)
+{
+   /* do nothing */
+}
+
+#endif

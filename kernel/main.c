@@ -51,6 +51,9 @@ void init_console(void)
    }
 
    printk_flush_ringbuf();
+
+   if (!MOD_console)
+      panic("Unable to init the video console without the console module!");
 }
 
 static void read_multiboot_info(u32 magic, u32 mbi_addr)
