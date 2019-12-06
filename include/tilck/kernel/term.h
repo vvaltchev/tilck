@@ -4,6 +4,7 @@
 #include <tilck/common/basic_defs.h>
 
 struct term;
+extern struct term *__curr_term;
 
 struct video_interface {
 
@@ -47,9 +48,6 @@ int init_term(struct term *t,
 bool term_is_initialized(struct term *t);
 void term_read_info(struct term *t, struct tilck_term_info *out);
 
-u16 term_get_curr_row(struct term *t);
-u16 term_get_curr_col(struct term *t);
-
 void term_write(struct term *t, const char *buf, size_t len, u8 color);
 void term_scroll_up(struct term *t, u32 lines);
 void term_scroll_down(struct term *t, u32 lines);
@@ -83,12 +81,6 @@ void debug_term_dump_font_table(struct term *t);
 #define CHAR_RARROW       0x1a
 #define CHAR_DARROW       0x19
 #define CHAR_UARROW       0x18
-
-/* Other functions */
-
-void init_console(void); /* generic console init: fb or text mode */
-
-extern struct term *__curr_term;
 
 static ALWAYS_INLINE struct term *get_curr_term(void) {
    return __curr_term;

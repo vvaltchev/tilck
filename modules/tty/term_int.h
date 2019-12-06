@@ -88,6 +88,8 @@ typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
 
 void term_set_filter(struct term *t, term_filter func, void *ctx);
 term_filter term_get_filter(struct term *t);
+u16 term_get_curr_row(struct term *t);
+u16 term_get_curr_col(struct term *t);
 
 /* --- */
 
