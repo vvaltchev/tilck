@@ -48,11 +48,6 @@ enum term_del_type {
 
 /* --- term write filter interface --- */
 
-enum term_fret {
-   TERM_FILTER_WRITE_BLANK,
-   TERM_FILTER_WRITE_C,
-};
-
 struct term_action {
 
    union {
@@ -81,20 +76,5 @@ struct term_action {
 
 STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(uptr)));
 
-typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
-                                      u8 *color,             /* in/out */
-                                      struct term_action *a, /*  out   */
-                                      void *ctx);            /*   in   */
-
-void term_set_filter(struct term *t, term_filter func, void *ctx);
-term_filter term_get_filter(struct term *t);
 u16 term_get_curr_row(struct term *t);
 u16 term_get_curr_col(struct term *t);
-
-/* --- */
-
-struct term *alloc_term_struct(void);
-void free_term_struct(struct term *t);
-void dispose_term(struct term *t);
-
-void set_curr_term(struct term *t);

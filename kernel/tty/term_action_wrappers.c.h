@@ -163,11 +163,6 @@ void term_set_filter(struct term *t, term_filter func, void *ctx)
    t->filter_ctx = ctx;
 }
 
-term_filter term_get_filter(struct term *t)
-{
-   return t->filter;
-}
-
 bool term_is_initialized(struct term *t)
 {
    return t->initialized;

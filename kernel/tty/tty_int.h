@@ -11,8 +11,6 @@
 #include <tilck/kernel/tty_struct.h>
 #include <tilck/kernel/tty.h>
 
-#include "term_int.h"
-
 void tty_input_init(struct tty *t);
 
 enum kb_handler_action
@@ -39,5 +37,3 @@ void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 extern const struct termios default_termios;
 extern struct tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
-extern const s16 tty_default_trans_table[256];
-extern const s16 tty_gfx_trans_table[256];

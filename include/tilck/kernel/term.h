@@ -4,6 +4,8 @@
 #include <tilck/common/basic_defs.h>
 
 struct term;
+struct term_action;
+
 extern struct term *__curr_term;
 
 struct video_interface {
@@ -56,6 +58,27 @@ void term_pause_video_output(struct term *t);
 void term_restart_video_output(struct term *t);
 void term_set_cursor_enabled(struct term *t, bool value);
 
+struct term *alloc_term_struct(void);
+void free_term_struct(struct term *t);
+void dispose_term(struct term *t);
+void set_curr_term(struct term *t);
+
+enum term_fret {
+   TERM_FILTER_WRITE_BLANK,
+   TERM_FILTER_WRITE_C,
+};
+
+typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
+                                      u8 *color,             /* in/out */
+                                      struct term_action *a, /*  out   */
+                                      void *ctx);            /*   in   */
+
+void term_set_filter(struct term *t, term_filter func, void *ctx);
+
+static ALWAYS_INLINE struct term *get_curr_term(void) {
+   return __curr_term;
+}
+
 /* --- debug funcs --- */
 void debug_term_dump_font_table(struct term *t);
 
@@ -81,7 +104,3 @@ void debug_term_dump_font_table(struct term *t);
 #define CHAR_RARROW       0x1a
 #define CHAR_DARROW       0x19
 #define CHAR_UARROW       0x18
-
-static ALWAYS_INLINE struct term *get_curr_term(void) {
-   return __curr_term;
-}
