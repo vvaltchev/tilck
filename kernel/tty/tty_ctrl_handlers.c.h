@@ -190,12 +190,12 @@ tty_set_ctrl_handler(struct tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
       return;
    }
 
-   t->special_ctrl_handlers[c] = h;
+   t->ctrl_handlers[c] = h;
 }
 
 static inline bool tty_handle_special_controls(struct tty *t, u8 c)
 {
-   tty_ctrl_sig_func handler = t->special_ctrl_handlers[c];
+   tty_ctrl_sig_func handler = t->ctrl_handlers[c];
 
    if (handler)
       return handler(t);

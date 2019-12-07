@@ -164,7 +164,7 @@ tty_full_destroy(struct tty *t)
       free_console_data(t->console_data);
    }
 
-   kfree2(t->special_ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
+   kfree2(t->ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
    kfree2(t->input_buf, sizeof(TTY_INPUT_BS));
    kfree2(t, sizeof(struct tty));
 }
@@ -183,7 +183,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
    }
 
-   if (!(t->special_ctrl_handlers = kzmalloc(256*sizeof(tty_ctrl_sig_func)))) {
+   if (!(t->ctrl_handlers = kzmalloc(256*sizeof(tty_ctrl_sig_func)))) {
       tty_full_destroy(t);
       return NULL;
    }

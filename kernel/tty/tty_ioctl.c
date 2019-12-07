@@ -70,7 +70,7 @@ static int tty_ioctl_tcsets(struct tty *t, void *argp)
       return -EFAULT;
    }
 
-   tty_update_special_ctrl_handlers(t);
+   tty_update_ctrl_handlers(t);
    tty_update_default_state_tables(t);
    return 0;
 }

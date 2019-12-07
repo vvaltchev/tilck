@@ -20,26 +20,21 @@ struct tty {
 
    struct term *term_inst;
    struct tilck_term_info term_i;
+   void *console_data;
 
    int minor;
    char dev_filename[16];
 
-   /* tty input */
    struct ringbuf input_ringbuf;
    struct kcond input_cond;
    int end_line_delim_count;
+
    bool mediumraw_mode;
-
-   char *input_buf;
-   tty_ctrl_sig_func *special_ctrl_handlers;
-
-   /* tty ioctl */
-   struct termios c_term;
-   u32 kd_gfx_mode;
-
-   /* tty input & output */
-   u8 curr_color; /* actual color after applying attrs */
+   u8 curr_color;
    u16 serial_port_fwd;
 
-   void *console_data;
+   char *input_buf;
+   u32 kd_gfx_mode;
+   tty_ctrl_sig_func *ctrl_handlers;
+   struct termios c_term;
 };

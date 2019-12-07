@@ -18,7 +18,7 @@ void tty_input_init(struct tty *t);
 enum kb_handler_action
 tty_keypress_handler(struct kb_dev *, struct key_event ke);
 
-void tty_update_special_ctrl_handlers(struct tty *t);
+void tty_update_ctrl_handlers(struct tty *t);
 void tty_update_default_state_tables(struct tty *t);
 
 ssize_t
