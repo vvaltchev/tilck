@@ -22,7 +22,7 @@ void *alloc_console_data(void)
    if (!(cd = kzmalloc(sizeof(struct console_data))))
       return NULL;
 
-   if (!(cd->default_state_funcs = kzmalloc(256 * sizeof(term_filter)))) {
+   if (!(cd->def_state_funcs = kzmalloc(256 * sizeof(term_filter)))) {
       kfree2(cd, sizeof(struct console_data));
       return NULL;
    }
@@ -34,7 +34,7 @@ void free_console_data(void *data)
 {
    if (data) {
       struct console_data *cd = data;
-      kfree2(cd->default_state_funcs, 256 * sizeof(term_filter));
+      kfree2(cd->def_state_funcs, 256 * sizeof(term_filter));
       kfree2(data, sizeof(struct console_data));
    }
 }
