@@ -729,7 +729,7 @@ static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state)
 {
    struct tty *const t = ctx->t;
    ctx->non_default_state = new_state != &tty_state_default;
-   t->term_intf->set_filter(t->tstate, new_state, ctx);
+   t->tintf->set_filter(t->tstate, new_state, ctx);
 }
 
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)

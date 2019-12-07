@@ -175,8 +175,8 @@ static void
 tty_full_destroy(struct tty *t)
 {
    if (t->tstate) {
-      t->term_intf->dispose(t->tstate);
-      t->term_intf->free(t->tstate);
+      t->tintf->dispose(t->tstate);
+      t->tintf->free(t->tstate);
    }
 
    if (MOD_console) {
@@ -233,8 +233,8 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    t->tstate = new_term;
-   t->term_intf = new_term_intf;
-   t->term_intf->get_params(t->tstate, &t->tparams);
+   t->tintf = new_term_intf;
+   t->tintf->get_params(t->tstate, &t->tparams);
    tty_reset_filter_ctx(t);
    return t;
 }
@@ -316,7 +316,7 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   t->term_intf->write(t->tstate, buf, size, t->curr_color);
+   t->tintf->write(t->tstate, buf, size, t->curr_color);
    return (ssize_t) size;
 }
 

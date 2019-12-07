@@ -19,7 +19,7 @@ void tty_reset_termios(struct tty *t);
 struct tty {
 
    struct term *tstate;
-   const struct term_interface *term_intf;
+   const struct term_interface *tintf;
    struct term_params tparams;
    void *console_data;
 
