@@ -229,7 +229,7 @@ tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
          return tty_ioctl_tcsets(t, argp);
 
       case TCSETSF: // equivalent to: tcsetattr(fd, TCSAFLUSH, argp)
-         tty_kb_buf_reset(t);
+         tty_inbuf_reset(t);
          return tty_ioctl_tcsets(t, argp);
 
       case TIOCGWINSZ:

@@ -18,7 +18,7 @@
 #include "term_int.h"
 #include "tty_int.h"
 
-static inline bool kb_buf_write_elem(struct tty *t, u8 c);
+static inline bool tty_inbuf_write_elem(struct tty *t, u8 c);
 static void tty_keypress_echo(struct tty *t, char c);
 
 #include "tty_ctrl_handlers.c.h"
@@ -109,7 +109,7 @@ static void tty_keypress_echo(struct tty *t, char c)
    term_write(t->term_inst, &c, 1, t->curr_color);
 }
 
-static inline bool kb_buf_is_empty(struct tty *t)
+static inline bool tty_inbuf_is_empty(struct tty *t)
 {
    bool ret;
    disable_preemption();
@@ -120,7 +120,7 @@ static inline bool kb_buf_is_empty(struct tty *t)
    return ret;
 }
 
-void tty_kb_buf_reset(struct tty *t)
+void tty_inbuf_reset(struct tty *t)
 {
    disable_preemption();
    {
@@ -130,19 +130,19 @@ void tty_kb_buf_reset(struct tty *t)
    enable_preemption();
 }
 
-static inline u8 kb_buf_read_elem(struct tty *t)
+static inline u8 tty_inbuf_read_elem(struct tty *t)
 {
    u8 ret = 0;
    disable_preemption();
    {
-      ASSERT(!kb_buf_is_empty(t));
+      ASSERT(!tty_inbuf_is_empty(t));
       DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->input_ringbuf, &ret));
    }
    enable_preemption();
    return ret;
 }
 
-static inline bool kb_buf_drop_last_written_elem(struct tty *t)
+static inline bool tty_inbuf_drop_last_written_elem(struct tty *t)
 {
    bool ret;
    tty_keypress_echo(t, (char)t->c_term.c_cc[VERASE]);
@@ -155,7 +155,7 @@ static inline bool kb_buf_drop_last_written_elem(struct tty *t)
    return ret;
 }
 
-static inline bool kb_buf_write_elem(struct tty *t, u8 c)
+static inline bool tty_inbuf_write_elem(struct tty *t, u8 c)
 {
    bool ret;
    tty_keypress_echo(t, (char)c);
@@ -182,7 +182,7 @@ tty_handle_non_printable_key(struct kb_dev *kb, struct tty *t, u32 key)
    }
 
    while (*p) {
-      kb_buf_write_elem(t, (u8) *p++);
+      tty_inbuf_write_elem(t, (u8) *p++);
    }
 
    if (!(t->c_term.c_lflag & ICANON))
@@ -204,11 +204,11 @@ tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
 {
    if (c == t->c_term.c_cc[VERASE]) {
 
-      kb_buf_drop_last_written_elem(t);
+      tty_inbuf_drop_last_written_elem(t);
 
    } else {
 
-      kb_buf_write_elem(t, c);
+      tty_inbuf_write_elem(t, c);
 
       if (tty_is_line_delim_char(t, c)) {
          t->end_line_delim_count++;
@@ -245,7 +245,7 @@ void tty_send_keyevent(struct tty *t, struct key_event ke)
    }
 
    /* raw mode input handling */
-   kb_buf_write_elem(t, c);
+   tty_inbuf_write_elem(t, c);
    kcond_signal_one(&t->input_cond);
 }
 
@@ -261,7 +261,7 @@ tty_keypress_handler_int(struct tty *t,
       return tty_handle_non_printable_key(kb, t, ke.key);
 
    if (kb_is_alt_pressed(kb))
-      kb_buf_write_elem(t, '\033');
+      tty_inbuf_write_elem(t, '\033');
 
    if (kb_is_ctrl_pressed(kb)) {
       if (isalpha(c) || c == '\\' || c == '[') {
@@ -309,7 +309,7 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
          return kb_handler_ok_and_stop;
       }
 
-      kb_buf_write_elem(t, mr);
+      tty_inbuf_write_elem(t, mr);
       kcond_signal_one(&t->input_cond);
       return kb_handler_ok_and_stop;
    }
@@ -379,7 +379,7 @@ tty_internal_read_single_char_from_kb(struct tty *t,
                                       struct devfs_handle *h,
                                       bool *delim_break)
 {
-   u8 c = kb_buf_read_elem(t);
+   u8 c = tty_inbuf_read_elem(t);
    h->read_buf[h->read_buf_used++] = (char)c;
 
    if (t->c_term.c_lflag & ICANON) {
@@ -477,10 +477,10 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
    do {
 
-      if ((h->fl_flags & O_NONBLOCK) && kb_buf_is_empty(t))
+      if ((h->fl_flags & O_NONBLOCK) && tty_inbuf_is_empty(t))
          return -EAGAIN;
 
-      while (kb_buf_is_empty(t)) {
+      while (tty_inbuf_is_empty(t)) {
          kcond_wait(&t->input_cond, NULL, KCOND_WAIT_FOREVER);
       }
 
@@ -491,7 +491,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
          ASSERT(h->read_pos == 0);
       }
 
-      while (!kb_buf_is_empty(t) &&
+      while (!tty_inbuf_is_empty(t) &&
              h->read_buf_used < DEVFS_READ_BS &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 

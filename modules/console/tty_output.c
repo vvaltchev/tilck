@@ -610,7 +610,7 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
             struct console_data *cd = ctx->cd;
             *a = (struct term_action) { .type1 = a_reset };
 
-            tty_kb_buf_reset(t);
+            tty_inbuf_reset(t);
             cd->c_set = 0;
             cd->c_sets_tables[0] = tty_default_trans_table;
             cd->c_sets_tables[1] = tty_gfx_trans_table;

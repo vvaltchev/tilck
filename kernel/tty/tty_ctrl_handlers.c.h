@@ -73,7 +73,7 @@ static bool tty_ctrl_intr(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
-      tty_kb_buf_reset(t);
+      tty_inbuf_reset(t);
       tty_async_send_signal_to_fg_group(t, SIGINT);
       return true;
    }
@@ -96,7 +96,7 @@ static bool tty_ctrl_quit(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
-      tty_kb_buf_reset(t);
+      tty_inbuf_reset(t);
       tty_async_send_signal_to_fg_group(t, SIGQUIT);
       return true;
    }
@@ -108,7 +108,7 @@ static bool tty_ctrl_eof(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      kb_buf_write_elem(t, t->c_term.c_cc[VEOF]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOF]);
       kcond_signal_one(&t->input_cond);
       return true;
    }
@@ -120,7 +120,7 @@ static bool tty_ctrl_eol(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      kb_buf_write_elem(t, t->c_term.c_cc[VEOL]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL]);
       kcond_signal_one(&t->input_cond);
       return true;
    }
@@ -131,7 +131,7 @@ static bool tty_ctrl_eol2(struct tty *t)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      kb_buf_write_elem(t, t->c_term.c_cc[VEOL2]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL2]);
       kcond_signal_one(&t->input_cond);
       return true;
    }
