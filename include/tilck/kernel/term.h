@@ -66,7 +66,7 @@ struct term_interface {
    void (*write)(struct term *t, const char *buf, size_t len, u8 color);
    void (*scroll_up)(struct term *t, u32 lines);
    void (*scroll_down)(struct term *t, u32 lines);
-   void (*set_col_offset)(struct term *t, u32 off);
+   void (*set_col_offset)(struct term *t, int off);
    void (*pause_video_output)(struct term *t);
    void (*restart_video_output)(struct term *t);
    void (*set_cursor_enabled)(struct term *t, bool value);

@@ -48,7 +48,7 @@ static void
 sterm_scroll_down(struct term *t, u32 lines) { }
 
 static void
-sterm_set_col_offset(struct term *t, u32 off) { }
+sterm_set_col_offset(struct term *t, int off) { }
 
 static void
 sterm_pause_video_output(struct term *t) { }

@@ -105,11 +105,11 @@ vterm_scroll_down(struct term *t, u32 lines)
 }
 
 static void
-vterm_set_col_offset(struct term *t, u32 off)
+vterm_set_col_offset(struct term *t, int off)
 {
    struct term_action a = {
       .type1 = a_set_col_offset,
-      .arg = off,
+      .arg = off >= 0 ? (u32)off : t->c,
    };
 
    term_execute_or_enqueue_action(t, a);

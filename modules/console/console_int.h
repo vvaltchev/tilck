@@ -2,15 +2,13 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
-
-#include "../../kernel/tty/term_int.h" // TEMP HACK!!!
+#include "term_int.h"
 
 #include <termios.h>      // system header
 
 #define NPAR 16                   /* maximum number of CSI parameters */
 #define TTY_ATTR_BOLD             (1 << 0)
 #define TTY_ATTR_REVERSE          (1 << 1)
-
 
 struct console_data;
 

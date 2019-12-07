@@ -15,7 +15,6 @@
 #include <fcntl.h>        // system header
 #include <linux/kd.h>     // system header
 
-#include "term_int.h"
 #include "tty_int.h"
 
 static inline bool tty_inbuf_write_elem(struct tty *t, u8 c);
@@ -475,7 +474,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
    }
 
    if (t->c_term.c_lflag & ICANON)
-      t->tintf->set_col_offset(t->tstate, term_get_curr_col(t->tstate));
+      t->tintf->set_col_offset(t->tstate, -1 /* current col */);
 
    h->read_allowed_to_return = false;
 
