@@ -13,7 +13,7 @@
 #include <tilck/kernel/kmalloc.h>
 
 #include "console_int.h"
-#include "tty_output_default_state.c.h"
+#include "console_def_state.c.h"
 
 void *alloc_console_data(void)
 {
