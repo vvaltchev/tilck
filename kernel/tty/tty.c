@@ -170,6 +170,12 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
    }
 
+   if (!(t->special_ctrl_handlers = kzmalloc(256*sizeof(tty_ctrl_sig_func)))) {
+      kfree2(t->input_buf, sizeof(TTY_INPUT_BS));
+      kfree2(t, sizeof(struct tty));
+      return NULL;
+   }
+
    init_tty_struct(t, minor, serial_port_fwd);
 
    struct term *new_term =

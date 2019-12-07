@@ -521,7 +521,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
 void tty_update_special_ctrl_handlers(struct tty *t)
 {
-   bzero(t->special_ctrl_handlers, sizeof(t->special_ctrl_handlers));
+   bzero(t->special_ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
    tty_set_ctrl_handler(t, VSTOP, tty_ctrl_stop);
    tty_set_ctrl_handler(t, VSTART, tty_ctrl_start);
    tty_set_ctrl_handler(t, VINTR, tty_ctrl_intr);

@@ -78,6 +78,9 @@ struct tty {
    int end_line_delim_count;
    bool mediumraw_mode;
 
+   char *input_buf;
+   tty_ctrl_sig_func *special_ctrl_handlers;
+
 #if MOD_console
    u16 saved_cur_row;
    u16 saved_cur_col;
@@ -97,12 +100,8 @@ struct tty {
    u8 curr_color; /* actual color after applying attrs */
    u16 serial_port_fwd;
 
-   /* large fields */
-   char *input_buf;                               /* tty input */
-   tty_ctrl_sig_func special_ctrl_handlers[256];  /* tty input */
-
 #if MOD_console
-   term_filter default_state_funcs[256];          /* tty output */
+   term_filter default_state_funcs[256];
 #endif
 };
 
