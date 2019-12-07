@@ -2,7 +2,9 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/color_defs.h>
+
 #include <tilck/kernel/term.h>
+#include "gfx_chars.h"
 
 #pragma GCC diagnostic push
 
