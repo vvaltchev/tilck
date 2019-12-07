@@ -8,7 +8,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/term.h>
-#include <tilck/mods/tty.h>
+#include <tilck/kernel/tty.h>
 
 #define PRINTK_COLOR                          COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR            COLOR_CYAN

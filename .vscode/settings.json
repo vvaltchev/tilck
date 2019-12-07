@@ -119,7 +119,8 @@
       "x86intrin.h": "c",
       "ia32intrin.h": "c",
       "simple_elf_loader.c.h": "c",
-      "textmode_video.h": "c"
+      "textmode_video.h": "c",
+      "tty_struct.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

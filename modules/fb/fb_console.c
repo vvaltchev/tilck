@@ -13,7 +13,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
-#include <tilck/mods/tty.h>
+#include <tilck/kernel/tty.h>
 
 #include "fb_int.h"
 

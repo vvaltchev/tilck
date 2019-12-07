@@ -107,9 +107,9 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
 {
    t->minor = minor;
    t->serial_port_fwd = serial_port_fwd;
-   t->c_term = default_termios;
    t->kd_gfx_mode = KD_TEXT;
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+   tty_reset_termios(t);
 
 #if MOD_console
    t->user_color = t->curr_color;
@@ -281,6 +281,15 @@ struct tty *get_serial_tty(int n)
    return ttys[TTYS0_MINOR + n];
 }
 
+ssize_t
+tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
+{
+   /* term_write's size is limited to 2^20 - 1 */
+   size = MIN(size, (size_t)MB - 1);
+   term_write(t->term_inst, buf, size, t->curr_color);
+   return (ssize_t) size;
+}
+
 static void init_tty(void)
 {
    term_read_info(get_curr_term(), &first_term_i);
@@ -338,15 +347,6 @@ REGISTER_MODULE(&tty_module);
 void tty_update_default_state_tables(struct tty *t)
 {
    /* do nothing */
-}
-
-ssize_t
-tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
-{
-   /* term_write's size is limited to 2^20 - 1 */
-   size = MIN(size, (size_t)MB - 1);
-   term_write(t->term_inst, buf, size, t->curr_color);
-   return (ssize_t) size;
 }
 
 void tty_reset_filter_ctx(struct tty *t)

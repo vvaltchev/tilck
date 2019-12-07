@@ -45,6 +45,11 @@ const struct termios default_termios =
    },
 };
 
+void tty_reset_termios(struct tty *t)
+{
+   t->c_term = default_termios;
+}
+
 static int tty_ioctl_tcgets(struct tty *t, void *argp)
 {
    int rc = copy_to_user(argp, &t->c_term, sizeof(struct termios));

@@ -8,11 +8,12 @@
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/cmdline.h>
-
-#include <termios.h>      // system header
+#include <tilck/kernel/tty_struct.h>
+#include <tilck/kernel/tty.h>
 
 #include "../../kernel/tty/term_int.h" // HACK!!!
-#include "../../kernel/tty/tty_int.h"  // HACK!!!
+
+#include <termios.h>      // system header
 
 /* tty_output internal functions */
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c);
@@ -23,6 +24,11 @@ static enum term_fret tty_state_esc2_par0(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_par1(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_csi(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_unknown(u8*,u8*,struct term_action*,void*);
+
+#define NPAR 16 /* maximum number of CSI parameters */
+#define TTY_ATTR_BOLD             (1 << 0)
+#define TTY_ATTR_REVERSE          (1 << 1)
+
 
 #include "tty_output_default_state.c.h"
 #pragma GCC diagnostic push
@@ -692,10 +698,10 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
             t->c_set = 0;
             t->c_sets_tables[0] = tty_default_trans_table;
             t->c_sets_tables[1] = tty_gfx_trans_table;
-            t->c_term = default_termios;
             t->kd_gfx_mode = KD_TEXT;
             t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
             t->user_color = t->curr_color;
+            tty_reset_termios(t);
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
             ctx->t = t;
@@ -809,13 +815,3 @@ static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
 
    return -1;
 }
-
-ssize_t
-tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
-{
-   /* term_write's size is limited to 2^20 - 1 */
-   size = MIN(size, (size_t)MB - 1);
-   term_write(t->term_inst, buf, size, t->curr_color);
-   return (ssize_t) size;
-}
-

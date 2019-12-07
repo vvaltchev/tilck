@@ -5,7 +5,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
-#include <tilck/mods/tty.h>
+#include <tilck/kernel/tty.h>
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"

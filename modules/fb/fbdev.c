@@ -8,7 +8,7 @@
 #include <tilck/mods/fb_console.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
-#include <tilck/mods/tty.h>
+#include <tilck/kernel/tty.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process_mm.h>
 
