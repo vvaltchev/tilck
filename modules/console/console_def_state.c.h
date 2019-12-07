@@ -33,7 +33,7 @@ tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    struct twfilter_ctx_t *const ctx = ctx_arg;
 
-   if (term_get_curr_row(ctx->t->term_inst) > 0) {
+   if (term_get_curr_row(ctx->t->tstate) > 0) {
 
       *a = (struct term_action) {
          .type2 = a_move_ch_and_cur_rel,

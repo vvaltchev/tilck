@@ -104,7 +104,7 @@ void tty_setup_for_panic(struct tty *t)
        * TODO: investigate whether it is possible to make
        * term_restart_video_output() safer in panic scenarios.
        */
-      t->term_intf->restart_video_output(t->term_inst);
+      t->term_intf->restart_video_output(t->tstate);
       t->kd_gfx_mode = KD_TEXT;
    }
 }
@@ -114,7 +114,7 @@ void tty_restore_kd_text_mode(struct tty *t)
    if (t->kd_gfx_mode == KD_TEXT)
       return;
 
-   t->term_intf->restart_video_output(t->term_inst);
+   t->term_intf->restart_video_output(t->tstate);
    t->kd_gfx_mode = KD_TEXT;
 }
 
@@ -128,7 +128,7 @@ static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
    }
 
    if (opt == KD_GRAPHICS) {
-      t->term_intf->pause_video_output(t->term_inst);
+      t->term_intf->pause_video_output(t->tstate);
       t->kd_gfx_mode = KD_GRAPHICS;
       return 0;
    }

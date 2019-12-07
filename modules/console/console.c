@@ -178,7 +178,7 @@ static inline void
 tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
 {
    const u32 new_row = MIN(
-      term_get_curr_row(t->term_inst) + row, t->tparams.rows - 1u
+      term_get_curr_row(t->tstate) + row, t->tparams.rows - 1u
    );
 
    *a = (struct term_action) {
@@ -226,7 +226,7 @@ tty_csi_G_handler(u32 *params,
 
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = term_get_curr_row(t->term_inst),
+      .arg1 = term_get_curr_row(t->tstate),
       .arg2 = MIN((u32)params[0], t->tparams.cols - 1u),
    };
 }
@@ -328,8 +328,8 @@ tty_csi_n_handler(u32 *params,
 
       char dsr[16];
       snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-               term_get_curr_row(t->term_inst) + 1,
-               term_get_curr_col(t->term_inst) + 1);
+               term_get_curr_row(t->tstate) + 1,
+               term_get_curr_col(t->tstate) + 1);
 
       for (char *p = dsr; *p; p++) {
          tty_send_keyevent(t, make_key_event((u32) *p, *p, true));
@@ -348,8 +348,8 @@ tty_csi_s_handler(u32 *params,
    struct tty *const t = ctx->t;
 
    /* SCP (Save Cursor Position) */
-   ctx->cd->saved_cur_row = term_get_curr_row(t->term_inst);
-   ctx->cd->saved_cur_col = term_get_curr_col(t->term_inst);
+   ctx->cd->saved_cur_row = term_get_curr_row(t->tstate);
+   ctx->cd->saved_cur_col = term_get_curr_col(t->tstate);
 }
 
 static void
@@ -386,7 +386,7 @@ tty_csi_d_handler(u32 *params,
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
-      .arg2 = term_get_curr_col(t->term_inst),
+      .arg2 = term_get_curr_col(t->tstate),
    };
 }
 
@@ -405,7 +405,7 @@ tty_csi_hpa_handler(u32 *params,
 
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = term_get_curr_row(t->term_inst),
+      .arg1 = term_get_curr_row(t->tstate),
       .arg2 = UNSAFE_MIN((u32)params[0], t->tparams.cols - 1u),
    };
 }
@@ -729,7 +729,7 @@ static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state)
 {
    struct tty *const t = ctx->t;
    ctx->non_default_state = new_state != &tty_state_default;
-   t->term_intf->set_filter(t->term_inst, new_state, ctx);
+   t->term_intf->set_filter(t->tstate, new_state, ctx);
 }
 
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
