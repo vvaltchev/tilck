@@ -24,9 +24,9 @@ sterm_is_initialized(struct term *t)
 }
 
 static void
-sterm_read_info(struct term *t, struct tilck_term_info *out)
+sterm_get_params(struct term *t, struct term_params *out)
 {
-   *out = (struct tilck_term_info) {
+   *out = (struct term_params) {
       .rows = 25,
       .cols = 80,
       .vi = NULL,
@@ -98,7 +98,7 @@ static const struct term_interface intf = {
 
    .get_type = sterm_get_type,
    .is_initialized = sterm_is_initialized,
-   .read_info = sterm_read_info,
+   .get_params = sterm_get_params,
 
    .write = sterm_write,
    .scroll_up = sterm_scroll_up,

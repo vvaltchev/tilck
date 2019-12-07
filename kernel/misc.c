@@ -74,9 +74,9 @@ void show_tilck_logo(void)
       "",
    };
 
-   struct tilck_term_info term_i;
-   term_read_info(&term_i);
-   const u32 cols = term_i.cols;
+   struct term_params tparams;
+   term_read_info(&tparams);
+   const u32 cols = tparams.cols;
    const u32 padding = (u32)(cols / 2 - strlen(banner[1]) / 2);
 
    for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {

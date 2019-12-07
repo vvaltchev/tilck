@@ -35,7 +35,7 @@ struct video_interface {
    void (*enable_static_elems_refresh)(void);
 };
 
-struct tilck_term_info {
+struct term_params {
 
    u16 rows;
    u16 cols;
@@ -61,7 +61,7 @@ struct term_interface {
 
    enum term_type (*get_type)(void);
    bool (*is_initialized)(struct term *t);
-   void (*read_info)(struct term *t, struct tilck_term_info *out);
+   void (*get_params)(struct term *t, struct term_params *out);
 
    void (*write)(struct term *t, const char *buf, size_t len, u8 color);
    void (*scroll_up)(struct term *t, u32 lines);
@@ -138,9 +138,9 @@ static ALWAYS_INLINE bool term_is_initialized(void)
    return __curr_term_intf->is_initialized(__curr_term);
 }
 
-static ALWAYS_INLINE void term_read_info(struct tilck_term_info *out)
+static ALWAYS_INLINE void term_read_info(struct term_params *out)
 {
-   __curr_term_intf->read_info(__curr_term, out);
+   __curr_term_intf->get_params(__curr_term, out);
 }
 
 static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)

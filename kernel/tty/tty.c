@@ -26,7 +26,7 @@ STATIC_ASSERT(TTY_COUNT <= MAX_TTYS);
 struct tty *ttys[128];
 struct tty *__curr_tty;
 int tty_tasklet_runner;
-static struct tilck_term_info first_term_i;
+static struct term_params first_term_i;
 
 static struct keypress_handler_elem tty_keypress_handler_elem =
 {
@@ -234,7 +234,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 
    t->term_inst = new_term;
    t->term_intf = new_term_intf;
-   t->term_intf->read_info(t->term_inst, &t->term_i);
+   t->term_intf->get_params(t->term_inst, &t->tparams);
    tty_reset_filter_ctx(t);
    return t;
 }

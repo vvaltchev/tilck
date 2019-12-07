@@ -813,9 +813,9 @@ dispose_term(struct term *t)
 }
 
 static void
-vterm_read_info(struct term *t, struct tilck_term_info *out)
+vterm_get_params(struct term *t, struct term_params *out)
 {
-   *out = (struct tilck_term_info) {
+   *out = (struct term_params) {
       .rows = t->rows,
       .cols = t->cols,
       .vi = t->vi,
@@ -936,7 +936,7 @@ static const struct term_interface intf = {
 
    .get_type = vterm_get_type,
    .is_initialized = vterm_is_initialized,
-   .read_info = vterm_read_info,
+   .get_params = vterm_get_params,
 
    .write = vterm_write,
    .scroll_up = vterm_scroll_up,

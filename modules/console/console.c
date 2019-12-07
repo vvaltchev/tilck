@@ -178,7 +178,7 @@ static inline void
 tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
 {
    const u32 new_row = MIN(
-      term_get_curr_row(t->term_inst) + row, t->term_i.rows - 1u
+      term_get_curr_row(t->term_inst) + row, t->tparams.rows - 1u
    );
 
    *a = (struct term_action) {
@@ -227,7 +227,7 @@ tty_csi_G_handler(u32 *params,
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = term_get_curr_row(t->term_inst),
-      .arg2 = MIN((u32)params[0], t->term_i.cols - 1u),
+      .arg2 = MIN((u32)params[0], t->tparams.cols - 1u),
    };
 }
 
@@ -247,8 +247,8 @@ tty_csi_fH_handler(u32 *params,
 
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = UNSAFE_MIN((u32)params[0], t->term_i.rows - 1u),
-      .arg2 = UNSAFE_MIN((u32)params[1], t->term_i.cols - 1u),
+      .arg1 = UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
+      .arg2 = UNSAFE_MIN((u32)params[1], t->tparams.cols - 1u),
    };
 }
 
@@ -385,7 +385,7 @@ tty_csi_d_handler(u32 *params,
 
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = UNSAFE_MIN((u32)params[0], t->term_i.rows - 1u),
+      .arg1 = UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
       .arg2 = term_get_curr_col(t->term_inst),
    };
 }
@@ -406,7 +406,7 @@ tty_csi_hpa_handler(u32 *params,
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
       .arg1 = term_get_curr_row(t->term_inst),
-      .arg2 = UNSAFE_MIN((u32)params[0], t->term_i.cols - 1u),
+      .arg2 = UNSAFE_MIN((u32)params[0], t->tparams.cols - 1u),
    };
 }
 
