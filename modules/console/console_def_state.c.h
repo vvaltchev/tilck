@@ -156,7 +156,7 @@ void tty_update_default_state_tables(struct tty *t)
 {
    const struct termios *const c_term = &t->c_term;
    struct console_data *cd = t->console_data;
-   bzero(cd->default_state_funcs, sizeof(cd->default_state_funcs));
+   bzero(cd->default_state_funcs, 256 * sizeof(term_filter));
 
    cd->default_state_funcs['\n'] = tty_def_state_lf;
    cd->default_state_funcs['\r'] = tty_def_state_keep;

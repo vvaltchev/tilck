@@ -39,7 +39,7 @@ struct console_data {
    const s16 *c_sets_tables[2];
    struct twfilter_ctx_t filter_ctx;
 
-   term_filter default_state_funcs[256];
+   term_filter *default_state_funcs;
 };
 
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c);

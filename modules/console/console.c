@@ -17,12 +17,26 @@
 
 void *alloc_console_data(void)
 {
-   return kzmalloc(sizeof(struct console_data));
+   struct console_data *cd;
+
+   if (!(cd = kzmalloc(sizeof(struct console_data))))
+      return NULL;
+
+   if (!(cd->default_state_funcs = kzmalloc(256 * sizeof(term_filter)))) {
+      kfree2(cd, sizeof(struct console_data));
+      return NULL;
+   }
+
+   return cd;
 }
 
 void free_console_data(void *data)
 {
-   kfree2(data, sizeof(struct console_data));
+   if (data) {
+      struct console_data *cd = data;
+      kfree2(cd->default_state_funcs, 256 * sizeof(term_filter));
+      kfree2(data, sizeof(struct console_data));
+   }
 }
 
 void init_console_data(struct tty *t)
