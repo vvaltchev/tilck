@@ -156,6 +156,10 @@ void tty_update_default_state_tables(struct tty *t)
 {
    const struct termios *const c_term = &t->c_term;
    struct console_data *cd = t->console_data;
+
+   if (!cd)
+      return; /* serial tty */
+
    bzero(cd->def_state_funcs, 256 * sizeof(term_filter));
 
    cd->def_state_funcs['\n'] = tty_def_state_lf;

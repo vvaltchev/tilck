@@ -1,7 +1,3 @@
-#ifndef _TERM_C_
-#error This is NOT a header file. It is part of term.c.
-#endif
-
 /* ---------------- term action engine --------------------- */
 
 #define ENTRY(func, n) { (action_func)(func), n }
@@ -68,7 +64,8 @@ static void term_execute_or_enqueue_action(struct term *t, struct term_action a)
    }
 }
 
-void term_write(struct term *t, const char *buf, size_t len, u8 color)
+static void
+vterm_write(struct term *t, const char *buf, size_t len, u8 color)
 {
    ASSERT(len < MB);
 
@@ -83,7 +80,8 @@ void term_write(struct term *t, const char *buf, size_t len, u8 color)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_up(struct term *t, u32 lines)
+static void
+vterm_scroll_up(struct term *t, u32 lines)
 {
    struct term_action a = {
       .type2 = a_scroll,
@@ -94,7 +92,8 @@ void term_scroll_up(struct term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_scroll_down(struct term *t, u32 lines)
+static void
+vterm_scroll_down(struct term *t, u32 lines)
 {
    struct term_action a = {
       .type2 = a_scroll,
@@ -105,7 +104,8 @@ void term_scroll_down(struct term *t, u32 lines)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_col_offset(struct term *t, u32 off)
+static void
+vterm_set_col_offset(struct term *t, u32 off)
 {
    struct term_action a = {
       .type1 = a_set_col_offset,
@@ -115,7 +115,8 @@ void term_set_col_offset(struct term *t, u32 off)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_pause_video_output(struct term *t)
+static void
+vterm_pause_video_output(struct term *t)
 {
    struct term_action a = {
       .type1 = a_pause_video_output,
@@ -125,7 +126,8 @@ void term_pause_video_output(struct term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_restart_video_output(struct term *t)
+static void
+vterm_restart_video_output(struct term *t)
 {
    struct term_action a = {
       .type1 = a_restart_video_output,
@@ -135,7 +137,8 @@ void term_restart_video_output(struct term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-void term_set_cursor_enabled(struct term *t, bool value)
+static void
+vterm_set_cursor_enabled(struct term *t, bool value)
 {
    struct term_action a = {
       .type1 = a_enable_cursor,
@@ -157,13 +160,15 @@ u16 term_get_curr_col(struct term *t)
    return t->c;
 }
 
-void term_set_filter(struct term *t, term_filter func, void *ctx)
+static void
+vterm_set_filter(struct term *t, term_filter func, void *ctx)
 {
    t->filter = func;
    t->filter_ctx = ctx;
 }
 
-bool term_is_initialized(struct term *t)
+static bool
+vterm_is_initialized(struct term *t)
 {
    return t->initialized;
 }

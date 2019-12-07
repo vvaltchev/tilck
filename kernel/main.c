@@ -34,26 +34,55 @@
 void init_console(void)
 {
    if (kopt_serial_console) {
-      init_term(get_curr_term(), NULL, 25, 80, COM1, 0);
+
+      if (!serial_term_intf) {
+
+         if (!video_term_intf)
+            goto we_are_doomed;
+
+         kopt_serial_console = false;
+         panic("Unable to init the serial console without the serial module!");
+      }
+
+      __curr_term_intf = serial_term_intf;
+      __curr_term = __curr_term_intf->get_first_term();
+
+      init_curr_term(NULL, 25, 80, COM1, 0);
       printk_flush_ringbuf();
       return;
    }
+
+   if (!video_term_intf) {
+
+      if (!serial_term_intf)
+         goto we_are_doomed;
+
+      kopt_serial_console = true;
+      panic("Unable to init the video console without the console module!");
+   }
+
+   __curr_term_intf = video_term_intf;
+   __curr_term = __curr_term_intf->get_first_term();
 
    if (use_framebuffer()) {
 
       if (MOD_fb)
          init_fb_console();
       else
-         init_term(get_curr_term(), NULL, 25, 80, 0, 0);
+         init_curr_term(NULL, 25, 80, 0, 0); /* no-output term */
 
    } else {
       init_textmode_console();
    }
 
    printk_flush_ringbuf();
+   return;
 
-   if (!MOD_console)
-      panic("Unable to init the video console without the console module!");
+we_are_doomed:
+   disable_interrupts_forced();
+
+   while (1)
+      halt();
 }
 
 static void read_multiboot_info(u32 magic, u32 mbi_addr)

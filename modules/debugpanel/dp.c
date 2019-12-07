@@ -55,10 +55,9 @@ static void dp_enter(void)
 {
    struct tilck_term_info term_i;
    struct dp_screen *pos;
-   struct term *t = get_curr_term();
 
-   term_read_info(t, &term_i);
-   term_set_cursor_enabled(t, false);
+   term_read_info(&term_i);
+   term_set_cursor_enabled(false);
 
    in_debug_panel = true;
    dp_rows = term_i.rows;
@@ -90,7 +89,7 @@ static void dp_exit(void)
          pos->on_dp_exit();
    }
 
-   term_set_cursor_enabled(get_curr_term(), true);
+   term_set_cursor_enabled(true);
 }
 
 void dp_register_screen(struct dp_screen *screen)
@@ -239,9 +238,9 @@ dp_keypress_handler(struct kb_dev *kb, struct key_event ke)
 
 
    if (ui_need_update) {
-      term_pause_video_output(get_curr_term());
+      term_pause_video_output();
       redraw_screen();
-      term_restart_video_output(get_curr_term());
+      term_restart_video_output();
    }
 
    return kb_handler_ok_and_stop;

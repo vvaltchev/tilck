@@ -14,7 +14,6 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
 
-#define _TERM_C_
 #include "term_int.h"
 
 struct term {
@@ -58,8 +57,6 @@ struct term {
 
 static struct term first_instance;
 static u16 failsafe_buffer[80 * 25];
-
-struct term *__curr_term = &first_instance;
 
 /* ------------ No-output video-interface ------------------ */
 
@@ -733,7 +730,8 @@ static void term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 
 #ifdef DEBUG
 
-void debug_term_dump_font_table(struct term *t)
+static void
+debug_term_dump_font_table(struct term *t)
 {
    static const u8 hex_digits[] = "0123456789abcdef";
 
@@ -780,18 +778,21 @@ void debug_term_dump_font_table(struct term *t)
 
 #endif
 
-struct term *alloc_term_struct(void)
+static struct term *
+alloc_term_struct(void)
 {
    return kzmalloc(sizeof(struct term));
 }
 
-void free_term_struct(struct term *t)
+static void
+free_term_struct(struct term *t)
 {
    ASSERT(t != &first_instance);
    kfree2(t, sizeof(struct term));
 }
 
-void dispose_term(struct term *t)
+static void
+dispose_term(struct term *t)
 {
    ASSERT(t != &first_instance);
 
@@ -811,19 +812,10 @@ void dispose_term(struct term *t)
    }
 }
 
-void set_curr_term(struct term *t)
-{
-   ASSERT(!is_preemption_enabled());
-
-   term_pause_video_output(get_curr_term());
-   __curr_term = t;
-   term_restart_video_output(get_curr_term());
-}
-
-void term_read_info(struct term *t, struct tilck_term_info *out)
+static void
+vterm_read_info(struct term *t, struct tilck_term_info *out)
 {
    *out = (struct tilck_term_info) {
-      .tab_size = t->tabsize,
       .rows = t->rows,
       .cols = t->cols,
       .vi = t->vi,
@@ -848,14 +840,14 @@ static u32 term_calc_opt_buf_rows(u16 rows, u16 cols)
    }
 }
 
-int
-init_term(struct term *t,
-          const struct video_interface *intf,
-          u16 rows,
-          u16 cols,
-          u16 serial_port_fwd,
-          int rows_buf)
+static int
+init_vterm(struct term *t,
+           const struct video_interface *intf,
+           u16 rows,
+           u16 cols,
+           int rows_buf)
 {
+   const u16 serial_port_fwd = 0;
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
    if (serial_port_fwd) {
@@ -928,4 +920,47 @@ init_term(struct term *t,
 
    t->initialized = true;
    return 0;
+}
+
+static struct term *vterm_get_first_inst(void)
+{
+   return &first_instance;
+}
+
+static enum term_type vterm_get_type(void)
+{
+   return term_type_video;
+}
+
+static const struct term_interface intf = {
+
+   .get_type = vterm_get_type,
+   .is_initialized = vterm_is_initialized,
+   .read_info = vterm_read_info,
+
+   .write = vterm_write,
+   .scroll_up = vterm_scroll_up,
+   .scroll_down = vterm_scroll_down,
+   .set_col_offset = vterm_set_col_offset,
+   .pause_video_output = vterm_pause_video_output,
+   .restart_video_output = vterm_restart_video_output,
+   .set_cursor_enabled = vterm_set_cursor_enabled,
+   .set_filter = vterm_set_filter,
+
+   .get_first_term = vterm_get_first_inst,
+   .video_term_init = init_vterm,
+   .serial_term_init = NULL,
+   .alloc = alloc_term_struct,
+   .free = free_term_struct,
+   .dispose = dispose_term,
+
+#ifdef DEBUG
+   .debug_dump_font_table = debug_term_dump_font_table,
+#endif
+};
+
+__attribute__((constructor))
+static void register_term(void)
+{
+   register_term_intf(&intf);
 }

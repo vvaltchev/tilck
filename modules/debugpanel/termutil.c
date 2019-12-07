@@ -16,7 +16,7 @@ void dp_write_raw(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   term_write(get_curr_term(), buf, (size_t)rc, DP_COLOR);
+   term_write(buf, (size_t)rc, DP_COLOR);
 }
 
 void dp_write(int row, int col, const char *fmt, ...)
@@ -45,7 +45,7 @@ void dp_write(int row, int col, const char *fmt, ...)
       col = dp_start_col + 2;
 
    dp_move_cursor(row, col);
-   term_write(get_curr_term(), buf, (size_t)rc, DP_COLOR);
+   term_write(buf, (size_t)rc, DP_COLOR);
 }
 
 void dp_draw_rect_raw(int row, int col, int h, int w)

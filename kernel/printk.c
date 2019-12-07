@@ -280,7 +280,7 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
    if (LIKELY(get_curr_tty() != NULL)) {
       /* tty has been initialized and set a term write filter func */
-      term_write(get_curr_term(), buf, size, color);
+      term_write(buf, size, color);
       return;
    }
 
@@ -292,10 +292,10 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
    for (u32 i = 0; i < size; i++) {
 
       if (buf[i] == '\n') {
-         term_write(get_curr_term(), "\r", 1, color);
+         term_write("\r", 1, color);
       }
 
-      term_write(get_curr_term(), &buf[i], 1, color);
+      term_write(&buf[i], 1, color);
    }
 }
 
@@ -354,7 +354,7 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
 
       if (cs.used + size >= sizeof(printk_rbuf)) {
 
-         if (term_is_initialized(get_curr_term())) {
+         if (term_is_initialized()) {
             printk_direct_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
             return;
          }
@@ -417,7 +417,7 @@ void vprintk(const char *fmt, va_list args)
       written--;
    }
 
-   if (!term_is_initialized(get_curr_term())) {
+   if (!term_is_initialized()) {
       printk_append_to_ringbuf(buf, (size_t) written);
       return;
    }

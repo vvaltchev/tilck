@@ -40,7 +40,7 @@ static void tty_keypress_echo(struct tty *t, char c)
        *    ECHONL: If ICANON is also set, echo the NL character even if ECHO
        *            is not set.
        */
-      term_write(t->term_inst, &c, 1, t->curr_color);
+      t->term_intf->write(t->term_inst, &c, 1, t->curr_color);
       return;
    }
 
@@ -60,7 +60,7 @@ static void tty_keypress_echo(struct tty *t, char c)
 
       if (c_term->c_lflag & ECHOK) {
          if (c == c_term->c_cc[VKILL]) {
-            term_write(t->term_inst, &c, 1, t->curr_color);
+            t->term_intf->write(t->term_inst, &c, 1, t->curr_color);
             return;
          }
       }
@@ -78,7 +78,7 @@ static void tty_keypress_echo(struct tty *t, char c)
 
 
          if (c == c_term->c_cc[VWERASE] || c == c_term->c_cc[VERASE]) {
-            term_write(t->term_inst, &c, 1, t->curr_color);
+            t->term_intf->write(t->term_inst, &c, 1, t->curr_color);
             return;
          }
       }
@@ -99,14 +99,14 @@ static void tty_keypress_echo(struct tty *t, char c)
       if (c != '\t' && c != '\n') {
          if (c != c_term->c_cc[VSTART] && c != c_term->c_cc[VSTOP]) {
             char mini_buf[2] = { '^', c + 0x40 };
-            term_write(t->term_inst, mini_buf, 2, t->curr_color);
+            t->term_intf->write(t->term_inst, mini_buf, 2, t->curr_color);
             return;
          }
       }
    }
 
    /* Just ECHO a regular character */
-   term_write(t->term_inst, &c, 1, t->curr_color);
+   t->term_intf->write(t->term_inst, &c, 1, t->curr_color);
 }
 
 static inline bool tty_inbuf_is_empty(struct tty *t)
@@ -281,8 +281,12 @@ int set_curr_tty(struct tty *t)
    disable_preemption();
    {
       if (__curr_tty->kd_gfx_mode == KD_TEXT) {
+
          __curr_tty = t;
-         set_curr_term(t->term_inst);
+
+         if (t->term_intf->get_type() == term_type_video)
+            set_curr_video_term(t->term_inst);
+
          res = 0;
       }
    }
@@ -318,12 +322,12 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
       return kb_handler_nak;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed(kb)) {
-      term_scroll_up(t->term_inst, TERM_SCROLL_LINES);
+      t->term_intf->scroll_up(t->term_inst, TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 
    if (key == KEY_PAGE_DOWN && kb_is_shift_pressed(kb)) {
-      term_scroll_down(t->term_inst, TERM_SCROLL_LINES);
+      t->term_intf->scroll_down(t->term_inst, TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 
@@ -471,7 +475,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
    }
 
    if (t->c_term.c_lflag & ICANON)
-      term_set_col_offset(t->term_inst, term_get_curr_col(t->term_inst));
+      t->term_intf->set_col_offset(t->term_inst, term_get_curr_col(t->term_inst));
 
    h->read_allowed_to_return = false;
 

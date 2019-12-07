@@ -5,8 +5,12 @@
 
 struct term;
 struct term_action;
+struct term_interface;
 
 extern struct term *__curr_term;
+extern const struct term_interface *__curr_term_intf;
+extern const struct term_interface *video_term_intf;
+extern const struct term_interface *serial_term_intf;
 
 struct video_interface {
 
@@ -33,35 +37,15 @@ struct video_interface {
 
 struct tilck_term_info {
 
-   u16 tab_size;
    u16 rows;
    u16 cols;
-
    const struct video_interface *vi;
 };
 
-int init_term(struct term *t,
-              const struct video_interface *vi,
-              u16 rows,
-              u16 cols,
-              u16 serial_port_fwd,
-              int rows_buf); /* note: < 0 means default value */
-
-bool term_is_initialized(struct term *t);
-void term_read_info(struct term *t, struct tilck_term_info *out);
-
-void term_write(struct term *t, const char *buf, size_t len, u8 color);
-void term_scroll_up(struct term *t, u32 lines);
-void term_scroll_down(struct term *t, u32 lines);
-void term_set_col_offset(struct term *t, u32 off);
-void term_pause_video_output(struct term *t);
-void term_restart_video_output(struct term *t);
-void term_set_cursor_enabled(struct term *t, bool value);
-
-struct term *alloc_term_struct(void);
-void free_term_struct(struct term *t);
-void dispose_term(struct term *t);
-void set_curr_term(struct term *t);
+enum term_type {
+   term_type_video,
+   term_type_serial,
+};
 
 enum term_fret {
    TERM_FILTER_WRITE_BLANK,
@@ -73,11 +57,108 @@ typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
                                       struct term_action *a, /*  out   */
                                       void *ctx);            /*   in   */
 
-void term_set_filter(struct term *t, term_filter func, void *ctx);
+struct term_interface {
+
+   enum term_type (*get_type)(void);
+   bool (*is_initialized)(struct term *t);
+   void (*read_info)(struct term *t, struct tilck_term_info *out);
+
+   void (*write)(struct term *t, const char *buf, size_t len, u8 color);
+   void (*scroll_up)(struct term *t, u32 lines);
+   void (*scroll_down)(struct term *t, u32 lines);
+   void (*set_col_offset)(struct term *t, u32 off);
+   void (*pause_video_output)(struct term *t);
+   void (*restart_video_output)(struct term *t);
+   void (*set_cursor_enabled)(struct term *t, bool value);
+   void (*set_filter)(struct term *t, term_filter func, void *ctx);
+
+   /*
+    * The first term must be pre-allocated but _not_ pre-initialized.
+    * It is expected to require init() to be called on it before use.
+    */
+   struct term *(*get_first_term)(void);
+
+   int (*video_term_init)(struct term *t,
+                          const struct video_interface *vi,
+                          u16 rows,
+                          u16 cols,
+                          int rows_buf); /* note: < 0 means default value */
+
+   int (*serial_term_init)(struct term *t,
+                           u16 serial_port_fwd);
+
+   struct term *(*alloc)(void);
+   void (*free)(struct term *t);
+   void (*dispose)(struct term *t);
+
+   /* --- debug funcs --- */
+   void (*debug_dump_font_table)(struct term *t);
+};
+
+void set_curr_video_term(struct term *t);
+void register_term_intf(const struct term_interface *intf);
 
 static ALWAYS_INLINE struct term *get_curr_term(void) {
    return __curr_term;
 }
 
-/* --- debug funcs --- */
-void debug_term_dump_font_table(struct term *t);
+static ALWAYS_INLINE const struct term_interface *get_curr_term_intf(void) {
+   return __curr_term_intf;
+}
+
+static ALWAYS_INLINE
+int init_curr_term(const struct video_interface *vi,
+                   u16 rows,
+                   u16 cols,
+                   u16 serial_port_fwd,
+                   int rows_buf) /* note: < 0 means default value */
+{
+   const struct term_interface *intf = __curr_term_intf;
+   ASSERT(!intf->is_initialized(__curr_term));
+
+   if (intf->get_type() == term_type_video)
+      return intf->video_term_init(__curr_term,
+                                   vi,
+                                   rows,
+                                   cols,
+                                   rows_buf);
+
+   else if (intf->get_type() == term_type_serial)
+      return intf->serial_term_init(__curr_term,
+                                    serial_port_fwd);
+   else
+      NOT_REACHED();
+}
+
+static ALWAYS_INLINE bool term_is_initialized(void)
+{
+   if (!__curr_term_intf)
+      return false;
+
+   return __curr_term_intf->is_initialized(__curr_term);
+}
+
+static ALWAYS_INLINE void term_read_info(struct tilck_term_info *out)
+{
+   __curr_term_intf->read_info(__curr_term, out);
+}
+
+static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)
+{
+   __curr_term_intf->write(__curr_term, buf, len, color);
+}
+
+static ALWAYS_INLINE void term_pause_video_output(void)
+{
+   __curr_term_intf->pause_video_output(__curr_term);
+}
+
+static ALWAYS_INLINE void term_restart_video_output(void)
+{
+   __curr_term_intf->restart_video_output(__curr_term);
+}
+
+static ALWAYS_INLINE void term_set_cursor_enabled(bool value)
+{
+   __curr_term_intf->set_cursor_enabled(__curr_term, value);
+}

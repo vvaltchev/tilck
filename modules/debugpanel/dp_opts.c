@@ -77,7 +77,7 @@ static void dp_show_opts(void)
    DUMP_LABEL("Console");
    {
       struct tilck_term_info info;
-      term_read_info(get_curr_term(), &info);
+      term_read_info(&info);
       DUMP_INT("TERM_ROWS", info.rows);
       DUMP_INT("TERM_COLS", info.cols);
    }

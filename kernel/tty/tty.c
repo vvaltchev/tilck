@@ -12,6 +12,7 @@
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/term.h>
 #include <tilck/mods/console.h>
 
 #include <linux/major.h> // system header
@@ -112,7 +113,7 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
    tty_reset_termios(t);
 
-   if (MOD_console)
+   if (MOD_console && !serial_port_fwd)
       init_console_data(t);
 }
 
@@ -131,21 +132,39 @@ tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
 }
 
 static struct term *
-tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
+tty_allocate_and_init_new_video_term(int rows_buf)
 {
-   struct term *new_term = alloc_term_struct();
+   const struct term_interface *intf = video_term_intf;
+   struct term *new_term = intf->alloc();
 
    if (!new_term)
       panic("TTY: no enough memory a new term instance");
 
-   if (init_term(new_term,
-                 first_term_i.vi,
-                 first_term_i.rows,
-                 first_term_i.cols,
-                 serial_port_fwd,
-                 rows_buf) < 0)
+   if (intf->video_term_init(new_term,
+                             first_term_i.vi,
+                             first_term_i.rows,
+                             first_term_i.cols,
+                             rows_buf) < 0)
    {
-      free_term_struct(new_term);
+      intf->free(new_term);
+      return NULL;
+   }
+
+   return new_term;
+}
+
+static struct term *
+tty_allocate_and_init_new_serial_term(u16 serial_port_fwd)
+{
+   const struct term_interface *intf = serial_term_intf;
+   struct term *new_term = serial_term_intf->alloc();
+
+   if (!new_term)
+      panic("TTY: no enough memory a new term instance");
+
+   if (intf->serial_term_init(new_term, serial_port_fwd) < 0)
+   {
+      intf->free(new_term);
       return NULL;
    }
 
@@ -156,8 +175,8 @@ static void
 tty_full_destroy(struct tty *t)
 {
    if (t->term_inst) {
-      dispose_term(t->term_inst);
-      free_term_struct(t->term_inst);
+      t->term_intf->dispose(t->term_inst);
+      t->term_intf->free(t->term_inst);
    }
 
    if (MOD_console) {
@@ -174,6 +193,8 @@ static struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    struct tty *t;
+   struct term *new_term = get_curr_term();
+   const struct term_interface *new_term_intf;
 
    if (!(t = kzmalloc(sizeof(struct tty))))
       return NULL;
@@ -183,12 +204,12 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
    }
 
-   if (!(t->ctrl_handlers = kzmalloc(256*sizeof(tty_ctrl_sig_func)))) {
+   if (!(t->ctrl_handlers = kzmalloc(256 * sizeof(tty_ctrl_sig_func)))) {
       tty_full_destroy(t);
       return NULL;
    }
 
-   if (MOD_console) {
+   if (MOD_console && !serial_port_fwd) {
       if (!(t->console_data = alloc_console_data())) {
          tty_full_destroy(t);
          return NULL;
@@ -196,11 +217,15 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    init_tty_struct(t, minor, serial_port_fwd);
+   new_term_intf = serial_port_fwd ? serial_term_intf : video_term_intf;
 
-   struct term *new_term =
-      (minor == 1 || kopt_serial_console)
-         ? get_curr_term()
-         : tty_allocate_and_init_new_term(serial_port_fwd, rows_buf);
+   if (minor != 1 && !kopt_serial_console) {
+
+      new_term =
+         serial_port_fwd
+            ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
+            : tty_allocate_and_init_new_video_term(rows_buf);
+   }
 
    if (!new_term) {
       kfree2(t, sizeof(struct tty));
@@ -208,12 +233,9 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    t->term_inst = new_term;
-   term_read_info(t->term_inst, &t->term_i);
+   t->term_intf = new_term_intf;
+   t->term_intf->read_info(t->term_inst, &t->term_i);
    tty_reset_filter_ctx(t);
-
-   if (serial_port_fwd)
-      term_set_filter(new_term, NULL, NULL);
-
    return t;
 }
 
@@ -294,13 +316,13 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
    /* term_write's size is limited to 2^20 - 1 */
    size = MIN(size, (size_t)MB - 1);
-   term_write(t->term_inst, buf, size, t->curr_color);
+   t->term_intf->write(t->term_inst, buf, size, t->curr_color);
    return (ssize_t) size;
 }
 
 static void init_tty(void)
 {
-   term_read_info(get_curr_term(), &first_term_i);
+   term_read_info(&first_term_i);
    struct driver_info *di = kzmalloc(sizeof(struct driver_info));
 
    if (!di)
@@ -317,9 +339,11 @@ static void init_tty(void)
    tty_create_devfile_or_panic("tty0", di->major, 0);
 
    if (!kopt_serial_console)
-      init_video_ttys();
+      if (video_term_intf)
+         init_video_ttys();
 
-   init_serial_ttys();
+   if (serial_term_intf)
+      init_serial_ttys();
 
    disable_preemption();
    {

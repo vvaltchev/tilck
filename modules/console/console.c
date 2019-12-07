@@ -54,6 +54,10 @@ void init_console_data(struct tty *t)
 void tty_reset_filter_ctx(struct tty *t)
 {
    struct console_data *cd = t->console_data;
+
+   if (!cd)
+      return; /* serial tty */
+
    struct twfilter_ctx_t *ctx = &cd->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
@@ -723,8 +727,9 @@ tty_state_esc2_par1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 
 static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state)
 {
+   struct tty *const t = ctx->t;
    ctx->non_default_state = new_state != &tty_state_default;
-   term_set_filter(ctx->t->term_inst, new_state, ctx);
+   t->term_intf->set_filter(t->term_inst, new_state, ctx);
 }
 
 static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)

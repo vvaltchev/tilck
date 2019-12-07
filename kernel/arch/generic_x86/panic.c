@@ -107,13 +107,13 @@ NORETURN void panic(const char *fmt, ...)
 
    curr = get_curr_task();
 
-   if (term_is_initialized(get_curr_term())) {
+   if (term_is_initialized()) {
 
       if (get_curr_tty() != NULL)
          tty_setup_for_panic(get_curr_tty());
 
       /* In case the video output has been paused, we MUST restart it */
-      term_restart_video_output(get_curr_term());
+      term_restart_video_output();
 
    } else {
 

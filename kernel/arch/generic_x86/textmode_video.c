@@ -155,5 +155,5 @@ void init_textmode_console(void)
          panic("textmode_console: unable to map VIDEO_ADDR in the virt space");
    }
 
-   init_term(get_curr_term(), &ega_text_mode_i, VIDEO_ROWS, VIDEO_COLS, 0, -1);
+   init_curr_term(&ega_text_mode_i, VIDEO_ROWS, VIDEO_COLS, 0, -1);
 }
