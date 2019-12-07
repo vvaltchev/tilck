@@ -12,6 +12,7 @@
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/tasklet.h>
+#include <tilck/mods/console.h>
 
 #include <linux/major.h> // system header
 
@@ -111,14 +112,8 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
    tty_reset_termios(t);
 
-#if MOD_console
-   t->user_color = t->curr_color;
-   t->filter_ctx.t = t;
-   t->c_set = 0;
-   t->c_sets_tables[0] = tty_default_trans_table;
-   t->c_sets_tables[1] = tty_gfx_trans_table;
-#endif
-
+   if (MOD_console)
+      init_console_data(t);
 }
 
 int tty_get_num(struct tty *t)
@@ -157,6 +152,24 @@ tty_allocate_and_init_new_term(u16 serial_port_fwd, int rows_buf)
    return new_term;
 }
 
+static void
+tty_full_destroy(struct tty *t)
+{
+   if (t->term_inst) {
+      dispose_term(t->term_inst);
+      free_term_struct(t->term_inst);
+   }
+
+   if (MOD_console) {
+      free_console_data(t->console_data);
+   }
+
+   kfree2(t->special_ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
+   kfree2(t->input_buf, sizeof(TTY_INPUT_BS));
+   kfree2(t, sizeof(struct tty));
+}
+
+
 static struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
@@ -166,14 +179,20 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
 
    if (!(t->input_buf = kzmalloc(TTY_INPUT_BS))) {
-      kfree2(t, sizeof(struct tty));
+      tty_full_destroy(t);
       return NULL;
    }
 
    if (!(t->special_ctrl_handlers = kzmalloc(256*sizeof(tty_ctrl_sig_func)))) {
-      kfree2(t->input_buf, sizeof(TTY_INPUT_BS));
-      kfree2(t, sizeof(struct tty));
+      tty_full_destroy(t);
       return NULL;
+   }
+
+   if (MOD_console) {
+      if (!(t->console_data = alloc_console_data())) {
+         tty_full_destroy(t);
+         return NULL;
+      }
    }
 
    init_tty_struct(t, minor, serial_port_fwd);
@@ -196,17 +215,6 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       term_set_filter(new_term, NULL, NULL);
 
    return t;
-}
-
-static void
-tty_full_destroy(struct tty *t)
-{
-   if (t->term_inst) {
-      dispose_term(t->term_inst);
-      free_term_struct(t->term_inst);
-   }
-
-   kfree2(t, sizeof(struct tty));
 }
 
 struct tty *create_tty_nodev(void)

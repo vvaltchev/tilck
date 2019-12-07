@@ -10,113 +10,40 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/tty_struct.h>
 #include <tilck/kernel/tty.h>
-
-#include "../../kernel/tty/term_int.h" // HACK!!!
-
-#include <termios.h>      // system header
+#include <tilck/kernel/kmalloc.h>
 
 #include "console_int.h"
 #include "tty_output_default_state.c.h"
 
-#pragma GCC diagnostic push
-
-static const u8 fg_csi_to_vga[256] =
+void *alloc_console_data(void)
 {
-   [30] = COLOR_BLACK,
-   [31] = COLOR_RED,
-   [32] = COLOR_GREEN,
-   [33] = COLOR_YELLOW,
-   [34] = COLOR_BLUE,
-   [35] = COLOR_MAGENTA,
-   [36] = COLOR_CYAN,
-   [37] = COLOR_WHITE,
-   [90] = COLOR_BRIGHT_BLACK,
-   [91] = COLOR_BRIGHT_RED,
-   [92] = COLOR_BRIGHT_GREEN,
-   [93] = COLOR_BRIGHT_YELLOW,
-   [94] = COLOR_BRIGHT_BLUE,
-   [95] = COLOR_BRIGHT_MAGENTA,
-   [96] = COLOR_BRIGHT_CYAN,
-   [97] = COLOR_BRIGHT_WHITE,
-};
+   return kzmalloc(sizeof(struct console_data));
+}
 
-
-#ifdef __clang__
-   #pragma GCC diagnostic ignored "-Winitializer-overrides"
-#else
-   #pragma GCC diagnostic ignored "-Woverride-init"
-#endif
-
-/* clang-format off */
-const s16 tty_default_trans_table[256] =
+void free_console_data(void *data)
 {
-   [0 ... 31] = -1,        /* not translated by default */
+   kfree2(data, sizeof(struct console_data));
+}
 
-   [32] = 32,     [56] = 56,     [80] = 80,     [104] = 104,
-   [33] = 33,     [57] = 57,     [81] = 81,     [105] = 105,
-   [34] = 34,     [58] = 58,     [82] = 82,     [106] = 106,
-   [35] = 35,     [59] = 59,     [83] = 83,     [107] = 107,
-   [36] = 36,     [60] = 60,     [84] = 84,     [108] = 108,
-   [37] = 37,     [61] = 61,     [85] = 85,     [109] = 109,
-   [38] = 38,     [62] = 62,     [86] = 86,     [110] = 110,
-   [39] = 39,     [63] = 63,     [87] = 87,     [111] = 111,
-   [40] = 40,     [64] = 64,     [88] = 88,     [112] = 112,
-   [41] = 41,     [65] = 65,     [89] = 89,     [113] = 113,
-   [42] = 42,     [66] = 66,     [90] = 90,     [114] = 114,
-   [43] = 43,     [67] = 67,     [91] = 91,     [115] = 115,
-   [44] = 44,     [68] = 68,     [92] = 92,     [116] = 116,
-   [45] = 45,     [69] = 69,     [93] = 93,     [117] = 117,
-   [46] = 46,     [70] = 70,     [94] = 94,     [118] = 118,
-   [47] = 47,     [71] = 71,     [95] = 95,     [119] = 119,
-   [48] = 48,     [72] = 72,     [96] = 96,     [120] = 120,
-   [49] = 49,     [73] = 73,     [97] = 97,     [121] = 121,
-   [50] = 50,     [74] = 74,     [98] = 98,     [122] = 122,
-   [51] = 51,     [75] = 75,     [99] = 99,     [123] = 123,
-   [52] = 52,     [76] = 76,     [100] = 100,   [124] = 124,
-   [53] = 53,     [77] = 77,     [101] = 101,   [125] = 125,
-   [54] = 54,     [78] = 78,     [102] = 102,   [126] = 126,
-   [55] = 55,     [79] = 79,     [103] = 103,
-
-   [127 ... 255] = -1,     /* not translated */
-};
-/* clang-format on */
-
-const s16 tty_gfx_trans_table[256] =
+void init_console_data(struct tty *t)
 {
-   [0 ... 255] = -1,       /* not translated by default */
+   struct console_data *const cd = t->console_data;
 
-   [' '] = ' ',
-   ['l'] = CHAR_ULCORNER,
-   ['m'] = CHAR_LLCORNER,
-   ['k'] = CHAR_URCORNER,
-   ['j'] = CHAR_LRCORNER,
-   ['t'] = CHAR_LTEE,
-   ['u'] = CHAR_RTEE,
-   ['v'] = CHAR_BTEE,
-   ['w'] = CHAR_TTEE,
-   ['q'] = CHAR_HLINE,
-   ['x'] = CHAR_VLINE,
-   ['n'] = CHAR_CROSS,
-   ['`'] = CHAR_DIAMOND,
-   ['a'] = CHAR_BLOCK_MID,
-   ['f'] = CHAR_DEGREE,
-   ['g'] = CHAR_PLMINUS,
-   ['~'] = CHAR_BULLET,
-   [','] = CHAR_LARROW,
-   ['+'] = CHAR_RARROW,
-   ['.'] = CHAR_DARROW,
-   ['-'] = CHAR_UARROW,
-   ['h'] = CHAR_BLOCK_LIGHT,
-   ['0'] = CHAR_BLOCK_HEAVY,
-};
-
-#pragma GCC diagnostic pop
+   cd->user_color = t->curr_color;
+   cd->c_set = 0;
+   cd->c_sets_tables[0] = tty_default_trans_table;
+   cd->c_sets_tables[1] = tty_gfx_trans_table;
+   cd->filter_ctx.t = t;
+   cd->filter_ctx.cd = cd;
+}
 
 void tty_reset_filter_ctx(struct tty *t)
 {
-   struct twfilter_ctx_t *ctx = &t->filter_ctx;
+   struct console_data *cd = t->console_data;
+   struct twfilter_ctx_t *ctx = &cd->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
+   ctx->cd = cd;
    tty_set_state(ctx, &tty_state_default);
 }
 
@@ -142,9 +69,10 @@ static void
 tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
 {
    struct tty *const t = ctx->t;
+   struct console_data *const cd = ctx->cd;
 
-   u8 fg = get_color_fg(t->user_color);
-   u8 bg = get_color_bg(t->user_color);
+   u8 fg = get_color_fg(cd->user_color);
+   u8 bg = get_color_bg(cd->user_color);
 
    switch(p) {
 
@@ -152,7 +80,7 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
          /* Reset all attributes */
          fg = DEFAULT_FG_COLOR;
          bg = DEFAULT_BG_COLOR;
-         t->attrs = 0;
+         cd->attrs = 0;
          goto set_color;
 
       case 39:
@@ -166,11 +94,11 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
          goto set_color;
 
       case 1:
-         t->attrs |= TTY_ATTR_BOLD;
+         cd->attrs |= TTY_ATTR_BOLD;
          goto set_color;
 
       case 7:
-         t->attrs |= TTY_ATTR_REVERSE;
+         cd->attrs |= TTY_ATTR_REVERSE;
          goto set_color;
 
       default:
@@ -194,12 +122,12 @@ tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
    return;
 
 set_color:
-   t->user_color = make_color(fg, bg);
+   cd->user_color = make_color(fg, bg);
 
-   if ((t->attrs & TTY_ATTR_BOLD) && fg <= 7)
+   if ((cd->attrs & TTY_ATTR_BOLD) && fg <= 7)
       fg += 8;
 
-   if (t->attrs & TTY_ATTR_REVERSE)
+   if (cd->attrs & TTY_ATTR_REVERSE)
       t->curr_color = make_color(bg, fg);
    else
       t->curr_color = make_color(fg, bg);
@@ -402,8 +330,8 @@ tty_csi_s_handler(u32 *params,
    struct tty *const t = ctx->t;
 
    /* SCP (Save Cursor Position) */
-   ctx->t->saved_cur_row = term_get_curr_row(t->term_inst);
-   ctx->t->saved_cur_col = term_get_curr_col(t->term_inst);
+   ctx->cd->saved_cur_row = term_get_curr_row(t->term_inst);
+   ctx->cd->saved_cur_col = term_get_curr_col(t->term_inst);
 }
 
 static void
@@ -414,13 +342,13 @@ tty_csi_u_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   struct tty *const t = ctx->t;
+   struct console_data *const cd = ctx->cd;
 
    /* RCP (Restore Cursor Position) */
    *a = (struct term_action) {
       .type2 = a_move_ch_and_cur,
-      .arg1 = t->saved_cur_row,
-      .arg2 = t->saved_cur_col,
+      .arg1 = cd->saved_cur_row,
+      .arg2 = cd->saved_cur_col,
    };
 }
 
@@ -679,15 +607,16 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
       case 'c':
          {
             struct tty *t = ctx->t;
+            struct console_data *cd = ctx->cd;
             *a = (struct term_action) { .type1 = a_reset };
 
             tty_kb_buf_reset(t);
-            t->c_set = 0;
-            t->c_sets_tables[0] = tty_default_trans_table;
-            t->c_sets_tables[1] = tty_gfx_trans_table;
+            cd->c_set = 0;
+            cd->c_sets_tables[0] = tty_default_trans_table;
+            cd->c_sets_tables[1] = tty_gfx_trans_table;
             t->kd_gfx_mode = KD_TEXT;
+            cd->user_color = t->curr_color;
             t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
-            t->user_color = t->curr_color;
             tty_reset_termios(t);
             tty_update_default_state_tables(t);
             bzero(ctx, sizeof(*ctx));
@@ -731,14 +660,16 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_change_translation_table(struct twfilter_ctx_t *ctx, u8 *c, int c_set)
 {
+   struct console_data *const cd = ctx->cd;
+
    switch (*c) {
 
       case 'B':
-         ctx->t->c_sets_tables[c_set] = tty_default_trans_table;
+         cd->c_sets_tables[c_set] = tty_default_trans_table;
          break;
 
       case '0':
-         ctx->t->c_sets_tables[c_set] = tty_gfx_trans_table;
+         cd->c_sets_tables[c_set] = tty_gfx_trans_table;
          break;
 
       case 'U':

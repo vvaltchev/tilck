@@ -11,13 +11,12 @@
 #include <tilck/kernel/tty_struct.h>
 #include <tilck/kernel/tty.h>
 
+#include "term_int.h"
+
 void tty_input_init(struct tty *t);
 
 enum kb_handler_action
 tty_keypress_handler(struct kb_dev *, struct key_event ke);
-
-enum term_fret
-serial_tty_write_filter(u8 *c, u8 *color, struct term_action *a, void *ctx_arg);
 
 void tty_update_special_ctrl_handlers(struct tty *t);
 void tty_update_default_state_tables(struct tty *t);
