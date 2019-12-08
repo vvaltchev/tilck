@@ -48,6 +48,8 @@ void validate_stack_pointer_int(const char *file, int line)
 
 #endif
 
+#if KERNEL_SHOW_LOGO
+
 static void print_banner_line(const u8 *s)
 {
    printk(NO_PREFIX "\033(0");
@@ -87,3 +89,5 @@ void show_tilck_logo(void)
       print_banner_line((u8 *)banner[i]);
    }
 }
+
+#endif

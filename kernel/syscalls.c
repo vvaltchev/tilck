@@ -199,6 +199,9 @@ int sys_tilck_run_selftest(const char *user_selftest)
    if (rc != 0)
       return -EFAULT;
 
+   if (!KERNEL_SELFTESTS)
+      return -EINVAL;
+
    if (!(addr = find_addr_of_symbol(buf)))
       return -EINVAL;
 
