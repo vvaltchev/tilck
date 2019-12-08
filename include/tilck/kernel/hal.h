@@ -15,7 +15,6 @@
    #include <tilck/common/arch/generic_x86/cpu_features.h>
    #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
    #include <tilck/kernel/arch/generic_x86/arch_ints.h>
-   #include <tilck/kernel/arch/generic_x86/textmode_video.h>
 
    #if defined(__x86_64__)
 

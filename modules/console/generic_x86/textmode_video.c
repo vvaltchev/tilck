@@ -3,7 +3,6 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/color_defs.h>
 
-#include <tilck/kernel/arch/generic_x86/textmode_video.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/hal.h>

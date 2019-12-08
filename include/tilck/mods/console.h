@@ -8,3 +8,4 @@ struct tty;
 void *alloc_console_data(void);
 void free_console_data(void *data);
 void init_console_data(struct tty *t);
+void init_textmode_console(void);

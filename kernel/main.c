@@ -28,6 +28,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/fs/kernelfs.h>
 
+#include <tilck/mods/console.h>
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/serial.h>
 
@@ -72,7 +73,9 @@ void init_console(void)
          init_curr_term(NULL, 25, 80, 0, 0); /* no-output term */
 
    } else {
-      init_textmode_console();
+
+      if (MOD_console)
+         init_textmode_console();
    }
 
    printk_flush_ringbuf();
