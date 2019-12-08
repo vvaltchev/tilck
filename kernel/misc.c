@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
@@ -9,8 +10,15 @@
 #include <tilck/kernel/term.h>
 
 char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+
+#if KERNEL_SYMBOLS
 char symtab_buf[SYMTAB_MAX_SIZE] __attribute__ ((section (".Symtab"))) = {0};
 char strtab_buf[STRTAB_MAX_SIZE] __attribute__ ((section (".Strtab"))) = {0};
+#else
+char symtab_buf[1] __attribute__ ((section (".Symtab"))) = {0};
+char strtab_buf[1] __attribute__ ((section (".Strtab"))) = {0};
+#endif
+
 bool __use_framebuffer;
 
 #ifdef DEBUG

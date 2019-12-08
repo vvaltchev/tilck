@@ -186,11 +186,27 @@ static void *get_fpu_cpy_single_256_nt_read_func(void)
    return IS_RELEASE_BUILD ? &memcpy_single_256_failsafe : NULL;
 }
 
+static void
+simple_hot_patch(void *dest, void *func, size_t max_size)
+{
+   if (KERNEL_SYMBOLS) {
+
+      const char *func_name;
+      ptrdiff_t offset;
+      u32 size;
+
+      func_name = find_sym_at_addr((uptr)func, &offset, &size);
+      init_fpu_memcpy_internal_check(func, func_name, size);
+      memcpy(dest, func, size);
+
+   } else {
+
+      memcpy(dest, func, max_size);
+   }
+}
+
 void init_fpu_memcpy(void)
 {
-   const char *func_name;
-   ptrdiff_t offset;
-   u32 size;
    void *func;
 
    /*
@@ -214,14 +230,10 @@ void init_fpu_memcpy(void)
     */
 
    if ((func = get_fpu_cpy_single_256_nt_func())) {
-      func_name = find_sym_at_addr((uptr)func, &offset, &size);
-      init_fpu_memcpy_internal_check(func, func_name, size);
-      memcpy(&__asm_fpu_cpy_single_256_nt, func, size);
+      simple_hot_patch(&__asm_fpu_cpy_single_256_nt, func, 128);
    }
 
    if ((func = get_fpu_cpy_single_256_nt_read_func())) {
-      func_name = find_sym_at_addr((uptr)func, &offset, &size);
-      init_fpu_memcpy_internal_check(func, func_name, size);
-      memcpy(&__asm_fpu_cpy_single_256_nt_read, func, size);
+      simple_hot_patch(&__asm_fpu_cpy_single_256_nt_read, func, 128);
    }
 }

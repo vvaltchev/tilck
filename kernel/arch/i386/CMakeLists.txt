@@ -87,38 +87,56 @@ build_all_modules(tilck_unstripped)
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
 
-add_custom_command(
-   OUTPUT
-      ${KERNEL_FILE}
-   COMMAND
-      ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
-   COMMAND
-      elfhack ${KERNEL_FILE} --copy .symtab .Symtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --copy .strtab .Strtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --link .Symtab .Strtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --rename .symtab osymtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --rename .strtab ostrtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --rename .Symtab .symtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --rename .Strtab .strtab
-   COMMAND
-      elfhack ${KERNEL_FILE} --move-metadata
-   COMMAND
-      elfhack ${KERNEL_FILE} --drop-last-section
-   COMMAND
-      elfhack ${KERNEL_FILE} --drop-last-section
-   COMMAND
-      elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
-   DEPENDS
-      elfhack tilck_unstripped
-   COMMENT
-      "Preparing kernel's stripped binary"
-)
+if (KERNEL_SYMBOLS)
+
+   add_custom_command(
+      OUTPUT
+         ${KERNEL_FILE}
+      COMMAND
+         ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
+      COMMAND
+         elfhack ${KERNEL_FILE} --copy .symtab .Symtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --copy .strtab .Strtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --link .Symtab .Strtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --rename .symtab osymtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --rename .strtab ostrtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --rename .Symtab .symtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --rename .Strtab .strtab
+      COMMAND
+         elfhack ${KERNEL_FILE} --move-metadata
+      COMMAND
+         elfhack ${KERNEL_FILE} --drop-last-section
+      COMMAND
+         elfhack ${KERNEL_FILE} --drop-last-section
+      COMMAND
+         elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
+      DEPENDS
+         elfhack tilck_unstripped
+      COMMENT
+         "Preparing kernel's stripped binary"
+   )
+
+else()
+
+   add_custom_command(
+      OUTPUT
+         ${KERNEL_FILE}
+      COMMAND
+         ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
+      COMMAND
+         elfhack ${KERNEL_FILE} --move-metadata
+      DEPENDS
+         elfhack tilck_unstripped
+      COMMENT
+         "Preparing kernel's stripped binary"
+   )
+endif()
 
 add_custom_target(
 

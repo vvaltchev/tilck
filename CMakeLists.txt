@@ -107,6 +107,9 @@ set(KERNEL_FB_BANNER ON CACHE BOOL
 set(KERNEL_SHOW_LOGO ON CACHE BOOL
     "Show Tilck's logo after boot")
 
+set(KERNEL_SYMBOLS ON CACHE BOOL
+    "Keep symbol tables loaded in the kernel for backtraces and self tests")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
@@ -195,6 +198,7 @@ list(
    KERNEL_STACK_ISOLATION
    KERNEL_FB_BANNER
    KERNEL_SHOW_LOGO
+   KERNEL_SYMBOLS
 
    # Boolean options DISABLED by default
    TEST_GCOV

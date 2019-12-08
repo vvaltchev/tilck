@@ -133,6 +133,8 @@ public:
    }
 };
 
+#if KERNEL_SELFTESTS
+
 TEST_F(kmalloc_test, perf_test)
 {
    selftest_kmalloc_perf_med();
@@ -144,6 +146,8 @@ TEST_F(kmalloc_test, glibc_malloc_comparative_perf_test)
    selftest_kmalloc_perf_med();
    mock_kmalloc = false;
 }
+
+#endif
 
 TEST_F(kmalloc_test, chaos_test)
 {

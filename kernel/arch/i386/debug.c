@@ -81,7 +81,8 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
    printk("Stacktrace (%u frames):\n", c);
 
    for (size_t i = 0; i < c; i++) {
-      ptrdiff_t off;
+
+      ptrdiff_t off = 0;
       u32 sym_size;
       uptr va = (uptr)frames[i];
       const char *sym_name;

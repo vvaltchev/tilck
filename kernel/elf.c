@@ -316,11 +316,13 @@ out:
 void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
-   VERIFY(h->e_shentsize == sizeof(Elf_Shdr));
-
    *symtab = NULL;
    *strtab = NULL;
 
+   if (!KERNEL_SYMBOLS)
+      return;
+
+   VERIFY(h->e_shentsize == sizeof(Elf_Shdr));
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
 
    for (u32 i = 0; i < h->e_shnum; i++) {
@@ -343,6 +345,9 @@ const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size)
 {
    Elf_Shdr *symtab;
    Elf_Shdr *strtab;
+
+   if (!KERNEL_SYMBOLS)
+      return NULL;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
@@ -371,6 +376,9 @@ uptr find_addr_of_symbol(const char *searched_sym)
 {
    Elf_Shdr *symtab;
    Elf_Shdr *strtab;
+
+   if (!KERNEL_SYMBOLS)
+      return 0;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
