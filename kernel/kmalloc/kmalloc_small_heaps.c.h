@@ -23,7 +23,12 @@
  * good parameter to have and evaluate it's effects in the long term, with more
  * and more complex uses cases.
  */
-#define MAX_EMPTY_SMALL_HEAPS    1
+
+#if !KERNEL_TEST
+   #define MAX_EMPTY_SMALL_HEAPS    1
+#else
+   #define MAX_EMPTY_SMALL_HEAPS    0
+#endif
 
 struct small_heap_node {
 

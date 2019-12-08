@@ -161,7 +161,9 @@ TEST_F(kmalloc_test, chaos_test)
    unique_ptr<u8[]> meta_before[KMALLOC_HEAPS_COUNT];
 
    for (int h = 0; h < KMALLOC_HEAPS_COUNT && heaps[h]; h++) {
-      meta_before[h].reset(new u8[heaps[h]->metadata_size]);
+      u8 *buf = new u8[heaps[h]->metadata_size];
+      memset(buf, 0, heaps[h]->metadata_size);
+      meta_before[h].reset(buf);
    }
 
    for (int i = 0; i < 150; i++) {
@@ -170,11 +172,11 @@ TEST_F(kmalloc_test, chaos_test)
 
       ASSERT_NO_FATAL_FAILURE({
          kmalloc_chaos_test_sub(e, dist);
-      });
+      }) << "i: " << i;
 
       ASSERT_NO_FATAL_FAILURE({
          check_heaps_metadata(meta_before);
-      });
+      }) << "i: " << i;
    }
 }
 

@@ -20,8 +20,16 @@ extern "C" {
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/paging.h>
 
-extern bool kmalloc_initialized;
+#include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
+#include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
+
 extern bool suppress_printk;
+
+extern bool kmalloc_initialized;
+extern struct kmalloc_heap first_heap_struct;
+extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
+extern u32 used_heaps;
+extern size_t max_tot_heap_mem_free;
 
 void *kernel_va = nullptr;
 bool mock_kmalloc = false;
@@ -30,7 +38,7 @@ static unordered_map<uptr, uptr> mappings;
 
 void initialize_test_kernel_heap()
 {
-   uptr test_mem_size = 256 * MB;
+   const uptr test_mem_size = 256 * MB;
 
    if (kernel_va != nullptr) {
       bzero(kernel_va, test_mem_size);
@@ -39,6 +47,7 @@ void initialize_test_kernel_heap()
    }
 
    kernel_va = aligned_alloc(MB, test_mem_size);
+   bzero(kernel_va, test_mem_size);
 
    mem_regions_count = 1;
    mem_regions[0] = (struct mem_region) {
@@ -51,7 +60,12 @@ void initialize_test_kernel_heap()
 
 void init_kmalloc_for_tests()
 {
-   kmalloc_initialized = false;
+   bzero(&kmalloc_initialized, sizeof(kmalloc_initialized));
+   bzero(&first_heap_struct, sizeof(first_heap_struct));
+   bzero(&heaps, sizeof(heaps));
+   bzero(&used_heaps, sizeof(used_heaps));
+   bzero(&max_tot_heap_mem_free, sizeof(max_tot_heap_mem_free));
+
    initialize_test_kernel_heap();
    suppress_printk = true;
    init_kmalloc();
