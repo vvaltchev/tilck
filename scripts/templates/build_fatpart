@@ -111,8 +111,18 @@ function add_efi_files {
 }
 
 function add_tilck_kernel {
-   # hard-link the kernel file (used also by the legacy bootloader)
-   link_or_copy @KERNEL_FILE@ @KERNEL_FATPART_PATH@
+
+   if [ -s "@BOOTLOADER_BIN_FILE@" ] ||
+      [ -s "@EFI_ia32_FILE@" ] ||
+      [ -s "@EFI_x86_64_FILE@" ]
+   then
+      # hard-link the kernel file (used also by the legacy bootloader)
+      link_or_copy @KERNEL_FILE@ @KERNEL_FATPART_PATH@
+   else
+      rm EFI/BOOT/.gitignore
+      rmdir EFI/BOOT
+      rmdir EFI
+   fi
 }
 
 function add_busybox {

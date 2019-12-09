@@ -18,7 +18,11 @@ link_directories(
 
 set(EARLY_STAGES_SOURCES "boot.S" "boot_enable_a20.S")
 
-add_executable(early_boot ${EARLY_STAGES_SOURCES})
+add_executable(
+   early_boot EXCLUDE_FROM_ALL
+
+   ${EARLY_STAGES_SOURCES}
+)
 
 set_target_properties(
 
@@ -61,7 +65,7 @@ add_custom_command(
 
 add_custom_target(
 
-   bootloader ALL
+   bootloader
 
    DEPENDS
       ${BOOTLOADER_BIN_FILE}

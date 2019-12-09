@@ -8,7 +8,7 @@ file(GLOB COMMON_SOURCES "${CMAKE_SOURCE_DIR}/common/*.c")
 add_library(
 
    efi_app_${EFI_ARCH}
-   SHARED
+   SHARED EXCLUDE_FROM_ALL
 
    ${SOURCES}
    ${COMMON_SOURCES}

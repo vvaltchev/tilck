@@ -110,6 +110,12 @@ set(KERNEL_SHOW_LOGO ON CACHE BOOL
 set(KERNEL_SYMBOLS ON CACHE BOOL
     "Keep symbol tables loaded in the kernel for backtraces and self tests")
 
+set(BOOTLOADER_LEGACY ON CACHE BOOL
+    "Build the legacy bootloader")
+
+set(BOOTLOADER_EFI ON CACHE BOOL
+    "Build the EFI bootloader")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
@@ -202,6 +208,8 @@ list(
    KERNEL_FB_BANNER
    KERNEL_SHOW_LOGO
    KERNEL_SYMBOLS
+   BOOTLOADER_LEGACY
+   BOOTLOADER_EFI
 
    # Boolean options DISABLED by default
    TEST_GCOV
@@ -329,6 +337,7 @@ endif()
 set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
+set(IMGSZ                  37296)
 set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
 set(GPT_IMG_FILE           ${CMAKE_BINARY_DIR}/gpt_tilck.img)
 
@@ -388,46 +397,87 @@ unset(files)
 
 set(dd_opts "status=none" "conv=notrunc")
 
-add_custom_command(
+set(
+   mbr_img_deps
 
-   OUTPUT
-      ${IMG_FILE}
-   COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} 37296 # ~36 MB
-   COMMAND
-      dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
-   COMMAND
-      ${BUILD_FATPART}
-   COMMAND
-      ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
-   COMMAND
-      dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
-   DEPENDS
-      # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
-      # our image file to be re-built when the *.bin files are re-built.
+   # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
+   # our image file to be re-built when the *.bin files are re-built.
+
+   kernel
+   ${KERNEL_FILE}
+
+   userapps
+   ${USERAPPS_FILES_LIST}
+   ${EXTRA_APPS_LIST}
+
+   fat_get_used_bytes
+   ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+   ${CMAKE_SOURCE_DIR}/sysroot/etc/start
+   ${BUILD_SCRIPTS_FILES_LIST}
+)
+
+if (BOOTLOADER_LEGACY)
+   list(
+      APPEND mbr_img_deps
+
       bootloader
       ${BOOTLOADER_BIN_FILE}
+   )
+endif()
+
+if (BOOTLOADER_EFI)
+   list(
+      APPEND mbr_img_deps
 
       efi_bootloader
       ${EFI_x86_64_FILE}
       ${EFI_ia32_FILE}
+   )
+endif()
 
-      kernel
-      ${KERNEL_FILE}
-
-      userapps
-      ${USERAPPS_FILES_LIST}
-      ${EXTRA_APPS_LIST}
-
-      fat_get_used_bytes
-      ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
-      ${CMAKE_SOURCE_DIR}/sysroot/etc/start
-      ${BUILD_SCRIPTS_FILES_LIST}
-
-   COMMENT
-      "Creating the bootable image file (MBR)"
-   VERBATIM
-)
+if (BOOTLOADER_LEGACY)
+   add_custom_command(
+      OUTPUT
+         ${IMG_FILE}
+      COMMAND
+         ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} ${IMGSZ}
+      COMMAND
+         dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
+      COMMAND
+         ${BUILD_FATPART}
+      COMMAND
+         ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
+      COMMAND
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
+      DEPENDS
+         ${mbr_img_deps}
+      COMMENT
+         "Creating a dual-bootable (legacy+efi) image file (MBR)"
+      VERBATIM
+   )
+else()
+   add_custom_command(
+      OUTPUT
+         ${IMG_FILE}
+      COMMAND
+         ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} ${IMGSZ}
+      COMMAND
+         parted ${IMG_FILE} -s -a minimal mklabel msdos
+      COMMAND
+         parted ${IMG_FILE} -s -a minimal mkpart primary FAT32 2048s 73727s
+      COMMAND
+         ${BUILD_FATPART}
+      COMMAND
+         ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
+      COMMAND
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
+      DEPENDS
+         ${mbr_img_deps}
+      COMMENT
+         "Creating a EFI-only bootable image file (MBR)"
+      VERBATIM
+   )
+endif()
 
 add_custom_target(
 
@@ -442,7 +492,7 @@ add_custom_command(
    OUTPUT
       ${GPT_IMG_FILE}
    COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${GPT_IMG_FILE} 37296 #36MB
+      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${GPT_IMG_FILE} ${IMGSZ}
    COMMAND
       parted ${GPT_IMG_FILE} -s -a minimal mklabel gpt
    COMMAND
@@ -454,7 +504,8 @@ add_custom_command(
    DEPENDS
       tilck_image ${IMG_FILE}
    COMMENT
-      "Creating the bootable image file (GPT)"
+      "Creating a EFI-only bootable image file (GPT)"
+   VERBATIM
 )
 
 add_custom_target(
