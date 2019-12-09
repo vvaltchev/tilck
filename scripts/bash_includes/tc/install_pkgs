@@ -34,6 +34,7 @@ function install_debian_family {
    pkg_list+=(bzip2)
    pkg_list+=(rpm2cpio)
    pkg_list+=(cpio)
+   pkg_list+=(parted)
    pkg_list+=(qemu-system-x86)
 
    to_install=()
@@ -98,6 +99,7 @@ function install_fedora {
    pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(cpio)
+   pkg_list+=(parted)
    pkg_list+=(qemu-system-x86)
 
    to_install=()
@@ -155,6 +157,7 @@ function install_arch {
    pkg_list+=(rpmextract)
    pkg_list+=(cpio)
    pkg_list+=(qemu)
+   pkg_list+=(parted)
    pkg_list+=(qemu-arch-extra)
 
    to_install=()
@@ -212,6 +215,7 @@ function install_openSUSE {
    pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(cpio)
+   pkg_list+=(parted)
    pkg_list+=(qemu-x86)
 
    to_install=()
@@ -313,6 +317,7 @@ function install_packages {
       full_list+=(rpm2cpio)
       full_list+=(cpio)
       full_list+=(bzip2)
+      full_list+=(parted)
       full_list+=(qemu-system-i386)
 
       to_install_list=()
