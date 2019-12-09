@@ -32,11 +32,52 @@
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/serial.h>
 
+static void init_video_console(void)
+{
+   if (!use_framebuffer()) {
+
+      if (MOD_console) {
+
+         /*
+          * NOTE: since we got here, we're sure that we have the console module
+          * built-in, but we still have to put the call under an if, in order
+          * to remove the link dependency on that symbol in case the console
+          * module is _not_ built-in.
+          */
+         init_textmode_console();
+      }
+
+      return;
+   }
+
+   /* framebuffer console */
+
+   if (!MOD_fb) {
+
+      /*
+       * This compile-time check (MOD_fb will evalute as 0 or 1) instead, is
+       * strictly necessary, as the kernel could be loaded in graphical mode
+       * without having the `fb` module built-in. In this case, we just won't
+       * display anything on the screen.
+       */
+      init_first_term_null();
+      return;
+   }
+
+   init_fb_console();
+}
+
 void init_console(void)
 {
    if (kopt_serial_console) {
 
       if (!serial_term_intf) {
+
+         /*
+          * We have to use the serial console, but the module is not built-in:
+          * disable it and display an error on video, if we can. Otherwise,
+          * we're simply doomed.
+          */
 
          if (!video_term_intf)
             goto we_are_doomed;
@@ -45,15 +86,18 @@ void init_console(void)
          panic("Unable to init the serial console without the serial module!");
       }
 
-      __curr_term_intf = serial_term_intf;
-      __curr_term = __curr_term_intf->get_first_term();
-
-      init_curr_term(NULL, 25, 80, COM1, 0);
+      init_first_serial_term(COM1);
       printk_flush_ringbuf();
       return;
    }
 
    if (!video_term_intf) {
+
+      /*
+       * We have to use the video console, but the module is not built-in:
+       * disable it and send an error on the serial port, if we can. Otherwise,
+       * we're simply doomed.
+       */
 
       if (!serial_term_intf)
          goto we_are_doomed;
@@ -62,22 +106,7 @@ void init_console(void)
       panic("Unable to init the video console without the console module!");
    }
 
-   __curr_term_intf = video_term_intf;
-   __curr_term = __curr_term_intf->get_first_term();
-
-   if (use_framebuffer()) {
-
-      if (MOD_fb)
-         init_fb_console();
-      else
-         init_curr_term(NULL, 25, 80, 0, 0); /* no-output term */
-
-   } else {
-
-      if (MOD_console)
-         init_textmode_console();
-   }
-
+   init_video_console();
    printk_flush_ringbuf();
    return;
 

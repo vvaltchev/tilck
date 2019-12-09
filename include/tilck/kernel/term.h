@@ -98,36 +98,21 @@ struct term_interface {
 void set_curr_video_term(struct term *t);
 void register_term_intf(const struct term_interface *intf);
 
+void
+init_first_video_term(const struct video_interface *vi,
+                      u16 rows,
+                      u16 cols,
+                      int rows_buf);
+
+void init_first_serial_term(u16 port);
+void init_first_term_null(void);
+
 static ALWAYS_INLINE struct term *get_curr_term(void) {
    return __curr_term;
 }
 
 static ALWAYS_INLINE const struct term_interface *get_curr_term_intf(void) {
    return __curr_term_intf;
-}
-
-static ALWAYS_INLINE
-int init_curr_term(const struct video_interface *vi,
-                   u16 rows,
-                   u16 cols,
-                   u16 serial_port_fwd,
-                   int rows_buf) /* note: < 0 means default value */
-{
-   const struct term_interface *intf = __curr_term_intf;
-   ASSERT(!intf->is_initialized(__curr_term));
-
-   if (intf->get_type() == term_type_video)
-      return intf->video_term_init(__curr_term,
-                                   vi,
-                                   rows,
-                                   cols,
-                                   rows_buf);
-
-   else if (intf->get_type() == term_type_serial)
-      return intf->serial_term_init(__curr_term,
-                                    serial_port_fwd);
-   else
-      NOT_REACHED();
 }
 
 static ALWAYS_INLINE bool term_is_initialized(void)

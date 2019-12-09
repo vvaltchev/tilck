@@ -436,11 +436,10 @@ void init_fb_console(void)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
    }
 
-   init_curr_term(&framebuffer_vi,
-                  (u16) fb_term_rows,
-                  (u16) fb_term_cols,
-                  0,
-                  -1);
+   init_first_video_term(&framebuffer_vi,
+                         (u16) fb_term_rows,
+                         (u16) fb_term_cols,
+                         -1);
 
    printk_flush_ringbuf();
 
