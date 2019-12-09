@@ -177,6 +177,9 @@ foreach(modpath ${modules})
 
 endforeach()
 
+# Create a list with all the kernel opts, in order to dump it later
+# -------------------------------------------------------------------
+
 list(
    APPEND kernel_opts_list
 
@@ -303,6 +306,17 @@ foreach (mod ${modules_list})
 endforeach()
 
 message(STATUS "**************** END KERNEL MODULES *****************")
+
+# Config validation checks
+# -----------------------------------
+
+if (NOT ${MOD_console} AND NOT ${MOD_serial})
+   message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
+endif()
+
+if (${KERNEL_SELFTESTS} AND NOT ${KERNEL_SYMBOLS})
+   message(FATAL_ERROR "Selftests require kernel symbols to be enabled")
+endif()
 
 ################################################################################
 
