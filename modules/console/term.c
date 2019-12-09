@@ -7,7 +7,6 @@
 
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
-#include <tilck/mods/serial.h>
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
@@ -51,8 +50,6 @@ struct term {
 
    term_filter filter;
    void *filter_ctx;
-
-   u16 serial_port_fwd;
 };
 
 static struct term first_instance;
@@ -357,14 +354,6 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 
 static void term_internal_write_char2(struct term *t, char c, u8 color)
 {
-   if (t->serial_port_fwd) {
-
-      if (MOD_serial)
-         serial_write(t->serial_port_fwd, c);
-
-      return;
-   }
-
    switch (c) {
 
       case '\n':
@@ -847,13 +836,7 @@ init_vterm(struct term *t,
            u16 cols,
            int rows_buf)
 {
-   const u16 serial_port_fwd = 0;
    ASSERT(t != &first_instance || !are_interrupts_enabled());
-
-   if (serial_port_fwd) {
-      intf = &no_output_vi;
-      t->serial_port_fwd = serial_port_fwd;
-   }
 
    t->tabsize = 8;
    t->cols = cols;
@@ -866,7 +849,7 @@ init_vterm(struct term *t,
                      sizeof(struct term_action),
                      t->actions_buf);
 
-   if (!in_panic() && !serial_port_fwd) {
+   if (!in_panic()) {
 
       t->extra_buffer_rows =
          rows_buf >= 0
@@ -893,7 +876,7 @@ init_vterm(struct term *t,
          printk("WARNING: unable to allocate term_tabs_buf\n");
       }
 
-   } else if (!serial_port_fwd) {
+   } else {
 
       /* We're in panic or we were unable to allocate the buffer */
 
