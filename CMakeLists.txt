@@ -365,9 +365,15 @@ include(other/cmake/gen_config.cmake)
 ################################################################################
 # Include sub-directories
 
+if (BOOTLOADER_LEGACY)
+   add_subdirectory(boot/legacy)
+endif()
+
+if (BOOTLOADER_EFI)
+   add_subdirectory(boot/efi)
+endif()
+
 add_subdirectory(userapps)
-add_subdirectory(boot/legacy)
-add_subdirectory(boot/efi)
 add_subdirectory(kernel)
 add_subdirectory(scripts/build_apps)
 
