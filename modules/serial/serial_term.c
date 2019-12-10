@@ -136,7 +136,6 @@ static const struct term_interface intf = {
    .set_col_offset = NULL,
    .pause_video_output = NULL,
    .restart_video_output = NULL,
-   .set_cursor_enabled = NULL,
    .set_filter = NULL,
 
    .get_first_term = sterm_get_first_inst,

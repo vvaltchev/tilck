@@ -69,7 +69,6 @@ struct term_interface {
    void (*set_col_offset)(struct term *t, int off);
    void (*pause_video_output)(struct term *t);
    void (*restart_video_output)(struct term *t);
-   void (*set_cursor_enabled)(struct term *t, bool value);
    void (*set_filter)(struct term *t, term_filter func, void *ctx);
 
    /*
@@ -141,9 +140,4 @@ static ALWAYS_INLINE void term_pause_video_output(void)
 static ALWAYS_INLINE void term_restart_video_output(void)
 {
    __curr_term_intf->restart_video_output(__curr_term);
-}
-
-static ALWAYS_INLINE void term_set_cursor_enabled(bool value)
-{
-   __curr_term_intf->set_cursor_enabled(__curr_term, value);
 }

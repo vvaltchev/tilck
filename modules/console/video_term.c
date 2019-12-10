@@ -927,7 +927,6 @@ static const struct term_interface intf = {
    .set_col_offset = vterm_set_col_offset,
    .pause_video_output = vterm_pause_video_output,
    .restart_video_output = vterm_restart_video_output,
-   .set_cursor_enabled = vterm_set_cursor_enabled,
    .set_filter = vterm_set_filter,
 
    .get_first_term = vterm_get_first_inst,

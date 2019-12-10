@@ -137,17 +137,6 @@ vterm_restart_video_output(struct term *t)
    term_execute_or_enqueue_action(t, a);
 }
 
-static void
-vterm_set_cursor_enabled(struct term *t, bool value)
-{
-   struct term_action a = {
-      .type1 = a_enable_cursor,
-      .arg = value,
-   };
-
-   term_execute_or_enqueue_action(t, a);
-}
-
 /* ---------------- term non-action interface funcs --------------------- */
 
 u16 term_get_curr_row(struct term *t)
