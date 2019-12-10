@@ -14,7 +14,6 @@ typedef bool (*tty_ctrl_sig_func)(struct tty *);
 
 void tty_reset_filter_ctx(struct tty *t);
 void tty_inbuf_reset(struct tty *t);
-void tty_reset_termios(struct tty *t);
 
 struct tty {
 

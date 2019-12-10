@@ -46,6 +46,7 @@ include_directories(${TCROOT}/zlib/install/include)
    add_usermode_app(init)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
+   add_usermode_app(dp)
 # [/simple apps]
 
 

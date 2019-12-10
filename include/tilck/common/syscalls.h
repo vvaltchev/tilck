@@ -11,7 +11,8 @@ enum tilck_cmd {
    TILCK_CMD_GCOV_GET_FILE       = 3,
    TILCK_CMD_QEMU_POWEROFF       = 4,
    TILCK_CMD_SET_SAT_ENABLED     = 5,
+   TILCK_CMD_DEBUG_PANEL         = 6,
 
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 6,
+   TILCK_CMD_COUNT               = 7,
 };

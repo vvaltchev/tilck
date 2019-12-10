@@ -17,6 +17,7 @@ void tty_setup_for_panic(struct tty *t);
 int tty_get_num(struct tty *t);
 void tty_restore_kd_text_mode(struct tty *t);
 struct tty *get_serial_tty(int n);
+void tty_reset_termios(struct tty *t);
 
 static inline int get_curr_tty_num(void)
 {
@@ -26,3 +27,5 @@ static inline int get_curr_tty_num(void)
 /* Used only by the debug panel */
 int set_curr_tty(struct tty *t);
 struct tty *create_tty_nodev(void);
+void tty_set_raw_mode(struct tty *t);
+void tty_set_medium_raw_mode(struct tty *t);

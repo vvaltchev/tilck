@@ -45,9 +45,37 @@ const struct termios default_termios =
    },
 };
 
+void tty_set_raw_mode(struct tty *t)
+{
+   disable_preemption();
+   {
+      tty_reset_termios(t);
+      t->c_term.c_iflag &= (u32) ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+      t->c_term.c_oflag &= (u32) ~(OPOST);
+      t->c_term.c_cflag |= (u32) (CS8);
+      t->c_term.c_lflag &= (u32) ~(ECHO | ICANON | IEXTEN | ISIG);
+   }
+   enable_preemption();
+}
+
+void tty_set_medium_raw_mode(struct tty *t)
+{
+   disable_preemption();
+   {
+      tty_set_raw_mode(t);
+      t->mediumraw_mode = true;
+   }
+   enable_preemption();
+}
+
 void tty_reset_termios(struct tty *t)
 {
-   t->c_term = default_termios;
+   disable_preemption();
+   {
+      t->c_term = default_termios;
+      t->mediumraw_mode = false;
+   }
+   enable_preemption();
 }
 
 static int tty_ioctl_tcgets(struct tty *t, void *argp)

@@ -101,7 +101,7 @@ static void dp_chunks_exit(void)
       return;
 }
 
-static int dp_chunks_keypress(struct kb_dev *kb, struct key_event ke)
+static int dp_chunks_keypress(struct key_event ke)
 {
    const char c = ke.print_char;
 

@@ -7,6 +7,8 @@
 #define DP_W   76
 #define DP_H   23
 
+typedef enum kb_handler_action (*dp_keypress_func)(struct key_event);
+
 struct dp_screen {
 
    struct list_node node;
@@ -18,7 +20,7 @@ struct dp_screen {
    void (*draw_func)(void);
    void (*on_dp_enter)(void);
    void (*on_dp_exit)(void);
-   keypress_func on_keypress_func;
+   dp_keypress_func on_keypress_func;
 };
 
 extern int dp_rows;

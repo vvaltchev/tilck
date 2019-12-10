@@ -23,7 +23,16 @@ static void *tilck_cmds[] = {
    [TILCK_CMD_GCOV_GET_FILE] = sys_gcov_get_file,
    [TILCK_CMD_QEMU_POWEROFF] = debug_qemu_turn_off_machine,
    [TILCK_CMD_SET_SAT_ENABLED] = set_sched_alive_thread_enabled,
+   [TILCK_CMD_DEBUG_PANEL] = NULL,
 };
+
+void register_tilck_cmd(int cmd_n, void *func)
+{
+   ASSERT(0 <= cmd_n && cmd_n < TILCK_CMD_COUNT);
+   VERIFY(tilck_cmds[cmd_n] == NULL);
+
+   tilck_cmds[cmd_n] = func;
+}
 
 static int sys_tilck_run_selftest(const char *user_selftest)
 {
