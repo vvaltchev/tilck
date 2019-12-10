@@ -342,7 +342,11 @@ set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
 set(GPT_IMG_FILE           ${CMAKE_BINARY_DIR}/gpt_tilck.img)
 
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
-set(KERNEL_FATPART_PATH    "EFI/BOOT/tilck")
+
+if (${BOOTLOADER_LEGACY} OR ${BOOTLOADER_EFI})
+   set(KERNEL_FATPART_PATH    "EFI/BOOT/tilck")
+endif()
+
 string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 
 ################################################################################
