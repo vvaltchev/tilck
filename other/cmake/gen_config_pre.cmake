@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
+cmake_minimum_required(VERSION 3.2)
 
 set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/early_boot_script.ld)
 set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/stage3/linker_script.ld)

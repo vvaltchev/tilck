@@ -363,8 +363,8 @@ set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
 set(LINEAR_MAPPING_MB         896)
 
-# Generate config files & build scripts
-include(other/cmake/gen_config.cmake)
+# Generate config files & build scripts (before including sub-dirs)
+include(other/cmake/gen_config_pre.cmake)
 
 ################################################################################
 # Include sub-directories
@@ -383,20 +383,8 @@ add_subdirectory(scripts/build_apps)
 
 ################################################################################
 
-set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)
-set(BUILD_TEST_FATPART ${CMAKE_BINARY_DIR}/scripts/build_test_fatpart)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/build_fatpart
-   ${BUILD_FATPART}
-   @ONLY
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/build_test_fatpart
-   ${BUILD_TEST_FATPART}
-   @ONLY
-)
+# Generate config files & build scripts (after including sub-dirs)
+include(other/cmake/gen_config_post.cmake)
 
 set(BUILD_SCRIPTS_FILES_LIST "")
 file(GLOB files "${BUILD_SCRIPTS}/*")
