@@ -2,9 +2,9 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
-#include "term_int.h"
+#include "video_term_int.h"
 
-#include <termios.h>      // system header
+#include <termios.h>              // system header
 
 #define NPAR 16                   /* maximum number of CSI parameters */
 #define TTY_ATTR_BOLD             (1 << 0)

@@ -121,7 +121,8 @@
       "simple_elf_loader.c.h": "c",
       "textmode_video.h": "c",
       "tty_struct.h": "c",
-      "*.tcc": "c"
+      "*.tcc": "c",
+      "video_term_int.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

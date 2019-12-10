@@ -13,7 +13,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
 
-#include "term_int.h"
+#include "video_term_int.h"
 
 struct term {
 
