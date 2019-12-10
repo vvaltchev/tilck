@@ -77,8 +77,8 @@ getdents64(unsigned fd, struct linux_dirent64 *dirp, unsigned count)
 
 static inline int tilck_get_num_gcov_files(void)
 {
-   return sysenter_call1(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_GCOV_GET_NUM_FILES);
+   return sysenter_call1(TILCK_CMD_SYSCALL,
+                         TILCK_CMD_GCOV_GET_NUM_FILES);
 }
 
 static inline int
@@ -87,29 +87,29 @@ tilck_get_gcov_file_info(int fn,
                          unsigned fname_size,
                          unsigned *fsize)
 {
-   return sysenter_call5(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_GCOV_FILE_INFO,
+   return sysenter_call5(TILCK_CMD_SYSCALL,
+                         TILCK_CMD_GCOV_FILE_INFO,
                          fn, fname, fname_size, fsize);
 }
 
 static inline int
 tilck_get_gcov_file(int fn, char *buf)
 {
-   return sysenter_call3(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_GCOV_GET_FILE,
+   return sysenter_call3(TILCK_CMD_SYSCALL,
+                         TILCK_CMD_GCOV_GET_FILE,
                          fn, buf);
 }
 
 static inline int
 tilck_debug_qemu_poweroff(void)
 {
-   return sysenter_call1(TILCK_TESTCMD_SYSCALL, TILCK_TESTCMD_QEMU_POWEROFF);
+   return sysenter_call1(TILCK_CMD_SYSCALL, TILCK_CMD_QEMU_POWEROFF);
 }
 
 static inline int
 tilck_set_sched_alive_thread_enabled(bool enabled)
 {
-   return sysenter_call2(TILCK_TESTCMD_SYSCALL,
-                         TILCK_TESTCMD_SET_SAT_ENABLED,
+   return sysenter_call2(TILCK_CMD_SYSCALL,
+                         TILCK_CMD_SET_SAT_ENABLED,
                          enabled);
 }

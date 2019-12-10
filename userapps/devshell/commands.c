@@ -46,16 +46,16 @@ int cmd_selftest(int argc, char **argv)
       return 1;
    }
 
-   int rc = sysenter_call3(TILCK_TESTCMD_SYSCALL,
-                           TILCK_TESTCMD_RUN_SELFTEST,
+   int rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                           TILCK_CMD_RUN_SELFTEST,
                            argv[0], /* self test name */
                            NULL);
 
    if (rc != 0) {
 
       sprintf(buf, "%s_manual", argv[0]);
-      rc = sysenter_call3(TILCK_TESTCMD_SYSCALL,
-                          TILCK_TESTCMD_RUN_SELFTEST,
+      rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                          TILCK_CMD_RUN_SELFTEST,
                           buf,  /* self test name */
                           NULL);
 

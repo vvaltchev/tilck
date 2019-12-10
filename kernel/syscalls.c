@@ -6,14 +6,11 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/syscalls.h>
-#include <tilck/kernel/user.h>
-#include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/gcov.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/user.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/self_tests.h>
 
 #define LINUX_REBOOT_MAGIC1         0xfee1dead
 #define LINUX_REBOOT_MAGIC2          672274793
@@ -178,71 +175,4 @@ int sys_sched_yield(void)
 {
    kernel_yield();
    return 0;
-}
-
-/* *************************************************************** */
-/*          Tilck-specific syscalls & helper functions             */
-/* *************************************************************** */
-
-int sys_tilck_run_selftest(const char *user_selftest)
-{
-   int rc;
-   int tid;
-   uptr addr;
-   char buf[256] = SELFTEST_PREFIX;
-
-   rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
-                           user_selftest,
-                           sizeof(buf) - sizeof(SELFTEST_PREFIX) - 2,
-                           NULL);
-
-   if (rc != 0)
-      return -EFAULT;
-
-   if (!KERNEL_SELFTESTS)
-      return -EINVAL;
-
-   if (!(addr = find_addr_of_symbol(buf)))
-      return -EINVAL;
-
-   printk("Running function: %s()\n", buf);
-
-   if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, (void*)addr)) < 0)
-      return tid;
-
-   kthread_join(tid);
-   return 0;
-}
-
-int sys_tilck_cmd(enum tilck_testcmd_type cmd,
-                  uptr a1, uptr a2, uptr a3, uptr a4)
-{
-   switch (cmd) {
-
-      case TILCK_TESTCMD_RUN_SELFTEST:
-         return sys_tilck_run_selftest((const char *)a1);
-
-      case TILCK_TESTCMD_GCOV_GET_NUM_FILES:
-         return sys_gcov_get_file_count();
-
-      case TILCK_TESTCMD_GCOV_FILE_INFO:
-         return sys_gcov_get_file_info((int)a1,
-                                       (char *)a2,
-                                       (u32) a3,
-                                       (u32 *)a4);
-
-      case TILCK_TESTCMD_GCOV_GET_FILE:
-         return sys_gcov_get_file((int)a1, (char *)a2);
-
-      case TILCK_TESTCMD_QEMU_POWEROFF:
-         debug_qemu_turn_off_machine();
-         return 0;
-
-      case TILCK_TESTCMD_SET_SAT_ENABLED:
-         set_sched_alive_thread_enabled((bool)a1);
-         return 0;
-
-      default:
-         return -EINVAL;
-   }
 }

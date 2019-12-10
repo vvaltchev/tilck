@@ -16,7 +16,7 @@
 typedef sptr (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
-void *syscalls[] =
+static void *syscalls[] =
 {
    [0] = sys_restart_syscall,
    [1] = sys_exit,
@@ -357,7 +357,7 @@ void *syscalls[] =
    [336] = sys_perf_event_open,
    [337] = sys_recvmmsg,
 
-   [TILCK_TESTCMD_SYSCALL] = sys_tilck_cmd,
+   [TILCK_CMD_SYSCALL] = sys_tilck_cmd,
 };
 
 void handle_syscall(regs_t *r)
