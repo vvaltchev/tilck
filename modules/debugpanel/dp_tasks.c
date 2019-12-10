@@ -144,11 +144,15 @@ static int debug_per_task_cb(void *obj, void *arg)
 
    const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
 
-   if (!is_tasklet_runner(ti)) {
-      snprintk(buf, sizeof(buf), "<%s>", kfunc);
+   if (kfunc) {
+      if (!is_tasklet_runner(ti)) {
+         snprintk(buf, sizeof(buf), "<%s>", kfunc);
+      } else {
+         snprintk(buf, sizeof(buf), "<%s[%d]>",
+                  kfunc, debug_get_tn_for_tasklet_runner(ti));
+      }
    } else {
-      snprintk(buf, sizeof(buf), "<%s[%d]>",
-               kfunc, debug_get_tn_for_tasklet_runner(ti));
+      snprintk(buf, sizeof(buf), "<func: %p>", ti->what);
    }
 
    dp_writeln(fmt, ti->tid, pi->pid, pi->parent_pid, state, 0, buf);
