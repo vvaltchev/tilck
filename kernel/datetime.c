@@ -172,7 +172,7 @@ full_resync:
     * and then check we have absolutely no drift measurable in seconds.
     */
    enable_preemption();
-   kernel_sleep(20 * TIMER_HZ);
+   kernel_sleep(15 * TIMER_HZ);
 
    disable_preemption();
    {
@@ -189,13 +189,15 @@ full_resync:
       if (++full_resync_failed_attempts > 3)
          panic("Time-management: drift(%d) must be zero after sync", drift);
 
-      printk("WARNING: full re-sync failed (attempt %d of 3)\n",
-             full_resync_failed_attempts);
+      if (full_resync_failed_attempts > 1) {
+         printk("WARNING: full re-sync failed (attempt %d of 3)\n",
+               full_resync_failed_attempts);
 
-      printk("WARNING: the drift is now: %d, abs_drift on re-sync was: %d\n",
-             drift, abs_drift / (TS_SCALE / 1000));
+         printk("WARNING: the drift is now: %d, abs_drift on re-sync was: %d\n",
+               drift, abs_drift / (TS_SCALE / 1000));
 
-      printk("WARNING: re-trying...\n");
+         printk("WARNING: re-trying...\n");
+      }
       goto full_resync;
    }
 
