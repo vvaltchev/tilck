@@ -48,6 +48,8 @@ jobs:
           GEN: 'gcc_nocow'
         no_nested_irq_tracking:
           GEN: 'gcc_no_nested_irq_tracking'
+        minimal:
+          GEN: 'minimal'
         syscc:
           GEN: 'gcc_syscc'
         clang:
