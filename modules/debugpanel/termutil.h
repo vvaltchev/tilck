@@ -14,6 +14,8 @@
 #define RESET_ATTRS              "\033[0m"
 #define GFX_ON                   "\033(0"
 #define GFX_OFF                  "\033(B"
+#define HIDE_CURSOR              "\033[?25l"
+#define SHOW_CURSOR              "\033[?25h"
 
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
 #define DP_COLOR                 DEFAULT_FG_COLOR
@@ -47,6 +49,11 @@ static inline void dp_clear(void) {
 static inline void dp_move_cursor(int row, int col)
 {
    printk(NO_PREFIX "\033[%d;%dH", row, col);
+}
+
+static inline void dp_set_cursor_enabled(bool enabled)
+{
+   printk(NO_PREFIX "%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
 }
 
 static inline const char *

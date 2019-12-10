@@ -57,7 +57,7 @@ static void dp_enter(void)
    struct dp_screen *pos;
 
    term_read_info(&tparams);
-   term_set_cursor_enabled(false);
+   dp_set_cursor_enabled(false);
 
    in_debug_panel = true;
    dp_rows = tparams.rows;
@@ -89,7 +89,7 @@ static void dp_exit(void)
          pos->on_dp_exit();
    }
 
-   term_set_cursor_enabled(true);
+   dp_set_cursor_enabled(true);
 }
 
 void dp_register_screen(struct dp_screen *screen)
@@ -174,6 +174,7 @@ static enum kb_handler_action
 dp_keypress_handler(struct kb_dev *kb, struct key_event ke)
 {
    int rc;
+   u8 mods;
 
    if (kopt_serial_console)
       return kb_handler_nak;
@@ -190,8 +191,9 @@ dp_keypress_handler(struct kb_dev *kb, struct key_event ke)
    }
 
    ASSERT(in_debug_panel);
+   mods = kb_get_current_modifiers(kb);
 
-   if (ke.print_char == 'q' || (!kb_is_ctrl_pressed(kb) && ke.key == KEY_F12)) {
+   if (!mods && (ke.print_char == 'q' || ke.key == KEY_F12)) {
 
       if (set_curr_tty(saved_tty) == 0)
          dp_exit();
