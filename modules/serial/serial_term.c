@@ -50,6 +50,10 @@ static void
 sterm_action_write(struct term *t, const char *buf, size_t len)
 {
    for (u32 i = 0; i < len; i++) {
+
+      if (buf[i] == '\n')
+         serial_write(t->serial_port_fwd, '\r');
+
       serial_write(t->serial_port_fwd, buf[i]);
    }
 }
