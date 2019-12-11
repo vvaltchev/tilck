@@ -13,7 +13,7 @@
 
 #include "tty_int.h"
 
-static inline struct tty *get_curr_process_tty(void)
+struct tty *get_curr_process_tty(void)
 {
    return get_curr_task()->pi->proc_tty;
 }
