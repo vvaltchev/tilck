@@ -21,9 +21,11 @@
 #define BUSYBOX         "/initrd/bin/busybox"
 #define START_SCRIPT    "/initrd/etc/start"
 #define DEFAULT_SHELL   "/bin/ash"
+#define TTYS0_MINOR     64
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
+static int video_tty_count;
 
 /* -- command line options -- */
 
@@ -55,7 +57,7 @@ init_reset_signal_mask(void)
    signal(SIGTERM, SIG_DFL);
 }
 
-static int get_tty_count(void)
+static int get_video_tty_count(void)
 {
    static int count = 0;
    struct stat statbuf;
@@ -80,13 +82,6 @@ static int get_tty_count(void)
          count++; /* don't count /dev/tty0 */
    }
 
-   if (count == 0) {
-
-      /* Assume that the kernel has been booted with -sercon */
-      if (!stat("/dev/ttyS0", &statbuf))
-         count++;
-   }
-
    return count;
 }
 
@@ -96,10 +91,10 @@ static void open_std_handles(int tty)
 
    if (tty >= 0) {
 
-      if (tty < 64)
+      if (tty < TTYS0_MINOR)
          sprintf(ttyfile, "/dev/tty%d", tty);
       else
-         sprintf(ttyfile, "/dev/ttyS%d", tty - 64);
+         sprintf(ttyfile, "/dev/ttyS%d", tty - TTYS0_MINOR);
    }
 
    int in = open(ttyfile, O_RDONLY);
@@ -272,7 +267,7 @@ static void wait_for_children(pid_t shell_pid)
 
 static void setup_console_for_shell(int tty)
 {
-   if (tty == 1) {
+   if (tty == 1 || (tty == TTYS0_MINOR && !video_tty_count)) {
 
       /*
        * For /dev/tty1 we're already fine. The current process already has tty1
@@ -322,6 +317,9 @@ int main(int argc, char **argv, char **env)
 {
    int shell_pids[128] = {0};
    int pid = getpid();
+   struct stat statbuf;
+
+   video_tty_count = get_video_tty_count();
 
    if (pid != 1) {
 
@@ -345,7 +343,7 @@ int main(int argc, char **argv, char **env)
       printf("[init] Skipping the start script\n");
    }
 
-   for (int tty = 1; tty <= get_tty_count(); tty++) {
+   for (int tty = 1; tty <= video_tty_count; tty++) {
 
       pid = fork_and_run_shell_on_tty(tty);
       shell_pids[tty] = pid;
@@ -357,10 +355,10 @@ int main(int argc, char **argv, char **env)
       }
    }
 
-   ///
-   // pid = fork_and_run_shell_on_tty(64);
-   // shell_pids[64] = pid;
-   ///
+   if (!stat("/dev/ttyS0", &statbuf)) {
+      pid = fork_and_run_shell_on_tty(TTYS0_MINOR);
+      shell_pids[TTYS0_MINOR] = pid;
+   }
 
    for (int i = 0; i < ARRAY_SIZE(shell_pids); i++) {
       if (shell_pids[i])
