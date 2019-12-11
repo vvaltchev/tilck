@@ -19,6 +19,7 @@ void tty_restore_kd_text_mode(struct tty *t);
 struct tty *get_serial_tty(int n);
 void tty_reset_termios(struct tty *t);
 struct tty *get_curr_process_tty(void);
+enum term_type get_curr_proc_tty_term_type(void);
 
 static inline int get_curr_tty_num(void)
 {
