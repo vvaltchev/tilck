@@ -335,14 +335,14 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
       struct tty *other_tty;
       int fn = kb_get_fn_key_pressed(key);
 
-      if (fn > 0 && get_curr_tty()->kd_gfx_mode == KD_TEXT) {
+      if (fn > 0 && t->kd_gfx_mode == KD_TEXT) {
 
          if (fn > kopt_tty_count)
             return kb_handler_ok_and_stop; /* just ignore the key stroke */
 
          other_tty = ttys[fn];
 
-         if (other_tty == get_curr_tty())
+         if (other_tty == t)
             return kb_handler_ok_and_stop; /* just ignore the key stroke */
 
          ASSERT(other_tty != NULL);
