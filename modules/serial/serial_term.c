@@ -128,6 +128,11 @@ sterm_init(struct term *t, u16 serial_port_fwd)
    return 0;
 }
 
+static void sterm_ignored()
+{
+   /* do nothing */
+}
+
 static const struct term_interface intf = {
 
    .get_type = sterm_get_type,
@@ -135,12 +140,12 @@ static const struct term_interface intf = {
    .get_params = sterm_get_params,
 
    .write = sterm_write,
-   .scroll_up = NULL,
-   .scroll_down = NULL,
-   .set_col_offset = NULL,
-   .pause_video_output = NULL,
-   .restart_video_output = NULL,
-   .set_filter = NULL,
+   .scroll_up = (void*)sterm_ignored,
+   .scroll_down = (void*)sterm_ignored,
+   .set_col_offset = (void*)sterm_ignored,
+   .pause_video_output = (void*)sterm_ignored,
+   .restart_video_output = (void*)sterm_ignored,
+   .set_filter = (void*)sterm_ignored,
 
    .get_first_term = sterm_get_first_inst,
    .video_term_init = NULL,
