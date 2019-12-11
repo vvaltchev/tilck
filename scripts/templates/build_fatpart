@@ -153,7 +153,7 @@ function add_fat_test_dir {
 
 function add_tcc {
 
-   if [ ! -d $tc/tcc ]; then
+   if [ -z "@EXTRA_TCC_ENABLED@" ]; then
       return
    fi
 
@@ -171,7 +171,7 @@ function add_tcc {
 
 function add_micropython {
 
-   if [ ! -d $tc/micropython ]; then
+   if [ -z "@EXTRA_MICROPYTHON_ENABLED@" ]; then
       return
    fi
 
@@ -180,12 +180,34 @@ function add_micropython {
 
 function add_fbdoom {
 
-   if [ ! -d $tc/fbDOOM ]; then
+   if [ -z "@EXTRA_FBDOOM_ENABLED@" ]; then
       return
    fi
 
+   mkdir -p usr/lib/fbDOOM
    link_or_copy $tc/fbDOOM/fbdoom/fbdoom usr/bin
-   link_or_copy $tc/fbDOOM/freedoom/freedoom1.wad usr/bin
+   link_or_copy $tc/fbDOOM/freedoom/freedoom1.wad usr/lib/fbDOOM
+
+   # Here document
+
+   (
+cat <<'EOF'
+#!/bin/sh
+
+# Exit on failure
+set -e
+wad="/usr/lib/fbDOOM/freedoom1.wad"
+if ! [ -f $wad ]; then
+   echo "ERROR: Wad file $wad not found."
+   exit 1
+fi
+
+echo "Running fbdoom -iwad $wad"
+exec fbdoom -iwad $wad
+EOF
+   ) > usr/bin/freedoom
+
+   chmod 755 usr/bin/freedoom
 }
 
 

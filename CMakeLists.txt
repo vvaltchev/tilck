@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
+
 project(tilck C CXX ASM)
 
 include(CheckCCompilerFlag)
@@ -7,7 +8,6 @@ include(other/cmake/utils.cmake)
 include(other/cmake/errors.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
-
 set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
@@ -362,6 +362,9 @@ set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
 set(LINEAR_MAPPING_MB         896)
+
+# Options for extra apps
+include(other/cmake/extra_apps.cmake)
 
 # Generate config files & build scripts (before including sub-dirs)
 include(other/cmake/gen_config_pre.cmake)

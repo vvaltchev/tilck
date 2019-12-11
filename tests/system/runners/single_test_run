@@ -124,7 +124,7 @@ def process_line(line: str):
    #raw_print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
-      m = re.search(r'the devshell exited with status: ([0-9]+)', stripped)
+      m = re.search(r'the shell exited with status: ([0-9]+)', stripped)
 
       if m:
          set_once_shell_exit_code(int(m.group(1)))

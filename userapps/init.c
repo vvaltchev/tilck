@@ -187,7 +187,7 @@ static void do_initial_setup(void)
 static void report_shell_exit(int wstatus)
 {
    const int status = WEXITSTATUS(wstatus);
-   printf("[init] the devshell exited with status: %d\n", status);
+   printf("[init] the shell exited with status: %d\n", status);
 }
 
 static void report_process_exit(pid_t pid, int wstatus)
