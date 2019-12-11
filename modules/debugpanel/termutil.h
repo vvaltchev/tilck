@@ -30,31 +30,12 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w);
 /* WARNING: dirty macro expecting both `row` and `col` to be defined */
 #define dp_writeln2(...) dp_write(row++, col, __VA_ARGS__)
 
-static inline void dp_move_right(int n) {
-   printk(NO_PREFIX "\033[%dC", n);
-}
-
-static inline void dp_move_left(int n) {
-   printk(NO_PREFIX "\033[%dD", n);
-}
-
-static inline void dp_move_to_col(int n) {
-   printk(NO_PREFIX "\033[%dG", n);
-}
-
-static inline void dp_clear(void) {
-   printk(NO_PREFIX ERASE_DISPLAY);
-}
-
-static inline void dp_move_cursor(int row, int col)
-{
-   printk(NO_PREFIX "\033[%d;%dH", row, col);
-}
-
-static inline void dp_set_cursor_enabled(bool enabled)
-{
-   printk(NO_PREFIX "%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
-}
+void dp_move_right(int n);
+void dp_move_left(int n);
+void dp_move_to_col(int n);
+void dp_clear(void);
+void dp_move_cursor(int row, int col);
+void dp_set_cursor_enabled(bool enabled);
 
 static inline const char *
 dp_sign_value_esc_color(sptr val)

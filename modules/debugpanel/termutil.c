@@ -4,10 +4,13 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/color_defs.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/tty.h>
+#include <tilck/kernel/tty_struct.h>
 #include "termutil.h"
 
 void dp_write_raw(const char *fmt, ...)
 {
+   struct tty *t;
    char buf[256];
    va_list args;
    int rc;
@@ -16,11 +19,43 @@ void dp_write_raw(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   term_write(buf, (size_t)rc, DP_COLOR);
+   t = get_curr_process_tty();
+
+   if (t->tparams.type == term_type_video)
+      term_write(buf, (size_t)rc, DP_COLOR);
+   else
+      t->tintf->write(t->tstate, buf, (size_t)rc, DP_COLOR);
+}
+
+void dp_move_right(int n) {
+   dp_write_raw("\033[%dC", n);
+}
+
+void dp_move_left(int n) {
+   dp_write_raw("\033[%dD", n);
+}
+
+void dp_move_to_col(int n) {
+   dp_write_raw("\033[%dG", n);
+}
+
+void dp_clear(void) {
+   dp_write_raw(ERASE_DISPLAY);
+}
+
+void dp_move_cursor(int row, int col)
+{
+   dp_write_raw("\033[%d;%dH", row, col);
+}
+
+void dp_set_cursor_enabled(bool enabled)
+{
+   dp_write_raw("%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
 }
 
 void dp_write(int row, int col, const char *fmt, ...)
 {
+   struct tty *t;
    char buf[256];
    va_list args;
    int rc;
@@ -45,7 +80,12 @@ void dp_write(int row, int col, const char *fmt, ...)
       col = dp_start_col + 2;
 
    dp_move_cursor(row, col);
-   term_write(buf, (size_t)rc, DP_COLOR);
+   t = get_curr_process_tty();
+
+   if (t->tparams.type == term_type_video)
+      term_write(buf, (size_t)rc, DP_COLOR);
+   else
+      t->tintf->write(t->tstate, buf, (size_t)rc, DP_COLOR);
 }
 
 void dp_draw_rect_raw(int row, int col, int h, int w)

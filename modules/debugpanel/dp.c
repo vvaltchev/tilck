@@ -116,7 +116,7 @@ void dp_register_screen(struct dp_screen *screen)
 }
 
 static int
-dp_switch_to_dedicated_tty(void)
+dp_switch_to_dedicated_video_tty(void)
 {
    int rc = 0;
 
@@ -151,7 +151,7 @@ dp_debug_panel_off_keypress(struct kb_dev *kb, struct key_event ke)
 
    if (kb_is_ctrl_pressed(kb) && ke.key == KEY_F12) {
 
-      rc = dp_switch_to_dedicated_tty();
+      rc = dp_switch_to_dedicated_video_tty();
 
       if (!rc || rc == -ENOMEM)
          return kb_handler_ok_and_stop;
@@ -441,33 +441,30 @@ static void dp_tilck_cmd()
    struct key_event ke;
    fs_handle h = NULL;
    int rc;
-   bool tty_switched = false;
 
    dp_enable_kb_handler = false;
-   tt = term_get_type();
+   tt = get_curr_proc_tty_term_type();
+
+   dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
+   dp_enter();
 
    if (tt == term_type_video) {
 
-      rc = dp_switch_to_dedicated_tty();
-
-      if (rc < 0) {
-         printk("Failed to switch the dp tty with %d\n", rc);
+      if ((rc = vfs_open("/dev/tty0", &h, O_RDONLY, 0777)) < 0)
          goto end;
-      }
-
-      tty_switched = true;
 
    } else {
 
-      ASSERT(tt == term_type_serial);
-      dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
-      dp_enter();
+      /*
+       * HACK: this assumes that, if we're using a serial tty, it's TTYS0.
+       * TOOD: fix this somehow. An idea could be exposing a special interface
+       * from tty to open a handle to it, without any access to the VFS layer.
+       */
+      if ((rc = vfs_open("/dev/ttyS0", &h, O_RDONLY, 0777)) < 0)
+         goto end;
    }
 
-   if ((rc = vfs_open("/dev/tty0", &h, O_RDONLY, 0777)) < 0)
-      goto end;
-
-   tty_set_raw_mode(get_curr_tty());
+   tty_set_raw_mode(get_curr_process_tty());
 
    bzero(&ke, sizeof(ke));
    ui_need_update = true;
@@ -492,19 +489,10 @@ end:
    if (h)
       vfs_close(h);
 
-   if (tt == term_type_video && tty_switched) {
-
-      tty_reset_termios(get_curr_tty());
-      dp_video_quit();
-
-   } else if (tt == term_type_serial) {
-
-      tty_reset_termios(get_curr_tty());
-      dp_exit();
-      dp_clear();
-      printk(NO_PREFIX "\n");
-   }
-
+   tty_reset_termios(get_curr_process_tty());
+   dp_exit();
+   dp_clear();
+   dp_write_raw("\n");
    dp_enable_kb_handler = true;
 }
 
