@@ -35,16 +35,17 @@ struct video_interface {
    void (*enable_static_elems_refresh)(void);
 };
 
+enum term_type {
+   term_type_video,
+   term_type_serial,
+};
+
 struct term_params {
 
    u16 rows;
    u16 cols;
+   enum term_type type;
    const struct video_interface *vi;
-};
-
-enum term_type {
-   term_type_video,
-   term_type_serial,
 };
 
 enum term_fret {

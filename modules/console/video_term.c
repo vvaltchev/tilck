@@ -807,6 +807,7 @@ vterm_get_params(struct term *t, struct term_params *out)
    *out = (struct term_params) {
       .rows = t->rows,
       .cols = t->cols,
+      .type = term_type_video,
       .vi = t->vi,
    };
 }

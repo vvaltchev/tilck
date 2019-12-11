@@ -42,6 +42,7 @@ sterm_get_params(struct term *t, struct term_params *out)
    *out = (struct term_params) {
       .rows = 25,
       .cols = 80,
+      .type = term_type_serial,
       .vi = NULL,
    };
 }
