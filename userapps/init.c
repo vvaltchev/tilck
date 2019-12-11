@@ -94,8 +94,13 @@ static void open_std_handles(int tty)
 {
    char ttyfile[32] = "/dev/console";
 
-   if (tty >= 0)
-      sprintf(ttyfile, "/dev/tty%d", tty);
+   if (tty >= 0) {
+
+      if (tty < 64)
+         sprintf(ttyfile, "/dev/tty%d", tty);
+      else
+         sprintf(ttyfile, "/dev/ttyS%d", tty - 64);
+   }
 
    int in = open(ttyfile, O_RDONLY);
    int out = open(ttyfile, O_WRONLY);
@@ -287,9 +292,35 @@ static void setup_console_for_shell(int tty)
    ioctl(0, TIOCSCTTY, 0);  /* Make ttyN to be the controlling terminal */
 }
 
+static int fork_and_run_shell_on_tty(int tty)
+{
+   pid_t pid = fork();
+
+   if (pid < 0) {
+      perror("[init] fork() failed");
+      call_exit(1);
+   }
+
+   if (!pid) {
+
+      setup_console_for_shell(tty);
+      init_reset_signal_mask();
+
+      execve(shell_args[0], shell_args, NULL);
+
+      printf("[init] execve(%s) failed with: %s\n",
+               shell_args[0],
+               strerror(errno));
+
+      call_exit(1);
+   }
+
+   return pid;
+}
+
 int main(int argc, char **argv, char **env)
 {
-   int shell_pids[MAX_TTYS];
+   int shell_pids[128] = {0};
    int pid = getpid();
 
    if (pid != 1) {
@@ -316,36 +347,25 @@ int main(int argc, char **argv, char **env)
 
    for (int tty = 1; tty <= get_tty_count(); tty++) {
 
-      pid = fork();
+      pid = fork_and_run_shell_on_tty(tty);
+      shell_pids[tty] = pid;
 
-      if (pid < 0) {
-         perror("[init] fork() failed");
-         call_exit(1);
+      if (tty == 1) {
+         /* only the 1st shell gets executed with the specified arguments */
+         for (int i = 1; i < ARRAY_SIZE(shell_args); i++)
+            shell_args[i] = NULL;
       }
-
-      if (!pid) {
-
-         setup_console_for_shell(tty);
-         init_reset_signal_mask();
-
-         execve(shell_args[0], shell_args, NULL);
-
-         printf("[init] execve(%s) failed with: %s\n",
-                shell_args[0],
-                strerror(errno));
-
-         call_exit(1);
-      }
-
-      shell_pids[tty - 1] = pid;
-
-      /* only the 1st shell gets executed with the specified arguments */
-      for (int i = 1; i < ARRAY_SIZE(shell_args); i++)
-         shell_args[i] = NULL;
    }
 
-   for (int tty = 1; tty <= get_tty_count(); tty++)
-      wait_for_children(shell_pids[tty - 1]);
+   ///
+   // pid = fork_and_run_shell_on_tty(64);
+   // shell_pids[64] = pid;
+   ///
+
+   for (int i = 0; i < ARRAY_SIZE(shell_pids); i++) {
+      if (shell_pids[i])
+         wait_for_children(shell_pids[i]);
+   }
 
    call_exit(0);
 }
