@@ -113,7 +113,9 @@ execve_prepare_process(struct process *pi, void *brk, const char *path)
 }
 
 static inline int
-execve_handle_script(struct execve_ctx *ctx, const char *const *argv)
+execve_handle_script(struct execve_ctx *ctx,
+                     const char *path,
+                     const char *const *argv)
 {
    const char **new_argv = ctx->argv_stack[ctx->reclvl];
    char *hdr = ctx->hdr_stack[ctx->reclvl];
@@ -154,6 +156,7 @@ execve_handle_script(struct execve_ctx *ctx, const char *const *argv)
 
          na[i] = NULL;
          ctx->reclvl++;
+         new_argv[l ? 2 : 1] = path;
          return do_execve_int(ctx, new_argv[0], new_argv);
       }
    }
@@ -181,7 +184,7 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
          if (ctx->reclvl == MAX_SCRIPT_REC)
             return -ELOOP;
 
-         rc = execve_handle_script(ctx, argv);
+         rc = execve_handle_script(ctx, path, argv);
       }
       return rc;
    }
