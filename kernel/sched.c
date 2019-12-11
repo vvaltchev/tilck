@@ -261,17 +261,18 @@ static void task_remove_from_state_list(struct task *ti)
 
 void task_change_state(struct task *ti, enum task_state new_state)
 {
+   uptr var;
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
    DEBUG_ONLY(check_in_no_other_irq_than_timer());
 
-   disable_preemption();
+   disable_interrupts(&var);
    {
       task_remove_from_state_list(ti);
       ti->state = new_state;
       task_add_to_state_list(ti);
    }
-   enable_preemption();
+   enable_interrupts(&var);
 }
 
 void add_task(struct task *ti)
