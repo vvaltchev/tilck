@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <poll.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -35,7 +36,7 @@ static bool opt_nostart;
 
 /* -- end -- */
 
-static void call_exit(int code)
+static NORETURN void call_exit(int code)
 {
    printf("[init] exit with code: %i\n", code);
    exit(code);
@@ -297,21 +298,53 @@ static int fork_and_run_shell_on_tty(int tty)
       call_exit(1);
    }
 
-   if (!pid) {
+   if (pid)
+      return pid;
 
-      setup_console_for_shell(tty);
-      init_reset_signal_mask();
+   setup_console_for_shell(tty);
+   init_reset_signal_mask();
 
-      execve(shell_args[0], shell_args, NULL);
+   if (video_tty_count && tty > 1) {
 
-      printf("[init] execve(%s) failed with: %s\n",
-               shell_args[0],
-               strerror(errno));
+      /*
+       * Instead of wasting resources for running the shell from now, just wait
+       * until an user is connected and presses ENTER.
+       */
 
-      call_exit(1);
+      char buf[32];
+
+      struct pollfd fd = {
+         .fd = 0,
+         .events = POLLIN,
+      };
+
+      do {
+
+         printf("\033[2J\033[1;1H");
+         printf("Tilck console on /dev/tty%s%d\n",
+                tty >= TTYS0_MINOR ? "S" : "",
+                tty >= TTYS0_MINOR ? tty - TTYS0_MINOR : tty);
+         printf("------------------------------------------\n\n");
+         printf("Press ENTER to run the shell");
+
+         fflush(stdout);
+
+      } while (poll(&fd, 1, 3000) <= 0);
+
+      while (read(0, buf, 32) == 32) {
+         /* drain the input buffer */
+      }
+
+      printf("\n");
    }
 
-   return pid;
+   execve(shell_args[0], shell_args, NULL);
+
+   printf("[init] execve(%s) failed with: %s\n",
+          shell_args[0],
+          strerror(errno));
+
+   call_exit(1);
 }
 
 int main(int argc, char **argv, char **env)
