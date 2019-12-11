@@ -81,7 +81,7 @@ set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
 # Non-boolean kernel options
 set(TIMER_HZ            100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
-set(TTY_COUNT             2 CACHE STRING "Number of TTYs")
+set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 set(USERAPPS_CFLAGS "-ggdb" CACHE STRING "Build flags for C/C++ user programs")
 
 # Kernel options (enabled by default)
@@ -115,6 +115,9 @@ set(BOOTLOADER_LEGACY ON CACHE BOOL
 
 set(BOOTLOADER_EFI ON CACHE BOOL
     "Build the EFI bootloader")
+
+set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
+    "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
 
 # Kernel options (disabled by default)
 

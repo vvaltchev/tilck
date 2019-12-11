@@ -16,6 +16,7 @@
 #include <sys/prctl.h>
 #include <sys/ioctl.h>
 
+#include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
 #define BUSYBOX         "/initrd/bin/busybox"
@@ -355,9 +356,11 @@ int main(int argc, char **argv, char **env)
       }
    }
 
-   if (!stat("/dev/ttyS0", &statbuf)) {
-      pid = fork_and_run_shell_on_tty(TTYS0_MINOR);
-      shell_pids[TTYS0_MINOR] = pid;
+   if (!video_tty_count || SERIAL_CON_IN_VIDEO_MODE) {
+      if (!stat("/dev/ttyS0", &statbuf)) {
+         pid = fork_and_run_shell_on_tty(TTYS0_MINOR);
+         shell_pids[TTYS0_MINOR] = pid;
+      }
    }
 
    for (int i = 0; i < ARRAY_SIZE(shell_pids); i++) {
