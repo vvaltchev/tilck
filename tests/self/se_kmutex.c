@@ -61,6 +61,7 @@ static void sek_thread(void *unused)
          kernel_yield();
       }
       kmutex_unlock(&test_mutex);
+      debug_no_deadlock_set_report_progress();
 
    } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
 }
@@ -286,20 +287,15 @@ void selftest_kmutex_ord_med()
    kmutex_init(&test_mutex, KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED);
    kmutex_init(&order_mutex, 0);
 
-   debug_reset_no_deadlock_set();
-
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
 
       if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
       tids[i] = tid;
-      debug_add_task_to_no_deadlock_set(tid);
    }
 
-   debug_add_task_to_no_deadlock_set(get_curr_tid());
    kthread_join_all(tids, ARRAY_SIZE(tids));
-   debug_reset_no_deadlock_set();
 
 #if KMUTEX_STATS_ENABLED
    printk("order_mutex max waiters: %u\n", order_mutex.max_num_waiters);

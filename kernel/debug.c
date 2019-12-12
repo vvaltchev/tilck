@@ -22,9 +22,12 @@ volatile bool __in_double_fault;
 static volatile bool sched_alive_thread_enabled = true;
 
 #if KERNEL_SELFTESTS
+#define MAX_NO_DEADLOCK_SET_ELEMS   144
 
-static int no_deadlock_set[144];
 static int no_deadlock_set_elems;
+static int no_deadlock_set[MAX_NO_DEADLOCK_SET_ELEMS];
+static u64 no_deadlock_set_progress[MAX_NO_DEADLOCK_SET_ELEMS];
+static u64 no_deadlock_set_progress_old[MAX_NO_DEADLOCK_SET_ELEMS];
 
 void debug_reset_no_deadlock_set(void)
 {
@@ -32,6 +35,8 @@ void debug_reset_no_deadlock_set(void)
    {
       no_deadlock_set_elems = 0;
       bzero(no_deadlock_set, sizeof(no_deadlock_set));
+      bzero(no_deadlock_set_progress, sizeof(no_deadlock_set_progress));
+      bzero(no_deadlock_set_progress_old, sizeof(no_deadlock_set_progress_old));
    }
    enable_preemption();
 }
@@ -50,23 +55,44 @@ void debug_add_task_to_no_deadlock_set(int tid)
    enable_preemption();
 }
 
+static int nds_find_pos(int tid)
+{
+   ASSERT(!is_preemption_enabled());
+
+   for (int i = 0; i < no_deadlock_set_elems; i++) {
+      if (no_deadlock_set[i] == tid)
+         return i;
+   }
+
+   return -1;
+}
+
 void debug_remove_task_from_no_deadlock_set(int tid)
 {
-   int pos = -1;
+   int pos;
 
    disable_preemption();
    {
-      for (int i = 0; i < no_deadlock_set_elems; i++) {
-         if (no_deadlock_set[i] == tid) {
-            pos = i;
-            break;
-         }
-      }
+      pos = nds_find_pos(tid);
 
       if (pos < 0)
          panic("Task %d not found in no_deadlock_set", tid);
 
       no_deadlock_set[pos] = 0;
+   }
+   enable_preemption();
+}
+
+void debug_no_deadlock_set_report_progress(void)
+{
+   int tid = get_curr_tid();
+   int pos;
+
+   disable_preemption();
+   {
+      pos = nds_find_pos(tid);
+      VERIFY(pos >= 0);
+      no_deadlock_set_progress[pos]++;
    }
    enable_preemption();
 }
@@ -102,6 +128,71 @@ void debug_check_for_deadlock(void)
    }
 }
 
+void debug_check_for_any_progress(void)
+{
+   int tid;
+   int counter = 0, candidates = 0;
+   struct task *ti;
+
+   disable_preemption();
+   {
+      for (int i = 0; i < no_deadlock_set_elems; i++) {
+
+         if (!(tid = no_deadlock_set[i]))
+            continue;
+
+         if (!(ti = get_task(tid)))
+            continue;
+
+         if (ti->state == TASK_STATE_ZOMBIE)
+            continue;
+
+         if (!no_deadlock_set_progress[i])
+            continue;
+
+         if (no_deadlock_set_progress[i] == no_deadlock_set_progress_old[i])
+            panic("[deadlock?] No progress for tid %d", tid);
+
+         candidates++;
+      }
+
+      if (candidates) {
+
+         printk("Progress for the first 4 tasks: [\n");
+
+         for (int i = 0; i < no_deadlock_set_elems && counter < 4; i++) {
+
+            if (!(tid = no_deadlock_set[i]))
+               continue;
+
+            if (!(ti = get_task(tid)))
+               continue;
+
+            if (ti->state == TASK_STATE_ZOMBIE)
+               continue;
+
+            if (!no_deadlock_set_progress[i])
+               continue;
+
+            if (i == 0)
+               printk("%llu ", no_deadlock_set_progress[i]);
+            else
+               printk(NO_PREFIX "%llu ", no_deadlock_set_progress[i]);
+
+            counter++;
+         }
+
+         printk(NO_PREFIX "\n");
+         printk("]\n\n");
+      }
+
+      memcpy(no_deadlock_set_progress_old,
+             no_deadlock_set_progress,
+             sizeof(no_deadlock_set_progress));
+   }
+   enable_preemption();
+}
+
 #endif
 
 static void sched_alive_thread()
@@ -110,7 +201,11 @@ static void sched_alive_thread()
 
       if (sched_alive_thread_enabled) {
          printk("---- Sched alive thread: %d ----\n", counter);
-         debug_check_for_deadlock();
+
+         if (counter % 2) {
+            debug_check_for_deadlock();
+            debug_check_for_any_progress();
+         }
       }
 
       kernel_sleep(TIMER_HZ);

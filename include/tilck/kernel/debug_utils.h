@@ -31,6 +31,7 @@ void set_sched_alive_thread_enabled(bool enabled);
 void debug_reset_no_deadlock_set(void);
 void debug_add_task_to_no_deadlock_set(int tid);
 void debug_remove_task_from_no_deadlock_set(int tid);
+void debug_no_deadlock_set_report_progress(void);
 void debug_check_for_deadlock(void);
 
 /* Internal */
