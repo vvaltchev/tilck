@@ -50,10 +50,6 @@ int dp_screen_rows;
 bool ui_need_update;
 struct dp_screen *dp_ctx;
 
-static bool dp_enable_kb_handler;
-static bool in_debug_panel;
-static struct tty *dp_tty;
-static struct tty *saved_tty;
 static struct list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
@@ -64,7 +60,6 @@ static void dp_enter(void)
    term_read_info(&tparams);
    dp_set_cursor_enabled(false);
 
-   in_debug_panel = true;
    dp_rows = tparams.rows;
    dp_cols = tparams.cols;
    dp_start_row = (dp_rows - DP_H) / 2 + 1;
@@ -86,7 +81,6 @@ static void dp_enter(void)
 static void dp_exit(void)
 {
    struct dp_screen *pos;
-   in_debug_panel = false;
 
    list_for_each_ro(pos, &dp_screens_list, node) {
 
@@ -115,51 +109,6 @@ void dp_register_screen(struct dp_screen *screen)
    list_add_after(pred, &screen->node);
 }
 
-static int
-dp_switch_to_dedicated_video_tty(void)
-{
-   int rc = 0;
-
-   if (!dp_tty) {
-
-      dp_tty = create_tty_nodev();
-
-      if (!dp_tty) {
-         printk("ERROR: no enough memory for debug panel's TTY\n");
-         rc = -ENOMEM;
-         goto end;
-      }
-
-      dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
-   }
-
-   saved_tty = get_curr_tty();
-
-   if ((rc = set_curr_tty(dp_tty)) < 0)
-      goto end;
-
-   dp_enter();
-
-end:
-   return rc;
-}
-
-static enum kb_handler_action
-dp_debug_panel_off_keypress(struct kb_dev *kb, struct key_event ke)
-{
-   int rc;
-
-   if (kb_is_ctrl_pressed(kb) && ke.key == KEY_F12) {
-
-      rc = dp_switch_to_dedicated_video_tty();
-
-      if (!rc || rc == -ENOMEM)
-         return kb_handler_ok_and_stop;
-   }
-
-   return kb_handler_nak;
-}
-
 static void redraw_screen(void)
 {
    struct dp_screen *pos;
@@ -179,11 +128,7 @@ static void redraw_screen(void)
 
    dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
-
-   if (dp_enable_kb_handler)
-      dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
-   else
-      dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel (cmd) ]" RESET_ATTRS);
+   dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
 
    rc = snprintk(buf, sizeof(buf),
                  "[rows %02d - %02d of %02d]",
@@ -255,68 +200,6 @@ dp_main_body(enum term_type tt, struct key_event ke)
 
    return dp_screen_key_handled;
 }
-
-static void
-dp_video_quit(void)
-{
-   if (set_curr_tty(saved_tty) == 0)
-      dp_exit();
-}
-
-static enum kb_handler_action
-dp_keypress_handler(struct kb_dev *kb, struct key_event ke)
-{
-   int rc;
-   u8 mods;
-
-   if (!ke.pressed)
-      return kb_handler_nak; /* ignore key-release events */
-
-   if (kopt_serial_console)
-      return kb_handler_nak;
-
-   if (!dp_enable_kb_handler) {
-
-      /* Disable switch to any other TTY with ALT + Fn */
-      if (kb_is_alt_pressed(kb)) {
-         if (kb_get_fn_key_pressed(ke.key) > 0)
-            return kb_handler_ok_and_stop;
-      }
-
-      return kb_handler_nak;
-   }
-
-   if (!in_debug_panel) {
-
-      if (dp_debug_panel_off_keypress(kb, ke) == kb_handler_nak)
-         return kb_handler_nak;
-
-      ui_need_update = true;
-   }
-
-   ASSERT(in_debug_panel);
-   mods = kb_get_current_modifiers(kb);
-
-   if (mods == 4 /* ctrl */ && ke.print_char == 'c') {
-      dp_video_quit();
-      return kb_handler_ok_and_stop;
-   }
-
-   rc = dp_main_body(term_type_video, ke);
-
-   if (!rc && ke.print_char == 'q') {
-      dp_video_quit();
-      return kb_handler_ok_and_stop;
-   }
-
-   return kb_handler_ok_and_stop;
-}
-
-static struct keypress_handler_elem debugpanel_handler_elem =
-{
-   .handler = &dp_keypress_handler
-};
-
 
 static int
 read_ke_from_tty(fs_handle h, struct key_event *ke)
@@ -442,9 +325,7 @@ static void dp_tilck_cmd()
    fs_handle h = NULL;
    int rc;
 
-   dp_enable_kb_handler = false;
    tt = get_curr_proc_tty_term_type();
-
    dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
    dp_enter();
 
@@ -493,13 +374,10 @@ end:
    dp_exit();
    dp_clear();
    dp_write_raw("\n");
-   dp_enable_kb_handler = true;
 }
 
 static void dp_init(void)
 {
-   dp_enable_kb_handler = true;
-   register_keypress_handler(&debugpanel_handler_elem);
    register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_tilck_cmd);
 }
 
