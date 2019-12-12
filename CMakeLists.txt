@@ -104,8 +104,13 @@ set(KERNEL_STACK_ISOLATION ON CACHE BOOL
 set(KERNEL_FB_BANNER ON CACHE BOOL
     "Show a top banner when using fb_console")
 
-set(KERNEL_SHOW_LOGO ON CACHE BOOL
-    "Show Tilck's logo after boot")
+if ($ENV{TILCK_NO_LOGO})
+   set(KERNEL_SHOW_LOGO OFF CACHE BOOL
+      "Show Tilck's logo after boot")
+else()
+   set(KERNEL_SHOW_LOGO ON CACHE BOOL
+      "Show Tilck's logo after boot")
+endif()
 
 set(KERNEL_SYMBOLS ON CACHE BOOL
     "Keep symbol tables loaded in the kernel for backtraces and self tests")

@@ -8,6 +8,7 @@ jobs:
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
       REPORT_COV: 1
+      TILCK_NO_LOGO: 1
     steps:
       - script: printenv
         displayName: Dump env
@@ -36,6 +37,7 @@ jobs:
       vmImage: 'ubuntu-18.04'
     variables:
       GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
     strategy:
       matrix:
         release:
