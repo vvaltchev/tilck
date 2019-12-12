@@ -113,7 +113,10 @@ def load_list_of_kernel_self_tests():
 
 def internal_run_test(test_type, test, timeout, show_output = False):
 
-   print("[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout))
+   raw_print(
+      "[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout)
+   )
+
    start_time = time.time()
 
    try:
@@ -130,30 +133,33 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
    except subprocess.CalledProcessError as e:
       elapsed = time.time() - start_time
-      raw_print(e.output.decode('utf-8'))
-      print("[ FAILED  ] after {:.2f} seconds with: {}\n"
-               .format(elapsed, getFailByCode(e.returncode)))
+      direct_print(e.output)
+      raw_print("")
+      raw_print(
+         "[ FAILED  ] after {:.2f} seconds with: {}\n"
+            .format(elapsed, getFailByCode(e.returncode))
+      )
       return False
 
    elapsed = time.time() - start_time
 
    if show_output:
-      print("")
+      raw_print("")
       raw_print(output)
 
-   print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
+   raw_print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
    return True
 
 def show_help_and_exit():
-   print("Syntax:")
-   print("     run_all_tests -l")
-   print("     run_all_tests [-c] [-o] [<regex>] [<max_timeout>]")
+   raw_print("Syntax:")
+   raw_print("     run_all_tests -l")
+   raw_print("     run_all_tests [-c] [-o] [<regex>] [<max_timeout>]")
    sys.exit(1)
 
 def show_tests_and_exit():
 
    col_names = [['test name', 30], ['test type', 12],  ['timeout', 10]]
-   print("")
+   raw_print("")
 
    for x in col_names:
       sys.stdout.write('+-')
@@ -197,7 +203,7 @@ def run_test(test_type, x, show_output):
    global tests_to_run, tests_passed
 
    if get_sum(tests_to_run) == 0:
-      print("")
+      raw_print("")
 
    tests_to_run[test_type] += 1
    if internal_run_test(test_type, x[0], x[1], show_output):
@@ -220,28 +226,32 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
                   found.append(x)
 
          if not found:
-            print("ERROR: No tests matching the '{}' regex.".format(reg))
+            raw_print("ERROR: No tests matching the '{}' regex.".format(reg))
          else:
-            print("ERROR: No tests matching "
-                  "the '{}' regex having timeout <= {}"
-                     .format(reg, max_test_timeout))
-            print("Tests matching the regex with timeout > {}:"
-                     .format(max_test_timeout))
+            raw_print(
+               "ERROR: No tests matching "
+               "the '{}' regex having timeout <= {}"
+                  .format(reg, max_test_timeout)
+            )
+            raw_print(
+               "Tests matching the regex with timeout > {}:"
+                  .format(max_test_timeout)
+            )
             for x in found:
-               print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
+               raw_print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
 
          sys.exit(1)
 
 def dump_test_stats():
 
-   print('-' * 80)
+   raw_print('-' * 80)
 
    for tt in test_types:
       if tests_to_run[tt]:
-         print("{} passed: {}/{}"
-                  .format(tt_pretty_names[tt],
-                          tests_passed[tt],
-                          tests_to_run[tt]))
+         raw_print("{} passed: {}/{}"
+                     .format(tt_pretty_names[tt],
+                             tests_passed[tt],
+                             tests_to_run[tt]))
 
 def main():
 

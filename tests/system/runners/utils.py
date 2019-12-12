@@ -30,9 +30,14 @@ test_types = ['selftest', 'shellcmd']
 KERNEL_FILE = r'@KERNEL_FILE@'
 BUILD_DIR = r'@CMAKE_BINARY_DIR@'
 
+def direct_print(data):
+   sys.stdout.buffer.write(data)
+   sys.stdout.buffer.flush()
+
 def raw_print(msg):
    sys.stdout.buffer.write(msg.encode('utf-8'))
    sys.stdout.buffer.write('\n'.encode('utf-8'))
+   sys.stdout.buffer.flush()
 
 def msg_print(msg):
    raw_print("[system test runner] {}".format(msg))
