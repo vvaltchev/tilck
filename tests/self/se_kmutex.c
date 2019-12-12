@@ -17,6 +17,12 @@ static int sek_vars[3];
 static const int sek_set_1[3] = {1, 2, 3};
 static const int sek_set_2[3] = {10, 20, 30};
 
+static int tids[128];
+static int tid_by_idx1[128];
+static int tid_by_idx2[128];
+static int idx1, idx2;
+static struct kmutex order_mutex;
+
 static void sek_set_vars(const int *set)
 {
    for (u32 i = 0; i < ARRAY_SIZE(sek_vars); i++) {
@@ -61,16 +67,21 @@ static void sek_thread(void *unused)
 
 void selftest_kmutex_short()
 {
-   int tids[3];
+   int local_tids[3];
    kmutex_init(&test_mutex, 0);
    sek_set_vars(sek_set_1);
 
+   debug_reset_no_deadlock_set();
+
    for (int i = 0; i < 3; i++) {
-      tids[i] = kthread_create(sek_thread, 0, NULL);
-      VERIFY(tids[i] > 0);
+      local_tids[i] = kthread_create(sek_thread, 0, NULL);
+      VERIFY(local_tids[i] > 0);
+      debug_add_task_to_no_deadlock_set(local_tids[i]);
    }
 
-   kthread_join_all(tids, ARRAY_SIZE(tids));
+   debug_add_task_to_no_deadlock_set(get_curr_tid());
+   kthread_join_all(local_tids, ARRAY_SIZE(local_tids));
+   debug_reset_no_deadlock_set();
 
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
@@ -119,7 +130,7 @@ static void test_kmutex_thread_trylock()
 void selftest_kmutex_rec_med()
 {
    bool success;
-   int tids[3];
+   int local_tids[3];
 
    printk("kmutex recursive test\n");
    kmutex_init(&test_mutex, KMUTEX_FL_RECURSIVE);
@@ -138,9 +149,9 @@ void selftest_kmutex_rec_med()
 
    printk("Locked 3 times (last with trylock)\n");
 
-   tids[0] = kthread_create(test_kmutex_thread_trylock, 0, NULL);
-   VERIFY(tids[0] > 0);
-   kthread_join(tids[0]);
+   local_tids[0] = kthread_create(test_kmutex_thread_trylock, 0, NULL);
+   VERIFY(local_tids[0] > 0);
+   kthread_join(local_tids[0]);
 
    kmutex_unlock(&test_mutex);
    printk("Unlocked once\n");
@@ -151,16 +162,16 @@ void selftest_kmutex_rec_med()
    kmutex_unlock(&test_mutex);
    printk("Unlocked 3 times\n");
 
-   tids[0] = kthread_create(&test_kmutex_thread, 0, (void*) 1);
-   VERIFY(tids[0] > 0);
+   local_tids[0] = kthread_create(&test_kmutex_thread, 0, (void*) 1);
+   VERIFY(local_tids[0] > 0);
 
-   tids[1] = kthread_create(&test_kmutex_thread, 0, (void*) 2);
-   VERIFY(tids[1] > 0);
+   local_tids[1] = kthread_create(&test_kmutex_thread, 0, (void*) 2);
+   VERIFY(local_tids[1] > 0);
 
-   tids[2] = kthread_create(&test_kmutex_thread_trylock, 0, NULL);
-   VERIFY(tids[2] > 0);
+   local_tids[2] = kthread_create(&test_kmutex_thread_trylock, 0, NULL);
+   VERIFY(local_tids[2] > 0);
 
-   kthread_join_all(tids, ARRAY_SIZE(tids));
+   kthread_join_all(local_tids, ARRAY_SIZE(local_tids));
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
 }
@@ -191,13 +202,6 @@ void selftest_kmutex_rec_med()
  * sleep while holding the `test_mutex`. For a better understanding, see the
  * comments below.
  */
-
-static int tids[128];
-static int tid_by_idx1[128];
-static int tid_by_idx2[128];
-static int idx1, idx2;
-
-static struct kmutex order_mutex;
 
 static void kmutex_ord_th()
 {
@@ -282,15 +286,20 @@ void selftest_kmutex_ord_med()
    kmutex_init(&test_mutex, KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED);
    kmutex_init(&order_mutex, 0);
 
+   debug_reset_no_deadlock_set();
+
    for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
 
       if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
       tids[i] = tid;
+      debug_add_task_to_no_deadlock_set(tid);
    }
 
+   debug_add_task_to_no_deadlock_set(get_curr_tid());
    kthread_join_all(tids, ARRAY_SIZE(tids));
+   debug_reset_no_deadlock_set();
 
 #if KMUTEX_STATS_ENABLED
    printk("order_mutex max waiters: %u\n", order_mutex.max_num_waiters);

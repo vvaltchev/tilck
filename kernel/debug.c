@@ -21,11 +21,98 @@ volatile bool __in_double_fault;
  */
 static volatile bool sched_alive_thread_enabled = true;
 
+#if KERNEL_SELFTESTS
+
+static int no_deadlock_set[144];
+static int no_deadlock_set_elems;
+
+void debug_reset_no_deadlock_set(void)
+{
+   disable_preemption();
+   {
+      no_deadlock_set_elems = 0;
+      bzero(no_deadlock_set, sizeof(no_deadlock_set));
+   }
+   enable_preemption();
+}
+
+void debug_add_task_to_no_deadlock_set(int tid)
+{
+   disable_preemption();
+   {
+      for (int i = 0; i < no_deadlock_set_elems; i++) {
+         VERIFY(no_deadlock_set[i] != tid);
+      }
+
+      VERIFY(no_deadlock_set_elems < (int)ARRAY_SIZE(no_deadlock_set));
+      no_deadlock_set[no_deadlock_set_elems++] = tid;
+   }
+   enable_preemption();
+}
+
+void debug_remove_task_from_no_deadlock_set(int tid)
+{
+   int pos = -1;
+
+   disable_preemption();
+   {
+      for (int i = 0; i < no_deadlock_set_elems; i++) {
+         if (no_deadlock_set[i] == tid) {
+            pos = i;
+            break;
+         }
+      }
+
+      if (pos < 0)
+         panic("Task %d not found in no_deadlock_set", tid);
+
+      no_deadlock_set[pos] = 0;
+   }
+   enable_preemption();
+}
+
+void debug_check_for_deadlock(void)
+{
+   bool found_runnable = false;
+   struct task *ti;
+   int tid, candidates = 0;
+
+   disable_preemption();
+   {
+      for (int i = 0; i < no_deadlock_set_elems; i++) {
+
+         if (!(tid = no_deadlock_set[i]))
+            continue;
+
+         if (!(ti = get_task(tid)))
+            continue;
+
+         candidates++;
+
+         if (ti->state == TASK_STATE_RUNNABLE) {
+            found_runnable = true;
+            break;
+         }
+      }
+   }
+   enable_preemption();
+
+   if (candidates > 0 && !found_runnable) {
+      panic("No runnable task found in no_deadlock_set [%d elems]", candidates);
+   }
+}
+
+#endif
+
 static void sched_alive_thread()
 {
    for (int counter = 0; ; counter++) {
-      if (sched_alive_thread_enabled)
+
+      if (sched_alive_thread_enabled) {
          printk("---- Sched alive thread: %d ----\n", counter);
+         debug_check_for_deadlock();
+      }
+
       kernel_sleep(TIMER_HZ);
    }
 }
