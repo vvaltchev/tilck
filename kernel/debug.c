@@ -128,26 +128,66 @@ void debug_check_for_deadlock(void)
    }
 }
 
+static bool
+nds_should_skip_progress_check(int i, int *tid_ref)
+{
+   int tid;
+   struct task *ti;
+   ASSERT(!is_preemption_enabled());
+
+   if (!no_deadlock_set_progress[i])
+      return true;
+
+   if (!(tid = no_deadlock_set[i]))
+      return true;
+
+   if (!(ti = get_task(tid)))
+      return true;
+
+   if (ti->state == TASK_STATE_ZOMBIE)
+      return true;
+
+   if (tid_ref)
+      *tid_ref = tid;
+
+   return false;
+}
+
+static void
+nds_dump_progress_of_first_tasks(void)
+{
+   int counter = 0;
+   ASSERT(!is_preemption_enabled());
+
+   printk("Progress of the first tasks: [\n");
+
+   for (int i = 0; i < no_deadlock_set_elems && counter < 4; i++) {
+
+      if (nds_should_skip_progress_check(i, NULL))
+         continue;
+
+      if (i == 0)
+         printk("%llu ", no_deadlock_set_progress[i]);
+      else
+         printk(NO_PREFIX "%llu ", no_deadlock_set_progress[i]);
+
+      counter++;
+   }
+
+   printk(NO_PREFIX "\n");
+   printk("]\n\n");
+}
+
 void debug_check_for_any_progress(void)
 {
    int tid;
-   int counter = 0, candidates = 0;
-   struct task *ti;
+   int candidates = 0;
 
    disable_preemption();
    {
       for (int i = 0; i < no_deadlock_set_elems; i++) {
 
-         if (!(tid = no_deadlock_set[i]))
-            continue;
-
-         if (!(ti = get_task(tid)))
-            continue;
-
-         if (ti->state == TASK_STATE_ZOMBIE)
-            continue;
-
-         if (!no_deadlock_set_progress[i])
+         if (nds_should_skip_progress_check(i, &tid))
             continue;
 
          if (no_deadlock_set_progress[i] == no_deadlock_set_progress_old[i])
@@ -156,35 +196,8 @@ void debug_check_for_any_progress(void)
          candidates++;
       }
 
-      if (candidates) {
-
-         printk("Progress for the first 4 tasks: [\n");
-
-         for (int i = 0; i < no_deadlock_set_elems && counter < 4; i++) {
-
-            if (!(tid = no_deadlock_set[i]))
-               continue;
-
-            if (!(ti = get_task(tid)))
-               continue;
-
-            if (ti->state == TASK_STATE_ZOMBIE)
-               continue;
-
-            if (!no_deadlock_set_progress[i])
-               continue;
-
-            if (i == 0)
-               printk("%llu ", no_deadlock_set_progress[i]);
-            else
-               printk(NO_PREFIX "%llu ", no_deadlock_set_progress[i]);
-
-            counter++;
-         }
-
-         printk(NO_PREFIX "\n");
-         printk("]\n\n");
-      }
+      if (candidates)
+         nds_dump_progress_of_first_tasks();
 
       memcpy(no_deadlock_set_progress_old,
              no_deadlock_set_progress,
