@@ -50,6 +50,7 @@ int dp_screen_rows;
 bool ui_need_update;
 struct dp_screen *dp_ctx;
 
+static ATOMIC(bool) dp_running;
 static struct list dp_screens_list = make_list(dp_screens_list);
 
 static void dp_enter(void)
@@ -202,9 +203,52 @@ dp_main_body(enum term_type tt, struct key_event ke)
 }
 
 static int
+read_single_byte(fs_handle h, char *buf, u32 len)
+{
+   bool esc_timeout = false;
+   int rc;
+   char c;
+
+   while (true) {
+
+      rc = vfs_read(h, &c, 1);
+
+      if (rc == -EAGAIN) {
+
+         if (len > 1 && buf[0] == 27 /* ESC */) {
+
+            /*
+             * We hit a non-terminated escape sequence: let's wait for one
+             * timeout interval and then return 0 if we hit EAGAIN another time.
+             */
+
+            if (esc_timeout)
+               return 0; /* stop reading */
+
+            esc_timeout = true;
+         }
+
+         kernel_sleep(TIMER_HZ / 25);
+         continue;
+      }
+
+      if (rc == 0)
+         return 0; /* stop reading */
+
+      if (rc < 0)
+         return rc; /* error */
+
+      break;
+   }
+
+   buf[len] = c;
+   return 1; /* continue reading */
+}
+
+static int
 read_ke_from_tty(fs_handle h, struct key_event *ke)
 {
-   char buf[16];
+   char c, buf[16];
    int rc;
    u32 len;
 
@@ -222,8 +266,15 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
 
    for (len = 0; len < sizeof(buf); len++) {
 
-      if ((rc = vfs_read(h, &buf[len], 1)) <= 0)
-         return -1;
+      rc = read_single_byte(h, buf, len);
+
+      if (rc < 0 || (!rc && !len))
+         return rc;
+
+      if (!rc)
+         break;
+
+      c = buf[len];
 
    state_changed:
 
@@ -231,7 +282,7 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
 
          case state_in_csi_intermediate:
 
-            if (IN_RANGE_INC(buf[len], 0x20, 0x2F))
+            if (IN_RANGE_INC(c, 0x20, 0x2F))
                continue; /* for loop */
 
             /*
@@ -243,7 +294,7 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
 
          case state_in_csi_param:
 
-            if (IN_RANGE_INC(buf[len], 0x30, 0x3F))
+            if (IN_RANGE_INC(c, 0x30, 0x3F))
                continue; /* for loop */
 
             state = state_in_csi_intermediate;
@@ -251,7 +302,7 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
 
          case state_in_esc1:
 
-            if (buf[len] == '[') {
+            if (c == '[') {
                state = state_in_csi_param;
                continue; /* for loop */
             }
@@ -261,7 +312,7 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
 
          case state_default:
 
-            if (buf[len] == '\033') {
+            if (c == 27) {
                state = state_in_esc1;
                continue; /* for loop */
             }
@@ -283,9 +334,15 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
          .key = 0,
       };
 
-      return 0;
+   } else if (buf[0] == 27 /* ESC */ && !buf[1]) {
 
-   } else if (buf[0] == '\033' && buf[1] == '[') {
+      *ke = (struct key_event) {
+         .pressed = true,
+         .print_char = buf[0],
+         .key = 0,
+      };
+
+   } else if (buf[0] == 27 /* ESC */ && buf[1] == '[') {
 
       u32 key = 0;
 
@@ -313,6 +370,10 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
          .print_char = 0,
          .key = key,
       };
+
+   } else {
+
+      /* Unknown ESC sequence: do nothing (`ke` will remain zeroed) */
    }
 
    return 0;
@@ -325,27 +386,31 @@ static void dp_tilck_cmd()
    fs_handle h = NULL;
    int rc;
 
+   if (dp_running)
+      return;
+
+   disable_preemption();
+   {
+      h = get_curr_proc()->handles[0];
+   }
+   enable_preemption();
+
+   if (!h) {
+      printk("ERROR: unable to open debugpanel: fd 0 is not open\n");
+      return;
+   }
+
+   dp_running = true;
    tt = get_curr_proc_tty_term_type();
    dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
    dp_enter();
 
-   if (tt == term_type_video) {
-
-      if ((rc = vfs_open("/dev/tty0", &h, O_RDONLY, 0777)) < 0)
-         goto end;
-
-   } else {
-
-      /*
-       * HACK: this assumes that, if we're using a serial tty, it's TTYS0.
-       * TOOD: fix this somehow. An idea could be exposing a special interface
-       * from tty to open a handle to it, without any access to the VFS layer.
-       */
-      if ((rc = vfs_open("/dev/ttyS0", &h, O_RDONLY, 0777)) < 0)
-         goto end;
+   disable_preemption();
+   {
+      tty_set_raw_mode(get_curr_process_tty());
+      ((struct fs_handle_base *)h)->fl_flags |= O_NONBLOCK;
    }
-
-   tty_set_raw_mode(get_curr_process_tty());
+   enable_preemption();
 
    bzero(&ke, sizeof(ke));
    ui_need_update = true;
@@ -365,15 +430,17 @@ static void dp_tilck_cmd()
          break;
    }
 
-end:
+   disable_preemption();
+   {
+      ((struct fs_handle_base *)h)->fl_flags &= ~O_NONBLOCK;
+      tty_reset_termios(get_curr_process_tty());
+   }
+   enable_preemption();
 
-   if (h)
-      vfs_close(h);
-
-   tty_reset_termios(get_curr_process_tty());
    dp_exit();
    dp_clear();
    dp_write_raw("\n");
+   dp_running = false;
 }
 
 static void dp_init(void)
