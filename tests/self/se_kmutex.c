@@ -66,7 +66,7 @@ static void sek_thread(void *unused)
    } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
 }
 
-void selftest_kmutex_short()
+void selftest_kmutex_med()
 {
    int local_tids[3];
    kmutex_init(&test_mutex, 0);
