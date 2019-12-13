@@ -258,7 +258,7 @@ int create_tasklet_thread(int priority, u16 limit)
       return -ENOMEM;
    }
 
-   t->task = kthread_get_ptr(tid);
+   t->task = get_task(tid);
 
 #endif
 

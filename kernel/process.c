@@ -241,7 +241,6 @@ struct task *allocate_new_thread(struct process *pi, bool alloc_bufs)
 
    ti->tid = kthread_calc_tid(ti);
    ti->is_main_thread = false;
-   ASSERT(kthread_get_ptr(ti->tid) == ti);
 
    init_task_lists(ti);
    arch_specific_new_task_setup(ti, process_task);

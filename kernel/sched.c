@@ -243,7 +243,7 @@ void init_sched(void)
    if (tid < 0)
       panic("Unable to create the idle_task!");
 
-   idle_task = kthread_get_ptr(tid);
+   idle_task = get_task(tid);
 }
 
 void set_current_task_in_kernel(void)

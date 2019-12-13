@@ -197,12 +197,6 @@ static ALWAYS_INLINE int kthread_calc_tid(struct task *ti)
    return (int)(MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA));
 }
 
-static ALWAYS_INLINE struct task *kthread_get_ptr(int tid)
-{
-   ASSERT(tid > MAX_PID);
-   return (struct task *)((uptr)tid - MAX_PID + KERNEL_BASE_VA);
-}
-
 static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
 {
    return ti->what == &tasklet_runner;
