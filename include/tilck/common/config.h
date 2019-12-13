@@ -128,7 +128,7 @@
 
 
 
-#define MAX_PID                                             32768
+#define MAX_PID                                             32767
 #define MAX_PATH                                              256
 #define MAX_HANDLES                                            16
 #define USER_ARGS_PAGE_COUNT                                    1

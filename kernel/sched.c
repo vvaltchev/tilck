@@ -27,6 +27,7 @@ static struct task *tree_by_tid_root;
 static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid = -1;
+static int current_max_kernel_tid = -1;
 static struct task *idle_task;
 
 int sched_count_proc_in_group(int pgid)
@@ -93,6 +94,8 @@ int get_curr_pid(void)
 
 struct create_pid_visit_ctx {
 
+   bool kernel_tid;
+   int id_off;
    int lowest_available;
    int lowest_after_current_max;
 };
@@ -101,9 +104,20 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
 {
    struct task *ti = obj;
    struct create_pid_visit_ctx *ctx = arg;
+   int tid = ti->tid - ctx->id_off;
 
-   if (!is_main_thread(ti))
-      return 0; /* skip threads */
+   if (ctx->kernel_tid) {
+
+      if (!is_kernel_thread(ti))
+         return 0; /* skip non-kernel tasks */
+
+   } else {
+
+      if (!is_main_thread(ti))
+         return 0; /* skip threads */
+   }
+
+   ASSERT(tid >= 0);
 
    /*
     * Algorithm: we start with lowest_available (L) == 0. When we hit
@@ -113,39 +127,76 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
     * will stuck. That value will be clearly 4.
     */
 
-   if (ctx->lowest_available == ti->tid)
-      ctx->lowest_available = ti->tid + 1;
+   if (ctx->lowest_available == tid)
+      ctx->lowest_available = tid + 1;
 
    /*
     * For lowest_after_current_max (A) the logic is similar.
     * We start with A = current_max_pid + 1. The first time A is == tid, will
     * be when tid is current_max_pid + 1. We continue to update A, until the
-    * first whole is found. In case tid never reaches current_max_pid + 1,
-    * A will be just be current_max_pid + 1, as expected.
+    * first hole is found. In case tid never reaches current_max_pid + 1, `A`
+    * will be just be current_max_pid + 1, as expected.
     */
 
-   if (ctx->lowest_after_current_max == ti->tid)
-      ctx->lowest_after_current_max = ti->tid + 1;
+   if (ctx->lowest_after_current_max == tid)
+      ctx->lowest_after_current_max = tid + 1;
 
    return 0;
+}
+
+static int
+create_id_common(struct create_pid_visit_ctx *ctx, int max_id)
+{
+   int r;
+   iterate_over_tasks(&create_new_pid_visit_cb, ctx);
+
+   r = ctx->lowest_after_current_max <= max_id
+         ? ctx->lowest_after_current_max
+         : ctx->lowest_available <= max_id
+            ? ctx->lowest_available
+            : -1;
+
+   return r;
 }
 
 int create_new_pid(void)
 {
    ASSERT(!is_preemption_enabled());
-   struct create_pid_visit_ctx ctx = { 0, current_max_pid + 1 };
-   int r;
 
-   iterate_over_tasks(&create_new_pid_visit_cb, &ctx);
+   struct create_pid_visit_ctx ctx = {
+      .kernel_tid = false,
+      .id_off = 0,
+      .lowest_available = 0,
+      .lowest_after_current_max = current_max_pid + 1,
+   };
 
-   r = ctx.lowest_after_current_max <= MAX_PID
-         ? ctx.lowest_after_current_max
-         : (ctx.lowest_available <= MAX_PID ? ctx.lowest_available : -1);
+   int r = create_id_common(&ctx, MAX_PID);
 
    if (r >= 0)
       current_max_pid = r;
 
    return r;
+}
+
+int create_new_kernel_tid(void)
+{
+   ASSERT(!is_preemption_enabled());
+
+   struct create_pid_visit_ctx ctx = {
+      .kernel_tid = true,
+      .id_off = KERNEL_TID_START,
+      .lowest_available = 0,
+      .lowest_after_current_max = current_max_kernel_tid + 1,
+   };
+
+   int r = create_id_common(&ctx, KERNEL_MAX_TID);
+
+   if (r >= 0) {
+      current_max_kernel_tid = r;
+      return r + KERNEL_TID_START;
+   }
+
+   return -1;
 }
 
 int iterate_over_tasks(bintree_visit_cb func, void *arg)
@@ -192,10 +243,10 @@ void create_kernel_process(void)
    }
 #endif
 
-   ASSERT(s_kernel_ti->tid == 0);
    ASSERT(s_kernel_pi->pid == 0);
    ASSERT(s_kernel_pi->parent_pid == 0);
 
+   s_kernel_ti->tid = create_new_kernel_tid();
    s_kernel_pi->ref_count = 1;
    s_kernel_ti->pi = s_kernel_pi;
    init_task_lists(s_kernel_ti);

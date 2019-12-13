@@ -136,7 +136,7 @@ static int debug_per_task_cb(void *obj, void *arg)
 
    STATIC_ASSERT(sizeof(buf) >= (2 * MAX_EXEC_PATH_LEN + 2));
 
-   if (!ti->tid)
+   if (ti->tid == KERNEL_TID_START)
       return 0; /* skip the main kernel task */
 
    if (strlen(orig_path) < MAX_EXEC_PATH_LEN - 2) {

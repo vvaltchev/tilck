@@ -136,7 +136,7 @@ NODISCARD int
 kthread_create(kthread_func_ptr func, int fl, void *arg)
 {
    struct task *ti;
-   int ret = -ENOMEM;
+   int tid, ret = -ENOMEM;
 
    regs_t r = {
       .kernel_resume_eip = (uptr)&soft_interrupt_resume,
@@ -156,10 +156,19 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
       .ss = X86_KERNEL_DATA_SEL,
    };
 
-   ti = allocate_new_thread(kernel_process->pi, !!(fl & KTH_ALLOC_BUFS));
+   disable_preemption();
+
+   tid = create_new_kernel_tid();
+
+   if (tid < 0) {
+      ret = -EAGAIN;
+      goto end;
+   }
+
+   ti = allocate_new_thread(kernel_process->pi, tid, !!(fl & KTH_ALLOC_BUFS));
 
    if (!ti)
-      return ret;
+      goto end;
 
    ASSERT(is_kernel_thread(ti));
 
@@ -197,7 +206,10 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
     */
 
    add_task(ti);
-   return ret; /* tid */
+   enable_preemption();
+
+end:
+   return ret; /* tid or error */
 }
 
 void kthread_exit(void)

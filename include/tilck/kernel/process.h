@@ -191,12 +191,6 @@ static ALWAYS_INLINE bool is_main_thread(struct task *ti)
    return ti->is_main_thread;
 }
 
-static ALWAYS_INLINE int kthread_calc_tid(struct task *ti)
-{
-   ASSERT(is_kernel_thread(ti));
-   return (int)(MAX_PID + (sptr) ((uptr)ti - KERNEL_BASE_VA));
-}
-
 static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
 {
    return ti->what == &tasklet_runner;
@@ -218,7 +212,7 @@ struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir);
 
 struct task *
-allocate_new_thread(struct process *pi, bool alloc_bufs);
+allocate_new_thread(struct process *pi, int tid, bool alloc_bufs);
 
 void free_task(struct task *ti);
 void free_mem_for_zombie_task(struct task *ti);

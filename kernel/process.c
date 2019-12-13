@@ -229,7 +229,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    return ti;
 }
 
-struct task *allocate_new_thread(struct process *pi, bool alloc_bufs)
+struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 {
    struct task *process_task = get_process_task(pi);
    struct task *ti = kzmalloc(sizeof(struct task));
@@ -239,7 +239,7 @@ struct task *allocate_new_thread(struct process *pi, bool alloc_bufs)
       return NULL;
    }
 
-   ti->tid = kthread_calc_tid(ti);
+   ti->tid = tid;
    ti->is_main_thread = false;
 
    init_task_lists(ti);

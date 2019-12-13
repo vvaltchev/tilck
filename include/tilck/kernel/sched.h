@@ -22,7 +22,11 @@ extern struct list zombie_tasks_list;
 
 extern ATOMIC(u32) disable_preemption_count;
 
-#define KTH_ALLOC_BUFS                           (1 << 0)
+#define KTH_ALLOC_BUFS                       (1 << 0)
+#define KERNEL_TID_START                       100000
+#define KERNEL_MAX_TID                           1024 /* + KERNEL_TID_START */
+
+STATIC_ASSERT(MAX_PID < KERNEL_TID_START);
 
 enum task_state {
    TASK_STATE_INVALID   = 0,
@@ -126,6 +130,7 @@ void save_current_task_state(regs_t *);
 void account_ticks(void);
 bool need_reschedule(void);
 int create_new_pid(void);
+int create_new_kernel_tid(void);
 void task_info_reset_kernel_stack(struct task *ti);
 void add_task(struct task *ti);
 void remove_task(struct task *ti);
