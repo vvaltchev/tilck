@@ -2,6 +2,8 @@
 
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/tty.h>
+#include <tilck/kernel/tty_struct.h>
 
 struct term *__curr_term;
 const struct term_interface *__curr_term_intf;
@@ -63,4 +65,15 @@ init_first_serial_term(u16 port)
 void init_first_term_null(void)
 {
    init_first_video_term(NULL, 0, 0, 0);
+}
+
+void process_term_read_info(struct term_params *out)
+{
+   struct tty *t = get_curr_process_tty();
+   ASSERT(__curr_term_intf);
+
+   if (t)
+      *out = t->tparams;
+   else
+      __curr_term_intf->get_params(__curr_term, out);
 }

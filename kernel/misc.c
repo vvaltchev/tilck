@@ -85,7 +85,7 @@ void show_tilck_logo(void)
    };
 
    struct term_params tparams;
-   term_read_info(&tparams);
+   process_term_read_info(&tparams);
    const u32 cols = tparams.cols;
    const u32 padding = (u32)(cols / 2 - strlen(banner[1]) / 2);
 

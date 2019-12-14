@@ -321,7 +321,7 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
 static void init_tty(void)
 {
-   term_read_info(&first_term_i);
+   process_term_read_info(&first_term_i);
    struct driver_info *di = kzmalloc(sizeof(struct driver_info));
 
    if (!di)

@@ -58,8 +58,11 @@ static void dp_enter(void)
    struct term_params tparams;
    struct dp_screen *pos;
 
-   term_read_info(&tparams);
+   process_term_read_info(&tparams);
    dp_set_cursor_enabled(false);
+
+   if (tparams.type == term_type_video)
+      dp_switch_to_alt_buffer();
 
    dp_rows = tparams.rows;
    dp_cols = tparams.cols;
@@ -81,12 +84,22 @@ static void dp_enter(void)
 
 static void dp_exit(void)
 {
+   struct term_params tparams;
    struct dp_screen *pos;
+
+   process_term_read_info(&tparams);
 
    list_for_each_ro(pos, &dp_screens_list, node) {
 
       if (pos->on_dp_exit)
          pos->on_dp_exit();
+   }
+
+   if (tparams.type == term_type_video) {
+      dp_switch_to_default_buffer();
+   } else {
+      dp_clear();
+      dp_write_raw("\n");
    }
 
    dp_set_cursor_enabled(true);
@@ -436,10 +449,7 @@ static void dp_tilck_cmd()
       tty_reset_termios(get_curr_process_tty());
    }
    enable_preemption();
-
    dp_exit();
-   dp_clear();
-   dp_write_raw("\n");
    dp_running = false;
 }
 

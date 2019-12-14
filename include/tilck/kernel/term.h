@@ -106,6 +106,7 @@ init_first_video_term(const struct video_interface *vi,
 
 void init_first_serial_term(u16 port);
 void init_first_term_null(void);
+void process_term_read_info(struct term_params *out);
 
 static ALWAYS_INLINE struct term *get_curr_term(void) {
    return __curr_term;
@@ -121,16 +122,6 @@ static ALWAYS_INLINE bool term_is_initialized(void)
       return false;
 
    return __curr_term_intf->is_initialized(__curr_term);
-}
-
-static ALWAYS_INLINE enum term_type term_get_type(void)
-{
-   return __curr_term_intf->get_type();
-}
-
-static ALWAYS_INLINE void term_read_info(struct term_params *out)
-{
-   __curr_term_intf->get_params(__curr_term, out);
 }
 
 static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)

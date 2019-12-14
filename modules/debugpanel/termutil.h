@@ -16,6 +16,8 @@
 #define GFX_OFF                  "\033(B"
 #define HIDE_CURSOR              "\033[?25l"
 #define SHOW_CURSOR              "\033[?25h"
+#define USE_ALT_BUF              "\033[?1049h"
+#define USE_DEF_BUF              "\033[?1049l"
 
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
 #define DP_COLOR                 DEFAULT_FG_COLOR
@@ -36,6 +38,8 @@ void dp_move_to_col(int n);
 void dp_clear(void);
 void dp_move_cursor(int row, int col);
 void dp_set_cursor_enabled(bool enabled);
+void dp_switch_to_alt_buffer(void);
+void dp_switch_to_default_buffer(void);
 
 static inline const char *
 dp_sign_value_esc_color(sptr val)

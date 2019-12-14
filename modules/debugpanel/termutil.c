@@ -53,6 +53,16 @@ void dp_set_cursor_enabled(bool enabled)
    dp_write_raw("%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
 }
 
+void dp_switch_to_alt_buffer(void)
+{
+   dp_write_raw("%s", USE_ALT_BUF);
+}
+
+void dp_switch_to_default_buffer(void)
+{
+   dp_write_raw("%s", USE_DEF_BUF);
+}
+
 void dp_write(int row, int col, const char *fmt, ...)
 {
    struct tty *t;
