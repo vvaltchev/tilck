@@ -9,7 +9,7 @@
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
-#define MAX_EXEC_PATH_LEN     28
+#define MAX_EXEC_PATH_LEN     35
 
 static int row;
 
@@ -60,8 +60,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[120];
    static char hfmt[120];
    static char header[120];
-   static char hline_sep[120] =
-      "qqqqqqqqqqqnqqqqqqqnqqqqqqqnqqqqqqqnqqqnqqqqqn";
+   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
@@ -70,20 +69,20 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
       int path_field_len = (DP_W - 80) + MAX_EXEC_PATH_LEN;
 
       snprintk(fmt, sizeof(fmt),
-               " %%-9d "
-               TERM_VLINE " %%-5d "
-               TERM_VLINE " %%-5d "
-               TERM_VLINE " %%-5d "
+               " %%-5d "
+               TERM_VLINE " %%-4d "
+               TERM_VLINE " %%-4d "
+               TERM_VLINE " %%-4d "
                TERM_VLINE " %%-1s "
                TERM_VLINE "  %%-2d "
                TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
 
       snprintk(hfmt, sizeof(hfmt),
-               " %%-9s "
-               TERM_VLINE " %%-5s "
-               TERM_VLINE " %%-5s "
-               TERM_VLINE " %%-5s "
+               " %%-5s "
+               TERM_VLINE " %%-4s "
+               TERM_VLINE " %%-4s "
+               TERM_VLINE " %%-4s "
                TERM_VLINE " %%-1s "
                TERM_VLINE " %%-3s "
                TERM_VLINE " %%-%ds",
@@ -92,7 +91,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
       snprintk(header,
                sizeof(header),
                hfmt,
-               "tid/pid",
+               "pid",
                "pgid",
                "sid",
                "ppid",
