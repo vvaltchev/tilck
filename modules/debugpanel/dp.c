@@ -175,14 +175,14 @@ dp_main_body(enum term_type tt, struct key_event ke)
          }
       }
 
-   } else if (ke.key == KEY_DOWN) {
+   } else if (ke.key == KEY_PAGE_DOWN) {
 
       if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
          dp_ctx->row_off++;
          ui_need_update = true;
       }
 
-   } else if (ke.key == KEY_UP) {
+   } else if (ke.key == KEY_PAGE_UP) {
 
       if (dp_ctx->row_off > 0) {
          dp_ctx->row_off--;
@@ -256,6 +256,68 @@ read_single_byte(fs_handle h, char *buf, u32 len)
 
    buf[len] = c;
    return 1; /* continue reading */
+}
+
+static void
+convert_seq_to_key(char *buf, struct key_event *ke)
+{
+   if (IN_RANGE_INC(buf[0], 32, 127) || IN_RANGE_INC(buf[0], 1, 26)) {
+
+      *ke = (struct key_event) {
+         .pressed = true,
+         .print_char = buf[0],
+         .key = 0,
+      };
+
+   } else if (buf[0] == 27 /* ESC */ && !buf[1]) {
+
+      *ke = (struct key_event) {
+         .pressed = true,
+         .print_char = buf[0],
+         .key = 0,
+      };
+
+   } else if (buf[0] == 27 /* ESC */ && buf[1] == '[') {
+
+      u32 key = 0;
+
+      switch (buf[2]) {
+
+         case 'A':
+            key = KEY_UP;
+            break;
+
+         case 'B':
+            key = KEY_DOWN;
+            break;
+
+         case 'C':
+            key = KEY_RIGHT;
+            break;
+
+         case 'D':
+            key = KEY_LEFT;
+            break;
+
+         case '5':
+         case '6':
+
+            if (buf[3] == '~')
+               key = buf[2] == '5' ? KEY_PAGE_UP : KEY_PAGE_DOWN;
+
+            break;
+      }
+
+      *ke = (struct key_event) {
+         .pressed = true,
+         .print_char = 0,
+         .key = key,
+      };
+
+   } else {
+
+      /* Unknown ESC sequence: do nothing (`ke` will remain zeroed) */
+   }
 }
 
 static int
@@ -339,56 +401,7 @@ read_ke_from_tty(fs_handle h, struct key_event *ke)
       break; /* for (len = 0; len < sizeof(buf); len++) */
    }
 
-   if (IN_RANGE_INC(buf[0], 32, 127) || IN_RANGE_INC(buf[0], 1, 26)) {
-
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = buf[0],
-         .key = 0,
-      };
-
-   } else if (buf[0] == 27 /* ESC */ && !buf[1]) {
-
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = buf[0],
-         .key = 0,
-      };
-
-   } else if (buf[0] == 27 /* ESC */ && buf[1] == '[') {
-
-      u32 key = 0;
-
-      switch (buf[2]) {
-
-         case 'A':
-            key = KEY_UP;
-            break;
-
-         case 'B':
-            key = KEY_DOWN;
-            break;
-
-         case 'C':
-            key = KEY_RIGHT;
-            break;
-
-         case 'D':
-            key = KEY_LEFT;
-            break;
-      }
-
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = 0,
-         .key = key,
-      };
-
-   } else {
-
-      /* Unknown ESC sequence: do nothing (`ke` will remain zeroed) */
-   }
-
+   convert_seq_to_key(buf, ke);
    return 0;
 }
 
