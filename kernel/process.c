@@ -460,6 +460,49 @@ static int wait_for_single_pid(int pid, int *user_wstatus)
    return pid;
 }
 
+static inline bool
+waitpid_should_skip_child(struct process *pos, int pid)
+{
+   struct task *curr = get_curr_task();
+
+   /* The case pid > 0 is handled is a different code path */
+   ASSERT(pid <= 0);
+
+   /*
+    * pid has several special values, when not simply > 0:
+    *
+    *    < -1   meaning  wait for any child process whose process
+    *           group ID is equal to the absolute value of pid.
+    *
+    *      -1   meaning wait for any child process.
+    *
+    *       0   meaning wait for any child process whose process
+    *           group ID is equal to that of the calling process.
+    */
+
+   if (pid < -1) {
+
+      /*
+         * -pid is a process group id: skip children which don't belong to
+         * that specific process group.
+         */
+      if (pos->pgid != -pid)
+         return true;
+
+   } else if (pid == 0) {
+
+      /* We have to skip children belonging to a different group */
+      if (pos->pgid != curr->pi->pgid)
+         return true;
+
+   } else if (pid == -1) {
+
+      /* We're going to wait on any children */
+   }
+
+   return false;
+}
+
 int sys_waitpid(int pid, int *user_wstatus, int options)
 {
    struct task *curr = get_curr_task();
@@ -486,27 +529,20 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
       return pid;
    }
 
-   /*
-    * Since Tilck does not support process groups yet, the following cases:
-    *    pid < -1
-    *    pid == -1
-    *    pid == 0
-    *  are treated in the same way.
-    *
-    * TODO: update this code when process groups are supported.
-    */
-
-
    while (true) {
 
       struct process *pos;
+      struct task *ti;
       u32 child_count = 0;
 
       disable_preemption();
 
       list_for_each_ro(pos, &curr->pi->children, siblings_node) {
 
-         struct task *ti = get_process_task(pos);
+         if (waitpid_should_skip_child(pos, pid))
+            continue;
+
+         ti = get_process_task(pos);
          child_count++;
 
          if (ti->state == TASK_STATE_ZOMBIE) {
@@ -517,7 +553,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       if (zombie)
-         break;
+         break; /* note: leave the preemption disabled */
 
       enable_preemption();
 
@@ -541,7 +577,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
    /*
     * The only way to get here is a positive branch in `if (zombie)`: this mean
-    * that we have a valid `zombie` and that preemption is diabled.
+    * that we have a valid `zombie` and that preemption is disabled.
     */
    ASSERT(!is_preemption_enabled());
 
