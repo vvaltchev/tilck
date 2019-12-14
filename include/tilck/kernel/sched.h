@@ -23,7 +23,7 @@ extern struct list zombie_tasks_list;
 extern ATOMIC(u32) disable_preemption_count;
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
-#define KERNEL_TID_START                       100000
+#define KERNEL_TID_START                        10000
 #define KERNEL_MAX_TID                           1024 /* + KERNEL_TID_START */
 
 STATIC_ASSERT(MAX_PID < KERNEL_TID_START);

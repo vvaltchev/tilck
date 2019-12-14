@@ -127,8 +127,7 @@
 #define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)
 
 
-
-#define MAX_PID                                             32767
+#define MAX_PID                                              8191
 #define MAX_PATH                                              256
 #define MAX_HANDLES                                            16
 #define USER_ARGS_PAGE_COUNT                                    1
