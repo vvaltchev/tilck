@@ -95,29 +95,100 @@ int get_curr_pid(void)
 struct create_pid_visit_ctx {
 
    bool kernel_tid;
+   bool lowest_avail_invalid;
    int id_off;
    int lowest_available;
    int lowest_after_current_max;
 };
 
+static inline int inc_candicate_if_matches(int *cand, int id, int val)
+{
+   if (*cand != val)
+      return 0; /* Everything is OK */
+
+   /* The lowest_<something> candicate cannot be > id */
+   ASSERT(*cand <= val);
+
+   /*
+    * We've found a case where the candicate is equal to current task's pgid/sid
+    * and that might be a problem.
+    *
+    * Two cases:
+    *
+    *    1) Candidate == id. This means: candidate == pgid/sid == id.
+    *       That's fine: we just hit a group/session leader. By default we'll
+    *       skip this candiate (see the impl. below).
+    *
+    *    2) Candidate < id. This means that the pgid/sid is < id and we didn't
+    *       hit it before (note: we're doing an in-order visit). For example:
+    *
+    *    pid | sid | what
+    *    ----+-----+-----------
+    *     1  |  1  | init
+    *     2  |  1  | ash
+    *     8  |  3  | prog1
+    *
+    *    lowest_available = 3   [our candidate]
+    *
+    *    We don't want this to happen because 3 is the ID of a session, with
+    *    a dead leader. In order to handle this case, we have to increment
+    *    lowest_available and restart the whole iteration. We must end up with
+    *    lowest_available = 4. Actually, if lowest_after_current_max is a good
+    *    value, we're going to use it without restarting the iteration.
+    */
+
+   if (*cand == id)
+      return 0; /* We just hit a group/session leader. That's fine */
+
+   (*cand)++;
+   return 1;
+}
+
 static int create_new_pid_visit_cb(void *obj, void *arg)
 {
    struct task *ti = obj;
    struct create_pid_visit_ctx *ctx = arg;
-   int tid = ti->tid - ctx->id_off;
+   const int tid = ti->tid - ctx->id_off;
 
    if (ctx->kernel_tid) {
 
       if (!is_kernel_thread(ti))
          return 0; /* skip non-kernel tasks */
 
+      ASSERT(tid >= 0);
+
+
    } else {
 
       if (!is_main_thread(ti))
          return 0; /* skip threads */
+
+      ASSERT(tid >= 0);
+
+      if (tid < ctx->lowest_available)
+         return 0;
+
+      /*
+       * Both ctx->lowest_available and ctx->lowest_after_current_max are
+       * candidates for the next tid. If one of them gets equal to a sid
+       * without a session leader process or to a pgid without a group leader,
+       * the new process could accidentally become leader of a group/session:
+       * we have to ensure that could never happen.
+       */
+
+      const int pgid = ti->pi->pgid;
+      const int sid = ti->pi->sid;
+      const int should_restart =
+         inc_candicate_if_matches(&ctx->lowest_available, tid, pgid) +
+         inc_candicate_if_matches(&ctx->lowest_available, tid, sid) +
+         inc_candicate_if_matches(&ctx->lowest_after_current_max, tid, pgid) +
+         inc_candicate_if_matches(&ctx->lowest_after_current_max, tid, sid);
+
+      if (should_restart) {
+         ctx->lowest_avail_invalid = true;
+      }
    }
 
-   ASSERT(tid >= 0);
 
    /*
     * Algorithm: we start with lowest_available (L) == 0. When we hit
@@ -128,7 +199,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
     */
 
    if (ctx->lowest_available == tid)
-      ctx->lowest_available = tid + 1;
+      ctx->lowest_available++;
 
    /*
     * For lowest_after_current_max (A) the logic is similar.
@@ -139,7 +210,7 @@ static int create_new_pid_visit_cb(void *obj, void *arg)
     */
 
    if (ctx->lowest_after_current_max == tid)
-      ctx->lowest_after_current_max = tid + 1;
+      ctx->lowest_after_current_max++;
 
    return 0;
 }
@@ -148,13 +219,33 @@ static int
 create_id_common(struct create_pid_visit_ctx *ctx, int max_id)
 {
    int r;
-   iterate_over_tasks(&create_new_pid_visit_cb, ctx);
 
-   r = ctx->lowest_after_current_max <= max_id
-         ? ctx->lowest_after_current_max
-         : ctx->lowest_available <= max_id
-            ? ctx->lowest_available
-            : -1;
+   do {
+
+      ctx->lowest_avail_invalid = false;
+      iterate_over_tasks(&create_new_pid_visit_cb, ctx);
+
+      r = ctx->lowest_after_current_max <= max_id
+            ? ctx->lowest_after_current_max
+            : ctx->lowest_available <= max_id
+               ? ctx->lowest_available
+               : -1;
+
+      /*
+       * Typically, ctx->lowest_avail_invalid is not a problem because the new
+       * id will be ctx->lowest_after_current_max. But, in the case we've
+       * finished the IDs, we have to pick the absolutely lowest ID available,
+       * which might be invalid we it matched with a process' pgid/sid. This
+       * can happen only in case of orphaned sessions/process groups.
+       *
+       * NOTE: in case we're going to repeat the loop, lowest_avail_invalid is
+       * reset, but all the rest of the context is unchanged: that's because
+       * ctx->lowest_available has actually a meaningful value: the lowest ID
+       * after pgid/sid we hit. It doesn't mean we can use this value, but it
+       * means we cannot pick consider IDs smaller than it.
+       */
+
+   } while (r == ctx->lowest_available && ctx->lowest_avail_invalid);
 
    return r;
 }
