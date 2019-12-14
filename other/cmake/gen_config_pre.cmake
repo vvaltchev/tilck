@@ -66,6 +66,11 @@ configure_file(
    @ONLY
 )
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/other/cmake/config_fatpart
+   ${CMAKE_BINARY_DIR}/config_fatpart
+)
+
 # Run qemu scripts
 
 list(

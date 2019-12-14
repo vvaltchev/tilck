@@ -422,6 +422,7 @@ set(
    fat_get_used_bytes
    ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
    ${CMAKE_SOURCE_DIR}/sysroot/etc/start
+   ${CMAKE_BINARY_DIR}/config_fatpart
    ${BUILD_SCRIPTS_FILES_LIST}
 )
 
