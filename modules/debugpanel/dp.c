@@ -228,7 +228,7 @@ read_single_byte(fs_handle h, char *buf, u32 len)
 
       if (rc == -EAGAIN) {
 
-         if (len > 1 && buf[0] == 27 /* ESC */) {
+         if (len > 0 && buf[0] == 27 /* ESC */) {
 
             /*
              * We hit a non-terminated escape sequence: let's wait for one

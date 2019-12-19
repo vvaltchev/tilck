@@ -11,7 +11,22 @@
 #include "termutil.h"
 #define MAX_EXEC_PATH_LEN     35
 
+/* Gfx state */
 static int row;
+
+/* State */
+static int sel_index;
+static int curr_idx;
+static int max_idx;
+static int sel_tid;
+static bool sel_tid_found;
+
+static enum {
+
+   dp_tasks_mode_default,
+   dp_tasks_mode_sel,
+
+} mode;
 
 const char *debug_get_state_name(enum task_state state)
 {
@@ -165,6 +180,28 @@ static int debug_per_task_cb(void *obj, void *arg)
       }
    }
 
+   bool sel = false;
+
+   if (mode == dp_tasks_mode_sel) {
+
+      if (sel_tid > 0) {
+
+         if (ti->tid == sel_tid) {
+            sel_index = curr_idx;
+            dp_reverse_colors();
+            sel = true;
+         }
+
+      } else if (sel_index >= 0) {
+
+         if (curr_idx == sel_index) {
+            sel_tid = ti->tid;
+            dp_reverse_colors();
+            sel = true;
+         }
+      }
+   }
+
    dp_writeln(fmt,
               ti->tid,
               pi->pgid,
@@ -174,6 +211,10 @@ static int debug_per_task_cb(void *obj, void *arg)
               ttynum,
               buf);
 
+   if (sel)
+      dp_reset_attrs();
+
+   curr_idx++;
    return 0;
 }
 
@@ -182,26 +223,168 @@ static void debug_dump_task_table_hr(void)
    dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress(struct key_event ke)
+{
+   if (ke.key == KEY_UP) {
+      sel_tid = -1;
+      sel_index = MAX(0, sel_index - 1);
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.key == KEY_DOWN) {
+      sel_tid = -1;
+      sel_index = MIN(max_idx, sel_index + 1);
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == 'k') {
+
+      if (sel_tid == 1 || sel_tid == get_curr_tid())
+         return kb_handler_ok_and_continue;
+
+      if (sel_tid >= KERNEL_TID_START)
+         return kb_handler_ok_and_continue;
+
+      ui_need_update = true;
+      send_signal(sel_tid, 9 /* SIGKILL */, false);
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == '\033') {
+      mode = dp_tasks_mode_default;
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   return kb_handler_nak;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_default_mode_keypress(struct key_event ke)
+{
+   if (ke.print_char == 'r') {
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == 13) {
+      mode = dp_tasks_mode_sel;
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   return kb_handler_nak;
+}
+
+static enum kb_handler_action
+dp_tasks_keypress(struct key_event ke)
+{
+   switch (mode) {
+
+      case dp_tasks_mode_default:
+         return dp_tasks_handle_default_mode_keypress(ke);
+
+      case dp_tasks_mode_sel:
+         return dp_tasks_handle_sel_mode_keypress(ke);
+   }
+
+   return kb_handler_nak;
+}
+
+static int dp_count_tasks(void *obj, void *arg)
+{
+   struct task *ti = obj;
+
+   if (ti->tid == KERNEL_TID_START)
+      return 0; /* skip the main kernel task */
+
+   if (mode == dp_tasks_mode_sel) {
+      if (sel_tid > 0 && ti->tid == sel_tid)
+         sel_tid_found = true;
+   }
+
+   max_idx++;
+   return 0;
+}
+
+static void show_actions_menu(void)
+{
+   if (mode == dp_tasks_mode_default) {
+      dp_writeln(
+         TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "<ENTER>" RESET_ATTRS ": select " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+      );
+   } else if (mode == dp_tasks_mode_sel) {
+      dp_writeln(
+         TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE
+            "<ESC>" RESET_ATTRS ": exit select mode " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
+      );
+   }
+
+   dp_writeln("");
+}
+
 static void dp_show_tasks(void)
 {
    row = dp_screen_start_row;
+
+   show_actions_menu();
    dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
 
    disable_preemption();
    {
+      curr_idx = 0;
+      max_idx = -1;
+      sel_tid_found = false;
+      iterate_over_tasks(dp_count_tasks, NULL);
+
+      if (mode == dp_tasks_mode_sel && sel_tid > 0 && !sel_tid_found) {
+
+         /*
+          * The task with the selected tid does not exist anymore: invalidate
+          * the selected TID, but leave sel_index as it is: this will make
+          * the cursor to stay at the same position and select the next task.
+          */
+         sel_tid = -1;
+      }
+
+      if (sel_index >= 0)
+         sel_index = MIN(sel_index, max_idx);
+
       iterate_over_tasks(debug_per_task_cb, NULL);
    }
    enable_preemption();
    dp_writeln("");
 }
 
+static void dp_tasks_enter(void)
+{
+   sel_index = 0;
+   sel_tid = -1;
+   mode = dp_tasks_mode_default;
+}
+
+static void dp_tasks_exit(void)
+{
+   /* do nothing, for the moment */
+}
+
 static struct dp_screen dp_tasks_screen =
 {
    .index = 3,
    .label = "Tasks",
+   .on_dp_enter = dp_tasks_enter,
+   .on_dp_exit = dp_tasks_exit,
    .draw_func = dp_show_tasks,
-   .on_keypress_func = NULL,
+   .on_keypress_func = dp_tasks_keypress,
 };
 
 __attribute__((constructor))

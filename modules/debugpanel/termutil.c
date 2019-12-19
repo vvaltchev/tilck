@@ -8,9 +8,20 @@
 #include <tilck/kernel/tty_struct.h>
 #include "termutil.h"
 
+static bool rev_colors;
+
+static void dp_write_internal(const char *buf, int len)
+{
+   struct tty *t = get_curr_process_tty();
+
+   if (t->tparams.type == term_type_video)
+      term_write(buf, (size_t)len, !rev_colors ? DP_COLOR : DP_REV_COLOR);
+   else
+      t->tintf->write(t->tstate, buf, (size_t)len, 0);
+}
+
 void dp_write_raw(const char *fmt, ...)
 {
-   struct tty *t;
    char buf[256];
    va_list args;
    int rc;
@@ -19,12 +30,27 @@ void dp_write_raw(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   t = get_curr_process_tty();
+   dp_write_internal(buf, rc);
+}
+
+void dp_reverse_colors(void)
+{
+   struct tty *t = get_curr_process_tty();
 
    if (t->tparams.type == term_type_video)
-      term_write(buf, (size_t)rc, DP_COLOR);
+      rev_colors = true;
    else
-      t->tintf->write(t->tstate, buf, (size_t)rc, DP_COLOR);
+      dp_write_raw("%s", REVERSE_VIDEO);
+}
+
+void dp_reset_attrs(void)
+{
+   struct tty *t = get_curr_process_tty();
+
+   if (t->tparams.type == term_type_video)
+      rev_colors = false;
+   else
+      dp_write_raw("%s", RESET_ATTRS);
 }
 
 void dp_move_right(int n) {
@@ -65,7 +91,6 @@ void dp_switch_to_default_buffer(void)
 
 void dp_write(int row, int col, const char *fmt, ...)
 {
-   struct tty *t;
    char buf[256];
    va_list args;
    int rc;
@@ -90,12 +115,7 @@ void dp_write(int row, int col, const char *fmt, ...)
       col = dp_start_col + 2;
 
    dp_move_cursor(row, col);
-   t = get_curr_process_tty();
-
-   if (t->tparams.type == term_type_video)
-      term_write(buf, (size_t)rc, DP_COLOR);
-   else
-      t->tintf->write(t->tstate, buf, (size_t)rc, DP_COLOR);
+   dp_write_internal(buf, rc);
 }
 
 void dp_draw_rect_raw(int row, int col, int h, int w)

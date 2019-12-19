@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 #include "dp_int.h"
 
 #define ERASE_DISPLAY            "\033[2J"
@@ -20,7 +21,8 @@
 #define USE_DEF_BUF              "\033[?1049l"
 
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
-#define DP_COLOR                 DEFAULT_FG_COLOR
+#define DP_COLOR                 make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR)
+#define DP_REV_COLOR             make_color(DEFAULT_BG_COLOR, DEFAULT_FG_COLOR)
 #define DP_ESC_COLOR             ESC_COLOR_WHITE
 
 void dp_write(int row, int col, const char *fmt, ...);
@@ -32,6 +34,8 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w);
 /* WARNING: dirty macro expecting both `row` and `col` to be defined */
 #define dp_writeln2(...) dp_write(row++, col, __VA_ARGS__)
 
+void dp_reverse_colors(void);
+void dp_reset_attrs(void);
 void dp_move_right(int n);
 void dp_move_left(int n);
 void dp_move_to_col(int n);
