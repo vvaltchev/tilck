@@ -247,6 +247,36 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
    return ti;
 }
 
+static void free_process(struct process *pi)
+{
+   ASSERT(get_ref_count(pi) > 0);
+
+   if (pi->mmap_heap) {
+      kmalloc_destroy_heap(pi->mmap_heap);
+      kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+      pi->mmap_heap = NULL;
+   }
+
+   if (release_obj(pi) == 0) {
+      list_remove(&pi->siblings_node);
+      kfree2(get_process_task(pi),
+             sizeof(struct task) + sizeof(struct process));
+   }
+
+   if (LIKELY(pi->cwd.fs != NULL)) {
+
+      /*
+       * When we change the current directory or when we fork a process, we
+       * set a new value for the struct vfs_path pi->cwd which has its inode
+       * retained as well as its owning fs. Here we have to release those
+       * ref-counts.
+       */
+
+      vfs_release_inode_at(&pi->cwd);
+      release_obj(pi->cwd.fs);
+   }
+}
+
 void free_task(struct task *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
@@ -256,38 +286,10 @@ void free_task(struct task *ti)
    ASSERT(!ti->io_copybuf);
    ASSERT(!ti->args_copybuf);
 
-   if (is_main_thread(ti)) {
-
-      struct process *pi = ti->pi;
-      ASSERT(get_ref_count(pi) > 0);
-
-      if (pi->mmap_heap) {
-         kmalloc_destroy_heap(pi->mmap_heap);
-         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
-         pi->mmap_heap = NULL;
-      }
-
-      if (release_obj(pi) == 0) {
-         list_remove(&pi->siblings_node);
-         kfree2(ti, sizeof(struct task) + sizeof(struct process));
-      }
-
-      if (LIKELY(pi->cwd.fs != NULL)) {
-
-         /*
-          * When we change the current directory or when we fork a process, we
-          * set a new value for the struct vfs_path pi->cwd which has its inode
-          * retained as well as its owning fs. Here we have to release those
-          * ref-counts.
-          */
-
-         vfs_release_inode_at(&pi->cwd);
-         release_obj(pi->cwd.fs);
-      }
-
-   } else {
+   if (is_main_thread(ti))
+      free_process(ti->pi);
+   else
       kfree2(ti, sizeof(struct task));
-   }
 }
 
 void *task_temp_kernel_alloc(size_t size)
