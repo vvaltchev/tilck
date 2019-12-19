@@ -12,6 +12,9 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 
+#define FULL_RESYNC_WARN_AFTER          6
+#define FULL_RESYNC_MAX_ATTEMPTS       10
+
 const char *weekdays[7] =
 {
    "Sunday",
@@ -40,6 +43,7 @@ const char *months3[12] =
 };
 
 static s64 boot_timestamp;
+static bool in_full_resync;
 
 // Regular value
 u32 clock_drift_adj_loop_delay = 600 * TIMER_HZ;
@@ -51,6 +55,11 @@ extern u64 __time_ns;
 extern u32 __tick_duration;
 extern int __tick_adj_val;
 extern int __tick_adj_ticks_rem;
+
+bool clock_in_full_resync(void)
+{
+   return in_full_resync;
+}
 
 void clock_drift_adj()
 {
@@ -87,6 +96,7 @@ void clock_drift_adj()
     */
 
 full_resync:
+   in_full_resync = true;
    attempts_cnt = 0;
    disable_preemption();
    hw_read_clock(&d);
@@ -185,13 +195,28 @@ full_resync:
 
    if (drift) {
 
-      /* Something gone wrong, but don't give up on the first try */
-      if (++full_resync_failed_attempts > 3)
+      /*
+       * Given that:
+       *
+       *    - the __tick_adj_val mechanism is not perfect because the timer does
+       *      not really work exactly at TIMER_HZ and that, if we're unlucky
+       *      we can over/under compensate the drift by a tiny fraction.
+       *
+       *    - between the reading of the system clock and the reading of our
+       *      internal timestamp we keep the interrupts enabled: this means
+       *      that our timestamp, if we didn't guess the right time could
+       *      increase by just +1 and get us to a new second.
+       *
+       * It should be expected that there's a chance we can get here, with
+       * still some real or apparent drift. Therefore, we should retry again
+       * the whole resync.
+       */
+      if (++full_resync_failed_attempts > FULL_RESYNC_MAX_ATTEMPTS)
          panic("Time-management: drift(%d) must be zero after sync", drift);
 
-      if (full_resync_failed_attempts > 1) {
-         printk("WARNING: full re-sync failed (attempt %d of 3)\n",
-               full_resync_failed_attempts);
+      if (full_resync_failed_attempts > FULL_RESYNC_WARN_AFTER) {
+         printk("WARNING: full re-sync failed (attempt %d of %d)\n",
+               full_resync_failed_attempts, FULL_RESYNC_MAX_ATTEMPTS);
 
          printk("WARNING: the drift is now: %d, abs_drift on re-sync was: %d\n",
                drift, abs_drift / (TS_SCALE / 1000));
@@ -206,6 +231,7 @@ full_resync:
     * loop of this thread, which will compensate any clock drifts that might
     * occur as Tilck runs for a long time.
     */
+   in_full_resync = false;
    kernel_sleep(clock_drift_adj_loop_delay);
    adj_cnt = 0;
    full_resync_failed_attempts = 0;

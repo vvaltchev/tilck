@@ -99,6 +99,7 @@ static void dp_show_opts(void)
    }
 
    DUMP_INT("TTY_COUNT", kopt_tty_count);
+   DUMP_INT("CLOCK_IN_RESYNC", clock_in_full_resync());
 
    rows_right = row - dp_screen_start_row - 1;
    max_rows = MAX(rows_left, rows_right);
