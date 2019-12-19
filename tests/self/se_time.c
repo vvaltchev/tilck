@@ -16,8 +16,6 @@ extern u32 clock_drift_adj_loop_delay;
 
 void selftest_time_manual(void)
 {
-   struct datetime d;
-   s64 sys_ts, hw_ts;
    int drift;
    u32 orig_tick_duration = 0;
    u32 art_drift_p = 5;
@@ -80,14 +78,7 @@ void selftest_time_manual(void)
 
    for (int t = 0; !se_is_stop_requested(); t++) {
 
-      disable_preemption();
-      {
-         hw_read_clock(&d);
-         sys_ts = get_timestamp();
-      }
-      enable_preemption();
-      hw_ts = datetime_to_timestamp(d);
-      drift = (int)(sys_ts - hw_ts);
+      drift = clock_get_second_drift();
 
       if (art_drift_p && t == 0) {
 

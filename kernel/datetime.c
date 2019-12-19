@@ -12,7 +12,6 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process.h>
 
-#define FULL_RESYNC_WARN_AFTER          6
 #define FULL_RESYNC_MAX_ATTEMPTS       10
 
 const char *weekdays[7] =
@@ -61,15 +60,64 @@ bool clock_in_full_resync(void)
    return in_full_resync;
 }
 
+static int clock_get_second_drift2(bool enable_preempt_on_exit)
+{
+   struct datetime d;
+   s64 sys_ts, hw_ts;
+   u32 under_sec;
+   u64 ts;
+
+   while (true) {
+
+      disable_preemption();
+
+      hw_read_clock(&d);
+      ts = get_sys_time();
+      under_sec = (u32)(ts % TS_SCALE);
+
+      /*
+       * We don't want to measure the drift when we're too close to the second
+       * border line, because there's a real chance to measure this way a
+       * non-existent clock drift. For example: suppose that the seconds value
+       * of the real clock time is 34.999, but we read just 34, of course.
+       * If now our system time is ahead by even just 1 ms [keep in mind we
+       * don't disable the interrupts and ticks to continue to increase], we'd
+       * read something like 35.0001 and get 35 after the truncation. Therefore,
+       * we'll "measure" +1 second of drift, which is completely false! It makes
+       * only sense to measure the drift in the middle of the second.
+       */
+      if (IN_RANGE(under_sec, TS_SCALE/4, TS_SCALE/4*3)) {
+
+         sys_ts = boot_timestamp + (s64)(ts / TS_SCALE);
+
+         if (enable_preempt_on_exit)
+            enable_preemption();
+
+         break;
+      }
+
+      /* We weren't in the middle of the second. Sleep 0.1s and try again */
+      enable_preemption();
+      kernel_sleep(TIMER_HZ / 10);
+   }
+
+   hw_ts = datetime_to_timestamp(d);
+   return (int)(sys_ts - hw_ts);
+}
+
+int clock_get_second_drift(void)
+{
+   return clock_get_second_drift2(true);
+}
+
 void clock_drift_adj()
 {
    struct datetime d;
-   s64 sys_ts, hw_ts, ts;
+   s64 hw_ts, ts;
    u64 hw_time_ns;
    int adj_val, adj_ticks;
    int drift, abs_drift, adj_cnt;
-   u32 attempts_cnt;
-   u32 full_resync_failed_attempts;
+   u32 attempts_cnt, full_resync_failed_attempts;
    uptr var;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
@@ -183,47 +231,12 @@ full_resync:
     */
    enable_preemption();
    kernel_sleep(15 * TIMER_HZ);
-
-   disable_preemption();
-   {
-      hw_read_clock(&d);
-      sys_ts = get_timestamp();
-   }
-   enable_preemption();
-   hw_ts = datetime_to_timestamp(d);
-   drift = (int)(sys_ts - hw_ts);
+   drift = clock_get_second_drift2(true);
 
    if (drift) {
 
-      /*
-       * Given that:
-       *
-       *    - the __tick_adj_val mechanism is not perfect because the timer does
-       *      not really work exactly at TIMER_HZ and that, if we're unlucky
-       *      we can over/under compensate the drift by a tiny fraction.
-       *
-       *    - between the reading of the system clock and the reading of our
-       *      internal timestamp we keep the interrupts enabled: this means
-       *      that our timestamp, if we didn't guess the right time could
-       *      increase by just +1 and get us to a new second.
-       *
-       * It should be expected that there's a chance we can get here, with
-       * still some real or apparent drift. Therefore, we should retry again
-       * the whole resync.
-       */
       if (++full_resync_failed_attempts > FULL_RESYNC_MAX_ATTEMPTS)
          panic("Time-management: drift(%d) must be zero after sync", drift);
-
-      if (full_resync_failed_attempts > FULL_RESYNC_WARN_AFTER) {
-         printk("WARNING: full re-sync failed (attempt %d of %d)\n",
-               full_resync_failed_attempts, FULL_RESYNC_MAX_ATTEMPTS);
-
-         printk("WARNING: the drift is now: %d, abs_drift on re-sync was: %d\n",
-               drift, abs_drift / (TS_SCALE / 1000));
-
-         printk("WARNING: re-trying...\n");
-      }
-      goto full_resync;
    }
 
    /*
@@ -238,11 +251,8 @@ full_resync:
 
    while (true) {
 
-      disable_preemption();
-      hw_read_clock(&d);
-      sys_ts = get_timestamp();
-      hw_ts = datetime_to_timestamp(d);
-      drift = (int)(sys_ts - hw_ts);
+      /* NOTE: this disables the preemption */
+      drift = clock_get_second_drift2(false);
 
       if (drift) {
 

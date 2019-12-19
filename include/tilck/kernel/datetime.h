@@ -22,3 +22,4 @@ static inline bool is_leap_year(u32 year)
 u64 get_sys_time(void);
 s64 get_timestamp(void);
 void init_system_time(void);
+int clock_get_second_drift(void);
