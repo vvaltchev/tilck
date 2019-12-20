@@ -30,4 +30,4 @@ static inline int get_curr_tty_num(void)
 int set_curr_tty(struct tty *t);
 struct tty *create_tty_nodev(void);
 void tty_set_raw_mode(struct tty *t);
-void tty_set_medium_raw_mode(struct tty *t);
+void tty_set_medium_raw_mode(struct tty *t, bool enabled);

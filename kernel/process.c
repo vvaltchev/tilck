@@ -809,6 +809,17 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
          task_reset_wait_obj(parent_task);
    }
 
+   if (term_sig) {
+
+      /*
+       * The process has been killed. It makes sense to perform some additional
+       * actions, in order to preserve the system in a healty state.
+       */
+
+      if (pi->did_set_tty_medium_raw)
+         tty_set_medium_raw_mode(pi->proc_tty, false);
+   }
+
    if (ti == get_curr_task()) {
 
       /* This function has been called by sys_exit(): we won't return */

@@ -58,12 +58,12 @@ void tty_set_raw_mode(struct tty *t)
    enable_preemption();
 }
 
-void tty_set_medium_raw_mode(struct tty *t)
+void tty_set_medium_raw_mode(struct tty *t, bool enabled)
 {
    disable_preemption();
    {
       tty_set_raw_mode(t);
-      t->mediumraw_mode = true;
+      t->mediumraw_mode = enabled;
    }
    enable_preemption();
 }
@@ -176,16 +176,23 @@ static int tty_ioctl_KDGKBMODE(struct tty *t, void *argp)
 
 static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
 {
+   struct process *pi = get_curr_proc();
+
+   if (t != pi->proc_tty)
+      return -EPERM; /* don't allow setting mode of other TTYs */
+
    uptr mode = (uptr) argp;
 
    switch (mode) {
 
       case K_XLATE:
          t->mediumraw_mode = false;
+         pi->did_set_tty_medium_raw = false;
          break;
 
       case K_MEDIUMRAW:
          t->mediumraw_mode = true;
+         pi->did_set_tty_medium_raw = true;
          break;
 
       default:

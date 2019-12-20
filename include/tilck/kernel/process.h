@@ -49,6 +49,8 @@ struct process {
 
    void *proc_tty;
    bool did_call_execve;
+   bool did_set_tty_medium_raw;
+
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 
    struct kmutex fslock;                  /* protects `handles` and `cwd` */
