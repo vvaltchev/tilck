@@ -16,6 +16,8 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/hal_types.h>
 
+#define PROCESS_CMDLINE_BUF_SIZE                      256
+
 STATIC_ASSERT(IS_PAGE_ALIGNED(KERNEL_STACK_SIZE));
 STATIC_ASSERT(IS_PAGE_ALIGNED(IO_COPYBUF_SIZE));
 STATIC_ASSERT(IS_PAGE_ALIGNED(ARGS_COPYBUF_SIZE));
@@ -53,10 +55,9 @@ struct process {
    mode_t umask;
 
    struct vfs_path cwd;                   /* CWD as a struct vfs_path */
+   char *debug_cmdline;                   /* debug field used by debugpanel */
 
    /* large members */
-
-   char debug_filepath[64];               /* debug field: executable's path */
    char str_cwd[MAX_PATH];                /* current working directory */
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 

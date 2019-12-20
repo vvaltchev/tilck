@@ -152,6 +152,7 @@ static void redraw_screen(void)
 
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
    dp_write_raw(ESC_COLOR_BRIGHT_RED "%s" RESET_ATTRS, buf);
+   dp_move_cursor(dp_rows, 1);
    ui_need_update = false;
 }
 

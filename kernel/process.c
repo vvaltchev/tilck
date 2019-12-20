@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
@@ -195,6 +196,21 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    memcpy(ti, parent, sizeof(struct task));
    memcpy(pi, parent_pi, sizeof(struct process));
+
+   if (MOD_debugpanel) {
+
+      if (!(pi->debug_cmdline = kzmalloc(PROCESS_CMDLINE_BUF_SIZE))) {
+         kfree2(ti, sizeof(struct task) + sizeof(struct process));
+         return NULL;
+      }
+
+      if (parent_pi->debug_cmdline) {
+         memcpy(pi->debug_cmdline,
+                parent_pi->debug_cmdline,
+                PROCESS_CMDLINE_BUF_SIZE);
+      }
+   }
+
    pi->parent_pid = parent_pi->pid;
    pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
 
@@ -247,7 +263,7 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
    return ti;
 }
 
-static void free_process(struct process *pi)
+static void free_process_int(struct process *pi)
 {
    ASSERT(get_ref_count(pi) > 0);
 
@@ -258,9 +274,13 @@ static void free_process(struct process *pi)
    }
 
    if (release_obj(pi) == 0) {
+
       list_remove(&pi->siblings_node);
       kfree2(get_process_task(pi),
              sizeof(struct task) + sizeof(struct process));
+
+      if (MOD_debugpanel)
+         kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
    }
 
    if (LIKELY(pi->cwd.fs != NULL)) {
@@ -287,7 +307,7 @@ void free_task(struct task *ti)
    ASSERT(!ti->args_copybuf);
 
    if (is_main_thread(ti))
-      free_process(ti->pi);
+      free_process_int(ti->pi);
    else
       kfree2(ti, sizeof(struct task));
 }

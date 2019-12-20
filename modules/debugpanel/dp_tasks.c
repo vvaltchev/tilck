@@ -112,7 +112,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                "ppid",
                "S",
                "tty",
-               "path or kernel thread");
+               "cmdline");
 
       char *p = hline_sep + strlen(hline_sep);
 
@@ -146,7 +146,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    char buf[128] = {0};
    char *path = buf;
    char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
-   const char *orig_path = pi->debug_filepath;
+   const char *orig_path = pi->debug_cmdline ? pi->debug_cmdline : "<n/a>";
 
    STATIC_ASSERT(sizeof(buf) >= (2 * MAX_EXEC_PATH_LEN + 2));
 
@@ -226,6 +226,11 @@ static void debug_dump_task_table_hr(void)
 static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 {
+   if (ke.print_char == 'r') {
+      ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
    if (ke.key == KEY_UP) {
       sel_tid = -1;
       sel_index = MAX(0, sel_index - 1);
@@ -314,17 +319,15 @@ static void show_actions_menu(void)
 {
    if (mode == dp_tasks_mode_default) {
       dp_writeln(
-         TERM_VLINE " "
          ESC_COLOR_BRIGHT_WHITE "<ENTER>" RESET_ATTRS ": select " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh "
       );
    } else if (mode == dp_tasks_mode_sel) {
       dp_writeln(
-         TERM_VLINE " "
          ESC_COLOR_BRIGHT_WHITE
             "<ESC>" RESET_ATTRS ": exit select mode " TERM_VLINE " "
          ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill "
       );
    }
 
