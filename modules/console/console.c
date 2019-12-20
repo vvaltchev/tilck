@@ -625,21 +625,15 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
       case 'c':
          {
             struct tty *t = ctx->t;
-            struct console_data *cd = ctx->cd;
             *a = (struct term_action) { .type1 = a_reset };
 
             tty_inbuf_reset(t);
-            cd->c_set = 0;
-            cd->c_sets_tables[0] = tty_default_trans_table;
-            cd->c_sets_tables[1] = tty_gfx_trans_table;
             t->kd_gfx_mode = KD_TEXT;
-            cd->user_color = t->curr_color;
             t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+            init_console_data(t);
             tty_reset_termios(t);
             tty_update_default_state_tables(t);
-            bzero(ctx, sizeof(*ctx));
-            ctx->t = t;
-            tty_set_state(ctx, &tty_state_default);
+            tty_reset_filter_ctx(t);
          }
          break;
 
