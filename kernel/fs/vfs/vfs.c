@@ -27,6 +27,7 @@ vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
                                struct fs *fs,
                                const struct file_ops *fops)
 {
+   hb->pi = get_curr_proc();
    hb->fs = fs;
    hb->fops = fops;
 }

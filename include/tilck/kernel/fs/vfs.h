@@ -233,6 +233,7 @@ struct file_ops {
  */
 
 #define FS_HANDLE_BASE_FIELDS    \
+   struct process *pi;           \
    struct fs *fs;                \
    const struct file_ops *fops;  \
    int fd_flags;                 \
