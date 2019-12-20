@@ -10,6 +10,7 @@
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
 
 #include <linux/fb.h>     // system header
@@ -131,13 +132,30 @@ register_mapping:
    return 0;
 }
 
-static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
+static int fbdev_munmap(fs_handle h, void *vaddr, size_t len)
 {
+   struct fs_handle_base *hb = h;
    size_t unmapped_count;
+   bool dying_task = false;
+
    ASSERT(IS_PAGE_ALIGNED(len));
 
+   if (get_process_task(hb->pi)->state == TASK_STATE_ZOMBIE)
+      dying_task = true;
+
+   if (hb->pi != get_curr_proc()) {
+
+      /*
+       * In case a process is being killed by a process != itself, we end up
+       * here starting from terminate_process(). That's OK, just we must be
+       * sure that preemption is disabled.
+       */
+      ASSERT(!is_preemption_enabled());
+      ASSERT(dying_task);
+   }
+
    unmapped_count = unmap_pages_permissive(
-      get_curr_pdir(),
+      hb->pi->pdir,
       vaddr,
       len >> PAGE_SHIFT,
       false
@@ -158,8 +176,8 @@ static int fbdev_munmap(fs_handle h /* ignored */, void *vaddr, size_t len)
     * with ALT+F1, ALT+F2, etc. works. It's required to use Magic SysRq
     * shortcuts to reboot the machine or connect to it remotely to do that.
     */
-   if (total_fb_pages_mapped == 0 && in_currently_dying_task()) {
-      tty_restore_kd_text_mode(get_curr_tty());
+   if (total_fb_pages_mapped == 0 && dying_task) {
+      tty_restore_kd_text_mode(hb->pi->proc_tty);
    }
 
    return 0;
