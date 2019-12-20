@@ -22,6 +22,16 @@
 
 static u32 next_device_id;
 
+void
+vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
+                               struct fs *fs,
+                               const struct file_ops *fops)
+{
+   hb->fs = fs;
+   hb->fops = fops;
+}
+
+
 /* ------------ handle-based functions ------------- */
 
 void vfs_close2(struct process *pi, fs_handle h)

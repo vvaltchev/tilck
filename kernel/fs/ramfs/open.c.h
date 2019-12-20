@@ -21,9 +21,8 @@ ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
    if (!(h = kzmalloc(sizeof(struct ramfs_handle))))
       return -ENOMEM;
 
+   vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_ramfs);
    h->inode = inode;
-   h->fs = fs;
-   h->fops = &static_ops_ramfs;
    retain_obj(inode);
 
    if (inode->type == VFS_DIR) {

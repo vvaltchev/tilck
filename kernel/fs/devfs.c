@@ -232,9 +232,8 @@ static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
    if (!(h = kzmalloc(sizeof(struct devfs_handle))))
       return -ENOMEM;
 
+   vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_devfs);
    h->type = VFS_DIR;
-   h->fs = fs;
-   h->fops = &static_ops_devfs;
 
    *out = h;
    return 0;
@@ -253,10 +252,9 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
       return -ENOMEM;
    }
 
+   vfs_init_fs_handle_base_fields((void *)h, fs, pos->fops);
    h->type       = pos->type;
    h->file       = pos;
-   h->fs         = fs;
-   h->fops       = pos->fops;
    h->spec_flags = pos->spec_flags;
 
    *out = h;

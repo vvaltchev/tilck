@@ -86,13 +86,10 @@ kfs_create_new_handle(const struct file_ops *fops,
    if (!(h = (void *)kzmalloc(sizeof(struct kfs_handle))))
       return NULL;
 
-   *h = (struct kfs_handle) {
-      .fs = kernelfs,
-      .fops = fops,
-      .kobj = kobj,
-      .fl_flags = fl_flags,
-      .fd_flags = 0
-   };
+   vfs_init_fs_handle_base_fields((void *)h, kernelfs, fops);
+   h->kobj = kobj;
+   h->fl_flags = fl_flags;
+   h->fd_flags = 0;
 
    /* Retain the object, as, in general, each file-handle retains the inode */
    retain_obj(h->kobj);

@@ -246,6 +246,10 @@ struct fs_handle_base {
 
 #define VFS_SPFL_NO_USER_COPY         (1 << 0)
 
+void vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
+                                    struct fs *fs,
+                                    const struct file_ops *fops);
+
 int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_unlink(const char *path);

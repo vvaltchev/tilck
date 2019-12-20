@@ -472,9 +472,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
    if (!(h = kzmalloc(sizeof(struct fatfs_handle))))
       return -ENOMEM;
 
-   h->fs = fs;
-   h->fops = &static_ops_fat;
-
+   vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_fat);
    h->e = e;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(e);
