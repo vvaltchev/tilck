@@ -39,7 +39,7 @@ void free_console_data(void *data)
    }
 }
 
-void init_console_data(struct tty *t)
+void reset_console_data(struct tty *t)
 {
    struct console_data *const cd = t->console_data;
 
@@ -630,7 +630,7 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
             tty_inbuf_reset(t);
             t->kd_gfx_mode = KD_TEXT;
             t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
-            init_console_data(t);
+            reset_console_data(t);
             tty_reset_termios(t);
             tty_update_default_state_tables(t);
             tty_reset_filter_ctx(t);

@@ -113,7 +113,7 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
    tty_reset_termios(t);
 
    if (MOD_console && !serial_port_fwd)
-      init_console_data(t);
+      reset_console_data(t);
 }
 
 int tty_get_num(struct tty *t)
