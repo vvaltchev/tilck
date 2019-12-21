@@ -742,6 +742,41 @@ static struct process *get_child_reaper(struct process *pi)
    return child_reaper->pi;
 }
 
+static void
+handle_children_of_dying_process(struct task *ti)
+{
+   struct process *pi = ti->pi;
+   struct process *pos, *temp;
+   struct process *child_reaper = get_child_reaper(pi);
+
+   list_for_each(pos, temp, &pi->children, siblings_node) {
+
+      struct task *child_task = get_process_task(pos);
+
+      list_remove(&pos->siblings_node);
+      list_add_tail(&child_reaper->children, &pos->siblings_node);
+      pos->parent_pid = child_reaper->pid;
+
+      if (child_task->state == TASK_STATE_ZOMBIE) {
+
+         /*
+          * Corner case: the dying task had already dead children which it
+          * did not wait for. Their exit code couldn't be retrieved by the
+          * nearest reaper (init) because their parent was still alive when
+          * they died. But now, they also have to be waited by the nearest
+          * reaper, along with their parent.
+          */
+
+         struct task *reaper_task = get_process_task(child_reaper);
+
+         wake_up_tasks_waiting_on(child_task);
+
+         if (task_is_waiting_on_any_child(reaper_task))
+            task_reset_wait_obj(reaper_task);
+      }
+   }
+}
+
 /*
  * NOTE: this code ASSUMES that threads do NOT exist:
  *    process = task = thread
@@ -775,7 +810,6 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    remove_all_user_zero_mem_mappings(pi);
    ASSERT(list_is_empty(&pi->mappings));
 
-
    if (ti->tid != 1) {
 
       /*
@@ -784,35 +818,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
        * supported.
        */
 
-      struct process *pos, *temp;
-      struct process *child_reaper = get_child_reaper(pi);
-
-      list_for_each(pos, temp, &pi->children, siblings_node) {
-
-         struct task *child_task = get_process_task(pos);
-
-         list_remove(&pos->siblings_node);
-         list_add_tail(&child_reaper->children, &pos->siblings_node);
-         pos->parent_pid = child_reaper->pid;
-
-         if (child_task->state == TASK_STATE_ZOMBIE) {
-
-            /*
-             * Corner case: the dying task had already dead children which it
-             * did not wait for. Their exit code couldn't be retrieved by the
-             * nearest reaper (init) because their parent was still alive when
-             * they died. But now, they also have to be waited by the nearest
-             * reaper, along with their parent.
-             */
-
-            struct task *reaper_task = get_process_task(child_reaper);
-
-            wake_up_tasks_waiting_on(child_task);
-
-            if (task_is_waiting_on_any_child(reaper_task))
-               task_reset_wait_obj(reaper_task);
-         }
-      }
+      handle_children_of_dying_process(ti);
 
    } else {
 
