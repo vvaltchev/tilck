@@ -9,7 +9,7 @@
 #include <tilck/kernel/cmdline.h>
 
 #include "termutil.h"
-#define MAX_EXEC_PATH_LEN     35
+#define MAX_EXEC_PATH_LEN     34
 
 /* Gfx state */
 static int row;
@@ -28,7 +28,7 @@ static enum {
 
 } mode;
 
-const char *debug_get_state_name(enum task_state state)
+const char *debug_get_state_name(enum task_state state, bool stopped)
 {
    switch (state) {
 
@@ -36,13 +36,13 @@ const char *debug_get_state_name(enum task_state state)
          return "?";
 
       case TASK_STATE_RUNNABLE:
-         return "r";
+         return !stopped ? "r" : "rS";
 
       case TASK_STATE_RUNNING:
          return "R";
 
       case TASK_STATE_SLEEPING:
-         return "s";
+         return !stopped ? "s" : "sS";
 
       case TASK_STATE_ZOMBIE:
          return "Z";
@@ -75,7 +75,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[120];
    static char hfmt[120];
    static char header[120];
-   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqnqqqqqn";
+   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
@@ -88,7 +88,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-1s "
+               TERM_VLINE " %%-2s "
                TERM_VLINE "  %%-2d "
                TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
@@ -98,7 +98,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-1s "
+               TERM_VLINE " %%-2s "
                TERM_VLINE " %%-3s "
                TERM_VLINE " %%-%ds",
                path_field_len);
@@ -160,7 +160,7 @@ static int debug_per_task_cb(void *obj, void *arg)
       snprintk(path, MAX_EXEC_PATH_LEN + 1, "%s...", path2);
    }
 
-   const char *state = debug_get_state_name(ti->state);
+   const char *state = debug_get_state_name(ti->state, ti->stopped);
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (is_kernel_thread(ti)) {

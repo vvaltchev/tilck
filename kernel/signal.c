@@ -20,16 +20,19 @@ static void action_ignore(struct task *ti, int signum)
    /* do nothing */
 }
 
-static void action_continue(struct task *ti, int signum)
-{
-   NOT_IMPLEMENTED();
-   // printk("Send CONTINUE to pid %d\n", ti->tid);
-}
-
 static void action_stop(struct task *ti, int signum)
 {
-   NOT_IMPLEMENTED();
-   // printk("Send STOP to pid %d\n", ti->tid);
+   ti->stopped = true;
+
+   if (ti == get_curr_task()) {
+      enable_preemption();
+      schedule_outside_interrupt_context();
+   }
+}
+
+static void action_continue(struct task *ti, int signum)
+{
+   ti->stopped = false;
 }
 
 static const action_type signal_default_actions[32] =

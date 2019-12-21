@@ -518,15 +518,16 @@ bool need_reschedule(void)
 {
    struct task *curr = get_curr_task();
    struct task *tasklet_runner = get_hi_prio_ready_tasklet_runner();
+   enum task_state s = atomic_load_explicit(&curr->state, mo_relaxed);
 
    if (tasklet_runner && tasklet_runner != curr)
       return true;
 
-   if (curr->time_slot_ticks < TIME_SLOT_TICKS &&
-       curr->state == TASK_STATE_RUNNING)
-   {
+   if (curr->stopped)
+      return true;
+
+   if (curr->time_slot_ticks < TIME_SLOT_TICKS && s == TASK_STATE_RUNNING)
       return false;
-   }
 
    return true;
 }
@@ -561,6 +562,9 @@ void schedule(int curr_int)
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
       if (pos == idle_task || pos == get_curr_task())
+         continue;
+
+      if (pos->stopped)
          continue;
 
       if (!selected || pos->total_ticks < selected->total_ticks) {
