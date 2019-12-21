@@ -223,6 +223,17 @@ static void debug_dump_task_table_hr(void)
    dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
+static bool is_tid_off_limits(int tid)
+{
+   if (tid == get_curr_tid())
+      return true;
+
+   if (tid >= KERNEL_TID_START)
+      return true;
+
+   return false;
+}
+
 static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 {
@@ -247,20 +258,37 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 
    if (ke.print_char == 'k') {
 
-      if (sel_tid == 1 || sel_tid == get_curr_tid())
-         return kb_handler_ok_and_continue;
-
-      if (sel_tid >= KERNEL_TID_START)
+      if (is_tid_off_limits(sel_tid) || sel_tid == 1)
          return kb_handler_ok_and_continue;
 
       ui_need_update = true;
-      send_signal(sel_tid, 9 /* SIGKILL */, false);
+      send_signal(sel_tid, SIGKILL, false);
       return kb_handler_ok_and_continue;
    }
 
    if (ke.print_char == '\033') {
       mode = dp_tasks_mode_default;
       ui_need_update = true;
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == 's') {
+
+      if (is_tid_off_limits(sel_tid))
+         return kb_handler_ok_and_continue;
+
+      ui_need_update = true;
+      send_signal(sel_tid, SIGSTOP, false);
+      return kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == 'c') {
+
+      if (is_tid_off_limits(sel_tid))
+         return kb_handler_ok_and_continue;
+
+      ui_need_update = true;
+      send_signal(sel_tid, SIGCONT, false);
       return kb_handler_ok_and_continue;
    }
 
@@ -327,7 +355,9 @@ static void show_actions_menu(void)
          ESC_COLOR_BRIGHT_WHITE
             "<ESC>" RESET_ATTRS ": exit select mode " TERM_VLINE " "
          ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill "
+         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS ": stop " TERM_VLINE " "
+         ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS ": continue "
       );
    }
 
