@@ -629,22 +629,6 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    return sys_waitpid(pid, user_wstatus, options);
 }
 
-void wake_up_tasks_waiting_on(struct task *ti)
-{
-   struct wait_obj *wo_pos, *wo_temp;
-   ASSERT(!is_preemption_enabled());
-
-   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
-
-      ASSERT(wo_pos->type == WOBJ_TASK);
-
-      struct task *task_to_wake_up = CONTAINER_OF(
-         wo_pos, struct task, wobj
-      );
-      task_reset_wait_obj(task_to_wake_up);
-   }
-}
-
 static bool task_is_waiting_on_any_child(struct task *ti)
 {
    struct wait_obj *wobj = &ti->wobj;
@@ -656,6 +640,33 @@ static bool task_is_waiting_on_any_child(struct task *ti)
       return false;
 
    return wait_obj_get_ptr(wobj) == WOBJ_TASK_PTR_ANY_CHILD;
+}
+
+void wake_up_tasks_waiting_on(struct task *ti)
+{
+   struct wait_obj *wo_pos, *wo_temp;
+   struct process *pi = ti->pi;
+
+   ASSERT(!is_preemption_enabled());
+
+   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
+
+      ASSERT(wo_pos->type == WOBJ_TASK);
+
+      struct task *task_to_wake_up = CONTAINER_OF(
+         wo_pos, struct task, wobj
+      );
+      task_reset_wait_obj(task_to_wake_up);
+   }
+
+   if (LIKELY(pi->parent_pid > 0)) {
+
+      struct task *parent_task = get_task(pi->parent_pid);
+
+      /* Wake-up the parent task if it's waiting on any child to exit */
+      if (task_is_waiting_on_any_child(parent_task))
+         task_reset_wait_obj(parent_task);
+   }
 }
 
 /*
@@ -769,21 +780,20 @@ handle_children_of_dying_process(struct task *ti)
           * reaper, along with their parent.
           */
 
-         struct task *reaper_task = get_process_task(child_reaper);
-
          wake_up_tasks_waiting_on(child_task);
-
-         if (task_is_waiting_on_any_child(reaper_task))
-            task_reset_wait_obj(reaper_task);
       }
    }
 }
 
 /*
- * NOTE: this code ASSUMES that threads do NOT exist:
+ * NOTE: this code ASSUMES that user processes have a _single_ thread:
+ *
  *    process = task = thread
  *
- * TODO: re-design/adapt this function when thread support is introduced
+ * TODO: re-design/adapt this function when thread support is introduced.
+ *
+ * NOTE: the kernel "process" has multiple threads (kthreads), but they cannot
+ * be signalled nor killed.
  */
 void terminate_process(struct task *ti, int exit_code, int term_sig)
 {
@@ -830,15 +840,6 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
 
    /* Wake-up all the tasks waiting on this specific task to exit */
    wake_up_tasks_waiting_on(ti);
-
-   if (pi->parent_pid > 0) {
-
-      struct task *parent_task = get_task(pi->parent_pid);
-
-      /* Wake-up the parent task if it's waiting on any child to exit */
-      if (task_is_waiting_on_any_child(parent_task))
-         task_reset_wait_obj(parent_task);
-   }
 
    if (term_sig) {
 
