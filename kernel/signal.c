@@ -111,6 +111,9 @@ int send_signal2(int pid, int tid, int signum, bool whole_process)
    if (!(ti = get_task(tid)))
       goto err_end;
 
+   if (is_kernel_thread(ti))
+      goto err_end; /* cannot send signals to kernel threads */
+
    /* When `whole_process` is true, tid must be == pid */
    if (whole_process && ti->pi->pid != tid)
       goto err_end;
