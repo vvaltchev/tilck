@@ -528,8 +528,8 @@ waitpid_should_skip_child(struct process *pos, int pid)
 int sys_waitpid(int pid, int *user_wstatus, int options)
 {
    struct task *curr = get_curr_task();
-   struct task *zombie = NULL;
-   int zombie_tid = -1;
+   struct task *chtask = NULL;
+   int chtask_tid = -1;
 
    ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
@@ -568,21 +568,21 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
          child_count++;
 
          if (ti->state == TASK_STATE_ZOMBIE) {
-            zombie = ti;
-            zombie_tid = ti->tid;
+            chtask = ti;
+            chtask_tid = ti->tid;
             break;
          }
       }
 
-      if (zombie)
+      if (chtask)
          break; /* note: leave the preemption disabled */
 
       enable_preemption();
 
-      /* No zombie child has been found */
+      /* No chtask has been found */
 
       if (options & WNOHANG) {
-         /* With WNOHANG we must not hang until a child dies */
+         /* With WNOHANG we must not hang until a child changes state */
          return 0;
       }
 
@@ -591,27 +591,29 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
          return -ECHILD;
       }
 
-      /* Hang until a child dies */
+      /* Hang until a child changes state */
       task_set_wait_obj(curr, WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD, NULL);
       kernel_yield();
 
    } // while (true)
 
    /*
-    * The only way to get here is a positive branch in `if (zombie)`: this mean
-    * that we have a valid `zombie` and that preemption is disabled.
+    * The only way to get here is a positive branch in `if (chtask)`: this mean
+    * that we have a valid `chtask` and that preemption is disabled.
     */
    ASSERT(!is_preemption_enabled());
 
    if (user_wstatus) {
-      if (copy_to_user(user_wstatus, &zombie->exit_wstatus, sizeof(s32)) < 0) {
-         zombie_tid = -EFAULT;
+      if (copy_to_user(user_wstatus, &chtask->exit_wstatus, sizeof(s32)) < 0) {
+         chtask_tid = -EFAULT;
       }
    }
 
-   remove_task(zombie);
+   if (chtask->state == TASK_STATE_ZOMBIE)
+      remove_task(chtask);
+
    enable_preemption();
-   return zombie_tid;
+   return chtask_tid;
 }
 
 int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)

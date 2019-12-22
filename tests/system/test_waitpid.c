@@ -253,3 +253,87 @@ int cmd_wpid4(int argc, char **argv)
    printf("[grandparent] exit (failed: %d)\n", failed);
    return failed ? 1 : 0;
 }
+
+/*
+ * Wait on children getting SIGSTOP and SIGCONT
+ */
+int cmd_wpid5(int argc, char **argv)
+{
+   pid_t children[2];
+   int pid, wstatus;
+
+   children[0] = fork();
+
+   if (children[0] < 0) {
+      printf("[   parent   ] fork() failed\n");
+      return 1;
+   }
+
+   if (!children[0]) {
+
+      /* child 0's body */
+      printf("[child 0] Hello from pid %d\n", getpid());
+
+      for (int i = 0; i < 10; i++) {
+         printf("[child 0] i = %d\n", i);
+         usleep(100 * 1000);
+      }
+
+      printf("[child 0] exit\n");
+      exit(0);
+   }
+
+   printf("[   parent   ] children[0] pid: %d\n", children[0]);
+
+   children[1] = fork();
+
+   if (children[1] < 0) {
+      printf("[   parent   ] fork() failed\n");
+      kill(children[0], SIGKILL);
+      return 1;
+   }
+
+   if (!children[1]) {
+
+      /* child 1's body */
+      printf("[child 1] Hello from pid %d\n", getpid());
+
+      printf("[child 1] Wait some time...\n");
+      usleep(250 * 1000);
+
+      printf("[child 1] Send SIGSTOP to child 0\n");
+      kill(children[0], SIGSTOP);
+
+      printf("[child 1] Wait some time...\n");
+      usleep(250 * 1000);
+
+      printf("[child 1] Send SIGCONT to child 0\n");
+      kill(children[0], SIGCONT);
+
+      printf("[child 1] Wait some time...\n");
+      usleep(250 * 1000);
+
+      printf("[child 1] exit\n");
+      exit(0);
+   }
+
+   while ((pid = waitpid(-1, &wstatus, WUNTRACED | WCONTINUED)) >= 0) {
+
+      int code = WEXITSTATUS(wstatus);
+      int sig = WTERMSIG(wstatus);
+      int child = pid == children[0] ? 0 : 1;
+
+      if (WIFSTOPPED(wstatus))
+         printf("[   parent   ] child %d: STOPPED\n", child);
+      else if (WIFCONTINUED(wstatus))
+         printf("[   parent   ] child %d: CONTINUED\n", child);
+      else if (WIFEXITED(wstatus))
+         printf("[   parent   ] child %d: EXITED with %d\n", child, code);
+      else if (WIFSIGNALED(wstatus))
+         printf("[   parent   ] child %d: KILLED by sig: %d\n", child, sig);
+      else
+         printf("[   parent   ] child %d: UNKNOWN status change!\n", child);
+   }
+
+   return 0;
+}

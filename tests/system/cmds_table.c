@@ -26,6 +26,7 @@ DECL_CMD(wpid1);
 DECL_CMD(wpid2);
 DECL_CMD(wpid3);
 DECL_CMD(wpid4);
+DECL_CMD(wpid5);
 DECL_CMD(sigsegv1);
 DECL_CMD(sigsegv2);
 DECL_CMD(sigill);
@@ -88,6 +89,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(wpid2,        TT_SHORT,  true),
    CMD_ENTRY(wpid3,        TT_SHORT,  true),
    CMD_ENTRY(wpid4,        TT_SHORT,  true),
+   CMD_ENTRY(wpid5,        TT_SHORT,  true),
    CMD_ENTRY(sigsegv1,     TT_SHORT,  true),
    CMD_ENTRY(sigsegv2,     TT_SHORT,  true),
    CMD_ENTRY(sigill,       TT_SHORT,  true),
