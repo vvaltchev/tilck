@@ -27,6 +27,8 @@
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
+static int shell_pids[128] = {0};
+
 static int video_tty_count;
 
 /* -- command line options -- */
@@ -313,6 +315,7 @@ static int fork_and_run_shell_on_tty(int tty)
        */
 
       char buf[32];
+      int poll_timeout = -1;                    /* infinite */
 
       struct pollfd fd = {
          .fd = 0,
@@ -321,16 +324,26 @@ static int fork_and_run_shell_on_tty(int tty)
 
       do {
 
-         printf("\033[2J\033[1;1H");
+         const char *serial_tty_suffix = "";
+         int user_tty_num = tty;
+
+         if (tty >= TTYS0_MINOR) {
+            poll_timeout = 3000;                /* 3 seconds */
+            serial_tty_suffix = "S";
+            user_tty_num = tty - TTYS0_MINOR;
+            printf("\033[2J\033[1;1H");
+         }
+
          printf("Tilck console on /dev/tty%s%d\n",
-                tty >= TTYS0_MINOR ? "S" : "",
-                tty >= TTYS0_MINOR ? tty - TTYS0_MINOR : tty);
+                serial_tty_suffix,
+                user_tty_num);
+
          printf("------------------------------------------\n\n");
          printf("Press ENTER to run the shell");
 
          fflush(stdout);
 
-      } while (poll(&fd, 1, 3000) <= 0);
+      } while (poll(&fd, 1, poll_timeout) <= 0);
 
       while (read(0, buf, 32) == 32) {
          /* drain the input buffer */
@@ -350,7 +363,6 @@ static int fork_and_run_shell_on_tty(int tty)
 
 int main(int argc, char **argv, char **env)
 {
-   int shell_pids[128] = {0};
    int pid = getpid();
    struct stat statbuf;
 
