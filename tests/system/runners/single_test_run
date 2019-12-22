@@ -52,9 +52,11 @@ g_gcda_buf = None
 g_gcda_file = None
 
 def set_once_shell_exit_code(val: int):
+
    global g_shell_exit_code
-   assert(g_shell_exit_code == -1)
-   g_shell_exit_code = val
+
+   if g_shell_exit_code == -1:
+      g_shell_exit_code = val
 
 def set_once_fail_reason(reason: Fail):
    global g_fail_reason
@@ -124,10 +126,14 @@ def process_line(line: str):
    #raw_print(stripped)
 
    if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
-      m = re.search(r'the shell exited with status: ([0-9]+)', stripped)
+
+      m = re.search(
+         r'the shell with pid ([0-9]+) exited with status: ([0-9]+)',
+         stripped
+      )
 
       if m:
-         set_once_shell_exit_code(int(m.group(1)))
+         set_once_shell_exit_code(int(m.group(2)))
          g_dumping_gcda_files = False
          raw_print(stripped)
          return
@@ -220,7 +226,7 @@ def run_the_vm():
 
    kernel_cmdline = '-sercon '
    cmdline = DEVSHELL_PATH
-   init_opts = '-ns'
+   init_opts = '-ns -nr'
 
    if dump_coverage:
       cmdline += ' -dcov'

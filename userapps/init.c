@@ -28,13 +28,16 @@
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
 static int shell_pids[128] = {0};
-
 static int video_tty_count;
+static FILE *tty0;
+
+static int fork_and_run_shell_on_tty(int tty);
 
 /* -- command line options -- */
 
 static bool opt_quiet;
 static bool opt_nostart;
+static bool opt_no_shell_respawn;
 
 /* -- end -- */
 
@@ -172,26 +175,47 @@ static void run_start_script(void)
 
 static void do_initial_setup(void)
 {
-   if (getenv("TILCK")) {
+   if (!getenv("TILCK")) {
 
-      open_std_handles(-1);
+      fprintf(stderr, "[init] Tilck specific program. Not tested on Linux\n");
+      exit(1);
 
-      if (getpid() != 1) {
-         printf("[init] ERROR: my pid is %i instead of 1\n", getpid());
-         call_exit(1);
-      }
+      // if (prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) < 0)
+      //    perror("prctl(PR_SET_CHILD_SUBREAPER) failed");
+   }
 
-   } else {
+   open_std_handles(-1);
+   tty0 = fopen("/dev/tty0", "w");
 
-      if (prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) < 0)
-         perror("prctl(PR_SET_CHILD_SUBREAPER) failed");
+   if (!tty0) {
+      fprintf(stderr, "[init] Unable to open /dev/tty0: %s\n", strerror(errno));
+      exit(1);
    }
 }
 
-static void report_shell_exit(int wstatus)
+static int get_tty_for_shell_pid(pid_t shell_pid)
+{
+   for (int i = 0; i < ARRAY_SIZE(shell_pids); i++) {
+
+      if (shell_pids[i] == shell_pid)
+         return i;
+   }
+
+   return -1;
+}
+
+static void report_shell_exit(pid_t pid, int tty, int wstatus)
 {
    const int status = WEXITSTATUS(wstatus);
-   printf("[init] the shell exited with status: %d\n", status);
+
+   fprintf(tty0, "[init] the shell with pid %d exited with status: %d\n",
+           pid, status);
+
+   if (opt_no_shell_respawn)
+      return;
+
+   fprintf(tty0, "\n");
+   shell_pids[tty] = fork_and_run_shell_on_tty(tty);
 }
 
 static void report_process_exit(pid_t pid, int wstatus)
@@ -214,7 +238,8 @@ static void show_help_and_exit(void)
    printf("    init                Regular run. Shell: %s\n", DEFAULT_SHELL);
    printf("    init -h/--help      Show this help and exit\n");
    printf("    init -q             Quiet: don't report exit of orphan tasks\n");
-   printf("    init -ns            Don't run the script: %s", START_SCRIPT);
+   printf("    init -ns            Don't run the script: %s\n", START_SCRIPT);
+   printf("    init -nr            Don't respawn shells\n");
    printf("    init -- <cmdline>   "
           "Run the specified cmdline instead of the default one.\n");
    printf("                        "
@@ -230,9 +255,6 @@ begin:
    if (!argc)
       return;
 
-   if (!strcmp(*argv, "-h") || !strcmp(*argv, "--help"))
-      show_help_and_exit();
-
    if (!strcmp(*argv, "-q")) {
       opt_quiet = true;
       argc--; argv++;
@@ -241,6 +263,12 @@ begin:
 
    if (!strcmp(*argv, "-ns")) {
       opt_nostart = true;
+      argc--; argv++;
+      goto begin;
+   }
+
+   if (!strcmp(*argv, "-nr")) {
+      opt_no_shell_respawn = true;
       argc--; argv++;
       goto begin;
    }
@@ -255,15 +283,17 @@ unknown_opt:
    printf("[init] Unknown option '%s'\n", *argv);
 }
 
-static void wait_for_children(pid_t shell_pid)
+static void wait_for_children(void)
 {
-   int wstatus;
+   int shell_tty, wstatus;
    pid_t pid;
 
    while ((pid = waitpid(-1, &wstatus, 0)) > 0) {
 
-      if (pid == shell_pid)
-         report_shell_exit(wstatus);
+      shell_tty = get_tty_for_shell_pid(pid);
+
+      if (shell_tty > 0)
+         report_shell_exit(pid, shell_tty, wstatus);
       else
          report_process_exit(pid, wstatus);
    }
@@ -294,6 +324,8 @@ static void setup_console_for_shell(int tty)
 
 static int fork_and_run_shell_on_tty(int tty)
 {
+   static bool already_run;
+
    pid_t pid = fork();
 
    if (pid < 0) {
@@ -301,13 +333,15 @@ static int fork_and_run_shell_on_tty(int tty)
       call_exit(1);
    }
 
-   if (pid)
+   if (pid) {
+      already_run = true;
       return pid;
+   }
 
    setup_console_for_shell(tty);
    init_reset_signal_mask();
 
-   if (video_tty_count && tty > 1) {
+   if (video_tty_count && (tty > 1 || already_run)) {
 
       /*
        * Instead of wasting resources for running the shell from now, just wait
@@ -328,9 +362,12 @@ static int fork_and_run_shell_on_tty(int tty)
          int user_tty_num = tty;
 
          if (tty >= TTYS0_MINOR) {
+
             poll_timeout = 3000;                /* 3 seconds */
             serial_tty_suffix = "S";
             user_tty_num = tty - TTYS0_MINOR;
+
+            /* clear the screen */
             printf("\033[2J\033[1;1H");
          }
 
@@ -366,7 +403,8 @@ int main(int argc, char **argv, char **env)
    int pid = getpid();
    struct stat statbuf;
 
-   video_tty_count = get_video_tty_count();
+   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
+      show_help_and_exit();
 
    if (pid != 1) {
 
@@ -374,11 +412,13 @@ int main(int argc, char **argv, char **env)
               "FATAL ERROR: init has pid %d.\n"
               "Init expects to be the 1st user process (pid 1) "
               "to run on the system.\n"
-              "Running it on an already running system is *not* supported.\n\n",
+              "Running it on an already running system is *not* supported.\n",
               pid);
 
       return 1;
    }
+
+   video_tty_count = get_video_tty_count();
 
    init_set_signal_mask();
    do_initial_setup();
@@ -409,11 +449,7 @@ int main(int argc, char **argv, char **env)
       }
    }
 
-   for (int i = 0; i < ARRAY_SIZE(shell_pids); i++) {
-      if (shell_pids[i])
-         wait_for_children(shell_pids[i]);
-   }
-
+   wait_for_children();
    call_exit(0);
 }
 
