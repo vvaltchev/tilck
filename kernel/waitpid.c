@@ -90,6 +90,57 @@ get_child_with_changed_status(struct process *pi,
    return chtask;
 }
 
+static bool
+task_is_waiting_on_multiple_children(struct task *ti, int *pid)
+{
+   struct wait_obj *wobj = &ti->wobj;
+
+   if (ti->state != TASK_STATE_SLEEPING)
+      return false;
+
+   if (wobj->type != WOBJ_TASK)
+      return false;
+
+   *pid = (int)(sptr)wait_obj_get_ptr(wobj);
+   return *pid < 0;
+}
+
+void wake_up_tasks_waiting_on(struct task *ti)
+{
+   struct wait_obj *wo_pos, *wo_temp;
+   struct process *pi = ti->pi;
+
+   ASSERT(!is_preemption_enabled());
+
+   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
+
+      ASSERT(wo_pos->type == WOBJ_TASK);
+
+      struct task *task_to_wake_up = CONTAINER_OF(
+         wo_pos, struct task, wobj
+      );
+      task_reset_wait_obj(task_to_wake_up);
+   }
+
+   if (LIKELY(pi->parent_pid > 0)) {
+
+      struct task *parent_task = get_task(pi->parent_pid);
+      int pid;
+
+      if (task_is_waiting_on_multiple_children(parent_task, &pid))
+         if (!waitpid_should_skip_child(parent_task, ti->pi, pid))
+            task_reset_wait_obj(parent_task);
+   }
+}
+
+/*
+ * ***************************************************************
+ *
+ * SYSCALLS
+ *
+ * ***************************************************************
+ */
+
 int sys_waitpid(int pid, int *user_wstatus, int options)
 {
    struct task *curr = get_curr_task();
@@ -187,47 +238,4 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    }
 
    return sys_waitpid(pid, user_wstatus, options);
-}
-
-static bool
-task_is_waiting_on_multiple_children(struct task *ti, int *pid)
-{
-   struct wait_obj *wobj = &ti->wobj;
-
-   if (ti->state != TASK_STATE_SLEEPING)
-      return false;
-
-   if (wobj->type != WOBJ_TASK)
-      return false;
-
-   *pid = (int)(sptr)wait_obj_get_ptr(wobj);
-   return *pid < 0;
-}
-
-void wake_up_tasks_waiting_on(struct task *ti)
-{
-   struct wait_obj *wo_pos, *wo_temp;
-   struct process *pi = ti->pi;
-
-   ASSERT(!is_preemption_enabled());
-
-   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
-
-      ASSERT(wo_pos->type == WOBJ_TASK);
-
-      struct task *task_to_wake_up = CONTAINER_OF(
-         wo_pos, struct task, wobj
-      );
-      task_reset_wait_obj(task_to_wake_up);
-   }
-
-   if (LIKELY(pi->parent_pid > 0)) {
-
-      struct task *parent_task = get_task(pi->parent_pid);
-      int pid;
-
-      if (task_is_waiting_on_multiple_children(parent_task, &pid))
-         if (!waitpid_should_skip_child(parent_task, ti->pi, pid))
-            task_reset_wait_obj(parent_task);
-   }
 }
