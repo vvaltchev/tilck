@@ -236,7 +236,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
    ASSERT(!is_preemption_enabled());
 
    if (user_wstatus) {
-      if (copy_to_user(user_wstatus, &chtask->exit_wstatus, sizeof(s32)) < 0)
+      if (copy_to_user(user_wstatus, &chtask->wstatus, sizeof(s32)) < 0)
          chtask_tid = -EFAULT;
    }
 

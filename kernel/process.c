@@ -582,7 +582,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    }
 
    task_change_state(ti, TASK_STATE_ZOMBIE);
-   ti->exit_wstatus = EXITCODE(exit_code, term_sig);
+   ti->wstatus = EXITCODE(exit_code, term_sig);
 
    close_all_handles(pi);
    task_free_all_kernel_allocs(ti);

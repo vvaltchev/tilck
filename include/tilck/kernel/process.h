@@ -115,7 +115,8 @@ struct task {
 
    struct list tasks_waiting_list;    /* tasks waiting this task to end */
 
-   s32 exit_wstatus;
+   s32 wstatus;                       /* waitpid's wstatus */
+
    u32 time_slot_ticks; /*
                          * ticks counter for the current time-slot: it's reset
                          * each time the task is selected by the scheduler.
