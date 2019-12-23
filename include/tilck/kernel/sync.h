@@ -61,13 +61,6 @@ struct multi_obj_waiter {
    struct mwobj_elem elems[];    /* variable-size array */
 };
 
-/*
- * For a wait_obj with type == WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD is a special
- * value for __ptr meaning that the task owning the wait_obj is going to wait
- * for any of its children to change state (usually, = to die).
- */
-#define WOBJ_TASK_PTR_ANY_CHILD ((void *) -1)
-
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,

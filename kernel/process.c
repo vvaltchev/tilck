@@ -428,7 +428,7 @@ void kthread_join(int tid)
 
       task_set_wait_obj(get_curr_task(),
                         WOBJ_TASK,
-                        ti,
+                        TO_PTR(ti->tid),
                         &ti->tasks_waiting_list);
 
       enable_preemption();
@@ -445,50 +445,10 @@ void kthread_join_all(const int *tids, size_t n)
       kthread_join(tids[i]);
 }
 
-static int wait_for_single_pid(int pid, int *user_wstatus)
-{
-   ASSERT(!is_preemption_enabled());
-
-   struct task *curr = get_curr_task();
-   struct task *waited_task = get_task(pid);
-
-   if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
-      return -ECHILD;
-   }
-
-   while (waited_task->state != TASK_STATE_ZOMBIE) {
-
-      task_set_wait_obj(curr,
-                        WOBJ_TASK,
-                        waited_task,
-                        &waited_task->tasks_waiting_list);
-
-      enable_preemption();
-      kernel_yield();
-      disable_preemption();
-   }
-
-   if (user_wstatus) {
-      if (copy_to_user(user_wstatus,
-                       &waited_task->exit_wstatus,
-                       sizeof(s32)) < 0)
-      {
-         remove_task((struct task *)waited_task);
-         return -EFAULT;
-      }
-   }
-
-   remove_task((struct task *)waited_task);
-   return pid;
-}
-
 static inline bool
 waitpid_should_skip_child(struct process *pos, int pid)
 {
    struct task *curr = get_curr_task();
-
-   /* The case pid > 0 is handled is a different code path */
-   ASSERT(pid <= 0);
 
    /*
     * pid has several special values, when not simply > 0:
@@ -502,27 +462,42 @@ waitpid_should_skip_child(struct process *pos, int pid)
     *           group ID is equal to that of the calling process.
     */
 
-   if (pid < -1) {
+   if (pid > 0) {
+
+      return pos->pid != pid;
+
+   } else if (pid < -1) {
 
       /*
-         * -pid is a process group id: skip children which don't belong to
-         * that specific process group.
-         */
-      if (pos->pgid != -pid)
-         return true;
+       * -pid is a process group id: skip children which don't belong to
+       * that specific process group.
+       */
+      return pos->pgid != -pid;
 
    } else if (pid == 0) {
 
       /* We have to skip children belonging to a different group */
-      if (pos->pgid != curr->pi->pgid)
-         return true;
+      return pos->pgid != curr->pi->pgid;
 
    } else if (pid == -1) {
 
       /* We're going to wait on any children */
+      return false;
    }
 
-   return false;
+   NOT_REACHED();
+}
+
+static struct task *
+waitpid_get_changed_task(struct task *ti, int opts)
+{
+   enum task_state s = atomic_load_explicit(&ti->state, mo_relaxed);
+
+   if (s == TASK_STATE_ZOMBIE) {
+      return ti;
+   }
+
+   return NULL;
 }
 
 int sys_waitpid(int pid, int *user_wstatus, int options)
@@ -539,25 +514,26 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
     * particular in case a children received a SIGSTOP or a SIGCONT.
     */
 
-   if (pid > 0) {
-
-      /* Wait for a specific PID */
-
-      disable_preemption();
-      {
-         pid = wait_for_single_pid(pid, user_wstatus);
-      }
-      enable_preemption();
-      return pid;
-   }
-
    while (true) {
 
+      struct list *wait_list = NULL;
       struct process *pos;
       struct task *ti;
       u32 child_count = 0;
 
       disable_preemption();
+
+      if (pid > 0) {
+
+         struct task *waited_task = get_task(pid);
+
+         if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
+            enable_preemption();
+            return -ECHILD;
+         }
+
+         wait_list = &waited_task->tasks_waiting_list;
+      }
 
       list_for_each_ro(pos, &curr->pi->children, siblings_node) {
 
@@ -567,15 +543,14 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
          ti = get_process_task(pos);
          child_count++;
 
-         if (ti->state == TASK_STATE_ZOMBIE) {
-            chtask = ti;
-            chtask_tid = ti->tid;
+         if ((chtask = waitpid_get_changed_task(ti, options)))
             break;
-         }
       }
 
-      if (chtask)
+      if (chtask) {
+         chtask_tid = chtask->tid;
          break; /* note: leave the preemption disabled */
+      }
 
       enable_preemption();
 
@@ -592,7 +567,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       /* Hang until a child changes state */
-      task_set_wait_obj(curr, WOBJ_TASK, WOBJ_TASK_PTR_ANY_CHILD, NULL);
+      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(pid), wait_list);
       kernel_yield();
 
    } // while (true)
@@ -629,7 +604,7 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    return sys_waitpid(pid, user_wstatus, options);
 }
 
-static bool task_is_waiting_on_any_child(struct task *ti)
+static bool task_is_waiting_on_multiple_children(struct task *ti)
 {
    struct wait_obj *wobj = &ti->wobj;
 
@@ -639,7 +614,7 @@ static bool task_is_waiting_on_any_child(struct task *ti)
    if (wobj->type != WOBJ_TASK)
       return false;
 
-   return wait_obj_get_ptr(wobj) == WOBJ_TASK_PTR_ANY_CHILD;
+   return (sptr)wait_obj_get_ptr(wobj) < 0;
 }
 
 void wake_up_tasks_waiting_on(struct task *ti)
@@ -663,8 +638,7 @@ void wake_up_tasks_waiting_on(struct task *ti)
 
       struct task *parent_task = get_task(pi->parent_pid);
 
-      /* Wake-up the parent task if it's waiting on any child to exit */
-      if (task_is_waiting_on_any_child(parent_task))
+      if (task_is_waiting_on_multiple_children(parent_task))
          task_reset_wait_obj(parent_task);
    }
 }
