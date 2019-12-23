@@ -12,11 +12,11 @@
 #include <sys/prctl.h>        // system header
 #include <sys/wait.h>         // system header
 
-static inline bool
-waitpid_should_skip_child(struct process *pos, int pid)
+static bool
+waitpid_should_skip_child(struct task *waiting_task,
+                          struct process *pos,
+                          int pid)
 {
-   struct task *curr = get_curr_task();
-
    /*
     * pid has several special values, when not simply > 0:
     *
@@ -29,30 +29,28 @@ waitpid_should_skip_child(struct process *pos, int pid)
     *           group ID is equal to that of the calling process.
     */
 
-   if (pid > 0) {
-
+   if (pid > 0)
       return pos->pid != pid;
 
-   } else if (pid < -1) {
+   if (pid < -1) {
 
       /*
        * -pid is a process group id: skip children which don't belong to
        * that specific process group.
        */
       return pos->pgid != -pid;
-
-   } else if (pid == 0) {
-
-      /* We have to skip children belonging to a different group */
-      return pos->pgid != curr->pi->pgid;
-
-   } else if (pid == -1) {
-
-      /* We're going to wait on any children */
-      return false;
    }
 
-   NOT_REACHED();
+   if (pid == 0) {
+
+      /* We have to skip children belonging to a different group */
+      return pos->pgid != waiting_task->pi->pgid;
+   }
+
+   ASSERT(pid == -1);
+
+   /* We're going to wait on any children */
+   return false;
 }
 
 static struct task *
@@ -104,7 +102,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
       list_for_each_ro(pos, &curr->pi->children, siblings_node) {
 
-         if (waitpid_should_skip_child(pos, pid))
+         if (waitpid_should_skip_child(curr, pos, pid))
             continue;
 
          ti = get_process_task(pos);
@@ -171,7 +169,8 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
    return sys_waitpid(pid, user_wstatus, options);
 }
 
-static bool task_is_waiting_on_multiple_children(struct task *ti)
+static bool
+task_is_waiting_on_multiple_children(struct task *ti, int *pid)
 {
    struct wait_obj *wobj = &ti->wobj;
 
@@ -181,7 +180,8 @@ static bool task_is_waiting_on_multiple_children(struct task *ti)
    if (wobj->type != WOBJ_TASK)
       return false;
 
-   return (sptr)wait_obj_get_ptr(wobj) < 0;
+   *pid = (int)(sptr)wait_obj_get_ptr(wobj);
+   return *pid < 0;
 }
 
 void wake_up_tasks_waiting_on(struct task *ti)
@@ -204,8 +204,10 @@ void wake_up_tasks_waiting_on(struct task *ti)
    if (LIKELY(pi->parent_pid > 0)) {
 
       struct task *parent_task = get_task(pi->parent_pid);
+      int pid;
 
-      if (task_is_waiting_on_multiple_children(parent_task))
-         task_reset_wait_obj(parent_task);
+      if (task_is_waiting_on_multiple_children(parent_task, &pid))
+         if (!waitpid_should_skip_child(parent_task, ti->pi, pid))
+            task_reset_wait_obj(parent_task);
    }
 }
