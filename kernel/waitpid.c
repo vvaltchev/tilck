@@ -115,7 +115,7 @@ task_is_waiting_on_multiple_children(struct task *ti, int *tid)
    if (wobj->type != WOBJ_TASK)
       return false;
 
-   *tid = (int)(sptr)wait_obj_get_ptr(wobj);
+   *tid = (int)wait_obj_get_data(wobj);
    return *tid < 0;
 }
 

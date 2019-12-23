@@ -29,8 +29,12 @@ enum wo_type {
 
 struct wait_obj {
 
-   ATOMIC(void *) __ptr;      /* pointer to the object we're waiting for */
-   enum wo_type type;         /* type of the object we're waiting for */
+   union {
+      ATOMIC(void *) __ptr;          /* ptr to the object we're waiting for */
+      sptr __data;                   /* data field (id) describing the obj */
+   };
+
+   enum wo_type type;                /* type of the object we're waiting for */
    struct list_node wait_list_node;  /* node in waited object's waiting list */
 };
 
@@ -68,14 +72,21 @@ void wait_obj_set(struct wait_obj *wo,
 
 void *wait_obj_reset(struct wait_obj *wo);
 
-static inline void *wait_obj_get_ptr(struct wait_obj *wo)
+static ALWAYS_INLINE void *
+wait_obj_get_ptr(struct wait_obj *wo)
 {
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
+static ALWAYS_INLINE sptr
+wait_obj_get_data(struct wait_obj *wo)
+{
+   return wo->__data;
+}
+
 void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
-                       void *ptr,
+                       void *ptr_or_data,
                        struct list *wait_list);
 
 void *task_reset_wait_obj(struct task *ti);
