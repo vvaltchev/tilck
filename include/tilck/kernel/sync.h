@@ -22,7 +22,9 @@ enum wo_type {
    WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
 
-#define NO_EXTRA            0
+#define NO_EXTRA                 0
+#define WEXTRA_TASK_STOPPED      1
+#define WEXTRA_TASK_CONTINUED    2
 
 /*
  * wait_obj is used internally in struct task for referring to an object that

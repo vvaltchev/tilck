@@ -121,19 +121,22 @@ task_is_waiting_on_multiple_children(struct task *ti, int *tid)
 
 void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
 {
-   struct wait_obj *wo_pos, *wo_temp;
+   struct wait_obj *wo, *wo_temp;
    struct process *pi = ti->pi;
 
    ASSERT(!is_preemption_enabled());
 
-   list_for_each(wo_pos, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
+   list_for_each(wo, wo_temp, &ti->tasks_waiting_list, wait_list_node) {
 
-      ASSERT(wo_pos->type == WOBJ_TASK);
+      ASSERT(wo->type == WOBJ_TASK);
+      struct task *task_to_wake_up = CONTAINER_OF(wo, struct task, wobj);
 
-      struct task *task_to_wake_up = CONTAINER_OF(
-         wo_pos, struct task, wobj
-      );
-      task_reset_wait_obj(task_to_wake_up);
+      if (r == task_died ||
+          (r == task_stopped && (wo->extra & WEXTRA_TASK_STOPPED)) ||
+          (r == task_continued && (wo->extra & WEXTRA_TASK_CONTINUED)))
+      {
+         task_reset_wait_obj(task_to_wake_up);
+      }
    }
 
    if (LIKELY(pi->parent_pid > 0)) {
@@ -160,14 +163,16 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
    int chtask_tid = -1;
+   u16 wobj_extra = 0;
+
+   if (options & WUNTRACED)
+      wobj_extra |= WEXTRA_TASK_STOPPED;
+
+   if (options & WCONTINUED)
+      wobj_extra |= WEXTRA_TASK_CONTINUED;
 
    ASSERT(are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-
-   /*
-    * TODO: make waitpid() able to wait on other child state changes, in
-    * particular in case a children received a SIGSTOP or a SIGCONT.
-    */
 
    while (true) {
 
