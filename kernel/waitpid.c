@@ -147,12 +147,6 @@ void wake_up_tasks_waiting_on(struct task *ti)
    }
 }
 
-static inline bool
-task_is_parent(struct task *parent, struct task *child)
-{
-   return child->pi->parent_pid == parent->pi->pid;
-}
-
 /*
  * ***************************************************************
  *

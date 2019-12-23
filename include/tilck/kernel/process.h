@@ -202,6 +202,12 @@ static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
    return ti->what == &tasklet_runner;
 }
 
+static ALWAYS_INLINE bool
+task_is_parent(struct task *parent, struct task *child)
+{
+   return child->pi->parent_pid == parent->pi->pid;
+}
+
 int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
