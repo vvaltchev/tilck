@@ -119,7 +119,7 @@ task_is_waiting_on_multiple_children(struct task *ti, int *tid)
    return *tid < 0;
 }
 
-void wake_up_tasks_waiting_on(struct task *ti)
+void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
 {
    struct wait_obj *wo_pos, *wo_temp;
    struct process *pi = ti->pi;

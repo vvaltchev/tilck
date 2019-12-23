@@ -547,7 +547,7 @@ handle_children_of_dying_process(struct task *ti)
           * reaper, along with their parent.
           */
 
-         wake_up_tasks_waiting_on(pos);
+         wake_up_tasks_waiting_on(pos, task_died);
       }
    }
 }
@@ -606,7 +606,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    }
 
    /* Wake-up all the tasks waiting on this specific task to exit */
-   wake_up_tasks_waiting_on(ti);
+   wake_up_tasks_waiting_on(ti, task_died);
 
    if (term_sig) {
 

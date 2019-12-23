@@ -208,6 +208,12 @@ task_is_parent(struct task *parent, struct task *child)
    return child->pi->parent_pid == parent->pi->pid;
 }
 
+enum wakeup_reason {
+   task_died,
+   task_stopped,
+   task_continued,
+};
+
 int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
@@ -230,7 +236,7 @@ void free_task(struct task *ti);
 void free_mem_for_zombie_task(struct task *ti);
 bool arch_specific_new_task_setup(struct task *ti, struct task *parent);
 void arch_specific_free_task(struct task *ti);
-void wake_up_tasks_waiting_on(struct task *ti);
+void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r);
 void init_process_lists(struct process *pi);
 
 void *task_temp_kernel_alloc(size_t size);

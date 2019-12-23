@@ -25,7 +25,7 @@ static void action_stop(struct task *ti, int signum)
 {
    ti->stopped = true;
    ti->wstatus = STOPCODE(signum);
-   wake_up_tasks_waiting_on(ti);
+   wake_up_tasks_waiting_on(ti, task_stopped);
 
    if (ti == get_curr_task()) {
       enable_preemption();
@@ -37,7 +37,7 @@ static void action_continue(struct task *ti, int signum)
 {
    ti->stopped = false;
    ti->wstatus = CONTINUED;
-   wake_up_tasks_waiting_on(ti);
+   wake_up_tasks_waiting_on(ti, task_continued);
 }
 
 static const action_type signal_default_actions[32] =

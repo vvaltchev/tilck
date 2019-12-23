@@ -226,7 +226,7 @@ void kthread_exit(void)
     */
    disable_preemption();
 
-   wake_up_tasks_waiting_on(get_curr_task());
+   wake_up_tasks_waiting_on(get_curr_task(), task_died);
    task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
