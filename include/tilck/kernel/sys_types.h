@@ -108,3 +108,8 @@ struct k_rusage {
    O_NOATIME     |                    \
    O_NONBLOCK                         \
 )
+
+#define EXITCODE(ret, sig)    ((ret) << 8 | (sig))
+#define STOPCODE(sig)          ((sig) << 8 | 0x7f)
+#define CONTINUED                           0xffff
+#define COREFLAG                              0x80

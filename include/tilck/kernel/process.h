@@ -98,6 +98,7 @@ struct task {
    bool is_main_thread;     /* value of `tid == pi->pid` */
    bool running_in_kernel;
    bool stopped;
+   bool was_stopped;
 
    volatile ATOMIC(enum task_state) state;
 

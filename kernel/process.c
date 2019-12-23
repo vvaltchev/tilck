@@ -17,16 +17,9 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/process_mm.h>
+#include <tilck/kernel/sys_types.h>
 
 #include <sys/prctl.h>        // system header
-
-//#define DEBUG_printk printk
-#define DEBUG_printk(...)
-
-#define EXITCODE(ret, sig)    ((ret) << 8 | (sig))
-#define STOPCODE(sig)          ((sig) << 8 | 0x7f)
-#define CONTINUED                           0xffff
-#define COREFLAG                              0x80
 
 #define ISOLATED_STACK_HI_VMEM_SPACE   (KERNEL_STACK_SIZE + (2 * PAGE_SIZE))
 

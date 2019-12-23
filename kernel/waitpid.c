@@ -17,7 +17,9 @@ waitpid_should_skip_child(struct task *waiting_task,
                           int tid)
 {
    /*
-    * tid has several special values, when not simply > 0:
+    * tid has several special values:
+    *
+    *     > 0   meaning wait for the child whose tid is equal to `tid`.
     *
     *    < -1   meaning  wait for any child process whose process
     *           group ID is equal to the absolute value of pid.
@@ -62,6 +64,16 @@ get_task_if_changed(struct task *ti, int opts)
 
    if (s == TASK_STATE_ZOMBIE)
       return ti;
+
+   if (ti->stopped && !ti->was_stopped && (opts & WUNTRACED)) {
+      ti->was_stopped = true;
+      return ti;
+   }
+
+   if (!ti->stopped && ti->was_stopped && (opts & WCONTINUED)) {
+      ti->was_stopped = false;
+      return ti;
+   }
 
    return NULL;
 }

@@ -7,6 +7,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/sys_types.h>
 
 typedef void (*action_type)(struct task *, int signum);
 
@@ -23,6 +24,8 @@ static void action_ignore(struct task *ti, int signum)
 static void action_stop(struct task *ti, int signum)
 {
    ti->stopped = true;
+   ti->exit_wstatus = STOPCODE(signum);
+   wake_up_tasks_waiting_on(ti);
 
    if (ti == get_curr_task()) {
       enable_preemption();
@@ -33,6 +36,8 @@ static void action_stop(struct task *ti, int signum)
 static void action_continue(struct task *ti, int signum)
 {
    ti->stopped = false;
+   ti->exit_wstatus = CONTINUED;
+   wake_up_tasks_waiting_on(ti);
 }
 
 static const action_type signal_default_actions[32] =

@@ -254,6 +254,34 @@ int cmd_wpid4(int argc, char **argv)
    return failed ? 1 : 0;
 }
 
+static void
+print_waitpid_change(int child, int wstatus)
+{
+   int code = WEXITSTATUS(wstatus);
+   int sig = WTERMSIG(wstatus);
+
+   if (WIFSTOPPED(wstatus))
+      printf("[   parent   ] child %d: STOPPED\n", child);
+   else if (WIFCONTINUED(wstatus))
+      printf("[   parent   ] child %d: CONTINUED\n", child);
+   else if (WIFEXITED(wstatus))
+      printf("[   parent   ] child %d: EXITED with %d\n", child, code);
+   else if (WIFSIGNALED(wstatus))
+      printf("[   parent   ] child %d: KILLED by sig: %d\n", child, sig);
+   else
+      printf("[   parent   ] child %d: UNKNOWN status change!\n", child);
+
+   fflush(stdout);
+}
+
+static void
+call_waitpid(int *pid, int *wstatus, int *children)
+{
+   *pid = waitpid(-1, wstatus, WUNTRACED | WCONTINUED);
+   DEVSHELL_CMD_ASSERT(*pid > 0);
+   print_waitpid_change(*pid == children[0] ? 0 : 1, *wstatus);
+}
+
 /*
  * Wait on children getting SIGSTOP and SIGCONT
  */
@@ -273,17 +301,21 @@ int cmd_wpid5(int argc, char **argv)
 
       /* child 0's body */
       printf("[child 0] Hello from pid %d\n", getpid());
+      fflush(stdout);
 
       for (int i = 0; i < 10; i++) {
          printf("[child 0] i = %d\n", i);
+         fflush(stdout);
          usleep(100 * 1000);
       }
 
       printf("[child 0] exit\n");
+      fflush(stdout);
       exit(0);
    }
 
    printf("[   parent   ] children[0] pid: %d\n", children[0]);
+   fflush(stdout);
 
    children[1] = fork();
 
@@ -297,43 +329,52 @@ int cmd_wpid5(int argc, char **argv)
 
       /* child 1's body */
       printf("[child 1] Hello from pid %d\n", getpid());
+      fflush(stdout);
 
       printf("[child 1] Wait some time...\n");
+      fflush(stdout);
       usleep(250 * 1000);
 
       printf("[child 1] Send SIGSTOP to child 0\n");
+      fflush(stdout);
       kill(children[0], SIGSTOP);
 
       printf("[child 1] Wait some time...\n");
+      fflush(stdout);
       usleep(250 * 1000);
 
       printf("[child 1] Send SIGCONT to child 0\n");
+      fflush(stdout);
       kill(children[0], SIGCONT);
 
       printf("[child 1] Wait some time...\n");
-      usleep(250 * 1000);
+      fflush(stdout);
+      usleep(50 * 1000);
 
       printf("[child 1] exit\n");
+      fflush(stdout);
       exit(0);
    }
 
-   while ((pid = waitpid(-1, &wstatus, WUNTRACED | WCONTINUED)) >= 0) {
+   /* Expect child 0 stopped */
+   call_waitpid(&pid, &wstatus, children);
+   DEVSHELL_CMD_ASSERT(pid == children[0]);
+   DEVSHELL_CMD_ASSERT(WIFSTOPPED(wstatus));
 
-      int code = WEXITSTATUS(wstatus);
-      int sig = WTERMSIG(wstatus);
-      int child = pid == children[0] ? 0 : 1;
+   /* Expect child 0 continued */
+   call_waitpid(&pid, &wstatus, children);
+   DEVSHELL_CMD_ASSERT(pid == children[0]);
+   DEVSHELL_CMD_ASSERT(WIFCONTINUED(wstatus));
 
-      if (WIFSTOPPED(wstatus))
-         printf("[   parent   ] child %d: STOPPED\n", child);
-      else if (WIFCONTINUED(wstatus))
-         printf("[   parent   ] child %d: CONTINUED\n", child);
-      else if (WIFEXITED(wstatus))
-         printf("[   parent   ] child %d: EXITED with %d\n", child, code);
-      else if (WIFSIGNALED(wstatus))
-         printf("[   parent   ] child %d: KILLED by sig: %d\n", child, sig);
-      else
-         printf("[   parent   ] child %d: UNKNOWN status change!\n", child);
-   }
+   /* Expect that child 1 exited */
+   call_waitpid(&pid, &wstatus, children);
+   DEVSHELL_CMD_ASSERT(pid == children[1]);
+   DEVSHELL_CMD_ASSERT(WIFEXITED(wstatus));
+
+   /* Expect that child 0 exited */
+   call_waitpid(&pid, &wstatus, children);
+   DEVSHELL_CMD_ASSERT(pid == children[0]);
+   DEVSHELL_CMD_ASSERT(WIFEXITED(wstatus));
 
    return 0;
 }
