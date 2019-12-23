@@ -54,15 +54,40 @@ waitpid_should_skip_child(struct task *waiting_task,
 }
 
 static struct task *
-waitpid_get_changed_task(struct task *ti, int opts)
+get_task_if_changed(struct task *ti, int opts)
 {
    enum task_state s = atomic_load_explicit(&ti->state, mo_relaxed);
 
-   if (s == TASK_STATE_ZOMBIE) {
+   if (s == TASK_STATE_ZOMBIE)
       return ti;
-   }
 
    return NULL;
+}
+
+static struct task *
+get_child_with_changed_status(struct process *pi,
+                              int pid,
+                              int opts,
+                              u32 *child_cnt_ref)
+{
+   struct task *curr = get_curr_task();
+   struct task *chtask = NULL;
+   struct process *pos;
+   u32 cnt = 0;
+
+   list_for_each_ro(pos, &pi->children, siblings_node) {
+
+      if (waitpid_should_skip_child(curr, pos, pid))
+         continue;
+
+      cnt++;
+
+      if ((chtask = get_task_if_changed(get_process_task(pos), opts)))
+         break;
+   }
+
+   *child_cnt_ref = cnt;
+   return chtask;
 }
 
 int sys_waitpid(int pid, int *user_wstatus, int options)
@@ -82,8 +107,6 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
    while (true) {
 
       struct list *wait_list = NULL;
-      struct process *pos;
-      struct task *ti;
       u32 child_count = 0;
 
       disable_preemption();
@@ -98,18 +121,16 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
          }
 
          wait_list = &waited_task->tasks_waiting_list;
-      }
+         child_count = 1;
 
-      list_for_each_ro(pos, &curr->pi->children, siblings_node) {
+         chtask = get_task_if_changed(waited_task, options);
 
-         if (waitpid_should_skip_child(curr, pos, pid))
-            continue;
+      } else {
 
-         ti = get_process_task(pos);
-         child_count++;
-
-         if ((chtask = waitpid_get_changed_task(ti, options)))
-            break;
+         chtask = get_child_with_changed_status(curr->pi,
+                                                pid,
+                                                options,
+                                                &child_count);
       }
 
       if (chtask) {
@@ -144,9 +165,8 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
    ASSERT(!is_preemption_enabled());
 
    if (user_wstatus) {
-      if (copy_to_user(user_wstatus, &chtask->exit_wstatus, sizeof(s32)) < 0) {
+      if (copy_to_user(user_wstatus, &chtask->exit_wstatus, sizeof(s32)) < 0)
          chtask_tid = -EFAULT;
-      }
    }
 
    if (chtask->state == TASK_STATE_ZOMBIE)
