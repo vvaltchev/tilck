@@ -422,6 +422,7 @@ void kthread_join(int tid)
       task_set_wait_obj(get_curr_task(),
                         WOBJ_TASK,
                         TO_PTR(ti->tid),
+                        NO_EXTRA,
                         &ti->tasks_waiting_list);
 
       enable_preemption();

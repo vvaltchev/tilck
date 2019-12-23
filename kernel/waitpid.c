@@ -218,7 +218,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
       }
 
       /* Hang until a child changes state */
-      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), wait_list);
+      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), NO_EXTRA, wait_list);
       kernel_yield();
 
    } // while (true)

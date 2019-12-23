@@ -22,6 +22,8 @@ enum wo_type {
    WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
 
+#define NO_EXTRA            0
+
 /*
  * wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
@@ -31,9 +33,10 @@ struct wait_obj {
 
    union {
       ATOMIC(void *) __ptr;          /* ptr to the object we're waiting for */
-      sptr __data;                   /* data field (id) describing the obj */
+      sptr __data;                   /* data field (id) describing the obj  */
    };
 
+   u16 extra;                        /* extra info about the waiting reason  */
    enum wo_type type;                /* type of the object we're waiting for */
    struct list_node wait_list_node;  /* node in waited object's waiting list */
 };
@@ -67,7 +70,7 @@ struct multi_obj_waiter {
 
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
-                  void *ptr,
+                  void *ptr_or_data,
                   struct list *wait_list);
 
 void *wait_obj_reset(struct wait_obj *wo);
@@ -87,6 +90,7 @@ wait_obj_get_data(struct wait_obj *wo)
 void task_set_wait_obj(struct task *ti,
                        enum wo_type type,
                        void *ptr_or_data,
+                       u16 extra,
                        struct list *wait_list);
 
 void *task_reset_wait_obj(struct task *ti);

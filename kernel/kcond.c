@@ -20,7 +20,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 
    disable_preemption();
    {
-      task_set_wait_obj(curr, WOBJ_KCOND, c, &c->wait_list);
+      task_set_wait_obj(curr, WOBJ_KCOND, c, NO_EXTRA, &c->wait_list);
 
       if (timeout_ticks != KCOND_WAIT_FOREVER)
          task_set_wakeup_timer(curr, timeout_ticks);
