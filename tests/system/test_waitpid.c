@@ -274,12 +274,23 @@ print_waitpid_change(int child, int wstatus)
    fflush(stdout);
 }
 
-static void
-call_waitpid(int *pid, int *wstatus, int *children)
+static int
+call_waitpid(int wait_pid, int *wstatus, int *children, int n)
 {
-   *pid = waitpid(-1, wstatus, WUNTRACED | WCONTINUED);
-   DEVSHELL_CMD_ASSERT(*pid > 0);
-   print_waitpid_change(*pid == children[0] ? 0 : 1, *wstatus);
+   int pid = waitpid(wait_pid, wstatus, WUNTRACED | WCONTINUED);
+
+   if (pid > 0) {
+
+      int child_index = -1;
+
+      for (int i = 0; i < n && child_index < 0; i++)
+         if (children[i] == pid)
+            child_index = i;
+
+      print_waitpid_change(child_index, *wstatus);
+   }
+
+   return pid;
 }
 
 /*
@@ -301,21 +312,17 @@ int cmd_wpid5(int argc, char **argv)
 
       /* child 0's body */
       printf("[child 0] Hello from pid %d\n", getpid());
-      fflush(stdout);
 
       for (int i = 0; i < 10; i++) {
          printf("[child 0] i = %d\n", i);
-         fflush(stdout);
          usleep(100 * 1000);
       }
 
       printf("[child 0] exit\n");
-      fflush(stdout);
       exit(0);
    }
 
    printf("[   parent   ] children[0] pid: %d\n", children[0]);
-   fflush(stdout);
 
    children[1] = fork();
 
@@ -329,52 +336,137 @@ int cmd_wpid5(int argc, char **argv)
 
       /* child 1's body */
       printf("[child 1] Hello from pid %d\n", getpid());
-      fflush(stdout);
 
       printf("[child 1] Wait some time...\n");
-      fflush(stdout);
       usleep(250 * 1000);
 
       printf("[child 1] Send SIGSTOP to child 0\n");
-      fflush(stdout);
       kill(children[0], SIGSTOP);
 
       printf("[child 1] Wait some time...\n");
-      fflush(stdout);
       usleep(250 * 1000);
 
       printf("[child 1] Send SIGCONT to child 0\n");
-      fflush(stdout);
       kill(children[0], SIGCONT);
 
       printf("[child 1] Wait some time...\n");
-      fflush(stdout);
       usleep(50 * 1000);
 
       printf("[child 1] exit\n");
-      fflush(stdout);
       exit(0);
    }
 
    /* Expect child 0 stopped */
-   call_waitpid(&pid, &wstatus, children);
+   pid = call_waitpid(-1, &wstatus, children, 2);
    DEVSHELL_CMD_ASSERT(pid == children[0]);
    DEVSHELL_CMD_ASSERT(WIFSTOPPED(wstatus));
 
    /* Expect child 0 continued */
-   call_waitpid(&pid, &wstatus, children);
+   pid = call_waitpid(-1, &wstatus, children, 2);
    DEVSHELL_CMD_ASSERT(pid == children[0]);
    DEVSHELL_CMD_ASSERT(WIFCONTINUED(wstatus));
 
    /* Expect that child 1 exited */
-   call_waitpid(&pid, &wstatus, children);
+   pid = call_waitpid(-1, &wstatus, children, 2);
    DEVSHELL_CMD_ASSERT(pid == children[1]);
    DEVSHELL_CMD_ASSERT(WIFEXITED(wstatus));
 
    /* Expect that child 0 exited */
-   call_waitpid(&pid, &wstatus, children);
+   pid = call_waitpid(-1, &wstatus, children, 2);
    DEVSHELL_CMD_ASSERT(pid == children[0]);
    DEVSHELL_CMD_ASSERT(WIFEXITED(wstatus));
 
+   return 0;
+}
+
+static void
+wpid6_test_child(int n, int pgid)
+{
+   printf("[child %d] Hello from pid %d\n", n, getpid());
+
+   printf("[child %d] curr pgid: %d\n", n, getpgid(0));
+   setpgid(0, pgid);
+   printf("[child %d] new pgid: %d\n", n, getpgid(0));
+
+
+   for (int i = 0; i < 10; i++) {
+      printf("[child %d] i = %d\n", n, i);
+      usleep(100 * 1000);
+   }
+
+   printf("[child %d] exit\n", n);
+   exit(0);
+}
+
+static void
+wpid6_test_active_child(int n, int pgid1, int pgid2)
+{
+   printf("[active child %d] Hello from pid %d\n", n, getpid());
+   usleep(500 * 1000);
+
+   printf("[active child %d] Send SIGKILL to the pgid %d\n", n, pgid1);
+   kill(-pgid1, SIGKILL);
+
+   usleep(100 * 1000);
+   printf("[active child %d] Send SIGKILL to the pgid %d\n", n, pgid2);
+   kill(-pgid2, SIGKILL);
+
+   printf("[active child %d] exit\n", n);
+   exit(0);
+}
+
+/*
+ * Wait on a process group + send a signal to a process group
+ */
+int cmd_wpid6(int argc, char **argv)
+{
+   int cld[7] = {0};
+   int pid, wstatus;
+   int g1_killed = 0;
+   int g2_killed = 0;
+
+   printf("[   parent   ] Hello, pid: %d, pgid: %d\n", getpid(), getpgid(0));
+   printf("[   parent   ] Start children..\n");
+
+   for (int i = 0; i < ARRAY_SIZE(cld) - 1; i++) {
+
+      cld[i] = fork();
+      DEVSHELL_CMD_ASSERT(cld[i] >= 0);
+
+      if (!cld[i]) {
+
+         int pgid = i < 3 ? cld[0] : cld[3];
+         wpid6_test_child(i, pgid);
+      }
+   }
+
+   cld[6] = fork();
+   DEVSHELL_CMD_ASSERT(cld[6] >= 0);
+
+   if (!cld[6])
+      wpid6_test_active_child(6, cld[0], cld[3]);
+
+   printf("[   parent   ] Wait for children to change their pgid\n");
+   usleep(100 * 1000);
+
+   printf("[   parent   ] Wait on the 1st process group\n");
+   while ((pid = call_waitpid(-cld[0], &wstatus, cld, ARRAY_SIZE(cld))) > 0) {
+      if (pid == cld[0] || pid == cld[1] || pid == cld[2])
+         g1_killed++;
+   }
+
+   DEVSHELL_CMD_ASSERT(g1_killed == 3);
+
+   printf("[   parent   ] Wait on the 2st process group\n");
+   while ((pid = call_waitpid(-cld[3], &wstatus, cld, ARRAY_SIZE(cld))) > 0) {
+      if (pid == cld[3] || pid == cld[4] || pid == cld[5])
+         g2_killed++;
+   }
+
+   DEVSHELL_CMD_ASSERT(g2_killed == 3);
+
+   printf("[   parent   ] Wait on any other child\n");
+   pid = call_waitpid(-1, &wstatus, cld, ARRAY_SIZE(cld));
+   DEVSHELL_CMD_ASSERT(pid == cld[6]);
    return 0;
 }
