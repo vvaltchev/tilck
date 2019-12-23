@@ -582,6 +582,11 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
       task_reset_wait_obj(ti);
    }
 
+   /*
+    * Sleep-based wake-up timers work without the wait_obj mechanism: we have
+    * to cancel any potential wake-up timer.
+    */
+   task_cancel_wakeup_timer(ti);
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->wstatus = EXITCODE(exit_code, term_sig);
 
