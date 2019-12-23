@@ -4,7 +4,6 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
-#include <tilck/kernel/process_int.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
@@ -14,11 +13,11 @@
 
 static bool
 waitpid_should_skip_child(struct task *waiting_task,
-                          struct process *pos,
-                          int pid)
+                          struct task *pos,
+                          int tid)
 {
    /*
-    * pid has several special values, when not simply > 0:
+    * tid has several special values, when not simply > 0:
     *
     *    < -1   meaning  wait for any child process whose process
     *           group ID is equal to the absolute value of pid.
@@ -27,27 +26,30 @@ waitpid_should_skip_child(struct task *waiting_task,
     *
     *       0   meaning wait for any child process whose process
     *           group ID is equal to that of the calling process.
+    *
+    * NOTE: Tilck's tid is called `pid` in the Linux kernel. What Tilck calls
+    * `pid` is called in Linux `tgid` (thread ground id).
     */
 
-   if (pid > 0)
-      return pos->pid != pid;
+   if (tid > 0)
+      return pos->tid != tid;
 
-   if (pid < -1) {
+   if (tid < -1) {
 
       /*
        * -pid is a process group id: skip children which don't belong to
        * that specific process group.
        */
-      return pos->pgid != -pid;
+      return pos->pi->pgid != -tid;
    }
 
-   if (pid == 0) {
+   if (tid == 0) {
 
       /* We have to skip children belonging to a different group */
-      return pos->pgid != waiting_task->pi->pgid;
+      return pos->pi->pgid != waiting_task->pi->pgid;
    }
 
-   ASSERT(pid == -1);
+   ASSERT(tid == -1);
 
    /* We're going to wait on any children */
    return false;
@@ -66,23 +68,23 @@ get_task_if_changed(struct task *ti, int opts)
 
 static struct task *
 get_child_with_changed_status(struct process *pi,
-                              int pid,
+                              int tid,
                               int opts,
                               u32 *child_cnt_ref)
 {
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
-   struct process *pos;
+   struct task *pos;
    u32 cnt = 0;
 
    list_for_each_ro(pos, &pi->children, siblings_node) {
 
-      if (waitpid_should_skip_child(curr, pos, pid))
+      if (waitpid_should_skip_child(curr, pos, tid))
          continue;
 
       cnt++;
 
-      if ((chtask = get_task_if_changed(get_process_task(pos), opts)))
+      if ((chtask = get_task_if_changed(pos, opts)))
          break;
    }
 
@@ -91,7 +93,7 @@ get_child_with_changed_status(struct process *pi,
 }
 
 static bool
-task_is_waiting_on_multiple_children(struct task *ti, int *pid)
+task_is_waiting_on_multiple_children(struct task *ti, int *tid)
 {
    struct wait_obj *wobj = &ti->wobj;
 
@@ -101,8 +103,8 @@ task_is_waiting_on_multiple_children(struct task *ti, int *pid)
    if (wobj->type != WOBJ_TASK)
       return false;
 
-   *pid = (int)(sptr)wait_obj_get_ptr(wobj);
-   return *pid < 0;
+   *tid = (int)(sptr)wait_obj_get_ptr(wobj);
+   return *tid < 0;
 }
 
 void wake_up_tasks_waiting_on(struct task *ti)
@@ -125,12 +127,18 @@ void wake_up_tasks_waiting_on(struct task *ti)
    if (LIKELY(pi->parent_pid > 0)) {
 
       struct task *parent_task = get_task(pi->parent_pid);
-      int pid;
+      int tid;
 
-      if (task_is_waiting_on_multiple_children(parent_task, &pid))
-         if (!waitpid_should_skip_child(parent_task, ti->pi, pid))
+      if (task_is_waiting_on_multiple_children(parent_task, &tid))
+         if (!waitpid_should_skip_child(parent_task, ti, tid))
             task_reset_wait_obj(parent_task);
    }
+}
+
+static inline bool
+task_is_parent(struct task *parent, struct task *child)
+{
+   return child->pi->parent_pid == parent->pi->pid;
 }
 
 /*
@@ -141,7 +149,7 @@ void wake_up_tasks_waiting_on(struct task *ti)
  * ***************************************************************
  */
 
-int sys_waitpid(int pid, int *user_wstatus, int options)
+int sys_waitpid(int tid, int *user_wstatus, int options)
 {
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
@@ -162,11 +170,11 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
 
       disable_preemption();
 
-      if (pid > 0) {
+      if (tid > 0) {
 
-         struct task *waited_task = get_task(pid);
+         struct task *waited_task = get_task(tid);
 
-         if (!waited_task || waited_task->pi->parent_pid != curr->pi->pid) {
+         if (!waited_task || !task_is_parent(curr, waited_task)) {
             enable_preemption();
             return -ECHILD;
          }
@@ -179,7 +187,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
       } else {
 
          chtask = get_child_with_changed_status(curr->pi,
-                                                pid,
+                                                tid,
                                                 options,
                                                 &child_count);
       }
@@ -204,7 +212,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
       }
 
       /* Hang until a child changes state */
-      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(pid), wait_list);
+      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), wait_list);
       kernel_yield();
 
    } // while (true)
@@ -227,7 +235,7 @@ int sys_waitpid(int pid, int *user_wstatus, int options)
    return chtask_tid;
 }
 
-int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
+int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
 {
    struct k_rusage ru = {0};
 
@@ -237,5 +245,5 @@ int sys_wait4(int pid, int *user_wstatus, int options, void *user_rusage)
          return -EFAULT;
    }
 
-   return sys_waitpid(pid, user_wstatus, options);
+   return sys_waitpid(tid, user_wstatus, options);
 }

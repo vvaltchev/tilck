@@ -163,6 +163,7 @@ void init_task_lists(struct task *ti)
    list_node_init(&ti->sleeping_node);
    list_node_init(&ti->zombie_node);
    list_node_init(&ti->wakeup_timer_node);
+   list_node_init(&ti->siblings_node);
 
    list_init(&ti->tasks_waiting_list);
    bzero(&ti->wobj, sizeof(struct wait_obj));
@@ -172,7 +173,6 @@ void init_process_lists(struct process *pi)
 {
    list_init(&pi->children);
    list_init(&pi->mappings);
-   list_node_init(&pi->siblings_node);
 
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
 }
@@ -238,9 +238,9 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    init_task_lists(ti);
    init_process_lists(pi);
-   list_add_tail(&parent->pi->children, &pi->siblings_node);
+   list_add_tail(&parent_pi->children, &ti->siblings_node);
 
-   pi->proc_tty = parent->pi->proc_tty;
+   pi->proc_tty = parent_pi->proc_tty;
    return ti;
 }
 
@@ -274,7 +274,6 @@ static void free_process_int(struct process *pi)
 
    if (release_obj(pi) == 0) {
 
-      list_remove(&pi->siblings_node);
       kfree2(get_process_task(pi),
              sizeof(struct task) + sizeof(struct process));
 
@@ -304,6 +303,8 @@ void free_task(struct task *ti)
    ASSERT(!ti->kernel_stack);
    ASSERT(!ti->io_copybuf);
    ASSERT(!ti->args_copybuf);
+
+   list_remove(&ti->siblings_node);
 
    if (is_main_thread(ti))
       free_process_int(ti->pi);
@@ -534,18 +535,16 @@ static void
 handle_children_of_dying_process(struct task *ti)
 {
    struct process *pi = ti->pi;
-   struct process *pos, *temp;
+   struct task *pos, *temp;
    struct process *child_reaper = get_child_reaper(pi);
 
    list_for_each(pos, temp, &pi->children, siblings_node) {
 
-      struct task *child_task = get_process_task(pos);
-
       list_remove(&pos->siblings_node);
       list_add_tail(&child_reaper->children, &pos->siblings_node);
-      pos->parent_pid = child_reaper->pid;
+      pos->pi->parent_pid = child_reaper->pid;
 
-      if (child_task->state == TASK_STATE_ZOMBIE) {
+      if (pos->state == TASK_STATE_ZOMBIE) {
 
          /*
           * Corner case: the dying task had already dead children which it
@@ -555,7 +554,7 @@ handle_children_of_dying_process(struct task *ti)
           * reaper, along with their parent.
           */
 
-         wake_up_tasks_waiting_on(child_task);
+         wake_up_tasks_waiting_on(pos);
       }
    }
 }

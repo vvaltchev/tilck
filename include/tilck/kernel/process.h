@@ -38,7 +38,6 @@ struct process {
    int sid;                          /* process session ID (as in Linux)      */
    int parent_pid;
    pdir_t *pdir;
-   struct list_node siblings_node;   /* nodes in parent's pi's children list */
 
    void *brk;
    void *initial_brk;
@@ -111,8 +110,9 @@ struct task {
    struct list_node sleeping_node;
    struct list_node zombie_node;
    struct list_node wakeup_timer_node;
+   struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
-   struct list tasks_waiting_list; /* tasks waiting this task to end */
+   struct list tasks_waiting_list;    /* tasks waiting this task to end */
 
    s32 exit_wstatus;
    u32 time_slot_ticks; /*
