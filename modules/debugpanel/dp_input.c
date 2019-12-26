@@ -6,6 +6,9 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/sched.h>
 
+#include "termutil.h"
+#include "dp_int.h"
+
 static int
 read_single_byte(fs_handle h, char *buf, u32 len)
 {
@@ -19,7 +22,7 @@ read_single_byte(fs_handle h, char *buf, u32 len)
 
       if (rc == -EAGAIN) {
 
-         if (len > 0 && buf[0] == 27 /* ESC */) {
+         if (len > 0 && buf[0] == DP_KEY_ESC) {
 
             /*
              * We hit a non-terminated escape sequence: let's wait for one
@@ -60,7 +63,7 @@ convert_seq_to_key(char *buf, struct key_event *ke)
          .key = 0,
       };
 
-   } else if (buf[0] == 27 /* ESC */ && !buf[1]) {
+   } else if (buf[0] == DP_KEY_ESC && !buf[1]) {
 
       *ke = (struct key_event) {
          .pressed = true,
@@ -68,7 +71,7 @@ convert_seq_to_key(char *buf, struct key_event *ke)
          .key = 0,
       };
 
-   } else if (buf[0] == 27 /* ESC */ && buf[1] == '[') {
+   } else if (buf[0] == DP_KEY_ESC && buf[1] == '[') {
 
       u32 key = 0;
 

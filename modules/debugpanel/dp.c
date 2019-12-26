@@ -258,7 +258,7 @@ static void dp_tilck_cmd()
       if (dp_read_ke_from_tty(h, &ke) < 0)
          break;
 
-      if (ke.print_char == 0x3 /* Ctrl+C */)
+      if (ke.print_char == DP_KEY_CTRL_C)
          break;
 
       rc = dp_main_body(tt, ke);
