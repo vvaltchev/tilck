@@ -26,6 +26,5 @@ void validate_stack_pointer_int(const char *file, int line);
 void debug_qemu_turn_off_machine(void);
 void init_extra_debug_features();
 void set_sched_alive_thread_enabled(bool enabled);
-
-/* Internal */
 void register_tilck_cmd(int cmd_n, void *func);
+void *get_syscall_func_ptr(u32 n);

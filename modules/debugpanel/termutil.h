@@ -57,3 +57,7 @@ dp_sign_value_esc_color(sptr val)
             ? E_COLOR_GREEN
             : val < 0 ? E_COLOR_BR_RED : DP_ESC_COLOR;
 }
+
+/* raw functions, avoid using when possible */
+void dp_write_raw(const char *fmt, ...);
+void dp_draw_rect_raw(int row, int col, int h, int w);

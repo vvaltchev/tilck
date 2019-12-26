@@ -34,10 +34,11 @@ extern int dp_screen_rows;
 extern bool ui_need_update;
 extern const char *modal_msg;
 extern struct dp_screen *dp_ctx;
+extern fs_handle dp_input_handle;
 
 static inline sptr dp_int_abs(sptr val) {
    return val >= 0 ? val : -val;
 }
 
 void dp_register_screen(struct dp_screen *screen);
-int dp_read_ke_from_tty(fs_handle h, struct key_event *ke);
+int dp_read_ke_from_tty(struct key_event *ke);

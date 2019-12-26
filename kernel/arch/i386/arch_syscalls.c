@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
@@ -12,6 +14,13 @@
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/mods/tracing.h>
+
+#include "idt_int.h"
+
+void syscall_int80_entry(void);
+void sysenter_entry(void);
+void asm_sysenter_setup(void);
 
 typedef sptr (*syscall_type)();
 
@@ -360,9 +369,19 @@ static void *syscalls[] =
    [TILCK_CMD_SYSCALL] = sys_tilck_cmd,
 };
 
+void *get_syscall_func_ptr(u32 n)
+{
+   if (n >= ARRAY_SIZE(syscalls))
+      return NULL;
+
+   return syscalls[n];
+}
+
 void handle_syscall(regs_t *r)
 {
-   ASSERT(get_curr_task() != NULL);
+   struct task *const curr = get_curr_task();
+   const bool traced = curr->traced;
+
    DEBUG_VALIDATE_STACK_PTR();
 
    /*
@@ -387,19 +406,20 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
+      if (MOD_debugpanel && traced)
+         trace_syscall_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
       *(void **)(&fptr) = syscalls[sn];
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
+      if (MOD_debugpanel && traced)
+         trace_syscall_exit(sn, (sptr)r->eax,
+                            r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();
    set_current_task_in_user_mode();
 }
-
-#include "idt_int.h"
-
-void syscall_int80_entry(void);
-void sysenter_entry(void);
-void asm_sysenter_setup(void);
 
 void init_syscall_interfaces(void)
 {

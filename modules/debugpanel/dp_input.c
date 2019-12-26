@@ -115,8 +115,9 @@ convert_seq_to_key(char *buf, struct key_event *ke)
 }
 
 int
-dp_read_ke_from_tty(fs_handle h, struct key_event *ke)
+dp_read_ke_from_tty(struct key_event *ke)
 {
+   fs_handle h = dp_input_handle;
    char c, buf[16];
    int rc;
    u32 len;

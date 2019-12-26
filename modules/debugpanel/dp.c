@@ -19,12 +19,10 @@
 #include <tilck/kernel/fs/vfs.h>
 
 #include <tilck/mods/fb_console.h>
+#include <tilck/mods/tracing.h>
 
 #include "termutil.h"
 #include "dp_int.h"
-
-void dp_write_raw(const char *fmt, ...);
-void dp_draw_rect_raw(int row, int col, int h, int w);
 
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
@@ -50,6 +48,7 @@ int dp_screen_rows;
 bool ui_need_update;
 const char *modal_msg;
 struct dp_screen *dp_ctx;
+fs_handle dp_input_handle;
 
 static bool skip_next_keypress;
 static ATOMIC(bool) dp_running;
@@ -269,6 +268,7 @@ static void dp_tilck_cmd()
    {
       tty_set_raw_mode(get_curr_process_tty());
       ((struct fs_handle_base *)h)->fl_flags |= O_NONBLOCK;
+      dp_input_handle = h;
    }
    enable_preemption();
 
@@ -278,7 +278,7 @@ static void dp_tilck_cmd()
 
    while (true) {
 
-      if (dp_read_ke_from_tty(h, &ke) < 0)
+      if (dp_read_ke_from_tty(&ke) < 0)
          break;
 
       if (ke.print_char == DP_KEY_CTRL_C)
@@ -303,6 +303,7 @@ static void dp_tilck_cmd()
 static void dp_init(void)
 {
    register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_tilck_cmd);
+   init_tracing();
 }
 
 static struct module dp_module = {
