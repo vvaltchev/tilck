@@ -252,92 +252,130 @@ static bool is_tid_off_limits(int tid)
 }
 
 static enum kb_handler_action
-dp_tasks_handle_sel_mode_keypress(struct key_event ke)
+dp_tasks_handle_sel_mode_keypress_special(u32 key)
 {
-   if (ke.print_char == 'r') {
-      ui_need_update = true;
-      return kb_handler_ok_and_continue;
-   }
-
-   if (ke.key == KEY_UP) {
+   if (key == KEY_UP) {
       sel_tid = -1;
       sel_index = MAX(0, sel_index - 1);
       ui_need_update = true;
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.key == KEY_DOWN) {
+   if (key == KEY_DOWN) {
       sel_tid = -1;
       sel_index = MIN(max_idx, sel_index + 1);
       ui_need_update = true;
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == 'k') {
+   return kb_handler_nak;
+}
 
-      if (is_tid_off_limits(sel_tid) || sel_tid == 1) {
-         modal_msg = "Killing kernel threads or pid 1 is not allowed";
-         return kb_handler_ok_and_continue;
-      }
-
-      ui_need_update = true;
-      send_signal(sel_tid, SIGKILL, false);
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_k(void)
+{
+   if (is_tid_off_limits(sel_tid) || sel_tid == 1) {
+      modal_msg = "Killing kernel threads or pid 1 is not allowed";
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == '\033') {
-      mode = dp_tasks_mode_default;
-      ui_need_update = true;
+   ui_need_update = true;
+   send_signal(sel_tid, SIGKILL, false);
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_s(void)
+{
+   if (is_tid_off_limits(sel_tid)) {
+      modal_msg = "Stopping kernel threads is not allowed";
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == 's') {
+   ui_need_update = true;
+   send_signal(sel_tid, SIGSTOP, false);
+   return kb_handler_ok_and_continue;
+}
 
-      if (is_tid_off_limits(sel_tid)) {
-         modal_msg = "Stopping kernel threads is not allowed";
-         return kb_handler_ok_and_continue;
-      }
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_c(void)
+{
+   if (is_tid_off_limits(sel_tid))
+      return kb_handler_ok_and_continue;
 
-      ui_need_update = true;
-      send_signal(sel_tid, SIGSTOP, false);
+   ui_need_update = true;
+   send_signal(sel_tid, SIGCONT, false);
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_t(void)
+{
+   if (is_tid_off_limits(sel_tid)) {
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Cannot trace kernel threads for syscalls";
+      else
+         modal_msg = "Cannot trace the debug panel process";
+
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == 'c') {
+   ui_need_update = true;
 
-      if (is_tid_off_limits(sel_tid))
-         return kb_handler_ok_and_continue;
+   {
+      disable_preemption();
+      struct task *ti = get_task(sel_tid);
 
-      ui_need_update = true;
-      send_signal(sel_tid, SIGCONT, false);
-      return kb_handler_ok_and_continue;
+      if (ti)
+         ti->traced = !ti->traced;
+
+      enable_preemption();
    }
 
-   if (ke.print_char == 't') {
+   return kb_handler_ok_and_continue;
+}
 
-      if (is_tid_off_limits(sel_tid)) {
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_esc(void)
+{
+   mode = dp_tasks_mode_default;
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
 
-         if (sel_tid != get_curr_tid())
-            modal_msg = "Cannot trace kernel threads for syscalls";
-         else
-            modal_msg = "Cannot trace the debug panel process";
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_r(void)
+{
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
 
-         return kb_handler_ok_and_continue;
-      }
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress(struct key_event ke)
+{
+   if (!ke.print_char)
+      return dp_tasks_handle_sel_mode_keypress_special(ke.key);
 
-      ui_need_update = true;
+   switch (ke.print_char) {
 
-      {
-         disable_preemption();
-         struct task *ti = get_task(sel_tid);
+      case DP_KEY_ESC:
+         return dp_tasks_handle_sel_mode_keypress_esc();
 
-         if (ti)
-            ti->traced = !ti->traced;
+      case 'r':
+         return dp_tasks_handle_sel_mode_keypress_r();
 
-         enable_preemption();
-      }
+      case 'k':
+         return dp_tasks_handle_sel_mode_keypress_k();
 
-      return kb_handler_ok_and_continue;
+      case 's':
+         return dp_tasks_handle_sel_mode_keypress_s();
+
+      case 'c':
+         return dp_tasks_handle_sel_mode_keypress_c();
+
+      case 't':
+         return dp_tasks_handle_sel_mode_keypress_t();
    }
 
    return kb_handler_nak;
