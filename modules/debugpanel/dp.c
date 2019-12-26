@@ -48,8 +48,10 @@ int dp_start_col;
 int dp_screen_start_row;
 int dp_screen_rows;
 bool ui_need_update;
+const char *modal_msg;
 struct dp_screen *dp_ctx;
 
+static bool skip_next_keypress;
 static ATOMIC(bool) dp_running;
 static struct list dp_screens_list = make_list(dp_screens_list);
 
@@ -156,11 +158,10 @@ static void redraw_screen(void)
    ui_need_update = false;
 }
 
-static int
-dp_main_body(enum term_type tt, struct key_event ke)
+static void
+dp_main_handle_keypress(struct key_event ke)
 {
    int rc;
-   bool dp_screen_key_handled = false;
 
    if ('0' <= ke.print_char && ke.print_char <= '9') {
 
@@ -190,24 +191,46 @@ dp_main_body(enum term_type tt, struct key_event ke)
          ui_need_update = true;
       }
    }
+}
 
-   if (!ui_need_update && dp_ctx->on_keypress_func) {
+static int
+dp_main_body(enum term_type tt, struct key_event ke)
+{
+   int rc;
+   bool dp_screen_key_handled = false;
 
-      rc = dp_ctx->on_keypress_func(ke);
+   if (!skip_next_keypress) {
 
-      if (rc == kb_handler_ok_and_stop)
-         return 1; /* skip redraw_screen() */
+      dp_main_handle_keypress(ke);
 
-      if (rc != kb_handler_nak)
-         dp_screen_key_handled = true;
+      if (!ui_need_update && dp_ctx->on_keypress_func) {
+
+         rc = dp_ctx->on_keypress_func(ke);
+
+         if (rc == kb_handler_ok_and_stop)
+            return 1; /* skip redraw_screen() */
+
+         if (rc != kb_handler_nak)
+            dp_screen_key_handled = true;
+      }
+
+   } else {
+      skip_next_keypress = false;
+      ui_need_update = true;
    }
 
-   if (ui_need_update) {
+   if (ui_need_update || modal_msg) {
 
       if (tt == term_type_video)
          term_pause_video_output();
 
       redraw_screen();
+
+      if (modal_msg) {
+         dp_show_modal_msg(modal_msg);
+         modal_msg = NULL;
+         skip_next_keypress = true;
+      }
 
       if (tt == term_type_video)
          term_restart_video_output();

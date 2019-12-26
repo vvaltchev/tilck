@@ -32,6 +32,7 @@ extern int dp_start_col;
 extern int dp_screen_start_row;
 extern int dp_screen_rows;
 extern bool ui_need_update;
+extern const char *modal_msg;
 extern struct dp_screen *dp_ctx;
 
 static inline sptr dp_int_abs(sptr val) {

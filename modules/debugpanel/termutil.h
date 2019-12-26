@@ -48,6 +48,7 @@ void dp_move_cursor(int row, int col);
 void dp_set_cursor_enabled(bool enabled);
 void dp_switch_to_alt_buffer(void);
 void dp_switch_to_default_buffer(void);
+void dp_show_modal_msg(const char *msg);
 
 static inline const char *
 dp_sign_value_esc_color(sptr val)

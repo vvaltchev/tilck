@@ -185,3 +185,35 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w)
       dp_write(row, col + 2, E_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
    }
 }
+
+void dp_show_modal_msg(const char *msg)
+{
+   static const char common_msg[] = "Press ANY key to continue";
+   const int max_line_len = DP_W - 2 - 2 - 2;
+   const int msg_len = (int)strlen(msg);
+   const int row_len = UNSAFE_MAX(
+      UNSAFE_MIN(max_line_len, msg_len), (int)sizeof(common_msg) - 1
+   ) + 2;
+   const int srow = dp_start_row + DP_H / 2;
+   const int scol = dp_cols / 2 - row_len / 2;
+
+   char buf[DP_W+1];
+   ASSERT(msg_len <= max_line_len); /* for the moment, no multi-line */
+   memset(buf, ' ', sizeof(buf) - 1);
+   buf[row_len] = 0;
+
+   /* Clear the area around the message box */
+   for (int i = 0; i < 3; i++)
+      dp_write(srow + i, scol, "%s", buf);
+
+   /* Draw the rect */
+   dp_draw_rect("Alert", srow - 1, scol - 1, 5, row_len + 2);
+
+   /* Draw the actual alert message */
+   dp_write(srow, scol, " %s", msg);
+
+   dp_write(srow + 2,
+            dp_cols / 2 - ((int)sizeof(common_msg)-1) / 2,
+            E_COLOR_YELLOW "%s" RESET_ATTRS,
+            common_msg);
+}

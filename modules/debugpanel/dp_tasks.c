@@ -275,8 +275,10 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 
    if (ke.print_char == 'k') {
 
-      if (is_tid_off_limits(sel_tid) || sel_tid == 1)
+      if (is_tid_off_limits(sel_tid) || sel_tid == 1) {
+         modal_msg = "Killing kernel threads or pid 1 is not allowed";
          return kb_handler_ok_and_continue;
+      }
 
       ui_need_update = true;
       send_signal(sel_tid, SIGKILL, false);
@@ -291,8 +293,10 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 
    if (ke.print_char == 's') {
 
-      if (is_tid_off_limits(sel_tid))
+      if (is_tid_off_limits(sel_tid)) {
+         modal_msg = "Stopping kernel threads is not allowed";
          return kb_handler_ok_and_continue;
+      }
 
       ui_need_update = true;
       send_signal(sel_tid, SIGSTOP, false);
@@ -311,8 +315,15 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 
    if (ke.print_char == 't') {
 
-      if (is_tid_off_limits(sel_tid))
+      if (is_tid_off_limits(sel_tid)) {
+
+         if (sel_tid != get_curr_tid())
+            modal_msg = "Cannot trace kernel threads for syscalls";
+         else
+            modal_msg = "Cannot trace the debug panel process";
+
          return kb_handler_ok_and_continue;
+      }
 
       ui_need_update = true;
 
