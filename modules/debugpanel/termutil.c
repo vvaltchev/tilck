@@ -182,6 +182,6 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 
    if (label) {
-      dp_write(row, col + 2, ESC_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
+      dp_write(row, col + 2, E_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
    }
 }

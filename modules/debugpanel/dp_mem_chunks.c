@@ -173,10 +173,10 @@ static void dp_show_chunks(void)
 
    dp_writeln(
       "Order by: "
-      ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS "ize, "
-      ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS "ount, "
-      ESC_COLOR_BRIGHT_WHITE "w" RESET_ATTRS "aste, "
-      "was" ESC_COLOR_BRIGHT_WHITE "t" RESET_ATTRS "e (%%)"
+      E_COLOR_BR_WHITE "s" RESET_ATTRS "ize, "
+      E_COLOR_BR_WHITE "c" RESET_ATTRS "ount, "
+      E_COLOR_BR_WHITE "w" RESET_ATTRS "aste, "
+      "was" E_COLOR_BR_WHITE "t" RESET_ATTRS "e (%%)"
    );
 
    dp_writeln("");
@@ -186,10 +186,10 @@ static void dp_show_chunks(void)
       TERM_VLINE "%s" "  Count  "         RESET_ATTRS
       TERM_VLINE "%s" " Max waste "       RESET_ATTRS
       TERM_VLINE "%s" " Max waste (%%)"   RESET_ATTRS,
-      chunks_order_by == 's' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 'c' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 'w' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 't' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : ""
+      chunks_order_by == 's' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'c' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'w' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 't' ? E_COLOR_BR_WHITE REVERSE_VIDEO : ""
    );
 
    dp_writeln(

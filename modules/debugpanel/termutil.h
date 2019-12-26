@@ -7,11 +7,11 @@
 
 #define ERASE_DISPLAY            "\033[2J"
 #define REVERSE_VIDEO            "\033[7m"
-#define ESC_COLOR_WHITE          "\033[37m"
-#define ESC_COLOR_BRIGHT_WHITE   "\033[97m"
-#define ESC_COLOR_BRIGHT_RED     "\033[91m"
-#define ESC_COLOR_GREEN          "\033[32m"
-#define ESC_COLOR_YELLOW         "\033[93m"
+#define E_COLOR_WHITE            "\033[37m"
+#define E_COLOR_BR_WHITE         "\033[97m"
+#define E_COLOR_BR_RED           "\033[91m"
+#define E_COLOR_GREEN            "\033[32m"
+#define E_COLOR_YELLOW           "\033[93m"
 #define RESET_ATTRS              "\033[0m"
 #define GFX_ON                   "\033(0"
 #define GFX_OFF                  "\033(B"
@@ -23,7 +23,7 @@
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
 #define DP_COLOR                 make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR)
 #define DP_REV_COLOR             make_color(DEFAULT_BG_COLOR, DEFAULT_FG_COLOR)
-#define DP_ESC_COLOR             ESC_COLOR_WHITE
+#define DP_ESC_COLOR             E_COLOR_WHITE
 
 void dp_write(int row, int col, const char *fmt, ...);
 void dp_draw_rect(const char *label, int row, int col, int h, int w);
@@ -49,6 +49,6 @@ static inline const char *
 dp_sign_value_esc_color(sptr val)
 {
    return val > 0
-            ? ESC_COLOR_GREEN
-            : val < 0 ? ESC_COLOR_BRIGHT_RED : DP_ESC_COLOR;
+            ? E_COLOR_GREEN
+            : val < 0 ? E_COLOR_BR_RED : DP_ESC_COLOR;
 }

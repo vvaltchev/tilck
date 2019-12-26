@@ -28,28 +28,44 @@ static enum {
 
 } mode;
 
-const char *debug_get_state_name(enum task_state state, bool stopped)
+static void
+debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
 {
+   char *ptr = s;
+
    switch (state) {
 
       case TASK_STATE_INVALID:
-         return "?";
+         *ptr++ = '?';
+         break;
 
       case TASK_STATE_RUNNABLE:
-         return !stopped ? "r" : "rS";
+         *ptr++ = 'r';
+         break;
 
       case TASK_STATE_RUNNING:
-         return "R";
+         *ptr++ = 'R';
+         break;
 
       case TASK_STATE_SLEEPING:
-         return !stopped ? "s" : "sS";
+         *ptr++ = 's';
+         break;
 
       case TASK_STATE_ZOMBIE:
-         return "Z";
+         *ptr++ = 'Z';
+         break;
 
       default:
          NOT_REACHED();
    }
+
+   if (stopped)
+      *ptr++ = 'S';
+
+   if (traced)
+      *ptr++ = 't';
+
+   *ptr = 0;
 }
 
 static int debug_get_tn_for_tasklet_runner(struct task *ti)
@@ -75,7 +91,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[120];
    static char hfmt[120];
    static char header[120];
-   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqnqqqqqn";
+   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
@@ -88,7 +104,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-2s "
+               TERM_VLINE " %%-3s "
                TERM_VLINE "  %%-2d "
                TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
@@ -98,7 +114,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-2s "
+               TERM_VLINE " %%-3s "
                TERM_VLINE " %%-3s "
                TERM_VLINE " %%-%ds",
                path_field_len);
@@ -144,6 +160,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    struct task *ti = obj;
    struct process *pi = ti->pi;
    char buf[128] = {0};
+   char state_str[4];
    char *path = buf;
    char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
    const char *orig_path = pi->debug_cmdline ? pi->debug_cmdline : "<n/a>";
@@ -160,7 +177,7 @@ static int debug_per_task_cb(void *obj, void *arg)
       snprintk(path, MAX_EXEC_PATH_LEN + 1, "%s...", path2);
    }
 
-   const char *state = debug_get_state_name(ti->state, ti->stopped);
+   debug_get_state_name(state_str, ti->state, ti->stopped, ti->traced);
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (is_kernel_thread(ti)) {
@@ -207,7 +224,7 @@ static int debug_per_task_cb(void *obj, void *arg)
               pi->pgid,
               pi->sid,
               pi->parent_pid,
-              state,
+              state_str,
               ttynum,
               buf);
 
@@ -292,6 +309,26 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
       return kb_handler_ok_and_continue;
    }
 
+   if (ke.print_char == 't') {
+
+      if (is_tid_off_limits(sel_tid))
+         return kb_handler_ok_and_continue;
+
+      ui_need_update = true;
+
+      {
+         disable_preemption();
+         struct task *ti = get_task(sel_tid);
+
+         if (ti)
+            ti->traced = !ti->traced;
+
+         enable_preemption();
+      }
+
+      return kb_handler_ok_and_continue;
+   }
+
    return kb_handler_nak;
 }
 
@@ -303,7 +340,7 @@ dp_tasks_handle_default_mode_keypress(struct key_event ke)
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == 13) {
+   if (ke.print_char == 13 /* enter */) {
       mode = dp_tasks_mode_sel;
       ui_need_update = true;
       return kb_handler_ok_and_continue;
@@ -346,19 +383,30 @@ static int dp_count_tasks(void *obj, void *arg)
 static void show_actions_menu(void)
 {
    if (mode == dp_tasks_mode_default) {
+
       dp_writeln(
-         ESC_COLOR_BRIGHT_WHITE "<ENTER>" RESET_ATTRS ": select " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh "
+         E_COLOR_BR_WHITE "<ENTER>" RESET_ATTRS ": select mode " TERM_VLINE " "
+         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": show trace"
       );
+
+      dp_writeln("");
+
    } else if (mode == dp_tasks_mode_sel) {
+
       dp_writeln(
-         ESC_COLOR_BRIGHT_WHITE
-            "<ESC>" RESET_ATTRS ": exit select mode " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS ": stop " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS ": continue "
+         E_COLOR_BR_WHITE "ESC" RESET_ATTRS ": exit select mode " TERM_VLINE " "
+         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": show trace " TERM_VLINE " "
+         E_COLOR_BR_WHITE "t" RESET_ATTRS ": trace task "
       );
+
+      dp_writeln(
+         E_COLOR_BR_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
+         E_COLOR_BR_WHITE "s" RESET_ATTRS ": stop " TERM_VLINE " "
+         E_COLOR_BR_WHITE "c" RESET_ATTRS ": continue "
+      );
+
    }
 
    dp_writeln("");

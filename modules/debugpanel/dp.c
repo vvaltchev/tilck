@@ -31,7 +31,7 @@ static inline void dp_write_header(int i, const char *s, bool selected)
    if (selected) {
 
       dp_write_raw(
-         ESC_COLOR_BRIGHT_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
+         E_COLOR_BR_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
          i, s
       );
 
@@ -142,7 +142,7 @@ static void redraw_screen(void)
 
    dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
-   dp_write_raw(ESC_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
+   dp_write_raw(E_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
 
    rc = snprintk(buf, sizeof(buf),
                  "[rows %02d - %02d of %02d]",
@@ -151,7 +151,7 @@ static void redraw_screen(void)
                  dp_ctx->row_max + 1);
 
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
-   dp_write_raw(ESC_COLOR_BRIGHT_RED "%s" RESET_ATTRS, buf);
+   dp_write_raw(E_COLOR_BR_RED "%s" RESET_ATTRS, buf);
    dp_move_cursor(dp_rows, 1);
    ui_need_update = false;
 }

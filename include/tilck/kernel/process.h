@@ -166,6 +166,9 @@ struct task {
    /* Temp kernel allocations for user requests */
    struct kernel_alloc *kallocs_tree_root;
 
+   /* Trace the syscalls of this task (requires debugpanel) */
+   bool traced;
+
    /*
     * For kernel threads, this is a function pointer of the thread's entry
     * point. For user processes/threads, it is unused for the moment. In the
