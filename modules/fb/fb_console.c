@@ -278,13 +278,10 @@ static void fb_draw_banner(void)
 
    u32 llen, rlen, padding, i;
    struct datetime d;
-   s64 timestamp;
    int rc, ttynum = 1;
 
    ASSERT(fb_offset_y >= font_h);
-
-   timestamp = get_timestamp();
-   timestamp_to_datetime(timestamp, &d);
+   timestamp_to_datetime(get_timestamp(), &d);
 
    if (get_curr_tty())
       ttynum = get_curr_tty_num();
@@ -310,17 +307,17 @@ static void fb_draw_banner(void)
    ASSERT(rc > 0);
    rlen = MIN((u32)rc, fb_term_cols - 1 - llen);
 
-   padding = fb_term_cols - 1 - llen - rlen;
+   padding = fb_term_cols - llen - rlen;
 
    for (i = llen; i < llen + padding; i++)
       lbuf[i] = ' ';
 
    memcpy(lbuf + i, rbuf, rlen);
-   lbuf[fb_term_cols - 1] = 0;
+   lbuf[fb_term_cols] = 0;
 
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
    fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
-   fb_draw_string_at_raw(font_w/2, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
+   fb_draw_string_at_raw(0, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
 
    u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
 
