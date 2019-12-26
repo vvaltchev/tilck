@@ -14,10 +14,10 @@ static void dp_write_internal(const char *buf, int len)
 {
    struct tty *t = get_curr_process_tty();
 
-   if (t->tparams.type == term_type_video)
-      term_write(buf, (size_t)len, !rev_colors ? DP_COLOR : DP_REV_COLOR);
-   else
-      t->tintf->write(t->tstate, buf, (size_t)len, 0);
+   t->tintf->write(t->tstate,
+                   buf,
+                   (size_t)len,
+                   !rev_colors ? DP_COLOR : DP_REV_COLOR);
 }
 
 void dp_write_raw(const char *fmt, ...)
@@ -153,7 +153,12 @@ void dp_draw_rect_raw(int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 }
 
-void dp_draw_rect(const char *label, int row, int col, int h, int w)
+void dp_draw_rect(const char *label,
+                  const char *esc_label_color,
+                  int row,
+                  int col,
+                  int h,
+                  int w)
 {
    ASSERT(w >= 2);
    ASSERT(h >= 2);
@@ -182,7 +187,7 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 
    if (label) {
-      dp_write(row, col + 2, E_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
+      dp_write(row, col + 2, "%s[ %s ]" RESET_ATTRS, esc_label_color, label);
    }
 }
 
@@ -194,7 +199,7 @@ void dp_show_modal_msg(const char *msg)
    const int row_len = UNSAFE_MAX(
       UNSAFE_MIN(max_line_len, msg_len), (int)sizeof(common_msg) - 1
    ) + 2;
-   const int srow = dp_start_row + DP_H / 2;
+   const int srow = dp_start_row + DP_H / 2 - 5 / 2;
    const int scol = dp_cols / 2 - row_len / 2;
 
    char buf[DP_W+1];
@@ -207,7 +212,7 @@ void dp_show_modal_msg(const char *msg)
       dp_write(srow + i, scol, "%s", buf);
 
    /* Draw the rect */
-   dp_draw_rect("Alert", srow - 1, scol - 1, 5, row_len + 2);
+   dp_draw_rect("Alert", E_COLOR_BR_RED, srow - 1, scol - 1, 5, row_len + 2);
 
    /* Draw the actual alert message */
    dp_write(srow, scol, " %s", msg);

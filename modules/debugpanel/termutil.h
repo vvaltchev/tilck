@@ -26,11 +26,18 @@
 #define DP_ESC_COLOR             E_COLOR_WHITE
 
 #define DP_KEY_ESC               0x1b
+#define DP_KEY_ENTER             0x0d
 #define DP_KEY_CTRL_C            0x03
 #define DP_KEY_CTRL_T            0x14
 
 void dp_write(int row, int col, const char *fmt, ...);
-void dp_draw_rect(const char *label, int row, int col, int h, int w);
+
+void dp_draw_rect(const char *label,
+                  const char *esc_label_color,
+                  int row,
+                  int col,
+                  int h,
+                  int w);
 
 /* WARNING: dirty macro expecting a local `row` variable to be defined */
 #define dp_writeln(...)  dp_write(row++, 0, __VA_ARGS__)

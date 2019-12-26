@@ -14,6 +14,8 @@
 #include "termutil.h"
 #define MAX_EXEC_PATH_LEN     34
 
+enum kb_handler_action dp_tasks_show_trace(void);
+
 /* Gfx state */
 static int row;
 
@@ -278,7 +280,12 @@ static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress_k(void)
 {
    if (is_tid_off_limits(sel_tid) || sel_tid == 1) {
-      modal_msg = "Killing kernel threads or pid 1 is not allowed";
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Killing kernel threads or pid 1 is not allowed";
+      else
+         modal_msg = "Killing the debug panel's process is not allowed";
+
       return kb_handler_ok_and_continue;
    }
 
@@ -291,7 +298,12 @@ static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress_s(void)
 {
    if (is_tid_off_limits(sel_tid)) {
-      modal_msg = "Stopping kernel threads is not allowed";
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Stopping kernel threads is not allowed";
+      else
+         modal_msg = "Stopping the debug panel's process is not allowed";
+
       return kb_handler_ok_and_continue;
    }
 
@@ -355,47 +367,6 @@ dp_tasks_handle_sel_mode_keypress_r(void)
 }
 
 static enum kb_handler_action
-dp_tasks_handle_sel_mode_keypress_ctrl_t(void)
-{
-   struct trace_event e;
-   bool success;
-   int rc;
-   char c;
-
-   dp_clear();
-   dp_move_cursor(1, 1);
-   dp_write_raw("Tilck syscall tracing. Press Ctrl+C to exit\n");
-
-   while (true) {
-
-      success = read_trace_event(&e, TIMER_HZ / 10);
-
-      if (!success) {
-
-         rc = vfs_read(dp_input_handle, &c, 1);
-
-         if (rc == 1 && c == DP_KEY_CTRL_C)
-            break;
-
-         continue;
-      }
-
-      dp_write_raw(
-         "%05u.%03u [%04d] %s sys#%u\n",
-         (u32)(e.sys_time / TS_SCALE),
-         (u32)((e.sys_time % TS_SCALE) / (TS_SCALE / 1000)),
-         e.tid,
-         e.type == te_sys_enter ? "ENTER" : "EXIT",
-         e.sys
-      );
-
-   }
-
-   ui_need_update = true;
-   return kb_handler_ok_and_continue;
-}
-
-static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 {
    if (!ke.print_char)
@@ -407,7 +378,7 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
          return dp_tasks_handle_sel_mode_keypress_esc();
 
       case DP_KEY_CTRL_T:
-         return dp_tasks_handle_sel_mode_keypress_ctrl_t();
+         return dp_tasks_show_trace();
 
       case 'r':
          return dp_tasks_handle_sel_mode_keypress_r();
@@ -429,17 +400,26 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 }
 
 static enum kb_handler_action
+dp_tasks_handle_default_mode_enter(void)
+{
+   mode = dp_tasks_mode_sel;
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
 dp_tasks_handle_default_mode_keypress(struct key_event ke)
 {
-   if (ke.print_char == 'r') {
-      ui_need_update = true;
-      return kb_handler_ok_and_continue;
-   }
+   switch (ke.print_char) {
 
-   if (ke.print_char == 13 /* enter */) {
-      mode = dp_tasks_mode_sel;
-      ui_need_update = true;
-      return kb_handler_ok_and_continue;
+      case 'r':
+         return dp_tasks_handle_sel_mode_keypress_r();
+
+      case DP_KEY_ENTER:
+         return dp_tasks_handle_default_mode_enter();
+
+      case DP_KEY_CTRL_T:
+         return dp_tasks_show_trace();
    }
 
    return kb_handler_nak;
