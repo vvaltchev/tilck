@@ -3,6 +3,7 @@
 #pragma once
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #define DP_W   76
 #define DP_H   23
@@ -38,3 +39,4 @@ static inline sptr dp_int_abs(sptr val) {
 }
 
 void dp_register_screen(struct dp_screen *screen);
+int dp_read_ke_from_tty(fs_handle h, struct key_event *ke);
