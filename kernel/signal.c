@@ -174,7 +174,7 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
    return 0;
 }
 
-sptr
+int
 sys_rt_sigaction(int signum,
                  const struct k_sigaction *user_act,
                  struct k_sigaction *user_oldact,
@@ -217,10 +217,10 @@ sys_rt_sigaction(int signum,
          rc = -EFAULT;
    }
 
-   return (sptr)rc;
+   return rc;
 }
 
-sptr
+int
 sys_rt_sigprocmask(int how,
                    sigset_t *set,
                    sigset_t *oset,

@@ -260,13 +260,13 @@ int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
 
-sptr
+int
 sys_rt_sigaction(int signum,
                  const struct k_sigaction *act,
                  struct k_sigaction *oldact,
                  size_t);
 
-sptr
+int
 sys_rt_sigprocmask(int how, sigset_t *set,
                    sigset_t *oset, size_t sigsetsize);
 
