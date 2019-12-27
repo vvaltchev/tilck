@@ -14,6 +14,7 @@
 #include <tilck/kernel/debug_utils.h>
 
 #include <tilck/mods/tracing.h>
+#include "tracing_int.h"
 
 #define TRACE_BUF_SIZE                       (128 * KB)
 
@@ -33,6 +34,8 @@ static void *tracing_buf;
 static u32 syms_count;
 static struct symbol_node *syms_buf;
 static struct symbol_node *syms_bintree;
+
+static const struct syscall_info **syscalls_info;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -69,26 +72,6 @@ tracing_get_syscall_name(u32 n)
       return NULL;
 
    return node->name;
-}
-
-void
-init_tracing(void)
-{
-   if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
-      panic("Unable to allocate the tracing buffer");
-
-   if (!(syms_buf = kmalloc(sizeof(struct symbol_node) * MAX_SYSCALLS)))
-      panic("Unable to allocate the syms_buf in tracing.c");
-
-   ringbuf_init(&tracing_rb,
-                TRACE_BUF_SIZE / sizeof(struct trace_event),
-                sizeof(struct trace_event),
-                tracing_buf);
-
-   kmutex_init(&tracing_lock, 0);
-   kcond_init(&tracing_cond);
-
-   foreach_symbol(elf_symbol_cb, NULL);
 }
 
 void
@@ -144,4 +127,109 @@ bool read_trace_event(struct trace_event *e, u32 timeout_ticks)
    }
    kmutex_unlock(&tracing_lock);
    return ret;
+}
+
+const struct syscall_info *
+tracing_get_syscall_info(u32 n)
+{
+   if (n >= MAX_SYSCALLS)
+      return NULL;
+
+   return syscalls_info[n];
+}
+
+void
+tracing_get_slot(struct trace_event *e,
+                 const struct syscall_info *si,
+                 const struct sys_param_info *p,
+                 char **buf,
+                 size_t *s)
+{
+   const s8 slot = p->slot;
+   ASSERT(slot >= 0);
+
+   if (si->pfmt == sys_fmt1) {
+
+      switch (slot) {
+
+         case 0:
+            *buf = e->fmt1.d0;
+            *s = sizeof(e->fmt1.d0);
+            break;
+
+         case 1:
+            *buf = e->fmt1.d1;
+            *s = sizeof(e->fmt1.d1);
+            break;
+
+         case 2:
+            *buf = e->fmt1.d2;
+            *s = sizeof(e->fmt1.d2);
+            break;
+
+         case 3:
+            *buf = e->fmt1.d3;
+            *s = sizeof(e->fmt1.d3);
+            break;
+
+         default:
+            NOT_REACHED();
+      }
+
+   } else if (si->pfmt == sys_fmt2) {
+
+      switch (slot) {
+
+         case 0:
+            *buf = e->fmt2.d0;
+            *s = sizeof(e->fmt2.d0);
+            break;
+
+         case 1:
+            *buf = e->fmt2.d1;
+            *s = sizeof(e->fmt2.d1);
+            break;
+
+         case 2:
+            *buf = e->fmt2.d2;
+            *s = sizeof(e->fmt2.d2);
+            break;
+
+         default:
+            NOT_REACHED();
+      }
+
+   } else {
+
+      NOT_REACHED();
+   }
+}
+
+void
+init_tracing(void)
+{
+   const struct syscall_info *s;
+
+   if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
+      panic("Unable to allocate the tracing buffer in tracing.c");
+
+   if (!(syms_buf = kmalloc(sizeof(struct symbol_node) * MAX_SYSCALLS)))
+      panic("Unable to allocate the syms_buf in tracing.c");
+
+   if (!(syscalls_info = kzmalloc(sizeof(void *) * MAX_SYSCALLS)))
+      panic("Unable to allocate the syscalls_info array in tracing.c");
+
+   ringbuf_init(&tracing_rb,
+                TRACE_BUF_SIZE / sizeof(struct trace_event),
+                sizeof(struct trace_event),
+                tracing_buf);
+
+   kmutex_init(&tracing_lock, 0);
+   kcond_init(&tracing_cond);
+
+   foreach_symbol(elf_symbol_cb, NULL);
+
+   for (s = tracing_metadata; s->sys_n != INVALID_SYSCALL; s++) {
+      syscalls_info[s->sys_n] = s;
+   }
 }

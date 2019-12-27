@@ -12,6 +12,8 @@
 #define E_COLOR_BR_RED           "\033[91m"
 #define E_COLOR_GREEN            "\033[32m"
 #define E_COLOR_YELLOW           "\033[93m"
+#define E_COLOR_BLUE             "\033[34m"
+#define E_COLOR_MAGENTA          "\033[35m"
 #define RESET_ATTRS              "\033[0m"
 #define GFX_ON                   "\033(0"
 #define GFX_OFF                  "\033(B"

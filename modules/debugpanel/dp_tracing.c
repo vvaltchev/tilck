@@ -49,9 +49,91 @@ tracing_ui_wait_for_enter(void)
 }
 
 static void
+dp_dump_syscall_with_info(struct trace_event *e,
+                          const char *sys_name,
+                          const struct syscall_info *si)
+{
+   int params_printed = 0;
+   char buf[128];
+
+   dp_write_raw("%s(", sys_name);
+
+   for (int i = 0; i < si->n_params; i++) {
+
+      const struct sys_param_info *nfo = &si->params[i];
+      const struct sys_param_type *type = nfo->type;
+
+      if (nfo->kind == sys_param_in_out ||
+          (e->type == te_sys_enter && nfo->kind == sys_param_in) ||
+          (e->type == te_sys_exit && nfo->kind == sys_param_out))
+      {
+         bzero(buf, sizeof(buf));
+
+         dp_write_raw("\r\n  ");
+         dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, nfo->name);
+         dp_write_raw(": ");
+
+         if (nfo->slot == NO_SLOT) {
+
+            ASSERT(type->dump_from_val);
+
+            if (type->dump_from_val(e->args[i], buf, sizeof(buf)))
+               dp_write_raw("%s", buf);
+            else
+               dp_write_raw("<no space in output buf>");
+
+         } else {
+
+            ASSERT(type->dump_from_data);
+
+            char *data;
+            size_t data_size;
+
+            tracing_get_slot(e, si, nfo, &data, &data_size);
+
+            if (type->dump_from_data(data, buf, sizeof(buf)))
+               dp_write_raw("%s", buf);
+            else
+               dp_write_raw("<no space in output buf>");
+         }
+
+         params_printed++;
+      }
+   }
+
+   if (params_printed)
+      dp_write_raw("\r\n)");
+   else
+      dp_write_raw(")");
+}
+
+static void
+dp_dump_syscall_event(struct trace_event *e,
+                      const char *sys_name,
+                      const struct syscall_info *si)
+{
+   if (e->type == te_sys_enter)
+      dp_write_raw(E_COLOR_GREEN "ENTER" RESET_ATTRS " ");
+   else
+      dp_write_raw(E_COLOR_BR_RED "EXIT" RESET_ATTRS " ");
+
+   if (si)
+      dp_dump_syscall_with_info(e, sys_name, si);
+   else
+      dp_write_raw("%s()", sys_name);
+
+   if (e->type == te_sys_enter) {
+      dp_write_raw("\r\n");
+   } else {
+      dp_write_raw(" -> %d\r\n", e->retval);
+   }
+}
+
+static void
 dp_dump_tracing_event(struct trace_event *e)
 {
    const char *sys_name = NULL;
+   const struct syscall_info *si = NULL;
 
    dp_write_raw(
       "%05u.%03u [%04d] ",
@@ -61,20 +143,12 @@ dp_dump_tracing_event(struct trace_event *e)
    );
 
    if (e->type == te_sys_enter || e->type == te_sys_exit) {
+
       sys_name = tracing_get_syscall_name(e->sys);
       ASSERT(sys_name);
       sys_name += 4; /* skip the "sys_" prefix */
-   }
-
-   if (e->type == te_sys_enter) {
-
-      dp_write_raw(E_COLOR_GREEN "ENTER" RESET_ATTRS " ");
-      dp_write_raw("%s()\r\n", sys_name);
-
-   } else if (e->type == te_sys_exit) {
-
-      dp_write_raw(E_COLOR_BR_RED "EXIT" RESET_ATTRS " ");
-      dp_write_raw("%s() -> %d\r\n", sys_name, e->retval);
+      si = tracing_get_syscall_info(e->sys);
+      dp_dump_syscall_event(e, sys_name, si);
 
    } else {
 
