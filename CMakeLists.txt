@@ -334,6 +334,10 @@ if (${KERNEL_SELFTESTS} AND NOT ${KERNEL_SYMBOLS})
    message(FATAL_ERROR "Selftests require kernel symbols to be enabled")
 endif()
 
+if (${MOD_debugpanel} AND NOT ${KERNEL_SYMBOLS})
+   message(FATAL_ERROR "The debug panel require kernel symbols to be enabled")
+endif()
+
 ################################################################################
 
 set(BOOTLOADER_BIN_FILE    ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)

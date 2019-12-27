@@ -51,6 +51,8 @@ tracing_ui_wait_for_enter(void)
 static void
 dp_dump_tracing_event(struct trace_event *e)
 {
+   const char *sys_name = NULL;
+
    dp_write_raw(
       "%05u.%03u [%04d] ",
       (u32)(e->sys_time / TS_SCALE),
@@ -58,20 +60,25 @@ dp_dump_tracing_event(struct trace_event *e)
       e->tid
    );
 
+   if (e->type == te_sys_enter || e->type == te_sys_exit) {
+      sys_name = tracing_get_syscall_name(e->sys);
+      ASSERT(sys_name);
+      sys_name += 4; /* skip the "sys_" prefix */
+   }
+
    if (e->type == te_sys_enter) {
 
-      dp_write_raw(
-         E_COLOR_GREEN "ENTER" RESET_ATTRS " sys#%u\r\n",
-         e->sys
-      );
+      dp_write_raw(E_COLOR_GREEN "ENTER" RESET_ATTRS " ");
+      dp_write_raw("%s()\r\n", sys_name);
 
    } else if (e->type == te_sys_exit) {
 
-      dp_write_raw(
-         E_COLOR_BR_RED "EXIT" RESET_ATTRS " sys#%u -> %d\r\n",
-         e->sys, e->retval
-      );
+      dp_write_raw(E_COLOR_BR_RED "EXIT" RESET_ATTRS " ");
+      dp_write_raw("%s() -> %d\r\n", sys_name, e->retval);
 
+   } else {
+
+      dp_write_raw(E_COLOR_BR_RED "<unknown event>\r\n" RESET_ATTRS);
    }
 }
 

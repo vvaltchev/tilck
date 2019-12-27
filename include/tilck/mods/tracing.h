@@ -33,3 +33,6 @@ trace_syscall_enter(u32 sys,
 void
 trace_syscall_exit(u32 sys, sptr retval,
                    uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
+
+const char *
+tracing_get_syscall_name(u32 n);
