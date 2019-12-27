@@ -393,6 +393,37 @@ uptr find_addr_of_symbol(const char *searched_sym)
    return 0;
 }
 
+int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
+{
+   Elf_Shdr *symtab;
+   Elf_Shdr *strtab;
+   int ret = 0;
+
+   if (!KERNEL_SYMBOLS)
+      return 0;
+
+   get_symtab_and_strtab(&symtab, &strtab);
+
+   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
+   const uptr sym_count = symtab->sh_size / sizeof(Elf_Sym);
+
+   for (uptr i = 0; i < sym_count; i++) {
+
+      Elf_Sym *s = syms + i;
+
+      struct elf_symbol_info info = {
+         .vaddr = TO_PTR(s->st_value),
+         .size = (u32) s->st_size,
+         .name = (char *)strtab->sh_addr + syms[i].st_name,
+      };
+
+      if ((ret = cb(&info, arg)))
+         break;
+   }
+
+   return ret;
+}
+
 static void
 find_sym_at_addr_no_ret(uptr vaddr,
                         ptrdiff_t *offset,
