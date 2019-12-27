@@ -25,7 +25,7 @@ void asm_sysenter_setup(void);
 typedef sptr (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
-static void *syscalls[] =
+static void *syscalls[MAX_SYSCALLS] =
 {
    [0] = sys_restart_syscall,
    [1] = sys_exit,

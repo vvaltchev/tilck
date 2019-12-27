@@ -11,6 +11,8 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/sys_types.h>
 
+#define MAX_SYSCALLS                                     500
+
 #ifdef __SYSCALLS_C__
 
    #define CREATE_STUB_SYSCALL_IMPL(name)                  \
