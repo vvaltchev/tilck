@@ -5,13 +5,24 @@
 
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/kmalloc.h>
 
 #include <tilck/mods/tracing.h>
 
 #include "termutil.h"
 #include "tracing_int.h"
 
-static char rend_bufs[6][128];
+#define REND_BUF_SIZE                              128
+static char *rend_bufs[6];
+
+void init_dp_tracing(void)
+{
+   for (int i = 0; i < 6; i++) {
+
+      if (!(rend_bufs[i] = kmalloc(REND_BUF_SIZE)))
+         panic("[dp] Unable to allocate rend_buf[%d]", i);
+   }
+}
 
 static void
 tracing_ui_msg1(void)
@@ -96,7 +107,7 @@ dp_render_full_dump_single_param(int i,
 
       ASSERT(type->dump_from_val);
 
-      if (!type->dump_from_val(e->args[i], rend_bufs[i], 128))
+      if (!type->dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
          memcpy(rend_bufs[i], "<nosp>", 6);
 
    } else {
@@ -105,7 +116,7 @@ dp_render_full_dump_single_param(int i,
 
       tracing_get_slot(e, si, nfo, &data, &data_size);
 
-      if (!type->dump_from_data(data, rend_bufs[i], 128))
+      if (!type->dump_from_data(data, rend_bufs[i], REND_BUF_SIZE))
          memcpy(rend_bufs[i], "<nosp>", 6);
    }
 }
@@ -113,7 +124,7 @@ dp_render_full_dump_single_param(int i,
 static void
 dp_render_minimal_dump_single_param(int i, struct trace_event *e)
 {
-   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], 128))
+   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
       memcpy(rend_bufs[i], "<nosp>", 6);
 }
 
@@ -122,9 +133,9 @@ dp_dump_syscall_with_info(struct trace_event *e,
                           const char *sys_name,
                           const struct syscall_info *si)
 {
-   bzero(rend_bufs, sizeof(rend_bufs));
-
    for (int i = 0; i < si->n_params; i++) {
+
+      bzero(rend_bufs[i], REND_BUF_SIZE);
 
       const struct sys_param_info *nfo = &si->params[i];
       const struct sys_param_type *type = nfo->type;
