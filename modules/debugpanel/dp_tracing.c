@@ -6,6 +6,7 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
 
 #include <tilck/mods/tracing.h>
 
@@ -49,18 +50,29 @@ tracing_ui_msg2(void)
    dp_write_raw("\r\n");
 }
 
-static void
+static bool
 tracing_ui_wait_for_enter(void)
 {
    int rc;
    char c;
 
-   do {
+   while (true) {
 
-      rc = vfs_read(dp_input_handle, &c, 1);
       kernel_sleep(TIMER_HZ / 10);
+      rc = vfs_read(dp_input_handle, &c, 1);
 
-   } while (rc != 1 && c != DP_KEY_ENTER);
+      if (rc == -EAGAIN)
+         continue;
+
+      if (rc != 1)
+         return false; /* error */
+
+      if (c == DP_KEY_ENTER)
+         return true;
+
+      if (c == DP_KEY_CTRL_C)
+         return false;
+   }
 }
 
 static inline bool
@@ -208,7 +220,10 @@ dp_tasks_show_trace(void)
    dp_set_cursor_enabled(true);
 
    tracing_ui_msg1();
-   tracing_ui_wait_for_enter();
+
+   if (!tracing_ui_wait_for_enter())
+      goto out;
+
    tracing_ui_msg2();
 
    while (true) {
@@ -228,6 +243,7 @@ dp_tasks_show_trace(void)
       }
    }
 
+out:
    ui_need_update = true;
    dp_set_cursor_enabled(false);
    return kb_handler_ok_and_continue;
