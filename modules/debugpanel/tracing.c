@@ -37,6 +37,7 @@ static struct symbol_node *syms_bintree;
 
 static const struct syscall_info **syscalls_info;
 static s8 (*params_slots)[MAX_SYSCALLS][6];
+static s8 *syscalls_fmts;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -294,12 +295,14 @@ tracing_get_slot(struct trace_event *e,
                  size_t *size)
 {
    const s8 slot = (*params_slots)[e->sys][p_idx];
+   s8 fmt;
 
    if (slot == NO_SLOT)
       return false;
 
-   *buf = (char *)e + fmt_offsets[si->pfmt][slot];
-   *size = fmt_sizes[si->pfmt][slot];
+   fmt = syscalls_fmts[si->sys_n];
+   *buf = (char *)e + fmt_offsets[fmt][slot];
+   *size = fmt_sizes[fmt][slot];
    return true;
 }
 
@@ -315,13 +318,13 @@ is_slot_free(u32 sys, int slot)
    return true;
 }
 
-static void
+static bool
 alloc_for_fmt0(u32 sys, int p_idx, size_t size)
 {
    s8 slot = NO_SLOT;
 
    if (!size)
-      return;
+      return true; /* we're fine: no need to allocate anything for this param */
 
    if (CAN_USE_SLOT(sys, 0, 3, size))
       slot = 3;
@@ -332,18 +335,19 @@ alloc_for_fmt0(u32 sys, int p_idx, size_t size)
    else if (CAN_USE_SLOT(sys, 0, 0, size))
       slot = 0;
    else
-      NOT_REACHED();
+      return false; /* we failed: another fmt should be used for this syscall */
 
    (*params_slots)[sys][p_idx] = slot;
+   return true;     /* everything is alright */
 }
 
-static void
+static bool
 alloc_for_fmt1(u32 sys, int p_idx, size_t size)
 {
    s8 slot = NO_SLOT;
 
    if (!size)
-      return;
+      return true; /* we're fine: no need to allocate anything for this param */
 
    if (CAN_USE_SLOT(sys, 1, 2, size))
       slot = 2;
@@ -352,9 +356,10 @@ alloc_for_fmt1(u32 sys, int p_idx, size_t size)
    else if (CAN_USE_SLOT(sys, 1, 0, size))
       slot = 0;
    else
-      NOT_REACHED();
+      return false; /* we failed: another fmt should be used for this syscall */
 
    (*params_slots)[sys][p_idx] = slot;
+   return true;     /* everything is alright */
 }
 
 static void
@@ -368,31 +373,51 @@ tracing_populate_syscalls_info(void)
 }
 
 static void
+tracing_reset_slot_info(u32 sys)
+{
+   syscalls_fmts[sys] = 0;
+
+   for (int j = 0; j < 6; j++)
+      (*params_slots)[sys][j] = NO_SLOT;
+}
+
+static void
 tracing_allocate_slots_for_params(void)
 {
    const struct syscall_info *si;
+   bool failed;
 
-   for (int i = 0; i < MAX_SYSCALLS; i++)
-      for (int j = 0; j < 6; j++)
-         (*params_slots)[i][j] = NO_SLOT;
+   for (u32 i = 0; i < MAX_SYSCALLS; i++)
+      tracing_reset_slot_info(i);
 
    for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
 
-      switch (si->pfmt) {
+      const struct sys_param_info *p = si->params;
+      const u32 sys_n = si->sys_n;
 
-         case sys_fmt0:
-            for (int i = 0; i < si->n_params; i++)
-               alloc_for_fmt0(si->sys_n, i, si->params[i].type->slot_size);
+      failed = false;
+      syscalls_fmts[sys_n] = 0; /* fmt 0 */
+
+      for (int i = 0; i < si->n_params; i++)
+         if ((failed = !alloc_for_fmt0(sys_n, i, p[i].type->slot_size)))
             break;
 
-         case sys_fmt1:
-            for (int i = 0; i < si->n_params; i++)
-               alloc_for_fmt1(si->sys_n, i, si->params[i].type->slot_size);
+      if (!failed)
+         continue;
+
+      tracing_reset_slot_info(sys_n);
+
+      failed = false;
+      syscalls_fmts[sys_n] = 1; /* fmt 1 */
+
+      for (int i = 0; i < si->n_params; i++)
+         if ((failed = !alloc_for_fmt1(sys_n, i, p[i].type->slot_size)))
             break;
 
-         default:
-            NOT_REACHED();
-      }
+      if (!failed)
+         continue;
+
+      panic("Unable to alloc param slots for syscall #%u", sys_n);
    }
 }
 
@@ -410,6 +435,9 @@ init_tracing(void)
 
    if (!(params_slots = kmalloc(sizeof(*params_slots))))
       panic("Unable to allocate the params_slots array in tracing.c");
+
+   if (!(syscalls_fmts = kmalloc(sizeof(s8) * MAX_SYSCALLS)))
+      panic("Unable to allocate the syscalls_fmts array in tracing.c");
 
    ringbuf_init(&tracing_rb,
                 TRACE_BUF_SIZE / sizeof(struct trace_event),

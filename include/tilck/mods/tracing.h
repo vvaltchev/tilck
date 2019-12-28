@@ -95,9 +95,6 @@ struct syscall_info {
    /* return type of the syscall */
    const struct sys_param_type *ret_type;
 
-   /* format used for saving the paramaters during tracing */
-   enum sys_saved_param_fmt pfmt;
-
    /* info about its parameters */
    struct sys_param_info params[6];
 };
