@@ -81,13 +81,6 @@ struct sys_param_info {
    bool real_sz_in_ret;
 };
 
-enum sys_ret_type {
-
-   sys_ret_type_val_or_errno,
-   sys_ret_type_errno,
-   sys_ret_type_ptr,
-};
-
 enum sys_saved_param_fmt {
    sys_fmt1,
    sys_fmt2,
@@ -102,7 +95,7 @@ struct syscall_info {
    int n_params;
 
    /* return type of the syscall */
-   enum sys_ret_type ret_type;
+   const struct sys_param_type *ret_type;
 
    /* format used for saving the paramaters during tracing */
    enum sys_saved_param_fmt pfmt;

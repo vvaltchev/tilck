@@ -143,7 +143,7 @@ dp_render_full_dump_single_param(int i,
       ASSERT(type->dump_from_val);
 
       if (!type->dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
-         memcpy(rend_bufs[i], "<nosp>", 6);
+         snprintk(rend_bufs[i], REND_BUF_SIZE, "(raw) %p", e->args[i]);
 
    } else {
 
@@ -165,7 +165,7 @@ dp_render_full_dump_single_param(int i,
          real_sz = e->retval;
 
       if (!type->dump_from_data(data, sz, real_sz, rend_bufs[i], REND_BUF_SIZE))
-         memcpy(rend_bufs[i], "<nosp>", 6);
+         snprintk(rend_bufs[i], REND_BUF_SIZE, "(raw) %p", e->args[i]);
    }
 }
 
@@ -173,7 +173,7 @@ static void
 dp_render_minimal_dump_single_param(int i, struct trace_event *e)
 {
    if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
-      memcpy(rend_bufs[i], "<nosp>", 6);
+      panic("Unable to serialize a ptype_voidp in a render buf");
 }
 
 static void
@@ -206,6 +206,40 @@ dp_dump_syscall_with_info(struct trace_event *e,
 }
 
 static void
+dp_dump_ret_val(const struct syscall_info *si, sptr retval)
+{
+   if (!si) {
+
+      if (retval <= 1024 * 1024) {
+
+         /* we guess it's just a number or an errno */
+         dp_write_raw(E_COLOR_BR_BLUE "%d" RESET_ATTRS, retval);
+
+      } else {
+
+         /* we guess it's a pointer */
+         dp_write_raw("%p", retval);
+      }
+
+      return;
+   }
+
+   const struct sys_param_type *rt = si->ret_type;
+   ASSERT(rt->dump_from_val);
+
+   if (!rt->dump_from_val((uptr)retval, rend_bufs[0], REND_BUF_SIZE)) {
+      dp_write_raw("(raw) %p", retval);
+      return;
+   }
+
+   dp_write_raw(
+      "%s%s" RESET_ATTRS,
+      dp_get_esc_color_for_param(si->ret_type, rend_bufs[0]),
+      rend_bufs[0]
+   );
+}
+
+static void
 dp_dump_syscall_event(struct trace_event *e,
                       const char *sys_name,
                       const struct syscall_info *si)
@@ -221,7 +255,9 @@ dp_dump_syscall_event(struct trace_event *e,
       dp_write_raw("%s()", sys_name);
 
    if (e->type == te_sys_exit) {
-      dp_write_raw(" -> " E_COLOR_BR_BLUE "%d" RESET_ATTRS, e->retval);
+
+      dp_write_raw(" -> ");
+      dp_dump_ret_val(si, e->retval);
    }
 
    dp_write_raw("\r\n");

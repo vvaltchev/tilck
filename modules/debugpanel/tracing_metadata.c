@@ -4,21 +4,25 @@
 
 #include <sys/syscall.h> // system header
 
+#define SIMPLE_PARAM(_name, _type, _kind)                \
+   {                                                     \
+      .name = _name,                                     \
+      .type = _type,                                     \
+      .kind = _kind,                                     \
+      .slot = NO_SLOT,                                   \
+   }
+
+
 static const struct syscall_info __tracing_metadata[] =
 {
    {
       .sys_n = SYS_read,
       .n_params = 3,
-      .ret_type = sys_ret_type_val_or_errno,
+      .ret_type = &ptype_int,
       .pfmt = sys_fmt1,
       .params = {
 
-         {
-            .name = "fd",
-            .type = &ptype_int,
-            .kind = sys_param_in,
-            .slot = NO_SLOT,
-         },
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
 
          {
             .name = "buf",
@@ -29,12 +33,7 @@ static const struct syscall_info __tracing_metadata[] =
             .real_sz_in_ret = true,
          },
 
-         {
-            .name = "count",
-            .type = &ptype_int,
-            .kind = sys_param_in,
-            .slot = NO_SLOT,
-         },
+         SIMPLE_PARAM("count", &ptype_int, sys_param_in),
       },
    },
 
