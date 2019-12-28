@@ -337,9 +337,23 @@ alloc_for_fmt2(u32 sys, int p_idx, size_t size)
 }
 
 static void
+tracing_populate_syscalls_info(void)
+{
+   const struct syscall_info *si;
+
+   for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
+      syscalls_info[si->sys_n] = si;
+   }
+}
+
+static void
 tracing_allocate_slots_for_params(void)
 {
    const struct syscall_info *si;
+
+   for (int i = 0; i < MAX_SYSCALLS; i++)
+      for (int j = 0; j < 6; j++)
+         (*params_slots)[i][j] = NO_SLOT;
 
    for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
 
@@ -363,8 +377,6 @@ tracing_allocate_slots_for_params(void)
 void
 init_tracing(void)
 {
-   const struct syscall_info *si;
-
    if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
       panic("Unable to allocate the tracing buffer in tracing.c");
 
@@ -387,13 +399,6 @@ init_tracing(void)
 
    foreach_symbol(elf_symbol_cb, NULL);
 
-   for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
-      syscalls_info[si->sys_n] = si;
-   }
-
-   for (int i = 0; i < MAX_SYSCALLS; i++)
-      for (int j = 0; j < 6; j++)
-         (*params_slots)[i][j] = NO_SLOT;
-
+   tracing_populate_syscalls_info();
    tracing_allocate_slots_for_params();
 }
