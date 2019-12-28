@@ -84,6 +84,18 @@ dp_should_full_dump_param(enum sys_param_kind kind, enum trace_event_type t)
           (t == te_sys_exit && kind == sys_param_out);
 }
 
+static const char *
+dp_get_esc_color_for_param(const struct sys_param_type *t, const char *rb)
+{
+   if (t == &ptype_buffer && rb[0] == '\"')
+      return E_COLOR_RED;
+
+   if (t == &ptype_int)
+      return E_COLOR_BR_BLUE;
+
+   return "";
+}
+
 static void
 dp_dump_rendered_params(const char *sys_name, const struct syscall_info *si)
 {
@@ -98,8 +110,13 @@ dp_dump_rendered_params(const char *sys_name, const struct syscall_info *si)
       if (!rend_bufs[i][0])
          continue;
 
-      dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, p->name);
-      dp_write_raw(": %s", rend_bufs[i]);
+      dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS ": ", p->name);
+
+      dp_write_raw(
+         "%s%s" RESET_ATTRS,
+         dp_get_esc_color_for_param(p->type, rend_bufs[i]),
+         rend_bufs[i]
+      );
 
       if (dumped_bufs < used_rend_bufs - 1)
          dp_write_raw(", ");
@@ -194,20 +211,20 @@ dp_dump_syscall_event(struct trace_event *e,
                       const struct syscall_info *si)
 {
    if (e->type == te_sys_enter)
-      dp_write_raw(E_COLOR_GREEN "ENTER" RESET_ATTRS " ");
+      dp_write_raw(E_COLOR_BR_GREEN "ENTER" RESET_ATTRS " ");
    else
-      dp_write_raw(E_COLOR_BR_RED "EXIT" RESET_ATTRS " ");
+      dp_write_raw(E_COLOR_BR_BLUE "EXIT" RESET_ATTRS " ");
 
    if (si)
       dp_dump_syscall_with_info(e, sys_name, si);
    else
       dp_write_raw("%s()", sys_name);
 
-   if (e->type == te_sys_enter) {
-      dp_write_raw("\r\n");
-   } else {
-      dp_write_raw(" -> %d\r\n", e->retval);
+   if (e->type == te_sys_exit) {
+      dp_write_raw(" -> " E_COLOR_BR_BLUE "%d" RESET_ATTRS, e->retval);
    }
+
+   dp_write_raw("\r\n");
 }
 
 static void
