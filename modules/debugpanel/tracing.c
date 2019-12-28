@@ -74,9 +74,31 @@ tracing_get_syscall_name(u32 n)
    return node->name;
 }
 
+int
+tracing_get_param_idx(const struct syscall_info *si, const char *name)
+{
+   for (int i = 0; i < si->n_params; i++) {
+
+      const struct sys_param_info *p = &si->params[i];
+
+      /*
+       * NOTE: using pointer comparison instead of strcmp() for strings.
+       * This code assumes that in the metadata the same string literal will
+       * be used both for the parameter name and the `size_param_name` field.
+       */
+      if (p->name == name)
+         return i;
+   }
+
+   return -1;
+}
+
 void trace_syscall_enter_save_params(struct trace_event *e)
 {
    const struct syscall_info *si = tracing_get_syscall_info(e->sys);
+   char *buf;
+   size_t bs;
+   int idx;
 
    if (!si)
       return;
@@ -88,9 +110,18 @@ void trace_syscall_enter_save_params(struct trace_event *e)
 
       if (t->save && (p->kind == sys_param_in || p->kind == sys_param_in_out))
       {
-         char *buf; size_t bs;
+         sptr sz = -1;
+
+         if (p->size_param_name) {
+
+            idx = tracing_get_param_idx(si, p->size_param_name);
+            ASSERT(idx >= 0);
+
+            sz = (sptr) e->args[idx];
+         }
+
          tracing_get_slot(e, si, p, &buf, &bs);
-         t->save(TO_PTR(e->args[i]), buf, bs);
+         t->save(TO_PTR(e->args[i]), sz, buf, bs);
       }
    }
 }
@@ -98,6 +129,9 @@ void trace_syscall_enter_save_params(struct trace_event *e)
 void trace_syscall_exit_save_params(struct trace_event *e)
 {
    const struct syscall_info *si = tracing_get_syscall_info(e->sys);
+   char *buf;
+   size_t bs;
+   int idx;
 
    if (!si)
       return;
@@ -109,9 +143,18 @@ void trace_syscall_exit_save_params(struct trace_event *e)
 
       if (t->save && (p->kind == sys_param_out || p->kind == sys_param_in_out))
       {
-         char *buf; size_t bs;
+         sptr sz = -1;
+
+         if (p->size_param_name) {
+
+            idx = tracing_get_param_idx(si, p->size_param_name);
+            ASSERT(idx >= 0);
+
+            sz = (sptr) e->args[idx];
+         }
+
          tracing_get_slot(e, si, p, &buf, &bs);
-         t->save(TO_PTR(e->args[i]), buf, bs);
+         t->save(TO_PTR(e->args[i]), sz, buf, bs);
       }
    }
 }

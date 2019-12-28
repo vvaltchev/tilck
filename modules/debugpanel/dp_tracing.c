@@ -15,6 +15,7 @@
 
 #define REND_BUF_SIZE                              128
 static char *rend_bufs[6];
+static int used_rend_bufs;
 
 void init_dp_tracing(void)
 {
@@ -86,20 +87,24 @@ dp_should_full_dump_param(enum sys_param_kind kind, enum trace_event_type t)
 static void
 dp_dump_rendered_params(const char *sys_name, const struct syscall_info *si)
 {
+   int dumped_bufs = 0;
+
    dp_write_raw("%s(", sys_name);
 
    for (int i = 0; i < si->n_params; i++) {
 
-      const struct sys_param_info *nfo = &si->params[i];
+      const struct sys_param_info *p = &si->params[i];
 
       if (!rend_bufs[i][0])
          continue;
 
-      dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, nfo->name);
+      dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, p->name);
       dp_write_raw(": %s", rend_bufs[i]);
 
-      if (i < si->n_params - 1)
+      if (dumped_bufs < used_rend_bufs - 1)
          dp_write_raw(", ");
+
+      dumped_bufs++;
    }
 
    dp_write_raw(")");
@@ -109,13 +114,14 @@ static void
 dp_render_full_dump_single_param(int i,
                                  struct trace_event *e,
                                  const struct syscall_info *si,
-                                 const struct sys_param_info *nfo,
+                                 const struct sys_param_info *p,
                                  const struct sys_param_type *type)
 {
    char *data;
    size_t data_size;
+   sptr real_sz = -1;
 
-   if (nfo->slot == NO_SLOT) {
+   if (p->slot == NO_SLOT) {
 
       ASSERT(type->dump_from_val);
 
@@ -124,11 +130,24 @@ dp_render_full_dump_single_param(int i,
 
    } else {
 
+      sptr sz = -1;
       ASSERT(type->dump_from_data);
 
-      tracing_get_slot(e, si, nfo, &data, &data_size);
+      if (p->size_param_name) {
 
-      if (!type->dump_from_data(data, rend_bufs[i], REND_BUF_SIZE))
+         int idx = tracing_get_param_idx(si, p->size_param_name);
+         ASSERT(idx >= 0);
+
+         sz = (sptr) e->args[idx];
+      }
+
+      tracing_get_slot(e, si, p, &data, &data_size);
+      sz = MIN(sz, (sptr)data_size);
+
+      if (p->real_sz_in_ret && e->type == te_sys_exit)
+         real_sz = e->retval;
+
+      if (!type->dump_from_data(data, sz, real_sz, rend_bufs[i], REND_BUF_SIZE))
          memcpy(rend_bufs[i], "<nosp>", 6);
    }
 }
@@ -145,17 +164,25 @@ dp_dump_syscall_with_info(struct trace_event *e,
                           const char *sys_name,
                           const struct syscall_info *si)
 {
+   used_rend_bufs = 0;
+
    for (int i = 0; i < si->n_params; i++) {
 
       bzero(rend_bufs[i], REND_BUF_SIZE);
 
-      const struct sys_param_info *nfo = &si->params[i];
-      const struct sys_param_type *type = nfo->type;
+      const struct sys_param_info *p = &si->params[i];
+      const struct sys_param_type *type = p->type;
 
-      if (dp_should_full_dump_param(nfo->kind, e->type))
-         dp_render_full_dump_single_param(i, e, si, nfo, type);
-      else if (e->type == te_sys_enter)
+      if (dp_should_full_dump_param(p->kind, e->type)) {
+
+         dp_render_full_dump_single_param(i, e, si, p, type);
+         used_rend_bufs++;
+
+      } else if (e->type == te_sys_enter) {
+
          dp_render_minimal_dump_single_param(i, e);
+         used_rend_bufs++;
+      }
    }
 
    dp_dump_rendered_params(sys_name, si);

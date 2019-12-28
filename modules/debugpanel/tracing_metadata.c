@@ -22,9 +22,11 @@ static const struct syscall_info __tracing_metadata[] =
 
          {
             .name = "buf",
-            .type = &ptype_voidp,
-            .kind = sys_param_in,
-            .slot = NO_SLOT,
+            .type = &ptype_buffer,
+            .kind = sys_param_out,
+            .slot = 1,
+            .size_param_name = "count",
+            .real_sz_in_ret = true,
          },
 
          {

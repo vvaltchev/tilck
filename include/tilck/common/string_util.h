@@ -39,6 +39,10 @@ static ALWAYS_INLINE int isdigit(int c) {
    return IN_RANGE_INC(c, '0', '9');
 }
 
+static ALWAYS_INLINE int isprint(int c) {
+   return IN_RANGE_INC(c, ' ', '~');
+}
+
 static ALWAYS_INLINE bool slash_or_nul(char c)
 {
    return !c || c == '/';

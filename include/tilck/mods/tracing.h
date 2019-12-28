@@ -47,10 +47,10 @@ struct sys_param_type {
    const char *name;
 
    /* Returns false if buf_size is too small */
-   bool (*save)(void *ptr, char *buf, size_t buf_size);
+   bool (*save)(void *ptr, sptr size, char *buf, size_t buf_size);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_data)(char *buf, char *dest, size_t dest_buf_size);
+   bool (*dump_from_data)(char *buf, sptr bs, sptr rsz, char *dst, size_t d_bs);
 
    /* Returns false if dest_buf_size is too small */
    bool (*dump_from_val)(uptr val, char *dest, size_t dest_buf_size);
@@ -73,6 +73,12 @@ struct sys_param_info {
 
    /* slot in fmt1 or fmt2 where to save its info during tracing */
    s8 slot;
+
+   /* name of another param in the same func used as size of this buffer */
+   const char *size_param_name;
+
+   /* true if the retval of the func represents the real value of this buffer */
+   bool real_sz_in_ret;
 };
 
 enum sys_ret_type {
@@ -130,3 +136,6 @@ tracing_get_slot(struct trace_event *e,
                  const struct sys_param_info *p,
                  char **buf,
                  size_t *s);
+
+int
+tracing_get_param_idx(const struct syscall_info *si, const char *name);
