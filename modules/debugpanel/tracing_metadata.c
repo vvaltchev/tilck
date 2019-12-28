@@ -11,7 +11,6 @@
       .kind = _kind,                                     \
    }
 
-
 static const struct syscall_info __tracing_metadata[] =
 {
    {
@@ -59,13 +58,7 @@ static const struct syscall_info __tracing_metadata[] =
       .n_params = 3,
       .ret_type = &ptype_int,
       .params = {
-
-         {
-            .name = "path",
-            .type = &ptype_path,
-            .kind = sys_param_in,
-         },
-
+         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
          SIMPLE_PARAM("flags", &ptype_voidp, sys_param_in),
          SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
       }
