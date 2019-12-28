@@ -74,6 +74,48 @@ tracing_get_syscall_name(u32 n)
    return node->name;
 }
 
+void trace_syscall_enter_save_params(struct trace_event *e)
+{
+   const struct syscall_info *si = tracing_get_syscall_info(e->sys);
+
+   if (!si)
+      return;
+
+   for (int i = 0; i < si->n_params; i++) {
+
+      const struct sys_param_info *p = &si->params[i];
+      const struct sys_param_type *t = p->type;
+
+      if (t->save && (p->kind == sys_param_in || p->kind == sys_param_in_out))
+      {
+         char *buf; size_t bs;
+         tracing_get_slot(e, si, p, &buf, &bs);
+         t->save(TO_PTR(e->args[i]), buf, bs);
+      }
+   }
+}
+
+void trace_syscall_exit_save_params(struct trace_event *e)
+{
+   const struct syscall_info *si = tracing_get_syscall_info(e->sys);
+
+   if (!si)
+      return;
+
+   for (int i = 0; i < si->n_params; i++) {
+
+      const struct sys_param_info *p = &si->params[i];
+      const struct sys_param_type *t = p->type;
+
+      if (t->save && (p->kind == sys_param_out || p->kind == sys_param_in_out))
+      {
+         char *buf; size_t bs;
+         tracing_get_slot(e, si, p, &buf, &bs);
+         t->save(TO_PTR(e->args[i]), buf, bs);
+      }
+   }
+}
+
 void
 trace_syscall_enter(u32 sys,
                     uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
@@ -85,6 +127,8 @@ trace_syscall_enter(u32 sys,
       .sys = sys,
       .args = {a1,a2,a3,a4,a5,a6}
    };
+
+   trace_syscall_enter_save_params(&e);
 
    kmutex_lock(&tracing_lock);
    {
@@ -106,6 +150,8 @@ trace_syscall_exit(u32 sys, sptr retval,
       .retval = retval,
       .args = {a1,a2,a3,a4,a5,a6}
    };
+
+   trace_syscall_exit_save_params(&e);
 
    kmutex_lock(&tracing_lock);
    {

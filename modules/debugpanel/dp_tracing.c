@@ -7,7 +7,11 @@
 #include <tilck/kernel/sched.h>
 
 #include <tilck/mods/tracing.h>
+
 #include "termutil.h"
+#include "tracing_int.h"
+
+static char rend_bufs[6][128];
 
 static void
 tracing_ui_msg1(void)
@@ -48,63 +52,90 @@ tracing_ui_wait_for_enter(void)
    } while (rc != 1 && c != DP_KEY_ENTER);
 }
 
+static inline bool
+dp_should_full_dump_param(enum sys_param_kind kind, enum trace_event_type t)
+{
+   return kind == sys_param_in_out ||
+          (t == te_sys_enter && kind == sys_param_in) ||
+          (t == te_sys_exit && kind == sys_param_out);
+}
+
+static void
+dp_dump_rendered_params(const char *sys_name, const struct syscall_info *si)
+{
+   dp_write_raw("%s(", sys_name);
+
+   for (int i = 0; i < si->n_params; i++) {
+
+      const struct sys_param_info *nfo = &si->params[i];
+
+      if (!rend_bufs[i][0])
+         continue;
+
+      dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, nfo->name);
+      dp_write_raw(": %s", rend_bufs[i]);
+
+      if (i < si->n_params - 1)
+         dp_write_raw(", ");
+   }
+
+   dp_write_raw(")");
+}
+
+static void
+dp_render_full_dump_single_param(int i,
+                                 struct trace_event *e,
+                                 const struct syscall_info *si,
+                                 const struct sys_param_info *nfo,
+                                 const struct sys_param_type *type)
+{
+   char *data;
+   size_t data_size;
+
+   if (nfo->slot == NO_SLOT) {
+
+      ASSERT(type->dump_from_val);
+
+      if (!type->dump_from_val(e->args[i], rend_bufs[i], 128))
+         memcpy(rend_bufs[i], "<nosp>", 6);
+
+   } else {
+
+      ASSERT(type->dump_from_data);
+
+      tracing_get_slot(e, si, nfo, &data, &data_size);
+
+      if (!type->dump_from_data(data, rend_bufs[i], 128))
+         memcpy(rend_bufs[i], "<nosp>", 6);
+   }
+}
+
+static void
+dp_render_minimal_dump_single_param(int i, struct trace_event *e)
+{
+   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], 128))
+      memcpy(rend_bufs[i], "<nosp>", 6);
+}
+
 static void
 dp_dump_syscall_with_info(struct trace_event *e,
                           const char *sys_name,
                           const struct syscall_info *si)
 {
-   int params_printed = 0;
-   char buf[128];
-
-   dp_write_raw("%s(", sys_name);
+   bzero(rend_bufs, sizeof(rend_bufs));
 
    for (int i = 0; i < si->n_params; i++) {
 
       const struct sys_param_info *nfo = &si->params[i];
       const struct sys_param_type *type = nfo->type;
 
-      if (nfo->kind == sys_param_in_out ||
-          (e->type == te_sys_enter && nfo->kind == sys_param_in) ||
-          (e->type == te_sys_exit && nfo->kind == sys_param_out))
-      {
-         bzero(buf, sizeof(buf));
-
-         dp_write_raw("\r\n  ");
-         dp_write_raw(E_COLOR_MAGENTA "%s" RESET_ATTRS, nfo->name);
-         dp_write_raw(": ");
-
-         if (nfo->slot == NO_SLOT) {
-
-            ASSERT(type->dump_from_val);
-
-            if (type->dump_from_val(e->args[i], buf, sizeof(buf)))
-               dp_write_raw("%s", buf);
-            else
-               dp_write_raw("<no space in output buf>");
-
-         } else {
-
-            ASSERT(type->dump_from_data);
-
-            char *data;
-            size_t data_size;
-
-            tracing_get_slot(e, si, nfo, &data, &data_size);
-
-            if (type->dump_from_data(data, buf, sizeof(buf)))
-               dp_write_raw("%s", buf);
-            else
-               dp_write_raw("<no space in output buf>");
-         }
-
-         params_printed++;
-      }
+      if (dp_should_full_dump_param(nfo->kind, e->type))
+         dp_render_full_dump_single_param(i, e, si, nfo, type);
+      else if (e->type == te_sys_enter)
+         dp_render_minimal_dump_single_param(i, e);
    }
 
-   if (params_printed)
-      dp_write_raw("\r\n)");
-   else
-      dp_write_raw(")");
+   dp_dump_rendered_params(sys_name, si);
 }
 
 static void
