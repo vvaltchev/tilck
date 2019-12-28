@@ -28,7 +28,7 @@ static const struct syscall_info __tracing_metadata[] =
             .name = "buf",
             .type = &ptype_buffer,
             .kind = sys_param_out,
-            .slot = 1,
+            .slot = 2,
             .size_param_name = "count",
             .real_sz_in_ret = true,
          },
@@ -50,7 +50,7 @@ static const struct syscall_info __tracing_metadata[] =
             .name = "buf",
             .type = &ptype_buffer,
             .kind = sys_param_in,
-            .slot = 1,
+            .slot = 2,
             .size_param_name = "count",
             .real_sz_in_ret = true,
          },
@@ -70,11 +70,11 @@ static const struct syscall_info __tracing_metadata[] =
             .name = "path",
             .type = &ptype_buffer,
             .kind = sys_param_in,
-            .slot = 1,
+            .slot = 0,
          },
 
          SIMPLE_PARAM("flags", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("mode", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
       }
    },
 

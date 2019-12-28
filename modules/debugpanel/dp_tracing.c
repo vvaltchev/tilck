@@ -156,6 +156,7 @@ dp_render_full_dump_single_param(int i,
          ASSERT(idx >= 0);
 
          sz = (sptr) e->args[idx];
+         real_sz = sz;
       }
 
       tracing_get_slot(e, si, p, &data, &data_size);
