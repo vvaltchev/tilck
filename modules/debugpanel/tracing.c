@@ -232,53 +232,74 @@ tracing_get_syscall_info(u32 n)
    return syscalls_info[n];
 }
 
-#define CAN_USE_SLOT(sys, fmt_n, slot_n, size)                             \
-   (sizeof(((struct trace_event *)0)->fmt##fmt_n.d##slot_n) >= size &&     \
-    is_slot_free(sys, slot_n))
+#define NULL_TRACE_EVENT                           ((struct trace_event *)0)
 
-#define GET_SLOT(e, fmt_n, slot_n)                 (e->fmt##fmt_n.d##slot_n)
-#define SLOT_CASE(e, buf, size, fmt_n, slot_n)                             \
-   case slot_n:                                                            \
-      *(buf) = GET_SLOT(e, fmt_n, slot_n);                                 \
-      *(size) = sizeof(GET_SLOT(e, fmt_n, slot_n));                        \
-      break;
+#define GET_SLOT(e, fmt_n, slot_n)               ((e)->fmt##fmt_n.d##slot_n)
+
+#define GET_SLOT_ABS_OFF(fmt_n, slot_n)                                    \
+   ((uptr)GET_SLOT(NULL_TRACE_EVENT, fmt_n, slot_n))
+
+#define GET_SLOT_OFF(fmt_n, slot_n)                                        \
+   (GET_SLOT_ABS_OFF(fmt_n, slot_n) - GET_SLOT_ABS_OFF(fmt_n, 0))
+
+#define GET_SLOT_SIZE(fmt_n, slot_n)                                       \
+   sizeof(GET_SLOT(NULL_TRACE_EVENT, fmt_n, slot_n))
+
+#define CAN_USE_SLOT(sys, fmt_n, slot_n, size)                             \
+   (GET_SLOT_SIZE(fmt_n, slot_n) >= size && is_slot_free(sys, slot_n))
+
+static const size_t fmt_offsets[2][4] = {
+
+   /* fmt 1 */
+   {
+      GET_SLOT_ABS_OFF(1, 0),
+      GET_SLOT_ABS_OFF(1, 1),
+      GET_SLOT_ABS_OFF(1, 2),
+      GET_SLOT_ABS_OFF(1, 3),
+   },
+
+   /* fmt 2 */
+   {
+      GET_SLOT_ABS_OFF(2, 0),
+      GET_SLOT_ABS_OFF(2, 1),
+      GET_SLOT_ABS_OFF(2, 2),
+      0,
+   },
+};
+
+static const size_t fmt_sizes[2][4] = {
+
+   /* fmt 1 */
+   {
+      GET_SLOT_SIZE(1, 0),
+      GET_SLOT_SIZE(1, 1),
+      GET_SLOT_SIZE(1, 2),
+      GET_SLOT_SIZE(1, 3),
+   },
+
+   /* fmt 2 */
+   {
+      GET_SLOT_SIZE(2, 0),
+      GET_SLOT_SIZE(2, 1),
+      GET_SLOT_SIZE(2, 2),
+      0,
+   },
+};
 
 bool
 tracing_get_slot(struct trace_event *e,
                  const struct syscall_info *si,
                  int p_idx,
                  char **buf,
-                 size_t *s)
+                 size_t *size)
 {
    const s8 slot = (*params_slots)[e->sys][p_idx];
-   *buf = NULL;
 
    if (slot == NO_SLOT)
       return false;
 
-   switch (si->pfmt) {
-
-      case sys_fmt1:
-
-         switch (slot) {
-            SLOT_CASE(e, buf, s, 1, 0);
-            SLOT_CASE(e, buf, s, 1, 1);
-            SLOT_CASE(e, buf, s, 1, 2);
-            SLOT_CASE(e, buf, s, 1, 3);
-         }
-         break;
-
-      case sys_fmt2:
-
-         switch (slot) {
-            SLOT_CASE(e, buf, s, 2, 0);
-            SLOT_CASE(e, buf, s, 2, 1);
-            SLOT_CASE(e, buf, s, 2, 2);
-         }
-         break;
-   }
-
-   ASSERT(*buf != NULL);
+   *buf = (char *)e + fmt_offsets[si->pfmt][slot];
+   *size = fmt_sizes[si->pfmt][slot];
    return true;
 }
 

@@ -162,7 +162,7 @@ dp_render_full_dump_single_param(int i,
       sz = MIN(sz, (sptr)data_size);
 
       if (p->real_sz_in_ret && e->type == te_sys_exit)
-         real_sz = e->retval;
+         real_sz = e->retval >= 0 ? e->retval : 0;
 
       if (!type->dump_from_data(data, sz, real_sz, rend_bufs[i], REND_BUF_SIZE))
          snprintk(rend_bufs[i], REND_BUF_SIZE, "(raw) %p", e->args[i]);

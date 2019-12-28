@@ -80,8 +80,8 @@ struct sys_param_info {
 };
 
 enum sys_saved_param_fmt {
-   sys_fmt1,
-   sys_fmt2,
+   sys_fmt1 = 0,
+   sys_fmt2 = 1,
 };
 
 struct syscall_info {
