@@ -25,7 +25,11 @@ dump_param_voidp(uptr val, char *dest, size_t dest_buf_size)
 static bool
 save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 {
-   ASSERT(data_sz > 0);
+   if (data_sz == -1) {
+      /* assume that `data` is a C string */
+      data_sz = (sptr)strlen(data) + 1;
+   }
+
    const sptr dest_bs = (sptr) __dest_bs;
    const sptr actual_sz = MIN(data_sz, dest_bs);
 
@@ -43,8 +47,12 @@ dump_param_buffer(char *data,
                   char *dest,
                   size_t dest_bs)
 {
-   ASSERT(data_bs > 0);
    ASSERT(dest_bs > 8);
+
+   if (data_bs == -1) {
+      /* assume that `data` is a C string */
+      data_bs = (sptr)strlen(data);
+   }
 
    char minibuf[8];
    char *s;

@@ -38,6 +38,47 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
+      .sys_n = SYS_write,
+      .n_params = 3,
+      .ret_type = &ptype_int,
+      .pfmt = sys_fmt1,
+      .params = {
+
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+
+         {
+            .name = "buf",
+            .type = &ptype_buffer,
+            .kind = sys_param_in,
+            .slot = 1,
+            .size_param_name = "count",
+            .real_sz_in_ret = true,
+         },
+
+         SIMPLE_PARAM("count", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_open,
+      .n_params = 3,
+      .ret_type = &ptype_int,
+      .pfmt = sys_fmt1,
+      .params = {
+
+         {
+            .name = "path",
+            .type = &ptype_buffer,
+            .kind = sys_param_in,
+            .slot = 1,
+         },
+
+         SIMPLE_PARAM("flags", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("mode", &ptype_voidp, sys_param_in),
+      }
+   },
+
+   {
       .sys_n = INVALID_SYSCALL,
    },
 };
