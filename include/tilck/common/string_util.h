@@ -75,6 +75,8 @@ void itoa64(s64 value, char *destBuf);
 void uitoa32_dec(u32 value, char *destBuf);
 void uitoa64_dec(u64 value, char *destBuf);
 
+void uitoa32_oct(u32 value, char *buf);
+void uitoa64_oct(u64 value, char *buf);
 void uitoa32_hex(u32 value, char *buf);
 void uitoa64_hex(u64 value, char *buf);
 void uitoa32_hex_fixed(u32 value, char *buf);

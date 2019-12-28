@@ -177,6 +177,9 @@ switch_case:
             } else if (*fmt == 'x') {
                uitoa64_hex_fixed(va_arg(args, u64), intbuf);
                WRITE_STR(intbuf);
+            } else if (*fmt == 'o') {
+               uitoa64_oct(va_arg(args, u64), intbuf);
+               WRITE_STR(intbuf);
             }
 
          }
@@ -190,6 +193,11 @@ switch_case:
 
       case 'u':
          uitoa32_dec(va_arg(args, u32), intbuf);
+         WRITE_STR(intbuf);
+         break;
+
+      case 'o':
+         uitoa32_oct(va_arg(args, u32), intbuf);
          WRITE_STR(intbuf);
          break;
 
@@ -214,11 +222,13 @@ switch_case:
 
       case 'p':
 
-#if NBITS == 32
+         if (NBITS == 32)
             uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
-#elif NBITS == 64
+         else if (NBITS == 64)
             uitoa64_hex_fixed(va_arg(args, uptr), intbuf);
-#endif
+         else
+            NOT_REACHED();
+
          WRITE_STR("0x");
          WRITE_STR(intbuf);
          break;
