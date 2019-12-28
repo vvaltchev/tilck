@@ -11,3 +11,4 @@ extern const struct sys_param_type ptype_int;
 extern const struct sys_param_type ptype_voidp;
 extern const struct sys_param_type ptype_oct;
 extern const struct sys_param_type ptype_buffer;
+extern const struct sys_param_type ptype_path;

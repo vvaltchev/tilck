@@ -45,6 +45,7 @@ STATIC_ASSERT(sizeof(struct trace_event) <= 256);
 struct sys_param_type {
 
    const char *name;
+   u32 save_slot_size;
 
    /* Returns false if buf_size is too small */
    bool (*save)(void *ptr, sptr size, char *buf, size_t buf_size);
@@ -70,9 +71,6 @@ struct sys_param_info {
 
    /* IN, OUT or IN/OUT */
    enum sys_param_kind kind;
-
-   /* slot in fmt1 or fmt2 where to save its info during tracing */
-   s8 slot;
 
    /* name of another param in the same func used as size of this buffer */
    const char *size_param_name;
@@ -123,10 +121,10 @@ tracing_get_syscall_name(u32 n);
 const struct syscall_info *
 tracing_get_syscall_info(u32 n);
 
-void
+bool
 tracing_get_slot(struct trace_event *e,
                  const struct syscall_info *si,
-                 const struct sys_param_info *p,
+                 int p_idx,
                  char **buf,
                  size_t *s);
 

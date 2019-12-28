@@ -87,7 +87,7 @@ dp_should_full_dump_param(enum sys_param_kind kind, enum trace_event_type t)
 static const char *
 dp_get_esc_color_for_param(const struct sys_param_type *t, const char *rb)
 {
-   if (t == &ptype_buffer && rb[0] == '\"')
+   if (rb[0] == '\"' && (t == &ptype_buffer || t == &ptype_path))
       return E_COLOR_RED;
 
    if (t == &ptype_int)
@@ -138,7 +138,7 @@ dp_render_full_dump_single_param(int i,
    size_t data_size;
    sptr real_sz = -1;
 
-   if (p->slot == NO_SLOT) {
+   if (!tracing_get_slot(e, si, i, &data, &data_size)) {
 
       ASSERT(type->dump_from_val);
 
@@ -159,7 +159,6 @@ dp_render_full_dump_single_param(int i,
          real_sz = sz;
       }
 
-      tracing_get_slot(e, si, p, &data, &data_size);
       sz = MIN(sz, (sptr)data_size);
 
       if (p->real_sz_in_ret && e->type == te_sys_exit)

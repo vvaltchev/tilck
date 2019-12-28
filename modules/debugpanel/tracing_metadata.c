@@ -9,7 +9,6 @@
       .name = _name,                                     \
       .type = _type,                                     \
       .kind = _kind,                                     \
-      .slot = NO_SLOT,                                   \
    }
 
 
@@ -28,7 +27,6 @@ static const struct syscall_info __tracing_metadata[] =
             .name = "buf",
             .type = &ptype_buffer,
             .kind = sys_param_out,
-            .slot = 2,
             .size_param_name = "count",
             .real_sz_in_ret = true,
          },
@@ -50,7 +48,6 @@ static const struct syscall_info __tracing_metadata[] =
             .name = "buf",
             .type = &ptype_buffer,
             .kind = sys_param_in,
-            .slot = 2,
             .size_param_name = "count",
             .real_sz_in_ret = true,
          },
@@ -68,9 +65,8 @@ static const struct syscall_info __tracing_metadata[] =
 
          {
             .name = "path",
-            .type = &ptype_buffer,
+            .type = &ptype_path,
             .kind = sys_param_in,
-            .slot = 0,
          },
 
          SIMPLE_PARAM("flags", &ptype_voidp, sys_param_in),

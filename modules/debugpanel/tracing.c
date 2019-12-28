@@ -36,6 +36,7 @@ static struct symbol_node *syms_buf;
 static struct symbol_node *syms_bintree;
 
 static const struct syscall_info **syscalls_info;
+static s8 (*params_slots)[MAX_SYSCALLS][6];
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -96,8 +97,8 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name)
 void trace_syscall_enter_save_params(struct trace_event *e)
 {
    const struct syscall_info *si = tracing_get_syscall_info(e->sys);
-   char *buf;
-   size_t bs;
+   char *buf = NULL;
+   size_t bs = 0;
    int idx;
 
    if (!si)
@@ -120,7 +121,9 @@ void trace_syscall_enter_save_params(struct trace_event *e)
             sz = (sptr) e->args[idx];
          }
 
-         tracing_get_slot(e, si, p, &buf, &bs);
+         tracing_get_slot(e, si, i, &buf, &bs);
+         ASSERT(buf && bs > 0);
+
          t->save(TO_PTR(e->args[i]), sz, buf, bs);
       }
    }
@@ -129,8 +132,8 @@ void trace_syscall_enter_save_params(struct trace_event *e)
 void trace_syscall_exit_save_params(struct trace_event *e)
 {
    const struct syscall_info *si = tracing_get_syscall_info(e->sys);
-   char *buf;
-   size_t bs;
+   char *buf = NULL;
+   size_t bs = 0;
    int idx;
 
    if (!si)
@@ -153,7 +156,9 @@ void trace_syscall_exit_save_params(struct trace_event *e)
             sz = (sptr) e->args[idx];
          }
 
-         tracing_get_slot(e, si, p, &buf, &bs);
+         tracing_get_slot(e, si, i, &buf, &bs);
+         ASSERT(buf && bs > 0);
+
          t->save(TO_PTR(e->args[i]), sz, buf, bs);
       }
    }
@@ -227,77 +232,138 @@ tracing_get_syscall_info(u32 n)
    return syscalls_info[n];
 }
 
-void
+#define CAN_USE_SLOT(sys, fmt_n, slot_n, size)                             \
+   (sizeof(((struct trace_event *)0)->fmt##fmt_n.d##slot_n) >= size &&     \
+    is_slot_free(sys, slot_n))
+
+#define GET_SLOT(e, fmt_n, slot_n)                 (e->fmt##fmt_n.d##slot_n)
+#define SLOT_CASE(e, buf, size, fmt_n, slot_n)                             \
+   case slot_n:                                                            \
+      *(buf) = GET_SLOT(e, fmt_n, slot_n);                                 \
+      *(size) = sizeof(GET_SLOT(e, fmt_n, slot_n));                        \
+      break;
+
+bool
 tracing_get_slot(struct trace_event *e,
                  const struct syscall_info *si,
-                 const struct sys_param_info *p,
+                 int p_idx,
                  char **buf,
                  size_t *s)
 {
-   const s8 slot = p->slot;
+   const s8 slot = (*params_slots)[e->sys][p_idx];
+   *buf = NULL;
+
+   if (slot == NO_SLOT)
+      return false;
+
+   switch (si->pfmt) {
+
+      case sys_fmt1:
+
+         switch (slot) {
+            SLOT_CASE(e, buf, s, 1, 0);
+            SLOT_CASE(e, buf, s, 1, 1);
+            SLOT_CASE(e, buf, s, 1, 2);
+            SLOT_CASE(e, buf, s, 1, 3);
+         }
+         break;
+
+      case sys_fmt2:
+
+         switch (slot) {
+            SLOT_CASE(e, buf, s, 2, 0);
+            SLOT_CASE(e, buf, s, 2, 1);
+            SLOT_CASE(e, buf, s, 2, 2);
+         }
+         break;
+   }
+
+   ASSERT(*buf != NULL);
+   return true;
+}
+
+static bool
+is_slot_free(u32 sys, int slot)
+{
    ASSERT(slot >= 0);
 
-   if (si->pfmt == sys_fmt1) {
+   for (int i = 0; i < 6; i++)
+      if ((*params_slots)[sys][i] == slot)
+         return false;
 
-      switch (slot) {
+   return true;
+}
 
-         case 0:
-            *buf = e->fmt1.d0;
-            *s = sizeof(e->fmt1.d0);
-            break;
+static void
+alloc_for_fmt1(u32 sys, int p_idx, size_t size)
+{
+   s8 slot = NO_SLOT;
 
-         case 1:
-            *buf = e->fmt1.d1;
-            *s = sizeof(e->fmt1.d1);
-            break;
+   if (!size)
+      return;
 
-         case 2:
-            *buf = e->fmt1.d2;
-            *s = sizeof(e->fmt1.d2);
-            break;
-
-         case 3:
-            *buf = e->fmt1.d3;
-            *s = sizeof(e->fmt1.d3);
-            break;
-
-         default:
-            NOT_REACHED();
-      }
-
-   } else if (si->pfmt == sys_fmt2) {
-
-      switch (slot) {
-
-         case 0:
-            *buf = e->fmt2.d0;
-            *s = sizeof(e->fmt2.d0);
-            break;
-
-         case 1:
-            *buf = e->fmt2.d1;
-            *s = sizeof(e->fmt2.d1);
-            break;
-
-         case 2:
-            *buf = e->fmt2.d2;
-            *s = sizeof(e->fmt2.d2);
-            break;
-
-         default:
-            NOT_REACHED();
-      }
-
-   } else {
-
+   if (CAN_USE_SLOT(sys, 1, 3, size))
+      slot = 3;
+   else if (CAN_USE_SLOT(sys, 1, 2, size))
+      slot = 2;
+   else if (CAN_USE_SLOT(sys, 1, 1, size))
+      slot = 1;
+   else if (CAN_USE_SLOT(sys, 1, 0, size))
+      slot = 0;
+   else
       NOT_REACHED();
+
+   (*params_slots)[sys][p_idx] = slot;
+}
+
+static void
+alloc_for_fmt2(u32 sys, int p_idx, size_t size)
+{
+   s8 slot = NO_SLOT;
+
+   if (!size)
+      return;
+
+   if (CAN_USE_SLOT(sys, 2, 2, size))
+      slot = 2;
+   else if (CAN_USE_SLOT(sys, 2, 1, size))
+      slot = 1;
+   else if (CAN_USE_SLOT(sys, 2, 0, size))
+      slot = 0;
+   else
+      NOT_REACHED();
+
+   (*params_slots)[sys][p_idx] = slot;
+}
+
+static void
+tracing_allocate_slots_for_params(void)
+{
+   const struct syscall_info *si;
+
+   for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
+
+      if (si->pfmt == sys_fmt1) {
+
+         for (int i = 0; i < si->n_params; i++)
+            alloc_for_fmt1(si->sys_n, i, si->params[i].type->save_slot_size);
+
+      } else if (si->pfmt == sys_fmt2) {
+
+         for (int i = 0; i < si->n_params; i++)
+            alloc_for_fmt2(si->sys_n, i, si->params[i].type->save_slot_size);
+
+      } else {
+
+         NOT_REACHED();
+      }
    }
 }
 
 void
 init_tracing(void)
 {
-   const struct syscall_info *s;
+   const struct syscall_info *si;
 
    if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
       panic("Unable to allocate the tracing buffer in tracing.c");
@@ -307,6 +373,9 @@ init_tracing(void)
 
    if (!(syscalls_info = kzmalloc(sizeof(void *) * MAX_SYSCALLS)))
       panic("Unable to allocate the syscalls_info array in tracing.c");
+
+   if (!(params_slots = kmalloc(sizeof(*params_slots))))
+      panic("Unable to allocate the params_slots array in tracing.c");
 
    ringbuf_init(&tracing_rb,
                 TRACE_BUF_SIZE / sizeof(struct trace_event),
@@ -318,7 +387,13 @@ init_tracing(void)
 
    foreach_symbol(elf_symbol_cb, NULL);
 
-   for (s = tracing_metadata; s->sys_n != INVALID_SYSCALL; s++) {
-      syscalls_info[s->sys_n] = s;
+   for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
+      syscalls_info[si->sys_n] = si;
    }
+
+   for (int i = 0; i < MAX_SYSCALLS; i++)
+      for (int j = 0; j < 6; j++)
+         (*params_slots)[i][j] = NO_SLOT;
+
+   tracing_allocate_slots_for_params();
 }

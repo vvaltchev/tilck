@@ -140,6 +140,8 @@ dump_param_buffer(char *data,
 const struct sys_param_type ptype_int = {
 
    .name = "int",
+   .save_slot_size = 0,
+
    .save = NULL,
    .dump_from_data = NULL,
    .dump_from_val = dump_param_int,
@@ -148,6 +150,8 @@ const struct sys_param_type ptype_int = {
 const struct sys_param_type ptype_voidp = {
 
    .name = "void *",
+   .save_slot_size = 0,
+
    .save = NULL,
    .dump_from_data = NULL,
    .dump_from_val = dump_param_voidp,
@@ -156,6 +160,8 @@ const struct sys_param_type ptype_voidp = {
 const struct sys_param_type ptype_oct = {
 
    .name = "oct",
+   .save_slot_size = 0,
+
    .save = NULL,
    .dump_from_data = NULL,
    .dump_from_val = dump_param_oct,
@@ -164,6 +170,18 @@ const struct sys_param_type ptype_oct = {
 const struct sys_param_type ptype_buffer = {
 
    .name = "char *",
+   .save_slot_size = 32,
+
+   .save = save_param_buffer,
+   .dump_from_data = dump_param_buffer,
+   .dump_from_val = NULL,
+};
+
+const struct sys_param_type ptype_path = {
+
+   .name = "char *",
+   .save_slot_size = 64,
+
    .save = save_param_buffer,
    .dump_from_data = dump_param_buffer,
    .dump_from_val = NULL,
