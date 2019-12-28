@@ -45,7 +45,7 @@ STATIC_ASSERT(sizeof(struct trace_event) <= 256);
 struct sys_param_type {
 
    const char *name;
-   u32 save_slot_size;
+   u32 slot_size;
 
    /* Returns false if buf_size is too small */
    bool (*save)(void *ptr, sptr size, char *buf, size_t buf_size);

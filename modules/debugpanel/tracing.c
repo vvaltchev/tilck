@@ -378,19 +378,20 @@ tracing_allocate_slots_for_params(void)
 
    for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
 
-      if (si->pfmt == sys_fmt1) {
+      switch (si->pfmt) {
 
-         for (int i = 0; i < si->n_params; i++)
-            alloc_for_fmt1(si->sys_n, i, si->params[i].type->save_slot_size);
+         case sys_fmt1:
+            for (int i = 0; i < si->n_params; i++)
+               alloc_for_fmt1(si->sys_n, i, si->params[i].type->slot_size);
+            break;
 
-      } else if (si->pfmt == sys_fmt2) {
+         case sys_fmt2:
+            for (int i = 0; i < si->n_params; i++)
+               alloc_for_fmt2(si->sys_n, i, si->params[i].type->slot_size);
+            break;
 
-         for (int i = 0; i < si->n_params; i++)
-            alloc_for_fmt2(si->sys_n, i, si->params[i].type->save_slot_size);
-
-      } else {
-
-         NOT_REACHED();
+         default:
+            NOT_REACHED();
       }
    }
 }
