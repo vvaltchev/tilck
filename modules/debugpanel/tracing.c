@@ -250,38 +250,38 @@ tracing_get_syscall_info(u32 n)
 
 static const size_t fmt_offsets[2][4] = {
 
+   /* fmt 0 */
+   {
+      GET_SLOT_ABS_OFF(0, 0),
+      GET_SLOT_ABS_OFF(0, 1),
+      GET_SLOT_ABS_OFF(0, 2),
+      GET_SLOT_ABS_OFF(0, 3),
+   },
+
    /* fmt 1 */
    {
       GET_SLOT_ABS_OFF(1, 0),
       GET_SLOT_ABS_OFF(1, 1),
       GET_SLOT_ABS_OFF(1, 2),
-      GET_SLOT_ABS_OFF(1, 3),
-   },
-
-   /* fmt 2 */
-   {
-      GET_SLOT_ABS_OFF(2, 0),
-      GET_SLOT_ABS_OFF(2, 1),
-      GET_SLOT_ABS_OFF(2, 2),
       0,
    },
 };
 
 static const size_t fmt_sizes[2][4] = {
 
+   /* fmt 0 */
+   {
+      GET_SLOT_SIZE(0, 0),
+      GET_SLOT_SIZE(0, 1),
+      GET_SLOT_SIZE(0, 2),
+      GET_SLOT_SIZE(0, 3),
+   },
+
    /* fmt 1 */
    {
       GET_SLOT_SIZE(1, 0),
       GET_SLOT_SIZE(1, 1),
       GET_SLOT_SIZE(1, 2),
-      GET_SLOT_SIZE(1, 3),
-   },
-
-   /* fmt 2 */
-   {
-      GET_SLOT_SIZE(2, 0),
-      GET_SLOT_SIZE(2, 1),
-      GET_SLOT_SIZE(2, 2),
       0,
    },
 };
@@ -316,20 +316,20 @@ is_slot_free(u32 sys, int slot)
 }
 
 static void
-alloc_for_fmt1(u32 sys, int p_idx, size_t size)
+alloc_for_fmt0(u32 sys, int p_idx, size_t size)
 {
    s8 slot = NO_SLOT;
 
    if (!size)
       return;
 
-   if (CAN_USE_SLOT(sys, 1, 3, size))
+   if (CAN_USE_SLOT(sys, 0, 3, size))
       slot = 3;
-   else if (CAN_USE_SLOT(sys, 1, 2, size))
+   else if (CAN_USE_SLOT(sys, 0, 2, size))
       slot = 2;
-   else if (CAN_USE_SLOT(sys, 1, 1, size))
+   else if (CAN_USE_SLOT(sys, 0, 1, size))
       slot = 1;
-   else if (CAN_USE_SLOT(sys, 1, 0, size))
+   else if (CAN_USE_SLOT(sys, 0, 0, size))
       slot = 0;
    else
       NOT_REACHED();
@@ -338,18 +338,18 @@ alloc_for_fmt1(u32 sys, int p_idx, size_t size)
 }
 
 static void
-alloc_for_fmt2(u32 sys, int p_idx, size_t size)
+alloc_for_fmt1(u32 sys, int p_idx, size_t size)
 {
    s8 slot = NO_SLOT;
 
    if (!size)
       return;
 
-   if (CAN_USE_SLOT(sys, 2, 2, size))
+   if (CAN_USE_SLOT(sys, 1, 2, size))
       slot = 2;
-   else if (CAN_USE_SLOT(sys, 2, 1, size))
+   else if (CAN_USE_SLOT(sys, 1, 1, size))
       slot = 1;
-   else if (CAN_USE_SLOT(sys, 2, 0, size))
+   else if (CAN_USE_SLOT(sys, 1, 0, size))
       slot = 0;
    else
       NOT_REACHED();
@@ -380,14 +380,14 @@ tracing_allocate_slots_for_params(void)
 
       switch (si->pfmt) {
 
+         case sys_fmt0:
+            for (int i = 0; i < si->n_params; i++)
+               alloc_for_fmt0(si->sys_n, i, si->params[i].type->slot_size);
+            break;
+
          case sys_fmt1:
             for (int i = 0; i < si->n_params; i++)
                alloc_for_fmt1(si->sys_n, i, si->params[i].type->slot_size);
-            break;
-
-         case sys_fmt2:
-            for (int i = 0; i < si->n_params; i++)
-               alloc_for_fmt2(si->sys_n, i, si->params[i].type->slot_size);
             break;
 
          default:

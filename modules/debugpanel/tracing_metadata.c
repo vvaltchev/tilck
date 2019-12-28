@@ -18,7 +18,7 @@ static const struct syscall_info __tracing_metadata[] =
       .sys_n = SYS_read,
       .n_params = 3,
       .ret_type = &ptype_int,
-      .pfmt = sys_fmt1,
+      .pfmt = sys_fmt0,
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
@@ -39,7 +39,7 @@ static const struct syscall_info __tracing_metadata[] =
       .sys_n = SYS_write,
       .n_params = 3,
       .ret_type = &ptype_int,
-      .pfmt = sys_fmt1,
+      .pfmt = sys_fmt0,
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
@@ -60,7 +60,7 @@ static const struct syscall_info __tracing_metadata[] =
       .sys_n = SYS_open,
       .n_params = 3,
       .ret_type = &ptype_int,
-      .pfmt = sys_fmt1,
+      .pfmt = sys_fmt0,
       .params = {
 
          {

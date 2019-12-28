@@ -30,13 +30,13 @@ struct trace_event {
          char d1[64];
          char d2[32];
          char d3[16];
-      } fmt1;
+      } fmt0;
 
       struct {
          char d0[128];
          char d1[32];
          char d2[16];
-      } fmt2;
+      } fmt1;
    };
 };
 
@@ -80,8 +80,8 @@ struct sys_param_info {
 };
 
 enum sys_saved_param_fmt {
-   sys_fmt1 = 0,
-   sys_fmt2 = 1,
+   sys_fmt0 = 0,
+   sys_fmt1 = 1,
 };
 
 struct syscall_info {
