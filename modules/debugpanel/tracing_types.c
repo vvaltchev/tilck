@@ -37,16 +37,6 @@ save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 }
 
 static bool
-write_to_buf(char *buf, char *buf_end, char c)
-{
-   if (buf == buf_end)
-      return false;
-
-   *buf = c;
-   return true;
-}
-
-static bool
 dump_param_buffer(char *data,
                   sptr data_bs,
                   sptr real_sz,
@@ -54,41 +44,45 @@ dump_param_buffer(char *data,
                   size_t dest_bs)
 {
    ASSERT(data_bs > 0);
+   ASSERT(dest_bs > 8);
+
    char minibuf[8];
    char *s;
    char *data_end = data + (real_sz < 0 ? data_bs : MIN(real_sz, data_bs));
    char *dest_end = dest + dest_bs;
 
-   write_to_buf(dest++, dest_end, '\"');
+   *dest++ = '\"';
 
    for (s = data; s < data_end; s++) {
 
       char c = *s;
       sptr ml = 0;
 
-      if (isprint(c)) {
-
-         if (!write_to_buf(dest++, dest_end, c))
+      switch (c) {
+         case '\n':
+            snprintk(minibuf, sizeof(minibuf), "\\n");
             break;
 
-         continue;
-      }
+         case '\r':
+            snprintk(minibuf, sizeof(minibuf), "\\r");
+            break;
 
-      if (c == '\n') {
+         case '\"':
+            snprintk(minibuf, sizeof(minibuf), "\\\"");
+            break;
 
-         snprintk(minibuf, sizeof(minibuf), "\\n");
+         case '\\':
+            snprintk(minibuf, sizeof(minibuf), "\\\\");
+            break;
 
-      } else if (c== '\r') {
+         default:
 
-         snprintk(minibuf, sizeof(minibuf), "\\r");
-
-      } else if (c == '\"') {
-
-         snprintk(minibuf, sizeof(minibuf), "\\\"");
-
-      } else {
-
-         snprintk(minibuf, sizeof(minibuf), "\\x%02x", (u32)c);
+            if (isprint(c)) {
+               minibuf[0] = c;
+               minibuf[1] = 0;
+            } else {
+               snprintk(minibuf, sizeof(minibuf), "\\x%02x", (u32)c);
+            }
       }
 
       ml = (sptr)strlen(minibuf);
