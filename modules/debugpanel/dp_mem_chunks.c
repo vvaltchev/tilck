@@ -12,6 +12,8 @@
 #include "termutil.h"
 #include "dp_int.h"
 
+#define CHUNKS_ARR_BUF_SIZE                              (16 * KB)
+
 struct chunk_info {
 
    size_t size;
@@ -24,7 +26,8 @@ static struct debug_kmalloc_stats stats;
 static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
-static struct chunk_info chunks_arr[1024];
+static struct chunk_info *chunks_arr;
+static size_t chunks_max_count;
 static char chunks_order_by;
 
 static sptr dp_chunks_cmpf_size(const void *a, const void *b)
@@ -63,6 +66,24 @@ static void dp_chunks_enter(void)
    if (!KMALLOC_HEAVY_STATS)
       return;
 
+   if (!chunks_arr) {
+
+      size_t chunks_buf_sz = CHUNKS_ARR_BUF_SIZE;
+
+      for (int i = 0; i < 4; i++) {
+
+         if ((chunks_arr = kzmalloc(chunks_buf_sz)))
+            break;
+
+         chunks_buf_sz /= 2;
+      }
+
+      if (!chunks_arr)
+         panic("Unable to alloc memory for chunks_arr");
+
+      chunks_max_count = chunks_buf_sz / sizeof(struct chunk_info);
+   }
+
    debug_kmalloc_get_stats(&stats);
    lf_allocs = 0;
    lf_waste = 0;
@@ -74,7 +95,7 @@ static void dp_chunks_enter(void)
       debug_kmalloc_chunks_stats_start_read(&ctx);
       while (debug_kmalloc_chunks_stats_next(&ctx, &s, &c)) {
 
-         if (chunks_count == ARRAY_SIZE(chunks_arr))
+         if (chunks_count == chunks_max_count)
             break;
 
          const u64 waste = (u64)(
