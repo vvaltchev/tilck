@@ -20,6 +20,7 @@
 #define E_COLOR_MAGENTA          "\033[35m"
 #define E_COLOR_CYAN             "\033[36m"
 #define E_COLOR_BR_CYAN          "\033[96m"
+#define E_COLOR_WHITE_ON_RED     "\033[97;41m"
 #define RESET_ATTRS              "\033[0m"
 #define GFX_ON                   "\033(0"
 #define GFX_OFF                  "\033(B"

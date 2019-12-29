@@ -127,3 +127,6 @@ tracing_get_slot(struct trace_event *e,
 
 int
 tracing_get_param_idx(const struct syscall_info *si, const char *name);
+
+const char *
+get_errno_name(int errno);

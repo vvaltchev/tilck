@@ -33,6 +33,19 @@ dump_param_oct(uptr __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
+dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
+{
+   int val = (int)__val;
+   int rc;
+
+   rc = (val >= 0)
+      ? snprintk(dest, dest_buf_size, "%d", val)
+      : snprintk(dest, dest_buf_size, "-%s", get_errno_name(-val));
+
+   return rc < (int)dest_buf_size;
+}
+
+static bool
 save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 {
    if (data_sz == -1) {
@@ -165,6 +178,16 @@ const struct sys_param_type ptype_oct = {
    .save = NULL,
    .dump_from_data = NULL,
    .dump_from_val = dump_param_oct,
+};
+
+const struct sys_param_type ptype_errno_or_val = {
+
+   .name = "errno_or_val",
+   .slot_size = 0,
+
+   .save = NULL,
+   .dump_from_data = NULL,
+   .dump_from_val = dump_param_errno_or_val,
 };
 
 const struct sys_param_type ptype_buffer = {

@@ -90,7 +90,10 @@ dp_get_esc_color_for_param(const struct sys_param_type *t, const char *rb)
    if (rb[0] == '\"' && (t == &ptype_buffer || t == &ptype_path))
       return E_COLOR_RED;
 
-   if (t == &ptype_int)
+   if (t == &ptype_errno_or_val && rb[0] == '-')
+      return E_COLOR_WHITE_ON_RED;
+
+   if (t == &ptype_int || t == &ptype_errno_or_val)
       return E_COLOR_BR_BLUE;
 
    return "";
@@ -212,8 +215,17 @@ dp_dump_ret_val(const struct syscall_info *si, sptr retval)
 
       if (retval <= 1024 * 1024) {
 
-         /* we guess it's just a number or an errno */
-         dp_write_raw(E_COLOR_BR_BLUE "%d" RESET_ATTRS, retval);
+         if (retval >= 0) {
+
+            /* we guess it's just a number */
+            dp_write_raw(E_COLOR_BR_BLUE "%d" RESET_ATTRS, retval);
+
+         } else {
+
+            /* we guess it's an errno */
+            dp_write_raw(E_COLOR_WHITE_ON_RED "-%s" RESET_ATTRS,
+                         get_errno_name(-retval));
+         }
 
       } else {
 
