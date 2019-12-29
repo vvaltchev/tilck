@@ -375,8 +375,6 @@ tracing_populate_syscalls_info(void)
 static void
 tracing_reset_slot_info(u32 sys)
 {
-   syscalls_fmts[sys] = 0;
-
    for (int j = 0; j < 6; j++)
       (*params_slots)[sys][j] = NO_SLOT;
 }
@@ -405,10 +403,9 @@ tracing_allocate_slots_for_params(void)
       if (!failed)
          continue;
 
-      tracing_reset_slot_info(sys_n);
-
       failed = false;
       syscalls_fmts[sys_n] = 1; /* fmt 1 */
+      tracing_reset_slot_info(sys_n);
 
       for (int i = 0; i < si->n_params; i++)
          if ((failed = !alloc_for_fmt1(sys_n, i, p[i].type->slot_size)))
@@ -418,6 +415,18 @@ tracing_allocate_slots_for_params(void)
          continue;
 
       panic("Unable to alloc param slots for syscall #%u", sys_n);
+   }
+}
+
+static void
+debug_tracing_dump_syscalls_fmt(void)
+{
+   const struct syscall_info *si;
+   s8 fmt;
+
+   for (si = tracing_metadata; si->sys_n != INVALID_SYSCALL; si++) {
+      fmt = syscalls_fmts[si->sys_n];
+      printk("sys #%u -> fmt %d\n", si->sys_n, fmt);
    }
 }
 
@@ -436,7 +445,7 @@ init_tracing(void)
    if (!(params_slots = kmalloc(sizeof(*params_slots))))
       panic("Unable to allocate the params_slots array in tracing.c");
 
-   if (!(syscalls_fmts = kmalloc(sizeof(s8) * MAX_SYSCALLS)))
+   if (!(syscalls_fmts = kzmalloc(sizeof(s8) * MAX_SYSCALLS)))
       panic("Unable to allocate the syscalls_fmts array in tracing.c");
 
    ringbuf_init(&tracing_rb,
