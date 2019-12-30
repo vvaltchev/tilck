@@ -73,11 +73,13 @@ tracing_ui_wait_for_enter(void)
 }
 
 static inline bool
-dp_should_full_dump_param(enum sys_param_kind kind, enum trace_event_type t)
+dp_should_full_dump_param(bool exp_block,
+                          enum sys_param_kind kind,
+                          enum trace_event_type t)
 {
    return kind == sys_param_in_out ||
           (t == te_sys_enter && kind == sys_param_in) ||
-          (t == te_sys_exit && kind == sys_param_out);
+          (t == te_sys_exit && (!exp_block || kind == sys_param_out));
 }
 
 static const char *
@@ -189,7 +191,7 @@ dp_dump_syscall_with_info(struct trace_event *e,
       const struct sys_param_info *p = &si->params[i];
       const struct sys_param_type *type = p->type;
 
-      if (dp_should_full_dump_param(p->kind, e->type)) {
+      if (dp_should_full_dump_param(si->exp_block, p->kind, e->type)) {
 
          dp_render_full_dump_single_param(i, e, si, p, type);
          used_rend_bufs++;
@@ -252,10 +254,17 @@ dp_dump_syscall_event(struct trace_event *e,
                       const char *sys_name,
                       const struct syscall_info *si)
 {
-   if (e->type == te_sys_enter)
+   if (e->type == te_sys_enter) {
+
       dp_write_raw(E_COLOR_BR_GREEN "ENTER" RESET_ATTRS " ");
-   else
-      dp_write_raw(E_COLOR_BR_BLUE "EXIT" RESET_ATTRS " ");
+
+   } else {
+
+      if (!si || si->exp_block)
+         dp_write_raw(E_COLOR_BR_BLUE "EXIT" RESET_ATTRS " ");
+      else
+         dp_write_raw(E_COLOR_YELLOW "CALL" RESET_ATTRS " ");
+   }
 
    if (si)
       dp_dump_syscall_with_info(e, sys_name, si);

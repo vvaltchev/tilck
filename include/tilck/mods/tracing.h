@@ -94,7 +94,18 @@ struct syscall_info {
    u32 sys_n;
 
    /* number of parameters */
-   int n_params;
+   s8 n_params;
+
+   /*
+    * True if the syscall is expected to block. In other words:
+    *    => do we care about the ENTER event?
+    *
+    * exp_block = false DOES NOT mean that the syscall cannot block due to
+    * I/O like sys_rename, sys_link etc. But that that's not interesting 99.9%
+    * of the time. It's interesting instead to observe the ENTER and EXIT events
+    * for syscalls like read(), write(), select(), poll(), waitpid() etc.
+    */
+   bool exp_block;
 
    /* return type of the syscall */
    const struct sys_param_type *ret_type;

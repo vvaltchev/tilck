@@ -15,6 +15,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 0,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = { }                                                  \
    }
@@ -23,6 +24,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 1,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = {                                                    \
          SIMPLE_PARAM(par1, &ptype_int, sys_param_in),               \
@@ -33,6 +35,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 2,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = {                                                    \
          SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
@@ -44,6 +47,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 1,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = {                                                    \
          SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
@@ -54,6 +58,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 2,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = {                                                    \
          SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
@@ -65,6 +70,7 @@
    {                                                                 \
       .sys_n = sys,                                                  \
       .n_params = 2,                                                 \
+      .exp_block = false,                                            \
       .ret_type = &ptype_errno_or_val,                               \
       .params = {                                                    \
          SIMPLE_PARAM(par1, &ptype_int, sys_param_in),               \
@@ -116,6 +122,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_read,
       .n_params = 3,
+      .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
 
@@ -136,6 +143,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_write,
       .n_params = 3,
+      .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
 
@@ -156,6 +164,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_getcwd,
       .n_params = 2,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
 
@@ -174,6 +183,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_open,
       .n_params = 3,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("path", &ptype_path, sys_param_in),
@@ -185,6 +195,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_stat64,
       .n_params = 2,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("path", &ptype_path, sys_param_in),
@@ -195,6 +206,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_lstat64,
       .n_params = 2,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("path", &ptype_path, sys_param_in),
@@ -205,6 +217,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_fstat64,
       .n_params = 2,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
@@ -215,6 +228,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_execve,
       .n_params = 3,
+      .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("filename", &ptype_path, sys_param_in),
@@ -226,6 +240,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_brk,
       .n_params = 1,
+      .exp_block = false,
       .ret_type = &ptype_voidp,
       .params = {
          SIMPLE_PARAM("vaddr", &ptype_voidp, sys_param_in),
@@ -235,6 +250,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_waitpid,
       .n_params = 3,
+      .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
@@ -246,6 +262,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_wait4,
       .n_params = 4,
+      .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
@@ -258,6 +275,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_umask,
       .n_params = 1,
+      .exp_block = false,
       .ret_type = &ptype_oct,
       .params = {
          SIMPLE_PARAM("mask", &ptype_oct, sys_param_in),

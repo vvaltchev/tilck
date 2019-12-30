@@ -112,9 +112,9 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name)
    return -1;
 }
 
-void trace_syscall_enter_save_params(struct trace_event *e)
+static void trace_syscall_enter_save_params(const struct syscall_info *si,
+                                            struct trace_event *e)
 {
-   const struct syscall_info *si = tracing_get_syscall_info(e->sys);
    char *buf = NULL;
    size_t bs = 0;
    int idx;
@@ -147,9 +147,10 @@ void trace_syscall_enter_save_params(struct trace_event *e)
    }
 }
 
-void trace_syscall_exit_save_params(struct trace_event *e)
+static void
+trace_syscall_exit_save_params(const struct syscall_info *si,
+                               struct trace_event *e)
 {
-   const struct syscall_info *si = tracing_get_syscall_info(e->sys);
    char *buf = NULL;
    size_t bs = 0;
    int idx;
@@ -161,8 +162,9 @@ void trace_syscall_exit_save_params(struct trace_event *e)
 
       const struct sys_param_info *p = &si->params[i];
       const struct sys_param_type *t = p->type;
+      const bool outp = p->kind == sys_param_out || p->kind == sys_param_in_out;
 
-      if (t->save && (p->kind == sys_param_out || p->kind == sys_param_in_out))
+      if (t->save && (!si->exp_block || outp))
       {
          sptr sz = -1;
 
@@ -186,6 +188,11 @@ void
 trace_syscall_enter(u32 sys,
                     uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
 {
+   const struct syscall_info *si = tracing_get_syscall_info(sys);
+
+   if (si && !si->exp_block)
+      return; /* don't trace the enter event */
+
    struct trace_event e = {
       .type = te_sys_enter,
       .tid = get_curr_tid(),
@@ -194,7 +201,7 @@ trace_syscall_enter(u32 sys,
       .args = {a1,a2,a3,a4,a5,a6}
    };
 
-   trace_syscall_enter_save_params(&e);
+   trace_syscall_enter_save_params(si, &e);
 
    kmutex_lock(&tracing_lock);
    {
@@ -208,6 +215,8 @@ void
 trace_syscall_exit(u32 sys, sptr retval,
                    uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
 {
+   const struct syscall_info *si = tracing_get_syscall_info(sys);
+
    struct trace_event e = {
       .type = te_sys_exit,
       .tid = get_curr_tid(),
@@ -217,7 +226,7 @@ trace_syscall_exit(u32 sys, sptr retval,
       .args = {a1,a2,a3,a4,a5,a6}
    };
 
-   trace_syscall_exit_save_params(&e);
+   trace_syscall_exit_save_params(si, &e);
 
    kmutex_lock(&tracing_lock);
    {
