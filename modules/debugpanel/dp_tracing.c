@@ -306,7 +306,7 @@ dp_dump_tracing_event(struct trace_event *e)
 }
 
 enum kb_handler_action
-dp_tasks_show_trace(void)
+dp_tracing_screen(void)
 {
    struct trace_event e;
    int rc;

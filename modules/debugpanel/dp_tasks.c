@@ -17,7 +17,7 @@
 #define MAX_EXEC_PATH_LEN     34
 
 void init_dp_tracing(void);
-enum kb_handler_action dp_tasks_show_trace(void);
+enum kb_handler_action dp_tracing_screen(void);
 
 /* Gfx state */
 static int row;
@@ -267,6 +267,14 @@ dp_no_tracing_module_action(void)
 }
 
 static enum kb_handler_action
+dp_enter_tracing_mode(void)
+{
+   return MOD_tracing
+      ? dp_tracing_screen()
+      : dp_no_tracing_module_action();
+}
+
+static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress_special(u32 key)
 {
    if (key == KEY_UP) {
@@ -388,11 +396,7 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
          return dp_tasks_handle_sel_mode_keypress_esc();
 
       case DP_KEY_CTRL_T:
-
-         if (MOD_tracing)
-            return dp_tasks_show_trace();
-
-         return dp_no_tracing_module_action();
+         return dp_enter_tracing_mode();
 
       case 'r':
          return dp_tasks_handle_sel_mode_keypress_r();
@@ -437,11 +441,7 @@ dp_tasks_handle_default_mode_keypress(struct key_event ke)
          return dp_tasks_handle_default_mode_enter();
 
       case DP_KEY_CTRL_T:
-
-         if (MOD_tracing)
-            return dp_tasks_show_trace();
-
-         return dp_no_tracing_module_action();
+         return dp_enter_tracing_mode();
    }
 
    return kb_handler_nak;
