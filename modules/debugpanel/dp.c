@@ -238,6 +238,20 @@ dp_main_body(enum term_type tt, struct key_event ke)
    return dp_screen_key_handled;
 }
 
+void dp_set_input_blocking(bool blocking)
+{
+   struct fs_handle_base *h = dp_input_handle;
+
+   disable_preemption();
+   {
+      if (blocking)
+         h->fl_flags &= ~O_NONBLOCK;
+      else
+         h->fl_flags |= O_NONBLOCK;
+   }
+   enable_preemption();
+}
+
 static void dp_tilck_cmd()
 {
    enum term_type tt;
@@ -267,8 +281,8 @@ static void dp_tilck_cmd()
    disable_preemption();
    {
       tty_set_raw_mode(get_curr_process_tty());
-      ((struct fs_handle_base *)h)->fl_flags |= O_NONBLOCK;
       dp_input_handle = h;
+      dp_set_input_blocking(false);
    }
    enable_preemption();
 

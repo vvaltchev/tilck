@@ -30,28 +30,13 @@ void init_dp_tracing(void)
 }
 
 static void
-tracing_ui_msg1(void)
+tracing_ui_msg(void)
 {
-   dp_clear();
-   dp_move_cursor(1, 1);
    dp_write_raw(
       E_COLOR_YELLOW
-      "Tilck syscall tracing. ENTER: start dumping | Ctrl+C: exit"
+      "Tilck syscall tracing. ENTER: start/stop dumping | Ctrl+C: exit"
       RESET_ATTRS
    );
-}
-
-static void
-tracing_ui_msg2(void)
-{
-   dp_clear();
-   dp_move_cursor(1, 1);
-   dp_write_raw(
-      E_COLOR_YELLOW
-      "Tilck syscall tracing. Press Ctrl+C to exit"
-      RESET_ATTRS
-   );
-   dp_write_raw("\r\n");
 }
 
 static bool
@@ -59,24 +44,32 @@ tracing_ui_wait_for_enter(void)
 {
    int rc;
    char c;
+   bool retval;
+
+   dp_set_input_blocking(true);
 
    while (true) {
 
-      kernel_sleep(TIMER_HZ / 10);
       rc = vfs_read(dp_input_handle, &c, 1);
 
-      if (rc == -EAGAIN)
-         continue;
+      if (rc <= 0) {
+         retval = false;
+         break; /* something gone wrong */
+      }
 
-      if (rc != 1)
-         return false; /* error */
+      if (c == DP_KEY_ENTER) {
+         retval = true;
+         break; /* ok, start dumping */
+      }
 
-      if (c == DP_KEY_ENTER)
-         return true;
-
-      if (c == DP_KEY_CTRL_C)
-         return false;
+      if (c == DP_KEY_CTRL_C) {
+         retval = false;
+         break; /* clean exit */
+      }
    }
+
+   dp_set_input_blocking(false);
+   return retval;
 }
 
 static inline bool
@@ -305,37 +298,60 @@ dp_dump_tracing_event(struct trace_event *e)
    }
 }
 
-enum kb_handler_action
-dp_tracing_screen(void)
+static bool
+dp_tracing_screen_main_loop(void)
 {
    struct trace_event e;
    int rc;
    char c;
 
+   while (true) {
+
+      /* Check the input for Ctrl+C */
+      rc = vfs_read(dp_input_handle, &c, 1);
+
+      if (rc < 0 && rc != -EAGAIN)
+         return false; /* exit because of an error */
+
+      /* rc == 1 */
+
+      switch (c) {
+
+         case DP_KEY_CTRL_C:
+            return false; /* clean exit */
+
+         case DP_KEY_ENTER:
+            return true; /* stop dumping the trace buffer */
+      }
+
+      if (read_trace_event(&e, TIMER_HZ / 10))
+         dp_dump_tracing_event(&e);
+   }
+
+   NOT_REACHED();
+}
+
+enum kb_handler_action
+dp_tracing_screen(void)
+{
    dp_set_cursor_enabled(true);
-
-   tracing_ui_msg1();
-
-   if (!tracing_ui_wait_for_enter())
-      goto out;
-
-   tracing_ui_msg2();
+   dp_clear();
+   dp_move_cursor(1, 1);
 
    while (true) {
 
-      if (!read_trace_event(&e, TIMER_HZ / 10)) {
+      tracing_ui_msg();
 
-         /* No tracing event yet, check the input for Ctrl+C */
-         rc = vfs_read(dp_input_handle, &c, 1);
+      if (!tracing_ui_wait_for_enter())
+         goto out;
 
-         if (rc == 1 && c == DP_KEY_CTRL_C)
-            break; /* Ctrl+C hit, exit from here! */
+      dp_write_raw("\r\n");
+      dp_write_raw(E_COLOR_GREEN "-- Dumping active --" RESET_ATTRS "\r\n\r\n");
 
-      } else {
+      if (!dp_tracing_screen_main_loop())
+         break;
 
-         /* We actually read a tracing event, dump it. */
-         dp_dump_tracing_event(&e);
-      }
+      dp_write_raw("\r\n");
    }
 
 out:

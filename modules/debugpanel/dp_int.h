@@ -43,3 +43,4 @@ static inline sptr dp_int_abs(sptr val) {
 
 void dp_register_screen(struct dp_screen *screen);
 int dp_read_ke_from_tty(struct key_event *ke);
+void dp_set_input_blocking(bool blocking);
