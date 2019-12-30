@@ -7,10 +7,14 @@
 static bool
 dump_param_int(uptr __val, char *dest, size_t dest_buf_size)
 {
-   int val = (int)__val;
+   const sptr val = (sptr)__val;
    int rc;
 
-   rc = snprintk(dest, dest_buf_size, "%d", val);
+   rc = snprintk(dest,
+                 dest_buf_size,
+                 NBITS == 32 ? "%d" : "%lld",
+                 val);
+
    return rc < (int)dest_buf_size;
 }
 

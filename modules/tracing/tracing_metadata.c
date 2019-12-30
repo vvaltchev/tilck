@@ -11,8 +11,108 @@
       .kind = _kind,                                     \
    }
 
+#define SYSCALL_TYPE_0(sys)                                          \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 0,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = { }                                                  \
+   }
+
+#define SYSCALL_TYPE_1(sys, par1)                                    \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 1,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_int, sys_param_in),               \
+      }                                                              \
+   }
+
+#define SYSCALL_TYPE_2(sys, par1, par2)                              \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 2,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
+         SIMPLE_PARAM(par2, &ptype_oct, sys_param_in),               \
+      }                                                              \
+   }
+
+#define SYSCALL_TYPE_3(sys, par1)                                    \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 1,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
+      }                                                              \
+   }
+
+#define SYSCALL_TYPE_4(sys, par1, par2)                              \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 2,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
+         SIMPLE_PARAM(par2, &ptype_path, sys_param_in),              \
+      }                                                              \
+   }
+
+#define SYSCALL_TYPE_5(sys, par1, par2)                              \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 2,                                                 \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_int, sys_param_in),               \
+         SIMPLE_PARAM(par2, &ptype_int, sys_param_in),               \
+      }                                                              \
+   }
+
 static const struct syscall_info __tracing_metadata[] =
 {
+   SYSCALL_TYPE_0(SYS_fork),
+   SYSCALL_TYPE_0(SYS_vfork),
+   SYSCALL_TYPE_0(SYS_pause),
+   SYSCALL_TYPE_0(SYS_getuid),
+   SYSCALL_TYPE_0(SYS_getgid),
+   SYSCALL_TYPE_0(SYS_geteuid),
+   SYSCALL_TYPE_0(SYS_getegid),
+   SYSCALL_TYPE_0(SYS_gettid),
+   SYSCALL_TYPE_0(SYS_setsid),
+   SYSCALL_TYPE_0(SYS_sync),
+   SYSCALL_TYPE_0(SYS_getppid),
+   SYSCALL_TYPE_0(SYS_getpgrp),
+   SYSCALL_TYPE_0(SYS_sched_yield),
+
+   SYSCALL_TYPE_1(SYS_close, "fd"),
+   SYSCALL_TYPE_1(SYS_dup, "dup"),
+   SYSCALL_TYPE_1(SYS_getpgid, "pid"),
+   SYSCALL_TYPE_1(SYS_getsid, "pid"),
+   SYSCALL_TYPE_1(SYS_exit, "status"),
+   SYSCALL_TYPE_1(SYS_exit_group, "status"),
+
+   SYSCALL_TYPE_2(SYS_creat, "path", "mode"),
+   SYSCALL_TYPE_2(SYS_chmod, "path", "mode"),
+   SYSCALL_TYPE_2(SYS_mkdir, "path", "mode"),
+   SYSCALL_TYPE_2(SYS_access, "path", "mode"),
+
+   SYSCALL_TYPE_3(SYS_unlink, "path"),
+   SYSCALL_TYPE_3(SYS_rmdir, "path"),
+   SYSCALL_TYPE_3(SYS_chdir, "path"),
+
+   SYSCALL_TYPE_4(SYS_link, "oldpath", "newpath"),
+   SYSCALL_TYPE_4(SYS_symlink, "target", "linkpath"),
+   SYSCALL_TYPE_4(SYS_rename, "oldpath", "newpath"),
+
+   SYSCALL_TYPE_5(SYS_setpgid, "pid", "pgid"),
+   SYSCALL_TYPE_5(SYS_dup2, "oldfd", "newfd"),
+   SYSCALL_TYPE_5(SYS_kill, "pid", "sig"),
+   SYSCALL_TYPE_5(SYS_tkill, "tid", "sig"),
+
    {
       .sys_n = SYS_read,
       .n_params = 3,
@@ -50,6 +150,24 @@ static const struct syscall_info __tracing_metadata[] =
          },
 
          SIMPLE_PARAM("count", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_getcwd,
+      .n_params = 2,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+
+         {
+            .name = "buf",
+            .type = &ptype_buffer,
+            .kind = sys_param_out,
+            .size_param_name = "size",
+            .real_sz_in_ret = true,
+         },
+
+         SIMPLE_PARAM("size", &ptype_int, sys_param_in),
       },
    },
 
@@ -106,34 +224,6 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
-      .sys_n = SYS_close,
-      .n_params = 1,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_dup,
-      .n_params = 1,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_dup2,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("oldfd", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("newfd", &ptype_int, sys_param_in),
-      }
-   },
-
-   {
       .sys_n = SYS_brk,
       .n_params = 1,
       .ret_type = &ptype_voidp,
@@ -166,100 +256,12 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
-      .sys_n = SYS_creat,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_link,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("oldpath", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("newpath", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_symlink,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("target", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("linkpath", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_rename,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("oldpath", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("newpath", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_unlink,
+      .sys_n = SYS_umask,
       .n_params = 1,
-      .ret_type = &ptype_errno_or_val,
+      .ret_type = &ptype_oct,
       .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_rmdir,
-      .n_params = 1,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_chdir,
-      .n_params = 1,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_chmod,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_mkdir,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
-      }
-   },
-
-   {
-      .sys_n = SYS_kill,
-      .n_params = 2,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-         SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("sig", &ptype_int, sys_param_in),
-      }
+         SIMPLE_PARAM("mask", &ptype_oct, sys_param_in),
+      },
    },
 
    { .sys_n = INVALID_SYSCALL },

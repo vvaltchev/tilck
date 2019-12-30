@@ -78,7 +78,7 @@ int sys_pause(); // TODO: update once signals are implemented
 
 CREATE_STUB_SYSCALL_IMPL(sys_utime)
 
-int sys_access(const char *pathname, int mode);
+int sys_access(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
 
@@ -146,7 +146,7 @@ int sys_symlink(const char *u_target, const char *u_linkpath);
 
 CREATE_STUB_SYSCALL_IMPL(sys_lstat)
 
-int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize);
+int sys_readlink(const char *u_pathname, char *u_buf, size_t bufsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_uselib)
 CREATE_STUB_SYSCALL_IMPL(sys_swapon)
@@ -278,7 +278,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_pread64)
 CREATE_STUB_SYSCALL_IMPL(sys_pwrite64)
 CREATE_STUB_SYSCALL_IMPL(sys_chown16)
 
-int sys_getcwd(char *buf, size_t buf_size);
+int sys_getcwd(char *buf, size_t size);
 
 CREATE_STUB_SYSCALL_IMPL(sys_capget)
 CREATE_STUB_SYSCALL_IMPL(sys_capset)
@@ -299,10 +299,10 @@ int sys_lstat64(const char *u_path, struct stat64 *u_statbuf);
 int sys_fstat64(int fd, struct stat64 *u_statbuf);
 int sys_lchown(const char *u_path, int owner, int group);
 
-int sys_getuid();
-int sys_getgid();
-int sys_geteuid();
-int sys_getegid();
+int sys_getuid(void);
+int sys_getgid(void);
+int sys_geteuid(void);
+int sys_getegid(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_setreuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setregid)

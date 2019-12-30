@@ -487,7 +487,7 @@ int sys_getdents64(int fd, struct linux_dirent64 *u_dirp, u32 buf_size)
    return vfs_getdents64(handle, u_dirp, buf_size);
 }
 
-int sys_access(const char *pathname, int mode)
+int sys_access(const char *u_path, mode_t mode)
 {
    // TODO: check mode and file r/w flags.
    return 0;
