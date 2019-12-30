@@ -406,13 +406,13 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
-      if (MOD_debugpanel && traced)
+      if (MOD_tracing && traced)
          trace_syscall_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
       *(void **)(&fptr) = syscalls[sn];
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-      if (MOD_debugpanel && traced)
+      if (MOD_tracing && traced)
          trace_syscall_exit(sn, (sptr)r->eax,
                             r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }

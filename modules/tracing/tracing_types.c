@@ -2,8 +2,7 @@
 
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/user.h>
-
-#include "tracing_int.h"
+#include <tilck/mods/tracing.h>
 
 static bool
 dump_param_int(uptr __val, char *dest, size_t dest_buf_size)

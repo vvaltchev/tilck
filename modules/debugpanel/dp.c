@@ -24,8 +24,6 @@
 #include "termutil.h"
 #include "dp_int.h"
 
-void init_dp_tracing(void);
-
 static inline void dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
@@ -304,15 +302,20 @@ static void dp_tilck_cmd()
 
 static void dp_init(void)
 {
+   struct dp_screen *pos;
    register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_tilck_cmd);
-   init_tracing();
-   init_dp_tracing();
+
+   list_for_each_ro(pos, &dp_screens_list, node) {
+
+      if (pos->first_setup)
+         pos->first_setup();
+   }
 }
 
 static struct module dp_module = {
 
    .name = "debugpanel",
-   .priority = 100,
+   .priority = 1000,
    .init = &dp_init,
 };
 

@@ -12,6 +12,7 @@
 #cmakedefine01    MOD_fb
 #cmakedefine01    MOD_serial
 #cmakedefine01    MOD_debugpanel
+#cmakedefine01    MOD_tracing
 
 /*
  * Module-specific config options that won't affect the whole kernel.

@@ -18,6 +18,7 @@ struct dp_screen {
    int row_off;
    int row_max;
    const char *label;
+   void (*first_setup)(void);
    void (*draw_func)(void);
    void (*on_dp_enter)(void);
    void (*on_dp_exit)(void);

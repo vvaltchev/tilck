@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include "tracing_int.h"
+#include <tilck/mods/tracing.h>
 
 #include <sys/syscall.h> // system header
 

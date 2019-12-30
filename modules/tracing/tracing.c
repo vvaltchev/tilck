@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
+#include <tilck/kernel/modules.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/sync.h>
@@ -14,7 +15,6 @@
 #include <tilck/kernel/debug_utils.h>
 
 #include <tilck/mods/tracing.h>
-#include "tracing_int.h"
 
 #define TRACE_BUF_SIZE                       (128 * KB)
 
@@ -461,3 +461,12 @@ init_tracing(void)
    tracing_populate_syscalls_info();
    tracing_allocate_slots_for_params();
 }
+
+static struct module dp_module = {
+
+   .name = "tracing",
+   .priority = 100,
+   .init = &init_tracing,
+};
+
+REGISTER_MODULE(&dp_module);

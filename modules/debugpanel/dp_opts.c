@@ -41,6 +41,7 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(MOD_fb);
    DUMP_BOOL_OPT(MOD_serial);
    DUMP_BOOL_OPT(MOD_debugpanel);
+   DUMP_BOOL_OPT(MOD_tracing);
 
    DUMP_LABEL("Modules config");
    DUMP_BOOL_OPT(KERNEL_FB_BANNER);

@@ -1,7 +1,8 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/user.h>
-
-#include "tracing_int.h"
+#include <tilck/mods/tracing.h>
 
 static bool
 save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)

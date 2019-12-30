@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/process.h>
@@ -14,6 +16,7 @@
 #include "termutil.h"
 #define MAX_EXEC_PATH_LEN     34
 
+void init_dp_tracing(void);
 enum kb_handler_action dp_tasks_show_trace(void);
 
 /* Gfx state */
@@ -257,6 +260,13 @@ static bool is_tid_off_limits(int tid)
 }
 
 static enum kb_handler_action
+dp_no_tracing_module_action(void)
+{
+   modal_msg = "The tracing module is NOT built-in";
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
 dp_tasks_handle_sel_mode_keypress_special(u32 key)
 {
    if (key == KEY_UP) {
@@ -378,7 +388,11 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
          return dp_tasks_handle_sel_mode_keypress_esc();
 
       case DP_KEY_CTRL_T:
-         return dp_tasks_show_trace();
+
+         if (MOD_tracing)
+            return dp_tasks_show_trace();
+
+         return dp_no_tracing_module_action();
 
       case 'r':
          return dp_tasks_handle_sel_mode_keypress_r();
@@ -393,7 +407,11 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
          return dp_tasks_handle_sel_mode_keypress_c();
 
       case 't':
-         return dp_tasks_handle_sel_mode_keypress_t();
+
+         if (MOD_tracing)
+            return dp_tasks_handle_sel_mode_keypress_t();
+
+         return dp_no_tracing_module_action();
    }
 
    return kb_handler_nak;
@@ -419,7 +437,11 @@ dp_tasks_handle_default_mode_keypress(struct key_event ke)
          return dp_tasks_handle_default_mode_enter();
 
       case DP_KEY_CTRL_T:
-         return dp_tasks_show_trace();
+
+         if (MOD_tracing)
+            return dp_tasks_show_trace();
+
+         return dp_no_tracing_module_action();
    }
 
    return kb_handler_nak;
@@ -534,10 +556,17 @@ static void dp_tasks_exit(void)
    /* do nothing, for the moment */
 }
 
+static void dp_tasks_first_setup(void)
+{
+   if (MOD_tracing)
+      init_dp_tracing();
+}
+
 static struct dp_screen dp_tasks_screen =
 {
    .index = 3,
    .label = "Tasks",
+   .first_setup = dp_tasks_first_setup,
    .on_dp_enter = dp_tasks_enter,
    .on_dp_exit = dp_tasks_exit,
    .draw_func = dp_show_tasks,

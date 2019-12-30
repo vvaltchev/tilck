@@ -130,3 +130,13 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name);
 
 const char *
 get_errno_name(int errno);
+
+
+extern const struct syscall_info *tracing_metadata;
+
+extern const struct sys_param_type ptype_int;
+extern const struct sys_param_type ptype_voidp;
+extern const struct sys_param_type ptype_oct;
+extern const struct sys_param_type ptype_errno_or_val;
+extern const struct sys_param_type ptype_buffer;
+extern const struct sys_param_type ptype_path;

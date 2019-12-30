@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
@@ -11,7 +13,8 @@
 #include <tilck/mods/tracing.h>
 
 #include "termutil.h"
-#include "tracing_int.h"
+
+#if MOD_tracing
 
 #define REND_BUF_SIZE                              128
 static char *rend_bufs[6];
@@ -340,3 +343,5 @@ out:
    dp_set_cursor_enabled(false);
    return kb_handler_ok_and_continue;
 }
+
+#endif // #if MOD_tracing
