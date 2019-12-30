@@ -2,9 +2,13 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/syscalls.h>
 
-#define INVALID_SYSCALL ((u32) -1)
-#define NO_SLOT                 -1
+#define INVALID_SYSCALL           ((u32) -1)
+#define NO_SLOT                           -1
+#define TRACED_SYSCALLS_STR_LEN         512u
+
+extern bool *traced_syscalls;
 
 enum trace_event_type {
    te_invalid,
@@ -131,6 +135,23 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name);
 const char *
 get_errno_name(int errno);
 
+int
+get_traced_syscalls_count(void);
+
+void
+get_traced_syscalls_str(char *buf, size_t len);
+
+int
+set_traced_syscalls(const char *str);
+
+static ALWAYS_INLINE bool
+tracing_is_enabled_on_sys(u32 sys_n)
+{
+   if (sys_n >= MAX_SYSCALLS)
+      return false;
+
+   return traced_syscalls[sys_n];
+}
 
 extern const struct syscall_info *tracing_metadata;
 

@@ -22,6 +22,7 @@ struct symbol_node {
 
    struct bintree_node node;
 
+   u32 sys_n;
    void *vaddr;
    const char *name;
 };
@@ -39,18 +40,34 @@ static const struct syscall_info **syscalls_info;
 static s8 (*params_slots)[MAX_SYSCALLS][6];
 static s8 *syscalls_fmts;
 
+static char *traced_syscalls_str;
+static int traced_syscalls_count;
+bool *traced_syscalls;
+
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
 {
+   struct symbol_node *sym_node;
+   int sys_n;
+
    if (!i->name || strncmp(i->name, "sys_", 4))
       return 0; /* not a syscall symbol */
 
-   bintree_node_init(&syms_buf[syms_count].node);
-   syms_buf[syms_count].vaddr = i->vaddr;
-   syms_buf[syms_count].name = i->name;
+   if ((sys_n = get_syscall_num(i->vaddr)) < 0)
+      return 0; /* not a syscall, just a function start with sys_ */
+
+   sym_node = &syms_buf[syms_count];
+
+   *sym_node = (struct symbol_node) {
+      .sys_n = (u32) sys_n,
+      .vaddr = i->vaddr,
+      .name = i->name,
+   };
+
+   bintree_node_init(&sym_node->node);
 
    bintree_insert_ptr(&syms_bintree,
-                      &syms_buf[syms_count],
+                      sym_node,
                       struct symbol_node,
                       node,
                       vaddr);
@@ -431,22 +448,180 @@ debug_tracing_dump_syscalls_fmt(void)
 }
 
 void
+get_traced_syscalls_str(char *buf, size_t len)
+{
+   memcpy(buf, traced_syscalls_str, MIN(len, TRACED_SYSCALLS_STR_LEN));
+}
+
+int
+get_traced_syscalls_count(void)
+{
+   return traced_syscalls_count;
+}
+
+/*
+ * Minimalistic wildcard matching function.
+ *
+ * It supports only '*' at the end of an expression like:
+ *
+ *    ab*      matches:  abc, ab, abcdefgh, etc.
+ *      *      matches EVERYTHING
+ *
+ * And the jolly character '?' which matches exactly one character (any).
+ *
+ * NOTE:
+ *    ab*c     matches NOTHING because '*' must be the last char, if present.
+ *
+ */
+static bool
+simple_wildcard_match(const char *str, const char *expr)
+{
+   for (; *str && *expr; str++, expr++) {
+
+      if (*expr == '*')
+         return expr[1] == 0;
+
+      if (*str != *expr && *expr != '?')
+         return false; /* not a match */
+   }
+
+   return !*expr || (*expr == '*' && !expr[1]);
+}
+
+static int
+handle_sys_trace_arg(const char *arg)
+{
+   struct bintree_walk_ctx ctx;
+   struct symbol_node *n;
+   bool match_sign = true;
+
+   if (!*arg)
+      return 0; /* empty string */
+
+   if (*arg == '!') {
+
+      if (!arg[1])
+         return 0; /* empty negation string */
+
+      match_sign = false;
+      arg++;
+   }
+
+   bintree_in_order_visit_start(&ctx,
+                                syms_bintree,
+                                struct symbol_node,
+                                node,
+                                false);
+
+   while ((n = bintree_in_order_visit_next(&ctx))) {
+
+      if (simple_wildcard_match(n->name + 4, arg))
+         traced_syscalls[n->sys_n] = match_sign;
+   }
+
+   return 0;
+}
+
+static int
+set_traced_syscalls_int(const char *s)
+{
+   const size_t len = strlen(s);
+   char *p, buf[32];
+   int rc;
+
+   if (len >= TRACED_SYSCALLS_STR_LEN)
+      return -ENAMETOOLONG;
+
+   if (len == 0)
+      return -EINVAL;
+
+   for (p = buf; *s; s++) {
+
+      if (p == buf + sizeof(buf))
+         return -ENAMETOOLONG;
+
+      if (*s == ',') {
+         *p = 0;
+         p = buf;
+
+         if ((rc = handle_sys_trace_arg(buf)))
+            return rc;
+
+         continue;
+      }
+
+      *p++ = *s;
+   }
+
+   if (p > buf) {
+
+      *p = 0;
+
+      if ((rc = handle_sys_trace_arg(buf)))
+         return rc;
+   }
+
+   traced_syscalls_count = 0;
+
+   for (int i = 0; i < MAX_SYSCALLS; i++)
+      if (traced_syscalls[i])
+         traced_syscalls_count++;
+
+   memcpy(traced_syscalls_str, s, len);
+   return 0;
+}
+
+static void
+reset_traced_syscalls(void)
+{
+   for (int i = 0; i < MAX_SYSCALLS; i++)
+      traced_syscalls[i] = false;
+}
+
+int
+set_traced_syscalls(const char *s)
+{
+   int rc;
+   disable_preemption();
+   {
+      reset_traced_syscalls();
+
+      if ((rc = set_traced_syscalls_int(s)))
+         reset_traced_syscalls();
+   }
+   enable_preemption();
+   return rc;
+}
+
+static void
+tracing_init_oom_panic(const char *buf_name)
+{
+   panic("Unable to allocate %s in init_tracing()", buf_name);
+}
+
+void
 init_tracing(void)
 {
    if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
-      panic("Unable to allocate the tracing buffer in tracing.c");
+      tracing_init_oom_panic("tracing_buf");
 
    if (!(syms_buf = kmalloc(sizeof(struct symbol_node) * MAX_SYSCALLS)))
-      panic("Unable to allocate the syms_buf in tracing.c");
+      tracing_init_oom_panic("syms_buf");
 
    if (!(syscalls_info = kzmalloc(sizeof(void *) * MAX_SYSCALLS)))
-      panic("Unable to allocate the syscalls_info array in tracing.c");
+      tracing_init_oom_panic("syscalls_info");
 
    if (!(params_slots = kmalloc(sizeof(*params_slots))))
-      panic("Unable to allocate the params_slots array in tracing.c");
+      tracing_init_oom_panic("params_slots");
 
    if (!(syscalls_fmts = kzmalloc(sizeof(s8) * MAX_SYSCALLS)))
-      panic("Unable to allocate the syscalls_fmts array in tracing.c");
+      tracing_init_oom_panic("syscalls_fmts");
+
+   if (!(traced_syscalls = kmalloc(MAX_SYSCALLS)))
+      tracing_init_oom_panic("traced_syscalls");
+
+   if (!(traced_syscalls_str = kmalloc(TRACED_SYSCALLS_STR_LEN)))
+      tracing_init_oom_panic("traced_syscalls_str");
 
    ringbuf_init(&tracing_rb,
                 TRACE_BUF_SIZE / sizeof(struct trace_event),
@@ -460,6 +635,8 @@ init_tracing(void)
 
    tracing_populate_syscalls_info();
    tracing_allocate_slots_for_params();
+
+   set_traced_syscalls("*");
 }
 
 static struct module dp_module = {

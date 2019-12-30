@@ -28,3 +28,4 @@ void init_extra_debug_features();
 void set_sched_alive_thread_enabled(bool enabled);
 void register_tilck_cmd(int cmd_n, void *func);
 void *get_syscall_func_ptr(u32 n);
+int get_syscall_num(void *func);

@@ -123,7 +123,9 @@
       "tty_struct.h": "c",
       "*.tcc": "c",
       "video_term_int.h": "c",
-      "idt_int.h": "c"
+      "idt_int.h": "c",
+      "unordered_map": "c",
+      "unordered_set": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

@@ -377,6 +377,18 @@ void *get_syscall_func_ptr(u32 n)
    return syscalls[n];
 }
 
+int get_syscall_num(void *func)
+{
+   if (!func)
+      return -1;
+
+   for (int i = 0; i < (int)ARRAY_SIZE(syscalls); i++)
+      if (syscalls[i] == func)
+         return i;
+
+   return -1;
+}
+
 void handle_syscall(regs_t *r)
 {
    struct task *const curr = get_curr_task();
@@ -406,13 +418,13 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
-      if (MOD_tracing && traced)
+      if (MOD_tracing && traced && tracing_is_enabled_on_sys(sn))
          trace_syscall_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
       *(void **)(&fptr) = syscalls[sn];
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-      if (MOD_tracing && traced)
+      if (MOD_tracing && traced && tracing_is_enabled_on_sys(sn))
          trace_syscall_exit(sn, (sptr)r->eax,
                             r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
