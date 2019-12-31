@@ -8,8 +8,6 @@
 #define NO_SLOT                           -1
 #define TRACED_SYSCALLS_STR_LEN         512u
 
-extern bool *traced_syscalls;
-
 enum trace_event_type {
    te_invalid,
    te_sys_enter,
@@ -155,6 +153,17 @@ get_traced_syscalls_str(char *buf, size_t len);
 int
 set_traced_syscalls(const char *str);
 
+extern bool force_exp_block;
+extern bool *traced_syscalls;
+
+extern const struct syscall_info *tracing_metadata;
+extern const struct sys_param_type ptype_int;
+extern const struct sys_param_type ptype_voidp;
+extern const struct sys_param_type ptype_oct;
+extern const struct sys_param_type ptype_errno_or_val;
+extern const struct sys_param_type ptype_buffer;
+extern const struct sys_param_type ptype_path;
+
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
 {
@@ -164,11 +173,8 @@ tracing_is_enabled_on_sys(u32 sys_n)
    return traced_syscalls[sys_n];
 }
 
-extern const struct syscall_info *tracing_metadata;
-
-extern const struct sys_param_type ptype_int;
-extern const struct sys_param_type ptype_voidp;
-extern const struct sys_param_type ptype_oct;
-extern const struct sys_param_type ptype_errno_or_val;
-extern const struct sys_param_type ptype_buffer;
-extern const struct sys_param_type ptype_path;
+static ALWAYS_INLINE bool
+exp_block(const struct syscall_info *si)
+{
+   return force_exp_block || si->exp_block;
+}

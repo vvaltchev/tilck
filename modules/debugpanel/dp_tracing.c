@@ -34,42 +34,39 @@ tracing_ui_msg(void)
 {
    dp_write_raw(
       E_COLOR_YELLOW
-      "Tilck syscall tracing. ENTER: start/stop dumping | Ctrl+C: exit"
+      "Tilck syscall tracing\r\n"
       RESET_ATTRS
    );
-}
 
-static bool
-tracing_ui_wait_for_enter(void)
-{
-   int rc;
-   char c;
-   bool retval;
+   dp_write_raw("-------------------------------------\r\n");
 
-   dp_set_input_blocking(true);
+   dp_write_raw(
+      "Always ENTER + EXIT: %s\r\n",
+      force_exp_block
+         ? E_COLOR_GREEN "ON" RESET_ATTRS
+         : E_COLOR_RED "OFF" RESET_ATTRS
+   );
 
-   while (true) {
+   dp_write_raw("Syscalls traced: %d\r\n", get_traced_syscalls_count());
+   dp_write_raw("Actions:\r\n");
 
-      rc = vfs_read(dp_input_handle, &c, 1);
+   dp_write_raw(
+      "     " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop dumping\r\n"
+   );
 
-      if (rc <= 0) {
-         retval = false;
-         break; /* something gone wrong */
-      }
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "     " E_COLOR_YELLOW "Ctrl+C" RESET_ATTRS ": exit\r\n"
+      RESET_ATTRS
+   );
 
-      if (c == DP_KEY_ENTER) {
-         retval = true;
-         break; /* ok, start dumping */
-      }
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "     " E_COLOR_YELLOW "o" RESET_ATTRS ": toggle always enter + exit\r\n"
+      RESET_ATTRS
+   );
 
-      if (c == DP_KEY_CTRL_C) {
-         retval = false;
-         break; /* clean exit */
-      }
-   }
-
-   dp_set_input_blocking(false);
-   return retval;
+   dp_write_raw(E_COLOR_YELLOW "> " RESET_ATTRS);
 }
 
 static inline bool
@@ -191,7 +188,7 @@ dp_dump_syscall_with_info(struct trace_event *e,
       const struct sys_param_info *p = &si->params[i];
       const struct sys_param_type *type = p->type;
 
-      if (dp_should_full_dump_param(si->exp_block, p->kind, e->type)) {
+      if (dp_should_full_dump_param(exp_block(si), p->kind, e->type)) {
 
          dp_render_full_dump_single_param(i, e, si, p, type);
          used_rend_bufs++;
@@ -260,7 +257,7 @@ dp_dump_syscall_event(struct trace_event *e,
 
    } else {
 
-      if (!si || si->exp_block)
+      if (!si || exp_block(si))
          dp_write_raw(E_COLOR_BR_BLUE "EXIT" RESET_ATTRS " ");
       else
          dp_write_raw(E_COLOR_YELLOW "CALL" RESET_ATTRS " ");
@@ -343,27 +340,60 @@ dp_tracing_screen_main_loop(void)
 enum kb_handler_action
 dp_tracing_screen(void)
 {
+   int rc;
+   char c;
+
    dp_set_cursor_enabled(true);
    dp_clear();
    dp_move_cursor(1, 1);
+   tracing_ui_msg();
 
    while (true) {
 
-      tracing_ui_msg();
+      dp_set_input_blocking(true);
+      {
+         rc = vfs_read(dp_input_handle, &c, 1);
+      }
+      dp_set_input_blocking(false);
 
-      if (!tracing_ui_wait_for_enter())
-         goto out;
+      if (rc <= 0)
+         break; /* something gone wrong */
 
-      dp_write_raw("\r\n");
-      dp_write_raw(E_COLOR_GREEN "-- Dumping active --" RESET_ATTRS "\r\n\r\n");
-
-      if (!dp_tracing_screen_main_loop())
+      if (c == DP_KEY_CTRL_C)
          break;
 
-      dp_write_raw("\r\n");
+      if (c == DP_KEY_ENTER) {
+
+         dp_write_raw("\r\n");
+         dp_write_raw(
+            E_COLOR_GREEN "-- Dumping active --" RESET_ATTRS "\r\n\r\n"
+         );
+
+         if (!dp_tracing_screen_main_loop())
+            break;
+
+         dp_write_raw("\r\n");
+         tracing_ui_msg();
+         continue;
+      }
+
+      switch (c) {
+
+         case 'o':
+            force_exp_block = !force_exp_block;
+            break;
+
+         default:
+            continue;
+      }
+
+      if (isprint(c))
+         dp_write_raw("%c", c);
+
+      dp_write_raw("\r\n\r\n");
+      tracing_ui_msg();
    }
 
-out:
    ui_need_update = true;
    dp_set_cursor_enabled(false);
    return kb_handler_ok_and_continue;

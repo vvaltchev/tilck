@@ -43,6 +43,7 @@ static s8 *syscalls_fmts;
 static char *traced_syscalls_str;
 static int traced_syscalls_count;
 bool *traced_syscalls;
+bool force_exp_block;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -164,7 +165,7 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
       const struct sys_param_type *t = p->type;
       const bool outp = p->kind == sys_param_out || p->kind == sys_param_in_out;
 
-      if (t->save && (!si->exp_block || outp))
+      if (t->save && (!exp_block(si) || outp))
       {
          sptr sz = -1;
 
@@ -190,7 +191,7 @@ trace_syscall_enter(u32 sys,
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
-   if (si && !si->exp_block)
+   if (si && !exp_block(si))
       return; /* don't trace the enter event */
 
    struct trace_event e = {
