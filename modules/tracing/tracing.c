@@ -533,9 +533,10 @@ handle_sys_trace_arg(const char *arg)
 }
 
 static int
-set_traced_syscalls_int(const char *s)
+set_traced_syscalls_int(const char *str)
 {
-   const size_t len = strlen(s);
+   const size_t len = strlen(str);
+   const char *s = str;
    char *p, buf[32];
    int rc;
 
@@ -577,7 +578,7 @@ set_traced_syscalls_int(const char *s)
       if (traced_syscalls[i])
          traced_syscalls_count++;
 
-   memcpy(traced_syscalls_str, s, len);
+   memcpy(traced_syscalls_str, str, len + 1);
    return 0;
 }
 

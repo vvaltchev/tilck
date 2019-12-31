@@ -19,6 +19,7 @@
 #define REND_BUF_SIZE                              128
 static char *rend_bufs[6];
 static int used_rend_bufs;
+static char *line_buf;
 
 void init_dp_tracing(void)
 {
@@ -27,6 +28,9 @@ void init_dp_tracing(void)
       if (!(rend_bufs[i] = kmalloc(REND_BUF_SIZE)))
          panic("[dp] Unable to allocate rend_buf[%d]", i);
    }
+
+   if (!(line_buf = kmalloc(TRACED_SYSCALLS_STR_LEN)))
+      panic("[dp] Unable to allocate line_buf");
 }
 
 static void
@@ -47,25 +51,35 @@ tracing_ui_msg(void)
          : E_COLOR_RED "OFF" RESET_ATTRS
    );
 
-   dp_write_raw("Syscalls traced: %d\r\n", get_traced_syscalls_count());
+   get_traced_syscalls_str(line_buf, TRACED_SYSCALLS_STR_LEN);
+
+   dp_write_raw("Syscalls traced [%d]:\r\n", get_traced_syscalls_count());
+   dp_write_raw("  Expr: " E_COLOR_YELLOW "%s" RESET_ATTRS "\r\n", line_buf);
    dp_write_raw("Actions:\r\n");
 
    dp_write_raw(
-      "     " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop dumping\r\n"
+      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop dumping\r\n"
    );
 
    dp_write_raw(
       E_COLOR_YELLOW
-      "     " E_COLOR_YELLOW "Ctrl+C" RESET_ATTRS ": exit\r\n"
+      "  " E_COLOR_YELLOW "Ctrl+C" RESET_ATTRS ": exit\r\n"
       RESET_ATTRS
    );
 
    dp_write_raw(
       E_COLOR_YELLOW
-      "     " E_COLOR_YELLOW "o" RESET_ATTRS ": toggle always enter + exit\r\n"
+      "  " E_COLOR_YELLOW "o" RESET_ATTRS ": toggle always enter + exit\r\n"
       RESET_ATTRS
    );
 
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "  " E_COLOR_YELLOW "e" RESET_ATTRS ": edit syscalls expr\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw("\r\n");
    dp_write_raw(E_COLOR_YELLOW "> " RESET_ATTRS);
 }
 
@@ -381,6 +395,21 @@ dp_tracing_screen(void)
 
          case 'o':
             force_exp_block = !force_exp_block;
+            break;
+
+         case 'e':
+            dp_move_left(2);
+            dp_write_raw(E_COLOR_YELLOW "syscall expr> " RESET_ATTRS);
+            dp_set_input_blocking(true);
+            dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
+            dp_set_input_blocking(false);
+
+            rc = set_traced_syscalls(line_buf);
+
+            if (rc < 0)
+               dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+
+            c = 0;
             break;
 
          default:

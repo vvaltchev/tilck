@@ -10,7 +10,7 @@
 
 static bool rev_colors;
 
-static void dp_write_internal(const char *buf, int len)
+void dp_write_raw_int(const char *buf, int len)
 {
    struct tty *t = get_curr_process_tty();
 
@@ -30,7 +30,7 @@ void dp_write_raw(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   dp_write_internal(buf, rc);
+   dp_write_raw_int(buf, rc);
 }
 
 void dp_reverse_colors(void)
@@ -115,7 +115,7 @@ void dp_write(int row, int col, const char *fmt, ...)
       col = dp_start_col + 2;
 
    dp_move_cursor(row, col);
-   dp_write_internal(buf, rc);
+   dp_write_raw_int(buf, rc);
 }
 
 void dp_draw_rect_raw(int row, int col, int h, int w)

@@ -93,6 +93,21 @@ convert_seq_to_key(char *buf, struct key_event *ke)
             key = KEY_LEFT;
             break;
 
+         case 'H':
+            key = KEY_HOME;
+            break;
+
+         case 'F':
+            key = KEY_END;
+            break;
+
+         case '3':
+
+            if (buf[3] == '~')
+               key = KEY_DEL;
+
+            break;
+
          case '5':
          case '6':
 
@@ -198,4 +213,206 @@ dp_read_ke_from_tty(struct key_event *ke)
 
    convert_seq_to_key(buf, ke);
    return 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// read cmd
+
+static int line_pos;
+
+typedef void (*key_handler_type)(char *, int, char *, int *);
+
+static inline void raw_mode_erase_last(void)
+{
+   dp_write_raw("\033[D \033[D");
+}
+
+static void
+handle_seq_home(char *buf, int bs, char *line, int *line_len)
+{
+   dp_move_left(line_pos);
+   line_pos = 0;
+}
+
+static void
+handle_seq_end(char *buf, int bs, char *line, int *line_len)
+{
+   dp_move_right(*line_len - line_pos);
+   line_pos = *line_len;
+}
+
+static void
+handle_seq_delete(char *buf, int bs, char *line, int *line_len)
+{
+   if (!*line_len || line_pos == *line_len)
+      return;
+
+   (*line_len)--;
+
+   for (int i = line_pos; i < *line_len + 1; i++) {
+      buf[i] = buf[i + 1];
+   }
+
+   buf[*line_len] = ' ';
+   dp_write_raw_int(buf + line_pos, *line_len - line_pos + 1);
+   dp_move_left(*line_len - line_pos + 1);
+}
+
+static void
+handle_seq_left(char *buf, int bs, char *line, int *line_len)
+{
+   if (!line_pos)
+      return;
+
+   dp_move_left(1);
+   line_pos--;
+}
+
+static void
+handle_seq_right(char *buf, int bs, char *line, int *line_len)
+{
+   if (line_pos >= *line_len)
+      return;
+
+   dp_move_right(1);
+   line_pos++;
+}
+
+static void
+handle_esc_seq(u32 key, char *buf, int buf_size, char *line, int *line_len)
+{
+   key_handler_type func = NULL;
+
+   switch (key) {
+
+      case KEY_LEFT:
+         func = handle_seq_left;
+         break;
+
+      case KEY_RIGHT:
+         func = handle_seq_right;
+         break;
+
+      case KEY_HOME:
+         func = handle_seq_home;
+         break;
+
+      case KEY_END:
+         func = handle_seq_end;
+         break;
+
+      case KEY_DEL:
+         func = handle_seq_delete;
+         break;
+   }
+
+   if (func)
+      func(buf, buf_size, line, line_len);
+}
+
+static void
+handle_backspace(char *buf, int buf_size, char *line, int *line_len)
+{
+   if (!(*line_len) || !line_pos)
+      return;
+
+   (*line_len)--;
+   line_pos--;
+   raw_mode_erase_last();
+
+   if (line_pos == (*line_len))
+      return;
+
+   /* We have to shift left all the chars after line_pos */
+   for (int i = line_pos; i < (*line_len) + 1; i++) {
+      buf[i] = buf[i+1];
+   }
+
+   buf[(*line_len)] = ' ';
+   dp_write_raw_int(buf + line_pos, (*line_len) - line_pos + 1);
+   dp_move_left(*line_len - line_pos + 1);
+}
+
+static bool
+handle_regular_char(char c, char *buf, int bs, char *line, int *line_len)
+{
+   dp_write_raw_int(&c, 1);
+
+   if (c == '\r' || c == '\n')
+      return false;
+
+   if (line_pos == (*line_len)) {
+
+      buf[line_pos++] = c;
+
+   } else {
+
+      /* We have to shift right all the chars after line_pos */
+      for (int i = (*line_len); i >= line_pos; i--) {
+         buf[i + 1] = buf[i];
+      }
+
+      buf[line_pos] = c;
+
+      dp_write_raw_int(buf + line_pos + 1, (*line_len) - line_pos);
+      line_pos++;
+
+      dp_move_left(*line_len - line_pos + 1);
+   }
+
+   (*line_len)++;
+   return true;
+}
+
+int dp_read_line(char *buf, int buf_size)
+{
+   int rc;
+   char c;
+   int line_len;
+   char line[128];
+   struct key_event ke;
+   const int max_line_len = MIN(buf_size - 1, (int)sizeof(line) - 1);
+
+   line_len = line_pos = 0;
+
+   line_len = (int)strlen(buf);
+   line_pos = line_len;
+
+   memcpy(line, buf, (size_t)max_line_len);
+   line[line_len] = 0;
+
+   dp_write_raw("%s", line);
+
+   while (line_len < max_line_len) {
+
+      rc = dp_read_ke_from_tty(&ke);
+
+      if (rc < 0) {
+         line_len = rc;
+         break;
+      }
+
+      c = ke.print_char;
+
+      if (c == DP_KEY_BACKSPACE) {
+
+         handle_backspace(buf, buf_size, line, &line_len);
+
+      } else if (!c && ke.key) {
+
+         handle_esc_seq(ke.key, buf, buf_size, line, &line_len);
+
+      } else if (isprint(c) || c == '\r' || c == '\n') {
+
+         if (!handle_regular_char(c, buf, buf_size, line, &line_len))
+            break;
+
+      } else {
+
+         /* just ignore everything else */
+      }
+   }
+
+   buf[line_len >= 0 ? line_len : 0] = 0;
+   return line_len;
 }

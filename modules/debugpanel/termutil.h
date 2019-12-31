@@ -34,6 +34,7 @@
 #define DP_REV_COLOR             make_color(DEFAULT_BG_COLOR, DEFAULT_FG_COLOR)
 #define DP_ESC_COLOR             E_COLOR_WHITE
 
+#define DP_KEY_BACKSPACE         0x7f
 #define DP_KEY_ESC               0x1b
 #define DP_KEY_ENTER             0x0d
 #define DP_KEY_CTRL_C            0x03
@@ -77,3 +78,4 @@ dp_sign_value_esc_color(sptr val)
 /* raw functions, avoid using when possible */
 void dp_write_raw(const char *fmt, ...);
 void dp_draw_rect_raw(int row, int col, int h, int w);
+void dp_write_raw_int(const char *buf, int len);
