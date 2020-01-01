@@ -9,6 +9,13 @@
 #include "termutil.h"
 #include "dp_int.h"
 
+static int line_pos;
+static int line_len;
+static char line[128];
+
+typedef void (*key_handler_type)(char *, int);
+
+
 static int
 read_single_byte(fs_handle h, char *buf, u32 len)
 {
@@ -215,51 +222,44 @@ dp_read_ke_from_tty(struct key_event *ke)
    return 0;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// read cmd
-
-static int line_pos;
-
-typedef void (*key_handler_type)(char *, int, char *, int *);
-
-static inline void raw_mode_erase_last(void)
+static inline void dp_erase_last(void)
 {
    dp_write_raw("\033[D \033[D");
 }
 
 static void
-handle_seq_home(char *buf, int bs, char *line, int *line_len)
+handle_seq_home(char *buf, int bs)
 {
    dp_move_left(line_pos);
    line_pos = 0;
 }
 
 static void
-handle_seq_end(char *buf, int bs, char *line, int *line_len)
+handle_seq_end(char *buf, int bs)
 {
-   dp_move_right(*line_len - line_pos);
-   line_pos = *line_len;
+   dp_move_right(line_len - line_pos);
+   line_pos = line_len;
 }
 
 static void
-handle_seq_delete(char *buf, int bs, char *line, int *line_len)
+handle_seq_delete(char *buf, int bs)
 {
-   if (!*line_len || line_pos == *line_len)
+   if (!line_len || line_pos == line_len)
       return;
 
-   (*line_len)--;
+   line_len--;
 
-   for (int i = line_pos; i < *line_len + 1; i++) {
+   for (int i = line_pos; i < line_len + 1; i++) {
       buf[i] = buf[i + 1];
    }
 
-   buf[*line_len] = ' ';
-   dp_write_raw_int(buf + line_pos, *line_len - line_pos + 1);
-   dp_move_left(*line_len - line_pos + 1);
+   buf[line_len] = ' ';
+   dp_write_raw_int(buf + line_pos, line_len - line_pos + 1);
+   dp_move_left(line_len - line_pos + 1);
 }
 
 static void
-handle_seq_left(char *buf, int bs, char *line, int *line_len)
+handle_seq_left(char *buf, int bs)
 {
    if (!line_pos)
       return;
@@ -269,9 +269,9 @@ handle_seq_left(char *buf, int bs, char *line, int *line_len)
 }
 
 static void
-handle_seq_right(char *buf, int bs, char *line, int *line_len)
+handle_seq_right(char *buf, int bs)
 {
-   if (line_pos >= *line_len)
+   if (line_pos >= line_len)
       return;
 
    dp_move_right(1);
@@ -279,7 +279,7 @@ handle_seq_right(char *buf, int bs, char *line, int *line_len)
 }
 
 static void
-handle_esc_seq(u32 key, char *buf, int buf_size, char *line, int *line_len)
+handle_esc_seq(u32 key, char *buf, int buf_size)
 {
    key_handler_type func = NULL;
 
@@ -307,60 +307,60 @@ handle_esc_seq(u32 key, char *buf, int buf_size, char *line, int *line_len)
    }
 
    if (func)
-      func(buf, buf_size, line, line_len);
+      func(buf, buf_size);
 }
 
 static void
-handle_backspace(char *buf, int buf_size, char *line, int *line_len)
+handle_backspace(char *buf, int buf_size)
 {
-   if (!(*line_len) || !line_pos)
+   if (!line_len || !line_pos)
       return;
 
-   (*line_len)--;
+   line_len--;
    line_pos--;
-   raw_mode_erase_last();
+   dp_erase_last();
 
-   if (line_pos == (*line_len))
+   if (line_pos == line_len)
       return;
 
    /* We have to shift left all the chars after line_pos */
-   for (int i = line_pos; i < (*line_len) + 1; i++) {
+   for (int i = line_pos; i < line_len + 1; i++) {
       buf[i] = buf[i+1];
    }
 
-   buf[(*line_len)] = ' ';
-   dp_write_raw_int(buf + line_pos, (*line_len) - line_pos + 1);
-   dp_move_left(*line_len - line_pos + 1);
+   buf[line_len] = ' ';
+   dp_write_raw_int(buf + line_pos, line_len - line_pos + 1);
+   dp_move_left(line_len - line_pos + 1);
 }
 
 static bool
-handle_regular_char(char c, char *buf, int bs, char *line, int *line_len)
+handle_regular_char(char c, char *buf, int bs)
 {
    dp_write_raw_int(&c, 1);
 
    if (c == '\r' || c == '\n')
       return false;
 
-   if (line_pos == (*line_len)) {
+   if (line_pos == line_len) {
 
       buf[line_pos++] = c;
 
    } else {
 
       /* We have to shift right all the chars after line_pos */
-      for (int i = (*line_len); i >= line_pos; i--) {
+      for (int i = line_len; i >= line_pos; i--) {
          buf[i + 1] = buf[i];
       }
 
       buf[line_pos] = c;
 
-      dp_write_raw_int(buf + line_pos + 1, (*line_len) - line_pos);
+      dp_write_raw_int(buf + line_pos + 1, line_len - line_pos);
       line_pos++;
 
-      dp_move_left(*line_len - line_pos + 1);
+      dp_move_left(line_len - line_pos + 1);
    }
 
-   (*line_len)++;
+   line_len++;
    return true;
 }
 
@@ -368,8 +368,6 @@ int dp_read_line(char *buf, int buf_size)
 {
    int rc;
    char c;
-   int line_len;
-   char line[128];
    struct key_event ke;
    const int max_line_len = MIN(buf_size - 1, (int)sizeof(line) - 1);
 
@@ -396,15 +394,15 @@ int dp_read_line(char *buf, int buf_size)
 
       if (c == DP_KEY_BACKSPACE) {
 
-         handle_backspace(buf, buf_size, line, &line_len);
+         handle_backspace(buf, buf_size);
 
       } else if (!c && ke.key) {
 
-         handle_esc_seq(ke.key, buf, buf_size, line, &line_len);
+         handle_esc_seq(ke.key, buf, buf_size);
 
       } else if (isprint(c) || c == '\r' || c == '\n') {
 
-         if (!handle_regular_char(c, buf, buf_size, line, &line_len))
+         if (!handle_regular_char(c, buf, buf_size))
             break;
 
       } else {
