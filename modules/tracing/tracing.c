@@ -489,13 +489,21 @@ simple_wildcard_match(const char *str, const char *expr)
    for (; *str && *expr; str++, expr++) {
 
       if (*expr == '*')
-         return expr[1] == 0;
+         return !expr[1]; /* always fail if '*' is NOT the last char */
 
       if (*str != *expr && *expr != '?')
          return false; /* not a match */
    }
 
-   return !*expr || (*expr == '*' && !expr[1]);
+   /* Both `expr` and `str` ended: match */
+   if (!*expr && !*str)
+      return true;
+
+   /* If `str` just ended while `expr` has just one more '*': match */
+   if (*expr == '*' && !expr[1])
+      return true;
+
+   return false; /* not a match */
 }
 
 static int
