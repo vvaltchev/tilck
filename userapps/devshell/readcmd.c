@@ -41,6 +41,18 @@ static unsigned hist_count;
 static unsigned curr_hist_cmd_to_show;
 static int curr_line_pos;
 
+static inline void move_right(int n) {
+   char buf[16];
+   int rc = sprintf(buf, "\033[%dC", n);
+   write(1, buf, rc);
+}
+
+static inline void move_left(int n) {
+   char buf[16];
+   int rc = sprintf(buf, "\033[%dD", n);
+   write(1, buf, rc);
+}
+
 static inline void put_in_history(const char *cmdline)
 {
    strcpy(cmd_history[hist_count++ % HIST_SIZE], cmdline);
@@ -102,18 +114,14 @@ static uint64_t read_esc_seq(void)
 static void
 handle_seq_home(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
 {
-   for (int i = curr_line_pos - 1; i >= 0; i--)
-      write(1, SEQ_LEFT, 3);
-
+   move_left(curr_line_pos);
    curr_line_pos = 0;
 }
 
 static void
 handle_seq_end(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
 {
-   for (int i = curr_line_pos; i <= *c_cmd_len - 1; i++)
-      write(1, SEQ_RIGHT, 3);
-
+   move_right(*c_cmd_len - curr_line_pos);
    curr_line_pos = *c_cmd_len;
 }
 
@@ -131,9 +139,7 @@ handle_seq_delete(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
 
    buf[*c_cmd_len] = ' ';
    write(1, buf + curr_line_pos, *c_cmd_len - curr_line_pos + 1);
-
-   for (int i = *c_cmd_len; i >= curr_line_pos; i--)
-      write(1, SEQ_LEFT, 3);
+   move_left(*c_cmd_len - curr_line_pos + 1);
 }
 
 static void
@@ -142,7 +148,7 @@ handle_seq_left(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
    if (!curr_line_pos)
       return;
 
-   write(1, SEQ_LEFT, 3);
+   move_left(1);
    curr_line_pos--;
 }
 
@@ -152,7 +158,7 @@ handle_seq_right(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
    if (curr_line_pos >= *c_cmd_len)
       return;
 
-   write(1, SEQ_RIGHT, 3);
+   move_right(1);
    curr_line_pos++;
 }
 
@@ -162,8 +168,11 @@ handle_seq_updown(uint64_t seq, char *buf, int bs, char *c_cmd, int *c_cmd_len)
    const char *cmd;
 
    if (curr_line_pos != *c_cmd_len - 1) {
-      for (; curr_line_pos < *c_cmd_len; curr_line_pos++)
-         write(1, SEQ_RIGHT, 3);
+
+      if (curr_line_pos < *c_cmd_len) {
+         move_right(*c_cmd_len - curr_line_pos);
+         curr_line_pos = *c_cmd_len;
+      }
    }
 
    if (seq == SN(SEQ_UP)) {
@@ -269,9 +278,7 @@ handle_backspace(char *buf, int buf_size, char *c_cmd, int *c_cmd_len)
 
    buf[(*c_cmd_len)] = ' ';
    write(1, buf + curr_line_pos, (*c_cmd_len) - curr_line_pos + 1);
-
-   for (int i = (*c_cmd_len); i >= curr_line_pos; i--)
-      write(1, SEQ_LEFT, 3);
+   move_left(*c_cmd_len - curr_line_pos + 1);
 }
 
 static bool
@@ -304,8 +311,7 @@ handle_regular_char(char c, char *buf, int bs, char *c_cmd, int *c_cmd_len)
       write(1, buf + curr_line_pos + 1, (*c_cmd_len) - curr_line_pos);
       curr_line_pos++;
 
-      for (int i = (*c_cmd_len); i >= curr_line_pos; i--)
-         write(1, SEQ_LEFT, 3);
+      move_left(*c_cmd_len - curr_line_pos + 1);
    }
 
    (*c_cmd_len)++;
