@@ -156,10 +156,6 @@ get_traced_syscalls_str(char *buf, size_t len);
 int
 set_traced_syscalls(const char *str);
 
-extern bool tracing_on;
-extern bool force_exp_block;
-extern bool *traced_syscalls;
-
 extern const struct syscall_info *tracing_metadata;
 extern const struct sys_param_type ptype_int;
 extern const struct sys_param_type ptype_voidp;
@@ -171,6 +167,8 @@ extern const struct sys_param_type ptype_path;
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
 {
+   extern bool *traced_syscalls;
+
    if (sys_n >= MAX_SYSCALLS)
       return false;
 
@@ -180,15 +178,44 @@ tracing_is_enabled_on_sys(u32 sys_n)
 static ALWAYS_INLINE bool
 exp_block(const struct syscall_info *si)
 {
-   return force_exp_block || si->exp_block;
+   extern bool __force_exp_block;
+   return __force_exp_block || si->exp_block;
 }
 
-#define trace_sys_enter(sn, ...)                                        \
-   if (MOD_tracing && tracing_on && tracing_is_enabled_on_sys(sn)) {    \
-      trace_syscall_enter_int(sn, __VA_ARGS__);                         \
+static ALWAYS_INLINE void
+tracing_set_enabled(bool val)
+{
+   extern bool __tracing_on;
+   __tracing_on = val;
+}
+
+static ALWAYS_INLINE bool
+tracing_is_enabled(void)
+{
+   extern bool __tracing_on;
+   return __tracing_on;
+}
+
+static ALWAYS_INLINE void
+tracing_set_force_exp_block(bool enabled)
+{
+   extern bool __force_exp_block;
+   __force_exp_block = enabled;
+}
+
+static ALWAYS_INLINE bool
+tracing_is_force_exp_block_enabled(void)
+{
+   extern bool __force_exp_block;
+   return __force_exp_block;
+}
+
+#define trace_sys_enter(sn, ...)                                               \
+   if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
+      trace_syscall_enter_int(sn, __VA_ARGS__);                                \
    }
 
-#define trace_sys_exit(sn, ret, ...)                                    \
-   if (MOD_tracing && tracing_on && tracing_is_enabled_on_sys(sn)) {    \
-      trace_syscall_exit_int(sn, (sptr)(ret), __VA_ARGS__);             \
+#define trace_sys_exit(sn, ret, ...)                                           \
+   if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
+      trace_syscall_exit_int(sn, (sptr)(ret), __VA_ARGS__);                    \
    }

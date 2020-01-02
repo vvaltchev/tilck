@@ -104,7 +104,7 @@ tracing_ui_msg(void)
       TERM_VLINE " #Tasks traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
       TERM_VLINE "\r\n",
 
-      force_exp_block
+      tracing_is_force_exp_block_enabled()
          ? E_COLOR_GREEN "ON" RESET_ATTRS
          : E_COLOR_RED "OFF" RESET_ATTRS,
       get_traced_syscalls_count(),
@@ -412,7 +412,7 @@ dp_list_traced_syscalls(void)
 
    for (u32 i = 0; i < MAX_SYSCALLS; i++) {
 
-      if (!traced_syscalls[i])
+      if (!tracing_is_enabled_on_sys(i))
          continue;
 
       dp_write_raw("%s ", 4 + tracing_get_syscall_name(i));
@@ -454,11 +454,11 @@ dp_tracing_screen(void)
             E_COLOR_GREEN "-- Tracing active --" RESET_ATTRS "\r\n\r\n"
          );
 
-         tracing_on = true;
+         tracing_set_enabled(true);
          {
             should_continue = dp_tracing_screen_main_loop();
          }
-         tracing_on = false;
+         tracing_set_enabled(false);
 
          if (!should_continue)
             break;
@@ -478,7 +478,7 @@ dp_tracing_screen(void)
       switch (c) {
 
          case 'o':
-            force_exp_block = !force_exp_block;
+            tracing_set_force_exp_block(!tracing_is_force_exp_block_enabled());
             break;
 
          case 'h':
