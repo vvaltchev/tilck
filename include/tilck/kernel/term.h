@@ -7,8 +7,6 @@ struct term;
 struct term_action;
 struct term_interface;
 
-extern struct term *__curr_term;
-extern const struct term_interface *__curr_term_intf;
 extern const struct term_interface *video_term_intf;
 extern const struct term_interface *serial_term_intf;
 
@@ -109,15 +107,22 @@ void init_first_term_null(void);
 void process_term_read_info(struct term_params *out);
 
 static ALWAYS_INLINE struct term *get_curr_term(void) {
+
+   extern struct term *__curr_term;
    return __curr_term;
 }
 
 static ALWAYS_INLINE const struct term_interface *get_curr_term_intf(void) {
+
+   extern const struct term_interface *__curr_term_intf;
    return __curr_term_intf;
 }
 
 static ALWAYS_INLINE bool term_is_initialized(void)
 {
+   extern struct term *__curr_term;
+   extern const struct term_interface *__curr_term_intf;
+
    if (!__curr_term_intf)
       return false;
 
@@ -126,15 +131,24 @@ static ALWAYS_INLINE bool term_is_initialized(void)
 
 static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)
 {
+   extern struct term *__curr_term;
+   extern const struct term_interface *__curr_term_intf;
+
    __curr_term_intf->write(__curr_term, buf, len, color);
 }
 
 static ALWAYS_INLINE void term_pause_video_output(void)
 {
+   extern struct term *__curr_term;
+   extern const struct term_interface *__curr_term_intf;
+
    __curr_term_intf->pause_video_output(__curr_term);
 }
 
 static ALWAYS_INLINE void term_restart_video_output(void)
 {
+   extern struct term *__curr_term;
+   extern const struct term_interface *__curr_term_intf;
+
    __curr_term_intf->restart_video_output(__curr_term);
 }
