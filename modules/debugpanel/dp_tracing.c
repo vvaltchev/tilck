@@ -63,7 +63,7 @@ tracing_ui_msg(void)
 
    dp_write_raw(
       E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "Ctrl+C" RESET_ATTRS ": exit\r\n"
+      "  " E_COLOR_YELLOW "q" RESET_ATTRS ": exit\r\n"
       RESET_ATTRS
    );
 
@@ -337,7 +337,7 @@ dp_tracing_screen_main_loop(void)
 
       switch (c) {
 
-         case DP_KEY_CTRL_C:
+         case 'q':
             return false; /* clean exit */
 
          case DP_KEY_ENTER:
@@ -373,8 +373,8 @@ dp_tracing_screen(void)
       if (rc <= 0)
          break; /* something gone wrong */
 
-      if (c == DP_KEY_CTRL_C)
-         break;
+      if (c == 'q')
+         break; /* clean exit */
 
       if (c == DP_KEY_ENTER) {
 
