@@ -12,9 +12,6 @@
 #include <elf.h>         // system header
 #include <multiboot.h>   // system header in include/system_headers
 
-volatile bool __in_panic;
-volatile bool __in_double_fault;
-
 /*
  * NOTE: this flag affect affect sched_alive_thread() only when it is actually
  * running. By default it does *not* run. It gets activated only by the kernel

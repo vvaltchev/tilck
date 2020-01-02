@@ -11,6 +11,8 @@
 #include "gdt_int.h"
 #include "idt_int.h"
 
+extern volatile bool __in_double_fault;
+
 void double_fault_handler_asm(void);
 static int double_fault_tss_num;
 

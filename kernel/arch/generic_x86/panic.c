@@ -15,6 +15,9 @@
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/fault_resumable.h>
 
+volatile bool __in_panic;
+volatile bool __in_double_fault;
+
 void init_console(void);         /* defined in main.c */
 void panic_save_current_state(); /* defined in kernel_yield.S */
 regs_t panic_state_regs;

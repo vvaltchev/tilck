@@ -12,6 +12,7 @@ u32 spur_irq_count;
 u32 unhandled_irq_count[256];
 
 bool suppress_printk;
+volatile bool __in_panic;
 
 void panic(const char *fmt, ...)
 {
