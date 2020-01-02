@@ -399,7 +399,7 @@ dp_tracing_screen(void)
 
          case 'e':
             dp_move_left(2);
-            dp_write_raw(E_COLOR_YELLOW "syscall expr> " RESET_ATTRS);
+            dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
             dp_set_input_blocking(true);
             dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
             dp_set_input_blocking(false);

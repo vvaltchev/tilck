@@ -559,7 +559,7 @@ set_traced_syscalls_int(const char *str)
       if (p == buf + sizeof(buf))
          return -ENAMETOOLONG;
 
-      if (*s == ',') {
+      if (*s == ',' || *s == ' ') {
          *p = 0;
          p = buf;
 

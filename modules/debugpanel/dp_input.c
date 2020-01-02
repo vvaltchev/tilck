@@ -11,7 +11,7 @@
 
 static int line_pos;
 static int line_len;
-static char line[128];
+static char line[72];
 
 typedef void (*key_handler_type)(char *, int);
 
@@ -381,7 +381,7 @@ int dp_read_line(char *buf, int buf_size)
 
    dp_write_raw("%s", line);
 
-   while (line_len < max_line_len) {
+   while (true) {
 
       rc = dp_read_ke_from_tty(&ke);
 
@@ -392,22 +392,35 @@ int dp_read_line(char *buf, int buf_size)
 
       c = ke.print_char;
 
-      if (c == DP_KEY_BACKSPACE) {
+      if (line_len < max_line_len) {
 
-         handle_backspace(buf, buf_size);
+         if (c == DP_KEY_BACKSPACE) {
 
-      } else if (!c && ke.key) {
+            handle_backspace(buf, buf_size);
 
-         handle_esc_seq(ke.key, buf, buf_size);
+         } else if (!c && ke.key) {
 
-      } else if (isprint(c) || c == '\r' || c == '\n') {
+            handle_esc_seq(ke.key, buf, buf_size);
 
-         if (!handle_regular_char(c, buf, buf_size))
-            break;
+         } else if (isprint(c) || c == '\r' || c == '\n') {
+
+            if (!handle_regular_char(c, buf, buf_size))
+               break;
+         }
 
       } else {
 
-         /* just ignore everything else */
+         ASSERT(line_len == max_line_len);
+
+         if (c == DP_KEY_BACKSPACE) {
+
+            handle_backspace(buf, buf_size);
+
+         } else if (c == '\r' || c == '\n') {
+
+            dp_write_raw("\r\n");
+            break;
+         }
       }
    }
 

@@ -6,7 +6,7 @@
 
 #define INVALID_SYSCALL           ((u32) -1)
 #define NO_SLOT                           -1
-#define TRACED_SYSCALLS_STR_LEN         512u
+#define TRACED_SYSCALLS_STR_LEN         128u
 
 enum trace_event_type {
    te_invalid,
