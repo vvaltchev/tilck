@@ -12,7 +12,6 @@
 
 struct task;
 
-extern struct task *__current;
 extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 
@@ -97,6 +96,8 @@ static inline bool kernel_yield(void)
 
 static ALWAYS_INLINE struct task *get_curr_task(void)
 {
+   extern struct task *__current;
+
    /*
     * Access to `__current` DOES NOT need to be atomic (not even relaxed) even
     * on architectures (!= x86) where loading/storing a pointer-size integer

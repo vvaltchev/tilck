@@ -11,6 +11,7 @@ void switch_to_initial_kernel_stack(void);
 
 static ALWAYS_INLINE void set_curr_task(struct task *ti)
 {
+   extern struct task *__current;
 
 #ifndef UNIT_TEST_ENVIRONMENT
    DEBUG_ONLY(check_not_in_irq_handler());
