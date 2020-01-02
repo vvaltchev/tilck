@@ -485,7 +485,7 @@ static void show_actions_menu(void)
       dp_writeln(
          E_COLOR_BR_WHITE "<ENTER>" RESET_ATTRS ": select mode " TERM_VLINE " "
          E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": show trace"
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode"
       );
 
       dp_writeln("");
@@ -495,7 +495,7 @@ static void show_actions_menu(void)
       dp_writeln(
          E_COLOR_BR_WHITE "ESC" RESET_ATTRS ": exit select mode " TERM_VLINE " "
          E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": show trace " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode " TERM_VLINE " "
          E_COLOR_BR_WHITE "t" RESET_ATTRS ": trace task "
       );
 

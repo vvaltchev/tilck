@@ -119,11 +119,11 @@ bool
 read_trace_event(struct trace_event *e, u32 timeout_ticks);
 
 void
-trace_syscall_enter(u32 sys,
-                    uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
+trace_syscall_enter_int(u32 sys,
+                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
 void
-trace_syscall_exit(u32 sys, sptr retval,
-                   uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
+trace_syscall_exit_int(u32 sys, sptr retval,
+                       uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
 
 const char *
 tracing_get_syscall_name(u32 n);
@@ -153,6 +153,7 @@ get_traced_syscalls_str(char *buf, size_t len);
 int
 set_traced_syscalls(const char *str);
 
+extern bool tracing_on;
 extern bool force_exp_block;
 extern bool *traced_syscalls;
 
@@ -178,3 +179,13 @@ exp_block(const struct syscall_info *si)
 {
    return force_exp_block || si->exp_block;
 }
+
+#define trace_sys_enter(sn, ...)                                        \
+   if (MOD_tracing && tracing_on && tracing_is_enabled_on_sys(sn)) {    \
+      trace_syscall_enter_int(sn, __VA_ARGS__);                         \
+   }
+
+#define trace_sys_exit(sn, ret, ...)                                    \
+   if (MOD_tracing && tracing_on && tracing_is_enabled_on_sys(sn)) {    \
+      trace_syscall_exit_int(sn, (sptr)(ret), __VA_ARGS__);             \
+   }

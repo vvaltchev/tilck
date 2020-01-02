@@ -58,7 +58,7 @@ tracing_ui_msg(void)
    dp_write_raw("Actions:\r\n");
 
    dp_write_raw(
-      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop dumping\r\n"
+      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop tracing\r\n"
    );
 
    dp_write_raw(
@@ -356,6 +356,7 @@ dp_tracing_screen(void)
 {
    int rc;
    char c;
+   bool should_continue;
 
    dp_set_cursor_enabled(true);
    dp_clear();
@@ -380,10 +381,16 @@ dp_tracing_screen(void)
 
          dp_write_raw("\r\n");
          dp_write_raw(
-            E_COLOR_GREEN "-- Dumping active --" RESET_ATTRS "\r\n\r\n"
+            E_COLOR_GREEN "-- Tracing active --" RESET_ATTRS "\r\n\r\n"
          );
 
-         if (!dp_tracing_screen_main_loop())
+         tracing_on = true;
+         {
+            should_continue = dp_tracing_screen_main_loop();
+         }
+         tracing_on = false;
+
+         if (!should_continue)
             break;
 
          dp_write_raw("\r\n");

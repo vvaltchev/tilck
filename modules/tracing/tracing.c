@@ -42,8 +42,10 @@ static s8 *syscalls_fmts;
 
 static char *traced_syscalls_str;
 static int traced_syscalls_count;
+
 bool *traced_syscalls;
 bool force_exp_block;
+bool tracing_on;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -186,8 +188,8 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
 }
 
 void
-trace_syscall_enter(u32 sys,
-                    uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
+trace_syscall_enter_int(u32 sys,
+                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
@@ -213,8 +215,8 @@ trace_syscall_enter(u32 sys,
 }
 
 void
-trace_syscall_exit(u32 sys, sptr retval,
-                   uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
+trace_syscall_exit_int(u32 sys, sptr retval,
+                       uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
