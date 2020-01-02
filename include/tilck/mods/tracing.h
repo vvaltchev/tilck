@@ -147,6 +147,9 @@ get_errno_name(int errno);
 int
 get_traced_syscalls_count(void);
 
+int
+get_traced_tasks_count(void);
+
 void
 get_traced_syscalls_str(char *buf, size_t len);
 

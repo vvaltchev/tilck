@@ -98,13 +98,17 @@ tracing_ui_msg(void)
    );
 
    dp_write_raw(
+
       TERM_VLINE " Always ENTER + EXIT: %s "
-      TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS
-      " " TERM_VLINE "\r\n",
+      TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
+      TERM_VLINE " #Tasks traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
+      TERM_VLINE "\r\n",
+
       force_exp_block
          ? E_COLOR_GREEN "ON" RESET_ATTRS
          : E_COLOR_RED "OFF" RESET_ATTRS,
-      get_traced_syscalls_count()
+      get_traced_syscalls_count(),
+      get_traced_tasks_count()
    );
 
    get_traced_syscalls_str(line_buf, TRACED_SYSCALLS_STR_LEN);

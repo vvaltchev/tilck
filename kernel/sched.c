@@ -30,6 +30,30 @@ static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 static struct task *idle_task;
 
+int
+get_traced_tasks_count(void)
+{
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int count = 0;
+
+   disable_preemption();
+   {
+      bintree_in_order_visit_start(&ctx,
+                                   tree_by_tid_root,
+                                   struct task,
+                                   tree_by_tid_node,
+                                   false);
+
+      while ((ti = bintree_in_order_visit_next(&ctx))) {
+         if (ti->traced)
+            count++;
+      }
+   }
+   enable_preemption();
+   return count;
+}
+
 int sched_count_proc_in_group(int pgid)
 {
    struct bintree_walk_ctx ctx;
