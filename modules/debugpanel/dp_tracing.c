@@ -38,34 +38,53 @@ tracing_ui_show_help(void)
 {
    dp_write_raw("\r\n\r\n");
    dp_write_raw(E_COLOR_YELLOW "Tracing mode help" RESET_ATTRS "\r\n");
-   dp_write_raw("-------------------------------------\r\n");
 
    dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "o" RESET_ATTRS "     : Toggle always enter + exit\r\n"
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "o" RESET_ATTRS "     : Toggle always enter + exit\r\n"
       RESET_ATTRS
    );
 
    dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "e" RESET_ATTRS "     : Edit syscalls expr\r\n"
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "e" RESET_ATTRS "     : Edit syscalls wildcard expr "
+      E_COLOR_RED "[1]" RESET_ATTRS "\r\n"
       RESET_ATTRS
    );
 
    dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "l" RESET_ATTRS "     : List traced syscalls\r\n"
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "l" RESET_ATTRS "     : List traced syscalls\r\n"
       RESET_ATTRS
    );
 
    dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "q" RESET_ATTRS "     : Back to the debug panel\r\n"
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "q" RESET_ATTRS "     : Back to the debug panel\r\n"
       RESET_ATTRS
    );
 
    dp_write_raw(
-      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS " : Start / stop tracing\r\n"
+      E_COLOR_YELLOW "  "
+      "ENTER" RESET_ATTRS " : Start / stop tracing\r\n"
+   );
+
+   dp_write_raw("\r\n" E_COLOR_RED "[1]" RESET_ATTRS " ");
+   dp_write_raw("In the wildcard expr the " E_COLOR_BR_WHITE "*" RESET_ATTRS
+                " character is allowed only once, at the end.\r\n");
+
+   dp_write_raw("The " E_COLOR_BR_WHITE "!" RESET_ATTRS " character can be "
+                "used, at the beginning of each sub-expr, to negate it.\r\n");
+
+   dp_write_raw("Single sub-expressions are separated by comma or space. "
+                "The " E_COLOR_BR_WHITE "?" RESET_ATTRS " character is\r\n");
+
+   dp_write_raw("supported and has the usual meaning "
+                "(matches 1 single char, any).\r\n");
+
+   dp_write_raw(
+      E_COLOR_BR_WHITE "Example: " RESET_ATTRS
+      "read*,write*,!readlink* \r\n"
    );
 }
 
@@ -78,19 +97,22 @@ tracing_ui_msg(void)
       RESET_ATTRS
    );
 
-   dp_write_raw("-------------------------------------\r\n");
-
    dp_write_raw(
-      "Always ENTER + EXIT: %s\r\n",
+      TERM_VLINE " Always ENTER + EXIT: %s "
+      TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS
+      " " TERM_VLINE "\r\n",
       force_exp_block
          ? E_COLOR_GREEN "ON" RESET_ATTRS
-         : E_COLOR_RED "OFF" RESET_ATTRS
+         : E_COLOR_RED "OFF" RESET_ATTRS,
+      get_traced_syscalls_count()
    );
 
    get_traced_syscalls_str(line_buf, TRACED_SYSCALLS_STR_LEN);
 
-   dp_write_raw("Syscalls traced [%d]:\r\n", get_traced_syscalls_count());
-   dp_write_raw("  Expr: " E_COLOR_YELLOW "%s" RESET_ATTRS "\r\n", line_buf);
+   dp_write_raw(
+      TERM_VLINE
+      " Trace expr: " E_COLOR_YELLOW "%s" RESET_ATTRS "\r\n", line_buf
+   );
 
    dp_write_raw("\r\n");
    dp_write_raw(E_COLOR_YELLOW "> " RESET_ATTRS);
@@ -383,7 +405,6 @@ dp_list_traced_syscalls(void)
    dp_write_raw("\r\n\r\n");
    dp_write_raw(E_COLOR_YELLOW "Traced syscalls list" RESET_ATTRS);
    dp_write_raw("\r\n");
-   dp_write_raw("-------------------------------------\r\n");
 
    for (u32 i = 0; i < MAX_SYSCALLS; i++) {
 
