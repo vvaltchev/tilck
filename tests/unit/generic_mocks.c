@@ -13,6 +13,7 @@ u32 unhandled_irq_count[256];
 
 bool suppress_printk;
 volatile bool __in_panic;
+void *__kernel_pdir;
 
 void panic(const char *fmt, ...)
 {

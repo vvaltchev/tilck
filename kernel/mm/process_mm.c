@@ -12,7 +12,6 @@
 
 #include <sys/mman.h>      // system header
 
-pdir_t *__kernel_pdir;
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 static inline void sys_brk_internal(struct process *pi, void *new_brk)

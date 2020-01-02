@@ -25,6 +25,9 @@
 #define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
 
+extern char page_size_buf[PAGE_SIZE];
+extern char zero_page[PAGE_SIZE];
+
 void init_paging();
 bool handle_potential_cow(void *r);
 
@@ -75,12 +78,9 @@ void pdir_destroy(pdir_t *pdir);
 void invalidate_page(uptr vaddr);
 void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
 
-extern pdir_t *__kernel_pdir;
-extern char page_size_buf[PAGE_SIZE];
-extern char zero_page[PAGE_SIZE];
-
 static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
 {
+   extern pdir_t *__kernel_pdir;
    return __kernel_pdir;
 }
 

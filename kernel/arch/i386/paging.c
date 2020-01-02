@@ -35,6 +35,8 @@
 extern char vsdo_like_page[PAGE_SIZE];
 extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
+pdir_t *__kernel_pdir;
+
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
