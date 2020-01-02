@@ -5,10 +5,10 @@
 #include <tilck/kernel/kb.h>
 
 struct tty;
-extern struct tty *__curr_tty;
 
 static ALWAYS_INLINE struct tty *get_curr_tty(void)
 {
+   extern struct tty *__curr_tty;
    return __curr_tty;
 }
 

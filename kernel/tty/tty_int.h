@@ -37,3 +37,4 @@ void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 extern const struct termios default_termios;
 extern struct tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
+extern struct tty *__curr_tty;
