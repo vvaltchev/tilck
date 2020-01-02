@@ -239,6 +239,17 @@ trace_syscall_exit_int(u32 sys, sptr retval,
    kmutex_unlock(&tracing_lock);
 }
 
+bool read_trace_event_noblock(struct trace_event *e)
+{
+   bool ret;
+   kmutex_lock(&tracing_lock);
+   {
+      ret = ringbuf_read_elem(&tracing_rb, e);
+   }
+   kmutex_unlock(&tracing_lock);
+   return ret;
+}
+
 bool read_trace_event(struct trace_event *e, u32 timeout_ticks)
 {
    bool ret;
@@ -611,6 +622,18 @@ set_traced_syscalls(const char *s)
          reset_traced_syscalls();
    }
    enable_preemption();
+   return rc;
+}
+
+int
+tracing_get_in_buffer_events_count(void)
+{
+   int rc;
+   kmutex_lock(&tracing_lock);
+   {
+      rc = (int)ringbuf_get_elems(&tracing_rb); // integer narrowing
+   }
+   kmutex_unlock(&tracing_lock);
    return rc;
 }
 

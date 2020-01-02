@@ -421,11 +421,51 @@ dp_list_traced_syscalls(void)
    dp_write_raw("\r\n");
 }
 
+static int
+dp_tracing_dump_remaining_events(void)
+{
+   char c;
+   int rem;
+   struct key_event ke;
+   struct trace_event e;
+
+   if (!(rem = tracing_get_in_buffer_events_count()))
+      return 0; /* no remaining events in the buffer */
+
+   dp_write_raw("Discard remaining %d events in the buf? [Y/n] ", rem);
+
+   do {
+
+      if (dp_read_ke_from_tty(&ke) < 0)
+         return -1; /* unexpected I/O error */
+
+      c = ke.print_char;
+
+   } while (c != 'y' && c != 'n' && c != '\r');
+
+   if (c == '\r')
+      c = 'y';
+
+   dp_write_raw_int(&c, 1);
+
+   while (true) {
+
+      if (!read_trace_event_noblock(&e))
+         break;
+
+      if (c == 'n')
+         dp_dump_tracing_event(&e);
+   }
+
+   dp_write_raw("\r\n");
+   return 1;
+}
+
 enum kb_handler_action
 dp_tracing_screen(void)
 {
-   int rc;
    char c;
+   int rc;
    bool should_continue;
 
    dp_set_cursor_enabled(true);
@@ -466,6 +506,9 @@ dp_tracing_screen(void)
          dp_write_raw(
             E_COLOR_RED "-- Tracing stopped --" RESET_ATTRS "\r\n"
          );
+
+         if ((rc = dp_tracing_dump_remaining_events()) < 0)
+            break; /* unexpected I/O error */
 
          dp_write_raw("\r\n");
          tracing_ui_msg();

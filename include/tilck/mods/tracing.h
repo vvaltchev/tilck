@@ -118,6 +118,9 @@ init_tracing(void);
 bool
 read_trace_event(struct trace_event *e, u32 timeout_ticks);
 
+bool
+read_trace_event_noblock(struct trace_event *e);
+
 void
 trace_syscall_enter_int(u32 sys,
                         uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
@@ -155,6 +158,9 @@ get_traced_syscalls_str(char *buf, size_t len);
 
 int
 set_traced_syscalls(const char *str);
+
+int
+tracing_get_in_buffer_events_count(void);
 
 extern const struct syscall_info *tracing_metadata;
 extern const struct sys_param_type ptype_int;
