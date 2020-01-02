@@ -4,6 +4,19 @@
 
 #include <sys/syscall.h> // system header
 
+#if defined(__x86_64__)
+   #define STAT_SYSCALL_N      SYS_stat
+   #define LSTAT_SYSCALL_N     SYS_lstat
+   #define FSTAT_SYSCALL_N     SYS_fstat
+#elif defined(__i386__)
+   #define STAT_SYSCALL_N      SYS_stat64
+   #define LSTAT_SYSCALL_N     SYS_lstat64
+   #define FSTAT_SYSCALL_N     SYS_fstat64
+#else
+   #error Architecture not supported
+#endif
+
+
 #define SIMPLE_PARAM(_name, _type, _kind)                \
    {                                                     \
       .name = _name,                                     \
@@ -193,7 +206,7 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
-      .sys_n = SYS_stat64,
+      .sys_n = STAT_SYSCALL_N,
       .n_params = 2,
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
@@ -204,7 +217,7 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
-      .sys_n = SYS_lstat64,
+      .sys_n = LSTAT_SYSCALL_N,
       .n_params = 2,
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
@@ -215,7 +228,7 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
-      .sys_n = SYS_fstat64,
+      .sys_n = FSTAT_SYSCALL_N,
       .n_params = 2,
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
@@ -247,6 +260,10 @@ static const struct syscall_info __tracing_metadata[] =
       }
    },
 
+#ifdef __i386__
+
+   /* waitpid is old and has been supported on amd64. Replacement: wait4 */
+
    {
       .sys_n = SYS_waitpid,
       .n_params = 3,
@@ -258,6 +275,8 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("options", &ptype_int, sys_param_in),
       }
    },
+
+#endif
 
    {
       .sys_n = SYS_wait4,

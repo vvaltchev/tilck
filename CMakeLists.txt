@@ -174,6 +174,7 @@ list(
    APPEND no_arch_modules_whitelist
 
    console
+   tracing
 )
 
 file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
