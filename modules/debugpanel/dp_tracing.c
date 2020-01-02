@@ -34,11 +34,47 @@ void init_dp_tracing(void)
 }
 
 static void
+tracing_ui_show_help(void)
+{
+   dp_write_raw("\r\n\r\n");
+   dp_write_raw(E_COLOR_YELLOW "Tracing mode help" RESET_ATTRS "\r\n");
+   dp_write_raw("-------------------------------------\r\n");
+
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "  " E_COLOR_YELLOW "o" RESET_ATTRS "     : Toggle always enter + exit\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "  " E_COLOR_YELLOW "e" RESET_ATTRS "     : Edit syscalls expr\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "  " E_COLOR_YELLOW "l" RESET_ATTRS "     : List traced syscalls\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW
+      "  " E_COLOR_YELLOW "q" RESET_ATTRS "     : Back to the debug panel\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS " : Start / stop tracing\r\n"
+   );
+}
+
+static void
 tracing_ui_msg(void)
 {
    dp_write_raw(
       E_COLOR_YELLOW
-      "Tilck syscall tracing\r\n"
+      "Tilck syscall tracing (h: help)\r\n"
       RESET_ATTRS
    );
 
@@ -55,29 +91,6 @@ tracing_ui_msg(void)
 
    dp_write_raw("Syscalls traced [%d]:\r\n", get_traced_syscalls_count());
    dp_write_raw("  Expr: " E_COLOR_YELLOW "%s" RESET_ATTRS "\r\n", line_buf);
-   dp_write_raw("Actions:\r\n");
-
-   dp_write_raw(
-      "  " E_COLOR_YELLOW "ENTER" RESET_ATTRS ": start/stop tracing\r\n"
-   );
-
-   dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "q" RESET_ATTRS ": exit\r\n"
-      RESET_ATTRS
-   );
-
-   dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "o" RESET_ATTRS ": toggle always enter + exit\r\n"
-      RESET_ATTRS
-   );
-
-   dp_write_raw(
-      E_COLOR_YELLOW
-      "  " E_COLOR_YELLOW "e" RESET_ATTRS ": edit syscalls expr\r\n"
-      RESET_ATTRS
-   );
 
    dp_write_raw("\r\n");
    dp_write_raw(E_COLOR_YELLOW "> " RESET_ATTRS);
@@ -351,6 +364,38 @@ dp_tracing_screen_main_loop(void)
    NOT_REACHED();
 }
 
+static void
+dp_exit_trace_syscall_str(void)
+{
+   dp_move_left(2);
+   dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
+   dp_set_input_blocking(true);
+   dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
+   dp_set_input_blocking(false);
+
+   if (set_traced_syscalls(line_buf) < 0)
+      dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+}
+
+static void
+dp_list_traced_syscalls(void)
+{
+   dp_write_raw("\r\n\r\n");
+   dp_write_raw(E_COLOR_YELLOW "Traced syscalls list" RESET_ATTRS);
+   dp_write_raw("\r\n");
+   dp_write_raw("-------------------------------------\r\n");
+
+   for (u32 i = 0; i < MAX_SYSCALLS; i++) {
+
+      if (!traced_syscalls[i])
+         continue;
+
+      dp_write_raw("%s ", 4 + tracing_get_syscall_name(i));
+   }
+
+   dp_write_raw("\r\n");
+}
+
 enum kb_handler_action
 dp_tracing_screen(void)
 {
@@ -393,10 +438,17 @@ dp_tracing_screen(void)
          if (!should_continue)
             break;
 
+         dp_write_raw(
+            E_COLOR_RED "-- Tracing stopped --" RESET_ATTRS "\r\n"
+         );
+
          dp_write_raw("\r\n");
          tracing_ui_msg();
          continue;
       }
+
+      if (c == 'o' || c == 'h' || c == 'l')
+         dp_write_raw("%c", c);
 
       switch (c) {
 
@@ -404,27 +456,21 @@ dp_tracing_screen(void)
             force_exp_block = !force_exp_block;
             break;
 
+         case 'h':
+            tracing_ui_show_help();
+            break;
+
          case 'e':
-            dp_move_left(2);
-            dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
-            dp_set_input_blocking(true);
-            dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
-            dp_set_input_blocking(false);
+            dp_exit_trace_syscall_str();
+            break;
 
-            rc = set_traced_syscalls(line_buf);
-
-            if (rc < 0)
-               dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
-
-            c = 0;
+         case 'l':
+            dp_list_traced_syscalls();
             break;
 
          default:
             continue;
       }
-
-      if (isprint(c))
-         dp_write_raw("%c", c);
 
       dp_write_raw("\r\n\r\n");
       tracing_ui_msg();

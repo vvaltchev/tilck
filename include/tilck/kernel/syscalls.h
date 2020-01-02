@@ -189,7 +189,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_ipc)
 CREATE_STUB_SYSCALL_IMPL(sys_fsync)
 CREATE_STUB_SYSCALL_IMPL(sys_sigreturn)
 CREATE_STUB_SYSCALL_IMPL(sys_clone)
-CREATE_STUB_SYSCALL_IMPL(sys_setsetdomainname)
+CREATE_STUB_SYSCALL_IMPL(sys_setdomainname)
 
 int sys_newuname(struct utsname *buf);
 
