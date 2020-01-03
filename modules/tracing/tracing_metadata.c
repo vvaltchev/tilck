@@ -24,6 +24,15 @@
       .kind = _kind,                                     \
    }
 
+#define BUF_PARAM(_name, _type, _kind, _sz_param)                    \
+   {                                                                 \
+      .name = _name,                                                 \
+      .type = _type,                                                 \
+      .kind = _kind,                                                 \
+      .size_param_name = _sz_param,                                  \
+      .real_sz_in_ret = true,                                        \
+   }
+
 #define SYSCALL_TYPE_0(sys)                                          \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -140,15 +149,7 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-
-         {
-            .name = "buf",
-            .type = &ptype_buffer,
-            .kind = sys_param_out,
-            .size_param_name = "count",
-            .real_sz_in_ret = true,
-         },
-
+         BUF_PARAM("buf", &ptype_buffer, sys_param_out, "count"),
          SIMPLE_PARAM("count", &ptype_int, sys_param_in),
       },
    },
@@ -161,15 +162,7 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-
-         {
-            .name = "buf",
-            .type = &ptype_buffer,
-            .kind = sys_param_in,
-            .size_param_name = "count",
-            .real_sz_in_ret = true,
-         },
-
+         BUF_PARAM("buf", &ptype_buffer, sys_param_in, "count"),
          SIMPLE_PARAM("count", &ptype_int, sys_param_in),
       },
    },
@@ -182,15 +175,7 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-
-         {
-            .name = "iov",
-            .type = &ptype_iov_out,
-            .kind = sys_param_out,
-            .size_param_name = "iovcnt",
-            .real_sz_in_ret = true,
-         },
-
+         BUF_PARAM("iov", &ptype_iov_out, sys_param_out, "iovcnt"),
          SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
       },
    },
@@ -203,15 +188,7 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
 
          SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-
-         {
-            .name = "iov",
-            .type = &ptype_iov_in,
-            .kind = sys_param_in,
-            .size_param_name = "iovcnt",
-            .real_sz_in_ret = true,
-         },
-
+         BUF_PARAM("iov", &ptype_iov_in, sys_param_in, "iovcnt"),
          SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
       },
    },
