@@ -101,6 +101,10 @@ struct k_rusage {
    #define O_NOATIME __O_NOATIME
 #endif
 
+#ifndef O_PATH
+   #define O_PATH __O_PATH
+#endif
+
 #define FCNTL_CHANGEABLE_FL (         \
    O_APPEND      |                    \
    O_ASYNC       |                    \

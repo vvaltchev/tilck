@@ -200,7 +200,7 @@ static const struct syscall_info __tracing_metadata[] =
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("path", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("flags", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_open_flags, sys_param_in),
          SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
       }
    },

@@ -169,6 +169,7 @@ extern const struct sys_param_type ptype_oct;
 extern const struct sys_param_type ptype_errno_or_val;
 extern const struct sys_param_type ptype_buffer;
 extern const struct sys_param_type ptype_path;
+extern const struct sys_param_type ptype_open_flags;
 
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
