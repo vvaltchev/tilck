@@ -26,7 +26,8 @@ save_param_iov(void *data, sptr iovcnt, char *dest_buf, size_t dest_bs)
 
    for (int i = 0; i < iovcnt; i++) {
 
-      ((sptr *)dest_buf)[i] = (sptr)iovec[i].iov_len;
+      ((sptr *)(dest_buf + 0))[i] = (sptr)iovec[i].iov_len;
+      ((uptr *)(dest_buf + 32))[i] = (uptr)iovec[i].iov_base;
 
       ok = ptype_buffer.save(iovec[i].iov_base,
                              (sptr)iovec[i].iov_len,
@@ -41,7 +42,8 @@ save_param_iov(void *data, sptr iovcnt, char *dest_buf, size_t dest_bs)
 }
 
 static bool
-__dump_param_iov(char *data,
+__dump_param_iov(uptr orig,
+                 char *data,
                  sptr u_iovcnt,
                  sptr maybe_tot_data_size,
                  char *dest,
@@ -62,12 +64,14 @@ __dump_param_iov(char *data,
 
    for (int i = 0; i < iovcnt; i++) {
 
-      const sptr len = ((sptr *)data)[i];
+      const sptr len = ((sptr *)(data + 0))[i];
+      const uptr base = ((uptr *)(data + 32))[i];
 
       if (!buf_append(dest, &used, &rem, "   {base: "))
          return false;
 
-      ok = ptype_buffer.dump_from_data(
+      ok = ptype_buffer.dump(
+         base,
          data + 64 + i * 16,
          MIN(len, 16),
          maybe_tot_data_size >= 0 ? MIN(tot_rem, len) : len,
@@ -108,23 +112,25 @@ __dump_param_iov(char *data,
 }
 
 static bool
-dump_param_iov_in(char *data,
-                 sptr u_iovcnt,
-                 sptr unused,
-                 char *dest,
-                 size_t dest_bs)
+dump_param_iov_in(uptr orig,
+                  char *data,
+                  sptr u_iovcnt,
+                  sptr unused,
+                  char *dest,
+                  size_t dest_bs)
 {
-   return __dump_param_iov(data, u_iovcnt, -1, dest, dest_bs);
+   return __dump_param_iov(orig, data, u_iovcnt, -1, dest, dest_bs);
 }
 
 static bool
-dump_param_iov_out(char *data,
+dump_param_iov_out(uptr orig,
+                   char *data,
                    sptr u_iovcnt,
                    sptr real_sz,
                    char *dest,
                    size_t dest_bs)
 {
-   return __dump_param_iov(data, u_iovcnt, real_sz, dest, dest_bs);
+   return __dump_param_iov(orig, data, u_iovcnt, real_sz, dest, dest_bs);
 }
 
 
@@ -134,7 +140,7 @@ const struct sys_param_type ptype_iov_in = {
    .slot_size = 128,
 
    .save = save_param_iov,
-   .dump_from_data = dump_param_iov_in,
+   .dump = dump_param_iov_in,
    .dump_from_val = NULL,
 };
 
@@ -144,6 +150,6 @@ const struct sys_param_type ptype_iov_out = {
    .slot_size = 128,
 
    .save = save_param_iov,
-   .dump_from_data = dump_param_iov_out,
+   .dump = dump_param_iov_out,
    .dump_from_val = NULL,
 };

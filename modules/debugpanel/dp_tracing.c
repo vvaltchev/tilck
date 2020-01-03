@@ -16,7 +16,7 @@
 
 #if MOD_tracing
 
-#define REND_BUF_SIZE                              256
+#define REND_BUF_SZ                              256
 static char *rend_bufs[6];
 static int used_rend_bufs;
 static char *line_buf;
@@ -25,7 +25,7 @@ void init_dp_tracing(void)
 {
    for (int i = 0; i < 6; i++) {
 
-      if (!(rend_bufs[i] = kmalloc(REND_BUF_SIZE)))
+      if (!(rend_bufs[i] = kmalloc(REND_BUF_SZ)))
          panic("[dp] Unable to allocate rend_buf[%d]", i);
    }
 
@@ -193,13 +193,13 @@ dp_render_full_dump_single_param(int i,
 
       ASSERT(type->dump_from_val);
 
-      if (!type->dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
-         snprintk(rend_bufs[i], REND_BUF_SIZE, "(raw) %p", e->args[i]);
+      if (!type->dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SZ))
+         snprintk(rend_bufs[i], REND_BUF_SZ, "(raw) %p", e->args[i]);
 
    } else {
 
       sptr sz = -1;
-      ASSERT(type->dump_from_data);
+      ASSERT(type->dump);
 
       if (p->size_param_name) {
 
@@ -215,15 +215,15 @@ dp_render_full_dump_single_param(int i,
       if (p->real_sz_in_ret && e->type == te_sys_exit)
          real_sz = e->retval >= 0 ? e->retval : 0;
 
-      if (!type->dump_from_data(data, sz, real_sz, rend_bufs[i], REND_BUF_SIZE))
-         snprintk(rend_bufs[i], REND_BUF_SIZE, "(raw) %p", e->args[i]);
+      if (!type->dump(e->args[i], data, sz, real_sz, rend_bufs[i], REND_BUF_SZ))
+         snprintk(rend_bufs[i], REND_BUF_SZ, "(raw) %p", e->args[i]);
    }
 }
 
 static void
 dp_render_minimal_dump_single_param(int i, struct trace_event *e)
 {
-   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SIZE))
+   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SZ))
       panic("Unable to serialize a ptype_voidp in a render buf");
 }
 
@@ -236,7 +236,7 @@ dp_dump_syscall_with_info(struct trace_event *e,
 
    for (int i = 0; i < si->n_params; i++) {
 
-      bzero(rend_bufs[i], REND_BUF_SIZE);
+      bzero(rend_bufs[i], REND_BUF_SZ);
 
       const struct sys_param_info *p = &si->params[i];
       const struct sys_param_type *type = p->type;
@@ -287,7 +287,7 @@ dp_dump_ret_val(const struct syscall_info *si, sptr retval)
    const struct sys_param_type *rt = si->ret_type;
    ASSERT(rt->dump_from_val);
 
-   if (!rt->dump_from_val((uptr)retval, rend_bufs[0], REND_BUF_SIZE)) {
+   if (!rt->dump_from_val((uptr)retval, rend_bufs[0], REND_BUF_SZ)) {
       dp_write_raw("(raw) %p", retval);
       return;
    }

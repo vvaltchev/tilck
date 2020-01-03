@@ -7,9 +7,7 @@
 static bool
 save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 {
-   /* Use dest buffer's 1st byte to store the data == NULL condition */
-   const sptr dest_bs = (sptr) __dest_bs - 1;
-   *dest_buf++ = (data == NULL);
+   const sptr dest_bs = (sptr) __dest_bs;
 
    if (data_sz == -1) {
       /* assume that `data` is a C string */
@@ -26,22 +24,19 @@ save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 }
 
 static bool
-dump_param_buffer(char *data,
+dump_param_buffer(uptr orig,
+                  char *data,
                   sptr data_bs,
                   sptr real_sz,
                   char *dest,
                   size_t dest_bs)
 {
-   const bool is_null = (bool) *data;
    ASSERT(dest_bs > 8);
 
-   if (is_null) {
+   if (!orig) {
       snprintk(dest, dest_bs, "NULL");
       return true;
    }
-
-   /* skip the special 1st byte used for the NULL condition */
-   data++;
 
    if (data_bs == -1) {
       /* assume that `data` is a C string */
@@ -127,7 +122,7 @@ const struct sys_param_type ptype_buffer = {
    .slot_size = 32,
 
    .save = save_param_buffer,
-   .dump_from_data = dump_param_buffer,
+   .dump = dump_param_buffer,
    .dump_from_val = NULL,
 };
 
@@ -137,6 +132,6 @@ const struct sys_param_type ptype_path = {
    .slot_size = 64,
 
    .save = save_param_buffer,
-   .dump_from_data = dump_param_buffer,
+   .dump = dump_param_buffer,
    .dump_from_val = NULL,
 };

@@ -121,7 +121,7 @@ const struct sys_param_type ptype_int = {
    .slot_size = 0,
 
    .save = NULL,
-   .dump_from_data = NULL,
+   .dump = NULL,
    .dump_from_val = dump_param_int,
 };
 
@@ -131,7 +131,7 @@ const struct sys_param_type ptype_voidp = {
    .slot_size = 0,
 
    .save = NULL,
-   .dump_from_data = NULL,
+   .dump = NULL,
    .dump_from_val = dump_param_voidp,
 };
 
@@ -141,7 +141,7 @@ const struct sys_param_type ptype_oct = {
    .slot_size = 0,
 
    .save = NULL,
-   .dump_from_data = NULL,
+   .dump = NULL,
    .dump_from_val = dump_param_oct,
 };
 
@@ -151,7 +151,7 @@ const struct sys_param_type ptype_errno_or_val = {
    .slot_size = 0,
 
    .save = NULL,
-   .dump_from_data = NULL,
+   .dump = NULL,
    .dump_from_val = dump_param_errno_or_val,
 };
 
@@ -161,6 +161,6 @@ const struct sys_param_type ptype_open_flags = {
    .slot_size = 0,
 
    .save = NULL,
-   .dump_from_data = NULL,
+   .dump = NULL,
    .dump_from_val = dump_param_open_flags,
 };

@@ -53,7 +53,7 @@ struct sys_param_type {
    bool (*save)(void *ptr, sptr size, char *buf, size_t buf_size);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_data)(char *buf, sptr bs, sptr rsz, char *dst, size_t d_bs);
+   bool (*dump)(uptr orig, char *b, sptr bs, sptr rsz, char *dst, size_t d_bs);
 
    /* Returns false if dest_buf_size is too small */
    bool (*dump_from_val)(uptr val, char *dest, size_t dest_buf_size);
