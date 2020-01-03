@@ -24,7 +24,7 @@
       .kind = _kind,                                     \
    }
 
-#define BUF_PARAM(_name, _type, _kind, _sz_param)                    \
+#define BUFFER_PARAM(_name, _type, _kind, _sz_param)                    \
    {                                                                 \
       .name = _name,                                                 \
       .type = _type,                                                 \
@@ -100,6 +100,19 @@
       }                                                              \
    }
 
+#define SYSCALL_RW(sys, par1, par2, par2_type, par2_kind, par3)            \
+   {                                                                       \
+      .sys_n = sys,                                                        \
+      .n_params = 3,                                                       \
+      .exp_block = true,                                                   \
+      .ret_type = &ptype_errno_or_val,                                     \
+      .params = {                                                          \
+         SIMPLE_PARAM(par1, &ptype_int, sys_param_in),                     \
+         BUFFER_PARAM(par2, par2_type, par2_kind, par3),                   \
+         SIMPLE_PARAM(par3, &ptype_int, sys_param_in),                     \
+      },                                                                   \
+   }
+
 static const struct syscall_info __tracing_metadata[] =
 {
    SYSCALL_TYPE_0(SYS_fork),
@@ -141,57 +154,10 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_5(SYS_kill, "pid", "sig"),
    SYSCALL_TYPE_5(SYS_tkill, "tid", "sig"),
 
-   {
-      .sys_n = SYS_read,
-      .n_params = 3,
-      .exp_block = true,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         BUF_PARAM("buf", &ptype_buffer, sys_param_out, "count"),
-         SIMPLE_PARAM("count", &ptype_int, sys_param_in),
-      },
-   },
-
-   {
-      .sys_n = SYS_write,
-      .n_params = 3,
-      .exp_block = true,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         BUF_PARAM("buf", &ptype_buffer, sys_param_in, "count"),
-         SIMPLE_PARAM("count", &ptype_int, sys_param_in),
-      },
-   },
-
-   {
-      .sys_n = SYS_readv,
-      .n_params = 3,
-      .exp_block = true,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         BUF_PARAM("iov", &ptype_iov_out, sys_param_out, "iovcnt"),
-         SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
-      },
-   },
-
-   {
-      .sys_n = SYS_writev,
-      .n_params = 3,
-      .exp_block = true,
-      .ret_type = &ptype_errno_or_val,
-      .params = {
-
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         BUF_PARAM("iov", &ptype_iov_in, sys_param_in, "iovcnt"),
-         SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
-      },
-   },
+   SYSCALL_RW(SYS_read, "fd", "buf", &ptype_buffer, sys_param_out, "count"),
+   SYSCALL_RW(SYS_write, "fd", "buf", &ptype_buffer, sys_param_in, "count"),
+   SYSCALL_RW(SYS_readv, "fd", "iov", &ptype_iov_out, sys_param_out, "iovcnt"),
+   SYSCALL_RW(SYS_writev, "fd", "iov", &ptype_iov_in, sys_param_in, "iovcnt"),
 
    {
       .sys_n = SYS_getcwd,
@@ -199,15 +165,7 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-
-         {
-            .name = "buf",
-            .type = &ptype_buffer,
-            .kind = sys_param_out,
-            .size_param_name = "size",
-            .real_sz_in_ret = true,
-         },
-
+         BUFFER_PARAM("buf", &ptype_buffer, sys_param_out, "size"),
          SIMPLE_PARAM("size", &ptype_int, sys_param_in),
       },
    },
