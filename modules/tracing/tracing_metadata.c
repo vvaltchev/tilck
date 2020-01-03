@@ -5,13 +5,34 @@
 #include <sys/syscall.h> // system header
 
 #if defined(__x86_64__)
+
    #define STAT_SYSCALL_N      SYS_stat
    #define LSTAT_SYSCALL_N     SYS_lstat
    #define FSTAT_SYSCALL_N     SYS_fstat
+   #define FCNTL_SYSCALL_N     SYS_fcntl
+
 #elif defined(__i386__)
+
    #define STAT_SYSCALL_N      SYS_stat64
    #define LSTAT_SYSCALL_N     SYS_lstat64
    #define FSTAT_SYSCALL_N     SYS_fstat64
+   #define FCNTL_SYSCALL_N     SYS_fcntl64
+
+   #undef SYS_getuid
+   #undef SYS_getgid
+   #undef SYS_geteuid
+   #undef SYS_getegid
+
+   #define SYS_getuid            199
+   #define SYS_getgid            200
+   #define SYS_geteuid           201
+   #define SYS_getegid           202
+
+   #define SYS_getuid16          24
+   #define SYS_getgid16          47
+   #define SYS_geteuid16         49
+   #define SYS_getegid16         50
+
 #else
    #error Architecture not supported
 #endif
@@ -122,6 +143,14 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_0(SYS_getgid),
    SYSCALL_TYPE_0(SYS_geteuid),
    SYSCALL_TYPE_0(SYS_getegid),
+
+#if defined(__i386__)
+   SYSCALL_TYPE_0(SYS_getuid16),
+   SYSCALL_TYPE_0(SYS_getgid16),
+   SYSCALL_TYPE_0(SYS_geteuid16),
+   SYSCALL_TYPE_0(SYS_getegid16),
+#endif
+
    SYSCALL_TYPE_0(SYS_gettid),
    SYSCALL_TYPE_0(SYS_setsid),
    SYSCALL_TYPE_0(SYS_sync),
@@ -275,6 +304,66 @@ static const struct syscall_info __tracing_metadata[] =
       .ret_type = &ptype_oct,
       .params = {
          SIMPLE_PARAM("mask", &ptype_oct, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_ioctl,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("request", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("argp", &ptype_voidp, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = FCNTL_SYSCALL_N,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("cmd", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("arg", &ptype_voidp, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_uname,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("buf", &ptype_voidp, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_rt_sigaction,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("signum", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("act", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("oldact", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigsetsize", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_rt_sigprocmask,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("how", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("set", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("oldset", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigsetsize", &ptype_int, sys_param_in),
       },
    },
 

@@ -264,11 +264,11 @@ int
 sys_rt_sigaction(int signum,
                  const struct k_sigaction *act,
                  struct k_sigaction *oldact,
-                 size_t);
+                 size_t sigsetsize);
 
 int
 sys_rt_sigprocmask(int how, sigset_t *set,
-                   sigset_t *oset, size_t sigsetsize);
+                   sigset_t *oldset, size_t sigsetsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigpending)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait)
