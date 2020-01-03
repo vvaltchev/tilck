@@ -7,12 +7,15 @@
 static bool
 save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 {
+   /* Use dest buffer's 1st byte to store the data == NULL condition */
+   const sptr dest_bs = (sptr) __dest_bs - 1;
+   *dest_buf++ = (data == NULL);
+
    if (data_sz == -1) {
       /* assume that `data` is a C string */
       data_sz = (sptr)strlen(data) + 1;
    }
 
-   const sptr dest_bs = (sptr) __dest_bs;
    const sptr actual_sz = MIN(data_sz, dest_bs);
 
    if (copy_from_user(dest_buf, data, (size_t)actual_sz)) {
@@ -29,7 +32,16 @@ dump_param_buffer(char *data,
                   char *dest,
                   size_t dest_bs)
 {
+   const bool is_null = (bool) *data;
    ASSERT(dest_bs > 8);
+
+   if (is_null) {
+      snprintk(dest, dest_bs, "NULL");
+      return true;
+   }
+
+   /* skip the special 1st byte used for the NULL condition */
+   data++;
 
    if (data_bs == -1) {
       /* assume that `data` is a C string */

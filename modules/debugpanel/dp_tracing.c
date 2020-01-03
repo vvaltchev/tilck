@@ -16,7 +16,7 @@
 
 #if MOD_tracing
 
-#define REND_BUF_SIZE                              128
+#define REND_BUF_SIZE                              256
 static char *rend_bufs[6];
 static int used_rend_bufs;
 static char *line_buf;

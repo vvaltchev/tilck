@@ -175,6 +175,48 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    {
+      .sys_n = SYS_readv,
+      .n_params = 3,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+
+         {
+            .name = "iov",
+            .type = &ptype_iov_out,
+            .kind = sys_param_out,
+            .size_param_name = "iovcnt",
+            .real_sz_in_ret = true,
+         },
+
+         SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_writev,
+      .n_params = 3,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+
+         {
+            .name = "iov",
+            .type = &ptype_iov_in,
+            .kind = sys_param_in,
+            .size_param_name = "iovcnt",
+            .real_sz_in_ret = true,
+         },
+
+         SIMPLE_PARAM("iovcnt", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
       .sys_n = SYS_getcwd,
       .n_params = 2,
       .exp_block = false,

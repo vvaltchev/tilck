@@ -50,7 +50,7 @@ dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
    return rc < (int)dest_buf_size;
 }
 
-static bool
+bool
 buf_append(char *dest, int *used, int *rem, char *str)
 {
    int rc;
