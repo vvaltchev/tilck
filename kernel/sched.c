@@ -608,6 +608,7 @@ void schedule(int curr_int)
       selected = idle_task;
    }
 
+   ASSERT(!selected->stopped);
    switch_to_task(selected, curr_int);
 }
 

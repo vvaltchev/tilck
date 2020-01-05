@@ -160,10 +160,14 @@ uptr sys_times(struct tms *user_buf)
    return (uptr) get_ticks();
 }
 
-int sys_vfork()
+int sys_fork(void)
 {
-   // TODO: consider actually implementing vfork().
-   return sys_fork();
+   return do_fork(false);
+}
+
+int sys_vfork(void)
+{
+   return do_fork(true);
 }
 
 int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)

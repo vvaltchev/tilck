@@ -285,7 +285,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_capset)
 CREATE_STUB_SYSCALL_IMPL(sys_sigaltstack)
 CREATE_STUB_SYSCALL_IMPL(sys_sendfile)
 
-int sys_vfork();
+int sys_vfork(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 

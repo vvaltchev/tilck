@@ -29,12 +29,15 @@ static void action_stop(struct task *ti, int signum)
 
    if (ti == get_curr_task()) {
       enable_preemption();
-      schedule_outside_interrupt_context();
+      kernel_yield();
    }
 }
 
 static void action_continue(struct task *ti, int signum)
 {
+   if (ti->vfork_stopped)
+      return;
+
    ti->stopped = false;
    ti->wstatus = CONTINUED;
    wake_up_tasks_waiting_on(ti, task_continued);

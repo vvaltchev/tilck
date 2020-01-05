@@ -133,6 +133,9 @@ execve_prepare_process(struct process *pi, void *brk, const char *const *argv)
 
    if (pi->debug_cmdline)
       save_cmdline(pi, argv);
+
+   if (pi->vforked)
+      handle_vforked_child_move_on(pi);
 }
 
 static inline int

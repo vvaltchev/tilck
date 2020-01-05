@@ -568,7 +568,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
 
-   struct process *pi = ti->pi;
+   struct process *const pi = ti->pi;
 
    if (ti->state == TASK_STATE_ZOMBIE)
       return; /* do nothing, the task is already dead */
@@ -625,6 +625,9 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
          tty_set_medium_raw_mode(pi->proc_tty, false);
    }
 
+   if (pi->vforked)
+      handle_vforked_child_move_on(pi);
+
    if (ti == get_curr_task()) {
 
       /* This function has been called by sys_exit(): we won't return */
@@ -665,8 +668,27 @@ static int fork_dup_all_handles(struct process *pi)
    return 0;
 }
 
+void
+handle_vforked_child_move_on(struct process *pi)
+{
+   struct task *parent;
+
+   ASSERT(!is_preemption_enabled());
+   ASSERT(pi->vforked);
+   parent = get_task(pi->parent_pid);
+
+   ASSERT(parent != NULL);
+   ASSERT(parent->stopped);
+   ASSERT(parent->vfork_stopped);
+
+   parent->stopped = false;
+   parent->vfork_stopped = false;
+
+   pi->vforked = false;
+}
+
 // Returns child's pid
-int sys_fork(void)
+int do_fork(bool vfork)
 {
    int pid;
    int rc = -EAGAIN;
@@ -676,9 +698,14 @@ int sys_fork(void)
    pdir_t *new_pdir = NULL;
 
    disable_preemption();
+   ASSERT(curr->state == TASK_STATE_RUNNING);
 
    if ((pid = create_new_pid()) < 0)
-      goto out; /* NOTE: is already set to -EAGAIN */
+      goto out; /* NOTE: rc is already set to -EAGAIN */
+
+   /*
+    * TODO: consider actually NOT cloning the pdir in case of vfork.
+    */
 
    if (FORK_NO_COW)
       new_pdir = pdir_deep_clone(curr_pi->pdir);
@@ -697,9 +724,7 @@ int sys_fork(void)
    /* Child's kernel stack must be set */
    ASSERT(child->kernel_stack != NULL);
 
-   if (child->state == TASK_STATE_RUNNING)
-      child->state = TASK_STATE_RUNNABLE;
-
+   child->state = TASK_STATE_RUNNABLE;
    child->running_in_kernel = false;
    task_info_reset_kernel_stack(child);
 
@@ -713,6 +738,12 @@ int sys_fork(void)
    if (fork_dup_all_handles(child->pi) < 0)
       goto no_mem_exit;
 
+   if (vfork) {
+      curr->stopped = true;
+      curr->vfork_stopped = true;
+      child->pi->vforked = true;
+   }
+
    add_task(child);
 
    /*
@@ -724,6 +755,34 @@ int sys_fork(void)
 
    set_curr_pdir(curr_pi->pdir);
    enable_preemption();
+
+   if (vfork) {
+
+      /* Make absolutely sure the current task is vfork-stopped */
+      ASSERT(curr->stopped);
+      ASSERT(curr->vfork_stopped);
+
+      /* Check that the child is not stopped */
+      ASSERT(!child->stopped);
+      ASSERT(!child->vfork_stopped);
+
+      /* Check that the child is marked as vfork-ed */
+      ASSERT(child->pi->vforked);
+
+      /* Yield indefinitely until the child dies or calls execve() */
+      kernel_yield();
+
+      /* Make absolutely sure that we're running because we're not stopped */
+      ASSERT(!curr->stopped);
+      ASSERT(!curr->vfork_stopped);
+
+      /* Check that the child died or called execve() */
+      ASSERT(
+         (child->pi->did_call_execve && !child->pi->vforked) ||
+         child->state == TASK_STATE_ZOMBIE
+      );
+   }
+
    return child->tid;
 
 

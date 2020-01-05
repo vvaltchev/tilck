@@ -50,6 +50,9 @@ struct process {
    bool did_call_execve;
    bool did_set_tty_medium_raw;
 
+   /* This process is a result of vfork(), before any call to execve() */
+   bool vforked;
+
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 
    struct kmutex fslock;                  /* protects `handles` and `cwd` */
@@ -166,6 +169,9 @@ struct task {
    /* Temp kernel allocations for user requests */
    struct kernel_alloc *kallocs_tree_root;
 
+   /* This task is stopped because of its vfork-ed child */
+   bool vfork_stopped;
+
    /* Trace the syscalls of this task (requires debugpanel) */
    bool traced;
 
@@ -244,6 +250,8 @@ enum wakeup_reason {
    task_continued,
 };
 
+int do_fork(bool vfork);
+void handle_vforked_child_move_on(struct process *pi);
 int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,
