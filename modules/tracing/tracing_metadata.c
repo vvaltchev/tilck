@@ -139,7 +139,6 @@
 static const struct syscall_info __tracing_metadata[] =
 {
    SYSCALL_TYPE_0(SYS_fork),
-   SYSCALL_TYPE_0(SYS_vfork),
    SYSCALL_TYPE_0(SYS_pause),
    SYSCALL_TYPE_0(SYS_getuid),
    SYSCALL_TYPE_0(SYS_getgid),
@@ -206,6 +205,14 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
          SIMPLE_PARAM("status", &ptype_int, sys_param_in),
       }
+   },
+
+   {
+      .sys_n = SYS_vfork,
+      .n_params = 0,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = { }
    },
 
    {
