@@ -9,6 +9,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/datetime.h>
 
 #define PRINTK_COLOR                          COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR            COLOR_CYAN
@@ -408,8 +409,16 @@ void vprintk(const char *fmt, va_list args)
          prefix = false;
    }
 
-   if (prefix)
-      written = snprintk(buf, sizeof(buf), "[kernel] ");
+   if (prefix) {
+
+      const u64 systime = get_sys_time();
+
+      written = snprintk(
+         buf, sizeof(buf), "[%5u.%03u] ",
+         (u32)(systime / TS_SCALE),
+         (u32)((systime % TS_SCALE) / (TS_SCALE / 1000))
+      );
+   }
 
    written += vsnprintk(buf + written, sizeof(buf) - (u32)written, fmt, args);
 
