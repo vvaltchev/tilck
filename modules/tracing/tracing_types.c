@@ -50,6 +50,19 @@ dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
    return rc < (int)dest_buf_size;
 }
 
+static bool
+dump_param_errno_or_ptr(uptr __val, char *dest, size_t dest_buf_size)
+{
+   sptr val = (sptr)__val;
+   int rc;
+
+   rc = (val >= 0 || val < -500 /* the smallest errno */)
+      ? snprintk(dest, dest_buf_size, "%p", val)
+      : snprintk(dest, dest_buf_size, "-%s", get_errno_name((int)-val));
+
+   return rc < (int)dest_buf_size;
+}
+
 bool
 buf_append(char *dest, int *used, int *rem, char *str)
 {
@@ -155,6 +168,16 @@ const struct sys_param_type ptype_errno_or_val = {
    .dump_from_val = dump_param_errno_or_val,
 };
 
+const struct sys_param_type ptype_errno_or_ptr = {
+
+   .name = "errno_or_ptr",
+   .slot_size = 0,
+
+   .save = NULL,
+   .dump = NULL,
+   .dump_from_val = dump_param_errno_or_ptr,
+};
+
 const struct sys_param_type ptype_open_flags = {
 
    .name = "int",
@@ -163,4 +186,54 @@ const struct sys_param_type ptype_open_flags = {
    .save = NULL,
    .dump = NULL,
    .dump_from_val = dump_param_open_flags,
+};
+
+struct saved_int_pair_data {
+
+   bool valid;
+   int pair[2];
+};
+
+static bool
+save_param_int_pair(void *data, sptr unused, char *dest_buf, size_t dest_bs)
+{
+   struct saved_int_pair_data *saved_data = (void *)dest_buf;
+   ASSERT(dest_bs >= sizeof(struct saved_int_pair_data));
+
+   if (copy_from_user(saved_data->pair, data, sizeof(int) * 2))
+      saved_data->valid = false;
+   else
+      saved_data->valid = true;
+
+   return true;
+}
+
+static bool
+dump_param_int_pair(uptr orig,
+                    char *__data,
+                    sptr unused1,
+                    sptr unused2,
+                    char *dest,
+                    size_t dest_bs)
+{
+   int rc;
+   struct saved_int_pair_data *data = (void *)__data;
+
+   if (!data->valid) {
+      snprintk(dest, dest_bs, "<fault>");
+      return true;
+   }
+
+   rc = snprintk(dest, dest_bs, "{%d, %d}", data->pair[0], data->pair[1]);
+   return rc <= (int) dest_bs;
+}
+
+const struct sys_param_type ptype_int32_pair = {
+
+   .name = "int[2]",
+   .slot_size = 16,
+
+   .save = save_param_int_pair,
+   .dump = dump_param_int_pair,
+   .dump_from_val = NULL,
 };

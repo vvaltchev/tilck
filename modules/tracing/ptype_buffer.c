@@ -78,7 +78,7 @@ dump_param_buffer(uptr orig,
                minibuf[0] = c;
                minibuf[1] = 0;
             } else {
-               snprintk(minibuf, sizeof(minibuf), "\\x%02x", (u32)c);
+               snprintk(minibuf, sizeof(minibuf), "\\x%02x", (u8)c);
             }
       }
 

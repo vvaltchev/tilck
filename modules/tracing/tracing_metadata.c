@@ -10,6 +10,7 @@
    #define LSTAT_SYSCALL_N     SYS_lstat
    #define FSTAT_SYSCALL_N     SYS_fstat
    #define FCNTL_SYSCALL_N     SYS_fcntl
+   #define MMAP_SYSCALL_N      SYS_mmap
 
 #elif defined(__i386__)
 
@@ -17,6 +18,7 @@
    #define LSTAT_SYSCALL_N     SYS_lstat64
    #define FSTAT_SYSCALL_N     SYS_fstat64
    #define FCNTL_SYSCALL_N     SYS_fcntl64
+   #define MMAP_SYSCALL_N      192
 
    #undef SYS_getuid
    #undef SYS_getgid
@@ -45,7 +47,7 @@
       .kind = _kind,                                     \
    }
 
-#define BUFFER_PARAM(_name, _type, _kind, _sz_param)                    \
+#define BUFFER_PARAM(_name, _type, _kind, _sz_param)                 \
    {                                                                 \
       .name = _name,                                                 \
       .type = _type,                                                 \
@@ -128,7 +130,7 @@
       .exp_block = true,                                                   \
       .ret_type = &ptype_errno_or_val,                                     \
       .params = {                                                          \
-         SIMPLE_PARAM(par1, &ptype_int, sys_param_in),                     \
+         SIMPLE_PARAM(par1, &ptype_int, sys_param_in_out),                 \
          BUFFER_PARAM(par2, par2_type, par2_kind, par3),                   \
          SIMPLE_PARAM(par3, &ptype_int, sys_param_in),                     \
       },                                                                   \
@@ -364,6 +366,72 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("set", &ptype_voidp, sys_param_in),
          SIMPLE_PARAM("oldset", &ptype_voidp, sys_param_in),
          SIMPLE_PARAM("sigsetsize", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_pipe,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("pipefd", &ptype_int32_pair, sys_param_out),
+      }
+   },
+
+   {
+      .sys_n = SYS_pipe2,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("pipefd", &ptype_int32_pair, sys_param_out),
+         SIMPLE_PARAM("flags", &ptype_open_flags, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = SYS_set_thread_area,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("u_info", &ptype_voidp, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = SYS_prctl,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("option", &ptype_int, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = MMAP_SYSCALL_N,
+      .n_params = 6,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_ptr,
+      .params = {
+         SIMPLE_PARAM("addr", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("len", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("prot", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("pgoffset", &ptype_int, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = SYS_set_tid_address,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_voidp,
+      .params = {
+         SIMPLE_PARAM("tidptr", &ptype_voidp, sys_param_in),
       },
    },
 
