@@ -31,18 +31,6 @@ static void pipe_cmd1_child(int rfd, int wfd)
    buf[rc] = 0;
 
    printf("[child] got: '%s'\n", buf);
-   printf("[child] now reading again, expecting to get 0..\n");
-
-   rc = read(rfd, buf, sizeof(buf));
-
-   if (rc != 0) {
-
-      printf("[child] read() returned %d [expected: 0], error: %s\n",
-             rc, strerror(errno));
-
-      exit(1);
-   }
-
    printf("[child] Done.\n");
    exit(0);
 }

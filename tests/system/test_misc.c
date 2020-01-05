@@ -210,6 +210,17 @@ int cmd_cloexec(int argc, char **argv)
 {
    int pid;
    int wstatus;
+   const char *devshell_path = DEVSHELL_PATH;
+
+   if (!getenv("TILCK")) {
+
+      /*
+       * When running this test on Linux, we cannot expect to find the devshell
+       * in the same abs path (/initrd/...) as on Tilck.
+       */
+
+      devshell_path = "/proc/self/exe";
+   }
 
    if (argc > 0) {
 
@@ -228,7 +239,7 @@ int cmd_cloexec(int argc, char **argv)
    }
 
    if (!pid) {
-      char *argv[] = { DEVSHELL_PATH, "-c", "cloexec", "do_exec", NULL };
+      char *argv[] = { "devshell", "-c", "cloexec", "do_exec", NULL };
 
       int flags = fcntl(2 /* stderr */, F_GETFD);
       int rc = fcntl(2 /* stderr */, F_SETFD, flags | FD_CLOEXEC);
@@ -239,8 +250,8 @@ int cmd_cloexec(int argc, char **argv)
       }
 
       fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
-      execvpe(DEVSHELL_PATH, argv, shell_env);
-      fprintf(stderr, "execvpe('%s') failed\n", DEVSHELL_PATH);
+      execvpe(devshell_path, argv, shell_env);
+      fprintf(stderr, "execvpe('%s') failed\n", devshell_path);
       exit(1);
    }
 
