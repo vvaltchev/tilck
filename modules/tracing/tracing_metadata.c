@@ -274,7 +274,7 @@ static const struct syscall_info __tracing_metadata[] =
    {
       .sys_n = SYS_execve,
       .n_params = 3,
-      .exp_block = false,
+      .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("filename", &ptype_path, sys_param_in),
