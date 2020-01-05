@@ -164,8 +164,6 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_1(SYS_dup, "dup"),
    SYSCALL_TYPE_1(SYS_getpgid, "pid"),
    SYSCALL_TYPE_1(SYS_getsid, "pid"),
-   SYSCALL_TYPE_1(SYS_exit, "status"),
-   SYSCALL_TYPE_1(SYS_exit_group, "status"),
 
    SYSCALL_TYPE_2(SYS_creat, "path", "mode"),
    SYSCALL_TYPE_2(SYS_chmod, "path", "mode"),
@@ -189,6 +187,26 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_RW(SYS_write, "fd", "buf", &ptype_buffer, sys_param_in, "count"),
    SYSCALL_RW(SYS_readv, "fd", "iov", &ptype_iov_out, sys_param_out, "iovcnt"),
    SYSCALL_RW(SYS_writev, "fd", "iov", &ptype_iov_in, sys_param_in, "iovcnt"),
+
+   {
+      .sys_n = SYS_exit,
+      .n_params = 1,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("status", &ptype_int, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = SYS_exit_group,
+      .n_params = 1,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("status", &ptype_int, sys_param_in),
+      }
+   },
 
    {
       .sys_n = SYS_getcwd,
