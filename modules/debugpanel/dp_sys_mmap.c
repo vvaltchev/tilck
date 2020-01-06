@@ -106,9 +106,34 @@ static void dump_var_mtrrs(void)
 
 #endif
 
+static void dp_print_tot_usable_system_memory(void)
+{
+   struct mem_region ma;
+   u64 size = 0;
+
+   for (int i = 0; i < get_mem_regions_count(); i++) {
+
+      get_mem_region(i, &ma);
+
+      if (ma.type == MULTIBOOT_MEMORY_AVAILABLE ||
+          (ma.extra & (MEM_REG_EXTRA_RAMDISK | MEM_REG_EXTRA_KERNEL)))
+      {
+         size += ma.len;
+      }
+   }
+
+   dp_writeln(
+      "Total usable physical memory: %llu KB [%llu MB]",
+      size / KB,
+      size / MB
+   );
+   dp_writeln("");
+}
+
 static void dp_show_sys_mmap(void)
 {
    row = dp_screen_start_row;
+   dp_print_tot_usable_system_memory();
    dump_memory_map();
 
 #ifdef arch_x86_family
