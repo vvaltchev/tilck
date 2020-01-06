@@ -298,7 +298,7 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 
    statbuf->st_dev = fs->device_id;
    statbuf->st_ino = fat_entry_to_inode(fs->device_data, e);
-   statbuf->st_mode = 0555;
+   statbuf->st_mode = 0777;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
