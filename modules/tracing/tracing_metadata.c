@@ -18,7 +18,7 @@
    #define LSTAT_SYSCALL_N     SYS_lstat64
    #define FSTAT_SYSCALL_N     SYS_fstat64
    #define FCNTL_SYSCALL_N     SYS_fcntl64
-   #define MMAP_SYSCALL_N      192
+   #define MMAP_SYSCALL_N        192
 
    #undef SYS_getuid
    #undef SYS_getgid
@@ -30,10 +30,22 @@
    #define SYS_geteuid           201
    #define SYS_getegid           202
 
-   #define SYS_getuid16          24
-   #define SYS_getgid16          47
-   #define SYS_geteuid16         49
-   #define SYS_getegid16         50
+   #define SYS_getuid16           24
+   #define SYS_getgid16           47
+   #define SYS_geteuid16          49
+   #define SYS_getegid16          50
+
+   #undef SYS_lchown
+   #undef SYS_fchown
+   #undef SYS_chown
+
+   #define SYS_lchown            198
+   #define SYS_fchown            207
+   #define SYS_chown             212
+
+   #define SYS_lchown16           16
+   #define SYS_fchown16           95
+   #define SYS_chown16           182
 
 #else
    #error Architecture not supported
@@ -56,6 +68,7 @@
       .real_sz_in_ret = true,                                        \
    }
 
+/* Syscall (void) */
 #define SYSCALL_TYPE_0(sys)                                          \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -65,6 +78,7 @@
       .params = { }                                                  \
    }
 
+/* Syscall (int) */
 #define SYSCALL_TYPE_1(sys, par1)                                    \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -76,6 +90,7 @@
       }                                                              \
    }
 
+/* Syscall (path, oct_int) */
 #define SYSCALL_TYPE_2(sys, par1, par2)                              \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -88,6 +103,7 @@
       }                                                              \
    }
 
+/* Syscall (path) */
 #define SYSCALL_TYPE_3(sys, par1)                                    \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -99,6 +115,7 @@
       }                                                              \
    }
 
+/* Syscall (path, path) */
 #define SYSCALL_TYPE_4(sys, par1, par2)                              \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -111,6 +128,7 @@
       }                                                              \
    }
 
+/* Syscall (int, int) */
 #define SYSCALL_TYPE_5(sys, par1, par2)                              \
    {                                                                 \
       .sys_n = sys,                                                  \
@@ -123,6 +141,35 @@
       }                                                              \
    }
 
+/* Syscall (path, int, int) */
+#define SYSCALL_TYPE_6(sys, par1, par2, par3)                        \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 3,                                                 \
+      .exp_block = false,                                            \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_path, sys_param_in),              \
+         SIMPLE_PARAM(par2, &ptype_int, sys_param_in),               \
+         SIMPLE_PARAM(par3, &ptype_int, sys_param_in),               \
+      }                                                              \
+   }
+
+/* Syscall (int, int, int) */
+#define SYSCALL_TYPE_7(sys, par1, par2, par3)                        \
+   {                                                                 \
+      .sys_n = sys,                                                  \
+      .n_params = 3,                                                 \
+      .exp_block = false,                                            \
+      .ret_type = &ptype_errno_or_val,                               \
+      .params = {                                                    \
+         SIMPLE_PARAM(par1, &ptype_int, sys_param_in),               \
+         SIMPLE_PARAM(par2, &ptype_int, sys_param_in),               \
+         SIMPLE_PARAM(par3, &ptype_int, sys_param_in),               \
+      }                                                              \
+   }
+
+/* Syscall (int, buffer_type, int) */
 #define SYSCALL_RW(sys, par1, par2, par2_type, par2_kind, par3)            \
    {                                                                       \
       .sys_n = sys,                                                        \
@@ -181,6 +228,18 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_5(SYS_dup2, "oldfd", "newfd"),
    SYSCALL_TYPE_5(SYS_kill, "pid", "sig"),
    SYSCALL_TYPE_5(SYS_tkill, "tid", "sig"),
+
+#if defined(__i386__)
+   SYSCALL_TYPE_6(SYS_chown16, "path", "owner", "group"),
+   SYSCALL_TYPE_6(SYS_lchown16, "path", "owner", "group"),
+
+   SYSCALL_TYPE_7(SYS_fchown16, "fd", "owner", "group"),
+#endif
+
+   SYSCALL_TYPE_6(SYS_chown, "path", "owner", "group"),
+   SYSCALL_TYPE_6(SYS_lchown, "path", "owner", "group"),
+
+   SYSCALL_TYPE_7(SYS_fchown, "fd", "owner", "group"),
 
    SYSCALL_RW(SYS_read, "fd", "buf", &ptype_buffer, sys_param_out, "count"),
    SYSCALL_RW(SYS_write, "fd", "buf", &ptype_buffer, sys_param_in, "count"),
