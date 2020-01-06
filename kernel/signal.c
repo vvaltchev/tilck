@@ -43,10 +43,8 @@ static void action_continue(struct task *ti, int signum)
    wake_up_tasks_waiting_on(ti, task_continued);
 }
 
-static const action_type signal_default_actions[32] =
+static const action_type signal_default_actions[_NSIG] =
 {
-   [0] = action_ignore,
-
    [SIGHUP] = action_terminate,
    [SIGINT] = action_terminate,
    [SIGQUIT] = action_terminate,
@@ -105,6 +103,9 @@ static void do_send_signal(struct task *ti, int signum)
       signal_default_actions[signum] != NULL
          ? signal_default_actions[signum]
          : action_terminate;
+
+   if (!action_func)
+      return; /* unknown signal, just do nothing */
 
    action_func(ti, signum);
 }
