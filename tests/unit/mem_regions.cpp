@@ -19,7 +19,12 @@ using namespace std;
 using namespace testing;
 
 extern "C" {
+
    #include <tilck/kernel/system_mmap.h>
+
+   extern struct mem_region mem_regions[MAX_MEM_REGIONS];
+   extern int mem_regions_count;
+
    void append_mem_region(struct mem_region r);
    void fix_mem_regions(void);
    void align_mem_regions_to_page_boundary(void);

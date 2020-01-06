@@ -252,11 +252,14 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 
 void init_kmalloc(void)
 {
+   struct mem_region r;
+   int heap_index;
+   uptr vbegin, vend;
+
    ASSERT(!kmalloc_initialized);
    list_init(&small_heaps_list);
    list_init(&avail_small_heaps_list);
 
-   int heap_index;
    used_heaps = 0;
    bzero(heaps, sizeof(heaps));
 
@@ -279,15 +282,14 @@ void init_kmalloc(void)
       kmalloc_account_alloc(heaps[0]->metadata_size);
    }
 
-   for (int i = 0; i < mem_regions_count; i++) {
+   for (int i = 0; i < get_mem_regions_count(); i++) {
 
-      struct mem_region *r = mem_regions + i;
-      uptr vbegin, vend;
+      get_mem_region(i, &r);
 
-      if (!linear_map_mem_region(r, &vbegin, &vend))
+      if (!linear_map_mem_region(&r, &vbegin, &vend))
          break;
 
-      if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
+      if (r.type == MULTIBOOT_MEMORY_AVAILABLE) {
 
          init_kmalloc_fill_region(i, vbegin, vend);
 

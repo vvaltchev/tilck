@@ -30,6 +30,8 @@ extern struct kmalloc_heap first_heap_struct;
 extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 extern u32 used_heaps;
 extern size_t max_tot_heap_mem_free;
+extern struct mem_region mem_regions[MAX_MEM_REGIONS];
+extern int mem_regions_count;
 
 void *kernel_va = nullptr;
 bool mock_kmalloc = false;

@@ -19,23 +19,36 @@ struct mem_region {
    u32 extra; /* bit mask */
 };
 
-extern struct mem_region mem_regions[MAX_MEM_REGIONS];
-extern int mem_regions_count;
-
 void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr);
 void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
 void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(uptr paddr);
 bool linear_map_mem_region(struct mem_region *r, uptr *vbegin, uptr *vend);
 
-extern u32 __mem_upper_kb;
-
-static ALWAYS_INLINE uptr get_phys_mem_mb(void)
+static ALWAYS_INLINE int
+get_mem_regions_count(void)
 {
+   extern int mem_regions_count;
+   return mem_regions_count;
+}
+
+static ALWAYS_INLINE void
+get_mem_region(int n, struct mem_region *r)
+{
+   extern struct mem_region mem_regions[MAX_MEM_REGIONS];
+   *r = mem_regions[n];
+}
+
+static ALWAYS_INLINE uptr
+get_phys_mem_mb(void)
+{
+   extern u32 __mem_upper_kb;
    return __mem_upper_kb >> 10;
 }
 
-static ALWAYS_INLINE uptr get_phys_mem_size(void)
+static ALWAYS_INLINE uptr
+get_phys_mem_size(void)
 {
+   extern u32 __mem_upper_kb;
    return __mem_upper_kb << 10;
 }

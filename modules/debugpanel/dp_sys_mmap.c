@@ -28,17 +28,19 @@ static const char *mem_region_extra_to_str(u32 e)
    }
 }
 
-static void dump_memory_map(struct mem_region *regions, int count)
+static void dump_memory_map(void)
 {
+   struct mem_region ma;
+
    dp_writeln("           START                 END        (T, Extr)");
 
-   for (int i = 0; i < count; i++) {
+   for (int i = 0; i < get_mem_regions_count(); i++) {
 
-      struct mem_region *ma = regions + i;
+      get_mem_region(i, &ma);
 
       dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
-                 ma->addr, ma->addr + ma->len,
-                 ma->type, mem_region_extra_to_str(ma->extra), ma->len / KB);
+                 ma.addr, ma.addr + ma.len,
+                 ma.type, mem_region_extra_to_str(ma.extra), ma.len / KB);
    }
 
    dp_writeln("");
@@ -107,7 +109,7 @@ static void dump_var_mtrrs(void)
 static void dp_show_sys_mmap(void)
 {
    row = dp_screen_start_row;
-   dump_memory_map(mem_regions, mem_regions_count);
+   dump_memory_map();
 
 #ifdef arch_x86_family
    dump_var_mtrrs();
