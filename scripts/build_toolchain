@@ -701,6 +701,10 @@ function build_fbdoom {
       mv freedoom-0.12.1 freedoom
       rm freedoom-0.12.1.zip
 
+      pushd freedoom
+      gzip freedoom1.wad
+      popd
+
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
 
          # Case HOST_ARCH == ARCH
@@ -721,6 +725,7 @@ function build_fbdoom {
       pushd fbdoom
       run_command2 "make NOSDL=1 -j" build.log
       ${ARCH_GCC_TC}-linux-strip --strip-all fbdoom
+      gzip fbdoom
       popd
 
       export LDFLAGS=""
