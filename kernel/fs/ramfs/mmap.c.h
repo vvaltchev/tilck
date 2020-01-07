@@ -2,7 +2,8 @@
 
 static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct fs_handle_base *hb = h;
+   struct process *pi = hb->pi;
    uptr vaddr = (uptr)vaddrp;
    uptr vend = vaddr + len;
    ASSERT(IS_PAGE_ALIGNED(len));
