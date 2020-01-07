@@ -46,6 +46,9 @@ dump_param_buffer(uptr orig,
       data_bs = (sptr)strlen(data);
    }
 
+   if (!tracing_are_dump_big_bufs_on() && real_sz > 0)
+      real_sz = MIN(real_sz, 16);
+
    char minibuf[8];
    char *s;
    char *data_end = data + (real_sz < 0 ? data_bs : MIN(real_sz, data_bs));
@@ -81,7 +84,7 @@ dump_param_buffer(uptr orig,
                minibuf[0] = c;
                minibuf[1] = 0;
             } else {
-               snprintk(minibuf, sizeof(minibuf), "\\x%02x", (u8)c);
+               snprintk(minibuf, sizeof(minibuf), "\\x%x", (u8)c);
             }
       }
 

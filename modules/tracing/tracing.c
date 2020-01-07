@@ -46,6 +46,7 @@ static int traced_syscalls_count;
 bool *traced_syscalls;
 bool __force_exp_block;
 bool __tracing_on;
+bool __tracing_dump_big_bufs;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)

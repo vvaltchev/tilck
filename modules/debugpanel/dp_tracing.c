@@ -47,6 +47,12 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "b" RESET_ATTRS "     : Dump big buffers\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW "  "
       E_COLOR_YELLOW "e" RESET_ATTRS "     : Edit syscalls wildcard expr "
       E_COLOR_RED "[1]" RESET_ATTRS "\r\n"
       RESET_ATTRS
@@ -99,7 +105,8 @@ tracing_ui_msg(void)
 
    dp_write_raw(
 
-      TERM_VLINE " Always ENTER + EXIT: %s "
+      TERM_VLINE " Always ENTER+EXIT: %s "
+      TERM_VLINE " Big bufs: %s "
       TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
       TERM_VLINE " #Tasks traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
       TERM_VLINE "\r\n",
@@ -107,6 +114,11 @@ tracing_ui_msg(void)
       tracing_is_force_exp_block_enabled()
          ? E_COLOR_GREEN "ON" RESET_ATTRS
          : E_COLOR_RED "OFF" RESET_ATTRS,
+
+      tracing_are_dump_big_bufs_on()
+         ? E_COLOR_GREEN "ON" RESET_ATTRS
+         : E_COLOR_RED "OFF" RESET_ATTRS,
+
       get_traced_syscalls_count(),
       get_traced_tasks_count()
    );
@@ -522,6 +534,10 @@ dp_tracing_screen(void)
 
          case 'o':
             tracing_set_force_exp_block(!tracing_is_force_exp_block_enabled());
+            break;
+
+         case 'b':
+            tracing_set_dump_big_bufs_opt(!tracing_are_dump_big_bufs_on());
             break;
 
          case 'h':

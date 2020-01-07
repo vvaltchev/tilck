@@ -221,6 +221,20 @@ tracing_is_force_exp_block_enabled(void)
    return __force_exp_block;
 }
 
+static ALWAYS_INLINE bool
+tracing_are_dump_big_bufs_on(void)
+{
+   extern bool __tracing_dump_big_bufs;
+   return __tracing_dump_big_bufs;
+}
+
+static ALWAYS_INLINE void
+tracing_set_dump_big_bufs_opt(bool enabled)
+{
+   extern bool __tracing_dump_big_bufs;
+   __tracing_dump_big_bufs = enabled;
+}
+
 #define trace_sys_enter(sn, ...)                                               \
    if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
       trace_syscall_enter_int(sn, __VA_ARGS__);                                \
