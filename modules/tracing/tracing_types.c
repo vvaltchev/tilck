@@ -25,7 +25,10 @@ dump_param_int(uptr __val, char *dest, size_t dest_buf_size)
 static bool
 dump_param_voidp(uptr val, char *dest, size_t dest_buf_size)
 {
-   int rc = snprintk(dest, dest_buf_size, "%p", val);
+   const int rc = (val != 0)
+      ? snprintk(dest, dest_buf_size, "%p", val)
+      : snprintk(dest, dest_buf_size, "NULL");
+
    return rc < (int)dest_buf_size;
 }
 
