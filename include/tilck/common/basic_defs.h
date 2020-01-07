@@ -113,6 +113,21 @@ typedef sptr offt;
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
+#if !defined(TESTING) && !defined(USERMODE_APP)
+
+   /* va_list types and defs */
+   typedef __builtin_va_list va_list;
+
+   #define va_start(v,l)         __builtin_va_start(v,l)
+   #define va_end(v)             __builtin_va_end(v)
+   #define va_arg(v,l)           __builtin_va_arg(v,l)
+
+#else
+
+   #include <stdarg.h>
+
+#endif
+
 /*
  * An useful two-pass concatenation macro.
  *

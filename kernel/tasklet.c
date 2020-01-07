@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 #include <tilck/common/atomics.h>
 
 #include <tilck/kernel/tasklet.h>

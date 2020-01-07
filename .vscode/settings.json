@@ -125,7 +125,9 @@
       "video_term_int.h": "c",
       "idt_int.h": "c",
       "unordered_map": "c",
-      "unordered_set": "c"
+      "unordered_set": "c",
+      "kmalloc_debug.h": "c",
+      "asm_x86_strings.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

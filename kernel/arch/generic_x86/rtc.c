@@ -1,25 +1,25 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/string_util.h>
+#include <tilck/common/basic_defs.h>
 
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/datetime.h>
 
-#define CMOS_CONTROL_PORT 0x70
-#define CMOS_DATA_PORT 0x71
+#define CMOS_CONTROL_PORT                 0x70
+#define CMOS_DATA_PORT                    0x71
 
-#define REG_SECONDS 0x00
-#define REG_MINUTES 0x02
-#define REG_HOURS 0x04
-#define REG_WEEKDAY 0x06
-#define REG_DAY 0x07
-#define REG_MONTH 0x08
-#define REG_YEAR 0x09
+#define REG_SECONDS                       0x00
+#define REG_MINUTES                       0x02
+#define REG_HOURS                         0x04
+#define REG_WEEKDAY                       0x06
+#define REG_DAY                           0x07
+#define REG_MONTH                         0x08
+#define REG_YEAR                          0x09
 
-#define REG_STATUS_REG_A 0x0A
-#define REG_STATUS_REG_B 0x0B
+#define REG_STATUS_REG_A                  0x0A
+#define REG_STATUS_REG_B                  0x0B
 
-#define STATUS_REG_A_UPDATE_IN_PROGRESS 0x80
+#define STATUS_REG_A_UPDATE_IN_PROGRESS   0x80
 
 static inline u8 bcd_to_dec(u8 bcd)
 {

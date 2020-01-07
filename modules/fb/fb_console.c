@@ -3,8 +3,8 @@
 #include <tilck_gen_headers/config_modules.h>
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 #include <tilck/common/color_defs.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/mods/fb_console.h>
 #include <tilck/kernel/term.h>

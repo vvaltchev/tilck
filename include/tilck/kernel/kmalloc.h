@@ -3,7 +3,6 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #define KMALLOC_METADATA_BLOCK_NODE_SIZE      1
 #define KMALLOC_HEAPS_COUNT                  32
@@ -87,17 +86,7 @@ void kfree2(void *ptr, size_t user_size);
 
 #endif
 
-static inline void *kzmalloc(size_t size)
-{
-   void *res = kmalloc(size);
-
-   if (!res)
-      return NULL;
-
-   bzero(res, size);
-   return res;
-}
-
+void *kzmalloc(size_t size);
 size_t kmalloc_get_heap_struct_size(void);
 size_t kmalloc_get_max_tot_heap_free(void);
 void *aligned_kmalloc(size_t size, u32 align);

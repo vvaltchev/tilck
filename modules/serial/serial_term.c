@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/basic_defs.h>
+
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/safe_ringbuf.h>
+
 #include <tilck/mods/serial.h>
 
 struct term_action {

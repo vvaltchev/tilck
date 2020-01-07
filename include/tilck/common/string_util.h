@@ -5,11 +5,6 @@
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
-typedef __builtin_va_list va_list;
-#define va_start(v,l)  __builtin_va_start(v,l)
-#define va_end(v)      __builtin_va_end(v)
-#define va_arg(v,l)    __builtin_va_arg(v,l)
-
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
 
@@ -43,18 +38,16 @@ static ALWAYS_INLINE int isprint(int c) {
    return IN_RANGE_INC(c, ' ', '~');
 }
 
-static ALWAYS_INLINE bool slash_or_nul(char c)
-{
+static ALWAYS_INLINE bool slash_or_nul(char c) {
    return !c || c == '/';
 }
 
-static inline bool is_dot_or_dotdot(const char *n, int nl)
-{
+static inline bool is_dot_or_dotdot(const char *n, int nl) {
    return (n[0] == '.' && (nl == 1 || (n[1] == '.' && nl == 2)));
 }
 
 #if defined(__i386__) || defined(__x86_64__)
-#include <tilck/common/arch/generic_x86/asm_x86_strings.h>
+   #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 #endif
 
 #else
@@ -83,22 +76,3 @@ void uitoa32_hex_fixed(u32 value, char *buf);
 void uitoa64_hex_fixed(u64 value, char *buf);
 
 int tilck_strtol(const char *str, const char **endptr, int *error);
-
-void vprintk(const char *fmt, va_list args);
-void printk(const char *fmt, ...);
-
-#ifdef __TILCK_KERNEL__
-
-   #define PRINTK_CTRL_CHAR   '\001'
-
-   int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
-   int snprintk(char *buf, size_t size, const char *fmt, ...);
-   void printk_flush_ringbuf(void);
-
-#endif
-
-#ifndef UNIT_TEST_ENVIRONMENT
-   #define NO_PREFIX          "\001\001\000\000"
-#else
-   #define NO_PREFIX          ""
-#endif

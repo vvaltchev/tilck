@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 #include <tilck/common/fat32_base.h>
 #include <tilck/common/utils.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 #include <tilck/common/simple_elf_loader.c.h>
+#include <tilck/common/printk.h>
 
 #include <multiboot.h>
 

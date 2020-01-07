@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/string_util.h>
 #include <tilck/kernel/bintree.h>
 
 #define ALLOWED_IMBALANCE      1

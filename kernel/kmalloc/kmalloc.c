@@ -2,7 +2,9 @@
 
 #define _KMALLOC_C_
 
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/kmalloc.h>
@@ -691,6 +693,17 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    }
 
    ASSERT(tot == size);
+}
+
+void *kzmalloc(size_t size)
+{
+   void *res = kmalloc(size);
+
+   if (!res)
+      return NULL;
+
+   bzero(res, size);
+   return res;
 }
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */

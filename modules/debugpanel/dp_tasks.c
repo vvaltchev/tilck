@@ -3,7 +3,8 @@
 #include <tilck_gen_headers/config_modules.h>
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
+
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/tty_struct.h>
