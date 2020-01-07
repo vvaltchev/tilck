@@ -388,7 +388,7 @@ void set_kernel_process_pdir(pdir_t *pdir)
 
 mode_t sys_umask(mode_t mask)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    mode_t old = pi->umask;
    pi->umask = mask & 0777;
    return old;
@@ -403,7 +403,7 @@ int sys_pause()
 
 int sys_getpid()
 {
-   return get_curr_task()->pi->pid;
+   return get_curr_proc()->pid;
 }
 
 int sys_gettid()

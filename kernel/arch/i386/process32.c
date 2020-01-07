@@ -549,7 +549,7 @@ int sys_set_tid_address(int *tidptr)
     * is not valid, we'll send SIGSEGV to the just created thread.
     */
 
-   get_curr_task()->pi->set_child_tid = tidptr;
+   get_curr_proc()->set_child_tid = tidptr;
    return get_curr_task()->tid;
 }
 

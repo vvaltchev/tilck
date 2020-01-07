@@ -345,7 +345,7 @@ __vfs_resolve(struct vfs_resolve_int_ctx *ctx, bool res_last_sl)
 static void
 get_locked_retained_cwd(struct vfs_path *rp, bool exlock)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    kmutex_lock(&pi->fslock);
    {

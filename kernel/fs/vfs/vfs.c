@@ -63,7 +63,7 @@ void vfs_close2(struct process *pi, fs_handle h)
 
 void vfs_close(fs_handle h)
 {
-   vfs_close2(get_curr_task()->pi, h);
+   vfs_close2(get_curr_proc(), h);
 }
 
 /*

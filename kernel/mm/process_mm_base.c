@@ -11,7 +11,7 @@ process_add_user_mapping(fs_handle h,
                          size_t off,
                          int prot)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    struct user_mapping *um;
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
@@ -49,7 +49,7 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
    ASSERT(!is_preemption_enabled());
 
    uptr vaddr = (uptr)vaddrp;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    struct user_mapping *pos;
 
    list_for_each_ro(pos, &pi->mappings, pi_node) {

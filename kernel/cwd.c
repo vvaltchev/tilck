@@ -68,7 +68,7 @@ void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp)
 
 void process_set_cwd2_nolock(struct vfs_path *tp)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
    ASSERT(pi->cwd.fs != NULL);
    ASSERT(pi->cwd.fs_path.inode != NULL);
@@ -151,7 +151,7 @@ out:
 int sys_getcwd(char *user_buf, size_t buf_size)
 {
    int rc;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    kmutex_lock(&pi->fslock);
    {

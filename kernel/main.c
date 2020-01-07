@@ -195,7 +195,7 @@ static void mount_initrd(void)
    {
       struct vfs_path tp;
       struct process *pi = kernel_process_pi;
-      ASSERT(pi == get_curr_task()->pi);
+      ASSERT(pi == get_curr_proc());
 
       tp.fs = mp_get_root();
       vfs_get_root_entry(tp.fs, &tp.fs_path);

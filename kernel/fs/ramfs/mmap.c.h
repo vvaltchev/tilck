@@ -17,7 +17,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 
 static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
    uptr vaddr = um->vaddr;
@@ -138,7 +138,7 @@ static bool
 ramfs_handle_fault(fs_handle h, void *vaddrp, bool p, bool rw)
 {
    bool ret;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    disable_preemption();
    {

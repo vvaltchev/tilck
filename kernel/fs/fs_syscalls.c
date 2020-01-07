@@ -565,7 +565,7 @@ out:
 int sys_dup(int oldfd)
 {
    int rc = -EMFILE, free_fd;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    kmutex_lock(&pi->fslock);
    {
