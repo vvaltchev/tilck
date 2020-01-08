@@ -44,10 +44,19 @@ struct trace_event {
 
 STATIC_ASSERT(sizeof(struct trace_event) <= 256);
 
+enum sys_param_ui_type {
+
+   ui_type_other,
+   ui_type_integer,
+   ui_type_string,
+};
+
 struct sys_param_type {
 
    const char *name;
    u32 slot_size;
+
+   enum sys_param_ui_type ui_type;
 
    /* Returns false if buf_size is too small */
    bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
@@ -64,6 +73,7 @@ enum sys_param_kind {
    sys_param_out,
    sys_param_in_out,
 };
+
 
 struct sys_param_info {
 

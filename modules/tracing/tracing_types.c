@@ -173,6 +173,7 @@ const struct sys_param_type ptype_int = {
 
    .name = "int",
    .slot_size = 0,
+   .ui_type = ui_type_integer,
 
    .save = NULL,
    .dump = NULL,
@@ -193,6 +194,7 @@ const struct sys_param_type ptype_oct = {
 
    .name = "oct",
    .slot_size = 0,
+   .ui_type = ui_type_integer,
 
    .save = NULL,
    .dump = NULL,
@@ -203,6 +205,7 @@ const struct sys_param_type ptype_errno_or_val = {
 
    .name = "errno_or_val",
    .slot_size = 0,
+   .ui_type = ui_type_integer,
 
    .save = NULL,
    .dump = NULL,
@@ -233,6 +236,7 @@ const struct sys_param_type ptype_doff64 = {
 
    .name = "ulong",
    .slot_size = 0,
+   .ui_type = ui_type_integer,
 
    .save = NULL,
    .dump = NULL,
@@ -330,6 +334,7 @@ const struct sys_param_type ptype_u64_ptr = {
 
    .name = "u64",
    .slot_size = 32,
+   .ui_type = ui_type_integer,
 
    .save = save_param_u64_ptr,
    .dump = dump_param_u64_ptr,

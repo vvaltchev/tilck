@@ -147,19 +147,14 @@ dp_should_full_dump_param(bool exp_block,
 static const char *
 dp_get_esc_color_for_param(const struct sys_param_type *t, const char *rb)
 {
-   if (rb[0] == '\"' && (t == &ptype_buffer || t == &ptype_path))
+   if (rb[0] == '\"' && t->ui_type == ui_type_string)
       return E_COLOR_RED;
 
    if (t == &ptype_errno_or_val && rb[0] == '-')
       return E_COLOR_WHITE_ON_RED;
 
-   if (t == &ptype_int ||
-       t == &ptype_errno_or_val ||
-       t == &ptype_doff64 ||
-       t == &ptype_u64_ptr)
-   {
+   if (t->ui_type == ui_type_integer)
       return E_COLOR_BR_BLUE;
-   }
 
    return "";
 }
