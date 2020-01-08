@@ -10,6 +10,8 @@
 #include <tilck/common/syscalls.h>
 #include "sysenter.h"
 
+typedef unsigned long long ull_t;
+
 /* configuration */
 #define MAX_ARGS 16
 #define FORK_TEST_ITERS (250 * MB)
