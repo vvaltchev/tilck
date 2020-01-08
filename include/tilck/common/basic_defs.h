@@ -93,23 +93,18 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
-#ifdef BITS32
-   typedef s32 sptr;
-   typedef u32 uptr;
-#else
-   typedef s64 sptr;
-   typedef u64 uptr;
-#endif
+/* Pointer-size signed integer */
+typedef intptr_t sptr;
 
-/*
- * Tilck's off_t, which does not depend on any extern include files and it's
- * pointer-size wide.
- */
-typedef sptr offt;
+/* Pointer-size unsigned integer */
+typedef uintptr_t uptr;
 
-
+/* What we're relying on */
 STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
+
+/* Tilck's off_t, unrelated with any external files and pointer-size long */
+typedef sptr offt;
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
