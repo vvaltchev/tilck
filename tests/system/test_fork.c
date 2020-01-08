@@ -86,7 +86,7 @@ int cmd_fork_perf(int argc, char **argv)
 {
    const int iters = 150000;
    int rc, wstatus, child_pid;
-   unsigned long long start, duration;
+   ull_t start, duration;
 
    start = RDTSC();
 

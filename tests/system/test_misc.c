@@ -101,7 +101,7 @@ int cmd_sysenter(int argc, char **argv)
 int cmd_syscall_perf(int argc, char **argv)
 {
    const int iters = 1000;
-   unsigned long long start, duration;
+   ull_t start, duration;
    pid_t uid = getuid();
 
    start = RDTSC();

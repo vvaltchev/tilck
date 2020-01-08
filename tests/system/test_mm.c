@@ -56,12 +56,12 @@ int cmd_mmap(int argc, char **argv)
    void *arr[1024];
    int max_mb = -1;
 
-   unsigned long long tot_duration = 0;
+   ull_t tot_duration = 0;
 
    for (int iter = 0; iter < iters_count; iter++) {
 
       int i;
-      unsigned long long start = RDTSC();
+      ull_t start = RDTSC();
 
       for (i = 0; i < 64; i++) {
 
