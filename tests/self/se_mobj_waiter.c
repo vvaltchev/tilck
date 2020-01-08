@@ -15,7 +15,7 @@ static bool mobj_se_test_assumption_failed;
 
 static void mobj_waiter_sig_thread(void *arg)
 {
-   uptr n = (uptr) arg;
+   ulong n = (ulong) arg;
    u64 ticks_to_sleep = (u64)(n + 1) * TIMER_HZ / 2;
 
    printk("[thread %u] sleep for %d ticks\n", n, ticks_to_sleep);

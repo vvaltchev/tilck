@@ -14,8 +14,8 @@ struct elf_symbol_info {
 };
 
 void call_kernel_global_ctors(void);
-uptr find_addr_of_symbol(const char *searched_sym);
-const char *find_sym_at_addr(uptr vaddr, ptrdiff_t *offset, u32 *sym_size);
-const char *find_sym_at_addr_safe(uptr vaddr, ptrdiff_t *offset, u32 *sym_size);
+ulong find_addr_of_symbol(const char *searched_sym);
+const char *find_sym_at_addr(ulong vaddr, ptrdiff_t *off, u32 *sym_size);
+const char *find_sym_at_addr_safe(ulong vaddr, ptrdiff_t *off, u32 *sym_size);
 
 int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg);

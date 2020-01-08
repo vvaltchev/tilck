@@ -4,8 +4,8 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
    struct fs_handle_base *hb = h;
    struct process *pi = hb->pi;
-   uptr vaddr = (uptr)vaddrp;
-   uptr vend = vaddr + len;
+   ulong vaddr = (ulong)vaddrp;
+   ulong vend = vaddr + len;
    ASSERT(IS_PAGE_ALIGNED(len));
 
    for (; vaddr < vend; vaddr += PAGE_SIZE) {
@@ -20,7 +20,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
    struct process *pi = get_curr_proc();
    struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
-   uptr vaddr = um->vaddr;
+   ulong vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
    struct ramfs_block *b;
    int rc;
@@ -83,8 +83,8 @@ ramfs_handle_fault_int(struct process *pi,
                        bool p,
                        bool rw)
 {
-   uptr vaddr = (uptr) vaddrp;
-   uptr abs_off;
+   ulong vaddr = (ulong) vaddrp;
+   ulong abs_off;
    struct ramfs_block *block;
    int rc;
    struct user_mapping *um = process_get_user_mapping(vaddrp);
@@ -109,7 +109,7 @@ ramfs_handle_fault_int(struct process *pi,
    /* The page is *not* present */
    abs_off = um->off + (vaddr - um->vaddr);
 
-   if (abs_off >= (uptr)rh->inode->fsize)
+   if (abs_off >= (ulong)rh->inode->fsize)
       return false; /* Read/write past EOF */
 
    if (rw) {

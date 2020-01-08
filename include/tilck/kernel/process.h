@@ -66,8 +66,8 @@ struct process {
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
-   uptr sa_mask[K_SIGACTION_MASK_WORDS];
-   uptr sa_flags;
+   ulong sa_mask[K_SIGACTION_MASK_WORDS];
+   ulong sa_flags;
 };
 
 struct misc_buf {
@@ -93,7 +93,7 @@ struct task {
        * padding.
        */
 
-      uptr padding_0;
+      ulong padding_0;
    };
 
    struct process *pi;

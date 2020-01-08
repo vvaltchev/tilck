@@ -27,8 +27,8 @@ static void dp_heaps_on_enter(void)
       if (!debug_kmalloc_get_heap_info(i, &hi))
          break;
 
-      const uptr size_kb = hi.size / KB;
-      const uptr allocated_kb = hi.mem_allocated / KB;
+      const ulong size_kb = hi.size / KB;
+      const ulong allocated_kb = hi.mem_allocated / KB;
       const long diff = (long)hi.mem_allocated - (long)heaps_alloc[i];
 
       tot_usable_mem_kb += size_kb;
@@ -92,8 +92,8 @@ static void dp_show_kmalloc_heaps(void)
       char region_str[8] = "--";
 
       ASSERT(hi.size);
-      const uptr size_kb = hi.size / KB;
-      const uptr allocated_kb = hi.mem_allocated / KB;
+      const ulong size_kb = hi.size / KB;
+      const ulong allocated_kb = hi.mem_allocated / KB;
       const long diff = (long)hi.mem_allocated - (long)heaps_alloc[i];
 
       if (hi.region >= 0)

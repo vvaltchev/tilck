@@ -192,7 +192,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    if (is_kernel_thread(ti)) {
 
       ttynum = 0;
-      const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
+      const char *kfunc = find_sym_at_addr((ulong)ti->what, NULL, NULL);
 
       if (kfunc) {
          if (!is_tasklet_runner(ti)) {

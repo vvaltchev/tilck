@@ -8,7 +8,7 @@
 
 struct x86_64_regs {
    /* STUB struct */
-   uptr some_var; /* avoid error: empty struct has size 0 in C, size 1 in C++ */
+   ulong some_var; /* avoid error: empty struct has size 0 in C, 1 in C++ */
 };
 
 struct x86_64_arch_task_members {
@@ -23,12 +23,12 @@ static ALWAYS_INLINE int regs_intnum(regs_t *r)
    return 0;
 }
 
-static ALWAYS_INLINE void set_return_register(regs_t *r, uptr value)
+static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
 {
    NOT_IMPLEMENTED();
 }
 
-static ALWAYS_INLINE uptr get_curr_stack_ptr(void)
+static ALWAYS_INLINE ulong get_curr_stack_ptr(void)
 {
    NOT_IMPLEMENTED();
    return 0;

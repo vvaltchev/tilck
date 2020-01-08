@@ -34,8 +34,8 @@ int sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
    if (copy_from_user(&req, user_req, sizeof(req)) < 0)
       return -EFAULT;
 
-   ticks_to_sleep += (uptr) TIMER_HZ * (uptr) req.tv_sec;
-   ticks_to_sleep += (uptr) req.tv_nsec / (1000000000 / TIMER_HZ);
+   ticks_to_sleep += (ulong) TIMER_HZ * (ulong) req.tv_sec;
+   ticks_to_sleep += (ulong) req.tv_nsec / (1000000000 / TIMER_HZ);
    kernel_sleep(ticks_to_sleep);
 
    // TODO (future): use HPET in order to improve the sleep precision
@@ -132,7 +132,7 @@ int sys_kill(int pid, int sig)
    return send_signal(pid, sig, true);
 }
 
-uptr sys_times(struct tms *user_buf)
+ulong sys_times(struct tms *user_buf)
 {
    struct task *curr = get_curr_task();
    struct tms buf;
@@ -154,9 +154,9 @@ uptr sys_times(struct tms *user_buf)
    enable_preemption();
 
    if (copy_to_user(user_buf, &buf, sizeof(buf)) != 0)
-      return (uptr) -EBADF;
+      return (ulong) -EBADF;
 
-   return (uptr) get_ticks();
+   return (ulong) get_ticks();
 }
 
 int sys_fork(void)

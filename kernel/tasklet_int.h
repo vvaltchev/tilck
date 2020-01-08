@@ -3,7 +3,7 @@
 #pragma once
 #include <tilck/kernel/safe_ringbuf.h>
 
-typedef void (*tasklet_func)(uptr, uptr);
+typedef void (*tasklet_func)(ulong, ulong);
 
 struct tasklet {
 

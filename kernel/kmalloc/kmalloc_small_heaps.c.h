@@ -143,7 +143,7 @@ static struct small_heap_node *alloc_new_small_heap(void)
 
    bool success =
       kmalloc_create_heap(&new_node->heap,
-                          (uptr)heap_data,
+                          (ulong)heap_data,
                           SMALL_HEAP_SIZE,
                           SMALL_HEAP_MBS,
                           0,
@@ -234,13 +234,13 @@ small_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    ASSERT(!is_preemption_enabled());
    struct small_heap_node *pos, *node = NULL;
-   const uptr vaddr = (uptr) ptr;
+   const ulong vaddr = (ulong) ptr;
    bool was_full;
 
    list_for_each_ro(pos, &small_heaps_list, node) {
 
-      const uptr hva = pos->heap.vaddr;
-      const uptr heap_last_byte = pos->heap.heap_last_byte;
+      const ulong hva = pos->heap.vaddr;
+      const ulong heap_last_byte = pos->heap.heap_last_byte;
 
       // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
       if (hva <= vaddr && vaddr + *size - 1 <= heap_last_byte) {

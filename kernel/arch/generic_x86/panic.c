@@ -71,7 +71,7 @@ static void panic_print_task_info(struct task *curr)
 
       } else {
 
-         str = find_sym_at_addr_safe((uptr)curr->what, NULL, NULL);
+         str = find_sym_at_addr_safe((ulong)curr->what, NULL, NULL);
          printk("Current task [KERNEL]: tid: %i [%s]\n",
                 curr->tid, str ? str : "???");
       }
@@ -85,7 +85,7 @@ NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
 
-   uptr rc;
+   ulong rc;
    va_list args;
    struct task *curr;
 

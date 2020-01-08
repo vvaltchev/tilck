@@ -236,12 +236,12 @@ sys_rt_sigprocmask(int how,
    return 0;
 }
 
-int sys_sigprocmask(uptr a1, uptr a2, uptr a3)
+int sys_sigprocmask(ulong a1, ulong a2, ulong a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }
 
-int sys_sigaction(uptr a1, uptr a2, uptr a3)
+int sys_sigaction(ulong a1, ulong a2, ulong a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }

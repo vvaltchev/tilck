@@ -46,7 +46,7 @@ STATIC void sort_mem_regions(void)
                           less_than_cmp_mem_region);
 }
 
-void system_mmap_add_ramdisk(uptr start_paddr, uptr end_paddr)
+void system_mmap_add_ramdisk(ulong start_paddr, ulong end_paddr)
 {
    append_mem_region((struct mem_region) {
       .addr = start_paddr,
@@ -68,7 +68,7 @@ void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
 
       if (m->extra & MEM_REG_EXTRA_RAMDISK) {
          if (rd_count == ramdisk_index)
-            return KERNEL_PA_TO_VA((uptr)m->addr);
+            return KERNEL_PA_TO_VA((ulong)m->addr);
 
          rd_count++;
       }
@@ -428,7 +428,7 @@ STATIC void set_lower_and_upper_kb(void)
 
 void system_mmap_set(multiboot_info_t *mbi)
 {
-   uptr ma_addr = mbi->mmap_addr;
+   ulong ma_addr = mbi->mmap_addr;
 
    /* We want to keep the first 64 KB as reserved */
    append_mem_region((struct mem_region) {
@@ -455,7 +455,7 @@ void system_mmap_set(multiboot_info_t *mbi)
    set_lower_and_upper_kb();
 }
 
-int system_mmap_get_region_of(uptr paddr)
+int system_mmap_get_region_of(ulong paddr)
 {
    for (int i = 0; i < mem_regions_count; i++) {
 
@@ -469,20 +469,20 @@ int system_mmap_get_region_of(uptr paddr)
 }
 
 bool
-linear_map_mem_region(struct mem_region *r, uptr *vbegin, uptr *vend)
+linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 {
    if (r->addr >= LINEAR_MAPPING_SIZE)
       return false;
 
-   const uptr pbegin = (uptr) r->addr;
-   const uptr pend = MIN((uptr)(r->addr + r->len), (uptr)LINEAR_MAPPING_SIZE);
+   const ulong pbegin = (ulong) r->addr;
+   const ulong pend = MIN((ulong)(r->addr+r->len), (ulong)LINEAR_MAPPING_SIZE);
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 
    const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;
 
-   *vbegin = (uptr)KERNEL_PA_TO_VA(pbegin);
-   *vend = (uptr)KERNEL_PA_TO_VA(pend);
+   *vbegin = (ulong)KERNEL_PA_TO_VA(pbegin);
+   *vend = (ulong)KERNEL_PA_TO_VA(pend);
 
    size_t count =
       map_pages(get_kernel_pdir(),

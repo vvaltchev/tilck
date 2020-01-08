@@ -38,7 +38,7 @@ void *kmalloc_get_first_heap(size_t *size)
 #include "kmalloc_leak_detector.c.h"
 
 bool kmalloc_create_heap(struct kmalloc_heap *h,
-                         uptr vaddr,
+                         ulong vaddr,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size,
@@ -125,10 +125,10 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
    return new_heap;
 }
 
-static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
+static size_t find_biggest_heap_size(ulong vaddr, ulong limit)
 {
-   uptr curr_max = 512 * MB;
-   uptr curr_end;
+   ulong curr_max = 512 * MB;
+   ulong curr_end;
 
    while (curr_max) {
 
@@ -167,7 +167,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    bool success =
       kmalloc_create_heap(heaps[used_heaps],
-                          (uptr)vaddr,
+                          (ulong)vaddr,
                           heap_size,
                           min_block_size,
                           0,              /* alloc_block_size */
@@ -219,7 +219,7 @@ static long greater_than_heap_cmp(const void *a, const void *b)
    return -1;
 }
 
-static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
+static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
 {
    int heap_index;
    vaddr = pow2_round_up_at(
@@ -254,7 +254,7 @@ void init_kmalloc(void)
 {
    struct mem_region r;
    int heap_index;
-   uptr vbegin, vend;
+   ulong vbegin, vend;
 
    ASSERT(!kmalloc_initialized);
    list_init(&small_heaps_list);

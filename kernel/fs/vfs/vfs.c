@@ -144,7 +144,7 @@ offt vfs_seek(fs_handle h, s64 off, int whence)
    return hb->fops->seek(h, (offt) off, whence);
 }
 
-int vfs_ioctl(fs_handle h, uptr request, void *argp)
+int vfs_ioctl(fs_handle h, ulong request, void *argp)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -182,14 +182,14 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
 
 /* ----------- path-based functions -------------- */
 
-typedef int (*vfs_func_impl)(struct fs *, struct vfs_path *, uptr, uptr, uptr);
+typedef int (*vfs_func_impl)(struct fs*, struct vfs_path*, ulong, ulong, ulong);
 
 static ALWAYS_INLINE int
 __vfs_path_funcs_wrapper(const char *path,
                          bool exlock,
                          bool res_last_sl,
                          vfs_func_impl func,
-                         uptr a1, uptr a2, uptr a3)
+                         ulong a1, ulong a2, ulong a3)
 {
    struct vfs_path p;
    int rc;
@@ -212,7 +212,7 @@ __vfs_path_funcs_wrapper(const char *path,
                             exlock,                                           \
                             rsl,                                              \
                             (vfs_func_impl)(void *)func,                      \
-                            (uptr)a1, (uptr)a2, (uptr)a3)
+                            (ulong)a1, (ulong)a2, (ulong)a3)
 
 static ALWAYS_INLINE int
 vfs_open_impl(struct fs *fs, struct vfs_path *p,
@@ -257,7 +257,7 @@ vfs_stat64_impl(struct fs *fs,
                 struct vfs_path *p,
                 struct stat64 *statbuf,
                 bool res_last_sl,
-                uptr unused1)
+                ulong unused1)
 {
    if (!p->fs_path.inode)
       return -ENOENT;
@@ -279,7 +279,7 @@ int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
 }
 
 static ALWAYS_INLINE int
-vfs_mkdir_impl(struct fs *fs, struct vfs_path *p, mode_t mode, uptr u1, uptr u2)
+vfs_mkdir_impl(struct fs *fs, struct vfs_path *p, mode_t mode, ulong x, ulong y)
 {
    if (!fs->fsops->mkdir)
       return -EPERM;
@@ -307,7 +307,7 @@ int vfs_mkdir(const char *path, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_rmdir_impl(struct fs *fs, struct vfs_path *p, uptr u1, uptr u2, uptr u3)
+vfs_rmdir_impl(struct fs *fs, struct vfs_path *p, ulong u1, ulong u2, ulong u3)
 {
    if (!fs->fsops->rmdir)
       return -EPERM;
@@ -333,7 +333,7 @@ int vfs_rmdir(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_unlink_impl(struct fs *fs, struct vfs_path *p, uptr u1, uptr u2, uptr u3)
+vfs_unlink_impl(struct fs *fs, struct vfs_path *p, ulong u1, ulong u2, ulong u3)
 {
    if (!fs->fsops->unlink)
       return -EPERM;
@@ -359,7 +359,7 @@ int vfs_unlink(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, uptr u1, uptr u2)
+vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
 {
    if (!fs->fsops->truncate)
       return -EROFS;
@@ -387,7 +387,7 @@ int vfs_truncate(const char *path, offt len)
 
 static ALWAYS_INLINE int
 vfs_symlink_impl(struct fs *fs,
-                 struct vfs_path *p, const char *target, uptr u1, uptr u2)
+                 struct vfs_path *p, const char *target, ulong u1, ulong u2)
 {
    if (!fs->fsops->symlink)
       return -EPERM;
@@ -417,8 +417,8 @@ static ALWAYS_INLINE int
 vfs_readlink_impl(struct fs *fs,
                   struct vfs_path *p,
                   char *buf,
-                  uptr u1,
-                  uptr u2)
+                  ulong u1,
+                  ulong u2)
 {
    if (!fs->fsops->readlink) {
       /*

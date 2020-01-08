@@ -190,7 +190,12 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
 
 void
 trace_syscall_enter_int(u32 sys,
-                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
+                        ulong a1,
+                        ulong a2,
+                        ulong a3,
+                        ulong a4,
+                        ulong a5,
+                        ulong a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
@@ -216,8 +221,14 @@ trace_syscall_enter_int(u32 sys,
 }
 
 void
-trace_syscall_exit_int(u32 sys, long retval,
-                       uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
+trace_syscall_exit_int(u32 sys,
+                       long retval,
+                       ulong a1,
+                       ulong a2,
+                       ulong a3,
+                       ulong a4,
+                       ulong a5,
+                       ulong a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
@@ -279,7 +290,7 @@ tracing_get_syscall_info(u32 n)
 #define GET_SLOT(e, fmt_n, slot_n)               ((e)->fmt##fmt_n.d##slot_n)
 
 #define GET_SLOT_ABS_OFF(fmt_n, slot_n)                                    \
-   ((uptr)GET_SLOT(NULL_TRACE_EVENT, fmt_n, slot_n))
+   ((ulong)GET_SLOT(NULL_TRACE_EVENT, fmt_n, slot_n))
 
 #define GET_SLOT_OFF(fmt_n, slot_n)                                        \
    (GET_SLOT_ABS_OFF(fmt_n, slot_n) - GET_SLOT_ABS_OFF(fmt_n, 0))

@@ -9,7 +9,7 @@
 #include <tilck/mods/tracing.h>
 
 static bool
-dump_param_int(uptr __val, char *dest, size_t dest_buf_size)
+dump_param_int(ulong __val, char *dest, size_t dest_buf_size)
 {
    const long val = (long)__val;
    int rc;
@@ -23,7 +23,7 @@ dump_param_int(uptr __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_voidp(uptr val, char *dest, size_t dest_buf_size)
+dump_param_voidp(ulong val, char *dest, size_t dest_buf_size)
 {
    const int rc = (val != 0)
       ? snprintk(dest, dest_buf_size, "%p", val)
@@ -33,7 +33,7 @@ dump_param_voidp(uptr val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_oct(uptr __val, char *dest, size_t dest_buf_size)
+dump_param_oct(ulong __val, char *dest, size_t dest_buf_size)
 {
    int val = (int)__val;
    int rc;
@@ -43,7 +43,7 @@ dump_param_oct(uptr __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
+dump_param_errno_or_val(ulong __val, char *dest, size_t dest_buf_size)
 {
    int val = (int)__val;
    int rc;
@@ -56,7 +56,7 @@ dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_errno_or_ptr(uptr __val, char *dest, size_t dest_buf_size)
+dump_param_errno_or_ptr(ulong __val, char *dest, size_t dest_buf_size)
 {
    long val = (long)__val;
    int rc;
@@ -88,7 +88,7 @@ buf_append(char *dest, int *used, int *rem, char *str)
 }
 
 static ALWAYS_INLINE bool
-is_flag_on(uptr var, uptr fl)
+is_flag_on(ulong var, ulong fl)
 {
    return (var & fl) == fl;
 }
@@ -99,7 +99,7 @@ is_flag_on(uptr var, uptr fl)
          return false;
 
 static bool
-dump_param_open_flags(uptr fl, char *dest, size_t dest_buf_size)
+dump_param_open_flags(ulong fl, char *dest, size_t dest_buf_size)
 {
    int rem = (int) dest_buf_size;
    int used = 0;
@@ -214,7 +214,7 @@ save_param_int_pair(void *data, long unused, char *dest_buf, size_t dest_bs)
 }
 
 static bool
-dump_param_int_pair(uptr orig,
+dump_param_int_pair(ulong orig,
                     char *__data,
                     long unused1,
                     long unused2,

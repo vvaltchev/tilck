@@ -52,9 +52,9 @@ struct k_sigaction {
       void (*sigact_handler)(int, void * /* siginfo */, void *);
    };
 
-   uptr sa_flags;
+   ulong sa_flags;
    void (*restorer)(void);
-   uptr sa_mask[K_SIGACTION_MASK_WORDS];
+   ulong sa_mask[K_SIGACTION_MASK_WORDS];
 };
 
 struct k_rusage {

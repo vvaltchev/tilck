@@ -28,7 +28,7 @@ save_param_iov(void *data, long iovcnt, char *dest_buf, size_t dest_bs)
    for (int i = 0; i < iovcnt; i++) {
 
       ((long *)(dest_buf + 0))[i] = (long)iovec[i].iov_len;
-      ((uptr *)(dest_buf + 32))[i] = (uptr)iovec[i].iov_base;
+      ((ulong *)(dest_buf + 32))[i] = (ulong)iovec[i].iov_base;
 
       ok = ptype_buffer.save(iovec[i].iov_base,
                              (long)iovec[i].iov_len,
@@ -43,7 +43,7 @@ save_param_iov(void *data, long iovcnt, char *dest_buf, size_t dest_bs)
 }
 
 static bool
-__dump_param_iov(uptr orig,
+__dump_param_iov(ulong orig,
                  char *data,
                  long u_iovcnt,
                  long maybe_tot_data_size,
@@ -66,7 +66,7 @@ __dump_param_iov(uptr orig,
    for (int i = 0; i < iovcnt; i++) {
 
       const long len = ((long *)(data + 0))[i];
-      const uptr base = ((uptr *)(data + 32))[i];
+      const ulong base = ((ulong *)(data + 32))[i];
 
       if (!buf_append(dest, &used, &rem, "   {base: "))
          return false;
@@ -113,7 +113,7 @@ __dump_param_iov(uptr orig,
 }
 
 static bool
-dump_param_iov_in(uptr orig,
+dump_param_iov_in(ulong orig,
                   char *data,
                   long u_iovcnt,
                   long unused,
@@ -124,7 +124,7 @@ dump_param_iov_in(uptr orig,
 }
 
 static bool
-dump_param_iov_out(uptr orig,
+dump_param_iov_out(ulong orig,
                    char *data,
                    long u_iovcnt,
                    long real_sz,

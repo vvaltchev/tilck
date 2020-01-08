@@ -23,7 +23,7 @@ struct trace_event {
 
    u32 sys;
    long retval;
-   uptr args[6];
+   ulong args[6];
 
    union {
 
@@ -53,10 +53,10 @@ struct sys_param_type {
    bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump)(uptr orig, char *b, long bs, long rsz, char *dst, size_t d_bs);
+   bool (*dump)(ulong orig, char *b, long bs, long rsz, char *dst, size_t d_bs);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_val)(uptr val, char *dest, size_t dest_buf_size);
+   bool (*dump_from_val)(ulong val, char *dest, size_t dest_buf_size);
 };
 
 enum sys_param_kind {
@@ -123,10 +123,21 @@ read_trace_event_noblock(struct trace_event *e);
 
 void
 trace_syscall_enter_int(u32 sys,
-                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
+                        ulong a1,
+                        ulong a2,
+                        ulong a3,
+                        ulong a4,
+                        ulong a5,
+                        ulong a6);
 void
-trace_syscall_exit_int(u32 sys, long retval,
-                       uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
+trace_syscall_exit_int(u32 sys,
+                       long retval,
+                       ulong a1,
+                       ulong a2,
+                       ulong a3,
+                       ulong a4,
+                       ulong a5,
+                       ulong a6);
 
 const char *
 tracing_get_syscall_name(u32 n);

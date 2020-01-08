@@ -49,7 +49,7 @@ struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
 
 struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
 {
-   uptr i;
+   ulong i;
    struct mountpoint *res = NULL;
 
    kmutex_lock(&mp_mutex);

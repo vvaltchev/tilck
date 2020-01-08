@@ -43,7 +43,7 @@ void reboot();
 void init_segmentation(void);
 void init_cpu_exception_handling(void);
 void init_syscall_interfaces(void);
-void set_kernel_stack(uptr stack);
+void set_kernel_stack(ulong stack);
 void enable_cpu_features(void);
 void fpu_context_begin(void);
 void fpu_context_end(void);

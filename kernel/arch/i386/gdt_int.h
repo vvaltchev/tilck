@@ -7,10 +7,10 @@
 #define GDT_LIMIT_MAX (0x000FFFFF)
 
 /* GDT 'flags' (4 bits) */
-#define GDT_GRAN_4KB (1 << 3)
-#define GDT_GRAN_BYTE (0)
-#define GDT_32BIT (1 << 2)
-#define GDT_16BIT (0)
+#define GDT_GRAN_4KB          (1 << 3)
+#define GDT_GRAN_BYTE              (0)
+#define GDT_32BIT             (1 << 2)
+#define GDT_16BIT                  (0)
 
 /* GDT 'access' flags (8 bits) */
 
@@ -114,7 +114,7 @@ struct gdt_entry {
 struct user_desc {
 
    u32 entry_number;
-   uptr base_addr;
+   ulong base_addr;
    u32 limit;
 
    union {
@@ -134,7 +134,7 @@ struct user_desc {
 };
 
 void load_ldt(u32 entry_index_in_gdt, u32 dpl);
-void gdt_set_entry(struct gdt_entry *e, uptr base, uptr lim, u8 accs, u8 flags);
+void gdt_set_entry(struct gdt_entry *e, ulong base, ulong lim, u8 accs, u8 fl);
 int gdt_add_entry(struct gdt_entry *e);
 void gdt_clear_entry(u32 index);
 void gdt_entry_inc_ref_count(u32 n);

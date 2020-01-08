@@ -19,7 +19,7 @@ tty_def_state_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
          .type3 = a_dwrite_no_filter,
          .len = 2,
          .col = *color,
-         .ptr = (uptr)"\n\r",
+         .ptr = (ulong)"\n\r",
       };
 
       return TERM_FILTER_WRITE_BLANK;
@@ -193,7 +193,7 @@ tty_def_print_untrasl_char(u8 *c,
       .type3 = a_dwrite_no_filter,
       .len = (u32)len,
       .col = *color,
-      .ptr = (uptr)ctx->tmpbuf,
+      .ptr = (ulong)ctx->tmpbuf,
    };
 
    return TERM_FILTER_WRITE_BLANK;

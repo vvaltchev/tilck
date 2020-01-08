@@ -299,7 +299,7 @@ dp_dump_ret_val(const struct syscall_info *si, long retval)
    const struct sys_param_type *rt = si->ret_type;
    ASSERT(rt->dump_from_val);
 
-   if (!rt->dump_from_val((uptr)retval, rend_bufs[0], REND_BUF_SZ)) {
+   if (!rt->dump_from_val((ulong)retval, rend_bufs[0], REND_BUF_SZ)) {
       dp_write_raw("(raw) %p", retval);
       return;
    }

@@ -15,7 +15,7 @@ struct term_action {
    size_t len;
 };
 
-STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(uptr)));
+STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
 struct term {
 

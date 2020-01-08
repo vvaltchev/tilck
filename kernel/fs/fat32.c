@@ -432,7 +432,7 @@ STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
    NOT_IMPLEMENTED();
 }
 
-STATIC int fat_ioctl(fs_handle h, uptr request, void *arg)
+STATIC int fat_ioctl(fs_handle h, ulong request, void *arg)
 {
    return -EINVAL;
 }

@@ -185,9 +185,9 @@ static ALWAYS_INLINE u64 rdmsr(u32 msr_id)
    return msr_value;
 }
 
-static ALWAYS_INLINE uptr get_eflags(void)
+static ALWAYS_INLINE ulong get_eflags(void)
 {
-   uptr eflags;
+   ulong eflags;
    asmVolatile("pushf\n\t"
                "pop %0\n\t"
                : "=g"(eflags) );
@@ -195,7 +195,7 @@ static ALWAYS_INLINE uptr get_eflags(void)
    return eflags;
 }
 
-static ALWAYS_INLINE void set_eflags(uptr f)
+static ALWAYS_INLINE void set_eflags(ulong f)
 {
    asmVolatile("push %0\n\t"
                "popf\n\t"
@@ -225,7 +225,7 @@ static ALWAYS_INLINE bool are_interrupts_enabled(void)
 }
 #endif
 
-static ALWAYS_INLINE void disable_interrupts(uptr *const var)
+static ALWAYS_INLINE void disable_interrupts(ulong *const var)
 {
    *var = get_eflags();
 
@@ -234,7 +234,7 @@ static ALWAYS_INLINE void disable_interrupts(uptr *const var)
    }
 }
 
-static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
+static ALWAYS_INLINE void enable_interrupts(const ulong *const var)
 {
    if (*var & EFLAGS_IF) {
       enable_interrupts_forced();
@@ -244,7 +244,7 @@ static ALWAYS_INLINE void enable_interrupts(const uptr *const var)
 /*
  * Invalidates the TLB entry used for resolving the page containing 'vaddr'.
  */
-static ALWAYS_INLINE void invalidate_page_hw(uptr vaddr)
+static ALWAYS_INLINE void invalidate_page_hw(ulong vaddr)
 {
    asmVolatile("invlpg (%0)"
                : /* no output */
@@ -265,9 +265,9 @@ static ALWAYS_INLINE void cpuid(u32 code, u32 *a, u32 *b, u32 *c, u32 *d)
         : "memory");
 }
 
-static ALWAYS_INLINE uptr read_cr0(void)
+static ALWAYS_INLINE ulong read_cr0(void)
 {
-   uptr res;
+   ulong res;
    asmVolatile("mov %%cr0, %0"
                : "=r" (res)
                : /* no input */
@@ -276,7 +276,7 @@ static ALWAYS_INLINE uptr read_cr0(void)
    return res;
 }
 
-static ALWAYS_INLINE void write_cr0(uptr val)
+static ALWAYS_INLINE void write_cr0(ulong val)
 {
    asmVolatile("mov %0, %%cr0"
                : /* no output */
@@ -284,9 +284,9 @@ static ALWAYS_INLINE void write_cr0(uptr val)
                : /* no clobber */);
 }
 
-static ALWAYS_INLINE uptr read_cr3(void)
+static ALWAYS_INLINE ulong read_cr3(void)
 {
-   uptr res;
+   ulong res;
    asmVolatile("mov %%cr3, %0"
                : "=r" (res)
                : /* no input */
@@ -295,7 +295,7 @@ static ALWAYS_INLINE uptr read_cr3(void)
    return res;
 }
 
-static ALWAYS_INLINE void write_cr3(uptr val)
+static ALWAYS_INLINE void write_cr3(ulong val)
 {
    asmVolatile("mov %0, %%cr3"
                : /* no output */
@@ -303,9 +303,9 @@ static ALWAYS_INLINE void write_cr3(uptr val)
                : /* no clobber */);
 }
 
-static ALWAYS_INLINE uptr read_cr4(void)
+static ALWAYS_INLINE ulong read_cr4(void)
 {
-   uptr res;
+   ulong res;
    asmVolatile("mov %%cr4, %0"
                : "=r" (res)
                : /* no input */
@@ -314,7 +314,7 @@ static ALWAYS_INLINE uptr read_cr4(void)
    return res;
 }
 
-static ALWAYS_INLINE void write_cr4(uptr val)
+static ALWAYS_INLINE void write_cr4(ulong val)
 {
    asmVolatile("mov %0, %%cr4"
                : /* no output */
@@ -337,12 +337,12 @@ static ALWAYS_INLINE bool hw_is_fpu_enabled(void)
    return !(read_cr0() & CR0_TS);
 }
 
-static ALWAYS_INLINE uptr __get_curr_pdir()
+static ALWAYS_INLINE ulong __get_curr_pdir()
 {
    return read_cr3();
 }
 
-static ALWAYS_INLINE void __set_curr_pdir(uptr paddr)
+static ALWAYS_INLINE void __set_curr_pdir(ulong paddr)
 {
    write_cr3(paddr);
 }

@@ -66,7 +66,7 @@ int sys_mount(const char *u_source,
 
 CREATE_STUB_SYSCALL_IMPL(sys_oldumount)
 
-int sys_setuid16(uptr uid);
+int sys_setuid16(ulong uid);
 int sys_getuid16();
 
 CREATE_STUB_SYSCALL_IMPL(sys_stime)
@@ -91,9 +91,9 @@ int sys_dup(int oldfd);
 
 int sys_pipe(int u_pipefd[2]);
 
-uptr sys_times(struct tms *u_buf);
+ulong sys_times(struct tms *u_buf);
 void *sys_brk(void *vaddr);
-int sys_setgid16(uptr gid);
+int sys_setgid16(ulong gid);
 int sys_getgid16();
 
 CREATE_STUB_SYSCALL_IMPL(sys_signal)
@@ -104,7 +104,7 @@ int sys_getegid16();
 CREATE_STUB_SYSCALL_IMPL(sys_acct)
 
 int sys_umount(const char *target, int flags);
-int sys_ioctl(int fd, uptr request, void *argp);
+int sys_ioctl(int fd, ulong request, void *argp);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fcntl)
 
@@ -122,7 +122,7 @@ int sys_getppid();
 int sys_getpgrp(void);
 
 int sys_setsid(void);
-int sys_sigaction(uptr a1, uptr a2, uptr a3); // deprecated interface
+int sys_sigaction(ulong a1, ulong a2, ulong a3); // deprecated interface
 
 CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)
 CREATE_STUB_SYSCALL_IMPL(sys_ssetmask)
@@ -197,7 +197,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
 CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
 CREATE_STUB_SYSCALL_IMPL(sys_mprotect)
 
-int sys_sigprocmask(uptr a1, uptr a2, uptr a3); // deprecated interface
+int sys_sigprocmask(ulong a1, ulong a2, ulong a3); // deprecated interface
 
 CREATE_STUB_SYSCALL_IMPL(sys_init_module)
 CREATE_STUB_SYSCALL_IMPL(sys_delete_module)
@@ -256,7 +256,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_nfsservctl)
 CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
 
-int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5);
+int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
 
@@ -317,8 +317,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_setresgid)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid)
 
 int sys_chown(const char *u_path, int owner, int group);
-int sys_setuid(uptr uid);
-int sys_setgid(uptr gid);
+int sys_setuid(ulong uid);
+int sys_setgid(ulong gid);
 
 CREATE_STUB_SYSCALL_IMPL(sys_setfsuid)
 CREATE_STUB_SYSCALL_IMPL(sys_setfsgid)
@@ -456,4 +456,4 @@ CREATE_STUB_SYSCALL_IMPL(sys_rt_tgsigqueueinfo)
 CREATE_STUB_SYSCALL_IMPL(sys_perf_event_open)
 CREATE_STUB_SYSCALL_IMPL(sys_recvmmsg)
 
-int sys_tilck_cmd(int cmd_n, uptr a1, uptr a2, uptr a3, uptr a4);
+int sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4);

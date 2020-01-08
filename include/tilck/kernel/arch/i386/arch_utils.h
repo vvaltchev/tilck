@@ -43,7 +43,7 @@ static ALWAYS_INLINE int regs_intnum(regs_t *r)
    return r->int_num;
 }
 
-static ALWAYS_INLINE void set_return_register(regs_t *r, uptr value)
+static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
 {
    r->eax = value;
 }

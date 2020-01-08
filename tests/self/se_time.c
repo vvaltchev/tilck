@@ -19,7 +19,7 @@ void selftest_time_manual(void)
    int drift;
    u32 orig_tick_duration = 0;
    u32 art_drift_p = 5;
-   uptr var;
+   ulong var;
 
    if (clock_drift_adj_loop_delay > 60 * TIMER_HZ) {
 

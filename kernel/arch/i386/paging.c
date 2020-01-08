@@ -40,7 +40,7 @@ pdir_t *__kernel_pdir;
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
 static u16 *pageframes_refcount;
-static uptr phys_mem_lim;
+static ulong phys_mem_lim;
 static struct kmalloc_heap *hi_vmem_heap;
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
@@ -74,7 +74,7 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
-void invalidate_page(uptr vaddr)
+void invalidate_page(ulong vaddr)
 {
    invalidate_page_hw(vaddr);
 }
@@ -123,7 +123,7 @@ bool handle_potential_cow(void *context)
 
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
-   const uptr paddr = KERNEL_VA_TO_PA(new_page_vaddr);
+   const ulong paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
    /* Sanity-check: a newly allocated pageframe MUST have ref-count == 0 */
    ASSERT(pf_ref_count_get(paddr) == 0);
@@ -226,7 +226,7 @@ void handle_page_fault(regs_t *r)
 bool is_mapped(pdir_t *pdir, void *vaddrp)
 {
    page_table_t *pt;
-   const uptr vaddr = (uptr) vaddrp;
+   const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
@@ -245,7 +245,7 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
 void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
 {
    page_table_t *pt;
-   const uptr vaddr = (uptr) vaddrp;
+   const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
@@ -259,7 +259,7 @@ static inline int
 __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
 {
    page_table_t *pt;
-   const uptr vaddr = (uptr) vaddrp;
+   const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
 
@@ -278,7 +278,7 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
       ASSERT(pt->pages[page_table_index].present);
    }
 
-   const uptr paddr = (uptr)
+   const ulong paddr = (ulong)
       pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
 
    pt->pages[page_table_index].raw = 0;
@@ -336,10 +336,10 @@ unmap_pages_permissive(pdir_t *pdir,
    return unmapped_pages;
 }
 
-uptr get_mapping(pdir_t *pdir, void *vaddrp)
+ulong get_mapping(pdir_t *pdir, void *vaddrp)
 {
    page_table_t *pt;
-   const uptr vaddr = (uptr)vaddrp;
+   const ulong vaddr = (ulong)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 pd_index = (vaddr >> 22) & 0x3FF;
    page_dir_entry_t e;
@@ -359,13 +359,13 @@ uptr get_mapping(pdir_t *pdir, void *vaddrp)
    p.raw = pt->pages[pt_index].raw;
    ASSERT(p.present);
 
-   return ((uptr) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
+   return ((ulong) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
 }
 
-int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref)
+int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
 {
    page_table_t *pt;
-   const uptr vaddr = (uptr)vaddrp;
+   const ulong vaddr = (ulong)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
    const u32 pd_index = (vaddr >> 22) & 0x3FF;
    page_dir_entry_t e;
@@ -388,12 +388,12 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref)
    if (!p.present)
       return -EFAULT;
 
-   *pa_ref = ((uptr) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
+   *pa_ref = ((ulong) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
    return 0;
 }
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddrp, uptr paddr, u32 flags)
+map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
 {
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
@@ -435,7 +435,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, uptr paddr, u32 flags)
 NODISCARD size_t
 map_pages_int(pdir_t *pdir,
               void *vaddr,
-              uptr paddr,
+              ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
               u32 flags)
@@ -446,14 +446,14 @@ map_pages_int(pdir_t *pdir,
    size_t rem_pages = page_count;
    u32 big_page_flags;
 
-   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
+   ASSERT(!((ulong)vaddr & OFFSET_IN_PAGE_MASK));
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK));
 
    if (big_pages_allowed && rem_pages >= 1024) {
 
       for (; pages < rem_pages; pages++) {
 
-         if (!((uptr)vaddr & (4*MB - 1)) && !(paddr & (4*MB - 1)))
+         if (!((ulong)vaddr & (4*MB - 1)) && !(paddr & (4*MB - 1)))
             break;
 
          rc = map_page_int(pdir, vaddr, paddr, flags);
@@ -496,7 +496,7 @@ out:
 NODISCARD int
 map_page(pdir_t *pdir,
          void *vaddrp,
-         uptr paddr,
+         ulong paddr,
          bool us,
          bool rw)
 {
@@ -540,7 +540,7 @@ map_zero_pages(pdir_t *pdir,
 {
    int rc;
    size_t n;
-   uptr vaddr = (uptr) vaddrp;
+   ulong vaddr = (ulong) vaddrp;
 
    for (n = 0; n < page_count; n++, vaddr += PAGE_SIZE) {
 
@@ -556,7 +556,7 @@ map_zero_pages(pdir_t *pdir,
 NODISCARD size_t
 map_pages(pdir_t *pdir,
           void *vaddr,
-          uptr paddr,
+          ulong paddr,
           size_t page_count,
           bool big_pages_allowed,
           bool us,
@@ -622,7 +622,8 @@ pdir_t *pdir_clone(pdir_t *pdir)
          if (!orig_pt->pages[j].present)
             continue;
 
-         const uptr orig_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         const ulong orig_paddr =
+            (ulong)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
 
          /* Sanity-check: a mapped page MUST have ref-count > 0 */
          ASSERT(pf_ref_count_get(orig_paddr) > 0);
@@ -690,7 +691,9 @@ pdir_deep_clone(pdir_t *pdir)
 
          ASSERT(IS_PAGE_ALIGNED(new_page));
 
-         uptr orig_page_paddr = (uptr)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         ulong orig_page_paddr =
+            (ulong)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+
          void *orig_page = KERNEL_PA_TO_VA(orig_page_paddr);
 
          u32 new_page_paddr = KERNEL_VA_TO_PA(new_page);
@@ -739,7 +742,7 @@ void pdir_destroy(pdir_t *pdir)
          if (!pt->pages[j].present)
             continue;
 
-         const uptr paddr = (uptr)pt->pages[j].pageAddr << PAGE_SHIFT;
+         const ulong paddr = (ulong)pt->pages[j].pageAddr << PAGE_SHIFT;
 
          if (pf_ref_count_dec(paddr) == 0)
             kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
@@ -756,7 +759,7 @@ void pdir_destroy(pdir_t *pdir)
 
 void map_4mb_page_int(pdir_t *pdir,
                       void *vaddrp,
-                      uptr paddr,
+                      ulong paddr,
                       u32 flags)
 {
    const u32 vaddr = (u32) vaddrp;
@@ -820,7 +823,7 @@ static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 
 void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
 {
-   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK));
+   ASSERT(!((ulong)vaddr & OFFSET_IN_PAGE_MASK));
    ASSERT(IS_PAGE_ALIGNED(size));
 
    const void *end = vaddr + size;
@@ -850,7 +853,7 @@ static void init_hi_vmem_heap(void)
    size_t hi_vmem_size;
    size_t metadata_size;
    size_t min_block_size = 4 * PAGE_SIZE;
-   uptr hi_vmem_start;
+   ulong hi_vmem_start;
    u32 hi_vmem_end_pdir_index;
    void *metadata;
    bool success;
@@ -953,7 +956,7 @@ void init_paging_cow(void)
       panic("Unable to map the vsdo-like page");
 }
 
-static void *failsafe_map_framebuffer(uptr paddr, uptr size)
+static void *failsafe_map_framebuffer(ulong paddr, ulong size)
 {
    /*
     * Paging has not been initialized yet: probably we're in panic.
@@ -961,7 +964,7 @@ static void *failsafe_map_framebuffer(uptr paddr, uptr size)
     * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
     */
 
-   uptr vaddr = FAILSAFE_FB_VADDR;
+   ulong vaddr = FAILSAFE_FB_VADDR;
    __kernel_pdir = (pdir_t *)page_size_buf;
 
    u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
@@ -976,7 +979,7 @@ static void *failsafe_map_framebuffer(uptr paddr, uptr size)
    return (void *)vaddr;
 }
 
-void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
+void *map_framebuffer(ulong paddr, ulong vaddr, ulong size, bool user_mmap)
 {
    if (!get_kernel_pdir())
       return failsafe_map_framebuffer(paddr, size);
@@ -988,7 +991,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
 
    if (!vaddr) {
 
-      vaddr = (uptr) hi_vmem_reserve(size);
+      vaddr = (ulong) hi_vmem_reserve(size);
 
       if (!vaddr) {
 
@@ -1047,7 +1050,7 @@ void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap)
     * region be of type WC (write-combining).
     */
    int selected_mtrr = get_free_mtrr();
-   uptr pow2size = roundup_next_power_of_2(size);
+   ulong pow2size = roundup_next_power_of_2(size);
 
    if (selected_mtrr < 0) {
       /*
@@ -1092,7 +1095,7 @@ void hi_vmem_release(void *ptr, size_t size)
 static int
 virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 {
-   uptr pgoff, pa;
+   ulong pgoff, pa;
    size_t tot, to_read;
    void *va;
 
@@ -1103,7 +1106,7 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
       if (get_mapping2(pdir, extern_va, &pa) < 0)
          return -EFAULT;
 
-      pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
+      pgoff = ((ulong)extern_va) & OFFSET_IN_PAGE_MASK;
       to_read = MIN(PAGE_SIZE - pgoff, len - tot);
 
       va = KERNEL_PA_TO_VA(pa);
@@ -1116,7 +1119,7 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
 static int
 virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
 {
-   uptr pgoff, pa;
+   ulong pgoff, pa;
    size_t tot, to_write;
    void *va;
 
@@ -1127,7 +1130,7 @@ virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
       if (get_mapping2(pdir, extern_va, &pa) < 0)
          return -EFAULT;
 
-      pgoff = ((uptr)extern_va) & OFFSET_IN_PAGE_MASK;
+      pgoff = ((ulong)extern_va) & OFFSET_IN_PAGE_MASK;
       to_write = MIN(PAGE_SIZE - pgoff, len - tot);
 
       va = KERNEL_PA_TO_VA(pa);

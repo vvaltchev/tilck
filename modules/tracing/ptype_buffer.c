@@ -27,7 +27,7 @@ save_param_buffer(void *data, long data_sz, char *dest_buf, size_t __dest_bs)
 }
 
 static bool
-dump_param_buffer(uptr orig,
+dump_param_buffer(ulong orig,
                   char *data,
                   long data_bs,
                   long real_sz,

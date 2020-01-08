@@ -73,7 +73,7 @@
    #undef KERNEL_BASE_VA
    #undef LINEAR_MAPPING_MB
 
-   #define KERNEL_BASE_VA             ((uptr)kernel_va)
+   #define KERNEL_BASE_VA             ((ulong)kernel_va)
    #define LINEAR_MAPPING_MB          (128u)
 
 #endif

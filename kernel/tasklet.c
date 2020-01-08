@@ -45,7 +45,7 @@ bool any_tasklets_to_run(u32 tn)
    return !safe_ringbuf_is_empty(&t->rb);
 }
 
-bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2)
+bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
    bool success, was_empty;
@@ -146,9 +146,9 @@ bool run_one_tasklet(int tn)
  */
 #if !defined(NDEBUG) && !defined(RELEASE)
 
-#define DEBUG_SAVE_ESP()                 \
-   uptr curr_esp;                        \
-   uptr saved_esp = get_stack_ptr();
+#define DEBUG_SAVE_ESP()                  \
+   ulong curr_esp;                        \
+   ulong saved_esp = get_stack_ptr();
 
 #define DEBUG_CHECK_ESP()                                                 \
       curr_esp = get_stack_ptr();                                         \
@@ -164,10 +164,10 @@ bool run_one_tasklet(int tn)
 
 void tasklet_runner(void *arg)
 {
-   int tn = (int)(uptr)arg;
+   int tn = (int)(ulong)arg;
    struct tasklet_thread *t = tasklet_threads[tn];
    bool tasklet_run, yield;
-   uptr var;
+   ulong var;
 
    ASSERT(t != NULL);
    DEBUG_SAVE_ESP()

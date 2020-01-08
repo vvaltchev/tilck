@@ -26,7 +26,7 @@ static long less_than_cmp_int(const void *a, const void *b)
    return 1;
 }
 
-static bool my_is_sorted(uptr *arr, int len, cmpfun_ptr cmp)
+static bool my_is_sorted(ulong *arr, int len, cmpfun_ptr cmp)
 {
    if (len <= 1)
       return true;
@@ -56,8 +56,8 @@ TEST(insertion_sort_ptr, basic_test)
 {
    long vec[] = { 3, 4, 1, 0, -3, 10, 2 };
 
-   insertion_sort_ptr((uptr *)&vec, ARRAY_SIZE(vec), less_than_cmp_int);
-   ASSERT_TRUE(my_is_sorted((uptr *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
+   insertion_sort_ptr((ulong *)&vec, ARRAY_SIZE(vec), less_than_cmp_int);
+   ASSERT_TRUE(my_is_sorted((ulong *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
 }
 
 TEST(insertion_sort_ptr, random)
@@ -70,17 +70,17 @@ TEST(insertion_sort_ptr, random)
 
    vector<long> vec;
    random_fill_vec(e, dist, vec, 1000);
-   insertion_sort_ptr((uptr *)&vec[0], vec.size(), less_than_cmp_int);
-   ASSERT_TRUE(my_is_sorted((uptr *)&vec[0], vec.size(), less_than_cmp_int));
+   insertion_sort_ptr((ulong *)&vec[0], vec.size(), less_than_cmp_int);
+   ASSERT_TRUE(my_is_sorted((ulong *)&vec[0], vec.size(), less_than_cmp_int));
 }
 
 TEST(insertion_sort_generic, basic_test)
 {
    long vec[] = { 3, 4, 1, 0, -3, 10, 2 };
 
-   insertion_sort_generic((uptr *)&vec, sizeof(long),
+   insertion_sort_generic((ulong *)&vec, sizeof(long),
                           ARRAY_SIZE(vec), less_than_cmp_int);
-   ASSERT_TRUE(my_is_sorted((uptr *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
+   ASSERT_TRUE(my_is_sorted((ulong *)vec, ARRAY_SIZE(vec), less_than_cmp_int));
 }
 
 TEST(insertion_sort_generic, random)
@@ -93,7 +93,7 @@ TEST(insertion_sort_generic, random)
 
    vector<long> vec;
    random_fill_vec(e, dist, vec, 1000);
-   insertion_sort_generic((uptr *)&vec[0], sizeof(vec[0]),
+   insertion_sort_generic((ulong *)&vec[0], sizeof(vec[0]),
                           vec.size(), less_than_cmp_int);
-   ASSERT_TRUE(my_is_sorted((uptr *)&vec[0], vec.size(), less_than_cmp_int));
+   ASSERT_TRUE(my_is_sorted((ulong *)&vec[0], vec.size(), less_than_cmp_int));
 }

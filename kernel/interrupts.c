@@ -24,7 +24,7 @@ static int nested_interrupts[MAX_NESTED_INTERRUPTS] =
 
 inline void push_nested_interrupt(int int_num)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
    {
       ASSERT(nested_interrupts_count < MAX_NESTED_INTERRUPTS);
@@ -36,7 +36,7 @@ inline void push_nested_interrupt(int int_num)
 
 inline void pop_nested_interrupt(void)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
    {
       nested_interrupts_count--;
@@ -58,7 +58,7 @@ bool in_nested_irq_num(int irq_num)
 
 void check_not_in_irq_handler(void)
 {
-   uptr var;
+   ulong var;
 
    if (!in_panic()) {
       disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
@@ -73,7 +73,7 @@ void check_not_in_irq_handler(void)
 
 void check_in_no_other_irq_than_timer(void)
 {
-   uptr var;
+   ulong var;
 
    if (in_panic())
       return;
@@ -93,7 +93,7 @@ void check_in_no_other_irq_than_timer(void)
 
 void check_in_irq_handler(void)
 {
-   uptr var;
+   ulong var;
 
    if (!in_panic()) {
 

@@ -4,25 +4,28 @@
 
 #include <tilck/common/basic_defs.h>
 
+uint32_t crc32(uint32_t crc, const void *buf, size_t size);
+
 /*
 * From: http://graphics.stanford.edu/~seander/bithacks.html
 * with custom adaptions.
 */
 
-static ALWAYS_INLINE uptr CONSTEXPR log2_for_power_of_2(uptr v)
+CONSTEXPR static ALWAYS_INLINE ulong
+log2_for_power_of_2(ulong v)
 {
-   uptr r;
+   ulong r;
 
    r = (v & 0xAAAAAAAA) != 0;
 
 #ifdef BITS64
-   r |= (uptr)((v & 0xFFFFFFFF00000000ULL) != 0) << 5;
+   r |= (ulong)((v & 0xFFFFFFFF00000000ULL) != 0) << 5;
 #endif
 
-   r |= (uptr)((v & 0xFFFF0000) != 0) << 4;
-   r |= (uptr)((v & 0xFF00FF00) != 0) << 3;
-   r |= (uptr)((v & 0xF0F0F0F0) != 0) << 2;
-   r |= (uptr)((v & 0xCCCCCCCC) != 0) << 1;
+   r |= (ulong)((v & 0xFFFF0000) != 0) << 4;
+   r |= (ulong)((v & 0xFF00FF00) != 0) << 3;
+   r |= (ulong)((v & 0xF0F0F0F0) != 0) << 2;
+   r |= (ulong)((v & 0xCCCCCCCC) != 0) << 1;
 
    return r;
 }
@@ -32,7 +35,8 @@ static ALWAYS_INLINE uptr CONSTEXPR log2_for_power_of_2(uptr v)
 * with custom adaptions.
 */
 
-CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
+CONSTEXPR static inline ulong
+roundup_next_power_of_2(ulong v)
 {
    v--;
    v |= v >> 1;
@@ -50,9 +54,8 @@ CONSTEXPR static inline uptr roundup_next_power_of_2(uptr v)
    return v;
 }
 
-uint32_t crc32(uint32_t crc, const void *buf, size_t size);
-
-CONSTEXPR static inline u32 get_first_zero_bit_index(u32 num)
+CONSTEXPR static inline u32
+get_first_zero_bit_index(u32 num)
 {
    u32 i;
 
@@ -65,7 +68,8 @@ CONSTEXPR static inline u32 get_first_zero_bit_index(u32 num)
    return i;
 }
 
-CONSTEXPR static inline u32 get_first_set_bit_index(u32 num)
+CONSTEXPR static inline u32
+get_first_set_bit_index(u32 num)
 {
    u32 i;
    ASSERT(num != 0);
@@ -78,7 +82,8 @@ CONSTEXPR static inline u32 get_first_set_bit_index(u32 num)
 }
 
 
-CONSTEXPR static inline u32 get_first_zero_bit_index64(u64 num)
+CONSTEXPR static inline u32
+get_first_zero_bit_index64(u64 num)
 {
    u32 i;
 
@@ -91,7 +96,8 @@ CONSTEXPR static inline u32 get_first_zero_bit_index64(u64 num)
    return i;
 }
 
-CONSTEXPR static inline u32 get_first_set_bit_index64(u64 num)
+CONSTEXPR static inline u32
+get_first_set_bit_index64(u64 num)
 {
    u32 i;
    ASSERT(num != 0);
@@ -103,32 +109,38 @@ CONSTEXPR static inline u32 get_first_set_bit_index64(u64 num)
    return i;
 }
 
-CONSTEXPR static ALWAYS_INLINE uptr pow2_round_up_at(uptr n, uptr pow2unit)
+CONSTEXPR static ALWAYS_INLINE ulong
+pow2_round_up_at(ulong n, ulong pow2unit)
 {
    return (n + pow2unit - 1) & -pow2unit;
 }
 
-CONSTEXPR static ALWAYS_INLINE u64 pow2_round_up_at64(u64 n, u64 pow2unit)
+CONSTEXPR static ALWAYS_INLINE u64
+pow2_round_up_at64(u64 n, u64 pow2unit)
 {
    return (n + pow2unit - 1) & -pow2unit;
 }
 
-CONSTEXPR static ALWAYS_INLINE uptr round_up_at(uptr n, uptr unit)
+CONSTEXPR static ALWAYS_INLINE ulong
+round_up_at(ulong n, ulong unit)
 {
    return ((n + unit - 1) / unit) * unit;
 }
 
-CONSTEXPR static ALWAYS_INLINE u64 round_up_at64(u64 n, u64 unit)
+CONSTEXPR static ALWAYS_INLINE u64
+round_up_at64(u64 n, u64 unit)
 {
    return ((n + unit - 1) / unit) * unit;
 }
 
-CONSTEXPR static ALWAYS_INLINE uptr round_down_at(uptr n, uptr unit)
+CONSTEXPR static ALWAYS_INLINE ulong
+round_down_at(ulong n, ulong unit)
 {
    return (n / unit) * unit;
 }
 
-CONSTEXPR static ALWAYS_INLINE u64 round_down_at64(u64 n, u64 unit)
+CONSTEXPR static ALWAYS_INLINE u64
+round_down_at64(u64 n, u64 unit)
 {
    return (n / unit) * unit;
 }

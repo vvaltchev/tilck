@@ -60,9 +60,9 @@ int get_free_mtrr(void)
    return -1;
 }
 
-static void cache_disable(uptr *saved_cr0)
+static void cache_disable(ulong *saved_cr0)
 {
-   uptr cr0 = read_cr0();
+   ulong cr0 = read_cr0();
 
    *saved_cr0 = cr0;
 
@@ -77,16 +77,16 @@ static void cache_disable(uptr *saved_cr0)
    write_cr0(cr0);
 }
 
-static void cache_enable(uptr *saved_cr0)
+static void cache_enable(ulong *saved_cr0)
 {
    write_cr0(*saved_cr0);
 }
 
 struct mtrr_change_ctx {
 
-   uptr eflags;
-   uptr cr4;
-   uptr cr0;
+   ulong eflags;
+   ulong cr4;
+   ulong cr0;
 };
 
 /*

@@ -148,7 +148,7 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
    system_mmap_set(mbi);
 
    if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
-      parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
+      parse_kernel_cmdline((const char *)(ulong)mbi->cmdline);
 }
 
 static void show_hello_message(void)

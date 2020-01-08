@@ -477,7 +477,7 @@ static void task_remove_from_state_list(struct task *ti)
 
 void task_change_state(struct task *ti, enum task_state new_state)
 {
-   uptr var;
+   ulong var;
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
    DEBUG_ONLY(check_in_no_other_irq_than_timer());

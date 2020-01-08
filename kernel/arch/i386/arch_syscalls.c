@@ -410,7 +410,7 @@ void handle_syscall(regs_t *r)
 
    if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
       printk("Unknown syscall #%i\n", sn);
-      r->eax = (uptr) -ENOSYS;
+      r->eax = (ulong) -ENOSYS;
       return;
    }
 
@@ -442,7 +442,7 @@ void init_syscall_interfaces(void)
 
    /* Setup the sysenter interface */
    wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
-   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &sysenter_entry);
+   wrmsr(MSR_IA32_SYSENTER_EIP, (ulong) &sysenter_entry);
 
    asm_sysenter_setup();
 }

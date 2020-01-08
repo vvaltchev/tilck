@@ -33,7 +33,7 @@ static ssize_t ttyaux_write(fs_handle h, char *buf, size_t size)
    return tty_write_int(get_curr_process_tty(), h, buf, size);
 }
 
-static int ttyaux_ioctl(fs_handle h, uptr request, void *argp)
+static int ttyaux_ioctl(fs_handle h, ulong request, void *argp)
 {
    return tty_ioctl_int(get_curr_process_tty(), h, request, argp);
 }

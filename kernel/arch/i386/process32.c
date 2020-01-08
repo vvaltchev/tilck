@@ -34,41 +34,41 @@ STATIC_ASSERT(sizeof(struct task) + sizeof(struct process) <= 1024);
 
 void task_info_reset_kernel_stack(struct task *ti)
 {
-   uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
+   ulong bottom = (ulong)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
    ti->state_regs = (regs_t *)(bottom & POINTER_ALIGN_MASK);
 }
 
-static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
+static inline void push_on_stack(ulong **stack_ptr_ref, ulong val)
 {
    (*stack_ptr_ref)--;     // Decrease the value of the stack pointer
    **stack_ptr_ref = val;  // *stack_ptr = val
 }
 
-static void push_on_stack2(pdir_t *pdir, uptr **stack_ptr_ref, uptr val)
+static void push_on_stack2(pdir_t *pdir, ulong **stack_ptr_ref, ulong val)
 {
    // Decrease the value of the stack pointer
    (*stack_ptr_ref)--;
 
    // *stack_ptr = val
-   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(uptr));
+   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(ulong));
 }
 
-static inline void push_on_user_stack(regs_t *r, uptr val)
+static inline void push_on_user_stack(regs_t *r, ulong val)
 {
-   push_on_stack((uptr **)&r->useresp, val);
+   push_on_stack((ulong **)&r->useresp, val);
 }
 
 static void push_string_on_user_stack(regs_t *r, const char *str)
 {
    const size_t len = strlen(str) + 1; // count also the '\0'
-   const size_t aligned_len = round_down_at(len, sizeof(uptr));
+   const size_t aligned_len = round_down_at(len, sizeof(ulong));
    const size_t rem = len - aligned_len;
 
-   r->useresp -= aligned_len + (rem > 0 ? sizeof(uptr) : 0);
+   r->useresp -= aligned_len + (rem > 0 ? sizeof(ulong) : 0);
    memcpy((void *)r->useresp, str, aligned_len);
 
    if (rem > 0) {
-      uptr smallbuf = 0;
+      ulong smallbuf = 0;
       memcpy(&smallbuf, str + aligned_len, rem);
       memcpy((void *)(r->useresp + aligned_len), &smallbuf, sizeof(smallbuf));
    }
@@ -81,8 +81,8 @@ push_args_on_user_stack(regs_t *r,
                         const char *const *env,
                         u32 envc)
 {
-   uptr pointers[32];
-   uptr env_pointers[96];
+   ulong pointers[32];
+   ulong env_pointers[96];
 
    if (argc > ARRAY_SIZE(pointers))
       return -E2BIG;
@@ -128,7 +128,7 @@ push_args_on_user_stack(regs_t *r,
    }
 
    // push argc as last (since it will be the first to be pop-ed)
-   push_on_user_stack(r, (uptr)argc);
+   push_on_user_stack(r, (ulong)argc);
    return 0;
 }
 
@@ -139,7 +139,7 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
    int tid, ret = -ENOMEM;
 
    regs_t r = {
-      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
+      .kernel_resume_eip = (ulong)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_KERNEL_DATA_SEL,
       .fs = X86_KERNEL_DATA_SEL,
@@ -149,7 +149,7 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
       .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
       .int_num = 0,
       .err_code = 0,
-      .eip = (uptr)func,
+      .eip = (ulong)func,
       .cs = X86_KERNEL_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
       .useresp = 0,
@@ -190,8 +190,8 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
     * 4) Copy the actual regs to the new stack
     */
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
-   push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
+   push_on_stack((ulong **)&ti->state_regs, (ulong)arg);
+   push_on_stack((ulong **)&ti->state_regs, (ulong)&kthread_exit);
    ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
    memcpy(ti->state_regs, &r, sizeof(r) - 8);
 
@@ -239,7 +239,7 @@ void kthread_exit(void)
    remove_task(get_curr_task());
 
    {
-      uptr var;
+      ulong var;
       disable_interrupts(&var);
       set_curr_task(kernel_process);
       enable_interrupts(&var);
@@ -256,7 +256,7 @@ int setup_usermode_task(pdir_t *pdir,
                         struct task **ti_ref)
 {
    regs_t r = {
-      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
+      .kernel_resume_eip = (ulong)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_USER_DATA_SEL,
       .fs = X86_USER_DATA_SEL,
@@ -266,10 +266,10 @@ int setup_usermode_task(pdir_t *pdir,
       .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
       .int_num = 0,
       .err_code = 0,
-      .eip = (uptr)entry,
+      .eip = (ulong)entry,
       .cs = X86_USER_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
-      .useresp = (uptr)stack_addr,
+      .useresp = (ulong)stack_addr,
       .ss = X86_USER_DATA_SEL,
    };
 

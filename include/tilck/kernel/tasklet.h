@@ -8,8 +8,8 @@
 
 struct tasklet_context {
 
-   uptr arg1;
-   uptr arg2;
+   ulong arg1;
+   ulong arg2;
 };
 
 void init_tasklets();
@@ -22,13 +22,13 @@ void destroy_last_tasklet_thread(void);
 
 struct task *get_hi_prio_ready_tasklet_runner(void);
 
-NODISCARD bool enqueue_tasklet_int(int tn, void *func, uptr arg1, uptr arg2);
+NODISCARD bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2);
 
 #define enqueue_tasklet2(tn, f, a1, a2) \
-   enqueue_tasklet_int(tn, (void *)(f), (uptr)(a1), (uptr)(a2))
+   enqueue_tasklet_int(tn, (void *)(f), (ulong)(a1), (ulong)(a2))
 
 #define enqueue_tasklet1(tn, f, a1) \
-   enqueue_tasklet_int(tn, (void *)(f), (uptr)(a1), 0)
+   enqueue_tasklet_int(tn, (void *)(f), (ulong)(a1), 0)
 
 #define enqueue_tasklet0(tn, f) \
    enqueue_tasklet_int(tn, (void *)(f), 0, 0)

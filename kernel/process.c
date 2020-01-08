@@ -29,7 +29,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
    void *vaddr_in_block;
    void *block_vaddr;
    void *direct_va;
-   uptr direct_pa;
+   ulong direct_pa;
    size_t count;
 
    ASSERT(pi->pdir != NULL);
@@ -47,7 +47,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
       return NULL;
    }
 
-   vaddr_in_block = (void *)((uptr)block_vaddr + KERNEL_STACK_SIZE);
+   vaddr_in_block = (void *)((ulong)block_vaddr + KERNEL_STACK_SIZE);
 
    count = map_pages(pi->pdir,
                      vaddr_in_block,
@@ -70,8 +70,8 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
 static void
 free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
-   void *block_vaddr = (void *)((uptr)vaddr_in_block - KERNEL_STACK_SIZE);
-   uptr direct_pa = get_mapping(pi->pdir, vaddr_in_block);
+   void *block_vaddr = (void *)((ulong)vaddr_in_block - KERNEL_STACK_SIZE);
+   ulong direct_pa = get_mapping(pi->pdir, vaddr_in_block);
    void *direct_va = KERNEL_PA_TO_VA(direct_pa);
 
    unmap_pages(pi->pdir, vaddr_in_block, KERNEL_STACK_SIZE / PAGE_SIZE, false);
@@ -112,7 +112,7 @@ static bool do_common_task_allocations(struct task *ti, bool alloc_bufs)
          return false;
       }
 
-      ti->args_copybuf = (void *)((uptr)ti->io_copybuf + IO_COPYBUF_SIZE);
+      ti->args_copybuf = (void *)((ulong)ti->io_copybuf + IO_COPYBUF_SIZE);
    }
    return true;
 }
@@ -140,8 +140,8 @@ void free_mem_for_zombie_task(struct task *ti)
 
    if (ti == get_curr_task()) {
 
-      uptr stack_var = 123;
-      if (!IN_RANGE((uptr)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
+      ulong stack_var = 123;
+      if (!IN_RANGE((ulong)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
          panic("free_mem_for_zombie_task() called w/o switch to initial stack");
    }
 
@@ -734,7 +734,7 @@ int do_fork(bool vfork)
    set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.
-   set_return_register(curr->state_regs, (uptr) child->tid);
+   set_return_register(curr->state_regs, (ulong) child->tid);
 
    if (fork_dup_all_handles(child->pi) < 0)
       goto no_mem_exit;
@@ -921,7 +921,7 @@ int sys_getpgrp(void)
    return get_curr_proc()->pgid;
 }
 
-int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
+int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
 {
    // TODO: actually implement sys_prctl()
 

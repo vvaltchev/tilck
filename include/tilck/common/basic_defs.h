@@ -35,6 +35,11 @@
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 #endif
 
+#ifndef __USE_MISC
+   #define __USE_MISC
+#endif
+
+#include <sys/types.h>    // system header (just for ulong)
 
 #ifdef __i386__
 
@@ -94,18 +99,17 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 /* Pointer-size signed integer */
-
 /*
  * Just use `long`. We support only LP64 compilers and 32/64 bit architectures.
  * 16-bit architectures where sizeof(long) > sizeof(void *) won't be supported.
  */
 
 /* Pointer-size unsigned integer */
-typedef uintptr_t uptr;
+/* Just use `ulong` (from sys/types.h). Reason: see the comment for long */
 
 /* What we're relying on */
-STATIC_ASSERT(sizeof(uptr) == sizeof(long));
-STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
+STATIC_ASSERT(sizeof(ulong) == sizeof(long));
+STATIC_ASSERT(sizeof(ulong) == sizeof(void *));
 
 /* Tilck's off_t, unrelated with any external files and pointer-size long */
 typedef long offt;
@@ -315,7 +319,7 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
  *    - in EFI code, EFI_PHYSICAL_ADDRESS is 64-bit wide, even on 32-bit
  *      machines.
  */
-#define TO_PTR(n) ((void *)(uptr)(n))
+#define TO_PTR(n) ((void *)(ulong)(n))
 
 /* Includes */
 #include <tilck/common/panic.h>

@@ -89,8 +89,8 @@ void simple_test_kthread(void *arg)
 {
    u32 i;
 #if !defined(NDEBUG) && !defined(RELEASE)
-   uptr esp;
-   uptr saved_esp = get_stack_ptr();
+   ulong esp;
+   ulong saved_esp = get_stack_ptr();
 #endif
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);

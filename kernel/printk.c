@@ -225,9 +225,9 @@ switch_case:
       case 'p':
 
          if (NBITS == 32)
-            uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
+            uitoa32_hex_fixed(va_arg(args, ulong), intbuf);
          else if (NBITS == 64)
-            uitoa64_hex_fixed(va_arg(args, uptr), intbuf);
+            uitoa64_hex_fixed(va_arg(args, ulong), intbuf);
          else
             NOT_REACHED();
 

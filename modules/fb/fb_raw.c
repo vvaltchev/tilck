@@ -24,7 +24,7 @@
 
 void append_mem_region(struct mem_region r);
 
-static uptr fb_paddr;
+static ulong fb_paddr;
 static u32 fb_pitch;
 static u32 fb_width;
 static u32 fb_height;
@@ -46,7 +46,7 @@ u32 fb_size;
 static u32 fb_bytes_per_pixel;
 static u32 fb_line_length;
 
-uptr fb_vaddr;
+ulong fb_vaddr;
 static u32 *fb_w8_char_scanlines;
 
 u32 font_w;
@@ -147,7 +147,7 @@ void set_framebuffer_info_from_mbi(multiboot_info_t *mbi)
 {
    __use_framebuffer = true;
 
-   fb_paddr = (uptr) mbi->framebuffer_addr;
+   fb_paddr = (ulong) mbi->framebuffer_addr;
    fb_pitch = mbi->framebuffer_pitch;
    fb_width = mbi->framebuffer_width;
    fb_height = mbi->framebuffer_height;
@@ -207,12 +207,12 @@ u32 fb_get_bpp(void)
 
 void fb_user_mmap(void *vaddr, size_t mmap_len)
 {
-   map_framebuffer(fb_paddr, (uptr)vaddr, mmap_len, true);
+   map_framebuffer(fb_paddr, (ulong)vaddr, mmap_len, true);
 }
 
 void fb_map_in_kernel_space(void)
 {
-   fb_vaddr = (uptr) map_framebuffer(fb_paddr, 0, fb_size, false);
+   fb_vaddr = (ulong) map_framebuffer(fb_paddr, 0, fb_size, false);
 }
 
 /*
@@ -240,7 +240,7 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 {
    if (LIKELY(fb_bpp == 32)) {
 
-      uptr v = fb_vaddr + (fb_pitch * iy);
+      ulong v = fb_vaddr + (fb_pitch * iy);
 
       if (LIKELY(fb_pitch == fb_line_length)) {
 
@@ -310,7 +310,7 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 
 void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
-   uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
+   ulong vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
 
    if (LIKELY(fb_bpp == 32)) {
 
@@ -333,7 +333,7 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
 void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 {
-   uptr vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
+   ulong vaddr = fb_vaddr + (fb_pitch * iy) + (ix * fb_bytes_per_pixel);
 
    if (LIKELY(fb_bpp == 32)) {
 
@@ -516,7 +516,7 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 
 void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
 {
-   const uptr vaddr_base = fb_vaddr + (fb_pitch * y);
+   const ulong vaddr_base = fb_vaddr + (fb_pitch * y);
 
    // ASSUMPTION: SL_SIZE is 8
    const u32 width_bytes = font_w >> 3;

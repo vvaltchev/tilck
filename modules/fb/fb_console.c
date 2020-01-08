@@ -359,7 +359,7 @@ static void async_pre_render_scanlines()
       return;
    }
 
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       use_optimized = true;

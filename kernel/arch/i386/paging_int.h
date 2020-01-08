@@ -116,5 +116,5 @@ STATIC_ASSERT(sizeof(struct x86_pdir) == PAGE_DIR_SIZE);
 
 void map_4mb_page_int(pdir_t *pdir,
                       void *vaddr,
-                      uptr paddr,
+                      ulong paddr,
                       u32 flags);

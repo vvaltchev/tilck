@@ -52,7 +52,7 @@ static inline void sys_brk_internal(struct process *pi, void *new_brk)
       if (!kernel_vaddr)
          break; /* we've allocated as much as possible */
 
-      const uptr paddr = KERNEL_VA_TO_PA(kernel_vaddr);
+      const ulong paddr = KERNEL_VA_TO_PA(kernel_vaddr);
       int rc = map_page(pi->pdir, vaddr, paddr, true, true);
 
       if (rc != 0) {
@@ -77,13 +77,13 @@ void *sys_brk(void *new_brk)
 
    // TODO: check if Linux accepts non-page aligned addresses.
    // If yes, what to do? how to approx? truncation, round-up/round-down?
-   if ((uptr)new_brk & OFFSET_IN_PAGE_MASK)
+   if ((ulong)new_brk & OFFSET_IN_PAGE_MASK)
       return pi->brk;
 
    if (new_brk < pi->initial_brk)
       return pi->brk;
 
-   if ((uptr)new_brk >= MAX_BRK)
+   if ((ulong)new_brk >= MAX_BRK)
       return pi->brk;
 
    if (new_brk == pi->brk)
@@ -296,7 +296,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 {
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
    struct user_mapping *um = NULL, *um2 = NULL;
-   uptr vaddr = (uptr) vaddrp;
+   ulong vaddr = (ulong) vaddrp;
    size_t actual_len;
    int rc;
 
@@ -317,7 +317,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
       return 0;
    }
 
-   const uptr um_vend = um->vaddr + um->len;
+   const ulong um_vend = um->vaddr + um->len;
 
    if (actual_len == um->len) {
 
@@ -398,7 +398,7 @@ int sys_munmap(void *vaddrp, size_t len)
 {
    struct task *curr = get_curr_task();
    struct process *pi = curr->pi;
-   uptr vaddr = (uptr) vaddrp;
+   ulong vaddr = (ulong) vaddrp;
    int rc;
 
    if (!len || !pi->mmap_heap)

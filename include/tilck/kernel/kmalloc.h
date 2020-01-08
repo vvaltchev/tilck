@@ -23,8 +23,8 @@
 #define KFREE_FL_NO_ACTUAL_FREE             (0b01000000000000000000000000000000)
 #define KFREE_FL_ALLOW_SPLIT                (0b00100000000000000000000000000000)
 
-typedef bool (*virtual_alloc_and_map_func)(uptr vaddr, size_t page_count);
-typedef void (*virtual_free_and_unmap_func)(uptr vaddr, size_t page_count);
+typedef bool (*virtual_alloc_and_map_func)(ulong vaddr, size_t page_count);
+typedef void (*virtual_free_and_unmap_func)(ulong vaddr, size_t page_count);
 
 #define calculate_heap_metadata_size(heap_size, min_block_size) \
    (2 * (heap_size) / (min_block_size))
@@ -40,7 +40,7 @@ void general_kfree(void *ptr, size_t *size, u32 flags);
 bool is_kmalloc_initialized(void);
 
 bool kmalloc_create_heap(struct kmalloc_heap *h,
-                         uptr vaddr,
+                         ulong vaddr,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size, /* 0 if linear_mapping=1 */

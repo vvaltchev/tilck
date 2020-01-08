@@ -52,7 +52,7 @@ static ssize_t tty_write(fs_handle h, char *buf, size_t size)
    return tty_write_int(t, dh, buf, size);
 }
 
-static int tty_ioctl(fs_handle h, uptr request, void *argp)
+static int tty_ioctl(fs_handle h, ulong request, void *argp)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;

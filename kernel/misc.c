@@ -24,15 +24,15 @@ bool __use_framebuffer;
 
 #ifdef DEBUG
 
-const uptr init_st_begin = (uptr)&kernel_initial_stack;
-const uptr init_st_end   = (uptr)&kernel_initial_stack + KERNEL_STACK_SIZE;
+const ulong init_st_begin = (ulong)&kernel_initial_stack;
+const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
 
 void validate_stack_pointer_int(const char *file, int line)
 {
-   uptr stack_var = 123;
-   const uptr stack_var_page = (uptr)&stack_var & PAGE_MASK;
-   const uptr st_begin = (uptr)get_curr_task()->kernel_stack;
-   const uptr st_end = st_begin + KERNEL_STACK_SIZE;
+   ulong stack_var = 123;
+   const ulong stack_var_page = (ulong)&stack_var & PAGE_MASK;
+   const ulong st_begin = (ulong)get_curr_task()->kernel_stack;
+   const ulong st_end = st_begin + KERNEL_STACK_SIZE;
 
    if (IN_RANGE(stack_var_page, init_st_begin, init_st_end)) {
 
@@ -50,7 +50,7 @@ void validate_stack_pointer_int(const char *file, int line)
             "[validate stack] stack page: %p\n"
             "[validate stack] expected:   %p\n",
             file, line,
-            ((uptr)&stack_var & PAGE_MASK),
+            ((ulong)&stack_var & PAGE_MASK),
             get_curr_task()->kernel_stack);
    }
 }

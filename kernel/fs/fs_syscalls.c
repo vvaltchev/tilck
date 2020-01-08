@@ -229,7 +229,7 @@ int sys_write(int fd, const void *u_buf, size_t count)
    return (int)vfs_write(h, (char *)curr->io_copybuf, count);
 }
 
-int sys_ioctl(int fd, uptr request, void *argp)
+int sys_ioctl(int fd, ulong request, void *argp)
 {
    fs_handle handle = get_fs_handle(fd);
 

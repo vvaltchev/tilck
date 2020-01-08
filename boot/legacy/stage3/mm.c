@@ -28,7 +28,7 @@ void read_memory_map(void *buf, size_t buf_size, struct mem_info *mi)
 
    u32 eax, ebx, ecx, edx, esi, edi, flags;
    struct mem_area *mem_areas = buf;
-   uptr buf_end = (uptr) buf + buf_size;
+   ulong buf_end = (ulong) buf + buf_size;
    u32 mem_areas_count = 0;
 
    /*
@@ -71,7 +71,7 @@ void read_memory_map(void *buf, size_t buf_size, struct mem_info *mi)
          .acpi = bios_mem_area->acpi,
       };
 
-      if ((uptr)(mem_areas+mem_areas_count+sizeof(struct mem_area)) > buf_end)
+      if ((ulong)(mem_areas+mem_areas_count+sizeof(struct mem_area)) > buf_end)
          panic("No enough memory for the memory map");
 
       memcpy(mem_areas + mem_areas_count, &m, sizeof(struct mem_area));
@@ -99,13 +99,13 @@ void poison_usable_memory(struct mem_info *mi)
    }
 }
 
-uptr get_usable_mem(struct mem_info *mi, uptr min_paddr, uptr size)
+ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size)
 {
    for (u32 i = 0; i < mi->count; i++) {
 
       struct mem_area *ma = mi->mem_areas + i;
-      uptr mbase = ma->base;
-      uptr mend = ma->base + ma->len;
+      ulong mbase = ma->base;
+      ulong mend = ma->base + ma->len;
 
       if (ma->type != MEM_USABLE)
          continue;
@@ -131,9 +131,9 @@ uptr get_usable_mem(struct mem_info *mi, uptr min_paddr, uptr size)
    return 0;
 }
 
-uptr get_usable_mem_or_panic(struct mem_info *mi, uptr min_paddr, uptr size)
+ulong get_usable_mem_or_panic(struct mem_info *mi, ulong min_paddr, ulong size)
 {
-   uptr free_mem = get_usable_mem(mi, min_paddr, size);
+   ulong free_mem = get_usable_mem(mi, min_paddr, size);
 
    if (!free_mem)
       panic("Unable to allocate %u bytes after %p", size, min_paddr);
