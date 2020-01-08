@@ -9,7 +9,7 @@ bool
 buf_append(char *dest, int *used, int *rem, char *str);
 
 static bool
-save_param_iov(void *data, sptr iovcnt, char *dest_buf, size_t dest_bs)
+save_param_iov(void *data, long iovcnt, char *dest_buf, size_t dest_bs)
 {
    struct iovec *u_iovec = data;
    struct iovec iovec[4];
@@ -27,11 +27,11 @@ save_param_iov(void *data, sptr iovcnt, char *dest_buf, size_t dest_bs)
 
    for (int i = 0; i < iovcnt; i++) {
 
-      ((sptr *)(dest_buf + 0))[i] = (sptr)iovec[i].iov_len;
+      ((long *)(dest_buf + 0))[i] = (long)iovec[i].iov_len;
       ((uptr *)(dest_buf + 32))[i] = (uptr)iovec[i].iov_base;
 
       ok = ptype_buffer.save(iovec[i].iov_base,
-                             (sptr)iovec[i].iov_len,
+                             (long)iovec[i].iov_len,
                              dest_buf + 64 + 16 * i,
                              16);
 
@@ -45,14 +45,14 @@ save_param_iov(void *data, sptr iovcnt, char *dest_buf, size_t dest_bs)
 static bool
 __dump_param_iov(uptr orig,
                  char *data,
-                 sptr u_iovcnt,
-                 sptr maybe_tot_data_size,
+                 long u_iovcnt,
+                 long maybe_tot_data_size,
                  char *dest,
                  size_t dest_bs)
 {
    int used = 0, rem = (int) dest_bs;
-   sptr iovcnt = MIN(u_iovcnt, 4);
-   sptr tot_rem = maybe_tot_data_size >= 0 ? maybe_tot_data_size : 16;
+   long iovcnt = MIN(u_iovcnt, 4);
+   long tot_rem = maybe_tot_data_size >= 0 ? maybe_tot_data_size : 16;
    char buf[32];
    bool ok;
 
@@ -65,7 +65,7 @@ __dump_param_iov(uptr orig,
 
    for (int i = 0; i < iovcnt; i++) {
 
-      const sptr len = ((sptr *)(data + 0))[i];
+      const long len = ((long *)(data + 0))[i];
       const uptr base = ((uptr *)(data + 32))[i];
 
       if (!buf_append(dest, &used, &rem, "   {base: "))
@@ -115,8 +115,8 @@ __dump_param_iov(uptr orig,
 static bool
 dump_param_iov_in(uptr orig,
                   char *data,
-                  sptr u_iovcnt,
-                  sptr unused,
+                  long u_iovcnt,
+                  long unused,
                   char *dest,
                   size_t dest_bs)
 {
@@ -126,8 +126,8 @@ dump_param_iov_in(uptr orig,
 static bool
 dump_param_iov_out(uptr orig,
                    char *data,
-                   sptr u_iovcnt,
-                   sptr real_sz,
+                   long u_iovcnt,
+                   long real_sz,
                    char *dest,
                    size_t dest_bs)
 {

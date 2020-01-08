@@ -11,7 +11,7 @@
 static bool
 dump_param_int(uptr __val, char *dest, size_t dest_buf_size)
 {
-   const sptr val = (sptr)__val;
+   const long val = (long)__val;
    int rc;
 
    rc = snprintk(dest,
@@ -58,7 +58,7 @@ dump_param_errno_or_val(uptr __val, char *dest, size_t dest_buf_size)
 static bool
 dump_param_errno_or_ptr(uptr __val, char *dest, size_t dest_buf_size)
 {
-   sptr val = (sptr)__val;
+   long val = (long)__val;
    int rc;
 
    rc = (val >= 0 || val < -500 /* the smallest errno */)
@@ -200,7 +200,7 @@ struct saved_int_pair_data {
 };
 
 static bool
-save_param_int_pair(void *data, sptr unused, char *dest_buf, size_t dest_bs)
+save_param_int_pair(void *data, long unused, char *dest_buf, size_t dest_bs)
 {
    struct saved_int_pair_data *saved_data = (void *)dest_buf;
    ASSERT(dest_bs >= sizeof(struct saved_int_pair_data));
@@ -216,8 +216,8 @@ save_param_int_pair(void *data, sptr unused, char *dest_buf, size_t dest_bs)
 static bool
 dump_param_int_pair(uptr orig,
                     char *__data,
-                    sptr unused1,
-                    sptr unused2,
+                    long unused1,
+                    long unused2,
                     char *dest,
                     size_t dest_bs)
 {

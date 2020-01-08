@@ -35,7 +35,7 @@ struct wait_obj {
 
    union {
       ATOMIC(void *) __ptr;          /* ptr to the object we're waiting for */
-      sptr __data;                   /* data field (id) describing the obj  */
+      long __data;                   /* data field (id) describing the obj  */
    };
 
    u16 extra;                        /* extra info about the waiting reason  */
@@ -83,7 +83,7 @@ wait_obj_get_ptr(struct wait_obj *wo)
    return atomic_load_explicit(&wo->__ptr, mo_relaxed);
 }
 
-static ALWAYS_INLINE sptr
+static ALWAYS_INLINE long
 wait_obj_get_data(struct wait_obj *wo)
 {
    return wo->__data;

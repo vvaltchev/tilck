@@ -8,16 +8,16 @@
 #include <tilck/mods/tracing.h>
 
 static bool
-save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
+save_param_buffer(void *data, long data_sz, char *dest_buf, size_t __dest_bs)
 {
-   const sptr dest_bs = (sptr) __dest_bs;
+   const long dest_bs = (long) __dest_bs;
 
    if (data_sz == -1) {
       /* assume that `data` is a C string */
-      data_sz = (sptr)strlen(data) + 1;
+      data_sz = (long)strlen(data) + 1;
    }
 
-   const sptr actual_sz = MIN(data_sz, dest_bs);
+   const long actual_sz = MIN(data_sz, dest_bs);
 
    if (copy_from_user(dest_buf, data, (size_t)actual_sz)) {
       memcpy(dest_buf, "<fault>", 8);
@@ -29,8 +29,8 @@ save_param_buffer(void *data, sptr data_sz, char *dest_buf, size_t __dest_bs)
 static bool
 dump_param_buffer(uptr orig,
                   char *data,
-                  sptr data_bs,
-                  sptr real_sz,
+                  long data_bs,
+                  long real_sz,
                   char *dest,
                   size_t dest_bs)
 {
@@ -43,7 +43,7 @@ dump_param_buffer(uptr orig,
 
    if (data_bs == -1) {
       /* assume that `data` is a C string */
-      data_bs = (sptr)strlen(data);
+      data_bs = (long)strlen(data);
    }
 
    if (!tracing_are_dump_big_bufs_on() && real_sz > 0)
@@ -59,7 +59,7 @@ dump_param_buffer(uptr orig,
    for (s = data; s < data_end; s++) {
 
       char c = *s;
-      sptr ml = 0;
+      long ml = 0;
 
       switch (c) {
          case '\n':
@@ -88,7 +88,7 @@ dump_param_buffer(uptr orig,
             }
       }
 
-      ml = (sptr)strlen(minibuf);
+      ml = (long)strlen(minibuf);
 
       if (dest_end - dest < ml - 1) {
          dest = dest_end;

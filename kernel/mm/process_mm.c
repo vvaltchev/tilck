@@ -171,7 +171,7 @@ mmap_on_user_heap(struct process *pi,
    return um;
 }
 
-sptr
+long
 sys_mmap_pgoff(void *addr, size_t len, int prot,
                int flags, int fd, size_t pgoffset)
 {
@@ -289,7 +289,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
          bzero(um->vaddrp, actual_len);
    }
 
-   return (sptr)um->vaddr;
+   return (long)um->vaddr;
 }
 
 static int munmap_int(struct process *pi, void *vaddrp, size_t len)

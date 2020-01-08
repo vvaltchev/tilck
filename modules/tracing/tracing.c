@@ -133,14 +133,14 @@ static void trace_syscall_enter_save_params(const struct syscall_info *si,
 
       if (t->save && (p->kind == sys_param_in || p->kind == sys_param_in_out))
       {
-         sptr sz = -1;
+         long sz = -1;
 
          if (p->size_param_name) {
 
             idx = tracing_get_param_idx(si, p->size_param_name);
             ASSERT(idx >= 0);
 
-            sz = (sptr) e->args[idx];
+            sz = (long) e->args[idx];
          }
 
          tracing_get_slot(e, si, i, &buf, &bs);
@@ -170,14 +170,14 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
 
       if (t->save && (!exp_block(si) || outp))
       {
-         sptr sz = -1;
+         long sz = -1;
 
          if (p->size_param_name) {
 
             idx = tracing_get_param_idx(si, p->size_param_name);
             ASSERT(idx >= 0);
 
-            sz = (sptr) e->args[idx];
+            sz = (long) e->args[idx];
          }
 
          tracing_get_slot(e, si, i, &buf, &bs);
@@ -216,7 +216,7 @@ trace_syscall_enter_int(u32 sys,
 }
 
 void
-trace_syscall_exit_int(u32 sys, sptr retval,
+trace_syscall_exit_int(u32 sys, long retval,
                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);

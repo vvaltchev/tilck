@@ -199,7 +199,7 @@ dp_render_full_dump_single_param(int i,
 {
    char *data;
    size_t data_size;
-   sptr real_sz = -1;
+   long real_sz = -1;
 
    if (!tracing_get_slot(e, si, i, &data, &data_size)) {
 
@@ -210,7 +210,7 @@ dp_render_full_dump_single_param(int i,
 
    } else {
 
-      sptr sz = -1;
+      long sz = -1;
       ASSERT(type->dump);
 
       if (p->size_param_name) {
@@ -218,11 +218,11 @@ dp_render_full_dump_single_param(int i,
          int idx = tracing_get_param_idx(si, p->size_param_name);
          ASSERT(idx >= 0);
 
-         sz = (sptr) e->args[idx];
+         sz = (long) e->args[idx];
          real_sz = sz;
       }
 
-      sz = MIN(sz, (sptr)data_size);
+      sz = MIN(sz, (long)data_size);
 
       if (p->real_sz_in_ret && e->type == te_sys_exit)
          real_sz = e->retval >= 0 ? e->retval : 0;
@@ -269,7 +269,7 @@ dp_dump_syscall_with_info(struct trace_event *e,
 }
 
 static void
-dp_dump_ret_val(const struct syscall_info *si, sptr retval)
+dp_dump_ret_val(const struct syscall_info *si, long retval)
 {
    if (!si) {
 

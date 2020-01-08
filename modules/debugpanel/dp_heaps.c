@@ -14,7 +14,7 @@ static struct debug_kmalloc_heap_info hi;
 static struct debug_kmalloc_stats stats;
 static size_t tot_usable_mem_kb;
 static size_t tot_used_mem_kb;
-static sptr tot_diff;
+static long tot_diff;
 
 static void dp_heaps_on_enter(void)
 {
@@ -29,7 +29,7 @@ static void dp_heaps_on_enter(void)
 
       const uptr size_kb = hi.size / KB;
       const uptr allocated_kb = hi.mem_allocated / KB;
-      const sptr diff = (sptr)hi.mem_allocated - (sptr)heaps_alloc[i];
+      const long diff = (long)hi.mem_allocated - (long)heaps_alloc[i];
 
       tot_usable_mem_kb += size_kb;
       tot_used_mem_kb += allocated_kb;
@@ -63,7 +63,7 @@ static void dp_show_kmalloc_heaps(void)
    dp_writeln("Diff:   %s%s%6d KB" RESET_ATTRS " [%d B]",
               dp_sign_value_esc_color(tot_diff),
               tot_diff > 0 ? "+" : " ",
-              tot_diff / (sptr)KB,
+              tot_diff / (long)KB,
               tot_diff);
 
    dp_writeln("");
@@ -94,7 +94,7 @@ static void dp_show_kmalloc_heaps(void)
       ASSERT(hi.size);
       const uptr size_kb = hi.size / KB;
       const uptr allocated_kb = hi.mem_allocated / KB;
-      const sptr diff = (sptr)hi.mem_allocated - (sptr)heaps_alloc[i];
+      const long diff = (long)hi.mem_allocated - (long)heaps_alloc[i];
 
       if (hi.region >= 0)
          snprintk(region_str, sizeof(region_str), "%02d", hi.region);

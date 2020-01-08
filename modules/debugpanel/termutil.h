@@ -67,7 +67,7 @@ void dp_switch_to_default_buffer(void);
 void dp_show_modal_msg(const char *msg);
 
 static inline const char *
-dp_sign_value_esc_color(sptr val)
+dp_sign_value_esc_color(long val)
 {
    return val > 0
             ? E_COLOR_GREEN

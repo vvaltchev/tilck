@@ -236,7 +236,7 @@ static void run_init_or_selftest(void)
          panic("No ramdisk and no selftest requested: nothing to do.");
 
       /* Run init or whatever program was passed in the cmdline */
-      sptr rc = first_execve(cmd_args[0], cmd_args);
+      long rc = first_execve(cmd_args[0], cmd_args);
 
       if (rc != 0)
          panic("execve('%s') failed with %i\n", cmd_args[0], rc);

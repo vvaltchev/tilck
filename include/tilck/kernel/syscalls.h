@@ -25,7 +25,7 @@
 
 #else
 
-   #define CREATE_STUB_SYSCALL_IMPL(name) sptr name();
+   #define CREATE_STUB_SYSCALL_IMPL(name) long name();
 
 #endif
 
@@ -289,7 +289,7 @@ int sys_vfork(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 
-sptr sys_mmap_pgoff(void *addr, size_t length, int prot,
+long sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
 int sys_truncate64(const char *u_path, s64 length);

@@ -22,7 +22,7 @@ struct trace_event {
    u64 sys_time;
 
    u32 sys;
-   sptr retval;
+   long retval;
    uptr args[6];
 
    union {
@@ -50,10 +50,10 @@ struct sys_param_type {
    u32 slot_size;
 
    /* Returns false if buf_size is too small */
-   bool (*save)(void *ptr, sptr size, char *buf, size_t buf_size);
+   bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump)(uptr orig, char *b, sptr bs, sptr rsz, char *dst, size_t d_bs);
+   bool (*dump)(uptr orig, char *b, long bs, long rsz, char *dst, size_t d_bs);
 
    /* Returns false if dest_buf_size is too small */
    bool (*dump_from_val)(uptr val, char *dest, size_t dest_buf_size);
@@ -125,7 +125,7 @@ void
 trace_syscall_enter_int(u32 sys,
                         uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
 void
-trace_syscall_exit_int(u32 sys, sptr retval,
+trace_syscall_exit_int(u32 sys, long retval,
                        uptr a1, uptr a2, uptr a3, uptr a4, uptr a5, uptr a6);
 
 const char *
@@ -242,5 +242,5 @@ tracing_set_dump_big_bufs_opt(bool enabled)
 
 #define trace_sys_exit(sn, ret, ...)                                           \
    if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
-      trace_syscall_exit_int(sn, (sptr)(ret), __VA_ARGS__);                    \
+      trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);                    \
    }

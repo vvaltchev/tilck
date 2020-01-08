@@ -94,17 +94,21 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 /* Pointer-size signed integer */
-typedef intptr_t sptr;
+
+/*
+ * Just use `long`. We support only LP64 compilers and 32/64 bit architectures.
+ * 16-bit architectures where sizeof(long) > sizeof(void *) won't be supported.
+ */
 
 /* Pointer-size unsigned integer */
 typedef uintptr_t uptr;
 
 /* What we're relying on */
-STATIC_ASSERT(sizeof(uptr) == sizeof(sptr));
+STATIC_ASSERT(sizeof(uptr) == sizeof(long));
 STATIC_ASSERT(sizeof(uptr) == sizeof(void *));
 
 /* Tilck's off_t, unrelated with any external files and pointer-size long */
-typedef sptr offt;
+typedef long offt;
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
@@ -231,7 +235,7 @@ typedef sptr offt;
 #define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
 
 // Standard compare function signature among generic objects.
-typedef sptr (*cmpfun_ptr)(const void *a, const void *b);
+typedef long (*cmpfun_ptr)(const void *a, const void *b);
 
 #ifndef NO_TILCK_STATIC_WRAPPER
 

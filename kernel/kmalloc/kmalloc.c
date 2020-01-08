@@ -357,7 +357,7 @@ internal_kmalloc(struct kmalloc_heap *h,
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int nn = (int)(sptr) STACK_VAR[ss].arg2; /* arg2: node */
+            const int nn = (int)(long) STACK_VAR[ss].arg2; /* arg2: node */
 
             if (nodes[NODE_LEFT(nn)].full && nodes[NODE_RIGHT(nn)].full) {
                ASSERT(!nodes[nn].full);

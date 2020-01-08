@@ -30,32 +30,32 @@ static struct chunk_info *chunks_arr;
 static size_t chunks_max_count;
 static char chunks_order_by;
 
-static sptr dp_chunks_cmpf_size(const void *a, const void *b)
+static long dp_chunks_cmpf_size(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->size - (sptr)x->size;
+   return (long)y->size - (long)x->size;
 }
 
-static sptr dp_chunks_cmpf_count(const void *a, const void *b)
+static long dp_chunks_cmpf_count(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->count - (sptr)x->count;
+   return (long)y->count - (long)x->count;
 }
 
-static sptr dp_chunks_cmpf_waste(const void *a, const void *b)
+static long dp_chunks_cmpf_waste(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->max_waste - (sptr)x->max_waste;
+   return (long)y->max_waste - (long)x->max_waste;
 }
 
-static sptr dp_chunks_cmpf_waste_p(const void *a, const void *b)
+static long dp_chunks_cmpf_waste_p(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->max_waste_p - (sptr)x->max_waste_p;
+   return (long)y->max_waste_p - (long)x->max_waste_p;
 }
 
 static void dp_chunks_enter(void)

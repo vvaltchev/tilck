@@ -22,7 +22,7 @@ void syscall_int80_entry(void);
 void sysenter_entry(void);
 void asm_sysenter_setup(void);
 
-typedef sptr (*syscall_type)();
+typedef long (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
 static void *syscalls[MAX_SYSCALLS] =

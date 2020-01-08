@@ -13,7 +13,7 @@ void register_module(struct module *m)
    modules[mods_count++] = m;
 }
 
-static sptr mod_cmp_func(const void *a, const void *b)
+static long mod_cmp_func(const void *a, const void *b)
 {
    const struct module * const *ma = a;
    const struct module * const *mb = b;

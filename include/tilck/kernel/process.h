@@ -89,7 +89,7 @@ struct task {
       /*
        * For the moment, `tid` has everywhere `int` as type, while the field is
        * used as key with the bintree_*_int functions which use pointer-sized
-       * integers. Therefore, in case sizeof(sptr) > sizeof(int), we need some
+       * integers. Therefore, in case sizeof(long) > sizeof(int), we need some
        * padding.
        */
 

@@ -37,7 +37,7 @@ extern const char *modal_msg;
 extern struct dp_screen *dp_ctx;
 extern fs_handle dp_input_handle;
 
-static inline sptr dp_int_abs(sptr val) {
+static inline long dp_int_abs(long val) {
    return val >= 0 ? val : -val;
 }
 

@@ -613,7 +613,7 @@ void schedule(int curr_int)
 
 struct task *get_task(int tid)
 {
-   sptr ltid = tid;
+   long ltid = tid;
    struct task *res = NULL;
    ASSERT(!is_preemption_enabled());
 
