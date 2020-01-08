@@ -258,8 +258,8 @@ fs4_aux_read_dents(DIR *d,        /* dir handle */
 
       if (telldir(d) != dposs[i]) {
          printf("telldir != dposs for i = %d\n", i);
-         printf("telldir: %d\n", telldir(d));
-         printf("dposs:   %d\n", dposs[i]);
+         printf("telldir: %ld\n", telldir(d));
+         printf("dposs:   %ld\n", dposs[i]);
          exit(1);
       }
 

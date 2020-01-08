@@ -127,7 +127,7 @@ int cmd_poll1(int argc, char **argv)
    }
 
    buf[rc] = 0;
-   printf("[parent] Got: '%s' from child\n");
+   printf("[parent] Got: '%s' from child\n", buf);
    printf("[parent] Now make wfd nonblock and fill the buffer\n");
 
    fl = fcntl(pipefd[1], F_GETFL, 0);
@@ -290,7 +290,7 @@ int cmd_poll3(int argc, char **argv)
       return 1;
    }
 
-   printf("fds[0].revents = %p\n", fds[0].revents);
+   printf("fds[0].revents = %p\n", (void*)(long)fds[0].revents);
 
    if (!(fds[0].revents & POLLIN)) {
       printf("ERROR: fds[0].revents did *not* contain POLLIN, as expected\n");
