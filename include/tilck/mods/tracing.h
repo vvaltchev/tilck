@@ -53,10 +53,10 @@ struct sys_param_type {
    bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump)(ulong orig, char *b, long bs, long rsz, char *dst, size_t d_bs);
+   bool (*dump)(ulong orig, char *b, long bs, long hlp, char *dst, size_t d_bs);
 
    /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_val)(ulong val, char *dest, size_t dest_buf_size);
+   bool (*dump_from_val)(ulong val, long hlp, char *dest, size_t dest_buf_size);
 };
 
 enum sys_param_kind {
@@ -74,11 +74,14 @@ struct sys_param_info {
    /* IN, OUT or IN/OUT */
    enum sys_param_kind kind;
 
-   /* name of another param in the same func used as size of this buffer */
-   const char *size_param_name;
+   /* name of another (helper) param, typically a buffer size */
+   const char *helper_param_name;
 
    /* true if the retval of the func represents the real value of this buffer */
    bool real_sz_in_ret;
+
+   /* invisible: if true, the param won't be dumped (see llseek) */
+   bool invisible;
 };
 
 enum sys_saved_param_fmt {
@@ -185,6 +188,9 @@ extern const struct sys_param_type ptype_open_flags;
 extern const struct sys_param_type ptype_iov_in;
 extern const struct sys_param_type ptype_iov_out;
 extern const struct sys_param_type ptype_int32_pair;
+extern const struct sys_param_type ptype_doff64;
+extern const struct sys_param_type ptype_whence;
+extern const struct sys_param_type ptype_u64_ptr;
 
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)

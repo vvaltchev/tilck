@@ -107,7 +107,7 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name)
       /*
        * NOTE: using pointer comparison instead of strcmp() for strings.
        * This code assumes that in the metadata the same string literal will
-       * be used both for the parameter name and the `size_param_name` field.
+       * be used both for the parameter name and the `helper_param_name` field.
        */
       if (p->name == name)
          return i;
@@ -135,9 +135,9 @@ static void trace_syscall_enter_save_params(const struct syscall_info *si,
       {
          long sz = -1;
 
-         if (p->size_param_name) {
+         if (p->helper_param_name) {
 
-            idx = tracing_get_param_idx(si, p->size_param_name);
+            idx = tracing_get_param_idx(si, p->helper_param_name);
             ASSERT(idx >= 0);
 
             sz = (long) e->args[idx];
@@ -172,9 +172,9 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
       {
          long sz = -1;
 
-         if (p->size_param_name) {
+         if (p->helper_param_name) {
 
-            idx = tracing_get_param_idx(si, p->size_param_name);
+            idx = tracing_get_param_idx(si, p->helper_param_name);
             ASSERT(idx >= 0);
 
             sz = (long) e->args[idx];

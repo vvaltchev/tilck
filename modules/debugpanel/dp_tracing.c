@@ -153,8 +153,13 @@ dp_get_esc_color_for_param(const struct sys_param_type *t, const char *rb)
    if (t == &ptype_errno_or_val && rb[0] == '-')
       return E_COLOR_WHITE_ON_RED;
 
-   if (t == &ptype_int || t == &ptype_errno_or_val)
+   if (t == &ptype_int ||
+       t == &ptype_errno_or_val ||
+       t == &ptype_doff64 ||
+       t == &ptype_u64_ptr)
+   {
       return E_COLOR_BR_BLUE;
+   }
 
    return "";
 }
@@ -199,13 +204,21 @@ dp_render_full_dump_single_param(int i,
 {
    char *data;
    size_t data_size;
-   long real_sz = -1;
+   long hlp = -1; /* helper param, means "real_size" for ptype_buffer */
+
+   if (p->helper_param_name) {
+
+      int idx = tracing_get_param_idx(si, p->helper_param_name);
+      ASSERT(idx >= 0);
+
+      hlp = (long) e->args[idx];
+   }
 
    if (!tracing_get_slot(e, si, i, &data, &data_size)) {
 
       ASSERT(type->dump_from_val);
 
-      if (!type->dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SZ))
+      if (!type->dump_from_val(e->args[i], hlp, rend_bufs[i], REND_BUF_SZ))
          snprintk(rend_bufs[i], REND_BUF_SZ, "(raw) %p", e->args[i]);
 
    } else {
@@ -213,21 +226,15 @@ dp_render_full_dump_single_param(int i,
       long sz = -1;
       ASSERT(type->dump);
 
-      if (p->size_param_name) {
-
-         int idx = tracing_get_param_idx(si, p->size_param_name);
-         ASSERT(idx >= 0);
-
-         sz = (long) e->args[idx];
-         real_sz = sz;
-      }
+      if (p->helper_param_name)
+         sz = hlp;
 
       sz = MIN(sz, (long)data_size);
 
       if (p->real_sz_in_ret && e->type == te_sys_exit)
-         real_sz = e->retval >= 0 ? e->retval : 0;
+         hlp = e->retval >= 0 ? e->retval : 0;
 
-      if (!type->dump(e->args[i], data, sz, real_sz, rend_bufs[i], REND_BUF_SZ))
+      if (!type->dump(e->args[i], data, sz, hlp, rend_bufs[i], REND_BUF_SZ))
          snprintk(rend_bufs[i], REND_BUF_SZ, "(raw) %p", e->args[i]);
    }
 }
@@ -235,7 +242,7 @@ dp_render_full_dump_single_param(int i,
 static void
 dp_render_minimal_dump_single_param(int i, struct trace_event *e)
 {
-   if (!ptype_voidp.dump_from_val(e->args[i], rend_bufs[i], REND_BUF_SZ))
+   if (!ptype_voidp.dump_from_val(e->args[i], -1, rend_bufs[i], REND_BUF_SZ))
       panic("Unable to serialize a ptype_voidp in a render buf");
 }
 
@@ -252,6 +259,9 @@ dp_dump_syscall_with_info(struct trace_event *e,
 
       const struct sys_param_info *p = &si->params[i];
       const struct sys_param_type *type = p->type;
+
+      if (p->invisible)
+         continue;
 
       if (dp_should_full_dump_param(exp_block(si), p->kind, e->type)) {
 
@@ -299,7 +309,7 @@ dp_dump_ret_val(const struct syscall_info *si, long retval)
    const struct sys_param_type *rt = si->ret_type;
    ASSERT(rt->dump_from_val);
 
-   if (!rt->dump_from_val((ulong)retval, rend_bufs[0], REND_BUF_SZ)) {
+   if (!rt->dump_from_val((ulong)retval, -1, rend_bufs[0], REND_BUF_SZ)) {
       dp_write_raw("(raw) %p", retval);
       return;
    }

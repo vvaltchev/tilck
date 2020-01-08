@@ -9,7 +9,7 @@
 #include <tilck/mods/tracing.h>
 
 static bool
-dump_param_int(ulong __val, char *dest, size_t dest_buf_size)
+dump_param_int(ulong __val, long hlp, char *dest, size_t dest_buf_size)
 {
    const long val = (long)__val;
    int rc;
@@ -23,7 +23,7 @@ dump_param_int(ulong __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_voidp(ulong val, char *dest, size_t dest_buf_size)
+dump_param_voidp(ulong val, long hlp, char *dest, size_t dest_buf_size)
 {
    const int rc = (val != 0)
       ? snprintk(dest, dest_buf_size, "%p", val)
@@ -33,7 +33,7 @@ dump_param_voidp(ulong val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_oct(ulong __val, char *dest, size_t dest_buf_size)
+dump_param_oct(ulong __val, long hlp, char *dest, size_t dest_buf_size)
 {
    int val = (int)__val;
    int rc;
@@ -43,7 +43,7 @@ dump_param_oct(ulong __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_errno_or_val(ulong __val, char *dest, size_t dest_buf_size)
+dump_param_errno_or_val(ulong __val, long hlp, char *dest, size_t dest_buf_size)
 {
    int val = (int)__val;
    int rc;
@@ -56,7 +56,7 @@ dump_param_errno_or_val(ulong __val, char *dest, size_t dest_buf_size)
 }
 
 static bool
-dump_param_errno_or_ptr(ulong __val, char *dest, size_t dest_buf_size)
+dump_param_errno_or_ptr(ulong __val, long hlp, char *dest, size_t dest_buf_size)
 {
    long val = (long)__val;
    int rc;
@@ -99,7 +99,7 @@ is_flag_on(ulong var, ulong fl)
          return false;
 
 static bool
-dump_param_open_flags(ulong fl, char *dest, size_t dest_buf_size)
+dump_param_open_flags(ulong fl, long hlp, char *dest, size_t dest_buf_size)
 {
    int rem = (int) dest_buf_size;
    int used = 0;
@@ -131,6 +131,42 @@ dump_param_open_flags(ulong fl, char *dest, size_t dest_buf_size)
    ASSERT(dest[used - 1] == '|');
    dest[used - 1] = 0;
    return true;
+}
+
+static bool
+dump_param_doff64(ulong hi, long hlp, char *dest, size_t dest_bs)
+{
+   const ulong low = (ulong)hlp;
+   const u64 val = ((u64)hi) << 32 | (u64)low;
+   const int rc = snprintk(dest, dest_bs, "%llu", val);
+
+   return rc < (int)dest_bs;
+}
+
+static bool
+dump_param_whence(ulong val, long hlp, char *dest, size_t dest_bs)
+{
+   int rc;
+
+   switch (val) {
+
+      case SEEK_SET:
+         rc = snprintk(dest, dest_bs, "SEEK_SET");
+         break;
+
+      case SEEK_CUR:
+         rc = snprintk(dest, dest_bs, "SEEK_CUR");
+         break;
+
+      case SEEK_END:
+         rc = snprintk(dest, dest_bs, "SEEK_END");
+         break;
+
+      default:
+         rc = snprintk(dest, dest_bs, "unknown: %d", (int)val);
+   }
+
+   return rc < (int)dest_bs;
 }
 
 const struct sys_param_type ptype_int = {
@@ -193,6 +229,26 @@ const struct sys_param_type ptype_open_flags = {
    .dump_from_val = dump_param_open_flags,
 };
 
+const struct sys_param_type ptype_doff64 = {
+
+   .name = "ulong",
+   .slot_size = 0,
+
+   .save = NULL,
+   .dump = NULL,
+   .dump_from_val = dump_param_doff64,
+};
+
+const struct sys_param_type ptype_whence = {
+
+   .name = "char *",
+   .slot_size = 0,
+
+   .save = NULL,
+   .dump = NULL,
+   .dump_from_val = dump_param_whence,
+};
+
 struct saved_int_pair_data {
 
    bool valid;
@@ -236,9 +292,46 @@ dump_param_int_pair(ulong orig,
 const struct sys_param_type ptype_int32_pair = {
 
    .name = "int[2]",
-   .slot_size = 16,
+   .slot_size = 32,
 
    .save = save_param_int_pair,
    .dump = dump_param_int_pair,
+   .dump_from_val = NULL,
+};
+
+static bool
+save_param_u64_ptr(void *data, long unused, char *dest_buf, size_t dest_bs)
+{
+   ASSERT(dest_bs >= 8);
+   u64 val;
+
+   if (copy_from_user(&val, data, 8)) {
+      snprintk(dest_buf, dest_bs, "<fault>");
+      return true;
+   }
+
+   snprintk(dest_buf, dest_bs, "%llu", val);
+   return true;
+}
+
+static bool
+dump_param_u64_ptr(ulong orig,
+                   char *data,
+                   long unused1,
+                   long unused2,
+                   char *dest,
+                   size_t dest_bs)
+{
+   memcpy(dest, data, strlen(data) + 1);
+   return true;
+}
+
+const struct sys_param_type ptype_u64_ptr = {
+
+   .name = "u64",
+   .slot_size = 32,
+
+   .save = save_param_u64_ptr,
+   .dump = dump_param_u64_ptr,
    .dump_from_val = NULL,
 };

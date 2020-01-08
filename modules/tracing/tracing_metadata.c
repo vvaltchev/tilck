@@ -341,7 +341,24 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+#ifdef __i386__
+   {
+      .sys_n = SYS_llseek,
+      .n_params = 5,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
+         COMPLEX_PARAM("off", &ptype_doff64, sys_param_in, "off_low"),
+         HIDDEN_PARAM("off_low", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("result", &ptype_u64_ptr, sys_param_out),
+         SIMPLE_PARAM("whence", &ptype_whence, sys_param_in),
+      },
+   },
+#endif
+
    { .sys_n = INVALID_SYSCALL },
 };
 
 const struct syscall_info *tracing_metadata = __tracing_metadata;
+

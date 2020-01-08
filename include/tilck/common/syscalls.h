@@ -33,7 +33,7 @@ enum tilck_cmd {
    #define LSTAT_SYSCALL_N     SYS_lstat64
    #define FSTAT_SYSCALL_N     SYS_fstat64
    #define FCNTL_SYSCALL_N     SYS_fcntl64
-   #define MMAP_SYSCALL_N        192
+   #define MMAP_SYSCALL_N      192
 
    #undef SYS_getuid
    #undef SYS_getgid
@@ -61,6 +61,9 @@ enum tilck_cmd {
    #define SYS_lchown16           16
    #define SYS_fchown16           95
    #define SYS_chown16           182
+
+   #define SYS_llseek            140
+
 
 #else
    #error Architecture not supported

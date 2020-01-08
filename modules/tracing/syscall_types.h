@@ -14,8 +14,24 @@
       .name = _name,                                                 \
       .type = _type,                                                 \
       .kind = _kind,                                                 \
-      .size_param_name = _sz_param,                                  \
+      .helper_param_name = _sz_param,                                \
       .real_sz_in_ret = true,                                        \
+   }
+
+#define COMPLEX_PARAM(_name, _type, _kind, _helper)                  \
+   {                                                                 \
+      .name = _name,                                                 \
+      .type = _type,                                                 \
+      .kind = _kind,                                                 \
+      .helper_param_name = _helper,                                  \
+   }
+
+#define HIDDEN_PARAM(_name, _type, _kind)                \
+   {                                                     \
+      .name = _name,                                     \
+      .type = _type,                                     \
+      .kind = _kind,                                     \
+      .invisible = true,                                 \
    }
 
 /* Syscall (void) */
