@@ -210,17 +210,7 @@ int cmd_cloexec(int argc, char **argv)
 {
    int pid;
    int wstatus;
-   const char *devshell_path = DEVSHELL_PATH;
-
-   if (!getenv("TILCK")) {
-
-      /*
-       * When running this test on Linux, we cannot expect to find the devshell
-       * in the same abs path (/initrd/...) as on Tilck.
-       */
-
-      devshell_path = "/proc/self/exe";
-   }
+   const char *devshell_path = get_devshell_path();
 
    if (argc > 0) {
 
