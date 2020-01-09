@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
@@ -326,11 +327,16 @@ int setup_usermode_task(pdir_t *pdir,
        */
 
       pi = ti->pi;
+      remove_all_user_zero_mem_mappings(pi);
+      remove_all_file_mappings(pi);
+      process_free_mmap_heap(pi);
+      arch_specific_free_task(ti);
+
       ASSERT(old_pdir == pi->pdir);
       pdir_destroy(pi->pdir);
       pi->pdir = pdir;
       old_pdir = NULL;
-      arch_specific_free_task(ti);
+
       arch_specific_new_task_setup(ti, NULL);
 
       ASSERT(ti->state == TASK_STATE_RUNNING);

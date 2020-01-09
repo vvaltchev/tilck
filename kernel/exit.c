@@ -88,14 +88,15 @@ handle_children_of_dying_process(struct task *ti)
 
 static void close_all_handles(struct process *pi)
 {
+   fs_handle *h;
+
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 
-      fs_handle *h = pi->handles[i];
+      if (!(h = pi->handles[i]))
+         continue;
 
-      if (h) {
-         vfs_close2(pi, h);
-         pi->handles[i] = NULL;
-      }
+      vfs_close2(pi, h);
+      pi->handles[i] = NULL;
    }
 }
 

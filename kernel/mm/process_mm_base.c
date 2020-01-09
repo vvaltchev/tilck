@@ -105,6 +105,19 @@ void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
    process_remove_user_mapping(um);
 }
 
+void remove_all_file_mappings(struct process *pi)
+{
+   fs_handle *h;
+
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
+
+      if (!(h = pi->handles[i]))
+         continue;
+
+      remove_all_mappings_of_handle(pi, h);
+   }
+}
+
 void user_vfree_and_unmap(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();

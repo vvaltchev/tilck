@@ -164,6 +164,15 @@ void init_process_lists(struct process *pi)
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
 }
 
+void process_free_mmap_heap(struct process *pi)
+{
+   if (pi->mmap_heap) {
+      kmalloc_destroy_heap(pi->mmap_heap);
+      kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+      pi->mmap_heap = NULL;
+   }
+}
+
 struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 {
@@ -214,11 +223,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    if (!do_common_task_allocations(ti, true) ||
        !arch_specific_new_task_setup(ti, parent))
    {
-      if (pi->mmap_heap) {
-         kmalloc_destroy_heap(pi->mmap_heap);
-         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
-      }
-
+      process_free_mmap_heap(pi);
       kfree2(ti, sizeof(struct task) + sizeof(struct process));
       return NULL;
    }
