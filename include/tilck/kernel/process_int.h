@@ -5,9 +5,10 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/hal.h>
 
-/* Internal stuff (used by process.c, process32.c, misc.c, sched.c) */
+/* Internal stuff (used by process.c, process32.c, misc.c, sched.c, fork.c) */
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];
 void switch_to_initial_kernel_stack(void);
+void internal_free_mem_for_zombie_task(struct task *ti);
 
 static ALWAYS_INLINE void set_curr_task(struct task *ti)
 {
