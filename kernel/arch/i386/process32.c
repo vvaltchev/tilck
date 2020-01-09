@@ -248,15 +248,10 @@ void kthread_exit(void)
    schedule_outside_interrupt_context();
 }
 
-int setup_usermode_task(pdir_t *pdir,
-                        void *entry,
-                        void *stack_addr,
-                        struct task *ti,
-                        const char *const *argv,
-                        const char *const *env,
-                        struct task **ti_ref)
+static void
+setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 {
-   regs_t r = {
+   *r = (regs_t) {
       .kernel_resume_eip = (ulong)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_USER_DATA_SEL,
@@ -273,16 +268,49 @@ int setup_usermode_task(pdir_t *pdir,
       .useresp = (ulong)stack_addr,
       .ss = X86_USER_DATA_SEL,
    };
+}
 
+static int NO_INLINE
+setup_usermode_task_first_process(pdir_t *pdir, struct task **ti_ref)
+{
+   struct task *ti;
+   struct process *pi;
+
+   VERIFY(create_new_pid() == 1);
+
+   if (!(ti = allocate_new_process(kernel_process, 1, pdir)))
+      return -ENOMEM;
+
+   pi = ti->pi;
+   pi->pgid = 1;
+   pi->sid = 1;
+   pi->umask = 0022;
+   ti->state = TASK_STATE_RUNNABLE;
+   add_task(ti);
+   memcpy(pi->str_cwd, "/", 2);
+   *ti_ref = ti;
+   return 0;
+}
+
+int setup_usermode_task(pdir_t *pdir,
+                        void *entry,
+                        void *stack_addr,
+                        struct task *ti,
+                        const char *const *argv,
+                        const char *const *env,
+                        struct task **ti_ref)
+{
+   regs_t r;
    int rc = 0;
    u32 argv_elems = 0;
    u32 env_elems = 0;
    pdir_t *old_pdir;
    struct process *pi = NULL;
 
-   *ti_ref = NULL;
-
    ASSERT(!is_preemption_enabled());
+
+   *ti_ref = NULL;
+   setup_usermode_task_regs(&r, entry, stack_addr);
 
    /* Switch to the new page directory (we're going to write on user's stack) */
    old_pdir = get_curr_pdir();
@@ -292,38 +320,23 @@ int setup_usermode_task(pdir_t *pdir,
    while (env[env_elems]) env_elems++;
 
    if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
-      goto out;
+      goto err;
 
    if (UNLIKELY(!ti)) {
 
-      /*
-       * Special case: applies only for `init`, the first process.
-       */
+      /* Special case: applies only for `init`, the first process */
 
-      VERIFY(create_new_pid() == 1);
+      if ((rc = setup_usermode_task_first_process(pdir, &ti)))
+         goto err;
 
-      if (!(ti = allocate_new_process(kernel_process, 1, pdir))) {
-         rc = -ENOMEM;
-         goto out;
-      }
-
+      ASSERT(ti != NULL);
       pi = ti->pi;
-      pi->pgid = 1;
-      pi->sid = 1;
-      pi->umask = 0022;
-      ti->state = TASK_STATE_RUNNABLE;
-      add_task(ti);
-      memcpy(pi->str_cwd, "/", 2);
 
    } else {
 
       /*
        * Common case: we're creating a new process using the data structures
        * and the PID from a forked child (the `ti` task).
-       *
-       * The only things we HAVE TO do in this case is to destroy process's page
-       * directory and free all GDT and LDT entries used by the current (forked)
-       * child since we're creating a totally new process now.
        */
 
       pi = ti->pi;
@@ -350,14 +363,14 @@ int setup_usermode_task(pdir_t *pdir,
    ti->state_regs--;    // make room for a regs_t struct in the stack
    *ti->state_regs = r; // copy the regs_t struct we just prepared
    *ti_ref = ti;
+   return 0;
 
-out:
+err:
+   ASSERT(rc != 0);
 
-   if (UNLIKELY(rc != 0)) {
-      if (old_pdir) {
-         set_curr_pdir(old_pdir);
-         pdir_destroy(pdir);
-      }
+   if (old_pdir) {
+      set_curr_pdir(old_pdir);
+      pdir_destroy(pdir);
    }
 
    return rc;
