@@ -6,9 +6,9 @@
    #error This header can be used only when building for ia32.
 #endif
 
-static ALWAYS_INLINE uptr get_stack_ptr(void)
+static ALWAYS_INLINE ulong get_stack_ptr(void)
 {
-   uptr sp;
+   ulong sp;
 
    asmVolatile("mov %%esp, %0"
                : "=r" (sp)

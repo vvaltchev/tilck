@@ -101,7 +101,7 @@ int cmd_sysenter(int argc, char **argv)
 int cmd_syscall_perf(int argc, char **argv)
 {
    const int iters = 1000;
-   unsigned long long start, duration;
+   ull_t start, duration;
    pid_t uid = getuid();
 
    start = RDTSC();
@@ -210,6 +210,7 @@ int cmd_cloexec(int argc, char **argv)
 {
    int pid;
    int wstatus;
+   const char *devshell_path = get_devshell_path();
 
    if (argc > 0) {
 
@@ -228,7 +229,7 @@ int cmd_cloexec(int argc, char **argv)
    }
 
    if (!pid) {
-      char *argv[] = { DEVSHELL_PATH, "-c", "cloexec", "do_exec", NULL };
+      char *argv[] = { "devshell", "-c", "cloexec", "do_exec", NULL };
 
       int flags = fcntl(2 /* stderr */, F_GETFD);
       int rc = fcntl(2 /* stderr */, F_SETFD, flags | FD_CLOEXEC);
@@ -239,8 +240,8 @@ int cmd_cloexec(int argc, char **argv)
       }
 
       fprintf(stderr, "[forked-child] Stderr works [expected to work]\n");
-      execvpe(DEVSHELL_PATH, argv, shell_env);
-      fprintf(stderr, "execvpe('%s') failed\n", DEVSHELL_PATH);
+      execvpe(devshell_path, argv, shell_env);
+      fprintf(stderr, "execvpe('%s') failed\n", devshell_path);
       exit(1);
    }
 

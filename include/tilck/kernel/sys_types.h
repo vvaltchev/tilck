@@ -52,9 +52,9 @@ struct k_sigaction {
       void (*sigact_handler)(int, void * /* siginfo */, void *);
    };
 
-   uptr sa_flags;
+   ulong sa_flags;
    void (*restorer)(void);
-   uptr sa_mask[K_SIGACTION_MASK_WORDS];
+   ulong sa_mask[K_SIGACTION_MASK_WORDS];
 };
 
 struct k_rusage {
@@ -99,6 +99,10 @@ struct k_rusage {
 
 #ifndef O_NOATIME
    #define O_NOATIME __O_NOATIME
+#endif
+
+#ifndef O_PATH
+   #define O_PATH __O_PATH
 #endif
 
 #define FCNTL_CHANGEABLE_FL (         \

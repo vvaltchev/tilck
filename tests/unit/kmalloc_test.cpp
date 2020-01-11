@@ -488,12 +488,12 @@ TEST_F(kmalloc_test, coalesce_block)
    kmalloc_destroy_heap(&h);
 }
 
-static bool fake_alloc_and_map_func(uptr vaddr, size_t page_count)
+static bool fake_alloc_and_map_func(ulong vaddr, size_t page_count)
 {
    return true;
 }
 
-static void fake_free_and_map_func(uptr vaddr, size_t page_count)
+static void fake_free_and_map_func(ulong vaddr, size_t page_count)
 {
    /* do nothing */
 }
@@ -670,7 +670,7 @@ TEST_F(kmalloc_test, multi_step_free)
 
    size_t actual_size = h.min_block_size * 7;
    per_heap_kfree(&h,
-                  (void *)((uptr)ptr + h.min_block_size * 4),
+                  (void *)((ulong)ptr + h.min_block_size * 4),
                   &actual_size,
                   KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP);
 

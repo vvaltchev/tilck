@@ -50,6 +50,9 @@ struct process {
    bool did_call_execve;
    bool did_set_tty_medium_raw;
 
+   /* This process is a result of vfork(), before any call to execve() */
+   bool vforked;
+
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 
    struct kmutex fslock;                  /* protects `handles` and `cwd` */
@@ -63,8 +66,8 @@ struct process {
    fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
-   uptr sa_mask[K_SIGACTION_MASK_WORDS];
-   uptr sa_flags;
+   ulong sa_mask[K_SIGACTION_MASK_WORDS];
+   ulong sa_flags;
 };
 
 struct misc_buf {
@@ -86,11 +89,11 @@ struct task {
       /*
        * For the moment, `tid` has everywhere `int` as type, while the field is
        * used as key with the bintree_*_int functions which use pointer-sized
-       * integers. Therefore, in case sizeof(sptr) > sizeof(int), we need some
+       * integers. Therefore, in case sizeof(long) > sizeof(int), we need some
        * padding.
        */
 
-      uptr padding_0;
+      ulong padding_0;
    };
 
    struct process *pi;
@@ -100,6 +103,33 @@ struct task {
    bool stopped;
    bool was_stopped;
 
+   /*
+    * Technically `state` is just 1 byte wide and should be enough on all the
+    * architectures to guarantee its simple atomicity (not sequential
+    * consistency!!), the only thing we need in non-SMP kernels. BUT, it is
+    * marked as ATOMIC here for consistency, as in interrupt context this member
+    * might be checked and changed (see the tasklet subsystem).
+    *
+    * If, in the future `state` will need to become wider than just 1 single
+    * byte, then even getting a plain atomicity would require ATOMIC(x) on some
+    * architectures, while on i386 and x86_64 it won't make a difference.
+    * Therefore, marking it ATOMIC at the moment is more about semantic than
+    * anything else, but in the future it will be actually needed.
+    *
+    * NOTE: the following implications are *not* true:
+    *
+    *    volatile -> atomic
+    *    atomic -> volatile
+    *
+    * The field needs to be also volatile because its value is read in loops
+    * expecting it to change as some point (see sys_waitpid()). Theoretically,
+    * in case of consecutive atomic loads, the compiler is _not_ obliged to
+    * do every time an actual read and it might cache the value in a register,
+    * according to the C11 atomic model. In practice with GCC this can happen
+    * only with relaxed atomics (the ones used in Tilck), at best of my
+    * knowledge, but it is still good write C11 compliant code, instead of
+    * relying on the current behavior.
+    */
    volatile ATOMIC(enum task_state) state;
 
    regs_t *state_regs;
@@ -138,6 +168,12 @@ struct task {
 
    /* Temp kernel allocations for user requests */
    struct kernel_alloc *kallocs_tree_root;
+
+   /* This task is stopped because of its vfork-ed child */
+   bool vfork_stopped;
+
+   /* Trace the syscalls of this task (requires debugpanel) */
+   bool traced;
 
    /*
     * For kernel threads, this is a function pointer of the thread's entry
@@ -214,6 +250,8 @@ enum wakeup_reason {
    task_continued,
 };
 
+int do_fork(bool vfork);
+void handle_vforked_child_move_on(struct process *pi);
 int first_execve(const char *abs_path, const char *const *argv);
 int setup_usermode_task(pdir_t *pdir,
                         void *entry,

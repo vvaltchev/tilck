@@ -73,6 +73,8 @@ instantiate_uitoa_hex_fixed(uitoa64_hex_fixed, 64)
 
 instantiate_uitoa(uitoa32_dec, 32, 10)
 instantiate_uitoa(uitoa64_dec, 64, 10)
+instantiate_uitoa(uitoa32_oct, 32, 8)
+instantiate_uitoa(uitoa64_oct, 64, 8)
 instantiate_uitoa(uitoa32_hex, 32, 16)
 instantiate_uitoa(uitoa64_hex, 64, 16)
 

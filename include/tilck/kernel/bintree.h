@@ -3,7 +3,6 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #define MAX_TREE_HEIGHT       32
 
@@ -15,7 +14,11 @@ struct bintree_node {
 
 static inline void bintree_node_init(struct bintree_node *node)
 {
-   bzero(node, sizeof(struct bintree_node));
+   *node = (struct bintree_node) {
+      .left_obj = NULL,
+      .right_obj = NULL,
+      .height = 0,
+   };
 }
 
 #include <tilck/common/norec.h>

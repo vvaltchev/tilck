@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/errno.h>
@@ -212,14 +211,14 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
 
       /* No chtask has been found */
 
-      if (options & WNOHANG) {
-         /* With WNOHANG we must not hang until a child changes state */
-         return 0;
-      }
-
       if (!child_count) {
          /* No children to wait for */
          return -ECHILD;
+      }
+
+      if (options & WNOHANG) {
+         /* With WNOHANG we must not hang until a child changes state */
+         return 0;
       }
 
       /* Hang until a child changes state */

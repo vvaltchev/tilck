@@ -11,7 +11,7 @@ process_add_user_mapping(fs_handle h,
                          size_t off,
                          int prot)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    struct user_mapping *um;
 
    ASSERT((len & OFFSET_IN_PAGE_MASK) == 0);
@@ -48,8 +48,8 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
 {
    ASSERT(!is_preemption_enabled());
 
-   uptr vaddr = (uptr)vaddrp;
-   struct process *pi = get_curr_task()->pi;
+   ulong vaddr = (ulong)vaddrp;
+   struct process *pi = get_curr_proc();
    struct user_mapping *pos;
 
    list_for_each_ro(pos, &pi->mappings, pi_node) {
@@ -105,10 +105,23 @@ void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
    process_remove_user_mapping(um);
 }
 
-void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
+void remove_all_file_mappings(struct process *pi)
+{
+   fs_handle *h;
+
+   for (u32 i = 0; i < MAX_HANDLES; i++) {
+
+      if (!(h = pi->handles[i]))
+         continue;
+
+      remove_all_mappings_of_handle(pi, h);
+   }
+}
+
+void user_vfree_and_unmap(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
-   uptr va = user_vaddr;
+   ulong va = user_vaddr;
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
 
@@ -119,10 +132,10 @@ void user_vfree_and_unmap(uptr user_vaddr, size_t page_count)
    }
 }
 
-bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
+bool user_valloc_and_map_slow(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
-   uptr pa, va = user_vaddr;
+   ulong pa, va = user_vaddr;
    void *kernel_vaddr;
 
    for (size_t i = 0; i < page_count; i++, va += PAGE_SIZE) {
@@ -149,7 +162,7 @@ bool user_valloc_and_map_slow(uptr user_vaddr, size_t page_count)
    return true;
 }
 
-bool user_valloc_and_map(uptr user_vaddr, size_t page_count)
+bool user_valloc_and_map(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
    size_t size = (size_t)page_count << PAGE_SHIFT;
@@ -181,13 +194,13 @@ bool user_valloc_and_map(uptr user_vaddr, size_t page_count)
    return true;
 }
 
-void user_unmap_zero_page(uptr user_vaddr, size_t page_count)
+void user_unmap_zero_page(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
    unmap_pages(pdir, (void *)user_vaddr, page_count, true);
 }
 
-bool user_map_zero_page(uptr user_vaddr, size_t page_count)
+bool user_map_zero_page(ulong user_vaddr, size_t page_count)
 {
    pdir_t *pdir = get_curr_pdir();
    size_t count =

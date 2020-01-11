@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>
@@ -29,6 +28,30 @@ static int runnable_tasks_count;
 static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 static struct task *idle_task;
+
+int
+get_traced_tasks_count(void)
+{
+   struct bintree_walk_ctx ctx;
+   struct task *ti;
+   int count = 0;
+
+   disable_preemption();
+   {
+      bintree_in_order_visit_start(&ctx,
+                                   tree_by_tid_root,
+                                   struct task,
+                                   tree_by_tid_node,
+                                   false);
+
+      while ((ti = bintree_in_order_visit_next(&ctx))) {
+         if (ti->traced)
+            count++;
+      }
+   }
+   enable_preemption();
+   return count;
+}
 
 int sched_count_proc_in_group(int pgid)
 {
@@ -454,7 +477,7 @@ static void task_remove_from_state_list(struct task *ti)
 
 void task_change_state(struct task *ti, enum task_state new_state)
 {
-   uptr var;
+   ulong var;
    ASSERT(ti->state != new_state);
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
    DEBUG_ONLY(check_in_no_other_irq_than_timer());
@@ -584,12 +607,13 @@ void schedule(int curr_int)
       selected = idle_task;
    }
 
+   ASSERT(!selected->stopped);
    switch_to_task(selected, curr_int);
 }
 
 struct task *get_task(int tid)
 {
-   sptr ltid = tid;
+   long ltid = tid;
    struct task *res = NULL;
    ASSERT(!is_preemption_enabled());
 

@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/irq.h>
@@ -12,11 +14,18 @@
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/mods/tracing.h>
 
-typedef sptr (*syscall_type)();
+#include "idt_int.h"
+
+void syscall_int80_entry(void);
+void sysenter_entry(void);
+void asm_sysenter_setup(void);
+
+typedef long (*syscall_type)();
 
 // The syscall numbers are ARCH-dependent
-static void *syscalls[] =
+static void *syscalls[MAX_SYSCALLS] =
 {
    [0] = sys_restart_syscall,
    [1] = sys_exit,
@@ -139,7 +148,7 @@ static void *syscalls[] =
    [118] = sys_fsync,
    [119] = sys_sigreturn,
    [120] = sys_clone,
-   [121] = sys_setsetdomainname,
+   [121] = sys_setdomainname,
    [122] = sys_newuname,
    [123] = sys_modify_ldt,
    [124] = sys_adjtimex,
@@ -360,9 +369,31 @@ static void *syscalls[] =
    [TILCK_CMD_SYSCALL] = sys_tilck_cmd,
 };
 
+void *get_syscall_func_ptr(u32 n)
+{
+   if (n >= ARRAY_SIZE(syscalls))
+      return NULL;
+
+   return syscalls[n];
+}
+
+int get_syscall_num(void *func)
+{
+   if (!func)
+      return -1;
+
+   for (int i = 0; i < (int)ARRAY_SIZE(syscalls); i++)
+      if (syscalls[i] == func)
+         return i;
+
+   return -1;
+}
+
 void handle_syscall(regs_t *r)
 {
-   ASSERT(get_curr_task() != NULL);
+   struct task *const curr = get_curr_task();
+   const bool traced = curr->traced;
+
    DEBUG_VALIDATE_STACK_PTR();
 
    /*
@@ -379,7 +410,7 @@ void handle_syscall(regs_t *r)
 
    if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
       printk("Unknown syscall #%i\n", sn);
-      r->eax = (uptr) -ENOSYS;
+      r->eax = (ulong) -ENOSYS;
       return;
    }
 
@@ -387,19 +418,19 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
+      if (traced)
+         trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
       *(void **)(&fptr) = syscalls[sn];
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
+      if (traced)
+         trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();
    set_current_task_in_user_mode();
 }
-
-#include "idt_int.h"
-
-void syscall_int80_entry(void);
-void sysenter_entry(void);
-void asm_sysenter_setup(void);
 
 void init_syscall_interfaces(void)
 {
@@ -411,7 +442,7 @@ void init_syscall_interfaces(void)
 
    /* Setup the sysenter interface */
    wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
-   wrmsr(MSR_IA32_SYSENTER_EIP, (uptr) &sysenter_entry);
+   wrmsr(MSR_IA32_SYSENTER_EIP, (ulong) &sysenter_entry);
 
    asm_sysenter_setup();
 }

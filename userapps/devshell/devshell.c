@@ -286,6 +286,21 @@ static void parse_opt(int argc, char **argv)
    }
 }
 
+const char *get_devshell_path(void)
+{
+   if (!getenv("TILCK")) {
+
+      /*
+       * When running this test on Linux, we cannot expect to find the devshell
+       * in the same abs path (/initrd/...) as on Tilck.
+       */
+
+      return "/proc/self/exe";
+   }
+
+   return DEVSHELL_PATH;
+}
+
 int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];

@@ -6,9 +6,9 @@
    #error This header can be used only when building for x86_64.
 #endif
 
-static ALWAYS_INLINE uptr get_stack_ptr(void)
+static ALWAYS_INLINE ulong get_stack_ptr(void)
 {
-   uptr sp;
+   ulong sp;
 
    asmVolatile("mov %%rsp, %0"
                : "=r" (sp)

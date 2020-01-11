@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/irq.h>
@@ -89,8 +89,8 @@ void simple_test_kthread(void *arg)
 {
    u32 i;
 #if !defined(NDEBUG) && !defined(RELEASE)
-   uptr esp;
-   uptr saved_esp = get_stack_ptr();
+   ulong esp;
+   ulong saved_esp = get_stack_ptr();
 #endif
 
    printk("[kthread] This is a kernel thread, arg = %p\n", arg);

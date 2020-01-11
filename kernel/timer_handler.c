@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 #include <tilck/common/atomics.h>
 
 #include <tilck/kernel/process.h>
@@ -29,7 +28,7 @@ static struct list timer_wakeup_list = make_list(timer_wakeup_list);
 u64 get_ticks(void)
 {
    u64 curr_ticks;
-   uptr var;
+   ulong var;
 
    disable_interrupts(&var);
    {
@@ -41,7 +40,7 @@ u64 get_ticks(void)
 
 void task_set_wakeup_timer(struct task *ti, u32 ticks)
 {
-   uptr var;
+   ulong var;
    ASSERT(ticks > 0);
 
    disable_interrupts(&var);
@@ -60,7 +59,7 @@ void task_set_wakeup_timer(struct task *ti, u32 ticks)
 
 void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
 {
-   uptr var;
+   ulong var;
    ASSERT(new_ticks > 0);
 
    disable_interrupts(&var);
@@ -75,7 +74,7 @@ void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks)
 
 u32 task_cancel_wakeup_timer(struct task *ti)
 {
-   uptr var;
+   ulong var;
    u32 old;
    disable_interrupts(&var);
    {
@@ -94,7 +93,7 @@ static struct task *tick_all_timers(void)
 {
    struct task *pos, *temp;
    struct task *last_ready_task = NULL;
-   uptr var;
+   ulong var;
 
    /*
     * This is *NOT* the best we can do. In particular, it's terrible to keep
@@ -237,7 +236,7 @@ static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
 
 #if defined(DEBUG) && KRN_TRACK_NESTED_INTERR
    {
-      uptr var;
+      ulong var;
       disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
       int c = get_nested_interrupts_count();
       ASSERT(c == 1 || (c == 2 && in_syscall()));
@@ -251,7 +250,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
 
 #if KRN_TRACK_NESTED_INTERR
 
-   uptr var;
+   ulong var;
    disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
 
    if (in_nested_irq_num(X86_PC_TIMER_IRQ)) {

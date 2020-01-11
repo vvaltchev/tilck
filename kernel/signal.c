@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
@@ -29,21 +30,22 @@ static void action_stop(struct task *ti, int signum)
 
    if (ti == get_curr_task()) {
       enable_preemption();
-      schedule_outside_interrupt_context();
+      kernel_yield();
    }
 }
 
 static void action_continue(struct task *ti, int signum)
 {
+   if (ti->vfork_stopped)
+      return;
+
    ti->stopped = false;
    ti->wstatus = CONTINUED;
    wake_up_tasks_waiting_on(ti, task_continued);
 }
 
-static const action_type signal_default_actions[32] =
+static const action_type signal_default_actions[_NSIG] =
 {
-   [0] = action_ignore,
-
    [SIGHUP] = action_terminate,
    [SIGINT] = action_terminate,
    [SIGQUIT] = action_terminate,
@@ -102,6 +104,9 @@ static void do_send_signal(struct task *ti, int signum)
       signal_default_actions[signum] != NULL
          ? signal_default_actions[signum]
          : action_terminate;
+
+   if (!action_func)
+      return; /* unknown signal, just do nothing */
 
    action_func(ti, signum);
 }
@@ -174,7 +179,7 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
    return 0;
 }
 
-sptr
+int
 sys_rt_sigaction(int signum,
                  const struct k_sigaction *user_act,
                  struct k_sigaction *user_oldact,
@@ -217,10 +222,10 @@ sys_rt_sigaction(int signum,
          rc = -EFAULT;
    }
 
-   return (sptr)rc;
+   return rc;
 }
 
-sptr
+int
 sys_rt_sigprocmask(int how,
                    sigset_t *set,
                    sigset_t *oset,
@@ -231,12 +236,12 @@ sys_rt_sigprocmask(int how,
    return 0;
 }
 
-int sys_sigprocmask(uptr a1, uptr a2, uptr a3)
+int sys_sigprocmask(ulong a1, ulong a2, ulong a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }
 
-int sys_sigaction(uptr a1, uptr a2, uptr a3)
+int sys_sigaction(ulong a1, ulong a2, ulong a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }

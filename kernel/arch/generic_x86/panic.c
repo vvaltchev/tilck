@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/atomics.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 
@@ -14,6 +14,9 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/fault_resumable.h>
+
+volatile bool __in_panic;
+volatile bool __in_double_fault;
 
 void init_console(void);         /* defined in main.c */
 void panic_save_current_state(); /* defined in kernel_yield.S */
@@ -68,7 +71,7 @@ static void panic_print_task_info(struct task *curr)
 
       } else {
 
-         str = find_sym_at_addr_safe((uptr)curr->what, NULL, NULL);
+         str = find_sym_at_addr_safe((ulong)curr->what, NULL, NULL);
          printk("Current task [KERNEL]: tid: %i [%s]\n",
                 curr->tid, str ? str : "???");
       }
@@ -82,7 +85,7 @@ NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
 
-   uptr rc;
+   ulong rc;
    va_list args;
    struct task *curr;
 

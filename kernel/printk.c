@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
 #include <tilck/common/atomics.h>
 
@@ -9,6 +10,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/datetime.h>
 
 #define PRINTK_COLOR                          COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR            COLOR_CYAN
@@ -177,6 +179,9 @@ switch_case:
             } else if (*fmt == 'x') {
                uitoa64_hex_fixed(va_arg(args, u64), intbuf);
                WRITE_STR(intbuf);
+            } else if (*fmt == 'o') {
+               uitoa64_oct(va_arg(args, u64), intbuf);
+               WRITE_STR(intbuf);
             }
 
          }
@@ -190,6 +195,11 @@ switch_case:
 
       case 'u':
          uitoa32_dec(va_arg(args, u32), intbuf);
+         WRITE_STR(intbuf);
+         break;
+
+      case 'o':
+         uitoa32_oct(va_arg(args, u32), intbuf);
          WRITE_STR(intbuf);
          break;
 
@@ -214,11 +224,13 @@ switch_case:
 
       case 'p':
 
-#if NBITS == 32
-            uitoa32_hex_fixed(va_arg(args, uptr), intbuf);
-#elif NBITS == 64
-            uitoa64_hex_fixed(va_arg(args, uptr), intbuf);
-#endif
+         if (NBITS == 32)
+            uitoa32_hex_fixed(va_arg(args, ulong), intbuf);
+         else if (NBITS == 64)
+            uitoa64_hex_fixed(va_arg(args, ulong), intbuf);
+         else
+            NOT_REACHED();
+
          WRITE_STR("0x");
          WRITE_STR(intbuf);
          break;
@@ -398,8 +410,16 @@ void vprintk(const char *fmt, va_list args)
          prefix = false;
    }
 
-   if (prefix)
-      written = snprintk(buf, sizeof(buf), "[kernel] ");
+   if (prefix) {
+
+      const u64 systime = get_sys_time();
+
+      written = snprintk(
+         buf, sizeof(buf), "[%5u.%03u] ",
+         (u32)(systime / TS_SCALE),
+         (u32)((systime % TS_SCALE) / (TS_SCALE / 1000))
+      );
+   }
 
    written += vsnprintk(buf + written, sizeof(buf) - (u32)written, fmt, args);
 

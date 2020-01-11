@@ -76,7 +76,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa32_hex_fixed(va_arg(args, uptr), buf);
+         uitoa32_hex_fixed(va_arg(args, ulong), buf);
          print_string("0x");
          print_string(buf);
          break;

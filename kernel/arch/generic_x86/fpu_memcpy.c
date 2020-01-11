@@ -195,7 +195,7 @@ simple_hot_patch(void *dest, void *func, size_t max_size)
       ptrdiff_t offset;
       u32 size;
 
-      func_name = find_sym_at_addr((uptr)func, &offset, &size);
+      func_name = find_sym_at_addr((ulong)func, &offset, &size);
       init_fpu_memcpy_internal_check(func, func_name, size);
       memcpy(dest, func, size);
 

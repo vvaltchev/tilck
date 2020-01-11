@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static int ramfs_ioctl(fs_handle h, uptr cmd, void *argp)
+static int ramfs_ioctl(fs_handle h, ulong cmd, void *argp)
 {
    return -EINVAL;
 }
@@ -155,7 +155,7 @@ static void ramfs_unmap_past_eof_mappings(struct ramfs_inode *i, size_t len)
 {
    const size_t rlen = pow2_round_up_at(len, PAGE_SIZE);
    struct user_mapping *um;
-   uptr va;
+   ulong va;
    ASSERT(!is_preemption_enabled());
 
    list_for_each_ro(um, &i->mappings_list, inode_node) {
@@ -163,8 +163,8 @@ static void ramfs_unmap_past_eof_mappings(struct ramfs_inode *i, size_t len)
       if (um->off + um->len <= rlen)
          continue;
 
-      const uptr voff = rlen >= um->off ? rlen - um->off : 0;
-      const uptr vend = um->vaddr + um->len;
+      const ulong voff = rlen >= um->off ? rlen - um->off : 0;
+      const ulong vend = um->vaddr + um->len;
 
       for (va = um->vaddr + voff; va < vend; va += PAGE_SIZE) {
          unmap_page_permissive(um->pi->pdir, (void *)va, false);
@@ -220,7 +220,7 @@ static int ramfs_inode_truncate(struct ramfs_inode *i, offt len)
    }
 
    i->fsize = len;
-   i->blocks_count = pow2_round_up_at((uptr) len, PAGE_SIZE);
+   i->blocks_count = pow2_round_up_at((ulong) len, PAGE_SIZE);
    return 0;
 }
 

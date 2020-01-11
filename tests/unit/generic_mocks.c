@@ -12,6 +12,8 @@ u32 spur_irq_count;
 u32 unhandled_irq_count[256];
 
 bool suppress_printk;
+volatile bool __in_panic;
+void *__kernel_pdir;
 
 void panic(const char *fmt, ...)
 {
@@ -111,3 +113,6 @@ int get_int_num(void *ctx) { return -1; }
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }
 void on_first_pdir_update(void) { }
+
+void *get_syscall_func_ptr(u32 n) { return NULL; }
+int get_syscall_num(void *func) { return -1; }

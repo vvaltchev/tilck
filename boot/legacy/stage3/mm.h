@@ -35,10 +35,10 @@ void poison_usable_memory(struct mem_info *mi);
  * Get the first usable memory area of size `size` with address >= `min_paddr`.
  * Returns `0` in case of failure.
  */
-uptr get_usable_mem(struct mem_info *mi, uptr min_paddr, uptr size);
+ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size);
 
 /* Wrapper of get_usable_mem() which triggers PANIC instead of returning 0 */
-uptr get_usable_mem_or_panic(struct mem_info *mi, uptr min_paddr, uptr size);
+ulong get_usable_mem_or_panic(struct mem_info *mi, ulong min_paddr, ulong size);
 
 static inline u32 bios_to_multiboot_mem_region(u32 bios_mem_type)
 {

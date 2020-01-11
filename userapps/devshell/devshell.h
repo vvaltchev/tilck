@@ -10,6 +10,8 @@
 #include <tilck/common/syscalls.h>
 #include "sysenter.h"
 
+typedef unsigned long long ull_t;
+
 /* configuration */
 #define MAX_ARGS 16
 #define FORK_TEST_ITERS (250 * MB)
@@ -59,6 +61,7 @@ void dump_list_of_commands_and_exit(void);
 int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
 void show_common_help_intro(void);
+const char *get_devshell_path(void);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

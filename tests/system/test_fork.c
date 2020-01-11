@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -86,7 +87,7 @@ int cmd_fork_perf(int argc, char **argv)
 {
    const int iters = 150000;
    int rc, wstatus, child_pid;
-   unsigned long long start, duration;
+   ull_t start, duration;
 
    start = RDTSC();
 
@@ -123,4 +124,60 @@ int cmd_fork_perf(int argc, char **argv)
 int cmd_fork_se(int argc, char **argv)
 {
    return fork_test(&sysenter_fork);
+}
+
+int cmd_execve0(int argc, char **argv)
+{
+   int rc, pid, wstatus;
+   char buf[32];
+   const char *devshell_path = get_devshell_path();
+
+   if (argc >= 2 && !strcmp(argv[0], "--test1")) {
+
+      printf("[execve child] Trying to access mapped mem before fork\n");
+      ulong val = strtoul(argv[1], NULL, 16);
+      void *ptr = (void *)val;
+      strcpy(ptr, "hello world\n");
+      printf("[execve child] Something's wrong: I succeeded!\n");
+      return 0;
+   }
+
+   printf("[parent] Calling fork()...\n");
+   pid = fork();
+   DEVSHELL_CMD_ASSERT(pid >= 0);
+
+   if (!pid) {
+
+      printf("[child] alloc 1 MB with mmap()\n");
+
+      void *res = mmap(NULL,
+                       1 * MB,
+                       PROT_READ | PROT_WRITE,
+                       MAP_ANONYMOUS | MAP_PRIVATE,
+                       -1,
+                       0);
+
+      DEVSHELL_CMD_ASSERT(res != (void *)-1);
+      strcpy(res, "I can write here, for sure!");
+
+      sprintf(buf, "%p", res);
+      printf("[child] call execve(devshell)\n");
+      execl(devshell_path, "devshell", "-c", "execve0", "--test1", buf, NULL);
+      perror("execl");
+      exit(123);
+   }
+
+   printf("[parent] Wait for child, expecting it killed by SIGSEGV\n");
+
+   rc = waitpid(pid, &wstatus, 0);
+   DEVSHELL_CMD_ASSERT(rc == pid);
+
+   if (WIFEXITED(wstatus))
+      printf("[parent] child exited with: %d\n", WEXITSTATUS(wstatus));
+   else if (WIFSIGNALED(wstatus))
+      printf("[parent] child terminated by sig: %d\n", WTERMSIG(wstatus));
+
+   DEVSHELL_CMD_ASSERT(WIFSIGNALED(wstatus));
+   DEVSHELL_CMD_ASSERT(WTERMSIG(wstatus) == SIGSEGV);
+   return 0;
 }

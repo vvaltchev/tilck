@@ -12,6 +12,8 @@
 #include "termutil.h"
 #include "dp_int.h"
 
+#define CHUNKS_ARR_BUF_SIZE                              (16 * KB)
+
 struct chunk_info {
 
    size_t size;
@@ -24,35 +26,36 @@ static struct debug_kmalloc_stats stats;
 static u64 lf_allocs;
 static u64 lf_waste;
 static size_t chunks_count;
-static struct chunk_info chunks_arr[1024];
+static struct chunk_info *chunks_arr;
+static size_t chunks_max_count;
 static char chunks_order_by;
 
-static sptr dp_chunks_cmpf_size(const void *a, const void *b)
+static long dp_chunks_cmpf_size(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->size - (sptr)x->size;
+   return (long)y->size - (long)x->size;
 }
 
-static sptr dp_chunks_cmpf_count(const void *a, const void *b)
+static long dp_chunks_cmpf_count(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->count - (sptr)x->count;
+   return (long)y->count - (long)x->count;
 }
 
-static sptr dp_chunks_cmpf_waste(const void *a, const void *b)
+static long dp_chunks_cmpf_waste(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->max_waste - (sptr)x->max_waste;
+   return (long)y->max_waste - (long)x->max_waste;
 }
 
-static sptr dp_chunks_cmpf_waste_p(const void *a, const void *b)
+static long dp_chunks_cmpf_waste_p(const void *a, const void *b)
 {
    const struct chunk_info *x = a;
    const struct chunk_info *y = b;
-   return (sptr)y->max_waste_p - (sptr)x->max_waste_p;
+   return (long)y->max_waste_p - (long)x->max_waste_p;
 }
 
 static void dp_chunks_enter(void)
@@ -62,6 +65,24 @@ static void dp_chunks_enter(void)
 
    if (!KMALLOC_HEAVY_STATS)
       return;
+
+   if (!chunks_arr) {
+
+      size_t chunks_buf_sz = CHUNKS_ARR_BUF_SIZE;
+
+      for (int i = 0; i < 4; i++) {
+
+         if ((chunks_arr = kzmalloc(chunks_buf_sz)))
+            break;
+
+         chunks_buf_sz /= 2;
+      }
+
+      if (!chunks_arr)
+         panic("Unable to alloc memory for chunks_arr");
+
+      chunks_max_count = chunks_buf_sz / sizeof(struct chunk_info);
+   }
 
    debug_kmalloc_get_stats(&stats);
    lf_allocs = 0;
@@ -74,7 +95,7 @@ static void dp_chunks_enter(void)
       debug_kmalloc_chunks_stats_start_read(&ctx);
       while (debug_kmalloc_chunks_stats_next(&ctx, &s, &c)) {
 
-         if (chunks_count == ARRAY_SIZE(chunks_arr))
+         if (chunks_count == chunks_max_count)
             break;
 
          const u64 waste = (u64)(
@@ -173,10 +194,10 @@ static void dp_show_chunks(void)
 
    dp_writeln(
       "Order by: "
-      ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS "ize, "
-      ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS "ount, "
-      ESC_COLOR_BRIGHT_WHITE "w" RESET_ATTRS "aste, "
-      "was" ESC_COLOR_BRIGHT_WHITE "t" RESET_ATTRS "e (%%)"
+      E_COLOR_BR_WHITE "s" RESET_ATTRS "ize, "
+      E_COLOR_BR_WHITE "c" RESET_ATTRS "ount, "
+      E_COLOR_BR_WHITE "w" RESET_ATTRS "aste, "
+      "was" E_COLOR_BR_WHITE "t" RESET_ATTRS "e (%%)"
    );
 
    dp_writeln("");
@@ -186,10 +207,10 @@ static void dp_show_chunks(void)
       TERM_VLINE "%s" "  Count  "         RESET_ATTRS
       TERM_VLINE "%s" " Max waste "       RESET_ATTRS
       TERM_VLINE "%s" " Max waste (%%)"   RESET_ATTRS,
-      chunks_order_by == 's' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 'c' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 'w' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : "",
-      chunks_order_by == 't' ? ESC_COLOR_BRIGHT_WHITE REVERSE_VIDEO : ""
+      chunks_order_by == 's' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'c' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 'w' ? E_COLOR_BR_WHITE REVERSE_VIDEO : "",
+      chunks_order_by == 't' ? E_COLOR_BR_WHITE REVERSE_VIDEO : ""
    );
 
    dp_writeln(

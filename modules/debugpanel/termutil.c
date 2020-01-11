@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
+
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/tty_struct.h>
@@ -10,14 +11,14 @@
 
 static bool rev_colors;
 
-static void dp_write_internal(const char *buf, int len)
+void dp_write_raw_int(const char *buf, int len)
 {
    struct tty *t = get_curr_process_tty();
 
-   if (t->tparams.type == term_type_video)
-      term_write(buf, (size_t)len, !rev_colors ? DP_COLOR : DP_REV_COLOR);
-   else
-      t->tintf->write(t->tstate, buf, (size_t)len, 0);
+   t->tintf->write(t->tstate,
+                   buf,
+                   (size_t)len,
+                   !rev_colors ? DP_COLOR : DP_REV_COLOR);
 }
 
 void dp_write_raw(const char *fmt, ...)
@@ -30,7 +31,7 @@ void dp_write_raw(const char *fmt, ...)
    rc = vsnprintk(buf, sizeof(buf), fmt, args);
    va_end(args);
 
-   dp_write_internal(buf, rc);
+   dp_write_raw_int(buf, rc);
 }
 
 void dp_reverse_colors(void)
@@ -115,7 +116,7 @@ void dp_write(int row, int col, const char *fmt, ...)
       col = dp_start_col + 2;
 
    dp_move_cursor(row, col);
-   dp_write_internal(buf, rc);
+   dp_write_raw_int(buf, rc);
 }
 
 void dp_draw_rect_raw(int row, int col, int h, int w)
@@ -153,7 +154,12 @@ void dp_draw_rect_raw(int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 }
 
-void dp_draw_rect(const char *label, int row, int col, int h, int w)
+void dp_draw_rect(const char *label,
+                  const char *esc_label_color,
+                  int row,
+                  int col,
+                  int h,
+                  int w)
 {
    ASSERT(w >= 2);
    ASSERT(h >= 2);
@@ -182,6 +188,38 @@ void dp_draw_rect(const char *label, int row, int col, int h, int w)
    dp_write_raw(GFX_OFF);
 
    if (label) {
-      dp_write(row, col + 2, ESC_COLOR_GREEN "[ %s ]" RESET_ATTRS, label);
+      dp_write(row, col + 2, "%s[ %s ]" RESET_ATTRS, esc_label_color, label);
    }
+}
+
+void dp_show_modal_msg(const char *msg)
+{
+   static const char common_msg[] = "Press ANY key to continue";
+   const int max_line_len = DP_W - 2 - 2 - 2;
+   const int msg_len = (int)strlen(msg);
+   const int row_len = UNSAFE_MAX(
+      UNSAFE_MIN(max_line_len, msg_len), (int)sizeof(common_msg) - 1
+   ) + 2;
+   const int srow = dp_start_row + DP_H / 2 - 5 / 2;
+   const int scol = dp_cols / 2 - row_len / 2;
+
+   char buf[DP_W+1];
+   ASSERT(msg_len <= max_line_len); /* for the moment, no multi-line */
+   memset(buf, ' ', sizeof(buf) - 1);
+   buf[row_len] = 0;
+
+   /* Clear the area around the message box */
+   for (int i = 0; i < 3; i++)
+      dp_write(srow + i, scol, "%s", buf);
+
+   /* Draw the rect */
+   dp_draw_rect("Alert", E_COLOR_BR_RED, srow - 1, scol - 1, 5, row_len + 2);
+
+   /* Draw the actual alert message */
+   dp_write(srow, scol, " %s", msg);
+
+   dp_write(srow + 2,
+            dp_cols / 2 - ((int)sizeof(common_msg)-1) / 2,
+            E_COLOR_YELLOW "%s" RESET_ATTRS,
+            common_msg);
 }

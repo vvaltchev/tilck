@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/elf_utils.h>
@@ -54,7 +55,7 @@ parse_arg_state_set_selftest(int arg_num, const char *arg, size_t arg_len)
    char buf[256] = SELFTEST_PREFIX;
    memcpy(buf + sizeof(SELFTEST_PREFIX) - 1, arg, arg_len + 1);
 
-   uptr addr = find_addr_of_symbol(buf);
+   ulong addr = find_addr_of_symbol(buf);
 
    if (!addr) {
       printk("*******************************************************\n");

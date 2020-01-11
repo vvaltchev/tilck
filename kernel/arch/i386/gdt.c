@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
@@ -48,8 +49,8 @@ static void load_gdt(struct gdt_entry *gdt, u32 entries_count);
 
 void
 gdt_set_entry(struct gdt_entry *e,
-              uptr base,
-              uptr limit,
+              ulong base,
+              ulong limit,
               u8 access,
               u8 flags)
 {
@@ -59,7 +60,7 @@ gdt_set_entry(struct gdt_entry *e,
     * later passed as argument to set_entry_num().
     */
 
-   ASSERT(!((uptr)gdt <= (uptr)e && (uptr)e < ((uptr)gdt + gdt_size)));
+   ASSERT(!((ulong)gdt <= (ulong)e && (ulong)e < ((ulong)gdt + gdt_size)));
 
    ASSERT(limit <= GDT_LIMIT_MAX); /* limit is only 20 bits */
    ASSERT(flags <= 0xf); /* flags is 4 bits */
@@ -78,7 +79,7 @@ gdt_set_entry(struct gdt_entry *e,
 static void
 set_entry_num(u32 n, struct gdt_entry *e)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       ASSERT(n < gdt_size);
@@ -92,7 +93,7 @@ set_entry_num(u32 n, struct gdt_entry *e)
 
 void gdt_clear_entry(u32 n)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       ASSERT(n < gdt_size);
@@ -107,7 +108,7 @@ void gdt_clear_entry(u32 n)
 
 void gdt_entry_inc_ref_count(u32 n)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       ASSERT(n < gdt_size);
@@ -121,8 +122,8 @@ void gdt_entry_inc_ref_count(u32 n)
 
 static void
 set_entry_num2(u32 n,
-               uptr base,
-               uptr limit,
+               ulong base,
+               ulong limit,
                u8 access,
                u8 flags)
 {
@@ -133,7 +134,7 @@ set_entry_num2(u32 n,
 
 static NODISCARD int gdt_expand(void)
 {
-   uptr var;
+   ulong var;
    void *old_gdt_ptr;
    void *old_gdt_refcount_ptr;
    u32 old_gdt_size;
@@ -215,7 +216,7 @@ static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
    struct gdt_entry e;
 
    gdt_set_entry(&e,
-                 (uptr) ldt_ptr,
+                 (ulong) ldt_ptr,
                  size,
                  GDT_DESC_TYPE_LDT,
                  GDT_GRAN_BYTE | GDT_32BIT);
@@ -223,9 +224,9 @@ static int gdt_add_ldt_entry(void *ldt_ptr, u32 size)
    return gdt_add_entry(&e);
 }
 
-void set_kernel_stack(u32 stack)
+void set_kernel_stack(ulong stack)
 {
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       /* Kernel stack segment = data seg */
@@ -312,7 +313,7 @@ void init_segmentation(void)
 
    /* GDT entry for our TSS */
    set_entry_num2(5,
-                  (uptr)&tss_array[TSS_MAIN],  /* TSS addr */
+                  (ulong)&tss_array[TSS_MAIN],  /* TSS addr */
                   sizeof(tss_array[TSS_MAIN]), /* limit: struct TSS size */
                   GDT_DESC_TYPE_TSS,
                   GDT_GRAN_BYTE | GDT_32BIT);

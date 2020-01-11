@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/hal.h>
@@ -230,7 +229,7 @@ int sys_write(int fd, const void *u_buf, size_t count)
    return (int)vfs_write(h, (char *)curr->io_copybuf, count);
 }
 
-int sys_ioctl(int fd, uptr request, void *argp)
+int sys_ioctl(int fd, ulong request, void *argp)
 {
    fs_handle handle = get_fs_handle(fd);
 
@@ -487,7 +486,7 @@ int sys_getdents64(int fd, struct linux_dirent64 *u_dirp, u32 buf_size)
    return vfs_getdents64(handle, u_dirp, buf_size);
 }
 
-int sys_access(const char *pathname, int mode)
+int sys_access(const char *u_path, mode_t mode)
 {
    // TODO: check mode and file r/w flags.
    return 0;
@@ -566,7 +565,7 @@ out:
 int sys_dup(int oldfd)
 {
    int rc = -EMFILE, free_fd;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    kmutex_lock(&pi->fslock);
    {

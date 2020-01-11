@@ -1,7 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/kernel/process.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
+
+#include <tilck/kernel/process.h>
+
 #include <sys/mman.h>      // system header
 
 #include "ramfs_int.h"

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 #include <tilck/common/fat32_base.h>
 #include <tilck/common/utils.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 #include <tilck/common/simple_elf_loader.c.h>
+#include <tilck/common/printk.h>
 
 #include <multiboot.h>
 
@@ -52,13 +52,13 @@ static void calculate_ramdisk_fat_size(struct fat_hdr *hdr)
 
 static void
 load_elf_kernel(struct mem_info *mi,
-                uptr ramdisk,
-                uptr ramdisk_size,
+                ulong ramdisk,
+                ulong ramdisk_size,
                 const char *filepath,
                 void **entry)
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
-   uptr free_space;
+   ulong free_space;
    struct fat_entry *e;
 
    free_space = get_usable_mem(mi, ramdisk + ramdisk_size, KERNEL_MAX_SIZE);
@@ -83,9 +83,11 @@ load_elf_kernel(struct mem_info *mi,
 }
 
 static multiboot_info_t *
-setup_multiboot_info(struct mem_info *mi, uptr ramdisk_paddr, uptr ramdisk_size)
+setup_multiboot_info(struct mem_info *mi,
+                     ulong ramdisk_paddr,
+                     ulong ramdisk_size)
 {
-   uptr free_mem;
+   ulong free_mem;
    multiboot_info_t *mbi;
    multiboot_module_t *mod;
 
@@ -177,8 +179,8 @@ void bootloader_main(void)
    multiboot_info_t *mbi;
    u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
    u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
-   uptr rd_paddr;          /* ramdisk physical address */
-   uptr free_mem;
+   ulong rd_paddr;         /* ramdisk physical address */
+   ulong free_mem;
    void *entry;
    bool success;
    struct mem_info mi;

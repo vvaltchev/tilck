@@ -5,8 +5,8 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/hal.h>
 
-extern const uptr init_st_begin;
-extern const uptr init_st_end;
+extern const ulong init_st_begin;
+extern const ulong init_st_end;
 
 size_t stackwalk32(void **frames, size_t count,
                    void *ebp, pdir_t *pdir);
@@ -26,6 +26,6 @@ void validate_stack_pointer_int(const char *file, int line);
 void debug_qemu_turn_off_machine(void);
 void init_extra_debug_features();
 void set_sched_alive_thread_enabled(bool enabled);
-
-/* Internal */
 void register_tilck_cmd(int cmd_n, void *func);
+void *get_syscall_func_ptr(u32 n);
+int get_syscall_num(void *func);

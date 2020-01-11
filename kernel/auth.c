@@ -27,7 +27,7 @@ int sys_getegid()
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-int sys_setuid(uptr uid)
+int sys_setuid(ulong uid)
 {
    if (uid == 0)
       return 0;
@@ -36,7 +36,7 @@ int sys_setuid(uptr uid)
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-int sys_setgid(uptr gid)
+int sys_setgid(ulong gid)
 {
    if (gid == 0)
       return 0;
@@ -45,7 +45,7 @@ int sys_setgid(uptr gid)
 }
 
 /* Actual implementation: accept only 0 as UID. */
-int sys_setuid16(uptr uid)
+int sys_setuid16(ulong uid)
 {
    return sys_setuid((u16)uid);
 }
@@ -56,7 +56,7 @@ int sys_getuid16()
    return 0;
 }
 
-int sys_setgid16(uptr gid)
+int sys_setgid16(ulong gid)
 {
    return sys_setgid((u16)gid);
 }

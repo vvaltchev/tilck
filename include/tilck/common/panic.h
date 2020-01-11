@@ -2,9 +2,6 @@
 
 #pragma once
 
-extern volatile bool __in_panic;
-extern volatile bool __in_double_fault;
-
 NORETURN void panic(const char *fmt, ...);
 NORETURN void assert_failed(const char *expr, const char *file, int line);
 NORETURN void not_reached(const char *file, int line);
@@ -12,6 +9,7 @@ NORETURN void not_implemented(const char *file, int line);
 
 static ALWAYS_INLINE bool in_panic(void)
 {
+   extern volatile bool __in_panic;
    return __in_panic;
 }
 

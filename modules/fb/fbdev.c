@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/basic_defs.h>
+
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/devfs.h>
@@ -19,7 +21,7 @@
 
 #include "fb_int.h"
 
-extern uptr fb_vaddr;
+extern ulong fb_vaddr;
 extern u32 fb_size;
 
 static ssize_t total_fb_pages_mapped;
@@ -79,7 +81,7 @@ static offt fb_seek(fs_handle h, offt off, int whence)
    return dh->pos;
 }
 
-static int fb_ioctl(fs_handle h, uptr request, void *argp)
+static int fb_ioctl(fs_handle h, ulong request, void *argp)
 {
    if (request == FBIOGET_FSCREENINFO) {
 

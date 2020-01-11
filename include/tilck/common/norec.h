@@ -21,7 +21,7 @@
 #define NOREC_LOOP_END     loop_end:; }
 
 #define LOAD_ARG_FROM_STACK(n, t)                                      \
-   ((t)(uptr)STACK_VAR[STACK_SIZE_VAR-1].arg##n)
+   ((t)(ulong)STACK_VAR[STACK_SIZE_VAR-1].arg##n)
 
 #define DECLARE_SHADOW_STACK(size, nargs)                              \
    struct explicit_stack_elem##nargs STACK_VAR[size];                  \

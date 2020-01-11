@@ -6,7 +6,7 @@
 
 struct debug_kmalloc_heap_info {
 
-   uptr vaddr;
+   ulong vaddr;
    size_t size;
    size_t mem_allocated;
    size_t min_block_size;

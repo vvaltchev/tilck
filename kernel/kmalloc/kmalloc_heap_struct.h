@@ -9,7 +9,7 @@
 
 struct kmalloc_heap {
 
-   uptr vaddr;
+   ulong vaddr;
    size_t size;
    size_t mem_allocated;
    void *metadata_nodes;
@@ -25,7 +25,7 @@ struct kmalloc_heap {
    size_t heap_data_size_log2;
    size_t alloc_block_size_log2;
    size_t metadata_size;
-   uptr heap_last_byte; /* addr + size - 1 */
+   ulong heap_last_byte; /* addr + size - 1 */
    /* -- */
 
    bool linear_mapping;

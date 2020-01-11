@@ -23,8 +23,6 @@ struct pipe {
    struct kcond wcond;
    struct kcond errcond;
 
-   bool read_must_block;
-
    ATOMIC(int) read_handles;
    ATOMIC(int) write_handles;
 };
@@ -51,21 +49,17 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
             goto end;
          }
 
-         if (p->read_must_block) {
-
-            if (kh->fl_flags & O_NONBLOCK) {
-               rc = -EAGAIN;
-               goto end;
-            }
-
-            kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
-            goto again;
-
-         } else {
-
-            p->read_must_block = true;
+         if (kh->fl_flags & O_NONBLOCK) {
+            rc = -EAGAIN;
             goto end;
          }
+
+         /* Wake-up all the writers waiting on the readers cond */
+         kcond_signal_all(&p->rcond);
+
+         /* Wait on the writers cond */
+         kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
+         goto again;
       }
 
       if (!ringbuf_is_empty(&p->rb)) {
@@ -117,11 +111,13 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
             goto end;
          }
 
+         /* Wake-up all the readers waiting on the writers cond */
+         kcond_signal_all(&p->wcond);
+
+         /* Wait on the readers cond */
          kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
          goto again;
       }
-
-      p->read_must_block = false;
 
       if (!ringbuf_is_full(&p->rb)) {
          /* Notify other writers that now it possible to write on the pipe */
@@ -148,7 +144,6 @@ static int pipe_read_ready(fs_handle h)
    kmutex_lock(&p->mutex);
    {
       ret = !ringbuf_is_empty(&p->rb) ||
-            !p->read_must_block       ||
             atomic_load_explicit(&p->write_handles, mo_relaxed) == 0;
    }
    kmutex_unlock(&p->mutex);
@@ -283,7 +278,6 @@ struct pipe *create_pipe(void)
       return NULL;
    }
 
-   p->read_must_block = true;
    p->on_handle_close = &pipe_on_handle_close;
    p->on_handle_dup = &pipe_on_handle_dup;
    p->destory_obj = (void *)&destroy_pipe;

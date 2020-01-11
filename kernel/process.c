@@ -1,23 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/process.h>
-#include <tilck/kernel/process_int.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/tty.h>
-#include <tilck/kernel/syscalls.h>
-#include <tilck/kernel/paging.h>
-#include <tilck/kernel/paging_hw.h>
-#include <tilck/kernel/process_mm.h>
-#include <tilck/kernel/sys_types.h>
 
 #include <sys/prctl.h>        // system header
 
@@ -28,7 +22,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
    void *vaddr_in_block;
    void *block_vaddr;
    void *direct_va;
-   uptr direct_pa;
+   ulong direct_pa;
    size_t count;
 
    ASSERT(pi->pdir != NULL);
@@ -46,7 +40,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
       return NULL;
    }
 
-   vaddr_in_block = (void *)((uptr)block_vaddr + KERNEL_STACK_SIZE);
+   vaddr_in_block = (void *)((ulong)block_vaddr + KERNEL_STACK_SIZE);
 
    count = map_pages(pi->pdir,
                      vaddr_in_block,
@@ -69,8 +63,8 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
 static void
 free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
-   void *block_vaddr = (void *)((uptr)vaddr_in_block - KERNEL_STACK_SIZE);
-   uptr direct_pa = get_mapping(pi->pdir, vaddr_in_block);
+   void *block_vaddr = (void *)((ulong)vaddr_in_block - KERNEL_STACK_SIZE);
+   ulong direct_pa = get_mapping(pi->pdir, vaddr_in_block);
    void *direct_va = KERNEL_PA_TO_VA(direct_pa);
 
    unmap_pages(pi->pdir, vaddr_in_block, KERNEL_STACK_SIZE / PAGE_SIZE, false);
@@ -111,12 +105,12 @@ static bool do_common_task_allocations(struct task *ti, bool alloc_bufs)
          return false;
       }
 
-      ti->args_copybuf = (void *)((uptr)ti->io_copybuf + IO_COPYBUF_SIZE);
+      ti->args_copybuf = (void *)((ulong)ti->io_copybuf + IO_COPYBUF_SIZE);
    }
    return true;
 }
 
-static void internal_free_mem_for_zombie_task(struct task *ti)
+void internal_free_mem_for_zombie_task(struct task *ti)
 {
    if (KERNEL_STACK_ISOLATION) {
       free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
@@ -139,8 +133,8 @@ void free_mem_for_zombie_task(struct task *ti)
 
    if (ti == get_curr_task()) {
 
-      uptr stack_var = 123;
-      if (!IN_RANGE((uptr)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
+      ulong stack_var = 123;
+      if (!IN_RANGE((ulong)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
          panic("free_mem_for_zombie_task() called w/o switch to initial stack");
    }
 
@@ -168,6 +162,15 @@ void init_process_lists(struct process *pi)
    list_init(&pi->mappings);
 
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
+}
+
+void process_free_mmap_heap(struct process *pi)
+{
+   if (pi->mmap_heap) {
+      kmalloc_destroy_heap(pi->mmap_heap);
+      kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
+      pi->mmap_heap = NULL;
+   }
 }
 
 struct task *
@@ -220,11 +223,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    if (!do_common_task_allocations(ti, true) ||
        !arch_specific_new_task_setup(ti, parent))
    {
-      if (pi->mmap_heap) {
-         kmalloc_destroy_heap(pi->mmap_heap);
-         kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
-      }
-
+      process_free_mmap_heap(pi);
       kfree2(ti, sizeof(struct task) + sizeof(struct process));
       return NULL;
    }
@@ -387,7 +386,7 @@ void set_kernel_process_pdir(pdir_t *pdir)
 
 mode_t sys_umask(mode_t mask)
 {
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
    mode_t old = pi->umask;
    pi->umask = mask & 0777;
    return old;
@@ -402,7 +401,7 @@ int sys_pause()
 
 int sys_getpid()
 {
-   return get_curr_task()->pi->pid;
+   return get_curr_proc()->pid;
 }
 
 int sys_gettid()
@@ -439,310 +438,23 @@ void kthread_join_all(const int *tids, size_t n)
       kthread_join(tids[i]);
 }
 
-/*
- * Note: we HAVE TO make this function NO_INLINE otherwise clang in release
- * builds generates code that is incompatible with asm hacks chaining both
- * the stack pointer and the frame pointer. It is worth mentioning that even
- * copying the whole stack to a new place is still not enough for clang.
- * Therefore, the simplest and reliable thing we can do is just to make the
- * following function be non-inlineable and take no arguments.
- */
-static NORETURN NO_INLINE void
-switch_stack_free_mem_and_schedule(void)
+void
+handle_vforked_child_move_on(struct process *pi)
 {
-   ASSERT(get_curr_task()->state == TASK_STATE_ZOMBIE);
+   struct task *parent;
 
-   /* WARNING: the following call discards the whole stack! */
-   switch_to_initial_kernel_stack();
-
-   /* Free the heap allocations used, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
-
-   /* Run the scheduler */
-   schedule_outside_interrupt_context();
-
-   /* Reassure the compiler that we won't return (schedule() is not NORETURN) */
-   NOT_REACHED();
-}
-
-static void close_all_handles(struct process *pi)
-{
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
-
-      fs_handle *h = pi->handles[i];
-
-      if (h) {
-         vfs_close2(pi, h);
-         pi->handles[i] = NULL;
-      }
-   }
-}
-
-static void
-task_free_all_kernel_allocs(struct task *ti)
-{
    ASSERT(!is_preemption_enabled());
+   ASSERT(pi->vforked);
+   parent = get_task(pi->parent_pid);
 
-   while (ti->kallocs_tree_root != NULL) {
+   ASSERT(parent != NULL);
+   ASSERT(parent->stopped);
+   ASSERT(parent->vfork_stopped);
 
-      /* Save a pointer to the alloc object on the stack */
-      struct kernel_alloc *alloc = ti->kallocs_tree_root;
+   parent->stopped = false;
+   parent->vfork_stopped = false;
 
-      /* Free the allocated chunk */
-      kfree2(alloc->vaddr, alloc->size);
-
-      /* Remove the kernel_alloc elem from the tree */
-      bintree_remove_ptr(&ti->kallocs_tree_root,
-                         alloc,
-                         struct kernel_alloc,
-                         node,
-                         vaddr);
-
-      /* Free the kernel_alloc object itself */
-      kfree2(alloc, sizeof(struct kernel_alloc));
-   }
-}
-
-static void init_terminated(struct task *ti, int exit_code, int term_sig)
-{
-   if (DEBUG_QEMU_EXIT_ON_INIT_EXIT)
-      debug_qemu_turn_off_machine();
-
-   if (!term_sig)
-      panic("Init exited with code: %d\n", exit_code);
-   else
-      panic("Init terminated by signal %d\n", term_sig);
-}
-
-static struct process *get_child_reaper(struct process *pi)
-{
-   /* TODO: support prctl(PR_SET_CHILD_SUBREAPER) */
-   ASSERT(!is_preemption_enabled());
-
-   struct task *child_reaper = get_task(1); /* init */
-   VERIFY(child_reaper != NULL);
-
-   return child_reaper->pi;
-}
-
-static void
-handle_children_of_dying_process(struct task *ti)
-{
-   struct process *pi = ti->pi;
-   struct task *pos, *temp;
-   struct process *child_reaper = get_child_reaper(pi);
-
-   list_for_each(pos, temp, &pi->children, siblings_node) {
-
-      list_remove(&pos->siblings_node);
-      list_add_tail(&child_reaper->children, &pos->siblings_node);
-      pos->pi->parent_pid = child_reaper->pid;
-
-      if (pos->state == TASK_STATE_ZOMBIE) {
-
-         /*
-          * Corner case: the dying task had already dead children which it
-          * did not wait for. Their exit code couldn't be retrieved by the
-          * nearest reaper (init) because their parent was still alive when
-          * they died. But now, they also have to be waited by the nearest
-          * reaper, along with their parent.
-          */
-
-         wake_up_tasks_waiting_on(pos, task_died);
-      }
-   }
-}
-
-/*
- * NOTE: this code ASSUMES that user processes have a _single_ thread:
- *
- *    process = task = thread
- *
- * TODO: re-design/adapt this function when thread support is introduced.
- *
- * NOTE: the kernel "process" has multiple threads (kthreads), but they cannot
- * be signalled nor killed.
- */
-void terminate_process(struct task *ti, int exit_code, int term_sig)
-{
-   ASSERT(!is_preemption_enabled());
-   ASSERT(!is_kernel_thread(ti));
-
-   struct process *pi = ti->pi;
-
-   if (ti->state == TASK_STATE_ZOMBIE)
-      return; /* do nothing, the task is already dead */
-
-   if (ti->wobj.type != WOBJ_NONE) {
-
-      /*
-       * If the task has been waiting on something, we have to reset its wobj
-       * and remove its pointer from the target object's wait_list.
-       */
-      task_reset_wait_obj(ti);
-   }
-
-   /*
-    * Sleep-based wake-up timers work without the wait_obj mechanism: we have
-    * to cancel any potential wake-up timer.
-    */
-   task_cancel_wakeup_timer(ti);
-   task_change_state(ti, TASK_STATE_ZOMBIE);
-   ti->wstatus = EXITCODE(exit_code, term_sig);
-
-   close_all_handles(pi);
-   task_free_all_kernel_allocs(ti);
-   remove_all_user_zero_mem_mappings(pi);
-   ASSERT(list_is_empty(&pi->mappings));
-
-   if (ti->tid != 1) {
-
-      /*
-       * What if the dying task has any children? We have to set their parent
-       * to init (pid 1) or to the nearest child subreaper, once that is
-       * supported.
-       */
-
-      handle_children_of_dying_process(ti);
-
-   } else {
-
-      /* The dying task is PID 1, init */
-      init_terminated(ti, exit_code, term_sig);
-   }
-
-   /* Wake-up all the tasks waiting on this specific task to exit */
-   wake_up_tasks_waiting_on(ti, task_died);
-
-   if (term_sig) {
-
-      /*
-       * The process has been killed. It makes sense to perform some additional
-       * actions, in order to preserve the system in a healty state.
-       */
-
-      if (pi->did_set_tty_medium_raw)
-         tty_set_medium_raw_mode(pi->proc_tty, false);
-   }
-
-   if (ti == get_curr_task()) {
-
-      /* This function has been called by sys_exit(): we won't return */
-      set_curr_pdir(get_kernel_pdir());
-      pdir_destroy(pi->pdir);
-      switch_stack_free_mem_and_schedule();
-      NOT_REACHED();
-   }
-
-   pdir_destroy(pi->pdir);
-   free_mem_for_zombie_task(ti);
-}
-
-static int fork_dup_all_handles(struct process *pi)
-{
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
-
-      int rc;
-      fs_handle dup_h = NULL;
-      fs_handle h = pi->handles[i];
-
-      if (!h)
-         continue;
-
-      rc = vfs_dup(h, &dup_h);
-
-      if (rc < 0 || !dup_h) {
-
-         for (u32 j = 0; j < i; j++)
-            vfs_close(pi->handles[j]);
-
-         return -ENOMEM;
-      }
-
-      pi->handles[i] = dup_h;
-   }
-
-   return 0;
-}
-
-// Returns child's pid
-int sys_fork(void)
-{
-   int pid;
-   int rc = -EAGAIN;
-   struct task *child = NULL;
-   struct task *curr = get_curr_task();
-   struct process *curr_pi = curr->pi;
-   pdir_t *new_pdir = NULL;
-
-   disable_preemption();
-
-   if ((pid = create_new_pid()) < 0)
-      goto out; /* NOTE: is already set to -EAGAIN */
-
-   if (FORK_NO_COW)
-      new_pdir = pdir_deep_clone(curr_pi->pdir);
-   else
-      new_pdir = pdir_clone(curr_pi->pdir);
-
-   if (!new_pdir)
-      goto no_mem_exit;
-
-   if (!(child = allocate_new_process(curr, pid, new_pdir)))
-      goto no_mem_exit;
-
-   /* Set new_pdir in order to avoid its double-destruction */
-   new_pdir = NULL;
-
-   /* Child's kernel stack must be set */
-   ASSERT(child->kernel_stack != NULL);
-
-   if (child->state == TASK_STATE_RUNNING)
-      child->state = TASK_STATE_RUNNABLE;
-
-   child->running_in_kernel = false;
-   task_info_reset_kernel_stack(child);
-
-   child->state_regs--; // make room for a regs_t struct in child's stack
-   *child->state_regs = *curr->state_regs; // copy parent's regs_t
-   set_return_register(child->state_regs, 0);
-
-   // Make the parent to get child's pid as return value.
-   set_return_register(curr->state_regs, (uptr) child->tid);
-
-   if (fork_dup_all_handles(child->pi) < 0)
-      goto no_mem_exit;
-
-   add_task(child);
-
-   /*
-    * X86-specific note:
-    * Force the CR3 reflush using the current (parent's) pdir.
-    * Without doing that, COW on parent's pages doesn't work immediately.
-    * That is better than invalidating all the pages affected, one by one.
-    */
-
-   set_curr_pdir(curr_pi->pdir);
-   enable_preemption();
-   return child->tid;
-
-
-no_mem_exit:
-
-   rc = -ENOMEM;
-
-   if (new_pdir)
-      pdir_destroy(new_pdir);
-
-   if (child) {
-      child->state = TASK_STATE_ZOMBIE;
-      internal_free_mem_for_zombie_task(child);
-      free_task(child);
-   }
-
-out:
-   enable_preemption();
-   return rc;
+   pi->vforked = false;
 }
 
 int sys_getppid()
@@ -861,7 +573,7 @@ int sys_getpgrp(void)
    return get_curr_proc()->pgid;
 }
 
-int sys_prctl(int option, uptr a2, uptr a3, uptr a4, uptr a5)
+int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
 {
    // TODO: actually implement sys_prctl()
 

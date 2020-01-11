@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/fault_resumable.h>
@@ -47,8 +47,8 @@ static void faulting_code2(void)
     * to trigger a PAGE FAULT and check that it has been handeled correctly.
     */
 
-   uptr *ptr = NULL;
-   bzero(ptr, sizeof(uptr));
+   ulong *ptr = NULL;
+   bzero(ptr, sizeof(ulong));
 
 #endif
 }
@@ -124,8 +124,8 @@ void selftest_fault_res_short(void)
    regular_self_test_end();
 }
 
-static NO_INLINE void do_nothing(uptr a1, uptr a2, uptr a3,
-                                 uptr a4, uptr a5, uptr a6)
+static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
+                                 ulong a4, ulong a5, ulong a6)
 {
    DO_NOT_OPTIMIZE_AWAY(a1);
    DO_NOT_OPTIMIZE_AWAY(a2);

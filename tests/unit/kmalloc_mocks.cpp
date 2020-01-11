@@ -30,15 +30,17 @@ extern struct kmalloc_heap first_heap_struct;
 extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 extern u32 used_heaps;
 extern size_t max_tot_heap_mem_free;
+extern struct mem_region mem_regions[MAX_MEM_REGIONS];
+extern int mem_regions_count;
 
 void *kernel_va = nullptr;
 bool mock_kmalloc = false;
 
-static unordered_map<uptr, uptr> mappings;
+static unordered_map<ulong, ulong> mappings;
 
 void initialize_test_kernel_heap()
 {
-   const uptr test_mem_size = 256 * MB;
+   const ulong test_mem_size = 256 * MB;
 
    if (kernel_va != nullptr) {
       bzero(kernel_va, test_mem_size);
@@ -72,19 +74,19 @@ void init_kmalloc_for_tests()
    suppress_printk = false;
 }
 
-int map_page(pdir_t *, void *vaddr, uptr paddr, bool us, bool rw)
+int map_page(pdir_t *, void *vaddr, ulong paddr, bool us, bool rw)
 {
-   ASSERT(!((uptr)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
+   ASSERT(!((ulong)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
 
-   mappings[(uptr)vaddr] = paddr;
+   mappings[(ulong)vaddr] = paddr;
    return 0;
 }
 
 size_t
 map_pages(pdir_t *pdir,
           void *vaddr,
-          uptr paddr,
+          ulong paddr,
           size_t page_count,
           bool big_pages_allowed,
           bool us,
@@ -104,7 +106,7 @@ map_pages(pdir_t *pdir,
 
 void unmap_page(pdir_t *, void *vaddrp, bool free_pageframe)
 {
-   mappings[(uptr)vaddrp] = INVALID_PADDR;
+   mappings[(ulong)vaddrp] = INVALID_PADDR;
 }
 
 int unmap_page_permissive(pdir_t *, void *vaddrp, bool free_pageframe)
@@ -135,7 +137,7 @@ size_t unmap_pages_permissive(pdir_t *pd, void *va, size_t count, bool do_free)
 
 bool is_mapped(pdir_t *, void *vaddrp)
 {
-   uptr vaddr = (uptr)vaddrp & PAGE_MASK;
+   ulong vaddr = (ulong)vaddrp & PAGE_MASK;
 
    if (vaddr + PAGE_SIZE < LINEAR_MAPPING_END)
       return true;
@@ -143,9 +145,9 @@ bool is_mapped(pdir_t *, void *vaddrp)
    return mappings.find(vaddr) != mappings.end();
 }
 
-uptr get_mapping(pdir_t *, void *vaddrp)
+ulong get_mapping(pdir_t *, void *vaddrp)
 {
-   return mappings[(uptr)vaddrp];
+   return mappings[(ulong)vaddrp];
 }
 
 void *kmalloc(size_t size)
@@ -171,7 +173,7 @@ void *kmalloc_get_first_heap(size_t *size)
    if (!buf) {
       buf = aligned_alloc(KMALLOC_MAX_ALIGN, KMALLOC_FIRST_HEAP_SIZE);
       VERIFY(buf);
-      VERIFY( ((uptr)buf & (KMALLOC_MAX_ALIGN - 1)) == 0 );
+      VERIFY( ((ulong)buf & (KMALLOC_MAX_ALIGN - 1)) == 0 );
    }
 
    if (size)

@@ -283,7 +283,7 @@ fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth)
 static inline tilck_ino_t
 fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
 {
-   return (tilck_ino_t)((sptr)e - (sptr)hdr);
+   return (tilck_ino_t)((long)e - (long)hdr);
 }
 
 STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
@@ -298,7 +298,7 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 
    statbuf->st_dev = fs->device_id;
    statbuf->st_ino = fat_entry_to_inode(fs->device_data, e);
-   statbuf->st_mode = 0555;
+   statbuf->st_mode = 0777;
    statbuf->st_nlink = 1;
    statbuf->st_uid = 0; /* root */
    statbuf->st_gid = 0; /* root */
@@ -432,7 +432,7 @@ STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
    NOT_IMPLEMENTED();
 }
 
-STATIC int fat_ioctl(fs_handle h, uptr request, void *arg)
+STATIC int fat_ioctl(fs_handle h, ulong request, void *arg)
 {
    return -EINVAL;
 }

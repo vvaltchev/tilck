@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/debug/termios_debug.c.h>
 
 #include <tilck/kernel/fs/vfs.h>
@@ -148,7 +148,7 @@ void tty_restore_kd_text_mode(struct tty *t)
 
 static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
 {
-   uptr opt = (uptr) argp;
+   ulong opt = (ulong) argp;
 
    if (opt == KD_TEXT) {
       tty_restore_kd_text_mode(t);
@@ -181,7 +181,7 @@ static int tty_ioctl_KDSKBMODE(struct tty *t, void *argp)
    if (t != pi->proc_tty)
       return -EPERM; /* don't allow setting mode of other TTYs */
 
-   uptr mode = (uptr) argp;
+   ulong mode = (ulong) argp;
 
    switch (mode) {
 
@@ -305,7 +305,7 @@ static int tty_ioctl_TIOCSPGRP(struct tty *t, const int *user_pgrp)
 }
 
 int
-tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp)
+tty_ioctl_int(struct tty *t, struct devfs_handle *h, ulong request, void *argp)
 {
    switch (request) {
 

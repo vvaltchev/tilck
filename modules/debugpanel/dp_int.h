@@ -3,6 +3,7 @@
 #pragma once
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #define DP_W   76
 #define DP_H   23
@@ -17,6 +18,7 @@ struct dp_screen {
    int row_off;
    int row_max;
    const char *label;
+   void (*first_setup)(void);
    void (*draw_func)(void);
    void (*on_dp_enter)(void);
    void (*on_dp_exit)(void);
@@ -31,10 +33,15 @@ extern int dp_start_col;
 extern int dp_screen_start_row;
 extern int dp_screen_rows;
 extern bool ui_need_update;
+extern const char *modal_msg;
 extern struct dp_screen *dp_ctx;
+extern fs_handle dp_input_handle;
 
-static inline sptr dp_int_abs(sptr val) {
+static inline long dp_int_abs(long val) {
    return val >= 0 ? val : -val;
 }
 
 void dp_register_screen(struct dp_screen *screen);
+int dp_read_ke_from_tty(struct key_event *ke);
+void dp_set_input_blocking(bool blocking);
+int dp_read_line(char *buf, int buf_size);

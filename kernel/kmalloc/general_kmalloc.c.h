@@ -24,7 +24,7 @@ struct mdalloc_metadata {
    u64 magic;
 #endif
 
-   uptr size;
+   ulong size;
 };
 
 static void *
@@ -66,12 +66,12 @@ static void
 main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    struct kmalloc_heap *h = NULL;
-   const uptr vaddr = (uptr) ptr;
+   const ulong vaddr = (ulong) ptr;
    ASSERT(kmalloc_initialized);
 
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
-      const uptr hva = heaps[i]->vaddr;
+      const ulong hva = heaps[i]->vaddr;
 
       // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
       if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
@@ -166,7 +166,7 @@ void *aligned_kmalloc(size_t size, u32 align)
    ASSERT(roundup_next_power_of_2(align) == align);
 
    if (res != NULL)
-      ASSERT(((uptr)res & (align-1)) == 0);
+      ASSERT(((ulong)res & (align-1)) == 0);
 
    return res;
 }

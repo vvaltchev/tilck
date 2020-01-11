@@ -2,7 +2,9 @@
 
 #define _KMALLOC_C_
 
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/kmalloc.h>
@@ -41,22 +43,22 @@ bool is_kmalloc_initialized(void)
 
 STATIC_INLINE int ptr_to_node(struct kmalloc_heap *h, void *ptr, size_t size)
 {
-   const uptr size_log = log2_for_power_of_2(size);
+   const ulong size_log = log2_for_power_of_2(size);
 
-   const uptr offset = (uptr)ptr - h->vaddr;
-   const uptr nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
-   const uptr position_in_row = offset >> size_log;
+   const ulong offset = (ulong)ptr - h->vaddr;
+   const ulong nodes_before_our = (1 << (h->heap_data_size_log2 - size_log))-1;
+   const ulong position_in_row = offset >> size_log;
 
    return (int)(nodes_before_our + position_in_row);
 }
 
 STATIC_INLINE void *node_to_ptr(struct kmalloc_heap *h, int node, size_t size)
 {
-   const uptr size_log = log2_for_power_of_2(size);
+   const ulong size_log = log2_for_power_of_2(size);
 
-   const uptr nodes_before_our = (1 << (h->heap_data_size_log2 - size_log)) - 1;
-   const uptr position_in_row = (u32)node - nodes_before_our;
-   const uptr offset = position_in_row << size_log;
+   const ulong nodes_before_our = (1 << (h->heap_data_size_log2 - size_log))-1;
+   const ulong position_in_row = (u32)node - nodes_before_our;
+   const ulong offset = position_in_row << size_log;
 
    return (void *)(offset + h->vaddr);
 }
@@ -129,13 +131,13 @@ actual_allocate_node(struct kmalloc_heap *h,
    struct block_node *nodes = h->metadata_nodes;
    nodes[node].full = true;
 
-   const uptr vaddr = (uptr)node_to_ptr(h, node, node_size);
+   const ulong vaddr = (ulong)node_to_ptr(h, node, node_size);
    *vaddr_ref = (void *)vaddr;
 
    if (h->linear_mapping || !do_actual_alloc)
       return true; // nothing to do!
 
-   uptr alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
+   ulong alloc_block_vaddr = vaddr & ~(h->alloc_block_size - 1);
    const size_t alloc_block_count =
       1 + ((node_size - 1) >> h->alloc_block_size_log2);
 
@@ -355,7 +357,7 @@ internal_kmalloc(struct kmalloc_heap *h,
 
          for (int ss = stack_size - 2; ss >= 0; ss--) {
 
-            const int nn = (int)(sptr) STACK_VAR[ss].arg2; /* arg2: node */
+            const int nn = (int)(long) STACK_VAR[ss].arg2; /* arg2: node */
 
             if (nodes[NODE_LEFT(nn)].full && nodes[NODE_RIGHT(nn)].full) {
                ASSERT(!nodes[nn].full);
@@ -559,7 +561,7 @@ internal_kfree(struct kmalloc_heap *h,
    if (h->linear_mapping || !do_actual_free)
       return; // nothing to do!
 
-   uptr alloc_block_vaddr = (uptr)ptr & ~(h->alloc_block_size - 1);
+   ulong alloc_block_vaddr = (ulong)ptr & ~(h->alloc_block_size - 1);
    const size_t alloc_block_count = 1 + ((size-1) >> h->alloc_block_size_log2);
 
    /*
@@ -600,11 +602,11 @@ internal_kfree(struct kmalloc_heap *h,
    }
 }
 
-static size_t calculate_block_size(struct kmalloc_heap *h, uptr vaddr)
+static size_t calculate_block_size(struct kmalloc_heap *h, ulong vaddr)
 {
    struct block_node *nodes = h->metadata_nodes;
    int n = 0; /* root's node index */
-   uptr va = h->vaddr; /* root's node data address == heap's address */
+   ulong va = h->vaddr; /* root's node data address == heap's address */
    size_t size = h->size; /* root's node size == heap's size */
 
    while (size > h->min_block_size) {
@@ -626,7 +628,7 @@ static size_t calculate_block_size(struct kmalloc_heap *h, uptr vaddr)
 }
 
 static void
-debug_check_block_size(struct kmalloc_heap *h, uptr vaddr, size_t size)
+debug_check_block_size(struct kmalloc_heap *h, ulong vaddr, size_t size)
 {
    size_t cs = calculate_block_size(h, vaddr);
 
@@ -647,7 +649,7 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
    const bool do_actual_free = !(flags & KFREE_FL_NO_ACTUAL_FREE);
 
-   DEBUG_ONLY(uptr vaddr = (uptr)ptr);
+   DEBUG_ONLY(ulong vaddr = (ulong)ptr);
    ASSERT(!is_preemption_enabled());
 
    ASSERT(vaddr >= h->vaddr);
@@ -691,6 +693,17 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    }
 
    ASSERT(tot == size);
+}
+
+void *kzmalloc(size_t size)
+{
+   void *res = kmalloc(size);
+
+   if (!res)
+      return NULL;
+
+   bzero(res, size);
+   return res;
 }
 
 /* Natural continuation of this source file. Purpose: make this file shorter. */

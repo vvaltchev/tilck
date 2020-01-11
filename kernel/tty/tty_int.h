@@ -26,7 +26,7 @@ ssize_t
 tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
 
 int
-tty_ioctl_int(struct tty *t, struct devfs_handle *h, uptr request, void *argp);
+tty_ioctl_int(struct tty *t, struct devfs_handle *h, ulong request, void *argp);
 
 bool
 tty_read_ready_int(struct tty *t, struct devfs_handle *h);
@@ -37,3 +37,4 @@ void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
 extern const struct termios default_termios;
 extern struct tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_tasklet_runner;
+extern struct tty *__curr_tty;

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/string_util.h>
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/datetime.h>
@@ -118,7 +118,7 @@ void clock_drift_adj()
    int adj_val, adj_ticks;
    int drift, abs_drift, adj_cnt;
    u32 attempts_cnt, full_resync_failed_attempts;
-   uptr var;
+   ulong var;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
@@ -309,7 +309,7 @@ void init_system_time(void)
 u64 get_sys_time(void)
 {
    u64 ts;
-   uptr var;
+   ulong var;
    disable_interrupts(&var);
    {
       ts = __time_ns;

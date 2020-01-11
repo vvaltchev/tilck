@@ -117,7 +117,7 @@ typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
 typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
 typedef offt           (*func_seek)         (fs_handle, offt, int);
-typedef int            (*func_ioctl)        (fs_handle, uptr, void *);
+typedef int            (*func_ioctl)        (fs_handle, ulong, void *);
 typedef int            (*func_mmap)         (struct user_mapping *, bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
@@ -265,7 +265,7 @@ int vfs_rename(const char *oldpath, const char *newpath);
 int vfs_link(const char *oldpath, const char *newpath);
 
 int vfs_ftruncate(fs_handle h, offt length);
-int vfs_ioctl(fs_handle h, uptr request, void *argp);
+int vfs_ioctl(fs_handle h, ulong request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);

@@ -2,9 +2,9 @@
 
 /*
  * This file contains the list of all error codes used currently by the Linux
- * kernel. It is not expected Tilck to them all even in 10 years from now but,
- * it makes sense to have them all from now. Very likely we'll never need to
- * change this file again.
+ * kernel. It is not expected Tilck to use all of them all even in 10 years from
+ * now but, it still makes sense to have them all from now. Very likely we'll
+ * never need to change this file again.
  */
 
 #define EPERM            1 /* Operation not permitted */

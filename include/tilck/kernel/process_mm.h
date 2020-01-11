@@ -17,7 +17,7 @@ struct user_mapping {
 
    union {
       void *vaddrp;
-      uptr vaddr;
+      ulong vaddr;
    };
 
    int prot;
@@ -31,12 +31,13 @@ void full_remove_user_mapping(struct process *pi, struct user_mapping *um);
 void remove_all_mappings_of_handle(struct process *pi, fs_handle h);
 void remove_all_user_zero_mem_mappings(struct process *pi);
 struct user_mapping *process_get_user_mapping(void *vaddr);
+void remove_all_file_mappings(struct process *pi);
 
 /* Internal functions */
-bool user_valloc_and_map(uptr user_vaddr, size_t page_count);
-void user_vfree_and_unmap(uptr user_vaddr, size_t page_count);
-void user_unmap_zero_page(uptr user_vaddr, size_t page_count);
-bool user_map_zero_page(uptr user_vaddr, size_t page_count);
+bool user_valloc_and_map(ulong user_vaddr, size_t page_count);
+void user_vfree_and_unmap(ulong user_vaddr, size_t page_count);
+void user_unmap_zero_page(ulong user_vaddr, size_t page_count);
+bool user_map_zero_page(ulong user_vaddr, size_t page_count);
 
 /* Special one-time funcs */
 void set_kernel_process_pdir(pdir_t *pdir);

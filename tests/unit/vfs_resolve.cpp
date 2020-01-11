@@ -122,7 +122,7 @@ protected:
           * That is set in a lazy way on the first vfs_resolve() call.
           * TODO: make `cwd` to be always set.
           */
-         struct vfs_path *tp = &get_curr_task()->pi->cwd;
+         struct vfs_path *tp = &get_curr_proc()->cwd;
          tp->fs = mp_get_root();
          vfs_get_root_entry(tp->fs, &tp->fs_path);
          retain_obj(tp->fs);
@@ -557,7 +557,7 @@ TEST_F(vfs_resolve_multi_fs, rel_paths)
 {
    int rc;
    struct vfs_path p;
-   struct process *pi = get_curr_task()->pi;
+   struct process *pi = get_curr_proc();
 
    rc = resolve("/dev/", &p, true);
    ASSERT_EQ(rc, 0);

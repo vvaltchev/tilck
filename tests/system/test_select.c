@@ -93,7 +93,7 @@ int cmd_select1(int argc, char **argv)
    }
 
    buf[rc] = 0;
-   printf("[parent] Got: '%s' from child\n");
+   printf("[parent] Got: '%s' from child\n", buf);
    printf("[parent] Now make wfd nonblock and fill the buffer\n");
 
    fl = fcntl(pipefd[1], F_GETFL, 0);

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/string_util.h>
 #include <tilck/kernel/bintree.h>
 
 #define ALLOWED_IMBALANCE      1
@@ -216,19 +217,19 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
    return root_obj;
 }
 
-static ALWAYS_INLINE sptr
+static ALWAYS_INLINE long
 bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
 {
    const char *f1 = (const char *)a + field_off;
    const char *f2 = (const char *)b + field_off;
-   return *(sptr *)f1 - *(sptr *)f2;
+   return *(long *)f1 - *(long *)f2;
 }
 
-static ALWAYS_INLINE sptr
+static ALWAYS_INLINE long
 bintree_find_ptr_cmp(const void *obj, const void *val, ptrdiff_t field_off)
 {
-   sptr obj_field_val = *(sptr *)((const char *)obj + field_off);
-   return obj_field_val - (sptr)val;
+   long obj_field_val = *(long *)((const char *)obj + field_off);
+   return obj_field_val - (long)val;
 }
 
 /*
@@ -259,7 +260,7 @@ bintree_find_ptr_cmp(const void *obj, const void *val, ptrdiff_t field_off)
                                                                        \
       while (*STACK_TOP()) {                                           \
                                                                        \
-         sptr c;                                                       \
+         long c;                                                       \
          void **obj_ref = STACK_TOP();                                 \
          struct bintree_node *node = OBJTN(*obj_ref);                  \
                                                                        \

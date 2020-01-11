@@ -4,6 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <multiboot.h>
@@ -147,13 +148,13 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
    system_mmap_set(mbi);
 
    if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
-      parse_kernel_cmdline((const char *)(uptr)mbi->cmdline);
+      parse_kernel_cmdline((const char *)(ulong)mbi->cmdline);
 }
 
 static void show_hello_message(void)
 {
    printk("Hello from Tilck! [%s build, %s %i.%i.%i]\n", BUILDTYPE_STR,
-          COMPILER_NAME, __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+          COMPILER_NAME, COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
 
 static void show_system_info(void)
@@ -194,7 +195,7 @@ static void mount_initrd(void)
    {
       struct vfs_path tp;
       struct process *pi = kernel_process_pi;
-      ASSERT(pi == get_curr_task()->pi);
+      ASSERT(pi == get_curr_proc());
 
       tp.fs = mp_get_root();
       vfs_get_root_entry(tp.fs, &tp.fs_path);
@@ -235,7 +236,7 @@ static void run_init_or_selftest(void)
          panic("No ramdisk and no selftest requested: nothing to do.");
 
       /* Run init or whatever program was passed in the cmdline */
-      sptr rc = first_execve(cmd_args[0], cmd_args);
+      long rc = first_execve(cmd_args[0], cmd_args);
 
       if (rc != 0)
          panic("execve('%s') failed with %i\n", cmd_args[0], rc);

@@ -74,7 +74,7 @@ vterm_write(struct term *t, const char *buf, size_t len, u8 color)
       .type3 = a_write,
       .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
       .col = color,
-      .ptr = (uptr)buf,
+      .ptr = (ulong)buf,
    };
 
    term_execute_or_enqueue_action(t, a);

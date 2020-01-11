@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/self_tests.h>
@@ -38,7 +37,7 @@ static int sys_tilck_run_selftest(const char *user_selftest)
 {
    int rc;
    int tid;
-   uptr addr;
+   ulong addr;
    char buf[256] = SELFTEST_PREFIX;
 
    rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
@@ -64,7 +63,7 @@ static int sys_tilck_run_selftest(const char *user_selftest)
    return 0;
 }
 
-int sys_tilck_cmd(int cmd_n, uptr a1, uptr a2, uptr a3, uptr a4)
+int sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4)
 {
    tilck_cmd_func func;
 

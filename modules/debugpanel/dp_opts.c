@@ -18,7 +18,7 @@
             col,                                         \
             "  %-30s: %s%u" RESET_ATTRS,                 \
             #opt,                                        \
-            opt ? ESC_COLOR_GREEN : DP_ESC_COLOR,        \
+            opt ? E_COLOR_GREEN : DP_ESC_COLOR,        \
             opt)
 
 static void dp_show_opts(void)
@@ -41,6 +41,7 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(MOD_fb);
    DUMP_BOOL_OPT(MOD_serial);
    DUMP_BOOL_OPT(MOD_debugpanel);
+   DUMP_BOOL_OPT(MOD_tracing);
 
    DUMP_LABEL("Modules config");
    DUMP_BOOL_OPT(KERNEL_FB_BANNER);
@@ -105,11 +106,11 @@ static void dp_show_opts(void)
    max_rows = MAX(rows_left, rows_right);
 
    /* left rectangle */
-   dp_draw_rect("Build-time",
+   dp_draw_rect("Build-time", E_COLOR_GREEN,
                 dp_screen_start_row, dp_start_col + 1, max_rows+2, 45);
 
    /* right rectangle */
-   dp_draw_rect("Boot-time",
+   dp_draw_rect("Boot-time", E_COLOR_GREEN,
                 dp_screen_start_row, col - 2, max_rows+2, 29);
 }
 

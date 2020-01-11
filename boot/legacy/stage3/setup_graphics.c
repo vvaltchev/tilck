@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/gfx.h>
 
 #include "realmode_call.h"
@@ -93,7 +93,7 @@ static void show_modes_aux(u16 *modes,
 
 void ask_user_video_mode(struct mem_info *minfo)
 {
-   uptr free_mem;
+   ulong free_mem;
    struct VbeInfoBlock *vb;
    struct ModeInfoBlock *mi;
    u16 known_modes[10];

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
@@ -22,7 +22,7 @@ static bool mapped_in_pdir(pdir_t *pdir, void *vaddr)
        * Just check if vaddr is in the first 4 MB (and in BASE_VA + 4 MB).
        */
 
-      uptr va = (uptr)vaddr;
+      ulong va = (ulong)vaddr;
       return va < 4*MB || IN_RANGE(va, KERNEL_BASE_VA, KERNEL_BASE_VA+4*MB);
    }
 
@@ -84,7 +84,7 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
 
       ptrdiff_t off = 0;
       u32 sym_size;
-      uptr va = (uptr)frames[i];
+      ulong va = (ulong)frames[i];
       const char *sym_name;
 
       sym_name = find_sym_at_addr(va, &off, &sym_size);
@@ -163,7 +163,7 @@ void dump_regs(regs_t *r)
           r->ebx, r->ebp, r->esi, r->edi);
 }
 
-void dump_raw_stack(uptr addr)
+void dump_raw_stack(ulong addr)
 {
    printk("Raw stack dump:\n");
 
@@ -173,7 +173,7 @@ void dump_raw_stack(uptr addr)
 
       for (int j = 0; j < 4; j++) {
          printk("%p ", *(void **)addr);
-         addr += sizeof(uptr);
+         addr += sizeof(ulong);
       }
 
       printk("\n");

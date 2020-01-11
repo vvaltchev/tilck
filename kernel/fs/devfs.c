@@ -166,7 +166,7 @@ static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
    return -EINVAL;
 }
 
-static int devfs_dir_ioctl(fs_handle h, uptr request, void *arg)
+static int devfs_dir_ioctl(fs_handle h, ulong request, void *arg)
 {
    return -EINVAL;
 }

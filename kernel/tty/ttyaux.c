@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/devfs.h>
@@ -15,13 +14,13 @@
 
 enum term_type get_curr_proc_tty_term_type(void)
 {
-   struct tty *t = get_curr_task()->pi->proc_tty;
+   struct tty *t = get_curr_proc()->proc_tty;
    return t->tparams.type;
 }
 
 struct tty *get_curr_process_tty(void)
 {
-   return get_curr_task()->pi->proc_tty;
+   return get_curr_proc()->proc_tty;
 }
 
 static ssize_t ttyaux_read(fs_handle h, char *buf, size_t size)
@@ -34,7 +33,7 @@ static ssize_t ttyaux_write(fs_handle h, char *buf, size_t size)
    return tty_write_int(get_curr_process_tty(), h, buf, size);
 }
 
-static int ttyaux_ioctl(fs_handle h, uptr request, void *argp)
+static int ttyaux_ioctl(fs_handle h, ulong request, void *argp)
 {
    return tty_ioctl_int(get_curr_process_tty(), h, request, argp);
 }

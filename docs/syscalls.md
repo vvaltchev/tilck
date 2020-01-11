@@ -17,13 +17,13 @@ considered as *not implemented yet*.
  sys_write           | full
  sys_open            | partial++ [1]
  sys_close           | full
- sys_waitpid         | compliant [2]
+ sys_waitpid         | full
  sys_execve          | full
  sys_chdir           | full
  sys_getpid          | full
  sys_setuid16        | limited [3]
  sys_getuid16        | limited [3]
- sys_pause           | stub
+ sys_pause           | minimal [2]
  sys_access          | partial
  sys_brk             | full
  sys_setgid16        | limited [3]
@@ -42,7 +42,7 @@ considered as *not implemented yet*.
  sys_nanosleep       | full
  sys_prctl           | stub
  sys_getcwd          | full
- sys_mmap_pgoff      | partial
+ sys_mmap_pgoff      | full
  sys_stat64          | full
  sys_fstat64         | full
  sys_lstat64         | partial
@@ -53,15 +53,15 @@ considered as *not implemented yet*.
  sys_setuid          | limited [3]
  sys_setgid          | limited [3]
  sys_getdents64      | full
- sys_fcntl64         | stub
+ sys_fcntl64         | partial
  sys_gettid          | minimal [4]
  sys_set_thread_area | full
  sys_exit_group      | minimal [5]
  sys_set_tid_address | stub
- sys_tkill           | partial [6]
- sys_tgkill          | partial [6]
- sys_kill            | partial [6]
- sys_setsid          | minimal [8]
+ sys_tkill           | partial++ [6]
+ sys_tgkill          | partial++ [6]
+ sys_kill            | full
+ sys_setsid          | full
  sys_times           | minimal [9]
  sys_clock_gettime   | compliant [10]
  sys_clock_getres    | compliant [10]
@@ -73,8 +73,8 @@ considered as *not implemented yet*.
  sys_symlink         | full
  sys_vfork           | compliant [11]
  sys_umask           | full
- sys_truncate64      | partial [12]
- sys_ftruncate64     | partial [12]
+ sys_truncate64      | full
+ sys_ftruncate64     | full
  sys_sync            | compliant [13]
  sys_chown           | limited [3]
  sys_fchown          | limited [3]
@@ -85,6 +85,11 @@ considered as *not implemented yet*.
  sys_pipe            | full
  sys_pipe2           | partial++ [14]
  sys_sched_yield     | compliant
+ getsid              | full
+ setpgid             | full
+ getpgid             | full
+ getpgrp             | full
+
 
 Definitions:
 
@@ -109,8 +114,8 @@ Notes:
    setting and flags like O_APPEND, O_CLOEXEC, O_EXCL, O_TRUNC. All the
    "advanced" flags like O_ASYNC are not supported yet.
 
-2. The cases pid < -1, pid == -1 and pid == 0 are treated in the same way
-   because Tilck does not support process groups.
+2. Because custom signal handlers are not supported, pause() puts the process
+   to sleep until a signal actually kills it.
 
 3. Tilck does not support *by design* multiple users nor any form of
    authentication. Therefore, the following statement is always true:
@@ -121,14 +126,13 @@ Notes:
 
 5. Because the lack of thread support, exit_group() behaves as exit()
 
-6. Because the lack of thread support and process groups, all of those *kill*
-   syscalls behave substantially in the same way. In the case of `tgkill()` the
-   the condition pid == tid is checked.
+6. Because the lack of thread support, `tgkill()` works only when
+   `tgid` == `tid`.
 
 7. Currently `wait4()` behaves like `waitpid()` and the `rusage` buffer is just
    zero-ed.
 
-8. The only thing that `setsid()` does now is resetting the controlling tty.
+8. [Limitation removed]
 
 9. At the moment `times()` just updates `tms_utime` and `tms_stime`.
 
@@ -136,7 +140,7 @@ Notes:
 
 11. Behaves exactly as `fork()`.
 
-12. Truncate called with `length` > `file size` is not supported yet.
+12. [Limitation removed]
 
 13. Since there is no disk cache nor disk support in general, `sync()` just
     does nothing.

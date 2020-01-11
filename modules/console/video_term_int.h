@@ -71,10 +71,10 @@ struct term_action {
 
    };
 
-   uptr ptr;
+   ulong ptr;
 };
 
-STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(uptr)));
+STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
 u16 term_get_curr_row(struct term *t);
 u16 term_get_curr_col(struct term *t);

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-static sptr ramfs_insert_remove_entry_cmp(const void *a, const void *b)
+static long ramfs_insert_remove_entry_cmp(const void *a, const void *b)
 {
    const struct ramfs_entry *e1 = a;
    const struct ramfs_entry *e2 = b;
    return strcmp(e1->name, e2->name);
 }
 
-static sptr ramfs_find_entry_cmp(const void *obj, const void *valptr)
+static long ramfs_find_entry_cmp(const void *obj, const void *valptr)
 {
    const struct ramfs_entry *e = obj;
    const char *searched_str = valptr;

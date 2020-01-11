@@ -11,14 +11,16 @@
 #include "gdt_int.h"
 #include "idt_int.h"
 
+extern volatile bool __in_double_fault;
+
 void double_fault_handler_asm(void);
 static int double_fault_tss_num;
 
 static const struct tss_entry df_tss_data = {
-   .esp0 = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
+   .esp0 = ((ulong)kernel_initial_stack + PAGE_SIZE - 4),
    .ss0 = X86_KERNEL_DATA_SEL,
    .cr3 = 0 /* updated later */,
-   .eip = (uptr)&double_fault_handler_asm,
+   .eip = (ulong)&double_fault_handler_asm,
    .eflags = 0x2,
    .cs = X86_KERNEL_CODE_SEL,
    .es = X86_KERNEL_DATA_SEL,
@@ -26,7 +28,7 @@ static const struct tss_entry df_tss_data = {
    .ds = X86_KERNEL_DATA_SEL,
    .fs = X86_KERNEL_DATA_SEL,
    .gs = X86_KERNEL_DATA_SEL,
-   .esp = ((uptr)kernel_initial_stack + PAGE_SIZE - 4),
+   .esp = ((ulong)kernel_initial_stack + PAGE_SIZE - 4),
 };
 
 static inline void double_fault_tss_update_cr3(void)
@@ -41,7 +43,7 @@ void register_double_fault_tss_entry(void)
    double_fault_tss_update_cr3();
 
    gdt_set_entry(&e,
-                 (uptr)&tss_array[TSS_DOUBLE_FAULT],
+                 (ulong)&tss_array[TSS_DOUBLE_FAULT],
                  sizeof(tss_array[TSS_DOUBLE_FAULT]),
                  GDT_DESC_TYPE_TSS,
                  GDT_GRAN_BYTE | GDT_32BIT);

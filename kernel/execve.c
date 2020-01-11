@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/string_util.h>
+#include <tilck/common/basic_defs.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
@@ -133,6 +133,9 @@ execve_prepare_process(struct process *pi, void *brk, const char *const *argv)
 
    if (pi->debug_cmdline)
       save_cmdline(pi, argv);
+
+   if (pi->vforked)
+      handle_vforked_child_move_on(pi);
 }
 
 static inline int

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/hal.h>
@@ -19,7 +19,7 @@ void selftest_time_manual(void)
    int drift;
    u32 orig_tick_duration = 0;
    u32 art_drift_p = 5;
-   uptr var;
+   ulong var;
 
    if (clock_drift_adj_loop_delay > 60 * TIMER_HZ) {
 

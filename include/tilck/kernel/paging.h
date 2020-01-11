@@ -6,33 +6,36 @@
 #include <tilck/kernel/hal_types.h>
 
 #ifdef __i386__
-#define PAGE_DIR_SIZE (PAGE_SIZE)
+   #define PAGE_DIR_SIZE (PAGE_SIZE)
 #endif
 
-#define PAGE_SHIFT                                            12
-#define PAGE_SIZE                        ((uptr)1 << PAGE_SHIFT)
-#define OFFSET_IN_PAGE_MASK                      (PAGE_SIZE - 1)
-#define PAGE_MASK                         (~OFFSET_IN_PAGE_MASK)
-#define IS_PAGE_ALIGNED(x)    (!((uptr)x & OFFSET_IN_PAGE_MASK))
-#define IS_PTR_ALIGNED(x)        (!((uptr)x & (sizeof(uptr)-1)))
+#define PAGE_SHIFT                                              12
+#define PAGE_SIZE                         ((ulong)1 << PAGE_SHIFT)
+#define OFFSET_IN_PAGE_MASK                        (PAGE_SIZE - 1)
+#define PAGE_MASK                           (~OFFSET_IN_PAGE_MASK)
+#define IS_PAGE_ALIGNED(x)     (!((ulong)x & OFFSET_IN_PAGE_MASK))
+#define IS_PTR_ALIGNED(x)        (!((ulong)x & (sizeof(ulong)-1)))
 
-#define INVALID_PADDR                                 ((uptr)-1)
+#define INVALID_PADDR                                  ((ulong)-1)
 
 /*
  * These MACROs can be used for the linear mapping region in the kernel space.
  */
 
-#define KERNEL_PA_TO_VA(pa) ((void *) ((uptr)(pa) + KERNEL_BASE_VA))
-#define KERNEL_VA_TO_PA(va) ((uptr)(va) - KERNEL_BASE_VA)
+#define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
+#define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
+
+extern char page_size_buf[PAGE_SIZE];
+extern char zero_page[PAGE_SIZE];
 
 void init_paging();
 bool handle_potential_cow(void *r);
 
 NODISCARD int
-map_page(pdir_t *pdir, void *vaddr, uptr paddr, bool us, bool rw);
+map_page(pdir_t *pdir, void *vaddr, ulong paddr, bool us, bool rw);
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddr, uptr paddr, u32 flags);
+map_page_int(pdir_t *pdir, void *vaddr, ulong paddr, u32 flags);
 
 NODISCARD int
 map_zero_page(pdir_t *pdir, void *vaddrp, bool us, bool rw);
@@ -40,7 +43,7 @@ map_zero_page(pdir_t *pdir, void *vaddrp, bool us, bool rw);
 NODISCARD size_t
 map_pages(pdir_t *pdir,
           void *vaddr,
-          uptr paddr,
+          ulong paddr,
           size_t page_count,
           bool big_pages_allowed,
           bool us,
@@ -49,7 +52,7 @@ map_pages(pdir_t *pdir,
 NODISCARD size_t
 map_pages_int(pdir_t *pdir,
               void *vaddr,
-              uptr paddr,
+              ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
               u32 flags);
@@ -67,24 +70,21 @@ void unmap_page(pdir_t *pdir, void *vaddr, bool do_free);
 int unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool do_free);
 void unmap_pages(pdir_t *pdir, void *vaddr, size_t count, bool do_free);
 size_t unmap_pages_permissive(pdir_t *pd, void *va, size_t count, bool do_free);
-uptr get_mapping(pdir_t *pdir, void *vaddr);
-int get_mapping2(pdir_t *pdir, void *vaddrp, uptr *pa_ref);
+ulong get_mapping(pdir_t *pdir, void *vaddr);
+int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref);
 pdir_t *pdir_clone(pdir_t *pdir);
 pdir_t *pdir_deep_clone(pdir_t *pdir);
 void pdir_destroy(pdir_t *pdir);
-void invalidate_page(uptr vaddr);
+void invalidate_page(ulong vaddr);
 void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
-
-extern pdir_t *__kernel_pdir;
-extern char page_size_buf[PAGE_SIZE];
-extern char zero_page[PAGE_SIZE];
 
 static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
 {
+   extern pdir_t *__kernel_pdir;
    return __kernel_pdir;
 }
 
-void *map_framebuffer(uptr paddr, uptr vaddr, uptr size, bool user_mmap);
+void *map_framebuffer(ulong paddr, ulong vaddr, ulong size, bool user_mmap);
 void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size);
 
 /*

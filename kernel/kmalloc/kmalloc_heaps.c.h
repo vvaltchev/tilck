@@ -38,7 +38,7 @@ void *kmalloc_get_first_heap(size_t *size)
 #include "kmalloc_leak_detector.c.h"
 
 bool kmalloc_create_heap(struct kmalloc_heap *h,
-                         uptr vaddr,
+                         ulong vaddr,
                          size_t size,
                          size_t min_block_size,
                          size_t alloc_block_size,
@@ -125,10 +125,10 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
    return new_heap;
 }
 
-static size_t find_biggest_heap_size(uptr vaddr, uptr limit)
+static size_t find_biggest_heap_size(ulong vaddr, ulong limit)
 {
-   uptr curr_max = 512 * MB;
-   uptr curr_end;
+   ulong curr_max = 512 * MB;
+   ulong curr_end;
 
    while (curr_max) {
 
@@ -167,7 +167,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
 
    bool success =
       kmalloc_create_heap(heaps[used_heaps],
-                          (uptr)vaddr,
+                          (ulong)vaddr,
                           heap_size,
                           min_block_size,
                           0,              /* alloc_block_size */
@@ -202,7 +202,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    return (int)used_heaps++;
 }
 
-static sptr greater_than_heap_cmp(const void *a, const void *b)
+static long greater_than_heap_cmp(const void *a, const void *b)
 {
    const struct kmalloc_heap *const *ha_ref = a;
    const struct kmalloc_heap *const *hb_ref = b;
@@ -219,7 +219,7 @@ static sptr greater_than_heap_cmp(const void *a, const void *b)
    return -1;
 }
 
-static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
+static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
 {
    int heap_index;
    vaddr = pow2_round_up_at(
@@ -252,11 +252,14 @@ static void init_kmalloc_fill_region(int region, uptr vaddr, uptr limit)
 
 void init_kmalloc(void)
 {
+   struct mem_region r;
+   int heap_index;
+   ulong vbegin, vend;
+
    ASSERT(!kmalloc_initialized);
    list_init(&small_heaps_list);
    list_init(&avail_small_heaps_list);
 
-   int heap_index;
    used_heaps = 0;
    bzero(heaps, sizeof(heaps));
 
@@ -279,15 +282,14 @@ void init_kmalloc(void)
       kmalloc_account_alloc(heaps[0]->metadata_size);
    }
 
-   for (int i = 0; i < mem_regions_count; i++) {
+   for (int i = 0; i < get_mem_regions_count(); i++) {
 
-      struct mem_region *r = mem_regions + i;
-      uptr vbegin, vend;
+      get_mem_region(i, &r);
 
-      if (!linear_map_mem_region(r, &vbegin, &vend))
+      if (!linear_map_mem_region(&r, &vbegin, &vend))
          break;
 
-      if (r->type == MULTIBOOT_MEMORY_AVAILABLE) {
+      if (r.type == MULTIBOOT_MEMORY_AVAILABLE) {
 
          init_kmalloc_fill_region(i, vbegin, vend);
 

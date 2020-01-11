@@ -29,7 +29,7 @@
 EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
-   uptr unused;
+   ulong unused;
 
    /*
     * 0. ASSUME DF = 0 (the compiler assumes that already everywhere!)
@@ -86,7 +86,7 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
     *
     * But, given the forward direction of copy this is perfectly fine.
     */
-   ASSERT( dest < src || ((uptr)src + n <= (uptr)dest) );
+   ASSERT( dest < src || ((ulong)src + n <= (ulong)dest) );
 
    asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
@@ -101,7 +101,7 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
 EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 {
    u32 unused;
-   ASSERT( dest < src || ((uptr)src + n <= (uptr)dest) );
+   ASSERT( dest < src || ((ulong)src + n <= (ulong)dest) );
 
    asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n times
                : "=c" (n), "=S" (src), "=D" (unused)
@@ -114,7 +114,7 @@ EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 /* dest and src might overlap anyhow */
 EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 {
-   if (dest < src || ((uptr)src + n <= (uptr)dest)) {
+   if (dest < src || ((ulong)src + n <= (ulong)dest)) {
 
       memcpy(dest, src, n);
 
@@ -154,7 +154,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
  */
 EXTERN inline void *memset(void *s, int c, size_t n)
 {
-   uptr unused; /* See the comment in strlen() about the unused variable */
+   ulong unused; /* See the comment in strlen() about the unused variable */
 
    asmVolatile("rep stosb"
                : "=D" (unused), "=a" (c), "=c" (n)
@@ -169,7 +169,7 @@ EXTERN inline void *memset(void *s, int c, size_t n)
  */
 EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
 {
-   uptr unused; /* See the comment in strlen() about the unused variable */
+   ulong unused; /* See the comment in strlen() about the unused variable */
 
    asmVolatile("rep stosw"
                : "=D" (unused), "=a" (val), "=c" (n)
@@ -184,7 +184,7 @@ EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
  */
 EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
 {
-   uptr unused; /* See the comment in strlen() about the unused variable */
+   ulong unused; /* See the comment in strlen() about the unused variable */
 
    asmVolatile("rep stosl"
                : "=D" (unused), "=a" (val), "=c" (n)
@@ -196,7 +196,7 @@ EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
 
 EXTERN inline void bzero(void *s, size_t n)
 {
-   uptr unused; /* See the comment in strlen() about the unused variable */
+   ulong unused; /* See the comment in strlen() about the unused variable */
 
    asmVolatile("xor %%eax, %%eax\n\t"    // eax = 0
                "rep stosl\n\t"           // zero 4 byte at a time, n / 4 times

@@ -1,15 +1,24 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/datetime.h>
+
+#include <tilck/mods/tracing.h>
 
 #include "termutil.h"
 #define MAX_EXEC_PATH_LEN     34
+
+void init_dp_tracing(void);
+enum kb_handler_action dp_tracing_screen(void);
 
 /* Gfx state */
 static int row;
@@ -28,28 +37,44 @@ static enum {
 
 } mode;
 
-const char *debug_get_state_name(enum task_state state, bool stopped)
+static void
+debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
 {
+   char *ptr = s;
+
    switch (state) {
 
       case TASK_STATE_INVALID:
-         return "?";
+         *ptr++ = '?';
+         break;
 
       case TASK_STATE_RUNNABLE:
-         return !stopped ? "r" : "rS";
+         *ptr++ = 'r';
+         break;
 
       case TASK_STATE_RUNNING:
-         return "R";
+         *ptr++ = 'R';
+         break;
 
       case TASK_STATE_SLEEPING:
-         return !stopped ? "s" : "sS";
+         *ptr++ = 's';
+         break;
 
       case TASK_STATE_ZOMBIE:
-         return "Z";
+         *ptr++ = 'Z';
+         break;
 
       default:
          NOT_REACHED();
    }
+
+   if (stopped)
+      *ptr++ = 'S';
+
+   if (traced)
+      *ptr++ = 't';
+
+   *ptr = 0;
 }
 
 static int debug_get_tn_for_tasklet_runner(struct task *ti)
@@ -75,7 +100,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    static char fmt[120];
    static char hfmt[120];
    static char header[120];
-   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqnqqqqqn";
+   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqqnqqqqqn";
 
    static char *hline_sep_end = &hline_sep[sizeof(hline_sep)];
 
@@ -88,7 +113,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
                TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-2s "
+               TERM_VLINE " %%-3s "
                TERM_VLINE "  %%-2d "
                TERM_VLINE " %%-%ds",
                dp_start_col+1, path_field_len);
@@ -98,7 +123,7 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
                TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-2s "
+               TERM_VLINE " %%-3s "
                TERM_VLINE " %%-3s "
                TERM_VLINE " %%-%ds",
                path_field_len);
@@ -144,6 +169,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    struct task *ti = obj;
    struct process *pi = ti->pi;
    char buf[128] = {0};
+   char state_str[4];
    char *path = buf;
    char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
    const char *orig_path = pi->debug_cmdline ? pi->debug_cmdline : "<n/a>";
@@ -160,13 +186,13 @@ static int debug_per_task_cb(void *obj, void *arg)
       snprintk(path, MAX_EXEC_PATH_LEN + 1, "%s...", path2);
    }
 
-   const char *state = debug_get_state_name(ti->state, ti->stopped);
+   debug_get_state_name(state_str, ti->state, ti->stopped, ti->traced);
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (is_kernel_thread(ti)) {
 
       ttynum = 0;
-      const char *kfunc = find_sym_at_addr((uptr)ti->what, NULL, NULL);
+      const char *kfunc = find_sym_at_addr((ulong)ti->what, NULL, NULL);
 
       if (kfunc) {
          if (!is_tasklet_runner(ti)) {
@@ -207,7 +233,7 @@ static int debug_per_task_cb(void *obj, void *arg)
               pi->pgid,
               pi->sid,
               pi->parent_pid,
-              state,
+              state_str,
               ttynum,
               buf);
 
@@ -235,60 +261,34 @@ static bool is_tid_off_limits(int tid)
 }
 
 static enum kb_handler_action
-dp_tasks_handle_sel_mode_keypress(struct key_event ke)
+dp_no_tracing_module_action(void)
 {
-   if (ke.print_char == 'r') {
-      ui_need_update = true;
-      return kb_handler_ok_and_continue;
-   }
+   modal_msg = "The tracing module is NOT built-in";
+   return kb_handler_ok_and_continue;
+}
 
-   if (ke.key == KEY_UP) {
+static enum kb_handler_action
+dp_enter_tracing_mode(void)
+{
+   return MOD_tracing
+      ? dp_tracing_screen()
+      : dp_no_tracing_module_action();
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_special(u32 key)
+{
+   if (key == KEY_UP) {
       sel_tid = -1;
       sel_index = MAX(0, sel_index - 1);
       ui_need_update = true;
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.key == KEY_DOWN) {
+   if (key == KEY_DOWN) {
       sel_tid = -1;
       sel_index = MIN(max_idx, sel_index + 1);
       ui_need_update = true;
-      return kb_handler_ok_and_continue;
-   }
-
-   if (ke.print_char == 'k') {
-
-      if (is_tid_off_limits(sel_tid) || sel_tid == 1)
-         return kb_handler_ok_and_continue;
-
-      ui_need_update = true;
-      send_signal(sel_tid, SIGKILL, false);
-      return kb_handler_ok_and_continue;
-   }
-
-   if (ke.print_char == '\033') {
-      mode = dp_tasks_mode_default;
-      ui_need_update = true;
-      return kb_handler_ok_and_continue;
-   }
-
-   if (ke.print_char == 's') {
-
-      if (is_tid_off_limits(sel_tid))
-         return kb_handler_ok_and_continue;
-
-      ui_need_update = true;
-      send_signal(sel_tid, SIGSTOP, false);
-      return kb_handler_ok_and_continue;
-   }
-
-   if (ke.print_char == 'c') {
-
-      if (is_tid_off_limits(sel_tid))
-         return kb_handler_ok_and_continue;
-
-      ui_need_update = true;
-      send_signal(sel_tid, SIGCONT, false);
       return kb_handler_ok_and_continue;
    }
 
@@ -296,17 +296,153 @@ dp_tasks_handle_sel_mode_keypress(struct key_event ke)
 }
 
 static enum kb_handler_action
-dp_tasks_handle_default_mode_keypress(struct key_event ke)
+dp_tasks_handle_sel_mode_keypress_k(void)
 {
-   if (ke.print_char == 'r') {
-      ui_need_update = true;
+   if (is_tid_off_limits(sel_tid) || sel_tid == 1) {
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Killing kernel threads or pid 1 is not allowed";
+      else
+         modal_msg = "Killing the debug panel's process is not allowed";
+
       return kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == 13) {
-      mode = dp_tasks_mode_sel;
-      ui_need_update = true;
+   ui_need_update = true;
+   send_signal(sel_tid, SIGKILL, false);
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_s(void)
+{
+   if (is_tid_off_limits(sel_tid)) {
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Stopping kernel threads is not allowed";
+      else
+         modal_msg = "Stopping the debug panel's process is not allowed";
+
       return kb_handler_ok_and_continue;
+   }
+
+   ui_need_update = true;
+   send_signal(sel_tid, SIGSTOP, false);
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_c(void)
+{
+   if (is_tid_off_limits(sel_tid))
+      return kb_handler_ok_and_continue;
+
+   ui_need_update = true;
+   send_signal(sel_tid, SIGCONT, false);
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_t(void)
+{
+   if (is_tid_off_limits(sel_tid)) {
+
+      if (sel_tid != get_curr_tid())
+         modal_msg = "Cannot trace kernel threads for syscalls";
+      else
+         modal_msg = "Cannot trace the debug panel process";
+
+      return kb_handler_ok_and_continue;
+   }
+
+   ui_need_update = true;
+
+   {
+      disable_preemption();
+      struct task *ti = get_task(sel_tid);
+
+      if (ti)
+         ti->traced = !ti->traced;
+
+      enable_preemption();
+   }
+
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_esc(void)
+{
+   mode = dp_tasks_mode_default;
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress_r(void)
+{
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_sel_mode_keypress(struct key_event ke)
+{
+   if (!ke.print_char)
+      return dp_tasks_handle_sel_mode_keypress_special(ke.key);
+
+   switch (ke.print_char) {
+
+      case DP_KEY_ESC:
+         return dp_tasks_handle_sel_mode_keypress_esc();
+
+      case DP_KEY_CTRL_T:
+         return dp_enter_tracing_mode();
+
+      case 'r':
+         return dp_tasks_handle_sel_mode_keypress_r();
+
+      case 'k':
+         return dp_tasks_handle_sel_mode_keypress_k();
+
+      case 's':
+         return dp_tasks_handle_sel_mode_keypress_s();
+
+      case 'c':
+         return dp_tasks_handle_sel_mode_keypress_c();
+
+      case 't':
+
+         if (MOD_tracing)
+            return dp_tasks_handle_sel_mode_keypress_t();
+
+         return dp_no_tracing_module_action();
+   }
+
+   return kb_handler_nak;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_default_mode_enter(void)
+{
+   mode = dp_tasks_mode_sel;
+   ui_need_update = true;
+   return kb_handler_ok_and_continue;
+}
+
+static enum kb_handler_action
+dp_tasks_handle_default_mode_keypress(struct key_event ke)
+{
+   switch (ke.print_char) {
+
+      case 'r':
+         return dp_tasks_handle_sel_mode_keypress_r();
+
+      case DP_KEY_ENTER:
+         return dp_tasks_handle_default_mode_enter();
+
+      case DP_KEY_CTRL_T:
+         return dp_enter_tracing_mode();
    }
 
    return kb_handler_nak;
@@ -346,19 +482,30 @@ static int dp_count_tasks(void *obj, void *arg)
 static void show_actions_menu(void)
 {
    if (mode == dp_tasks_mode_default) {
+
       dp_writeln(
-         ESC_COLOR_BRIGHT_WHITE "<ENTER>" RESET_ATTRS ": select " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh "
+         E_COLOR_BR_WHITE "<ENTER>" RESET_ATTRS ": select mode " TERM_VLINE " "
+         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode"
       );
+
+      dp_writeln("");
+
    } else if (mode == dp_tasks_mode_sel) {
+
       dp_writeln(
-         ESC_COLOR_BRIGHT_WHITE
-            "<ESC>" RESET_ATTRS ": exit select mode " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "s" RESET_ATTRS ": stop " TERM_VLINE " "
-         ESC_COLOR_BRIGHT_WHITE "c" RESET_ATTRS ": continue "
+         E_COLOR_BR_WHITE "ESC" RESET_ATTRS ": exit select mode " TERM_VLINE " "
+         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode " TERM_VLINE " "
+         E_COLOR_BR_WHITE "t" RESET_ATTRS ": trace task "
       );
+
+      dp_writeln(
+         E_COLOR_BR_WHITE "k" RESET_ATTRS ": kill " TERM_VLINE " "
+         E_COLOR_BR_WHITE "s" RESET_ATTRS ": stop " TERM_VLINE " "
+         E_COLOR_BR_WHITE "c" RESET_ATTRS ": continue "
+      );
+
    }
 
    dp_writeln("");
@@ -410,10 +557,17 @@ static void dp_tasks_exit(void)
    /* do nothing, for the moment */
 }
 
+static void dp_tasks_first_setup(void)
+{
+   if (MOD_tracing)
+      init_dp_tracing();
+}
+
 static struct dp_screen dp_tasks_screen =
 {
    .index = 3,
    .label = "Tasks",
+   .first_setup = dp_tasks_first_setup,
    .on_dp_enter = dp_tasks_enter,
    .on_dp_exit = dp_tasks_exit,
    .draw_func = dp_show_tasks,

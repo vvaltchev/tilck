@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/string_util.h>
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
@@ -34,41 +35,41 @@ STATIC_ASSERT(sizeof(struct task) + sizeof(struct process) <= 1024);
 
 void task_info_reset_kernel_stack(struct task *ti)
 {
-   uptr bottom = (uptr)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
+   ulong bottom = (ulong)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
    ti->state_regs = (regs_t *)(bottom & POINTER_ALIGN_MASK);
 }
 
-static inline void push_on_stack(uptr **stack_ptr_ref, uptr val)
+static inline void push_on_stack(ulong **stack_ptr_ref, ulong val)
 {
    (*stack_ptr_ref)--;     // Decrease the value of the stack pointer
    **stack_ptr_ref = val;  // *stack_ptr = val
 }
 
-static void push_on_stack2(pdir_t *pdir, uptr **stack_ptr_ref, uptr val)
+static void push_on_stack2(pdir_t *pdir, ulong **stack_ptr_ref, ulong val)
 {
    // Decrease the value of the stack pointer
    (*stack_ptr_ref)--;
 
    // *stack_ptr = val
-   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(uptr));
+   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(ulong));
 }
 
-static inline void push_on_user_stack(regs_t *r, uptr val)
+static inline void push_on_user_stack(regs_t *r, ulong val)
 {
-   push_on_stack((uptr **)&r->useresp, val);
+   push_on_stack((ulong **)&r->useresp, val);
 }
 
 static void push_string_on_user_stack(regs_t *r, const char *str)
 {
    const size_t len = strlen(str) + 1; // count also the '\0'
-   const size_t aligned_len = round_down_at(len, sizeof(uptr));
+   const size_t aligned_len = round_down_at(len, sizeof(ulong));
    const size_t rem = len - aligned_len;
 
-   r->useresp -= aligned_len + (rem > 0 ? sizeof(uptr) : 0);
+   r->useresp -= aligned_len + (rem > 0 ? sizeof(ulong) : 0);
    memcpy((void *)r->useresp, str, aligned_len);
 
    if (rem > 0) {
-      uptr smallbuf = 0;
+      ulong smallbuf = 0;
       memcpy(&smallbuf, str + aligned_len, rem);
       memcpy((void *)(r->useresp + aligned_len), &smallbuf, sizeof(smallbuf));
    }
@@ -81,8 +82,8 @@ push_args_on_user_stack(regs_t *r,
                         const char *const *env,
                         u32 envc)
 {
-   uptr pointers[32];
-   uptr env_pointers[96];
+   ulong pointers[32];
+   ulong env_pointers[96];
 
    if (argc > ARRAY_SIZE(pointers))
       return -E2BIG;
@@ -128,7 +129,7 @@ push_args_on_user_stack(regs_t *r,
    }
 
    // push argc as last (since it will be the first to be pop-ed)
-   push_on_user_stack(r, (uptr)argc);
+   push_on_user_stack(r, (ulong)argc);
    return 0;
 }
 
@@ -139,7 +140,7 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
    int tid, ret = -ENOMEM;
 
    regs_t r = {
-      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
+      .kernel_resume_eip = (ulong)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_KERNEL_DATA_SEL,
       .fs = X86_KERNEL_DATA_SEL,
@@ -149,7 +150,7 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
       .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
       .int_num = 0,
       .err_code = 0,
-      .eip = (uptr)func,
+      .eip = (ulong)func,
       .cs = X86_KERNEL_CODE_SEL,
       .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
       .useresp = 0,
@@ -190,8 +191,8 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
     * 4) Copy the actual regs to the new stack
     */
 
-   push_on_stack((uptr **)&ti->state_regs, (uptr)arg);
-   push_on_stack((uptr **)&ti->state_regs, (uptr)&kthread_exit);
+   push_on_stack((ulong **)&ti->state_regs, (ulong)arg);
+   push_on_stack((ulong **)&ti->state_regs, (ulong)&kthread_exit);
    ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
    memcpy(ti->state_regs, &r, sizeof(r) - 8);
 
@@ -239,12 +240,56 @@ void kthread_exit(void)
    remove_task(get_curr_task());
 
    {
-      uptr var;
+      ulong var;
       disable_interrupts(&var);
       set_curr_task(kernel_process);
       enable_interrupts(&var);
    }
    schedule_outside_interrupt_context();
+}
+
+static void
+setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
+{
+   *r = (regs_t) {
+      .kernel_resume_eip = (ulong)&soft_interrupt_resume,
+      .custom_flags = 0,
+      .gs = X86_USER_DATA_SEL,
+      .fs = X86_USER_DATA_SEL,
+      .es = X86_USER_DATA_SEL,
+      .ds = X86_USER_DATA_SEL,
+      .edi = 0, .esi = 0, .ebp = 0, .esp = 0,
+      .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
+      .int_num = 0,
+      .err_code = 0,
+      .eip = (ulong)entry,
+      .cs = X86_USER_CODE_SEL,
+      .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
+      .useresp = (ulong)stack_addr,
+      .ss = X86_USER_DATA_SEL,
+   };
+}
+
+static int NO_INLINE
+setup_usermode_task_first_process(pdir_t *pdir, struct task **ti_ref)
+{
+   struct task *ti;
+   struct process *pi;
+
+   VERIFY(create_new_pid() == 1);
+
+   if (!(ti = allocate_new_process(kernel_process, 1, pdir)))
+      return -ENOMEM;
+
+   pi = ti->pi;
+   pi->pgid = 1;
+   pi->sid = 1;
+   pi->umask = 0022;
+   ti->state = TASK_STATE_RUNNABLE;
+   add_task(ti);
+   memcpy(pi->str_cwd, "/", 2);
+   *ti_ref = ti;
+   return 0;
 }
 
 int setup_usermode_task(pdir_t *pdir,
@@ -255,33 +300,17 @@ int setup_usermode_task(pdir_t *pdir,
                         const char *const *env,
                         struct task **ti_ref)
 {
-   regs_t r = {
-      .kernel_resume_eip = (uptr)&soft_interrupt_resume,
-      .custom_flags = 0,
-      .gs = X86_USER_DATA_SEL,
-      .fs = X86_USER_DATA_SEL,
-      .es = X86_USER_DATA_SEL,
-      .ds = X86_USER_DATA_SEL,
-      .edi = 0, .esi = 0, .ebp = 0, .esp = 0,
-      .ebx = 0, .edx = 0, .ecx = 0, .eax = 0,
-      .int_num = 0,
-      .err_code = 0,
-      .eip = (uptr)entry,
-      .cs = X86_USER_CODE_SEL,
-      .eflags = 0x2 /* reserved, should be always set */ | EFLAGS_IF,
-      .useresp = (uptr)stack_addr,
-      .ss = X86_USER_DATA_SEL,
-   };
-
+   regs_t r;
    int rc = 0;
    u32 argv_elems = 0;
    u32 env_elems = 0;
    pdir_t *old_pdir;
    struct process *pi = NULL;
 
-   *ti_ref = NULL;
-
    ASSERT(!is_preemption_enabled());
+
+   *ti_ref = NULL;
+   setup_usermode_task_regs(&r, entry, stack_addr);
 
    /* Switch to the new page directory (we're going to write on user's stack) */
    old_pdir = get_curr_pdir();
@@ -291,46 +320,36 @@ int setup_usermode_task(pdir_t *pdir,
    while (env[env_elems]) env_elems++;
 
    if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
-      goto out;
+      goto err;
 
    if (UNLIKELY(!ti)) {
 
-      /*
-       * Special case: applies only for `init`, the first process.
-       */
+      /* Special case: applies only for `init`, the first process */
 
-      VERIFY(create_new_pid() == 1);
+      if ((rc = setup_usermode_task_first_process(pdir, &ti)))
+         goto err;
 
-      if (!(ti = allocate_new_process(kernel_process, 1, pdir))) {
-         rc = -ENOMEM;
-         goto out;
-      }
-
+      ASSERT(ti != NULL);
       pi = ti->pi;
-      pi->pgid = 1;
-      pi->sid = 1;
-      pi->umask = 0022;
-      ti->state = TASK_STATE_RUNNABLE;
-      add_task(ti);
-      memcpy(pi->str_cwd, "/", 2);
 
    } else {
 
       /*
        * Common case: we're creating a new process using the data structures
        * and the PID from a forked child (the `ti` task).
-       *
-       * The only things we HAVE TO do in this case is to destroy process's page
-       * directory and free all GDT and LDT entries used by the current (forked)
-       * child since we're creating a totally new process now.
        */
 
       pi = ti->pi;
+      remove_all_user_zero_mem_mappings(pi);
+      remove_all_file_mappings(pi);
+      process_free_mmap_heap(pi);
+      arch_specific_free_task(ti);
+
       ASSERT(old_pdir == pi->pdir);
       pdir_destroy(pi->pdir);
       pi->pdir = pdir;
       old_pdir = NULL;
-      arch_specific_free_task(ti);
+
       arch_specific_new_task_setup(ti, NULL);
 
       ASSERT(ti->state == TASK_STATE_RUNNING);
@@ -344,14 +363,14 @@ int setup_usermode_task(pdir_t *pdir,
    ti->state_regs--;    // make room for a regs_t struct in the stack
    *ti->state_regs = r; // copy the regs_t struct we just prepared
    *ti_ref = ti;
+   return 0;
 
-out:
+err:
+   ASSERT(rc != 0);
 
-   if (UNLIKELY(rc != 0)) {
-      if (old_pdir) {
-         set_curr_pdir(old_pdir);
-         pdir_destroy(pdir);
-      }
+   if (old_pdir) {
+      set_curr_pdir(old_pdir);
+      pdir_destroy(pdir);
    }
 
    return rc;
@@ -549,7 +568,7 @@ int sys_set_tid_address(int *tidptr)
     * is not valid, we'll send SIGSEGV to the just created thread.
     */
 
-   get_curr_task()->pi->set_child_tid = tidptr;
+   get_curr_proc()->set_child_tid = tidptr;
    return get_curr_task()->tid;
 }
 

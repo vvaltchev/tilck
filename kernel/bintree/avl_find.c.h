@@ -20,7 +20,7 @@ bintree_find_internal(void *root_obj,
                       ptrdiff_t bintree_offset)
 #endif
 {
-   sptr c;
+   long c;
 
    while (root_obj) {
 
