@@ -219,7 +219,7 @@ int cmd_wpid4(int argc, char **argv)
          exit(10);
       }
 
-      printf("[parent] child 1: %d\n", grand_child1);
+      printf(STR_PARENT "child 1: %d\n", grand_child1);
 
       grand_child2 = fork();
 
@@ -233,8 +233,8 @@ int cmd_wpid4(int argc, char **argv)
          exit(11);
       }
 
-      printf("[parent] child 2: %d\n", grand_child2);
-      printf("[parent] exit\n");
+      printf(STR_PARENT "child 2: %d\n", grand_child2);
+      printf(STR_PARENT "exit\n");
       exit(0);
    }
 
@@ -254,22 +254,22 @@ int cmd_wpid4(int argc, char **argv)
    return failed ? 1 : 0;
 }
 
-static void
+void
 print_waitpid_change(int child, int wstatus)
 {
    int code = WEXITSTATUS(wstatus);
    int sig = WTERMSIG(wstatus);
 
    if (WIFSTOPPED(wstatus))
-      printf("[   parent   ] child %d: STOPPED\n", child);
+      printf(STR_PARENT "child %d: STOPPED\n", child);
    else if (WIFCONTINUED(wstatus))
-      printf("[   parent   ] child %d: CONTINUED\n", child);
+      printf(STR_PARENT "child %d: CONTINUED\n", child);
    else if (WIFEXITED(wstatus))
-      printf("[   parent   ] child %d: EXITED with %d\n", child, code);
+      printf(STR_PARENT "child %d: EXITED with %d\n", child, code);
    else if (WIFSIGNALED(wstatus))
-      printf("[   parent   ] child %d: KILLED by sig: %d\n", child, sig);
+      printf(STR_PARENT "child %d: KILLED by sig: %d\n", child, sig);
    else
-      printf("[   parent   ] child %d: UNKNOWN status change!\n", child);
+      printf(STR_PARENT "child %d: UNKNOWN status change!\n", child);
 
    fflush(stdout);
 }
@@ -304,7 +304,7 @@ int cmd_wpid5(int argc, char **argv)
    children[0] = fork();
 
    if (children[0] < 0) {
-      printf("[   parent   ] fork() failed\n");
+      printf(STR_PARENT "fork() failed\n");
       return 1;
    }
 
@@ -322,12 +322,12 @@ int cmd_wpid5(int argc, char **argv)
       exit(0);
    }
 
-   printf("[   parent   ] children[0] pid: %d\n", children[0]);
+   printf(STR_PARENT "children[0] pid: %d\n", children[0]);
 
    children[1] = fork();
 
    if (children[1] < 0) {
-      printf("[   parent   ] fork() failed\n");
+      printf(STR_PARENT "fork() failed\n");
       kill(children[0], SIGKILL);
       return 1;
    }
@@ -425,8 +425,8 @@ int cmd_wpid6(int argc, char **argv)
    int g1_killed = 0;
    int g2_killed = 0;
 
-   printf("[   parent   ] Hello, pid: %d, pgid: %d\n", getpid(), getpgid(0));
-   printf("[   parent   ] Start children..\n");
+   printf(STR_PARENT "Hello, pid: %d, pgid: %d\n", getpid(), getpgid(0));
+   printf(STR_PARENT "Start children..\n");
 
    for (int i = 0; i < ARRAY_SIZE(cld) - 1; i++) {
 
@@ -446,10 +446,10 @@ int cmd_wpid6(int argc, char **argv)
    if (!cld[6])
       wpid6_test_active_child(6, cld[0], cld[3]);
 
-   printf("[   parent   ] Wait for children to change their pgid\n");
+   printf(STR_PARENT "Wait for children to change their pgid\n");
    usleep(100 * 1000);
 
-   printf("[   parent   ] Wait on the 1st process group\n");
+   printf(STR_PARENT "Wait on the 1st process group\n");
    while ((pid = call_waitpid(-cld[0], &wstatus, cld, ARRAY_SIZE(cld))) > 0) {
       if (pid == cld[0] || pid == cld[1] || pid == cld[2])
          g1_killed++;
@@ -457,7 +457,7 @@ int cmd_wpid6(int argc, char **argv)
 
    DEVSHELL_CMD_ASSERT(g1_killed == 3);
 
-   printf("[   parent   ] Wait on the 2st process group\n");
+   printf(STR_PARENT "Wait on the 2st process group\n");
    while ((pid = call_waitpid(-cld[3], &wstatus, cld, ARRAY_SIZE(cld))) > 0) {
       if (pid == cld[3] || pid == cld[4] || pid == cld[5])
          g2_killed++;
@@ -465,7 +465,7 @@ int cmd_wpid6(int argc, char **argv)
 
    DEVSHELL_CMD_ASSERT(g2_killed == 3);
 
-   printf("[   parent   ] Wait on any other child\n");
+   printf(STR_PARENT "Wait on any other child\n");
    pid = call_waitpid(-1, &wstatus, cld, ARRAY_SIZE(cld));
    DEVSHELL_CMD_ASSERT(pid == cld[6]);
    return 0;

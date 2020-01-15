@@ -134,7 +134,7 @@ static void no_munmap_bad_child(void)
                     0);
 
    if (res == (void*) -1) {
-      printf("[child] mmap 128 KB failed!\n");
+      printf(STR_CHILD "mmap 128 KB failed!\n");
       exit(1);
    }
 

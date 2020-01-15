@@ -56,10 +56,10 @@ static int fork_test(int (*fork_func)(void))
                inchild = true;
             } else {
                printf("############## I'm the parent, child's pid = %i\n", pid);
-               printf("[parent] waiting the child to exit...\n");
+               printf(STR_PARENT "waiting the child to exit...\n");
                int wstatus=0;
                int p = waitpid(pid, &wstatus, 0);
-               printf("[parent] child (pid: %i) exited with status: %i!\n",
+               printf(STR_PARENT "child (pid: %i) exited with status: %i!\n",
                       p, WEXITSTATUS(wstatus));
                exit_on_next_FORK_TEST_ITERS_hit = true;
             }
@@ -142,13 +142,13 @@ int cmd_execve0(int argc, char **argv)
       return 0;
    }
 
-   printf("[parent] Calling fork()...\n");
+   printf(STR_PARENT "Calling fork()...\n");
    pid = fork();
    DEVSHELL_CMD_ASSERT(pid >= 0);
 
    if (!pid) {
 
-      printf("[child] alloc 1 MB with mmap()\n");
+      printf(STR_CHILD "alloc 1 MB with mmap()\n");
 
       void *res = mmap(NULL,
                        1 * MB,
@@ -161,21 +161,17 @@ int cmd_execve0(int argc, char **argv)
       strcpy(res, "I can write here, for sure!");
 
       sprintf(buf, "%p", res);
-      printf("[child] call execve(devshell)\n");
+      printf(STR_CHILD "call execve(devshell)\n");
       execl(devshell_path, "devshell", "-c", "execve0", "--test1", buf, NULL);
       perror("execl");
       exit(123);
    }
 
-   printf("[parent] Wait for child, expecting it killed by SIGSEGV\n");
+   printf(STR_PARENT "Wait for child, expecting it killed by SIGSEGV\n");
 
    rc = waitpid(pid, &wstatus, 0);
    DEVSHELL_CMD_ASSERT(rc == pid);
-
-   if (WIFEXITED(wstatus))
-      printf("[parent] child exited with: %d\n", WEXITSTATUS(wstatus));
-   else if (WIFSIGNALED(wstatus))
-      printf("[parent] child terminated by sig: %d\n", WTERMSIG(wstatus));
+   print_waitpid_change(pid, wstatus);
 
    DEVSHELL_CMD_ASSERT(WIFSIGNALED(wstatus));
    DEVSHELL_CMD_ASSERT(WTERMSIG(wstatus) == SIGSEGV);

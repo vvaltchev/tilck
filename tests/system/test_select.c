@@ -31,15 +31,15 @@ int cmd_select1(int argc, char **argv)
 
    signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE */
 
-   printf("[parent] Calling pipe()\n");
+   printf(STR_PARENT "Calling pipe()\n");
    rc = pipe(pipefd);
 
    if (rc < 0) {
-      printf("[parent] pipe() failed. Error: %s\n", strerror(errno));
+      printf(STR_PARENT "pipe() failed. Error: %s\n", strerror(errno));
       exit(1);
    }
 
-   printf("[parent] fork()..\n");
+   printf(STR_PARENT "fork()..\n");
    childpid = fork();
    DEVSHELL_CMD_ASSERT(childpid >= 0);
 
@@ -61,25 +61,25 @@ int cmd_select1(int argc, char **argv)
    } while (rc < 0 && errno == EINTR);
 
    if (rc < 0) {
-      printf("[parent] ERROR: select() failed with: %s\n", strerror(errno));
+      printf(STR_PARENT "ERROR: select() failed with: %s\n", strerror(errno));
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (rc == 0) {
-      printf("[parent] ERROR: select() timed out (unexpected)\n");
+      printf(STR_PARENT "ERROR: select() timed out (unexpected)\n");
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (rc != 1) {
-      printf("[parent] ERROR: select() returned %d (expected: 1)\n", rc);
+      printf(STR_PARENT "ERROR: select() returned %d (expected: 1)\n", rc);
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (!FD_ISSET(pipefd[0], &readfds)) {
-      printf("[parent] ERROR: pipefd[0] is NOT set in readfds\n");
+      printf(STR_PARENT "ERROR: pipefd[0] is NOT set in readfds\n");
       failed = 1;
       goto wait_child_and_return;
    }
@@ -87,19 +87,19 @@ int cmd_select1(int argc, char **argv)
    rc = read(pipefd[0], buf, sizeof(buf));
 
    if (rc < 0) {
-      printf("[parent] ERROR: read(rfd]) failed with: %s\n", strerror(errno));
+      printf(STR_PARENT "ERROR: read(rfd]) failed with: %s\n", strerror(errno));
       failed = 1;
       goto wait_child_and_return;
    }
 
    buf[rc] = 0;
-   printf("[parent] Got: '%s' from child\n", buf);
-   printf("[parent] Now make wfd nonblock and fill the buffer\n");
+   printf(STR_PARENT "Got: '%s' from child\n", buf);
+   printf(STR_PARENT "Now make wfd nonblock and fill the buffer\n");
 
    fl = fcntl(pipefd[1], F_GETFL, 0);
 
    if (fl < 0) {
-      printf("[parent] fcntl(pipefd[1]) failed with: %s\n", strerror(errno));
+      printf(STR_PARENT "fcntl(pipefd[1]) failed with: %s\n", strerror(errno));
       goto wait_child_and_return;
    }
 
@@ -116,12 +116,12 @@ int cmd_select1(int argc, char **argv)
 
    } while (rc > 0);
 
-   printf("[parent] Restore the blocking mode on wfd\n");
+   printf(STR_PARENT "Restore the blocking mode on wfd\n");
    rc = fcntl(pipefd[1], F_SETFL, fl & ~O_NONBLOCK);
    DEVSHELL_CMD_ASSERT(rc == 0);
 
-   printf("[parent] The pipe buffer is full after writing %d bytes\n", tot);
-   printf("[parent] Now select() wfd with writefds\n");
+   printf(STR_PARENT "The pipe buffer is full after writing %d bytes\n", tot);
+   printf(STR_PARENT "Now select() wfd with writefds\n");
 
    FD_ZERO(&readfds);
    FD_ZERO(&writefds);
@@ -135,42 +135,42 @@ int cmd_select1(int argc, char **argv)
    } while (rc < 0 && errno == EINTR);
 
    if (rc < 0) {
-      printf("[parent] ERROR: select() failed with: %s\n", strerror(errno));
+      printf(STR_PARENT "ERROR: select() failed with: %s\n", strerror(errno));
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (rc == 0) {
-      printf("[parent] ERROR: select() timed out (unexpected)\n");
+      printf(STR_PARENT "ERROR: select() timed out (unexpected)\n");
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (rc != 1) {
-      printf("[parent] ERROR: select() returned %d (expected: 1)\n", rc);
+      printf(STR_PARENT "ERROR: select() returned %d (expected: 1)\n", rc);
       failed = 1;
       goto wait_child_and_return;
    }
 
    if (!FD_ISSET(pipefd[1], &writefds)) {
-      printf("[parent] ERROR: pipefd[1] is NOT set in writefds\n");
+      printf(STR_PARENT "ERROR: pipefd[1] is NOT set in writefds\n");
       failed = 1;
       goto wait_child_and_return;
    }
 
-   printf("[parent] selected() completed as expected\n");
+   printf(STR_PARENT "selected() completed as expected\n");
 
 wait_child_and_return:
 
-   printf("[parent] waitpid()..\n");
+   printf(STR_PARENT "waitpid()..\n");
    rc = waitpid(childpid, &wstatus, 0);
 
    if (rc < 0) {
-      printf("[parent] waitpid() failed. Error: %s\n", strerror(errno));
+      printf(STR_PARENT "waitpid() failed. Error: %s\n", strerror(errno));
       return 1;
    }
 
-   printf("[parent] waitpid() done\n");
+   printf(STR_PARENT "waitpid() done\n");
    close(pipefd[0]);
    close(pipefd[1]);
    return failed;
@@ -241,7 +241,7 @@ int cmd_select2(int argc, char **argv)
    }
 
    if (!FD_ISSET(pipefd[0], &readfds)) {
-      printf("[parent] ERROR: pipefd[0] is NOT set in readfds\n");
+      printf(STR_PARENT "ERROR: pipefd[0] is NOT set in readfds\n");
       return 1;
    }
 

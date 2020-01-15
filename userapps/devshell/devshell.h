@@ -28,13 +28,14 @@ typedef unsigned long long ull_t;
       }                                                                     \
    } while(0)
 
-
 /* constants */
 #define COLOR_RED     "\033[31m"
 #define COLOR_GREEN   "\033[32m"
 #define COLOR_YELLOW  "\033[93m"
 #define RESET_ATTRS   "\033[0m"
 #define PFX           "[devshell] "
+#define STR_PARENT    "[   parent   ] "
+#define STR_CHILD     "[child] "
 /* --- */
 
 extern bool dump_coverage;
@@ -62,6 +63,7 @@ int read_command(char *buf, int buf_size);
 void dump_coverage_files(void);
 void show_common_help_intro(void);
 const char *get_devshell_path(void);
+void print_waitpid_change(int child, int wstatus);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

@@ -19,19 +19,19 @@ static void pipe_cmd1_child(int rfd, int wfd)
    char buf[64];
    int rc;
 
-   printf("[child] read from pipe...\n");
+   printf(STR_CHILD "read from pipe...\n");
 
    rc = read(rfd, buf, sizeof(buf));
 
    if (rc < 0) {
-      printf("[child] read returned %d, error: %s\n", rc, strerror(errno));
+      printf(STR_CHILD "read returned %d, error: %s\n", rc, strerror(errno));
       exit(1);
    }
 
    buf[rc] = 0;
 
-   printf("[child] got: '%s'\n", buf);
-   printf("[child] Done.\n");
+   printf(STR_CHILD "got: '%s'\n", buf);
+   printf(STR_CHILD "Done.\n");
    exit(0);
 }
 
@@ -44,14 +44,14 @@ int cmd_pipe1(int argc, char **argv)
    int rc;
    pid_t childpid;
 
-   printf("[parent] Creating the pipe..\n");
+   printf(STR_PARENT "Creating the pipe..\n");
 
    {
       int pipefd[2];
       rc = pipe(pipefd);
 
       if (rc < 0) {
-         printf("[parent] pipe() failed. Error: %s\n", strerror(errno));
+         printf(STR_PARENT "pipe() failed. Error: %s\n", strerror(errno));
          return 1;
       }
 
@@ -59,35 +59,35 @@ int cmd_pipe1(int argc, char **argv)
       wfd = pipefd[1];
    }
 
-   printf("[parent] Doing fork()..\n");
+   printf(STR_PARENT "Doing fork()..\n");
    childpid = fork();
    DEVSHELL_CMD_ASSERT(childpid >= 0);
 
    if (!childpid)
       pipe_cmd1_child(rfd, wfd);
 
-   printf("[parent] Wait 100 ms\n");
+   printf(STR_PARENT "Wait 100 ms\n");
    usleep(100 * 1000);
 
-   printf("[parent] Writing 'hello' to the pipe..\n");
+   printf(STR_PARENT "Writing 'hello' to the pipe..\n");
 
    strcpy(buf, "hello");
    rc = write(wfd, buf, strlen(buf));
 
    if (rc < 0) {
-      printf("[parent] write() failed. Error: %s\n", strerror(errno));
+      printf(STR_PARENT "write() failed. Error: %s\n", strerror(errno));
       return 1;
    }
 
-   printf("[parent] Done.\n");
+   printf(STR_PARENT "Done.\n");
    rc = waitpid(childpid, &wstatus, 0);
 
    if (rc < 0) {
-      printf("[parent] waitpid() failed. Error: %s\n", strerror(errno));
+      printf(STR_PARENT "waitpid() failed. Error: %s\n", strerror(errno));
       return 1;
    }
 
-   printf("[parent] Child done.\n");
+   printf(STR_PARENT "Child done.\n");
    return 0;
 }
 
@@ -96,15 +96,15 @@ static void pipe_cmd2_child(int rfd, int wfd)
    char buf[64] = "whatever";
    int rc;
 
-   printf("[child] close the read side of the pipe\n");
+   printf(STR_CHILD "close the read side of the pipe\n");
    close(rfd);
 
-   printf("[child] write to pipe, expecting SIGPIPE\n");
+   printf(STR_CHILD "write to pipe, expecting SIGPIPE\n");
    errno = 0;
    rc = write(wfd, buf, sizeof(buf));
 
-   printf("[child] write returned %d (%s)\n", rc, strerror(errno));
-   printf("[child] while we expected to die\n");
+   printf(STR_CHILD "write returned %d (%s)\n", rc, strerror(errno));
+   printf(STR_CHILD "while we expected to die\n");
    exit(1);
 }
 
@@ -118,14 +118,14 @@ int cmd_pipe2(int argc, char **argv)
    int rc;
    pid_t childpid;
 
-   printf("[parent] Creating the pipe..\n");
+   printf(STR_PARENT "Creating the pipe..\n");
 
    {
       int pipefd[2];
       rc = pipe(pipefd);
 
       if (rc < 0) {
-         printf("[parent] pipe() failed. Error: %s\n", strerror(errno));
+         printf(STR_PARENT "pipe() failed. Error: %s\n", strerror(errno));
          return 1;
       }
 
@@ -133,36 +133,36 @@ int cmd_pipe2(int argc, char **argv)
       wfd = pipefd[1];
    }
 
-   printf("[parent] Close the read side of the pipe\n");
+   printf(STR_PARENT "Close the read side of the pipe\n");
    close(rfd);
 
-   printf("[parent] Doing fork()..\n");
+   printf(STR_PARENT "Doing fork()..\n");
    childpid = fork();
    DEVSHELL_CMD_ASSERT(childpid >= 0);
 
    if (!childpid)
       pipe_cmd2_child(rfd, wfd);
 
-   printf("[parent] Done.\n");
+   printf(STR_PARENT "Done.\n");
    rc = waitpid(childpid, &wstatus, 0);
 
    if (rc < 0) {
-      printf("[parent] waitpid() failed. Error: %s\n", strerror(errno));
+      printf(STR_PARENT "waitpid() failed. Error: %s\n", strerror(errno));
       return 1;
    }
 
-   printf("[parent] Child done.\n");
+   printf(STR_PARENT "Child done.\n");
 
    code = WEXITSTATUS(wstatus);
    term_sig = WTERMSIG(wstatus);
 
    if (term_sig != SIGPIPE) {
-      printf("[parent] The child didn't die with SIGPIPE as expected\n");
-      printf("[parent] exit code: %d, term_sig: %d\n", code, term_sig);
+      printf(STR_PARENT "The child didn't die with SIGPIPE as expected\n");
+      printf(STR_PARENT "exit code: %d, term_sig: %d\n", code, term_sig);
       return 1;
    }
 
-   printf("[parent] The child died with SIGPIPE, as expected\n");
+   printf(STR_PARENT "The child died with SIGPIPE, as expected\n");
    return 0;
 }
 
