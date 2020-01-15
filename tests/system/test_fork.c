@@ -83,7 +83,7 @@ int cmd_fork0(int argc, char **argv)
    return fork_test(&fork);
 }
 
-int cmd_fork_perf(int argc, char **argv)
+static int do_fork_perf(int (*fork_func)(void))
 {
    const int iters = 150000;
    int rc, wstatus, child_pid;
@@ -93,7 +93,7 @@ int cmd_fork_perf(int argc, char **argv)
 
    for (int i = 0; i < iters; i++) {
 
-      child_pid = fork();
+      child_pid = fork_func();
 
       if (child_pid < 0) {
          perror("fork() failed");
@@ -124,6 +124,16 @@ int cmd_fork_perf(int argc, char **argv)
 int cmd_fork_se(int argc, char **argv)
 {
    return fork_test(&sysenter_fork);
+}
+
+int cmd_fork_perf(int argc, char **argv)
+{
+   return do_fork_perf(&fork);
+}
+
+int cmd_vfork_perf(int argc, char **argv)
+{
+   return do_fork_perf(&vfork);
 }
 
 int cmd_execve0(int argc, char **argv)
@@ -228,4 +238,58 @@ int cmd_fork1(int argc, char **argv)
 
    printf(STR_PARENT "clean exit\n");
    return 0;
+}
+
+int cmd_vfork0(int argc, char **argv)
+{
+   int rc, pid, wstatus;
+   int stack_var = 0;
+   int failed = 0;
+   void *mmap_addr = NULL;
+
+   printf(STR_PARENT "Call vfork()..\n");
+   pid = vfork();
+   DEVSHELL_CMD_ASSERT(pid >= 0);
+
+   if (!pid) {
+
+      printf(STR_CHILD "In vfork-ed child..\n");
+      printf(STR_CHILD "mmap(1 MB)...\n");
+
+      mmap_addr = mmap(NULL,
+                       1 * MB,
+                       PROT_READ | PROT_WRITE,
+                       MAP_ANONYMOUS | MAP_PRIVATE,
+                       -1,
+                       0);
+
+      printf(STR_CHILD "mmap_addr: %p\n", mmap_addr);
+      DEVSHELL_CMD_ASSERT(mmap_addr != (void *)-1);
+      strcpy(mmap_addr, "Hello from the child!!");
+
+      printf(STR_CHILD "Sleep a little\n");
+      usleep(70 * 1000);
+
+      printf(STR_CHILD "Setting stack_var\n");
+      stack_var = 12345;
+
+      printf(STR_CHILD "Call _exit(0)\n");
+      _exit(0);
+   }
+
+   if (stack_var != 12345) {
+      printf(STR_PARENT "ERROR: stack_var not set by vforked-child!\n");
+      failed = 1;
+   }
+
+   printf(STR_PARENT "Read from mmap_addr:\n");
+   printf(STR_PARENT "'%s'\n", mmap_addr);
+
+   printf(STR_PARENT "Write to mmap_addr...\n");
+   strcpy(mmap_addr, "Hello from the parent!!");
+
+   rc = waitpid(pid, &wstatus, 0);
+   DEVSHELL_CMD_ASSERT(rc == pid);
+   print_waitpid_change(pid, wstatus);
+   return failed;
 }

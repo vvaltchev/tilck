@@ -16,6 +16,7 @@ DECL_CMD(fork_se);
 DECL_CMD(bad_read);
 DECL_CMD(bad_write);
 DECL_CMD(fork_perf);
+DECL_CMD(vfork_perf);
 DECL_CMD(syscall_perf);
 DECL_CMD(fpu);
 DECL_CMD(fpu_loop);
@@ -67,6 +68,7 @@ DECL_CMD(pipe4);
 DECL_CMD(pollerr);
 DECL_CMD(pollhup);
 DECL_CMD(execve0);
+DECL_CMD(vfork0);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -82,6 +84,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(bad_read,     TT_SHORT,  true),
    CMD_ENTRY(bad_write,    TT_SHORT,  true),
    CMD_ENTRY(fork_perf,    TT_LONG,   true),
+   CMD_ENTRY(vfork_perf,   TT_LONG,   true),
    CMD_ENTRY(syscall_perf, TT_SHORT,  true),
    CMD_ENTRY(fpu,          TT_SHORT,  true),
    CMD_ENTRY(fpu_loop,     TT_LONG,  false),
@@ -133,6 +136,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(select3,      TT_SHORT,  true),
    CMD_ENTRY(select4,      TT_SHORT,  true),
    CMD_ENTRY(execve0,      TT_SHORT,  true),
+   CMD_ENTRY(vfork0,       TT_SHORT,  true),
 
    CMD_END(),
 };

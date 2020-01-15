@@ -115,7 +115,7 @@ void process_free_mappings_info(struct process *pi)
 {
    struct mappings_info *mi = pi->mi;
 
-   if (mi) {
+   if (mi && !pi->vforked) {
       ASSERT(mi->mmap_heap);
       kmalloc_destroy_heap(mi->mmap_heap);
       kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
@@ -212,11 +212,18 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    pi->parent_pid = parent_pi->pid;
 
-   if (parent_pi->mi) {
-      if (UNLIKELY(!(pi->mi = duplicate_mappings_info(parent_pi->mi))))
-         goto oom_case;
+   if (new_pdir != parent_pi->pdir) {
+
+      if (parent_pi->mi) {
+         if (UNLIKELY(!(pi->mi = duplicate_mappings_info(parent_pi->mi))))
+            goto oom_case;
+      }
+
+   } else {
+      pi->vforked = true;
    }
 
+   pi->inherited_mmap_heap = !!pi->mi;
    pi->pdir = new_pdir;
    pi->ref_count = 1;
    pi->pid = pid;

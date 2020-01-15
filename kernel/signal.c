@@ -14,6 +14,15 @@ typedef void (*action_type)(struct task *, int signum);
 
 static void action_terminate(struct task *ti, int signum)
 {
+   if (ti->vfork_stopped) {
+
+      /*
+       * Cannot kill the parent of a vfork-ed child.
+       * TODO: implement deferred delivery of kill or any other signal.
+       */
+      return;
+   }
+
    terminate_process(ti, 0, signum);
 }
 

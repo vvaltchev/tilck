@@ -57,6 +57,7 @@ struct process {
 
    /* This process is a result of vfork(), before any call to execve() */
    bool vforked;
+   bool inherited_mmap_heap;
 
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 

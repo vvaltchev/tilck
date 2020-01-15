@@ -143,6 +143,7 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    ASSERT(!is_kernel_thread(ti));
 
    struct process *const pi = ti->pi;
+   const bool vforked = pi->vforked;
 
    if (ti->state == TASK_STATE_ZOMBIE)
       return; /* do nothing, the task is already dead */
@@ -166,9 +167,12 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
 
    close_all_handles(pi);
    task_free_all_kernel_allocs(ti);
-   remove_all_user_zero_mem_mappings(pi);
 
-   if (ti->tid != 1) {
+   if (!vforked) {
+      remove_all_user_zero_mem_mappings(pi);
+   }
+
+   if (LIKELY(ti->tid != 1)) {
 
       /*
        * What if the dying task has any children? We have to set their parent
@@ -198,18 +202,42 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
          tty_set_medium_raw_mode(pi->proc_tty, false);
    }
 
-   if (pi->vforked)
+   if (vforked) {
       handle_vforked_child_move_on(pi);
+      pi->vforked = true; /* handle_vforked_child_move_on() unsets this */
+
+      if (!pi->inherited_mmap_heap) {
+
+         struct task *parent = get_task(pi->parent_pid);
+
+         /* We're in a vfork-ed child: the parent cannot die */
+         ASSERT(parent != NULL);
+
+         /*
+          * If we didn't inherit mappings info from the parent and the parent
+          * didn't run the whole time: its `mi` must continue to be NULL.
+          */
+         ASSERT(!parent->pi->mi);
+
+         /* Transfer the ownership of our mappings info back to our parent */
+         parent->pi->mi = pi->mi;
+      }
+   }
 
    if (ti == get_curr_task()) {
 
       /* This function has been called by sys_exit(): we won't return */
       set_curr_pdir(get_kernel_pdir());
-      pdir_destroy(pi->pdir);
+
+      if (!vforked)
+         pdir_destroy(pi->pdir);
+
       switch_stack_free_mem_and_schedule();
       NOT_REACHED();
    }
 
-   pdir_destroy(pi->pdir);
+   if (!vforked)
+      pdir_destroy(pi->pdir);
+
    free_mem_for_zombie_task(ti);
 }

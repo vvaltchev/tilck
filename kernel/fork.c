@@ -52,23 +52,27 @@ int do_fork(bool vfork)
    if ((pid = create_new_pid()) < 0)
       goto out; /* NOTE: rc is already set to -EAGAIN */
 
-   /*
-    * TODO: consider actually NOT cloning the pdir in case of vfork.
-    */
+   if (vfork) {
 
-   if (FORK_NO_COW)
-      new_pdir = pdir_deep_clone(curr_pi->pdir);
-   else
-      new_pdir = pdir_clone(curr_pi->pdir);
+      if (!(child = allocate_new_process(curr, pid, curr_pi->pdir)))
+         goto oom_case;
 
-   if (!new_pdir)
-      goto oom_case;
+   } else {
 
-   if (!(child = allocate_new_process(curr, pid, new_pdir)))
-      goto oom_case;
+      if (FORK_NO_COW)
+         new_pdir = pdir_deep_clone(curr_pi->pdir);
+      else
+         new_pdir = pdir_clone(curr_pi->pdir);
 
-   /* Set new_pdir in order to avoid its double-destruction */
-   new_pdir = NULL;
+      if (!new_pdir)
+         goto oom_case;
+
+      if (!(child = allocate_new_process(curr, pid, new_pdir)))
+         goto oom_case;
+
+      /* Set new_pdir in order to avoid its double-destruction */
+      new_pdir = NULL;
+   }
 
    /* Child's kernel stack must be set */
    ASSERT(child->kernel_stack != NULL);
@@ -87,36 +91,28 @@ int do_fork(bool vfork)
    if (fork_dup_all_handles(child->pi) < 0)
       goto oom_case;
 
-   if (vfork) {
-      curr->stopped = true;
-      curr->vfork_stopped = true;
-      child->pi->vforked = true;
-   }
-
    add_task(child);
 
-   /*
-    * X86-specific note:
-    * Force the CR3 reflush using the current (parent's) pdir.
-    * Without doing that, COW on parent's pages doesn't work immediately.
-    * That is better than invalidating all the pages affected, one by one.
-    */
+   if (vfork) {
 
-   set_curr_pdir(curr_pi->pdir);
+      curr->stopped = true;
+      curr->vfork_stopped = true;
+
+   } else {
+
+      /*
+       * X86-specific note:
+       * Force the CR3 reflush using the current (parent's) pdir.
+       * Without doing that, COW on parent's pages doesn't work immediately.
+       * That is better than invalidating all the pages affected, one by one.
+       */
+
+      set_curr_pdir(curr_pi->pdir);
+   }
+
    enable_preemption();
 
    if (vfork) {
-
-      /* Make absolutely sure the current task is vfork-stopped */
-      ASSERT(curr->stopped);
-      ASSERT(curr->vfork_stopped);
-
-      /* Check that the child is not stopped */
-      ASSERT(!child->stopped);
-      ASSERT(!child->vfork_stopped);
-
-      /* Check that the child is marked as vfork-ed */
-      ASSERT(child->pi->vforked);
 
       /* Yield indefinitely until the child dies or calls execve() */
       kernel_yield();
