@@ -104,13 +104,22 @@ void *sys_brk(void *new_brk)
 
 static int create_process_mmap_heap(struct process *pi)
 {
-   pi->mmap_heap = kzmalloc(kmalloc_get_heap_struct_size());
+   struct kmalloc_heap *mmap_heap;
+   ASSERT(!pi->mi);
 
-   if (!pi->mmap_heap)
+   if (!(pi->mi = kmalloc(sizeof(struct mappings_info))))
       return -ENOMEM;
 
+   if (!(mmap_heap = kzmalloc(kmalloc_get_heap_struct_size()))) {
+      kfree2(pi->mi, sizeof(struct mappings_info));
+      return -ENOMEM;
+   }
+
+   list_init(&pi->mi->mappings);
+   pi->mi->mmap_heap = mmap_heap;
+
    bool success =
-      kmalloc_create_heap(pi->mmap_heap,
+      kmalloc_create_heap(mmap_heap,
                           USER_MMAP_BEGIN,
                           USER_MMAP_END - USER_MMAP_BEGIN,
                           PAGE_SIZE,
@@ -134,7 +143,7 @@ static int create_process_mmap_heap(struct process *pi)
 static inline void
 mmap_err_case_free(struct process *pi, void *ptr, size_t actual_len)
 {
-   per_heap_kfree(pi->mmap_heap,
+   per_heap_kfree(pi->mi->mmap_heap,
                   ptr,
                   &actual_len,
                   KFREE_FL_ALLOW_SPLIT |
@@ -153,7 +162,7 @@ mmap_on_user_heap(struct process *pi,
    void *res;
    struct user_mapping *um;
 
-   res = per_heap_kmalloc(pi->mmap_heap,
+   res = per_heap_kmalloc(pi->mi->mmap_heap,
                           actual_len_ref,
                           per_heap_kmalloc_flags);
 
@@ -243,7 +252,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
-   if (!pi->mmap_heap)
+   if (!pi->mi)
       if ((rc = create_process_mmap_heap(pi)))
          return rc;
 
@@ -385,7 +394,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
          vfs_mmap(um2, true);
    }
 
-   per_heap_kfree(pi->mmap_heap,
+   per_heap_kfree(pi->mi->mmap_heap,
                   vaddrp,
                   &actual_len,
                   kfree_flags);
@@ -401,7 +410,7 @@ int sys_munmap(void *vaddrp, size_t len)
    ulong vaddr = (ulong) vaddrp;
    int rc;
 
-   if (!len || !pi->mmap_heap)
+   if (!len || !pi->mi->mmap_heap)
       return -EINVAL;
 
    if (vaddr < USER_MMAP_BEGIN || vaddr >= USER_MMAP_END)

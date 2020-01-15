@@ -29,6 +29,12 @@ struct kernel_alloc {
    size_t size;
 };
 
+struct mappings_info {
+
+   struct kmalloc_heap *mmap_heap;
+   struct list mappings;
+};
+
 struct process {
 
    REF_COUNTED_OBJECT;
@@ -41,10 +47,9 @@ struct process {
 
    void *brk;
    void *initial_brk;
-   struct kmalloc_heap *mmap_heap;
+   struct mappings_info *mi;
 
    struct list children;
-   struct list mappings;
 
    void *proc_tty;
    bool did_call_execve;
@@ -204,6 +209,8 @@ struct task {
     */
    char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
+
+#define TOT_PROC_AND_TASK_SIZE    (sizeof(struct task) + sizeof(struct process))
 
 STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(struct process) & ~POINTER_ALIGN_MASK) == 0);

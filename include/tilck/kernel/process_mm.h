@@ -32,6 +32,8 @@ void remove_all_mappings_of_handle(struct process *pi, fs_handle h);
 void remove_all_user_zero_mem_mappings(struct process *pi);
 struct user_mapping *process_get_user_mapping(void *vaddr);
 void remove_all_file_mappings(struct process *pi);
+struct mappings_info *duplicate_mappings_info(struct mappings_info *mi);
+
 
 /* Internal functions */
 bool user_valloc_and_map(ulong user_vaddr, size_t page_count);

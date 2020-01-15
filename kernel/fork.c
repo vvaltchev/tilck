@@ -62,10 +62,10 @@ int do_fork(bool vfork)
       new_pdir = pdir_clone(curr_pi->pdir);
 
    if (!new_pdir)
-      goto no_mem_exit;
+      goto oom_case;
 
    if (!(child = allocate_new_process(curr, pid, new_pdir)))
-      goto no_mem_exit;
+      goto oom_case;
 
    /* Set new_pdir in order to avoid its double-destruction */
    new_pdir = NULL;
@@ -85,7 +85,7 @@ int do_fork(bool vfork)
    set_return_register(curr->state_regs, (ulong) child->tid);
 
    if (fork_dup_all_handles(child->pi) < 0)
-      goto no_mem_exit;
+      goto oom_case;
 
    if (vfork) {
       curr->stopped = true;
@@ -135,7 +135,7 @@ int do_fork(bool vfork)
    return child->tid;
 
 
-no_mem_exit:
+oom_case:
 
    rc = -ENOMEM;
 
@@ -144,7 +144,7 @@ no_mem_exit:
 
    if (child) {
       child->state = TASK_STATE_ZOMBIE;
-      internal_free_mem_for_zombie_task(child);
+      free_common_task_allocs(child);
       free_task(child);
    }
 

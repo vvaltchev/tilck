@@ -167,7 +167,6 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
    close_all_handles(pi);
    task_free_all_kernel_allocs(ti);
    remove_all_user_zero_mem_mappings(pi);
-   ASSERT(list_is_empty(&pi->mappings));
 
    if (ti->tid != 1) {
 

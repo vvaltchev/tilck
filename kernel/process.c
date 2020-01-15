@@ -6,6 +6,7 @@
 #include <tilck/common/printk.h>
 
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kmalloc.h>
@@ -86,7 +87,7 @@ STATIC_ASSERT(
 
 #undef TOT_IOBUF_AND_ARGS_BUF_PG
 
-static bool do_common_task_allocations(struct task *ti, bool alloc_bufs)
+static bool do_common_task_allocs(struct task *ti, bool alloc_bufs)
 {
    if (KERNEL_STACK_ISOLATION) {
       ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
@@ -110,10 +111,26 @@ static bool do_common_task_allocations(struct task *ti, bool alloc_bufs)
    return true;
 }
 
-void internal_free_mem_for_zombie_task(struct task *ti)
+void process_free_mappings_info(struct process *pi)
 {
+   struct mappings_info *mi = pi->mi;
+
+   if (mi) {
+      ASSERT(mi->mmap_heap);
+      kmalloc_destroy_heap(mi->mmap_heap);
+      kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
+      kfree2(mi, sizeof(struct mappings_info));
+      pi->mi = NULL;
+   }
+}
+
+void free_common_task_allocs(struct task *ti)
+{
+   struct process *pi = ti->pi;
+   process_free_mappings_info(pi);
+
    if (KERNEL_STACK_ISOLATION) {
-      free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
+      free_kernel_isolated_stack(pi, ti->kernel_stack);
    } else {
       kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
    }
@@ -140,7 +157,7 @@ void free_mem_for_zombie_task(struct task *ti)
 
 #endif
 
-   internal_free_mem_for_zombie_task(ti);
+   free_common_task_allocs(ti);
 }
 
 void init_task_lists(struct task *ti)
@@ -159,30 +176,19 @@ void init_task_lists(struct task *ti)
 void init_process_lists(struct process *pi)
 {
    list_init(&pi->children);
-   list_init(&pi->mappings);
-
    kmutex_init(&pi->fslock, KMUTEX_FL_RECURSIVE);
-}
-
-void process_free_mmap_heap(struct process *pi)
-{
-   if (pi->mmap_heap) {
-      kmalloc_destroy_heap(pi->mmap_heap);
-      kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
-      pi->mmap_heap = NULL;
-   }
 }
 
 struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 {
    struct process *pi, *parent_pi = parent->pi;
-   struct task *ti = kmalloc(
-      sizeof(struct task) + sizeof(struct process)
-   );
+   struct task *ti = NULL;
+   bool common_allocs = false;
+   bool arch_fields = false;
 
-   if (!ti)
-      return NULL;
+   if (UNLIKELY(!(ti = kmalloc(TOT_PROC_AND_TASK_SIZE))))
+      goto oom_case;
 
    pi = (struct process *)(ti + 1);
 
@@ -194,10 +200,8 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    if (MOD_debugpanel) {
 
-      if (!(pi->debug_cmdline = kzmalloc(PROCESS_CMDLINE_BUF_SIZE))) {
-         kfree2(ti, sizeof(struct task) + sizeof(struct process));
-         return NULL;
-      }
+      if (UNLIKELY(!(pi->debug_cmdline = kzmalloc(PROCESS_CMDLINE_BUF_SIZE))))
+         goto oom_case;
 
       if (parent_pi->debug_cmdline) {
          memcpy(pi->debug_cmdline,
@@ -207,7 +211,11 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    }
 
    pi->parent_pid = parent_pi->pid;
-   pi->mmap_heap = kmalloc_heap_dup(parent_pi->mmap_heap);
+
+   if (parent_pi->mi) {
+      if (UNLIKELY(!(pi->mi = duplicate_mappings_info(parent_pi->mi))))
+         goto oom_case;
+   }
 
    pi->pdir = new_pdir;
    pi->ref_count = 1;
@@ -216,17 +224,16 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    ti->is_main_thread = true;
    pi->did_call_execve = false;
    ti->pi = pi;
+   pi->cwd.fs = NULL;
 
    /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
    process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
 
-   if (!do_common_task_allocations(ti, true) ||
-       !arch_specific_new_task_setup(ti, parent))
-   {
-      process_free_mmap_heap(pi);
-      kfree2(ti, sizeof(struct task) + sizeof(struct process));
-      return NULL;
-   }
+   if (UNLIKELY(!(common_allocs = do_common_task_allocs(ti, true))))
+      goto oom_case;
+
+   if (UNLIKELY(!(arch_fields = arch_specific_new_task_setup(ti, parent))))
+      goto oom_case;
 
    init_task_lists(ti);
    init_process_lists(pi);
@@ -234,14 +241,44 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    pi->proc_tty = parent_pi->proc_tty;
    return ti;
+
+oom_case:
+
+   if (ti) {
+
+      if (arch_fields)
+         arch_specific_free_task(ti);
+
+      if (common_allocs)
+         free_common_task_allocs(ti);
+
+      if (pi->cwd.fs) {
+         vfs_release_inode_at(&pi->cwd);
+         release_obj(pi->cwd.fs);
+      }
+
+      process_free_mappings_info(ti->pi);
+
+      if (MOD_debugpanel && pi->debug_cmdline)
+         kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
+
+      kfree2(ti, TOT_PROC_AND_TASK_SIZE);
+   }
+
+   return NULL;
 }
 
 struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 {
+   ASSERT(pi != NULL);
    struct task *process_task = get_process_task(pi);
    struct task *ti = kzmalloc(sizeof(struct task));
 
-   if (!ti || !(ti->pi=pi) || !do_common_task_allocations(ti, alloc_bufs)) {
+   if (!ti || !(ti->pi = pi) || !do_common_task_allocs(ti, alloc_bufs)) {
+
+      if (ti) /* do_common_task_allocs() failed */
+         free_common_task_allocs(ti);
+
       kfree2(ti, sizeof(struct task));
       return NULL;
    }
@@ -258,16 +295,9 @@ static void free_process_int(struct process *pi)
 {
    ASSERT(get_ref_count(pi) > 0);
 
-   if (pi->mmap_heap) {
-      kmalloc_destroy_heap(pi->mmap_heap);
-      kfree2(pi->mmap_heap, kmalloc_get_heap_struct_size());
-      pi->mmap_heap = NULL;
-   }
-
    if (release_obj(pi) == 0) {
 
-      kfree2(get_process_task(pi),
-             sizeof(struct task) + sizeof(struct process));
+      kfree2(get_process_task(pi), TOT_PROC_AND_TASK_SIZE);
 
       if (MOD_debugpanel)
          kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);

@@ -31,7 +31,7 @@ STATIC_ASSERT(
    OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
 );
 
-STATIC_ASSERT(sizeof(struct task) + sizeof(struct process) <= 1024);
+STATIC_ASSERT(TOT_PROC_AND_TASK_SIZE <= 1024);
 
 void task_info_reset_kernel_stack(struct task *ti)
 {
@@ -342,7 +342,7 @@ int setup_usermode_task(pdir_t *pdir,
       pi = ti->pi;
       remove_all_user_zero_mem_mappings(pi);
       remove_all_file_mappings(pi);
-      process_free_mmap_heap(pi);
+      process_free_mappings_info(pi);
       arch_specific_free_task(ti);
 
       ASSERT(old_pdir == pi->pdir);
