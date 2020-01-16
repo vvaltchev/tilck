@@ -9,6 +9,7 @@ jobs:
       DUMP_COV: 1
       REPORT_COV: 1
       TILCK_NO_LOGO: 1
+      CMAKE_ARGS: -DEXTRA_TCC=1
     steps:
       - script: printenv
         displayName: Dump env

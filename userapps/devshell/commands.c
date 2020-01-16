@@ -87,8 +87,8 @@ static bool
 run_child(int argc, char **argv, cmd_func_type func, const char *name)
 {
    static const char *pass_fail_strings[2] = {
-      COLOR_RED "[FAILED] " RESET_ATTRS,
-      COLOR_GREEN "[PASSED] " RESET_ATTRS,
+      COLOR_RED STR_FAIL RESET_ATTRS,
+      COLOR_GREEN STR_PASS RESET_ATTRS,
    };
 
    int child_pid, wstatus, rc;
@@ -98,7 +98,7 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
    start_ms = get_monotonic_time_ms();
 
    printf(COLOR_YELLOW PFX);
-   printf(COLOR_GREEN "[RUN   ] " RESET_ATTRS "%s"  "\n", name);
+   printf(COLOR_GREEN STR_RUN RESET_ATTRS "%s"  "\n", name);
 
    child_pid = fork();
 

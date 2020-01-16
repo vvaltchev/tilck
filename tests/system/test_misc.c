@@ -254,3 +254,46 @@ int cmd_cloexec(int argc, char **argv)
 
    return WEXITSTATUS(wstatus);
 }
+
+/* Test scripts testing EXTRA components running on Tilck */
+
+static const char *extra_test_scripts[] = {
+   "tcc",
+};
+
+static int run_extra_test(const char *name)
+{
+   int rc, pid, wstatus;
+   char buf[64];
+
+   printf("%s Extra: %s\n", STR_RUN, name);
+   sprintf(buf, "/initrd/usr/local/tests/%s", name);
+
+   pid = vfork();
+   DEVSHELL_CMD_ASSERT(pid >= 0);
+
+   if (!pid) {
+      rc = execl(buf, buf, NULL);
+      perror("Execve failed");
+      _exit(1);
+   }
+
+   rc = waitpid(pid, &wstatus, 0);
+   DEVSHELL_CMD_ASSERT(rc == pid);
+   rc = WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0;
+
+   printf("%s Extra: %s\n", rc ? STR_PASS : STR_FAIL, name);
+   return !rc;
+}
+
+int cmd_extra(int argc, char **argv)
+{
+   int rc = 0;
+
+   for (u32 i = 0; i < ARRAY_SIZE(extra_test_scripts); i++) {
+      if ((rc = run_extra_test(extra_test_scripts[i])))
+         break;
+   }
+
+   return rc;
+}

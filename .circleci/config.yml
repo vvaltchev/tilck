@@ -8,6 +8,7 @@ jobs:
       - GTEST_SHUFFLE: 0
       - DUMP_COV: 1
       - REPORT_COV: 1
+      - CMAKE_ARGS: -DEXTRA_TCC=1
     steps:
       - checkout
       - run: mv /tilck_toolchain ./toolchain

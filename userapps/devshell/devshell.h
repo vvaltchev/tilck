@@ -36,6 +36,10 @@ typedef unsigned long long ull_t;
 #define PFX           "[devshell] "
 #define STR_PARENT    "[   parent   ] "
 #define STR_CHILD     "[child] "
+#define STR_RUN       "[RUN   ] "
+#define STR_PASS      "[PASSED] "
+#define STR_FAIL      "[FAILED] "
+
 /* --- */
 
 extern bool dump_coverage;

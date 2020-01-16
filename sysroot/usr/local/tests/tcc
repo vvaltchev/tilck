@@ -1,0 +1,28 @@
+#!/initrd/bin/busybox ash
+
+set -e
+
+if ! [ -f /bin/tcc ]; then
+   echo "No TinyCC in /bin/tcc: skipping the test"
+   exit 0
+fi
+
+cd /tmp
+
+echo "Compiling ex1.c with TinyCC ..."
+tcc -static /lib/tcc-examples/ex1.c -o /tmp/ex1
+
+echo "Running the ex1 program ..."
+out=`./ex1`
+
+echo "Output:"
+echo "$out"
+
+if [ "$out" != "Hello World" ]; then
+   echo "The output does not match the expected value"
+   exit 1
+fi
+
+rm /tmp/ex1
+echo "Done."
+exit 0

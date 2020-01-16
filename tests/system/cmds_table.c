@@ -69,6 +69,7 @@ DECL_CMD(pollerr);
 DECL_CMD(pollhup);
 DECL_CMD(execve0);
 DECL_CMD(vfork0);
+DECL_CMD(extra);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -137,6 +138,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(select4,      TT_SHORT,  true),
    CMD_ENTRY(execve0,      TT_SHORT,  true),
    CMD_ENTRY(vfork0,       TT_SHORT,  true),
+   CMD_ENTRY(extra,          TT_MED,  true),
 
    CMD_END(),
 };
