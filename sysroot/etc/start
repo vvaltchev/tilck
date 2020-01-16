@@ -18,10 +18,15 @@ for d in $dirs; do
 
       elif [ -d $x ]; then
 
-         dname=${x##*/}      # like $(basename $x) but does not use sys_pipe()
+         dname=$(basename $x)
          mkdir /$d/$dname
 
          for y in /initrd/$d/$dname/*; do
+
+            if [ "$y" = "/initrd/$d/$dname/*" ]; then
+               break
+            fi
+
             ln -s $y /$d/$dname/
          done
       fi
