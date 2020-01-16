@@ -9,7 +9,8 @@ DECL_CMD(help);
 DECL_CMD(selftest);
 DECL_CMD(runall);
 DECL_CMD(loop);
-DECL_CMD(fork);
+DECL_CMD(fork0);
+DECL_CMD(fork1);
 DECL_CMD(sysenter);
 DECL_CMD(fork_se);
 DECL_CMD(bad_read);
@@ -74,7 +75,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(runall,       TT_LONG,  false),
    CMD_ENTRY(loop,         TT_MED,   false),
 
-   CMD_ENTRY(fork,         TT_MED,    true),
+   CMD_ENTRY(fork0,        TT_MED,    true),
+   CMD_ENTRY(fork1,        TT_SHORT,  true),
    CMD_ENTRY(sysenter,     TT_SHORT,  true),
    CMD_ENTRY(fork_se,      TT_MED,    true),
    CMD_ENTRY(bad_read,     TT_SHORT,  true),

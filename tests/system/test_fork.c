@@ -78,7 +78,7 @@ static int fork_test(int (*fork_func)(void))
    return 0;
 }
 
-int cmd_fork(int argc, char **argv)
+int cmd_fork0(int argc, char **argv)
 {
    return fork_test(&fork);
 }
@@ -175,5 +175,57 @@ int cmd_execve0(int argc, char **argv)
 
    DEVSHELL_CMD_ASSERT(WIFSIGNALED(wstatus));
    DEVSHELL_CMD_ASSERT(WTERMSIG(wstatus) == SIGSEGV);
+   return 0;
+}
+
+int cmd_fork1(int argc, char **argv)
+{
+   int rc, pid, wstatus;
+   void *mmap_addr;
+
+   printf(STR_CHILD "alloc 1 MB with mmap()\n");
+
+   mmap_addr = mmap(NULL,
+                    1 * MB,
+                    PROT_READ | PROT_WRITE,
+                    MAP_ANONYMOUS | MAP_PRIVATE,
+                    -1,
+                    0);
+
+   DEVSHELL_CMD_ASSERT(mmap_addr != (void *)-1);
+
+   strcpy(mmap_addr, "hello from parent");
+   printf(STR_PARENT "Calling fork()...\n");
+
+   pid = fork();
+   DEVSHELL_CMD_ASSERT(pid >= 0);
+
+   if (!pid) {
+
+      printf(STR_CHILD "hello from the child\n");
+      printf(STR_CHILD "mmap_addr: '%s'\n", mmap_addr);
+      printf(STR_CHILD "Calling munmap()..\n");
+
+      if ((rc = munmap(mmap_addr, 1 * MB))) {
+         perror("munmap failed in the child");
+         exit(1);
+      }
+
+      printf(STR_CHILD "clean exit\n");
+      exit(0);
+   }
+
+   printf(STR_PARENT "Wait for the child\n");
+   rc = waitpid(pid, &wstatus, 0);
+   DEVSHELL_CMD_ASSERT(rc == pid);
+   print_waitpid_change(pid, wstatus);
+
+   DEVSHELL_CMD_ASSERT(!WIFSIGNALED(wstatus));
+   DEVSHELL_CMD_ASSERT(WEXITSTATUS(wstatus) == 0);
+
+   if ((rc = munmap(mmap_addr, 1 * MB)))
+      perror("munmap failed in the parent");
+
+   printf(STR_PARENT "clean exit\n");
    return 0;
 }
