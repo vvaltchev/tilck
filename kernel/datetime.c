@@ -387,7 +387,7 @@ int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
    return 0;
 }
 
-int sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
+int sys_clock_gettime32(clockid_t clk_id, struct timespec *user_tp)
 {
    struct timespec tp;
 
@@ -423,7 +423,7 @@ int sys_clock_gettime(clockid_t clk_id, struct timespec *user_tp)
    return 0;
 }
 
-int sys_clock_getres(clockid_t clk_id, struct timespec *user_res)
+int sys_clock_getres32(clockid_t clk_id, struct timespec *user_res)
 {
    struct timespec tp;
 

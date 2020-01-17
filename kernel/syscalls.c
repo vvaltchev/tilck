@@ -26,7 +26,7 @@ int sys_madvise(void *addr, size_t len, int advice)
    return 0;
 }
 
-int sys_nanosleep(const struct timespec *user_req, struct timespec *rem)
+int sys_nanosleep_time32(const struct timespec *user_req, struct timespec *rem)
 {
    u64 ticks_to_sleep = 0;
    struct timespec req;
@@ -248,8 +248,8 @@ int sys_utime(const char *u_path, const struct utimbuf *u_times)
    return vfs_utimens(path, new_ts);
 }
 
-int sys_utimensat(int dirfd, const char *u_path,
-                  const struct timespec times[2], int flags)
+int sys_utimensat_time32(int dirfd, const char *u_path,
+                         const struct timespec times[2], int flags)
 {
    // TODO (future): consider implementing sys_utimensat() [modern]
    return -ENOSYS;
