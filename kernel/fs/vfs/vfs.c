@@ -501,6 +501,27 @@ int vfs_chmod(const char *path, mode_t mode)
    );
 }
 
+static ALWAYS_INLINE int
+vfs_utimens_impl(struct fs *fs, struct vfs_path *p, const struct timespec ts[2])
+{
+   if (!fs->fsops->futimens)
+      return -EROFS;
+
+   return fs->fsops->futimens(fs, p->fs_path.inode, ts);
+}
+
+int vfs_utimens(const char *path, const struct timespec times[2])
+{
+   return vfs_path_funcs_wrapper(
+      path,
+      true,            /* exlock */
+      true,            /* res_last_sl */
+      vfs_utimens_impl,
+      times,
+      0, 0
+   );
+}
+
 static int
 vfs_rename_or_link(const char *oldpath,
                    const char *newpath,
@@ -651,6 +672,17 @@ bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
       return false;
 
    return fops->handle_fault(h, va, p, rw);
+}
+
+int vfs_futimens(fs_handle h, const struct timespec times[2])
+{
+   struct fs_handle_base *hb = h;
+   const struct fs_ops *fsops = hb->fs->fsops;
+
+   if (!fsops->futimens)
+      return -EROFS;
+
+   return fsops->futimens(hb->fs, fsops->get_inode(h), times);
 }
 
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt)

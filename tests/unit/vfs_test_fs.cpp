@@ -148,6 +148,7 @@ extern const struct fs_ops static_fsops_testfs = {
    .chmod               = nullptr,
    .rename              = nullptr,
    .link                = nullptr,
+   .futimens            = nullptr,
    .retain_inode        = vfs_test_retain_inode,
    .release_inode       = vfs_test_release_inode,
    .fs_exlock           = vfs_test_fs_exlock,
