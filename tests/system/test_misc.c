@@ -259,6 +259,7 @@ int cmd_cloexec(int argc, char **argv)
 
 static const char *extra_test_scripts[] = {
    "tcc",
+   "tar",
 };
 
 static int run_extra_test(const char *name)

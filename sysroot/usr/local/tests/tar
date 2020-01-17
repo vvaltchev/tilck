@@ -1,0 +1,17 @@
+#!/initrd/bin/busybox ash
+
+set -e
+
+cd /tmp
+
+echo "Running tar cfvz t.tgz /initrd ..."
+tar cfvz t.tgz /initrd
+
+echo "Running tar xfvz t.tgz ..."
+tar xfvz t.tgz
+
+echo "Removing t.tgz and initrd/ ..."
+rm -rf t.tgz initrd
+
+echo "Done."
+exit 0
