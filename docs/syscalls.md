@@ -91,7 +91,8 @@ considered as *not implemented yet*.
  sys_getpgrp         | full
  sys_utime           | full
  sys_utimes          | full
-
+ sys_fsync           | stub
+ sys_fdatasync       | stub
 
 Definitions:
 

@@ -167,7 +167,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_setpriority)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs)
 CREATE_STUB_SYSCALL_IMPL(sys_ioperm)
-CREATE_STUB_SYSCALL_IMPL(sys_socketcall)
+
+int sys_socketcall(int call, ulong *args);
+
 CREATE_STUB_SYSCALL_IMPL(sys_syslog)
 CREATE_STUB_SYSCALL_IMPL(sys_setitimer)
 CREATE_STUB_SYSCALL_IMPL(sys_getitimer)
@@ -184,7 +186,9 @@ int sys_wait4(int pid, int *u_wstatus, int options, void *u_rusage);
 CREATE_STUB_SYSCALL_IMPL(sys_swapoff)
 CREATE_STUB_SYSCALL_IMPL(sys_sysinfo)
 CREATE_STUB_SYSCALL_IMPL(sys_ipc)
-CREATE_STUB_SYSCALL_IMPL(sys_fsync)
+
+int sys_fsync(int fd);
+
 CREATE_STUB_SYSCALL_IMPL(sys_sigreturn)
 CREATE_STUB_SYSCALL_IMPL(sys_clone)
 CREATE_STUB_SYSCALL_IMPL(sys_setdomainname)
@@ -223,8 +227,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_msync)
 int sys_readv(int fd, const struct iovec *iov, int iovcnt);
 int sys_writev(int fd, const struct iovec *iov, int iovcnt);
 int sys_getsid(int pid);
+int sys_fdatasync(int fd);
 
-CREATE_STUB_SYSCALL_IMPL(sys_fdatasync)
 CREATE_STUB_SYSCALL_IMPL(sys_sysctl)
 CREATE_STUB_SYSCALL_IMPL(sys_mlock)
 CREATE_STUB_SYSCALL_IMPL(sys_munlock)
