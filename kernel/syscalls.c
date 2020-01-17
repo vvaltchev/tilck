@@ -197,3 +197,67 @@ int sys_sched_yield(void)
    kernel_yield();
    return 0;
 }
+
+int sys_utimes(const char *u_path, const struct timeval u_times[2])
+{
+   struct timeval ts[2];
+   struct timespec new_ts[2];
+   char *path = get_curr_task()->args_copybuf;
+
+   if (copy_from_user(ts, u_times, sizeof(ts)))
+      return -EFAULT;
+
+   if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
+      return -EFAULT;
+
+   new_ts[0] = (struct timespec) {
+      .tv_sec = ts[0].tv_sec,
+      .tv_nsec = ((long)ts[0].tv_usec) * 1000,
+   };
+
+   new_ts[1] = (struct timespec) {
+      .tv_sec = ts[1].tv_sec,
+      .tv_nsec = ((long)ts[1].tv_usec) * 1000,
+   };
+
+   return vfs_utimens(path, new_ts);
+}
+
+int sys_utime(const char *u_path, const struct utimbuf *u_times)
+{
+   struct utimbuf ts;
+   struct timespec new_ts[2];
+   char *path = get_curr_task()->args_copybuf;
+
+   if (copy_from_user(&ts, u_times, sizeof(ts)))
+      return -EFAULT;
+
+   if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
+      return -EFAULT;
+
+   new_ts[0] = (struct timespec) {
+      .tv_sec = ts.actime,
+      .tv_nsec = 0,
+   };
+
+   new_ts[1] = (struct timespec) {
+      .tv_sec = ts.modtime,
+      .tv_nsec = 0,
+   };
+
+   return vfs_utimens(path, new_ts);
+}
+
+int sys_utimensat(int dirfd, const char *u_path,
+                  const struct timespec times[2], int flags)
+{
+   // TODO (future): consider implementing sys_utimensat() [modern]
+   return -ENOSYS;
+}
+
+int sys_futimesat(int dirfd, const char *u_path,
+                  const struct timeval times[2])
+{
+   // TODO (future): consider implementing sys_futimesat() [obsolete]
+   return -ENOSYS;
+}

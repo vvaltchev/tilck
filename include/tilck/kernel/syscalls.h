@@ -75,9 +75,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_alarm)
 CREATE_STUB_SYSCALL_IMPL(sys_oldfstat)
 
 int sys_pause(); // TODO: update once signals are implemented
-
-CREATE_STUB_SYSCALL_IMPL(sys_utime)
-
+int sys_utime(const char *u_path, const struct utimbuf *u_times);
 int sys_access(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
@@ -387,8 +385,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs64)
 
 int sys_tgkill(int pid /* linux: tgid */, int tid, int sig);
+int sys_utimes(const char *u_path, const struct timeval u_times[2]);
 
-CREATE_STUB_SYSCALL_IMPL(sys_utimes)
 CREATE_STUB_SYSCALL_IMPL(sys_fadvise64_64)
 CREATE_STUB_SYSCALL_IMPL(sys_mbind)
 CREATE_STUB_SYSCALL_IMPL(sys_get_mempolicy)
@@ -414,7 +412,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_openat)
 CREATE_STUB_SYSCALL_IMPL(sys_mkdirat)
 CREATE_STUB_SYSCALL_IMPL(sys_mknodat)
 CREATE_STUB_SYSCALL_IMPL(sys_fchownat)
-CREATE_STUB_SYSCALL_IMPL(sys_futimesat)
+
+int sys_futimesat(int dirfd, const char *u_path,
+                  const struct timeval times[2]);
+
 CREATE_STUB_SYSCALL_IMPL(sys_fstatat64)
 CREATE_STUB_SYSCALL_IMPL(sys_unlinkat)
 CREATE_STUB_SYSCALL_IMPL(sys_renameat)
@@ -435,7 +436,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_vmsplice)
 CREATE_STUB_SYSCALL_IMPL(sys_move_pages)
 CREATE_STUB_SYSCALL_IMPL(sys_getcpu)
 CREATE_STUB_SYSCALL_IMPL(sys_epoll_pwait)
-CREATE_STUB_SYSCALL_IMPL(sys_utimensat)
+
+int sys_utimensat(int dirfd, const char *u_path,
+                  const struct timespec times[2], int flags);
+
 CREATE_STUB_SYSCALL_IMPL(sys_signalfd)
 CREATE_STUB_SYSCALL_IMPL(sys_timerfd_create)
 CREATE_STUB_SYSCALL_IMPL(sys_eventfd)

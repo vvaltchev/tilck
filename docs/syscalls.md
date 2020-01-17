@@ -85,10 +85,12 @@ considered as *not implemented yet*.
  sys_pipe            | full
  sys_pipe2           | partial++ [14]
  sys_sched_yield     | compliant
- getsid              | full
- setpgid             | full
- getpgid             | full
- getpgrp             | full
+ sys_getsid          | full
+ sys_setpgid         | full
+ sys_getpgid         | full
+ sys_getpgrp         | full
+ sys_utime           | full
+ sys_utimes          | full
 
 
 Definitions:
