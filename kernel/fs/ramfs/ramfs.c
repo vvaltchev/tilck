@@ -315,7 +315,7 @@ int ramfs_futimens(struct fs *fs,
    if (!(i->mode & 0200))
       return -EACCES;
 
-   i->mtime = (time_t) times[1].tv_sec;
+   i->mtime = times[1];
    return 0;
 }
 

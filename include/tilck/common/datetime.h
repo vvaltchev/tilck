@@ -24,3 +24,5 @@ struct datetime {
 int timestamp_to_datetime(int64_t t, struct datetime *d);
 int64_t datetime_to_timestamp(struct datetime d);
 bool clock_in_full_resync(void);
+void real_time_get_timespec(struct timespec *tp);
+void monotonic_time_get_timespec(struct timespec *tp);

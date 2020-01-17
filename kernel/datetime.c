@@ -324,7 +324,7 @@ s64 get_timestamp(void)
    return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
-static void real_time_get_timespec(struct timespec *tp)
+void real_time_get_timespec(struct timespec *tp)
 {
    const u64 t = get_sys_time();
 
@@ -336,7 +336,7 @@ static void real_time_get_timespec(struct timespec *tp)
       tp->tv_nsec = (t % TS_SCALE) / (TS_SCALE / BILLION);
 }
 
-static void monotonic_time_get_timespec(struct timespec *tp)
+void monotonic_time_get_timespec(struct timespec *tp)
 {
    /* Same as the real_time clock, for the moment */
    real_time_get_timespec(tp);
