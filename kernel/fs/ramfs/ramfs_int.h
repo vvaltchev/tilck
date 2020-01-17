@@ -93,8 +93,9 @@ struct ramfs_inode {
       };
    };
 
-   time_t ctime;
-   time_t mtime;
+   time_t ctime;     /* TODO: consider using timespec for ctime */
+   time_t mtime;     /* TODO: consider using timespec for mtime */
+                     /* TODO: consider introducing `atime`      */
 };
 
 struct ramfs_handle {

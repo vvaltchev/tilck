@@ -127,7 +127,8 @@
       "unordered_map": "c",
       "unordered_set": "c",
       "kmalloc_debug.h": "c",
-      "asm_x86_strings.h": "c"
+      "asm_x86_strings.h": "c",
+      "open.c.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

@@ -306,6 +306,19 @@ ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
    return ramfs_dir_add_entry(newp->dir_inode, vnewp->last_comp, oldp->inode);
 }
 
+int ramfs_futimens(struct fs *fs,
+                   vfs_inode_ptr_t inode,
+                   const struct timespec times[2])
+{
+   struct ramfs_inode *i = inode;
+
+   if (!(i->mode & 0200))
+      return -EACCES;
+
+   i->mtime = (time_t) times[1].tv_sec;
+   return 0;
+}
+
 static const struct fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
@@ -324,6 +337,7 @@ static const struct fs_ops static_fsops_ramfs =
    .get_entry = ramfs_get_entry,
    .rename = ramfs_rename,
    .link = ramfs_link,
+   .futimens = ramfs_futimens,
    .retain_inode = ramfs_retain_inode,
    .release_inode = ramfs_release_inode,
 
