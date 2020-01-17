@@ -818,17 +818,23 @@ vterm_get_params(struct term *t, struct term_params *out)
  * `rows` x `cols`, in order to minimize the memory waste (happening when the
  * buffer size is not a power of 2).
  */
-static u32 term_calc_opt_buf_rows(u16 rows, u16 cols)
+static u32 term_calc_extra_buf_rows(u16 rows, u16 cols)
 {
-   if (cols <= 80) {
-      return (32 * KB / 2) / cols - rows;
-   } else if (cols <= 100) {
-      return (64 * KB / 2) / cols - rows;
-   } else if (cols <= 128) {
-      return (128 * KB / 2) / cols - rows;
-   } else {
-      return (256 * KB / 2) / cols - rows;
-   }
+   u32 buf_size = 0;
+
+   if (cols <= 80)
+      buf_size = 32 * KB;
+   else if (cols <= 100)
+      buf_size = 64 * KB;
+   else if (cols <= 128)
+      buf_size = 128 * KB;
+   else
+      buf_size = 256 * KB;
+
+   if (TERM_BIG_SCROLL_BUF)
+      buf_size *= 4;
+
+   return (buf_size / 2) / cols - rows;
 }
 
 static int
@@ -856,7 +862,7 @@ init_vterm(struct term *t,
       t->extra_buffer_rows =
          rows_buf >= 0
             ? (u32)rows_buf
-            : term_calc_opt_buf_rows(rows, cols);
+            : term_calc_extra_buf_rows(rows, cols);
 
       t->total_buffer_rows = t->rows + t->extra_buffer_rows;
 

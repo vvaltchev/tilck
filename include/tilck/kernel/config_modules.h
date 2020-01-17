@@ -24,3 +24,4 @@
 #cmakedefine01    KERNEL_SHOW_LOGO
 #cmakedefine01    FB_CONSOLE_USE_ALT_FONTS
 #cmakedefine01    SERIAL_CON_IN_VIDEO_MODE
+#cmakedefine01    TERM_BIG_SCROLL_BUF

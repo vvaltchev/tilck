@@ -138,6 +138,9 @@ set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
 
+set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
+    "Use a 4x bigger scrollback buffer for the terminal")
+
 set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
@@ -231,6 +234,8 @@ list(
    BOOTLOADER_EFI
 
    # Boolean options DISABLED by default
+   KERNEL_BIG_IO_BUF
+   TERM_BIG_SCROLL_BUF
    TEST_GCOV
    KERNEL_GCOV
    KERNEL_SYSCC
