@@ -17,7 +17,7 @@ from utils import * # pylint: disable=unused-wildcard-import
 
 SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
-LONG_TEST_TIMEOUT  = 60
+LONG_TEST_TIMEOUT  = 72
 
 pretty_names_list = ['Self tests', 'Shell cmd tests']
 load_tests_func_by_type_list = [

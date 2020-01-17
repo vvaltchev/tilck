@@ -138,7 +138,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(select4,      TT_SHORT,  true),
    CMD_ENTRY(execve0,      TT_SHORT,  true),
    CMD_ENTRY(vfork0,       TT_SHORT,  true),
-   CMD_ENTRY(extra,          TT_MED,  true),
+   CMD_ENTRY(extra,        TT_MED,    true),
 
    CMD_END(),
 };
