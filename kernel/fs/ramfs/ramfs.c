@@ -308,7 +308,7 @@ ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 
 int ramfs_futimens(struct fs *fs,
                    vfs_inode_ptr_t inode,
-                   const struct timespec times[2])
+                   const struct k_timespec64 times[2])
 {
    struct ramfs_inode *i = inode;
 

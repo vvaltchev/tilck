@@ -98,7 +98,7 @@ typedef int     (*func_rr_inode)  (struct fs *, vfs_inode_ptr_t);
 
 typedef int     (*func_futimens)  (struct fs *,
                                    vfs_inode_ptr_t,
-                                   const struct timespec times[2]);
+                                   const struct k_timespec64 times[2]);
 
 typedef int     (*func_2paths)    (struct fs *,
                                    struct vfs_path *,
@@ -268,7 +268,7 @@ int vfs_chown(const char *path, int owner, int group, bool reslink);
 int vfs_chmod(const char *path, mode_t mode);
 int vfs_rename(const char *oldpath, const char *newpath);
 int vfs_link(const char *oldpath, const char *newpath);
-int vfs_utimens(const char *path, const struct timespec times[2]);
+int vfs_utimens(const char *path, const struct k_timespec64 times[2]);
 
 int vfs_ftruncate(fs_handle h, offt length);
 int vfs_ioctl(fs_handle h, ulong request, void *argp);
@@ -281,7 +281,7 @@ int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 void vfs_close2(struct process *pi, fs_handle h);
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
-int vfs_futimens(fs_handle h, const struct timespec times[2]);
+int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
 
 
 int vfs_read_ready(fs_handle h);

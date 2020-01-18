@@ -245,7 +245,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_sched_get_priority_max)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_set_priority_min)
 CREATE_STUB_SYSCALL_IMPL(sys_sched_rr_get_interval_time32)
 
-int sys_nanosleep_time32(const struct timespec *req, struct timespec *rem);
+int sys_nanosleep_time32(const struct k_timespec32 *req,
+                         struct k_timespec32 *rem);
 
 CREATE_STUB_SYSCALL_IMPL(sys_mremap)
 CREATE_STUB_SYSCALL_IMPL(sys_setresuid16)
@@ -381,8 +382,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_timer_getoverrun)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_delete)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime32)
 
-int sys_clock_gettime32(clockid_t clk_id, struct timespec *tp);
-int sys_clock_getres32(clockid_t clk_id, struct timespec *res);
+int sys_clock_gettime32(clockid_t clk_id, struct k_timespec32 *tp);
+int sys_clock_getres32(clockid_t clk_id, struct k_timespec32 *res);
 
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep32)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
@@ -442,7 +443,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_getcpu)
 CREATE_STUB_SYSCALL_IMPL(sys_epoll_pwait)
 
 int sys_utimensat_time32(int dirfd, const char *u_path,
-                         const struct timespec times[2], int flags);
+                         const struct k_timespec32 times[2], int flags);
 
 CREATE_STUB_SYSCALL_IMPL(sys_signalfd)
 CREATE_STUB_SYSCALL_IMPL(sys_timerfd_create)
@@ -524,10 +525,14 @@ CREATE_STUB_SYSCALL_IMPL(sys_msgget)
 CREATE_STUB_SYSCALL_IMPL(sys_msgsnd)
 CREATE_STUB_SYSCALL_IMPL(sys_msgrcv)
 CREATE_STUB_SYSCALL_IMPL(sys_msgctl)
-CREATE_STUB_SYSCALL_IMPL(sys_clock_gettime)
+
+int sys_clock_gettime(clockid_t clk_id, struct k_timespec64 *user_tp);
+
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_adjtime)
-CREATE_STUB_SYSCALL_IMPL(sys_clock_getres)
+
+int sys_clock_getres(clockid_t clk_id, struct k_timespec64 *user_res);
+
 CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_gettime)
 CREATE_STUB_SYSCALL_IMPL(sys_timer_settime)

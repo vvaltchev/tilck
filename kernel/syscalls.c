@@ -26,20 +26,44 @@ int sys_madvise(void *addr, size_t len, int advice)
    return 0;
 }
 
-int sys_nanosleep_time32(const struct timespec *user_req, struct timespec *rem)
+int
+do_nanosleep(const struct k_timespec64 *req)
 {
    u64 ticks_to_sleep = 0;
-   struct timespec req;
 
-   if (copy_from_user(&req, user_req, sizeof(req)) < 0)
-      return -EFAULT;
-
-   ticks_to_sleep += (ulong) TIMER_HZ * (ulong) req.tv_sec;
-   ticks_to_sleep += (ulong) req.tv_nsec / (1000000000 / TIMER_HZ);
+   ticks_to_sleep += (ulong) TIMER_HZ * (ulong) req->tv_sec;
+   ticks_to_sleep += (ulong) req->tv_nsec / (1000000000 / TIMER_HZ);
    kernel_sleep(ticks_to_sleep);
 
    // TODO (future): use HPET in order to improve the sleep precision
    // TODO (nanosleep): set rem if the call has been interrupted by a signal
+   return 0;
+}
+
+int
+sys_nanosleep_time32(const struct k_timespec32 *user_req,
+                     struct k_timespec32 *rem)
+{
+   struct k_timespec32 req32;
+   struct k_timespec64 req;
+   int rc;
+
+   if (copy_from_user(&req32, user_req, sizeof(req)))
+      return -EFAULT;
+
+   req = (struct k_timespec64) {
+      .tv_sec = req32.tv_sec,
+      .tv_nsec = req32.tv_nsec,
+   };
+
+   if ((rc = do_nanosleep(&req)))
+      return rc;
+
+   bzero(&req32, sizeof(req32));
+
+   if (copy_to_user(rem, &req32, sizeof(req32)))
+      return -EFAULT;
+
    return 0;
 }
 
@@ -201,7 +225,7 @@ int sys_sched_yield(void)
 int sys_utimes(const char *u_path, const struct timeval u_times[2])
 {
    struct timeval ts[2];
-   struct timespec new_ts[2];
+   struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
 
    if (copy_from_user(ts, u_times, sizeof(ts)))
@@ -210,12 +234,12 @@ int sys_utimes(const char *u_path, const struct timeval u_times[2])
    if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
       return -EFAULT;
 
-   new_ts[0] = (struct timespec) {
+   new_ts[0] = (struct k_timespec64) {
       .tv_sec = ts[0].tv_sec,
       .tv_nsec = ((long)ts[0].tv_usec) * 1000,
    };
 
-   new_ts[1] = (struct timespec) {
+   new_ts[1] = (struct k_timespec64) {
       .tv_sec = ts[1].tv_sec,
       .tv_nsec = ((long)ts[1].tv_usec) * 1000,
    };
@@ -226,7 +250,7 @@ int sys_utimes(const char *u_path, const struct timeval u_times[2])
 int sys_utime(const char *u_path, const struct utimbuf *u_times)
 {
    struct utimbuf ts;
-   struct timespec new_ts[2];
+   struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
 
    if (copy_from_user(&ts, u_times, sizeof(ts)))
@@ -235,12 +259,12 @@ int sys_utime(const char *u_path, const struct utimbuf *u_times)
    if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
       return -EFAULT;
 
-   new_ts[0] = (struct timespec) {
+   new_ts[0] = (struct k_timespec64) {
       .tv_sec = ts.actime,
       .tv_nsec = 0,
    };
 
-   new_ts[1] = (struct timespec) {
+   new_ts[1] = (struct k_timespec64) {
       .tv_sec = ts.modtime,
       .tv_nsec = 0,
    };
@@ -249,7 +273,7 @@ int sys_utime(const char *u_path, const struct utimbuf *u_times)
 }
 
 int sys_utimensat_time32(int dirfd, const char *u_path,
-                         const struct timespec times[2], int flags)
+                         const struct k_timespec32 times[2], int flags)
 {
    // TODO (future): consider implementing sys_utimensat() [modern]
    return -ENOSYS;

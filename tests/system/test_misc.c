@@ -93,7 +93,7 @@ int cmd_sysenter(int argc, char **argv)
    printf("same sleep, but with sysenter:\n");
 
    struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
-   sysenter_call3(162 /* nanosleep */, &req, NULL, NULL);
+   sysenter_call3(162 /* nanosleep_time32 */, &req, NULL, NULL);
    printf("after sleep, everything is fine. Prev ret: %i\n", ret);
    return 0;
 }

@@ -502,7 +502,9 @@ int vfs_chmod(const char *path, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_utimens_impl(struct fs *fs, struct vfs_path *p, const struct timespec ts[2])
+vfs_utimens_impl(struct fs *fs,
+                 struct vfs_path *p,
+                 const struct k_timespec64 ts[2])
 {
    if (!fs->fsops->futimens)
       return -EROFS;
@@ -510,7 +512,7 @@ vfs_utimens_impl(struct fs *fs, struct vfs_path *p, const struct timespec ts[2])
    return fs->fsops->futimens(fs, p->fs_path.inode, ts);
 }
 
-int vfs_utimens(const char *path, const struct timespec times[2])
+int vfs_utimens(const char *path, const struct k_timespec64 times[2])
 {
    return vfs_path_funcs_wrapper(
       path,
@@ -674,7 +676,7 @@ bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
    return fops->handle_fault(h, va, p, rw);
 }
 
-int vfs_futimens(fs_handle h, const struct timespec times[2])
+int vfs_futimens(fs_handle h, const struct k_timespec64 times[2])
 {
    struct fs_handle_base *hb = h;
    const struct fs_ops *fsops = hb->fs->fsops;

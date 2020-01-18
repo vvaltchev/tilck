@@ -44,9 +44,9 @@ ramfs_stat_nolock(struct fs *fs,
    statbuf->st_blocks =
       (typeof(statbuf->st_blocks)) (inode->blocks_count * (PAGE_SIZE / 512));
 
-   statbuf->st_ctim = inode->ctime;
-   statbuf->st_mtim = inode->mtime;
-   statbuf->st_atim = inode->mtime;
+   statbuf->st_ctim = to_timespec(inode->ctime);
+   statbuf->st_mtim = to_timespec(inode->mtime);
+   statbuf->st_atim = to_timespec(inode->mtime);
    return 0;
 }
 

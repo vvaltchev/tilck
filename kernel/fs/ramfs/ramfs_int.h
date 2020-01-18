@@ -94,8 +94,8 @@ struct ramfs_inode {
    };
 
    /* TODO: consider introducing `atime`      */
-   struct timespec mtime;
-   struct timespec ctime;
+   struct k_timespec64 mtime;
+   struct k_timespec64 ctime;
 };
 
 struct ramfs_handle {

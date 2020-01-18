@@ -86,6 +86,18 @@ struct k_rusage {
    STATIC_ASSERT(sizeof(struct k_rusage) == 136);
 #endif
 
+struct k_timespec32 {
+
+   s32 tv_sec;
+   long tv_nsec;
+};
+
+struct k_timespec64 {
+
+   s64 tv_sec;
+   long tv_nsec;
+};
+
 #ifndef O_DIRECTORY
    #define O_DIRECTORY __O_DIRECTORY
 #endif

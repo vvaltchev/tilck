@@ -23,3 +23,40 @@ u64 get_sys_time(void);
 s64 get_timestamp(void);
 void init_system_time(void);
 int clock_get_second_drift(void);
+bool clock_in_full_resync(void);
+void real_time_get_timespec(struct k_timespec64 *tp);
+void monotonic_time_get_timespec(struct k_timespec64 *tp);
+
+static ALWAYS_INLINE struct timespec
+to_timespec(struct k_timespec64 tp)
+{
+   struct timespec res;
+   STATIC_ASSERT(sizeof(res.tv_nsec) == sizeof(res.tv_nsec));
+
+   if (sizeof(res.tv_sec) == tp.tv_sec)
+      return *(struct timespec *)&tp;
+
+   res = (struct timespec) {
+      .tv_sec = (s32)tp.tv_sec,
+      .tv_nsec = tp.tv_nsec,
+   };
+
+   return res;
+}
+
+static ALWAYS_INLINE struct k_timespec64
+from_timespec(struct timespec tp)
+{
+   struct k_timespec64 res;
+   STATIC_ASSERT(sizeof(res.tv_nsec) == sizeof(res.tv_nsec));
+
+   if (sizeof(res.tv_sec) == tp.tv_sec)
+      return *(struct k_timespec64 *)&tp;
+
+   res = (struct k_timespec64) {
+      .tv_sec = tp.tv_sec,
+      .tv_nsec = tp.tv_nsec,
+   };
+
+   return res;
+}

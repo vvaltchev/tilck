@@ -324,11 +324,11 @@ s64 get_timestamp(void)
    return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
-void real_time_get_timespec(struct timespec *tp)
+void real_time_get_timespec(struct k_timespec64 *tp)
 {
    const u64 t = get_sys_time();
 
-   tp->tv_sec = (time_t)boot_timestamp + (time_t)(t / TS_SCALE);
+   tp->tv_sec = (s64)boot_timestamp + (s64)(t / TS_SCALE);
 
    if (TS_SCALE <= BILLION)
       tp->tv_nsec = (t % TS_SCALE) * (BILLION / TS_SCALE);
@@ -336,13 +336,14 @@ void real_time_get_timespec(struct timespec *tp)
       tp->tv_nsec = (t % TS_SCALE) / (TS_SCALE / BILLION);
 }
 
-void monotonic_time_get_timespec(struct timespec *tp)
+void monotonic_time_get_timespec(struct k_timespec64 *tp)
 {
    /* Same as the real_time clock, for the moment */
    real_time_get_timespec(tp);
 }
 
-static void task_cpu_get_timespec(struct timespec *tp)
+static void
+task_cpu_get_timespec(struct k_timespec64 *tp)
 {
    struct task *ti = get_curr_task();
 
@@ -350,7 +351,7 @@ static void task_cpu_get_timespec(struct timespec *tp)
    {
       const u64 tot = ti->total_ticks * __tick_duration;
 
-      tp->tv_sec = (time_t)(tot / TS_SCALE);
+      tp->tv_sec = (s64)(tot / TS_SCALE);
 
       if (TS_SCALE <= BILLION)
          tp->tv_nsec = (tot % TS_SCALE) * (BILLION / TS_SCALE);
@@ -363,7 +364,8 @@ static void task_cpu_get_timespec(struct timespec *tp)
 int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 {
    struct timeval tv;
-   struct timespec tp;
+   struct k_timespec64 tp;
+
    struct timezone tz = {
       .tz_minuteswest = 0,
       .tz_dsttime = 0,
@@ -372,7 +374,7 @@ int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
    real_time_get_timespec(&tp);
 
    tv = (struct timeval) {
-      .tv_sec = tp.tv_sec,
+      .tv_sec = (long)tp.tv_sec,
       .tv_usec = tp.tv_nsec / 1000,
    };
 
@@ -387,29 +389,25 @@ int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
    return 0;
 }
 
-int sys_clock_gettime32(clockid_t clk_id, struct timespec *user_tp)
+int
+do_clock_gettime(clockid_t clk_id, struct k_timespec64 *tp)
 {
-   struct timespec tp;
-
-   if (!user_tp)
-      return -EINVAL;
-
    switch (clk_id) {
 
       case CLOCK_REALTIME:
       case CLOCK_REALTIME_COARSE:
-         real_time_get_timespec(&tp);
+         real_time_get_timespec(tp);
          break;
 
       case CLOCK_MONOTONIC:
       case CLOCK_MONOTONIC_COARSE:
       case CLOCK_MONOTONIC_RAW:
-         monotonic_time_get_timespec(&tp);
+         monotonic_time_get_timespec(tp);
          break;
 
       case CLOCK_PROCESS_CPUTIME_ID:
       case CLOCK_THREAD_CPUTIME_ID:
-         task_cpu_get_timespec(&tp);
+         task_cpu_get_timespec(tp);
          break;
 
       default:
@@ -417,16 +415,12 @@ int sys_clock_gettime32(clockid_t clk_id, struct timespec *user_tp)
          return -EINVAL;
    }
 
-   if (copy_to_user(user_tp, &tp, sizeof(tp)) < 0)
-      return -EFAULT;
-
    return 0;
 }
 
-int sys_clock_getres32(clockid_t clk_id, struct timespec *user_res)
+int
+do_clock_getres(clockid_t clk_id, struct k_timespec64 *res)
 {
-   struct timespec tp;
-
    switch (clk_id) {
 
       case CLOCK_REALTIME:
@@ -437,7 +431,7 @@ int sys_clock_getres32(clockid_t clk_id, struct timespec *user_res)
       case CLOCK_PROCESS_CPUTIME_ID:
       case CLOCK_THREAD_CPUTIME_ID:
 
-         tp = (struct timespec) {
+         *res = (struct k_timespec64) {
             .tv_sec = 0,
             .tv_nsec = BILLION/TIMER_HZ,
          };
@@ -448,6 +442,87 @@ int sys_clock_getres32(clockid_t clk_id, struct timespec *user_res)
          printk("WARNING: unsupported clk_id: %d\n", clk_id);
          return -EINVAL;
    }
+
+   return 0;
+}
+
+/*
+ * ----------------- SYSCALLS -----------------------
+ */
+
+int sys_clock_gettime32(clockid_t clk_id, struct k_timespec32 *user_tp)
+{
+   struct k_timespec64 tp64;
+   struct k_timespec32 tp32;
+   int rc;
+
+   if (!user_tp)
+      return -EINVAL;
+
+   if ((rc = do_clock_gettime(clk_id, &tp64)))
+      return rc;
+
+   tp32 = (struct k_timespec32) {
+      .tv_sec = (s32) tp64.tv_sec,
+      .tv_nsec = tp64.tv_nsec,
+   };
+
+   if (copy_to_user(user_tp, &tp32, sizeof(tp32)) < 0)
+      return -EFAULT;
+
+   return 0;
+}
+
+int sys_clock_gettime(clockid_t clk_id, struct k_timespec64 *user_tp)
+{
+   struct k_timespec64 tp;
+   int rc;
+
+   if (!user_tp)
+      return -EINVAL;
+
+   if ((rc = do_clock_gettime(clk_id, &tp)))
+      return rc;
+
+   if (copy_to_user(user_tp, &tp, sizeof(tp)) < 0)
+      return -EFAULT;
+
+   return 0;
+}
+
+int sys_clock_getres32(clockid_t clk_id, struct k_timespec32 *user_res)
+{
+   struct k_timespec64 tp64;
+   struct k_timespec32 tp32;
+   int rc;
+
+   if (!user_res)
+      return -EINVAL;
+
+   if ((rc = do_clock_getres(clk_id, &tp64)))
+      return rc;
+
+   tp32 = (struct k_timespec32) {
+      .tv_sec = (s32) tp64.tv_sec,
+      .tv_nsec = tp64.tv_nsec,
+   };
+
+   if (copy_to_user(user_res, &tp32, sizeof(tp32)) < 0)
+      return -EFAULT;
+
+   return 0;
+}
+
+int sys_clock_getres(clockid_t clk_id, struct k_timespec64 *user_res)
+{
+   struct k_timespec64 tp;
+   int rc;
+
+   if (!user_res)
+      return -EINVAL;
+
+   if ((rc = do_clock_gettime(clk_id, &tp)))
+      return rc;
 
    if (copy_to_user(user_res, &tp, sizeof(tp)) < 0)
       return -EFAULT;
