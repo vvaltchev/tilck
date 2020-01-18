@@ -15,6 +15,10 @@ gtests: $(PREREQUISITES)
 clean: $(PREREQUISITES)
 	@$(MAKE) -C build clean
 
+rem: $(PREREQUISITES)
+	@rm -rf ./build/fatpart ./build/tilck.img
+	@$(MAKE) -C build
+
 rebuild_img: $(PREREQUISITES)
 	@rm -rf ./build/fatpart ./build/tilck.img
 	@$(MAKE) -C build
