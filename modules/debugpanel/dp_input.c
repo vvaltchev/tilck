@@ -62,6 +62,11 @@ read_single_byte(fs_handle h, char *buf, u32 len)
 static void
 convert_seq_to_key(char *buf, struct key_event *ke)
 {
+   /* ESC [ <n> ~ */
+   static const u32 helper_keys[6] = {
+      KEY_HOME, KEY_INS, KEY_DEL, KEY_END, KEY_PAGE_UP, KEY_PAGE_DOWN,
+   };
+
    if (IN_RANGE_INC(buf[0], 32, 127) || IN_RANGE_INC(buf[0], 1, 26)) {
 
       *ke = (struct key_event) {
@@ -100,27 +105,25 @@ convert_seq_to_key(char *buf, struct key_event *ke)
             key = KEY_LEFT;
             break;
 
+         case '1':
+         case '2':
+         case '3':
+         case '4':
+         case '5':
+         case '6':
+
+            if (buf[3] == '~' && IN_RANGE_INC(buf[2], '1', '6'))
+               key = helper_keys[buf[2] - '1'];
+
+            break;
+
+         /* Compatibility keys, for TERM != linux */
          case 'H':
             key = KEY_HOME;
             break;
 
          case 'F':
             key = KEY_END;
-            break;
-
-         case '3':
-
-            if (buf[3] == '~')
-               key = KEY_DEL;
-
-            break;
-
-         case '5':
-         case '6':
-
-            if (buf[3] == '~')
-               key = buf[2] == '5' ? KEY_PAGE_UP : KEY_PAGE_DOWN;
-
             break;
       }
 

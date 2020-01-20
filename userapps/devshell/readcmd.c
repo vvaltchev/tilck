@@ -20,8 +20,11 @@
 #define SEQ_RIGHT   "\033[C\0\0\0\0\0"
 #define SEQ_LEFT    "\033[D\0\0\0\0\0"
 #define SEQ_DELETE  "\033[3~\0\0\0\0"
-#define SEQ_HOME    "\033[H\0\0\0\0\0"
-#define SEQ_END     "\033[F\0\0\0\0\0"
+#define SEQ_HOME    "\033[1~\0\0\0\0"
+#define SEQ_END     "\033[4~\0\0\0\0"
+#define SEQ_HOME2   "\033[H\0\0\0\0\0"
+#define SEQ_END2    "\033[F\0\0\0\0\0"
+
 
 STATIC_ASSERT(sizeof(SEQ_UP) == 9);
 STATIC_ASSERT(sizeof(SEQ_DOWN) == 9);
@@ -30,6 +33,8 @@ STATIC_ASSERT(sizeof(SEQ_LEFT) == 9);
 STATIC_ASSERT(sizeof(SEQ_DELETE) == 9);
 STATIC_ASSERT(sizeof(SEQ_HOME) == 9);
 STATIC_ASSERT(sizeof(SEQ_END) == 9);
+STATIC_ASSERT(sizeof(SEQ_HOME2) == 9);
+STATIC_ASSERT(sizeof(SEQ_END2) == 9);
 
 #define SN(s) (*(uint64_t*)(s))
 
@@ -223,6 +228,8 @@ static struct {
    {0, handle_seq_right},
    {0, handle_seq_updown},
    {0, handle_seq_updown},
+   {0, handle_seq_home},
+   {0, handle_seq_end},
 };
 
 static void initialize_once_handle_esc_seq_table(void)
@@ -239,6 +246,8 @@ static void initialize_once_handle_esc_seq_table(void)
    handle_esc_seq_table[4].seq = SN(SEQ_RIGHT);
    handle_esc_seq_table[5].seq = SN(SEQ_UP);
    handle_esc_seq_table[6].seq = SN(SEQ_DOWN);
+   handle_esc_seq_table[7].seq = SN(SEQ_HOME2);
+   handle_esc_seq_table[8].seq = SN(SEQ_END2);
 
    initalized = true;
 }
