@@ -14,6 +14,8 @@ static const char *const default_env[] =
 {
    "OSTYPE=linux-gnu",
    "TERM=linux",
+   "LANG=C",
+   "LC_ALL=C",
    "CONSOLE=/dev/console",
    "TILCK=1",
    "HOME=/",

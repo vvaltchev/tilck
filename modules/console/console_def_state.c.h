@@ -162,22 +162,22 @@ void tty_update_default_state_tables(struct tty *t)
 
    bzero(cd->def_state_funcs, 256 * sizeof(term_filter));
 
-   cd->def_state_funcs['\n'] = tty_def_state_lf;
-   cd->def_state_funcs['\r'] = tty_def_state_keep;
-   cd->def_state_funcs['\t'] = tty_def_state_keep;
-   cd->def_state_funcs['\a'] = tty_def_state_ignore;   /* bell */
-   cd->def_state_funcs['\f'] = tty_def_state_raw_lf;   /* form-feed */
-   cd->def_state_funcs['\v'] = tty_def_state_raw_lf;   /* vertical tab */
-   cd->def_state_funcs['\b'] = tty_def_state_backspace;
+   cd->def_state_funcs['\n']   = tty_def_state_lf;
+   cd->def_state_funcs['\r']   = tty_def_state_keep;
+   cd->def_state_funcs['\t']   = tty_def_state_keep;
+   cd->def_state_funcs['\a']   = tty_def_state_ignore;   /* bell */
+   cd->def_state_funcs['\f']   = tty_def_state_raw_lf;   /* form-feed */
+   cd->def_state_funcs['\v']   = tty_def_state_raw_lf;   /* vertical tab */
+   cd->def_state_funcs['\b']   = tty_def_state_backspace;
    cd->def_state_funcs['\033'] = tty_def_state_esc;
    cd->def_state_funcs['\016'] = tty_def_state_shift_out;
    cd->def_state_funcs['\017'] = tty_def_state_shift_in;
-   cd->def_state_funcs[0x7f] = tty_def_state_ignore;
-   cd->def_state_funcs[0x9b] = tty_def_state_csi;
+   cd->def_state_funcs[0x7f]   = tty_def_state_ignore;
+   cd->def_state_funcs[0x9b]   = tty_def_state_csi;
 
-   cd->def_state_funcs[c_term->c_cc[VERASE]] = tty_def_state_verase;
+   cd->def_state_funcs[c_term->c_cc[VERASE]]  = tty_def_state_verase;
    cd->def_state_funcs[c_term->c_cc[VWERASE]] = tty_def_state_vwerase;
-   cd->def_state_funcs[c_term->c_cc[VKILL]] = tty_def_state_vkill;
+   cd->def_state_funcs[c_term->c_cc[VKILL]]   = tty_def_state_vkill;
 }
 
 static enum term_fret
