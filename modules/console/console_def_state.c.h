@@ -46,7 +46,7 @@ tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
       *a = (struct term_action) {
          .type2 = a_non_buf_scroll,
          .arg1 = 1,
-         .arg2 = non_buf_scroll_down,
+         .arg2 = term_scroll_down,
       };
 
    }

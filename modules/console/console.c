@@ -293,7 +293,7 @@ tty_csi_S_handler(u32 *params,
    *a = (struct term_action) {
       .type2 = a_non_buf_scroll,
       .arg1 = UNSAFE_MAX(1, params[0]),
-      .arg2 = non_buf_scroll_up,
+      .arg2 = term_scroll_up,
    };
 }
 
@@ -308,7 +308,7 @@ tty_csi_T_handler(u32 *params,
    *a = (struct term_action) {
       .type2 = a_non_buf_scroll,
       .arg1 = UNSAFE_MAX(1, params[0]),
-      .arg2 = non_buf_scroll_down,
+      .arg2 = term_scroll_down,
    };
 }
 

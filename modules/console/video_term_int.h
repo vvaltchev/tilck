@@ -3,18 +3,18 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-enum term_non_buf_scroll_type {
-   non_buf_scroll_up,
-   non_buf_scroll_down
+enum term_scroll_type {
+   term_scroll_up = 0,
+   term_scroll_down = 1,
 };
 
 enum term_action_type {
 
    a_none,
    a_write,
-   a_dwrite_no_filter,   /* direct write w/o filters/scroll/move_cursor/flush */
+   a_dwrite_no_filter,           // [1]
    a_del_generic,
-   a_scroll,               /* arg1 = rows, arg2 = direction */
+   a_scroll,                     // [2]
    a_set_col_offset,
    a_move_ch_and_cur,
    a_move_ch_and_cur_rel,
@@ -23,12 +23,26 @@ enum term_action_type {
    a_restart_video_output,
    a_enable_cursor,
    a_use_alt_buffer,
-   a_non_buf_scroll,   /*
-                        * non_buf scroll: arg1 = rows, arg2 = direction
-                        * up => text moves up => new blank lines at the bottom
-                        * down => text moves down => new blank lines at the top
-                        */
+   a_non_buf_scroll,             // [3]
 };
+
+/*
+ * NOTES [enum term_action_type].
+ *
+ *    [1] direct write without filters/scroll/move_cursor/flush
+ *
+ *    [2] arg1 = rows, arg2 = direction (0 = up, 1 = down)
+ *          WARNING: up => text moves down, down => text moves up.
+ *
+ *    [3] non_buf scroll: (arg1: rows, arg2: direction (term_scroll_type))
+ *          WARNING: up and down are inverted if compared to a_scroll.
+ *              up => text moves up => new blank lines at the bottom
+ *              down => text moves down => new blank lines at the top
+ *
+ *          REASON: because the `CSI n S` sequence is called SU (Scroll Up) and
+ *             the `CSI n T` sequence is called SD (Scroll Down), despite what
+ *             traditionally up and down mean when it's about scrolling.
+ */
 
 typedef void (*action_func)(struct term *t, ...);
 

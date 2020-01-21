@@ -86,7 +86,7 @@ vterm_scroll_up(struct term *t, u32 lines)
    struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
-      .arg2 = 0,
+      .arg2 = term_scroll_up,
    };
 
    term_execute_or_enqueue_action(t, a);
@@ -98,7 +98,7 @@ vterm_scroll_down(struct term *t, u32 lines)
    struct term_action a = {
       .type2 = a_scroll,
       .arg1 = lines,
-      .arg2 = 1,
+      .arg2 = term_scroll_down,
    };
 
    term_execute_or_enqueue_action(t, a);

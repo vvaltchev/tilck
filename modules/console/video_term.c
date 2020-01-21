@@ -242,12 +242,15 @@ static void term_int_scroll_down(struct term *t, u32 lines)
       t->vi->flush_buffers();
 }
 
-static void term_action_scroll(struct term *t, u32 lines, bool down, ...)
+static void
+term_action_scroll(struct term *t, u32 lines, enum term_scroll_type st, ...)
 {
-   if (!down)
+   if (st == term_scroll_up) {
       term_int_scroll_up(t, lines);
-   else
+   } else {
+      ASSERT(st == term_scroll_down);
       term_int_scroll_down(t, lines);
+   }
 }
 
 static void term_internal_incr_row(struct term *t, u8 color)
@@ -645,13 +648,13 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
 
 static void term_action_non_buf_scroll(struct term *t, u16 n, u16 dir, ...)
 {
-   if (dir == non_buf_scroll_up) {
+   if (dir == term_scroll_up) {
 
       term_action_non_buf_scroll_up(t, n);
 
    } else {
 
-      ASSERT(dir == non_buf_scroll_down);
+      ASSERT(dir == term_scroll_down);
       term_action_non_buf_scroll_down(t, n);
    }
 }
