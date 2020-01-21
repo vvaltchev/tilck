@@ -321,19 +321,28 @@ tty_csi_n_handler(u32 *params,
                   struct twfilter_ctx_t *ctx)
 {
    struct tty *const t = ctx->t;
+   char dsr[16] = {0};
 
    if (params[0] == 6) {
 
-      /* DSR (Device Status Report) */
+      /* CPR (Cursor Position Report) */
 
-      char dsr[16];
       snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
                term_get_curr_row(t->tstate) + 1,
                term_get_curr_col(t->tstate) + 1);
 
-      for (char *p = dsr; *p; p++) {
-         tty_send_keyevent(t, make_key_event((u32) *p, *p, true));
-      }
+   } else if (params[0] == 5) {
+
+      /* DSR (Device Status Report) */
+      snprintk(dsr, sizeof(dsr), "\033[0n");
+   }
+
+   if (dsr[0]) {
+
+      tty_reset_filter_ctx(ctx->t);
+
+      for (char *p = dsr; *p; p++)
+         tty_send_keyevent(t, make_key_event((u32)*p, *p, true));
    }
 }
 
