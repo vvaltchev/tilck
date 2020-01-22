@@ -164,3 +164,12 @@ term_make_action_scroll(struct term_action *a,
       .arg2 = st,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_set_col_off(struct term_action *a, u32 off)
+{
+   *a = (struct term_action) {
+      .type1 = a_set_col_offset,
+      .arg = off,
+   };
+}
