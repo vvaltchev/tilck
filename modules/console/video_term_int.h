@@ -114,3 +114,41 @@ term_make_action_direct_write(struct term_action *a,
       .ptr = (ulong)buf,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_del_prev_char(struct term_action *a)
+{
+   *a = (struct term_action) {
+      .type1 = a_del_generic,
+      .arg = TERM_DEL_PREV_CHAR,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_del_prev_word(struct term_action *a)
+{
+   *a = (struct term_action) {
+      .type1 = a_del_generic,
+      .arg = TERM_DEL_PREV_WORD,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_erase_in_display(struct term_action *a, u32 mode)
+{
+   *a = (struct term_action) {
+      .type2 = a_del_generic,
+      .arg1 = TERM_DEL_ERASE_IN_DISPLAY,
+      .arg2 = mode,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_erase_in_line(struct term_action *a, u32 mode)
+{
+   *a = (struct term_action) {
+      .type2 = a_del_generic,
+      .arg1 = TERM_DEL_ERASE_IN_LINE,
+      .arg2 = mode,
+   };
+}

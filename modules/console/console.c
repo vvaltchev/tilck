@@ -260,11 +260,7 @@ tty_csi_J_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   *a = (struct term_action) {
-      .type2 = a_del_generic,
-      .arg1 = TERM_DEL_ERASE_IN_DISPLAY,
-      .arg2 = params[0],
-   };
+   term_make_action_erase_in_display(a, params[0]);
 }
 
 static void
@@ -275,11 +271,7 @@ tty_csi_K_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx_t *ctx)
 {
-   *a = (struct term_action) {
-      .type2 = a_del_generic,
-      .arg1 = TERM_DEL_ERASE_IN_LINE,
-      .arg2 = params[0],
-   };
+   term_make_action_erase_in_line(a, params[0]);
 }
 
 static void

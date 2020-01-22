@@ -85,22 +85,14 @@ tty_def_state_shift_in(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_verase(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (struct term_action) {
-      .type1 = a_del_generic,
-      .arg = TERM_DEL_PREV_CHAR,
-   };
-
+   term_make_action_del_prev_char(a);
    return TERM_FILTER_WRITE_BLANK;
 }
 
 static enum term_fret
 tty_def_state_vwerase(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (struct term_action) {
-      .type1 = a_del_generic,
-      .arg = TERM_DEL_PREV_WORD,
-   };
-
+   term_make_action_del_prev_word(a);
    return TERM_FILTER_WRITE_BLANK;
 }
 
