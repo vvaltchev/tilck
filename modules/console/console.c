@@ -181,11 +181,7 @@ tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
       term_get_curr_row(t->tstate) + row, t->tparams.rows - 1u
    );
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = new_row,
-      .arg2 = 0,
-   };
+   term_make_action_move_cursor(a, new_row, 0);
 }
 
 static void
@@ -224,11 +220,11 @@ tty_csi_G_handler(u32 *params,
    /* Move the cursor to the column 'n' (absolute, 1-based) */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = term_get_curr_row(t->tstate),
-      .arg2 = MIN((u32)params[0], t->tparams.cols - 1u),
-   };
+   term_make_action_move_cursor(
+      a,
+      term_get_curr_row(t->tstate),
+      MIN((u32)params[0], t->tparams.cols - 1u)
+   );
 }
 
 static void
@@ -245,11 +241,11 @@ tty_csi_fH_handler(u32 *params,
    params[0] = MAX(1u, params[0]) - 1;
    params[1] = MAX(1u, params[1]) - 1;
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
-      .arg2 = UNSAFE_MIN((u32)params[1], t->tparams.cols - 1u),
-   };
+   term_make_action_move_cursor(
+      a,
+      UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
+      UNSAFE_MIN((u32)params[1], t->tparams.cols - 1u)
+   );
 }
 
 static void
@@ -364,11 +360,11 @@ tty_csi_u_handler(u32 *params,
    struct console_data *const cd = ctx->cd;
 
    /* RCP (Restore Cursor Position) */
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = cd->saved_cur_row,
-      .arg2 = cd->saved_cur_col,
-   };
+   term_make_action_move_cursor(
+      a,
+      cd->saved_cur_row,
+      cd->saved_cur_col
+   );
 }
 
 static void
@@ -384,11 +380,11 @@ tty_csi_d_handler(u32 *params,
    /* VPA: Move cursor to the indicated row, current column */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
-      .arg2 = term_get_curr_col(t->tstate),
-   };
+   term_make_action_move_cursor(
+      a,
+      UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
+      term_get_curr_col(t->tstate)
+   );
 }
 
 static void
@@ -404,11 +400,11 @@ tty_csi_hpa_handler(u32 *params,
    /* HPA: Move cursor to the indicated column, current row */
    params[0] = MAX(1u, params[0]) - 1;
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur,
-      .arg1 = term_get_curr_row(t->tstate),
-      .arg2 = UNSAFE_MIN((u32)params[0], t->tparams.cols - 1u),
-   };
+   term_make_action_move_cursor(
+      a,
+      term_get_curr_row(t->tstate),
+      UNSAFE_MIN((u32)params[0], t->tparams.cols - 1u)
+   );
 }
 
 static void

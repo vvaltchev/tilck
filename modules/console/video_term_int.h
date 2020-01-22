@@ -173,3 +173,13 @@ term_make_action_set_col_off(struct term_action *a, u32 off)
       .arg = off,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_move_cursor(struct term_action *a, u32 row, u32 col)
+{
+   *a = (struct term_action) {
+      .type2 = a_move_ch_and_cur,
+      .arg1 = row,
+      .arg2 = col,
+   };
+}
