@@ -32,8 +32,9 @@ enum vga_color {
 #define get_color_fg(color) ((color) & 0xF)
 #define get_color_bg(color) (((color) >> 4) & 0xF)
 
-#define DEFAULT_FG_COLOR COLOR_WHITE
-#define DEFAULT_BG_COLOR COLOR_BLACK
+#define DEFAULT_FG_COLOR   COLOR_WHITE
+#define DEFAULT_BG_COLOR   COLOR_BLACK
+#define DEFAULT_COLOR16    (make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR))
 
 /*
  * Entry defs (color + char): the hardware format (VGA textmode) is used also
