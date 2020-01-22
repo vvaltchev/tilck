@@ -81,26 +81,18 @@ vterm_write(struct term *t, const char *buf, size_t len, u8 color)
 }
 
 static void
-vterm_scroll_up(struct term *t, u32 lines)
+vterm_scroll_up(struct term *t, u32 rows)
 {
-   struct term_action a = {
-      .type2 = a_scroll,
-      .arg1 = lines,
-      .arg2 = term_scroll_up,
-   };
-
+   struct term_action a;
+   term_make_action_scroll(&a, term_scroll_up, rows);
    term_execute_or_enqueue_action(t, a);
 }
 
 static void
-vterm_scroll_down(struct term *t, u32 lines)
+vterm_scroll_down(struct term *t, u32 rows)
 {
-   struct term_action a = {
-      .type2 = a_scroll,
-      .arg1 = lines,
-      .arg2 = term_scroll_down,
-   };
-
+   struct term_action a;
+   term_make_action_scroll(&a, term_scroll_down, rows);
    term_execute_or_enqueue_action(t, a);
 }
 

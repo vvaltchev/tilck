@@ -152,3 +152,15 @@ term_make_action_erase_in_line(struct term_action *a, u32 mode)
       .arg2 = mode,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_scroll(struct term_action *a,
+                        enum term_scroll_type st,
+                        u32 rows)
+{
+   *a = (struct term_action) {
+      .type2 = a_scroll,
+      .arg1 = rows,
+      .arg2 = st,
+   };
+}
