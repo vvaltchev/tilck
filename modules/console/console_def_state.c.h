@@ -15,13 +15,7 @@ tty_def_state_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 
    if ((ctx->t->c_term.c_oflag & (OPOST | ONLCR)) == (OPOST | ONLCR)) {
 
-      *a = (struct term_action) {
-         .type3 = a_dwrite_no_filter,
-         .len = 2,
-         .col = *color,
-         .ptr = (ulong)"\n\r",
-      };
-
+      term_make_action_direct_write(a, "\n\r", 2, *color);
       return TERM_FILTER_WRITE_BLANK;
    }
 
@@ -189,13 +183,7 @@ tty_def_print_untrasl_char(u8 *c,
    struct twfilter_ctx_t *const ctx = ctx_arg;
    int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);
 
-   *a = (struct term_action) {
-      .type3 = a_dwrite_no_filter,
-      .len = (u32)len,
-      .col = *color,
-      .ptr = (ulong)ctx->tmpbuf,
-   };
-
+   term_make_action_direct_write(a, ctx->tmpbuf, (u32)len, *color);
    return TERM_FILTER_WRITE_BLANK;
 }
 

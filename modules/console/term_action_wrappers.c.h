@@ -73,16 +73,10 @@ static void term_execute_or_enqueue_action(struct term *t, struct term_action a)
 static void
 vterm_write(struct term *t, const char *buf, size_t len, u8 color)
 {
+   struct term_action a;
    ASSERT(len < MB);
 
-   struct term_action a = {
-
-      .type3 = a_write,
-      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
-      .col = color,
-      .ptr = (ulong)buf,
-   };
-
+   term_make_action_write(&a, buf, len, color);
    term_execute_or_enqueue_action(t, a);
 }
 

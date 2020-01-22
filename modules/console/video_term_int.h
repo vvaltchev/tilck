@@ -86,3 +86,31 @@ STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
 u16 term_get_curr_row(struct term *t);
 u16 term_get_curr_col(struct term *t);
+
+static ALWAYS_INLINE void
+term_make_action_write(struct term_action *a,
+                       const char *buf,
+                       size_t len,
+                       u8 color)
+{
+   *a = (struct term_action) {
+      .type3 = a_write,
+      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
+      .col = color,
+      .ptr = (ulong)buf,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_direct_write(struct term_action *a,
+                              const char *buf,
+                              size_t len,
+                              u8 color)
+{
+   *a = (struct term_action) {
+      .type3 = a_dwrite_no_filter,
+      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
+      .col = color,
+      .ptr = (ulong)buf,
+   };
+}
