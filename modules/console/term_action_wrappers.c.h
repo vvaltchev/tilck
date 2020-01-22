@@ -1,5 +1,11 @@
 /* ---------------- term action engine --------------------- */
 
+struct actions_table_item {
+
+   action_func func;
+   u32 args_count;
+};
+
 #define ENTRY(func, n) { (action_func)(func), n }
 
 static const struct actions_table_item actions_table[] = {

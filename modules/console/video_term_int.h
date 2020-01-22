@@ -46,12 +46,6 @@ enum term_action_type {
 
 typedef void (*action_func)(struct term *t, ...);
 
-struct actions_table_item {
-
-   action_func func;
-   u32 args_count;
-};
-
 enum term_del_type {
 
    TERM_DEL_PREV_CHAR,
@@ -60,7 +54,7 @@ enum term_del_type {
    TERM_DEL_ERASE_IN_LINE,
 };
 
-/* --- term write filter interface --- */
+/* --- interface exposed to the term filter func --- */
 
 struct term_action {
 
