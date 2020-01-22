@@ -58,17 +58,17 @@ static u16 failsafe_buffer[80 * 25];
 
 /* ------------ No-output video-interface ------------------ */
 
-void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
-void no_vi_set_row(u16 row, u16 *data, bool flush) { }
-void no_vi_clear_row(u16 row_num, u8 color) { }
-void no_vi_move_cursor(u16 row, u16 col, int color) { }
-void no_vi_enable_cursor(void) { }
-void no_vi_disable_cursor(void) { }
-void no_vi_scroll_one_line_up(void) { }
-void no_vi_flush_buffers(void) { }
-void no_vi_redraw_static_elements(void) { }
-void no_vi_disable_static_elems_refresh(void) { }
-void no_vi_enable_static_elems_refresh(void) { }
+static void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
+static void no_vi_set_row(u16 row, u16 *data, bool flush) { }
+static void no_vi_clear_row(u16 row_num, u8 color) { }
+static void no_vi_move_cursor(u16 row, u16 col, int color) { }
+static void no_vi_enable_cursor(void) { }
+static void no_vi_disable_cursor(void) { }
+static void no_vi_scroll_one_line_up(void) { }
+static void no_vi_flush_buffers(void) { }
+static void no_vi_redraw_static_elements(void) { }
+static void no_vi_disable_static_elems_refresh(void) { }
+static void no_vi_enable_static_elems_refresh(void) { }
 
 static const struct video_interface no_output_vi =
 {
@@ -127,6 +127,7 @@ static void term_action_enable_cursor(struct term *t, u16 val, ...)
       t->cursor_enabled = true;
    }
 }
+
 static void term_redraw(struct term *t)
 {
    if (!t->buffer)
@@ -276,7 +277,7 @@ static void term_internal_incr_row(struct term *t, u8 color)
 
 static void term_internal_write_printable_char(struct term *t, u8 c, u8 color)
 {
-   u16 entry = make_vgaentry(c, color);
+   const u16 entry = make_vgaentry(c, color);
    buffer_set_entry(t, t->r, t->c, entry);
    t->vi->set_char_at(t->r, t->c, entry);
    t->c++;
@@ -476,7 +477,7 @@ static void term_action_reset(struct term *t, ...)
    t->scroll = t->max_scroll = 0;
 
    for (u16 i = 0; i < t->rows; i++)
-      ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+      ts_clear_row(t, i, DEFAULT_COLOR16);
 
    if (t->tabs_buf)
       memset(t->tabs_buf, 0, t->cols * t->rows);
@@ -484,8 +485,7 @@ static void term_action_reset(struct term *t, ...)
 
 static void term_action_erase_in_display(struct term *t, int mode, ...)
 {
-   static const u16 entry =
-      make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+   const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
    switch (mode) {
 
@@ -499,7 +499,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
          }
 
          for (u16 i = t->r + 1; i < t->rows; i++)
-            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+            ts_clear_row(t, i, DEFAULT_COLOR16);
 
          break;
 
@@ -508,7 +508,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
          /* Clear the screen from the beginning up to cursor's position */
 
          for (u16 i = 0; i < t->r; i++)
-            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+            ts_clear_row(t, i, DEFAULT_COLOR16);
 
          for (u16 col = 0; col < t->c; col++) {
             buffer_set_entry(t, t->r, col, entry);
@@ -522,7 +522,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
          /* Clear the whole screen */
 
          for (u16 i = 0; i < t->rows; i++)
-            ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+            ts_clear_row(t, i, DEFAULT_COLOR16);
 
          break;
 
@@ -534,8 +534,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
             term_action_reset(t);
 
             if (t->cursor_enabled)
-               t->vi->move_cursor(row, col, make_color(DEFAULT_FG_COLOR,
-                                                       DEFAULT_BG_COLOR));
+               t->vi->move_cursor(row, col, DEFAULT_COLOR16);
          }
          break;
 
@@ -549,8 +548,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
 
 static void term_action_erase_in_line(struct term *t, int mode, ...)
 {
-   static const u16 entry =
-      make_vgaentry(' ', make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+   const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
    switch (mode) {
 
@@ -621,7 +619,7 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    }
 
    for (u16 row = t->rows - n; row < t->rows; row++)
-      ts_buf_clear_row(t, row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
 
    term_redraw(t);
 }
@@ -641,7 +639,7 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    }
 
    for (u16 row = 0; row < n; row++)
-      ts_buf_clear_row(t, row, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
 
    term_redraw(t);
 }
@@ -727,8 +725,7 @@ static void
 debug_term_dump_font_table(struct term *t)
 {
    static const u8 hex_digits[] = "0123456789abcdef";
-
-   u8 color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+   const u8 color = DEFAULT_COLOR16;
 
    term_internal_incr_row(t, color);
    t->c = 0;
@@ -910,7 +907,7 @@ init_vterm(struct term *t,
    term_action_move_ch_and_cur(t, 0, 0);
 
    for (u16 i = 0; i < t->rows; i++)
-      ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
+      ts_clear_row(t, i, DEFAULT_COLOR16);
 
    t->initialized = true;
    return 0;
