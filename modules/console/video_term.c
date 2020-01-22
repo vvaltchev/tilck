@@ -45,6 +45,8 @@ struct term {
    u16 saved_cur_col;         /* keeps primary buffer's cursor's col */
 
    bool *tabs_buf;
+   bool *main_tabs_buf;
+   bool *alt_tabs_buf;
 
    struct safe_ringbuf ringb;
    struct term_action actions_buf[32];
@@ -424,15 +426,12 @@ static void term_action_write(struct term *t, char *buf, u32 len, u8 color)
       vi->flush_buffers();
 }
 
-/*
- * Direct write w/o any filter nor scroll/move_cursor/flush.
- */
+/* Direct write without any filter nor move_cursor/flush */
 static void
 term_action_dwrite_no_filter(struct term *t, char *buf, u32 len, u8 color)
 {
-   for (u32 i = 0; i < len; i++) {
+   for (u32 i = 0; i < len; i++)
       term_internal_write_char2(t, buf[i], color);
-   }
 }
 
 static void term_action_set_col_offset(struct term *t, u16 off, ...)
@@ -681,7 +680,30 @@ static void term_action_restart_video_output(struct term *t, ...)
       t->vi->enable_static_elems_refresh();
 }
 
-static void term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
+static int
+term_allocate_alt_buffers(struct term *t)
+{
+   t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
+
+   if (!t->screen_buf_copy)
+      return -ENOMEM;
+
+   if (!t->alt_tabs_buf) {
+
+      t->alt_tabs_buf = kzmalloc(t->rows * t->cols);
+
+      if (!t->alt_tabs_buf) {
+         kfree2(t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+         t->screen_buf_copy = NULL;
+         return -ENOMEM;
+      }
+   }
+
+   return 0;
+}
+
+static void
+term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 {
    u16 *b = &t->buffer[t->scroll % t->total_buffer_rows * t->cols];
 
@@ -692,12 +714,11 @@ static void term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 
       if (!t->screen_buf_copy) {
 
-         t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
-
-         if (!t->screen_buf_copy)
-            return; /* just do nothing, that's OK */
+         if (term_allocate_alt_buffers(t) < 0)
+            return; /* just do nothing: the main buffer will be used */
       }
 
+      t->tabs_buf = t->alt_tabs_buf;
       t->saved_cur_row = t->r;
       t->saved_cur_col = t->c;
       memcpy(t->screen_buf_copy, b, sizeof(u16) * t->rows * t->cols);
@@ -709,6 +730,7 @@ static void term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
       memcpy(b, t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
       t->r = t->saved_cur_row;
       t->c = t->saved_cur_col;
+      t->tabs_buf = t->main_tabs_buf;
    }
 
    t->using_alt_buffer = use_alt_buffer;
@@ -791,9 +813,14 @@ dispose_term(struct term *t)
       t->buffer = NULL;
    }
 
-   if (t->tabs_buf) {
-      kfree2(t->tabs_buf, t->cols * t->rows);
-      t->tabs_buf = NULL;
+   if (t->main_tabs_buf) {
+      kfree2(t->main_tabs_buf, t->cols * t->rows);
+      t->main_tabs_buf = NULL;
+   }
+
+   if (t->alt_tabs_buf) {
+      kfree2(t->alt_tabs_buf, t->cols * t->rows);
+      t->alt_tabs_buf = NULL;
    }
 
    if (t->screen_buf_copy) {
@@ -872,16 +899,20 @@ init_vterm(struct term *t,
 
    if (t->buffer) {
 
-      t->tabs_buf = kzmalloc(t->cols * t->rows);
+      t->main_tabs_buf = kzmalloc(t->cols * t->rows);
 
-      if (!t->tabs_buf) {
+      if (t->main_tabs_buf) {
+
+         t->tabs_buf = t->main_tabs_buf;
+
+      } else {
 
          if (t != &first_instance) {
             kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
             return -ENOMEM;
          }
 
-         printk("WARNING: unable to allocate tabs_buf\n");
+         printk("WARNING: unable to allocate main_tabs_buf\n");
       }
 
    } else {

@@ -29,7 +29,7 @@ enum term_action_type {
 /*
  * NOTES [enum term_action_type].
  *
- *    [1] direct write without filters/scroll/move_cursor/flush
+ *    [1] direct write without filters/move_cursor/flush
  *
  *    [2] arg1 = rows, arg2 = direction (0 = up, 1 = down)
  *          WARNING: up => text moves down, down => text moves up.
