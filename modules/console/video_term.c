@@ -41,10 +41,10 @@ struct term {
    u32 total_buffer_rows;     /* >= term rows */
    u32 extra_buffer_rows;     /* => total_buffer_rows - rows. Always >= 0 */
 
-   u16 saved_cur_row;         /* keeps cursor's row in the primary buffer */
-   u16 saved_cur_col;         /* keeps cursor's col in the primary buffer */
+   u16 saved_cur_row;         /* keeps primary buffer's cursor's row */
+   u16 saved_cur_col;         /* keeps primary buffer's cursor's col */
 
-   bool *term_tabs_buf;
+   bool *tabs_buf;
 
    struct safe_ringbuf ringb;
    struct term_action actions_buf[32];
@@ -286,7 +286,7 @@ static void term_internal_write_tab(struct term *t, u8 color)
 {
    int rem = t->cols - t->c - 1;
 
-   if (!t->term_tabs_buf) {
+   if (!t->tabs_buf) {
 
       if (rem)
          term_internal_write_printable_char(t, ' ', color);
@@ -295,7 +295,7 @@ static void term_internal_write_tab(struct term *t, u8 color)
    }
 
    u32 tab_col = (u32) MIN(round_up_at(t->c+1, t->tabsize), (u32)t->cols-1) - 1;
-   t->term_tabs_buf[t->r * t->cols + tab_col] = 1;
+   t->tabs_buf[t->r * t->cols + tab_col] = 1;
    t->c = (u16)(tab_col + 1);
 }
 
@@ -307,21 +307,21 @@ static void term_internal_write_backspace(struct term *t, u8 color)
    const u16 space_entry = make_vgaentry(' ', color);
    t->c--;
 
-   if (!t->term_tabs_buf || !t->term_tabs_buf[t->r * t->cols + t->c]) {
+   if (!t->tabs_buf || !t->tabs_buf[t->r * t->cols + t->c]) {
       buffer_set_entry(t, t->r, t->c, space_entry);
       t->vi->set_char_at(t->r, t->c, space_entry);
       return;
    }
 
    /* we hit the end of a tab */
-   t->term_tabs_buf[t->r * t->cols + t->c] = 0;
+   t->tabs_buf[t->r * t->cols + t->c] = 0;
 
    for (int i = t->tabsize - 1; i >= 0; i--) {
 
       if (!t->c || t->c == t->col_offset)
          break;
 
-      if (t->term_tabs_buf[t->r * t->cols + t->c - 1])
+      if (t->tabs_buf[t->r * t->cols + t->c - 1])
          break; /* we hit the previous tab */
 
       if (vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1)) != ' ')
@@ -478,8 +478,8 @@ static void term_action_reset(struct term *t, ...)
    for (u16 i = 0; i < t->rows; i++)
       ts_clear_row(t, i, make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR));
 
-   if (t->term_tabs_buf)
-      memset(t->term_tabs_buf, 0, t->cols * t->rows);
+   if (t->tabs_buf)
+      memset(t->tabs_buf, 0, t->cols * t->rows);
 }
 
 static void term_action_erase_in_display(struct term *t, int mode, ...)
@@ -794,9 +794,9 @@ dispose_term(struct term *t)
       t->buffer = NULL;
    }
 
-   if (t->term_tabs_buf) {
-      kfree2(t->term_tabs_buf, t->cols * t->rows);
-      t->term_tabs_buf = NULL;
+   if (t->tabs_buf) {
+      kfree2(t->tabs_buf, t->cols * t->rows);
+      t->tabs_buf = NULL;
    }
 
    if (t->screen_buf_copy) {
@@ -875,16 +875,16 @@ init_vterm(struct term *t,
 
    if (t->buffer) {
 
-      t->term_tabs_buf = kzmalloc(t->cols * t->rows);
+      t->tabs_buf = kzmalloc(t->cols * t->rows);
 
-      if (!t->term_tabs_buf) {
+      if (!t->tabs_buf) {
 
          if (t != &first_instance) {
             kfree2(t->buffer, 2 * t->total_buffer_rows * t->cols);
             return -ENOMEM;
          }
 
-         printk("WARNING: unable to allocate term_tabs_buf\n");
+         printk("WARNING: unable to allocate tabs_buf\n");
       }
 
    } else {
