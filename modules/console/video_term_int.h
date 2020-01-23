@@ -61,20 +61,20 @@ struct term_action {
    union {
 
       struct {
-         u32 type3 :  4;
-         u32 len   : 20;
+         u32 type3 :  8;
+         u32 len   : 16;
          u32 col   :  8;
       };
 
       struct {
-         u32 type2 :  4;
-         u32 arg1  : 14;
-         u32 arg2  : 14;
+         u32 type2 :  8;
+         u32 arg1  : 12;
+         u32 arg2  : 12;
       };
 
       struct {
-         u32 type1  :  4;
-         u32 arg    : 28;
+         u32 type1 :  8;
+         u32 arg   : 24;
       };
 
    };
