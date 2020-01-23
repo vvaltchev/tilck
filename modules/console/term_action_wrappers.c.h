@@ -22,6 +22,8 @@ static const struct actions_table_item actions_table[] = {
    [a_enable_cursor]        = ENTRY(term_action_enable_cursor, 1),
    [a_non_buf_scroll]       = ENTRY(term_action_non_buf_scroll, 2),
    [a_use_alt_buffer]       = ENTRY(term_action_use_alt_buffer, 1),
+   [a_insert_blank_lines]   = ENTRY(term_action_ins_blank_lines, 1),
+   [a_delete_lines]         = ENTRY(term_action_del_lines, 1),
 };
 
 #undef ENTRY

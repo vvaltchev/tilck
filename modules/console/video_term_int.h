@@ -24,6 +24,8 @@ enum term_action_type {
    a_enable_cursor,
    a_use_alt_buffer,
    a_non_buf_scroll,             // [3]
+   a_insert_blank_lines,
+   a_delete_lines,
 };
 
 /*
@@ -247,5 +249,23 @@ term_make_action_non_buf_scroll(struct term_action *a,
       .type2 = a_non_buf_scroll,
       .arg1 = rows,
       .arg2 = st,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_ins_blank_lines(struct term_action *a, u32 n)
+{
+   *a = (struct term_action) {
+      .type1 = a_insert_blank_lines,
+      .arg = n,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_del_lines(struct term_action *a, u32 n)
+{
+   *a = (struct term_action) {
+      .type1 = a_delete_lines,
+      .arg = n,
    };
 }

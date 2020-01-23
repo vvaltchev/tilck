@@ -739,6 +739,17 @@ term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
    term_action_enable_cursor(t, t->cursor_enabled);
 }
 
+static void
+term_action_ins_blank_lines(struct term *t, u32 n)
+{
+}
+
+static void
+term_action_del_lines(struct term *t, u32 n)
+{
+}
+
+
 #include "term_action_wrappers.c.h"
 
 #ifdef DEBUG

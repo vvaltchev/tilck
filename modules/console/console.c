@@ -446,6 +446,28 @@ tty_csi_pvt_ext_handler(u32 *params,
    }
 }
 
+static void
+tty_csi_L_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   term_make_action_ins_blank_lines(a, params[0]);
+}
+
+static void
+tty_csi_M_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   term_make_action_del_lines(a, params[0]);
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -466,8 +488,8 @@ static csi_seq_handler csi_handlers[256] =
    ['H'] = tty_csi_fH_handler,         /* CUP: Move to (N, M) [abs, 1-based] */
    ['J'] = tty_csi_J_handler,          /* ED: Erase in display */
    ['K'] = tty_csi_K_handler,          /* EL: Erase in line */
-   ['L'] = NULL,                       /* IL: not implemented */
-   ['M'] = NULL,                       /* DL: not implemented */
+   ['L'] = tty_csi_L_handler,          /* IL: Insert # blank lines */
+   ['M'] = tty_csi_M_handler,          /* DL: Delete # lines */
    ['P'] = NULL,                       /* DCH: not implemented */
    ['S'] = tty_csi_S_handler,          /* SU: Non-buf scroll-up */
    ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
