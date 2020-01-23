@@ -76,11 +76,11 @@ tty_filter_handle_csi_ABCD(u32 *params,
    int d[4] = {0};
    d[c - 'A'] = (int) MAX(1u, params[0]);
 
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur_rel,
-      .arg1 = LO_BITS((u32)(-d[0] + d[1]), 8, u32),
-      .arg2 = LO_BITS((u32)( d[2] - d[3]), 8, u32),
-   };
+   term_make_action_move_cursor_rel(
+      a,
+      -d[0] + d[1],
+       d[2] - d[3]
+   );
 }
 
 static void

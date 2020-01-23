@@ -183,3 +183,13 @@ term_make_action_move_cursor(struct term_action *a, u32 row, u32 col)
       .arg2 = col,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_move_cursor_rel(struct term_action *a, int dr, int dc)
+{
+   *a = (struct term_action) {
+      .type2 = a_move_ch_and_cur_rel,
+      .arg1 = LO_BITS((u32)dr, 8, u32),
+      .arg2 = LO_BITS((u32)dc, 8, u32),
+   };
+}

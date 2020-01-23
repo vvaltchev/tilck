@@ -29,11 +29,7 @@ tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 
    if (term_get_curr_row(ctx->t->tstate) > 0) {
 
-      *a = (struct term_action) {
-         .type2 = a_move_ch_and_cur_rel,
-         .arg1 = LO_BITS((u32)-1, 8, u32),
-         .arg2 = 0,
-      };
+      term_make_action_move_cursor_rel(a, -1, 0);
 
    } else {
 
@@ -116,12 +112,7 @@ tty_def_state_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_backspace(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur_rel,
-      .arg1 = LO_BITS((u32)  0, 8, u32),
-      .arg2 = LO_BITS((u32) -1, 8, u32),
-   };
-
+   term_make_action_move_cursor_rel(a, 0, -1);
    return TERM_FILTER_WRITE_BLANK;
 }
 
