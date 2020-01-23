@@ -421,18 +421,12 @@ tty_csi_pvt_ext_handler(u32 *params,
          if (c == 'h') {
 
             /* Show the cursor */
-
-            *a = (struct term_action) {
-               .type1 = a_enable_cursor,
-               .arg = true,
-            };
+            term_make_action_set_cursor_enabled(a, true);
 
          } else if (c == 'l') {
 
-            *a = (struct term_action) {
-               .type1 = a_enable_cursor,
-               .arg = false,
-            };
+            /* Hide the cursor */
+            term_make_action_set_cursor_enabled(a, false);
          }
          break;
 

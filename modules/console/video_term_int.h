@@ -219,3 +219,12 @@ term_make_action_restart_video_output(struct term_action *a)
       .arg = 0,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_set_cursor_enabled(struct term_action *a, bool value)
+{
+   *a = (struct term_action) {
+      .type1 = a_enable_cursor,
+      .arg = value,
+   };
+}
