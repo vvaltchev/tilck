@@ -201,3 +201,21 @@ term_make_action_reset(struct term_action *a)
       .type1 = a_reset,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_pause_video_output(struct term_action *a)
+{
+   *a = (struct term_action) {
+      .type1 = a_pause_video_output,
+      .arg = 0,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_restart_video_output(struct term_action *a)
+{
+   *a = (struct term_action) {
+      .type1 = a_restart_video_output,
+      .arg = 0,
+   };
+}

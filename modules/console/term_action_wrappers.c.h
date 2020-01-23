@@ -107,22 +107,16 @@ vterm_set_col_offset(struct term *t, int off)
 static void
 vterm_pause_video_output(struct term *t)
 {
-   struct term_action a = {
-      .type1 = a_pause_video_output,
-      .arg = 0,
-   };
-
+   struct term_action a;
+   term_make_action_pause_video_output(&a);
    term_execute_or_enqueue_action(t, a);
 }
 
 static void
 vterm_restart_video_output(struct term *t)
 {
-   struct term_action a = {
-      .type1 = a_restart_video_output,
-      .arg = 0,
-   };
-
+   struct term_action a;
+   term_make_action_restart_video_output(&a);
    term_execute_or_enqueue_action(t, a);
 }
 
