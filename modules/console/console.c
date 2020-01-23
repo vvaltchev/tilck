@@ -415,6 +415,19 @@ tty_csi_pvt_ext_handler(u32 *params,
                         struct term_action *a,
                         struct twfilter_ctx *ctx)
 {
+   if (c == 'c') {
+
+      /*
+       * Linux-specific cursor appearance manipulation.
+       * See: www.kernel.org/doc/html/latest/admin-guide/vga-softcursor.html
+       *
+       * TODO: [console] consider supporting ESC [ ? <n> c
+       */
+
+      return;
+   }
+
+
    switch (params[0]) {
 
       case 25:
