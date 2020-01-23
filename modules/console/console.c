@@ -418,34 +418,26 @@ tty_csi_pvt_ext_handler(u32 *params,
    switch (params[0]) {
 
       case 25:
-         if (c == 'h') {
+
+         if (c == 'h')
 
             /* Show the cursor */
             term_make_action_set_cursor_enabled(a, true);
 
-         } else if (c == 'l') {
+         else if (c == 'l')
 
             /* Hide the cursor */
             term_make_action_set_cursor_enabled(a, false);
-         }
+
          break;
 
       case 1049:
-         if (c == 'h') {
 
-            *a = (struct term_action) {
-               .type1 = a_use_alt_buffer,
-               .arg = true,
-            };
+         if (c == 'h')
+            term_make_action_use_alt_buffer(a, true);
+         else if (c == 'l')
+            term_make_action_use_alt_buffer(a, false);
 
-         } else if (c == 'l') {
-
-            *a = (struct term_action) {
-               .type1 = a_use_alt_buffer,
-               .arg = false,
-            };
-
-         }
          break;
 
       default:

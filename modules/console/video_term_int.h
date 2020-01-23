@@ -228,3 +228,12 @@ term_make_action_set_cursor_enabled(struct term_action *a, bool value)
       .arg = value,
    };
 }
+
+static ALWAYS_INLINE void
+term_make_action_use_alt_buffer(struct term_action *a, bool value)
+{
+   *a = (struct term_action) {
+      .type1 = a_use_alt_buffer,
+      .arg = value,
+   };
+}
