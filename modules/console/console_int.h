@@ -12,7 +12,7 @@
 
 struct console_data;
 
-struct twfilter_ctx_t {
+struct twfilter_ctx {
 
    struct tty *t;
    struct console_data *cd;
@@ -35,13 +35,13 @@ struct console_data {
    u8 user_color;       /* color before attrs */
    u8 c_set;            /* 0 = G0, 1 = G1     */
    const s16 *c_sets_tables[2];
-   struct twfilter_ctx_t filter_ctx;
+   struct twfilter_ctx filter_ctx;
 
    term_filter *def_state_funcs;
 };
 
-static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c);
-static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state);
+static int tty_pre_filter(struct twfilter_ctx *ctx, u8 *c);
+static void tty_set_state(struct twfilter_ctx *ctx, term_filter new_state);
 static enum term_fret tty_state_default(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc1(u8*, u8*, struct term_action*, void*);
 static enum term_fret tty_state_esc2_par0(u8*, u8*, struct term_action*, void*);

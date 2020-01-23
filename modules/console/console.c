@@ -58,7 +58,7 @@ void tty_reset_filter_ctx(struct tty *t)
    if (!cd)
       return; /* serial tty */
 
-   struct twfilter_ctx_t *ctx = &cd->filter_ctx;
+   struct twfilter_ctx *ctx = &cd->filter_ctx;
    ctx->pbc = ctx->ibc = 0;
    ctx->t = t;
    ctx->cd = cd;
@@ -71,7 +71,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
                            u8 c,
                            u8 *color,
                            struct term_action *a,
-                           struct twfilter_ctx_t *ctx)
+                           struct twfilter_ctx *ctx)
 {
    int d[4] = {0};
    d[c - 'A'] = (int) MAX(1u, params[0]);
@@ -84,7 +84,7 @@ tty_filter_handle_csi_ABCD(u32 *params,
 }
 
 static void
-tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx_t *ctx)
+tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
    struct console_data *const cd = ctx->cd;
@@ -159,7 +159,7 @@ tty_filter_handle_csi_m(u32 *params,
                         u8 c,
                         u8 *color,
                         struct term_action *a,
-                        struct twfilter_ctx_t *ctx)
+                        struct twfilter_ctx *ctx)
 {
    if (!pc) {
       /*
@@ -190,7 +190,7 @@ tty_csi_EF_handler(u32 *params,
                    u8 c,
                    u8 *color,
                    struct term_action *a,
-                   struct twfilter_ctx_t *ctx)
+                   struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
    ASSERT(c == 'E' || c == 'F');
@@ -213,7 +213,7 @@ tty_csi_G_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
 
@@ -233,7 +233,7 @@ tty_csi_fH_handler(u32 *params,
                    u8 c,
                    u8 *color,
                    struct term_action *a,
-                   struct twfilter_ctx_t *ctx)
+                   struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
 
@@ -254,7 +254,7 @@ tty_csi_J_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    term_make_action_erase_in_display(a, params[0]);
 }
@@ -265,7 +265,7 @@ tty_csi_K_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    term_make_action_erase_in_line(a, params[0]);
 }
@@ -276,7 +276,7 @@ tty_csi_S_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    term_make_action_non_buf_scroll(
       a,
@@ -291,7 +291,7 @@ tty_csi_T_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    term_make_action_non_buf_scroll(
       a,
@@ -306,7 +306,7 @@ tty_csi_n_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
    char dsr[16] = {0};
@@ -340,7 +340,7 @@ tty_csi_s_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
 
@@ -355,7 +355,7 @@ tty_csi_u_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    struct console_data *const cd = ctx->cd;
 
@@ -373,7 +373,7 @@ tty_csi_d_handler(u32 *params,
                   u8 c,
                   u8 *color,
                   struct term_action *a,
-                  struct twfilter_ctx_t *ctx)
+                  struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
 
@@ -393,7 +393,7 @@ tty_csi_hpa_handler(u32 *params,
                     u8 c,
                     u8 *color,
                     struct term_action *a,
-                    struct twfilter_ctx_t *ctx)
+                    struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
 
@@ -413,7 +413,7 @@ tty_csi_pvt_ext_handler(u32 *params,
                         u8 c,
                         u8 *color,
                         struct term_action *a,
-                        struct twfilter_ctx_t *ctx)
+                        struct twfilter_ctx *ctx)
 {
    switch (params[0]) {
 
@@ -451,7 +451,7 @@ typedef void (*csi_seq_handler)(u32 *params,
                                 u8 c,
                                 u8 *color,
                                 struct term_action *a,
-                                struct twfilter_ctx_t *ctx);
+                                struct twfilter_ctx *ctx);
 
 static csi_seq_handler csi_handlers[256] =
 {
@@ -480,7 +480,7 @@ static enum term_fret
 tty_filter_end_csi_seq(u8 c,
                        u8 *color,
                        struct term_action *a,
-                       struct twfilter_ctx_t *ctx)
+                       struct twfilter_ctx *ctx)
 {
    const char *endptr;
    u32 params[NPAR] = {0};
@@ -522,7 +522,7 @@ tty_filter_end_csi_seq(u8 c,
 static enum term_fret
 tty_state_esc2_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -575,7 +575,7 @@ tty_state_esc2_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_state_esc2_unknown(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -592,7 +592,7 @@ tty_state_esc2_unknown(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *ctx = ctx_arg;
+   struct twfilter_ctx *ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -652,7 +652,7 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 }
 
 static enum term_fret
-tty_change_translation_table(struct twfilter_ctx_t *ctx, u8 *c, int c_set)
+tty_change_translation_table(struct twfilter_ctx *ctx, u8 *c, int c_set)
 {
    struct console_data *const cd = ctx->cd;
 
@@ -680,7 +680,7 @@ tty_change_translation_table(struct twfilter_ctx_t *ctx, u8 *c, int c_set)
 static enum term_fret
 tty_state_esc2_par0(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -692,7 +692,7 @@ tty_state_esc2_par0(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_state_esc2_par1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
    int rc;
 
    if ((rc = tty_pre_filter(ctx, c)) >= 0)
@@ -701,14 +701,14 @@ tty_state_esc2_par1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
    return tty_change_translation_table(ctx_arg, c, 1);
 }
 
-static void tty_set_state(struct twfilter_ctx_t *ctx, term_filter new_state)
+static void tty_set_state(struct twfilter_ctx *ctx, term_filter new_state)
 {
    struct tty *const t = ctx->t;
    ctx->non_default_state = new_state != &tty_state_default;
    t->tintf->set_filter(t->tstate, new_state, ctx);
 }
 
-static int tty_pre_filter(struct twfilter_ctx_t *ctx, u8 *c)
+static int tty_pre_filter(struct twfilter_ctx *ctx, u8 *c)
 {
    if (ctx->non_default_state) {
 

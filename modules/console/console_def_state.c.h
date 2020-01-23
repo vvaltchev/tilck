@@ -3,7 +3,7 @@
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
    tty_set_state(ctx, &tty_state_esc1);
    return TERM_FILTER_WRITE_BLANK;
 }
@@ -11,7 +11,7 @@ tty_def_state_esc(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
 
    if ((ctx->t->c_term.c_oflag & (OPOST | ONLCR)) == (OPOST | ONLCR)) {
 
@@ -25,7 +25,7 @@ tty_def_state_lf(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
 
    if (term_get_curr_row(ctx->t->tstate) > 0) {
 
@@ -54,7 +54,7 @@ tty_def_state_ignore(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_shift_out(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
 
    /* shift out: use alternate charset G1 */
    ctx->cd->c_set = 1;
@@ -65,7 +65,7 @@ tty_def_state_shift_out(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_shift_in(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
 
    /* shift in: return to the default charset G0 */
    ctx->cd->c_set = 0;
@@ -97,7 +97,7 @@ tty_def_state_vkill(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 static enum term_fret
 tty_def_state_csi(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
 
    tty_reset_filter_ctx(ctx->t);
    tty_set_state(ctx, &tty_state_esc2_csi);
@@ -158,7 +158,7 @@ tty_def_print_untrasl_char(u8 *c,
                            struct term_action *a,
                            void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
    int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);
 
    term_make_action_direct_write(a, ctx->tmpbuf, (u32)len, *color);
@@ -168,7 +168,7 @@ tty_def_print_untrasl_char(u8 *c,
 static enum term_fret
 tty_state_default(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
-   struct twfilter_ctx_t *const ctx = ctx_arg;
+   struct twfilter_ctx *const ctx = ctx_arg;
    struct console_data *cd = ctx->cd;
 
    s16 tv = cd->c_sets_tables[cd->c_set][*c];
