@@ -455,24 +455,37 @@ typedef void (*csi_seq_handler)(u32 *params,
 
 static csi_seq_handler csi_handlers[256] =
 {
+   ['@'] = NULL,                       /* ICH: not implemented */
    ['A'] = tty_filter_handle_csi_ABCD, /* CUU: Move the cursor up */
    ['B'] = tty_filter_handle_csi_ABCD, /* CUD: Move the cursor down */
    ['C'] = tty_filter_handle_csi_ABCD, /* CUF: Move the cursor right */
    ['D'] = tty_filter_handle_csi_ABCD, /* CUB: Move the cursor left */
-   ['m'] = tty_filter_handle_csi_m,    /* SGR: Select Graphic Rendition */
    ['E'] = tty_csi_EF_handler,         /* CNL: Move N lines down; set col=0 */
    ['F'] = tty_csi_EF_handler,         /* CPL: Move N lines up; set col = 0 */
    ['G'] = tty_csi_G_handler,          /* CHA: Move to col N [abs, 1-based] */
    ['H'] = tty_csi_fH_handler,         /* CUP: Move to (N, M) [abs, 1-based] */
-   ['f'] = tty_csi_fH_handler,         /* HVP: Move to (N, M) [abs, 1-based] */
    ['J'] = tty_csi_J_handler,          /* ED: Erase in display */
    ['K'] = tty_csi_K_handler,          /* EL: Erase in line */
-   ['S'] = tty_csi_S_handler,          /* Non-buf scroll-up */
-   ['T'] = tty_csi_T_handler,          /* Non-buf scroll-down */
+   ['L'] = NULL,                       /* IL: not implemented */
+   ['M'] = NULL,                       /* DL: not implemented */
+   ['P'] = NULL,                       /* DCH: not implemented */
+   ['S'] = tty_csi_S_handler,          /* SU: Non-buf scroll-up */
+   ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
+   ['X'] = NULL,                       /* ECH: not implemented */
+   ['a'] = NULL,                       /* HPR: not implemented */
+   ['c'] = NULL,                       /* DA: not implemented */
+   ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
+   ['e'] = NULL,                       /* VPR: not implemented */
+   ['f'] = tty_csi_fH_handler,         /* HVP: Move to (N, M) [abs, 1-based] */
+   ['g'] = NULL,                       /* TBC: not implemented */
+   ['h'] = NULL,                       /* SM: not implemented */
+   ['l'] = NULL,                       /* RM: not implemented */
+   ['m'] = tty_filter_handle_csi_m,    /* SGR: Select Graphic Rendition */
    ['n'] = tty_csi_n_handler,          /* DSR: Device Status Report */
+   ['q'] = NULL,                       /* DECLL: not implemented */
+   ['r'] = NULL,                       /* DECSTBM: not implemented */
    ['s'] = tty_csi_s_handler,          /* SCP: Save Cursor Position */
    ['u'] = tty_csi_u_handler,          /* RCP: Restore Cursor Position */
-   ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
    ['`'] = tty_csi_hpa_handler,        /* HPA: Move to col N (abs), same row */
 };
 
