@@ -237,3 +237,16 @@ term_make_action_use_alt_buffer(struct term_action *a, bool value)
       .arg = value,
    };
 }
+
+
+static ALWAYS_INLINE void
+term_make_action_non_buf_scroll(struct term_action *a,
+                                enum term_scroll_type st,
+                                u32 rows)
+{
+   *a = (struct term_action) {
+      .type2 = a_non_buf_scroll,
+      .arg1 = rows,
+      .arg2 = st,
+   };
+}

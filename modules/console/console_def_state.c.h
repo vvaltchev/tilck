@@ -33,12 +33,7 @@ tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 
    } else {
 
-      *a = (struct term_action) {
-         .type2 = a_non_buf_scroll,
-         .arg1 = 1,
-         .arg2 = term_scroll_down,
-      };
-
+      term_make_action_non_buf_scroll(a, term_scroll_down, 1);
    }
 
    return TERM_FILTER_WRITE_BLANK;
