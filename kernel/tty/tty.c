@@ -313,8 +313,7 @@ struct tty *get_serial_tty(int n)
 ssize_t
 tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
-   /* term_write's size is limited to 2^20 - 1 */
-   size = MIN(size, (size_t)MB - 1);
+   size = MIN(size, MAX_TERM_WRITE_LEN);
    t->tintf->write(t->tstate, buf, size, t->curr_color);
    return (ssize_t) size;
 }

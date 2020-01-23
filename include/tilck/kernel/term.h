@@ -10,6 +10,8 @@ struct term_interface;
 extern const struct term_interface *video_term_intf;
 extern const struct term_interface *serial_term_intf;
 
+#define MAX_TERM_WRITE_LEN                ((u32)(MB - 1))
+
 struct video_interface {
 
    /* Main functions */

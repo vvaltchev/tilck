@@ -95,7 +95,7 @@ term_make_action_write(struct term_action *a,
 {
    *a = (struct term_action) {
       .type3 = a_write,
-      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
+      .len = UNSAFE_MIN((u32)len, MAX_TERM_WRITE_LEN),
       .col = color,
       .ptr = (ulong)buf,
    };
@@ -109,7 +109,7 @@ term_make_action_direct_write(struct term_action *a,
 {
    *a = (struct term_action) {
       .type3 = a_dwrite_no_filter,
-      .len = UNSAFE_MIN((u32)len, (u32)MB - 1),
+      .len = UNSAFE_MIN((u32)len, MAX_TERM_WRITE_LEN),
       .col = color,
       .ptr = (ulong)buf,
    };
