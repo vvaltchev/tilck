@@ -622,11 +622,10 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
       case 'c':
          {
             struct tty *t = ctx->t;
-            *a = (struct term_action) { .type1 = a_reset };
-
+            term_make_action_reset(a);
             tty_inbuf_reset(t);
             t->kd_gfx_mode = KD_TEXT;
-            t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
+            t->curr_color = DEFAULT_COLOR16;
             reset_console_data(t);
             tty_reset_termios(t);
             tty_update_default_state_tables(t);
