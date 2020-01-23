@@ -26,6 +26,7 @@ enum term_action_type {
    a_non_buf_scroll,             // [3]
    a_insert_blank_lines,
    a_delete_lines,
+   a_set_scroll_region,
 };
 
 /*
@@ -267,5 +268,17 @@ term_make_action_del_lines(struct term_action *a, u32 n)
    *a = (struct term_action) {
       .type1 = a_delete_lines,
       .arg = n,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_set_scroll_region(struct term_action *a,
+                                   u32 start,
+                                   u32 end)
+{
+   *a = (struct term_action) {
+      .type2 = a_set_scroll_region,
+      .arg1 = start,
+      .arg2 = end,
    };
 }

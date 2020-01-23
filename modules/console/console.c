@@ -468,6 +468,23 @@ tty_csi_M_handler(u32 *params,
    term_make_action_del_lines(a, params[0]);
 }
 
+static void
+tty_csi_r_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   const u32 s = params[0] ? params[0] - 1u : 0u;
+   const u32 e = params[1] ? params[1] - 1u : ctx->t->tparams.rows - 1u;
+
+   if (s >= e)
+      return; /* ignore */
+
+   term_make_action_set_scroll_region(a, s, e);
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,

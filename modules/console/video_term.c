@@ -44,6 +44,15 @@ struct term {
    u16 saved_cur_row;         /* keeps primary buffer's cursor's row */
    u16 saved_cur_col;         /* keeps primary buffer's cursor's col */
 
+   u16 main_scroll_region_start;
+   u16 main_scroll_region_end;
+
+   u16 alt_scroll_region_start;
+   u16 alt_scroll_region_end;
+
+   u16 *start_scroll_region;
+   u16 *end_scroll_region;
+
    bool *tabs_buf;
    bool *main_tabs_buf;
    bool *alt_tabs_buf;
@@ -718,6 +727,8 @@ term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
             return; /* just do nothing: the main buffer will be used */
       }
 
+      t->start_scroll_region = &t->alt_scroll_region_start;
+      t->end_scroll_region = &t->alt_scroll_region_end;
       t->tabs_buf = t->alt_tabs_buf;
       t->saved_cur_row = t->r;
       t->saved_cur_col = t->c;
@@ -731,6 +742,8 @@ term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
       t->r = t->saved_cur_row;
       t->c = t->saved_cur_col;
       t->tabs_buf = t->main_tabs_buf;
+      t->start_scroll_region = &t->main_scroll_region_start;
+      t->end_scroll_region = &t->main_scroll_region_end;
    }
 
    t->using_alt_buffer = use_alt_buffer;
@@ -749,6 +762,18 @@ term_action_del_lines(struct term *t, u32 n)
 {
 }
 
+static void
+term_action_set_scroll_region(struct term *t, u16 start, u16 end)
+{
+   start = (u16) CLAMP(start, 0u, t->rows - 1u);
+   end = (u16) CLAMP(end, 0u, t->rows - 1u);
+
+   if (start >= end)
+      return;
+
+   *t->start_scroll_region = start;
+   *t->end_scroll_region = end;
+}
 
 #include "term_action_wrappers.c.h"
 
@@ -889,6 +914,12 @@ init_vterm(struct term *t,
    t->rows = rows;
    t->saved_vi = intf;
    t->vi = (t == &first_instance) ? intf : &no_output_vi;
+
+   t->main_scroll_region_start = t->alt_scroll_region_start = 0;
+   t->main_scroll_region_end = t->alt_scroll_region_end = t->rows - 1;
+
+   t->start_scroll_region = &t->main_scroll_region_start;
+   t->end_scroll_region = &t->main_scroll_region_end;
 
    safe_ringbuf_init(&t->ringb,
                      ARRAY_SIZE(t->actions_buf),
