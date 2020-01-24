@@ -98,16 +98,22 @@ static const struct video_interface no_output_vi =
 
 /* --------------------------------------------------------- */
 
+static ALWAYS_INLINE u32
+calc_buf_row(struct term *t, u32 row)
+{
+   return (row + t->scroll) % t->total_buffer_rows;
+}
+
 static ALWAYS_INLINE void
 buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
-   t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col] = e;
+   t->buffer[calc_buf_row(t, row) * t->cols + col] = e;
 }
 
 static ALWAYS_INLINE
 u16 buffer_get_entry(struct term *t, u16 row, u16 col)
 {
-   return t->buffer[(row + t->scroll) % t->total_buffer_rows * t->cols + col];
+   return t->buffer[calc_buf_row(t, row) * t->cols + col];
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
@@ -204,7 +210,7 @@ static void ts_buf_clear_row(struct term *t, u16 row, u8 color)
    if (!t->buffer)
       return;
 
-   u16 *rowb = t->buffer + t->cols * ((row + t->scroll) % t->total_buffer_rows);
+   u16 *rowb = t->buffer + t->cols * calc_buf_row(t, row);
    memset16(rowb, make_vgaentry(' ', color), t->cols);
 }
 
@@ -620,9 +626,9 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
-   for (u16 row = 0; row < (u16)(t->rows - n); row++) {
-      u32 s = (t->scroll + row + n) % t->total_buffer_rows;
-      u32 d = (t->scroll + row) % t->total_buffer_rows;
+   for (u32 row = 0; row < t->rows - n; row++) {
+      u32 s = calc_buf_row(t, row + n);
+      u32 d = calc_buf_row(t, row);
       memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
    }
 
@@ -641,8 +647,8 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    n = (u16)MIN(n, t->rows);
 
    for (int row = (int)t->rows - n - 1; row >= 0; row--) {
-      u32 s = (t->scroll + (u32)row) % t->total_buffer_rows;
-      u32 d = (t->scroll + (u32)row + n) % t->total_buffer_rows;
+      u32 s = calc_buf_row(t, (u32)row);
+      u32 d = calc_buf_row(t, (u32)row + n);
       memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
    }
 
@@ -714,7 +720,7 @@ term_allocate_alt_buffers(struct term *t)
 static void
 term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 {
-   u16 *b = &t->buffer[t->scroll % t->total_buffer_rows * t->cols];
+   u16 *b = &t->buffer[calc_buf_row(t, 0) * t->cols];
 
    if (t->using_alt_buffer == use_alt_buffer)
       return;
