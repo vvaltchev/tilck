@@ -67,7 +67,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
 
    UINTN wanted_mode;
    UINTN orig_mode;
-   UINTN default_mode;
+   UINTN default_mode = (UINTN)-1;
 
    u32 my_modes[10];
    u32 my_modes_count = 0;

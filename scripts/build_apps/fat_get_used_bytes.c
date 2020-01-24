@@ -29,6 +29,7 @@ int main(int argc, char **argv)
    void *vaddr;
    const char *file;
    bool trunc = false;
+   int failed = 0;
 
    if (argc < 2) {
       show_help_and_exit(argc, argv);
@@ -65,8 +66,8 @@ int main(int argc, char **argv)
 
    if (errno) {
       perror("mmap() failed");
-      close(fd);
-      return 1;
+      failed = 1;
+      goto out;
    }
 
    u32 used_bytes = fat_get_used_bytes(vaddr);
@@ -79,9 +80,13 @@ int main(int argc, char **argv)
    }
 
    if (trunc) {
-      ftruncate(fd, used_bytes);
+      if (ftruncate(fd, used_bytes) < 0) {
+         perror("ftruncate() failed");
+         failed = 1;
+      }
    }
 
+out:
    close(fd);
-   return 0;
+   return failed;
 }

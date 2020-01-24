@@ -423,7 +423,6 @@ void check_entry_point(const char *file,
 int main(int argc, char **argv)
 {
    void *vaddr;
-   int ret;
    int fd;
 
    if (argc < 3) {
