@@ -3,6 +3,12 @@
 
 # GLOBAL VARIABLES
 
+# Reset any forced env-based CFLAGS
+export CFLAGS=""
+export FFLAGS=""
+export CXXFLAGS=""
+export CFFLAGS=""
+
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
@@ -49,6 +55,49 @@ echo
 echo "ARCH=$ARCH"
 echo
 
+function save_cc_vars {
+   saved_CC=$CC
+   saved_CXX=$CXX
+   saved_AR=$AR
+   saved_NM=$NM
+   saved_RANLIB=$RANLIB
+}
+
+function set_cc_vars_to_tc {
+
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+      # Default case: use our cross toolchain
+
+      export CC="${ARCH_GCC_TC}-linux-gcc"
+      export CXX="${ARCH_GCC_TC}-linux-g++"
+      export AR="${ARCH_GCC_TC}-linux-ar"
+      export NM="${ARCH_GCC_TC}-linux-nm"
+      export RANLIB="${ARCH_GCC_TC}-linux-ranlib"
+
+   fi
+}
+
+function reset_cc_vars_to_null {
+
+   export CC=""
+   export CXX=""
+   export AR=""
+   export NM=""
+   export RANLIB=""
+}
+
+
+function reset_cc_vars {
+
+   export CC=$saved_CC
+   export CXX=$saved_CXX
+   export AR=$saved_AR
+   export NM=$saved_NM
+   export RANLIB=$saved_RANLIB
+}
+
+
 all_funcs_list=()
 
 # Source files to include
@@ -77,6 +126,8 @@ function build_mtools {
       extract_cachefile_tar_gz $tarname $pkgname mtools
 
       cd mtools
+      reset_cc_vars
+
       run_command2 ./configure configure.log
       run_command2 "make -j" build.log
    else
@@ -129,6 +180,7 @@ function build_gtest {
       mkdir gtest
       cd gtest
 
+      reset_cc_vars
       $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
       run_command2 "make -j" build.log
    else
@@ -156,9 +208,8 @@ function build_gtest_arch {
       mkdir gtest_arch
       cd gtest_arch
 
-      local cc="${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc"
-      local cxx="${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++"
-      CC=$cc CXX=$cxx $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
+      set_cc_vars_to_tc
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
       run_command2 "make -j" build.log
    else
       show_skip_component_msg "GOOGLE TEST (target arch)"
@@ -176,10 +227,10 @@ function build_libmusl {
 
    pushd .
    local saved_path="$PATH"
-   export SYS_CC="$CC"
-   export SYS_CXX="$CXX"
 
    if ! [ -d musl ]; then
+
+      reset_cc_vars_to_null
 
       if [[ "$USE_SYSCC" == "" || "$USE_SYSCC" == 0 ]]; then
 
@@ -195,6 +246,7 @@ function build_libmusl {
 
          download_gcc_glibc_toolchain
          export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
+
 
       else
 
@@ -247,8 +299,7 @@ function build_libmusl {
       show_skip_component_msg "LIBMUSL"
    fi
 
-   export CC="$SYS_CC"
-   export CXX="$SYS_CXX"
+   reset_cc_vars
    export PATH="$saved_path"
    popd
 }
@@ -265,6 +316,7 @@ function build_gnuefi {
    if ! [ -d gnu-efi ]; then
 
       show_work_on_component_msg "GNU-EFI"
+      reset_cc_vars
 
       # Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
       #
@@ -380,14 +432,22 @@ function config_busybox {
 function internal_build_busybox {
 
    echo "Building busybox... "
+   reset_cc_vars
+
    cp $MAIN_DIR/other/busybox.config .config
 
    if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
       # Case HOST_ARCH == ARCH
       # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
       export SYS_CC="$CC"
       export SYS_CXX="$CXX"
       export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+
+   else
+
+      # Default case
+      set_cc_vars_to_tc
    fi
 
    export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
@@ -460,6 +520,10 @@ function build_busybox {
    popd
 }
 
+##################################
+# Build ncurses
+##################################
+
 all_funcs_list+=(build_ncurses)
 function build_ncurses {
 
@@ -482,21 +546,16 @@ function build_ncurses {
       opts2="--datarootdir=/usr/share --without-cxx --without-cxx-binding"
       opts3="--without-ada --without-manpages --without-dlsym"
 
-      local saved_cc="$CC"
-
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-         # Default case
-         export CC="${ARCH_GCC_TC}-linux-gcc"
-
-      else
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
 
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
-         export CC="${ARCH_GCC_TC}-linux-gcc"
+         reset_cc_vars
+      else
+         set_cc_vars_to_tc
       fi
 
 
@@ -505,7 +564,6 @@ function build_ncurses {
       run_command2 "make install" install.log
 
       export CC_POST_FLAGS=""
-      export CC="$saved_cc"
 
    else
       show_skip_component_msg "NCURSES"
@@ -513,6 +571,10 @@ function build_ncurses {
 
    popd
 }
+
+##################################
+# Build zlib
+##################################
 
 all_funcs_list+=(build_zlib)
 function build_zlib {
@@ -529,14 +591,20 @@ function build_zlib {
       local p="$TC/zlib/install"
 
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
-      fi
+         reset_cc_vars
 
-      export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
+      else
+
+         # Default case
+         export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
+         set_cc_vars_to_tc
+      fi
 
       run_command2 "./configure --prefix='$p' --static" configure.log
       run_command2 "make -j" build.log
@@ -550,6 +618,10 @@ function build_zlib {
    popd
 }
 
+##################################
+# Build tcc
+##################################
+
 all_funcs_list+=(build_tcc)
 function build_tcc {
 
@@ -557,6 +629,7 @@ function build_tcc {
 
    if [ ! -d tcc ]; then
 
+      reset_cc_vars
       install_32bit_libs
 
       DOWNLOAD_IGNORING_SYSCC="1"
@@ -586,12 +659,14 @@ function build_tcc {
 
       if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 
-         : # Default case: do nothing, for the moment
+         # Default case
+         set_cc_vars_to_tc
 
       else
 
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
@@ -634,6 +709,10 @@ function build_tcc {
    popd
 }
 
+##################################
+# Build micropython
+##################################
+
 all_funcs_list+=(build_micropython)
 function build_micropython {
 
@@ -642,6 +721,7 @@ function build_micropython {
    if ! [ -d micropython ]; then
 
       show_work_on_component_msg "MICROPYTHON"
+      reset_cc_vars
 
       git clone --depth 1 https://github.com/micropython/micropython.git
       cd micropython
@@ -658,6 +738,11 @@ function build_micropython {
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+
+      else
+
+         # Default case
+         set_cc_vars_to_tc
       fi
 
       export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
@@ -682,6 +767,9 @@ function build_micropython {
    popd
 }
 
+##################################
+# Build fbDOOM
+##################################
 
 all_funcs_list+=(build_fbdoom)
 function build_fbdoom {
@@ -691,6 +779,7 @@ function build_fbdoom {
    if ! [ -d fbDOOM ]; then
 
       show_work_on_component_msg "FBDOOM"
+      reset_cc_vars_to_null
 
       git clone --depth 1 https://github.com/maximevince/fbDOOM.git
       cd fbDOOM
@@ -717,6 +806,10 @@ function build_fbdoom {
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+
+      else
+         # Default case
+         set_cc_vars_to_tc
       fi
 
       export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
@@ -910,6 +1003,8 @@ fi
 compiler_checks
 # Arch-related checks
 arch_checks
+# Save the current values of CC, CXX and related
+save_cc_vars
 
 # Exit on the first failure
 set -e
