@@ -70,10 +70,20 @@ if (NOT "${HOST_ARCH}" STREQUAL "x86_64")
 endif()
 
 # Reset the default flags
+set(CMAKE_C_FLAGS "")
+set(CMAKE_C_FLAGS_INT "")
 set(CMAKE_C_FLAGS_DEBUG "")
 set(CMAKE_C_FLAGS_MINSIZEREL "")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_C_FLAGS_RELEASE "")
+
+set(CMAKE_CXX_FLAGS "")
+set(CMAKE_CXX_FLAGS_INT "")
+set(CMAKE_CXX_FLAGS_DEBUG "")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "")
+set(CMAKE_CXX_FLAGS_RELEASE "")
+
 
 # Compile options
 set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
