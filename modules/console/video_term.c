@@ -626,7 +626,7 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
-   for (u32 row = 0; row < t->rows - n; row++) {
+   for (u32 row = 0; (int)row < t->rows - n; row++) {
       u32 s = calc_buf_row(t, row + n);
       u32 d = calc_buf_row(t, row);
       memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
@@ -646,9 +646,9 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
-   for (int row = (int)t->rows - n - 1; row >= 0; row--) {
-      u32 s = calc_buf_row(t, (u32)row);
-      u32 d = calc_buf_row(t, (u32)row + n);
+   for (u32 row = t->rows - n; row > 0; row--) {
+      u32 s = calc_buf_row(t, row - 1);
+      u32 d = calc_buf_row(t, row - 1 + n);
       memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
    }
 
