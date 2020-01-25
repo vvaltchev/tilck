@@ -271,12 +271,101 @@ term_action_scroll(struct term *t, u32 lines, enum term_scroll_type st, ...)
    }
 }
 
+static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
+{
+   const u16 sR = *t->start_scroll_region;
+   const u16 eR = *t->end_scroll_region + 1;
+
+   if (!t->buffer)
+      return;
+
+   ASSERT(n >= 1);
+   n = (u16)MIN(n, eR - sR);
+
+   for (u32 row = sR; (int)row < eR - n; row++) {
+      u32 s = calc_buf_row(t, row + n);
+      u32 d = calc_buf_row(t, row);
+      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+   }
+
+   for (u16 row = eR - n; row < eR; row++)
+      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
+
+   term_redraw(t);
+}
+
+static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
+{
+   const u16 sR = *t->start_scroll_region;
+   const u16 eR = *t->end_scroll_region + 1;
+
+   if (!t->buffer)
+      return;
+
+   ASSERT(n >= 1);
+   n = (u16)MIN(n, t->rows);
+
+   for (u32 row = eR - n; row > sR; row--) {
+      u32 s = calc_buf_row(t, row - 1);
+      u32 d = calc_buf_row(t, row - 1 + n);
+      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+   }
+
+   for (u16 row = sR; row < n; row++)
+      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
+
+   term_redraw(t);
+}
+
+static void term_action_non_buf_scroll(struct term *t, u16 n, u16 dir, ...)
+{
+   if (dir == term_scroll_up) {
+
+      term_action_non_buf_scroll_up(t, n);
+
+   } else {
+
+      ASSERT(dir == term_scroll_down);
+      term_action_non_buf_scroll_down(t, n);
+   }
+}
+
+static void term_action_move_ch_and_cur(struct term *t, int row, int col, ...)
+{
+   if (!t->buffer)
+      return;
+
+   t->r = (u16) CLAMP(row, 0, t->rows - 1);
+   t->c = (u16) CLAMP(col, 0, t->cols - 1);
+
+   if (t->cursor_enabled)
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
+}
+
 static void term_internal_incr_row(struct term *t, u8 color)
 {
+   const u16 sR = *t->start_scroll_region;
+   const u16 eR = *t->end_scroll_region + 1;
+
    t->col_offset = 0;
 
-   if (t->r < t->rows - 1) {
+   if (t->r < eR - 1) {
       ++t->r;
+      return;
+   }
+
+   if (sR || eR < t->rows) {
+
+      term_action_move_ch_and_cur(t, t->r, 0);
+
+      if (t->r == eR - 1)
+         term_action_non_buf_scroll_up(t, 1);
+      else if (t->r < t->rows - 1)
+         ++t->r;
+
       return;
    }
 
@@ -454,21 +543,6 @@ static void term_action_set_col_offset(struct term *t, u16 off, ...)
    t->col_offset = off;
 }
 
-static void term_action_move_ch_and_cur(struct term *t, int row, int col, ...)
-{
-   if (!t->buffer)
-      return;
-
-   t->r = (u16) CLAMP(row, 0, t->rows - 1);
-   t->c = (u16) CLAMP(col, 0, t->cols - 1);
-
-   if (t->cursor_enabled)
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
-}
-
 static void term_action_move_ch_and_cur_rel(struct term *t, s8 dr, s8 dc, ...)
 {
    if (!t->buffer)
@@ -618,59 +692,6 @@ term_action_del(struct term *t, enum term_del_type del_type, int m, ...)
    }
 }
 
-static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
-{
-   if (!t->buffer)
-      return;
-
-   ASSERT(n >= 1);
-   n = (u16)MIN(n, t->rows);
-
-   for (u32 row = 0; (int)row < t->rows - n; row++) {
-      u32 s = calc_buf_row(t, row + n);
-      u32 d = calc_buf_row(t, row);
-      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
-   }
-
-   for (u16 row = t->rows - n; row < t->rows; row++)
-      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
-
-   term_redraw(t);
-}
-
-static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
-{
-   if (!t->buffer)
-      return;
-
-   ASSERT(n >= 1);
-   n = (u16)MIN(n, t->rows);
-
-   for (u32 row = t->rows - n; row > 0; row--) {
-      u32 s = calc_buf_row(t, row - 1);
-      u32 d = calc_buf_row(t, row - 1 + n);
-      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
-   }
-
-   for (u16 row = 0; row < n; row++)
-      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
-
-   term_redraw(t);
-}
-
-static void term_action_non_buf_scroll(struct term *t, u16 n, u16 dir, ...)
-{
-   if (dir == term_scroll_up) {
-
-      term_action_non_buf_scroll_up(t, n);
-
-   } else {
-
-      ASSERT(dir == term_scroll_down);
-      term_action_non_buf_scroll_down(t, n);
-   }
-}
-
 static void term_action_pause_video_output(struct term *t, ...)
 {
    if (t->vi->disable_static_elems_refresh)
@@ -761,11 +782,13 @@ term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 static void
 term_action_ins_blank_lines(struct term *t, u32 n)
 {
+   // TODO: implement term_action_ins_blank_lines
 }
 
 static void
 term_action_del_lines(struct term *t, u32 n)
 {
+   // TODO: implement term_action_del_lines
 }
 
 static void
@@ -779,6 +802,7 @@ term_action_set_scroll_region(struct term *t, u16 start, u16 end)
 
    *t->start_scroll_region = start;
    *t->end_scroll_region = end;
+   term_action_move_ch_and_cur(t, 0, 0);
 }
 
 #include "term_action_wrappers.c.h"
