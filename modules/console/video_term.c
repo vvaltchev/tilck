@@ -98,17 +98,44 @@ static const struct video_interface no_output_vi =
 
 /* --------------------------------------------------------- */
 
-static ALWAYS_INLINE u32
-calc_buf_row(struct term *t, u32 row)
-{
-   return (row + t->scroll) % t->total_buffer_rows;
-}
+/*
+ * Performance note: using macros instead of ALWAYS_INLINE funcs because,
+ * despite the forced inlining, even with -O3, the compiler optimizes better
+ * this code when macros are used instead of inline funcs. Better means
+ * a smaller binary.
+ *
+ * Measurements
+ * --------------
+ *
+ * full debug build, -O0 -fno-inline-funcs EXCEPT the ALWAYS_INLINE ones
+ * -----------------------------------------------------------------------
+ *
+ * Before (inline funcs):
+ *    text     data      bss      dec    hex   filename
+ *  466397    34104   316082   816583  c75c7   ./build/tilck
+ *
+ * After (with macros):
+ *    text     data     bss      dec     hex   filename
+ *  465421    34104  316082   815607   c71f7   ./build/tilck
 
-static ALWAYS_INLINE u16 *
-get_buf_row(struct term *t, u32 row)
-{
-   return &t->buffer[calc_buf_row(t, row) * t->cols];
-}
+ * full optimization, -O3, no debug checks:
+ * -------------------------------------------
+ *
+ * Before (inline funcs):
+ *
+ *    text     data     bss      dec     hex   filename
+ *  301608    29388  250610   581606   8dfe6   tilck
+ *
+ * After (with macros):
+ *    text     data     bss      dec     hex   filename
+ *  301288    29388  250610   581286   8dea6   tilck
+ */
+
+#define calc_buf_row(t, r) (((r) + (t)->scroll) % (t)->total_buffer_rows)
+#define get_buf_row(t, r) (&(t)->buffer[calc_buf_row((t), (r)) * (t)->cols])
+#define buf_set_entry(t, r, c, e) (get_buf_row((t), (r))[(c)] = (e))
+#define buf_get_entry(t, r, c) (get_buf_row((t), (r))[(c)])
+#define buf_get_char_at(t, r, c) (vgaentry_get_char(buf_get_entry((t),(r),(c))))
 
 static void
 buf_copy_row(struct term *t, u32 dest, u32 src)
@@ -117,24 +144,6 @@ buf_copy_row(struct term *t, u32 dest, u32 src)
       return;
 
    memcpy(get_buf_row(t, dest), get_buf_row(t, src), t->cols * 2);
-}
-
-static ALWAYS_INLINE void
-buf_set_entry(struct term *t, u16 row, u16 col, u16 e)
-{
-   get_buf_row(t, row)[col] = e;
-}
-
-static ALWAYS_INLINE u16
-buf_get_entry(struct term *t, u16 row, u16 col)
-{
-   return get_buf_row(t, row)[col];
-}
-
-static ALWAYS_INLINE u8
-buf_get_char_at(struct term *t, u16 row, u16 col)
-{
-   return vgaentry_get_char(buf_get_entry(t, row, col));
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
@@ -180,12 +189,12 @@ static void term_redraw2(struct term *t, u16 s, u16 e)
    fpu_context_end();
 }
 
-static void term_redraw(struct term *t)
+static inline void term_redraw(struct term *t)
 {
    term_redraw2(t, 0, t->rows);
 }
 
-static void term_redraw_scroll_region(struct term *t)
+static inline void term_redraw_scroll_region(struct term *t)
 {
    term_redraw2(t, *t->start_scroll_region, *t->end_scroll_region + 1);
 }
