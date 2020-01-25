@@ -790,7 +790,27 @@ term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 static void
 term_action_ins_blank_lines(struct term *t, u32 n)
 {
-   // TODO: implement term_action_ins_blank_lines
+   const u16 eR = *t->end_scroll_region + 1;
+
+   if (!t->buffer || !n)
+      return;
+
+   if (t->r >= eR)
+      return; /* we're outside the scrolling region: do nothing */
+
+   t->c = 0;
+   n = MIN(n, (u32)(eR - t->r));
+
+   for (u32 row = eR - n - 1; row >= t->r; row--) {
+      u32 s = calc_buf_row(t, row - 1);
+      u32 d = calc_buf_row(t, row - 1 + n);
+      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+   }
+
+   for (u16 row = t->r; row < t->r + n; row++)
+      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
+
+   term_redraw_scroll_region(t);
 }
 
 static void
