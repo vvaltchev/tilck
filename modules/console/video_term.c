@@ -120,21 +120,21 @@ buf_copy_row(struct term *t, u32 dest, u32 src)
 }
 
 static ALWAYS_INLINE void
-buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
+buf_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
    get_buf_row(t, row)[col] = e;
 }
 
 static ALWAYS_INLINE u16
-buffer_get_entry(struct term *t, u16 row, u16 col)
+buf_get_entry(struct term *t, u16 row, u16 col)
 {
    return get_buf_row(t, row)[col];
 }
 
 static ALWAYS_INLINE u8
-buffer_get_char_at(struct term *t, u16 row, u16 col)
+buf_get_char_at(struct term *t, u16 row, u16 col)
 {
-   return vgaentry_get_char(buffer_get_entry(t, row, col));
+   return vgaentry_get_char(buf_get_entry(t, row, col));
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
@@ -147,7 +147,7 @@ static ALWAYS_INLINE u8 get_curr_cell_color(struct term *t)
    if (!t->buffer)
       return 0;
 
-   return vgaentry_get_color(buffer_get_entry(t, t->r, t->c));
+   return vgaentry_get_color(buf_get_entry(t, t->r, t->c));
 }
 
 static void term_action_enable_cursor(struct term *t, u16 val, ...)
@@ -405,7 +405,7 @@ static void term_internal_incr_row(struct term *t, u8 color)
 static void term_internal_write_printable_char(struct term *t, u8 c, u8 color)
 {
    const u16 entry = make_vgaentry(c, color);
-   buffer_set_entry(t, t->r, t->c, entry);
+   buf_set_entry(t, t->r, t->c, entry);
    t->vi->set_char_at(t->r, t->c, entry);
    t->c++;
 }
@@ -436,7 +436,7 @@ static void term_internal_write_backspace(struct term *t, u8 color)
    t->c--;
 
    if (!t->tabs_buf || !t->tabs_buf[t->r * t->cols + t->c]) {
-      buffer_set_entry(t, t->r, t->c, space_entry);
+      buf_set_entry(t, t->r, t->c, space_entry);
       t->vi->set_char_at(t->r, t->c, space_entry);
       return;
    }
@@ -452,7 +452,7 @@ static void term_internal_write_backspace(struct term *t, u8 color)
       if (t->tabs_buf[t->r * t->cols + t->c - 1])
          break; /* we hit the previous tab */
 
-      if (buffer_get_char_at(t, t->r, t->c - 1) != ' ')
+      if (buf_get_char_at(t, t->r, t->c - 1) != ' ')
          break;
 
       t->c--;
@@ -465,7 +465,7 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 
    while (t->c > 0) {
 
-      c = buffer_get_char_at(t, t->r, t->c - 1);
+      c = buf_get_char_at(t, t->r, t->c - 1);
 
       if (c != ' ')
          break;
@@ -475,7 +475,7 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 
    while (t->c > 0) {
 
-      c = buffer_get_char_at(t, t->r, t->c - 1);
+      c = buf_get_char_at(t, t->r, t->c - 1);
 
       if (c == ' ')
          break;
@@ -603,7 +603,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
          /* Clear the screen from the cursor position up to the end */
 
          for (u16 col = t->c; col < t->cols; col++) {
-            buffer_set_entry(t, t->r, col, entry);
+            buf_set_entry(t, t->r, col, entry);
             t->vi->set_char_at(t->r, col, entry);
          }
 
@@ -620,7 +620,7 @@ static void term_action_erase_in_display(struct term *t, int mode, ...)
             ts_clear_row(t, i, DEFAULT_COLOR16);
 
          for (u16 col = 0; col < t->c; col++) {
-            buffer_set_entry(t, t->r, col, entry);
+            buf_set_entry(t, t->r, col, entry);
             t->vi->set_char_at(t->r, col, entry);
          }
 
@@ -663,14 +663,14 @@ static void term_action_erase_in_line(struct term *t, int mode, ...)
 
       case 0:
          for (u16 col = t->c; col < t->cols; col++) {
-            buffer_set_entry(t, t->r, col, entry);
+            buf_set_entry(t, t->r, col, entry);
             t->vi->set_char_at(t->r, col, entry);
          }
          break;
 
       case 1:
          for (u16 col = 0; col < t->c; col++) {
-            buffer_set_entry(t, t->r, col, entry);
+            buf_set_entry(t, t->r, col, entry);
             t->vi->set_char_at(t->r, col, entry);
          }
          break;
