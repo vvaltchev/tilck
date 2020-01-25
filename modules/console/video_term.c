@@ -26,9 +26,9 @@ struct term {
    u16 rows;                  /* term's rows count */
    u16 cols;                  /* term's columns count */
 
+   u16 col_offset;
    u16 r;                     /* current row */
    u16 c;                     /* current col */
-   u16 col_offset;
 
    const struct video_interface *vi;
    const struct video_interface *saved_vi;
@@ -110,6 +110,15 @@ get_buf_row(struct term *t, u32 row)
    return &t->buffer[calc_buf_row(t, row) * t->cols];
 }
 
+static void
+buf_copy_row(struct term *t, u32 dest, u32 src)
+{
+   if (UNLIKELY(dest == src))
+      return;
+
+   memcpy(get_buf_row(t, dest), get_buf_row(t, src), t->cols * 2);
+}
+
 static ALWAYS_INLINE void
 buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
@@ -157,9 +166,9 @@ static void term_redraw2(struct term *t, u16 s, u16 e)
       return;
 
    fpu_context_begin();
-
-   for (u16 row = s; row < e; row++) {
-      t->vi->set_row(row, get_buf_row(t, row), true);
+   {
+      for (u16 row = s; row < e; row++)
+         t->vi->set_row(row, get_buf_row(t, row), true);
    }
 
    fpu_context_end();
@@ -225,8 +234,7 @@ static void ts_buf_clear_row(struct term *t, u16 row, u8 color)
    if (!t->buffer)
       return;
 
-   u16 *rowb = t->buffer + t->cols * calc_buf_row(t, row);
-   memset16(rowb, make_vgaentry(' ', color), t->cols);
+   memset16(get_buf_row(t, row), make_vgaentry(' ', color), t->cols);
 }
 
 static void ts_clear_row(struct term *t, u16 row, u8 color)
@@ -296,9 +304,8 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
 
    n = (u16)MIN(n, eR - sR);
 
-   for (u32 row = sR; (int)row < eR - n; row++) {
-      memcpy(get_buf_row(t, row), get_buf_row(t, row + n), t->cols * 2);
-   }
+   for (u32 row = sR; (int)row < eR - n; row++)
+      buf_copy_row(t, row, row + n);
 
    for (u16 row = eR - n; row < eR; row++)
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
@@ -316,9 +323,8 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
 
    n = (u16)MIN(n, t->rows);
 
-   for (u32 row = eR - n; row > sR; row--) {
-      memcpy(get_buf_row(t, row - 1 + n), get_buf_row(t, row - 1), t->cols * 2);
-   }
+   for (u32 row = eR - n; row > sR; row--)
+      buf_copy_row(t, row - 1 + n, row - 1);
 
    for (u16 row = sR; row < n; row++)
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
@@ -802,9 +808,8 @@ term_action_ins_blank_lines(struct term *t, u32 n)
    t->c = 0;
    n = MIN(n, (u32)(eR - t->r));
 
-   for (u32 row = eR - n - 1; row >= t->r; row--) {
-      memcpy(get_buf_row(t, row - 1 + n), get_buf_row(t, row - 1), t->cols * 2);
-   }
+   for (u32 row = eR - n - 1; row >= t->r; row--)
+      buf_copy_row(t, row - 1 + n, row - 1);
 
    for (u16 row = t->r; row < t->r + n; row++)
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
