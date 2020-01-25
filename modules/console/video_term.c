@@ -145,19 +145,29 @@ static void term_action_enable_cursor(struct term *t, u16 val, ...)
    }
 }
 
-static void term_redraw(struct term *t)
+static void term_redraw2(struct term *t, u16 s, u16 e)
 {
    if (!t->buffer)
       return;
 
    fpu_context_begin();
 
-   for (u16 row = 0; row < t->rows; row++) {
-      u32 buffer_row = (t->scroll + row) % t->total_buffer_rows;
+   for (u16 row = s; row < e; row++) {
+      u32 buffer_row = calc_buf_row(t, row);
       t->vi->set_row(row, &t->buffer[t->cols * buffer_row], true);
    }
 
    fpu_context_end();
+}
+
+static void term_redraw(struct term *t)
+{
+   term_redraw2(t, 0, t->rows);
+}
+
+static void term_redraw_scroll_region(struct term *t)
+{
+   term_redraw2(t, *t->start_scroll_region, *t->end_scroll_region + 1);
 }
 
 static void ts_set_scroll(struct term *t, u32 requested_scroll)
@@ -276,10 +286,9 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
-   if (!t->buffer)
+   if (!t->buffer || !n)
       return;
 
-   ASSERT(n >= 1);
    n = (u16)MIN(n, eR - sR);
 
    for (u32 row = sR; (int)row < eR - n; row++) {
@@ -291,7 +300,7 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    for (u16 row = eR - n; row < eR; row++)
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
 
-   term_redraw(t);
+   term_redraw_scroll_region(t);
 }
 
 static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
@@ -299,10 +308,9 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
-   if (!t->buffer)
+   if (!t->buffer || !n)
       return;
 
-   ASSERT(n >= 1);
    n = (u16)MIN(n, t->rows);
 
    for (u32 row = eR - n; row > sR; row--) {
@@ -314,7 +322,7 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    for (u16 row = sR; row < n; row++)
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
 
-   term_redraw(t);
+   term_redraw_scroll_region(t);
 }
 
 static void term_action_non_buf_scroll(struct term *t, u16 n, u16 dir, ...)
