@@ -131,6 +131,12 @@ buffer_get_entry(struct term *t, u16 row, u16 col)
    return get_buf_row(t, row)[col];
 }
 
+static ALWAYS_INLINE u8
+buffer_get_char_at(struct term *t, u16 row, u16 col)
+{
+   return vgaentry_get_char(buffer_get_entry(t, row, col));
+}
+
 static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
 {
    return t->scroll == t->max_scroll;
@@ -446,7 +452,7 @@ static void term_internal_write_backspace(struct term *t, u8 color)
       if (t->tabs_buf[t->r * t->cols + t->c - 1])
          break; /* we hit the previous tab */
 
-      if (vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1)) != ' ')
+      if (buffer_get_char_at(t, t->r, t->c - 1) != ' ')
          break;
 
       t->c--;
@@ -459,7 +465,7 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 
    while (t->c > 0) {
 
-      c = vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1));
+      c = buffer_get_char_at(t, t->r, t->c - 1);
 
       if (c != ' ')
          break;
@@ -469,7 +475,7 @@ static void term_internal_delete_last_word(struct term *t, u8 color)
 
    while (t->c > 0) {
 
-      c = vgaentry_get_char(buffer_get_entry(t, t->r, t->c - 1));
+      c = buffer_get_char_at(t, t->r, t->c - 1);
 
       if (c == ' ')
          break;
