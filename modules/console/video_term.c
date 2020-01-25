@@ -104,16 +104,22 @@ calc_buf_row(struct term *t, u32 row)
    return (row + t->scroll) % t->total_buffer_rows;
 }
 
+static ALWAYS_INLINE u16 *
+get_buf_row(struct term *t, u32 row)
+{
+   return &t->buffer[calc_buf_row(t, row) * t->cols];
+}
+
 static ALWAYS_INLINE void
 buffer_set_entry(struct term *t, u16 row, u16 col, u16 e)
 {
-   t->buffer[calc_buf_row(t, row) * t->cols + col] = e;
+   get_buf_row(t, row)[col] = e;
 }
 
-static ALWAYS_INLINE
-u16 buffer_get_entry(struct term *t, u16 row, u16 col)
+static ALWAYS_INLINE u16
+buffer_get_entry(struct term *t, u16 row, u16 col)
 {
-   return t->buffer[calc_buf_row(t, row) * t->cols + col];
+   return get_buf_row(t, row)[col];
 }
 
 static ALWAYS_INLINE bool ts_is_at_bottom(struct term *t)
@@ -153,8 +159,7 @@ static void term_redraw2(struct term *t, u16 s, u16 e)
    fpu_context_begin();
 
    for (u16 row = s; row < e; row++) {
-      u32 buffer_row = calc_buf_row(t, row);
-      t->vi->set_row(row, &t->buffer[t->cols * buffer_row], true);
+      t->vi->set_row(row, get_buf_row(t, row), true);
    }
 
    fpu_context_end();
@@ -292,9 +297,7 @@ static void term_action_non_buf_scroll_up(struct term *t, u16 n, ...)
    n = (u16)MIN(n, eR - sR);
 
    for (u32 row = sR; (int)row < eR - n; row++) {
-      u32 s = calc_buf_row(t, row + n);
-      u32 d = calc_buf_row(t, row);
-      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+      memcpy(get_buf_row(t, row), get_buf_row(t, row + n), t->cols * 2);
    }
 
    for (u16 row = eR - n; row < eR; row++)
@@ -314,9 +317,7 @@ static void term_action_non_buf_scroll_down(struct term *t, u16 n, ...)
    n = (u16)MIN(n, t->rows);
 
    for (u32 row = eR - n; row > sR; row--) {
-      u32 s = calc_buf_row(t, row - 1);
-      u32 d = calc_buf_row(t, row - 1 + n);
-      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+      memcpy(get_buf_row(t, row - 1 + n), get_buf_row(t, row - 1), t->cols * 2);
    }
 
    for (u16 row = sR; row < n; row++)
@@ -749,7 +750,7 @@ term_allocate_alt_buffers(struct term *t)
 static void
 term_action_use_alt_buffer(struct term *t, bool use_alt_buffer, ...)
 {
-   u16 *b = &t->buffer[calc_buf_row(t, 0) * t->cols];
+   u16 *b = get_buf_row(t, 0);
 
    if (t->using_alt_buffer == use_alt_buffer)
       return;
@@ -802,9 +803,7 @@ term_action_ins_blank_lines(struct term *t, u32 n)
    n = MIN(n, (u32)(eR - t->r));
 
    for (u32 row = eR - n - 1; row >= t->r; row--) {
-      u32 s = calc_buf_row(t, row - 1);
-      u32 d = calc_buf_row(t, row - 1 + n);
-      memcpy(&t->buffer[t->cols * d], &t->buffer[t->cols * s], t->cols * 2);
+      memcpy(get_buf_row(t, row - 1 + n), get_buf_row(t, row - 1), t->cols * 2);
    }
 
    for (u16 row = t->r; row < t->r + n; row++)
