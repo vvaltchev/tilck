@@ -227,10 +227,10 @@ function build_libmusl {
 
    pushd .
    local saved_path="$PATH"
+   export SYS_CC="$CC"
+   export SYS_CXX="$CXX"
 
    if ! [ -d musl ]; then
-
-      reset_cc_vars_to_null
 
       if [[ "$USE_SYSCC" == "" || "$USE_SYSCC" == 0 ]]; then
 
