@@ -13,6 +13,7 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
 
 set(DEFAULT_TARGET_ARCH "i386")
+set(BUILD_ARCH "x86_64")
 
 if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
@@ -24,9 +25,12 @@ elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686")
 
 endif()
 
+
 # BEGIN [Environment-controlled "sticky" cache variables]
 
 # Main variables
+define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain2)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
@@ -258,9 +262,9 @@ list(
 
 set(BUILD_SCRIPTS       ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
-set(TCROOT              ${CMAKE_SOURCE_DIR}/toolchain)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
+set(TCROOT_BA           ${TCROOT}/host_${BUILD_ARCH})
 
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -277,34 +281,39 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_LD_OUTPUT   "elf_i386")
    set(ARCH_GCC_TC      "i686")
    set(ARCH_GCC_FLAGS   "-m32 -march=${ARCH_GCC_TC}")
-   set(ARCH_TC_DIR      "x86_gcc_toolchain")
+   set(GCC_TC_VER       "6.4.0" CACHE STRING "GCC toolchain version")
 
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
 
-set(BUSYBOX_CONFIG            ${TCROOT}/busybox/.config)
-set(NCURSES_INST              ${TCROOT}/ncurses/install)
+message(STATUS "TCROOT: ${TCROOT}")
+message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 
+set(BUSYBOX_CONFIG            ${TCROOT}/${ARCH}/busybox/.config)
+set(NCURSES_INST              ${TCROOT}/${ARCH}/ncurses/install)
+
+string(REPLACE                "." "_" GCC_TC_VER_ "${GCC_TC_VER}")
+set(GCC_NAME_PFX              gcc_${GCC_TC_VER_}_${ARCH})
 
 # BEGIN [ARCH-dependent paths]
 
    # Main toolchain (musl)
-   set(GCC_TC_ROOT            ${TCROOT}/${ARCH_TC_DIR})
+   set(GCC_TC_ROOT            ${TCROOT_BA}/${GCC_NAME_PFX}_musl)
    set(GCC_TC_LIBC_DIRNAME    ${ARCH_GCC_TC}-buildroot-linux-musl)
    set(GCC_TC_SYSROOT         ${GCC_TC_ROOT}/${GCC_TC_LIBC_DIRNAME}/sysroot)
    set(GCC_TC_ISYSTEM         ${GCC_TC_SYSROOT}/usr/include)
    set(GCC_TOOLCHAIN          ${GCC_TC_ROOT}/bin)
 
    # Glibc toolchain
-   set(GCC_TC_GLIBC_ROOT      ${TCROOT}/${ARCH_TC_DIR}_glibc)
+   set(GCC_TC_GLIBC_ROOT      ${TCROOT_BA}/${GCC_NAME_PFX}_glibc)
    set(GCC_TOOLCHAIN_GLIBC    ${GCC_TC_GLIBC_ROOT}/bin)
 
 # END [ARCH-dependent paths]
 
 if (USE_SYSCC)
 
-   if (NOT EXISTS ${TCROOT}/musl/install/bin/musl-gcc)
+   if (NOT EXISTS ${TCROOT}/${ARCH}/musl/install/bin/musl-gcc)
       show_no_musl_syscc_error()
    endif()
 
@@ -547,10 +556,10 @@ add_custom_target(
 )
 
 if (ARCH_GTESTS)
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/gtest_arch)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest)
    set(GTEST_BTC_COMMAND build_gtest_arch)
 else()
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/gtest)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest)
    set(GTEST_BTC_COMMAND build_gtest)
 endif()
 

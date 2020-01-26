@@ -18,7 +18,7 @@ else()
 endif()
 
 if (TEST_GCOV OR KERNEL_GCOV)
-   if (NOT EXISTS ${TCROOT}/lcov)
+   if (NOT EXISTS ${TCROOT}/noarch/lcov)
       show_missing_lcov_error()
    endif()
 endif()

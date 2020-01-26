@@ -13,9 +13,20 @@ export CFFLAGS=""
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
+# Global toolchain directory
+
+if [ -z "$TCROOT_PARENT" ]; then
+   TCROOT_PARENT="$MAIN_DIR"
+fi
+
+if [ -z "$TCROOT" ]; then
+   TCROOT="$TCROOT_PARENT/toolchain2"
+fi
+
+TC="$TCROOT"
+
 # Constants
 BUILD_ARCH="x86_64" # the only arch accepted for the build machine
-X86_TOOLCHAIN_DIR_NAME="x86_gcc_toolchain"
 
 # Arch-variables
 
@@ -44,18 +55,42 @@ if [[ "$ARCH" == "i386" ]]; then
    ARCH_EFI="ia32"
    ARCH_GCC_TC="i686"
    ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
-   ARCH_TC_DIR="$X86_TOOLCHAIN_DIR_NAME"
+   ARCH_GCC_TC_CODENAME="x86-i686"
+   ARCH_GCC_TC_VER="stable-2018.02-2"
+   GCC_TC_VER="6.4.0"
 
 else
    echo "Architecture '$ARCH' not supported."
    exit 1
 fi
 
+GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g' -)
+GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
+MUSL_INSTALL=$TC/$ARCH/musl/install
+
 echo
 echo "ARCH=$ARCH"
 echo
 
 function save_cc_vars {
+
+   if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+      # HOST_ARCH == ARCH case
+
+      if [ -z "$AR" ]; then
+         export AR="ar"
+      fi
+
+      if [ -z "$NM" ]; then
+         export NM="nm"
+      fi
+
+      if [ -z "$RANLIB" ]; then
+         export RANLIB="ranlib"
+      fi
+   fi
+
    saved_CC=$CC
    saved_CXX=$CXX
    saved_AR=$AR
@@ -114,7 +149,7 @@ source $MAIN_DIR/scripts/bash_includes/tc/cmake_download
 all_funcs_list+=(build_mtools)
 function build_mtools {
 
-   pushd .
+   pushd host_${HOST_ARCH}
 
    if ! [ -d mtools ]; then
 
@@ -145,7 +180,8 @@ function build_mtools {
 all_funcs_list+=(build_lcov)
 function build_lcov {
 
-   pushd .
+   pushd noarch
+
    if ! [ -d lcov ]; then
 
       show_work_on_component_msg "LCOV"
@@ -156,35 +192,41 @@ function build_lcov {
    else
       show_skip_component_msg "LCOV"
    fi
-   popd
 
+   popd
 }
 
 ##############################
 # Build gtest
 ##############################
 
+function download_googletest {
+
+   if ! [ -d cache/googletest ]; then
+      pushd cache
+      local url="https://github.com/google/googletest.git"
+      git clone --branch release-1.8.0 --depth 1 "$url"
+      popd
+   fi
+}
+
 all_funcs_list+=(build_gtest)
 function build_gtest {
 
-   pushd .
-
-   if ! [ -d googletest ]; then
-      local url="https://github.com/google/googletest.git"
-      git clone --branch release-1.8.0 --depth 1 "$url"
-   fi
+   download_googletest
+   pushd host_$HOST_ARCH
 
    if ! [ -d gtest ]; then
 
-      show_work_on_component_msg "GOOGLE TEST (host arch)"
+      show_work_on_component_msg "GOOGLE TEST ($HOST_ARCH)"
       mkdir gtest
       cd gtest
 
       reset_cc_vars
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
       run_command2 "make -j" build.log
    else
-      show_skip_component_msg "GOOGLE TEST (host arch)"
+      show_skip_component_msg "GOOGLE TEST ($HOST_ARCH)"
    fi
 
    popd
@@ -193,26 +235,22 @@ function build_gtest {
 all_funcs_list+=(build_gtest_arch)
 function build_gtest_arch {
 
-   pushd .
+   download_googletest
+   pushd host_$ARCH
 
-   if ! [ -d googletest ]; then
-      local url="https://github.com/google/googletest.git"
-      git clone --branch release-1.8.0 --depth 1 "$url"
-   fi
+   if ! [ -d gtest ]; then
 
-   if ! [ -d gtest_arch ]; then
-
-      show_work_on_component_msg "GOOGLE TEST (target arch)"
+      show_work_on_component_msg "GOOGLE TEST ($ARCH)"
       download_gcc_glibc_toolchain
 
-      mkdir gtest_arch
-      cd gtest_arch
+      mkdir gtest
+      cd gtest
 
       set_cc_vars_to_tc
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug ../googletest/googletest
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
       run_command2 "make -j" build.log
    else
-      show_skip_component_msg "GOOGLE TEST (target arch)"
+      show_skip_component_msg "GOOGLE TEST ($ARCH)"
    fi
 
    popd
@@ -225,7 +263,7 @@ function build_gtest_arch {
 all_funcs_list+=(build_libmusl)
 function build_libmusl {
 
-   pushd .
+   pushd $ARCH
    local saved_path="$PATH"
    export SYS_CC="$CC"
    export SYS_CXX="$CXX"
@@ -261,9 +299,9 @@ function build_libmusl {
       cd musl
 
       local opts1="--target=${ARCH} --host=${ARCH}"
-      local opts2="--disable-shared --prefix=$TC/musl/install"
-      local opts3="--exec-prefix=$TC/musl/install --enable-debug"
-      local opts4="--syslibdir=$TC/musl/install/lib"
+      local opts2="--disable-shared --prefix=$MUSL_INSTALL"
+      local opts3="--exec-prefix=$MUSL_INSTALL --enable-debug"
+      local opts4="--syslibdir=$MUSL_INSTALL/lib"
 
       run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
 
@@ -277,11 +315,11 @@ function build_libmusl {
       run_command2 "make" build.log
       run_command2 "make install" make_install.log
 
-      cd $TC/musl/install/bin
+      cd $MUSL_INSTALL/bin
       cp musl-gcc musl-g++
       sed -i 's/-${ARCH}-gcc/-${ARCH}-g++/' musl-g++
 
-      cd $TC/musl/install/include
+      cd $MUSL_INSTALL/include
       ln -s /usr/include/linux .
       ln -s /usr/include/asm-generic .
 
@@ -308,46 +346,72 @@ function build_libmusl {
 # Build GNU EFI
 ##################################
 
-all_funcs_list+=(build_gnuefi)
-function build_gnuefi {
+# Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
+#
+#     git://git.code.sf.net/p/gnu-efi/code
+#
+# exclusively for performance reasons: SF sometimes is too slow for
+# CI builds.
 
-   pushd .
+function clone_gnu_efi {
+   local url="https://github.com/vvaltchev/gnu-efi-fork.git"
+   git clone --branch 3.0.10 --depth 1 "$url" gnu-efi
+   cd gnu-efi
+}
 
-   if ! [ -d gnu-efi ]; then
+function build_gnuefi_arch {
 
-      show_work_on_component_msg "GNU-EFI"
-      reset_cc_vars
+   pushd $ARCH
 
-      # Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
-      #
-      #     git://git.code.sf.net/p/gnu-efi/code
-      #
-      # exclusively for performance reasons: SF sometimes is too slow for
-      # CI builds.
+      if ! [ -d gnu-efi ]; then
 
-      local url="https://github.com/vvaltchev/gnu-efi-fork.git"
-      git clone --branch 3.0.10 --depth 1 "$url" gnu-efi
-      cd gnu-efi
+         show_work_on_component_msg "GNU-EFI (arch: $ARCH)"
+         reset_cc_vars
+         clone_gnu_efi
 
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+         if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+            local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
+         else
+            # HOST_ARCH must be == ARCH
+            local arch_flags="ARCH=${ARCH_EFI}"
+         fi
 
-         # Note: default case
-         run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
-         local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
          run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
 
       else
-         # Special case (HOST_ARCH == ARCH)
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-         run_command2 "make ARCH=${ARCH_EFI} -j" build_${ARCH_EFI}.log
+         show_skip_component_msg "GNU-EFI (arch: $ARCH)"
       fi
 
+   popd
+}
 
-   else
-      show_skip_component_msg "GNU-EFI"
-   fi
+function build_gnuefi_build_arch {
+
+   pushd $BUILD_ARCH
+
+      if ! [ -d gnu-efi ]; then
+
+         show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
+         reset_cc_vars
+         clone_gnu_efi
+         run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
+
+      else
+
+         show_skip_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
+      fi
 
    popd
+}
+
+all_funcs_list+=(build_gnuefi)
+function build_gnuefi {
+
+   build_gnuefi_arch
+
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+      build_gnuefi_build_arch
+   fi
 }
 
 
@@ -355,79 +419,48 @@ function build_gnuefi {
 # Download OVMF
 ##################################
 
-all_funcs_list+=(download_ovmf)
-function download_ovmf {
+# $1: omvf_arch
+function download_ovmf_internal {
 
-   pushd .
+   local ovmf_arch="$1"
+   local url="https://www.kraxel.org/repos/jenkins/edk2/"
+
+   wget -nd -r --no-parent -A "edk2.git-ovmf-${ovmf_arch}*" "$url"
+   rpm2cpio edk2.git-ovmf-${ovmf_arch}* | cpio -idmv
+
+   mv ./usr/share/edk2.git/* .
+   rm -rf ./usr
+   rm -rf ./robots*
+   rm -rf *.rpm
+
+   mv ovmf-${ovmf_arch} ovmf
+}
+
+# $1: omvf_arch
+# $2: arch (our convention)
+function check_and_download_ovmf {
+
+   pushd $2
 
    if ! [ -d ovmf ]; then
-
-      show_work_on_component_msg "OVMF"
-
-      mkdir ovmf
-      cd ovmf
-
-      local url="https://www.kraxel.org/repos/jenkins/edk2/"
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-ia32*' "$url"
-      wget -nd -r --no-parent -A 'edk2.git-ovmf-x64*' "$url"
-
-      rpm2cpio edk2.git-ovmf-ia32* | cpio -idmv
-      rpm2cpio edk2.git-ovmf-x64* | cpio -idmv
-
-      mv ./usr/share/edk2.git/* .
-      rm -rf ./usr
-      rm -rf ./robots*
-      rm -rf *.rpm
-
+      show_work_on_component_msg "OVMF (arch: $2)"
+      download_ovmf_internal $1
    else
-
-      show_skip_component_msg "OVMF"
+      show_skip_component_msg "(arch: $2)"
    fi
 
    popd
+}
+
+all_funcs_list+=(download_ovmf)
+function download_ovmf {
+   check_and_download_ovmf ia32 i386
+   check_and_download_ovmf x64 x86_64
 }
 
 ##################################
 # Build busybox
 ##################################
-
-function busybox_fix_config_file {
-
-   # Remove the date-time row (in order to allow config diff to work)
-   sed -i -e '4d' .config
-
-   # Remove all empty lines
-   sed -i '/CONFIG_/!d' .config
-
-   # Sort all the lines
-   LC_ALL=C sort -sr .config > .config_sorted
-   mv .config_sorted .config
-}
-
-all_funcs_list+=(config_busybox)
-function config_busybox {
-
-   if ! [ -d busybox ]; then
-      echo "ERROR: busybox not found in toolchain"
-      exit 1
-   fi
-
-   pushd busybox
-
-   make menuconfig
-
-   echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
-   read answer
-
-   busybox_fix_config_file
-
-   if [[ "$answer" == "" || "$answer" == "y" ]]; then
-      cp .config $MAIN_DIR/other/busybox.config
-      echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
-   fi
-
-   popd
-}
 
 function internal_build_busybox {
 
@@ -442,7 +475,7 @@ function internal_build_busybox {
       # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
       export SYS_CC="$CC"
       export SYS_CXX="$CXX"
-      export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+      export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
    else
 
@@ -466,7 +499,7 @@ function internal_build_busybox {
 all_funcs_list+=(build_busybox)
 function build_busybox {
 
-   pushd .
+   pushd $ARCH
 
    if [ -d busybox ]; then
       s1=`sha1sum ./busybox/.config | cut -d " " -f 1`
@@ -520,6 +553,49 @@ function build_busybox {
    popd
 }
 
+function busybox_fix_config_file {
+
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   LC_ALL=C sort -sr .config > .config_sorted
+   mv .config_sorted .config
+}
+
+all_funcs_list+=(config_busybox)
+function config_busybox {
+
+   pushd $ARCH
+
+   if ! [ -d busybox ]; then
+      echo "ERROR: busybox not found in toolchain"
+      exit 1
+   fi
+
+   pushd busybox
+
+   make menuconfig
+
+   echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
+   read answer
+
+   busybox_fix_config_file
+
+   if [[ "$answer" == "" || "$answer" == "y" ]]; then
+      cp .config $MAIN_DIR/other/busybox.config
+      echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
+   fi
+
+   popd
+   popd
+
+   build_busybox
+}
+
 ##################################
 # Build ncurses
 ##################################
@@ -527,24 +603,26 @@ function build_busybox {
 all_funcs_list+=(build_ncurses)
 function build_ncurses {
 
-   pushd .
+   pushd $ARCH
 
    if ! [ -d ncurses ]; then
 
       show_work_on_component_msg "NCURSES"
+      reset_cc_vars
 
       local ver=6.1
       local tarname=ncurses-$ver.tar.gz
-
+      local install_dir=$TC/$ARCH/ncurses/install
       download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
       extract_cachefile_tar_gz $tarname ncurses-$ver ncurses
 
-      mkdir -p ncurses/install
+      mkdir -p $install_dir
       cd ncurses
 
-      opts1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$TC/ncurses/install"
-      opts2="--datarootdir=/usr/share --without-cxx --without-cxx-binding"
-      opts3="--without-ada --without-manpages --without-dlsym"
+      local o1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$install_dir"
+      local o2="--datarootdir=/usr/share --disable-db-install"
+      local o4="--without-progs --without-cxx --without-cxx-binding"
+      local o5="--without-ada --without-manpages --without-dlsym"
 
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
 
@@ -552,17 +630,14 @@ function build_ncurses {
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
-         reset_cc_vars
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
       else
          set_cc_vars_to_tc
       fi
 
-
-      run_command2 "./configure $opts1 $opts2 $opts3" configure.log
+      run_command2 "./configure $o1 $o2 $o3 $o4 $o5" configure.log
       run_command2 "make -j" build.log
       run_command2 "make install" install.log
-
       export CC_POST_FLAGS=""
 
    else
@@ -579,16 +654,17 @@ function build_ncurses {
 all_funcs_list+=(build_zlib)
 function build_zlib {
 
-   pushd .
+   pushd $ARCH
 
    if ! [ -d zlib ]; then
 
       show_work_on_component_msg "ZLIB"
+      reset_cc_vars
 
       git clone --branch v1.2.11 --depth 1 https://github.com/madler/zlib
       cd zlib
 
-      local p="$TC/zlib/install"
+      local p="$TC/$ARCH/zlib/install"
 
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
 
@@ -596,8 +672,7 @@ function build_zlib {
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
-         reset_cc_vars
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
       else
 
@@ -625,22 +700,30 @@ function build_zlib {
 all_funcs_list+=(build_tcc)
 function build_tcc {
 
-   pushd .
-
-   if [ ! -d tcc ]; then
+   if [ ! -d $ARCH/tcc ]; then
 
       reset_cc_vars
-      install_32bit_libs
 
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+         install_32bit_libs
+      fi
+
+      # Download the gcc toolchain even in the case HOST != BUILD_ARCH
+      # because we'll need its sysroot to be deployed in Tilck's image.
       DOWNLOAD_IGNORING_SYSCC="1"
-      download_x86_gcc_toolchain
+      download_gcc_toolchain
       DOWNLOAD_IGNORING_SYSCC=""
+   fi
+
+
+   pushd $ARCH
+
+   if [ ! -d tcc ]; then
 
       show_work_on_component_msg "TCC"
       git clone git://repo.or.cz/tinycc.git tcc
 
       cd tcc
-      local tc=$TC/$ARCH_TC_DIR
 
       # Variables for making the compiler to work on Tilck
       # Note: these vars are used by --crtprefix and --libpaths
@@ -651,7 +734,8 @@ function build_tcc {
       local lib="/lib/$ARCH_GCC_TC-tilck-musl"
 
       # To test it on the Linux build machine
-      # local p="$tc/tcc/install"
+      # local tc=$TC/host_${HOST_ARCH}/${GCC_NAME_PFX}_musl
+      # local p="$tc/$ARCH/tcc/install"
       # local lib=$tc/$ARCH_GCC_TC-buildroot-linux-musl/sysroot/lib
 
       local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
@@ -670,7 +754,7 @@ function build_tcc {
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
          # Hack: unfortunately, while tcc's build system uses the
          # just-built tcc in order to build libtcc1.a and, one of its files
@@ -716,7 +800,7 @@ function build_tcc {
 all_funcs_list+=(build_micropython)
 function build_micropython {
 
-   pushd .
+   pushd $ARCH
 
    if ! [ -d micropython ]; then
 
@@ -737,15 +821,15 @@ function build_micropython {
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
       else
 
          # Default case
          set_cc_vars_to_tc
+         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       fi
 
-      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       export LDFLAGS_EXTRA="-static"
 
       pushd mpy-cross
@@ -774,12 +858,12 @@ function build_micropython {
 all_funcs_list+=(build_fbdoom)
 function build_fbdoom {
 
-   pushd .
+   pushd $ARCH
 
    if ! [ -d fbDOOM ]; then
 
       show_work_on_component_msg "FBDOOM"
-      reset_cc_vars_to_null
+      reset_cc_vars
 
       git clone --depth 1 https://github.com/maximevince/fbDOOM.git
       cd fbDOOM
@@ -805,7 +889,7 @@ function build_fbdoom {
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $TC/musl/install/lib/musl-gcc.specs"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
       else
          # Default case
@@ -943,7 +1027,7 @@ if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
    default_funcs+=(download_gcc_toolchain)   # note: this is the default case
 else
    # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
-   # be *must* build also libmusl, in order to link with musl programs compiled
+   # we *must* build also libmusl, in order to link with musl programs compiled
    # with the system compiler.
    default_funcs+=(build_libmusl)
 fi
@@ -998,7 +1082,6 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
    exit 0
 fi
 
-
 # Compiler-related checks
 compiler_checks
 # Arch-related checks
@@ -1009,14 +1092,14 @@ save_cc_vars
 # Exit on the first failure
 set -e
 
-# Global toolchain directory
-TC=$MAIN_DIR/toolchain
-
 export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
 if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   GCC_TOOLCHAIN=$TC/$ARCH_TC_DIR/bin # Default cross-compiler, in $PATH.
-   GCC_TOOLCHAIN_GLIBC=$TC/${ARCH_TC_DIR}_glibc/bin # NOTE: not in $PATH!
+
+   ha=$TC/host_${HOST_ARCH}
+   GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
+   GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # NOTE: not in $PATH!
+   ha=""
 
    # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
    # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
@@ -1028,11 +1111,21 @@ fi
 
 mkdir -p $TC
 mkdir -p $TC/cache
+mkdir -p $TC/noarch
+mkdir -p $TC/i386
+mkdir -p $TC/x86_64
+mkdir -p $TC/host_i386
+mkdir -p $TC/host_x86_64
+
+if ! [ -L $TC/host ]; then
+   ln -s $TC/host_${HOST_ARCH} $TC/host
+fi
+
 cd $TC
 
 # Set the CMAKE variable in order to single functions to be able to use it
-if [ -f $TC/cmake/bin/cmake ]; then
-   CMAKE=$TC/cmake/bin/cmake
+if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
+   CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
 else
    CMAKE=cmake
 fi

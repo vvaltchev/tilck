@@ -26,13 +26,13 @@ function download_cmake_internal {
    download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
    extract_cachefile_tar_gz $tarname $filename cmake
 
-   CMAKE=$TC/cmake/bin/cmake
+   CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
 }
 
 all_funcs_list+=(download_cmake)
 function download_cmake {
 
-   pushd .
+   pushd host_$HOST_ARCH
 
    if ! [ -d cmake ]; then
 

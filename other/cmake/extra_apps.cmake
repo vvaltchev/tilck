@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-if (EXISTS ${TCROOT}/tcc)
+if (EXISTS ${TCROOT}/${ARCH}/tcc)
    set(EXTRA_TCC OFF CACHE BOOL "Load the TinyCC compiler in Tilck")
    message(STATUS "EXTRA_TCC: ${EXTRA_TCC}")
 endif()
 
-if (EXISTS ${TCROOT}/fbDOOM)
+if (EXISTS ${TCROOT}/${ARCH}/fbDOOM)
    set(EXTRA_FBDOOM OFF CACHE BOOL "Load fbDOOM in Tilck")
    message(STATUS "EXTRA_FBDOOM: ${EXTRA_FBDOOM}")
 endif()
 
-if (EXISTS ${TCROOT}/micropython)
+if (EXISTS ${TCROOT}/${ARCH}/micropython)
    set(EXTRA_MICROPYTHON OFF CACHE BOOL "Load micropython in Tilck")
    message(STATUS "EXTRA_MICROPYTHON: ${EXTRA_MICROPYTHON}")
 endif()

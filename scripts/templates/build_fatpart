@@ -11,6 +11,8 @@ tc="@TCROOT@"
 archgcc="@ARCH_GCC_TC@"
 strip="@STRIP@"
 gcctc="@GCC_TOOLCHAIN@"
+host_arch="@HOST_ARCH@"
+arch="@ARCH@"
 
 if [ "@HOST_ARCH@" == "x86_64" ]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -22,7 +24,7 @@ else
    fi
 fi
 
-mtoolsdir=$tc/mtools
+mtoolsdir=$tc/host_${host_arch}/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
@@ -123,8 +125,8 @@ function add_tilck_kernel {
 }
 
 function add_busybox {
-   if [ -d $tc/busybox ]; then
-      link_or_copy $tc/busybox/busybox bin/
+   if [ -d $tc/$arch/busybox ]; then
+      link_or_copy $tc/$arch/busybox/busybox bin/
    fi
 }
 
@@ -160,11 +162,11 @@ function add_tcc {
    local musl=@GCC_TC_SYSROOT@/lib/
 
    mkdir -p lib/tcc
-   cp -r $tc/tcc/include lib/tcc
-   link_or_copy $tc/tcc/tcclib.h lib/tcc/include
-   link_or_copy $tc/tcc/@ARCH@-libtcc1.a lib/tcc
-   link_or_copy $tc/tcc/@ARCH@-tcc bin/tcc
-   cp -r $tc/tcc/examples lib/tcc-examples
+   cp -r $tc/$arch/tcc/include lib/tcc
+   link_or_copy $tc/$arch/tcc/tcclib.h lib/tcc/include
+   link_or_copy $tc/$arch/tcc/@ARCH@-libtcc1.a lib/tcc
+   link_or_copy $tc/$arch/tcc/@ARCH@-tcc bin/tcc
+   cp -r $tc/$arch/tcc/examples lib/tcc-examples
 
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
 }
@@ -175,7 +177,7 @@ function add_micropython {
       return
    fi
 
-   link_or_copy $tc/micropython/ports/unix/micropython usr/bin
+   link_or_copy $tc/$arch/micropython/ports/unix/micropython usr/bin
 }
 
 function add_fbdoom {
@@ -185,8 +187,8 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $tc/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
-   link_or_copy $tc/fbDOOM/freedoom/freedoom1.wad.gz usr/lib/fbDOOM
+   link_or_copy $tc/$arch/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz usr/lib/fbDOOM
 
    # Here document
 

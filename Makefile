@@ -4,7 +4,10 @@
 
 MAKEFLAGS += --no-print-directory
 
-PREREQUISITES := toolchain build/CMakeCache.txt
+TCROOT_PARENT ?= ./
+TCROOT ?= $(TCROOT_PARENT)/toolchain2
+
+PREREQUISITES := $(TCROOT) build/CMakeCache.txt
 
 all: $(PREREQUISITES)
 	@$(MAKE) -C build
@@ -26,7 +29,7 @@ rebuild_img: $(PREREQUISITES)
 gpt_image: $(PREREQUISITES)
 	@$(MAKE) -C build gpt_image
 
-toolchain:
+$(TCROOT):
 	$(error Before building Tilck, you need to build the toolchain by running ./scripts/build_toolchain)
 
 build/CMakeCache.txt:

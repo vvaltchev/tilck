@@ -35,7 +35,7 @@
          "name": "(gdb) Busybox on Tilck",
          "type": "cppdbg",
          "request": "launch",
-         "program": "${workspaceFolder}/toolchain/busybox/busybox_unstripped",
+         "program": "${workspaceFolder}/toolchain2/busybox/busybox_unstripped",
          "MIMode": "gdb",
          "miDebuggerServerAddress": "localhost:1234",
          "cwd": "${workspaceRoot}",

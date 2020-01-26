@@ -18,6 +18,6 @@ If you want to test your own application on Tilck, you have two choices:
       to its root directory in `extra` [see `extra/README.md` for more].
 
    2. Compile it and link it *statically* using Tilck's GCC libmusl toolchain
-      [`toolchain/x86_gcc_toolchain`]. After that, could can just drop the
+      [`toolchain2/x86_gcc_toolchain`]. After that, could can just drop the
       executable in sysroot/usr/bin. In order to just rebuild Tilck's image,
       updating the sysroot, use the `make rebuild_img` command.

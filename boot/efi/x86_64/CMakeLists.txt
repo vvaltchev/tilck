@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.2)
 
 set(EFI_ARCH x86_64)
+set(GNUEFI_DIR ${TCROOT}/x86_64/gnu-efi)
 
 CHECK_C_COMPILER_FLAG(-maccumulate-outgoing-args ACC_OUTGOING_ARGS_SUPPORTED)
 

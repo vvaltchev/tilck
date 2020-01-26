@@ -22,13 +22,7 @@ file(
    "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 
-set(GTEST_SOURCE_DIR "${TCROOT}/googletest/googletest")
-
-if (${ARCH_GTESTS})
-   set(GTEST_BUILD_DIR "${TCROOT}/gtest_arch")
-else()
-   set(GTEST_BUILD_DIR "${TCROOT}/gtest")
-endif()
+set(GTEST_SOURCE_DIR "${TCROOT}/cache/googletest/googletest")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -70,8 +64,8 @@ set(
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
 JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
-target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest.a)
-target_link_libraries(gtests ${GTEST_BUILD_DIR}/libgtest_main.a)
+target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/libgtest.a)
+target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/libgtest_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests "${WRAPPINGS}")
 target_link_libraries(gtests kernel_noarch_for_test)

@@ -22,8 +22,8 @@ BUILD="@CMAKE_BINARY_DIR@"
 HTML_DIR="@COVERAGE_HTML_DIR@"
 GCOV="@TOOL_GCOV@"
 
-LCOV="$TC/lcov/bin/lcov"
-GENHTML="$TC/lcov/bin/genhtml"
+LCOV="$TC/noarch/lcov/bin/lcov"
+GENHTML="$TC/noarch/lcov/bin/genhtml"
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 

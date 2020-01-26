@@ -28,7 +28,7 @@ steps:
     displayName: Dump env
   - script: sudo -E ./scripts/build_toolchain
     displayName: "[toolchain] Default run"
-  - bash: sudo ./scripts/tc/$(cat ./toolchain/.distro)/install_pkg -ci python3
+  - bash: sudo ./scripts/tc/$(cat toolchain2/.distro)/install_pkg -ci python3
     displayName: Install Python 3
   - script: sudo -E ./scripts/build_toolchain -s build_gtest
     displayName: "[toolchain] Build gtest"

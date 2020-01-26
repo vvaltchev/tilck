@@ -8,8 +8,9 @@ maindir="@CMAKE_SOURCE_DIR@"
 bdir="@CMAKE_BINARY_DIR@"
 dest="@CMAKE_BINARY_DIR@/test_fatpart"
 tc="@TCROOT@"
+host_arch="@HOST_ARCH@"
 
-mtoolsdir=$tc/mtools
+mtoolsdir=$tc/host_${host_arch}/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd

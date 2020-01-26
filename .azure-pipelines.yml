@@ -1,10 +1,11 @@
 
 jobs:
   - job: coverage_build
-    container: 'vvaltchev/tilck_build:latest'
+    container: 'vvaltchev/tilck_build:t2'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
+      TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
       REPORT_COV: 1
@@ -13,8 +14,6 @@ jobs:
     steps:
       - script: printenv
         displayName: Dump env
-      - script: sudo mv /tilck_toolchain ./toolchain
-        displayName: Move toolchain
       - script: ./scripts/build_generators/gcc_gcov
         displayName: Run CMake
       - script: make -j
@@ -33,10 +32,11 @@ jobs:
           CODECOV_TOKEN: $(CODECOV_TOKEN)
 
   - job: build
-    container: 'vvaltchev/tilck_build:latest'
+    container: 'vvaltchev/tilck_build:t2'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
+      TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
     strategy:
@@ -63,8 +63,6 @@ jobs:
     steps:
       - script: printenv
         displayName: Dump env
-      - script: sudo mv /tilck_toolchain ./toolchain
-        displayName: Move toolchain
       - script: ./scripts/build_generators/$(GEN)
         displayName: Run CMake
       - script: make -j

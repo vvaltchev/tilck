@@ -123,8 +123,8 @@ function download_file_in_cache {
    local url="$1"
    local filename="$2"
 
-   if ! [ -f cache/$filename ]; then
-      (cd cache && wget $url/$filename)
+   if ! [ -f $TC/cache/$filename ]; then
+      (cd $TC/cache && wget $url/$filename)
    else
       echo "NOTE: Skipping the download of $filename"
    fi
@@ -137,7 +137,7 @@ function extract_cachefile_tar_gz {
    local newDirName="$3"
 
    echo "Extracting $tarname..."
-   tar xfz cache/$tarname
+   tar xfz $TC/cache/$tarname
    mv "$internalDirName" "$newDirName"
 }
 
@@ -148,7 +148,7 @@ function extract_cachefile_tar_bz {
    local newDirName="$3"
 
    echo "Extracting $tarname..."
-   tar xfj cache/$tarname
+   tar xfj $TC/cache/$tarname
    mv "$internalDirName" "$newDirName"
    echo "Extracting completed."
 }

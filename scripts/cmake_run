@@ -89,8 +89,8 @@ export CC
 export CXX
 
 
-if [ -f $MAIN_DIR/toolchain/cmake/bin/cmake ]; then
-   export CMAKE="$MAIN_DIR/toolchain/cmake/bin/cmake"
+if [ -f $MAIN_DIR/toolchain2/host_x86_64/cmake/bin/cmake ]; then
+   export CMAKE="$MAIN_DIR/toolchain2/host_x86_64/cmake/bin/cmake"
 else
    export CMAKE="cmake"
 fi

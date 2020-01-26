@@ -13,7 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USERAPPS_CFLAGS}")
 
 add_custom_target(userapps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${TCROOT}/zlib/install/include)
+include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
 # [build utils]
 
@@ -66,7 +66,7 @@ include_directories(${TCROOT}/zlib/install/include)
       add_executable(devshell ${DEVSHELL_SOURCES})
       set(DEVSHELL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/devshell)
       target_include_directories(devshell PUBLIC ${DEVSHELL_SRC_DIR})
-      target_link_libraries(devshell ${TCROOT}/zlib/install/lib/libz.a)
+      target_link_libraries(devshell ${TCROOT}/${ARCH}/zlib/install/lib/libz.a)
       register_usermode_app(devshell)
    endif()
 # [/devshell]

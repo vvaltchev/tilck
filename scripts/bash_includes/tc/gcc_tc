@@ -18,7 +18,7 @@
 # $2 arch name
 # $3 tc file name
 
-function internal_download_toolchain {
+function raw_gcc_tc_download {
 
    local dest="$1"
    local arch="$2"
@@ -30,72 +30,73 @@ function internal_download_toolchain {
 
    download_file_in_cache "$url/$arch/tarballs" "$tarname"
    extract_cachefile_tar_bz "$tarname" $tcname $dest
-   cd $dest/bin
 }
 
-function download_x86_gcc_toolchain {
+function gcc_x86_glibc_patch {
 
-   if [[ "$DOWNLOAD_IGNORING_SYSCC" == "" ]]; then
-      if [[ "$USE_SYSCC" == "1" ]]; then
-         echo "NOTE: Skipping download_x86_gcc_toolchain because USE_SYSCC=1"
-         return 0
+   # To make musl-gcc happy
+   pushd ${GCC_NAME_PFX}_glibc/bin
+
+   for x in *; do
+      if [[ $x == i686* ]]; then
+         new_name=`echo $x | sed 's/i686/i386/g' -`
+         ln -s $x $new_name
       fi
-   fi
+   done
 
-   pushd .
-
-   if ! [ -d $X86_TOOLCHAIN_DIR_NAME ]; then
-
-      show_work_on_component_msg "i686 GCC TOOLCHAIN (libmusl)"
-
-      internal_download_toolchain            \
-         "$X86_TOOLCHAIN_DIR_NAME"           \
-         "x86-i686"                          \
-         "musl--stable-2018.02-2"
-
-   else
-      show_skip_component_msg "i686 GCC TOOLCHAIN (libmusl)"
-   fi
+   for x in *; do
+      if [[ $x == i386-linux-* ]]; then
+         new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
+         ln -s $x $new_name
+      fi
+   done
 
    popd
 }
 
-function download_x86_gcc_glibc_toolchain {
+# $1: libc name
+function download_gcc_tc_internal {
 
-   pushd .
+   local libc="$1"
+   pushd host_${BUILD_ARCH}
 
-   if ! [ -d ${X86_TOOLCHAIN_DIR_NAME}_glibc ]; then
+   if ! [ -d ${GCC_NAME_PFX}_${libc} ]; then
 
-      show_work_on_component_msg "i686 GCC TOOLCHAIN (glibc)"
+      show_work_on_component_msg "GCC TOOLCHAIN ($ARCH - $libc)"
 
-      internal_download_toolchain              \
-         "${X86_TOOLCHAIN_DIR_NAME}_glibc"     \
-         "x86-i686"                            \
-         "glibc--stable-2018.02-2"
+      raw_gcc_tc_download                    \
+         "${GCC_NAME_PFX}_${libc}"           \
+         "$ARCH_GCC_TC_CODENAME"             \
+         "$libc--$ARCH_GCC_TC_VER"
 
-      # To make musl-gcc happy
+      if [[ "$libc" == "glibc" && "$ARCH" == "i386" ]]; then
+         gcc_x86_glibc_patch
+      fi
 
-      for x in *; do
-         if [[ $x == i686* ]]; then
-            new_name=`echo $x | sed 's/i686/i386/g' -`
-            ln -s $x $new_name
+      local gcc=${GCC_NAME_PFX}_${libc}/bin/$ARCH_GCC_TC-linux-gcc
+
+      if ! [ -f $gcc ]; then
+         echo "ERROR (download_gcc_tc_internal): file $gcc NOT found."
+         exit 1
+      fi
+
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+         local ver=$(generic_get_version_str $gcc)
+         echo "Detected GCC toolchain version: '$ver'"
+
+         if [[ "$ver" != "$GCC_TC_VER" ]]; then
+            echo "ERROR: gcc version doesn't match expected ($GCC_TC_VER)"
+            exit 1
          fi
-      done
-
-      for x in *; do
-         if [[ $x == i386-linux-* ]]; then
-            new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
-            ln -s $x $new_name
-         fi
-      done
+      fi
 
    else
-      show_skip_component_msg "i686 GCC TOOLCHAIN (glibc)"
+      show_skip_component_msg "GCC TOOLCHAIN ($ARCH - $libc)"
    fi
 
    popd
 }
-
 
 ############################################################
 
@@ -103,7 +104,14 @@ all_funcs_list+=(download_gcc_toolchain)
 function download_gcc_toolchain {
 
    if [[ "$ARCH" == "i386" ]]; then
-      download_x86_gcc_toolchain
+
+      if [[ "$DOWNLOAD_IGNORING_SYSCC" != 1 && "$USE_SYSCC" == 1 ]]; then
+         echo "NOTE: Skipping download_gcc_toolchain because USE_SYSCC=1"
+         return 0
+      fi
+
+      download_gcc_tc_internal musl
+
    else
       echo "Architecture '$ARCH' not supported."
       exit 1
@@ -113,10 +121,14 @@ function download_gcc_toolchain {
 all_funcs_list+=(download_gcc_glibc_toolchain)
 function download_gcc_glibc_toolchain {
 
+   pushd $TC
+
    if [[ "$ARCH" == "i386" ]]; then
-      download_x86_gcc_glibc_toolchain
+      download_gcc_tc_internal glibc
    else
       echo "Architecture '$ARCH' not supported."
       exit 1
    fi
+
+   popd
 }

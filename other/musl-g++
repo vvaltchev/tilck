@@ -3,6 +3,7 @@
 
 PROJ_DIR="@CMAKE_SOURCE_DIR@"
 TCROOT="@TCROOT@"
+ARCH="@ARCH@"
 
 if [ @USE_SYSCC@ = 0 ]; then
    export PATH="$TCROOT/x86_gcc_toolchain_glibc/bin:$PATH"
@@ -12,5 +13,5 @@ else
    export PATH="$PROJ_DIR/scripts/build_scripts:$PATH"
 fi
 
-"$TCROOT/musl/install/bin/musl-g++" "$@" -Wl,-m -Wl,@ARCH_LD_OUTPUT@
+"$TCROOT/$ARCH/musl/install/bin/musl-g++" "$@" -Wl,-m -Wl,@ARCH_LD_OUTPUT@
 
