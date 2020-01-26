@@ -25,8 +25,24 @@ RATTRS='\033[0m'
 
 export RUNNING_IN_CI=0
 
-if [ -n "TRAVIS" ] || [ -n "CIRCLECI" ] || [ -n "AZURE_HTTP_USER_AGENT" ]; then
+if [ -n "$TRAVIS" ]; then
+
+   echo "Detected TRAVIS CI"
    export RUNNING_IN_CI=1
+
+elif [ -n "$CIRCLECI" ]; then
+
+   echo "Detected CIRCLE CI"
+   export RUNNING_IN_CI=1
+
+elif [ -n "$AZURE_HTTP_USER_AGENT" ]; then
+
+   echo "Detected AZURE PIPELINES CI"
+   export RUNNING_IN_CI=1
+
+else
+
+   echo "No CI detected: assuming user machine"
 fi
 
 ############################################
