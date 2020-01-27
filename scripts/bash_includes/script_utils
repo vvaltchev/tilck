@@ -23,26 +23,28 @@ LCYAN='\033[1;36m'
 WHITE='\033[1;37m'
 RATTRS='\033[0m'
 
-export RUNNING_IN_CI=0
-
 if [ -n "$TRAVIS" ]; then
 
-   echo "Detected TRAVIS CI"
+   echo "CI Detected: TRAVIS"
    export RUNNING_IN_CI=1
 
 elif [ -n "$CIRCLECI" ]; then
 
-   echo "Detected CIRCLE CI"
+   echo "CI Detected: CIRCLE"
    export RUNNING_IN_CI=1
 
 elif [ -n "$AZURE_HTTP_USER_AGENT" ]; then
 
-   echo "Detected AZURE PIPELINES CI"
+   echo "CI Detected: AZURE PIPELINES"
    export RUNNING_IN_CI=1
 
 else
 
-   echo "No CI detected: assuming user machine"
+   if [[ "$RUNNING_IN_CI" == "1" ]]; then
+      echo "CI Detected: UNKNOWN"
+   else
+      echo "CI Detected: None [Assuming user machine]"
+   fi
 fi
 
 ############################################
