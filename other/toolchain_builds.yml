@@ -26,19 +26,19 @@ variables:
 steps:
   - script: printenv
     displayName: Dump env
-  - script: sudo ./scripts/build_toolchain
+  - script: sudo -E ./scripts/build_toolchain
     displayName: "[toolchain] Default run"
-  - bash: sudo ./scripts/tc/$(cat ./toolchain/.distro)/install_pkg -ci python3
+  - bash: sudo -E ./scripts/tc/$(cat ./toolchain/.distro)/install_pkg -ci python3
     displayName: Install Python 3
-  - script: sudo ./scripts/build_toolchain -s build_gtest
+  - script: sudo -E ./scripts/build_toolchain -s build_gtest
     displayName: "[toolchain] Build gtest"
-  - script: sudo ./scripts/build_toolchain -s build_lcov
+  - script: sudo -E ./scripts/build_toolchain -s build_lcov
     displayName: "[toolchain] Build lcov"
-  - script: sudo ./scripts/build_toolchain -s build_libmusl
+  - script: sudo -E ./scripts/build_toolchain -s build_libmusl
     displayName: "[toolchain] Build libmusl"
-  - script: sudo ./scripts/build_toolchain -s build_ncurses
+  - script: sudo -E ./scripts/build_toolchain -s build_ncurses
     displayName: "[toolchain] Build ncurses"
-  - script: sudo ./scripts/build_toolchain -s build_tcc
+  - script: sudo -E ./scripts/build_toolchain -s build_tcc
     displayName: "[toolchain] Build tcc"
   - script: make -j
     displayName: Build the kernel
