@@ -498,6 +498,23 @@ tty_csi_r_handler(u32 *params,
    term_make_action_set_scroll_region(a, s, e);
 }
 
+static void
+tty_csi_c_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   struct tty *const t = ctx->t;
+   static const char buf[] = "\033[?6c"; /* meaning: I'm a VT102 */
+
+   tty_reset_filter_ctx(ctx->t);
+
+   for (const char *p = buf; *p; p++)
+      tty_send_keyevent(t, make_key_event((u32)*p, *p, true));
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -525,7 +542,7 @@ static csi_seq_handler csi_handlers[256] =
    ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
    ['X'] = NULL,                       /* ECH: not implemented */
    ['a'] = NULL,                       /* HPR: not implemented */
-   ['c'] = NULL,                       /* DA: not implemented */
+   ['c'] = tty_csi_c_handler,          /* DA: query term type */
    ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
    ['e'] = NULL,                       /* VPR: not implemented */
    ['f'] = tty_csi_fH_handler,         /* HVP: Move to (N, M) [abs, 1-based] */
