@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-project(tilck C CXX ASM)
+project(tilck VERSION 0.1.0 LANGUAGES C CXX ASM)
 
 include(CheckCCompilerFlag)
 include(other/cmake/utils.cmake)
@@ -87,7 +87,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "")
 set(CMAKE_CXX_FLAGS_MINSIZEREL "")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
-
 
 # Compile options
 set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")

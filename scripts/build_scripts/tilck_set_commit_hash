@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# $1 -> elfhack binary
+# $2 -> kernel elf file
+
+set -e
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+hash=`$SOURCE_DIR/get_commit_hash`
+exec "$1" "$2" --set-sym-strval commit_hash "$hash"

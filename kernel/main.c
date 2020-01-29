@@ -153,8 +153,9 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 static void show_hello_message(void)
 {
-   printk("Hello from Tilck! [%s build, %s %i.%i.%i]\n", BUILDTYPE_STR,
-          COMPILER_NAME, COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
+   printk("Hello from Tilck! [ver: %s.%s.%s, %s, %s %i.%i.%i]\n",
+           VER_MAJOR, VER_MINOR, VER_PATCH, BUILDTYPE_STR,
+           COMPILER_NAME, COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
 
 static void show_system_info(void)

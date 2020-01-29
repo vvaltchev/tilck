@@ -8,6 +8,11 @@
 
 #pragma once
 
+#define VER_MAJOR              "@tilck_VERSION_MAJOR@"
+#define VER_MINOR              "@tilck_VERSION_MINOR@"
+#define VER_PATCH              "@tilck_VERSION_PATCH@"
+
+#define ARCH_GCC_TC            "@ARCH_GCC_TC@"
 #define PROJ_BUILD_DIR         "@CMAKE_BINARY_DIR@"
 #define BUILDTYPE_STR          "@CMAKE_BUILD_TYPE@"
 

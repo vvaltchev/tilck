@@ -67,9 +67,11 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
    return 0;
 }
 
-static const char uname_name[] = "Tilck";
-static const char uname_nodename[] = "tilck";
-static const char uname_release[] = "0.01";
+const char uname_name[] = "Tilck";
+const char uname_nodename[] = "tilck";
+const char uname_release[] = VER_MAJOR "." VER_MINOR "." VER_PATCH;
+const char uname_arch[] = ARCH_GCC_TC;
+const char commit_hash[65] = {0};
 
 int sys_newuname(struct utsname *user_buf)
 {
@@ -78,8 +80,8 @@ int sys_newuname(struct utsname *user_buf)
    memcpy(buf.sysname, uname_name, ARRAY_SIZE(uname_name));
    memcpy(buf.nodename, uname_nodename, ARRAY_SIZE(uname_nodename));
    memcpy(buf.release, uname_release, ARRAY_SIZE(uname_release));
-   memcpy(buf.version, "", 1);
-   memcpy(buf.machine, "i686", 5); // TODO: set the right architecture
+   memcpy(buf.version, commit_hash, strlen(commit_hash) + 1);
+   memcpy(buf.machine, uname_arch, ARRAY_SIZE(uname_arch));
 
    if (copy_to_user(user_buf, &buf, sizeof(struct utsname)) < 0)
       return -EFAULT;

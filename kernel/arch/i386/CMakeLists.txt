@@ -87,11 +87,15 @@ build_all_modules(tilck_unstripped)
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
 
+set(ELFHACK ${BUILD_APPS}/elfhack)
+
 if (KERNEL_SYMBOLS)
 
    add_custom_command(
       OUTPUT
          ${KERNEL_FILE}
+      COMMAND
+         ${BUILD_SCRIPTS}/tilck_set_commit_hash ${ELFHACK} ${KERNEL_UNSTRIPPED}
       COMMAND
          ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
@@ -127,6 +131,8 @@ else()
    add_custom_command(
       OUTPUT
          ${KERNEL_FILE}
+      COMMAND
+         ${BUILD_SCRIPTS}/tilck_set_commit_hash ${ELFHACK} ${KERNEL_UNSTRIPPED}
       COMMAND
          ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
