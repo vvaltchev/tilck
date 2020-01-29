@@ -59,6 +59,34 @@ Elf_Phdr *get_phdr_for_section(void *mapped_elf_file, Elf_Shdr *section)
    return NULL;
 }
 
+Elf_Sym *get_symbol(Elf_Ehdr *h, const char *sym_name)
+{
+   Elf_Shdr *symtab;
+   Elf_Shdr *strtab;
+   Elf_Sym *syms;
+   unsigned sym_count;
+
+   symtab = get_section(h, ".symtab");
+   strtab = get_section(h, ".strtab");
+
+   if (!symtab || !strtab)
+      return NULL;
+
+   syms = (Elf_Sym *)((char *)h + symtab->sh_offset);
+   sym_count = symtab->sh_size / sizeof(Elf_Sym);
+
+   for (unsigned i = 0; i < sym_count; i++) {
+
+      Elf_Sym *s = syms + i;
+      const char *s_name = (char *)h + strtab->sh_offset + s->st_name;
+
+      if (!strcmp(s_name, sym_name))
+         return s;
+   }
+
+   return NULL;
+}
+
 void section_dump(void *mapped_elf_file, const char *section_name)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
@@ -95,18 +123,22 @@ void copy_section(void *mapped_elf_file, const char *src, const char *dst)
    s_dst->sh_size = s_src->sh_size;
 }
 
+#define printerr(...) fprintf(stderr, __VA_ARGS__)
+#define print_help_line(...) printerr("    elfhack <file> " __VA_ARGS__)
+
 void show_help(char **argv)
 {
-   fprintf(stderr, "Usage: \n");
-   fprintf(stderr, "    elfhack <file> [--dump <section name>]\n");
-   fprintf(stderr, "    elfhack <file> [--move-metadata]\n");
-   fprintf(stderr, "    elfhack <file> [--copy <src section> <dest section>]\n");
-   fprintf(stderr, "    elfhack <file> [--rename <section> <new_name>]\n");
-   fprintf(stderr, "    elfhack <file> [--link <section> <linked_section>]\n");
-   fprintf(stderr, "    elfhack <file> [--drop-last-section]\n");
-   fprintf(stderr, "    elfhack <file> [--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
-   fprintf(stderr, "    elfhack <file> [--verify-flat-elf]\n");
-   fprintf(stderr, "    elfhack <file> [--check-entry-point [<expected>]]\n");
+   printerr("Usage:\n");
+   print_help_line("[--dump <section name>]\n");
+   print_help_line("[--move-metadata]\n");
+   print_help_line("[--copy <src section> <dest section>]\n");
+   print_help_line("[--rename <section> <new_name>]\n");
+   print_help_line("[--link <section> <linked_section>]\n");
+   print_help_line("[--drop-last-section]\n");
+   print_help_line("[--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
+   print_help_line("[--verify-flat-elf]\n");
+   print_help_line("[--check-entry-point [<expected>]]\n");
+   print_help_line("[--set-sym-strval <sym> <string value>]\n");
    exit(1);
 }
 
@@ -420,6 +452,53 @@ void check_entry_point(const char *file,
    }
 }
 
+void
+set_sym_strval(void *mapped_elf_file, const char *sym_name, const char *val)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)mapped_elf_file;
+   Elf_Shdr *section;
+   Elf_Sym *sym;
+   size_t len;
+
+   if (!sym_name || !val) {
+      fprintf(stderr, "Missing arguments\n");
+      exit(1);
+   }
+
+   section = get_section(h, ".rodata");
+
+   if (!section) {
+      fprintf(stderr, "Unable to find the .rodata section\n");
+      exit(1);
+   }
+
+   sym = get_symbol(h, sym_name);
+
+   if (!sym) {
+      fprintf(stderr, "Unable to find the symbol '%s'\n", sym_name);
+      exit(1);
+   }
+
+   if (sym->st_value < section->sh_addr ||
+       sym->st_value + sym->st_size > section->sh_addr + section->sh_size)
+   {
+      fprintf(stderr, "Symbol '%s' not in .rodata\n", sym_name);
+      exit(1);
+   }
+
+   len = strlen(val) + 1;
+
+   if (sym->st_size < len) {
+      fprintf(stderr, "Symbol '%s' [%u bytes] not big enough for value\n",
+              sym_name, (unsigned)sym->st_size);
+      exit(1);
+   }
+
+   const long sym_sec_off = sym->st_value - section->sh_addr;
+   const long sym_file_off = section->sh_offset + sym_sec_off;
+   memcpy((char *)h + sym_file_off, val, len);
+}
+
 int main(int argc, char **argv)
 {
    void *vaddr;
@@ -480,6 +559,8 @@ int main(int argc, char **argv)
       verify_flat_elf_file(file, vaddr);
    } else if (!strcmp(opt, "--check-entry-point")) {
       check_entry_point(file, vaddr, opt_arg);
+   } else if (!strcmp(opt, "--set-sym-strval")) {
+      set_sym_strval(vaddr, opt_arg, opt_arg2);
    } else {
       show_help(argv);
    }
