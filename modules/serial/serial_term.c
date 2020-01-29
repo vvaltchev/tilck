@@ -34,13 +34,14 @@ static enum term_type sterm_get_type(void)
 }
 
 static bool
-sterm_is_initialized(struct term *t)
+sterm_is_initialized(term_t _t)
 {
+   struct term *const t = _t;
    return t->initialized;
 }
 
 static void
-sterm_get_params(struct term *t, struct term_params *out)
+sterm_get_params(term_t _t, struct term_params *out)
 {
    *out = (struct term_params) {
       .rows = 25,
@@ -51,8 +52,10 @@ sterm_get_params(struct term *t, struct term_params *out)
 }
 
 static void
-sterm_action_write(struct term *t, const char *buf, size_t len)
+sterm_action_write(term_t _t, const char *buf, size_t len)
 {
+   struct term *const t = _t;
+
    for (u32 i = 0; i < len; i++) {
 
       if (buf[i] == '\n')
@@ -63,8 +66,10 @@ sterm_action_write(struct term *t, const char *buf, size_t len)
 }
 
 static void
-serial_term_execute_or_enqueue_action(struct term *t, struct term_action a)
+serial_term_execute_or_enqueue_action(term_t _t, struct term_action a)
 {
+   struct term *const t = _t;
+
    bool written;
    bool was_empty;
 
@@ -85,8 +90,10 @@ serial_term_execute_or_enqueue_action(struct term *t, struct term_action a)
 }
 
 static void
-sterm_write(struct term *t, const char *buf, size_t len, u8 color)
+sterm_write(term_t _t, const char *buf, size_t len, u8 color)
 {
+   struct term *const t = _t;
+
    struct term_action a = {
       .buf = buf,
       .len = len,
@@ -95,33 +102,36 @@ sterm_write(struct term *t, const char *buf, size_t len, u8 color)
    serial_term_execute_or_enqueue_action(t, a);
 }
 
-static struct term *sterm_get_first_inst(void)
+static term_t sterm_get_first_inst(void)
 {
    return &first_instance;
 }
 
-static struct term *
+static term_t
 alloc_sterm_struct(void)
 {
    return kzmalloc(sizeof(struct term));
 }
 
 static void
-free_sterm_struct(struct term *t)
+free_sterm_struct(term_t _t)
 {
+   struct term *const t = _t;
    ASSERT(t != &first_instance);
    kfree2(t, sizeof(struct term));
 }
 
 static void
-dispose_sterm(struct term *t)
+dispose_sterm(term_t _t)
 {
    /* Do nothing */
 }
 
 static int
-sterm_init(struct term *t, u16 serial_port_fwd)
+sterm_init(term_t _t, u16 serial_port_fwd)
 {
+   struct term *const t = _t;
+
    t->serial_port_fwd = serial_port_fwd;
    t->initialized = true;
 

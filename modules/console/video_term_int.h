@@ -47,8 +47,6 @@ enum term_action_type {
  *             traditionally up and down mean when it's about scrolling.
  */
 
-typedef void (*action_func)(struct term *t, ...);
-
 enum term_del_type {
 
    TERM_DEL_PREV_CHAR,
@@ -87,8 +85,8 @@ struct term_action {
 
 STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
-u16 term_get_curr_row(struct term *t);
-u16 term_get_curr_col(struct term *t);
+u16 term_get_curr_row(term_t t);
+u16 term_get_curr_col(term_t t);
 
 static ALWAYS_INLINE void
 term_make_action_write(struct term_action *a,
