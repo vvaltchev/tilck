@@ -63,8 +63,8 @@ static const struct syscall_info __tracing_metadata[] =
 
    SYSCALL_TYPE_7(SYS_fchown, "fd", "owner", "group"),
 
-   SYSCALL_RW(SYS_read, "fd", "buf", &ptype_buffer, sys_param_out, "count"),
-   SYSCALL_RW(SYS_write, "fd", "buf", &ptype_buffer, sys_param_in, "count"),
+   SYSCALL_RW(SYS_read, "fd", "buf", &ptype_big_buf, sys_param_out, "count"),
+   SYSCALL_RW(SYS_write, "fd", "buf", &ptype_big_buf, sys_param_in, "count"),
    SYSCALL_RW(SYS_readv, "fd", "iov", &ptype_iov_out, sys_param_out, "iovcnt"),
    SYSCALL_RW(SYS_writev, "fd", "iov", &ptype_iov_in, sys_param_in, "iovcnt"),
 

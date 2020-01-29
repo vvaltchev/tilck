@@ -133,6 +133,17 @@ const struct sys_param_type ptype_buffer = {
    .dump_from_val = NULL,
 };
 
+const struct sys_param_type ptype_big_buf = {
+
+   .name = "char *",
+   .slot_size = 128,
+   .ui_type = ui_type_string,
+
+   .save = save_param_buffer,
+   .dump = dump_param_buffer,
+   .dump_from_val = NULL,
+};
+
 const struct sys_param_type ptype_path = {
 
    .name = "char *",
