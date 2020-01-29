@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+if ! git --version &> /dev/null; then
+   echo "<unknown commit>"
+   exit 0
+fi
+
+set -e
+ver=`git rev-parse --short=8 HEAD`
+
+if [[ $(git diff --stat) != '' ]]; then
+   echo "dirty:$ver"
+else
+   echo "$ver"
+fi
