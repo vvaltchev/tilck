@@ -27,7 +27,7 @@ tty_def_state_ri(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {
    struct twfilter_ctx *const ctx = ctx_arg;
 
-   if (term_get_curr_row(ctx->t->tstate) > 0) {
+   if (vterm_get_curr_row(ctx->t->tstate) > 0) {
 
       term_make_action_move_cursor_rel(a, -1, 0);
 

@@ -3,6 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+struct vterm;
+
 enum term_scroll_type {
    term_scroll_up = 0,
    term_scroll_down = 1,
@@ -85,8 +87,8 @@ struct term_action {
 
 STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
-u16 term_get_curr_row(term_t t);
-u16 term_get_curr_col(term_t t);
+u16 vterm_get_curr_row(struct vterm *t);
+u16 vterm_get_curr_col(struct vterm *t);
 
 static ALWAYS_INLINE void
 term_make_action_write(struct term_action *a,

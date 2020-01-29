@@ -16,7 +16,7 @@
 
 #include "video_term_int.h"
 
-struct term {
+struct vterm {
 
    bool initialized;
    bool cursor_enabled;
@@ -64,7 +64,7 @@ struct term {
    void *filter_ctx;
 };
 
-static struct term first_instance;
+static struct vterm first_instance;
 static u16 failsafe_buffer[80 * 25];
 
 /* ------------ No-output video-interface ------------------ */
@@ -140,7 +140,7 @@ static const struct video_interface no_output_vi =
 static void
 buf_copy_row(term_t _t, u32 dest, u32 src)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (UNLIKELY(dest == src))
       return;
@@ -150,13 +150,13 @@ buf_copy_row(term_t _t, u32 dest, u32 src)
 
 static ALWAYS_INLINE bool ts_is_at_bottom(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    return t->scroll == t->max_scroll;
 }
 
 static ALWAYS_INLINE u8 get_curr_cell_color(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (!t->buffer)
       return 0;
@@ -166,7 +166,7 @@ static ALWAYS_INLINE u8 get_curr_cell_color(term_t _t)
 
 static void term_action_enable_cursor(term_t _t, u16 val, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (val == 0) {
 
@@ -184,7 +184,7 @@ static void term_action_enable_cursor(term_t _t, u16 val, ...)
 
 static void term_redraw2(term_t _t, u16 s, u16 e)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (!t->buffer)
       return;
@@ -200,19 +200,19 @@ static void term_redraw2(term_t _t, u16 s, u16 e)
 
 static inline void term_redraw(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    term_redraw2(t, 0, t->rows);
 }
 
 static inline void term_redraw_scroll_region(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    term_redraw2(t, *t->start_scroll_region, *t->end_scroll_region + 1);
 }
 
 static void ts_set_scroll(term_t _t, u32 requested_scroll)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    /*
     * 1. scroll cannot be > max_scroll
@@ -239,7 +239,7 @@ static void ts_set_scroll(term_t _t, u32 requested_scroll)
 
 static ALWAYS_INLINE void ts_scroll_up(term_t _t, u32 lines)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (lines > t->scroll)
       ts_set_scroll(t, 0);
@@ -249,13 +249,13 @@ static ALWAYS_INLINE void ts_scroll_up(term_t _t, u32 lines)
 
 static ALWAYS_INLINE void ts_scroll_down(term_t _t, u32 lines)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    ts_set_scroll(t, t->scroll + lines);
 }
 
 static ALWAYS_INLINE void ts_scroll_to_bottom(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    if (t->scroll != t->max_scroll) {
       ts_set_scroll(t, t->max_scroll);
    }
@@ -263,7 +263,7 @@ static ALWAYS_INLINE void ts_scroll_to_bottom(term_t _t)
 
 static void ts_buf_clear_row(term_t _t, u16 row, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (!t->buffer)
       return;
@@ -273,18 +273,18 @@ static void ts_buf_clear_row(term_t _t, u16 row, u8 color)
 
 static void ts_clear_row(term_t _t, u16 row, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    ts_buf_clear_row(t, row, color);
    t->vi->clear_row(row, color);
 }
 
 /* ---------------- term actions --------------------- */
 
-static void term_execute_action(term_t _t, struct term_action *a);
+static void term_execute_action(struct vterm *t, struct term_action *a);
 
 static void term_int_scroll_up(term_t _t, u32 lines)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    ts_scroll_up(t, lines);
 
@@ -307,7 +307,7 @@ static void term_int_scroll_up(term_t _t, u32 lines)
 
 static void term_int_scroll_down(term_t _t, u32 lines)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    ts_scroll_down(t, lines);
 
@@ -325,7 +325,7 @@ static void term_int_scroll_down(term_t _t, u32 lines)
 static void
 term_action_scroll(term_t _t, u32 lines, enum term_scroll_type st, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (st == term_scroll_up) {
       term_int_scroll_up(t, lines);
@@ -337,7 +337,7 @@ term_action_scroll(term_t _t, u32 lines, enum term_scroll_type st, ...)
 
 static void term_action_non_buf_scroll_up(term_t _t, u16 n, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -357,7 +357,7 @@ static void term_action_non_buf_scroll_up(term_t _t, u16 n, ...)
 
 static void term_action_non_buf_scroll_down(term_t _t, u16 n, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -377,7 +377,7 @@ static void term_action_non_buf_scroll_down(term_t _t, u16 n, ...)
 
 static void term_action_non_buf_scroll(term_t _t, u16 n, u16 dir, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (dir == term_scroll_up) {
 
@@ -392,7 +392,7 @@ static void term_action_non_buf_scroll(term_t _t, u16 n, u16 dir, ...)
 
 static void term_action_move_ch_and_cur(term_t _t, int row, int col, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (!t->buffer)
       return;
@@ -409,7 +409,7 @@ static void term_action_move_ch_and_cur(term_t _t, int row, int col, ...)
 
 static void term_internal_incr_row(term_t _t, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -446,7 +446,7 @@ static void term_internal_incr_row(term_t _t, u8 color)
 
 static void term_internal_write_printable_char(term_t _t, u8 c, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 entry = make_vgaentry(c, color);
    buf_set_entry(t, t->r, t->c, entry);
    t->vi->set_char_at(t->r, t->c, entry);
@@ -455,7 +455,7 @@ static void term_internal_write_printable_char(term_t _t, u8 c, u8 color)
 
 static void term_internal_write_tab(term_t _t, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    int rem = t->cols - t->c - 1;
 
    if (!t->tabs_buf) {
@@ -473,7 +473,7 @@ static void term_internal_write_tab(term_t _t, u8 color)
 
 static void term_internal_write_backspace(term_t _t, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    if (!t->c || t->c <= t->col_offset)
       return;
 
@@ -506,7 +506,7 @@ static void term_internal_write_backspace(term_t _t, u8 color)
 
 static void term_internal_delete_last_word(term_t _t, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    u8 c;
 
    while (t->c > 0) {
@@ -532,7 +532,7 @@ static void term_internal_delete_last_word(term_t _t, u8 color)
 
 static void term_internal_write_char2(term_t _t, char c, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    switch (c) {
 
@@ -562,7 +562,7 @@ static void term_internal_write_char2(term_t _t, char c, u8 color)
 
 static void term_action_write(term_t _t, char *buf, u32 len, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const struct video_interface *const vi = t->vi;
 
    ts_scroll_to_bottom(t);
@@ -604,7 +604,7 @@ static void term_action_write(term_t _t, char *buf, u32 len, u8 color)
 static void
 term_action_dwrite_no_filter(term_t _t, char *buf, u32 len, u8 color)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    for (u32 i = 0; i < len; i++)
       term_internal_write_char2(t, buf[i], color);
@@ -612,13 +612,13 @@ term_action_dwrite_no_filter(term_t _t, char *buf, u32 len, u8 color)
 
 static void term_action_set_col_offset(term_t _t, u16 off, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    t->col_offset = off;
 }
 
 static void term_action_move_ch_and_cur_rel(term_t _t, s8 dr, s8 dc, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (!t->buffer)
       return;
@@ -635,7 +635,7 @@ static void term_action_move_ch_and_cur_rel(term_t _t, s8 dr, s8 dc, ...)
 
 static void term_action_reset(term_t _t, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    t->vi->enable_cursor();
    term_action_move_ch_and_cur(t, 0, 0);
@@ -650,7 +650,7 @@ static void term_action_reset(term_t _t, ...)
 
 static void term_action_erase_in_display(term_t _t, int mode, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
    switch (mode) {
@@ -714,7 +714,7 @@ static void term_action_erase_in_display(term_t _t, int mode, ...)
 
 static void term_action_erase_in_line(term_t _t, int mode, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
    switch (mode) {
@@ -748,7 +748,7 @@ static void term_action_erase_in_line(term_t _t, int mode, ...)
 static void
 term_action_del(term_t _t, enum term_del_type del_type, int m, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    switch (del_type) {
 
@@ -775,7 +775,7 @@ term_action_del(term_t _t, enum term_del_type del_type, int m, ...)
 
 static void term_action_pause_video_output(term_t _t, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    if (t->vi->disable_static_elems_refresh)
       t->vi->disable_static_elems_refresh();
@@ -787,7 +787,7 @@ static void term_action_pause_video_output(term_t _t, ...)
 
 static void term_action_restart_video_output(term_t _t, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    t->vi = t->saved_vi;
 
    term_redraw(t);
@@ -803,7 +803,7 @@ static void term_action_restart_video_output(term_t _t, ...)
 static int
 term_allocate_alt_buffers(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
 
    if (!t->screen_buf_copy)
@@ -826,7 +826,7 @@ term_allocate_alt_buffers(term_t _t)
 static void
 term_action_use_alt_buffer(term_t _t, bool use_alt_buffer, ...)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    u16 *b = get_buf_row(t, 0);
 
    if (t->using_alt_buffer == use_alt_buffer)
@@ -868,7 +868,7 @@ term_action_use_alt_buffer(term_t _t, bool use_alt_buffer, ...)
 static void
 term_action_ins_blank_lines(term_t _t, u32 n)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 eR = *t->end_scroll_region + 1;
 
    if (!t->buffer || !n)
@@ -892,7 +892,7 @@ term_action_ins_blank_lines(term_t _t, u32 n)
 static void
 term_action_del_lines(term_t _t, u32 n)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    const u16 eR = *t->end_scroll_region + 1;
 
    if (!t->buffer || !n)
@@ -915,7 +915,7 @@ term_action_del_lines(term_t _t, u32 n)
 static void
 term_action_set_scroll_region(term_t _t, u16 start, u16 end)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    start = (u16) CLAMP(start, 0u, t->rows - 1u);
    end = (u16) CLAMP(end, 0u, t->rows - 1u);
 
@@ -934,7 +934,7 @@ term_action_set_scroll_region(term_t _t, u16 start, u16 end)
 static void
 debug_term_dump_font_table(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    static const u8 hex_digits[] = "0123456789abcdef";
    const u8 color = DEFAULT_COLOR16;
 
@@ -982,21 +982,21 @@ debug_term_dump_font_table(term_t _t)
 static term_t
 alloc_term_struct(void)
 {
-   return kzmalloc(sizeof(struct term));
+   return kzmalloc(sizeof(struct vterm));
 }
 
 static void
 free_term_struct(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    ASSERT(t != &first_instance);
-   kfree2(t, sizeof(struct term));
+   kfree2(t, sizeof(struct vterm));
 }
 
 static void
 dispose_term(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    ASSERT(t != &first_instance);
 
    if (t->buffer) {
@@ -1023,7 +1023,7 @@ dispose_term(term_t _t)
 static void
 vterm_get_params(term_t _t, struct term_params *out)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
 
    *out = (struct term_params) {
       .rows = t->rows,
@@ -1064,7 +1064,7 @@ init_vterm(term_t _t,
            u16 cols,
            int rows_buf)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
    t->tabsize = 8;

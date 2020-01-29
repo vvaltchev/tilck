@@ -178,7 +178,7 @@ static inline void
 tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
 {
    const u32 new_row = MIN(
-      term_get_curr_row(t->tstate) + row, t->tparams.rows - 1u
+      vterm_get_curr_row(t->tstate) + row, t->tparams.rows - 1u
    );
 
    term_make_action_move_cursor(a, new_row, 0);
@@ -222,7 +222,7 @@ tty_csi_G_handler(u32 *params,
 
    term_make_action_move_cursor(
       a,
-      term_get_curr_row(t->tstate),
+      vterm_get_curr_row(t->tstate),
       MIN((u32)params[0], t->tparams.cols - 1u)
    );
 }
@@ -316,8 +316,8 @@ tty_csi_n_handler(u32 *params,
       /* CPR (Cursor Position Report) */
 
       snprintk(dsr, sizeof(dsr), "\033[%u;%uR",
-               term_get_curr_row(t->tstate) + 1,
-               term_get_curr_col(t->tstate) + 1);
+               vterm_get_curr_row(t->tstate) + 1,
+               vterm_get_curr_col(t->tstate) + 1);
 
    } else if (params[0] == 5) {
 
@@ -345,8 +345,8 @@ tty_csi_s_handler(u32 *params,
    struct tty *const t = ctx->t;
 
    /* SCP (Save Cursor Position) */
-   ctx->cd->saved_cur_row = term_get_curr_row(t->tstate);
-   ctx->cd->saved_cur_col = term_get_curr_col(t->tstate);
+   ctx->cd->saved_cur_row = vterm_get_curr_row(t->tstate);
+   ctx->cd->saved_cur_col = vterm_get_curr_col(t->tstate);
 }
 
 static void
@@ -383,7 +383,7 @@ tty_csi_d_handler(u32 *params,
    term_make_action_move_cursor(
       a,
       UNSAFE_MIN((u32)params[0], t->tparams.rows - 1u),
-      term_get_curr_col(t->tstate)
+      vterm_get_curr_col(t->tstate)
    );
 }
 
@@ -402,7 +402,7 @@ tty_csi_hpa_handler(u32 *params,
 
    term_make_action_move_cursor(
       a,
-      term_get_curr_row(t->tstate),
+      vterm_get_curr_row(t->tstate),
       UNSAFE_MIN((u32)params[0], t->tparams.cols - 1u)
    );
 }

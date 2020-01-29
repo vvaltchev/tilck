@@ -1,6 +1,6 @@
 /* ---------------- term action engine --------------------- */
 
-typedef void (*action_func)(term_t t, ...);
+typedef void (*action_func)(struct vterm *t, ...);
 
 struct actions_table_item {
 
@@ -31,7 +31,7 @@ static const struct actions_table_item actions_table[] = {
 
 #undef ENTRY
 
-static void term_execute_action(term_t t, struct term_action *a)
+static void term_execute_action(struct vterm *t, struct term_action *a)
 {
    ASSERT(a->type3 < ARRAY_SIZE(actions_table));
 
@@ -53,10 +53,9 @@ static void term_execute_action(term_t t, struct term_action *a)
 }
 
 
-static void term_execute_or_enqueue_action(term_t _t, struct term_action a)
+static void
+term_execute_or_enqueue_action(struct vterm *t, struct term_action a)
 {
-   struct term *const t = _t;
-
    bool written;
    bool was_empty;
 
@@ -106,7 +105,7 @@ vterm_scroll_down(term_t t, u32 rows)
 static void
 vterm_set_col_offset(term_t _t, int off)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    struct term_action a;
    term_make_action_set_col_off(&a, off >= 0 ? (u32)off : t->c);
    term_execute_or_enqueue_action(t, a);
@@ -130,23 +129,20 @@ vterm_restart_video_output(term_t t)
 
 /* ---------------- term non-action interface funcs --------------------- */
 
-u16 term_get_curr_row(term_t _t)
+u16 vterm_get_curr_row(struct vterm *t)
 {
-   struct term *const t = _t;
    return t->r;
 }
 
-u16 term_get_curr_col(term_t _t)
+u16 vterm_get_curr_col(struct vterm *t)
 {
-   struct term *const t = _t;
    return t->c;
 }
 
 static void
 vterm_set_filter(term_t _t, term_filter func, void *ctx)
 {
-   struct term *const t = _t;
-
+   struct vterm *const t = _t;
    t->filter = func;
    t->filter_ctx = ctx;
 }
@@ -154,6 +150,6 @@ vterm_set_filter(term_t _t, term_filter func, void *ctx)
 static bool
 vterm_is_initialized(term_t _t)
 {
-   struct term *const t = _t;
+   struct vterm *const t = _t;
    return t->initialized;
 }
