@@ -17,7 +17,7 @@ struct term_action {
 
 STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
 
-struct term {
+struct sterm {
 
    bool initialized;
    u16 serial_port_fwd;
@@ -26,7 +26,7 @@ struct term {
    struct term_action actions_buf[32];
 };
 
-static struct term first_instance;
+static struct sterm first_instance;
 
 static enum term_type sterm_get_type(void)
 {
@@ -36,7 +36,7 @@ static enum term_type sterm_get_type(void)
 static bool
 sterm_is_initialized(term_t _t)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
    return t->initialized;
 }
 
@@ -54,7 +54,7 @@ sterm_get_params(term_t _t, struct term_params *out)
 static void
 sterm_action_write(term_t _t, const char *buf, size_t len)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
 
    for (u32 i = 0; i < len; i++) {
 
@@ -68,7 +68,7 @@ sterm_action_write(term_t _t, const char *buf, size_t len)
 static void
 serial_term_execute_or_enqueue_action(term_t _t, struct term_action a)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
 
    bool written;
    bool was_empty;
@@ -92,7 +92,7 @@ serial_term_execute_or_enqueue_action(term_t _t, struct term_action a)
 static void
 sterm_write(term_t _t, const char *buf, size_t len, u8 color)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
 
    struct term_action a = {
       .buf = buf,
@@ -110,15 +110,15 @@ static term_t sterm_get_first_inst(void)
 static term_t
 alloc_sterm_struct(void)
 {
-   return kzmalloc(sizeof(struct term));
+   return kzmalloc(sizeof(struct sterm));
 }
 
 static void
 free_sterm_struct(term_t _t)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
    ASSERT(t != &first_instance);
-   kfree2(t, sizeof(struct term));
+   kfree2(t, sizeof(struct sterm));
 }
 
 static void
@@ -130,7 +130,7 @@ dispose_sterm(term_t _t)
 static int
 sterm_init(term_t _t, u16 serial_port_fwd)
 {
-   struct term *const t = _t;
+   struct sterm *const t = _t;
 
    t->serial_port_fwd = serial_port_fwd;
    t->initialized = true;
