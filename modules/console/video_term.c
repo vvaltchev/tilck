@@ -835,7 +835,23 @@ term_action_ins_blank_lines(struct term *t, u32 n)
 static void
 term_action_del_lines(struct term *t, u32 n)
 {
-   // TODO: implement term_action_del_lines
+   const u16 eR = *t->end_scroll_region + 1;
+
+   if (!t->buffer || !n)
+      return;
+
+   if (t->r >= eR)
+      return; /* we're outside the scrolling region: do nothing */
+
+   n = MIN(n, (u32)(eR - t->r));
+
+   for (u32 row = t->r; row <= t->r + n; row++)
+      buf_copy_row(t, row, row + n);
+
+   for (u32 row = eR - n; row < eR; row++)
+      ts_buf_clear_row(t, (u16)row, DEFAULT_COLOR16);
+
+   term_redraw_scroll_region(t);
 }
 
 static void
