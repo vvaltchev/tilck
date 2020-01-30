@@ -213,7 +213,7 @@ int cmd_fork1(int argc, char **argv)
    if (!pid) {
 
       printf(STR_CHILD "hello from the child\n");
-      printf(STR_CHILD "mmap_addr: '%s'\n", mmap_addr);
+      printf(STR_CHILD "mmap_addr: '%s'\n", (char *)mmap_addr);
       printf(STR_CHILD "Calling munmap()..\n");
 
       if ((rc = munmap(mmap_addr, 1 * MB))) {
@@ -283,7 +283,7 @@ int cmd_vfork0(int argc, char **argv)
    }
 
    printf(STR_PARENT "Read from mmap_addr:\n");
-   printf(STR_PARENT "'%s'\n", mmap_addr);
+   printf(STR_PARENT "'%s'\n", (char *)mmap_addr);
 
    printf(STR_PARENT "Write to mmap_addr...\n");
    strcpy(mmap_addr, "Hello from the parent!!");

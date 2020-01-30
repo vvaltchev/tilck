@@ -141,6 +141,7 @@ err_case:
    close(fd);
    unlink(test_file);
    DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
+   return 1;
 }
 
 /* mmap file and then do a partial unmap */
