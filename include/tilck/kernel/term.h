@@ -5,7 +5,7 @@
 
 struct term_action;
 struct term_interface;
-typedef void *term_t;
+typedef void term;
 
 extern const struct term_interface *video_term_intf;
 extern const struct term_interface *serial_term_intf;
@@ -61,41 +61,41 @@ typedef enum term_fret (*term_filter)(u8 *c,                 /* in/out */
 struct term_interface {
 
    enum term_type (*get_type)(void);
-   bool (*is_initialized)(term_t t);
-   void (*get_params)(term_t t, struct term_params *out);
+   bool (*is_initialized)(term *t);
+   void (*get_params)(term *t, struct term_params *out);
 
-   void (*write)(term_t t, const char *buf, size_t len, u8 color);
-   void (*scroll_up)(term_t t, u32 lines);
-   void (*scroll_down)(term_t t, u32 lines);
-   void (*set_col_offset)(term_t t, int off);
-   void (*pause_video_output)(term_t t);
-   void (*restart_video_output)(term_t t);
-   void (*set_filter)(term_t t, term_filter func, void *ctx);
+   void (*write)(term *t, const char *buf, size_t len, u8 color);
+   void (*scroll_up)(term *t, u32 lines);
+   void (*scroll_down)(term *t, u32 lines);
+   void (*set_col_offset)(term *t, int off);
+   void (*pause_video_output)(term *t);
+   void (*restart_video_output)(term *t);
+   void (*set_filter)(term *t, term_filter func, void *ctx);
 
    /*
     * The first term must be pre-allocated but _not_ pre-initialized.
     * It is expected to require init() to be called on it before use.
     */
-   term_t (*get_first_term)(void);
+   term *(*get_first_term)(void);
 
-   int (*video_term_init)(term_t t,
+   int (*video_term_init)(term *t,
                           const struct video_interface *vi,
                           u16 rows,
                           u16 cols,
                           int rows_buf); /* note: < 0 means default value */
 
-   int (*serial_term_init)(term_t t,
+   int (*serial_term_init)(term *t,
                            u16 serial_port_fwd);
 
-   term_t (*alloc)(void);
-   void (*free)(term_t t);
-   void (*dispose)(term_t t);
+   term *(*alloc)(void);
+   void (*free)(term *t);
+   void (*dispose)(term *t);
 
    /* --- debug funcs --- */
-   void (*debug_dump_font_table)(term_t t);
+   void (*debug_dump_font_table)(term *t);
 };
 
-void set_curr_video_term(term_t t);
+void set_curr_video_term(term *t);
 void register_term_intf(const struct term_interface *intf);
 
 void
@@ -108,9 +108,9 @@ void init_first_serial_term(u16 port);
 void init_first_term_null(void);
 void process_term_read_info(struct term_params *out);
 
-static ALWAYS_INLINE term_t get_curr_term(void) {
+static ALWAYS_INLINE term *get_curr_term(void) {
 
-   extern term_t __curr_term;
+   extern term *__curr_term;
    return __curr_term;
 }
 
@@ -122,7 +122,7 @@ static ALWAYS_INLINE const struct term_interface *get_curr_term_intf(void) {
 
 static ALWAYS_INLINE bool term_is_initialized(void)
 {
-   extern term_t __curr_term;
+   extern term *__curr_term;
    extern const struct term_interface *__curr_term_intf;
 
    if (!__curr_term_intf)
@@ -133,7 +133,7 @@ static ALWAYS_INLINE bool term_is_initialized(void)
 
 static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)
 {
-   extern term_t __curr_term;
+   extern term *__curr_term;
    extern const struct term_interface *__curr_term_intf;
 
    __curr_term_intf->write(__curr_term, buf, len, color);
@@ -141,7 +141,7 @@ static ALWAYS_INLINE void term_write(const char *buf, size_t len, u8 color)
 
 static ALWAYS_INLINE void term_pause_video_output(void)
 {
-   extern term_t __curr_term;
+   extern term *__curr_term;
    extern const struct term_interface *__curr_term_intf;
 
    __curr_term_intf->pause_video_output(__curr_term);
@@ -149,7 +149,7 @@ static ALWAYS_INLINE void term_pause_video_output(void)
 
 static ALWAYS_INLINE void term_restart_video_output(void)
 {
-   extern term_t __curr_term;
+   extern term *__curr_term;
    extern const struct term_interface *__curr_term_intf;
 
    __curr_term_intf->restart_video_output(__curr_term);

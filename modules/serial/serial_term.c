@@ -34,14 +34,14 @@ static enum term_type sterm_get_type(void)
 }
 
 static bool
-sterm_is_initialized(term_t _t)
+sterm_is_initialized(term *_t)
 {
    struct sterm *const t = _t;
    return t->initialized;
 }
 
 static void
-sterm_get_params(term_t _t, struct term_params *out)
+sterm_get_params(term *_t, struct term_params *out)
 {
    *out = (struct term_params) {
       .rows = 25,
@@ -52,7 +52,7 @@ sterm_get_params(term_t _t, struct term_params *out)
 }
 
 static void
-sterm_action_write(term_t _t, const char *buf, size_t len)
+sterm_action_write(term *_t, const char *buf, size_t len)
 {
    struct sterm *const t = _t;
 
@@ -66,7 +66,7 @@ sterm_action_write(term_t _t, const char *buf, size_t len)
 }
 
 static void
-serial_term_execute_or_enqueue_action(term_t _t, struct term_action a)
+serial_term_execute_or_enqueue_action(term *_t, struct term_action a)
 {
    struct sterm *const t = _t;
 
@@ -90,7 +90,7 @@ serial_term_execute_or_enqueue_action(term_t _t, struct term_action a)
 }
 
 static void
-sterm_write(term_t _t, const char *buf, size_t len, u8 color)
+sterm_write(term *_t, const char *buf, size_t len, u8 color)
 {
    struct sterm *const t = _t;
 
@@ -102,19 +102,19 @@ sterm_write(term_t _t, const char *buf, size_t len, u8 color)
    serial_term_execute_or_enqueue_action(t, a);
 }
 
-static term_t sterm_get_first_inst(void)
+static term *sterm_get_first_inst(void)
 {
    return &first_instance;
 }
 
-static term_t
+static term *
 alloc_sterm_struct(void)
 {
    return kzmalloc(sizeof(struct sterm));
 }
 
 static void
-free_sterm_struct(term_t _t)
+free_sterm_struct(term *_t)
 {
    struct sterm *const t = _t;
    ASSERT(t != &first_instance);
@@ -122,13 +122,13 @@ free_sterm_struct(term_t _t)
 }
 
 static void
-dispose_sterm(term_t _t)
+dispose_sterm(term *_t)
 {
    /* Do nothing */
 }
 
 static int
-sterm_init(term_t _t, u16 serial_port_fwd)
+sterm_init(term *_t, u16 serial_port_fwd)
 {
    struct sterm *const t = _t;
 

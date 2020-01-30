@@ -130,11 +130,11 @@ tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
       panic("TTY: unable to create devfile /dev/%s (error: %d)", filename, rc);
 }
 
-static term_t
+static term *
 tty_allocate_and_init_new_video_term(int rows_buf)
 {
    const struct term_interface *intf = video_term_intf;
-   term_t new_term = intf->alloc();
+   term *new_term = intf->alloc();
 
    if (!new_term)
       panic("TTY: no enough memory a new term instance");
@@ -152,11 +152,11 @@ tty_allocate_and_init_new_video_term(int rows_buf)
    return new_term;
 }
 
-static term_t
+static term *
 tty_allocate_and_init_new_serial_term(u16 serial_port_fwd)
 {
    const struct term_interface *intf = serial_term_intf;
-   term_t new_term = serial_term_intf->alloc();
+   term *new_term = serial_term_intf->alloc();
 
    if (!new_term)
       panic("TTY: no enough memory a new term instance");
@@ -192,7 +192,7 @@ static struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    struct tty *t;
-   term_t new_term = get_curr_term();
+   term *new_term = get_curr_term();
    const struct term_interface *new_term_intf;
 
    if (!(t = kzmalloc(sizeof(struct tty))))

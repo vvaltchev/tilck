@@ -5,12 +5,12 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/tty_struct.h>
 
-term_t __curr_term;
+term *__curr_term;
 const struct term_interface *__curr_term_intf;
 const struct term_interface *video_term_intf;
 const struct term_interface *serial_term_intf;
 
-void set_curr_video_term(term_t t)
+void set_curr_video_term(term *t)
 {
    ASSERT(!is_preemption_enabled());
    ASSERT(__curr_term_intf != NULL);

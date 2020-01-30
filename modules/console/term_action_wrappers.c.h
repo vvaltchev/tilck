@@ -77,7 +77,7 @@ term_execute_or_enqueue_action(struct vterm *t, struct term_action a)
 }
 
 static void
-vterm_write(term_t t, const char *buf, size_t len, u8 color)
+vterm_write(term *t, const char *buf, size_t len, u8 color)
 {
    struct term_action a;
    ASSERT(len < MB);
@@ -87,7 +87,7 @@ vterm_write(term_t t, const char *buf, size_t len, u8 color)
 }
 
 static void
-vterm_scroll_up(term_t t, u32 rows)
+vterm_scroll_up(term *t, u32 rows)
 {
    struct term_action a;
    term_make_action_scroll(&a, term_scroll_up, rows);
@@ -95,7 +95,7 @@ vterm_scroll_up(term_t t, u32 rows)
 }
 
 static void
-vterm_scroll_down(term_t t, u32 rows)
+vterm_scroll_down(term *t, u32 rows)
 {
    struct term_action a;
    term_make_action_scroll(&a, term_scroll_down, rows);
@@ -103,7 +103,7 @@ vterm_scroll_down(term_t t, u32 rows)
 }
 
 static void
-vterm_set_col_offset(term_t _t, int off)
+vterm_set_col_offset(term *_t, int off)
 {
    struct vterm *const t = _t;
    struct term_action a;
@@ -112,7 +112,7 @@ vterm_set_col_offset(term_t _t, int off)
 }
 
 static void
-vterm_pause_video_output(term_t t)
+vterm_pause_video_output(term *t)
 {
    struct term_action a;
    term_make_action_pause_video_output(&a);
@@ -120,7 +120,7 @@ vterm_pause_video_output(term_t t)
 }
 
 static void
-vterm_restart_video_output(term_t t)
+vterm_restart_video_output(term *t)
 {
    struct term_action a;
    term_make_action_restart_video_output(&a);
@@ -140,7 +140,7 @@ u16 vterm_get_curr_col(struct vterm *t)
 }
 
 static void
-vterm_set_filter(term_t _t, term_filter func, void *ctx)
+vterm_set_filter(term *_t, term_filter func, void *ctx)
 {
    struct vterm *const t = _t;
    t->filter = func;
@@ -148,7 +148,7 @@ vterm_set_filter(term_t _t, term_filter func, void *ctx)
 }
 
 static bool
-vterm_is_initialized(term_t _t)
+vterm_is_initialized(term *_t)
 {
    struct vterm *const t = _t;
    return t->initialized;

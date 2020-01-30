@@ -17,7 +17,7 @@ void tty_inbuf_reset(struct tty *t);
 
 struct tty {
 
-   term_t tstate;
+   term *tstate;
    const struct term_interface *tintf;
    struct term_params tparams;
    void *console_data;
