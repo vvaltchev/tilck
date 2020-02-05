@@ -65,7 +65,7 @@ static bool enable_sse(void)
    if (x86_cpu_features.ecx1.sse4_2)
       max_sse = "SSE 4.2";
 
-   printk(NO_PREFIX "[CPU features] %s enabled\n", max_sse);
+   printk("%s enabled\n", max_sse);
    return true;
 }
 
@@ -104,9 +104,9 @@ static bool enable_avx(void)
 
    if (x86_cpu_features.avx2) {
       x86_cpu_features.can_use_avx2 = true;
-      printk(NO_PREFIX "[CPU features] AVX 2 enabled\n");
+      printk("AVX 2 enabled\n");
    } else {
-      printk(NO_PREFIX "[CPU features] AVX 1 enabled\n");
+      printk("AVX 1 enabled\n");
    }
 
    return true;
@@ -120,7 +120,7 @@ void init_pat(void)
    entries[7] = MEM_TYPE_WC;
 
    wrmsr(MSR_IA32_PAT, pat);
-   printk(NO_PREFIX "[CPU features] PAT initialized\n");
+   printk("PAT initialized\n");
 }
 
 void enable_cpu_features(void)
@@ -175,8 +175,7 @@ out:
    if (x86_cpu_features.edx1.pat)
       init_pat();
 
-   printk(NO_PREFIX "[CPU features] Physical addr bits: %u\n",
-          x86_cpu_features.phys_addr_bits);
+   printk("Physical addr bits: %u\n", x86_cpu_features.phys_addr_bits);
 }
 
 static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] ALIGNED_AT(64);

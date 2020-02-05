@@ -173,10 +173,10 @@ static void show_system_info(void)
 {
    void show_tilck_logo(void);
 
-   printk("TIMER_HZ: %i; TIME_SLOT: %i ms %s\n",
-          TIMER_HZ,
-          1000 / (TIMER_HZ / TIME_SLOT_TICKS),
-          in_hypervisor() ? "[IN HYPERVISOR]" : "");
+   printk("timer_hz: \e[1m%i", TIMER_HZ);
+   printk(NO_PREFIX "; time_slot: \e[1m%i", 1000 / (TIMER_HZ/TIME_SLOT_TICKS));
+   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\n",
+          in_hypervisor() ? "yes" : "no");
 
    if (KERNEL_SHOW_LOGO)
       show_tilck_logo();

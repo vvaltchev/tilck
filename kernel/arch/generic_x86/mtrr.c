@@ -32,7 +32,7 @@ void enable_mtrr(void)
       enable_mtrr_int();
    }
 
-   printk(NO_PREFIX "[CPU features] MTRR enabled\n");
+   printk("MTRR enabled\n");
 }
 
 u32 get_var_mttrs_count(void)
