@@ -15,23 +15,20 @@
 
 /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
 static const u16 com_ports[] = {COM1, COM2, COM3, COM4};
+
 static int serial_port_tasklet_runner;
 static struct tty *serial_ttys[4];
 static ATOMIC(int) tasklets_per_port[4];
 
 static void serial_con_bh_handler(u16 portn)
 {
-   u16 p = com_ports[portn];
+   const u16 p = com_ports[portn];
    char c;
 
    while (serial_read_ready(p)) {
 
       c = serial_read(p);
-
-      tty_send_keyevent(
-         serial_ttys[portn],
-         make_key_event((u32)c, c, true)
-      );
+      tty_send_keyevent_safe(serial_ttys[portn], make_key_event(0, c, true));
    }
 
    tasklets_per_port[portn]--;

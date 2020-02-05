@@ -216,14 +216,14 @@ tty_keypress_handle_canon_mode(struct tty *t, u32 key, u8 c)
    }
 }
 
-void tty_send_keyevent(struct tty *t, struct key_event ke)
+int tty_send_keyevent(struct tty *t, struct key_event ke)
 {
    u8 c = (u8)ke.print_char;
 
    if (c == '\r') {
 
       if (t->c_term.c_iflag & IGNCR)
-         return; /* ignore the carriage return */
+         return 0; /* ignore the carriage return */
 
       if (t->c_term.c_iflag & ICRNL)
          c = '\n';
@@ -236,16 +236,31 @@ void tty_send_keyevent(struct tty *t, struct key_event ke)
 
    /* Ctrl+C, Ctrl+D, Ctrl+Z etc.*/
    if (tty_handle_special_controls(t, c))
-      return;
+      return 0;
 
    if (t->c_term.c_lflag & ICANON) {
       tty_keypress_handle_canon_mode(t, ke.key, c);
-      return;
+      return 0;
    }
 
    /* raw mode input handling */
-   tty_inbuf_write_elem(t, c);
+
+   if (!tty_inbuf_write_elem(t, c))
+      return -EAGAIN;
+
    kcond_signal_one(&t->input_cond);
+   return 0;
+}
+
+void tty_send_keyevent_safe(struct tty *t, struct key_event ke)
+{
+   ASSERT(is_preemption_enabled());
+   int rc = tty_send_keyevent(t, ke);
+
+   while (rc == -EAGAIN) {
+      kernel_yield();
+      rc = tty_send_keyevent(t, ke);
+   }
 }
 
 static int
@@ -260,7 +275,7 @@ tty_keypress_handler_int(struct tty *t,
       return tty_handle_non_printable_key(kb, t, ke.key);
 
    if (kb_is_alt_pressed(kb))
-      tty_inbuf_write_elem(t, '\033');
+      tty_inbuf_write_elem(t, '\e');
 
    if (kb_is_ctrl_pressed(kb)) {
       if (isalpha(c) || c == '\\' || c == '[') {
@@ -270,7 +285,12 @@ tty_keypress_handler_int(struct tty *t,
    }
 
    ke.print_char = (char)c;
-   tty_send_keyevent(t, ke);
+
+   if (tty_send_keyevent(t, ke) == -EAGAIN) {
+      /* just discard the keypress: that's fine in this context */
+      return kb_handler_ok_and_continue;
+   }
+
    return kb_handler_ok_and_continue;
 }
 
