@@ -69,7 +69,7 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
 
 const char uname_name[] = "Tilck";
 const char uname_nodename[] = "tilck";
-const char uname_release[] = VER_MAJOR "." VER_MINOR "." VER_PATCH;
+const char uname_release[] = VER_MAJOR_STR "." VER_MINOR_STR "." VER_PATCH_STR;
 const char uname_arch[] = ARCH_GCC_TC;
 const char commit_hash[65] = {0};
 

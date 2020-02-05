@@ -153,9 +153,20 @@ static void read_multiboot_info(u32 magic, u32 mbi_addr)
 
 static void show_hello_message(void)
 {
-   printk("Hello from Tilck! [ver: %s.%s.%s, %s, %s %i.%i.%i]\n",
-           VER_MAJOR, VER_MINOR, VER_PATCH, BUILDTYPE_STR,
-           COMPILER_NAME, COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
+   extern const char commit_hash[65];
+   const bool dirty = !strncmp(commit_hash, "dirty:", 6);
+   const char *const hash = dirty ? commit_hash + 6 : commit_hash;
+
+   printk("Hello from Tilck \e[1m%d.%d.%d",
+          VER_MAJOR, VER_MINOR, VER_PATCH);
+
+   printk(NO_PREFIX ", commit: \e[1m%s", hash);
+   printk(NO_PREFIX "%s\n", dirty ? " (dirty)" : "");
+
+   printk("Build type: \e[1m%s", BUILDTYPE_STR);
+   printk(NO_PREFIX ", compiler: \e[1m%s %d.%d.%d\n",
+          COMPILER_NAME,
+          COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
 
 static void show_system_info(void)
