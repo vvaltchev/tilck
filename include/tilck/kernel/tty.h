@@ -12,8 +12,7 @@ static ALWAYS_INLINE struct tty *get_curr_tty(void)
    return __curr_tty;
 }
 
-NODISCARD int tty_send_keyevent(struct tty *t, struct key_event ke);
-void tty_send_keyevent_safe(struct tty *t, struct key_event ke);
+void tty_send_keyevent(struct tty *t, struct key_event ke, bool block);
 void tty_setup_for_panic(struct tty *t);
 int tty_get_num(struct tty *t);
 void tty_restore_kd_text_mode(struct tty *t);

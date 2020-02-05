@@ -3,7 +3,7 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
 
-static bool tty_ctrl_stop(struct tty *t)
+static bool tty_ctrl_stop(struct tty *t, bool block)
 {
    if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -13,7 +13,7 @@ static bool tty_ctrl_stop(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_start(struct tty *t)
+static bool tty_ctrl_start(struct tty *t, bool block)
 {
    if (t->c_term.c_iflag & IXON) {
       // TODO: eventually support pause transmission, one day.
@@ -23,7 +23,7 @@ static bool tty_ctrl_start(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_intr(struct tty *t)
+static bool tty_ctrl_intr(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VINTR]);
@@ -35,7 +35,7 @@ static bool tty_ctrl_intr(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_susp(struct tty *t)
+static bool tty_ctrl_susp(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ISIG) {
 
@@ -50,7 +50,7 @@ static bool tty_ctrl_susp(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_quit(struct tty *t)
+static bool tty_ctrl_quit(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ISIG) {
       tty_keypress_echo(t, (char)t->c_term.c_cc[VQUIT]);
@@ -62,11 +62,11 @@ static bool tty_ctrl_quit(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_eof(struct tty *t)
+static bool tty_ctrl_eof(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOF]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOF], block);
       kcond_signal_one(&t->input_cond);
       return true;
    }
@@ -74,29 +74,29 @@ static bool tty_ctrl_eof(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_eol(struct tty *t)
+static bool tty_ctrl_eol(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL], block);
       kcond_signal_one(&t->input_cond);
       return true;
    }
    return false;
 }
 
-static bool tty_ctrl_eol2(struct tty *t)
+static bool tty_ctrl_eol2(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & ICANON) {
       t->end_line_delim_count++;
-      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL2]);
+      tty_inbuf_write_elem(t, t->c_term.c_cc[VEOL2], block);
       kcond_signal_one(&t->input_cond);
       return true;
    }
    return false;
 }
 
-static bool tty_ctrl_reprint(struct tty *t)
+static bool tty_ctrl_reprint(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & (ICANON | IEXTEN)) {
 
@@ -111,7 +111,7 @@ static bool tty_ctrl_reprint(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_discard(struct tty *t)
+static bool tty_ctrl_discard(struct tty *t, bool block)
 {
    /*
     * From termios' man page:
@@ -127,7 +127,7 @@ static bool tty_ctrl_discard(struct tty *t)
    return false;
 }
 
-static bool tty_ctrl_lnext(struct tty *t)
+static bool tty_ctrl_lnext(struct tty *t, bool block)
 {
    if (t->c_term.c_lflag & IEXTEN) {
 
@@ -158,12 +158,13 @@ tty_set_ctrl_handler(struct tty *t, u8 ctrl_type, tty_ctrl_sig_func h)
    t->ctrl_handlers[c] = h;
 }
 
-static inline bool tty_handle_special_controls(struct tty *t, u8 c)
+static inline bool
+tty_handle_special_controls(struct tty *t, u8 c, bool block)
 {
    tty_ctrl_sig_func handler = t->ctrl_handlers[c];
 
    if (handler)
-      return handler(t);
+      return handler(t, block);
 
    return false;
 }

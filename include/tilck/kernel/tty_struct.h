@@ -10,7 +10,7 @@
 #include <linux/kd.h>     // system header
 
 struct tty;
-typedef bool (*tty_ctrl_sig_func)(struct tty *);
+typedef bool (*tty_ctrl_sig_func)(struct tty *, bool);
 
 void tty_reset_filter_ctx(struct tty *t);
 void tty_inbuf_reset(struct tty *t);

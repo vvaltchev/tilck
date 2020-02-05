@@ -330,7 +330,7 @@ tty_csi_n_handler(u32 *params,
       tty_reset_filter_ctx(ctx->t);
 
       for (char *p = dsr; *p; p++)
-         tty_send_keyevent_safe(t, make_key_event(0, *p, true));
+         tty_send_keyevent(t, make_key_event(0, *p, true), true);
    }
 }
 
@@ -512,7 +512,7 @@ tty_csi_c_handler(u32 *params,
    tty_reset_filter_ctx(ctx->t);
 
    for (const char *p = buf; *p; p++)
-      tty_send_keyevent_safe(t, make_key_event(0, *p, true));
+      tty_send_keyevent(t, make_key_event(0, *p, true), true);
 }
 
 typedef void (*csi_seq_handler)(u32 *params,
