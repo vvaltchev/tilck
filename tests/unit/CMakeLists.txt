@@ -7,6 +7,29 @@ else()
    set(TOOL_GCOV "${GCOV}")
 endif()
 
+set(GTEST_SOURCE_DIR "${TCROOT}/cache/googletest/googletest")
+
+include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
+
+include_directories(${GTEST_SOURCE_DIR}/include)
+
+# Create a static library target for kernel's arch-independent code.
+add_library(
+   kernel_noarch_for_test
+   STATIC EXCLUDE_FROM_ALL ${KERNEL_NOARCH_SOURCES}
+)
+
+set_target_properties(
+
+   kernel_noarch_for_test
+
+   PROPERTIES
+      COMPILE_FLAGS "${KERNEL_NO_ARCH_FLAGS}"
+)
+
+
 configure_file(
    ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
    ${CMAKE_BINARY_DIR}/scripts/generate_test_coverage_report
@@ -21,12 +44,6 @@ file(
    "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
    "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
-
-set(GTEST_SOURCE_DIR "${TCROOT}/cache/googletest/googletest")
-
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${GTEST_SOURCE_DIR}/include)
 
 # Override CMake's default executable output directory
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})

@@ -48,8 +48,6 @@ file(
    "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
 )
 
-file(GLOB SOURCES ${KERNEL_NOARCH_SOURCES_GLOB})
-
 # Override CMake's default executable output directory
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
@@ -57,7 +55,10 @@ add_executable(
 
    tilck_unstripped
 
-   ${ARCH_START_FILE} ${ARCH_SOURCES} ${ARCH_FAMILY_SOURCES} ${SOURCES}
+   ${ARCH_START_FILE}
+   ${ARCH_SOURCES}
+   ${ARCH_FAMILY_SOURCES}
+   ${KERNEL_NOARCH_SOURCES}
 )
 
 set(

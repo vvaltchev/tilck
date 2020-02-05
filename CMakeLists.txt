@@ -405,6 +405,9 @@ include(other/cmake/extra_apps.cmake)
 # Generate config files & build scripts (before including sub-dirs)
 include(other/cmake/gen_config_pre.cmake)
 
+# Include kernel's noarch sources
+include(kernel/sources.cmake)
+
 ################################################################################
 # Include sub-directories
 
