@@ -50,10 +50,10 @@ void tty_set_raw_mode(struct tty *t)
    disable_preemption();
    {
       tty_reset_termios(t);
-      t->c_term.c_iflag &= (u32) ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-      t->c_term.c_oflag &= (u32) ~(OPOST);
-      t->c_term.c_cflag |= (u32) (CS8);
-      t->c_term.c_lflag &= (u32) ~(ECHO | ICANON | IEXTEN | ISIG);
+      t->c_term.c_iflag = 0;
+      t->c_term.c_oflag = 0;
+      t->c_term.c_cflag = CREAD | B38400 | CS8;
+      t->c_term.c_lflag = 0;
    }
    enable_preemption();
 }
@@ -62,7 +62,11 @@ void tty_set_medium_raw_mode(struct tty *t, bool enabled)
 {
    disable_preemption();
    {
-      tty_set_raw_mode(t);
+      if (enabled)
+         tty_set_raw_mode(t);
+      else
+         tty_reset_termios(t);
+
       t->mediumraw_mode = enabled;
    }
    enable_preemption();
