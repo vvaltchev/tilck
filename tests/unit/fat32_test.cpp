@@ -12,6 +12,7 @@ extern "C" {
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/common/utils.h>
+   #include <3rd_party/crc32.h>
 }
 
 using namespace std;

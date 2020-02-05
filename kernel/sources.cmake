@@ -9,6 +9,7 @@ set(
    "${CMAKE_SOURCE_DIR}/kernel/fs/*/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
+   "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
 )
 
 if (KERNEL_SELFTESTS)
