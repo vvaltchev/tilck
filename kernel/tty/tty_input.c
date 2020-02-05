@@ -443,23 +443,25 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
    ASSERT(is_preemption_enabled());
 
-   if (pi->proc_tty != t) {
+   if (!t->serial_port_fwd) {
 
-      /*
-       * Cannot read from this TTY, as it is not the process' controlling
-       * terminal.
-       */
-      return -EIO;
-   }
+      if (pi->proc_tty != t) {
 
-   if (pi->pgid != t->fg_pgid) {
+         /*
+          * Cannot read from this TTY, as it's a video TTY (not serial) and it's
+          * not the process' controlling terminal.
+          */
+         return -EIO;
+      }
 
-      /*
-       * Cannot read from TTY, as the process is not in the terminal's
-       * foreground process group.
-       */
+      if (pi->pgid != t->fg_pgid) {
 
-      return -EIO;
+         /*
+          * Cannot read from TTY, as the process is not in the terminal's
+          * foreground process group.
+          */
+         return -EIO;
+      }
    }
 
    if (!size)
