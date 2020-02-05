@@ -197,6 +197,7 @@ void kcond_init(struct kcond *c);
 void kcond_destory(struct kcond *c);
 void kcond_signal_int(struct kcond *c, bool all);
 bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks);
+bool kcond_is_anyone_waiting(struct kcond *c);
 
 static inline void kcond_signal_one(struct kcond *c)
 {

@@ -12,6 +12,17 @@ void kcond_init(struct kcond *c)
    list_init(&c->wait_list);
 }
 
+bool kcond_is_anyone_waiting(struct kcond *c)
+{
+   bool ret;
+   disable_preemption();
+   {
+      ret = !list_is_empty(&c->wait_list);
+   }
+   enable_preemption();
+   return ret;
+}
+
 bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
