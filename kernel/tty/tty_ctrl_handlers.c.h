@@ -38,8 +38,12 @@ static bool tty_ctrl_intr(struct tty *t)
 static bool tty_ctrl_susp(struct tty *t)
 {
    if (t->c_term.c_lflag & ISIG) {
+
       tty_keypress_echo(t, (char)t->c_term.c_cc[VSUSP]);
-      printk("SUSP not supported yet\n");
+
+      if (!t->serial_port_fwd)
+         printk("SUSP not supported yet\n");
+
       return true;
    }
 
@@ -95,8 +99,12 @@ static bool tty_ctrl_eol2(struct tty *t)
 static bool tty_ctrl_reprint(struct tty *t)
 {
    if (t->c_term.c_lflag & (ICANON | IEXTEN)) {
+
       tty_keypress_echo(t, (char)t->c_term.c_cc[VREPRINT]);
-      printk("REPRINT not supported yet\n");
+
+      if (!t->serial_port_fwd)
+         printk("REPRINT not supported yet\n");
+
       return true;
    }
 
@@ -122,7 +130,10 @@ static bool tty_ctrl_discard(struct tty *t)
 static bool tty_ctrl_lnext(struct tty *t)
 {
    if (t->c_term.c_lflag & IEXTEN) {
-      printk("LNEXT not supported yet\n");
+
+      if (!t->serial_port_fwd)
+         printk("LNEXT not supported yet\n");
+
       return true;
    }
 
