@@ -5,6 +5,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
+      CI: 1
       TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
@@ -36,6 +37,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
+      CI: 1
       TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1

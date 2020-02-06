@@ -20,6 +20,7 @@ strategy:
 container: $[ variables['img'] ]
 
 variables:
+  CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
 
