@@ -397,6 +397,46 @@ fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 clusterN, u32 fatN)
    return (*(u32 *)(SecBuf + ThisFATEntOffset)) & 0x0FFFFFFF;
 }
 
+void
+fat_write_fat_entry(struct fat_hdr *h,
+                    enum fat_type ft,
+                    u32 fatN,
+                    u32 clusterN,
+                    u32 value)
+{
+   if (ft == fat_unknown) {
+      ft = fat_get_type(h);
+   }
+
+   if (ft == fat12_type) {
+      // FAT12 is NOT supported.
+      NOT_REACHED();
+   }
+
+   ASSERT(fatN < h->BPB_NumFATs);
+
+   u32 FATSz = fat_get_FATSz(h);
+   u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
+
+   u32 ThisFATSecNum =
+      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
+
+   u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
+
+   u8 *SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
+
+   if (ft == fat16_type) {
+
+      ASSERT((value & 0xFFFF0000U) == 0); /* the top 16 bits cannot be used */
+      *(u16 *)(SecBuf + ThisFATEntOffset) = (u16)value;
+
+   } else {
+
+      ASSERT((value & 0xF0000000U) == 0); /* the top 4 bits cannot be used */
+      *(u32 *)(SecBuf + ThisFATEntOffset) = value;
+   }
+}
+
 u32 fat_get_first_data_sector(struct fat_hdr *hdr)
 {
    u32 RootDirSectors = fat_get_RootDirSectors(hdr);
@@ -720,9 +760,10 @@ fat_get_used_bytes(struct fat_hdr *hdr)
 {
    u32 clusterN;
    const u32 cluster_count = fat_get_TotSec(hdr) / hdr->BPB_SecPerClus;
+   const enum fat_type ft = fat_get_type(hdr);
 
    for (clusterN = 0; clusterN < cluster_count; clusterN++) {
-      if (!fat_read_fat_entry(hdr, fat_unknown, clusterN, 0))
+      if (!fat_read_fat_entry(hdr, ft, clusterN, 0))
          break;
    }
 

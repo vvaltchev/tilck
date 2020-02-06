@@ -141,6 +141,13 @@ u32 fat_read_fat_entry(struct fat_hdr *hdr,
                        u32 clusterN,
                        u32 fatNum);
 
+void
+fat_write_fat_entry(struct fat_hdr *h,
+                    enum fat_type ft,
+                    u32 fatN,
+                    u32 clusterN,
+                    u32 value);
+
 u32 fat_get_first_data_sector(struct fat_hdr *hdr);
 
 
