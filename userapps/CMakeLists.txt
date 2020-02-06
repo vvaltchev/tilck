@@ -31,7 +31,13 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
       endif()
 
       if (USERAPPS_${ARGV0})
-         file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
+
+         file(
+            GLOB
+            SOURCES
+            "${ARGV1}${ARGV0}*.c"
+         )
+
          add_executable(${ARGV0} ${SOURCES})
          register_usermode_app(${ARGV0})
       endif()
@@ -49,6 +55,22 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
    add_usermode_app(dp)
 # [/simple apps]
 
+# [filedump]
+   file(
+      GLOB
+      FILEDUMP_SOURCES
+
+      "filedump.c"
+      "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
+   )
+
+   set(USERAPPS_filedump OFF CACHE BOOL "Include `filedump` in fatpart")
+
+   if (USERAPPS_filedump)
+      add_executable(filedump ${FILEDUMP_SOURCES})
+      register_usermode_app(filedump)
+   endif()
+# [/filedump]
 
 # [devshell]
    file(
@@ -60,7 +82,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
       "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
    )
 
-   set(USERAPPS_devshell ON CACHE BOOL "Build `${ARGV0}`")
+   set(USERAPPS_devshell ON CACHE BOOL "Include `devshell` in fatpart")
 
    if (USERAPPS_devshell)
       add_executable(devshell ${DEVSHELL_SOURCES})
@@ -74,7 +96,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 # [ncurses test app]
    if (EXISTS ${NCURSES_INST}/lib/libncurses_g.a)
 
-      set(USERAPPS_ncapp ON CACHE BOOL "Build `ncapp`")
+      set(USERAPPS_ncapp OFF CACHE BOOL "Include `ncapp` in fatpart")
 
       if (USERAPPS_ncapp)
          add_usermode_app(ncapp)
