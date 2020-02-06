@@ -75,7 +75,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
       }
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
          ASSERT(h->pos == fsize);
@@ -137,7 +137,7 @@ fat_seek_forward(fs_handle handle, offt dist)
          break;
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(d->hdr, d->type, h->curr_cluster, 0);
+      u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
          ASSERT(h->pos == fsize);

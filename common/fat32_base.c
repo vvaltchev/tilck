@@ -320,7 +320,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(h, ft, cluster, 0);
+      u32 val = fat_read_fat_entry(h, ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(ft, val))
          break; // that's it: we hit an exactly full cluster.
@@ -365,7 +365,7 @@ enum fat_type fat_get_type(struct fat_hdr *hdr)
  * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
  */
 u32
-fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 clusterN, u32 fatN)
+fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 fatN, u32 clusterN)
 {
    if (ft == fat_unknown) {
       ft = fat_get_type(h);
@@ -740,7 +740,7 @@ fat_read_whole_file(struct fat_hdr *hdr,
       ASSERT((fsize - written) > 0);
 
       // find the next cluster
-      u32 fatval = fat_read_fat_entry(hdr, ft, cluster, 0);
+      u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
          // rem is still > 0, this should NOT be the last cluster
@@ -763,7 +763,7 @@ fat_get_used_bytes(struct fat_hdr *hdr)
    const enum fat_type ft = fat_get_type(hdr);
 
    for (clusterN = 0; clusterN < cluster_count; clusterN++) {
-      if (!fat_read_fat_entry(hdr, ft, clusterN, 0))
+      if (!fat_read_fat_entry(hdr, ft, 0, clusterN))
          break;
    }
 

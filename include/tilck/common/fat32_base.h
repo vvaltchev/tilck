@@ -138,8 +138,8 @@ u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N);
 
 u32 fat_read_fat_entry(struct fat_hdr *hdr,
                        enum fat_type ft,
-                       u32 clusterN,
-                       u32 fatNum);
+                       u32 fatN,
+                       u32 clusterN);
 
 void
 fat_write_fat_entry(struct fat_hdr *h,
