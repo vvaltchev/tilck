@@ -231,11 +231,17 @@ fat_get_pointer_to_cluster_data(struct fat_hdr *hdr, u32 clusterN)
    return ((u8*)hdr + sector * hdr->BPB_BytsPerSec);
 }
 
+static inline u32
+fat_get_dir_entries_per_cluster(struct fat_hdr *h)
+{
+   return ((u32)h->BPB_BytsPerSec*h->BPB_SecPerClus)/sizeof(struct fat_entry);
+}
+
 // PUBLIC interface ------------------------------------------------------------
 
 bool fat32_is_valid_filename_character(char c);
 
-struct fat_walk_dir_ctx {
+struct fat_walk_long_name_ctx {
 
    bool is_valid;       /* long name valid ? */
    u8 lname_buf[256];   /* long name buffer */
@@ -249,15 +255,20 @@ typedef int (*fat_dentry_cb)(struct fat_hdr *,
                              const char *,         /* long name */
                              void *);              /* user data pointer */
 
-int
-fat_walk_directory(struct fat_walk_dir_ctx *ctx,
-                   struct fat_hdr *hdr,
-                   enum fat_type ft,
-                   struct fat_entry *entry,
-                   u32 cluster,
-                   fat_dentry_cb cb,
-                   void *arg);
+struct fat_walk_static_params {
 
+   struct fat_walk_long_name_ctx *ctx;
+   struct fat_hdr *h;
+   enum fat_type ft;
+   fat_dentry_cb cb;
+   void *arg;
+};
+
+
+int
+fat_walk_directory(struct fat_walk_static_params *p,
+                   struct fat_entry *entry,
+                   u32 cluster);
 
 struct fat_entry *
 fat_search_entry(struct fat_hdr *hdr,
@@ -293,7 +304,7 @@ struct fat_search_ctx {
    char pc[256];              // path component
    size_t pcl;                // path component's length
    char shortname[16];        // short name of the current entry
-   struct fat_walk_dir_ctx walk_ctx; // walk context: contains long names
+   struct fat_walk_long_name_ctx walk_ctx; // walk context: contains long names
 };
 
 void

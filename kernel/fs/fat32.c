@@ -154,6 +154,10 @@ fat_seek_forward(fs_handle handle, offt dist)
    return (offt)h->pos;
 }
 
+struct fat_count_dirents_ctx {
+   offt count;
+};
+
 static int
 fat_count_dirents_cb(struct fat_hdr *hdr,
                      enum fat_type ft,
@@ -161,33 +165,35 @@ fat_count_dirents_cb(struct fat_hdr *hdr,
                      const char *long_name,
                      void *arg)
 {
-   (*(offt *)arg)++;
+   struct fat_count_dirents_ctx *ctx = arg;
+   ctx->count++;
    return 0;
 }
 
 /*
  * Count the number of entries in a given FAT directory.
- *
  * TODO: implement fat_count_dirents() in a more efficient way.
  */
 STATIC offt fat_count_dirents(struct fat_fs_device_data *d, struct fat_entry *e)
 {
-   struct fat_walk_dir_ctx walk_ctx = {0};
-   offt count = 0;
    int rc;
+   struct fat_count_dirents_ctx ctx = { .count = 0 };
+   struct fat_walk_static_params walk_params = {
+      .ctx = NULL,      /* no need for long name ctx */
+      .h = d->hdr,
+      .ft = d->type,
+      .cb = &fat_count_dirents_cb,
+      .arg = &ctx,
+   };
 
    ASSERT(e->directory);
    u32 dir_cluster = fat_get_first_cluster_generic(d, e);
 
-   rc = fat_walk_directory(&walk_ctx,
-                           d->hdr,
-                           d->type,
+   rc = fat_walk_directory(&walk_params,
                            !dir_cluster ? e : NULL,
-                           dir_cluster,
-                           fat_count_dirents_cb,
-                           &count);
+                           dir_cluster);
 
-   return rc ? rc : count;
+   return rc ? rc : ctx.count;
 }
 
 static offt fat_seek_dir(struct fatfs_handle *fh, offt off)
@@ -364,28 +370,34 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    struct fatfs_handle *fh = h;
    struct fat_fs_device_data *d = fh->fs->device_data;
-   struct fat_walk_dir_ctx walk_ctx = {0};
+   struct fat_getdents_ctx ctx;
+   struct fat_walk_long_name_ctx walk_ctx;
+   struct fat_walk_static_params walk_params;
    int rc;
 
    if (!fh->e->directory && !fh->e->volume_id)
       return -ENOTDIR;
 
-   struct fat_getdents_ctx ctx = {
+   ctx = (struct fat_getdents_ctx) {
       .fh = fh,
       .vfs_cb = cb,
       .vfs_ctx = arg,
       .rc = 0,
    };
 
+   walk_params = (struct fat_walk_static_params) {
+      .ctx = &walk_ctx,
+      .h = d->hdr,
+      .ft = d->type,
+      .cb = &fat_getdents_cb,
+      .arg = &ctx,
+   };
+
    u32 dir_cluster = fat_get_first_cluster_generic(d, fh->e);
 
-   rc = fat_walk_directory(&walk_ctx,
-                           d->hdr,
-                           d->type,
+   rc = fat_walk_directory(&walk_params,
                            !dir_cluster ? fh->e : NULL,
-                           dir_cluster,
-                           fat_getdents_cb,
-                           &ctx);
+                           dir_cluster);;
 
    return rc ? rc : ctx.rc;
 }
@@ -513,9 +525,10 @@ fat_get_entry(struct fs *fs,
 {
    struct fat_fs_device_data *d = fs->device_data;
    struct fat_fs_path *fp = (struct fat_fs_path *)fs_path;
+   struct fat_walk_static_params walk_params;
    struct fat_entry *dir_entry;
-   u32 dir_cluster;
    struct fat_search_ctx ctx;
+   u32 dir_cluster;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:
       return fat_get_root_entry(d, fp);  // getting a path to the root dir
@@ -527,14 +540,18 @@ fat_get_entry(struct fs *fs,
       if (is_dot_or_dotdot(name, (int)name_len))
          return fat_get_root_entry(d, fp);
 
+   walk_params = (struct fat_walk_static_params) {
+      .ctx = &ctx.walk_ctx,
+      .h = d->hdr,
+      .ft = d->type,
+      .cb = &fat_search_entry_cb,
+      .arg = &ctx,
+   };
+
    fat_init_search_ctx(&ctx, name, true);
-   fat_walk_directory(&ctx.walk_ctx,
-                      d->hdr,
-                      d->type,
+   fat_walk_directory(&walk_params,
                       !dir_cluster ? dir_entry : NULL,
-                      dir_cluster,
-                      &fat_search_entry_cb,
-                      &ctx);
+                      dir_cluster);
 
    struct fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
    enum vfs_entry_type type = VFS_NONE;

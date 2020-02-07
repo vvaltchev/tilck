@@ -146,7 +146,7 @@ bool fat32_is_valid_filename_character(char c)
 /*
  * WARNING: this implementation supports only the ASCII subset of UTF16.
  */
-static void fat_handle_long_dir_entry(struct fat_walk_dir_ctx *ctx,
+static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
                                       struct fat_long_entry *le)
 {
    char entrybuf[13] = {0};
@@ -225,20 +225,16 @@ static void fat_handle_long_dir_entry(struct fat_walk_dir_ctx *ctx,
    }
 }
 
-int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
-                       struct fat_hdr *h,
-                       enum fat_type ft,
-                       struct fat_entry *entry,
-                       u32 cluster,
-                       fat_dentry_cb cb,
-                       void *arg)
+int
+fat_walk_directory(struct fat_walk_static_params *p,
+                   struct fat_entry *entry,
+                   u32 cluster)
 {
-   const u32 entries_per_cluster =
-      ((u32)h->BPB_BytsPerSec * h->BPB_SecPerClus) / sizeof(struct fat_entry);
+   struct fat_walk_long_name_ctx *const ctx = p->ctx;
+   const u32 entries_per_cluster = fat_get_dir_entries_per_cluster(p->h);
+   ASSERT(p->ft == fat16_type || p->ft == fat32_type);
 
-   ASSERT(ft == fat16_type || ft == fat32_type);
-
-   if (ft == fat16_type) {
+   if (p->ft == fat16_type) {
       ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
       ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
    }
@@ -247,6 +243,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
       bzero(ctx->lname_buf, sizeof(ctx->lname_buf));
       ctx->lname_sz = 0;
       ctx->lname_chksum = -1;
+      ctx->is_valid = false;
    }
 
    while (true) {
@@ -259,7 +256,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
           * In that case, fat_get_rootdir() returns 0 as cluster. In all the
           * other cases, we need only the cluster.
           */
-         entry = fat_get_pointer_to_cluster_data(h, cluster);
+         entry = fat_get_pointer_to_cluster_data(p->h, cluster);
       }
 
       ASSERT(entry != NULL);
@@ -294,7 +291,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
             }
          }
 
-         int ret = cb(h, ft, entry + i, long_name_ptr, arg);
+         int ret = p->cb(p->h, p->ft, entry + i, long_name_ptr, p->arg);
 
          if (ctx) {
             ctx->lname_sz = 0;
@@ -320,13 +317,13 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
        * If we're here, it means that there is more then one cluster for the
        * entries of this directory. We have to follow the chain.
        */
-      u32 val = fat_read_fat_entry(h, ft, 0, cluster);
+      u32 val = fat_read_fat_entry(p->h, p->ft, 0, cluster);
 
-      if (fat_is_end_of_clusterchain(ft, val))
+      if (fat_is_end_of_clusterchain(p->ft, val))
          break; // that's it: we hit an exactly full cluster.
 
       /* We do not handle BAD CLUSTERS */
-      ASSERT(!fat_is_bad_cluster(ft, val));
+      ASSERT(!fat_is_bad_cluster(p->ft, val));
 
       cluster = val;
    }
@@ -641,13 +638,13 @@ fat_search_entry(struct fat_hdr *hdr,
                  const char *abspath,
                  int *err)
 {
+   struct fat_walk_static_params walk_params;
    struct fat_search_ctx ctx;
    struct fat_entry *root;
    u32 root_dir_cluster;
 
-   if (ft == fat_unknown) {
+   if (ft == fat_unknown)
        ft = fat_get_type(hdr);
-   }
 
    ASSERT(*abspath == '/');
    abspath++;
@@ -659,17 +656,22 @@ fat_search_entry(struct fat_hdr *hdr,
       return root;
    }
 
+   walk_params = (struct fat_walk_static_params) {
+      .ctx = &ctx.walk_ctx,
+      .h = hdr,
+      .ft = ft,
+      .cb = &fat_search_entry_cb,
+      .arg = &ctx,
+   };
+
    fat_init_search_ctx(&ctx, abspath, false);
-   fat_walk_directory(&ctx.walk_ctx, hdr, ft, root, root_dir_cluster,
-                      &fat_search_entry_cb, &ctx);
+   fat_walk_directory(&walk_params, root, root_dir_cluster);
 
    while (ctx.subdir_cluster) {
 
-      u32 cluster = ctx.subdir_cluster;
+      const u32 cluster = ctx.subdir_cluster;
       ctx.subdir_cluster = 0;
-
-      fat_walk_directory(&ctx.walk_ctx, hdr, ft, NULL, cluster,
-                         &fat_search_entry_cb, &ctx);
+      fat_walk_directory(&walk_params, NULL, cluster);
    }
 
    if (err) {
@@ -738,7 +740,9 @@ fat_read_whole_file(struct fat_hdr *hdr,
 }
 
 struct compact_ctx {
-   u32 ffc;             /* first free cluster */
+
+   struct fat_walk_static_params walk_params;
+   u32 ffc;                                     /* first free cluster */
 };
 
 static int
@@ -791,13 +795,10 @@ fat_compact_walk_cb(struct fat_hdr *hdr,
    } while (!fat_is_end_of_clusterchain(ft, clu));
 
    if (is_dir) {
-      fat_walk_directory(NULL,
-                         hdr,
-                         ft,
+      fat_walk_directory(&ctx->walk_params,
                          NULL,
-                         fat_get_first_cluster(e),
-                         fat_compact_walk_cb,
-                         arg);
+                         fat_get_first_cluster(e));
+
    }
 
    return 0;
@@ -816,15 +817,16 @@ void fat_compact_clusters(struct fat_hdr *hdr)
          break;
    }
 
-   root = fat_get_rootdir(hdr, ft, &root_cluster);
+   cctx.walk_params = (struct fat_walk_static_params) {
+      .ctx = NULL,
+      .h = hdr,
+      .ft = ft,
+      .cb = &fat_compact_walk_cb,
+      .arg = &cctx,
+   };
 
-   fat_walk_directory(NULL,
-                      hdr,
-                      ft,
-                      root,
-                      root_cluster,
-                      fat_compact_walk_cb,
-                      &cctx);
+   root = fat_get_rootdir(hdr, ft, &root_cluster);
+   fat_walk_directory(&cctx.walk_params, root, root_cluster);
 }
 
 u32
