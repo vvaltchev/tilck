@@ -29,6 +29,7 @@ int main(int argc, char **argv)
    void *vaddr;
    const char *file;
    bool trunc = false;
+   u32 used_bytes, ff_clu_off;
    int failed = 0;
 
    if (argc < 2) {
@@ -55,22 +56,36 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   errno = 0;
-
    vaddr = mmap(NULL,                   /* addr */
                 MMAP_SIZE,              /* length */
-                PROT_READ,              /* prot */
+                PROT_READ|PROT_WRITE,   /* prot */
                 MAP_SHARED,             /* flags */
                 fd,                     /* fd */
                 0);                     /* offset */
 
-   if (errno) {
+   if (vaddr == (void *)-1) {
       perror("mmap() failed");
       failed = 1;
       goto out;
    }
 
-   u32 used_bytes = fat_get_used_bytes(vaddr);
+   /*
+    * Don't do this here, forcing it to happen in the bootloaders.
+    * fat_compact_clusters(vaddr);
+    */
+
+   ff_clu_off = fat_get_first_free_cluster_off(vaddr);
+   used_bytes = fat_calculate_used_bytes(vaddr);
+
+   if (ff_clu_off > used_bytes) {
+
+      fprintf(stderr,
+              "FATAL ERROR: ff_clu_off (%u) > used_bytes (%u)\n",
+              ff_clu_off, used_bytes);
+
+      failed = 1;
+      goto out;
+   }
 
    if (!trunc)
       printf("%u\n", used_bytes);

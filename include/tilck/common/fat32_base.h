@@ -128,9 +128,10 @@ void fat_dump_info(void *fatpart_begin);
 
 enum fat_type fat_get_type(struct fat_hdr *hdr);
 
-struct fat_entry *fat_get_rootdir(struct fat_hdr *hdr,
-                           enum fat_type ft,
-                           u32 *cluster /*out*/);
+struct fat_entry *
+fat_get_rootdir(struct fat_hdr *hdr,
+                enum fat_type ft,
+                u32 *cluster /*out*/);
 
 void fat_get_short_name(struct fat_entry *entry, char *destbuf);
 
@@ -149,7 +150,7 @@ fat_write_fat_entry(struct fat_hdr *h,
                     u32 value);
 
 u32 fat_get_first_data_sector(struct fat_hdr *hdr);
-
+u32 fat_get_count_of_clusters(struct fat_hdr *hdr);
 
 static inline u32 fat_get_reserved_sectors_count(struct fat_hdr *hdr)
 {
@@ -159,6 +160,11 @@ static inline u32 fat_get_reserved_sectors_count(struct fat_hdr *hdr)
 static inline u32 fat_get_sector_size(struct fat_hdr *hdr)
 {
    return hdr->BPB_BytsPerSec;
+}
+
+static inline u32 fat_get_cluster_size(struct fat_hdr *hdr)
+{
+   return hdr->BPB_BytsPerSec * hdr->BPB_SecPerClus;
 }
 
 // FATSz is the number of sectors per FAT
@@ -182,21 +188,42 @@ static inline u32 fat_get_RootDirSectors(struct fat_hdr *hdr)
    return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
 }
 
-static inline u32 fat_get_first_cluster(struct fat_entry *entry)
+static inline u32 fat_get_first_cluster(struct fat_entry *e)
 {
-   return (u32)entry->DIR_FstClusHI << 16u | entry->DIR_FstClusLO;
+   return (u32)e->DIR_FstClusHI << 16u | e->DIR_FstClusLO;
+}
+
+static inline void fat_set_first_cluster(struct fat_entry *e, u32 clu)
+{
+   e->DIR_FstClusHI = clu >> 16;
+   e->DIR_FstClusLO = clu & 0xFFFF;
 }
 
 static inline bool fat_is_end_of_clusterchain(enum fat_type ft, u32 val)
 {
    ASSERT(ft == fat16_type || ft == fat32_type);
-   return (ft == fat16_type) ? val >= 0xFFF8 : val >= 0x0FFFFFF8;
+
+   /*
+    * NOTES about the FAT32 case: despite the FAT32 File System Specification
+    * states that EOC is when val >= 0x0FFFFFF8, in practice we can found also
+    * values in the range [0x0FFFFFF0, 0x0FFFFFF6] which technically are
+    * "reserved". So, how do we treat them? Well, it seems reasonable to treat
+    * them as EOC by checking any val >= 0x0FFFFFF0 except 0x0FFFFFF7 (bad
+    * cluster case).
+    */
+
+   return ft == fat16_type
+            ? val >= 0xFFF8
+            : val >= 0x0FFFFFF0 && val != 0x0FFFFFF7;
 }
 
 static inline bool fat_is_bad_cluster(enum fat_type ft, u32 val)
 {
    ASSERT(ft == fat16_type || ft == fat32_type);
-   return (ft == fat16_type) ? (val == 0xFFF7) : (val == 0x0FFFFFF7);
+
+   return ft == fat16_type
+      ? val == 0xFFF7
+      : val == 0x0FFFFFF7;
 }
 
 static inline void *
@@ -221,8 +248,8 @@ struct fat_walk_dir_ctx {
 typedef int (*fat_dentry_cb)(struct fat_hdr *,
                              enum fat_type,
                              struct fat_entry *,
-                             const char *, /* long name */
-                             void *);      /* user data pointer */
+                             const char *,         /* long name */
+                             void *);              /* user data pointer */
 
 int
 fat_walk_directory(struct fat_walk_dir_ctx *ctx,
@@ -241,14 +268,15 @@ fat_search_entry(struct fat_hdr *hdr,
                  int *err);
 
 size_t fat_get_file_size(struct fat_entry *entry);
+u32 fat_get_first_free_cluster_off(struct fat_hdr *hdr);
+u32 fat_calculate_used_bytes(struct fat_hdr *hdr);
+void fat_compact_clusters(struct fat_hdr *hdr);
 
 void
 fat_read_whole_file(struct fat_hdr *hdr,
                     struct fat_entry *entry,
                     char *dest_buf,
                     size_t dest_buf_size);
-
-u32 fat_get_used_bytes(struct fat_hdr *hdr);
 
 // IMPLEMENTATION INTERNALS --------------------------------------------------
 

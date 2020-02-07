@@ -28,6 +28,7 @@ LoadRamdisk(EFI_HANDLE image,
    u32 sector_size;
    u32 total_fat_size;
    u32 total_used_bytes;
+   u32 ff_clu_off;
    void *fat_hdr;
 
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
@@ -85,17 +86,7 @@ LoadRamdisk(EFI_HANDLE image,
                              fat_hdr);
    HANDLE_EFI_ERROR("ReadDisk");
 
-   total_used_bytes = fat_get_used_bytes(fat_hdr);
-   Print(L"RAMDISK used bytes: %u\n", total_used_bytes);
-
-   //*ramdisk_size = fat_get_TotSec(fat_hdr) * sector_size;
-
-   /*
-    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
-    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
-    */
-   *ramdisk_size = total_used_bytes;
-
+   total_used_bytes = fat_calculate_used_bytes(fat_hdr);
 
    /*
     * Now we know everything. Free the memory used so far and allocate the
@@ -121,6 +112,36 @@ LoadRamdisk(EFI_HANDLE image,
                              total_used_bytes,
                              fat_hdr);
    HANDLE_EFI_ERROR("ReadDisk");
+
+   ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
+
+   if (ff_clu_off < total_used_bytes) {
+
+      Print(L"Compacting ramdisk... ");
+
+      fat_compact_clusters(fat_hdr);
+      ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
+      total_used_bytes = fat_calculate_used_bytes(fat_hdr);
+
+      if (total_used_bytes != ff_clu_off) {
+
+         Print(L"fat_compact_clusters failed: %u != %u\r\n",
+               total_used_bytes, ff_clu_off);
+
+         status = EFI_ABORTED;
+         goto end;
+      }
+
+      Print(L"[ OK ]\r\n");
+   }
+
+   Print(L"RAMDISK used bytes: %u\r\n", total_used_bytes);
+
+   /*
+    * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
+    * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
+    */
+   *ramdisk_size = total_used_bytes;
 
 end:
    return status;

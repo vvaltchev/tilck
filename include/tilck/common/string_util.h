@@ -38,14 +38,6 @@ static ALWAYS_INLINE int isprint(int c) {
    return IN_RANGE_INC(c, ' ', '~');
 }
 
-static ALWAYS_INLINE bool slash_or_nul(char c) {
-   return !c || c == '/';
-}
-
-static inline bool is_dot_or_dotdot(const char *n, int nl) {
-   return (n[0] == '.' && (nl == 1 || (n[1] == '.' && nl == 2)));
-}
-
 #if defined(__i386__) || defined(__x86_64__)
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 #endif
@@ -57,6 +49,14 @@ static inline bool is_dot_or_dotdot(const char *n, int nl) {
 #include <stdarg.h>
 
 #endif // #if !defined(TESTING) && !defined(USERMODE_APP)
+
+static ALWAYS_INLINE bool slash_or_nul(char c) {
+   return !c || c == '/';
+}
+
+static inline bool is_dot_or_dotdot(const char *n, int nl) {
+   return (n[0] == '.' && (nl == 1 || (n[1] == '.' && nl == 2)));
+}
 
 int stricmp(const char *s1, const char *s2);
 void str_reverse(char *str, size_t len);

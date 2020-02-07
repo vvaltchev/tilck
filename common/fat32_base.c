@@ -21,8 +21,8 @@
  */
 
 
-#define FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES ((char)0)
-#define FAT_ENTRY_DIRNAME_EMPTY_DIR ((char)0xE5)
+#define FAT_ENTRY_LAST                       ((char)0)
+#define FAT_ENTRY_AVAILABLE                  ((char)0xE5)
 
 static u8 shortname_checksum(u8 *shortname)
 {
@@ -243,9 +243,11 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
       ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
    }
 
-   bzero(ctx->lname_buf, sizeof(ctx->lname_buf));
-   ctx->lname_sz = 0;
-   ctx->lname_chksum = -1;
+   if (ctx) {
+      bzero(ctx->lname_buf, sizeof(ctx->lname_buf));
+      ctx->lname_sz = 0;
+      ctx->lname_chksum = -1;
+   }
 
    while (true) {
 
@@ -264,28 +266,24 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
 
       for (u32 i = 0; i < entries_per_cluster; i++) {
 
-         if (is_long_name_entry(&entry[i])) {
+         if (ctx && is_long_name_entry(&entry[i])) {
             fat_handle_long_dir_entry(ctx, (struct fat_long_entry*)&entry[i]);
             continue;
          }
 
-         if (entry[i].volume_id) {
+         if (entry[i].volume_id)
             continue; // the first "file" is the volume ID. Skip it.
-         }
+
+         if (entry[i].DIR_Name[0] == FAT_ENTRY_AVAILABLE)
+            continue;
 
          // that means all the rest of the entries are free.
-         if (entry[i].DIR_Name[0] == FAT_ENTRY_DIRNAME_NO_MORE_ENTRIES) {
+         if (entry[i].DIR_Name[0] == FAT_ENTRY_LAST)
             return 0;
-         }
-
-         // that means that the directory is empty
-         if (entry[i].DIR_Name[0] == FAT_ENTRY_DIRNAME_EMPTY_DIR) {
-            return 0;
-         }
 
          const char *long_name_ptr = NULL;
 
-         if (ctx->lname_sz > 0 && ctx->is_valid) {
+         if (ctx && ctx->lname_sz > 0 && ctx->is_valid) {
 
             s16 entry_checksum = shortname_checksum((u8 *)entry[i].DIR_Name);
 
@@ -298,8 +296,10 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
 
          int ret = cb(h, ft, entry + i, long_name_ptr, arg);
 
-         ctx->lname_sz = 0;
-         ctx->lname_chksum = -1;
+         if (ctx) {
+            ctx->lname_sz = 0;
+            ctx->lname_chksum = -1;
+         }
 
          if (ret) {
             /* the callback returns a value != 0 to request a walk STOP. */
@@ -308,7 +308,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
       }
 
       /*
-       * In case dump_directory() has been called on the root dir on a FAT16,
+       * In case fat_walk_directory has been called on the root dir on a FAT16,
        * cluster is 0 (invalid) and there is no next cluster in the chain. This
        * fact seriously limits the number of items in the root dir of a FAT16
        * volume.
@@ -325,7 +325,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
       if (fat_is_end_of_clusterchain(ft, val))
          break; // that's it: we hit an exactly full cluster.
 
-      // we do not expect BAD CLUSTERS
+      /* We do not handle BAD CLUSTERS */
       ASSERT(!fat_is_bad_cluster(ft, val));
 
       cluster = val;
@@ -334,14 +334,19 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
    return 0;
 }
 
+u32 fat_get_count_of_clusters(struct fat_hdr *hdr)
+{
+   const u32 FATSz = fat_get_FATSz(hdr);
+   const u32 TotSec = fat_get_TotSec(hdr);
+   const u32 RootDirSectors = fat_get_RootDirSectors(hdr);
+   const u32 FatAreaSize = hdr->BPB_NumFATs * FATSz;
+   const u32 DataSec = TotSec-(hdr->BPB_RsvdSecCnt+FatAreaSize+RootDirSectors);
+   return DataSec / hdr->BPB_SecPerClus;
+}
+
 enum fat_type fat_get_type(struct fat_hdr *hdr)
 {
-   u32 FATSz = fat_get_FATSz(hdr);
-   u32 TotSec = fat_get_TotSec(hdr);
-   u32 RootDirSectors = fat_get_RootDirSectors(hdr);
-   u32 FatAreaSize = hdr->BPB_NumFATs * FATSz;
-   u32 DataSec = TotSec - (hdr->BPB_RsvdSecCnt + FatAreaSize + RootDirSectors);
-   u32 CountofClusters = DataSec / hdr->BPB_SecPerClus;
+   const u32 CountofClusters = fat_get_count_of_clusters(hdr);
 
    if (CountofClusters < 4085) {
 
@@ -433,7 +438,8 @@ fat_write_fat_entry(struct fat_hdr *h,
    } else {
 
       ASSERT((value & 0xF0000000U) == 0); /* the top 4 bits cannot be used */
-      *(u32 *)(SecBuf + ThisFATEntOffset) = value;
+      u32 oldval = *(u32 *)(SecBuf + ThisFATEntOffset) & 0xF0000000U;
+      *(u32 *)(SecBuf + ThisFATEntOffset) = oldval | value;
    }
 }
 
@@ -728,13 +734,13 @@ fat_read_whole_file(struct fat_hdr *hdr,
 
       if (rem <= cs) {
          // read what is needed
-         memmove(dest_buf + written, data, rem);
+         memcpy(dest_buf + written, data, rem);
          /* written += rem; */ // Avoid SA warning "dead increment"
          break;
       }
 
       // read the whole cluster
-      memmove(dest_buf + written, data, cs);
+      memcpy(dest_buf + written, data, cs);
       written += cs;
 
       ASSERT((fsize - written) > 0);
@@ -755,18 +761,130 @@ fat_read_whole_file(struct fat_hdr *hdr,
    } while (written < fsize);
 }
 
-u32
-fat_get_used_bytes(struct fat_hdr *hdr)
-{
-   u32 clusterN;
-   const u32 cluster_count = fat_get_TotSec(hdr) / hdr->BPB_SecPerClus;
-   const enum fat_type ft = fat_get_type(hdr);
+struct compact_ctx {
+   u32 ffc;             /* first free cluster */
+};
 
-   for (clusterN = 0; clusterN < cluster_count; clusterN++) {
-      if (!fat_read_fat_entry(hdr, ft, 0, clusterN))
+static int
+fat_compact_walk_cb(struct fat_hdr *hdr,
+                    enum fat_type ft,
+                    struct fat_entry *e,
+                    const char *longname,
+                    void *arg)
+{
+   const u32 first_clu = fat_get_first_cluster(e);
+   const u32 clu_size = fat_get_cluster_size(hdr);
+   u32 clu = first_clu, next_clu, last_clu = 0;
+   struct compact_ctx *const ctx = arg;
+   bool is_dir;
+
+   {
+      char name[16];
+      fat_get_short_name(e, name);
+      is_dir = e->directory && !is_dot_or_dotdot(name, (int)strlen(name));
+   }
+
+   do {
+
+      next_clu = fat_read_fat_entry(hdr, ft, 0, clu);
+
+      /* Move forward `ctx->ffc`, if necessary */
+      while (fat_read_fat_entry(hdr, ft, 0, ctx->ffc)) {
+         ctx->ffc++;
+      }
+
+      if (clu > ctx->ffc) {
+
+         void *src = fat_get_pointer_to_cluster_data(hdr, clu);
+         void *dest = fat_get_pointer_to_cluster_data(hdr, ctx->ffc);
+         memcpy(dest, src, clu_size);
+
+         if (clu == first_clu)
+            fat_set_first_cluster(e, ctx->ffc);
+         else
+            fat_write_fat_entry(hdr, ft, 0, last_clu, ctx->ffc);
+
+         fat_write_fat_entry(hdr, ft, 0, ctx->ffc, next_clu);
+         fat_write_fat_entry(hdr, ft, 0, clu, 0);
+         clu = ctx->ffc++;
+      }
+
+      last_clu = clu;
+      clu = next_clu;
+
+   } while (!fat_is_end_of_clusterchain(ft, clu));
+
+   if (is_dir) {
+      fat_walk_directory(NULL,
+                         hdr,
+                         ft,
+                         NULL,
+                         fat_get_first_cluster(e),
+                         fat_compact_walk_cb,
+                         arg);
+   }
+
+   return 0;
+}
+
+void fat_compact_clusters(struct fat_hdr *hdr)
+{
+   const u32 count = fat_get_count_of_clusters(hdr);
+   const enum fat_type ft = fat_get_type(hdr);
+   struct compact_ctx cctx;
+   u32 root_cluster = 0;
+   struct fat_entry *root;
+
+   for (cctx.ffc = 0; cctx.ffc < count; cctx.ffc++) {
+      if (!fat_read_fat_entry(hdr, ft, 0, cctx.ffc))
          break;
    }
 
-   u32 first_free_sector = fat_get_sector_for_cluster(hdr, clusterN);
-   return first_free_sector * hdr->BPB_BytsPerSec;
+   root = fat_get_rootdir(hdr, ft, &root_cluster);
+
+   fat_walk_directory(NULL,
+                      hdr,
+                      ft,
+                      root,
+                      root_cluster,
+                      fat_compact_walk_cb,
+                      &cctx);
+}
+
+u32
+fat_get_first_free_cluster_off(struct fat_hdr *hdr)
+{
+   u32 clu, ff_sector;
+   const u32 cluster_count = fat_get_count_of_clusters(hdr);
+   const enum fat_type ft = fat_get_type(hdr);
+
+   for (clu = 0; clu < cluster_count; clu++) {
+      if (!fat_read_fat_entry(hdr, ft, 0, clu))
+         break;
+   }
+
+   ff_sector = fat_get_sector_for_cluster(hdr, clu);
+   return (ff_sector + 1) * hdr->BPB_BytsPerSec;
+}
+
+u32
+fat_calculate_used_bytes(struct fat_hdr *hdr)
+{
+   const u32 cluster_count = fat_get_count_of_clusters(hdr);
+   const enum fat_type ft = fat_get_type(hdr);
+   u32 val, clu, ff_sector;
+
+   for (clu = cluster_count; clu > 0; clu--) {
+
+      val = fat_read_fat_entry(hdr, ft, 0, clu-1);
+
+      if (val && !fat_is_bad_cluster(ft, val))
+         break;
+   }
+
+   if (!clu)
+      return 0; /* fat partition completely corrupt */
+
+   ff_sector = fat_get_sector_for_cluster(hdr, clu);
+   return (ff_sector + 1) * hdr->BPB_BytsPerSec;
 }

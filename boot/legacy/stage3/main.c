@@ -179,6 +179,7 @@ void bootloader_main(void)
    multiboot_info_t *mbi;
    u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
    u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
+   u32 ff_clu_off;         /* offset of ramdisk's first free cluster */
    ulong rd_paddr;         /* ramdisk physical address */
    ulong free_mem;
    void *entry;
@@ -234,7 +235,7 @@ void bootloader_main(void)
    read_sectors(free_mem, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
 
    // Finally we're able to determine how big is the fatpart (pure data)
-   rd_size = fat_get_used_bytes((void *)free_mem);
+   rd_size = fat_calculate_used_bytes((void *)free_mem);
    rd_sectors = (rd_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
    free_mem =
@@ -249,12 +250,28 @@ void bootloader_main(void)
 
    rd_paddr = free_mem;
    read_sectors(rd_paddr, RAMDISK_SECTOR, rd_sectors);
-
    printk("[ OK ]\n");
+
+   ff_clu_off = fat_get_first_free_cluster_off((void *)free_mem);
+
+   if (ff_clu_off < rd_size) {
+
+      printk("Compacting ramdisk... ");
+
+      fat_compact_clusters((void *)free_mem);
+      ff_clu_off = fat_get_first_free_cluster_off((void *)free_mem);
+      rd_size = fat_calculate_used_bytes((void *)free_mem);
+
+      if (rd_size != ff_clu_off) {
+         printk("\n");
+         panic("fat_compact_clusters() failed: %u != %u", rd_size, ff_clu_off);
+      }
+
+      printk("[ OK ]\n");
+   }
+
    printk("Loading the ELF kernel... ");
-
    load_elf_kernel(&mi, rd_paddr, rd_size, KERNEL_FILE_PATH, &entry);
-
    printk("[ OK ]\n\n");
 
    ask_user_video_mode(&mi);

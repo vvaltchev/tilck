@@ -29,6 +29,7 @@ mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
+mdel=$mtoolsdir/mdel
 
 function strip_binary {
    $strip -s "$1"
@@ -249,6 +250,17 @@ function make_fatpart {
       $mmd -i $dest $f
    done
 
+   # [debug] Create a hole (file that will be deleted later) in the fatpart.
+   # [debug] This forces the bootloaders to run fat_compact_clusters() and do
+   # [debug] some real work. Otherwise, fat_calculate_used_bytes() will return
+   # [debug] the same as fat_get_first_free_cluster_off() and we won't test
+   # [debug] that fat_compact_clusters() really works.
+   if ! [ -f hole ]; then
+      dd status=none if=/dev/zero of=hole bs=1K count=16
+   fi
+   $mcopy -i $dest hole ::/hole
+   # [end debug]
+
    # then, copy all the files in sysroot
    for f in $(find * -type f); do
 
@@ -256,8 +268,17 @@ function make_fatpart {
          continue;
       fi
 
+      # [debug] Skip our hole file
+      if [[ "$(basename -- $f)" == "hole" ]]; then
+         continue;
+      fi
+      # [end debug]
+
       $mcopy -i $dest $f ::/$f
    done
+
+   # [debug] Delete our hole file
+   $mdel -i $dest ::/hole
 }
 
 # -----------------------------------------------------------------------------
