@@ -13,8 +13,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define MMAP_SIZE (40*1024*1024)
-
 void show_help_and_exit(int argc, char **argv)
 {
    printf("Syntax:\n");
@@ -30,6 +28,7 @@ int main(int argc, char **argv)
    const char *file;
    bool trunc = false;
    u32 used_bytes, ff_clu_off;
+   struct stat statbuf;
    int failed = 0;
 
    if (argc < 2) {
@@ -49,6 +48,16 @@ int main(int argc, char **argv)
       file = argv[1];
    }
 
+   if (stat(file, &statbuf) < 0) {
+      perror("stat() failed");
+      return 1;
+   }
+
+   if (!S_ISREG(statbuf.st_mode) && !S_ISBLK(statbuf.st_mode)) {
+      fprintf(stderr, "Invalid file type\n");
+      return 1;
+   }
+
    fd = open(file, O_RDWR);
 
    if (fd < 0) {
@@ -57,7 +66,7 @@ int main(int argc, char **argv)
    }
 
    vaddr = mmap(NULL,                   /* addr */
-                MMAP_SIZE,              /* length */
+                statbuf.st_size,        /* length */
                 PROT_READ|PROT_WRITE,   /* prot */
                 MAP_SHARED,             /* flags */
                 fd,                     /* fd */
@@ -90,7 +99,7 @@ int main(int argc, char **argv)
    if (!trunc)
       printf("%u\n", used_bytes);
 
-   if (munmap(vaddr, MMAP_SIZE) < 0) {
+   if (munmap(vaddr, statbuf.st_size) < 0) {
       perror("munmap() failed");
    }
 
