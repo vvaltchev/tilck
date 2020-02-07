@@ -391,12 +391,7 @@ u32
 fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 fatN, u32 clusterN)
 {
    void *ptr;
-
-   if (ft == fat_unknown)
-      ft = fat_get_type(h);
-
-   if (ft == fat12_type)
-      NOT_REACHED(); // FAT12 is NOT supported.
+   ASSERT(ft == fat16_type || ft == fat32_type);
 
    ptr = fat_get_entry_ptr(h, ft, fatN, clusterN);
    return ft == fat16_type ? *(u16 *)ptr : (*(u32 *)ptr) & 0x0FFFFFFF;
@@ -410,12 +405,7 @@ fat_write_fat_entry(struct fat_hdr *h,
                     u32 value)
 {
    void *ptr;
-
-   if (ft == fat_unknown)
-      ft = fat_get_type(h);
-
-   if (ft == fat12_type)
-      NOT_REACHED(); // FAT12 is NOT supported.
+   ASSERT(ft == fat16_type || ft == fat32_type);
 
    ptr = fat_get_entry_ptr(h, ft, fatN, clusterN);
 
@@ -704,16 +694,12 @@ fat_read_whole_file(struct fat_hdr *hdr,
 {
    ASSERT(entry->DIR_FileSize <= dest_buf_size);
 
-   // cluster size in bytes
-   const u32 cs = (u32)hdr->BPB_SecPerClus * (u32)hdr->BPB_BytsPerSec;
+   const enum fat_type ft = fat_get_type(hdr);
+   const u32 cs = fat_get_cluster_size(hdr);
 
-   u32 cluster;
    size_t written = 0;
    size_t fsize = entry->DIR_FileSize;
-
-   enum fat_type ft = fat_get_type(hdr);
-
-   cluster = fat_get_first_cluster(entry);
+   u32 cluster = fat_get_first_cluster(entry);
 
    do {
 
