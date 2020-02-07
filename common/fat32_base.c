@@ -334,7 +334,7 @@ int fat_walk_directory(struct fat_walk_dir_ctx *ctx,
    return 0;
 }
 
-u32 fat_get_count_of_clusters(struct fat_hdr *hdr)
+u32 fat_get_cluster_count(struct fat_hdr *hdr)
 {
    const u32 FATSz = fat_get_FATSz(hdr);
    const u32 TotSec = fat_get_TotSec(hdr);
@@ -346,7 +346,7 @@ u32 fat_get_count_of_clusters(struct fat_hdr *hdr)
 
 enum fat_type fat_get_type(struct fat_hdr *hdr)
 {
-   const u32 CountofClusters = fat_get_count_of_clusters(hdr);
+   const u32 CountofClusters = fat_get_cluster_count(hdr);
 
    if (CountofClusters < 4085) {
 
@@ -805,7 +805,7 @@ fat_compact_walk_cb(struct fat_hdr *hdr,
 
 void fat_compact_clusters(struct fat_hdr *hdr)
 {
-   const u32 count = fat_get_count_of_clusters(hdr);
+   const u32 count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
    struct compact_ctx cctx;
    u32 root_cluster = 0;
@@ -831,7 +831,7 @@ u32
 fat_get_first_free_cluster_off(struct fat_hdr *hdr)
 {
    u32 clu, ff_sector;
-   const u32 cluster_count = fat_get_count_of_clusters(hdr);
+   const u32 cluster_count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
 
    for (clu = 0; clu < cluster_count; clu++) {
@@ -846,7 +846,7 @@ fat_get_first_free_cluster_off(struct fat_hdr *hdr)
 u32
 fat_calculate_used_bytes(struct fat_hdr *hdr)
 {
-   const u32 cluster_count = fat_get_count_of_clusters(hdr);
+   const u32 cluster_count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
    u32 val, clu, ff_sector;
 

@@ -100,8 +100,6 @@ struct fat_entry {
 
 } PACKED;
 
-#define LAST_LONG_ENTRY_MASK (0x40)
-
 struct fat_long_entry {
 
    u8 LDIR_Ord;
@@ -150,7 +148,7 @@ fat_write_fat_entry(struct fat_hdr *h,
                     u32 value);
 
 u32 fat_get_first_data_sector(struct fat_hdr *hdr);
-u32 fat_get_count_of_clusters(struct fat_hdr *hdr);
+u32 fat_get_cluster_count(struct fat_hdr *hdr);
 
 static inline u32 fat_get_reserved_sectors_count(struct fat_hdr *hdr)
 {
