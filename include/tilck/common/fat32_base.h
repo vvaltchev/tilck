@@ -264,11 +264,11 @@ struct fat_walk_static_params {
    void *arg;
 };
 
-
-int
-fat_walk_directory(struct fat_walk_static_params *p,
-                   struct fat_entry *entry,
-                   u32 cluster);
+/*
+ * Walk the FAT directory having dir entries in the specified cluster.
+ * For the root directory, just set cluster = 0.
+ */
+int fat_walk(struct fat_walk_static_params *p, u32 cluster);
 
 struct fat_entry *
 fat_search_entry(struct fat_hdr *hdr,

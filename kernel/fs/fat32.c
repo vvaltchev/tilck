@@ -13,15 +13,19 @@
 #include <dirent.h> // system header
 
 /*
- * Generic version of fat_get_first_cluster() that works also when `e` is the
- * root entry. NOTE: this function still will return 0 in case of FAT16 and
- * and e == root, simply because of FAT16 the root dir is NOT a cluster chain.
+ * Special fat_walk() wrapper handling the special case where `e` is NOT a dir
+ * entry but a pointer to the entries in the root directory.
  */
 
-static inline u32
-fat_get_first_cluster_generic(struct fat_fs_device_data *d, struct fat_entry *e)
+static inline int
+fat_fs_walk_generic(struct fat_fs_device_data *d,
+                    struct fat_walk_static_params *static_walk_params,
+                    struct fat_entry *e)
 {
-   return e == d->root_entry ? d->root_cluster : fat_get_first_cluster(e);
+   return fat_walk(static_walk_params,
+                   e == d->root_dir_entries
+                     ? d->root_cluster
+                     : fat_get_first_cluster(e));
 }
 
 STATIC void
@@ -187,12 +191,7 @@ STATIC offt fat_count_dirents(struct fat_fs_device_data *d, struct fat_entry *e)
    };
 
    ASSERT(e->directory);
-   u32 dir_cluster = fat_get_first_cluster_generic(d, e);
-
-   rc = fat_walk_directory(&walk_params,
-                           !dir_cluster ? e : NULL,
-                           dir_cluster);
-
+   rc = fat_fs_walk_generic(d, &walk_params, e);
    return rc ? rc : ctx.count;
 }
 
@@ -393,12 +392,7 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
       .arg = &ctx,
    };
 
-   u32 dir_cluster = fat_get_first_cluster_generic(d, fh->e);
-
-   rc = fat_walk_directory(&walk_params,
-                           !dir_cluster ? fh->e : NULL,
-                           dir_cluster);;
-
+   rc = fat_fs_walk_generic(d, &walk_params, fh->e);
    return rc ? rc : ctx.rc;
 }
 
@@ -509,8 +503,8 @@ static inline void
 fat_get_root_entry(struct fat_fs_device_data *d, struct fat_fs_path *fp)
 {
    *fp = (struct fat_fs_path) {
-      .entry            = d->root_entry,
-      .parent_entry     = d->root_entry,
+      .entry            = d->root_dir_entries,
+      .parent_entry     = d->root_dir_entries,
       .unused           = NULL,
       .type             = VFS_DIR,
    };
@@ -528,15 +522,13 @@ fat_get_entry(struct fs *fs,
    struct fat_walk_static_params walk_params;
    struct fat_entry *dir_entry;
    struct fat_search_ctx ctx;
-   u32 dir_cluster;
 
    if (!dir_inode && !name)              // both dir_inode and name are NULL:
       return fat_get_root_entry(d, fp);  // getting a path to the root dir
 
-   dir_entry = dir_inode ? dir_inode : d->root_entry;
-   dir_cluster = fat_get_first_cluster_generic(d, dir_entry);
+   dir_entry = dir_inode ? dir_inode : d->root_dir_entries;
 
-   if (UNLIKELY(dir_entry == d->root_entry))
+   if (UNLIKELY(dir_entry == d->root_dir_entries))
       if (is_dot_or_dotdot(name, (int)name_len))
          return fat_get_root_entry(d, fp);
 
@@ -549,9 +541,7 @@ fat_get_entry(struct fs *fs,
    };
 
    fat_init_search_ctx(&ctx, name, true);
-   fat_walk_directory(&walk_params,
-                      !dir_cluster ? dir_entry : NULL,
-                      dir_cluster);
+   fat_fs_walk_generic(d, &walk_params, dir_entry);
 
    struct fat_entry *res = !ctx.not_dir ? ctx.result : NULL;
    enum vfs_entry_type type = VFS_NONE;
@@ -562,7 +552,7 @@ fat_get_entry(struct fs *fs,
       type = res->directory ? VFS_DIR : VFS_FILE;
 
       if (type == VFS_DIR && (clu == 0 || clu == d->root_cluster)) {
-         res = d->root_entry;
+         res = d->root_dir_entries;
          type = VFS_DIR;
       }
    }
@@ -634,7 +624,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
    d->hdr = (struct fat_hdr *) vaddr;
    d->type = fat_get_type(d->hdr);
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
-   d->root_entry = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
+   d->root_dir_entries = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
    struct fs *fs = kzmalloc(sizeof(struct fs));
 

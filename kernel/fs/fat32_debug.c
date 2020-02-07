@@ -117,11 +117,7 @@ static int dump_dir_entry(struct fat_hdr *hdr,
       if (strcmp(shortname, ".") && strcmp(shortname, "..")) {
 
          ctx->level++;
-
-         fat_walk_directory(&ctx->walk_params,
-                            NULL,
-                            fat_get_first_cluster(entry));
-
+         fat_walk(&ctx->walk_params, fat_get_first_cluster(entry));
          ctx->level--;
       }
    }
@@ -146,9 +142,6 @@ void fat_dump_info(void *fatpart_begin)
    }
    printk("\n");
 
-   u32 root_dir_cluster;
-   struct fat_entry *root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
-
    struct debug_fat_walk_ctx ctx = {
 
       .walk_params = {
@@ -161,5 +154,5 @@ void fat_dump_info(void *fatpart_begin)
       .level = 0,
    };
 
-   fat_walk_directory(&ctx.walk_params, root, root_dir_cluster);
+   fat_walk(&ctx.walk_params, 0);
 }

@@ -15,9 +15,8 @@ struct fat_fs_device_data {
    enum fat_type type;
    size_t cluster_size;
 
-   struct fat_entry *root_entry;
+   struct fat_entry *root_dir_entries;
    u32 root_cluster;
-
 };
 
 struct fatfs_handle {

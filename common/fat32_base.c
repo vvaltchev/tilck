@@ -226,18 +226,16 @@ static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
 }
 
 int
-fat_walk_directory(struct fat_walk_static_params *p,
-                   struct fat_entry *entry,
-                   u32 cluster)
+fat_walk(struct fat_walk_static_params *p, u32 cluster)
 {
    struct fat_walk_long_name_ctx *const ctx = p->ctx;
    const u32 entries_per_cluster = fat_get_dir_entries_per_cluster(p->h);
+   struct fat_entry *dentries = NULL;
+
    ASSERT(p->ft == fat16_type || p->ft == fat32_type);
 
-   if (p->ft == fat16_type) {
-      ASSERT(cluster == 0 || entry == NULL); // cluster != 0 => entry == NULL
-      ASSERT(entry == NULL || cluster == 0); // entry != NULL => cluster == 0
-   }
+   if (cluster == 0)
+      dentries = fat_get_rootdir(p->h, p->ft, &cluster);
 
    if (ctx) {
       bzero(ctx->lname_buf, sizeof(ctx->lname_buf));
@@ -256,42 +254,42 @@ fat_walk_directory(struct fat_walk_static_params *p,
           * In that case, fat_get_rootdir() returns 0 as cluster. In all the
           * other cases, we need only the cluster.
           */
-         entry = fat_get_pointer_to_cluster_data(p->h, cluster);
+         dentries = fat_get_pointer_to_cluster_data(p->h, cluster);
       }
 
-      ASSERT(entry != NULL);
+      ASSERT(dentries != NULL);
 
       for (u32 i = 0; i < entries_per_cluster; i++) {
 
-         if (ctx && is_long_name_entry(&entry[i])) {
-            fat_handle_long_dir_entry(ctx, (struct fat_long_entry*)&entry[i]);
+         if (ctx && is_long_name_entry(&dentries[i])) {
+            fat_handle_long_dir_entry(ctx, (void *)&dentries[i]);
             continue;
          }
 
-         if (entry[i].volume_id)
+         if (dentries[i].volume_id)
             continue; // the first "file" is the volume ID. Skip it.
 
-         if (entry[i].DIR_Name[0] == FAT_ENTRY_AVAILABLE)
+         if (dentries[i].DIR_Name[0] == FAT_ENTRY_AVAILABLE)
             continue;
 
          // that means all the rest of the entries are free.
-         if (entry[i].DIR_Name[0] == FAT_ENTRY_LAST)
+         if (dentries[i].DIR_Name[0] == FAT_ENTRY_LAST)
             return 0;
 
          const char *long_name_ptr = NULL;
 
          if (ctx && ctx->lname_sz > 0 && ctx->is_valid) {
 
-            s16 entry_checksum = shortname_checksum((u8 *)entry[i].DIR_Name);
+            s16 e_checksum = shortname_checksum((u8 *)dentries[i].DIR_Name);
 
-            if (ctx->lname_chksum == entry_checksum) {
+            if (ctx->lname_chksum == e_checksum) {
                ctx->lname_buf[ctx->lname_sz] = 0;
                str_reverse((char *)ctx->lname_buf, (size_t)ctx->lname_sz);
                long_name_ptr = (const char *) ctx->lname_buf;
             }
          }
 
-         int ret = p->cb(p->h, p->ft, entry + i, long_name_ptr, p->arg);
+         int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
 
          if (ctx) {
             ctx->lname_sz = 0;
@@ -305,7 +303,7 @@ fat_walk_directory(struct fat_walk_static_params *p,
       }
 
       /*
-       * In case fat_walk_directory has been called on the root dir on a FAT16,
+       * In case fat_walk has been called on the root dir on a FAT16,
        * cluster is 0 (invalid) and there is no next cluster in the chain. This
        * fact seriously limits the number of items in the root dir of a FAT16
        * volume.
@@ -640,8 +638,6 @@ fat_search_entry(struct fat_hdr *hdr,
 {
    struct fat_walk_static_params walk_params;
    struct fat_search_ctx ctx;
-   struct fat_entry *root;
-   u32 root_dir_cluster;
 
    if (ft == fat_unknown)
        ft = fat_get_type(hdr);
@@ -649,11 +645,10 @@ fat_search_entry(struct fat_hdr *hdr,
    ASSERT(*abspath == '/');
    abspath++;
 
-   root = fat_get_rootdir(hdr, ft, &root_dir_cluster);
-
    if (!*abspath) {
       /* the whole abspath was just '/' */
-      return root;
+      u32 unused;
+      return fat_get_rootdir(hdr, ft, &unused);
    }
 
    walk_params = (struct fat_walk_static_params) {
@@ -665,13 +660,13 @@ fat_search_entry(struct fat_hdr *hdr,
    };
 
    fat_init_search_ctx(&ctx, abspath, false);
-   fat_walk_directory(&walk_params, root, root_dir_cluster);
+   fat_walk(&walk_params, 0);
 
    while (ctx.subdir_cluster) {
 
       const u32 cluster = ctx.subdir_cluster;
       ctx.subdir_cluster = 0;
-      fat_walk_directory(&walk_params, NULL, cluster);
+      fat_walk(&walk_params, cluster);
    }
 
    if (err) {
@@ -794,11 +789,9 @@ fat_compact_walk_cb(struct fat_hdr *hdr,
 
    } while (!fat_is_end_of_clusterchain(ft, clu));
 
-   if (is_dir) {
-      fat_walk_directory(&ctx->walk_params,
-                         NULL,
-                         fat_get_first_cluster(e));
 
+   if (is_dir) {
+      fat_walk(&ctx->walk_params, fat_get_first_cluster(e));
    }
 
    return 0;
@@ -809,8 +802,6 @@ void fat_compact_clusters(struct fat_hdr *hdr)
    const u32 count = fat_get_cluster_count(hdr);
    const enum fat_type ft = fat_get_type(hdr);
    struct compact_ctx cctx;
-   u32 root_cluster = 0;
-   struct fat_entry *root;
 
    for (cctx.ffc = 0; cctx.ffc < count; cctx.ffc++) {
       if (!fat_read_fat_entry(hdr, ft, 0, cctx.ffc))
@@ -825,8 +816,7 @@ void fat_compact_clusters(struct fat_hdr *hdr)
       .arg = &cctx,
    };
 
-   root = fat_get_rootdir(hdr, ft, &root_cluster);
-   fat_walk_directory(&cctx.walk_params, root, root_cluster);
+   fat_walk(&cctx.walk_params, 0);
 }
 
 u32
