@@ -360,19 +360,22 @@ enum fat_type fat_get_type(struct fat_hdr *hdr)
 
    } else {
 
-      return fat32_type;
       /* Volume is FAT32 */
+      return fat32_type;
    }
 }
 
 static void *
 fat_get_entry_ptr(struct fat_hdr *h, enum fat_type ft, u32 fatN, u32 clu)
 {
-   ASSERT(ft != fat_unknown);
+   STATIC_ASSERT(fat16_type == 2);
+   STATIC_ASSERT(fat32_type == 4);
+
+   ASSERT(ft == fat16_type || ft == fat32_type);
    ASSERT(fatN < h->BPB_NumFATs);
 
    const u32 FATSz = fat_get_FATSz(h);
-   const u32 FATOffset = clu * (ft == fat16_type ? 2 : 4);
+   const u32 FATOffset = clu * ft;
 
    const u32 ThisFATSecNum =
       fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
@@ -451,9 +454,7 @@ u32 fat_get_sector_for_cluster(struct fat_hdr *hdr, u32 N)
 struct fat_entry *
 fat_get_rootdir(struct fat_hdr *hdr, enum fat_type ft, u32 *cluster /* out */)
 {
-   ASSERT(ft != fat12_type);
-   ASSERT(ft != fat_unknown);
-
+   ASSERT(ft == fat16_type || ft == fat32_type);
    u32 sector;
 
    if (ft == fat16_type) {

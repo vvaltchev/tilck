@@ -9,7 +9,7 @@ enum fat_type {
    fat_unknown = 0, // unknown FAT type
    fat12_type  = 1,
    fat16_type  = 2,
-   fat32_type  = 3
+   fat32_type  = 4,
 };
 
 struct fat_hdr {
