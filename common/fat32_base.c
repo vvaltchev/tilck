@@ -365,6 +365,24 @@ enum fat_type fat_get_type(struct fat_hdr *hdr)
    }
 }
 
+static void *
+fat_get_entry_ptr(struct fat_hdr *h, enum fat_type ft, u32 fatN, u32 clu)
+{
+   ASSERT(ft != fat_unknown);
+   ASSERT(fatN < h->BPB_NumFATs);
+
+   const u32 FATSz = fat_get_FATSz(h);
+   const u32 FATOffset = clu * (ft == fat16_type ? 2 : 4);
+
+   const u32 ThisFATSecNum =
+      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
+
+   const u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
+   u8 *const SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
+
+   return SecBuf + ThisFATEntOffset;
+}
+
 /*
  * Reads the entry in the FAT 'fatN' for cluster 'clusterN'.
  * The entry may be 16 or 32 bit. It returns 32-bit integer for convenience.
@@ -372,34 +390,16 @@ enum fat_type fat_get_type(struct fat_hdr *hdr)
 u32
 fat_read_fat_entry(struct fat_hdr *h, enum fat_type ft, u32 fatN, u32 clusterN)
 {
-   if (ft == fat_unknown) {
+   void *ptr;
+
+   if (ft == fat_unknown)
       ft = fat_get_type(h);
-   }
 
-   if (ft == fat12_type) {
-      // FAT12 is NOT supported.
-      NOT_REACHED();
-   }
+   if (ft == fat12_type)
+      NOT_REACHED(); // FAT12 is NOT supported.
 
-   ASSERT(fatN < h->BPB_NumFATs);
-
-   u32 FATSz = fat_get_FATSz(h);
-   u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
-
-   u32 ThisFATSecNum =
-      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
-
-   u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
-
-   u8 *SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
-
-   if (ft == fat16_type) {
-      return *(u16 *)(SecBuf + ThisFATEntOffset);
-   }
-
-   // FAT32
-   // Note: FAT32 "FAT" entries are 28-bit. The 4 higher bits are reserved.
-   return (*(u32 *)(SecBuf + ThisFATEntOffset)) & 0x0FFFFFFF;
+   ptr = fat_get_entry_ptr(h, ft, fatN, clusterN);
+   return ft == fat16_type ? *(u16 *)ptr : (*(u32 *)ptr) & 0x0FFFFFFF;
 }
 
 void
@@ -409,37 +409,26 @@ fat_write_fat_entry(struct fat_hdr *h,
                     u32 clusterN,
                     u32 value)
 {
-   if (ft == fat_unknown) {
+   void *ptr;
+
+   if (ft == fat_unknown)
       ft = fat_get_type(h);
-   }
 
-   if (ft == fat12_type) {
-      // FAT12 is NOT supported.
-      NOT_REACHED();
-   }
+   if (ft == fat12_type)
+      NOT_REACHED(); // FAT12 is NOT supported.
 
-   ASSERT(fatN < h->BPB_NumFATs);
-
-   u32 FATSz = fat_get_FATSz(h);
-   u32 FATOffset = (ft == fat16_type) ? clusterN * 2 : clusterN * 4;
-
-   u32 ThisFATSecNum =
-      fatN * FATSz + h->BPB_RsvdSecCnt + (FATOffset / h->BPB_BytsPerSec);
-
-   u32 ThisFATEntOffset = FATOffset % h->BPB_BytsPerSec;
-
-   u8 *SecBuf = (u8*)h + ThisFATSecNum * h->BPB_BytsPerSec;
+   ptr = fat_get_entry_ptr(h, ft, fatN, clusterN);
 
    if (ft == fat16_type) {
 
       ASSERT((value & 0xFFFF0000U) == 0); /* the top 16 bits cannot be used */
-      *(u16 *)(SecBuf + ThisFATEntOffset) = (u16)value;
+      *(u16 *)ptr = (u16)value;
 
    } else {
 
       ASSERT((value & 0xF0000000U) == 0); /* the top 4 bits cannot be used */
-      u32 oldval = *(u32 *)(SecBuf + ThisFATEntOffset) & 0xF0000000U;
-      *(u32 *)(SecBuf + ThisFATEntOffset) = oldval | value;
+      u32 oldval = *(u32 *)ptr & 0xF0000000U;
+      *(u32 *)ptr = oldval | value;
    }
 }
 
