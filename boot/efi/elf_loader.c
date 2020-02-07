@@ -68,8 +68,6 @@ ElfChecks(EFI_PHYSICAL_ADDRESS filePaddr)
 
    Elf32_Phdr *phdr = (Elf32_Phdr *)(header + 1);
 
-   Print(L"Num of program headers: %d\n", header->e_phnum);
-
    for (int i = 0; i < header->e_phnum; i++, phdr++) {
 
       // Ignore non-load segments.
@@ -100,7 +98,7 @@ LoadKernelFile(EFI_BOOT_SERVICES *BS,
                              KERNEL_FILE);
 
    HANDLE_EFI_ERROR("LoadFileFromDisk");
-   Print(L"Kernel file loaded at temporary paddr: 0x%08x\n", *filePaddr);
+   // Print(L"Kernel file loaded at temporary paddr: 0x%08x\n", *filePaddr);
    status = ElfChecks(*filePaddr);
 
 end:

@@ -56,7 +56,6 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
    EFI_STATUS status = EFI_SUCCESS;
    EFI_FILE_PROTOCOL *fileHandle;
    UINTN bufSize = pagesCount * PAGE_SIZE;
-   UINT32 crc32 = 0;
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -64,19 +63,17 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
                               paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   Print(L"File Open('%s')...\r\n", filePath);
    status =
       fileProt->Open(fileProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
    HANDLE_EFI_ERROR("fileProt->Open");
 
-   Print(L"File Read()...\r\n");
    status = fileProt->Read(fileHandle, &bufSize, TO_PTR(*paddr));
    HANDLE_EFI_ERROR("fileProt->Read");
 
-   Print(L"Size read: %d\r\n", bufSize);
-
-   BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
-   Print(L"Crc32: 0x%x\r\n", crc32);
+   // UINT32 crc32 = 0;
+   // Print(L"Size read: %d\r\n", bufSize);
+   // BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
+   // Print(L"Crc32: 0x%x\r\n", crc32);
 
    status = fileHandle->Close(fileHandle);
    HANDLE_EFI_ERROR("fileHandle->Close");

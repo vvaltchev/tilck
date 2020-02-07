@@ -26,11 +26,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    InitializeLib(image, ST);
 
+   ST->ConOut->ClearScreen(ST->ConOut);
    Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");
-
-   status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
-
-   HANDLE_EFI_ERROR("SetupGraphicMode() failed");
 
    status = BS->OpenProtocol(image,
                              &LoadedImageProtocol,
@@ -43,7 +40,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    // ------------------------------------------------------------------ //
 
-   Print(L"OpenProtocol (EFI_SIMPLE_FILE_SYSTEM_PROTOCOL)...\r\n");
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &FileSystemProtocol,
                              (void **)&fileFsProt,
@@ -52,7 +48,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
 
-   Print(L"OpenVolume()...\r\n");
    status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
@@ -69,6 +64,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
    HANDLE_EFI_ERROR("LoadRamdisk failed");
+
+   Print(L"\r\n");
+   status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
+   HANDLE_EFI_ERROR("SetupGraphicMode() failed");
 
    status = AllocateMbi();
    HANDLE_EFI_ERROR("AllocateMbi");

@@ -47,7 +47,7 @@ LoadRamdisk(EFI_HANDLE image,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
 
-   Print(L"Loading ramdisk...\r\n");
+   Print(L"Loading ramdisk... ");
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -113,6 +113,7 @@ LoadRamdisk(EFI_HANDLE image,
                              fat_hdr);
    HANDLE_EFI_ERROR("ReadDisk");
 
+   Print(L"[ OK ]\r\n");
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 
    if (ff_clu_off < total_used_bytes) {
@@ -135,7 +136,7 @@ LoadRamdisk(EFI_HANDLE image,
       Print(L"[ OK ]\r\n");
    }
 
-   Print(L"RAMDISK used bytes: %u\r\n", total_used_bytes);
+   // Print(L"RAMDISK used bytes: %u\r\n", total_used_bytes);
 
    /*
     * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
