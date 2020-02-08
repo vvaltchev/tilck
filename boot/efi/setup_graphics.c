@@ -153,6 +153,7 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
 
       if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
           wanted_mode = default_mode;
+          Print(L"<default>\r\n\r\n");
           break;
       }
 
@@ -167,13 +168,10 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
       break;
    }
 
-   //Print(L"About to switch the video mode. Press any key to continue.\n");
-   //WaitForKeyPress(ST);
-
-   status = ST->ConOut->ClearScreen(ST->ConOut);
-   HANDLE_EFI_ERROR("ClearScreen() failed");
-
    if (wanted_mode != orig_mode) {
+
+      status = ST->ConOut->ClearScreen(ST->ConOut);
+      HANDLE_EFI_ERROR("ClearScreen() failed");
 
       status = gProt->SetMode(gProt, wanted_mode);
 

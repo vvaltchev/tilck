@@ -78,8 +78,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = MbiSetRamdisk(ramdisk_paddr, ramdisk_size);
    HANDLE_EFI_ERROR("MbiSetRamdisk");
 
+   //
+   // For debugging with GDB (see docs/efi_debug.md)
+   //
+   // Print(L"Pointer size: %d\r\n", sizeof(void *));
+   // Print(L"JumpToKernel: 0x%x\r\n", (void *)JumpToKernel);
+   // Print(L"BaseAddr: 0x%x\r\n", loaded_image->ImageBase + 0x1000);
    // Print(L"Press ANY key to boot the kernel...\r\n");
    // WaitForKeyPress(ST);
+   //
 
    status = MultibootSaveMemoryMap(&mapkey);
    HANDLE_EFI_ERROR("MultibootSaveMemoryMap");
