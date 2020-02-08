@@ -225,6 +225,21 @@ static void fat_handle_long_dir_entry(struct fat_walk_long_name_ctx *ctx,
    }
 }
 
+static const char *
+finalize_long_name(struct fat_walk_long_name_ctx *ctx,
+                   struct fat_entry *e)
+{
+   const s16 e_checksum = shortname_checksum((u8 *)e->DIR_Name);
+
+   if (ctx->lname_chksum == e_checksum) {
+      ctx->lname_buf[ctx->lname_sz] = 0;
+      str_reverse((char *)ctx->lname_buf, (size_t)ctx->lname_sz);
+      return (const char *) ctx->lname_buf;
+   }
+
+   return NULL;
+}
+
 int
 fat_walk(struct fat_walk_static_params *p, u32 cluster)
 {
@@ -266,9 +281,11 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
             continue;
          }
 
+         // the first "file" is the volume ID. Skip it.
          if (dentries[i].volume_id)
-            continue; // the first "file" is the volume ID. Skip it.
+            continue;
 
+         // the entry was used, but now is free
          if (dentries[i].DIR_Name[0] == FAT_ENTRY_AVAILABLE)
             continue;
 
@@ -278,16 +295,8 @@ fat_walk(struct fat_walk_static_params *p, u32 cluster)
 
          const char *long_name_ptr = NULL;
 
-         if (ctx && ctx->lname_sz > 0 && ctx->is_valid) {
-
-            s16 e_checksum = shortname_checksum((u8 *)dentries[i].DIR_Name);
-
-            if (ctx->lname_chksum == e_checksum) {
-               ctx->lname_buf[ctx->lname_sz] = 0;
-               str_reverse((char *)ctx->lname_buf, (size_t)ctx->lname_sz);
-               long_name_ptr = (const char *) ctx->lname_buf;
-            }
-         }
+         if (ctx && ctx->lname_sz > 0 && ctx->is_valid)
+            long_name_ptr = finalize_long_name(ctx, &dentries[i]);
 
          int ret = p->cb(p->h, p->ft, dentries + i, long_name_ptr, p->arg);
 
