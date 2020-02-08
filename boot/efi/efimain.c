@@ -54,12 +54,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = LoadKernelFile(BS, fileProt, &kernel_file_paddr);
    HANDLE_EFI_ERROR("LoadKernelFile");
 
-   status = GetMemoryMap(&mapkey);
-   HANDLE_EFI_ERROR("GetMemoryMap");
-
-   status = KernelLoadMemoryChecks();
-   HANDLE_EFI_ERROR("KernelLoadMemoryChecks");
-
    // ------------------------------------------------------------------ //
 
    status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
@@ -91,10 +85,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = MultibootSaveMemoryMap(&mapkey);
    HANDLE_EFI_ERROR("MultibootSaveMemoryMap");
 
+   status = KernelLoadMemoryChecks();
+   HANDLE_EFI_ERROR("KernelLoadMemoryChecks");
+
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 
-   /* --- point of no-return: from here on in we MUST NOT fail --- */
+   /* --- Point of no return: from here on, we MUST NOT fail --- */
 
    kernel_entry = simple_elf_loader(TO_PTR(kernel_file_paddr));
    JumpToKernel(mbi, kernel_entry);
