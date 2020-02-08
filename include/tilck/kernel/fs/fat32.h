@@ -13,10 +13,20 @@ struct fat_fs_device_data {
 
    struct fat_hdr *hdr; /* vaddr of the beginning of the FAT partition */
    enum fat_type type;
-   size_t cluster_size;
-
-   struct fat_entry *root_dir_entries;
+   u32 cluster_size;
    u32 root_cluster;
+
+   /*
+    * A pointer to root directory's entries. Notice that this isn't a random
+    * choice: the first entry in the root directory the is "Volume ID" entry,
+    * which has some of the traits of regular dir entries, but it doesn't have
+    * the cluster information (we cannot pass it to fat_get_first_cluster()),
+    * so it still requires to be treated in a special way. That's the main
+    * reason for calling this member `root_dir_entries` and not `root_entry`
+    * as in the past: because it does not complain a 100% with the idea of a
+    * regular fat_entry.
+    */
+   struct fat_entry *root_dir_entries;
 };
 
 struct fatfs_handle {
