@@ -85,19 +85,23 @@ multiboot_entry:
    # Map the first 4 MB at KERNEL_BASE_VA
    mov [edx + (KERNEL_BASE_VA >> 20)], ecx
 
+   mov ecx, cr0
+   and ecx, ~(1 << 31)  # Make sure PAGING is disabled
+   mov cr0, ecx
+
+   mov ecx, cr4
+   or ecx,   (1 << 4)   # enable PSE (Page Size Extension)
+   or ecx,   (1 << 7)   # enable PGE (Page Global Enabled)
+   and ecx, ~(1 << 5)   # disable PAE (Physical Address Extension)
+   mov cr4, ecx
+
    # Set the CR3 register
    mov cr3, edx
 
-   mov ecx, cr4
-   or ecx, 16      # bit 4, PSE (Page Size Extension). Allows 4-MB pages.
-   or ecx, 128     # bit 7, PGE (Page Global Enabled)
-   mov cr4, ecx
-
    mov ecx, cr0
-   or ecx, 0x80000000 # paging ON
-   or ecx, 0x00010000 # WP ON (write protect for supervisor)
-   mov cr0, ecx       # enable paging!
-
+   or ecx, (1 << 31)  # paging: on
+   or ecx, (1 << 16)  # WP: on (write protect for supervisor)
+   mov cr0, ecx       # apply the changes!
 
    mov ecx, offset .next_step
    jmp ecx        # Jump to next instruction using the high virtual address.
@@ -118,4 +122,3 @@ multiboot_entry:
                # KERNEL_BASE_VA + KERNEL_PADDR as ORG
 
 END_FUNC(_start)
-
