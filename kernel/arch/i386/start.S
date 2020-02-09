@@ -86,22 +86,22 @@ multiboot_entry:
    mov [edx + (KERNEL_BASE_VA >> 20)], ecx
 
    mov ecx, cr0
-   and ecx, ~(1 << 31)  # Make sure PAGING is disabled
+   and ecx, ~CR0_PG  # Make sure PAGING is disabled
    mov cr0, ecx
 
    mov ecx, cr4
-   or ecx,   (1 << 4)   # enable PSE (Page Size Extension)
-   or ecx,   (1 << 7)   # enable PGE (Page Global Enabled)
-   and ecx, ~(1 << 5)   # disable PAE (Physical Address Extension)
+   or ecx,   CR4_PSE   # enable PSE (Page Size Extension)
+   or ecx,   CR4_PGE   # enable PGE (Page Global Enabled)
+   and ecx, ~CR4_PAE   # disable PAE (Physical Address Extension)
    mov cr4, ecx
 
    # Set the CR3 register
    mov cr3, edx
 
    mov ecx, cr0
-   or ecx, (1 << 31)  # paging: on
-   or ecx, (1 << 16)  # WP: on (write protect for supervisor)
-   mov cr0, ecx       # apply the changes!
+   or ecx, CR0_PG  # paging
+   or ecx, CR0_WP  # write protect for supervisor
+   mov cr0, ecx    # apply the changes!
 
    mov ecx, offset .next_step
    jmp ecx        # Jump to next instruction using the high virtual address.

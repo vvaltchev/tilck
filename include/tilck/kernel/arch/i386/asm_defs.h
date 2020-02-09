@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck/common/arch/generic_x86/asm_consts.h>
 
 #define TI_F_RESUME_RS_OFF     20 /* offset of: fault_resume_regs */
 #define TI_FAULTS_MASK_OFF     24 /* offset of: faults_resume_mask */
