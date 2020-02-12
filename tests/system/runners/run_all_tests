@@ -303,7 +303,7 @@ def main():
                  not compact_shellcmds)
 
    if compact_shellcmds:
-      run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 2], show_output)
+      run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 4], show_output)
 
    dump_test_stats()
 
