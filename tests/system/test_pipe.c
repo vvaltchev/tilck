@@ -111,7 +111,6 @@ static void pipe_cmd2_child(int rfd, int wfd)
 /* Test the broken pipe case */
 int cmd_pipe2(int argc, char **argv)
 {
-   char buf[64];
    int code, term_sig;
    int rfd, wfd;
    int wstatus;

@@ -44,7 +44,6 @@ static bool contains_slash(const char *s) {
 
 static void shell_builtin_cd(int argc)
 {
-   int rc = 0;
    const char *dest_dir = "/";
 
    if (argc == 2 && strlen(cmd_argv[1]))

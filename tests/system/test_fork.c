@@ -245,8 +245,7 @@ int cmd_vfork0(int argc, char **argv)
    static const char child_hello[] = "Hello from the child!!";
    static const char parent_hello[] = "Hello from the parent!!";
 
-   int rc, pid, wstatus;
-   int failed = 0;
+   int rc, pid, wstatus, failed = 0;
    volatile int stack_var = 0;       /* changed by child: must be volatile */
    void *volatile mmap_addr = NULL;  /* changed by child: must be volatile */
 

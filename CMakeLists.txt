@@ -99,7 +99,7 @@ set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 set(
 
    USERAPPS_CFLAGS
-   "-ggdb -Os"
+   "-ggdb -Os -Wall -Wno-unused-parameter"
 
    CACHE STRING "Build flags for C/C++ user programs"
 )

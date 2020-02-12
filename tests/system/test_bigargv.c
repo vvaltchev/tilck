@@ -33,7 +33,6 @@ static void do_bigargv_test(size_t len)
 
 static bool fails_with_e2big(size_t len)
 {
-   int rc;
    int pid;
    int wstatus;
 

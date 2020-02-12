@@ -149,7 +149,6 @@ static void fmmap2_read_unmapped_mem(void)
 {
    int fd, rc;
    char *vaddr;
-   size_t file_size;
    char buf[64] = {0};
    char *page_size_buf;
    const size_t page_size = getpagesize();
@@ -207,7 +206,6 @@ int cmd_fmmap3(int argc, char **argv)
 {
    int fd, rc;
    char *vaddr;
-   size_t file_size;
    char buf[64] = {0};
    char exp_buf[64] = {0};
    char *page_size_buf;
@@ -473,7 +471,6 @@ static void fmmap7_child(void)
    struct stat statbuf;
    char *page_size_buf;
    const size_t page_size = getpagesize();
-   bool failed = false;
 
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);

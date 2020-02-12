@@ -279,7 +279,7 @@ begin:
       return;
    }
 
-unknown_opt:
+   /* Unknown option case */
    printf("[init] Unknown option '%s'\n", *argv);
 }
 

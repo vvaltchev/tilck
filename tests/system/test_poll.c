@@ -214,7 +214,7 @@ wait_child_and_return:
 
 int cmd_poll2(int argc, char **argv)
 {
-   int rc, cnt = 0;
+   int rc;
    struct pollfd fds[] = {
       { .fd = 0, .events = POLLIN }
    };
