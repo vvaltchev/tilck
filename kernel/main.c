@@ -157,8 +157,12 @@ static void show_hello_message(void)
    const bool dirty = !strncmp(commit_hash, "dirty:", 6);
    const char *const hash = dirty ? commit_hash + 6 : commit_hash;
 
-   printk("Hello from Tilck \e[1m%d.%d.%d",
-          VER_MAJOR, VER_MINOR, VER_PATCH);
+   if (VER_PATCH > 0)
+      printk("Hello from Tilck \e[1m%d.%d.%d",
+             VER_MAJOR, VER_MINOR, VER_PATCH);
+   else
+      printk("Hello from Tilck \e[1m%d.%d",
+             VER_MAJOR, VER_MINOR);
 
    printk(NO_PREFIX ", commit: \e[1m%s", hash);
    printk(NO_PREFIX "%s\n", dirty ? " (dirty)" : "");
