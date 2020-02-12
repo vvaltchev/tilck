@@ -210,6 +210,7 @@ int cmd_pipe3(int argc, char **argv)
    printf("Try the broken pipe case with SIGPIPE ignored...\n");
    rc = test_sig(&pipe_cmd3_child, 0, 0);
    DEVSHELL_CMD_ASSERT(rc == 0);
+   return 0;
 }
 
 /* Test pipes with O_NONBLOCK */

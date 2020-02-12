@@ -242,10 +242,13 @@ int cmd_fork1(int argc, char **argv)
 
 int cmd_vfork0(int argc, char **argv)
 {
+   static const char child_hello[] = "Hello from the child!!";
+   static const char parent_hello[] = "Hello from the parent!!";
+
    int rc, pid, wstatus;
-   int stack_var = 0;
    int failed = 0;
-   void *mmap_addr = NULL;
+   volatile int stack_var = 0;       /* changed by child: must be volatile */
+   void *volatile mmap_addr = NULL;  /* changed by child: must be volatile */
 
    printf(STR_PARENT "Call vfork()..\n");
    pid = vfork();
@@ -265,7 +268,7 @@ int cmd_vfork0(int argc, char **argv)
 
       printf(STR_CHILD "mmap_addr: %p\n", mmap_addr);
       DEVSHELL_CMD_ASSERT(mmap_addr != (void *)-1);
-      strcpy(mmap_addr, "Hello from the child!!");
+      forced_memcpy(mmap_addr, child_hello, sizeof(child_hello));
 
       printf(STR_CHILD "Sleep a little\n");
       usleep(70 * 1000);
@@ -286,7 +289,7 @@ int cmd_vfork0(int argc, char **argv)
    printf(STR_PARENT "'%s'\n", (char *)mmap_addr);
 
    printf(STR_PARENT "Write to mmap_addr...\n");
-   strcpy(mmap_addr, "Hello from the parent!!");
+   forced_memcpy(mmap_addr, parent_hello, sizeof(parent_hello));
 
    rc = waitpid(pid, &wstatus, 0);
    DEVSHELL_CMD_ASSERT(rc == pid);

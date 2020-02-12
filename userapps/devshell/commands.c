@@ -248,3 +248,22 @@ void run_if_known_command(const char *cmd, int argc, char **argv)
       if (!strcmp(cmds_table[i].name, cmd))
          run_cmd(cmds_table[i].func, argc, argv);
 }
+
+/*
+ * When the tests are compiled with optimizations like -Os or higher, some
+ * memcpy() are optimized out (e.g. fmmap4 test) because the compiler see no
+ * point in performing the memcpy (while we expect to get killed a signal).
+ *
+ * Therefore, we need a simple "forced" memcpy that will always do what we
+ * expect, even with -O3.
+ */
+
+void
+forced_memcpy(void *dest, const void *src, size_t n)
+{
+   for (size_t i = 0; i < n / 4; i++)
+      ((volatile u32 *)dest)[i] = ((const volatile u32 *)src)[i];
+
+   for (size_t i = 0; i < n % 4; i++)
+      ((volatile u8 *)dest)[i] = ((const volatile u8 *)src)[i];
+}

@@ -87,9 +87,14 @@ static uint64_t read_esc_seq(void)
 {
    char c;
    int len = 0;
-   char buf[8] = { 0 };
 
-   buf[len++] = '\033';
+   union {
+      char buf[8];
+      uint64_t num;
+   } data;
+
+   data.num = 0;
+   data.buf[len++] = '\033';
 
    if (read(0, &c, 1) <= 0)
       return 0;
@@ -97,14 +102,14 @@ static uint64_t read_esc_seq(void)
    if (c != '[')
       return 0; /* unknown escape sequence */
 
-   buf[len++] = c;
+   data.buf[len++] = c;
 
    while (true) {
 
       if (read(0, &c, 1) <= 0)
          return 0;
 
-      buf[len++] = c;
+      data.buf[len++] = c;
 
       if (IN_RANGE_INC(c, 0x40, 0x7E) && c != '[')
          break;
@@ -113,7 +118,7 @@ static uint64_t read_esc_seq(void)
          return 0; /* no more space in our 64-bit int (seq too long) */
    }
 
-   return *(uint64_t *)buf;
+   return data.num;
 }
 
 static void

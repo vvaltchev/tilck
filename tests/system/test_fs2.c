@@ -264,6 +264,7 @@ static void fmmap4_read_write_after_eof(bool rw)
    struct stat statbuf;
    const size_t page_size = getpagesize();
 
+   printf("fmmap4_read_write_after_eof(%s)\n", rw ? "WRITE" : "READ");
    printf("Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
@@ -290,13 +291,14 @@ static void fmmap4_read_write_after_eof(bool rw)
 
    if (!rw) {
       /* Read past EOF */
-      memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
+      forced_memcpy(buf, vaddr + page_size, sizeof(buf) - 1);
    } else {
       /* Write past EOF */
-      memcpy(vaddr + page_size, buf, sizeof(buf) - 1);
+      forced_memcpy(vaddr + page_size, buf, sizeof(buf) - 1);
    }
 
    /* If we got here, something went wrong */
+   printf("ERROR: got to the end, something went wrong\n");
 }
 
 static void fmmap4_read_after_eof(void)

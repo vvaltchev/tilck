@@ -100,11 +100,11 @@ static void child_generate_sigill(void)
 
 static void child_generate_sigfpe(void)
 {
-   static int zero_val;
-   static int val;
+   volatile int zero_val = 0;
+   volatile int val = 35 / zero_val;
 
-   if (!val)
-      val = 35 / zero_val;
+   printf("ERROR: val is %d\n", val);
+   exit(1);
 }
 
 static void child_generate_sigabrt(void)

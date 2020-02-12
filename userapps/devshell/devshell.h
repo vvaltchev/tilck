@@ -68,6 +68,7 @@ void dump_coverage_files(void);
 void show_common_help_intro(void);
 const char *get_devshell_path(void);
 void print_waitpid_change(int child, int wstatus);
+void forced_memcpy(void *dest, const void *src, size_t n);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

@@ -107,11 +107,7 @@ int cmd_syscall_perf(int argc, char **argv)
    start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
-      __asm__ ("int $0x80"
-               : /* no output */
-               : "a" (23),          /* 23 = sys_setuid */
-                 "b" (uid)
-               : /* no clobber */);
+      syscall(SYS_setuid, uid);
    }
 
    duration = RDTSC() - start;
