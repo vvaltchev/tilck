@@ -13,6 +13,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/sync.h>
 
 #include "video_term_int.h"
 
@@ -21,6 +22,8 @@ struct vterm {
    bool initialized;
    bool cursor_enabled;
    bool using_alt_buffer;
+
+   struct kmutex lock;
 
    u16 tabsize;               /* term's current tab size */
    u16 rows;                  /* term's rows count */
@@ -999,6 +1002,8 @@ dispose_term(term *_t)
    struct vterm *const t = _t;
    ASSERT(t != &first_instance);
 
+   kmutex_destroy(&t->lock);
+
    if (t->buffer) {
       kfree2(t->buffer, sizeof(u16) * t->total_buffer_rows * t->cols);
       t->buffer = NULL;
@@ -1067,6 +1072,7 @@ init_vterm(term *_t,
    struct vterm *const t = _t;
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
+   kmutex_init(&t->lock, 0);
    t->tabsize = 8;
    t->cols = cols;
    t->rows = rows;

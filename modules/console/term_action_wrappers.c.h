@@ -52,28 +52,87 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
    }
 }
 
+/* Handle the _VERY UNLIKELY_ case were `t->actions_buf` is full */
+static void
+term_unable_to_enqueue_action(struct vterm *t,
+                              struct term_action a,
+                              bool *was_empty)
+{
+   extern bool __in_printk; /* defined in printk.c */
+   struct term_action other_action;
+   bool written;
+
+   /* We got here because the ringbuf was full in the first place */
+   ASSERT(*was_empty);
+
+   if (__in_printk) {
+
+      if (in_panic()) {
+
+         /* Stop caring about IRQs and stuff: execute everything we have */
+
+         while (safe_ringbuf_read_elem(&t->ringb, &other_action))
+            term_execute_action(t, &other_action);
+
+         /* Finally, execute our action */
+         term_execute_action(t, &a);
+         return;
+      }
+
+      /*
+       * OK, this is pretty weird: it's maybe (?) the absurd case of many nested
+       * IRQs each one of them calling printk(), which at some point, finished
+       * its own ring buffer and ended up flushing directly the messages to
+       * this layer. The whole thing is more theoretical than practical: it
+       * should never happen, but if it does, it's better to not pass unnoticed.
+       */
+
+      panic("Term ringbuf full while in printk()");
+
+   } else {
+
+     /*
+      * We CANNOT possibly be in an IRQ context: we're likely in tty_write()
+      * and we can be preempted.
+      */
+
+      do {
+
+         kmutex_lock(&t->lock);
+         {
+            written = safe_ringbuf_write_elem_ex(&t->ringb, &a, was_empty);
+         }
+         kmutex_unlock(&t->lock);
+
+      } while (!written);
+   }
+}
 
 static void
 term_execute_or_enqueue_action(struct vterm *t, struct term_action a)
 {
-   bool written;
    bool was_empty;
 
-   written = safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty);
+   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty)))
+      term_unable_to_enqueue_action(t, a, &was_empty);
 
-   /*
-    * written would be false only if the ringbuf was full. In order that to
-    * happen, we'll need ARRAY_SIZE(actions_buf) nested interrupts and
-    * all of them need to issue a term_* call. Virtually "impossible".
-    */
-   VERIFY(written);
+   if (!was_empty)
+      return; /* just enqueue the action */
 
-   if (was_empty) {
+   if (UNLIKELY(in_panic()))
+      goto panic_case;
 
+   kmutex_lock(&t->lock);
+   {
       while (safe_ringbuf_read_elem(&t->ringb, &a))
          term_execute_action(t, &a);
-
    }
+   kmutex_unlock(&t->lock);
+   return;
+
+panic_case:
+   while (safe_ringbuf_read_elem(&t->ringb, &a))
+      term_execute_action(t, &a);
 }
 
 static void

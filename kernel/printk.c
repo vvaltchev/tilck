@@ -279,6 +279,7 @@ struct ringbuf_stat {
 
 static char printk_rbuf[1024];
 static volatile struct ringbuf_stat printk_rbuf_stat;
+bool __in_printk;
 
 /*
  * NOTE: the ring buf cannot be larger than 1024 elems because the fields
@@ -292,7 +293,11 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 {
    if (LIKELY(get_curr_tty() != NULL)) {
       /* tty has been initialized and set a term write filter func */
-      term_write(buf, size, color);
+      __in_printk = true;
+      {
+         term_write(buf, size, color);
+      }
+      __in_printk = false;
       return;
    }
 
@@ -303,11 +308,14 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
 
    for (u32 i = 0; i < size; i++) {
 
-      if (buf[i] == '\n') {
-         term_write("\r", 1, color);
-      }
+      __in_printk = true;
+      {
+         if (buf[i] == '\n')
+            term_write("\r", 1, color);
 
-      term_write(&buf[i], 1, color);
+         term_write(&buf[i], 1, color);
+      }
+      __in_printk = false;
    }
 }
 
