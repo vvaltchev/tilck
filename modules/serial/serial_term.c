@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/term_aux.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/sync.h>
@@ -22,9 +23,7 @@ struct sterm {
 
    bool initialized;
    u16 serial_port_fwd;
-
-   struct kmutex lock;
-   struct safe_ringbuf ringb;
+   struct term_rb_data rb_data;
    struct term_action actions_buf[32];
 };
 
@@ -67,61 +66,14 @@ sterm_action_write(term *_t, const char *buf, size_t len)
    }
 }
 
-
-/* Handle the _VERY UNLIKELY_ case were `t->actions_buf` is full */
-static void
-sterm_unable_to_enqueue_action(struct sterm *t,
-                               struct term_action a,
-                               bool *was_empty)
+static inline void
+sterm_execute_everything(term *_t)
 {
-   extern bool __in_printk; /* defined in printk.c */
-   struct term_action other_action;
-   bool written;
+   struct sterm *const t = _t;
+   struct term_action a;
 
-   /* We got here because the ringbuf was full in the first place */
-   ASSERT(*was_empty);
-
-   if (__in_printk) {
-
-      if (in_panic()) {
-
-         /* Stop caring about IRQs and stuff: write everything we have */
-
-         while (safe_ringbuf_read_elem(&t->ringb, &other_action))
-            sterm_action_write(t, other_action.buf, other_action.len);
-
-         /* Finally, write our action */
-         sterm_action_write(t, a.buf, a.len);
-         return;
-      }
-
-      /*
-       * OK, this is pretty weird: it's maybe (?) the absurd case of many nested
-       * IRQs each one of them calling printk(), which at some point, finished
-       * its own ring buffer and ended up flushing directly the messages to
-       * this layer. The whole thing is more theoretical than practical: it
-       * should never happen, but if it does, it's better to not pass unnoticed.
-       */
-
-      panic("Term ringbuf full while in printk()");
-
-   } else {
-
-     /*
-      * We CANNOT possibly be in an IRQ context: we're likely in tty_write()
-      * and we can be preempted.
-      */
-
-      do {
-
-         kmutex_lock(&t->lock);
-         {
-            written = safe_ringbuf_write_elem_ex(&t->ringb, &a, was_empty);
-         }
-         kmutex_unlock(&t->lock);
-
-      } while (!written);
-   }
+   while (safe_ringbuf_read_elem(&t->rb_data.rb, &a))
+      sterm_action_write(t, a.buf, a.len);
 }
 
 static void
@@ -130,26 +82,28 @@ serial_term_execute_or_enqueue_action(term *_t, struct term_action a)
    struct sterm *const t = _t;
    bool was_empty;
 
-   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty)))
-      sterm_unable_to_enqueue_action(t, a, &was_empty);
+   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->rb_data.rb, &a, &was_empty))) {
+
+      term_unable_to_enqueue_action(t,
+                                    &t->rb_data,
+                                    &a,
+                                    &was_empty,
+                                    (void *)&sterm_execute_everything);
+
+      /* NOTE: do not return */
+   }
 
    if (!was_empty)
       return; /* just enqueue the action */
 
    if (UNLIKELY(in_panic()))
-      goto panic_case;
+      return sterm_execute_everything(t);
 
-   kmutex_lock(&t->lock);
+   kmutex_lock(&t->rb_data.lock);
    {
-      while (safe_ringbuf_read_elem(&t->ringb, &a))
-         sterm_action_write(t, a.buf, a.len);
+      sterm_execute_everything(t);
    }
-   kmutex_unlock(&t->lock);
-   return;
-
-panic_case:
-   while (safe_ringbuf_read_elem(&t->ringb, &a))
-      sterm_action_write(t, a.buf, a.len);
+   kmutex_unlock(&t->rb_data.lock);
 }
 
 static void
@@ -188,7 +142,7 @@ static void
 dispose_sterm(term *_t)
 {
    struct sterm *const t = _t;
-   kmutex_destroy(&t->lock);
+   dispose_term_rb_data(&t->rb_data);
 }
 
 static int
@@ -198,9 +152,7 @@ sterm_init(term *_t, u16 serial_port_fwd)
 
    t->serial_port_fwd = serial_port_fwd;
 
-   kmutex_init(&t->lock, 0);
-
-   safe_ringbuf_init(&t->ringb,
+   init_term_rb_data(&t->rb_data,
                      ARRAY_SIZE(t->actions_buf),
                      sizeof(struct term_action),
                      t->actions_buf);

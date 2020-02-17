@@ -8,12 +8,12 @@
 
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/term_aux.h>
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
-#include <tilck/kernel/sync.h>
 
 #include "video_term_int.h"
 
@@ -23,7 +23,7 @@ struct vterm {
    bool cursor_enabled;
    bool using_alt_buffer;
 
-   struct kmutex lock;
+   struct term_rb_data rb_data;
 
    u16 tabsize;               /* term's current tab size */
    u16 rows;                  /* term's rows count */
@@ -60,7 +60,6 @@ struct vterm {
    bool *main_tabs_buf;
    bool *alt_tabs_buf;
 
-   struct safe_ringbuf ringb;
    struct term_action actions_buf[32];
 
    term_filter filter;
@@ -1002,7 +1001,7 @@ dispose_term(term *_t)
    struct vterm *const t = _t;
    ASSERT(t != &first_instance);
 
-   kmutex_destroy(&t->lock);
+   dispose_term_rb_data(&t->rb_data);
 
    if (t->buffer) {
       kfree2(t->buffer, sizeof(u16) * t->total_buffer_rows * t->cols);
@@ -1072,7 +1071,6 @@ init_vterm(term *_t,
    struct vterm *const t = _t;
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
-   kmutex_init(&t->lock, 0);
    t->tabsize = 8;
    t->cols = cols;
    t->rows = rows;
@@ -1085,7 +1083,7 @@ init_vterm(term *_t,
    t->start_scroll_region = &t->main_scroll_region_start;
    t->end_scroll_region = &t->main_scroll_region_end;
 
-   safe_ringbuf_init(&t->ringb,
+   init_term_rb_data(&t->rb_data,
                      ARRAY_SIZE(t->actions_buf),
                      sizeof(struct term_action),
                      t->actions_buf);
