@@ -5,6 +5,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/safe_ringbuf.h>
+#include <tilck/kernel/sync.h>
 
 #include <tilck/mods/serial.h>
 
@@ -22,6 +23,7 @@ struct sterm {
    bool initialized;
    u16 serial_port_fwd;
 
+   struct kmutex lock;
    struct safe_ringbuf ringb;
    struct term_action actions_buf[32];
 };
@@ -65,28 +67,89 @@ sterm_action_write(term *_t, const char *buf, size_t len)
    }
 }
 
+
+/* Handle the _VERY UNLIKELY_ case were `t->actions_buf` is full */
+static void
+sterm_unable_to_enqueue_action(struct sterm *t,
+                               struct term_action a,
+                               bool *was_empty)
+{
+   extern bool __in_printk; /* defined in printk.c */
+   struct term_action other_action;
+   bool written;
+
+   /* We got here because the ringbuf was full in the first place */
+   ASSERT(*was_empty);
+
+   if (__in_printk) {
+
+      if (in_panic()) {
+
+         /* Stop caring about IRQs and stuff: write everything we have */
+
+         while (safe_ringbuf_read_elem(&t->ringb, &other_action))
+            sterm_action_write(t, other_action.buf, other_action.len);
+
+         /* Finally, write our action */
+         sterm_action_write(t, a.buf, a.len);
+         return;
+      }
+
+      /*
+       * OK, this is pretty weird: it's maybe (?) the absurd case of many nested
+       * IRQs each one of them calling printk(), which at some point, finished
+       * its own ring buffer and ended up flushing directly the messages to
+       * this layer. The whole thing is more theoretical than practical: it
+       * should never happen, but if it does, it's better to not pass unnoticed.
+       */
+
+      panic("Term ringbuf full while in printk()");
+
+   } else {
+
+     /*
+      * We CANNOT possibly be in an IRQ context: we're likely in tty_write()
+      * and we can be preempted.
+      */
+
+      do {
+
+         kmutex_lock(&t->lock);
+         {
+            written = safe_ringbuf_write_elem_ex(&t->ringb, &a, was_empty);
+         }
+         kmutex_unlock(&t->lock);
+
+      } while (!written);
+   }
+}
+
 static void
 serial_term_execute_or_enqueue_action(term *_t, struct term_action a)
 {
    struct sterm *const t = _t;
-
-   bool written;
    bool was_empty;
 
-   written = safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty);
+   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty)))
+      sterm_unable_to_enqueue_action(t, a, &was_empty);
 
-   /*
-    * written would be false only if the ringbuf was full. In order that to
-    * happen, we'll need ARRAY_SIZE(actions_buf) nested interrupts and
-    * all of them need to issue a term_* call. Virtually "impossible".
-    */
-   VERIFY(written);
+   if (!was_empty)
+      return; /* just enqueue the action */
 
-   if (was_empty) {
+   if (UNLIKELY(in_panic()))
+      goto panic_case;
 
+   kmutex_lock(&t->lock);
+   {
       while (safe_ringbuf_read_elem(&t->ringb, &a))
          sterm_action_write(t, a.buf, a.len);
    }
+   kmutex_unlock(&t->lock);
+   return;
+
+panic_case:
+   while (safe_ringbuf_read_elem(&t->ringb, &a))
+      sterm_action_write(t, a.buf, a.len);
 }
 
 static void
@@ -124,7 +187,8 @@ free_sterm_struct(term *_t)
 static void
 dispose_sterm(term *_t)
 {
-   /* Do nothing */
+   struct sterm *const t = _t;
+   kmutex_destroy(&t->lock);
 }
 
 static int
@@ -133,12 +197,15 @@ sterm_init(term *_t, u16 serial_port_fwd)
    struct sterm *const t = _t;
 
    t->serial_port_fwd = serial_port_fwd;
-   t->initialized = true;
+
+   kmutex_init(&t->lock, 0);
 
    safe_ringbuf_init(&t->ringb,
                      ARRAY_SIZE(t->actions_buf),
                      sizeof(struct term_action),
                      t->actions_buf);
+
+   t->initialized = true;
    return 0;
 }
 

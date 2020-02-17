@@ -54,9 +54,9 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
 
 /* Handle the _VERY UNLIKELY_ case were `t->actions_buf` is full */
 static void
-term_unable_to_enqueue_action(struct vterm *t,
-                              struct term_action a,
-                              bool *was_empty)
+vterm_unable_to_enqueue_action(struct vterm *t,
+                               struct term_action a,
+                               bool *was_empty)
 {
    extern bool __in_printk; /* defined in printk.c */
    struct term_action other_action;
@@ -114,7 +114,7 @@ term_execute_or_enqueue_action(struct vterm *t, struct term_action a)
    bool was_empty;
 
    if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->ringb, &a, &was_empty)))
-      term_unable_to_enqueue_action(t, a, &was_empty);
+      vterm_unable_to_enqueue_action(t, a, &was_empty);
 
    if (!was_empty)
       return; /* just enqueue the action */
