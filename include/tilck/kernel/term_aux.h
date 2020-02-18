@@ -5,6 +5,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/sched.h>
 
 struct term_action;
 
@@ -28,3 +29,46 @@ term_unable_to_enqueue_action(term *t,
                               struct term_action *a,
                               bool *was_empty,
                               void (*exec_everything)(term *));
+
+/*
+ * C "template" function used to allow code sharing between video term and
+ * serial term. The idea is simple: do NOT treat this as a function, but as
+ * a macro to put in your term_execute_or_enqueue_action() function. This way,
+ * all this code will be inlined in just one place per term implementation.
+ * See video_term's term_execute_or_enqueue_action() implementation.
+ */
+
+static ALWAYS_INLINE void
+term_execute_or_enqueue_action_template(term *t,
+                                        struct term_rb_data *rb_data,
+                                        struct term_action *a,
+                                        void (*exec_everything)(term *))
+{
+   bool was_empty;
+
+   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&rb_data->rb, a, &was_empty))) {
+
+      term_unable_to_enqueue_action(t,
+                                    rb_data,
+                                    a,
+                                    &was_empty,
+                                    exec_everything);
+
+      /* NOTE: do not return */
+   }
+
+   if (!was_empty)
+      return; /* just enqueue the action */
+
+   if (UNLIKELY(in_panic()) || !is_preemption_enabled()) {
+      /* We don't need to grab the lock, as the preemption is disabled! */
+      return exec_everything(t);
+   }
+
+   /* Don't disable the preemption, just grab term's lock */
+   kmutex_lock(&rb_data->lock);
+   {
+      exec_everything(t);
+   }
+   kmutex_unlock(&rb_data->lock);
+}

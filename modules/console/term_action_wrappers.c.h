@@ -52,7 +52,7 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
    }
 }
 
-static inline void
+static ALWAYS_INLINE void
 vterm_exec_everything(struct vterm *t)
 {
    struct term_action a;
@@ -62,32 +62,12 @@ vterm_exec_everything(struct vterm *t)
 }
 
 static void
-term_execute_or_enqueue_action(struct vterm *t, struct term_action a)
+term_execute_or_enqueue_action(struct vterm *t, struct term_action *a)
 {
-   bool was_empty;
-
-   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->rb_data.rb, &a, &was_empty))) {
-
-      term_unable_to_enqueue_action(t,
-                                    &t->rb_data,
-                                    &a,
-                                    &was_empty,
-                                    (void *)&vterm_exec_everything);
-
-      /* NOTE: do not return */
-   }
-
-   if (!was_empty)
-      return; /* just enqueue the action */
-
-   if (UNLIKELY(in_panic()))
-      return vterm_exec_everything(t);
-
-   kmutex_lock(&t->rb_data.lock);
-   {
-      vterm_exec_everything(t);
-   }
-   kmutex_unlock(&t->rb_data.lock);
+   term_execute_or_enqueue_action_template(t,
+                                           &t->rb_data,
+                                           a,
+                                           (void *)&vterm_exec_everything);
 }
 
 static void
@@ -97,7 +77,7 @@ vterm_write(term *t, const char *buf, size_t len, u8 color)
    ASSERT(len < MB);
 
    term_make_action_write(&a, buf, len, color);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 static void
@@ -105,7 +85,7 @@ vterm_scroll_up(term *t, u32 rows)
 {
    struct term_action a;
    term_make_action_scroll(&a, term_scroll_up, rows);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 static void
@@ -113,7 +93,7 @@ vterm_scroll_down(term *t, u32 rows)
 {
    struct term_action a;
    term_make_action_scroll(&a, term_scroll_down, rows);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 static void
@@ -122,7 +102,7 @@ vterm_set_col_offset(term *_t, int off)
    struct vterm *const t = _t;
    struct term_action a;
    term_make_action_set_col_off(&a, off >= 0 ? (u32)off : t->c);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 static void
@@ -130,7 +110,7 @@ vterm_pause_video_output(term *t)
 {
    struct term_action a;
    term_make_action_pause_video_output(&a);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 static void
@@ -138,7 +118,7 @@ vterm_restart_video_output(term *t)
 {
    struct term_action a;
    term_make_action_restart_video_output(&a);
-   term_execute_or_enqueue_action(t, a);
+   term_execute_or_enqueue_action(t, &a);
 }
 
 /* ---------------- term non-action interface funcs --------------------- */

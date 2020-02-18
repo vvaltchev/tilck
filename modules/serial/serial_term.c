@@ -67,7 +67,7 @@ sterm_action_write(term *_t, const char *buf, size_t len)
 }
 
 static inline void
-sterm_execute_everything(term *_t)
+sterm_exec_everything(term *_t)
 {
    struct sterm *const t = _t;
    struct term_action a;
@@ -77,33 +77,12 @@ sterm_execute_everything(term *_t)
 }
 
 static void
-serial_term_execute_or_enqueue_action(term *_t, struct term_action a)
+serial_term_execute_or_enqueue_action(struct sterm *t, struct term_action *a)
 {
-   struct sterm *const t = _t;
-   bool was_empty;
-
-   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&t->rb_data.rb, &a, &was_empty))) {
-
-      term_unable_to_enqueue_action(t,
-                                    &t->rb_data,
-                                    &a,
-                                    &was_empty,
-                                    (void *)&sterm_execute_everything);
-
-      /* NOTE: do not return */
-   }
-
-   if (!was_empty)
-      return; /* just enqueue the action */
-
-   if (UNLIKELY(in_panic()))
-      return sterm_execute_everything(t);
-
-   kmutex_lock(&t->rb_data.lock);
-   {
-      sterm_execute_everything(t);
-   }
-   kmutex_unlock(&t->rb_data.lock);
+   term_execute_or_enqueue_action_template(t,
+                                           &t->rb_data,
+                                           a,
+                                           &sterm_exec_everything);
 }
 
 static void
@@ -116,7 +95,7 @@ sterm_write(term *_t, const char *buf, size_t len, u8 color)
       .len = len,
    };
 
-   serial_term_execute_or_enqueue_action(t, a);
+   serial_term_execute_or_enqueue_action(t, &a);
 }
 
 static term *sterm_get_first_inst(void)
