@@ -84,7 +84,7 @@ tty_csi_ABCD_handler(u32 *params,
 }
 
 static void
-tty_filter_handle_csi_m_param(u32 p, u8 *color, struct twfilter_ctx *ctx)
+tty_csi_m_handler_param(u32 p, u8 *color, struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
    struct console_data *const cd = ctx->cd;
@@ -154,12 +154,12 @@ set_color:
 }
 
 static void
-tty_filter_handle_csi_m(u32 *params,
-                        int pc,
-                        u8 c,
-                        u8 *color,
-                        struct term_action *a,
-                        struct twfilter_ctx *ctx)
+tty_csi_m_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
 {
    if (!pc) {
       /*
@@ -170,7 +170,7 @@ tty_filter_handle_csi_m(u32 *params,
    }
 
    for (int i = 0; i < pc; i++) {
-      tty_filter_handle_csi_m_param(params[i], color, ctx);
+      tty_csi_m_handler_param(params[i], color, ctx);
    }
 }
 
@@ -595,7 +595,7 @@ static csi_seq_handler csi_handlers[256] =
    ['g'] = NULL,                       /* TBC: not implemented */
    ['h'] = NULL,                       /* SM: not implemented */
    ['l'] = NULL,                       /* RM: not implemented */
-   ['m'] = tty_filter_handle_csi_m,    /* SGR: Select Graphic Rendition */
+   ['m'] = tty_csi_m_handler,          /* SGR: Select Graphic Rendition */
    ['n'] = tty_csi_n_handler,          /* DSR: Device Status Report */
    ['q'] = NULL,                       /* DECLL: not implemented */
    ['r'] = tty_csi_r_handler,          /* DECSTBM: not implemented */
