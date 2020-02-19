@@ -550,6 +550,17 @@ tty_csi_a_handler(u32 *params,
    term_make_action_move_cursor_rel(a, 0, (int)params[0]);
 }
 
+static void
+tty_csi_e_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   term_make_action_move_cursor_rel(a, (int)params[0], 0);
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -579,7 +590,7 @@ static csi_seq_handler csi_handlers[256] =
    ['a'] = tty_csi_a_handler,          /* HPR: move right # columns */
    ['c'] = tty_csi_c_handler,          /* DA: query term type */
    ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
-   ['e'] = NULL,                       /* VPR: not implemented */
+   ['e'] = tty_csi_e_handler,          /* VPR: move down # rows */
    ['f'] = tty_csi_fH_handler,         /* HVP: Move to (N, M) [abs, 1-based] */
    ['g'] = NULL,                       /* TBC: not implemented */
    ['h'] = NULL,                       /* SM: not implemented */
