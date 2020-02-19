@@ -467,7 +467,7 @@ tty_csi_L_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx *ctx)
 {
-   term_make_action_ins_blank_lines(a, params[0]);
+   term_make_action_ins_blank_lines(a, MAX(1u, params[0]));
 }
 
 static void
@@ -478,7 +478,7 @@ tty_csi_M_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx *ctx)
 {
-   term_make_action_del_lines(a, params[0]);
+   term_make_action_del_lines(a, MAX(1u, params[0]));
 }
 
 static void
@@ -524,7 +524,7 @@ tty_csi_ICH_handler(u32 *params,
                     struct twfilter_ctx *ctx)
 {
    const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
-   term_make_action_ins_blank_chars(a, n);
+   term_make_action_ins_blank_chars(a, UNSAFE_MAX(1u, n));
 }
 
 static void
@@ -536,7 +536,7 @@ tty_csi_P_handler(u32 *params,
                   struct twfilter_ctx *ctx)
 {
    const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
-   term_make_action_simple_del_chars(a, n);
+   term_make_action_simple_del_chars(a, UNSAFE_MAX(1u, n));
 }
 
 static void
@@ -547,7 +547,8 @@ tty_csi_a_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx *ctx)
 {
-   term_make_action_move_cursor_rel(a, 0, (int)params[0]);
+   const int n = MAX(1, (int)params[0]);
+   term_make_action_move_cursor_rel(a, 0, n);
 }
 
 static void
@@ -558,7 +559,8 @@ tty_csi_e_handler(u32 *params,
                   struct term_action *a,
                   struct twfilter_ctx *ctx)
 {
-   term_make_action_move_cursor_rel(a, (int)params[0], 0);
+   const int n = MAX(1, (int)params[0]);
+   term_make_action_move_cursor_rel(a, n, 0);
 }
 
 static void
@@ -570,7 +572,7 @@ tty_csi_X_handler(u32 *params,
                   struct twfilter_ctx *ctx)
 {
    const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
-   term_make_action_simple_erase_chars(a, n);
+   term_make_action_simple_erase_chars(a, UNSAFE_MAX(1u, n));
 }
 
 
@@ -596,7 +598,7 @@ static csi_seq_handler csi_handlers[256] =
    ['K'] = tty_csi_K_handler,          /* EL: Erase in line */
    ['L'] = tty_csi_L_handler,          /* IL: Insert # blank lines */
    ['M'] = tty_csi_M_handler,          /* DL: Delete # lines */
-   ['P'] = tty_csi_P_handler,          /* DCH: not implemented */
+   ['P'] = tty_csi_P_handler,          /* DCH: Del # chars in the curr line */
    ['S'] = tty_csi_S_handler,          /* SU: Non-buf scroll-up */
    ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
    ['X'] = tty_csi_X_handler,          /* ECH: Erase # chars in the curr line */
