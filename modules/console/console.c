@@ -66,12 +66,12 @@ void tty_reset_filter_ctx(struct tty *t)
 }
 
 static void
-tty_filter_handle_csi_ABCD(u32 *params,
-                           int pc,
-                           u8 c,
-                           u8 *color,
-                           struct term_action *a,
-                           struct twfilter_ctx *ctx)
+tty_csi_ABCD_handler(u32 *params,
+                     int pc,
+                     u8 c,
+                     u8 *color,
+                     struct term_action *a,
+                     struct twfilter_ctx *ctx)
 {
    int d[4] = {0};
    d[c - 'A'] = (int) MAX(1u, params[0]);
@@ -571,12 +571,12 @@ typedef void (*csi_seq_handler)(u32 *params,
 static csi_seq_handler csi_handlers[256] =
 {
    ['@'] = tty_csi_ICH_handler,        /* ICH: Insert # blank chars */
-   ['A'] = tty_filter_handle_csi_ABCD, /* CUU: Move the cursor up */
-   ['B'] = tty_filter_handle_csi_ABCD, /* CUD: Move the cursor down */
-   ['C'] = tty_filter_handle_csi_ABCD, /* CUF: Move the cursor right */
-   ['D'] = tty_filter_handle_csi_ABCD, /* CUB: Move the cursor left */
+   ['A'] = tty_csi_ABCD_handler,       /* CUU: Move the cursor up */
+   ['B'] = tty_csi_ABCD_handler,       /* CUD: Move the cursor down */
+   ['C'] = tty_csi_ABCD_handler,       /* CUF: Move the cursor right */
+   ['D'] = tty_csi_ABCD_handler,       /* CUB: Move the cursor left */
    ['E'] = tty_csi_EF_handler,         /* CNL: Move N lines down; set col=0 */
-   ['F'] = tty_csi_EF_handler,         /* CPL: Move N lines up; set col = 0 */
+   ['F'] = tty_csi_EF_handler,         /* CPL: Move N lines up; set col=0 */
    ['G'] = tty_csi_G_handler,          /* CHA: Move to col N [abs, 1-based] */
    ['H'] = tty_csi_fH_handler,         /* CUP: Move to (N, M) [abs, 1-based] */
    ['J'] = tty_csi_J_handler,          /* ED: Erase in display */
