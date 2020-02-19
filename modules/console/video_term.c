@@ -803,6 +803,26 @@ static void term_action_ins_blank_chars(term *_t, u16 n, ...)
       t->vi->flush_buffers();
 }
 
+static void term_action_del_chars_in_line(term *_t, u16 n, ...)
+{
+   struct vterm *const t = _t;
+   const u16 row = t->r;
+   u16 *const buf_row = get_buf_row(t, row);
+   const u16 maxN = (u16)MIN(n, t->cols - t->c);
+   const u16 cN = t->cols - t->c - maxN; /* copied count */
+
+   memmove(&buf_row[t->c], &buf_row[t->c + maxN], 2 * cN);
+
+   for (u16 c = t->c + cN; c < MIN(t->c + cN + n - maxN, t->cols); c++)
+      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
+
+   for (u16 c = t->c; c < t->cols; c++)
+      t->vi->set_char_at(row, c, buf_row[c]);
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
+}
+
 static void term_action_pause_video_output(term *_t, ...)
 {
    struct vterm *const t = _t;

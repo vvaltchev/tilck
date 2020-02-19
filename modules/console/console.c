@@ -527,6 +527,18 @@ tty_csi_ICH_handler(u32 *params,
    term_make_action_ins_blank_chars(a, n);
 }
 
+static void
+tty_csi_P_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
+   term_make_action_del_simple_chars(a, n);
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -549,7 +561,7 @@ static csi_seq_handler csi_handlers[256] =
    ['K'] = tty_csi_K_handler,          /* EL: Erase in line */
    ['L'] = tty_csi_L_handler,          /* IL: Insert # blank lines */
    ['M'] = tty_csi_M_handler,          /* DL: Delete # lines */
-   ['P'] = NULL,                       /* DCH: not implemented */
+   ['P'] = tty_csi_P_handler,          /* DCH: not implemented */
    ['S'] = tty_csi_S_handler,          /* SU: Non-buf scroll-up */
    ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
    ['X'] = NULL,                       /* ECH: not implemented */

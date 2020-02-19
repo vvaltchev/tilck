@@ -28,6 +28,7 @@ static const struct actions_table_item actions_table[] = {
    [a_delete_lines]         = ENTRY(term_action_del_lines, 1),
    [a_set_scroll_region]    = ENTRY(term_action_set_scroll_region, 2),
    [a_insert_blank_chars]   = ENTRY(term_action_ins_blank_chars, 1),
+   [a_simple_del_chars]     = ENTRY(term_action_del_chars_in_line, 1),
 };
 
 #undef ENTRY
