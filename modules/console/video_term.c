@@ -946,7 +946,7 @@ term_action_ins_blank_lines(term *_t, u32 n)
    t->c = 0;
    n = MIN(n, (u32)(eR - t->r));
 
-   for (u32 row = eR - n - 1; row >= t->r; row--)
+   for (u32 row = eR - n; row > t->r; row--)
       buf_copy_row(t, row - 1 + n, row - 1);
 
    for (u16 row = t->r; row < t->r + n; row++)
