@@ -515,6 +515,18 @@ tty_csi_c_handler(u32 *params,
       tty_send_keyevent(t, make_key_event(0, *p, true), true);
 }
 
+static void
+tty_csi_ICH_handler(u32 *params,
+                    int pc,
+                    u8 c,
+                    u8 *color,
+                    struct term_action *a,
+                    struct twfilter_ctx *ctx)
+{
+   const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
+   term_make_action_ins_blank_chars(a, n);
+}
+
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
                                 u8 c,
@@ -524,7 +536,7 @@ typedef void (*csi_seq_handler)(u32 *params,
 
 static csi_seq_handler csi_handlers[256] =
 {
-   ['@'] = NULL,                       /* ICH: not implemented */
+   ['@'] = tty_csi_ICH_handler,        /* ICH: Insert # blank chars */
    ['A'] = tty_filter_handle_csi_ABCD, /* CUU: Move the cursor up */
    ['B'] = tty_filter_handle_csi_ABCD, /* CUD: Move the cursor down */
    ['C'] = tty_filter_handle_csi_ABCD, /* CUF: Move the cursor right */

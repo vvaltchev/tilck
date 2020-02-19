@@ -196,8 +196,10 @@ static void term_redraw2(term *_t, u16 s, u16 e)
       for (u16 row = s; row < e; row++)
          t->vi->set_row(row, get_buf_row(t, row), true);
    }
-
    fpu_context_end();
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
 }
 
 static inline void term_redraw(term *_t)
@@ -476,6 +478,7 @@ static void term_internal_write_tab(term *_t, u8 color)
 static void term_internal_write_backspace(term *_t, u8 color)
 {
    struct vterm *const t = _t;
+
    if (!t->c || t->c <= t->col_offset)
       return;
 
@@ -648,6 +651,9 @@ static void term_action_reset(term *_t, ...)
 
    if (t->tabs_buf)
       memset(t->tabs_buf, 0, t->cols * t->rows);
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
 }
 
 static void term_action_erase_in_display(term *_t, int mode, ...)
@@ -773,6 +779,28 @@ term_action_del(term *_t, enum term_del_type del_type, int m, ...)
       default:
          NOT_REACHED();
    }
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
+}
+
+static void term_action_ins_blank_chars(term *_t, u16 n, ...)
+{
+   struct vterm *const t = _t;
+   const u16 row = t->r;
+   u16 *const buf_row = get_buf_row(t, row);
+   n = (u16)MIN(n, t->cols - t->c);
+
+   memmove(&buf_row[t->c + n], &buf_row[t->c], 2 * (t->cols - t->c - n));
+
+   for (u16 c = t->c; c < t->c + n; c++)
+      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
+
+   for (u16 c = t->c; c < t->cols; c++)
+      t->vi->set_char_at(row, c, buf_row[c]);
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
 }
 
 static void term_action_pause_video_output(term *_t, ...)

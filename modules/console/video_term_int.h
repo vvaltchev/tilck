@@ -29,6 +29,7 @@ enum term_action_type {
    a_insert_blank_lines,
    a_delete_lines,
    a_set_scroll_region,
+   a_insert_blank_chars,
 };
 
 /*
@@ -280,5 +281,14 @@ term_make_action_set_scroll_region(struct term_action *a,
       .type2 = a_set_scroll_region,
       .arg1 = start,
       .arg2 = end,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_ins_blank_chars(struct term_action *a, u16 num)
+{
+   *a = (struct term_action) {
+      .type1 = a_insert_blank_chars,
+      .arg = num,
    };
 }
