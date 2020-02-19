@@ -823,6 +823,22 @@ static void term_action_del_chars_in_line(term *_t, u16 n, ...)
       t->vi->flush_buffers();
 }
 
+static void term_action_erase_chars_in_line(term *_t, u16 n, ...)
+{
+   struct vterm *const t = _t;
+   const u16 row = t->r;
+   u16 *const buf_row = get_buf_row(t, row);
+
+   for (u16 c = t->c; c < MIN(t->cols, t->c + n); c++)
+      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
+
+   for (u16 c = t->c; c < t->cols; c++)
+      t->vi->set_char_at(row, c, buf_row[c]);
+
+   if (t->vi->flush_buffers)
+      t->vi->flush_buffers();
+}
+
 static void term_action_pause_video_output(term *_t, ...)
 {
    struct vterm *const t = _t;

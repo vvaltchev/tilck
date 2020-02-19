@@ -31,6 +31,7 @@ enum term_action_type {
    a_set_scroll_region,
    a_insert_blank_chars,
    a_simple_del_chars,
+   a_simple_erase_chars,
 };
 
 /*
@@ -295,10 +296,19 @@ term_make_action_ins_blank_chars(struct term_action *a, u16 num)
 }
 
 static ALWAYS_INLINE void
-term_make_action_del_simple_chars(struct term_action *a, u16 num)
+term_make_action_simple_del_chars(struct term_action *a, u16 num)
 {
    *a = (struct term_action) {
       .type1 = a_simple_del_chars,
+      .arg = num,
+   };
+}
+
+static ALWAYS_INLINE void
+term_make_action_simple_erase_chars(struct term_action *a, u16 num)
+{
+   *a = (struct term_action) {
+      .type1 = a_simple_erase_chars,
       .arg = num,
    };
 }

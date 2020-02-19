@@ -536,7 +536,7 @@ tty_csi_P_handler(u32 *params,
                   struct twfilter_ctx *ctx)
 {
    const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
-   term_make_action_del_simple_chars(a, n);
+   term_make_action_simple_del_chars(a, n);
 }
 
 static void
@@ -560,6 +560,19 @@ tty_csi_e_handler(u32 *params,
 {
    term_make_action_move_cursor_rel(a, (int)params[0], 0);
 }
+
+static void
+tty_csi_X_handler(u32 *params,
+                  int pc,
+                  u8 c,
+                  u8 *color,
+                  struct term_action *a,
+                  struct twfilter_ctx *ctx)
+{
+   const u16 n = (u16)MIN(params[0], (u32)UINT16_MAX);
+   term_make_action_simple_erase_chars(a, n);
+}
+
 
 typedef void (*csi_seq_handler)(u32 *params,
                                 int pc,
@@ -586,7 +599,7 @@ static csi_seq_handler csi_handlers[256] =
    ['P'] = tty_csi_P_handler,          /* DCH: not implemented */
    ['S'] = tty_csi_S_handler,          /* SU: Non-buf scroll-up */
    ['T'] = tty_csi_T_handler,          /* SD: Non-buf scroll-down */
-   ['X'] = NULL,                       /* ECH: not implemented */
+   ['X'] = tty_csi_X_handler,          /* ECH: Erase # chars in the curr line */
    ['a'] = tty_csi_a_handler,          /* HPR: move right # columns */
    ['c'] = tty_csi_c_handler,          /* DA: query term type */
    ['d'] = tty_csi_d_handler,          /* VPA: Move to row N (abs), same col */
