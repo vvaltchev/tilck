@@ -240,6 +240,17 @@ EOF
 }
 
 
+function add_vim {
+
+   if [ -z "@EXTRA_VIM_ENABLED@" ]; then
+      return
+   fi
+
+   mkdir -p usr/lib/vim
+   link_or_copy $tc/$arch/vim/install/vim.gz usr/lib/vim
+   link_or_copy $tc/$arch/vim/install/vr.tgz usr/lib/vim
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -295,5 +306,6 @@ add_busybox
 add_tcc
 add_micropython
 add_fbdoom
+add_vim
 
 make_fatpart

@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
+if (EXISTS ${TCROOT}/${ARCH}/vim)
+   set(EXTRA_VIM OFF CACHE BOOL "Load the real VIM in Tilck")
+   message(STATUS "EXTRA_VIM: ${EXTRA_VIM}")
+endif()
+
 if (EXISTS ${TCROOT}/${ARCH}/tcc)
    set(EXTRA_TCC OFF CACHE BOOL "Load the TinyCC compiler in Tilck")
    message(STATUS "EXTRA_TCC: ${EXTRA_TCC}")
@@ -14,6 +19,10 @@ endif()
 if (EXISTS ${TCROOT}/${ARCH}/micropython)
    set(EXTRA_MICROPYTHON OFF CACHE BOOL "Load micropython in Tilck")
    message(STATUS "EXTRA_MICROPYTHON: ${EXTRA_MICROPYTHON}")
+endif()
+
+if (EXTRA_VIM)
+   set(EXTRA_VIM_ENABLED "1")
 endif()
 
 if (EXTRA_TCC)

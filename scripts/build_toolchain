@@ -915,6 +915,84 @@ function build_fbdoom {
    popd
 }
 
+##################################
+# Build VIM
+##################################
+
+all_funcs_list+=(build_vim)
+function build_vim {
+
+   pushd $ARCH
+
+   if ! [ -d vim ]; then
+
+      show_work_on_component_msg "VIM"
+      reset_cc_vars
+      local ncurses="$TC/$ARCH/ncurses/install"
+
+      if ! [ -d "$ncurses" ]; then
+         echo "ERROR: ncurses is needed to build vim"
+         echo "How to fix: run this script with -s build_ncurses first"
+         exit 1
+      fi
+
+      git clone --depth 1 https://github.com/vim/vim.git
+      cd vim
+
+      local curr="$PWD"
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         #
+         # Note: NOT TESTED yet.
+         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # supported.
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+      else
+         # Default case
+         set_cc_vars_to_tc
+      fi
+
+      export CFLAGS="-ggdb -Os"
+      export LDFLAGS="-static -L$ncurses/lib"
+      export CPPFLAGS="-I$ncurses/include/ncurses"
+
+      local c_opts="--with-features=normal"
+      run_command2 "./configure --prefix=$curr/install $c_opts" configure.log
+      run_command2 "make -j" build.log
+      run_command2 "make install" install.log
+
+      pushd install
+
+         cp -r ../runtime .
+
+         pushd runtime
+            rm -rf doc lang tutor spell
+         popd
+
+         tar cfz vr.tgz runtime
+         rm -rf runtime
+
+         gzip -c --best ./bin/vim > vim.gz
+         chmod 644 vim.gz
+      popd
+
+      export CFLAGS=""
+      export LDFLAGS=""
+      export CPPFLAGS=""
+
+   else
+      show_skip_component_msg "VIM"
+   fi
+
+   popd
+}
 
 function arch_checks {
 
@@ -1149,7 +1227,6 @@ if [ "$1" == "-s" ]; then
    fi
 
    exit 0
-
 fi
 
 # Single-option parsing

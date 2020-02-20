@@ -1,0 +1,54 @@
+#!/bin/sh
+
+#
+# Constants
+#
+
+VR_TGZ="/initrd/usr/lib/vim/vr.tgz"
+VIM_GZ="/initrd/usr/lib/vim/vim.gz"
+vim_binary=/tmp/vim/vim
+
+#
+# Main body
+#
+
+set -e
+oldpwd="$PWD"
+
+if ! [ -f $VIM_GZ ] || ! [ -f $VR_TGZ ]; then
+
+   echo ""
+   echo "VIM is not built-in. Tilck image rebuild needed. Steps:"
+   echo " - Run: ./scripts/build_toolchain -s build_vim"
+   echo " - Run: make rem"
+   echo ""
+   exit 1
+fi
+
+export VIMRUNTIME=/tmp/vim/runtime
+
+if ! [ -d $VIMRUNTIME ]; then
+
+   mkdir -p /tmp/vim
+   cd /tmp/vim
+
+   if ! tar xfz $VR_TGZ; then
+      echo "ERROR: tar failed"
+      cd /
+      rm -rf /tmp/vim
+      exit 1
+   fi
+
+   sed -Ei s/scrolloff=[0-9]*/scrolloff=0/g $VIMRUNTIME/defaults.vim
+fi
+
+if ! [ -f $vim_binary ]; then
+   gzip -d $VIM_GZ > $vim_binary
+   chmod 755 $vim_binary
+fi
+
+cd $oldpwd
+
+# Start vim with no swap file (-n) and no viminfo (-i)
+# simply because they're useless for the use case of Tilck.
+exec $vim_binary -n -i NONE "$@"
