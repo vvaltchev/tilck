@@ -191,6 +191,22 @@ static void do_initial_setup(void)
       fprintf(stderr, "[init] Unable to open /dev/tty0: %s\n", strerror(errno));
       exit(1);
    }
+
+   /*
+    * In order to allow the start /etc/start to begin simply with #!/bin/sh
+    * instead of "#!/initrd/bin/busybox ash", we need to create /bin and symlink
+    * busybox to /bin/sh.
+    */
+
+   if (mkdir("/bin", 0777) < 0) {
+      fprintf(stderr, "[init] Failed to create /bin: %s\n", strerror(errno));
+      exit(1);
+   }
+
+   if (symlink("/initrd/bin/busybox", "/bin/sh") < 0) {
+      fprintf(stderr, "[init] Failed to create symlink: %s\n", strerror(errno));
+      exit(1);
+   }
 }
 
 static int get_tty_for_shell_pid(pid_t shell_pid)

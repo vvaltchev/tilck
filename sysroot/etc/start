@@ -1,4 +1,4 @@
-#!/initrd/bin/busybox ash
+#!/bin/sh
 
 # Symlink the essential directories from /initrd to /
 dirs="bin etc usr lib"
@@ -9,7 +9,7 @@ for d in $dirs; do
       continue
    fi
 
-   mkdir $d
+   mkdir -p $d
    for x in /initrd/$d/*; do
 
       if [ -f $x ]; then
@@ -19,7 +19,7 @@ for d in $dirs; do
       elif [ -d $x ]; then
 
          dname=$(basename $x)
-         mkdir /$d/$dname
+         mkdir -p /$d/$dname
 
          for y in /initrd/$d/$dname/*; do
 
