@@ -45,6 +45,8 @@ steps:
     displayName: "[toolchain] Build tcc"
   - script: sudo -E ./scripts/build_toolchain -s build_micropython
     displayName: "[toolchain] Build micropython"
+  - script: sudo -E ./scripts/build_toolchain -s build_vim
+    displayName: "[toolchain] Build vim"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests
