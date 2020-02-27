@@ -1,14 +1,12 @@
 Tilck (Tiny Linux-Compatible Kernel)
 -------------------------------------
 
-[![CircleCI](https://circleci.com/gh/vvaltchev/tilck.svg?style=svg)](https://circleci.com/gh/vvaltchev/tilck)
-[![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status/vvaltchev.tilck?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=1&branchName=master)
-[![TravisCI](https://travis-ci.org/vvaltchev/tilck.svg?branch=master)](https://travis-ci.org/vvaltchev/tilck)
+[![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status/Tilck?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=1&branchName=master)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 <p align="center">
-    <img src="http://vvaltchev.github.io/tilck_imgs/screen1.png" alt="Tilck">
+    <img src="http://vvaltchev.github.io/tilck_imgs/screen1v2.png" alt="Tilck">
 </p>
 
 What is Tilck?
