@@ -54,10 +54,10 @@ Today that project is **far** from being ready for any kind of production use, b
 it is growing very fast with major patch series being merged every week.
 It has a read-only support to `FAT32` ramdisk, and it can run a discrete amount of
 `busybox` applications compiled for embedded Linux. Also, it has a console
-(supporting both text-mode and framebuffer) which understands all the essential
-escape sequences supported by the Linux console: that allows line-editing and
-simple `ncurses` applications to work. Finally, the kernel supports Linux
-applications using the framebuffer.
+(supporting both text-mode and framebuffer) which understands most of the
+escape sequences supported by the Linux console: that allows even applications like
+`vim` to work. Finally, the kernel supports graphical Linux applications using the
+framebuffer.
 
 For a slightly more accurate idea of kernel's features, please check the list of
 [supported Linux syscalls] or see what `Tilck` can do at any time by building it.
@@ -114,7 +114,7 @@ kernel, without any on-disk bootloaders can perfectly work with `Tilck`:
 Actually that way of booting the kernel is used in the system tests. A shortcut
 for it is:
 
-    ./build/run_multiboot_qemu -initrd ./build/fatpart
+    ./build/run_multiboot_qemu
 
 #### Grub support
 
@@ -225,13 +225,12 @@ way: it really cares about the **user experience** (where "user" means
 complex to build and configure; it's not a project requiring 200 things to be
 installed on the host machine. Building such projects may require hours or even
 days of effort (think about special configurations e.g. cross builds). Tilck
-instead, has been designed to be trivial to build and test even for students who
-can barely use Linux (actually it can even be built and run on QEMU w/o KVM on
-Microsoft's WSL, aka "Bash for Windows"). It has a sophisticated script for
-building its own toolchain that works for the major Linux distributions and a
-powerful CMake-based build system. The build of Tilck, produce an image ready to
-be tested with QEMU or written on a USB stick. (To some degree, it's like what
-the `buildroot` project does for Linux.) Of course, the project includes also
+instead, has been designed to be trivial to build and test even for inexperienced
+people with basic knowledge of Linux. It has a sophisticated script for building
+its own toolchain that works on all the major Linux distributions and a powerful
+CMake-based build system. The build of Tilck produce an image ready to be tested
+with QEMU or written on a USB stick. (To some degree, it's like what the
+`buildroot` project does for Linux.) Of course, the project includes also
 scripts for running Tilck in QEMU with various configurations (bios boot, efi
 boot, direct (multi)boot with QEMU's -kernel option, etc.).
 
@@ -255,8 +254,8 @@ it and/or add a couple of printk()'s here and there in their fork. Hopefully,
 some of those people "just playing" with Tilck might actually want to contribute
 to its development.
 
-In conclusion, even if some parts of the project itself might be pretty complex,
-at least building and running its test **must be** something anyone can do.
+In conclusion, even if some parts of the project itself are be pretty complex,
+at least building and running its tests **must be** something anyone can do.
 
 [coverage]: docs/coverage.md
 
@@ -301,18 +300,12 @@ Linux for that. The idea at the moment to implement a kernel as simple as possib
 able to run a class of Linux console applications. At some point in the future
 `Tilck` might actually have a chance to be used in production embedded environments,
 but it still will be *by design* limited in terms of features compared to the Linux
-kernel. For example, `Tilck` will *probably* never support:
-
-* Swap
-* I/O cache
-* SMP
-* Multiple users
-
-`Tilck`'s whole purpose is being *simple* and *extremely-deterministic*, while
-most of the above-mentioned features introduce a substantial amount of complexity
-in a kernel. As mentioned above, one can think of Tilck as a kernel offering what
-a unikernel will never be able to offer, but without trying to be a kernel for
-full-blown desktop/server systems.
+kernel. For example, `Tilck` will *probably* never support swap and I/O cache:
+project's whole purpose is being *simple* and *extremely-deterministic*, while
+some typical kernel features (e.g. swap, SMP) introduce a substantial amount of
+complexity and nondeterminism in a kernel. As mentioned above, one can think of
+`Tilck` as a kernel offering what a unikernel will never be able to offer, but
+without trying to be a kernel for full-blown desktop/server systems.
 
 #### Why Tilck runs only on i686?
 
