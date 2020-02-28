@@ -106,6 +106,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    Print(LOADING_RAMDISK_STR);
 
+   *ramdisk_paddr_ref = 0;
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               1, /* just 1 page */
@@ -153,12 +154,11 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    status = BS->FreePages(*ramdisk_paddr_ref, (total_fat_size / PAGE_SIZE) + 1);
    HANDLE_EFI_ERROR("FreePages");
 
-   *ramdisk_paddr_ref = KERNEL_PADDR + KERNEL_MAX_SIZE;
-
-   status = BS->AllocatePages(AllocateAddress,
+   status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               (total_used_bytes / PAGE_SIZE) + 1,
                               ramdisk_paddr_ref);
+
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
