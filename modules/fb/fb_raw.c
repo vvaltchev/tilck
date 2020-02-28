@@ -256,7 +256,7 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
 
       /*
        * Generic (but slower version)
-       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       * NOTE: Optimizing for bpp != 32 is completely out of Tilck's goals.
        */
 
       for (u32 y = iy; y < (iy + h); y++)
@@ -299,7 +299,7 @@ void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 
       /*
        * Generic (but slower version)
-       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       * NOTE: Optimizing for bpp != 32 is completely out of Tilck's goals.
        */
 
       for (u32 y = iy; y < (iy + font_h); y++)
@@ -321,7 +321,7 @@ void fb_copy_from_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
       /*
        * Generic (but slower version)
-       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       * NOTE: Optimizing for bpp != 32 is completely out of Tilck's goals.
        */
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
@@ -344,7 +344,7 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
       /*
        * Generic (but slower version)
-       * NOTE: Optimizing for bbp != 32 is completely out of Tilck's goals.
+       * NOTE: Optimizing for bpp != 32 is completely out of Tilck's goals.
        */
 
       for (u32 y = 0; y < h; y++, vaddr += fb_pitch)
@@ -448,7 +448,7 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
  * -------------------------------------------
  */
 
-#define PSZ         4     /* pixel size = 32 bbp / 8 = 4 bytes */
+#define PSZ         4     /* pixel size = 32 bpp / 8 = 4 bytes */
 #define SL_COUNT  256     /* all possible 8-pixel scanlines */
 #define SL_SIZE     8     /* scanline size: 8 pixels */
 #define FG_COLORS  16     /* #fg colors */
