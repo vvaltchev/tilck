@@ -7,6 +7,7 @@
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 #include <tilck/common/simple_elf_loader.c.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/color_defs.h>
 
 #include <multiboot.h>
 
@@ -15,6 +16,8 @@
 #include "vbe.h"
 #include "mm.h"
 #include "common.h"
+
+#define LOADING_RAMDISK_STR            "Loading ramdisk... "
 
 bool graphics_mode; // false = text mode
 
@@ -174,6 +177,48 @@ setup_multiboot_info(struct mem_info *mi,
    return mbi;
 }
 
+static void
+dump_progress(const char *prefix_str, u32 curr, u32 tot)
+{
+   bt_movecur(bt_get_curr_row(), 0);
+   printk("%s%u%% ", prefix_str, 100 * curr / tot);
+}
+
+static void
+read_sectors_with_progress(const char *prefix_str,
+                           u32 paddr, u32 first_sector, u32 count)
+{
+   const u32 chunk_sectors = 1024;
+   const u32 chunks_count = count / chunk_sectors;
+   const u32 rem = count - chunks_count * chunk_sectors;
+
+   for (u32 chunk = 0; chunk < chunks_count; chunk++) {
+
+      const u32 sectors_read = chunk * chunk_sectors;
+
+      if (sectors_read > 0)
+         dump_progress(prefix_str, sectors_read, count);
+
+      read_sectors(paddr, first_sector, chunk_sectors);
+      paddr += chunk_sectors * SECTOR_SIZE;
+      first_sector += chunk_sectors;
+   }
+
+   if (rem > 0) {
+      read_sectors(paddr, first_sector, rem);
+   }
+
+   dump_progress(prefix_str, count, count);
+}
+
+static void
+write_ok_msg(void)
+{
+   bt_setcolor(COLOR_GREEN);
+   printk("[ OK ]\n");
+   bt_setcolor(DEFAULT_FG_COLOR);
+}
+
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
@@ -193,7 +238,9 @@ void bootloader_main(void)
    ASSERT(!graphics_mode);
    ASSERT(!fb_paddr);
 
+   bt_setcolor(COLOR_BRIGHT_WHITE);
    printk("----- Hello from Tilck's legacy bootloader! -----\n\n");
+   bt_setcolor(DEFAULT_FG_COLOR);
 
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
@@ -218,7 +265,7 @@ void bootloader_main(void)
    if (!success)
       panic("read_write_params failed");
 
-   printk("Loading ramdisk... ");
+   printk(LOADING_RAMDISK_STR);
    free_mem = get_usable_mem_or_panic(&mi, KERNEL_MAX_END_PADDR, SECTOR_SIZE);
 
    // Read FAT's header
@@ -249,8 +296,14 @@ void bootloader_main(void)
    }
 
    rd_paddr = free_mem;
-   read_sectors(rd_paddr, RAMDISK_SECTOR, rd_sectors);
-   printk("[ OK ]\n");
+   read_sectors_with_progress(LOADING_RAMDISK_STR,
+                              rd_paddr,
+                              RAMDISK_SECTOR,
+                              rd_sectors);
+
+   bt_movecur(bt_get_curr_row(), 0);
+   printk(LOADING_RAMDISK_STR);
+   write_ok_msg();
 
    ff_clu_off = fat_get_first_free_cluster_off((void *)free_mem);
 
@@ -267,12 +320,13 @@ void bootloader_main(void)
          panic("fat_compact_clusters() failed: %u != %u", rd_size, ff_clu_off);
       }
 
-      printk("[ OK ]\n");
+      write_ok_msg();
    }
 
    printk("Loading the ELF kernel... ");
    load_elf_kernel(&mi, rd_paddr, rd_size, KERNEL_FILE_PATH, &entry);
-   printk("[ OK ]\n\n");
+   write_ok_msg();
+   printk("\n");
 
    ask_user_video_mode(&mi);
 

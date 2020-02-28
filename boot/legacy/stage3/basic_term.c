@@ -18,6 +18,16 @@ void bt_setcolor(u8 color)
    curr_color = color;
 }
 
+u16 bt_get_curr_row(void)
+{
+   return curr_row;
+}
+
+u16 bt_get_curr_col(void)
+{
+   return curr_col;
+}
+
 void bt_movecur(int row, int col)
 {
    row = CLAMP(row, 0, TERM_ROWS - 1);
@@ -56,20 +66,20 @@ static void bt_incr_row()
 void bt_write_char(char c)
 {
    if (c == '\n') {
-      curr_col = 0;
+      curr_col = 0;                    /* treat \n as \r\n */
       bt_incr_row();
       bt_movecur(curr_row, curr_col);
       return;
    }
 
    if (c == '\r') {
-      curr_col = 0;
+      curr_col = 0;                    /* just handle properly \r */
       bt_movecur(curr_row, curr_col);
       return;
    }
 
    if (c == '\t')
-      return;
+      return;                          /* ignore tabs */
 
    volatile u16 *video = (volatile u16 *)VIDEO_ADDR;
 
