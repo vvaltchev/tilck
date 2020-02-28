@@ -51,13 +51,129 @@ static bool IsTilckDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    return false;
 }
 
+static EFI_STATUS
+FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
+                  bool supported,
+                  INTN *choice)
+{
+   INTN chosenMode = -1, minResPixels = 0, minResModeN = -1;
+   EFI_STATUS status;
+
+   for (UINTN i = 0; i < gProt->Mode->MaxMode; i++) {
+
+      EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
+      UINTN sizeof_info = 0;
+
+      status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
+      HANDLE_EFI_ERROR("QueryMode() failed");
+
+      if (mi->HorizontalResolution < 640)
+         continue; /* too small */
+
+      if (mi->VerticalResolution < 480)
+         continue; /* too small */
+
+      if (supported && !IsSupported(mi))
+         continue;
+
+      if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600) {
+         chosenMode = (INTN) i;
+         break; /* Our preferred resolution */
+      }
+
+      const INTN p = (INTN)(mi->HorizontalResolution * mi->VerticalResolution);
+
+      if (p < minResPixels) {
+         minResPixels = p;
+         minResModeN = (INTN) i;
+      }
+   }
+
+   if (chosenMode >= 0)
+      *choice = chosenMode;
+   else if (minResModeN >= 0)
+      *choice = minResModeN;
+   else
+      *choice = -1;
+
+end:
+   return status;
+}
+
+EFI_STATUS
+EarlySetLowResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS)
+{
+   EFI_STATUS status;
+   EFI_HANDLE handles[32];
+   UINTN handles_buf_size;
+   UINTN handles_count;
+   INTN chosenMode, origMode;
+   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
+
+   ST->ConOut->ClearScreen(ST->ConOut);
+   handles_buf_size = sizeof(handles);
+
+   status = BS->LocateHandle(ByProtocol,
+                             &GraphicsOutputProtocol,
+                             NULL,
+                             &handles_buf_size,
+                             handles);
+
+   HANDLE_EFI_ERROR("LocateHandle() failed");
+
+   handles_count = handles_buf_size / sizeof(EFI_HANDLE);
+   CHECK(handles_count > 0);
+
+   status = BS->HandleProtocol(handles[0],
+                               &GraphicsOutputProtocol,
+                               (void **)&gProt);
+   HANDLE_EFI_ERROR("HandleProtocol() failed");
+
+   FindGoodVideoMode(gProt, true, &chosenMode);
+   HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
+
+   if (chosenMode < 0) {
+
+      /*
+       * We were unable to find a good and supported (= 32 bps) video mode.
+       * That's bad, but not fatal: just re-run FindGoodVideoMode() including
+       * also non-32bps video modes. They are still perfectly fine for the
+       * bootloader. The resolution used by Tilck instead, will be chosen later
+       * directly by the user, among the available ones.
+       */
+
+      FindGoodVideoMode(gProt, false, &chosenMode);
+      HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
+
+      if (chosenMode < 0) {
+         /* Do nothing: just keep the current video mode */
+         return status;
+      }
+   }
+
+   origMode = (INTN) gProt->Mode->Mode;
+
+   if (chosenMode == origMode)
+      return status; /* We're already using a "good" video mode */
+
+   status = gProt->SetMode(gProt, (UINTN)chosenMode);
+
+   if (EFI_ERROR(status)) {
+      /* Something went wrong: just restore the previous video mode */
+      status = gProt->SetMode(gProt, (UINTN)origMode);
+      HANDLE_EFI_ERROR("SetMode() failed");
+   }
+
+end:
+   return status;
+}
+
 EFI_STATUS
 SetupGraphicMode(EFI_BOOT_SERVICES *BS,
                  UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
 {
-   UINTN status = EFI_SUCCESS;
-
+   EFI_STATUS status;
    EFI_HANDLE handles[32];
    UINTN handles_buf_size;
    UINTN handles_count;

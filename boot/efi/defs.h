@@ -36,3 +36,6 @@ EFI_STATUS
 SetupGraphicMode(EFI_BOOT_SERVICES *BS                           /* in */,
                  UINTN *fb_addr                                  /* out */,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info /* out */);
+
+EFI_STATUS
+EarlySetLowResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS);
