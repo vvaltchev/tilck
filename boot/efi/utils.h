@@ -39,5 +39,11 @@ LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
                  EFI_PHYSICAL_ADDRESS *paddr,
                  CHAR16 *filePath);
 
-void JumpToKernel(multiboot_info_t *mbi, void *entry_point);
+void
+ShowProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
+             UINTN CurrRow,
+             const CHAR16 *PrefixStr,
+             UINTN curr,
+             UINTN tot);
 
+void JumpToKernel(multiboot_info_t *mbi, void *entry_point);

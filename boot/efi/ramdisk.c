@@ -10,16 +10,73 @@
 #include <efi.h>
 #include <efilib.h>
 #include <multiboot.h>
-#include "efierr.h"
+#include <efierr.h>
 
 #include "utils.h"
 
+#define LOADING_RAMDISK_STR            L"Loading ramdisk... "
+
+static EFI_STATUS
+ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
+                     UINTN CurrRow,
+                     EFI_DISK_IO_PROTOCOL *prot,
+                     UINT32 MediaId,
+                     UINT64 Offset,
+                     UINTN BufferSize,
+                     void *Buffer)
+{
+   const UINTN ChunkSize = 256 * KB;
+   const UINTN ChunkCount = BufferSize / ChunkSize;
+   const UINTN rem = BufferSize - ChunkCount * ChunkSize;
+   EFI_STATUS status;
+
+   for (u32 chunk = 0; chunk < ChunkCount; chunk++) {
+
+      if (chunk > 0) {
+         ShowProgress(ST->ConOut,
+                      CurrRow,
+                      LOADING_RAMDISK_STR,
+                      chunk * ChunkSize,
+                      BufferSize);
+      }
+
+      status = prot->ReadDisk(prot,
+                              MediaId,
+                              Offset,
+                              ChunkSize,
+                              Buffer);
+      HANDLE_EFI_ERROR("ReadDisk");
+
+      Offset += ChunkSize;
+      Buffer += ChunkSize;
+   }
+
+   if (rem > 0) {
+      status = prot->ReadDisk(prot,
+                              MediaId,
+                              Offset,
+                              rem,
+                              Buffer);
+      HANDLE_EFI_ERROR("ReadDisk");
+   }
+
+   ShowProgress(ST->ConOut,
+                CurrRow,
+                LOADING_RAMDISK_STR,
+                BufferSize,
+                BufferSize);
+
+end:
+   return status;
+}
 
 EFI_STATUS
-LoadRamdisk(EFI_HANDLE image,
+LoadRamdisk(EFI_SYSTEM_TABLE *ST,
+            EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *ramdisk_size)
+            UINTN *ramdisk_size,
+            UINTN CurrConsoleRow)
 {
    EFI_STATUS status = EFI_SUCCESS;
    EFI_BLOCK_IO_PROTOCOL *blockio;
@@ -47,7 +104,7 @@ LoadRamdisk(EFI_HANDLE image,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
 
-   Print(L"Loading ramdisk... ");
+   Print(LOADING_RAMDISK_STR);
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -58,11 +115,10 @@ LoadRamdisk(EFI_HANDLE image,
 
    status = ioprot->ReadDisk(ioprot,
                              blockio->Media->MediaId,
-                             0, // offset from the beginnig of the partition!
+                             0, /* offset from the beginnig of the partition! */
                              1 * KB, /* just the header */
                              fat_hdr);
    HANDLE_EFI_ERROR("ReadDisk");
-
 
    sector_size = fat_get_sector_size(fat_hdr);
    total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
@@ -106,13 +162,17 @@ LoadRamdisk(EFI_HANDLE image,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0,
-                             total_used_bytes,
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
+   status = ReadDiskWithProgress(ST->ConOut,
+                                 CurrConsoleRow,
+                                 ioprot,
+                                 blockio->Media->MediaId,
+                                 0,
+                                 total_used_bytes,
+                                 fat_hdr);
+   HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
+   ST->ConOut->SetCursorPosition(ST->ConOut, 0, 2);
+   Print(LOADING_RAMDISK_STR);
    Print(L"[ OK ]\r\n");
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 

@@ -116,3 +116,37 @@ GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr)
 
    return NULL;
 }
+
+/*
+ * ShowProgress
+ *    -- Shows (curr/tot)% on the row `CurrRow` with the given prefix
+ *
+ * Unfortunately, the `CurrRow` parameter is not avoidable because
+ * EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL has a SetCursorPosition() but NOTHING like a
+ * GetCursorPosition(). It seems like we're supposed to manually track cursor's
+ * position. To do that, we'll need to write a non-trivial wrapper of the
+ * Print() function, calling directly OutputString(), which have to track
+ * accurately the current row number. That means increasing it every time a \n
+ * is found or the text overflows the current row. It will end up as a whole
+ * layer on the top of EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL.
+ *
+ * A probably better approach will be to track the current row and to call
+ * SetCursorPosition() every time before Print() [still, by introducing a
+ * wrapper], instead of just passively tracking it. But, in that case too we
+ * must handle the case where the buffer overflows the current row.
+ *
+ * So, at the end, the simpler thing for the moment allowing us to show the
+ * progress% while loading the ramdisk is just to hard-code the current row in
+ * efi_main() and pass it down the whole way to this function, ShowProgress().
+ */
+
+void
+ShowProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
+             UINTN CurrRow,            /* HACK: see the note above */
+             const CHAR16 *PrefixStr,
+             UINTN curr,
+             UINTN tot)
+{
+   ConOut->SetCursorPosition(ConOut, 0, CurrRow);
+   Print(L"%s%u%%", PrefixStr, 100 * curr / tot);
+}

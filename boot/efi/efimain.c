@@ -27,6 +27,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    InitializeLib(image, ST);
 
    ST->ConOut->ClearScreen(ST->ConOut);
+   ST->ConOut->EnableCursor(ST->ConOut, true);
    Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");
 
    status = BS->OpenProtocol(image,
@@ -56,7 +57,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    // ------------------------------------------------------------------ //
 
-   status = LoadRamdisk(image, loaded_image, &ramdisk_paddr, &ramdisk_size);
+   status = LoadRamdisk(ST,
+                        image,
+                        loaded_image,
+                        &ramdisk_paddr,
+                        &ramdisk_size,
+                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
+
    HANDLE_EFI_ERROR("LoadRamdisk failed");
 
    Print(L"\r\n");
