@@ -1072,15 +1072,15 @@ function compiler_checks {
          fi
       fi
 
-      cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
-      cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
+      local cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
+      local cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
 
-      if [[ "$cc_compiler" == "" ]]; then
+      if [ -z "$cc_compiler" ]; then
          echo "ERROR: $CC compiler NOT FOUND"
          exit 1
       fi
 
-      if [[ "$cxx_compiler" == "" ]]; then
+      if [ -z "$cxx_compiler" ]; then
          echo "ERROR: $CXX compiler NOT FOUND"
          exit 1
       fi
@@ -1093,35 +1093,7 @@ function compiler_checks {
    fi
 }
 
-##########################################################
-#
-# MAIN
-#
-##########################################################
-
-default_funcs=()
-
-if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   default_funcs+=(download_gcc_toolchain)   # note: this is the default case
-else
-   # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
-   # we *must* build also libmusl, in order to link with musl programs compiled
-   # with the system compiler.
-   default_funcs+=(build_libmusl)
-fi
-
-default_funcs+=(download_cmake)
-default_funcs+=(build_gnuefi)
-default_funcs+=(build_mtools)
-default_funcs+=(build_zlib)
-
-if [ -z "$NO_BUSYBOX" ]; then
-   default_funcs+=(build_busybox)
-fi
-
-############################################################
-
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+function show_help {
 
    echo ""
    echo "Syntax:"
@@ -1137,7 +1109,7 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
    echo "           Linux distribution and then it checks if all the required"
    echo "           packages are already installed. In case some packages need"
    echo "           to be installed, this script will show a list and run:"
-   echo "               sudo <package manager> <list>"
+   echo "               sudo <package manager> install [pkg1 [pkg2 [pkg3 ...]]]"
    echo "           In case the user does not want this script to install the "
    echo "           necessary packages he/she could just interrupt this script"
    echo "           with Ctrl+C, without affecting the system."
@@ -1157,100 +1129,154 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 
    echo ""
    echo -e "(*) Default functions\n"
-   exit 0
-fi
+}
 
-# Compiler-related checks
-compiler_checks
-# Arch-related checks
-arch_checks
-# Save the current values of CC, CXX and related
-save_cc_vars
+function show_error_no_func {
+   echo "ERROR: The function '$1' does not exist. Re-run with --help."
+}
 
-# Exit on the first failure
-set -e
+##########################################################
+#
+# MAIN
+#
+##########################################################
 
-export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+function main {
 
-if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+   default_funcs=()
 
-   ha=$TC/host_${HOST_ARCH}
-   GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
-   GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # NOTE: not in $PATH!
-   ha=""
-
-   # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
-   # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
-   # its version and NOT the wrapper script in build_scripts which simulates
-   # its behavior using -m32 and -specs.
-   export PATH="$GCC_TOOLCHAIN:$PATH"
-fi
-
-
-mkdir -p $TC
-mkdir -p $TC/cache
-mkdir -p $TC/noarch
-mkdir -p $TC/i386
-mkdir -p $TC/x86_64
-mkdir -p $TC/host_i386
-mkdir -p $TC/host_x86_64
-
-if ! [ -L $TC/host ]; then
-   ln -s $TC/host_${HOST_ARCH} $TC/host
-fi
-
-cd $TC
-
-# Set the CMAKE variable in order to single functions to be able to use it
-if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
-   CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
-else
-   CMAKE=cmake
-fi
-
-
-if [ "$1" == "-s" ]; then
-
-   if [ $# -ne 2 ]; then
-      echo "Expected the name of the function to call after the $1 option"
-   fi
-
-   func="$2"
-
-   if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
-      echo "[build_toolchain] Executing single function '$func'"
-      $func
-      echo "[build_toolchain] Executing single function: DONE"
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+      default_funcs+=(download_gcc_toolchain)   # note: this is the default case
    else
-      echo "ERROR: The function '$func' does not exist."
-      exit 1
+      # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
+      # we *must* build also libmusl, in order to link with musl programs
+      # compiled with the system compiler.
+      default_funcs+=(build_libmusl)
    fi
 
-   exit 0
-fi
+   default_funcs+=(download_cmake)
+   default_funcs+=(build_gnuefi)
+   default_funcs+=(build_mtools)
+   default_funcs+=(build_zlib)
 
-# Single-option parsing
+   if [ -z "$NO_BUSYBOX" ]; then
+      default_funcs+=(build_busybox)
+   fi
 
-if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
-   skip_install=true
-fi
+   if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+      show_help
+      exit 0
+   fi
 
-# Do the actual job
+   # Compiler-related checks
+   compiler_checks
+   # Arch-related checks
+   arch_checks
+   # Save the current values of CC, CXX and related
+   save_cc_vars
 
-if [ -z "$skip_install" ]; then
-   install_packages
-else
-   echo "*** SKIPPING installation of packages"
-fi
+   # Exit on the first failure
+   set -e
 
-echo
-echo "*** Building the custom toolchain ***"
-echo
+   export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
-for x in ${default_funcs[@]}; do
-   $x
-done
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 
-echo
-echo "*** Building custom toolchain COMPLETED ***"
-echo
+      local ha=$TC/host_${HOST_ARCH}
+      GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
+      GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # NOTE: not in $PATH!
+      unset ha
+
+      # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
+      # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
+      # its version and NOT the wrapper script in build_scripts which simulates
+      # its behavior using -m32 and -specs.
+      export PATH="$GCC_TOOLCHAIN:$PATH"
+   fi
+
+
+   mkdir -p $TC
+   mkdir -p $TC/cache
+   mkdir -p $TC/noarch
+   mkdir -p $TC/i386
+   mkdir -p $TC/x86_64
+   mkdir -p $TC/host_i386
+   mkdir -p $TC/host_x86_64
+
+   if ! [ -L $TC/host ]; then
+      ln -s $TC/host_${HOST_ARCH} $TC/host
+   fi
+
+   cd $TC
+
+   # Set the CMAKE variable in order to single functions to be able to use it
+   if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
+      CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
+   else
+      CMAKE=cmake
+   fi
+
+
+   if [ "$1" == "-s" ]; then
+
+      if [ $# -ne 2 ]; then
+         echo "Expected the name of the function to call after the $1 option"
+      fi
+
+      local func="$2"
+
+      for x in ${all_funcs_list[@]}; do
+         if [ "$x" = "$func" ]; then
+            local func_found=1
+            break
+         fi
+      done
+
+      if [ -z "$func_found" ]; then
+         show_error_no_func "$func"
+         exit 1
+      fi
+
+      if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
+         echo "[build_toolchain] Executing single function '$func'"
+         $func
+         echo "[build_toolchain] Executing single function: DONE"
+      else
+         show_error_no_func "$func"
+         exit 1
+      fi
+
+      exit 0
+   fi
+
+   # Single-option parsing
+
+   if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
+      local skip_install=1
+   fi
+
+   # Do the actual job
+
+   if [ -z "$skip_install" ]; then
+      install_packages
+   else
+      echo "*** SKIPPING installation of packages"
+   fi
+
+   echo
+   echo "*** Building the custom toolchain ***"
+   echo
+
+   for x in ${default_funcs[@]}; do
+      $x
+   done
+
+   echo
+   echo "*** Building custom toolchain COMPLETED ***"
+   echo
+}
+
+##############################################
+# Entry point: run the main() function
+##############################################
+main "$@"
