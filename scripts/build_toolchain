@@ -431,8 +431,8 @@ for x in $MAIN_DIR/scripts/bash_includes/tc/*; do
 done
 
 if command -v sort &> /dev/null 2>&1; then
-   IFS=$'\n';
-   all_funcs_list=($(sort <<<"${all_funcs_list[*]}"));
+   IFS=$'\n'
+   all_funcs_list=($(sort <<<"${all_funcs_list[*]}"))
    unset IFS
 fi
 

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+all_funcs_list+=(build_tfblib)
+function build_tfblib {
+
+   if [ ! -d noarch/tfblib ]; then
+
+      pushd noarch
+      show_work_on_component_msg "TFBLIB"
+      git clone https://github.com/vvaltchev/tfblib
+      ln -s $TC/noarch/tfblib "$MAIN_DIR/userapps/extra"
+      popd
+
+   else
+      show_skip_component_msg "TFBLIB"
+   fi
+}
