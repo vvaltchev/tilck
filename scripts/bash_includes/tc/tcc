@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+
+all_funcs_list+=(build_tcc)
+function build_tcc {
+
+   if [ ! -d $ARCH/tcc ]; then
+
+      reset_cc_vars
+
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+         install_32bit_libs
+      fi
+
+      # Download the gcc toolchain even in the case HOST != BUILD_ARCH
+      # because we'll need its sysroot to be deployed in Tilck's image.
+      DOWNLOAD_IGNORING_SYSCC="1"
+      download_gcc_toolchain
+      DOWNLOAD_IGNORING_SYSCC=""
+   fi
+
+
+   pushd $ARCH
+
+   if [ ! -d tcc ]; then
+
+      show_work_on_component_msg "TCC"
+      git clone git://repo.or.cz/tinycc.git tcc
+
+      cd tcc
+
+      # Variables for making the compiler to work on Tilck
+      # Note: these vars are used by --crtprefix and --libpaths
+      # and do not affect the compiler in case just -c is used to
+      # compile a single C file, without linking.
+
+      local p="/"
+      local lib="/lib/$ARCH_GCC_TC-tilck-musl"
+
+      # To test it on the Linux build machine
+      # local tc=$TC/host_${HOST_ARCH}/${GCC_NAME_PFX}_musl
+      # local p="$tc/$ARCH/tcc/install"
+      # local lib=$tc/$ARCH_GCC_TC-buildroot-linux-musl/sysroot/lib
+
+      local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
+
+
+      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
+         # Default case
+         set_cc_vars_to_tc
+
+      else
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+         # Hack: unfortunately, while tcc's build system uses the
+         # just-built tcc in order to build libtcc1.a and, one of its files
+         # (bcheck.c) needs to include standard headers, which most of them
+         # like stdlib.h get found because of fall-back logic in the compiler,
+         # but the specific ones in sys, bits and gnu don't (they are included
+         # indirectly by standard headers). Therefore, the `tcc` compiler
+         # fall-backs to the path specified by -B.. (pointing to the project's
+         # root directory). So, one dirty hack to workaround this problem is
+         # just to symlink the missing dirs in the local directory. This avoids
+         # touching tcc's build system's code.
+         ln -s /usr/include/$ARCH-linux-gnu/sys include/
+         ln -s /usr/include/$ARCH-linux-gnu/bits include/
+         ln -s /usr/include/$ARCH-linux-gnu/gnu include/
+      fi
+
+      local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
+      local flags="$flags --enable-static --cpu=$ARCH"
+      local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
+      local af="$af --crtprefix=$lib --libpaths=$lib"
+
+      run_command2 "./configure $af" configure.log
+      run_command2 "make -j" build.log
+
+      # Just to test on the local machine
+      # run_command2 "make install" install.log
+
+      # Note the configure --strip-binaries option does not work
+      $ARCH_GCC_TC-linux-strip --strip-all $ARCH-tcc
+
+   else
+
+      show_skip_component_msg "TCC"
+   fi
+
+   popd
+}

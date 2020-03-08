@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+###############################
+# Mtools
+###############################
+
+all_funcs_list+=(build_mtools)
+function build_mtools {
+
+   pushd host_${HOST_ARCH}
+
+   if ! [ -d mtools ]; then
+
+      show_work_on_component_msg "MTOOLS"
+      local pkgname=mtools-4.0.23
+      local tarname=$pkgname.tar.gz
+
+      download_file_in_cache "ftp://ftp.gnu.org/gnu/mtools" "$tarname"
+      extract_cachefile_tar_gz $tarname $pkgname mtools
+
+      cd mtools
+      reset_cc_vars
+
+      run_command2 ./configure configure.log
+      run_command2 "make -j" build.log
+   else
+      show_skip_component_msg "MTOOLS"
+   fi
+
+   popd
+}

@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+function internal_build_busybox {
+
+   echo "Building busybox... "
+   reset_cc_vars
+
+   cp $MAIN_DIR/other/busybox.config .config
+
+   if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+      # Case HOST_ARCH == ARCH
+      # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+      export SYS_CC="$CC"
+      export SYS_CXX="$CXX"
+      export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+   else
+
+      # Default case
+      set_cc_vars_to_tc
+   fi
+
+   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+
+   run_command2 "make -j" build.log
+
+   export CROSS_COMPILE=""
+   export CC_POST_FLAGS=""
+
+   busybox_fix_config_file
+
+   # Save a copy of the last built .config file
+   cp .config .last_build_config
+}
+
+all_funcs_list+=(build_busybox)
+function build_busybox {
+
+   pushd $ARCH
+
+   if [ -d busybox ]; then
+      s1=`sha1sum ./busybox/.config | cut -d " " -f 1`
+      s2=`sha1sum ./busybox/.last_build_config | cut -d " " -f 1`
+
+      if [ "$s1" != "$s2" ]; then
+
+         echo "Busybox: .config != .last_build_config"
+         echo -n "Do you want to rebuild with the new config? [Y/n]: "
+         read answer
+
+         if [[ "$answer" == "" || "$answer" == "y" ]]; then
+
+            echo -n "Do you want an incremental build? [Y/n]: "
+            read answer
+            if [[ "$answer" == "" || "$answer" == "y" ]]; then
+               pushd busybox
+               internal_build_busybox
+               popd
+            else
+               rm -rf busybox
+            fi
+         fi
+      fi
+   fi
+
+   if ! [ -d busybox ]; then
+
+      show_work_on_component_msg "BUSYBOX"
+
+      local ver=1.28.4
+      local tarname=busybox-$ver.tar.bz2
+
+      download_file_in_cache "https://busybox.net/downloads" "$tarname"
+      extract_cachefile_tar_bz $tarname busybox-$ver busybox
+
+      pushd busybox
+      internal_build_busybox
+      popd
+
+   elif [ "$REBUILD" == "1" ]; then
+
+      pushd busybox
+      internal_build_busybox
+      popd
+
+   else
+      show_skip_component_msg "BUSYBOX"
+   fi
+
+   popd
+}
+
+function busybox_fix_config_file {
+
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   LC_ALL=C sort -sr .config > .config_sorted
+   mv .config_sorted .config
+}
+
+all_funcs_list+=(config_busybox)
+function config_busybox {
+
+   pushd $ARCH
+
+   if ! [ -d busybox ]; then
+      echo "ERROR: busybox not found in toolchain"
+      exit 1
+   fi
+
+   pushd busybox
+
+   make menuconfig
+
+   echo -n "Do you want to update busybox.config with the new config? [Y/n]: "
+   read answer
+
+   busybox_fix_config_file
+
+   if [[ "$answer" == "" || "$answer" == "y" ]]; then
+      cp .config $MAIN_DIR/other/busybox.config
+      echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
+   fi
+
+   popd
+   popd
+
+   build_busybox
+}

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+all_funcs_list+=(build_ncurses)
+function build_ncurses {
+
+   pushd $ARCH
+
+   if ! [ -d ncurses ]; then
+
+      show_work_on_component_msg "NCURSES"
+      reset_cc_vars
+
+      local ver=6.1
+      local tarname=ncurses-$ver.tar.gz
+      local install_dir=$TC/$ARCH/ncurses/install
+      download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
+      extract_cachefile_tar_gz $tarname ncurses-$ver ncurses
+
+      mkdir -p $install_dir
+      cd ncurses
+
+      local o1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$install_dir"
+      local o2="--datarootdir=/usr/share --disable-db-install"
+      local o4="--without-progs --without-cxx --without-cxx-binding"
+      local o5="--without-ada --without-manpages --without-dlsym"
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+      else
+         set_cc_vars_to_tc
+      fi
+
+      run_command2 "./configure $o1 $o2 $o3 $o4 $o5" configure.log
+      run_command2 "make -j" build.log
+      run_command2 "make install" install.log
+      export CC_POST_FLAGS=""
+
+   else
+      show_skip_component_msg "NCURSES"
+   fi
+
+   popd
+}

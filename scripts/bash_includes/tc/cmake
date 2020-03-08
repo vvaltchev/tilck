@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# ---------------------------------------------------------------
-# NOTE
-#
-# This "script" is NOT meant to be executed directly.
-# It is included as a source file by scripts/build_toolchian.
-#
-# ---------------------------------------------------------------
-
 CMAKE_VERSION_TO_DOWNLOAD="3.2.3"
 CMAKE_MIN_VERSION="3.2.0"
 

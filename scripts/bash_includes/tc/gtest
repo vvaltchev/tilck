@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+##############################
+# Build gtest
+##############################
+
+function download_googletest {
+
+   if ! [ -d cache/googletest ]; then
+      pushd cache
+      local url="https://github.com/google/googletest.git"
+      git clone --branch release-1.8.0 --depth 1 "$url"
+      popd
+   fi
+}
+
+all_funcs_list+=(build_gtest)
+function build_gtest {
+
+   download_googletest
+   pushd host_$HOST_ARCH
+
+   if ! [ -d gtest ]; then
+
+      show_work_on_component_msg "GOOGLE TEST ($HOST_ARCH)"
+      mkdir gtest
+      cd gtest
+
+      reset_cc_vars
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
+      run_command2 "make -j" build.log
+   else
+      show_skip_component_msg "GOOGLE TEST ($HOST_ARCH)"
+   fi
+
+   popd
+}
+
+all_funcs_list+=(build_gtest_arch)
+function build_gtest_arch {
+
+   download_googletest
+   pushd host_$ARCH
+
+   if ! [ -d gtest ]; then
+
+      show_work_on_component_msg "GOOGLE TEST ($ARCH)"
+      download_gcc_glibc_toolchain
+
+      mkdir gtest
+      cd gtest
+
+      set_cc_vars_to_tc
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
+      run_command2 "make -j" build.log
+   else
+      show_skip_component_msg "GOOGLE TEST ($ARCH)"
+   fi
+
+   popd
+}

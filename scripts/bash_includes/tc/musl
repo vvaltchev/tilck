@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+all_funcs_list+=(build_libmusl)
+function build_libmusl {
+
+   pushd $ARCH
+   local saved_path="$PATH"
+   export SYS_CC="$CC"
+   export SYS_CXX="$CXX"
+
+   if ! [ -d musl ]; then
+
+      if [[ "$USE_SYSCC" == "" || "$USE_SYSCC" == 0 ]]; then
+
+         # The glibc gcc toolchain is necessary in order to build libmusl and
+         # make its build system generate the musl-gcc script. Attempting to
+         # build libmusl with the musl gcc toolchain succeeds BUT the musl-gcc
+         # script and the lib/musl-gcc.specs file ARE NOT generated, because the
+         # build system detected that the toolchain is already using libmusl. In
+         # our case having the ability to build libmusl and compile programs
+         # with musl-gcc is essential since it allows debugging libmusl itself
+         # (the pre-compiled toolchain uses an optimized non-debug version of
+         # libmusl).
+
+         download_gcc_glibc_toolchain
+         export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
+
+
+      else
+
+         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
+         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
+
+      fi
+
+      show_work_on_component_msg "LIBMUSL"
+
+      git clone --branch v1.1.19 --depth 1 git://git.musl-libc.org/musl
+      cd musl
+
+      local opts1="--target=${ARCH} --host=${ARCH}"
+      local opts2="--disable-shared --prefix=$MUSL_INSTALL"
+      local opts3="--exec-prefix=$MUSL_INSTALL --enable-debug"
+      local opts4="--syslibdir=$MUSL_INSTALL/lib"
+
+      run_command2 "./configure $opts1 $opts2 $opts3 $opts4" configure.log
+
+      # Unfortunately, musl's build system does not support reliably parallel
+      # builds with make -j. That does not mean that make -j will usually fail.
+      # It means that *sometimes* make -j will fail OR produce corrupted objects
+      # (without failing the build!) leading to weird link errors in user apps.
+      # For that reason, it's just much more convenient to NOT use parallel
+      # builds.
+
+      run_command2 "make" build.log
+      run_command2 "make install" make_install.log
+
+      cd $MUSL_INSTALL/bin
+      cp musl-gcc musl-g++
+      sed -i 's/-${ARCH}-gcc/-${ARCH}-g++/' musl-g++
+
+      cd $MUSL_INSTALL/include
+      ln -s /usr/include/linux .
+      ln -s /usr/include/asm-generic .
+
+      if [ -d /usr/include/asm ]; then
+         ln -s /usr/include/asm .
+      elif [ -d /usr/include/${HOST_ARCH}-linux-gnu/asm ]; then
+         ln -s /usr/include/${HOST_ARCH}-linux-gnu/asm .
+      else
+         msg="WARNING: unable to find the linux include asm directory"
+         echo msg >> make_install.log
+         echo msg
+      fi
+
+   else
+      show_skip_component_msg "LIBMUSL"
+   fi
+
+   reset_cc_vars
+   export PATH="$saved_path"
+   popd
+}

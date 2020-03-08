@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+##################################
+# Build GNU EFI
+##################################
+
+# Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
+#
+#     git://git.code.sf.net/p/gnu-efi/code
+#
+# exclusively for performance reasons: SF sometimes is too slow for
+# CI builds.
+
+function clone_gnu_efi {
+   local url="https://github.com/vvaltchev/gnu-efi-fork.git"
+   git clone --branch 3.0.10 --depth 1 "$url" gnu-efi
+   cd gnu-efi
+}
+
+function build_gnuefi_arch {
+
+   pushd $ARCH
+
+      if ! [ -d gnu-efi ]; then
+
+         show_work_on_component_msg "GNU-EFI (arch: $ARCH)"
+         reset_cc_vars
+         clone_gnu_efi
+
+         if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+            local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
+         else
+            # HOST_ARCH must be == ARCH
+            local arch_flags="ARCH=${ARCH_EFI}"
+         fi
+
+         run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
+
+      else
+         show_skip_component_msg "GNU-EFI (arch: $ARCH)"
+      fi
+
+   popd
+}
+
+function build_gnuefi_build_arch {
+
+   pushd $BUILD_ARCH
+
+      if ! [ -d gnu-efi ]; then
+
+         show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
+         reset_cc_vars
+         clone_gnu_efi
+         run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
+
+      else
+
+         show_skip_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
+      fi
+
+   popd
+}
+
+all_funcs_list+=(build_gnuefi)
+function build_gnuefi {
+
+   build_gnuefi_arch
+
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+      build_gnuefi_build_arch
+   fi
+}
+

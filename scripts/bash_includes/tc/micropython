@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+all_funcs_list+=(build_micropython)
+function build_micropython {
+
+   pushd $ARCH
+
+   if ! [ -d micropython ]; then
+
+      show_work_on_component_msg "MICROPYTHON"
+      reset_cc_vars
+
+      git clone --depth 1 https://github.com/micropython/micropython.git
+      cd micropython
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         #
+         # Note: NOT TESTED yet.
+         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # supported.
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+      else
+
+         # Default case
+         set_cc_vars_to_tc
+         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      fi
+
+      export LDFLAGS_EXTRA="-static"
+
+      pushd mpy-cross
+      run_command2 "make MICROPY_PY_FFI=0 -j" build.log
+      popd
+
+      pushd ports/unix
+      run_command2 "make submodules" make_submodules.log
+      run_command2 "make MICROPY_PY_FFI=0 -j" build.log
+      popd
+
+      export LDFLAGS_EXTRA=""
+      export CROSS_COMPILE=""
+
+   else
+      show_skip_component_msg "MICROPYTHON"
+   fi
+
+   popd
+}

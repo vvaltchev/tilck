@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+###############################
+# LCOV (front end for GCOV)
+###############################
+
+all_funcs_list+=(build_lcov)
+function build_lcov {
+
+   pushd noarch
+
+   if ! [ -d lcov ]; then
+
+      show_work_on_component_msg "LCOV"
+
+      local url="https://github.com/linux-test-project/lcov.git"
+      git clone --branch v1.13 --depth 1 "$url"
+      cd lcov
+   else
+      show_skip_component_msg "LCOV"
+   fi
+
+   popd
+}

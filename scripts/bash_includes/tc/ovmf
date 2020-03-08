@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# $1: omvf_arch
+function download_ovmf_internal {
+
+   local ovmf_arch="$1"
+   local url="https://www.kraxel.org/repos/jenkins/edk2/"
+
+   wget -nd -r --no-parent -A "edk2.git-ovmf-${ovmf_arch}*" "$url"
+   rpm2cpio edk2.git-ovmf-${ovmf_arch}* | cpio -idmv
+
+   mv ./usr/share/edk2.git/* .
+   rm -rf ./usr
+   rm -rf ./robots*
+   rm -rf *.rpm
+
+   mv ovmf-${ovmf_arch} ovmf
+}
+
+# $1: omvf_arch
+# $2: arch (our convention)
+function check_and_download_ovmf {
+
+   pushd $2
+
+   if ! [ -d ovmf ]; then
+      show_work_on_component_msg "OVMF (arch: $2)"
+      download_ovmf_internal $1
+   else
+      show_skip_component_msg "(arch: $2)"
+   fi
+
+   popd
+}
+
+all_funcs_list+=(download_ovmf)
+function download_ovmf {
+   check_and_download_ovmf ia32 i386
+   check_and_download_ovmf x64 x86_64
+}
