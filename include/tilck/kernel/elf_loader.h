@@ -7,23 +7,24 @@
 
 #define ELF_RAW_HEADER_SIZE   128
 
+struct elf_program_info {
+
+   pdir_t *pdir;     // the pdir used for the program
+   void *entry;      // the address of program's entry point
+   void *stack;      // the initial value of the stack pointer
+   void *brk;        // the first invalid vaddr (program break)
+};
+
 /*
- * Loads the ELF file 'filepath' in memory.
+ * Loads an ELF program in memory.
  *
- * header_buf: IN arg, the address of a buffer where to store the first
+ * `filepath`: IN arg, the path of the ELF file to load.
+ *
+ * `header_buf`: IN arg, the address of a buffer where to store the first
  * `ELF_RAW_HEADER_SIZE` bytes of the file at `filepath`.
  *
- * pdir_ref is IN/OUT: in case *pdir_ref is NOT NULL, the supplied pdir will
- * be used. Otherwise, *pdir_ref will be a clone of kernel's pdir. Also, this
- * function will call set_curr_pdir(*pdir_ref).
- *
- * 'entry': OUT arg, the address of program's entry point.
- * 'stack_addr': OUT arg, the initial value of the stack pointer.
- * 'brk': OUT arg, the first invalid vaddr (program break).
+ * 'pinfo': OUT arg, essential info about the loaded program.
  */
 int load_elf_program(const char *filepath,
                      char *header_buf,
-                     pdir_t **pdir_ref,
-                     void **entry,
-                     void **stack_addr,
-                     void **brk);
+                     struct elf_program_info *pinfo);

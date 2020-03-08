@@ -292,9 +292,7 @@ setup_usermode_task_first_process(pdir_t *pdir, struct task **ti_ref)
    return 0;
 }
 
-int setup_usermode_task(pdir_t *pdir,
-                        void *entry,
-                        void *stack_addr,
+int setup_usermode_task(struct elf_program_info *pinfo,
                         struct task *ti,
                         const char *const *argv,
                         const char *const *env,
@@ -310,11 +308,11 @@ int setup_usermode_task(pdir_t *pdir,
    ASSERT(!is_preemption_enabled());
 
    *ti_ref = NULL;
-   setup_usermode_task_regs(&r, entry, stack_addr);
+   setup_usermode_task_regs(&r, pinfo->entry, pinfo->stack);
 
    /* Switch to the new page directory (we're going to write on user's stack) */
    old_pdir = get_curr_pdir();
-   set_curr_pdir(pdir);
+   set_curr_pdir(pinfo->pdir);
 
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
@@ -326,7 +324,7 @@ int setup_usermode_task(pdir_t *pdir,
 
       /* Special case: applies only for `init`, the first process */
 
-      if ((rc = setup_usermode_task_first_process(pdir, &ti)))
+      if ((rc = setup_usermode_task_first_process(pinfo->pdir, &ti)))
          goto err;
 
       ASSERT(ti != NULL);
@@ -350,7 +348,7 @@ int setup_usermode_task(pdir_t *pdir,
          pdir_destroy(pi->pdir);
       }
 
-      pi->pdir = pdir;
+      pi->pdir = pinfo->pdir;
       old_pdir = NULL;
 
       arch_specific_free_task(ti);
@@ -374,7 +372,7 @@ err:
 
    if (old_pdir) {
       set_curr_pdir(old_pdir);
-      pdir_destroy(pdir);
+      pdir_destroy(pinfo->pdir);
    }
 
    return rc;

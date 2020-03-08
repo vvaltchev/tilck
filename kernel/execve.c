@@ -197,16 +197,15 @@ static int
 do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 {
    int rc;
-   pdir_t *pdir = NULL;
    struct task *ti = NULL;
-   void *entry, *stack_addr, *brk;
+   struct elf_program_info pinfo = {0};
    char *hdr = ctx->hdr_stack[ctx->reclvl];
 
    DEBUG_VALIDATE_STACK_PTR();
    ASSERT(is_preemption_enabled());
    bzero(hdr, ELF_RAW_HEADER_SIZE);
 
-   if ((rc = load_elf_program(path, hdr, &pdir, &entry, &stack_addr, &brk))) {
+   if ((rc = load_elf_program(path, hdr, &pinfo))) {
       if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!') {
 
          if (ctx->reclvl == MAX_SCRIPT_REC)
@@ -219,9 +218,7 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 
    disable_preemption();
 
-   rc = setup_usermode_task(pdir,
-                            entry,
-                            stack_addr,
+   rc = setup_usermode_task(&pinfo,
                             ctx->curr_user_task,
                             argv,
                             ctx->env,
@@ -230,7 +227,7 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
    if (LIKELY(!rc)) {
 
       /* Positive case: setup_usermode_task() succeeded */
-      execve_prepare_process(ti->pi, brk, argv);
+      execve_prepare_process(ti->pi, pinfo.brk, argv);
 
       if (LIKELY(ctx->curr_user_task != NULL)) {
 

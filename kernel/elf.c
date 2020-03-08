@@ -197,12 +197,10 @@ alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
    return rc;
 }
 
-int load_elf_program(const char *filepath,
-                     char *header_buf,
-                     pdir_t **pdir_ref,
-                     void **entry,
-                     void **stack_addr,
-                     void **brk_ref)
+int
+load_elf_program(const char *filepath,
+                 char *header_buf,
+                 struct elf_program_info *pinfo)
 {
    fs_handle elf_file = NULL;
    struct stat64 statbuf;
@@ -229,9 +227,9 @@ int load_elf_program(const char *filepath,
       return rc;
    }
 
-   ASSERT(*pdir_ref == NULL);
+   ASSERT(pinfo->pdir == NULL);
 
-   if (!(*pdir_ref = pdir_clone(get_kernel_pdir()))) {
+   if (!(pinfo->pdir = pdir_clone(get_kernel_pdir()))) {
       rc = -ENOMEM;
       goto out;
    }
@@ -244,7 +242,7 @@ int load_elf_program(const char *filepath,
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      rc = (int) load_phdr(elf_file, *pdir_ref, phdr, &end_vaddr);
+      rc = (int) load_phdr(elf_file, pinfo->pdir, phdr, &end_vaddr);
 
       if (rc < 0)
          goto out;
@@ -258,7 +256,7 @@ int load_elf_program(const char *filepath,
       Elf_Phdr *phdr = eh.phdrs + i;
 
       if (phdr->p_type == PT_LOAD)
-         phdr_adjust_page_access(*pdir_ref, phdr);
+         phdr_adjust_page_access(pinfo->pdir, phdr);
    }
 
    /*
@@ -276,37 +274,37 @@ int load_elf_program(const char *filepath,
    const size_t zero_mapped_pages = USER_STACK_PAGES - pre_allocated_pages;
    const ulong stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
 
-   count = map_zero_pages(*pdir_ref,
+   count = map_zero_pages(pinfo->pdir,
                           (void *)stack_top,
                           zero_mapped_pages,
                           true, true);
 
    if (count != zero_mapped_pages) {
-      unmap_pages(*pdir_ref, (void *)stack_top, count, true);
+      unmap_pages(pinfo->pdir, (void *)stack_top, count, true);
       rc = -ENOMEM;
       goto out;
    }
 
    for (u32 i = zero_mapped_pages; i < USER_STACK_PAGES; i++) {
-      if ((rc = alloc_and_map_stack_page(*pdir_ref, (void *)stack_top, i)))
+      if ((rc = alloc_and_map_stack_page(pinfo->pdir, (void *)stack_top, i)))
          goto out;
    }
 
 
    // Finally setting the output-params.
 
-   *stack_addr = (void *) USERMODE_STACK_MAX;
-   *entry = (void *) eh.header->e_entry;
-   *brk_ref = (void *) brk;
+   pinfo->stack = (void *) USERMODE_STACK_MAX;
+   pinfo->entry = (void *) eh.header->e_entry;
+   pinfo->brk = (void *) brk;
 
 out:
    vfs_close(elf_file);
    free_elf_headers(&eh);
 
    if (UNLIKELY(rc != 0)) {
-      if (*pdir_ref) {
-         pdir_destroy(*pdir_ref);
-         *pdir_ref = NULL;
+      if (pinfo->pdir) {
+         pdir_destroy(pinfo->pdir);
+         pinfo->pdir = NULL;
       }
    }
 
