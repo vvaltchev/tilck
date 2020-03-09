@@ -24,13 +24,13 @@
 #endif
 
 
-static ssize_t
+static int
 load_phdr(fs_handle *elf_file,
           pdir_t *pdir,
           Elf_Phdr *phdr,
           ulong *end_vaddr_ref)
 {
-   ssize_t rc, ret;
+   ssize_t rc;
    ulong va = phdr->p_vaddr;
    size_t filesz_rem = phdr->p_filesz;
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
@@ -43,9 +43,12 @@ load_phdr(fs_handle *elf_file,
 
    *end_vaddr_ref = (ulong)vaddr + (page_count << PAGE_SHIFT);
 
-   ret = vfs_seek(elf_file, (s64)phdr->p_offset, SEEK_SET);
+   rc = vfs_seek(elf_file, (s64)phdr->p_offset, SEEK_SET);
 
-   if (ret != (ssize_t)phdr->p_offset)
+   if (rc < 0)
+      return (int)rc; /* I/O error during seek */
+
+   if (rc != (ssize_t)phdr->p_offset)
       return -ENOEXEC;
 
    for (u32 j = 0; j < page_count; j++, vaddr += PAGE_SIZE) {
@@ -59,7 +62,7 @@ load_phdr(fs_handle *elf_file,
 
          if ((rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true))) {
             kfree2(p, PAGE_SIZE);
-            return rc;
+            return (int)rc;
          }
 
       } else {
@@ -73,10 +76,13 @@ load_phdr(fs_handle *elf_file,
          const size_t off = (va & OFFSET_IN_PAGE_MASK);
          const size_t to_read = MIN(filesz_rem, (PAGE_SIZE - off));
 
-         ret = vfs_read(elf_file, p + off, to_read);
+         rc = vfs_read(elf_file, p + off, to_read);
 
-         if (ret < (ssize_t)to_read)
-            return -ENOEXEC;
+         if (rc < 0)
+            return (int)rc;           /* I/O error during read */
+
+         if (rc < (ssize_t)to_read)
+            return -ENOEXEC;     /* The ELF file is corrupted */
 
          va += to_read;
          filesz_rem -= to_read;
@@ -242,7 +248,7 @@ load_elf_program(const char *filepath,
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      rc = (int) load_phdr(elf_file, pinfo->pdir, phdr, &end_vaddr);
+      rc = load_phdr(elf_file, pinfo->pdir, phdr, &end_vaddr);
 
       if (rc < 0)
          goto out;
