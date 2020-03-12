@@ -159,7 +159,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
             set(msg2 "")
             string(CONCAT msg2 "How to fix it: \n"
-                               "   1) rm -rf ${TCROOT_REL}/busybox\n"
+                               "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
                                "   2) ${BTC_SCRIPT_REL} -s build_busybox")
 
             message(FATAL_ERROR "\n${msg1}\n${msg2}")
