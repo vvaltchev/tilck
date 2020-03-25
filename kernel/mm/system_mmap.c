@@ -283,10 +283,9 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
          }
       }
 
-      return true;
-   }
+   } else {
 
-   if (s1 <= s2 && s2 < e1 && e2 > e1) {
+      ASSERT(s1 <= s2 && s2 < e1 && e2 > e1);
 
       /*
        * Case 3: partial overlap.
@@ -344,14 +343,9 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
             r1->len = s2 - s1;
          }
       }
-
-      return true;
    }
 
-   /*
-    * There should NOT be any unhandled cases.
-    */
-   NOT_REACHED();
+   return true;
 }
 
 STATIC void handle_overlapping_regions(void)
