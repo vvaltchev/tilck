@@ -8,7 +8,9 @@
 #include <random>
 
 #include "vfs_test.h"
+
 using namespace std;
+using namespace testing;
 
 class vfs_misc : public vfs_test_base {
 
@@ -164,63 +166,117 @@ TEST_F(vfs_misc, fseek)
    close(fd);
 }
 
-string compute_abs_path_wrapper(const char *str_cwd, const char *path)
+class compute_abs_path_test :
+   public TestWithParam<
+      tuple<const char *, const char *, const char *>
+   >
+{ };
+
+TEST_P(compute_abs_path_test, check)
 {
-   char dest[256];
-   int rc = compute_abs_path(path, str_cwd, dest, sizeof(dest));
+   const auto &t = GetParam();
+   const char *cwd = get<0>(t);
+   const char *path = get<1>(t);
+   const char *expected = get<2>(t);
+
+   char output[256];
+   int rc = compute_abs_path(path, cwd, output, sizeof(output));
 
    if (rc < 0)
-      return "<error>";
+      FAIL() << "Errno: " << rc;
 
-   return dest;
+   ASSERT_STREQ(output, expected);
 }
 
-TEST(compute_abs_path, tests)
-{
-   /* path is absolute */
-   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c"), "/a/b/c");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/"), "/a/b/c/");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/.."), "/a/b");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "/a/b/c/../"), "/a/b/");
+INSTANTIATE_TEST_CASE_P(
 
-   /* path is relative */
-   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c"), "/a/b/c");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/"), "/a/b/c/");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/.."), "/a/b");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "a/b/c/../"), "/a/b/");
+   abs_path,
+   compute_abs_path_test,
 
-   /* path is relative starting with ./ */
-   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c"), "/a/b/c");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/"), "/a/b/c/");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/.."), "/a/b");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "./a/b/c/../"), "/a/b/");
+   Values(
+      make_tuple("/", "/a/b/c", "/a/b/c"),
+      make_tuple("/", "/a/b/c/", "/a/b/c/"),
+      make_tuple("/", "/a/b/c/..", "/a/b"),
+      make_tuple("/", "/a/b/c/../", "/a/b/")
+   )
+);
 
-   /* path is relative, str_cwd != / */
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a"), "/a/b/c/a");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "a/"), "/a/b/c/a/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".."), "/a/b");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../"), "/a/b/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../.."), "/a");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../"), "/a/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../."), "/a");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../.././"), "/a/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../.."), "/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../"), "/");
+INSTANTIATE_TEST_CASE_P(
 
-   /* try to go beyond / */
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../.."), "/");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "../../../../"), "/");
+   rel_path,
+   compute_abs_path_test,
 
-   /* double slash */
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "d//e"), "/a/b/c/d/e");
+   Values(
+      make_tuple("/", "a/b/c", "/a/b/c"),
+      make_tuple("/", "a/b/c/", "/a/b/c/"),
+      make_tuple("/", "a/b/c/..", "/a/b"),
+      make_tuple("/", "a/b/c/../", "/a/b/")
+   )
+);
 
-   /* triple slash */
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "d///e"), "/a/b/c/d/e");
+INSTANTIATE_TEST_CASE_P(
 
-   /* other */
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", ".a"), "/a/b/c/.a");
-   EXPECT_EQ(compute_abs_path_wrapper("/a/b/c/", "..a"), "/a/b/c/..a");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "something.."), "/something..");
-   EXPECT_EQ(compute_abs_path_wrapper("/", "something."), "/something.");
-}
+   rel_dot_slash_path,
+   compute_abs_path_test,
 
+   Values(
+      make_tuple("/", "./a/b/c", "/a/b/c"),
+      make_tuple("/", "./a/b/c/", "/a/b/c/"),
+      make_tuple("/", "./a/b/c/..", "/a/b"),
+      make_tuple("/", "./a/b/c/../", "/a/b/")
+   )
+);
+
+INSTANTIATE_TEST_CASE_P(
+
+   rel_path_cwd_not_root,
+   compute_abs_path_test,
+
+   Values(
+      make_tuple("/a/b/c/", "a", "/a/b/c/a"),
+      make_tuple("/a/b/c/", "a/", "/a/b/c/a/"),
+      make_tuple("/a/b/c/", "..", "/a/b"),
+      make_tuple("/a/b/c/", "../", "/a/b/"),
+      make_tuple("/a/b/c/", "../..", "/a"),
+      make_tuple("/a/b/c/", "../../", "/a/"),
+      make_tuple("/a/b/c/", "../../.", "/a"),
+      make_tuple("/a/b/c/", "../.././", "/a/"),
+      make_tuple("/a/b/c/", "../../..", "/"),
+      make_tuple("/a/b/c/", "../../../", "/")
+   )
+);
+
+INSTANTIATE_TEST_CASE_P(
+
+   try_go_beyond_root,
+   compute_abs_path_test,
+
+   Values(
+      make_tuple("/a/b/c/", "../../../..", "/"),
+      make_tuple("/a/b/c/", "../../../../", "/")
+   )
+);
+
+INSTANTIATE_TEST_CASE_P(
+
+   multiple_slashes,
+   compute_abs_path_test,
+
+   Values(
+      make_tuple("/a/b/c/", "d//e", "/a/b/c/d/e"),
+      make_tuple("/a/b/c/", "d///e", "/a/b/c/d/e")
+   )
+);
+
+INSTANTIATE_TEST_CASE_P(
+
+   other,
+   compute_abs_path_test,
+
+   Values(
+      make_tuple("/a/b/c/", ".a", "/a/b/c/.a"),
+      make_tuple("/a/b/c/", "..a", "/a/b/c/..a"),
+      make_tuple("/", "something..", "/something.."),
+      make_tuple("/", "something.", "/something.")
+   )
+);
