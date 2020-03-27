@@ -19,6 +19,57 @@ from utils import * # pylint: disable=unused-wildcard-import
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 
+QEMU_SPECIAL_KEYS = {
+   " "  : "spc",
+   "!"  : "shift-1",
+   '"'  : "shift-apostrophe",
+   "#"  : "shift-3",
+   "$"  : "shift-4",
+   "%"  : "shift-5",
+   "&"  : "shift-7",
+   "'"  : "apostrophe",
+   "("  : "shift-9",
+   ")"  : "shift-0",
+   "*"  : "shift-8",
+   "+"  : "shift-equal",
+   ","  : "comma",
+   "-"  : "minus",
+   "."  : "dot",
+   "/"  : "slash",
+   ":"  : "shift-semicolon",
+   ";"  : "semicolon",
+   "<"  : "shift-comma",
+   "="  : "equal",
+   ">"  : "shift-dot",
+   "?"  : "shift-slash",
+   "@"  : "shift-2",
+   "["  : "bracket_left",
+   "\\" : "backslash",
+   "]"  : "bracket_right",
+   "^"  : "shift-6",
+   "_"  : "shift-minus",
+   "`"  : "grave_accent",
+   "{"  : "shift-bracket_left",
+   "|"  : "shift-backslash",
+   "}"  : "shift-bracket_right",
+   "~"  : "shift-grave_accent"
+}
+
+KEYS_MAP = {
+   chr(x):
+      chr(x)
+         if x in range(ord('a'), ord('z')+1) or x in range(ord('0'),ord('9')+1)
+         else
+         'shift-' + chr(x).lower()
+            if x in range(ord('A'), ord('Z')+1)
+            else
+            QEMU_SPECIAL_KEYS[chr(x)]
+               if chr(x) in QEMU_SPECIAL_KEYS
+               else None
+
+   for x in range(27, 128)
+}
+
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 
@@ -72,13 +123,32 @@ def echo_qemu_monitor():
    text = recv_from_qemu_monitor()
    raw_stdout_write(text)
 
-def send_to_qemu_monitor(cmd):
+def send_to_qemu_monitor(cmd, delay = 0.2):
    g_process.stdin.write("{}\n".format(cmd).encode('latin-1'))
    g_process.stdin.flush()
-   time.sleep(0.2)
+   time.sleep(delay)
    echo_qemu_monitor()
 
-def run_the_vm():
+def send_single_key_to_vm(key):
+
+   key_name = None
+
+   if not key:
+      return
+
+   if len(key) > 1:
+      key_name = key
+   else:
+      key_name = KEYS_MAP.get(key, None)
+
+   if key_name is not None:
+      send_to_qemu_monitor("sendkey " + key_name)
+
+def send_string_to_vm(s):
+   for k in s:
+      send_single_key_to_vm(k)
+
+def run(test_func):
 
    args = [
       'qemu-system-i386',
@@ -107,11 +177,8 @@ def run_the_vm():
    start_time = time.time()
    echo_qemu_monitor()
 
-   send_to_qemu_monitor("screendump s0")
-   time.sleep(1)
-
-   send_to_qemu_monitor("screendump s1")
-   time.sleep(1)
+   # Call the test func
+   test_func()
 
    send_to_qemu_monitor("quit")
    wait_for_qemu_to_exit()
@@ -119,6 +186,18 @@ def run_the_vm():
    elapsed = time.time() - start_time
    raw_print('-' * 80)
    msg_print("Elapsed: {:.2f} s".format(elapsed))
+
+def trivial_func():
+   send_to_qemu_monitor("screendump s0")
+   time.sleep(1)
+   send_to_qemu_monitor("screendump s1")
+   time.sleep(1)
+   send_string_to_vm("1")
+   time.sleep(1)
+   send_to_qemu_monitor("screendump s2")
+   send_string_to_vm("ls -l")
+   send_single_key_to_vm("ret")
+   send_to_qemu_monitor("screendump s3")
 
 def main():
 
@@ -129,7 +208,7 @@ def main():
 
    os.chdir(TMP_DIR)
 
-   thread = threading.Thread(target = run_the_vm)
+   thread = threading.Thread(target = run, args = (trivial_func,))
    thread.start()
    thread.join(g_timeout)
 
