@@ -61,6 +61,12 @@ configure_file(
 )
 
 configure_file(
+   ${CMAKE_SOURCE_DIR}/tests/system/runners/run_interactive_test
+   ${CMAKE_BINARY_DIR}/st/run_interactive_test
+   @ONLY
+)
+
+configure_file(
    ${CMAKE_SOURCE_DIR}/tests/system/runners/utils.py
    ${CMAKE_BINARY_DIR}/st/utils.py
    @ONLY

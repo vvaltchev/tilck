@@ -40,6 +40,10 @@ def raw_print(msg):
    sys.stdout.buffer.write('\n'.encode('utf-8'))
    sys.stdout.buffer.flush()
 
+def raw_stdout_write(msg):
+   sys.stdout.buffer.write(msg.encode('utf-8'))
+   sys.stdout.buffer.flush()
+
 def msg_print(msg):
    raw_print("[system test runner] {}".format(msg))
 

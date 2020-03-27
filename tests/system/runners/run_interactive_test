@@ -1,0 +1,161 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: BSD-2-Clause
+
+import os
+import re
+import sys
+import time
+import signal
+import subprocess
+import threading
+import struct
+import fcntl
+from collections import namedtuple
+
+# Local imports
+from utils import * # pylint: disable=unused-wildcard-import
+
+# Constants
+TILCK_IMAGE = "@IMG_FILE@"
+TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
+
+# Environment config variables
+VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
+
+g_process = None
+g_fail_reason = Fail.success
+g_dumping_gcda_files = False
+g_timeout = 20
+
+def set_once_qemu_process(p):
+   global g_process
+   assert(g_process is None)
+   g_process = p
+
+def set_once_fail_reason(reason: Fail):
+   global g_fail_reason
+   assert(g_fail_reason == Fail.success)
+   g_fail_reason = reason
+
+def wait_for_qemu_to_exit():
+   while g_process.poll() is None:
+      time.sleep(0.1)
+
+def recv_from_qemu_monitor():
+
+   read_anything = False
+   buf = ''
+
+   while True:
+
+      text = g_process.stdout.read()
+
+      # Is there any new text?
+      if text:
+         buf += text.decode('latin-1')
+         read_anything = True
+         time.sleep(0.05)
+         continue
+
+      # Nope. Did we read anything in the previous iteration?
+      if read_anything:
+         return buf # yep, return.
+
+      # Nope. Is the VM still alive?
+      if g_process.poll() is not None:
+         return '' # Nope. Return an empty string
+
+      # Yep. Wait for some text
+      time.sleep(0.1)
+
+def echo_qemu_monitor():
+   text = recv_from_qemu_monitor()
+   raw_stdout_write(text)
+
+def send_to_qemu_monitor(cmd):
+   g_process.stdin.write("{}\n".format(cmd).encode('latin-1'))
+   g_process.stdin.flush()
+   time.sleep(0.2)
+   echo_qemu_monitor()
+
+def run_the_vm():
+
+   args = [
+      'qemu-system-i386',
+      '-m', str(VM_MEMORY_SIZE_IN_MB),
+      '-display', 'none',
+      '-monitor', 'stdio',
+      '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04',
+      '-drive', 'id=img1,format=raw,if=none,file=' + TILCK_IMAGE,
+      '-device', 'ide-hd,drive=img1,cyls=74,heads=16,secs=63'
+   ]
+
+   if is_kvm_installed():
+      args.append('-enable-kvm')
+
+   # Run the QEMU process by using a PIPE for its stdout
+   p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+   set_once_qemu_process(p)
+
+   # Get the current flags for the `stdout` file descriptor
+   fl = fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_GETFL)
+
+   # Make the `stdout` file descriptor non-blocking
+   fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+   raw_print('-' * 80)
+   start_time = time.time()
+   echo_qemu_monitor()
+
+   send_to_qemu_monitor("screendump s0")
+   time.sleep(1)
+
+   send_to_qemu_monitor("screendump s1")
+   time.sleep(1)
+
+   send_to_qemu_monitor("quit")
+   wait_for_qemu_to_exit()
+
+   elapsed = time.time() - start_time
+   raw_print('-' * 80)
+   msg_print("Elapsed: {:.2f} s".format(elapsed))
+
+def main():
+
+   detect_kvm()
+
+   if not os.path.isdir(TMP_DIR):
+      os.mkdir(TMP_DIR)
+
+   os.chdir(TMP_DIR)
+
+   thread = threading.Thread(target = run_the_vm)
+   thread.start()
+   thread.join(g_timeout)
+
+   if thread.is_alive():
+
+      # If we get here, after `g_params.timeout`, the test is still running
+
+      if g_dumping_gcda_files:
+
+         # If we're just dumping the GCDA file, wait a little more
+         thread.join(30)
+
+      if thread.is_alive():
+
+         # If it's still alive, we have to fail with timeout
+         set_once_fail_reason(Fail.timeout)
+
+         msg_print(
+            "The VM is alive after the timeout "
+            "of {} seconds. KILLING IT.".format(g_timeout)
+         )
+
+         g_process.send_signal(signal.SIGINT)
+         thread.join()
+
+
+###############################
+if __name__ == '__main__':
+   main()
