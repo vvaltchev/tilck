@@ -20,7 +20,7 @@
  * We'll keep these here until they become too many. At that point, each module
  * will have its own config file. It's too early for that, at the moment.
  */
-#cmakedefine01    KERNEL_FB_BANNER
+#cmakedefine01    FB_CONSOLE_BANNER
 #cmakedefine01    KERNEL_SHOW_LOGO
 #cmakedefine01    FB_CONSOLE_USE_ALT_FONTS
 #cmakedefine01    SERIAL_CON_IN_VIDEO_MODE

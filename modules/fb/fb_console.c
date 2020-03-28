@@ -420,7 +420,7 @@ void init_fb_console(void)
    fb_set_font(font);
    fb_map_in_kernel_space();
 
-   if (KERNEL_FB_BANNER)
+   if (FB_CONSOLE_BANNER)
       fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / font_h;
