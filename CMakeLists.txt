@@ -124,6 +124,9 @@ set(KERNEL_STACK_ISOLATION ON CACHE BOOL
 set(FB_CONSOLE_BANNER ON CACHE BOOL
     "Show a top banner when using fb_console")
 
+set(FB_CONSOLE_CURSOR_BLINK ON CACHE BOOL
+    "Support cursor blinking in the fb_console")
+
 if ($ENV{TILCK_NO_LOGO})
    set(KERNEL_SHOW_LOGO OFF CACHE BOOL
       "Show Tilck's logo after boot")

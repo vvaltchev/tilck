@@ -406,6 +406,23 @@ bool fb_is_using_opt_funcs(void)
    return use_optimized;
 }
 
+static void fb_create_cursor_blinking_thread(void)
+{
+   int tid = kthread_create(fb_blink_thread, 0, NULL);
+
+   if (tid < 0) {
+      printk("WARNING: unable to create the fb_blink_thread\n");
+      return;
+   }
+
+   disable_preemption();
+   {
+      blink_thread_ti = get_task(tid);
+      ASSERT(blink_thread_ti != NULL);
+   }
+   enable_preemption();
+}
+
 void init_fb_console(void)
 {
    ASSERT(use_framebuffer());
@@ -450,18 +467,8 @@ void init_fb_console(void)
    if (in_panic())
       return;
 
-   int tid = kthread_create(fb_blink_thread, 0, NULL);
-
-   if (tid > 0) {
-      disable_preemption();
-      {
-         blink_thread_ti = get_task(tid);
-         ASSERT(blink_thread_ti != NULL);
-      }
-      enable_preemption();
-   } else {
-      printk("WARNING: unable to create the fb_blink_thread\n");
-   }
+   if (FB_CONSOLE_CURSOR_BLINK)
+      fb_create_cursor_blinking_thread();
 
    if (fb_offset_y) {
       if (kthread_create(fb_update_banner, 0, NULL) < 0)
