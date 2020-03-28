@@ -30,6 +30,8 @@ INIT_PATH = '/initrd/bin/init'
 DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
+
+# Constants coming from CMake (this file gets pre-processed by CMake)
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 
@@ -374,15 +376,9 @@ def main():
          thread.join(30)
 
       if thread.is_alive():
-
-         # If it's still alive, we have to fail with timeout
+         # We have to fail with timeout
          set_once_fail_reason(Fail.timeout)
-
-         msg_print(
-            "The VM is alive after the timeout "
-            "of {} seconds. KILLING IT.".format(g_params.timeout)
-         )
-
+         print_timeout_kill_vm_msg(g_params.timeout)
          g_process.send_signal(signal.SIGINT)
          thread.join()
 

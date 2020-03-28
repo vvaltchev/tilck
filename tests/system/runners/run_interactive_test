@@ -15,7 +15,7 @@ from collections import namedtuple
 # Local imports
 from utils import * # pylint: disable=unused-wildcard-import
 
-# Constants
+# Constants coming from CMake (this file gets pre-processed by CMake)
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 
@@ -201,6 +201,7 @@ def trivial_func():
 
 def main():
 
+   set_runner_name("interactive tests runner")
    detect_kvm()
 
    if not os.path.isdir(TMP_DIR):
@@ -222,15 +223,9 @@ def main():
          thread.join(30)
 
       if thread.is_alive():
-
-         # If it's still alive, we have to fail with timeout
+         # We have to fail with timeout
          set_once_fail_reason(Fail.timeout)
-
-         msg_print(
-            "The VM is alive after the timeout "
-            "of {} seconds. KILLING IT.".format(g_timeout)
-         )
-
+         print_timeout_kill_vm_msg(g_timeout)
          g_process.send_signal(signal.SIGINT)
          thread.join()
 

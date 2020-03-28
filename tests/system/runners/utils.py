@@ -31,6 +31,20 @@ test_types = ['selftest', 'shellcmd']
 KERNEL_FILE = r'@KERNEL_FILE@'
 BUILD_DIR = r'@CMAKE_BINARY_DIR@'
 
+# Environment flags
+in_travis = os.environ.get('TRAVIS', False)
+in_circleci = os.environ.get('CIRCLECI', False)
+in_azure = os.environ.get('AZURE_HTTP_USER_AGENT', False)
+dump_coverage = os.environ.get('DUMP_COV', False)
+report_coverage = os.environ.get('REPORT_COV', False)
+verbose = os.environ.get('VERBOSE', False)
+in_any_ci = in_travis or in_circleci or in_azure
+
+# Runtime config vars
+runnerName = "system test runner"
+kvm_installed = False
+qemu_kvm_version = None
+
 def direct_print(data):
    sys.stdout.buffer.write(data)
    sys.stdout.buffer.flush()
@@ -45,22 +59,11 @@ def raw_stdout_write(msg):
    sys.stdout.buffer.flush()
 
 def msg_print(msg):
-   raw_print("[system test runner] {}".format(msg))
+   raw_print("[{}] {}".format(runnerName, msg))
 
-# Environment flags
-in_travis = os.environ.get('TRAVIS', False)
-in_circleci = os.environ.get('CIRCLECI', False)
-in_azure = os.environ.get('AZURE_HTTP_USER_AGENT', False)
-dump_coverage = os.environ.get('DUMP_COV', False)
-report_coverage = os.environ.get('REPORT_COV', False)
-verbose = os.environ.get('VERBOSE', False)
-in_any_ci = False
-
-if in_travis or in_circleci or in_azure:
-   in_any_ci = True
-
-kvm_installed = False
-qemu_kvm_version = None
+def set_runner_name(name):
+   global runnerName
+   runnerName = name
 
 def is_kvm_installed():
    return kvm_installed
@@ -110,3 +113,10 @@ def detect_kvm():
             "\n"
          )
       pass
+
+
+def print_timeout_kill_vm_msg(timeout):
+   msg_print(
+      "The VM is alive after the timeout "
+      "of {} seconds. KILLING IT.".format(timeout)
+   )
