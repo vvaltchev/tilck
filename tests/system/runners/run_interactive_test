@@ -10,6 +10,7 @@ import subprocess
 import threading
 import struct
 import fcntl
+import filecmp
 from collections import namedtuple
 
 # Local imports
@@ -18,6 +19,10 @@ from utils import * # pylint: disable=unused-wildcard-import
 # Constants coming from CMake (this file gets pre-processed by CMake)
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
+
+# Other constants
+STABLE_SCREENSHOT_DELAY   = 0.25
+STABLE_SCREENSHOT_TIMEOUT = 3.00
 
 QEMU_SPECIAL_KEYS = {
    " "  : "spc",
@@ -73,10 +78,12 @@ KEYS_MAP = {
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 
+# Global state variables
 g_process = None
 g_fail_reason = Fail.success
 g_dumping_gcda_files = False
 g_timeout = 20
+g_next_screenshot = 0
 
 def set_once_qemu_process(p):
    global g_process
@@ -177,8 +184,14 @@ def run(test_func):
    start_time = time.time()
    echo_qemu_monitor()
 
-   # Call the test func
-   test_func()
+   try:
+
+      # Call the test func
+      test_func()
+
+   except Exception as e:
+
+      msg_print("Exception: " + str(e))
 
    send_to_qemu_monitor("quit")
    wait_for_qemu_to_exit()
@@ -187,17 +200,74 @@ def run(test_func):
    raw_print('-' * 80)
    msg_print("Elapsed: {:.2f} s".format(elapsed))
 
+def delete_old_screenshots():
+
+   for f in os.listdir():
+
+      if not os.path.isfile(f):
+         continue
+
+      if re.match("s[0-9]+[.](ppm|png)", f):
+         os.remove(f)
+
+def vm_take_screenshot():
+
+   global g_next_screenshot
+
+   name = "s{:03}".format(g_next_screenshot)
+   full_name = name + ".ppm"
+   send_to_qemu_monitor("screendump " + full_name)
+   g_next_screenshot += 1
+   return full_name
+
+def vm_take_stable_screenshot():
+
+   time_elapsed = 0.0
+   prevs = [vm_take_screenshot()]
+   curr = None
+
+   while True:
+
+      time_elapsed += STABLE_SCREENSHOT_DELAY
+
+      if time_elapsed >= STABLE_SCREENSHOT_TIMEOUT:
+         tstr = str(STABLE_SCREENSHOT_TIMEOUT)
+         raise RuntimeError("Unable to take a stable screenshot in "+tstr+"s")
+
+      time.sleep(STABLE_SCREENSHOT_DELAY)
+      curr = vm_take_screenshot()
+
+      if filecmp.cmp(prevs[-1], curr, False):
+         break # Bang! We got two identical screenshots.
+
+      # We screenshots differ.
+      if len(prevs) > 1:
+
+         # We have more than 1 old screeshot. Could be the cursor blinking?
+         if filecmp.cmp(prevs[-2], curr, False):
+            break # Assume it's cursor blinking.
+
+      # We have to save this screenshot
+      prevs.append(curr)
+
+   # Great, we're out of the loop. Let's delete the useless screenshots.
+   for s in prevs:
+      os.remove(s)
+
+   return curr
+
+
 def trivial_func():
-   send_to_qemu_monitor("screendump s0")
+   vm_take_stable_screenshot()
    time.sleep(1)
-   send_to_qemu_monitor("screendump s1")
+   vm_take_stable_screenshot()
    time.sleep(1)
    send_string_to_vm("1")
    time.sleep(1)
-   send_to_qemu_monitor("screendump s2")
+   vm_take_stable_screenshot()
    send_string_to_vm("ls -l")
    send_single_key_to_vm("ret")
-   send_to_qemu_monitor("screendump s3")
+   vm_take_stable_screenshot()
 
 def main():
 
@@ -208,6 +278,7 @@ def main():
       os.mkdir(TMP_DIR)
 
    os.chdir(TMP_DIR)
+   delete_old_screenshots()
 
    thread = threading.Thread(target = run, args = (trivial_func,))
    thread.start()
