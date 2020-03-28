@@ -49,26 +49,20 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/runners/single_test_run
+   ${CMAKE_SOURCE_DIR}/tests/runners/single_test_run
    ${CMAKE_BINARY_DIR}/st/single_test_run
    @ONLY
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/runners/run_all_tests
+   ${CMAKE_SOURCE_DIR}/tests/runners/run_all_tests
    ${CMAKE_BINARY_DIR}/st/run_all_tests
    @ONLY
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/runners/run_interactive_test
+   ${CMAKE_SOURCE_DIR}/tests/runners/run_interactive_test
    ${CMAKE_BINARY_DIR}/st/run_interactive_test
-   @ONLY
-)
-
-configure_file(
-   ${CMAKE_SOURCE_DIR}/tests/system/runners/utils.py
-   ${CMAKE_BINARY_DIR}/st/utils.py
    @ONLY
 )
 

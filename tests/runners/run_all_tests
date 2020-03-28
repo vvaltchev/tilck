@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=unused-wildcard-import
 
 import os
 import re
@@ -10,8 +11,15 @@ import subprocess
 import threading
 from typing import List, Dict
 
-# Local imports
-from utils import * # pylint: disable=unused-wildcard-import
+# Constants coming from CMake (this file gets pre-processed by CMake)
+RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
+KERNEL_FILE = '@KERNEL_FILE@'
+BUILD_DIR = '@CMAKE_BINARY_DIR@'
+
+sys.path.append(RUNNERS_DIR)
+from lib.utils import *
+from lib.detect_kvm import *
+from lib.env import *
 
 # Constants
 
@@ -296,7 +304,6 @@ def main():
             show_help_and_exit()
 
    detect_kvm()
-
    run_all_tests(max_test_timeout,
                  show_output,
                  reg_filter,

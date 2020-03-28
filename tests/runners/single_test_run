@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=unused-wildcard-import
 
 import os
 import re
@@ -14,8 +15,17 @@ import base64
 import fcntl
 from collections import namedtuple
 
-# Local imports
-from utils import * # pylint: disable=unused-wildcard-import
+# Constants coming from CMake (this file gets pre-processed by CMake)
+RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
+KERNEL_FILE = '@KERNEL_FILE@'
+BUILD_DIR = '@CMAKE_BINARY_DIR@'
+FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
+GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
+
+sys.path.append(RUNNERS_DIR)
+from lib.utils import *
+from lib.detect_kvm import *
+from lib.env import *
 
 # Runtime-generated constants
 r_notInBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
@@ -30,10 +40,6 @@ INIT_PATH = '/initrd/bin/init'
 DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
-
-# Constants coming from CMake (this file gets pre-processed by CMake)
-FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
-GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))

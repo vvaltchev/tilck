@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=unused-wildcard-import
 
 import os
 import re
@@ -13,67 +14,20 @@ import fcntl
 import filecmp
 from collections import namedtuple
 
-# Local imports
-from utils import * # pylint: disable=unused-wildcard-import
-
 # Constants coming from CMake (this file gets pre-processed by CMake)
+RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
+
+sys.path.append(RUNNERS_DIR)
+from lib import qemu
+from lib.utils import *
+from lib.detect_kvm import *
+from lib.env import *
 
 # Other constants
 STABLE_SCREENSHOT_DELAY   = 0.25
 STABLE_SCREENSHOT_TIMEOUT = 3.00
-
-QEMU_SPECIAL_KEYS = {
-   " "  : "spc",
-   "!"  : "shift-1",
-   '"'  : "shift-apostrophe",
-   "#"  : "shift-3",
-   "$"  : "shift-4",
-   "%"  : "shift-5",
-   "&"  : "shift-7",
-   "'"  : "apostrophe",
-   "("  : "shift-9",
-   ")"  : "shift-0",
-   "*"  : "shift-8",
-   "+"  : "shift-equal",
-   ","  : "comma",
-   "-"  : "minus",
-   "."  : "dot",
-   "/"  : "slash",
-   ":"  : "shift-semicolon",
-   ";"  : "semicolon",
-   "<"  : "shift-comma",
-   "="  : "equal",
-   ">"  : "shift-dot",
-   "?"  : "shift-slash",
-   "@"  : "shift-2",
-   "["  : "bracket_left",
-   "\\" : "backslash",
-   "]"  : "bracket_right",
-   "^"  : "shift-6",
-   "_"  : "shift-minus",
-   "`"  : "grave_accent",
-   "{"  : "shift-bracket_left",
-   "|"  : "shift-backslash",
-   "}"  : "shift-bracket_right",
-   "~"  : "shift-grave_accent"
-}
-
-KEYS_MAP = {
-   chr(x):
-      chr(x)
-         if x in range(ord('a'), ord('z')+1) or x in range(ord('0'),ord('9')+1)
-         else
-         'shift-' + chr(x).lower()
-            if x in range(ord('A'), ord('Z')+1)
-            else
-            QEMU_SPECIAL_KEYS[chr(x)]
-               if chr(x) in QEMU_SPECIAL_KEYS
-               else None
-
-   for x in range(27, 128)
-}
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
@@ -146,7 +100,7 @@ def send_single_key_to_vm(key):
    if len(key) > 1:
       key_name = key
    else:
-      key_name = KEYS_MAP.get(key, None)
+      key_name = qemu.KEYS_MAP.get(key, None)
 
    if key_name is not None:
       send_to_qemu_monitor("sendkey " + key_name)
