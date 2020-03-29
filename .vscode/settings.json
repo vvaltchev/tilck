@@ -132,7 +132,8 @@
       "asm_x86_strings.h": "c",
       "open.c.h": "c",
       "term_action_wrappers.c.h": "c",
-      "tuple": "cpp"
+      "tuple": "cpp",
+      "string": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

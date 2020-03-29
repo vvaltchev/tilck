@@ -5,10 +5,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_definitions(-DUSERMODE_APP)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb")
 
-file(GLOB ELFHACK_SOURCES "elfhack.c")
-
-add_executable(elfhack ${ELFHACK_SOURCES})
-
 file(
    GLOB FAT_GET_USED_BYTES_SRC
    "fat_get_used_bytes.c"
@@ -16,3 +12,6 @@ file(
 )
 
 add_executable(fat_get_used_bytes ${FAT_GET_USED_BYTES_SRC})
+
+add_executable(elfhack "elfhack.c")
+add_executable(pbm2text "pbm2text.c")
