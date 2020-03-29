@@ -122,6 +122,9 @@ def CountLinesInFile(f, ft):
 
 def IsExcluded(path):
 
+   if os.path.basename(path) == 'build_apps':
+      return False
+
    for e in excludedDirs:
       if path.find(e) != -1:
          return True
