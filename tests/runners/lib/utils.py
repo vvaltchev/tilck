@@ -19,6 +19,8 @@ class Fail(Enum):
    gcov_error              = 6
    shell_unknown_exit_code = 7
    invalid_build_config    = 8
+   invalid_system_config   = 9
+   other                   = 10
 
 def getFailByCode(err_code):
 
@@ -30,3 +32,7 @@ def getFailByCode(err_code):
 
 def is_cmake_opt_enabled(opt):
    return opt.lower() in ["on", "1", "true", "yes", "y"]
+
+class InvalidSystemConfig(Exception):
+   def __init__(self, msg):
+      super(InvalidSystemConfig, self).__init__(msg)

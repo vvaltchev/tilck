@@ -12,6 +12,7 @@ import threading
 import struct
 import fcntl
 import filecmp
+import traceback
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -41,6 +42,14 @@ from lib.env import *
 # Other constants
 STABLE_SCREENSHOT_DELAY   = 0.25
 STABLE_SCREENSHOT_TIMEOUT = 3.00
+
+# Exceptions
+
+class StableScreenshotFailure(Exception):
+   def __init__(self):
+      msg = "Unable to take a stable screenshot in {}s"
+      msg = msg.format(STABLE_SCREENSHOT_TIMEOUT)
+      super(StableScreenshotFailure, self).__init__(msg)
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
@@ -172,9 +181,13 @@ def run(test_func):
       # Call the test func
       test_func()
 
-   except Exception as e:
-
+   except StableScreenshotFailure as e:
       msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.timeout)
+
+   except Exception as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.other)
 
    send_to_qemu_monitor("quit")
    wait_for_qemu_to_exit()
@@ -214,8 +227,7 @@ def vm_take_stable_screenshot():
       time_elapsed += STABLE_SCREENSHOT_DELAY
 
       if time_elapsed >= STABLE_SCREENSHOT_TIMEOUT:
-         tstr = str(STABLE_SCREENSHOT_TIMEOUT)
-         raise RuntimeError("Unable to take a stable screenshot in "+tstr+"s")
+         raise StableScreenshotFailure()
 
       time.sleep(STABLE_SCREENSHOT_DELAY)
       curr = vm_take_screenshot()
@@ -252,17 +264,41 @@ def trivial_func():
    send_single_key_to_vm("ret")
    vm_take_stable_screenshot()
 
-def main():
-
-   set_runner_name("interactive tests runner")
-   check_cmake_config()
-   detect_kvm()
+def setup_tmp_dir():
 
    if not os.path.isdir(TMP_DIR):
       os.mkdir(TMP_DIR)
 
    os.chdir(TMP_DIR)
    delete_old_screenshots()
+
+def check_system_config():
+
+   found = False
+   exTrace = None
+
+   try:
+
+      res = subprocess.run(["convert"], stdout=subprocess.PIPE)
+      out = res.stdout.decode("utf-8")
+      if out.find("ImageMagick") != -1:
+         found = True
+
+   except Exception:
+      exTrace = traceback.format_exc()
+
+   if not found:
+      msg_print("ERROR: ImageMagick (convert tool) not found on the system")
+      msg_print("Exception:\n{}".format(exTrace))
+      sys.exit(Fail.invalid_system_config)
+
+def main():
+
+   set_runner_name("interactive tests runner")
+   check_cmake_config()
+   check_system_config()
+   detect_kvm()
+   setup_tmp_dir()
 
    thread = threading.Thread(target = run, args = (trivial_func,))
    thread.start()
