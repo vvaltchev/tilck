@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 
@@ -50,6 +51,9 @@ static int pbm_h;
 static int pbm_w_bytes;
 static int rows;
 static int cols;
+
+static bool opt_border = true;
+static bool opt_quiet = false;
 
 static char (*recognize_char)(int, int);
 static char recognize_ascii_char_at_w8(int r, int c);
@@ -106,11 +110,13 @@ parse_font_file(void)
       return -1;
    }
 
-   fprintf(stderr,
-           "Detected %s font: ",
-           h2->magic == PSF2_MAGIC ? "PSF2" : "PSF1");
+   if (!opt_quiet) {
+      fprintf(stderr,
+            "Detected %s font: ",
+            h2->magic == PSF2_MAGIC ? "PSF2" : "PSF1");
 
-   fprintf(stderr, "%d x %d\n", font_w, font_h);
+      fprintf(stderr, "%d x %d\n", font_w, font_h);
+   }
 
    if (font_w != 8 && font_w != 16)
       return -1; /* font width not supported */
@@ -154,8 +160,12 @@ parse_pbm_file(void)
 
    pbm_data = (char *)pbm + i;
    pbm_w_bytes = (pbm_w + 7) / 8;
-   fprintf(stderr, "Detected PBM image: %d x %d\n", pbm_w, pbm_h);
-   fprintf(stderr, "Screen size: %d x %d\n", cols, rows);
+
+   if (!opt_quiet) {
+      fprintf(stderr, "Detected PBM image: %d x %d\n", pbm_w, pbm_h);
+      fprintf(stderr, "Screen size: %d x %d\n", cols, rows);
+   }
+
    return 0;
 }
 
@@ -196,14 +206,82 @@ recognize_ascii_char_at_w16(int r, int c)
    return i < 128 ? i-1 : '?';
 }
 
+static void
+show_help(void)
+{
+   fprintf(stderr, "Usage:\n");
+   fprintf(stderr, "    pbm2text [-nq] <psf_font> <pbm_screenshot>\n\n");
+   fprintf(stderr, "Options:\n");
+   fprintf(stderr, "    -n    Don't print any border\n");
+   fprintf(stderr, "    -q    Quiet: no info messages\n");
+}
+
+static void
+show_help_end_exit(void)
+{
+   show_help();
+   exit(1);
+}
+
+static void
+print_hline(void)
+{
+   putchar('+');
+
+   for (int c = 0; c < cols; c++)
+      putchar('-');
+
+   putchar('+');
+   putchar('\n');
+}
+
+static void
+parse_and_dump_screen_with_border(void)
+{
+   print_hline();
+
+   for (int r = 0; r < rows; r++) {
+
+      putchar('|');
+
+      for (int c = 0; c < cols; c++)
+         putchar(recognize_char(r, c));
+
+      putchar('|');
+      putchar('\n');
+   }
+
+   print_hline();
+}
+
 int main(int argc, char **argv)
 {
    int rc;
 
-   if (argc < 3) {
-      fprintf(stderr, "Usage:\n");
-      fprintf(stderr, "    %s <psf_font_file> <pbm_screenshot>\n", argv[0]);
-      return 1;
+   if (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
+      show_help();
+      return 0;
+   }
+
+   if (argc < 3)
+      show_help_end_exit();
+
+   if (!strcmp(argv[1], "-n")) {
+
+      opt_border = false;
+      argc--; argv++;
+
+      if (argc < 3)
+         show_help_end_exit();
+   }
+
+   if (!strcmp(argv[1], "-q")) {
+
+      opt_quiet = true;
+      argc--; argv++;
+
+      if (argc < 3)
+         show_help_end_exit();
    }
 
    if ((rc = open_and_mmap_file(argv[1], &font, &font_fd, &font_file_sz)) < 0) {
@@ -232,32 +310,20 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   putchar('+');
+   if (opt_border) {
 
-   for (int c = 0; c < cols; c++)
-      putchar('-');
+      parse_and_dump_screen_with_border();
 
-   putchar('+');
-   putchar('\n');
+   } else {
 
-   for (int r = 0; r < rows; r++) {
+      for (int r = 0; r < rows; r++) {
 
-      putchar('|');
+         for (int c = 0; c < cols; c++)
+            putchar(recognize_char(r, c));
 
-      for (int c = 0; c < cols; c++)
-         putchar(recognize_char(r, c));
-
-      putchar('|');
-      putchar('\n');
+         putchar('\n');
+      }
    }
-
-   putchar('+');
-
-   for (int c = 0; c < cols; c++)
-      putchar('-');
-
-   putchar('+');
-   putchar('\n');
 
    close(font_fd);
    close(pbm_fd);
