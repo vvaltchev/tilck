@@ -7,6 +7,7 @@ import subprocess
 from enum import Enum
 
 # Constants
+test_types = ['selftest', 'shellcmd']
 
 class Fail(Enum):
    success                 = 0
@@ -17,6 +18,7 @@ class Fail(Enum):
    shell_no_zero_exit      = 5
    gcov_error              = 6
    shell_unknown_exit_code = 7
+   invalid_build_config    = 8
 
 def getFailByCode(err_code):
 
@@ -26,4 +28,5 @@ def getFailByCode(err_code):
 
    return None
 
-test_types = ['selftest', 'shellcmd']
+def is_cmake_opt_enabled(opt):
+   return opt.lower() in ["on", "1", "true", "yes", "y"]

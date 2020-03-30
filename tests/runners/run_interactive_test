@@ -15,9 +15,22 @@ import filecmp
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
-RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
+RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
+
+CMAKE_CONFIG = {
+   "EXTRA_VIM" : ("@EXTRA_VIM@", True),
+   "FB_CONSOLE_BANNER" : ("@FB_CONSOLE_BANNER@", False),
+   "FB_CONSOLE_BLINK" : ("@FB_CONSOLE_BLINK@", False),
+   "FB_CONSOLE_USE_ALT_FONTS" : ("@FB_CONSOLE_USE_ALT_FONTS@", False),
+   "SERIAL_CON_IN_VIDEO_MODE" : ("@SERIAL_CON_IN_VIDEO_MODE@", True),
+   "BOOTLOADER_LEGACY" : ("@BOOTLOADER_LEGACY@", True),
+   "MOD_console" : ("@MOD_console@", True),
+   "MOD_serial" : ("@MOD_serial@", True),
+   "MOD_fb" : ("@MOD_fb@", True),
+   "MOD_kb8042" : ("@MOD_kb8042@", True)
+}
 
 sys.path.append(RUNNERS_DIR)
 from lib import qemu
@@ -48,6 +61,22 @@ def set_once_fail_reason(reason: Fail):
    global g_fail_reason
    assert(g_fail_reason == Fail.success)
    g_fail_reason = reason
+
+def check_cmake_config():
+
+   for k in CMAKE_CONFIG:
+
+      pair = CMAKE_CONFIG[k]
+      val, exp = is_cmake_opt_enabled(pair[0]), pair[1]
+
+      if val != exp:
+         msg_print("INVALID CONFIG: expected {} to be `{}`".format(k, exp))
+
+         if g_fail_reason == Fail.success:
+            set_once_fail_reason(Fail.invalid_build_config)
+
+   if g_fail_reason != Fail.success:
+      sys.exit(g_fail_reason.value)
 
 def wait_for_qemu_to_exit():
    while g_process.poll() is None:
@@ -226,6 +255,7 @@ def trivial_func():
 def main():
 
    set_runner_name("interactive tests runner")
+   check_cmake_config()
    detect_kvm()
 
    if not os.path.isdir(TMP_DIR):
@@ -254,6 +284,7 @@ def main():
          g_process.send_signal(signal.SIGINT)
          thread.join()
 
+   sys.exit(g_fail_reason.value)
 
 ###############################
 if __name__ == '__main__':
