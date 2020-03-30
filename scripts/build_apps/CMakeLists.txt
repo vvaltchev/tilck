@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 add_definitions(-DUSERMODE_APP)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ggdb")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -ggdb")
 
 file(
    GLOB FAT_GET_USED_BYTES_SRC
