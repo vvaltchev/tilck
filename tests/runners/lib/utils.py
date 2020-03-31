@@ -20,7 +20,8 @@ class Fail(Enum):
    shell_unknown_exit_code = 7
    invalid_build_config    = 8
    invalid_system_config   = 9
-   other                   = 10
+   no_hello_message        = 10
+   other                   = 11
 
 def getFailByCode(err_code):
 
@@ -36,3 +37,7 @@ def is_cmake_opt_enabled(opt):
 class InvalidSystemConfig(Exception):
    def __init__(self, msg):
       super(InvalidSystemConfig, self).__init__(msg)
+
+class NoTilckHelloMessage(Exception):
+   def __init__(self):
+      super(NoTilckHelloMessage, self).__init__("NoTilckHelloMessage")

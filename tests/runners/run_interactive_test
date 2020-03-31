@@ -20,6 +20,7 @@ RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PBM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pbm2text"
+FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
 
 CMAKE_CONFIG = {
    "EXTRA_VIM" : ("@EXTRA_VIM@", True),
@@ -55,6 +56,10 @@ class StableScreenshotFailure(Exception):
 class ConvertFailure(Exception):
    def __init__(self, msg):
       super(ConvertFailure, self).__init__(msg)
+
+class Pbm2TextFailure(Exception):
+   def __init__(self, ret):
+      super(Pbm2TextFailure, self).__init__("Return code: {}".format(ret))
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
@@ -175,16 +180,30 @@ def img_convert(img, newtype):
       ]
 
    name, ext = os.path.splitext(img)
+   new_name = name + "." + newtype
 
    cmd.append(img)
    cmd.append("-strip")
-   cmd.append(name + "." + newtype)
+   cmd.append(new_name)
    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
    if res.returncode != 0:
       out = res.stdout.decode('utf-8')
       err = res.stderr.decode('utf-8')
       raise ConvertFailure("stdout: '{}'\nstderr: '{}'".format(out, err))
+
+   return new_name
+
+def screenshot_to_text(img):
+
+   pbm = img_convert(img, "pbm")
+   cmd = [PBM2TEXT, "-q", FONT_FILE, pbm]
+   res = subprocess.run(cmd, stdout=subprocess.PIPE)
+
+   if res.returncode != 0:
+      raise Pbm2TextFailure(res.returncode)
+
+   return res.stdout.decode('utf-8')
 
 def vm_take_screenshot():
 
@@ -247,7 +266,7 @@ def run(test_func):
    ]
 
    if is_kvm_installed():
-      args.append('-enable-kvm')
+      args += ['-enable-kvm', '-cpu', 'host']
 
    # Run the QEMU process by using a PIPE for its stdout
    p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -265,12 +284,42 @@ def run(test_func):
 
    try:
 
+      # Wait for the bootloader to load everything
+      time.sleep(3)
+
+      # Take a stable screenshot -> the bootloader has done
+      vm_take_stable_screenshot()
+
+      # Now choose the 640x480 mode
+      send_string_to_vm("1")
+
+      # Wait a little for Tilck to boot
+      time.sleep(1)
+
+      # Take a screenshot for Tilck's initial screen
+      s = vm_take_stable_screenshot()
+
+      # Convert (using our pbm2text tool) the image to text
+      text = screenshot_to_text(s)
+
+      # Dump on our text
+      raw_stdout_write("\n")
+      raw_stdout_write(text)
+      send_to_qemu_monitor("\n")
+
+      if text.find("Hello from Tilck") == -1:
+         raise NoTilckHelloMessage()
+
       # Call the test func
       test_func()
 
    except StableScreenshotFailure as e:
       msg_print("Exception: " + str(e))
       set_once_fail_reason(Fail.timeout)
+
+   except NoTilckHelloMessage as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.no_hello_message)
 
    except Exception as e:
       msg_print("Exception: " + str(e))
@@ -284,13 +333,6 @@ def run(test_func):
    msg_print("Elapsed: {:.2f} s".format(elapsed))
 
 def trivial_func():
-   vm_take_stable_screenshot()
-   time.sleep(1)
-   vm_take_stable_screenshot()
-   time.sleep(1)
-   send_string_to_vm("1")
-   time.sleep(1)
-   vm_take_stable_screenshot()
    send_string_to_vm("ls -l")
    send_single_key_to_vm("ret")
    vm_take_stable_screenshot()
