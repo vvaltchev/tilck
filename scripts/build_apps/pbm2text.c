@@ -217,7 +217,7 @@ show_help(FILE *fh)
 }
 
 static void
-show_help_end_exit(void)
+show_help_and_exit(void)
 {
    show_help(stderr);
    exit(1);
@@ -258,31 +258,25 @@ int main(int argc, char **argv)
 {
    int rc;
 
-   if (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-      show_help(stdout);
-      return 0;
+   while (argc > 1 && argv[1][0] == '-') {
+
+      if (!strcmp(argv[1], "-n")) {
+         opt_border = false;
+      } else if (!strcmp(argv[1], "-q")) {
+         opt_quiet = true;
+      } else if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+         show_help(stdout);
+         return 0;
+      } else {
+         fprintf(stderr, "ERROR: unknown option '%s'\n", argv[1]);
+         show_help_and_exit();
+      }
+
+      argc--; argv++;
    }
 
    if (argc < 3)
-      show_help_end_exit();
-
-   if (!strcmp(argv[1], "-n")) {
-
-      opt_border = false;
-      argc--; argv++;
-
-      if (argc < 3)
-         show_help_end_exit();
-   }
-
-   if (!strcmp(argv[1], "-q")) {
-
-      opt_quiet = true;
-      argc--; argv++;
-
-      if (argc < 3)
-         show_help_end_exit();
-   }
+      show_help_and_exit();
 
    if ((rc = open_and_mmap_file(argv[1], &font, &font_fd, &font_file_sz)) < 0) {
       fprintf(stderr, "ERROR: unable to open and mmap '%s': %s\n",
