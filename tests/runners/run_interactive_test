@@ -179,7 +179,7 @@ def img_convert(img, newtype):
          "-negate"
       ]
 
-   name, ext = os.path.splitext(img)
+   name, ext = os.path.splitext(img) #pylint: disable=unused-variable
    new_name = name + "." + newtype
 
    cmd.append(img)
@@ -253,6 +253,68 @@ def vm_take_stable_screenshot():
    return curr
 
 
+def run_handle_boot():
+
+   # Wait for the bootloader to load everything
+   time.sleep(3)
+
+   # Take a stable screenshot -> the bootloader has done
+   vm_take_stable_screenshot()
+
+   # Now choose the 640x480 mode
+   send_string_to_vm("1")
+
+   # Wait a little for Tilck to boot
+   time.sleep(1)
+
+   # Take a screenshot for Tilck's initial screen
+   s = vm_take_stable_screenshot()
+
+   # Convert (using our pbm2text tool) the image to text
+   text = screenshot_to_text(s)
+
+   # Dump on our text
+   raw_stdout_write("\n")
+   raw_stdout_write(text)
+   send_to_qemu_monitor("\n")
+
+   if text.find("Hello from Tilck") == -1:
+      raise NoTilckHelloMessage()
+
+   if text.find("KERNEL PANIC") != -1:
+      raise KernelPanicFailure()
+
+def run_main_body(test_func):
+
+   try:
+
+      # Boot Tilck and make sure everything is alright
+      run_handle_boot()
+
+      # Call the test func
+      test_func()
+
+   except StableScreenshotFailure as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.timeout)
+
+   except NoTilckHelloMessage as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.no_hello_message)
+
+   except KernelPanicFailure as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.panic)
+
+   except Exception as e:
+      msg_print("Exception: " + str(e))
+      set_once_fail_reason(Fail.other)
+
+   except:
+      msg_print("Unknown exception:\n" + traceback.format_exc())
+      set_once_fail_reason(Fail.other)
+
+
 def run(test_func):
 
    args = [
@@ -282,48 +344,7 @@ def run(test_func):
    start_time = time.time()
    echo_qemu_monitor()
 
-   try:
-
-      # Wait for the bootloader to load everything
-      time.sleep(3)
-
-      # Take a stable screenshot -> the bootloader has done
-      vm_take_stable_screenshot()
-
-      # Now choose the 640x480 mode
-      send_string_to_vm("1")
-
-      # Wait a little for Tilck to boot
-      time.sleep(1)
-
-      # Take a screenshot for Tilck's initial screen
-      s = vm_take_stable_screenshot()
-
-      # Convert (using our pbm2text tool) the image to text
-      text = screenshot_to_text(s)
-
-      # Dump on our text
-      raw_stdout_write("\n")
-      raw_stdout_write(text)
-      send_to_qemu_monitor("\n")
-
-      if text.find("Hello from Tilck") == -1:
-         raise NoTilckHelloMessage()
-
-      # Call the test func
-      test_func()
-
-   except StableScreenshotFailure as e:
-      msg_print("Exception: " + str(e))
-      set_once_fail_reason(Fail.timeout)
-
-   except NoTilckHelloMessage as e:
-      msg_print("Exception: " + str(e))
-      set_once_fail_reason(Fail.no_hello_message)
-
-   except Exception as e:
-      msg_print("Exception: " + str(e))
-      set_once_fail_reason(Fail.other)
+   run_main_body(test_func)
 
    send_to_qemu_monitor("quit")
    wait_for_qemu_to_exit()
