@@ -51,6 +51,10 @@ class StableScreenshotFailure(Exception):
       msg = msg.format(STABLE_SCREENSHOT_TIMEOUT)
       super(StableScreenshotFailure, self).__init__(msg)
 
+class ConvertFailure(Exception):
+   def __init__(self, msg):
+      super(ConvertFailure, self).__init__(msg)
+
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 
@@ -203,18 +207,44 @@ def delete_old_screenshots():
       if not os.path.isfile(f):
          continue
 
-      if re.match("s[0-9]+[.](ppm|png)", f):
+      if re.match("s[0-9]+[.](ppm|pbm|png)", f):
          os.remove(f)
+
+def img_convert(img, newtype):
+
+   cmd = ["convert"]
+
+   if newtype == "pbm":
+      cmd += [
+         "-filter", "catrom",
+         "-colorspace", "gray", "+dither",
+         "-colors", "2",
+         "-negate"
+      ]
+
+   name, ext = os.path.splitext(img)
+
+   cmd.append(img)
+   cmd.append("-strip")
+   cmd.append(name + "." + newtype)
+   res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+   if res.returncode != 0:
+      out = res.stdout.decode('utf-8')
+      err = res.stderr.decode('utf-8')
+      raise ConvertFailure("stdout: '{}'\nstderr: '{}'".format(out, err))
 
 def vm_take_screenshot():
 
    global g_next_screenshot
 
    name = "s{:03}".format(g_next_screenshot)
-   full_name = name + ".ppm"
-   send_to_qemu_monitor("screendump " + full_name)
+   ppm_name = name + ".ppm"
+   send_to_qemu_monitor("screendump " + ppm_name)
+   img_convert(ppm_name, "png")
+   os.remove(ppm_name)
    g_next_screenshot += 1
-   return full_name
+   return name + ".png"
 
 def vm_take_stable_screenshot():
 
