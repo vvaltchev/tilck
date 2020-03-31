@@ -207,19 +207,19 @@ recognize_ascii_char_at_w16(int r, int c)
 }
 
 static void
-show_help(void)
+show_help(FILE *fh)
 {
-   fprintf(stderr, "Usage:\n");
-   fprintf(stderr, "    pbm2text [-nq] <psf_font> <pbm_screenshot>\n\n");
-   fprintf(stderr, "Options:\n");
-   fprintf(stderr, "    -n    Don't print any border\n");
-   fprintf(stderr, "    -q    Quiet: no info messages\n");
+   fprintf(fh, "Usage:\n");
+   fprintf(fh, "    pbm2text [-nq] <psf_font> <pbm_screenshot>\n\n");
+   fprintf(fh, "Options:\n");
+   fprintf(fh, "    -n    Don't print any border\n");
+   fprintf(fh, "    -q    Quiet: no info messages\n");
 }
 
 static void
 show_help_end_exit(void)
 {
-   show_help();
+   show_help(stderr);
    exit(1);
 }
 
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
    int rc;
 
    if (argc >= 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-      show_help();
+      show_help(stdout);
       return 0;
    }
 
@@ -287,14 +287,12 @@ int main(int argc, char **argv)
    if ((rc = open_and_mmap_file(argv[1], &font, &font_fd, &font_file_sz)) < 0) {
       fprintf(stderr, "ERROR: unable to open and mmap '%s': %s\n",
               argv[1], strerror(errno));
-
       return 1;
    }
 
    if ((rc = open_and_mmap_file(argv[2], &pbm, &pbm_fd, &pbm_file_sz)) < 0) {
       fprintf(stderr, "ERROR: unable to open and mmap '%s': %s\n",
               argv[2], strerror(errno));
-
       return 1;
    }
 
