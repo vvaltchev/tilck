@@ -56,8 +56,8 @@ static bool opt_border = true;
 static bool opt_quiet = false;
 
 static char (*recognize_char)(int, int);
-static char recognize_ascii_char_at_w8(int r, int c);
-static char recognize_ascii_char_at_w16(int r, int c);
+static char recognize_char_at_w8(int r, int c);
+static char recognize_char_at_w16(int r, int c);
 
 static int
 open_and_mmap_file(const char *f, void **buf_ref, int *fd_ref, size_t *sz_ref)
@@ -122,9 +122,9 @@ parse_font_file(void)
       return -1; /* font width not supported */
 
    if (font_w == 8)
-      recognize_char = &recognize_ascii_char_at_w8;
+      recognize_char = &recognize_char_at_w8;
    else
-      recognize_char = &recognize_ascii_char_at_w16;
+      recognize_char = &recognize_char_at_w16;
 
    return 0;
 }
@@ -170,40 +170,87 @@ parse_pbm_file(void)
 }
 
 static char
-recognize_ascii_char_at_w8(int r, int c)
+recognize_char_at_w8(int r, int c)
 {
    int i, y;
    uint8_t *img = pbm_data + pbm_w_bytes * font_h * r + font_w_bytes * c;
 
-   for (i = 32, y = 0; i < 128 && y < font_h; i++) {
+   for (i = 0, y = 0; i < 256 && y < font_h; i++) {
 
       uint8_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
       for (y = 0; y < font_h; y++)
          if (img[y * pbm_w_bytes] != g[y])
             break;
+
+      if (y < font_h) {
+         for (y = 0; y < font_h; y++)
+            if ((uint8_t)~img[y * pbm_w_bytes] != g[y])
+               break;
+      }
    }
 
-   return i < 128 ? i-1 : '?';
+   return i < 256 ? i-1 : '?';
 }
 
 static char
-recognize_ascii_char_at_w16(int r, int c)
+recognize_char_at_w16(int r, int c)
 {
    uint16_t *img = pbm_data + pbm_w_bytes * font_h * r + font_w_bytes * c;
    const int pbm_w_bytes_half = pbm_w_bytes / 2;
    int i, y;
 
-   for (i = 32, y = 0; i < 128 && y < font_h; i++) {
+   for (i = 0, y = 0; i < 256 && y < font_h; i++) {
 
       uint16_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
       for (y = 0; y < font_h; y++)
          if (img[y * pbm_w_bytes_half] != g[y])
             break;
+
+      if (y < font_h) {
+         for (y = 0; y < font_h; y++)
+            if ((uint16_t)~img[y * pbm_w_bytes_half] != g[y])
+               break;
+      }
    }
 
-   return i < 128 ? i-1 : '?';
+   return i < 256 ? i-1 : '?';
+}
+
+static const char transl[256] = {
+
+   [  1] = '-',
+
+   [176] = '#',
+   [177] = '#',
+   [179] = '|',
+   [180] = '+',
+
+   [191] = '+',
+   [192] = '+',
+   [193] = '+',
+   [194] = '+',
+   [195] = '+',
+   [196] = '-',
+   [197] = '+',
+
+   [217] = '+',
+   [218] = '+',
+   [219] = '#',
+   [223] = '+',
+};
+
+static void
+recognize_and_print_char(int row, int col)
+{
+   uint8_t c = (uint8_t)recognize_char(row, col);
+
+   putchar(
+      32 <= c && c <= 127
+         ? c
+         : transl[c] ? transl[c] : '?'
+   );
 }
 
 static void
@@ -245,7 +292,7 @@ parse_and_dump_screen_with_border(void)
       putchar('|');
 
       for (int c = 0; c < cols; c++)
-         putchar(recognize_char(r, c));
+         recognize_and_print_char(r, c);
 
       putchar('|');
       putchar('\n');
@@ -311,7 +358,7 @@ int main(int argc, char **argv)
       for (int r = 0; r < rows; r++) {
 
          for (int c = 0; c < cols; c++)
-            putchar(recognize_char(r, c));
+            recognize_and_print_char(r, c);
 
          putchar('\n');
       }
