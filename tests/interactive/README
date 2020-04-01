@@ -1,0 +1,10 @@
+INTERACTIVE TESTS: source & helper files
+---------------------------------------------
+
+This directory contains a list of NON-independent python3 source files, each
+one of them being the body of an "interactive test".
+
+Those source files are dynamically compiled (on-the-fly) and then executed
+by the `run_interactive_test` runner. That's not a detail: those files need to
+run using the same global context as the runner (because they need functions
+like send_string_to_vm(), vm_take_stable_screenshot() etc).

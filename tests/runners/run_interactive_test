@@ -17,6 +17,7 @@ from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
 RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
+INTERACTIVE_TESTS = "@CMAKE_SOURCE_DIR@/tests/interactive"
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PBM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pbm2text"
@@ -61,6 +62,12 @@ class Pbm2TextFailure(Exception):
    def __init__(self, ret):
       super(Pbm2TextFailure, self).__init__("Return code: {}".format(ret))
 
+class IntTestScreenTextCheckFailure(Exception):
+   def __init__(self, screen_text):
+      super(IntTestScreenTextCheckFailure, self)    \
+         .__init__("IntTestScreenTextCheckFailure")
+      self.screen_text = screen_text
+
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 
@@ -70,6 +77,7 @@ g_fail_reason = Fail.success
 g_dumping_gcda_files = False
 g_timeout = 20
 g_next_screenshot = 0
+g_tests = {}
 
 def set_once_qemu_process(p):
    global g_process
@@ -151,7 +159,7 @@ def send_single_key_to_vm(key):
       key_name = qemu.KEYS_MAP.get(key, None)
 
    if key_name is not None:
-      send_to_qemu_monitor("sendkey " + key_name)
+      send_to_qemu_monitor("sendkey " + key_name, 0.05)
 
 def send_string_to_vm(s):
    for k in s:
@@ -298,13 +306,22 @@ def run_main_body(test_func):
       msg_print("Exception: " + str(e))
       set_once_fail_reason(Fail.timeout)
 
-   except NoTilckHelloMessage as e:
-      msg_print("Exception: " + str(e))
-      set_once_fail_reason(Fail.no_hello_message)
+   except (NoTilckHelloMessage,
+           KernelPanicFailure,
+           IntTestScreenTextCheckFailure) as e:
 
-   except KernelPanicFailure as e:
       msg_print("Exception: " + str(e))
-      set_once_fail_reason(Fail.panic)
+
+      if e.screen_text:
+         raw_stdout_write("\n")
+         raw_stdout_write(e.screen_text)
+
+      if type(e) is NoTilckHelloMessage:
+         set_once_fail_reason(Fail.no_hello_message)
+      elif type(e) is KernelPanicFailure:
+         set_once_fail_reason(Fail.panic)
+      else:
+         set_once_fail_reason(Fail.other)
 
    except Exception as e:
       msg_print("Exception: " + str(e))
@@ -353,10 +370,6 @@ def run(test_func):
    raw_print('-' * 80)
    msg_print("Elapsed: {:.2f} s".format(elapsed))
 
-def trivial_func():
-   send_string_to_vm("ls -l")
-   send_single_key_to_vm("ret")
-   vm_take_stable_screenshot()
 
 def setup_tmp_dir():
 
@@ -402,6 +415,35 @@ def check_pbm2text():
       msg_print("Exception:\n{}".format(exTrace))
       sys.exit(Fail.invalid_build_config)
 
+def load_tests():
+
+   global g_tests
+
+   for f in os.listdir(INTERACTIVE_TESTS):
+
+      if not f.endswith(".py"):
+         continue
+
+      p = os.path.join(INTERACTIVE_TESTS, f)
+
+      with open(p, 'r') as fh:
+         src = fh.read()
+
+      e = compile(src, p, 'exec')
+      g_tests[f] = e
+
+def run_all_tests():
+
+   raw_stdout_write("\n")
+   msg_print("Run all tests")
+   msg_print("-" * 50)
+
+   for k in g_tests:
+      msg_print("Interactive test: {}".format(k))
+      send_to_qemu_monitor("\n")
+      exec(g_tests[k], globals(), {})
+      raw_stdout_write("\n")
+
 def main():
 
    set_runner_name("interactive tests runner")
@@ -410,8 +452,9 @@ def main():
    check_pbm2text()
    detect_kvm()
    setup_tmp_dir()
+   load_tests()
 
-   thread = threading.Thread(target = run, args = (trivial_func,))
+   thread = threading.Thread(target = run, args = (run_all_tests,))
    thread.start()
    thread.join(g_timeout)
 

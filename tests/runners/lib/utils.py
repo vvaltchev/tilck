@@ -39,9 +39,11 @@ class InvalidSystemConfig(Exception):
       super(InvalidSystemConfig, self).__init__(msg)
 
 class NoTilckHelloMessage(Exception):
-   def __init__(self):
+   def __init__(self, screen_text = None):
       super(NoTilckHelloMessage, self).__init__("NoTilckHelloMessage")
+      self.screen_text = screen_text
 
 class KernelPanicFailure(Exception):
-   def __init__(self):
+   def __init__(self, screen_text = None):
       super(KernelPanicFailure, self).__init__("KernelPanicFailure")
+      self.screen_text = screen_text
