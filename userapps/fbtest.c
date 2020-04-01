@@ -22,28 +22,19 @@
       return false;                                             \
    }
 
-struct fb_var_screeninfo fbi;
-struct fb_fix_screeninfo fb_fixinfo;
+static struct fb_var_screeninfo fbi;
+static struct fb_fix_screeninfo fb_fixinfo;
 
-char *buffer;
-size_t fb_size;
-size_t fb_pitch;
-size_t fb_pitch_div4;
-int fbfd = -1, ttyfd = -1;
+static char *buffer;
+static size_t fb_size;
+static size_t fb_pitch;
+static size_t fb_pitch_div4;
+static int fbfd = -1, ttyfd = -1;
 
-/*
- * Set 'n' 32-bit elems pointed by 's' to 'val'.
- */
-static inline void *memset32(void *s, uint32_t val, size_t n)
+static inline void memset32(void *s, uint32_t val, size_t n)
 {
-   unsigned unused; /* See the comment in strlen() about the unused variable */
-
-   __asm__ volatile ("rep stosl"
-               : "=D" (unused), "=a" (val), "=c" (n)
-               :  "D" (s), "a" (val), "c" (n)
-               : "cc", "memory");
-
-   return s;
+   for (size_t i = 0; i < n; i++)
+      ((volatile uint32_t*)s)[i] = val;
 }
 
 static inline uint32_t make_color(uint8_t red, uint8_t green, uint8_t blue)
@@ -58,15 +49,16 @@ static inline void set_pixel(uint32_t x, uint32_t y, uint32_t color)
    ((volatile uint32_t *)buffer)[x + y * fb_pitch_div4] = color;
 }
 
-void clear_screen(uint32_t color)
+static void clear_screen(uint32_t color)
 {
    memset32(buffer, color, fb_size >> 2);
 }
 
-void draw_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
+static void
+fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color)
 {
    for (uint32_t cy = y; cy < y + h; cy++)
-      memset32(buffer + cy * fb_pitch + x, color, w);
+      memset32(buffer + cy * fb_pitch + (x << 2), color, w);
 }
 
 static bool check_fb_assumptions(void)
@@ -93,7 +85,7 @@ static bool check_fb_assumptions(void)
    return true;
 }
 
-bool fb_acquire(void)
+static bool fb_acquire(void)
 {
    fbfd = open(FB_DEVICE, O_RDWR);
 
@@ -141,7 +133,7 @@ bool fb_acquire(void)
    return true;
 }
 
-void fb_release(void)
+static void fb_release(void)
 {
    if (buffer)
       munmap(buffer, fb_size);
@@ -155,13 +147,15 @@ void fb_release(void)
       close(fbfd);
 }
 
-void draw_something(void)
+static void draw_something(void)
 {
    clear_screen(make_color(0, 0, 0));
-   draw_rect(100, 100, 300, 200, make_color(255, 0, 0));
+   fill_rect(50, 50, 100, 100, make_color(255, 0, 0));
+   fill_rect(50 + 100, 50, 100, 100, make_color(0, 255, 0));
+   fill_rect(50 + 200, 50, 100, 100, make_color(0, 0, 255));
 }
 
-void dump_fb_fix_info(void)
+static void dump_fb_fix_info(void)
 {
    fbfd = open(FB_DEVICE, O_RDWR);
 
@@ -188,7 +182,7 @@ void dump_fb_fix_info(void)
    printf("mmio_len:    %u\n", fb_fixinfo.mmio_len);
 }
 
-void dump_fb_var_info(void)
+static void dump_fb_var_info(void)
 {
    fbfd = open(FB_DEVICE, O_RDWR);
 
