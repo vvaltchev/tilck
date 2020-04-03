@@ -145,15 +145,24 @@ static int
 parse_pnm_file(void)
 {
    char type[32];
-   char wstr[16], hstr[16];
-   size_t i, n;
+   char wstr[16], hstr[16], mvstr[16];
+   size_t i, n, nl = 2;
 
    sscanf(pnm, "%31s %15s %15s", type, wstr, hstr);
 
    if (!strcmp(type, "P4")) {
+
       pnm_type = 4;
+
    } else if (!strcmp(type, "P6")) {
+
+      sscanf(pnm, "%31s %15s %15s %15s", type, wstr, hstr, mvstr);
       pnm_type = 6;
+      nl = 3;
+
+      if (atoi(mvstr) != 255)
+         return -1;
+
    } else {
       return -1;
    }
@@ -167,7 +176,7 @@ parse_pnm_file(void)
    rows = pnm_h / font_h;
    cols = pnm_w / font_w;
 
-   for (i = 0, n = 0; i < pnm_file_sz && n < 2; i++) {
+   for (i = 0, n = 0; i < pnm_file_sz && n < nl; i++) {
       if (((char *)pnm)[i] == 10)
          n++;
    }
@@ -176,7 +185,12 @@ parse_pnm_file(void)
       return -1; /* corrupted pnm file */
 
    pnm_data = (char *)pnm + i;
-   pnm_w_bytes = (pnm_w + 7) / 8;
+
+   if (pnm_type == 4)
+      pnm_w_bytes = (pnm_w + 7) / 8;
+   else if (pnm_type == 6)
+      pnm_w_bytes = pnm_w * 3;
+
    pnm_w_bytes_half = pnm_w_bytes / 2;
 
    if (!opt_quiet) {
@@ -278,10 +292,70 @@ img_p4_get_char16(int row, int col, char *dest)
 }
 
 static void
+img_p6_get_colors(uint8_t *p8, uint32_t colors[2])
+{
+   colors[0] = *(uint32_t *)p8 & 0x00ffffff;
+
+   for (int y = 0; y < font_h; y++, p8 += pnm_w_bytes) {
+      for (int b = 0; b < font_w_bytes; b++) {
+         for (int x = 0; x < font_w; x++) {
+
+            uint32_t c = *(uint32_t *)(p8 + 3 * (x + b * 8)) & 0x00ffffff;
+
+            if (c != colors[0]) {
+               colors[1] = c;
+               return;
+            }
+         }
+      }
+   }
+
+   /* No foreground color: alright, it must be a blank character */
+   colors[1] = 0x00ffffff;
+}
+
+static void
+img_p6_get_char(int row, int col, char *dest)
+{
+   void *p = pnm_data + pnm_w_bytes * font_h * row + 24 * col * font_w_bytes;
+   uint8_t *p8 = (uint8_t *)p;
+   uint32_t colors[2] = {0};
+
+   img_p6_get_colors(p8, colors);
+
+   for (int y = 0; y < font_h; y++, p8 += pnm_w_bytes) {
+      for (int b = 0, val = 0; b < font_w_bytes; b++, val = 0) {
+         for (int x = 0; x < 8; x++, val <<= 1) {
+
+            uint32_t c = *(uint32_t *)(p8 + 3 * (x + b * 8)) & 0x00ffffff;
+
+            if (c == colors[0]) {
+
+               /* do nothing: keep the zero */
+
+            } else if (c == colors[1]) {
+
+               val |= 1;
+
+            } else {
+               /* Oops: we've found a 3rd color. We cannot recognize this. */
+               bzero(dest, font_w_bytes * font_h);
+               return;
+            }
+         }
+
+         val >>= 1;
+         ((uint8_t *)dest)[font_w_bytes * y + b] = val & 0xff;
+      }
+   }
+}
+
+static void
 recognize_and_print_char(int row, int col)
 {
    char imgbuf[font_w_bytes * font_h]; // VLA
 
+   bzero(imgbuf, font_w_bytes * font_h);
    img_get_char(row, col, imgbuf);
    uint8_t c = recognize_char(&imgbuf, row, col);
 
@@ -384,7 +458,7 @@ int main(int argc, char **argv)
    }
 
    if (parse_pnm_file() < 0) {
-      fprintf(stderr, "ERROR: invalid file. It must have P4 or P6 as type");
+      fprintf(stderr, "ERROR: invalid file. It must have P4 or P6 as type\n");
       return 1;
    }
 
@@ -398,9 +472,7 @@ int main(int argc, char **argv)
    } else {
 
       /* png_type == "P6" */
-
-      /* NOT IMPLEMENTED */
-      return 1;
+      img_get_char = &img_p6_get_char;
    }
 
    if (opt_border) {
