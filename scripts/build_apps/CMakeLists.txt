@@ -14,4 +14,4 @@ file(
 add_executable(fat_get_used_bytes ${FAT_GET_USED_BYTES_SRC})
 
 add_executable(elfhack "elfhack.c")
-add_executable(pbm2text "pbm2text.c")
+add_executable(pnm2text "pnm2text.c")

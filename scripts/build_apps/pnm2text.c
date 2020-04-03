@@ -13,6 +13,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+/*
+ * NOTE: PNM stands for: portable anymap format (PNM).
+ * This tool supports only PBM (monochrome) and PPM (24 bpp).
+ */
+
 #define PSF1_MAGIC               0x0436
 #define PSF2_MAGIC               0x864ab572
 
@@ -291,7 +296,7 @@ static void
 show_help(FILE *fh)
 {
    fprintf(fh, "Usage:\n");
-   fprintf(fh, "    pbm2text [-nq] <psf_font> <pnm_screenshot>\n\n");
+   fprintf(fh, "    pnm2text [-nq] <psf_font> <pnm_screenshot>\n\n");
    fprintf(fh, "Options:\n");
    fprintf(fh, "    -n    Don't print any border\n");
    fprintf(fh, "    -q    Quiet: no info messages\n");

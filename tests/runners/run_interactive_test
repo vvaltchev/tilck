@@ -20,7 +20,7 @@ RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 INTERACTIVE_TESTS = "@CMAKE_SOURCE_DIR@/tests/interactive"
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
-PBM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pbm2text"
+PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
 FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
 
 CMAKE_CONFIG = {
@@ -58,9 +58,9 @@ class ConvertFailure(Exception):
    def __init__(self, msg):
       super(ConvertFailure, self).__init__(msg)
 
-class Pbm2TextFailure(Exception):
+class Pnm2TextFailure(Exception):
    def __init__(self, ret):
-      super(Pbm2TextFailure, self).__init__("Return code: {}".format(ret))
+      super(Pnm2TextFailure, self).__init__("Return code: {}".format(ret))
 
 class IntTestScreenTextCheckFailure(Exception):
    def __init__(self, screen_text):
@@ -205,11 +205,11 @@ def img_convert(img, newtype):
 def screenshot_to_text(img):
 
    pbm = img_convert(img, "pbm")
-   cmd = [PBM2TEXT, "-q", FONT_FILE, pbm]
+   cmd = [PNM2TEXT, "-q", FONT_FILE, pbm]
    res = subprocess.run(cmd, stdout=subprocess.PIPE)
 
    if res.returncode != 0:
-      raise Pbm2TextFailure(res.returncode)
+      raise Pnm2TextFailure(res.returncode)
 
    return res.stdout.decode('utf-8')
 
@@ -278,7 +278,7 @@ def run_handle_boot():
    # Take a screenshot for Tilck's initial screen
    s = vm_take_stable_screenshot()
 
-   # Convert (using our pbm2text tool) the image to text
+   # Convert (using our pnm2text tool) the image to text
    text = screenshot_to_text(s)
 
    # Dump on our text
@@ -405,12 +405,12 @@ def check_system_config():
       msg_print("Exception:\n{}".format(exTrace))
       sys.exit(Fail.invalid_system_config)
 
-def check_pbm2text():
+def check_pnm2text():
 
-   found, exTrace = check_tool_works(PBM2TEXT, "-h", "pbm2text")
+   found, exTrace = check_tool_works(PNM2TEXT, "-h", "pnm2text")
 
    if not found:
-      msg_print("ERROR: pbm2text not found in the build directory")
+      msg_print("ERROR: pnm2text not found in the build directory")
       msg_print("ERROR: you might need to run `make`")
       msg_print("Exception:\n{}".format(exTrace))
       sys.exit(Fail.invalid_build_config)
@@ -449,7 +449,7 @@ def main():
    set_runner_name("interactive tests runner")
    check_cmake_config()
    check_system_config()
-   check_pbm2text()
+   check_pnm2text()
    detect_kvm()
    setup_tmp_dir()
    load_tests()
