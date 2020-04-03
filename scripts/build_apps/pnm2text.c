@@ -212,15 +212,14 @@ recognize_char_at_w8(void *img_ptr, int r, int c)
 
       uint8_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
-      for (y = 0; y < font_h; y++)
-         if (img[y] != g[y])
-            break;
-
-      if (y < font_h) {
-         for (y = 0; y < font_h; y++)
-            if ((uint8_t)~img[y] != g[y])
-               break;
+      if (!memcmp(img, g, font_h)) {
+         i++;
+         break;
       }
+
+      for (y = 0; y < font_h; y++)
+         if ((uint8_t)~img[y] != g[y])
+            break;
    }
 
    return i < 256 ? i-1 : '?';
@@ -236,15 +235,14 @@ recognize_char_at_w16(void *img_ptr, int r, int c)
 
       uint16_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
-      for (y = 0; y < font_h; y++)
-         if (img[y] != g[y])
-            break;
-
-      if (y < font_h) {
-         for (y = 0; y < font_h; y++)
-            if ((uint16_t)~img[y] != g[y])
-               break;
+      if (!memcmp(img, g, 2 * font_h)) {
+         i++;
+         break;
       }
+
+      for (y = 0; y < font_h; y++)
+         if ((uint16_t)~img[y] != g[y])
+            break;
    }
 
    return i < 256 ? i-1 : '?';
@@ -345,7 +343,7 @@ img_p6_get_char(int row, int col, char *dest)
          }
 
          val >>= 1;
-         ((uint8_t *)dest)[font_w_bytes * y + b] = val & 0xff;
+         ((uint8_t *)dest)[font_w_bytes * y + b] = (val & 0xff);
       }
    }
 }
