@@ -49,15 +49,22 @@ static void *pbm_data;
 static int pbm_w;
 static int pbm_h;
 static int pbm_w_bytes;
+static int pbm_w_bytes_half;
+static int pnm_type;
+
 static int rows;
 static int cols;
 
 static bool opt_border = true;
 static bool opt_quiet = false;
 
-static char (*recognize_char)(int, int);
-static char recognize_char_at_w8(int r, int c);
-static char recognize_char_at_w16(int r, int c);
+static uint8_t (*recognize_char)(void *, int, int);
+static void (*img_get_char)(int, int, char *);
+
+static void img_p4_get_char8(int row, int col, char *dest);
+static void img_p4_get_char16(int row, int col, char *dest);
+static uint8_t recognize_char_at_w8(void *img_ptr, int r, int c);
+static uint8_t recognize_char_at_w16(void *img_ptr, int r, int c);
 
 static int
 open_and_mmap_file(const char *f, void **buf_ref, int *fd_ref, size_t *sz_ref)
@@ -138,8 +145,13 @@ parse_pbm_file(void)
 
    sscanf(pbm, "%31s %15s %15s", type, wstr, hstr);
 
-   if (strcmp(type, "P4"))
+   if (!strcmp(type, "P4")) {
+      pnm_type = 4;
+   } else if (!strcmp(type, "P6")) {
+      pnm_type = 6;
+   } else {
       return -1;
+   }
 
    pbm_w = atoi(wstr);
    pbm_h = atoi(hstr);
@@ -160,6 +172,7 @@ parse_pbm_file(void)
 
    pbm_data = (char *)pbm + i;
    pbm_w_bytes = (pbm_w + 7) / 8;
+   pbm_w_bytes_half = pbm_w_bytes / 2;
 
    if (!opt_quiet) {
       fprintf(stderr, "Detected PBM image: %d x %d\n", pbm_w, pbm_h);
@@ -169,23 +182,23 @@ parse_pbm_file(void)
    return 0;
 }
 
-static char
-recognize_char_at_w8(int r, int c)
+static uint8_t
+recognize_char_at_w8(void *img_ptr, int r, int c)
 {
    int i, y;
-   uint8_t *img = pbm_data + pbm_w_bytes * font_h * r + font_w_bytes * c;
+   uint8_t *img = img_ptr;
 
    for (i = 0, y = 0; i < 256 && y < font_h; i++) {
 
       uint8_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
       for (y = 0; y < font_h; y++)
-         if (img[y * pbm_w_bytes] != g[y])
+         if (img[y] != g[y])
             break;
 
       if (y < font_h) {
          for (y = 0; y < font_h; y++)
-            if ((uint8_t)~img[y * pbm_w_bytes] != g[y])
+            if ((uint8_t)~img[y] != g[y])
                break;
       }
    }
@@ -193,11 +206,10 @@ recognize_char_at_w8(int r, int c)
    return i < 256 ? i-1 : '?';
 }
 
-static char
-recognize_char_at_w16(int r, int c)
+static uint8_t
+recognize_char_at_w16(void *img_ptr, int r, int c)
 {
-   uint16_t *img = pbm_data + pbm_w_bytes * font_h * r + font_w_bytes * c;
-   const int pbm_w_bytes_half = pbm_w_bytes / 2;
+   uint16_t *img = img_ptr;
    int i, y;
 
    for (i = 0, y = 0; i < 256 && y < font_h; i++) {
@@ -205,12 +217,12 @@ recognize_char_at_w16(int r, int c)
       uint16_t *g = (void *)(font_data + font_bytes_per_glyph * i);
 
       for (y = 0; y < font_h; y++)
-         if (img[y * pbm_w_bytes_half] != g[y])
+         if (img[y] != g[y])
             break;
 
       if (y < font_h) {
          for (y = 0; y < font_h; y++)
-            if ((uint16_t)~img[y * pbm_w_bytes_half] != g[y])
+            if ((uint16_t)~img[y] != g[y])
                break;
       }
    }
@@ -242,9 +254,30 @@ static const char transl[256] = {
 };
 
 static void
+img_p4_get_char8(int row, int col, char *dest)
+{
+   void *p = pbm_data + pbm_w_bytes * font_h * row + col;
+
+   for (int y = 0; y < font_h; y++)
+      ((uint8_t *)dest)[y] = ((uint8_t *)p)[y * pbm_w_bytes];
+}
+
+static void
+img_p4_get_char16(int row, int col, char *dest)
+{
+   void *p = pbm_data + pbm_w_bytes * font_h * row + 2 * col;
+
+   for (int y = 0; y < font_h; y++)
+      ((uint16_t *)dest)[y] = ((uint16_t *)p)[y * pbm_w_bytes_half];
+}
+
+static void
 recognize_and_print_char(int row, int col)
 {
-   uint8_t c = (uint8_t)recognize_char(row, col);
+   char imgbuf[font_w_bytes * font_h]; // VLA
+
+   img_get_char(row, col, imgbuf);
+   uint8_t c = recognize_char(&imgbuf, row, col);
 
    putchar(
       32 <= c && c <= 127
@@ -345,7 +378,22 @@ int main(int argc, char **argv)
    }
 
    if (parse_pbm_file() < 0) {
-      fprintf(stderr, "ERROR: invalid PBM file. It must have P4 as magic");
+      fprintf(stderr, "ERROR: invalid file. It must have P4 or P6 as type");
+      return 1;
+   }
+
+   if (pnm_type == 4) {
+
+      if (font_w_bytes == 1)
+         img_get_char = &img_p4_get_char8;
+      else
+         img_get_char = &img_p4_get_char16;
+
+   } else {
+
+      /* png_type == "P6" */
+
+      /* NOT IMPLEMENTED */
       return 1;
    }
 
