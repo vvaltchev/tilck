@@ -42,14 +42,14 @@ static uint32_t font_w_bytes;
 static uint32_t font_bytes_per_glyph;
 static uint8_t *font_data;
 
-static int pbm_fd = -1;
-static size_t pbm_file_sz;
-static void *pbm;
-static void *pbm_data;
-static int pbm_w;
-static int pbm_h;
-static int pbm_w_bytes;
-static int pbm_w_bytes_half;
+static int pnm_fd = -1;
+static size_t pnm_file_sz;
+static void *pnm;
+static void *pnm_data;
+static int pnm_w;
+static int pnm_h;
+static int pnm_w_bytes;
+static int pnm_w_bytes_half;
 static int pnm_type;
 
 static int rows;
@@ -137,13 +137,13 @@ parse_font_file(void)
 }
 
 static int
-parse_pbm_file(void)
+parse_pnm_file(void)
 {
    char type[32];
    char wstr[16], hstr[16];
    size_t i, n;
 
-   sscanf(pbm, "%31s %15s %15s", type, wstr, hstr);
+   sscanf(pnm, "%31s %15s %15s", type, wstr, hstr);
 
    if (!strcmp(type, "P4")) {
       pnm_type = 4;
@@ -153,29 +153,30 @@ parse_pbm_file(void)
       return -1;
    }
 
-   pbm_w = atoi(wstr);
-   pbm_h = atoi(hstr);
+   pnm_w = atoi(wstr);
+   pnm_h = atoi(hstr);
 
-   if (!pbm_w || !pbm_h)
+   if (!pnm_w || !pnm_h)
       return -1;
 
-   rows = pbm_h / font_h;
-   cols = pbm_w / font_w;
+   rows = pnm_h / font_h;
+   cols = pnm_w / font_w;
 
-   for (i = 0, n = 0; i < pbm_file_sz && n < 2; i++) {
-      if (((char *)pbm)[i] == 10)
+   for (i = 0, n = 0; i < pnm_file_sz && n < 2; i++) {
+      if (((char *)pnm)[i] == 10)
          n++;
    }
 
-   if (i == pbm_file_sz)
-      return -1; /* corrupted PBM file */
+   if (i == pnm_file_sz)
+      return -1; /* corrupted pnm file */
 
-   pbm_data = (char *)pbm + i;
-   pbm_w_bytes = (pbm_w + 7) / 8;
-   pbm_w_bytes_half = pbm_w_bytes / 2;
+   pnm_data = (char *)pnm + i;
+   pnm_w_bytes = (pnm_w + 7) / 8;
+   pnm_w_bytes_half = pnm_w_bytes / 2;
 
    if (!opt_quiet) {
-      fprintf(stderr, "Detected PBM image: %d x %d\n", pbm_w, pbm_h);
+      fprintf(stderr, "Detected %s image: %d x %d\n",
+              pnm_type == 4 ? "PBM" : "PPM", pnm_w, pnm_h);
       fprintf(stderr, "Screen size: %d x %d\n", cols, rows);
    }
 
@@ -256,19 +257,19 @@ static const char transl[256] = {
 static void
 img_p4_get_char8(int row, int col, char *dest)
 {
-   void *p = pbm_data + pbm_w_bytes * font_h * row + col;
+   void *p = pnm_data + pnm_w_bytes * font_h * row + col;
 
    for (int y = 0; y < font_h; y++)
-      ((uint8_t *)dest)[y] = ((uint8_t *)p)[y * pbm_w_bytes];
+      ((uint8_t *)dest)[y] = ((uint8_t *)p)[y * pnm_w_bytes];
 }
 
 static void
 img_p4_get_char16(int row, int col, char *dest)
 {
-   void *p = pbm_data + pbm_w_bytes * font_h * row + 2 * col;
+   void *p = pnm_data + pnm_w_bytes * font_h * row + 2 * col;
 
    for (int y = 0; y < font_h; y++)
-      ((uint16_t *)dest)[y] = ((uint16_t *)p)[y * pbm_w_bytes_half];
+      ((uint16_t *)dest)[y] = ((uint16_t *)p)[y * pnm_w_bytes_half];
 }
 
 static void
@@ -290,7 +291,7 @@ static void
 show_help(FILE *fh)
 {
    fprintf(fh, "Usage:\n");
-   fprintf(fh, "    pbm2text [-nq] <psf_font> <pbm_screenshot>\n\n");
+   fprintf(fh, "    pbm2text [-nq] <psf_font> <pnm_screenshot>\n\n");
    fprintf(fh, "Options:\n");
    fprintf(fh, "    -n    Don't print any border\n");
    fprintf(fh, "    -q    Quiet: no info messages\n");
@@ -364,7 +365,7 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   if ((rc = open_and_mmap_file(argv[2], &pbm, &pbm_fd, &pbm_file_sz)) < 0) {
+   if ((rc = open_and_mmap_file(argv[2], &pnm, &pnm_fd, &pnm_file_sz)) < 0) {
       fprintf(stderr, "ERROR: unable to open and mmap '%s': %s\n",
               argv[2], strerror(errno));
       return 1;
@@ -373,11 +374,11 @@ int main(int argc, char **argv)
    if (parse_font_file() < 0) {
       fprintf(stderr, "ERROR: invalid font file\n");
       close(font_fd);
-      close(pbm_fd);
+      close(pnm_fd);
       return 1;
    }
 
-   if (parse_pbm_file() < 0) {
+   if (parse_pnm_file() < 0) {
       fprintf(stderr, "ERROR: invalid file. It must have P4 or P6 as type");
       return 1;
    }
@@ -413,6 +414,6 @@ int main(int argc, char **argv)
    }
 
    close(font_fd);
-   close(pbm_fd);
+   close(pnm_fd);
    return 0;
 }
