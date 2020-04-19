@@ -475,6 +475,7 @@ def run_all_tests():
    msg_print("-" * 50)
 
    for k in matching_list:
+      delete_old_screenshots()
       msg_print("Interactive test: {}".format(k))
       send_to_qemu_monitor("\n")
       exec(g_tests[k], globals(), {})
