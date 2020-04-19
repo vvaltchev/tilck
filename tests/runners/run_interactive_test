@@ -78,7 +78,7 @@ GEN_TEST_DATA = os.getenv('GEN_TEST_DATA', '0') == '1'
 g_process = None
 g_fail_reason = Fail.success
 g_dumping_gcda_files = False
-g_timeout = 40
+g_timeout = 60
 g_next_screenshot = 0
 g_tests = {}
 g_before_run_func = lambda: None
@@ -143,13 +143,46 @@ def recv_from_qemu_monitor():
       # Yep. Wait for some text
       time.sleep(0.1)
 
+# Handle the escape sequences used by QEMU's monitor.
+#
+# NOTE: for performance and simplicity, this code has NOT been designed to
+# handle any kind of ANSI sequences, not even by just skipping them.
+# It assumes that QEMU's input something like:
+#
+#     qESC[KESC[DquESC[KESC[DESC[DquiESC[KESC[DESC[DESC[DquitESC[K
+#
+# What's that
+# ------------
+#
+# It starts with a regular character. After that ESC[K is used to clear the rest
+# of the console's row and than ESC[D is used to move back by 1 column, after
+# which the regular character (q) is re-written and then followed by the next
+# regular character (u). The same steps are repeated for the following chars
+# with the only detail that every time the number of ESC[D increases by 1.
+#
+# What we do
+# -------------
+#
+# Well, after observing that the string always finishes with ESC[K preceeded by
+# the a whole substring of regular text, we cheat in the most barbaric way
+# possible by:
+#
+# 1. Skipping the ESC[K sequences. They're useless in this context.
+# 2. Split the new string by ESC[D
+# 3. Take the last element of that list
+
+def qemu_process_tty_text(ttytext):
+   ttytext = ttytext.replace("\033[K", "")
+   seq = ttytext.split("\033[D")
+   return seq[-1]
+
 def echo_qemu_monitor():
-   text = recv_from_qemu_monitor()
+   tty_text = recv_from_qemu_monitor()
+   text = qemu_process_tty_text(tty_text)
    raw_stdout_write(text)
 
 def send_to_qemu_monitor(cmd, delay = 0.2):
-   g_process.stdin.write("{}\n".format(cmd).encode('latin-1'))
-   g_process.stdin.flush()
+   g_process.stdin.raw.write("{}\n".format(cmd).encode('latin-1'))
    time.sleep(delay)
    echo_qemu_monitor()
 
@@ -421,15 +454,17 @@ def run(test_func):
    if is_kvm_installed():
       args += ['-enable-kvm', '-cpu', 'host']
 
-   # Run the QEMU process by using a PIPE for its stdout
-   p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+   # Run the QEMU process
+   p = subprocess.Popen(
+      args,
+      stdin=subprocess.PIPE,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT
+   )
    set_once_qemu_process(p)
 
-   # Get the current flags for the `stdout` file descriptor
-   fl = fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_GETFL)
-
    # Make the `stdout` file descriptor non-blocking
-   fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
+   fh_set_blocking_mode(g_process.stdout, False)
 
    raw_print('-' * 80)
    start_time = time.time()

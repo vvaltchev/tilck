@@ -3,6 +3,7 @@
 import re
 import os
 import sys
+import fcntl
 import subprocess
 from enum import Enum
 
@@ -33,6 +34,17 @@ def getFailByCode(err_code):
 
 def is_cmake_opt_enabled(opt):
    return opt.lower() in ["on", "1", "true", "yes", "y"]
+
+def fh_set_blocking_mode(fh, blocking):
+
+   sys_fd = fh.fileno()
+
+   fl = fcntl.fcntl(sys_fd, fcntl.F_GETFL)
+
+   if not blocking:
+      fcntl.fcntl(sys_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+   else:
+      fcntl.fcntl(sys_fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
 
 class InvalidSystemConfig(Exception):
    def __init__(self, msg):
