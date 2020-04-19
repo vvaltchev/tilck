@@ -119,22 +119,22 @@ def wait_for_qemu_to_exit():
 def recv_from_qemu_monitor():
 
    read_anything = False
-   buf = ''
+   bbuf = b''
 
    while True:
 
-      text = g_process.stdout.read()
+      btext = g_process.stdout.read()
 
       # Is there any new text?
-      if text:
-         buf += text.decode('latin-1')
+      if btext:
+         bbuf += btext
          read_anything = True
          time.sleep(0.05)
          continue
 
       # Nope. Did we read anything in the previous iteration?
       if read_anything:
-         return buf # yep, return.
+         return bbuf.decode('latin-1') # yep, return.
 
       # Nope. Is the VM still alive?
       if g_process.poll() is not None:
@@ -553,7 +553,7 @@ def run_all_tests():
       msg_print("Interactive test: {}".format(k))
       send_to_qemu_monitor("\n")
       exec(g_tests[k], globals(), {})
-      raw_stdout_write("\n")
+      raw_stdout_write("\n\n")
 
 def show_help():
    raw_print("Syntax: ")
