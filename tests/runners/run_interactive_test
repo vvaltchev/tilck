@@ -398,7 +398,7 @@ def run_main_body(test_func):
          set_once_fail_reason(Fail.other)
 
    except Exception as e:
-      msg_print("Exception: " + str(e))
+      msg_print("Exception: {}\n{}".format(str(e), traceback.format_exc()))
       set_once_fail_reason(Fail.other)
 
    except:
