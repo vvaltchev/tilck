@@ -175,6 +175,7 @@ def delete_old_screenshots():
       if re.match("s[0-9]+[.](ppm|pbm|png)", f):
          os.remove(f)
 
+# NOTE: unused function
 def img_convert(img, newtype):
 
    cmd = ["convert"]
@@ -204,8 +205,7 @@ def img_convert(img, newtype):
 
 def screenshot_to_text(img):
 
-   pbm = img_convert(img, "pbm")
-   cmd = [PNM2TEXT, "-q", FONT_FILE, pbm]
+   cmd = [PNM2TEXT, "-q", FONT_FILE, img]
    res = subprocess.run(cmd, stdout=subprocess.PIPE)
 
    if res.returncode != 0:
@@ -220,10 +220,8 @@ def vm_take_screenshot():
    name = "s{:03}".format(g_next_screenshot)
    ppm_name = name + ".ppm"
    send_to_qemu_monitor("screendump " + ppm_name)
-   img_convert(ppm_name, "png")
-   os.remove(ppm_name)
    g_next_screenshot += 1
-   return name + ".png"
+   return ppm_name
 
 def vm_take_stable_screenshot():
 
@@ -396,7 +394,8 @@ def check_tool_works(tool, help_opt, keyword):
 
    return found, exTrace
 
-def check_system_config():
+# NOTE: unused function
+def check_imagemagick_installed():
 
    found, exTrace = check_tool_works("convert", "-h", "ImageMagick")
 
@@ -404,6 +403,14 @@ def check_system_config():
       msg_print("ERROR: ImageMagick (convert tool) not found on the system")
       msg_print("Exception:\n{}".format(exTrace))
       sys.exit(Fail.invalid_system_config)
+
+def check_system_config():
+
+   # Do nothing, at the moment: since img_covert() is used nowhere, we do not
+   # need to check for the presence of ImageMagick on the system.
+   pass
+
+   # check_imagemagick_installed()
 
 def check_pnm2text():
 

@@ -4,7 +4,7 @@
 # NOTE: this file, as all the others in this directory, run in the same global
 # context as their runner (run_interactive_test).
 
-send_string_to_vm("ls -l --color=no /")
+send_string_to_vm("ls -l /")
 send_single_key_to_vm("ret")
 s = vm_take_stable_screenshot()
 t = screenshot_to_text(s)
