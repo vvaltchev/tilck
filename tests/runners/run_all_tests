@@ -161,12 +161,12 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 def show_help_and_exit():
    raw_print("Syntax:")
    raw_print("     run_all_tests -l")
-   raw_print("     run_all_tests [-c] [-o] [<regex>] [<max_timeout>]")
-   sys.exit(1)
+   raw_print("     run_all_tests [-c] [-o] <regex> [<max_timeout>]")
+   sys.exit(Fail.invalid_args.value)
 
 def show_tests_and_exit():
 
-   col_names = [['test name', 30], ['test type', 12],  ['timeout', 10]]
+   col_names = [['test name', 30], ['test type', 12], ['timeout', 10]]
    raw_print("")
 
    for x in col_names:

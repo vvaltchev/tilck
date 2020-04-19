@@ -75,9 +75,11 @@ VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
 g_process = None
 g_fail_reason = Fail.success
 g_dumping_gcda_files = False
-g_timeout = 20
+g_timeout = 25
 g_next_screenshot = 0
 g_tests = {}
+g_before_run_func = lambda: None
+g_filter_regex = None
 
 def set_once_qemu_process(p):
    global g_process
@@ -431,35 +433,112 @@ def load_tests():
       if not f.endswith(".py"):
          continue
 
+      name = os.path.splitext(f)[0]
       p = os.path.join(INTERACTIVE_TESTS, f)
 
       with open(p, 'r') as fh:
          src = fh.read()
 
       e = compile(src, p, 'exec')
-      g_tests[f] = e
+      g_tests[name] = e
+
+def compute_matching_tests_list():
+
+   if not g_filter_regex:
+      return g_tests
+
+   re_filter = re.compile(g_filter_regex)
+   return list(filter(lambda x: re_filter.match(x), g_tests))
+
+def dump_list_matching_tests_and_timeout():
+
+   ll = compute_matching_tests_list()
+
+   if not ll:
+      msg_print("ERROR: no tests matching '{}'".format(g_filter_regex))
+      sys.exit(Fail.invalid_args.value)
+
+   msg_print("Per-test timeout: {}s".format(g_timeout))
+
+   if ll != g_tests:
+      msg_print("Matching tests: " + " ".join(ll))
+   else:
+      msg_print("Matching tests: ALL ({})".format(" ".join(ll)))
+
+   raw_print("")
 
 def run_all_tests():
 
+   matching_list = compute_matching_tests_list()
    raw_stdout_write("\n")
    msg_print("Run all tests")
    msg_print("-" * 50)
 
-   for k in g_tests:
+   for k in matching_list:
       msg_print("Interactive test: {}".format(k))
       send_to_qemu_monitor("\n")
       exec(g_tests[k], globals(), {})
       raw_stdout_write("\n")
 
+def show_help():
+   raw_print("Syntax: ")
+   raw_print("  run_interactive_test <testname_regex> [<timeout>]")
+   raw_print("  run_interactive_test -h, --help")
+   raw_print("  run_interactive_test -a, --all")
+   raw_print("  run_interactive_test -l, --list")
+
+def show_help_and_exit():
+   show_help()
+   sys.exit(Fail.invalid_args.value)
+
+def dump_list_of_tests():
+
+   for k in g_tests:
+      raw_print(k)
+
+   sys.exit(0)
+
+def parse_args():
+
+   global g_before_run_func
+   global g_filter_regex
+   global g_timeout
+
+   if sys.argv[1] in ["-h", "--help"]:
+      show_help()
+      sys.exit(0)
+
+   if sys.argv[1] in ["-l", "--list"]:
+      g_before_run_func = dump_list_of_tests
+      return
+
+   if sys.argv[1] in ["-a", "--all"]:
+      # Do nothing: keep g_filter_regex set to None
+      return
+
+   # Assume argv[1] is the test name filter regex
+   g_filter_regex = sys.argv[1]
+
+   if len(sys.argv) >= 3:
+      g_timeout = int(sys.argv[2])
+
 def main():
 
    set_runner_name("interactive tests runner")
+
+   if len(sys.argv) < 2:
+      show_help_and_exit()
+
+   parse_args()
    check_cmake_config()
    check_system_config()
    check_pnm2text()
-   detect_kvm()
    setup_tmp_dir()
    load_tests()
+   g_before_run_func()
+
+   dump_list_matching_tests_and_timeout()
+   detect_kvm()
 
    thread = threading.Thread(target = run, args = (run_all_tests,))
    thread.start()
