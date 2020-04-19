@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import time
+import gzip
 import signal
 import subprocess
 import threading
@@ -18,6 +19,7 @@ from collections import namedtuple
 # Constants coming from CMake (this file gets pre-processed by CMake)
 RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
 INTERACTIVE_TESTS = "@CMAKE_SOURCE_DIR@/tests/interactive"
+INTERACTIVE_EXP = "@CMAKE_SOURCE_DIR@/tests/interactive/expected"
 TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
@@ -70,12 +72,13 @@ class IntTestScreenTextCheckFailure(Exception):
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
+GEN_TEST_DATA = os.getenv('GEN_TEST_DATA', '0') == '1'
 
 # Global state variables
 g_process = None
 g_fail_reason = Fail.success
 g_dumping_gcda_files = False
-g_timeout = 25
+g_timeout = 40
 g_next_screenshot = 0
 g_tests = {}
 g_before_run_func = lambda: None
@@ -87,9 +90,11 @@ def set_once_qemu_process(p):
    g_process = p
 
 def set_once_fail_reason(reason: Fail):
+
    global g_fail_reason
-   assert(g_fail_reason == Fail.success)
-   g_fail_reason = reason
+
+   if g_fail_reason == Fail.success:
+      g_fail_reason = reason
 
 def check_cmake_config():
 
@@ -164,8 +169,29 @@ def send_single_key_to_vm(key):
       send_to_qemu_monitor("sendkey " + key_name, 0.05)
 
 def send_string_to_vm(s):
+
+   in_special_key = False
+   spk = ""
+
    for k in s:
-      send_single_key_to_vm(k)
+
+      if in_special_key:
+
+         if k == "}":
+            send_single_key_to_vm(spk)
+            in_special_key = False
+            spk = ""
+            continue
+
+         spk += k
+
+      else:
+
+         if k == "{":
+            in_special_key = True
+            continue
+
+         send_single_key_to_vm(k)
 
 def delete_old_screenshots():
 
@@ -260,6 +286,54 @@ def vm_take_stable_screenshot():
 
    return curr
 
+def make_and_save_text_screenshot_base(test_name, n):
+
+   t = screenshot_to_text(vm_take_stable_screenshot())
+   raw_print("")
+   raw_print(t)
+   send_to_qemu_monitor("\n")
+
+   fname = "{}-{}.gz".format(test_name, n)
+
+   with gzip.open(fname, "w") as fh:
+      fh.write(t.encode('utf-8'))
+
+def check_screenshot_base(test_name, n):
+
+   t = screenshot_to_text(vm_take_stable_screenshot())
+   fname = "{}-{}.gz".format(test_name, n)
+   p = os.path.join(INTERACTIVE_EXP, fname)
+
+   with gzip.open(p, "r") as fh:
+      exp_t = fh.read().decode('utf-8')
+
+   if t != exp_t:
+      IntTestScreenTextCheckFailure(t)
+
+def do_interactive_actions(test_name, inputs):
+
+   counter = 0
+
+   def save_screenshot():
+      nonlocal counter
+      make_and_save_text_screenshot_base(test_name, counter)
+      counter += 1
+
+   def check_screenshot():
+      nonlocal counter
+      check_screenshot_base(test_name, counter)
+      counter += 1
+
+   action_func = save_screenshot if GEN_TEST_DATA else check_screenshot
+
+   for x in inputs:
+
+      raw_print("\n")
+      msg_print("Sending to VM: {}".format(x))
+      send_to_qemu_monitor("\n")
+
+      send_string_to_vm(x)
+      action_func()
 
 def run_handle_boot():
 

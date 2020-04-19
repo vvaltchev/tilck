@@ -249,6 +249,9 @@ function add_vim {
    mkdir -p usr/lib/vim
    link_or_copy $tc/$arch/vim/install/vim.gz usr/lib/vim
    link_or_copy $tc/$arch/vim/install/vr.tgz usr/lib/vim
+
+   mkdir -p usr/lib/vim/samples
+   cp $maindir/tests/interactive/vim_text_files/* usr/lib/vim/samples/
 }
 
 function make_fatpart {

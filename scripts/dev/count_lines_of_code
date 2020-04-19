@@ -38,6 +38,7 @@ excludedDirs = [
    "sysroot",
    "toolchain",
    "system_headers",
+   "vim_text_files",
    ".git",
    ".vscode"
 ]
