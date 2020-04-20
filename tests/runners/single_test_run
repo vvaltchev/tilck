@@ -39,7 +39,6 @@ TestParamsType = namedtuple(
 INIT_PATH = '/initrd/bin/init'
 DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
-KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 
 # Environment config variables
 VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
@@ -377,7 +376,7 @@ def main():
    if len(sys.argv) < 4:
       show_help_and_exit()
 
-   if sys.argv[1] not in test_types:
+   if sys.argv[1] not in TEST_TYPES:
       show_help_and_exit()
 
    g_params = TestParamsType(sys.argv[1], sys.argv[2], int(sys.argv[3]))

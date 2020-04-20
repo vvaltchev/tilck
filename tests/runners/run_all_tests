@@ -28,35 +28,35 @@ SHORT_TEST_TIMEOUT = 12
 MED_TEST_TIMEOUT   = 24
 LONG_TEST_TIMEOUT  = 72
 
-pretty_names_list = ['Self tests', 'Shell cmd tests']
+
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
    'load_list_of_shell_cmd_tests'
 ]
 
 tt_pretty_names = {
-   val: pretty_names_list[i] for i, val in enumerate(test_types)
+   val: TEST_TYPES_PRETTY[i] for i, val in enumerate(TEST_TYPES)
 }
 
 load_tests_func_by_type = {
-   val: load_tests_func_by_type_list[i] for i, val in enumerate(test_types)
+   val: load_tests_func_by_type_list[i] for i, val in enumerate(TEST_TYPES)
 }
 
 tt_indexes = {
-   val : i for i, val in enumerate(test_types)
+   val : i for i, val in enumerate(TEST_TYPES)
 }
 
 # Global variables
 
-tests_by_type : Dict[str, List[str]] = { k: [] for k in test_types }
-tests_to_run  : Dict[str, int]       = { k:  0 for k in test_types }
-tests_passed  : Dict[str, int]       = { k:  0 for k in test_types }
+tests_by_type : Dict[str, List[str]] = { k: [] for k in TEST_TYPES }
+tests_to_run  : Dict[str, int]       = { k:  0 for k in TEST_TYPES }
+tests_passed  : Dict[str, int]       = { k:  0 for k in TEST_TYPES }
 
 def load_all_tests():
 
    global tests_by_type
 
-   for tt in test_types:
+   for tt in TEST_TYPES:
       tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
 
 def load_list_of_shell_cmd_tests():
@@ -217,7 +217,7 @@ def show_tests_and_exit():
       sys.stdout.write(''.center(x[1], '-'))
    sys.stdout.write('+\n')
 
-   for tt in test_types:
+   for tt in TEST_TYPES:
 
       for x in tests_by_type[tt]:
          sys.stdout.write('| ')
@@ -252,7 +252,7 @@ def run_test(test_type, x, show_output):
 
 def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
 
-   for tt in test_types:
+   for tt in TEST_TYPES:
       for x in tests_by_type[tt]:
          if re.match(reg, x[0]) and x[1] <= max_test_timeout:
             run_test(tt, x, show_output)
@@ -261,7 +261,7 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
       if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
 
          found = []
-         for tt in test_types:
+         for tt in TEST_TYPES:
             for x in tests_by_type[tt]:
                if re.match(reg, x[0]):
                   found.append(x)
@@ -287,7 +287,7 @@ def dump_test_stats():
 
    raw_print('-' * 80)
 
-   for tt in test_types:
+   for tt in TEST_TYPES:
       if tests_to_run[tt]:
          raw_print("{} passed: {}/{}"
                      .format(tt_pretty_names[tt],

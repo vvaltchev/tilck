@@ -8,7 +8,10 @@ import subprocess
 from enum import Enum
 
 # Constants
-test_types = ['selftest', 'shellcmd']
+TEST_TYPES = ['selftest', 'shellcmd']
+TEST_TYPES_PRETTY = ['Self tests', 'Shell cmd tests']
+
+KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 
 class Fail(Enum):
    success                 = 0
