@@ -3,6 +3,7 @@
 
 import re
 import subprocess
+import traceback
 
 from .stdio import *
 from .env import *
@@ -31,8 +32,6 @@ def set_qemu_kvm_version(version):
    qemu_kvm_version = version
 
 def detect_kvm():
-
-   import traceback
 
    global kvm_installed, qemu_kvm_version
 
