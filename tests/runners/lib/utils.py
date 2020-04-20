@@ -22,7 +22,8 @@ class Fail(Enum):
    invalid_build_config    = 8
    invalid_system_config   = 9
    no_hello_message        = 10
-   other                   = 11
+   user_interruption       = 11
+   other                   = 12
 
 def getFailByCode(err_code):
 

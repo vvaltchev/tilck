@@ -196,7 +196,7 @@ def process_line(line: str):
    else:
       g_gcda_buf += stripped
 
-def process_text(text: str):
+def process_text(text: str, first_output: bool):
 
    # python's split always leaves an empty element in case of a trailing
    # delimiter. For example:
@@ -211,6 +211,23 @@ def process_text(text: str):
    # be used for the next (which will be appended to it).
 
    lines = text.split("\n")
+
+   if first_output:
+
+      # Unfortunately, newer versions of QEMU (like 4.x+) dump of ESC sequences
+      # when the serial port is used as "monitor" in order to clear the screen,
+      # move the cursor to 1,1 etc. We *MUST* skip those sequences because we
+      # really really don't want the screen to be cleared between one test run
+      # and another.
+
+      if lines[0].startswith("\033c"):
+
+         i = lines[0].find("SeaBIOS")
+
+         if i != -1:
+            lines[0] = lines[0][i:] # Skip until SeaBIOS
+         else:
+            lines[0] = lines[0][2:] # Just skip the ESC c sequence
 
    for ln in lines[:-1]:
       process_line(ln)
@@ -268,16 +285,14 @@ def run_the_vm():
    raw_print("")
 
    # Run the QEMU process by using a PIPE for its stdout
-   p = subprocess.Popen(args, stdout=subprocess.PIPE)
+   p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
    set_once_qemu_process(p)
 
-   # Get the current flags for the `stdout` file descriptor
-   fl = fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_GETFL)
-
    # Make the `stdout` file descriptor non-blocking
-   fcntl.fcntl(g_process.stdout.fileno(), fcntl.F_SETFL, fl | os.O_NONBLOCK)
+   fh_set_blocking_mode(g_process.stdout, False)
 
    read_anything = False
+   first_output = True
    start_time = time.time()
    incomplete_line = ''
 
@@ -320,7 +335,10 @@ def run_the_vm():
 
       start_time = time.time()
       text = incomplete_line + text.decode('latin-1')
-      incomplete_line = process_text(text)
+      incomplete_line = process_text(text, first_output)
+
+      if read_anything:
+         first_output = False
 
    raw_print('-' * 80)
 
@@ -354,6 +372,7 @@ def generate_coverage_if_enabled():
 def main():
 
    global g_params
+   set_runner_name("single test runner")
 
    if len(sys.argv) < 4:
       show_help_and_exit()
@@ -371,7 +390,12 @@ def main():
 
    thread = threading.Thread(target = run_the_vm)
    thread.start()
-   thread.join(g_params.timeout)
+
+   try:
+      thread.join(g_params.timeout)
+   except KeyboardInterrupt:
+      msg_print("KeyboardInterrupt")
+      sys.exit(Fail.user_interruption.value)
 
    if thread.is_alive():
 

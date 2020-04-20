@@ -3,7 +3,7 @@
 import sys
 
 # Runtime config vars
-runnerName = "system test runner"
+runnerName = "<UNKNOWN>"
 
 def direct_print(data):
    sys.stdout.buffer.write(data)

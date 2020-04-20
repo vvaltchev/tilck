@@ -9,6 +9,7 @@ import time
 import signal
 import subprocess
 import threading
+import concurrent.futures as ft
 from typing import List, Dict
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -119,7 +120,8 @@ def load_list_of_kernel_self_tests():
 
    return result
 
-def internal_run_test(test_type, test, timeout, show_output = False):
+
+def internal_single_test_runner_thread(test_type, test, timeout, show_output):
 
    raw_print(
       "[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout)
@@ -127,36 +129,67 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
    start_time = time.time()
 
-   try:
-      output = subprocess.check_output(
-         [
-            '@CMAKE_BINARY_DIR@/st/single_test_run',
-            test_type,
-            test,
-            str(timeout),
-            get_qemu_kvm_version()
-         ],
-         stderr=subprocess.STDOUT
-      ).decode('utf-8')
+   p = subprocess.Popen(
+      [
+         '@CMAKE_BINARY_DIR@/st/single_test_run',
+         test_type,
+         test,
+         str(timeout),
+         get_qemu_kvm_version()
+      ],
+      stdin=subprocess.DEVNULL,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+   )
 
-   except subprocess.CalledProcessError as e:
-      elapsed = time.time() - start_time
-      direct_print(e.output)
-      raw_print("")
-      raw_print(
-         "[ FAILED  ] after {:.2f} seconds with: {}\n"
-            .format(elapsed, getFailByCode(e.returncode))
-      )
-      return False
+   if show_output:
+     raw_print("")
+
+   bin_output = b''
+
+   while p.poll() is None:
+
+      bintext = p.stdout.read()
+
+      if not bintext:
+         time.sleep(0.1)
+         continue
+
+      if show_output:
+         direct_print(bintext)
+      else:
+         bin_output += bintext
 
    elapsed = time.time() - start_time
 
-   if show_output:
-      raw_print("")
-      raw_print(output)
+   if p.returncode != 0:
+
+      if not show_output:
+         raw_print("")
+         direct_print(bin_output)
+
+      raw_print(
+         "[ FAILED  ] after {:.2f} seconds with: {}\n"
+            .format(elapsed, getFailByCode(p.returncode))
+      )
+      return False
 
    raw_print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
    return True
+
+def internal_run_test(test_type, test, timeout, show_output = False):
+
+   with ft.ThreadPoolExecutor(max_workers = 1) as executor:
+
+      future = executor.submit(
+         internal_single_test_runner_thread,
+         test_type,
+         test,
+         timeout,
+         show_output
+      )
+
+      return future.result()
 
 def show_help_and_exit():
    raw_print("Syntax:")
@@ -265,6 +298,7 @@ def main():
 
    global tests_by_type
    global tests_to_run
+   set_runner_name("tests runner")
 
    # Options
    max_test_timeout = MED_TEST_TIMEOUT
@@ -304,13 +338,20 @@ def main():
             show_help_and_exit()
 
    detect_kvm()
-   run_all_tests(max_test_timeout,
-                 show_output,
-                 reg_filter,
-                 not compact_shellcmds)
 
-   if compact_shellcmds:
-      run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 4], show_output)
+   try:
+
+      run_all_tests(max_test_timeout,
+                  show_output,
+                  reg_filter,
+                  not compact_shellcmds)
+
+      if compact_shellcmds:
+         run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 4], show_output)
+
+   except KeyboardInterrupt:
+      msg_print("KeyboardInterrupt")
+      sys.exit(1)
 
    dump_test_stats()
 
