@@ -2,6 +2,9 @@
 
 import os
 
+VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
+GEN_TEST_DATA = os.getenv('GEN_TEST_DATA', '0') == '1'
+
 in_travis = os.environ.get('TRAVIS', False)
 in_circleci = os.environ.get('CIRCLECI', False)
 in_azure = os.environ.get('AZURE_HTTP_USER_AGENT', False)

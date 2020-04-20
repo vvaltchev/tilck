@@ -70,10 +70,6 @@ class IntTestScreenTextCheckFailure(Exception):
          .__init__("IntTestScreenTextCheckFailure")
       self.screen_text = screen_text
 
-# Environment config variables
-VM_MEMORY_SIZE_IN_MB = int(os.environ.get('TILCK_VM_MEM', '128'))
-GEN_TEST_DATA = os.getenv('GEN_TEST_DATA', '0') == '1'
-
 # Global state variables
 g_process = None
 g_fail_reason = Fail.success
