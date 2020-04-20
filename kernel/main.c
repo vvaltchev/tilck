@@ -158,17 +158,17 @@ static void show_hello_message(void)
    const char *const hash = dirty ? commit_hash + 6 : commit_hash;
 
    if (VER_PATCH > 0)
-      printk("Hello from Tilck \e[1m%d.%d.%d",
+      printk("Hello from Tilck \e[1m%d.%d.%d\e[m",
              VER_MAJOR, VER_MINOR, VER_PATCH);
    else
-      printk("Hello from Tilck \e[1m%d.%d",
+      printk("Hello from Tilck \e[1m%d.%d\e[m",
              VER_MAJOR, VER_MINOR);
 
-   printk(NO_PREFIX ", commit: \e[1m%s", hash);
+   printk(NO_PREFIX ", commit: \e[1m%s\e[m", hash);
    printk(NO_PREFIX "%s\n", dirty ? " (dirty)" : "");
 
-   printk("Build type: \e[1m%s", BUILDTYPE_STR);
-   printk(NO_PREFIX ", compiler: \e[1m%s %d.%d.%d\n",
+   printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
+   printk(NO_PREFIX ", compiler: \e[1m%s %d.%d.%d\e[m\n",
           COMPILER_NAME,
           COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
@@ -177,9 +177,9 @@ static void show_system_info(void)
 {
    void show_tilck_logo(void);
 
-   printk("timer_hz: \e[1m%i", TIMER_HZ);
-   printk(NO_PREFIX "; time_slot: \e[1m%i", 1000 / (TIMER_HZ/TIME_SLOT_TICKS));
-   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\n",
+   printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
+   printk(NO_PREFIX "; time_slot: \e[1m%i\e[m",1000/(TIMER_HZ/TIME_SLOT_TICKS));
+   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\e[m\n",
           in_hypervisor() ? "yes" : "no");
 
    if (KERNEL_SHOW_LOGO)
