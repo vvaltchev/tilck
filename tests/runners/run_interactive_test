@@ -322,6 +322,10 @@ def vm_take_stable_screenshot():
 def make_and_save_text_screenshot_base(test_name, n):
 
    t = screenshot_to_text(vm_take_stable_screenshot())
+
+   if t.find("KERNEL PANIC") != -1:
+      raise KernelPanicFailure(t)
+
    raw_print("")
    raw_print(t)
    send_to_qemu_monitor("\n")
@@ -334,6 +338,10 @@ def make_and_save_text_screenshot_base(test_name, n):
 def check_screenshot_base(test_name, n):
 
    t = screenshot_to_text(vm_take_stable_screenshot())
+
+   if t.find("KERNEL PANIC") != -1:
+      raise KernelPanicFailure(t)
+
    fname = "{}-{}.gz".format(test_name, n)
    p = os.path.join(INTERACTIVE_EXP, fname)
 
@@ -568,11 +576,10 @@ def dump_list_matching_tests_and_timeout():
       sys.exit(Fail.invalid_args.value)
 
    msg_print("Per-test timeout: {}s".format(g_timeout))
-
-   if ll != g_tests:
-      msg_print("Matching tests: " + " ".join(ll))
-   else:
-      msg_print("Matching tests: ALL ({})".format(" ".join(ll)))
+   msg_print("Matching tests: {} ({})".format(
+      "ALL" if ll == g_tests else g_filter_regex,
+      " ".join(ll))
+   )
 
    raw_print("")
 
