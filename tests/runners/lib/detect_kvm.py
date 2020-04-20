@@ -50,7 +50,7 @@ def detect_kvm():
 
    except:
 
-      if not in_any_ci:
+      if not IN_ANY_CI:
          raw_print(
             "\n"
             "*** WARNING: qemu-kvm not found on the system ***\n"

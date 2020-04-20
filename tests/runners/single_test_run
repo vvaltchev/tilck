@@ -249,11 +249,11 @@ def run_the_vm():
    cmdline = DEVSHELL_PATH
    init_opts = '-ns -nr'
 
-   if dump_coverage:
+   if DUMP_COVERAGE:
       cmdline += ' -dcov'
       init_opts += ' -q'
 
-   if in_any_ci:
+   if IN_ANY_CI:
       kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
    if g_params.type == 'shellcmd':
@@ -274,7 +274,7 @@ def run_the_vm():
    kernel_cmdline += ' -cmd {} {} -- {}'.format(INIT_PATH, init_opts, cmdline)
    args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
-   if verbose:
+   if VERBOSE:
       raw_print(" ".join(args))
 
    raw_print('-' * 80)
@@ -346,7 +346,7 @@ def show_help_and_exit():
 
 def generate_coverage_if_enabled():
 
-   if not dump_coverage or not report_coverage:
+   if not DUMP_COVERAGE or not REPORT_COVERAGE:
       return # Just do nothing
 
    try:
