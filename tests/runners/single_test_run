@@ -54,7 +54,7 @@ g_output = ""
 g_process = None
 g_fail_reason = Fail.success
 g_hello_msg_found = False
-g_shell_exit_code = -1
+g_shell_exit_code = None
 g_dumping_gcda_files = False
 g_gcda_buf = None
 g_gcda_file = None
@@ -63,7 +63,7 @@ def set_once_shell_exit_code(val: int):
 
    global g_shell_exit_code
 
-   if g_shell_exit_code == -1:
+   if g_shell_exit_code is None:
       g_shell_exit_code = val
 
 def set_once_fail_reason(reason: Fail):
@@ -152,7 +152,7 @@ def process_line(line: str):
 
    # NOTE: we could kill the VM immediately after a kernel panic, but we'll
    # loose the backtrace. TODO: detect kernel panic here, but kill the VM after
-   # a some timeout (e.g. 1 sec).
+   # some timeout (e.g. 1 sec).
    #
    # if stripped.find("KERNEL PANIC") != -1:
    #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
@@ -420,7 +420,7 @@ def main():
 
    if g_fail_reason == Fail.success and g_shell_exit_code != 0:
 
-      if g_shell_exit_code != -1:
+      if g_shell_exit_code is not None:
          msg_print("Shell exited with code {}.".format(g_shell_exit_code))
          set_once_fail_reason(Fail.shell_no_zero_exit)
       else:
