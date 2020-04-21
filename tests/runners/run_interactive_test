@@ -314,19 +314,31 @@ def make_and_save_text_screenshot_base(test_name, n):
 
 def check_screenshot_base(test_name, n):
 
-   t = screenshot_to_text(vm_take_stable_screenshot())
-
-   if t.find("KERNEL PANIC") != -1:
-      raise KernelPanicFailure(t)
-
    fname = "{}-{}.gz".format(test_name, n)
    p = os.path.join(INTERACTIVE_EXP, fname)
 
    with gzip.open(p, "r") as fh:
       exp_t = fh.read().decode('utf-8')
 
+   t = screenshot_to_text(vm_take_stable_screenshot())
+
+   if t.find("KERNEL PANIC") != -1:
+      raise KernelPanicFailure(t)
+
    if t != exp_t:
-      raise IntTestScreenshotNoMatchFailure(t, exp_t)
+
+      # Mmh.. this still could be a false positive: stable screenshots
+      # are not perfect. Let's try another screenshot before failing.
+
+      time.sleep(1)
+      t = screenshot_to_text(vm_take_stable_screenshot())
+
+      if t.find("KERNEL PANIC") != -1:
+         raise KernelPanicFailure(t)
+
+      if t != exp_t:
+         # Ok, that's definitively a failure.
+         raise IntTestScreenshotNoMatchFailure(t, exp_t)
 
 # NOTE: utility function used by the interactive tests
 def do_interactive_actions(test_name, inputs):
