@@ -16,6 +16,7 @@ TEST_TYPES_PRETTY = ['Self tests', 'Shell cmd tests']
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
 KERNEL_DUMP_GCDA_END_STR = '** GCOV gcda files END **'
 
+# Classes
 class Fail(Enum):
    success                 = 0
    invalid_args            = 1
@@ -31,6 +32,17 @@ class Fail(Enum):
    user_interruption       = 11
    qemu_msg_parsing_fail   = 12
    other                   = 13
+
+# Globals
+g_fail_reason = Fail.success
+
+# Functions
+def set_once_fail_reason(reason: Fail):
+
+   global g_fail_reason
+
+   if g_fail_reason == Fail.success:
+      g_fail_reason = reason
 
 def getFailByCode(err_code):
 

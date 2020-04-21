@@ -48,7 +48,6 @@ g_params:TestParamsType = None
 # Internal state
 g_output = ""
 g_process = None
-g_fail_reason = Fail.success
 g_hello_msg_found = False
 g_shell_exit_code = None
 g_dumping_gcda_files = False
@@ -61,11 +60,6 @@ def set_once_shell_exit_code(val: int):
 
    if g_shell_exit_code is None:
       g_shell_exit_code = val
-
-def set_once_fail_reason(reason: Fail):
-   global g_fail_reason
-   assert(g_fail_reason == Fail.success)
-   g_fail_reason = reason
 
 def set_once_qemu_process(p):
    global g_process

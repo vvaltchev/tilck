@@ -77,7 +77,6 @@ class IntTestScreenTextCheckFailure(Exception):
 
 # Global state variables
 g_process = None
-g_fail_reason = Fail.success
 g_dumping_gcda_files = False
 g_timeout = 60
 g_next_screenshot = 0
@@ -89,13 +88,6 @@ def set_once_qemu_process(p):
    global g_process
    assert(g_process is None)
    g_process = p
-
-def set_once_fail_reason(reason: Fail):
-
-   global g_fail_reason
-
-   if g_fail_reason == Fail.success:
-      g_fail_reason = reason
 
 def check_cmake_config():
 
