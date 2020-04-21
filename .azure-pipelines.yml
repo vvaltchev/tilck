@@ -1,7 +1,7 @@
 
 jobs:
   - job: coverage_build
-    container: 'vvaltchev/tilck_build:v3'
+    container: 'vvaltchev/tilck_build:v4'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -39,7 +39,7 @@ jobs:
           CODECOV_TOKEN: $(CODECOV_TOKEN)
 
   - job: build
-    container: 'vvaltchev/tilck_build:v3'
+    container: 'vvaltchev/tilck_build:v4'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:

@@ -5,13 +5,16 @@ import os
 import sys
 import fcntl
 import subprocess
+
 from enum import Enum
+from .stdio import msg_print, raw_print
 
 # Constants
 TEST_TYPES = ['selftest', 'shellcmd']
 TEST_TYPES_PRETTY = ['Self tests', 'Shell cmd tests']
 
 KERNEL_DUMP_GCDA_STR = '** GCOV gcda files **'
+KERNEL_DUMP_GCDA_END_STR = '** GCOV gcda files END **'
 
 class Fail(Enum):
    success                 = 0
@@ -26,7 +29,8 @@ class Fail(Enum):
    invalid_system_config   = 9
    no_hello_message        = 10
    user_interruption       = 11
-   other                   = 12
+   qemu_msg_parsing_fail   = 12
+   other                   = 13
 
 def getFailByCode(err_code):
 
@@ -63,3 +67,21 @@ class KernelPanicFailure(Exception):
    def __init__(self, screen_text = None):
       super(KernelPanicFailure, self).__init__("KernelPanicFailure")
       self.screen_text = screen_text
+
+def run_gen_coverage_report_tool(gen_cov_tool):
+
+   try:
+
+      subprocess.check_output([gen_cov_tool, '--acc'])
+
+   except Exception as e:
+
+      msg_print(
+         "{} generated the exception: {}".format(gen_cov_tool, str(e))
+      )
+      msg_print("Output of {} --acc:".format(gen_cov_tool))
+      raw_print(getattr(e, 'output', '<no output>'))
+      msg_print("--- end output ---")
+      return False
+
+   return True

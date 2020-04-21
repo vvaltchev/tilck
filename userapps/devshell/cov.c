@@ -96,5 +96,7 @@ void dump_coverage_files(void)
       free(buf);
    }
 
+   printf("\n");
+   printf("** GCOV gcda files END **\n\n");
    tilck_set_sched_alive_thread_enabled(true);
 }

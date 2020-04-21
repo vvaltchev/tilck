@@ -3,7 +3,7 @@ jobs:
 
   debug_build:
     docker:
-      - image: vvaltchev/tilck_build:v3
+      - image: vvaltchev/tilck_build:v4
     environment:
       - TCROOT_PARENT: /tc
       - GTEST_SHUFFLE: 0
@@ -22,7 +22,7 @@ jobs:
 
   release_build:
     docker:
-      - image: vvaltchev/tilck_build:v3
+      - image: vvaltchev/tilck_build:v4
     environment:
       - TCROOT_PARENT: /tc
       - GTEST_SHUFFLE: 0
@@ -36,7 +36,7 @@ jobs:
 
   debug_arch_gtests_build:
     docker:
-      - image: vvaltchev/tilck_build:v3
+      - image: vvaltchev/tilck_build:v4
     environment:
       - TCROOT_PARENT: /tc
       - RELEASE: 0
@@ -49,7 +49,7 @@ jobs:
 
   debug_syscc_build:
     docker:
-      - image: vvaltchev/tilck_build:v3
+      - image: vvaltchev/tilck_build:v4
     environment:
       - TCROOT_PARENT: /tc
       - GTEST_SHUFFLE: 0
@@ -63,7 +63,7 @@ jobs:
 
   debug_clang_build:
     docker:
-      - image: vvaltchev/tilck_build:v3
+      - image: vvaltchev/tilck_build:v4
     environment:
       - TCROOT_PARENT: /tc
       - GTEST_SHUFFLE: 0

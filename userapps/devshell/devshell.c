@@ -240,7 +240,8 @@ static void show_help_and_exit(void)
 
    printf("    Internal test-infrastructure options\n");
    printf("    ------------------------------------\n\n");
-   printf("    devshell %-15s List the built-in (test) commands\n\n", "-l");
+   printf("    devshell %-15s List the built-in (test) commands\n", "-l");
+   printf("    devshell %-15s Just dump the kernel coverage data\n\n", "-dcov");
 
    printf("    devshell [-dcov] -c <cmd> [arg1 [arg2 [arg3...]]]\n");
    printf("%-28s Run the <cmd> built-in command and exit.\n", " ");
@@ -262,15 +263,21 @@ static void parse_opt(int argc, char **argv)
       if (!strcmp(*argv, "-l"))
          dump_list_of_commands_and_exit();
 
+      if (!strcmp(*argv, "-dcov")) {
+
+         if (argc > 1) {
+            dump_coverage = true;
+            continue;
+         }
+
+         dump_coverage_files();
+         exit(0);
+      }
+
       if (argc == 1)
          goto unknown_opt;
 
       /* argc > 1 */
-
-      if (!strcmp(*argv, "-dcov")) {
-         dump_coverage = true;
-         continue;
-      }
 
       if (!strcmp(*argv, "-c")) {
          printf(PFX "Executing built-in command '%s'\n", argv[1]);

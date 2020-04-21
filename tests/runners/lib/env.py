@@ -15,10 +15,11 @@ GEN_TEST_DATA = env_bool('GEN_TEST_DATA')
 IN_TRAVIS = env_bool('TRAVIS')
 IN_CIRCLECI = env_bool('CIRCLECI')
 IN_AZURE = env_bool('AZURE_HTTP_USER_AGENT')
+CI = env_bool('CI')
 DUMP_COVERAGE = env_bool('DUMP_COV')
 REPORT_COVERAGE = env_bool('REPORT_COV')
 VERBOSE = env_bool('VERBOSE')
-IN_ANY_CI = Const(IN_TRAVIS.val or IN_CIRCLECI.val or IN_AZURE.val)
+IN_ANY_CI = Const(IN_TRAVIS.val or IN_CIRCLECI.val or IN_AZURE.val or CI.val)
 
 ReloadAsConstModule(__name__)
 

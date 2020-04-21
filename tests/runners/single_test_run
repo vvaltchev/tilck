@@ -349,18 +349,7 @@ def generate_coverage_if_enabled():
    if not DUMP_COVERAGE or not REPORT_COVERAGE:
       return # Just do nothing
 
-   try:
-
-      subprocess.check_output([GEN_KCOV_REPORT, '--acc'])
-
-   except Exception as e:
-
-      msg_print(
-         "{} generated the exception: {}".format(GEN_KCOV_REPORT, str(e))
-      )
-      msg_print("Output of {} --acc:".format(GEN_KCOV_REPORT))
-      raw_print(getattr(e, 'output', '<no output>'))
-      msg_print("--- end output ---")
+   if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
       sys.exit(Fail.gcov_error.value)
 
 ###############################################################################

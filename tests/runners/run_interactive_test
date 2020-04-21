@@ -14,6 +14,9 @@ import struct
 import fcntl
 import filecmp
 import traceback
+import serial
+import base64
+import zlib
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -24,6 +27,8 @@ TILCK_IMAGE = "@IMG_FILE@"
 TMP_DIR = "@CMAKE_BINARY_DIR@/tmp"
 PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
 FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
+KERNEL_GCOV = "@KERNEL_GCOV@"
+GEN_KCOV_REPORT = "@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report"
 
 CMAKE_CONFIG = {
    "EXTRA_VIM" : ("@EXTRA_VIM@", True),
@@ -35,7 +40,7 @@ CMAKE_CONFIG = {
    "MOD_console" : ("@MOD_console@", True),
    "MOD_serial" : ("@MOD_serial@", True),
    "MOD_fb" : ("@MOD_fb@", True),
-   "MOD_kb8042" : ("@MOD_kb8042@", True)
+   "MOD_kb8042" : ("@MOD_kb8042@", True),
 }
 
 sys.path.append(RUNNERS_DIR)
@@ -112,9 +117,10 @@ def wait_for_qemu_to_exit():
    while g_process.poll() is None:
       time.sleep(0.1)
 
-def recv_from_qemu_monitor():
+def recv_from_qemu_monitor(max_read_attempts):
 
    read_anything = False
+   attempts = 0
    bbuf = b''
 
    while True:
@@ -130,14 +136,22 @@ def recv_from_qemu_monitor():
 
       # Nope. Did we read anything in the previous iteration?
       if read_anything:
-         return bbuf.decode('latin-1') # yep, return.
+         break # Yep, end.
 
       # Nope. Is the VM still alive?
       if g_process.poll() is not None:
-         return '' # Nope. Return an empty string
+         break # Nope. End returning an empty string
 
-      # Yep. Wait for some text
+      # Yep, the VM is still alive. But, should we re-try to read?
+
+      if max_read_attempts > 0 and attempts == max_read_attempts:
+         break # End returning an empty string
+
+      # Wait some before re-trying to read
       time.sleep(0.1)
+      attempts += 1
+
+   return bbuf.decode('utf-8')
 
 # Handle the escape sequences used by QEMU's monitor.
 #
@@ -172,13 +186,14 @@ def qemu_process_tty_text(ttytext):
    seq = ttytext.split("\033[D")
    return seq[-1]
 
-def echo_qemu_monitor():
-   tty_text = recv_from_qemu_monitor()
+def echo_qemu_monitor(read_attempts = 3):
+   tty_text = recv_from_qemu_monitor(read_attempts)
    text = qemu_process_tty_text(tty_text)
    raw_stdout_write(text)
+   return text
 
 def send_to_qemu_monitor(cmd, delay = 0.2):
-   g_process.stdin.raw.write("{}\n".format(cmd).encode('latin-1'))
+   g_process.stdin.raw.write("{}\n".format(cmd).encode('utf-8'))
    time.sleep(delay)
    echo_qemu_monitor()
 
@@ -442,6 +457,100 @@ def run_main_body(test_func):
       msg_print("Unknown exception:\n" + traceback.format_exc())
       set_once_fail_reason(Fail.other)
 
+def write_gcda_file(file, b64data):
+
+   data_compressed = base64.b64decode(b64data)
+   data = zlib.decompress(data_compressed)
+
+   with open(file, 'wb') as fh:
+      fh.write(data)
+
+def dump_coverage_data_int(lines):
+
+   global g_dumping_gcda_files
+
+   gcda_file = None
+   gcda_data = ''
+
+   for line in lines:
+
+      if not g_dumping_gcda_files:
+
+         if line.find(KERNEL_DUMP_GCDA_STR) != -1:
+            g_dumping_gcda_files = True
+
+         continue
+
+      # Dumping GCDA files
+      if not line:
+
+         if gcda_file and gcda_data:
+            write_gcda_file(gcda_file, gcda_data)
+
+         gcda_file = None
+         gcda_data = ''
+         continue
+
+      if not gcda_file:
+
+         m = re.search(r'file: (.+)', line)
+
+         if m:
+
+            gcda_file = m.group(1)
+
+         else:
+
+            if line.find(KERNEL_DUMP_GCDA_END_STR) != -1:
+               break # greaceful stop
+
+            msg_print("ERROR: expected gcda file name in {}".format(line))
+            set_once_fail_reason(Fail.gcov_error)
+            break
+
+         continue
+
+      gcda_data += line
+
+def dump_coverage_data(pts_file):
+
+   if not is_cmake_opt_enabled(KERNEL_GCOV):
+      msg_print("ERROR: kernel not compiled with KERNEL_GCOV=1")
+      set_once_fail_reason(Fail.invalid_build_config)
+      return
+
+   msg_print("Performing coverage dump ...")
+   output = b''
+
+   with serial.Serial(pts_file, timeout=0.5) as ser:
+
+      # Enter the shell
+      ser.write("\n".encode("latin-1"))
+
+      # Ask our devshell to dump the coverage data
+      ser.write("devshell -dcov\n".encode("latin-1"))
+
+      # Just wait a little in order to allow data to accumulate
+      time.sleep(0.5)
+
+      # Read all the output
+      while True:
+
+         buf = ser.read(4096)
+
+         if not buf:
+            break
+
+         output += buf
+
+   lines = output.decode('latin-1').splitlines()
+   del output # free the memory used by `output`
+   dump_coverage_data_int(lines)
+   msg_print("Coverage dump: DONE")
+
+   if REPORT_COVERAGE:
+      if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
+         set_once_fail_reason(Fail.gcov_error)
 
 def run(test_func):
 
@@ -452,7 +561,8 @@ def run(test_func):
       '-monitor', 'stdio',
       '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04',
       '-drive', 'id=img1,format=raw,if=none,file=' + TILCK_IMAGE,
-      '-device', 'ide-hd,drive=img1,cyls=74,heads=16,secs=63'
+      '-device', 'ide-hd,drive=img1,cyls=74,heads=16,secs=63',
+      '-serial', 'pty',
    ]
 
    if is_kvm_installed():
@@ -472,17 +582,38 @@ def run(test_func):
 
    raw_print('-' * 80)
    start_time = time.time()
-   echo_qemu_monitor()
+   qemu_hello_msg = echo_qemu_monitor(0)
+   raw_print("")
 
-   run_main_body(test_func)
+   pts_file = None
+   m = re.search(r"char device redirected to ([^ ]+)[ ]", qemu_hello_msg)
 
+   if m:
+
+      pts_file = m.group(1)
+      msg_print("Serial port: {}".format(pts_file))
+      run_main_body(test_func)
+
+      if DUMP_COVERAGE:
+
+         try:
+            dump_coverage_data(pts_file)
+         except Exception as e:
+            fmtex = traceback.format_exc()
+            msg_print("Exception: {}\n{}".format(str(e), fmtex))
+            set_once_fail_reason(Fail.gcov_error)
+
+   else:
+      msg_print("ERROR: unable to find serial port's device in QEMU's msg")
+      set_once_fail_reason(Fail.qemu_msg_parsing_fail)
+
+   send_to_qemu_monitor("")
    send_to_qemu_monitor("quit")
    wait_for_qemu_to_exit()
 
    elapsed = time.time() - start_time
    raw_print('-' * 80)
    msg_print("Elapsed: {:.2f} s".format(elapsed))
-
 
 def setup_tmp_dir():
 
