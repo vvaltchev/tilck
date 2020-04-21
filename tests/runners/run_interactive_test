@@ -214,7 +214,6 @@ def delete_old_screenshots():
       if re.match("s[0-9]+[.](ppm|pbm|png)", f):
          os.remove(f)
 
-# NOTE: unused function
 def img_convert(img, newtype):
 
    cmd = ["convert"]
@@ -471,7 +470,7 @@ def run_main_body():
          raw_stdout_write(e.screen_text)
 
          if type(e) is IntTestScreenshotNoMatchFailure:
-            raw_stdout_write("Expected screenshot:\n")
+            raw_stdout_write("\nExpected screenshot:\n")
             raw_stdout_write(e.expected_text)
 
       if type(e) is NoTilckHelloMessage:
@@ -694,12 +693,7 @@ def check_imagemagick_installed():
       sys.exit(Fail.invalid_system_config)
 
 def check_system_config():
-
-   # Do nothing, at the moment: since img_covert() is used nowhere, we do not
-   # need to check for the presence of ImageMagick on the system.
-   pass
-
-   # check_imagemagick_installed()
+   check_imagemagick_installed()
 
 def check_pnm2text():
 
