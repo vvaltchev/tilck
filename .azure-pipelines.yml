@@ -15,7 +15,7 @@ jobs:
         -DEXTRA_TCC=1
         -DEXTRA_VIM=1
         -DFB_CONSOLE_BANNER=0
-        -DFB_CONSOLE_BLINK=0
+        -DFB_CONSOLE_CURSOR_BLINK=0
     steps:
       - script: printenv
         displayName: Dump env
