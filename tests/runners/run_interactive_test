@@ -15,8 +15,6 @@ import fcntl
 import filecmp
 import traceback
 import serial
-import base64
-import zlib
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -448,14 +446,6 @@ def run_main_body(test_func):
    except:
       msg_print("Unknown exception:\n" + traceback.format_exc())
       set_once_fail_reason(Fail.other)
-
-def write_gcda_file(file, b64data):
-
-   data_compressed = base64.b64decode(b64data)
-   data = zlib.decompress(data_compressed)
-
-   with open(file, 'wb') as fh:
-      fh.write(data)
 
 def dump_coverage_data_int(lines):
 

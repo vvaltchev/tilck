@@ -4,6 +4,8 @@ import re
 import os
 import sys
 import fcntl
+import base64
+import zlib
 import subprocess
 
 from enum import Enum
@@ -97,6 +99,29 @@ def run_gen_coverage_report_tool(gen_cov_tool):
       msg_print("Output of {} --acc:".format(gen_cov_tool))
       raw_print(getattr(e, 'output', '<no output>'))
       msg_print("--- end output ---")
+      return False
+
+   return True
+
+
+def write_gcda_file(file, b64data):
+
+   try:
+
+      data_compressed = base64.b64decode(b64data)
+      data = zlib.decompress(data_compressed)
+
+      with open(file, 'wb') as fh:
+         fh.write(data)
+
+   except Exception as e:
+      msg_print("")
+      msg_print(
+         "While writing gcda file '{}', "
+         "got exception: {}".format(file, str(e))
+      )
+      raw_print("b64data:\n<<{}>>\n".format(b64data))
+      set_once_fail_reason(Fail.gcov_error)
       return False
 
    return True

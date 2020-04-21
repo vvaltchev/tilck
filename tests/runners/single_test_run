@@ -70,32 +70,15 @@ def append_to_output(s: str):
    global g_output
    g_output += s
 
-def write_gcda_file():
+def write_gcda_file_wrapper():
 
    global g_gcda_file, g_gcda_buf
 
-   try:
-
-      orig_gcda_buf = g_gcda_buf
-      g_gcda_buf = base64.b64decode(g_gcda_buf)
-      g_gcda_buf = zlib.decompress(g_gcda_buf)
-
-      with open(g_gcda_file, 'wb') as fh:
-         fh.write(g_gcda_buf)
-
-   except Exception as e:
-      set_once_fail_reason(Fail.gcov_error)
-      msg_print("")
-      msg_print(
-         "While working on gcda file '{}', "
-         "got exception: {}".format(g_gcda_file, str(e))
-      )
-      raw_print("g_gcda_buf:\n<<{}>>\n".format(orig_gcda_buf))
+   if not write_gcda_file(g_gcda_file, g_gcda_buf):
       g_process.send_signal(signal.SIGINT)
 
-   finally:
-      g_gcda_file = None
-      g_gcda_buf = None
+   g_gcda_file = None
+   g_gcda_buf = None
 
 def handle_hello_msg(line: str):
 
@@ -167,7 +150,7 @@ def process_line(line: str):
    if r_notInBase64Char.search(stripped[0]):
 
       if g_gcda_file:
-         write_gcda_file()
+         write_gcda_file_wrapper()
 
       g_dumping_gcda_files = False
       raw_print(stripped)
@@ -178,7 +161,7 @@ def process_line(line: str):
    if m:
 
       if g_gcda_file:
-         write_gcda_file()
+         write_gcda_file_wrapper()
 
       g_gcda_file = m.group(1)
       g_gcda_buf = ''
@@ -392,7 +375,7 @@ def main():
          thread.join()
 
    if g_gcda_file:
-      write_gcda_file()
+      write_gcda_file_wrapper()
 
    if g_output.find("KERNEL PANIC") != -1:
       set_once_fail_reason(Fail.panic)
