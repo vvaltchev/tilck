@@ -249,7 +249,7 @@ def run_the_vm():
    cmdline = DEVSHELL_PATH
    init_opts = '-ns -nr'
 
-   if DUMP_COVERAGE:
+   if DUMP_COV:
       cmdline += ' -dcov'
       init_opts += ' -q'
 
@@ -346,7 +346,7 @@ def show_help_and_exit():
 
 def generate_coverage_if_enabled():
 
-   if not DUMP_COVERAGE or not REPORT_COVERAGE:
+   if not DUMP_COV or not REPORT_COV:
       return # Just do nothing
 
    if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
