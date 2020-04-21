@@ -44,6 +44,9 @@ def set_once_fail_reason(reason: Fail):
    if g_fail_reason == Fail.success:
       g_fail_reason = reason
 
+def get_fail_reason():
+   return g_fail_reason
+
 def get_fail_by_code(err_code):
 
    for f in Fail:

@@ -99,11 +99,11 @@ def check_cmake_config():
       if val != exp:
          msg_print("INVALID CONFIG: expected {} to be `{}`".format(k, exp))
 
-         if g_fail_reason == Fail.success:
+         if get_fail_reason() == Fail.success:
             set_once_fail_reason(Fail.invalid_build_config)
 
-   if g_fail_reason != Fail.success:
-      sys.exit(g_fail_reason.value)
+   if get_fail_reason() != Fail.success:
+      sys.exit(get_fail_reason().value)
 
 def wait_for_qemu_to_exit():
    while g_process.poll() is None:
@@ -796,7 +796,7 @@ def main():
          g_process.send_signal(signal.SIGINT)
          thread.join()
 
-   sys.exit(g_fail_reason.value)
+   sys.exit(get_fail_reason().value)
 
 ###############################
 if __name__ == '__main__':

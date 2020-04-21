@@ -397,7 +397,7 @@ def main():
    if g_output.find("KERNEL PANIC") != -1:
       set_once_fail_reason(Fail.panic)
 
-   if g_fail_reason == Fail.success and g_shell_exit_code != 0:
+   if get_fail_reason() == Fail.success and g_shell_exit_code != 0:
 
       if g_shell_exit_code is not None:
          msg_print("Shell exited with code {}.".format(g_shell_exit_code))
@@ -406,10 +406,10 @@ def main():
          msg_print("UNKNOWN shell exit code")
          set_once_fail_reason(Fail.shell_unknown_exit_code)
 
-   if g_fail_reason == Fail.success:
+   if get_fail_reason() == Fail.success:
       generate_coverage_if_enabled()
 
-   sys.exit(g_fail_reason.value)
+   sys.exit(get_fail_reason().value)
 
 ###############################
 if __name__ == '__main__':
