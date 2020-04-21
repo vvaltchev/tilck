@@ -170,7 +170,7 @@ def internal_single_test_runner_thread(test_type, test, timeout, show_output):
 
       raw_print(
          "[ FAILED  ] after {:.2f} seconds with: {}\n"
-            .format(elapsed, getFailByCode(p.returncode))
+            .format(elapsed, get_fail_by_code(p.returncode))
       )
       return False
 
