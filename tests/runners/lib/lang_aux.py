@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
+
 import sys
+import types
 
 class ConstError(TypeError):
 
@@ -22,13 +24,17 @@ class Const:
 
       self.__dict__[name] = val
 
-class ConstModule:
+class ConstModule(types.ModuleType):
 
    def __init__(self, mod):
+
+      super(ConstModule, self).__init__(mod)
 
       for pair in sys.modules[mod].__dict__.items():
          if type(pair[1]) is Const:
             self.__dict__[pair[0]] = pair[1].val
+         else:
+            self.__dict__[pair[0]] = pair[1]
 
    def __setattr__(self, name, value):
 
@@ -36,3 +42,7 @@ class ConstModule:
          raise ConstError(name)
 
       self.__dict__[name] = value
+
+def ReloadAsConstModule(name):
+   sys.modules[name] = ConstModule(name)
+

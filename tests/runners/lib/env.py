@@ -2,7 +2,7 @@
 
 import os
 import sys
-from .lang_aux import Const, ConstModule
+from .lang_aux import Const, ReloadAsConstModule
 
 def env_bool(x):
    return Const(os.environ.get(x, '0') == '1')
@@ -20,4 +20,6 @@ REPORT_COVERAGE = env_bool('REPORT_COV')
 VERBOSE = env_bool('VERBOSE')
 IN_ANY_CI = Const(IN_TRAVIS.val or IN_CIRCLECI.val or IN_AZURE.val)
 
-sys.modules[__name__] = ConstModule(__name__)
+ReloadAsConstModule(__name__)
+
+
