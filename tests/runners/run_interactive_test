@@ -51,12 +51,13 @@ from lib.exceptions import *
 # Global state variables
 g_process = None
 g_dumping_gcda_files = False
-g_timeout = 60
+g_timeout = None
 g_next_screenshot = 0
 g_tests = {}
 g_before_run_func = lambda: None
 g_filter_regex = None
 g_keyboard_interrupt = False
+g_matching_list = None
 
 def set_once_qemu_process(p):
    global g_process
@@ -738,28 +739,25 @@ def compute_matching_tests_list():
 
 def dump_list_matching_tests_and_timeout():
 
-   ll = compute_matching_tests_list()
-
-   if not ll:
+   if not g_matching_list:
       msg_print("ERROR: no tests matching '{}'".format(g_filter_regex))
       sys.exit(Fail.invalid_args.value)
 
-   msg_print("Per-test timeout: {}s".format(g_timeout))
+   msg_print("Total timeout: {}s".format(g_timeout))
    msg_print("Matching tests: {} ({})".format(
-      "ALL" if ll == g_tests else g_filter_regex,
-      " ".join(ll))
+      "ALL" if g_matching_list == g_tests else g_filter_regex,
+      " ".join(g_matching_list))
    )
 
    raw_print("")
 
 def run_all_tests():
 
-   matching_list = compute_matching_tests_list()
    raw_stdout_write("\n")
    msg_print("Run interactive tests")
    msg_print("-" * 50)
 
-   for k in matching_list:
+   for k in g_matching_list:
       delete_old_screenshots()
       msg_print("Interactive test: {}".format(k))
       send_to_qemu_monitor("\n")
@@ -768,7 +766,7 @@ def run_all_tests():
 
 def show_help():
    raw_print("Syntax: ")
-   raw_print("  run_interactive_test <testname_regex> [<timeout>]")
+   raw_print("  run_interactive_test <tests_filter_regex> [<timeout>]")
    raw_print("  run_interactive_test -h, --help")
    raw_print("  run_interactive_test -a, --all")
    raw_print("  run_interactive_test -l, --list")
@@ -832,6 +830,9 @@ def join_worker_thread(thread):
 def main():
 
    global g_keyboard_interrupt
+   global g_matching_list
+   global g_timeout
+
    set_runner_name("interactive tests runner")
 
    if len(sys.argv) < 2:
@@ -845,9 +846,13 @@ def main():
    load_tests()
    g_before_run_func()
 
+   g_matching_list = compute_matching_tests_list()
+
+   if not g_timeout:
+      g_timeout = 60 * len(g_matching_list)
+
    dump_list_matching_tests_and_timeout()
    detect_kvm()
-
    thread = threading.Thread(target = run)
    thread.start()
 
