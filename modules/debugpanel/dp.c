@@ -137,8 +137,7 @@ static void redraw_screen(void)
       dp_write_header(pos->index+1, pos->label, pos == dp_ctx);
    }
 
-   dp_write_header(12, "Quit", false);
-
+   dp_write_raw("q[Quit]" RESET_ATTRS " ");
    dp_ctx->draw_func();
 
    dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);

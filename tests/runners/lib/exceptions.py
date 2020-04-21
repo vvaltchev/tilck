@@ -33,7 +33,17 @@ class Pnm2TextFailure(Exception):
       super(Pnm2TextFailure, self).__init__("Return code: {}".format(ret))
 
 class IntTestScreenTextCheckFailure(Exception):
-   def __init__(self, screen_text):
-      super(IntTestScreenTextCheckFailure, self)    \
-         .__init__("IntTestScreenTextCheckFailure")
+   def __init__(self, screen_text, searched_text):
+      super(IntTestScreenTextCheckFailure, self)             \
+         .__init__(
+            "IntTestScreenTextCheckFailure: '{}' not found"  \
+               .format(searched_text)
+         )
       self.screen_text = screen_text
+
+class IntTestScreenshotNoMatchFailure(Exception):
+   def __init__(self, screen_text, expected_text):
+      super(IntTestScreenshotNoMatchFailure, self)           \
+         .__init__("IntTestScreenshotNoMatchFailure")
+      self.screen_text = screen_text
+      self.expected_text = expected_text

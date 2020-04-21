@@ -326,8 +326,9 @@ def check_screenshot_base(test_name, n):
       exp_t = fh.read().decode('utf-8')
 
    if t != exp_t:
-      IntTestScreenTextCheckFailure(t)
+      raise IntTestScreenshotNoMatchFailure(t, exp_t)
 
+# NOTE: utility function used by the interactive tests
 def do_interactive_actions(test_name, inputs):
 
    counter = 0
@@ -352,6 +353,24 @@ def do_interactive_actions(test_name, inputs):
 
       send_string_to_vm(x)
       action_func()
+
+# NOTE: utility function used by the interactive tests
+def send_to_vm_and_find_text(cmd, dump, patterns):
+
+   send_string_to_vm(cmd)
+   t = screenshot_to_text(vm_take_stable_screenshot())
+
+   if t.find("KERNEL PANIC") != -1:
+      KernelPanicFailure(t)
+
+   for p in patterns:
+      if t.find(p) == -1:
+         raise IntTestScreenTextCheckFailure(t, p)
+
+   if dump:
+      raw_print("")
+      raw_print(t)
+      send_to_qemu_monitor("\n")
 
 def run_handle_boot():
 
@@ -400,13 +419,18 @@ def run_main_body():
 
    except (NoTilckHelloMessage,
            KernelPanicFailure,
-           IntTestScreenTextCheckFailure) as e:
+           IntTestScreenTextCheckFailure,
+           IntTestScreenshotNoMatchFailure) as e:
 
       msg_print("Exception: " + str(e))
 
       if e.screen_text:
-         raw_stdout_write("\n")
+         raw_stdout_write("Actual screenshot:\n")
          raw_stdout_write(e.screen_text)
+
+         if type(e) is IntTestScreenshotNoMatchFailure:
+            raw_stdout_write("Expected screenshot:\n")
+            raw_stdout_write(e.expected_text)
 
       if type(e) is NoTilckHelloMessage:
          set_once_fail_reason(Fail.no_hello_message)
