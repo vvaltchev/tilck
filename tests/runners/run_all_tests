@@ -21,6 +21,7 @@ sys.path.append(RUNNERS_DIR)
 from lib.utils import *
 from lib.detect_kvm import *
 from lib.env import *
+from lib.exceptions import *
 
 # Constants
 

@@ -26,6 +26,7 @@ sys.path.append(RUNNERS_DIR)
 from lib.utils import *
 from lib.detect_kvm import *
 from lib.env import *
+from lib.exceptions import *
 
 # Runtime-generated constants
 r_notInBase64Char = re.compile(r'[^A-Za-z0-9+/=]')
@@ -380,7 +381,7 @@ def main():
    if g_output.find("KERNEL PANIC") != -1:
       set_once_fail_reason(Fail.panic)
 
-   if get_fail_reason() == Fail.success and g_shell_exit_code != 0:
+   if no_failures() and g_shell_exit_code != 0:
 
       if g_shell_exit_code is not None:
          msg_print("Shell exited with code {}.".format(g_shell_exit_code))
@@ -389,7 +390,7 @@ def main():
          msg_print("UNKNOWN shell exit code")
          set_once_fail_reason(Fail.shell_unknown_exit_code)
 
-   if get_fail_reason() == Fail.success:
+   if no_failures():
       generate_coverage_if_enabled()
 
    sys.exit(get_fail_reason().value)

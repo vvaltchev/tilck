@@ -46,32 +46,7 @@ from lib import qemu
 from lib.utils import *
 from lib.detect_kvm import *
 from lib.env import *
-
-# Other constants
-STABLE_SCREENSHOT_DELAY   = 0.25
-STABLE_SCREENSHOT_TIMEOUT = 3.00
-
-# Exceptions
-
-class StableScreenshotFailure(Exception):
-   def __init__(self):
-      msg = "Unable to take a stable screenshot in {}s"
-      msg = msg.format(STABLE_SCREENSHOT_TIMEOUT)
-      super(StableScreenshotFailure, self).__init__(msg)
-
-class ConvertFailure(Exception):
-   def __init__(self, msg):
-      super(ConvertFailure, self).__init__(msg)
-
-class Pnm2TextFailure(Exception):
-   def __init__(self, ret):
-      super(Pnm2TextFailure, self).__init__("Return code: {}".format(ret))
-
-class IntTestScreenTextCheckFailure(Exception):
-   def __init__(self, screen_text):
-      super(IntTestScreenTextCheckFailure, self)    \
-         .__init__("IntTestScreenTextCheckFailure")
-      self.screen_text = screen_text
+from lib.exceptions import *
 
 # Global state variables
 g_process = None
@@ -81,6 +56,7 @@ g_next_screenshot = 0
 g_tests = {}
 g_before_run_func = lambda: None
 g_filter_regex = None
+g_keyboard_interrupt = False
 
 def set_once_qemu_process(p):
    global g_process
@@ -97,10 +73,10 @@ def check_cmake_config():
       if val != exp:
          msg_print("INVALID CONFIG: expected {} to be `{}`".format(k, exp))
 
-         if get_fail_reason() == Fail.success:
+         if no_failures():
             set_once_fail_reason(Fail.invalid_build_config)
 
-   if get_fail_reason() != Fail.success:
+   if any_failures():
       sys.exit(get_fail_reason().value)
 
 def wait_for_qemu_to_exit():
@@ -440,6 +416,13 @@ def run_main_body(test_func):
          set_once_fail_reason(Fail.other)
 
    except Exception as e:
+
+      if g_keyboard_interrupt:
+         # The main thread has been interrupted by the user: just re-throw
+         # the exception without spamming him/her with useless verbose
+         # errors.
+         raise
+
       msg_print("Exception: {}\n{}".format(str(e), traceback.format_exc()))
       set_once_fail_reason(Fail.other)
 
@@ -574,9 +557,21 @@ def run(test_func):
 
       pts_file = m.group(1)
       msg_print("Serial port: {}".format(pts_file))
-      run_main_body(test_func)
 
-      if DUMP_COV:
+      try:
+
+         run_main_body(test_func)
+
+      except:
+
+         if g_keyboard_interrupt:
+            # The main thread has been interrupted by the user: just stop.
+            return
+
+         # Whatever else happened, just re-throw the exception
+         raise
+
+      if DUMP_COV and no_failures():
 
          try:
             dump_coverage_data(pts_file)
@@ -748,8 +743,30 @@ def parse_args():
    if len(sys.argv) >= 3:
       g_timeout = int(sys.argv[2])
 
+def join_worker_thread(thread):
+
+   thread.join(g_timeout)
+
+   if thread.is_alive():
+
+      # If we get here, after `g_params.timeout`, the test is still running
+
+      if g_dumping_gcda_files:
+
+         # If we're just dumping the GCDA file, wait a little more
+         thread.join(30)
+
+      if thread.is_alive():
+         # We have to fail with timeout
+         set_once_fail_reason(Fail.timeout)
+         print_timeout_kill_vm_msg(g_timeout)
+         g_process.send_signal(signal.SIGINT)
+         thread.join()
+
+
 def main():
 
+   global g_keyboard_interrupt
    set_runner_name("interactive tests runner")
 
    if len(sys.argv) < 2:
@@ -768,23 +785,15 @@ def main():
 
    thread = threading.Thread(target = run, args = (run_all_tests,))
    thread.start()
-   thread.join(g_timeout)
 
-   if thread.is_alive():
-
-      # If we get here, after `g_params.timeout`, the test is still running
-
-      if g_dumping_gcda_files:
-
-         # If we're just dumping the GCDA file, wait a little more
-         thread.join(30)
-
-      if thread.is_alive():
-         # We have to fail with timeout
-         set_once_fail_reason(Fail.timeout)
-         print_timeout_kill_vm_msg(g_timeout)
-         g_process.send_signal(signal.SIGINT)
-         thread.join()
+   try:
+      join_worker_thread(thread)
+   except KeyboardInterrupt:
+      g_keyboard_interrupt = True
+      msg_print("KeyboardInterrupt")
+      set_once_fail_reason(Fail.user_interruption)
+      g_process.send_signal(signal.SIGINT)
+      thread.join()
 
    sys.exit(get_fail_reason().value)
 

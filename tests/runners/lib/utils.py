@@ -36,18 +36,24 @@ class Fail(Enum):
    other                   = 13
 
 # Globals
-g_fail_reason = Fail.success
+__g_fail_reason = Fail.success
 
 # Functions
 def set_once_fail_reason(reason: Fail):
 
-   global g_fail_reason
+   global __g_fail_reason
 
-   if g_fail_reason == Fail.success:
-      g_fail_reason = reason
+   if __g_fail_reason == Fail.success:
+      __g_fail_reason = reason
 
 def get_fail_reason():
-   return g_fail_reason
+   return __g_fail_reason
+
+def no_failures():
+   return __g_fail_reason == Fail.success
+
+def any_failures():
+   return __g_fail_reason != Fail.success
 
 def get_fail_by_code(err_code):
 
@@ -70,20 +76,6 @@ def fh_set_blocking_mode(fh, blocking):
       fcntl.fcntl(sys_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
    else:
       fcntl.fcntl(sys_fd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
-
-class InvalidSystemConfig(Exception):
-   def __init__(self, msg):
-      super(InvalidSystemConfig, self).__init__(msg)
-
-class NoTilckHelloMessage(Exception):
-   def __init__(self, screen_text = None):
-      super(NoTilckHelloMessage, self).__init__("NoTilckHelloMessage")
-      self.screen_text = screen_text
-
-class KernelPanicFailure(Exception):
-   def __init__(self, screen_text = None):
-      super(KernelPanicFailure, self).__init__("KernelPanicFailure")
-      self.screen_text = screen_text
 
 def run_gen_coverage_report_tool(gen_cov_tool):
 
