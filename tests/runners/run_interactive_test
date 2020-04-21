@@ -384,6 +384,32 @@ def send_to_vm_and_find_text(cmd, dump, patterns):
       raw_print(t)
       send_to_qemu_monitor("\n")
 
+# NOTE: utility function used by the interactive tests
+#
+# What does: runs vim and quits from it.
+#
+# Reason: vim and its runtime is compressed (tgz) in Tilck's ramdisk.
+# The first time it's run, the `vim` wrapper script unpacks vim and its
+# runtime and that takes time. In CI runs, tests like `vim1` and `vim2`
+# could fail without this warm-up because the unpack operation is CPU-bound
+# and it might take a few seconds to get it done, while do_interactive_actions()
+# won't wait enough for that to happen and it will just fail.
+#
+def just_run_vim_and_exit():
+
+   send_string_to_vm(r"vim{ret}")
+
+   while True:
+
+      t = screenshot_to_text(vm_take_stable_screenshot())
+
+      if t.find("VIM - Vi IMproved") != -1:
+         break
+
+      time.sleep(2)
+
+   send_string_to_vm(r"{esc}:q{ret}")
+
 def run_handle_boot():
 
    # Wait for the bootloader to load everything
@@ -414,6 +440,9 @@ def run_handle_boot():
 
    if text.find("KERNEL PANIC") != -1:
       raise KernelPanicFailure()
+
+   send_string_to_vm(r"clear{ret}")
+
 
 def run_main_body():
 

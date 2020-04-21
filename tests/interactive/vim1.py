@@ -4,6 +4,8 @@
 # NOTE: this file, as all the others in this directory, run in the same global
 # context as their runner (run_interactive_test).
 
+just_run_vim_and_exit()
+
 do_interactive_actions(
    "vim1",
    [
