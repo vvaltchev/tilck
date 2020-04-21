@@ -384,7 +384,7 @@ def run_handle_boot():
    if text.find("KERNEL PANIC") != -1:
       raise KernelPanicFailure()
 
-def run_main_body(test_func):
+def run_main_body():
 
    try:
 
@@ -392,7 +392,7 @@ def run_main_body(test_func):
       run_handle_boot()
 
       # Call the test func
-      test_func()
+      run_all_tests()
 
    except StableScreenshotFailure as e:
       msg_print("Exception: " + str(e))
@@ -517,7 +517,7 @@ def dump_coverage_data(pts_file):
       if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
          set_once_fail_reason(Fail.gcov_error)
 
-def run(test_func):
+def run():
 
    args = [
       'qemu-system-i386',
@@ -560,7 +560,7 @@ def run(test_func):
 
       try:
 
-         run_main_body(test_func)
+         run_main_body()
 
       except:
 
@@ -691,7 +691,7 @@ def run_all_tests():
 
    matching_list = compute_matching_tests_list()
    raw_stdout_write("\n")
-   msg_print("Run all tests")
+   msg_print("Run interactive tests")
    msg_print("-" * 50)
 
    for k in matching_list:
@@ -783,17 +783,18 @@ def main():
    dump_list_matching_tests_and_timeout()
    detect_kvm()
 
-   thread = threading.Thread(target = run, args = (run_all_tests,))
+   thread = threading.Thread(target = run)
    thread.start()
 
    try:
       join_worker_thread(thread)
    except KeyboardInterrupt:
       g_keyboard_interrupt = True
+      msg_print("")
       msg_print("KeyboardInterrupt")
       set_once_fail_reason(Fail.user_interruption)
       g_process.send_signal(signal.SIGINT)
-      thread.join()
+      thread.join(2)
 
    sys.exit(get_fail_reason().value)
 
