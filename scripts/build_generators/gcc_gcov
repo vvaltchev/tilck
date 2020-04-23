@@ -16,4 +16,4 @@ CM=$MAIN_DIR/scripts/cmake_run
 
 ##############################################################
 
- TEST_GCOV=1 KERNEL_GCOV=1 $CM
+TEST_GCOV=1 KERNEL_GCOV=1 $CM
