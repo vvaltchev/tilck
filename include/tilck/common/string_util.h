@@ -8,8 +8,6 @@
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
 
-char *strdup(const char *s);
-
 static ALWAYS_INLINE bool isalpha_lower(int c) {
    return IN_RANGE_INC(c, 'a', 'z');
 }

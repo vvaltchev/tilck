@@ -81,6 +81,8 @@ instantiate_uitoa(uitoa64_hex, 64, 16)
 instantiate_itoa(itoa32, 32)
 instantiate_itoa(itoa64, 64)
 
+/* Compile-in strcmp() and strncmp() only when there's no libc */
+#if !defined(TESTING) && !defined(USERMODE_APP)
 
 int strcmp(const char *s1, const char *s2)
 {
@@ -101,6 +103,8 @@ int strncmp(const char *s1, const char *s2, size_t n)
 
    return i == n ? 0 : (int)*s1 - (int)*s2;
 }
+
+#endif // #if !defined(TESTING) && !defined(USERMODE_APP)
 
 int stricmp(const char *s1, const char *s2)
 {
