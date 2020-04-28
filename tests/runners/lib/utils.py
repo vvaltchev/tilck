@@ -9,7 +9,7 @@ import zlib
 import subprocess
 
 from enum import Enum
-from .stdio import msg_print, raw_print
+from .stdio import msg_print, raw_print, direct_print
 
 # Constants
 TEST_TYPES = ['selftest', 'shellcmd']
@@ -89,7 +89,7 @@ def run_gen_coverage_report_tool(gen_cov_tool):
          "{} generated the exception: {}".format(gen_cov_tool, str(e))
       )
       msg_print("Output of {} --acc:".format(gen_cov_tool))
-      raw_print(getattr(e, 'output', '<no output>'))
+      direct_print(getattr(e, 'output', '<no output>'))
       msg_print("--- end output ---")
       return False
 
