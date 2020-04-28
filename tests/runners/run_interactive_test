@@ -515,7 +515,12 @@ def dump_coverage_data_int(lines):
       if not line:
 
          if gcda_file and gcda_data:
-            write_gcda_file(gcda_file, gcda_data)
+
+            if VERBOSE:
+               msg_print("[debug] Write gcda file: {}".format(gcda_file))
+
+            if not write_gcda_file(gcda_file, gcda_data):
+               return False
 
          gcda_file = None
          gcda_data = ''
@@ -541,6 +546,8 @@ def dump_coverage_data_int(lines):
          continue
 
       gcda_data += line
+
+   return True
 
 def dump_coverage_data(pts_file):
 
@@ -573,10 +580,19 @@ def dump_coverage_data(pts_file):
 
          output += buf
 
+   if VERBOSE:
+      msg_print("[debug] Raw coverage data:")
+      direct_print(output)
+      msg_print("[debug] --- end ---")
+
    lines = output.decode('latin-1').splitlines()
    del output # free the memory used by `output`
-   dump_coverage_data_int(lines)
-   msg_print("Coverage dump: DONE")
+
+   if dump_coverage_data_int(lines):
+      msg_print("Coverage dump: DONE")
+   else:
+      msg_print("Coverage dump: FAILED")
+      return
 
    if REPORT_COV:
       if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
