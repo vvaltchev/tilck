@@ -25,15 +25,30 @@
 
 
 #ifdef __cplusplus
-   #include <cstdint>     // system header
+
+   #if !KERNEL_FORCE_TC_ISYSTEM
+
+      /* Default case: real kernel build */
+      #include <cstdint>     // system header
+
+   #else
+
+      /* Special case: non-runnable static analysis build */
+      #include <stdint.h>    // system header
+
+   #endif
+
    #define STATIC_ASSERT(s) static_assert(s, "Static assertion failed")
+
 #else
+
    #include <stdint.h>    // system header
    #include <stddef.h>    // system header
    #include <stdbool.h>   // system header
    #include <stdalign.h>  // system header
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
-#endif
+
+#endif // #ifdef __cplusplus
 
 #ifndef __USE_MISC
    #define __USE_MISC
@@ -64,7 +79,15 @@
 #endif
 
 #ifndef TESTING
-   #define NORETURN _Noreturn /* C11 standard no return attribute. */
+
+   #ifndef __cplusplus
+      #define NORETURN _Noreturn /* C11 no return attribute */
+   #else
+      #undef NULL
+      #define NULL nullptr
+      #define NORETURN [[ noreturn ]] /* C++11 no return attribute */
+   #endif
+
 #else
    #define NORETURN
 #endif

@@ -116,3 +116,12 @@ set(
 )
 
 JOIN("${KERNEL_NO_ARCH_FLAGS_LIST}" ${SPACE} KERNEL_NO_ARCH_FLAGS)
+
+set(
+   KERNEL_CXX_FLAGS_LIST
+
+   -fno-use-cxa-atexit
+   -fno-rtti
+)
+
+JOIN("${KERNEL_CXX_FLAGS_LIST}" ${SPACE} KERNEL_CXX_FLAGS)

@@ -142,7 +142,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
                   "rep movsb\n\t"
                   "cld\n\t"
                   : "=c" (n), "=S" (src), "=D" (unused)
-                  : "c" (n), "S" (src+n-1), "D" (dest+n-1)
+                  : "c" (n), "S" ((char*)src+n-1), "D" ((char*)dest+n-1)
                   : "cc", "memory");
    }
 

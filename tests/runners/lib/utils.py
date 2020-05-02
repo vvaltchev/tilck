@@ -117,3 +117,8 @@ def write_gcda_file(file, b64data):
       return False
 
    return True
+
+def unrunnable_build_graceful_exit():
+   msg_print("This build was NOT meant to be run")
+   msg_print("Just exiting with 0")
+   sys.exit(0)

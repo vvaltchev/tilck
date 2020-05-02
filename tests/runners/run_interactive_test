@@ -27,6 +27,7 @@ PNM2TEXT = "@CMAKE_BINARY_DIR@/scripts/build_apps/pnm2text"
 FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
 KERNEL_GCOV = "@KERNEL_GCOV@"
 GEN_KCOV_REPORT = "@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report"
+KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 
 CMAKE_CONFIG = {
    "EXTRA_VIM" : ("@EXTRA_VIM@", True),
@@ -863,6 +864,10 @@ def main():
 
    dump_list_matching_tests_and_timeout()
    detect_kvm()
+
+   if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
+      unrunnable_build_graceful_exit()
+
    thread = threading.Thread(target = run)
    thread.start()
 

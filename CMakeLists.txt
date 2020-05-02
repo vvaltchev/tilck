@@ -157,8 +157,11 @@ set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
 set(KERNEL_SYSCC OFF CACHE BOOL
     "Use system's compiler for the kernel instead of toolchain's one")
 
-set(KERNEL_FORCE_TC_ISYSTEM OFF CACHE BOOL
-    "Use TC's sysroot for system headers even when a system compiler is used")
+set(KERNEL_FORCE_TC_ISYSTEM OFF CACHE BOOL "\
+DANGEROUS. Do NOT use for other than static analysis builds. \
+BRUTALLY forces the build system to use tc's sysroot \
+for system headers even when a system compiler is used.\
+")
 
 set(FORK_NO_COW OFF CACHE BOOL
     "Make fork() to perform a full-copy instead of using copy-on-write")
@@ -606,3 +609,4 @@ if (EXISTS ${GTEST_TC_BUILD_DIR})
 else()
    no_googletest_lib_fake_error_target()
 endif()
+

@@ -21,6 +21,7 @@ KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
+KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -350,6 +351,9 @@ def main():
       raw_print("Assumed qemu-kvm version: {}".format(get_qemu_kvm_version()))
    else:
       detect_kvm()
+
+   if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
+      unrunnable_build_graceful_exit()
 
    thread = threading.Thread(target = run_the_vm)
    thread.start()

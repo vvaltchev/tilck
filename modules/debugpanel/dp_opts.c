@@ -21,7 +21,7 @@
             col,                                         \
             "  %-30s: %s%u" RESET_ATTRS,                 \
             #opt,                                        \
-            opt ? E_COLOR_GREEN : DP_ESC_COLOR,        \
+            opt ? E_COLOR_GREEN : DP_ESC_COLOR,          \
             opt)
 
 static void dp_show_opts(void)

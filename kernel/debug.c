@@ -37,7 +37,7 @@ static void sched_alive_thread()
    }
 }
 
-void init_extra_debug_features()
+void init_extra_debug_features(void)
 {
    if (kopt_sched_alive_thread)
       if (kthread_create(&sched_alive_thread, 0, NULL) < 0)
@@ -49,6 +49,11 @@ void set_sched_alive_thread_enabled(bool enabled)
    sched_alive_thread_enabled = enabled;
 }
 
+void kmain_early_checks(void)
+{
+   if (KERNEL_FORCE_TC_ISYSTEM)
+      panic("Builds with KERNEL_FORCE_TC_ISYSTEM=1 are not supposed to run");
+}
 
 #if SLOW_DEBUG_REF_COUNT
 

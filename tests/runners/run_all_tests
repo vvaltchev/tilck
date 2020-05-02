@@ -16,6 +16,7 @@ from typing import List, Dict
 RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
 KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
+KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -339,6 +340,9 @@ def main():
             show_help_and_exit()
 
    detect_kvm()
+
+   if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
+      unrunnable_build_graceful_exit()
 
    try:
 

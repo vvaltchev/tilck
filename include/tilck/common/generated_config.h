@@ -55,6 +55,7 @@
 #cmakedefine01 FAT_TEST_DIR
 #cmakedefine01 KERNEL_DO_PS2_SELFTEST
 #cmakedefine01 KERNEL_BIG_IO_BUF
+#cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 
 #if DEBUG_CHECKS_IN_RELEASE
    #ifdef NDEBUG

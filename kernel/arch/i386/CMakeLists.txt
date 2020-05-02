@@ -15,6 +15,7 @@ set(
    -fno-asynchronous-unwind-tables
    -fno-exceptions
    -fno-stack-protector
+   -fno-non-call-exceptions
 
    # Disable the generation of any kind of FPU instructions
    -mno-80387

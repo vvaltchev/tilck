@@ -18,6 +18,7 @@ function(build_and_link_module target modname)
    list(
       APPEND MOD_${modname}_SOURCES_GLOB
       "${CMAKE_SOURCE_DIR}/modules/${modname}/*.c"
+      "${CMAKE_SOURCE_DIR}/modules/${modname}/*.cpp"
    )
 
    if (NOT "${variant}" STREQUAL "_noarch")
