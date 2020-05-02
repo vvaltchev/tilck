@@ -10,14 +10,14 @@
 void *
 bintree_find_ptr_internal(void *root_obj,
                           const void *value_ptr,
-                          ptrdiff_t bintree_offset,
-                          ptrdiff_t field_off)
+                          long bintree_offset,
+                          long field_off)
 #else
 void *
 bintree_find_internal(void *root_obj,
                       const void *value_ptr,
                       cmpfun_ptr objval_cmpfun,
-                      ptrdiff_t bintree_offset)
+                      long bintree_offset)
 #endif
 {
    long c;

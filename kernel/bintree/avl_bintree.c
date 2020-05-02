@@ -11,13 +11,13 @@
 
 
 static ALWAYS_INLINE struct bintree_node *
-obj_to_bintree_node(void *obj, ptrdiff_t offset)
+obj_to_bintree_node(void *obj, long offset)
 {
    return obj ? (struct bintree_node *)((char*)obj + offset) : NULL;
 }
 
 static ALWAYS_INLINE void *
-bintree_node_to_obj(struct bintree_node *node, ptrdiff_t offset)
+bintree_node_to_obj(struct bintree_node *node, long offset)
 {
    return node ? (void *)((char*)node - offset) : NULL;
 }
@@ -30,7 +30,7 @@ bintree_node_to_obj(struct bintree_node *node, ptrdiff_t offset)
 #define HEIGHT(obj) ((obj) ? OBJTN((obj))->height : -1)
 
 static inline void
-update_height(struct bintree_node *node, ptrdiff_t bintree_offset)
+update_height(struct bintree_node *node, long bintree_offset)
 {
    node->height = (u16)MAX(HEIGHT(node->left_obj), HEIGHT(node->right_obj)) + 1;
 }
@@ -48,7 +48,7 @@ update_height(struct bintree_node *node, ptrdiff_t bintree_offset)
  *    (nll) (nlr)               (nlr) (nr)
  */
 
-void rotate_left_child(void **obj_ref, ptrdiff_t bintree_offset)
+void rotate_left_child(void **obj_ref, long bintree_offset)
 {
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
@@ -75,7 +75,7 @@ void rotate_left_child(void **obj_ref, ptrdiff_t bintree_offset)
  *       (nrl) (nrr)         (nl) (nrl)
  */
 
-void rotate_right_child(void **obj_ref, ptrdiff_t bintree_offset)
+void rotate_right_child(void **obj_ref, long bintree_offset)
 {
    ASSERT(obj_ref != NULL);
    ASSERT(*obj_ref != NULL);
@@ -96,7 +96,7 @@ void rotate_right_child(void **obj_ref, ptrdiff_t bintree_offset)
 #define ROTATE_CCW_RIGHT_CHILD(obj) (rotate_right_child((obj), bintree_offset))
 #define BALANCE(obj) (balance((obj), bintree_offset))
 
-static void balance(void **obj_ref, ptrdiff_t bintree_offset)
+static void balance(void **obj_ref, long bintree_offset)
 {
    ASSERT(obj_ref != NULL);
 
@@ -139,7 +139,7 @@ static void
 bintree_remove_internal_aux(void **root_obj_ref,
                             void ***stack,
                             int stack_size,
-                            ptrdiff_t bintree_offset)
+                            long bintree_offset)
 {
    if (LEFT_OF(*root_obj_ref) && RIGHT_OF(*root_obj_ref)) {
 
@@ -194,7 +194,7 @@ bintree_remove_internal_aux(void **root_obj_ref,
 
 
 void *
-bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+bintree_get_first_obj_internal(void *root_obj, long bintree_offset)
 {
    if (!root_obj)
       return NULL;
@@ -206,7 +206,7 @@ bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
 }
 
 void *
-bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
+bintree_get_last_obj_internal(void *root_obj, long bintree_offset)
 {
    if (!root_obj)
       return NULL;
@@ -218,7 +218,7 @@ bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset)
 }
 
 static ALWAYS_INLINE long
-bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
+bintree_insrem_ptr_cmp(const void *a, const void *b, long field_off)
 {
    const char *f1 = (const char *)a + field_off;
    const char *f2 = (const char *)b + field_off;
@@ -226,7 +226,7 @@ bintree_insrem_ptr_cmp(const void *a, const void *b, ptrdiff_t field_off)
 }
 
 static ALWAYS_INLINE long
-bintree_find_ptr_cmp(const void *obj, const void *val, ptrdiff_t field_off)
+bintree_find_ptr_cmp(const void *obj, const void *val, long field_off)
 {
    long obj_field_val = *(long *)((const char *)obj + field_off);
    return obj_field_val - (long)val;
@@ -292,7 +292,7 @@ int
 bintree_in_order_visit_internal(void *obj,
                                 bintree_visit_cb visit_cb,
                                 void *visit_cb_arg,
-                                ptrdiff_t bintree_offset,
+                                long bintree_offset,
                                 bool reverse)
 {
    int r;
@@ -336,7 +336,7 @@ bintree_in_order_visit_internal(void *obj,
 void
 bintree_in_order_visit_start_internal(struct bintree_walk_ctx *ctx,
                                       void *obj,
-                                      ptrdiff_t bintree_offset,
+                                      long bintree_offset,
                                       bool reverse)
 {
    *ctx = (struct bintree_walk_ctx) {
@@ -358,7 +358,7 @@ bintree_in_order_visit_next(struct bintree_walk_ctx *ctx)
     * than just aliases of variables taken from `ctx`. That's because it has to
     * support our simple yield mechanism: all of its state *must be* in `ctx`.
     */
-   const ptrdiff_t bintree_offset = ctx->bintree_offset;
+   const long bintree_offset = ctx->bintree_offset;
 
    if (UNLIKELY(!ctx->next_called)) {
 

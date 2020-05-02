@@ -10,14 +10,14 @@
 void *
 bintree_remove_ptr_internal(void **root_obj_ref,
                             void *obj_or_value,
-                            ptrdiff_t bintree_offset,
-                            ptrdiff_t field_off)
+                            long bintree_offset,
+                            long field_off)
 #else
 void *
 bintree_remove_internal(void **root_obj_ref,
                         void *obj_or_value,
                         cmpfun_ptr objval_cmpfun,
-                        ptrdiff_t bintree_offset)
+                        long bintree_offset)
 #endif
 {
    void **stack[MAX_TREE_HEIGHT];

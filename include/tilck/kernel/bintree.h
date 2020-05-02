@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-
 #include <tilck/common/basic_defs.h>
 
 #define MAX_TREE_HEIGHT       32
@@ -26,7 +25,7 @@ static inline void bintree_node_init(struct bintree_node *node)
 struct bintree_walk_ctx {
 
    DECLARE_SHADOW_STACK(MAX_TREE_HEIGHT, 1)
-   ptrdiff_t bintree_offset;
+   long bintree_offset;
    void *obj;
    bool reverse;
    bool next_called;
@@ -44,7 +43,7 @@ bool
 bintree_insert_internal(void **root_obj_ref,
                         void *obj,
                         cmpfun_ptr cmp, // cmp(*root_obj_ref, obj)
-                        ptrdiff_t bintree_offset);
+                        long bintree_offset);
 
 /*
  * bintree_find_internal() returns an obj* or NULL.
@@ -63,7 +62,7 @@ void *
 bintree_find_internal(void *root_obj,
                       const void *value_ptr,
                       cmpfun_ptr objval_cmpfun,   // cmp(root_obj, value_ptr)
-                      ptrdiff_t bintree_offset);
+                      long bintree_offset);
 
 
 /*
@@ -73,7 +72,7 @@ void *
 bintree_remove_internal(void **root_obj_ref,
                         void *value_ptr,
                         cmpfun_ptr objval_cmpfun, //cmp(*root_obj_ref,value_ptr)
-                        ptrdiff_t bintree_offset);
+                        long bintree_offset);
 
 
 typedef int (*bintree_visit_cb) (void *obj, void *arg);
@@ -82,38 +81,38 @@ int
 bintree_in_order_visit_internal(void *root_obj,
                                 bintree_visit_cb visit_cb,
                                 void *visit_cb_arg,
-                                ptrdiff_t bintree_offset,
+                                long bintree_offset,
                                 bool reverse);
 
 void
 bintree_in_order_visit_start_internal(struct bintree_walk_ctx *ctx,
                                       void *obj,
-                                      ptrdiff_t bintree_offset,
+                                      long bintree_offset,
                                       bool reverse);
 void *
 bintree_in_order_visit_next(struct bintree_walk_ctx *ctx);
 
 void *
-bintree_get_first_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
+bintree_get_first_obj_internal(void *root_obj, long bintree_offset);
 
 void *
-bintree_get_last_obj_internal(void *root_obj, ptrdiff_t bintree_offset);
+bintree_get_last_obj_internal(void *root_obj, long bintree_offset);
 
 bool
 bintree_insert_ptr_internal(void **root_obj_ref,
                             void *obj,
-                            ptrdiff_t bintree_offset,
-                            ptrdiff_t field_off);
+                            long bintree_offset,
+                            long field_off);
 void *
 bintree_find_ptr_internal(void *root_obj,
                           const void *value_ptr,
-                          ptrdiff_t bintree_offset,
-                          ptrdiff_t field_off);
+                          long bintree_offset,
+                          long field_off);
 void *
 bintree_remove_ptr_internal(void **root_obj_ref,
                             void *value_ptr,
-                            ptrdiff_t bintree_offset,
-                            ptrdiff_t field_off);
+                            long bintree_offset,
+                            long field_off);
 
 
 #define bintree_insert(rootref, obj, cmpfun, struct_type, elem_name)          \
