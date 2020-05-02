@@ -192,7 +192,7 @@ simple_hot_patch(void *dest, void *func, size_t max_size)
    if (KERNEL_SYMBOLS) {
 
       const char *func_name;
-      ptrdiff_t offset;
+      long offset;
       u32 size;
 
       func_name = find_sym_at_addr((ulong)func, &offset, &size);

@@ -142,7 +142,7 @@ bool handle_potential_cow(void *context)
 
 static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 {
-   ptrdiff_t off = 0;
+   long off = 0;
    const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
    panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
          rw ? "WRITE" : "READ",

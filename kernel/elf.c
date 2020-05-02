@@ -345,7 +345,7 @@ void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
    VERIFY(*strtab != NULL);
 }
 
-const char *find_sym_at_addr(ulong vaddr, ptrdiff_t *offset, u32 *sym_size)
+const char *find_sym_at_addr(ulong vaddr, long *offset, u32 *sym_size)
 {
    Elf_Shdr *symtab;
    Elf_Shdr *strtab;
@@ -364,7 +364,7 @@ const char *find_sym_at_addr(ulong vaddr, ptrdiff_t *offset, u32 *sym_size)
       if (IN_RANGE(vaddr, s->st_value, s->st_value + s->st_size)) {
 
          if (offset)
-            *offset = (ptrdiff_t)(vaddr - s->st_value);
+            *offset = (long)(vaddr - s->st_value);
 
          if (sym_size)
             *sym_size = (u32) s->st_size;
@@ -430,7 +430,7 @@ int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
 
 static void
 find_sym_at_addr_no_ret(ulong vaddr,
-                        ptrdiff_t *offset,
+                        long *offset,
                         u32 *sym_size,
                         const char **sym_name_ref)
 {
@@ -438,7 +438,7 @@ find_sym_at_addr_no_ret(ulong vaddr,
 }
 
 const char *
-find_sym_at_addr_safe(ulong vaddr, ptrdiff_t *offset, u32 *sym_size)
+find_sym_at_addr_safe(ulong vaddr, long *offset, u32 *sym_size)
 {
    const char *sym_name = NULL;
    fault_resumable_call(ALL_FAULTS_MASK, &find_sym_at_addr_no_ret, 4,

@@ -82,7 +82,7 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
 
    for (size_t i = 0; i < c; i++) {
 
-      ptrdiff_t off = 0;
+      long off = 0;
       u32 sym_size;
       ulong va = (ulong)frames[i];
       const char *sym_name;
