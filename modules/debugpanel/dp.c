@@ -273,7 +273,7 @@ static void dp_tilck_cmd()
    }
 
    dp_running = true;
-   tt = get_curr_proc_tty_term_type();
+   tt = (enum term_type)get_curr_proc_tty_term_type();
    dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
    dp_enter();
 

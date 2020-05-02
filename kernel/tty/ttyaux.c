@@ -12,10 +12,10 @@
 
 #include "tty_int.h"
 
-enum term_type get_curr_proc_tty_term_type(void)
+int get_curr_proc_tty_term_type(void)
 {
    struct tty *t = get_curr_proc()->proc_tty;
-   return t->tparams.type;
+   return (int)t->tparams.type;
 }
 
 struct tty *get_curr_process_tty(void)

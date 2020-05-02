@@ -5,6 +5,7 @@
 #include <tilck_gen_headers/config_modules.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/ringbuf.h>
+#include <tilck/kernel/term.h>
 
 #include <termios.h>      // system header
 #include <linux/kd.h>     // system header
