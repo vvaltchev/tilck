@@ -10,7 +10,7 @@ function download_googletest {
    if ! [ -d cache/googletest ]; then
       pushd cache
       local url="https://github.com/google/googletest.git"
-      git clone --branch release-1.8.0 --depth 1 "$url"
+      git clone --branch release-1.8.1 --depth 1 "$url"
       popd
    fi
 }
