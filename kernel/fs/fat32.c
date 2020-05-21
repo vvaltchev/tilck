@@ -12,6 +12,9 @@
 
 #include <dirent.h> // system header
 
+int fat_mmap(struct user_mapping *um, bool register_only);
+int fat_munmap(fs_handle h, void *vaddrp, size_t len);
+
 /*
  * Special fat_walk() wrapper handling the special case where `e` is NOT a dir
  * entry but a pointer to the entries in the root directory.
@@ -449,6 +452,8 @@ static const struct file_ops static_ops_fat =
    .seek = fat_seek,
    .write = fat_write,
    .ioctl = fat_ioctl,
+   .mmap = fat_mmap,
+   .munmap = fat_munmap,
 };
 
 STATIC int

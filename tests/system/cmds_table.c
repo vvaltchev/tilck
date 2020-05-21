@@ -70,6 +70,7 @@ DECL_CMD(pollhup);
 DECL_CMD(execve0);
 DECL_CMD(vfork0);
 DECL_CMD(extra);
+DECL_CMD(fatmm1);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -139,6 +140,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(execve0,      TT_SHORT,  true),
    CMD_ENTRY(vfork0,       TT_SHORT,  true),
    CMD_ENTRY(extra,        TT_MED,    true),
+   CMD_ENTRY(fatmm1,       TT_SHORT,  true),
 
    CMD_END(),
 };
