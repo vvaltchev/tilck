@@ -96,6 +96,11 @@ set(TIMER_HZ            100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
 set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 
+# Other non-boolean options
+
+set(FATPART_CLUSTER_SIZE  1 CACHE STRING
+    "Cluster size (in sectors) of the FAT ramdisk")
+
 set(
 
    USERAPPS_CFLAGS
@@ -232,9 +237,10 @@ list(
    USE_SYSCC
    ARCH_GTESTS
 
-   # Non-boolean kernel options
+   # Non-boolean options
    TIMER_HZ
    USER_STACK_PAGES
+   FATPART_CLUSTER_SIZE
 
    # Boolean options ENABLED by default
    KRN_TRACK_NESTED_INTERR

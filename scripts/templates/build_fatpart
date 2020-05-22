@@ -13,6 +13,7 @@ strip="@STRIP@"
 gcctc="@GCC_TOOLCHAIN@"
 host_arch="@HOST_ARCH@"
 arch="@ARCH@"
+spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
 
 if [ "@HOST_ARCH@" == "x86_64" ]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -66,7 +67,14 @@ function format_fatpart {
    # -t <N> ; cylinders
    # -h <N> ; heads
    # -s <N> ; sectors
-   $mformat -i $dest -d 1 -F -c 1 -t 70 -h 16 -s 63 ::
+
+   local force_fat32=""
+
+   if [[ "$spc" == "1" ]]; then
+      force_fat32="-F"
+   fi
+
+   $mformat -i $dest -d 1 $force_fat32 -c $spc -t 70 -h 16 -s 63 ::
    $mlabel -i $dest ::TILCK
 }
 
