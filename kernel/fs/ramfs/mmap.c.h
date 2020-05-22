@@ -2,17 +2,7 @@
 
 static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 {
-   struct fs_handle_base *hb = h;
-   struct process *pi = hb->pi;
-   ulong vaddr = (ulong)vaddrp;
-   ulong vend = vaddr + len;
-   ASSERT(IS_PAGE_ALIGNED(len));
-
-   for (; vaddr < vend; vaddr += PAGE_SIZE) {
-      unmap_page_permissive(pi->pdir, (void *)vaddr, false);
-   }
-
-   return 0;
+   return generic_fs_munmap(h, vaddrp, len);
 }
 
 static int ramfs_mmap(struct user_mapping *um, bool register_only)

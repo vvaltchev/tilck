@@ -283,3 +283,18 @@ bool user_map_zero_page(ulong user_vaddr, size_t page_count)
 
    return true;
 }
+
+int generic_fs_munmap(fs_handle h, void *vaddrp, size_t len)
+{
+   struct fs_handle_base *hb = h;
+   struct process *pi = hb->pi;
+   ulong vaddr = (ulong)vaddrp;
+   ulong vend = vaddr + len;
+   ASSERT(IS_PAGE_ALIGNED(len));
+
+   for (; vaddr < vend; vaddr += PAGE_SIZE) {
+      unmap_page_permissive(pi->pdir, (void *)vaddr, false);
+   }
+
+   return 0;
+}
