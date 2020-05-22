@@ -760,12 +760,13 @@ fat_compact_walk_cb(struct fat_hdr *hdr,
    const u32 clu_size = fat_get_cluster_size(hdr);
    u32 clu = first_clu, next_clu, last_clu = 0;
    struct compact_ctx *const ctx = arg;
-   bool is_dir;
 
    {
       char name[16];
       fat_get_short_name(e, name);
-      is_dir = e->directory && !is_dot_or_dotdot(name, (int)strlen(name));
+
+      if (is_dot_or_dotdot(name, (int)strlen(name)))
+         return 0; /* It makes no sense to visit '.' and '..' */
    }
 
    do {
@@ -799,7 +800,7 @@ fat_compact_walk_cb(struct fat_hdr *hdr,
    } while (!fat_is_end_of_clusterchain(ft, clu));
 
 
-   if (is_dir) {
+   if (e->directory) {
       fat_walk(&ctx->walk_params, fat_get_first_cluster(e));
    }
 
