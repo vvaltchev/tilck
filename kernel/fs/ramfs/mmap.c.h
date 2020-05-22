@@ -7,7 +7,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 
 static int ramfs_mmap(struct user_mapping *um, bool register_only)
 {
-   struct process *pi = get_curr_proc();
+   pdir_t *const pdir = get_curr_proc()->pdir;
    struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
    ulong vaddr = um->vaddr;
@@ -40,7 +40,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
       if ((size_t)b->offset >= off_end)
          break;
 
-      rc = map_page(pi->pdir,
+      rc = map_page(pdir,
                     (void *)vaddr,
                     KERNEL_VA_TO_PA(b->vaddr),
                     true,
@@ -52,7 +52,7 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
          vaddr -= PAGE_SIZE;
 
          for (; vaddr >= um->vaddr; vaddr -= PAGE_SIZE) {
-            unmap_page_permissive(pi->pdir, (void *)vaddr, false);
+            unmap_page_permissive(pdir, (void *)vaddr, false);
          }
 
          return rc;
