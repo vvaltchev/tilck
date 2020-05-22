@@ -28,4 +28,4 @@ else
 fi
 
 BUILD_DIR=@CMAKE_BINARY_DIR@
-$BUILD_DIR/run_multiboot_nokvm_qemu -enable-kvm "$@"
+$BUILD_DIR/run_multiboot_nokvm_qemu -enable-kvm -cpu host "$@"
