@@ -19,15 +19,28 @@
 #define ACTIONS_2(a1, a2)      {   a1,   a2, NULL, NULL }
 #define ACTIONS_3(a1, a2, a3)  {   a1,   a2,   a3, NULL }
 
-
 struct action_ctx {
    int fd;
    void *vaddr;
    struct stat statbuf;
 };
 
+typedef int (*act_t)(struct action_ctx *);
+
+struct action {
+
+   const char *params[2];
+   act_t pre_mmap_actions[MAX_ACTIONS+1];
+   act_t actions[MAX_ACTIONS+1];
+   act_t post_munmap_actions[MAX_ACTIONS+1];
+};
+
+/* Global variables */
+
 static u32 used_bytes;
 static u32 ff_clu_off;
+
+/* --- */
 
 static int action_calc_used_bytes(struct action_ctx *ctx)
 {
@@ -62,16 +75,47 @@ static int action_print_used_bytes(struct action_ctx *ctx)
    return 0;
 }
 
-typedef int (*act_t)(struct action_ctx *);
+static int action_expand_file_by_4k(struct action_ctx *ctx)
+{
+   if (ftruncate(ctx->fd, ctx->statbuf.st_size + 4096) < 0) {
+      perror("ftruncate() failed");
+      return 1;
+   }
 
-struct action {
+   if (fstat(ctx->fd, &ctx->statbuf) < 0) {
+      perror("stat() failed");
+      return 1;
+   }
 
-   const char *params[2];
-   act_t pre_mmap_actions[MAX_ACTIONS+1];
-   act_t actions[MAX_ACTIONS+1];
-   act_t post_munmap_actions[MAX_ACTIONS+1];
+   return 0;
+}
 
-} actions[] = {
+static int action_do_align(struct action_ctx *ctx)
+{
+   if (used_bytes > ctx->statbuf.st_size) {
+      fprintf(stderr,
+              "FATAL ERROR: used bytes (%u) > st_size (%ld)\n",
+              used_bytes, ctx->statbuf.st_size);
+      return 1;
+   }
+
+   if (fat_is_first_data_sector_aligned(ctx->vaddr, 4096)) {
+      printf("INFO: First data sector already aligned\n");
+      return 0;
+   }
+
+   if (used_bytes < ctx->statbuf.st_size) {
+      fprintf(stderr, "INFO: fat file NOT truncated.\n");
+      fprintf(stderr, "INFO: used bytes (%u) < st_size (%ld)\n",
+              used_bytes, ctx->statbuf.st_size);
+   }
+
+   action_expand_file_by_4k(ctx);
+   fat_align_first_data_sector(ctx->vaddr, 4096);
+   return 0;
+}
+
+struct action actions[] = {
 
    {
       {"-t", "--truncate"},
@@ -86,6 +130,13 @@ struct action {
       ACTIONS_1(action_calc_used_bytes),
       ACTIONS_1(action_print_used_bytes),
    },
+
+   {
+      {"-a", "--align_first_data_sector"},
+      NO_ACTIONS(),
+      ACTIONS_2(action_calc_used_bytes, action_do_align),
+      NO_ACTIONS(),
+   },
 };
 
 void show_help_and_exit(int argc, char **argv)
@@ -93,6 +144,7 @@ void show_help_and_exit(int argc, char **argv)
    printf("Syntax:\n");
    printf("    %s -t, --truncate <fat part file>\n", argv[0]);
    printf("    %s -c, --calc_used_bytes <fat part file>\n", argv[0]);
+   printf("    %s -a, --align_first_data_sector <fat part file>\n", argv[0]);
    exit(1);
 }
 
@@ -149,12 +201,12 @@ int main(int argc, char **argv)
       if ((failed = (*f)(&ctx)))
          goto out;
 
-   ctx.vaddr = mmap(NULL,                   /* addr */
-                    ctx.statbuf.st_size,    /* length */
-                    PROT_READ|PROT_WRITE,   /* prot */
-                    MAP_SHARED,             /* flags */
-                    ctx.fd,                 /* fd */
-                    0);                     /* offset */
+   ctx.vaddr = mmap(NULL,                          /* addr */
+                    ctx.statbuf.st_size + 4096,    /* length */
+                    PROT_READ|PROT_WRITE,          /* prot */
+                    MAP_SHARED,                    /* flags */
+                    ctx.fd,                        /* fd */
+                    0);                            /* offset */
 
    if (ctx.vaddr == (void *)-1) {
       perror("mmap() failed");
