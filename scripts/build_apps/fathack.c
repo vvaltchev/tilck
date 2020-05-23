@@ -67,6 +67,7 @@ typedef int (*act_t)(struct action_ctx *);
 struct action {
 
    const char *params[2];
+   act_t pre_mmap_actions[MAX_ACTIONS+1];
    act_t actions[MAX_ACTIONS+1];
    act_t post_munmap_actions[MAX_ACTIONS+1];
 
@@ -74,12 +75,14 @@ struct action {
 
    {
       {"-t", "--truncate"},
+      NO_ACTIONS(),
       ACTIONS_1(action_calc_used_bytes),
       ACTIONS_1(action_truncate),
    },
 
    {
       {"-c", "--calc_used_bytes"},
+      NO_ACTIONS(),
       ACTIONS_1(action_calc_used_bytes),
       ACTIONS_1(action_print_used_bytes),
    },
@@ -141,6 +144,10 @@ int main(int argc, char **argv)
       perror("open() failed");
       return 1;
    }
+
+   for (act_t *f = a->pre_mmap_actions; *f; f++)
+      if ((failed = (*f)(&ctx)))
+         goto out;
 
    ctx.vaddr = mmap(NULL,                   /* addr */
                     ctx.statbuf.st_size,    /* length */
