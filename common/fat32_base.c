@@ -866,3 +866,50 @@ fat_calculate_used_bytes(struct fat_hdr *hdr)
    ff_sector = fat_get_sector_for_cluster(hdr, clu);
    return (ff_sector + 1) * hdr->BPB_BytsPerSec;
 }
+
+bool fat_is_first_data_sector_aligned(struct fat_hdr *hdr, u32 page_size)
+{
+   u32 fdc = fat_get_first_data_sector(hdr);
+   u32 fdc_off = fdc * hdr->BPB_BytsPerSec;
+   return (fdc_off % page_size) == 0;
+}
+
+/*
+ * Aligns the first data sector to `page_size`, by moving all the data sectors
+ * by a number of bytes between 0 and page_size-1.
+ *
+ * WARNING: this function assumes it is safe to write up to 1 page after the
+ * value returned by fat_calculate_used_bytes().
+ */
+void fat_align_first_data_sector(struct fat_hdr *hdr, u32 page_size)
+{
+   const u32 used = fat_calculate_used_bytes(hdr);
+   const u32 fdc = fat_get_first_data_sector(hdr);
+   const u32 bps = hdr->BPB_BytsPerSec;
+   const u32 fdc_off = fdc * bps;
+   const u32 rem = page_size - (fdc_off % page_size);
+   const u32 rem_sectors = rem / hdr->BPB_BytsPerSec;
+   const u32 res_data = hdr->BPB_RsvdSecCnt * bps;
+   char *const data = (char *)hdr + res_data;
+
+   ASSERT((page_size % bps) == 0);
+   ASSERT((rem % bps) == 0);
+
+   if (!rem)
+      return; /* already aligned, nothing to do */
+
+   /* Make sure fat_is_first_data_sector_aligned() returns false */
+   ASSERT(!fat_is_first_data_sector_aligned(hdr, page_size));
+
+   /* Move forward the data by `rem` bytes */
+   memmove(data + rem, data, used - res_data);
+
+   /* Increase the number of reserved sectors by `rem_sectors` */
+   hdr->BPB_RsvdSecCnt += rem_sectors;
+
+   /* Now, make sure fat_is_first_data_sector_aligned() returns true */
+   ASSERT(fat_is_first_data_sector_aligned(hdr, page_size));
+
+   /* Finally, zero the data now part of the reserved sectors */
+   bzero(data, rem);
+}

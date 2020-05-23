@@ -182,7 +182,7 @@ static inline u32 fat_get_TotSec(struct fat_hdr *hdr)
 
 static inline u32 fat_get_root_dir_sectors(struct fat_hdr *hdr)
 {
-   u32 bps = hdr->BPB_BytsPerSec;
+   const u32 bps = hdr->BPB_BytsPerSec;
    return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;
 }
 
@@ -280,6 +280,8 @@ size_t fat_get_file_size(struct fat_entry *entry);
 u32 fat_get_first_free_cluster_off(struct fat_hdr *hdr);
 u32 fat_calculate_used_bytes(struct fat_hdr *hdr);
 void fat_compact_clusters(struct fat_hdr *hdr);
+bool fat_is_first_data_sector_aligned(struct fat_hdr *hdr, u32 page_size);
+void fat_align_first_data_sector(struct fat_hdr *hdr, u32 page_size);
 
 void
 fat_read_whole_file(struct fat_hdr *hdr,
