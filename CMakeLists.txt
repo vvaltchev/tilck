@@ -469,8 +469,8 @@ set(
    ${USERAPPS_FILES_LIST}
    ${EXTRA_APPS_LIST}
 
-   fat_get_used_bytes
-   ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+   fathack
+   ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
    ${CMAKE_SOURCE_DIR}/sysroot/etc/start
    ${CMAKE_BINARY_DIR}/config_fatpart
    ${BUILD_SCRIPTS_FILES_LIST}
@@ -506,7 +506,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${BUILD_FATPART}
       COMMAND
-         ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
+         ${BUILD_APPS}/fathack --truncate fatpart
       COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
       DEPENDS
@@ -528,7 +528,7 @@ else()
       COMMAND
          ${BUILD_FATPART}
       COMMAND
-         ${BUILD_APPS}/fat_get_used_bytes --truncate fatpart
+         ${BUILD_APPS}/fathack --truncate fatpart
       COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
       DEPENDS
@@ -594,11 +594,11 @@ add_custom_command(
       ${BUILD_TEST_FATPART}
 
    COMMAND
-      ${BUILD_APPS}/fat_get_used_bytes --truncate test_fatpart
+      ${BUILD_APPS}/fathack --truncate test_fatpart
 
    DEPENDS
-      fat_get_used_bytes
-      ${CMAKE_BINARY_DIR}/scripts/build_apps/fat_get_used_bytes
+      fathack
+      ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
 )
 
 add_custom_target(

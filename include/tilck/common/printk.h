@@ -5,42 +5,42 @@
 
 #ifndef USERMODE_APP
 
-void vprintk(const char *fmt, va_list args);
-void printk(const char *fmt, ...);
+   void vprintk(const char *fmt, va_list args);
+   void printk(const char *fmt, ...);
 
-#ifdef __TILCK_KERNEL__
+   #ifdef __TILCK_KERNEL__
 
-   #define PRINTK_CTRL_CHAR   '\x01'
+      #define PRINTK_CTRL_CHAR   '\x01'
 
-   int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
-   int snprintk(char *buf, size_t size, const char *fmt, ...);
-   void printk_flush_ringbuf(void);
+      int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
+      int snprintk(char *buf, size_t size, const char *fmt, ...);
+      void printk_flush_ringbuf(void);
 
-#endif
+   #endif
 
-#ifndef UNIT_TEST_ENVIRONMENT
-   #define NO_PREFIX          "\x01\x01\x00\x00"
+   #ifndef UNIT_TEST_ENVIRONMENT
+      #define NO_PREFIX          "\x01\x01\x00\x00"
+   #else
+      #define NO_PREFIX          ""
+   #endif
+
 #else
-   #define NO_PREFIX          ""
-#endif
 
-#else
+   /*
+   * Code in `common/` such as fat32_base.c is used also in user apps like
+   * fathack.c and it will be great to be able to printk there as well instead
+   * of using dirty #ifdef USERMODE_APP switches to decide whether to use printk
+   * or printf.
+   */
 
-/*
- * Code in `common/` such as fat32_base.c is used also in user apps like
- * fat_get_used_bytes.c and it will be great to be able to printk there
- * as well instead of using dirty #ifdef USERMODE_APP switches to decide
- * whether to use printk or printf.
- */
+   #include <stdio.h>
+   #define printk printf
+   #define vprintk vprintf
 
-#include <stdio.h>
-#define printk printf
-#define vprintk vprintf
+   /*
+    * NOTE: not including snprintk() because it's available only for the kernel
+    * itself, not in the `common` code. See basic_printk.c, the one used for the
+    * `common` code.
+    */
 
-/*
- * NOTE: not including snprintk() because it's available only for the kernel
- * itself, not in the `common` code. See basic_printk.c, the one used for the
- * `common` code.
- */
-
-#endif
+#endif // #ifndef USERMODE_APP
