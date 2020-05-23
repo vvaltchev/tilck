@@ -180,7 +180,7 @@ static inline u32 fat_get_TotSec(struct fat_hdr *hdr)
    return hdr->BPB_TotSec16 != 0 ? hdr->BPB_TotSec16 : hdr->BPB_TotSec32;
 }
 
-static inline u32 fat_get_RootDirSectors(struct fat_hdr *hdr)
+static inline u32 fat_get_root_dir_sectors(struct fat_hdr *hdr)
 {
    u32 bps = hdr->BPB_BytsPerSec;
    return ((hdr->BPB_RootEntCnt * 32u) + (bps - 1u)) / bps;

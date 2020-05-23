@@ -342,7 +342,7 @@ u32 fat_get_cluster_count(struct fat_hdr *hdr)
 {
    const u32 FATSz = fat_get_FATSz(hdr);
    const u32 TotSec = fat_get_TotSec(hdr);
-   const u32 RootDirSectors = fat_get_RootDirSectors(hdr);
+   const u32 RootDirSectors = fat_get_root_dir_sectors(hdr);
    const u32 FatAreaSize = hdr->BPB_NumFATs * FATSz;
    const u32 DataSec = TotSec-(hdr->BPB_RsvdSecCnt+FatAreaSize+RootDirSectors);
    return DataSec / hdr->BPB_SecPerClus;
@@ -431,7 +431,7 @@ fat_write_fat_entry(struct fat_hdr *h,
 
 u32 fat_get_first_data_sector(struct fat_hdr *hdr)
 {
-   u32 RootDirSectors = fat_get_RootDirSectors(hdr);
+   u32 RootDirSectors = fat_get_root_dir_sectors(hdr);
    u32 FATSz;
 
    if (hdr->BPB_FATSz16 != 0) {
