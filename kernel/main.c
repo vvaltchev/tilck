@@ -191,9 +191,13 @@ static void mount_initrd(void)
    /* declare the ramfs_create() function */
    struct fs *ramfs_create(void);
 
-   void *ramdisk = system_mmap_get_ramdisk_vaddr(0);
    struct fs *initrd, *ramfs;
+   void *ramdisk;
+   size_t ramdisk_size;
    int rc;
+
+   if (system_mmap_get_ramdisk(0, &ramdisk, &ramdisk_size) < 0)
+      panic("system_mmap_get_ramdisk_vaddr(0) failed");
 
    if (!(ramfs = ramfs_create()))
       panic("Unable to create ramfs");
@@ -248,7 +252,7 @@ static void run_init_or_selftest(void)
 
    } else {
 
-      if (!system_mmap_get_ramdisk_vaddr(0))
+      if (system_mmap_get_ramdisk(0, NULL, NULL) < 0)
          panic("No ramdisk and no selftest requested: nothing to do.");
 
       /* Run init or whatever program was passed in the cmdline */

@@ -20,7 +20,7 @@ struct mem_region {
 };
 
 void system_mmap_add_ramdisk(ulong start_paddr, ulong end_paddr);
-void *system_mmap_get_ramdisk_vaddr(int ramdisk_index);
+int system_mmap_get_ramdisk(int ramdisk_index, void **va, size_t *size);
 void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(ulong paddr);
 bool linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend);

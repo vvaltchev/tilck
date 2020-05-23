@@ -58,7 +58,7 @@ void system_mmap_add_ramdisk(ulong start_paddr, ulong end_paddr)
    sort_mem_regions();
 }
 
-void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
+int system_mmap_get_ramdisk(int ramdisk_index, void **va, size_t *size)
 {
    int rd_count = 0;
 
@@ -67,14 +67,23 @@ void *system_mmap_get_ramdisk_vaddr(int ramdisk_index)
       struct mem_region *m = mem_regions + i;
 
       if (m->extra & MEM_REG_EXTRA_RAMDISK) {
-         if (rd_count == ramdisk_index)
-            return KERNEL_PA_TO_VA((ulong)m->addr);
+
+         if (rd_count == ramdisk_index) {
+
+            if (va)
+               *va = KERNEL_PA_TO_VA((ulong)m->addr);
+
+            if (size)
+               *size = (size_t)m->len;
+
+            return 0;
+         }
 
          rd_count++;
       }
    }
 
-   return NULL;
+   return -1;
 }
 
 STATIC void remove_mem_region(int i)
