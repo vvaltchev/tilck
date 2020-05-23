@@ -224,7 +224,7 @@ static void mount_initrd(void)
 
    if (LIKELY(ramdisk != NULL)) {
 
-      if (!(initrd = fat_mount_ramdisk(ramdisk, VFS_FS_RO)))
+      if (!(initrd = fat_mount_ramdisk(ramdisk, ramdisk_size, VFS_FS_RO)))
          panic("Unable to mount the initrd fat32 RAMDISK");
 
       if ((rc = vfs_mkdir("/initrd", 0777)))

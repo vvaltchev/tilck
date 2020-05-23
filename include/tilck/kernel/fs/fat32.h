@@ -39,7 +39,7 @@ struct fatfs_handle {
    u32 curr_cluster;
 };
 
-struct fs *fat_mount_ramdisk(void *vaddr, u32 flags);
+struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags);
 void fat_umount_ramdisk(struct fs *fs);
 
 struct datetime

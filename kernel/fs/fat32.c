@@ -611,7 +611,7 @@ static const struct fs_ops static_fsops_fat =
    .fs_shunlock = fat_shared_unlock,
 };
 
-struct fs *fat_mount_ramdisk(void *vaddr, u32 flags)
+struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
 {
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
