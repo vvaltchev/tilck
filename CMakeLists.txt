@@ -508,6 +508,8 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${BUILD_APPS}/fathack --truncate fatpart
       COMMAND
+         ${BUILD_APPS}/fathack --align_first_data_sector fatpart
+      COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
       DEPENDS
          ${mbr_img_deps}
@@ -529,6 +531,8 @@ else()
          ${BUILD_FATPART}
       COMMAND
          ${BUILD_APPS}/fathack --truncate fatpart
+      COMMAND
+         ${BUILD_APPS}/fathack --align_first_data_sector fatpart
       COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
       DEPENDS
