@@ -156,7 +156,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
-                              (total_used_bytes / PAGE_SIZE) + 1,
+                              (total_used_bytes / PAGE_SIZE) + 2,
                               ramdisk_paddr_ref);
 
    HANDLE_EFI_ERROR("AllocatePages");
@@ -196,7 +196,12 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
       Print(L"[ OK ]\r\n");
    }
 
-   // Print(L"RAMDISK used bytes: %u\r\n", total_used_bytes);
+   /*
+    * Increase total_used_bytes by 1 page in order to allow Tilck's kernel to
+    * align the first data sector, if necessary.
+    */
+
+   total_used_bytes += PAGE_SIZE;
 
    /*
     * Pass via multiboot 'used bytes' as RAMDISK size instead of the real

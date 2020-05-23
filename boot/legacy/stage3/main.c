@@ -283,12 +283,14 @@ void bootloader_main(void)
 
    // Finally we're able to determine how big is the fatpart (pure data)
    rd_size = fat_calculate_used_bytes((void *)free_mem);
+
+   /* Calculate rd_size in sectors, rounding up at SECTOR_SIZE */
    rd_sectors = (rd_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
    free_mem =
       get_usable_mem(&mi,
                      KERNEL_MAX_END_PADDR,
-                     SECTOR_SIZE * rd_sectors);
+                     SECTOR_SIZE * rd_sectors + 4 * KB);
 
    if (!free_mem) {
       panic("Unable to allocate %u KB after %p for the ramdisk",
@@ -322,6 +324,12 @@ void bootloader_main(void)
 
       write_ok_msg();
    }
+
+   /*
+    * Increase rd_size by 1 page in order to allow Tilck's kernel to
+    * align the first data sector, if necessary.
+    */
+   rd_size += 4 * KB;
 
    printk("Loading the ELF kernel... ");
    load_elf_kernel(&mi, rd_paddr, rd_size, KERNEL_FILE_PATH, &entry);
