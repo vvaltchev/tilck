@@ -479,9 +479,16 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 
    const ulong pbegin = (ulong) r->addr;
    const ulong pend = MIN((ulong)(r->addr+r->len), (ulong)LINEAR_MAPPING_SIZE);
+
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 
+   /*
+    * Allow big_pages (4M) to be used except when the region is a ramdisk.
+    * Reason: fat_ramdisk_mm_fixes() might need to temporary make the region
+    * writable and it's much easier to do with 4k (regular) pages.
+    */
+   const bool big_pages = !(r->extra & MEM_REG_EXTRA_RAMDISK);
    const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;
 
    *vbegin = (ulong)KERNEL_PA_TO_VA(pbegin);
@@ -492,9 +499,9 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
                 (void *)*vbegin,
                 pbegin,
                 page_count,
-                true, /* big pages allowed */
-                false, /* user-accessible */
-                rw);
+                big_pages,   /* big pages allowed */
+                false,       /* user-accessible */
+                rw);         /* read/write */
 
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");

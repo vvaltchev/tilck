@@ -57,6 +57,11 @@ void __wrap_not_implemented(const char *file, int line)
    abort();
 }
 
+int __wrap_fat_ramdisk_mm_fixes(void *hdr, size_t rd_size)
+{
+   return -1;
+}
+
 void hw_read_clock(struct datetime *out)
 {
    memset(out, 0, sizeof(*out));

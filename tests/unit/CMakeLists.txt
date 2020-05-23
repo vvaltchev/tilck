@@ -76,6 +76,7 @@ set(
    printk
    kmutex_lock
    kmutex_unlock
+   fat_ramdisk_mm_fixes
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
