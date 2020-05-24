@@ -641,6 +641,13 @@ int vfs_fchmod(fs_handle h, mode_t mode)
    return fsops->chmod(hb->fs, fsops->get_inode(h), mode);
 }
 
+/*
+ * `register_only` means that the FS code must only register the new mapping,
+ * without actually doing any memory mapping, in case inodes have something like
+ * ramfs's `mappings_list` (see ramfs_unmap_past_eof_mappings()). In case there
+ * no such `mapping_list`, when register_only is true, the FS function is
+ * supposed to do just nothing (see fat_mmap()).
+ */
 int vfs_mmap(struct user_mapping *um, bool register_only)
 {
    struct fs_handle_base *hb = um->h;

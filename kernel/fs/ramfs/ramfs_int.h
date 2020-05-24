@@ -68,7 +68,7 @@ struct ramfs_inode {
    mode_t mode;
    size_t blocks_count;                /* count of page-size blocks */
    struct ramfs_inode *parent_dir;
-   struct list mappings_list;
+   struct list mappings_list;          /* see ramfs_unmap_past_eof_mappings() */
 
    union {
 
