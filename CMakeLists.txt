@@ -98,7 +98,7 @@ set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 
 # Other non-boolean options
 
-set(FATPART_CLUSTER_SIZE  1 CACHE STRING
+set(FATPART_CLUSTER_SIZE  8 CACHE STRING
     "Cluster size (in sectors) of the FAT ramdisk")
 
 set(
