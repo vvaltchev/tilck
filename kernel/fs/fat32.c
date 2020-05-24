@@ -616,7 +616,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
-   struct fat_fs_device_data *d = kmalloc(sizeof(struct fat_fs_device_data));
+   struct fat_fs_device_data *d = kzmalloc(sizeof(struct fat_fs_device_data));
 
    if (!d)
       return NULL;

@@ -15,6 +15,7 @@ struct fat_fs_device_data {
    enum fat_type type;
    u32 cluster_size;
    u32 root_cluster;
+   bool mmap_support;
 
    /*
     * A pointer to root directory's entries. Notice that this isn't a random
