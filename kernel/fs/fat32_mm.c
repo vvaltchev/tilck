@@ -8,10 +8,22 @@
 #include <tilck/kernel/fs/fat32.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
+#include <tilck/kernel/system_mmap.h>
 
 int fat_ramdisk_mm_fixes(struct fat_fs_device_data *d, size_t rd_size)
 {
    struct fat_hdr *hdr = d->hdr;
+
+   if (system_mmap_merge_rd_extra_region_if_any(hdr)) {
+
+      /*
+       * Typical case: the extra 4k region after our ramdisk, survived the
+       * overlap handling, meaning that the was at least 4k of usable (regular)
+       * memory just after our ramdisk. This will help in the corner case below.
+       */
+
+      rd_size += PAGE_SIZE;
+   }
 
    if (d->cluster_size < PAGE_SIZE || !IS_PAGE_ALIGNED(d->cluster_size)) {
       /* We cannot support our implementation of mmap in this case */
