@@ -58,7 +58,7 @@ void system_mmap_add_ramdisk(ulong start_paddr, ulong end_paddr)
    /*
     * Add one special region (completely overridable by other mem regions)
     * containing just one page after the ramdisk, in order to handle the corner
-    * case described in fat_ramdisk_mm_fixes().
+    * case described in fat_ramdisk_prepare_for_mmap().
     */
 
    append_mem_region((struct mem_region) {
@@ -498,8 +498,8 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 
    /*
     * Allow big_pages (4M) to be used except when the region is a ramdisk.
-    * Reason: fat_ramdisk_mm_fixes() might need to temporary make the region
-    * writable and it's much easier to do with 4k (regular) pages.
+    * Reason: fat_ramdisk_prepare_for_mmap() might need to temporary make the
+    * region writable and it's much easier to do with 4k (regular) pages.
     */
    const bool big_pages = !(r->extra & MEM_REG_EXTRA_RAMDISK);
    const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;

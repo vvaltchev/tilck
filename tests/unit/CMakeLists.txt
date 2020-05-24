@@ -76,7 +76,7 @@ set(
    printk
    kmutex_lock
    kmutex_unlock
-   fat_ramdisk_mm_fixes
+   fat_ramdisk_prepare_for_mmap
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})

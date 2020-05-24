@@ -14,7 +14,7 @@
 
 int fat_mmap(struct user_mapping *um, bool register_only);
 int fat_munmap(fs_handle h, void *vaddrp, size_t len);
-int fat_ramdisk_mm_fixes(struct fat_fs_device_data *d, size_t rd_size);
+int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size);
 
 /*
  * Special fat_walk() wrapper handling the special case where `e` is NOT a dir
@@ -646,7 +646,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    fs->fsops = &static_fsops_fat;
    fs->flags |= VFS_FS_RQ_DE_SKIP;
 
-   if (!fat_ramdisk_mm_fixes(d, rd_size))
+   if (!fat_ramdisk_prepare_for_mmap(d, rd_size))
       d->mmap_support = true;
 
    return fs;

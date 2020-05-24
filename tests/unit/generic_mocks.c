@@ -57,7 +57,7 @@ void __wrap_not_implemented(const char *file, int line)
    abort();
 }
 
-int __wrap_fat_ramdisk_mm_fixes(void *hdr, size_t rd_size)
+int __wrap_fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
 {
    return -1;
 }

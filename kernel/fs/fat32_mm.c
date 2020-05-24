@@ -10,7 +10,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/system_mmap.h>
 
-int fat_ramdisk_mm_fixes(struct fat_fs_device_data *d, size_t rd_size)
+int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
 {
    struct fat_hdr *hdr = d->hdr;
 
