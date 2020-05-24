@@ -289,7 +289,7 @@ void init_kmalloc(void)
       if (!linear_map_mem_region(&r, &vbegin, &vend))
          break;
 
-      if (r.type == MULTIBOOT_MEMORY_AVAILABLE) {
+      if (r.type == MULTIBOOT_MEMORY_AVAILABLE && !r.extra) {
 
          init_kmalloc_fill_region(i, vbegin, vend);
 
