@@ -55,6 +55,19 @@ void system_mmap_add_ramdisk(ulong start_paddr, ulong end_paddr)
       .extra = MEM_REG_EXTRA_RAMDISK,
    });
 
+   /*
+    * Add one special region (completely overridable by other mem regions)
+    * containing just one page after the ramdisk, in order to handle the corner
+    * case described in fat_ramdisk_mm_fixes().
+    */
+
+   append_mem_region((struct mem_region) {
+      .addr = end_paddr,
+      .len = PAGE_SIZE,
+      .type = MULTIBOOT_MEMORY_AVAILABLE,
+      .extra = MEM_REG_EXTRA_RAMDISK,
+   });
+
    sort_mem_regions();
 }
 
@@ -512,4 +525,40 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    }
 
    return true;
+}
+
+/*
+ * Merges, if exists, an available region following a ramdisk one.
+ *
+ * NOTE: this is the ONLY function supposed to alter (very carefully) the mem
+ * regions after the call of system_mmap_set().
+ */
+bool system_mmap_merge_rd_extra_region_if_any(void *rd)
+{
+   int ri = system_mmap_get_region_of(KERNEL_VA_TO_PA(rd));
+   struct mem_region *r;
+   ulong var;
+   VERIFY(ri >= 0);
+
+   if (ri == MAX_MEM_REGIONS - 1)
+      return false; /* no such extra region */
+
+   /* The extra region, if exists, will immediately follow our `rd` one */
+   r = &mem_regions[ri+1];
+
+   if (r->type == MULTIBOOT_MEMORY_AVAILABLE &&
+       r->extra == mem_regions[ri].extra)
+   {
+      /* Our extra 4k region survived the overlap handling, yey! */
+      disable_interrupts(&var);
+      {
+         r->type = mem_regions[ri].type;
+         merge_adj_mem_regions();
+      }
+      enable_interrupts(&var);
+      return true;
+   }
+
+   /* No such extra region: it has been overridden by a reserved one */
+   return false;
 }

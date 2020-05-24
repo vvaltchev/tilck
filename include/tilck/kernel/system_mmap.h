@@ -24,6 +24,7 @@ int system_mmap_get_ramdisk(int ramdisk_index, void **va, size_t *size);
 void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(ulong paddr);
 bool linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend);
+bool system_mmap_merge_rd_extra_region_if_any(void *rd);
 
 static ALWAYS_INLINE int
 get_mem_regions_count(void)
