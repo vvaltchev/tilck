@@ -192,9 +192,6 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    size_t actual_len;
    int rc, fl;
 
-   //printk("mmap2(addr: %p, len: %u, prot: %u, flags: %p, fd: %d, off: %d)\n",
-   //      addr, len, prot, flags, fd, pgoffset);
-
    if ((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
       return -EINVAL; /* non-sense parameters */
 
@@ -239,14 +236,14 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       fl = handle->fl_flags;
 
       if ((prot & (PROT_READ | PROT_WRITE)) == 0)
-         return -EINVAL;
+         return -EINVAL; /* nor read nor write prot */
 
       if ((prot & (PROT_READ | PROT_WRITE)) == PROT_WRITE)
          return -EINVAL; /* disallow write-only mappings */
 
       if (prot & PROT_WRITE) {
          if (!(fl & O_WRONLY) && (fl & O_RDWR) != O_RDWR)
-            return -EINVAL;
+            return -EACCES;
       }
 
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
