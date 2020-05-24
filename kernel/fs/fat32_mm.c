@@ -92,18 +92,97 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
 
 int fat_mmap(struct user_mapping *um, bool register_only)
 {
-   struct process *pi = get_curr_proc();
+   pdir_t *const pdir = um->pi->pdir;
    struct fatfs_handle *fh = um->h;
    struct fat_fs_device_data *d = fh->fs->device_data;
+   const size_t off_begin = um->off;
+   const size_t off_end = off_begin + um->len;
+   ulong vaddr = um->vaddr, off = 0;
+   size_t mapped_cnt;
+   u32 clu;
 
    if (!d->mmap_support)
       return -ENODEV; /* We do NOT support mmap for this "superblock" */
 
-   if (d->cluster_size < PAGE_SIZE)
-      return -ENODEV; /* We do NOT support mmap in this case */
+   if (fh->e->directory)
+      return -EACCES;
 
-   (void)pi;
-   NOT_IMPLEMENTED();
+   if (register_only)
+      return 0;
+
+   clu = fat_get_first_cluster(fh->e);
+
+   do {
+
+      char *data;
+      const ulong clu_end_off = off + d->cluster_size;
+
+      // Are we past the end of the mapped region?
+      if (off >= off_end)
+         break;
+
+      // Does this cluster belong to the mapped region?
+      if (clu_end_off > off_begin) {
+
+         // The cluster ends *after* the beginning of our region
+         data = fat_get_pointer_to_cluster_data(d->hdr, clu);
+
+         if (off < off_begin) {
+
+            // Our region begins somewhere in the middle of this cluster.
+            // This can happen only with cluster_size > PAGE_SIZE.
+            off = off_begin;
+            data += off_begin - off;
+         }
+
+         /*
+          * Calculate the number of pages to mmap, considering that:
+          *    - we cannot mmap in this iteration further than clu_end_off
+          *    - we must not mmap further than off_end
+          */
+         size_t pg_count = (MIN(clu_end_off, off_end) - off) >> PAGE_SHIFT;
+
+         mapped_cnt = map_pages(pdir,
+                                (void *)vaddr,
+                                KERNEL_VA_TO_PA(data),
+                                pg_count,
+                                false,      /* big pages: no */
+                                true,       /* user-access: yes */
+                                false);     /* read/write: no */
+
+         if (mapped_cnt != pg_count) {
+
+            /* mmap failed, we have to unmap the pages already mappped */
+            vaddr -= PAGE_SIZE;
+
+            for (; vaddr >= um->vaddr; vaddr -= PAGE_SIZE) {
+               unmap_page_permissive(pdir, (void *)vaddr, false);
+            }
+
+            return -ENOMEM;
+         }
+
+         vaddr += pg_count << PAGE_SHIFT;
+         off += pg_count << PAGE_SHIFT;
+
+         // After each iteration, `off` must always be aligned at `cluster_size`
+         ASSERT((off % d->cluster_size) == 0);
+
+      } else {
+
+         // We skipped the whole cluster
+         off += d->cluster_size;
+      }
+
+      // Get the next cluster# from the File Allocation Table
+      clu = fat_read_fat_entry(d->hdr, d->type, 0, clu);
+
+      // We do not expect BAD CLUSTERS
+      ASSERT(!fat_is_bad_cluster(d->type, clu));
+
+   } while (!fat_is_end_of_clusterchain(d->type, clu));
+
+   return 0;
 }
 
 int fat_munmap(fs_handle h, void *vaddrp, size_t len)
@@ -114,8 +193,5 @@ int fat_munmap(fs_handle h, void *vaddrp, size_t len)
    if (!d->mmap_support)
       return -ENODEV; /* We do NOT support mmap for this "superblock" */
 
-   if (d->cluster_size < PAGE_SIZE)
-      return -ENODEV; /* We do NOT support mmap in this case */
-
-   NOT_IMPLEMENTED();
+   return generic_fs_munmap(h, vaddrp, len);
 }
