@@ -9,8 +9,10 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
 
-int fat_ramdisk_mm_fixes(struct fat_hdr *hdr, size_t rd_size)
+int fat_ramdisk_mm_fixes(struct fat_fs_device_data *d, size_t rd_size)
 {
+   struct fat_hdr *hdr = d->hdr;
+
    if (fat_is_first_data_sector_aligned(hdr, PAGE_SIZE))
       return 0; /* nothing to do */
 
