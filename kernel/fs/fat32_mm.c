@@ -13,6 +13,11 @@ int fat_ramdisk_mm_fixes(struct fat_fs_device_data *d, size_t rd_size)
 {
    struct fat_hdr *hdr = d->hdr;
 
+   if (d->cluster_size < PAGE_SIZE || !IS_PAGE_ALIGNED(d->cluster_size)) {
+      /* We cannot support our implementation of mmap in this case */
+      return -1;
+   }
+
    if (fat_is_first_data_sector_aligned(hdr, PAGE_SIZE))
       return 0; /* nothing to do */
 
