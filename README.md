@@ -216,6 +216,32 @@ You can run kernel's system tests this way:
 **NOTE**: in order the script to work, you need to have `python` 3
 installed as `/usr/bin/python3`.
 
+Tilck's debug panel
+---------------------
+
+Tilck has a nice developer-only feature called **debug panel** or **dp** that
+allows people to get some very useful stats about the kernel, in real time.
+To open it, just run the `dp` program. The most interesting of those features
+is probably its embedded syscall tracer. To use it, go to the `tasks` tab,
+select a user process, mark it as *traced* by pressing `t`, and then enter in
+tracing mode by pressing `Ctrl+T`. Once there, press `ENTER` to start/stop the
+syscall tracing. That is particularly useful if the debug panel is run on a
+serial console: this way its possibile to see at the same time the traced
+program *and* its syscall trace. To do that, run the `qemu` VM this way:
+
+    ./build/run_qemu -serial pty
+    
+In addition to the VM window, you'll see on the terminal something like:
+
+    char device redirected to /dev/pts/4 (label serial0)
+
+Open another virtual terminal, install `screen` if you don't have it, and run:
+
+    screen /dev/pts/4
+    
+You'll just connect to a Tilck serial console. Just press ENTER there and run
+`dp` as previously explained. Enjoy!
+
 A comment about user experience
 ----------------------------------
 
@@ -267,17 +293,19 @@ FAQ (by vvaltchev)
 It is well-known that all of the popular open source projects care about having good
 commit messages. It is an investment that at some point pays off. I even wrote a
 [blog post] about that. The problem is that such investment actually starts paying
-off only when multiple people contribute to the project. Even in the case of small
-teams (2 people) it not obvious that it is worth spending hours in re-ordering and
-editing all the commits of a pull request until its *story* is perfect, especially
-when the project is not mature enough: the commits in a pull request have to be just
-*good enough* in terms of commit message, scope of the change, relative order etc.
-The focus here is on shape of the code *after* the patch series in the sense that
-limited hacks in the middle of a series are allowed. As a second contributor comes
-in, the commit messages will need necessarily to become more descriptive, in order
-to allow the collaboration to work. But, at this stage, going as fast as possible
-towards the first milestone makes sense. As the project matures, I'll be spending
-more and more time on writing better commit messages.
+off only when multiple people contribute to a project or even a single person works
+on it, but the project is *mature enough*. Until now, the focus was on the shape of
+the code *after* the patch series in the sense that limited hacks in the middle of
+a series were allowed. Now, as the project crossed the 4,000 commits threshold and 
+is approching its first milestone, I started investing more time in pushing more
+polished series of patches. Maybe the commit messages are still often one-liners,
+but the scope of each commit is getting tigher than ever before. With almost 75,000
+physical lines of source code, Tilcks starts to be a medium-size project with a fair
+amount of complexity that requires more care in each upcoming commit. I considerabily
+increased the amount of effort in re-writing the history of topic branches, before
+merging them in the master branch, in order to tell a much *better* story. Also, as
+the project starts to have other contributors, each commit will certainly require
+longer commit messages, in order to the collaboration to work successfully.
 
 [blog post]: https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer
 
