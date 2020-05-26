@@ -154,7 +154,7 @@ err_case:
 }
 
 /* mmap file and then do a partial unmap */
-static void fmmap2_read_unmapped_mem(void)
+static void fmmap2_read_unmapped_mem(void *unused_arg)
 {
    int fd, rc;
    char *vaddr;
@@ -205,7 +205,7 @@ static void fmmap2_read_unmapped_mem(void)
 /* mmap file and then do a partial unmap */
 int cmd_fmmap2(int argc, char **argv)
 {
-   int rc = test_sig(fmmap2_read_unmapped_mem, SIGSEGV, 0);
+   int rc = test_sig(fmmap2_read_unmapped_mem, NULL, SIGSEGV, 0);
    unlink(test_file);
    return rc;
 }
@@ -308,12 +308,12 @@ static void fmmap4_read_write_after_eof(bool rw)
    printf("ERROR: got to the end, something went wrong\n");
 }
 
-static void fmmap4_read_after_eof(void)
+static void fmmap4_read_after_eof(void *unused)
 {
    fmmap4_read_write_after_eof(false);
 }
 
-static void fmmap4_write_after_eof(void)
+static void fmmap4_write_after_eof(void *unused)
 {
    fmmap4_read_write_after_eof(true);
 }
@@ -323,10 +323,10 @@ int cmd_fmmap4(int argc, char **argv)
 {
    int rc;
 
-   if ((rc = test_sig(fmmap4_read_after_eof, SIGBUS, 0)))
+   if ((rc = test_sig(fmmap4_read_after_eof, NULL, SIGBUS, 0)))
       goto end;
 
-   if ((rc = test_sig(fmmap4_write_after_eof, SIGBUS, 0)))
+   if ((rc = test_sig(fmmap4_write_after_eof, NULL, SIGBUS, 0)))
       goto end;
 
 end:
@@ -471,7 +471,7 @@ int cmd_fmmap6(int argc, char **argv)
 }
 
 /* mmap file and then trucate it */
-static void fmmap7_child(void)
+static void fmmap7_child(void *unused_arg)
 {
    int fd, rc;
    char *vaddr;
@@ -551,7 +551,7 @@ static void fmmap7_child(void)
 /* mmap file and then trucate it */
 int cmd_fmmap7(int argc, char **argv)
 {
-   int rc = test_sig(fmmap7_child, SIGBUS, 0);
+   int rc = test_sig(fmmap7_child, NULL, SIGBUS, 0);
    unlink(test_file);
    return rc;
 }

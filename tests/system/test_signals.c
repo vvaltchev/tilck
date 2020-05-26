@@ -16,7 +16,10 @@
 
 #include "devshell.h"
 
-int test_sig(void (*child_func)(void), int expected_sig, int expected_code)
+int test_sig(void (*child_func)(void *),
+             void *arg,
+             int expected_sig,
+             int expected_code)
 {
    int code, term_sig;
    int child_pid;
@@ -31,7 +34,7 @@ int test_sig(void (*child_func)(void), int expected_sig, int expected_code)
    }
 
    if (!child_pid) {
-      child_func();
+      child_func(arg);
       exit(0);
    }
 
@@ -79,26 +82,26 @@ int test_sig(void (*child_func)(void), int expected_sig, int expected_code)
    return 0;
 }
 
-static void child_generate_gpf(void)
+static void child_generate_gpf(void *unused)
 {
    /* cause a general fault protection */
    asmVolatile("hlt");
 }
 
-static void child_generate_non_cow_page_fault(void)
+static void child_generate_non_cow_page_fault(void *unused)
 {
    /* cause non-CoW page fault */
    *(volatile int *)0xabc = 25;
 }
 
-static void child_generate_sigill(void)
+static void child_generate_sigill(void *unused)
 {
    /* trigger an illegal instruction fault */
    asmVolatile(".byte 0x0f\n\t"
                ".byte 0x0b\n\t");
 }
 
-static void child_generate_sigfpe(void)
+static void child_generate_sigfpe(void *unused)
 {
    volatile int zero_val = 0;
    volatile int val = 35 / zero_val;
@@ -107,12 +110,12 @@ static void child_generate_sigfpe(void)
    exit(1);
 }
 
-static void child_generate_sigabrt(void)
+static void child_generate_sigabrt(void *unused)
 {
    abort();
 }
 
-static void child_generate_and_ignore_sigint(void)
+static void child_generate_and_ignore_sigint(void *unused)
 {
    signal(SIGINT, SIG_IGN); /* ignore SIGINT */
    raise(SIGINT);           /* expect nothing to happen */
@@ -121,30 +124,30 @@ static void child_generate_and_ignore_sigint(void)
 
 int cmd_sigsegv1(int argc, char **argv)
 {
-   return test_sig(child_generate_gpf, SIGSEGV, 0);
+   return test_sig(child_generate_gpf, NULL, SIGSEGV, 0);
 }
 
 int cmd_sigsegv2(int argc, char **argv)
 {
-   return test_sig(child_generate_non_cow_page_fault, SIGSEGV, 0);
+   return test_sig(child_generate_non_cow_page_fault, NULL, SIGSEGV, 0);
 }
 
 int cmd_sigill(int argc, char **argv)
 {
-   return test_sig(child_generate_sigill, SIGILL, 0);
+   return test_sig(child_generate_sigill, NULL, SIGILL, 0);
 }
 
 int cmd_sigfpe(int argc, char **argv)
 {
-   return test_sig(child_generate_sigfpe, SIGFPE, 0);
+   return test_sig(child_generate_sigfpe, NULL, SIGFPE, 0);
 }
 
 int cmd_sigabrt(int argc, char **argv)
 {
-   return test_sig(child_generate_sigabrt, SIGABRT, 0);
+   return test_sig(child_generate_sigabrt, NULL, SIGABRT, 0);
 }
 
 int cmd_sig1(int argc, char **argv)
 {
-   return test_sig(child_generate_and_ignore_sigint, 0, 0);
+   return test_sig(child_generate_and_ignore_sigint, NULL, 0, 0);
 }

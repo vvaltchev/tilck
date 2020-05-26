@@ -165,7 +165,7 @@ int cmd_pipe2(int argc, char **argv)
    return 0;
 }
 
-static void pipe_cmd3_child(void)
+static void pipe_cmd3_child(void *unused_arg)
 {
    int pipefd[2];
    int rc;
@@ -207,7 +207,7 @@ int cmd_pipe3(int argc, char **argv)
    int rc;
 
    printf("Try the broken pipe case with SIGPIPE ignored...\n");
-   rc = test_sig(&pipe_cmd3_child, 0, 0);
+   rc = test_sig(&pipe_cmd3_child, NULL, 0, 0);
    DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 }
