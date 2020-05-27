@@ -13,20 +13,8 @@
 typedef unsigned long long ull_t;
 
 /* configuration */
-#define MAX_ARGS 16
-#define FORK_TEST_ITERS (250 * MB)
-
-/* utils */
-#define RDTSC() __rdtsc()
-#define DEVSHELL_CMD_ASSERT(x)                                              \
-   do {                                                                     \
-      if (!(x)) {                                                           \
-         fprintf(stderr, PFX "ASSERT '%s' FAILED.\n\t"                      \
-                 "On:\t%s:%d\n\tERRNO:\t%s\n",                              \
-                 #x, __FILE__, __LINE__, strerror(errno));                  \
-         exit(1);                                                           \
-      }                                                                     \
-   } while(0)
+#define MAX_ARGS                  16
+#define FORK_TEST_ITERS   (250 * MB)
 
 /* constants */
 #define COLOR_RED     "\033[31m"
@@ -39,6 +27,18 @@ typedef unsigned long long ull_t;
 #define STR_RUN       "[RUN   ] "
 #define STR_PASS      "[PASSED] "
 #define STR_FAIL      "[FAILED] "
+
+/* utils */
+#define RDTSC() __rdtsc()
+#define DEVSHELL_CMD_ASSERT(x)                                              \
+   do {                                                                     \
+      if (!(x)) {                                                           \
+         fprintf(stderr, PFX "ASSERT '%s' FAILED.\n\t"                      \
+                 "On:\t%s:%d\n\tERRNO:\t%s\n",                              \
+                 #x, __FILE__, __LINE__, strerror(errno));                  \
+         do_cmd_exit(1);                                                    \
+      }                                                                     \
+   } while(0)
 
 /* --- */
 
@@ -70,6 +70,7 @@ const char *get_devshell_path(void);
 void print_waitpid_change(int child, int wstatus);
 void forced_memcpy(void *dest, const void *src, size_t n);
 void do_mm_read(void *ptr);
+void do_cmd_exit(int code);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {

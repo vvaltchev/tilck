@@ -229,15 +229,25 @@ int cmd_help(int argc, char **argv)
    return 0;
 }
 
+void do_cmd_exit(int code)
+{
+   if (!dump_coverage && code != 0) {
+      printf(COLOR_YELLOW PFX RESET_ATTRS);
+      printf("The command %sFAILED%s with %s%d%s\n",
+             COLOR_RED, RESET_ATTRS, COLOR_YELLOW, code, RESET_ATTRS);
+   }
+
+   exit(code);
+}
+
 static void run_cmd(cmd_func_type func, int argc, char **argv)
 {
    int exit_code = func(argc, argv);
 
-   if (dump_coverage) {
+   if (dump_coverage)
       dump_coverage_files();
-   }
 
-   exit(exit_code);
+   do_cmd_exit(exit_code);
 }
 
 void run_if_known_command(const char *cmd, int argc, char **argv)
