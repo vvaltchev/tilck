@@ -44,11 +44,11 @@ static int ramfs_mmap(struct user_mapping *um, bool register_only)
                     (void *)vaddr,
                     KERNEL_VA_TO_PA(b->vaddr),
                     true,
-                    rh->fl_flags & O_RDWR);
+                    (rh->fl_flags & O_RDWR) == O_RDWR);
 
       if (rc) {
 
-         /* mmap failed, we have to unmap the pages already mappped */
+         /* mmap failed, we have to unmap the pages already mapped */
          vaddr -= PAGE_SIZE;
 
          for (; vaddr >= um->vaddr; vaddr -= PAGE_SIZE) {
