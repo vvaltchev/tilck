@@ -16,6 +16,7 @@ static int fork_dup_all_handles(struct process *pi)
       int rc;
       fs_handle dup_h = NULL;
       fs_handle h = pi->handles[i];
+      struct user_mapping *um;
 
       if (!h)
          continue;
@@ -30,7 +31,19 @@ static int fork_dup_all_handles(struct process *pi)
          return -ENOMEM;
       }
 
+      /* Update file handle's process pointer to the new process */
+      ((struct fs_handle_base *)dup_h)->pi = pi;
+
+      /* Replace the older (parent's) handle with the new one */
       pi->handles[i] = dup_h;
+
+      if (!pi->mi)
+         continue;
+
+      list_for_each_ro(um, &pi->mi->mappings, pi_node) {
+         if (um->h == h)
+            um->h = dup_h;
+      }
    }
 
    return 0;
