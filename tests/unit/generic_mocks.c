@@ -114,6 +114,8 @@ void dump_var_mtrrs() { }
 void set_page_rw() { }
 int get_irq_num(void *ctx) { return -1; }
 int get_int_num(void *ctx) { return -1; }
+void retain_pageframes_mapped_at() { }
+void release_pageframes_mapped_at() { }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }

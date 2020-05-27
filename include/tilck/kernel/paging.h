@@ -77,6 +77,8 @@ pdir_t *pdir_deep_clone(pdir_t *pdir);
 void pdir_destroy(pdir_t *pdir);
 void invalidate_page(ulong vaddr);
 void set_page_rw(pdir_t *pdir, void *vaddr, bool rw);
+void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddr, size_t len);
+void release_pageframes_mapped_at(pdir_t *pdir, void *vaddr, size_t len);
 
 static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
 {

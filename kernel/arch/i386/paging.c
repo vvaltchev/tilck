@@ -84,6 +84,42 @@ pdir_get_page_table(pdir_t *pdir, u32 i)
    return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
+void retain_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
+{
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
+
+   ulong paddr;
+   ulong vaddr = (ulong)vaddrp;
+   const ulong vaddr_end = vaddr + len;
+
+   for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
+
+      if (get_mapping2(pdir, (void *)vaddr, &paddr) < 0)
+         continue; /* not mapped, that's fine */
+
+      __pf_ref_count_inc(paddr);
+   }
+}
+
+void release_pageframes_mapped_at(pdir_t *pdir, void *vaddrp, size_t len)
+{
+   ASSERT(IS_PAGE_ALIGNED(vaddrp));
+   ASSERT(IS_PAGE_ALIGNED(len));
+
+   ulong paddr;
+   ulong vaddr = (ulong)vaddrp;
+   const ulong vaddr_end = vaddr + len;
+
+   for (; vaddr < vaddr_end; vaddr += PAGE_SIZE) {
+
+      if (get_mapping2(pdir, (void *)vaddr, &paddr) < 0)
+         continue; /* not mapped, that's fine */
+
+      __pf_ref_count_dec(paddr);
+   }
+}
+
 void invalidate_page(ulong vaddr)
 {
    invalidate_page_hw(vaddr);
