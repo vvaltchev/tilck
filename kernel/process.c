@@ -211,11 +211,16 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    }
 
    pi->parent_pid = parent_pi->pid;
+   pi->pdir = new_pdir;
+   pi->ref_count = 1;
+   pi->pid = pid;
+   pi->did_call_execve = false;
+   pi->cwd.fs = NULL;
 
    if (new_pdir != parent_pi->pdir) {
 
       if (parent_pi->mi) {
-         if (UNLIKELY(!(pi->mi = duplicate_mappings_info(parent_pi->mi))))
+         if (UNLIKELY(!(pi->mi = duplicate_mappings_info(pi, parent_pi->mi))))
             goto oom_case;
       }
 
@@ -224,14 +229,9 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    }
 
    pi->inherited_mmap_heap = !!pi->mi;
-   pi->pdir = new_pdir;
-   pi->ref_count = 1;
-   pi->pid = pid;
+   ti->pi = pi;
    ti->tid = pid;
    ti->is_main_thread = true;
-   pi->did_call_execve = false;
-   ti->pi = pi;
-   pi->cwd.fs = NULL;
 
    /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
    process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
