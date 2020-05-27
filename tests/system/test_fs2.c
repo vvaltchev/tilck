@@ -45,6 +45,15 @@ static const char test_str2[] = "hello from the 2nd page";
 static const char test_str_exp[] = "This is a test string\n";
 static const char test_file[] = "/tmp/test1";
 
+void do_mm_read(void *ptr)
+{
+   unsigned value;
+   printf("[pid: %d] Before read at %p\n", getpid(), ptr);
+   memcpy(&value, ptr, sizeof(value));
+   printf("Read OK. Value at %p: 0x%x\n", ptr, value);
+}
+
+
 /* mmap file */
 int cmd_fmmap1(int argc, char **argv)
 {
