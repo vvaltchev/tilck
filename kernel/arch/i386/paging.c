@@ -43,12 +43,23 @@ static u16 *pageframes_refcount;
 static ulong phys_mem_lim;
 static struct kmalloc_heap *hi_vmem_heap;
 
+static ALWAYS_INLINE u32 __pf_ref_count_inc(u32 paddr)
+{
+   return ++pageframes_refcount[paddr >> PAGE_SHIFT];
+}
+
+static ALWAYS_INLINE u32 __pf_ref_count_dec(u32 paddr)
+{
+   ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] > 0);
+   return --pageframes_refcount[paddr >> PAGE_SHIFT];
+}
+
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
    if (paddr >= phys_mem_lim)
       return 0;
 
-   return ++pageframes_refcount[paddr >> PAGE_SHIFT];
+   return __pf_ref_count_inc(paddr);
 }
 
 static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
@@ -56,8 +67,7 @@ static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
    if (paddr >= phys_mem_lim)
       return 0;
 
-   ASSERT(pageframes_refcount[paddr >> PAGE_SHIFT] > 0);
-   return --pageframes_refcount[paddr >> PAGE_SHIFT];
+   return __pf_ref_count_dec(paddr);
 }
 
 static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
