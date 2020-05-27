@@ -64,7 +64,7 @@ int cmd_fmmap1(int argc, char **argv)
    struct stat statbuf;
    const size_t page_size = getpagesize();
 
-   printf("Using '%s' as test file\n", test_file);
+   printf("- Using '%s' as test file\n", test_file);
    fd = open(test_file, O_CREAT | O_RDWR, 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
@@ -75,7 +75,7 @@ int cmd_fmmap1(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(rc == 0);
 
    file_size = statbuf.st_size;
-   printf("File size: %llu\n", (ull_t)file_size);
+   printf("- File size: %llu\n", (ull_t)file_size);
 
    vaddr = mmap(NULL,                   /* addr */
                 2 * page_size,          /* length */
@@ -87,9 +87,24 @@ int cmd_fmmap1(int argc, char **argv)
    if (vaddr == (void *)-1)
       goto err_case;
 
-   printf("vaddr: %p\n", vaddr);
+   printf("- vaddr: %p\n", vaddr);
+
+   printf("- Check that reading at `vaddr` succeeds\n");
+   do_mm_read(vaddr);
+
+   printf("- Check we can fork() a process with ramfs mmaps\n");
+   if (test_sig(do_mm_read, vaddr, 0, 0))
+      goto err_case;
+
+   printf("- Check that reading at `vaddr` still succeeds from parent\n");
+   do_mm_read(vaddr);
+
+   printf("- Done\n");
+   printf("- Write something at `vaddr`...\n");
 
    vaddr[0] = 'T';                     // has real effect
+
+   printf("- Write something at `vaddr + file_size`\n");
    vaddr[file_size +  0] = '?';        // gets ignored as past of EOF
    vaddr[file_size + 10] = 'x';        // gets ignored as past of EOF
    vaddr[file_size + 11] = '\n';       // gets ignored as past of EOF
@@ -98,6 +113,7 @@ int cmd_fmmap1(int argc, char **argv)
                                        // in a new page. Requires a separate
                                        // test.
 
+   printf("- Close the file descriptor and re-open the file\n");
    close(fd);
 
    rc = stat(test_file, &statbuf);
@@ -107,6 +123,7 @@ int cmd_fmmap1(int argc, char **argv)
    fd = open(test_file, O_RDONLY, 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
 
+   printf("- Check file's contents\n");
    rc = read(fd, buf, file_size);
    DEVSHELL_CMD_ASSERT(rc == file_size);
    buf[rc] = 0;
@@ -118,7 +135,7 @@ int cmd_fmmap1(int argc, char **argv)
       DEVSHELL_CMD_ASSERT(false);
    }
 
-   /* Now, let's mmap the file again and check the past-EOF contents */
+   printf("- Re-map and check past-EOF contents\n");
 
    vaddr = mmap(NULL,                   /* addr */
                 2 * page_size,          /* length */
@@ -140,16 +157,19 @@ int cmd_fmmap1(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(vaddr[file_size +  0] == '?');
    DEVSHELL_CMD_ASSERT(vaddr[file_size + 10] == 'x');
 
+   printf("DONE\n");
    close(fd);
    rc = unlink(test_file);
    DEVSHELL_CMD_ASSERT(rc == 0);
    return 0;
 
 err_case:
-   fprintf(stderr, "mmap failed: %s\n", strerror(errno));
+
+   if (vaddr == (void *)-1)
+      fprintf(stderr, "mmap failed: %s\n", strerror(errno));
+
    close(fd);
    unlink(test_file);
-   DEVSHELL_CMD_ASSERT(vaddr != (void *)-1);
    return 1;
 }
 
