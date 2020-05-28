@@ -71,6 +71,11 @@ configure_file(
    ${CMAKE_BINARY_DIR}/config_fatpart
 )
 
+configure_file(
+   ${CMAKE_SOURCE_DIR}/other/gdb/tilck_unstripped-gdb.py
+   ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
+)
+
 # Run qemu scripts
 
 list(

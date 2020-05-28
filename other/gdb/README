@@ -1,0 +1,19 @@
+In order to allow Tilck's gdb script to work, add the following line in your
+gdbinit file (typically ~/.gdbinit):
+
+   add-auto-load-safe-path <ABSOLUTE-PATH-OF-TILCK-BUILD-DIRECTORY>
+
+This is required because GDB's security protection. Without it, you'll see
+GDB complaining like:
+
+Reading symbols from ./build/tilck_unstripped...
+warning: File "/home/vlad/dev/tilck/build/tilck_unstripped-gdb.py" auto-loading has been declined by your `auto-load safe-path' set to "$debugdir:$datadir/auto-load".
+To enable execution of this file add
+	add-auto-load-safe-path /home/vlad/dev/tilck/build/tilck_unstripped-gdb.py
+line to your configuration file "/home/vlad/.gdbinit".
+To completely disable this security protection add
+	set auto-load safe-path /
+line to your configuration file "/home/vlad/.gdbinit".
+For more information about this security protection see the
+"Auto-loading safe path" section in the GDB manual.  E.g., run from the shell:
+	info "(gdb)Auto-loading safe path"
