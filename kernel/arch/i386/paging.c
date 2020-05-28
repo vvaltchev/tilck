@@ -99,22 +99,22 @@ bool handle_potential_cow(void *context)
 
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
-   page_table_t *pt = pdir_get_page_table(get_curr_pdir(), page_dir_index);
+   page_table_t *pt = pdir_get_page_table(get_curr_pdir(), pd_index);
 
-   if (!(pt->pages[page_table_index].avail & PAGE_COW_ORIG_RW))
+   if (!(pt->pages[pt_index].avail & PAGE_COW_ORIG_RW))
       return false; /* Not a COW page */
 
    const u32 orig_page_paddr = (u32)
-      pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
+      pt->pages[pt_index].pageAddr << PAGE_SHIFT;
 
    if (pf_ref_count_get(orig_page_paddr) == 1) {
 
       /* This page is not shared anymore. No need for copying it. */
-      pt->pages[page_table_index].rw = true;
-      pt->pages[page_table_index].avail = 0;
+      pt->pages[pt_index].rw = true;
+      pt->pages[pt_index].avail = 0;
       invalidate_page_hw(vaddr);
       return true;
    }
@@ -139,9 +139,9 @@ bool handle_potential_cow(void *context)
    ASSERT(pf_ref_count_get(paddr) == 0);
    pf_ref_count_inc(paddr);
 
-   pt->pages[page_table_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
-   pt->pages[page_table_index].rw = true;
-   pt->pages[page_table_index].avail = 0;
+   pt->pages[pt_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
+   pt->pages[pt_index].rw = true;
+   pt->pages[pt_index].avail = 0;
 
    invalidate_page_hw(vaddr);
 
@@ -237,10 +237,10 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
 {
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+   page_dir_entry_t *e = &pdir->entries[pd_index];
 
    if (!e->present)
       return false;
@@ -248,20 +248,20 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
    if (e->psize) /* 4-MB page */
       return e->present;
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
-   return pt->pages[page_table_index].present;
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   return pt->pages[pt_index].present;
 }
 
 void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
 {
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(pt) != 0);
-   pt->pages[page_table_index].rw = rw;
+   pt->pages[pt_index].rw = rw;
    invalidate_page_hw(vaddr);
 }
 
@@ -270,28 +270,28 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
 {
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
 
    if (permissive) {
 
       if (KERNEL_VA_TO_PA(pt) == 0)
          return -EINVAL;
 
-      if (!pt->pages[page_table_index].present)
+      if (!pt->pages[pt_index].present)
          return -EINVAL;
 
    } else {
       ASSERT(KERNEL_VA_TO_PA(pt) != 0);
-      ASSERT(pt->pages[page_table_index].present);
+      ASSERT(pt->pages[pt_index].present);
    }
 
    const ulong paddr = (ulong)
-      pt->pages[page_table_index].pageAddr << PAGE_SHIFT;
+      pt->pages[pt_index].pageAddr << PAGE_SHIFT;
 
-   pt->pages[page_table_index].raw = 0;
+   pt->pages[pt_index].raw = 0;
    invalidate_page_hw(vaddr);
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
@@ -407,13 +407,13 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
 {
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(IS_PAGE_ALIGNED(pt));
 
    if (UNLIKELY(KERNEL_VA_TO_PA(pt) == 0)) {
@@ -426,17 +426,17 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
 
       ASSERT(IS_PAGE_ALIGNED(pt));
 
-      pdir->entries[page_dir_index].raw =
+      pdir->entries[pd_index].raw =
          PG_PRESENT_BIT |
          PG_RW_BIT |
          (flags & PG_US_BIT) |
          KERNEL_VA_TO_PA(pt);
    }
 
-   if (pt->pages[page_table_index].present)
+   if (pt->pages[pt_index].present)
       return -EADDRINUSE;
 
-   pt->pages[page_table_index].raw = PG_PRESENT_BIT | flags | paddr;
+   pt->pages[pt_index].raw = PG_PRESENT_BIT | flags | paddr;
    pf_ref_count_inc(paddr);
    invalidate_page_hw(vaddr);
    return 0;
@@ -773,34 +773,34 @@ void map_4mb_page_int(pdir_t *pdir,
                       u32 flags)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & (4*MB - 1))); // the vaddr must be 4MB-aligned
    ASSERT(!(paddr & (4*MB - 1))); // the paddr must be 4MB-aligned
 
    // Check that the entry has not been used.
-   ASSERT(!pdir->entries[page_dir_index].present);
+   ASSERT(!pdir->entries[pd_index].present);
 
    // Check that there is no page table associated with this entry.
-   ASSERT(!pdir->entries[page_dir_index].ptaddr);
+   ASSERT(!pdir->entries[pd_index].ptaddr);
 
-   pdir->entries[page_dir_index].raw = flags | paddr;
+   pdir->entries[pd_index].raw = flags | paddr;
 }
 
 static inline bool in_big_4mb_page(pdir_t *pdir, void *vaddrp)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+   page_dir_entry_t *e = &pdir->entries[pd_index];
    return e->present && e->psize;
 }
 
 static void set_big_4mb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
-   page_dir_entry_t *e = &pdir->entries[page_dir_index];
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
+   page_dir_entry_t *e = &pdir->entries[pd_index];
 
    // 111 => entry[7] in the PAT MSR. See init_pat()
    e->big_4mb_page.pat = 1;
@@ -814,19 +814,19 @@ static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 {
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(IS_PAGE_ALIGNED(pt));
    ASSERT(pt != NULL);
 
    // 111 => entry[7] in the PAT MSR. See init_pat()
-   pt->pages[page_table_index].pat = 1;
-   pt->pages[page_table_index].cd = 1;
-   pt->pages[page_table_index].wt = 1;
+   pt->pages[pt_index].pat = 1;
+   pt->pages[pt_index].cd = 1;
+   pt->pages[pt_index].wt = 1;
 
    invalidate_page_hw(vaddr);
 }
