@@ -109,9 +109,9 @@ int cmd_fmmap1(int argc, char **argv)
    vaddr[file_size + 10] = 'x';        // gets ignored as past of EOF
    vaddr[file_size + 11] = '\n';       // gets ignored as past of EOF
 
-   // vaddr[page_size] = 'y';          // triggers SIGBUS as past of EOF and
-                                       // in a new page. Requires a separate
-                                       // test.
+   printf("- Check that read mapped area past EOF triggers SIGBUS\n");
+   if (test_sig(do_mm_read, vaddr + page_size, SIGBUS, 0))
+      goto err_case;
 
    printf("- Close the file descriptor and re-open the file\n");
    close(fd);
