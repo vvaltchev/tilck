@@ -100,7 +100,7 @@ bool handle_potential_cow(void *context)
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
 
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
    void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
    page_table_t *pt = pdir_get_page_table(get_curr_pdir(), page_dir_index);
 
@@ -238,7 +238,7 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    page_dir_entry_t *e = &pdir->entries[page_dir_index];
 
@@ -257,7 +257,7 @@ void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
    ASSERT(KERNEL_VA_TO_PA(pt) != 0);
@@ -271,7 +271,7 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    pt = KERNEL_PA_TO_VA(pdir->entries[page_dir_index].ptaddr << PAGE_SHIFT);
 
@@ -351,7 +351,7 @@ ulong get_mapping(pdir_t *pdir, void *vaddrp)
    page_table_t *pt;
    const ulong vaddr = (ulong)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   const u32 pd_index = (vaddr >> 22) & 0x3FF;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT) & 0x3FF;
    page_dir_entry_t e;
    page_t p;
 
@@ -377,7 +377,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
    page_table_t *pt;
    const ulong vaddr = (ulong)vaddrp;
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 0x3FF;
-   const u32 pd_index = (vaddr >> 22) & 0x3FF;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT) & 0x3FF;
    page_dir_entry_t e;
    page_t p;
 
@@ -408,7 +408,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
@@ -593,7 +593,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
    memcpy32(new_pdir, pdir, sizeof(pdir_t) / 4);
 
-   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
 
       /* User-space cannot use 4-MB pages */
       ASSERT(!pdir->entries[i].psize);
@@ -618,7 +618,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
       new_pdir->entries[i].ptaddr=SHR_BITS(KERNEL_VA_TO_PA(pt),PAGE_SHIFT,u32);
    }
 
-   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
 
       if (!pdir->entries[i].present)
          continue;
@@ -669,7 +669,7 @@ pdir_deep_clone(pdir_t *pdir)
 
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
 
-   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
 
       new_pdir->entries[i].raw = pdir->entries[i].raw;
 
@@ -718,7 +718,7 @@ pdir_deep_clone(pdir_t *pdir)
          SHR_BITS(KERNEL_VA_TO_PA(new_pt), PAGE_SHIFT, u32);
    }
 
-   for (u32 i = (KERNEL_BASE_VA >> 22); i < 1024; i++) {
+   for (u32 i = KERNEL_BASE_PD_IDX; i < 1024; i++) {
       new_pdir->entries[i].raw = pdir->entries[i].raw;
    }
 
@@ -740,7 +740,7 @@ void pdir_destroy(pdir_t *pdir)
    // Kernel's pdir cannot be destroyed!
    ASSERT(pdir != __kernel_pdir);
 
-   for (u32 i = 0; i < (KERNEL_BASE_VA >> 22); i++) {
+   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
 
       if (!pdir->entries[i].present)
          continue;
@@ -773,7 +773,7 @@ void map_4mb_page_int(pdir_t *pdir,
                       u32 flags)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & (4*MB - 1))); // the vaddr must be 4MB-aligned
    ASSERT(!(paddr & (4*MB - 1))); // the paddr must be 4MB-aligned
@@ -790,7 +790,7 @@ void map_4mb_page_int(pdir_t *pdir,
 static inline bool in_big_4mb_page(pdir_t *pdir, void *vaddrp)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    page_dir_entry_t *e = &pdir->entries[page_dir_index];
    return e->present && e->psize;
@@ -799,7 +799,7 @@ static inline bool in_big_4mb_page(pdir_t *pdir, void *vaddrp)
 static void set_big_4mb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 {
    const u32 vaddr = (u32) vaddrp;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
    page_dir_entry_t *e = &pdir->entries[page_dir_index];
 
    // 111 => entry[7] in the PAT MSR. See init_pat()
@@ -815,7 +815,7 @@ static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
    const u32 page_table_index = (vaddr >> PAGE_SHIFT) & 1023;
-   const u32 page_dir_index = (vaddr >> (PAGE_SHIFT + 10));
+   const u32 page_dir_index = (vaddr >> BIG_PAGE_SHIFT);
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
 
@@ -864,7 +864,7 @@ static void init_hi_vmem_heap(void)
    size_t metadata_size;
    size_t min_block_size = 4 * PAGE_SIZE;
    ulong hi_vmem_start;
-   u32 hi_vmem_end_pdir_index;
+   u32 hi_vmem_end_pdir_idx;
    void *metadata;
    bool success;
 
@@ -886,7 +886,7 @@ static void init_hi_vmem_heap(void)
       panic("No enough memory for hi vmem heap's metadata");
 
    hi_vmem_start = LINEAR_MAPPING_END;
-   hi_vmem_end_pdir_index = (hi_vmem_start >> 22) + (hi_vmem_size >> 22);
+   hi_vmem_end_pdir_idx = (hi_vmem_start + hi_vmem_size) >> BIG_PAGE_SHIFT;
 
    success =
       kmalloc_create_heap(hi_vmem_heap,
@@ -902,7 +902,8 @@ static void init_hi_vmem_heap(void)
    if (!success)
       panic("Failed to create the hi vmem heap");
 
-   for (u32 i = hi_vmem_start >> 22; i < hi_vmem_end_pdir_index; i++) {
+   for (u32 i = hi_vmem_start >> BIG_PAGE_SHIFT; i < hi_vmem_end_pdir_idx; i++)
+   {
 
       page_table_t *pt;
       page_dir_entry_t *e = &__kernel_pdir->entries[i];
@@ -910,7 +911,7 @@ static void init_hi_vmem_heap(void)
       ASSERT(!e->present);
 
       if (!(pt = kzmalloc(sizeof(page_table_t))))
-         panic("Unable to alloc ptable for hi_vmem at %p", i << 22);
+         panic("Unable to alloc ptable for hi_vmem at %p", i << BIG_PAGE_SHIFT);
 
       ASSERT(IS_PAGE_ALIGNED(pt));
       e->raw = PG_PRESENT_BIT | PG_RW_BIT | PG_US_BIT | KERNEL_VA_TO_PA(pt);
