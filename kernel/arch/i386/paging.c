@@ -56,7 +56,7 @@ static ALWAYS_INLINE u32 __pf_ref_count_dec(u32 paddr)
 
 static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 {
-   if (paddr >= phys_mem_lim)
+   if (UNLIKELY(paddr >= phys_mem_lim))
       return 0;
 
    return __pf_ref_count_inc(paddr);
@@ -64,7 +64,7 @@ static ALWAYS_INLINE u32 pf_ref_count_inc(u32 paddr)
 
 static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
 {
-   if (paddr >= phys_mem_lim)
+   if (UNLIKELY(paddr >= phys_mem_lim))
       return 0;
 
    return __pf_ref_count_dec(paddr);
@@ -72,7 +72,7 @@ static ALWAYS_INLINE u32 pf_ref_count_dec(u32 paddr)
 
 static ALWAYS_INLINE u32 pf_ref_count_get(u32 paddr)
 {
-   if (paddr >= phys_mem_lim)
+   if (UNLIKELY(paddr >= phys_mem_lim))
       return 0;
 
    return pageframes_refcount[paddr >> PAGE_SHIFT];
@@ -421,7 +421,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
       // we have to create a page table for mapping 'vaddr'.
       pt = kzmalloc(sizeof(page_table_t));
 
-      if (!pt)
+      if (UNLIKELY(!pt))
          return -ENOMEM;
 
       ASSERT(IS_PAGE_ALIGNED(pt));
@@ -468,7 +468,7 @@ map_pages_int(pdir_t *pdir,
 
          rc = map_page_int(pdir, vaddr, paddr, flags);
 
-         if (rc < 0)
+         if (UNLIKELY(rc < 0))
             goto out;
 
          vaddr += PAGE_SIZE;
@@ -492,7 +492,7 @@ map_pages_int(pdir_t *pdir,
 
       rc = map_page_int(pdir, vaddr, paddr, flags);
 
-      if (rc < 0)
+      if (UNLIKELY(rc < 0))
          goto out;
 
       vaddr += PAGE_SIZE;
@@ -603,7 +603,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
 
       page_table_t *pt = kmalloc(sizeof(page_table_t));
 
-      if (!pt) {
+      if (UNLIKELY(!pt)) {
 
          for (; i > 0; i--) {
             if (pdir->entries[i - 1].present)
@@ -664,7 +664,7 @@ pdir_deep_clone(pdir_t *pdir)
 
    pdir_t *new_pdir = kmalloc_accelerator_get_elem(&acc);
 
-   if (!new_pdir)
+   if (UNLIKELY(!new_pdir))
       goto oom_exit;
 
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
@@ -682,7 +682,7 @@ pdir_deep_clone(pdir_t *pdir)
       page_table_t *orig_pt = pdir_get_page_table(pdir, i);
       page_table_t *new_pt = kmalloc_accelerator_get_elem(&acc);
 
-      if (!new_pt)
+      if (UNLIKELY(!new_pt))
          goto oom_exit;
 
       ASSERT(IS_PAGE_ALIGNED(new_pt));
