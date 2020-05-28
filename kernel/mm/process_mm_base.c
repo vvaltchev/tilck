@@ -157,12 +157,23 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
       if (!(um2 = kmalloc(sizeof(struct user_mapping))))
          goto oom_case;
 
+      /* First just copy the mapping info */
       *um2 = *um;
+
+      /* Re-assign the process pointer */
+      um2->pi = new_pi;
+
+      /* Re-init the new nodes */
       list_node_init(&um2->pi_node);
       list_node_init(&um2->inode_node);
 
+      /* Add the pi_node to new process's mappings list */
       list_add_tail(&new_mi->mappings, &um2->pi_node);
 
+      /*
+       * If the inode_node belongs to a list (mappings per inode)
+       * add the new mapping's inode_node to the same list.
+       */
       if (list_is_node_in_list(&um->inode_node))
          list_add_after(&um->inode_node, &um2->inode_node);
    }
