@@ -41,6 +41,7 @@ const char *months3[12] =
    "Dec",
 };
 
+u32 clock_full_resync_count;
 static s64 boot_timestamp;
 static bool in_full_resync;
 
@@ -87,12 +88,7 @@ static int clock_get_second_drift2(bool enable_preempt_on_exit)
        * only sense to measure the drift in the middle of the second.
        */
       if (IN_RANGE(under_sec, TS_SCALE/4, TS_SCALE/4*3)) {
-
          sys_ts = boot_timestamp + (s64)(ts / TS_SCALE);
-
-         if (enable_preempt_on_exit)
-            enable_preemption();
-
          break;
       }
 
@@ -100,6 +96,10 @@ static int clock_get_second_drift2(bool enable_preempt_on_exit)
       enable_preemption();
       kernel_sleep(TIMER_HZ / 10);
    }
+
+   /* NOTE: here we always have the preemption disabled */
+   if (enable_preempt_on_exit)
+      enable_preemption();
 
    hw_ts = datetime_to_timestamp(d);
    return (int)(sys_ts - hw_ts);
@@ -203,7 +203,7 @@ full_resync:
    }
 
    /*
-    * Now that we waiting until the seconds changed, we have to very quickly
+    * Now that we waited until the seconds changed, we have to very quickly
     * calculate our initial drift (offset) and set __tick_adj_val and
     * __tick_adj_ticks_rem accordingly to compensate it.
     */
@@ -223,10 +223,11 @@ full_resync:
       }
    }
    enable_interrupts(&var);
+   clock_full_resync_count++;
 
    /*
     * We know that we need at most 10 seconds to compensate 1 second of drift,
-    * which is the max we can get at boot-time. Now, just to be sure, wait 20s
+    * which is the max we can get at boot-time. Now, just to be sure, wait 15s
     * and then check we have absolutely no drift measurable in seconds.
     */
    enable_preemption();
@@ -237,6 +238,8 @@ full_resync:
 
       if (++full_resync_failed_attempts > FULL_RESYNC_MAX_ATTEMPTS)
          panic("Time-management: drift(%d) must be zero after sync", drift);
+
+      goto full_resync;
    }
 
    /*
@@ -263,13 +266,15 @@ full_resync:
              * "long run" but it's expected very slowly to accumulate with
              * time some sub-second drift that cannot be measured directly,
              * because of HW clock's 1s resolution. We'll inevitably end up
-             * introducing some error while compensating the "apprently" 1s
+             * introducing some error while compensating the apparent 1 sec
              * drift (which, in reality was 1.01s, for example).
              *
              * To compensate even this 2nd-order problem, it's worth from time
              * to time to do a full-resync. This should happen less then once
              * every 24 h, depending on how precise the PIT is.
              */
+
+            enable_preemption(); /* note the clock_get_second_drift2() call */
             goto full_resync;
          }
 
