@@ -72,7 +72,7 @@ configure_file(
 )
 
 configure_file(
-   ${CMAKE_SOURCE_DIR}/other/gdb/tilck_unstripped-gdb.py
+   ${CMAKE_SOURCE_DIR}/other/tilck_unstripped-gdb.py
    ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
 )
 

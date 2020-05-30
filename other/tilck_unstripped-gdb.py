@@ -1,90 +1,17 @@
 # SPDX-License-Identifier: BSD-2-Clause
+# pylint: disable=unused-wildcard-import
 
-import gdb
+import gdb # pylint: disable=import-error
+import sys
 import re
 
-type_task = gdb.lookup_type("struct task")
-type_task_p = type_task.pointer()
+# Constants coming from CMake (this file gets pre-processed by CMake)
+OTHER_DIR = "@CMAKE_SOURCE_DIR@/other"
+# ---
 
-type_process = gdb.lookup_type("struct process")
-type_process_p = type_process.pointer()
-
-list_node = gdb.lookup_type("struct list_node")
-list_node_p = list_node.pointer()
-
-def offset_of(type_name, field):
-   return int(
-      gdb.parse_and_eval(
-         "((unsigned long)(&(({} *) 0)->{}))".format(type_name, field)
-      )
-   )
-
-def container_of(elem_ptr, type_name, mem_name):
-   off = offset_of(type_name, mem_name)
-   expr = "(({} *)(((char *)0x{:08x}) - {}))".format(type_name, elem_ptr, off)
-   return gdb.parse_and_eval(expr)
-
-def get_all_tasks():
-
-   tasks = []
-   root = gdb.lookup_symbol("tree_by_tid_root")[0]
-
-   def walk(tasks_list, task):
-
-      if int(task) == 0:
-         return
-
-      tasks_list.append(task)
-
-      left = task['tree_by_tid_node']['left_obj'].cast(type_task_p)
-      right = task['tree_by_tid_node']['right_obj'].cast(type_task_p)
-
-      walk(tasks_list, left)
-      walk(tasks_list, right)
-
-   walk(tasks, root.value())
-   tasks = sorted(tasks, key = lambda t: int(t['tid']))
-   return tasks
-
-def get_children_list(proc):
-
-   children_list = proc['children'].address
-   curr = children_list.cast(list_node_p)['next']
-   res = []
-
-   while int(curr) != int(children_list):
-
-      obj = container_of(int(curr), "struct task", "siblings_node")
-      res.append(obj)
-      curr = curr['next']
-
-   return res
-
-def get_task(tid):
-
-   tasks = get_all_tasks()
-
-   for t in tasks:
-
-      task_tid = int(t['tid'])
-
-      if task_tid == tid:
-         return t
-
-   return None
-
-def get_proc(pid):
-
-   tasks = get_all_tasks()
-
-   for t in tasks:
-
-      pi = t['pi']
-
-      if pi['pid'] == pid:
-         return pi
-
-   return None
+sys.path.append(OTHER_DIR)
+from gdb_scripts.base_utils import *
+from gdb_scripts.tasks import *
 
 class cmd_list_tasks(gdb.Command):
 
