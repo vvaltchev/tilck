@@ -2,8 +2,8 @@
 # pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
-from .base_utils import *
-from .tasks import *
+from . import base_utils as bu
+from . import tasks
 
 class printer_struct_process:
 
@@ -13,7 +13,7 @@ class printer_struct_process:
    def to_string(self):
 
       val = self.val
-      children_tasks = get_children_list(val)
+      children_tasks = tasks.get_children_list(val)
 
       # Note: it doesn't make sense to take t['pi']['pid'] because children
       # tasks are process' main threads, having always tid == pid.
@@ -51,4 +51,4 @@ class printer_struct_process:
          val['str_cwd'].string(),
       )
 
-register_tilck_regex_pp('process', '^process$', printer_struct_process)
+bu.register_tilck_regex_pp('process', '^process$', printer_struct_process)

@@ -2,7 +2,7 @@
 # pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
-from .base_utils import *
+from . import base_utils as bu
 
 def get_all_tasks():
 
@@ -16,8 +16,8 @@ def get_all_tasks():
 
       tasks_list.append(task)
 
-      left = task['tree_by_tid_node']['left_obj'].cast(type_task_p)
-      right = task['tree_by_tid_node']['right_obj'].cast(type_task_p)
+      left = task['tree_by_tid_node']['left_obj'].cast(bu.type_task_p)
+      right = task['tree_by_tid_node']['right_obj'].cast(bu.type_task_p)
 
       walk(tasks_list, left)
       walk(tasks_list, right)
@@ -29,12 +29,12 @@ def get_all_tasks():
 def get_children_list(proc):
 
    children_list = proc['children'].address
-   curr = children_list.cast(list_node_p)['next']
+   curr = children_list.cast(bu.list_node_p)['next']
    res = []
 
    while int(curr) != int(children_list):
 
-      obj = container_of(int(curr), "struct task", "siblings_node")
+      obj = bu.container_of(int(curr), "struct task", "siblings_node")
       res.append(obj)
       curr = curr['next']
 

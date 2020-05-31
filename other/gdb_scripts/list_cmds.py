@@ -2,8 +2,8 @@
 # pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
-from .base_utils import *
-from .tasks import *
+from . import base_utils as bu
+from . import tasks
 
 class cmd_list_tasks(gdb.Command):
 
@@ -12,10 +12,10 @@ class cmd_list_tasks(gdb.Command):
 
    def invoke(self, arg, from_tty):
 
-      tasks = get_all_tasks()
+      tasks_list = tasks.get_all_tasks()
       print("")
 
-      for t in tasks:
+      for t in tasks_list:
          pi = t['pi']
          tid = str(t['tid'])
          pid = str(pi['pid'])
@@ -41,10 +41,10 @@ class cmd_list_procs(gdb.Command):
 
    def invoke(self, arg, from_tty):
 
-      tasks = get_all_tasks()
+      tasks_list = tasks.get_all_tasks()
       print("")
 
-      for t in tasks:
+      for t in tasks_list:
 
          pi = t['pi']
          pid = str(pi['pid'])
@@ -65,5 +65,5 @@ class cmd_list_procs(gdb.Command):
          )
 
 # -------------------------------------------------
-register_new_custom_gdb_cmd(cmd_list_tasks)
-register_new_custom_gdb_cmd(cmd_list_procs)
+bu.register_new_custom_gdb_cmd(cmd_list_tasks)
+bu.register_new_custom_gdb_cmd(cmd_list_procs)

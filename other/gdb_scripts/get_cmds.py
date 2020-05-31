@@ -2,8 +2,8 @@
 # pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
-from .base_utils import *
-from .tasks import *
+from . import base_utils as bu
+from . import tasks
 
 class cmd_get_task(gdb.Command):
 
@@ -22,7 +22,7 @@ class cmd_get_task(gdb.Command):
          print("Usage: get-task <tid>")
          return
 
-      task = get_task(tid)
+      task = tasks.get_task(tid)
 
       if not task:
          print("No such task")
@@ -47,7 +47,7 @@ class cmd_get_proc(gdb.Command):
          print("Usage: get-proc <pid>")
          return
 
-      proc = get_proc(pid)
+      proc = tasks.get_proc(pid)
 
       if not proc:
          print("No such process")
@@ -57,5 +57,5 @@ class cmd_get_proc(gdb.Command):
 
 
 # ------------------------------------------------------
-register_new_custom_gdb_cmd(cmd_get_task)
-register_new_custom_gdb_cmd(cmd_get_proc)
+bu.register_new_custom_gdb_cmd(cmd_get_task)
+bu.register_new_custom_gdb_cmd(cmd_get_proc)
