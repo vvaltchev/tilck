@@ -66,3 +66,17 @@ def get_proc(pid):
          return pi
 
    return None
+
+def get_handles(proc):
+
+   handles_list = []
+   handles = proc['handles']
+
+   for i in range(bu.config.MAX_HANDLES):
+
+      h = handles[i]
+
+      if int(h) != 0:
+         handles_list.append(i)
+
+   return handles_list

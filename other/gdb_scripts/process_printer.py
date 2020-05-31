@@ -12,13 +12,17 @@ class printer_struct_process:
 
    def to_string(self):
 
-      val = self.val
-      children_tasks = tasks.get_children_list(val)
+      proc = self.val
+      children_tasks = tasks.get_children_list(proc)
 
       # Note: it doesn't make sense to take t['pi']['pid'] because children
       # tasks are process' main threads, having always tid == pid.
       children_pids_str = [str(t['tid']) for t in children_tasks]
       children_str = ", ".join(children_pids_str)
+
+      handles_list = tasks.get_handles(proc)
+      handles_list_arr_str = [str(x) for x in handles_list]
+      handles_list_str = ", ".join(handles_list_arr_str)
 
       res = """(struct process *) 0x{:08x} {{
    pid                 = {}
@@ -28,27 +32,30 @@ class printer_struct_process:
    sid                 = {}
    brk                 = {}
    initial_brk         = {}
-   children            = {{ {} }}
+   children            = [ {} ]
    did_call_execve     = {}
    vforked             = {}
    inherited_mmap_heap = {}
    str_cwd             = '{}'
+   handles             = [ {} ]
 }}
 """
 
       return res.format(
-         int(val.address),
-         val['pid'], val['debug_cmdline'].string().rstrip(),
-         val['parent_pid'],
-         val['pgid'],
-         val['sid'],
-         val['brk'],
-         val['initial_brk'],
+         int(proc.address),
+         proc['pid'],
+         proc['debug_cmdline'].string().rstrip(),
+         proc['parent_pid'],
+         proc['pgid'],
+         proc['sid'],
+         proc['brk'],
+         proc['initial_brk'],
          children_str,
-         val['did_call_execve'],
-         val['vforked'],
-         val['inherited_mmap_heap'],
-         val['str_cwd'].string(),
+         proc['did_call_execve'],
+         proc['vforked'],
+         proc['inherited_mmap_heap'],
+         proc['str_cwd'].string(),
+         handles_list_str
       )
 
 bu.register_tilck_regex_pp('process', '^process$', printer_struct_process)
