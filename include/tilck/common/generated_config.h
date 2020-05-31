@@ -33,6 +33,7 @@
 
 #define TIMER_HZ               (@TIMER_HZ@)
 #define TTY_COUNT              (@TTY_COUNT@)
+#define MAX_HANDLES            (@MAX_HANDLES@)
 
 /* enabled by default */
 #cmakedefine01 KRN_TRACK_NESTED_INTERR

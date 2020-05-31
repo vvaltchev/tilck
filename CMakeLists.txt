@@ -95,6 +95,7 @@ set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
 set(TIMER_HZ            100 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
 set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
+set(MAX_HANDLES          16 CACHE STRING "Max handles/process (keep small)")
 
 # Other non-boolean options
 
