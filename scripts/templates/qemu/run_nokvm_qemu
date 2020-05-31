@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
+if [ -z "$GDB_PORT" ]; then
+   GDB_PORT=1234
+fi
+
 BUILD_DIR=@CMAKE_BINARY_DIR@
-qemu-system-i386 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@            \
-   -drive id=img1,format=raw,if=none,file=@IMG_FILE@             \
+qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT @QEMU_RAM_OPT@   \
+   -drive id=img1,format=raw,if=none,file=@IMG_FILE@                     \
    -device ide-hd,drive=img1,cyls=74,heads=16,secs=63 "$@"

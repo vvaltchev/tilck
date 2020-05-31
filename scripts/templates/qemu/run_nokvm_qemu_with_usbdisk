@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ -z "$GDB_PORT" ]; then
+   GDB_PORT=1234
+fi
+
 BUILD_DIR="@CMAKE_BINARY_DIR@"
-qemu-system-i386 @QEMU_COMMON_OPTS@ \
-   -s @QEMU_RAM_OPT@ -usb -usbdevice "disk:format=raw:@IMG_FILE@" "$@"
+qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
+   @QEMU_RAM_OPT@ -usb -usbdevice "disk:format=raw:@IMG_FILE@" "$@"

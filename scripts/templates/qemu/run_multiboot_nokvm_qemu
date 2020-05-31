@@ -3,5 +3,9 @@
 BUILD_DIR="@CMAKE_BINARY_DIR@"
 FATPART="$BUILD_DIR/fatpart"
 
-qemu-system-i386 @QEMU_COMMON_OPTS@ \
-   -s @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" -initrd "$FATPART" "$@"
+if [ -z "$GDB_PORT" ]; then
+   GDB_PORT=1234
+fi
+
+qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
+   @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" -initrd "$FATPART" "$@"

@@ -17,6 +17,10 @@ if ! [ -f $f ]; then
    exit 1
 fi
 
-qemu-system-i386 @QEMU_COMMON_OPTS@ -s @QEMU_RAM_OPT@      \
-   -bios $tc/i386/ovmf/OVMF-pure-efi.fd                    \
+if [ -z "$GDB_PORT" ]; then
+   GDB_PORT=1234
+fi
+
+qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT @QEMU_RAM_OPT@       \
+   -bios $tc/i386/ovmf/OVMF-pure-efi.fd                                      \
    -drive index=0,media=disk,format=raw,file=$f "$@"
