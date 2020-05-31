@@ -2,6 +2,9 @@
 # pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
+from collections import namedtuple
+
+BuildConfig = namedtuple("BuildConfig", ["CMAKE_SOURCE_DIR", "MAX_HANDLES"])
 
 type_task = gdb.lookup_type("struct task")
 type_task_p = type_task.pointer()
@@ -14,6 +17,14 @@ list_node_p = list_node.pointer()
 
 gdb_custom_cmds = []
 regex_pretty_printers = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
+
+config = None
+
+def set_build_config(obj):
+   global config
+   assert(config is None)
+   assert(isinstance(obj, BuildConfig))
+   config = obj
 
 def register_new_custom_gdb_cmd(cmd_class):
    gdb_custom_cmds.append(cmd_class)

@@ -5,12 +5,20 @@ import gdb # pylint: disable=import-error
 import sys
 import re
 
-# Constants coming from CMake (this file gets pre-processed by CMake)
-OTHER_DIR = "@CMAKE_SOURCE_DIR@/other"
-# ---
-
-sys.path.append(OTHER_DIR)
+# Add Tilck's "other/" directory to our import path and import base_utils
+sys.path.append("@CMAKE_SOURCE_DIR@/other")
 import gdb_scripts.base_utils as bu
+
+# Set the build config as early as possible using the constants coming from
+# CMake (this file gets pre-processed by CMake)
+bu.set_build_config(
+   bu.BuildConfig(
+      "@CMAKE_SOURCE_DIR@",
+      int("@MAX_HANDLES@")
+   )
+)
+
+# Import the rest of our gdb_scripts
 import gdb_scripts.list_cmds
 import gdb_scripts.get_cmds
 import gdb_scripts.process_printer
