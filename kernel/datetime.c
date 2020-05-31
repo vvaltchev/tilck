@@ -41,9 +41,9 @@ const char *months3[12] =
    "Dec",
 };
 
-u32 clock_full_resync_count;
 static s64 boot_timestamp;
 static bool in_full_resync;
+static struct clock_resync_stats clock_rstats;
 
 // Regular value
 u32 clock_drift_adj_loop_delay = 600 * TIMER_HZ;
@@ -59,6 +59,11 @@ extern int __tick_adj_ticks_rem;
 bool clock_in_full_resync(void)
 {
    return in_full_resync;
+}
+
+void clock_get_resync_stats(struct clock_resync_stats *s)
+{
+   *s = clock_rstats;
 }
 
 static int clock_get_second_drift2(bool enable_preempt_on_exit)
@@ -223,7 +228,7 @@ full_resync:
       }
    }
    enable_interrupts(&var);
-   clock_full_resync_count++;
+   clock_rstats.full_resync_count++;
 
    /*
     * We know that we need at most 10 seconds to compensate 1 second of drift,

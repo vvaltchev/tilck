@@ -14,6 +14,12 @@
 extern const char *weekdays[7];
 extern const char *months3[12];
 
+struct clock_resync_stats {
+
+   u32 full_resync_count;
+
+};
+
 static inline bool is_leap_year(u32 year)
 {
    return (!(year % 4) && (year % 100)) || !(year % 400);
@@ -26,6 +32,7 @@ int clock_get_second_drift(void);
 bool clock_in_full_resync(void);
 void real_time_get_timespec(struct k_timespec64 *tp);
 void monotonic_time_get_timespec(struct k_timespec64 *tp);
+void clock_get_resync_stats(struct clock_resync_stats *s);
 
 static ALWAYS_INLINE struct timespec
 to_timespec(struct k_timespec64 tp)
