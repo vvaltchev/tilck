@@ -17,7 +17,8 @@ extern const char *months3[12];
 struct clock_resync_stats {
 
    u32 full_resync_count;
-
+   u32 full_resync_fail_count;
+   u32 full_resync_success_count;
 };
 
 static inline bool is_leap_year(u32 year)

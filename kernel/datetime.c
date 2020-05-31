@@ -241,6 +241,8 @@ full_resync:
 
    if (drift) {
 
+      clock_rstats.full_resync_fail_count++;
+
       if (++local_full_resync_fails > FULL_RESYNC_MAX_ATTEMPTS)
          panic("Time-management: drift(%d) must be zero after sync", drift);
 
@@ -252,7 +254,9 @@ full_resync:
     * loop of this thread, which will compensate any clock drifts that might
     * occur as Tilck runs for a long time.
     */
+
    in_full_resync = false;
+   clock_rstats.full_resync_success_count++;
    kernel_sleep(clock_drift_adj_loop_delay);
    adj_cnt = 0;
    local_full_resync_fails = 0;
