@@ -11,7 +11,7 @@ def get_all_tasks():
 
    def walk(tasks_list, task):
 
-      if int(task) == 0:
+      if not task:
          return
 
       tasks_list.append(task)
@@ -73,10 +73,7 @@ def get_handles(proc):
    handles = proc['handles']
 
    for i in range(bu.config.MAX_HANDLES):
-
-      h = handles[i]
-
-      if int(h) != 0:
+      if handles[i]:
          handles_list.append(i)
 
    return handles_list
