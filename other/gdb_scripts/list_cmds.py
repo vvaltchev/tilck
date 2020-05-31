@@ -63,3 +63,7 @@ class cmd_list_procs(gdb.Command):
                pi['debug_cmdline'].string().rstrip()
             )
          )
+
+# -------------------------------------------------
+register_new_custom_gdb_cmd(cmd_list_tasks)
+register_new_custom_gdb_cmd(cmd_list_procs)

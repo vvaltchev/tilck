@@ -12,6 +12,15 @@ type_process_p = type_process.pointer()
 list_node = gdb.lookup_type("struct list_node")
 list_node_p = list_node.pointer()
 
+gdb_custom_cmds = []
+regex_pretty_printers = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
+
+def register_new_custom_gdb_cmd(cmd_class):
+   gdb_custom_cmds.append(cmd_class)
+
+def register_tilck_regex_pp(name, regex, class_name):
+   regex_pretty_printers.add_printer(name, regex, class_name)
+
 def offset_of(type_name, field):
    return int(
       gdb.parse_and_eval(

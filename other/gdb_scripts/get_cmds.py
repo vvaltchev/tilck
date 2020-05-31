@@ -54,3 +54,8 @@ class cmd_get_proc(gdb.Command):
          return
 
       gdb.execute("print *(struct process *)0x{:08x}".format(int(proc)))
+
+
+# ------------------------------------------------------
+register_new_custom_gdb_cmd(cmd_get_task)
+register_new_custom_gdb_cmd(cmd_get_proc)

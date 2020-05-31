@@ -50,3 +50,5 @@ class printer_struct_process:
          val['inherited_mmap_heap'],
          val['str_cwd'].string(),
       )
+
+register_tilck_regex_pp('process', '^process$', printer_struct_process)

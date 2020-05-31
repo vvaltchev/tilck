@@ -10,28 +10,17 @@ OTHER_DIR = "@CMAKE_SOURCE_DIR@/other"
 # ---
 
 sys.path.append(OTHER_DIR)
-from gdb_scripts.base_utils import *
-from gdb_scripts.tasks import *
-from gdb_scripts.list_cmds import *
-from gdb_scripts.get_cmds import *
-from gdb_scripts.process_printer import *
+import gdb_scripts.base_utils as bu
+import gdb_scripts.list_cmds
+import gdb_scripts.get_cmds
+import gdb_scripts.process_printer
 
-def build_pretty_printers():
-   pp = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
-   pp.add_printer('process', '^process$', printer_struct_process)
-   return pp
+# Init all the custom GDB commands
+for cmd in bu.gdb_custom_cmds:
+   cmd()
 
-def build_gdb_cmds():
-   cmd_list_tasks()
-   cmd_list_procs()
-   cmd_get_proc()
-   cmd_get_task()
-
-# ------------------ MAIN ------------------
-
-build_gdb_cmds()
-
+# Register all the regex pretty printers
 gdb.printing.register_pretty_printer(
    gdb.current_objfile(),
-   build_pretty_printers()
+   bu.regex_pretty_printers
 )
