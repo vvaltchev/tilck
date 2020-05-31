@@ -115,42 +115,19 @@ int clock_get_second_drift(void)
    return clock_get_second_drift2(true);
 }
 
-void clock_drift_adj()
+static bool clock_sub_second_resync(void)
 {
    struct datetime d;
    s64 hw_ts, ts;
    u64 hw_time_ns;
-   int adj_val, adj_ticks;
-   int drift, abs_drift, adj_cnt;
-   u32 attempts_cnt, local_full_resync_fails;
+   int drift, abs_drift;
+   u32 micro_attempts_cnt;
+   u32 local_full_resync_fails = 0;
    ulong var;
 
-   /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
-   kernel_sleep(TIMER_HZ);
-   abs_drift = 0;
-   local_full_resync_fails = 0;
-
-   /*
-    * When Tilck starts, in init_system_time() we register system clock's time.
-    * But that time has a resolution of one second. After that, we keep the
-    * time using PIT's interrupts and here below we compensate any drifts.
-    *
-    * The problem is that, since init_system_time() it's super easy for us to
-    * hit a clock drift because `boot_timestamp` is in seconds. For example, we
-    * had no way to know that we were in second 23.99: we'll see just second 23
-    * and start counting from there. We inevitably start with a drift < 1 sec.
-    *
-    * Now, we could in theory avoid that by looping in init_system_time() until
-    * time changes, but that would mean wasting up to 1 sec of boot time. That's
-    * completely unacceptable. What we can do instead, is to boot and start
-    * working knowing that we have a clock drift < 1 sec and then, in this
-    * kernel thread do the loop, waiting for the time to change and calculating
-    * this way, the initial clock drift.
-    */
-
-full_resync:
+retry:
    in_full_resync = true;
-   attempts_cnt = 0;
+   micro_attempts_cnt = 0;
    disable_preemption();
    hw_read_clock(&d);
    hw_ts = datetime_to_timestamp(d);
@@ -159,7 +136,7 @@ full_resync:
 
       hw_read_clock(&d);
       ts = datetime_to_timestamp(d);
-      attempts_cnt++;
+      micro_attempts_cnt++;
 
       if (ts != hw_ts) {
 
@@ -177,7 +154,7 @@ full_resync:
        * From time to time we _have to_ allow other tasks to get some job done,
        * not stealing the CPU for a whole full second.
        */
-      if (!(attempts_cnt % 300)) {
+      if (!(micro_attempts_cnt % 300)) {
 
          enable_preemption();
          {
@@ -238,65 +215,144 @@ full_resync:
    enable_preemption();
    kernel_sleep(15 * TIMER_HZ);
    drift = clock_get_second_drift2(true);
+   abs_drift = (drift > 0 ? drift : -drift);
 
-   if (drift) {
+   if (abs_drift > 1) {
+
+      /*
+       * The absolute drift must be <= 1 here.
+       * abs_drift > 1 is VERY UNLIKELY to happen, but everything is possible,
+       * we have to handle it somehow. Just fail silently and let the rest of
+       * the code in clock_drift_adj() compensate for the multi-second drift.
+       */
+
+      in_full_resync = false;
+      clock_rstats.full_resync_fail_count++;
+      clock_rstats.full_resync_abs_drift_gt_1++;
+      return false;
+   }
+
+   if (abs_drift == 1) {
 
       clock_rstats.full_resync_fail_count++;
 
       if (++local_full_resync_fails > FULL_RESYNC_MAX_ATTEMPTS)
-         panic("Time-management: drift(%d) must be zero after sync", drift);
+         panic("Time-management: drift (%d) must be zero after sync", drift);
 
-      goto full_resync;
+      goto retry;
    }
 
-   /*
-    * Everything is alright. Sleep some time and then start the actual infinite
-    * loop of this thread, which will compensate any clock drifts that might
-    * occur as Tilck runs for a long time.
-    */
-
+   /* Default case: abs_drift == 0 */
    in_full_resync = false;
    clock_rstats.full_resync_success_count++;
-   kernel_sleep(clock_drift_adj_loop_delay);
-   adj_cnt = 0;
-   local_full_resync_fails = 0;
+   return true;
+}
+
+static void clock_multi_second_resync(int drift)
+{
+   ulong var;
+
+   const int abs_drift = (drift > 0 ? drift : -drift);
+   const int adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
+   const int adj_ticks = abs_drift * TIMER_HZ * 10;
+
+   disable_interrupts(&var);
+   {
+      __tick_adj_val = adj_val;
+      __tick_adj_ticks_rem = adj_ticks;
+   }
+   enable_interrupts(&var);
+   clock_rstats.multi_second_resync_count++;
+}
+
+void clock_drift_adj()
+{
+   int adj_cnt = 0;
+   bool first_sssync_failed = false; /* first_sub_second_sync_failed */
+
+   /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
+   kernel_sleep(TIMER_HZ);
+
+   /*
+    * When Tilck starts, in init_system_time() we register system clock's time.
+    * But that time has a resolution of one second. After that, we keep the
+    * time using PIT's interrupts and here below we compensate any drifts.
+    *
+    * The problem is that, since init_system_time() it's super easy for us to
+    * hit a clock drift because `boot_timestamp` is in seconds. For example, we
+    * had no way to know that we were in second 23.99: we'll see just second 23
+    * and start counting from there. We inevitably start with a drift < 1 sec.
+    *
+    * Now, we could in theory avoid that by looping in init_system_time() until
+    * time changes, but that would mean wasting up to 1 sec of boot time. That's
+    * completely unacceptable. What we can do instead, is to boot and start
+    * working knowing that we have a clock drift < 1 sec and then, in this
+    * kernel thread do the loop, waiting for the time to change and calculating
+    * this way, the initial clock drift.
+    *
+    * The code doing this job is in the function clock_sub_second_resync().
+    */
+
+   if (clock_sub_second_resync()) {
+
+      /*
+       * Since we got here, everything is alright. There is no more clock drift.
+       * Sleep some time and then start the actual infinite loop of this thread,
+       * which will compensate any clock drifts that might occur as Tilck runs
+       * for a long time.
+       */
+
+      kernel_sleep(clock_drift_adj_loop_delay);
+
+   } else {
+
+      /*
+       * If we got here, clock_sub_second_resync() detected an abs_drift > 1,
+       * which is an extremely unlikely event. Handling: enter the loop as
+       * described in the positive case, just without sleeping first.
+       * The multi-second drift will be detected and clock_multi_second_resync()
+       * will be called to compensate for that. In addition to that, set the
+       * `first_sssync_failed` variable to true forcing another sub-second sync
+       * after the first (multi-second) one. Note: in this case the condition
+       * `abs_drift >= 2` will be immediately hit.
+       */
+
+      first_sssync_failed = true;
+   }
 
    while (true) {
 
       /* NOTE: this disables the preemption */
-      drift = clock_get_second_drift2(false);
+      int drift = clock_get_second_drift2(false);
+      int abs_drift = (drift > 0 ? drift : -drift);
 
-      if (drift) {
+      if (abs_drift >= 2) {
 
-         if (++adj_cnt > 6) {
+         adj_cnt++;
+         clock_multi_second_resync(drift);
 
-            /*
-             * The periodic drift compensation works great even in the
-             * "long run" but it's expected very slowly to accumulate with
-             * time some sub-second drift that cannot be measured directly,
-             * because of HW clock's 1s resolution. We'll inevitably end up
-             * introducing some error while compensating the apparent 1 sec
-             * drift (which, in reality was 1.01s, for example).
-             *
-             * To compensate even this 2nd-order problem, it's worth from time
-             * to time to do a full-resync. This should happen less then once
-             * every 24 h, depending on how precise the PIT is.
-             */
+      } else if ((abs_drift == 1 && adj_cnt > 6) || first_sssync_failed) {
 
-            enable_preemption(); /* note the clock_get_second_drift2() call */
-            goto full_resync;
-         }
+         /*
+          * The periodic drift compensation works great even in the
+          * "long run" but it's expected very slowly to accumulate with
+          * time some sub-second drift that cannot be measured directly,
+          * because of HW clock's 1s resolution. We'll inevitably end up
+          * introducing some error while compensating the apparent 1 sec
+          * drift (which, in reality was 1.01s, for example).
+          *
+          * To compensate even this 2nd-order problem, it's worth from time
+          * to time to do a full-resync. This should happen less then once
+          * every 24 h, depending on how accurate the PIT is.
+          */
 
-         abs_drift = (drift > 0 ? drift : -drift);
-         adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
-         adj_ticks = abs_drift * TIMER_HZ * 10;
-
-         disable_interrupts(&var);
+         enable_preemption(); /* note the clock_get_second_drift2() call */
          {
-            __tick_adj_val = adj_val;
-            __tick_adj_ticks_rem = adj_ticks;
+            clock_sub_second_resync();
+            adj_cnt = 0;
+            first_sssync_failed = false;
          }
-         enable_interrupts(&var);
+         disable_preemption();
       }
 
       enable_preemption();

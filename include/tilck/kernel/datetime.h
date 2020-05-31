@@ -19,6 +19,8 @@ struct clock_resync_stats {
    u32 full_resync_count;
    u32 full_resync_fail_count;
    u32 full_resync_success_count;
+   u32 full_resync_abs_drift_gt_1;
+   u32 multi_second_resync_count;
 };
 
 static inline bool is_leap_year(u32 year)
