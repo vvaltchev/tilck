@@ -268,7 +268,9 @@ static void clock_multi_second_resync(int drift)
 void clock_drift_adj()
 {
    int adj_cnt = 0;
+   int adj_ticks_rem;
    bool first_sssync_failed = false; /* first_sub_second_sync_failed */
+   ulong var;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
@@ -322,9 +324,25 @@ void clock_drift_adj()
 
    while (true) {
 
+      disable_interrupts(&var);
+      {
+         adj_ticks_rem = __tick_adj_ticks_rem;
+      }
+      enable_interrupts(&var);
+
+      if (adj_ticks_rem) {
+
+         /*
+          * It doesn't make any sense to check for the clock drift when a
+          * correction is already ongoing.
+          */
+
+         goto go_back_sleeping;
+      }
+
       /* NOTE: this disables the preemption */
-      int drift = clock_get_second_drift2(false);
-      int abs_drift = (drift > 0 ? drift : -drift);
+      const int drift = clock_get_second_drift2(false);
+      const int abs_drift = (drift > 0 ? drift : -drift);
 
       if (abs_drift >= 2) {
 
@@ -334,17 +352,17 @@ void clock_drift_adj()
       } else if ((abs_drift == 1 && adj_cnt > 6) || first_sssync_failed) {
 
          /*
-          * The periodic drift compensation works great even in the
-          * "long run" but it's expected very slowly to accumulate with
-          * time some sub-second drift that cannot be measured directly,
-          * because of HW clock's 1s resolution. We'll inevitably end up
-          * introducing some error while compensating the apparent 1 sec
-          * drift (which, in reality was 1.01s, for example).
-          *
-          * To compensate even this 2nd-order problem, it's worth from time
-          * to time to do a full-resync. This should happen less then once
-          * every 24 h, depending on how accurate the PIT is.
-          */
+         * The periodic drift compensation works great even in the
+         * "long run" but it's expected very slowly to accumulate with
+         * time some sub-second drift that cannot be measured directly,
+         * because of HW clock's 1s resolution. We'll inevitably end up
+         * introducing some error while compensating the apparent 1 sec
+         * drift (which, in reality was 1.01s, for example).
+         *
+         * To compensate even this 2nd-order problem, it's worth from time
+         * to time to do a full-resync. This should happen less then once
+         * every 24 h, depending on how accurate the PIT is.
+         */
 
          enable_preemption(); /* note the clock_get_second_drift2() call */
          {
@@ -356,6 +374,8 @@ void clock_drift_adj()
       }
 
       enable_preemption();
+
+   go_back_sleeping:
       kernel_sleep(clock_drift_adj_loop_delay);
    }
 }
