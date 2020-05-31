@@ -122,13 +122,13 @@ void clock_drift_adj()
    u64 hw_time_ns;
    int adj_val, adj_ticks;
    int drift, abs_drift, adj_cnt;
-   u32 attempts_cnt, full_resync_failed_attempts;
+   u32 attempts_cnt, local_full_resync_fails;
    ulong var;
 
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
    abs_drift = 0;
-   full_resync_failed_attempts = 0;
+   local_full_resync_fails = 0;
 
    /*
     * When Tilck starts, in init_system_time() we register system clock's time.
@@ -241,7 +241,7 @@ full_resync:
 
    if (drift) {
 
-      if (++full_resync_failed_attempts > FULL_RESYNC_MAX_ATTEMPTS)
+      if (++local_full_resync_fails > FULL_RESYNC_MAX_ATTEMPTS)
          panic("Time-management: drift(%d) must be zero after sync", drift);
 
       goto full_resync;
@@ -255,7 +255,7 @@ full_resync:
    in_full_resync = false;
    kernel_sleep(clock_drift_adj_loop_delay);
    adj_cnt = 0;
-   full_resync_failed_attempts = 0;
+   local_full_resync_fails = 0;
 
    while (true) {
 
