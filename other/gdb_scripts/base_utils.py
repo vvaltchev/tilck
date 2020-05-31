@@ -44,3 +44,19 @@ def container_of(elem_ptr, type_name, mem_name):
    expr = "(({} *)(((char *)0x{:08x}) - {}))".format(type_name, elem_ptr, off)
    return gdb.parse_and_eval(expr)
 
+def select_field_in_list(arr, f, asString = False):
+
+   if asString:
+      return [ str(x[f]) for x in arr ]
+
+   return [ x[f] for x in arr ]
+
+def list_to_str_elems(arr):
+   return [ str(x) for x in arr ]
+
+def joined_str_list_with_field_select(arr, field = None, sep = ", "):
+
+   if not field:
+      return sep.join(list_to_str_elems(arr))
+
+   return sep.join(select_field_in_list(arr, field, True))

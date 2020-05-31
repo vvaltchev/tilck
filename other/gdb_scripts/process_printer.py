@@ -13,16 +13,16 @@ class printer_struct_process:
    def to_string(self):
 
       proc = self.val
-      children_tasks = tasks.get_children_list(proc)
 
       # Note: it doesn't make sense to take t['pi']['pid'] because children
       # tasks are process' main threads, having always tid == pid.
-      children_pids_str = [str(t['tid']) for t in children_tasks]
-      children_str = ", ".join(children_pids_str)
+      children_str = bu.joined_str_list_with_field_select(
+         tasks.get_children_list(proc), "tid"
+      )
 
-      handles_list = tasks.get_handles(proc)
-      handles_list_arr_str = [str(x) for x in handles_list]
-      handles_list_str = ", ".join(handles_list_arr_str)
+      handles_list_str = bu.joined_str_list_with_field_select(
+         tasks.get_handles(proc)
+      )
 
       res = """(struct process *) 0x{:08x} {{
    pid                 = {}
