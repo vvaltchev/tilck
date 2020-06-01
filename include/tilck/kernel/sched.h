@@ -88,7 +88,7 @@ bool asm_kernel_yield(void);
  * This wrapper is useful for adding ASSERTs and getting a backtrace containing
  * the caller's EIP in case of a failure.
  */
-static inline bool kernel_yield(void)
+static ALWAYS_INLINE bool kernel_yield(void)
 {
    ASSERT(is_preemption_enabled());
    return asm_kernel_yield();
