@@ -1,10 +1,14 @@
-In order to allow Tilck's gdb script to work, add the following line in your
-gdbinit file (typically ~/.gdbinit):
+In order to allow Tilck's gdb script to work, add the following twos lines in
+your gdbinit file (typically ~/.gdbinit):
 
+   set print pretty on
    add-auto-load-safe-path <ABSOLUTE-PATH-OF-TILCK-BUILD-DIRECTORY>
 
-This is required because GDB's security protection. Without it, you'll see
-GDB complaining like:
+Without the first line, the pretty printers will display the objects in an ugly
+way, especially because of the padding used to align all the fields.
+
+The second line is required because GDB's security protection. Without it,
+the scripts won't be loaded and you'll see GDB complaining like:
 
 Reading symbols from ./build/tilck_unstripped...
 warning: File "/home/vlad/dev/tilck/build/tilck_unstripped-gdb.py" auto-loading has been declined by your `auto-load safe-path' set to "$debugdir:$datadir/auto-load".

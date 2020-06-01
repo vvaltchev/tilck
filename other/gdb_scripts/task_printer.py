@@ -78,63 +78,44 @@ class printer_struct_task:
    def __init__(self, val):
       self.val = val
 
-   def to_string(self):
+   def children(self):
 
       task = self.val
       pi = task['pi']
       what_str = "n/a"
 
       if pi['pid'] != 0:
-         pi_str = "(struct process *) 0x{:08x}".format(int(pi))
+         pi_str = "(struct process *) {}".format(bu.fixhex32(int(pi)))
       else:
          pi_str = "<kernel_process_pi>"
          what_str = task['what']
 
-      res = """(struct task *) 0x{:08x} {{
-   tid                  = {}
-   pi                   = {}
-   state                = {}
-   what                 = {}
-   is_main_thread       = {}
-   running_in_kernel    = {}
-   stopped              = {}
-   was_stopped          = {}
-   vfork_stopped        = {}
-   traced               = {}
-   kernel_stack         = {}
-   args_copybuf         = {}
-   io_copybuf           = {}
-   wstatus              = {}
-   time_slot_ticks      = {}
-   total_ticks          = {}
-   total_kernel_ticks   = {}
-   ticks_before_wake_up = {}
-   wobj                 = {}
-   state_regs           = {}
-}}"""
-      return res.format(
-         int(task.address),
-         task['tid'],
-         pi_str,
-         task['state'],
-         what_str,
-         task['is_main_thread'],
-         task['running_in_kernel'],
-         task['stopped'],
-         task['was_stopped'],
-         task['vfork_stopped'],
-         task['traced'],
-         task['kernel_stack'],
-         task['args_copybuf'],
-         task['io_copybuf'],
-         task['wstatus'],
-         task['time_slot_ticks'],
-         task['total_ticks'],
-         task['total_kernel_ticks'],
-         task['ticks_before_wake_up'],
-         task['wobj'],
-         task['state_regs'].dereference(),
-      )
+      return [
+         ("tid                 ", task["tid"]),
+         ("pi                  ", pi_str),
+         ("state               ", task["state"]),
+         ("what                ", what_str),
+         ("is_main_thread      ", task["is_main_thread"]),
+         ("running_in_kernel   ", task['running_in_kernel']),
+         ("stopped             ", task['stopped']),
+         ("was_stopped         ", task['was_stopped']),
+         ("vfork_stopped       ", task['vfork_stopped']),
+         ("traced              ", task['traced']),
+         ("kernel_stack        ", task['kernel_stack']),
+         ("args_copybuf        ", task['args_copybuf']),
+         ("io_copybuf          ", task['io_copybuf']),
+         ("wstatus             ", task['wstatus']),
+         ("time_slot_ticks     ", task['time_slot_ticks']),
+         ("total_ticks         ", task['total_ticks']),
+         ("total_kernel_ticks  ", task['total_kernel_ticks']),
+         ("ticks_before_wake_up", task['ticks_before_wake_up']),
+         ("wobj                ", task['wobj']),
+         ("state_regs          ", task['state_regs'].dereference()),
+      ]
+
+   def to_string(self):
+      t = self.val
+      return "(struct task *) {}".format(bu.fixhex32(int(t.address)))
 
 bu.register_tilck_regex_pp(
    'task', '^task$', printer_struct_task
