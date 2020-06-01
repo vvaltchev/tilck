@@ -20,17 +20,15 @@ class cmd_list_tasks(gdb.Command):
          tid = str(t['tid'])
          pid = str(pi['pid'])
 
-         pi_str = "0x{:08x}".format(int(pi)) \
-            if pi['pid'] != 0 else "<kernel_process_pi>"
-
          gdb.execute(
             "print -symbol off -- (struct task *) 0x{:08x}"
                .format(int(t.address))
          )
 
          print(
-            "        {{tid = {:>5}, pid = {:>5}, pi = {}}}\n".format(
-               tid, pid, pi_str
+            "        "
+            "{{tid = {:>5}, pid = {:>5}, state = {}}}\n".format(
+               tid, pid, t['state']
             )
          )
 
