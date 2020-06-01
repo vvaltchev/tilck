@@ -4,7 +4,13 @@
 import gdb # pylint: disable=import-error
 from collections import namedtuple
 
-BuildConfig = namedtuple("BuildConfig", ["CMAKE_SOURCE_DIR", "MAX_HANDLES"])
+BuildConfig = namedtuple(
+   "BuildConfig", [
+      "CMAKE_SOURCE_DIR",
+      "MAX_HANDLES",
+      "KERNEL_BASE_VA"
+   ]
+)
 
 type_task = gdb.lookup_type("struct task")
 type_task_p = type_task.pointer()

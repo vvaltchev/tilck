@@ -23,6 +23,16 @@ class printer_regs:
          "(void *){}".format(r["kernel_resume_eip"])
       )
 
+      eip = r["eip"]
+      eip_str = None
+
+      if eip < bu.config.KERNEL_BASE_VA:
+         eip_str = fixhex32(r["eip"])
+      else:
+         eip_str = gdb.parse_and_eval(
+         "(void *){}".format(eip)
+      )
+
       cs = r["cs"] & 0xffff
       ds = r["ds"] & 0xffff
       ss = r["ss"] & 0xffff
@@ -45,7 +55,7 @@ class printer_regs:
          ("edx         ", fixhex32(r["edx"])),
          ("ecx         ", fixhex32(r["ecx"])),
          ("eax         ", fixhex32(r["eax"])),
-         ("eip         ", fixhex32(r["eip"])),
+         ("eip         ", eip_str),
          ("cs          ", fixhex16(cs)),
          ("eflags      ", fixhex32(r["eflags"])),
          ("useresp     ", fixhex32(r["useresp"])),

@@ -14,7 +14,8 @@ import gdb_scripts.base_utils as bu
 bu.set_build_config(
    bu.BuildConfig(
       "@CMAKE_SOURCE_DIR@",
-      int("@MAX_HANDLES@")
+      int("@MAX_HANDLES@"),
+      int("@KERNEL_BASE_VA@", 16),
    )
 )
 
