@@ -5,9 +5,9 @@ import gdb # pylint: disable=import-error
 from . import base_utils as bu
 from . import tasks
 
-WOBJ_NONE = gdb.parse_and_eval("(int)WOBJ_NONE")
-WOBJ_TASK = gdb.parse_and_eval("(int)WOBJ_TASK")
-WOBJ_MWO_WAITER = gdb.parse_and_eval("(int)WOBJ_MWO_WAITER")
+WOBJ_NONE = gdb.parse_and_eval("WOBJ_NONE")
+WOBJ_TASK = gdb.parse_and_eval("WOBJ_TASK")
+WOBJ_MWO_WAITER = gdb.parse_and_eval("WOBJ_MWO_WAITER")
 
 multi_obj_waiter = gdb.lookup_type("struct multi_obj_waiter")
 multi_obj_waiter_p = multi_obj_waiter.pointer()
@@ -60,6 +60,9 @@ class printer_wait_obj:
 
       wobj = self.val
 
+      if wobj['type'] == WOBJ_NONE:
+         return []
+
       res = [
          ("type", wobj['type']),
          ("extra", wobj['extra']),
@@ -106,12 +109,16 @@ class printer_struct_task:
       task = self.val
       pi = task['pi']
       what_str = "n/a"
+      state_regs = "(null)"
 
       if pi['pid'] != 0:
          pi_str = "(struct process *) {}".format(bu.fixhex32(int(pi)))
       else:
          pi_str = "<kernel_process_pi>"
          what_str = task['what']
+
+      if task['state_regs']:
+         state_regs = task['state_regs'].dereference()
 
       return [
          ("tid                 ", task["tid"]),
@@ -133,7 +140,7 @@ class printer_struct_task:
          ("total_kernel_ticks  ", task['total_kernel_ticks']),
          ("ticks_before_wake_up", task['ticks_before_wake_up']),
          ("wobj                ", task['wobj']),
-         ("state_regs          ", task['state_regs'].dereference()),
+         ("state_regs          ", state_regs),
       ]
 
    def to_string(self):
