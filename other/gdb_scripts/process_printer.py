@@ -38,8 +38,7 @@ class printer_struct_process:
    inherited_mmap_heap = {}
    str_cwd             = '{}'
    handles             = [ {} ]
-}}
-"""
+}}"""
 
       return res.format(
          int(proc.address),
@@ -58,4 +57,6 @@ class printer_struct_process:
          handles_list_str
       )
 
-bu.register_tilck_regex_pp('process', '^process$', printer_struct_process)
+bu.register_tilck_regex_pp(
+   'process', '^process$', printer_struct_process
+)
