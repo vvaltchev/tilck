@@ -12,21 +12,58 @@ WOBJ_MWO_WAITER = gdb.parse_and_eval("(int)WOBJ_MWO_WAITER")
 multi_obj_waiter = gdb.lookup_type("struct multi_obj_waiter")
 multi_obj_waiter_p = multi_obj_waiter.pointer()
 
-def format_mwobj_elem(elem):
-   return "{{type = {}, ptr = {}}}".format(
-      elem['type'],
-      elem['wobj']['__ptr']
-   )
+class printer_mwobj_elem:
+
+   def __init__(self, val):
+      self.val = val
+
+   def children(self):
+      e = self.val
+      wobj = e["wobj"]
+
+      return [
+         ("type", e["type"]),
+         ("extra", wobj["extra"]),
+         ("ptr", wobj["__ptr"]),
+      ]
+
+class printer_multi_obj_waiter:
+
+   def __init__(self, val):
+      self.val = val
+
+   def display_hint(self):
+      return 'array'
+
+   def children(self):
+
+      mwobj = self.val
+      count = mwobj['count']
+      elems = mwobj['elems']
+      arr = []
+
+      for i in range(count):
+         arr.append((str(i), elems[i]))
+
+      return arr
+
+   def to_string(self):
+      addr = bu.fixhex32(int(self.val.address))
+      return "(struct multi_obj_waiter *) {}".format(addr)
 
 class printer_wait_obj:
 
    def __init__(self, val):
       self.val = val
 
-   def to_string(self):
+   def children(self):
 
       wobj = self.val
-      body = ""
+
+      res = [
+         ("type", wobj['type']),
+         ("extra", wobj['extra']),
+      ]
 
       if wobj['type'] == WOBJ_TASK:
 
@@ -39,39 +76,25 @@ class printer_wait_obj:
          elif tidval == 0:
             tidval = "<any child with same pgid>"
 
-         body = "tid     = {}".format(tidval)
+         res.append(("tid", tidval))
 
       elif wobj['type'] == WOBJ_MWO_WAITER:
 
          mwobj = wobj['__ptr'].cast(multi_obj_waiter_p)
-
-         count = mwobj['count']
-         elems = mwobj['elems']
-         arr = []
-
-         for i in range(count):
-            arr.append(format_mwobj_elem(elems[i]))
-
-         body =  "ptr     = "
-         body += "(struct multi_obj_waiter *) 0x{:08x} ".format(int(mwobj))
-         body += "[{}]".format(", ".join(arr))
+         res.append(("ptr", mwobj.dereference()))
 
       else:
 
-         body = "ptr      = {}".format(wobj['__ptr'])
+         res.append(("ptr", wobj['__ptr']))
 
-      res = """(struct wait_obj *) 0x{:08x} {{
-      type    = {}
-      extra   = {}
-      {}
-   }}"""
+      return res
 
-      return res.format(
-         int(wobj.address),
-         wobj['type'],
-         wobj['extra'],
-         body,
-      )
+
+   def to_string(self):
+      wobj = self.val
+      return "(struct wait_obj *) {}".format(bu.fixhex32(int(wobj.address)))
+
+
 
 class printer_struct_task:
 
@@ -124,3 +147,12 @@ bu.register_tilck_regex_pp(
 bu.register_tilck_regex_pp(
    'wait_obj', '^wait_obj$', printer_wait_obj
 )
+
+bu.register_tilck_regex_pp(
+   'multi_obj_waiter', '^multi_obj_waiter$', printer_multi_obj_waiter
+)
+
+bu.register_tilck_regex_pp(
+   'mwobj_elem', '^mwobj_elem$', printer_mwobj_elem
+)
+
