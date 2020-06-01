@@ -22,6 +22,7 @@ class printer_regs:
       resume_eip = gdb.parse_and_eval(
          "(void *){}".format(r["kernel_resume_eip"])
       )
+      resume_eip_str = str(resume_eip)
 
       eip = r["eip"]
       eip_str = None
@@ -40,7 +41,7 @@ class printer_regs:
       fs = r["fs"] & 0xffff
       gs = r["gs"] & 0xffff
 
-      return [
+      res = [
          ("resume_eip  ", resume_eip),
          ("custom_flags", fixhex32(r["custom_flags"])),
          ("gs          ", fixhex16(gs)),
@@ -55,12 +56,23 @@ class printer_regs:
          ("edx         ", fixhex32(r["edx"])),
          ("ecx         ", fixhex32(r["ecx"])),
          ("eax         ", fixhex32(r["eax"])),
+         ("int_num     ", r["int_num"]),
+         ("err_code    ", fixhex32(r["err_code"])),
          ("eip         ", eip_str),
          ("cs          ", fixhex16(cs)),
          ("eflags      ", fixhex32(r["eflags"])),
-         ("useresp     ", fixhex32(r["useresp"])),
-         ("ss          ", fixhex16(ss)),
       ]
+
+      if resume_eip_str.find("asm_kernel_yield") == -1:
+         res += [
+            ("useresp     ", fixhex32(r["useresp"])),
+            ("ss          ", fixhex16(ss)),
+         ]
+      else:
+         calc_eip = gdb.parse_and_eval("(void *){}".format(r["useresp"]))
+         res.append(("[true_eip]  ", calc_eip))
+
+      return res
 
 
 bu.register_tilck_regex_pp(
