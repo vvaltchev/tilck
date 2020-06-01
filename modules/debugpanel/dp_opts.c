@@ -105,7 +105,20 @@ static void dp_show_opts(void)
    }
 
    DUMP_INT("TTY_COUNT", kopt_tty_count);
-   DUMP_INT("CLOCK_IN_RESYNC", clock_in_full_resync());
+
+   DUMP_LABEL("System clock");
+   {
+      struct clock_resync_stats stats;
+      clock_get_resync_stats(&stats);
+
+      DUMP_INT("CLK_IN_RS", clock_in_resync());
+      DUMP_INT("CLK_IN_FULL_RS", clock_in_full_resync());
+      DUMP_INT("CLK_FULL_RS_CNT", stats.full_resync_count);
+      DUMP_INT("CLK_FULL_RS_FAIL", stats.full_resync_fail_count);
+      DUMP_INT("CLK_FULL_RS_SUCC", stats.full_resync_success_count);
+      DUMP_INT("CLK_FULL_RS_ADG1", stats.full_resync_abs_drift_gt_1);
+      DUMP_INT("CLK_RESYNC_CNT", stats.multi_second_resync_count);
+   }
 
    rows_right = row - dp_screen_start_row - 1;
    max_rows = MAX(rows_left, rows_right);
@@ -115,7 +128,7 @@ static void dp_show_opts(void)
                 dp_screen_start_row, dp_start_col + 1, max_rows+2, 45);
 
    /* right rectangle */
-   dp_draw_rect("Boot-time", E_COLOR_GREEN,
+   dp_draw_rect("Run-time", E_COLOR_GREEN,
                 dp_screen_start_row, col - 2, max_rows+2, 29);
 }
 
