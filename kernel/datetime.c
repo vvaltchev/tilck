@@ -65,6 +65,23 @@ bool clock_in_full_resync(void)
    return in_full_resync;
 }
 
+bool clock_in_resync(void)
+{
+   ulong var;
+   int rem;
+
+   if (in_full_resync)
+      return true;
+
+   disable_interrupts(&var);
+   {
+      rem = __tick_adj_ticks_rem;
+   }
+   enable_interrupts(&var);
+   return rem != 0;
+}
+
+
 void clock_get_resync_stats(struct clock_resync_stats *s)
 {
    *s = clock_rstats;
@@ -310,9 +327,6 @@ static void check_drift_and_sync(void)
 
 void clock_drift_adj()
 {
-   int adj_ticks_rem;
-   ulong var;
-
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
 
@@ -365,13 +379,7 @@ void clock_drift_adj()
 
    while (true) {
 
-      disable_interrupts(&var);
-      {
-         adj_ticks_rem = __tick_adj_ticks_rem;
-      }
-      enable_interrupts(&var);
-
-      if (!adj_ticks_rem) {
+      if (!clock_in_resync()) {
 
          /*
           * It makes sense to check for the clock drift ONLY when there are

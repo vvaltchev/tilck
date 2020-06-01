@@ -32,6 +32,7 @@ u64 get_sys_time(void);
 s64 get_timestamp(void);
 void init_system_time(void);
 int clock_get_second_drift(void);
+bool clock_in_resync(void);
 bool clock_in_full_resync(void);
 void real_time_get_timespec(struct k_timespec64 *tp);
 void monotonic_time_get_timespec(struct k_timespec64 *tp);
