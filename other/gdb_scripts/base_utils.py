@@ -57,15 +57,16 @@ def select_field_in_list(arr, f, asString = False):
 
    return [ x[f] for x in arr ]
 
-def list_to_str_elems(arr):
-   return [ str(x) for x in arr ]
+def to_gdb_list(arr):
 
-def joined_str_list_with_field_select(arr, field = None, sep = ", "):
+   if not arr:
+      return "{}"
 
-   if not field:
-      return sep.join(list_to_str_elems(arr))
+   tmp = ", ".join([ str(x) for x in arr ])
+   return gdb.parse_and_eval("{{{}}}".format(tmp))
 
-   return sep.join(select_field_in_list(arr, field, True))
+def to_gdb_list_with_field_select(arr, field, sep = ", "):
+   return to_gdb_list(select_field_in_list(arr, field, True))
 
 def fixhex16(n):
    return "0x{:04x}".format(int(n))

@@ -10,52 +10,41 @@ class printer_struct_process:
    def __init__(self, val):
       self.val = val
 
-   def to_string(self):
+   def children(self):
 
       proc = self.val
 
       # Note: it doesn't make sense to take t['pi']['pid'] because children
       # tasks are process' main threads, having always tid == pid.
-      children_str = bu.joined_str_list_with_field_select(
+      children_arr = bu.to_gdb_list_with_field_select(
          tasks.get_children_list(proc), "tid"
       )
 
-      handles_list_str = bu.joined_str_list_with_field_select(
-         tasks.get_handles(proc)
-      )
+      handles_arr = bu.to_gdb_list(tasks.get_handles(proc))
+      cmdline = proc['debug_cmdline'].string().rstrip()
+      cwd = proc['str_cwd'].string()
 
-      res = """(struct process *) 0x{:08x} {{
-   pid                 = {}
-   cmdline             = '{}'
-   parent_pid          = {}
-   pgid                = {}
-   sid                 = {}
-   brk                 = {}
-   initial_brk         = {}
-   children            = [ {} ]
-   did_call_execve     = {}
-   vforked             = {}
-   inherited_mmap_heap = {}
-   str_cwd             = '{}'
-   handles             = [ {} ]
-}}"""
+      return [
+         ("pid                ", proc['pid']),
+         ("cmdline            ", "\"{}\"".format(cmdline)),
+         ("parent_pid         ", proc['parent_pid']),
+         ("pgid               ", proc['pgid']),
+         ("sid                ", proc['sid']),
+         ("brk                ", proc['brk']),
+         ("initial_brk        ", proc['initial_brk']),
+         ("children           ", children_arr),
+         ("did_call_execve    ", proc['did_call_execve']),
+         ("vforked            ", proc['vforked']),
+         ("inherited_mmap_heap", proc['inherited_mmap_heap']),
+         ("str_cwd            ", "\"{}\"".format(cwd)),
+         ("handles            ", handles_arr),
+      ]
 
-      return res.format(
-         int(proc.address),
-         proc['pid'],
-         proc['debug_cmdline'].string().rstrip(),
-         proc['parent_pid'],
-         proc['pgid'],
-         proc['sid'],
-         proc['brk'],
-         proc['initial_brk'],
-         children_str,
-         proc['did_call_execve'],
-         proc['vforked'],
-         proc['inherited_mmap_heap'],
-         proc['str_cwd'].string(),
-         handles_list_str
-      )
+   def to_string(self):
+
+      proc = self.val
+      return "(struct process *) {}".format(bu.fixhex32(int(proc.address)))
+
 
 bu.register_tilck_regex_pp(
    'process', '^process$', printer_struct_process
