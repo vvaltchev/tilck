@@ -110,7 +110,7 @@ class printer_struct_task:
    total_kernel_ticks   = {}
    ticks_before_wake_up = {}
    wobj                 = {}
-   state_regs           = 0x{:08x}
+   state_regs           = {}
 }}"""
       return res.format(
          int(task.address),
@@ -133,7 +133,7 @@ class printer_struct_task:
          task['total_kernel_ticks'],
          task['ticks_before_wake_up'],
          task['wobj'],
-         int(task['state_regs']),
+         task['state_regs'].dereference(),
       )
 
 bu.register_tilck_regex_pp(

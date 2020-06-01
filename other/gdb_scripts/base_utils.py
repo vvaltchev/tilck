@@ -60,3 +60,9 @@ def joined_str_list_with_field_select(arr, field = None, sep = ", "):
       return sep.join(list_to_str_elems(arr))
 
    return sep.join(select_field_in_list(arr, field, True))
+
+def fixhex16(n):
+   return "0x{:04x}".format(int(n))
+
+def fixhex32(n):
+   return "0x{:08x}".format(int(n))

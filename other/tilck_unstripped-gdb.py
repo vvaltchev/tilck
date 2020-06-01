@@ -23,6 +23,7 @@ import gdb_scripts.list_cmds
 import gdb_scripts.get_cmds
 import gdb_scripts.process_printer
 import gdb_scripts.task_printer
+import gdb_scripts.regs_printer
 
 # Init all the custom GDB commands
 for cmd in bu.gdb_custom_cmds:
