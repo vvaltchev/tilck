@@ -21,12 +21,18 @@ class printer_struct_process:
       )
 
       handles_arr = bu.to_gdb_list(tasks.get_handles(proc))
-      cmdline = proc['debug_cmdline'].string().rstrip()
+      debug_cmdline = proc['debug_cmdline']
+
+      if debug_cmdline:
+         cmdline = "\"{}\"".format(debug_cmdline.string().rstrip())
+      else:
+         cmdline = "(null)"
+
       cwd = proc['str_cwd'].string()
 
       return [
          ("pid                ", proc['pid']),
-         ("cmdline            ", "\"{}\"".format(cmdline)),
+         ("cmdline            ", cmdline),
          ("parent_pid         ", proc['parent_pid']),
          ("pgid               ", proc['pgid']),
          ("sid                ", proc['sid']),

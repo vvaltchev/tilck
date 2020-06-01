@@ -33,7 +33,6 @@ def get_children_list(proc):
    res = []
 
    while int(curr) != int(children_list):
-
       obj = bu.container_of(int(curr), "struct task", "siblings_node")
       res.append(obj)
       curr = curr['next']
@@ -77,3 +76,10 @@ def get_handles(proc):
          handles_list.append(i)
 
    return handles_list
+
+def get_handle(proc, n):
+
+   if n not in range(0, bu.config.MAX_HANDLES):
+      return None
+
+   return proc['handles'][n].cast(bu.fs_handle_base_p)
