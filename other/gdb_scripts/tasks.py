@@ -28,17 +28,11 @@ def get_all_tasks():
 
 def get_children_list(proc):
 
-   children_list = proc['children'].address
-   curr = children_list.cast(bu.list_node_p)['next']
-   res = []
-
-   while curr != children_list:
-      obj = bu.container_of(curr, bu.type_task, "siblings_node")
-      res.append(obj)
-      curr = curr['next']
-
-   return res
-
+   return bu.get_list_elems(
+      proc['children'].address,    # pointer to list object
+      bu.type_task,                # container type
+      "siblings_node"              # container's list node member name
+   )
 
 def get_task(tid):
 

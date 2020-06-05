@@ -77,3 +77,15 @@ def fixhex32(n):
 def fmt_type(name, gdb_val):
    addr = fixhex32(int(gdb_val.address))
    return "*({} *) {}".format(name, addr)
+
+def get_list_elems(list_obj_ptr, container_gdb_type, list_node_container_mem):
+
+   res = []
+   curr = list_obj_ptr.cast(list_node_p)['next']
+
+   while curr != list_obj_ptr:
+      obj = container_of(curr, container_gdb_type, list_node_container_mem)
+      res.append(obj)
+      curr = curr['next']
+
+   return res
