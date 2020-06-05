@@ -21,8 +21,7 @@ class cmd_list_tasks(gdb.Command):
          pid = str(pi['pid'])
 
          gdb.execute(
-            "print (struct task *) 0x{:08x}"
-               .format(int(t.address))
+            "print (struct task *) {}".format(bu.fixhex32(int(t)))
          )
 
          print(
@@ -51,8 +50,7 @@ class cmd_list_procs(gdb.Command):
             continue
 
          gdb.execute(
-            "print (struct process *) 0x{:08x}"
-               .format(int(pi))
+            "print (struct process *) {}".format(bu.fixhex32(int(pi)))
          )
 
          print(
