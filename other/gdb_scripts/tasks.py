@@ -77,3 +77,14 @@ def get_handle(proc, n):
       return None
 
    return proc['handles'][n].cast(bu.fs_handle_base_p)
+
+def get_handle_num(proc, handle_obj_ptr):
+
+   handles = proc['handles']
+
+   for i in range(bu.config.MAX_HANDLES):
+
+      if handles[i] == handle_obj_ptr:
+         return i
+
+   return None

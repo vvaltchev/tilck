@@ -29,6 +29,10 @@ class printer_struct_process:
          cmdline = "(null)"
 
       cwd = proc['str_cwd'].string()
+      mi = "(null)"
+
+      if proc['mi']:
+         mi = proc['mi'].dereference()
 
       return [
          ("pid                ", proc['pid']),
@@ -44,6 +48,7 @@ class printer_struct_process:
          ("inherited_mmap_heap", proc['inherited_mmap_heap']),
          ("str_cwd            ", "\"{}\"".format(cwd)),
          ("handles            ", handles_arr),
+         ("mi                 ", mi),
       ]
 
    def to_string(self):

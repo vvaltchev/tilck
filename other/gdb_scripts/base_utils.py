@@ -24,6 +24,9 @@ list_node_p = list_node.pointer()
 fs_handle_base = gdb.lookup_type("struct fs_handle_base")
 fs_handle_base_p = fs_handle_base.pointer()
 
+type_user_mapping = gdb.lookup_type("struct user_mapping")
+type_user_mapping_p = type_user_mapping.pointer()
+
 gdb_custom_cmds = []
 regex_pretty_printers = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
 
