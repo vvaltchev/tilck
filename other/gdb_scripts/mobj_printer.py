@@ -16,6 +16,9 @@ class printer_mwobj_elem:
    def __init__(self, val):
       self.val = val
 
+   def to_string(self):
+      return "mwobj_elem"
+
    def children(self):
       e = self.val
       wobj = e["wobj"]
