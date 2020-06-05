@@ -10,8 +10,7 @@ class printer_fs_handle_base:
       self.val = val
 
    def to_string(self):
-      r = self.val
-      return "(struct fs_handle_base *) {}".format(bu.fixhex32(int(r.address)))
+      return bu.fmt_type("struct fs_handle_base", self.val)
 
    def children(self):
 

@@ -47,10 +47,7 @@ class printer_struct_process:
       ]
 
    def to_string(self):
-
-      proc = self.val
-      return "(struct process *) {}".format(bu.fixhex32(int(proc.address)))
-
+      return bu.fmt_type("struct process", self.val)
 
 bu.register_tilck_regex_pp(
    'process', '^process$', printer_struct_process

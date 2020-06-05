@@ -50,8 +50,7 @@ class printer_multi_obj_waiter:
       return arr
 
    def to_string(self):
-      addr = bu.fixhex32(int(self.val.address))
-      return "(struct multi_obj_waiter *) {}".format(addr)
+      return bu.fmt_type("struct multi_obj_waiter", self.val)
 
 class printer_wait_obj:
 
@@ -96,9 +95,7 @@ class printer_wait_obj:
 
 
    def to_string(self):
-      wobj = self.val
-      return "(struct wait_obj *) {}".format(bu.fixhex32(int(wobj.address)))
-
+      return bu.fmt_type("struct wait_obj", self.val)
 
 bu.register_tilck_regex_pp(
    'wait_obj', '^wait_obj$', printer_wait_obj

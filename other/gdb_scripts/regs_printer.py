@@ -13,8 +13,7 @@ class printer_regs:
       self.val = val
 
    def to_string(self):
-      r = self.val
-      return "(struct x86_regs *) {}".format(fixhex32(int(r.address)))
+      return bu.fmt_type("struct x86_regs", self.val)
 
    def children(self):
 

@@ -76,3 +76,7 @@ def fixhex16(n):
 
 def fixhex32(n):
    return "0x{:08x}".format(int(n))
+
+def fmt_type(name, gdb_val):
+   addr = fixhex32(int(gdb_val.address))
+   return "*({} *) {}".format(name, addr)
