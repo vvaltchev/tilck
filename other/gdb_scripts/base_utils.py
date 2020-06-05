@@ -41,17 +41,14 @@ def register_new_custom_gdb_cmd(cmd_class):
 def register_tilck_regex_pp(name, regex, class_name):
    regex_pretty_printers.add_printer(name, regex, class_name)
 
-def offset_of(type_name, field):
-   return int(
-      gdb.parse_and_eval(
-         "((unsigned long)(&(({} *) 0)->{}))".format(type_name, field)
-      )
-   )
+def offset_of(gdb_type_obj, field):
+   null_obj = gdb.Value(0).cast(gdb_type_obj.pointer())
+   return null_obj[field].address
 
-def container_of(elem_ptr, type_name, mem_name):
-   off = offset_of(type_name, mem_name)
-   expr = "(({} *)(((char *)0x{:08x}) - {}))".format(type_name, elem_ptr, off)
-   return gdb.parse_and_eval(expr)
+def container_of(elem_ptr, gdb_type_obj, mem_name):
+   off = offset_of(gdb_type_obj, mem_name)
+   container_addr = gdb.Value(int(elem_ptr) - int(off))
+   return container_addr.cast(gdb_type_obj.pointer())
 
 def select_field_in_list(arr, f, asString = False):
 

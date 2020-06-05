@@ -33,7 +33,7 @@ def get_children_list(proc):
    res = []
 
    while curr != children_list:
-      obj = bu.container_of(int(curr), "struct task", "siblings_node")
+      obj = bu.container_of(curr, bu.type_task, "siblings_node")
       res.append(obj)
       curr = curr['next']
 
