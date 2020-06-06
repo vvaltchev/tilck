@@ -90,9 +90,8 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
    return 0;
 }
 
-int fat_mmap(struct user_mapping *um, bool register_only)
+int fat_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
 {
-   pdir_t *const pdir = um->pi->pdir;
    struct fatfs_handle *fh = um->h;
    struct fat_fs_device_data *d = fh->fs->device_data;
    const size_t off_begin = um->off;

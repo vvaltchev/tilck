@@ -648,7 +648,7 @@ int vfs_fchmod(fs_handle h, mode_t mode)
  * no such `mapping_list`, when register_only is true, the FS function is
  * supposed to do just nothing (see fat_mmap()).
  */
-int vfs_mmap(struct user_mapping *um, bool register_only)
+int vfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
 {
    struct fs_handle_base *hb = um->h;
    const struct file_ops *fops = hb->fops;
@@ -657,7 +657,7 @@ int vfs_mmap(struct user_mapping *um, bool register_only)
       return -ENODEV;
 
    ASSERT(fops->munmap != NULL);
-   return fops->mmap(um, register_only);
+   return fops->mmap(um, pdir, register_only);
 }
 
 int vfs_munmap(fs_handle h, void *vaddr, size_t len)

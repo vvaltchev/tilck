@@ -12,6 +12,7 @@
 #include <tilck/common/basic_defs.h>
 
 #include <tilck/kernel/sys_types.h>
+#include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/sync.h>
 
 struct process;
@@ -122,7 +123,9 @@ typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
 typedef offt           (*func_seek)         (fs_handle, offt, int);
 typedef int            (*func_ioctl)        (fs_handle, ulong, void *);
-typedef int            (*func_mmap)         (struct user_mapping *, bool);
+typedef int            (*func_mmap)         (struct user_mapping *,
+                                             pdir_t *,
+                                             bool);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int            (*func_rwe_ready)    (fs_handle);
@@ -278,7 +281,7 @@ int vfs_ioctl(fs_handle h, ulong request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_mmap(struct user_mapping *um, bool register_only);
+int vfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);

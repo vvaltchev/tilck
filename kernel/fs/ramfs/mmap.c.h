@@ -5,9 +5,9 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
    return generic_fs_munmap(h, vaddrp, len);
 }
 
-static int ramfs_mmap(struct user_mapping *um, bool register_only)
+static int
+ramfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
 {
-   pdir_t *const pdir = um->pi->pdir;
    struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
    ulong vaddr = um->vaddr;

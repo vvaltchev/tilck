@@ -12,7 +12,7 @@
 
 #include <dirent.h> // system header
 
-int fat_mmap(struct user_mapping *um, bool register_only);
+int fat_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only);
 int fat_munmap(fs_handle h, void *vaddrp, size_t len);
 int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size);
 

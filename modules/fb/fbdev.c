@@ -115,7 +115,7 @@ static int fb_ioctl(fs_handle h, ulong request, void *argp)
 }
 
 static int
-fbdev_mmap(struct user_mapping *um, bool register_only)
+fbdev_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
 {
    ASSERT(IS_PAGE_ALIGNED(um->len));
 
@@ -125,7 +125,7 @@ fbdev_mmap(struct user_mapping *um, bool register_only)
    if (register_only)
       goto register_mapping;
 
-   fb_user_mmap(um->pi->pdir, um->vaddrp, um->len);
+   fb_user_mmap(pdir, um->vaddrp, um->len);
 
    total_fb_pages_mapped += um->len >> PAGE_SHIFT;
 
