@@ -6,8 +6,13 @@ from . import tasks
 
 class cmd_list_tasks(gdb.Command):
 
+   cmd_name = "list-tasks"
+
    def __init__(self):
-      super(cmd_list_tasks, self).__init__("list-tasks", gdb.COMMAND_USER)
+      super(cmd_list_tasks, self).__init__(
+         cmd_list_tasks.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def invoke(self, arg, from_tty):
 
@@ -32,8 +37,13 @@ class cmd_list_tasks(gdb.Command):
 
 class cmd_list_procs(gdb.Command):
 
+   cmd_name = "list-procs"
+
    def __init__(self):
-      super(cmd_list_procs, self).__init__("list-procs", gdb.COMMAND_USER)
+      super(cmd_list_procs, self).__init__(
+         cmd_list_procs.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def invoke(self, arg, from_tty):
 
@@ -53,12 +63,28 @@ class cmd_list_procs(gdb.Command):
          )
 
          print(
-            "        {{ pid = {:>5}, cmdline = '{}' }}\n".format(
+            "        "
+            "{{ pid = {:>5}, cmdline = '{}' }}\n".format(
                pid,
                pi['debug_cmdline'].string().rstrip()
             )
          )
 
+class cmd_list_tilck_cmds(gdb.Command):
+
+   cmd_name = "list-tilck-cmds"
+
+   def __init__(self):
+      super(cmd_list_tilck_cmds, self).__init__(
+         cmd_list_tilck_cmds.cmd_name,
+         gdb.COMMAND_USER
+      )
+
+   def invoke(self, arg, from_tty):
+      for e in bu.gdb_custom_cmds:
+         print(e.cmd_name)
+
 # -------------------------------------------------
 bu.register_new_custom_gdb_cmd(cmd_list_tasks)
 bu.register_new_custom_gdb_cmd(cmd_list_procs)
+bu.register_new_custom_gdb_cmd(cmd_list_tilck_cmds)

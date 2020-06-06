@@ -29,8 +29,7 @@ import gdb_scripts.fs_handle_printer
 import gdb_scripts.mi_printer
 
 # Init all the custom GDB commands
-for cmd in bu.gdb_custom_cmds:
-   cmd()
+bu.init_all_custom_cmds()
 
 # Register all the regex pretty printers
 gdb.printing.register_pretty_printer(

@@ -7,8 +7,13 @@ from . import tasks
 
 class cmd_get_task(gdb.Command):
 
+   cmd_name = "get-task"
+
    def __init__(self):
-      super(cmd_get_task, self).__init__("get-task", gdb.COMMAND_USER)
+      super(cmd_get_task, self).__init__(
+         cmd_get_task.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def show_usage(self):
       print("Usage: get-task <tid>")
@@ -31,8 +36,13 @@ class cmd_get_task(gdb.Command):
 
 class cmd_get_proc(gdb.Command):
 
+   cmd_name = "get-proc"
+
    def __init__(self):
-      super(cmd_get_proc, self).__init__("get-proc", gdb.COMMAND_USER)
+      super(cmd_get_proc, self).__init__(
+         cmd_get_proc.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def show_usage(self):
       print("Use: get-proc <pid>")
@@ -55,8 +65,13 @@ class cmd_get_proc(gdb.Command):
 
 class cmd_get_handle2(gdb.Command):
 
+   cmd_name = "get-handle2"
+
    def __init__(self):
-      super(cmd_get_handle2, self).__init__("get-handle2", gdb.COMMAND_USER)
+      super(cmd_get_handle2, self).__init__(
+         cmd_get_handle2.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def show_usage(self):
       print("Use: get-handle2 <pid> <handle_number>")
@@ -89,8 +104,13 @@ class cmd_get_handle2(gdb.Command):
 
 class cmd_get_handle(gdb.Command):
 
+   cmd_name = "get-handle"
+
    def __init__(self):
-      super(cmd_get_handle, self).__init__("get-handle", gdb.COMMAND_USER)
+      super(cmd_get_handle, self).__init__(
+         cmd_get_handle.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def show_usage(self):
       print("Use: get-handle <handle_number> # assuming the current process")
@@ -114,16 +134,26 @@ class cmd_get_handle(gdb.Command):
 
 class cmd_get_curr(gdb.Command):
 
+   cmd_name = "get-curr"
+
    def __init__(self):
-      super(cmd_get_curr, self).__init__("get-curr", gdb.COMMAND_USER)
+      super(cmd_get_curr, self).__init__(
+         cmd_get_curr.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def invoke(self, arg, from_tty):
       gdb.execute("print *__current")
 
 class cmd_get_currp(gdb.Command):
 
+   cmd_name = "get-currp"
+
    def __init__(self):
-      super(cmd_get_currp, self).__init__("get-currp", gdb.COMMAND_USER)
+      super(cmd_get_currp, self).__init__(
+         cmd_get_currp.cmd_name,
+         gdb.COMMAND_USER
+      )
 
    def invoke(self, arg, from_tty):
       gdb.execute("print *__current->pi")

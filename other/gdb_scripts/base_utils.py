@@ -13,6 +13,8 @@ BuildConfig = namedtuple(
 )
 
 gdb_custom_cmds = []
+gdb_custom_cmds_objects = []
+
 regex_pretty_printers = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
 
 config = None
@@ -25,6 +27,13 @@ def set_build_config(obj):
 
 def register_new_custom_gdb_cmd(cmd_class):
    gdb_custom_cmds.append(cmd_class)
+
+def init_all_custom_cmds():
+
+   assert(not gdb_custom_cmds_objects)
+
+   for cmd in gdb_custom_cmds:
+      gdb_custom_cmds_objects.append(cmd())
 
 def register_tilck_regex_pp(name, regex, class_name):
    regex_pretty_printers.add_printer(name, regex, class_name)
