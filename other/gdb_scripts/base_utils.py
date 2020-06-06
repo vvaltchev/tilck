@@ -3,6 +3,7 @@
 
 import gdb # pylint: disable=import-error
 from collections import namedtuple
+from . import tilck_types as tt
 
 BuildConfig = namedtuple(
    "BuildConfig", [
@@ -11,21 +12,6 @@ BuildConfig = namedtuple(
       "KERNEL_BASE_VA"
    ]
 )
-
-type_task = gdb.lookup_type("struct task")
-type_task_p = type_task.pointer()
-
-type_process = gdb.lookup_type("struct process")
-type_process_p = type_process.pointer()
-
-list_node = gdb.lookup_type("struct list_node")
-list_node_p = list_node.pointer()
-
-fs_handle_base = gdb.lookup_type("struct fs_handle_base")
-fs_handle_base_p = fs_handle_base.pointer()
-
-type_user_mapping = gdb.lookup_type("struct user_mapping")
-type_user_mapping_p = type_user_mapping.pointer()
 
 gdb_custom_cmds = []
 regex_pretty_printers = gdb.printing.RegexpCollectionPrettyPrinter("Tilck")
@@ -84,7 +70,7 @@ def fmt_type(name, gdb_val):
 def get_list_elems(list_obj_ptr, container_gdb_type, list_node_container_mem):
 
    res = []
-   curr = list_obj_ptr.cast(list_node_p)['next']
+   curr = list_obj_ptr.cast(tt.list_node_p)['next']
 
    while curr != list_obj_ptr:
       obj = container_of(curr, container_gdb_type, list_node_container_mem)

@@ -3,6 +3,7 @@
 
 import gdb # pylint: disable=import-error
 from . import base_utils as bu
+from . import tilck_types as tt
 
 def get_all_tasks():
 
@@ -16,8 +17,8 @@ def get_all_tasks():
 
       tasks_list.append(task)
 
-      left = task['tree_by_tid_node']['left_obj'].cast(bu.type_task_p)
-      right = task['tree_by_tid_node']['right_obj'].cast(bu.type_task_p)
+      left = task['tree_by_tid_node']['left_obj'].cast(tt.type_task_p)
+      right = task['tree_by_tid_node']['right_obj'].cast(tt.type_task_p)
 
       walk(tasks_list, left)
       walk(tasks_list, right)
@@ -30,7 +31,7 @@ def get_children_list(proc):
 
    return bu.get_list_elems(
       proc['children'].address,    # pointer to list object
-      bu.type_task,                # container type
+      tt.type_task,                # container type
       "siblings_node"              # container's list node member name
    )
 
@@ -76,7 +77,7 @@ def get_handle(proc, n):
    if n not in range(0, bu.config.MAX_HANDLES):
       return None
 
-   return proc['handles'][n].cast(bu.fs_handle_base_p)
+   return proc['handles'][n].cast(tt.fs_handle_base_p)
 
 def get_handle_num(proc, handle_obj_ptr):
 

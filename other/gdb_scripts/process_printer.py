@@ -3,6 +3,7 @@
 
 import gdb # pylint: disable=import-error
 from . import base_utils as bu
+from . import tilck_types as tt
 from . import tasks
 
 class printer_struct_process:

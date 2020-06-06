@@ -3,13 +3,11 @@
 
 import gdb # pylint: disable=import-error
 from . import base_utils as bu
+from . import tilck_types as tt
 
 WOBJ_NONE = gdb.parse_and_eval("WOBJ_NONE")
 WOBJ_TASK = gdb.parse_and_eval("WOBJ_TASK")
 WOBJ_MWO_WAITER = gdb.parse_and_eval("WOBJ_MWO_WAITER")
-
-multi_obj_waiter = gdb.lookup_type("struct multi_obj_waiter")
-multi_obj_waiter_p = multi_obj_waiter.pointer()
 
 class printer_mwobj_elem:
 
@@ -84,7 +82,7 @@ class printer_wait_obj:
 
       elif wobj['type'] == WOBJ_MWO_WAITER:
 
-         mwobj = wobj['__ptr'].cast(multi_obj_waiter_p)
+         mwobj = wobj['__ptr'].cast(tt.multi_obj_waiter_p)
          res.append(("ptr", mwobj.dereference()))
 
       else:

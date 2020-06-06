@@ -3,6 +3,7 @@
 
 import gdb # pylint: disable=import-error
 from . import base_utils as bu
+from . import tilck_types as tt
 from . import tasks
 
 class printer_user_mapping:
@@ -54,7 +55,7 @@ class printer_mappings_info:
       res = []
       mappings = bu.get_list_elems(
          mi["mappings"].address,
-         bu.type_user_mapping,
+         tt.type_user_mapping,
          "pi_node"
       )
 
