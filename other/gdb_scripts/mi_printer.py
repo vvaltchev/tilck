@@ -55,7 +55,7 @@ class printer_mappings_info:
       res = []
       mappings = bu.get_list_elems(
          mi["mappings"].address,
-         tt.type_user_mapping,
+         tt.user_mapping,
          "pi_node"
       )
 

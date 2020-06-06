@@ -17,8 +17,8 @@ def get_all_tasks():
 
       tasks_list.append(task)
 
-      left = task['tree_by_tid_node']['left_obj'].cast(tt.type_task_p)
-      right = task['tree_by_tid_node']['right_obj'].cast(tt.type_task_p)
+      left = task['tree_by_tid_node']['left_obj'].cast(tt.task_p)
+      right = task['tree_by_tid_node']['right_obj'].cast(tt.task_p)
 
       walk(tasks_list, left)
       walk(tasks_list, right)
@@ -31,7 +31,7 @@ def get_children_list(proc):
 
    return bu.get_list_elems(
       proc['children'].address,    # pointer to list object
-      tt.type_task,                # container type
+      tt.task,                # container type
       "siblings_node"              # container's list node member name
    )
 

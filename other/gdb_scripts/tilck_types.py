@@ -2,11 +2,11 @@
 
 import gdb # pylint: disable=import-error
 
-type_task = gdb.lookup_type("struct task")
-type_task_p = type_task.pointer()
+task = gdb.lookup_type("struct task")
+task_p = task.pointer()
 
-type_process = gdb.lookup_type("struct process")
-type_process_p = type_process.pointer()
+process = gdb.lookup_type("struct process")
+process_p = process.pointer()
 
 list_node = gdb.lookup_type("struct list_node")
 list_node_p = list_node.pointer()
@@ -14,8 +14,8 @@ list_node_p = list_node.pointer()
 fs_handle_base = gdb.lookup_type("struct fs_handle_base")
 fs_handle_base_p = fs_handle_base.pointer()
 
-type_user_mapping = gdb.lookup_type("struct user_mapping")
-type_user_mapping_p = type_user_mapping.pointer()
+user_mapping = gdb.lookup_type("struct user_mapping")
+user_mapping_p = user_mapping.pointer()
 
 multi_obj_waiter = gdb.lookup_type("struct multi_obj_waiter")
 multi_obj_waiter_p = multi_obj_waiter.pointer()
