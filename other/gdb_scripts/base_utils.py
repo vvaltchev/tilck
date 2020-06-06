@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: BSD-2-Clause
-# pylint: disable=unused-wildcard-import
 
 import gdb # pylint: disable=import-error
 from collections import namedtuple
