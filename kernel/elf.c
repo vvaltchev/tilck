@@ -23,12 +23,13 @@
    #error Architecture not supported.
 #endif
 
+typedef int (*load_segment_func)(fs_handle *, pdir_t *, Elf_Phdr *, ulong *);
 
 static int
-load_phdr(fs_handle *elf_file,
-          pdir_t *pdir,
-          Elf_Phdr *phdr,
-          ulong *end_vaddr_ref)
+load_segment_by_copy(fs_handle *elf_file,
+                     pdir_t *pdir,
+                     Elf_Phdr *phdr,
+                     ulong *end_vaddr_ref)
 {
    ssize_t rc;
    ulong va = phdr->p_vaddr;
@@ -200,6 +201,7 @@ load_elf_program(const char *filepath,
                  char *header_buf,
                  struct elf_program_info *pinfo)
 {
+   load_segment_func load_seg = NULL;
    fs_handle elf_file = NULL;
    struct stat64 statbuf;
    struct elf_headers eh;
@@ -225,6 +227,7 @@ load_elf_program(const char *filepath,
       return rc;
    }
 
+   load_seg = &load_segment_by_copy;
    ASSERT(pinfo->pdir == NULL);
 
    if (!(pinfo->pdir = pdir_clone(get_kernel_pdir()))) {
@@ -240,7 +243,7 @@ load_elf_program(const char *filepath,
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      rc = load_phdr(elf_file, pinfo->pdir, phdr, &end_vaddr);
+      rc = load_seg(elf_file, pinfo->pdir, phdr, &end_vaddr);
 
       if (rc < 0)
          goto out;
