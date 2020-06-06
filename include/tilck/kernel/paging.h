@@ -84,7 +84,13 @@ static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
    return __kernel_pdir;
 }
 
-void *map_framebuffer(ulong paddr, ulong vaddr, ulong size, bool user_mmap);
+void *
+map_framebuffer(pdir_t *pdir,
+                ulong paddr,
+                ulong vaddr,
+                ulong size,
+                bool user_mmap);
+
 void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size);
 
 /*

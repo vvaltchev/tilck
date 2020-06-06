@@ -990,12 +990,16 @@ static void *failsafe_map_framebuffer(ulong paddr, ulong size)
    return (void *)vaddr;
 }
 
-void *map_framebuffer(ulong paddr, ulong vaddr, ulong size, bool user_mmap)
+void *
+map_framebuffer(pdir_t *pdir,
+                ulong paddr,
+                ulong vaddr,
+                ulong size,
+                bool user_mmap)
 {
    if (!get_kernel_pdir())
       return failsafe_map_framebuffer(paddr, size);
 
-   pdir_t *pdir = !user_mmap ? get_kernel_pdir() : get_curr_pdir();
    size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
    u32 mmap_flags = PG_RW_BIT | (user_mmap ? PG_US_BIT : PG_GLOBAL_BIT);
    size_t count;

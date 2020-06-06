@@ -125,7 +125,7 @@ fbdev_mmap(struct user_mapping *um, bool register_only)
    if (register_only)
       goto register_mapping;
 
-   fb_user_mmap(um->vaddrp, um->len);
+   fb_user_mmap(um->pi->pdir, um->vaddrp, um->len);
 
    total_fb_pages_mapped += um->len >> PAGE_SHIFT;
 

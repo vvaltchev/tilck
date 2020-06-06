@@ -205,14 +205,18 @@ u32 fb_get_bpp(void)
    return fb_bpp;
 }
 
-void fb_user_mmap(void *vaddr, size_t mmap_len)
+void fb_user_mmap(pdir_t *pdir, void *vaddr, size_t mmap_len)
 {
-   map_framebuffer(fb_paddr, (ulong)vaddr, mmap_len, true);
+   map_framebuffer(pdir, fb_paddr, (ulong)vaddr, mmap_len, true);
 }
 
 void fb_map_in_kernel_space(void)
 {
-   fb_vaddr = (ulong) map_framebuffer(fb_paddr, 0, fb_size, false);
+   fb_vaddr = (ulong) map_framebuffer(get_kernel_pdir(),
+                                      fb_paddr,
+                                      0,
+                                      fb_size,
+                                      false);
 }
 
 /*
