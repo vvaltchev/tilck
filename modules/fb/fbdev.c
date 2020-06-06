@@ -202,7 +202,7 @@ create_fb_device(int minor,
 
    *t = VFS_CHAR_DEV;
    *fops_ref = &static_ops_fb;
-   *spec_flags_ref = VFS_SPFL_NO_USER_COPY;
+   *spec_flags_ref = VFS_SPFL_NO_USER_COPY | VFS_SPFL_MMAP_SUPPORTED;
    return 0;
 }
 

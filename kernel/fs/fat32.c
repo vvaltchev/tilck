@@ -464,6 +464,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
    struct fs *fs = p->fs;
    struct fat_fs_path *fp = (struct fat_fs_path *)&p->fs_path;
    struct fat_entry *e = fp->entry;
+   struct fat_fs_device_data *d = fs->device_data;
 
    if (!e) {
 
@@ -488,6 +489,9 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
    h->e = e;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(e);
+
+   if (d->mmap_support)
+      h->spec_flags = VFS_SPFL_MMAP_SUPPORTED;
 
    *out = h;
    return 0;

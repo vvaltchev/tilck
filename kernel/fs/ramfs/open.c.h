@@ -23,6 +23,7 @@ ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
 
    vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_ramfs);
    h->inode = inode;
+   h->spec_flags = VFS_SPFL_MMAP_SUPPORTED;
    retain_obj(inode);
 
    if (inode->type == VFS_DIR) {
