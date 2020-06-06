@@ -6,6 +6,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/fs/fat32.h>
+#include <tilck/kernel/paging.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/system_mmap.h>
@@ -29,6 +30,8 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
       /* We cannot support our implementation of mmap in this case */
       return -1;
    }
+
+   retain_pageframes_mapped_at(get_kernel_pdir(), hdr, rd_size);
 
    if (fat_is_first_data_sector_aligned(hdr, PAGE_SIZE))
       return 0; /* Typical case: nothing to do */
