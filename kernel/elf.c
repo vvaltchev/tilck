@@ -91,24 +91,17 @@ load_phdr(fs_handle *elf_file,
    }
 
    ASSERT(tot_read == phdr->p_filesz);
-   return 0;
-}
 
-static void
-phdr_adjust_page_access(pdir_t *pdir, Elf_Phdr *phdr)
-{
-   char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
+   if (!(phdr->p_flags & PF_W)) {
 
-   if (phdr->p_memsz == 0)
-      return; /* very weird (because the phdr has type LOAD) */
+      /* Make the read-only pages to be read-only */
+      vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
 
-   ulong sz = phdr->p_vaddr + phdr->p_memsz - (ulong)vaddr;
-   size_t page_count = (sz + PAGE_SIZE - 1) / PAGE_SIZE;
-
-   /* Make the read-only pages to be read-only */
-   for (size_t j = 0; j < page_count; j++, vaddr += PAGE_SIZE)
-      if (!(phdr->p_flags & PF_W))
+      for (size_t j = 0; j < page_count; j++, vaddr += PAGE_SIZE)
          set_page_rw(pdir, vaddr, false);
+   }
+
+   return 0;
 }
 
 struct elf_headers {
@@ -254,14 +247,6 @@ load_elf_program(const char *filepath,
 
       if (end_vaddr > brk)
          brk = end_vaddr;
-   }
-
-   for (int i = 0; i < eh.header->e_phnum; i++) {
-
-      Elf_Phdr *phdr = eh.phdrs + i;
-
-      if (phdr->p_type == PT_LOAD)
-         phdr_adjust_page_access(pinfo->pdir, phdr);
    }
 
    /*
