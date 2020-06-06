@@ -301,6 +301,13 @@ ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
 
 offt vfs_seek(fs_handle h, s64 off, int whence);
 
+static ALWAYS_INLINE bool
+is_mmap_supported(fs_handle h)
+{
+   struct fs_handle_base *hb = (struct fs_handle_base *)h;
+   return !!(hb->spec_flags & VFS_SPFL_MMAP_SUPPORTED);
+}
+
 static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    fs->fsops->retain_inode(fs, inode);
