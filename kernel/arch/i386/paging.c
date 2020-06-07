@@ -417,7 +417,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
    page_dir_entry_t e;
    page_t p;
 
-   if (IN_RANGE(vaddr, KERNEL_BASE_VA, LINEAR_MAPPING_MB)) {
+   if (IN_RANGE(vaddr, KERNEL_BASE_VA, LINEAR_MAPPING_END)) {
       *pa_ref = KERNEL_VA_TO_PA(vaddr);
       return 0;
    }
