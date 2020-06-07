@@ -118,6 +118,24 @@ typedef void    (*func_get_entry) (struct fs *fs,
 typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
 typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
 
+/*
+ * vfs_mmap()'s flags
+ *
+ * By default the mmap() function (called by vfs_mmap) is expected to both do
+ * the actual memory-map and to register the user mapping in inode's
+ * mappings_list (not all file-systems do that, e.g. ramfs does, fat doesn't).
+ * For more about where the mappings_list play a role in ramfs, see the func
+ * ramfs_unmap_past_eof_mappings().
+ *
+ * However, in certain contexts, like partial un-mapping we might want to just
+ * register the new user-mapping, without actually doing it. That's where the
+ * VFS_MM_DONT_MMAP flag play a role. At the same way, in other exceptional
+ * situations we might not want the FS to register the mapping, but to do it
+ * anyway.
+ */
+#define VFS_MM_DONT_MMAP            (1 << 0)
+#define VFS_MM_DONT_REGISTER        (1 << 1)
+
 /* file ops */
 typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
@@ -125,7 +143,7 @@ typedef offt           (*func_seek)         (fs_handle, offt, int);
 typedef int            (*func_ioctl)        (fs_handle, ulong, void *);
 typedef int            (*func_mmap)         (struct user_mapping *,
                                              pdir_t *,
-                                             bool);
+                                             int);
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int            (*func_rwe_ready)    (fs_handle);
@@ -281,7 +299,7 @@ int vfs_ioctl(fs_handle h, ulong request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only);
+int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);

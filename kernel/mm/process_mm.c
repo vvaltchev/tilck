@@ -271,7 +271,7 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
 
    if (handle) {
 
-      if ((rc = vfs_mmap(um, pi->pdir, false))) {
+      if ((rc = vfs_mmap(um, pi->pdir, 0))) {
 
          /*
           * Everything was apparently OK and the allocation in the user virtual
@@ -388,7 +388,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
       (void) rc; /* prevent the "unused variable" Werror in release */
 
       if (um2)
-         vfs_mmap(um2, pi->pdir, true);
+         vfs_mmap(um2, pi->pdir, VFS_MM_DONT_MMAP);
    }
 
    per_heap_kfree(pi->mi->mmap_heap,

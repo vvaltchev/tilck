@@ -6,7 +6,7 @@ static int ramfs_munmap(fs_handle h, void *vaddrp, size_t len)
 }
 
 static int
-ramfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
+ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 {
    struct ramfs_handle *rh = um->h;
    struct ramfs_inode *i = rh->inode;
@@ -23,7 +23,7 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
    if (i->type != VFS_FILE)
       return -EACCES;
 
-   if (register_only)
+   if (flags & VFS_MM_DONT_MMAP)
       goto register_mapping;
 
    bintree_in_order_visit_start(&ctx,
@@ -62,7 +62,10 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
    }
 
 register_mapping:
-   list_add_tail(&i->mappings_list, &um->inode_node);
+   if (!(flags & VFS_MM_DONT_REGISTER)) {
+      list_add_tail(&i->mappings_list, &um->inode_node);
+   }
+
    return 0;
 }
 

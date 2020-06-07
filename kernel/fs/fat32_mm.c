@@ -90,7 +90,7 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
    return 0;
 }
 
-int fat_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
+int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 {
    struct fatfs_handle *fh = um->h;
    struct fat_fs_device_data *d = fh->fs->device_data;
@@ -106,7 +106,7 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
    if (fh->e->directory)
       return -EACCES;
 
-   if (register_only)
+   if (flags & VFS_MM_DONT_MMAP)
       return 0;
 
    clu = fat_get_first_cluster(fh->e);

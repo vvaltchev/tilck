@@ -115,22 +115,24 @@ static int fb_ioctl(fs_handle h, ulong request, void *argp)
 }
 
 static int
-fbdev_mmap(struct user_mapping *um, pdir_t *pdir, bool register_only)
+fbdev_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 {
    ASSERT(IS_PAGE_ALIGNED(um->len));
 
    if (um->off != 0)
       return -EINVAL; /* not supported, at least for the moment */
 
-   if (register_only)
+   if (flags & VFS_MM_DONT_MMAP)
       goto register_mapping;
 
    fb_user_mmap(pdir, um->vaddrp, um->len);
-
    total_fb_pages_mapped += um->len >> PAGE_SHIFT;
 
 register_mapping:
-   list_add_tail(&mappings_list, &um->inode_node);
+   if (!(flags & VFS_MM_DONT_REGISTER)) {
+      list_add_tail(&mappings_list, &um->inode_node);
+   }
+
    return 0;
 }
 
