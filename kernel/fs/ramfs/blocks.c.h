@@ -14,6 +14,9 @@ static struct ramfs_block *ramfs_new_block(offt page)
       return NULL;
    }
 
+   /* Retain the pageframe used by this block */
+   retain_pageframes_mapped_at(get_kernel_pdir(), b->vaddr, PAGE_SIZE);
+
    /* Init the block object */
    bintree_node_init(&b->node);
    b->offset = page;
@@ -22,6 +25,9 @@ static struct ramfs_block *ramfs_new_block(offt page)
 
 static void ramfs_destroy_block(struct ramfs_block *b)
 {
+   /* Release the pageframe used by this block */
+   release_pageframes_mapped_at(get_kernel_pdir(), b->vaddr, PAGE_SIZE);
+
    /* Free the memory pointed by this block */
    kfree2(b->vaddr, PAGE_SIZE);
 
