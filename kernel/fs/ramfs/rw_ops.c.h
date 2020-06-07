@@ -212,11 +212,7 @@ static int ramfs_inode_truncate(struct ramfs_inode *i, offt len)
                          node,
                          offset);
 
-      /* Free the memory pointed by this block */
-      kfree2(b->vaddr, PAGE_SIZE);
-
-      /* Free the memory used by the block object itself */
-      kfree2(b, sizeof(struct ramfs_block));
+      ramfs_destroy_block(b);
    }
 
    i->fsize = len;

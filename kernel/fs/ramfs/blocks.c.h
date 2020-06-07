@@ -2,21 +2,31 @@
 
 static struct ramfs_block *ramfs_new_block(offt page)
 {
-   void *vaddr;
-   struct ramfs_block *block;
+   struct ramfs_block *b;
 
-   if (!(vaddr = kzmalloc(PAGE_SIZE)))
+   /* Allocate memory for the block object */
+   if (!(b = kmalloc(sizeof(struct ramfs_block))))
       return NULL;
 
-   if (!(block = kmalloc(sizeof(struct ramfs_block)))) {
-      kfree2(vaddr, PAGE_SIZE);
+   /* Allocate block's data */
+   if (!(b->vaddr = kzmalloc(PAGE_SIZE))) {
+      kfree2(b, sizeof(struct ramfs_block));
       return NULL;
    }
 
-   bintree_node_init(&block->node);
-   block->offset = page;
-   block->vaddr = vaddr;
-   return block;
+   /* Init the block object */
+   bintree_node_init(&b->node);
+   b->offset = page;
+   return b;
+}
+
+static void ramfs_destroy_block(struct ramfs_block *b)
+{
+   /* Free the memory pointed by this block */
+   kfree2(b->vaddr, PAGE_SIZE);
+
+   /* Free the memory used by the block object itself */
+   kfree2(b, sizeof(struct ramfs_block));
 }
 
 static void
