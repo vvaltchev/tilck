@@ -284,9 +284,10 @@ void user_unmap_zero_page(ulong user_vaddr, size_t page_count)
 
 bool user_map_zero_page(ulong user_vaddr, size_t page_count)
 {
-   pdir_t *pdir = get_curr_pdir();
-   size_t count =
-      map_zero_pages(pdir, (void *)user_vaddr, page_count, true, true);
+   size_t count = map_zero_pages(get_curr_pdir(),
+                                 (void *)user_vaddr,
+                                 page_count,
+                                 PAGING_FL_US | PAGING_FL_RW);
 
    if (count != page_count) {
       user_unmap_zero_page(user_vaddr, count);

@@ -282,7 +282,7 @@ load_elf_program(const char *filepath,
    count = map_zero_pages(pinfo->pdir,
                           (void *)stack_top,
                           zero_mapped_pages,
-                          true, true);
+                          PAGING_FL_US | PAGING_FL_RW);
 
    if (count != zero_mapped_pages) {
       unmap_pages(pinfo->pdir, (void *)stack_top, count, true);

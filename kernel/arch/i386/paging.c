@@ -556,15 +556,10 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 }
 
 NODISCARD int
-map_zero_page(pdir_t *pdir,
-              void *vaddrp,
-              bool us,
-              bool rw)
+map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
 {
-   u32 avail_flags = 0;
-
-   if (rw)
-      avail_flags = PAGE_COW_ORIG_RW;
+   const u32 avail_flags = (pg_flags & PAGING_FL_RW) ? PAGE_COW_ORIG_RW : 0;
+   const bool us = !!(pg_flags & PAGING_FL_US);
 
    return
       map_page_int(pdir,
@@ -580,18 +575,13 @@ NODISCARD size_t
 map_zero_pages(pdir_t *pdir,
                void *vaddrp,
                size_t page_count,
-               bool us,
-               bool rw)
+               u32 pg_flags)
 {
-   int rc;
    size_t n;
    ulong vaddr = (ulong) vaddrp;
 
    for (n = 0; n < page_count; n++, vaddr += PAGE_SIZE) {
-
-      rc = map_zero_page(pdir, (void *)vaddr, us, rw);
-
-      if (rc != 0)
+      if (map_zero_page(pdir, (void *)vaddr, pg_flags) != 0)
          break;
    }
 

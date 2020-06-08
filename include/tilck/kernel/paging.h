@@ -51,7 +51,7 @@ NODISCARD int
 map_page_int(pdir_t *pdir, void *vaddr, ulong paddr, u32 hw_flags);
 
 NODISCARD int
-map_zero_page(pdir_t *pdir, void *vaddrp, bool us, bool rw);
+map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags);
 
 NODISCARD size_t
 map_pages(pdir_t *pdir,
@@ -74,8 +74,7 @@ NODISCARD size_t
 map_zero_pages(pdir_t *pdir,
                void *vaddrp,
                size_t page_count,
-               bool us,
-               bool rw);
+               u32 pg_flags);
 
 void init_paging_cow(void);
 bool is_mapped(pdir_t *pdir, void *vaddr);
