@@ -262,8 +262,7 @@ bool user_valloc_and_map(ulong user_vaddr, size_t page_count)
                      (void *)user_vaddr,
                      KERNEL_VA_TO_PA(kernel_vaddr),
                      page_count,
-                     false,
-                     true, true);
+                     PAGING_FL_US | PAGING_FL_RW);
 
    if (count != page_count) {
       unmap_pages(pdir, (void *)user_vaddr, count, false);

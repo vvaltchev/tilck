@@ -47,9 +47,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
                      vaddr_in_block,
                      direct_pa,
                      KERNEL_STACK_SIZE / PAGE_SIZE,
-                     false,   /* big pages allowed */
-                     false,   /* user accessible */
-                     true);   /* writable */
+                     PAGING_FL_RW);
 
    if (count != KERNEL_STACK_SIZE / PAGE_SIZE) {
       unmap_pages(pi->pdir, vaddr_in_block, count, false);

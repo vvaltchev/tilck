@@ -145,9 +145,7 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
                                 (void *)vaddr,
                                 KERNEL_VA_TO_PA(data),
                                 pg_count,
-                                false,      /* big pages: no */
-                                true,       /* user-access: yes */
-                                false);     /* read/write: no */
+                                PAGING_FL_US);
 
          if (mapped_cnt != pg_count) {
 

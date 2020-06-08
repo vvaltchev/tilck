@@ -593,16 +593,18 @@ map_pages(pdir_t *pdir,
           void *vaddr,
           ulong paddr,
           size_t page_count,
-          bool big_pages_allowed,
-          bool us,
-          bool rw)
+          u32 pg_flags)
 {
+   const bool us = !!(pg_flags & PAGING_FL_US);
+   const bool rw = !!(pg_flags & PAGING_FL_RW);
+   const bool big_pages = !!(pg_flags & PAGING_FL_BIG_PAGES_ALLOWED);
+
    return
       map_pages_int(pdir,
                     vaddr,
                     paddr,
                     page_count,
-                    big_pages_allowed,
+                    big_pages,
                     (u32)(us << PG_US_BIT_POS) |
                     (u32)(rw << PG_RW_BIT_POS) |
                     (u32)((!us) << PG_GLOBAL_BIT_POS));

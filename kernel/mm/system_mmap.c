@@ -512,9 +512,8 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
                 (void *)*vbegin,
                 pbegin,
                 page_count,
-                big_pages,   /* big pages allowed */
-                false,       /* user-accessible */
-                rw);         /* read/write */
+                (big_pages ? PAGING_FL_BIG_PAGES_ALLOWED : 0) |
+                (rw ? PAGING_FL_RW : 0));
 
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");

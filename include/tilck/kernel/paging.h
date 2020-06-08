@@ -21,6 +21,7 @@
 /* Paging flags (pg_flags) */
 #define PAGING_FL_RW                                      (1 << 0)
 #define PAGING_FL_US                                      (1 << 1)
+#define PAGING_FL_BIG_PAGES_ALLOWED                       (1 << 2)
 
 /* Combo values */
 #define PAGING_FL_RWUS               (PAGING_FL_RW | PAGING_FL_US)
@@ -58,9 +59,7 @@ map_pages(pdir_t *pdir,
           void *vaddr,
           ulong paddr,
           size_t page_count,
-          bool big_pages_allowed,
-          bool us,
-          bool rw);
+          u32 pg_flags);
 
 NODISCARD size_t
 map_pages_int(pdir_t *pdir,

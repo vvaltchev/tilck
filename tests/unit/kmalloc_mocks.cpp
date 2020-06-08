@@ -88,9 +88,7 @@ map_pages(pdir_t *pdir,
           void *vaddr,
           ulong paddr,
           size_t page_count,
-          bool big_pages_allowed,
-          bool us,
-          bool rw)
+          u32 pg_flags)
 {
    for (size_t i = 0; i < page_count; i++) {
       int rc = map_page(pdir,
