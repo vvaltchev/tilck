@@ -675,23 +675,27 @@ pdir_t *pdir_clone(pdir_t *pdir)
       page_table_t *orig_pt = pdir_get_page_table(pdir, i);
       page_table_t *new_pt = pdir_get_page_table(new_pdir, i);
 
-      /* Mark all the pages in that page-table as COW. */
+      /* Mark all the non-shared pages in that page-table as COW. */
       for (u32 j = 0; j < 1024; j++) {
 
-         if (!orig_pt->pages[j].present)
+         page_t *const p = &orig_pt->pages[j];
+
+         if (!p->present)
             continue;
 
-         const ulong orig_paddr =
-            (ulong)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
+         const ulong orig_paddr = (ulong)p->pageAddr << PAGE_SHIFT;
 
          /* Sanity-check: a mapped page MUST have ref-count > 0 */
          ASSERT(pf_ref_count_get(orig_paddr) > 0);
 
-         if (orig_pt->pages[j].rw) {
-            orig_pt->pages[j].avail |= PAGE_COW_ORIG_RW;
+         if (!(p->avail & PAGE_SHARED)) {
+
+            if (p->rw)
+               p->avail |= PAGE_COW_ORIG_RW;
+
+            p->rw = false;
          }
 
-         orig_pt->pages[j].rw = false;
          pf_ref_count_inc(orig_paddr);
       }
 
