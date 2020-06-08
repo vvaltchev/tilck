@@ -29,7 +29,8 @@ typedef unsigned long long ull_t;
 #define STR_FAIL      "[FAILED] "
 
 /* utils */
-#define RDTSC() __rdtsc()
+#define RDTSC()                     __rdtsc()
+#define DEBUG_BREAK()               asmVolatile("int $3")
 #define DEVSHELL_CMD_ASSERT(x)                                              \
    do {                                                                     \
       if (!(x)) {                                                           \

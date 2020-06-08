@@ -526,7 +526,7 @@ void handle_syscall(regs_t *r)
 void init_syscall_interfaces(void)
 {
    /* Set the entry for the int 0x80 syscall interface */
-   idt_set_entry(0x80,
+   idt_set_entry(SYSCALL_SOFT_INTERRUPT,
                  syscall_int80_entry,
                  X86_KERNEL_CODE_SEL,
                  IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);

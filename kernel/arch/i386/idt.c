@@ -161,6 +161,22 @@ void set_fault_handler(int ex_num, void *ptr)
    fault_handlers[ex_num] = (soft_int_handler_t) ptr;
 }
 
+static void handle_debugbreak(regs_t *r)
+{
+   /*
+    * Do nothing, literally. The purpose of this way of handling `int 3` is to
+    * allow during development to easily put a breakpoint in user-space code and
+    * from GDB (using remote debugging) to put a HW breakpoint here.
+    *
+    * On Linux, the behavior of `int 3` is quite different, but that's fine.
+    * This interrupt is anyway used only for debugging purposes. In the future,
+    * it is absolutely possible that Tilck will handle it in a different way.
+    * For the moment, the kernel offers no debugging features of userspace
+    * programs (= no such thing as ptrace).
+    */
+   asmVolatile("nop");
+}
+
 void init_cpu_exception_handling(void)
 {
    /* Set the entries for the x86 faults (exceptions) */
@@ -171,10 +187,21 @@ void init_cpu_exception_handling(void)
                     IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
    }
 
+   /*
+    * Set a special entry for the breakpoint FAULT, allowing `int 3` to work
+    * from userspace, without triggering a GPF, in the same way int 0x80 is
+    * allowed by init_syscall_interfaces().
+    */
+   idt_set_entry(FAULT_BREAKPOINT,
+                 fault_entry_points[FAULT_BREAKPOINT],
+                 X86_KERNEL_CODE_SEL,
+                 IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL3);
+
    load_idt(idt, ARRAY_SIZE(idt));
    set_fault_handler(FAULT_GENERAL_PROTECTION, handle_gpf);
    set_fault_handler(FAULT_INVALID_OPCODE, handle_ill);
    set_fault_handler(FAULT_DIVISION_BY_ZERO, handle_div0);
    set_fault_handler(FAULT_COPROC_FAULT, handle_cpf);
+   set_fault_handler(FAULT_BREAKPOINT, handle_debugbreak);
 }
 
