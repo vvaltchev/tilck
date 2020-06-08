@@ -154,7 +154,23 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    status = BS->FreePages(*ramdisk_paddr_ref, (total_fat_size / PAGE_SIZE) + 1);
    HANDLE_EFI_ERROR("FreePages");
 
-   status = BS->AllocatePages(AllocateAnyPages,
+   /*
+    * Because Tilck is 32-bit and it maps the first LINEAR_MAPPING_SIZE of
+    * physical memory at KERNEL_BASE_VA, we really cannot accept ANY address
+    * in the 64-bit space, because from Tilck we won't be able to read from
+    * there. The address of the ramdisk we actually be at most:
+    *
+    *    LINEAR_MAPPING_SIZE - "size of ramdisk"
+    *
+    * The AllocateMaxAddress allocation type is exactly what we need to use in
+    * this case. As explained in the UEFI specification:
+    *
+    *    Allocation requests of Type AllocateMaxAddress allocate any available
+    *    range of pages whose uppermost address is less than or equal to the
+    *    address pointed to by Memory on input.
+    */
+   *ramdisk_paddr_ref = LINEAR_MAPPING_SIZE;
+   status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
                               (total_used_bytes / PAGE_SIZE) + 2,
                               ramdisk_paddr_ref);
