@@ -27,7 +27,13 @@
  * is writeable even if it marked as read-only and that, on a write attempt
  * the page has to be copied (copy-on-write).
  */
-#define PAGE_COW_ORIG_RW 1
+#define PAGE_COW_ORIG_RW                       (1 << 0)
+
+/*
+ * When this flag is set in the 'avail' bits in page_t, it means that the page
+ * is shared and, therefore, can never become a CoW page.
+ */
+#define PAGE_SHARED                            (1 << 1)
 
 
 /* ---------------------------------------------- */
@@ -544,13 +550,18 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 {
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool us = !!(pg_flags & PAGING_FL_US);
+   u32 avail_bits = 0;
+
+   if (pg_flags & PAGING_FL_SHARED)
+      avail_bits |= PAGE_SHARED;
 
    return
       map_page_int(pdir,
                    vaddrp,
                    paddr,
-                   (u32)(us << PG_US_BIT_POS) |
-                   (u32)(rw << PG_RW_BIT_POS) |
+                   (u32)(avail_bits << PG_CUSTOM_B0_POS) |
+                   (u32)(us << PG_US_BIT_POS)            |
+                   (u32)(rw << PG_RW_BIT_POS)            |
                    (u32)((!us) << PG_GLOBAL_BIT_POS));
                    /* Kernel pages are global */
 }
@@ -558,15 +569,21 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 NODISCARD int
 map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
 {
-   const u32 avail_flags = (pg_flags & PAGING_FL_RW) ? PAGE_COW_ORIG_RW : 0;
+   u32 avail_bits = 0;
    const bool us = !!(pg_flags & PAGING_FL_US);
+
+   /* Zero pages are always private */
+   ASSERT(!(pg_flags & PAGING_FL_SHARED));
+
+   if (pg_flags & PAGING_FL_RW)
+      avail_bits |= PAGE_COW_ORIG_RW;
 
    return
       map_page_int(pdir,
                    vaddrp,
                    KERNEL_VA_TO_PA(&zero_page),
                    (u32)(us << PG_US_BIT_POS) |
-                   (u32)(avail_flags << PG_CUSTOM_B0_POS) |
+                   (u32)(avail_bits << PG_CUSTOM_B0_POS) |
                    (u32)((!us) << PG_GLOBAL_BIT_POS));
                    /* Kernel pages are global */
 }
@@ -598,6 +615,10 @@ map_pages(pdir_t *pdir,
    const bool us = !!(pg_flags & PAGING_FL_US);
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool big_pages = !!(pg_flags & PAGING_FL_BIG_PAGES_ALLOWED);
+   u32 avail_bits = 0;
+
+   if (pg_flags & PAGING_FL_SHARED)
+      avail_bits |= PAGE_SHARED;
 
    return
       map_pages_int(pdir,
@@ -605,8 +626,9 @@ map_pages(pdir_t *pdir,
                     paddr,
                     page_count,
                     big_pages,
-                    (u32)(us << PG_US_BIT_POS) |
-                    (u32)(rw << PG_RW_BIT_POS) |
+                    (u32)(avail_bits << PG_CUSTOM_B0_POS) |
+                    (u32)(us << PG_US_BIT_POS)            |
+                    (u32)(rw << PG_RW_BIT_POS)            |
                     (u32)((!us) << PG_GLOBAL_BIT_POS));
 }
 
