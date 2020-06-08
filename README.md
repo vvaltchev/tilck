@@ -135,7 +135,7 @@ Hardware support
 
 From the beginning of its development, `Tilck` has been tested both on virtualized
 hardware (`qemu`, `virtualbox`, `vmware workstation`) and on several hardware
-machines. Therefore, `Tilck` should work on any `i686+` machine compatible with the
+machines. Therefore, `Tilck` should work on any `i586+` machine compatible with the
 IBM-PC architecture, supporting the PSE (page-size extension) feature (introduced
 in Pentium Pro, 1995). If you want to try it, just use `dd` to store `tilck.img` in
 a flash drive and than use it for booting.
@@ -230,7 +230,7 @@ serial console: this way its possibile to see at the same time the traced
 program *and* its syscall trace. To do that, run the `qemu` VM this way:
 
     ./build/run_qemu -serial pty
-    
+
 In addition to the VM window, you'll see on the terminal something like:
 
     char device redirected to /dev/pts/4 (label serial0)
@@ -238,7 +238,7 @@ In addition to the VM window, you'll see on the terminal something like:
 Open another virtual terminal, install `screen` if you don't have it, and run:
 
     screen /dev/pts/4
-    
+
 You'll just connect to a Tilck serial console. Just press ENTER there and run
 `dp` as previously explained. Enjoy!
 
@@ -254,7 +254,7 @@ days of effort (think about special configurations e.g. cross builds). Tilck
 instead, has been designed to be trivial to build and test even for inexperienced
 people with basic knowledge of Linux. It has a sophisticated script for building
 its own toolchain that works on all the major Linux distributions and a powerful
-CMake-based build system. The build of Tilck produce an image ready to be tested
+CMake-based build system. The build of Tilck produces an image ready to be tested
 with QEMU or written on a USB stick. (To some degree, it's like what the
 `buildroot` project does for Linux.) Of course, the project includes also
 scripts for running Tilck in QEMU with various configurations (bios boot, efi
@@ -296,7 +296,7 @@ commit messages. It is an investment that at some point pays off. I even wrote a
 off only when multiple people contribute to a project or even a single person works
 on it, but the project is *mature enough*. Until now, the focus was on the shape of
 the code *after* the patch series in the sense that limited hacks in the middle of
-a series were allowed. Now, as the project crossed the 4,000 commits threshold and 
+a series were allowed. Now, as the project crossed the 4,000 commits threshold and
 is approching its first milestone, I started investing more time in pushing more
 polished series of patches. Maybe the commit messages are still often one-liners,
 but the scope of each commit is getting tigher than ever before. With almost 75,000
@@ -328,16 +328,15 @@ Linux for that. The idea at the moment to implement a kernel as simple as possib
 able to run a class of Linux console applications. At some point in the future
 `Tilck` might actually have a chance to be used in production embedded environments,
 but it still will be *by design* limited in terms of features compared to the Linux
-kernel. For example, `Tilck` will *probably* never support swap and I/O cache:
-project's whole purpose is being *simple* and *extremely-deterministic*, while
-some typical kernel features (e.g. swap, SMP) introduce a substantial amount of
-complexity and nondeterminism in a kernel. As mentioned above, one can think of
-`Tilck` as a kernel offering what a unikernel will never be able to offer, but
-without trying to be a kernel for full-blown desktop/server systems.
+kernel. For example, `Tilck` will *probably* never support swap and SMP as they
+introduce a substantial amount of complexity and nondeterminism in a kernel.
+As mentioned above, one can think of `Tilck` as a kernel offering what a unikernel
+will never be able to offer, but without trying to be a kernel for full-blown
+desktop/server systems.
 
-#### Why Tilck runs only on i686?
+#### Why Tilck runs only on x86 (ia-32)?
 
-Actually Tilck runs only on i686 *for the moment*. The kernel was born as a purely
+Actually Tilck runs only on x86 *for the moment*. The kernel was born as a purely
 educational project and the x86 architecture was already very friendly to me at
 the time. Moving from x86 usermode assembly to "kernel" mode (real-mode and the
 transitions back and forth to protected mode for the bootloader) required quite an
@@ -354,7 +353,7 @@ decided to stick initially with the `i686` architecture for the following reason
   to get confident with this technology as well.
 
 * The `long mode` has a 4-level paging system, which is more complex to use that
-  the classic 2-level paging supported by `ia32` (it was better to start with
+  the classic 2-level paging supported by `ia-32` (it was better to start with
   something simpler).
 
 * I never considered the idea of writing a kernel for desktop or server-class
@@ -370,7 +369,7 @@ in `long mode` at some point but, given the long-term plans for it as a tiny ker
 for embedded systems, making it to run on `ARM` machines has priority over supporting
 `x86_64`. Anyway, at this stage, making the kernel (mostly arch-independent code)
 powerful enough has absolute priority over the support for any specific architecture.
-`i686` was just a pragmatic choice for its first archicture.
+`x86` was just a pragmatic choice for its first archicture.
 
 #### Why having support for FAT32?
 
