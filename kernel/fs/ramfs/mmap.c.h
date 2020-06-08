@@ -13,6 +13,7 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    ulong vaddr = um->vaddr;
    struct bintree_walk_ctx ctx;
    struct ramfs_block *b;
+   u32 pg_flags;
    int rc;
 
    const size_t off_begin = um->off;
@@ -32,6 +33,11 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
                                 node,
                                 false);
 
+   pg_flags = PAGING_FL_US;
+
+   if ((rh->fl_flags & O_RDWR) == O_RDWR)
+      pg_flags |= PAGING_FL_RW;
+
    while ((b = bintree_in_order_visit_next(&ctx))) {
 
       if ((size_t)b->offset < off_begin)
@@ -43,8 +49,7 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
       rc = map_page(pdir,
                     (void *)vaddr,
                     KERNEL_VA_TO_PA(b->vaddr),
-                    true,
-                    (rh->fl_flags & O_RDWR) == O_RDWR);
+                    pg_flags);
 
       if (rc) {
 
@@ -116,8 +121,7 @@ ramfs_handle_fault_int(struct process *pi,
    rc = map_page(pi->pdir,
                  (void *)(vaddr & PAGE_MASK),
                  KERNEL_VA_TO_PA(rw ? block->vaddr : &zero_page),
-                 true,
-                 true);
+                 PAGING_FL_US | PAGING_FL_RW);
 
    if (rc)
       panic("Out-of-memory: unable to map a ramfs_block. No OOM killer");

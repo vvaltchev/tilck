@@ -540,12 +540,11 @@ out:
 }
 
 NODISCARD int
-map_page(pdir_t *pdir,
-         void *vaddrp,
-         ulong paddr,
-         bool us,
-         bool rw)
+map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 {
+   const bool rw = !!(pg_flags & PAGING_FL_RW);
+   const bool us = !!(pg_flags & PAGING_FL_US);
+
    return
       map_page_int(pdir,
                    vaddrp,
@@ -986,7 +985,7 @@ void init_paging_cow(void)
     */
    user_vsdo_like_page_vaddr = hi_vmem_reserve(PAGE_SIZE);
 
-   if (user_vsdo_like_page_vaddr != (void*)USER_VSDO_LIKE_PAGE_VADDR)
+   if (user_vsdo_like_page_vaddr != (void *)USER_VSDO_LIKE_PAGE_VADDR)
       panic("user_vsdo_like_page_vaddr != USER_VSDO_LIKE_PAGE_VADDR");
 
    /*
@@ -996,8 +995,7 @@ void init_paging_cow(void)
    rc = map_page(__kernel_pdir,
                  user_vsdo_like_page_vaddr,
                  KERNEL_VA_TO_PA(&vsdo_like_page),
-                 true,   /* user-visible */
-                 false); /* writable */
+                 PAGING_FL_US);
 
    if (rc < 0)
       panic("Unable to map the vsdo-like page");

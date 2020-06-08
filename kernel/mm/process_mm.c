@@ -53,9 +53,8 @@ static inline void sys_brk_internal(struct process *pi, void *new_brk)
          break; /* we've allocated as much as possible */
 
       const ulong paddr = KERNEL_VA_TO_PA(kernel_vaddr);
-      int rc = map_page(pi->pdir, vaddr, paddr, true, true);
 
-      if (rc != 0) {
+      if (map_page(pi->pdir, vaddr, paddr, PAGING_FL_RWUS) != 0) {
          kfree2(kernel_vaddr, PAGE_SIZE);
          break;
       }

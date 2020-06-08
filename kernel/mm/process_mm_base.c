@@ -234,7 +234,7 @@ bool user_valloc_and_map_slow(ulong user_vaddr, size_t page_count)
 
       pa = KERNEL_VA_TO_PA(kernel_vaddr);
 
-      if (map_page(pdir, (void *)va, pa, true, true) != 0) {
+      if (map_page(pdir, (void *)va, pa, PAGING_FL_RWUS) != 0) {
          kfree2(kernel_vaddr, PAGE_SIZE);
          user_vfree_and_unmap(user_vaddr, i);
          return false;

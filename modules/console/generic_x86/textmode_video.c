@@ -147,8 +147,7 @@ void init_textmode_console(void)
       int rc = map_page(pdir,
                         VIDEO_ADDR,
                         KERNEL_VA_TO_PA(VIDEO_ADDR),
-                        false,
-                        true);
+                        PAGING_FL_RW);
 
       if (rc < 0)
          panic("textmode_console: unable to map VIDEO_ADDR in the virt space");

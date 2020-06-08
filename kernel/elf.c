@@ -60,7 +60,7 @@ load_phdr(fs_handle *elf_file,
          if (!(p = kzmalloc(PAGE_SIZE)))
             return -ENOMEM;
 
-         if ((rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), true, true))) {
+         if ((rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), PAGING_FL_RWUS))) {
             kfree2(p, PAGE_SIZE);
             return (int)rc;
          }
@@ -197,8 +197,7 @@ alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
    rc = map_page(pdir,
                  (void *)stack_top + (i << PAGE_SHIFT),
                  KERNEL_VA_TO_PA(p),
-                 true,
-                 true);
+                 PAGING_FL_RW | PAGING_FL_US);
 
    return rc;
 }

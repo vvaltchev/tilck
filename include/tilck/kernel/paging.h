@@ -18,6 +18,13 @@
 
 #define INVALID_PADDR                                  ((ulong)-1)
 
+/* Paging flags (pg_flags) */
+#define PAGING_FL_RW                                      (1 << 0)
+#define PAGING_FL_US                                      (1 << 1)
+
+/* Combo values */
+#define PAGING_FL_RWUS               (PAGING_FL_RW | PAGING_FL_US)
+
 /*
  * These MACROs can be used for the linear mapping region in the kernel space.
  */
@@ -31,8 +38,14 @@ extern char zero_page[PAGE_SIZE];
 void init_paging();
 bool handle_potential_cow(void *r);
 
+/*
+ * Map a pageframe at `paddr` at the virtual address `vaddr` in the page
+ * directory `pdir`, using the arch-independent `pg_flags`. This last param
+ * is made by ORing the flags defined above such as PAGING_FL_RO etc.
+ */
+
 NODISCARD int
-map_page(pdir_t *pdir, void *vaddr, ulong paddr, bool us, bool rw);
+map_page(pdir_t *pdir, void *vaddr, ulong paddr, u32 pg_flags);
 
 NODISCARD int
 map_page_int(pdir_t *pdir, void *vaddr, ulong paddr, u32 hw_flags);

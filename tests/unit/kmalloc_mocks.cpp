@@ -74,7 +74,7 @@ void init_kmalloc_for_tests()
    suppress_printk = false;
 }
 
-int map_page(pdir_t *, void *vaddr, ulong paddr, bool us, bool rw)
+int map_page(pdir_t *, void *vaddr, ulong paddr, u32 pg_flags)
 {
    ASSERT(!((ulong)vaddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // check page-aligned
@@ -96,8 +96,7 @@ map_pages(pdir_t *pdir,
       int rc = map_page(pdir,
                         (char *)vaddr + (i << PAGE_SHIFT),
                         paddr + (i << PAGE_SHIFT),
-                        us,
-                        rw);
+                        0);
       VERIFY(rc == 0);
    }
 
