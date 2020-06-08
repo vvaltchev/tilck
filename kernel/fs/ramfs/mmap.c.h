@@ -33,7 +33,7 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
                                 node,
                                 false);
 
-   pg_flags = PAGING_FL_US;
+   pg_flags = PAGING_FL_US | PAGING_FL_SHARED;
 
    if ((rh->fl_flags & O_RDWR) == O_RDWR)
       pg_flags |= PAGING_FL_RW;
@@ -121,7 +121,7 @@ ramfs_handle_fault_int(struct process *pi,
    rc = map_page(pi->pdir,
                  (void *)(vaddr & PAGE_MASK),
                  KERNEL_VA_TO_PA(rw ? block->vaddr : &zero_page),
-                 PAGING_FL_US | PAGING_FL_RW);
+                 PAGING_FL_US | PAGING_FL_RW | PAGING_FL_SHARED);
 
    if (rc)
       panic("Out-of-memory: unable to map a ramfs_block. No OOM killer");
