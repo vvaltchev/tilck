@@ -1052,9 +1052,11 @@ map_framebuffer(pdir_t *pdir,
    if (!get_kernel_pdir())
       return failsafe_map_framebuffer(paddr, size);
 
-   size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
-   u32 mmap_flags = PG_RW_BIT | (user_mmap ? PG_US_BIT : PG_GLOBAL_BIT);
    size_t count;
+   const size_t page_count = pow2_round_up_at(size, PAGE_SIZE) / PAGE_SIZE;
+   const u32 pg_flags = PAGING_FL_RW                     |
+                        PAGING_FL_SHARED                 |
+                        (user_mmap ? PAGING_FL_US : 0);
 
    if (!vaddr) {
 
@@ -1086,12 +1088,11 @@ map_framebuffer(pdir_t *pdir,
       }
    }
 
-   count = map_pages_int(pdir,
-                         (void *)vaddr,
-                         paddr,
-                         page_count,
-                         false, /* big pages not allowed */
-                         mmap_flags);
+   count = map_pages(pdir,
+                     (void *)vaddr,
+                     paddr,
+                     page_count,
+                     pg_flags);
 
    if (count < page_count) {
 
