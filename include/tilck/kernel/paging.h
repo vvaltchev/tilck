@@ -35,7 +35,7 @@ NODISCARD int
 map_page(pdir_t *pdir, void *vaddr, ulong paddr, bool us, bool rw);
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddr, ulong paddr, u32 flags);
+map_page_int(pdir_t *pdir, void *vaddr, ulong paddr, u32 hw_flags);
 
 NODISCARD int
 map_zero_page(pdir_t *pdir, void *vaddrp, bool us, bool rw);
@@ -55,7 +55,7 @@ map_pages_int(pdir_t *pdir,
               ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
-              u32 flags);
+              u32 hw_flags);
 
 NODISCARD size_t
 map_zero_pages(pdir_t *pdir,

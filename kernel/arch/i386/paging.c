@@ -439,7 +439,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
 }
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
+map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
 {
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
@@ -465,14 +465,14 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 flags)
       pdir->entries[pd_index].raw =
          PG_PRESENT_BIT |
          PG_RW_BIT |
-         (flags & PG_US_BIT) |
+         (hw_flags & PG_US_BIT) |
          KERNEL_VA_TO_PA(pt);
    }
 
    if (pt->pages[pt_index].present)
       return -EADDRINUSE;
 
-   pt->pages[pt_index].raw = PG_PRESENT_BIT | flags | paddr;
+   pt->pages[pt_index].raw = PG_PRESENT_BIT | hw_flags | paddr;
    pf_ref_count_inc(paddr);
    invalidate_page_hw(vaddr);
    return 0;
@@ -484,7 +484,7 @@ map_pages_int(pdir_t *pdir,
               ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
-              u32 flags)
+              u32 hw_flags)
 {
    int rc;
    size_t pages = 0;
@@ -502,7 +502,7 @@ map_pages_int(pdir_t *pdir,
          if (!((ulong)vaddr & (4*MB - 1)) && !(paddr & (4*MB - 1)))
             break;
 
-         rc = map_page_int(pdir, vaddr, paddr, flags);
+         rc = map_page_int(pdir, vaddr, paddr, hw_flags);
 
          if (UNLIKELY(rc < 0))
             goto out;
@@ -512,7 +512,7 @@ map_pages_int(pdir_t *pdir,
       }
 
       rem_pages -= pages;
-      big_page_flags = flags | PG_4MB_BIT | PG_PRESENT_BIT;
+      big_page_flags = hw_flags | PG_4MB_BIT | PG_PRESENT_BIT;
       big_page_flags &= ~PG_GLOBAL_BIT;
 
       for (; big_pages < (rem_pages >> 10); big_pages++) {
@@ -526,7 +526,7 @@ map_pages_int(pdir_t *pdir,
 
    for (size_t i = 0; i < rem_pages; i++, pages++) {
 
-      rc = map_page_int(pdir, vaddr, paddr, flags);
+      rc = map_page_int(pdir, vaddr, paddr, hw_flags);
 
       if (UNLIKELY(rc < 0))
          goto out;
