@@ -318,7 +318,6 @@ compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s);
 
 u32 vfs_get_new_device_id(void);
 fs_handle get_fs_handle(int fd);
-void close_cloexec_handles(struct process *pi);
 
 /* ------------ Current mount point interface ------------- */
 

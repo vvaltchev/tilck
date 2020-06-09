@@ -9,13 +9,14 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/elf_loader.h>
+#include <tilck/kernel/fs/vfs_base.h>
+#include <tilck/kernel/sys_types.h>
 
 #define PROCESS_CMDLINE_BUF_SIZE                      256
 
@@ -290,3 +291,4 @@ void task_temp_kernel_free(void *ptr);
 void process_set_cwd2_nolock(struct vfs_path *tp);
 void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp);
 void terminate_process(struct task *ti, int exit_code, int term_sig);
+void close_cloexec_handles(struct process *pi);

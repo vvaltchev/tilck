@@ -5,6 +5,7 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/fs/vfs.h>
 
 struct select_ctx {
    int nfds;

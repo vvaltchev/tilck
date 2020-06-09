@@ -5,6 +5,7 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/fs/vfs.h>
 
 static u32
 poll_count_conds(struct pollfd *fds, nfds_t nfds)

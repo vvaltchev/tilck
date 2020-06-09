@@ -10,6 +10,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #define LINUX_REBOOT_MAGIC1         0xfee1dead
 #define LINUX_REBOOT_MAGIC2          672274793
