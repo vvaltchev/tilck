@@ -184,11 +184,8 @@ int vfs_utimens(const char *path, const struct k_timespec64 times[2]);
 int vfs_ftruncate(fs_handle h, offt length);
 int vfs_ioctl(fs_handle h, ulong request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
-int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fchmod(fs_handle h, mode_t mode);
-void vfs_close(fs_handle h);
-void vfs_close2(struct process *pi, fs_handle h);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
 
 
