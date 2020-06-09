@@ -4,7 +4,7 @@
 #include <tilck/common/printk.h>
 #include <tilck/common/debug/termios_debug.c.h>
 
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>

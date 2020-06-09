@@ -4,7 +4,7 @@
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
 
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/cmdline.h>

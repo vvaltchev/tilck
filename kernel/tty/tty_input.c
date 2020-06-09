@@ -3,7 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/term.h>
