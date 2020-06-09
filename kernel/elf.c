@@ -105,6 +105,52 @@ load_segment_by_copy(fs_handle *elf_file,
    return 0;
 }
 
+static inline int check_segment_alignment(Elf_Phdr *phdr)
+{
+   const ulong file_page_off = phdr->p_offset & OFFSET_IN_PAGE_MASK;
+   const ulong mem_page_off = phdr->p_vaddr & OFFSET_IN_PAGE_MASK;
+
+   if (phdr->p_align != PAGE_SIZE) {
+
+      /*
+       * We simply cannot possibly support such a scenario. It would imply
+       * having cases like:
+       *
+       *    file_offset   = 0x0000a001
+       *    memory_offset = 0x0800b002
+       *
+       * While we can only map 4k pages, like mapping the whole 4k chunk of
+       * the ELF file at 0x0000a000 to the virtual memory address 0x800b000.
+       * If the two offsets are not equal, the whole mapping in the memory would
+       * have to shift by a given amount in the range [1, 4095] and that could
+       * possibily happen only after copying the whole file in memory.
+       *
+       * NOTE: while it might seem that p_align == PAGE_SIZE means that both
+       * file_page_off and mem_page_off must always be zero, that's NOT correct.
+       * In reality, it's typical for them to have values != 0 as long as their
+       * value is the same, like 0x123, that's absolutely fine. Just, during
+       * the mapping, that offset will be simply ignored.
+       *
+       * See the case below.
+       */
+
+      return -ENOEXEC;
+   }
+
+   if (file_page_off != mem_page_off) {
+
+      /*
+       * The ELF header states that this segment is aligned at PAGE_SIZE but
+       * the in-page offset of the file position and the one of the vaddr
+       * differ: therefore, the header is lying. The segment is NOT aligned at
+       * PAGE_SIZE. We cannot possibly accept that.
+       */
+      return -ENOEXEC;
+   }
+
+   return 0;
+}
+
 struct elf_headers {
 
    char *header_buf;
@@ -242,6 +288,11 @@ load_elf_program(const char *filepath,
 
       if (phdr->p_type != PT_LOAD)
          continue;
+
+      rc = check_segment_alignment(phdr);
+
+      if (rc < 0)
+         goto out;
 
       rc = load_seg(elf_file, pinfo->pdir, phdr, &end_vaddr);
 
