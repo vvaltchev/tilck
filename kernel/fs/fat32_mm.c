@@ -4,12 +4,12 @@
 #include <tilck/common/printk.h>
 
 #include <tilck/kernel/errno.h>
-#include <tilck/kernel/fs/vfs.h>
-#include <tilck/kernel/fs/fat32.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/fs/vfs_base.h>
+#include <tilck/kernel/fs/fat32.h>
 
 int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
 {
