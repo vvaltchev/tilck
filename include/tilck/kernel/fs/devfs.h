@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
+#include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/list.h>
 
 #define DEVFS_READ_BS   4096

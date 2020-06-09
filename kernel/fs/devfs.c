@@ -4,6 +4,7 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/fs/devfs.h>
+#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
