@@ -6,8 +6,8 @@
 #include <tilck/common/fat32_base.h>
 
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/fs/vfs_base.h>
 
 struct fat_fs_device_data {
 
