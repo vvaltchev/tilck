@@ -9,6 +9,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #include <tilck/mods/tracing.h>
 
