@@ -6,12 +6,14 @@
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/fault_resumable.h>
 
+#include <sys/mman.h>      // system header
 
 #if defined(__x86_64__)
    #define ELF_CURR_ARCH   EM_X86_64
@@ -83,7 +85,7 @@ load_segment_by_copy(fs_handle *elf_file,
             return (int)rc;           /* I/O error during read */
 
          if (rc < (ssize_t)to_read)
-            return -ENOEXEC;     /* The ELF file is corrupted */
+            return -ENOEXEC;      /* The ELF file is corrupted */
 
          va += to_read;
          filesz_rem -= to_read;
@@ -149,6 +151,58 @@ static inline int check_segment_alignment(Elf_Phdr *phdr)
    }
 
    return 0;
+}
+
+static int
+load_segment_by_mmap(fs_handle *elf_file,
+                     pdir_t *pdir,
+                     Elf_Phdr *phdr,
+                     ulong *end_vaddr_ref)
+{
+   if (phdr->p_flags & PF_W)
+      return load_segment_by_copy(elf_file, pdir, phdr, end_vaddr_ref);
+
+   if (UNLIKELY(phdr->p_memsz == 0))
+      return 0; /* very weird (because the phdr has type LOAD) */
+
+   /*
+    * Logic behind the calculation of `um.len`.
+    *
+    * First of all, phdr->p_memsz is NOT page aligned; it could have any value.
+    * Because we have to map a number of pages, not bytes, the least we can do
+    * is to round-up the value of `p_memsz` at PAGE_SIZE. That would do a great
+    * job for many cases like:
+    *
+    *    vaddr:  0x08001000
+    *    length: 800 bytes -> 4096 bytes (1 page)
+    *       => range [0x08001000, 0x08002000)
+    *
+    * BUT, because `p_vaddr` is NOT required to be divisible by PAGE_SIZE, see
+    * check_segment_alignment(), we will end with a wrong range in some cases.
+    * For example:
+    *
+    *    vaddr: 0x08001c00       (in-page offset: 0xc00 = 3072)
+    *    length: 2048 bytes -> 4096 bytes (1 page)
+    *         => range [0x08001000, 0x08002000)     <---- WRONG!!
+    *
+    * The correct way of calculating `length` requires to consider the in-page
+    * offset of `vaddr` as part of it. In other words:
+    *
+    *    0x08001c00 (vaddr) - 0x08001000 (vaddr & PAGE_MASK) + 2048 (p_memsz) =
+    *    0xc00 + 2048 = 5120 -> 8192 (2 pages)
+    *       => range [0x08001000, 0x08003000)      <---- CORRECT!!
+    */
+
+   struct user_mapping um = {0};
+   um.pi = NULL;
+   um.h = elf_file;
+   um.off = phdr->p_offset & PAGE_MASK;
+   um.vaddr = phdr->p_vaddr & PAGE_MASK;
+   um.len = round_up_at(phdr->p_vaddr + phdr->p_memsz - um.vaddr, PAGE_SIZE);
+   um.prot = PROT_READ;
+
+   *end_vaddr_ref = um.vaddr + um.len;
+   return vfs_mmap(&um, pdir, VFS_MM_DONT_REGISTER);
 }
 
 struct elf_headers {
@@ -273,7 +327,10 @@ load_elf_program(const char *filepath,
       return rc;
    }
 
-   load_seg = &load_segment_by_copy;
+   load_seg = is_mmap_supported(elf_file)
+      ? &load_segment_by_mmap
+      : &load_segment_by_copy;
+
    ASSERT(pinfo->pdir == NULL);
 
    if (!(pinfo->pdir = pdir_clone(get_kernel_pdir()))) {
