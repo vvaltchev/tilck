@@ -3,8 +3,22 @@
 BUILD_DIR="@CMAKE_BINARY_DIR@"
 f="@GPT_IMG_FILE@"
 tc="@TCROOT@"
+tc_bios="$tc/x86_64/ovmf/OVMF-pure-efi.fd"
 
-if ! [ -d $tc/x86_64/ovmf ]; then
+if [ -z "$QEMU_BIOS" ]; then
+
+   QEMU_BIOS="/usr/share/qemu/OVMF.fd"
+
+   if ! [ -f "$QEMU_BIOS" ]; then
+      QEMU_BIOS="$tc_bios"
+   fi
+
+elif [ "$QEMU_BIOS" = "tc" ]; then
+
+   QEMU_BIOS="$tc_bios"
+fi
+
+if ! [ -f "$QEMU_BIOS" ]; then
    echo "In order to boot with EFI, you need to download OVMF first."
    echo "To do that, just run in project's main directory:"
    echo "   ./scripts/build_toolchain -s download_ovmf"
@@ -21,6 +35,11 @@ if [ -z "$GDB_PORT" ]; then
    GDB_PORT=1234
 fi
 
-qemu-system-x86_64 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT @QEMU_RAM_OPT@    \
-   -bios $tc/x86_64/ovmf/OVMF-pure-efi.fd                                   \
+echo "Run QEMU with -bios $QEMU_BIOS -gdb tcp::$GDB_PORT"
+
+qemu-system-x86_64                                     \
+   @QEMU_COMMON_OPTS@                                  \
+   @QEMU_RAM_OPT@                                      \
+   -gdb tcp::$GDB_PORT                                 \
+   -bios "$QEMU_BIOS"                                  \
    -drive index=0,media=disk,format=raw,file=$f "$@"
