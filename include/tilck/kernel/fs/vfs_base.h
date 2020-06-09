@@ -4,6 +4,8 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
+#include <tilck/kernel/hal_types.h>
+
 /* Forward declarations */
 struct process;
 struct user_mapping;
@@ -64,6 +66,10 @@ struct vfs_path {
    const char *last_comp;
 };
 
+#define VFS_FS_RO                  (0)  /* struct fs mounted in RO mode */
+#define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
+#define VFS_FS_RQ_DE_SKIP     (1 << 1)  /* FS requires vfs dents skip */
+
 /* This struct is Tilck's analogue of Linux's "superblock" */
 struct fs {
 
@@ -75,3 +81,58 @@ struct fs {
    void *device_data;
    const struct fs_ops *fsops;
 };
+
+
+/*
+ * Each fs_handle struct should contain at its beginning the fields of the
+ * following base struct [a rough attempt to emulate inheritance in C].
+ *
+ * TODO: introduce a ref-count in the fs_base_handle struct when implementing
+ * thread support.
+ */
+
+#define FS_HANDLE_BASE_FIELDS    \
+   struct process *pi;           \
+   struct fs *fs;                \
+   const struct file_ops *fops;  \
+   int fd_flags;                 \
+   int fl_flags;                 \
+   int spec_flags;               \
+   offt pos;                        /* file: offset, dir: opaque entry index */
+
+struct fs_handle_base {
+   FS_HANDLE_BASE_FIELDS
+};
+
+/* File handle's special flags (spec_flags) */
+#define VFS_SPFL_NO_USER_COPY         (1 << 0)
+#define VFS_SPFL_MMAP_SUPPORTED       (1 << 1)
+
+/*
+ * vfs_mmap()'s flags
+ *
+ * By default the mmap() function (called by vfs_mmap) is expected to both do
+ * the actual memory-map and to register the user mapping in inode's
+ * mappings_list (not all file-systems do that, e.g. ramfs does, fat doesn't).
+ * For more about where the mappings_list play a role in ramfs, see the func
+ * ramfs_unmap_past_eof_mappings().
+ *
+ * However, in certain contexts, like partial un-mapping we might want to just
+ * register the new user-mapping, without actually doing it. That's where the
+ * VFS_MM_DONT_MMAP flag play a role. At the same way, in other exceptional
+ * situations we might not want the FS to register the mapping, but to do it
+ * anyway.
+ */
+#define VFS_MM_DONT_MMAP            (1 << 0)
+#define VFS_MM_DONT_REGISTER        (1 << 1)
+
+int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
+int vfs_munmap(fs_handle h, void *vaddr, size_t len);
+bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
+
+static ALWAYS_INLINE bool
+is_mmap_supported(fs_handle h)
+{
+   struct fs_handle_base *hb = (struct fs_handle_base *)h;
+   return !!(hb->spec_flags & VFS_SPFL_MMAP_SUPPORTED);
+}

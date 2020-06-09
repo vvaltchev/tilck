@@ -63,24 +63,6 @@ typedef void    (*func_get_entry) (struct fs *fs,
 typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
 typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
 
-/*
- * vfs_mmap()'s flags
- *
- * By default the mmap() function (called by vfs_mmap) is expected to both do
- * the actual memory-map and to register the user mapping in inode's
- * mappings_list (not all file-systems do that, e.g. ramfs does, fat doesn't).
- * For more about where the mappings_list play a role in ramfs, see the func
- * ramfs_unmap_past_eof_mappings().
- *
- * However, in certain contexts, like partial un-mapping we might want to just
- * register the new user-mapping, without actually doing it. That's where the
- * VFS_MM_DONT_MMAP flag play a role. At the same way, in other exceptional
- * situations we might not want the FS to register the mapping, but to do it
- * anyway.
- */
-#define VFS_MM_DONT_MMAP            (1 << 0)
-#define VFS_MM_DONT_REGISTER        (1 << 1)
-
 /* file ops */
 typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
 typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
@@ -104,10 +86,6 @@ typedef ssize_t        (*func_writev)       (fs_handle,
                                              const struct iovec *,
                                              int);
 
-
-#define VFS_FS_RO                  (0)  /* struct fs mounted in RO mode */
-#define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
-#define VFS_FS_RQ_DE_SKIP     (1 << 1)  /* FS requires vfs dents skip */
 
 /*
  * Operations affecting the file system structure (directories, files, etc.).
@@ -185,32 +163,6 @@ struct file_ops {
    func_get_rwe_cond get_except_cond;  /* if NULL, return NULL */
 };
 
-/*
- * Each fs_handle struct should contain at its beginning the fields of the
- * following base struct [a rough attempt to emulate inheritance in C].
- *
- * TODO: introduce a ref-count in the fs_base_handle struct when implementing
- * thread support.
- */
-
-#define FS_HANDLE_BASE_FIELDS    \
-   struct process *pi;           \
-   struct fs *fs;                \
-   const struct file_ops *fops;  \
-   int fd_flags;                 \
-   int fl_flags;                 \
-   int spec_flags;               \
-   offt pos;                        /* file: offset, dir: opaque entry index */
-
-struct fs_handle_base {
-   FS_HANDLE_BASE_FIELDS
-};
-
-/* File handle's special flags (spec_flags) */
-#define VFS_SPFL_NO_USER_COPY         (1 << 0)
-#define VFS_SPFL_MMAP_SUPPORTED       (1 << 1)
-/* --- */
-
 void vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
                                     struct fs *fs,
                                     const struct file_ops *fops);
@@ -234,12 +186,9 @@ int vfs_ioctl(fs_handle h, ulong request, void *argp);
 int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
-int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
-int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 int vfs_fchmod(fs_handle h, mode_t mode);
 void vfs_close(fs_handle h);
 void vfs_close2(struct process *pi, fs_handle h);
-bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
 
 
@@ -257,12 +206,6 @@ ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
 
 offt vfs_seek(fs_handle h, s64 off, int whence);
 
-static ALWAYS_INLINE bool
-is_mmap_supported(fs_handle h)
-{
-   struct fs_handle_base *hb = (struct fs_handle_base *)h;
-   return !!(hb->spec_flags & VFS_SPFL_MMAP_SUPPORTED);
-}
 
 static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
