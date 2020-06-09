@@ -28,6 +28,7 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/fs/kernelfs.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #include <tilck/mods/console.h>
 #include <tilck/mods/fb_console.h>

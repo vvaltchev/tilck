@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 
 #define KOBJ_BASE_FIELDS                    \
    REF_COUNTED_OBJECT;                      \
