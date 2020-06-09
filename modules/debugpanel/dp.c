@@ -16,7 +16,6 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/cmdline.h>
-#include <tilck/kernel/fs/vfs.h>
 
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/tracing.h>

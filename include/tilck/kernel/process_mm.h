@@ -2,8 +2,9 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
-#include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/list.h>
 
 struct user_mapping {
 

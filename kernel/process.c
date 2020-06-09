@@ -13,6 +13,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/fs/vfs.h>
 
 #include <sys/prctl.h>        // system header
 
