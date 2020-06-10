@@ -155,5 +155,7 @@ extern const struct fs_ops static_fsops_testfs = {
    .fs_exunlock         = vfs_test_fs_exunlock,
    .fs_shlock           = vfs_test_fs_shlock,
    .fs_shunlock         = vfs_test_fs_shunlock,
+   .exlock_noblk        = nullptr,
+   .exunlock            = nullptr,
 };
 

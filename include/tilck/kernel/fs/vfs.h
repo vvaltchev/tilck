@@ -62,6 +62,7 @@ typedef void    (*func_get_entry) (struct fs *fs,
 /* mixed fs/file ops */
 typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
 typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
+typedef int     (*func_exlock_noblk) (struct fs *, vfs_inode_ptr_t);
 
 /* file ops */
 typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
@@ -129,6 +130,10 @@ struct fs_ops {
    func_fslock_t fs_exunlock;
    func_fslock_t fs_shlock;
    func_fslock_t fs_shunlock;
+
+   /* per-file lock funcs */
+   func_exlock_noblk exlock_noblk;     /* if NULL -> -ENOLOCK  */
+   func_exlock_noblk exunlock;         /* if NULL -> 0         */
 };
 
 struct file_ops {
@@ -144,7 +149,7 @@ struct file_ops {
    func_readv readv;                   /* if NULL, emulated in non-atomic way */
    func_writev writev;                 /* if NULL, emulated in non-atomic way */
 
-   func_handle_fault handle_fault;
+   func_handle_fault handle_fault;     /* if NULL -> false     */
 
    /*
     * Optional, r/w/e ready funcs
@@ -187,7 +192,7 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fchmod(fs_handle h, mode_t mode);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
-
+offt vfs_seek(fs_handle h, s64 off, int whence);
 
 int vfs_read_ready(fs_handle h);
 int vfs_write_ready(fs_handle h);
@@ -201,8 +206,8 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
 ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
 
-offt vfs_seek(fs_handle h, s64 off, int whence);
-
+int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i);
+int vfs_exunlock(struct fs *fs, vfs_inode_ptr_t i);
 
 static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {

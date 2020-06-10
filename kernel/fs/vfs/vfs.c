@@ -782,3 +782,59 @@ u32 vfs_get_new_device_id(void)
 {
    return next_device_id++;
 }
+
+int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i)
+{
+   int rc;
+
+   if (!(fs->flags & VFS_FS_RW))
+      return 0; /* always succeed for read-only mounted filesystems */
+
+   if (!fs->fsops->exlock_noblk) {
+      /* Make sure its counterpart function neither exists */
+      ASSERT(!fs->fsops->exunlock);
+      return -ENOLCK;
+   }
+
+   /* Make sure its counterpart function do exists as well */
+   ASSERT(fs->fsops->exunlock != NULL);
+
+   /* Retain the fs, the inode and finally try to grab the exlock */
+   retain_obj(fs);
+   vfs_retain_inode(fs, i);
+   rc = fs->fsops->exlock_noblk(fs, i);
+
+   if (rc != 0) {
+      /* error case: we must release the inode and the fs obj */
+      vfs_release_inode(fs, i);
+      release_obj(fs);
+   }
+
+   return rc;
+}
+
+int vfs_exunlock(struct fs *fs, vfs_inode_ptr_t i)
+{
+   int rc;
+
+   if (!(fs->flags & VFS_FS_RW))
+      return 0; /* always succeed for read-only mounted filesystems */
+
+   if (!fs->fsops->exunlock) {
+      /* Make sure its counterpart function neither exists */
+      ASSERT(!fs->fsops->exlock_noblk);
+      return -ENOLCK;
+   }
+
+   /* Make sure its counterpart function do exists as well */
+   ASSERT(fs->fsops->exlock_noblk != NULL);
+   rc = fs->fsops->exunlock(fs, i);
+
+   if (!rc) {
+      /* success case: release the inode and the fs obj */
+      vfs_release_inode(fs, i);
+      release_obj(fs);
+   }
+
+   return rc;
+}
