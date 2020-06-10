@@ -75,7 +75,7 @@ int register_driver(struct driver_info *info, int arg_major)
 struct devfs_dir {
 
    /*
-    * Yes, sub-directories are NOT supported by devfs. The whole struct fs is
+    * Yes, sub-directories are NOT supported by devfs. The whole filesystem is
     * just one flat directory.
     */
    enum vfs_entry_type type;
@@ -194,7 +194,7 @@ int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
          break;
 
       default:
-         panic("[devfs] Invalid type: %d", df->type);
+         panic("[devfs] Invalid dentry type: %d", df->type);
    }
 
    statbuf->st_nlink = 1;
@@ -430,7 +430,22 @@ devfs_get_entry(struct fs *fs,
 
 static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
 {
-   return ((struct devfs_handle *)h)->file;
+   struct devfs_handle *dh = h;
+   struct devfs_data *ddata = dh->fs->device_data;
+
+   switch (dh->type) {
+
+      case VFS_DIR:
+         return &ddata->root_dir;
+
+      case VFS_CHAR_DEV:
+         return dh->file;
+
+      default:
+         panic("[devfs] Invalid dentry type: %d", dh->type);
+   }
+
+   NOT_REACHED();
 }
 
 static int devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
