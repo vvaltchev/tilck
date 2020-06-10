@@ -24,7 +24,7 @@ protected:
       vfs_test_base::SetUp();
 
       const char *buf = load_once_file(TEST_FATPART_FILE, &fatpart_size);
-      fat_fs = fat_mount_ramdisk((void *) buf, fatpart_size, VFS_FS_RO);
+      fat_fs = fat_mount_ramdisk((void *) buf, fatpart_size, 0);
       ASSERT_TRUE(fat_fs != NULL);
 
       mp_init(fat_fs);
