@@ -296,6 +296,40 @@ alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
    return rc;
 }
 
+static int
+open_elf_file(const char *filepath, fs_handle *elf_file_ref)
+{
+   struct stat64 statbuf;
+   fs_handle h;
+   int rc;
+
+   if ((rc = vfs_open(filepath, &h, O_RDONLY, 0)))
+      return rc;           /* The file does not exist (typical case) */
+
+   if ((rc = vfs_fstat64(h, &statbuf))) {
+      vfs_close(h);
+      return rc;           /* Cannot stat() the file */
+   }
+
+   if ((statbuf.st_mode & S_IFREG) != S_IFREG) {
+
+      vfs_close(h);
+
+      if ((statbuf.st_mode & S_IFDIR) == S_IFDIR)
+         return -EISDIR;   /* Cannot execute a directory! */
+
+      return -EACCES;      /* Not a regular file */
+   }
+
+   if ((statbuf.st_mode & S_IXUSR) != S_IXUSR) {
+      vfs_close(h);
+      return -EACCES;      /* Doesn't have exec permission */
+   }
+
+   *elf_file_ref = h;
+   return 0;
+}
+
 int
 load_elf_program(const char *filepath,
                  char *header_buf,
@@ -303,24 +337,13 @@ load_elf_program(const char *filepath,
 {
    load_segment_func load_seg = NULL;
    fs_handle elf_file = NULL;
-   struct stat64 statbuf;
    struct elf_headers eh;
    ulong brk = 0;
    size_t count;
    int rc;
 
-   if ((rc = vfs_open(filepath, &elf_file, O_RDONLY, 0)))
+   if ((rc = open_elf_file(filepath, &elf_file)))
       return rc;
-
-   if ((rc = vfs_fstat64(elf_file, &statbuf))) {
-      vfs_close(elf_file);
-      return rc;
-   }
-
-   if (!(statbuf.st_mode & S_IXUSR)) {
-      vfs_close(elf_file);
-      return -EACCES;
-   }
 
    if ((rc = load_elf_headers(elf_file, header_buf, &eh))) {
       vfs_close(elf_file);
