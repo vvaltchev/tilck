@@ -100,6 +100,7 @@ struct fs {
    int fd_flags;                 \
    int fl_flags;                 \
    int spec_flags;               \
+   struct locked_file *lf;       \
    offt pos;                        /* file: offset, dir: opaque entry index */
 
 struct fs_handle_base {

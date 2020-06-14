@@ -91,6 +91,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
    struct ramfs_data *d = p->fs->device_data;
    struct ramfs_inode *i = rp->inode;
    struct ramfs_inode *idir = rp->dir_inode;
+   struct locked_file *lf = NULL;
    int rc;
 
    if (!i) {
@@ -104,6 +105,16 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
+      rc = acquire_subsystem_file_exlock(p->fs,
+                                         i,
+                                         SUBSYS_VFS,
+                                         &lf);
+
+      if (rc) {
+         ramfs_destroy_inode(d, i);
+         return rc;
+      }
+
       if ((rc = ramfs_dir_add_entry(idir, p->last_comp, i))) {
          ramfs_destroy_inode(d, i);
          return rc;
@@ -116,7 +127,33 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
       if ((rc = ramfs_open_existing_checks(fl, i)))
          return rc;
+
+      if (i->type == VFS_FILE && (fl & (O_WRONLY | O_RDWR))) {
+
+         rc = acquire_subsystem_file_exlock(p->fs,
+                                            i,
+                                            SUBSYS_VFS,
+                                            &lf);
+
+         if (rc)
+            return rc;
+      }
    }
 
-   return ramfs_open_int(p->fs, i, out, fl);
+   rc = ramfs_open_int(p->fs, i, out, fl);
+
+   if (LIKELY(!rc)) {
+
+      /* Success: now set the `lf` field in the file handle */
+      ((struct fs_handle_base *) *out)->lf = lf;
+
+   } else {
+
+      /* Open failed: we have to release the lock obj (if any) */
+
+      if (lf)
+         release_subsystem_file_exlock(lf);
+   }
+
+   return rc;
 }

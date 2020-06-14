@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/flock.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/process.h>
@@ -50,11 +51,14 @@ void vfs_close2(struct process *pi, fs_handle h)
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
 
-   if (!pi->vforked) {
+   if (!pi->vforked)
       remove_all_mappings_of_handle(pi, h);
-   }
 
    fs->fsops->close(h);
+
+   if (hb->lf)
+      release_subsystem_file_exlock(hb->lf);
+
    release_obj(fs);
 
    /* while a struct fs is mounted, the minimum ref-count it can have is 1 */
@@ -88,7 +92,14 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
       return rc;
 
    /* The new file descriptor does NOT share old file descriptor's fd_flags */
-   ((struct fs_handle_base*) *dup_h)->fd_flags = 0;
+   ((struct fs_handle_base *) *dup_h)->fd_flags = 0;
+
+   /* Check that the locked_file object (if any) is still the same */
+   ASSERT(((struct fs_handle_base *) *dup_h)->lf == hb->lf);
+
+   /* Retain locked_file object (if any) */
+   if (hb->lf)
+      retain_subsystem_file_exlock(hb->lf);
 
    retain_obj(hb->fs);
    ASSERT(*dup_h != NULL);
@@ -218,21 +229,31 @@ static ALWAYS_INLINE int
 vfs_open_impl(struct fs *fs, struct vfs_path *p,
               fs_handle *out, int flags, mode_t mode)
 {
+   const enum vfs_entry_type type = p->fs_path.type;
    int rc;
 
    if (flags & O_DIRECTORY) {
-      if (p->fs_path.type != VFS_DIR)
+      if (type != VFS_DIR)
          return -ENOTDIR;
    }
 
    if ((rc = fs->fsops->open(p, out, flags, mode)))
       return rc;
 
-   /* open() succeeded, the FS is already retained */
-   ((struct fs_handle_base *) *out)->fl_flags = flags;
+   {
+      struct fs_handle_base *hb = *out;
 
-   if (flags & O_CLOEXEC)
-      ((struct fs_handle_base *) *out)->fd_flags |= FD_CLOEXEC;
+      /* open() succeeded, the FS is already retained */
+      hb->fl_flags = flags;
+
+      if (flags & O_CLOEXEC)
+         hb->fd_flags |= FD_CLOEXEC;
+
+      if (type == VFS_FILE && (fs->flags & VFS_FS_RW)) {
+         if (flags & (O_WRONLY | O_RDWR))
+            ASSERT(hb->lf != NULL);
+      }
+   }
 
    /* file handles retain their struct fs */
    retain_obj(fs);
@@ -361,6 +382,9 @@ int vfs_unlink(const char *path)
 static ALWAYS_INLINE int
 vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
 {
+   struct locked_file *lf = NULL;
+   int rc;
+
    if (!fs->fsops->truncate)
       return -EROFS;
 
@@ -370,7 +394,20 @@ vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
    if (!p->fs_path.inode)
       return -ENOENT;
 
-   return fs->fsops->truncate(fs, p->fs_path.inode, len);
+   rc = acquire_subsystem_file_exlock(fs,
+                                      p->fs_path.inode,
+                                      SUBSYS_VFS,
+                                      &lf);
+
+   if (rc)
+      return rc; /* We couldn't acquire the lock */
+
+   /* Got the lock, great. Now do truncate the file */
+   rc = fs->fsops->truncate(fs, p->fs_path.inode, len);
+
+   /* Release the lock */
+   release_subsystem_file_exlock(lf);
+   return rc;
 }
 
 int vfs_truncate(const char *path, offt len)
