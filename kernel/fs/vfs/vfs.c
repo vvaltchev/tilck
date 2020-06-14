@@ -790,12 +790,14 @@ struct fs *create_fs_obj(const char *type)
    if (!fs)
       return NULL;
 
+   fs->pss_lock_root = NULL;
    fs->fs_type_name = type;
    return fs;
 }
 
 void destory_fs_obj(struct fs *fs)
 {
+   ASSERT(!fs->pss_lock_root);
    kfree2(fs, sizeof(struct fs));
 }
 

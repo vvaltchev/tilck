@@ -52,6 +52,7 @@ inline struct fs create_test_fs(const char *name, tfs_entry *root)
    struct fs fs {
 
       .ref_count        = 1,
+      .pss_lock_root    = nullptr,
       .fs_type_name     = name,
       .device_id        = 0,
       .flags            = 0,

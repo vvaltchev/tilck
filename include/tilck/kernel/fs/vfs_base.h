@@ -4,12 +4,14 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
+#include <tilck/kernel/list.h>
 #include <tilck/kernel/hal_types.h>
 
 /* Forward declarations */
 struct process;
 struct user_mapping;
 struct fs_ops;
+struct locked_file;
 
 /*
  * Opaque type for file handles.
@@ -74,7 +76,8 @@ struct fs {
 
    REF_COUNTED_OBJECT;
 
-   const char *fs_type_name; /* statically allocated: do NOT free() */
+   struct locked_file *pss_lock_root;  /* Per SubSystem lock tree root */
+   const char *fs_type_name;           /* Statically allocated: do NOT free() */
    u32 device_id;
    u32 flags;
    void *device_data;
