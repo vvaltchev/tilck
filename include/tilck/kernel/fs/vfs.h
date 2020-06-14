@@ -260,9 +260,9 @@ void vfs_fs_shunlock(struct fs *fs);
 
 int
 compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s);
-
 u32 vfs_get_new_device_id(void);
-
+struct fs *create_fs_obj(const char *type);
+void destory_fs_obj(struct fs *fs);
 
 /* ------------ Current mount point interface ------------- */
 

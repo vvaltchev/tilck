@@ -783,6 +783,22 @@ u32 vfs_get_new_device_id(void)
    return next_device_id++;
 }
 
+struct fs *create_fs_obj(const char *type)
+{
+   struct fs *fs = kzmalloc(sizeof(struct fs));
+
+   if (!fs)
+      return NULL;
+
+   fs->fs_type_name = type;
+   return fs;
+}
+
+void destory_fs_obj(struct fs *fs)
+{
+   kfree2(fs, sizeof(struct fs));
+}
+
 int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i)
 {
    int rc;

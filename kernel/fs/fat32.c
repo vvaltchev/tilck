@@ -623,10 +623,13 @@ static const struct fs_ops static_fsops_fat =
 
 struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
 {
+   struct fat_fs_device_data *d;
+   struct fs *fs;
+
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
-   struct fat_fs_device_data *d = kzmalloc(sizeof(struct fat_fs_device_data));
+   d = kzmalloc(sizeof(struct fat_fs_device_data));
 
    if (!d)
       return NULL;
@@ -636,14 +639,11 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
    d->root_dir_entries = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
-   struct fs *fs = kzmalloc(sizeof(struct fs));
-
-   if (!fs) {
+   if (!(fs = create_fs_obj("fat"))) {
       kfree2(d, sizeof(struct fat_fs_device_data));
       return NULL;
    }
 
-   fs->fs_type_name = "fat";
    fs->flags = flags;
    fs->device_id = vfs_get_new_device_id();
    fs->device_data = d;
@@ -659,5 +659,5 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
 void fat_umount_ramdisk(struct fs *fs)
 {
    kfree2(fs->device_data, sizeof(struct fat_fs_device_data));
-   kfree2(fs, sizeof(struct fs));
+   destory_fs_obj(fs);
 }

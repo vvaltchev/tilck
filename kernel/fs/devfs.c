@@ -494,11 +494,11 @@ struct fs *create_devfs(void)
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
 
-   if (!(fs = kzmalloc(sizeof(struct fs))))
+   if (!(fs = create_fs_obj("devfs")))
       return NULL;
 
    if (!(d = kzmalloc(sizeof(struct devfs_data)))) {
-      kfree2(fs, sizeof(struct fs));
+      destory_fs_obj(fs);
       return NULL;
    }
 
@@ -509,7 +509,6 @@ struct fs *create_devfs(void)
    rwlock_wp_init(&d->rwlock, false);
    d->wrt_time = (time_t)get_timestamp();
 
-   fs->fs_type_name = "devfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
    fs->device_data = d;

@@ -126,7 +126,7 @@ static void ramfs_err_case_destroy(struct fs *fs)
       kfree2(d, sizeof(struct ramfs_data));
    }
 
-   kfree2(fs, sizeof(struct fs));
+   destory_fs_obj(fs);
 }
 
 static void
@@ -352,7 +352,7 @@ struct fs *ramfs_create(void)
    struct fs *fs;
    struct ramfs_data *d;
 
-   if (!(fs = kzmalloc(sizeof(struct fs))))
+   if (!(fs = create_fs_obj("ramfs")))
       return NULL;
 
    if (!(d = kzmalloc(sizeof(struct ramfs_data)))) {
@@ -370,7 +370,6 @@ struct fs *ramfs_create(void)
       return NULL;
    }
 
-   fs->fs_type_name = "ramfs";
    fs->device_id = vfs_get_new_device_id();
    fs->flags = VFS_FS_RW;
    fs->fsops = &static_fsops_ramfs;
