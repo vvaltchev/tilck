@@ -50,13 +50,9 @@ void vfs_close2(struct process *pi, fs_handle h)
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
    if (!pi->vforked) {
       remove_all_mappings_of_handle(pi, h);
    }
-
-#endif
 
    fs->fsops->close(h);
    release_obj(fs);
