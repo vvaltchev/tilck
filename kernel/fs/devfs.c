@@ -424,7 +424,7 @@ devfs_get_entry(struct fs *fs,
          .inode         = pos,
          .dir_inode     = dir,
          .dir_entry     = pos,
-         .type          = VFS_FILE,
+         .type          = pos->type,
       };
    }
 }
