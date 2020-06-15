@@ -92,7 +92,6 @@ int sys_newuname(struct utsname *user_buf)
 
 NORETURN int sys_exit(int exit_status)
 {
-   disable_preemption();
    terminate_process(exit_status, 0 /* term_sig */);
 
    /* Necessary to guarantee to the compiler that we won't return. */

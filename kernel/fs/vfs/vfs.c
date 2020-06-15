@@ -41,10 +41,6 @@ void vfs_close2(struct process *pi, fs_handle h)
     * TODO: consider forcing also vfs_close() to be run always with preemption
     * enabled. Reason: when one day when actual I/O devices will be supported,
     * close() might need in some cases to do some I/O.
-    *
-    * What prevents vfs_close() to run with preemption enabled is the function
-    * terminate_process() which requires disabled preemption, because of its
-    * (primitive) sync with signal handling.
     */
    ASSERT(h != NULL);
 

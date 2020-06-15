@@ -144,8 +144,9 @@ void terminate_process(int exit_code, int term_sig)
    const bool vforked = pi->vforked;
 
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
-   ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
+   ASSERT(is_preemption_enabled());
+   disable_preemption();
 
    if (ti->wobj.type != WOBJ_NONE) {
 

@@ -16,15 +16,19 @@ void handle_term_signal(void)
 {
    struct task *curr = get_curr_task();
 
-   if (curr->term_sig) {
-      disable_preemption();
+   if (curr->term_sig)
       terminate_process(0, curr->term_sig);
-   }
 }
 
 static void action_terminate(struct task *ti, int signum)
 {
+   ASSERT(!is_preemption_enabled());
+
    if (ti == get_curr_task()) {
+
+      enable_preemption();
+      ASSERT(is_preemption_enabled());
+
       terminate_process(0, signum);
       NOT_REACHED();
    }
