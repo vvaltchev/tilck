@@ -15,7 +15,7 @@ term_unable_to_enqueue_action(term *t,
    bool written;
 
    /* We got here because the ringbuf was full in the first place */
-   ASSERT(*was_empty);
+   ASSERT(!*was_empty);
 
    if (__in_printk) {
 
@@ -47,7 +47,7 @@ term_unable_to_enqueue_action(term *t,
 
          kmutex_lock(&d->lock);
          {
-            written = safe_ringbuf_write_elem_ex(&d->rb, &a, was_empty);
+            written = safe_ringbuf_write_elem_ex(&d->rb, a, was_empty);
          }
          kmutex_unlock(&d->lock);
 
