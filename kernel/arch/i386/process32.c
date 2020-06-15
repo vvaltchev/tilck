@@ -348,7 +348,7 @@ int setup_usermode_task(struct elf_program_info *pinfo,
          pdir_destroy(pi->pdir);
 
          if (pi->elf)
-            release_subsystem_file_exlock(pi->elf);
+            release_subsys_flock(pi->elf);
       }
 
       pi->pdir = pinfo->pdir;

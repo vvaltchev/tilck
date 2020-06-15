@@ -19,10 +19,10 @@ struct locked_file {
 };
 
 int
-acquire_subsystem_file_exlock(struct fs *fs,
-                              vfs_inode_ptr_t i,
-                              enum subsystem subsys,
-                              struct locked_file **lock_ref)
+acquire_subsys_flock(struct fs *fs,
+                     vfs_inode_ptr_t i,
+                     enum subsystem subsys,
+                     struct locked_file **lock_ref)
 {
    struct locked_file *lf;
    int rc;
@@ -100,13 +100,13 @@ acquire_subsystem_file_exlock(struct fs *fs,
 }
 
 void
-retain_subsystem_file_exlock(struct locked_file *lf)
+retain_subsys_flock(struct locked_file *lf)
 {
    retain_obj(lf);
 }
 
 void
-release_subsystem_file_exlock(struct locked_file *lf)
+release_subsys_flock(struct locked_file *lf)
 {
    const int curr_ref_count = release_obj(lf);
    int rc;
@@ -125,11 +125,11 @@ release_subsystem_file_exlock(struct locked_file *lf)
       /*
        * Weird: something went wrong while trying to release the lock.
        * This MUST never happen, if the `lf` is a valid object, returned by
-       * acquire_subsystem_file_exlock(), after acquiring the per-lock.
+       * acquire_subsys_flock(), after acquiring the per-lock.
        * If we got here, there's a bug in filesystem's exlock/exunlock impl.
        *
        * NOTE: we're accepting accepting the case where the call failed with
-       * -ENOLCK. See the comments in acquire_subsystem_file_exlock().
+       * -ENOLCK. See the comments in acquire_subsys_flock().
        */
 
       panic("Failed to release per-file lock with: %d", rc);
@@ -152,9 +152,9 @@ release_subsystem_file_exlock(struct locked_file *lf)
 }
 
 int
-acquire_subsystem_file_exlock_h(fs_handle h,
-                                enum subsystem subsys,
-                                struct locked_file **lock_ref)
+acquire_subsys_flock_h(fs_handle h,
+                       enum subsystem subsys,
+                       struct locked_file **lock_ref)
 {
    struct fs_handle_base *hb = h;
    struct fs *fs = hb->fs;
@@ -163,5 +163,5 @@ acquire_subsystem_file_exlock_h(fs_handle h,
    if (!i)
       return -EBADF;
 
-   return acquire_subsystem_file_exlock(fs, i, subsys, lock_ref);
+   return acquire_subsys_flock(fs, i, subsys, lock_ref);
 }

@@ -11,15 +11,15 @@
 struct locked_file; /* forward declaration */
 
 int
-acquire_subsystem_file_exlock(struct fs *fs,
-                              vfs_inode_ptr_t i,
-                              enum subsystem subsys,
-                              struct locked_file **lock_ref);   /* out */
+acquire_subsys_flock(struct fs *fs,
+                     vfs_inode_ptr_t i,
+                     enum subsystem subsys,
+                     struct locked_file **lock_ref);   /* out */
 
 int
-acquire_subsystem_file_exlock_h(fs_handle h,
-                                enum subsystem subsys,
-                                struct locked_file **lock_ref); /* out */
+acquire_subsys_flock_h(fs_handle h,
+                       enum subsystem subsys,
+                       struct locked_file **lock_ref); /* out */
 
-void retain_subsystem_file_exlock(struct locked_file *lf);
-void release_subsystem_file_exlock(struct locked_file *lf);
+void retain_subsys_flock(struct locked_file *lf);
+void release_subsys_flock(struct locked_file *lf);

@@ -105,7 +105,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
-      rc = acquire_subsystem_file_exlock(p->fs,
+      rc = acquire_subsys_flock(p->fs,
                                          i,
                                          SUBSYS_VFS,
                                          &lf);
@@ -130,7 +130,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
       if (i->type == VFS_FILE && (fl & (O_WRONLY | O_RDWR))) {
 
-         rc = acquire_subsystem_file_exlock(p->fs,
+         rc = acquire_subsys_flock(p->fs,
                                             i,
                                             SUBSYS_VFS,
                                             &lf);
@@ -152,7 +152,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
       /* Open failed: we have to release the lock obj (if any) */
 
       if (lf)
-         release_subsystem_file_exlock(lf);
+         release_subsys_flock(lf);
    }
 
    return rc;

@@ -345,10 +345,7 @@ load_elf_program(const char *filepath,
    if ((rc = open_elf_file(filepath, &elf_h)))
       return rc;
 
-   if ((rc = acquire_subsystem_file_exlock_h(elf_h,
-                                             SUBSYS_PROCMGNT,
-                                             &pinfo->lf)))
-   {
+   if ((rc = acquire_subsys_flock_h(elf_h, SUBSYS_PROCMGNT, &pinfo->lf))) {
       vfs_close(elf_h);
       return rc == -EBADF ? -ENOEXEC : rc;
    }
@@ -441,7 +438,7 @@ out:
       }
 
       if (pinfo->lf)
-         release_subsystem_file_exlock(pinfo->lf);
+         release_subsys_flock(pinfo->lf);
    }
 
    return rc;

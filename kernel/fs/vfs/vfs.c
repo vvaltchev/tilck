@@ -57,7 +57,7 @@ void vfs_close2(struct process *pi, fs_handle h)
    fs->fsops->close(h);
 
    if (hb->lf)
-      release_subsystem_file_exlock(hb->lf);
+      release_subsys_flock(hb->lf);
 
    release_obj(fs);
 
@@ -99,7 +99,7 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 
    /* Retain locked_file object (if any) */
    if (hb->lf)
-      retain_subsystem_file_exlock(hb->lf);
+      retain_subsys_flock(hb->lf);
 
    retain_obj(hb->fs);
    ASSERT(*dup_h != NULL);
@@ -394,7 +394,7 @@ vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
    if (!p->fs_path.inode)
       return -ENOENT;
 
-   rc = acquire_subsystem_file_exlock(fs,
+   rc = acquire_subsys_flock(fs,
                                       p->fs_path.inode,
                                       SUBSYS_VFS,
                                       &lf);
@@ -406,7 +406,7 @@ vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
    rc = fs->fsops->truncate(fs, p->fs_path.inode, len);
 
    /* Release the lock */
-   release_subsystem_file_exlock(lf);
+   release_subsys_flock(lf);
    return rc;
 }
 
