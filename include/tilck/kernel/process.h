@@ -16,6 +16,7 @@
 #include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/fs/vfs_base.h>
+#include <tilck/kernel/fs/flock.h>
 #include <tilck/kernel/sys_types.h>
 
 #define PROCESS_CMDLINE_BUF_SIZE                      256
@@ -68,6 +69,8 @@ struct process {
 
    struct vfs_path cwd;                   /* CWD as a struct vfs_path */
    char *debug_cmdline;                   /* debug field used by debugpanel */
+
+   struct locked_file *elf;
 
    /* large members */
    char str_cwd[MAX_PATH];                /* current working directory */

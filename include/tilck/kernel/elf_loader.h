@@ -7,12 +7,15 @@
 
 #define ELF_RAW_HEADER_SIZE   128
 
+struct locked_file; /* forward declaration */
+
 struct elf_program_info {
 
-   pdir_t *pdir;     // the pdir used for the program
-   void *entry;      // the address of program's entry point
-   void *stack;      // the initial value of the stack pointer
-   void *brk;        // the first invalid vaddr (program break)
+   pdir_t *pdir;           // the pdir used for the program
+   void *entry;            // the address of program's entry point
+   void *stack;            // the initial value of the stack pointer
+   void *brk;              // the first invalid vaddr (program break)
+   struct locked_file *lf; // ELF's file lock (can be NULL)
 };
 
 /*

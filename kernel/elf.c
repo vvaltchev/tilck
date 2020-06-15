@@ -345,6 +345,14 @@ load_elf_program(const char *filepath,
    if ((rc = open_elf_file(filepath, &elf_file)))
       return rc;
 
+   if ((rc = acquire_subsystem_file_exlock_h(elf_file,
+                                             SUBSYS_PROCMGNT,
+                                             &pinfo->lf)))
+   {
+      vfs_close(elf_file);
+      return rc == -EBADF ? -ENOEXEC : rc;
+   }
+
    if ((rc = load_elf_headers(elf_file, header_buf, &eh))) {
       vfs_close(elf_file);
       return rc;
@@ -426,10 +434,14 @@ out:
    free_elf_headers(&eh);
 
    if (UNLIKELY(rc != 0)) {
+
       if (pinfo->pdir) {
          pdir_destroy(pinfo->pdir);
          pinfo->pdir = NULL;
       }
+
+      if (pinfo->lf)
+         release_subsystem_file_exlock(pinfo->lf);
    }
 
    return rc;

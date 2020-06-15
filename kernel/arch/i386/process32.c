@@ -346,6 +346,9 @@ int setup_usermode_task(struct elf_program_info *pinfo,
 
          ASSERT(old_pdir == pi->pdir);
          pdir_destroy(pi->pdir);
+
+         if (pi->elf)
+            release_subsystem_file_exlock(pi->elf);
       }
 
       pi->pdir = pinfo->pdir;
@@ -358,6 +361,7 @@ int setup_usermode_task(struct elf_program_info *pinfo,
       task_change_state(ti, TASK_STATE_RUNNABLE);
    }
 
+   pi->elf = pinfo->lf;
    ti->running_in_kernel = false;
    ASSERT(ti->kernel_stack != NULL);
 

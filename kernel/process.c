@@ -223,6 +223,9 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
             goto oom_case;
       }
 
+      if (pi->elf)
+         retain_subsystem_file_exlock(pi->elf);
+
    } else {
       pi->vforked = true;
    }
