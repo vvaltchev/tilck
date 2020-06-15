@@ -28,7 +28,7 @@
 typedef int (*load_segment_func)(fs_handle *, pdir_t *, Elf_Phdr *, ulong *);
 
 static int
-load_segment_by_copy(fs_handle *elf_file,
+load_segment_by_copy(fs_handle *elf_h,
                      pdir_t *pdir,
                      Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
@@ -46,7 +46,7 @@ load_segment_by_copy(fs_handle *elf_file,
 
    *end_vaddr_ref = (ulong)vaddr + (page_count << PAGE_SHIFT);
 
-   rc = vfs_seek(elf_file, (s64)phdr->p_offset, SEEK_SET);
+   rc = vfs_seek(elf_h, (s64)phdr->p_offset, SEEK_SET);
 
    if (rc < 0)
       return (int)rc; /* I/O error during seek */
@@ -79,7 +79,7 @@ load_segment_by_copy(fs_handle *elf_file,
          const size_t off = (va & OFFSET_IN_PAGE_MASK);
          const size_t to_read = MIN(filesz_rem, (PAGE_SIZE - off));
 
-         rc = vfs_read(elf_file, p + off, to_read);
+         rc = vfs_read(elf_h, p + off, to_read);
 
          if (rc < 0)
             return (int)rc;           /* I/O error during read */
@@ -154,13 +154,13 @@ static inline int check_segment_alignment(Elf_Phdr *phdr)
 }
 
 static int
-load_segment_by_mmap(fs_handle *elf_file,
+load_segment_by_mmap(fs_handle *elf_h,
                      pdir_t *pdir,
                      Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
 {
    if (phdr->p_flags & PF_W)
-      return load_segment_by_copy(elf_file, pdir, phdr, end_vaddr_ref);
+      return load_segment_by_copy(elf_h, pdir, phdr, end_vaddr_ref);
 
    if (UNLIKELY(phdr->p_memsz == 0))
       return 0; /* very weird (because the phdr has type LOAD) */
@@ -195,7 +195,7 @@ load_segment_by_mmap(fs_handle *elf_file,
 
    struct user_mapping um = {0};
    um.pi = NULL;
-   um.h = elf_file;
+   um.h = elf_h;
    um.off = phdr->p_offset & PAGE_MASK;
    um.vaddr = phdr->p_vaddr & PAGE_MASK;
    um.len = round_up_at(phdr->p_vaddr + phdr->p_memsz - um.vaddr, PAGE_SIZE);
@@ -222,15 +222,15 @@ static void free_elf_headers(struct elf_headers *eh)
 }
 
 static int
-load_elf_headers(fs_handle elf_file, char *hdr_buf, struct elf_headers *eh)
+load_elf_headers(fs_handle elf_h, char *hdr_buf, struct elf_headers *eh)
 {
    ssize_t rc;
    bzero(eh, sizeof(*eh));
 
-   if ((rc = vfs_seek(elf_file, 0, SEEK_SET)))
+   if ((rc = vfs_seek(elf_h, 0, SEEK_SET)))
       return -EIO;
 
-   rc = vfs_read(elf_file, hdr_buf, ELF_RAW_HEADER_SIZE);
+   rc = vfs_read(elf_h, hdr_buf, ELF_RAW_HEADER_SIZE);
 
    if (rc < (int)sizeof(*eh->header))
       return -ENOEXEC;
@@ -258,14 +258,14 @@ load_elf_headers(fs_handle elf_file, char *hdr_buf, struct elf_headers *eh)
    if (!eh->phdrs)
       return -ENOMEM;
 
-   rc = vfs_seek(elf_file, (s64)eh->header->e_phoff, SEEK_SET);
+   rc = vfs_seek(elf_h, (s64)eh->header->e_phoff, SEEK_SET);
 
    if (rc != (ssize_t)eh->header->e_phoff) {
       rc = -ENOEXEC;
       goto errend;
    }
 
-   rc = vfs_read(elf_file, eh->phdrs, eh->total_phdrs_size);
+   rc = vfs_read(elf_h, eh->phdrs, eh->total_phdrs_size);
 
    if (rc != (ssize_t)eh->total_phdrs_size) {
       rc = -ENOEXEC;
@@ -336,29 +336,29 @@ load_elf_program(const char *filepath,
                  struct elf_program_info *pinfo)
 {
    load_segment_func load_seg = NULL;
-   fs_handle elf_file = NULL;
+   fs_handle elf_h = NULL;
    struct elf_headers eh;
    ulong brk = 0;
    size_t count;
    int rc;
 
-   if ((rc = open_elf_file(filepath, &elf_file)))
+   if ((rc = open_elf_file(filepath, &elf_h)))
       return rc;
 
-   if ((rc = acquire_subsystem_file_exlock_h(elf_file,
+   if ((rc = acquire_subsystem_file_exlock_h(elf_h,
                                              SUBSYS_PROCMGNT,
                                              &pinfo->lf)))
    {
-      vfs_close(elf_file);
+      vfs_close(elf_h);
       return rc == -EBADF ? -ENOEXEC : rc;
    }
 
-   if ((rc = load_elf_headers(elf_file, header_buf, &eh))) {
-      vfs_close(elf_file);
+   if ((rc = load_elf_headers(elf_h, header_buf, &eh))) {
+      vfs_close(elf_h);
       return rc;
    }
 
-   load_seg = is_mmap_supported(elf_file)
+   load_seg = is_mmap_supported(elf_h)
       ? &load_segment_by_mmap
       : &load_segment_by_copy;
 
@@ -382,7 +382,7 @@ load_elf_program(const char *filepath,
       if (rc < 0)
          goto out;
 
-      rc = load_seg(elf_file, pinfo->pdir, phdr, &end_vaddr);
+      rc = load_seg(elf_h, pinfo->pdir, phdr, &end_vaddr);
 
       if (rc < 0)
          goto out;
@@ -430,7 +430,7 @@ load_elf_program(const char *filepath,
    pinfo->brk = (void *) brk;
 
 out:
-   vfs_close(elf_file);
+   vfs_close(elf_h);
    free_elf_headers(&eh);
 
    if (UNLIKELY(rc != 0)) {
