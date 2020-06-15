@@ -14,6 +14,7 @@
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/signal.h>
 #include <tilck/mods/tracing.h>
 
 #include "idt_int.h"
@@ -509,6 +510,8 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
+      handle_term_signal();
+
       if (traced)
          trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
@@ -517,6 +520,8 @@ void handle_syscall(regs_t *r)
 
       if (traced)
          trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
+      handle_term_signal();
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();

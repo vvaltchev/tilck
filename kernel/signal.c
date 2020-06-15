@@ -12,18 +12,40 @@
 
 typedef void (*action_type)(struct task *, int signum);
 
+void handle_term_signal(void)
+{
+   struct task *curr = get_curr_task();
+
+   if (curr->term_sig) {
+      disable_preemption();
+      terminate_process(curr, 0, curr->term_sig);
+   }
+}
+
 static void action_terminate(struct task *ti, int signum)
 {
-   if (ti->vfork_stopped) {
-
-      /*
-       * Cannot kill the parent of a vfork-ed child.
-       * TODO: implement deferred delivery of kill or any other signal.
-       */
-      return;
+   if (ti == get_curr_task()) {
+      terminate_process(ti, 0, signum);
+      NOT_REACHED();
    }
 
-   terminate_process(ti, 0, signum);
+   ti->term_sig = signum;
+
+   if (!ti->vfork_stopped) {
+
+      if (ti->state == TASK_STATE_SLEEPING)
+         task_change_state(ti, TASK_STATE_RUNNABLE);
+
+      ti->stopped = false;
+
+   } else {
+
+      /*
+       * The task is vfork_stopped: we cannot make it runnable, nor kill it
+       * right now. Just registering `term_sig` is enough. As soon as the
+       * process wakes up, the killing signal will be delivered.
+       */
+   }
 }
 
 static void action_ignore(struct task *ti, int signum)
@@ -142,6 +164,9 @@ int send_signal2(int pid, int tid, int signum, bool whole_process)
 
    if (signum == 0)
       goto end; /* the user app is just checking permissions */
+
+   if (ti->state == TASK_STATE_ZOMBIE)
+      goto end; /* do nothing */
 
    /* TODO: update this code when thread support is added */
    do_send_signal(ti, signum);
