@@ -132,21 +132,20 @@ switch_stack_free_mem_and_schedule(void)
  *
  *    process = task = thread
  *
- * TODO: re-design/adapt this function when thread support is introduced.
+ * TODO: re-design this function when thread support is introduced.
  *
  * NOTE: the kernel "process" has multiple threads (kthreads), but they cannot
  * be signalled nor killed.
  */
-void terminate_process(struct task *ti, int exit_code, int term_sig)
+void terminate_process(int exit_code, int term_sig)
 {
-   ASSERT(!is_preemption_enabled());
-   ASSERT(!is_kernel_thread(ti));
-
+   struct task *const ti = get_curr_task();
    struct process *const pi = ti->pi;
    const bool vforked = pi->vforked;
 
-   if (ti->state == TASK_STATE_ZOMBIE)
-      return; /* do nothing, the task is already dead */
+   ASSERT(ti->state != TASK_STATE_ZOMBIE);
+   ASSERT(!is_preemption_enabled());
+   ASSERT(!is_kernel_thread(ti));
 
    if (ti->wobj.type != WOBJ_NONE) {
 
@@ -235,20 +234,12 @@ void terminate_process(struct task *ti, int exit_code, int term_sig)
       }
    }
 
-   if (ti == get_curr_task()) {
-
-      /* This function has been called by sys_exit(): we won't return */
-      set_curr_pdir(get_kernel_pdir());
-
-      if (!vforked)
-         pdir_destroy(pi->pdir);
-
-      switch_stack_free_mem_and_schedule();
-      NOT_REACHED();
-   }
+   /* This function has been called by sys_exit(): we won't return */
+   set_curr_pdir(get_kernel_pdir());
 
    if (!vforked)
       pdir_destroy(pi->pdir);
 
-   free_mem_for_zombie_task(ti);
+   switch_stack_free_mem_and_schedule();
+   NOT_REACHED();
 }

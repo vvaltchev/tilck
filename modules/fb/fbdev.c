@@ -144,20 +144,10 @@ static int fbdev_munmap(fs_handle h, void *vaddr, size_t len)
    bool dying_task = false;
 
    ASSERT(IS_PAGE_ALIGNED(len));
+   ASSERT(hb->pi == get_curr_proc());
 
    if (get_process_task(hb->pi)->state == TASK_STATE_ZOMBIE)
       dying_task = true;
-
-   if (hb->pi != get_curr_proc()) {
-
-      /*
-       * In case a process is being killed by a process != itself, we end up
-       * here starting from terminate_process(). That's OK, just we must be
-       * sure that preemption is disabled.
-       */
-      ASSERT(!is_preemption_enabled());
-      ASSERT(dying_task);
-   }
 
    unmapped_count = unmap_pages_permissive(
       hb->pi->pdir,

@@ -18,14 +18,14 @@ void handle_term_signal(void)
 
    if (curr->term_sig) {
       disable_preemption();
-      terminate_process(curr, 0, curr->term_sig);
+      terminate_process(0, curr->term_sig);
    }
 }
 
 static void action_terminate(struct task *ti, int signum)
 {
    if (ti == get_curr_task()) {
-      terminate_process(ti, 0, signum);
+      terminate_process(0, signum);
       NOT_REACHED();
    }
 
