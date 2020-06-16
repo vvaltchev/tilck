@@ -119,10 +119,10 @@ save_cmdline(struct process *pi, const char *const *argv)
 }
 
 static void
-execve_prepare_process(struct task *ti,
-                       void *brk,
-                       const char *const *argv,
-                       regs_t *user_regs)
+execve_final_steps(struct task *ti,
+                   void *brk,
+                   const char *const *argv,
+                   regs_t *user_regs)
 {
    struct process *pi = ti->pi;
 
@@ -235,8 +235,11 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 
    if (LIKELY(!rc)) {
 
-      /* Positive case: setup_usermode_task() succeeded */
-      execve_prepare_process(ti, pinfo.brk, argv, &user_regs);
+      /*
+       * Positive case: setup_usermode_task() succeeded.
+       * From now on, we cannot fail.
+       */
+      execve_final_steps(ti, pinfo.brk, argv, &user_regs);
 
       if (LIKELY(ctx->curr_user_task != NULL)) {
 
