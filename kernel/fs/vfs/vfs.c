@@ -37,11 +37,7 @@ vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
 
 void vfs_close2(struct process *pi, fs_handle h)
 {
-   /*
-    * TODO: consider forcing also vfs_close() to be run always with preemption
-    * enabled. Reason: when one day when actual I/O devices will be supported,
-    * close() might need in some cases to do some I/O.
-    */
+   NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;

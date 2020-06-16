@@ -88,15 +88,13 @@ handle_children_of_dying_process(struct task *ti)
 
 static void close_all_handles(struct process *pi)
 {
-   fs_handle *h;
+   ASSERT(is_preemption_enabled());
 
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
-
-      if (!(h = pi->handles[i]))
-         continue;
-
-      vfs_close2(pi, h);
-      pi->handles[i] = NULL;
+   for (int i = 0; i < MAX_HANDLES; i++) {
+      if (pi->handles[i]) {
+         vfs_close2(pi, pi->handles[i]);
+         pi->handles[i] = NULL;
+      }
    }
 }
 
@@ -169,10 +167,23 @@ void terminate_process(int exit_code, int term_sig)
     * to cancel any potential wake-up timer.
     */
    task_cancel_wakeup_timer(ti);
+
+   /* Here we can either be RUNNABLE (if ti->wobj was set) or RUNNING */
+   ASSERT(ti->state == TASK_STATE_RUNNING || ti->state == TASK_STATE_RUNNABLE);
+
+   /*
+    * Close all the handles, keeping the preemption enabled while doing so.
+    */
+   enable_preemption();
+   {
+      close_all_handles(pi);
+   }
+   disable_preemption();
+
+   /* OK, from now on the preemption won't be enabled until the end */
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->wstatus = EXITCODE(exit_code, term_sig);
 
-   close_all_handles(pi);
    task_free_all_kernel_allocs(ti);
 
    if (!vforked) {
@@ -242,5 +253,4 @@ void terminate_process(int exit_code, int term_sig)
       pdir_destroy(pi->pdir);
 
    switch_stack_free_mem_and_schedule();
-   NOT_REACHED();
 }

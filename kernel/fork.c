@@ -11,6 +11,8 @@
 
 static int fork_dup_all_handles(struct process *pi)
 {
+   ASSERT(!is_preemption_enabled());
+
    for (u32 i = 0; i < MAX_HANDLES; i++) {
 
       int rc;
@@ -25,9 +27,12 @@ static int fork_dup_all_handles(struct process *pi)
 
       if (rc < 0 || !dup_h) {
 
-         for (u32 j = 0; j < i; j++)
-            vfs_close(pi->handles[j]);
-
+         enable_preemption();
+         {
+            for (u32 j = 0; j < i; j++)
+               vfs_close(pi->handles[j]);
+         }
+         disable_preemption();
          return -ENOMEM;
       }
 

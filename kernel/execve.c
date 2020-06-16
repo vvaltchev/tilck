@@ -126,13 +126,17 @@ execve_final_steps(struct task *ti,
 {
    struct process *pi = ti->pi;
 
-   /*
-    * Close the CLOEXEC handles. Note: we couldn't do that before because they
-    * can be closed ONLY IF execve() succeeded. Only here we're sure of that.
-    */
+   enable_preemption();
+   {
+      /*
+       * Close the CLOEXEC handles. Note: we couldn't do that before because
+       * they can be closed ONLY IF execve() succeeded. Only here we're sure.
+       */
+      close_cloexec_handles(pi);
+   }
+   disable_preemption();
 
-   close_cloexec_handles(pi);
-
+   /* From now on, we cannot re-enable the preemption anymore */
    finalize_usermode_task_setup(ti, user_regs);
 
    /* Final steps */
