@@ -125,18 +125,8 @@ execve_final_steps(struct task *ti,
                    regs_t *user_regs)
 {
    struct process *pi = ti->pi;
+   ASSERT(!is_preemption_enabled());
 
-   enable_preemption();
-   {
-      /*
-       * Close the CLOEXEC handles. Note: we couldn't do that before because
-       * they can be closed ONLY IF execve() succeeded. Only here we're sure.
-       */
-      close_cloexec_handles(pi);
-   }
-   disable_preemption();
-
-   /* From now on, we cannot re-enable the preemption anymore */
    finalize_usermode_task_setup(ti, user_regs);
 
    /* Final steps */
@@ -204,20 +194,45 @@ execve_handle_script(struct execve_ctx *ctx,
    return -ENOEXEC;
 }
 
-static int
-do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
+static inline void
+execve_do_task_switch(struct execve_ctx *ctx, struct task *ti)
 {
-   int rc;
-   struct task *ti = NULL;
-   struct elf_program_info pinfo = {0};
-   char *hdr = ctx->hdr_stack[ctx->reclvl];
-   regs_t user_regs;
+   if (LIKELY(ctx->curr_user_task != NULL)) {
 
-   DEBUG_VALIDATE_STACK_PTR();
-   ASSERT(is_preemption_enabled());
+      ASSERT(ti == ctx->curr_user_task);
+
+      /*
+       * Handling the difference between the first execve() and all the
+       * others. In case of a regular execve(), curr_user_task will always
+       * be != NULL and we can switch again to its 'new image' with
+       * switch_to_task().
+       */
+      switch_to_task(ti, SYSCALL_SOFT_INTERRUPT);
+
+   } else {
+
+      /*
+       * In case of curr_user_task == NULL (meaning first_execve()), we just
+       * have to return. Yes, that's weird for execve(), but it makes perfect
+       * sense in our context because we'll calling it from a pretty regular
+       * kernel thread (do_async_init): we CANNOT just switch to another task
+       * without saving the current state etc. We just have to return 0.
+       */
+   }
+}
+
+static int
+execve_load_elf(struct execve_ctx *ctx,
+                const char *path,
+                const char *const *argv,
+                struct elf_program_info *pinfo)
+{
+   char *hdr = ctx->hdr_stack[ctx->reclvl];
+   int rc;
+
    bzero(hdr, ELF_RAW_HEADER_SIZE);
 
-   if ((rc = load_elf_program(path, hdr, &pinfo))) {
+   if ((rc = load_elf_program(path, hdr, pinfo))) {
       if (rc == -ENOEXEC && hdr[0] == '#' && hdr[1] == '!') {
 
          if (ctx->reclvl == MAX_SCRIPT_REC)
@@ -228,47 +243,44 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
       return rc;
    }
 
+   return 0;
+}
+
+static int
+do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
+{
+   struct elf_program_info pinfo = {0};
+   struct task *ti = NULL;
+   regs_t user_regs;
+   int rc;
+
+   DEBUG_VALIDATE_STACK_PTR();
+   ASSERT(is_preemption_enabled());
+
+   if ((rc = execve_load_elf(ctx, path, argv, &pinfo)))
+      return rc;                 /* load failed */
+
    disable_preemption();
-
-   rc = setup_usermode_task(&pinfo,
-                            ctx->curr_user_task,
-                            argv,
-                            ctx->env,
-                            &ti,
-                            &user_regs);
-
-   if (LIKELY(!rc)) {
-
-      /*
-       * Positive case: setup_usermode_task() succeeded.
-       * From now on, we cannot fail.
-       */
-      execve_final_steps(ti, pinfo.brk, argv, &user_regs);
-
-      if (LIKELY(ctx->curr_user_task != NULL)) {
-
-         ASSERT(ti == ctx->curr_user_task);
-
-         /*
-          * Handling the difference between the first execve() and all the
-          * others. In case of a regular execve(), curr_user_task will always
-          * be != NULL and we can switch again to its 'new image' with
-          * switch_to_task().
-          */
-         switch_to_task(ti, SYSCALL_SOFT_INTERRUPT);
-
-      } else {
-
-         /*
-          * In case of curr_user_task == NULL (meaning first_execve()), we just
-          * have to return. Yes, that's weird for execve(), but it makes perfect
-          * sense in our context because we'll calling it from a pretty regular
-          * kernel thread (do_async_init): we CANNOT just switch to another task
-          * without saving the current state etc. We just have to return 0.
-          */
-      }
+   {
+      rc = setup_usermode_task(&pinfo,
+                               ctx->curr_user_task,
+                               argv,
+                               ctx->env,
+                               &ti,
+                               &user_regs);
    }
+   enable_preemption();
 
+   if (UNLIKELY(rc))
+      return rc;                 /* setup_usermode_task() failed */
+
+   /* From now on, we cannot fail */
+   close_cloexec_handles(ti->pi);
+   disable_preemption();
+   {
+      execve_final_steps(ti, pinfo.brk, argv, &user_regs);
+      execve_do_task_switch(ctx, ti); /* this might NOT return */
+   }
    enable_preemption();
    return rc;
 }
