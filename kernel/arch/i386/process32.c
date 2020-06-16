@@ -285,20 +285,36 @@ setup_usermode_task_first_process(pdir_t *pdir, struct task **ti_ref)
    pi->pgid = 1;
    pi->sid = 1;
    pi->umask = 0022;
-   ti->state = TASK_STATE_RUNNABLE;
+   ti->state = TASK_STATE_RUNNING;
    add_task(ti);
    memcpy(pi->str_cwd, "/", 2);
    *ti_ref = ti;
    return 0;
 }
 
+void
+finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
+{
+   ASSERT(!is_preemption_enabled());
+
+   ASSERT(ti->state == TASK_STATE_RUNNING);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
+
+   ti->running_in_kernel = false;
+   ASSERT(ti->kernel_stack != NULL);
+
+   task_info_reset_kernel_stack(ti);
+   ti->state_regs--;             // make room for a regs_t struct in the stack
+   *ti->state_regs = *user_regs; // copy the regs_t struct we prepared before
+}
+
 int setup_usermode_task(struct elf_program_info *pinfo,
                         struct task *ti,
                         const char *const *argv,
                         const char *const *env,
-                        struct task **ti_ref)
+                        struct task **ti_ref,
+                        regs_t *r)
 {
-   regs_t r;
    int rc = 0;
    u32 argv_elems = 0;
    u32 env_elems = 0;
@@ -308,7 +324,7 @@ int setup_usermode_task(struct elf_program_info *pinfo,
    ASSERT(!is_preemption_enabled());
 
    *ti_ref = NULL;
-   setup_usermode_task_regs(&r, pinfo->entry, pinfo->stack);
+   setup_usermode_task_regs(r, pinfo->entry, pinfo->stack);
 
    /* Switch to the new page directory (we're going to write on user's stack) */
    old_pdir = get_curr_pdir();
@@ -317,7 +333,7 @@ int setup_usermode_task(struct elf_program_info *pinfo,
    while (argv[argv_elems]) argv_elems++;
    while (env[env_elems]) env_elems++;
 
-   if ((rc = push_args_on_user_stack(&r, argv, argv_elems, env, env_elems)))
+   if ((rc = push_args_on_user_stack(r, argv, argv_elems, env, env_elems)))
       goto err;
 
    if (UNLIKELY(!ti)) {
@@ -356,18 +372,9 @@ int setup_usermode_task(struct elf_program_info *pinfo,
 
       arch_specific_free_task(ti);
       arch_specific_new_task_setup(ti, NULL);
-
-      ASSERT(ti->state == TASK_STATE_RUNNING);
-      task_change_state(ti, TASK_STATE_RUNNABLE);
    }
 
    pi->elf = pinfo->lf;
-   ti->running_in_kernel = false;
-   ASSERT(ti->kernel_stack != NULL);
-
-   task_info_reset_kernel_stack(ti);
-   ti->state_regs--;    // make room for a regs_t struct in the stack
-   *ti->state_regs = r; // copy the regs_t struct we just prepared
    *ti_ref = ti;
    return 0;
 

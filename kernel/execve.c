@@ -118,15 +118,22 @@ save_cmdline(struct process *pi, const char *const *argv)
       memcpy(p - 4, "...", 4);
 }
 
-static inline void
-execve_prepare_process(struct process *pi, void *brk, const char *const *argv)
+static void
+execve_prepare_process(struct task *ti,
+                       void *brk,
+                       const char *const *argv,
+                       regs_t *user_regs)
 {
+   struct process *pi = ti->pi;
+
    /*
     * Close the CLOEXEC handles. Note: we couldn't do that before because they
     * can be closed ONLY IF execve() succeeded. Only here we're sure of that.
     */
 
    close_cloexec_handles(pi);
+
+   finalize_usermode_task_setup(ti, user_regs);
 
    /* Final steps */
    pi->brk = brk;
@@ -200,6 +207,7 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
    struct task *ti = NULL;
    struct elf_program_info pinfo = {0};
    char *hdr = ctx->hdr_stack[ctx->reclvl];
+   regs_t user_regs;
 
    DEBUG_VALIDATE_STACK_PTR();
    ASSERT(is_preemption_enabled());
@@ -222,12 +230,13 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
                             ctx->curr_user_task,
                             argv,
                             ctx->env,
-                            &ti);
+                            &ti,
+                            &user_regs);
 
    if (LIKELY(!rc)) {
 
       /* Positive case: setup_usermode_task() succeeded */
-      execve_prepare_process(ti->pi, pinfo.brk, argv);
+      execve_prepare_process(ti, pinfo.brk, argv, &user_regs);
 
       if (LIKELY(ctx->curr_user_task != NULL)) {
 
