@@ -917,7 +917,8 @@ static void init_hi_vmem_heap(void)
    size_t metadata_size;
    size_t min_block_size = 4 * PAGE_SIZE;
    ulong hi_vmem_start;
-   u32 hi_vmem_end_pdir_idx;
+   u32 hi_vmem_start_pidx;
+   u32 hi_vmem_end_pidx;
    void *metadata;
    bool success;
 
@@ -939,7 +940,9 @@ static void init_hi_vmem_heap(void)
       panic("No enough memory for hi vmem heap's metadata");
 
    hi_vmem_start = LINEAR_MAPPING_END;
-   hi_vmem_end_pdir_idx = (hi_vmem_start + hi_vmem_size) >> BIG_PAGE_SHIFT;
+
+   hi_vmem_start_pidx = hi_vmem_start >> BIG_PAGE_SHIFT;
+   hi_vmem_end_pidx = hi_vmem_start_pidx + (hi_vmem_size >> BIG_PAGE_SHIFT);
 
    success =
       kmalloc_create_heap(hi_vmem_heap,
@@ -955,8 +958,7 @@ static void init_hi_vmem_heap(void)
    if (!success)
       panic("Failed to create the hi vmem heap");
 
-   for (u32 i = hi_vmem_start >> BIG_PAGE_SHIFT; i < hi_vmem_end_pdir_idx; i++)
-   {
+   for (u32 i = hi_vmem_start_pidx; i < hi_vmem_end_pidx; i++) {
 
       page_table_t *pt;
       page_dir_entry_t *e = &__kernel_pdir->entries[i];
