@@ -68,8 +68,10 @@ safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb,
       cs = rb->s;
       ns = rb->s;
 
-      if (cs.full)
+      if (cs.full) {
+         *was_empty = false;
          return false;
+      }
 
       *was_empty = rb_stat_is_empty(&cs);
       ns.write_pos = (ns.write_pos + 1) % rb->max_elems;
