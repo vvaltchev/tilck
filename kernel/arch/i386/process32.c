@@ -271,7 +271,7 @@ setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 }
 
 static int NO_INLINE
-setup_usermode_task_first_process(pdir_t *pdir, struct task **ti_ref)
+setup_first_process(pdir_t *pdir, struct task **ti_ref)
 {
    struct task *ti;
    struct process *pi;
@@ -340,7 +340,7 @@ int setup_process(struct elf_program_info *pinfo,
 
       /* Special case: applies only for `init`, the first process */
 
-      if ((rc = setup_usermode_task_first_process(pinfo->pdir, &ti)))
+      if ((rc = setup_first_process(pinfo->pdir, &ti)))
          goto err;
 
       ASSERT(ti != NULL);
