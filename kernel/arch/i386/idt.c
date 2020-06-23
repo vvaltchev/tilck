@@ -6,6 +6,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/process.h>
 
 #include "idt_int.h"
 

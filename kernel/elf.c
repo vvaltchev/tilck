@@ -12,6 +12,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/fs/flock.h>
 
 #include <sys/mman.h>      // system header
 

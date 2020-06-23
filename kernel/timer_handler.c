@@ -3,7 +3,6 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>

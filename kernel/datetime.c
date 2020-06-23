@@ -10,7 +10,7 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/hal.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 
 #define FULL_RESYNC_MAX_ATTEMPTS       10
 

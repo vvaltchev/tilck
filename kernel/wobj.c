@@ -5,7 +5,7 @@
 #include <tilck/common/atomics.h>
 
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,

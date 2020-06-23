@@ -4,7 +4,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/self_tests.h>
 

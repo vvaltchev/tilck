@@ -3,7 +3,6 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/timer.h>

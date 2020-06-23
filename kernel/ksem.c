@@ -4,7 +4,6 @@
 #include <tilck/common/string_util.h>
 
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 
 void ksem_init(struct ksem *s)

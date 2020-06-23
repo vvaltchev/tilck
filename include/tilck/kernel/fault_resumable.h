@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/interrupts.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
 
 static inline bool in_fault_resumable_code(void)
 {

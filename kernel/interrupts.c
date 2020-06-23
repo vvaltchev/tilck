@@ -5,7 +5,6 @@
 
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/debug_utils.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/hal.h>

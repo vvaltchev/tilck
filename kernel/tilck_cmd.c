@@ -5,7 +5,6 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/gcov.h>

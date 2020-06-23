@@ -4,7 +4,8 @@
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/user.h>
-#include <tilck/kernel/process.h>
+#include <tilck/kernel/sched.h>
+#include <tilck/kernel/paging.h>
 #include <tilck/kernel/fs/vfs.h>
 
 static u32

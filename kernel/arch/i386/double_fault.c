@@ -4,7 +4,6 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/paging.h>
-#include <tilck/kernel/process.h>
 #include <tilck/kernel/debug_utils.h>
 
 #include "double_fault.h"
