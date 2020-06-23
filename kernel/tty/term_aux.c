@@ -3,13 +3,12 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/term_aux.h>
 
-/* Handle the _VERY UNLIKELY_ case where the ringbuf is full */
 void
-term_unable_to_enqueue_action(term *t,
-                              struct term_rb_data *d,
-                              struct term_action *a,
-                              bool *was_empty,
-                              void (*exec_everything)(void *))
+term_handle_full_ringbuf(term *t,
+                         struct term_rb_data *rb_data,
+                         struct term_action *a,
+                         bool *was_empty,
+                         void (*exec_everything)(void *))
 {
    extern bool __in_printk; /* defined in printk.c */
    bool written;
@@ -45,11 +44,11 @@ term_unable_to_enqueue_action(term *t,
 
       do {
 
-         kmutex_lock(&d->lock);
+         kmutex_lock(&rb_data->lock);
          {
-            written = safe_ringbuf_write_elem_ex(&d->rb, a, was_empty);
+            written = safe_ringbuf_write_elem_ex(&rb_data->rb, a, was_empty);
          }
-         kmutex_unlock(&d->lock);
+         kmutex_unlock(&rb_data->lock);
 
       } while (!written);
    }
