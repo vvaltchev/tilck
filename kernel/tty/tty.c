@@ -13,6 +13,8 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/tasklet.h>
 #include <tilck/kernel/term.h>
+#include <tilck/kernel/sched.h>
+
 #include <tilck/mods/console.h>
 
 #include <linux/major.h> // system header

@@ -8,6 +8,7 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/tasklet.h>
 
 #define TIME_SLOT_TICKS (TIMER_HZ / 20)
 
@@ -17,6 +18,12 @@ enum task_state {
    TASK_STATE_RUNNING   = 2,
    TASK_STATE_SLEEPING  = 3,
    TASK_STATE_ZOMBIE    = 4
+};
+
+enum wakeup_reason {
+   task_died,
+   task_stopped,
+   task_continued,
 };
 
 struct misc_buf {
@@ -190,6 +197,26 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
 
 #endif
 
+static ALWAYS_INLINE bool running_in_kernel(struct task *t)
+{
+   return t->running_in_kernel;
+}
+
+static ALWAYS_INLINE bool is_kernel_thread(struct task *ti)
+{
+   return ti->pi == kernel_process_pi;
+}
+
+static ALWAYS_INLINE bool is_main_thread(struct task *ti)
+{
+   return ti->is_main_thread;
+}
+
+static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
+{
+   return ti->what == &tasklet_runner;
+}
+
 /*
  * Saves the current state and calls schedule().
  * That after, typically after some time, the scheduler will restore the thread
@@ -272,3 +299,8 @@ int sched_get_session_of_group(int pgid);
 struct process *task_get_pi_opaque(struct task *ti);
 void process_set_tty(struct process *pi, void *t);
 bool in_currently_dying_task(void);
+
+void set_current_task_in_kernel(void);
+void set_current_task_in_user_mode(void);
+void *task_temp_kernel_alloc(size_t size);
+void task_temp_kernel_free(void *ptr);

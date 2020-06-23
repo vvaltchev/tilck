@@ -118,37 +118,11 @@ get_process_task(struct process *pi)
    return ((struct task *)pi) - 1;
 }
 
-static ALWAYS_INLINE bool running_in_kernel(struct task *t)
-{
-   return t->running_in_kernel;
-}
-
-static ALWAYS_INLINE bool is_kernel_thread(struct task *ti)
-{
-   return ti->pi == kernel_process_pi;
-}
-
-static ALWAYS_INLINE bool is_main_thread(struct task *ti)
-{
-   return ti->is_main_thread;
-}
-
-static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
-{
-   return ti->what == &tasklet_runner;
-}
-
 static ALWAYS_INLINE bool
 task_is_parent(struct task *parent, struct task *child)
 {
    return child->pi->parent_pid == parent->pi->pid;
 }
-
-enum wakeup_reason {
-   task_died,
-   task_stopped,
-   task_continued,
-};
 
 int do_fork(bool vfork);
 void handle_vforked_child_move_on(struct process *pi);
@@ -162,8 +136,6 @@ int setup_usermode_task(struct elf_program_info *pinfo,
                         regs_t *user_regs);
 
 void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
-void set_current_task_in_kernel(void);
-void set_current_task_in_user_mode(void);
 
 struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir);
@@ -179,9 +151,6 @@ void arch_specific_new_proc_setup(struct process *pi, struct process *parent);
 void arch_specific_free_proc(struct process *pi);
 void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r);
 void init_process_lists(struct process *pi);
-
-void *task_temp_kernel_alloc(size_t size);
-void task_temp_kernel_free(void *ptr);
 
 void process_set_cwd2_nolock(struct vfs_path *tp);
 void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp);

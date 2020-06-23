@@ -11,6 +11,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/sched.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"
