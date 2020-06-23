@@ -107,6 +107,8 @@ void set_curr_pdir() { }
 void set_current_task_in_user_mode() { }
 void arch_specific_new_task_setup() { NOT_REACHED(); }
 void arch_specific_free_task() { NOT_REACHED(); }
+void arch_specific_new_proc_setup() { NOT_REACHED(); }
+void arch_specific_free_proc() { NOT_REACHED(); }
 void fpu_context_begin() { }
 void fpu_context_end() { }
 void map_zero_pages() { NOT_REACHED(); }

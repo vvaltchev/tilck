@@ -377,7 +377,8 @@ void create_kernel_process(void)
 
 #ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
-      VERIFY(arch_specific_new_task_setup(s_kernel_ti, NULL));
+      bzero(s_kernel_ti->arch_fields, sizeof(s_kernel_ti->arch_fields));
+      bzero(s_kernel_pi->arch_fields, sizeof(s_kernel_pi->arch_fields));
       add_task(kernel_process);
    }
 #endif

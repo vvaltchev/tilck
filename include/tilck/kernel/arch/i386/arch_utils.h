@@ -28,12 +28,14 @@ STATIC_ASSERT(X86_KERNEL_DATA_SEL == X86_SELECTOR(2, TABLE_GDT, 0));
 STATIC_ASSERT(X86_USER_CODE_SEL == X86_SELECTOR(3, TABLE_GDT, 3));
 STATIC_ASSERT(X86_USER_DATA_SEL == X86_SELECTOR(4, TABLE_GDT, 3));
 
-struct x86_arch_task_members {
-
+struct x86_arch_proc_members {
    void *ldt;
    u16 ldt_size; /* Number of entries. Valid only if ldt != NULL. */
    u16 ldt_index_in_gdt; /* Index in gdt, valid only if ldt != NULL. */
    u16 gdt_entries[3]; /* Array of indexes in gdt, valid if > 0 */
+};
+
+struct x86_arch_task_members {
    u16 fpu_regs_size;
    void *aligned_fpu_regs;
 };

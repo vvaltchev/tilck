@@ -244,6 +244,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    if (UNLIKELY(!(arch_fields = arch_specific_new_task_setup(ti, parent))))
       goto oom_case;
 
+   arch_specific_new_proc_setup(pi, parent_pi); // NOTE: cannot fail
    init_task_lists(ti);
    init_process_lists(pi);
    list_add_tail(&parent_pi->children, &ti->siblings_node);
@@ -306,6 +307,7 @@ static void free_process_int(struct process *pi)
 
    if (release_obj(pi) == 0) {
 
+      arch_specific_free_proc(pi);
       kfree2(get_process_task(pi), TOT_PROC_AND_TASK_SIZE);
 
       if (MOD_debugpanel)

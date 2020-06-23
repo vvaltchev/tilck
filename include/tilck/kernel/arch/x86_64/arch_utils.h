@@ -11,8 +11,12 @@ struct x86_64_regs {
    ulong some_var; /* avoid error: empty struct has size 0 in C, 1 in C++ */
 };
 
-struct x86_64_arch_task_members {
+struct x86_64_arch_proc_members {
+   /* STUB struct */
+   ulong some_var; /* avoid error: empty struct has size 0 in C, 1 in C++ */
+};
 
+struct x86_64_arch_task_members {
    /* STUB struct */
    void *aligned_fpu_regs;
 };

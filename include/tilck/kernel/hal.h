@@ -39,6 +39,9 @@
 STATIC_ASSERT(ARCH_TASK_MEMBERS_SIZE == sizeof(arch_task_members_t));
 STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
 
+STATIC_ASSERT(ARCH_PROC_MEMBERS_SIZE == sizeof(arch_proc_members_t));
+STATIC_ASSERT(ARCH_PROC_MEMBERS_ALIGN == alignof(arch_proc_members_t));
+
 void reboot();
 void init_segmentation(void);
 void init_cpu_exception_handling(void);
@@ -59,4 +62,5 @@ u32 hw_timer_setup(u32 hz);
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
 void copy_main_tss_on_regs(regs_t *ctx);
 
-#define get_arch_fields(ti) ((arch_task_members_t *)(ti)->arch_fields)
+#define get_task_arch_fields(ti) ((arch_task_members_t *)(ti)->arch_fields)
+#define get_proc_arch_fields(pi) ((arch_proc_members_t *)(pi)->arch_fields)

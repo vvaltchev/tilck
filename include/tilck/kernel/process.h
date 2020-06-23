@@ -71,10 +71,31 @@ struct process {
    char *debug_cmdline;                   /* debug field used by debugpanel */
 
    struct locked_file *elf;
+   fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
+
+   /*
+    * The purpose of having this opaque `arch_fields` member here is to avoid
+    * including hal.h in this header. The general idea is that, while it is OK
+    * to have architecture-specific fields in this struct, all the non-arch code
+    * should be able to work with this structure without needing to understand
+    * the arch-specific fields. It's all about trying to isolate as much as
+    * possible non-arch code from arch-specific code.
+    *
+    * NOTE: a simpler solution here might be just using a void * pointer and
+    * having those fields stored elsewhere in the kernel heap. That will
+    * certainly work, but it will require an additional kmalloc/kfree call for
+    * each task creation/destruction _and_ it will increase the likelihood of
+    * a cache miss when trying to access those fields as they won't be in a
+    * memory location contiguous with the current struct.
+    *
+    * Therefore, this approach, at the price of some complexity, achieves
+    * separation of arch from non-arch code without introducing any runtime
+    * cost for that.
+    */
+   char arch_fields[ARCH_PROC_MEMBERS_SIZE] ALIGNED_AT(ARCH_PROC_MEMBERS_ALIGN);
 
    /* large members */
    char str_cwd[MAX_PATH];                /* current working directory */
-   fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
 
    __sighandler_t sa_handlers[_NSIG];
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
@@ -195,25 +216,7 @@ struct task {
     */
    void *what;
 
-   /*
-    * The purpose of having this opaque `arch_fields` member here is to avoid
-    * including hal.h in this header. The general idea is that, while it is OK
-    * to have architecture-specific fields in this struct, all the non-arch code
-    * should be able to work with this structure without needing to understand
-    * the arch-specific fields. It's all about trying to isolate as much as
-    * possible non-arch code from arch-specific code.
-    *
-    * NOTE: a simpler solution here might be just using a void * pointer and
-    * having those fields stored elsewhere in the kernel heap. That will
-    * certainly work, but it will require an additional kmalloc/kfree call for
-    * each task creation/destruction _and_ it will increase the likelihood of
-    * a cache miss when trying to access those fields as they won't be in a
-    * memory location contiguous with the current struct.
-    *
-    * Therefore, this approach, at the price of some complexity, achieves
-    * separation of arch from non-arch code without introducing any runtime
-    * cost for that.
-    */
+   /* See the comment above struct process' arch_fields */
    char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
 
@@ -289,6 +292,8 @@ void free_task(struct task *ti);
 void free_mem_for_zombie_task(struct task *ti);
 bool arch_specific_new_task_setup(struct task *ti, struct task *parent);
 void arch_specific_free_task(struct task *ti);
+void arch_specific_new_proc_setup(struct process *pi, struct process *parent);
+void arch_specific_free_proc(struct process *pi);
 void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r);
 void init_process_lists(struct process *pi);
 

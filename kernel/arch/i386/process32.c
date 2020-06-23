@@ -370,8 +370,11 @@ int setup_usermode_task(struct elf_program_info *pinfo,
       pi->pdir = pinfo->pdir;
       old_pdir = NULL;
 
-      arch_specific_free_task(ti);
-      arch_specific_new_task_setup(ti, NULL);
+      /* NOTE: not calling arch_specific_free_task() */
+      VERIFY(arch_specific_new_task_setup(ti, NULL));
+
+      arch_specific_free_proc(pi);
+      arch_specific_new_proc_setup(pi, NULL);
    }
 
    pi->elf = pinfo->lf;
@@ -415,7 +418,7 @@ void set_current_task_in_user_mode(void)
 
 static inline bool is_fpu_enabled_for_task(struct task *ti)
 {
-   return get_arch_fields(ti)->aligned_fpu_regs &&
+   return get_task_arch_fields(ti)->aligned_fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
@@ -502,14 +505,14 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
 
    if (!is_kernel_thread(ti)) {
 
-      arch_task_members_t *arch = get_arch_fields(ti);
+      if (get_curr_pdir() != ti->pi->pdir) {
 
-      /* Switch the page directory only if really necessary */
-      if (get_curr_pdir() != ti->pi->pdir)
+         arch_proc_members_t *arch = get_proc_arch_fields(ti->pi);
          set_curr_pdir(ti->pi->pdir);
 
-      if (arch->ldt)
-         load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
+         if (arch->ldt)
+            load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
+      }
 
       if (is_fpu_enabled_for_task(ti)) {
          hw_fpu_enable();
@@ -588,41 +591,88 @@ int sys_set_tid_address(int *tidptr)
 bool
 arch_specific_new_task_setup(struct task *ti, struct task *parent)
 {
-   arch_task_members_t *arch = get_arch_fields(ti);
+   arch_task_members_t *arch = get_task_arch_fields(ti);
 
-   if (LIKELY(parent != NULL)) {
-      memcpy(&ti->arch_fields, &parent->arch_fields, sizeof(ti->arch_fields));
+   if (FORK_NO_COW) {
+
+      if (parent) {
+
+         /*
+          * We parent is set, we're forking a task and we must NOT preserve the
+          * arch fields. But, if we're not forking (parent is set), it means
+          * we're in execve(): in that case there's no point to reset the arch
+          * fields. Actually, here, in the NO_COW case, we MUST NOT do it, in
+          * order to be sure we won't fail.
+          */
+
+         bzero(arch, sizeof(arch_task_members_t));
+      }
+
+      if (arch->aligned_fpu_regs) {
+
+         /*
+          * We already have an FPU regs buffer: just clear its contents and
+          * keep it allocated.
+          */
+         bzero(arch->aligned_fpu_regs, arch->fpu_regs_size);
+
+      } else {
+
+         /* We don't have a FPU regs buffer: unless this is kthread, allocate */
+         if (LIKELY(!is_kernel_thread(ti)))
+            if (!allocate_fpu_regs(arch))
+               return false; // out-of-memory
+      }
+
+   } else {
+
+      /*
+       * We're not in the NO_COW case. We have to free the arch specific fields
+       * (like the fpu_regs buffer) if the parent is NULL. Otherwise, just reset
+       * its members to zero.
+       */
+
+      if (parent) {
+         bzero(arch, sizeof(*arch));
+      } else {
+         arch_specific_free_task(ti);
+      }
    }
 
-   arch->aligned_fpu_regs = NULL;
-   arch->fpu_regs_size = 0;
-
-#if FORK_NO_COW
-
-   if (LIKELY(!is_kernel_thread(ti))) {
-      if (!allocate_fpu_regs(arch))
-         return false; // out-of-memory
-   }
-
-#endif
-
-   if (LIKELY(parent != NULL)) {
-
-      if (arch->ldt)
-         gdt_entry_inc_ref_count(arch->ldt_index_in_gdt);
-
-      for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
-         if (arch->gdt_entries[i])
-            gdt_entry_inc_ref_count(arch->gdt_entries[i]);
-   }
-
-   ti->pi->set_child_tid = NULL;
    return true;
 }
 
 void arch_specific_free_task(struct task *ti)
 {
-   arch_task_members_t *arch = get_arch_fields(ti);
+   arch_task_members_t *arch = get_task_arch_fields(ti);
+   aligned_kfree2(arch->aligned_fpu_regs, arch->fpu_regs_size);
+   arch->aligned_fpu_regs = NULL;
+   arch->fpu_regs_size = 0;
+}
+
+void
+arch_specific_new_proc_setup(struct process *pi, struct process *parent)
+{
+   arch_proc_members_t *arch = get_proc_arch_fields(pi);
+
+   if (!parent)
+      return;      /* we're done */
+
+   memcpy(&pi->arch_fields, &parent->arch_fields, sizeof(pi->arch_fields));
+
+   if (arch->ldt)
+      gdt_entry_inc_ref_count(arch->ldt_index_in_gdt);
+
+   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
+      if (arch->gdt_entries[i])
+         gdt_entry_inc_ref_count(arch->gdt_entries[i]);
+
+   pi->set_child_tid = NULL;
+}
+
+void arch_specific_free_proc(struct process *pi)
+{
+   arch_proc_members_t *arch = get_proc_arch_fields(pi);
 
    if (arch->ldt) {
       gdt_clear_entry(arch->ldt_index_in_gdt);
@@ -635,10 +685,6 @@ void arch_specific_free_task(struct task *ti)
          arch->gdt_entries[i] = 0;
       }
    }
-
-   aligned_kfree2(arch->aligned_fpu_regs, arch->fpu_regs_size);
-   arch->aligned_fpu_regs = NULL;
-   arch->fpu_regs_size = 0;
 }
 
 /* General protection fault handler */

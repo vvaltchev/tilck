@@ -352,8 +352,8 @@ static void DEBUG_set_thread_area(struct user_desc *d)
 
 static int find_available_slot_in_user_task(void)
 {
-   struct task *curr = get_curr_task();
-   arch_task_members_t *arch = get_arch_fields(curr);
+   struct process *pi = get_curr_proc();
+   arch_proc_members_t *arch = get_proc_arch_fields(pi);
 
    for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
       if (!arch->gdt_entries[i])
@@ -364,8 +364,8 @@ static int find_available_slot_in_user_task(void)
 
 static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
 {
-   struct task *curr = get_curr_task();
-   arch_task_members_t *arch = get_arch_fields(curr);
+   struct process *pi = get_curr_proc();
+   arch_proc_members_t *arch = get_proc_arch_fields(pi);
 
    for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
       if (arch->gdt_entries[i] == gdt_entry_num)
@@ -376,7 +376,7 @@ static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
 
 static void gdt_set_slot_in_task(struct task *ti, u16 slot, u16 gdt_index)
 {
-   get_arch_fields(ti)->gdt_entries[slot] = gdt_index;
+   get_proc_arch_fields(ti)->gdt_entries[slot] = gdt_index;
 }
 
 int sys_set_thread_area(void *arg)
