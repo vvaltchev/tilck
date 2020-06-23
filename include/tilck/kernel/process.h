@@ -8,7 +8,6 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/paging.h>
-#include <tilck/kernel/sync.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/tasklet.h>
@@ -102,123 +101,7 @@ struct process {
    ulong sa_flags;
 };
 
-struct misc_buf {
-
-   char path_buf[MAX_PATH];
-   char unused[1024 - MAX_PATH];
-   char execve_ctx[1024];
-   char resolve_ctx[2048];
-};
-
 STATIC_ASSERT(sizeof(struct misc_buf) <= PAGE_SIZE);
-
-struct task {
-
-   union {
-
-      int tid;               /* User/kernel task ID (pid in the Linux kernel) */
-
-      /*
-       * For the moment, `tid` has everywhere `int` as type, while the field is
-       * used as key with the bintree_*_int functions which use pointer-sized
-       * integers. Therefore, in case sizeof(long) > sizeof(int), we need some
-       * padding.
-       */
-
-      ulong padding_0;
-   };
-
-   struct process *pi;
-
-   bool is_main_thread;     /* value of `tid == pi->pid` */
-   bool running_in_kernel;
-   bool stopped;
-   bool was_stopped;
-
-   /*
-    * Technically `state` is just 1 byte wide and should be enough on all the
-    * architectures to guarantee its simple atomicity (not sequential
-    * consistency!!), the only thing we need in non-SMP kernels. BUT, it is
-    * marked as ATOMIC here for consistency, as in interrupt context this member
-    * might be checked and changed (see the tasklet subsystem).
-    *
-    * If, in the future `state` will need to become wider than just 1 single
-    * byte, then even getting a plain atomicity would require ATOMIC(x) on some
-    * architectures, while on i386 and x86_64 it won't make a difference.
-    * Therefore, marking it ATOMIC at the moment is more about semantic than
-    * anything else, but in the future it will be actually needed.
-    *
-    * NOTE: the following implications are *not* true:
-    *
-    *    volatile -> atomic
-    *    atomic -> volatile
-    *
-    * The field needs to be also volatile because its value is read in loops
-    * expecting it to change as some point (see sys_waitpid()). Theoretically,
-    * in case of consecutive atomic loads, the compiler is _not_ obliged to
-    * do every time an actual read and it might cache the value in a register,
-    * according to the C11 atomic model. In practice with GCC this can happen
-    * only with relaxed atomics (the ones used in Tilck), at best of my
-    * knowledge, but it is still good write C11 compliant code, instead of
-    * relying on the current behavior.
-    */
-   volatile ATOMIC(enum task_state) state;
-
-   regs_t *state_regs;
-   regs_t *fault_resume_regs;
-   u32 faults_resume_mask;
-   ATOMIC(int) term_sig;
-
-   struct bintree_node tree_by_tid_node;
-   struct list_node runnable_node;
-   struct list_node sleeping_node;
-   struct list_node zombie_node;
-   struct list_node wakeup_timer_node;
-   struct list_node siblings_node;    /* nodes in parent's pi's children list */
-
-   struct list tasks_waiting_list;    /* tasks waiting this task to end */
-
-   s32 wstatus;                       /* waitpid's wstatus */
-
-   u32 time_slot_ticks; /*
-                         * ticks counter for the current time-slot: it's reset
-                         * each time the task is selected by the scheduler.
-                         */
-
-   u64 total_ticks;
-   u64 total_kernel_ticks;
-
-   void *kernel_stack;
-   void *args_copybuf;
-
-   union {
-      void *io_copybuf;
-      struct misc_buf *misc_buf;
-   };
-
-   struct wait_obj wobj;
-   u32 ticks_before_wake_up;
-
-   /* Temp kernel allocations for user requests */
-   struct kernel_alloc *kallocs_tree_root;
-
-   /* This task is stopped because of its vfork-ed child */
-   bool vfork_stopped;
-
-   /* Trace the syscalls of this task (requires debugpanel) */
-   bool traced;
-
-   /*
-    * For kernel threads, this is a function pointer of the thread's entry
-    * point. For user processes/threads, it is unused for the moment. In the
-    * future, for processes it could be a path to the executable and for threads
-    * still the entry-point.
-    */
-   void *what;
-
-   /* See the comment above struct process' arch_fields */
-   char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
-};
 
 #define TOT_PROC_AND_TASK_SIZE    (sizeof(struct task) + sizeof(struct process))
 
