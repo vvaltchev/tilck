@@ -128,12 +128,12 @@ int do_fork(bool vfork);
 void handle_vforked_child_move_on(struct process *pi);
 int first_execve(const char *abs_path, const char *const *argv);
 
-int setup_usermode_task(struct elf_program_info *pinfo,
-                        struct task *task_to_use,
-                        const char *const *argv,
-                        const char *const *env,
-                        struct task **ti_ref,
-                        regs_t *user_regs);
+int setup_process(struct elf_program_info *pinfo,
+                  struct task *task_to_use,
+                  const char *const *argv,
+                  const char *const *env,
+                  struct task **ti_ref,
+                  regs_t *user_regs);
 
 void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
 

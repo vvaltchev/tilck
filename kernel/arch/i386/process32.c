@@ -308,12 +308,12 @@ finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
    *ti->state_regs = *user_regs; // copy the regs_t struct we prepared before
 }
 
-int setup_usermode_task(struct elf_program_info *pinfo,
-                        struct task *ti,
-                        const char *const *argv,
-                        const char *const *env,
-                        struct task **ti_ref,
-                        regs_t *r)
+int setup_process(struct elf_program_info *pinfo,
+                  struct task *ti,
+                  const char *const *argv,
+                  const char *const *env,
+                  struct task **ti_ref,
+                  regs_t *r)
 {
    int rc = 0;
    u32 argv_elems = 0;

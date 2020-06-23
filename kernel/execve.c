@@ -262,17 +262,17 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 
    disable_preemption();
    {
-      rc = setup_usermode_task(&pinfo,
-                               ctx->curr_user_task,
-                               argv,
-                               ctx->env,
-                               &ti,
-                               &user_regs);
+      rc = setup_process(&pinfo,
+                         ctx->curr_user_task,
+                         argv,
+                         ctx->env,
+                         &ti,
+                         &user_regs);
    }
    enable_preemption();
 
    if (UNLIKELY(rc))
-      return rc;                 /* setup_usermode_task() failed */
+      return rc;                 /* setup_process() failed */
 
    /* From now on, we cannot fail */
    close_cloexec_handles(ti->pi);
