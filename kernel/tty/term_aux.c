@@ -8,7 +8,7 @@ term_handle_full_ringbuf(term *t,
                          struct term_rb_data *rb_data,
                          struct term_action *a,
                          bool *was_empty,
-                         void (*exec_everything)(void *))
+                         exec_action_func exec)
 {
    extern bool __in_printk; /* defined in printk.c */
    bool written;
@@ -21,7 +21,7 @@ term_handle_full_ringbuf(term *t,
       if (in_panic()) {
 
          /* Stop caring about IRQs and stuff: execute everything */
-         exec_everything(t);
+         term_exec_everything(t, rb_data, exec);
          return;
       }
 

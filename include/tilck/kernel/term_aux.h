@@ -14,6 +14,8 @@ struct term_rb_data {
    struct safe_ringbuf rb;
 };
 
+typedef void (*exec_action_func)(term *, struct term_action *);
+
 void
 init_term_rb_data(struct term_rb_data *d,
                   u16 max_elems,
@@ -28,7 +30,7 @@ term_handle_full_ringbuf(term *t,
                          struct term_rb_data *rb_data,
                          struct term_action *a,
                          bool *was_empty,
-                         void (*exec_everything)(term *));
+                         exec_action_func exec);
 
 /*
  * C "template" function used to allow code sharing between video term and
@@ -39,10 +41,20 @@ term_handle_full_ringbuf(term *t,
  */
 
 static ALWAYS_INLINE void
+term_exec_everything(term *t, struct term_rb_data *d, exec_action_func exec)
+{
+   long a[2];
+   ASSERT(d->rb.elem_size <= sizeof(a));
+
+   while (safe_ringbuf_read_elem(&d->rb, a))
+      exec(t, (struct term_action *) a);
+}
+
+static ALWAYS_INLINE void
 term_execute_or_enqueue_action_template(term *t,
                                         struct term_rb_data *rb_data,
                                         struct term_action *a,
-                                        void (*exec_everything)(term *))
+                                        exec_action_func exec)
 {
    bool was_empty;
 
@@ -52,7 +64,7 @@ term_execute_or_enqueue_action_template(term *t,
                                rb_data,
                                a,
                                &was_empty,
-                               exec_everything);
+                               exec);
 
       /* NOTE: do not return */
    }
@@ -70,13 +82,13 @@ term_execute_or_enqueue_action_template(term *t,
 
    if (UNLIKELY(in_panic()) || !is_preemption_enabled()) {
       /* We don't need to grab the lock, as the preemption is disabled! */
-      return exec_everything(t);
+      return term_exec_everything(t, rb_data, exec);
    }
 
    /* Don't disable the preemption, just grab term's lock */
    kmutex_lock(&rb_data->lock);
    {
-      exec_everything(t);
+      term_exec_everything(t, rb_data, exec);
    }
    kmutex_unlock(&rb_data->lock);
 }

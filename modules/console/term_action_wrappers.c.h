@@ -55,22 +55,13 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
    }
 }
 
-static ALWAYS_INLINE void
-vterm_exec_everything(struct vterm *t)
-{
-   struct term_action a;
-
-   while (safe_ringbuf_read_elem(&t->rb_data.rb, &a))
-      term_execute_action(t, &a);
-}
-
 static void
 term_execute_or_enqueue_action(struct vterm *t, struct term_action *a)
 {
    term_execute_or_enqueue_action_template(t,
                                            &t->rb_data,
                                            a,
-                                           (void *)&vterm_exec_everything);
+                                           (void *)&term_execute_action);
 }
 
 static void
