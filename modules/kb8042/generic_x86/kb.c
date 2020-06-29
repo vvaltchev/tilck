@@ -28,8 +28,8 @@ enum kb_state {
 int kb_tasklet_runner = -1;
 static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
-static bool numLock = true;
-static bool capsLock = false;
+static bool numLock;
+static bool capsLock;
 static struct list keypress_handlers = make_list(keypress_handlers);
 static struct kb_dev ps2_keyboard;
 
@@ -283,6 +283,18 @@ void init_kb(void)
       }
    }
 
+   if (in_hypervisor()) {
+
+      /*
+       * In case of real HW, we can assume numLock is off on boot, while
+       * when running inside a VM, the numLock can still be off in the VM
+       * itself while being (typically) turned on in the host. Because we
+       * cannot control the `numLock` state in the host and we're not even
+       * guarateed to be able to catch the `numLock` key press, assuming it as
+       * turned on when running in a VM, is typically the best choice.
+       */
+      numLock = true;
+   }
 
    kb_led_update();
    kb_set_typematic_byte(0);
