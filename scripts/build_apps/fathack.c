@@ -49,7 +49,7 @@ static int action_mmap(struct action_ctx *ctx)
    ASSERT(ctx->statbuf.st_size > 0);
 
    ctx->vaddr = mmap(NULL,                           /* addr */
-                     ctx->statbuf.st_size + 4096,    /* length */
+                     ctx->statbuf.st_size,           /* length */
                      PROT_READ|PROT_WRITE,           /* prot */
                      MAP_SHARED,                     /* flags */
                      ctx->fd,                        /* fd */
@@ -67,11 +67,13 @@ static int action_munmap(struct action_ctx *ctx)
 {
    int rc = munmap(ctx->vaddr, ctx->statbuf.st_size);
 
-   if (!rc) {
-      ctx->vaddr = NULL;
+   if (rc < 0) {
+      perror("munmap() failed");
+      return -1;
    }
 
-   return rc;
+   ctx->vaddr = NULL;
+   return 0;
 }
 
 static int action_calc_used_bytes(struct action_ctx *ctx)
@@ -142,7 +144,21 @@ static int action_do_align(struct action_ctx *ctx)
               used_bytes, ctx->statbuf.st_size);
    }
 
+   /*
+    * While on the Linux kernel (and on Tilck as well) it's fine to expand or
+    * shrink a file while being memory-mapped, that's NOT true on WSL. While
+    * it's true that WSL is not supposed to be Tilck's main build host type,
+    * it is still nice to support it, in particular because that does not
+    * require a huge effort; just minor fixes here and there.
+    */
+   if (action_munmap(ctx) < 0)
+      return -1;
+
    action_expand_file_by_4k(ctx);
+
+   if (action_mmap(ctx) < 0)
+      return -1;
+
    fat_align_first_data_sector(ctx->vaddr, 4096);
    return 0;
 }
@@ -207,7 +223,7 @@ int main(int argc, char **argv)
    int failed;
    const char *file;
    struct action *a;
-   struct action_ctx ctx;
+   struct action_ctx ctx = {0};
 
    if (parse_opts(argc, argv, &a, &file) < 0)
       show_help_and_exit(argc, argv);
