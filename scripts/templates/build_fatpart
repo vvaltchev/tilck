@@ -197,7 +197,10 @@ function add_fbdoom {
 
    mkdir -p usr/lib/fbDOOM
    link_or_copy $tc/$arch/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
-   link_or_copy $tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz usr/lib/fbDOOM
+
+   if ! [ -f usr/lib/fbDOOM/Doom1.WAD ]; then
+      link_or_copy $tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz usr/lib/fbDOOM
+   fi
 
    # Here document
 
@@ -209,16 +212,16 @@ cat <<'EOF'
 set -e
 fbdoomgz="/usr/lib/fbDOOM/fbdoom.gz"
 wadgz="/usr/lib/fbDOOM/freedoom1.wad.gz"
-wad="/tmp/freedom1.wad"
 fbdoom="/tmp/fbdoom"
+
+if [ -f /usr/lib/fbDOOM/Doom1.WAD ]; then
+   wad="/usr/lib/fbDOOM/Doom1.WAD"
+else
+   wad="/tmp/freedom1.wad"
+fi
 
 if ! [ -f $fbdoomgz ]; then
    echo "ERROR: fbDOOM binary $fbdoomgz not found."
-   exit 1
-fi
-
-if ! [ -f $wadgz ]; then
-   echo "ERROR: Wad file $wadgz not found."
    exit 1
 fi
 
@@ -232,6 +235,12 @@ if ! [ -f $fbdoom ]; then
 fi
 
 if ! [ -f $wad ]; then
+
+   if ! [ -f $wadgz ]; then
+      echo "ERROR: Wad file $wadgz not found."
+      exit 1
+   fi
+
    echo -n "Uncompressing ${wadgz}... "
    cp $wadgz /tmp
    gzip -d /tmp/freedoom1.wad.gz > $wad
@@ -242,9 +251,9 @@ fi
 echo "Running $fbdoom -iwad $wad"
 exec $fbdoom -iwad $wad
 EOF
-   ) > usr/bin/freedoom
+   ) > usr/bin/fbdoom
 
-   chmod 755 usr/bin/freedoom
+   chmod 755 usr/bin/fbdoom
 }
 
 
