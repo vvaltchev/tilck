@@ -42,6 +42,38 @@ static u32 ff_clu_off;
 
 /* --- */
 
+static int action_mmap(struct action_ctx *ctx)
+{
+   ASSERT(ctx->vaddr == NULL);
+   ASSERT(ctx->fd > 0);
+   ASSERT(ctx->statbuf.st_size > 0);
+
+   ctx->vaddr = mmap(NULL,                           /* addr */
+                     ctx->statbuf.st_size + 4096,    /* length */
+                     PROT_READ|PROT_WRITE,           /* prot */
+                     MAP_SHARED,                     /* flags */
+                     ctx->fd,                        /* fd */
+                     0);                             /* offset */
+
+   if (ctx->vaddr == (void *)-1) {
+      perror("mmap() failed");
+      return -1;
+   }
+
+   return 0;
+}
+
+static int action_munmap(struct action_ctx *ctx)
+{
+   int rc = munmap(ctx->vaddr, ctx->statbuf.st_size);
+
+   if (!rc) {
+      ctx->vaddr = NULL;
+   }
+
+   return rc;
+}
+
 static int action_calc_used_bytes(struct action_ctx *ctx)
 {
    ff_clu_off = fat_get_first_free_cluster_off(ctx->vaddr);
@@ -201,15 +233,7 @@ int main(int argc, char **argv)
       if ((failed = (*f)(&ctx)))
          goto out;
 
-   ctx.vaddr = mmap(NULL,                          /* addr */
-                    ctx.statbuf.st_size + 4096,    /* length */
-                    PROT_READ|PROT_WRITE,          /* prot */
-                    MAP_SHARED,                    /* flags */
-                    ctx.fd,                        /* fd */
-                    0);                            /* offset */
-
-   if (ctx.vaddr == (void *)-1) {
-      perror("mmap() failed");
+   if (action_mmap(&ctx) < 0) {
       failed = 1;
       goto out;
    }
@@ -218,8 +242,7 @@ int main(int argc, char **argv)
       if ((failed = (*f)(&ctx)))
          goto out;
 
-   if (munmap(ctx.vaddr, ctx.statbuf.st_size) < 0) {
-      perror("munmap() failed");
+   if (action_munmap(&ctx) < 0) {
       failed = 1;
       goto out;
    }
