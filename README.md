@@ -261,12 +261,13 @@ scripts for running Tilck in QEMU with various configurations (bios boot, efi
 boot, direct (multi)boot with QEMU's -kernel option, etc.).
 
 #### Tests
-Tilck has **unit tests**, **system tests** and **self tests** all in the same
-repository, completely integrated with its build system. In addition, there's
-full code coverage support and useful scripts for generating HTML reports
-(see the [coverage] guide). Finally, Tilck is fully integrated with `CircleCI`,
-which validates each branch with builds and test runs in a variety
-of configurations. The integration with `CodeCov` for checking online the
+Tilck has **unit tests**, **kernel self tests**, **traditional system tests**
+(passive, using the syscall interface) and **automated interactive system tests**
+all in the same repository, completely integrated with its build system.
+In addition, there's full code coverage support and useful scripts for generating
+HTML reports (see the [coverage] guide). Finally, Tilck is fully integrated with
+`Azure Pipelines`, which validates each push with builds and test runs in a
+variety of configurations. The integration with `CodeCov` for checking online the
 coverage is another nice perk.
 
 #### Motivation
