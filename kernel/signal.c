@@ -16,8 +16,8 @@ void process_signals(void)
 {
    struct task *curr = get_curr_task();
 
-   if (curr->term_sig)
-      terminate_process(0, curr->term_sig);
+   if (curr->pending_signal)
+      terminate_process(0, curr->pending_signal);
 }
 
 static void action_terminate(struct task *ti, int signum)
@@ -33,7 +33,7 @@ static void action_terminate(struct task *ti, int signum)
       NOT_REACHED();
    }
 
-   ti->term_sig = signum;
+   ti->pending_signal = signum;
 
    if (!ti->vfork_stopped) {
 
@@ -46,7 +46,7 @@ static void action_terminate(struct task *ti, int signum)
 
       /*
        * The task is vfork_stopped: we cannot make it runnable, nor kill it
-       * right now. Just registering `term_sig` is enough. As soon as the
+       * right now. Just registering `pending_signal` is enough. As soon as the
        * process wakes up, the killing signal will be delivered.
        */
    }

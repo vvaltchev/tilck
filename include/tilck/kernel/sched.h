@@ -88,7 +88,7 @@ struct task {
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
-   ATOMIC(int) term_sig;
+   ATOMIC(int) pending_signal;
 
    struct bintree_node tree_by_tid_node;
    struct list_node runnable_node;
