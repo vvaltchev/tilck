@@ -59,6 +59,10 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 
          /* Wait on the writers cond */
          kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
+
+         if (pending_signals())
+            goto end;
+
          goto again;
       }
 
@@ -75,6 +79,10 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    end:;
    }
    kmutex_unlock(&p->mutex);
+
+   if (pending_signals())
+      return -EINTR;
+
    return rc;
 }
 
@@ -116,6 +124,10 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 
          /* Wait on the readers cond */
          kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
+
+         if (pending_signals())
+            goto end;
+
          goto again;
       }
 
@@ -132,6 +144,10 @@ static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
    end:;
    }
    kmutex_unlock(&p->mutex);
+
+   if (pending_signals())
+      return -EINTR;
+
    return rc;
 }
 

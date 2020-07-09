@@ -170,6 +170,9 @@ select_wait_on_cond(struct select_ctx *c)
 
       kernel_sleep_on_waiter(waiter);
 
+      if (pending_signals())
+         break;
+
       if (c->tv) {
 
          if (curr->wobj.type) {
@@ -209,6 +212,10 @@ select_wait_on_cond(struct select_ctx *c)
 
 out:
    free_mobj_waiter(waiter);
+
+   if (pending_signals())
+      return -EINTR;
+
    return rc;
 }
 
@@ -366,6 +373,9 @@ int sys_select(int user_nfds,
           */
 
          kernel_sleep(ctx.timeout_ticks);
+
+         if (pending_signals())
+            return -EINTR;
       }
    }
 

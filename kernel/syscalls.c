@@ -36,6 +36,9 @@ do_nanosleep(const struct k_timespec64 *req)
    ticks_to_sleep += (ulong) req->tv_nsec / (1000000000 / TIMER_HZ);
    kernel_sleep(ticks_to_sleep);
 
+   if (pending_signals())
+      return -EINTR;
+
    // TODO (future): use HPET in order to improve the sleep precision
    // TODO (nanosleep): set rem if the call has been interrupted by a signal
    return 0;

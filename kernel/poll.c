@@ -188,6 +188,9 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 
       kernel_sleep_on_waiter(waiter);
 
+      if (pending_signals())
+         break;
+
       if (timeout > 0) {
 
          if (curr->wobj.type) {
@@ -225,6 +228,10 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
    }
 
    free_mobj_waiter(waiter);
+
+   if (pending_signals())
+      return -EINTR;
+
    return ready_fds_cnt;
 }
 
@@ -263,6 +270,9 @@ int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
 
       if (timeout > 0) {
          kernel_sleep((u64)timeout / (1000 / TIMER_HZ));
+
+         if (pending_signals())
+            return -EINTR;
       }
 
       ready_fds_cnt = poll_count_ready_fds(fds, nfds);

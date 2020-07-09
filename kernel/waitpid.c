@@ -225,6 +225,9 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
       task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), NO_EXTRA, wait_list);
       kernel_yield();
 
+      if (pending_signals())
+         return -EINTR;
+
    } // while (true)
 
    /*

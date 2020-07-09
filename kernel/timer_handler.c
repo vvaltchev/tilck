@@ -191,6 +191,9 @@ void kernel_sleep(u64 ticks)
       task_set_wakeup_timer(get_curr_task(), 0xffffffff);
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
       kernel_yield();
+
+      if (pending_signals())
+         return;
    }
 
    if (q) {
@@ -200,6 +203,9 @@ void kernel_sleep(u64 ticks)
       if (rem) {
          /* Yield only if we're going to sleep again because rem > 0 */
          kernel_yield();
+
+         if (pending_signals())
+            return;
       }
    }
 

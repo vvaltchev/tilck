@@ -532,7 +532,11 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
          return -EAGAIN;
 
       while (tty_inbuf_is_empty(t)) {
+
          kcond_wait(&t->input_cond, NULL, KCOND_WAIT_FOREVER);
+
+         if (pending_signals())
+            return -EINTR;
       }
 
       delim_break = false;

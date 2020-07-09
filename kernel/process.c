@@ -437,6 +437,10 @@ int sys_pause()
 {
    task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
    kernel_yield();
+
+   if (pending_signals())
+      return -EINTR;
+
    return 0;
 }
 
