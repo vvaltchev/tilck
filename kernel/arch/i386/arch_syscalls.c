@@ -510,7 +510,7 @@ void handle_syscall(regs_t *r)
    DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
-      handle_term_signal();
+      process_signals();
 
       if (traced)
          trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
@@ -521,7 +521,7 @@ void handle_syscall(regs_t *r)
       if (traced)
          trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-      handle_term_signal();
+      process_signals();
    }
    disable_preemption();
    DEBUG_VALIDATE_STACK_PTR();

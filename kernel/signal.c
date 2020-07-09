@@ -12,7 +12,7 @@
 
 typedef void (*action_type)(struct task *, int signum);
 
-void handle_term_signal(void)
+void process_signals(void)
 {
    struct task *curr = get_curr_task();
 
