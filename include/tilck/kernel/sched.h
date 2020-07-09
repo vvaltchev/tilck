@@ -261,6 +261,13 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 /* Hack: it works only if the C file includes process.h, but that's fine. */
 #define get_curr_proc() (get_curr_task()->pi)
 
+static ALWAYS_INLINE bool pending_signals(void)
+{
+   struct task *curr = get_curr_task();
+   int sig = atomic_load_explicit(&curr->pending_signal, mo_relaxed);
+   return sig != 0;
+}
+
 int get_curr_tid(void);
 int get_curr_pid(void);
 void schedule(int curr_int);
