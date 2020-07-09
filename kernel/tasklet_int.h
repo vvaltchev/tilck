@@ -18,6 +18,7 @@ struct tasklet_thread {
    struct task *task;
    int priority; /* 0 => max priority */
    u32 limit;
+   bool waiting_for_jobs;
 };
 
 extern struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];

@@ -91,15 +91,15 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-   if (success && was_empty) {
+   if (success && was_empty && t->waiting_for_jobs) {
 
       enum task_state exp_state = TASK_STATE_SLEEPING;
 
+      t->waiting_for_jobs = false;
       atomic_cas_strong(&t->task->state,
                         &exp_state,
                         TASK_STATE_RUNNABLE,
                         mo_relaxed, mo_relaxed);
-
       /*
        * Note: we don't care whether atomic_cas_strong() succeeded or not.
        * Reason: if it didn't succeed, that's because an IRQ preempted us
@@ -164,9 +164,9 @@ bool run_one_tasklet(int tn)
 
 void tasklet_runner(void *arg)
 {
-   int tn = (int)(ulong)arg;
+   const int tn = (int)(ulong)arg;
    struct tasklet_thread *t = tasklet_threads[tn];
-   bool tasklet_run, yield;
+   bool tasklet_run;
    ulong var;
 
    ASSERT(t != NULL);
@@ -175,7 +175,7 @@ void tasklet_runner(void *arg)
    while (true) {
 
       DEBUG_CHECK_ESP()
-      yield = false;
+      t->waiting_for_jobs = false;
 
       do {
 
@@ -187,12 +187,12 @@ void tasklet_runner(void *arg)
       {
          if (safe_ringbuf_is_empty(&t->rb)) {
             t->task->state = TASK_STATE_SLEEPING;
-            yield = true;
+            t->waiting_for_jobs = true;
          }
       }
       enable_interrupts(&var);
 
-      if (yield)
+      if (t->waiting_for_jobs)
          kernel_yield();
    }
 }
