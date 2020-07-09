@@ -21,7 +21,6 @@
 
 FUNC(asm_kernel_yield):
 
-   call process_signals
    lock inc dword ptr [disable_preemption_count]
 
    pushf             # push EFLAGS
@@ -57,7 +56,6 @@ FUNC(asm_kernel_yield):
    resume_base_regs
    add esp, 16     # Discard int_num, err_code, eip, cs
    popf
-   call process_signals
    mov eax, 1      # Context-switch return value
    ret
 
