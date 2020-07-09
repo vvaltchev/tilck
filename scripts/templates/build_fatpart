@@ -198,9 +198,13 @@ function add_fbdoom {
    mkdir -p usr/lib/fbDOOM
    link_or_copy $tc/$arch/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
 
-   if ! [ -f usr/lib/fbDOOM/Doom1.WAD ]; then
-      link_or_copy $tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz usr/lib/fbDOOM
+   if [ -f $tc/$arch/fbDOOM/Doom1.WAD ]; then
+      local wadfile="$tc/$arch/fbDOOM/Doom1.WAD"
+   else
+      local wadfile="$tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz"
    fi
+
+   link_or_copy "$wadfile" usr/lib/fbDOOM
 
    # Here document
 
