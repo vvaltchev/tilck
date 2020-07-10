@@ -84,7 +84,12 @@ void kmutex_lock(struct kmutex *m)
 
    task_set_wait_obj(get_curr_task(), WOBJ_KMUTEX, m, NO_EXTRA, &m->wait_list);
    kmutex_lock_enable_preemption_wrapper(m);
-   kernel_yield(); // Go to sleep until someone else is holding the lock.
+
+   /*
+    * Go to sleep until someone else is holding the lock.
+    * NOTE: we won't be woken up by a signal here, see signal.c.
+    */
+   kernel_yield();
 
    /* ------------------- We've been woken up ------------------- */
 

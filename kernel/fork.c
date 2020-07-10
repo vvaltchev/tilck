@@ -132,7 +132,10 @@ int do_fork(bool vfork)
 
    if (vfork) {
 
-      /* Yield indefinitely until the child dies or calls execve() */
+      /*
+       * Yield indefinitely until the child dies or calls execve().
+       * NOTE: we won't be woken up by a signal here, see signal.c.
+       */
       kernel_yield();
 
       /* Make absolutely sure that we're running because we're not stopped */

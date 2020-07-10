@@ -23,6 +23,7 @@ void process_signals(void)
 static void action_terminate(struct task *ti, int signum)
 {
    ASSERT(!is_preemption_enabled());
+   ASSERT(!is_kernel_thread(ti));
 
    if (ti == get_curr_task()) {
 
@@ -37,8 +38,19 @@ static void action_terminate(struct task *ti, int signum)
 
    if (!ti->vfork_stopped) {
 
-      if (ti->state == TASK_STATE_SLEEPING)
-         task_change_state(ti, TASK_STATE_RUNNABLE);
+      if (ti->state == TASK_STATE_SLEEPING) {
+
+         /*
+          * We must NOT wake up tasks waiting on a mutex or on a semaphore:
+          * supporting spurious wake-ups there is just a waste of resources.
+          * On the contrary, if a task is waiting on a condition or sleeping
+          * in kernel_sleep(), we HAVE to wake it up.
+          */
+
+         if (ti->wobj.type != WOBJ_KMUTEX && ti->wobj.type != WOBJ_SEM)
+            task_change_state(ti, TASK_STATE_RUNNABLE);
+      }
+
 
       ti->stopped = false;
 
@@ -47,7 +59,11 @@ static void action_terminate(struct task *ti, int signum)
       /*
        * The task is vfork_stopped: we cannot make it runnable, nor kill it
        * right now. Just registering `pending_signal` is enough. As soon as the
-       * process wakes up, the killing signal will be delivered.
+       * process wakes up, the killing signal will be delivered. Supporting
+       * the killing a vforked process (while its child is still alive and has
+       * not called execve()) and just tricky.
+       *
+       * TODO: consider supporting killing of vforked process.
        */
    }
 }
@@ -59,6 +75,8 @@ static void action_ignore(struct task *ti, int signum)
 
 static void action_stop(struct task *ti, int signum)
 {
+   ASSERT(!is_kernel_thread(ti));
+
    ti->stopped = true;
    ti->wstatus = STOPCODE(signum);
    wake_up_tasks_waiting_on(ti, task_stopped);
@@ -71,6 +89,8 @@ static void action_stop(struct task *ti, int signum)
 
 static void action_continue(struct task *ti, int signum)
 {
+   ASSERT(!is_kernel_thread(ti));
+
    if (ti->vfork_stopped)
       return;
 

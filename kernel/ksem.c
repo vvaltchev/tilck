@@ -25,6 +25,11 @@ void ksem_wait(struct ksem *s)
 
       task_set_wait_obj(get_curr_task(), WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
       enable_preemption();
+
+      /*
+       * Go to sleep until someone else signals the semaphore.
+       * NOTE: we won't be woken up by a signal here, see signal.c.
+       */
       kernel_yield();
       return;
    }
