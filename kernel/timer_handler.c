@@ -221,38 +221,6 @@ void kernel_sleep(u64 ticks)
    kernel_yield();
 }
 
-static ALWAYS_INLINE void debug_timer_irq_sanity_checks(void)
-{
-   /*
-    * We CANNOT allow the timer to call the scheduler if it interrupted an
-    * interrupt handler. That's why interrupt handlers always to run with
-    * preemption disabled. But, if we got here, preemption was NOT disabled and
-    * therefore, we're in one of following two cases:
-    *
-    * nested_interrupts_count == 1
-    *     meaning the timer is the only current interrupt: a kernel or an user
-    *     task was running regularly.
-    *
-    * OR
-    *
-    * nested_interrupts_count == 2
-    *     meaning that the timer interrupted a syscall working with preemption
-    *     enabled.
-    *
-    * The ASSERT below checks that.
-    */
-
-#if defined(DEBUG) && KRN_TRACK_NESTED_INTERR
-   {
-      ulong var;
-      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
-      int c = get_nested_interrupts_count();
-      ASSERT(c == 1 || (c == 2 && in_syscall()));
-      enable_interrupts(&var);
-   }
-#endif
-}
-
 static ALWAYS_INLINE bool timer_nested_irq(void)
 {
 
@@ -298,25 +266,6 @@ enum irq_action timer_irq_handler(regs_t *context)
 
    account_ticks();
    tick_all_timers();
-
-   /*
-    * Here we have to check that disabled_preemption_count is > 1, not > 0
-    * since as the way the handle_irq() is implemented, that counter will be
-    * always 1 when this function is called. We must not call schedule()
-    * if there has been another part of the code that disabled the preemption.
-    */
-   if (disable_preemption_count > 1) {
-      return IRQ_FULLY_HANDLED;
-   }
-
-   ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
-   debug_timer_irq_sanity_checks();
-
-   if (need_reschedule()) {
-      save_current_task_state(context);
-      schedule(get_int_num(context));
-   }
-
    return IRQ_FULLY_HANDLED;
 }
 

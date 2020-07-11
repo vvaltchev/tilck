@@ -250,10 +250,8 @@ void handle_irq(regs_t *r)
    enable_preemption();
    handle_irq_clear_mask(irq);
 
-   if (hret == IRQ_REQUIRES_BH) {
-      /* NOTE: we are NOT in "interrupt context" anymore */
+   if (need_reschedule())
       run_sched_if_possible(r);
-   }
 }
 
 int get_irq_num(regs_t *context)
