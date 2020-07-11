@@ -283,6 +283,22 @@ static ALWAYS_INLINE struct task *get_curr_task(void)
 /* Hack: it works only if the C file includes process.h, but that's fine. */
 #define get_curr_proc() (get_curr_task()->pi)
 
+static ALWAYS_INLINE enum task_state
+get_curr_task_state(void)
+{
+   STATIC_ASSERT(sizeof(get_curr_task()->state) == 4);
+
+   /*
+    * Casting `state` to u32 and back to `enum task_state` to avoid compiler
+    * errors in some weird configurations.
+    */
+
+   return (enum task_state) atomic_load_explicit(
+      (ATOMIC(u32)*)&get_curr_task()->state,
+      mo_relaxed
+   );
+}
+
 static ALWAYS_INLINE bool pending_signals(void)
 {
    struct task *curr = get_curr_task();

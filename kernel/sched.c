@@ -565,8 +565,8 @@ void schedule(void)
    if (selected == get_curr_task())
       return;
 
-   // If we preempted the process, it is still runnable.
-   if (get_curr_task()->state == TASK_STATE_RUNNING) {
+   // If we preempted the process, it is still `running`.
+   if (get_curr_task_state() == TASK_STATE_RUNNING) {
       task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
    }
 
@@ -596,7 +596,7 @@ void schedule(void)
 
    if (!selected) {
 
-      if (get_curr_task()->state == TASK_STATE_RUNNABLE) {
+      if (get_curr_task_state() == TASK_STATE_RUNNABLE) {
          selected = get_curr_task();
          task_change_state(selected, TASK_STATE_RUNNING);
          selected->time_slot_ticks = 0;
@@ -640,7 +640,7 @@ struct process *get_process(int pid)
 
 bool in_currently_dying_task(void)
 {
-   return get_curr_task()->state == TASK_STATE_ZOMBIE;
+   return get_curr_task_state() == TASK_STATE_ZOMBIE;
 }
 
 int send_signal_to_group(int pgid, int sig)
