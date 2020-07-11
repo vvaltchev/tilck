@@ -129,6 +129,9 @@ struct task {
    /* Trace the syscalls of this task (requires debugpanel) */
    bool traced;
 
+   /* The task was sleeping on a timer and has just been woken up */
+   bool timer_ready;
+
    /*
     * For kernel threads, this is a function pointer of the thread's entry
     * point. For user processes/threads, it is unused for the moment. In the

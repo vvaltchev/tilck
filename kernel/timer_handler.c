@@ -88,10 +88,10 @@ u32 task_cancel_wakeup_timer(struct task *ti)
    return old;
 }
 
-static struct task *tick_all_timers(void)
+static void tick_all_timers(void)
 {
    struct task *pos, *temp;
-   struct task *last_ready_task = NULL;
+   bool any_woken_up_task = false;
    ulong var;
 
    /*
@@ -130,13 +130,16 @@ static struct task *tick_all_timers(void)
 
          if (pos->state == TASK_STATE_SLEEPING) {
             task_change_state(pos, TASK_STATE_RUNNABLE);
-            last_ready_task = pos;
+            pos->timer_ready = true;
+            any_woken_up_task = true;
          }
       }
    }
 
    enable_interrupts(&var);
-   return last_ready_task;
+
+   if (any_woken_up_task)
+      sched_set_need_resched();
 }
 
 void kernel_sleep(u64 ticks)
@@ -294,7 +297,7 @@ enum irq_action timer_irq_handler(regs_t *context)
    }
 
    account_ticks();
-   struct task *last_ready_task = tick_all_timers();
+   tick_all_timers();
 
    /*
     * Here we have to check that disabled_preemption_count is > 1, not > 0
@@ -308,16 +311,6 @@ enum irq_action timer_irq_handler(regs_t *context)
 
    ASSERT(disable_preemption_count == 1); // again, for us disable = 1 means 0.
    debug_timer_irq_sanity_checks();
-
-   if (last_ready_task) {
-
-      if (get_curr_task()->state == TASK_STATE_RUNNING) {
-         task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-      }
-
-      save_current_task_state(context);
-      switch_to_task(last_ready_task, get_int_num(context));
-   }
 
    if (need_reschedule()) {
       save_current_task_state(context);

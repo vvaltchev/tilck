@@ -582,10 +582,16 @@ void schedule(int curr_int)
 
       ASSERT(pos->state == TASK_STATE_RUNNABLE);
 
-      if (pos == idle_task || pos == get_curr_task())
+      if (pos->stopped || pos == idle_task)
          continue;
 
-      if (pos->stopped)
+      if (pos->timer_ready) {
+         pos->timer_ready = false;
+         selected = pos;
+         break;
+      }
+
+      if (pos == get_curr_task())
          continue;
 
       if (!selected || pos->total_ticks < selected->total_ticks) {
