@@ -185,15 +185,15 @@ static ALWAYS_INLINE void force_enable_preemption(void)
 
 #ifdef DEBUG
 
-/*
- * This function is supposed to be used only in ASSERTs or in special debug-only
- * pieces of code. No "regular" code should use is_preemption_enabled() to
- * change its behavior.
- */
-static ALWAYS_INLINE bool is_preemption_enabled(void)
-{
-   return disable_preemption_count == 0;
-}
+   /*
+    * This function is supposed to be used only in ASSERTs or in special debug
+    * only pieces of code. No "regular" code should use is_preemption_enabled()
+    * to change its behavior.
+    */
+   static ALWAYS_INLINE bool is_preemption_enabled(void)
+   {
+      return disable_preemption_count == 0;
+   }
 
 #endif
 
@@ -218,19 +218,19 @@ static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
 }
 
 /*
- * Saves the current state and calls schedule().
- * That after, typically after some time, the scheduler will restore the thread
- * as if kernel_yield() returned and nothing else happened.
- */
-
-bool asm_kernel_yield(void);
-
-/*
  * This wrapper is useful for adding ASSERTs and getting a backtrace containing
  * the caller's EIP in case of a failure.
  */
 static ALWAYS_INLINE bool kernel_yield(void)
 {
+   /*
+    * Saves the current state and calls schedule().
+    * That after, typically after some time, the scheduler will restore the
+    * thread as if kernel_yield() returned and nothing else happened.
+    */
+   extern bool asm_kernel_yield(void);
+
+
    ASSERT(is_preemption_enabled());
    return asm_kernel_yield();
 }
