@@ -105,10 +105,11 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
        * Reason: if it didn't succeed, that's because an IRQ preempted us
        * and made its state to be runnable.
        */
+
+      sched_set_need_resched();
    }
 
 #endif
-
 
    enable_preemption();
    return success;

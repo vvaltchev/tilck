@@ -11,8 +11,10 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
 
+/* Shared global variables */
 struct task *__current;
 ATOMIC(u32) disable_preemption_count = 1;
+ATOMIC(bool) need_resched;
 
 struct task *kernel_process;
 struct process *kernel_process_pi;
@@ -21,8 +23,8 @@ struct list runnable_tasks_list;
 struct list sleeping_tasks_list;
 struct list zombie_tasks_list;
 
+/* Static variables */
 static struct task *tree_by_tid_root;
-
 static u64 idle_ticks;
 static int runnable_tasks_count;
 static int current_max_pid = -1;
@@ -529,31 +531,22 @@ void remove_task(struct task *ti)
 void account_ticks(void)
 {
    struct task *curr = get_curr_task();
+   enum task_state s = atomic_load_explicit(&curr->state, mo_relaxed);
    ASSERT(curr != NULL);
+   ASSERT(!is_preemption_enabled());
 
    curr->time_slot_ticks++;
    curr->total_ticks++;
 
    if (curr->running_in_kernel)
       curr->total_kernel_ticks++;
-}
 
-bool need_reschedule(void)
-{
-   struct task *curr = get_curr_task();
-   struct task *tasklet_runner = get_hi_prio_ready_tasklet_runner();
-   enum task_state s = atomic_load_explicit(&curr->state, mo_relaxed);
-
-   if (tasklet_runner && tasklet_runner != curr)
-      return true;
-
-   if (curr->stopped)
-      return true;
-
-   if (curr->time_slot_ticks < TIME_SLOT_TICKS && s == TASK_STATE_RUNNING)
-      return false;
-
-   return true;
+   if (curr->stopped                             ||
+       curr->time_slot_ticks >= TIME_SLOT_TICKS  ||
+       s != TASK_STATE_RUNNING)
+   {
+      sched_set_need_resched();
+   }
 }
 
 void schedule_outside_interrupt_context(void)
@@ -568,6 +561,10 @@ void schedule(int curr_int)
 
    ASSERT(!is_preemption_enabled());
 
+   /* Essential: clear the `need_resched` flag */
+   sched_clear_need_resched();
+
+   /* Look for tasklet runners */
    selected = get_hi_prio_ready_tasklet_runner();
 
    if (selected == get_curr_task())

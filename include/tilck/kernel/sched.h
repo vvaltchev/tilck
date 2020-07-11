@@ -161,6 +161,24 @@ struct task *get_task(int tid);
 struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
 
+static ALWAYS_INLINE void sched_set_need_resched(void)
+{
+   extern ATOMIC(bool) need_resched;
+   atomic_store_explicit(&need_resched, true, mo_relaxed);
+}
+
+static ALWAYS_INLINE void sched_clear_need_resched(void)
+{
+   extern ATOMIC(bool) need_resched;
+   atomic_store_explicit(&need_resched, false, mo_relaxed);
+}
+
+static ALWAYS_INLINE bool need_reschedule(void)
+{
+   extern ATOMIC(bool) need_resched;
+   return atomic_load_explicit(&need_resched, mo_relaxed);
+}
+
 static ALWAYS_INLINE void disable_preemption(void)
 {
    atomic_fetch_add_explicit(&disable_preemption_count, 1U, mo_relaxed);
@@ -277,7 +295,6 @@ NORETURN void switch_to_task(struct task *ti, int curr_int);
 
 void save_current_task_state(regs_t *);
 void account_ticks(void);
-bool need_reschedule(void);
 int create_new_pid(void);
 int create_new_kernel_tid(void);
 void task_info_reset_kernel_stack(struct task *ti);
