@@ -89,6 +89,7 @@ struct task {
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
    ATOMIC(int) pending_signal;
+   void *tasklet_thread;              /* used only for tasklet runner threads */
 
    struct bintree_node tree_by_tid_node;
    struct list_node runnable_node;

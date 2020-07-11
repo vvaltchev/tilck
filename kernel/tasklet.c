@@ -48,8 +48,10 @@ bool any_tasklets_to_run(u32 tn)
 bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
+   struct task *curr = get_curr_task();
    bool success, was_empty;
 
+   (void) curr; // unused in some paths (unit tests case)
    ASSERT(t != NULL);
 
    struct tasklet new_tasklet = {
@@ -80,7 +82,7 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
 
    #ifdef DEBUG
 
-      if (get_curr_task() == t->task)
+      if (curr == t->task)
          check_in_irq_handler();
 
    #endif
@@ -106,7 +108,10 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
        * and made its state to be runnable.
        */
 
-      sched_set_need_resched();
+      struct tasklet_thread *curr_tt = curr->tasklet_thread;
+
+      if (!curr_tt || t->priority < curr_tt->priority)
+         sched_set_need_resched();
    }
 
 #endif
@@ -259,6 +264,7 @@ int create_tasklet_thread(int priority, u16 limit)
    }
 
    t->task = get_task(tid);
+   t->task->tasklet_thread = t;
 
 #endif
 
