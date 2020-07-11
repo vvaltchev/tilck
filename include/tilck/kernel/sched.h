@@ -290,12 +290,11 @@ static ALWAYS_INLINE bool pending_signals(void)
    return sig != 0;
 }
 
+NORETURN void switch_to_task(struct task *ti);
+
+void schedule(void);
 int get_curr_tid(void);
 int get_curr_pid(void);
-void schedule(void);
-
-NORETURN void switch_to_task(struct task *ti, int curr_int);
-
 void save_current_task_state(regs_t *);
 void account_ticks(void);
 int create_new_pid(void);

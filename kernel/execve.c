@@ -9,6 +9,7 @@
 #include <tilck/kernel/elf_loader.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/interrupts.h>
 
 static const char *const default_env[] =
 {
@@ -203,11 +204,15 @@ execve_do_task_switch(struct execve_ctx *ctx, struct task *ti)
 
       /*
        * Handling the difference between the first execve() and all the
-       * others. In case of a regular execve(), curr_user_task will always
+       * others. In case of a regular execve(), `curr_user_task` will always
        * be != NULL and we can switch again to its 'new image' with
        * switch_to_task().
        */
-      switch_to_task(ti, SYSCALL_SOFT_INTERRUPT);
+
+      if (KRN_TRACK_NESTED_INTERR)
+         pop_nested_interrupt();
+
+      switch_to_task(ti);
 
    } else {
 

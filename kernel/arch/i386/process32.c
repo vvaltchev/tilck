@@ -432,14 +432,11 @@ static inline void save_curr_fpu_ctx_if_enabled(void)
 }
 
 static inline void
-switch_to_task_pop_nested_interrupts(int curr_int)
+switch_to_task_pop_nested_interrupts(void)
 {
    if (KRN_TRACK_NESTED_INTERR) {
 
       ASSERT(get_curr_task() != NULL);
-
-      if (curr_int != -1)
-         pop_nested_interrupt();
 
       if (get_curr_task()->running_in_kernel)
          if (!is_kernel_thread(get_curr_task()))
@@ -447,39 +444,7 @@ switch_to_task_pop_nested_interrupts(int curr_int)
    }
 }
 
-static inline void
-switch_to_task_clear_irq_mask(int curr_int)
-{
-   if (!is_irq(curr_int))
-      return; /* Invalid IRQ#: nothing to do. NOTE: -1 is a special value */
-
-   const int curr_irq = int_to_irq(curr_int);
-
-   if (KRN_TRACK_NESTED_INTERR) {
-
-      /*
-       * When nested interrupts are tracked, nested IRQ #0 are allowed and in no
-       * case the IRQ #0 is masked. Therefore there is no point in clearing the
-       * IRQ mask if irq == 0, wasting a lot of cycles. On QEMU + KVM, the clear
-       * mask function costs ~30K cycles, while on bare-metal costs 5-10 K
-       * cycles.
-       */
-
-      if (curr_irq != X86_PC_TIMER_IRQ)
-         irq_clear_mask(curr_irq);
-
-   } else {
-
-      /*
-       * When nested interrupts are not tracked, nested IRQ #0 is not allowed.
-       * Therefore here, as for any other IRQ, its mask has to be cleared.
-       */
-
-      irq_clear_mask(curr_irq);
-   }
-}
-
-NORETURN void switch_to_task(struct task *ti, int curr_int)
+NORETURN void switch_to_task(struct task *ti)
 {
    /* Save the value of ti->state_regs as it will be reset below */
    regs_t *state = ti->state_regs;
@@ -523,7 +488,7 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
 
    /* From here until the end, we have to be as fast as possible */
    disable_interrupts_forced();
-   switch_to_task_pop_nested_interrupts(curr_int);
+   switch_to_task_pop_nested_interrupts();
    enable_preemption();
 
    /*
@@ -532,7 +497,6 @@ NORETURN void switch_to_task(struct task *ti, int curr_int)
     */
    ASSERT(is_preemption_enabled());
    DEBUG_VALIDATE_STACK_PTR();
-   switch_to_task_clear_irq_mask(curr_int);
 
    if (!ti->running_in_kernel) {
 

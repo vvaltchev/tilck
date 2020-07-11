@@ -571,7 +571,7 @@ void schedule(void)
    }
 
    if (selected)
-      switch_to_task(selected, -1);
+      switch_to_task(selected);
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
@@ -607,7 +607,7 @@ void schedule(void)
    }
 
    ASSERT(!selected->stopped);
-   switch_to_task(selected, -1);
+   switch_to_task(selected);
 }
 
 struct task *get_task(int tid)
