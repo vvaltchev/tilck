@@ -245,7 +245,7 @@ void kthread_exit(void)
       set_curr_task(kernel_process);
       enable_interrupts(&var);
    }
-   schedule_outside_interrupt_context();
+   schedule();
 }
 
 static void

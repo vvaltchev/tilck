@@ -205,7 +205,7 @@ static inline void run_sched_if_possible(regs_t *r)
     * At the moment, only timer_irq_handler() calls schedule() from a proper
     * interrupt context. NOTE: this might change in the future.
     */
-   schedule_outside_interrupt_context();
+   schedule();
 
    /* In case schedule() returned, we MUST re-enable the preemption */
    enable_preemption();

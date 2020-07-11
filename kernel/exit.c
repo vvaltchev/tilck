@@ -118,7 +118,7 @@ switch_stack_free_mem_and_schedule(void)
    free_mem_for_zombie_task(get_curr_task());
 
    /* Run the scheduler */
-   schedule_outside_interrupt_context();
+   schedule();
 
    /* Reassure the compiler that we won't return (schedule() is not NORETURN) */
    NOT_REACHED();

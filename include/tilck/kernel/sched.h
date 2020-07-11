@@ -292,8 +292,7 @@ static ALWAYS_INLINE bool pending_signals(void)
 
 int get_curr_tid(void);
 int get_curr_pid(void);
-void schedule(int curr_int);
-void schedule_outside_interrupt_context(void);
+void schedule(void);
 
 NORETURN void switch_to_task(struct task *ti, int curr_int);
 

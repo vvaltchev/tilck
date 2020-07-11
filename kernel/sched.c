@@ -549,12 +549,7 @@ void account_ticks(void)
    }
 }
 
-void schedule_outside_interrupt_context(void)
-{
-   schedule(-1);
-}
-
-void schedule(int curr_int)
+void schedule(void)
 {
    struct task *selected = NULL;
    struct task *pos;
@@ -576,7 +571,7 @@ void schedule(int curr_int)
    }
 
    if (selected)
-      switch_to_task(selected, curr_int);
+      switch_to_task(selected, -1);
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
@@ -612,7 +607,7 @@ void schedule(int curr_int)
    }
 
    ASSERT(!selected->stopped);
-   switch_to_task(selected, curr_int);
+   switch_to_task(selected, -1);
 }
 
 struct task *get_task(int tid)

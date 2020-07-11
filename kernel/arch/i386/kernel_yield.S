@@ -39,7 +39,7 @@ FUNC(asm_kernel_yield):
    call check_not_in_irq_handler
 #endif
 
-   call schedule_outside_interrupt_context
+   call schedule
 
    # schedule() just returned: restore ESP and just return
 

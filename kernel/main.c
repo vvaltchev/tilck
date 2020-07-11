@@ -311,5 +311,5 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kernelfs();
 
    async_init();
-   schedule_outside_interrupt_context();
+   schedule();
 }
