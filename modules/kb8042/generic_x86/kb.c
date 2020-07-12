@@ -246,11 +246,6 @@ static void create_kb_tasklet_runner(void)
       panic("KB: Unable to create a tasklet runner thread for IRQs");
 }
 
-static struct irq_handler_node kb_irq_handler_node = {
-   .node = make_list_node(kb_irq_handler_node.node),
-   .handler = keyboard_irq_handler,
-};
-
 static struct kb_dev ps2_keyboard = {
 
    .driver_name = "ps2",
@@ -259,6 +254,8 @@ static struct kb_dev ps2_keyboard = {
    .scancode_to_ansi_seq = kb_scancode_to_ansi_seq,
    .translate_to_mediumraw = kb_translate_to_mediumraw,
 };
+
+DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 
 /* This will be executed in a kernel thread */
 void init_kb(void)
@@ -300,7 +297,7 @@ void init_kb(void)
    kb_set_typematic_byte(0);
 
    create_kb_tasklet_runner();
-   irq_install_handler(X86_PC_KEYBOARD_IRQ, &kb_irq_handler_node);
+   irq_install_handler(X86_PC_KEYBOARD_IRQ, &keyboard);
 
    register_keyboard_device(&ps2_keyboard);
    enable_preemption();

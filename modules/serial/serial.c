@@ -64,32 +64,10 @@ void early_init_serial_ports(void)
    init_serial_port(COM4);
 }
 
-static struct irq_handler_node serial_irq_handler_nodes[4] =
-{
-   {
-      .node = make_list_node(serial_irq_handler_nodes[0].node),
-      .handler = serial_con_irq_handler,
-      .context = (void *)0,
-   },
-
-   {
-      .node = make_list_node(serial_irq_handler_nodes[1].node),
-      .handler = serial_con_irq_handler,
-      .context = (void *)1,
-   },
-
-   {
-      .node = make_list_node(serial_irq_handler_nodes[2].node),
-      .handler = serial_con_irq_handler,
-      .context = (void *)2,
-   },
-
-   {
-      .node = make_list_node(serial_irq_handler_nodes[3].node),
-      .handler = serial_con_irq_handler,
-      .context = (void *)3,
-   }
-};
+DEFINE_IRQ_HANDLER_NODE(com1, serial_con_irq_handler, (void *)0);
+DEFINE_IRQ_HANDLER_NODE(com2, serial_con_irq_handler, (void *)1);
+DEFINE_IRQ_HANDLER_NODE(com3, serial_con_irq_handler, (void *)2);
+DEFINE_IRQ_HANDLER_NODE(com4, serial_con_irq_handler, (void *)3);
 
 static void init_serial_comm(void)
 {
@@ -106,10 +84,10 @@ static void init_serial_comm(void)
    for (int i = 0; i < 4; i++)
       serial_ttys[i] = get_serial_tty(i);
 
-   irq_install_handler(X86_PC_COM1_COM3_IRQ, &serial_irq_handler_nodes[0]);
-   irq_install_handler(X86_PC_COM1_COM3_IRQ, &serial_irq_handler_nodes[2]);
-   irq_install_handler(X86_PC_COM2_COM4_IRQ, &serial_irq_handler_nodes[1]);
-   irq_install_handler(X86_PC_COM2_COM4_IRQ, &serial_irq_handler_nodes[3]);
+   irq_install_handler(X86_PC_COM1_COM3_IRQ, &com1);
+   irq_install_handler(X86_PC_COM1_COM3_IRQ, &com3);
+   irq_install_handler(X86_PC_COM2_COM4_IRQ, &com2);
+   irq_install_handler(X86_PC_COM2_COM4_IRQ, &com4);
 }
 
 static struct module serial_module = {

@@ -269,13 +269,10 @@ enum irq_action timer_irq_handler(void *ctx)
    return IRQ_FULLY_HANDLED;
 }
 
-static struct irq_handler_node timer_irq_handler_node = {
-   .node = make_list_node(timer_irq_handler_node.node),
-   .handler = timer_irq_handler,
-};
+DEFINE_IRQ_HANDLER_NODE(timer, timer_irq_handler, NULL);
 
 void init_timer(void)
 {
    __tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
-   irq_install_handler(X86_PC_TIMER_IRQ, &timer_irq_handler_node);
+   irq_install_handler(X86_PC_TIMER_IRQ, &timer);
 }
