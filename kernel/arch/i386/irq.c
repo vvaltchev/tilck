@@ -42,14 +42,27 @@ void idt_set_entry(u8 num, void *handler, u16 sel, u8 flags);
 /* This installs a custom IRQ handler for the given IRQ */
 void irq_install_handler(u8 irq, struct irq_handler_node *n)
 {
-   list_add_tail(&irq_handlers_lists[irq], &n->node);
+   ulong var;
+   disable_interrupts(&var);
+   {
+      list_add_tail(&irq_handlers_lists[irq], &n->node);
+   }
+   enable_interrupts(&var);
    irq_clear_mask(irq);
 }
 
 /* This clears the handler for a given IRQ */
 void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
 {
-   list_remove(&n->node);
+   ulong var;
+   disable_interrupts(&var);
+   {
+      list_remove(&n->node);
+
+      if (list_is_empty(&irq_handlers_lists[irq]))
+         irq_set_mask(irq);
+   }
+   enable_interrupts(&var);
 }
 
 void irq_set_mask(int irq)
@@ -238,7 +251,7 @@ void handle_irq(regs_t *r)
 
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 
-         hret = pos->handler();
+         hret = pos->handler(pos->context);
 
          if (hret != IRQ_UNHANDLED)
             break;

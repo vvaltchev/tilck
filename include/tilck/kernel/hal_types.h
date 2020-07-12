@@ -46,5 +46,5 @@ enum irq_action {
 };
 
 typedef void (*soft_int_handler_t)(regs_t *);
-typedef enum irq_action (*irq_handler_t)(void);
+typedef enum irq_action (*irq_handler_t)(void *ctx);
 

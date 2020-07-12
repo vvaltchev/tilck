@@ -8,6 +8,7 @@ struct irq_handler_node {
 
    struct list_node node;
    irq_handler_t handler;
+   void *context;          /* device-specific context, passed to the handler */
 };
 
 void set_fault_handler(int fault, void *ptr);

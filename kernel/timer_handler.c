@@ -242,7 +242,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return false;
 }
 
-enum irq_action timer_irq_handler(void)
+enum irq_action timer_irq_handler(void *ctx)
 {
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
