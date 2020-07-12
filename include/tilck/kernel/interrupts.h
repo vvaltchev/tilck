@@ -4,20 +4,6 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/hal_types.h>
 
-struct irq_handler_node {
-
-   struct list_node node;
-   irq_handler_t handler;
-   void *context;          /* device-specific context, passed to the handler */
-};
-
-#define DEFINE_IRQ_HANDLER_NODE(node_name, func, ctx)        \
-   static struct irq_handler_node node_name = {              \
-      .node = make_list_node(node_name.node),                \
-      .handler = (func),                                     \
-      .context = (ctx),                                      \
-   };
-
 void set_fault_handler(int fault, void *ptr);
 void exit_fault_handler_state(void);
 
