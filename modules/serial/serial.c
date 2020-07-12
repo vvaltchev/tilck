@@ -15,16 +15,41 @@
 #include <tilck/mods/serial.h>
 
 /* NOTE: hw-specific stuff in generic code. TODO: fix that. */
-static const u16 com_ports[] = {COM1, COM2, COM3, COM4};
 
-static int serial_port_tasklet_runner;
-static struct tty *serial_ttys[4];
-static ATOMIC(int) tasklets_per_port[4];
+struct serial_device {
 
-static void serial_con_bh_handler(u16 portn)
+   const char *name;
+   u16 ioport;
+   struct tty *tty;
+   ATOMIC(int) tasklets_cnt;
+   int tasklet_runner;
+};
+
+struct serial_device legacy_serial_ports[] =
 {
-   struct tty *const t = serial_ttys[portn];
-   const u16 p = com_ports[portn];
+   {
+      .name = "COM1",
+      .ioport = COM1,
+   },
+   {
+      .name = "COM2",
+      .ioport = COM2,
+   },
+   {
+      .name = "COM3",
+      .ioport = COM3,
+   },
+   {
+      .name = "COM4",
+      .ioport = COM4,
+   },
+};
+
+static void ser_bh_handler(void *ctx)
+{
+   struct serial_device *const dev = ctx;
+   struct tty *const t = dev->tty;
+   const u16 p = dev->ioport;
    char c;
 
    while (serial_read_ready(p)) {
@@ -33,26 +58,25 @@ static void serial_con_bh_handler(u16 portn)
       tty_send_keyevent(t, make_key_event(0, c, true), true);
    }
 
-   tasklets_per_port[portn]--;
+   dev->tasklets_cnt--;
 }
 
 static enum irq_action serial_con_irq_handler(void *ctx)
 {
-   const u32 portn = (u32)ctx;
+   struct serial_device *const dev = ctx;
 
-   if (!serial_read_ready(com_ports[portn]))
+   if (!serial_read_ready(dev->ioport))
       return IRQ_UNHANDLED; /* Not an IRQ from this "device" [irq sharing] */
 
-   if (tasklets_per_port[portn] >= 2)
+   if (dev->tasklets_cnt >= 2)
       return IRQ_FULLY_HANDLED;
 
-   if (!enqueue_tasklet1(serial_port_tasklet_runner,
-                         &serial_con_bh_handler, portn))
-   {
-      panic("[serial] hit tasklet queue limit");
+   if (!enqueue_tasklet1(dev->tasklet_runner, &ser_bh_handler, dev)) {
+      printk("[serial] WARNING: hit tasklet queue limit\n");
+      return IRQ_FULLY_HANDLED;
    }
 
-   tasklets_per_port[portn]++;
+   dev->tasklets_cnt++;
    return IRQ_REQUIRES_BH;
 }
 
@@ -64,25 +88,32 @@ void early_init_serial_ports(void)
    init_serial_port(COM4);
 }
 
-DEFINE_IRQ_HANDLER_NODE(com1, serial_con_irq_handler, (void *)0);
-DEFINE_IRQ_HANDLER_NODE(com2, serial_con_irq_handler, (void *)1);
-DEFINE_IRQ_HANDLER_NODE(com3, serial_con_irq_handler, (void *)2);
-DEFINE_IRQ_HANDLER_NODE(com4, serial_con_irq_handler, (void *)3);
+DEFINE_IRQ_HANDLER_NODE(com1, serial_con_irq_handler, &legacy_serial_ports[0]);
+DEFINE_IRQ_HANDLER_NODE(com2, serial_con_irq_handler, &legacy_serial_ports[1]);
+DEFINE_IRQ_HANDLER_NODE(com3, serial_con_irq_handler, &legacy_serial_ports[2]);
+DEFINE_IRQ_HANDLER_NODE(com4, serial_con_irq_handler, &legacy_serial_ports[3]);
 
 static void init_serial_comm(void)
 {
+   int tasklet_runner;
+
    disable_preemption();
    {
-      serial_port_tasklet_runner =
+      tasklet_runner =
          create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
-      if (serial_port_tasklet_runner < 0)
+      if (tasklet_runner < 0)
          panic("Serial: Unable to create a tasklet runner thread for IRQs");
    }
    enable_preemption();
 
-   for (int i = 0; i < 4; i++)
-      serial_ttys[i] = get_serial_tty(i);
+   for (u32 i = 0; i < ARRAY_SIZE(legacy_serial_ports); i++) {
+
+      struct serial_device *dev = &legacy_serial_ports[i];
+
+      dev->tty = get_serial_tty((int)i);
+      dev->tasklet_runner = tasklet_runner;
+   }
 
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &com1);
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &com3);
