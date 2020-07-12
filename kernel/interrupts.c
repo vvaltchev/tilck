@@ -208,8 +208,22 @@ void irq_entry(regs_t *r)
 }
 
 /*
- * Exit from the fault handler with the correct sequence.
- * WARNING: To be used by fault handlers that DO NOT return.
+ * Common fault handler prologue, used only by soft_interrupt_entry().
+ *
+ * Note: introduced just for symmetry with exit_fault_handler_state(), which
+ * is used outside of this file as well.
+ */
+static void enter_fault_handler_state(int int_num)
+{
+   push_nested_interrupt(int_num);
+   disable_preemption();
+}
+
+/*
+ * Exit from the fault handler with the correct sequence, the counter-part of
+ * enter_fault_handler_state().
+ *
+ * WARNING: To be used *ONLY* by fault handlers that DO NOT return.
  *
  *    - re-enable the preemption (the last thing disabled)
  *    - pop the last "nested interrupt" caused by the fault
@@ -232,8 +246,7 @@ void soft_interrupt_entry(regs_t *r)
    if (LIKELY(in_syscall))
       DEBUG_check_preemption_enabled_for_usermode();
 
-   push_nested_interrupt(int_num);
-   disable_preemption();
+   enter_fault_handler_state(int_num);
    enable_interrupts_forced();
    {
       if (LIKELY(in_syscall))
