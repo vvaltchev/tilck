@@ -238,7 +238,9 @@ void handle_irq(regs_t *r)
 
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 
-         if ((hret = pos->handler(r)) != IRQ_UNHANDLED)
+         hret = pos->handler();
+
+         if (hret != IRQ_UNHANDLED)
             break;
       }
    }

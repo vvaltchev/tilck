@@ -204,7 +204,7 @@ static void kb_process_scancode(u8 scancode)
    }
 }
 
-static enum irq_action keyboard_irq_handler(regs_t *context)
+static enum irq_action keyboard_irq_handler(void)
 {
    int count = 0;
 

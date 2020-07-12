@@ -36,7 +36,7 @@ static void serial_con_bh_handler(u16 portn)
    tasklets_per_port[portn]--;
 }
 
-static enum irq_action serial_con_irq_handler(regs_t *r, u16 portn)
+static enum irq_action serial_con_irq_handler(u16 portn)
 {
    if (!serial_read_ready(com_ports[portn]))
       return IRQ_UNHANDLED; /* Not an IRQ from this "device" [irq sharing] */
@@ -54,24 +54,24 @@ static enum irq_action serial_con_irq_handler(regs_t *r, u16 portn)
    return IRQ_REQUIRES_BH;
 }
 
-static enum irq_action serial_com1_irq_handler(regs_t *r)
+static enum irq_action serial_com1_irq_handler(void)
 {
-   return serial_con_irq_handler(r, 0);
+   return serial_con_irq_handler(0);
 }
 
-static enum irq_action serial_com2_irq_handler(regs_t *r)
+static enum irq_action serial_com2_irq_handler(void)
 {
-   return serial_con_irq_handler(r, 1);
+   return serial_con_irq_handler(1);
 }
 
-static enum irq_action serial_com3_irq_handler(regs_t *r)
+static enum irq_action serial_com3_irq_handler(void)
 {
-   return serial_con_irq_handler(r, 2);
+   return serial_con_irq_handler(2);
 }
 
-static enum irq_action serial_com4_irq_handler(regs_t *r)
+static enum irq_action serial_com4_irq_handler(void)
 {
-   return serial_con_irq_handler(r, 3);
+   return serial_con_irq_handler(3);
 }
 
 void early_init_serial_ports(void)
