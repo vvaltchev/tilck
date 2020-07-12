@@ -248,7 +248,7 @@ void handle_page_fault_int(regs_t *r)
 
    printk("EIP: %p\n", r->eip);
 
-   end_fault_handler_state();
+   exit_fault_handler_state();
    send_signal(get_curr_tid(), sig, true);
    NOT_REACHED();
 }

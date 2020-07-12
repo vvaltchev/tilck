@@ -11,7 +11,7 @@ struct irq_handler_node {
 };
 
 void set_fault_handler(int fault, void *ptr);
-void end_fault_handler_state(void);
+void exit_fault_handler_state(void);
 
 #if KRN_TRACK_NESTED_INTERR
 void check_not_in_irq_handler(void);

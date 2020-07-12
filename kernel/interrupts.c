@@ -217,7 +217,7 @@ void irq_entry(regs_t *r)
  * See soft_interrupt_entry() for more.
  */
 
-void end_fault_handler_state(void)
+void exit_fault_handler_state(void)
 {
    enable_preemption();
    pop_nested_interrupt();
@@ -242,7 +242,7 @@ void soft_interrupt_entry(regs_t *r)
          handle_fault(r);
    }
    disable_interrupts_forced();
-   end_fault_handler_state();
+   exit_fault_handler_state();
 
    if (LIKELY(in_syscall))
       DEBUG_check_preemption_enabled_for_usermode();

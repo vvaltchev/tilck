@@ -657,7 +657,7 @@ void handle_gpf(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("General protection fault. Error: %p\n", r->err_code);
 
-   end_fault_handler_state();
+   exit_fault_handler_state();
    send_signal(get_curr_tid(), SIGSEGV, true);
    NOT_REACHED();
 }
@@ -668,7 +668,7 @@ void handle_ill(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Illegal instruction fault. Error: %p\n", r->err_code);
 
-   end_fault_handler_state();
+   exit_fault_handler_state();
    send_signal(get_curr_tid(), SIGILL, true);
    NOT_REACHED();
 }
@@ -679,7 +679,7 @@ void handle_div0(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Division by zero fault. Error: %p\n", r->err_code);
 
-   end_fault_handler_state();
+   exit_fault_handler_state();
    send_signal(get_curr_tid(), SIGFPE, true);
    NOT_REACHED();
 }
@@ -690,7 +690,7 @@ void handle_cpf(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);
 
-   end_fault_handler_state();
+   exit_fault_handler_state();
    send_signal(get_curr_tid(), SIGFPE, true);
    NOT_REACHED();
 }
