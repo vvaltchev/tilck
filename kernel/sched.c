@@ -13,8 +13,8 @@
 
 /* Shared global variables */
 struct task *__current;
-ATOMIC(u32) disable_preemption_count = 1;
-ATOMIC(bool) need_resched;
+ATOMIC(u32) disable_preemption_count = 1; /* see docs/atomics.md */
+ATOMIC(bool) need_resched;                /* see docs/atomics.md */
 
 struct task *kernel_process;
 struct process *kernel_process_pi;

@@ -51,45 +51,18 @@ struct task {
 
    struct process *pi;
 
-   bool is_main_thread;     /* value of `tid == pi->pid` */
+   bool is_main_thread;                      /* value of `tid == pi->pid` */
    bool running_in_kernel;
    bool stopped;
    bool was_stopped;
 
-   /*
-    * Technically `state` is just 1 byte wide and should be enough on all the
-    * architectures to guarantee its simple atomicity (not sequential
-    * consistency!!), the only thing we need in non-SMP kernels. BUT, it is
-    * marked as ATOMIC here for consistency, as in interrupt context this member
-    * might be checked and changed (see the tasklet subsystem).
-    *
-    * If, in the future `state` will need to become wider than just 1 single
-    * byte, then even getting a plain atomicity would require ATOMIC(x) on some
-    * architectures, while on i386 and x86_64 it won't make a difference.
-    * Therefore, marking it ATOMIC at the moment is more about semantic than
-    * anything else, but in the future it will be actually needed.
-    *
-    * NOTE: the following implications are *not* true:
-    *
-    *    volatile -> atomic
-    *    atomic -> volatile
-    *
-    * The field needs to be also volatile because its value is read in loops
-    * expecting it to change as some point (see sys_waitpid()). Theoretically,
-    * in case of consecutive atomic loads, the compiler is _not_ obliged to
-    * do every time an actual read and it might cache the value in a register,
-    * according to the C11 atomic model. In practice with GCC this can happen
-    * only with relaxed atomics (the ones used in Tilck), at best of my
-    * knowledge, but it is still good write C11 compliant code, instead of
-    * relying on the current behavior.
-    */
-   volatile ATOMIC(enum task_state) state;
+   volatile ATOMIC(enum task_state) state;   /* see docs/atomics.md */
 
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
    ATOMIC(int) pending_signal;
-   void *tasklet_thread;              /* used only for tasklet runner threads */
+   void *tasklet_thread;                     /* only for tasklet runners */
 
    struct bintree_node tree_by_tid_node;
    struct list_node runnable_node;
@@ -152,7 +125,7 @@ extern struct list runnable_tasks_list;
 extern struct list sleeping_tasks_list;
 extern struct list zombie_tasks_list;
 
-extern ATOMIC(u32) disable_preemption_count;
+extern ATOMIC(u32) disable_preemption_count; /* see docs/atomics.md */
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
 #define KERNEL_TID_START                        10000
@@ -167,19 +140,19 @@ void task_change_state(struct task *ti, enum task_state new_state);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
-   extern ATOMIC(bool) need_resched;
+   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
    atomic_store_explicit(&need_resched, true, mo_relaxed);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
-   extern ATOMIC(bool) need_resched;
+   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
    atomic_store_explicit(&need_resched, false, mo_relaxed);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
-   extern ATOMIC(bool) need_resched;
+   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
    return atomic_load_explicit(&need_resched, mo_relaxed);
 }
 
