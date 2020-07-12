@@ -277,8 +277,6 @@ bool allocate_fpu_regs(arch_task_members_t *arch_fields)
 static void
 handle_no_coproc_fault(regs_t *r)
 {
-   enable_interrupts_forced();
-
    if (is_kernel_thread(get_curr_task())) {
       panic("FPU instructions used in kernel outside an fpu_context!");
    }
@@ -336,7 +334,6 @@ handle_no_coproc_fault(regs_t *r)
 #endif
 
    r->custom_flags |= REGS_FL_FPU_ENABLED;
-   disable_interrupts_forced(); /* restore the IF value we got (= 0) */
 }
 
 static volatile bool in_fpu_context;

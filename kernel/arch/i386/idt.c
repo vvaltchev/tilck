@@ -89,8 +89,6 @@ const char *x86_exception_names[32] =
 void handle_resumable_fault(regs_t *r)
 {
    struct task *curr = get_curr_task();
-
-   ASSERT(!are_interrupts_enabled());
    pop_nested_interrupt(); // the fault
    set_return_register(curr->fault_resume_regs, 1u << regs_intnum(r));
    context_switch(curr->fault_resume_regs);

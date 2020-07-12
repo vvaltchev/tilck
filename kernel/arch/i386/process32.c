@@ -659,6 +659,7 @@ void handle_gpf(regs_t *r)
 
    end_fault_handler_state();
    send_signal(get_curr_tid(), SIGSEGV, true);
+   NOT_REACHED();
 }
 
 /* Illegal instruction fault handler */
@@ -669,6 +670,7 @@ void handle_ill(regs_t *r)
 
    end_fault_handler_state();
    send_signal(get_curr_tid(), SIGILL, true);
+   NOT_REACHED();
 }
 
 /* Division by zero fault handler */
@@ -679,6 +681,7 @@ void handle_div0(regs_t *r)
 
    end_fault_handler_state();
    send_signal(get_curr_tid(), SIGFPE, true);
+   NOT_REACHED();
 }
 
 /* Coproc fault handler */
@@ -689,4 +692,5 @@ void handle_cpf(regs_t *r)
 
    end_fault_handler_state();
    send_signal(get_curr_tid(), SIGFPE, true);
+   NOT_REACHED();
 }

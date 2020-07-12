@@ -250,8 +250,8 @@ void handle_page_fault_int(regs_t *r)
 
    end_fault_handler_state();
    send_signal(get_curr_tid(), sig, true);
+   NOT_REACHED();
 }
-
 
 void handle_page_fault(regs_t *r)
 {
@@ -265,14 +265,7 @@ void handle_page_fault(regs_t *r)
    }
 
    ASSERT(!is_preemption_enabled());
-   ASSERT(!are_interrupts_enabled());
-
-   enable_interrupts_forced();
-   {
-      /* Page fault are processed with IF = 1 */
-      handle_page_fault_int(r);
-   }
-   disable_interrupts_forced(); /* restore IF = 0 */
+   handle_page_fault_int(r);
 }
 
 bool is_mapped(pdir_t *pdir, void *vaddrp)

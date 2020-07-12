@@ -207,57 +207,44 @@ void irq_entry(regs_t *r)
    handle_irq(r);
 }
 
+/*
+ * Exit from the fault handler with the correct sequence.
+ * WARNING: To be used by fault handlers that DO NOT return.
+ *
+ *    - re-enable the preemption (the last thing disabled)
+ *    - pop the last "nested interrupt" caused by the fault
+ *
+ * See soft_interrupt_entry() for more.
+ */
+
 void end_fault_handler_state(void)
 {
-   /*
-    * Exit from the fault handler with the correct sequence:
-    *
-    *    - re-enable the preemption (the last thing disabled)
-    *    - pop the last "nested interrupt" caused by the fault
-    *    - re-enable the interrupts (disabled by the CPU as first thing)
-    *
-    * See soft_interrupt_entry() for more.
-    */
    enable_preemption();
    pop_nested_interrupt();
-   enable_interrupts_forced();
 }
 
 void soft_interrupt_entry(regs_t *r)
 {
    const int int_num = regs_intnum(r);
+   const bool in_syscall = (int_num == SYSCALL_SOFT_INTERRUPT);
    ASSERT(!are_interrupts_enabled());
 
-   if (int_num == SYSCALL_SOFT_INTERRUPT)
+   if (LIKELY(in_syscall))
       DEBUG_check_preemption_enabled_for_usermode();
 
    push_nested_interrupt(int_num);
    disable_preemption();
-
-   if (int_num == SYSCALL_SOFT_INTERRUPT) {
-
-      enable_interrupts_forced();
-      {
+   enable_interrupts_forced();
+   {
+      if (LIKELY(in_syscall))
          handle_syscall(r);
-      }
-      disable_interrupts_forced(); /* restore IF = 0 */
-
-   } else {
-
-      /*
-       * General rule: fault handlers get control with interrupts disabled but
-       * they are supposed to call enable_interrupts_forced() ASAP.
-       */
-      handle_fault(r);
-
-      /* Faults are expected to return with interrupts disabled. */
-      ASSERT(!are_interrupts_enabled());
+      else
+         handle_fault(r);
    }
+   disable_interrupts_forced();
+   end_fault_handler_state();
 
-   enable_preemption();
-   pop_nested_interrupt();
-
-   if (int_num == SYSCALL_SOFT_INTERRUPT)
+   if (LIKELY(in_syscall))
       DEBUG_check_preemption_enabled_for_usermode();
 }
 
