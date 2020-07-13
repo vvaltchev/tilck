@@ -211,7 +211,7 @@ static ALWAYS_INLINE bool is_main_thread(struct task *ti)
 
 static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
 {
-   return ti->what == &tasklet_runner;
+   return ti->tasklet_thread != NULL;
 }
 
 /*
