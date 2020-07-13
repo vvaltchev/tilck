@@ -25,7 +25,7 @@ enum kb_state {
    KB_READ_FIRST_SCANCODE_AFTER_E1_STATE,
 };
 
-int kb_tasklet_runner = -1;
+int kb_worker_thread = -1;
 static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock;
@@ -219,7 +219,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
       u8 scancode = inb(KB_DATA_PORT);
 
-      if (!enqueue_job(kb_tasklet_runner,
+      if (!enqueue_job(kb_worker_thread,
                            &kb_process_scancode,
                            TO_PTR(scancode)))
       {
@@ -242,13 +242,13 @@ static u8 kb_translate_to_mediumraw(struct key_event ke)
    return mediumraw_e0_keys[key & 0xff] | (u8)(!ke.pressed << 7);
 }
 
-static void create_kb_tasklet_runner(void)
+static void create_kb_worker_thread(void)
 {
-   kb_tasklet_runner =
+   kb_worker_thread =
       create_worker_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
-   if (kb_tasklet_runner < 0)
-      panic("KB: Unable to create a tasklet runner thread for IRQs");
+   if (kb_worker_thread < 0)
+      panic("KB: Unable to create a tasklet worker thread for IRQs");
 }
 
 static struct kb_dev ps2_keyboard = {
@@ -277,7 +277,7 @@ void init_kb(void)
 
          if (!kb_ctrl_reset()) {
             printk("Unable to initialize the PS/2 controller");
-            create_kb_tasklet_runner();
+            create_kb_worker_thread();
             return;
          }
 
@@ -301,7 +301,7 @@ void init_kb(void)
    kb_led_update();
    kb_set_typematic_byte(0);
 
-   create_kb_tasklet_runner();
+   create_kb_worker_thread();
    irq_install_handler(X86_PC_KEYBOARD_IRQ, &keyboard);
 
    register_keyboard_device(&ps2_keyboard);

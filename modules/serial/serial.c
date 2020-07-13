@@ -103,7 +103,7 @@ static void init_serial_comm(void)
          create_worker_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
       if (worker_thread_id < 0)
-         panic("Serial: Unable to create a tasklet runner thread for IRQs");
+         panic("Serial: Unable to create a tasklet worker thread for IRQs");
    }
    enable_preemption();
 

@@ -77,7 +77,7 @@ debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
    *ptr = 0;
 }
 
-static int debug_get_tn_for_tasklet_runner(struct task *ti)
+static int debug_get_wth_for_worker_thread(struct task *ti)
 {
    for (int i = 0; i < MAX_WORKER_THREADS; i++)
       if (get_worker_thread(i) == ti)
@@ -199,7 +199,7 @@ static int debug_per_task_cb(void *obj, void *arg)
             snprintk(buf, sizeof(buf), "<%s>", kfunc);
          } else {
             snprintk(buf, sizeof(buf), "<%s[%d]>",
-                     kfunc, debug_get_tn_for_tasklet_runner(ti));
+                     kfunc, debug_get_wth_for_worker_thread(ti));
          }
       } else {
          snprintk(buf, sizeof(buf), "<func: %p>", ti->what);
