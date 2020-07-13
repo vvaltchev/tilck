@@ -105,9 +105,8 @@
 #define MAX_NESTED_INTERRUPTS                      32
 #define TTY_INPUT_BS                             1024
 #define FBCON_OPT_FUNCS_MIN_FREE_HEAP       (16 * MB)
-#define MAX_PRIO_TASKLET_QUEUE_SIZE                40 /* uses ~512B of mem */
-#define KB_TASKLETS_QUEUE_SIZE                    170 /* uses ~2 KB of mem */
-#define TTY_TASKLETS_QUEUE_SIZE                   682 /* uses ~8 KB of mem */
+#define MAX_PRIO_WTH_QUEUE_SIZE                    40 /* uses ~512B of mem */
+#define KB_WTH_QUEUE_SIZE                         170 /* uses ~2 KB of mem */
 
 /*
  * User tasks constants

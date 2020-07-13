@@ -211,7 +211,7 @@ void init_worker_threads(void)
    int wth;
 
    worker_threads_cnt = 0;
-   wth = create_worker_thread(0 /* priority */, MAX_PRIO_TASKLET_QUEUE_SIZE);
+   wth = create_worker_thread(0 /* priority */, MAX_PRIO_WTH_QUEUE_SIZE);
 
    if (wth < 0)
       panic("init_worker_threads() failed");
