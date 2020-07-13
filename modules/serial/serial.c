@@ -22,7 +22,7 @@ struct serial_device {
    u16 ioport;
    struct tty *tty;
    ATOMIC(int) tasklets_cnt;
-   int tasklet_runner;
+   int run_worker_thread;
 };
 
 struct serial_device legacy_serial_ports[] =
@@ -71,7 +71,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->tasklets_cnt >= 2)
       return IRQ_FULLY_HANDLED;
 
-   if (!enqueue_tasklet(dev->tasklet_runner, &ser_bh_handler, dev)) {
+   if (!enqueue_job(dev->run_worker_thread, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit tasklet queue limit\n");
       return IRQ_FULLY_HANDLED;
    }
@@ -95,14 +95,14 @@ DEFINE_IRQ_HANDLER_NODE(com4, serial_con_irq_handler, &legacy_serial_ports[3]);
 
 static void init_serial_comm(void)
 {
-   int tasklet_runner;
+   int run_worker_thread;
 
    disable_preemption();
    {
-      tasklet_runner =
-         create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
+      run_worker_thread =
+         create_worker_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
-      if (tasklet_runner < 0)
+      if (run_worker_thread < 0)
          panic("Serial: Unable to create a tasklet runner thread for IRQs");
    }
    enable_preemption();
@@ -112,7 +112,7 @@ static void init_serial_comm(void)
       struct serial_device *dev = &legacy_serial_ports[i];
 
       dev->tty = get_serial_tty((int)i);
-      dev->tasklet_runner = tasklet_runner;
+      dev->run_worker_thread = run_worker_thread;
    }
 
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &com1);

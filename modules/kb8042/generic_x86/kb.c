@@ -219,7 +219,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
       u8 scancode = inb(KB_DATA_PORT);
 
-      if (!enqueue_tasklet(kb_tasklet_runner,
+      if (!enqueue_job(kb_tasklet_runner,
                            &kb_process_scancode,
                            TO_PTR(scancode)))
       {
@@ -245,7 +245,7 @@ static u8 kb_translate_to_mediumraw(struct key_event ke)
 static void create_kb_tasklet_runner(void)
 {
    kb_tasklet_runner =
-      create_tasklet_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
+      create_worker_thread(1 /* priority */, KB_TASKLETS_QUEUE_SIZE);
 
    if (kb_tasklet_runner < 0)
       panic("KB: Unable to create a tasklet runner thread for IRQs");

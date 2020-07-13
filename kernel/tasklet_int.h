@@ -19,7 +19,7 @@ struct tasklet_thread {
    bool waiting_for_jobs;
 };
 
-extern struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
+extern struct tasklet_thread *tasklet_threads[MAX_WORKER_THREADS];
 
 bool run_one_tasklet(int tn);
 int tasklet_create_thread_for(struct tasklet_thread *t);

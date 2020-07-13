@@ -16,16 +16,16 @@
 #include "tasklet_int.h"
 
 STATIC u32 tasklet_threads_count;
-struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
+struct tasklet_thread *tasklet_threads[MAX_WORKER_THREADS];
 
-u32 get_tasklet_runner_limit(u32 tn)
+u32 get_worker_queue_size(u32 tn)
 {
-   ASSERT(tn < MAX_TASKLET_THREADS);
+   ASSERT(tn < MAX_WORKER_THREADS);
    struct tasklet_thread *t = tasklet_threads[tn];
    return t ? t->limit : 0;
 }
 
-struct task *get_tasklet_runner(u32 tn)
+struct task *get_worker_thread(u32 tn)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
 
@@ -36,7 +36,7 @@ struct task *get_tasklet_runner(u32 tn)
    return t->task;
 }
 
-bool any_tasklets_to_run(u32 tn)
+static bool any_tasklets_to_run(u32 tn)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
 
@@ -46,7 +46,7 @@ bool any_tasklets_to_run(u32 tn)
    return !safe_ringbuf_is_empty(&t->rb);
 }
 
-bool enqueue_tasklet(int tn, void (*func)(void *), void *arg)
+bool enqueue_job(int tn, void (*func)(void *), void *arg)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
    struct task *curr = get_curr_task();
@@ -108,7 +108,7 @@ bool run_one_tasklet(int tn)
    return success;
 }
 
-void tasklet_runner(void *arg)
+void run_worker_thread(void *arg)
 {
    struct tasklet_thread *t = arg;
    bool tasklet_run;
@@ -142,7 +142,7 @@ void tasklet_runner(void *arg)
    }
 }
 
-struct task *get_hi_prio_ready_tasklet_runner(void)
+struct task *get_runnable_worker_thread(void)
 {
    ASSERT(!is_preemption_enabled());
    struct tasklet_thread *selected = NULL;
@@ -162,7 +162,7 @@ struct task *get_hi_prio_ready_tasklet_runner(void)
    return selected ? selected->task : NULL;
 }
 
-int create_tasklet_thread(int priority, u16 limit)
+int create_worker_thread(int priority, u16 limit)
 {
    struct tasklet_thread *t;
    int rc;
@@ -207,12 +207,12 @@ int create_tasklet_thread(int priority, u16 limit)
    return t->thread_index;
 }
 
-void init_tasklets(void)
+void init_worker_threads(void)
 {
    int tn;
 
    tasklet_threads_count = 0;
-   tn = create_tasklet_thread(0 /* priority */, MAX_PRIO_TASKLET_QUEUE_SIZE);
+   tn = create_worker_thread(0 /* priority */, MAX_PRIO_TASKLET_QUEUE_SIZE);
 
    if (tn < 0)
       panic("init_tasklet_thread() failed");

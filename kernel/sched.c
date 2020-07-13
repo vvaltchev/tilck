@@ -564,7 +564,7 @@ void schedule(void)
    sched_clear_need_resched();
 
    /* Look for tasklet runners */
-   selected = get_hi_prio_ready_tasklet_runner();
+   selected = get_runnable_worker_thread();
 
    if (selected == get_curr_task())
       return;

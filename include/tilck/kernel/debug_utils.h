@@ -43,7 +43,7 @@ int get_syscall_num(void *func);
  * probably most critical code.
  *
  * One of the places where the following two debug checks are used is inside
- * tasklet_runner()'s code: it is the perfect place for such checks, because
+ * run_worker_thread()'s code: it is the perfect place for such checks, because
  * it really often yields and gets the control back.
  *
  * The DEBUG_VALIDATE_STACK_PTR() sure works as well, but it catches bugs only

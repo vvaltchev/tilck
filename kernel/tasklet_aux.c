@@ -17,7 +17,7 @@
 
 int tasklet_create_thread_for(struct tasklet_thread *t)
 {
-   const int tid = kthread_create(tasklet_runner, KTH_WORKER_THREAD, t);
+   const int tid = kthread_create(run_worker_thread, KTH_WORKER_THREAD, t);
 
    if (tid < 0)
       return -ENOMEM;

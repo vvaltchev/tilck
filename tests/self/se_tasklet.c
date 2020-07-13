@@ -28,7 +28,7 @@ static void end_test(void *arg)
 {
    struct se_tasklet_ctx *ctx = arg;
 
-   const u32 max_tasklets = get_tasklet_runner_limit(0);
+   const u32 max_tasklets = get_worker_queue_size(0);
    const u32 tot_iters = max_tasklets * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
@@ -47,7 +47,7 @@ static void end_test(void *arg)
 
 void selftest_tasklet_short(void)
 {
-   const u32 max_tasklets = get_tasklet_runner_limit(0);
+   const u32 max_tasklets = get_worker_queue_size(0);
    const u32 tot_iters = max_tasklets * 10;
    const u32 attempts_check = 500 * 1000;
    struct se_tasklet_ctx ctx;
@@ -74,7 +74,7 @@ void selftest_tasklet_short(void)
 
       do {
 
-         added = enqueue_tasklet(0, &test_tasklet_func, NULL);
+         added = enqueue_job(0, &test_tasklet_func, NULL);
          attempts++;
 
          if (!(attempts % attempts_check)) {
@@ -124,7 +124,7 @@ void selftest_tasklet_short(void)
       printk("[se_tasklet] Under lock, before enqueue\n");
 
       do {
-         added = enqueue_tasklet(0, &end_test, &ctx);
+         added = enqueue_job(0, &end_test, &ctx);
       } while (!added);
 
       printk("[se_tasklet] Under lock, AFTER enqueue\n");
@@ -148,7 +148,7 @@ void selftest_tasklet_perf_short(void)
 
    while (true) {
 
-      added = enqueue_tasklet(0, &test_tasklet_func, NULL);
+      added = enqueue_job(0, &test_tasklet_func, NULL);
 
       if (!added)
          break;

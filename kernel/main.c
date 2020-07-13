@@ -307,7 +307,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_irq_handling();
    init_sched();
    init_syscall_interfaces();
-   init_tasklets();
+   init_worker_threads();
    init_timer();
    init_system_time();
    init_kernelfs();

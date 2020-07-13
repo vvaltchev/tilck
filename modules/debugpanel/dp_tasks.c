@@ -79,8 +79,8 @@ debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
 
 static int debug_get_tn_for_tasklet_runner(struct task *ti)
 {
-   for (u32 i = 0; i < MAX_TASKLET_THREADS; i++)
-      if (get_tasklet_runner(i) == ti)
+   for (u32 i = 0; i < MAX_WORKER_THREADS; i++)
+      if (get_worker_thread(i) == ti)
          return (int)i;
 
    return -1;
