@@ -10,7 +10,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/tasklet.h>
 
-#define TIME_SLOT_TICKS (TIMER_HZ / 20)
+#define TIME_SLICE_TICKS (TIMER_HZ / 20)
 
 enum task_state {
    TASK_STATE_INVALID   = 0,
@@ -35,11 +35,7 @@ struct misc_buf {
 
 struct sched_ticks {
 
-   u32 timeslot;        /*
-                         * ticks counter for the current time-slot: it's reset
-                         * each time the task is selected by the scheduler.
-                         */
-
+   u32 timeslice;       /* ticks counter for the current time slice */
    u64 total;           /* total life-time ticks */
    u64 total_kernel;    /* total life-time ticks spent in kernel */
 };

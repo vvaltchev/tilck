@@ -538,7 +538,7 @@ void account_ticks(void)
    ASSERT(curr != NULL);
    ASSERT(!is_preemption_enabled());
 
-   t->timeslot++;
+   t->timeslice++;
    t->total++;
 
    if (curr->running_in_kernel)
@@ -546,7 +546,7 @@ void account_ticks(void)
 
    if (curr->stopped                                 ||
        state != TASK_STATE_RUNNING                   ||
-         (!runner && t->timeslot >= TIME_SLOT_TICKS)
+         (!runner && t->timeslice >= TIME_SLICE_TICKS)
        )
    {
       sched_set_need_resched();
@@ -603,7 +603,7 @@ void schedule(void)
       if (get_curr_task_state() == TASK_STATE_RUNNABLE) {
          selected = get_curr_task();
          task_change_state(selected, TASK_STATE_RUNNING);
-         selected->ticks.timeslot = 0;
+         selected->ticks.timeslice = 0;
          return;
       }
 

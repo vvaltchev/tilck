@@ -463,7 +463,7 @@ NORETURN void switch_to_task(struct task *ti)
 
    /* Do as much as possible work before disabling the interrupts */
    task_change_state(ti, TASK_STATE_RUNNING);
-   ti->ticks.timeslot = 0;
+   ti->ticks.timeslice = 0;
 
    if (!is_kernel_thread(curr) && curr->state != TASK_STATE_ZOMBIE)
       save_curr_fpu_ctx_if_enabled();

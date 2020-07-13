@@ -178,10 +178,12 @@ static void show_system_info(void)
 {
    void show_tilck_logo(void);
 
+   const int time_slice = 1000 / (TIMER_HZ / TIME_SLICE_TICKS);
+   const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
+
    printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
-   printk(NO_PREFIX "; time_slot: \e[1m%i\e[m",1000/(TIMER_HZ/TIME_SLOT_TICKS));
-   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\e[m\n",
-          in_hypervisor() ? "yes" : "no");
+   printk(NO_PREFIX "; time_slice: \e[1m%i\e[m", time_slice);
+   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
 
    if (KERNEL_SHOW_LOGO)
       show_tilck_logo();

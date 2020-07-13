@@ -40,7 +40,7 @@ class printer_struct_task:
          ("args_copybuf        ", task['args_copybuf']),
          ("io_copybuf          ", task['io_copybuf']),
          ("wstatus             ", task['wstatus']),
-         ("time_slot_ticks     ", task['ticks']['timeslot']),
+         ("timeslice_ticks     ", task['ticks']['timeslice']),
          ("total_ticks         ", task['ticks']['total']),
          ("total_kernel_ticks  ", task['ticks']['total_kernel']),
          ("ticks_before_wake_up", task['ticks_before_wake_up']),
