@@ -19,7 +19,7 @@ extern "C" {
 
    #include <tilck/kernel/kmalloc.h>
    #include <tilck/kernel/tasklet.h>
-   #include "kernel/tasklet_int.h" // private header
+   #include "kernel/wth_int.h" // private header
 
    extern u32 worker_threads_cnt;
 

@@ -13,7 +13,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/debug_utils.h>
 
-#include "tasklet_int.h"
+#include "wth_int.h"
 
 STATIC u32 worker_threads_cnt;
 struct worker_thread *worker_threads[MAX_WORKER_THREADS];

@@ -13,7 +13,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
 
-#include "tasklet_int.h"
+#include "wth_int.h"
 
 int wth_create_thread_for(struct worker_thread *t)
 {
