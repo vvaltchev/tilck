@@ -20,6 +20,7 @@ if ! [ -f $VIM_GZ ] || ! [ -f $VR_TGZ ]; then
    echo ""
    echo "VIM is not built-in. Tilck image rebuild needed. Steps:"
    echo " - Run: ./scripts/build_toolchain -s build_vim"
+   echo " - Run: CMAKE_ARGS='-DEXTRA_VIM=1' ./scripts/cmake_run"
    echo " - Run: make rem"
    echo ""
    exit 1
