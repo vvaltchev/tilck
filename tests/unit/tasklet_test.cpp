@@ -54,26 +54,16 @@ class tasklet_test : public Test {
    }
 };
 
-void simple_func2(void *p1, void *p2)
-{
-   ASSERT_EQ(p1, (void*) 1);
-   ASSERT_EQ(p2, (void*) 2);
-}
-
 void simple_func1(void *p1)
 {
-   ASSERT_EQ(p1, (void*) 1);
+   ASSERT_EQ(p1, TO_PTR(1234));
 }
 
 TEST_F(tasklet_test, essential)
 {
    bool res = false;
 
-   ASSERT_TRUE(enqueue_tasklet2(0, &simple_func2, 1, 2));
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
-   ASSERT_TRUE(res);
-
-   ASSERT_TRUE(enqueue_tasklet1(0, &simple_func1, 1));
+   ASSERT_TRUE(enqueue_tasklet(0, &simple_func1, TO_PTR(1234)));
    ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
    ASSERT_TRUE(res);
 }
@@ -85,11 +75,11 @@ TEST_F(tasklet_test, base)
    bool res;
 
    for (int i = 0; i < max_tasklets; i++) {
-      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+      res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
-   res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+   res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
@@ -113,7 +103,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_tasklets/2; i++) {
-      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+      res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -125,7 +115,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_tasklets/2; i++) {
-      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+      res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -137,7 +127,7 @@ TEST_F(tasklet_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_tasklets/2; i++) {
-      res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+      res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -175,11 +165,11 @@ TEST_F(tasklet_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == max_tasklets) {
-            ASSERT_FALSE(enqueue_tasklet2(0, &simple_func2, NULL, NULL));
+            ASSERT_FALSE(enqueue_tasklet(0, &simple_func1, TO_PTR(1234)));
             break;
          }
 
-         res = enqueue_tasklet2(0, &simple_func2, 1, 2);
+         res = enqueue_tasklet(0, &simple_func1, TO_PTR(1234));
          ASSERT_TRUE(res);
          slots_used++;
       }

@@ -46,21 +46,17 @@ bool any_tasklets_to_run(u32 tn)
    return !safe_ringbuf_is_empty(&t->rb);
 }
 
-bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
+bool enqueue_tasklet(int tn, void (*func)(void *), void *arg)
 {
    struct tasklet_thread *t = tasklet_threads[tn];
    struct task *curr = get_curr_task();
    bool success, was_empty;
 
-   (void) curr; // unused in some paths (unit tests case)
    ASSERT(t != NULL);
 
    struct tasklet new_tasklet = {
-      .fptr = func,
-      .ctx = {
-         .arg1 = arg1,
-         .arg2 = arg2,
-      }
+      .func = func,
+      .arg = arg,
    };
 
    disable_preemption();
@@ -106,7 +102,7 @@ bool run_one_tasklet(int tn)
 
    if (success) {
       /* Run the tasklet with preemption enabled */
-      tasklet_to_run.fptr(tasklet_to_run.ctx.arg1, tasklet_to_run.ctx.arg2);
+      tasklet_to_run.func(tasklet_to_run.arg);
    }
 
    return success;

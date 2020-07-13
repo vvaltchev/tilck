@@ -71,7 +71,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->tasklets_cnt >= 2)
       return IRQ_FULLY_HANDLED;
 
-   if (!enqueue_tasklet1(dev->tasklet_runner, &ser_bh_handler, dev)) {
+   if (!enqueue_tasklet(dev->tasklet_runner, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit tasklet queue limit\n");
       return IRQ_FULLY_HANDLED;
    }

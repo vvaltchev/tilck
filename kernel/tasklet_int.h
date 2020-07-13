@@ -3,12 +3,9 @@
 #pragma once
 #include <tilck/kernel/safe_ringbuf.h>
 
-typedef void (*tasklet_func)(ulong, ulong);
-
 struct tasklet {
-
-   tasklet_func fptr;
-   struct tasklet_context ctx;
+   void (*func)(void *);
+   void *arg;
 };
 
 struct tasklet_thread {
@@ -16,7 +13,7 @@ struct tasklet_thread {
    struct tasklet *tasklets;
    struct safe_ringbuf rb;
    struct task *task;
-   int thread_index;          /* index in of this obj in tasklet_threads */
+   int thread_index;          /* index of this obj in tasklet_threads */
    int priority;              /* 0 is the max priority */
    u32 limit;
    bool waiting_for_jobs;

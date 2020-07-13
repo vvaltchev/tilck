@@ -14,15 +14,19 @@
 static ATOMIC(u32) g_counter;
 static u64 g_cycles_begin;
 
-static void test_tasklet_func()
+struct se_tasklet_ctx {
+   struct kmutex m;
+   struct kcond c;
+};
+
+static void test_tasklet_func(void *arg)
 {
    g_counter++;
 }
 
-static void end_test(void *arg1, void *arg2)
+static void end_test(void *arg)
 {
-   struct kcond *c = arg1;
-   struct kmutex *m = arg2;
+   struct se_tasklet_ctx *ctx = arg;
 
    const u32 max_tasklets = get_tasklet_runner_limit(0);
    const u32 tot_iters = max_tasklets * 10;
@@ -32,12 +36,12 @@ static void end_test(void *arg1, void *arg2)
    printk("[se_tasklet] Avg cycles per tasklet "
           "(enqueue + execute): %llu\n", elapsed/g_counter);
 
-   kmutex_lock(m);
+   kmutex_lock(&ctx->m);
    {
       printk("[se_tasklet] end_test() holding the lock and signalling cond\n");
-      kcond_signal_one(c);
+      kcond_signal_one(&ctx->c);
    }
-   kmutex_unlock(m);
+   kmutex_unlock(&ctx->m);
    printk("[se_tasklet] end_test() func completed\n");
 }
 
@@ -46,16 +50,15 @@ void selftest_tasklet_short(void)
    const u32 max_tasklets = get_tasklet_runner_limit(0);
    const u32 tot_iters = max_tasklets * 10;
    const u32 attempts_check = 500 * 1000;
-   struct kcond c;
-   struct kmutex m;
+   struct se_tasklet_ctx ctx;
    u32 yields_count = 0;
    u64 tot_attempts = 0;
    u32 last_counter_val;
    u32 counter_now;
    bool added;
 
-   kcond_init(&c);
-   kmutex_init(&m, 0);
+   kcond_init(&ctx.c);
+   kmutex_init(&ctx.m, 0);
    g_counter = 0;
 
    ASSERT(is_preemption_enabled());
@@ -71,7 +74,7 @@ void selftest_tasklet_short(void)
 
       do {
 
-         added = enqueue_tasklet0(0, &test_tasklet_func);
+         added = enqueue_tasklet(0, &test_tasklet_func, NULL);
          attempts++;
 
          if (!(attempts % attempts_check)) {
@@ -116,21 +119,21 @@ void selftest_tasklet_short(void)
 
    printk("[se_tasklet] DONE, counter: %u\n", counter_now);
    printk("[se_tasklet] enqueue end_test()\n");
-   kmutex_lock(&m);
+   kmutex_lock(&ctx.m);
    {
       printk("[se_tasklet] Under lock, before enqueue\n");
 
       do {
-         added = enqueue_tasklet2(0, &end_test, &c, &m);
+         added = enqueue_tasklet(0, &end_test, &ctx);
       } while (!added);
 
       printk("[se_tasklet] Under lock, AFTER enqueue\n");
       printk("[se_tasklet] Now, wait on cond\n");
-      kcond_wait(&c, &m, KCOND_WAIT_FOREVER);
+      kcond_wait(&ctx.c, &ctx.m, KCOND_WAIT_FOREVER);
    }
-   kmutex_unlock(&m);
-   kcond_destory(&c);
-   kmutex_destroy(&m);
+   kmutex_unlock(&ctx.m);
+   kcond_destory(&ctx.c);
+   kmutex_destroy(&ctx.m);
    printk("[se_tasklet] END\n");
    regular_self_test_end();
 }
@@ -145,7 +148,7 @@ void selftest_tasklet_perf_short(void)
 
    while (true) {
 
-      added = enqueue_tasklet0(0, &test_tasklet_func);
+      added = enqueue_tasklet(0, &test_tasklet_func, NULL);
 
       if (!added)
          break;

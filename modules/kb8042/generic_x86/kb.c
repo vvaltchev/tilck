@@ -168,8 +168,9 @@ static void kb_handle_default_state(u8 scancode)
    }
 }
 
-static void kb_process_scancode(u8 scancode)
+static void kb_process_scancode(void *arg)
 {
+   u8 scancode = (u8)(ulong)arg;
    bool kb_is_pressed;
 
    switch (kb_curr_state) {
@@ -218,8 +219,12 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
       u8 scancode = inb(KB_DATA_PORT);
 
-      if (!enqueue_tasklet1(kb_tasklet_runner, &kb_process_scancode, scancode))
+      if (!enqueue_tasklet(kb_tasklet_runner,
+                           &kb_process_scancode,
+                           TO_PTR(scancode)))
+      {
          panic("KB: hit tasklet queue limit");
+      }
 
       count++;
    }
