@@ -11,6 +11,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/interrupts.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include "tasklet_int.h"
 
@@ -111,37 +112,6 @@ bool run_one_tasklet(int tn)
    return success;
 }
 
-/*
- * Debug-only checks useful to verify that kernel_yield() + context_switch()
- * do NOT change the current ESP. Sure, at some point when we decide that
- * those function will never be touched again we could remove this code, but
- * until then, in a fast-growing and changing code base like the current one,
- * it makes sense to constantly check that there are not subtle bugs in the
- * probably most critical code. The tasklet runner kernel thread seems the
- * perfect place for such checks, because it really often yields and gets the
- * control back. The DEBUG_VALIDATE_STACK_PTR() sure works as well, but it
- * catches bugs only when the stack pointer is completely out of the allocated
- * stack area for the current task. This following code allows instead, any kind
- * of such problems to be caught much earlier.
- */
-#if !defined(NDEBUG) && !defined(RELEASE)
-
-#define DEBUG_SAVE_ESP()                  \
-   ulong curr_esp;                        \
-   ulong saved_esp = get_stack_ptr();
-
-#define DEBUG_CHECK_ESP()                                                 \
-      curr_esp = get_stack_ptr();                                         \
-      if (curr_esp != saved_esp)                                          \
-         panic("ESP changed. Saved: %p, Curr: %p", saved_esp, curr_esp);
-
-#else
-
-#define DEBUG_SAVE_ESP()
-#define DEBUG_CHECK_ESP()
-
-#endif
-
 void tasklet_runner(void *arg)
 {
    struct tasklet_thread *t = arg;
@@ -149,11 +119,11 @@ void tasklet_runner(void *arg)
    ulong var;
 
    ASSERT(t != NULL);
-   DEBUG_SAVE_ESP()
+   DEBUG_SAVE_ESP()                    /* see debug_utils.h */
 
    while (true) {
 
-      DEBUG_CHECK_ESP()
+      DEBUG_CHECK_ESP()                /* see debug_utils.h */
       t->waiting_for_jobs = false;
 
       do {
