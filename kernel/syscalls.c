@@ -173,8 +173,8 @@ ulong sys_times(struct tms *user_buf)
    {
 
       buf = (struct tms) {
-         .tms_utime = (clock_t) curr->total_ticks,
-         .tms_stime = (clock_t) curr->total_kernel_ticks,
+         .tms_utime = (clock_t) curr->ticks.total,
+         .tms_stime = (clock_t) curr->ticks.total_kernel,
          .tms_cutime = 0,
          .tms_cstime = 0,
       };

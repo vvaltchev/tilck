@@ -533,19 +533,20 @@ void account_ticks(void)
    struct task *curr = get_curr_task();
    const enum task_state state = get_curr_task_state();
    const bool runner = is_tasklet_runner(curr);
+   struct sched_ticks *t = &curr->ticks;
 
    ASSERT(curr != NULL);
    ASSERT(!is_preemption_enabled());
 
-   curr->time_slot_ticks++;
-   curr->total_ticks++;
+   t->timeslot++;
+   t->total++;
 
    if (curr->running_in_kernel)
-      curr->total_kernel_ticks++;
+      t->total_kernel++;
 
-   if (curr->stopped                             ||
-       state != TASK_STATE_RUNNING               ||
-         (!runner && curr->time_slot_ticks >= TIME_SLOT_TICKS)
+   if (curr->stopped                                 ||
+       state != TASK_STATE_RUNNING                   ||
+         (!runner && t->timeslot >= TIME_SLOT_TICKS)
        )
    {
       sched_set_need_resched();
@@ -592,7 +593,7 @@ void schedule(void)
       if (pos == get_curr_task())
          continue;
 
-      if (!selected || pos->total_ticks < selected->total_ticks) {
+      if (!selected || pos->ticks.total < selected->ticks.total) {
          selected = pos;
       }
    }
@@ -602,7 +603,7 @@ void schedule(void)
       if (get_curr_task_state() == TASK_STATE_RUNNABLE) {
          selected = get_curr_task();
          task_change_state(selected, TASK_STATE_RUNNING);
-         selected->time_slot_ticks = 0;
+         selected->ticks.timeslot = 0;
          return;
       }
 

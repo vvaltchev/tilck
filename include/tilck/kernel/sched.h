@@ -33,6 +33,17 @@ struct misc_buf {
    char resolve_ctx[2048];
 };
 
+struct sched_ticks {
+
+   u32 timeslot;        /*
+                         * ticks counter for the current time-slot: it's reset
+                         * each time the task is selected by the scheduler.
+                         */
+
+   u64 total;           /* total life-time ticks */
+   u64 total_kernel;    /* total life-time ticks spent in kernel */
+};
+
 struct task {
 
    union {
@@ -73,15 +84,8 @@ struct task {
 
    struct list tasks_waiting_list;    /* tasks waiting this task to end */
 
-   s32 wstatus;                       /* waitpid's wstatus */
-
-   u32 time_slot_ticks; /*
-                         * ticks counter for the current time-slot: it's reset
-                         * each time the task is selected by the scheduler.
-                         */
-
-   u64 total_ticks;
-   u64 total_kernel_ticks;
+   s32 wstatus;                       /* waitpid's wstatus  */
+   struct sched_ticks ticks;          /* scheduler counters */
 
    void *kernel_stack;
    void *args_copybuf;

@@ -452,7 +452,7 @@ task_cpu_get_timespec(struct k_timespec64 *tp)
 
    disable_preemption();
    {
-      const u64 tot = ti->total_ticks * __tick_duration;
+      const u64 tot = ti->ticks.total * __tick_duration;
 
       tp->tv_sec = (s64)(tot / TS_SCALE);
 
