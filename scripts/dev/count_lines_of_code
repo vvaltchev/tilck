@@ -32,6 +32,7 @@ extToType = {
 
 excludedDirs = [
    "docs",
+   "3rd_party",
    "build",
    "other_builds",
    "tcci_builds",
@@ -74,6 +75,7 @@ def GetFileType(f, folder):
    if f == "CMakeLists.txt":
       return "CMake"
 
+   #pylint: disable=unused-variable
    fname, fext = os.path.splitext(f)
 
    if fext == "":
