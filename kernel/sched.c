@@ -531,7 +531,9 @@ void remove_task(struct task *ti)
 void account_ticks(void)
 {
    struct task *curr = get_curr_task();
-   enum task_state s = atomic_load_explicit(&curr->state, mo_relaxed);
+   const enum task_state state = get_curr_task_state();
+   const bool runner = is_tasklet_runner(curr);
+
    ASSERT(curr != NULL);
    ASSERT(!is_preemption_enabled());
 
@@ -542,8 +544,9 @@ void account_ticks(void)
       curr->total_kernel_ticks++;
 
    if (curr->stopped                             ||
-       curr->time_slot_ticks >= TIME_SLOT_TICKS  ||
-       s != TASK_STATE_RUNNING)
+       state != TASK_STATE_RUNNING               ||
+         (!runner && curr->time_slot_ticks >= TIME_SLOT_TICKS)
+       )
    {
       sched_set_need_resched();
    }
