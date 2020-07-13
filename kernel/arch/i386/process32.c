@@ -8,7 +8,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/signal.h>

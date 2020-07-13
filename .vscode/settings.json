@@ -115,7 +115,7 @@
       "pipe.h": "c",
       "vfs_locking.c.h": "c",
       "elf_utils.h": "c",
-      "tasklet.h": "c",
+      "worker_thread.h": "c",
       "string_util.h": "c",
       "intrin.h": "c",
       "x86intrin.h": "c",

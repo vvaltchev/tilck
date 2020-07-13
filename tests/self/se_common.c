@@ -10,7 +10,7 @@
 #include <tilck/kernel/debug_utils.h>
 
 #include <tilck/kernel/hal.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/timer.h>

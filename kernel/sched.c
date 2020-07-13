@@ -7,7 +7,7 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
 

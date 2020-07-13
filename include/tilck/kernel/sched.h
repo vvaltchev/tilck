@@ -8,7 +8,7 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 
 #define TIME_SLICE_TICKS (TIMER_HZ / 20)
 

@@ -11,7 +11,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/cmdline.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
 

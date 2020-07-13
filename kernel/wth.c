@@ -3,7 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
 
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/sync.h>

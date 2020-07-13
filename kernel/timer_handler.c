@@ -8,7 +8,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/elf_utils.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/datetime.h>
 
 static u64 __ticks;        /* ticks since the timer started */

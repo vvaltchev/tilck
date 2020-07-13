@@ -10,7 +10,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/kmalloc.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/hal_types.h>
 #include <tilck/kernel/elf_loader.h>

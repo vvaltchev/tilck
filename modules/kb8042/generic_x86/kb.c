@@ -4,7 +4,7 @@
 #include <tilck/common/printk.h>
 
 #include <tilck/kernel/modules.h>
-#include <tilck/kernel/tasklet.h>
+#include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/kb.h>
 #include <tilck/kernel/errno.h>
