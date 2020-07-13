@@ -16,8 +16,27 @@
 #include "kernel_init_funcs.h"
 
 extern "C" {
+
+   #include <tilck/kernel/kmalloc.h>
    #include <tilck/kernel/tasklet.h>
    #include "kernel/tasklet_int.h" // private header
+
+   extern u32 tasklet_threads_count;
+
+   void destroy_last_tasklet_thread(void)
+   {
+      assert(tasklet_threads_count > 0);
+
+      const u32 tn = --tasklet_threads_count;
+      struct tasklet_thread *t = tasklet_threads[tn];
+      assert(t != NULL);
+
+      safe_ringbuf_destory(&t->rb);
+      kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
+      kfree2(t, sizeof(struct tasklet_thread));
+      bzero((void *)t, sizeof(*t));
+      tasklet_threads[tn] = NULL;
+   }
 }
 
 using namespace std;

@@ -14,7 +14,7 @@
 
 #include "tasklet_int.h"
 
-u32 tasklet_threads_count;
+STATIC u32 tasklet_threads_count;
 struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
 
 u32 get_tasklet_runner_limit(u32 tn)
@@ -274,27 +274,6 @@ int create_tasklet_thread(int priority, u16 limit)
    ASSERT(tn == tasklet_threads_count);
    tasklet_threads_count++;
    return (int)tn;
-}
-
-void destroy_last_tasklet_thread(void)
-{
-   ASSERT(!is_preemption_enabled());
-   ASSERT(tasklet_threads_count > 0);
-   DEBUG_ONLY(check_not_in_irq_handler());
-
-   u32 tn = --tasklet_threads_count;
-   struct tasklet_thread *t = tasklet_threads[tn];
-   ASSERT(t != NULL);
-
-#ifndef UNIT_TEST_ENVIRONMENT
-   ASSERT(safe_ringbuf_is_empty(&t->rb));
-#endif
-
-   safe_ringbuf_destory(&t->rb);
-   kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
-   kfree2(t, sizeof(struct tasklet_thread));
-   bzero(t, sizeof(*t));
-   tasklet_threads[tn] = NULL;
 }
 
 void init_tasklets(void)
