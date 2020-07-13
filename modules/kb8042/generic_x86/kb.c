@@ -223,7 +223,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
                            &kb_process_scancode,
                            TO_PTR(scancode)))
       {
-         panic("KB: hit tasklet queue limit");
+         panic("KB: hit job queue limit");
       }
 
       count++;
@@ -248,7 +248,7 @@ static void create_kb_worker_thread(void)
       create_worker_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
 
    if (kb_worker_thread < 0)
-      panic("KB: Unable to create a tasklet worker thread for IRQs");
+      panic("KB: Unable to create a worker thread for IRQs");
 }
 
 static struct kb_dev ps2_keyboard = {

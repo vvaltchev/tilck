@@ -48,7 +48,7 @@ Therefore, it makes sense to have:
    - volatile atomic variables
 
 An example: the `state` field in `struct task`. It needs to be atomic because
-its value can be read and updated by interrupt handlers (see `tasklet.c`), but
+its value can be read and updated by interrupt handlers (see `wth.c`), but
 it also needs to be *volatile* because it is read in loops (see `sys_waitpid`)
 waiting for it to change. Theoretically, in case of consecutive atomic loads,
 the compiler is *not* obliged to perform every time an actual read and it might

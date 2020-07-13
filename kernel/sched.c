@@ -563,7 +563,7 @@ void schedule(void)
    /* Essential: clear the `need_resched` flag */
    sched_clear_need_resched();
 
-   /* Look for tasklet runners */
+   /* Look for worker threads ready to run */
    selected = get_runnable_worker_thread();
 
    if (selected == get_curr_task())

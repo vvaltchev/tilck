@@ -19,7 +19,7 @@ struct se_wth_ctx {
    struct kcond c;
 };
 
-static void test_tasklet_func(void *arg)
+static void test_wth_func(void *arg)
 {
    g_counter++;
 }
@@ -28,8 +28,8 @@ static void end_test(void *arg)
 {
    struct se_wth_ctx *ctx = arg;
 
-   const u32 max_tasklets = get_worker_queue_size(0);
-   const u32 tot_iters = max_tasklets * 10;
+   const u32 max_jobs = get_worker_queue_size(0);
+   const u32 tot_iters = max_jobs * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
    VERIFY(g_counter == tot_iters);
@@ -45,10 +45,10 @@ static void end_test(void *arg)
    printk("[se_wth] end_test() func completed\n");
 }
 
-void selftest_tasklet_short(void)
+void selftest_wth_short(void)
 {
-   const u32 max_tasklets = get_worker_queue_size(0);
-   const u32 tot_iters = max_tasklets * 10;
+   const u32 max_jobs = get_worker_queue_size(0);
+   const u32 tot_iters = max_jobs * 10;
    const u32 attempts_check = 500 * 1000;
    struct se_wth_ctx ctx;
    u32 yields_count = 0;
@@ -74,7 +74,7 @@ void selftest_tasklet_short(void)
 
       do {
 
-         added = enqueue_job(0, &test_tasklet_func, NULL);
+         added = enqueue_job(0, &test_wth_func, NULL);
          attempts++;
 
          if (!(attempts % attempts_check)) {
@@ -84,7 +84,7 @@ void selftest_tasklet_short(void)
             if (counter_now == last_counter_val) {
 
                if (did_yield)
-                  panic("It seems that tasklets don't get executed");
+                  panic("It seems that jobs don't get executed");
 
                did_yield = true;
                yields_count++;
@@ -110,7 +110,7 @@ void selftest_tasklet_short(void)
       counter_now = g_counter;
 
       if (counter_now == last_counter_val)
-         panic("It seems that tasklets don't get executed");
+         panic("It seems that jobs don't get executed");
 
       last_counter_val = counter_now;
       kernel_sleep(1);
@@ -138,7 +138,7 @@ void selftest_tasklet_short(void)
    regular_self_test_end();
 }
 
-void selftest_tasklet_perf_short(void)
+void selftest_wth_perf_short(void)
 {
    bool added;
    u32 n = 0;
@@ -148,7 +148,7 @@ void selftest_tasklet_perf_short(void)
 
    while (true) {
 
-      added = enqueue_job(0, &test_tasklet_func, NULL);
+      added = enqueue_job(0, &test_wth_func, NULL);
 
       if (!added)
          break;
@@ -159,6 +159,6 @@ void selftest_tasklet_perf_short(void)
    elapsed = RDTSC() - start;
 
    ASSERT(n > 0); // SA: avoid division by zero warning
-   printk("Avg. job enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
+   printk("Avg. job enqueue cycles: %llu [%i jobs]\n", elapsed/n, n);
    regular_self_test_end();
 }

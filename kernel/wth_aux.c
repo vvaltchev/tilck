@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * This file contains functions used by tasklet.c, but are NOT placed there
+ * This file contains functions used by wth.c, but are NOT placed there
  * in order to allow unit tests to wrap them (with -Wl,--wrap).
  */
 
