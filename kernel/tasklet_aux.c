@@ -17,7 +17,7 @@
 
 int wth_create_thread_for(struct worker_thread *t)
 {
-   const int tid = kthread_create(run_worker_thread, KTH_WORKER_THREAD, t);
+   const int tid = kthread_create(wth_run, KTH_WORKER_THREAD, t);
 
    if (tid < 0)
       return -ENOMEM;
@@ -42,7 +42,7 @@ void wth_wakeup(struct worker_thread *t)
     * and made its state to be runnable.
     */
 
-   struct worker_thread *curr_tt = curr->tasklet_thread;
+   struct worker_thread *curr_tt = curr->worker_thread;
 
    if (!curr_tt || t->priority < curr_tt->priority)
       sched_set_need_resched();

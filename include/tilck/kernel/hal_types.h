@@ -42,7 +42,7 @@ enum irq_action {
 
    IRQ_UNHANDLED     = -1,        /* the irq was not handled at all */
    IRQ_FULLY_HANDLED =  0,        /* no more work required */
-   IRQ_REQUIRES_BH   =  1         /* requires a botton half (tasklet) to run */
+   IRQ_REQUIRES_BH   =  1         /* requires a botton half to run */
 };
 
 typedef void (*soft_int_handler_t)(regs_t *);

@@ -199,7 +199,7 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
    ret = ti->tid;
 
    if (fl & KTH_WORKER_THREAD)
-      ti->tasklet_thread = arg;
+      ti->worker_thread = arg;
 
    /*
     * After the following call to add_task(), given that preemption is enabled,

@@ -422,7 +422,7 @@ void set_current_task_in_kernel(void)
 
 static void task_add_to_state_list(struct task *ti)
 {
-   if (is_tasklet_runner(ti))
+   if (is_worker_thread(ti))
       return;
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
@@ -451,7 +451,7 @@ static void task_add_to_state_list(struct task *ti)
 
 static void task_remove_from_state_list(struct task *ti)
 {
-   if (is_tasklet_runner(ti))
+   if (is_worker_thread(ti))
       return;
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
@@ -532,7 +532,7 @@ void account_ticks(void)
 {
    struct task *curr = get_curr_task();
    const enum task_state state = get_curr_task_state();
-   const bool runner = is_tasklet_runner(curr);
+   const bool runner = is_worker_thread(curr);
    struct sched_ticks *t = &curr->ticks;
 
    ASSERT(curr != NULL);

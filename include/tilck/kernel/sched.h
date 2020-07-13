@@ -69,7 +69,7 @@ struct task {
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
    ATOMIC(int) pending_signal;
-   void *tasklet_thread;                     /* only for tasklet runners */
+   void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
    struct list_node runnable_node;
@@ -209,9 +209,9 @@ static ALWAYS_INLINE bool is_main_thread(struct task *ti)
    return ti->is_main_thread;
 }
 
-static ALWAYS_INLINE bool is_tasklet_runner(struct task *ti)
+static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
 {
-   return ti->tasklet_thread != NULL;
+   return ti->worker_thread != NULL;
 }
 
 /*

@@ -14,7 +14,7 @@
 static ATOMIC(u32) g_counter;
 static u64 g_cycles_begin;
 
-struct se_tasklet_ctx {
+struct se_wth_ctx {
    struct kmutex m;
    struct kcond c;
 };
@@ -26,23 +26,23 @@ static void test_tasklet_func(void *arg)
 
 static void end_test(void *arg)
 {
-   struct se_tasklet_ctx *ctx = arg;
+   struct se_wth_ctx *ctx = arg;
 
    const u32 max_tasklets = get_worker_queue_size(0);
    const u32 tot_iters = max_tasklets * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
    VERIFY(g_counter == tot_iters);
-   printk("[se_tasklet] Avg cycles per tasklet "
+   printk("[se_wth] Avg cycles per job "
           "(enqueue + execute): %llu\n", elapsed/g_counter);
 
    kmutex_lock(&ctx->m);
    {
-      printk("[se_tasklet] end_test() holding the lock and signalling cond\n");
+      printk("[se_wth] end_test() holding the lock and signalling cond\n");
       kcond_signal_one(&ctx->c);
    }
    kmutex_unlock(&ctx->m);
-   printk("[se_tasklet] end_test() func completed\n");
+   printk("[se_wth] end_test() func completed\n");
 }
 
 void selftest_tasklet_short(void)
@@ -50,7 +50,7 @@ void selftest_tasklet_short(void)
    const u32 max_tasklets = get_worker_queue_size(0);
    const u32 tot_iters = max_tasklets * 10;
    const u32 attempts_check = 500 * 1000;
-   struct se_tasklet_ctx ctx;
+   struct se_wth_ctx ctx;
    u32 yields_count = 0;
    u64 tot_attempts = 0;
    u32 last_counter_val;
@@ -62,7 +62,7 @@ void selftest_tasklet_short(void)
    g_counter = 0;
 
    ASSERT(is_preemption_enabled());
-   printk("[se_tasklet] BEGIN\n");
+   printk("[se_wth] BEGIN\n");
 
    g_cycles_begin = RDTSC();
 
@@ -98,11 +98,11 @@ void selftest_tasklet_short(void)
    }
 
    last_counter_val = g_counter;
-   printk("[se_tasklet] Main test done\n");
-   printk("[se_tasklet] AVG attempts: %u\n", (u32)(tot_attempts/tot_iters));
-   printk("[se_tasklet] Yields:       %u\n", yields_count);
-   printk("[se_tasklet] counter now:  %u\n", last_counter_val);
-   printk("[se_tasklet] now wait for completion...\n");
+   printk("[se_wth] Main test done\n");
+   printk("[se_wth] AVG attempts: %u\n", (u32)(tot_attempts/tot_iters));
+   printk("[se_wth] Yields:       %u\n", yields_count);
+   printk("[se_wth] counter now:  %u\n", last_counter_val);
+   printk("[se_wth] now wait for completion...\n");
    kernel_sleep(1);
 
    do {
@@ -117,24 +117,24 @@ void selftest_tasklet_short(void)
 
    } while (counter_now < tot_iters);
 
-   printk("[se_tasklet] DONE, counter: %u\n", counter_now);
-   printk("[se_tasklet] enqueue end_test()\n");
+   printk("[se_wth] DONE, counter: %u\n", counter_now);
+   printk("[se_wth] enqueue end_test()\n");
    kmutex_lock(&ctx.m);
    {
-      printk("[se_tasklet] Under lock, before enqueue\n");
+      printk("[se_wth] Under lock, before enqueue\n");
 
       do {
          added = enqueue_job(0, &end_test, &ctx);
       } while (!added);
 
-      printk("[se_tasklet] Under lock, AFTER enqueue\n");
-      printk("[se_tasklet] Now, wait on cond\n");
+      printk("[se_wth] Under lock, AFTER enqueue\n");
+      printk("[se_wth] Now, wait on cond\n");
       kcond_wait(&ctx.c, &ctx.m, KCOND_WAIT_FOREVER);
    }
    kmutex_unlock(&ctx.m);
    kcond_destory(&ctx.c);
    kmutex_destroy(&ctx.m);
-   printk("[se_tasklet] END\n");
+   printk("[se_wth] END\n");
    regular_self_test_end();
 }
 
@@ -159,6 +159,6 @@ void selftest_tasklet_perf_short(void)
    elapsed = RDTSC() - start;
 
    ASSERT(n > 0); // SA: avoid division by zero warning
-   printk("Avg. tasklet enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
+   printk("Avg. job enqueue cycles: %llu [%i tasklets]\n", elapsed/n, n);
    regular_self_test_end();
 }

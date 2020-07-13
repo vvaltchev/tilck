@@ -21,21 +21,21 @@ extern "C" {
    #include <tilck/kernel/tasklet.h>
    #include "kernel/tasklet_int.h" // private header
 
-   extern u32 tasklet_threads_count;
+   extern u32 worker_threads_cnt;
 
    void destroy_last_tasklet_thread(void)
    {
-      assert(tasklet_threads_count > 0);
+      assert(worker_threads_cnt > 0);
 
-      const u32 tn = --tasklet_threads_count;
-      struct worker_thread *t = worker_threads[tn];
+      const u32 wth = --worker_threads_cnt;
+      struct worker_thread *t = worker_threads[wth];
       assert(t != NULL);
 
       safe_ringbuf_destory(&t->rb);
-      kfree2(t->tasklets, sizeof(struct wjob) * t->limit);
+      kfree2(t->jobs, sizeof(struct wjob) * t->limit);
       kfree2(t, sizeof(struct worker_thread));
       bzero((void *)t, sizeof(*t));
-      worker_threads[tn] = NULL;
+      worker_threads[wth] = NULL;
    }
 }
 
@@ -91,7 +91,7 @@ TEST_F(tasklet_test, base)
 
    ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
 
-   // There are no more tasklets, expecting the RUN failed.
+   // There are no more jobs, expecting the RUN failed.
    ASSERT_FALSE(res);
 }
 
@@ -141,7 +141,7 @@ TEST_F(tasklet_test, advanced)
 
    ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
 
-   // There are no more tasklets, expecting the RUN failed.
+   // There are no more jobs, expecting the RUN failed.
    ASSERT_FALSE(res);
 }
 

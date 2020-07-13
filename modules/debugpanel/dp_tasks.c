@@ -79,7 +79,7 @@ debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
 
 static int debug_get_tn_for_tasklet_runner(struct task *ti)
 {
-   for (u32 i = 0; i < MAX_WORKER_THREADS; i++)
+   for (int i = 0; i < MAX_WORKER_THREADS; i++)
       if (get_worker_thread(i) == ti)
          return (int)i;
 
@@ -195,7 +195,7 @@ static int debug_per_task_cb(void *obj, void *arg)
       const char *kfunc = find_sym_at_addr((ulong)ti->what, NULL, NULL);
 
       if (kfunc) {
-         if (!is_tasklet_runner(ti)) {
+         if (!is_worker_thread(ti)) {
             snprintk(buf, sizeof(buf), "<%s>", kfunc);
          } else {
             snprintk(buf, sizeof(buf), "<%s[%d]>",
