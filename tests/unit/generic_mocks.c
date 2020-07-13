@@ -62,12 +62,8 @@ int __wrap_fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
    return -1;
 }
 
-int __wrap_tasklet_create_thread_for(void *t)
-{
-   return 0;
-}
-
-void __wrap_tasklet_wakeup_runner() { /* do nothing */ }
+int __wrap_wth_create_thread_for(void *t) { return 0; }
+void __wrap_wth_wakeup() { /* do nothing */ }
 void __wrap_check_in_irq_handler() { /* do nothing */ }
 
 void hw_read_clock(struct datetime *out)

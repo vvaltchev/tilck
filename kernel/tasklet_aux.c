@@ -15,7 +15,7 @@
 
 #include "tasklet_int.h"
 
-int tasklet_create_thread_for(struct tasklet_thread *t)
+int wth_create_thread_for(struct worker_thread *t)
 {
    const int tid = kthread_create(run_worker_thread, KTH_WORKER_THREAD, t);
 
@@ -26,7 +26,7 @@ int tasklet_create_thread_for(struct tasklet_thread *t)
    return 0;
 }
 
-void tasklet_wakeup_runner(struct tasklet_thread *t)
+void wth_wakeup(struct worker_thread *t)
 {
    struct task *curr = get_curr_task();
    enum task_state exp_state = TASK_STATE_SLEEPING;
@@ -42,7 +42,7 @@ void tasklet_wakeup_runner(struct tasklet_thread *t)
     * and made its state to be runnable.
     */
 
-   struct tasklet_thread *curr_tt = curr->tasklet_thread;
+   struct worker_thread *curr_tt = curr->tasklet_thread;
 
    if (!curr_tt || t->priority < curr_tt->priority)
       sched_set_need_resched();

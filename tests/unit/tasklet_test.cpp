@@ -28,14 +28,14 @@ extern "C" {
       assert(tasklet_threads_count > 0);
 
       const u32 tn = --tasklet_threads_count;
-      struct tasklet_thread *t = tasklet_threads[tn];
+      struct worker_thread *t = worker_threads[tn];
       assert(t != NULL);
 
       safe_ringbuf_destory(&t->rb);
-      kfree2(t->tasklets, sizeof(struct tasklet) * t->limit);
-      kfree2(t, sizeof(struct tasklet_thread));
+      kfree2(t->tasklets, sizeof(struct wjob) * t->limit);
+      kfree2(t, sizeof(struct worker_thread));
       bzero((void *)t, sizeof(*t));
-      tasklet_threads[tn] = NULL;
+      worker_threads[tn] = NULL;
    }
 }
 
@@ -64,7 +64,7 @@ TEST_F(tasklet_test, essential)
    bool res = false;
 
    ASSERT_TRUE(enqueue_job(0, &simple_func1, TO_PTR(1234)));
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
    ASSERT_TRUE(res);
 }
 
@@ -85,11 +85,11 @@ TEST_F(tasklet_test, base)
    ASSERT_FALSE(res);
 
    for (int i = 0; i < max_tasklets; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
 
    // There are no more tasklets, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -109,7 +109,7 @@ TEST_F(tasklet_test, advanced)
 
    // Consume 1/4.
    for (int i = 0; i < max_tasklets/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
       ASSERT_TRUE(res);
    }
 
@@ -121,7 +121,7 @@ TEST_F(tasklet_test, advanced)
 
    // Consume 2/4
    for (int i = 0; i < max_tasklets/2; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
       ASSERT_TRUE(res);
    }
 
@@ -135,11 +135,11 @@ TEST_F(tasklet_test, advanced)
 
    // Consume 3/4
    for (int i = 0; i < 3*max_tasklets/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
 
    // There are no more tasklets, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -179,12 +179,12 @@ TEST_F(tasklet_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == 0) {
-            ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+            ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
             ASSERT_FALSE(res);
             break;
          }
 
-         ASSERT_NO_FATAL_FAILURE({ res = run_one_tasklet(0); });
+         ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
          ASSERT_TRUE(res);
          slots_used--;
       }

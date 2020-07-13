@@ -77,8 +77,8 @@ set(
    kmutex_lock
    kmutex_unlock
    fat_ramdisk_prepare_for_mmap
-   tasklet_create_thread_for
-   tasklet_wakeup_runner
+   wth_create_thread_for
+   wth_wakeup
    check_in_irq_handler
 )
 

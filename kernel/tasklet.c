@@ -16,18 +16,18 @@
 #include "tasklet_int.h"
 
 STATIC u32 tasklet_threads_count;
-struct tasklet_thread *tasklet_threads[MAX_WORKER_THREADS];
+struct worker_thread *worker_threads[MAX_WORKER_THREADS];
 
 u32 get_worker_queue_size(u32 tn)
 {
    ASSERT(tn < MAX_WORKER_THREADS);
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct worker_thread *t = worker_threads[tn];
    return t ? t->limit : 0;
 }
 
 struct task *get_worker_thread(u32 tn)
 {
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct worker_thread *t = worker_threads[tn];
 
    if (!t)
       return NULL;
@@ -38,7 +38,7 @@ struct task *get_worker_thread(u32 tn)
 
 static bool any_tasklets_to_run(u32 tn)
 {
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct worker_thread *t = worker_threads[tn];
 
    if (!t)
       return false;
@@ -48,13 +48,13 @@ static bool any_tasklets_to_run(u32 tn)
 
 bool enqueue_job(int tn, void (*func)(void *), void *arg)
 {
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct worker_thread *t = worker_threads[tn];
    struct task *curr = get_curr_task();
    bool success, was_empty;
 
    ASSERT(t != NULL);
 
-   struct tasklet new_tasklet = {
+   struct wjob new_tasklet = {
       .func = func,
       .arg = arg,
    };
@@ -84,18 +84,18 @@ bool enqueue_job(int tn, void (*func)(void *), void *arg)
    success = safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
 
    if (success && was_empty && t->waiting_for_jobs) {
-      tasklet_wakeup_runner(t);
+      wth_wakeup(t);
    }
 
    enable_preemption();
    return success;
 }
 
-bool run_one_tasklet(int tn)
+bool wth_process_single_job(int tn)
 {
    bool success;
-   struct tasklet tasklet_to_run;
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct wjob tasklet_to_run;
+   struct worker_thread *t = worker_threads[tn];
 
    ASSERT(t != NULL);
    success = safe_ringbuf_read_elem(&t->rb, &tasklet_to_run);
@@ -110,7 +110,7 @@ bool run_one_tasklet(int tn)
 
 void run_worker_thread(void *arg)
 {
-   struct tasklet_thread *t = arg;
+   struct worker_thread *t = arg;
    bool tasklet_run;
    ulong var;
 
@@ -124,7 +124,7 @@ void run_worker_thread(void *arg)
 
       do {
 
-         tasklet_run = run_one_tasklet(t->thread_index);
+         tasklet_run = wth_process_single_job(t->thread_index);
 
       } while (tasklet_run);
 
@@ -145,11 +145,11 @@ void run_worker_thread(void *arg)
 struct task *get_runnable_worker_thread(void)
 {
    ASSERT(!is_preemption_enabled());
-   struct tasklet_thread *selected = NULL;
+   struct worker_thread *selected = NULL;
 
    for (u32 i = 0; i < tasklet_threads_count; i++) {
 
-      struct tasklet_thread *t = tasklet_threads[i];
+      struct worker_thread *t = worker_threads[i];
 
       if (!any_tasklets_to_run(i))
          continue;
@@ -164,16 +164,16 @@ struct task *get_runnable_worker_thread(void)
 
 int create_worker_thread(int priority, u16 limit)
 {
-   struct tasklet_thread *t;
+   struct worker_thread *t;
    int rc;
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
-   if (tasklet_threads_count >= ARRAY_SIZE(tasklet_threads))
+   if (tasklet_threads_count >= ARRAY_SIZE(worker_threads))
       return -ENFILE; /* too many tasklet runners */
 
-   t = kzmalloc(sizeof(struct tasklet_thread));
+   t = kzmalloc(sizeof(struct worker_thread));
 
    if (!t)
       return -ENOMEM;
@@ -181,25 +181,25 @@ int create_worker_thread(int priority, u16 limit)
    t->thread_index = (int)tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
-   t->tasklets = kzmalloc(sizeof(struct tasklet) * limit);
+   t->tasklets = kzmalloc(sizeof(struct wjob) * limit);
 
    if (!t->tasklets) {
-      kfree2(t, sizeof(struct tasklet_thread));
+      kfree2(t, sizeof(struct worker_thread));
       return -ENOMEM;
    }
 
    safe_ringbuf_init(&t->rb,
                      limit,
-                     sizeof(struct tasklet),
+                     sizeof(struct wjob),
                      t->tasklets);
 
-   if ((rc = tasklet_create_thread_for(t))) {
-      kfree2(t->tasklets, sizeof(struct tasklet) * limit);
-      kfree2(t, sizeof(struct tasklet_thread));
+   if ((rc = wth_create_thread_for(t))) {
+      kfree2(t->tasklets, sizeof(struct wjob) * limit);
+      kfree2(t, sizeof(struct worker_thread));
       return rc;
    }
 
-   tasklet_threads[t->thread_index] = t;
+   worker_threads[t->thread_index] = t;
 
    /* Double-check that tasklet_threads_count did not change */
    ASSERT(t->thread_index == (int)tasklet_threads_count);
