@@ -64,8 +64,7 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
 
    disable_preemption();
 
-
-#ifndef UNIT_TEST_ENVIRONMENT
+#ifdef DEBUG
 
    /*
     * Trying to enqueue a tasklet from the same tasklet thread can cause
@@ -80,41 +79,16 @@ bool enqueue_tasklet_int(int tn, void *func, ulong arg1, ulong arg2)
     * that to happen.
     */
 
-   #ifdef DEBUG
-
-      if (curr == t->task)
-         check_in_irq_handler();
-
-   #endif
+   if (curr == t->task)
+      check_in_irq_handler();
 
 #endif
 
    success = safe_ringbuf_write_elem_ex(&t->rb, &new_tasklet, &was_empty);
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
    if (success && was_empty && t->waiting_for_jobs) {
-
-      enum task_state exp_state = TASK_STATE_SLEEPING;
-
-      t->waiting_for_jobs = false;
-      atomic_cas_strong(&t->task->state,
-                        &exp_state,
-                        TASK_STATE_RUNNABLE,
-                        mo_relaxed, mo_relaxed);
-      /*
-       * Note: we don't care whether atomic_cas_strong() succeeded or not.
-       * Reason: if it didn't succeed, that's because an IRQ preempted us
-       * and made its state to be runnable.
-       */
-
-      struct tasklet_thread *curr_tt = curr->tasklet_thread;
-
-      if (!curr_tt || t->priority < curr_tt->priority)
-         sched_set_need_resched();
+      tasklet_wakeup_runner(t);
    }
-
-#endif
 
    enable_preemption();
    return success;
@@ -170,8 +144,7 @@ bool run_one_tasklet(int tn)
 
 void tasklet_runner(void *arg)
 {
-   const int tn = (int)(ulong)arg;
-   struct tasklet_thread *t = tasklet_threads[tn];
+   struct tasklet_thread *t = arg;
    bool tasklet_run;
    ulong var;
 
@@ -185,7 +158,7 @@ void tasklet_runner(void *arg)
 
       do {
 
-         tasklet_run = run_one_tasklet(tn);
+         tasklet_run = run_one_tasklet(t->thread_index);
 
       } while (tasklet_run);
 
@@ -226,6 +199,7 @@ struct task *get_hi_prio_ready_tasklet_runner(void)
 int create_tasklet_thread(int priority, u16 limit)
 {
    struct tasklet_thread *t;
+   int rc;
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -238,7 +212,7 @@ int create_tasklet_thread(int priority, u16 limit)
    if (!t)
       return -ENOMEM;
 
-   u32 tn = tasklet_threads_count;
+   t->thread_index = (int)tasklet_threads_count;
    t->priority = priority;
    t->limit = limit;
    t->tasklets = kzmalloc(sizeof(struct tasklet) * limit);
@@ -253,27 +227,18 @@ int create_tasklet_thread(int priority, u16 limit)
                      sizeof(struct tasklet),
                      t->tasklets);
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
-   int tid = kthread_create(tasklet_runner, 0, TO_PTR(tn));
-
-   if (tid < 0) {
+   if ((rc = tasklet_create_thread_for(t))) {
       kfree2(t->tasklets, sizeof(struct tasklet) * limit);
       kfree2(t, sizeof(struct tasklet_thread));
-      return -ENOMEM;
+      return rc;
    }
 
-   t->task = get_task(tid);
-   t->task->tasklet_thread = t;
-
-#endif
-
-   tasklet_threads[tn] = t;
+   tasklet_threads[t->thread_index] = t;
 
    /* Double-check that tasklet_threads_count did not change */
-   ASSERT(tn == tasklet_threads_count);
+   ASSERT(t->thread_index == (int)tasklet_threads_count);
    tasklet_threads_count++;
-   return (int)tn;
+   return t->thread_index;
 }
 
 void init_tasklets(void)

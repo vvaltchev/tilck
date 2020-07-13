@@ -16,7 +16,8 @@ struct tasklet_thread {
    struct tasklet *tasklets;
    struct safe_ringbuf rb;
    struct task *task;
-   int priority; /* 0 => max priority */
+   int thread_index;          /* index in of this obj in tasklet_threads */
+   int priority;              /* 0 is the max priority */
    u32 limit;
    bool waiting_for_jobs;
 };
@@ -24,3 +25,5 @@ struct tasklet_thread {
 extern struct tasklet_thread *tasklet_threads[MAX_TASKLET_THREADS];
 
 bool run_one_tasklet(int tn);
+int tasklet_create_thread_for(struct tasklet_thread *t);
+void tasklet_wakeup_runner(struct tasklet_thread *t);

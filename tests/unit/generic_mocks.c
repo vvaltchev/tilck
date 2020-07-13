@@ -62,6 +62,14 @@ int __wrap_fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
    return -1;
 }
 
+int __wrap_tasklet_create_thread_for(void *t)
+{
+   return 0;
+}
+
+void __wrap_tasklet_wakeup_runner() { /* do nothing */ }
+void __wrap_check_in_irq_handler() { /* do nothing */ }
+
 void hw_read_clock(struct datetime *out)
 {
    memset(out, 0, sizeof(*out));
@@ -79,6 +87,8 @@ int virtual_write(void *pdir, void *extern_va, void *src, size_t len)
    return 0;
 }
 
+int kthread_create() { return -12; /* ENOMEM */}
+
 void invalidate_page() {}
 void init_serial_port() { }
 void serial_write() { }
@@ -89,7 +99,6 @@ void pic_send_eoi() { }
 void task_info_reset_kernel_stack() { }
 void set_kernel_stack() { }
 void irq_clear_mask() { }
-void kthread_create() { }
 void debug_qemu_turn_off_machine() { }
 void setup_process() { }
 void gdt_install() { }
