@@ -3,8 +3,6 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-#define MAX_WORKER_THREADS 64
-
 void init_worker_threads();
 struct task *wth_get_task(int wth);
 struct task *wth_get_runnable_thread(void);
