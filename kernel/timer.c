@@ -282,7 +282,7 @@ enum irq_action timer_irq_handler(void *ctx)
    }
    enable_interrupts_forced();
 
-   account_ticks();
+   sched_account_ticks();
    tick_all_timers();
    return IRQ_FULLY_HANDLED;
 }

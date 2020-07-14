@@ -528,7 +528,7 @@ void remove_task(struct task *ti)
    enable_preemption();
 }
 
-void account_ticks(void)
+void sched_account_ticks(void)
 {
    struct task *curr = get_curr_task();
    const enum task_state state = get_curr_task_state();

@@ -287,7 +287,7 @@ void schedule(void);
 int get_curr_tid(void);
 int get_curr_pid(void);
 void save_current_task_state(regs_t *);
-void account_ticks(void);
+void sched_account_ticks(void);
 int create_new_pid(void);
 int create_new_kernel_tid(void);
 void task_info_reset_kernel_stack(struct task *ti);
