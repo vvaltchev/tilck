@@ -244,25 +244,43 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
 
 enum irq_action timer_irq_handler(void *ctx)
 {
+   u32 ns_delta;
+   ASSERT(are_interrupts_enabled());
+
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
          return IRQ_FULLY_HANDLED;
 
    /*
-    * It is SAFE to directly increase the 64-bit integer __ticks here, without
-    * disabling the interrupts and without trying to use any kind of atomic
-    * operation because this is the ONLY place where __ticks is modified. Even
-    * when nested IRQ0 is allowed, __ticks won't be touched by the nested
-    * handler as you can see above.
+    * Compute `ns_delta` by reading `__tick_duration` and `__tick_adj_val` here
+    * without disabling interrupts, because it's safe to do so. Also, decrement
+    * `__tick_adj_ticks_rem` too. Why it's safe:
+    *
+    *    1. `__tick_duration` is immutable
+    *    2. `__tick_adj_val` is changed only by datetime.c while keeping
+    *       interrupts disabled and it's read only here. Nested timer IRQs
+    *       will be ignored (see above). No other IRQ handler should read it.
     */
-   __ticks++;
 
-   if (UNLIKELY(__tick_adj_ticks_rem)) {
-      __time_ns += (u32)((s32)__tick_duration + __tick_adj_val);
+   if (__tick_adj_ticks_rem) {
+      ns_delta = (u32)((s32)__tick_duration + __tick_adj_val);
       __tick_adj_ticks_rem--;
    } else {
-      __time_ns += __tick_duration;
+      ns_delta = __tick_duration;
    }
+
+   disable_interrupts_forced();
+   {
+      /*
+       * Alter __ticks and __time_ns here, while keeping the interrupts disabled
+       * because other IRQ handlers might need to use them. While, as explained
+       * above, `__tick_adj_val` and `__tick_adj_ticks_rem` will never need to
+       * be read or written by IRQ handlers.
+       */
+      __ticks++;
+      __time_ns += ns_delta;
+   }
+   enable_interrupts_forced();
 
    account_ticks();
    tick_all_timers();
