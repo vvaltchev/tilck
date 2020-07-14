@@ -29,10 +29,11 @@ extern "C" {
 
       const u32 wth = --worker_threads_cnt;
       struct worker_thread *t = worker_threads[wth];
+      const u32 queue_size = t->rb.max_elems;
       assert(t != NULL);
 
       safe_ringbuf_destory(&t->rb);
-      kfree2(t->jobs, sizeof(struct wjob) * t->queue_size);
+      kfree2(t->jobs, sizeof(struct wjob) * queue_size);
       kfree2(t, sizeof(struct worker_thread));
       bzero((void *)t, sizeof(*t));
       worker_threads[wth] = NULL;

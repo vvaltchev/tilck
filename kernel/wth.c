@@ -22,7 +22,7 @@ u32 wth_get_queue_size(int wth)
 {
    ASSERT(wth < MAX_WORKER_THREADS);
    struct worker_thread *t = worker_threads[wth];
-   return t ? t->queue_size : 0;
+   return t ? t->rb.max_elems : 0;
 }
 
 struct task *wth_get_task(int wth)
@@ -179,7 +179,6 @@ int wth_create_thread(int priority, u16 queue_size)
 
    t->thread_index = (int)worker_threads_cnt;
    t->priority = priority;
-   t->queue_size = queue_size;
    t->jobs = kzmalloc(sizeof(struct wjob) * queue_size);
 
    if (!t->jobs) {
