@@ -16,11 +16,11 @@
 #include "wth_int.h"
 
 STATIC u32 worker_threads_cnt;
-struct worker_thread *worker_threads[MAX_WORKER_THREADS];
+struct worker_thread *worker_threads[WTH_MAX_THREADS];
 
 u32 wth_get_queue_size(int wth)
 {
-   ASSERT(wth < MAX_WORKER_THREADS);
+   ASSERT(wth < WTH_MAX_THREADS);
    struct worker_thread *t = worker_threads[wth];
    return t ? t->rb.max_elems : 0;
 }
@@ -210,7 +210,7 @@ void init_worker_threads(void)
    int wth;
 
    worker_threads_cnt = 0;
-   wth = wth_create_thread(0 /* priority */, MAX_PRIO_WTH_QUEUE_SIZE);
+   wth = wth_create_thread(0 /* priority */, WTH_MAX_PRIO_QUEUE_SIZE);
 
    if (wth < 0)
       panic("init_worker_threads() failed");

@@ -245,7 +245,7 @@ static u8 kb_translate_to_mediumraw(struct key_event ke)
 static void create_kb_worker_thread(void)
 {
    kb_worker_thread =
-      wth_create_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
+      wth_create_thread(1 /* priority */, WTH_KB_QUEUE_SIZE);
 
    if (kb_worker_thread < 0)
       panic("KB: Unable to create a worker thread for IRQs");

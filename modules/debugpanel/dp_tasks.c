@@ -79,7 +79,7 @@ debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
 
 static int debug_get_wth_for_worker_thread(struct task *ti)
 {
-   for (int i = 0; i < MAX_WORKER_THREADS; i++)
+   for (int i = 0; i < WTH_MAX_THREADS; i++)
       if (wth_get_task(i) == ti)
          return (int)i;
 

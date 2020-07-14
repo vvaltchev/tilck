@@ -105,9 +105,9 @@
 #define MAX_NESTED_INTERRUPTS                      32
 #define TTY_INPUT_BS                             1024
 #define FBCON_OPT_FUNCS_MIN_FREE_HEAP       (16 * MB)
-#define MAX_WORKER_THREADS                         64
-#define MAX_PRIO_WTH_QUEUE_SIZE                    40 /* uses ~512B of mem */
-#define KB_WTH_QUEUE_SIZE                         170 /* uses ~2 KB of mem */
+#define WTH_MAX_THREADS                            64
+#define WTH_MAX_PRIO_QUEUE_SIZE                    40 /* uses ~512B of mem */
+#define WTH_KB_QUEUE_SIZE                         170 /* uses ~2 KB of mem */
 
 /*
  * User tasks constants

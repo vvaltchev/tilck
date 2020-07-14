@@ -18,7 +18,7 @@ struct worker_thread {
    bool waiting_for_jobs;
 };
 
-extern struct worker_thread *worker_threads[MAX_WORKER_THREADS];
+extern struct worker_thread *worker_threads[WTH_MAX_THREADS];
 
 void wth_run(void *arg);
 void wth_wakeup(struct worker_thread *t);
