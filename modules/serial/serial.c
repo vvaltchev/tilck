@@ -71,7 +71,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->jobs_cnt >= 2)
       return IRQ_FULLY_HANDLED;
 
-   if (!enqueue_job(dev->worker_thread_id, &ser_bh_handler, dev)) {
+   if (!wth_enqueue_job(dev->worker_thread_id, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit job queue limit\n");
       return IRQ_FULLY_HANDLED;
    }
@@ -100,7 +100,7 @@ static void init_serial_comm(void)
    disable_preemption();
    {
       worker_thread_id =
-         create_worker_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
+         wth_create_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
 
       if (worker_thread_id < 0)
          panic("Serial: Unable to create a worker thread for IRQs");

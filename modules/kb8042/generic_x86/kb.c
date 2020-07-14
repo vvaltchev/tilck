@@ -219,7 +219,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
       u8 scancode = inb(KB_DATA_PORT);
 
-      if (!enqueue_job(kb_worker_thread,
+      if (!wth_enqueue_job(kb_worker_thread,
                            &kb_process_scancode,
                            TO_PTR(scancode)))
       {
@@ -245,7 +245,7 @@ static u8 kb_translate_to_mediumraw(struct key_event ke)
 static void create_kb_worker_thread(void)
 {
    kb_worker_thread =
-      create_worker_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
+      wth_create_thread(1 /* priority */, KB_WTH_QUEUE_SIZE);
 
    if (kb_worker_thread < 0)
       panic("KB: Unable to create a worker thread for IRQs");

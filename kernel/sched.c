@@ -564,7 +564,7 @@ void schedule(void)
    sched_clear_need_resched();
 
    /* Look for worker threads ready to run */
-   selected = get_runnable_worker_thread();
+   selected = wth_get_runnable_thread();
 
    if (selected == get_curr_task())
       return;

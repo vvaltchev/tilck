@@ -32,7 +32,7 @@ extern "C" {
       assert(t != NULL);
 
       safe_ringbuf_destory(&t->rb);
-      kfree2(t->jobs, sizeof(struct wjob) * t->limit);
+      kfree2(t->jobs, sizeof(struct wjob) * t->queue_size);
       kfree2(t, sizeof(struct worker_thread));
       bzero((void *)t, sizeof(*t));
       worker_threads[wth] = NULL;
@@ -63,7 +63,7 @@ TEST_F(worker_thread_test, essential)
 {
    bool res = false;
 
-   ASSERT_TRUE(enqueue_job(0, &simple_func1, TO_PTR(1234)));
+   ASSERT_TRUE(wth_enqueue_job(0, &simple_func1, TO_PTR(1234)));
    ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
    ASSERT_TRUE(res);
 }
@@ -71,15 +71,15 @@ TEST_F(worker_thread_test, essential)
 
 TEST_F(worker_thread_test, base)
 {
-   const int max_jobs = get_worker_queue_size(0);
+   const int max_jobs = wth_get_queue_size(0);
    bool res;
 
    for (int i = 0; i < max_jobs; i++) {
-      res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
-   res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+   res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
@@ -98,12 +98,12 @@ TEST_F(worker_thread_test, base)
 
 TEST_F(worker_thread_test, advanced)
 {
-   const int max_jobs = get_worker_queue_size(0);
+   const int max_jobs = wth_get_queue_size(0);
    bool res;
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -115,7 +115,7 @@ TEST_F(worker_thread_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -127,7 +127,7 @@ TEST_F(worker_thread_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -147,7 +147,7 @@ TEST_F(worker_thread_test, advanced)
 
 TEST_F(worker_thread_test, chaos)
 {
-   const int max_jobs = get_worker_queue_size(0);
+   const int max_jobs = wth_get_queue_size(0);
 
    random_device rdev;
    default_random_engine e(rdev());
@@ -165,11 +165,11 @@ TEST_F(worker_thread_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == max_jobs) {
-            ASSERT_FALSE(enqueue_job(0, &simple_func1, TO_PTR(1234)));
+            ASSERT_FALSE(wth_enqueue_job(0, &simple_func1, TO_PTR(1234)));
             break;
          }
 
-         res = enqueue_job(0, &simple_func1, TO_PTR(1234));
+         res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
          ASSERT_TRUE(res);
          slots_used++;
       }

@@ -15,7 +15,7 @@ struct worker_thread {
    struct task *task;
    int thread_index;          /* index of this obj in worker_threads */
    int priority;              /* 0 is the max priority */
-   u32 limit;
+   u32 queue_size;
    bool waiting_for_jobs;
 };
 
