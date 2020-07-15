@@ -8,6 +8,8 @@ extern "C" {
 #include <tilck/kernel/kmalloc.h>
 }
 
+#include <tilck/common/cpputils.h>
+
 static ALWAYS_INLINE bool
 rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)
 {
@@ -75,7 +77,9 @@ __safe_ringbuf_write(struct safe_ringbuf *rb,
                      void *elem_ptr,
                      bool *was_empty)
 {
+   typedef typename unsigned_by_size<static_elem_size>::type T;
    struct generic_safe_ringbuf_stat cs, ns;
+   const u16 e_size = rb->elem_size;
    bool ret = true;
    begin_debug_write_checks(rb);
 
@@ -101,16 +105,10 @@ __safe_ringbuf_write(struct safe_ringbuf *rb,
                              mo_relaxed,
                              mo_relaxed));
 
-   if (static_elem_size == 1)
-      ((u8 *)rb->buf)[cs.write_pos]  = *(u8 *)elem_ptr;
-   else if (static_elem_size == 2)
-      ((u16 *)rb->buf)[cs.write_pos] = *(u16 *)elem_ptr;
-   else if (static_elem_size == 4)
-      ((u32 *)rb->buf)[cs.write_pos] = *(u32 *)elem_ptr;
-   else if (static_elem_size == 8)
-      ((u64 *)rb->buf)[cs.write_pos] = *(u64 *)elem_ptr;
+   if (static_elem_size)
+      ((T *)rb->buf)[cs.write_pos] = *(T *)elem_ptr;
    else
-      memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
+      memcpy(rb->buf + cs.write_pos * e_size, elem_ptr, e_size);
 
    *was_empty = rb_stat_is_empty(&cs);
 
@@ -123,7 +121,9 @@ template <int static_elem_size = 0>
 static ALWAYS_INLINE bool
 __safe_ringbuf_read(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 {
+   typedef typename unsigned_by_size<static_elem_size>::type T;
    struct generic_safe_ringbuf_stat cs, ns;
+   const u16 e_size = rb->elem_size;
    bool ret = true;
 
    if (static_elem_size)
@@ -141,16 +141,10 @@ __safe_ringbuf_read(struct safe_ringbuf *rb, void *elem_ptr /* out */)
          goto out;
       }
 
-      if (static_elem_size == 1)
-         *(u8 *)elem_ptr =  (( u8 *)rb->buf)[cs.read_pos];
-      else if (static_elem_size == 2)
-         *(u16 *)elem_ptr = ((u16 *)rb->buf)[cs.read_pos];
-      else if (static_elem_size == 4)
-         *(u32 *)elem_ptr = ((u32 *)rb->buf)[cs.read_pos];
-      else if (static_elem_size == 8)
-         *(u64 *)elem_ptr = ((u64 *)rb->buf)[cs.read_pos];
+      if (static_elem_size)
+         *(T *)elem_ptr = ((T *)rb->buf)[cs.read_pos];
       else
-         memcpy(elem_ptr, rb->buf + cs.read_pos * rb->elem_size, rb->elem_size);
+         memcpy(elem_ptr, rb->buf + cs.read_pos * e_size, e_size);
 
       ns.read_pos = (ns.read_pos + 1) % rb->max_elems;
       ns.full = false;
@@ -174,81 +168,37 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *e, bool *was_empty)
    return __safe_ringbuf_write<>(rb, e, was_empty);
 }
 
-
 bool
 safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 {
    return __safe_ringbuf_read<>(rb, elem_ptr);
 }
 
-#if 0
+#define INST_WRITE_FUNC(s, n)                                                  \
+   bool safe_ringbuf_write_##s(struct safe_ringbuf *rb, void *e, bool *empty) {\
+      return __safe_ringbuf_write<n>(rb, e, empty);                            \
+   }
 
-/*
- * For the moment, the following instantiations are NOT needed in Tilck.
- * No point in adding code-bloat to the kernel. As a use-case comes out,
- * move the individual functions outside of this #if 0 block.
- */
+#define INST_READ_FUNC(s, n)                                                   \
+   bool safe_ringbuf_read_##s(struct safe_ringbuf *rb, void *elem_ptr) {       \
+      return __safe_ringbuf_read<n>(rb, elem_ptr);                             \
+   }
 
-bool
-safe_ringbuf_write_ulong(struct safe_ringbuf *rb, void *e, bool *was_empty)
-{
-   return __safe_ringbuf_write<sizeof(void *)>(rb, e, was_empty);
-}
 
-bool
-safe_ringbuf_read_ulong(struct safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   return __safe_ringbuf_read<sizeof(void *)>(rb, elem_ptr);
-}
+// For the moment, the following instantiations are NOT needed in Tilck.
+// No point in adding code-bloat to the kernel. As a use-cases come out,
+// un-comment the individual functions.
 
-bool
-safe_ringbuf_write1(struct safe_ringbuf *rb, void *e, bool *was_empty)
-{
-   return __safe_ringbuf_write<1>(rb, e, was_empty);
-}
+// INST_WRITE_FUNC(ulong, sizeof(void *))
+// INST_WRITE_FUNC(1, 1)
+// INST_WRITE_FUNC(2, 2)
+// INST_WRITE_FUNC(4, 4)
+// INST_WRITE_FUNC(8, 8)
 
-bool
-safe_ringbuf_write2(struct safe_ringbuf *rb, void *e, bool *was_empty)
-{
-   return __safe_ringbuf_write<2>(rb, e, was_empty);
-}
-
-bool
-safe_ringbuf_write4(struct safe_ringbuf *rb, void *e, bool *was_empty)
-{
-   return __safe_ringbuf_write<4>(rb, e, was_empty);
-}
-
-bool
-safe_ringbuf_write8(struct safe_ringbuf *rb, void *e, bool *was_empty)
-{
-   return __safe_ringbuf_write<8>(rb, e, was_empty);
-}
-
-bool
-safe_ringbuf_read1(struct safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   return __safe_ringbuf_read<1>(rb, elem_ptr);
-}
-
-bool
-safe_ringbuf_read2(struct safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   return __safe_ringbuf_read<2>(rb, elem_ptr);
-}
-
-bool
-safe_ringbuf_read4(struct safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   return __safe_ringbuf_read<4>(rb, elem_ptr);
-}
-
-bool
-safe_ringbuf_read8(struct safe_ringbuf *rb, void *elem_ptr /* out */)
-{
-   return __safe_ringbuf_read<8>(rb, elem_ptr);
-}
-
-#endif // #if 0
+// INST_READ_FUNC(ulong, sizeof(void *))
+// INST_READ_FUNC(1, 1)
+// INST_READ_FUNC(2, 2)
+// INST_READ_FUNC(4, 4)
+// INST_READ_FUNC(8, 8)
 
 } // extern "C"

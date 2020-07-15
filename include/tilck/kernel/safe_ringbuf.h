@@ -69,12 +69,12 @@ safe_ringbuf_read_ulong(struct safe_ringbuf *rb, void *elem_ptr /* out */);
 
 /* Size-specific read/write funcs */
 
-bool safe_ringbuf_write1(struct safe_ringbuf *rb, void *e, bool *was_empty);
-bool safe_ringbuf_write2(struct safe_ringbuf *rb, void *e, bool *was_empty);
-bool safe_ringbuf_write4(struct safe_ringbuf *rb, void *e, bool *was_empty);
-bool safe_ringbuf_write8(struct safe_ringbuf *rb, void *e, bool *was_empty);
+bool safe_ringbuf_write_1(struct safe_ringbuf *rb, void *e, bool *was_empty);
+bool safe_ringbuf_write_2(struct safe_ringbuf *rb, void *e, bool *was_empty);
+bool safe_ringbuf_write_4(struct safe_ringbuf *rb, void *e, bool *was_empty);
+bool safe_ringbuf_write_8(struct safe_ringbuf *rb, void *e, bool *was_empty);
 
-bool safe_ringbuf_read1(struct safe_ringbuf *rb, void *elem_ptr /* out */);
-bool safe_ringbuf_read2(struct safe_ringbuf *rb, void *elem_ptr /* out */);
-bool safe_ringbuf_read4(struct safe_ringbuf *rb, void *elem_ptr /* out */);
-bool safe_ringbuf_read8(struct safe_ringbuf *rb, void *elem_ptr /* out */);
+bool safe_ringbuf_read_1(struct safe_ringbuf *rb, void *elem_ptr /* out */);
+bool safe_ringbuf_read_2(struct safe_ringbuf *rb, void *elem_ptr /* out */);
+bool safe_ringbuf_read_4(struct safe_ringbuf *rb, void *elem_ptr /* out */);
+bool safe_ringbuf_read_8(struct safe_ringbuf *rb, void *elem_ptr /* out */);
