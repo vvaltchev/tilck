@@ -28,34 +28,6 @@ void safe_ringbuf_destory(struct safe_ringbuf *rb)
    bzero(rb, sizeof(struct safe_ringbuf));
 }
 
-bool safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *elem_ptr)
-{
-   struct generic_safe_ringbuf_stat cs, ns;
-
-   do {
-
-      cs = rb->s;
-      ns = rb->s;
-
-      if (cs.full)
-         return false;
-
-      ns.write_pos = (ns.write_pos + 1) % rb->max_elems;
-
-      if (ns.write_pos == ns.read_pos)
-         ns.full = true;
-
-   } while (!atomic_cas_weak(&rb->s.raw,
-                             (u32 *)&cs.raw,
-                             ns.raw,
-                             mo_relaxed,
-                             mo_relaxed));
-
-   memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
-   return true;
-}
-
-
 bool
 safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb,
                            void *elem_ptr,

@@ -45,9 +45,6 @@ void
 safe_ringbuf_destory(struct safe_ringbuf *rb);
 
 bool
-safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *elem_ptr);
-
-bool
 safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb, void *e, bool *was_empty);
 
 bool
