@@ -53,9 +53,3 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb, void *e, bool *was_empty);
 
 bool
 safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */);
-
-bool
-safe_ringbuf_write_elem1(struct safe_ringbuf *rb, u8 val);
-
-bool
-safe_ringbuf_read_elem1(struct safe_ringbuf *rb, u8 *elem_ptr);
