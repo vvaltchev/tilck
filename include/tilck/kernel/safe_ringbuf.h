@@ -26,6 +26,10 @@ struct safe_ringbuf {
    u16 elem_size;
    struct generic_safe_ringbuf_stat s;
    u8 *buf;
+
+#ifdef DEBUG
+   ATOMIC(int) nested_writes;
+#endif
 };
 
 static inline bool safe_ringbuf_is_empty(struct safe_ringbuf *rb)
