@@ -38,7 +38,7 @@ static ALWAYS_INLINE ulong get_curr_stack_ptr(void)
    return 0;
 }
 
-static ALWAYS_INLINE NORETURN void context_switch(regs_t *r)
+NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)
 {
    NOT_IMPLEMENTED();
 }

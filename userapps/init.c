@@ -41,7 +41,7 @@ static bool opt_no_shell_respawn;
 
 /* -- end -- */
 
-static NORETURN void call_exit(int code)
+NORETURN static void call_exit(int code)
 {
    printf("[init] exit with code: %i\n", code);
    exit(code);

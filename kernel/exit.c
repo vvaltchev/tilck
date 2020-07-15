@@ -106,7 +106,7 @@ static void close_all_handles(struct process *pi)
  * Therefore, the simplest and reliable thing we can do is just to make the
  * following function be non-inlineable and take no arguments.
  */
-static NORETURN NO_INLINE void
+NORETURN static NO_INLINE void
 switch_stack_free_mem_and_schedule(void)
 {
    ASSERT(get_curr_task_state() == TASK_STATE_ZOMBIE);
