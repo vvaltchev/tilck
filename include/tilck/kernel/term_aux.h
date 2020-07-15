@@ -58,7 +58,7 @@ term_execute_or_enqueue_action_template(term *t,
 {
    bool was_empty;
 
-   if (UNLIKELY(!safe_ringbuf_write_elem_ex(&rb_data->rb, a, &was_empty))) {
+   if (UNLIKELY(!safe_ringbuf_write_elem(&rb_data->rb, a, &was_empty))) {
 
       term_handle_full_ringbuf(t,
                                rb_data,

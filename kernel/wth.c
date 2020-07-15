@@ -80,7 +80,7 @@ bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
 
 #endif
 
-   success = safe_ringbuf_write_elem_ex(&t->rb, &new_job, &was_empty);
+   success = safe_ringbuf_write_elem(&t->rb, &new_job, &was_empty);
 
    if (success && was_empty && t->waiting_for_jobs) {
       wth_wakeup(t);

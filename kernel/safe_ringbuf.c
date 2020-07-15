@@ -29,9 +29,9 @@ void safe_ringbuf_destory(struct safe_ringbuf *rb)
 }
 
 bool
-safe_ringbuf_write_elem_ex(struct safe_ringbuf *rb,
-                           void *elem_ptr,
-                           bool *was_empty)
+safe_ringbuf_write_elem(struct safe_ringbuf *rb,
+                        void *elem_ptr,
+                        bool *was_empty)
 {
    struct generic_safe_ringbuf_stat cs, ns;
 

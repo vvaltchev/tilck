@@ -46,7 +46,7 @@ term_handle_full_ringbuf(term *t,
 
          kmutex_lock(&rb_data->lock);
          {
-            written = safe_ringbuf_write_elem_ex(&rb_data->rb, a, was_empty);
+            written = safe_ringbuf_write_elem(&rb_data->rb, a, was_empty);
          }
          kmutex_unlock(&rb_data->lock);
 
