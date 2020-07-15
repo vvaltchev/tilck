@@ -111,7 +111,6 @@ void wth_run(void *arg)
 {
    struct worker_thread *t = arg;
    bool job_run;
-   ulong var;
 
    ASSERT(t != NULL);
    DEBUG_SAVE_ESP()                    /* see debug_utils.h */
@@ -127,14 +126,14 @@ void wth_run(void *arg)
 
       } while (job_run);
 
-      disable_interrupts(&var);
+      disable_interrupts_forced();
       {
          if (safe_ringbuf_is_empty(&t->rb)) {
             t->task->state = TASK_STATE_SLEEPING;
             t->waiting_for_jobs = true;
          }
       }
-      enable_interrupts(&var);
+      enable_interrupts_forced();
 
       if (t->waiting_for_jobs)
          kernel_yield();

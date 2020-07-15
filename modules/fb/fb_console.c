@@ -359,14 +359,13 @@ static void async_pre_render_scanlines()
       return;
    }
 
-   ulong var;
-   disable_interrupts(&var);
+   disable_interrupts_forced();
    {
       use_optimized = true;
       framebuffer_vi.set_char_at = fb_set_char_at_optimized;
       framebuffer_vi.set_row = fb_set_row_optimized;
    }
-   enable_interrupts(&var);
+   enable_interrupts_forced();
 }
 
 static void fb_use_optimized_funcs_if_possible(void)

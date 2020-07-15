@@ -144,7 +144,6 @@ static bool clock_sub_second_resync(void)
    int drift, abs_drift;
    u32 micro_attempts_cnt;
    u32 local_full_resync_fails = 0;
-   ulong var;
 
 retry:
    in_full_resync = true;
@@ -211,7 +210,7 @@ retry:
     * __tick_adj_ticks_rem accordingly to compensate it.
     */
 
-   disable_interrupts(&var);
+   disable_interrupts_forced();
    {
       hw_time_ns = round_up_at64(__time_ns, TS_SCALE);
 
@@ -225,7 +224,7 @@ retry:
          __tick_adj_ticks_rem = abs_drift / __tick_adj_val;
       }
    }
-   enable_interrupts(&var);
+   enable_interrupts_forced();
    clock_rstats.full_resync_count++;
 
    /*
@@ -271,18 +270,16 @@ retry:
 
 static void clock_multi_second_resync(int drift)
 {
-   ulong var;
-
    const int abs_drift = (drift > 0 ? drift : -drift);
    const int adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
    const int adj_ticks = abs_drift * TIMER_HZ * 10;
 
-   disable_interrupts(&var);
+   disable_interrupts_forced();
    {
       __tick_adj_val = adj_val;
       __tick_adj_ticks_rem = adj_ticks;
    }
-   enable_interrupts(&var);
+   enable_interrupts_forced();
    clock_rstats.multi_second_resync_count++;
 }
 

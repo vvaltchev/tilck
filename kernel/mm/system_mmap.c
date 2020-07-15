@@ -536,7 +536,6 @@ bool system_mmap_merge_rd_extra_region_if_any(void *rd)
 {
    int ri = system_mmap_get_region_of(KERNEL_VA_TO_PA(rd));
    struct mem_region *r;
-   ulong var;
    VERIFY(ri >= 0);
 
    if (ri == MAX_MEM_REGIONS - 1)
@@ -549,12 +548,12 @@ bool system_mmap_merge_rd_extra_region_if_any(void *rd)
        r->extra == mem_regions[ri].extra)
    {
       /* Our extra 4k region survived the overlap handling, yey! */
-      disable_interrupts(&var);
+      disable_interrupts_forced();
       {
          r->type = mem_regions[ri].type;
          merge_adj_mem_regions();
       }
-      enable_interrupts(&var);
+      enable_interrupts_forced();
       return true;
    }
 

@@ -134,12 +134,12 @@ set_entry_num2(u32 n,
 
 static NODISCARD int gdt_expand(void)
 {
-   ulong var;
    void *old_gdt_ptr;
    void *old_gdt_refcount_ptr;
    u32 old_gdt_size;
    u32 new_size;
 
+   ASSERT(are_interrupts_enabled());
    disable_preemption();
    {
       old_gdt_ptr = gdt;
@@ -171,14 +171,14 @@ static NODISCARD int gdt_expand(void)
       memcpy(new_gdt, gdt, sizeof(struct gdt_entry) * gdt_size);
       memcpy(new_gdt_refcount, gdt_refcount, sizeof(s32) * gdt_size);
 
-      disable_interrupts(&var);
+      disable_interrupts_forced();
       {
          gdt = new_gdt;
          gdt_size = new_size;
          gdt_refcount = new_gdt_refcount;
          load_gdt(new_gdt, new_size);
       }
-      enable_interrupts(&var);
+      enable_interrupts_forced();
    }
    enable_preemption();
 

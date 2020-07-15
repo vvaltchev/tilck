@@ -242,12 +242,11 @@ void kthread_exit(void)
    /* Remove the from the scheduler and free its struct */
    remove_task(get_curr_task());
 
+   disable_interrupts_forced();
    {
-      ulong var;
-      disable_interrupts(&var);
       set_curr_task(kernel_process);
-      enable_interrupts(&var);
    }
+   enable_interrupts_forced();
    schedule();
 }
 
