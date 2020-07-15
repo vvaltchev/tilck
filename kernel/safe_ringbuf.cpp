@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+/*
+ * WARNING: despite the name, safe_ringbuf is not SAFE in every use pattern.
+ * Read at the documentation in the header file: safe_ringbuf.h.
+ */
+
 extern "C" {
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
