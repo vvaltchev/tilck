@@ -6,6 +6,7 @@ extern "C" {
 #include <tilck/common/atomics.h>
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/hal.h>
 }
 
 #include <tilck/common/cpputils.h>
@@ -14,6 +15,26 @@ static ALWAYS_INLINE bool
 rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)
 {
    return s->read_pos == s->write_pos && !s->full;
+}
+
+bool safe_ringbuf_is_empty(struct safe_ringbuf *rb)
+{
+   bool res;
+   ulong var;
+
+   disable_interrupts(&var);
+   {
+      res = rb_stat_is_empty(&rb->s);
+   }
+   enable_interrupts(&var);
+   return res;
+}
+
+bool safe_ringbuf_is_full(struct safe_ringbuf *rb)
+{
+   struct generic_safe_ringbuf_stat cs;
+   cs.__raw = atomic_load_explicit(&rb->s.raw, mo_relaxed);
+   return cs.full;
 }
 
 static ALWAYS_INLINE void

@@ -33,15 +33,8 @@ struct safe_ringbuf {
 #endif
 };
 
-static inline bool safe_ringbuf_is_empty(struct safe_ringbuf *rb)
-{
-   return rb->s.read_pos == rb->s.write_pos && !rb->s.full;
-}
-
-static inline bool safe_ringbuf_is_full(struct safe_ringbuf *rb)
-{
-   return rb->s.full;
-}
+bool safe_ringbuf_is_empty(struct safe_ringbuf *rb);
+bool safe_ringbuf_is_full(struct safe_ringbuf *rb);
 
 void
 safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 e_size, void *b);
