@@ -40,12 +40,11 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb,
       cs = rb->s;
       ns = rb->s;
 
-      if (cs.full) {
+      if (UNLIKELY(cs.full)) {
          *was_empty = false;
          return false;
       }
 
-      *was_empty = rb_stat_is_empty(&cs);
       ns.write_pos = (ns.write_pos + 1) % rb->max_elems;
 
       if (ns.write_pos == ns.read_pos)
@@ -58,6 +57,7 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb,
                              mo_relaxed));
 
    memcpy(rb->buf + cs.write_pos * rb->elem_size, elem_ptr, rb->elem_size);
+   *was_empty = rb_stat_is_empty(&cs);
    return true;
 }
 
@@ -98,7 +98,7 @@ bool safe_ringbuf_write_elem1(struct safe_ringbuf *rb, u8 val)
       cs = rb->s;
       ns = rb->s;
 
-      if (cs.full)
+      if (UNLIKELY(cs.full))
          return false;
 
       ns.write_pos = (ns.write_pos + 1) % rb->max_elems;
