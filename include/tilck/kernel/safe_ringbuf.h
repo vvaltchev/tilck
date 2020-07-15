@@ -16,6 +16,7 @@ struct generic_safe_ringbuf_stat {
       };
 
       ATOMIC(u32) raw;
+      u32 __raw;
    };
 
 };

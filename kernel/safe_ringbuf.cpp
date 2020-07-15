@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+extern "C" {
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/atomics.h>
-
 #include <tilck/kernel/safe_ringbuf.h>
 #include <tilck/kernel/kmalloc.h>
+}
 
 static ALWAYS_INLINE bool
 rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)
@@ -44,6 +45,7 @@ end_debug_read_checks(struct safe_ringbuf *rb)
    /* Do nothing, at the moment */
 }
 
+extern "C" {
 
 void
 safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 e_size, void *buf)
@@ -52,7 +54,7 @@ safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 e_size, void *buf)
 
    rb->max_elems = max_elems;
    rb->elem_size = e_size;
-   rb->buf = buf;
+   rb->buf = (u8 *)buf;
    rb->s.raw = 0;
 
 #ifdef DEBUG
@@ -76,8 +78,8 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb,
 
    do {
 
-      cs = rb->s;
-      ns = rb->s;
+      *(u32 *)&cs.raw = *(u32 *)&rb->s.raw;
+      *(u32 *)&ns.raw = *(u32 *)&rb->s.raw;
 
       if (UNLIKELY(cs.full)) {
          *was_empty = false;
@@ -91,8 +93,8 @@ safe_ringbuf_write_elem(struct safe_ringbuf *rb,
          ns.full = true;
 
    } while (!atomic_cas_weak(&rb->s.raw,
-                             (u32 *)&cs.raw,
-                             ns.raw,
+                             &cs.__raw,
+                             ns.__raw,
                              mo_relaxed,
                              mo_relaxed));
 
@@ -113,8 +115,8 @@ bool safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 
    do {
 
-      cs = rb->s;
-      ns = rb->s;
+      *(u32 *)&cs.raw = *(u32 *)&rb->s.raw;
+      *(u32 *)&ns.raw = *(u32 *)&rb->s.raw;
 
       if (rb_stat_is_empty(&cs)) {
          ret = false;
@@ -127,12 +129,14 @@ bool safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
       ns.full = false;
 
    } while (!atomic_cas_weak(&rb->s.raw,
-                             (u32 *)&cs.raw,
-                             ns.raw,
+                             &cs.__raw,
+                             ns.__raw,
                              mo_relaxed,
                              mo_relaxed));
 
 out:
    end_debug_read_checks(rb);
    return ret;
+}
+
 }
