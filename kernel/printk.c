@@ -274,6 +274,7 @@ struct ringbuf_stat {
       };
 
       ATOMIC(u32) raw;
+      u32 __raw;
    };
 };
 
@@ -349,8 +350,8 @@ void printk_flush_ringbuf(void)
          /* Repeat that until we were able to do that atomically */
 
       } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                                (u32 *)&cs.raw,
-                                ns.raw,
+                                &cs.__raw,
+                                ns.__raw,
                                 mo_relaxed,
                                 mo_relaxed));
 
@@ -391,8 +392,8 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
       ns.write_pos = (ns.write_pos + size) % sizeof(printk_rbuf);
 
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                             (u32 *)&cs.raw,
-                             ns.raw,
+                             &cs.__raw,
+                             ns.__raw,
                              mo_relaxed,
                              mo_relaxed));
 
@@ -464,8 +465,8 @@ void vprintk(const char *fmt, va_list args)
          ns = printk_rbuf_stat;
          ns.in_printk = 1;
       } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                                (u32 *)&cs.raw,
-                                ns.raw,
+                                &cs.__raw,
+                                ns.__raw,
                                 mo_relaxed,
                                 mo_relaxed));
 
