@@ -180,19 +180,10 @@ static ALWAYS_INLINE void force_enable_preemption(void)
    atomic_store_explicit(&disable_preemption_count, 0u, mo_relaxed);
 }
 
-#ifdef DEBUG
-
-   /*
-    * This function is supposed to be used only in ASSERTs or in special debug
-    * only pieces of code. No "regular" code should use is_preemption_enabled()
-    * to change its behavior.
-    */
-   static ALWAYS_INLINE bool is_preemption_enabled(void)
-   {
-      return disable_preemption_count == 0;
-   }
-
-#endif
+static ALWAYS_INLINE bool is_preemption_enabled(void)
+{
+   return atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 0;
+}
 
 static ALWAYS_INLINE bool running_in_kernel(struct task *t)
 {

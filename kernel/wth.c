@@ -49,7 +49,6 @@ static bool any_jobs_to_run(u32 wth)
 bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
 {
    struct worker_thread *t = worker_threads[wth];
-   struct task *curr = get_curr_task();
    bool success, was_empty;
 
    ASSERT(t != NULL);
@@ -75,7 +74,7 @@ bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
     * there. We MUST allow that to happen.
     */
 
-   if (curr == t->task)
+   if (get_curr_task() == t->task)
       check_in_irq_handler();
 
 #endif
