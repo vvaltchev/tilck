@@ -38,7 +38,7 @@
 /* enabled by default */
 #cmakedefine01 KRN_TRACK_NESTED_INTERR
 #cmakedefine01 PANIC_SHOW_STACKTRACE
-#cmakedefine01 DEBUG_CHECKS_IN_RELEASE
+#cmakedefine01 DEBUG_CHECKS
 #cmakedefine01 KERNEL_SELFTESTS
 #cmakedefine01 KERNEL_STACK_ISOLATION
 #cmakedefine01 KERNEL_SYMBOLS
@@ -58,7 +58,7 @@
 #cmakedefine01 KERNEL_BIG_IO_BUF
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 
-#if DEBUG_CHECKS_IN_RELEASE
+#if DEBUG_CHECKS
    #ifdef NDEBUG
       #undef NDEBUG
       #define DEBUG

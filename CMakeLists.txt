@@ -118,7 +118,7 @@ set(KRN_TRACK_NESTED_INTERR ON CACHE BOOL
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
     "Show the stacktrace in case of a kernel panic")
 
-set(DEBUG_CHECKS_IN_RELEASE ON CACHE BOOL
+set(DEBUG_CHECKS ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
 set(KERNEL_SELFTESTS ON CACHE BOOL
@@ -246,7 +246,7 @@ list(
    # Boolean options ENABLED by default
    KRN_TRACK_NESTED_INTERR
    PANIC_SHOW_STACKTRACE
-   DEBUG_CHECKS_IN_RELEASE
+   DEBUG_CHECKS
    KERNEL_SELFTESTS
    MOD_DEBUG_PANEL
    KERNEL_STACK_ISOLATION
