@@ -31,6 +31,14 @@ static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 static struct task *idle_task;
 
+void enable_preemption(void)
+{
+   DEBUG_ONLY_UNSAFE(u32 oldval =)
+   atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
+
+   ASSERT(oldval > 0);
+}
+
 int
 get_traced_tasks_count(void)
 {

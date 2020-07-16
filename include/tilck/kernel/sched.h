@@ -68,7 +68,7 @@ struct task {
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
-   ATOMIC(int) pending_signal;
+   ATOMIC(int) pending_signal;               /* see docs/atomics.md */
    void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
@@ -163,13 +163,7 @@ static ALWAYS_INLINE void disable_preemption(void)
    atomic_fetch_add_explicit(&disable_preemption_count, 1U, mo_relaxed);
 }
 
-static ALWAYS_INLINE void enable_preemption(void)
-{
-   DEBUG_ONLY_UNSAFE(u32 oldval =)
-   atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
-
-   ASSERT(oldval > 0);
-}
+void enable_preemption(void);
 
 /*
  * WARNING: this function is dangerous and should NEVER be used it for anything
