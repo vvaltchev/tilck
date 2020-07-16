@@ -205,6 +205,9 @@ set(KERNEL_DO_PS2_SELFTEST OFF CACHE BOOL
 set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
     "Use the fonts in other/alt_fonts instead of the default ones")
 
+set(KRN_RESCHED_ENABLE_PREEMPT OFF CACHE BOOL
+    "Check for need_resched and yield in enable_preemption()")
+
 list(
    APPEND no_arch_modules_whitelist
 

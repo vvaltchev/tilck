@@ -491,7 +491,7 @@ NORETURN void switch_to_task(struct task *ti)
    /* From here until the end, we have to be as fast as possible */
    disable_interrupts_forced();
    switch_to_task_pop_nested_interrupts();
-   enable_preemption();
+   enable_preemption_nosched();
 
    /*
     * Make sure in NO WAY we'll switch to a user task while keeping the

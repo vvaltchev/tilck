@@ -233,7 +233,7 @@ static void enter_fault_handler_state(int int_num)
 
 void exit_fault_handler_state(void)
 {
-   enable_preemption();
+   enable_preemption_nosched();
    pop_nested_interrupt();
 }
 

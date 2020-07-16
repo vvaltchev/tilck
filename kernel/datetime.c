@@ -119,7 +119,7 @@ static int clock_get_second_drift2(bool enable_preempt_on_exit)
       }
 
       /* We weren't in the middle of the second. Sleep 0.1s and try again */
-      enable_preemption();
+      enable_preemption_nosched();
       kernel_sleep(TIMER_HZ / 10);
    }
 
@@ -176,7 +176,7 @@ retry:
        */
       if (!(micro_attempts_cnt % 300)) {
 
-         enable_preemption();
+         enable_preemption_nosched();
          {
             /* Sleep for a 1/5 of a second */
             kernel_sleep(TIMER_HZ / 5);
@@ -232,7 +232,7 @@ retry:
     * which is the max we can get at boot-time. Now, just to be sure, wait 15s
     * and then check we have absolutely no drift measurable in seconds.
     */
-   enable_preemption();
+   enable_preemption_nosched();
    kernel_sleep(15 * TIMER_HZ);
    drift = clock_get_second_drift2(true);
    abs_drift = (drift > 0 ? drift : -drift);
@@ -310,7 +310,7 @@ static void check_drift_and_sync(void)
       * accurate the PIT is.
       */
 
-      enable_preemption(); /* note the clock_get_second_drift2() call */
+      enable_preemption_nosched(); /* note the clock_get_second_drift2() call */
       {
          clock_sub_second_resync();
          adj_cnt = 0;

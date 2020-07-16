@@ -24,7 +24,7 @@ void ksem_wait(struct ksem *s)
    if (--s->counter < 0) {
 
       task_set_wait_obj(get_curr_task(), WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
-      enable_preemption();
+      enable_preemption_nosched();
 
       /*
        * Go to sleep until someone else signals the semaphore.

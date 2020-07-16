@@ -469,7 +469,7 @@ void kthread_join(int tid)
                         NO_EXTRA,
                         &ti->tasks_waiting_list);
 
-      enable_preemption();
+      enable_preemption_nosched();
       kernel_yield();
       disable_preemption();
    }

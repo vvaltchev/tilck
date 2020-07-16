@@ -31,10 +31,10 @@ kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
 #if KERNEL_SELFTESTS
 
    if (LIKELY(!(m->flags & KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED))) {
-      enable_preemption();       /* default case */
+      enable_preemption_nosched(); /* default case */
    } else {
       ASSERT(disable_preemption_count == 2);
-      force_enable_preemption(); /* special case only for self tests */
+      force_enable_preemption();   /* special case only for self tests */
    }
 
 #else

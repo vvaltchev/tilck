@@ -33,10 +33,15 @@ static struct task *idle_task;
 
 void enable_preemption(void)
 {
-   DEBUG_ONLY_UNSAFE(u32 oldval =)
-   atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
+   u32 oldval =
+      atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
 
    ASSERT(oldval > 0);
+
+   if (KRN_RESCHED_ENABLE_PREEMPT) {
+      if (oldval == 1 && need_reschedule())
+         kernel_yield();
+   }
 }
 
 int

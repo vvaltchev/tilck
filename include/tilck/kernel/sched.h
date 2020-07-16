@@ -163,6 +163,12 @@ static ALWAYS_INLINE void disable_preemption(void)
    atomic_fetch_add_explicit(&disable_preemption_count, 1U, mo_relaxed);
 }
 
+static ALWAYS_INLINE void enable_preemption_nosched(void)
+{
+   atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
+}
+
+
 void enable_preemption(void);
 
 /*

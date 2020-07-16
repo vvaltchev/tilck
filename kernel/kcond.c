@@ -39,7 +39,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
          kmutex_unlock(m);
       }
    }
-   enable_preemption();
+   enable_preemption_nosched();
    kernel_yield(); // Go to sleep until a signal is fired or timeout happens.
 
    /* ------------------- We've been woken up ------------------- */

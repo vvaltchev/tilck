@@ -194,36 +194,6 @@ static inline bool is_spur_irq(int irq)
    return false;
 }
 
-static inline void run_sched_if_possible(regs_t *r)
-{
-   disable_preemption();
-
-   if (disable_preemption_count > 1) {
-
-      /*
-       * Preemption was already disabled: we cannot run the "bottom half" of
-       * this interrupt handler right now. The scheduler will run it as soon as
-       * possible.
-       */
-
-      enable_preemption(); // restore the counter
-      return;
-   }
-
-   save_current_task_state(r);
-
-   /*
-    * We call here schedule with curr_irq = -1 because we are actually
-    * OUTSIDE the interrupt context (see the pop_nested_interrupt() above()).
-    * At the moment, only timer_irq_handler() calls schedule() from a proper
-    * interrupt context. NOTE: this might change in the future.
-    */
-   schedule();
-
-   /* In case schedule() returned, we MUST re-enable the preemption */
-   enable_preemption();
-}
-
 void handle_irq(regs_t *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
@@ -232,8 +202,8 @@ void handle_irq(regs_t *r)
    if (is_spur_irq(irq))
       return;
 
-   handle_irq_set_mask(irq);
    disable_preemption();
+   handle_irq_set_mask(irq);
    push_nested_interrupt(r->int_num);
    ASSERT(!are_interrupts_enabled());
 
@@ -262,11 +232,33 @@ void handle_irq(regs_t *r)
       unhandled_irq_count[irq]++;
 
    pop_nested_interrupt();
-   enable_preemption();
    handle_irq_clear_mask(irq);
 
-   if (need_reschedule())
-      run_sched_if_possible(r);
+   /* Disable again the interrupts, keeping preemption disabled as well */
+   disable_interrupts_forced();
+
+   /* Check if rescheduling is needed */
+   if (need_reschedule()) {
+
+      /* Check if just we disabled the preemption or it was disabled before */
+      if (atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 1) {
+
+         /* It wasn't disabled before: save the current state (registers) */
+         save_current_task_state(r);
+
+         /* Re-enable the interrupts, keeping preemption disabled */
+         enable_interrupts_forced();
+
+         /* Call schedule() with preemption disabled, as mandatory */
+         schedule();
+      }
+   }
+
+   /*
+    * In case schedule() returned or there was no need for resched, just
+    * re-enable the preemption and return.
+    */
+   enable_preemption_nosched();
 }
 
 int get_irq_num(regs_t *context)
