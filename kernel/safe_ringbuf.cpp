@@ -216,13 +216,13 @@ safe_ringbuf_read_elem(struct safe_ringbuf *rb, void *elem_ptr /* out */)
 // un-comment the individual functions.
 
 // INST_WRITE_FUNC(ulong, sizeof(void *))
-// INST_WRITE_FUNC(1, 1)
+INST_WRITE_FUNC(1, 1)
 // INST_WRITE_FUNC(2, 2)
 // INST_WRITE_FUNC(4, 4)
 // INST_WRITE_FUNC(8, 8)
 
 // INST_READ_FUNC(ulong, sizeof(void *))
-// INST_READ_FUNC(1, 1)
+INST_READ_FUNC(1, 1)
 // INST_READ_FUNC(2, 2)
 // INST_READ_FUNC(4, 4)
 // INST_READ_FUNC(8, 8)

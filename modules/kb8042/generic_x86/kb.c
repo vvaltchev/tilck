@@ -12,6 +12,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/safe_ringbuf.h>
 
 #include "kb_int.c.h"
 #include "kb_layouts.c.h"
@@ -32,6 +33,7 @@ static bool numLock;
 static bool capsLock;
 static struct list keypress_handlers = make_list(keypress_handlers);
 static struct kb_dev ps2_keyboard;
+static struct safe_ringbuf kb_input_rb;
 
 static bool kb_is_pressed(u32 key)
 {
@@ -168,9 +170,8 @@ static void kb_handle_default_state(u8 scancode)
    }
 }
 
-static void kb_process_scancode(void *arg)
+static void kb_process_scancode(u8 scancode)
 {
-   u8 scancode = (u8)(ulong)arg;
    bool kb_is_pressed;
 
    switch (kb_curr_state) {
@@ -205,6 +206,25 @@ static void kb_process_scancode(void *arg)
    }
 }
 
+static void kb_irq_bottom_half(void *arg)
+{
+   u8 scancode;
+   disable_preemption();
+   {
+      /*
+       * While it is absolutely NOT necessary to disable the preemption here,
+       * the reason to do that is purely performance-related: it's bad to be
+       * preempted by a just woke-up task after a single scancode has been
+       * processed while there might be other scancodes to process here.
+       * Just process everything first, as fast as possible.
+       */
+      while (safe_ringbuf_read_1(&kb_input_rb, &scancode)) {
+         kb_process_scancode(scancode);
+      }
+   }
+   enable_preemption();
+}
+
 static enum irq_action keyboard_irq_handler(void *ctx)
 {
    int count = 0;
@@ -218,18 +238,23 @@ static enum irq_action keyboard_irq_handler(void *ctx)
    while (kb_ctrl_is_pending_data()) {
 
       u8 scancode = inb(KB_DATA_PORT);
+      bool was_empty;
 
-      if (!wth_enqueue_job(kb_worker_thread,
-                           &kb_process_scancode,
-                           TO_PTR(scancode)))
-      {
-         panic("KB: hit job queue limit");
-      }
+      if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty))
+         printk("KB: hit input limit\n");
 
       count++;
    }
 
-   return count > 0 ? IRQ_REQUIRES_BH : IRQ_FULLY_HANDLED;
+   if (count > 0) {
+
+      if (!wth_enqueue_job(kb_worker_thread, &kb_irq_bottom_half, NULL))
+         panic("KB: unable to enqueue job");
+
+      return IRQ_REQUIRES_BH;
+   }
+
+   return IRQ_FULLY_HANDLED;
 }
 
 static u8 kb_translate_to_mediumraw(struct key_event ke)
@@ -244,6 +269,13 @@ static u8 kb_translate_to_mediumraw(struct key_event ke)
 
 static void create_kb_worker_thread(void)
 {
+   u8 *kb_input_buf = kmalloc(512);
+
+   if (!kb_input_buf)
+      panic("KB: unable to alloc kb_input_buf");
+
+   safe_ringbuf_init(&kb_input_rb, 512, 1, kb_input_buf);
+
    kb_worker_thread =
       wth_create_thread(1 /* priority */, WTH_KB_QUEUE_SIZE);
 
