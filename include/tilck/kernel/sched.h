@@ -142,20 +142,20 @@ void task_change_state(struct task *ti, enum task_state new_state);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
-   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&need_resched, true, mo_relaxed);
+   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
+   atomic_store_explicit(&__need_resched, true, mo_relaxed);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
-   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&need_resched, false, mo_relaxed);
+   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
+   atomic_store_explicit(&__need_resched, false, mo_relaxed);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
-   extern ATOMIC(bool) need_resched; /* see docs/atomics.md */
-   return atomic_load_explicit(&need_resched, mo_relaxed);
+   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
+   return atomic_load_explicit(&__need_resched, mo_relaxed);
 }
 
 static ALWAYS_INLINE void disable_preemption(void)

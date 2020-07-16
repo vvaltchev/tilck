@@ -14,7 +14,7 @@
 /* Shared global variables */
 struct task *__current;
 ATOMIC(u32) disable_preemption_count = 1; /* see docs/atomics.md */
-ATOMIC(bool) need_resched;                /* see docs/atomics.md */
+ATOMIC(bool) __need_resched;              /* see docs/atomics.md */
 
 struct task *kernel_process;
 struct process *kernel_process_pi;
@@ -560,7 +560,7 @@ void schedule(void)
 
    ASSERT(!is_preemption_enabled());
 
-   /* Essential: clear the `need_resched` flag */
+   /* Essential: clear the `__need_resched` flag */
    sched_clear_need_resched();
 
    /* Look for worker threads ready to run */
