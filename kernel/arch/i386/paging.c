@@ -196,7 +196,7 @@ static void kernel_page_fault_panic(regs_t *r, u32 vaddr, bool rw, bool p)
 {
    long off = 0;
    const char *sym_name = find_sym_at_addr_safe(r->eip, &off, NULL);
-   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + 0x%x]\n",
+   panic("PAGE FAULT in attempt to %s %p from %s%s\nEIP: %p [%s + %d]\n",
          rw ? "WRITE" : "READ",
          vaddr,
          "kernel",
