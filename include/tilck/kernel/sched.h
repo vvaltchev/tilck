@@ -125,8 +125,6 @@ extern struct list runnable_tasks_list;
 extern struct list sleeping_tasks_list;
 extern struct list zombie_tasks_list;
 
-extern ATOMIC(int) disable_preemption_count; /* see docs/atomics.md */
-
 #define KTH_ALLOC_BUFS                       (1 << 0)
 #define KTH_WORKER_THREAD                    (1 << 1)
 
@@ -160,12 +158,14 @@ static ALWAYS_INLINE bool need_reschedule(void)
 
 static ALWAYS_INLINE void disable_preemption(void)
 {
-   atomic_fetch_add_explicit(&disable_preemption_count, 1, mo_relaxed);
+   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_add_explicit(&__disable_preempt, 1, mo_relaxed);
 }
 
 static ALWAYS_INLINE void enable_preemption_nosched(void)
 {
-   atomic_fetch_sub_explicit(&disable_preemption_count, 1, mo_relaxed);
+   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
+   atomic_fetch_sub_explicit(&__disable_preempt, 1, mo_relaxed);
 }
 
 void enable_preemption(void);
@@ -176,12 +176,14 @@ void enable_preemption(void);
  */
 static ALWAYS_INLINE void force_enable_preemption(void)
 {
-   atomic_store_explicit(&disable_preemption_count, 0, mo_relaxed);
+   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
+   atomic_store_explicit(&__disable_preempt, 0, mo_relaxed);
 }
 
 static ALWAYS_INLINE int get_preempt_disable_count(void)
 {
-   return atomic_load_explicit(&disable_preemption_count, mo_relaxed);
+   extern ATOMIC(int) __disable_preempt; /* see docs/atomics.md */
+   return atomic_load_explicit(&__disable_preempt, mo_relaxed);
 }
 
 static ALWAYS_INLINE bool is_preemption_enabled(void)

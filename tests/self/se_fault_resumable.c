@@ -32,7 +32,7 @@ static void faulting_code(void)
     * Note: because the above asm will trigger a div by 0 fault, we'll never
     * reach the enable_preemption() below. This is an intentional way of testing
     * that fault_resumable_call() will restore correctly the value of
-    * disable_preemption_count in case of fault.
+    * __disable_preempt in case of fault.
     */
 
    enable_preemption();

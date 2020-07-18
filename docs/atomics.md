@@ -22,7 +22,7 @@ instructions for atomics will be used.
 Why we need simply atomicity for certain variables: examples
 -------------------------------------------------------------
 
-Think about a variable like `disable_preemption_count`, used both in regular
+Think about a variable like `__disable_preempt`, used both in regular
 code and in interrupt handlers. Now imagine that it takes two separate
 instructions to store a value into it. What happens if an IRQs gets delivered
 after the first instruction, but before the second one? Well get a *corrupt*

@@ -22,7 +22,7 @@ FUNC(fault_resumable_call):
    push ebp
    mov ebp, esp
 
-   push [disable_preemption_count]
+   push [__disable_preempt]
    sub esp, 8        # skip pushing ss, esp
    pushf             # save eflags
    sub esp, 16       # skip cs, eip, err_code and int_num
@@ -64,7 +64,7 @@ FUNC(fault_resumable_call):
    add esp, 16   # skip int_num, err_code, eip, cs
    popf          # restore the eflags register
    add esp, 8    # skip useresp, ss
-   pop [disable_preemption_count]
+   pop [__disable_preempt]
    leave
 
    # Yes, the value of ECX won't be preserved but that's fine: it is a
