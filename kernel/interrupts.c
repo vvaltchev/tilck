@@ -199,7 +199,7 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 static void irq_resched(regs_t *r)
 {
    /* Check if we just disabled the preemption or it was disabled before */
-   if (atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 1) {
+   if (get_preempt_disable_count() == 1) {
 
       /* It wasn't disabled before: save the current state (registers) */
       save_current_task_state(r);

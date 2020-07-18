@@ -179,9 +179,14 @@ static ALWAYS_INLINE void force_enable_preemption(void)
    atomic_store_explicit(&disable_preemption_count, 0, mo_relaxed);
 }
 
+static ALWAYS_INLINE int get_preempt_disable_count(void)
+{
+   return atomic_load_explicit(&disable_preemption_count, mo_relaxed);
+}
+
 static ALWAYS_INLINE bool is_preemption_enabled(void)
 {
-   return atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 0;
+   return !get_preempt_disable_count();
 }
 
 static ALWAYS_INLINE bool running_in_kernel(struct task *t)

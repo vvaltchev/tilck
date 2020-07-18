@@ -33,7 +33,7 @@ kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
    if (LIKELY(!(m->flags & KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED))) {
       enable_preemption_nosched(); /* default case */
    } else {
-      ASSERT(disable_preemption_count == 2);
+      ASSERT(get_preempt_disable_count() == 2);
       force_enable_preemption();   /* special case only for self tests */
    }
 
