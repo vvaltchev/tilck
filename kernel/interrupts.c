@@ -196,15 +196,52 @@ static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 
 #endif // KRN_TRACK_NESTED_INTERR
 
+static void irq_resched(regs_t *r)
+{
+   /* Check if we just disabled the preemption or it was disabled before */
+   if (atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 1) {
+
+      /* It wasn't disabled before: save the current state (registers) */
+      save_current_task_state(r);
+
+      /* Re-enable the interrupts, keeping preemption disabled */
+      enable_interrupts_forced();
+
+      /* Call schedule() with preemption disabled, as mandatory */
+      schedule();
+   }
+}
 
 void irq_entry(regs_t *r)
 {
-   ASSERT(!are_interrupts_enabled());
    DEBUG_VALIDATE_STACK_PTR();
    ASSERT(get_curr_task() != NULL);
    DEBUG_check_not_same_interrupt_nested(regs_intnum(r));
 
+   /* We expect here that the CPU disabled the interrupts */
+   ASSERT(!are_interrupts_enabled());
+
+   /* Disable the preemption */
+   disable_preemption();
+
+   /* Call the arch-dependent IRQ handling logic */
    handle_irq(r);
+
+   /* Check that arch_irq_handling restored the interrupts state to disabled */
+   ASSERT(!are_interrupts_enabled());
+
+   /* Check that the preemption is disabled as well */
+   ASSERT(!is_preemption_enabled());
+
+   /* Run the scheduler if necessary (it will enable interrupts) */
+   if (need_reschedule())
+      irq_resched(r);
+
+   /*
+    * In case schedule() returned or there was no need for resched, just
+    * re-enable the preemption and return.
+    */
+   enable_preemption_nosched();
 }
 
 /*

@@ -202,7 +202,6 @@ void handle_irq(regs_t *r)
    if (is_spur_irq(irq))
       return;
 
-   disable_preemption();
    handle_irq_set_mask(irq);
    push_nested_interrupt(r->int_num);
    ASSERT(!are_interrupts_enabled());
@@ -236,29 +235,6 @@ void handle_irq(regs_t *r)
 
    /* Disable again the interrupts, keeping preemption disabled as well */
    disable_interrupts_forced();
-
-   /* Check if rescheduling is needed */
-   if (need_reschedule()) {
-
-      /* Check if just we disabled the preemption or it was disabled before */
-      if (atomic_load_explicit(&disable_preemption_count, mo_relaxed) == 1) {
-
-         /* It wasn't disabled before: save the current state (registers) */
-         save_current_task_state(r);
-
-         /* Re-enable the interrupts, keeping preemption disabled */
-         enable_interrupts_forced();
-
-         /* Call schedule() with preemption disabled, as mandatory */
-         schedule();
-      }
-   }
-
-   /*
-    * In case schedule() returned or there was no need for resched, just
-    * re-enable the preemption and return.
-    */
-   enable_preemption_nosched();
 }
 
 int get_irq_num(regs_t *context)
