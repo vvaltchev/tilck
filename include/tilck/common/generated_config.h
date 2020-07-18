@@ -42,6 +42,7 @@
 #cmakedefine01 KERNEL_SELFTESTS
 #cmakedefine01 KERNEL_STACK_ISOLATION
 #cmakedefine01 KERNEL_SYMBOLS
+#cmakedefine01 KRN_PRINTK_ON_CURR_TTY
 
 /* disabled by default */
 #cmakedefine01 KERNEL_GCOV

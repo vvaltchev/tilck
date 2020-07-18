@@ -318,7 +318,10 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
    /* tty has been initialized and set a term write filter func */
    __in_printk = true;
    {
-      term_write(buf, size, color);
+      if (KRN_PRINTK_ON_CURR_TTY || !get_curr_process_tty())
+         term_write(buf, size, color);
+      else
+         tty_curr_proc_write(buf, size);
    }
    __in_printk = false;
    return;

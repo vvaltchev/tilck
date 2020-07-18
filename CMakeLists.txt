@@ -153,6 +153,9 @@ set(BOOTLOADER_EFI ON CACHE BOOL
 set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
     "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
 
+set(KRN_PRINTK_ON_CURR_TTY ON CACHE BOOL
+    "Make printk() always flush on the current TTY")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
@@ -254,6 +257,7 @@ list(
    MOD_DEBUG_PANEL
    KERNEL_STACK_ISOLATION
    FB_CONSOLE_BANNER
+   KRN_PRINTK_ON_CURR_TTY
    KERNEL_SHOW_LOGO
    KERNEL_SYMBOLS
    BOOTLOADER_LEGACY
@@ -261,6 +265,7 @@ list(
 
    # Boolean options DISABLED by default
    KERNEL_BIG_IO_BUF
+   KRN_RESCHED_ENABLE_PREEMPT
    TERM_BIG_SCROLL_BUF
    TEST_GCOV
    KERNEL_GCOV
