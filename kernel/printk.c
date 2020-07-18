@@ -284,24 +284,14 @@ bool __in_printk;
 
 /*
  * NOTE: the ring buf cannot be larger than 1024 elems because the fields
- * 'used', 'read_pos' and 'write_pos' and 10 bits long and we CANNOT extend
+ * 'used', 'read_pos' and 'write_pos' are 10 bits long and we CANNOT extend
  * them in 32 bits. Such approach is convenient because with everything packed
  * in 32 bits, we can do atomic operations.
  */
 STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
 
-static void printk_direct_flush(const char *buf, size_t size, u8 color)
+static void printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
 {
-   if (LIKELY(get_curr_tty() != NULL)) {
-      /* tty has been initialized and set a term write filter func */
-      __in_printk = true;
-      {
-         term_write(buf, size, color);
-      }
-      __in_printk = false;
-      return;
-   }
-
    /*
     * tty has not been initialized yet, therefore we have to translate here
     * \n to \r\n, by writing character by character to term.
@@ -318,6 +308,20 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
       }
       __in_printk = false;
    }
+}
+
+static void printk_direct_flush(const char *buf, size_t size, u8 color)
+{
+   if (UNLIKELY(get_curr_tty() == NULL))
+      return printk_direct_flush_no_tty(buf, size, color);
+
+   /* tty has been initialized and set a term write filter func */
+   __in_printk = true;
+   {
+      term_write(buf, size, color);
+   }
+   __in_printk = false;
+   return;
 }
 
 void printk_flush_ringbuf(void)
