@@ -11,7 +11,7 @@
 
 void handle_syscall(regs_t *);
 void handle_fault(regs_t *);
-void handle_irq(regs_t *r);
+void arch_irq_handling(regs_t *r);
 
 #if KRN_TRACK_NESTED_INTERR
 
@@ -225,7 +225,7 @@ void irq_entry(regs_t *r)
    disable_preemption();
 
    /* Call the arch-dependent IRQ handling logic */
-   handle_irq(r);
+   arch_irq_handling(r);
 
    /* Check that arch_irq_handling restored the interrupts state to disabled */
    ASSERT(!are_interrupts_enabled());

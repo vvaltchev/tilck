@@ -90,7 +90,7 @@ void init_serial_port() { }
 void serial_write() { }
 void handle_fault() { }
 void handle_syscall() { }
-void handle_irq() { }
+void arch_irq_handling() { }
 void pic_send_eoi() { }
 void task_info_reset_kernel_stack() { }
 void set_kernel_stack() { }

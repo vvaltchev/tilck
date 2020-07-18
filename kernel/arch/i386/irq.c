@@ -194,7 +194,7 @@ static inline bool is_spur_irq(int irq)
    return false;
 }
 
-void handle_irq(regs_t *r)
+void arch_irq_handling(regs_t *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
    const int irq = r->int_num - 32;
