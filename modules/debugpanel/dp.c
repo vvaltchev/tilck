@@ -278,8 +278,8 @@ static void dp_tilck_cmd()
 
    disable_preemption();
    {
-      tty_set_raw_mode(get_curr_process_tty());
       dp_input_handle = h;
+      tty_set_raw_mode(get_curr_process_tty());
       dp_set_input_blocking(false);
    }
    enable_preemption();
@@ -304,7 +304,7 @@ static void dp_tilck_cmd()
 
    disable_preemption();
    {
-      ((struct fs_handle_base *)h)->fl_flags &= ~O_NONBLOCK;
+      dp_set_input_blocking(true);
       tty_reset_termios(get_curr_process_tty());
    }
    enable_preemption();
