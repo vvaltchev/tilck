@@ -13,7 +13,7 @@
 
 /* Shared global variables */
 struct task *__current;
-ATOMIC(u32) disable_preemption_count = 1; /* see docs/atomics.md */
+ATOMIC(int) disable_preemption_count = 1; /* see docs/atomics.md */
 ATOMIC(bool) __need_resched;              /* see docs/atomics.md */
 
 struct task *kernel_process;
@@ -33,8 +33,8 @@ static struct task *idle_task;
 
 void enable_preemption(void)
 {
-   u32 oldval =
-      atomic_fetch_sub_explicit(&disable_preemption_count, 1U, mo_relaxed);
+   int oldval =
+      atomic_fetch_sub_explicit(&disable_preemption_count, 1, mo_relaxed);
 
    ASSERT(oldval > 0);
 
