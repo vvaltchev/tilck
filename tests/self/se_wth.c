@@ -33,9 +33,11 @@ static void end_test(void *arg)
 
    u64 elapsed = RDTSC() - g_cycles_begin;
    VERIFY(g_counter == tot_iters);
+
    printk("[se_wth] Avg cycles per job "
           "(enqueue + execute): %llu\n", elapsed/g_counter);
 
+   printk("[se_wth] end_test() waiting to grab the lock\n");
    kmutex_lock(&ctx->m);
    {
       printk("[se_wth] end_test() holding the lock and signalling cond\n");
@@ -55,6 +57,7 @@ void selftest_wth_short(void)
    u64 tot_attempts = 0;
    u32 last_counter_val;
    u32 counter_now;
+   u32 attempts;
    bool added;
 
    kcond_init(&ctx.c);
@@ -68,7 +71,7 @@ void selftest_wth_short(void)
 
    for (u32 i = 0; i < tot_iters; i++) {
 
-      u32 attempts = 1;
+      attempts = 1;
       last_counter_val = g_counter;
       bool did_yield = false;
 
@@ -103,15 +106,31 @@ void selftest_wth_short(void)
    printk("[se_wth] Yields:       %u\n", yields_count);
    printk("[se_wth] counter now:  %u\n", last_counter_val);
    printk("[se_wth] now wait for completion...\n");
+
    kernel_sleep(1);
+   attempts = 0;
 
    do {
 
       counter_now = g_counter;
 
-      if (counter_now == last_counter_val)
-         panic("It seems that jobs don't get executed");
+      if (counter_now == last_counter_val) {
 
+         /*
+          * Note: we must keep in mind that we cannot rely that 100% of the time
+          * after kernel_sleep() the worker thread will be able to run, without
+          * being preempted and increment our `g_counter`. In theory we might
+          * still get there first.
+          */
+
+         if (attempts++ >= 3)
+            panic("It seems that jobs don't get executed");
+
+         kernel_sleep(TIME_SLICE_TICKS);
+         continue;
+      }
+
+      attempts = 0;
       last_counter_val = counter_now;
       kernel_sleep(1);
 

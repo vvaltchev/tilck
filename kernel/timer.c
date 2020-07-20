@@ -11,6 +11,7 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/datetime.h>
 
+
 static u64 __ticks;        /* ticks since the timer started */
 
 u64 __time_ns;             /* nanoseconds since the timer started */
@@ -126,11 +127,11 @@ static void tick_all_timers(void)
 
       if (UNLIKELY(--pos->ticks_before_wake_up == 0)) {
 
+         pos->timer_ready = true;
          list_remove(&pos->wakeup_timer_node);
 
          if (pos->state == TASK_STATE_SLEEPING) {
             task_change_state(pos, TASK_STATE_RUNNABLE);
-            pos->timer_ready = true;
             any_woken_up_task = true;
          }
       }

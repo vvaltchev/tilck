@@ -36,16 +36,6 @@ struct task *wth_get_task(int wth)
    return t->task;
 }
 
-static bool any_jobs_to_run(u32 wth)
-{
-   struct worker_thread *t = worker_threads[wth];
-
-   if (!t)
-      return false;
-
-   return !safe_ringbuf_is_empty(&t->rb);
-}
-
 bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
 {
    struct worker_thread *t = worker_threads[wth];
@@ -148,11 +138,8 @@ struct task *wth_get_runnable_thread(void)
 
       struct worker_thread *t = worker_threads[i];
 
-      if (!any_jobs_to_run(i))
-         continue;
-
-      if (!selected || t->priority < selected->priority)
-         if (t->task->state == TASK_STATE_RUNNABLE)
+      if (t->task->state == TASK_STATE_RUNNABLE)
+         if (!selected || t->priority < selected->priority)
             selected = t;
    }
 

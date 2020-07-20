@@ -348,7 +348,7 @@ static void idle(void)
       idle_ticks++;
       halt();
 
-      if (runnable_tasks_count > 0)
+      if (need_reschedule() || runnable_tasks_count > 0)
          kernel_yield();
    }
 }
@@ -568,6 +568,7 @@ void sched_account_ticks(void)
 
 void schedule(void)
 {
+   enum task_state curr_state = get_curr_task_state();
    struct task *selected = NULL;
    struct task *pos;
 
@@ -576,14 +577,42 @@ void schedule(void)
    /* Essential: clear the `__need_resched` flag */
    sched_clear_need_resched();
 
+   if (UNLIKELY(get_curr_task()->timer_ready)) {
+
+      /*
+       * Corner case: call to the scheduler with timer_ready set.
+       *
+       * This means that we called task_set_wakeup_timer(), got preempted,
+       * the timer fired and only THEN we went to sleep. This is a perfectly
+       * valid case. We might also have already set the state to SLEEPING.
+       *
+       * Because the timer handler couldn't wake this task up, as it was already
+       * running, the right behavior is just to not going to sleep the first
+       * time we're supposed to. That's AS IF we went to sleep as expected and
+       * woke up very quickly after that. Just don't go to sleep at all.
+       */
+
+      if (curr_state != TASK_STATE_RUNNING) {
+
+         /* The current state is either RUNNING or SLEEPING */
+         ASSERT(curr_state == TASK_STATE_SLEEPING);
+
+         /* Since it was SLEEPING, we must restore it to RUNNING */
+         task_change_state(get_curr_task(), TASK_STATE_RUNNING);
+      }
+
+      get_curr_task()->timer_ready = false;
+      return; /* Give the control back to current task */
+   }
+
    /* Look for worker threads ready to run */
    selected = wth_get_runnable_thread();
 
    if (selected == get_curr_task())
       return;
 
-   // If we preempted the process, it is still `running`.
-   if (get_curr_task_state() == TASK_STATE_RUNNING) {
+   /* If we preempted the process, it is still `running` */
+   if (curr_state == TASK_STATE_RUNNING) {
       task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
    }
 
