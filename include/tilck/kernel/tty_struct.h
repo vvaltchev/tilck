@@ -29,7 +29,8 @@ struct tty {
    char dev_filename[16];
 
    struct ringbuf input_ringbuf;
-   struct kcond input_cond;
+   struct kcond input_cond;     /* signal when we can read from input_rb */
+   struct kcond output_cond;    /* signal when we can write to input_rb */
    int end_line_delim_count;
 
    bool mediumraw_mode;

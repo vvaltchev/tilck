@@ -136,6 +136,7 @@ static inline u8 tty_inbuf_read_elem(struct tty *t)
    {
       ASSERT(!tty_inbuf_is_empty(t));
       DEBUG_CHECKED_SUCCESS(ringbuf_read_elem1(&t->input_ringbuf, &ret));
+      kcond_signal_all(&t->output_cond);
    }
    enable_preemption();
    return ret;
@@ -158,7 +159,6 @@ static void
 tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
 {
    ASSERT(!block || is_preemption_enabled());
-   int attempts = 0;
    bool ok;
 
    while (true) {
@@ -170,22 +170,23 @@ tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
       enable_preemption();
 
       if (LIKELY(ok)) {
+         /* Everything is fine, we wrote the `c` in the ringbuf */
          tty_keypress_echo(t, (char)c);
          break;
       }
 
-      if (kcond_is_anyone_waiting(&t->input_cond)) {
+      /* Oops, our buffer is full. And now what? */
 
-         kernel_yield();
-
-      } else {
-
-         kernel_sleep(1);
-         attempts++;
-
-         if (attempts >= 3)
-            break; /* give up */
+      if (!block) {
+         /* We cannot block, discard the data! */
+         break;
       }
+
+      /* OK, signal all consumers waiting for input (tty_read()) */
+      kcond_signal_all(&t->input_cond);
+
+      /* Now, block on the `output_cond` waiting for a consumer to signal us */
+      kcond_wait(&t->output_cond, NULL, TIME_SLICE_TICKS);
    }
 }
 
@@ -592,6 +593,7 @@ void tty_update_ctrl_handlers(struct tty *t)
 
 void tty_input_init(struct tty *t)
 {
+   kcond_init(&t->output_cond);
    kcond_init(&t->input_cond);
    ringbuf_init(&t->input_ringbuf, TTY_INPUT_BS, 1, t->input_buf);
    tty_update_ctrl_handlers(t);
