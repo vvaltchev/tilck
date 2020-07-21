@@ -319,8 +319,8 @@ PT1: # First Partition Entry
 .byte 73 # cylinder (lower 8 bits)
 
 # LBA first sector in the partition
-.long 0x00000800 # 2048
-.long 0x00012000 # 71680 sectors: 35 MB
+.long 2048  # + 1 MB
+.long 71680 # 35 MB [1 MB, 36 MB]
 
 
 PT2: .space 16, 0x00             # Second Partition Entry
