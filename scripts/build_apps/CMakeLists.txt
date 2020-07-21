@@ -14,3 +14,4 @@ file(
 add_executable(fathack ${FATHACK_SRC})
 add_executable(elfhack "elfhack.c")
 add_executable(pnm2text "pnm2text.c")
+add_executable(mbrhack "mbrhack.c")
