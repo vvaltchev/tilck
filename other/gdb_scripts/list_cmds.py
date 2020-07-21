@@ -16,22 +16,65 @@ class cmd_list_tasks(gdb.Command):
 
    def invoke(self, arg, from_tty):
 
+      user_only = False
+      kernel_only = False
+
+      if arg == '/u':
+         user_only = True
+      elif arg == '/k':
+         kernel_only = True
+      elif arg == '':
+         pass # Do nothing
+      else:
+         print("Usage:")
+         print("  list-tasks        # List all the tasks")
+         print("  list-tasks /u     # List only the user tasks")
+         print("  list-tasks /k     # List only the kernel tasks")
+         print("")
+         return
+
+
       tasks_list = tasks.get_all_tasks()
       print("")
 
       for t in tasks_list:
+
          pi = t['pi']
          tid = str(t['tid'])
          pid = str(pi['pid'])
+         pid_field = ""
+         state = str(t['state'])[11:] # Skip "TASK_STATE_"
+         what_field = ""
+
+         if kernel_only:
+            if t['tid'] <= 10000:
+               continue
+
+         if t['tid'] == 10000:
+
+            if user_only:
+               break
+
+            print("        "
+                  "------------------ Kernel threads ------------------")
+            print("")
+            continue # Skip kernel's unused task 10000
 
          gdb.execute(
             "print (struct task *) {}".format(bu.fixhex32(int(t)))
          )
 
+         if t['tid'] > 10000:
+            val = gdb.parse_and_eval("(void *){}".format(hex(t['what'])))
+            what_field = str(val)
+         else:
+            pid_field = "pid = {:>5}, ".format(pid)
+            what_field = pi['debug_cmdline'].string().rstrip()
+
          print(
             "        "
-            "{{tid = {:>5}, pid = {:>5}, state = {}}}\n".format(
-               tid, pid, t['state']
+            "{{tid = {:>5}, {}{}, what: {}}}\n".format(
+               tid, pid_field, state, what_field
             )
          )
 

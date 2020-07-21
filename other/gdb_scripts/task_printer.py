@@ -44,6 +44,7 @@ class printer_struct_task:
          ("total_ticks         ", task['ticks']['total']),
          ("total_kernel_ticks  ", task['ticks']['total_kernel']),
          ("ticks_before_wake_up", task['ticks_before_wake_up']),
+         ("timer_ready         ", task['timer_ready']),
          ("wobj                ", task['wobj']),
          ("state_regs          ", state_regs),
       ]
