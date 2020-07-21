@@ -403,7 +403,6 @@ set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
 set(IMGSZ                  37296)
 set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
-set(GPT_IMG_FILE           ${CMAKE_BINARY_DIR}/gpt_tilck.img)
 
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
 
@@ -560,35 +559,6 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-add_custom_command(
-
-   OUTPUT
-      ${GPT_IMG_FILE}
-   COMMAND
-      ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${GPT_IMG_FILE} ${IMGSZ}
-   COMMAND
-      parted ${GPT_IMG_FILE} -s -a minimal mklabel gpt
-   COMMAND
-      parted ${GPT_IMG_FILE} -s -a minimal mkpart EFI FAT32 2048s 73727s
-   COMMAND
-      parted ${GPT_IMG_FILE} -s -a minimal toggle 1 boot
-   COMMAND
-      dd ${dd_opts} if=fatpart of=${GPT_IMG_FILE} seek=1024 bs=1K
-   DEPENDS
-      tilck_image ${IMG_FILE}
-   COMMENT
-      "Creating a EFI-only bootable image file (GPT)"
-   VERBATIM
-)
-
-add_custom_target(
-
-   gpt_image
-
-   DEPENDS
-      ${GPT_IMG_FILE}
-)
-
 if (ARCH_GTESTS)
    set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest)
    set(GTEST_BTC_COMMAND build_gtest_arch)
@@ -596,7 +566,6 @@ else()
    set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest)
    set(GTEST_BTC_COMMAND build_gtest)
 endif()
-
 
 add_custom_command(
 

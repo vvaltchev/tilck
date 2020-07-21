@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
-f="@GPT_IMG_FILE@"
+f="@IMG_FILE@"
 tc="@TCROOT@"
 
 if [ -z "$QEMU_BIOS" ]; then
@@ -12,12 +12,6 @@ if ! [ -f "$QEMU_BIOS" ]; then
    echo "In order to boot with EFI, you need to download OVMF first."
    echo "To do that, just run in project's main directory:"
    echo "   ./scripts/build_toolchain -s download_ovmf"
-   exit 1
-fi
-
-if ! [ -f $f ]; then
-   echo "In order to boot with EFI, you need to build the gpt_image target:"
-   echo "   make gpt_image"
    exit 1
 fi
 

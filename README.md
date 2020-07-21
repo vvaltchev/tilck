@@ -178,9 +178,9 @@ Step 2. Download `OVMF` (not downloaded by default)
 
     ./scripts/build_toolchian -s download_ovmf
 
-Step 3. Build the kernel and the image using a GPT partition table
+Step 3. Build the kernel as above
 
-    make -j gpt_image
+    make -j
 
 Step 4. Run QEMU using the OVMF firmware
 
