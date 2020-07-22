@@ -6,6 +6,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
+#include <tilck/common/compiler.h>
 
 #include <multiboot.h>
 
