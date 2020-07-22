@@ -271,7 +271,7 @@ void bootloader_main(void)
    free_mem = get_usable_mem_or_panic(&mi, KERNEL_MAX_END_PADDR, SECTOR_SIZE);
 
    // Read FAT's header
-   read_sectors(free_mem, RAMDISK_SECTOR, 1 /* read just 1 sector */);
+   read_sectors(free_mem, INITRD_SECTOR, 1 /* read just 1 sector */);
 
    calculate_ramdisk_fat_size((void *)free_mem);
 
@@ -281,7 +281,7 @@ void bootloader_main(void)
                               SECTOR_SIZE * (ramdisk_first_data_sector + 1));
 
    // Now read all the meta-data up to the first data sector.
-   read_sectors(free_mem, RAMDISK_SECTOR, ramdisk_first_data_sector + 1);
+   read_sectors(free_mem, INITRD_SECTOR, ramdisk_first_data_sector + 1);
 
    // Finally we're able to determine how big is the fatpart (pure data)
    rd_size = fat_calculate_used_bytes((void *)free_mem);
@@ -302,7 +302,7 @@ void bootloader_main(void)
    rd_paddr = free_mem;
    read_sectors_with_progress(LOADING_RAMDISK_STR,
                               rd_paddr,
-                              RAMDISK_SECTOR,
+                              INITRD_SECTOR,
                               rd_sectors);
 
    bt_movecur(bt_get_curr_row(), 0);

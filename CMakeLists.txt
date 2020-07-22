@@ -417,12 +417,20 @@ string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
-set(BL_ST2_DATA_SEG       0x2000)
-set(EARLY_BOOT_SZ           4096)
-set(STAGE3_ENTRY_OFF        4096)
-set(RAMDISK_SECTOR          2048)
-set(IMGSZ                  37296)  # KB
-set(DISK_UUID         0x4906062b)
+set(SECTOR_SIZE              512)  # Do *not* touch!
+set(BL_ST2_DATA_SEG       0x2000)  # Better not touch!
+set(EARLY_BOOT_SZ           4096)  # Better not touch!
+set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
+set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
+
+set(IMG_SZ_MB                 37)
+set(INITRD_START_KB         1024)
+set(INITRD_SIZE_MB            35)
+
+math(EXPR IMG_SZ_SEC           "${IMG_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
+math(EXPR INITRD_SECTOR        "${INITRD_START_KB} * 1024 / ${SECTOR_SIZE}")
+math(EXPR INITRD_SZ_SEC        "${INITRD_SIZE_MB} * 1048576 / ${SECTOR_SIZE}")
+math(EXPR INITRD_LAST_SEC      "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
@@ -511,24 +519,30 @@ if (BOOTLOADER_EFI)
    )
 endif()
 
+# Convenience variables
+set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
+set(FATHACK ${BUILD_APPS}/fathack)
+set(PARTED parted ${IMG_FILE} -s -a minimal)
+set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
+
 if (BOOTLOADER_LEGACY)
    add_custom_command(
       OUTPUT
          ${IMG_FILE}
       COMMAND
-         ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} ${IMGSZ}
+         ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-         dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
+         dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
       COMMAND
-         ${BUILD_APPS}/mbrhack -q ${IMG_FILE} add 0xc ${RAMDISK_SECTOR} +35M
+         ${MBRHACK} add 0xc ${INITRD_SECTOR} +${INITRD_SIZE_MB}M
       COMMAND
          ${BUILD_FATPART}
       COMMAND
-         ${BUILD_APPS}/fathack --truncate fatpart
+         ${FATHACK} --truncate fatpart
       COMMAND
-         ${BUILD_APPS}/fathack --align_first_data_sector fatpart
+         ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} bs=512 seek=${RAMDISK_SECTOR}
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -540,19 +554,19 @@ else()
       OUTPUT
          ${IMG_FILE}
       COMMAND
-         ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} ${IMGSZ}
+         ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-         parted ${IMG_FILE} -s -a minimal mklabel msdos
+         ${PARTED} mklabel msdos
       COMMAND
-         parted ${IMG_FILE} -s -a minimal mkpart primary FAT32 ${RAMDISK_SECTOR}s 73727s
+         ${PARTED} mkpart primary FAT32 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
       COMMAND
          ${BUILD_FATPART}
       COMMAND
-         ${BUILD_APPS}/fathack --truncate fatpart
+         ${FATHACK} --truncate fatpart
       COMMAND
-         ${BUILD_APPS}/fathack --align_first_data_sector fatpart
+         ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} bs=512 seek=${RAMDISK_SECTOR}
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT

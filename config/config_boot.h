@@ -11,14 +11,13 @@
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
 #define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"
 
-#define SECTOR_SIZE            512
-
+#define SECTOR_SIZE            @SECTOR_SIZE@
 #define BL_ST2_DATA_SEG        @BL_ST2_DATA_SEG@
 #define BL_BASE_ADDR           @BL_BASE_ADDR@
 #define BL_BASE_SEG            (@BL_BASE_ADDR@ / 16)
-#define RAMDISK_SECTOR         @RAMDISK_SECTOR@
+#define INITRD_SECTOR          @INITRD_SECTOR@
 #define DISK_UUID              @DISK_UUID@
-#define IMGSZ                  @IMGSZ@
+#define IMG_SZ_SEC             @IMG_SZ_SEC@
 
 
 /* Boolean config variables */

@@ -35,7 +35,7 @@ bios_parameter_pack:
 
 sectorsize:              .word SECTOR_SIZE
 sectors_per_cluster:     .byte 0    # <left unset>
-reserved_sectors:        .word RAMDISK_SECTOR
+reserved_sectors:        .word INITRD_SECTOR
 number_of_FATs:          .byte 0    # <left unset>
 root_entries:            .word 0    # <left unset>
 small_sector_count:      .word 0    # unset means large_total_sectors is used.
@@ -44,8 +44,8 @@ sectors_per_FAT:         .word 0    # <left unset>
 
 phys_sectors_per_track:  .word 63
 num_heads:               .word 16
-hidden_sectors:          .long RAMDISK_SECTOR
-large_total_sectors:     .long (IMGSZ * 1024)/SECTOR_SIZE
+hidden_sectors:          .long INITRD_SECTOR
+large_total_sectors:     .long IMG_SZ_SEC
 
 drive_number:            .byte 0x80
 bflags:                  .byte 0
