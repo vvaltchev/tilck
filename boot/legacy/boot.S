@@ -272,57 +272,14 @@ print_string:
 
 ########################################################################
 
+
 .space 436 - (.-_start), 0x90      # Pad For MBR Partition Table
 
-UID: # Unique Disk ID
-.byte 0x00, 0x00, 0x00, 0x00, 0x2b, 0x06, 0x06, 0x49, 0x00, 0x00
+.byte 0x00, 0x00, 0x00, 0x00     # Unknown
+.byte 0x2b, 0x06, 0x06, 0x49     # Unique Disk ID (UUID)
+.byte 0x00, 0x00                 # Reserved. 0x5A, 0x5A if read-only
 
-
-PT1: # First Partition Entry
-
-# A 35MB FAT32 partition, from sector 2048 to sector 73727.
-
-# status: 0x80 means active/bootable, 0x00 means inactive.
-.byte 0x80 # it doesn't really matter in our case.
-
-# first absolute sector (CHS) of the partition, 3 bytes
-# in this case, it is: 2048
-
-# C = LBA / (heads_per_cyl * sectors_per_track)
-# H = (LBA / sectors_per_track) % heads_per_cyl
-# S = (LBA % sectors_per_track) + 1
-#
-# LBA = (C × heads_per_cyl + H) × sectors_per_track + (S - 1)
-
-# Given our (typical LBA) values:
-# heads_per_cyl = 16
-# sectors_per_track = 63
-#
-# C = LBA / (16*63)
-# H = (LBA / 63) % 16
-# S = (LBA % 63) + 1
-
-.byte  0 # head
-.byte 33 # HI cyl num  | sector num
-         # bits [7-6]  | bits [5-0]
-
-.byte  2 # LO 8 bits of the cylinder num
-
-# partition type
-.byte 0x0C # FAT32 (LBA)
-
-# last abs sector (CHS), 3 bytes
-# it this case it is: 73727
-
-.byte  2 # head
-.byte 18 # sector + 2 HI bits of cyl (0)
-.byte 73 # cylinder (lower 8 bits)
-
-# LBA first sector in the partition
-.long 2048  # + 1 MB
-.long 71680 # 35 MB [1 MB, 36 MB]
-
-
+PT1: .space 16, 0x00             # First Partition Entry
 PT2: .space 16, 0x00             # Second Partition Entry
 PT3: .space 16, 0x00             # Third Partition Entry
 PT4: .space 16, 0x00             # Fourth Partition Entry

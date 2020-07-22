@@ -478,7 +478,9 @@ set(
    ${EXTRA_APPS_LIST}
 
    fathack
+   mbrhack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
+   ${CMAKE_BINARY_DIR}/scripts/build_apps/mbrhack
    ${CMAKE_SOURCE_DIR}/sysroot/etc/start
    ${CMAKE_BINARY_DIR}/config_fatpart
    ${BUILD_SCRIPTS_FILES_LIST}
@@ -511,6 +513,8 @@ if (BOOTLOADER_LEGACY)
          ${BUILD_SCRIPTS}/create_empty_img_if_necessary ${IMG_FILE} ${IMGSZ}
       COMMAND
          dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
+      COMMAND
+         ${BUILD_APPS}/mbrhack -q ${IMG_FILE} add 0xc 2048 +35M
       COMMAND
          ${BUILD_FATPART}
       COMMAND
