@@ -5,6 +5,7 @@
 #define ASM_FILE 1
 
 #include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_kernel.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
@@ -101,7 +102,7 @@ FUNC(switch_to_initial_kernel_stack):
    sub ecx, esp
 
    # change the stack pointer and the frame pointer
-   mov ebp, offset kernel_initial_stack + KERNEL_STACK_SIZE - 4
+   mov ebp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 4
    mov esp, ebp
 
    # restore the ebp-esp difference

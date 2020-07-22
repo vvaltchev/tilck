@@ -23,57 +23,19 @@
 #define PROJ_BUILD_DIR         "@CMAKE_BINARY_DIR@"
 #define BUILDTYPE_STR          "@CMAKE_BUILD_TYPE@"
 
-#define KERNEL_BASE_VA         (@KERNEL_BASE_VA@)
-#define KERNEL_PADDR           (@KERNEL_PADDR@)
-#define LINEAR_MAPPING_MB      (@LINEAR_MAPPING_MB@)
-#define USER_STACK_PAGES       (@USER_STACK_PAGES@)
-
 #define DEVSHELL_PATH          "@TILCK_DEVSHELL_PATH@"
 
-#define TIMER_HZ               (@TIMER_HZ@)
-#define TTY_COUNT              (@TTY_COUNT@)
-#define MAX_HANDLES            (@MAX_HANDLES@)
+#define KERNEL_STACK_PAGES     @KERNEL_STACK_PAGES@
+#define KERNEL_PADDR           @KERNEL_PADDR@
+#define KERNEL_BASE_VA         @KERNEL_BASE_VA@
+#define LINEAR_MAPPING_MB      @LINEAR_MAPPING_MB@
 
-/* enabled by default */
-#cmakedefine01 KRN_TRACK_NESTED_INTERR
-#cmakedefine01 PANIC_SHOW_STACKTRACE
-#cmakedefine01 DEBUG_CHECKS
-#cmakedefine01 KERNEL_SELFTESTS
-#cmakedefine01 KERNEL_STACK_ISOLATION
-#cmakedefine01 KERNEL_SYMBOLS
-#cmakedefine01 KRN_PRINTK_ON_CURR_TTY
-
-/* disabled by default */
-#cmakedefine01 KERNEL_GCOV
-#cmakedefine01 FORK_NO_COW
-#cmakedefine01 MMAP_NO_COW
-#cmakedefine01 PANIC_SHOW_REGS
-#cmakedefine01 KMALLOC_HEAVY_STATS
-#cmakedefine01 KMALLOC_FREE_MEM_POISONING
-#cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
-#cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
-#cmakedefine01 BOOTLOADER_POISON_MEMORY
+/* --------- Boolean config variables --------- */
 #cmakedefine01 FAT_TEST_DIR
-#cmakedefine01 KERNEL_DO_PS2_SELFTEST
-#cmakedefine01 KERNEL_BIG_IO_BUF
-#cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
-#cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
+#cmakedefine01 DEBUG_CHECKS
+#cmakedefine01 KERNEL_GCOV       /* Used for KERNEL_MAX_SIZE */
 
-/*
- * --------------------------------------------------------------------------
- *                  Hard-coded global & derived constants
- * --------------------------------------------------------------------------
- *
- * Here below there are many dervied constants and convenience constants like
- * COMPILER_NAME along with some pseudo-constants like USERMODE_VADDR_END not
- * designed to be easily changed because of the code makes assumptions about
- * them. Because of that, those constants are hard-coded and not available as
- * CMake variables. With time, some of those constants get "promoted" and moved
- * in CMake, others remain here. See the comments and think about the potential
- * implications before promoting a hard-coded constant to a configurable CMake
- * variable.
- */
-
+/* ----------- Convenience defines ------------ */
 
 #if DEBUG_CHECKS
    #ifdef NDEBUG
@@ -103,43 +65,13 @@
 
 #endif
 
+/* ----------- Derived constants ----------- */
 
-
-/* Constants that have no reason to be changed */
-#define KMALLOC_FREE_MEM_POISON_VAL    0xFAABCAFE
-
-/* Special advanced developer-only debug utils */
-#define KMUTEX_STATS_ENABLED                    0
-#define SLOW_DEBUG_REF_COUNT                    0
-
-/* Value-based version of some defined-or-not macros */
-
-#ifdef KERNEL_TEST
-   #define KERNEL_TEST_INT 1
+#if !KERNEL_GCOV
+   #define KERNEL_MAX_SIZE            (1024 * KB)
 #else
-   #define KERNEL_TEST_INT 0
+   #define KERNEL_MAX_SIZE            (2048 * KB)
 #endif
-
-#ifdef RELEASE
-   #define IS_RELEASE_BUILD 1
-#else
-   #define IS_RELEASE_BUILD 0
-#endif
-
-/* ------------------------------- */
-
-/*
- * QEMU-specific debug constants. For the moment, keep those defines always
- * defined. Unless qemu is run with -device isa-debug-exit,iobase=0xf4,iosize=0x04
- * debug_qemu_turn_off_machine() won't turn off the VM.
- */
-
-#define DEBUG_QEMU_EXIT_ON_INIT_EXIT   1
-#define DEBUG_QEMU_EXIT_ON_PANIC       1
-
-/* ------------------------------- */
-
-#define KERNEL_STACK_SIZE (4 * KB)
 
 #if defined(TESTING) || defined(KERNEL_TEST)
 
@@ -157,62 +89,18 @@
 #define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
 #define LINEAR_MAPPING_END         (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
 
-#define KMALLOC_MAX_ALIGN          (64 * KB)
-#define KMALLOC_MIN_HEAP_SIZE      KMALLOC_MAX_ALIGN
-
-#if !KERNEL_GCOV
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
-   #define KERNEL_MAX_SIZE            (1024 * KB)
-   #define SYMTAB_MAX_SIZE            (  48 * KB)
-   #define STRTAB_MAX_SIZE            (  48 * KB)
-#else
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
-   #define KERNEL_MAX_SIZE            (2048 * KB)
-   #define SYMTAB_MAX_SIZE            ( 128 * KB)
-   #define STRTAB_MAX_SIZE            ( 128 * KB)
-#endif
-
-#define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
-#define FAILSAFE_FB_VADDR          (KERNEL_BASE_VA + (1024 - 64) * MB)
-
-#define MAX_TTYS                                    9
-#define TERM_SCROLL_LINES                           5
-#define MAX_MOUNTPOINTS                            16
-#define MAX_NESTED_INTERRUPTS                      32
-#define TTY_INPUT_BS                             1024
-#define FBCON_OPT_FUNCS_MIN_FREE_HEAP       (16 * MB)
-#define WTH_MAX_THREADS                            64
-#define WTH_MAX_PRIO_QUEUE_SIZE                    40
-#define WTH_KB_QUEUE_SIZE                          80
+/* Constants that have no reason to be changed */
+#define FREE_MEM_POISON_VAL    0xFAABCAFE
 
 /*
- * User tasks constants
+ * ----------- User tasks constants -----------
  *
  * WARNING: some of them are NOT really "configurable" without having to modify
- * a lot of code. For example, USERMODE_VADDR_END cannot be > KERNEL_BASE_VA.
- * Also, making *_COPYBUF_SIZE != 2^PAGE_SIZE will cause a waste of memory.
- * MAX_PID can be set to be less than 32K, but not bigger than 65535 because
- * it has to fit in a 16-bit integer.
+ * a lot of code. Think about the potential implications changing the following
+ * constants or, worse, before promoting them to be configurable as CMake
+ * variables.
  */
-
-#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
-#define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
-#define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
-#define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
-#define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)
-
-
-#define MAX_PID                                              8191
-#define MAX_PATH                                              256
 #define USER_ARGS_PAGE_COUNT                                    1
-#define USERAPP_MAX_ARGS_COUNT                                 32
-#define MAX_SCRIPT_REC                                          2
-
-#if KERNEL_BIG_IO_BUF
-   #define IO_COPYBUF_PAGE_COUNT                               63
-#else
-   #define IO_COPYBUF_PAGE_COUNT                                3
-#endif
-
-#define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
-#define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
+#define MAX_TTYS                                                9
+#define MAX_PATH                                              256
+#define MAX_PID                                              8191

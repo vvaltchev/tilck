@@ -93,7 +93,7 @@ void poison_usable_memory(struct mem_info *mi)
          /* Poison only memory regions above the 1st MB */
 
          memset32(TO_PTR(ma->base),
-                  KMALLOC_FREE_MEM_POISON_VAL,
+                  FREE_MEM_POISON_VAL,
                   (u32)ma->len / 4);
       }
    }

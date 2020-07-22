@@ -92,7 +92,7 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
    per_heap_kfree(h, ptr, size, flags);
 
    if (KMALLOC_FREE_MEM_POISONING) {
-      memset32(ptr, KMALLOC_FREE_MEM_POISON_VAL, *size / 4);
+      memset32(ptr, FREE_MEM_POISON_VAL, *size / 4);
    }
 
    if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {

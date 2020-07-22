@@ -3,8 +3,6 @@
 #pragma once
 #include "defs.h"
 
-#define PAGE_SIZE         4096
-
 #define CHECK(cond)                                  \
    do {                                              \
       if (!(cond)) {                                 \

@@ -1,7 +1,16 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck_gen_headers/config_global.h>
 #include <tilck/common/arch/generic_x86/asm_consts.h>
+
+#if KERNEL_STACK_PAGES == 1
+   #define ASM_KERNEL_STACK_SZ      4096
+#elif KERNEL_STACK_PAGES == 2
+   #define ASM_KERNEL_STACK_SZ      8192
+#else
+   #error Unsupported value of KERNEL_STACK_PAGES
+#endif
 
 #define TI_F_RESUME_RS_OFF     20 /* offset of: fault_resume_regs */
 #define TI_FAULTS_MASK_OFF     24 /* offset of: faults_resume_mask */

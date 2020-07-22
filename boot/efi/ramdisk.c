@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/page_size.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/fat32_base.h>
 

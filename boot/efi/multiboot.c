@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/page_size.h>
+
 #include "defs.h"
 #include "utils.h"
 

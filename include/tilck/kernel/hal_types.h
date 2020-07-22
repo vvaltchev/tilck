@@ -50,3 +50,4 @@ typedef void (*soft_int_handler_t)(regs_t *);
 typedef enum irq_action (*irq_handler_t)(void *ctx);
 
 STATIC_ASSERT(PAGE_SIZE == (1u << PAGE_SHIFT));
+STATIC_ASSERT(KERNEL_STACK_PAGES == 1 || KERNEL_STACK_PAGES == 2);

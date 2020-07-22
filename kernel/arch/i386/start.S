@@ -5,6 +5,7 @@
 #define ASM_FILE 1
 
 #include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_kernel.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
@@ -15,7 +16,7 @@
 .global kernel_initial_stack
 .global vsdo_like_page
 
-.comm kernel_initial_stack, KERNEL_STACK_SIZE, 4096
+.comm kernel_initial_stack, ASM_KERNEL_STACK_SZ, 4096
 .comm vsdo_like_page, 4096, 4096
 
 .section .text
@@ -114,7 +115,7 @@ multiboot_entry:
                   # 0xC0100000 (KERNEL_BASE_VA + KERNEL_PADDR).
 
 .next_step:
-   mov esp, offset kernel_initial_stack + KERNEL_STACK_SIZE - 4
+   mov esp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 4
 
    push ebx    # 2st argument: multiboot information structure
    push eax    # 1nd argument: multiboot magic

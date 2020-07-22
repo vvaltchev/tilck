@@ -5,6 +5,7 @@
 #define ASM_FILE 1
 
 #include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_kernel.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 
 .code32

@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include <tilck/common/page_size.h>
 
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
 #define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"
@@ -18,4 +19,8 @@
 #define RAMDISK_SECTOR         @RAMDISK_SECTOR@
 #define DISK_UUID              @DISK_UUID@
 #define IMGSZ                  @IMGSZ@
+
+
+/* Boolean config variables */
+#cmakedefine01 BOOTLOADER_POISON_MEMORY
 

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#define _TILCK_BASIC_DEFS_H
+#define _TILCK_BASIC_DEFS_H_
 
 #include <tilck_gen_headers/config_global.h>
 
@@ -9,7 +9,7 @@
  * TESTING is defined when kernel unit tests are compiled and it affects
  * actual kernel headers but NOT kernel's C files.
  *
- * KERNEL_TEST is defined when the non-arch part of the kernel is compiled for
+ * KERNEL_TEST is defined when the noarch part of the kernel is compiled for
  * unit tests. Therefore, it affects only the kernel's C files.
  *
  * UNIT_TEST_ENVIRONMENT is defined when TESTING or KERNEL_TEST is defined.
@@ -23,6 +23,9 @@
    #define UNIT_TEST_ENVIRONMENT
 #endif
 
+#if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
+   #include <tilck_gen_headers/config_kernel.h>
+#endif
 
 #ifdef __cplusplus
 

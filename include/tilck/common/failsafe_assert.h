@@ -13,7 +13,7 @@
  * common/, but not for the rest (of the bootloader in this case).
  */
 
-#ifndef _TILCK_BASIC_DEFS_H
+#ifndef _TILCK_BASIC_DEFS_H_
 #error This header must be included AFTER common/basic_defs.h
 #endif
 

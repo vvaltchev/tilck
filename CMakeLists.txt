@@ -424,6 +424,7 @@ set(DISK_UUID         0x4906062b)
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
+set(KERNEL_STACK_PAGES          1)
 set(KERNEL_BASE_VA     0xC0000000)
 set(KERNEL_PADDR       0x00100000)
 set(LINEAR_MAPPING_MB         896)
