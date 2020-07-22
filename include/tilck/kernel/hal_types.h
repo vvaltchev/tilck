@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/page_size.h>
 
 #if defined(__i386__) && !defined(__x86_64__)
 
@@ -48,3 +49,4 @@ enum irq_action {
 typedef void (*soft_int_handler_t)(regs_t *);
 typedef enum irq_action (*irq_handler_t)(void *ctx);
 
+STATIC_ASSERT(PAGE_SIZE == (1u << PAGE_SHIFT));

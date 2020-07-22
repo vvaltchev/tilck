@@ -3,14 +3,13 @@
 #pragma once
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/page_size.h>
 #include <tilck/kernel/hal_types.h>
 
 #ifdef __i386__
    #define PAGE_DIR_SIZE (PAGE_SIZE)
 #endif
 
-#define PAGE_SHIFT                                              12
-#define PAGE_SIZE                         ((ulong)1 << PAGE_SHIFT)
 #define OFFSET_IN_PAGE_MASK                        (PAGE_SIZE - 1)
 #define PAGE_MASK                           (~OFFSET_IN_PAGE_MASK)
 #define IS_PAGE_ALIGNED(x)     (!((ulong)x & OFFSET_IN_PAGE_MASK))
