@@ -81,6 +81,7 @@ u32 task_cancel_wakeup_timer(struct task *ti)
       old = ti->ticks_before_wake_up;
 
       if (old > 0) {
+         ti->timer_ready = false;
          ti->ticks_before_wake_up = 0;
          list_remove(&ti->wakeup_timer_node);
       }

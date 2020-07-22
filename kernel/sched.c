@@ -627,7 +627,6 @@ void schedule(void)
          continue;
 
       if (pos->timer_ready) {
-         pos->timer_ready = false;
          selected = pos;
          break;
       }
@@ -635,9 +634,8 @@ void schedule(void)
       if (pos == get_curr_task())
          continue;
 
-      if (!selected || pos->ticks.total < selected->ticks.total) {
+      if (!selected || pos->ticks.total < selected->ticks.total)
          selected = pos;
-      }
    }
 
    if (!selected) {

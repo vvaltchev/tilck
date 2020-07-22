@@ -539,6 +539,7 @@ NORETURN void switch_to_task(struct task *ti)
    }
 
    set_curr_task(ti);
+   ti->timer_ready = false;
    set_kernel_stack((u32)ti->state_regs);
    context_switch(state);
 }
