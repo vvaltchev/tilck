@@ -10,6 +10,8 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/worker_thread.h>
 
+#include <tilck_gen_headers/config_sched.h>
+
 #define TIME_SLICE_TICKS (TIMER_HZ / 20)
 
 enum task_state {

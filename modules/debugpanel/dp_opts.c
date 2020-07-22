@@ -9,6 +9,8 @@
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/datetime.h>
+#include <tilck/kernel/sched.h>
+
 #include <tilck/mods/fb_console.h>
 
 #include "termutil.h"

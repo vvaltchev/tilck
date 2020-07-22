@@ -45,6 +45,18 @@
    #endif
 #endif
 
+#ifdef KERNEL_TEST
+   #define KERNEL_TEST_INT 1
+#else
+   #define KERNEL_TEST_INT 0
+#endif
+
+#ifdef RELEASE
+   #define IS_RELEASE_BUILD 1
+#else
+   #define IS_RELEASE_BUILD 0
+#endif
+
 /* ----------- Derived constants ----------- */
 
 #if !KERNEL_GCOV

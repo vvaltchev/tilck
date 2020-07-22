@@ -6,6 +6,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/kb.h>
+#include <tilck/kernel/sched.h>
 
 #include "termutil.h"
 

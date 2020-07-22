@@ -9,7 +9,6 @@
 #include <tilck_gen_headers/config_global.h>
 
 #define USER_STACK_PAGES       @USER_STACK_PAGES@
-#define TIMER_HZ               @TIMER_HZ@
 #define TTY_COUNT              @TTY_COUNT@
 #define MAX_HANDLES            @MAX_HANDLES@
 
@@ -32,7 +31,6 @@
 #cmakedefine01 KERNEL_DO_PS2_SELFTEST
 #cmakedefine01 KERNEL_BIG_IO_BUF
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
-#cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
 
 /*
  * --------------------------------------------------------------------------
@@ -54,20 +52,6 @@
 /* Special advanced developer-only debug utils */
 #define KMUTEX_STATS_ENABLED                    0
 #define SLOW_DEBUG_REF_COUNT                    0
-
-/* Value-based version of some defined-or-not macros */
-
-#ifdef KERNEL_TEST
-   #define KERNEL_TEST_INT 1
-#else
-   #define KERNEL_TEST_INT 0
-#endif
-
-#ifdef RELEASE
-   #define IS_RELEASE_BUILD 1
-#else
-   #define IS_RELEASE_BUILD 0
-#endif
 
 /* ------------------------------- */
 
