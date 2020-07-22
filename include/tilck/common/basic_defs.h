@@ -224,7 +224,7 @@ typedef long offt;
                   CONCAT(_c, __LINE__));                              \
    })
 
-#define UNSAFE_BOUND(val, minval, maxval)                             \
+#define UNSAFE_CLAMP(val, minval, maxval)                             \
    UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
 
 #define CLAMP(val, minval, maxval)                                    \
@@ -232,7 +232,7 @@ typedef long offt;
       const typeof(val) CONCAT(_v, __LINE__) = (val);                 \
       const typeof(minval) CONCAT(_mv, __LINE__) = (minval);          \
       const typeof(maxval) CONCAT(_Mv, __LINE__) = (maxval);          \
-      UNSAFE_BOUND(CONCAT(_v, __LINE__),                              \
+      UNSAFE_CLAMP(CONCAT(_v, __LINE__),                              \
                    CONCAT(_mv, __LINE__),                             \
                    CONCAT(_Mv, __LINE__));                            \
    })
