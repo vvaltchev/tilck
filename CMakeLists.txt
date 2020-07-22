@@ -102,6 +102,9 @@ set(MAX_HANDLES          16 CACHE STRING "Max handles/process (keep small)")
 set(FATPART_CLUSTER_SIZE  8 CACHE STRING
     "Cluster size (in sectors) of the FAT ramdisk")
 
+set(TERM_SCROLL_LINES 5 CACHE STRING
+    "Number of lines to scroll on Shift+PgUp/PgDown")
+
 set(
 
    USERAPPS_CFLAGS

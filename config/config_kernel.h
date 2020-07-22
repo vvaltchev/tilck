@@ -9,7 +9,6 @@
 #include <tilck_gen_headers/config_global.h>
 
 #define USER_STACK_PAGES       @USER_STACK_PAGES@
-#define TTY_COUNT              @TTY_COUNT@
 #define MAX_HANDLES            @MAX_HANDLES@
 
 /* enabled by default */
@@ -75,13 +74,9 @@
 #endif
 
 #define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
-#define FAILSAFE_FB_VADDR          (KERNEL_BASE_VA + (1024 - 64) * MB)
 
-#define TERM_SCROLL_LINES                           5
 #define MAX_MOUNTPOINTS                            16
 #define MAX_NESTED_INTERRUPTS                      32
-#define TTY_INPUT_BS                             1024
-#define FBCON_OPT_FUNCS_MIN_FREE_HEAP       (16 * MB)
 #define WTH_MAX_THREADS                            64
 #define WTH_MAX_PRIO_QUEUE_SIZE                    40
 #define WTH_KB_QUEUE_SIZE                          80
