@@ -7,7 +7,7 @@
 #define KB (1024u)
 #define MB (1024u * 1024u)
 
-#include <tilck_gen_headers/config.h>
+#include <tilck_gen_headers/config_global.h>
 
 #if defined(__GNUC__) && !defined(__clang__)
 
