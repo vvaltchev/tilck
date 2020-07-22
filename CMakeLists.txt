@@ -419,6 +419,7 @@ set(EARLY_BOOT_SZ           4096)
 set(STAGE3_ENTRY_OFF        4096)
 set(RAMDISK_SECTOR          2048)
 set(IMGSZ                  37296)  # KB
+set(DISK_UUID         0x4906062b)
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")

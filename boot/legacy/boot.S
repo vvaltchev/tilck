@@ -33,24 +33,23 @@ jmp reloc
 bios_parameter_pack:
 
 sectorsize:              .word SECTOR_SIZE
-sectors_per_cluster:     .byte 1
+sectors_per_cluster:     .byte 0    # <left unset>
 reserved_sectors:        .word RAMDISK_SECTOR
-number_of_FATs:          .byte 1
-root_entries:            .word 240
-small_sector_count:      .word 0    # the value large_total_sectors is used.
+number_of_FATs:          .byte 0    # <left unset>
+root_entries:            .word 0    # <left unset>
+small_sector_count:      .word 0    # unset means large_total_sectors is used.
 media_descriptor:        .byte 0xF0 # floppy (even if that's not a real floppy)
-
-sectors_per_FAT:         .word 9
+sectors_per_FAT:         .word 0    # <left unset>
 
 phys_sectors_per_track:  .word 63
 num_heads:               .word 16
 hidden_sectors:          .long RAMDISK_SECTOR
-large_total_sectors:     .long (37*MB)/SECTOR_SIZE
+large_total_sectors:     .long (IMGSZ * 1024)/SECTOR_SIZE
 
 drive_number:            .byte 0x80
 bflags:                  .byte 0
 boot_signature:          .byte 0x28  # DOS 3.4 EBPB
-serial_num:              .long 123456789
+serial_num:              .long DISK_UUID
 
 reloc:
 
@@ -276,7 +275,7 @@ print_string:
 .space 436 - (.-_start), 0x90      # Pad For MBR Partition Table
 
 .byte 0x00, 0x00, 0x00, 0x00     # Unknown
-.byte 0x2b, 0x06, 0x06, 0x49     # Unique Disk ID (UUID)
+.long DISK_UUID                  # Unique Disk ID (UUID)
 .byte 0x00, 0x00                 # Reserved. 0x5A, 0x5A if read-only
 
 PT1: .space 16, 0x00             # First Partition Entry

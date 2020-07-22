@@ -36,6 +36,8 @@
 #define MAX_HANDLES            (@MAX_HANDLES@)
 
 #define RAMDISK_SECTOR         @RAMDISK_SECTOR@
+#define DISK_UUID              @DISK_UUID@
+#define IMGSZ                  @IMGSZ@
 
 /* enabled by default */
 #cmakedefine01 KRN_TRACK_NESTED_INTERR
