@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/fat32_base.h>
 #include <tilck/common/utils.h>

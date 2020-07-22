@@ -17,11 +17,19 @@ dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 configure_file(
    ${CMAKE_SOURCE_DIR}/config/config_global.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_global.h
+   @ONLY
+)
+
+configure_file(
+   ${CMAKE_SOURCE_DIR}/config/config_boot.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_boot.h
+   @ONLY
 )
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/config/config_modules.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_modules.h
+   @ONLY
 )
 
 configure_file(
@@ -69,11 +77,13 @@ configure_file(
 configure_file(
    ${CMAKE_SOURCE_DIR}/other/cmake/config_fatpart
    ${CMAKE_BINARY_DIR}/config_fatpart
+   @ONLY
 )
 
 configure_file(
    ${CMAKE_SOURCE_DIR}/other/tilck_unstripped-gdb.py
    ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
+   @ONLY
 )
 
 # Run qemu scripts

@@ -3,6 +3,7 @@
 .intel_syntax noprefix
 
 #include <tilck/common/config.h>
+#include <tilck_gen_headers/config_boot.h>
 
 .section .text
 .global _start

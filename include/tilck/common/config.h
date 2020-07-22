@@ -140,9 +140,3 @@
 
 #define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
-
-
-/* Bootloader-specific constants */
-
-#define SECTOR_SIZE          512
-#define BL_BASE_SEG          (BL_BASE_ADDR / 16)
