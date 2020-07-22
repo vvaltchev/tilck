@@ -18,6 +18,10 @@
 
 #include <sys/prctl.h>        // system header
 
+STATIC_ASSERT(IS_PAGE_ALIGNED(KERNEL_STACK_SIZE));
+STATIC_ASSERT(IS_PAGE_ALIGNED(IO_COPYBUF_SIZE));
+STATIC_ASSERT(IS_PAGE_ALIGNED(ARGS_COPYBUF_SIZE));
+
 #define ISOLATED_STACK_HI_VMEM_SPACE   (KERNEL_STACK_SIZE + (2 * PAGE_SIZE))
 
 static void *alloc_kernel_isolated_stack(struct process *pi)

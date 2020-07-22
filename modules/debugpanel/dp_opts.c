@@ -5,6 +5,7 @@
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kmalloc.h>
 #include <tilck_gen_headers/config_console.h>
+#include <tilck_gen_headers/config_userlim.h>
 #include <tilck_gen_headers/config_mm.h>
 
 #include <tilck/common/basic_defs.h>

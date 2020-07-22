@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck_gen_headers/config_userlim.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
@@ -17,12 +18,6 @@
 #include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/fs/flock.h>
 #include <tilck/kernel/sys_types.h>
-
-#define PROCESS_CMDLINE_BUF_SIZE                      256
-
-STATIC_ASSERT(IS_PAGE_ALIGNED(KERNEL_STACK_SIZE));
-STATIC_ASSERT(IS_PAGE_ALIGNED(IO_COPYBUF_SIZE));
-STATIC_ASSERT(IS_PAGE_ALIGNED(ARGS_COPYBUF_SIZE));
 
 struct kernel_alloc {
 
