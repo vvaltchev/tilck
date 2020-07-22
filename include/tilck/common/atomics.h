@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck_gen_headers/config_debug.h>
 
 #define __TILCK_ATOMICS__
 

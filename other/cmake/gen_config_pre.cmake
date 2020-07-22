@@ -57,6 +57,12 @@ configure_file(
 )
 
 configure_file(
+   ${CMAKE_SOURCE_DIR}/config/config_debug.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_debug.h
+   @ONLY
+)
+
+configure_file(
    ${CMAKE_SOURCE_DIR}/config/config_modules.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_modules.h
    @ONLY

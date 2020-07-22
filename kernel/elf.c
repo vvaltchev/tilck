@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_mm.h>
+#include <tilck_gen_headers/config_debug.h>
 
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>

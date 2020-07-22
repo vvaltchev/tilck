@@ -6,6 +6,8 @@
 
 #include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 

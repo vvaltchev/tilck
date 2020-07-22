@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/hal_types.h>
 

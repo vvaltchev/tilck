@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_modules.h>
+#include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kmalloc.h>
 #include <tilck_gen_headers/config_console.h>

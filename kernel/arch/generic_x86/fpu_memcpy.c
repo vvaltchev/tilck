@@ -18,6 +18,8 @@
    #pragma GCC optimize "-fomit-frame-pointer"
 #endif
 
+#include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
