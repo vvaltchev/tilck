@@ -401,7 +401,6 @@ endif()
 set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
-set(IMGSZ                  37296)
 set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
 
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
@@ -415,9 +414,11 @@ string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
-set(BL_ST2_DATA_SEG  0x2000)
-set(EARLY_BOOT_SZ      4096)
-set(STAGE3_ENTRY_OFF   4096)
+set(BL_ST2_DATA_SEG       0x2000)
+set(EARLY_BOOT_SZ           4096)
+set(STAGE3_ENTRY_OFF        4096)
+set(RAMDISK_SECTOR          2048)
+set(IMGSZ                  37296)  # KB
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
@@ -514,7 +515,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE} bs=1K
       COMMAND
-         ${BUILD_APPS}/mbrhack -q ${IMG_FILE} add 0xc 2048 +35M
+         ${BUILD_APPS}/mbrhack -q ${IMG_FILE} add 0xc ${RAMDISK_SECTOR} +35M
       COMMAND
          ${BUILD_FATPART}
       COMMAND
@@ -522,7 +523,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${BUILD_APPS}/fathack --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} bs=512 seek=${RAMDISK_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -538,7 +539,7 @@ else()
       COMMAND
          parted ${IMG_FILE} -s -a minimal mklabel msdos
       COMMAND
-         parted ${IMG_FILE} -s -a minimal mkpart primary FAT32 2048s 73727s
+         parted ${IMG_FILE} -s -a minimal mkpart primary FAT32 ${RAMDISK_SECTOR}s 73727s
       COMMAND
          ${BUILD_FATPART}
       COMMAND
@@ -546,7 +547,7 @@ else()
       COMMAND
          ${BUILD_APPS}/fathack --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=1024 bs=1K
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} bs=512 seek=${RAMDISK_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT

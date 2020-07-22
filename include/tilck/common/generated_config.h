@@ -35,6 +35,8 @@
 #define TTY_COUNT              (@TTY_COUNT@)
 #define MAX_HANDLES            (@MAX_HANDLES@)
 
+#define RAMDISK_SECTOR         @RAMDISK_SECTOR@
+
 /* enabled by default */
 #cmakedefine01 KRN_TRACK_NESTED_INTERR
 #cmakedefine01 PANIC_SHOW_STACKTRACE
