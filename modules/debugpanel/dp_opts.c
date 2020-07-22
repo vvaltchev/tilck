@@ -2,6 +2,7 @@
 
 #include <tilck_gen_headers/config_modules.h>
 #include <tilck_gen_headers/config_boot.h>
+#include <tilck_gen_headers/config_kmalloc.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>

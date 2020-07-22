@@ -24,10 +24,6 @@
 #cmakedefine01 FORK_NO_COW
 #cmakedefine01 MMAP_NO_COW
 #cmakedefine01 PANIC_SHOW_REGS
-#cmakedefine01 KMALLOC_FREE_MEM_POISONING
-#cmakedefine01 KMALLOC_HEAVY_STATS
-#cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
-#cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
 #cmakedefine01 KERNEL_DO_PS2_SELFTEST
 #cmakedefine01 KERNEL_BIG_IO_BUF
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
@@ -46,8 +42,6 @@
  * implications before promoting a hard-coded constant to a configurable CMake
  * variable.
  */
-
-
 
 /* Special advanced developer-only debug utils */
 #define KMUTEX_STATS_ENABLED                    0

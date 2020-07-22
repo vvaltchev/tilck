@@ -14,6 +14,8 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sort.h>
 
+#include <tilck_gen_headers/config_kmalloc.h>
+
 #include "kmalloc_debug.h"
 #include "kmalloc_heap_struct.h"
 #include "kmalloc_block_node.h"
