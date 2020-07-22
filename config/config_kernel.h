@@ -8,7 +8,6 @@
 #pragma once
 #include <tilck_gen_headers/config_global.h>
 
-#define USER_STACK_PAGES       @USER_STACK_PAGES@
 #define MAX_HANDLES            @MAX_HANDLES@
 
 /* enabled by default */
@@ -17,11 +16,8 @@
 #cmakedefine01 KERNEL_SELFTESTS
 #cmakedefine01 KERNEL_STACK_ISOLATION
 #cmakedefine01 KERNEL_SYMBOLS
-#cmakedefine01 KRN_PRINTK_ON_CURR_TTY
 
 /* disabled by default */
-#cmakedefine01 FORK_NO_COW
-#cmakedefine01 MMAP_NO_COW
 #cmakedefine01 PANIC_SHOW_REGS
 #cmakedefine01 KERNEL_DO_PS2_SELFTEST
 #cmakedefine01 KERNEL_BIG_IO_BUF
@@ -64,16 +60,12 @@
 #define KMALLOC_MIN_HEAP_SIZE      KMALLOC_MAX_ALIGN
 
 #if !KERNEL_GCOV
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
    #define SYMTAB_MAX_SIZE            (  48 * KB)
    #define STRTAB_MAX_SIZE            (  48 * KB)
 #else
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
    #define SYMTAB_MAX_SIZE            ( 128 * KB)
    #define STRTAB_MAX_SIZE            ( 128 * KB)
 #endif
-
-#define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
 
 #define MAX_MOUNTPOINTS                            16
 #define MAX_NESTED_INTERRUPTS                      32
@@ -82,24 +74,23 @@
 #define WTH_KB_QUEUE_SIZE                          80
 
 /*
- * User tasks constants
+ * --------------------------------------------------------------------------
+ *                  Hard-coded global & derived constants
+ * --------------------------------------------------------------------------
  *
- * WARNING: some of them are NOT really "configurable" without having to modify
- * a lot of code. For example, USERMODE_VADDR_END cannot be > KERNEL_BASE_VA.
- * Also, making *_COPYBUF_SIZE != 2^PAGE_SIZE will cause a waste of memory.
- * MAX_PID can be set to be less than 32K, but not bigger than 65535 because
- * it has to fit in a 16-bit integer.
+ * Here below there are some pseudo-constants not designed to be easily changed
+ * because of the code makes assumptions about them. Because of that, those
+ * constants are hard-coded and not available as CMake variables. With time,
+ * some of those constants get "promoted" and moved in CMake, others remain
+ * here. See the comments and think about the potential implications before
+ * promoting a hard-coded constant to a configurable CMake variable.
  */
 
-#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
-#define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
-#define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
-#define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
-#define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)
 
-#define USER_ARGS_PAGE_COUNT                                    1
-#define USERAPP_MAX_ARGS_COUNT                                 32
 #define MAX_SCRIPT_REC                                          2
+
+#define USERAPP_MAX_ARGS_COUNT                                 32
+#define USER_ARGS_PAGE_COUNT                                    1
 
 #if KERNEL_BIG_IO_BUF
    #define IO_COPYBUF_PAGE_COUNT                               63
@@ -109,3 +100,4 @@
 
 #define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
 #define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
+

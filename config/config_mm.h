@@ -8,12 +8,15 @@
 #pragma once
 #include <tilck_gen_headers/config_global.h>
 
+/* ------ Value-based config variables -------- */
+
+#define USER_STACK_PAGES       @USER_STACK_PAGES@
+
 /* --------- Boolean config variables --------- */
 
-#cmakedefine01 KMALLOC_FREE_MEM_POISONING
-#cmakedefine01 KMALLOC_HEAVY_STATS
-#cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
-#cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
+#cmakedefine01 FORK_NO_COW
+#cmakedefine01 MMAP_NO_COW
+
 
 /*
  * --------------------------------------------------------------------------
@@ -30,8 +33,11 @@
  * variable.
  */
 
-#if !KERNEL_GCOV
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
-#else
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
-#endif
+
+#define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
+
+#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
+#define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
+#define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
+#define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
+#define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)

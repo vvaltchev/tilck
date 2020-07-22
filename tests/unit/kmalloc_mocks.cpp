@@ -14,6 +14,7 @@ using namespace std;
 
 extern "C" {
 
+#include <tilck_gen_headers/config_kmalloc.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/system_mmap.h>
