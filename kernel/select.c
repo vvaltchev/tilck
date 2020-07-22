@@ -258,17 +258,7 @@ select_read_user_tv(struct timeval *user_tv,
       tmp += (u64)tv->tv_usec / (1000000 / TIMER_HZ);
 
       /* NOTE: select() can't sleep for more than UINT32_MAX ticks */
-      *timeout = (u32) MIN(tmp, UINT32_MAX);
-
-      if (*timeout == 0) {
-
-         /*
-          * In case the timeout value is less than 1 tick, just behave as if
-          * the timeout was 0.
-          */
-
-         tv = NULL;
-      }
+      *timeout = (u32) CLAMP(tmp, 1u, UINT32_MAX);
    }
 
    *tv_ref = tv;

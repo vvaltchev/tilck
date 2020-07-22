@@ -165,22 +165,14 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
 
    poll_set_conds(waiter, fds, nfds, cond_cnt);
 
+   if (!timeout) {
+      ready_fds_cnt = poll_count_ready_fds(fds, nfds);
+      free_mobj_waiter(waiter);
+      return ready_fds_cnt;
+   }
+
    if (timeout > 0) {
-
-      u32 ticks = (u32)timeout / (1000 / TIMER_HZ);
-
-      if (!ticks) {
-
-         /*
-          * In case the timeout value is less than 1 tick, just behave as if
-          * the timeout was 0.
-          */
-
-         ready_fds_cnt = poll_count_ready_fds(fds, nfds);
-         free_mobj_waiter(waiter);
-         return ready_fds_cnt;
-      }
-
+      u32 ticks = MAX((u32)timeout / (1000 / TIMER_HZ), 1u);
       task_set_wakeup_timer(curr, ticks);
    }
 
