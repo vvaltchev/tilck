@@ -2,7 +2,7 @@
 
 .intel_syntax noprefix
 
-#include <tilck/common/config.h>
+#include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_boot.h>
 
 #define BASE_LOAD_SEG          0x07C0

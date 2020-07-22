@@ -2,7 +2,7 @@
 
 .intel_syntax noprefix
 
-#include <tilck/common/config.h>
+#include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_boot.h>
 
 # Usable (un)real mode functions

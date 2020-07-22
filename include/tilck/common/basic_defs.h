@@ -3,7 +3,7 @@
 #pragma once
 #define _TILCK_BASIC_DEFS_H
 
-#include <tilck/common/config.h>
+#include <tilck_gen_headers/config_global.h>
 
 /*
  * TESTING is defined when kernel unit tests are compiled and it affects

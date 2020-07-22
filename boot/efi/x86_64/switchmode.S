@@ -2,7 +2,7 @@
 
 .intel_syntax noprefix
 
-#include <tilck/common/config.h>
+#include <tilck_gen_headers/config_global.h>
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
 .global switch_to_pm32_and_jump_to_kernel

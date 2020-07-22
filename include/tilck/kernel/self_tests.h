@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/common/config.h>
+#include <tilck_gen_headers/config_global.h>
 
 #define MAX_NO_DEADLOCK_SET_ELEMS   144
 
