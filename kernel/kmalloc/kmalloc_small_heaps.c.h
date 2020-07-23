@@ -24,7 +24,7 @@
  * and more complex uses cases.
  */
 
-#if !KERNEL_TEST
+#if !KERNEL_TEST_INT
    #define MAX_EMPTY_SMALL_HEAPS    1
 #else
    #define MAX_EMPTY_SMALL_HEAPS    0

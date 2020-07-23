@@ -32,6 +32,7 @@ set(
    -fwrapv
    -static
    -Wvla
+   -Wundef
 
    # Disable the generation of any kind of FPU instructions
    -mno-80387

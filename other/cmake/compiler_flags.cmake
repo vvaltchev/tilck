@@ -97,6 +97,7 @@ set(
    -fwrapv
    -Wno-unused-label
    -Wvla
+   -Wundef
 )
 
 if (WCONV)
