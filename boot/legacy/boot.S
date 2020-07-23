@@ -1,20 +1,11 @@
-# SPDX-License-Identifier: BSD-2-Clause
+/* SPDX-License-Identifier: BSD-2-Clause */
 
 .intel_syntax noprefix
 
 #include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_boot.h>
 
-#define BASE_LOAD_SEG          0x07C0
-
-
-/*
- * We're OK with just 48 KB, a little more than the size of the 3rd stage of
- * the bootloader + 4 KB for this code. All the rest (the whole ramdisk
- * and the ELF kernel) is loaded by the 3rd stage.
- */
-
-#define INITIAL_SECTORS_TO_READ (48 * KB / SECTOR_SIZE)
+#define BASE_LOAD_SEG          0x07C0 /* x86 BIOS constant, do *not* touch */
 
 .org 0x0000
 
@@ -54,7 +45,7 @@ serial_num:              .long DISK_UUID
 
 reloc:
 
-   cli               # Clear interrupts
+   cli               # Disable interrupts
    cld               # The default direction for string operations
                      # will be 'up' - incrementing address in RAM
 
@@ -75,8 +66,8 @@ reloc:
 after_reloc:
 
    xor ax, ax
-   mov ss, ax      # Set stack segment and pointer
-   mov sp, 0xFFF0
+   mov ss, ax      # Set stack segment
+   mov sp, 0xFFF0  # Set stack pointer
    sti             # Restore interrupts
 
    mov ax, BL_ST2_DATA_SEG # Update ds to match the new cs segment.
@@ -94,7 +85,7 @@ after_reloc:
    mov dl, [current_device]
    mov ah, 0x8 # read drive parameters
    int 0x13
-   jc end
+   jc error_end
 
    # read drive params: OK
 
@@ -106,7 +97,7 @@ after_reloc:
    mov ax, cx
    and ax, 63   # last 6 bits
    mov [sectors_per_track], ax # Actual number of sectors, NOT number_of - 1.
-
+                               # Reason: CHS sectors start from 1, not zero.
    xor ax, ax
    mov al, ch  # higher 8 bits of CX = lower bits for cyclinders count
    and cx, 192 # bits 6 and 7 of CX = higher 2 bits for cyclinders count
@@ -131,12 +122,12 @@ after_reloc:
    mov al, 1         # Read just 1 sector at time
 
    int 0x13
-   jc end
+   jc error_end
 
    mov ax, [curr_sec]
 
    # We read all the sectors we needed: loading is over.
-   cmp ax, INITIAL_SECTORS_TO_READ
+   cmp ax, BOOT_SECTORS
    je .load_OK
 
    inc ax                    # we read just 1 sector at time
@@ -144,7 +135,7 @@ after_reloc:
 
 
    # If the current sector num have the bits 0-7 unset,
-   # we loaded 128 sectors * 512 bytes = 64K.
+   # we've loaded 128 sectors * 512 bytes = 64K.
    # We have to change the segment in order to continue.
    #
    # NOTE: at the moment we don't need to load more then 64 KB here, but it's
@@ -166,7 +157,7 @@ after_reloc:
 .load_OK:
    jmp BL_ST2_DATA_SEG:stage2_entry
 
-end:
+error_end:
    mov si, offset str_failed
    call print_string
 
@@ -249,7 +240,6 @@ lba_to_chs:         # Calculate head, track and sector settings for int 13h
    pop ebx
 
    mov dl, [current_device]      # Set correct device
-
    ret
 
 
@@ -273,19 +263,19 @@ print_string:
 ########################################################################
 
 
-.space 436 - (.-_start), 0x90      # Pad For MBR Partition Table
+.space 436 - (.-_start), 0x90    # Pad for MBR Partition Table
 
 .byte 0x00, 0x00, 0x00, 0x00     # Unknown
 .long DISK_UUID                  # Unique Disk ID (UUID)
 .byte 0x00, 0x00                 # Reserved. 0x5A, 0x5A if read-only
 
-PT1: .space 16, 0x00             # First Partition Entry
-PT2: .space 16, 0x00             # Second Partition Entry
-PT3: .space 16, 0x00             # Third Partition Entry
-PT4: .space 16, 0x00             # Fourth Partition Entry
+PT1: .space 16, 0x00             # 1st Partition Entry
+PT2: .space 16, 0x00             # 2nd Partition Entry
+PT3: .space 16, 0x00             # 3rd Partition Entry
+PT4: .space 16, 0x00             # 4th Partition Entry
 
-.space 510-(.-_start), 0   # Pad remainder of boot sector with 0s
-.word 0xAA55               # The standard PC boot signature
+.space 510-(.-_start), 0         # Pad remainder of boot sector with 0s
+.word 0xAA55                     # Standard PC boot signature
 
 
 

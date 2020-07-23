@@ -422,23 +422,24 @@ set(BL_ST2_DATA_SEG       0x2000)  # Better not touch!
 set(EARLY_BOOT_SZ           4096)  # Better not touch!
 set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
 set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
-
+set(MAX_BOOTLOADER_BIN_SZ_KB  48)  # Max size of bootloader.bin (keep updated!)
 set(IMG_SZ_MB                 37)
 set(INITRD_START_KB         1024)
 set(INITRD_SIZE_MB            35)
 
-math(EXPR IMG_SZ_SEC           "${IMG_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
-math(EXPR INITRD_SECTOR        "${INITRD_START_KB} * 1024 / ${SECTOR_SIZE}")
-math(EXPR INITRD_SZ_SEC        "${INITRD_SIZE_MB} * 1048576 / ${SECTOR_SIZE}")
-math(EXPR INITRD_LAST_SEC      "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
+math(EXPR BOOT_SECTORS    "${MAX_BOOTLOADER_BIN_SZ_KB} * 1024 / ${SECTOR_SIZE}")
+math(EXPR IMG_SZ_SEC      "${IMG_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
+math(EXPR INITRD_SECTOR   "${INITRD_START_KB} * 1024 / ${SECTOR_SIZE}")
+math(EXPR INITRD_SZ_SEC   "${INITRD_SIZE_MB} * 1048576 / ${SECTOR_SIZE}")
+math(EXPR INITRD_LAST_SEC "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
-set(KERNEL_STACK_PAGES          1)
-set(KERNEL_BASE_VA     0xC0000000)
-set(KERNEL_PADDR       0x00100000)
-set(LINEAR_MAPPING_MB         896)
+set(KERNEL_STACK_PAGES          1)  # 1 or 2.
+set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
+set(KERNEL_PADDR       0x00100000)  # Better not touch!
+set(LINEAR_MAPPING_MB         896)  # Better not touch!
 
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)

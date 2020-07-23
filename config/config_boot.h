@@ -18,7 +18,7 @@
 #define INITRD_SECTOR          @INITRD_SECTOR@
 #define DISK_UUID              @DISK_UUID@
 #define IMG_SZ_SEC             @IMG_SZ_SEC@
-
+#define BOOT_SECTORS           @BOOT_SECTORS@
 
 /* Boolean config variables */
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
