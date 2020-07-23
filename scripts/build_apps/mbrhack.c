@@ -7,6 +7,22 @@
 #include <string.h>
 #include <errno.h>
 
+#define BPB_OFFSET                  0x00b
+#define PART_TABLE_OFFSET           0x1be
+
+#define EBPB_3_4_SIGNATURE           0x28
+#define EBPB_4_0_SIGNATURE           0x29
+
+#define INFO(fmt, ...)                                       \
+   do {                                                      \
+      if (!opt_quiet)                                        \
+         fprintf(stdout, "INFO: " fmt, ##__VA_ARGS__);       \
+   } while (0)
+
+#define WARNING(fmt, ...)     fprintf(stderr, "WARNING: " fmt, ##__VA_ARGS__)
+#define ERROR(fmt, ...)       fprintf(stderr, "ERROR: " fmt, ##__VA_ARGS__)
+
+
 struct PACKED bpb34 {
 
    u16 sector_size;
@@ -103,6 +119,55 @@ struct PACKED mbr_part_table {
    struct mbr_part partitions[4];
 };
 
+static void dump_bpb(struct bpb34 *b)
+{
+   printf("Bios Parameter Block:\n");
+   printf("    Sector size:       %u\n", b->sector_size);
+   printf("    Heads per cyl:     %u\n", b->heads_per_cyl);
+   printf("    Sectors per track: %u\n", b->sectors_per_track);
+   printf("    Reserved sectors:  %u\n", b->res_sectors);
+   printf("    Hidden sectors:    %u\n", b->hidden_sectors);
+   printf("    Tot sectors count: %u\n", bpb_get_sectors_count(b));
+   printf("    BPB signature:     0x%x\n", b->boot_sig);
+   printf("    Media type:        0x%x\n", b->media_type);
+   printf("    Serial num:        0x%x\n", b->serial);
+}
+
+static int bpb_check(struct bpb34 *b)
+{
+   if (b->boot_sig != EBPB_3_4_SIGNATURE && b->boot_sig != EBPB_4_0_SIGNATURE) {
+      ERROR("Unsupported MBR boot signature: 0x%x\n", b->boot_sig);
+      return -1;
+   }
+
+   if (!b->sector_size) {
+      ERROR("Invalid BIOS Parameter Block: missing sector size\n");
+      return -1;
+   }
+
+   if (!b->heads_per_cyl) {
+      ERROR("Invalid BIOS Parameter Block: missing heads per cylinder\n");
+      return -1;
+   }
+
+   if (!b->sectors_per_track) {
+      ERROR("Invalid BIOS Parameter Block: missing sectors per track\n");
+      return -1;
+   }
+
+   if (!b->res_sectors) {
+      ERROR("Invalid BIOS Parameter Block: resSectors == 0. Must be >= 1.\n");
+      return -1;
+   }
+
+   if (!b->small_sector_count && !b->large_sector_count) {
+      ERROR("Invalid BIOS Parameter Block: missing sector count\n");
+      return -1;
+   }
+
+   return 0;
+}
+
 struct cmd {
    const char *name;
    int params;
@@ -147,17 +212,17 @@ parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
    type = strtoul(argv[0], NULL, 16);
 
    if (errno) {
-      fprintf(stderr, "Invalid type param (%s). Expected a hex num\n", argv[0]);
+      ERROR("Invalid type param (%s). Expected a hex num\n", argv[0]);
       return -1;
    }
 
    if (!IN_RANGE_INC(type, 0x1, 0xff)) {
-      fprintf(stderr, "Invalid type param. Range: 0x01 - 0xff\n");
+      ERROR("Invalid type param. Range: 0x01 - 0xff\n");
       return -1;
    }
 
    if (argv[1][0] == '+') {
-      fprintf(stderr, "Invalid <start sector> param (%s)\n", argv[1]);
+      ERROR("Invalid <start sector> param (%s)\n", argv[1]);
       return -1;
    }
 
@@ -165,22 +230,22 @@ parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
    start = strtoul(argv[1], NULL, 10);
 
    if (errno) {
-      fprintf(stderr, "Invalid <start sector> param (%s)\n", argv[1]);
+      ERROR("Invalid <start sector> param (%s)\n", argv[1]);
       return -1;
    }
 
    if (start > 0xffffffff) {
-      fprintf(stderr, "ERROR: start sector cannot fit in LBA (32-bit)\n");
+      ERROR("start sector cannot fit in LBA (32-bit)\n");
       return -1;
    }
 
    if (start < b->res_sectors) {
-      fprintf(stderr, "ERROR: start sector falls in reserved area\n");
+      ERROR("start sector falls in reserved area\n");
       return -1;
    }
 
    if (start >= bpb_get_sectors_count(b)) {
-      fprintf(stderr, "ERROR: start sector is too big for this disk\n");
+      ERROR("start sector is too big for this disk\n");
       return -1;
    }
 
@@ -193,7 +258,7 @@ parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
    end = strtoul(end_str, &endp, 10);
 
    if (errno) {
-      fprintf(stderr, "Invalid <end sector> param (%s)\n", argv[1]);
+      ERROR("Invalid <end sector> param (%s)\n", argv[1]);
       return -1;
    }
 
@@ -210,22 +275,22 @@ parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
    }
 
    if (end > 0xffffffff) {
-      fprintf(stderr, "ERROR: end sector cannot fit in LBA (32-bit)\n");
+      ERROR("end sector cannot fit in LBA (32-bit)\n");
       return -1;
    }
 
    if (end < b->res_sectors) {
-      fprintf(stderr, "ERROR: end sector falls in reserved area\n");
+      ERROR("end sector falls in reserved area\n");
       return -1;
    }
 
    if (end >= bpb_get_sectors_count(b)) {
-      fprintf(stderr, "ERROR: start sector is too big for this disk\n");
+      ERROR("start sector is too big for this disk\n");
       return -1;
    }
 
    if (start > end) {
-      fprintf(stderr, "ERROR: start (%lu) > end (%lu)\n", start, end);
+      ERROR("start (%lu) > end (%lu)\n", start, end);
       return -1;
    }
 
@@ -290,13 +355,17 @@ find_overlapping_part(struct bpb34 *b,
 
 static int cmd_add(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 {
-   u8 type;
    u32 start, end;
-   int n = find_first_free(t);
-   int overlap;
+   int n, overlap;
+   u8 type;
+
+   if (bpb_check(b) < 0)
+      return 1;
+
+   n = find_first_free(t);
 
    if (n < 0) {
-      fprintf(stderr, "No free partition slot\n");
+      ERROR("No free partition slot\n");
       return 1;
    }
 
@@ -306,11 +375,7 @@ static int cmd_add(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    overlap = find_overlapping_part(b, t, start, end);
 
    if (overlap >= 0) {
-
-      fprintf(stderr,
-              "ERROR: the new partition would overlap with partition %d\n",
-              overlap + 1);
-
+      ERROR("the new partition overlaps with partition %d\n", overlap + 1);
       return 1;
    }
 
@@ -326,8 +391,11 @@ static int cmd_remove(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 {
    int num = atoi(argv[0]);
 
+   if (bpb_check(b) < 0)
+      return 1;
+
    if (!IN_RANGE_INC(num, 1, 4)) {
-      fprintf(stderr, "Invalid partition number. Valid range: 1-4.\n");
+      ERROR("Invalid partition number. Valid range: 1-4.\n");
       return 1;
    }
 
@@ -340,8 +408,11 @@ static int cmd_boot(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    int num = atoi(argv[0]);
    struct mbr_part *p;
 
+   if (bpb_check(b) < 0)
+      return 1;
+
    if (!IN_RANGE_INC(num, 1, 4)) {
-      fprintf(stderr, "Invalid partition number. Valid range: 1-4.\n");
+      ERROR("Invalid partition number. Valid range: 1-4.\n");
       return 1;
    }
 
@@ -349,7 +420,7 @@ static int cmd_boot(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    p = &t->partitions[num];
 
    if (!p->id) {
-      fprintf(stderr, "ERROR: partition %d is UNUSED\n", num + 1);
+      ERROR("partition %d is UNUSED\n", num + 1);
       return 1;
    }
 
@@ -412,14 +483,11 @@ static int do_check_partitions(struct bpb34 *b, struct mbr_part_table *t)
 
 static int cmd_list(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 {
+   if (bpb_check(b) < 0)
+      return 1;
+
    printf("\n");
-   printf("Bios Parameter Block:\n");
-   printf("    Sector size:       %u\n", b->sector_size);
-   printf("    Heads per cyl:     %u\n", b->heads_per_cyl);
-   printf("    Sectors per track: %u\n", b->sectors_per_track);
-   printf("    Reserved sectors:  %u\n", b->res_sectors);
-   printf("    Hidden sectors:    %u\n", b->hidden_sectors);
-   printf("    Tot sectors count: %u\n", bpb_get_sectors_count(b));
+   dump_bpb(b);
 
    printf("\n");
    printf("Partitions:\n\n");
@@ -459,12 +527,18 @@ static int cmd_list(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 
 static int cmd_clear(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 {
+   if (bpb_check(b) < 0)
+      return 1;
+
    memset(t, 0, sizeof(*t));
    return 0;
 }
 
 static int cmd_check(struct bpb34 *b, struct mbr_part_table *t, char **argv)
 {
+   if (bpb_check(b) < 0)
+      return 1;
+
    return do_check_partitions(b, t);
 }
 
@@ -576,36 +650,34 @@ int main(int argc, char **argv)
    fh = fopen(file, "r+b");
 
    if (!fh) {
-      fprintf(stderr, "Failed to open file '%s'\n", file);
+      ERROR("Failed to open file '%s'\n", file);
       return 1;
    }
 
    r = fread(buf, 1, 512, fh);
 
    if (r != 512) {
-      fprintf(stderr, "Failed to read the first 512 bytes\n");
+      ERROR("Failed to read the first 512 bytes\n");
       return 1;
    }
 
-   memcpy(&b, buf + 0xb, sizeof(b));
-   memcpy(&t, buf + 0x1be, sizeof(t));
-
-   if (b.boot_sig != 0x28 && b.boot_sig != 0x29) {
-      fprintf(stderr, "Unsupported MBR boot signature: 0x%x\n", b.boot_sig);
-      goto end;
-   }
+   memcpy(&b, buf + BPB_OFFSET, sizeof(b));
+   memcpy(&t, buf + PART_TABLE_OFFSET, sizeof(t));
 
    /* Call func with its specific params */
    rc = cmd.func(&b, &t, argv);
 
    if (!rc) {
 
-      if (memcmp(&t, buf + 0x1be, 64)) {
+      if (memcmp(&b, buf + BPB_OFFSET, sizeof(b))) {
+         INFO("BIOS parameter block changed, write it back\n");
+         memcpy(buf + BPB_OFFSET, &b, sizeof(b));
+         write_back = true;
+      }
 
-         if (!opt_quiet)
-            printf("INFO: partition table changed, write it back\n");
-
-         memcpy(buf + 0x1be, &t, 64);
+      if (memcmp(&t, buf + PART_TABLE_OFFSET, sizeof(t))) {
+         INFO("Partition table changed, write it back\n");
+         memcpy(buf + PART_TABLE_OFFSET, &t, sizeof(t));
          write_back = true;
       }
    }
@@ -613,14 +685,14 @@ int main(int argc, char **argv)
    if (write_back) {
 
       if (fseek(fh, 0, SEEK_SET) < 0) {
-         fprintf(stderr, "fseek() failed\n");
+         ERROR("fseek() failed\n");
          goto end;
       }
 
       r = fwrite(buf, 1, 512, fh);
 
       if (r != 512) {
-         fprintf(stderr, "Failed to write the first 512 bytes\n");
+         ERROR("Failed to write the first 512 bytes\n");
          rc = 1;
       }
    }
