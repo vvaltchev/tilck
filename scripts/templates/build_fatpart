@@ -55,7 +55,7 @@ function link_or_copy {
 function create_fatpart_if_necessary {
    if [ ! -f $dest ]; then
       # If the 'fatpart' file does not already exist
-      dd status=none if=/dev/zero of=$dest bs=1M count=35
+      dd status=none if=/dev/zero of=$dest bs=1M count=@INITRD_SZ_MB@
    fi
 }
 
@@ -64,9 +64,7 @@ function format_fatpart {
    # -d <N> ; num of FAT copies
    # -F     ; force FAT32 to be used
    # -c <N> ; sectors per cluster
-   # -t <N> ; cylinders
-   # -h <N> ; heads
-   # -s <N> ; sectors
+   # -T <N> ; total sectors
 
    local force_fat32=""
 
@@ -74,7 +72,7 @@ function format_fatpart {
       force_fat32="-F"
    fi
 
-   $mformat -i $dest -d 1 $force_fat32 -c $spc -t 70 -h 16 -s 63 ::
+   $mformat -i $dest -d 1 $force_fat32 -c $spc -T @INITRD_SZ_SEC@ ::
    $mlabel -i $dest ::TILCK
 }
 
