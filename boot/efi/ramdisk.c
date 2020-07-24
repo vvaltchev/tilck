@@ -4,6 +4,7 @@
 #include <tilck/common/page_size.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/fat32_base.h>
+#include <tilck/common/utils.h>
 
 /* We HAVE to undef our ASSERT because the gnu-efi headers define it */
 #undef ASSERT
@@ -18,10 +19,40 @@
 #define LOADING_RAMDISK_STR            L"Loading ramdisk... "
 
 static EFI_STATUS
+ReadAlignedBlock(EFI_BLOCK_IO_PROTOCOL *blockio,
+                 UINTN offset,  /* offset in bytes, aligned to blockSize */
+                 UINTN len,     /* length in bytes, aligned to blockSize */
+                 void *buf)
+{
+   const UINT32 blockSize = blockio->Media->BlockSize;
+   const UINT32 mediaId = blockio->Media->MediaId;
+   EFI_STATUS status = EFI_SUCCESS;
+
+   if (offset % blockSize) {
+      status = EFI_INVALID_PARAMETER;
+      goto end;
+   }
+
+   if (len < blockSize || (len % blockSize)) {
+      status = EFI_BAD_BUFFER_SIZE;
+      goto end;
+   }
+
+   status = blockio->ReadBlocks(blockio,
+                                mediaId,
+                                offset / blockSize,   /* offset in blocks */
+                                len,                  /* length in bytes  */
+                                buf);
+   HANDLE_EFI_ERROR("ReadBlocks");
+
+end:
+   return status;
+}
+
+static EFI_STATUS
 ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
                      UINTN CurrRow,
-                     EFI_DISK_IO_PROTOCOL *prot,
-                     UINT32 MediaId,
+                     EFI_BLOCK_IO_PROTOCOL *blockio,
                      UINT64 Offset,
                      UINTN BufferSize,
                      void *Buffer)
@@ -41,24 +72,16 @@ ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
                       BufferSize);
       }
 
-      status = prot->ReadDisk(prot,
-                              MediaId,
-                              Offset,
-                              ChunkSize,
-                              Buffer);
-      HANDLE_EFI_ERROR("ReadDisk");
+      status = ReadAlignedBlock(blockio, Offset, ChunkSize, Buffer);
+      HANDLE_EFI_ERROR("ReadAlignedBlock");
 
       Offset += ChunkSize;
       Buffer += ChunkSize;
    }
 
    if (rem > 0) {
-      status = prot->ReadDisk(prot,
-                              MediaId,
-                              Offset,
-                              rem,
-                              Buffer);
-      HANDLE_EFI_ERROR("ReadDisk");
+      status = ReadAlignedBlock(blockio, Offset, rem, Buffer);
+      HANDLE_EFI_ERROR("ReadAlignedBlock");
    }
 
    ShowProgress(ST->ConOut,
@@ -81,7 +104,6 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 {
    EFI_STATUS status = EFI_SUCCESS;
    EFI_BLOCK_IO_PROTOCOL *blockio;
-   EFI_DISK_IO_PROTOCOL *ioprot;
 
    u32 sector_size;
    u32 total_fat_size;
@@ -97,16 +119,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("Getting a BlockIoProtocol handle");
 
-   status = BS->OpenProtocol(loaded_image->DeviceHandle,
-                             &DiskIoProtocol,
-                             (void **)&ioprot,
-                             image,
-                             NULL,
-                             EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a DiskIOProtocol handle");
-
    Print(LOADING_RAMDISK_STR);
-
    *ramdisk_paddr_ref = 0;
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -115,12 +128,8 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0, /* offset from the beginnig of the partition! */
-                             1 * KB, /* just the header */
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
+   status = ReadAlignedBlock(blockio, 0, PAGE_SIZE, fat_hdr);
+   HANDLE_EFI_ERROR("ReadAlignedBlock");
 
    sector_size = fat_get_sector_size(fat_hdr);
    total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
@@ -137,12 +146,8 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ioprot->ReadDisk(ioprot,
-                             blockio->Media->MediaId,
-                             0,
-                             total_fat_size, /* only the FAT table */
-                             fat_hdr);
-   HANDLE_EFI_ERROR("ReadDisk");
+   status = ReadAlignedBlock(blockio, 0, total_fat_size, fat_hdr);
+   HANDLE_EFI_ERROR("ReadAlignedBlock");
 
    total_used_bytes = fat_calculate_used_bytes(fat_hdr);
 
@@ -169,6 +174,16 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
     *    Allocation requests of Type AllocateMaxAddress allocate any available
     *    range of pages whose uppermost address is less than or equal to the
     *    address pointed to by Memory on input.
+    *
+    * Additional notes
+    * --------------------------
+    * Note the `(total_used_bytes / PAGE_SIZE) + 2` expression below.
+    *
+    *    +1 page is added in order to brutally round-up the value of
+    *    `total_used_bytes`, when turning into pages.
+    *
+    *    Another +1 page is added to allow, evenutally, the Tilck kernel
+    *    to align it's data clusters at page boundary.
     */
    *ramdisk_paddr_ref = LINEAR_MAPPING_SIZE;
    status = BS->AllocatePages(AllocateMaxAddress,
@@ -181,14 +196,13 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
-                                 ioprot,
-                                 blockio->Media->MediaId,
+                                 blockio,
                                  0,
-                                 total_used_bytes,
+                                 round_up_at(total_used_bytes, PAGE_SIZE),
                                  fat_hdr);
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
-   ST->ConOut->SetCursorPosition(ST->ConOut, 0, 2);
+   ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
    Print(L"[ OK ]\r\n");
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
