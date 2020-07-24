@@ -42,15 +42,6 @@
 
 /* ------------------------------- */
 
-/*
- * QEMU-specific debug constants. For the moment, keep those defines always
- * defined. Unless qemu is run with -device isa-debug-exit,iobase=0xf4,iosize=0x04
- * debug_qemu_turn_off_machine() won't turn off the VM.
- */
-
-#define DEBUG_QEMU_EXIT_ON_INIT_EXIT   1
-#define DEBUG_QEMU_EXIT_ON_PANIC       1
-
 #if !KERNEL_GCOV
    #define SYMTAB_MAX_SIZE            (  48 * KB)
    #define STRTAB_MAX_SIZE            (  48 * KB)
@@ -58,3 +49,18 @@
    #define SYMTAB_MAX_SIZE            ( 128 * KB)
    #define STRTAB_MAX_SIZE            ( 128 * KB)
 #endif
+
+
+/*
+ * QEMU-specific debug constants. For the moment, keep those defines always
+ * defined. Unless qemu is run with:
+ *
+ *    -device isa-debug-exit,iobase=0xf4,iosize=0x04
+ *
+ * debug_qemu_turn_off_machine() won't turn off the VM. Also it's worth
+ * remarking debug_qemu_turn_off_machine() does nothing if we're not running if
+ * we're running on real HW (it checks x86_cpu_features.ecx1.hypervisor).
+ */
+
+#define DEBUG_QEMU_EXIT_ON_INIT_EXIT   1
+#define DEBUG_QEMU_EXIT_ON_PANIC       1
