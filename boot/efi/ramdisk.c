@@ -20,6 +20,39 @@
 
 #define LOADING_RAMDISK_STR            L"Loading ramdisk... "
 
+static EFI_STATUS
+LoadRamdisk_GetTotFatSize(EFI_BLOCK_IO_PROTOCOL *blockio,
+                          UINT32 *total_fat_size_ref)
+{
+   const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
+   EFI_PHYSICAL_ADDRESS ramdisk_paddr = 0;
+   EFI_STATUS status;
+   UINT32 total_fat_size;
+   UINT32 sector_size;
+   void *fat_hdr;
+
+   status = BS->AllocatePages(AllocateAnyPages,
+                              EfiLoaderData,
+                              1, /* just 1 page */
+                              &ramdisk_paddr);
+   HANDLE_EFI_ERROR("AllocatePages");
+   fat_hdr = TO_PTR(ramdisk_paddr);
+
+   status = ReadAlignedBlock(blockio, initrd_off, PAGE_SIZE, fat_hdr);
+   HANDLE_EFI_ERROR("ReadAlignedBlock");
+
+   sector_size = fat_get_sector_size(fat_hdr);
+   total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
+
+   status = BS->FreePages(ramdisk_paddr, 1);
+   HANDLE_EFI_ERROR("FreePages");
+
+   *total_fat_size_ref = total_fat_size;
+
+end:
+   return status;
+}
+
 EFI_STATUS
 LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             EFI_HANDLE image,
@@ -34,7 +67,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    EFI_DEVICE_PATH *parentDpCopy = NULL;
    EFI_HANDLE parentDpHandle = NULL;
 
-   u32 sector_size;
+
    u32 total_fat_size;
    u32 total_used_bytes;
    u32 ff_clu_off;
@@ -61,25 +94,13 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("OpenProtocol(BlockIoProtocol)");
 
    Print(LOADING_RAMDISK_STR);
-   *ramdisk_paddr_ref = 0;
-   status = BS->AllocatePages(AllocateAnyPages,
-                              EfiLoaderData,
-                              1, /* just 1 page */
-                              ramdisk_paddr_ref);
-   HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ReadAlignedBlock(blockio, initrd_off, PAGE_SIZE, fat_hdr);
-   HANDLE_EFI_ERROR("ReadAlignedBlock");
-
-   sector_size = fat_get_sector_size(fat_hdr);
-   total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
-
-   status = BS->FreePages(*ramdisk_paddr_ref, 1);
-   HANDLE_EFI_ERROR("FreePages");
+   status = LoadRamdisk_GetTotFatSize(blockio, &total_fat_size);
+   HANDLE_EFI_ERROR("LoadRamdisk_GetTotFatSize");
 
    /* Now allocate memory for storing the whole FAT table */
 
+   *ramdisk_paddr_ref = 0;
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               (total_fat_size / PAGE_SIZE) + 1,
