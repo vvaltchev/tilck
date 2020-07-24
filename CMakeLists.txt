@@ -559,11 +559,15 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
       COMMAND
+         ${BUILD_BOOTPART}
+      COMMAND
          ${BUILD_FATPART}
       COMMAND
          ${FATHACK} --truncate fatpart
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
+      COMMAND
+         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
@@ -585,11 +589,15 @@ else()
       COMMAND
          ${PARTED} mkpart primary FAT16 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
       COMMAND
+         ${BUILD_BOOTPART}
+      COMMAND
          ${BUILD_FATPART}
       COMMAND
          ${FATHACK} --truncate fatpart
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
+      COMMAND
+         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
          dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS

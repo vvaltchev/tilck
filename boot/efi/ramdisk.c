@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/page_size.h>
 #include <tilck/common/failsafe_assert.h>
@@ -43,7 +45,14 @@ ReadAlignedBlock(EFI_BLOCK_IO_PROTOCOL *blockio,
                                 offset / blockSize,   /* offset in blocks */
                                 len,                  /* length in bytes  */
                                 buf);
-   HANDLE_EFI_ERROR("ReadBlocks");
+
+   if (EFI_ERROR(status)) {
+
+      Print(L"offset: %u\r\n", offset);
+      Print(L"length: %u\r\n", len);
+      Print(L"logical part: %u\r\n", blockio->Media->LogicalPartition);
+      HANDLE_EFI_ERROR("ReadBlocks");
+   }
 
 end:
    return status;
@@ -94,6 +103,58 @@ end:
    return status;
 }
 
+
+static EFI_DEVICE_PATH *
+DevicePathGetLastValidNode(EFI_DEVICE_PATH *dp)
+{
+   EFI_DEVICE_PATH *curr = dp;
+   EFI_DEVICE_PATH *prev = dp;
+
+   for (; !IsDevicePathEnd(curr); curr = NextDevicePathNode(curr)) {
+      prev = curr;
+   }
+
+   return prev;
+}
+
+static void
+TruncateDevicePath(EFI_DEVICE_PATH *dp)
+{
+   EFI_DEVICE_PATH *lastDp = DevicePathGetLastValidNode(dp);
+   SetDevicePathEndNode(lastDp);
+}
+
+static EFI_DEVICE_PATH *
+GetCopyOfParentDevicePathNode(EFI_DEVICE_PATH *dp)
+{
+   EFI_DEVICE_PATH *parent = DuplicateDevicePath(dp);
+   TruncateDevicePath(parent);
+   return parent;
+}
+
+static EFI_STATUS
+GetHandlerForDevicePath(EFI_DEVICE_PATH *dp,
+                        EFI_GUID *supportedProt,
+                        EFI_HANDLE *refHandle)
+{
+   EFI_DEVICE_PATH *dpCopy = dp;
+   EFI_STATUS status = EFI_SUCCESS;
+
+   status = BS->LocateDevicePath(supportedProt, &dpCopy, refHandle);
+   HANDLE_EFI_ERROR("LocateDevicePath");
+
+   if (!IsDevicePathEnd(dpCopy)) {
+      Print(L"ERROR: Cannot get a handler for device path:\r\n");
+      Print(L"    \"%s\"\r\n", DevicePathToStr(dp));
+      Print(L"ERROR: Closest match:\r\n");
+      Print(L"    \"%s\"\r\n", DevicePathToStr(dpCopy));
+      status = EFI_ABORTED;
+   }
+
+end:
+   return status;
+}
+
 EFI_STATUS
 LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             EFI_HANDLE image,
@@ -102,8 +163,11 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             UINTN *ramdisk_size,
             UINTN CurrConsoleRow)
 {
+   const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_STATUS status = EFI_SUCCESS;
-   EFI_BLOCK_IO_PROTOCOL *blockio;
+   EFI_BLOCK_IO_PROTOCOL *blockio = NULL;
+   EFI_DEVICE_PATH *parentDpCopy = NULL;
+   EFI_HANDLE parentDpHandle = NULL;
 
    u32 sector_size;
    u32 total_fat_size;
@@ -111,13 +175,25 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    u32 ff_clu_off;
    void *fat_hdr;
 
-   status = BS->OpenProtocol(loaded_image->DeviceHandle,
+   parentDpCopy = GetCopyOfParentDevicePathNode(
+      DevicePathFromHandle(loaded_image->DeviceHandle)
+   );
+
+   status = GetHandlerForDevicePath(parentDpCopy,
+                                    &BlockIoProtocol,
+                                    &parentDpHandle);
+   HANDLE_EFI_ERROR("GetHandlerForDevicePath");
+
+   FreePool(parentDpCopy);
+   parentDpCopy = NULL;
+
+   status = BS->OpenProtocol(parentDpHandle,
                              &BlockIoProtocol,
                              (void **)&blockio,
                              image,
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a BlockIoProtocol handle");
+   HANDLE_EFI_ERROR("OpenProtocol(BlockIoProtocol)");
 
    Print(LOADING_RAMDISK_STR);
    *ramdisk_paddr_ref = 0;
@@ -128,7 +204,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ReadAlignedBlock(blockio, 0, PAGE_SIZE, fat_hdr);
+   status = ReadAlignedBlock(blockio, initrd_off, PAGE_SIZE, fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
 
    sector_size = fat_get_sector_size(fat_hdr);
@@ -146,7 +222,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(*ramdisk_paddr_ref);
 
-   status = ReadAlignedBlock(blockio, 0, total_fat_size, fat_hdr);
+   status = ReadAlignedBlock(blockio, initrd_off, total_fat_size, fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
 
    total_used_bytes = fat_calculate_used_bytes(fat_hdr);
@@ -197,10 +273,14 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
                                  blockio,
-                                 0,
+                                 initrd_off,
                                  round_up_at(total_used_bytes, PAGE_SIZE),
                                  fat_hdr);
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
+
+   /* Now we're done with the BlockIoProtocol, close it. */
+   BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
+   blockio = NULL;
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
@@ -241,5 +321,12 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    *ramdisk_size = total_used_bytes;
 
 end:
+
+   if (parentDpCopy)
+      FreePool(parentDpCopy);
+
+   if (blockio)
+      BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
+
    return status;
 }
