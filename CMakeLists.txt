@@ -418,6 +418,8 @@ string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 # Bootloaders, build-scripts and link-scripts config
 
 set(SECTOR_SIZE              512)  # Do *not* touch!
+set(CHS_HEADS_PER_CYL         16)  # Do *not* touch!
+set(CHS_SECTORS_PER_TRACK     63)  # Do *not* touch!
 set(BL_ST2_DATA_SEG       0x2000)  # Better not touch!
 set(EARLY_BOOT_SZ           4096)  # Better not touch!
 set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
@@ -522,6 +524,13 @@ endif()
 
 # Convenience variables
 set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
+
+# Setting one long variable, MBRHACK_BPB
+set(MBRHACK_BPB ${SECTOR_SIZE} ${CHS_HEADS_PER_CYL})
+set(MBRHACK_BPB ${MBRHACK_BPB} ${CHS_SECTORS_PER_TRACK} ${IMG_SZ_SEC})
+set(MBRHACK_BPB ${MBRHACK_BPB} ${INITRD_SECTOR} ${INITRD_SECTOR} ${DISK_UUID})
+# ---
+
 set(FATHACK ${BUILD_APPS}/fathack)
 set(PARTED parted ${IMG_FILE} -s -a minimal)
 set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
@@ -534,6 +543,8 @@ if (BOOTLOADER_LEGACY)
          ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
          dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
+      COMMAND
+         ${MBRHACK} bpb ${MBRHACK_BPB}
       COMMAND
          ${MBRHACK} add 0xc ${INITRD_SECTOR} +${INITRD_SIZE_MB}M
       COMMAND

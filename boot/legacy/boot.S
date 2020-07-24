@@ -19,29 +19,11 @@ _start:
 
 jmp reloc
 
-# Fill the gap with nops since bios_parameter_pack has to be at offset +0x0B.
+/* Fill the gap with nops since bios_parameter_pack has to be at offset +0x0B */
 .space 0x0B - (.-_start)
 
 bios_parameter_pack:
-
-sectorsize:              .word SECTOR_SIZE
-sectors_per_cluster:     .byte 0    # <left unset>
-reserved_sectors:        .word INITRD_SECTOR
-number_of_FATs:          .byte 0    # <left unset>
-root_entries:            .word 0    # <left unset>
-small_sector_count:      .word 0    # unset means large_total_sectors is used.
-media_descriptor:        .byte 0xF0 # floppy (even if that's not a real floppy)
-sectors_per_FAT:         .word 0    # <left unset>
-
-phys_sectors_per_track:  .word 63
-num_heads:               .word 16
-hidden_sectors:          .long INITRD_SECTOR
-large_total_sectors:     .long IMG_SZ_SEC
-
-drive_number:            .byte 0x80
-bflags:                  .byte 0
-boot_signature:          .byte 0x28  # DOS 3.4 EBPB
-serial_num:              .long DISK_UUID
+.space 32 /* Leave just enough space for a DOS EBPB 3.2 */
 
 reloc:
 
