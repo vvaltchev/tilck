@@ -29,13 +29,15 @@ struct load_ramdisk_ctx {
 
    UINT32 tot_used_bytes;
    UINT32 rounded_tot_used_bytes;   /* Rounded up at PAGE_SIZE */
+
+   void *fat_hdr;
 };
 
 static EFI_STATUS
 LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
-   EFI_PHYSICAL_ADDRESS ramdisk_paddr = 0;
+   EFI_PHYSICAL_ADDRESS paddr = 0;
    EFI_STATUS status;
    UINT32 fat_sec_sz;
    void *fat_hdr;
@@ -43,9 +45,9 @@ LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               1, /* just 1 page */
-                              &ramdisk_paddr);
+                              &paddr);
    HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = TO_PTR(ramdisk_paddr);
+   fat_hdr = TO_PTR(paddr);
 
    status = ReadAlignedBlock(ctx->blockio, initrd_off, PAGE_SIZE, fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
@@ -54,7 +56,7 @@ LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
    ctx->total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * fat_sec_sz;
    ctx->rounded_tot_fat_sz = round_up_at(ctx->total_fat_size, PAGE_SIZE);
 
-   status = BS->FreePages(ramdisk_paddr, 1);
+   status = BS->FreePages(paddr, 1);
    HANDLE_EFI_ERROR("FreePages");
 
 end:
@@ -65,7 +67,7 @@ static EFI_STATUS
 LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
-   EFI_PHYSICAL_ADDRESS ramdisk_paddr = 0;
+   EFI_PHYSICAL_ADDRESS paddr = 0;
    EFI_STATUS status;
    void *fat_hdr;
 
@@ -73,9 +75,9 @@ LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
                               ctx->rounded_tot_fat_sz / PAGE_SIZE,
-                              &ramdisk_paddr);
+                              &paddr);
    HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = TO_PTR(ramdisk_paddr);
+   fat_hdr = TO_PTR(paddr);
 
    status = ReadAlignedBlock(ctx->blockio,
                              initrd_off,
@@ -92,7 +94,7 @@ LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
     * including clearly the header and the FAT table.
     */
 
-   status = BS->FreePages(ramdisk_paddr, ctx->rounded_tot_fat_sz / PAGE_SIZE);
+   status = BS->FreePages(paddr, ctx->rounded_tot_fat_sz / PAGE_SIZE);
    HANDLE_EFI_ERROR("FreePages");
 
 end:
@@ -100,9 +102,10 @@ end:
 }
 
 static EFI_STATUS
-LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx, void *fat_hdr)
+LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx)
 {
    EFI_STATUS status = EFI_SUCCESS;
+   void *fat_hdr = ctx->fat_hdr;
    UINT32 ff_clu_off;
 
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
@@ -131,6 +134,48 @@ end:
    return status;
 }
 
+static EFI_STATUS
+LoadRamdisk_AllocMem(struct load_ramdisk_ctx *ctx)
+{
+   EFI_STATUS status;
+   EFI_PHYSICAL_ADDRESS paddr;
+
+   /*
+    * Because Tilck is 32-bit and it maps the first LINEAR_MAPPING_SIZE of
+    * physical memory at KERNEL_BASE_VA, we really cannot accept ANY address
+    * in the 64-bit space, because from Tilck we won't be able to read from
+    * there. The address of the ramdisk we actually be at most:
+    *
+    *    LINEAR_MAPPING_SIZE - "size of ramdisk"
+    *
+    * The AllocateMaxAddress allocation type is exactly what we need to use in
+    * this case. As explained in the UEFI specification:
+    *
+    *    Allocation requests of Type AllocateMaxAddress allocate any available
+    *    range of pages whose uppermost address is less than or equal to the
+    *    address pointed to by Memory on input.
+    *
+    * Additional notes
+    * --------------------------
+    * Note the `(ctx.rounded_tot_used_bytes / PAGE_SIZE) + 1` expression below.
+    *
+    *    +1 page is allocated to allow, evenutally, the Tilck kernel
+    *    to align it's data clusters at page boundary.
+    */
+
+   paddr = LINEAR_MAPPING_SIZE;
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              (ctx->rounded_tot_used_bytes / PAGE_SIZE) + 1,
+                              &paddr);
+
+   HANDLE_EFI_ERROR("AllocatePages");
+   ctx->fat_hdr = TO_PTR(paddr);
+
+end:
+   return status;
+}
+
 EFI_STATUS
 LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             EFI_HANDLE image,
@@ -143,9 +188,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    EFI_STATUS status = EFI_SUCCESS;
    EFI_DEVICE_PATH *parentDpCopy = NULL;
    EFI_HANDLE parentDpHandle = NULL;
-
    struct load_ramdisk_ctx ctx = {0};
-   void *fat_hdr;
 
    parentDpCopy = GetCopyOfParentDevicePathNode(
       DevicePathFromHandle(loaded_image->DeviceHandle)
@@ -175,36 +218,8 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    status = LoadRamdisk_GetTotUsedBytes(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_GetTotUsedBytes");
 
-   /*
-    * Because Tilck is 32-bit and it maps the first LINEAR_MAPPING_SIZE of
-    * physical memory at KERNEL_BASE_VA, we really cannot accept ANY address
-    * in the 64-bit space, because from Tilck we won't be able to read from
-    * there. The address of the ramdisk we actually be at most:
-    *
-    *    LINEAR_MAPPING_SIZE - "size of ramdisk"
-    *
-    * The AllocateMaxAddress allocation type is exactly what we need to use in
-    * this case. As explained in the UEFI specification:
-    *
-    *    Allocation requests of Type AllocateMaxAddress allocate any available
-    *    range of pages whose uppermost address is less than or equal to the
-    *    address pointed to by Memory on input.
-    *
-    * Additional notes
-    * --------------------------
-    * Note the `(ctx.rounded_tot_used_bytes / PAGE_SIZE) + 1` expression below.
-    *
-    *    +1 page is allocated to allow, evenutally, the Tilck kernel
-    *    to align it's data clusters at page boundary.
-    */
-   *ramdisk_paddr_ref = LINEAR_MAPPING_SIZE;
-   status = BS->AllocatePages(AllocateMaxAddress,
-                              EfiLoaderData,
-                              (ctx.rounded_tot_used_bytes / PAGE_SIZE) + 1,
-                              ramdisk_paddr_ref);
-
-   HANDLE_EFI_ERROR("AllocatePages");
-   fat_hdr = TO_PTR(*ramdisk_paddr_ref);
+   status = LoadRamdisk_AllocMem(&ctx);
+   HANDLE_EFI_ERROR("LoadRamdisk_AllocMem");
 
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
@@ -212,7 +227,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
                                  ctx.blockio,
                                  initrd_off,
                                  ctx.rounded_tot_used_bytes,
-                                 fat_hdr);
+                                 ctx.fat_hdr);
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
    /* Now we're done with the BlockIoProtocol, close it. */
@@ -223,7 +238,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    Print(LOADING_RAMDISK_STR);
    Print(L"[ OK ]\r\n");
 
-   status = LoadRamdisk_CompactClusters(&ctx, fat_hdr);
+   status = LoadRamdisk_CompactClusters(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_CompactClusters");
 
    /*
@@ -237,6 +252,9 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
     */
 
    *ramdisk_size = ctx.tot_used_bytes + PAGE_SIZE;
+
+   /* Return (as OUR param) a pointer to the ramdisk */
+   *ramdisk_paddr_ref = (UINTN)ctx.fat_hdr;
 
 end:
 
