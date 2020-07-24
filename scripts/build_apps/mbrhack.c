@@ -9,9 +9,8 @@
 
 #define BPB_OFFSET                  0x00b
 #define PART_TABLE_OFFSET           0x1be
-
-#define EBPB_3_4_SIGNATURE           0x28
-#define EBPB_4_0_SIGNATURE           0x29
+#define DISK_UUID_OFFSET            0x1b8
+#define MAX_EBPB_SIZE                 128
 
 #define INFO(fmt, ...)                                       \
    do {                                                      \
@@ -22,8 +21,8 @@
 #define WARNING(fmt, ...)     fprintf(stderr, "WARNING: " fmt, ##__VA_ARGS__)
 #define ERROR(fmt, ...)       fprintf(stderr, "ERROR: " fmt, ##__VA_ARGS__)
 
-
-struct PACKED bpb34 {
+/* DOS 3.31 BPB */
+struct PACKED bpb {
 
    u16 sector_size;
    u8 sec_per_cluster;
@@ -39,6 +38,13 @@ struct PACKED bpb34 {
    u16 heads_per_cyl;
    u32 hidden_sectors;
    u32 large_sector_count;
+
+   char __extra[0];        /* declare we're going to write out-of-bounds */
+};
+
+struct PACKED ebpb34 {
+
+   struct bpb bpb;
 
    u8 drive_num;
    u8 bflags;
@@ -64,7 +70,7 @@ struct PACKED mbr_part {
    u32 lba_tot;
 };
 
-static inline u32 bpb_get_sectors_count(struct bpb34 *b)
+static inline u32 bpb_get_sectors_count(struct bpb *b)
 {
    return b->small_sector_count
             ? b->small_sector_count
@@ -93,24 +99,24 @@ static inline void set_end_cyl(struct mbr_part *p, u16 val)
    p->end_hi_cyl = (val >> 8) & 3;
 }
 
-static u32 chs_to_lba(struct bpb34 *b, u32 c, u32 h, u32 s)
+static u32 chs_to_lba(struct bpb *b, u32 c, u32 h, u32 s)
 {
    return (c * b->heads_per_cyl + h) * b->sectors_per_track + (s - 1);
 }
 
-static void lba_to_chs(struct bpb34 *b, u32 lba, u16 *c, u16 *h, u16 *s)
+static void lba_to_chs(struct bpb *b, u32 lba, u16 *c, u16 *h, u16 *s)
 {
    *c = lba / (b->heads_per_cyl * b->sectors_per_track);
    *h = (lba / b->sectors_per_track) % b->heads_per_cyl;
    *s = (lba % b->sectors_per_track) + 1;
 }
 
-static u32 get_part_start(struct bpb34 *b, struct mbr_part *p)
+static u32 get_part_start(struct bpb *b, struct mbr_part *p)
 {
    return chs_to_lba(b, get_start_cyl(p), p->start_head, p->start_sec);
 }
 
-static u32 get_part_end(struct bpb34 *b, struct mbr_part *p)
+static u32 get_part_end(struct bpb *b, struct mbr_part *p)
 {
    return chs_to_lba(b, get_end_cyl(p), p->end_head, p->end_sec);
 }
@@ -119,25 +125,50 @@ struct PACKED mbr_part_table {
    struct mbr_part partitions[4];
 };
 
-static void dump_bpb(struct bpb34 *b)
+struct mbr_info {
+
+   unsigned char jmp[3];
+   struct bpb *b;
+   struct mbr_part_table *t;
+   u32 disk_uuid;
+};
+
+static void dump_bpb(struct bpb *b)
 {
-   printf("Bios Parameter Block:\n");
-   printf("    Sector size:       %u\n", b->sector_size);
-   printf("    Heads per cyl:     %u\n", b->heads_per_cyl);
-   printf("    Sectors per track: %u\n", b->sectors_per_track);
-   printf("    Reserved sectors:  %u\n", b->res_sectors);
-   printf("    Hidden sectors:    %u\n", b->hidden_sectors);
-   printf("    Tot sectors count: %u\n", bpb_get_sectors_count(b));
-   printf("    BPB signature:     0x%x\n", b->boot_sig);
-   printf("    Media type:        0x%x\n", b->media_type);
-   printf("    Serial num:        0x%x\n", b->serial);
+   printf("Bios Parameter Block (DOS 3.31):\n");
+   printf("    Media type:       %#9x\n", b->media_type);
+   printf("    Sector size:       %8u\n", b->sector_size);
+   printf("    Heads per cyl:     %8u\n", b->heads_per_cyl);
+   printf("    Sectors per track: %8u\n", b->sectors_per_track);
+   printf("    Reserved sectors:  %8u\n", b->res_sectors);
+   printf("    Hidden sectors:    %8u\n", b->hidden_sectors);
+   printf("    Tot sectors count: %8u\n", bpb_get_sectors_count(b));
+   printf("\n");
+
+   struct ebpb34 *ext = (void *)b;
+
+   if (ext->boot_sig == 0x28 || ext->boot_sig == 0x29) {
+      printf("Extended fields (DOS 3.4 EBPB):\n");
+      printf("    BPB signature:   %#10x\n", ext->boot_sig);
+      printf("    Serial num:      %#10x\n", ext->serial);
+   }
 }
 
-static int bpb_check(struct bpb34 *b)
+static int bpb_check(struct mbr_info *nfo)
 {
-   if (b->boot_sig != EBPB_3_4_SIGNATURE && b->boot_sig != EBPB_4_0_SIGNATURE) {
-      ERROR("Unsupported MBR boot signature: 0x%x\n", b->boot_sig);
-      return -1;
+   struct bpb *b = nfo->b;
+   struct ebpb34 *ext = (void *)b;
+
+   if (ext->boot_sig != 0x28 && ext->boot_sig != 0x29) {
+
+      WARNING("Unsupported BPB signature: 0x%x\n", ext->boot_sig);
+
+      if (nfo->jmp[0] != 0xEB)
+         WARNING("Very likely this MBR does NOT contain a BPB at all.\n");
+      else
+         WARNING("The BPB is likely a DOS 7.1 EBPB\n");
+
+      return 1;
    }
 
    if (!b->sector_size) {
@@ -171,7 +202,7 @@ static int bpb_check(struct bpb34 *b)
 struct cmd {
    const char *name;
    int params;
-   int (*func)(struct bpb34 *, struct mbr_part_table *, char **);
+   int (*func)(struct mbr_info *i, char **);
 };
 
 static bool opt_quiet;
@@ -179,15 +210,29 @@ static bool opt_quiet;
 static void show_help_and_exit(int argc, char **argv)
 {
    printf("Syntax:\n");
-   printf("    %s [-q] <file> <command> [<cmd args...>]\n", argv[0]);
+   printf("\t%s [-q] <file> <command> [<cmd args...>]\n", argv[0]);
    printf("\n");
    printf("Commands:\n");
-   printf("    list                      List MBR partitions\n");
-   printf("    clear                     Remove all the partitions\n");
-   printf("    check                     Do sanity checks\n");
-   printf("    remove <n>                Remove the partition <n> (1-4)\n");
-   printf("    boot <n>                  Make the partition <n> bootable\n");
-   printf("    add <type> <start> <end>  Add a new partition in a free slot\n");
+   printf("\tinfo                     \tDump BPB and list partitions\n");
+   printf("\tclear                    \tRemove all the partitions\n");
+   printf("\tcheck                    \tDo sanity checks\n");
+   printf("\tremove <n>               \tRemove the partition <n> (1-4)\n");
+   printf("\tboot <n>                 \tMake the partition <n> bootable\n");
+   printf("\tadd <type> <first> <last>\tAdd a new partition in a free slot\n");
+   printf("\tbpb s h spt tS rS hS sn  \tWrite the Bios Parameter Block\n");
+   printf("\n");
+   printf("Notes:\n");
+   printf("\t- Both `first` and `last` are expressed in sectors\n");
+   printf("\t- `last` can turned into `length` by prefixing it with `+`\n");
+   printf("\t- The `length` param is KB or MB when followed by K, M (+2M)\n");
+   printf("\t- `Type` is supposed to be a hex byte, like 0xC\n");
+   printf("\t- `s`   = sector size\n");
+   printf("\t- `h`   = heads per cylinder\n");
+   printf("\t- `spt` = sectors per track\n");
+   printf("\t- `tS`  = total sectors\n");
+   printf("\t- `rS`  = reserved sectors\n");
+   printf("\t- `hS`  = hidden sectors\n");
+   printf("\t- `sn`  = serial number / disk UUID (hex)\n");
    printf("\n");
    exit(1);
 }
@@ -202,7 +247,7 @@ static int find_first_free(struct mbr_part_table *t)
 }
 
 static int
-parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
+parse_new_part_params(struct bpb *b, char **argv, u8 *rt, u32 *rs, u32 *re)
 {
    unsigned long type, start, end;
    char *endp, *end_str = argv[2];
@@ -301,7 +346,7 @@ parse_new_part_params(struct bpb34 *b, char **argv, u8 *rt, u32 *rs, u32 *re)
 }
 
 static void
-do_set_part(struct bpb34 *b,
+do_set_part(struct bpb *b,
             struct mbr_part_table *t,
             int n,
             u8 type,
@@ -329,7 +374,7 @@ do_set_part(struct bpb34 *b,
 }
 
 static int
-find_overlapping_part(struct bpb34 *b,
+find_overlapping_part(struct bpb *b,
                       struct mbr_part_table *t,
                       u32 start, u32 end)
 {
@@ -353,14 +398,19 @@ find_overlapping_part(struct bpb34 *b,
    return -1;
 }
 
-static int cmd_add(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_add(struct mbr_info *nfo, char **argv)
 {
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
+
    u32 start, end;
    int n, overlap;
    u8 type;
 
-   if (bpb_check(b) < 0)
+   if (bpb_check(nfo) != 0) {
+      ERROR("Unable to add partitions: unknown disk CHS geometry.\n");
       return 1;
+   }
 
    n = find_first_free(t);
 
@@ -387,11 +437,13 @@ static int cmd_add(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    return 0;
 }
 
-static int cmd_remove(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_remove(struct mbr_info *nfo, char **argv)
 {
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
    int num = atoi(argv[0]);
 
-   if (bpb_check(b) < 0)
+   if (bpb_check(nfo) < 0)
       return 1;
 
    if (!IN_RANGE_INC(num, 1, 4)) {
@@ -403,12 +455,14 @@ static int cmd_remove(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    return 0;
 }
 
-static int cmd_boot(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_boot(struct mbr_info *nfo, char **argv)
 {
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
    int num = atoi(argv[0]);
    struct mbr_part *p;
 
-   if (bpb_check(b) < 0)
+   if (bpb_check(nfo) < 0)
       return 1;
 
    if (!IN_RANGE_INC(num, 1, 4)) {
@@ -435,7 +489,7 @@ static int cmd_boot(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    return 0;
 }
 
-static int do_check_partitions(struct bpb34 *b, struct mbr_part_table *t)
+static int do_check_partitions(struct bpb *b, struct mbr_part_table *t)
 {
    int fail = 0;
 
@@ -481,13 +535,20 @@ static int do_check_partitions(struct bpb34 *b, struct mbr_part_table *t)
    return fail;
 }
 
-static int cmd_list(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_info(struct mbr_info *nfo, char **argv)
 {
-   if (bpb_check(b) < 0)
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
+
+   if (bpb_check(nfo) < 0)
       return 1;
 
    printf("\n");
    dump_bpb(b);
+
+   printf("\n");
+   printf("Disk UUID (if valid):\n");
+   printf("    Value:           %#9x\n", nfo->disk_uuid);
 
    printf("\n");
    printf("Partitions:\n\n");
@@ -525,60 +586,183 @@ static int cmd_list(struct bpb34 *b, struct mbr_part_table *t, char **argv)
    return 0;
 }
 
-static int cmd_clear(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_clear(struct mbr_info *nfo, char **argv)
 {
-   if (bpb_check(b) < 0)
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
+
+   if (bpb_check(nfo) < 0)
       return 1;
 
    memset(t, 0, sizeof(*t));
    return 0;
 }
 
-static int cmd_check(struct bpb34 *b, struct mbr_part_table *t, char **argv)
+static int cmd_check(struct mbr_info *nfo, char **argv)
 {
-   if (bpb_check(b) < 0)
+   struct bpb *b = nfo->b;
+   struct mbr_part_table *t = nfo->t;
+
+   if (bpb_check(nfo) < 0)
       return 1;
 
    return do_check_partitions(b, t);
 }
 
+static int cmd_bpb(struct mbr_info *nfo, char **argv)
+{
+   struct bpb *b = nfo->b;
+   struct ebpb34 *e = (void *)b;
+   unsigned long val, bpb_space;
+
+   if (nfo->jmp[0] == 0xEB && IN_RANGE(nfo->jmp[1], 12, 128)) {
+
+      /*
+       * There's likely already another BPB here or a hole for a BPB.
+       * Let's determine the available space.
+       */
+
+      bpb_space = (u32)nfo->jmp[1] - 11 + 2; /* Off. rel. to the next instr. */
+
+   } else {
+
+      /*
+       * Cannot find a valid initial jmp instruction.
+       * Let's use the space we need. We have no other choice.
+       */
+      bpb_space = sizeof(*e);
+
+      if (nfo->jmp[0] != 0) {
+
+         WARNING("Possibly overriding an MBR without BPB\n");
+
+         if (nfo->jmp[0] == 0xFA)
+            WARNING("This 1st byte looks like a x86 CLI instruction\n");
+      }
+   }
+
+   if (bpb_space < sizeof(*e)) {
+      ERROR("Available space for BPB: %lu B < %lu B\n", bpb_space, sizeof(*e));
+      ERROR("Writing a EBPB 3.4 will certaily override MBR code\n");
+      ERROR("Stop. Nothing was written.\n");
+      return 1;
+   }
+
+   /* zero the whole available space as we won't set all of its fields */
+   memset(e, 0, bpb_space);
+
+   e->bpb.media_type = 0xf0;  /* floppy (good even if media is a USB stick) */
+   e->drive_num = 0x80;       /* standard value for first the disk */
+   e->boot_sig = 0x28;        /* DOS 3.4 EBPB */
+
+   {
+      const char *str_val = argv[0];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno || val > 4096) {
+         ERROR("Invalid sector size value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.sector_size = val;
+   }
+
+   {
+      const char *str_val = argv[1];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno || val > 255) {
+         ERROR("Invalid heads per cylinder value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.heads_per_cyl = val;
+   }
+
+   {
+      const char *str_val = argv[2];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno || val > 255) {
+         ERROR("Invalid sectors per track value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.sectors_per_track = val;
+   }
+
+   {
+      const char *str_val = argv[3];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno) {
+         ERROR("Invalid total sectors value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.large_sector_count = val;
+   }
+
+   {
+      const char *str_val = argv[4];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno || val == 0) {
+         ERROR("Invalid reserved sectors value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.res_sectors = val;
+   }
+
+   {
+      const char *str_val = argv[5];
+      errno = 0;
+      val = strtoul(str_val, NULL, 10);
+
+      if (errno) {
+         ERROR("Invalid hidden sectors value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->bpb.hidden_sectors = val;
+   }
+
+   {
+      const char *str_val = argv[6];
+      errno = 0;
+      val = strtoul(str_val, NULL, 16);
+
+      if (errno) {
+         ERROR("Invalid serial/UUID value '%s'\n", str_val);
+         return 1;
+      }
+
+      e->serial = val;
+
+      /* Keep BPB's serial in sync with the UUID field */
+      nfo->disk_uuid = val;
+   }
+
+   return 0;
+}
+
+#define DECL_CMD(nn, par) {.name = #nn, .params = par, .func = &cmd_##nn}
+
 const static struct cmd cmds[] =
 {
-   {
-      .name = "list",
-      .params = 0,
-      .func = &cmd_list,
-   },
-
-   {
-      .name = "clear",
-      .params = 0,
-      .func = &cmd_clear,
-   },
-
-   {
-      .name = "check",
-      .params = 0,
-      .func = &cmd_check,
-   },
-
-   {
-      .name = "remove",
-      .params = 1,
-      .func = &cmd_remove,
-   },
-
-   {
-      .name = "add",
-      .params = 3,
-      .func = &cmd_add,
-   },
-
-   {
-      .name = "boot",
-      .params = 1,
-      .func = &cmd_boot,
-   },
+   DECL_CMD(info, 0),
+   DECL_CMD(clear, 0),
+   DECL_CMD(check, 0),
+   DECL_CMD(remove, 1),
+   DECL_CMD(add, 3),
+   DECL_CMD(boot, 1),
+   DECL_CMD(bpb, 7),
 };
 
 static int
@@ -637,9 +821,13 @@ int main(int argc, char **argv)
    size_t r;
    int rc;
    struct mbr_part_table t;
-   struct bpb34 b;
-
+   char bpb_buf[MAX_EBPB_SIZE] ALIGNED_AT(4);
    bool write_back = false;
+   struct mbr_info i = {
+      .b = (void *)bpb_buf,
+      .t = (void *)&t,
+      .disk_uuid = 0,
+   };
 
    STATIC_ASSERT(sizeof(t.partitions[0]) == 16);
    STATIC_ASSERT(sizeof(t) == 64);  /* 4 x 16 bytes */
@@ -661,23 +849,32 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   memcpy(&b, buf + BPB_OFFSET, sizeof(b));
+   memcpy(i.jmp, buf + 0, sizeof(i.jmp));
+   memcpy(bpb_buf, buf + BPB_OFFSET, sizeof(bpb_buf));
    memcpy(&t, buf + PART_TABLE_OFFSET, sizeof(t));
+   memcpy(&i.disk_uuid, buf + DISK_UUID_OFFSET, sizeof(i.disk_uuid));
 
    /* Call func with its specific params */
-   rc = cmd.func(&b, &t, argv);
+   rc = cmd.func(&i, argv);
 
    if (!rc) {
 
-      if (memcmp(&b, buf + BPB_OFFSET, sizeof(b))) {
+      if (memcmp(bpb_buf, buf + BPB_OFFSET, sizeof(bpb_buf))) {
+
          INFO("BIOS parameter block changed, write it back\n");
-         memcpy(buf + BPB_OFFSET, &b, sizeof(b));
+         memcpy(buf + BPB_OFFSET, bpb_buf, sizeof(bpb_buf));
          write_back = true;
       }
 
       if (memcmp(&t, buf + PART_TABLE_OFFSET, sizeof(t))) {
          INFO("Partition table changed, write it back\n");
          memcpy(buf + PART_TABLE_OFFSET, &t, sizeof(t));
+         write_back = true;
+      }
+
+      if (memcmp(&i.disk_uuid, buf + DISK_UUID_OFFSET, sizeof(i.disk_uuid))) {
+         INFO("DISK UUID changed, write it back\n");
+         memcpy(buf + DISK_UUID_OFFSET, &i.disk_uuid, sizeof(i.disk_uuid));
          write_back = true;
       }
    }
