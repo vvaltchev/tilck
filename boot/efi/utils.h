@@ -24,11 +24,20 @@ extern EFI_MEMORY_DESCRIPTOR mmap[512];
 extern UINTN mmap_size;
 extern UINTN desc_size;
 
-EFI_STATUS GetMemoryMap(UINTN *mapkey);
-EFI_MEMORY_DESCRIPTOR *GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr);
-EFI_STATUS KernelLoadMemoryChecks(void);
+void
+JumpToKernel(multiboot_info_t *mbi, void *entry_point);
 
-EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
+EFI_STATUS
+GetMemoryMap(UINTN *mapkey);
+
+EFI_MEMORY_DESCRIPTOR *
+GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr);
+
+EFI_STATUS
+KernelLoadMemoryChecks(void);
+
+EFI_INPUT_KEY
+WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
 
 EFI_STATUS
 LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
@@ -44,4 +53,32 @@ ShowProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
              UINTN curr,
              UINTN tot);
 
-void JumpToKernel(multiboot_info_t *mbi, void *entry_point);
+EFI_STATUS
+ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
+                     UINTN CurrRow,
+                     const CHAR16 *loadingStr,
+                     EFI_BLOCK_IO_PROTOCOL *blockio,
+                     UINT64 Offset,
+                     UINTN BufferSize,
+                     void *Buffer);
+
+EFI_STATUS
+ReadAlignedBlock(EFI_BLOCK_IO_PROTOCOL *blockio,
+                 UINTN offset,  /* offset in bytes, aligned to blockSize */
+                 UINTN len,     /* length in bytes, aligned to blockSize */
+                 void *buf);
+
+EFI_DEVICE_PATH *
+DevicePathGetLastValidNode(EFI_DEVICE_PATH *dp);
+
+void
+TruncateDevicePath(EFI_DEVICE_PATH *dp);
+
+EFI_DEVICE_PATH *
+GetCopyOfParentDevicePathNode(EFI_DEVICE_PATH *dp);
+
+EFI_STATUS
+GetHandlerForDevicePath(EFI_DEVICE_PATH *dp,
+                        EFI_GUID *supportedProt,
+                        EFI_HANDLE *refHandle);
+

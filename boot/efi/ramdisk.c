@@ -20,141 +20,6 @@
 
 #define LOADING_RAMDISK_STR            L"Loading ramdisk... "
 
-static EFI_STATUS
-ReadAlignedBlock(EFI_BLOCK_IO_PROTOCOL *blockio,
-                 UINTN offset,  /* offset in bytes, aligned to blockSize */
-                 UINTN len,     /* length in bytes, aligned to blockSize */
-                 void *buf)
-{
-   const UINT32 blockSize = blockio->Media->BlockSize;
-   const UINT32 mediaId = blockio->Media->MediaId;
-   EFI_STATUS status = EFI_SUCCESS;
-
-   if (offset % blockSize) {
-      status = EFI_INVALID_PARAMETER;
-      goto end;
-   }
-
-   if (len < blockSize || (len % blockSize)) {
-      status = EFI_BAD_BUFFER_SIZE;
-      goto end;
-   }
-
-   status = blockio->ReadBlocks(blockio,
-                                mediaId,
-                                offset / blockSize,   /* offset in blocks */
-                                len,                  /* length in bytes  */
-                                buf);
-
-   if (EFI_ERROR(status)) {
-
-      Print(L"offset: %u\r\n", offset);
-      Print(L"length: %u\r\n", len);
-      Print(L"logical part: %u\r\n", blockio->Media->LogicalPartition);
-      HANDLE_EFI_ERROR("ReadBlocks");
-   }
-
-end:
-   return status;
-}
-
-static EFI_STATUS
-ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
-                     UINTN CurrRow,
-                     EFI_BLOCK_IO_PROTOCOL *blockio,
-                     UINT64 Offset,
-                     UINTN BufferSize,
-                     void *Buffer)
-{
-   const UINTN ChunkSize = 256 * KB;
-   const UINTN ChunkCount = BufferSize / ChunkSize;
-   const UINTN rem = BufferSize - ChunkCount * ChunkSize;
-   EFI_STATUS status;
-
-   for (u32 chunk = 0; chunk < ChunkCount; chunk++) {
-
-      if (chunk > 0) {
-         ShowProgress(ST->ConOut,
-                      CurrRow,
-                      LOADING_RAMDISK_STR,
-                      chunk * ChunkSize,
-                      BufferSize);
-      }
-
-      status = ReadAlignedBlock(blockio, Offset, ChunkSize, Buffer);
-      HANDLE_EFI_ERROR("ReadAlignedBlock");
-
-      Offset += ChunkSize;
-      Buffer += ChunkSize;
-   }
-
-   if (rem > 0) {
-      status = ReadAlignedBlock(blockio, Offset, rem, Buffer);
-      HANDLE_EFI_ERROR("ReadAlignedBlock");
-   }
-
-   ShowProgress(ST->ConOut,
-                CurrRow,
-                LOADING_RAMDISK_STR,
-                BufferSize,
-                BufferSize);
-
-end:
-   return status;
-}
-
-
-static EFI_DEVICE_PATH *
-DevicePathGetLastValidNode(EFI_DEVICE_PATH *dp)
-{
-   EFI_DEVICE_PATH *curr = dp;
-   EFI_DEVICE_PATH *prev = dp;
-
-   for (; !IsDevicePathEnd(curr); curr = NextDevicePathNode(curr)) {
-      prev = curr;
-   }
-
-   return prev;
-}
-
-static void
-TruncateDevicePath(EFI_DEVICE_PATH *dp)
-{
-   EFI_DEVICE_PATH *lastDp = DevicePathGetLastValidNode(dp);
-   SetDevicePathEndNode(lastDp);
-}
-
-static EFI_DEVICE_PATH *
-GetCopyOfParentDevicePathNode(EFI_DEVICE_PATH *dp)
-{
-   EFI_DEVICE_PATH *parent = DuplicateDevicePath(dp);
-   TruncateDevicePath(parent);
-   return parent;
-}
-
-static EFI_STATUS
-GetHandlerForDevicePath(EFI_DEVICE_PATH *dp,
-                        EFI_GUID *supportedProt,
-                        EFI_HANDLE *refHandle)
-{
-   EFI_DEVICE_PATH *dpCopy = dp;
-   EFI_STATUS status = EFI_SUCCESS;
-
-   status = BS->LocateDevicePath(supportedProt, &dpCopy, refHandle);
-   HANDLE_EFI_ERROR("LocateDevicePath");
-
-   if (!IsDevicePathEnd(dpCopy)) {
-      Print(L"ERROR: Cannot get a handler for device path:\r\n");
-      Print(L"    \"%s\"\r\n", DevicePathToStr(dp));
-      Print(L"ERROR: Closest match:\r\n");
-      Print(L"    \"%s\"\r\n", DevicePathToStr(dpCopy));
-      status = EFI_ABORTED;
-   }
-
-end:
-   return status;
-}
-
 EFI_STATUS
 LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             EFI_HANDLE image,
@@ -272,6 +137,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
+                                 LOADING_RAMDISK_STR,
                                  blockio,
                                  initrd_off,
                                  round_up_at(total_used_bytes, PAGE_SIZE),
