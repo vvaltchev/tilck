@@ -176,22 +176,15 @@ end:
    return status;
 }
 
-EFI_STATUS
-LoadRamdisk(EFI_SYSTEM_TABLE *ST,
-            EFI_HANDLE image,
-            EFI_LOADED_IMAGE *loaded_image,
-            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *ramdisk_size,
-            UINTN CurrConsoleRow)
+static EFI_STATUS
+GetPhysBlockIODeviceHandle(EFI_LOADED_IMAGE *img, EFI_HANDLE *ref)
 {
-   const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
-   EFI_STATUS status = EFI_SUCCESS;
    EFI_DEVICE_PATH *parentDpCopy = NULL;
    EFI_HANDLE parentDpHandle = NULL;
-   struct load_ramdisk_ctx ctx = {0};
+   EFI_STATUS status;
 
    parentDpCopy = GetCopyOfParentDevicePathNode(
-      DevicePathFromHandle(loaded_image->DeviceHandle)
+      DevicePathFromHandle(img->DeviceHandle)
    );
 
    status = GetHandlerForDevicePath(parentDpCopy,
@@ -199,10 +192,34 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
                                     &parentDpHandle);
    HANDLE_EFI_ERROR("GetHandlerForDevicePath");
 
-   FreePool(parentDpCopy);
-   parentDpCopy = NULL;
+   /* Everything is OK, we can return the handle via the OUT parameter */
+   *ref = parentDpHandle;
 
-   status = BS->OpenProtocol(parentDpHandle,
+end:
+
+   if (parentDpCopy)
+      FreePool(parentDpCopy);
+
+   return status;
+}
+
+EFI_STATUS
+LoadRamdisk(EFI_SYSTEM_TABLE *ST,
+            EFI_HANDLE image,
+            EFI_LOADED_IMAGE *loadedImg,
+            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
+            UINTN *ramdisk_size,
+            UINTN CurrConsoleRow)
+{
+   const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
+   EFI_STATUS status = EFI_SUCCESS;
+   EFI_HANDLE bioDeviceHandle;
+   struct load_ramdisk_ctx ctx = {0};
+
+   status = GetPhysBlockIODeviceHandle(loadedImg, &bioDeviceHandle);
+   HANDLE_EFI_ERROR("GetPhysBlockIODeviceHandle");
+
+   status = BS->OpenProtocol(bioDeviceHandle,
                              &BlockIoProtocol,
                              (void **)&ctx.blockio,
                              image,
@@ -231,7 +248,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
    /* Now we're done with the BlockIoProtocol, close it. */
-   BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
+   BS->CloseProtocol(bioDeviceHandle, &BlockIoProtocol, image, NULL);
    ctx.blockio = NULL;
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
@@ -257,12 +274,8 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    *ramdisk_paddr_ref = (UINTN)ctx.fat_hdr;
 
 end:
-
-   if (parentDpCopy)
-      FreePool(parentDpCopy);
-
    if (ctx.blockio)
-      BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
+      BS->CloseProtocol(bioDeviceHandle, &BlockIoProtocol, image, NULL);
 
    return status;
 }
