@@ -417,15 +417,15 @@ string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
-set(SECTOR_SIZE              512)  # Do *not* touch!
-set(CHS_HEADS_PER_CYL         16)  # Do *not* touch!
-set(CHS_SECTORS_PER_TRACK     63)  # Do *not* touch!
+set(SECTOR_SIZE              512)  # CHS Logic sector size.  Do *not* touch!
+set(CHS_HPC                   16)  # CHS heads per cylinder. Do *not* touch!
+set(CHS_SPT                   63)  # CHS sectors per track.  Do *not* touch!
 set(BL_ST2_DATA_SEG       0x2000)  # Better not touch!
 set(EARLY_BOOT_SZ           4096)  # Better not touch!
 set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
 set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
 set(MAX_BOOTLOADER_BIN_SZ_KB  48)  # Max size of bootloader.bin (keep updated!)
-set(IMG_SZ_MB                 37)  # Total size of tilck.img
+set(IMG_SZ_MB                 36)  # Total size of tilck.img
 set(INITRD_SZ_MB              32)  # Size of the initrd RAMDISK in MB
 set(BOOTPART_SZ_SEC         6144)  # Size of the boot partition in sectors
 
@@ -437,9 +437,16 @@ math(EXPR INITRD_SECTOR     "${BOOTPART_LAST_SEC} + 1")
 math(EXPR INITRD_SZ_SEC     "${INITRD_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
 math(EXPR INITRD_LAST_SEC   "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
 
+math(EXPR SEC_PER_CYL   "${CHS_HPC} * ${CHS_SPT}")
+math(EXPR CHS_CYLS      "(${IMG_SZ_SEC} + ${SEC_PER_CYL} - 1) / ${SEC_PER_CYL}")
+unset(SEC_PER_CYL)
+
+# For qemu run scripts
+set(QEMU_CHS_GEOM         "cyls=${CHS_CYLS},heads=${CHS_HPC},secs=${CHS_SPT}")
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
+# Fundamental kernel MM constants
 set(KERNEL_STACK_PAGES          1)  # 1 or 2.
 set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
 set(KERNEL_PADDR       0x00100000)  # Better not touch!
@@ -524,18 +531,18 @@ if (BOOTLOADER_EFI)
    )
 endif()
 
-# Convenience variables
-set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
+# [begin] Set some convenience variables
+   set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
+   set(FATHACK ${BUILD_APPS}/fathack)
+   set(PARTED parted ${IMG_FILE} -s -a minimal)
+   set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
 
-# [begin] Setting one long variable, MBRHACK_BPB
-set(MBRHACK_BPB ${SECTOR_SIZE} ${CHS_HEADS_PER_CYL})
-set(MBRHACK_BPB ${MBRHACK_BPB} ${CHS_SECTORS_PER_TRACK} ${IMG_SZ_SEC})
-set(MBRHACK_BPB ${MBRHACK_BPB} ${BOOT_SECTORS} ${BOOT_SECTORS} ${DISK_UUID})
+   # [begin] Setting one long variable, MBRHACK_BPB
+      set(MBRHACK_BPB ${SECTOR_SIZE} ${CHS_HPC})
+      set(MBRHACK_BPB ${MBRHACK_BPB} ${CHS_SPT} ${IMG_SZ_SEC} ${BOOT_SECTORS})
+      set(MBRHACK_BPB ${MBRHACK_BPB} ${BOOT_SECTORS} ${DISK_UUID})
+   # [end]
 # [end]
-
-set(FATHACK ${BUILD_APPS}/fathack)
-set(PARTED parted ${IMG_FILE} -s -a minimal)
-set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
 
 if (BOOTLOADER_LEGACY)
    add_custom_command(
@@ -592,6 +599,14 @@ else()
       VERBATIM
    )
 endif()
+
+# [begin] Unset the convenience variables
+   unset(MBRHACK_BPB)
+   unset(CREATE_EMPTY_IMG)
+   unset(PARTED)
+   unset(FATHACK)
+   unset(MBRHACK)
+# [end]
 
 add_custom_target(
 

@@ -608,7 +608,7 @@ def run():
       '-monitor', 'stdio',
       '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04',
       '-drive', 'id=img1,format=raw,if=none,file=' + TILCK_IMAGE,
-      '-device', 'ide-hd,drive=img1,cyls=74,heads=16,secs=63',
+      '-device', 'ide-hd,drive=img1,@QEMU_CHS_GEOM@',
       '-serial', 'pty',
    ]
 
