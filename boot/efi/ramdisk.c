@@ -20,15 +20,20 @@
 
 #define LOADING_RAMDISK_STR            L"Loading ramdisk... "
 
+struct load_ramdisk_ctx {
+
+   EFI_BLOCK_IO_PROTOCOL *blockio;
+   UINT32 total_fat_size;
+   UINT32 total_used_bytes;
+};
+
 static EFI_STATUS
-LoadRamdisk_GetTotFatSize(EFI_BLOCK_IO_PROTOCOL *blockio,
-                          UINT32 *total_fat_size_ref)
+LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr = 0;
    EFI_STATUS status;
-   UINT32 total_fat_size;
-   UINT32 sector_size;
+   UINT32 fat_sec_sz;
    void *fat_hdr;
 
    status = BS->AllocatePages(AllocateAnyPages,
@@ -38,44 +43,42 @@ LoadRamdisk_GetTotFatSize(EFI_BLOCK_IO_PROTOCOL *blockio,
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(ramdisk_paddr);
 
-   status = ReadAlignedBlock(blockio, initrd_off, PAGE_SIZE, fat_hdr);
+   status = ReadAlignedBlock(ctx->blockio, initrd_off, PAGE_SIZE, fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
 
-   sector_size = fat_get_sector_size(fat_hdr);
-   total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * sector_size;
+   fat_sec_sz = fat_get_sector_size(fat_hdr);
+   ctx->total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * fat_sec_sz;
 
    status = BS->FreePages(ramdisk_paddr, 1);
    HANDLE_EFI_ERROR("FreePages");
-
-   *total_fat_size_ref = total_fat_size;
 
 end:
    return status;
 }
 
 static EFI_STATUS
-LoadRamdisk_GetTotUsedBytes(EFI_BLOCK_IO_PROTOCOL *blockio,
-                            UINT32 total_fat_size,
-                            UINT32 *total_used_bytes_ref)
+LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr = 0;
-   UINT32 total_used_bytes;
    EFI_STATUS status;
    void *fat_hdr;
 
    /* Allocate memory for storing the whole FAT table */
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
-                              (total_fat_size / PAGE_SIZE) + 1,
+                              (ctx->total_fat_size / PAGE_SIZE) + 1,
                               &ramdisk_paddr);
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(ramdisk_paddr);
 
-   status = ReadAlignedBlock(blockio, initrd_off, total_fat_size, fat_hdr);
+   status = ReadAlignedBlock(ctx->blockio,
+                             initrd_off,
+                             ctx->total_fat_size,
+                             fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
 
-   total_used_bytes = fat_calculate_used_bytes(fat_hdr);
+   ctx->total_used_bytes = fat_calculate_used_bytes(fat_hdr);
 
    /*
     * Now we know everything. Free the memory used so far and allocate the
@@ -83,10 +86,8 @@ LoadRamdisk_GetTotUsedBytes(EFI_BLOCK_IO_PROTOCOL *blockio,
     * including clearly the header and the FAT table.
     */
 
-   status = BS->FreePages(ramdisk_paddr, (total_fat_size / PAGE_SIZE) + 1);
+   status = BS->FreePages(ramdisk_paddr, (ctx->total_fat_size / PAGE_SIZE) + 1);
    HANDLE_EFI_ERROR("FreePages");
-
-   *total_used_bytes_ref = total_used_bytes;
 
 end:
    return status;
@@ -102,13 +103,11 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_STATUS status = EFI_SUCCESS;
-   EFI_BLOCK_IO_PROTOCOL *blockio = NULL;
    EFI_DEVICE_PATH *parentDpCopy = NULL;
    EFI_HANDLE parentDpHandle = NULL;
 
+   struct load_ramdisk_ctx ctx = {0};
 
-   u32 total_fat_size;
-   u32 total_used_bytes;
    u32 ff_clu_off;
    void *fat_hdr;
 
@@ -126,7 +125,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    status = BS->OpenProtocol(parentDpHandle,
                              &BlockIoProtocol,
-                             (void **)&blockio,
+                             (void **)&ctx.blockio,
                              image,
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
@@ -134,12 +133,10 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    Print(LOADING_RAMDISK_STR);
 
-   status = LoadRamdisk_GetTotFatSize(blockio, &total_fat_size);
+   status = LoadRamdisk_GetTotFatSize(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_GetTotFatSize");
 
-   status = LoadRamdisk_GetTotUsedBytes(blockio,
-                                        total_fat_size,
-                                        &total_used_bytes);
+   status = LoadRamdisk_GetTotUsedBytes(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_GetTotUsedBytes");
 
    /*
@@ -170,7 +167,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    *ramdisk_paddr_ref = LINEAR_MAPPING_SIZE;
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
-                              (total_used_bytes / PAGE_SIZE) + 2,
+                              (ctx.total_used_bytes / PAGE_SIZE) + 2,
                               ramdisk_paddr_ref);
 
    HANDLE_EFI_ERROR("AllocatePages");
@@ -179,33 +176,33 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
                                  LOADING_RAMDISK_STR,
-                                 blockio,
+                                 ctx.blockio,
                                  initrd_off,
-                                 round_up_at(total_used_bytes, PAGE_SIZE),
+                                 round_up_at(ctx.total_used_bytes, PAGE_SIZE),
                                  fat_hdr);
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
    /* Now we're done with the BlockIoProtocol, close it. */
    BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
-   blockio = NULL;
+   ctx.blockio = NULL;
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
    Print(L"[ OK ]\r\n");
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 
-   if (ff_clu_off < total_used_bytes) {
+   if (ff_clu_off < ctx.total_used_bytes) {
 
       Print(L"Compacting ramdisk... ");
 
       fat_compact_clusters(fat_hdr);
       ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
-      total_used_bytes = fat_calculate_used_bytes(fat_hdr);
+      ctx.total_used_bytes = fat_calculate_used_bytes(fat_hdr);
 
-      if (total_used_bytes != ff_clu_off) {
+      if (ctx.total_used_bytes != ff_clu_off) {
 
          Print(L"fat_compact_clusters failed: %u != %u\r\n",
-               total_used_bytes, ff_clu_off);
+               ctx.total_used_bytes, ff_clu_off);
 
          status = EFI_ABORTED;
          goto end;
@@ -219,20 +216,20 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
     * align the first data sector, if necessary.
     */
 
-   total_used_bytes += PAGE_SIZE;
+   ctx.total_used_bytes += PAGE_SIZE;
 
    /*
     * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
     * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
     */
-   *ramdisk_size = total_used_bytes;
+   *ramdisk_size = ctx.total_used_bytes;
 
 end:
 
    if (parentDpCopy)
       FreePool(parentDpCopy);
 
-   if (blockio)
+   if (ctx.blockio)
       BS->CloseProtocol(parentDpHandle, &BlockIoProtocol, image, NULL);
 
    return status;
