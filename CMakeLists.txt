@@ -425,15 +425,17 @@ set(EARLY_BOOT_SZ           4096)  # Better not touch!
 set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
 set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
 set(MAX_BOOTLOADER_BIN_SZ_KB  48)  # Max size of bootloader.bin (keep updated!)
-set(IMG_SZ_MB                 37)
-set(INITRD_START_KB         1024)
-set(INITRD_SIZE_MB            35)
+set(IMG_SZ_MB                 37)  # Total size of tilck.img
+set(INITRD_SZ_MB              32)  # Size of the initrd RAMDISK in MB
+set(BOOTPART_SZ_SEC         6144)  # Size of the boot partition in sectors
 
-math(EXPR BOOT_SECTORS    "${MAX_BOOTLOADER_BIN_SZ_KB} * 1024 / ${SECTOR_SIZE}")
-math(EXPR IMG_SZ_SEC      "${IMG_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
-math(EXPR INITRD_SECTOR   "${INITRD_START_KB} * 1024 / ${SECTOR_SIZE}")
-math(EXPR INITRD_SZ_SEC   "${INITRD_SIZE_MB} * 1048576 / ${SECTOR_SIZE}")
-math(EXPR INITRD_LAST_SEC "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
+math(EXPR IMG_SZ_SEC        "${IMG_SZ_MB} * 1024 * 1024 / ${SECTOR_SIZE}")
+math(EXPR BOOT_SECTORS      "${MAX_BOOTLOADER_BIN_SZ_KB}*1024/${SECTOR_SIZE}")
+math(EXPR BOOTPART_SEC      "${BOOT_SECTORS}")
+math(EXPR BOOTPART_LAST_SEC "${BOOTPART_SEC} + ${BOOTPART_SZ_SEC} - 1")
+math(EXPR INITRD_SECTOR     "${BOOTPART_LAST_SEC} + 1")
+math(EXPR INITRD_SZ_SEC     "${INITRD_SZ_MB} * 1048576 / ${SECTOR_SIZE}")
+math(EXPR INITRD_LAST_SEC   "${INITRD_SECTOR} + ${INITRD_SZ_SEC} - 1")
 
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
@@ -525,11 +527,11 @@ endif()
 # Convenience variables
 set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
 
-# Setting one long variable, MBRHACK_BPB
+# [begin] Setting one long variable, MBRHACK_BPB
 set(MBRHACK_BPB ${SECTOR_SIZE} ${CHS_HEADS_PER_CYL})
 set(MBRHACK_BPB ${MBRHACK_BPB} ${CHS_SECTORS_PER_TRACK} ${IMG_SZ_SEC})
-set(MBRHACK_BPB ${MBRHACK_BPB} ${INITRD_SECTOR} ${INITRD_SECTOR} ${DISK_UUID})
-# ---
+set(MBRHACK_BPB ${MBRHACK_BPB} ${BOOT_SECTORS} ${BOOT_SECTORS} ${DISK_UUID})
+# [end]
 
 set(FATHACK ${BUILD_APPS}/fathack)
 set(PARTED parted ${IMG_FILE} -s -a minimal)
@@ -546,7 +548,9 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${MBRHACK} bpb ${MBRHACK_BPB}
       COMMAND
-         ${MBRHACK} add 0xc ${INITRD_SECTOR} +${INITRD_SIZE_MB}M
+         ${MBRHACK} add 0x0e ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
+      COMMAND
+         ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
       COMMAND
          ${BUILD_FATPART}
       COMMAND
@@ -570,7 +574,9 @@ else()
       COMMAND
          ${PARTED} mklabel msdos
       COMMAND
-         ${PARTED} mkpart primary FAT32 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
+         ${PARTED} mkpart primary FAT16 ${BOOTPART_SEC}s ${BOOTPART_LAST_SEC}s
+      COMMAND
+         ${PARTED} mkpart primary FAT16 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
       COMMAND
          ${BUILD_FATPART}
       COMMAND
