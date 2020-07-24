@@ -23,8 +23,12 @@
 struct load_ramdisk_ctx {
 
    EFI_BLOCK_IO_PROTOCOL *blockio;
+
    UINT32 total_fat_size;
-   UINT32 total_used_bytes;
+   UINT32 rounded_tot_fat_sz;       /* Rounded up at PAGE_SIZE */
+
+   UINT32 tot_used_bytes;
+   UINT32 rounded_tot_used_bytes;   /* Rounded up at PAGE_SIZE */
 };
 
 static EFI_STATUS
@@ -48,6 +52,7 @@ LoadRamdisk_GetTotFatSize(struct load_ramdisk_ctx *ctx)
 
    fat_sec_sz = fat_get_sector_size(fat_hdr);
    ctx->total_fat_size = (fat_get_first_data_sector(fat_hdr) + 1) * fat_sec_sz;
+   ctx->rounded_tot_fat_sz = round_up_at(ctx->total_fat_size, PAGE_SIZE);
 
    status = BS->FreePages(ramdisk_paddr, 1);
    HANDLE_EFI_ERROR("FreePages");
@@ -67,7 +72,7 @@ LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
    /* Allocate memory for storing the whole FAT table */
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
-                              (ctx->total_fat_size / PAGE_SIZE) + 1,
+                              ctx->rounded_tot_fat_sz / PAGE_SIZE,
                               &ramdisk_paddr);
    HANDLE_EFI_ERROR("AllocatePages");
    fat_hdr = TO_PTR(ramdisk_paddr);
@@ -78,7 +83,8 @@ LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
                              fat_hdr);
    HANDLE_EFI_ERROR("ReadAlignedBlock");
 
-   ctx->total_used_bytes = fat_calculate_used_bytes(fat_hdr);
+   ctx->tot_used_bytes = fat_calculate_used_bytes(fat_hdr);
+   ctx->rounded_tot_used_bytes = round_up_at(ctx->tot_used_bytes, PAGE_SIZE);
 
    /*
     * Now we know everything. Free the memory used so far and allocate the
@@ -86,7 +92,7 @@ LoadRamdisk_GetTotUsedBytes(struct load_ramdisk_ctx *ctx)
     * including clearly the header and the FAT table.
     */
 
-   status = BS->FreePages(ramdisk_paddr, (ctx->total_fat_size / PAGE_SIZE) + 1);
+   status = BS->FreePages(ramdisk_paddr, ctx->rounded_tot_fat_sz / PAGE_SIZE);
    HANDLE_EFI_ERROR("FreePages");
 
 end:
@@ -108,7 +114,8 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
 
    struct load_ramdisk_ctx ctx = {0};
 
-   u32 ff_clu_off;
+
+   UINT32 ff_clu_off;
    void *fat_hdr;
 
    parentDpCopy = GetCopyOfParentDevicePathNode(
@@ -156,18 +163,15 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
     *
     * Additional notes
     * --------------------------
-    * Note the `(total_used_bytes / PAGE_SIZE) + 2` expression below.
+    * Note the `(ctx.rounded_tot_used_bytes / PAGE_SIZE) + 1` expression below.
     *
-    *    +1 page is added in order to brutally round-up the value of
-    *    `total_used_bytes`, when turning into pages.
-    *
-    *    Another +1 page is added to allow, evenutally, the Tilck kernel
+    *    +1 page is allocated to allow, evenutally, the Tilck kernel
     *    to align it's data clusters at page boundary.
     */
    *ramdisk_paddr_ref = LINEAR_MAPPING_SIZE;
    status = BS->AllocatePages(AllocateMaxAddress,
                               EfiLoaderData,
-                              (ctx.total_used_bytes / PAGE_SIZE) + 2,
+                              (ctx.rounded_tot_used_bytes / PAGE_SIZE) + 1,
                               ramdisk_paddr_ref);
 
    HANDLE_EFI_ERROR("AllocatePages");
@@ -178,7 +182,7 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
                                  LOADING_RAMDISK_STR,
                                  ctx.blockio,
                                  initrd_off,
-                                 round_up_at(ctx.total_used_bytes, PAGE_SIZE),
+                                 ctx.rounded_tot_used_bytes,
                                  fat_hdr);
    HANDLE_EFI_ERROR("ReadDiskWithProgress");
 
@@ -191,18 +195,18 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    Print(L"[ OK ]\r\n");
    ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 
-   if (ff_clu_off < ctx.total_used_bytes) {
+   if (ff_clu_off < ctx.tot_used_bytes) {
 
       Print(L"Compacting ramdisk... ");
 
       fat_compact_clusters(fat_hdr);
       ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
-      ctx.total_used_bytes = fat_calculate_used_bytes(fat_hdr);
+      ctx.tot_used_bytes = fat_calculate_used_bytes(fat_hdr);
 
-      if (ctx.total_used_bytes != ff_clu_off) {
+      if (ctx.tot_used_bytes != ff_clu_off) {
 
          Print(L"fat_compact_clusters failed: %u != %u\r\n",
-               ctx.total_used_bytes, ff_clu_off);
+               ctx.tot_used_bytes, ff_clu_off);
 
          status = EFI_ABORTED;
          goto end;
@@ -212,17 +216,15 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    }
 
    /*
-    * Increase total_used_bytes by 1 page in order to allow Tilck's kernel to
-    * align the first data sector, if necessary.
-    */
-
-   ctx.total_used_bytes += PAGE_SIZE;
-
-   /*
     * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
     * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
+    *
+    * Note: we've increased the value by 1 page in order to allow Tilck's kernel
+    * to align the first data sector, if necessary. Note: previously we
+    * allocated one additional page, in order this to be safe.
     */
-   *ramdisk_size = ctx.total_used_bytes;
+
+   *ramdisk_size = ctx.tot_used_bytes + PAGE_SIZE;
 
 end:
 
