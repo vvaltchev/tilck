@@ -99,6 +99,38 @@ end:
    return status;
 }
 
+static EFI_STATUS
+LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx, void *fat_hdr)
+{
+   EFI_STATUS status = EFI_SUCCESS;
+   UINT32 ff_clu_off;
+
+   ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
+
+   if (ff_clu_off < ctx->tot_used_bytes) {
+
+      Print(L"Compacting ramdisk... ");
+
+      fat_compact_clusters(fat_hdr);
+      ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
+      ctx->tot_used_bytes = fat_calculate_used_bytes(fat_hdr);
+
+      if (ctx->tot_used_bytes != ff_clu_off) {
+
+         Print(L"fat_compact_clusters failed: %u != %u\r\n",
+               ctx->tot_used_bytes, ff_clu_off);
+
+         status = EFI_ABORTED;
+         goto end;
+      }
+
+      Print(L"[ OK ]\r\n");
+   }
+
+end:
+   return status;
+}
+
 EFI_STATUS
 LoadRamdisk(EFI_SYSTEM_TABLE *ST,
             EFI_HANDLE image,
@@ -113,9 +145,6 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    EFI_HANDLE parentDpHandle = NULL;
 
    struct load_ramdisk_ctx ctx = {0};
-
-
-   UINT32 ff_clu_off;
    void *fat_hdr;
 
    parentDpCopy = GetCopyOfParentDevicePathNode(
@@ -193,35 +222,18 @@ LoadRamdisk(EFI_SYSTEM_TABLE *ST,
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
    Print(L"[ OK ]\r\n");
-   ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
 
-   if (ff_clu_off < ctx.tot_used_bytes) {
-
-      Print(L"Compacting ramdisk... ");
-
-      fat_compact_clusters(fat_hdr);
-      ff_clu_off = fat_get_first_free_cluster_off(fat_hdr);
-      ctx.tot_used_bytes = fat_calculate_used_bytes(fat_hdr);
-
-      if (ctx.tot_used_bytes != ff_clu_off) {
-
-         Print(L"fat_compact_clusters failed: %u != %u\r\n",
-               ctx.tot_used_bytes, ff_clu_off);
-
-         status = EFI_ABORTED;
-         goto end;
-      }
-
-      Print(L"[ OK ]\r\n");
-   }
+   status = LoadRamdisk_CompactClusters(&ctx, fat_hdr);
+   HANDLE_EFI_ERROR("LoadRamdisk_CompactClusters");
 
    /*
     * Pass via multiboot 'used bytes' as RAMDISK size instead of the real
     * RAMDISK size. This is useful if the kernel uses the RAMDISK read-only.
     *
-    * Note: we've increased the value by 1 page in order to allow Tilck's kernel
-    * to align the first data sector, if necessary. Note: previously we
-    * allocated one additional page, in order this to be safe.
+    * Note[1]: we've increased the value by 1 page in order to allow Tilck's
+    * kernel to align the first data sector, if necessary.
+    *
+    * Note[2]: previously we allocated one additional page.
     */
 
    *ramdisk_size = ctx.tot_used_bytes + PAGE_SIZE;
