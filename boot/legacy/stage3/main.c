@@ -43,16 +43,16 @@ u32 sectors_per_track;
 u32 heads_per_cylinder;
 u32 cylinders_count;
 
-static u32 ramdisk_max_size;
-static u32 ramdisk_first_data_sector;
 static struct mem_area ma_buf[64];
 
-static void calculate_ramdisk_fat_size(struct fat_hdr *hdr)
+static u32
+calc_fat_ramdisk_metadata_sz(struct fat_hdr *hdr)
 {
    const u32 sector_size = fat_get_sector_size(hdr);
+   const u32 first_data_sector = fat_get_first_data_sector(hdr);
 
-   ramdisk_first_data_sector = fat_get_first_data_sector(hdr);
-   ramdisk_max_size = fat_get_TotSec(hdr) * sector_size;
+   /* Note: the `first_data_sector` is *relative* to the start of the ramdisk */
+   return sector_size * (first_data_sector + 1);
 }
 
 static void
@@ -250,6 +250,7 @@ do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size)
 static void
 load_fat_ramdisk(const char *load_str,
                  struct mem_info *mi,
+                 u32 first_sec,
                  ulong min_paddr,
                  ulong *ref_rd_paddr,
                  u32 *ref_rd_size,
@@ -257,6 +258,7 @@ load_fat_ramdisk(const char *load_str,
 {
    u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
    u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
+   u32 rd_metadata_sz;     /* size of ramdisk's metadata, including the FATs */
    ulong rd_paddr;         /* ramdisk physical address */
    ulong free_mem;
    ulong size_to_alloc;
@@ -265,17 +267,17 @@ load_fat_ramdisk(const char *load_str,
    free_mem = get_usable_mem_or_panic(mi, min_paddr, SECTOR_SIZE);
 
    // Read FAT's header
-   read_sectors(free_mem, INITRD_SECTOR, 1 /* read just 1 sector */);
+   read_sectors(free_mem, first_sec, 1 /* read just 1 sector */);
 
-   calculate_ramdisk_fat_size((void *)free_mem);
+   rd_metadata_sz = calc_fat_ramdisk_metadata_sz((void *)free_mem);
 
    free_mem =
       get_usable_mem_or_panic(mi,
                               min_paddr,
-                              SECTOR_SIZE * (ramdisk_first_data_sector + 1));
+                              rd_metadata_sz);
 
    // Now read all the meta-data up to the first data sector.
-   read_sectors(free_mem, INITRD_SECTOR, ramdisk_first_data_sector + 1);
+   read_sectors(free_mem, first_sec, rd_metadata_sz / SECTOR_SIZE);
 
    // Finally we're able to determine how big is the fatpart (pure data)
    rd_size = fat_calculate_used_bytes((void *)free_mem);
@@ -298,7 +300,7 @@ load_fat_ramdisk(const char *load_str,
    rd_paddr = free_mem;
    read_sectors_with_progress(load_str,
                               rd_paddr,
-                              INITRD_SECTOR,
+                              first_sec,
                               rd_sectors);
 
    bt_movecur(bt_get_curr_row(), 0);
@@ -355,6 +357,7 @@ void bootloader_main(void)
    /* Load the INITRD */
    load_fat_ramdisk(LOADING_RAMDISK_STR,
                     &mi,
+                    INITRD_SECTOR,
                     KERNEL_MAX_END_PADDR,
                     &rd_paddr,
                     &rd_size,
