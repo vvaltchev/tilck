@@ -106,31 +106,6 @@ function add_apps {
    unset IFS
 }
 
-function add_efi_files {
-
-   # hard-link EFI files
-
-   if [ -s "@EFI_x86_64_FILE@" ]; then
-      link_or_copy "@EFI_x86_64_FILE@" EFI/BOOT/
-   fi
-
-   if [ -s "@EFI_ia32_FILE@" ]; then
-      link_or_copy "@EFI_ia32_FILE@" EFI/BOOT/
-   fi
-}
-
-function add_tilck_kernel {
-
-   if [ -n "@KERNEL_FATPART_PATH@" ]; then
-      # hard-link the kernel file (used also by the legacy bootloader)
-      link_or_copy @KERNEL_FILE@ @KERNEL_FATPART_PATH@
-   else
-      rm EFI/BOOT/.gitignore
-      rmdir EFI/BOOT
-      rmdir EFI
-   fi
-}
-
 function add_busybox {
    if [ -d $tc/$arch/busybox ]; then
       link_or_copy $tc/$arch/busybox/busybox bin/
@@ -321,8 +296,6 @@ function make_fatpart {
 create_sysroot_skeleton
 
 add_apps
-add_efi_files
-add_tilck_kernel
 add_fat_test_dir
 add_busybox
 add_tcc
