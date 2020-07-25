@@ -15,10 +15,13 @@
 #define BL_ST2_DATA_SEG        @BL_ST2_DATA_SEG@
 #define BL_BASE_ADDR           @BL_BASE_ADDR@
 #define BL_BASE_SEG            (@BL_BASE_ADDR@ / 16)
-#define INITRD_SECTOR          @INITRD_SECTOR@
 #define DISK_UUID              @DISK_UUID@
-#define IMG_SZ_SEC             @IMG_SZ_SEC@
-#define BOOT_SECTORS           @BOOT_SECTORS@
+#define IMG_SZ_SEC             @IMG_SZ_SEC@       /* size of the whole image */
+#define BOOT_SECTORS           @BOOT_SECTORS@     /* bootloader sectors      */
+#define BOOTPART_SEC           @BOOTPART_SEC@     /* start of the bootpart   */
+#define BOOTPART_SZ_SEC        @BOOTPART_SZ_SEC@  /* size of the bootpart    */
+#define INITRD_SECTOR          @INITRD_SECTOR@    /* start of the initrd     */
+#define INITRD_SZ_SEC          @INITRD_SZ_SEC@    /* size of the initrd      */
 
 /* Boolean config variables */
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
