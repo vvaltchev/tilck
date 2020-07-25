@@ -115,7 +115,7 @@ ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size)
 
       if (mbase < min_paddr) {
          /*
-          * The memory area starts before our the min address we can use,
+          * The memory area starts before the lowest address we can use,
           * therefore, for our purposes it's as if it just started at min_addr.
           */
          mbase = min_paddr;

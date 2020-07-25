@@ -221,12 +221,37 @@ write_ok_msg(void)
    bt_setcolor(DEFAULT_FG_COLOR);
 }
 
+static u32
+do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size)
+{
+   u32 ff_clu_off;         /* offset of ramdisk's first free cluster */
+
+   ff_clu_off = fat_get_first_free_cluster_off(ramdisk);
+
+   if (ff_clu_off < rd_size) {
+
+      printk("Compacting ramdisk... ");
+
+      fat_compact_clusters(ramdisk);
+      ff_clu_off = fat_get_first_free_cluster_off(ramdisk);
+      rd_size = fat_calculate_used_bytes(ramdisk);
+
+      if (rd_size != ff_clu_off) {
+         printk("\n");
+         panic("fat_compact_clusters() failed: %u != %u", rd_size, ff_clu_off);
+      }
+
+      write_ok_msg();
+   }
+
+   return rd_size;
+}
+
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
    u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
    u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
-   u32 ff_clu_off;         /* offset of ramdisk's first free cluster */
    ulong rd_paddr;         /* ramdisk physical address */
    ulong free_mem;
    void *entry;
@@ -254,9 +279,8 @@ void bootloader_main(void)
 
    read_memory_map(ma_buf, sizeof(ma_buf), &mi);
 
-#if BOOTLOADER_POISON_MEMORY
-   poison_usable_memory(&mi);
-#endif
+   if (BOOTLOADER_POISON_MEMORY)
+      poison_usable_memory(&mi);
 
    success =
       read_drive_params(current_device,
@@ -309,23 +333,7 @@ void bootloader_main(void)
    printk(LOADING_RAMDISK_STR);
    write_ok_msg();
 
-   ff_clu_off = fat_get_first_free_cluster_off((void *)free_mem);
-
-   if (ff_clu_off < rd_size) {
-
-      printk("Compacting ramdisk... ");
-
-      fat_compact_clusters((void *)free_mem);
-      ff_clu_off = fat_get_first_free_cluster_off((void *)free_mem);
-      rd_size = fat_calculate_used_bytes((void *)free_mem);
-
-      if (rd_size != ff_clu_off) {
-         printk("\n");
-         panic("fat_compact_clusters() failed: %u != %u", rd_size, ff_clu_off);
-      }
-
-      write_ok_msg();
-   }
+   rd_size = do_ramdisk_compact_clusters((void *)rd_paddr, rd_size);
 
    /*
     * Increase rd_size by 1 page in order to allow Tilck's kernel to
