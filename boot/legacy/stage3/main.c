@@ -247,13 +247,74 @@ do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size)
    return rd_size;
 }
 
+static void
+load_fat_ramdisk(const char *load_str,
+                 struct mem_info *mi,
+                 ulong min_paddr,
+                 ulong *ref_rd_paddr,
+                 u32 *ref_rd_size,
+                 bool alloc_extra_page)
+{
+   u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
+   u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
+   ulong rd_paddr;         /* ramdisk physical address */
+   ulong free_mem;
+   ulong size_to_alloc;
+
+   printk(load_str);
+   free_mem = get_usable_mem_or_panic(mi, min_paddr, SECTOR_SIZE);
+
+   // Read FAT's header
+   read_sectors(free_mem, INITRD_SECTOR, 1 /* read just 1 sector */);
+
+   calculate_ramdisk_fat_size((void *)free_mem);
+
+   free_mem =
+      get_usable_mem_or_panic(mi,
+                              min_paddr,
+                              SECTOR_SIZE * (ramdisk_first_data_sector + 1));
+
+   // Now read all the meta-data up to the first data sector.
+   read_sectors(free_mem, INITRD_SECTOR, ramdisk_first_data_sector + 1);
+
+   // Finally we're able to determine how big is the fatpart (pure data)
+   rd_size = fat_calculate_used_bytes((void *)free_mem);
+
+   /* Calculate rd_size in sectors, rounding up at SECTOR_SIZE */
+   rd_sectors = (rd_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
+
+   size_to_alloc = SECTOR_SIZE * rd_sectors;
+
+   if (alloc_extra_page)
+      size_to_alloc += PAGE_SIZE;
+
+   free_mem = get_usable_mem(mi, min_paddr, size_to_alloc);
+
+   if (!free_mem) {
+      panic("Unable to allocate %u KB after %p for the ramdisk",
+            SECTOR_SIZE * rd_sectors / KB, KERNEL_MAX_END_PADDR);
+   }
+
+   rd_paddr = free_mem;
+   read_sectors_with_progress(load_str,
+                              rd_paddr,
+                              INITRD_SECTOR,
+                              rd_sectors);
+
+   bt_movecur(bt_get_curr_row(), 0);
+   printk(load_str);
+   write_ok_msg();
+
+   /* Return ramdisk's paddr and size using the OUT parameters */
+   *ref_rd_paddr = rd_paddr;
+   *ref_rd_size = rd_size;
+}
+
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
    u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
-   u32 rd_sectors;         /* rd_size in 512-bytes sectors (rounded-up) */
    ulong rd_paddr;         /* ramdisk physical address */
-   ulong free_mem;
    void *entry;
    bool success;
    struct mem_info mi;
@@ -291,48 +352,15 @@ void bootloader_main(void)
    if (!success)
       panic("read_write_params failed");
 
-   printk(LOADING_RAMDISK_STR);
-   free_mem = get_usable_mem_or_panic(&mi, KERNEL_MAX_END_PADDR, SECTOR_SIZE);
+   /* Load the INITRD */
+   load_fat_ramdisk(LOADING_RAMDISK_STR,
+                    &mi,
+                    KERNEL_MAX_END_PADDR,
+                    &rd_paddr,
+                    &rd_size,
+                    true);
 
-   // Read FAT's header
-   read_sectors(free_mem, INITRD_SECTOR, 1 /* read just 1 sector */);
-
-   calculate_ramdisk_fat_size((void *)free_mem);
-
-   free_mem =
-      get_usable_mem_or_panic(&mi,
-                              KERNEL_MAX_END_PADDR,
-                              SECTOR_SIZE * (ramdisk_first_data_sector + 1));
-
-   // Now read all the meta-data up to the first data sector.
-   read_sectors(free_mem, INITRD_SECTOR, ramdisk_first_data_sector + 1);
-
-   // Finally we're able to determine how big is the fatpart (pure data)
-   rd_size = fat_calculate_used_bytes((void *)free_mem);
-
-   /* Calculate rd_size in sectors, rounding up at SECTOR_SIZE */
-   rd_sectors = (rd_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
-
-   free_mem =
-      get_usable_mem(&mi,
-                     KERNEL_MAX_END_PADDR,
-                     SECTOR_SIZE * rd_sectors + 4 * KB);
-
-   if (!free_mem) {
-      panic("Unable to allocate %u KB after %p for the ramdisk",
-            SECTOR_SIZE * rd_sectors / KB, KERNEL_MAX_END_PADDR);
-   }
-
-   rd_paddr = free_mem;
-   read_sectors_with_progress(LOADING_RAMDISK_STR,
-                              rd_paddr,
-                              INITRD_SECTOR,
-                              rd_sectors);
-
-   bt_movecur(bt_get_curr_row(), 0);
-   printk(LOADING_RAMDISK_STR);
-   write_ok_msg();
-
+   /* Compact its clusters, if necessary */
    rd_size = do_ramdisk_compact_clusters((void *)rd_paddr, rd_size);
 
    /*
