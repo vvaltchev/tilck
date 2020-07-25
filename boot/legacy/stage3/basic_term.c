@@ -6,8 +6,8 @@
 
 #define VIDEO_ADDR ((u16*)(0xB8000))
 
-#define TERM_COLS  80
-#define TERM_ROWS  25
+#define TERM_COLS                80
+#define TERM_ROWS                25
 
 static u16 curr_row;
 static u16 curr_col;
@@ -46,7 +46,7 @@ void bt_movecur(int row, int col)
    curr_col = (u16)col;
 }
 
-static void bt_incr_row()
+static void bt_incr_row(void)
 {
    if (curr_row < TERM_ROWS - 1) {
       ++curr_row;

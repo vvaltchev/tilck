@@ -396,13 +396,28 @@ void bootloader_main(void)
    write_ok_msg();
    printk("\n");
 
-   ask_user_video_mode(&mi);
+   if (TINY_KERNEL) {
 
-   while (!vbe_set_video_mode(selected_mode)) {
-      printk("ERROR: unable to set the selected video mode!\n");
-      printk("       vbe_set_video_mode(0x%x) failed.\n\n", selected_mode);
-      printk("Please select a different video mode.\n\n");
+      printk("WARNING: TINY_KERNEL=1, Tilck won't support any type of video\n");
+      printk("console. Use the serial console instead.\n");
+      printk("\n");
+
+      printk("Press ANY key to boot");
+      bios_read_char();
+
+      init_bt();
+      printk("<No video console>");
+
+   } else {
+
       ask_user_video_mode(&mi);
+
+      while (!vbe_set_video_mode(selected_mode)) {
+         printk("ERROR: unable to set the selected video mode!\n");
+         printk("       vbe_set_video_mode(0x%x) failed.\n\n", selected_mode);
+         printk("Please select a different video mode.\n\n");
+         ask_user_video_mode(&mi);
+      }
    }
 
    mbi = setup_multiboot_info(&mi, rd_paddr, rd_size);

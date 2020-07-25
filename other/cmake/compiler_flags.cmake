@@ -7,7 +7,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
    list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DRELEASE")
-   set(OPT_FLAGS_LIST -O3)
+
+   if (TINY_KERNEL)
+      set(OPT_FLAGS_LIST -Os)
+   else()
+      set(OPT_FLAGS_LIST -O3)
+   endif()
 
 else()
 

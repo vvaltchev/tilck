@@ -31,7 +31,11 @@
  */
 
 #if KERNEL_MAX_SIZE <= 1024 * KB
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
+   #if TINY_KERNEL
+      #define KMALLOC_FIRST_HEAP_SIZE    (  64 * KB)
+   #else
+      #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
+   #endif
 #else
    #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
 #endif

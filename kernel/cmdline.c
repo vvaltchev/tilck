@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_console.h>
+#include <tilck_gen_headers/config_modules.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -14,8 +15,8 @@
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 int kopt_tty_count = TTY_COUNT;
-bool kopt_serial_console;
 bool kopt_sched_alive_thread;
+bool kopt_serial_console = !MOD_console;
 
 /* static variables */
 

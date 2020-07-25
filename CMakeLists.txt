@@ -214,11 +214,26 @@ set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
 set(KRN_RESCHED_ENABLE_PREEMPT OFF CACHE BOOL
     "Check for need_resched and yield in enable_preemption()")
 
+set(TINY_KERNEL OFF CACHE BOOL "\
+Advanced option, use carefully. Forces the Tilck kernel \
+to be as small as possible. Incompatibile with many modules \
+like console, fb, tracing and several kernel options like \
+KERNEL_SELFTESTS")
+
 list(
    APPEND no_arch_modules_whitelist
 
    console
    tracing
+)
+
+list(
+   APPEND tiny_kernel_modules_blacklist
+
+   fb
+   console
+   tracing
+   kb8042
 )
 
 file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
@@ -229,12 +244,53 @@ foreach(modpath ${modules})
 
    if (IS_DIRECTORY ${modpath})
 
+      if (TINY_KERNEL)
+
+         list(FIND tiny_kernel_modules_blacklist ${modname} _index)
+
+         if (${_index} GREATER -1)
+            if (MOD_${modname})
+               message(WARNING "TINY_KERNEL=1, force-setting MOD_{modname}=0")
+               set(MOD_${modname} OFF)
+            endif()
+         endif()
+         unset(_index)
+
+      endif(TINY_KERNEL)
+
       list(APPEND modules_list ${modname})
       set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
 
    endif()
 
 endforeach()
+
+if (TINY_KERNEL)
+
+   if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+      message(FATAL_ERROR "TINY_KERNEL=1 requires CMAKE_BUILD_TYPE=Release")
+   endif()
+
+   if (KERNEL_GCOV)
+      message(FATAL_ERROR "TINY_KERNEL=1 requires KERNEL_GCOV=0")
+   endif()
+
+   if (KERNEL_SELFTESTS)
+      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SELFTESTS=0")
+      set(KERNEL_SELFTESTS OFF)
+   endif()
+
+   if (KERNEL_SYMBOLS)
+      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SYMBOLS=0")
+      set(KERNEL_SYMBOLS OFF)
+   endif()
+
+   if (KERNEL_SHOW_LOGO)
+      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SHOW_LOGO=0")
+      set(KERNEL_SHOW_LOGO OFF)
+   endif()
+
+endif()
 
 # Create a list with all the kernel opts, in order to dump it later
 # -------------------------------------------------------------------
@@ -286,6 +342,7 @@ list(
    FAT_TEST_DIR
    KERNEL_DO_PS2_SELFTEST
    FB_CONSOLE_USE_ALT_FONTS
+   TINY_KERNEL
 )
 
 ###########################################################
@@ -387,10 +444,6 @@ endif()
 
 if (${KERNEL_SELFTESTS} AND NOT ${KERNEL_SYMBOLS})
    message(FATAL_ERROR "Selftests require kernel symbols to be enabled")
-endif()
-
-if (${MOD_debugpanel} AND NOT ${KERNEL_SYMBOLS})
-   message(FATAL_ERROR "The debug panel require kernel symbols to be enabled")
 endif()
 
 ################################################################################

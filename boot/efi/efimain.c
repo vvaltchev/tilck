@@ -66,10 +66,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                         2); /* CurrConsoleRow (HACK). See ShowProgress() */
 
    HANDLE_EFI_ERROR("LoadRamdisk failed");
-
    Print(L"\r\n");
-   status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
-   HANDLE_EFI_ERROR("SetupGraphicMode() failed");
+
+   if (!TINY_KERNEL) {
+      status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
+      HANDLE_EFI_ERROR("SetupGraphicMode() failed");
+   }
 
    status = AllocateMbi();
    HANDLE_EFI_ERROR("AllocateMbi");
@@ -89,6 +91,18 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    // Print(L"Press ANY key to boot the kernel...\r\n");
    // WaitForKeyPress(ST);
    //
+
+   if (TINY_KERNEL) {
+      Print(L"WARNING: TINY_KERNEL=1, Tilck won't support any type of video\n");
+      Print(L"console. Use the serial console instead.\n");
+      Print(L"\n");
+
+      Print(L"Press ANY key to boot");
+      WaitForKeyPress(ST);
+
+      ST->ConOut->ClearScreen(ST->ConOut);
+      Print(L"<No video console>");
+   }
 
    status = MultibootSaveMemoryMap(&mapkey);
    HANDLE_EFI_ERROR("MultibootSaveMemoryMap");
