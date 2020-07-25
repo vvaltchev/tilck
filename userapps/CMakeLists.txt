@@ -24,11 +24,25 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
    macro(add_usermode_app)
 
-      if (NOT "${ARGV0}" STREQUAL "init")
-         set(USERAPPS_${ARGV0} ON CACHE BOOL "Include `${ARGV0}` in fatpart")
+      if (TYPICAL_DEVEL_USERAPPS)
+         set(do_include_this ON)
       else()
-         set(USERAPPS_init ON)
+         set(do_include_this OFF)
       endif()
+
+      if ("${ARGV0}" STREQUAL "init")
+         set(do_include_this ON)
+      endif()
+
+      if ("${ARGV0}" STREQUAL "dp")
+         set(do_include_this ON)
+      endif()
+
+      if (do_include_this)
+         set(USERAPPS_${ARGV0} ON CACHE BOOL "Include `${ARGV0}` in initrd")
+      endif()
+
+      unset(do_include_this)
 
       if (USERAPPS_${ARGV0})
 
@@ -52,7 +66,10 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
    add_usermode_app(init)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
-   add_usermode_app(dp)
+
+   if (MOD_debugpanel)
+      add_usermode_app(dp)
+   endif()
 # [/simple apps]
 
 # [filedump]
@@ -64,7 +81,11 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
       "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
    )
 
-   set(USERAPPS_filedump OFF CACHE BOOL "Include `filedump` in fatpart")
+   if (TYPICAL_DEVEL_USERAPPS)
+      set(USERAPPS_filedump OFF CACHE BOOL "Include `filedump` in fatpart")
+   else()
+      set(USERAPPS_filedump OFF)
+   endif()
 
    if (USERAPPS_filedump)
       add_executable(filedump ${FILEDUMP_SOURCES})
@@ -96,7 +117,11 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 # [ncurses test app]
    if (EXISTS ${NCURSES_INST}/lib/libncurses_g.a)
 
-      set(USERAPPS_ncapp OFF CACHE BOOL "Include `ncapp` in fatpart")
+      if (TYPICAL_DEVEL_USERAPPS)
+         set(USERAPPS_ncapp OFF CACHE BOOL "Include `ncapp` in fatpart")
+      else()
+         set(USERAPPS_ncapp OFF)
+      endif()
 
       if (USERAPPS_ncapp)
          add_usermode_app(ncapp)

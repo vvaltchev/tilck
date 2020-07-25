@@ -159,6 +159,9 @@ set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
 set(KRN_PRINTK_ON_CURR_TTY ON CACHE BOOL
     "Make printk() always flush on the current TTY")
 
+set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
+    "Include in Tilck's ramdisk some apps for testing the kernel")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")

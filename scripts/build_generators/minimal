@@ -17,10 +17,17 @@ CM=$MAIN_DIR/scripts/cmake_run
 ##############################################################
 
 $CM                                   \
+      -DCMAKE_BUILD_TYPE=Release      \
       -DBOOTLOADER_EFI=0              \
       -DKERNEL_SHOW_LOGO=0            \
+      -DKERNEL_SYMBOLS=0              \
+      -DKERNEL_SELFTESTS=0            \
       -DMOD_console=0                 \
-      -DMOD_debugpanel=0              \
+      -DMOD_fb=0                      \
       -DMOD_kb8042=0                  \
-      -DMOD_serial=1
+      -DMOD_tracing=0                 \
+      -DMOD_serial=1                  \
+      -DTINY_KERNEL=1                 \
+      -DUSERAPPS_extra=0              \
+      -DTYPICAL_DEVEL_USERAPPS=0
 
