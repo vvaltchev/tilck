@@ -13,7 +13,7 @@ send_to_vm_and_find_text(r"dp{ret}", True, [
 send_to_vm_and_find_text(r"2", True, [
    "START",
    "END",
-   "memory",
+   "usable physical mem",
 ])
 
 send_to_vm_and_find_text(r"3", True, [

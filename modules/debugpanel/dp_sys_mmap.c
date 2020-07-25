@@ -1,11 +1,16 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_kmalloc.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/sched.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/kmalloc_debug.h>
 
 #include "termutil.h"
 #include "dp_int.h"
@@ -106,10 +111,26 @@ static void dump_var_mtrrs(void)
 
 #endif
 
-static void dp_print_tot_usable_system_memory(void)
+static void dump_global_mem_stats(void)
 {
+   static struct debug_kmalloc_heap_info hi;
+
    struct mem_region ma;
-   u64 size = 0;
+   u64 tot_usable = 0;
+   u64 kernel_mem = 0;
+   u64 ramdisk_mem = 0;
+   u64 kmalloc_mem = 0;
+   u64 tot_used = 0;
+
+   ASSERT(!is_preemption_enabled());
+
+   for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
+
+      if (!debug_kmalloc_get_heap_info(i, &hi))
+         break;
+
+      kmalloc_mem += hi.mem_allocated;
+   }
 
    for (int i = 0; i < get_mem_regions_count(); i++) {
 
@@ -118,22 +139,59 @@ static void dp_print_tot_usable_system_memory(void)
       if (ma.type == MULTIBOOT_MEMORY_AVAILABLE ||
           (ma.extra & (MEM_REG_EXTRA_RAMDISK | MEM_REG_EXTRA_KERNEL)))
       {
-         size += ma.len;
+         tot_usable += ma.len;
+
+         if (ma.extra & MEM_REG_EXTRA_KERNEL)
+            kernel_mem += ma.len;
+
+         if (ma.extra & MEM_REG_EXTRA_RAMDISK)
+            ramdisk_mem += ma.len;
       }
    }
 
+   kernel_mem -= KMALLOC_FIRST_HEAP_SIZE;
+   tot_used = kmalloc_mem + ramdisk_mem + kernel_mem;
+
    dp_writeln(
-      "Total usable physical memory: %llu KB [%llu MB]",
-      size / KB,
-      size / MB
+      "Total usable physical mem:   %8llu KB [ %s%llu MB ]",
+      tot_usable / KB,
+      "\033(0g\033(B",              /* plus/minus sign */
+      tot_usable / MB
    );
+
+   dp_writeln(
+      "Used by kmalloc:             %8llu KB",
+      kmalloc_mem / KB
+   );
+
+   dp_writeln(
+      "Used by initrd:              %8llu KB",
+      ramdisk_mem / KB
+   );
+
+   dp_writeln(
+      "Used by kernel text + data:  %8llu KB",
+      kernel_mem / KB
+   );
+
+   dp_writeln(
+      "Tot used:                    %8llu KB",
+      tot_used / KB
+   );
+
    dp_writeln("");
 }
 
 static void dp_show_sys_mmap(void)
 {
    row = dp_screen_start_row;
-   dp_print_tot_usable_system_memory();
+
+   disable_preemption();
+   {
+      dump_global_mem_stats();
+   }
+   enable_preemption();
+
    dump_memory_map();
 
 #ifdef arch_x86_family
