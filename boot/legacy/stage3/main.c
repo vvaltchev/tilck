@@ -19,7 +19,8 @@
 #include "mm.h"
 #include "common.h"
 
-#define LOADING_RAMDISK_STR            "Loading ramdisk... "
+#define LOADING_INITRD_STR            "Loading ramdisk... "
+#define LOADING_BOOTPART_STR          "Loading bootpart... "
 
 bool graphics_mode; // false = text mode
 
@@ -315,8 +316,11 @@ load_fat_ramdisk(const char *load_str,
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
-   u32 rd_size;            /* ramdisk size (used bytes in the fat partition) */
-   ulong rd_paddr;         /* ramdisk physical address */
+   ulong rd_paddr;         /* initrd's physical address */
+   u32 rd_size;            /* initrd's size (used bytes in the fat partition) */
+   ulong bp_paddr;         /* bootpart's physical address */
+   u32 bp_size;            /* bootpart's size (used bytes, as rd_size) */
+   ulong bp_min_paddr;
    void *entry;
    bool success;
    struct mem_info mi;
@@ -355,15 +359,30 @@ void bootloader_main(void)
       panic("read_write_params failed");
 
    /* Load the INITRD */
-   load_fat_ramdisk(LOADING_RAMDISK_STR,
+   load_fat_ramdisk(LOADING_INITRD_STR,
                     &mi,
                     INITRD_SECTOR,
                     KERNEL_MAX_END_PADDR,
                     &rd_paddr,
                     &rd_size,
-                    true);
+                    true);       /* alloc_extra_page */
 
-   /* Compact its clusters, if necessary */
+   /* Set bootpart's lowest paddr, leaving some safe margin */
+   bp_min_paddr = rd_paddr + rd_size + 2 * PAGE_SIZE;
+
+   /* Round-up bootpart's lowest paddr at page boundary */
+   bp_min_paddr = round_up_at(bp_min_paddr, PAGE_SIZE);
+
+   /* Load the BOOTPART from which we'll load the kernel */
+   load_fat_ramdisk(LOADING_BOOTPART_STR,
+                    &mi,
+                    BOOTPART_SEC,
+                    bp_min_paddr,
+                    &bp_paddr,
+                    &bp_size,
+                    false);       /* alloc_extra_page */
+
+   /* Compact initrd's clusters, if necessary */
    rd_size = do_ramdisk_compact_clusters((void *)rd_paddr, rd_size);
 
    /*
@@ -373,7 +392,7 @@ void bootloader_main(void)
    rd_size += 4 * KB;
 
    printk("Loading the ELF kernel... ");
-   load_elf_kernel(&mi, rd_paddr, rd_size, KERNEL_FILE_PATH, &entry);
+   load_elf_kernel(&mi, bp_paddr, bp_size, KERNEL_FILE_PATH, &entry);
    write_ok_msg();
    printk("\n");
 
