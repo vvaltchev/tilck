@@ -26,3 +26,21 @@
 /* Boolean config variables */
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
 
+
+/*
+ * --------------------------------------------------------------------------
+ *                  Hard-coded global & derived constants
+ * --------------------------------------------------------------------------
+ *
+ * Here below there are many dervied constants and convenience constants like
+ * COMPILER_NAME along with some pseudo-constants like KERNEL_MAX_END_PADDR not
+ * designed to be easily changed because of the code makes assumptions about
+ * them. Because of that, those constants are hard-coded and not available as
+ * CMake variables. With time, some of those constants get "promoted" and moved
+ * in CMake, others remain here. See the comments and think about the potential
+ * implications before promoting a hard-coded constant to a configurable CMake
+ * variable.
+ */
+
+
+#define KERNEL_MAX_END_PADDR     (KERNEL_PADDR + KERNEL_MAX_SIZE)

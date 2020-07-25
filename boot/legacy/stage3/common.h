@@ -2,8 +2,6 @@
 
 #pragma once
 
-#define KERNEL_MAX_END_PADDR (KERNEL_PADDR + KERNEL_MAX_SIZE)
-
 /*
  * Static address of a single bios memory area struct: it must be in the lowest
  * 64 KB and must be hard-coded (because we don't know the memory map yet!).
