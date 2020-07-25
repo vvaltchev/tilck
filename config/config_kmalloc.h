@@ -30,7 +30,7 @@
  * variable.
  */
 
-#if !KERNEL_GCOV
+#if KERNEL_MAX_SIZE <= 1024 * KB
    #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
 #else
    #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
