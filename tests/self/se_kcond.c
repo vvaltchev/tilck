@@ -88,3 +88,5 @@ void selftest_kcond_short()
    kcond_destory(&cond);
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond_short)

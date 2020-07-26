@@ -188,6 +188,8 @@ void selftest_rwlock_rp_med()
    regular_self_test_end();
 }
 
+DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp_med)
+
 void selftest_rwlock_wp_med()
 {
    int rt[RWLOCK_READERS];
@@ -246,3 +248,5 @@ void selftest_rwlock_wp_med()
    rwlock_wp_destroy(&test_rwlwp);
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp_med)

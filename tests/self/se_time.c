@@ -124,3 +124,5 @@ void selftest_time_manual(void)
 
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time_manual)

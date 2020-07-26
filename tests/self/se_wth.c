@@ -157,6 +157,8 @@ void selftest_wth_short(void)
    regular_self_test_end();
 }
 
+DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth_short)
+
 void selftest_wth_perf_short(void)
 {
    bool added;
@@ -181,3 +183,5 @@ void selftest_wth_perf_short(void)
    printk("Avg. job enqueue cycles: %llu [%i jobs]\n", elapsed/n, n);
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf_short)

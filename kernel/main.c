@@ -307,6 +307,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kmalloc();
    init_paging_cow();
    init_console();
+   init_self_tests();
    init_irq_handling();
    init_sched();
    init_syscall_interfaces();

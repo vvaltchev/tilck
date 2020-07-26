@@ -445,10 +445,6 @@ if (NOT ${MOD_console} AND NOT ${MOD_serial})
    message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
 endif()
 
-if (${KERNEL_SELFTESTS} AND NOT ${KERNEL_SYMBOLS})
-   message(FATAL_ERROR "Selftests require kernel symbols to be enabled")
-endif()
-
 ################################################################################
 
 set(BOOTLOADER_BIN_FILE    ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)

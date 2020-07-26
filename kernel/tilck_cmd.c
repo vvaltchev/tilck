@@ -33,30 +33,29 @@ void register_tilck_cmd(int cmd_n, void *func)
    tilck_cmds[cmd_n] = func;
 }
 
-static int sys_tilck_run_selftest(const char *user_selftest)
+static int sys_tilck_run_selftest(const char *u_selftest)
 {
    int rc;
    int tid;
-   ulong addr;
-   char buf[256] = SELFTEST_PREFIX;
-
-   rc = copy_str_from_user(buf + sizeof(SELFTEST_PREFIX) - 1,
-                           user_selftest,
-                           sizeof(buf) - sizeof(SELFTEST_PREFIX) - 2,
-                           NULL);
-
-   if (rc != 0)
-      return -EFAULT;
+   struct self_test *se;
+   char buf[96];
 
    if (!KERNEL_SELFTESTS)
       return -EINVAL;
 
-   if (!(addr = find_addr_of_symbol(buf)))
+   rc = copy_str_from_user(buf, u_selftest, sizeof(buf) - 1, NULL);
+
+   if (rc != 0)
+      return -EFAULT;
+
+   se = se_find(buf);
+
+   if (!se)
       return -EINVAL;
 
-   printk("Running function: %s()\n", buf);
+   printk("Running self-test: %s\n", buf);
 
-   if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, (void*)addr)) < 0)
+   if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, se)) < 0)
       return tid;
 
    kthread_join(tid);

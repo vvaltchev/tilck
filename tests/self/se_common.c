@@ -18,32 +18,96 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/kb.h>
 
+static struct list se_list = make_list(se_list);
 static volatile bool se_stop_requested;
-static void (*se_running_func)(void);
+static struct self_test *se_running;
+
+static void
+se_actual_register(struct self_test *se)
+{
+   struct self_test *pos;
+
+   if (strlen(se->name) >= SELF_TEST_MAX_NAME_LEN)
+      panic("Self test name '%s' too long\n", se->name);
+
+   list_for_each_ro(pos, &se_list, node) {
+
+      if (pos == se)
+         continue;
+
+      if (!strcmp(pos->name, se->name))
+         panic("Cannot register self-test '%s': duplicate name!", se->name);
+   }
+}
+
+void se_register(struct self_test *se)
+{
+   list_add_tail(&se_list, &se->node);
+}
 
 bool se_is_stop_requested(void)
 {
    return se_stop_requested;
 }
 
-void se_internal_run(void (*se_func)(void))
+struct self_test *se_find(const char *name)
+{
+   char shortname[SELF_TEST_MAX_NAME_LEN+1];
+   size_t len = strlen(name);
+   const char *p = name + len - 1;
+   const char *p2 = name;
+   char *s = shortname;
+   struct self_test *pos;
+
+   if (len >= SELF_TEST_MAX_NAME_LEN)
+      return NULL;
+
+   /*
+    * Find the position of the last '_', going backwards.
+    * Reason: drop the {_manual, _short, _med, _long} suffix.
+    */
+   while (p > name) {
+
+      if (*p == '_')
+         break;
+
+      p--;
+   }
+
+   if (p <= name)
+      return NULL;
+
+   while (p2 < p)
+      *s++ = *p2++;
+
+   *s = 0;
+
+   list_for_each_ro(pos, &se_list, node) {
+      if (!strcmp(pos->name, shortname))
+         return pos;
+   }
+
+   return NULL;
+}
+
+void se_internal_run(struct self_test *se)
 {
    /* Common self test setup code */
    disable_preemption();
    {
       se_stop_requested = false;
-      se_running_func = se_func;
+      se_running = se;
    }
    enable_preemption();
 
    /* Run the actual self test */
-   se_func();
+   se->func();
 
    /* Common self test tear down code */
    disable_preemption();
    {
       se_stop_requested = false;
-      se_running_func = NULL;
+      se_running = NULL;
    }
    enable_preemption();
 }
@@ -53,12 +117,12 @@ se_keypress_handler(struct kb_dev *kb, struct key_event ke)
 {
    enum kb_handler_action ret = kb_handler_nak;
 
-   if (!se_running_func)
+   if (!se_running)
       return ret;
 
    disable_preemption();
 
-   if (se_running_func) {
+   if (se_running) {
       if (ke.print_char == 'c' && kb_is_ctrl_pressed(kb)) {
          se_stop_requested = true;
          ret = kb_handler_ok_and_stop;
@@ -69,157 +133,39 @@ se_keypress_handler(struct kb_dev *kb, struct key_event ke)
    return ret;
 }
 
-static struct keypress_handler_elem se_handler =
-{
-   .handler = &se_keypress_handler
-};
-
-__attribute__((constructor))
-static void init_self_tests_infrastructure()
-{
-   register_keypress_handler(&se_handler);
-}
-
 void regular_self_test_end(void)
 {
    printk("Self-test completed.\n");
 }
 
-void simple_test_kthread(void *arg)
+static struct keypress_handler_elem se_handler =
 {
-   u32 i;
-#if !defined(NDEBUG) && !defined(RELEASE)
-   ulong esp;
-   ulong saved_esp = get_stack_ptr();
-#endif
+   .handler = &se_keypress_handler
+};
 
-   printk("[kthread] This is a kernel thread, arg = %p\n", arg);
-
-   for (i = 0; i < 128*MB; i++) {
-
-#if !defined(NDEBUG) && !defined(RELEASE)
-
-      /*
-       * This VERY IMPORTANT check ensures us that in NO WAY functions like
-       * save_current_task_state() and kernel_context_switch() changed value
-       * of the stack pointer. Unfortunately, we cannot reliably do this check
-       * in RELEASE (= optimized) builds because the compiler plays with the
-       * stack pointer and 'esp' and 'saved_esp' differ by a constant value.
-       */
-      esp = get_stack_ptr();
-
-      if (esp != saved_esp)
-         panic("esp: %p != saved_esp: %p [curr-saved: %d], i = %u",
-               esp, saved_esp, esp - saved_esp, i);
-
-#endif
-
-      if (!(i % (8*MB))) {
-         printk("[kthread] i = %i\n", i/MB);
-      }
+void init_self_tests(void)
+{
+   struct self_test *se;
+   list_for_each_ro(se, &se_list, node) {
+      se_actual_register(se);
    }
 
-   printk("[kthread] completed\n");
+   register_keypress_handler(&se_handler);
 }
 
-void selftest_kthread_med(void)
+void selftest_list_manual(void)
 {
-   int tid = kthread_create(simple_test_kthread, 0, (void *)1);
+   static const char *se_kind_str[] = {
+      [se_short] = "short",
+      [se_med] = "med",
+      [se_long] = "long",
+      [se_manual] = "manual"
+   };
 
-   if (tid < 0)
-      panic("Unable to create the simple test kthread");
-
-   kthread_join(tid);
-   regular_self_test_end();
+   struct self_test *se;
+   list_for_each_ro(se, &se_list, node) {
+      printk("%-20s [%s]\n", se->name, se_kind_str[se->kind]);
+   }
 }
 
-void selftest_sleep_short()
-{
-   const u64 wait_ticks = TIMER_HZ;
-   u64 before = get_ticks();
-
-   kernel_sleep(wait_ticks);
-
-   u64 after = get_ticks();
-   u64 elapsed = after - before;
-
-   printk("[sleeping_kthread] elapsed ticks: %llu (expected: %llu)\n",
-          elapsed, wait_ticks);
-
-   VERIFY((elapsed - wait_ticks) <= TIMER_HZ/10);
-   regular_self_test_end();
-}
-
-void selftest_join_med()
-{
-   int tid;
-
-   printk("[selftest join] create the simple thread\n");
-
-   if ((tid = kthread_create(simple_test_kthread, 0, (void *)0xAA0011FF)) < 0)
-      panic("Unable to create simple_test_kthread");
-
-   printk("[selftest join] join()\n");
-   kthread_join(tid);
-
-   printk("[selftest join] kernel thread exited\n");
-   regular_self_test_end();
-}
-
-/*
- * Special selftest that cannot be run by the system test runner.
- * It has to be run manually by passing to the kernel -s panic_manual.
- */
-void selftest_panic_manual(void)
-{
-   printk("[panic selftest] I'll panic now\n");
-   panic("test panic [str: '%s'][num: %d]", "test string", -123);
-}
-
-void selftest_panic2_manual(void)
-{
-   printk("[panic selftest] I'll panic with bad pointers\n");
-   panic("test panic [str: '%s'][num: %d]", (char *)1234, -123);
-}
-
-/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
-void selftest_so1_manual(void)
-{
-   char buf[16];
-
-   /*
-    * Hack needed to avoid the compiler detecting that we're accessing the
-    * array out-of-bounds, which is generally a terrible bug. But here we're
-    * looking exactly for this.
-    */
-   char *volatile ptr = buf;
-   printk("Causing intentionally a stack overflow: expect panic\n");
-   memset(ptr, 'x', KERNEL_STACK_SIZE);
-}
-
-/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
-void selftest_so2_manual(void)
-{
-   char buf[16];
-
-   /*
-    * Hack needed to avoid the compiler detecting that we're accessing the
-    * array below bounds, which is generally a terrible bug. But here we're
-    * looking exactly for this.
-    */
-   char *volatile ptr = buf;
-   printk("Causing intentionally a stack underflow: expect panic\n");
-   memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
-}
-
-static void NO_INLINE do_cause_double_fault(void)
-{
-   char buf[KERNEL_STACK_SIZE];
-   memset(buf, 'z', KERNEL_STACK_SIZE);
-}
-
-void selftest_so3_manual(void)
-{
-   printk("Causing intentionally a double fault: expect panic\n");
-   do_cause_double_fault();
-}
+DECLARE_AND_REGISTER_SELF_TEST(list, se_manual, &selftest_list_manual)

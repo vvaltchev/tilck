@@ -92,3 +92,7 @@ retry:
 
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(mobj_waiter,
+                               se_short,
+                               &selftest_mobj_waiter_short)

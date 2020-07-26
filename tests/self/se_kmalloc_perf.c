@@ -87,3 +87,7 @@ void selftest_kmalloc_perf_med(void)
    kfree2(allocations, 10000 * sizeof(void *));
    regular_self_test_end();
 }
+
+DECLARE_AND_REGISTER_SELF_TEST(kmalloc_perf,
+                               se_med,
+                               &selftest_kmalloc_perf_med)
