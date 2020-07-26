@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
+#include <tilck/common/arch/generic_x86/cpu_features.h>
 
 #include <multiboot.h>
 
@@ -84,6 +85,9 @@ void read_memory_map(void *buf, size_t buf_size, struct mem_info *mi)
 
 void poison_usable_memory(struct mem_info *mi)
 {
+   if (!in_hypervisor())
+      return; /* it's better to use this feature only in VMs */
+
    for (u32 i = 0; i < mi->count; i++) {
 
       struct mem_area *ma = mi->mem_areas + i;
@@ -91,10 +95,7 @@ void poison_usable_memory(struct mem_info *mi)
       if (ma->type == MEM_USABLE && ma->base >= MB) {
 
          /* Poison only memory regions above the 1st MB */
-
-         memset32(TO_PTR(ma->base),
-                  FREE_MEM_POISON_VAL,
-                  (u32)ma->len / 4);
+         memset32(TO_PTR(ma->base), FREE_MEM_POISON_VAL, (u32)ma->len / 4);
       }
    }
 }
