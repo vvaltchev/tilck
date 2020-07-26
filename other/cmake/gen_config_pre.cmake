@@ -75,6 +75,12 @@ configure_file(
 )
 
 configure_file(
+   ${CMAKE_SOURCE_DIR}/config/config_init.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_init.h
+   @ONLY
+)
+
+configure_file(
    ${CMAKE_SOURCE_DIR}/boot/legacy/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
    @ONLY

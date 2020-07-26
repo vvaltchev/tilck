@@ -223,6 +223,9 @@ to be as small as possible. Incompatibile with many modules \
 like console, fb, tracing and several kernel options like \
 KERNEL_SELFTESTS")
 
+set(INIT_REPORT_PROC_EXIT OFF CACHE BOOL
+    "Make init to report on TTY when children (often acquired) exit")
+
 list(
    APPEND no_arch_modules_whitelist
 

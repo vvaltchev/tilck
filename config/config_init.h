@@ -6,14 +6,10 @@
  */
 
 #pragma once
-#include <tilck_gen_headers/config_global.h>
 
 /* --------- Boolean config variables --------- */
 
-#cmakedefine01 KMALLOC_FREE_MEM_POISONING
-#cmakedefine01 KMALLOC_HEAVY_STATS
-#cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
-#cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
+#cmakedefine01 INIT_REPORT_PROC_EXIT
 
 /*
  * --------------------------------------------------------------------------
@@ -29,12 +25,7 @@
  * variable.
  */
 
-#if KERNEL_MAX_SIZE <= 1024 * KB
-   #if TINY_KERNEL
-      #define KMALLOC_FIRST_HEAP_SIZE    (  64 * KB)
-   #else
-      #define KMALLOC_FIRST_HEAP_SIZE    ( 128 * KB)
-   #endif
-#else
-   #define KMALLOC_FIRST_HEAP_SIZE    ( 512 * KB)
-#endif
+#define BUSYBOX         "/initrd/bin/busybox"
+#define START_SCRIPT    "/initrd/etc/start"
+#define DEFAULT_SHELL   "/bin/ash"
+#define TTYS0_MINOR     64

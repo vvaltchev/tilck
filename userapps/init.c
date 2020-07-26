@@ -18,12 +18,9 @@
 #include <sys/ioctl.h>
 
 #include <tilck_gen_headers/config_console.h>
-#include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
+#include <tilck_gen_headers/config_init.h>
 
-#define BUSYBOX         "/initrd/bin/busybox"
-#define START_SCRIPT    "/initrd/etc/start"
-#define DEFAULT_SHELL   "/bin/ash"
-#define TTYS0_MINOR     64
+#include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */
 
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
@@ -236,7 +233,7 @@ static void report_shell_exit(pid_t pid, int tty, int wstatus)
 
 static void report_process_exit(pid_t pid, int wstatus)
 {
-   if (opt_quiet)
+   if (opt_quiet || !INIT_REPORT_PROC_EXIT)
       return;
 
    const int status = WEXITSTATUS(wstatus);
