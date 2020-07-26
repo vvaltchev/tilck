@@ -252,6 +252,10 @@ static void run_cmd(cmd_func_type func, int argc, char **argv)
 
 void run_if_known_command(const char *cmd, int argc, char **argv)
 {
+   /* Reset all the signal handlers to their default behavior */
+   for (int i = 1; i < _NSIG; i++)
+     signal(i, SIG_DFL);
+
    for (int i = 0; i < get_cmds_count(); i++)
       if (!strcmp(cmds_table[i].name, cmd))
          run_cmd(cmds_table[i].func, argc, argv);

@@ -99,10 +99,6 @@ static void shell_run_child(int argc)
    int saved_errno;
    unsigned i;
 
-   /* Reset all the signal handlers to their default behavior */
-   for (int i = 1; i < _NSIG; i++)
-     signal(i, SIG_DFL);
-
    run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
 
    /* Since we got here, cmd_argv[0] was NOT a known built-in command */
