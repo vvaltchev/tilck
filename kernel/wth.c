@@ -36,6 +36,16 @@ struct task *wth_get_task(int wth)
    return t->task;
 }
 
+int wth_get_id(struct task *ti)
+{
+   struct worker_thread *th = ti->worker_thread;
+
+   if (!th)
+      return -1;
+
+   return th->thread_index;
+}
+
 bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
 {
    struct worker_thread *t = worker_threads[wth];

@@ -7,5 +7,6 @@ void init_worker_threads();
 struct task *wth_get_task(int wth);
 struct task *wth_get_runnable_thread(void);
 int wth_create_thread(int priority, u16 queue_size);
+int wth_get_id(struct task *ti);
 u32 wth_get_queue_size(int wth);
 NODISCARD bool wth_enqueue_job(int wth, void (*func)(void *), void *arg);
