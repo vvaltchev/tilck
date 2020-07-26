@@ -29,7 +29,7 @@ class printer_struct_task:
          ("tid                 ", task["tid"]),
          ("pi                  ", pi_str),
          ("state               ", task["state"]),
-         ("what                ", what_str),
+         ("kthread_name        ", task["kthread_name"]),
          ("is_main_thread      ", task["is_main_thread"]),
          ("running_in_kernel   ", task['running_in_kernel']),
          ("stopped             ", task['stopped']),

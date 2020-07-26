@@ -77,15 +77,6 @@ debug_get_state_name(char *s, enum task_state state, bool stopped, bool traced)
    *ptr = 0;
 }
 
-static int debug_get_wth_for_worker_thread(struct task *ti)
-{
-   for (int i = 0; i < WTH_MAX_THREADS; i++)
-      if (wth_get_task(i) == ti)
-         return (int)i;
-
-   return -1;
-}
-
 enum task_dump_util_str {
 
    HEADER,
@@ -191,19 +182,13 @@ static int debug_per_task_cb(void *obj, void *arg)
 
    if (is_kernel_thread(ti)) {
 
+      const char *name = ti->kthread_name;
       ttynum = 0;
-      const char *kfunc = find_sym_at_addr((ulong)ti->what, NULL, NULL);
 
-      if (kfunc) {
-         if (!is_worker_thread(ti)) {
-            snprintk(buf, sizeof(buf), "<%s>", kfunc);
-         } else {
-            snprintk(buf, sizeof(buf), "<%s[%d]>",
-                     kfunc, debug_get_wth_for_worker_thread(ti));
-         }
-      } else {
-         snprintk(buf, sizeof(buf), "<func: %p>", ti->what);
-      }
+      if (is_worker_thread(ti))
+         snprintk(buf, sizeof(buf), "<%s[%d]>", name, wth_get_id(ti));
+      else
+         snprintk(buf, sizeof(buf), "<%s>", name);
    }
 
    bool sel = false;

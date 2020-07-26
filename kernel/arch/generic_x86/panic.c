@@ -73,7 +73,7 @@ static void panic_print_task_info(struct task *curr)
 
       } else {
 
-         str = find_sym_at_addr_safe((ulong)curr->what, NULL, NULL);
+         str = curr->kthread_name;
          printk("Current task [KERNEL]: tid: %i [%s]\n",
                 curr->tid, str ? str : "???");
       }

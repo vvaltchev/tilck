@@ -108,13 +108,8 @@ struct task {
    /* The task was sleeping on a timer and has just been woken up */
    bool timer_ready;
 
-   /*
-    * For kernel threads, this is a function pointer of the thread's entry
-    * point. For user processes/threads, it is unused for the moment. In the
-    * future, for processes it could be a path to the executable and for threads
-    * still the entry-point.
-    */
-   void *what;
+   /* Kernel thread name, NULL for user tasks */
+   const char *kthread_name;
 
    /* See the comment above struct process' arch_fields */
    char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
@@ -307,7 +302,15 @@ void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
 u32 task_cancel_wakeup_timer(struct task *ti);
 
 typedef void (*kthread_func_ptr)();
-NODISCARD int kthread_create(kthread_func_ptr fun, int fl, void *arg);
+
+NODISCARD int kthread_create2(kthread_func_ptr func,
+                              const char *name,
+                              int fl,
+                              void *arg);
+
+#define kthread_create(func, fl, arg)  \
+   kthread_create2(func, #func, (fl), (arg))
+
 int iterate_over_tasks(bintree_visit_cb func, void *arg);
 int sched_count_proc_in_group(int pgid);
 int sched_get_session_of_group(int pgid);

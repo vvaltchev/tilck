@@ -83,7 +83,7 @@ int virtual_write(void *pdir, void *extern_va, void *src, size_t len)
    return 0;
 }
 
-int kthread_create() { return -12; /* ENOMEM */}
+int kthread_create2() { return -12; /* ENOMEM */}
 
 void invalidate_page() {}
 void init_serial_port() { }

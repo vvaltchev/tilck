@@ -137,10 +137,11 @@ push_args_on_user_stack(regs_t *r,
 }
 
 NODISCARD int
-kthread_create(kthread_func_ptr func, int fl, void *arg)
+kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
 {
    struct task *ti;
    int tid, ret = -ENOMEM;
+   ASSERT(name != NULL);
 
    regs_t r = {
       .kernel_resume_eip = (ulong)&soft_interrupt_resume,
@@ -176,7 +177,10 @@ kthread_create(kthread_func_ptr func, int fl, void *arg)
 
    ASSERT(is_kernel_thread(ti));
 
-   ti->what = func;
+   if (*name == '&')
+      name++;         /* see the macro kthread_create() */
+
+   ti->kthread_name = name;
    ti->state = TASK_STATE_RUNNABLE;
    ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
