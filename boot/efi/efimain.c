@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_modules.h>
+#include <tilck_gen_headers/config_console.h>
+
 #include "defs.h"
 #include "utils.h"
+
 #include <tilck/common/simple_elf_loader.c.h>
 
 
@@ -68,7 +72,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    HANDLE_EFI_ERROR("LoadRamdisk failed");
    Print(L"\r\n");
 
-   if (!TINY_KERNEL) {
+   if (MOD_console && MOD_fb) {
       status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
       HANDLE_EFI_ERROR("SetupGraphicMode() failed");
    }
@@ -92,16 +96,26 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    // WaitForKeyPress(ST);
    //
 
-   if (TINY_KERNEL) {
-      Print(L"WARNING: TINY_KERNEL=1, Tilck won't support any type of video\n");
-      Print(L"console. Use the serial console instead.\n");
-      Print(L"\n");
+   if (!(MOD_console && MOD_fb)) {
 
-      Print(L"Press ANY key to boot");
-      WaitForKeyPress(ST);
+      Print(L"WARNING: MOD_fb=0, Tilck won't support graphics mode.\r\n");
+      Print(L"WARNING: text mode is NOT available with UEFI boot.\r\n\n");
 
-      ST->ConOut->ClearScreen(ST->ConOut);
-      Print(L"<No video console>");
+      if (MOD_serial && (TINY_KERNEL || SERIAL_CON_IN_VIDEO_MODE)) {
+
+         Print(L"Only the serial console is available. Use it.\r\n\n");
+         Print(L"Press ANY key to boot");
+         WaitForKeyPress(ST);
+
+         ST->ConOut->ClearScreen(ST->ConOut);
+         Print(L"<No video console>");
+
+      } else {
+
+         Print(L"ERROR: No serial console enabled. Refuse to boot.\r\n");
+         status = EFI_ABORTED;
+         goto end;
+      }
    }
 
    status = MultibootSaveMemoryMap(&mapkey);
@@ -121,7 +135,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 end:
    /* --- we should never get here in the normal case --- */
    WaitForKeyPress(ST);
-   return EFI_SUCCESS;
+   return status;
 }
 
 

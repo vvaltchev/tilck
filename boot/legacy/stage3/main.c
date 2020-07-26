@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_boot.h>
+#include <tilck_gen_headers/config_modules.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/fat32_base.h>
@@ -396,17 +397,24 @@ void bootloader_main(void)
    write_ok_msg();
    printk("\n");
 
-   if (TINY_KERNEL) {
+   if (!MOD_console) {
 
-      printk("WARNING: TINY_KERNEL=1, Tilck won't support any type of video\n");
-      printk("console. Use the serial console instead.\n");
-      printk("\n");
+      printk("WARNING: MOD_console=0, Tilck won't support any type of video\n");
+      printk("console. Use the serial console instead.\n\n");
 
       printk("Press ANY key to boot");
       bios_read_char();
 
       init_bt();
       printk("<No video console>");
+
+   } else if (!MOD_fb) {
+
+      printk("WARNING: MOD_fb=0, Tilck won't support graphics mode.\n");
+      printk("Force-selecting text-mode.\n\n");
+
+      printk("Press ANY key to boot");
+      bios_read_char();
 
    } else {
 
