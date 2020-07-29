@@ -86,7 +86,7 @@ void init_irq_handling(void)
    }
 }
 
-static inline void handle_irq_set_mask(int irq)
+static inline void handle_irq_set_mask_and_eoi(int irq)
 {
    if (KRN_TRACK_NESTED_INTERR) {
 
@@ -97,10 +97,12 @@ static inline void handle_irq_set_mask(int irq)
        */
 
       if (irq != X86_PC_TIMER_IRQ)
-         irq_set_mask(irq);
+         pic_mask_and_send_eoi(irq);
+      else
+         pic_send_eoi(irq);
 
    } else {
-      irq_set_mask(irq);
+      pic_mask_and_send_eoi(irq);
    }
 }
 
@@ -131,8 +133,7 @@ void arch_irq_handling(regs_t *r)
    }
 
    push_nested_interrupt(r->int_num);
-   handle_irq_set_mask(irq);
-   pic_send_eoi(irq);
+   handle_irq_set_mask_and_eoi(irq);
    enable_interrupts_forced();
    {
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {

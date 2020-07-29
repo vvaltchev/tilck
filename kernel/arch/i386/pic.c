@@ -12,6 +12,7 @@
 #define PIC2_IMR            (PIC2+1) /* PIC2's Interrupt Mask Register */
 
 #define PIC_EOI             0x20     /* End-of-interrupt command code */
+#define PIC_SPEC_EOI        0x60     /* Specific End-of-interrupt command */
 #define PIC_READ_IRR        0x0a     /* OCW3 irq ready next CMD read */
 #define PIC_READ_ISR        0x0b     /* OCW3 irq service next CMD read */
 #define PIC_CASCADE         0x02     /* IR in the master for slave IRQs */
@@ -111,18 +112,50 @@ void init_pic_8259(u8 offset1, u8 offset2)
    }
 }
 
-void pic_send_eoi(int irq)
+void pic_send_eoi(int __irq)
 {
    ulong var;
-   ASSERT(IN_RANGE_INC(irq, 0, 15));
+   u8 irq = (u8)__irq;
 
    disable_interrupts(&var);
    {
-      if (irq >= 8) {
-         outb(PIC2_COMMAND, PIC_EOI);
-      }
+      if (irq < 8) {
 
-      outb(PIC1_COMMAND, PIC_EOI);
+         outb(PIC1_COMMAND, PIC_SPEC_EOI | irq);
+
+      } else {
+
+         outb(PIC2_COMMAND, PIC_SPEC_EOI | (irq - 8));
+         outb(PIC1_COMMAND, PIC_SPEC_EOI | PIC_CASCADE);
+      }
+   }
+   enable_interrupts(&var);
+}
+
+void pic_mask_and_send_eoi(int __irq)
+{
+   ulong var;
+   u8 irq = (u8)__irq;
+   u8 irq_mask;
+
+   disable_interrupts(&var);
+   {
+      if (irq < 8) {
+
+         irq_mask = inb(PIC1_IMR);
+         irq_mask |= (1 << irq);
+         outb(PIC1_IMR, irq_mask);
+         outb(PIC1_COMMAND, PIC_SPEC_EOI | irq);
+
+      } else {
+
+         const u8 ir = irq - 8;
+         irq_mask = inb(PIC2_IMR);
+         irq_mask |= (1 << ir);
+         outb(PIC2_IMR, irq_mask);
+         outb(PIC2_COMMAND, PIC_SPEC_EOI | ir);
+         outb(PIC1_COMMAND, PIC_SPEC_EOI | PIC_CASCADE);
+      }
    }
    enable_interrupts(&var);
 }
