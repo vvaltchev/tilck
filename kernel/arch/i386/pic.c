@@ -6,10 +6,11 @@
 
 #define PIC1                0x20     /* IO base address for master PIC */
 #define PIC2                0xA0     /* IO base address for slave PIC */
-#define PIC1_COMMAND        PIC1
-#define PIC1_DATA           (PIC1+1)
-#define PIC2_COMMAND        PIC2
-#define PIC2_DATA           (PIC2+1)
+#define PIC1_COMMAND        PIC1     /* PIC1's Command register */
+#define PIC1_IMR            (PIC1+1) /* PIC1's Interrupt Mask Register */
+#define PIC2_COMMAND        PIC2     /* PIC2's Command register */
+#define PIC2_IMR            (PIC2+1) /* PIC2's Interrupt Mask Register */
+
 #define PIC_EOI             0x20     /* End-of-interrupt command code */
 #define PIC_READ_IRR        0x0a     /* OCW3 irq ready next CMD read */
 #define PIC_READ_ISR        0x0b     /* OCW3 irq service next CMD read */
@@ -67,8 +68,8 @@ void init_pic_8259(u8 offset1, u8 offset2)
 {
    ASSERT(!are_interrupts_enabled());
 
-   outb(PIC1_DATA, 0xff);     /* mask everything */
-   outb(PIC2_DATA, 0xff);     /* mask everything */
+   outb(PIC1_IMR, 0xff);     /* mask everything */
+   outb(PIC2_IMR, 0xff);     /* mask everything */
    pic_io_wait();
 
    /* start the initialization sequence - master */
@@ -76,15 +77,15 @@ void init_pic_8259(u8 offset1, u8 offset2)
    pic_io_wait();
 
    /* set master PIC vector offset */
-   outb(PIC1_DATA, offset1);
+   outb(PIC1_IMR, offset1);
    pic_io_wait();
 
    /* tell master PIC that there is a slave PIC at IRQ2 */
-   outb(PIC1_DATA, 1u << PIC_CASCADE);
+   outb(PIC1_IMR, 1u << PIC_CASCADE);
    pic_io_wait();
 
    /* set master PIC in default mode */
-   outb(PIC1_DATA, ICW4_8086);
+   outb(PIC1_IMR, ICW4_8086);
    pic_io_wait();
 
    /* start the initialization sequence - slave */
@@ -92,15 +93,15 @@ void init_pic_8259(u8 offset1, u8 offset2)
    pic_io_wait();
 
    /* set slave PIC vector offset */
-   outb(PIC2_DATA, offset2);
+   outb(PIC2_IMR, offset2);
    pic_io_wait();
 
    /* tell slave PIC its cascade number */
-   outb(PIC2_DATA, PIC_CASCADE);
+   outb(PIC2_IMR, PIC_CASCADE);
    pic_io_wait();
 
    /* set slave PIC in default mode */
-   outb(PIC2_DATA, ICW4_8086);
+   outb(PIC2_IMR, ICW4_8086);
    pic_io_wait();
 
    /* wait a lot for the PIC to initialize */
@@ -128,9 +129,9 @@ void irq_set_mask(int irq)
    ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
-      port = PIC1_DATA;
+      port = PIC1_IMR;
    } else {
-      port = PIC2_DATA;
+      port = PIC2_IMR;
       irq -= 8;
    }
 
@@ -145,9 +146,9 @@ void irq_clear_mask(int irq)
    ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
-      port = PIC1_DATA;
+      port = PIC1_IMR;
    } else {
-      port = PIC2_DATA;
+      port = PIC2_IMR;
       irq -= 8;
    }
 
