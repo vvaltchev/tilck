@@ -65,15 +65,14 @@ class cmd_list_tasks(gdb.Command):
          )
 
          if t['tid'] > 10000:
-            val = gdb.parse_and_eval("(void *){}".format(hex(t['what'])))
-            what_field = str(val)
+            what_field = t['kthread_name'].string()
          else:
             pid_field = "pid = {:>5}, ".format(pid)
             what_field = pi['debug_cmdline'].string().rstrip()
 
          print(
             "        "
-            "{{tid = {:>5}, {}{}, what: {}}}\n".format(
+            "{{tid = {:>5}, {}{}, kthread_name: {}}}\n".format(
                tid, pid_field, state, what_field
             )
          )

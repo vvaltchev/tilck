@@ -13,14 +13,12 @@ class printer_struct_task:
 
       task = self.val
       pi = task['pi']
-      what_str = "n/a"
       state_regs = "(null)"
 
       if pi['pid'] != 0:
          pi_str = "(struct process *) {}".format(bu.fixhex32(int(pi)))
       else:
          pi_str = "<kernel_process_pi>"
-         what_str = task['what']
 
       if task['state_regs']:
          state_regs = task['state_regs'].dereference()
