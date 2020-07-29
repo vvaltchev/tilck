@@ -116,60 +116,15 @@ static inline void handle_irq_clear_mask(int irq)
    }
 }
 
-static inline bool is_spur_irq(int irq)
-{
-   if (irq == 7 || irq == 15) {
-
-      /*
-       * Check for a spurious wake-up.
-       *
-       * Source: https://wiki.osdev.org/8259_PIC, with some editing.
-       *
-       * When an IRQ occurs, the PIC chip tells the CPU (via. the PIC's INTR
-       * line) that there's an interrupt, and the CPU acknowledges this and
-       * waits for the PIC to send the interrupt vector. This creates a race
-       * condition: if the IRQ disappears after the PIC has told the CPU there's
-       * an interrupt but before the PIC has sent the interrupt vector to the
-       * CPU, then the CPU will be waiting for the PIC to tell it which
-       * interrupt vector but the PIC won't have a valid interrupt vector to
-       * tell the CPU.
-       *
-       * To get around this, the PIC tells the CPU a fake interrupt number.
-       * This is a spurious IRQ. The fake interrupt number is the lowest
-       * priority interrupt number for the corresponding PIC chip (IRQ 7 for the
-       * master PIC, and IRQ 15 for the slave PIC).
-       *
-       * Handling Spurious IRQs
-       * -------------------------
-       *
-       * For a spurious IRQ, there is no real IRQ and the PIC chip's ISR
-       * (In Service Register) flag for the corresponding IRQ will NOT be set.
-       * This means that the interrupt handler must not send an EOI back to the
-       * PIC to reset the ISR flag, EXCEPT when the spurious IRQ comes from the
-       * 2nd PIC: in that case an EOI must be sent to the master PIC, but NOT
-       * to the slave PIC.
-       */
-
-      if (!(pic_get_isr() & (1 << irq))) {
-
-         if (irq == 15)
-             pic_send_eoi(7);
-
-         spur_irq_count++;
-         return true;
-      }
-   }
-
-   return false;
-}
-
 void arch_irq_handling(regs_t *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
    const int irq = r->int_num - 32;
 
-   if (is_spur_irq(irq))
+   if (pic_is_spur_irq(irq)) {
+      spur_irq_count++;
       return;
+   }
 
    handle_irq_set_mask(irq);
    push_nested_interrupt(r->int_num);
