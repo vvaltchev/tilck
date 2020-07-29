@@ -76,14 +76,13 @@ void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
 void init_irq_handling(void)
 {
    ASSERT(!are_interrupts_enabled());
-   pic_remap(32, 40);
+   init_pic_8259(32, 40);
 
    for (u8 i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
       idt_set_entry(32 + i,
                     irq_entry_points[i],
                     X86_KERNEL_CODE_SEL,
                     IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);
-      irq_set_mask(i);
    }
 }
 

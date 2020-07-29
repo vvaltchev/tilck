@@ -52,18 +52,21 @@ static NO_INLINE void pic_io_wait(void)
 
 
 /*
- * Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
- * is a problem in protected mode, because IDT entry 8 is a
- * Double Fault! Without remapping, every time IRQ0 fires,
- * you get a Double Fault Exception, which is NOT actually
- * what's happening. We send commands to the Programmable
- * Interrupt Controller (PICs - also called the 8259's) in
- * order to make IRQ0 to 15 be remapped to IDT entries 32 to
- * 47.
+ * Initialize the legacy PIT and remap IRQs
+ *
+ * By default, on boot, IRQs 0 to 7 are mapped to IDT entires 8 to 15. This
+ * is a problem in protected mode, because IDT entry 8 is a Double Fault!
+ * Without remapping, every time IRQ0 fires, we'll get a Double Fault, which
+ * is NOT actually what's happening. We send commands to the PIT in order to
+ * make IRQ0 to 15 be remapped to IDT entries 32 to 47.
+ *
+ * NOTE: it leaves all the IRQs masked.
  */
 
-void pic_remap(u8 offset1, u8 offset2)
+void init_pic_8259(u8 offset1, u8 offset2)
 {
+   ASSERT(!are_interrupts_enabled());
+
    outb(PIC1_DATA, 0xff);     /* mask everything */
    outb(PIC2_DATA, 0xff);     /* mask everything */
    pic_io_wait();
