@@ -113,18 +113,24 @@ void init_pic_8259(u8 offset1, u8 offset2)
 
 void pic_send_eoi(int irq)
 {
+   ulong var;
    ASSERT(IN_RANGE_INC(irq, 0, 15));
 
-   if (irq >= 8) {
-      outb(PIC2_COMMAND, PIC_EOI);
-   }
+   disable_interrupts(&var);
+   {
+      if (irq >= 8) {
+         outb(PIC2_COMMAND, PIC_EOI);
+      }
 
-   outb(PIC1_COMMAND, PIC_EOI);
+      outb(PIC1_COMMAND, PIC_EOI);
+   }
+   enable_interrupts(&var);
 }
 
 void irq_set_mask(int irq)
 {
    u16 port;
+   ulong var;
    u8 irq_mask;
    ASSERT(IN_RANGE_INC(irq, 0, 32));
 
@@ -135,14 +141,19 @@ void irq_set_mask(int irq)
       irq -= 8;
    }
 
-   irq_mask = inb(port);
-   irq_mask |= (1 << irq);
-   outb(port, irq_mask);
+   disable_interrupts(&var);
+   {
+      irq_mask = inb(port);
+      irq_mask |= (1 << irq);
+      outb(port, irq_mask);
+   }
+   enable_interrupts(&var);
 }
 
 void irq_clear_mask(int irq)
 {
    u16 port;
+   ulong var;
    ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
@@ -152,7 +163,11 @@ void irq_clear_mask(int irq)
       irq -= 8;
    }
 
-   outb(port, inb(port) & ~(1 << irq));
+   disable_interrupts(&var);
+   {
+      outb(port, inb(port) & ~(1 << irq));
+   }
+   enable_interrupts(&var);
 }
 
 bool pic_is_spur_irq(int irq)
