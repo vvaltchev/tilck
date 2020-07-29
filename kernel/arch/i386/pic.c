@@ -1,5 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_debug.h>
+#include <tilck/kernel/hal.h>
+#include "pic.h"
+
 #define PIC1                0x20     /* IO base address for master PIC */
 #define PIC2                0xA0     /* IO base address for slave PIC */
 #define PIC1_COMMAND        PIC1
@@ -42,7 +46,7 @@ static inline void io_wait() {}
    offset2 - same for slave PIC: offset2..offset2+7
 */
 
-static void pic_remap(u8 offset1, u8 offset2)
+void pic_remap(u8 offset1, u8 offset2)
 {
    u8 a1, a2;
 
@@ -75,7 +79,7 @@ static void pic_remap(u8 offset1, u8 offset2)
    outb(PIC2_DATA, a2);
 }
 
-static void pic_send_eoi(int irq)
+void pic_send_eoi(int irq)
 {
    ASSERT(IN_RANGE_INC(irq, 0, 15));
 
@@ -107,7 +111,7 @@ static u16 __pic_get_irq_reg(u8 ocw3)
  * The Interrupt Request Register (IRR) tells us which interrupts have been
  * raised.
  */
-static inline u16 pic_get_irr(void)
+u16 pic_get_irr(void)
 {
     return __pic_get_irq_reg(PIC_READ_IRR);
 }
@@ -117,13 +121,40 @@ static inline u16 pic_get_irr(void)
  * The In-Service Register (ISR) tells us which interrupts are being serviced,
  * meaning IRQs sent to the CPU.
  */
-static inline u16 pic_get_isr(void)
+u16 pic_get_isr(void)
 {
     return __pic_get_irq_reg(PIC_READ_ISR);
 }
 
-/* IMR = Interrupt Mask Register */
-static inline u32 pic_get_imr(void)
+void irq_set_mask(int irq)
 {
-   return inb(PIC1_DATA) | (u32)(inb(PIC2_DATA) << 8);
+   u16 port;
+   u8 irq_mask;
+   ASSERT(IN_RANGE_INC(irq, 0, 32));
+
+   if (irq < 8) {
+      port = PIC1_DATA;
+   } else {
+      port = PIC2_DATA;
+      irq -= 8;
+   }
+
+   irq_mask = inb(port);
+   irq_mask |= (1 << irq);
+   outb(port, irq_mask);
+}
+
+void irq_clear_mask(int irq)
+{
+   u16 port;
+   ASSERT(IN_RANGE_INC(irq, 0, 32));
+
+   if (irq < 8) {
+      port = PIC1_DATA;
+   } else {
+      port = PIC2_DATA;
+      irq -= 8;
+   }
+
+   outb(port, inb(port) & ~(1 << irq));
 }

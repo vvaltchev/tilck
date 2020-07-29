@@ -13,7 +13,7 @@
 #include <tilck/kernel/timer.h>
 
 #include "idt_int.h"
-#include "pic.c.h"
+#include "pic.h"
 
 extern void (*irq_entry_points[16])(void);
 
@@ -65,39 +65,6 @@ void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
          irq_set_mask(irq);
    }
    enable_interrupts(&var);
-}
-
-void irq_set_mask(int irq)
-{
-   u16 port;
-   u8 irq_mask;
-   ASSERT(IN_RANGE_INC(irq, 0, 32));
-
-   if (irq < 8) {
-      port = PIC1_DATA;
-   } else {
-      port = PIC2_DATA;
-      irq -= 8;
-   }
-
-   irq_mask = inb(port);
-   irq_mask |= (1 << irq);
-   outb(port, irq_mask);
-}
-
-void irq_clear_mask(int irq)
-{
-   u16 port;
-   ASSERT(IN_RANGE_INC(irq, 0, 32));
-
-   if (irq < 8) {
-      port = PIC1_DATA;
-   } else {
-      port = PIC2_DATA;
-      irq -= 8;
-   }
-
-   outb(port, inb(port) & ~(1 << irq));
 }
 
 /*
