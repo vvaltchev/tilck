@@ -26,7 +26,29 @@
 #define ICW4_BUF_MASTER     0x0C     /* Buffered mode/master */
 #define ICW4_SFNM           0x10     /* Special fully nested (not) */
 
-static inline void io_wait() {}
+/*
+ * Implementing the pic_io_wait() function this way is a *dirty hack*, but the
+ * right solution requires a lot of additional infrastructure. For example,
+ * pic_io_wait() should loop for about ~2 microseconds: how to do that,
+ * precisely? We'd need to calculate something like Linux's "bogoMips" first.
+ * But what about the case where we cannot used the PIT yet and we cannot
+ * estimate bogoMips not even empirically? Well, we should have a reasonable
+ * initial value that will work well both on fast modern CPUs and on older CPUs
+ * as well (by being just slower). In alternative, we could try to determine
+ * CPU's nominal frequency using things like cpuinfo and, from there, estimate
+ * how many loops approximately we should do in order to wait ~2us. That's a
+ * lot of work. For the moment, let's just hard-code a value good-enough.
+ * One step at a time.
+ */
+static NO_INLINE void pic_io_wait(void)
+{
+   if (in_hypervisor())
+      return;
+
+   for (int i = 0; i < 10 * 1000; i++)
+      asmVolatile("nop");
+}
+
 
 /*
  * Normally, IRQs 0 to 7 are mapped to entries 8 to 15. This
@@ -55,25 +77,25 @@ void pic_remap(u8 offset1, u8 offset2)
 
    outb(PIC1_COMMAND, ICW1_INIT + ICW1_ICW4);  // starts the initialization
                                                // sequence (in cascade mode)
-   io_wait();
+   pic_io_wait();
    outb(PIC2_COMMAND, ICW1_INIT + ICW1_ICW4);
-   io_wait();
+   pic_io_wait();
    outb(PIC1_DATA, offset1);                 // ICW2: Master PIC vector offset
-   io_wait();
+   pic_io_wait();
    outb(PIC2_DATA, offset2);                 // ICW2: Slave PIC vector offset
-   io_wait();
+   pic_io_wait();
    outb(PIC1_DATA, 4);                       // ICW3: tell Master PIC that there
                                              // is a slave PIC at IRQ2
                                              // (0000 0100)
-   io_wait();
+   pic_io_wait();
    outb(PIC2_DATA, 2);                       // ICW3: tell Slave PIC its cascade
                                              // identity (0000 0010)
-   io_wait();
+   pic_io_wait();
 
    outb(PIC1_DATA, ICW4_8086);
-   io_wait();
+   pic_io_wait();
    outb(PIC2_DATA, ICW4_8086);
-   io_wait();
+   pic_io_wait();
 
    outb(PIC1_DATA, a1);   // restore saved masks.
    outb(PIC2_DATA, a2);
