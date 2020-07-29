@@ -13,6 +13,7 @@
 #define PIC_EOI             0x20     /* End-of-interrupt command code */
 #define PIC_READ_IRR        0x0a     /* OCW3 irq ready next CMD read */
 #define PIC_READ_ISR        0x0b     /* OCW3 irq service next CMD read */
+#define PIC_CASCADE         0x02     /* IR in the master for slave IRQs */
 
 #define ICW1_ICW4           0x01     /* ICW4 (not) needed */
 #define ICW1_SINGLE         0x02     /* Single (cascade) mode */
@@ -61,44 +62,49 @@ static NO_INLINE void pic_io_wait(void)
  * 47.
  */
 
-/*
-   arguments:
-   offset1 - vector offset for master PIC
-   vectors on the master become offset1..offset1+7
-   offset2 - same for slave PIC: offset2..offset2+7
-*/
-
 void pic_remap(u8 offset1, u8 offset2)
 {
-   u8 a1, a2;
-
-   a1 = inb(PIC1_DATA);       // save masks
-   a2 = inb(PIC2_DATA);
-
-   outb(PIC1_COMMAND, ICW1_INIT + ICW1_ICW4);  // starts the initialization
-                                               // sequence (in cascade mode)
-   pic_io_wait();
-   outb(PIC2_COMMAND, ICW1_INIT + ICW1_ICW4);
-   pic_io_wait();
-   outb(PIC1_DATA, offset1);                 // ICW2: Master PIC vector offset
-   pic_io_wait();
-   outb(PIC2_DATA, offset2);                 // ICW2: Slave PIC vector offset
-   pic_io_wait();
-   outb(PIC1_DATA, 4);                       // ICW3: tell Master PIC that there
-                                             // is a slave PIC at IRQ2
-                                             // (0000 0100)
-   pic_io_wait();
-   outb(PIC2_DATA, 2);                       // ICW3: tell Slave PIC its cascade
-                                             // identity (0000 0010)
+   outb(PIC1_DATA, 0xff);     /* mask everything */
+   outb(PIC2_DATA, 0xff);     /* mask everything */
    pic_io_wait();
 
+   /* start the initialization sequence - master */
+   outb(PIC1_COMMAND, ICW1_INIT + ICW1_ICW4);
+   pic_io_wait();
+
+   /* set master PIC vector offset */
+   outb(PIC1_DATA, offset1);
+   pic_io_wait();
+
+   /* tell master PIC that there is a slave PIC at IRQ2 */
+   outb(PIC1_DATA, 1u << PIC_CASCADE);
+   pic_io_wait();
+
+   /* set master PIC in default mode */
    outb(PIC1_DATA, ICW4_8086);
    pic_io_wait();
+
+   /* start the initialization sequence - slave */
+   outb(PIC2_COMMAND, ICW1_INIT + ICW1_ICW4);
+   pic_io_wait();
+
+   /* set slave PIC vector offset */
+   outb(PIC2_DATA, offset2);
+   pic_io_wait();
+
+   /* tell slave PIC its cascade number */
+   outb(PIC2_DATA, PIC_CASCADE);
+   pic_io_wait();
+
+   /* set slave PIC in default mode */
    outb(PIC2_DATA, ICW4_8086);
    pic_io_wait();
 
-   outb(PIC1_DATA, a1);   // restore saved masks.
-   outb(PIC2_DATA, a2);
+   /* wait a lot for the PIC to initialize */
+   if (!in_hypervisor()) {
+      for (int i = 0; i < 50; i++)
+         pic_io_wait();
+   }
 }
 
 void pic_send_eoi(int irq)
