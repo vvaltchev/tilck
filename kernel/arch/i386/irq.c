@@ -75,6 +75,7 @@ void irq_uninstall_handler(u8 irq, struct irq_handler_node *n)
 
 void init_irq_handling(void)
 {
+   ASSERT(!are_interrupts_enabled());
    pic_remap(32, 40);
 
    for (u8 i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
@@ -120,28 +121,21 @@ void arch_irq_handling(regs_t *r)
 {
    enum irq_action hret = IRQ_UNHANDLED;
    const int irq = r->int_num - 32;
+   struct irq_handler_node *pos;
+
+   ASSERT(!are_interrupts_enabled());
+   ASSERT(!is_preemption_enabled());
 
    if (pic_is_spur_irq(irq)) {
       spur_irq_count++;
       return;
    }
 
-   handle_irq_set_mask(irq);
    push_nested_interrupt(r->int_num);
-   ASSERT(!are_interrupts_enabled());
-
-   /*
-    * We MUST send EOI to the PIC here, before starting the interrupt handler
-    * otherwise, the PIC will just not allow nested interrupts to happen.
-    * NOTE: we MUST send the EOI **before** re-enabling the interrupts,
-    * otherwise we'll start getting a lot of spurious interrupts!
-    */
+   handle_irq_set_mask(irq);
    pic_send_eoi(irq);
    enable_interrupts_forced();
-
    {
-      struct irq_handler_node *pos;
-
       list_for_each_ro(pos, &irq_handlers_lists[irq], node) {
 
          hret = pos->handler(pos->context);
@@ -149,16 +143,13 @@ void arch_irq_handling(regs_t *r)
          if (hret != IRQ_UNHANDLED)
             break;
       }
+
+      if (hret == IRQ_UNHANDLED)
+         unhandled_irq_count[irq]++;
    }
-
-   if (hret == IRQ_UNHANDLED)
-      unhandled_irq_count[irq]++;
-
-   pop_nested_interrupt();
-   handle_irq_clear_mask(irq);
-
-   /* Disable again the interrupts, keeping preemption disabled as well */
    disable_interrupts_forced();
+   handle_irq_clear_mask(irq);
+   pop_nested_interrupt();
 }
 
 int get_irq_num(regs_t *context)
