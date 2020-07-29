@@ -121,42 +121,6 @@ void pic_send_eoi(int irq)
    outb(PIC1_COMMAND, PIC_EOI);
 }
 
-
-static u16 __pic_get_irq_reg(u8 ocw3)
-{
-   u16 result;
-
-   /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
-   * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
-   outb(PIC1_COMMAND, ocw3);
-   outb(PIC2_COMMAND, ocw3);
-
-   result = inb(PIC1_COMMAND);
-   result |= (u16)(inb(PIC2_COMMAND) << 8);
-
-   return result;
-}
-
-/*
- * Returns the combined value of the cascaded PICs irq request register.
- * The Interrupt Request Register (IRR) tells us which interrupts have been
- * raised.
- */
-u16 pic_get_irr(void)
-{
-    return __pic_get_irq_reg(PIC_READ_IRR);
-}
-
-/*
- * Returns the combined value of the cascaded PICs in-service register.
- * The In-Service Register (ISR) tells us which interrupts are being serviced,
- * meaning IRQs sent to the CPU.
- */
-u16 pic_get_isr(void)
-{
-    return __pic_get_irq_reg(PIC_READ_ISR);
-}
-
 void irq_set_mask(int irq)
 {
    u16 port;
@@ -192,8 +156,7 @@ void irq_clear_mask(int irq)
 
 bool pic_is_spur_irq(int irq)
 {
-   if (irq != 7 && irq != 15)
-      return false;
+   ASSERT(!are_interrupts_enabled());
 
    /*
     * Check for a spurious wake-up.
@@ -225,12 +188,21 @@ bool pic_is_spur_irq(int irq)
     * to the slave PIC.
     */
 
-   if (!(pic_get_isr() & (1 << irq))) {
+   if (irq == 7) {
 
-      if (irq == 15)
-         pic_send_eoi(7);
+      outb(PIC1_COMMAND, PIC_READ_ISR);
+      u8 isr = inb(PIC1_COMMAND);
+      return !(isr & (1 << 7));
 
-      return true;
+   } else if (irq == 15) {
+
+      outb(PIC2_COMMAND, PIC_READ_ISR);
+      u8 isr = inb(PIC2_COMMAND);
+
+      if (!(isr & (1 << 7))) {
+         pic_send_eoi(PIC_CASCADE);
+         return true;
+      }
    }
 
    return false;
