@@ -72,7 +72,7 @@ static u16 failsafe_buffer[80 * 25];
 /* ------------ No-output video-interface ------------------ */
 
 static void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
-static void no_vi_set_row(u16 row, u16 *data) { }
+static void no_vi_set_row(u16 row, u16 *data, bool fpu_allowed) { }
 static void no_vi_clear_row(u16 row_num, u8 color) { }
 static void no_vi_move_cursor(u16 row, u16 col, int color) { }
 static void no_vi_enable_cursor(void) { }
@@ -192,7 +192,7 @@ static void term_redraw2(term *_t, u16 s, u16 e)
    fpu_context_begin();
    {
       for (u16 row = s; row < e; row++)
-         t->vi->set_row(row, get_buf_row(t, row));
+         t->vi->set_row(row, get_buf_row(t, row), true);
    }
    fpu_context_end();
 }

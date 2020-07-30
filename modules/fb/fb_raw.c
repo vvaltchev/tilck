@@ -472,11 +472,23 @@ bool fb_pre_render_char_scanlines(void)
 
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
+   /* Static variables, set once! */
+   static void *op;
+
+   if (UNLIKELY(!op)) {
+
+      ASSERT(font_w == 8 || font_w == 16);
+
+      if (font_w == 8)
+         op = &&width1;
+      else
+         op = &&width2;
+   }
+
+   /* -------------- Regular variables --------------- */
    const u8 c = vgaentry_get_char(e);
-   const u32 width_bytes = font_w >> 3;
 
    ASSUME_WITHOUT_CHECK(!(font_w % 8));
-   ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
    ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
    ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
 
@@ -486,36 +498,41 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
       (vgaentry_get_fg(e) << 15) + (vgaentry_get_bg(e) << 11)
    );
    u32 *scanlines = &fb_w8_char_scanlines[c_off];
+   goto *op;
 
-   if (width_bytes == 1)
+   width1:
 
       for (u32 r = 0; r < font_h; r++, d++, vaddr += fb_pitch)
-         memcpy32(vaddr, &scanlines[*d << 3], SL_SIZE);
+         memcpy32(vaddr,      &scanlines[d[0] << 3], SL_SIZE);
 
-   else
+      return;
 
-      // width_bytes == 2
+   width2:
 
       for (u32 r = 0; r < font_h; r++, d+=2, vaddr += fb_pitch) {
-         memcpy32(vaddr, &scanlines[d[0] << 3], SL_SIZE);
+         memcpy32(vaddr,      &scanlines[d[0] << 3], SL_SIZE);
          memcpy32(vaddr + 32, &scanlines[d[1] << 3], SL_SIZE);
       }
+
+      return;
 }
 
-void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
+void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count, bool fpu)
 {
+   static const void *ops[] = {
+      &&width_1_nofpu, &&width_1_fpu, &&width_2_nofpu, &&width_2_fpu
+   };
+
+   const u32 bpg_shift = 4 + (font_bytes_per_glyph == 64) * 2; // 4 or 6
+   const u32 w4_shift  = 5 + (font_w == 16);                   // 5 or 6
+   const void *const op = ops[(font_w == 16) * 2 + fpu];       // ops[0..3]
+
+   /* -------------- Regular variables --------------- */
    const ulong vaddr_base = fb_vaddr + (fb_pitch * y);
 
-   // ASSUMPTION: SL_SIZE is 8
-   const u32 width_bytes = font_w >> 3;
-
-   ASSUME_WITHOUT_CHECK(!(font_w % 8));
-   ASSUME_WITHOUT_CHECK(width_bytes == 1 || width_bytes == 2);
+   ASSUME_WITHOUT_CHECK(font_w == 8 || font_w == 16);
    ASSUME_WITHOUT_CHECK(font_h == 16 || font_h == 32);
    ASSUME_WITHOUT_CHECK(font_bytes_per_glyph==16 || font_bytes_per_glyph==64);
-
-   const u32 w4_shift = font_w == 8 ? 2 + 3 : 2 + 4;
-   const u32 bpg_shift = font_bytes_per_glyph == 16 ? 4 : 6;
 
    for (u32 ei = 0; ei < count; ei++) {
 
@@ -526,21 +543,39 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count)
       void *vaddr = (void *)vaddr_base + (ei << w4_shift);
       const u8 *d = &font_glyph_data[vgaentry_get_char(e) << bpg_shift];
       u32 *scanlines = &fb_w8_char_scanlines[c_off];
+      goto *op;
 
-      if (width_bytes == 1)
+      width_1_fpu:
 
          for (u32 r = 0; r < font_h; r++, d++, vaddr += fb_pitch)
-            fpu_cpy_single_256_nt(vaddr, &scanlines[*d << 3]);
+            fpu_cpy_single_256_nt(vaddr, &scanlines[d[0] << 3]);
 
-      else
+         continue;
 
-         // width_bytes == 2
+      width_1_nofpu:
+
+         for (u32 r = 0; r < font_h; r++, d++, vaddr += fb_pitch)
+            memcpy32(vaddr, &scanlines[d[0] << 3], SL_SIZE);
+
+         continue;
+
+      width_2_fpu:
 
          for (u32 r = 0; r < font_h; r++, d+=2, vaddr += fb_pitch) {
-            fpu_cpy_single_256_nt(vaddr, &scanlines[d[0] << 3]);
+            fpu_cpy_single_256_nt(vaddr,      &scanlines[d[0] << 3]);
             fpu_cpy_single_256_nt(vaddr + 32, &scanlines[d[1] << 3]);
          }
 
+         continue;
+
+      width_2_nofpu:
+
+         for (u32 r = 0; r < font_h; r++, d+=2, vaddr += fb_pitch) {
+            memcpy32(vaddr,      &scanlines[d[0] << 3], SL_SIZE);
+            memcpy32(vaddr + 32, &scanlines[d[1] << 3], SL_SIZE);
+         }
+
+         continue;
    }
 }
 

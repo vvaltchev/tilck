@@ -30,7 +30,7 @@ static void textmode_set_char_at(u16 row, u16 col, u16 entry)
    video[row * VIDEO_COLS + col] = entry;
 }
 
-static void textmode_set_row(u16 row, u16 *data)
+static void textmode_set_row(u16 row, u16 *data, bool fpu_allowed)
 {
    ASSERT(row < VIDEO_ROWS);
 

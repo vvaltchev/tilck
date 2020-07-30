@@ -16,10 +16,7 @@ struct video_interface {
 
    /* Main functions */
    void (*set_char_at)(u16 row, u16 col, u16 entry);
-   void (*set_row)(u16 row, u16 *data);             // NOTE: set_row() can
-                                                    // safely assume that it has
-                                                    // been called in a FPU
-                                                    // context.
+   void (*set_row)(u16 row, u16 *data, bool fpu_allowed);
    void (*clear_row)(u16 row_num, u8 color);
 
    /* Cursor management */
