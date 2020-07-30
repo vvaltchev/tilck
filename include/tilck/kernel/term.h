@@ -16,7 +16,7 @@ struct video_interface {
 
    /* Main functions */
    void (*set_char_at)(u16 row, u16 col, u16 entry);
-   void (*set_row)(u16 row, u16 *data, bool flush); // NOTE: set_row() can
+   void (*set_row)(u16 row, u16 *data);             // NOTE: set_row() can
                                                     // safely assume that it has
                                                     // been called in a FPU
                                                     // context.
@@ -29,7 +29,6 @@ struct video_interface {
 
    /* Other (optional) */
    void (*scroll_one_line_up)(void);
-   void (*flush_buffers)(void);
    void (*redraw_static_elements)(void);
    void (*disable_static_elems_refresh)(void);
    void (*enable_static_elems_refresh)(void);

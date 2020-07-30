@@ -72,13 +72,12 @@ static u16 failsafe_buffer[80 * 25];
 /* ------------ No-output video-interface ------------------ */
 
 static void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
-static void no_vi_set_row(u16 row, u16 *data, bool flush) { }
+static void no_vi_set_row(u16 row, u16 *data) { }
 static void no_vi_clear_row(u16 row_num, u8 color) { }
 static void no_vi_move_cursor(u16 row, u16 col, int color) { }
 static void no_vi_enable_cursor(void) { }
 static void no_vi_disable_cursor(void) { }
 static void no_vi_scroll_one_line_up(void) { }
-static void no_vi_flush_buffers(void) { }
 static void no_vi_redraw_static_elements(void) { }
 static void no_vi_disable_static_elems_refresh(void) { }
 static void no_vi_enable_static_elems_refresh(void) { }
@@ -92,7 +91,6 @@ static const struct video_interface no_output_vi =
    no_vi_enable_cursor,
    no_vi_disable_cursor,
    no_vi_scroll_one_line_up,
-   no_vi_flush_buffers,
    no_vi_redraw_static_elements,
    no_vi_disable_static_elems_refresh,
    no_vi_enable_static_elems_refresh
@@ -194,12 +192,9 @@ static void term_redraw2(term *_t, u16 s, u16 e)
    fpu_context_begin();
    {
       for (u16 row = s; row < e; row++)
-         t->vi->set_row(row, get_buf_row(t, row), true);
+         t->vi->set_row(row, get_buf_row(t, row));
    }
    fpu_context_end();
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static inline void term_redraw(term *_t)
@@ -304,9 +299,6 @@ static void term_int_scroll_up(term *_t, u32 lines)
          t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
       }
    }
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_int_scroll_down(term *_t, u32 lines)
@@ -321,9 +313,6 @@ static void term_int_scroll_down(term *_t, u32 lines)
          t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
       }
    }
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void
@@ -406,9 +395,6 @@ static void term_action_move_ch_and_cur(term *_t, int row, int col, ...)
 
    if (t->cursor_enabled)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_internal_incr_row(term *_t, u8 color)
@@ -600,9 +586,6 @@ static void term_action_write(term *_t, char *buf, u32 len, u8 color)
 
    if (t->cursor_enabled)
       vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
-
-   if (vi->flush_buffers)
-      vi->flush_buffers();
 }
 
 /* Direct write without any filter nor move_cursor/flush */
@@ -633,9 +616,6 @@ static void term_action_move_ch_and_cur_rel(term *_t, s8 dr, s8 dc, ...)
 
    if (t->cursor_enabled)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_reset(term *_t, ...)
@@ -651,9 +631,6 @@ static void term_action_reset(term *_t, ...)
 
    if (t->tabs_buf)
       memset(t->tabs_buf, 0, t->cols * t->rows);
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_erase_in_display(term *_t, int mode, ...)
@@ -715,9 +692,6 @@ static void term_action_erase_in_display(term *_t, int mode, ...)
       default:
          return;
    }
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_erase_in_line(term *_t, int mode, ...)
@@ -748,9 +722,6 @@ static void term_action_erase_in_line(term *_t, int mode, ...)
       default:
          return;
    }
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void
@@ -779,9 +750,6 @@ term_action_del(term *_t, enum term_del_type del_type, int m, ...)
       default:
          NOT_REACHED();
    }
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_ins_blank_chars(term *_t, u16 n, ...)
@@ -798,9 +766,6 @@ static void term_action_ins_blank_chars(term *_t, u16 n, ...)
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_del_chars_in_line(term *_t, u16 n, ...)
@@ -818,9 +783,6 @@ static void term_action_del_chars_in_line(term *_t, u16 n, ...)
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_erase_chars_in_line(term *_t, u16 n, ...)
@@ -834,9 +796,6 @@ static void term_action_erase_chars_in_line(term *_t, u16 n, ...)
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-
-   if (t->vi->flush_buffers)
-      t->vi->flush_buffers();
 }
 
 static void term_action_pause_video_output(term *_t, ...)

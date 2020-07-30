@@ -166,7 +166,7 @@ static void fb_disable_cursor(void)
    fb_move_cursor(cursor_row, cursor_col, -1);
 }
 
-static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
+static void fb_set_row_failsafe(u16 row, u16 *data)
 {
    for (u16 i = 0; i < fb_term_cols; i++)
       fb_set_char_at_failsafe(row, i, data[i]);
@@ -174,7 +174,7 @@ static void fb_set_row_failsafe(u16 row, u16 *data, bool flush)
    fb_reset_blink_timer();
 }
 
-static void fb_set_row_optimized(u16 row, u16 *data, bool flush)
+static void fb_set_row_optimized(u16 row, u16 *data)
 {
    fb_draw_char_optimized_row(fb_offset_y + row * font_h,
                               data,
@@ -207,7 +207,6 @@ static struct video_interface framebuffer_vi =
    fb_enable_cursor,
    fb_disable_cursor,
    NULL,  /* scroll_one_line_up: used only when running in a VM */
-   NULL,  /* flush_buffers: never used by fb_console */
    fb_draw_banner,
    fb_disable_banner_refresh,
    fb_enable_banner_refresh,
