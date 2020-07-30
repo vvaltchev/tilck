@@ -24,6 +24,7 @@
 #define KB_CTRL_CMD_PORT1_ENABLE     0xAE
 #define KB_CTRL_CMD_PORT2_DISABLE    0xA7
 #define KB_CTRL_CMD_PORT2_ENABLE     0xA8
+#define KB_CTRL_CMD_READ_CTR         0x20
 
 #define KB_RESPONSE_ACK              0xFA
 #define KB_RESPONSE_RESEND           0xFE
@@ -299,6 +300,37 @@ out:
 
    printk("KB: reset success: %u\n", success);
    return success;
+}
+
+static bool kb_ctrl_read_ctr(u8 *result)
+{
+   bool ok = true;
+   ASSERT(are_interrupts_enabled());
+
+   if (!kb_ctrl_disable_ports()) {
+      printk("KB: disable ports failed\n");
+      ok = false;
+      goto out;
+   }
+
+   /* read byte 0 from internal RAM */
+   if (kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
+
+      *result = inb(KB_DATA_PORT);
+
+   } else {
+
+      printk("KB: send cmd failed\n");
+      ok = false;
+   }
+
+out:
+   if (!kb_ctrl_enable_ports()) {
+      printk("KB: enable ports failed\n");
+      ok = false;
+   }
+
+   return ok;
 }
 
 // Reboot procedure using the 8042 PS/2 controller
