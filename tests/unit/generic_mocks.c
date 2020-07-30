@@ -123,6 +123,7 @@ int get_irq_num(void *ctx) { return -1; }
 int get_int_num(void *ctx) { return -1; }
 void retain_pageframes_mapped_at() { }
 void release_pageframes_mapped_at() { }
+bool irq_is_masked() { NOT_REACHED(); return false; }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }

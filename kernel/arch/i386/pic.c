@@ -208,6 +208,23 @@ void irq_clear_mask(int irq)
    enable_interrupts(&var);
 }
 
+bool irq_is_masked(int irq)
+{
+   ulong var;
+   bool res;
+   ASSERT(IN_RANGE_INC(irq, 0, 32));
+
+   disable_interrupts(&var);
+   {
+      if (irq < 8)
+         res = inb(PIC1_IMR) & (1 << irq);
+      else
+         res = inb(PIC2_IMR) & (1 << (irq - 8));
+   }
+   enable_interrupts(&var);
+   return res;
+}
+
 bool pic_is_spur_irq(int irq)
 {
    ASSERT(!are_interrupts_enabled());
