@@ -181,11 +181,11 @@ err:
 /*
  * From http://wiki.osdev.org/PS/2_Keyboard
  *
- * BITS [0,4]: Repeat rate (00000b = 30 Hz, ..., 11111b = 2 Hz)
- * BITS [5,6]: Delay before keys repeat (00b = 250 ms, ..., 11b = 1000 ms)
- * BIT [7]: Must be zero
- * BIT [8]: I'm assuming is ignored.
+ * BITS [0..4]: Repeat rate (00000b = 30 Hz, ..., 11111b = 2 Hz)
+ * BITS [5..6]: Delay before keys repeat (00b = 250 ms, ..., 11b = 1000 ms)
+ * BIT  [7]: Must be zero
  *
+ * Note: this function sets just the repeat rate.
  */
 
 bool kb_set_typematic_byte(u8 val)
@@ -198,7 +198,7 @@ bool kb_set_typematic_byte(u8 val)
    if (!kb_ctrl_full_wait()) goto err;
    outb(KB_DATA_PORT, 0xF3);
    if (!kb_ctrl_full_wait()) goto err;
-   outb(KB_DATA_PORT, 0);
+   outb(KB_DATA_PORT, val & 0b11111);
    if (!kb_ctrl_full_wait()) goto err;
 
    if (!kb_ctrl_enable_ports()) {
