@@ -116,6 +116,7 @@ void pic_send_eoi(int __irq)
 {
    ulong var;
    u8 irq = (u8)__irq;
+   ASSERT(IN_RANGE_INC(__irq, 0, 32));
 
    disable_interrupts(&var);
    {
@@ -137,6 +138,7 @@ void pic_mask_and_send_eoi(int __irq)
    ulong var;
    u8 irq = (u8)__irq;
    u8 irq_mask;
+   ASSERT(IN_RANGE_INC(__irq, 0, 32));
 
    disable_interrupts(&var);
    {
@@ -187,6 +189,7 @@ void irq_clear_mask(int irq)
 {
    u16 port;
    ulong var;
+   u8 irq_mask;
    ASSERT(IN_RANGE_INC(irq, 0, 32));
 
    if (irq < 8) {
@@ -198,7 +201,9 @@ void irq_clear_mask(int irq)
 
    disable_interrupts(&var);
    {
-      outb(port, inb(port) & ~(1 << irq));
+      irq_mask = inb(port);
+      irq_mask &= ~(1 << irq);
+      outb(port, irq_mask);
    }
    enable_interrupts(&var);
 }
