@@ -15,6 +15,28 @@ void handle_syscall(regs_t *);
 void handle_fault(regs_t *);
 void arch_irq_handling(regs_t *r);
 
+/*
+ * Nested IRQ counter needed for in_irq().
+ *
+ * Note: the `__in_irq_count` mechanism tracks only nested IRQs and has NOTHING
+ * to do with `KRN_TRACK_NESTED_INTERR` which is a debug util that tracks all
+ * the interrupt types, including: syscalls, faults and IRQs.
+ */
+ATOMIC(int) __in_irq_count;
+
+static ALWAYS_INLINE void inc_irq_count(void)
+{
+   atomic_fetch_add_explicit(&__in_irq_count, 1, mo_relaxed);
+}
+
+static ALWAYS_INLINE void dec_irq_count(void)
+{
+   DEBUG_ONLY_UNSAFE(int oldval =)
+      atomic_fetch_sub_explicit(&__in_irq_count, 1, mo_relaxed);
+
+   ASSERT(oldval > 0);
+}
+
 #if KRN_TRACK_NESTED_INTERR
 
 static int nested_interrupts_count;
@@ -59,16 +81,17 @@ bool in_nested_irq_num(int irq_num)
 
 void check_not_in_irq_handler(void)
 {
-   ulong var;
-
    if (!in_panic()) {
-      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
-      {
-         if (nested_interrupts_count > 0)
-            if (is_irq(nested_interrupts[nested_interrupts_count - 1]))
-               panic("NOT expected to be in an IRQ handler");
-      }
-      enable_interrupts(&var);
+      if (in_irq())
+         panic("NOT expected to be in an IRQ handler");
+   }
+}
+
+void check_in_irq_handler(void)
+{
+   if (!in_panic()) {
+      if (!in_irq())
+         panic("Expected TO BE in an IRQ handler (but we're NOT)");
    }
 }
 
@@ -90,25 +113,6 @@ void check_in_no_other_irq_than_timer(void)
       }
    }
    enable_interrupts(&var);
-}
-
-void check_in_irq_handler(void)
-{
-   ulong var;
-
-   if (!in_panic()) {
-
-      disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
-
-      if (nested_interrupts_count > 0) {
-         if (is_irq(nested_interrupts[nested_interrupts_count - 1])) {
-            enable_interrupts(&var);
-            return;
-         }
-      }
-
-      panic("Expected TO BE in an IRQ handler (but we're NOT)");
-   }
 }
 
 static void DEBUG_check_not_same_interrupt_nested(int int_num)
@@ -208,8 +212,14 @@ void irq_entry(regs_t *r)
    /* Disable the preemption */
    disable_preemption();
 
+   /* Increase the always-enabled in_irq_count counter */
+   inc_irq_count();
+
    /* Call the arch-dependent IRQ handling logic */
    arch_irq_handling(r);
+
+   /* Decrease the always-enabled in_irq_count counter */
+   dec_irq_count();
 
    /* Check that arch_irq_handling restored the interrupts state to disabled */
    ASSERT(!are_interrupts_enabled());

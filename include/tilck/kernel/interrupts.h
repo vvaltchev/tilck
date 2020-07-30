@@ -3,11 +3,18 @@
 #pragma once
 #include <tilck_gen_headers/config_debug.h>
 
+#include <tilck/common/atomics.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/hal_types.h>
 
 void set_fault_handler(int fault, void *ptr);
 void exit_fault_handler_state(void);
+
+static ALWAYS_INLINE bool in_irq(void)
+{
+   extern ATOMIC(int) __in_irq_count;
+   return atomic_load_explicit(&__in_irq_count, mo_relaxed) > 0;
+}
 
 #if KRN_TRACK_NESTED_INTERR
    void check_not_in_irq_handler(void);
