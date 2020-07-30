@@ -2,8 +2,9 @@
 
 #define KB_ITERS_TIMEOUT (100*1000)
 
-#define KB_DATA_PORT     0x60
-#define KB_CONTROL_PORT  0x64
+#define KB_DATA_PORT     0x60       /* 0x60 is a read/write data port */
+#define KB_COMMAND_PORT  0x64       /* 0x64 is for cmds, when it's written */
+#define KB_STATUS_PORT   0x64       /* 0x64 is for status, when it's read */
 
 /* keyboard interface bits */
 
@@ -12,7 +13,7 @@
 
 /*
  * The input buffer is full: it must be 0 before writing data to KB_DATA_PORT or
- * KB_CONTROL_PORT.
+ * KB_COMMAND_PORT.
  */
 #define KB_CTRL_INPUT_FULL        (1 << 1)
 
@@ -31,12 +32,12 @@
 
 static ALWAYS_INLINE NODISCARD bool kb_ctrl_is_pending_data(void)
 {
-   return !!(inb(KB_CONTROL_PORT) & KB_CTRL_OUTPUT_FULL);
+   return !!(inb(KB_STATUS_PORT) & KB_CTRL_OUTPUT_FULL);
 }
 
 static ALWAYS_INLINE NODISCARD bool kb_ctrl_is_read_for_next_cmd(void)
 {
-   return !(inb(KB_CONTROL_PORT) & KB_CTRL_INPUT_FULL);
+   return !(inb(KB_STATUS_PORT) & KB_CTRL_INPUT_FULL);
 }
 
 static ALWAYS_INLINE NODISCARD bool kb_wait_cmd_fetched(void)
@@ -73,7 +74,7 @@ static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
    if (!kb_wait_cmd_fetched())
       return false;
 
-   outb(KB_CONTROL_PORT, cmd);
+   outb(KB_COMMAND_PORT, cmd);
 
    if (!kb_wait_cmd_fetched())
       return false;
@@ -102,7 +103,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
       if (iters > KB_ITERS_TIMEOUT)
          return false;
 
-      ctrl = inb(KB_CONTROL_PORT);
+      ctrl = inb(KB_STATUS_PORT);
 
       if (ctrl & KB_CTRL_OUTPUT_FULL) {
          inb(KB_DATA_PORT); /* drain the KB's output */
@@ -253,7 +254,7 @@ static NODISCARD bool kb_ctrl_reset(void)
    if (!kb_ctrl_disable_ports())
       goto out;
 
-   kb_ctrl = inb(KB_CONTROL_PORT);
+   kb_ctrl = inb(KB_STATUS_PORT);
 
    printk("KB: reset procedure\n");
    printk("KB: initial status: 0x%x\n", kb_ctrl);
