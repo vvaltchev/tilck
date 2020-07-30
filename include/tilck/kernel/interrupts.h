@@ -19,7 +19,6 @@ void panic_dump_nested_interrupts(void);
 void check_in_no_other_irq_than_timer(void);
 
 /* The following value-returning funcs are NOT defined in the #else case: */
-bool in_syscall(void);
 bool in_nested_irq_num(int irq_num);
 int get_nested_interrupts_count(void);
 

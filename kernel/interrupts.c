@@ -111,21 +111,6 @@ void check_in_irq_handler(void)
    }
 }
 
-bool in_syscall(void)
-{
-   ASSERT(!are_interrupts_enabled());
-   bool res = false;
-
-   for (int i = nested_interrupts_count - 1; i >= 0; i--) {
-      if (nested_interrupts[i] == SYSCALL_SOFT_INTERRUPT) {
-         res = true;
-         break;
-      }
-   }
-
-   return res;
-}
-
 extern u32 slow_timer_irq_handler_count;
 
 static void DEBUG_check_not_same_interrupt_nested(int int_num)
