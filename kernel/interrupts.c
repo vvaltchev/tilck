@@ -111,8 +111,6 @@ void check_in_irq_handler(void)
    }
 }
 
-extern u32 slow_timer_irq_handler_count;
-
 static void DEBUG_check_not_same_interrupt_nested(int int_num)
 {
    ASSERT(!are_interrupts_enabled());
@@ -121,7 +119,12 @@ static void DEBUG_check_not_same_interrupt_nested(int int_num)
       if (nested_interrupts[i] == int_num) {
 
          if (int_num == 32) {
-            /* tollarate nested IRQ 0 for debug purposes */
+
+            /*
+             * Tolerate nested IRQ 0 for debug purposes: to make sure that the
+             * timer handler *never* gets so slow that IRQ #0 gets fired again
+             * before it finishes.
+             */
             return;
          }
 

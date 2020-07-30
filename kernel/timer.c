@@ -12,17 +12,18 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/datetime.h>
 
-
+/* jiffies */
 static u64 __ticks;        /* ticks since the timer started */
 
+/* system time */
 u64 __time_ns;             /* nanoseconds since the timer started */
 u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
 int __tick_adj_val;
 int __tick_adj_ticks_rem;
 
-#if KRN_TRACK_NESTED_INTERR
+/* debug counters */
 u32 slow_timer_irq_handler_count;
-#endif
+
 
 static struct list timer_wakeup_list = make_list(timer_wakeup_list);
 
@@ -226,23 +227,22 @@ void kernel_sleep(u64 ticks)
 
 static ALWAYS_INLINE bool timer_nested_irq(void)
 {
+   bool res = false;
 
-#if KRN_TRACK_NESTED_INTERR
+   if (KRN_TRACK_NESTED_INTERR) {
 
-   ulong var;
-   disable_interrupts(&var); /* under #if KRN_TRACK_NESTED_INTERR */
+      ulong var;
+      disable_interrupts(&var);
 
-   if (in_nested_irq_num(X86_PC_TIMER_IRQ)) {
-      slow_timer_irq_handler_count++;
+      if (in_nested_irq_num(X86_PC_TIMER_IRQ)) {
+         slow_timer_irq_handler_count++;
+         res = true;
+      }
+
       enable_interrupts(&var);
-      return true;
    }
 
-   enable_interrupts(&var);
-
-#endif
-
-   return false;
+   return res;
 }
 
 enum irq_action timer_irq_handler(void *ctx)
