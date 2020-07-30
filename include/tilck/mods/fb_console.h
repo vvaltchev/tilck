@@ -5,10 +5,9 @@
 #include <tilck/common/basic_defs.h>
 #include <multiboot.h>
 
-extern bool __use_framebuffer;
-
 static ALWAYS_INLINE bool use_framebuffer(void)
 {
+   extern bool __use_framebuffer;
    return __use_framebuffer;
 }
 

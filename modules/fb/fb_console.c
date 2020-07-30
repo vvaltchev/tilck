@@ -72,7 +72,7 @@ static void fb_reset_blink_timer(void)
    task_update_wakeup_timer_if_any(blink_thread_ti, blink_half_period);
 }
 
-/*video_interface */
+/* video_interface */
 
 static void fb_set_char_at_failsafe(u16 row, u16 col, u16 entry)
 {
@@ -183,7 +183,7 @@ static void fb_set_row_optimized(u16 row, u16 *data, bool flush)
    fb_reset_blink_timer();
 }
 
-static void fb_draw_banner(void);
+void fb_draw_banner(void);
 
 static void fb_disable_banner_refresh(void)
 {
@@ -247,7 +247,7 @@ static void fb_setup_banner(void)
    fb_offset_y = (20 * font_h) / 10;
 }
 
-static void fb_draw_banner(void)
+void fb_draw_banner(void)
 {
    static bool oom;
    static char *lbuf;
@@ -473,41 +473,4 @@ void init_fb_console(void)
       if (kthread_create(fb_update_banner, 0, NULL) < 0)
          printk("WARNING: unable to create the fb_update_banner\n");
    }
-}
-
-void internal_selftest_fb_perf(bool use_fpu)
-{
-   if (!__use_framebuffer)
-      panic("Unable to test framebuffer's performance: we're in text-mode");
-
-   const int iters = 20;
-   u64 start, duration, cycles;
-
-   start = RDTSC();
-
-   for (int i = 0; i < iters; i++) {
-      u32 color = vga_rgb_colors[i % 2 ? COLOR_WHITE : COLOR_BLACK];
-      fb_raw_perf_screen_redraw(color, use_fpu);
-   }
-
-   duration = RDTSC() - start;
-   cycles = duration / iters;
-
-   u64 pixels = fb_get_width() * fb_get_height();
-   printk("fb size (pixels): %u\n", pixels);
-   printk("cycles per redraw: %llu\n", cycles);
-   printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);
-   printk("use_fpu: %d\n", use_fpu);
-
-   fb_draw_banner();
-}
-
-void selftest_fb_perf(void)
-{
-   internal_selftest_fb_perf(false);
-}
-
-void selftest_fb_perf_fpu(void)
-{
-   internal_selftest_fb_perf(true);
 }

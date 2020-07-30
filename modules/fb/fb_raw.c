@@ -9,6 +9,8 @@
    #pragma GCC optimize "-O3"
 #endif
 
+#include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
 #include <tilck/common/color_defs.h>
@@ -269,23 +271,6 @@ void fb_raw_color_lines(u32 iy, u32 h, u32 color)
    }
 }
 
-void fb_raw_perf_screen_redraw(u32 color, bool use_fpu)
-{
-   VERIFY(fb_bpp == 32);
-   VERIFY(fb_pitch == fb_line_length);
-
-   if (!use_fpu) {
-      memset32((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 2);
-      return;
-   }
-
-   fpu_context_begin();
-   {
-      fpu_memset256((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 5);
-   }
-   fpu_context_end();
-}
-
 void fb_draw_cursor_raw(u32 ix, u32 iy, u32 color)
 {
    if (LIKELY(fb_bpp == 32)) {
@@ -485,7 +470,6 @@ bool fb_pre_render_char_scanlines(void)
    return true;
 }
 
-
 void fb_draw_char_optimized(u32 x, u32 y, u16 e)
 {
    const u8 c = vgaentry_get_char(e);
@@ -594,3 +578,16 @@ void fb_fill_var_info(void *var_info)
 
    // NOTE: vi->{red, green, blue}.msb_right = 0
 }
+
+#if KERNEL_SELFTESTS
+void fb_raw_perf_screen_redraw(u32 color, bool use_fpu)
+{
+   VERIFY(fb_bpp == 32);
+   VERIFY(fb_pitch == fb_line_length);
+
+   if (use_fpu)
+      fpu_memset256((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 5);
+   else
+      memset32((void *)fb_vaddr, color, (fb_pitch * fb_height) >> 2);
+}
+#endif
