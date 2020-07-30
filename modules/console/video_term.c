@@ -185,16 +185,19 @@ static void term_action_enable_cursor(term *_t, u16 val, ...)
 static void term_redraw2(term *_t, u16 s, u16 e)
 {
    struct vterm *const t = _t;
+   const bool fpu_allowed = !in_irq();
 
    if (!t->buffer)
       return;
 
-   fpu_context_begin();
-   {
-      for (u16 row = s; row < e; row++)
-         t->vi->set_row(row, get_buf_row(t, row), true);
-   }
-   fpu_context_end();
+   if (fpu_allowed)
+      fpu_context_begin();
+
+   for (u16 row = s; row < e; row++)
+      t->vi->set_row(row, get_buf_row(t, row), fpu_allowed);
+
+   if (fpu_allowed)
+      fpu_context_end();
 }
 
 static inline void term_redraw(term *_t)
