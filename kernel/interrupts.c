@@ -158,12 +158,6 @@ void panic_dump_nested_interrupts(void)
    printk("%s", buf);
 }
 
-int get_nested_interrupts_count(void)
-{
-   ASSERT(!are_interrupts_enabled());
-   return nested_interrupts_count;
-}
-
 /*
  * This sanity check is essential: it assures us that in no case
  * we're running an usermode thread with preemption disabled.
