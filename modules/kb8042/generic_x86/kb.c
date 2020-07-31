@@ -14,7 +14,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/safe_ringbuf.h>
 
-#include "kb_int.c.h"
+#include "i8042.h"
 #include "kb_layouts.c.h"
 #include "kb_ansi_seq.c.h"
 
