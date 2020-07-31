@@ -206,18 +206,18 @@ static void kb_process_scancode(u8 scancode)
    }
 }
 
+static void kb_dump_regs(u8 ctr, u8 cto, u8 status)
+{
+   printk("KB: CTR:    0x%02x\n", ctr);
+   printk("KB: CTO:    0x%02x\n", cto);
+   printk("KB: status: 0x%02x\n", status);
+}
+
 static void kb_irq_bottom_half(void *arg)
 {
    u8 scancode;
    disable_preemption();
    {
-      /*
-       * While it is absolutely NOT necessary to disable the preemption here,
-       * the reason to do that is purely performance-related: it's bad to be
-       * preempted by a just woke-up task after a single scancode has been
-       * processed while there might be other scancodes to process here.
-       * Just process everything first, as fast as possible.
-       */
       while (safe_ringbuf_read_1(&kb_input_rb, &scancode)) {
          kb_process_scancode(scancode);
       }
@@ -225,36 +225,48 @@ static void kb_irq_bottom_half(void *arg)
    enable_preemption();
 }
 
-static enum irq_action keyboard_irq_handler(void *ctx)
+static int kb_irq_handler_read_scancodes(void)
 {
    int count = 0;
-
-   ASSERT(are_interrupts_enabled());
-   ASSERT(!is_preemption_enabled());
-
-   if (!kb_wait_cmd_fetched())
-      panic("KB: fatal error: timeout in kb_wait_cmd_fetched");
 
    while (kb_ctrl_is_pending_data()) {
 
       u8 scancode = inb(KB_DATA_PORT);
       bool was_empty;
 
-      if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty))
-         printk("KB: hit input limit\n");
+      if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty)) {
+         /* We have no other choice than to just drain the data */
+         printk("KB: Warning: hit input limit. Drain the data!\n");
+         kb_drain_any_data();
+      }
 
       count++;
    }
 
-   if (count > 0) {
+   return count;
+}
 
-      if (!wth_enqueue_job(kb_worker_thread, &kb_irq_bottom_half, NULL))
-         panic("KB: unable to enqueue job");
+static enum irq_action keyboard_irq_handler(void *ctx)
+{
+   ASSERT(are_interrupts_enabled());
+   ASSERT(!is_preemption_enabled());
 
-      return IRQ_REQUIRES_BH;
+   if (!kb_ctrl_is_read_for_next_cmd()) {
+      printk("KB: Warning: got IRQ with pending command\n");
+      return IRQ_FULLY_HANDLED;
    }
 
-   return IRQ_FULLY_HANDLED;
+   if (!kb_irq_handler_read_scancodes()) {
+      /* Got IRQ *without* output buffer full set in the status register */
+      kb_drain_data_no_check();
+      return IRQ_FULLY_HANDLED;
+   }
+
+   /* Everything is fine: we read at least one scancode */
+   if (!wth_enqueue_job(kb_worker_thread, &kb_irq_bottom_half, NULL))
+      panic("KB: unable to enqueue job");
+
+   return IRQ_REQUIRES_BH;
 }
 
 static u8 kb_translate_to_mediumraw(struct key_event ke)
@@ -296,7 +308,28 @@ DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 
 static bool hw_8042_init(void)
 {
+   u8 status, ctr = 0, cto = 0;
+   bool dump_regs = false;
+
    ASSERT(!is_preemption_enabled());
+
+   if (!in_hypervisor()) {
+
+      status = kb_ctrl_read_status();
+
+      if (!kb_ctrl_read_ctr_and_cto(&ctr, &cto)) {
+         printk("KB: read CTR failed\n");
+         return false;
+      }
+
+      if (!(ctr & KB_CTR_SYS_FLAG)) {
+         printk("KB: Warning: unset system flag in CTR\n");
+         dump_regs = true;
+      }
+
+      if (dump_regs)
+         kb_dump_regs(ctr, cto, status);
+   }
 
    if (!KERNEL_DO_PS2_SELFTEST)
       return true;
@@ -323,8 +356,10 @@ void init_kb(void)
 
    disable_preemption();
 
-   if (!hw_8042_init())
+   if (!hw_8042_init()) {
+      printk("KB: hw_8042_init() failed\n");
       goto out;
+   }
 
    if (in_hypervisor()) {
 
@@ -344,7 +379,6 @@ void init_kb(void)
 
    create_kb_worker_thread();
    irq_install_handler(X86_PC_KEYBOARD_IRQ, &keyboard);
-
    register_keyboard_device(&ps2_keyboard);
 
 out:
