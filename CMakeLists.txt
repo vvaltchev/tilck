@@ -211,6 +211,9 @@ set(FAT_TEST_DIR OFF CACHE BOOL
 set(PS2_DO_SELFTEST OFF CACHE BOOL
     "Do PS/2 controller selftests in init_kb()")
 
+set(PS2_VERBOSE_DEBUG_LOG OFF CACHE BOOL
+    "Enable developer-only verbose logging")
+
 set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
     "Use the fonts in other/alt_fonts instead of the default ones")
 
@@ -347,6 +350,7 @@ list(
    WCONV
    FAT_TEST_DIR
    PS2_DO_SELFTEST
+   PS2_VERBOSE_DEBUG_LOG
    FB_CONSOLE_USE_ALT_FONTS
    TINY_KERNEL
 )

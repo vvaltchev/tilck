@@ -10,6 +10,7 @@
 
 /* --------- Boolean config variables --------- */
 #cmakedefine01 PS2_DO_SELFTEST
+#cmakedefine01 PS2_VERBOSE_DEBUG_LOG
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 
 
