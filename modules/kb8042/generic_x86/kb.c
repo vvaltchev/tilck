@@ -210,9 +210,11 @@ static void kb_process_scancode(u8 scancode)
 
 static void kb_dump_regs(u8 ctr, u8 cto, u8 status)
 {
-   printk("KB: CTR:    0x%02x\n", ctr);
-   printk("KB: CTO:    0x%02x\n", cto);
-   printk("KB: status: 0x%02x\n", status);
+   bool masked = irq_is_masked(X86_PC_KEYBOARD_IRQ);
+   printk("KB: IRQ masked:                   %u\n", masked);
+   printk("KB: Ctrl Config. Byte (CTR):   0x%02x\n", ctr);
+   printk("KB: Ctrl Output Port (CTO):    0x%02x\n", cto);
+   printk("KB: Status register:           0x%02x\n", status);
 }
 
 static void kb_irq_bottom_half(void *arg)
@@ -259,7 +261,13 @@ static enum irq_action keyboard_irq_handler(void *ctx)
    }
 
    if (!kb_irq_handler_read_scancodes()) {
+
       /* Got IRQ *without* output buffer full set in the status register */
+
+      if (PS2_VERBOSE_DEBUG_LOG) {
+         printk("KB: Got IRQ#1 with OBF=0 in status register\n");
+      }
+
       kb_drain_data_no_check();
       return IRQ_FULLY_HANDLED;
    }
@@ -311,7 +319,7 @@ DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 static bool hw_8042_init(void)
 {
    u8 status, ctr = 0, cto = 0;
-   bool dump_regs = false;
+   bool dump_regs = PS2_VERBOSE_DEBUG_LOG;
 
    ASSERT(!is_preemption_enabled());
 
