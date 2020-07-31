@@ -9,7 +9,7 @@
 #include <tilck_gen_headers/config_global.h>
 
 /* --------- Boolean config variables --------- */
-#cmakedefine01 KERNEL_DO_PS2_SELFTEST
+#cmakedefine01 PS2_DO_SELFTEST
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 
 
@@ -30,8 +30,8 @@
 #define KERNEL_STACK_SIZE          (KERNEL_STACK_PAGES << PAGE_SHIFT)
 
 /* We careful here */
-#define KMALLOC_MAX_ALIGN                  (64 * KB)
-#define KMALLOC_MIN_HEAP_SIZE      KMALLOC_MAX_ALIGN
+#define KMALLOC_MAX_ALIGN                   (64 * KB)
+#define KMALLOC_MIN_HEAP_SIZE       KMALLOC_MAX_ALIGN
 
 #define MAX_MOUNTPOINTS                            16
 #define MAX_NESTED_INTERRUPTS                      32

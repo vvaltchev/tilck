@@ -331,7 +331,7 @@ static bool hw_8042_init(void)
          kb_dump_regs(ctr, cto, status);
    }
 
-   if (!KERNEL_DO_PS2_SELFTEST)
+   if (!PS2_DO_SELFTEST)
       return true;
 
    if (kb_ctrl_self_test())
