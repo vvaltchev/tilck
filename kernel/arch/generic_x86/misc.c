@@ -10,7 +10,7 @@
 void reboot(void)
 {
    if (MOD_kb8042) {
-      x86_pc_8042_reboot();
+      i8042_reboot();
    } else {
       printk("WARNING: unable to reboot: the mod kb8042 is not built-in\n");
    }

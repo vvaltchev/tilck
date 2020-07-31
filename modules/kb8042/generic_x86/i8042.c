@@ -370,7 +370,7 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
 }
 
 // Reboot procedure using the 8042 PS/2 controller
-void x86_pc_8042_reboot(void)
+void i8042_reboot(void)
 {
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
 
