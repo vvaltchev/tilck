@@ -233,7 +233,7 @@ static int kb_irq_handler_read_scancodes(void)
 
    while (kb_ctrl_is_pending_data()) {
 
-      u8 scancode = inb(KB_DATA_PORT);
+      u8 scancode = kb_ctrl_read_data();
       bool was_empty;
 
       if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty)) {

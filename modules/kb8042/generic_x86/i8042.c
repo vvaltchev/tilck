@@ -50,7 +50,7 @@ static NODISCARD bool kb_wait_for_data(void)
 void kb_drain_any_data(void)
 {
    while (kb_ctrl_is_pending_data()) {
-      inb(KB_DATA_PORT);
+      kb_ctrl_read_data();
       kb_io_wait();
    }
 }
@@ -58,7 +58,7 @@ void kb_drain_any_data(void)
 void kb_drain_data_no_check(void)
 {
    for (int i = 0; i < 16; i++)
-      inb(KB_DATA_PORT);
+      kb_ctrl_read_data();
 }
 
 static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
@@ -98,7 +98,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
       ctrl = inb(KB_STATUS_PORT);
 
       if (ctrl & KB_STATUS_OUTPUT_FULL) {
-         inb(KB_DATA_PORT); /* drain the KB's output */
+         kb_ctrl_read_data(); /* drain the KB's output */
       }
 
       iters++;
@@ -223,7 +223,7 @@ NODISCARD bool kb_ctrl_self_test(void)
       if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
          goto out;
 
-      res = inb(KB_DATA_PORT);
+      res = kb_ctrl_read_data();
       resend_count++;
 
    } while (res == KB_RESPONSE_RESEND);
@@ -262,7 +262,7 @@ NODISCARD bool kb_ctrl_reset(void)
       if (resend_count >= 3)
          break;
 
-      res = inb(KB_DATA_PORT);
+      res = kb_ctrl_read_data();
       printk("KB: response: 0x%x\n", res);
       resend_count++;
 
@@ -281,7 +281,7 @@ NODISCARD bool kb_ctrl_reset(void)
    if (!kb_wait_for_data())
       goto out;
 
-   res = inb(KB_DATA_PORT);
+   res = kb_ctrl_read_data();
    printk("KB: response: 0x%x\n", res);
 
    if (res == KB_RESPONSE_BAT_OK)
@@ -308,7 +308,7 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
 
    if (ctr) {
       if (kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
-         *ctr = inb(KB_DATA_PORT);
+         *ctr = kb_ctrl_read_data();
       } else {
          printk("KB: send cmd failed\n");
          ok = false;
@@ -317,7 +317,7 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
 
    if (cto) {
       if (kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
-         *cto = inb(KB_DATA_PORT);
+         *cto = kb_ctrl_read_data();
       } else {
          printk("KB: send cmd failed\n");
          ok = false;
