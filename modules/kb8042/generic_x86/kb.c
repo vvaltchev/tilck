@@ -294,6 +294,27 @@ static struct kb_dev ps2_keyboard = {
 
 DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 
+static bool hw_8042_init(void)
+{
+   ASSERT(!is_preemption_enabled());
+
+   if (!KERNEL_DO_PS2_SELFTEST)
+      return true;
+
+   if (kb_ctrl_self_test())
+      return true;
+
+   printk("KB: PS/2 controller self-test failed, trying a reset\n");
+
+   if (kb_ctrl_reset()) {
+      printk("KB: PS/2 controller: reset successful\n");
+      return true;
+   }
+
+   printk("KB: Unable to initialize the PS/2 controller\n");
+   return false;
+}
+
 /* This will be executed in a kernel thread */
 void init_kb(void)
 {
@@ -302,20 +323,8 @@ void init_kb(void)
 
    disable_preemption();
 
-   if (KERNEL_DO_PS2_SELFTEST) {
-      if (!kb_ctrl_self_test()) {
-
-         printk("Warning: PS/2 controller self-test failed, trying a reset\n");
-
-         if (!kb_ctrl_reset()) {
-            printk("Unable to initialize the PS/2 controller");
-            create_kb_worker_thread();
-            return;
-         }
-
-         printk("PS/2 controller: reset successful\n");
-      }
-   }
+   if (!hw_8042_init())
+      goto out;
 
    if (in_hypervisor()) {
 
@@ -337,6 +346,8 @@ void init_kb(void)
    irq_install_handler(X86_PC_KEYBOARD_IRQ, &keyboard);
 
    register_keyboard_device(&ps2_keyboard);
+
+out:
    enable_preemption();
 }
 
