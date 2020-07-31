@@ -59,24 +59,24 @@ NODISCARD bool kb_ctrl_reset(void);              // TODO: rename as i8042_...
 NODISCARD bool kb_ctrl_disable_ports(void);      // TODO: rename as i8042_...
 NODISCARD bool kb_ctrl_enable_ports(void);       // TODO: rename as i8042_...
 
-static inline u8 kb_ctrl_read_status(void)       // TODO: rename as i8042_...
+static inline u8 i8042_read_status(void)
 {
    return inb(KB_STATUS_PORT);
 }
 
-static inline u8 kb_ctrl_read_data(void)         // TODO: rename as i8042_...
+static inline u8 i8042_read_data(void)
 {
    return inb(KB_DATA_PORT);
 }
 
 static inline NODISCARD bool
-kb_ctrl_is_pending_data(void) // TODO: rename as i8042_...
+i8042_has_pending_data(void)
 {
    return !!(inb(KB_STATUS_PORT) & KB_STATUS_OUTPUT_FULL);
 }
 
 static inline NODISCARD bool
-kb_ctrl_is_read_for_next_cmd(void) // TODO: rename as i8042_...
+i8042_is_ready_for_cmd(void)
 {
    return !(inb(KB_STATUS_PORT) & KB_STATUS_INPUT_FULL);
 }

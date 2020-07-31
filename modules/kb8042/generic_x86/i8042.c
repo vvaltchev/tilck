@@ -49,7 +49,7 @@ static NO_INLINE void kb_io_wait(void)
 
 static bool kb_wait_cmd_fetched(void)
 {
-   for (int i = 0; !kb_ctrl_is_read_for_next_cmd(); i++) {
+   for (int i = 0; !i8042_is_ready_for_cmd(); i++) {
 
       if (i >= KB_ITERS_TIMEOUT)
          return false;
@@ -62,7 +62,7 @@ static bool kb_wait_cmd_fetched(void)
 
 static NODISCARD bool kb_wait_for_data(void)
 {
-   for (int i = 0; !kb_ctrl_is_pending_data(); i++) {
+   for (int i = 0; !i8042_has_pending_data(); i++) {
 
       if (i >= KB_ITERS_TIMEOUT)
          return false;
@@ -75,8 +75,8 @@ static NODISCARD bool kb_wait_for_data(void)
 
 void kb_drain_any_data(void)
 {
-   while (kb_ctrl_is_pending_data()) {
-      kb_ctrl_read_data();
+   while (i8042_has_pending_data()) {
+      i8042_read_data();
       kb_io_wait();
    }
 }
@@ -84,7 +84,7 @@ void kb_drain_any_data(void)
 void kb_drain_data_no_check(void)
 {
    for (int i = 0; i < 16; i++)
-      kb_ctrl_read_data();
+      i8042_read_data();
 }
 
 static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
@@ -124,7 +124,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
       ctrl = inb(KB_STATUS_PORT);
 
       if (ctrl & KB_STATUS_OUTPUT_FULL) {
-         kb_ctrl_read_data(); /* drain the KB's output */
+         i8042_read_data(); /* drain the KB's output */
       }
 
       iters++;
@@ -251,7 +251,7 @@ NODISCARD bool kb_ctrl_self_test(void)
       if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
          goto out;
 
-      res = kb_ctrl_read_data();
+      res = i8042_read_data();
       resend_count++;
 
    } while (res == KB_RESPONSE_RESEND);
@@ -290,7 +290,7 @@ NODISCARD bool kb_ctrl_reset(void)
       if (resend_count >= 3)
          break;
 
-      res = kb_ctrl_read_data();
+      res = i8042_read_data();
       printk("KB: response: 0x%x\n", res);
       resend_count++;
 
@@ -309,7 +309,7 @@ NODISCARD bool kb_ctrl_reset(void)
    if (!kb_wait_for_data())
       goto out;
 
-   res = kb_ctrl_read_data();
+   res = i8042_read_data();
    printk("KB: response: 0x%x\n", res);
 
    if (res == KB_RESPONSE_BAT_OK)
@@ -330,7 +330,7 @@ bool i8042_read_ctr_unsafe(u8 *ctr)
       return false;
    }
 
-   *ctr = kb_ctrl_read_data();
+   *ctr = i8042_read_data();
    return true;
 }
 
@@ -341,7 +341,7 @@ bool i8042_read_cto_unsafe(u8 *cto)
       return false;
    }
 
-   *cto = kb_ctrl_read_data();
+   *cto = i8042_read_data();
    return true;
 }
 

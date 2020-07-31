@@ -233,9 +233,9 @@ static int kb_irq_handler_read_scancodes(void)
 {
    int count = 0;
 
-   while (kb_ctrl_is_pending_data()) {
+   while (i8042_has_pending_data()) {
 
-      u8 scancode = kb_ctrl_read_data();
+      u8 scancode = i8042_read_data();
       bool was_empty;
 
       if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty)) {
@@ -255,7 +255,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
    ASSERT(are_interrupts_enabled());
    ASSERT(!is_preemption_enabled());
 
-   if (!kb_ctrl_is_read_for_next_cmd()) {
+   if (!i8042_is_ready_for_cmd()) {
       printk("KB: Warning: got IRQ with pending command\n");
       return IRQ_FULLY_HANDLED;
    }
@@ -321,7 +321,7 @@ static bool hw_8042_init_first_steps(void)
    u8 status, ctr = 0, cto = 0;
    bool dump_regs = PS2_VERBOSE_DEBUG_LOG;
 
-   status = kb_ctrl_read_status();
+   status = i8042_read_status();
 
    if (!i8042_read_ctr_unsafe(&ctr)) {
       printk("KB: read CTR failed\n");
