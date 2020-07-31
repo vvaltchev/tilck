@@ -42,31 +42,41 @@
 #define KB_RESPONSE_BAT_OK                 0xAA
 #define KB_RESPONSE_SELF_TEST_OK           0x55
 
-void kb_drain_any_data(void);
-void kb_drain_data_no_check(void);
+void i8042_set_sw_port_enabled_state(u8 port, bool enabled);
+bool i8042_get_sw_port_enabled_state(u8 port);
+
+bool i8042_read_ctr_unsafe(u8 *ctr);
+bool i8042_read_cto_unsafe(u8 *cto);
+
+void kb_drain_any_data(void);                    // TODO: rename as i8042_...
+void kb_drain_data_no_check(void);               // TODO: rename as i8042_...
 bool kb_led_set(u8 val);
 bool kb_set_typematic_byte(u8 val);
-bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto);
-void x86_pc_8042_reboot(void);
-NODISCARD bool kb_ctrl_self_test(void);
-NODISCARD bool kb_ctrl_reset(void);
+bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto); // TODO: rename as i8042_...
+void x86_pc_8042_reboot(void);                   // TODO: rename as i8042_...
+NODISCARD bool kb_ctrl_self_test(void);          // TODO: rename as i8042_...
+NODISCARD bool kb_ctrl_reset(void);              // TODO: rename as i8042_...
+NODISCARD bool kb_ctrl_disable_ports(void);      // TODO: rename as i8042_...
+NODISCARD bool kb_ctrl_enable_ports(void);       // TODO: rename as i8042_...
 
-static inline u8 kb_ctrl_read_status(void)
+static inline u8 kb_ctrl_read_status(void)       // TODO: rename as i8042_...
 {
    return inb(KB_STATUS_PORT);
 }
 
-static inline u8 kb_ctrl_read_data(void)
+static inline u8 kb_ctrl_read_data(void)         // TODO: rename as i8042_...
 {
    return inb(KB_DATA_PORT);
 }
 
-static inline NODISCARD bool kb_ctrl_is_pending_data(void)
+static inline NODISCARD bool
+kb_ctrl_is_pending_data(void) // TODO: rename as i8042_...
 {
    return !!(inb(KB_STATUS_PORT) & KB_STATUS_OUTPUT_FULL);
 }
 
-static inline NODISCARD bool kb_ctrl_is_read_for_next_cmd(void)
+static inline NODISCARD bool
+kb_ctrl_is_read_for_next_cmd(void) // TODO: rename as i8042_...
 {
    return !(inb(KB_STATUS_PORT) & KB_STATUS_INPUT_FULL);
 }

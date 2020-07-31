@@ -316,30 +316,51 @@ static struct kb_dev ps2_keyboard = {
 
 DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 
-static bool hw_8042_init(void)
+static bool hw_8042_init_first_steps(void)
 {
    u8 status, ctr = 0, cto = 0;
    bool dump_regs = PS2_VERBOSE_DEBUG_LOG;
 
-   ASSERT(!is_preemption_enabled());
+   status = kb_ctrl_read_status();
 
-   if (!in_hypervisor()) {
+   if (!i8042_read_ctr_unsafe(&ctr)) {
+      printk("KB: read CTR failed\n");
+      return false;
+   }
 
-      status = kb_ctrl_read_status();
+   if (!in_hypervisor() && !(ctr & KB_CTR_SYS_FLAG)) {
+      printk("KB: Warning: unset system flag in CTR\n");
+      dump_regs = true;
+   }
 
-      if (!kb_ctrl_read_ctr_and_cto(&ctr, &cto)) {
-         printk("KB: read CTR failed\n");
+   if (dump_regs) {
+
+      if (!i8042_read_cto_unsafe(&cto)) {
+         printk("KB: read CTO failed\n");
          return false;
       }
 
-      if (!(ctr & KB_CTR_SYS_FLAG)) {
-         printk("KB: Warning: unset system flag in CTR\n");
-         dump_regs = true;
-      }
-
-      if (dump_regs)
-         kb_dump_regs(ctr, cto, status);
+      kb_dump_regs(ctr, cto, status);
    }
+
+   return true;
+}
+
+static bool hw_8042_init(void)
+{
+   bool ok;
+   ASSERT(!is_preemption_enabled());
+
+   if (!kb_ctrl_disable_ports())
+      return false;
+
+   ok = hw_8042_init_first_steps();
+
+   if (!kb_ctrl_enable_ports())
+      return false;
+
+   if (!ok)
+      return false;
 
    if (!PS2_DO_SELFTEST)
       return true;

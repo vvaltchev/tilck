@@ -10,6 +10,32 @@
 
 #define KB_ITERS_TIMEOUT   10000
 
+/*
+ * The array `sw_port_enabled` determines which ports Tilck wants to keep
+ * enabled, not which ports are currently enabled on the controller.
+ * The difference is great because temporarely we can disable all the ports,
+ * but later we must re-enable only the ones "logically" enabled, as determined
+ * by this array.
+ */
+
+static bool sw_port_enabled[2] =
+{
+   true,    /* Primary PS/2 port, keyboard */
+   false    /* Secondary PS/2 port, mouse */
+};
+
+void i8042_set_sw_port_enabled_state(u8 port, bool enabled)
+{
+   ASSERT(port <= 1);
+   sw_port_enabled[port] = enabled;
+}
+
+bool i8042_get_sw_port_enabled_state(u8 port)
+{
+   ASSERT(port <= 1);
+   return sw_port_enabled[port];
+}
+
 
 /* Hack!!! See pic_io_wait() */
 static NO_INLINE void kb_io_wait(void)
@@ -109,7 +135,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
    return true;
 }
 
-static NODISCARD bool kb_ctrl_disable_ports(void)
+NODISCARD bool kb_ctrl_disable_ports(void)
 {
    irq_set_mask(X86_PC_KEYBOARD_IRQ);
 
@@ -128,16 +154,18 @@ static NODISCARD bool kb_ctrl_disable_ports(void)
    return true;
 }
 
-static NODISCARD bool kb_ctrl_enable_ports(void)
+NODISCARD bool kb_ctrl_enable_ports(void)
 {
    if (!kb_ctrl_full_wait())
       return false;
 
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
-      return false;
+   if (sw_port_enabled[0])
+      if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
+         return false;
 
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
-      return false;
+   if (sw_port_enabled[1])
+      if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
+         return false;
 
    if (!kb_ctrl_full_wait())
       return false;
@@ -295,6 +323,28 @@ out:
    return success;
 }
 
+bool i8042_read_ctr_unsafe(u8 *ctr)
+{
+   if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
+      printk("KB: send cmd failed\n");
+      return false;
+   }
+
+   *ctr = kb_ctrl_read_data();
+   return true;
+}
+
+bool i8042_read_cto_unsafe(u8 *cto)
+{
+   if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
+      printk("KB: send cmd failed\n");
+      return false;
+   }
+
+   *cto = kb_ctrl_read_data();
+   return true;
+}
+
 bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
 {
    bool ok = true;
@@ -303,28 +353,14 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
    if (!kb_ctrl_disable_ports()) {
       printk("KB: disable ports failed\n");
       ok = false;
-      goto out;
    }
 
-   if (ctr) {
-      if (kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
-         *ctr = kb_ctrl_read_data();
-      } else {
-         printk("KB: send cmd failed\n");
-         ok = false;
-      }
-   }
+   if (ctr && ok)
+      ok = i8042_read_ctr_unsafe(ctr);
 
-   if (cto) {
-      if (kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
-         *cto = kb_ctrl_read_data();
-      } else {
-         printk("KB: send cmd failed\n");
-         ok = false;
-      }
-   }
+   if (cto && ok)
+      ok = i8042_read_cto_unsafe(cto);
 
-out:
    if (!kb_ctrl_enable_ports()) {
       printk("KB: enable ports failed\n");
       ok = false;
