@@ -7,6 +7,7 @@
 #include <tilck_gen_headers/config_console.h>
 #include <tilck_gen_headers/config_userlim.h>
 #include <tilck_gen_headers/config_mm.h>
+#include <tilck_gen_headers/config_8042.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
