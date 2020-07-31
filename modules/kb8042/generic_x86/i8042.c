@@ -135,7 +135,7 @@ static NODISCARD bool kb_ctrl_full_wait(void)
    return true;
 }
 
-NODISCARD bool kb_ctrl_disable_ports(void)
+NODISCARD bool i8042_disable_ports(void)
 {
    irq_set_mask(X86_PC_KEYBOARD_IRQ);
 
@@ -154,7 +154,7 @@ NODISCARD bool kb_ctrl_disable_ports(void)
    return true;
 }
 
-NODISCARD bool kb_ctrl_enable_ports(void)
+NODISCARD bool i8042_enable_ports(void)
 {
    if (!kb_ctrl_full_wait())
       return false;
@@ -177,8 +177,8 @@ NODISCARD bool kb_ctrl_enable_ports(void)
 
 bool kb_led_set(u8 val)
 {
-   if (!kb_ctrl_disable_ports()) {
-      printk("KB: kb_ctrl_disable_ports() fail\n");
+   if (!i8042_disable_ports()) {
+      printk("KB: i8042_disable_ports() fail\n");
       return false;
    }
 
@@ -188,8 +188,8 @@ bool kb_led_set(u8 val)
    outb(KB_DATA_PORT, val & 7);
    if (!kb_ctrl_full_wait()) goto err;
 
-   if (!kb_ctrl_enable_ports()) {
-      printk("KB: kb_ctrl_enable_ports() fail\n");
+   if (!i8042_enable_ports()) {
+      printk("KB: i8042_enable_ports() fail\n");
       return false;
    }
 
@@ -212,8 +212,8 @@ err:
 
 bool kb_set_typematic_byte(u8 val)
 {
-   if (!kb_ctrl_disable_ports()) {
-      printk("kb_set_typematic_byte() failed: kb_ctrl_disable_ports() fail\n");
+   if (!i8042_disable_ports()) {
+      printk("kb_set_typematic_byte() failed: i8042_disable_ports() fail\n");
       return false;
    }
 
@@ -223,8 +223,8 @@ bool kb_set_typematic_byte(u8 val)
    outb(KB_DATA_PORT, val & 0b11111);
    if (!kb_ctrl_full_wait()) goto err;
 
-   if (!kb_ctrl_enable_ports()) {
-      printk("kb_set_typematic_byte() failed: kb_ctrl_enable_ports() fail\n");
+   if (!i8042_enable_ports()) {
+      printk("kb_set_typematic_byte() failed: i8042_enable_ports() fail\n");
       return false;
    }
 
@@ -235,12 +235,12 @@ err:
    return false;
 }
 
-NODISCARD bool kb_ctrl_self_test(void)
+NODISCARD bool i8042_self_test(void)
 {
    u8 res, resend_count = 0;
    bool success = false;
 
-   if (!kb_ctrl_disable_ports())
+   if (!i8042_disable_ports())
       goto out;
 
    do {
@@ -260,20 +260,20 @@ NODISCARD bool kb_ctrl_self_test(void)
       success = true;
 
 out:
-   if (!kb_ctrl_enable_ports())
+   if (!i8042_enable_ports())
       success = false;
 
    return success;
 }
 
-NODISCARD bool kb_ctrl_reset(void)
+NODISCARD bool i8042_reset(void)
 {
    u8 res;
    u8 kb_ctrl;
    u8 resend_count = 0;
    bool success = false;
 
-   if (!kb_ctrl_disable_ports())
+   if (!i8042_disable_ports())
       goto out;
 
    kb_ctrl = inb(KB_STATUS_PORT);
@@ -316,7 +316,7 @@ NODISCARD bool kb_ctrl_reset(void)
       success = true;
 
 out:
-   if (!kb_ctrl_enable_ports())
+   if (!i8042_enable_ports())
       success = false;
 
    printk("KB: reset success: %u\n", success);
@@ -350,7 +350,7 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
    bool ok = true;
    ASSERT(are_interrupts_enabled());
 
-   if (!kb_ctrl_disable_ports()) {
+   if (!i8042_disable_ports()) {
       printk("KB: disable ports failed\n");
       ok = false;
    }
@@ -361,7 +361,7 @@ bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
    if (cto && ok)
       ok = i8042_read_cto_unsafe(cto);
 
-   if (!kb_ctrl_enable_ports()) {
+   if (!i8042_enable_ports()) {
       printk("KB: enable ports failed\n");
       ok = false;
    }

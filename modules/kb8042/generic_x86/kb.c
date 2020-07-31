@@ -351,12 +351,12 @@ static bool hw_8042_init(void)
    bool ok;
    ASSERT(!is_preemption_enabled());
 
-   if (!kb_ctrl_disable_ports())
+   if (!i8042_disable_ports())
       return false;
 
    ok = hw_8042_init_first_steps();
 
-   if (!kb_ctrl_enable_ports())
+   if (!i8042_enable_ports())
       return false;
 
    if (!ok)
@@ -365,12 +365,12 @@ static bool hw_8042_init(void)
    if (!PS2_DO_SELFTEST)
       return true;
 
-   if (kb_ctrl_self_test())
+   if (i8042_self_test())
       return true;
 
    printk("KB: PS/2 controller self-test failed, trying a reset\n");
 
-   if (kb_ctrl_reset()) {
+   if (i8042_reset()) {
       printk("KB: PS/2 controller: reset successful\n");
       return true;
    }
