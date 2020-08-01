@@ -241,6 +241,9 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    ti->is_main_thread = true;
    ti->timer_ready = false;
 
+   /* Reset sched ticks in the new process */
+   bzero(&ti->ticks, sizeof(ti->ticks));
+
    /* Copy parent's `cwd` while retaining the `fs` and the inode obj */
    process_set_cwd2_nolock_raw(pi, &parent_pi->cwd);
 
