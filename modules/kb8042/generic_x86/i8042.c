@@ -87,7 +87,7 @@ void i8042_force_drain_data(void)
       i8042_read_data();
 }
 
-static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
+static NODISCARD bool i8042_send_cmd(u8 cmd)
 {
    if (!kb_wait_cmd_fetched())
       return false;
@@ -100,9 +100,9 @@ static NODISCARD bool kb_ctrl_send_cmd(u8 cmd)
    return true;
 }
 
-static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
+static NODISCARD bool i8042_send_cmd_and_wait_response(u8 cmd)
 {
-   if (!kb_ctrl_send_cmd(cmd))
+   if (!i8042_send_cmd(cmd))
       return false;
 
    if (!kb_wait_for_data())
@@ -111,7 +111,7 @@ static NODISCARD bool kb_ctrl_send_cmd_and_wait_response(u8 cmd)
    return true;
 }
 
-static NODISCARD bool kb_ctrl_full_wait(void)
+static NODISCARD bool i8042_full_wait(void)
 {
    u8 ctrl;
    u32 iters = 0;
@@ -139,16 +139,16 @@ NODISCARD bool i8042_disable_ports(void)
 {
    irq_set_mask(X86_PC_KEYBOARD_IRQ);
 
-   if (!kb_ctrl_full_wait())
+   if (!i8042_full_wait())
       return false;
 
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
+   if (!i8042_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
       return false;
 
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
+   if (!i8042_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
       return false;
 
-   if (!kb_ctrl_full_wait())
+   if (!i8042_full_wait())
       return false;
 
    return true;
@@ -156,18 +156,18 @@ NODISCARD bool i8042_disable_ports(void)
 
 NODISCARD bool i8042_enable_ports(void)
 {
-   if (!kb_ctrl_full_wait())
+   if (!i8042_full_wait())
       return false;
 
    if (sw_port_enabled[0])
-      if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
+      if (!i8042_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
          return false;
 
    if (sw_port_enabled[1])
-      if (!kb_ctrl_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
+      if (!i8042_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
          return false;
 
-   if (!kb_ctrl_full_wait())
+   if (!i8042_full_wait())
       return false;
 
    i8042_force_drain_data();
@@ -182,11 +182,11 @@ bool kb_led_set(u8 val)
       return false;
    }
 
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
    outb(KB_DATA_PORT, 0xED);
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
    outb(KB_DATA_PORT, val & 7);
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
 
    if (!i8042_enable_ports()) {
       printk("KB: i8042_enable_ports() fail\n");
@@ -196,7 +196,7 @@ bool kb_led_set(u8 val)
    return true;
 
 err:
-   printk("kb_led_set() failed: timeout in kb_ctrl_full_wait()\n");
+   printk("kb_led_set() failed: timeout in i8042_full_wait()\n");
    return false;
 }
 
@@ -217,11 +217,11 @@ bool kb_set_typematic_byte(u8 val)
       return false;
    }
 
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
    outb(KB_DATA_PORT, 0xF3);
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
    outb(KB_DATA_PORT, val & 0b11111);
-   if (!kb_ctrl_full_wait()) goto err;
+   if (!i8042_full_wait()) goto err;
 
    if (!i8042_enable_ports()) {
       printk("kb_set_typematic_byte() failed: i8042_enable_ports() fail\n");
@@ -231,7 +231,7 @@ bool kb_set_typematic_byte(u8 val)
    return true;
 
 err:
-   printk("kb_set_typematic_byte() failed: timeout in kb_ctrl_full_wait()\n");
+   printk("kb_set_typematic_byte() failed: timeout in i8042_full_wait()\n");
    return false;
 }
 
@@ -248,7 +248,7 @@ NODISCARD bool i8042_self_test(void)
       if (resend_count >= 3)
          break;
 
-      if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
+      if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
          goto out;
 
       res = i8042_read_data();
@@ -282,7 +282,7 @@ NODISCARD bool i8042_reset(void)
    printk("KB: initial status: 0x%x\n", kb_ctrl);
    printk("KB: sending 0xFF (reset) to the controller\n");
 
-   if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_RESET))
+   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_RESET))
       goto out;
 
    do {
@@ -325,7 +325,7 @@ out:
 
 bool i8042_read_ctr_unsafe(u8 *ctr)
 {
-   if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
+   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
       printk("KB: send cmd failed\n");
       return false;
    }
@@ -336,7 +336,7 @@ bool i8042_read_ctr_unsafe(u8 *ctr)
 
 bool i8042_read_cto_unsafe(u8 *cto)
 {
-   if (!kb_ctrl_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
+   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
       printk("KB: send cmd failed\n");
       return false;
    }
@@ -374,7 +374,7 @@ void i8042_reboot(void)
 {
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
 
-   if (!kb_ctrl_send_cmd(KB_CTRL_CMD_CPU_RESET))
+   if (!i8042_send_cmd(KB_CTRL_CMD_CPU_RESET))
       panic("Unable to reboot using the 8042 controller: timeout in send cmd");
 
    while (true) {
