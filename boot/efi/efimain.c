@@ -41,7 +41,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
                              image,
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-   HANDLE_EFI_ERROR("Getting a LoadedImageProtocol handle");
+   HANDLE_EFI_ERROR("OpenProtocol(LoadedImageProtocol)");
 
 
    // ------------------------------------------------------------------ //
@@ -59,6 +59,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    status = LoadKernelFile(BS, fileProt, &kernel_file_paddr);
    HANDLE_EFI_ERROR("LoadKernelFile");
+
+   status = BS->CloseProtocol(loaded_image->DeviceHandle,
+                              &FileSystemProtocol,
+                              image,
+                              NULL);
+   HANDLE_EFI_ERROR("CloseProtocol(FileSystemProtocol)");
+   fileFsProt = NULL;
 
    // ------------------------------------------------------------------ //
 
@@ -95,6 +102,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    // Print(L"Press ANY key to boot the kernel...\r\n");
    // WaitForKeyPress(ST);
    //
+
+   status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
+   HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");
+   loaded_image = NULL;
 
    if (!(MOD_console && MOD_fb)) {
 
