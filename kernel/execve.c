@@ -135,6 +135,7 @@ execve_final_steps(struct task *ti,
    pi->brk = brk;
    pi->initial_brk = brk;
    pi->did_call_execve = true;
+   ti->timer_ready = false;
 
    if (pi->debug_cmdline)
       save_cmdline(pi, argv);
