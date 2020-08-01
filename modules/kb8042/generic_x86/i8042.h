@@ -13,8 +13,8 @@
 
 /* Status flags */
 
-#define KB_STATUS_OUTPUT_FULL          (1 << 0) /* must be 1 before reading */
-#define KB_STATUS_INPUT_FULL           (1 << 1) /* must be 0 before writing */
+#define I8042_STATUS_OUTPUT_FULL       (1 << 0) /* must be 1 before reading */
+#define I8042_STATUS_INPUT_FULL        (1 << 1) /* must be 0 before writing */
 
 
 /* CTR (Controller Configuration Byte) flags */
@@ -75,11 +75,11 @@ static inline u8 i8042_read_data(void)
 static inline NODISCARD bool
 i8042_has_pending_data(void)
 {
-   return !!(inb(I8042_STATUS_PORT) & KB_STATUS_OUTPUT_FULL);
+   return !!(inb(I8042_STATUS_PORT) & I8042_STATUS_OUTPUT_FULL);
 }
 
 static inline NODISCARD bool
 i8042_is_ready_for_cmd(void)
 {
-   return !(inb(I8042_STATUS_PORT) & KB_STATUS_INPUT_FULL);
+   return !(inb(I8042_STATUS_PORT) & I8042_STATUS_INPUT_FULL);
 }

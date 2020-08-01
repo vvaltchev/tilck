@@ -123,14 +123,14 @@ static NODISCARD bool i8042_full_wait(void)
 
       ctrl = inb(I8042_STATUS_PORT);
 
-      if (ctrl & KB_STATUS_OUTPUT_FULL) {
+      if (ctrl & I8042_STATUS_OUTPUT_FULL) {
          i8042_read_data(); /* drain the KB's output */
       }
 
       iters++;
       kb_io_wait();
 
-   } while (ctrl & (KB_STATUS_INPUT_FULL | KB_STATUS_OUTPUT_FULL));
+   } while (ctrl & (I8042_STATUS_INPUT_FULL | I8042_STATUS_OUTPUT_FULL));
 
    return true;
 }
