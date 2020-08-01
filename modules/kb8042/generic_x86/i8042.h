@@ -47,18 +47,18 @@ bool i8042_get_sw_port_enabled_state(u8 port);
 
 bool i8042_read_ctr_unsafe(u8 *ctr);
 bool i8042_read_cto_unsafe(u8 *cto);
-
-void kb_drain_any_data(void);                    // TODO: rename as i8042_...
-void kb_drain_data_no_check(void);               // TODO: rename as i8042_...
-bool kb_led_set(u8 val);
-bool kb_set_typematic_byte(u8 val);
-bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto); // TODO: rename as i8042_...
+void i8042_drain_any_data(void);
+void i8042_force_drain_data(void);
+bool i8042_read_regs(u8 *ctr, u8 *cto);
 void i8042_reboot(void);
 
 NODISCARD bool i8042_self_test(void);
 NODISCARD bool i8042_reset(void);
 NODISCARD bool i8042_disable_ports(void);
 NODISCARD bool i8042_enable_ports(void);
+
+bool kb_led_set(u8 val);
+bool kb_set_typematic_byte(u8 val);
 
 static inline u8 i8042_read_status(void)
 {

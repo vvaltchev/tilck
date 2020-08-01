@@ -73,7 +73,7 @@ static NODISCARD bool kb_wait_for_data(void)
    return true;
 }
 
-void kb_drain_any_data(void)
+void i8042_drain_any_data(void)
 {
    while (i8042_has_pending_data()) {
       i8042_read_data();
@@ -81,7 +81,7 @@ void kb_drain_any_data(void)
    }
 }
 
-void kb_drain_data_no_check(void)
+void i8042_force_drain_data(void)
 {
    for (int i = 0; i < 16; i++)
       i8042_read_data();
@@ -170,7 +170,7 @@ NODISCARD bool i8042_enable_ports(void)
    if (!kb_ctrl_full_wait())
       return false;
 
-   kb_drain_data_no_check();
+   i8042_force_drain_data();
    irq_clear_mask(X86_PC_KEYBOARD_IRQ);
    return true;
 }
@@ -345,7 +345,7 @@ bool i8042_read_cto_unsafe(u8 *cto)
    return true;
 }
 
-bool kb_ctrl_read_ctr_and_cto(u8 *ctr, u8 *cto)
+bool i8042_read_regs(u8 *ctr, u8 *cto)
 {
    bool ok = true;
    ASSERT(are_interrupts_enabled());

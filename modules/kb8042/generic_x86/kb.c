@@ -241,7 +241,7 @@ static int kb_irq_handler_read_scancodes(void)
       if (!safe_ringbuf_write_1(&kb_input_rb, &scancode, &was_empty)) {
          /* We have no other choice than to just drain the data */
          printk("KB: Warning: hit input limit. Drain the data!\n");
-         kb_drain_any_data();
+         i8042_drain_any_data();
       }
 
       count++;
@@ -268,7 +268,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
          printk("KB: Got IRQ#1 with OBF=0 in status register\n");
       }
 
-      kb_drain_data_no_check();
+      i8042_force_drain_data();
       return IRQ_FULLY_HANDLED;
    }
 
