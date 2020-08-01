@@ -4,22 +4,27 @@
 #include "utils.h"
 #include <multiboot.h>
 
-static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
+static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
-   Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
-   Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
    Print(L"Resolution: %u x %u\n",
-         mode->Info->HorizontalResolution,
-         mode->Info->VerticalResolution);
+         mi->HorizontalResolution,
+         mi->VerticalResolution);
 
-   if (mode->Info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor)
+   if (mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor)
       Print(L"PixelFormat: RGB + reserved\n");
-   else if (mode->Info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor)
+   else if (mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor)
       Print(L"PixelFormat: BGR + reserved\n");
    else
       Print(L"PixelFormat: other\n");
 
-   Print(L"PixelsPerScanLine: %u\n", mode->Info->PixelsPerScanLine);
+   Print(L"PixelsPerScanLine: %u\n", mi->PixelsPerScanLine);
+}
+
+static void PrintModeFullInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
+{
+   Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
+   Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
+   PrintModeInfo(mode->Info);
 }
 
 static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
@@ -214,6 +219,8 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
    mode = gProt->Mode;
    orig_mode = mode->Mode;
 
+retry:
+
    for (UINTN i = 0; i < mode->MaxMode; i++) {
 
       EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
@@ -286,27 +293,36 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
 
    if (wanted_mode != orig_mode) {
 
-      status = ST->ConOut->ClearScreen(ST->ConOut);
-      HANDLE_EFI_ERROR("ClearScreen() failed");
-
+      ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
       status = gProt->SetMode(gProt, wanted_mode);
 
       if (EFI_ERROR(status)) {
 
-         status = gProt->SetMode(gProt, orig_mode);
-         status = ST->ConOut->ClearScreen(ST->ConOut);
-         HANDLE_EFI_ERROR("ClearScreen() failed");
+         gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
+         ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
 
-         Print(L"Loader failed: unable to set desired mode\n");
-         status = EFI_LOAD_ERROR;
-         goto end;
+         Print(L"ERROR: Unable to set desired mode: %r\r\n", status);
+
+         EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
+         UINTN sizeof_info = 0;
+
+         status = gProt->QueryMode(gProt, wanted_mode, &sizeof_info, &mi);
+
+         if (!EFI_ERROR(status)) {
+            Print(L"Failed mode info:\r\n");
+            PrintModeInfo(mi);
+         } else {
+            Print(L"ERROR: Unable to print failed mode info: %r\r\n", status);
+         }
+
+         goto retry;
       }
    }
 
+   mode = gProt->Mode;
    *fb_addr = mode->FrameBufferBase;
    *mode_info = *mode->Info;
-
-   PrintModeInfo(mode);
+   PrintModeFullInfo(mode);
 
 end:
    return status;
