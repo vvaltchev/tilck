@@ -227,27 +227,24 @@ bool kb_led_set(u8 val)
 
 bool kb_set_typematic_byte(u8 val)
 {
+   bool ok;
+
    if (!i8042_disable_ports()) {
-      printk("kb_set_typematic_byte() failed: i8042_disable_ports() fail\n");
+      printk("KB: i8042_disable_ports() fail\n");
       return false;
    }
 
-   if (!i8042_full_wait()) goto err;
-   outb(I8042_DATA_PORT, 0xF3);
-   if (!i8042_full_wait()) goto err;
-   outb(I8042_DATA_PORT, val & 0b11111);
-   if (!i8042_full_wait()) goto err;
+   ok = kb_send_cmd_with_arg_unsafe(KB_CMD_SET_TYPEMATIC_BYTE, val & 0b11111);
+
+   if (!ok)
+      printk("kb_set_typematic_byte() failed: timeout in i8042_full_wait()\n");
 
    if (!i8042_enable_ports()) {
-      printk("kb_set_typematic_byte() failed: i8042_enable_ports() fail\n");
-      return false;
+      printk("KB: i8042_enable_ports() fail\n");
+      ok = false;
    }
 
-   return true;
-
-err:
-   printk("kb_set_typematic_byte() failed: timeout in i8042_full_wait()\n");
-   return false;
+   return ok;
 }
 
 NODISCARD bool i8042_self_test(void)

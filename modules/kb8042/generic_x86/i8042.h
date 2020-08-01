@@ -44,6 +44,7 @@
 
 /* PS/2 Keyboard commands */
 #define KB_CMD_SET_LED                     0xED
+#define KB_CMD_SET_TYPEMATIC_BYTE          0xF3
 
 /* PS/2 Keyboard response codes */
 #define KB_RESPONSE_ACK                    0xFA
