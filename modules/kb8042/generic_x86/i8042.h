@@ -19,12 +19,12 @@
 
 /* CTR (Controller Configuration Byte) flags */
 
-#define KB_CTR_PORT1_INT_ENABLED       (1 << 0)
-#define KB_CTR_PORT2_INT_ENABLED       (1 << 1)
-#define KB_CTR_SYS_FLAG                (1 << 2)
-#define KB_CTR_PORT1_CLOCK_DISABLED    (1 << 4)
-#define KB_CTR_PORT2_CLOCK_DISABLED    (1 << 5)
-#define KB_CTR_PS2_PORT_TRANSLATION    (1 << 6)
+#define I8042_CTR_PORT1_INT_ENABLED    (1 << 0)
+#define I8042_CTR_PORT2_INT_ENABLED    (1 << 1)
+#define I8042_CTR_SYS_FLAG             (1 << 2)
+#define I8042_CTR_PORT1_CLK_DISABLED   (1 << 4)
+#define I8042_CTR_PORT2_CLK_DISABLED   (1 << 5)
+#define I8042_CTR_PS2_PORT_TRANSL      (1 << 6)
 
 /* PS/2 Controller commands */
 
@@ -46,10 +46,15 @@
 #define KB_RESPONSE_ACK                    0xFA
 #define KB_RESPONSE_RESEND                 0xFE
 
-/* Functions */
+/* Logical state functions */
 void i8042_set_sw_port_enabled_state(u8 port, bool enabled);
 bool i8042_get_sw_port_enabled_state(u8 port);
 
+/* HW keyboard-specific functions */
+bool kb_led_set(u8 val);
+bool kb_set_typematic_byte(u8 val);
+
+/* HW controller functions */
 bool i8042_read_ctr_unsafe(u8 *ctr);
 bool i8042_read_cto_unsafe(u8 *cto);
 void i8042_drain_any_data(void);
@@ -61,9 +66,6 @@ NODISCARD bool i8042_self_test(void);
 NODISCARD bool i8042_reset(void);
 NODISCARD bool i8042_disable_ports(void);
 NODISCARD bool i8042_enable_ports(void);
-
-bool kb_led_set(u8 val);
-bool kb_set_typematic_byte(u8 val);
 
 static inline u8 i8042_read_status(void)
 {

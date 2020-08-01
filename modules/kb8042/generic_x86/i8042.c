@@ -38,7 +38,7 @@ bool i8042_get_sw_port_enabled_state(u8 port)
 
 
 /* Hack!!! See pic_io_wait() */
-static NO_INLINE void kb_io_wait(void)
+static NO_INLINE void i8042_io_wait(void)
 {
    if (in_hypervisor())
       return;
@@ -47,27 +47,27 @@ static NO_INLINE void kb_io_wait(void)
       asmVolatile("nop");
 }
 
-static bool kb_wait_cmd_fetched(void)
+static bool i8042_wait_cmd_fetched(void)
 {
    for (int i = 0; !i8042_is_ready_for_cmd(); i++) {
 
       if (i >= KB_ITERS_TIMEOUT)
          return false;
 
-      kb_io_wait();
+      i8042_io_wait();
    }
 
    return true;
 }
 
-static NODISCARD bool kb_wait_for_data(void)
+static NODISCARD bool i8042_wait_for_data(void)
 {
    for (int i = 0; !i8042_has_pending_data(); i++) {
 
       if (i >= KB_ITERS_TIMEOUT)
          return false;
 
-      kb_io_wait();
+      i8042_io_wait();
    }
 
    return true;
@@ -77,7 +77,7 @@ void i8042_drain_any_data(void)
 {
    while (i8042_has_pending_data()) {
       i8042_read_data();
-      kb_io_wait();
+      i8042_io_wait();
    }
 }
 
@@ -89,12 +89,12 @@ void i8042_force_drain_data(void)
 
 static NODISCARD bool i8042_send_cmd(u8 cmd)
 {
-   if (!kb_wait_cmd_fetched())
+   if (!i8042_wait_cmd_fetched())
       return false;
 
    outb(I8042_CMD_PORT, cmd);
 
-   if (!kb_wait_cmd_fetched())
+   if (!i8042_wait_cmd_fetched())
       return false;
 
    return true;
@@ -105,7 +105,7 @@ static NODISCARD bool i8042_send_cmd_and_wait_response(u8 cmd)
    if (!i8042_send_cmd(cmd))
       return false;
 
-   if (!kb_wait_for_data())
+   if (!i8042_wait_for_data())
       return false;
 
    return true;
@@ -128,7 +128,7 @@ static NODISCARD bool i8042_full_wait(void)
       }
 
       iters++;
-      kb_io_wait();
+      i8042_io_wait();
 
    } while (ctrl & (I8042_STATUS_INPUT_FULL | I8042_STATUS_OUTPUT_FULL));
 
@@ -269,17 +269,17 @@ out:
 NODISCARD bool i8042_reset(void)
 {
    u8 res;
-   u8 kb_ctrl;
+   u8 status;
    u8 resend_count = 0;
    bool success = false;
 
    if (!i8042_disable_ports())
       goto out;
 
-   kb_ctrl = inb(I8042_STATUS_PORT);
+   status = inb(I8042_STATUS_PORT);
 
    printk("KB: reset procedure\n");
-   printk("KB: initial status: 0x%x\n", kb_ctrl);
+   printk("KB: initial status: 0x%x\n", status);
    printk("KB: sending 0xFF (reset) to the controller\n");
 
    if (!i8042_send_cmd_and_wait_response(I8042_CMD_RESET))
@@ -306,7 +306,7 @@ NODISCARD bool i8042_reset(void)
 
    /* We got an ACK, now wait for the success/failure of the reset itself */
 
-   if (!kb_wait_for_data())
+   if (!i8042_wait_for_data())
       goto out;
 
    res = i8042_read_data();

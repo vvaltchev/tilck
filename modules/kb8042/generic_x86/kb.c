@@ -328,7 +328,7 @@ static bool hw_8042_init_first_steps(void)
       return false;
    }
 
-   if (!in_hypervisor() && !(ctr & KB_CTR_SYS_FLAG)) {
+   if (!in_hypervisor() && !(ctr & I8042_CTR_SYS_FLAG)) {
       printk("KB: Warning: unset system flag in CTR\n");
       dump_regs = true;
    }
