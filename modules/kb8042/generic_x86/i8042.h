@@ -42,6 +42,9 @@
 #define I8042_RESPONSE_BAT_OK              0xAA
 #define I8042_RESPONSE_SELF_TEST_OK        0x55
 
+/* PS/2 Keyboard commands */
+#define KB_CMD_SET_LED                     0xED
+
 /* PS/2 Keyboard response codes */
 #define KB_RESPONSE_ACK                    0xFA
 #define KB_RESPONSE_RESEND                 0xFE

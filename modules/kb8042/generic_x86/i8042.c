@@ -175,29 +175,44 @@ NODISCARD bool i8042_enable_ports(void)
    return true;
 }
 
+static bool kb_send_cmd_with_arg_unsafe(u8 cmd, u8 arg)
+{
+   if (!i8042_full_wait())
+      return false;
+
+   outb(I8042_DATA_PORT, cmd);
+
+   if (!i8042_full_wait())
+      return false;
+
+   outb(I8042_DATA_PORT, arg);
+
+   if (!i8042_full_wait())
+      return false;
+
+   return true;
+}
+
 bool kb_led_set(u8 val)
 {
+   bool ok;
+
    if (!i8042_disable_ports()) {
       printk("KB: i8042_disable_ports() fail\n");
       return false;
    }
 
-   if (!i8042_full_wait()) goto err;
-   outb(I8042_DATA_PORT, 0xED);
-   if (!i8042_full_wait()) goto err;
-   outb(I8042_DATA_PORT, val & 7);
-   if (!i8042_full_wait()) goto err;
+   ok = kb_send_cmd_with_arg_unsafe(KB_CMD_SET_LED, val & 0b111);
+
+   if (!ok)
+      printk("kb_led_set() failed: timeout in i8042_full_wait()\n");
 
    if (!i8042_enable_ports()) {
       printk("KB: i8042_enable_ports() fail\n");
-      return false;
+      ok = false;
    }
 
-   return true;
-
-err:
-   printk("kb_led_set() failed: timeout in i8042_full_wait()\n");
-   return false;
+   return ok;
 }
 
 /*
