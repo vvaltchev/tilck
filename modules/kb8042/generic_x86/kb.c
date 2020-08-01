@@ -113,7 +113,7 @@ static int kb_call_keypress_handlers(struct key_event ke)
    return count;
 }
 
-void handle_key_pressed(u32 key, bool pressed)
+static bool handle_special_keys_pressed(u32 key)
 {
    switch (key) {
 
@@ -122,6 +122,7 @@ void handle_key_pressed(u32 key, bool pressed)
          if (kb_is_pressed(KEY_LEFT_CTRL) && kb_is_pressed(KEY_LEFT_ALT)) {
             printk("Ctrl + Alt + Del: Reboot!\n");
             reboot();
+            NOT_REACHED();
          }
 
          break;
@@ -129,23 +130,26 @@ void handle_key_pressed(u32 key, bool pressed)
       case KEY_NUM_LOCK:
          numLock = !numLock;
          kb_led_update();
-         return;
+         return true;
 
       case KEY_CAPS_LOCK:
          capsLock = !capsLock;
          kb_led_update();
-         return;
+         return true;
    }
 
-   //int hc =
+   return false;
+}
+
+void handle_key_pressed(u32 key, bool pressed)
+{
+   if (pressed)
+      if (handle_special_keys_pressed(key))
+         return;
+
    kb_call_keypress_handlers(
       make_key_event(key, translate_printable_key(key), pressed)
    );
-
-   // if (!hc && key != KEY_L_SHIFT && key != KEY_R_SHIFT)
-   //    if (key != KEY_LEFT_CTRL && key != KEY_RIGHT_CTRL)
-   //       if (key != KEY_LEFT_ALT && key != KEY_RIGHT_ALT)
-   //          printk("KB: PRESSED key 0x%x\n", key);
 }
 
 static void key_int_handler(u32 key, bool kb_is_pressed)
