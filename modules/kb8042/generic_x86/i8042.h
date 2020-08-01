@@ -28,15 +28,15 @@
 
 /* PS/2 Controller commands */
 
-#define KB_CTRL_CMD_CPU_RESET              0xFE
-#define KB_CTRL_CMD_RESET                  0xFF
-#define KB_CTRL_CMD_SELFTEST               0xAA
-#define KB_CTRL_CMD_PORT1_DISABLE          0xAD
-#define KB_CTRL_CMD_PORT1_ENABLE           0xAE
-#define KB_CTRL_CMD_PORT2_DISABLE          0xA7
-#define KB_CTRL_CMD_PORT2_ENABLE           0xA8
-#define KB_CTRL_CMD_READ_CTR               0x20 /* Controller Config. Byte */
-#define KB_CTRL_CMD_READ_CTO               0xD0 /* Controller Output Port */
+#define I8042_CMD_CPU_RESET                0xFE
+#define I8042_CMD_RESET                    0xFF
+#define I8042_CMD_SELFTEST                 0xAA
+#define I8042_CMD_PORT1_DISABLE            0xAD
+#define I8042_CMD_PORT1_ENABLE             0xAE
+#define I8042_CMD_PORT2_DISABLE            0xA7
+#define I8042_CMD_PORT2_ENABLE             0xA8
+#define I8042_CMD_READ_CTR                 0x20 /* Controller Config. Byte */
+#define I8042_CMD_READ_CTO                 0xD0 /* Controller Output Port */
 
 /* Response codes */
 #define KB_RESPONSE_ACK                    0xFA

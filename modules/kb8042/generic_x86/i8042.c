@@ -142,10 +142,10 @@ NODISCARD bool i8042_disable_ports(void)
    if (!i8042_full_wait())
       return false;
 
-   if (!i8042_send_cmd(KB_CTRL_CMD_PORT1_DISABLE))
+   if (!i8042_send_cmd(I8042_CMD_PORT1_DISABLE))
       return false;
 
-   if (!i8042_send_cmd(KB_CTRL_CMD_PORT2_DISABLE))
+   if (!i8042_send_cmd(I8042_CMD_PORT2_DISABLE))
       return false;
 
    if (!i8042_full_wait())
@@ -160,11 +160,11 @@ NODISCARD bool i8042_enable_ports(void)
       return false;
 
    if (sw_port_enabled[0])
-      if (!i8042_send_cmd(KB_CTRL_CMD_PORT1_ENABLE))
+      if (!i8042_send_cmd(I8042_CMD_PORT1_ENABLE))
          return false;
 
    if (sw_port_enabled[1])
-      if (!i8042_send_cmd(KB_CTRL_CMD_PORT2_ENABLE))
+      if (!i8042_send_cmd(I8042_CMD_PORT2_ENABLE))
          return false;
 
    if (!i8042_full_wait())
@@ -248,7 +248,7 @@ NODISCARD bool i8042_self_test(void)
       if (resend_count >= 3)
          break;
 
-      if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_SELFTEST))
+      if (!i8042_send_cmd_and_wait_response(I8042_CMD_SELFTEST))
          goto out;
 
       res = i8042_read_data();
@@ -282,7 +282,7 @@ NODISCARD bool i8042_reset(void)
    printk("KB: initial status: 0x%x\n", kb_ctrl);
    printk("KB: sending 0xFF (reset) to the controller\n");
 
-   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_RESET))
+   if (!i8042_send_cmd_and_wait_response(I8042_CMD_RESET))
       goto out;
 
    do {
@@ -325,7 +325,7 @@ out:
 
 bool i8042_read_ctr_unsafe(u8 *ctr)
 {
-   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTR)) {
+   if (!i8042_send_cmd_and_wait_response(I8042_CMD_READ_CTR)) {
       printk("KB: send cmd failed\n");
       return false;
    }
@@ -336,7 +336,7 @@ bool i8042_read_ctr_unsafe(u8 *ctr)
 
 bool i8042_read_cto_unsafe(u8 *cto)
 {
-   if (!i8042_send_cmd_and_wait_response(KB_CTRL_CMD_READ_CTO)) {
+   if (!i8042_send_cmd_and_wait_response(I8042_CMD_READ_CTO)) {
       printk("KB: send cmd failed\n");
       return false;
    }
@@ -374,7 +374,7 @@ void i8042_reboot(void)
 {
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
 
-   if (!i8042_send_cmd(KB_CTRL_CMD_CPU_RESET))
+   if (!i8042_send_cmd(I8042_CMD_CPU_RESET))
       panic("Unable to reboot using the 8042 controller: timeout in send cmd");
 
    while (true) {
