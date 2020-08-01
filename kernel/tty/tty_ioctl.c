@@ -102,6 +102,9 @@ static int tty_ioctl_tcsets(struct tty *t, void *argp)
       return -EFAULT;
    }
 
+   if ((t->c_term.c_lflag & ICANON) != (saved.c_lflag & ICANON))
+      t->end_line_delim_count = 0;
+
    tty_update_ctrl_handlers(t);
    tty_update_default_state_tables(t);
    return 0;
