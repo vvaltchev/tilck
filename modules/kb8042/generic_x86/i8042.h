@@ -38,12 +38,15 @@
 #define I8042_CMD_READ_CTR                 0x20 /* Controller Config. Byte */
 #define I8042_CMD_READ_CTO                 0xD0 /* Controller Output Port */
 
-/* Response codes */
+/* PS/2 Controller response codes */
+#define I8042_RESPONSE_BAT_OK              0xAA
+#define I8042_RESPONSE_SELF_TEST_OK        0x55
+
+/* PS/2 Keyboard response codes */
 #define KB_RESPONSE_ACK                    0xFA
 #define KB_RESPONSE_RESEND                 0xFE
-#define KB_RESPONSE_BAT_OK                 0xAA
-#define KB_RESPONSE_SELF_TEST_OK           0x55
 
+/* Functions */
 void i8042_set_sw_port_enabled_state(u8 port, bool enabled);
 bool i8042_get_sw_port_enabled_state(u8 port);
 

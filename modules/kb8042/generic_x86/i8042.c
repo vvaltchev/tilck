@@ -256,7 +256,7 @@ NODISCARD bool i8042_self_test(void)
 
    } while (res == KB_RESPONSE_RESEND);
 
-   if (res == KB_RESPONSE_SELF_TEST_OK)
+   if (res == I8042_RESPONSE_SELF_TEST_OK)
       success = true;
 
 out:
@@ -298,7 +298,7 @@ NODISCARD bool i8042_reset(void)
 
    if (res != KB_RESPONSE_ACK) {
 
-      if (res == KB_RESPONSE_BAT_OK)
+      if (res == I8042_RESPONSE_BAT_OK)
          success = true;
 
       goto out;
@@ -312,7 +312,7 @@ NODISCARD bool i8042_reset(void)
    res = i8042_read_data();
    printk("KB: response: 0x%x\n", res);
 
-   if (res == KB_RESPONSE_BAT_OK)
+   if (res == I8042_RESPONSE_BAT_OK)
       success = true;
 
 out:
