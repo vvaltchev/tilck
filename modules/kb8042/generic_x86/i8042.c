@@ -92,7 +92,7 @@ static NODISCARD bool i8042_send_cmd(u8 cmd)
    if (!kb_wait_cmd_fetched())
       return false;
 
-   outb(KB_COMMAND_PORT, cmd);
+   outb(I8042_CMD_PORT, cmd);
 
    if (!kb_wait_cmd_fetched())
       return false;
@@ -121,7 +121,7 @@ static NODISCARD bool i8042_full_wait(void)
       if (iters > KB_ITERS_TIMEOUT)
          return false;
 
-      ctrl = inb(KB_STATUS_PORT);
+      ctrl = inb(I8042_STATUS_PORT);
 
       if (ctrl & KB_STATUS_OUTPUT_FULL) {
          i8042_read_data(); /* drain the KB's output */
@@ -183,9 +183,9 @@ bool kb_led_set(u8 val)
    }
 
    if (!i8042_full_wait()) goto err;
-   outb(KB_DATA_PORT, 0xED);
+   outb(I8042_DATA_PORT, 0xED);
    if (!i8042_full_wait()) goto err;
-   outb(KB_DATA_PORT, val & 7);
+   outb(I8042_DATA_PORT, val & 7);
    if (!i8042_full_wait()) goto err;
 
    if (!i8042_enable_ports()) {
@@ -218,9 +218,9 @@ bool kb_set_typematic_byte(u8 val)
    }
 
    if (!i8042_full_wait()) goto err;
-   outb(KB_DATA_PORT, 0xF3);
+   outb(I8042_DATA_PORT, 0xF3);
    if (!i8042_full_wait()) goto err;
-   outb(KB_DATA_PORT, val & 0b11111);
+   outb(I8042_DATA_PORT, val & 0b11111);
    if (!i8042_full_wait()) goto err;
 
    if (!i8042_enable_ports()) {
@@ -276,7 +276,7 @@ NODISCARD bool i8042_reset(void)
    if (!i8042_disable_ports())
       goto out;
 
-   kb_ctrl = inb(KB_STATUS_PORT);
+   kb_ctrl = inb(I8042_STATUS_PORT);
 
    printk("KB: reset procedure\n");
    printk("KB: initial status: 0x%x\n", kb_ctrl);

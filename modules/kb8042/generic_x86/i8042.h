@@ -5,9 +5,11 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal.h>
 
-#define KB_DATA_PORT        0x60       /* 0x60 is a read/write data port */
-#define KB_COMMAND_PORT     0x64       /* 0x64 is for cmds, when it's written */
-#define KB_STATUS_PORT      0x64       /* 0x64 is for status, when it's read */
+/* i8042's I/O ports */
+
+#define I8042_DATA_PORT     0x60       /* 0x60 is a read/write data port */
+#define I8042_CMD_PORT      0x64       /* 0x64 is for cmds, when it's written */
+#define I8042_STATUS_PORT   0x64       /* 0x64 is for status, when it's read */
 
 /* Status flags */
 
@@ -62,22 +64,22 @@ bool kb_set_typematic_byte(u8 val);
 
 static inline u8 i8042_read_status(void)
 {
-   return inb(KB_STATUS_PORT);
+   return inb(I8042_STATUS_PORT);
 }
 
 static inline u8 i8042_read_data(void)
 {
-   return inb(KB_DATA_PORT);
+   return inb(I8042_DATA_PORT);
 }
 
 static inline NODISCARD bool
 i8042_has_pending_data(void)
 {
-   return !!(inb(KB_STATUS_PORT) & KB_STATUS_OUTPUT_FULL);
+   return !!(inb(I8042_STATUS_PORT) & KB_STATUS_OUTPUT_FULL);
 }
 
 static inline NODISCARD bool
 i8042_is_ready_for_cmd(void)
 {
-   return !(inb(KB_STATUS_PORT) & KB_STATUS_INPUT_FULL);
+   return !(inb(I8042_STATUS_PORT) & KB_STATUS_INPUT_FULL);
 }
