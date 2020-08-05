@@ -2,6 +2,7 @@
 
 extern "C" {
    #include <tilck/common/basic_defs.h>
+   #include <limits.h>
 }
 
 #ifndef __cplusplus
@@ -97,3 +98,26 @@ template <>
 struct unsigned_type<s64> {
    typedef u64 type;
 };
+
+/* numeric limits */
+
+template <typename T>
+struct limits;
+
+#define INST_LIMIT_TEMPL(T, m, M)                         \
+   template <>                                            \
+   struct limits<T> {                                     \
+      static constexpr T min() { return m; };             \
+      static constexpr T max() { return M; };             \
+   }
+
+INST_LIMIT_TEMPL(u8,  0, UCHAR_MAX);
+INST_LIMIT_TEMPL(u16, 0, USHRT_MAX);
+INST_LIMIT_TEMPL(u32, 0, UINT_MAX);
+INST_LIMIT_TEMPL(u64, 0, ULLONG_MAX);
+
+INST_LIMIT_TEMPL(s8,  CHAR_MIN, CHAR_MAX);
+INST_LIMIT_TEMPL(s16, SHRT_MIN, SHRT_MAX);
+INST_LIMIT_TEMPL(s32, INT_MIN,  INT_MAX);
+INST_LIMIT_TEMPL(s64, LLONG_MIN, LLONG_MAX);
+
