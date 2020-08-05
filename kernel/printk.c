@@ -145,7 +145,7 @@ switch_case:
       case '8':
       case '9':
 
-         ctx->left_padding = tilck_strtol(fmt, &fmt, 10, NULL);
+         ctx->left_padding = (int)tilck_strtol(fmt, &fmt, 10, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %<number> sequence */
@@ -154,7 +154,7 @@ switch_case:
          goto switch_case;
 
       case '-':
-         ctx->right_padding = tilck_strtol(fmt + 1, &fmt, 10, NULL);
+         ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
 
          if (!*fmt)
             goto out; /* nothing after the %-<number> sequence */

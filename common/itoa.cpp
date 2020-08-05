@@ -73,6 +73,10 @@ void __itoa(T svalue, char *buf)
    str_reverse(buf, (size_t)ptr - (size_t)buf);
 }
 
+static inline bool is_valid_digit(u8 d, int base)
+{
+   return d < 128 && IN_RANGE(digit_to_val[d], 0, base);
+}
 
 template<typename T>
 T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
@@ -91,13 +95,7 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
 
       u8 up = (u8)*p;
 
-      if (up >= 128)
-         break;
-
-      if (digit_to_val[up] < 0)
-         break;
-
-      if (digit_to_val[up] >= base)
+      if (!is_valid_digit(up, base))
          break;
 
       res = res * base + sign * digit_to_val[up];
@@ -134,13 +132,7 @@ T __tilck_strtoul(const char *str, const char **endptr, int base, int *error)
 
       u8 up = (u8)*p;
 
-      if (up >= 128)
-         break;
-
-      if (digit_to_val[up] < 0)
-         break;
-
-      if (digit_to_val[up] >= base)
+      if (!is_valid_digit(up, base))
          break;
 
       next = res * (T)base + (T)digit_to_val[up];
@@ -198,8 +190,8 @@ extern "C" {
    instantiate_itoa(itoa32, 32, 10)
    instantiate_itoa(itoa64, 64, 10)
 
-   s32 tilck_strtol(const char *s, const char **endptr, int base, int *err) {
-      return __tilck_strtol<s32>(s, endptr, base, err);
+   long tilck_strtol(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtol<long>(s, endptr, base, err);
    }
 
 #ifdef __TILCK_KERNEL__
@@ -209,32 +201,34 @@ extern "C" {
     * in the legacy bootloader.
     */
 
-   s64 tilck_strtoll(const char *s, const char **endptr, int base, int *err) {
-      return __tilck_strtol<s64>(s, endptr, base, err);
+   ulong tilck_strtoul(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtoul<ulong>(s, endptr, base, err);
    }
 
-   u32 tilck_strtoul(const char *s, const char **endptr, int base, int *err) {
+#ifdef KERNEL_TEST
+   s32 tilck_strtol32(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtol<s32>(s, endptr, base, err);
+   }
+   u32 tilck_strtoul32(const char *s, const char **endptr, int base, int *err) {
       return __tilck_strtoul<u32>(s, endptr, base, err);
    }
-
-   u64 tilck_strtoull(const char *s, const char **endptr, int base, int *err) {
+   s64 tilck_strtol64(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtol<s64>(s, endptr, base, err);
+   }
+   u64 tilck_strtoul64(const char *s, const char **endptr, int base, int *err) {
       return __tilck_strtoul<u64>(s, endptr, base, err);
    }
-
-#endif
+#endif // #ifdef KERNEL_TEST
+#endif // #ifdef __TILCK_KERNEL__
 
 #if defined(__TILCK_KERNEL__) && !defined(KERNEL_TEST)
 
    long strtol(const char *s, const char **endptr, int base) {
-      return NBITS == 32
-         ? tilck_strtol(s, endptr, base, NULL)
-         : tilck_strtoll(s, endptr, base, NULL);
+      return tilck_strtol(s, endptr, base, NULL);
    }
 
    ulong strtoul(const char *s, const char **endptr, int base) {
-      return NBITS == 32
-         ? tilck_strtoul(s, endptr, base, NULL)
-         : tilck_strtoull(s, endptr, base, NULL);
+      return tilck_strtoul(s, endptr, base, NULL);
    }
 
 #endif

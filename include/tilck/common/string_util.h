@@ -97,8 +97,5 @@ void uitoa64_hex(u64 value, char *buf);
 void uitoa32_hex_fixed(u32 value, char *buf);
 void uitoa64_hex_fixed(u64 value, char *buf);
 
-s32 tilck_strtol(const char *str, const char **endptr, int base, int *error);
-s64 tilck_strtoll(const char *str, const char **endptr, int base, int *error);
-u32 tilck_strtoul(const char *str, const char **endptr, int base, int *error);
-u64 tilck_strtoull(const char *str, const char **endptr, int base, int *error);
-
+long tilck_strtol(const char *str, const char **endptr, int base, int *error);
+ulong tilck_strtoul(const char *str, const char **endptr, int base, int *error);

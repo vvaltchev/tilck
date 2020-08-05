@@ -11,6 +11,11 @@ using namespace std;
 
 extern "C" {
    #include <tilck/common/string_util.h>
+
+   s32 tilck_strtol32(const char *s, const char **endptr, int base, int *err);
+   s64 tilck_strtol64(const char *s, const char **endptr, int base, int *err);
+   u32 tilck_strtoul32(const char *s, const char **endptr, int base, int *err);
+   u64 tilck_strtoul64(const char *s, const char **endptr, int base, int *err);
 }
 
 #ifdef BITS32
@@ -49,22 +54,22 @@ inline T strtol_wrapper(const char *s, int base);
 
 template <>
 inline s32 strtol_wrapper<s32>(const char *s, int base) {
-   return tilck_strtol(s, NULL, base, NULL);
+   return tilck_strtol32(s, NULL, base, NULL);
 }
 
 template <>
 inline s64 strtol_wrapper<s64>(const char *s, int base) {
-   return tilck_strtoll(s, NULL, base, NULL);
+   return tilck_strtol64(s, NULL, base, NULL);
 }
 
 template <>
 inline u32 strtol_wrapper<u32>(const char *s, int base) {
-   return tilck_strtoul(s, NULL, base, NULL);
+   return tilck_strtoul32(s, NULL, base, NULL);
 }
 
 template <>
 inline u64 strtol_wrapper<u64>(const char *s, int base) {
-   return tilck_strtoull(s, NULL, base, NULL);
+   return tilck_strtoul64(s, NULL, base, NULL);
 }
 
 
@@ -282,20 +287,19 @@ TEST(tilck_strtol, errors)
    int res;
 
    str = "abc";
-   res = tilck_strtol(str, &endptr, 10, &error);
+   res = tilck_strtol32(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -EINVAL);
 
    str = "2147483648"; // INT_MAX + 1
-   res = tilck_strtol(str, &endptr, 10, &error);
+   res = tilck_strtol32(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -ERANGE);
 
-
    str = "-2147483649"; // INT_MIN - 1
-   res = tilck_strtol(str, &endptr, 10, &error);
+   res = tilck_strtol32(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(error, -ERANGE);
 }
