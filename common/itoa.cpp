@@ -28,28 +28,10 @@ void __uitoa_fixed(T value, char *buf)
 }
 
 template <typename T, u32 base>
-void __uitoa(T value, char *buf)
-{
-   STATIC_ASSERT(IN_RANGE_INC(base, 2, 16));
-   char *ptr = buf;
-
-   while (value) {
-      *ptr++ = DIGITS[value % base];
-      value /= base;
-   }
-
-   if (ptr == buf)
-      *ptr++ = DIGITS[0];
-
-   *ptr = 0;
-   str_reverse(buf, (size_t)ptr - (size_t)buf);
-}
-
-template <typename T, u32 base>
 void __itoa(T svalue, char *buf)
 {
    STATIC_ASSERT(IN_RANGE_INC(base, 2, 16));
-   typedef typename unsigned_type<T>::type U;
+   typedef typename unsigned_type<T>::type U; /* same as T, if T is unsigned */
 
    char *ptr = buf;
 
@@ -59,6 +41,7 @@ void __itoa(T svalue, char *buf)
       return;
    }
 
+   /* If U == T, svalue >= 0 will always be true */
    U value = svalue >= 0 ? (U) svalue : (U) -svalue;
 
    while (value) {
@@ -66,6 +49,7 @@ void __itoa(T svalue, char *buf)
       value /= base;
    }
 
+   /* If U == T, svalue < 0 will always be false */
    if (svalue < 0)
       *ptr++ = '-';
 
@@ -140,7 +124,7 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
 
 #define instantiate_uitoa(func_name, bits, base)           \
    void func_name(u##bits value, char *buf) {              \
-      __uitoa<u##bits, base>(value, buf);                  \
+      __itoa<u##bits, base>(value, buf);                   \
    }
 
 #define instantiate_itoa(func_name, bits, base)            \

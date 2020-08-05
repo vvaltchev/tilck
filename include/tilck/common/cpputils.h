@@ -99,6 +99,23 @@ struct unsigned_type<s64> {
    typedef u64 type;
 };
 
+template <>
+struct unsigned_type<u8> {
+   typedef u8 type;
+};
+template <>
+struct unsigned_type<u16> {
+   typedef u16 type;
+};
+template <>
+struct unsigned_type<u32> {
+   typedef u32 type;
+};
+template <>
+struct unsigned_type<u64> {
+   typedef u64 type;
+};
+
 /* is unsigned */
 
 template <typename T>
