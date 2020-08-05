@@ -1,6 +1,6 @@
 
 jobs:
-  - job: coverage_build
+  - job: interactive
     container: 'vvaltchev/tilck_build:v5'
     pool:
       vmImage: 'ubuntu-18.04'
@@ -8,8 +8,6 @@ jobs:
       CI: 1
       TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
-      DUMP_COV: 1
-      REPORT_COV: 1
       TILCK_NO_LOGO: 1
       CMAKE_ARGS: >
         -DEXTRA_TCC=1
@@ -27,16 +25,10 @@ jobs:
         displayName: Build the unit tests
       - script: ./build/gtests
         displayName: Run the unit tests
-      - script: ./build/scripts/generate_test_coverage_report
-        displayName: Gen unit tests coverage report
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
       - script: ./build/st/run_interactive_test --all
         displayName: Run the interactive tests
-      - script: ./build/scripts/generate_kernel_coverage_report --codecov
-        displayName: Gen kernel gcov report and upload to codecov
-        env:
-          CODECOV_TOKEN: $(CODECOV_TOKEN)
 
   - job: build
     container: 'vvaltchev/tilck_build:v5'

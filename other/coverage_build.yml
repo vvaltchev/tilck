@@ -1,0 +1,42 @@
+
+trigger:
+  none
+
+jobs:
+  - job: coverage_build
+    container: 'vvaltchev/tilck_build:v5'
+    pool:
+      vmImage: 'ubuntu-18.04'
+    variables:
+      CI: 1
+      TCROOT_PARENT: /tc
+      GTEST_SHUFFLE: 0
+      DUMP_COV: 1
+      REPORT_COV: 1
+      TILCK_NO_LOGO: 1
+      CMAKE_ARGS: >
+        -DEXTRA_TCC=1
+        -DEXTRA_VIM=1
+        -DFB_CONSOLE_BANNER=0
+        -DFB_CONSOLE_CURSOR_BLINK=0
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/gcc_gcov
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/scripts/generate_test_coverage_report
+        displayName: Gen unit tests coverage report
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+      - script: ./build/st/run_interactive_test --all
+        displayName: Run the interactive tests
+      - script: ./build/scripts/generate_kernel_coverage_report --codecov
+        displayName: Gen kernel gcov report and upload to codecov
+        env:
+          CODECOV_TOKEN: $(CODECOV_TOKEN)
