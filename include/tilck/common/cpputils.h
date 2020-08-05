@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 extern "C" {
-#include <tilck/common/basic_defs.h>
+   #include <tilck/common/basic_defs.h>
 }
 
 #ifndef __cplusplus
@@ -73,5 +73,27 @@ struct unsigned_by_size<4> {
 };
 template <>
 struct unsigned_by_size<8> {
+   typedef u64 type;
+};
+
+/* signed -> unsigned_type */
+
+template <typename T>
+struct unsigned_type;
+
+template <>
+struct unsigned_type<s8> {
+   typedef u8 type;
+};
+template <>
+struct unsigned_type<s16> {
+   typedef u16 type;
+};
+template <>
+struct unsigned_type<s32> {
+   typedef u32 type;
+};
+template <>
+struct unsigned_type<s64> {
    typedef u64 type;
 };
