@@ -223,4 +223,20 @@ extern "C" {
 
 #endif
 
+#if defined(__TILCK_KERNEL__) && !defined(KERNEL_TEST)
+
+   long strtol(const char *s, const char **endptr, int base) {
+      return NBITS == 32
+         ? tilck_strtol(s, endptr, base, NULL)
+         : tilck_strtoll(s, endptr, base, NULL);
+   }
+
+   ulong strtoul(const char *s, const char **endptr, int base) {
+      return NBITS == 32
+         ? tilck_strtoul(s, endptr, base, NULL)
+         : tilck_strtoull(s, endptr, base, NULL);
+   }
+
+#endif
+
 } // extern "C"
