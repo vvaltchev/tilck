@@ -36,6 +36,9 @@ char *strstr(const char *haystack, const char *needle);
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t n);
 
+int isxdigit(int c);
+int isspace(int c);
+
 EXTERN inline bool isalpha_lower(int c) {
    return IN_RANGE_INC(c, 'a', 'z');
 }
