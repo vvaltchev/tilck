@@ -23,7 +23,10 @@
    #define UNIT_TEST_ENVIRONMENT
 #endif
 
-#if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
+#if defined(__TILCK_KERNEL__) ||      \
+    defined(UNIT_TEST_ENVIRONMENT) || \
+    defined(__cplusplus)
+
    #include <tilck_gen_headers/config_kernel.h>
 #endif
 

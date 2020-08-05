@@ -6,6 +6,7 @@ file(
 
    "*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
+   "${CMAKE_SOURCE_DIR}/common/*.cpp"
    "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
 )
 

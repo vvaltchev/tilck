@@ -9,6 +9,7 @@ file(
    GLOB FATHACK_SRC
    "fathack.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
+   "${CMAKE_SOURCE_DIR}/common/*.cpp"
 )
 
 add_executable(fathack ${FATHACK_SRC})
