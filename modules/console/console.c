@@ -643,7 +643,7 @@ tty_filter_end_csi_seq(u8 c,
       }
 
       do {
-         params[pc++] = (u32) tilck_strtol(endptr + 1, &endptr, NULL);
+         params[pc++] = (u32) tilck_strtol(endptr + 1, &endptr, 10, NULL);
       } while (*endptr);
    }
 

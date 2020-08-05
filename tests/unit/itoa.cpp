@@ -43,6 +43,20 @@ inline void itoa_wrapper<u32>(u32 val, char *buf) { uitoa32_dec(val, buf); }
 template <>
 inline void itoa_wrapper<u64>(u64 val, char *buf) { uitoa64_dec(val, buf); }
 
+// strtol() wrapper (s32 and s64 only)
+template <typename T>
+inline T strtol_wrapper(const char *s, int base);
+
+template <>
+inline s32 strtol_wrapper<s32>(const char *s, int base) {
+   return tilck_strtol(s, NULL, base, NULL);
+}
+
+template <>
+inline s64 strtol_wrapper<s64>(const char *s, int base) {
+   return tilck_strtoll(s, NULL, base, NULL);
+}
+
 
 template<>
 inline void uitoa_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
@@ -198,19 +212,28 @@ TEST(itoa, u64_hex_fixed)
 
 TEST(tilck_strtol, basic_tests)
 {
-   EXPECT_EQ(tilck_strtol("0", NULL, NULL), 0);
-   EXPECT_EQ(tilck_strtol("1", NULL, NULL), 1);
-   EXPECT_EQ(tilck_strtol("12", NULL, NULL), 12);
-   EXPECT_EQ(tilck_strtol("123", NULL, NULL), 123);
-   EXPECT_EQ(tilck_strtol("-1", NULL, NULL), -1);
-   EXPECT_EQ(tilck_strtol("-123", NULL, NULL), -123);
-   EXPECT_EQ(tilck_strtol("2147483647", NULL, NULL), 2147483647); // INT_MAX
-   EXPECT_EQ(tilck_strtol("2147483648", NULL, NULL), 0); // INT_MAX + 1
-   EXPECT_EQ(tilck_strtol("-2147483648", NULL, NULL), -2147483648); // INT_MIN
-   EXPECT_EQ(tilck_strtol("-2147483649", NULL, NULL), 0); // INT_MIN - 1
-   EXPECT_EQ(tilck_strtol("123abc", NULL, NULL), 123);
-   EXPECT_EQ(tilck_strtol("123 abc", NULL, NULL), 123);
-   EXPECT_EQ(tilck_strtol("-123abc", NULL, NULL), -123);
+   EXPECT_EQ(strtol_wrapper<s32>("0", 10), 0);
+   EXPECT_EQ(strtol_wrapper<s32>("1", 10), 1);
+   EXPECT_EQ(strtol_wrapper<s32>("12", 10), 12);
+   EXPECT_EQ(strtol_wrapper<s32>("123", 10), 123);
+   EXPECT_EQ(strtol_wrapper<s32>("-1", 10), -1);
+   EXPECT_EQ(strtol_wrapper<s32>("-123", 10), -123);
+   EXPECT_EQ(strtol_wrapper<s32>("00123", 10), 123);
+   EXPECT_EQ(strtol_wrapper<s32>("2147483647", 10), 2147483647); // INT_MAX
+   EXPECT_EQ(strtol_wrapper<s32>("2147483648", 10), 0); // INT_MAX + 1
+   EXPECT_EQ(strtol_wrapper<s32>("-2147483648", 10), -2147483648); // INT_MIN
+   EXPECT_EQ(strtol_wrapper<s32>("-2147483649", 10), 0); // INT_MIN - 1
+   EXPECT_EQ(strtol_wrapper<s32>("123abc", 10), 123);
+   EXPECT_EQ(strtol_wrapper<s32>("123 abc", 10), 123);
+   EXPECT_EQ(strtol_wrapper<s32>("-123abc", 10), -123);
+
+   EXPECT_EQ(strtol_wrapper<s32>("a", 16), 10);
+   EXPECT_EQ(strtol_wrapper<s32>("ff", 16), 255);
+   EXPECT_EQ(strtol_wrapper<s32>("02bbffdd", 16), 0x02bbffdd);
+   EXPECT_EQ(strtol_wrapper<s32>("111001", 2), 0b111001);
+   EXPECT_EQ(strtol_wrapper<s32>("755", 8), 0755);
+
+   EXPECT_EQ(strtol_wrapper<s64>("2147483648", 10), 2147483648); // INT_MAX+1
 }
 
 TEST(tilck_strtol, errors)
@@ -221,13 +244,13 @@ TEST(tilck_strtol, errors)
    int res;
 
    str = "abc";
-   res = tilck_strtol(str, &endptr, &error);
+   res = tilck_strtol(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -EINVAL);
 
    str = "2147483648"; // INT_MAX + 1
-   res = tilck_strtol(str, &endptr, &error);
+   res = tilck_strtol(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
    EXPECT_EQ(error, -ERANGE);

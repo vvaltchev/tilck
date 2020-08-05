@@ -65,42 +65,38 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-int tilck_strtol(const char *str, const char **endptr, int *error)
+const s8 digit_to_val[128] =
 {
-   int res = 0;
-   int sign = 1;
-   const char *p;
+   [0 ... 47] = -1,
 
-   if (*str == '-') {
-      sign = -1;
-      str++;
-   }
+   [48] = 0,         /* '0' */
+   [49] = 1,         /* '1' */
+   [50] = 2,         /* '2' */
+   [51] = 3,         /* '3' */
+   [52] = 4,         /* '4' */
+   [53] = 5,         /* '5' */
+   [54] = 6,         /* '6' */
+   [55] = 7,         /* '7' */
+   [56] = 8,         /* '7' */
+   [57] = 9,         /* '7' */
 
-   for (p = str; *p; p++) {
+   [58 ... 64] = -1,
 
-      if (!isdigit(*p))
-         break;
+   [65] = 10,        /* 'A' */
+   [66] = 11,        /* 'B' */
+   [67] = 12,        /* 'C' */
+   [68] = 13,        /* 'D' */
+   [69] = 14,        /* 'E' */
+   [70] = 15,        /* 'F' */
 
-      res = res * 10 + sign * (*p - '0');
+   [71 ... 96] = -1,
 
-      if ((sign > 0) != (res > 0)) {
+   [ 97] = 10,        /* 'a' */
+   [ 98] = 11,        /* 'b' */
+   [ 99] = 12,        /* 'c' */
+   [100] = 13,        /* 'd' */
+   [101] = 14,        /* 'e' */
+   [102] = 15,        /* 'f' */
 
-         if (error)
-            *error = -ERANGE;
-
-         if (endptr)
-            *endptr = str;
-
-         return 0; // signed int overflow
-      }
-   }
-
-
-   if (p == str && error)
-      *error = -EINVAL;
-
-   if (endptr)
-      *endptr = p;
-
-   return res;
-}
+   [103 ... 127] = -1,
+};

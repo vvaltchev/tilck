@@ -84,8 +84,6 @@ static inline bool is_dot_or_dotdot(const char *n, int nl) {
 
 int stricmp(const char *s1, const char *s2);
 void str_reverse(char *str, size_t len);
-char *const *dup_strarray(const char *const *argv);
-void free_strarray(char *const *argv);
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);
@@ -99,4 +97,5 @@ void uitoa64_hex(u64 value, char *buf);
 void uitoa32_hex_fixed(u32 value, char *buf);
 void uitoa64_hex_fixed(u64 value, char *buf);
 
-int tilck_strtol(const char *str, const char **endptr, int *error);
+s32 tilck_strtol(const char *str, const char **endptr, int base, int *error);
+s64 tilck_strtoll(const char *str, const char **endptr, int base, int *error);

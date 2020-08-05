@@ -2,9 +2,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 extern "C" {
+
    #include <tilck/common/basic_defs.h>
    #include <tilck/common/string_util.h>
    #include <tilck/kernel/errno.h>
+
+   extern const s8 digit_to_val[128];
 }
 
 #include <tilck/common/cpputils.h>
@@ -27,6 +30,7 @@ void __uitoa_fixed(T value, char *buf)
 template <typename T, u32 base>
 void __uitoa(T value, char *buf)
 {
+   STATIC_ASSERT(IN_RANGE_INC(base, 2, 16));
    char *ptr = buf;
 
    while (value) {
@@ -44,7 +48,9 @@ void __uitoa(T value, char *buf)
 template <typename T, u32 base>
 void __itoa(T svalue, char *buf)
 {
+   STATIC_ASSERT(IN_RANGE_INC(base, 2, 16));
    typedef typename unsigned_type<T>::type U;
+
    char *ptr = buf;
 
    if (svalue == 0) {
@@ -56,8 +62,8 @@ void __itoa(T svalue, char *buf)
    U value = svalue >= 0 ? (U) svalue : (U) -svalue;
 
    while (value) {
-      *ptr++ = DIGITS[value % 10];
-      value /= 10;
+      *ptr++ = DIGITS[value % base];
+      value /= base;
    }
 
    if (svalue < 0)
@@ -65,6 +71,56 @@ void __itoa(T svalue, char *buf)
 
    *ptr = 0;
    str_reverse(buf, (size_t)ptr - (size_t)buf);
+}
+
+
+template<typename T>
+T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
+{
+   T res = 0;
+   T sign = 1;
+   const char *p;
+   ASSERT(IN_RANGE_INC(base, 2, 16));
+
+   if (*str == '-') {
+      sign = -1;
+      str++;
+   }
+
+   for (p = str; *p; p++) {
+
+      u8 up = (u8)*p;
+
+      if (up >= 128)
+         break;
+
+      if (digit_to_val[up] < 0)
+         break;
+
+      if (digit_to_val[up] >= base)
+         break;
+
+      res = res * base + sign * digit_to_val[up];
+
+      if ((sign > 0) != (res >= 0)) {
+
+         if (error)
+            *error = -ERANGE;
+
+         if (endptr)
+            *endptr = str;
+
+         return 0; // signed int overflow
+      }
+   }
+
+   if (p == str && error)
+      *error = -EINVAL;
+
+   if (endptr)
+      *endptr = p;
+
+   return res;
 }
 
 #define instantiate_uitoa_hex_fixed(func_name, bits)       \
@@ -83,6 +139,7 @@ void __itoa(T svalue, char *buf)
    }
 
 extern "C" {
+
    instantiate_uitoa_hex_fixed(uitoa32_hex_fixed, 32)
    instantiate_uitoa_hex_fixed(uitoa64_hex_fixed, 64)
 
@@ -95,4 +152,22 @@ extern "C" {
 
    instantiate_itoa(itoa32, 32, 10)
    instantiate_itoa(itoa64, 64, 10)
+
+   s32 tilck_strtol(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtol<s32>(s, endptr, base, err);
+   }
+
+#ifdef __TILCK_KERNEL__
+
+   /*
+    * No other reason for this #ifdef except to avoid unnecessary code-bloat
+    * in the legacy bootloader.
+    */
+
+   s64 tilck_strtoll(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtol<s64>(s, endptr, base, err);
+   }
+
+#endif
+
 } // extern "C"
