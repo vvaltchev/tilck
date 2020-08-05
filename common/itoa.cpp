@@ -81,14 +81,17 @@ static inline bool is_valid_digit(u8 d, int base)
 template<typename T>
 T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
 {
-   T res = 0;
-   T sign = 1;
+   T next, res = 0, sign = 1;
    const char *p;
+   bool overflow;
+
    ASSERT(IN_RANGE_INC(base, 2, 16));
 
-   if (*str == '-') {
-      sign = -1;
-      str++;
+   if (!is_unsigned<T>::val) {
+      if (*str == '-') {
+         sign = (T) -1;
+         str++;
+      }
    }
 
    for (p = str; *p; p++) {
@@ -98,9 +101,15 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
       if (!is_valid_digit(up, base))
          break;
 
-      res = res * base + sign * digit_to_val[up];
+      if (is_unsigned<T>::val) {
+         next = res * (T)base + (T)digit_to_val[up];
+         overflow = next < res;
+      } else {
+         next = res * (T)base + sign * (T)digit_to_val[up];
+         overflow = (sign > 0) != (next >= 0);
+      }
 
-      if ((sign > 0) != (res >= 0)) {
+      if (overflow) {
 
          if (error)
             *error = -ERANGE;
@@ -109,43 +118,6 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
             *endptr = str;
 
          return 0; // signed int overflow
-      }
-   }
-
-   if (p == str && error)
-      *error = -EINVAL;
-
-   if (endptr)
-      *endptr = p;
-
-   return res;
-}
-
-template<typename T>
-T __tilck_strtoul(const char *str, const char **endptr, int base, int *error)
-{
-   T next, res = 0;
-   const char *p;
-   ASSERT(IN_RANGE_INC(base, 2, 16));
-
-   for (p = str; *p; p++) {
-
-      u8 up = (u8)*p;
-
-      if (!is_valid_digit(up, base))
-         break;
-
-      next = res * (T)base + (T)digit_to_val[up];
-
-      if (next < res) {
-
-         if (error)
-            *error = -ERANGE;
-
-         if (endptr)
-            *endptr = str;
-
-         return 0; // overflow
       }
 
       res = next;
@@ -159,6 +131,7 @@ T __tilck_strtoul(const char *str, const char **endptr, int base, int *error)
 
    return res;
 }
+
 
 #define instantiate_uitoa_hex_fixed(func_name, bits)       \
    void func_name(u##bits value, char *buf) {              \
@@ -202,7 +175,7 @@ extern "C" {
     */
 
    ulong tilck_strtoul(const char *s, const char **endptr, int base, int *err) {
-      return __tilck_strtoul<ulong>(s, endptr, base, err);
+      return __tilck_strtol<ulong>(s, endptr, base, err);
    }
 
 #ifdef KERNEL_TEST
@@ -210,13 +183,13 @@ extern "C" {
       return __tilck_strtol<s32>(s, endptr, base, err);
    }
    u32 tilck_strtoul32(const char *s, const char **endptr, int base, int *err) {
-      return __tilck_strtoul<u32>(s, endptr, base, err);
+      return __tilck_strtol<u32>(s, endptr, base, err);
    }
    s64 tilck_strtol64(const char *s, const char **endptr, int base, int *err) {
       return __tilck_strtol<s64>(s, endptr, base, err);
    }
    u64 tilck_strtoul64(const char *s, const char **endptr, int base, int *err) {
-      return __tilck_strtoul<u64>(s, endptr, base, err);
+      return __tilck_strtol<u64>(s, endptr, base, err);
    }
 #endif // #ifdef KERNEL_TEST
 #endif // #ifdef __TILCK_KERNEL__

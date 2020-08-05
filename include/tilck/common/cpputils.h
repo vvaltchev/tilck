@@ -99,6 +99,34 @@ struct unsigned_type<s64> {
    typedef u64 type;
 };
 
+/* is unsigned */
+
+template <typename T>
+struct is_unsigned {
+   enum { val = 0 };
+};
+
+template <>
+struct is_unsigned<u8> {
+   enum { val = 1 };
+};
+
+template <>
+struct is_unsigned<u16> {
+   enum { val = 1 };
+};
+
+template <>
+struct is_unsigned<u32> {
+   enum { val = 1 };
+};
+
+template <>
+struct is_unsigned<u64> {
+   enum { val = 1 };
+};
+
+
 /* numeric limits */
 
 template <typename T>
