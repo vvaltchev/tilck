@@ -7,20 +7,30 @@ extern "C" {
 #include <tilck/common/string_util.h>
 #include <tilck/kernel/errno.h>
 
+}
+
 #define DIGITS "0123456789abcdef"
 
-#define instantiate_uitoa_hex_fixed(func_name, bits)       \
-   void func_name(u##bits value, char *buf)                \
-   {                                                       \
-      u32 j = sizeof(value) * 8 - 4;                       \
-      char *ptr = buf;                                     \
-                                                           \
-      for (u32 i = 0; i < sizeof(value) * 2; i++, j-=4) {  \
-         *ptr++ = DIGITS[(value >> j) & 0xf];              \
-      }                                                    \
-                                                           \
-      *ptr = 0;                                            \
+template <typename T>
+void __uitoa_fixed(T value, char *buf)
+{
+   u32 j = sizeof(value) * 8 - 4;
+   char *ptr = buf;
+
+   for (u32 i = 0; i < sizeof(value) * 2; i++, j-=4) {
+      *ptr++ = DIGITS[(value >> j) & 0xf];
    }
+
+   *ptr = 0;
+}
+
+#define instantiate_uitoa_hex_fixed(func_name, bits)          \
+   void func_name(u##bits value, char *buf) {                 \
+      __uitoa_fixed(value, buf);                              \
+   }
+
+
+extern "C" {
 
 #define instantiate_uitoa(func_name, bits, base)           \
    void func_name(u##bits value, char *buf)                \
