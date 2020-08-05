@@ -123,6 +123,51 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
    return res;
 }
 
+template<typename T>
+T __tilck_strtoul(const char *str, const char **endptr, int base, int *error)
+{
+   T next, res = 0;
+   const char *p;
+   ASSERT(IN_RANGE_INC(base, 2, 16));
+
+   for (p = str; *p; p++) {
+
+      u8 up = (u8)*p;
+
+      if (up >= 128)
+         break;
+
+      if (digit_to_val[up] < 0)
+         break;
+
+      if (digit_to_val[up] >= base)
+         break;
+
+      next = res * (T)base + (T)digit_to_val[up];
+
+      if (next < res) {
+
+         if (error)
+            *error = -ERANGE;
+
+         if (endptr)
+            *endptr = str;
+
+         return 0; // overflow
+      }
+
+      res = next;
+   }
+
+   if (p == str && error)
+      *error = -EINVAL;
+
+   if (endptr)
+      *endptr = p;
+
+   return res;
+}
+
 #define instantiate_uitoa_hex_fixed(func_name, bits)       \
    void func_name(u##bits value, char *buf) {              \
       __uitoa_fixed(value, buf);                           \
@@ -166,6 +211,14 @@ extern "C" {
 
    s64 tilck_strtoll(const char *s, const char **endptr, int base, int *err) {
       return __tilck_strtol<s64>(s, endptr, base, err);
+   }
+
+   u32 tilck_strtoul(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtoul<u32>(s, endptr, base, err);
+   }
+
+   u64 tilck_strtoull(const char *s, const char **endptr, int base, int *err) {
+      return __tilck_strtoul<u64>(s, endptr, base, err);
    }
 
 #endif

@@ -57,6 +57,16 @@ inline s64 strtol_wrapper<s64>(const char *s, int base) {
    return tilck_strtoll(s, NULL, base, NULL);
 }
 
+template <>
+inline u32 strtol_wrapper<u32>(const char *s, int base) {
+   return tilck_strtoul(s, NULL, base, NULL);
+}
+
+template <>
+inline u64 strtol_wrapper<u64>(const char *s, int base) {
+   return tilck_strtoull(s, NULL, base, NULL);
+}
+
 
 template<>
 inline void uitoa_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
@@ -232,8 +242,36 @@ TEST(tilck_strtol, basic_tests)
    EXPECT_EQ(strtol_wrapper<s32>("02bbffdd", 16), 0x02bbffdd);
    EXPECT_EQ(strtol_wrapper<s32>("111001", 2), 0b111001);
    EXPECT_EQ(strtol_wrapper<s32>("755", 8), 0755);
+}
 
+TEST(tilck_strtoll, basic_tests)
+{
    EXPECT_EQ(strtol_wrapper<s64>("2147483648", 10), 2147483648); // INT_MAX+1
+   EXPECT_EQ(strtol_wrapper<s64>("21474836480", 10), 21474836480);
+
+   EXPECT_EQ(
+      strtol_wrapper<s64>("9223372036854775807", 10),
+      9223372036854775807ll
+   ); // LLONG_MAX
+
+   EXPECT_EQ(
+      strtol_wrapper<s64>("-9223372036854775808", 10),
+      -9223372036854775807ll - 1ll
+   ); // LLONG_MIN
+}
+
+TEST(tilck_strtoul, basic_tests)
+{
+   EXPECT_EQ(strtol_wrapper<u32>("0", 10), 0u);
+   EXPECT_EQ(strtol_wrapper<u32>("1234", 10), 1234u);
+   EXPECT_EQ(strtol_wrapper<u32>("a", 16), 10u);
+   EXPECT_EQ(strtol_wrapper<u32>("ff", 16), 255u);
+   EXPECT_EQ(strtol_wrapper<u32>("02bbffdd", 16), 0x02bbffddu);
+   EXPECT_EQ(strtol_wrapper<u32>("111001", 2), 0b111001u);
+   EXPECT_EQ(strtol_wrapper<u32>("755", 8), 0755u);
+
+   EXPECT_EQ(strtol_wrapper<u32>("-1", 10), 0u);
+   EXPECT_EQ(strtol_wrapper<u32>("-134", 10), 0u);
 }
 
 TEST(tilck_strtol, errors)
@@ -253,5 +291,11 @@ TEST(tilck_strtol, errors)
    res = tilck_strtol(str, &endptr, 10, &error);
    EXPECT_EQ(res, 0);
    EXPECT_EQ(endptr, str);
+   EXPECT_EQ(error, -ERANGE);
+
+
+   str = "-2147483649"; // INT_MIN - 1
+   res = tilck_strtol(str, &endptr, 10, &error);
+   EXPECT_EQ(res, 0);
    EXPECT_EQ(error, -ERANGE);
 }
