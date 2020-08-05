@@ -5,40 +5,66 @@
 
 #if !defined(TESTING) && !defined(USERMODE_APP)
 
+#ifdef STATIC_TILCK_ASM_STRING
+
+   /* Some targets demand those symbols to be static to avoid link conflicts */
+   #define EXTERN static
+
+#else
+
+   /*
+    * This nice trick allows the code for the following functions to be emitted,
+    * when not inlined, in only one translation unit, the one that declare them
+    * as "extern". This is a little better than just using static inline because
+    * avoids code duplication when the compiler decide to not inline a given
+    * function. Compared to using static + ALWAYS_INLINE this gives the compiler
+    * the maximum freedom to optimize.
+    */
+
+   #ifdef __STRING_UTIL_C__
+      #define EXTERN extern
+   #else
+      #define EXTERN
+   #endif
+
+#endif
+
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
 
-static ALWAYS_INLINE bool isalpha_lower(int c) {
+EXTERN inline bool isalpha_lower(int c) {
    return IN_RANGE_INC(c, 'a', 'z');
 }
 
-static ALWAYS_INLINE bool isalpha_upper(int c) {
+EXTERN inline bool isalpha_upper(int c) {
    return IN_RANGE_INC(c, 'A', 'Z');
 }
 
-static ALWAYS_INLINE int isalpha(int c) {
+EXTERN inline int isalpha(int c) {
    return isalpha_lower(c) || isalpha_upper(c);
 }
 
-static ALWAYS_INLINE int tolower(int c) {
+EXTERN inline int tolower(int c) {
    return isalpha_upper(c) ? c + 32 : c;
 }
 
-static ALWAYS_INLINE int toupper(int c) {
+EXTERN inline int toupper(int c) {
    return isalpha_lower(c) ? c - 32 : c;
 }
 
-static ALWAYS_INLINE int isdigit(int c) {
+EXTERN inline int isdigit(int c) {
    return IN_RANGE_INC(c, '0', '9');
 }
 
-static ALWAYS_INLINE int isprint(int c) {
+EXTERN inline int isprint(int c) {
    return IN_RANGE_INC(c, ' ', '~');
 }
 
 #if defined(__i386__) || defined(__x86_64__)
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 #endif
+
+#undef EXTERN
 
 #else
 

@@ -3,29 +3,6 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-/*
- * This nice trick allows the code for the following functions to be emitted,
- * when not inlined, in only one translation unit, the one that declare them
- * as "extern". This is a little better than just using static inline because
- * avoids code duplication when the compiler decide to not inline a given
- * function. Compared to using static + ALWAYS_INLINE this gives the compiler
- * the maximum freedom to optimize.
- */
-
-#ifndef STATIC_TILCK_ASM_STRING
-
-#ifdef __STRING_UTIL_C__
-#define EXTERN extern
-#else
-#define EXTERN
-#endif
-
-#else
-
-#define EXTERN static
-
-#endif
-
 EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
@@ -207,4 +184,3 @@ EXTERN inline void bzero(void *s, size_t n)
                : "cc", "memory", "%eax");
 }
 
-#undef EXTERN
