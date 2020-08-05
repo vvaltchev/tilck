@@ -30,6 +30,67 @@ int strncmp(const char *s1, const char *s2, size_t n)
    return i == n ? 0 : (int)*s1 - (int)*s2;
 }
 
+int memcmp(const void *_m1, const void *_m2, size_t n)
+{
+   size_t i = 0;
+   const char *m1 = _m1;
+   const char *m2 = _m2;
+
+   while(i < n && *m1 == *m2) {
+      m1++; m2++; i++;
+   }
+
+   return i == n ? 0 : (int)*m1 - (int)*m2;
+}
+
+char *strstr(const char *haystack, const char *needle)
+{
+   size_t sl, nl;
+
+   if (!*haystack || !*needle)
+      return NULL;
+
+   sl = strlen(haystack);
+   nl = strlen(needle);
+
+   while (*haystack && sl >= nl) {
+
+      if (*haystack == *needle && !strncmp(haystack, needle, nl))
+         return (char *)haystack;
+
+      haystack++;
+      sl--;
+   }
+
+   return NULL;
+}
+
+char *strcpy(char *dest, const char *src)
+{
+   char *p = dest;
+
+   while (*src)
+      *p++ = *src++;
+
+   *p = 0;
+   return dest;
+}
+
+char *strncpy(char *dest, const char *src, size_t n)
+{
+   char *p = dest;
+   size_t i = 0;
+
+   while (*src && i < n)
+      *p++ = *src++;
+
+   if (i < n)
+      *p = 0;
+
+   return dest;
+}
+
+
 #endif // #if !defined(TESTING) && !defined(USERMODE_APP)
 
 int stricmp(const char *s1, const char *s2)

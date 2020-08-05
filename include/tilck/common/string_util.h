@@ -31,6 +31,10 @@
 
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
+int memcmp(const void *m1, const void *m2, size_t n);
+char *strstr(const char *haystack, const char *needle);
+char *strcpy(char *dest, const char *src);
+char *strncpy(char *dest, const char *src, size_t n);
 
 EXTERN inline bool isalpha_lower(int c) {
    return IN_RANGE_INC(c, 'a', 'z');
@@ -65,6 +69,11 @@ EXTERN inline int isprint(int c) {
 #endif
 
 #undef EXTERN
+
+#ifdef __MOD_ACPICA__
+   long strtol(const char *s, const char **endptr, int base);
+   ulong strtoul(const char *s, const char **endptr, int base);
+#endif
 
 #else
 
