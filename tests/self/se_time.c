@@ -126,3 +126,23 @@ void selftest_time_manual(void)
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time_manual)
+
+void selftest_delay_manual(void)
+{
+   u64 before, after, elapsed;
+   u32 us = 50000; /* 50 ms */
+
+   disable_preemption();
+   {
+      before = get_ticks();
+      delay_us(us);
+      after = get_ticks();
+   }
+   enable_preemption();
+   elapsed = after - before;
+
+   printk("Expected in ticks: %u\n", us / (1000000 / TIMER_HZ));
+   printk("Actual ticks:      %" PRIu64 "\n", elapsed);
+}
+
+DECLARE_AND_REGISTER_SELF_TEST(delay, se_manual, &selftest_delay_manual)

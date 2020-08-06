@@ -26,3 +26,4 @@
  * promoting a hard-coded constant to a configurable CMake variable.
  */
 #define MEASURE_BOGOMIPS_TICKS        (TIMER_HZ / 10)
+#define BOGOMIPS_CONST                          10000

@@ -5,6 +5,7 @@
 #define ASM_FILE 1
 
 #include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_sched.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
@@ -12,12 +13,25 @@
 
 .section .text
 
+.global asm_nop_loop
 .global asm_do_bogomips_loop
 .global asm_enable_sse
 .global asm_enable_osxsave
 .global asm_enable_avx
 .global __asm_fpu_cpy_single_256_nt
 .global __asm_fpu_cpy_single_256_nt_read
+
+
+FUNC(asm_nop_loop):
+
+.loop:
+   nop
+   sub ecx, 1
+   jne .loop
+
+   ret
+
+END_FUNC(asm_nop_loop)
 
 FUNC(asm_do_bogomips_loop):
 
@@ -30,7 +44,7 @@ FUNC(asm_do_bogomips_loop):
    nop
 
 .outer_loop:
-   mov    eax, 10000
+   mov    eax, BOGOMIPS_CONST
 
 .inner_loop:
    nop
