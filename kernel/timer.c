@@ -225,6 +225,12 @@ void kernel_sleep(u64 ticks)
    kernel_yield();
 }
 
+void kernel_sleep_ms(u64 ms)
+{
+   u64 ticks = ms / (1000 / TIMER_HZ);
+   kernel_sleep(MAX(1u, ticks));
+}
+
 static ALWAYS_INLINE bool timer_nested_irq(void)
 {
    bool res = false;
