@@ -90,6 +90,45 @@ AcpiOsGetThreadId(void)
    return get_curr_tid();
 }
 
+ACPI_STATUS
+AcpiOsExecute(
+    ACPI_EXECUTE_TYPE       Type,
+    ACPI_OSD_EXEC_CALLBACK  Function,
+    void                    *Context)
+{
+   int prio;
+
+   if (!Function)
+      return AE_BAD_PARAMETER;
+
+   switch (Type) {
+
+      case OSL_NOTIFY_HANDLER:
+      case OSL_GPE_HANDLER:
+         prio = 1;
+         break;
+
+      case OSL_DEBUGGER_MAIN_THREAD:
+      case OSL_DEBUGGER_EXEC_THREAD:
+         prio = 3;
+         break;
+
+      case OSL_GLOBAL_LOCK_HANDLER: /* fall-through */
+      case OSL_EC_POLL_HANDLER:     /* fall-through */
+      case OSL_EC_BURST_HANDLER:    /* fall-through */
+      default:
+         prio = 2;
+         break;
+   }
+
+   if (!wth_enqueue_anywhere(prio, Function, Context)) {
+      if (!wth_enqueue_anywhere(WTH_PRIO_LOWEST, Function, Context))
+         panic("AcpiOsExecute: unable to enqueue job");
+   }
+
+   return AE_OK;
+}
+
 ACPI_PRINTF_LIKE (1)
 void ACPI_INTERNAL_VAR_XFACE
 AcpiOsPrintf(const char *Format, ...)
