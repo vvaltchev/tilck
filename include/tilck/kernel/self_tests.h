@@ -4,6 +4,7 @@
 #include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/timer.h>
 
 #define MAX_NO_DEADLOCK_SET_ELEMS   144
 #define SELF_TEST_MAX_NAME_LEN       31

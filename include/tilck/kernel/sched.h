@@ -293,7 +293,6 @@ void init_task_lists(struct task *ti);
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit(void);
 
-void kernel_sleep(u64 ticks);
 void kthread_join(int tid);
 void kthread_join_all(const int *tids, size_t n);
 

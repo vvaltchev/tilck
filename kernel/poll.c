@@ -8,6 +8,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/timer.h>
 
 static u32
 poll_count_conds(struct pollfd *fds, nfds_t nfds)

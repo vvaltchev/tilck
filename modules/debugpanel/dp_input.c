@@ -5,6 +5,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/timer.h>
 
 #include "termutil.h"
 #include "dp_int.h"

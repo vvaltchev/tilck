@@ -7,6 +7,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/timer.h>
 
 struct select_ctx {
    int nfds;
