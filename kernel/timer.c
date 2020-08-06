@@ -31,8 +31,8 @@ volatile ATOMIC(u32) __bogo_loops;
 
 /* Static variables */
 static struct list timer_wakeup_list = make_list(timer_wakeup_list);
-static u32 loops_per_tick; /* Tilck bogoMips expressed as loops/tick */
-static u32 loops_per_us;   /* loops/microsecond */
+static u32 loops_per_tick;        /* Tilck bogoMips expressed as loops/tick */
+static u32 loops_per_us = 5000;   /* loops/microsecond (initial value) */
 
 u64 get_ticks(void)
 {
@@ -346,6 +346,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
       disable_interrupts_forced();
       {
          loops_per_tick = __bogo_loops * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
+         loops_per_us = loops_per_tick / (1000000 / TIMER_HZ);
          __bogo_loops = -1;
       }
       enable_interrupts_forced();
@@ -366,7 +367,6 @@ static void do_bogomips_loop(void *arg)
       asm_do_bogomips_loop();
    }
    enable_preemption();
-   loops_per_us = loops_per_tick / (1000000 / TIMER_HZ);
    printk("Tilck bogoMips: %u\n", loops_per_us);
 }
 

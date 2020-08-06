@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/timer.h>
 
 #include "i8042.h"
 
@@ -36,15 +37,12 @@ bool i8042_get_sw_port_enabled_state(u8 port)
    return sw_port_enabled[port];
 }
 
-
-/* Hack!!! See pic_io_wait() */
 static NO_INLINE void i8042_io_wait(void)
 {
    if (in_hypervisor())
       return;
 
-   for (int i = 0; i < 1000; i++)
-      asmVolatile("nop");
+   delay_us(1);
 }
 
 static bool i8042_wait_cmd_fetched(void)

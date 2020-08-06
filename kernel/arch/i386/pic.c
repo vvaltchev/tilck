@@ -2,6 +2,8 @@
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/timer.h>
+
 #include "pic.h"
 
 #define PIC1                0x20     /* IO base address for master PIC */
@@ -29,27 +31,12 @@
 #define ICW4_BUF_MASTER     0x0C     /* Buffered mode/master */
 #define ICW4_SFNM           0x10     /* Special fully nested (not) */
 
-/*
- * Implementing the pic_io_wait() function this way is a *dirty hack*, but the
- * right solution requires a lot of additional infrastructure. For example,
- * pic_io_wait() should loop for about ~2 microseconds: how to do that,
- * precisely? We'd need to calculate something like Linux's "bogoMips" first.
- * But what about the case where we cannot used the PIT yet and we cannot
- * estimate bogoMips not even empirically? Well, we should have a reasonable
- * initial value that will work well both on fast modern CPUs and on older CPUs
- * as well (by being just slower). In alternative, we could try to determine
- * CPU's nominal frequency using things like cpuinfo and, from there, estimate
- * how many loops approximately we should do in order to wait ~2us. That's a
- * lot of work. For the moment, let's just hard-code a value good-enough.
- * One step at a time.
- */
 static NO_INLINE void pic_io_wait(void)
 {
    if (in_hypervisor())
       return;
 
-   for (int i = 0; i < 10 * 1000; i++)
-      asmVolatile("nop");
+   delay_us(2);
 }
 
 
