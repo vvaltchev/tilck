@@ -35,6 +35,8 @@ int memcmp(const void *m1, const void *m2, size_t n);
 char *strstr(const char *haystack, const char *needle);
 char *strcpy(char *dest, const char *src);
 char *strncpy(char *dest, const char *src, size_t n);
+char *strcat(char *dest, const char *src);
+char *strncat(char *dest, const char *src, size_t n);
 
 int isxdigit(int c);
 int isspace(int c);

@@ -126,6 +126,24 @@ char *strncpy(char *dest, const char *src, size_t n)
    return dest;
 }
 
+char *strcat(char *dest, const char *src)
+{
+   return strcpy(dest + strlen(dest), src);
+}
+
+char *strncat(char *dest, const char *src, size_t n)
+{
+   char *p = dest + strlen(dest);
+   size_t i = 0;
+
+   while (*src && i < n)
+      *p++ = *src++;
+
+   *p = 0;
+   return dest;
+}
+
+
 int isxdigit(int c)
 {
    return c < 128 && digit_to_val[c] >= 0;
