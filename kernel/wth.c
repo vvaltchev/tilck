@@ -200,15 +200,21 @@ int wth_create_thread(int priority, u16 queue_size)
    return t->thread_index;
 }
 
-void init_worker_threads(void)
+static void
+init_wth_create_worker_or_die(int prio, u16 queue_size)
 {
-   int wth;
-
-   worker_threads_cnt = 0;
-   wth = wth_create_thread(0 /* priority */, WTH_MAX_PRIO_QUEUE_SIZE);
+   int wth = wth_create_thread(prio, queue_size);
 
    if (wth < 0)
-      panic("init_worker_threads() failed");
+      panic("WTH: failed to create worker thread with prio %d", prio);
+}
 
-   ASSERT(wth == 0);
+void init_worker_threads(void)
+{
+   worker_threads_cnt = 0;
+
+   init_wth_create_worker_or_die(0, WTH_MAX_PRIO_QUEUE_SIZE);
+   init_wth_create_worker_or_die(1, WTH_1_PRIO_QUEUE_SIZE);
+   init_wth_create_worker_or_die(2, WTH_2_PRIO_QUEUE_SIZE);
+   init_wth_create_worker_or_die(3, WTH_3_PRIO_QUEUE_SIZE);
 }

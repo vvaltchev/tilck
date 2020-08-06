@@ -32,9 +32,13 @@
 #define KMALLOC_MAX_ALIGN                   (64 * KB)
 #define KMALLOC_MIN_HEAP_SIZE       KMALLOC_MAX_ALIGN
 
+#define PROCESS_CMDLINE_BUF_SIZE                  256
 #define MAX_MOUNTPOINTS                            16
 #define MAX_NESTED_INTERRUPTS                      32
+
 #define WTH_MAX_THREADS                            64
-#define WTH_MAX_PRIO_QUEUE_SIZE                    40
-#define WTH_KB_QUEUE_SIZE                          80
-#define PROCESS_CMDLINE_BUF_SIZE                  256
+#define WTH_MAX_PRIO_QUEUE_SIZE                    32
+#define WTH_1_PRIO_QUEUE_SIZE                      64
+#define WTH_2_PRIO_QUEUE_SIZE                      64
+#define WTH_3_PRIO_QUEUE_SIZE                     128
+#define WTH_KB_QUEUE_SIZE                          32
