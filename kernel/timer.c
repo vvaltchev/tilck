@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
 #include <tilck/common/atomics.h>
 
 #include <tilck/kernel/sched.h>
@@ -12,20 +14,25 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/datetime.h>
 
-/* jiffies */
+
+/* Jiffies */
 static u64 __ticks;        /* ticks since the timer started */
 
-/* system time */
+/* System time */
 u64 __time_ns;             /* nanoseconds since the timer started */
 u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
 int __tick_adj_val;
 int __tick_adj_ticks_rem;
 
-/* debug counters */
+/* Debug counters */
 u32 slow_timer_irq_handler_count;
 
+/* Temporary global used by asm_do_bogomips_loop() */
+volatile ATOMIC(int) __bogo_loops;
 
+/* Static variables */
 static struct list timer_wakeup_list = make_list(timer_wakeup_list);
+static u32 loops_per_tick; /* Tilck bogoMips expressed as loops/tick */
 
 u64 get_ticks(void)
 {
@@ -251,7 +258,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return res;
 }
 
-enum irq_action timer_irq_handler(void *ctx)
+static enum irq_action timer_irq_handler(void *ctx)
 {
    u32 ns_delta;
    ASSERT(are_interrupts_enabled());
@@ -296,10 +303,82 @@ enum irq_action timer_irq_handler(void *ctx)
    return IRQ_FULLY_HANDLED;
 }
 
+static enum irq_action measure_bogomips_irq_handler(void *ctx);
+
 DEFINE_IRQ_HANDLER_NODE(timer, timer_irq_handler, NULL);
+DEFINE_IRQ_HANDLER_NODE(measure_bogomips, measure_bogomips_irq_handler, NULL);
+
+struct bogo_measure_ctx {
+   bool started;
+   bool pass_start;
+   u32 ticks;
+};
+
+static enum irq_action measure_bogomips_irq_handler(void *arg)
+{
+   struct bogo_measure_ctx *ctx = arg;
+
+   if (!ctx->started)
+      return IRQ_UNHANDLED;
+
+   if (UNLIKELY(!ctx->pass_start)) {
+
+      /*
+       * First IRQ: reset the loops value.
+       *
+       * Reason: the asm_do_bogomips_loop() has been spinning already when we
+       * received this IRQ, but we cannot be sure that it started spinning
+       * immediately after a tick. In order to increase the precision, just
+       * discard the loops so far in this partial tick and start counting zero
+       * from now, when the timer IRQ just arrived.
+       */
+      __bogo_loops = 0;
+      ctx->pass_start = true;
+      return IRQ_UNHANDLED;
+   }
+
+   /* Successive IRQs */
+   if (++ctx->ticks == MEASURE_BOGOMIPS_TICKS) {
+
+      /* We're done */
+      irq_uninstall_handler(X86_PC_TIMER_IRQ, &measure_bogomips);
+
+      disable_interrupts_forced();
+      {
+         loops_per_tick = (u32)__bogo_loops * 10000 / MEASURE_BOGOMIPS_TICKS;
+         __bogo_loops = -1;
+      }
+      enable_interrupts_forced();
+   }
+
+   return IRQ_UNHANDLED;   /* always allow the real IRQ handler to go */
+}
+
+static void do_bogomips_loop(void *arg)
+{
+   void asm_do_bogomips_loop(void);
+   struct bogo_measure_ctx *ctx = arg;
+
+   ASSERT(is_preemption_enabled());
+   disable_preemption();
+   {
+      ctx->started = true;
+      asm_do_bogomips_loop();
+   }
+   enable_preemption();
+   printk("Tilck bogoMips: %llu\n", ((u64)loops_per_tick * TIMER_HZ) / 1000000);
+}
 
 void init_timer(void)
 {
+   static struct bogo_measure_ctx ctx;
+   measure_bogomips.context = &ctx;
+
    __tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
+
+   if (!wth_enqueue_job(0 /* top priority */, &do_bogomips_loop, &ctx))
+      panic("Timer: unable to enqueue job in wth 0");
+
+   irq_install_handler(X86_PC_TIMER_IRQ, &measure_bogomips);
    irq_install_handler(X86_PC_TIMER_IRQ, &timer);
 }

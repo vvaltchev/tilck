@@ -9,3 +9,4 @@ void *kernel_initial_stack = NULL;
 void asm_kernel_yield() { NOT_REACHED(); }
 void switch_to_initial_kernel_stack() { NOT_REACHED(); }
 void fault_resumable_call() { NOT_REACHED(); }
+void asm_do_bogomips_loop(void) { NOT_REACHED(); }

@@ -102,6 +102,7 @@ void idt_install() { }
 void irq_install() { }
 void hw_timer_setup() { }
 void irq_install_handler() { }
+void irq_uninstall_handler() { }
 void setup_sysenter_interface() { }
 void save_current_task_state() { }
 void switch_to_task() { }

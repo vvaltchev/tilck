@@ -12,11 +12,39 @@
 
 .section .text
 
+.global asm_do_bogomips_loop
 .global asm_enable_sse
 .global asm_enable_osxsave
 .global asm_enable_avx
 .global __asm_fpu_cpy_single_256_nt
 .global __asm_fpu_cpy_single_256_nt_read
+
+FUNC(asm_do_bogomips_loop):
+
+# Note: these NOPs are important to align the instructions
+# in the inner loop. Trying removing them and looping.
+# On my machine, the loop count drops in half!
+
+   nop
+   nop
+   nop
+
+.outer_loop:
+   mov    eax, 10000
+
+.inner_loop:
+   nop
+   sub eax, 1
+   jne .inner_loop
+
+   mov eax, 1
+   lock xadd DWORD PTR __bogo_loops, eax
+   test eax, eax
+   jns .outer_loop
+
+   ret
+
+END_FUNC(asm_do_bogomips_loop)
 
 # This function initialize both the x87 FPU and SSE
 FUNC(asm_enable_sse):

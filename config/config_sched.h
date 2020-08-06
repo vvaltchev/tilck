@@ -12,3 +12,17 @@
 
 /* --------- Boolean config variables --------- */
 #cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
+
+/*
+ * --------------------------------------------------------------------------
+ *                  Hard-coded global & derived constants
+ * --------------------------------------------------------------------------
+ *
+ * Here below there are some pseudo-constants not designed to be easily changed
+ * because of the code makes assumptions about them. Because of that, those
+ * constants are hard-coded and not available as CMake variables. With time,
+ * some of those constants get "promoted" and moved in CMake, others remain
+ * here. See the comments and think about the potential implications before
+ * promoting a hard-coded constant to a configurable CMake variable.
+ */
+#define MEASURE_BOGOMIPS_TICKS        (TIMER_HZ / 10)
