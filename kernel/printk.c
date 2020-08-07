@@ -162,6 +162,13 @@ switch_case:
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
 
+      case 'z':
+
+         if (!*++fmt)
+            goto out;
+
+         break;
+
       case 'l':
 
          if (!*++fmt)
@@ -191,22 +198,42 @@ switch_case:
 
       case 'd':
       case 'i':
-         itoa32(va_arg(args, s32), intbuf);
+
+         if (fmt[-1] == 'l' || fmt[-1] == 'z')
+            itoaN(va_arg(args, long), intbuf);
+         else
+            itoa32(va_arg(args, s32), intbuf);
+
          WRITE_STR(intbuf);
          break;
 
       case 'u':
-         uitoa32_dec(va_arg(args, u32), intbuf);
+
+         if (fmt[-1] == 'l' || fmt[-1] == 'z')
+            uitoaN(va_arg(args, ulong), intbuf, 10);
+         else
+            uitoa32_dec(va_arg(args, u32), intbuf);
+
          WRITE_STR(intbuf);
          break;
 
       case 'o':
-         uitoa32_oct(va_arg(args, u32), intbuf);
+
+         if (fmt[-1] == 'l' || fmt[-1] == 'z')
+            uitoaN(va_arg(args, ulong), intbuf, 8);
+         else
+            uitoa32_oct(va_arg(args, u32), intbuf);
+
          WRITE_STR(intbuf);
          break;
 
       case 'x':
-         uitoa32_hex(va_arg(args, u32), intbuf);
+
+         if (fmt[-1] == 'l' || fmt[-1] == 'z')
+            uitoaN(va_arg(args, ulong), intbuf, 16);
+         else
+            uitoa32_hex(va_arg(args, u32), intbuf);
+
          WRITE_STR(intbuf);
          break;
 
@@ -225,14 +252,7 @@ switch_case:
          break;
 
       case 'p':
-
-         if (NBITS == 32)
-            uitoa32_hex_fixed(va_arg(args, ulong), intbuf);
-         else if (NBITS == 64)
-            uitoa64_hex_fixed(va_arg(args, ulong), intbuf);
-         else
-            NOT_REACHED();
-
+         uitoaN_hex_fixed(va_arg(args, ulong), intbuf);
          WRITE_STR("0x");
          WRITE_STR(intbuf);
          break;
