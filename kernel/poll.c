@@ -10,10 +10,10 @@
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/timer.h>
 
-static u32
+static int
 poll_count_conds(struct pollfd *fds, nfds_t nfds)
 {
-   u32 cnt = 0;
+   int cnt = 0;
 
    for (nfds_t i = 0; i < nfds; i++) {
 
@@ -56,9 +56,9 @@ static void
 poll_set_conds(struct multi_obj_waiter *w,
                struct pollfd *fds,
                nfds_t nfds,
-               u32 cond_cnt)
+               int cond_cnt)
 {
-   u32 idx = 0;
+   int idx = 0;
 
    for (nfds_t i = 0; i < nfds; i++) {
 
@@ -156,7 +156,7 @@ poll_count_ready_fds(struct pollfd *fds, nfds_t nfds)
 }
 
 static int
-poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, u32 cond_cnt)
+poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 {
    struct task *curr = get_curr_task();
    struct multi_obj_waiter *waiter = NULL;
@@ -234,7 +234,7 @@ int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
    struct task *curr = get_curr_task();
    struct pollfd *fds = curr->args_copybuf;
    int rc, ready_fds_cnt;
-   u32 cond_cnt = 0;
+   int cond_cnt = 0;
 
    if (sizeof(struct pollfd) * nfds > ARGS_COPYBUF_SIZE)
       return -EINVAL;

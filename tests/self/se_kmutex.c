@@ -27,7 +27,7 @@ static struct kmutex order_mutex;
 
 static void sek_set_vars(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(sek_vars); i++) {
+   for (int i = 0; i < ARRAY_SIZE(sek_vars); i++) {
       sek_vars[i] = set[i];
       kernel_yield();
    }
@@ -35,7 +35,7 @@ static void sek_set_vars(const int *set)
 
 static void sek_check_set_eq(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(sek_vars); i++) {
+   for (int i = 0; i < ARRAY_SIZE(sek_vars); i++) {
       VERIFY(sek_vars[i] == set[i]);
       kernel_yield();
    }
@@ -296,7 +296,7 @@ void selftest_kmutex_ord_med()
    kmutex_init(&test_mutex, KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED);
    kmutex_init(&order_mutex, 0);
 
-   for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
+   for (int i = 0; i < ARRAY_SIZE(tids); i++) {
 
       if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
@@ -312,7 +312,7 @@ void selftest_kmutex_ord_med()
    VERIFY(test_mutex.max_num_waiters > 0);
 #endif
 
-   for (u32 i = 0; i < ARRAY_SIZE(tids); i++) {
+   for (int i = 0; i < ARRAY_SIZE(tids); i++) {
 
       int t1, t2;
 

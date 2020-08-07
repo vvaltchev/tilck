@@ -66,7 +66,7 @@ struct mwobj_elem {
  */
 struct multi_obj_waiter {
 
-   u32 count;                    /* number of `struct mwobj_elem` elements */
+   int count;                    /* number of `struct mwobj_elem` elements */
    struct mwobj_elem elems[];    /* variable-size array */
 };
 
@@ -97,12 +97,12 @@ void task_set_wait_obj(struct task *ti,
 
 void *task_reset_wait_obj(struct task *ti);
 
-struct multi_obj_waiter *allocate_mobj_waiter(u32 elems);
+struct multi_obj_waiter *allocate_mobj_waiter(int elems);
 void free_mobj_waiter(struct multi_obj_waiter *w);
 void mobj_waiter_reset(struct mwobj_elem *e);
-void mobj_waiter_reset2(struct multi_obj_waiter *w, u32 index);
+void mobj_waiter_reset2(struct multi_obj_waiter *w, int index);
 void mobj_waiter_set(struct multi_obj_waiter *w,
-                     u32 index,
+                     int index,
                      enum wo_type type,
                      void *ptr,
                      struct list *wait_list);

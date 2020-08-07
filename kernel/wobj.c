@@ -76,10 +76,10 @@ void *task_reset_wait_obj(struct task *ti)
 
 /* Multi wait obj stuff */
 
-struct multi_obj_waiter *allocate_mobj_waiter(u32 elems)
+struct multi_obj_waiter *allocate_mobj_waiter(int elems)
 {
    size_t s =
-      sizeof(struct multi_obj_waiter) + sizeof(struct mwobj_elem) * elems;
+      sizeof(struct multi_obj_waiter) + sizeof(struct mwobj_elem) * (u32)elems;
 
    struct multi_obj_waiter *w = task_temp_kernel_alloc(s);
 
@@ -96,7 +96,7 @@ void free_mobj_waiter(struct multi_obj_waiter *w)
    if (!w)
       return;
 
-   for (u32 i = 0; i < w->count; i++) {
+   for (int i = 0; i < w->count; i++) {
       mobj_waiter_reset2(w, i);
    }
 
@@ -105,7 +105,7 @@ void free_mobj_waiter(struct multi_obj_waiter *w)
 
 void
 mobj_waiter_set(struct multi_obj_waiter *w,
-                u32 index,
+                int index,
                 enum wo_type type,
                 void *ptr,
                 struct list *wait_list)
@@ -129,7 +129,7 @@ void mobj_waiter_reset(struct mwobj_elem *e)
    e->type = WOBJ_NONE;
 }
 
-void mobj_waiter_reset2(struct multi_obj_waiter *w, u32 index)
+void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
 {
    struct mwobj_elem *e = &w->elems[index];
    mobj_waiter_reset(e);

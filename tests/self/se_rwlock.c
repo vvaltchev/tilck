@@ -54,7 +54,7 @@ static struct se_rwlock_ctx se_wp_ctx =
 
 static void se_rwlock_set_vars(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
+   for (int i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
       se_rwlock_vars[i] = set[i];
       kernel_yield();
    }
@@ -62,7 +62,7 @@ static void se_rwlock_set_vars(const int *set)
 
 static void se_rwlock_check_set_eq(const int *set)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
+   for (int i = 0; i < ARRAY_SIZE(se_rwlock_vars); i++) {
       VERIFY(se_rwlock_vars[i] == set[i]);
       kernel_yield();
    }

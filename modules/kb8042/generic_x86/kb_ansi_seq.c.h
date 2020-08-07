@@ -64,7 +64,7 @@ static bool kb_scancode_to_ansi_seq(u32 key, u8 modifiers, char *seq)
     * constants multipliers in the function of N describing their *real*, not
     * asymptotic, cost.
     */
-   for (u32 i = 0; i < ARRAY_SIZE(ansi_sequences); i++) {
+   for (int i = 0; i < ARRAY_SIZE(ansi_sequences); i++) {
       if (ansi_sequences[i].key == key) {
          base_seq = ansi_sequences[i].seq;
          break;

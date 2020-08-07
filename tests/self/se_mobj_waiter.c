@@ -38,17 +38,17 @@ static void mobj_waiter_wait_thread(void *arg)
    struct multi_obj_waiter *w = allocate_mobj_waiter(ARRAY_SIZE(conds));
    VERIFY(w != NULL);
 
-   for (u32 j = 0; j < ARRAY_SIZE(conds); j++)
+   for (int j = 0; j < ARRAY_SIZE(conds); j++)
       mobj_waiter_set(w, j, WOBJ_KCOND, &conds[j], &conds[j].wait_list);
 
-   for (u32 i = 0; i < ARRAY_SIZE(conds); i++) {
+   for (int i = 0; i < ARRAY_SIZE(conds); i++) {
 
       printk("[wait th]: going to sleep on waiter obj\n");
       kernel_sleep_on_waiter(w);
 
       printk("[wait th ] wake up #%u\n", i);
 
-      for (size_t j = 0; j < w->count; j++) {
+      for (int j = 0; j < w->count; j++) {
 
          struct mwobj_elem *me = &w->elems[j];
 
@@ -72,9 +72,9 @@ retry:
    mobj_se_test_signal_counter = 0;
    mobj_se_test_assumption_failed = false;
 
-   for (size_t i = 0; i < ARRAY_SIZE(conds); i++) {
+   for (int i = 0; i < ARRAY_SIZE(conds); i++) {
       kcond_init(&conds[i]);
-      tids[i] = kthread_create(&mobj_waiter_sig_thread, 0, (void*) i);
+      tids[i] = kthread_create(&mobj_waiter_sig_thread, 0, TO_PTR(i));
       VERIFY(tids[i] > 0);
    }
 
@@ -84,7 +84,7 @@ retry:
    kthread_join_all(tids, ARRAY_SIZE(tids));
    kthread_join(w_tid);
 
-   for (size_t i = 0; i < ARRAY_SIZE(conds); i++)
+   for (int i = 0; i < ARRAY_SIZE(conds); i++)
       kcond_destory(&conds[i]);
 
    if (mobj_se_test_assumption_failed)

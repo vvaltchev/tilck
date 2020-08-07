@@ -153,7 +153,7 @@ selftest_bintree_perf_med(void)
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
 
-   for (u32 i = 0; i < ARRAY_SIZE(lookup_elems); i++)
+   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++)
       do_bintree_perf_test(lookup_elems[i], true, find_obj_with_bst);
 
    printk("\n");
@@ -162,7 +162,7 @@ selftest_bintree_perf_med(void)
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
 
-   for (u32 i = 0; i < ARRAY_SIZE(lookup_elems); i++)
+   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++)
       do_bintree_perf_test(lookup_elems[i], true, find_obj_with_bst2);
 
    printk("\n");

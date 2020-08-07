@@ -15,7 +15,7 @@ struct select_ctx {
    fd_set *u_sets[3];
    struct timeval *tv;
    struct timeval *user_tv;
-   u32 cond_cnt;
+   int cond_cnt;
    u32 timeout_ticks;
 };
 
@@ -59,7 +59,7 @@ select_count_cond_per_set(struct select_ctx *c,
 static int
 select_set_kcond(int nfds,
                  struct multi_obj_waiter *w,
-                 u32 *idx,
+                 int *idx,
                  fd_set *set,
                  func_get_rwe_cond get_cond)
 {
@@ -152,7 +152,7 @@ select_wait_on_cond(struct select_ctx *c)
 {
    struct task *curr = get_curr_task();
    struct multi_obj_waiter *waiter = NULL;
-   u32 idx = 0;
+   int idx = 0;
    int rc = 0;
 
    if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))

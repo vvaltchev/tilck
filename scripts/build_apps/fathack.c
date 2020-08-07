@@ -204,8 +204,8 @@ parse_opts(int argc, char **argv, struct action **a_ref, const char **file_ref)
    if (argc < 3)
       return -1;
 
-   for (u32 i = 0; !a && i < ARRAY_SIZE(actions); i++) {
-      for (u32 j = 0; j < 2; j++)
+   for (int i = 0; !a && i < ARRAY_SIZE(actions); i++) {
+      for (int j = 0; j < 2; j++)
          if (!strcmp(argv[1], actions[i].params[j]))
             a = &actions[i];
    }

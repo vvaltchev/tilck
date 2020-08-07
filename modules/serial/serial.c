@@ -106,7 +106,7 @@ static void init_serial_comm(void)
    }
    enable_preemption();
 
-   for (u32 i = 0; i < ARRAY_SIZE(legacy_serial_ports); i++) {
+   for (int i = 0; i < ARRAY_SIZE(legacy_serial_ports); i++) {
 
       struct serial_device *dev = &legacy_serial_ports[i];
 
