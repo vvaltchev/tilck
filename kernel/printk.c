@@ -96,6 +96,14 @@ out:
    else /* fmt[-1] is 'l' or 'z' */                      \
       uitoaN(va_arg(args, ulong), intbuf, base);
 
+static u8 diuox_base[256] =
+{
+   ['d'] = 10,
+   ['i'] = 10,
+   ['u'] = 10,
+   ['o'] = 8,
+   ['x'] = 16,
+};
 
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 {
@@ -185,45 +193,16 @@ switch_case:
             if (!*++fmt)
                goto out;
 
-            if (*fmt == 'u')
-               uitoa64(va_arg(args, u64), intbuf, 10);
-            else if (*fmt == 'i' || *fmt == 'd')
-               itoa64(va_arg(args, s64), intbuf);
-            else if (*fmt == 'x')
-               uitoa64_hex_fixed(va_arg(args, u64), intbuf);
-            else if (*fmt == 'o')
-               uitoa64(va_arg(args, u64), intbuf, 8);
-            else
+            if (!diuox_base[(u8)*fmt])
                break;
+
+            if (*fmt == 'i' || *fmt == 'd')
+               itoa64(va_arg(args, s64), intbuf);
+            else
+               uitoa64(va_arg(args, u64), intbuf, diuox_base[(u8)*fmt]);
 
             WRITE_STR(intbuf);
          }
-         break;
-
-      case 'd':
-      case 'i':
-
-         if (fmt[-1] == '%')
-            itoa32(va_arg(args, s32), intbuf);
-         else /* 'l' or 'z' */
-            itoaN(va_arg(args, long), intbuf);
-
-         WRITE_STR(intbuf);
-         break;
-
-      case 'u':
-         UOX_ITOA(10);
-         WRITE_STR(intbuf);
-         break;
-
-      case 'o':
-         UOX_ITOA(8);
-         WRITE_STR(intbuf);
-         break;
-
-      case 'x':
-         UOX_ITOA(16);
-         WRITE_STR(intbuf);
          break;
 
       case 'c':
@@ -247,8 +226,28 @@ switch_case:
          break;
 
       default:
-         WRITE_CHAR('%');
-         WRITE_CHAR(*fmt);
+
+         if (diuox_base[(u8)*fmt]) {
+
+            if (*fmt == 'd' || *fmt == 'i') {
+
+               if (fmt[-1] == '%')
+                  itoa32(va_arg(args, s32), intbuf);
+               else /* 'l' or 'z' */
+                  itoaN(va_arg(args, long), intbuf);
+
+            } else {
+
+               UOX_ITOA(diuox_base[(u8)*fmt]);
+            }
+
+            WRITE_STR(intbuf);
+
+         } else {
+
+            WRITE_CHAR('%');
+            WRITE_CHAR(*fmt);
+         }
       }
 
       snprintk_ctx_reset_per_argument_state(ctx);
