@@ -121,3 +121,13 @@ get_first_set_bit_index64(u64 num)
 
    return i;
 }
+
+/*
+ * Sign extend the `w`-bits wide value in `val`
+ */
+CONSTEXPR static ALWAYS_INLINE long
+sign_extend(long val, ulong w)
+{
+   ulong m = (sizeof(long) * 8) - w;
+   return (val << m) >> m;
+}
