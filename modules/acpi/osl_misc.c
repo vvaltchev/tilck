@@ -129,6 +129,40 @@ AcpiOsExecute(
    return AE_OK;
 }
 
+ACPI_STATUS
+AcpiOsSignal (
+    UINT32                  Function,
+    void                    *Info)
+{
+   if (Function == ACPI_SIGNAL_FATAL) {
+
+      ACPI_SIGNAL_FATAL_INFO *i = Info;
+
+      panic("ACPI: fatal signal. Type: 0x%x, Code: 0x%x, Arg: 0x%x\n",
+            i->Type, i->Code, i->Argument);
+
+   } else if (Function == ACPI_SIGNAL_BREAKPOINT) {
+
+      printk("ACPI: breakpoint: %s\n", (char *)Info);
+      printk("ACPI: ignoring the breakpoint\n");
+      return AE_OK;
+
+   } else {
+
+      panic("ACPI: unknown signal: %u\n", Function);
+   }
+}
+
+ACPI_STATUS
+AcpiOsEnterSleep(
+    UINT8                   SleepState,
+    UINT32                  RegaValue,
+    UINT32                  RegbValue)
+{
+   printk("ACPI sleep: %u, 0x%x, 0x%x\n", SleepState, RegaValue, RegaValue);
+   return AE_OK;
+}
+
 ACPI_PRINTF_LIKE (1)
 void ACPI_INTERNAL_VAR_XFACE
 AcpiOsPrintf(const char *Format, ...)
@@ -147,36 +181,13 @@ AcpiOsVprintf(
    vprintk(Format, Args);
 }
 
+/* ACPI DEBUGGER funcs: keep not implemented for the moment */
+
 void
 AcpiOsRedirectOutput(void *Destination)
 {
    printk("AcpiOsRedirectOutput ignored\n");
 }
-
-ACPI_STATUS
-AcpiOsSignal (
-    UINT32                  Function,
-    void                    *Info)
-{
-   if (Function == ACPI_SIGNAL_FATAL) {
-
-      ACPI_SIGNAL_FATAL_INFO *i = Info;
-
-      panic("ACPI fatal. Type: 0x%x, Code: 0x%x, Arg: 0x%x\n",
-            i->Type, i->Code, i->Argument);
-
-   } else if (Function == ACPI_SIGNAL_BREAKPOINT) {
-
-      printk("ACPI: ignoring breakpoint: %s\n", (char *)Info);
-      return AE_OK;
-
-   } else {
-
-      panic("Unknown AcpiOsFunction: %u\n", Function);
-   }
-}
-
-/* ACPI DEBUGGER funcs: keep not implemented for the moment */
 
 ACPI_STATUS
 AcpiOsGetLine (
