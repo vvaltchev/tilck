@@ -59,14 +59,9 @@ File[1]:
 Original source[1]:
    https://wiki.osdev.org/A20_Line
 
-File[2]:
-   kernel/arch/i386/pic.c.h
-Original source[2]:
-   https://wiki.osdev.org/PIC
-
 Comments:
-   The above-mentioned files contain more or less edited code taken from
-   wiki.osdev.org.
+   The boot_enable_a20.S file contain code taken from wiki.osdev.org, with
+   additional changes.
 
 Original license:
    As stated here: https://forum.osdev.org/viewtopic.php?f=2&t=23838, for all
@@ -114,3 +109,16 @@ musl as a whole is licensed under the following standard MIT license:
    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**************************************************************************
+******************************* Item 4 ***********************************
+**************************************************************************
+
+File[1]:
+   include/3rd_party/bithacks.h
+
+Original source:
+   http://graphics.stanford.edu/~seander/bithacks.html
+
+Original license:
+   PUBLIC DOMAIN (see notice at the beginning of bithacks.h)
