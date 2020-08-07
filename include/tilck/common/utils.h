@@ -40,3 +40,10 @@ round_down_at64(u64 n, u64 unit)
 {
    return (n / unit) * unit;
 }
+
+CONSTEXPR static ALWAYS_INLINE ulong
+make_bitmask(ulong width)
+{
+   ulong w = (sizeof(ulong) * 8) - width;
+   return (((ulong)-1) << w) >> w;
+}
