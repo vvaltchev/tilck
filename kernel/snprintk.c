@@ -4,6 +4,9 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 
+/* Check for the 'j' length modifier (intmax_t) */
+STATIC_ASSERT(sizeof(intmax_t) == sizeof(long long));
+
 static bool
 write_in_buf_str(char **buf_ref, char *buf_end, const char *s)
 {
@@ -26,8 +29,15 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
    return ptr < buf_end;
 }
 
+enum printk_width {
+   pw_default = 0,
+   pw_long = 1,
+   pw_long_long = 2,
+};
+
 struct snprintk_ctx {
 
+   enum printk_width width;
    int left_padding;
    int right_padding;
    char *buf;
@@ -39,6 +49,7 @@ struct snprintk_ctx {
 static void
 snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
 {
+   ctx->width = pw_default;
    ctx->left_padding = 0;
    ctx->right_padding = 0;
    ctx->zero_lpad = false;
@@ -124,12 +135,6 @@ out:
    return false;
 }
 
-#define UOX_ITOA(base)                                   \
-   if (fmt[-1] == '%')                                   \
-      uitoa32(va_arg(args, u32), intbuf, base);          \
-   else /* fmt[-1] is 'l' or 'z' */                      \
-      uitoaN(va_arg(args, ulong), intbuf, base);
-
 static u8 diuox_base[128] =
 {
    ['d'] = 10,
@@ -142,14 +147,14 @@ static u8 diuox_base[128] =
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 {
    char intbuf[64];
+   u8 base;
 
    struct snprintk_ctx __ctx = {
-      .left_padding = 0,
-      .right_padding = 0,
-      .zero_lpad = false,
       .buf = initial_buf,
       .buf_end = initial_buf + size,
    };
+
+   snprintk_ctx_reset_per_argument_state(&__ctx);
 
    /* ctx has to be a pointer because of macros shared with WRITE_STR */
    struct snprintk_ctx *ctx = &__ctx;
@@ -232,7 +237,13 @@ switch_case:
          if (!*++fmt)
             goto truncated_seq;
 
+         ctx->width = pw_long;
          goto switch_case;
+
+      case 'j': /* fall-through */
+      case 'q': /* fall-through */
+      case 'L':
+         goto fmt_long_long;
 
       // %l makes the following type (d, i, o, u, x) a long.
       case 'l':
@@ -240,22 +251,17 @@ switch_case:
          if (!*++fmt)
             goto truncated_seq;
 
+         ctx->width = pw_long;
+
          // %ll make the following type a long long.
          if (*fmt == 'l') {
+
+fmt_long_long:
 
             if (!*++fmt)
                goto truncated_seq;
 
-            if (!diuox_base[(u8)*fmt])
-               goto incomplete_seq;
-
-            if (*fmt == 'i' || *fmt == 'd')
-               itoa64(va_arg(args, s64), intbuf);
-            else
-               uitoa64(va_arg(args, u64), intbuf, diuox_base[(u8)*fmt]);
-
-            WRITE_STR(intbuf);
-            break;
+            ctx->width = pw_long_long;
          }
 
          goto switch_case;
@@ -282,18 +288,35 @@ switch_case:
 
       default:
 
-         if (diuox_base[(u8)*fmt]) {
+         base = diuox_base[(u8)*fmt];
+
+         if (base) {
 
             if (*fmt == 'd' || *fmt == 'i') {
 
-               if (fmt[-1] == '%')
-                  itoa32(va_arg(args, s32), intbuf);
-               else /* 'l' or 'z' */
-                  itoaN(va_arg(args, long), intbuf);
+               switch (ctx->width) {
+                  case pw_long:
+                     itoaN(va_arg(args, long), intbuf);
+                     break;
+                  case pw_long_long:
+                     itoa64(va_arg(args, s64), intbuf);
+                     break;
+                  default:
+                     itoa32(va_arg(args, s32), intbuf);
+               }
 
             } else {
 
-               UOX_ITOA(diuox_base[(u8)*fmt]);
+               switch (ctx->width) {
+                  case pw_long:
+                     uitoaN(va_arg(args, ulong), intbuf, base);
+                     break;
+                  case pw_long_long:
+                     uitoa64(va_arg(args, u64), intbuf, base);
+                     break;
+                  default:
+                     uitoa32(va_arg(args, u32), intbuf, base);
+               }
             }
 
             WRITE_STR(intbuf);

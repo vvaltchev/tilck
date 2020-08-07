@@ -40,6 +40,14 @@ TEST(printk, basic)
    EXPECT_EQ(spk_wrapper("%llx", 0xaabbccddeeffll), "aabbccddeeff");
 }
 
+TEST(printk, rare)
+{
+   /* Same as long long */
+   EXPECT_EQ(spk_wrapper("%Lx", 0xaabbccddeeffll), "aabbccddeeff");
+   EXPECT_EQ(spk_wrapper("%qx", 0xaabbccddeeffll), "aabbccddeeff");
+   EXPECT_EQ(spk_wrapper("%jx", 0xaabbccddeeffll), "aabbccddeeff");
+}
+
 TEST(printk, hashsign)
 {
    EXPECT_EQ(spk_wrapper("%#x",   0x123), "0x123");    // Just prepend "0x"
