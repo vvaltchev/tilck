@@ -46,6 +46,11 @@ TEST(printk, rare)
    EXPECT_EQ(spk_wrapper("%Lx", 0xaabbccddeeffll), "aabbccddeeff");
    EXPECT_EQ(spk_wrapper("%qx", 0xaabbccddeeffll), "aabbccddeeff");
    EXPECT_EQ(spk_wrapper("%jx", 0xaabbccddeeffll), "aabbccddeeff");
+
+   /* Half (short) and half half (char) */
+   EXPECT_EQ(spk_wrapper("%x", (char)-1), "ffffffff"); /* just for comparison */
+   EXPECT_EQ(spk_wrapper("%hx", (char)-1), "ffff");
+   EXPECT_EQ(spk_wrapper("%hhx", (char)-1), "ff");
 }
 
 TEST(printk, hashsign)

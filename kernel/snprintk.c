@@ -30,9 +30,11 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
 }
 
 enum printk_width {
-   pw_default = 0,
-   pw_long = 1,
+   pw_default   = 0,
+   pw_long      = 1,
    pw_long_long = 2,
+   pw_short     = 3,
+   pw_char      = 4
 };
 
 struct snprintk_ctx {
@@ -274,6 +276,29 @@ switch_case:
 
          goto switch_case;
 
+      case 'h':
+
+         if (ctx->width == pw_default) {
+
+            if (!*++fmt)
+               goto truncated_seq;
+
+            ctx->width = pw_short;
+
+         } else if (ctx->width == pw_short) {
+
+            if (!*++fmt)
+               goto truncated_seq;
+
+            ctx->width = pw_char;
+
+         } else {
+
+            goto unknown_seq;             /* %hhh */
+         }
+
+         goto switch_case;
+
       case 'c':
          WRITE_CHAR((char) va_arg(args, s32));
 
@@ -303,27 +328,41 @@ switch_case:
          if (*fmt == 'd' || *fmt == 'i') {
 
             switch (ctx->width) {
-               case pw_long:
-                  itoaN(va_arg(args, long), intbuf);
-                  break;
                case pw_long_long:
                   itoa64(va_arg(args, s64), intbuf);
                   break;
-               default:
-                  itoa32(va_arg(args, s32), intbuf);
+               case pw_long:
+                  itoaN(va_arg(args, long), intbuf);
+                  break;
+               case pw_default:
+                  itoaN(va_arg(args, int), intbuf);
+                  break;
+               case pw_short:
+                  itoaN((s16)va_arg(args, int), intbuf);
+                  break;
+               case pw_char:
+                  itoaN((s8)va_arg(args, int), intbuf);
+                  break;
             }
 
          } else {
 
             switch (ctx->width) {
-               case pw_long:
-                  uitoaN(va_arg(args, ulong), intbuf, base);
-                  break;
                case pw_long_long:
                   uitoa64(va_arg(args, u64), intbuf, base);
                   break;
-               default:
-                  uitoa32(va_arg(args, u32), intbuf, base);
+               case pw_long:
+                  uitoaN(va_arg(args, ulong), intbuf, base);
+                  break;
+               case pw_default:
+                  uitoaN(va_arg(args, unsigned), intbuf, base);
+                  break;
+               case pw_short:
+                  uitoaN((u16)va_arg(args, unsigned), intbuf, base);
+                  break;
+               case pw_char:
+                  uitoaN((u8)va_arg(args, unsigned), intbuf, base);
+                  break;
             }
          }
 
