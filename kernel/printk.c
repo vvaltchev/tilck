@@ -90,6 +90,12 @@ out:
    return false;
 }
 
+#define UOX_ITOA(base)                                   \
+   if (fmt[-1] == '%')                                   \
+      uitoa32(va_arg(args, u32), intbuf, base);          \
+   else /* fmt[-1] is 'l' or 'z' */                      \
+      uitoaN(va_arg(args, ulong), intbuf, base);
+
 
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 {
@@ -179,61 +185,44 @@ switch_case:
             if (!*++fmt)
                goto out;
 
-            if (*fmt == 'u') {
+            if (*fmt == 'u')
                uitoa64(va_arg(args, u64), intbuf, 10);
-               WRITE_STR(intbuf);
-            } else if (*fmt == 'i' || *fmt == 'd') {
+            else if (*fmt == 'i' || *fmt == 'd')
                itoa64(va_arg(args, s64), intbuf);
-               WRITE_STR(intbuf);
-            } else if (*fmt == 'x') {
+            else if (*fmt == 'x')
                uitoa64_hex_fixed(va_arg(args, u64), intbuf);
-               WRITE_STR(intbuf);
-            } else if (*fmt == 'o') {
+            else if (*fmt == 'o')
                uitoa64(va_arg(args, u64), intbuf, 8);
-               WRITE_STR(intbuf);
-            }
+            else
+               break;
 
+            WRITE_STR(intbuf);
          }
          break;
 
       case 'd':
       case 'i':
 
-         if (fmt[-1] == 'l' || fmt[-1] == 'z')
-            itoaN(va_arg(args, long), intbuf);
-         else
+         if (fmt[-1] == '%')
             itoa32(va_arg(args, s32), intbuf);
+         else /* 'l' or 'z' */
+            itoaN(va_arg(args, long), intbuf);
 
          WRITE_STR(intbuf);
          break;
 
       case 'u':
-
-         if (fmt[-1] == 'l' || fmt[-1] == 'z')
-            uitoaN(va_arg(args, ulong), intbuf, 10);
-         else
-            uitoa32(va_arg(args, u32), intbuf, 10);
-
+         UOX_ITOA(10);
          WRITE_STR(intbuf);
          break;
 
       case 'o':
-
-         if (fmt[-1] == 'l' || fmt[-1] == 'z')
-            uitoaN(va_arg(args, ulong), intbuf, 8);
-         else
-            uitoa32(va_arg(args, u32), intbuf, 8);
-
+         UOX_ITOA(8);
          WRITE_STR(intbuf);
          break;
 
       case 'x':
-
-         if (fmt[-1] == 'l' || fmt[-1] == 'z')
-            uitoaN(va_arg(args, ulong), intbuf, 16);
-         else
-            uitoa32(va_arg(args, u32), intbuf, 16);
-
+         UOX_ITOA(16);
          WRITE_STR(intbuf);
          break;
 
