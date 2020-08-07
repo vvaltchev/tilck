@@ -38,7 +38,7 @@ void vprintk(const char *fmt, va_list args)
             ++ptr;
             if (*ptr) {
                if (*ptr == 'u') {
-                  uitoa64_dec(va_arg(args, u64), buf);
+                  uitoa64(va_arg(args, u64), buf, 10);
                   print_string(buf);
                } else if (*ptr == 'i' || *ptr == 'd') {
                   itoa64(va_arg(args, s64), buf);
@@ -58,12 +58,12 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'u':
-         uitoa32_dec(va_arg(args, u32), buf);
+         uitoa32(va_arg(args, u32), buf, 10);
          print_string(buf);
          break;
 
       case 'x':
-         uitoa32_hex(va_arg(args, u32), buf);
+         uitoa32(va_arg(args, u32), buf, 10);
          print_string(buf);
          break;
 
@@ -76,7 +76,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'p':
-         uitoa32_hex_fixed(va_arg(args, ulong), buf);
+         uitoaN_hex_fixed(va_arg(args, ulong), buf);
          print_string("0x");
          print_string(buf);
          break;

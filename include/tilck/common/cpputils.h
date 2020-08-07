@@ -98,6 +98,13 @@ template <>
 struct unsigned_type<s64> {
    typedef u64 type;
 };
+#if NBITS == 32
+template <>
+struct unsigned_type<long> {
+   typedef ulong type;
+};
+#endif
+
 
 template <>
 struct unsigned_type<u8> {
@@ -115,6 +122,12 @@ template <>
 struct unsigned_type<u64> {
    typedef u64 type;
 };
+#if NBITS == 32
+template <>
+struct unsigned_type<ulong> {
+   typedef ulong type;
+};
+#endif
 
 /* is unsigned */
 

@@ -27,11 +27,11 @@ void __uitoa_fixed(T value, char *buf)
    *ptr = 0;
 }
 
-template <typename T, u32 base>
-void __itoa(T svalue, char *buf)
+template <typename T>
+void __itoa(T svalue, char *buf, int base)
 {
-   STATIC_ASSERT(IN_RANGE_INC(base, 2, 16));
    typedef typename unsigned_type<T>::type U; /* same as T, if T is unsigned */
+   ASSERT(IN_RANGE_INC(base, 2, 16));
 
    char *ptr = buf;
 
@@ -41,15 +41,15 @@ void __itoa(T svalue, char *buf)
       return;
    }
 
-   /* If U == T, svalue >= 0 will always be true */
+   /* If U == T, svalue >= 0 will always be true, at compile time */
    U value = svalue >= 0 ? (U) svalue : (U) -svalue;
 
    while (value) {
-      *ptr++ = DIGITS[value % base];
-      value /= base;
+      *ptr++ = DIGITS[value % (U)base];
+      value /= (U)base;
    }
 
-   /* If U == T, svalue < 0 will always be false */
+   /* If U == T, svalue < 0 will always be false, at compile time */
    if (svalue < 0)
       *ptr++ = '-';
 
@@ -116,92 +116,56 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
    return res;
 }
 
-
-#define instantiate_uitoa_hex_fixed(func_name, bits)       \
-   void func_name(u##bits value, char *buf) {              \
-      __uitoa_fixed(value, buf);                           \
-   }
-
-#define instantiate_uitoa(func_name, bits, base)           \
-   void func_name(u##bits value, char *buf) {              \
-      __itoa<u##bits, base>(value, buf);                   \
-   }
-
-#define instantiate_itoa(func_name, bits, base)            \
-   void func_name(s##bits svalue, char *buf) {             \
-      __itoa<s##bits, base>(svalue, buf);                  \
-   }
-
 extern "C" {
-
-   instantiate_uitoa_hex_fixed(uitoa32_hex_fixed, 32)
-   instantiate_uitoa_hex_fixed(uitoa64_hex_fixed, 64)
-
-   instantiate_uitoa(uitoa32_dec, 32, 10)
-   instantiate_uitoa(uitoa64_dec, 64, 10)
-   instantiate_uitoa(uitoa32_oct, 32, 8)
-   instantiate_uitoa(uitoa64_oct, 64, 8)
-   instantiate_uitoa(uitoa32_hex, 32, 16)
-   instantiate_uitoa(uitoa64_hex, 64, 16)
-
-   instantiate_itoa(itoa32, 32, 10)
-   instantiate_itoa(itoa64, 64, 10)
 
    long tilck_strtol(const char *s, const char **endptr, int base, int *err)
    {
       return __tilck_strtol<long>(s, endptr, base, err);
    }
 
+   void uitoa32_hex_fixed(u32 value, char *buf)
+   {
+      __uitoa_fixed(value, buf);
+   }
+
+   void uitoa64_hex_fixed(u64 value, char *buf)
+   {
+      __uitoa_fixed(value, buf);
+   }
+
    void uitoaN_hex_fixed(ulong value, char *buf)
    {
-      if (NBITS == 32)
-         uitoa32_hex_fixed(value, buf);
-      else
-         uitoa64_hex_fixed(value, buf);
+      __uitoa_fixed(value, buf);
+   }
+
+   void itoa32(s32 value, char *buf)
+   {
+      __itoa(value, buf, 10);
+   }
+
+   void itoa64(s64 value, char *buf)
+   {
+      __itoa(value, buf, 10);
    }
 
    void itoaN(long value, char *buf)
    {
-      if (NBITS == 32)
-         itoa32(value, buf);
-      else
-         itoa64(value, buf);
+      __itoa(value, buf, 10);
+   }
+
+   void uitoa32(u32 value, char *buf, int base)
+   {
+      __itoa(value, buf, base);
+   }
+
+   void uitoa64(u64 value, char *buf, int base)
+   {
+      __itoa(value, buf, base);
    }
 
    void uitoaN(ulong value, char *buf, int base)
    {
-      if (NBITS == 32) {
-
-         switch (base) {
-            case 8:
-               uitoa32_oct(value, buf);
-               break;
-            case 10:
-               uitoa32_dec(value, buf);
-               break;
-            case 16:
-               uitoa32_hex(value, buf);
-               break;
-            default:
-               NOT_IMPLEMENTED();
-         }
-
-      } else {
-
-         switch (base) {
-            case 8:
-               uitoa64_oct(value, buf);
-               break;
-            case 10:
-               uitoa64_dec(value, buf);
-               break;
-            case 16:
-               uitoa64_hex(value, buf);
-               break;
-            default:
-               NOT_IMPLEMENTED();
-         }
-      }
+      __itoa(value, buf, base);
    }
 
 #ifdef __TILCK_KERNEL__

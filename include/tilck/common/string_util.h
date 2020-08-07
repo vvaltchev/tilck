@@ -103,12 +103,8 @@ void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);
 void itoaN(long value, char *buf);                /* pointer-size */
 
-void uitoa32_dec(u32 value, char *destBuf);
-void uitoa64_dec(u64 value, char *destBuf);
-void uitoa32_oct(u32 value, char *buf);
-void uitoa64_oct(u64 value, char *buf);
-void uitoa32_hex(u32 value, char *buf);
-void uitoa64_hex(u64 value, char *buf);
+void uitoa32(u32 value, char *buf, int base);
+void uitoa64(u64 value, char *buf, int base);
 void uitoaN(ulong value, char *buf, int base);    /* pointer-size */
 
 void uitoa32_hex_fixed(u32 value, char *buf);

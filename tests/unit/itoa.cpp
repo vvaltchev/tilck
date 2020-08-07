@@ -43,10 +43,10 @@ template <>
 inline void itoa_wrapper<s64>(s64 val, char *buf) { itoa64(val, buf); }
 
 template <>
-inline void itoa_wrapper<u32>(u32 val, char *buf) { uitoa32_dec(val, buf); }
+inline void itoa_wrapper<u32>(u32 val, char *buf) { uitoa32(val, buf, 10); }
 
 template <>
-inline void itoa_wrapper<u64>(u64 val, char *buf) { uitoa64_dec(val, buf); }
+inline void itoa_wrapper<u64>(u64 val, char *buf) { uitoa64(val, buf, 10); }
 
 // strtol() wrapper (s32 and s64 only)
 template <typename T>
@@ -77,7 +77,7 @@ template<>
 inline void uitoa_hex_wrapper<u32>(u32 val, char *buf, bool fixed)
 {
    if (!fixed)
-      uitoa32_hex(val, buf);
+      uitoa32(val, buf, 16);
    else
       uitoa32_hex_fixed(val, buf);
 }
@@ -86,7 +86,7 @@ template<>
 inline void uitoa_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
 {
    if (!fixed)
-      uitoa64_hex(val, buf);
+      uitoa64(val, buf, 16);
    else
       uitoa64_hex_fixed(val, buf);
 }

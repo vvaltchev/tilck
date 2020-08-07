@@ -180,7 +180,7 @@ switch_case:
                goto out;
 
             if (*fmt == 'u') {
-               uitoa64_dec(va_arg(args, u64), intbuf);
+               uitoa64(va_arg(args, u64), intbuf, 10);
                WRITE_STR(intbuf);
             } else if (*fmt == 'i' || *fmt == 'd') {
                itoa64(va_arg(args, s64), intbuf);
@@ -189,7 +189,7 @@ switch_case:
                uitoa64_hex_fixed(va_arg(args, u64), intbuf);
                WRITE_STR(intbuf);
             } else if (*fmt == 'o') {
-               uitoa64_oct(va_arg(args, u64), intbuf);
+               uitoa64(va_arg(args, u64), intbuf, 8);
                WRITE_STR(intbuf);
             }
 
@@ -212,7 +212,7 @@ switch_case:
          if (fmt[-1] == 'l' || fmt[-1] == 'z')
             uitoaN(va_arg(args, ulong), intbuf, 10);
          else
-            uitoa32_dec(va_arg(args, u32), intbuf);
+            uitoa32(va_arg(args, u32), intbuf, 10);
 
          WRITE_STR(intbuf);
          break;
@@ -222,7 +222,7 @@ switch_case:
          if (fmt[-1] == 'l' || fmt[-1] == 'z')
             uitoaN(va_arg(args, ulong), intbuf, 8);
          else
-            uitoa32_oct(va_arg(args, u32), intbuf);
+            uitoa32(va_arg(args, u32), intbuf, 8);
 
          WRITE_STR(intbuf);
          break;
@@ -232,7 +232,7 @@ switch_case:
          if (fmt[-1] == 'l' || fmt[-1] == 'z')
             uitoaN(va_arg(args, ulong), intbuf, 16);
          else
-            uitoa32_hex(va_arg(args, u32), intbuf);
+            uitoa32(va_arg(args, u32), intbuf, 16);
 
          WRITE_STR(intbuf);
          break;
