@@ -40,6 +40,19 @@ TEST(printk, basic)
    EXPECT_EQ(spk_wrapper("%llx", 0xaabbccddeeffll), "aabbccddeeff");
 }
 
+TEST(printk, hashsign)
+{
+   EXPECT_EQ(spk_wrapper("%#x",   0x123), "0x123");    // Just prepend "0x"
+   EXPECT_EQ(spk_wrapper("%#08x", 0x123), "0x000123"); // "0x" counted in lpad
+   EXPECT_EQ(spk_wrapper("%#8x",  0x123), "   0x123"); // "0x" counted in lpad
+   EXPECT_EQ(spk_wrapper("%#-8x", 0x123), "0x123   "); // "0x" counted in rpad
+
+   EXPECT_EQ(spk_wrapper("%#o",   0755), "0755");      // Just prepend "0"
+   EXPECT_EQ(spk_wrapper("%#08o", 0755), "00000755");  // "0" counted in lpad
+   EXPECT_EQ(spk_wrapper("%#8o",  0755), "    0755");  // "0" counted in lpad
+   EXPECT_EQ(spk_wrapper("%#-8o", 0755), "0755    ");  // "0" counted in rpad
+}
+
 TEST(printk, truncated_seq)
 {
    EXPECT_EQ(spk_wrapper("%z"), "");
@@ -49,6 +62,7 @@ TEST(printk, truncated_seq)
    EXPECT_EQ(spk_wrapper("%5"), "");
    EXPECT_EQ(spk_wrapper("%5"), "");
    EXPECT_EQ(spk_wrapper("%-5"), "");
+   EXPECT_EQ(spk_wrapper("%#"), "");
 }
 
 TEST(printk, incomplete_seq)
@@ -60,6 +74,7 @@ TEST(printk, incomplete_seq)
    EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%-5, hello"), "%, hello");
+   EXPECT_EQ(spk_wrapper("%#, hello"), "%#, hello");
 }
 
 TEST(printk, invalid_seq)

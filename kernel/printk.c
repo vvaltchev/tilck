@@ -48,6 +48,7 @@ struct snprintk_ctx {
    char *buf;
    char *buf_end;
    bool zero_lpad;
+   bool hash_sign;
 };
 
 static void
@@ -56,6 +57,7 @@ snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
    ctx->left_padding = 0;
    ctx->right_padding = 0;
    ctx->zero_lpad = false;
+   ctx->hash_sign = false;
 }
 
 #define WRITE_CHAR(c)                                         \
@@ -64,25 +66,64 @@ snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
          goto out;                                            \
    } while (0)
 
-#define WRITE_STR(s) if (!write_str(ctx, s)) goto out;
+#define WRITE_STR(s) if (!write_str(ctx, *fmt, s)) goto out;
 
 static bool
-write_str(struct snprintk_ctx *ctx, const char *str)
+write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 {
    int sl = (int) strlen(str);
    int lpad = MAX(0, ctx->left_padding - sl);
    int rpad = MAX(0, ctx->right_padding - sl);
+   char pad_char = ' ';
 
+   /* Cannot have both left padding _and_ right padding */
    ASSERT(!lpad || !rpad);
 
+   if (ctx->hash_sign) {
+
+      int off = 0;
+
+      if (fmtX == 'x')
+         off = 2;
+      else if (fmtX == 'o')
+         off = 1;
+
+      lpad = MAX(0, lpad - off);
+      rpad = MAX(0, rpad - off);
+   }
+
+   if (ctx->zero_lpad) {
+
+      pad_char = '0';
+
+      if (ctx->hash_sign && (fmtX == 'x' || fmtX == 'o')) {
+
+         WRITE_CHAR('0');
+
+         if (fmtX == 'x')
+            WRITE_CHAR('x');
+      }
+   }
+
    for (int i = 0; i < lpad; i++)
-      WRITE_CHAR(ctx->zero_lpad ? '0' : ' ');
+      WRITE_CHAR(pad_char);
+
+   if (ctx->hash_sign && pad_char != '0') {
+
+      if (fmtX == 'x' || fmtX == 'o') {
+
+         WRITE_CHAR('0');
+
+         if (fmtX == 'x')
+            WRITE_CHAR('x');
+      }
+   }
 
    if (!write_in_buf_str(&ctx->buf, ctx->buf_end, (str)))
       goto out;
 
    for (int i = 0; i < rpad; i++)
-      WRITE_CHAR(' ');
+      WRITE_CHAR(pad_char);
 
    return true;
 
@@ -181,6 +222,17 @@ switch_case:
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
 
+      case '#':
+
+         if (fmt[-1] != '%')
+            break; /* ignore misplaced '#' */
+
+         if (!*++fmt)
+            goto truncated_seq;
+
+         ctx->hash_sign = true;
+         goto switch_case;
+
       // %z (followed by d, i, o, u, x) is C99 prefix for size_t
       case 'z':
 
@@ -256,7 +308,12 @@ switch_case:
          } else {
 
 incomplete_seq:
+
             WRITE_CHAR('%');
+
+            if (ctx->hash_sign)
+               WRITE_CHAR('#');
+
             WRITE_CHAR(*fmt);
          }
       }
