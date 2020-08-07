@@ -96,7 +96,7 @@ out:
    else /* fmt[-1] is 'l' or 'z' */                      \
       uitoaN(va_arg(args, ulong), intbuf, base);
 
-static u8 diuox_base[256] =
+static u8 diuox_base[128] =
 {
    ['d'] = 10,
    ['i'] = 10,
@@ -122,18 +122,24 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 
    while (*fmt) {
 
+      // *fmt != '%', just write it and continue.
       if (*fmt != '%') {
          WRITE_CHAR(*fmt++);
          continue;
       }
 
-      // *fmt is '%'
+      // *fmt is '%' ...
       ++fmt;
 
-      if (*fmt == '%') {
+      // after the '%' ...
+
+      if (*fmt == '%' || (u8)*fmt >= 128) {
+         /* %% or % followed by non-ascii char */
          WRITE_CHAR(*fmt++);
          continue;
       }
+
+      // after the '%', follows an ASCII char != '%' ...
 
 switch_case:
 
@@ -176,6 +182,7 @@ switch_case:
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
 
+      // %z (followed by d, i, o, u, x) is C99 prefix for size_t
       case 'z':
 
          if (!*++fmt)
@@ -183,11 +190,13 @@ switch_case:
 
          break;
 
+      // %l makes the following type (d, i, o, u, x) a long.
       case 'l':
 
          if (!*++fmt)
             goto out;
 
+         // %ll make the following type a long long.
          if (*fmt == 'l') {
 
             if (!*++fmt)
