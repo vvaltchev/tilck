@@ -51,6 +51,8 @@ TEST(printk, rare)
    EXPECT_EQ(spk_wrapper("%x", (char)-1), "ffffffff"); /* just for comparison */
    EXPECT_EQ(spk_wrapper("%hx", (char)-1), "ffff");
    EXPECT_EQ(spk_wrapper("%hhx", (char)-1), "ff");
+   EXPECT_EQ(spk_wrapper("%hd", (short)-1234), "-1234");
+   EXPECT_EQ(spk_wrapper("%hhd", (signed char)-123), "-123");
 }
 
 TEST(printk, hashsign)

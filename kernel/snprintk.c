@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/utils.h>
 
 /* Check for the 'j' length modifier (intmax_t) */
 STATIC_ASSERT(sizeof(intmax_t) == sizeof(long long));
@@ -30,11 +31,20 @@ write_in_buf_char(char **buf_ref, char *buf_end, char c)
 }
 
 enum printk_width {
-   pw_default   = 0,
+   pw_long_long = 0,
    pw_long      = 1,
-   pw_long_long = 2,
+   pw_default   = 2,
    pw_short     = 3,
    pw_char      = 4
+};
+
+static const ulong width_val[] =
+{
+   [pw_long_long] = 0, /* unused */
+   [pw_long]      = 8 * sizeof(long),
+   [pw_default]   = 8 * sizeof(int),
+   [pw_short]     = 8 * sizeof(short),
+   [pw_char]      = 8 * sizeof(char),
 };
 
 struct snprintk_ctx {
@@ -49,7 +59,7 @@ struct snprintk_ctx {
 };
 
 static void
-snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
+snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
 {
    ctx->width = pw_default;
    ctx->left_padding = 0;
@@ -137,7 +147,7 @@ out:
    return false;
 }
 
-static u8 diuox_base[128] =
+static const u8 diuox_base[128] =
 {
    ['d'] = 10,
    ['i'] = 10,
@@ -148,18 +158,16 @@ static u8 diuox_base[128] =
 
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
 {
+   struct snprintk_ctx __ctx;
    char intbuf[64];
+   ulong width;
    u8 base;
-
-   struct snprintk_ctx __ctx = {
-      .buf = initial_buf,
-      .buf_end = initial_buf + size,
-   };
-
-   snprintk_ctx_reset_per_argument_state(&__ctx);
 
    /* ctx has to be a pointer because of macros shared with WRITE_STR */
    struct snprintk_ctx *ctx = &__ctx;
+   snprintk_ctx_reset_state(ctx);
+   ctx->buf = initial_buf;
+   ctx->buf_end = initial_buf + size;
 
    while (*fmt) {
 
@@ -321,49 +329,24 @@ switch_case:
       default:
 
          base = diuox_base[(u8)*fmt];
+         width = width_val[ctx->width];
 
          if (!base)
             goto unknown_seq;
 
          if (*fmt == 'd' || *fmt == 'i') {
 
-            switch (ctx->width) {
-               case pw_long_long:
-                  itoa64(va_arg(args, s64), intbuf);
-                  break;
-               case pw_long:
-                  itoaN(va_arg(args, long), intbuf);
-                  break;
-               case pw_default:
-                  itoaN(va_arg(args, int), intbuf);
-                  break;
-               case pw_short:
-                  itoaN((s16)va_arg(args, int), intbuf);
-                  break;
-               case pw_char:
-                  itoaN((s8)va_arg(args, int), intbuf);
-                  break;
-            }
+            if (ctx->width == pw_long_long)
+               itoa64(va_arg(args, s64), intbuf);
+            else
+               itoaN(sign_extend(va_arg(args, long), width), intbuf);
 
          } else {
 
-            switch (ctx->width) {
-               case pw_long_long:
-                  uitoa64(va_arg(args, u64), intbuf, base);
-                  break;
-               case pw_long:
-                  uitoaN(va_arg(args, ulong), intbuf, base);
-                  break;
-               case pw_default:
-                  uitoaN(va_arg(args, unsigned), intbuf, base);
-                  break;
-               case pw_short:
-                  uitoaN((u16)va_arg(args, unsigned), intbuf, base);
-                  break;
-               case pw_char:
-                  uitoaN((u8)va_arg(args, unsigned), intbuf, base);
-                  break;
-            }
+            if (ctx->width == pw_long_long)
+               uitoa64(va_arg(args, u64), intbuf, base);
+            else
+               uitoaN(va_arg(args, ulong) & make_bitmask(width), intbuf, base);
          }
 
          WRITE_STR(intbuf);
@@ -381,7 +364,7 @@ incomplete_seq:
          WRITE_CHAR(*fmt);
       }
 
-      snprintk_ctx_reset_per_argument_state(ctx);
+      snprintk_ctx_reset_state(ctx);
       ++fmt;
    }
 
