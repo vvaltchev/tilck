@@ -147,8 +147,61 @@ extern "C" {
    instantiate_itoa(itoa32, 32, 10)
    instantiate_itoa(itoa64, 64, 10)
 
-   long tilck_strtol(const char *s, const char **endptr, int base, int *err) {
+   long tilck_strtol(const char *s, const char **endptr, int base, int *err)
+   {
       return __tilck_strtol<long>(s, endptr, base, err);
+   }
+
+   void uitoaN_hex_fixed(ulong value, char *buf)
+   {
+      if (NBITS == 32)
+         uitoa32_hex_fixed(value, buf);
+      else
+         uitoa64_hex_fixed(value, buf);
+   }
+
+   void itoaN(long value, char *buf)
+   {
+      if (NBITS == 32)
+         itoa32(value, buf);
+      else
+         itoa64(value, buf);
+   }
+
+   void uitoaN(ulong value, char *buf, int base)
+   {
+      if (NBITS == 32) {
+
+         switch (base) {
+            case 8:
+               uitoa32_oct(value, buf);
+               break;
+            case 10:
+               uitoa32_dec(value, buf);
+               break;
+            case 16:
+               uitoa32_hex(value, buf);
+               break;
+            default:
+               NOT_IMPLEMENTED();
+         }
+
+      } else {
+
+         switch (base) {
+            case 8:
+               uitoa64_oct(value, buf);
+               break;
+            case 10:
+               uitoa64_dec(value, buf);
+               break;
+            case 16:
+               uitoa64_hex(value, buf);
+               break;
+            default:
+               NOT_IMPLEMENTED();
+         }
+      }
    }
 
 #ifdef __TILCK_KERNEL__

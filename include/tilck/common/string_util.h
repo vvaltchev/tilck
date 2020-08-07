@@ -101,15 +101,19 @@ void str_reverse(char *str, size_t len);
 
 void itoa32(s32 value, char *destBuf);
 void itoa64(s64 value, char *destBuf);
+void itoaN(long value, char *buf);                /* pointer-size */
+
 void uitoa32_dec(u32 value, char *destBuf);
 void uitoa64_dec(u64 value, char *destBuf);
-
 void uitoa32_oct(u32 value, char *buf);
 void uitoa64_oct(u64 value, char *buf);
 void uitoa32_hex(u32 value, char *buf);
 void uitoa64_hex(u64 value, char *buf);
+void uitoaN(ulong value, char *buf, int base);    /* pointer-size */
+
 void uitoa32_hex_fixed(u32 value, char *buf);
 void uitoa64_hex_fixed(u64 value, char *buf);
+void uitoaN_hex_fixed(ulong value, char *buf);    /* pointer-size */
 
 long tilck_strtol(const char *str, const char **endptr, int base, int *error);
 ulong tilck_strtoul(const char *str, const char **endptr, int base, int *error);
