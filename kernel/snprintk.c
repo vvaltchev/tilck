@@ -67,11 +67,11 @@ snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
 static bool
 write_0x_prefix(struct snprintk_ctx *ctx, char fmtX)
 {
-   if (fmtX == 'x' || fmtX == 'o') {
+   if (fmtX == 'x' || fmtX == 'p' || fmtX == 'o') {
 
       WRITE_CHAR('0');
 
-      if (fmtX == 'x')
+      if (fmtX == 'x' || fmtX == 'p')
          WRITE_CHAR('x');
    }
 
@@ -118,7 +118,7 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
    for (int i = 0; i < lpad; i++)
       WRITE_CHAR(pad_char);
 
-   if (ctx->hash_sign && pad_char != '0') {
+   if ((fmtX == 'p' || ctx->hash_sign) && pad_char != '0') {
       if (!write_0x_prefix(ctx, fmtX))
          goto out;
    }
@@ -243,25 +243,33 @@ switch_case:
       case 'j': /* fall-through */
       case 'q': /* fall-through */
       case 'L':
-         goto fmt_long_long;
-
-      // %l makes the following type (d, i, o, u, x) a long.
-      case 'l':
 
          if (!*++fmt)
             goto truncated_seq;
 
-         ctx->width = pw_long;
+         ctx->width = pw_long_long;
+         goto switch_case;
 
-         // %ll make the following type a long long.
-         if (*fmt == 'l') {
+      // %l makes the following type (d, i, o, u, x) a long.
+      case 'l':
 
-fmt_long_long:
+         if (ctx->width == pw_default) {
+
+            if (!*++fmt)
+               goto truncated_seq;
+
+            ctx->width = pw_long;
+
+         } else if (ctx->width == pw_long) {
 
             if (!*++fmt)
                goto truncated_seq;
 
             ctx->width = pw_long_long;
+
+         } else {
+
+            goto unknown_seq;             /* %lll */
          }
 
          goto switch_case;
@@ -282,7 +290,6 @@ fmt_long_long:
 
       case 'p':
          uitoaN_hex_fixed(va_arg(args, ulong), intbuf);
-         WRITE_STR("0x");
          WRITE_STR(intbuf);
          break;
 
@@ -290,48 +297,49 @@ fmt_long_long:
 
          base = diuox_base[(u8)*fmt];
 
-         if (base) {
+         if (!base)
+            goto unknown_seq;
 
-            if (*fmt == 'd' || *fmt == 'i') {
+         if (*fmt == 'd' || *fmt == 'i') {
 
-               switch (ctx->width) {
-                  case pw_long:
-                     itoaN(va_arg(args, long), intbuf);
-                     break;
-                  case pw_long_long:
-                     itoa64(va_arg(args, s64), intbuf);
-                     break;
-                  default:
-                     itoa32(va_arg(args, s32), intbuf);
-               }
-
-            } else {
-
-               switch (ctx->width) {
-                  case pw_long:
-                     uitoaN(va_arg(args, ulong), intbuf, base);
-                     break;
-                  case pw_long_long:
-                     uitoa64(va_arg(args, u64), intbuf, base);
-                     break;
-                  default:
-                     uitoa32(va_arg(args, u32), intbuf, base);
-               }
+            switch (ctx->width) {
+               case pw_long:
+                  itoaN(va_arg(args, long), intbuf);
+                  break;
+               case pw_long_long:
+                  itoa64(va_arg(args, s64), intbuf);
+                  break;
+               default:
+                  itoa32(va_arg(args, s32), intbuf);
             }
-
-            WRITE_STR(intbuf);
 
          } else {
 
+            switch (ctx->width) {
+               case pw_long:
+                  uitoaN(va_arg(args, ulong), intbuf, base);
+                  break;
+               case pw_long_long:
+                  uitoa64(va_arg(args, u64), intbuf, base);
+                  break;
+               default:
+                  uitoa32(va_arg(args, u32), intbuf, base);
+            }
+         }
+
+         WRITE_STR(intbuf);
+         break;
+
+
+unknown_seq:
 incomplete_seq:
 
-            WRITE_CHAR('%');
+         WRITE_CHAR('%');
 
-            if (ctx->hash_sign)
-               WRITE_CHAR('#');
+         if (ctx->hash_sign)
+            WRITE_CHAR('#');
 
-            WRITE_CHAR(*fmt);
-         }
+         WRITE_CHAR(*fmt);
       }
 
       snprintk_ctx_reset_per_argument_state(ctx);

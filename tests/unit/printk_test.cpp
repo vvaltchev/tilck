@@ -87,15 +87,32 @@ TEST(printk, incomplete_seq)
 
 TEST(printk, invalid_seq)
 {
-   EXPECT_EQ(spk_wrapper("%w"), "%w");
+   EXPECT_EQ(spk_wrapper("%w", 123), "%w");
+   EXPECT_EQ(spk_wrapper("%lll", 123ll), "%l");
 }
 
 TEST(printk, pointers)
 {
-   if (NBITS == 32)
+   if (NBITS == 32) {
+
       EXPECT_EQ(spk_wrapper("%p", TO_PTR(0xc0aabbc0)), "0xc0aabbc0");
-   else
+      EXPECT_EQ(
+         spk_wrapper("%20p", TO_PTR(0xc0aabbc0)), "            0xc0aabbc0"
+      );
+      EXPECT_EQ(
+         spk_wrapper("%-20p", TO_PTR(0xc0aabbc0)), "0xc0aabbc0            "
+      );
+
+   } else {
+
       EXPECT_EQ(spk_wrapper("%p", TO_PTR(0xc0aabbc0)), "0x00000000c0aabbc0");
+      EXPECT_EQ(
+         spk_wrapper("%20p", TO_PTR(0xc0aabbc0)), "    0x00000000c0aabbc0"
+      );
+      EXPECT_EQ(
+         spk_wrapper("%-20p", TO_PTR(0xc0aabbc0)), "0x00000000c0aabbc0    "
+      );
+   }
 }
 
 TEST(printk, size_t)
