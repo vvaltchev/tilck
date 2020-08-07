@@ -8,7 +8,7 @@
    void vprintk(const char *fmt, va_list args);
    void printk(const char *fmt, ...);
 
-   #ifdef __TILCK_KERNEL__
+   #if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
 
       #define PRINTK_CTRL_CHAR   '\x01'
 

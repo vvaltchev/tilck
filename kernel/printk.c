@@ -147,10 +147,9 @@ switch_case:
 
       case '0':
          ctx->zero_lpad = true;
-         fmt++;
 
-         if (!*fmt)
-            goto out; /* nothing after the %0 sequence */
+         if (!*++fmt)
+            goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
@@ -168,7 +167,7 @@ switch_case:
          ctx->left_padding = (int)tilck_strtol(fmt, &fmt, 10, NULL);
 
          if (!*fmt)
-            goto out; /* nothing after the %<number> sequence */
+            goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
@@ -177,7 +176,7 @@ switch_case:
          ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
 
          if (!*fmt)
-            goto out; /* nothing after the %-<number> sequence */
+            goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
          goto switch_case;
@@ -186,24 +185,24 @@ switch_case:
       case 'z':
 
          if (!*++fmt)
-            goto out;
+            goto truncated_seq;
 
-         break;
+         goto switch_case;
 
       // %l makes the following type (d, i, o, u, x) a long.
       case 'l':
 
          if (!*++fmt)
-            goto out;
+            goto truncated_seq;
 
          // %ll make the following type a long long.
          if (*fmt == 'l') {
 
             if (!*++fmt)
-               goto out;
+               goto truncated_seq;
 
             if (!diuox_base[(u8)*fmt])
-               break;
+               goto incomplete_seq;
 
             if (*fmt == 'i' || *fmt == 'd')
                itoa64(va_arg(args, s64), intbuf);
@@ -211,8 +210,10 @@ switch_case:
                uitoa64(va_arg(args, u64), intbuf, diuox_base[(u8)*fmt]);
 
             WRITE_STR(intbuf);
+            break;
          }
-         break;
+
+         goto switch_case;
 
       case 'c':
          WRITE_CHAR((char) va_arg(args, s32));
@@ -254,6 +255,7 @@ switch_case:
 
          } else {
 
+incomplete_seq:
             WRITE_CHAR('%');
             WRITE_CHAR(*fmt);
          }
@@ -264,6 +266,7 @@ switch_case:
    }
 
 out:
+truncated_seq:
    ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
    return (int)(ctx->buf - initial_buf);
 }
