@@ -43,7 +43,7 @@ static void debug_dump_unhandled_irq_count(void)
    extern u32 unhandled_irq_count[256];
    u32 tot_count = 0;
 
-   for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++)
+   for (int i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++)
       tot_count += unhandled_irq_count[i];
 
    if (!tot_count)
@@ -52,7 +52,7 @@ static void debug_dump_unhandled_irq_count(void)
    row++;
    dp_write(row, 0, "Unhandled IRQs count table\n");
 
-   for (u32 i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
+   for (int i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
 
       if (unhandled_irq_count[i])
          dp_write(row, 0, "   IRQ #%3u: %3u unhandled", i,

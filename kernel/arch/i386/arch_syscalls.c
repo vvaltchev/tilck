@@ -474,7 +474,7 @@ int get_syscall_num(void *func)
    if (!func)
       return -1;
 
-   for (int i = 0; i < (int)ARRAY_SIZE(syscalls); i++)
+   for (int i = 0; i < ARRAY_SIZE(syscalls); i++)
       if (syscalls[i] == func)
          return i;
 

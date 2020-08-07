@@ -287,7 +287,7 @@ int cmd_extra(int argc, char **argv)
 {
    int rc = 0;
 
-   for (u32 i = 0; i < ARRAY_SIZE(extra_test_scripts); i++) {
+   for (int i = 0; i < ARRAY_SIZE(extra_test_scripts); i++) {
       if ((rc = run_extra_test(extra_test_scripts[i])))
          break;
    }

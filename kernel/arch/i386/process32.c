@@ -637,7 +637,7 @@ arch_specific_new_proc_setup(struct process *pi, struct process *parent)
    if (arch->ldt)
       gdt_entry_inc_ref_count(arch->ldt_index_in_gdt);
 
-   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
+   for (int i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
       if (arch->gdt_entries[i])
          gdt_entry_inc_ref_count(arch->gdt_entries[i]);
 
@@ -653,7 +653,7 @@ void arch_specific_free_proc(struct process *pi)
       arch->ldt = NULL;
    }
 
-   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++) {
+   for (int i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++) {
       if (arch->gdt_entries[i]) {
          gdt_clear_entry(arch->gdt_entries[i]);
          arch->gdt_entries[i] = 0;

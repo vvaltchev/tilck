@@ -355,9 +355,9 @@ static int find_available_slot_in_user_task(void)
    struct process *pi = get_curr_proc();
    arch_proc_members_t *arch = get_proc_arch_fields(pi);
 
-   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
+   for (int i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
       if (!arch->gdt_entries[i])
-         return (int)i;
+         return i;
 
    return -1;
 }
@@ -367,9 +367,9 @@ static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
    struct process *pi = get_curr_proc();
    arch_proc_members_t *arch = get_proc_arch_fields(pi);
 
-   for (u32 i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
+   for (int i = 0; i < ARRAY_SIZE(arch->gdt_entries); i++)
       if (arch->gdt_entries[i] == gdt_entry_num)
-         return (int)i;
+         return i;
 
    return -1;
 }

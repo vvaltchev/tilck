@@ -16,7 +16,7 @@
 
 #include "wth_int.h"
 
-STATIC u32 worker_threads_cnt;
+STATIC int worker_threads_cnt;
 struct worker_thread *worker_threads[WTH_MAX_THREADS];
 
 u32 wth_get_queue_size(struct worker_thread *wth)
@@ -91,7 +91,7 @@ wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg)
    if (lowest_prio == 0) /* optimization for highest prio case */
       return wth_enqueue_job(worker_threads[0], func, arg);
 
-   for (int i = (int)worker_threads_cnt-1; i >= 0; i--) {
+   for (int i = worker_threads_cnt-1; i >= 0; i--) {
 
       wth = worker_threads[i];
 
@@ -113,7 +113,7 @@ wth_find_worker(int lowest_prio)
    if (lowest_prio == 0) /* optimization for highest prio case */
       return worker_threads[0];
 
-   for (int i = (int)worker_threads_cnt-1; i >= 0; i--) {
+   for (int i = worker_threads_cnt-1; i >= 0; i--) {
 
       wth = worker_threads[i];
 
@@ -177,7 +177,7 @@ struct task *wth_get_runnable_thread(void)
    ASSERT(!is_preemption_enabled());
    struct worker_thread *selected = NULL;
 
-   for (u32 i = 0; i < worker_threads_cnt; i++) {
+   for (int i = 0; i < worker_threads_cnt; i++) {
 
       struct worker_thread *t = worker_threads[i];
 
@@ -193,8 +193,7 @@ struct worker_thread *
 wth_create_thread(int priority, u16 queue_size)
 {
    struct worker_thread *t;
-   int rc;
-   u32 idx;
+   int rc, idx;
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -234,7 +233,7 @@ wth_create_thread(int priority, u16 queue_size)
    worker_threads_cnt++;
 
    /* Sort all the worker threads */
-   insertion_sort_ptr(worker_threads, worker_threads_cnt, &wth_cmp_func);
+   insertion_sort_ptr(worker_threads, (u32)worker_threads_cnt, &wth_cmp_func);
    return t;
 }
 

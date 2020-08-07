@@ -97,7 +97,7 @@ static void shell_run_child(int argc)
 {
    char buf[MAX_PATH];
    int saved_errno;
-   unsigned i;
+   int i;
 
    run_if_known_command(cmd_argv[0], argc - 1, cmd_argv + 1);
 

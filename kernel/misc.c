@@ -91,7 +91,7 @@ void show_tilck_logo(void)
    const u32 cols = tparams.cols;
    const u32 padding = (u32)(cols / 2 - strlen(banner[1]) / 2);
 
-   for (u32 i = 0; i < ARRAY_SIZE(banner); i++) {
+   for (int i = 0; i < ARRAY_SIZE(banner); i++) {
 
       for (u32 j = 0; j < padding; j++)
          printk(NO_PREFIX " ");

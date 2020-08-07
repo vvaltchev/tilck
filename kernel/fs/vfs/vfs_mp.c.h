@@ -28,7 +28,7 @@ struct fs *mp_get_at_nolock(struct fs *host_fs, vfs_inode_ptr_t inode)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&mp_mutex));
 
-   for (u32 i = 0; i < ARRAY_SIZE(mps2); i++)
+   for (int i = 0; i < ARRAY_SIZE(mps2); i++)
       if (mps2[i].host_fs_inode == inode && mps2[i].host_fs == host_fs)
          return mps2[i].target_fs;
 
@@ -49,7 +49,7 @@ struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
 
 struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
 {
-   ulong i;
+   int i;
    struct mountpoint *res = NULL;
 
    kmutex_lock(&mp_mutex);
@@ -70,8 +70,7 @@ struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
 int mp_add(struct fs *target_fs, const char *target_path)
 {
    struct vfs_path p;
-   int rc;
-   u32 i;
+   int i, rc;
 
    /*
     * We need to resolve target_path in order to get the host_fs and the

@@ -78,8 +78,8 @@ void init_irq_handling(void)
    ASSERT(!are_interrupts_enabled());
    init_pic_8259(32, 40);
 
-   for (u8 i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
-      idt_set_entry(32 + i,
+   for (int i = 0; i < ARRAY_SIZE(irq_handlers_lists); i++) {
+      idt_set_entry(32 + (u8)i,
                     irq_entry_points[i],
                     X86_KERNEL_CODE_SEL,
                     IDT_FLAG_PRESENT | IDT_FLAG_INT_GATE | IDT_FLAG_DPL0);

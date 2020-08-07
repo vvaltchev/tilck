@@ -32,7 +32,7 @@ struct fs *get_devfs(void)
 
 struct driver_info *get_driver_info(u16 major)
 {
-   for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
+   for (int i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
       if (drivers[i]->major == major)
          return drivers[i];
    }
@@ -55,7 +55,7 @@ int register_driver(struct driver_info *info, int arg_major)
 
       major = 0;
 
-      for (u32 i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
+      for (int i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
          if (drivers[i]->major == major)
             major++;
       }

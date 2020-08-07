@@ -38,7 +38,7 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
 
    if (save_metadata) {
 
-      for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+      for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
 
          if (!heaps[i].metadata_size)
             continue;
@@ -51,7 +51,7 @@ void debug_kmalloc_start_leak_detector(bool save_metadata)
          metadata_copies[i] = buf;
       }
 
-      for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+      for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
 
          if (!heaps[i].metadata_size)
             continue;
@@ -93,7 +93,7 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks)
    printk("Total allocs: %u\n", alloc_entries_count);
    printk("Leak count: %u\n", leak_count);
 
-   for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+   for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
 
       struct block_node *md_copy = metadata_copies[i];
 
@@ -103,7 +103,7 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks)
       struct block_node *md = heaps[i].metadata_nodes;
       size_t len = heaps[i].metadata_size;
 
-      for (u32 j = 0; j < len; j++) {
+      for (int j = 0; j < len; j++) {
          if (md[j].raw == md_copy[j].raw)
             continue;
 
@@ -116,7 +116,7 @@ void debug_kmalloc_stop_leak_detector(bool show_leaks)
 
 end:
 
-   for (u32 i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
+   for (int i = 0; i < ARRAY_SIZE(metadata_copies); i++) {
       if (metadata_copies[i]) {
          kfree2(metadata_copies[i], heaps[i].metadata_size);
          metadata_copies[i] = NULL;

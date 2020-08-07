@@ -267,7 +267,7 @@ handle_esc_seq(char *buf, int buf_size, char *c_cmd, int *c_cmd_len)
 
    initialize_once_handle_esc_seq_table();
 
-   for (size_t i = 0; i < ARRAY_SIZE(handle_esc_seq_table); i++)
+   for (int i = 0; i < ARRAY_SIZE(handle_esc_seq_table); i++)
       if (handle_esc_seq_table[i].seq == seq)
          handle_esc_seq_table[i].fptr(seq, buf, buf_size, c_cmd, c_cmd_len);
 }

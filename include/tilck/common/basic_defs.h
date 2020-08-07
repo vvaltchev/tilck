@@ -234,7 +234,7 @@ typedef long offt;
 #define LIKELY(x) __builtin_expect((x), true)
 #define UNLIKELY(x) __builtin_expect((x), false)
 
-#define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+#define ARRAY_SIZE(a) ((int)(sizeof(a)/sizeof((a)[0])))
 #define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
    ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
 

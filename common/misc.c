@@ -21,7 +21,7 @@ bool is_tilck_known_resolution(u32 w, u32 h)
 {
    const struct display_resolution *kr = tilck_known_resolutions;
 
-   for (u32 i = 0; i < ARRAY_SIZE(tilck_known_resolutions); i++) {
+   for (int i = 0; i < ARRAY_SIZE(tilck_known_resolutions); i++) {
       if (kr[i].width == w && kr[i].height == h)
          return true;
    }

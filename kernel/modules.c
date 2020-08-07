@@ -4,7 +4,7 @@
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/sort.h>
 
-static u32 mods_count;
+static int mods_count;
 static struct module *modules[32];
 
 void register_module(struct module *m)
@@ -22,9 +22,9 @@ static long mod_cmp_func(const void *a, const void *b)
 
 void init_modules(void)
 {
-   insertion_sort_ptr(modules, mods_count, &mod_cmp_func);
+   insertion_sort_ptr(modules, (u32)mods_count, &mod_cmp_func);
 
-   for (u32 i = 0; i < mods_count; i++) {
+   for (int i = 0; i < mods_count; i++) {
       struct module *m = modules[i];
       m->init();
    }
