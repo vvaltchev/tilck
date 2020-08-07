@@ -54,6 +54,23 @@ snprintk_ctx_reset_per_argument_state(struct snprintk_ctx *ctx)
 #define WRITE_STR(s) if (!write_str(ctx, *fmt, s)) goto out;
 
 static bool
+write_0x_prefix(struct snprintk_ctx *ctx, char fmtX)
+{
+   if (fmtX == 'x' || fmtX == 'o') {
+
+      WRITE_CHAR('0');
+
+      if (fmtX == 'x')
+         WRITE_CHAR('x');
+   }
+
+   return true;
+
+out:
+   return false;
+}
+
+static bool
 write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 {
    int sl = (int) strlen(str);
@@ -81,12 +98,9 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 
       pad_char = '0';
 
-      if (ctx->hash_sign && (fmtX == 'x' || fmtX == 'o')) {
-
-         WRITE_CHAR('0');
-
-         if (fmtX == 'x')
-            WRITE_CHAR('x');
+      if (ctx->hash_sign) {
+         if (!write_0x_prefix(ctx, fmtX))
+            goto out;
       }
    }
 
@@ -94,14 +108,8 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
       WRITE_CHAR(pad_char);
 
    if (ctx->hash_sign && pad_char != '0') {
-
-      if (fmtX == 'x' || fmtX == 'o') {
-
-         WRITE_CHAR('0');
-
-         if (fmtX == 'x')
-            WRITE_CHAR('x');
-      }
+      if (!write_0x_prefix(ctx, fmtX))
+         goto out;
    }
 
    if (!write_in_buf_str(&ctx->buf, ctx->buf_end, (str)))
