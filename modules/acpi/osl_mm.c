@@ -6,6 +6,7 @@
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/system_mmap.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/acpiosxf.h>
@@ -77,3 +78,79 @@ AcpiOsGetPhysicalAddress(
    return AE_OK;
 }
 
+BOOLEAN
+AcpiOsReadable(
+    void                    *Pointer,
+    ACPI_SIZE               Length)
+{
+   ulong va = (ulong)Pointer;
+   ulong va_end = va + Length;
+
+   if (va < KERNEL_BASE_VA)
+      return false;
+
+   if (va_end <= LINEAR_MAPPING_END)
+      return true;
+
+   while (va < va_end) {
+
+      if (!is_mapped(get_kernel_pdir(), TO_PTR(va)))
+         return false;
+
+      va += PAGE_SIZE;
+   }
+
+   return true;
+}
+
+BOOLEAN
+AcpiOsWritable(
+    void                    *Pointer,
+    ACPI_SIZE               Length)
+{
+   ulong va = (ulong)Pointer;
+   ulong va_end = va + Length;
+   struct mem_region m;
+   int reg_count = get_mem_regions_count();
+
+   if (va < KERNEL_BASE_VA)
+      return false;
+
+   for (int i = 0; i < reg_count; i++) {
+
+      get_mem_region(i, &m);
+
+      if (m.type != MULTIBOOT_MEMORY_AVAILABLE)
+         continue;
+
+      if (~m.extra & MEM_REG_EXTRA_KERNEL)
+         continue;
+
+      if (~m.extra & MEM_REG_EXTRA_RAMDISK)
+         continue;
+
+      /* OK, now `m` points to a kernel/ramdisk region */
+      if (IN_RANGE(va, m.addr, m.addr + m.len)) {
+
+         /*
+          * The address falls inside a read/write protected region.
+          * We cannot allow ACPICA to believe it's writable.
+          */
+
+         return false;
+      }
+   }
+
+   if (va_end <= LINEAR_MAPPING_END)
+      return true;
+
+   while (va < va_end) {
+
+      if (!is_rw_mapped(get_kernel_pdir(), TO_PTR(va)))
+         return false;
+
+      va += PAGE_SIZE;
+   }
+
+   return true;
+}

@@ -12,7 +12,6 @@ void AcpiOsDeleteLock() { NOT_IMPLEMENTED(); }
 void AcpiOsDeleteSemaphore() { NOT_IMPLEMENTED(); }
 void AcpiOsFree() { NOT_IMPLEMENTED(); }
 void AcpiOsInstallInterruptHandler() { NOT_IMPLEMENTED(); }
-void AcpiOsReadable() { NOT_IMPLEMENTED(); }
 void AcpiOsReadMemory() { NOT_IMPLEMENTED(); }
 void AcpiOsReadPciConfiguration() { NOT_IMPLEMENTED(); }
 void AcpiOsReadPort() { NOT_IMPLEMENTED(); }
