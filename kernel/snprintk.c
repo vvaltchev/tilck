@@ -119,7 +119,8 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 
    if (ctx->zero_lpad) {
 
-      pad_char = '0';
+      if (fmtX != 'c')
+         pad_char = '0';
 
       if (ctx->hash_sign) {
          if (!write_0x_prefix(ctx, fmtX))
@@ -232,12 +233,21 @@ switch_case:
 
       case '#':
 
+         if (ctx->hash_sign) {
+
+            if (!*++fmt)
+               goto incomplete_seq; /* note: forcing "%#"" to be printed */
+
+            goto switch_case; /* skip this '#' and move on */
+         }
+
          if (fmt[-1] != '%')
-            break; /* ignore misplaced '#' */
+            goto incomplete_seq;
 
-         if (!*++fmt)
-            goto truncated_seq;
+         if (!fmt[1])
+            goto unknown_seq;
 
+         fmt++;
          ctx->hash_sign = true;
          goto switch_case;
 
@@ -308,13 +318,9 @@ switch_case:
          goto switch_case;
 
       case 'c':
-         WRITE_CHAR((char) va_arg(args, s32));
-
-         if (ctx->right_padding > 0) {
-            ctx->right_padding--;
-            WRITE_STR(""); // write the padding
-         }
-
+         intbuf[0] = (char)va_arg(args, long);
+         intbuf[1] = 0;
+         WRITE_STR(intbuf);
          break;
 
       case 's':

@@ -29,12 +29,15 @@ TEST(printk, basic)
    EXPECT_EQ(spk_wrapper("%i", -123), "-123");
    EXPECT_EQ(spk_wrapper("%x", 0xaab3), "aab3");
    EXPECT_EQ(spk_wrapper("%o", 0755), "755");
+   EXPECT_EQ(spk_wrapper("%c", 'a'), "a");
    EXPECT_EQ(spk_wrapper("%ld", (long)1234), "1234");
    EXPECT_EQ(spk_wrapper("%5d", 2), "    2");
    EXPECT_EQ(spk_wrapper("%05d", 2), "00002");
    EXPECT_EQ(spk_wrapper("%-5d", 2), "2    ");
    EXPECT_EQ(spk_wrapper("%5s", "abc"), "  abc");
    EXPECT_EQ(spk_wrapper("%-5s", "abc"), "abc  ");
+   EXPECT_EQ(spk_wrapper("%5c", 'a'),  "    a");
+   EXPECT_EQ(spk_wrapper("%-5c", 'a'), "a    ");
 
    EXPECT_EQ(spk_wrapper("%lld", 9223372036854775807ll), "9223372036854775807");
    EXPECT_EQ(spk_wrapper("%llx", 0xaabbccddeeffll), "aabbccddeeff");
@@ -53,6 +56,9 @@ TEST(printk, rare)
    EXPECT_EQ(spk_wrapper("%hhx", (char)-1), "ff");
    EXPECT_EQ(spk_wrapper("%hd", (short)-1234), "-1234");
    EXPECT_EQ(spk_wrapper("%hhd", (signed char)-123), "-123");
+
+   /* Corner cases */
+   EXPECT_EQ(spk_wrapper("%05c", 'a'),  "    a");  /* zero-pad is ignored */
 }
 
 TEST(printk, hashsign)
@@ -66,6 +72,10 @@ TEST(printk, hashsign)
    EXPECT_EQ(spk_wrapper("%#08o", 0755), "00000755");  // "0" counted in lpad
    EXPECT_EQ(spk_wrapper("%#8o",  0755), "    0755");  // "0" counted in lpad
    EXPECT_EQ(spk_wrapper("%#-8o", 0755), "0755    ");  // "0" counted in rpad
+
+   /* Corner cases */
+   EXPECT_EQ(spk_wrapper("%##x",  0x123), "0x123");
+   EXPECT_EQ(spk_wrapper("%###x", 0x123), "0x123");
 }
 
 TEST(printk, truncated_seq)
@@ -77,7 +87,8 @@ TEST(printk, truncated_seq)
    EXPECT_EQ(spk_wrapper("%5"), "");
    EXPECT_EQ(spk_wrapper("%5"), "");
    EXPECT_EQ(spk_wrapper("%-5"), "");
-   EXPECT_EQ(spk_wrapper("%#"), "");
+   EXPECT_EQ(spk_wrapper("%h"), "");
+   EXPECT_EQ(spk_wrapper("%hh"), "");
 }
 
 TEST(printk, incomplete_seq)
@@ -89,13 +100,19 @@ TEST(printk, incomplete_seq)
    EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%-5, hello"), "%, hello");
-   EXPECT_EQ(spk_wrapper("%#, hello"), "%#, hello");
+   EXPECT_EQ(spk_wrapper("%h, hello"), "%, hello");
+   EXPECT_EQ(spk_wrapper("%hh, hello"), "%, hello");
+   EXPECT_EQ(spk_wrapper("%#, hello"), "%#, hello"); /* note: %# is kept */
 }
 
 TEST(printk, invalid_seq)
 {
    EXPECT_EQ(spk_wrapper("%w", 123), "%w");
    EXPECT_EQ(spk_wrapper("%lll", 123ll), "%l");
+   EXPECT_EQ(spk_wrapper("%#"), "%#");
+   EXPECT_EQ(spk_wrapper("%##"), "%#");
+   EXPECT_EQ(spk_wrapper("%###"), "%#");
+   EXPECT_EQ(spk_wrapper("%l#d"), "%#d");
 }
 
 TEST(printk, pointers)
