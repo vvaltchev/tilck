@@ -238,9 +238,15 @@ static const enum printk_width single_mods[2] =
 };
 
 static bool
-vsnprintk_process_char(struct snprintk_ctx *ctx)
+process_seq(struct snprintk_ctx *ctx)
 {
-   /* Here're just after '%'. It follows an ASCII char != '%' */
+   /* Here're just after '%' */
+   if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
+      /* %% or % followed by non-ascii char */
+      WRITE_CHAR(*ctx->fmt);
+      return true;
+   }
+
    goto process_next_char_in_seq;
 
 move_to_next_char_in_seq:
@@ -356,7 +362,6 @@ incomplete_seq:
 
 end_sequence:
    snprintk_ctx_reset_state(ctx);
-   ++ctx->fmt;
    return true;
 
 truncated_seq:
@@ -376,27 +381,25 @@ int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
    ctx->buf_end = initial_buf + size;
    va_copy(ctx->args, __args);
 
-   while (*ctx->fmt) {
+   for (char fmtX; (fmtX = *ctx->fmt); ctx->fmt++) {
 
-      if (*ctx->fmt != '%') {
-         WRITE_CHAR(*ctx->fmt++);
-         continue;
+      if (LIKELY(fmtX != '%')) {
+
+         /* Regular character: just write it */
+         WRITE_CHAR(fmtX);
+
+      } else {
+
+         /* fmt is '%': move it forward */
+         ctx->fmt++;
+
+         /* process the whole '%' sequence (it's often longer than 1 char) */
+         if (!process_seq(ctx))
+            break;   /* our dest is full or fmt finished early */
       }
-
-      /* fmt is '%' ... */
-      ctx->fmt++;
-
-      /* after the '%' ... */
-      if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
-         /* %% or % followed by non-ascii char */
-         WRITE_CHAR(*ctx->fmt++);
-         continue;
-      }
-
-      if (!vsnprintk_process_char(ctx))
-         break;
    }
 
+truncated_seq:
 out_of_dest_buffer:
    ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
    return (int)(ctx->buf - initial_buf);
