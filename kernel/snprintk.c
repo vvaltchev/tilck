@@ -204,6 +204,20 @@ write_number_param(struct snprintk_ctx *ctx, char fmtX)
    return write_str(ctx, fmtX, intbuf);
 }
 
+typedef bool (*write_param_func)(struct snprintk_ctx *, char);
+
+static const write_param_func write_funcs[32] =
+{
+   ['d' - 97] = &write_number_param,
+   ['i' - 97] = &write_number_param,
+   ['o' - 97] = &write_number_param,
+   ['u' - 97] = &write_number_param,
+   ['x' - 97] = &write_number_param,
+   ['c' - 97] = &write_char_param,
+   ['s' - 97] = &write_string_param,
+   ['p' - 97] = &write_pointer_param,
+};
+
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 {
    struct snprintk_ctx __ctx;
@@ -238,13 +252,16 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 
 next_char_in_seq:
 
-      // Check if *fmt is one of 'd', 'i', 'u', 'o', 'x' ...
-      if (diuox_base[(u8)*fmt]) {
+      if (isalpha_lower(*fmt)) {
 
-         if (!write_number_param(ctx, *fmt))
-            goto out;
+         u8 idx = (u8)*fmt - 97;
 
-         goto end_sequence;
+         if (write_funcs[idx]) {
+            if (!write_funcs[idx](ctx, *fmt))
+               goto out;
+
+            goto end_sequence;
+         }
       }
 
       switch (*fmt) {
@@ -370,27 +387,6 @@ next_char_in_seq:
          }
 
          goto next_char_in_seq;
-
-      case 'c':
-
-         if (!write_char_param(ctx, *fmt))
-            goto out;
-
-         break;
-
-      case 's':
-
-         if (!write_string_param(ctx, *fmt))
-            goto out;
-
-         break;
-
-      case 'p':
-
-         if (!write_pointer_param(ctx, *fmt))
-            goto out;
-
-         break;
 
       default:
 
