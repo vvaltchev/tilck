@@ -290,6 +290,27 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
    return pt->pages[pt_index].present;
 }
 
+bool is_rw_mapped(pdir_t *pdir, void *vaddrp)
+{
+   page_table_t *pt;
+   const ulong vaddr = (ulong) vaddrp;
+   const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
+   const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
+
+   page_dir_entry_t *e = &pdir->entries[pd_index];
+   page_t page;
+
+   if (!e->present)
+      return false;
+
+   if (e->psize) /* 4-MB page */
+      return e->present && e->rw;
+
+   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   page = pt->pages[pt_index];
+   return page.present && page.rw;
+}
+
 void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
 {
    page_table_t *pt;
