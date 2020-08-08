@@ -116,6 +116,10 @@ TEST(printk, invalid_seq)
    EXPECT_EQ(spk_wrapper("%##"), "%#");
    EXPECT_EQ(spk_wrapper("%###"), "%#");
    EXPECT_EQ(spk_wrapper("%l#d"), "%#d");
+   EXPECT_EQ(spk_wrapper("%lh"), "%h");
+   EXPECT_EQ(spk_wrapper("%hl"), "%l");
+   EXPECT_EQ(spk_wrapper("%hld"), "%ld");
+   EXPECT_EQ(spk_wrapper("%lhd"), "%hd");
 }
 
 TEST(printk, pointers)

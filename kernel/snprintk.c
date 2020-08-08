@@ -220,6 +220,24 @@ static const write_param_func write_funcs[32] =
 
 int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 {
+   static const enum printk_width double_mods[2][3] =
+   {
+      /* 'l' modifier */
+      { pw_default, pw_long, pw_long_long },
+
+      /* 'h' modifier */
+      { pw_default, pw_short, pw_char },
+   };
+
+   static const enum printk_width single_mods[2] =
+   {
+      /* 'z' modifier */
+      pw_long,
+
+      /* 'L', 'q', 'j' modifiers */
+      pw_long_long,
+   };
+
    struct snprintk_ctx __ctx;
 
    /* ctx has to be a pointer because of macros */
@@ -322,71 +340,46 @@ next_char_in_seq:
          ctx->hash_sign = true;
          goto next_char_in_seq;
 
-      // %z (followed by d, i, o, u, x) is C99 prefix for size_t
-      case 'z':
-
-         if (!*++fmt)
-            goto truncated_seq;
-
-         ctx->width = pw_long;
-         goto next_char_in_seq;
-
+      case 'z': /* fall-through */
       case 'j': /* fall-through */
       case 'q': /* fall-through */
       case 'L':
 
-         if (!*++fmt)
+         if (ctx->width != pw_default)
+            goto unknown_seq;
+
+         ctx->width = single_mods[*fmt++ != 'z'];
+
+         if (!*fmt)
             goto truncated_seq;
 
-         ctx->width = pw_long_long;
          goto next_char_in_seq;
 
-      // %l makes the following type (d, i, o, u, x) a long.
-      case 'l':
-
-         if (ctx->width == pw_default) {
-
-            if (!*++fmt)
-               goto truncated_seq;
-
-            ctx->width = pw_long;
-
-         } else if (ctx->width == pw_long) {
-
-            if (!*++fmt)
-               goto truncated_seq;
-
-            ctx->width = pw_long_long;
-
-         } else {
-
-            goto unknown_seq;             /* %lll */
-         }
-
-         goto next_char_in_seq;
-
+      case 'l': /* fall-through */
       case 'h':
 
-         if (ctx->width == pw_default) {
+         {
+            int idx = -1;
+            int m = *fmt != 'l';    /* choose the right sub-array: 'l' or 'h' */
 
+            /* Find the index in the sub-array with the current width mod */
+            for (int i = 0; i < 3; i++) {
+               if (ctx->width == double_mods[m][i])
+                  idx = i;
+            }
+
+            /* Invalid current width modifier */
+            if (idx < 0 || idx == 2)
+               goto unknown_seq;             /* %lll, %hhh, %lh, %hl, ... */
+
+            /* Check for string end */
             if (!*++fmt)
                goto truncated_seq;
 
-            ctx->width = pw_short;
-
-         } else if (ctx->width == pw_short) {
-
-            if (!*++fmt)
-               goto truncated_seq;
-
-            ctx->width = pw_char;
-
-         } else {
-
-            goto unknown_seq;             /* %hhh */
+            /* Move to the next modifier (e.g. default -> long -> long long) */
+            ctx->width = double_mods[m][idx + 1];
+            goto next_char_in_seq;
          }
-
-         goto next_char_in_seq;
 
       default:
 
@@ -399,7 +392,11 @@ incomplete_seq:
             WRITE_CHAR('#');
 
          WRITE_CHAR(*fmt);
+         goto end_sequence;
       }
+
+      /* Make `break` unusable in the switch, in order to avoid confusion */
+      NOT_REACHED();
 
 end_sequence:
       snprintk_ctx_reset_state(ctx);
