@@ -236,7 +236,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 
       // after the '%', follows an ASCII char != '%' ...
 
-switch_case:
+next_char_in_seq:
 
       // Check if *fmt is one of 'd', 'i', 'u', 'o', 'x' ...
       if (diuox_base[(u8)*fmt]) {
@@ -244,7 +244,7 @@ switch_case:
          if (!write_number_param(ctx, *fmt))
             goto out;
 
-         goto next_iteration;
+         goto end_sequence;
       }
 
       switch (*fmt) {
@@ -256,7 +256,7 @@ switch_case:
             goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
-         goto switch_case;
+         goto next_char_in_seq;
 
       case '1':
       case '2':
@@ -274,7 +274,7 @@ switch_case:
             goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
-         goto switch_case;
+         goto next_char_in_seq;
 
       case '-':
          ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
@@ -283,7 +283,7 @@ switch_case:
             goto truncated_seq;
 
          /* parse now the command letter by re-entering in the switch case */
-         goto switch_case;
+         goto next_char_in_seq;
 
       case '#':
 
@@ -292,7 +292,7 @@ switch_case:
             if (!*++fmt)
                goto incomplete_seq; /* note: forcing "%#" to be printed */
 
-            goto switch_case; /* skip this '#' and move on */
+            goto next_char_in_seq; /* skip this '#' and move on */
          }
 
          if (fmt[-1] != '%')
@@ -303,7 +303,7 @@ switch_case:
 
          fmt++;
          ctx->hash_sign = true;
-         goto switch_case;
+         goto next_char_in_seq;
 
       // %z (followed by d, i, o, u, x) is C99 prefix for size_t
       case 'z':
@@ -312,7 +312,7 @@ switch_case:
             goto truncated_seq;
 
          ctx->width = pw_long;
-         goto switch_case;
+         goto next_char_in_seq;
 
       case 'j': /* fall-through */
       case 'q': /* fall-through */
@@ -322,7 +322,7 @@ switch_case:
             goto truncated_seq;
 
          ctx->width = pw_long_long;
-         goto switch_case;
+         goto next_char_in_seq;
 
       // %l makes the following type (d, i, o, u, x) a long.
       case 'l':
@@ -346,7 +346,7 @@ switch_case:
             goto unknown_seq;             /* %lll */
          }
 
-         goto switch_case;
+         goto next_char_in_seq;
 
       case 'h':
 
@@ -369,7 +369,7 @@ switch_case:
             goto unknown_seq;             /* %hhh */
          }
 
-         goto switch_case;
+         goto next_char_in_seq;
 
       case 'c':
 
@@ -405,7 +405,7 @@ incomplete_seq:
          WRITE_CHAR(*fmt);
       }
 
-next_iteration:
+end_sequence:
       snprintk_ctx_reset_state(ctx);
       ++fmt;
    }
