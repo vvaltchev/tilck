@@ -74,7 +74,7 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
 #define WRITE_CHAR(c)                                         \
    do {                                                       \
       if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))   \
-         goto out;                                            \
+         goto out_of_dest_buffer;                             \
    } while (0)
 
 static bool
@@ -90,7 +90,7 @@ write_0x_prefix(struct snprintk_ctx *ctx, char fmtX)
 
    return true;
 
-out:
+out_of_dest_buffer:
    return false;
 }
 
@@ -125,7 +125,7 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 
       if (ctx->hash_sign) {
          if (!write_0x_prefix(ctx, fmtX))
-            goto out;
+            goto out_of_dest_buffer;
       }
    }
 
@@ -134,18 +134,18 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 
    if ((fmtX == 'p' || ctx->hash_sign) && pad_char != '0') {
       if (!write_0x_prefix(ctx, fmtX))
-         goto out;
+         goto out_of_dest_buffer;
    }
 
    if (!write_in_buf_str(&ctx->buf, ctx->buf_end, (str)))
-      goto out;
+      goto out_of_dest_buffer;
 
    for (int i = 0; i < rpad; i++)
       WRITE_CHAR(pad_char);
 
    return true;
 
-out:
+out_of_dest_buffer:
    return false;
 }
 
@@ -257,7 +257,7 @@ process_next_char_in_seq:
 
       if (write_funcs[idx]) {
          if (!write_funcs[idx](ctx, *ctx->fmt))
-            goto out;
+            goto out_of_dest_buffer;
 
          goto end_sequence;
       }
@@ -359,8 +359,8 @@ end_sequence:
    ++ctx->fmt;
    return true;
 
-out:
 truncated_seq:
+out_of_dest_buffer:
    return false;
 }
 
@@ -397,7 +397,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
          break;
    }
 
-out:
+out_of_dest_buffer:
    ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
    return (int)(ctx->buf - initial_buf);
 }
