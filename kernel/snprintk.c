@@ -49,10 +49,11 @@ static const ulong width_val[] =
 
 struct snprintk_ctx {
 
+   const char *fmt;
    va_list args;
    enum printk_width width;
-   int left_padding;
-   int right_padding;
+   int lpad;
+   int rpad;
    char *buf;
    char *buf_end;
    bool zero_lpad;
@@ -64,8 +65,8 @@ static void
 snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
 {
    ctx->width = pw_default;
-   ctx->left_padding = 0;
-   ctx->right_padding = 0;
+   ctx->lpad = 0;
+   ctx->rpad = 0;
    ctx->zero_lpad = false;
    ctx->hash_sign = false;
 }
@@ -97,8 +98,8 @@ static bool
 write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
 {
    int sl = (int) strlen(str);
-   int lpad = MAX(0, ctx->left_padding - sl);
-   int rpad = MAX(0, ctx->right_padding - sl);
+   int lpad = MAX(0, ctx->lpad - sl);
+   int rpad = MAX(0, ctx->rpad - sl);
    char pad_char = ' ';
 
    /* Cannot have both left padding _and_ right padding */
@@ -218,7 +219,7 @@ static const write_param_func write_funcs[32] =
    ['p' - 97] = &write_pointer_param,
 };
 
-int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
+int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
 {
    static const enum printk_width double_mods[2][3] =
    {
@@ -243,26 +244,27 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
    /* ctx has to be a pointer because of macros */
    struct snprintk_ctx *ctx = &__ctx;
    snprintk_ctx_reset_state(ctx);
+   ctx->fmt = __fmt;
    ctx->buf = initial_buf;
    ctx->buf_end = initial_buf + size;
    va_copy(ctx->args, __args);
 
-   while (*fmt) {
+   while (*ctx->fmt) {
 
-      // *fmt != '%', just write it and continue.
-      if (*fmt != '%') {
-         WRITE_CHAR(*fmt++);
+      // *ctx->fmt != '%', just write it and continue.
+      if (*ctx->fmt != '%') {
+         WRITE_CHAR(*ctx->fmt++);
          continue;
       }
 
-      // *fmt is '%' ...
-      fmt++;
+      // *ctx->fmt is '%' ...
+      ctx->fmt++;
 
       // after the '%' ...
 
-      if (*fmt == '%' || (u8)*fmt >= 128) {
+      if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
          /* %% or % followed by non-ascii char */
-         WRITE_CHAR(*fmt++);
+         WRITE_CHAR(*ctx->fmt++);
          continue;
       }
 
@@ -270,26 +272,26 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
       goto process_next_char_in_seq;
 
 move_to_next_char_in_seq:
-      fmt++;
+      ctx->fmt++;
 
 process_next_char_in_seq:
 
-      if (!*fmt)
+      if (!*ctx->fmt)
          goto truncated_seq;
 
-      if (isalpha_lower(*fmt)) {
+      if (isalpha_lower(*ctx->fmt)) {
 
-         u8 idx = (u8)*fmt - 97;
+         u8 idx = (u8)*ctx->fmt - 97;
 
          if (write_funcs[idx]) {
-            if (!write_funcs[idx](ctx, *fmt))
+            if (!write_funcs[idx](ctx, *ctx->fmt))
                goto out;
 
             goto end_sequence;
          }
       }
 
-      switch (*fmt) {
+      switch (*ctx->fmt) {
 
       case '0':
          ctx->zero_lpad = true;
@@ -304,27 +306,27 @@ process_next_char_in_seq:
       case '7':
       case '8':
       case '9':
-         ctx->left_padding = (int)tilck_strtol(fmt, &fmt, 10, NULL);
+         ctx->lpad = (int)tilck_strtol(ctx->fmt, &ctx->fmt, 10, NULL);
          goto process_next_char_in_seq;
 
       case '-':
-         ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
+         ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
          goto process_next_char_in_seq;
 
       case '#':
 
          if (ctx->hash_sign) {
 
-            if (!*++fmt)
+            if (!*++ctx->fmt)
                goto incomplete_seq; /* note: forcing "%#" to be printed */
 
             goto process_next_char_in_seq; /* skip this '#' and move on */
          }
 
-         if (fmt[-1] != '%')
+         if (ctx->fmt[-1] != '%')
             goto incomplete_seq;
 
-         if (!fmt[1])
+         if (!ctx->fmt[1])
             goto unknown_seq;
 
          ctx->hash_sign = true;
@@ -338,7 +340,7 @@ process_next_char_in_seq:
          if (ctx->width != pw_default)
             goto unknown_seq;
 
-         ctx->width = single_mods[*fmt != 'z'];
+         ctx->width = single_mods[*ctx->fmt != 'z'];
          goto move_to_next_char_in_seq;
 
       case 'l': /* fall-through */
@@ -346,7 +348,7 @@ process_next_char_in_seq:
 
          {
             int idx = -1;
-            int m = *fmt != 'l';    /* choose the right sub-array: 'l' or 'h' */
+            int m = *ctx->fmt != 'l';  /* choose the sub-array: 'l' or 'h' */
 
             /* Find the index in the sub-array with the current width mod */
             for (int i = 0; i < 3; i++) {
@@ -373,7 +375,7 @@ incomplete_seq:
          if (ctx->hash_sign)
             WRITE_CHAR('#');
 
-         WRITE_CHAR(*fmt);
+         WRITE_CHAR(*ctx->fmt);
          goto end_sequence;
       }
 
@@ -382,7 +384,7 @@ incomplete_seq:
 
 end_sequence:
       snprintk_ctx_reset_state(ctx);
-      ++fmt;
+      ++ctx->fmt;
    }
 
 out:
