@@ -4,50 +4,77 @@
 #include <tilck/common/string_util.h>
 #include "basic_term.h"
 
+/* This extra-limited printk implementation treats %ld as %d */
+STATIC_ASSERT(sizeof(long) == sizeof(int));
+
 static void print_string(const char *s)
 {
    while (*s)
       bt_write_char(*s++);
 }
 
+static void print_ll(char fmtX, char *buf, u64 val)
+{
+   switch (fmtX) {
+
+      case 'i':
+      case 'd':
+         itoa64((s64)val, buf);
+         break;
+
+      case 'u':
+         uitoa64(val, buf, 10);
+         break;
+
+      case 'x':
+         uitoa64_hex_fixed(val, buf);
+         break;
+
+      default:
+         buf[0] = 0;
+   }
+
+   if (buf[0])
+      print_string(buf);
+}
+
 void vprintk(const char *fmt, va_list args)
 {
-   const char *ptr = fmt;
    char buf[64];
 
-   while (*ptr) {
+   for (const char *ptr = fmt; *ptr; ptr++) {
 
       if (*ptr != '%') {
-         bt_write_char(*ptr++);
+         bt_write_char(*ptr);
          continue;
       }
 
-      // *ptr is '%'
-
-      ++ptr;
-
-      if (*ptr == '%')
-         continue;
+      /* OK, we read '%', forward by one */
+      ptr++;
 
       switch (*ptr) {
 
-      case 'l':
-         ++ptr;
+      case '%':
+         bt_write_char(*ptr);
+         break;
 
-         if (*ptr && *ptr == 'l') {
-            ++ptr;
-            if (*ptr) {
-               if (*ptr == 'u') {
-                  uitoa64(va_arg(args, u64), buf, 10);
-                  print_string(buf);
-               } else if (*ptr == 'i' || *ptr == 'd') {
-                  itoa64(va_arg(args, s64), buf);
-                  print_string(buf);
-               } else if (*ptr == 'x') {
-                  uitoa64_hex_fixed(va_arg(args, u64), buf);
-                  print_string(buf);
-               }
-            }
+      case 'l':
+
+         /* Just skip 'l', treating %ld and %d the same way */
+         ptr++;
+
+         if (!*ptr)
+            return;
+
+         if (*ptr == 'l') {
+
+            /* OK, we've got %ll */
+            ptr++;
+
+            if (!*ptr)
+               return;
+
+            print_ll(*ptr, buf, va_arg(args, u64));
          }
          break;
 
@@ -63,7 +90,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'x':
-         uitoa32(va_arg(args, u32), buf, 10);
+         uitoa32(va_arg(args, u32), buf, 16);
          print_string(buf);
          break;
 
@@ -85,8 +112,6 @@ void vprintk(const char *fmt, va_list args)
          bt_write_char('%');
          bt_write_char(*ptr);
       }
-
-      ++ptr;
    }
 }
 
