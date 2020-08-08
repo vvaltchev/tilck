@@ -11,7 +11,7 @@
 static void debug_show_detailed_mode_info(struct ModeInfoBlock *mi)
 {
    printk("Detailed mode info:\n");
-   printk("fb_paddr: %p\n", fb_paddr);
+   printk("fb_paddr: %p\n", TO_PTR(fb_paddr));
    printk("fb_width: %u\n", fb_width);
    printk("fb_height: %u\n", fb_height);
    printk("fb_pitch: %u\n", fb_pitch);

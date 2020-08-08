@@ -69,8 +69,8 @@ void selftest_sleep_short()
    u64 after = get_ticks();
    u64 elapsed = after - before;
 
-   printk("[sleeping_kthread] elapsed ticks: %llu (expected: %llu)\n",
-          elapsed, wait_ticks);
+   printk("[sleeping_kthread] elapsed ticks: %" PRIu64
+          " (expected: %" PRIu64 ")\n", elapsed, wait_ticks);
 
    VERIFY((elapsed - wait_ticks) <= TIMER_HZ/10);
    regular_self_test_end();

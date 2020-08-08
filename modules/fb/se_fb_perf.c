@@ -39,7 +39,7 @@ void internal_selftest_fb_perf(bool use_fpu)
 
    cycles = duration / iters;
 
-   u64 pixels = fb_get_width() * fb_get_height();
+   u32 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);
    printk("cycles per redraw: %llu\n", cycles);
    printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);

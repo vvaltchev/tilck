@@ -357,7 +357,7 @@ tty_ioctl_int(struct tty *t, struct devfs_handle *h, ulong request, void *argp)
          return tty_ioctl_TIOCSPGRP(t, argp);
 
       default:
-         printk("WARNING: unknown tty_ioctl() request: %p\n", request);
+         printk("WARNING: unknown tty_ioctl() request: %p\n", TO_PTR(request));
          return -EINVAL;
    }
 }

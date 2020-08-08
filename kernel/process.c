@@ -637,6 +637,6 @@ int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
       return 0;
    }
 
-   printk("[TID: %d] Unknown option: %d\n", option);
+   printk("[TID: %d] Unknown option: %d\n", get_curr_tid(), option);
    return -EINVAL;
 }

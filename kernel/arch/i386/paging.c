@@ -246,10 +246,10 @@ void handle_page_fault_int(regs_t *r)
    }
 
    printk("USER PAGE FAULT in attempt to %s %p%s\n",
-          rw ? "WRITE" : "READ", vaddr,
+          rw ? "WRITE" : "READ", TO_PTR(vaddr),
           !p ? " (NON present)." : ".");
 
-   printk("EIP: %p\n", r->eip);
+   printk("EIP: %p\n", TO_PTR(r->eip));
 
    exit_fault_handler_state();
    send_signal(get_curr_tid(), sig, true);
@@ -1129,7 +1129,7 @@ map_framebuffer(pdir_t *pdir,
 
    if (pow2_round_up_at(paddr, pow2size) != paddr) {
       /* As above, show the error, but DO NOT fail */
-      printk("ERROR: fb_paddr (%p) not aligned at power-of-two address", paddr);
+      printk("ERROR: paddr (%p) not aligned at power-of-two", TO_PTR(paddr));
       return (void *)vaddr;
    }
 

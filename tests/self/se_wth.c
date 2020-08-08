@@ -35,7 +35,7 @@ static void end_test(void *arg)
    VERIFY(g_counter == tot_iters);
 
    printk("[se_wth] Avg cycles per job "
-          "(enqueue + execute): %llu\n", elapsed/g_counter);
+          "(enqueue + execute): %" PRIu64 "\n", elapsed/g_counter);
 
    printk("[se_wth] end_test() waiting to grab the lock\n");
    kmutex_lock(&ctx->m);
@@ -180,7 +180,7 @@ void selftest_wth_perf_short(void)
    elapsed = RDTSC() - start;
 
    ASSERT(n > 0); // SA: avoid division by zero warning
-   printk("Avg. job enqueue cycles: %llu [%i jobs]\n", elapsed/n, n);
+   printk("Avg. job enqueue cycles: %" PRIu64 " [%i jobs]\n", elapsed/n, n);
    regular_self_test_end();
 }
 

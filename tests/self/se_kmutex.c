@@ -98,19 +98,22 @@ DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex_med)
 
 static void test_kmutex_thread(void *arg)
 {
-   printk("%i) before lock\n", arg);
+   int tn = (int)(ulong)arg;
+
+   printk("%i) before lock\n", tn);
 
    kmutex_lock(&test_mutex);
 
-   printk("%i) under lock..\n", arg);
+   printk("%i) under lock..\n", tn);
 
+   // TODO: replace with delay_us()
    for (u32 i = 0; i < 128*MB; i++) {
       asmVolatile("nop");
    }
 
    kmutex_unlock(&test_mutex);
 
-   printk("%i) after lock\n", arg);
+   printk("%i) after lock\n", tn);
 }
 
 static void test_kmutex_thread_trylock()

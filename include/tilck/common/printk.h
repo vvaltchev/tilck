@@ -5,8 +5,8 @@
 
 #ifndef USERMODE_APP
 
-   void vprintk(const char *fmt, va_list args);
    void printk(const char *fmt, ...);
+   void vprintk(const char *fmt, va_list args);
 
    #if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
 
@@ -19,7 +19,7 @@
    #endif
 
    #ifndef UNIT_TEST_ENVIRONMENT
-      #define NO_PREFIX          "\x01\x01\x00\x00"
+      #define NO_PREFIX          "\x01\x01\x20\x20"
    #else
       #define NO_PREFIX          ""
    #endif

@@ -320,7 +320,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
        */
 
       printk("[%d] Un-map unknown chunk at [%p, %p)\n",
-             pi->pid, vaddr, vaddr + actual_len);
+             pi->pid, TO_PTR(vaddr), TO_PTR(vaddr + actual_len));
       return 0;
    }
 

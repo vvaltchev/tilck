@@ -31,7 +31,7 @@ void debug_kmalloc_stop_log(void)
 
 #define DEBUG_stop_coaleshe                                                 \
                                                                             \
-   DEBUG_printk("STOP: unable to mark node #%i (size %u) as free\n",        \
+   DEBUG_printk("STOP: unable to mark node #%i (size %zu) as free\n",       \
                 n, curr_size);                                              \
                                                                             \
    DEBUG_printk("node left:  full: %i, split: %i\n",                        \
@@ -41,34 +41,34 @@ void debug_kmalloc_stop_log(void)
                 right.full, left.split)                                     \
 
 #define DEBUG_coaleshe                                                      \
-   DEBUG_printk("Marking node #%i (size: %u) as free\n", n, curr_size)
+   DEBUG_printk("Marking node #%i (size: %zu) as free\n", n, curr_size)
 
 #define DEBUG_allocate_node1                                                \
-   DEBUG_printk("For node #%i, using alloc block (%i/%i): %p (node #%u)\n", \
+   DEBUG_printk("For node #%i, using alloc block (%i/%zu): %p (node #%u)\n",\
                 ptr_to_node(h, (void *)vaddr, node_size), i+1,              \
-                alloc_block_count, alloc_block_vaddr, alloc_node)           \
+                alloc_block_count, TO_PTR(alloc_block_vaddr), alloc_node)   \
 
 #define DEBUG_allocate_node2                                                \
    DEBUG_printk("Allocating block of pages..\n")
 
 #define DEBUG_allocate_node3                                                \
-   DEBUG_printk("Returning addr %p (%u alloc blocks)\n",                    \
-                vaddr,                                                      \
+   DEBUG_printk("Returning addr %p (%zu alloc blocks)\n",                   \
+                TO_PTR(vaddr),                                              \
                 alloc_block_count)                                          \
 
 #define DEBUG_kmalloc_begin                                                 \
-   DEBUG_printk("kmalloc(%u)...\n", *size)
+   DEBUG_printk("kmalloc(%zu)...\n", *size)
 
 #define DEBUG_kmalloc_call_begin                                            \
-   DEBUG_printk("Node #%i, node_size = %u, vaddr = %p\n",                   \
+   DEBUG_printk("Node #%i, node_size = %zu, vaddr = %p\n",                  \
                 node, node_size, node_to_ptr(h, node, node_size))           \
 
 #define DEBUG_kmalloc_bad_end                                               \
-   DEBUG_printk("kmalloc_bad_end: ptr: %p, node #%i, size: %u\n",           \
+   DEBUG_printk("kmalloc_bad_end: ptr: %p, node #%i, size: %zu\n",          \
                 vaddr, node, size)                                          \
 
 #define DEBUG_kmalloc_end                                                   \
-   DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %u\n",               \
+   DEBUG_printk("kmalloc_end: ptr: %p, node #%i, size: %zu\n",              \
                 vaddr, node, size)                                          \
 
 #define DEBUG_already_full                                                  \
@@ -93,21 +93,21 @@ void debug_kmalloc_stop_log(void)
    DEBUG_printk("allocation on right node was not possible, return NULL.\n")
 
 #define DEBUG_free1                                                         \
-   DEBUG_printk("kfree: ptr: %p, node #%i (size %u)\n", ptr, node, size)
+   DEBUG_printk("kfree: ptr: %p, node #%i (size %zu)\n", ptr, node, size)
 
 #define DEBUG_free_after_coaleshe                                           \
    DEBUG_printk("After coaleshe, biggest_free_node #%i, "                   \
-                "biggest_free_size = %u\n",                                 \
+                "biggest_free_size = %zu\n",                                \
                 biggest_free_node, biggest_free_size)                       \
 
 #define DEBUG_free_alloc_block_count                                        \
-   DEBUG_printk("The block node used up to %i pages\n", alloc_block_count)
+   DEBUG_printk("The block node used up to %zu pages\n", alloc_block_count)
 
 
 #define DEBUG_check_alloc_block                                             \
    DEBUG_printk("Checking alloc block i = %i, pNode = %i, pAddr = %p, "     \
                  "alloc = %i, free = %i, split = %i\n",                     \
-                 i, alloc_node, alloc_block_vaddr,                          \
+                 i, alloc_node, TO_PTR(alloc_block_vaddr),                  \
                  nodes[alloc_node].allocated,                               \
                  !nodes[alloc_node].full,                                   \
                  nodes[alloc_node].split)                                   \

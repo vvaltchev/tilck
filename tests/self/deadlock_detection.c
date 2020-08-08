@@ -151,9 +151,9 @@ nds_dump_progress_of_first_tasks(void)
          continue;
 
       if (i == 0)
-         printk("%llu ", no_deadlock_set_progress[i]);
+         printk("%" PRIu64 " ", no_deadlock_set_progress[i]);
       else
-         printk(NO_PREFIX "%llu ", no_deadlock_set_progress[i]);
+         printk(NO_PREFIX "%" PRIu64 " ", no_deadlock_set_progress[i]);
 
       counter++;
    }

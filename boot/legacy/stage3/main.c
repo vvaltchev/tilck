@@ -265,7 +265,7 @@ load_fat_ramdisk(const char *load_str,
    ulong free_mem;
    ulong size_to_alloc;
 
-   printk(load_str);
+   printk("%s", load_str);
    free_mem = get_usable_mem_or_panic(mi, min_paddr, SECTOR_SIZE);
 
    // Read FAT's header
@@ -306,7 +306,7 @@ load_fat_ramdisk(const char *load_str,
                               rd_sectors);
 
    bt_movecur(bt_get_curr_row(), 0);
-   printk(load_str);
+   printk("%s", load_str);
    write_ok_msg();
 
    /* Return ramdisk's paddr and size using the OUT parameters */

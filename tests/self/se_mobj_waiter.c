@@ -17,10 +17,10 @@ static void mobj_waiter_sig_thread(void *arg)
    ulong n = (ulong) arg;
    u64 ticks_to_sleep = (u64)(n + 1) * TIMER_HZ / 2;
 
-   printk("[thread %u] sleep for %d ticks\n", n, ticks_to_sleep);
+   printk("[thread %lu] sleep for %" PRIu64 " ticks\n", n, ticks_to_sleep);
    kernel_sleep(ticks_to_sleep);
 
-   printk("[thread %u] signal cond %d\n", n, n);
+   printk("[thread %lu] signal cond %ld\n", n, n);
    kcond_signal_one(&conds[n]);
    mobj_se_test_signal_counter++;
 }

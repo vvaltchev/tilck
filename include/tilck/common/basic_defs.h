@@ -52,6 +52,7 @@
    #include <stddef.h>    // system header
    #include <stdbool.h>   // system header
    #include <stdalign.h>  // system header
+   #include <inttypes.h>  // system header
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 
 #endif // #ifdef __cplusplus
@@ -112,6 +113,7 @@
 #define NODISCARD __attribute__((warn_unused_result))
 #define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
 #define ALIGNED_AT(x) __attribute__ ((aligned(x)))
+#define ATTR_PRINTF_LIKE(c) __attribute__ ((__format__ (__printf__, c, c+1)))
 
 #ifdef BITS32
    #define FASTCALL __attribute__((fastcall))

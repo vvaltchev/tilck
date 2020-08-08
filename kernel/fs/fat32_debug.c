@@ -48,7 +48,7 @@ static void dump_fat16_headers(struct fat_hdr *common_hdr)
 
    printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
    printk("BS_BootSig: %u\n", hdr->BS_BootSig);
-   printk("BS_VolID: %p\n", hdr->BS_VolID);
+   printk("BS_VolID: %p\n", TO_PTR(hdr->BS_VolID));
    dump_fixed_str("BS_VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
    dump_fixed_str("BS_FilSysType",
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));
@@ -65,7 +65,7 @@ static void dump_fat32_headers(struct fat_hdr *common_hdr)
    printk("BPB_BkBootSec: %u\n", hdr->BPB_BkBootSec);
    printk("BS_DrvNum: %u\n", hdr->BS_DrvNum);
    printk("BS_BootSig: %u\n", hdr->BS_BootSig);
-   printk("BS_VolID: %p\n", hdr->BS_VolID);
+   printk("BS_VolID: %p\n", TO_PTR(hdr->BS_VolID));
    dump_fixed_str("BS_VolLab", hdr->BS_VolLab, sizeof(hdr->BS_VolLab));
    dump_fixed_str("BS_FilSysType",
                   hdr->BS_FilSysType, sizeof(hdr->BS_FilSysType));

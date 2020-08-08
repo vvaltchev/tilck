@@ -92,7 +92,7 @@ static void kmalloc_init_heavy_stats(void)
    if (!alloc_arr)
       panic("Unable to alloc memory for the kmalloc heavy stats");
 
-   printk("[kmalloc] Heavy stats enabled [buf: %u elems]\n", alloc_arr_elems);
+   printk("[kmalloc] Heavy stats enabled [buf: %zu elems]\n", alloc_arr_elems);
    kmalloc_account_alloc(alloc_arr_bytes);
 }
 

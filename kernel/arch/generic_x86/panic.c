@@ -159,7 +159,7 @@ NORETURN void panic(const char *fmt, ...)
       copy_main_tss_on_regs(&panic_state_regs);
 
       if (!PANIC_SHOW_REGS)
-         printk("ESP: %p\n", panic_state_regs.esp);
+         printk("ESP: %p\n", TO_PTR(panic_state_regs.esp));
    }
 
    if (PANIC_SHOW_REGS)

@@ -333,8 +333,8 @@ static void DEBUG_set_thread_area(struct user_desc *d)
                     "                lim: %p,\n"
                     "                32-bit: %u,\n",
                     d->entry_number,
-                    d->base_addr,
-                    d->limit,
+                    TO_PTR(d->base_addr),
+                    TO_PTR(d->limit),
                     d->seg_32bit);
 
    printk(NO_PREFIX "                contents: %u,\n"

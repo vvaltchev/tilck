@@ -14,19 +14,20 @@ static struct kmutex cond_mutex = { 0 };
 
 static void kcond_thread_test(void *arg)
 {
+   const int tn = (int)(ulong)arg;
    kmutex_lock(&cond_mutex);
 
-   printk("[thread %i]: under lock, waiting for signal..\n", arg);
+   printk("[thread %i]: under lock, waiting for signal..\n", tn);
    bool success = kcond_wait(&cond, &cond_mutex, KCOND_WAIT_FOREVER);
 
    if (success)
-      printk("[thread %i]: under lock, signal received..\n", arg);
+      printk("[thread %i]: under lock, signal received..\n", tn);
    else
-      panic("[thread %i]: under lock, kcond_wait() FAILED\n", arg);
+      panic("[thread %i]: under lock, kcond_wait() FAILED\n", tn);
 
    kmutex_unlock(&cond_mutex);
 
-   printk("[thread %i]: exit\n", arg);
+   printk("[thread %i]: exit\n", tn);
 }
 
 static void kcond_thread_wait_ticks()

@@ -45,14 +45,14 @@ static void kmalloc_perf_per_size(u32 size)
 
    duration = RDTSC() - start;
    kmalloc_perf_print_iters(iters);
-   printk(NO_PREFIX "Cycles per kmalloc(%6i) + kfree: %llu\n",
+   printk(NO_PREFIX "Cycles per kmalloc(%6i) + kfree: %" PRIu64 "\n",
           size, duration / (u64) iters);
 }
 
 void selftest_kmalloc_perf_med(void)
 {
    const int iters = 1000;
-   printk("*** kmalloc perf test ***\n", iters);
+   printk("*** kmalloc perf test ***\n");
 
    allocations = kmalloc(10000 * sizeof(void *));
 
@@ -78,7 +78,9 @@ void selftest_kmalloc_perf_med(void)
    u64 duration = (RDTSC() - start) / (iters * RANDOM_VALUES_COUNT);
 
    kmalloc_perf_print_iters(iters * RANDOM_VALUES_COUNT);
-   printk(NO_PREFIX "Cycles per kmalloc(RANDOM) + kfree: %llu\n", duration);
+
+   printk(NO_PREFIX
+          "Cycles per kmalloc(RANDOM) + kfree: %" PRIu64 "\n", duration);
 
    for (u32 s = 32; s <= 256*KB; s *= 2) {
       kmalloc_perf_per_size(s);

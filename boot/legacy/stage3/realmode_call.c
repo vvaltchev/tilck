@@ -147,7 +147,7 @@ void read_sectors(u32 dest_paddr, u32 lba_sector, u32 sector_count)
 
    if (eax) {
       printk("[ FAILED ]\n");
-      printk("Read failed with last op err: %p\n", eax >> 8);
+      printk("Read failed with last op err: %p\n", TO_PTR(eax >> 8));
       printk("LBA sector: %u\n", curr_sec);
       dump_chs();
       panic("Unrecoverable read error");

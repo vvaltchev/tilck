@@ -5,6 +5,7 @@
 #include <random>
 #include <string>
 #include <type_traits>
+#include <inttypes.h>
 #include <gtest/gtest.h>
 
 using namespace std;
@@ -17,12 +18,6 @@ extern "C" {
    u32 tilck_strtoul32(const char *s, const char **endptr, int base, int *err);
    u64 tilck_strtoul64(const char *s, const char **endptr, int base, int *err);
 }
-
-#ifdef BITS32
-   #define FMT64 "ll"
-#else
-   #define FMT64 "l"
-#endif
 
 // Wrapper defined only for s32, s64, u32, u64.
 template <typename T>
@@ -104,9 +99,9 @@ template <>
 inline void sprintf_hex_wrapper<u64>(u64 val, char *buf, bool fixed)
 {
    if (fixed)
-      sprintf(buf, "%016" FMT64 "x", val);
+      sprintf(buf, "%016" PRIx64, val);
    else
-      sprintf(buf, "%" FMT64 "x", val);
+      sprintf(buf, "%" PRIx64, val);
 }
 
 

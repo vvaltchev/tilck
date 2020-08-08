@@ -240,8 +240,8 @@ static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
       heap_index = kmalloc_internal_add_heap((void *)vaddr, heap_size);
 
       if (heap_index < 0) {
-         printk("kmalloc: no heap slot for heap at %p, size: %u KB\n",
-                vaddr, heap_size / KB);
+         printk("kmalloc: no heap slot for heap at %p, size: %zu KB\n",
+                TO_PTR(vaddr), heap_size / KB);
          break;
       }
 

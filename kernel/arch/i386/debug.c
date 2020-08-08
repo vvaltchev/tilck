@@ -112,7 +112,7 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
          off++;
       }
 
-      printk("[%p] %s + %d\n", va, sym_name ? sym_name : "???", off);
+      printk("[%p] %s + %ld\n", TO_PTR(va), sym_name ? sym_name : "???", off);
    }
 
    printk("\n");
@@ -129,7 +129,7 @@ void debug_qemu_turn_off_machine(void)
 void dump_eflags(u32 f)
 {
    printk("eflags: %p [ %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s], IOPL: %u\n",
-          f,
+          TO_PTR(f),
           f & EFLAGS_CF ? "CF " : "",
           f & EFLAGS_PF ? "PF " : "",
           f & EFLAGS_AF ? "AF " : "",
@@ -154,13 +154,13 @@ void dump_regs(regs_t *r)
    dump_eflags(r->eflags);
 
    printk("ss:  %p, cs:  %p, ds:  %p, esp: %p\n",
-          r->ss, r->cs, r->ds, r->useresp);
+          TO_PTR(r->ss), TO_PTR(r->cs), TO_PTR(r->ds), TO_PTR(r->useresp));
 
    printk("eip: %p, eax: %p, ecx: %p, edx: %p\n",
-          r->eip, r->eax, r->ecx, r->edx);
+          TO_PTR(r->eip), TO_PTR(r->eax), TO_PTR(r->ecx), TO_PTR(r->edx));
 
    printk("ebx: %p, ebp: %p, esi: %p, edi: %p\n",
-          r->ebx, r->ebp, r->esi, r->edi);
+          TO_PTR(r->ebx), TO_PTR(r->ebp), TO_PTR(r->esi), TO_PTR(r->edi));
 }
 
 void dump_raw_stack(ulong addr)
@@ -169,7 +169,7 @@ void dump_raw_stack(ulong addr)
 
    for (int i = 0; i < 36; i += 4) {
 
-      printk("%p: ", addr);
+      printk("%p: ", TO_PTR(addr));
 
       for (int j = 0; j < 4; j++) {
          printk("%p ", *(void **)addr);
