@@ -59,3 +59,21 @@ AcpiOsUnmapMemory(
    unmap_pages(get_kernel_pdir(), TO_PTR(aligned_vaddr), pg_count, false);
    hi_vmem_release(LogicalAddr, Size);
 }
+
+ACPI_STATUS
+AcpiOsGetPhysicalAddress(
+    void                    *LogicalAddress,
+    ACPI_PHYSICAL_ADDRESS   *PhysicalAddress)
+{
+   ulong paddr;
+
+   if (!LogicalAddress || !PhysicalAddress)
+      return AE_BAD_PARAMETER;
+
+   if (get_mapping2(get_kernel_pdir(), LogicalAddress, &paddr) < 0)
+      return AE_ERROR;
+
+   *PhysicalAddress = paddr;
+   return AE_OK;
+}
+
