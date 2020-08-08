@@ -28,6 +28,7 @@ TEST(printk, basic)
    EXPECT_EQ(spk_wrapper("%d", -2), "-2");
    EXPECT_EQ(spk_wrapper("%i", -123), "-123");
    EXPECT_EQ(spk_wrapper("%x", 0xaab3), "aab3");
+   EXPECT_EQ(spk_wrapper("%X", 0xaab3), "AAB3");
    EXPECT_EQ(spk_wrapper("%o", 0755), "755");
    EXPECT_EQ(spk_wrapper("%c", 'a'), "a");
    EXPECT_EQ(spk_wrapper("%ld", (long)1234), "1234");
@@ -38,6 +39,8 @@ TEST(printk, basic)
    EXPECT_EQ(spk_wrapper("%-5s", "abc"), "abc  ");
    EXPECT_EQ(spk_wrapper("%5c", 'a'),  "    a");
    EXPECT_EQ(spk_wrapper("%-5c", 'a'), "a    ");
+   EXPECT_EQ(spk_wrapper("%6X", 0xaab3), "  AAB3");
+   EXPECT_EQ(spk_wrapper("%06X", 0xaab3), "00AAB3");
 
    EXPECT_EQ(spk_wrapper("%lld", 9223372036854775807ll), "9223372036854775807");
    EXPECT_EQ(spk_wrapper("%llx", 0xaabbccddeeffll), "aabbccddeeff");
@@ -70,6 +73,7 @@ TEST(printk, hashsign)
    EXPECT_EQ(spk_wrapper("%#08x", 0x123), "0x000123"); // "0x" counted in lpad
    EXPECT_EQ(spk_wrapper("%#8x",  0x123), "   0x123"); // "0x" counted in lpad
    EXPECT_EQ(spk_wrapper("%#-8x", 0x123), "0x123   "); // "0x" counted in rpad
+   EXPECT_EQ(spk_wrapper("%#08X", 0xabc), "0x000ABC"); // "0x" counted in lpad
 
    EXPECT_EQ(spk_wrapper("%#o",   0755), "0755");      // Just prepend "0"
    EXPECT_EQ(spk_wrapper("%#08o", 0755), "00000755");  // "0" counted in lpad

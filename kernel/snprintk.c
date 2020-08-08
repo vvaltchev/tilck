@@ -49,15 +49,20 @@ static const ulong width_val[] =
 
 struct snprintk_ctx {
 
+   /* Fundamental context variables */
    const char *fmt;
    va_list args;
+   char *buf;        /* dest buffer */
+   char *buf_end;    /* dest buffer's end */
+
+   /* The following params are reset on each call of process_seq */
    enum printk_width width;
    int lpad;
    int rpad;
-   char *buf;
-   char *buf_end;
    bool zero_lpad;
    bool hash_sign;
+
+   /* Helper buffers */
    char intbuf[64];
 };
 
@@ -156,6 +161,7 @@ static const u8 diuox_base[128] =
    ['u'] = 10,
    ['o'] = 8,
    ['x'] = 16,
+   ['X'] = 16,
 };
 
 static bool
@@ -200,6 +206,14 @@ write_number_param(struct snprintk_ctx *ctx, char fmtX)
          uitoa64(va_arg(ctx->args, u64), intbuf, base);
       else
          uitoaN(va_arg(ctx->args, ulong) & make_bitmask(width), intbuf, base);
+   }
+
+   if (fmtX == 'X') {
+
+      fmtX = 'x';
+
+      for (char *p = ctx->intbuf; *p; p++)
+         *p = (char) toupper(*p);
    }
 
    return write_str(ctx, fmtX, intbuf);
@@ -267,6 +281,13 @@ process_next_char_in_seq:
 
          goto end_sequence;
       }
+
+   } else if (*ctx->fmt == 'X') {
+
+      if (!write_number_param(ctx, 'X'))
+         goto out_of_dest_buffer;
+
+      goto end_sequence;
    }
 
    switch (*ctx->fmt) {
