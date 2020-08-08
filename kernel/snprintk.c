@@ -256,7 +256,7 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
       }
 
       // *fmt is '%' ...
-      ++fmt;
+      fmt++;
 
       // after the '%' ...
 
@@ -267,8 +267,12 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
       }
 
       // after the '%', follows an ASCII char != '%' ...
+      goto process_next_char_in_seq;
 
-next_char_in_seq:
+move_to_next_char_in_seq:
+      fmt++;
+
+process_next_char_in_seq:
 
       if (!*fmt)
          goto truncated_seq;
@@ -289,8 +293,7 @@ next_char_in_seq:
 
       case '0':
          ctx->zero_lpad = true;
-         fmt++;
-         goto next_char_in_seq;
+         goto move_to_next_char_in_seq;
 
       case '1':
       case '2':
@@ -302,11 +305,11 @@ next_char_in_seq:
       case '8':
       case '9':
          ctx->left_padding = (int)tilck_strtol(fmt, &fmt, 10, NULL);
-         goto next_char_in_seq;
+         goto process_next_char_in_seq;
 
       case '-':
          ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
-         goto next_char_in_seq;
+         goto process_next_char_in_seq;
 
       case '#':
 
@@ -315,7 +318,7 @@ next_char_in_seq:
             if (!*++fmt)
                goto incomplete_seq; /* note: forcing "%#" to be printed */
 
-            goto next_char_in_seq; /* skip this '#' and move on */
+            goto process_next_char_in_seq; /* skip this '#' and move on */
          }
 
          if (fmt[-1] != '%')
@@ -324,9 +327,8 @@ next_char_in_seq:
          if (!fmt[1])
             goto unknown_seq;
 
-         fmt++;
          ctx->hash_sign = true;
-         goto next_char_in_seq;
+         goto move_to_next_char_in_seq;
 
       case 'z': /* fall-through */
       case 'j': /* fall-through */
@@ -336,8 +338,8 @@ next_char_in_seq:
          if (ctx->width != pw_default)
             goto unknown_seq;
 
-         ctx->width = single_mods[*fmt++ != 'z'];
-         goto next_char_in_seq;
+         ctx->width = single_mods[*fmt != 'z'];
+         goto move_to_next_char_in_seq;
 
       case 'l': /* fall-through */
       case 'h':
@@ -358,9 +360,7 @@ next_char_in_seq:
 
             /* Move to the next modifier (e.g. default -> long -> long long) */
             ctx->width = double_mods[m][idx + 1];
-
-            fmt++;
-            goto next_char_in_seq;
+            goto move_to_next_char_in_seq;
          }
 
       default:
