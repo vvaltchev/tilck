@@ -219,26 +219,153 @@ static const write_param_func write_funcs[32] =
    ['p' - 97] = &write_pointer_param,
 };
 
+static const enum printk_width double_mods[2][3] =
+{
+   /* 'l' modifier */
+   { pw_default, pw_long, pw_long_long },
+
+   /* 'h' modifier */
+   { pw_default, pw_short, pw_char },
+};
+
+static const enum printk_width single_mods[2] =
+{
+   /* 'z' modifier */
+   pw_long,
+
+   /* 'L', 'q', 'j' modifiers */
+   pw_long_long,
+};
+
+static bool
+vsnprintk_process_char(struct snprintk_ctx *ctx)
+{
+   /* Here're just after '%'. It follows an ASCII char != '%' */
+   goto process_next_char_in_seq;
+
+move_to_next_char_in_seq:
+   ctx->fmt++;
+
+process_next_char_in_seq:
+
+   if (!*ctx->fmt)
+      goto truncated_seq;
+
+   if (isalpha_lower(*ctx->fmt)) {
+
+      u8 idx = (u8)*ctx->fmt - 97;
+
+      if (write_funcs[idx]) {
+         if (!write_funcs[idx](ctx, *ctx->fmt))
+            goto out;
+
+         goto end_sequence;
+      }
+   }
+
+   switch (*ctx->fmt) {
+
+   case '0':
+      ctx->zero_lpad = true;
+      goto move_to_next_char_in_seq;
+
+   case '1':
+   case '2':
+   case '3':
+   case '4':
+   case '5':
+   case '6':
+   case '7':
+   case '8':
+   case '9':
+      ctx->lpad = (int)tilck_strtol(ctx->fmt, &ctx->fmt, 10, NULL);
+      goto process_next_char_in_seq;
+
+   case '-':
+      ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+      goto process_next_char_in_seq;
+
+   case '#':
+
+      if (ctx->hash_sign) {
+
+         if (!*++ctx->fmt)
+            goto incomplete_seq; /* note: forcing "%#" to be printed */
+
+         goto process_next_char_in_seq; /* skip this '#' and move on */
+      }
+
+      if (ctx->fmt[-1] != '%')
+         goto incomplete_seq;
+
+      if (!ctx->fmt[1])
+         goto unknown_seq;
+
+      ctx->hash_sign = true;
+      goto move_to_next_char_in_seq;
+
+   case 'z': /* fall-through */
+   case 'j': /* fall-through */
+   case 'q': /* fall-through */
+   case 'L':
+
+      if (ctx->width != pw_default)
+         goto unknown_seq;
+
+      ctx->width = single_mods[*ctx->fmt != 'z'];
+      goto move_to_next_char_in_seq;
+
+   case 'l': /* fall-through */
+   case 'h':
+
+      {
+         int idx = -1;
+         int m = *ctx->fmt != 'l';  /* choose the sub-array: 'l' or 'h' */
+
+         /* Find the index in the sub-array with the current width mod */
+         for (int i = 0; i < 3; i++) {
+            if (ctx->width == double_mods[m][i])
+               idx = i;
+         }
+
+         /* Invalid current width modifier */
+         if (idx < 0 || idx == 2)
+            goto unknown_seq;             /* %lll, %hhh, %lh, %hl, ... */
+
+         /* Move to the next modifier (e.g. default -> long -> long long) */
+         ctx->width = double_mods[m][idx + 1];
+         goto move_to_next_char_in_seq;
+      }
+
+   default:
+
+unknown_seq:
+incomplete_seq:
+
+      WRITE_CHAR('%');
+
+      if (ctx->hash_sign)
+         WRITE_CHAR('#');
+
+      WRITE_CHAR(*ctx->fmt);
+      goto end_sequence;
+   }
+
+   /* Make `break` unusable in the switch, in order to avoid confusion */
+   NOT_REACHED();
+
+end_sequence:
+   snprintk_ctx_reset_state(ctx);
+   ++ctx->fmt;
+   return true;
+
+out:
+truncated_seq:
+   return false;
+}
+
 int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
 {
-   static const enum printk_width double_mods[2][3] =
-   {
-      /* 'l' modifier */
-      { pw_default, pw_long, pw_long_long },
-
-      /* 'h' modifier */
-      { pw_default, pw_short, pw_char },
-   };
-
-   static const enum printk_width single_mods[2] =
-   {
-      /* 'z' modifier */
-      pw_long,
-
-      /* 'L', 'q', 'j' modifiers */
-      pw_long_long,
-   };
-
    struct snprintk_ctx __ctx;
 
    /* ctx has to be a pointer because of macros */
@@ -251,144 +378,26 @@ int vsnprintk(char *initial_buf, size_t size, const char *__fmt, va_list __args)
 
    while (*ctx->fmt) {
 
-      // *ctx->fmt != '%', just write it and continue.
       if (*ctx->fmt != '%') {
          WRITE_CHAR(*ctx->fmt++);
          continue;
       }
 
-      // *ctx->fmt is '%' ...
+      /* fmt is '%' ... */
       ctx->fmt++;
 
-      // after the '%' ...
-
+      /* after the '%' ... */
       if (*ctx->fmt == '%' || (u8)*ctx->fmt >= 128) {
          /* %% or % followed by non-ascii char */
          WRITE_CHAR(*ctx->fmt++);
          continue;
       }
 
-      // after the '%', follows an ASCII char != '%' ...
-      goto process_next_char_in_seq;
-
-move_to_next_char_in_seq:
-      ctx->fmt++;
-
-process_next_char_in_seq:
-
-      if (!*ctx->fmt)
-         goto truncated_seq;
-
-      if (isalpha_lower(*ctx->fmt)) {
-
-         u8 idx = (u8)*ctx->fmt - 97;
-
-         if (write_funcs[idx]) {
-            if (!write_funcs[idx](ctx, *ctx->fmt))
-               goto out;
-
-            goto end_sequence;
-         }
-      }
-
-      switch (*ctx->fmt) {
-
-      case '0':
-         ctx->zero_lpad = true;
-         goto move_to_next_char_in_seq;
-
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9':
-         ctx->lpad = (int)tilck_strtol(ctx->fmt, &ctx->fmt, 10, NULL);
-         goto process_next_char_in_seq;
-
-      case '-':
-         ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
-         goto process_next_char_in_seq;
-
-      case '#':
-
-         if (ctx->hash_sign) {
-
-            if (!*++ctx->fmt)
-               goto incomplete_seq; /* note: forcing "%#" to be printed */
-
-            goto process_next_char_in_seq; /* skip this '#' and move on */
-         }
-
-         if (ctx->fmt[-1] != '%')
-            goto incomplete_seq;
-
-         if (!ctx->fmt[1])
-            goto unknown_seq;
-
-         ctx->hash_sign = true;
-         goto move_to_next_char_in_seq;
-
-      case 'z': /* fall-through */
-      case 'j': /* fall-through */
-      case 'q': /* fall-through */
-      case 'L':
-
-         if (ctx->width != pw_default)
-            goto unknown_seq;
-
-         ctx->width = single_mods[*ctx->fmt != 'z'];
-         goto move_to_next_char_in_seq;
-
-      case 'l': /* fall-through */
-      case 'h':
-
-         {
-            int idx = -1;
-            int m = *ctx->fmt != 'l';  /* choose the sub-array: 'l' or 'h' */
-
-            /* Find the index in the sub-array with the current width mod */
-            for (int i = 0; i < 3; i++) {
-               if (ctx->width == double_mods[m][i])
-                  idx = i;
-            }
-
-            /* Invalid current width modifier */
-            if (idx < 0 || idx == 2)
-               goto unknown_seq;             /* %lll, %hhh, %lh, %hl, ... */
-
-            /* Move to the next modifier (e.g. default -> long -> long long) */
-            ctx->width = double_mods[m][idx + 1];
-            goto move_to_next_char_in_seq;
-         }
-
-      default:
-
-unknown_seq:
-incomplete_seq:
-
-         WRITE_CHAR('%');
-
-         if (ctx->hash_sign)
-            WRITE_CHAR('#');
-
-         WRITE_CHAR(*ctx->fmt);
-         goto end_sequence;
-      }
-
-      /* Make `break` unusable in the switch, in order to avoid confusion */
-      NOT_REACHED();
-
-end_sequence:
-      snprintk_ctx_reset_state(ctx);
-      ++ctx->fmt;
+      if (!vsnprintk_process_char(ctx))
+         break;
    }
 
 out:
-truncated_seq:
    ctx->buf[ ctx->buf < ctx->buf_end ? 0 : -1 ] = 0;
    return (int)(ctx->buf - initial_buf);
 }
