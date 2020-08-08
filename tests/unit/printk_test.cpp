@@ -41,6 +41,9 @@ TEST(printk, basic)
 
    EXPECT_EQ(spk_wrapper("%lld", 9223372036854775807ll), "9223372036854775807");
    EXPECT_EQ(spk_wrapper("%llx", 0xaabbccddeeffll), "aabbccddeeff");
+
+   /* Multi-param string */
+   EXPECT_EQ(spk_wrapper("p[%s] = %d", "opt1", 1234), "p[opt1] = 1234");
 }
 
 TEST(printk, rare)

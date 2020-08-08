@@ -49,6 +49,7 @@ static const ulong width_val[] =
 
 struct snprintk_ctx {
 
+   va_list args;
    enum printk_width width;
    int left_padding;
    int right_padding;
@@ -56,6 +57,7 @@ struct snprintk_ctx {
    char *buf_end;
    bool zero_lpad;
    bool hash_sign;
+   char intbuf[64];
 };
 
 static void
@@ -73,8 +75,6 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
       if (!write_in_buf_char(&ctx->buf, ctx->buf_end, (c)))   \
          goto out;                                            \
    } while (0)
-
-#define WRITE_STR(s) if (!write_str(ctx, *fmt, s)) goto out;
 
 static bool
 write_0x_prefix(struct snprintk_ctx *ctx, char fmtX)
@@ -157,18 +157,63 @@ static const u8 diuox_base[128] =
    ['x'] = 16,
 };
 
-int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
+static bool
+write_char_param(struct snprintk_ctx *ctx, char fmtX)
+{
+   ctx->intbuf[0] = (char)va_arg(ctx->args, long);
+   ctx->intbuf[1] = 0;
+   return write_str(ctx, 'c', ctx->intbuf);
+}
+
+static bool
+write_string_param(struct snprintk_ctx *ctx, char fmtX)
+{
+   return write_str(ctx, fmtX, va_arg(ctx->args, const char *));
+}
+
+static bool
+write_pointer_param(struct snprintk_ctx *ctx, char fmtX)
+{
+   uitoaN_hex_fixed(va_arg(ctx->args, ulong), ctx->intbuf);
+   return write_str(ctx, fmtX, ctx->intbuf);
+}
+
+static bool
+write_number_param(struct snprintk_ctx *ctx, char fmtX)
+{
+   ulong width = width_val[ctx->width];
+   u8 base = diuox_base[(u8)fmtX];
+   char *intbuf = ctx->intbuf;
+   ASSERT(base);
+
+   if (fmtX == 'd' || fmtX == 'i') {
+
+      if (ctx->width == pw_long_long)
+         itoa64(va_arg(ctx->args, s64), intbuf);
+      else
+         itoaN(sign_extend(va_arg(ctx->args, long), width), intbuf);
+
+   } else {
+
+      if (ctx->width == pw_long_long)
+         uitoa64(va_arg(ctx->args, u64), intbuf, base);
+      else
+         uitoaN(va_arg(ctx->args, ulong) & make_bitmask(width), intbuf, base);
+   }
+
+   return write_str(ctx, fmtX, intbuf);
+}
+
+int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 {
    struct snprintk_ctx __ctx;
-   char intbuf[64];
-   ulong width;
-   u8 base;
 
-   /* ctx has to be a pointer because of macros shared with WRITE_STR */
+   /* ctx has to be a pointer because of macros */
    struct snprintk_ctx *ctx = &__ctx;
    snprintk_ctx_reset_state(ctx);
    ctx->buf = initial_buf;
    ctx->buf_end = initial_buf + size;
+   va_copy(ctx->args, __args);
 
    while (*fmt) {
 
@@ -192,6 +237,15 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list args)
       // after the '%', follows an ASCII char != '%' ...
 
 switch_case:
+
+      // Check if *fmt is one of 'd', 'i', 'u', 'o', 'x' ...
+      if (diuox_base[(u8)*fmt]) {
+
+         if (!write_number_param(ctx, *fmt))
+            goto out;
+
+         goto next_iteration;
+      }
 
       switch (*fmt) {
 
@@ -236,7 +290,7 @@ switch_case:
          if (ctx->hash_sign) {
 
             if (!*++fmt)
-               goto incomplete_seq; /* note: forcing "%#"" to be printed */
+               goto incomplete_seq; /* note: forcing "%#" to be printed */
 
             goto switch_case; /* skip this '#' and move on */
          }
@@ -318,46 +372,27 @@ switch_case:
          goto switch_case;
 
       case 'c':
-         intbuf[0] = (char)va_arg(args, long);
-         intbuf[1] = 0;
-         WRITE_STR(intbuf);
+
+         if (!write_char_param(ctx, *fmt))
+            goto out;
+
          break;
 
       case 's':
-         WRITE_STR(va_arg(args, const char *));
+
+         if (!write_string_param(ctx, *fmt))
+            goto out;
+
          break;
 
       case 'p':
-         uitoaN_hex_fixed(va_arg(args, ulong), intbuf);
-         WRITE_STR(intbuf);
+
+         if (!write_pointer_param(ctx, *fmt))
+            goto out;
+
          break;
 
       default:
-
-         base = diuox_base[(u8)*fmt];
-         width = width_val[ctx->width];
-
-         if (!base)
-            goto unknown_seq;
-
-         if (*fmt == 'd' || *fmt == 'i') {
-
-            if (ctx->width == pw_long_long)
-               itoa64(va_arg(args, s64), intbuf);
-            else
-               itoaN(sign_extend(va_arg(args, long), width), intbuf);
-
-         } else {
-
-            if (ctx->width == pw_long_long)
-               uitoa64(va_arg(args, u64), intbuf, base);
-            else
-               uitoaN(va_arg(args, ulong) & make_bitmask(width), intbuf, base);
-         }
-
-         WRITE_STR(intbuf);
-         break;
-
 
 unknown_seq:
 incomplete_seq:
@@ -370,6 +405,7 @@ incomplete_seq:
          WRITE_CHAR(*fmt);
       }
 
+next_iteration:
       snprintk_ctx_reset_state(ctx);
       ++fmt;
    }
