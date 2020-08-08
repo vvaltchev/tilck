@@ -270,6 +270,9 @@ int vsnprintk(char *initial_buf, size_t size, const char *fmt, va_list __args)
 
 next_char_in_seq:
 
+      if (!*fmt)
+         goto truncated_seq;
+
       if (isalpha_lower(*fmt)) {
 
          u8 idx = (u8)*fmt - 97;
@@ -286,11 +289,7 @@ next_char_in_seq:
 
       case '0':
          ctx->zero_lpad = true;
-
-         if (!*++fmt)
-            goto truncated_seq;
-
-         /* parse now the command letter by re-entering in the switch case */
+         fmt++;
          goto next_char_in_seq;
 
       case '1':
@@ -302,22 +301,11 @@ next_char_in_seq:
       case '7':
       case '8':
       case '9':
-
          ctx->left_padding = (int)tilck_strtol(fmt, &fmt, 10, NULL);
-
-         if (!*fmt)
-            goto truncated_seq;
-
-         /* parse now the command letter by re-entering in the switch case */
          goto next_char_in_seq;
 
       case '-':
          ctx->right_padding = (int)tilck_strtol(fmt + 1, &fmt, 10, NULL);
-
-         if (!*fmt)
-            goto truncated_seq;
-
-         /* parse now the command letter by re-entering in the switch case */
          goto next_char_in_seq;
 
       case '#':
@@ -349,10 +337,6 @@ next_char_in_seq:
             goto unknown_seq;
 
          ctx->width = single_mods[*fmt++ != 'z'];
-
-         if (!*fmt)
-            goto truncated_seq;
-
          goto next_char_in_seq;
 
       case 'l': /* fall-through */
@@ -372,12 +356,10 @@ next_char_in_seq:
             if (idx < 0 || idx == 2)
                goto unknown_seq;             /* %lll, %hhh, %lh, %hl, ... */
 
-            /* Check for string end */
-            if (!*++fmt)
-               goto truncated_seq;
-
             /* Move to the next modifier (e.g. default -> long -> long long) */
             ctx->width = double_mods[m][idx + 1];
+
+            fmt++;
             goto next_char_in_seq;
          }
 
