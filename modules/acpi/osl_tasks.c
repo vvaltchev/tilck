@@ -53,6 +53,14 @@ AcpiOsExecute(
    return AE_OK;
 }
 
+void
+AcpiOsWaitEventsComplete(void)
+{
+   wth_wait_for_completion(wth_events);
+   wth_wait_for_completion(wth_main);
+   wth_wait_for_completion(wth_debug);
+}
+
 static struct worker_thread *
 osl_create_worker_or_die(const char *name, int prio, u16 queue_size)
 {
