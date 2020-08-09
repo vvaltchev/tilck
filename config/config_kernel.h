@@ -38,8 +38,5 @@
 
 #define WTH_MAX_THREADS                            64
 #define WTH_MAX_PRIO_QUEUE_SIZE                    32
-#define WTH_1_PRIO_QUEUE_SIZE                      64
-#define WTH_2_PRIO_QUEUE_SIZE                      64
-#define WTH_3_PRIO_QUEUE_SIZE                     128
 #define WTH_KB_QUEUE_SIZE                          32
 #define WTH_SERIAL_QUEUE_SIZE                      32

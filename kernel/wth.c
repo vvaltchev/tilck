@@ -247,9 +247,5 @@ init_wth_create_worker_or_die(int prio, u16 queue_size)
 void init_worker_threads(void)
 {
    worker_threads_cnt = 0;
-
    init_wth_create_worker_or_die(0, WTH_MAX_PRIO_QUEUE_SIZE);
-   init_wth_create_worker_or_die(1, WTH_1_PRIO_QUEUE_SIZE);
-   init_wth_create_worker_or_die(2, WTH_2_PRIO_QUEUE_SIZE);
-   init_wth_create_worker_or_die(3, WTH_3_PRIO_QUEUE_SIZE);
 }
