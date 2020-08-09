@@ -6,3 +6,6 @@
 
 ACPI_STATUS
 osl_init_malloc(void);
+
+ACPI_STATUS
+osl_init_tasks(void);
