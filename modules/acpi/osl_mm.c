@@ -7,6 +7,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/hal.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/acpiosxf.h>
@@ -226,6 +227,62 @@ AcpiOsWriteMemory(
          break;
       case 64:
          *(volatile u64 *)va = Value;
+         break;
+      default:
+         return AE_BAD_PARAMETER;
+   }
+
+   return AE_OK;
+}
+
+ACPI_STATUS
+AcpiOsReadPort(
+    ACPI_IO_ADDRESS         Address,
+    UINT32                  *Value,
+    UINT32                  Width)
+{
+   u16 ioport = (u16)Address;
+
+   if (Address > 0xffff)
+      return AE_NOT_EXIST;
+
+   switch (Width) {
+      case 8:
+         *Value = (u32)inb(ioport);
+         break;
+      case 16:
+         *Value = (u32)inw(ioport);
+         break;
+      case 32:
+         *Value = (u32)inl(ioport);
+         break;
+      default:
+         return AE_BAD_PARAMETER;
+   }
+
+   return AE_OK;
+}
+
+ACPI_STATUS
+AcpiOsWritePort(
+    ACPI_IO_ADDRESS         Address,
+    UINT32                  Value,
+    UINT32                  Width)
+{
+   u16 ioport = (u16)Address;
+
+   if (Address > 0xffff)
+      return AE_NOT_EXIST;
+
+   switch (Width) {
+      case 8:
+         outb(ioport, (u8)Value);
+         break;
+      case 16:
+         outw(ioport, (u16)Value);
+         break;
+      case 32:
+         outl(ioport, (u32)Value);
          break;
       default:
          return AE_BAD_PARAMETER;
