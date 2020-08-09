@@ -101,6 +101,9 @@ wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg)
 
       wth = worker_threads[i];
 
+      if (wth->name)
+         continue;   /* skip dedicated worker threads */
+
       if (wth->priority > lowest_prio)
          continue;
 
@@ -122,6 +125,9 @@ wth_find_worker(int lowest_prio)
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
 
       wth = worker_threads[i];
+
+      if (wth->name)
+         continue;   /* skip dedicated worker threads */
 
       if (wth->priority <= lowest_prio)
          return wth;
