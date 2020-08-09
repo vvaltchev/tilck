@@ -12,7 +12,6 @@ void AcpiOsDeleteLock() { NOT_IMPLEMENTED(); }
 void AcpiOsDeleteSemaphore() { NOT_IMPLEMENTED(); }
 void AcpiOsFree() { NOT_IMPLEMENTED(); }
 void AcpiOsInstallInterruptHandler() { NOT_IMPLEMENTED(); }
-void AcpiOsReadMemory() { NOT_IMPLEMENTED(); }
 void AcpiOsReadPciConfiguration() { NOT_IMPLEMENTED(); }
 void AcpiOsReadPort() { NOT_IMPLEMENTED(); }
 void AcpiOsReleaseLock() { NOT_IMPLEMENTED(); }
@@ -20,6 +19,5 @@ void AcpiOsRemoveInterruptHandler() { NOT_IMPLEMENTED(); }
 void AcpiOsSignalSemaphore() { NOT_IMPLEMENTED(); }
 void AcpiOsWaitEventsComplete() { NOT_IMPLEMENTED(); }
 void AcpiOsWaitSemaphore() { NOT_IMPLEMENTED(); }
-void AcpiOsWriteMemory() { NOT_IMPLEMENTED(); }
 void AcpiOsWritePciConfiguration() { NOT_IMPLEMENTED(); }
 void AcpiOsWritePort() { NOT_IMPLEMENTED(); }

@@ -154,3 +154,82 @@ AcpiOsWritable(
 
    return true;
 }
+
+ACPI_STATUS
+AcpiOsReadMemory(
+    ACPI_PHYSICAL_ADDRESS   Address,
+    UINT64                  *Value,
+    UINT32                  Width)
+{
+   void *va;
+
+   if ((Address + (Width >> 3)) > LINEAR_MAPPING_SIZE) {
+
+      /*
+       * In order to support this, we'll need to implement some sort of
+       * memory mapping cache. Mapping and un-mapping a page for a single
+       * read/write is definitively unaccetable.
+       */
+
+      NOT_IMPLEMENTED();
+
+   } else {
+      va = KERNEL_PA_TO_VA(Address);
+   }
+
+   switch (Width) {
+      case 8:
+         *Value = *(volatile u8 *)va;
+         break;
+      case 16:
+         *Value = *(volatile u16 *)va;
+         break;
+      case 32:
+         *Value = *(volatile u32 *)va;
+         break;
+      case 64:
+         *Value = *(volatile u64 *)va;
+         break;
+      default:
+         return AE_BAD_PARAMETER;
+   }
+
+   return AE_OK;
+}
+
+ACPI_STATUS
+AcpiOsWriteMemory(
+    ACPI_PHYSICAL_ADDRESS   Address,
+    UINT64                  Value,
+    UINT32                  Width)
+{
+   void *va;
+
+   if ((Address + (Width >> 3)) > LINEAR_MAPPING_SIZE) {
+
+      /* See the comment in AcpiOsReadMemory() */
+      NOT_IMPLEMENTED();
+
+   } else {
+      va = KERNEL_PA_TO_VA(Address);
+   }
+
+   switch (Width) {
+      case 8:
+         *(volatile u8 *)va = Value;
+         break;
+      case 16:
+         *(volatile u16 *)va = Value;
+         break;
+      case 32:
+         *(volatile u32 *)va = Value;
+         break;
+      case 64:
+         *(volatile u64 *)va = Value;
+         break;
+      default:
+         return AE_BAD_PARAMETER;
+   }
+
+   return AE_OK;
+}
