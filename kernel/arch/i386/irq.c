@@ -18,22 +18,22 @@
 extern void (*irq_entry_points[16])(void);
 
 static struct list irq_handlers_lists[16] = {
-   make_list(irq_handlers_lists[ 0]),
-   make_list(irq_handlers_lists[ 1]),
-   make_list(irq_handlers_lists[ 2]),
-   make_list(irq_handlers_lists[ 3]),
-   make_list(irq_handlers_lists[ 4]),
-   make_list(irq_handlers_lists[ 5]),
-   make_list(irq_handlers_lists[ 6]),
-   make_list(irq_handlers_lists[ 7]),
-   make_list(irq_handlers_lists[ 8]),
-   make_list(irq_handlers_lists[ 9]),
-   make_list(irq_handlers_lists[10]),
-   make_list(irq_handlers_lists[11]),
-   make_list(irq_handlers_lists[12]),
-   make_list(irq_handlers_lists[13]),
-   make_list(irq_handlers_lists[14]),
-   make_list(irq_handlers_lists[15]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 0]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 1]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 2]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 3]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 4]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 5]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 6]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 7]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 8]),
+   STATIC_LIST_INIT(irq_handlers_lists[ 9]),
+   STATIC_LIST_INIT(irq_handlers_lists[10]),
+   STATIC_LIST_INIT(irq_handlers_lists[11]),
+   STATIC_LIST_INIT(irq_handlers_lists[12]),
+   STATIC_LIST_INIT(irq_handlers_lists[13]),
+   STATIC_LIST_INIT(irq_handlers_lists[14]),
+   STATIC_LIST_INIT(irq_handlers_lists[15]),
 };
 
 u32 unhandled_irq_count[256];

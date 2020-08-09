@@ -15,7 +15,7 @@ struct irq_handler_node {
 
 #define DEFINE_IRQ_HANDLER_NODE(node_name, func, ctx)        \
    static struct irq_handler_node node_name = {              \
-      .node = make_list_node(node_name.node),                \
+      .node = STATIC_LIST_NODE_INIT(node_name.node),         \
       .handler = (func),                                     \
       .context = (ctx),                                      \
    };

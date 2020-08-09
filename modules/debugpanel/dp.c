@@ -39,7 +39,7 @@ fs_handle dp_input_handle;
 
 static bool skip_next_keypress;
 static ATOMIC(bool) dp_running;
-static struct list dp_screens_list = make_list(dp_screens_list);
+static struct list dp_screens_list = STATIC_LIST_INIT(dp_screens_list);
 
 static inline void
 dp_write_header(int i, const char *s, bool selected)

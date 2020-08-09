@@ -18,7 +18,7 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/kb.h>
 
-static struct list se_list = make_list(se_list);
+static struct list se_list = STATIC_LIST_INIT(se_list);
 static volatile bool se_stop_requested;
 static struct self_test *se_running;
 

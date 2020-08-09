@@ -16,12 +16,12 @@ struct list {
 STATIC_ASSERT(sizeof(struct list) == sizeof(struct list_node));
 STATIC_ASSERT(alignof(struct list) == alignof(struct list_node));
 
-#define make_list(name) {                                       \
+#define STATIC_LIST_INIT(name) {                                \
    (struct list_node *)&(name),                                 \
    (struct list_node *)&(name)                                  \
 }
 
-#define make_list_node(name) { &(name), &(name) }
+#define STATIC_LIST_NODE_INIT(name) { &(name), &(name) }
 
 static inline void list_node_init(struct list_node *n)
 {

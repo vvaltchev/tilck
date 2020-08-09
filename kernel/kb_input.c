@@ -3,7 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/kb.h>
 
-struct list kb_devices_list = make_list(kb_devices_list);
+struct list kb_devices_list = STATIC_LIST_INIT(kb_devices_list);
 
 void register_keyboard_device(struct kb_dev *kb)
 {

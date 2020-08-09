@@ -128,7 +128,7 @@ struct ksem {
    {                                             \
       .max = (max),                              \
       .counter = (val),                          \
-      .wait_list = make_list(s.wait_list),       \
+      .wait_list = STATIC_LIST_INIT(s.wait_list),\
    }
 
 void ksem_init(struct ksem *s, int val, int max);
@@ -158,7 +158,7 @@ struct kmutex {
       .owner_task = NULL,                         \
       .flags = 0,                                 \
       .lock_count = 0,                            \
-      .wait_list = make_list(m.wait_list),        \
+      .wait_list = STATIC_LIST_INIT(m.wait_list), \
    }
 
 #define KMUTEX_FL_RECURSIVE                                (1 << 0)
@@ -194,7 +194,7 @@ struct kcond {
 
 #define STATIC_KCOND_INIT(s)                     \
    {                                             \
-      .wait_list = make_list(s.wait_list),       \
+      .wait_list = STATIC_LIST_INIT(s.wait_list),\
    }
 
 #define KCOND_WAIT_FOREVER 0

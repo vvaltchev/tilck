@@ -33,7 +33,7 @@ static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock;
 static bool capsLock;
-static struct list keypress_handlers = make_list(keypress_handlers);
+static struct list keypress_handlers = STATIC_LIST_INIT(keypress_handlers);
 static struct kb_dev ps2_keyboard;
 static struct safe_ringbuf kb_input_rb;
 

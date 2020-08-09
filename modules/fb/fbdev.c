@@ -26,7 +26,7 @@ extern ulong fb_vaddr;
 extern u32 fb_size;
 
 static ssize_t total_fb_pages_mapped;
-static struct list mappings_list = make_list(mappings_list);
+static struct list mappings_list = STATIC_LIST_INIT(mappings_list);
 
 static ssize_t fb_read(fs_handle h, char *user_buf, size_t size)
 {

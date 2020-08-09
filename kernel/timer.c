@@ -30,7 +30,7 @@ u32 slow_timer_irq_handler_count;
 volatile ATOMIC(u32) __bogo_loops;
 
 /* Static variables */
-static struct list timer_wakeup_list = make_list(timer_wakeup_list);
+static struct list timer_wakeup_list = STATIC_LIST_INIT(timer_wakeup_list);
 static u32 loops_per_tick;        /* Tilck bogoMips expressed as loops/tick */
 static u32 loops_per_us = 5000;   /* loops/microsecond (initial value) */
 

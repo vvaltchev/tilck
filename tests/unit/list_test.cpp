@@ -63,7 +63,7 @@ void check_list_elems(struct list& list_var, const tvec& exp)
 
 TEST(list_adt, initialization)
 {
-   struct list list_var = make_list(list_var);
+   struct list list_var = STATIC_LIST_INIT(list_var);
 
    ASSERT_TRUE(list_is_empty(&list_var));
 
