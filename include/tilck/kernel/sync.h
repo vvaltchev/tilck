@@ -125,7 +125,7 @@ struct ksem {
       .wait_list = make_list(s.wait_list),       \
    }
 
-void ksem_init(struct ksem *s);
+void ksem_init(struct ksem *s, int val);
 void ksem_destroy(struct ksem *s);
 void ksem_wait(struct ksem *s);
 void ksem_signal(struct ksem *s);

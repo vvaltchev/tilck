@@ -6,7 +6,7 @@
 void rwlock_rp_init(struct rwlock_rp *r)
 {
    kmutex_init(&r->readers_lock, 0);
-   ksem_init(&r->writers_sem);
+   ksem_init(&r->writers_sem, 1);
    r->readers_count = 0;
    DEBUG_ONLY(r->ex_owner = NULL);
 }

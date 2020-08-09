@@ -6,9 +6,9 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
 
-void ksem_init(struct ksem *s)
+void ksem_init(struct ksem *s, int val)
 {
-   s->counter = 1;
+   s->counter = val;
    list_init(&s->wait_list);
 }
 
