@@ -37,3 +37,6 @@ wth_enqueue_on(struct worker_thread *wth, void (*func)(void *), void *arg);
 
 NODISCARD bool
 wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg);
+
+void
+wth_wait_for_completion(struct worker_thread *wth);

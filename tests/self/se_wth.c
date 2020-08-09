@@ -25,6 +25,12 @@ static void test_wth_func(void *arg)
    g_counter++;
 }
 
+static void test_wth_func2(void *arg)
+{
+   g_counter++;
+   kernel_sleep_ms(50);
+}
+
 static void end_test(void *arg)
 {
    struct se_wth_ctx *ctx = arg;
@@ -165,6 +171,38 @@ void selftest_wth_short(void)
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth_short)
+
+void selftest_wth2_short(void)
+{
+   struct worker_thread *wth;
+   bool added;
+   int cnt = 0;
+
+   g_counter = 0;
+   wth = wth_find_worker(WTH_PRIO_LOWEST);
+   ASSERT(wth != NULL);
+
+   printk("[se_wth] enqueue 10 jobs\n");
+
+   while (cnt < 10) {
+
+      added = wth_enqueue_on(wth, &test_wth_func2, NULL);
+
+      if (added)
+         cnt++;
+   }
+
+   printk("[se_wth] done\n");
+   printk("[se_wth] wait for completion\n");
+   wth_wait_for_completion(wth);
+
+   if (g_counter != 10)
+      panic("[se_wth] counter (%d) != 10", g_counter);
+
+   printk("[se_wth] everything is OK\n");
+}
+
+DECLARE_AND_REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2_short)
 
 void selftest_wth_perf_short(void)
 {

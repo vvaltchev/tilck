@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/kernel/safe_ringbuf.h>
+#include <tilck/kernel/sync.h>
 
 struct wjob {
    void (*func)(void *);
@@ -14,8 +15,9 @@ struct worker_thread {
    struct wjob *jobs;
    struct safe_ringbuf rb;
    struct task *task;
+   struct kcond completion;
    int priority;              /* 0 is the max priority */
-   bool waiting_for_jobs;
+   volatile bool waiting_for_jobs;
 };
 
 extern struct worker_thread *worker_threads[WTH_MAX_THREADS];

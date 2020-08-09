@@ -179,8 +179,10 @@ void wth_run(void *arg)
       }
       enable_interrupts_forced();
 
-      if (t->waiting_for_jobs)
+      if (t->waiting_for_jobs) {
+         kcond_signal_all(&t->completion);
          kernel_yield();
+      }
    }
 }
 
@@ -228,6 +230,8 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
       return NULL;
    }
 
+   kcond_init(&t->completion);
+
    safe_ringbuf_init(&t->rb,
                      queue_size,
                      sizeof(struct wjob),
@@ -248,6 +252,13 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
    /* Sort all the worker threads */
    insertion_sort_ptr(worker_threads, (u32)worker_threads_cnt, &wth_cmp_func);
    return t;
+}
+
+void
+wth_wait_for_completion(struct worker_thread *wth)
+{
+   while (!wth->waiting_for_jobs)
+      kcond_wait(&wth->completion, NULL, TIMER_HZ / 10);
 }
 
 static void
