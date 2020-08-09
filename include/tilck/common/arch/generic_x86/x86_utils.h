@@ -131,6 +131,26 @@ static ALWAYS_INLINE u16 inw(u16 port)
    return ret;
 }
 
+static ALWAYS_INLINE void outl(u16 port, u32 val)
+{
+   asmVolatile(
+      "outl %[value], %[port]"
+      : /* no output */
+      : [value] "a"(val), [port] "Nd"(port)
+   );
+}
+
+static ALWAYS_INLINE u32 inl(u16 port)
+{
+   u32 ret;
+   asmVolatile(
+      "inl %[port], %[result]"
+      : [result] "=a"(ret)
+      : [port] "Nd"(port)
+   );
+   return ret;
+}
+
 static ALWAYS_INLINE void halt(void)
 {
    asmVolatile("hlt");
