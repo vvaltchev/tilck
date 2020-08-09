@@ -5,12 +5,10 @@
 /* Temporary OSL stub functions */
 
 void AcpiOsAcquireLock() { NOT_IMPLEMENTED(); }
-void AcpiOsAllocate() { NOT_IMPLEMENTED(); }
 void AcpiOsCreateLock() { NOT_IMPLEMENTED(); }
 void AcpiOsCreateSemaphore() { NOT_IMPLEMENTED(); }
 void AcpiOsDeleteLock() { NOT_IMPLEMENTED(); }
 void AcpiOsDeleteSemaphore() { NOT_IMPLEMENTED(); }
-void AcpiOsFree() { NOT_IMPLEMENTED(); }
 void AcpiOsInstallInterruptHandler() { NOT_IMPLEMENTED(); }
 void AcpiOsReadPciConfiguration() { NOT_IMPLEMENTED(); }
 void AcpiOsReleaseLock() { NOT_IMPLEMENTED(); }

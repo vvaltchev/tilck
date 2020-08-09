@@ -11,10 +11,17 @@
 #include <3rd_party/acpi/acpiosxf.h>
 #include <3rd_party/acpi/acexcep.h>
 
+#include "osl.h"
+
 ACPI_STATUS
 AcpiOsInitialize(void)
 {
+   ACPI_STATUS rc;
    printk("AcpiOsInitialize\n");
+
+   if ((rc = osl_init_malloc()) != AE_OK)
+      return rc;
+
    return AE_OK;
 }
 
