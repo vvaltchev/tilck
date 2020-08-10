@@ -44,6 +44,30 @@ void enable_preemption(void)
    }
 }
 
+bool __kernel_yield(bool skip_disable_preempt)
+{
+   /* Private declaraction of the low-level yield function */
+   extern bool asm_kernel_yield(void *);
+
+   bool context_switch;
+
+   if (skip_disable_preempt) {
+      ASSERT(get_preempt_disable_count() == 1);
+   } else {
+      ASSERT(get_preempt_disable_count() == 0);
+      disable_preemption();
+   }
+
+   context_switch = asm_kernel_yield(
+      __builtin_extract_return_addr(__builtin_return_address(0))
+   );
+
+   if (UNLIKELY(!context_switch))
+      enable_preemption_nosched();
+
+   return context_switch;
+}
+
 int
 get_traced_tasks_count(void)
 {

@@ -209,37 +209,6 @@ static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
 }
 
 /*
- * Internel yield function
- * ---------------------------
- *
- * Do NOT call directly: use kernel_yield() or kernel_yield_preempt_disabled().
- *
- * NOTE: the function is ALWAYS_INLINE to prevent another frame on the stack.
- * Reason? Getting caller's EIP for debugging purposes.
- */
-static ALWAYS_INLINE bool __kernel_yield(bool skip_disable_preempt)
-{
-   /* Private declaraction of the low-level yield function */
-   extern bool asm_kernel_yield(void);
-
-   bool context_switch;
-
-   if (skip_disable_preempt) {
-      ASSERT(get_preempt_disable_count() == 1);
-   } else {
-      ASSERT(get_preempt_disable_count() == 0);
-      disable_preemption();
-   }
-
-   context_switch = asm_kernel_yield();
-
-   if (UNLIKELY(!context_switch))
-      enable_preemption_nosched();
-
-   return context_switch;
-}
-
-/*
  * Default yield function
  *
  * Saves the current state and calls the scheduler. Expects the preemption to be
@@ -247,6 +216,7 @@ static ALWAYS_INLINE bool __kernel_yield(bool skip_disable_preempt)
  */
 static ALWAYS_INLINE bool kernel_yield(void)
 {
+   extern bool __kernel_yield(bool skip_disable_preempt);
    return __kernel_yield(false);
 }
 
@@ -263,6 +233,7 @@ static ALWAYS_INLINE bool kernel_yield(void)
  */
 static ALWAYS_INLINE bool kernel_yield_preempt_disabled(void)
 {
+   extern bool __kernel_yield(bool skip_disable_preempt);
    return __kernel_yield(true);
 }
 

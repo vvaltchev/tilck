@@ -34,7 +34,6 @@ class printer_regs:
 
       cs = r["cs"] & 0xffff
       ds = r["ds"] & 0xffff
-      ss = r["ss"] & 0xffff
       es = r["es"] & 0xffff
       fs = r["fs"] & 0xffff
       gs = r["gs"] & 0xffff
@@ -59,15 +58,23 @@ class printer_regs:
          ("eip         ", eip_str),
          ("cs          ", fixhex16(cs)),
          ("eflags      ", fixhex32(r["eflags"])),
+         ("useresp     ", fixhex32(r["useresp"])),
       ]
 
       if resume_eip_str.find("asm_kernel_yield") == -1:
+
+         # Actual value of the stack segment
+         ss = r["ss"] & 0xffff
+
          res += [
             ("useresp     ", fixhex32(r["useresp"])),
             ("ss          ", fixhex16(ss)),
          ]
       else:
-         calc_eip = gdb.parse_and_eval("(void *){}".format(r["useresp"]))
+
+         # asm_kernel_yield() does NOT save SS on the stack. What we see there
+         # instead is it's first argument, caller's return EIP.
+         calc_eip = gdb.parse_and_eval("(void *){}".format(r["ss"]))
          res.append(("[true_eip]  ", calc_eip))
 
       return res
