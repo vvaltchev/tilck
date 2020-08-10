@@ -22,56 +22,63 @@ void ksem_destroy(struct ksem *s)
    bzero(s, sizeof(struct ksem));
 }
 
+static void
+ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
+{
+   u64 start_ticks, end_ticks;
+   struct task *curr = get_curr_task();
+   ASSERT(!is_preemption_enabled());
+
+   if (timeout_ticks > 0) {
+
+      start_ticks = get_ticks();
+      end_ticks = start_ticks + (u32)timeout_ticks;
+
+      if (s->counter < units)
+         task_set_wakeup_timer(curr, (u32)timeout_ticks);
+
+   } else {
+
+      ASSERT(timeout_ticks == KSEM_WAIT_FOREVER);
+   }
+
+   while (s->counter < units) {
+
+      if (timeout_ticks > 0) {
+         if (get_ticks() >= end_ticks)
+            break;
+      }
+
+      task_set_wait_obj(curr, WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
+      enable_preemption_nosched();
+      kernel_yield();       /* won't wakeup by a signal here, see signal.c */
+      disable_preemption();
+   }
+
+   if (timeout_ticks > 0)
+      task_cancel_wakeup_timer(curr);
+}
+
 int ksem_wait(struct ksem *s, int units, int timeout_ticks)
 {
    int rc = -ETIME;
-   u64 start_ticks, end_ticks;
-   struct task *curr = get_curr_task();
-
    ASSERT(units > 0);
 
    if (s->max != KSEM_NO_MAX) {
       if (units > s->max)
-         return -EPERM;
+         return -EINVAL;
    }
 
    disable_preemption();
+   {
+      if (timeout_ticks != KSEM_NO_WAIT)
+         ksem_do_wait(s, units, timeout_ticks);
 
-   if (timeout_ticks != KSEM_NO_WAIT) {
-
-      /* timeout_ticks > 0 or timeout_ticks == KSEM_WAIT_FOREVER */
-
-      if (timeout_ticks > 0) {
-
-         start_ticks = get_ticks();
-         end_ticks = start_ticks + (u32)timeout_ticks;
-
-         if (s->counter < units)
-            task_set_wakeup_timer(curr, (u32)timeout_ticks);
+      if (s->counter >= units) {
+         s->counter -= units;
+         rc = 0;
       }
-
-      while (s->counter < units) {
-
-         if (timeout_ticks > 0) {
-            if (get_ticks() >= end_ticks)
-               break;
-         }
-
-         task_set_wait_obj(curr, WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
-         enable_preemption_nosched();
-         kernel_yield();       /* won't wakeup by a signal here, see signal.c */
-         disable_preemption();
-      }
-
-      if (timeout_ticks > 0)
-         task_cancel_wakeup_timer(curr);
    }
-
-   if (s->counter >= units) {
-      s->counter -= units;
-      rc = 0;
-   }
-
    enable_preemption();
    return rc;
 }
@@ -104,7 +111,7 @@ int ksem_signal(struct ksem *s, int units)
           * NOTE: `s->counter + units > s->max` got re-written to avoid integer
           * wrap-around.
           */
-         rc = -EPERM;
+         rc = -EINVAL;
          goto out;
       }
    }
