@@ -24,6 +24,9 @@ AcpiOsInitialize(void)
    if ((rc = osl_init_tasks()) != AE_OK)
       return rc;
 
+   if ((rc = osl_init_irqs()) != AE_OK)
+      return rc;
+
    return AE_OK;
 }
 
