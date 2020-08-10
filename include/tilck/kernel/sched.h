@@ -209,22 +209,45 @@ static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
 }
 
 /*
- * This wrapper is useful for adding ASSERTs and getting a backtrace containing
- * the caller's EIP in case of a failure.
+ * NOTE: the function is ALWAYS_INLINE to prevent another frame on the stack.
+ * Reason? Getting caller's EIP.
  */
 static ALWAYS_INLINE bool kernel_yield(void)
 {
-   /*
-    * Saves the current state and calls schedule().
-    * That after, typically after some time, the scheduler will restore the
-    * thread as if kernel_yield() returned and nothing else happened.
-    */
+   /* Private declaraction of the low-level yield function */
    extern bool asm_kernel_yield(void);
 
    bool context_switch;
    ASSERT(is_preemption_enabled());
 
    disable_preemption();
+
+   context_switch = asm_kernel_yield();
+
+   if (UNLIKELY(!context_switch))
+      enable_preemption_nosched();
+
+   return context_switch;
+}
+
+/*
+ * Correct wrapper to use when we disabled the preemption just *ONCE* and want
+ * to yield without wasting a whole enable/disable preemption cycle.
+ *
+ * WARNING: this function excepts to be called with __disable_preempt == 1 while
+ * it will always return with __disable_preempt == 0. It is asymmetric but
+ * that's the same as schedule(): we want to call it with preemption disabled
+ * in order to safely do stuff before calling it, but we EXPECT that calling it
+ * WILL very likely "preempt" us, so we normally expected preemption to be
+ * enabled when it returns.
+ */
+static ALWAYS_INLINE bool kernel_yield_preempt_disabled(void)
+{
+   /* Private declaraction of the low-level yield function */
+   extern bool asm_kernel_yield(void);
+
+   bool context_switch;
+   ASSERT(get_preempt_disable_count() == 1);
 
    context_switch = asm_kernel_yield();
 
