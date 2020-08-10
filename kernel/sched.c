@@ -377,7 +377,8 @@ static void idle(void)
    }
 }
 
-void create_kernel_process(void)
+__attribute__((constructor))
+static void create_kernel_process(void)
 {
    static char kernel_proc_buf[
       sizeof(struct process) + sizeof(struct task)
@@ -390,15 +391,7 @@ void create_kernel_process(void)
    list_init(&sleeping_tasks_list);
    list_init(&zombie_tasks_list);
 
-#ifndef UNIT_TEST_ENVIRONMENT
-   if (!in_panic()) {
-      VERIFY(create_new_pid() == 0);
-   }
-#endif
-
-   ASSERT(s_kernel_pi->pid == 0);
-   ASSERT(s_kernel_pi->parent_pid == 0);
-
+   s_kernel_pi->pid = create_new_pid();
    s_kernel_ti->tid = create_new_kernel_tid();
    s_kernel_pi->ref_count = 1;
    s_kernel_ti->pi = s_kernel_pi;
@@ -441,6 +434,9 @@ void process_set_tty(struct process *pi, void *t)
 void init_sched(void)
 {
    int tid;
+
+   ASSERT(kernel_process_pi->pid == 0);
+   ASSERT(kernel_process_pi->parent_pid == 0);
 
    kernel_process->pi->pdir = get_kernel_pdir();
    tid = kthread_create(&idle, 0, NULL);

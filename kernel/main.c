@@ -294,14 +294,12 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    if (MOD_serial)
       early_init_serial_ports();
 
-   create_kernel_process();
    init_cpu_exception_handling();
    read_multiboot_info(multiboot_magic, mbi_addr);
    enable_cpu_features();
    kmain_early_checks();
 
    init_fpu_memcpy();
-
    init_segmentation();
    init_paging();
    init_kmalloc();

@@ -27,7 +27,6 @@ protected:
    void SetUp() override {
 
       init_kmalloc_for_tests();
-      create_kernel_process();
    }
 
    void TearDown() override {

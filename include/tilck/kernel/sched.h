@@ -298,7 +298,6 @@ int create_new_kernel_tid(void);
 void task_info_reset_kernel_stack(struct task *ti);
 void add_task(struct task *ti);
 void remove_task(struct task *ti);
-void create_kernel_process(void);
 void init_task_lists(struct task *ti);
 
 // It is called when each kernel thread returns. May be called explicitly too.
