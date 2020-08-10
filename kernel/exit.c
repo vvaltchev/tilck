@@ -101,7 +101,7 @@ static void close_all_handles(struct process *pi)
 
 /*
  * Note: we HAVE TO make this function NO_INLINE otherwise clang in release
- * builds generates code that is incompatible with asm hacks chaining both
+ * builds generates code that is incompatible with asm hacks changing both
  * the stack pointer and the frame pointer. It is worth mentioning that even
  * copying the whole stack to a new place is still not enough for clang.
  * Therefore, the simplest and reliable thing we can do is just to make the
