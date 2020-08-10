@@ -446,6 +446,8 @@ void system_mmap_set(multiboot_info_t *mbi)
 {
    ulong ma_addr = mbi->mmap_addr;
 
+#ifdef arch_x86_family
+
    /* We want to keep the first 64 KB as reserved */
    append_mem_region((struct mem_region) {
       .addr = 0,
@@ -453,6 +455,21 @@ void system_mmap_set(multiboot_info_t *mbi)
       .type = MULTIBOOT_MEMORY_RESERVED,
       .extra = MEM_REG_EXTRA_LOWMEM,
    });
+
+   /*
+    * Because we don't mmap regions not explicitly declared as AVAILABLE, we
+    * miss some regions in the lower 1 MB. ACPI need to access them. Therefore,
+    * create a fake 1 MB wide region marked as "available". Of course, it will
+    * be overriden by the real system mem regions, but parts of it will remain.
+    */
+   append_mem_region((struct mem_region) {
+      .addr = 0,
+      .len = 1024 * KB,
+      .type = MULTIBOOT_MEMORY_AVAILABLE,
+      .extra = MEM_REG_EXTRA_LOWMEM,
+   });
+
+#endif
 
    while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
 
