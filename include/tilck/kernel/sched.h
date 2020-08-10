@@ -209,18 +209,27 @@ static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
 }
 
 /*
+ * Internel yield function
+ * ---------------------------
+ *
+ * Do NOT call directly: use kernel_yield() or kernel_yield_preempt_disabled().
+ *
  * NOTE: the function is ALWAYS_INLINE to prevent another frame on the stack.
- * Reason? Getting caller's EIP.
+ * Reason? Getting caller's EIP for debugging purposes.
  */
-static ALWAYS_INLINE bool kernel_yield(void)
+static ALWAYS_INLINE bool __kernel_yield(bool skip_disable_preempt)
 {
    /* Private declaraction of the low-level yield function */
    extern bool asm_kernel_yield(void);
 
    bool context_switch;
-   ASSERT(is_preemption_enabled());
 
-   disable_preemption();
+   if (skip_disable_preempt) {
+      ASSERT(get_preempt_disable_count() == 1);
+   } else {
+      ASSERT(get_preempt_disable_count() == 0);
+      disable_preemption();
+   }
 
    context_switch = asm_kernel_yield();
 
@@ -231,30 +240,30 @@ static ALWAYS_INLINE bool kernel_yield(void)
 }
 
 /*
- * Correct wrapper to use when we disabled the preemption just *ONCE* and want
- * to yield without wasting a whole enable/disable preemption cycle.
+ * Default yield function
+ *
+ * Saves the current state and calls the scheduler. Expects the preemption to be
+ * enabled. Returns true if a context switch occurred, false otherwise.
+ */
+static ALWAYS_INLINE bool kernel_yield(void)
+{
+   return __kernel_yield(false);
+}
+
+/*
+ * Special yield function to use when we disabled the preemption just *ONCE*
+ * and want to yield without wasting a whole enable/disable preemption cycle.
  *
  * WARNING: this function excepts to be called with __disable_preempt == 1 while
  * it will always return with __disable_preempt == 0. It is asymmetric but
  * that's the same as schedule(): we want to call it with preemption disabled
  * in order to safely do stuff before calling it, but we EXPECT that calling it
- * WILL very likely "preempt" us, so we normally expected preemption to be
- * enabled when it returns.
+ * WILL very likely "preempt" us and do a context switch, so we clearly expect
+ * preemption to be enabled when it returns.
  */
 static ALWAYS_INLINE bool kernel_yield_preempt_disabled(void)
 {
-   /* Private declaraction of the low-level yield function */
-   extern bool asm_kernel_yield(void);
-
-   bool context_switch;
-   ASSERT(get_preempt_disable_count() == 1);
-
-   context_switch = asm_kernel_yield();
-
-   if (UNLIKELY(!context_switch))
-      enable_preemption_nosched();
-
-   return context_switch;
+   return __kernel_yield(true);
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)
