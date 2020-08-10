@@ -6,6 +6,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/timer.h>
 
 void ksem_init(struct ksem *s, int val, int max)
 {
@@ -21,8 +22,12 @@ void ksem_destroy(struct ksem *s)
    bzero(s, sizeof(struct ksem));
 }
 
-int ksem_wait(struct ksem *s, int units)
+int ksem_wait(struct ksem *s, int units, int timeout_ticks)
 {
+   int rc = -ETIME;
+   u64 start_ticks, end_ticks;
+   struct task *curr = get_curr_task();
+
    ASSERT(units > 0);
 
    if (s->max != KSEM_NO_MAX) {
@@ -32,18 +37,43 @@ int ksem_wait(struct ksem *s, int units)
 
    disable_preemption();
 
-   while (s->counter < units) {
+   if (timeout_ticks != KSEM_NO_WAIT) {
 
-      task_set_wait_obj(get_curr_task(), WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
+      /* timeout_ticks > 0 or timeout_ticks == KSEM_WAIT_FOREVER */
 
-      enable_preemption_nosched();
-      kernel_yield();        /* won't wakeup by a signal here, see signal.c */
-      disable_preemption();
+      if (timeout_ticks > 0) {
+
+         start_ticks = get_ticks();
+         end_ticks = start_ticks + (u32)timeout_ticks;
+
+         if (s->counter < units)
+            task_set_wakeup_timer(curr, (u32)timeout_ticks);
+      }
+
+      while (s->counter < units) {
+
+         if (timeout_ticks > 0) {
+            if (get_ticks() >= end_ticks)
+               break;
+         }
+
+         task_set_wait_obj(curr, WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
+         enable_preemption_nosched();
+         kernel_yield();       /* won't wakeup by a signal here, see signal.c */
+         disable_preemption();
+      }
+
+      if (timeout_ticks > 0)
+         task_cancel_wakeup_timer(curr);
    }
 
-   s->counter -= units;
+   if (s->counter >= units) {
+      s->counter -= units;
+      rc = 0;
+   }
+
    enable_preemption();
-   return 0;
+   return rc;
 }
 
 static void

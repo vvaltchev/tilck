@@ -121,6 +121,8 @@ struct ksem {
 };
 
 #define KSEM_NO_MAX                             -1
+#define KSEM_WAIT_FOREVER                       -1
+#define KSEM_NO_WAIT                             0
 
 #define STATIC_KSEM_INIT(s, val, max)            \
    {                                             \
@@ -131,7 +133,7 @@ struct ksem {
 
 void ksem_init(struct ksem *s, int val, int max);
 void ksem_destroy(struct ksem *s);
-int ksem_wait(struct ksem *s, int units);
+int ksem_wait(struct ksem *s, int units, int timeout_ticks);
 int ksem_signal(struct ksem *s, int units);
 
 /*

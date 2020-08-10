@@ -24,7 +24,7 @@ void rwlock_rp_shlock(struct rwlock_rp *r)
    kmutex_lock(&r->readers_lock);
    {
       if (++r->readers_count == 1)
-         ksem_wait(&r->writers_sem, 1);
+         ksem_wait(&r->writers_sem, 1, KSEM_WAIT_FOREVER);
    }
    kmutex_unlock(&r->readers_lock);
 }
@@ -41,7 +41,7 @@ void rwlock_rp_shunlock(struct rwlock_rp *r)
 
 void rwlock_rp_exlock(struct rwlock_rp *r)
 {
-   ksem_wait(&r->writers_sem, 1);
+   ksem_wait(&r->writers_sem, 1, KSEM_WAIT_FOREVER);
 
    ASSERT(r->ex_owner == NULL);
    DEBUG_ONLY(r->ex_owner = get_curr_task());

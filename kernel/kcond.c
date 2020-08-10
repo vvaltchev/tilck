@@ -84,7 +84,6 @@ kcond_signal_single(struct kcond *c, struct wait_obj *wo)
       return;
    }
 
-
    if (wo->type != WOBJ_MWO_ELEM) {
       ASSERT(wo->type == WOBJ_KCOND);
       task_cancel_wakeup_timer(ti);
