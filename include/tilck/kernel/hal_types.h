@@ -41,9 +41,8 @@
 
 enum irq_action {
 
-   IRQ_UNHANDLED     = -1,        /* the irq was not handled at all */
-   IRQ_FULLY_HANDLED =  0,        /* no more work required */
-   IRQ_REQUIRES_BH   =  1         /* requires a botton half to run */
+   IRQ_NOT_HANDLED     = 0,
+   IRQ_HANDLED         = 1,
 };
 
 typedef void (*soft_int_handler_t)(regs_t *);

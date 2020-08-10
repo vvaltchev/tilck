@@ -261,7 +261,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
    if (!i8042_is_ready_for_cmd()) {
       printk("KB: Warning: got IRQ with pending command\n");
-      return IRQ_FULLY_HANDLED;
+      return IRQ_HANDLED;
    }
 
    if (!kb_irq_handler_read_scancodes()) {
@@ -273,14 +273,14 @@ static enum irq_action keyboard_irq_handler(void *ctx)
       }
 
       i8042_force_drain_data();
-      return IRQ_FULLY_HANDLED;
+      return IRQ_HANDLED;
    }
 
    /* Everything is fine: we read at least one scancode */
    if (!wth_enqueue_job(kb_worker_thread, &kb_irq_bottom_half, NULL))
       panic("KB: unable to enqueue job");
 
-   return IRQ_REQUIRES_BH;
+   return IRQ_HANDLED;
 }
 
 static u8 kb_translate_to_mediumraw(struct key_event ke)

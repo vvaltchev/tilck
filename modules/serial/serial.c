@@ -66,18 +66,18 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    struct serial_device *const dev = ctx;
 
    if (!serial_read_ready(dev->ioport))
-      return IRQ_UNHANDLED; /* Not an IRQ from this "device" [irq sharing] */
+      return IRQ_NOT_HANDLED; /* Not an IRQ from this "device" [irq sharing] */
 
    if (dev->jobs_cnt >= 2)
-      return IRQ_FULLY_HANDLED;
+      return IRQ_HANDLED;
 
    if (!wth_enqueue_job(dev->worker_thread_id, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit job queue limit\n");
-      return IRQ_FULLY_HANDLED;
+      return IRQ_HANDLED;
    }
 
    dev->jobs_cnt++;
-   return IRQ_REQUIRES_BH;
+   return IRQ_HANDLED;
 }
 
 void early_init_serial_ports(void)

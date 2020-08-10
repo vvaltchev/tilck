@@ -120,7 +120,7 @@ static inline void handle_irq_clear_mask(int irq)
 
 void arch_irq_handling(regs_t *r)
 {
-   enum irq_action hret = IRQ_UNHANDLED;
+   enum irq_action hret = IRQ_NOT_HANDLED;
    const int irq = r->int_num - 32;
    struct irq_handler_node *pos;
 
@@ -140,11 +140,11 @@ void arch_irq_handling(regs_t *r)
 
          hret = pos->handler(pos->context);
 
-         if (hret != IRQ_UNHANDLED)
+         if (hret != IRQ_NOT_HANDLED)
             break;
       }
 
-      if (hret == IRQ_UNHANDLED)
+      if (hret == IRQ_NOT_HANDLED)
          unhandled_irq_count[irq]++;
    }
    disable_interrupts_forced();

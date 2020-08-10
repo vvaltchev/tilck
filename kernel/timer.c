@@ -264,7 +264,7 @@ static enum irq_action timer_irq_handler(void *ctx)
 
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
-         return IRQ_FULLY_HANDLED;
+         return IRQ_HANDLED;
 
    /*
     * Compute `ns_delta` by reading `__tick_duration` and `__tick_adj_val` here
@@ -299,7 +299,7 @@ static enum irq_action timer_irq_handler(void *ctx)
 
    sched_account_ticks();
    tick_all_timers();
-   return IRQ_FULLY_HANDLED;
+   return IRQ_HANDLED;
 }
 
 static enum irq_action measure_bogomips_irq_handler(void *ctx);
@@ -318,7 +318,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
    struct bogo_measure_ctx *ctx = arg;
 
    if (!ctx->started)
-      return IRQ_UNHANDLED;
+      return IRQ_NOT_HANDLED;
 
    if (UNLIKELY(!ctx->pass_start)) {
 
@@ -333,7 +333,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
        */
       __bogo_loops = 0;
       ctx->pass_start = true;
-      return IRQ_UNHANDLED;
+      return IRQ_NOT_HANDLED;
    }
 
    /* Successive IRQs */
@@ -351,7 +351,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
       enable_interrupts_forced();
    }
 
-   return IRQ_UNHANDLED;   /* always allow the real IRQ handler to go */
+   return IRQ_NOT_HANDLED;   /* always allow the real IRQ handler to go */
 }
 
 static void do_bogomips_loop(void *arg)
