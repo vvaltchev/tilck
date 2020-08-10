@@ -30,18 +30,18 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
    bool ret;
 
    disable_preemption();
-   {
-      task_set_wait_obj(curr, WOBJ_KCOND, c, NO_EXTRA, &c->wait_list);
 
-      if (timeout_ticks != KCOND_WAIT_FOREVER)
-         task_set_wakeup_timer(curr, timeout_ticks);
+   task_set_wait_obj(curr, WOBJ_KCOND, c, NO_EXTRA, &c->wait_list);
 
-      if (m) {
-         kmutex_unlock(m);
-      }
+   if (timeout_ticks != KCOND_WAIT_FOREVER)
+      task_set_wakeup_timer(curr, timeout_ticks);
+
+   if (m) {
+      kmutex_unlock(m);
    }
-   enable_preemption_nosched();
-   kernel_yield(); // Go to sleep until a signal is fired or timeout happens.
+
+   /* Go to sleep until a signal is fired or timeout happens */
+   kernel_yield_preempt_disabled();
 
    /* ------------------- We've been woken up ------------------- */
 

@@ -82,8 +82,7 @@ static void action_stop(struct task *ti, int signum)
    wake_up_tasks_waiting_on(ti, task_stopped);
 
    if (ti == get_curr_task()) {
-      enable_preemption_nosched();
-      kernel_yield();
+      kernel_yield_preempt_disabled();
    }
 }
 
