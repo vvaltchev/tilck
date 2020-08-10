@@ -2,11 +2,16 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
+
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/sync.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/acpiosxf.h>
+
+#include <limits.h>           // system header
 
 /*
  * ---------------------------------------
@@ -51,3 +56,106 @@ AcpiOsReleaseLock(
    ulong flags = (ulong) Flags;
    enable_interrupts(&flags);
 }
+
+
+/*
+ * ---------------------------------------
+ * OSL SEMAPHORE
+ * ---------------------------------------
+ */
+
+
+ACPI_STATUS
+AcpiOsCreateSemaphore(
+    UINT32                  MaxUnits,
+    UINT32                  InitialUnits,
+    ACPI_SEMAPHORE          *OutHandle)
+{
+   struct ksem *s;
+
+   if (MaxUnits == ACPI_NO_UNIT_LIMIT)
+      MaxUnits = INT_MAX;
+
+   if (MaxUnits > INT_MAX || InitialUnits > INT_MAX || !OutHandle)
+      return AE_BAD_PARAMETER;
+
+   if (!(s = kalloc_obj(struct ksem)))
+      return AE_NO_MEMORY;
+
+   ksem_init(s, (int)InitialUnits, (int)MaxUnits);
+   *OutHandle = s;
+   return AE_OK;
+}
+
+ACPI_STATUS
+AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
+{
+   struct ksem *s = Handle;
+
+   if (!Handle)
+      return AE_BAD_PARAMETER;
+
+   ksem_destroy(s);
+   kfree2(Handle, sizeof(struct ksem));
+   return AE_OK;
+}
+
+ACPI_STATUS
+AcpiOsWaitSemaphore(
+    ACPI_SEMAPHORE          Handle,
+    UINT32                  Units,
+    UINT16                  Timeout)
+{
+   struct ksem *s = Handle;
+   int rc;
+
+   if (Units > INT_MAX || !Handle)
+      return AE_BAD_PARAMETER;
+
+   rc = ksem_wait(s, (int)Units, (int)Timeout);
+
+   switch (rc) {
+
+      case 0:
+         return AE_OK;
+
+      case -EINVAL:
+         return AE_BAD_PARAMETER;
+
+      case -ETIME:
+         return AE_TIME;
+
+      default:
+         return AE_ERROR;
+   }
+}
+
+ACPI_STATUS
+AcpiOsSignalSemaphore(
+    ACPI_SEMAPHORE          Handle,
+    UINT32                  Units)
+{
+   struct ksem *s = Handle;
+   int rc;
+
+   if (Units > INT_MAX || !Handle)
+      return AE_BAD_PARAMETER;
+
+   rc = ksem_signal(s, (int)Units);
+
+   switch (rc) {
+
+      case 0:
+         return AE_OK;
+
+      case -EINVAL:
+         return AE_BAD_PARAMETER;
+
+      case -EDQUOT:
+         return AE_LIMIT;
+
+      default:
+         return AE_ERROR;
+   }
+}
+
