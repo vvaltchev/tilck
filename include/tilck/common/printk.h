@@ -5,16 +5,28 @@
 
 #ifndef USERMODE_APP
 
+   #define PRINTK_FL_DEFAULT                    0
+   #define PRINTK_FL_NO_PREFIX                  1
+
    void printk(const char *fmt, ...);
-   void vprintk(const char *fmt, va_list args);
 
    #if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
 
       #define PRINTK_CTRL_CHAR   '\x01'
 
+      void tilck_vprintk(u32 flags, const char *fmt, va_list args);
+      static inline void vprintk(const char *fmt, va_list args) {
+         tilck_vprintk(PRINTK_FL_DEFAULT, fmt, args);
+      }
+
       int vsnprintk(char *buf, size_t size, const char *fmt, va_list args);
       int snprintk(char *buf, size_t size, const char *fmt, ...);
       void printk_flush_ringbuf(void);
+
+   #else
+
+      /* Legacy bootloader's basic_printk doesn't have `flags` */
+      void vprintk(const char *fmt, va_list args);
 
    #endif
 

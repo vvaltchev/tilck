@@ -168,7 +168,7 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
       printk_rbuf[(cs.write_pos + i) % sizeof(printk_rbuf)] = buf[i];
 }
 
-void vprintk(const char *fmt, va_list args)
+void tilck_vprintk(u32 flags, const char *fmt, va_list args)
 {
    static const char truncated_str[] = "[...]";
 
@@ -183,6 +183,9 @@ void vprintk(const char *fmt, va_list args)
       if (cmd == *(u32 *)NO_PREFIX)
          prefix = false;
    }
+
+   if (flags & PRINTK_FL_NO_PREFIX)
+      prefix = false;
 
    if (prefix) {
 
