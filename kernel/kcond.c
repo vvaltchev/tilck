@@ -27,6 +27,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
    struct task *curr = get_curr_task();
+   bool ret;
 
    disable_preemption();
    {
@@ -44,16 +45,22 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 
    /* ------------------- We've been woken up ------------------- */
 
+   /*
+    * wait_obj_reset() returns the older value of wobj.ptr: in case it was
+    * NULL, we'll return true (no timeout). Note: that happens (no wobj) because
+    * in kcond_signal_single() we reset task's wobj before wakeing it up.
+    *
+    * In case `wobj.ptr` was != NULL, we woke up because of the timeout (which
+    * doesn't reset the wobj), therefore return false.
+    */
+
+   ret = !wait_obj_reset(&curr->wobj);
+
    if (m) {
       kmutex_lock(m); // Re-acquire the lock [if any]
    }
 
-   /*
-    * wait_obj_reset() returns the older value of wobj.ptr: in case it was
-    * NULL, we'll return true (no timeout). In case it was != NULL, we woke up
-    * because of the timeout -> return false.
-    */
-   return !wait_obj_reset(&curr->wobj);
+   return ret;
 }
 
 static void
