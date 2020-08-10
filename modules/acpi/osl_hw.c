@@ -79,3 +79,25 @@ AcpiOsRemoveInterruptHandler(
    irq_uninstall_handler(InterruptNumber, n);
    return AE_OK;
 }
+
+ACPI_STATUS
+AcpiOsReadPciConfiguration(
+    ACPI_PCI_ID             *PciId,
+    UINT32                  Reg,
+    UINT64                  *Value,
+    UINT32                  Width)
+{
+   printk("ACPI: AcpiOsReadPciConfiguration() -> not implemented\n");
+   return AE_SUPPORT;
+}
+
+ACPI_STATUS
+AcpiOsWritePciConfiguration(
+    ACPI_PCI_ID             *PciId,
+    UINT32                  Reg,
+    UINT64                  Value,
+    UINT32                  Width)
+{
+   printk("ACPI: AcpiOsWritePciConfiguration() -> not implemented\n");
+   return AE_SUPPORT;
+}
