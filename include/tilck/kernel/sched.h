@@ -221,9 +221,17 @@ static ALWAYS_INLINE bool kernel_yield(void)
     */
    extern bool asm_kernel_yield(void);
 
-
+   bool context_switch;
    ASSERT(is_preemption_enabled());
-   return asm_kernel_yield();
+
+   disable_preemption();
+
+   context_switch = asm_kernel_yield();
+
+   if (UNLIKELY(!context_switch))
+      enable_preemption_nosched();
+
+   return context_switch;
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)

@@ -24,8 +24,6 @@
 
 FUNC(asm_kernel_yield):
 
-   lock inc dword ptr [__disable_preempt]
-
    pushf             # push EFLAGS
    sub esp, 16       # skip cs, eip, err_code, int_num
 
@@ -49,7 +47,6 @@ FUNC(asm_kernel_yield):
    add esp, SIZEOF_REGS - 8 + 4 # -8 : we skipped ss, useresp
                                 # +4 : compensate the last push eax above
 
-   lock dec dword ptr [__disable_preempt]
    mov eax, 0      # No context-switch return value
    ret
 
