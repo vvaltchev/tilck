@@ -115,20 +115,24 @@ void kernel_sleep_on_waiter(struct multi_obj_waiter *w);
 
 struct ksem {
 
-   int counter;
+   int max;
+   volatile int counter;
    struct list wait_list;
 };
 
-#define STATIC_KSEM_INIT(s, val)                 \
+#define KSEM_NO_MAX                             -1
+
+#define STATIC_KSEM_INIT(s, val, max)            \
    {                                             \
+      .max = (max),                              \
       .counter = (val),                          \
       .wait_list = make_list(s.wait_list),       \
    }
 
-void ksem_init(struct ksem *s, int val);
+void ksem_init(struct ksem *s, int val, int max);
 void ksem_destroy(struct ksem *s);
-void ksem_wait(struct ksem *s);
-void ksem_signal(struct ksem *s);
+int ksem_wait(struct ksem *s, int units);
+int ksem_signal(struct ksem *s, int units);
 
 /*
  * The mutex implementation used for locking in kernel mode.

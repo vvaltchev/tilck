@@ -6,7 +6,7 @@
 void rwlock_rp_init(struct rwlock_rp *r)
 {
    kmutex_init(&r->readers_lock, 0);
-   ksem_init(&r->writers_sem, 1);
+   ksem_init(&r->writers_sem, 1, 1);
    r->readers_count = 0;
    DEBUG_ONLY(r->ex_owner = NULL);
 }
@@ -24,7 +24,7 @@ void rwlock_rp_shlock(struct rwlock_rp *r)
    kmutex_lock(&r->readers_lock);
    {
       if (++r->readers_count == 1)
-         ksem_wait(&r->writers_sem);
+         ksem_wait(&r->writers_sem, 1);
    }
    kmutex_unlock(&r->readers_lock);
 }
@@ -34,14 +34,14 @@ void rwlock_rp_shunlock(struct rwlock_rp *r)
    kmutex_lock(&r->readers_lock);
    {
       if (--r->readers_count == 0)
-         ksem_signal(&r->writers_sem);
+         ksem_signal(&r->writers_sem, 1);
    }
    kmutex_unlock(&r->readers_lock);
 }
 
 void rwlock_rp_exlock(struct rwlock_rp *r)
 {
-   ksem_wait(&r->writers_sem);
+   ksem_wait(&r->writers_sem, 1);
 
    ASSERT(r->ex_owner == NULL);
    DEBUG_ONLY(r->ex_owner = get_curr_task());
@@ -52,7 +52,7 @@ void rwlock_rp_exunlock(struct rwlock_rp *r)
    ASSERT(r->ex_owner == get_curr_task());
    DEBUG_ONLY(r->ex_owner = NULL);
 
-   ksem_signal(&r->writers_sem);
+   ksem_signal(&r->writers_sem, 1);
 }
 
 /* ---------------------------------------------- */
