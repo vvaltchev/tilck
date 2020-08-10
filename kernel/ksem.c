@@ -105,13 +105,18 @@ int ksem_signal(struct ksem *s, int units)
 
    if (s->max != KSEM_NO_MAX) {
 
-      if (units > s->max || s->counter > s->max - units) {
+      if (units > s->max) {
+         rc = -EINVAL;
+         goto out;
+      }
+
+      if (s->counter > s->max - units) {
 
          /*
           * NOTE: `s->counter + units > s->max` got re-written to avoid integer
           * wrap-around.
           */
-         rc = -EINVAL;
+         rc = -EDQUOT;
          goto out;
       }
    }
