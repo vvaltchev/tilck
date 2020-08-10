@@ -51,6 +51,12 @@ TEST(printk, basic)
 
 TEST(printk, rare)
 {
+   /* String precision */
+   EXPECT_EQ(spk_wrapper("%.3s", "abcdef"), "abc");
+
+   /* Precision for integers treated as lpad */
+   EXPECT_EQ(spk_wrapper("%.4d", 1), "0001");
+
    /* Same as long long */
    EXPECT_EQ(spk_wrapper("%Lx", 0xaabbccddeeffll), "aabbccddeeff");
    EXPECT_EQ(spk_wrapper("%qx", 0xaabbccddeeffll), "aabbccddeeff");

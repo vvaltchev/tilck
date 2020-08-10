@@ -9,12 +9,22 @@
 STATIC_ASSERT(sizeof(intmax_t) == sizeof(long long));
 
 static bool
-write_in_buf_str(char **buf_ref, char *buf_end, const char *s)
+write_in_buf_str(char **buf_ref, char *buf_end, const char *s, int len)
 {
    char *ptr = *buf_ref;
 
-   while (*s && ptr < buf_end) {
-      *ptr++ = *s++;
+   if (len > 0) {
+
+      while (*s && len > 0 && ptr < buf_end) {
+         *ptr++ = *s++;
+         len--;
+      }
+
+   } else {
+
+      while (*s && ptr < buf_end) {
+         *ptr++ = *s++;
+      }
    }
 
    *buf_ref = ptr;
@@ -59,6 +69,7 @@ struct snprintk_ctx {
    enum printk_width width;
    int lpad;
    int rpad;
+   int precision;
    bool zero_lpad;
    bool hash_sign;
 
@@ -72,6 +83,7 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
    ctx->width = pw_default;
    ctx->lpad = 0;
    ctx->rpad = 0;
+   ctx->precision = 0;
    ctx->zero_lpad = false;
    ctx->hash_sign = false;
 }
@@ -105,10 +117,17 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
    int sl = (int) strlen(str);
    int lpad = MAX(0, ctx->lpad - sl);
    int rpad = MAX(0, ctx->rpad - sl);
+   bool zero_lpad = ctx->zero_lpad;
    char pad_char = ' ';
 
    /* Cannot have both left padding _and_ right padding */
    ASSERT(!lpad || !rpad);
+
+   if (ctx->precision && fmtX != 's') {
+      /* Note: we don't support floating point numbers */
+      zero_lpad = true;
+      lpad = MAX(0, ctx->precision - sl);
+   }
 
    if (ctx->hash_sign) {
 
@@ -123,7 +142,7 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
       rpad = MAX(0, rpad - off);
    }
 
-   if (ctx->zero_lpad) {
+   if (zero_lpad) {
 
       if (fmtX != 'c')
          pad_char = '0';
@@ -142,7 +161,7 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
          goto out_of_dest_buffer;
    }
 
-   if (!write_in_buf_str(&ctx->buf, ctx->buf_end, (str)))
+   if (!write_in_buf_str(&ctx->buf, ctx->buf_end, str, ctx->precision))
       goto out_of_dest_buffer;
 
    for (int i = 0; i < rpad; i++)
@@ -310,6 +329,10 @@ process_next_char_in_seq:
 
    case '-':
       ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+      goto process_next_char_in_seq;
+
+   case '.':
+      ctx->precision = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
       goto process_next_char_in_seq;
 
    case '#':
