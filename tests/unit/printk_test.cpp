@@ -166,3 +166,14 @@ TEST(printk, size_t)
    EXPECT_EQ(spk_wrapper("%zu",(size_t)9223372036854775ll),"9223372036854775");
 #endif
 }
+
+TEST(printk, ptrdiff_t)
+{
+   EXPECT_EQ(spk_wrapper("%td", (size_t)1234), "1234");
+   EXPECT_EQ(spk_wrapper("%tu", (size_t)123), "123");
+   EXPECT_EQ(spk_wrapper("%tx", (size_t)0xaab3), "aab3");
+
+#if NBITS == 64
+   EXPECT_EQ(spk_wrapper("%tu",(size_t)9223372036854775ll),"9223372036854775");
+#endif
+}

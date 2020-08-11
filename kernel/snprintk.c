@@ -263,7 +263,7 @@ static const enum printk_width double_mods[2][3] =
 
 static const enum printk_width single_mods[2] =
 {
-   /* 'z' modifier */
+   /* 'z' and 't' modifiers */
    pw_long,
 
    /* 'L', 'q', 'j' modifiers */
@@ -355,6 +355,7 @@ process_next_char_in_seq:
       goto move_to_next_char_in_seq;
 
    case 'z': /* fall-through */
+   case 't': /* fall-through */
    case 'j': /* fall-through */
    case 'q': /* fall-through */
    case 'L':
@@ -362,7 +363,7 @@ process_next_char_in_seq:
       if (ctx->width != pw_default)
          goto unknown_seq;
 
-      ctx->width = single_mods[*ctx->fmt != 'z'];
+      ctx->width = single_mods[*ctx->fmt != 'z' && *ctx->fmt != 't'];
       goto move_to_next_char_in_seq;
 
    case 'l': /* fall-through */
