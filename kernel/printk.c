@@ -85,11 +85,10 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
    return;
 }
 
-void printk_flush_ringbuf(void)
+static void
+__printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 {
    struct ringbuf_stat cs, ns;
-
-   char minibuf[80];
    u32 to_read = 0;
 
    while (true) {
@@ -98,12 +97,12 @@ void printk_flush_ringbuf(void)
          cs = printk_rbuf_stat;
          ns = printk_rbuf_stat;
 
-         /* We at most 'sizeof(minibuf)' bytes at a time */
-         to_read = UNSAFE_MIN(sizeof(minibuf), ns.used);
+         /* We at most 'buf_size' bytes at a time */
+         to_read = UNSAFE_MIN(buf_size, ns.used);
 
          /* And copy them to our minibuf */
          for (u32 i = 0; i < to_read; i++)
-            minibuf[i] = printk_rbuf[(cs.read_pos + i) % sizeof(printk_rbuf)];
+            tmpbuf[i] = printk_rbuf[(cs.read_pos + i) % sizeof(printk_rbuf)];
 
          /* Increase read_pos and decrease used */
          ns.read_pos = (ns.read_pos + to_read) % sizeof(printk_rbuf);
@@ -124,8 +123,15 @@ void printk_flush_ringbuf(void)
       if (!to_read)
          break;
 
-      printk_direct_flush(minibuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
+      printk_direct_flush(tmpbuf, to_read, PRINTK_RINGBUF_FLUSH_COLOR);
    }
+}
+
+void
+printk_flush_ringbuf(void)
+{
+   char minibuf[80];
+   __printk_flush_ringbuf(minibuf, sizeof(minibuf));
 }
 
 static void printk_append_to_ringbuf(const char *buf, size_t size)
@@ -256,7 +262,7 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
           * generated.
           */
          printk_direct_flush(buf, (size_t) written, PRINTK_COLOR);
-         printk_flush_ringbuf();
+         __printk_flush_ringbuf(buf, sizeof(buf));
 
       } else {
 
