@@ -161,7 +161,26 @@ def echo_qemu_monitor(read_attempts = 3):
    return text
 
 def send_to_qemu_monitor(cmd, delay = 0.2):
-   g_process.stdin.raw.write("{}\n".format(cmd).encode('utf-8'))
+
+   try:
+
+      g_process.stdin.raw.write("{}\n".format(cmd).encode('utf-8'))
+
+   except BrokenPipeError:
+
+      msg_print("BrokenPipeError in send_to_qemu_monitor('{}')".format(cmd))
+
+      if g_process.poll() is None:
+         msg_print("Note: the QEMU process is still alive")
+         try:
+            echo_qemu_monitor()
+         except Exception as e:
+            msg_print("Cannot read from QEMU monitor: {}".format(str(e)))
+      else:
+         msg_print("Note: QEMU died with: {}".format(g_process.returncode))
+
+      raise
+
    time.sleep(delay)
    echo_qemu_monitor()
 
