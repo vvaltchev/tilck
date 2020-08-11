@@ -27,7 +27,7 @@ struct ringbuf_stat {
          u32 used : 10;
          u32 read_pos : 10;
          u32 write_pos : 10;
-         u32 in_printk : 1;
+         u32 first_printk_on_stack : 1;
          u32 unused : 1;
       };
 
@@ -110,7 +110,7 @@ void printk_flush_ringbuf(void)
          ns.used -= to_read;
 
          if (!to_read)
-            ns.in_printk = 0;
+            ns.first_printk_on_stack = 0;
 
          /* Repeat that until we were able to do that atomically */
 
@@ -120,7 +120,7 @@ void printk_flush_ringbuf(void)
                                 mo_relaxed,
                                 mo_relaxed));
 
-      /* Note: we check that in_printk in cs (current state) is unset! */
+      /* Note: we checked that `first_printk_on_stack` in `cs` was unset! */
       if (!to_read)
          break;
 
@@ -166,6 +166,28 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
 
    for (u32 i = 0; i < size; i++)
       printk_rbuf[(cs.write_pos + i) % sizeof(printk_rbuf)] = buf[i];
+}
+
+static bool
+try_set_first_printk_on_stack(void)
+{
+   struct ringbuf_stat cs, ns;
+
+   do {
+      cs = printk_rbuf_stat;
+      ns = printk_rbuf_stat;
+      ns.first_printk_on_stack = 1;
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
+                              &cs.__raw,
+                              ns.__raw,
+                              mo_relaxed,
+                              mo_relaxed));
+
+   /*
+    * If, when we swapped atomically the state, cs.first_printk_on_stack was 0
+    * we were the first to set it to 1.
+    */
+   return !cs.first_printk_on_stack;
 }
 
 void tilck_vprintk(u32 flags, const char *fmt, va_list args)
@@ -226,29 +248,26 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
 
    disable_preemption();
    {
-      struct ringbuf_stat cs, ns;
+      if (try_set_first_printk_on_stack()) {
 
-      do {
-         cs = printk_rbuf_stat;
-         ns = printk_rbuf_stat;
-         ns.in_printk = 1;
-      } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                                &cs.__raw,
-                                ns.__raw,
-                                mo_relaxed,
-                                mo_relaxed));
-
-      if (!cs.in_printk) {
-
+         /*
+          * OK, we were the first. Now, flush our buffer directly and loop
+          * flushing anything that, in the meanwhile, printk() calls from IRQs
+          * generated.
+          */
          printk_direct_flush(buf, (size_t) written, PRINTK_COLOR);
          printk_flush_ringbuf();
 
       } else {
 
-         /* in_printk was already 1 */
+         /*
+          * We were NOT the first printk on the stack: we're in an IRQ handler
+          * and can only append our data to the ringbuf. On return, at some
+          * point, the first printk(), in printk_flush_ringbuf() [case above]
+          * will flush our data.
+          */
          printk_append_to_ringbuf(buf, (size_t) written);
       }
-
    }
    enable_preemption();
 }
