@@ -24,11 +24,12 @@ struct ringbuf_stat {
    union {
 
       struct {
-         u32 used : 10;
-         u32 read_pos : 10;
-         u32 write_pos : 10;
-         u32 first_printk_on_stack : 1;
-         u32 unused : 1;
+         u32 read_pos              : 14;
+         u32 write_pos             : 14;
+         u32 full                  :  1;
+         u32 first_printk          :  1;
+         u32 unused0               :  1;
+         u32 unused1               :  1;
       };
 
       ATOMIC(u32) raw;
@@ -36,17 +37,20 @@ struct ringbuf_stat {
    };
 };
 
-static char printk_rbuf[1024];
+#if TINY_KERNEL
+   static char printk_rbuf[2 * KB];
+#else
+   static char printk_rbuf[8 * KB];
+#endif
+
 static volatile struct ringbuf_stat printk_rbuf_stat;
 bool __in_printk;
 
 /*
- * NOTE: the ring buf cannot be larger than 1024 elems because the fields
- * 'used', 'read_pos' and 'write_pos' are 10 bits long and we CANNOT extend
- * them in 32 bits. Such approach is convenient because with everything packed
- * in 32 bits, we can do atomic operations.
+ * NOTE: the ring buf cannot be larger than 16K elems because of the size of the
+ * read_pos and write_pos bit-fields.
  */
-STATIC_ASSERT(sizeof(printk_rbuf) <= 1024);
+STATIC_ASSERT(sizeof(printk_rbuf) <= 16 * KB);
 
 static void printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
 {
@@ -85,20 +89,32 @@ static void printk_direct_flush(const char *buf, size_t size, u8 color)
    return;
 }
 
+static ALWAYS_INLINE u32
+printk_calc_used(const struct ringbuf_stat *cs)
+{
+   u32 used = (cs->write_pos - cs->read_pos) % sizeof(printk_rbuf);
+
+   if (!used)
+      used = cs->full ? sizeof(printk_rbuf) : 0;
+
+   return used;
+}
+
 static void
 __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 {
    struct ringbuf_stat cs, ns;
-   u32 to_read = 0;
+   u32 used, to_read = 0;
 
    while (true) {
 
       do {
          cs = printk_rbuf_stat;
          ns = printk_rbuf_stat;
+         used = printk_calc_used(&cs);
 
-         /* We at most 'buf_size' bytes at a time */
-         to_read = UNSAFE_MIN(buf_size, ns.used);
+         /* We can read at most 'buf_size' bytes at a time */
+         to_read = UNSAFE_MIN(buf_size, used);
 
          /* And copy them to our minibuf */
          for (u32 i = 0; i < to_read; i++)
@@ -106,10 +122,9 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 
          /* Increase read_pos and decrease used */
          ns.read_pos = (ns.read_pos + to_read) % sizeof(printk_rbuf);
-         ns.used -= to_read;
 
          if (!to_read)
-            ns.first_printk_on_stack = 0;
+            ns.first_printk = 0;
 
          /* Repeat that until we were able to do that atomically */
 
@@ -119,7 +134,7 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
                                 mo_relaxed,
                                 mo_relaxed));
 
-      /* Note: we checked that `first_printk_on_stack` in `cs` was unset! */
+      /* Note: we checked that `first_printk` in `cs` was unset! */
       if (!to_read)
          break;
 
@@ -137,30 +152,35 @@ printk_flush_ringbuf(void)
 static void printk_append_to_ringbuf(const char *buf, size_t size)
 {
    static const char err_msg[] = "{_DROPPED_}\n";
-
    struct ringbuf_stat cs, ns;
+   u32 used;
 
    do {
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
+      used = printk_calc_used(&cs);
 
-      if (cs.used + size >= sizeof(printk_rbuf)) {
+      if (used + size >= sizeof(printk_rbuf)) {
+
+         /* Corner case: the ring buffer is full */
 
          if (term_is_initialized()) {
             printk_direct_flush(buf, size, PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR);
             return;
          }
 
-         if (buf != err_msg && cs.used < sizeof(printk_rbuf) - 1) {
-            size = MIN(sizeof(printk_rbuf) - cs.used - 1, sizeof(err_msg));
+         if (buf != err_msg && used < sizeof(printk_rbuf) - 1) {
+            size = MIN(sizeof(printk_rbuf) - used - 1, sizeof(err_msg));
             printk_append_to_ringbuf(err_msg, size);
          }
 
          return;
       }
 
-      ns.used += size;
       ns.write_pos = (ns.write_pos + size) % sizeof(printk_rbuf);
+
+      if (ns.write_pos == ns.read_pos)
+         ns.full = 1;
 
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                              &cs.__raw,
@@ -182,7 +202,7 @@ try_set_first_printk_on_stack(void)
    do {
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
-      ns.first_printk_on_stack = 1;
+      ns.first_printk = 1;
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
                               &cs.__raw,
                               ns.__raw,
@@ -190,10 +210,10 @@ try_set_first_printk_on_stack(void)
                               mo_relaxed));
 
    /*
-    * If, when we swapped atomically the state, cs.first_printk_on_stack was 0
+    * If, when we swapped atomically the state, cs.first_printk was 0
     * we were the first to set it to 1.
     */
-   return !cs.first_printk_on_stack;
+   return !cs.first_printk;
 }
 
 void tilck_vprintk(u32 flags, const char *fmt, va_list args)
