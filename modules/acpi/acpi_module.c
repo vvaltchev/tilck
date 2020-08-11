@@ -16,6 +16,11 @@ early_init_acpi_module(void)
 {
    ACPI_STATUS rc;
 
+   rc = AcpiInitializeSubsystem();
+
+   if (rc != AE_OK)
+      panic("AcpiInitializeSubsystem() failed with: %d", rc);
+
    rc = AcpiInitializeTables(acpi_tables, 16, false);
 
    if (rc != AE_OK)

@@ -3,6 +3,7 @@
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_fb.h>
+#include <tilck_gen_headers/mod_acpi.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -36,6 +37,10 @@
 #include <tilck/mods/console.h>
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/serial.h>
+#include <tilck/mods/acpi.h>
+
+#include <3rd_party/acpi/acpi.h>
+#include <3rd_party/acpi/acexcep.h>
 
 static bool read_multiboot_info_passed;
 static u32 saved_multiboot_magic;
@@ -366,6 +371,10 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_sched();
    init_syscall_interfaces();
    init_worker_threads();
+
+   if (MOD_acpi)
+      early_init_acpi_module();
+
    init_timer();
    init_system_time();
    init_kernelfs();

@@ -46,6 +46,7 @@ set(
 
    -D__MOD_ACPICA__
    -DACPI_DEBUGGER=1
+   -DACPI_DEBUG_OUTPUT=1
 
    -include tilck/common/basic_defs.h
    -include tilck/common/string_util.h
