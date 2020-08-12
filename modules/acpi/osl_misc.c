@@ -11,7 +11,6 @@
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
 
-#define _COMPONENT      ACPI_OS_SERVICES
 ACPI_MODULE_NAME("osl_misc")
 
 ACPI_STATUS

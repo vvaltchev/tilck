@@ -8,3 +8,4 @@
 #pragma once
 
 #cmakedefine01    MOD_acpi
+#cmakedefine01    ACPI_DEBUGGER_ENABLED

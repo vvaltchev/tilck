@@ -7,11 +7,11 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/worker_thread.h>
+#include <tilck/mods/acpi.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
 
-#define _COMPONENT      ACPI_OS_SERVICES
 ACPI_MODULE_NAME("osl_tasks")
 
 static struct worker_thread *wth_events;
@@ -82,6 +82,9 @@ osl_init_tasks(void)
 {
    wth_events = osl_create_worker_or_die("acevents", 1, 64);
    wth_main = osl_create_worker_or_die("acmain", 2, 64);
-   wth_debug = osl_create_worker_or_die("acdebug", 3, 64);
+
+   if (ACPI_DEBUGGER_ENABLED)
+      wth_debug = osl_create_worker_or_die("acdebug", 3, 64);
+
    return AE_OK;
 }
