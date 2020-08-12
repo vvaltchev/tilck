@@ -52,7 +52,8 @@ bool __in_printk;
  */
 STATIC_ASSERT(sizeof(printk_rbuf) <= 16 * KB);
 
-static void printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
+static void
+printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
 {
    /*
     * tty has not been initialized yet, therefore we have to translate here
@@ -61,29 +62,27 @@ static void printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
 
    for (u32 i = 0; i < size; i++) {
 
-      __in_printk = true;
-      {
-         if (buf[i] == '\n')
-            term_write("\r", 1, color);
+      if (buf[i] == '\n')
+         term_write("\r", 1, color);
 
-         term_write(&buf[i], 1, color);
-      }
-      __in_printk = false;
+      term_write(&buf[i], 1, color);
    }
 }
 
-static void printk_direct_flush(const char *buf, size_t size, u8 color)
+static void
+printk_direct_flush(const char *buf, size_t size, u8 color)
 {
-   if (UNLIKELY(get_curr_tty() == NULL))
-      return printk_direct_flush_no_tty(buf, size, color);
-
-   /* tty has been initialized and set a term write filter func */
    __in_printk = true;
    {
-      if (KRN_PRINTK_ON_CURR_TTY || !get_curr_process_tty())
-         term_write(buf, size, color);
-      else
-         tty_curr_proc_write(buf, size);
+      if (LIKELY(get_curr_tty() != NULL)) {
+         /* tty has been initialized and set a term write filter func */
+         if (KRN_PRINTK_ON_CURR_TTY || !get_curr_process_tty())
+            term_write(buf, size, color);
+         else
+            tty_curr_proc_write(buf, size);
+      } else {
+         printk_direct_flush_no_tty(buf, size, color);
+      }
    }
    __in_printk = false;
    return;
