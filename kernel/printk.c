@@ -28,8 +28,8 @@ struct ringbuf_stat {
          u32 write_pos             : 14;
          u32 full                  :  1;
          u32 first_printk          :  1;
+         u32 newline               :  1;
          u32 unused0               :  1;
-         u32 unused1               :  1;
       };
 
       ATOMIC(u32) raw;
@@ -43,7 +43,11 @@ struct ringbuf_stat {
    static char printk_rbuf[8 * KB];
 #endif
 
-static volatile struct ringbuf_stat printk_rbuf_stat;
+static volatile struct ringbuf_stat printk_rbuf_stat =
+{
+   .newline = 1
+};
+
 bool __in_printk;
 
 /*
@@ -72,6 +76,9 @@ printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
 static void
 printk_direct_flush(const char *buf, size_t size, u8 color)
 {
+   if (!size)
+      return;
+
    __in_printk = true;
    {
       if (LIKELY(get_curr_tty() != NULL)) {
@@ -154,6 +161,9 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
    struct ringbuf_stat cs, ns;
    u32 used;
 
+   if (!size)
+      return;
+
    do {
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
@@ -193,8 +203,11 @@ static void printk_append_to_ringbuf(const char *buf, size_t size)
       printk_rbuf[(cs.write_pos + i) % sizeof(printk_rbuf)] = buf[i];
 }
 
-static bool
-try_set_first_printk_on_stack(void)
+/*
+ * Sets atomically first_printk=1 and returns the old ringbuf_stat.
+ */
+static struct ringbuf_stat
+try_set_first_printk_on_stack(bool newline)
 {
    struct ringbuf_stat cs, ns;
 
@@ -202,26 +215,65 @@ try_set_first_printk_on_stack(void)
       cs = printk_rbuf_stat;
       ns = printk_rbuf_stat;
       ns.first_printk = 1;
+      ns.newline = newline;
    } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
-                              &cs.__raw,
-                              ns.__raw,
-                              mo_relaxed,
-                              mo_relaxed));
+                             &cs.__raw,
+                             ns.__raw,
+                             mo_relaxed,
+                             mo_relaxed));
 
-   /*
-    * If, when we swapped atomically the state, cs.first_printk was 0
-    * we were the first to set it to 1.
-    */
-   return !cs.first_printk;
+   return cs;
+}
+
+static void
+restore_first_printk_value(void)
+{
+   struct ringbuf_stat cs, ns;
+
+   do {
+      cs = printk_rbuf_stat;
+      ns = printk_rbuf_stat;
+      ns.first_printk = 0;
+   } while (!atomic_cas_weak(&printk_rbuf_stat.raw,
+                             &cs.__raw,
+                             ns.__raw,
+                             mo_relaxed,
+                             mo_relaxed));
+}
+
+STATIC int
+vsnprintk_with_truc_suffix(char *buf, u32 bufsz, const char *fmt, va_list args)
+{
+   static const char truncated_str[] = "[...]";
+
+   int written = vsnprintk(buf, bufsz, fmt, args);
+
+   if (written == (int)bufsz) {
+
+      /*
+       * Corner case: the buffer is completely full and the final \0 has been
+       * included in 'written'.
+       */
+
+      memcpy(buf + bufsz - sizeof(truncated_str),
+             truncated_str,
+             sizeof(truncated_str));
+
+      written--;
+   }
+
+   return written;
 }
 
 void tilck_vprintk(u32 flags, const char *fmt, va_list args)
 {
-   static const char truncated_str[] = "[...]";
+   char prefixbuf[32];
+   char buf[224];
 
-   char buf[256];
-   int written = 0;
-   bool prefix = in_panic() ? false : true;
+   bool prefix = !in_panic();
+   bool has_newline = false;
+   struct ringbuf_stat old;
+   int written, prefix_sz = 0;
 
    if (*fmt == PRINTK_CTRL_CHAR) {
       u32 cmd = *(u32 *)fmt;
@@ -234,54 +286,64 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
    if (flags & PRINTK_FL_NO_PREFIX)
       prefix = false;
 
-   if (prefix) {
+   written = vsnprintk_with_truc_suffix(buf, sizeof(buf), fmt, args);
+
+   for (int i = 0; i < written; i++) {
+      if (buf[i] == '\n') {
+         has_newline = true;
+         break;
+      }
+   }
+
+   old = try_set_first_printk_on_stack(has_newline);
+
+   if (prefix && old.newline) {
 
       const u64 systime = get_sys_time();
 
-      written = snprintk(
-         buf, sizeof(buf), "[%5u.%03u] ",
+      prefix_sz = snprintk(
+         prefixbuf, sizeof(prefixbuf), "[%5u.%03u] ",
          (u32)(systime / TS_SCALE),
          (u32)((systime % TS_SCALE) / (TS_SCALE / 1000))
       );
+
+   } else {
+
+      prefix = false;
    }
 
-   written += vsnprintk(buf + written, sizeof(buf) - (u32)written, fmt, args);
-
-   if (written == sizeof(buf)) {
-
-      /*
-       * Corner case: the buffer is completely full and the final \0 has been
-       * included in 'written'.
-       */
-
-      memcpy(buf + sizeof(buf) - sizeof(truncated_str),
-             truncated_str,
-             sizeof(truncated_str));
-
-      written--;
-   }
 
    if (!term_is_initialized()) {
+      printk_append_to_ringbuf(prefixbuf, (size_t) prefix_sz);
       printk_append_to_ringbuf(buf, (size_t) written);
+      restore_first_printk_value();
       return;
    }
 
    if (in_panic()) {
       printk_direct_flush(buf, (size_t) written, PRINTK_PANIC_COLOR);
+      restore_first_printk_value();
       return;
    }
 
    disable_preemption();
    {
-      if (try_set_first_printk_on_stack()) {
+      if (!old.first_printk) {
 
          /*
           * OK, we were the first. Now, flush our buffer directly and loop
           * flushing anything that, in the meanwhile, printk() calls from IRQs
           * generated.
           */
+
+         printk_direct_flush(prefixbuf, (size_t) prefix_sz, PRINTK_COLOR);
          printk_direct_flush(buf, (size_t) written, PRINTK_COLOR);
          __printk_flush_ringbuf(buf, sizeof(buf));
+
+         /*
+          * No need to call restore_first_printk_value(): printk_flush_ringbuf
+          * clears the `first_printk` bit for us.
+          */
 
       } else {
 
@@ -291,6 +353,8 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
           * point, the first printk(), in printk_flush_ringbuf() [case above]
           * will flush our data.
           */
+
+         printk_append_to_ringbuf(prefixbuf, (size_t) prefix_sz);
          printk_append_to_ringbuf(buf, (size_t) written);
       }
    }
