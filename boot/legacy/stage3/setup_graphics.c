@@ -30,20 +30,25 @@ static void debug_show_detailed_mode_info(struct ModeInfoBlock *mi)
    bios_read_char();
 }
 
-static void show_single_mode(int num, struct ModeInfoBlock *mi)
+static void
+show_single_mode(int num, struct ModeInfoBlock *mi, bool default_mode)
 {
-   printk("Mode [%d]: %d x %d x %d\n",
-          num, mi->XResolution, mi->YResolution, mi->BitsPerPixel);
+   printk("Mode [%d]: %d x %d x %d%s\n",
+          num, mi->XResolution,
+          mi->YResolution, mi->BitsPerPixel, default_mode ? " [DEFAULT]" : "");
 }
 
-static void show_modes_aux(u16 *modes,
-                           struct ModeInfoBlock *mi,
-                           u16 *known_modes,
-                           int *known_modes_count,
-                           int min_bpp)
+static void
+show_modes_aux(u16 *modes,
+               struct ModeInfoBlock *mi,
+               u16 *known_modes,
+               int *known_modes_count,
+               u16 *default_mode_num,
+               int min_bpp)
 {
    u32 max_width = 0;
    u16 max_width_mode;
+   *default_mode_num = 0xffff;
 
    for (u32 i = 0; modes[i] != 0xffff; i++) {
 
@@ -77,7 +82,10 @@ static void show_modes_aux(u16 *modes,
          continue;
       }
 
-      show_single_mode(*known_modes_count, mi);
+      if (is_tilck_default_resolution(mi->XResolution, mi->YResolution))
+         *default_mode_num = modes[i];
+
+      show_single_mode(*known_modes_count, mi, *default_mode_num == modes[i]);
       known_modes[(*known_modes_count)++] = modes[i];
    }
 
@@ -86,7 +94,7 @@ static void show_modes_aux(u16 *modes,
       if (!vbe_get_mode_info(max_width_mode, mi))
          panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
 
-      show_single_mode(*known_modes_count, mi);
+      show_single_mode(*known_modes_count, mi, false);
       known_modes[(*known_modes_count)++] = max_width_mode;
    }
 }
@@ -131,11 +139,13 @@ void ask_user_video_mode(struct mem_info *minfo)
    }
 
    known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
-   printk("Mode [0]: text mode 80 x 25 [DEFAULT]\n");
+   printk("Mode [0]: text mode 80 x 25\n");
 
 
    u16 *modes = get_flat_ptr(vb->VideoModePtr);
-   show_modes_aux(modes, mi, known_modes, &known_modes_count, 32);
+   u16 defmode;
+
+   show_modes_aux(modes, mi, known_modes, &known_modes_count, &defmode, 32);
 
    if (known_modes_count == 1) {
 
@@ -145,7 +155,7 @@ void ask_user_video_mode(struct mem_info *minfo)
        * the available modes.
        */
 
-      show_modes_aux(modes, mi, known_modes, &known_modes_count, 24);
+      show_modes_aux(modes, mi, known_modes, &known_modes_count, &defmode, 24);
    }
 
    printk("\n");
@@ -158,7 +168,7 @@ void ask_user_video_mode(struct mem_info *minfo)
       int s = sel - '0';
 
       if (sel == '\r') {
-         selected_mode = VGA_COLOR_TEXT_MODE_80x25;
+         selected_mode = defmode;
          printk("DEFAULT\n");
          break;
       }

@@ -49,11 +49,9 @@ static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 
 static bool IsTilckDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
-   if (IsSupported(mi))
-      if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600)
-         return true;
-
-   return false;
+   return IsSupported(mi) &&
+            is_tilck_default_resolution(mi->HorizontalResolution,
+                                        mi->VerticalResolution);
 }
 
 static EFI_STATUS

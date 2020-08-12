@@ -28,3 +28,8 @@ bool is_tilck_known_resolution(u32 w, u32 h)
 
    return false;
 }
+
+bool is_tilck_default_resolution(u32 w, u32 h)
+{
+   return w == 800 && h == 600;
+}
