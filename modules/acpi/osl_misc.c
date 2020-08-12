@@ -9,32 +9,34 @@
 
 #include "osl.h"
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
-#include <3rd_party/acpi/acexcep.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_misc")
 
 ACPI_STATUS
 AcpiOsInitialize(void)
 {
    ACPI_STATUS rc;
-   printk("AcpiOsInitialize\n");
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if ((rc = osl_init_malloc()) != AE_OK)
-      return rc;
+      return_ACPI_STATUS(rc);
 
    if ((rc = osl_init_tasks()) != AE_OK)
-      return rc;
+      return_ACPI_STATUS(rc);
 
    if ((rc = osl_init_irqs()) != AE_OK)
-      return rc;
+      return_ACPI_STATUS(rc);
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
 AcpiOsTerminate(void)
 {
-   printk("AcpiOsTerminate\n");
-   return AE_OK;
+   ACPI_FUNCTION_TRACE(__FUNC__);
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_PHYSICAL_ADDRESS
@@ -132,8 +134,9 @@ AcpiOsEnterSleep(
     UINT32                  RegaValue,
     UINT32                  RegbValue)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
    printk("ACPI sleep: %u, 0x%x, 0x%x\n", SleepState, RegaValue, RegaValue);
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_PRINTF_LIKE (1)

@@ -10,8 +10,10 @@
 #include <tilck/kernel/hal.h>
 
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
-#include <3rd_party/acpi/acexcep.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_mm")
 
 void *
 AcpiOsMapMemory(
@@ -23,11 +25,13 @@ AcpiOsMapMemory(
    size_t pg_count;
    size_t cnt;
 
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    if (Where + Length <= LINEAR_MAPPING_SIZE)
-      return KERNEL_PA_TO_VA(Where);
+      return_PTR(KERNEL_PA_TO_VA(Where));
 
    if (!(va = hi_vmem_reserve(Length)))
-      return NULL;
+      return_PTR(NULL);
 
    Length = Where + Length - paddr;
    pg_count = pow2_round_up_at(Length, PAGE_SIZE) >> PAGE_SHIFT;
@@ -36,11 +40,11 @@ AcpiOsMapMemory(
    if (cnt < pg_count) {
       unmap_pages_permissive(get_kernel_pdir(), va, cnt, false);
       hi_vmem_release(va, Length);
-      return NULL;
+      return_PTR(NULL);
    }
 
    printk("ACPI: mmap %zu pages %p -> %p\n", pg_count, TO_PTR(Where), va);
-   return va;
+   return_PTR(va);
 }
 
 void
@@ -52,8 +56,10 @@ AcpiOsUnmapMemory(
    ulong aligned_vaddr = vaddr & PAGE_MASK;
    size_t pg_count;
 
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    if (vaddr + Size <= LINEAR_MAPPING_END)
-      return;
+      return_VOID;
 
    Size = vaddr + Size - aligned_vaddr;
    pg_count = pow2_round_up_at(Size, PAGE_SIZE) >> PAGE_SHIFT;
@@ -68,15 +74,16 @@ AcpiOsGetPhysicalAddress(
     ACPI_PHYSICAL_ADDRESS   *PhysicalAddress)
 {
    ulong paddr;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (!LogicalAddress || !PhysicalAddress)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    if (get_mapping2(get_kernel_pdir(), LogicalAddress, &paddr) < 0)
-      return AE_ERROR;
+      return_ACPI_STATUS(AE_ERROR);
 
    *PhysicalAddress = paddr;
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 BOOLEAN
@@ -86,22 +93,23 @@ AcpiOsReadable(
 {
    ulong va = (ulong)Pointer;
    ulong va_end = va + Length;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < KERNEL_BASE_VA)
-      return false;
+      return_UINT8(false);
 
    if (va_end <= LINEAR_MAPPING_END)
-      return true;
+      return_UINT8(true);
 
    while (va < va_end) {
 
       if (!is_mapped(get_kernel_pdir(), TO_PTR(va)))
-         return false;
+         return_UINT8(false);
 
       va += PAGE_SIZE;
    }
 
-   return true;
+   return_UINT8(true);
 }
 
 BOOLEAN
@@ -113,9 +121,10 @@ AcpiOsWritable(
    ulong va_end = va + Length;
    struct mem_region m;
    int reg_count = get_mem_regions_count();
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (va < KERNEL_BASE_VA)
-      return false;
+      return_UINT8(false);
 
    for (int i = 0; i < reg_count; i++) {
 
@@ -138,22 +147,22 @@ AcpiOsWritable(
           * We cannot allow ACPICA to believe it's writable.
           */
 
-         return false;
+         return_UINT8(false);
       }
    }
 
    if (va_end <= LINEAR_MAPPING_END)
-      return true;
+      return_UINT8(true);
 
    while (va < va_end) {
 
       if (!is_rw_mapped(get_kernel_pdir(), TO_PTR(va)))
-         return false;
+         return_UINT8(false);
 
       va += PAGE_SIZE;
    }
 
-   return true;
+   return_UINT8(true);
 }
 
 ACPI_STATUS
@@ -163,6 +172,7 @@ AcpiOsReadMemory(
     UINT32                  Width)
 {
    void *va;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if ((Address + (Width >> 3)) > LINEAR_MAPPING_SIZE) {
 
@@ -192,10 +202,10 @@ AcpiOsReadMemory(
          *Value = *(volatile u64 *)va;
          break;
       default:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
    }
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -205,6 +215,7 @@ AcpiOsWriteMemory(
     UINT32                  Width)
 {
    void *va;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if ((Address + (Width >> 3)) > LINEAR_MAPPING_SIZE) {
 
@@ -229,10 +240,10 @@ AcpiOsWriteMemory(
          *(volatile u64 *)va = Value;
          break;
       default:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
    }
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -242,9 +253,10 @@ AcpiOsReadPort(
     UINT32                  Width)
 {
    u16 ioport = (u16)Address;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (Address > 0xffff)
-      return AE_NOT_EXIST;
+      return_ACPI_STATUS(AE_NOT_EXIST);
 
    switch (Width) {
       case 8:
@@ -257,10 +269,10 @@ AcpiOsReadPort(
          *Value = (u32)inl(ioport);
          break;
       default:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
    }
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -270,9 +282,10 @@ AcpiOsWritePort(
     UINT32                  Width)
 {
    u16 ioport = (u16)Address;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (Address > 0xffff)
-      return AE_NOT_EXIST;
+      return_ACPI_STATUS(AE_NOT_EXIST);
 
    switch (Width) {
       case 8:
@@ -285,8 +298,8 @@ AcpiOsWritePort(
          outl(ioport, (u32)Value);
          break;
       default:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
    }
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }

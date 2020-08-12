@@ -14,13 +14,22 @@ early_init_acpi_module(void)
 {
    ACPI_STATUS rc;
 
+   //AcpiDbgLevel = 0xffffffff; /* Max debug level */
+   AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
+   AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
+   AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
+
    rc = AcpiInitializeSubsystem();
 
-   if (rc != AE_OK)
-      panic("AcpiInitializeSubsystem() failed with: %d", rc);
+   if (rc != AE_OK) {
+      printk("ERROR: AcpiInitializeSubsystem() failed with: %d", rc);
+      return;
+   }
 
    rc = AcpiInitializeTables(NULL, 0, true);
 
-   if (rc != AE_OK)
-      panic("AcpiInitializeTables() failed with: %d", rc);
+   if (rc != AE_OK) {
+      printk("ERROR: AcpiInitializeTables() failed with: %d", rc);
+      return;
+   }
 }

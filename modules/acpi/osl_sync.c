@@ -8,10 +8,13 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
 
-#include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
-
 #include <limits.h>           // system header
+
+#include <3rd_party/acpi/acpi.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_sync")
 
 /*
  * ---------------------------------------
@@ -22,8 +25,10 @@
 ACPI_STATUS
 AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    if (!OutHandle)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    /*
     * Tilck does not support SMP, therefore there's no need for real spinlocks:
@@ -31,21 +36,22 @@ AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle)
     * value, by treating the handle as completely opaque value.
     */
    *OutHandle = NULL;
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 void
 AcpiOsDeleteLock(ACPI_SPINLOCK Handle)
 {
-   /* Nothing to do */
+   ACPI_FUNCTION_TRACE(__FUNC__);
 }
 
 ACPI_CPU_FLAGS
 AcpiOsAcquireLock(ACPI_SPINLOCK Handle)
 {
    ulong flags;
+   ACPI_FUNCTION_TRACE(__FUNC__);
    disable_interrupts(&flags);
-   return flags;
+   return_VALUE(flags);
 }
 
 void
@@ -55,6 +61,8 @@ AcpiOsReleaseLock(
 {
    ulong flags = (ulong) Flags;
    enable_interrupts(&flags);
+   ACPI_FUNCTION_TRACE(__FUNC__);
+   return_VOID;
 }
 
 
@@ -72,32 +80,34 @@ AcpiOsCreateSemaphore(
     ACPI_SEMAPHORE          *OutHandle)
 {
    struct ksem *s;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (MaxUnits == ACPI_NO_UNIT_LIMIT)
       MaxUnits = INT_MAX;
 
    if (MaxUnits > INT_MAX || InitialUnits > INT_MAX || !OutHandle)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    if (!(s = kalloc_obj(struct ksem)))
-      return AE_NO_MEMORY;
+      return_ACPI_STATUS(AE_NO_MEMORY);
 
    ksem_init(s, (int)InitialUnits, (int)MaxUnits);
    *OutHandle = s;
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
 AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle)
 {
    struct ksem *s = Handle;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (!Handle)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    ksem_destroy(s);
    kfree2(Handle, sizeof(struct ksem));
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -109,24 +119,26 @@ AcpiOsWaitSemaphore(
    struct ksem *s = Handle;
    int rc;
 
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    if (Units > INT_MAX || !Handle)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    rc = ksem_wait(s, (int)Units, (int)Timeout);
 
    switch (rc) {
 
       case 0:
-         return AE_OK;
+         return_ACPI_STATUS(AE_OK);
 
       case -EINVAL:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
 
       case -ETIME:
-         return AE_TIME;
+         return_ACPI_STATUS(AE_TIME);
 
       default:
-         return AE_ERROR;
+         return_ACPI_STATUS(AE_ERROR);
    }
 }
 
@@ -138,24 +150,26 @@ AcpiOsSignalSemaphore(
    struct ksem *s = Handle;
    int rc;
 
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    if (Units > INT_MAX || !Handle)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    rc = ksem_signal(s, (int)Units);
 
    switch (rc) {
 
       case 0:
-         return AE_OK;
+         return_ACPI_STATUS(AE_OK);
 
       case -EINVAL:
-         return AE_BAD_PARAMETER;
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
 
       case -EDQUOT:
-         return AE_LIMIT;
+         return_ACPI_STATUS(AE_LIMIT);
 
       default:
-         return AE_ERROR;
+         return_ACPI_STATUS(AE_ERROR);
    }
 }
 

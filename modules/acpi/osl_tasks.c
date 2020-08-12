@@ -9,8 +9,10 @@
 #include <tilck/kernel/worker_thread.h>
 
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
-#include <3rd_party/acpi/acexcep.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_tasks")
 
 static struct worker_thread *wth_events;
 static struct worker_thread *wth_main;
@@ -23,9 +25,10 @@ AcpiOsExecute(
     void                    *Context)
 {
    struct worker_thread *wth;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (!Function)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    switch (Type) {
 
@@ -50,12 +53,14 @@ AcpiOsExecute(
    if (!wth_enqueue_on(wth, Function, Context))
       panic("AcpiOsExecute: unable to enqueue job");
 
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 void
 AcpiOsWaitEventsComplete(void)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    wth_wait_for_completion(wth_events);
    wth_wait_for_completion(wth_main);
    wth_wait_for_completion(wth_debug);

@@ -12,7 +12,10 @@
 #include <tilck/kernel/errno.h>
 
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_malloc")
 
 #define ACPI_HEAP_SIZE                 (128 * KB)
 #define ACPI_HEAP_MBS                          32
@@ -67,6 +70,7 @@ AcpiOsAllocate(ACPI_SIZE Size)
    const size_t sz = (size_t)Size;
    void *vaddr;
    ulong var;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (Size >= 512 * MB) {
 
@@ -79,7 +83,7 @@ AcpiOsAllocate(ACPI_SIZE Size)
        * 64-bit wide just because it's used for other purposes as well (memory
        * regions, even on 32-bit systems, can indeed be larger than 2^32 bytes).
        */
-      return NULL;
+      return_PTR(NULL);
    }
 
    // if (in_irq()) {
@@ -91,18 +95,21 @@ AcpiOsAllocate(ACPI_SIZE Size)
       vaddr = acpi_osl_do_alloc(sz);
    }
    enable_interrupts(&var);
-   return vaddr;
+   return_PTR(vaddr);
 }
 
 void
 AcpiOsFree(void *Memory)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
+
    ulong var;
    disable_interrupts(&var);
    {
       acpi_osl_do_free(Memory);
    }
    enable_interrupts(&var);
+   return_VOID;
 }
 
 ACPI_STATUS

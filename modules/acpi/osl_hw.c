@@ -8,7 +8,10 @@
 #include <tilck/kernel/kmalloc.h>
 
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acpiosxf.h>
+#include <3rd_party/acpi/accommon.h>
+
+#define _COMPONENT      ACPI_OS_SERVICES
+ACPI_MODULE_NAME("osl_hw")
 
 STATIC_ASSERT(IRQ_HANDLED == ACPI_INTERRUPT_HANDLED);
 STATIC_ASSERT(IRQ_NOT_HANDLED == ACPI_INTERRUPT_NOT_HANDLED);
@@ -33,17 +36,18 @@ AcpiOsInstallInterruptHandler(
     void                    *Context)
 {
    struct irq_handler_node *n;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (!ServiceRoutine)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    if (!IN_RANGE((int)InterruptNumber, 0, 16))
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    n = &osl_irq_handlers[InterruptNumber];
 
    if (n->handler)
-      return AE_ALREADY_EXISTS;
+      return_ACPI_STATUS(AE_ALREADY_EXISTS);
 
    list_node_init(&n->node);
    n->handler = (irq_handler_t)ServiceRoutine;
@@ -51,7 +55,7 @@ AcpiOsInstallInterruptHandler(
 
    printk("ACPI: install handler for IRQ #%u\n", InterruptNumber);
    irq_install_handler(InterruptNumber, n);
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -60,24 +64,25 @@ AcpiOsRemoveInterruptHandler(
     ACPI_OSD_HANDLER        ServiceRoutine)
 {
    struct irq_handler_node *n;
+   ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (!ServiceRoutine)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    if (!IN_RANGE((int)InterruptNumber, 0, 16))
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    n = &osl_irq_handlers[InterruptNumber];
 
    if (!n->handler)
-      return AE_NOT_EXIST;
+      return_ACPI_STATUS(AE_NOT_EXIST);
 
    if (n->handler != ServiceRoutine)
-      return AE_BAD_PARAMETER;
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
 
    printk("ACPI: remove handler for IRQ #%u\n", InterruptNumber);
    irq_uninstall_handler(InterruptNumber, n);
-   return AE_OK;
+   return_ACPI_STATUS(AE_OK);
 }
 
 ACPI_STATUS
@@ -87,8 +92,9 @@ AcpiOsReadPciConfiguration(
     UINT64                  *Value,
     UINT32                  Width)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
    printk("ACPI: AcpiOsReadPciConfiguration() -> not implemented\n");
-   return AE_SUPPORT;
+   return_ACPI_STATUS(AE_SUPPORT);
 }
 
 ACPI_STATUS
@@ -98,6 +104,7 @@ AcpiOsWritePciConfiguration(
     UINT64                  Value,
     UINT32                  Width)
 {
+   ACPI_FUNCTION_TRACE(__FUNC__);
    printk("ACPI: AcpiOsWritePciConfiguration() -> not implemented\n");
-   return AE_SUPPORT;
+   return_ACPI_STATUS(AE_SUPPORT);
 }
