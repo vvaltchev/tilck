@@ -7,7 +7,19 @@
 
 #include "osl.h"
 #include <3rd_party/acpi/acpi.h>
-#include <3rd_party/acpi/acexcep.h>
+#include <3rd_party/acpi/accommon.h>
+
+void
+print_acpi_failure(const char *func, ACPI_STATUS rc)
+{
+   const ACPI_EXCEPTION_INFO *ex = AcpiUtValidateException(rc);
+
+   if (ex) {
+      printk("ERROR: %s() failed with: %s\n", func, ex->Name);
+   } else {
+      printk("ERROR: %s() failed with: %d\n", func, rc);
+   }
+}
 
 void
 early_init_acpi_module(void)
@@ -22,14 +34,14 @@ early_init_acpi_module(void)
    rc = AcpiInitializeSubsystem();
 
    if (rc != AE_OK) {
-      printk("ERROR: AcpiInitializeSubsystem() failed with: %d", rc);
+      print_acpi_failure("AcpiInitializeSubsystem", rc);
       return;
    }
 
    rc = AcpiInitializeTables(NULL, 0, true);
 
    if (rc != AE_OK) {
-      printk("ERROR: AcpiInitializeTables() failed with: %d", rc);
+      print_acpi_failure("AcpiInitializeTables", rc);
       return;
    }
 }
