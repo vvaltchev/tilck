@@ -233,12 +233,12 @@ extern "C" {
 
 #if defined(__TILCK_KERNEL__) && !defined(KERNEL_TEST)
 
-   long strtol(const char *s, const char **endptr, int base) {
-      return tilck_strtol(s, endptr, base, NULL);
+   long strtol(const char *s, char **endptr, int base) {
+      return tilck_strtol(s, (const char **)endptr, base, NULL);
    }
 
-   ulong strtoul(const char *s, const char **endptr, int base) {
-      return tilck_strtoul(s, endptr, base, NULL);
+   ulong strtoul(const char *s, char **endptr, int base) {
+      return tilck_strtoul(s, (const char **)endptr, base, NULL);
    }
 
 #endif

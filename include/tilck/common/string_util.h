@@ -76,8 +76,8 @@ EXTERN inline int isprint(int c) {
 #undef EXTERN
 
 #ifdef __MOD_ACPICA__
-   long strtol(const char *s, const char **endptr, int base);
-   ulong strtoul(const char *s, const char **endptr, int base);
+   long strtol(const char *__restrict, char **__restrict, int base);
+   ulong strtoul(const char *__restrict, char **__restrict, int base);
 #endif
 
 #else
