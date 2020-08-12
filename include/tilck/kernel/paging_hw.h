@@ -19,7 +19,7 @@ static ALWAYS_INLINE pdir_t *get_curr_pdir()
  * page directory is set, using the `page_size_buf` as buffer. The original
  * page directory just linearly maps the first 4 MB of the physical memory to
  * KERNEL_BASE_VA. This function returns true if we're still using that page
- * directory (-> init_paging() has not been called yet).
+ * directory (-> early_init_paging() has not been called yet).
  */
 static ALWAYS_INLINE bool still_using_orig_pdir(void)
 {

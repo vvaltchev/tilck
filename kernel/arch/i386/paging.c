@@ -900,7 +900,7 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
    }
 }
 
-void init_paging(void)
+void early_init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
    __kernel_pdir = (pdir_t *) kpdir_buf;

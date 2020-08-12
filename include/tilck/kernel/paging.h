@@ -36,7 +36,7 @@
 extern char page_size_buf[PAGE_SIZE];
 extern char zero_page[PAGE_SIZE];
 
-void init_paging();
+void early_init_paging();
 bool handle_potential_cow(void *r);
 
 /*
