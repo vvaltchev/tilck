@@ -38,6 +38,10 @@ bool
 debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i);
 
 void
+debug_kmalloc_get_heap_info_by_ptr(struct kmalloc_heap *h,
+                                   struct debug_kmalloc_heap_info *i);
+
+void
 debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats);
 
 void

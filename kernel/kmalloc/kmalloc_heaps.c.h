@@ -318,14 +318,10 @@ size_t kmalloc_get_max_tot_heap_free(void)
    return max_tot_heap_mem_free;
 }
 
-bool
-debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
+void
+debug_kmalloc_get_heap_info_by_ptr(struct kmalloc_heap *h,
+                                   struct debug_kmalloc_heap_info *i)
 {
-   struct kmalloc_heap *h = heaps[heap_num];
-
-   if (!h)
-      return false;
-
    *i = (struct debug_kmalloc_heap_info) {
       .vaddr = h->vaddr,
       .size = h->size,
@@ -334,7 +330,17 @@ debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
       .alloc_block_size = h->alloc_block_size,
       .region = h->region,
    };
+}
 
+bool
+debug_kmalloc_get_heap_info(int heap_num, struct debug_kmalloc_heap_info *i)
+{
+   struct kmalloc_heap *h = heaps[heap_num];
+
+   if (!h)
+      return false;
+
+   debug_kmalloc_get_heap_info_by_ptr(h, i);
    return true;
 }
 
