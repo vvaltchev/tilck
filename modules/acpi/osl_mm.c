@@ -8,6 +8,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/debug_utils.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
@@ -17,54 +18,61 @@ ACPI_MODULE_NAME("osl_mm")
 void *
 AcpiOsMapMemory(
     ACPI_PHYSICAL_ADDRESS   Where,
-    ACPI_SIZE               Length)
+    ACPI_SIZE               RawLength)
 {
    ACPI_PHYSICAL_ADDRESS paddr = Where & PAGE_MASK;
+   ACPI_SIZE Length = pow2_round_up_at(Where + RawLength - paddr, PAGE_SIZE);
+   size_t cnt, pg_count;
    void *va;
-   size_t pg_count;
-   size_t cnt;
 
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (Where + Length <= LINEAR_MAPPING_SIZE)
+   if (paddr + Length <= LINEAR_MAPPING_SIZE)
       return_PTR(KERNEL_PA_TO_VA(Where));
 
-   if (!(va = hi_vmem_reserve(Length)))
-      return_PTR(NULL);
+   // printk("ACPI: mmap 0x%08llx (len: %zu -> %zuK)\n",
+   //        paddr, RawLength, Length/KB);
 
-   Length = Where + Length - paddr;
-   pg_count = pow2_round_up_at(Length, PAGE_SIZE) >> PAGE_SHIFT;
-   cnt = map_pages(get_kernel_pdir(), va, paddr, pg_count, PAGING_FL_RW);
+   if (!(va = hi_vmem_reserve(Length))) {
+      ACPI_ERROR((AE_INFO, "hi_vmem_reserve() failed\n"));
+      return_PTR(NULL);
+   }
+
+   pg_count = Length >> PAGE_SHIFT;
+   cnt = map_kernel_pages(va, paddr, pg_count, PAGING_FL_RW);
 
    if (cnt < pg_count) {
       unmap_pages_permissive(get_kernel_pdir(), va, cnt, false);
       hi_vmem_release(va, Length);
+      ACPI_ERROR((AE_INFO, "cnt (%zu) < pg_count (%zu)\n", cnt, pg_count));
       return_PTR(NULL);
    }
 
-   printk("ACPI: mmap %zu pages %p -> %p\n", pg_count, TO_PTR(Where), va);
-   return_PTR(va);
+   return_PTR(TO_PTR((ulong)va + (Where & OFFSET_IN_PAGE_MASK)));
 }
 
 void
 AcpiOsUnmapMemory(
     void                    *LogicalAddr,
-    ACPI_SIZE               Size)
+    ACPI_SIZE               RawSz)
 {
    ulong vaddr = (ulong)LogicalAddr;
    ulong aligned_vaddr = vaddr & PAGE_MASK;
+   ACPI_SIZE Size = pow2_round_up_at(vaddr + RawSz - aligned_vaddr, PAGE_SIZE);
    size_t pg_count;
 
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (vaddr + Size <= LINEAR_MAPPING_END)
+   if (aligned_vaddr + Size <= LINEAR_MAPPING_END)
       return_VOID;
 
-   Size = vaddr + Size - aligned_vaddr;
-   pg_count = pow2_round_up_at(Size, PAGE_SIZE) >> PAGE_SHIFT;
-   printk("ACPI: release %zu pages mapped at %p\n", pg_count, LogicalAddr);
-   unmap_pages(get_kernel_pdir(), TO_PTR(aligned_vaddr), pg_count, false);
-   hi_vmem_release(LogicalAddr, Size);
+   //printk("ACPI: UNmap %p (len: %zu -> %zuK)\n",
+   //       LogicalAddr, RawSz, Size/KB);
+
+   pg_count = Size >> PAGE_SHIFT;
+   unmap_kernel_pages(TO_PTR(aligned_vaddr), pg_count, false);
+   hi_vmem_release(TO_PTR(aligned_vaddr), Size);
+   return_VOID;
 }
 
 ACPI_STATUS
