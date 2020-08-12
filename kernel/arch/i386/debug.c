@@ -23,7 +23,7 @@ size_t stackwalk32(void **frames,
    size_t i;
 
    if (!ebp) {
-      ebp = (void *) (&frames - 2);
+      ebp = __builtin_frame_address(0);
    }
 
    if (!pdir) {
@@ -32,6 +32,9 @@ size_t stackwalk32(void **frames,
    }
 
    for (i = 0; i < count; i++) {
+
+      if ((ulong)ebp < KERNEL_BASE_VA)
+         break;
 
       if (curr_pdir) {
 
