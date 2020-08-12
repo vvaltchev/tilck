@@ -97,6 +97,9 @@ set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
 set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 set(MAX_HANDLES          16 CACHE STRING "Max handles/process (keep small)")
 
+set(FBCON_BIGFONT_THR   160 CACHE STRING
+    "Max term cols with 8x16 font. After that, a 16x32 font will be used")
+
 # Other non-boolean options
 
 set(FATPART_CLUSTER_SIZE  8 CACHE STRING

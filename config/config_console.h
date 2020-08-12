@@ -12,6 +12,7 @@
 
 #define TTY_COUNT              @TTY_COUNT@
 #define TERM_SCROLL_LINES      @TERM_SCROLL_LINES@
+#define FBCON_BIGFONT_THR      @FBCON_BIGFONT_THR@
 
 /* --------- Boolean config variables --------- */
 

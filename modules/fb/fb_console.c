@@ -429,7 +429,7 @@ void init_fb_console(void)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   void *font = fb_get_width() / 8 < 160
+   void *font = fb_get_width() / 8 <= FBCON_BIGFONT_THR
                   ? (void *)&_binary_font8x16_psf_start
                   : (void *)&_binary_font16x32_psf_start;
 
