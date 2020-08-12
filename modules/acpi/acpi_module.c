@@ -9,8 +9,6 @@
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/acexcep.h>
 
-static ACPI_TABLE_DESC acpi_tables[16];
-
 void
 early_init_acpi_module(void)
 {
@@ -21,7 +19,7 @@ early_init_acpi_module(void)
    if (rc != AE_OK)
       panic("AcpiInitializeSubsystem() failed with: %d", rc);
 
-   rc = AcpiInitializeTables(acpi_tables, 16, false);
+   rc = AcpiInitializeTables(NULL, 0, true);
 
    if (rc != AE_OK)
       panic("AcpiInitializeTables() failed with: %d", rc);
