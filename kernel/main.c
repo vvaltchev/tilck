@@ -222,11 +222,11 @@ show_hello_message(void)
       printk("Hello from Tilck \e[1m%d.%d\e[m",
              VER_MAJOR, VER_MINOR);
 
-   printk(NO_PREFIX ", commit: \e[1m%s\e[m", hash);
-   printk(NO_PREFIX "%s\n", dirty ? " (dirty)" : "");
+   printk(", commit: \e[1m%s\e[m", hash);
+   printk("%s\n", dirty ? " (dirty)" : "");
 
    printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
-   printk(NO_PREFIX ", compiler: \e[1m%s %d.%d.%d\e[m\n",
+   printk(", compiler: \e[1m%s %d.%d.%d\e[m\n",
           COMPILER_NAME,
           COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
@@ -240,8 +240,8 @@ show_system_info(void)
    const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
 
    printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
-   printk(NO_PREFIX "; time_slice: \e[1m%i\e[m", time_slice);
-   printk(NO_PREFIX " ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
+   printk("; time_slice: \e[1m%i\e[m", time_slice);
+   printk(" ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
 
    if (KERNEL_SHOW_LOGO)
       show_tilck_logo();
