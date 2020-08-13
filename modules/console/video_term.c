@@ -400,7 +400,7 @@ static void term_action_move_ch_and_cur(term *_t, int row, int col, ...)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
 }
 
-static void term_internal_incr_row(term *_t, u8 color)
+static void term_internal_incr_row(term *_t)
 {
    struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
@@ -434,7 +434,7 @@ static void term_internal_incr_row(term *_t, u8 color)
       ts_set_scroll(t, t->max_scroll);
    }
 
-   ts_clear_row(t, t->rows - 1, color);
+   ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
 }
 
 static void term_internal_write_printable_char(term *_t, u8 c, u8 color)
@@ -531,7 +531,7 @@ static void term_internal_write_char2(term *_t, char c, u8 color)
    switch (c) {
 
       case '\n':
-         term_internal_incr_row(t, color);
+         term_internal_incr_row(t);
          break;
 
       case '\r':
@@ -546,7 +546,7 @@ static void term_internal_write_char2(term *_t, char c, u8 color)
 
          if (t->c == t->cols) {
             t->c = 0;
-            term_internal_incr_row(t, color);
+            term_internal_incr_row(t);
          }
 
          term_internal_write_printable_char(t, (u8)c, color);
@@ -966,7 +966,7 @@ debug_term_dump_font_table(term *_t)
    static const u8 hex_digits[] = "0123456789abcdef";
    const u8 color = DEFAULT_COLOR16;
 
-   term_internal_incr_row(t, color);
+   term_internal_incr_row(t);
    t->c = 0;
 
    for (u32 i = 0; i < 6; i++)
@@ -977,8 +977,8 @@ debug_term_dump_font_table(term *_t)
       term_internal_write_printable_char(t, ' ', color);
    }
 
-   term_internal_incr_row(t, color);
-   term_internal_incr_row(t, color);
+   term_internal_incr_row(t);
+   term_internal_incr_row(t);
    t->c = 0;
 
    for (u8 i = 0; i < 16; i++) {
@@ -997,11 +997,11 @@ debug_term_dump_font_table(term *_t)
          term_internal_write_printable_char(t, ' ', color);
       }
 
-      term_internal_incr_row(t, color);
+      term_internal_incr_row(t);
       t->c = 0;
    }
 
-   term_internal_incr_row(t, color);
+   term_internal_incr_row(t);
    t->c = 0;
 }
 
