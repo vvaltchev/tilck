@@ -43,8 +43,8 @@ static void dump_memory_map(void)
 
       get_mem_region(i, &ma);
 
-      dp_writeln("%02d) 0x%016llx - 0x%016llx (%d, %s) [%8u KB]", i,
-                 ma.addr, ma.addr + ma.len,
+      dp_writeln("%02d) %#018llx - %#018llx (%d, %s) [%8u KB]", i,
+                 ma.addr, ma.addr + ma.len - 1,
                  ma.type, mem_region_extra_to_str(ma.extra), ma.len / KB);
    }
 
