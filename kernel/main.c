@@ -37,8 +37,33 @@
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/serial.h>
 
-static void init_video_console(void)
+static bool read_multiboot_info_passed;
+static u32 saved_multiboot_magic;
+static multiboot_info_t *saved_multiboot_mbi;
+static void read_multiboot_info(void);
+
+static void
+save_multiboot_info(u32 magic, u32 mbi)
 {
+   saved_multiboot_magic = magic;
+   saved_multiboot_mbi = TO_PTR(mbi);
+}
+
+static void
+init_video_console(void)
+{
+   if (in_panic()) {
+
+      /*
+       * We're in panic and there's no video console yet. Well, we can
+       * initialize it, but we have to check if we at least read the multiboot
+       * info first.
+       */
+
+      if (!read_multiboot_info_passed)
+         read_multiboot_info();
+   }
+
    if (!use_framebuffer()) {
 
       if (MOD_console) {
@@ -72,7 +97,8 @@ static void init_video_console(void)
    init_fb_console();
 }
 
-void init_console(void)
+void
+init_console(void)
 {
    if (kopt_serial_console) {
 
@@ -122,40 +148,68 @@ we_are_doomed:
       halt();
 }
 
-static void read_multiboot_info(u32 magic, u32 mbi_addr)
+static void
+read_multiboot_info(void)
 {
-   multiboot_info_t *mbi = TO_PTR(mbi_addr);
+   multiboot_info_t *mbi = saved_multiboot_mbi;
 
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)
+   if (read_multiboot_info_passed)
+      return;             /* We're probably in panic: just do nothing */
+
+   if (saved_multiboot_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+
+      if (in_panic())
+         goto out;        /* We're already in panic: just fail silently */
+
       panic("The Tilck kernel requires a multiboot-compatible bootloader");
-
-   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
-      panic("No memory map in the multiboot info struct");
-
-   if (mbi->flags & MULTIBOOT_INFO_MODS) {
-
-      multiboot_module_t *mods = TO_PTR(mbi->mods_addr);
-
-      for (u32 i = 0; i < mbi->mods_count; i++)
-         system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
    }
 
+   if (~mbi->flags & MULTIBOOT_INFO_MEM_MAP) {
+
+      if (in_panic())
+         goto out;        /* We're already in panic: just fail silently */
+
+      panic("No memory map in the multiboot info struct");
+   }
+
+   /* Loading ramdisk(s) is not even worth considering if we're in panic */
+   if (!in_panic()) {
+
+      if (mbi->flags & MULTIBOOT_INFO_MODS) {
+
+         multiboot_module_t *mods = TO_PTR(mbi->mods_addr);
+
+         for (u32 i = 0; i < mbi->mods_count; i++)
+            system_mmap_add_ramdisk(mods[i].mod_start, mods[i].mod_end);
+      }
+   }
+
+   /* Framebuffer info is essential, even if we're in panic */
    if (MOD_fb) {
       if (mbi->flags & MULTIBOOT_INFO_FRAMEBUFFER_INFO)
          if (mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB)
             set_framebuffer_info_from_mbi(mbi);
    }
 
-   if (!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
-      panic("Tilck requires the bootloader to provide a full memory map");
-
+   /* Set system's memory map based on what was provided to us via multiboot */
    system_mmap_set(mbi);
 
-   if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
-      parse_kernel_cmdline((const char *)(ulong)mbi->cmdline);
+   /* It's safer to stick to the default settings, when we're in panic */
+   if (!in_panic()) {
+      if (mbi->flags & MULTIBOOT_INFO_CMDLINE)
+         parse_kernel_cmdline(TO_PTR(mbi->cmdline));
+   }
+
+out:
+   read_multiboot_info_passed = true;
+
+   /* Reset the temporary multiboot variables as they won't be used again */
+   saved_multiboot_magic = 0;
+   saved_multiboot_mbi = NULL;
 }
 
-static void show_hello_message(void)
+static void
+show_hello_message(void)
 {
    extern const char commit_hash[65];
    const bool dirty = !strncmp(commit_hash, "dirty:", 6);
@@ -177,7 +231,8 @@ static void show_hello_message(void)
           COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
 }
 
-static void show_system_info(void)
+static void
+show_system_info(void)
 {
    void show_tilck_logo(void);
 
@@ -192,7 +247,8 @@ static void show_system_info(void)
       show_tilck_logo();
 }
 
-static void mount_initrd(void)
+static void
+mount_initrd(void)
 {
    /* declare the ramfs_create() function */
    struct fs *ramfs_create(void);
@@ -245,7 +301,8 @@ static void mount_initrd(void)
    }
 }
 
-static void run_init_or_selftest(void)
+static void
+run_init_or_selftest(void)
 {
    if (self_test_to_run) {
 
@@ -281,15 +338,18 @@ static void do_async_init()
    run_init_or_selftest();
 }
 
-static void async_init(void)
+static void
+async_init(void)
 {
    if (kthread_create(&do_async_init, KTH_ALLOC_BUFS, NULL) < 0)
       panic("Unable to create a kthread for do_async_init()");
 }
 
-void kmain(u32 multiboot_magic, u32 mbi_addr)
+void
+kmain(u32 multiboot_magic, u32 mbi_addr)
 {
    call_kernel_global_ctors();
+   save_multiboot_info(multiboot_magic, mbi_addr);
 
    if (MOD_serial)
       early_init_serial_ports();
@@ -298,7 +358,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    early_init_paging();
    early_init_kmalloc();
 
-   read_multiboot_info(multiboot_magic, mbi_addr);
+   read_multiboot_info();
    enable_cpu_features();
    kmain_early_checks();
    init_segmentation();
