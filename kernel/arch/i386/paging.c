@@ -987,8 +987,13 @@ void init_paging(void)
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
 
-   if (!pageframes_refcount)
+   if (!pageframes_refcount) {
+
+      if (in_panic())
+         return;        /* We're in panic: silently ignore the failure */
+
       panic("Unable to allocate pageframes_refcount");
+   }
 
    pf_ref_count_inc(KERNEL_VA_TO_PA(zero_page));
 
@@ -1048,6 +1053,9 @@ map_framebuffer(pdir_t *pdir,
                 bool user_mmap)
 {
    if (!get_kernel_pdir())
+      return failsafe_map_framebuffer(paddr, size);
+
+   if (!pageframes_refcount)
       return failsafe_map_framebuffer(paddr, size);
 
    size_t count;
