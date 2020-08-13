@@ -12,6 +12,12 @@
 #include <3rd_party/acpi/accommon.h>
 
 ACPI_MODULE_NAME("osl_misc")
+static ulong boot_acpi_root_ptr;
+
+void acpi_set_root_pointer(ulong ptr)
+{
+   boot_acpi_root_ptr = ptr;
+}
 
 ACPI_STATUS
 AcpiOsInitialize(void)
@@ -41,6 +47,9 @@ AcpiOsTerminate(void)
 ACPI_PHYSICAL_ADDRESS
 AcpiOsGetRootPointer(void)
 {
+   if (boot_acpi_root_ptr)
+      return boot_acpi_root_ptr;
+
    ACPI_PHYSICAL_ADDRESS ptr = 0;
    AcpiFindRootPointer(&ptr);
    return ptr;

@@ -177,6 +177,20 @@ read_multiboot_info(void)
       panic("No memory map in the multiboot info struct");
    }
 
+   if (mbi->flags & MULTIBOOT_INFO_BOOT_LOADER_NAME) {
+
+      const char *name = TO_PTR(mbi->boot_loader_name);
+
+      if (!strcmp(name, "TILCK_EFI")) {
+
+         printk("Multiboot: detected the TILCK_EFI bootloader\n");
+         printk("Multiboot: ACPI root ptr: %p\n", TO_PTR(mbi->apm_table));
+
+         if (MOD_acpi)
+            acpi_set_root_pointer(mbi->apm_table);
+      }
+   }
+
    /* Loading ramdisk(s) is not even worth considering if we're in panic */
    if (!in_panic()) {
 

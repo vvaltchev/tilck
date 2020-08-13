@@ -5,3 +5,4 @@
 #include <tilck/common/basic_defs.h>
 
 void early_init_acpi_module(void);
+void acpi_set_root_pointer(ulong);
