@@ -71,6 +71,7 @@ void init_kmalloc_for_tests()
 
    initialize_test_kernel_heap();
    suppress_printk = true;
+   early_init_kmalloc();
    init_kmalloc();
    suppress_printk = false;
 }

@@ -250,11 +250,9 @@ static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
    }
 }
 
-void init_kmalloc(void)
+void early_init_kmalloc(void)
 {
-   struct mem_region r;
    int heap_index;
-   ulong vbegin, vend;
 
    ASSERT(!kmalloc_initialized);
    list_init(&small_heaps_list);
@@ -272,15 +270,24 @@ void init_kmalloc(void)
 
    VERIFY(heap_index == 0);
 
-   heaps[heap_index]->region =
-      system_mmap_get_region_of(KERNEL_VA_TO_PA(kmalloc_get_first_heap(NULL)));
-
    kmalloc_initialized = true; /* we have at least 1 heap */
 
    if (KMALLOC_HEAVY_STATS) {
       kmalloc_init_heavy_stats();
       kmalloc_account_alloc(heaps[0]->metadata_size);
    }
+}
+
+void init_kmalloc(void)
+{
+   struct mem_region r;
+   ulong vbegin, vend;
+
+   ASSERT(kmalloc_initialized);
+   ASSERT(used_heaps == 1);
+
+   heaps[0]->region =
+      system_mmap_get_region_of(KERNEL_VA_TO_PA(kmalloc_get_first_heap(NULL)));
 
    for (int i = 0; i < get_mem_regions_count(); i++) {
 

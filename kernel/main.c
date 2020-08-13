@@ -296,6 +296,7 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
 
    init_cpu_exception_handling();
    early_init_paging();
+   early_init_kmalloc();
 
    read_multiboot_info(multiboot_magic, mbi_addr);
    enable_cpu_features();

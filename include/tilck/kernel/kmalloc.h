@@ -34,6 +34,7 @@ typedef void (*virtual_free_and_unmap_func)(ulong vaddr, size_t page_count);
 
 struct kmalloc_heap;
 
+void early_init_kmalloc(void);
 void init_kmalloc(void);
 void *general_kmalloc(size_t *size, u32 flags);
 void general_kfree(void *ptr, size_t *size, u32 flags);
