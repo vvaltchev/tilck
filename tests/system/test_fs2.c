@@ -50,7 +50,7 @@ void do_mm_read(void *ptr)
    unsigned value;
    printf("[pid: %d] Before read at %p\n", getpid(), ptr);
    memcpy(&value, ptr, sizeof(value));
-   printf("Read OK. Value at %p: 0x%x\n", ptr, value);
+   printf("Read OK. Value at %p: %#x\n", ptr, value);
 }
 
 

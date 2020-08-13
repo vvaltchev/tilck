@@ -289,7 +289,7 @@ NODISCARD bool i8042_reset(void)
    status = inb(I8042_STATUS_PORT);
 
    printk("KB: reset procedure\n");
-   printk("KB: initial status: 0x%x\n", status);
+   printk("KB: initial status: %#x\n", status);
    printk("KB: sending 0xFF (reset) to the controller\n");
 
    if (!i8042_send_cmd_and_wait_response(I8042_CMD_RESET))
@@ -301,7 +301,7 @@ NODISCARD bool i8042_reset(void)
          break;
 
       res = i8042_read_data();
-      printk("KB: response: 0x%x\n", res);
+      printk("KB: response: %#x\n", res);
       resend_count++;
 
    } while (res == KB_RESPONSE_RESEND);
@@ -320,7 +320,7 @@ NODISCARD bool i8042_reset(void)
       goto out;
 
    res = i8042_read_data();
-   printk("KB: response: 0x%x\n", res);
+   printk("KB: response: %#x\n", res);
 
    if (res == I8042_RESPONSE_BAT_OK)
       success = true;

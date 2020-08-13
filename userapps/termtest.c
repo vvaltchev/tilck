@@ -79,7 +79,7 @@ void one_read(void)
       else if (isprint(buf[i]))
          printf("%c ", buf[i]);
       else
-         printf("[0x%x] ", buf[i]);
+         printf("[%#x] ", buf[i]);
    }
 
    printf("\n");
@@ -106,7 +106,7 @@ void echo_read(void)
 void show_read_res(int r, char c)
 {
    if (r > 0)
-      printf("read(%d): 0x%x\n", r, c);
+      printf("read(%d): %#x\n", r, c);
    else
       printf("read(%d)\n", r);
 }
@@ -169,7 +169,7 @@ void write_to_stdin(void)
 
    r = read(0, &c, 1);
 
-   printf("read(%d): 0x%x\n", r, c);
+   printf("read(%d): %#x\n", r, c);
 }
 
 void console_perf_test(void)
@@ -371,7 +371,7 @@ static void poll_and_read(void)
       rc = read(0, buf + pos, 1);
 
       printf("read() -> %d\r\n", rc);
-      printf("buf[%d]: 0x%x\r\n", pos, (unsigned)buf[pos]);
+      printf("buf[%d]: %#x\r\n", pos, (unsigned)buf[pos]);
 
       rc = poll(fds, 1 /* nfds */, 50 /* ms */);
       printf("poll() -> %d\r\n", rc);
@@ -408,9 +408,9 @@ static void medium_raw_read(void)
          break;
 
       if (c & 0x80)
-         printf("released 0x%x", (unsigned char)(c & ~0x80));
+         printf("released %#x", (unsigned char)(c & ~0x80));
       else
-         printf("PRESSED 0x%x", (unsigned char)(c & ~0x80));
+         printf("PRESSED %#x", (unsigned char)(c & ~0x80));
 
       printf("\r\n");
 

@@ -159,7 +159,7 @@ tty_def_print_untrasl_char(u8 *c,
                            void *ctx_arg)
 {
    struct twfilter_ctx *const ctx = ctx_arg;
-   int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{0x%x}", *c);
+   int len = snprintk(ctx->tmpbuf, sizeof(ctx->tmpbuf), "{%#x}", *c);
 
    term_make_action_direct_write(a, ctx->tmpbuf, (u32)len, *color);
    return TERM_FILTER_WRITE_BLANK;

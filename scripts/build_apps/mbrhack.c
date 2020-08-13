@@ -161,7 +161,7 @@ static int bpb_check(struct mbr_info *nfo)
 
    if (ext->boot_sig != 0x28 && ext->boot_sig != 0x29) {
 
-      WARNING("Unsupported BPB signature: 0x%x\n", ext->boot_sig);
+      WARNING("Unsupported BPB signature: %#x\n", ext->boot_sig);
 
       if (nfo->jmp[0] != 0xEB)
          WARNING("Very likely this MBR does NOT contain a BPB at all.\n");
