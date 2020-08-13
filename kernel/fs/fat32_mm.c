@@ -15,7 +15,7 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
 {
    struct fat_hdr *hdr = d->hdr;
 
-   if (system_mmap_merge_rd_extra_region_if_any(hdr)) {
+   if (system_mmap_check_for_extra_ramdisk_region(hdr)) {
 
       /*
        * Typical case: the extra 4k region after our ramdisk, survived the

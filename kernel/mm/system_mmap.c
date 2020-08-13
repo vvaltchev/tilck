@@ -543,34 +543,22 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    return true;
 }
 
-/*
- * Merges, if exists, an available region following a ramdisk one.
- *
- * NOTE: this is the ONLY function supposed to alter (very carefully) the mem
- * regions after the call of system_mmap_set().
- */
-bool system_mmap_merge_rd_extra_region_if_any(void *rd)
+bool system_mmap_check_for_extra_ramdisk_region(void *rd)
 {
    int ri = system_mmap_get_region_of(KERNEL_VA_TO_PA(rd));
    struct mem_region *r;
    VERIFY(ri >= 0);
 
    if (ri == MAX_MEM_REGIONS - 1)
-      return false; /* no such extra region */
+      return false; /* our region is the last one; no extra region */
 
-   /* The extra region, if exists, will immediately follow our `rd` one */
+   /* An extra region, if any, will immediately follow ours */
    r = &mem_regions[ri+1];
 
    if (r->type == MULTIBOOT_MEMORY_AVAILABLE &&
        r->extra == mem_regions[ri].extra)
    {
       /* Our extra 4k region survived the overlap handling, yey! */
-      disable_interrupts_forced();
-      {
-         r->type = mem_regions[ri].type;
-         merge_adj_mem_regions();
-      }
-      enable_interrupts_forced();
       return true;
    }
 
