@@ -18,8 +18,10 @@ LoadKernelFile(EFI_BOOT_SERVICES *BS,
 
 EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
+EFI_STATUS MbiSetBootloaderName(void);
 EFI_STATUS MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr,
                          UINTN ramdisk_size);
+
 
 EFI_STATUS
 MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,

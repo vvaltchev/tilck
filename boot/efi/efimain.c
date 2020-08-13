@@ -100,6 +100,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = MbiSetRamdisk(ramdisk_paddr, ramdisk_size);
    HANDLE_EFI_ERROR("MbiSetRamdisk");
 
+   status = MbiSetBootloaderName();
+   HANDLE_EFI_ERROR("MbiSetBootloaderName");
+
    //
    // For debugging with GDB (see docs/efi_debug.md)
    //

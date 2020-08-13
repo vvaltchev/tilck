@@ -216,3 +216,25 @@ MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr, UINTN ramdisk_size)
 end:
    return status;
 }
+
+EFI_STATUS
+MbiSetBootloaderName(void)
+{
+   static char BootloaderName[] = "TILCK_EFI";
+
+   EFI_STATUS status = EFI_SUCCESS;
+   EFI_PHYSICAL_ADDRESS paddr = EFI_MBI_MAX_ADDR;
+
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              1,
+                              &paddr);
+   HANDLE_EFI_ERROR("AllocatePages");
+
+   BS->CopyMem(TO_PTR(paddr), BootloaderName, sizeof(BootloaderName));
+   mbi->boot_loader_name = (u32)paddr;
+   mbi->flags |= MULTIBOOT_INFO_BOOT_LOADER_NAME;
+
+end:
+   return status;
+}
