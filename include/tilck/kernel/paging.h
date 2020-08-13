@@ -75,7 +75,7 @@ map_zero_pages(pdir_t *pdir,
                size_t page_count,
                u32 pg_flags);
 
-void init_paging_cow(void);
+void init_paging(void);
 bool is_mapped(pdir_t *pdir, void *vaddr);
 void unmap_page(pdir_t *pdir, void *vaddr, bool do_free);
 int unmap_page_permissive(pdir_t *pdir, void *vaddrp, bool do_free);

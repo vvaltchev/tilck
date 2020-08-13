@@ -969,7 +969,7 @@ static void init_hi_vmem_heap(void)
    }
 }
 
-void init_paging_cow(void)
+void init_paging(void)
 {
    int rc;
    void *user_vsdo_like_page_vaddr;

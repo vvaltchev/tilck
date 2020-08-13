@@ -300,12 +300,10 @@ void kmain(u32 multiboot_magic, u32 mbi_addr)
    read_multiboot_info(multiboot_magic, mbi_addr);
    enable_cpu_features();
    kmain_early_checks();
-
-   init_fpu_memcpy();
    init_segmentation();
-
+   init_fpu_memcpy();
    init_kmalloc();
-   init_paging_cow();
+   init_paging();
    init_console();
    init_self_tests();
    init_irq_handling();
