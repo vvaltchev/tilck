@@ -293,19 +293,18 @@ static void dp_tilck_cmd()
 
    bzero(&ke, sizeof(ke));
    ui_need_update = true;
-   dp_main_body(tt, ke);
 
    while (true) {
+
+      rc = dp_main_body(tt, ke);
+
+      if (!rc && ke.print_char == 'q')
+         break;
 
       if (dp_read_ke_from_tty(&ke) < 0)
          break;
 
       if (ke.print_char == DP_KEY_CTRL_C)
-         break;
-
-      rc = dp_main_body(tt, ke);
-
-      if (!rc && ke.print_char == 'q')
          break;
    }
 
