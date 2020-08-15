@@ -25,12 +25,14 @@ static struct fs *devfs;
 static struct driver_info *drivers[32];
 static u32 drivers_count;
 
-struct fs *get_devfs(void)
+struct fs *
+get_devfs(void)
 {
    return devfs;
 }
 
-struct driver_info *get_driver_info(u16 major)
+struct driver_info *
+get_driver_info(u16 major)
 {
    for (int i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
       if (drivers[i]->major == major)
@@ -44,7 +46,8 @@ struct driver_info *get_driver_info(u16 major)
  * Registers the driver described by 'info'.
  * Returns driver's major number.
  */
-int register_driver(struct driver_info *info, int arg_major)
+int
+register_driver(struct driver_info *info, int arg_major)
 {
    u16 major;
 
@@ -92,12 +95,14 @@ struct devfs_data {
    tilck_ino_t next_inode;
 };
 
-static inline tilck_ino_t devfs_get_next_inode(struct devfs_data *d)
+static inline tilck_ino_t
+devfs_get_next_inode(struct devfs_data *d)
 {
    return d->next_inode++;
 }
 
-int create_dev_file(const char *filename, u16 major, u16 minor)
+int
+create_dev_file(const char *filename, u16 major, u16 minor)
 {
    ASSERT(devfs != NULL);
 
@@ -130,17 +135,20 @@ int create_dev_file(const char *filename, u16 major, u16 minor)
    return 0;
 }
 
-static ssize_t devfs_dir_read(fs_handle h, char *buf, size_t len)
+static ssize_t
+devfs_dir_read(fs_handle h, char *buf, size_t len)
 {
    return -EINVAL;
 }
 
-static ssize_t devfs_dir_write(fs_handle h, char *buf, size_t len)
+static ssize_t
+devfs_dir_write(fs_handle h, char *buf, size_t len)
 {
    return -EINVAL;
 }
 
-static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
+static offt
+devfs_dir_seek(fs_handle h, offt target_off, int whence)
 {
    struct devfs_handle *dh = h;
    struct devfs_data *d = dh->fs->device_data;
@@ -167,12 +175,14 @@ static offt devfs_dir_seek(fs_handle h, offt target_off, int whence)
    return -EINVAL;
 }
 
-static int devfs_dir_ioctl(fs_handle h, ulong request, void *arg)
+static int
+devfs_dir_ioctl(fs_handle h, ulong request, void *arg)
 {
    return -EINVAL;
 }
 
-int devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+int
+devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
 {
    struct devfs_file *df = i;
    struct devfs_data *ddata = fs->device_data;
@@ -226,7 +236,8 @@ static const struct file_ops static_ops_devfs =
    .munmap = NULL,
 };
 
-static int devfs_open_root_dir(struct fs *fs, fs_handle *out)
+static int
+devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
    struct devfs_handle *h;
 
@@ -286,7 +297,8 @@ devfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
    return -ENOENT;
 }
 
-static void devfs_close(fs_handle h)
+static void
+devfs_close(fs_handle h)
 {
    struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
@@ -294,7 +306,8 @@ static void devfs_close(fs_handle h)
    kfree2(devh, sizeof(struct devfs_handle));
 }
 
-static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
+static int
+devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    struct devfs_handle *h = fsh;
    struct devfs_handle *h2;
@@ -332,31 +345,36 @@ static int devfs_dup(fs_handle fsh, fs_handle *dup_h)
    return 0;
 }
 
-static void devfs_exclusive_lock(struct fs *fs)
+static void
+devfs_exclusive_lock(struct fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_exlock(&d->rwlock);
 }
 
-static void devfs_exclusive_unlock(struct fs *fs)
+static void
+devfs_exclusive_unlock(struct fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_exunlock(&d->rwlock);
 }
 
-static void devfs_shared_lock(struct fs *fs)
+static void
+devfs_shared_lock(struct fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_shlock(&d->rwlock);
 }
 
-static void devfs_shared_unlock(struct fs *fs)
+static void
+devfs_shared_unlock(struct fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_shunlock(&d->rwlock);
 }
 
-static int devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
+static int
+devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 {
    struct devfs_handle *dh = h;
    struct devfs_data *d = dh->fs->device_data;
@@ -429,7 +447,8 @@ devfs_get_entry(struct fs *fs,
    }
 }
 
-static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
+static vfs_inode_ptr_t
+devfs_get_inode(fs_handle h)
 {
    struct devfs_handle *dh = h;
    struct devfs_data *ddata = dh->fs->device_data;
@@ -449,13 +468,15 @@ static vfs_inode_ptr_t devfs_get_inode(fs_handle h)
    NOT_REACHED();
 }
 
-static int devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int
+devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
 }
 
-static int devfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int
+devfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
@@ -486,7 +507,8 @@ static const struct fs_ops static_fsops_devfs =
    .fs_shunlock = devfs_shared_unlock,
 };
 
-struct fs *create_devfs(void)
+struct fs *
+create_devfs(void)
 {
    struct fs *fs;
    struct devfs_data *d;
@@ -517,7 +539,8 @@ struct fs *create_devfs(void)
    return fs;
 }
 
-void init_devfs(void)
+void
+init_devfs(void)
 {
    int rc;
    devfs = create_devfs();
