@@ -23,10 +23,11 @@ struct tty {
    const struct term_interface *tintf;
    struct term_params tparams;
    void *console_data;
+   void *devfile;
+   char dev_filename[16];
 
    int minor;
    int fg_pgid;
-   char dev_filename[16];
 
    struct ringbuf input_ringbuf;
    struct kcond input_cond;     /* signal when we can read from input_rb */

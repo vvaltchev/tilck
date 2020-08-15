@@ -102,36 +102,42 @@ devfs_get_next_inode(struct devfs_data *d)
 }
 
 int
-create_dev_file(const char *filename, u16 major, u16 minor)
+create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
 {
+   struct fs *fs = devfs;
+   struct driver_info *dinfo;
+   struct devfs_data *d;
+   struct devfs_file *f;
+   int rc;
+
    ASSERT(devfs != NULL);
 
-   struct fs *fs = devfs;
-   struct driver_info *dinfo = get_driver_info(major);
-
-   if (!dinfo)
+   if (!(dinfo = get_driver_info(major)))
       return -EINVAL;
 
-   struct devfs_data *d = fs->device_data;
-   struct devfs_file *f = kzmalloc(sizeof(struct devfs_file));
-
-   if (!f)
+   if (!(f = kzmalloc(sizeof(struct devfs_file))))
       return -ENOMEM;
 
+   d = fs->device_data;
+
    f->inode = devfs_get_next_inode(d);
-   list_node_init(&f->dir_node);
    f->name = filename;
    f->dev_major = major;
    f->dev_minor = minor;
+   list_node_init(&f->dir_node);
 
-   int res = dinfo->create_dev_file(minor, &f->fops, &f->type, &f->spec_flags);
+   rc = dinfo->create_dev_file(minor, &f->fops, &f->type, &f->spec_flags);
 
-   if (res < 0) {
+   if (rc < 0) {
       kfree2(f, sizeof(struct devfs_file));
-      return res;
+      return rc;
    }
 
    list_add_tail(&d->root_dir.files_list, &f->dir_node);
+
+   if (devfile)
+      *devfile = f;
+
    return 0;
 }
 

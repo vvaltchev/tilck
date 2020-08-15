@@ -126,11 +126,14 @@ int tty_get_num(struct tty *t)
 }
 
 void
-tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor)
+tty_create_devfile_or_panic(const char *filename,
+                            u16 major,
+                            u16 minor,
+                            void **devfile)
 {
    int rc;
 
-   if ((rc = create_dev_file(filename, major, minor)) < 0)
+   if ((rc = create_dev_file(filename, major, minor, devfile)) < 0)
       panic("TTY: unable to create devfile /dev/%s (error: %d)", filename, rc);
 }
 
@@ -269,7 +272,7 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
             serial_port_fwd ? "ttyS%d" : "tty%d",
             serial_port_fwd ? minor - TTYS0_MINOR : minor);
 
-   if (create_dev_file(t->dev_filename, major, minor) < 0) {
+   if (create_dev_file(t->dev_filename, major, minor, &t->devfile) < 0) {
       tty_full_destroy(t);
       return -ENOMEM;
    }
@@ -343,7 +346,7 @@ static void init_tty(void)
     * tty0 is special: not a real tty but a special file always pointing
     * to the current tty. Therefore, just create the dev file.
     */
-   tty_create_devfile_or_panic("tty0", di->major, 0);
+   tty_create_devfile_or_panic("tty0", di->major, 0, NULL);
 
    if (!kopt_serial_console)
       if (video_term_intf)

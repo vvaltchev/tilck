@@ -32,7 +32,10 @@ bool
 tty_read_ready_int(struct tty *t, struct devfs_handle *h);
 
 void init_ttyaux(void);
-void tty_create_devfile_or_panic(const char *filename, u16 major, u16 minor);
+void tty_create_devfile_or_panic(const char *filename,
+                                 u16 major,
+                                 u16 minor,
+                                 void **devfile);
 
 extern const struct termios default_termios;
 extern struct tty *ttys[128]; /* tty0 is not a real tty */
