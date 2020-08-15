@@ -74,3 +74,7 @@ int register_driver(struct driver_info *info, int major);
 int create_dev_file(const char *filename, u16 major, u16 minor, void **devfile);
 struct fs *get_devfs(void);
 struct driver_info *get_driver_info(u16 major);
+
+/* Special interface for in-kernel use of devfs handles */
+int devfs_kernel_create_handle_for(void *devfile, fs_handle *out);
+void devfs_kernel_destory_handle(fs_handle h);

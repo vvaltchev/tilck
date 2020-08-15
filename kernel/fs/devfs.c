@@ -545,6 +545,18 @@ create_devfs(void)
    return fs;
 }
 
+int
+devfs_kernel_create_handle_for(void *devfile, fs_handle *out)
+{
+   return devfs_open_file(devfs, devfile, out);
+}
+
+void
+devfs_kernel_destory_handle(fs_handle h)
+{
+   devfs_close(h);
+}
+
 void
 init_devfs(void)
 {

@@ -16,26 +16,14 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/tty_struct.h>
+#include <tilck/kernel/fs/devfs.h>
 
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/tracing.h>
 
 #include "termutil.h"
 #include "dp_int.h"
-
-static inline void dp_write_header(int i, const char *s, bool selected)
-{
-   if (selected) {
-
-      dp_write_raw(
-         E_COLOR_BR_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
-         i, s
-      );
-
-   } else {
-      dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
-   }
-}
 
 int dp_rows;
 int dp_cols;
@@ -52,6 +40,21 @@ fs_handle dp_input_handle;
 static bool skip_next_keypress;
 static ATOMIC(bool) dp_running;
 static struct list dp_screens_list = make_list(dp_screens_list);
+
+static inline void
+dp_write_header(int i, const char *s, bool selected)
+{
+   if (selected) {
+
+      dp_write_raw(
+         E_COLOR_BR_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
+         i, s
+      );
+
+   } else {
+      dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
+   }
+}
 
 static void dp_enter(void)
 {
@@ -254,32 +257,36 @@ static void dp_tilck_cmd()
 {
    enum term_type tt;
    struct key_event ke;
-   fs_handle h = NULL;
+   struct tty *t = get_curr_process_tty();
    int rc;
 
    if (dp_running)
       return;
 
+   if (!t) {
+      printk("ERROR: debugpanel: the current process has no attached TTY\n");
+      return;
+   }
+
    disable_preemption();
    {
-      h = get_curr_proc()->handles[0];
+      devfs_kernel_create_handle_for(t->devfile, &dp_input_handle);
    }
    enable_preemption();
 
-   if (!h) {
-      printk("ERROR: unable to open debugpanel: fd 0 is not open\n");
+   if (!dp_input_handle) {
+      printk("ERROR: debugpanel: cannot open process's TTY\n");
       return;
    }
 
    dp_running = true;
-   tt = (enum term_type)get_curr_proc_tty_term_type();
+   tt = t->tparams.type;
    dp_ctx = list_first_obj(&dp_screens_list, struct dp_screen, node);
    dp_enter();
 
    disable_preemption();
    {
-      dp_input_handle = h;
-      tty_set_raw_mode(get_curr_process_tty());
+      tty_set_raw_mode(t);
       dp_set_input_blocking(false);
    }
    enable_preemption();
@@ -309,6 +316,7 @@ static void dp_tilck_cmd()
    }
    enable_preemption();
    dp_exit();
+   devfs_kernel_destory_handle(dp_input_handle);
    dp_running = false;
 }
 
