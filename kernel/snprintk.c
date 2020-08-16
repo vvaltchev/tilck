@@ -194,7 +194,12 @@ write_char_param(struct snprintk_ctx *ctx, char fmtX)
 static bool
 write_string_param(struct snprintk_ctx *ctx, char fmtX)
 {
-   return write_str(ctx, fmtX, va_arg(ctx->args, const char *));
+   const char *str = va_arg(ctx->args, const char *);
+
+   if (!str)
+      str = "(null)";
+
+   return write_str(ctx, fmtX, str);
 }
 
 static bool
@@ -327,12 +332,28 @@ process_next_char_in_seq:
       ctx->lpad = (int)tilck_strtol(ctx->fmt, &ctx->fmt, 10, NULL);
       goto process_next_char_in_seq;
 
+   case '*':
+      /* Exactly like the 0-9 case, but we must take the value from a param */
+      ctx->lpad = MAX(0, (int)va_arg(ctx->args, long));
+      goto move_to_next_char_in_seq;
+
    case '-':
-      ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+      if (ctx->fmt[1] != '*') {
+         ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+      } else {
+         ctx->rpad = MAX(0, (int)va_arg(ctx->args, long));
+         ctx->fmt += 2; /* skip '-' and '*' */
+      }
       goto process_next_char_in_seq;
 
    case '.':
-      ctx->precision = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+
+      if (ctx->fmt[1] != '*') {
+         ctx->precision = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
+      } else {
+         ctx->precision = MAX(0, (int)va_arg(ctx->args, long));
+         ctx->fmt += 2;
+      }
       goto process_next_char_in_seq;
 
    case '#':

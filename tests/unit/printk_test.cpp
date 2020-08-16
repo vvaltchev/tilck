@@ -73,6 +73,17 @@ TEST(printk, rare)
    EXPECT_EQ(spk_wrapper("%05c", 'a'),  "    a");  /* zero-pad is ignored */
 }
 
+TEST(printk, varparam)
+{
+   EXPECT_EQ(spk_wrapper("%.*s", 3, "abcdef"), "abc");   /* precision */
+   EXPECT_EQ(spk_wrapper("%*s", 6, "abc"), "   abc");    /* left-padding */
+   EXPECT_EQ(spk_wrapper("%-*s", 6, "abc"), "abc   ");   /* right-padding */
+   EXPECT_EQ(spk_wrapper("%0*d", 5, 23), "00023");       /* zero-pad */
+   EXPECT_EQ(spk_wrapper("%*d", 5, 23), "   23");        /* numeric left-pad */
+   EXPECT_EQ(spk_wrapper("%-*d", 5, 23), "23   ");       /* numeric right-pad */
+   EXPECT_EQ(spk_wrapper("%*d", -5, 23), "23");          /* negative lpad */
+}
+
 TEST(printk, hashsign)
 {
    EXPECT_EQ(spk_wrapper("%#x",   0x123), "0x123");    // Just prepend "0x"
