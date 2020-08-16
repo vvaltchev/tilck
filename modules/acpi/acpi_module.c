@@ -4,10 +4,13 @@
 #include <tilck/common/printk.h>
 
 #include <tilck/kernel/sched.h>
+#include <tilck/mods/acpi.h>
 
 #include "osl.h"
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
+
+enum acpi_init_status acpi_init_status;
 
 void
 print_acpi_failure(const char *func, ACPI_STATUS rc)
@@ -35,6 +38,7 @@ early_init_acpi_module(void)
 
    if (rc != AE_OK) {
       print_acpi_failure("AcpiInitializeSubsystem", rc);
+      acpi_init_status = ais_failed;
       return;
    }
 
@@ -42,6 +46,9 @@ early_init_acpi_module(void)
 
    if (rc != AE_OK) {
       print_acpi_failure("AcpiInitializeTables", rc);
+      acpi_init_status = ais_failed;
       return;
    }
+
+   acpi_init_status = ais_tables_initialized;
 }
