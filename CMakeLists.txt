@@ -305,6 +305,9 @@ set(PREFERRED_GFX_MODE_H "600" CACHE STRING
 set(KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
     "Size in KB of kmalloc's first heap. Must be multiple of 64.")
 
+set(KRN_PCI_VENDORS_LIST OFF CACHE BOOL
+    "Compile-in the list of all known PCI vendors")
+
 list(
    APPEND no_arch_modules_whitelist
 
@@ -390,6 +393,11 @@ if (TINY_KERNEL)
       set(KERNEL_SHOW_LOGO OFF)
    endif()
 
+   if (KRN_PCI_VENDORS_LIST)
+      message(WARNING "TINY_KERNEL=1, force-setting KRN_PCI_VENDORS_LIST=0")
+      set(KRN_PCI_VENDORS_LIST OFF)
+   endif()
+
 endif()
 
 if (KMALLOC_FIRST_HEAP_SIZE_KB STREQUAL "auto")
@@ -463,6 +471,8 @@ list(
    PS2_VERBOSE_DEBUG_LOG
    FB_CONSOLE_USE_ALT_FONTS
    TINY_KERNEL
+   INIT_REPORT_PROC_EXIT
+   KRN_PCI_VENDORS_LIST
 )
 
 ###########################################################

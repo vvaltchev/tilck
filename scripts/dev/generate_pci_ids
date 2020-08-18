@@ -76,6 +76,9 @@ def generate_vendors():
    print("};")
    print("")
 
+def str_or_NULL(val):
+   return '"{}"'.format(val) if val else "NULL"
+
 class device_class_ctx:
 
    def __init__(self,
@@ -119,13 +122,13 @@ class device_class_ctx:
       self.progif_name = progif_name
 
    def dump(self):
-      print("   {{ 0x{:02x}, 0x{:02x}, 0x{:02x}, \"{}\", \"{}\", \"{}\" }},"
+      print("   {{ 0x{:02x}, 0x{:02x}, 0x{:02x}, {}, {}, {} }},"
                .format(self.class_id,
                        self.subclass_id,
                        self.progif_id,
-                       self.class_name,
-                       self.subclass_name,
-                       self.progif_name))
+                       str_or_NULL(self.class_name),
+                       str_or_NULL(self.subclass_name),
+                       str_or_NULL(self.progif_name)))
 
 
 def generate_device_classes():
