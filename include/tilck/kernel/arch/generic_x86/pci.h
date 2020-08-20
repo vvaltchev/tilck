@@ -25,6 +25,17 @@ struct pci_device_loc {
    u8 func : 3;   /* PCI Function Number */
 };
 
+static ALWAYS_INLINE struct pci_device_loc
+pci_make_loc(u16 seg, u8 bus, u8 dev, u8 func)
+{
+   return (struct pci_device_loc) {
+      .seg = seg,
+      .bus = bus,
+      .dev = dev,
+      .func = func
+   };
+}
+
 struct pci_device_basic_info {
 
    union {
