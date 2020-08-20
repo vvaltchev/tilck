@@ -1,8 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/mods/acpi.h>
+
+#include <3rd_party/acpi/acpi.h>
+#include <3rd_party/acpi/accommon.h>
 
 #include "pci_classes.c.h"
 
@@ -151,4 +157,58 @@ pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
    }
 
    return 0;
+}
+
+void
+init_pci(void)
+{
+   ACPI_STATUS rc;
+   ACPI_TABLE_HEADER *hdr;
+   const ACPI_EXCEPTION_INFO *ex;
+   struct acpi_mcfg_allocation *it;
+   u32 elem_count;
+
+   if (get_acpi_init_status() < ais_tables_initialized) {
+      printk("PCI: no ACPI. Don't check for MCFG\n");
+      return;
+   }
+
+   if (!MOD_acpi)
+      return;
+
+   rc = AcpiGetTable("MCFG", 1, &hdr);
+
+   if (rc == AE_NOT_FOUND) {
+      printk("PCI: ACPI table MCFG not found.\n");
+      return;
+   }
+
+   if (rc != AE_OK) {
+
+      ex = AcpiUtValidateException(rc);
+
+      if (ex)
+         printk("PCI: AcpiGetTable() failed with: %s\n", ex->Name);
+      else
+         printk("PCI: AcpiGetTable() failed with: %d\n", rc);
+
+      return;
+   }
+
+   elem_count = (hdr->Length - sizeof(struct acpi_table_mcfg)) / sizeof(*it);
+   it = (void *)((char *)hdr + sizeof(struct acpi_table_mcfg));
+
+   printk("PCI: ACPI table MCFG found.\n");
+   printk("PCI: MCFG has %u elements\n", elem_count);
+
+   for (u32 i = 0; i < elem_count; i++, it++) {
+
+      printk("PCI: MCFG elem[%u]\n", i);
+      printk("    Base paddr: %#llx\n", it->Address);
+      printk("    Segment:    %u\n", it->PciSegment);
+      printk("    Start bus:  %u\n", it->StartBusNumber);
+      printk("    End bus:    %u\n", it->EndBusNumber);
+   }
+
+   AcpiPutTable(hdr);
 }

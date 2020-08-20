@@ -7,9 +7,9 @@
 enum acpi_init_status {
 
    ais_not_started = 0,
+   ais_failed,
    ais_tables_initialized,
    ais_tables_loaded,
-   ais_failed,
 };
 
 #if MOD_acpi
