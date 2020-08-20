@@ -168,6 +168,9 @@ int pci_device_get_info(struct pci_device_loc loc,
    if ((rc = pci_config_read(loc, 0, 32, &nfo->__dev_and_vendor)))
       return rc;
 
+   if (!nfo->vendor_id || nfo->vendor_id == 0xffff)
+      return -ENOENT;
+
    if ((rc = pci_config_read(loc, 8, 32, &nfo->__class_info)))
       return rc;
 
@@ -236,15 +239,197 @@ init_pci_ecam(void)
    AcpiPutTable(hdr);
 }
 
+#define BUS_NOT_VISITED          0
+#define BUS_TO_VISIT             1
+#define BUS_VISITED              2
+
+static u8 pci_buses[256];
+
 static void
-init_pci_discover_devices(void)
+pci_mark_bus_to_visit(u8 bus)
 {
-   /* TODO: implement */
+   if (pci_buses[bus] == BUS_NOT_VISITED) {
+      pci_buses[bus] = BUS_TO_VISIT;
+   }
+}
+
+static void
+pci_mark_bus_as_visited(u8 bus)
+{
+   pci_buses[bus] = BUS_VISITED;
+}
+
+static void
+pci_dump_device_info(struct pci_device_loc loc,
+                     struct pci_device_basic_info *nfo)
+{
+   struct pci_device_class dc = {0};
+   const char *vendor;
+
+   dc.class_id = nfo->class_id;
+   dc.subclass_id = nfo->subclass_id;
+   dc.progif_id = nfo->progif_id;
+
+   pci_find_device_class_name(&dc);
+   vendor = pci_find_vendor_name(nfo->vendor_id);
+
+   printk("PCI: %04x:%02x:%02x.%x: ", loc.seg, loc.bus, loc.dev, loc.func);
+
+   if (dc.subclass_name && dc.progif_name) {
+
+      if (vendor)
+         printk("%s: %s %s\n", dc.subclass_name, vendor, dc.progif_name);
+      else
+         printk("%s (%s)\n", dc.subclass_name, dc.progif_name);
+
+   } else if (dc.subclass_name) {
+
+      if (vendor)
+         printk("%s: %s\n", dc.subclass_name, vendor);
+      else
+         printk("%s\n", dc.subclass_name);
+
+   } else if (dc.class_name) {
+
+      if (vendor)
+         printk("%s: %s (subclass: %#x)\n",
+                dc.class_name, vendor, dc.subclass_id);
+      else
+         printk("%s (subclass: %#x)\n", dc.class_name, dc.subclass_id);
+
+   } else {
+
+      if (vendor)
+         printk("vendor: %s, class: %#x, subclass: %#x\n",
+                vendor, dc.class_id, dc.subclass_id);
+      else
+         printk("class: %#x, subclass: %#x\n", dc.class_id, dc.subclass_id);
+   }
+}
+
+static bool
+pci_discover_device_func(struct pci_device_loc loc,
+                         struct pci_device_basic_info *dev_nfo)
+{
+   struct pci_device_basic_info __nfo;
+   struct pci_device_basic_info *nfo = &__nfo;
+   u32 secondary_bus;
+   u32 subordinate_bus;
+
+   if (loc.func != 0) {
+
+      if (pci_device_get_info(loc, nfo))
+         return false; /* no such device function */
+
+   } else {
+
+      ASSERT(dev_nfo != NULL);
+      nfo = dev_nfo;
+   }
+
+   pci_dump_device_info(loc, nfo);
+
+   if (nfo->class_id == 0x06 && nfo->subclass_id == 0x04) {
+
+      if (pci_config_read(loc, 0x19, 8, &secondary_bus)) {
+         printk("PCI: error while reading from config space\n");
+         return false;
+      }
+
+      if (pci_config_read(loc, 0x1a, 8, &subordinate_bus)) {
+         printk("PCI: error while reading from config space\n");
+         return false;
+      }
+
+      for (u32 i = secondary_bus; i <= subordinate_bus; i++)
+         pci_mark_bus_to_visit((u8)i);
+   }
+
+   return true;
+}
+
+static bool
+pci_discover_device(u8 bus, u8 dev)
+{
+   struct pci_device_basic_info nfo;
+   struct pci_device_loc loc;
+
+   loc = pci_make_loc(0, bus, dev, 0);
+
+   if (pci_device_get_info(loc, &nfo))
+      return false; /* no such device */
+
+   if (!pci_discover_device_func(loc, &nfo)) {
+      printk("PCI: ERROR discover func 0 failed on existing device!");
+      return false;
+   }
+
+   if (nfo.header_type & 0x80) {
+      /* Multi-function device */
+      for (u8 func = 1; func < 8; func++) {
+         loc.func = func;
+         pci_discover_device_func(loc, NULL);
+      }
+   }
+
+   return true;
+}
+
+static void
+pci_discover_bus(u8 bus)
+{
+   pci_mark_bus_as_visited(bus);
+
+   for (u8 dev = 0; dev < 32; dev++)
+      pci_discover_device(bus, dev);
+}
+
+static void
+pci_discover_all_devices_seg0(void)
+{
+   struct pci_device_basic_info nfo;
+   int visit_count;
+
+   if (pci_device_get_info(pci_make_loc(0, 0, 0, 0), &nfo)) {
+      printk("PCI: FATAL ERROR: cannot get root PCI device info\n");
+      return;
+   }
+
+   if (~nfo.header_type & 0x80) {
+
+      /* Single PCI controller */
+      pci_discover_bus(0);
+
+   } else {
+
+      /* Multiple PCI controllers */
+      for (u8 func = 0; func < 8; func++) {
+
+         if (pci_device_get_info(pci_make_loc(0, 0, 0, func), &nfo))
+            break;
+
+         pci_discover_bus(func);
+      }
+   }
+
+   /* Discover devices in the additional buses marked for visit */
+   do {
+
+      visit_count = 0;
+
+      for (u32 bus = 1; bus < 256; bus++) {
+         if (pci_buses[bus] == BUS_TO_VISIT) {
+            pci_discover_bus((u8)bus);
+            visit_count++;
+         }
+      }
+
+   } while (visit_count > 0);
 }
 
 void
 init_pci(void)
 {
    init_pci_ecam();
-   init_pci_discover_devices();
+   pci_discover_all_devices_seg0();
 }
