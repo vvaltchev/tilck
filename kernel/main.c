@@ -185,9 +185,7 @@ read_multiboot_info(void)
 
          printk("Multiboot: detected the TILCK_EFI bootloader\n");
          printk("Multiboot: ACPI root ptr: %p\n", TO_PTR(mbi->apm_table));
-
-         if (MOD_acpi)
-            acpi_set_root_pointer(mbi->apm_table);
+         acpi_set_root_pointer(mbi->apm_table);
       }
    }
 
@@ -386,9 +384,7 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_syscall_interfaces();
    init_worker_threads();
 
-   if (MOD_acpi)
-      early_init_acpi_module();
-
+   early_init_acpi_module();
    init_timer();
    init_system_time();
    init_kernelfs();

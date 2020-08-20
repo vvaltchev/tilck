@@ -12,6 +12,8 @@ enum acpi_init_status {
    ais_failed,
 };
 
+#if MOD_acpi
+
 static inline enum acpi_init_status
 get_acpi_init_status(void)
 {
@@ -21,3 +23,13 @@ get_acpi_init_status(void)
 
 void early_init_acpi_module(void);
 void acpi_set_root_pointer(ulong);
+
+#else
+
+static inline enum acpi_init_status
+get_acpi_init_status(void) { return ais_not_started; }
+
+static inline void early_init_acpi_module(void) { }
+static inline void acpi_set_root_pointer(ulong ptr) { }
+
+#endif
