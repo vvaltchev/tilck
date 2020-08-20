@@ -384,7 +384,7 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_syscall_interfaces();
    init_worker_threads();
 
-   early_init_acpi_module();
+   acpi_mod_init_tables();
    init_timer();
    init_system_time();
    init_kernelfs();

@@ -25,7 +25,7 @@ print_acpi_failure(const char *func, ACPI_STATUS rc)
 }
 
 void
-early_init_acpi_module(void)
+acpi_mod_init_tables(void)
 {
    ACPI_STATUS rc;
 
