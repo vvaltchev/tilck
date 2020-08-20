@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/errno.h>
 
 #include "pci_classes.c.h"
 
@@ -15,6 +17,10 @@
    };
 
 #endif
+
+#define PCI_CONFIG_ADDRESS              0xcf8
+#define PCI_CONFIG_DATA                 0xcfc
+
 
 const char *
 pci_find_vendor_name(u16 id)
@@ -71,4 +77,78 @@ pci_find_device_class_name(struct pci_device_class *dev_class)
          break;
       }
    }
+}
+
+int
+pci_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+{
+   const u32 bus = loc.bus;
+   const u32 dev = loc.dev;
+   const u32 func = loc.func;
+   const u32 aoff = off & ~3u;    /* off aligned at 4-byte boundary */
+   const u32 addr = 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | aoff;
+   const u16 data_port = PCI_CONFIG_DATA + (off & 3);
+
+   if (UNLIKELY(loc.seg != 0))
+      return -EINVAL; /* Conventional PCI has no segment support */
+
+   if (UNLIKELY(off >= 256 || off & ((width >> 3) - 1)))
+      return -EINVAL;
+
+   /* Write the address to the PCI config. space addr I/O port */
+   outl(PCI_CONFIG_ADDRESS, addr);
+
+   /* Read the data from the PCI config. space data I/O port */
+   switch (width) {
+      case 8:
+         *val = inb(data_port);
+         break;
+      case 16:
+         *val = inw(data_port);
+         break;
+      case 32:
+         *val = inl(data_port);
+         break;
+      default:
+         return -EINVAL;
+   }
+
+   return 0;
+}
+
+int
+pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
+{
+   const u32 bus = loc.bus;
+   const u32 dev = loc.dev;
+   const u32 func = loc.func;
+   const u32 aoff = off & ~3u;    /* off aligned at 4-byte boundary */
+   const u32 addr = 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | aoff;
+   const u16 data_port = PCI_CONFIG_DATA + (off & 3);
+
+   if (UNLIKELY(loc.seg != 0))
+      return -EINVAL; /* Conventional PCI has no segment support */
+
+   if (UNLIKELY(off >= 256 || off & ((width >> 3) - 1)))
+      return -EINVAL;
+
+   /* Write the address to the PCI config. space addr I/O port */
+   outl(PCI_CONFIG_ADDRESS, addr);
+
+   /* Write the data to the PCI config. space data I/O port */
+   switch (width) {
+      case 8:
+         outb(data_port, (u8)val);
+         break;
+      case 16:
+         outw(data_port, (u16)val);
+         break;
+      case 32:
+         outl(data_port, (u32)val);
+         break;
+      default:
+         return -EINVAL;
+   }
+
+   return 0;
 }
