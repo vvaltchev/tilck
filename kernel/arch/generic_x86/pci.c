@@ -396,7 +396,6 @@ init_pci_ecam(void)
    AcpiPutTable(hdr);
 }
 
-
 static void
 pci_dump_device_info(struct pci_device_loc loc,
                      struct pci_device_basic_info *nfo)
@@ -429,11 +428,21 @@ pci_dump_device_info(struct pci_device_loc loc,
 
    } else if (dc.class_name) {
 
-      if (vendor)
-         printk("%s: %s (subclass: %#x)\n",
-                dc.class_name, vendor, dc.subclass_id);
-      else
-         printk("%s (subclass: %#x)\n", dc.class_name, dc.subclass_id);
+      if (vendor) {
+
+         if (dc.subclass_id)
+            printk("%s: %s (subclass: %#x)\n",
+                   dc.class_name, vendor, dc.subclass_id);
+         else
+            printk("%s: %s\n", dc.class_name, vendor);
+
+      } else {
+
+         if (dc.subclass_id)
+            printk("%s (subclass: %#x)\n", dc.class_name, dc.subclass_id);
+         else
+            printk("%s\n", dc.class_name);
+      }
 
    } else {
 
