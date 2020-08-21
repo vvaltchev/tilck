@@ -384,12 +384,10 @@ pci_discover_device_func(struct pci_device_loc loc,
 }
 
 static bool
-pci_discover_device(u8 bus, u8 dev)
+pci_discover_device(struct pci_device_loc loc)
 {
    struct pci_device_basic_info nfo;
-   struct pci_device_loc loc;
-
-   loc = pci_make_loc(0, bus, dev, 0);
+   ASSERT(loc.func == 0);
 
    if (pci_device_get_info(loc, &nfo))
       return false; /* no such device */
@@ -411,16 +409,42 @@ pci_discover_device(u8 bus, u8 dev)
 }
 
 static void
-pci_discover_bus(u8 bus)
+pci_before_discover_bus(struct pci_segment *seg, u8 bus)
 {
-   pci_mark_bus_as_visited(bus);
+   if (!seg)
+      return; /* nothing to do */
 
-   for (u8 dev = 0; dev < 32; dev++)
-      pci_discover_device(bus, dev);
+   // TODO: map the (seg, bus) config space
 }
 
 static void
-pci_discover_all_devices_seg0(void)
+pci_after_discover_bus(struct pci_segment *seg, u8 bus)
+{
+   if (!seg)
+      return; /* nothing to do */
+
+   // TODO: un-map the (seg, bus) config space
+}
+
+static void
+pci_discover_bus(struct pci_segment *seg, u8 bus)
+{
+   u16 seg_num = seg ? seg->segment : 0;
+   struct pci_device_loc loc = pci_make_loc(seg_num, bus, 0, 0);
+
+   pci_mark_bus_as_visited(bus);
+   pci_before_discover_bus(seg, bus);
+
+   for (u8 dev = 0; dev < 32; dev++) {
+      loc.dev = dev;
+      pci_discover_device(loc);
+   }
+
+   pci_after_discover_bus(seg, bus);
+}
+
+static void
+pci_discover_segment(struct pci_segment *seg)
 {
    struct pci_device_basic_info nfo;
    int visit_count;
@@ -433,7 +457,7 @@ pci_discover_all_devices_seg0(void)
    if (!nfo.multi_func) {
 
       /* Single PCI controller */
-      pci_discover_bus(0);
+      pci_discover_bus(seg, 0);
 
    } else {
 
@@ -443,7 +467,7 @@ pci_discover_all_devices_seg0(void)
          if (pci_device_get_info(pci_make_loc(0, 0, 0, func), &nfo))
             break;
 
-         pci_discover_bus(func);
+         pci_discover_bus(seg, func);
       }
    }
 
@@ -454,7 +478,7 @@ pci_discover_all_devices_seg0(void)
 
       for (u32 bus = 1; bus < 256; bus++) {
          if (pci_buses[bus] == BUS_TO_VISIT) {
-            pci_discover_bus((u8)bus);
+            pci_discover_bus(seg, (u8)bus);
             visit_count++;
          }
       }
@@ -466,5 +490,16 @@ void
 init_pci(void)
 {
    init_pci_ecam();
-   pci_discover_all_devices_seg0();
+
+   if (pcie_segments_cnt) {
+
+      /* Iterate over all the PCI Express segment groups */
+      for (u32 i = 0; i < pcie_segments_cnt; i++)
+         pci_discover_segment(&pcie_segments[i]);
+
+   } else {
+
+      /* No PCI Express support */
+      pci_discover_segment(NULL);
+   }
 }
