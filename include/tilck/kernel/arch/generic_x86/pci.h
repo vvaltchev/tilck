@@ -77,11 +77,19 @@ pci_find_vendor_name(u16 id);
 void
 pci_find_device_class_name(struct pci_device_class *dev_class);
 
-int
-pci_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val);
+static inline int
+pci_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+{
+   extern int (*__pci_config_read_func)(struct pci_device_loc, u32, u32, u32 *);
+   return __pci_config_read_func(loc, off, width, val);
+}
 
-int
-pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val);
+static inline int
+pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
+{
+   extern int (*__pci_config_write_func)(struct pci_device_loc, u32, u32, u32);
+   return __pci_config_write_func(loc, off, width, val);
+}
 
 void
 init_pci(void);

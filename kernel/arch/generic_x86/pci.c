@@ -52,6 +52,9 @@ static u8 pci_buses[256];
 static u32 pcie_segments_cnt;
 static struct pci_segment *pcie_segments;
 
+int (*__pci_config_read_func)(struct pci_device_loc, u32, u32, u32 *);
+int (*__pci_config_write_func)(struct pci_device_loc, u32, u32, u32);
+
 static void
 pci_mark_bus_to_visit(u8 bus)
 {
@@ -123,8 +126,8 @@ pci_find_device_class_name(struct pci_device_class *dev_class)
    }
 }
 
-int
-pci_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+static int
+pci_ioport_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
 {
    const u32 bus = loc.bus;
    const u32 dev = loc.dev;
@@ -160,8 +163,8 @@ pci_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
    return 0;
 }
 
-int
-pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
+static int
+pci_ioport_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
 {
    const u32 bus = loc.bus;
    const u32 dev = loc.dev;
@@ -194,6 +197,18 @@ pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
          return -EINVAL;
    }
 
+   return 0;
+}
+
+static int
+pci_mmio_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+{
+   return 0;
+}
+
+static int
+pci_mmio_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
+{
    return 0;
 }
 
@@ -493,6 +508,10 @@ init_pci(void)
 
    if (pcie_segments_cnt) {
 
+      /* PCI Express is supported */
+      __pci_config_read_func = &pci_mmio_config_read;
+      __pci_config_write_func = &pci_mmio_config_write;
+
       /* Iterate over all the PCI Express segment groups */
       for (u32 i = 0; i < pcie_segments_cnt; i++)
          pci_discover_segment(&pcie_segments[i]);
@@ -500,6 +519,8 @@ init_pci(void)
    } else {
 
       /* No PCI Express support */
+      __pci_config_read_func = &pci_ioport_config_read;
+      __pci_config_write_func = &pci_ioport_config_write;
       pci_discover_segment(NULL);
    }
 }
