@@ -28,6 +28,15 @@
 #define PCI_CONFIG_ADDRESS              0xcf8
 #define PCI_CONFIG_DATA                 0xcfc
 
+#define PCI_CLASS_BRIDGE                 0x06
+#define PCI_SUBCLASS_PCI_BRIDGE          0x04
+#define PCI_DEV_BASE_INFO                0x00
+#define PCI_CLASS_INFO_OFF               0x08
+#define PCI_HDR_TYPE_OFF                 0x0e
+
+#define PCI_HDR1_SECOND_BUS              0x19
+#define PCI_HDR1_SUBORD_BUS              0x1a
+
 #define BUS_NOT_VISITED                     0
 #define BUS_TO_VISIT                        1
 #define BUS_VISITED                         2
@@ -187,16 +196,16 @@ int pci_device_get_info(struct pci_device_loc loc,
    int rc;
    u32 tmp;
 
-   if ((rc = pci_config_read(loc, 0, 32, &nfo->__dev_and_vendor)))
+   if ((rc = pci_config_read(loc, PCI_DEV_BASE_INFO, 32, &nfo->__dev_vendr)))
       return rc;
 
-   if (!nfo->vendor_id || nfo->vendor_id == 0xffff)
+   if (nfo->vendor_id == 0xffff || nfo->vendor_id == 0)
       return -ENOENT;
 
-   if ((rc = pci_config_read(loc, 8, 32, &nfo->__class_info)))
+   if ((rc = pci_config_read(loc, PCI_CLASS_INFO_OFF, 32, &nfo->__class_info)))
       return rc;
 
-   if ((rc = pci_config_read(loc, 14, 8, &tmp)))
+   if ((rc = pci_config_read(loc, PCI_HDR_TYPE_OFF, 8, &tmp)))
       return rc;
 
    nfo->header_type = tmp & 0xff;
@@ -343,14 +352,15 @@ pci_discover_device_func(struct pci_device_loc loc,
 
    pci_dump_device_info(loc, nfo);
 
-   if (nfo->class_id == 0x06 && nfo->subclass_id == 0x04) {
-
-      if (pci_config_read(loc, 0x19, 8, &secondary_bus)) {
+   if (nfo->class_id == PCI_CLASS_BRIDGE &&
+       nfo->subclass_id == PCI_SUBCLASS_PCI_BRIDGE)
+   {
+      if (pci_config_read(loc, PCI_HDR1_SECOND_BUS, 8, &secondary_bus)) {
          printk("PCI: error while reading from config space\n");
          return false;
       }
 
-      if (pci_config_read(loc, 0x1a, 8, &subordinate_bus)) {
+      if (pci_config_read(loc, PCI_HDR1_SUBORD_BUS, 8, &subordinate_bus)) {
          printk("PCI: error while reading from config space\n");
          return false;
       }

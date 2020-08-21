@@ -45,7 +45,7 @@ struct pci_device_basic_info {
          u16 device_id;
       };
 
-      u32 __dev_and_vendor;
+      u32 __dev_vendr;
    };
 
    union {
