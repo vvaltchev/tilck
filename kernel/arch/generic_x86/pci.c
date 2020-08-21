@@ -41,9 +41,16 @@
 #define BUS_TO_VISIT                        1
 #define BUS_VISITED                         2
 
+struct pci_segment {
+   u64 base_paddr;
+   u16 segment;
+   u8 start_bus;
+   u8 end_bus;
+};
+
 static u8 pci_buses[256];
 static u32 pcie_segments_cnt;
-static struct acpi_table_mcfg_item *pcie_segments;
+static struct pci_segment *pcie_segments;
 
 static void
 pci_mark_bus_to_visit(u8 bus)
@@ -258,16 +265,13 @@ init_pci_ecam(void)
    printk("PCI: ACPI table MCFG found.\n");
    printk("PCI: MCFG has %u elements\n", pcie_segments_cnt);
 
-   pcie_segments = kmalloc(pcie_segments_cnt * sizeof(*it));
+   pcie_segments = kalloc_array_obj(struct pci_segment, pcie_segments_cnt);
 
    if (UNLIKELY(!pcie_segments)) {
       printk("PCI: ERROR: no memory for PCIe segments list\n");
       pcie_segments_cnt = 0;
       return;
    }
-
-   /* Copy the MCFG table in a safe and always accessible place */
-   memcpy(pcie_segments, it, pcie_segments_cnt * sizeof(*it));
 
    for (u32 i = 0; i < pcie_segments_cnt; i++, it++) {
 
@@ -276,6 +280,13 @@ init_pci_ecam(void)
       printk("    Segment:    %u\n", it->PciSegment);
       printk("    Start bus:  %u\n", it->StartBusNumber);
       printk("    End bus:    %u\n", it->EndBusNumber);
+
+      pcie_segments[i] = (struct pci_segment) {
+         .base_paddr = it->Address,
+         .segment = it->PciSegment,
+         .start_bus = it->StartBusNumber,
+         .end_bus = it->EndBusNumber,
+      };
    }
 
    AcpiPutTable(hdr);
