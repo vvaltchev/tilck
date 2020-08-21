@@ -6,6 +6,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/paging.h>
 #include <tilck/mods/acpi.h>
 
 #include <3rd_party/acpi/acpi.h>
@@ -48,9 +49,12 @@ struct pci_segment {
    u8 end_bus;
 };
 
-static u8 pci_buses[256];
 static u32 pcie_segments_cnt;
 static struct pci_segment *pcie_segments;
+
+static u8 *pci_buses;                  /* valid ONLY during init_pci() */
+static ulong mmio_bus_va;              /* valid ONLY during init_pci() */
+static struct pci_device_loc mmio_bus; /* valid if mmio_bus_va != 0 */
 
 int (*__pci_config_read_func)(struct pci_device_loc, u32, u32, u32 *);
 int (*__pci_config_write_func)(struct pci_device_loc, u32, u32, u32);
@@ -423,32 +427,82 @@ pci_discover_device(struct pci_device_loc loc)
    return true;
 }
 
-static void
+static bool
 pci_before_discover_bus(struct pci_segment *seg, u8 bus)
 {
-   if (!seg)
-      return; /* nothing to do */
+   const size_t mmap_sz = NBITS == 32 ? 4 * MB : 2 * MB; /* 1 big page */
+   const size_t mmap_pages_cnt = mmap_sz >> PAGE_SHIFT;
+   u64 paddr;
+   size_t cnt;
+   void *va;
 
-   // TODO: map the (seg, bus) config space
+   if (!seg)
+      return true; /* nothing to do */
+
+   if (!IN_RANGE_INC(bus, seg->start_bus, seg->end_bus)) {
+      printk("PCI: bus #%u out-of-range in segment %04x\n", bus, seg->segment);
+      return false;
+   }
+
+   paddr = seg->base_paddr + ((u64)(bus - seg->start_bus) << 20);
+
+   if (NBITS == 32 && paddr > (0xffffffff - MB)) {
+      /* We do not (and never will) support PAE */
+      printk("PCI: paddr (%#llx) too big for a 32-bit machine\n", paddr);
+      return false;
+   }
+
+   va = hi_vmem_reserve(mmap_sz);
+
+   if (!va) {
+      printk("PCI: ERROR: hi vmem OOM for %04x:%02x\n", seg->segment, bus);
+      return false;
+   }
+
+   cnt = map_pages(get_kernel_pdir(),
+                   va,
+                   (ulong)paddr,
+                   mmap_pages_cnt,
+                   PAGING_FL_BIG_PAGES_ALLOWED);
+
+   if (cnt != mmap_pages_cnt) {
+      printk("PCI: ERROR: mmap failed for %04x:%02x\n", seg->segment, bus);
+      hi_vmem_release(va, mmap_sz);
+      return false;
+   }
+
+   mmio_bus = pci_make_loc(seg->segment, bus, 0, 0);
+   mmio_bus_va = (ulong) va;
+   return true;
 }
 
 static void
 pci_after_discover_bus(struct pci_segment *seg, u8 bus)
 {
+   const size_t mmap_sz = NBITS == 32 ? 4 * MB : 2 * MB; /* 1 big page */
+   const size_t mmap_pages_cnt = mmap_sz >> PAGE_SHIFT;
+
    if (!seg)
       return; /* nothing to do */
 
-   // TODO: un-map the (seg, bus) config space
+   ASSERT(mmio_bus.seg == seg->segment);
+   ASSERT(mmio_bus.bus == bus);
+
+   unmap_pages(get_kernel_pdir(), (void *)mmio_bus_va, mmap_pages_cnt, false);
+   hi_vmem_release((void *)mmio_bus_va, mmap_sz);
+   mmio_bus_va = 0;
 }
 
 static void
 pci_discover_bus(struct pci_segment *seg, u8 bus)
 {
-   u16 seg_num = seg ? seg->segment : 0;
+   const u16 seg_num = seg ? seg->segment : 0;
    struct pci_device_loc loc = pci_make_loc(seg_num, bus, 0, 0);
 
    pci_mark_bus_as_visited(bus);
-   pci_before_discover_bus(seg, bus);
+
+   if (!pci_before_discover_bus(seg, bus))
+      return;
 
    for (u8 dev = 0; dev < 32; dev++) {
       loc.dev = dev;
@@ -461,11 +515,12 @@ pci_discover_bus(struct pci_segment *seg, u8 bus)
 static void
 pci_discover_segment(struct pci_segment *seg)
 {
+   const u16 seg_num = seg ? seg->segment : 0;
    struct pci_device_basic_info nfo;
    int visit_count;
 
-   if (pci_device_get_info(pci_make_loc(0, 0, 0, 0), &nfo)) {
-      printk("PCI: FATAL ERROR: cannot get root PCI device info\n");
+   if (pci_device_get_info(pci_make_loc(seg_num, 0, 0, 0), &nfo)) {
+      printk("PCI: ERROR: cannot get info for host bridge %04x\n", seg_num);
       return;
    }
 
@@ -504,7 +559,14 @@ pci_discover_segment(struct pci_segment *seg)
 void
 init_pci(void)
 {
+   /* Read the ACPI table MCFG (if any) */
    init_pci_ecam();
+
+   /* Alloc the temporary `pci_buses` buffer */
+   if (!(pci_buses = kzalloc_array_obj(u8, 256))) {
+      printk("PCI: ERROR: unable to alloc the pci_buses buffer\n");
+      return;
+   }
 
    if (pcie_segments_cnt) {
 
@@ -523,4 +585,8 @@ init_pci(void)
       __pci_config_write_func = &pci_ioport_config_write;
       pci_discover_segment(NULL);
    }
+
+   /* Free the temporary pci_buses buffer */
+   kfree_array_obj(pci_buses, u8, 256);
+   pci_buses = NULL;
 }
