@@ -60,7 +60,15 @@ struct pci_device_basic_info {
       u32 __class_info;
    };
 
-   u8 header_type;
+   union {
+
+      struct {
+         u8 header_type : 7;
+         u8 multi_func  : 1;
+      };
+
+      u8 __header_type;
+   };
 };
 
 const char *

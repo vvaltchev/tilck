@@ -208,7 +208,7 @@ int pci_device_get_info(struct pci_device_loc loc,
    if ((rc = pci_config_read(loc, PCI_HDR_TYPE_OFF, 8, &tmp)))
       return rc;
 
-   nfo->header_type = tmp & 0xff;
+   nfo->__header_type = tmp & 0xff;
    return 0;
 }
 
@@ -388,7 +388,7 @@ pci_discover_device(u8 bus, u8 dev)
       return false;
    }
 
-   if (nfo.header_type & 0x80) {
+   if (nfo.multi_func) {
       /* Multi-function device */
       for (u8 func = 1; func < 8; func++) {
          loc.func = func;
@@ -419,7 +419,7 @@ pci_discover_all_devices_seg0(void)
       return;
    }
 
-   if (~nfo.header_type & 0x80) {
+   if (!nfo.multi_func) {
 
       /* Single PCI controller */
       pci_discover_bus(0);
