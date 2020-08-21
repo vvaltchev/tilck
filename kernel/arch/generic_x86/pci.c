@@ -204,15 +204,100 @@ pci_ioport_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
    return 0;
 }
 
+static struct pci_segment *
+pcie_get_segment(u16 seg)
+{
+   for (u32 i = 0; i < pcie_segments_cnt; i++)
+      if (pcie_segments[i].segment == seg)
+         return &pcie_segments[i];
+
+   return NULL;
+}
+
+static ulong
+pcie_get_conf_vaddr(struct pci_device_loc loc)
+{
+   struct pci_segment *seg;
+
+   if (mmio_bus_va && loc.seg == mmio_bus.seg && loc.bus == mmio_bus.bus) {
+
+      seg = pcie_get_segment(loc.seg);
+      ASSERT(seg != NULL);
+
+      if (!IN_RANGE_INC(loc.bus, seg->start_bus, seg->end_bus))
+         return 0; /* bus number out of range */
+
+      return mmio_bus_va + ((u32)loc.dev << 15) + ((u32)loc.func << 12);
+   }
+
+   NOT_IMPLEMENTED();
+}
+
 static int
 pci_mmio_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
 {
+   ulong va = pcie_get_conf_vaddr(loc);
+   const u32 len = width >> 3;
+
+   if (!va)
+      return -EINVAL;
+
+   if (UNLIKELY((off & (len - 1u)) != 0))
+      return -EINVAL;
+
+   if (UNLIKELY(off + len > 4096))
+      return -EINVAL;
+
+   va += off;
+
+   switch (width) {
+      case 8:
+         *val = *(volatile u8 *)va;
+         break;
+      case 16:
+         *val = *(volatile u16 *)va;
+         break;
+      case 32:
+         *val = *(volatile u32 *)va;
+         break;
+      default:
+         return -EINVAL;
+   }
+
    return 0;
 }
 
 static int
 pci_mmio_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
 {
+   ulong va = pcie_get_conf_vaddr(loc);
+   const u32 len = width >> 3;
+
+   if (!va)
+      return -EINVAL;
+
+   if (UNLIKELY((off & (len - 1u)) != 0))
+      return -EINVAL;
+
+   if (UNLIKELY(off + len > 4096))
+      return -EINVAL;
+
+   va += off;
+
+   switch (width) {
+      case 8:
+         *(volatile u8 *)va = (u8)val;
+         break;
+      case 16:
+         *(volatile u16 *)va = (u16)val;
+         break;
+      case 32:
+         *(volatile u32 *)va = (u32)val;
+         break;
+      default:
+         return -EINVAL;
+   }
+
    return 0;
 }
 
@@ -430,7 +515,7 @@ pci_discover_device(struct pci_device_loc loc)
 static bool
 pci_before_discover_bus(struct pci_segment *seg, u8 bus)
 {
-   const size_t mmap_sz = NBITS == 32 ? 4 * MB : 2 * MB; /* 1 big page */
+   const size_t mmap_sz = 1 * MB;
    const size_t mmap_pages_cnt = mmap_sz >> PAGE_SHIFT;
    u64 paddr;
    size_t cnt;
@@ -463,7 +548,7 @@ pci_before_discover_bus(struct pci_segment *seg, u8 bus)
                    va,
                    (ulong)paddr,
                    mmap_pages_cnt,
-                   PAGING_FL_BIG_PAGES_ALLOWED);
+                   0);
 
    if (cnt != mmap_pages_cnt) {
       printk("PCI: ERROR: mmap failed for %04x:%02x\n", seg->segment, bus);
@@ -479,7 +564,7 @@ pci_before_discover_bus(struct pci_segment *seg, u8 bus)
 static void
 pci_after_discover_bus(struct pci_segment *seg, u8 bus)
 {
-   const size_t mmap_sz = NBITS == 32 ? 4 * MB : 2 * MB; /* 1 big page */
+   const size_t mmap_sz = 1 * MB;
    const size_t mmap_pages_cnt = mmap_sz >> PAGE_SHIFT;
 
    if (!seg)
@@ -501,8 +586,16 @@ pci_discover_bus(struct pci_segment *seg, u8 bus)
 
    pci_mark_bus_as_visited(bus);
 
-   if (!pci_before_discover_bus(seg, bus))
-      return;
+   if (bus > 0) {
+
+      /*
+       * Call pci_before_discover_bus() only for bus > 0 because for bus 0
+       * we already called it in pci_discover_segment().
+       */
+
+      if (!pci_before_discover_bus(seg, bus))
+         return;
+   }
 
    for (u8 dev = 0; dev < 32; dev++) {
       loc.dev = dev;
@@ -519,8 +612,12 @@ pci_discover_segment(struct pci_segment *seg)
    struct pci_device_basic_info nfo;
    int visit_count;
 
+   if (!pci_before_discover_bus(seg, 0))
+      return;
+
    if (pci_device_get_info(pci_make_loc(seg_num, 0, 0, 0), &nfo)) {
       printk("PCI: ERROR: cannot get info for host bridge %04x\n", seg_num);
+      pci_after_discover_bus(seg, 0);
       return;
    }
 
