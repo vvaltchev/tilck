@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/kmalloc.h>
 #include <tilck/mods/acpi.h>
 
 #include <3rd_party/acpi/acpi.h>
@@ -27,6 +28,27 @@
 #define PCI_CONFIG_ADDRESS              0xcf8
 #define PCI_CONFIG_DATA                 0xcfc
 
+#define BUS_NOT_VISITED                     0
+#define BUS_TO_VISIT                        1
+#define BUS_VISITED                         2
+
+static u8 pci_buses[256];
+static u32 pcie_segments_cnt;
+static struct acpi_table_mcfg_item *pcie_segments;
+
+static void
+pci_mark_bus_to_visit(u8 bus)
+{
+   if (pci_buses[bus] == BUS_NOT_VISITED) {
+      pci_buses[bus] = BUS_TO_VISIT;
+   }
+}
+
+static void
+pci_mark_bus_as_visited(u8 bus)
+{
+   pci_buses[bus] = BUS_VISITED;
+}
 
 const char *
 pci_find_vendor_name(u16 id)
@@ -192,7 +214,6 @@ init_pci_ecam(void)
    ACPI_TABLE_HEADER *hdr;
    const ACPI_EXCEPTION_INFO *ex;
    struct acpi_mcfg_allocation *it;
-   u32 elem_count;
 
    if (get_acpi_init_status() < ais_tables_initialized) {
       printk("PCI: no ACPI. Don't check for MCFG\n");
@@ -221,13 +242,25 @@ init_pci_ecam(void)
       return;
    }
 
-   elem_count = (hdr->Length - sizeof(struct acpi_table_mcfg)) / sizeof(*it);
+   pcie_segments_cnt =
+      (hdr->Length - sizeof(struct acpi_table_mcfg)) / sizeof(*it);
    it = (void *)((char *)hdr + sizeof(struct acpi_table_mcfg));
 
    printk("PCI: ACPI table MCFG found.\n");
-   printk("PCI: MCFG has %u elements\n", elem_count);
+   printk("PCI: MCFG has %u elements\n", pcie_segments_cnt);
 
-   for (u32 i = 0; i < elem_count; i++, it++) {
+   pcie_segments = kmalloc(pcie_segments_cnt * sizeof(*it));
+
+   if (UNLIKELY(!pcie_segments)) {
+      printk("PCI: ERROR: no memory for PCIe segments list\n");
+      pcie_segments_cnt = 0;
+      return;
+   }
+
+   /* Copy the MCFG table in a safe and always accessible place */
+   memcpy(pcie_segments, it, pcie_segments_cnt * sizeof(*it));
+
+   for (u32 i = 0; i < pcie_segments_cnt; i++, it++) {
 
       printk("PCI: MCFG elem[%u]\n", i);
       printk("    Base paddr: %#llx\n", it->Address);
@@ -239,25 +272,6 @@ init_pci_ecam(void)
    AcpiPutTable(hdr);
 }
 
-#define BUS_NOT_VISITED          0
-#define BUS_TO_VISIT             1
-#define BUS_VISITED              2
-
-static u8 pci_buses[256];
-
-static void
-pci_mark_bus_to_visit(u8 bus)
-{
-   if (pci_buses[bus] == BUS_NOT_VISITED) {
-      pci_buses[bus] = BUS_TO_VISIT;
-   }
-}
-
-static void
-pci_mark_bus_as_visited(u8 bus)
-{
-   pci_buses[bus] = BUS_VISITED;
-}
 
 static void
 pci_dump_device_info(struct pci_device_loc loc,
