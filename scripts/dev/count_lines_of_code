@@ -42,7 +42,12 @@ excludedDirs = [
    "vim_text_files",
    "/acpica/",
    ".git",
-   ".vscode"
+   ".vscode",
+]
+
+excludedFiles = [
+   "pci_classes.c.h",
+   "pci_vendors.c.h",
 ]
 
 PREFIX = " " * 3
@@ -124,7 +129,7 @@ def CountLinesInFile(f, ft):
 
    return res
 
-def IsExcluded(path):
+def IsDirExcluded(path):
 
    if os.path.basename(path) == 'build_apps':
       return False
@@ -134,6 +139,9 @@ def IsExcluded(path):
          return True
 
    return False
+
+def IsFileExcluded(fname):
+   return fname in excludedFiles
 
 def AccumulateCounters(destArr, arr):
 
@@ -204,7 +212,7 @@ def main():
 
    for destDir in destDirs:
 
-      if not os.path.isdir(destDir) or IsExcluded(destDir):
+      if not os.path.isdir(destDir) or IsDirExcluded(destDir):
          continue
 
       linesByType = {t: 0 for t in fileTypes}
@@ -214,22 +222,26 @@ def main():
 
       for folder, subfolders, files in os.walk(destDir):
 
-         if not IsExcluded(folder):
+         if IsDirExcluded(folder):
+            continue
 
-            for f in files:
+         for f in files:
 
-               ft = GetFileType(f, folder)
+            if IsFileExcluded(f):
+               continue
 
-               if ft is not None:
+            ft = GetFileType(f, folder)
 
-                  c = CountLinesInFile(os.path.join(folder, f), ft)
+            if ft is not None:
 
-                  linesByType[ft] += c[0]
-                  emptyLinesByType[ft] += c[1]
-                  total += c[0]
-                  emptyTotal += c[1]
-                  gTotal += c[0]
-                  gEmptyTotal += c[1]
+               c = CountLinesInFile(os.path.join(folder, f), ft)
+
+               linesByType[ft] += c[0]
+               emptyLinesByType[ft] += c[1]
+               total += c[0]
+               emptyTotal += c[1]
+               gTotal += c[0]
+               gEmptyTotal += c[1]
 
 
       print(("Number of lines in '{0}':".format(destDir)))
