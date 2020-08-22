@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/list.h>
 
 struct pci_vendor {
    u16 vendor_id;
@@ -31,17 +32,6 @@ struct pci_device_loc {
       u32 raw;
    };
 };
-
-static ALWAYS_INLINE struct pci_device_loc
-pci_make_loc(u16 seg, u8 bus, u8 dev, u8 func)
-{
-   struct pci_device_loc ret;
-   ret.seg  = seg;
-   ret.bus  = bus;
-   ret.dev  = dev  & 0b11111;
-   ret.func = func & 0b00111;
-   return ret;
-}
 
 struct pci_device_basic_info {
 
@@ -77,6 +67,32 @@ struct pci_device_basic_info {
       u8 __header_type;
    };
 };
+
+/*
+ * PCI leaf node: a PCI device function.
+ *
+ * It's called just `device` and not `device_function` because it represents
+ * a logical device, not a physical one. Also, `pci_device` is just shorter
+ * and feels more natural than `pci_device_function` or `pci_device_node`.
+ */
+struct pci_device {
+
+   struct list_node node;
+   struct pci_device_loc loc;
+   struct pci_device_basic_info nfo;
+   void *ext_config;
+};
+
+static ALWAYS_INLINE struct pci_device_loc
+pci_make_loc(u16 seg, u8 bus, u8 dev, u8 func)
+{
+   struct pci_device_loc ret;
+   ret.seg  = seg;
+   ret.bus  = bus;
+   ret.dev  = dev  & 0b11111;
+   ret.func = func & 0b00111;
+   return ret;
+}
 
 const char *
 pci_find_vendor_name(u16 id);

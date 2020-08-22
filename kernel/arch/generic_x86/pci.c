@@ -53,6 +53,7 @@ struct pci_segment {
 
 static u32 pcie_segments_cnt;
 static struct pci_segment *pcie_segments;
+static struct list pci_device_list;
 
 static u8 *pci_buses;                  /* valid ONLY during init_pci() */
 static ulong mmio_bus_va;              /* valid ONLY during init_pci() */
@@ -489,6 +490,61 @@ pci_dump_device_info(struct pci_device_loc loc,
    }
 }
 
+static int
+pci_discover_leaf_node(struct pci_device_loc loc,
+                       struct pci_device_basic_info *nfo)
+{
+   struct pci_device *dev;
+   ulong paddr;
+   int rc;
+
+   pci_dump_device_info(loc, nfo);
+
+   if (!(dev = kzalloc_obj(struct pci_device)))
+      return -ENOMEM;
+
+   list_node_init(&dev->node);
+   dev->loc = loc;
+   dev->nfo = *nfo;
+
+   list_add_tail(&pci_device_list, &dev->node);
+
+   if (!pcie_segments_cnt)
+      return 0; /* No PCI express, we're done */
+
+   /* PCI express: we have to set the `ext_config` field */
+
+   rc = pcie_calc_config_paddr(loc, &paddr);
+
+   if (rc < 0) {
+      printk("PCI: ERROR: pcie_calc_config_paddr() failed with %d\n", rc);
+      goto err_end;
+   }
+
+   dev->ext_config = hi_vmem_reserve(4096);
+
+   if (!dev->ext_config) {
+      rc = -ENOMEM;
+      goto err_end;
+   }
+
+   rc = map_kernel_page(dev->ext_config, paddr, PAGING_FL_RW);
+
+   if (rc < 0)
+      goto err_end;
+
+   return 0;
+
+err_end:
+
+   if (dev->ext_config)
+      hi_vmem_release(dev->ext_config, 4096);
+
+   list_remove(&dev->node);
+   kfree2(dev, sizeof(struct pci_device));
+   return rc;
+}
+
 static bool
 pci_discover_device_func(struct pci_device_loc loc,
                          struct pci_device_basic_info *dev_nfo)
@@ -497,6 +553,7 @@ pci_discover_device_func(struct pci_device_loc loc,
    struct pci_device_basic_info *nfo = &__nfo;
    u32 secondary_bus;
    u32 subordinate_bus;
+   int rc;
 
    if (loc.func != 0) {
 
@@ -509,7 +566,12 @@ pci_discover_device_func(struct pci_device_loc loc,
       nfo = dev_nfo;
    }
 
-   pci_dump_device_info(loc, nfo);
+   rc = pci_discover_leaf_node(loc, nfo);
+
+   if (rc) {
+      printk("PCI: ERROR: pci_discover_leaf_node() failed with: %d\n", rc);
+      return false; /* OOM (out of memory) */
+   }
 
    if (nfo->class_id == PCI_CLASS_BRIDGE &&
        nfo->subclass_id == PCI_SUBCLASS_PCI_BRIDGE)
@@ -634,7 +696,7 @@ pci_after_discover_bus(struct pci_segment *seg, u8 bus)
    ASSERT(mmio_bus.seg == seg->segment);
    ASSERT(mmio_bus.bus == bus);
 
-   unmap_pages(get_kernel_pdir(), (void *)mmio_bus_va, mmap_pages_cnt, false);
+   unmap_kernel_pages((void *)mmio_bus_va, mmap_pages_cnt, false);
    hi_vmem_release((void *)mmio_bus_va, mmap_sz);
    mmio_bus_va = 0;
 }
@@ -717,6 +779,8 @@ pci_discover_segment(struct pci_segment *seg)
 void
 init_pci(void)
 {
+   list_init(&pci_device_list);
+
    /* Read the ACPI table MCFG (if any) */
    init_pci_ecam();
 
