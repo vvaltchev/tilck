@@ -19,21 +19,28 @@ struct pci_device_class {
 
 struct pci_device_loc {
 
-   u16 seg;       /* PCI Segment Group Number */
-   u8 bus;        /* PCI Bus */
-   u8 dev  : 5;   /* PCI Device Number */
-   u8 func : 3;   /* PCI Function Number */
+   union {
+
+      struct {
+         u16 seg;       /* PCI Segment Group Number */
+         u8 bus;        /* PCI Bus */
+         u8 dev  : 5;   /* PCI Device Number */
+         u8 func : 3;   /* PCI Function Number */
+      };
+
+      u32 raw;
+   };
 };
 
 static ALWAYS_INLINE struct pci_device_loc
 pci_make_loc(u16 seg, u8 bus, u8 dev, u8 func)
 {
-   return (struct pci_device_loc) {
-      .seg = seg,
-      .bus = bus,
-      .dev = dev,
-      .func = func
-   };
+   struct pci_device_loc ret;
+   ret.seg  = seg;
+   ret.bus  = bus;
+   ret.dev  = dev  & 0b11111;
+   ret.func = func & 0b00111;
+   return ret;
 }
 
 struct pci_device_basic_info {
