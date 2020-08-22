@@ -54,6 +54,7 @@ struct pci_segment {
 static u32 pcie_segments_cnt;
 static struct pci_segment *pcie_segments;
 static struct list pci_device_list;
+static ulong (*pcie_get_conf_vaddr)(struct pci_device_loc);
 
 static u8 *pci_buses;                  /* valid ONLY during init_pci() */
 static ulong mmio_bus_va;              /* valid ONLY during init_pci() */
@@ -250,23 +251,39 @@ pcie_calc_config_paddr(struct pci_device_loc loc, ulong *paddr)
    return 0;
 }
 
-static ulong
-pcie_get_conf_vaddr(struct pci_device_loc loc)
+struct pci_device *
+pci_get_object(struct pci_device_loc loc)
 {
-   struct pci_segment *seg;
+   struct pci_device *pos;
 
-   if (mmio_bus_va && loc.seg == mmio_bus.seg && loc.bus == mmio_bus.bus) {
-
-      seg = pcie_get_segment(loc.seg);
-      ASSERT(seg != NULL);
-
-      if (!IN_RANGE_INC(loc.bus, seg->start_bus, seg->end_bus))
-         return 0; /* bus number out of range */
-
-      return mmio_bus_va + ((u32)loc.dev << 15) + ((u32)loc.func << 12);
+   list_for_each_ro(pos, &pci_device_list, node) {
+      if (pos->loc.raw == loc.raw)
+         return pos;
    }
 
-   NOT_IMPLEMENTED();
+   return NULL;
+}
+
+static ulong
+discovery_pcie_get_conf_vaddr(struct pci_device_loc loc)
+{
+   struct pci_segment *seg = pcie_get_segment(loc.seg);
+
+   ASSERT(seg != NULL);
+   ASSERT(mmio_bus_va != 0);
+   ASSERT(loc.seg == mmio_bus.seg && loc.bus == mmio_bus.bus);
+
+   if (!IN_RANGE_INC(loc.bus, seg->start_bus, seg->end_bus))
+      return 0; /* bus number out of range */
+
+   return mmio_bus_va + ((u32)loc.dev << 15) + ((u32)loc.func << 12);
+}
+
+static ulong
+regular_pcie_get_conf_vaddr(struct pci_device_loc loc)
+{
+   struct pci_device *dev = pci_get_object(loc);
+   return dev ? (ulong)dev->ext_config : 0;
 }
 
 static int
@@ -603,7 +620,7 @@ pci_discover_device(struct pci_device_loc loc)
       return false; /* no such device */
 
    if (!pci_discover_device_func(loc, &nfo)) {
-      printk("PCI: ERROR discover func 0 failed on existing device!");
+      printk("PCI: ERROR discover func 0 failed on existing device!\n");
       return false;
    }
 
@@ -795,10 +812,13 @@ init_pci(void)
       /* PCI Express is supported */
       __pci_config_read_func = &pci_mmio_config_read;
       __pci_config_write_func = &pci_mmio_config_write;
+      pcie_get_conf_vaddr = &discovery_pcie_get_conf_vaddr;
 
       /* Iterate over all the PCI Express segment groups */
       for (u32 i = 0; i < pcie_segments_cnt; i++)
          pci_discover_segment(&pcie_segments[i]);
+
+      pcie_get_conf_vaddr = &regular_pcie_get_conf_vaddr;
 
    } else {
 
