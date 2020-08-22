@@ -130,24 +130,32 @@ pci_find_device_class_name(struct pci_device_class *dev_class)
    }
 }
 
-static int
-pci_ioport_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+static inline u32
+pci_get_config_io_addr(struct pci_device_loc loc, u32 off)
 {
    const u32 bus = loc.bus;
    const u32 dev = loc.dev;
    const u32 func = loc.func;
-   const u32 aoff = off & ~3u;    /* off aligned at 4-byte boundary */
-   const u32 addr = 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | aoff;
+   return 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | (off & ~3u);
+}
+
+static int
+pci_ioport_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
+{
    const u16 data_port = PCI_CONFIG_DATA + (off & 3);
+   const u32 len = width >> 3;
 
    if (UNLIKELY(loc.seg != 0))
       return -EINVAL; /* Conventional PCI has no segment support */
 
-   if (UNLIKELY(off >= 256 || off & ((width >> 3) - 1)))
+   if (UNLIKELY((off & (len - 1u)) != 0))
+      return -EINVAL;
+
+   if (UNLIKELY(off + len > 256))
       return -EINVAL;
 
    /* Write the address to the PCI config. space addr I/O port */
-   outl(PCI_CONFIG_ADDRESS, addr);
+   outl(PCI_CONFIG_ADDRESS, pci_get_config_io_addr(loc, off));
 
    /* Read the data from the PCI config. space data I/O port */
    switch (width) {
@@ -170,21 +178,20 @@ pci_ioport_config_read(struct pci_device_loc loc, u32 off, u32 width, u32 *val)
 static int
 pci_ioport_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
 {
-   const u32 bus = loc.bus;
-   const u32 dev = loc.dev;
-   const u32 func = loc.func;
-   const u32 aoff = off & ~3u;    /* off aligned at 4-byte boundary */
-   const u32 addr = 0x80000000 | (bus << 16) | (dev << 11) | (func << 8) | aoff;
    const u16 data_port = PCI_CONFIG_DATA + (off & 3);
+   const u32 len = width >> 3;
 
    if (UNLIKELY(loc.seg != 0))
       return -EINVAL; /* Conventional PCI has no segment support */
 
-   if (UNLIKELY(off >= 256 || off & ((width >> 3) - 1)))
+   if (UNLIKELY((off & (len - 1u)) != 0))
+      return -EINVAL;
+
+   if (UNLIKELY(off + len > 256))
       return -EINVAL;
 
    /* Write the address to the PCI config. space addr I/O port */
-   outl(PCI_CONFIG_ADDRESS, addr);
+   outl(PCI_CONFIG_ADDRESS, pci_get_config_io_addr(loc, off));
 
    /* Write the data to the PCI config. space data I/O port */
    switch (width) {
