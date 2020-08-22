@@ -29,7 +29,7 @@ acpi_mod_init_tables(void)
 {
    ACPI_STATUS rc;
 
-   //AcpiDbgLevel = 0xffffffff; /* Max debug level */
+   ASSERT(acpi_init_status == ais_not_started);
    AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
    AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
    AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
@@ -51,4 +51,24 @@ acpi_mod_init_tables(void)
    }
 
    acpi_init_status = ais_tables_initialized;
+}
+
+void
+acpi_mod_load_tables(void)
+{
+   ACPI_STATUS rc;
+
+   if (acpi_init_status == ais_failed)
+      return;
+
+   ASSERT(acpi_init_status == ais_tables_initialized);
+   rc = AcpiLoadTables();
+
+   if (rc != AE_OK) {
+      print_acpi_failure("AcpiLoadTables", rc);
+      acpi_init_status = ais_failed;
+      return;
+   }
+
+   acpi_init_status = ais_tables_loaded;
 }

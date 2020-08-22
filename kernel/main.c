@@ -387,6 +387,7 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
 
    acpi_mod_init_tables();
    init_pci();
+   acpi_mod_load_tables();
    init_timer();
    init_system_time();
    init_kernelfs();
