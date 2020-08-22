@@ -221,6 +221,32 @@ pcie_get_segment(u16 seg)
    return NULL;
 }
 
+static int
+pcie_calc_config_paddr(struct pci_device_loc loc, ulong *paddr)
+{
+   struct pci_segment *seg;
+   u64 paddr64;
+
+   seg = pcie_get_segment(loc.seg);
+
+   if (!seg)
+      return -EINVAL;
+
+   if (!IN_RANGE_INC(loc.bus, seg->start_bus, seg->end_bus))
+      return -ERANGE;
+
+   paddr64 = seg->base_paddr
+              + ((u64)(loc.bus - seg->start_bus) << 20)
+              + ((u32)loc.dev << 15)
+              + ((u32)loc.func << 12);
+
+   if (NBITS == 32 && paddr64 > (0xffffffff - 4096))
+      return -E2BIG;
+
+   *paddr = (ulong)paddr64;
+   return 0;
+}
+
 static ulong
 pcie_get_conf_vaddr(struct pci_device_loc loc)
 {
@@ -533,46 +559,63 @@ pci_before_discover_bus(struct pci_segment *seg, u8 bus)
 {
    const size_t mmap_sz = 1 * MB;
    const size_t mmap_pages_cnt = mmap_sz >> PAGE_SHIFT;
-   u64 paddr;
+   ulong paddr;
+   u16 seg_num;
    size_t cnt;
    void *va;
+   int rc;
 
    if (!seg)
       return true; /* nothing to do */
 
-   if (!IN_RANGE_INC(bus, seg->start_bus, seg->end_bus)) {
-      printk("PCI: bus #%u out-of-range in segment %04x\n", bus, seg->segment);
-      return false;
-   }
+   seg_num = seg->segment;
+   mmio_bus = pci_make_loc(seg_num, bus, 0, 0);
+   rc = pcie_calc_config_paddr(mmio_bus, &paddr);
 
-   paddr = seg->base_paddr + ((u64)(bus - seg->start_bus) << 20);
+   switch (rc) {
 
-   if (NBITS == 32 && paddr > (0xffffffff - MB)) {
-      /* We do not (and never will) support PAE */
-      printk("PCI: paddr (%#llx) too big for a 32-bit machine\n", paddr);
-      return false;
+      case 0:
+         /* Success: nothing to do */
+         break;
+
+      case -EINVAL:
+         /* This should NEVER happen */
+         panic("PCI: segment %04x not registered", seg_num);
+         break;
+
+      case -ERANGE:
+         /* This should also never happen, unless there's a HW problem */
+         printk("PCI: bus #%u out-of-range in segment %04x\n", bus, seg_num);
+         return false;
+
+      case -E2BIG:
+         printk("PCI: paddr for seg %04x does not fit in 32-bit\n", seg_num);
+         return false;
+
+      default:
+         printk("PCI: pcie_calc_config_paddr() failed with: %d\n", rc);
+         return false;
    }
 
    va = hi_vmem_reserve(mmap_sz);
 
    if (!va) {
-      printk("PCI: ERROR: hi vmem OOM for %04x:%02x\n", seg->segment, bus);
+      printk("PCI: ERROR: hi vmem OOM for %04x:%02x\n", seg_num, bus);
       return false;
    }
 
    cnt = map_pages(get_kernel_pdir(),
                    va,
-                   (ulong)paddr,
+                   paddr,
                    mmap_pages_cnt,
                    0);
 
    if (cnt != mmap_pages_cnt) {
-      printk("PCI: ERROR: mmap failed for %04x:%02x\n", seg->segment, bus);
+      printk("PCI: ERROR: mmap failed for %04x:%02x\n", seg_num, bus);
       hi_vmem_release(va, mmap_sz);
       return false;
    }
 
-   mmio_bus = pci_make_loc(seg->segment, bus, 0, 0);
    mmio_bus_va = (ulong) va;
    return true;
 }
