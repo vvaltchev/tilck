@@ -29,7 +29,7 @@
  *
  */
 
-#include <tilck/kernel/arch/generic_x86/pci.h>
+#include <tilck/kernel/pci.h>
 
 const struct pci_device_class pci_device_classes_list[] =
 {

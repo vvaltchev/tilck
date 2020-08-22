@@ -7,6 +7,8 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/paging.h>
+#include <tilck/kernel/pci.h>
+
 #include <tilck/mods/acpi.h>
 
 #include <3rd_party/acpi/acpi.h>

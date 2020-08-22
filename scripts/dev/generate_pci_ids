@@ -47,7 +47,7 @@ def dump_initial_comments():
 
    print(" */")
    print("")
-   print(r"#include <tilck/kernel/arch/generic_x86/pci.h>")
+   print(r"#include <tilck/kernel/pci.h>")
    print("")
 
 def generate_vendors():
