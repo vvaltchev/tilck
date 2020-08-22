@@ -6,6 +6,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/pci.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
@@ -91,9 +93,41 @@ AcpiOsReadPciConfiguration(
     UINT64                  *Value,
     UINT32                  Width)
 {
+   u32 val;
+   int rc;
+
    ACPI_FUNCTION_TRACE(__FUNC__);
-   printk("ACPI: AcpiOsReadPciConfiguration() -> not implemented\n");
-   return_ACPI_STATUS(AE_SUPPORT);
+
+   if (Width == 64)
+      return_ACPI_STATUS(AE_SUPPORT);
+
+   rc = pci_config_read(
+      pci_make_loc(
+         PciId->Segment,
+         PciId->Bus,
+         PciId->Device,
+         PciId->Function
+      ),
+      Reg,
+      Width,
+      &val
+   );
+
+   switch (rc) {
+
+      case 0:
+         break; /* everything is fine */
+
+      case -ERANGE: /* fall-through */
+      case -EINVAL:
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
+
+      default:
+         return_ACPI_STATUS(AE_ERROR);
+   }
+
+   *Value = val;
+   return AE_OK;
 }
 
 ACPI_STATUS
@@ -103,7 +137,36 @@ AcpiOsWritePciConfiguration(
     UINT64                  Value,
     UINT32                  Width)
 {
+   int rc;
    ACPI_FUNCTION_TRACE(__FUNC__);
-   printk("ACPI: AcpiOsWritePciConfiguration() -> not implemented\n");
-   return_ACPI_STATUS(AE_SUPPORT);
+
+   if (Width == 64)
+      return_ACPI_STATUS(AE_SUPPORT);
+
+   rc = pci_config_write(
+      pci_make_loc(
+         PciId->Segment,
+         PciId->Bus,
+         PciId->Device,
+         PciId->Function
+      ),
+      Reg,
+      Width,
+      (u32)Value
+   );
+
+   switch (rc) {
+
+      case 0:
+         break; /* everything is fine */
+
+      case -ERANGE: /* fall-through */
+      case -EINVAL:
+         return_ACPI_STATUS(AE_BAD_PARAMETER);
+
+      default:
+         return_ACPI_STATUS(AE_ERROR);
+   }
+
+   return AE_OK;
 }
