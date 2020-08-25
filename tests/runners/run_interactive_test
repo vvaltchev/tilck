@@ -590,8 +590,9 @@ def dump_coverage_data(pts_file):
 
    msg_print("Performing coverage dump ...")
    output = b''
+   read_timeout = 3 if IN_ANY_CI else 0.5
 
-   with serial.Serial(pts_file, timeout=0.5) as ser:
+   with serial.Serial(pts_file, timeout = read_timeout) as ser:
 
       # Enter the shell
       ser.write("\n".encode("latin-1"))
@@ -600,7 +601,7 @@ def dump_coverage_data(pts_file):
       ser.write("devshell -dcov\n".encode("latin-1"))
 
       # Just wait a little in order to allow data to accumulate
-      time.sleep(0.5)
+      time.sleep(read_timeout)
 
       # Read all the output
       while True:
@@ -611,6 +612,9 @@ def dump_coverage_data(pts_file):
             break
 
          output += buf
+
+   if not output:
+      raise RuntimeError("Nothing read from {}".format(pts_file))
 
    if VERBOSE:
       msg_print("[debug] Raw coverage data:")
