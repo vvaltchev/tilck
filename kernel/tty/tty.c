@@ -210,7 +210,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
    }
 
-   if (!(t->ctrl_handlers = kzmalloc(256 * sizeof(tty_ctrl_sig_func)))) {
+   if (!(t->ctrl_handlers = kzalloc_array_obj(tty_ctrl_sig_func, 256))) {
       tty_full_destroy(t);
       return NULL;
    }

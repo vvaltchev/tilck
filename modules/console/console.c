@@ -22,7 +22,7 @@ void *alloc_console_data(void)
    if (!(cd = kzalloc_obj(struct console_data)))
       return NULL;
 
-   if (!(cd->def_state_funcs = kzmalloc(256 * sizeof(term_filter)))) {
+   if (!(cd->def_state_funcs = kzalloc_array_obj(term_filter, 256))) {
       kfree_obj(cd, struct console_data);
       return NULL;
    }

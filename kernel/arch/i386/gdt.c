@@ -152,7 +152,7 @@ static NODISCARD int gdt_expand(void)
          return -ENOMEM;
       }
 
-      void *new_gdt = kzmalloc(sizeof(struct gdt_entry) * new_size);
+      void *new_gdt = kzalloc_array_obj(struct gdt_entry, new_size);
       void *new_gdt_refcount;
 
       if (!new_gdt) {
@@ -160,7 +160,7 @@ static NODISCARD int gdt_expand(void)
          return -ENOMEM;
       }
 
-      new_gdt_refcount = kzmalloc(sizeof(s32) * new_size);
+      new_gdt_refcount = kzalloc_array_obj(s32, new_size);
 
       if (!new_gdt_refcount) {
          kfree2(new_gdt, new_size);

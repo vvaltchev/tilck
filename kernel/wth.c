@@ -223,7 +223,7 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
    idx = worker_threads_cnt;
    t->name = name;
    t->priority = priority;
-   t->jobs = kzmalloc(sizeof(struct wjob) * queue_size);
+   t->jobs = kzalloc_array_obj(struct wjob, queue_size);
 
    if (!t->jobs) {
       kfree_obj(t, struct worker_thread);

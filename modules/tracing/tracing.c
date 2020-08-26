@@ -664,13 +664,13 @@ init_tracing(void)
    if (!(syms_buf = kalloc_array_obj(struct symbol_node, MAX_SYSCALLS)))
       tracing_init_oom_panic("syms_buf");
 
-   if (!(syscalls_info = kzmalloc(sizeof(void *) * MAX_SYSCALLS)))
+   if (!(syscalls_info = kzalloc_array_obj(void *, MAX_SYSCALLS)))
       tracing_init_oom_panic("syscalls_info");
 
    if (!(params_slots = kmalloc(sizeof(*params_slots))))
       tracing_init_oom_panic("params_slots");
 
-   if (!(syscalls_fmts = kzmalloc(sizeof(s8) * MAX_SYSCALLS)))
+   if (!(syscalls_fmts = kzalloc_array_obj(s8, MAX_SYSCALLS)))
       tracing_init_oom_panic("syscalls_fmts");
 
    if (!(traced_syscalls = kmalloc(MAX_SYSCALLS)))
