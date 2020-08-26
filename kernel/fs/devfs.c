@@ -129,7 +129,7 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
    rc = dinfo->create_dev_file(minor, &f->fops, &f->type, &f->spec_flags);
 
    if (rc < 0) {
-      kfree2(f, sizeof(struct devfs_file));
+      kfree_obj(f, struct devfs_file);
       return rc;
    }
 
@@ -266,7 +266,7 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
-      kfree2(h, sizeof(struct devfs_handle));
+      kfree_obj(h, struct devfs_handle);
       return -ENOMEM;
    }
 
@@ -309,7 +309,7 @@ devfs_close(fs_handle h)
    struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
    kfree2(devh->write_buf, DEVFS_WRITE_BS);
-   kfree2(devh, sizeof(struct devfs_handle));
+   kfree_obj(devh, struct devfs_handle);
 }
 
 static int
@@ -329,7 +329,7 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
       h2->read_buf = kmalloc(DEVFS_READ_BS);
 
       if (!h2->read_buf) {
-         kfree2(h2, sizeof(struct devfs_handle));
+         kfree_obj(h2, struct devfs_handle);
          return -ENOMEM;
       }
 
@@ -342,7 +342,7 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
 
       if (!h2->write_buf) {
          kfree2(h->read_buf, DEVFS_READ_BS);
-         kfree2(h2, sizeof(struct devfs_handle));
+         kfree_obj(h2, struct devfs_handle);
          return -ENOMEM;
       }
    }

@@ -112,7 +112,7 @@ static int create_process_mmap_heap(struct process *pi)
       return -ENOMEM;
 
    if (!(mmap_heap = kzmalloc(kmalloc_get_heap_struct_size()))) {
-      kfree2(pi->mi, sizeof(struct mappings_info));
+      kfree_obj(pi->mi, struct mappings_info);
       return -ENOMEM;
    }
 

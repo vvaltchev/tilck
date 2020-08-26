@@ -226,7 +226,7 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
    t->jobs = kzmalloc(sizeof(struct wjob) * queue_size);
 
    if (!t->jobs) {
-      kfree2(t, sizeof(struct worker_thread));
+      kfree_obj(t, struct worker_thread);
       return NULL;
    }
 
@@ -239,7 +239,7 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
 
    if ((rc = wth_create_thread_for(t))) {
       kfree2(t->jobs, sizeof(struct wjob) * queue_size);
-      kfree2(t, sizeof(struct worker_thread));
+      kfree_obj(t, struct worker_thread);
       return NULL;
    }
 

@@ -105,7 +105,7 @@ static void ramfs_close(fs_handle h)
       ramfs_destroy_inode(rh->fs->device_data, i);
    }
 
-   kfree2(rh, sizeof(struct ramfs_handle));
+   kfree_obj(rh, struct ramfs_handle);
 }
 
 /*
@@ -124,7 +124,7 @@ static void ramfs_err_case_destroy(struct fs *fs)
       }
 
       rwlock_wp_destroy(&d->rwlock);
-      kfree2(d, sizeof(struct ramfs_data));
+      kfree_obj(d, struct ramfs_data);
    }
 
    destory_fs_obj(fs);

@@ -38,7 +38,7 @@ kernelfs_close(fs_handle h)
    if (release_obj(kh->kobj) == 0)
       kh->kobj->destory_obj(kh->kobj);
 
-   kfree2(h, sizeof(struct kfs_handle));
+   kfree_obj(h, struct kfs_handle);
 }
 
 int
@@ -109,7 +109,7 @@ kfs_destroy_handle(struct kfs_handle *h)
    if (h->kobj)
       release_obj(h->kobj);
 
-   kfree2(h, sizeof(struct kfs_handle));
+   kfree_obj(h, struct kfs_handle);
    release_obj(kernelfs);
 }
 

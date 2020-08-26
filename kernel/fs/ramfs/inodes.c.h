@@ -45,7 +45,7 @@ ramfs_create_inode_dir(struct ramfs_data *d,
    i->parent_dir = parent;
 
    if (ramfs_dir_add_entry(i, ".", i) < 0) {
-      kfree2(i, sizeof(struct ramfs_inode));
+      kfree_obj(i, struct ramfs_inode);
       return NULL;
    }
 
@@ -54,7 +54,7 @@ ramfs_create_inode_dir(struct ramfs_data *d,
       struct ramfs_entry *e = i->entries_tree_root;
       ramfs_dir_remove_entry(i, e);
 
-      kfree2(i, sizeof(struct ramfs_inode));
+      kfree_obj(i, struct ramfs_inode);
       return NULL;
    }
 
@@ -115,7 +115,7 @@ static int ramfs_destroy_inode(struct ramfs_data *d, struct ramfs_inode *i)
    }
 
    rwlock_wp_destroy(&i->rwlock);
-   kfree2(i, sizeof(struct ramfs_inode));
+   kfree_obj(i, struct ramfs_inode);
    return 0;
 }
 

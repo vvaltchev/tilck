@@ -10,7 +10,7 @@ static struct ramfs_block *ramfs_new_block(offt page)
 
    /* Allocate block's data */
    if (!(b->vaddr = kzmalloc(PAGE_SIZE))) {
-      kfree2(b, sizeof(struct ramfs_block));
+      kfree_obj(b, struct ramfs_block);
       return NULL;
    }
 
@@ -32,7 +32,7 @@ static void ramfs_destroy_block(struct ramfs_block *b)
    kfree2(b->vaddr, PAGE_SIZE);
 
    /* Free the memory used by the block object itself */
-   kfree2(b, sizeof(struct ramfs_block));
+   kfree_obj(b, struct ramfs_block);
 }
 
 static void

@@ -148,7 +148,7 @@ release_subsys_flock(struct locked_file *lf)
 
    /* Release `lf->fs` and destroy the `lf` object itself */
    release_obj(lf->fs);
-   kfree2(lf, sizeof(struct locked_file));
+   kfree_obj(lf, struct locked_file);
 }
 
 int

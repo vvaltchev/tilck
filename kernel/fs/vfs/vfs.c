@@ -827,7 +827,7 @@ struct fs *create_fs_obj(const char *type)
 void destory_fs_obj(struct fs *fs)
 {
    ASSERT(!fs->pss_lock_root);
-   kfree2(fs, sizeof(struct fs));
+   kfree_obj(fs, struct fs);
 }
 
 int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i)

@@ -33,7 +33,7 @@ task_free_all_kernel_allocs(struct task *ti)
                          vaddr);
 
       /* Free the kernel_alloc object itself */
-      kfree2(alloc, sizeof(struct kernel_alloc));
+      kfree_obj(alloc, struct kernel_alloc);
    }
 }
 

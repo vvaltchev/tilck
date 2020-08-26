@@ -246,7 +246,7 @@ void destroy_pipe(struct pipe *p)
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
    kfree2(p->buf, PIPE_BUF_SIZE);
-   kfree2(p, sizeof(struct pipe));
+   kfree_obj(p, struct pipe);
 }
 
 static void pipe_on_handle_close(fs_handle h)
@@ -290,7 +290,7 @@ struct pipe *create_pipe(void)
       return NULL;
 
    if (!(p->buf = kmalloc(PIPE_BUF_SIZE))) {
-      kfree2(p, sizeof(struct pipe));
+      kfree_obj(p, struct pipe);
       return NULL;
    }
 

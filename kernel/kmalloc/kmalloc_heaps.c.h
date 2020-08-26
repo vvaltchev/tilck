@@ -117,7 +117,7 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
    new_heap->metadata_nodes = kmalloc(h->metadata_size);
 
    if (!new_heap->metadata_nodes) {
-      kfree2(new_heap, sizeof(struct kmalloc_heap));
+      kfree_obj(new_heap, struct kmalloc_heap);
       return NULL;
    }
 

@@ -123,7 +123,7 @@ void process_free_mappings_info(struct process *pi)
       ASSERT(mi->mmap_heap);
       kmalloc_destroy_heap(mi->mmap_heap);
       kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
-      kfree2(mi, sizeof(struct mappings_info));
+      kfree_obj(mi, struct mappings_info);
       pi->mi = NULL;
    }
 }
@@ -298,7 +298,7 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
       if (ti) /* do_common_task_allocs() failed */
          free_common_task_allocs(ti);
 
-      kfree2(ti, sizeof(struct task));
+      kfree_obj(ti, struct task);
       return NULL;
    }
 
@@ -351,7 +351,7 @@ void free_task(struct task *ti)
    if (is_main_thread(ti))
       free_process_int(ti->pi);
    else
-      kfree2(ti, sizeof(struct task));
+      kfree_obj(ti, struct task);
 }
 
 void *task_temp_kernel_alloc(size_t size)
@@ -416,7 +416,7 @@ void task_temp_kernel_free(void *ptr)
                          node,
                          vaddr);
 
-      kfree2(alloc, sizeof(struct kernel_alloc));
+      kfree_obj(alloc, struct kernel_alloc);
    }
    enable_preemption();
 }

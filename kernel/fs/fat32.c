@@ -36,7 +36,7 @@ STATIC void
 fat_close(fs_handle handle)
 {
    struct fatfs_handle *h = (struct fatfs_handle *)handle;
-   kfree2(h, sizeof(struct fatfs_handle));
+   kfree_obj(h, struct fatfs_handle);
 }
 
 STATIC ssize_t
@@ -640,7 +640,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    d->root_dir_entries = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
    if (!(fs = create_fs_obj("fat"))) {
-      kfree2(d, sizeof(struct fat_fs_device_data));
+      kfree_obj(d, struct fat_fs_device_data);
       return NULL;
    }
 
@@ -658,6 +658,6 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
 
 void fat_umount_ramdisk(struct fs *fs)
 {
-   kfree2(fs->device_data, sizeof(struct fat_fs_device_data));
+   kfree_obj(fs->device_data, struct fat_fs_device_data);
    destory_fs_obj(fs);
 }

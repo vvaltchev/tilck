@@ -190,8 +190,8 @@ tty_full_destroy(struct tty *t)
    }
 
    kfree2(t->ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
-   kfree2(t->input_buf, sizeof(TTY_INPUT_BS));
-   kfree2(t, sizeof(struct tty));
+   kfree_obj(t->input_buf, TTY_INPUT_BS);
+   kfree_obj(t, struct tty);
 }
 
 
@@ -234,7 +234,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    }
 
    if (!new_term) {
-      kfree2(t, sizeof(struct tty));
+      kfree_obj(t, struct tty);
       return NULL;
    }
 

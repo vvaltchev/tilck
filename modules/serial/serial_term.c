@@ -110,7 +110,7 @@ free_sterm_struct(term *_t)
 {
    struct sterm *const t = _t;
    ASSERT(t != &first_instance);
-   kfree2(t, sizeof(struct sterm));
+   kfree_obj(t, struct sterm);
 }
 
 static void

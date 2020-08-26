@@ -673,10 +673,10 @@ pdir_t *pdir_clone(pdir_t *pdir)
 
          for (; i > 0; i--) {
             if (pdir->entries[i - 1].present)
-               kfree2(pdir_get_page_table(pdir, i - 1), sizeof(page_table_t));
+               kfree_obj(pdir_get_page_table(pdir, i - 1), page_table_t);
          }
 
-         kfree2(new_pdir, sizeof(pdir_t));
+         kfree_obj(new_pdir, pdir_t);
          return NULL;
       }
 
@@ -829,11 +829,11 @@ void pdir_destroy(pdir_t *pdir)
       }
 
       // We freed all the pages, now free the whole page-table.
-      kfree2(pt, sizeof(*pt));
+      kfree_obj(pt, page_table_t);
    }
 
    // We freed all pages and all the page-tables, now free pdir.
-   kfree2(pdir, sizeof(*pdir));
+   kfree_obj(pdir, pdir_t);
 }
 
 

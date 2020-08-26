@@ -1018,7 +1018,7 @@ free_term_struct(term *_t)
 {
    struct vterm *const t = _t;
    ASSERT(t != &first_instance);
-   kfree2(t, sizeof(struct vterm));
+   kfree_obj(t, struct vterm);
 }
 
 static void

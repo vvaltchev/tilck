@@ -42,7 +42,7 @@ void process_remove_user_mapping(struct user_mapping *um)
 
    list_remove(&um->pi_node);
    list_remove(&um->inode_node);
-   kfree2(um, sizeof(struct user_mapping));
+   kfree_obj(um, struct user_mapping);
 }
 
 struct user_mapping *process_get_user_mapping(void *vaddrp)
@@ -191,10 +191,10 @@ oom_case:
 
       list_for_each(um, um2, &new_mi->mappings, pi_node) {
          list_remove(&um->pi_node);
-         kfree2(um, sizeof(struct user_mapping));
+         kfree_obj(um, struct user_mapping);
       }
 
-      kfree2(new_mi, sizeof(struct mappings_info));
+      kfree_obj(new_mi, struct mappings_info);
    }
 
    return NULL;

@@ -87,7 +87,7 @@ ramfs_dir_remove_entry(struct ramfs_inode *idir, struct ramfs_entry *e)
    ASSERT(ie->nlink > 0);
    ie->nlink--;
    idir->num_entries--;
-   kfree2(e, sizeof(struct ramfs_entry));
+   kfree_obj(e, struct ramfs_entry);
 }
 
 static struct ramfs_entry *
