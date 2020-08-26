@@ -8,6 +8,7 @@
    #define PRINTK_FL_DEFAULT                    0
    #define PRINTK_FL_NO_PREFIX                  1
 
+   ATTR_PRINTF_LIKE(1)
    void printk(const char *fmt, ...);
 
    #if defined(__TILCK_KERNEL__) || defined(UNIT_TEST_ENVIRONMENT)
