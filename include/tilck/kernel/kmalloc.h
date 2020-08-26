@@ -93,6 +93,9 @@ size_t kmalloc_get_max_tot_heap_free(void);
 void *aligned_kmalloc(size_t size, u32 align);
 void aligned_kfree2(void *ptr, size_t size);
 
-#define kalloc_obj(type)       kmalloc(sizeof(type))
-#define kzalloc_obj(type)      kzmalloc(sizeof(type))
-#define kfree_obj(ptr, type)   kfree2((ptr), sizeof(type))
+#define kalloc_obj(type)                 kmalloc(sizeof(type))
+#define kzalloc_obj(type)                kzmalloc(sizeof(type))
+#define kfree_obj(ptr, type)             kfree2((ptr), sizeof(type))
+#define kalloc_array_obj(type, cnt)      kmalloc(sizeof(type) * (cnt))
+#define kzalloc_array_obj(type, cnt)     kzmalloc(sizeof(type) * (cnt))
+#define kfree_array_obj(ptr, type, cnt)  kfree2((ptr), sizeof(type) * (cnt))
