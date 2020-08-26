@@ -84,7 +84,7 @@ wth_enqueue_on(struct worker_thread *t, void (*func)(void *), void *arg)
 }
 
 NODISCARD bool
-wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg)
+wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg)
 {
    struct worker_thread *wth;
 
