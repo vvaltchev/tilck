@@ -71,7 +71,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->jobs_cnt >= 2)
       return IRQ_HANDLED;
 
-   if (!wth_enqueue_job(dev->wth, &ser_bh_handler, dev)) {
+   if (!wth_enqueue_on(dev->wth, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit job queue limit\n");
       return IRQ_HANDLED;
    }

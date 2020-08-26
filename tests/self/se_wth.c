@@ -84,7 +84,7 @@ void selftest_wth_short(void)
 
       do {
 
-         added = wth_enqueue_job(ctx.wth, &test_wth_func, NULL);
+         added = wth_enqueue_on(ctx.wth, &test_wth_func, NULL);
          attempts++;
 
          if (!(attempts % attempts_check)) {
@@ -150,7 +150,7 @@ void selftest_wth_short(void)
       printk("[se_wth] Under lock, before enqueue\n");
 
       do {
-         added = wth_enqueue_job(ctx.wth, &end_test, &ctx);
+         added = wth_enqueue_on(ctx.wth, &end_test, &ctx);
       } while (!added);
 
       printk("[se_wth] Under lock, AFTER enqueue\n");
@@ -177,7 +177,7 @@ void selftest_wth_perf_short(void)
 
    while (true) {
 
-      added = wth_enqueue_job(wth, &test_wth_func, NULL);
+      added = wth_enqueue_on(wth, &test_wth_func, NULL);
 
       if (!added)
          break;

@@ -65,7 +65,7 @@ TEST_F(worker_thread_test, essential)
    bool res = false;
    struct worker_thread *wth = wth_find_worker(WTH_PRIO_HIGHEST);
 
-   ASSERT_TRUE(wth_enqueue_job(wth, &simple_func1, TO_PTR(1234)));
+   ASSERT_TRUE(wth_enqueue_on(wth, &simple_func1, TO_PTR(1234)));
    ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
    ASSERT_TRUE(res);
 }
@@ -78,11 +78,11 @@ TEST_F(worker_thread_test, base)
    bool res;
 
    for (int i = 0; i < max_jobs; i++) {
-      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
-   res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+   res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
@@ -107,7 +107,7 @@ TEST_F(worker_thread_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -119,7 +119,7 @@ TEST_F(worker_thread_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -131,7 +131,7 @@ TEST_F(worker_thread_test, advanced)
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -170,11 +170,11 @@ TEST_F(worker_thread_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == max_jobs) {
-            ASSERT_FALSE(wth_enqueue_job(wth, &simple_func1, TO_PTR(1234)));
+            ASSERT_FALSE(wth_enqueue_on(wth, &simple_func1, TO_PTR(1234)));
             break;
          }
 
-         res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
+         res = wth_enqueue_on(wth, &simple_func1, TO_PTR(1234));
          ASSERT_TRUE(res);
          slots_used++;
       }

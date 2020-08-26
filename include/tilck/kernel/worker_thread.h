@@ -30,7 +30,7 @@ struct worker_thread *
 wth_find_worker(int lowest_prio);
 
 NODISCARD bool
-wth_enqueue_job(struct worker_thread *wth, void (*func)(void *), void *arg);
+wth_enqueue_on(struct worker_thread *wth, void (*func)(void *), void *arg);
 
 NODISCARD bool
 wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg);

@@ -277,7 +277,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
    }
 
    /* Everything is fine: we read at least one scancode */
-   if (!wth_enqueue_job(kb_worker_thread, &kb_irq_bottom_half, NULL))
+   if (!wth_enqueue_on(kb_worker_thread, &kb_irq_bottom_half, NULL))
       panic("KB: unable to enqueue job");
 
    return IRQ_HANDLED;

@@ -42,7 +42,7 @@ static long wth_cmp_func(const void *a, const void *b)
 }
 
 NODISCARD bool
-wth_enqueue_job(struct worker_thread *t, void (*func)(void *), void *arg)
+wth_enqueue_on(struct worker_thread *t, void (*func)(void *), void *arg)
 {
    bool success, was_empty;
    ASSERT(t != NULL);
@@ -89,7 +89,7 @@ wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg)
    struct worker_thread *wth;
 
    if (lowest_prio == 0) /* optimization for highest prio case */
-      return wth_enqueue_job(worker_threads[0], func, arg);
+      return wth_enqueue_on(worker_threads[0], func, arg);
 
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
 
@@ -98,7 +98,7 @@ wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg)
       if (wth->priority > lowest_prio)
          continue;
 
-      if (wth_enqueue_job(wth, func, arg))
+      if (wth_enqueue_on(wth, func, arg))
          return true; /* success */
    }
 
