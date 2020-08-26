@@ -661,7 +661,7 @@ init_tracing(void)
    if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
       tracing_init_oom_panic("tracing_buf");
 
-   if (!(syms_buf = kmalloc(sizeof(struct symbol_node) * MAX_SYSCALLS)))
+   if (!(syms_buf = kalloc_array_obj(struct symbol_node, MAX_SYSCALLS)))
       tracing_init_oom_panic("syms_buf");
 
    if (!(syscalls_info = kzmalloc(sizeof(void *) * MAX_SYSCALLS)))

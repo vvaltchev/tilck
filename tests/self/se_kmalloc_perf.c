@@ -54,7 +54,7 @@ void selftest_kmalloc_perf_med(void)
    const int iters = 1000;
    printk("*** kmalloc perf test ***\n");
 
-   allocations = kmalloc(10000 * sizeof(void *));
+   allocations = kalloc_array_obj(void *, 10000);
 
    if (!allocations)
       panic("No enough memory for the 'allocations' buffer");

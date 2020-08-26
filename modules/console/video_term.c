@@ -832,7 +832,7 @@ static int
 term_allocate_alt_buffers(term *_t)
 {
    struct vterm *const t = _t;
-   t->screen_buf_copy = kmalloc(sizeof(u16) * t->rows * t->cols);
+   t->screen_buf_copy = kalloc_array_obj(u16, t->rows * t->cols);
 
    if (!t->screen_buf_copy)
       return -ENOMEM;

@@ -70,7 +70,7 @@ do_bintree_perf_test(u32 elems,
 
    VERIFY(elems <= RANDOM_VALUES_COUNT);
 
-   nodes = kmalloc(sizeof(struct simple_obj) * elems);
+   nodes = kalloc_array_obj(struct simple_obj, elems);
 
    if (!nodes)
       panic("No enough memory to alloc `nodes`");
