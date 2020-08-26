@@ -13,20 +13,6 @@
 
 #endif
 
-#define MDALLOC_MAGIC (0x28D119D8D488EFB5ull)
-
-/*
- * Metadata block prepending the actual data used by mdalloc() and mdfree().
- */
-struct mdalloc_metadata {
-
-#ifdef DEBUG
-   u64 magic;
-#endif
-
-   ulong size;
-};
-
 static void *
 main_heaps_kmalloc(size_t *size, u32 flags)
 {
@@ -201,30 +187,4 @@ void *aligned_kmalloc(size_t size, u32 align)
 void aligned_kfree2(void *ptr, size_t size)
 {
    general_kfree(ptr, &size, 0);
-}
-
-void *mdalloc(size_t size)
-{
-   struct mdalloc_metadata *b = kmalloc(size + sizeof(struct mdalloc_metadata));
-
-   if (!b)
-      return NULL;
-
-#ifdef DEBUG
-   b->magic = MDALLOC_MAGIC;
-#endif
-
-   b->size = size;
-   return b + 1;
-}
-
-void mdfree(void *ptr)
-{
-   if (!ptr)
-      return;
-
-   struct mdalloc_metadata *b = ptr - sizeof(struct mdalloc_metadata);
-   ASSERT(b->magic == MDALLOC_MAGIC);
-
-   kfree2(b, b->size + sizeof(struct mdalloc_metadata));
 }
