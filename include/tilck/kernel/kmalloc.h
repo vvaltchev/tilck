@@ -93,6 +93,12 @@ size_t kmalloc_get_max_tot_heap_free(void);
 void *aligned_kmalloc(size_t size, u32 align);
 void aligned_kfree2(void *ptr, size_t size);
 
+/* Free function to use when we really don't know chunk's size */
+static inline void kfree(void *ptr)
+{
+   kfree2(ptr, 0);
+}
+
 #define kalloc_obj(type)                 kmalloc(sizeof(type))
 #define kzalloc_obj(type)                kzmalloc(sizeof(type))
 #define kfree_obj(ptr, type)             kfree2((ptr), sizeof(type))
