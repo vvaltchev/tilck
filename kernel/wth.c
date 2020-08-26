@@ -238,7 +238,7 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
                      t->jobs);
 
    if ((rc = wth_create_thread_for(t))) {
-      kfree2(t->jobs, sizeof(struct wjob) * queue_size);
+      kfree_array_obj(t->jobs, struct wjob, queue_size);
       kfree_obj(t, struct worker_thread);
       return NULL;
    }

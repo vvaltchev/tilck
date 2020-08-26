@@ -138,7 +138,7 @@ do_bintree_perf_test(u32 elems,
    printk("    %5u    |   %5u    |    %5u    \n",
           elems, bst_cycles, list_cycles);
 
-   kfree2(nodes, sizeof(struct simple_obj) * elems);
+   kfree_array_obj(nodes, struct simple_obj, elems);
 }
 
 void

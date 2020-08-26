@@ -33,7 +33,7 @@ extern "C" {
       assert(t != NULL);
 
       safe_ringbuf_destory(&t->rb);
-      kfree2(t->jobs, sizeof(struct wjob) * queue_size);
+      kfree_array_obj(t->jobs, struct wjob, queue_size);
       kfree_obj(t, struct worker_thread);
       bzero((void *)t, sizeof(*t));
       worker_threads[wth] = NULL;

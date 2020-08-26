@@ -189,7 +189,7 @@ tty_full_destroy(struct tty *t)
       free_console_data(t->console_data);
    }
 
-   kfree2(t->ctrl_handlers, 256 * sizeof(tty_ctrl_sig_func));
+   kfree_array_obj(t->ctrl_handlers, tty_ctrl_sig_func, 256);
    kfree_obj(t->input_buf, TTY_INPUT_BS);
    kfree_obj(t, struct tty);
 }

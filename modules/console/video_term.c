@@ -842,7 +842,7 @@ term_allocate_alt_buffers(term *_t)
       t->alt_tabs_buf = kzmalloc(t->rows * t->cols);
 
       if (!t->alt_tabs_buf) {
-         kfree2(t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+         kfree_array_obj(t->screen_buf_copy, u16, t->rows * t->cols);
          t->screen_buf_copy = NULL;
          return -ENOMEM;
       }
@@ -1030,7 +1030,7 @@ dispose_term(term *_t)
    dispose_term_rb_data(&t->rb_data);
 
    if (t->buffer) {
-      kfree2(t->buffer, sizeof(u16) * t->total_buffer_rows * t->cols);
+      kfree_array_obj(t->buffer, u16, t->total_buffer_rows * t->cols);
       t->buffer = NULL;
    }
 
@@ -1045,7 +1045,7 @@ dispose_term(term *_t)
    }
 
    if (t->screen_buf_copy) {
-      kfree2(t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
+      kfree_array_obj(t->screen_buf_copy, u16, t->rows * t->cols);
       t->screen_buf_copy = NULL;
    }
 }

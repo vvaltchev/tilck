@@ -34,7 +34,7 @@ void free_console_data(void *data)
 {
    if (data) {
       struct console_data *cd = data;
-      kfree2(cd->def_state_funcs, 256 * sizeof(term_filter));
+      kfree_array_obj(cd->def_state_funcs, term_filter, 256);
       kfree_obj(data, struct console_data);
    }
 }

@@ -186,8 +186,8 @@ static NODISCARD int gdt_expand(void)
 
       ASSERT(old_gdt_refcount_ptr != initial_gdt_refcount_in_bss);
 
-      kfree2(old_gdt_ptr, sizeof(struct gdt_entry) * old_gdt_size);
-      kfree2(old_gdt_refcount_ptr, sizeof(s32) * old_gdt_size);
+      kfree_array_obj(old_gdt_ptr, struct gdt_entry, old_gdt_size);
+      kfree_array_obj(old_gdt_refcount_ptr, s32, old_gdt_size);
    }
 
    return 0;
