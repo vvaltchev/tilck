@@ -62,7 +62,7 @@ main_heaps_kmalloc(size_t *size, u32 flags)
    return NULL;
 }
 
-static void
+static int
 main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    struct kmalloc_heap *h = NULL;
@@ -72,16 +72,16 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
    for (int i = (int)used_heaps - 1; i >= 0; i--) {
 
       const ulong hva = heaps[i]->vaddr;
+      const ulong hend = heaps[i]->heap_last_byte-heaps[i]->min_block_size+1;
 
-      // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
-      if (hva <= vaddr && vaddr + *size - 1 <= heaps[i]->heap_last_byte) {
+      if (IN_RANGE_INC(vaddr, hva, hend)) {
          h = heaps[i];
          break;
       }
    }
 
    if (!h)
-      panic("[kfree] Heap not found for block: %p\n", ptr);
+      return -ENOENT;
 
    /*
     * Vaddr must be aligned at least at min_block_size otherwise, something is
@@ -98,6 +98,8 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
    if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
       debug_kmalloc_register_free((void *)vaddr, *size);
    }
+
+   return 0;
 }
 
 void *general_kmalloc(size_t *size, u32 flags)
@@ -121,7 +123,7 @@ void *general_kmalloc(size_t *size, u32 flags)
       }
 
       if (KMALLOC_HEAVY_STATS && res != NULL)
-         if (!(flags & KMALLOC_FL_DONT_ACCOUNT))
+         if (~flags & KMALLOC_FL_DONT_ACCOUNT)
             kmalloc_account_alloc(orig_size);
    }
    enable_preemption();
@@ -130,22 +132,46 @@ void *general_kmalloc(size_t *size, u32 flags)
 
 void general_kfree(void *ptr, size_t *size, u32 flags)
 {
+   int rc;
+
    ASSERT(kmalloc_initialized);
    ASSERT(size != NULL);
-   ASSERT(!ptr || *size);
 
    if (!ptr)
       return;
 
+   if (flags & (KFREE_FL_MULTI_STEP | KFREE_FL_ALLOW_SPLIT)) {
+      /* For these special cases, the `size` parameter is MANDATORY */
+      ASSERT(*size);
+   }
+
    disable_preemption();
    {
-      if (*size <= SMALL_HEAP_MAX_ALLOC) {
-         small_heaps_kfree(ptr, size, flags);
+      if (*size) {
+
+         /* We know which heap set contains our chunk */
+
+         if (*size <= SMALL_HEAP_MAX_ALLOC) {
+            rc = small_heaps_kfree(ptr, size, flags);
+         } else {
+            rc = main_heaps_kfree(ptr, size, flags);
+         }
+
+
       } else {
-         main_heaps_kfree(ptr, size, flags);
+
+         /* We don't know which heap set contains our chunk: try them both */
+
+         rc = small_heaps_kfree(ptr, size, flags);
+
+         if (rc)
+            rc = main_heaps_kfree(ptr, size, flags);
       }
    }
    enable_preemption();
+
+   if (rc)
+      panic("kfree: Heap not found for block: %p\n", ptr);
 }
 
 /*

@@ -229,7 +229,7 @@ static void *small_heaps_kmalloc(size_t *size, u32 flags)
    return ret;
 }
 
-static void
+static int
 small_heaps_kfree(void *ptr, size_t *size, u32 flags)
 {
    ASSERT(!is_preemption_enabled());
@@ -240,17 +240,16 @@ small_heaps_kfree(void *ptr, size_t *size, u32 flags)
    list_for_each_ro(pos, &small_heaps_list, node) {
 
       const ulong hva = pos->heap.vaddr;
-      const ulong heap_last_byte = pos->heap.heap_last_byte;
+      const ulong hend = pos->heap.heap_last_byte-pos->heap.min_block_size+1;
 
-      // Check if [vaddr, vaddr + *size - 1] is in [hva, heap_last_byte].
-      if (hva <= vaddr && vaddr + *size - 1 <= heap_last_byte) {
+      if (IN_RANGE_INC(vaddr, hva, hend)) {
          node = pos;
          break;
       }
    }
 
    if (!node)
-      panic("[kfree] Small heap not found for block: %p\n", ptr);
+      return -ENOENT;
 
    was_full = node->heap.mem_allocated == node->heap.size;
    per_heap_kfree(&node->heap, ptr, size, flags);
@@ -278,4 +277,6 @@ small_heaps_kfree(void *ptr, size_t *size, u32 flags)
          }
       }
    }
+
+   return 0;
 }

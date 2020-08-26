@@ -13,6 +13,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sort.h>
+#include <tilck/kernel/errno.h>
 
 #include <tilck_gen_headers/config_kmalloc.h>
 
@@ -525,6 +526,8 @@ internal_kfree(struct kmalloc_heap *h,
                bool allow_split,
                bool do_actual_free)
 {
+   ASSERT(size);
+
    const int node = ptr_to_node(h, ptr, size);
    size_t free_size_correction = 0;
 
@@ -647,30 +650,37 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
       return;
 
    size_t size;
+   ulong vaddr = (ulong)ptr;
+
    const bool allow_split = !!(flags & KFREE_FL_ALLOW_SPLIT);
    const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
    const bool do_actual_free = !(flags & KFREE_FL_NO_ACTUAL_FREE);
 
-   DEBUG_ONLY(ulong vaddr = (ulong)ptr);
    ASSERT(!is_preemption_enabled());
-
    ASSERT(vaddr >= h->vaddr);
-   ASSERT(*user_size);
 
    if (!multi_step_free) {
 
-      size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
+      if (*user_size) {
 
-      if (!allow_split) {
-         DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
+         size = roundup_next_power_of_2(MAX(*user_size, h->min_block_size));
+
+         if (!allow_split) {
+            DEBUG_ONLY(debug_check_block_size(h, vaddr, size));
+         }
+
+      } else {
+
+         ASSERT(!allow_split);
+         size = calculate_block_size(h, vaddr);
       }
 
       *user_size = size;
-
       ASSERT(vaddr + size - 1 <= h->heap_last_byte);
       return internal_kfree(h, ptr, size, allow_split, do_actual_free);
    }
 
+   ASSERT(*user_size);
    size = *user_size; /*
                        * No round-up: when multi_step_free=1 we assume that the
                        * size is the one returned as an out-param by
