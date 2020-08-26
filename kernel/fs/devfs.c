@@ -115,7 +115,7 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
    if (!(dinfo = get_driver_info(major)))
       return -EINVAL;
 
-   if (!(f = kzmalloc(sizeof(struct devfs_file))))
+   if (!(f = kzalloc_obj(struct devfs_file)))
       return -ENOMEM;
 
    d = fs->device_data;
@@ -247,7 +247,7 @@ devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(struct devfs_handle))))
+   if (!(h = kzalloc_obj(struct devfs_handle)))
       return -ENOMEM;
 
    vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_devfs);
@@ -262,7 +262,7 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = kzmalloc(sizeof(struct devfs_handle))))
+   if (!(h = kzalloc_obj(struct devfs_handle)))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
@@ -317,7 +317,7 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    struct devfs_handle *h = fsh;
    struct devfs_handle *h2;
-   h2 = kzmalloc(sizeof(struct devfs_handle));
+   h2 = kzalloc_obj(struct devfs_handle);
 
    if (!h2)
       return -ENOMEM;
@@ -525,7 +525,7 @@ create_devfs(void)
    if (!(fs = create_fs_obj("devfs")))
       return NULL;
 
-   if (!(d = kzmalloc(sizeof(struct devfs_data)))) {
+   if (!(d = kzalloc_obj(struct devfs_data))) {
       destory_fs_obj(fs);
       return NULL;
    }

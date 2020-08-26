@@ -19,7 +19,7 @@ process_add_user_mapping(fs_handle h,
    ASSERT(!process_get_user_mapping(vaddr));
    ASSERT(pi->mi);
 
-   if (!(um = kzmalloc(sizeof(struct user_mapping))))
+   if (!(um = kzalloc_obj(struct user_mapping)))
       return NULL;
 
    list_node_init(&um->pi_node);

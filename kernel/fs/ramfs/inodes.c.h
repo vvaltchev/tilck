@@ -4,7 +4,7 @@
 
 static struct ramfs_inode *ramfs_new_inode(struct ramfs_data *d)
 {
-   struct ramfs_inode *i = kzmalloc(sizeof(struct ramfs_inode));
+   struct ramfs_inode *i = kzalloc_obj(struct ramfs_inode);
 
    if (!i)
       return NULL;

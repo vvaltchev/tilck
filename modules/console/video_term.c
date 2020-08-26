@@ -1010,7 +1010,7 @@ debug_term_dump_font_table(term *_t)
 static term *
 alloc_term_struct(void)
 {
-   return kzmalloc(sizeof(struct vterm));
+   return kzalloc_obj(struct vterm);
 }
 
 static void

@@ -286,7 +286,7 @@ struct pipe *create_pipe(void)
 {
    struct pipe *p;
 
-   if (!(p = (void *)kzmalloc(sizeof(struct pipe))))
+   if (!(p = (void *)kzalloc_obj(struct pipe)))
       return NULL;
 
    if (!(p->buf = kmalloc(PIPE_BUF_SIZE))) {

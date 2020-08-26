@@ -291,7 +291,7 @@ struct task *allocate_new_thread(struct process *pi, int tid, bool alloc_bufs)
 {
    ASSERT(pi != NULL);
    struct task *process_task = get_process_task(pi);
-   struct task *ti = kzmalloc(sizeof(struct task));
+   struct task *ti = kzalloc_obj(struct task);
 
    if (!ti || !(ti->pi = pi) || !do_common_task_allocs(ti, alloc_bufs)) {
 
@@ -365,7 +365,7 @@ void *task_temp_kernel_alloc(size_t size)
 
       if (ptr) {
 
-         struct kernel_alloc *alloc = kzmalloc(sizeof(struct kernel_alloc));
+         struct kernel_alloc *alloc = kzalloc_obj(struct kernel_alloc);
 
          if (alloc) {
 

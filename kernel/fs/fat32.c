@@ -482,7 +482,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzmalloc(sizeof(struct fatfs_handle))))
+   if (!(h = kzalloc_obj(struct fatfs_handle)))
       return -ENOMEM;
 
    vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_fat);
@@ -629,7 +629,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
 
-   d = kzmalloc(sizeof(struct fat_fs_device_data));
+   d = kzalloc_obj(struct fat_fs_device_data);
 
    if (!d)
       return NULL;

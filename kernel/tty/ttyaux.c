@@ -74,7 +74,7 @@ ttyaux_create_device_file(int minor,
  */
 void init_ttyaux(void)
 {
-   struct driver_info *di = kzmalloc(sizeof(struct driver_info));
+   struct driver_info *di = kzalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for struct driver_info");

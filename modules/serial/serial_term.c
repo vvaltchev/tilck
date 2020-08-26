@@ -102,7 +102,7 @@ static term *sterm_get_first_inst(void)
 static term *
 alloc_sterm_struct(void)
 {
-   return kzmalloc(sizeof(struct sterm));
+   return kzalloc_obj(struct sterm);
 }
 
 static void

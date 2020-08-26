@@ -69,7 +69,7 @@ acquire_subsys_flock(struct fs *fs,
    }
 
    /* We've got it. Great! */
-   lf = kzmalloc(sizeof(struct locked_file));
+   lf = kzalloc_obj(struct locked_file);
 
    if (UNLIKELY(!lf)) {
 

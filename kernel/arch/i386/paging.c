@@ -478,7 +478,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
    if (UNLIKELY(KERNEL_VA_TO_PA(pt) == 0)) {
 
       // we have to create a page table for mapping 'vaddr'.
-      pt = kzmalloc(sizeof(page_table_t));
+      pt = kzalloc_obj(page_table_t);
 
       if (UNLIKELY(!pt))
          return -ENOMEM;
@@ -982,7 +982,7 @@ static void init_hi_vmem_heap(void)
 
       ASSERT(!e->present);
 
-      if (!(pt = kzmalloc(sizeof(page_table_t))))
+      if (!(pt = kzalloc_obj(page_table_t)))
          panic("Unable to alloc ptable for hi_vmem at %p", i << BIG_PAGE_SHIFT);
 
       ASSERT(IS_PAGE_ALIGNED(pt));

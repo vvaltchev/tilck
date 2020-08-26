@@ -356,7 +356,7 @@ struct fs *ramfs_create(void)
    if (!(fs = create_fs_obj("ramfs")))
       return NULL;
 
-   if (!(d = kzmalloc(sizeof(struct ramfs_data)))) {
+   if (!(d = kzalloc_obj(struct ramfs_data))) {
       ramfs_err_case_destroy(fs);
       return NULL;
    }

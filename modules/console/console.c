@@ -19,7 +19,7 @@ void *alloc_console_data(void)
 {
    struct console_data *cd;
 
-   if (!(cd = kzmalloc(sizeof(struct console_data))))
+   if (!(cd = kzalloc_obj(struct console_data)))
       return NULL;
 
    if (!(cd->def_state_funcs = kzmalloc(256 * sizeof(term_filter)))) {

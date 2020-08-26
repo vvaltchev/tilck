@@ -83,7 +83,7 @@ kfs_create_new_handle(const struct file_ops *fops,
 {
    struct kfs_handle *h;
 
-   if (!(h = (void *)kzmalloc(sizeof(struct kfs_handle))))
+   if (!(h = (void *)kzalloc_obj(struct kfs_handle)))
       return NULL;
 
    vfs_init_fs_handle_base_fields((void *)h, kernelfs, fops);

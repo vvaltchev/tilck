@@ -215,7 +215,7 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
    if (worker_threads_cnt >= ARRAY_SIZE(worker_threads))
       return NULL; /* too many worker threads */
 
-   t = kzmalloc(sizeof(struct worker_thread));
+   t = kzalloc_obj(struct worker_thread);
 
    if (!t)
       return NULL;

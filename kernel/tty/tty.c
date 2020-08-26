@@ -202,7 +202,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    term *new_term = get_curr_term();
    const struct term_interface *new_term_intf;
 
-   if (!(t = kzmalloc(sizeof(struct tty))))
+   if (!(t = kzalloc_obj(struct tty)))
       return NULL;
 
    if (!(t->input_buf = kzmalloc(TTY_INPUT_BS))) {
@@ -333,7 +333,7 @@ ssize_t tty_curr_proc_write(const char *buf, size_t size)
 static void init_tty(void)
 {
    process_term_read_info(&first_term_i);
-   struct driver_info *di = kzmalloc(sizeof(struct driver_info));
+   struct driver_info *di = kzalloc_obj(struct driver_info);
 
    if (!di)
       panic("TTY: no enough memory for struct driver_info");

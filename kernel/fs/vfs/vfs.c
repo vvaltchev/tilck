@@ -814,7 +814,7 @@ u32 vfs_get_new_device_id(void)
 
 struct fs *create_fs_obj(const char *type)
 {
-   struct fs *fs = kzmalloc(sizeof(struct fs));
+   struct fs *fs = kzalloc_obj(struct fs);
 
    if (!fs)
       return NULL;
