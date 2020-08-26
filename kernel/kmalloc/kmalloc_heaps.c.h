@@ -107,7 +107,7 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
    if (!h)
       return NULL;
 
-   struct kmalloc_heap *new_heap = kmalloc(sizeof(struct kmalloc_heap));
+   struct kmalloc_heap *new_heap = kalloc_obj(struct kmalloc_heap);
 
    if (!new_heap)
       return NULL;

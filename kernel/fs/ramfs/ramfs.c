@@ -64,7 +64,7 @@ static int ramfs_unlink(struct vfs_path *p)
 
 static int ramfs_dup(fs_handle h, fs_handle *dup_h)
 {
-   struct ramfs_handle *new_h = kmalloc(sizeof(struct ramfs_handle));
+   struct ramfs_handle *new_h = kalloc_obj(struct ramfs_handle);
 
    if (!new_h)
       return -ENOMEM;

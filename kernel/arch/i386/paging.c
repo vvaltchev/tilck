@@ -651,7 +651,7 @@ map_pages(pdir_t *pdir,
 
 pdir_t *pdir_clone(pdir_t *pdir)
 {
-   pdir_t *new_pdir = kmalloc(sizeof(pdir_t));
+   pdir_t *new_pdir = kalloc_obj(pdir_t);
 
    if (!new_pdir)
       return NULL;
@@ -667,7 +667,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
       if (!pdir->entries[i].present)
          continue;
 
-      page_table_t *pt = kmalloc(sizeof(page_table_t));
+      page_table_t *pt = kalloc_obj(page_table_t);
 
       if (UNLIKELY(!pt)) {
 

@@ -108,7 +108,7 @@ static int create_process_mmap_heap(struct process *pi)
    struct kmalloc_heap *mmap_heap;
    ASSERT(!pi->mi);
 
-   if (!(pi->mi = kmalloc(sizeof(struct mappings_info))))
+   if (!(pi->mi = kalloc_obj(struct mappings_info)))
       return -ENOMEM;
 
    if (!(mmap_heap = kzmalloc(kmalloc_get_heap_struct_size()))) {

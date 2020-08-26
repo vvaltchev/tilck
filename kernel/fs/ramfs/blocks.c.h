@@ -5,7 +5,7 @@ static struct ramfs_block *ramfs_new_block(offt page)
    struct ramfs_block *b;
 
    /* Allocate memory for the block object */
-   if (!(b = kmalloc(sizeof(struct ramfs_block))))
+   if (!(b = kalloc_obj(struct ramfs_block)))
       return NULL;
 
    /* Allocate block's data */

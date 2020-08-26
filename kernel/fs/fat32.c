@@ -499,7 +499,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   struct fatfs_handle *new_h = kmalloc(sizeof(struct fatfs_handle));
+   struct fatfs_handle *new_h = kalloc_obj(struct fatfs_handle);
 
    if (!new_h)
       return -ENOMEM;

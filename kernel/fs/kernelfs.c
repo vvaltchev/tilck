@@ -63,7 +63,7 @@ kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    struct kfs_handle *n;
 
-   if (!(n = (void *)kmalloc(sizeof(struct kfs_handle))))
+   if (!(n = (void *)kalloc_obj(struct kfs_handle)))
       return -ENOMEM;
 
    memcpy(n, fsh, sizeof(struct kfs_handle));

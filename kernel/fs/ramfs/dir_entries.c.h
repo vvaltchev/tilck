@@ -26,7 +26,7 @@ ramfs_dir_add_entry(struct ramfs_inode *idir,
    if (enl > sizeof(e->name))
       return -ENAMETOOLONG;
 
-   if (!(e = kmalloc(sizeof(struct ramfs_entry))))
+   if (!(e = kalloc_obj(struct ramfs_entry)))
       return -ENOSPC;
 
    ASSERT(ie->parent_dir != NULL);
