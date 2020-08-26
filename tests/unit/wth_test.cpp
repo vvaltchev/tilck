@@ -63,34 +63,36 @@ void simple_func1(void *p1)
 TEST_F(worker_thread_test, essential)
 {
    bool res = false;
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_HIGHEST);
 
-   ASSERT_TRUE(wth_enqueue_job(0, &simple_func1, TO_PTR(1234)));
-   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+   ASSERT_TRUE(wth_enqueue_job(wth, &simple_func1, TO_PTR(1234)));
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
    ASSERT_TRUE(res);
 }
 
 
 TEST_F(worker_thread_test, base)
 {
-   const int max_jobs = wth_get_queue_size(0);
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_HIGHEST);
+   const int max_jobs = wth_get_queue_size(wth);
    bool res;
 
    for (int i = 0; i < max_jobs; i++) {
-      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
-   res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+   res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
 
    // There is no more space left, expecting the ADD failed.
    ASSERT_FALSE(res);
 
    for (int i = 0; i < max_jobs; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
 
    // There are no more jobs, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -99,36 +101,37 @@ TEST_F(worker_thread_test, base)
 
 TEST_F(worker_thread_test, advanced)
 {
-   const int max_jobs = wth_get_queue_size(0);
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_HIGHEST);
+   const int max_jobs = wth_get_queue_size(wth);
    bool res;
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
    // Consume 1/4.
    for (int i = 0; i < max_jobs/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
       ASSERT_TRUE(res);
    }
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
    // Consume 2/4
    for (int i = 0; i < max_jobs/2; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
       ASSERT_TRUE(res);
    }
 
    // Fill half of the buffer.
    for (int i = 0; i < max_jobs/2; i++) {
-      res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+      res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
       ASSERT_TRUE(res);
    }
 
@@ -136,11 +139,11 @@ TEST_F(worker_thread_test, advanced)
 
    // Consume 3/4
    for (int i = 0; i < 3*max_jobs/4; i++) {
-      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+      ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
       ASSERT_TRUE(res);
    }
 
-   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+   ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
 
    // There are no more jobs, expecting the RUN failed.
    ASSERT_FALSE(res);
@@ -148,7 +151,8 @@ TEST_F(worker_thread_test, advanced)
 
 TEST_F(worker_thread_test, chaos)
 {
-   const int max_jobs = wth_get_queue_size(0);
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_HIGHEST);
+   const int max_jobs = wth_get_queue_size(wth);
 
    random_device rdev;
    default_random_engine e(rdev());
@@ -166,11 +170,11 @@ TEST_F(worker_thread_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == max_jobs) {
-            ASSERT_FALSE(wth_enqueue_job(0, &simple_func1, TO_PTR(1234)));
+            ASSERT_FALSE(wth_enqueue_job(wth, &simple_func1, TO_PTR(1234)));
             break;
          }
 
-         res = wth_enqueue_job(0, &simple_func1, TO_PTR(1234));
+         res = wth_enqueue_job(wth, &simple_func1, TO_PTR(1234));
          ASSERT_TRUE(res);
          slots_used++;
       }
@@ -180,12 +184,12 @@ TEST_F(worker_thread_test, chaos)
       for (int i = 0; i < c; i++) {
 
          if (slots_used == 0) {
-            ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+            ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
             ASSERT_FALSE(res);
             break;
          }
 
-         ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(0); });
+         ASSERT_NO_FATAL_FAILURE({ res = wth_process_single_job(wth); });
          ASSERT_TRUE(res);
          slots_used--;
       }

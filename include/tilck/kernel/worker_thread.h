@@ -3,10 +3,34 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
-void init_worker_threads();
-struct task *wth_get_task(int wth);
-struct task *wth_get_runnable_thread(void);
-int wth_create_thread(int priority, u16 queue_size);
-int wth_get_id(struct task *ti);
-u32 wth_get_queue_size(int wth);
-NODISCARD bool wth_enqueue_job(int wth, void (*func)(void *), void *arg);
+#define WTH_PRIO_HIGHEST            0
+#define WTH_PRIO_LOWEST           255
+
+struct worker_thread;
+
+void
+init_worker_threads();
+
+struct task *
+wth_get_task(struct worker_thread *wth);
+
+u32
+wth_get_queue_size(struct worker_thread *wth);
+
+int
+wth_get_priority(struct worker_thread *wth);
+
+struct task *
+wth_get_runnable_thread(void);
+
+struct worker_thread *
+wth_create_thread(int priority, u16 queue_size);
+
+struct worker_thread *
+wth_find_worker(int lowest_prio);
+
+NODISCARD bool
+wth_enqueue_job(struct worker_thread *wth, void (*func)(void *), void *arg);
+
+NODISCARD bool
+wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg);

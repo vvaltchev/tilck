@@ -185,10 +185,12 @@ static int debug_per_task_cb(void *obj, void *arg)
       const char *name = ti->kthread_name;
       ttynum = 0;
 
-      if (is_worker_thread(ti))
-         snprintk(buf, sizeof(buf), "<%s[%d]>", name, wth_get_id(ti));
-      else
+      if (is_worker_thread(ti)) {
+         int p = wth_get_priority(ti->worker_thread);
+         snprintk(buf, sizeof(buf), "<%s(p%d)>", name, p);
+      } else {
          snprintk(buf, sizeof(buf), "<%s>", name);
+      }
    }
 
    bool sel = false;

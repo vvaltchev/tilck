@@ -28,7 +28,7 @@ enum kb_state {
    KB_READ_FIRST_SCANCODE_AFTER_E1_STATE,
 };
 
-int kb_worker_thread = -1;
+static struct worker_thread *kb_worker_thread;
 static enum kb_state kb_curr_state;
 static bool key_pressed_state[2][128];
 static bool numLock;
@@ -305,7 +305,7 @@ static void create_kb_worker_thread(void)
    kb_worker_thread =
       wth_create_thread(1 /* priority */, WTH_KB_QUEUE_SIZE);
 
-   if (kb_worker_thread < 0)
+   if (!kb_worker_thread)
       panic("KB: Unable to create a worker thread for IRQs");
 }
 

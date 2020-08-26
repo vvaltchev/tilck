@@ -12,45 +12,39 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/sort.h>
 
 #include "wth_int.h"
 
 STATIC u32 worker_threads_cnt;
 struct worker_thread *worker_threads[WTH_MAX_THREADS];
 
-u32 wth_get_queue_size(int wth)
+u32 wth_get_queue_size(struct worker_thread *wth)
 {
-   ASSERT(wth < WTH_MAX_THREADS);
-   struct worker_thread *t = worker_threads[wth];
-   return t ? t->rb.max_elems : 0;
+   return wth->rb.max_elems;
 }
 
-struct task *wth_get_task(int wth)
+struct task *wth_get_task(struct worker_thread *wth)
 {
-   struct worker_thread *t = worker_threads[wth];
-
-   if (!t)
-      return NULL;
-
-   ASSERT(t->task != NULL);
-   return t->task;
+   return wth->task;
 }
 
-int wth_get_id(struct task *ti)
+int wth_get_priority(struct worker_thread *wth)
 {
-   struct worker_thread *th = ti->worker_thread;
-
-   if (!th)
-      return -1;
-
-   return th->thread_index;
+   return wth->priority;
 }
 
-bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
+static long wth_cmp_func(const void *a, const void *b)
 {
-   struct worker_thread *t = worker_threads[wth];
+   const struct worker_thread *const *wa = a;
+   const struct worker_thread *const *wb = b;
+   return (*wa)->priority - (*wb)->priority;
+}
+
+NODISCARD bool
+wth_enqueue_job(struct worker_thread *t, void (*func)(void *), void *arg)
+{
    bool success, was_empty;
-
    ASSERT(t != NULL);
 
    struct wjob new_job = {
@@ -89,13 +83,52 @@ bool wth_enqueue_job(int wth, void (*func)(void *), void *arg)
    return success;
 }
 
-bool wth_process_single_job(int wth)
+NODISCARD bool
+wth_enqueue_job2(int lowest_prio, void (*func)(void *), void *arg)
+{
+   struct worker_thread *wth;
+
+   if (lowest_prio == 0) /* optimization for highest prio case */
+      return wth_enqueue_job(worker_threads[0], func, arg);
+
+   for (int i = (int)worker_threads_cnt-1; i >= 0; i--) {
+
+      wth = worker_threads[i];
+
+      if (wth->priority > lowest_prio)
+         continue;
+
+      if (wth_enqueue_job(wth, func, arg))
+         return true; /* success */
+   }
+
+   return false;
+}
+
+struct worker_thread *
+wth_find_worker(int lowest_prio)
+{
+   struct worker_thread *wth;
+
+   if (lowest_prio == 0) /* optimization for highest prio case */
+      return worker_threads[0];
+
+   for (int i = (int)worker_threads_cnt-1; i >= 0; i--) {
+
+      wth = worker_threads[i];
+
+      if (wth->priority <= lowest_prio)
+         return wth;
+   }
+
+   return worker_threads[0];
+}
+
+bool wth_process_single_job(struct worker_thread *t)
 {
    bool success;
    struct wjob job_to_run;
-   struct worker_thread *t = worker_threads[wth];
 
-   ASSERT(t != NULL);
    success = safe_ringbuf_read_elem(&t->rb, &job_to_run);
 
    if (success) {
@@ -121,7 +154,7 @@ void wth_run(void *arg)
 
       do {
 
-         job_run = wth_process_single_job(t->thread_index);
+         job_run = wth_process_single_job(t);
 
       } while (job_run);
 
@@ -156,29 +189,31 @@ struct task *wth_get_runnable_thread(void)
    return selected ? selected->task : NULL;
 }
 
-int wth_create_thread(int priority, u16 queue_size)
+struct worker_thread *
+wth_create_thread(int priority, u16 queue_size)
 {
    struct worker_thread *t;
    int rc;
+   u32 idx;
 
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
    if (worker_threads_cnt >= ARRAY_SIZE(worker_threads))
-      return -ENFILE; /* too many worker threads */
+      return NULL; /* too many worker threads */
 
    t = kzmalloc(sizeof(struct worker_thread));
 
    if (!t)
-      return -ENOMEM;
+      return NULL;
 
-   t->thread_index = (int)worker_threads_cnt;
+   idx = worker_threads_cnt;
    t->priority = priority;
    t->jobs = kzmalloc(sizeof(struct wjob) * queue_size);
 
    if (!t->jobs) {
       kfree2(t, sizeof(struct worker_thread));
-      return -ENOMEM;
+      return NULL;
    }
 
    safe_ringbuf_init(&t->rb,
@@ -189,23 +224,24 @@ int wth_create_thread(int priority, u16 queue_size)
    if ((rc = wth_create_thread_for(t))) {
       kfree2(t->jobs, sizeof(struct wjob) * queue_size);
       kfree2(t, sizeof(struct worker_thread));
-      return rc;
+      return NULL;
    }
 
-   worker_threads[t->thread_index] = t;
+   worker_threads[idx] = t;
 
    /* Double-check that worker_threads_cnt did not change */
-   ASSERT(t->thread_index == (int)worker_threads_cnt);
+   ASSERT(idx == worker_threads_cnt);
    worker_threads_cnt++;
-   return t->thread_index;
+
+   /* Sort all the worker threads */
+   insertion_sort_ptr(worker_threads, worker_threads_cnt, &wth_cmp_func);
+   return t;
 }
 
 static void
 init_wth_create_worker_or_die(int prio, u16 queue_size)
 {
-   int wth = wth_create_thread(prio, queue_size);
-
-   if (wth < 0)
+   if (!wth_create_thread(prio, queue_size))
       panic("WTH: failed to create worker thread with prio %d", prio);
 }
 

@@ -22,7 +22,7 @@ struct serial_device {
    u16 ioport;
    struct tty *tty;
    ATOMIC(int) jobs_cnt;
-   int worker_thread_id;
+   struct worker_thread *wth;
 };
 
 struct serial_device legacy_serial_ports[] =
@@ -71,7 +71,7 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->jobs_cnt >= 2)
       return IRQ_HANDLED;
 
-   if (!wth_enqueue_job(dev->worker_thread_id, &ser_bh_handler, dev)) {
+   if (!wth_enqueue_job(dev->wth, &ser_bh_handler, dev)) {
       printk("[serial] WARNING: hit job queue limit\n");
       return IRQ_HANDLED;
    }
@@ -95,14 +95,13 @@ DEFINE_IRQ_HANDLER_NODE(com4, serial_con_irq_handler, &legacy_serial_ports[3]);
 
 static void init_serial_comm(void)
 {
-   int worker_thread_id;
+   struct worker_thread *wth;
 
    disable_preemption();
    {
-      worker_thread_id =
-         wth_create_thread(1 /* priority */, WTH_KB_QUEUE_SIZE);
+      wth = wth_create_thread(1 /* priority */, WTH_SERIAL_QUEUE_SIZE);
 
-      if (worker_thread_id < 0)
+      if (!wth)
          panic("Serial: Unable to create a worker thread for IRQs");
    }
    enable_preemption();
@@ -112,7 +111,7 @@ static void init_serial_comm(void)
       struct serial_device *dev = &legacy_serial_ports[i];
 
       dev->tty = get_serial_tty((int)i);
-      dev->worker_thread_id = worker_thread_id;
+      dev->wth = wth;
    }
 
    irq_install_handler(X86_PC_COM1_COM3_IRQ, &com1);

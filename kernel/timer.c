@@ -383,7 +383,7 @@ void init_timer(void)
 
    __tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
 
-   if (!wth_enqueue_job(0 /* top priority */, &do_bogomips_loop, &ctx))
+   if (!wth_enqueue_job2(WTH_PRIO_HIGHEST, &do_bogomips_loop, &ctx))
       panic("Timer: unable to enqueue job in wth 0");
 
    irq_install_handler(X86_PC_TIMER_IRQ, &measure_bogomips);

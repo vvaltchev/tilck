@@ -15,6 +15,7 @@ static ATOMIC(u32) g_counter;
 static u64 g_cycles_begin;
 
 struct se_wth_ctx {
+   struct worker_thread *wth;
    struct kmutex m;
    struct kcond c;
 };
@@ -28,7 +29,7 @@ static void end_test(void *arg)
 {
    struct se_wth_ctx *ctx = arg;
 
-   const u32 max_jobs = wth_get_queue_size(0);
+   const u32 max_jobs = wth_get_queue_size(ctx->wth);
    const u32 tot_iters = max_jobs * 10;
 
    u64 elapsed = RDTSC() - g_cycles_begin;
@@ -49,8 +50,6 @@ static void end_test(void *arg)
 
 void selftest_wth_short(void)
 {
-   const u32 max_jobs = wth_get_queue_size(0);
-   const u32 tot_iters = max_jobs * 10;
    const u32 attempts_check = 500 * 1000;
    struct se_wth_ctx ctx;
    u32 yields_count = 0;
@@ -58,7 +57,15 @@ void selftest_wth_short(void)
    u32 last_counter_val;
    u32 counter_now;
    u32 attempts;
+   u32 max_jobs;
+   u32 tot_iters;
    bool added;
+
+   ctx.wth = wth_find_worker(WTH_PRIO_LOWEST);
+   VERIFY(ctx.wth != NULL);
+
+   max_jobs = wth_get_queue_size(ctx.wth);
+   tot_iters = max_jobs * 10;
 
    kcond_init(&ctx.c);
    kmutex_init(&ctx.m, 0);
@@ -77,7 +84,7 @@ void selftest_wth_short(void)
 
       do {
 
-         added = wth_enqueue_job(0, &test_wth_func, NULL);
+         added = wth_enqueue_job(ctx.wth, &test_wth_func, NULL);
          attempts++;
 
          if (!(attempts % attempts_check)) {
@@ -143,7 +150,7 @@ void selftest_wth_short(void)
       printk("[se_wth] Under lock, before enqueue\n");
 
       do {
-         added = wth_enqueue_job(0, &end_test, &ctx);
+         added = wth_enqueue_job(ctx.wth, &end_test, &ctx);
       } while (!added);
 
       printk("[se_wth] Under lock, AFTER enqueue\n");
@@ -161,6 +168,7 @@ DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth_short)
 
 void selftest_wth_perf_short(void)
 {
+   struct worker_thread *wth = wth_find_worker(WTH_PRIO_LOWEST);
    bool added;
    u32 n = 0;
    u64 start, elapsed;
@@ -169,7 +177,7 @@ void selftest_wth_perf_short(void)
 
    while (true) {
 
-      added = wth_enqueue_job(0, &test_wth_func, NULL);
+      added = wth_enqueue_job(wth, &test_wth_func, NULL);
 
       if (!added)
          break;
