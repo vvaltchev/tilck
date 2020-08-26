@@ -355,7 +355,7 @@ static void fb_scroll_one_line_up(void)
 static void async_pre_render_scanlines()
 {
    if (!fb_pre_render_char_scanlines()) {
-      printk("[fb_console] WARNING: fb_pre_render_char_scanlines failed.\n");
+      printk("fb_console: WARNING: fb_pre_render_char_scanlines failed.\n");
       return;
    }
 
@@ -377,26 +377,26 @@ static void fb_use_optimized_funcs_if_possible(void)
       return;
 
    if (font_w % 8) {
-      printk("[fb_console] WARNING: using slower code for font %d x %d\n",
+      printk("fb_console: WARNING: using slower code for font %d x %d\n",
              font_w, font_h);
-      printk("[fb_console] switch to a font having width = 8, 16, 24, ...\n");
+      printk("fb_console: switch to a font having width = 8, 16, 24, ...\n");
       return;
    }
 
    if (fb_get_bpp() != 32) {
-      printk("[fb_console] WARNING: using slower code for bpp = %d\n",
+      printk("fb_console: WARNING: using slower code for bpp = %d\n",
              fb_get_bpp());
-      printk("[fb_console] switch to a resolution with bpp = 32 if possible\n");
+      printk("fb_console: switch to a resolution with bpp = 32 if possible\n");
       return;
    }
 
    if (kmalloc_get_max_tot_heap_free() < FBCON_OPT_FUNCS_MIN_FREE_HEAP) {
-      printk("[fb_console] Not using fast funcs in order to save memory\n");
+      printk("fb_console: Not using fast funcs in order to save memory\n");
       return;
    }
 
    if (kthread_create(async_pre_render_scanlines, 0, NULL) < 0)
-      printk("[fb_console] WARNING: unable to create a kthread for "
+      printk("fb_console: WARNING: unable to create a kthread for "
              "async_pre_render_scanlines\n");
 }
 
@@ -456,9 +456,9 @@ void init_fb_console(void)
 
    printk_flush_ringbuf();
 
-   printk("[fb_console] screen resolution: %i x %i x %i bpp\n",
+   printk("fb_console: screen resolution: %i x %i x %i bpp\n",
           fb_get_width(), fb_get_height(), fb_get_bpp());
-   printk("[fb_console] font size: %i x %i, term size: %i x %i\n",
+   printk("fb_console: font size: %i x %i, term size: %i x %i\n",
           font_w, font_h, fb_term_cols, fb_term_rows);
 
    fb_use_optimized_funcs_if_possible();

@@ -89,7 +89,7 @@ int fat_ramdisk_prepare_for_mmap(struct fat_fs_device_data *d, size_t rd_size)
    for (char *va = va_begin; va < va_end; va += PAGE_SIZE)
       set_page_rw(pdir, va, false);
 
-   printk("[fat ramdisk]: align of ramdisk was necessary\n");
+   printk("fat ramdisk: align of ramdisk was necessary\n");
    return 0;
 }
 

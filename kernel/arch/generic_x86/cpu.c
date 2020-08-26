@@ -39,7 +39,7 @@ static bool enable_sse(void)
 
       u32 n = get_first_set_bit_index(res);
 
-      printk("Enable SSE failed: fault %i [%s]\n",
+      printk("CPU: Enable SSE failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
 
       return false;
@@ -67,7 +67,7 @@ static bool enable_sse(void)
    if (x86_cpu_features.ecx1.sse4_2)
       max_sse = "SSE 4.2";
 
-   printk("%s enabled\n", max_sse);
+   printk("CPU: %s enabled\n", max_sse);
    return true;
 }
 
@@ -79,7 +79,7 @@ static bool enable_osxsave(void)
 
       u32 n = get_first_set_bit_index(res);
 
-      printk("Enable OSXSAVE failed: fault %i [%s]\n",
+      printk("CPU: Enable OSXSAVE failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
 
       return false;
@@ -96,7 +96,7 @@ static bool enable_avx(void)
 
       u32 n = get_first_set_bit_index(res);
 
-      printk("Enable AVX failed: fault %i [%s]\n",
+      printk("CPU: Enable AVX failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
 
       return false;
@@ -106,9 +106,9 @@ static bool enable_avx(void)
 
    if (x86_cpu_features.avx2) {
       x86_cpu_features.can_use_avx2 = true;
-      printk("AVX 2 enabled\n");
+      printk("CPU: AVX 2 enabled\n");
    } else {
-      printk("AVX 1 enabled\n");
+      printk("CPU: AVX 1 enabled\n");
    }
 
    return true;
@@ -122,7 +122,7 @@ void init_pat(void)
    entries[7] = MEM_TYPE_WC;
 
    wrmsr(MSR_IA32_PAT, pat);
-   printk("PAT initialized\n");
+   printk("CPU: PAT initialized\n");
 }
 
 void enable_cpu_features(void)
@@ -177,7 +177,7 @@ out:
    if (x86_cpu_features.edx1.pat)
       init_pat();
 
-   printk("Physical addr bits: %u\n", x86_cpu_features.phys_addr_bits);
+   printk("CPU: Physical addr bits: %u\n", x86_cpu_features.phys_addr_bits);
 }
 
 static char fpu_kernel_regs[CPU_XSAVE_AREA_SIZE] ALIGNED_AT(64);

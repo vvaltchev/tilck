@@ -211,7 +211,7 @@ devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
          break;
 
       default:
-         panic("[devfs] Invalid dentry type: %d", df->type);
+         panic("devfs: Invalid dentry type: %d", df->type);
    }
 
    statbuf->st_nlink = 1;
@@ -468,7 +468,7 @@ devfs_get_inode(fs_handle h)
          return dh->file;
 
       default:
-         panic("[devfs] Invalid dentry type: %d", dh->type);
+         panic("devfs: Invalid dentry type: %d", dh->type);
    }
 
    NOT_REACHED();

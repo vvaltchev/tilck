@@ -57,7 +57,7 @@ static void kmalloc_account_alloc(size_t size)
        * even for the medium-long term. In particular, it's enough for the
        * kmalloc perf test, which ends up requiring > 588 slots.
        */
-      panic("[kmalloc] No more space in alloc_arr");
+      panic("kmalloc: No more space in alloc_arr");
    }
 
    obj = &alloc_arr[alloc_arr_used++];
@@ -92,7 +92,7 @@ static void kmalloc_init_heavy_stats(void)
    if (!alloc_arr)
       panic("Unable to alloc memory for the kmalloc heavy stats");
 
-   printk("[kmalloc] Heavy stats enabled [buf: %zu elems]\n", alloc_arr_elems);
+   printk("kmalloc: heavy stats enabled (%zu elems)\n", alloc_arr_elems);
    kmalloc_account_alloc(alloc_arr_bytes);
 }
 

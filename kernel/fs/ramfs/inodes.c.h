@@ -16,7 +16,7 @@ static struct ramfs_inode *ramfs_new_inode(struct ramfs_data *d)
    i->ino = d->next_inode_num++;
 
    if (DEBUG_RAMFS_CREATE_INODE_PRINTK) {
-      printk("[ramfs] Create inode with ref_count at %p\n", &i->ref_count);
+      printk("ramfs: Create inode with ref_count at %p\n", &i->ref_count);
    }
 
    return i;

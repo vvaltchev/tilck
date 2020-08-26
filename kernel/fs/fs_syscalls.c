@@ -700,7 +700,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          return hb->fl_flags;
 
       default:
-         printk("[fcntl64] Ignored unknown cmd %d\n", cmd);
+         printk("fcntl64: Ignored unknown cmd %d\n", cmd);
    }
 
    return rc;
