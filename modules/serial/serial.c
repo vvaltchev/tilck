@@ -99,7 +99,7 @@ static void init_serial_comm(void)
 
    disable_preemption();
    {
-      wth = wth_create_thread(1 /* priority */, WTH_SERIAL_QUEUE_SIZE);
+      wth = wth_create_thread("serial", 1, WTH_SERIAL_QUEUE_SIZE);
 
       if (!wth)
          panic("Serial: Unable to create a worker thread for IRQs");

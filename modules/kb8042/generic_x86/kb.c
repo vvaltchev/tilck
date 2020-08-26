@@ -303,7 +303,7 @@ static void create_kb_worker_thread(void)
    safe_ringbuf_init(&kb_input_rb, 512, 1, kb_input_buf);
 
    kb_worker_thread =
-      wth_create_thread(1 /* priority */, WTH_KB_QUEUE_SIZE);
+      wth_create_thread("kb", 1 /* priority */, WTH_KB_QUEUE_SIZE);
 
    if (!kb_worker_thread)
       panic("KB: Unable to create a worker thread for IRQs");

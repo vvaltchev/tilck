@@ -20,11 +20,14 @@ wth_get_queue_size(struct worker_thread *wth);
 int
 wth_get_priority(struct worker_thread *wth);
 
+const char *
+wth_get_name(struct worker_thread *wth);
+
 struct task *
 wth_get_runnable_thread(void);
 
 struct worker_thread *
-wth_create_thread(int priority, u16 queue_size);
+wth_create_thread(const char *name, int priority, u16 queue_size);
 
 struct worker_thread *
 wth_find_worker(int lowest_prio);

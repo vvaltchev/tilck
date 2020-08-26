@@ -10,6 +10,7 @@ struct wjob {
 
 struct worker_thread {
 
+   const char *name;
    struct wjob *jobs;
    struct safe_ringbuf rb;
    struct task *task;

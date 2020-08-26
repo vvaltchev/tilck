@@ -34,6 +34,12 @@ int wth_get_priority(struct worker_thread *wth)
    return wth->priority;
 }
 
+const char *
+wth_get_name(struct worker_thread *wth)
+{
+   return wth->name;
+}
+
 static long wth_cmp_func(const void *a, const void *b)
 {
    const struct worker_thread *const *wa = a;
@@ -190,7 +196,7 @@ struct task *wth_get_runnable_thread(void)
 }
 
 struct worker_thread *
-wth_create_thread(int priority, u16 queue_size)
+wth_create_thread(const char *name, int priority, u16 queue_size)
 {
    struct worker_thread *t;
    int rc, idx;
@@ -207,6 +213,7 @@ wth_create_thread(int priority, u16 queue_size)
       return NULL;
 
    idx = worker_threads_cnt;
+   t->name = name;
    t->priority = priority;
    t->jobs = kzmalloc(sizeof(struct wjob) * queue_size);
 
@@ -240,7 +247,7 @@ wth_create_thread(int priority, u16 queue_size)
 static void
 init_wth_create_worker_or_die(int prio, u16 queue_size)
 {
-   if (!wth_create_thread(prio, queue_size))
+   if (!wth_create_thread(NULL, prio, queue_size))
       panic("WTH: failed to create worker thread with prio %d", prio);
 }
 

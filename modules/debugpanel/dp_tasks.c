@@ -187,7 +187,9 @@ static int debug_per_task_cb(void *obj, void *arg)
 
       if (is_worker_thread(ti)) {
          int p = wth_get_priority(ti->worker_thread);
-         snprintk(buf, sizeof(buf), "<%s(p%d)>", name, p);
+         const char *wth_name = wth_get_name(ti->worker_thread);
+         name = wth_name ? wth_name : "generic";
+         snprintk(buf, sizeof(buf), "<wth:%s(%d)>", name, p);
       } else {
          snprintk(buf, sizeof(buf), "<%s>", name);
       }
