@@ -14,130 +14,109 @@ math(EXPR BL_BASE_ADDR_DEC
 
 dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_global.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_global.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_boot.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_boot.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_kernel.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_kernel.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_sched.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_sched.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_kmalloc.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_kmalloc.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_console.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_console.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_mm.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_mm.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_debug.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_debug.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_userlim.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_userlim.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_8042.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_8042.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_modules.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_modules.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_init.h
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/boot/legacy/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH}/linker_script.ld
    ${KERNEL_SCRIPT}
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/other/musl-gcc
    ${MUSL_GCC}
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/other/musl-g++
    ${MUSL_GXX}
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/tests/runners/single_test_run
    ${CMAKE_BINARY_DIR}/st/single_test_run
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/tests/runners/run_all_tests
    ${CMAKE_BINARY_DIR}/st/run_all_tests
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/tests/runners/run_interactive_test
    ${CMAKE_BINARY_DIR}/st/run_interactive_test
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/other/cmake/config_fatpart
    ${CMAKE_BINARY_DIR}/config_fatpart
-   @ONLY
 )
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/other/tilck_unstripped-gdb.py
    ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
-   @ONLY
 )
 
 # Run qemu scripts
@@ -158,10 +137,9 @@ list(
 )
 
 foreach(script_file ${run_qemu_files})
-   configure_file(
+   smart_config_file(
       ${CMAKE_SOURCE_DIR}/scripts/templates/qemu/${script_file}
       ${CMAKE_BINARY_DIR}/${script_file}
-      @ONLY
    )
 endforeach()
 

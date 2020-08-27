@@ -30,10 +30,9 @@ set_target_properties(
 )
 
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
    ${CMAKE_BINARY_DIR}/scripts/generate_test_coverage_report
-   @ONLY
 )
 
 file(

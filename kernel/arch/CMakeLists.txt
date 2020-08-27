@@ -30,10 +30,9 @@ else()
    set_cross_compiler()
 endif()
 
-configure_file(
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
    ${CMAKE_BINARY_DIR}/scripts/generate_kernel_coverage_report
-   @ONLY
 )
 
 add_subdirectory(${ARCH})

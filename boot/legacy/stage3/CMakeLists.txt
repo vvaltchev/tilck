@@ -11,10 +11,9 @@ file(
 
 set(STAGE3_ASM_SOURCES "entry.S" "rm_calls.S")
 
-configure_file(
+smart_config_file(
    linker_script.ld
    ${STAGE3_SCRIPT}
-   @ONLY
 )
 
 set(

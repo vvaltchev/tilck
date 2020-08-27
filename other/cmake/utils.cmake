@@ -267,3 +267,49 @@ function(dec2hex val out)
 
    endif()
 endfunction()
+
+
+function(smart_config_file src dest)
+
+   configure_file(
+      ${src}
+      ${dest}.tmp
+      @ONLY
+   )
+
+   execute_process(
+
+      COMMAND
+         ${CMAKE_COMMAND} -E compare_files ${dest}.tmp ${dest}
+
+      RESULT_VARIABLE
+         NEED_UPDATE
+
+      OUTPUT_QUIET
+      ERROR_QUIET
+   )
+
+   if(NEED_UPDATE)
+
+      execute_process(
+         COMMAND ${CMAKE_COMMAND} -E rename ${dest}.tmp ${dest}
+      )
+
+   else()
+
+      if(${CMAKE_VERSION} VERSION_LESS "3.17.0")
+         execute_process(
+            COMMAND ${CMAKE_COMMAND} -E remove ${dest}.tmp
+         )
+      else()
+         # The `remove` command has been deprecated in CMake 3.17
+         execute_process(
+            COMMAND ${CMAKE_COMMAND} -E rm ${dest}.tmp
+         )
+      endif()
+
+   endif()
+
+   set_source_files_properties(${dest} PROPERTIES GENERATED TRUE)
+
+endfunction()
