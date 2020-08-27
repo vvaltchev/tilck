@@ -18,7 +18,7 @@
 
 STATIC struct kmalloc_heap first_heap_struct;
 STATIC struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
-STATIC u32 used_heaps;
+STATIC int used_heaps;
 STATIC size_t max_tot_heap_mem_free;
 
 #ifndef UNIT_TEST_ENVIRONMENT
@@ -199,7 +199,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
     */
 
    VERIFY(md_allocated == vaddr);
-   return (int)used_heaps++;
+   return used_heaps++;
 }
 
 static long greater_than_heap_cmp(const void *a, const void *b)
@@ -306,7 +306,7 @@ void init_kmalloc(void)
    }
 
    insertion_sort_ptr(heaps,
-                      used_heaps,
+                      (u32)used_heaps,
                       greater_than_heap_cmp);
 
    for (int i = 0; i < KMALLOC_HEAPS_COUNT; i++) {
