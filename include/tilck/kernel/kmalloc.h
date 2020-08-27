@@ -50,6 +50,11 @@ bool kmalloc_create_heap(struct kmalloc_heap *h,
                          virtual_alloc_and_map_func valloc,  // optional
                          virtual_free_and_unmap_func vfree); // optional
 
+struct kmalloc_heap *kmalloc_create_regular_heap(ulong vaddr,
+                                                 size_t size,
+                                                 size_t min_block_size);
+
+
 void kmalloc_destroy_heap(struct kmalloc_heap *h);
 struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h);
 

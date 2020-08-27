@@ -96,6 +96,34 @@ bool kmalloc_create_heap(struct kmalloc_heap *h,
    return true;
 }
 
+struct kmalloc_heap *kmalloc_create_regular_heap(ulong vaddr,
+                                                 size_t size,
+                                                 size_t min_block_size)
+{
+   struct kmalloc_heap *h = kalloc_obj(struct kmalloc_heap);
+   bool success;
+
+   if (!h)
+      return NULL;
+
+   success = kmalloc_create_heap(h,
+                                 vaddr,
+                                 size,
+                                 min_block_size,
+                                 0,                /* alloc_block_size */
+                                 true,             /* linear_mapping */
+                                 NULL,             /* metadata_nodes */
+                                 NULL,             /* valloc */
+                                 NULL);            /* vfree */
+
+   if (!success) {
+      kfree_obj(h, struct kmalloc_heap);
+      return NULL;
+   }
+
+   return h;
+}
+
 void kmalloc_destroy_heap(struct kmalloc_heap *h)
 {
    kfree2(h->metadata_nodes, h->metadata_size);
