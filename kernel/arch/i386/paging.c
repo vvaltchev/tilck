@@ -931,18 +931,9 @@ void early_init_paging(void)
 static void init_hi_vmem_heap(void)
 {
    size_t hi_vmem_size;
-   size_t metadata_size;
-   size_t min_block_size = 4 * PAGE_SIZE;
    ulong hi_vmem_start;
    u32 hi_vmem_start_pidx;
    u32 hi_vmem_end_pidx;
-   void *metadata;
-   bool success;
-
-   hi_vmem_heap = kmalloc(kmalloc_get_heap_struct_size());
-
-   if (!hi_vmem_heap)
-      panic("Unable to alloc hi_vmem_heap");
 
    if (LINEAR_MAPPING_MB <= 896) {
       hi_vmem_size = 128 * MB;
@@ -950,29 +941,15 @@ static void init_hi_vmem_heap(void)
       panic("LINEAR_MAPPING_MB (%d) is too big", LINEAR_MAPPING_MB);
    }
 
-   metadata_size = calculate_heap_metadata_size(hi_vmem_size, min_block_size);
-   metadata = kmalloc(metadata_size);
-
-   if (!metadata)
-      panic("No enough memory for hi vmem heap's metadata");
-
    hi_vmem_start = LINEAR_MAPPING_END;
-
    hi_vmem_start_pidx = hi_vmem_start >> BIG_PAGE_SHIFT;
    hi_vmem_end_pidx = hi_vmem_start_pidx + (hi_vmem_size >> BIG_PAGE_SHIFT);
 
-   success =
-      kmalloc_create_heap(hi_vmem_heap,
-                          hi_vmem_start,
-                          hi_vmem_size,
-                          min_block_size,
-                          0,
-                          true,     /* linear mapping true: that's lie! */
-                          metadata,
-                          NULL,
-                          NULL);
+   hi_vmem_heap = kmalloc_create_regular_heap(hi_vmem_start,
+                                              hi_vmem_size,
+                                              4 * PAGE_SIZE);  // min_block_size
 
-   if (!success)
+   if (!hi_vmem_heap)
       panic("Failed to create the hi vmem heap");
 
    for (u32 i = hi_vmem_start_pidx; i < hi_vmem_end_pidx; i++) {
