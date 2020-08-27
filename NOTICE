@@ -122,3 +122,18 @@ Original source:
 
 Original license:
    PUBLIC DOMAIN (see notice at the beginning of bithacks.h)
+
+**************************************************************************
+******************************* Item 5 ***********************************
+**************************************************************************
+
+Files:
+   - everything in modules/acpi/acpica/
+   - everything in include/3rd_party/acpi/
+   - everything in include/3rd_party/acpi/platform/ except "actilck.h"
+
+Original source:
+   https://acpica.org/sites/acpica/files/acpica-unix-20200717.tar.gz
+
+Original license:
+   https://acpica.org/sites/acpica/files/licensing.txt

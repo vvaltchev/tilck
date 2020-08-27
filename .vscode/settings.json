@@ -17,6 +17,7 @@
       "*_builds/**": true,
       "CMakeFiles/**": true,
       "sysroot/**": true,
+      "modules/acpi/acpica/**": true,
       "GPATH": true,
       "GRTAGS": true,
       "GTAGS": true,
