@@ -320,6 +320,13 @@ list(
    console
    tracing
    kb8042
+   acpi
+)
+
+list(
+   APPEND disabled_modules_list
+
+   acpi
 )
 
 file(GLOB modules ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/modules/*")
@@ -345,7 +352,14 @@ foreach(modpath ${modules})
       endif(TINY_KERNEL)
 
       list(APPEND modules_list ${modname})
-      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+
+      list(FIND disabled_modules_list ${modname} _index)
+
+      if (${_index} GREATER -1)
+         set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
+      else()
+         set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+      endif()
 
    endif()
 

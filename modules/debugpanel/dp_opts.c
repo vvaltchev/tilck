@@ -12,6 +12,7 @@
 #include <tilck_gen_headers/mod_debugpanel.h>
 #include <tilck_gen_headers/mod_tracing.h>
 #include <tilck_gen_headers/mod_sysfs.h>
+#include <tilck_gen_headers/mod_acpi.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -53,6 +54,7 @@ static void dp_show_opts(void)
    DUMP_INT_OPT(USER_STACK_PAGES);
 
    DUMP_LABEL("Kernel modules");
+   DUMP_BOOL_OPT(MOD_acpi);
    DUMP_BOOL_OPT(MOD_kb8042);
    DUMP_BOOL_OPT(MOD_console);
    DUMP_BOOL_OPT(MOD_fb);

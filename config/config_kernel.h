@@ -30,7 +30,7 @@
 /* Don't touch this: set KERNEL_STACK_PAGES instead */
 #define KERNEL_STACK_SIZE          (KERNEL_STACK_PAGES << PAGE_SHIFT)
 
-/* We careful here */
+/* Be careful here */
 #define KMALLOC_MAX_ALIGN                   (64 * KB)
 #define KMALLOC_MIN_HEAP_SIZE       KMALLOC_MAX_ALIGN
 

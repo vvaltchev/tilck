@@ -40,6 +40,7 @@ excludedDirs = [
    "toolchain",
    "system_headers",
    "vim_text_files",
+   "/acpica/",
    ".git",
    ".vscode"
 ]
