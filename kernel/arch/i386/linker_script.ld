@@ -25,6 +25,7 @@ SECTIONS
    .text : AT(kernel_text_paddr)
    {
       text = .;
+      *(.text.start)
       *(.text.unlikely .text.*_unlikely .text.unlikely.*)
       *(.text.exit .text.exit.*)
       *(.text.startup .text.startup.*)
