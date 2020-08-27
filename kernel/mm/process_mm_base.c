@@ -147,10 +147,10 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
    if (!(new_mi = kalloc_obj(struct mappings_info)))
       goto oom_case;
 
+   list_init(&new_mi->mappings);
+
    if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
       goto oom_case;
-
-   list_init(&new_mi->mappings);
 
    list_for_each_ro(um, &mi->mappings, pi_node) {
 
