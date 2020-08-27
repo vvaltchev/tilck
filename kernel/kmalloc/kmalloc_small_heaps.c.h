@@ -111,7 +111,8 @@ unregister_small_heap_node(struct small_heap_node *node)
    ASSERT(list_node_is_empty(&node->avail_node));
 }
 
-static struct small_heap_node *alloc_new_small_heap(void)
+static struct small_heap_node *
+alloc_new_small_heap_unsafe(void)
 {
    struct small_heap_node *new_node;
    void *heap_data, *metadata;
@@ -171,6 +172,21 @@ static struct small_heap_node *alloc_new_small_heap(void)
    shs.lifetime_created_heaps_count++;
    register_small_heap_node(new_node);
    return new_node;
+}
+
+static struct small_heap_node *
+alloc_new_small_heap(void)
+{
+   static ATOMIC(bool) in_use;
+   struct small_heap_node *res;
+   bool exp = false;
+
+   if (!atomic_cas_strong(&in_use, &exp, true, mo_relaxed, mo_relaxed))
+      return NULL;
+
+   res = alloc_new_small_heap_unsafe();
+   atomic_store_explicit(&in_use, false, mo_relaxed);
+   return res;
 }
 
 static void destroy_small_heap(struct small_heap_node *node)
