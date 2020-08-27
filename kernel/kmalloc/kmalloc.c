@@ -14,6 +14,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/sort.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/worker_thread.h>
 
 #include <tilck_gen_headers/config_kmalloc.h>
 
@@ -434,8 +435,8 @@ internal_kmalloc(struct kmalloc_heap *h,
    return NULL;
 }
 
-void *
-per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
+static void *
+per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
 {
    void *addr;
    const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
@@ -518,6 +519,20 @@ per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
    return big_block;
 }
 
+
+void *
+per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags)
+{
+   bool expected = false;
+   void *res;
+
+   if (!atomic_cas_strong(&h->in_use, &expected, true, mo_relaxed, mo_relaxed))
+      return NULL; /* heap already in use (we're in IRQ context) */
+
+   res = per_heap_kmalloc_unsafe(h, size, flags);
+   atomic_store_explicit(&h->in_use, false, mo_relaxed);
+   return res;
+}
 
 static void
 internal_kfree(struct kmalloc_heap *h,
@@ -643,12 +658,12 @@ debug_check_block_size(struct kmalloc_heap *h, ulong vaddr, size_t size)
    }
 }
 
-void
-per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
+static void
+per_heap_kfree_unsafe(struct kmalloc_heap *h,
+                      void *ptr,
+                      size_t *user_size,
+                      u32 flags)
 {
-   if (!ptr)
-      return;
-
    size_t size;
    ulong vaddr = (ulong)ptr;
 
@@ -658,6 +673,7 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
 
    ASSERT(!is_preemption_enabled());
    ASSERT(vaddr >= h->vaddr);
+   ASSERT(ptr);
 
    if (!multi_step_free) {
 
@@ -705,6 +721,131 @@ per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *user_size, u32 flags)
    }
 
    ASSERT(tot == size);
+}
+
+struct deferred_kfree_ctx {
+
+   struct kmalloc_heap *h;
+   void *ptr;
+   size_t user_size;
+   u32 flags;
+};
+
+static struct deferred_kfree_ctx emergency_deferred_kfree_ctx_array[8];
+
+static struct deferred_kfree_ctx *
+get_emergency_deferred_kfree_ctx(void *ptr)
+{
+   for (int i = 0; i < ARRAY_SIZE(emergency_deferred_kfree_ctx_array); i++) {
+      if (emergency_deferred_kfree_ctx_array[i].ptr == NULL) {
+         emergency_deferred_kfree_ctx_array[i].ptr = ptr;
+         return &emergency_deferred_kfree_ctx_array[i];
+      }
+   }
+
+   return NULL;
+}
+
+static bool
+is_emerg_deferred_kfree_ctx(struct deferred_kfree_ctx *ctx)
+{
+   return IN_RANGE(
+      (ulong)ctx,
+      (ulong)&emergency_deferred_kfree_ctx_array[0],
+      (ulong)&emergency_deferred_kfree_ctx_array[0]
+         + sizeof(emergency_deferred_kfree_ctx_array)
+   );
+}
+
+static void
+do_deferred_kfree(void *arg)
+{
+   struct deferred_kfree_ctx *ctx = arg;
+
+   disable_preemption();
+   {
+      per_heap_kfree(ctx->h, ctx->ptr, &ctx->user_size, ctx->flags);
+      bzero(ctx, sizeof(*ctx));
+   }
+   enable_preemption_nosched();
+
+   if (!is_emerg_deferred_kfree_ctx(ctx))
+      kfree_obj(ctx, struct deferred_kfree_ctx);
+}
+
+NO_INLINE static void
+per_heap_kfree_used_heap_corner_case(struct kmalloc_heap *h,
+                                     void *ptr,
+                                     size_t *size,
+                                     u32 flags)
+{
+   const bool multi_step_free = !!(flags & KFREE_FL_MULTI_STEP);
+
+   /*
+    * Corner case: probably because of ACPICA, we need to free a
+    * heap-allocated object in IRQ context WHILE the very same heap is
+    * already in use. That's extremely unfortunate.
+   */
+
+   if (!multi_step_free) {
+
+      if (*size) {
+         *size = roundup_next_power_of_2(MAX(*size, h->min_block_size));
+      } else {
+         /* No size: sorry, cannot give you this information in this case */
+      }
+
+   } else {
+
+      /* Here *size is REQUIRED */
+      ASSERT(*size);
+   }
+
+   struct deferred_kfree_ctx *ctx = kalloc_obj(struct deferred_kfree_ctx);
+
+   if (!ctx) {
+
+      /* Could we get more unlucky that this? */
+
+      ctx = get_emergency_deferred_kfree_ctx(ptr);
+
+      if (!ctx) {
+         /* Give up */
+         printk("kmalloc: ERROR: can't defer kfree %p: OOM\n", ptr);
+         return;
+      }
+   }
+
+   *ctx = (struct deferred_kfree_ctx) {
+      .h = h,
+      .ptr = ptr,
+      .user_size = *size,
+      .flags = flags
+   };
+
+   if (!wth_enqueue_anywhere(WTH_PRIO_HIGHEST, &do_deferred_kfree, ctx))
+      printk("kmalloc: ERROR: can't defer kfree %p: enqueue fail\n", ptr);
+}
+
+void
+per_heap_kfree(struct kmalloc_heap *h,
+               void *ptr,
+               size_t *user_size,
+               u32 flags)
+{
+   bool expected = false;
+
+   if (!ptr)
+      return;
+
+   if (!atomic_cas_strong(&h->in_use, &expected, true, mo_relaxed, mo_relaxed))
+   {
+      per_heap_kfree_used_heap_corner_case(h, ptr, user_size, flags);
+      return;
+   }
+
+   per_heap_kfree_unsafe(h, ptr, user_size, flags);
+   atomic_store_explicit(&h->in_use, false, mo_relaxed);
 }
 
 void *kzmalloc(size_t size)

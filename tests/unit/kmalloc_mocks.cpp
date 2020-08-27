@@ -64,7 +64,7 @@ void initialize_test_kernel_heap()
 void init_kmalloc_for_tests()
 {
    bzero(&kmalloc_initialized, sizeof(kmalloc_initialized));
-   bzero(&first_heap_struct, sizeof(first_heap_struct));
+   bzero((void *)&first_heap_struct, sizeof(first_heap_struct));
    bzero(&heaps, sizeof(heaps));
    bzero(&used_heaps, sizeof(used_heaps));
    bzero(&max_tot_heap_mem_free, sizeof(max_tot_heap_mem_free));
