@@ -91,7 +91,7 @@ bool kmalloc_create_heap(struct kmalloc_heap *h,
    h->heap_data_size_log2 = log2_for_power_of_2(size);
    h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
 
-   bzero(h->metadata_nodes, calculate_heap_metadata_size(size, min_block_size));
+   bzero(h->metadata_nodes, h->metadata_size);
    h->linear_mapping = linear_mapping;
    return true;
 }
