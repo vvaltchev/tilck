@@ -34,32 +34,49 @@ typedef void (*virtual_free_and_unmap_func)(ulong vaddr, size_t page_count);
 
 struct kmalloc_heap;
 
-void early_init_kmalloc(void);
-void init_kmalloc(void);
-void *general_kmalloc(size_t *size, u32 flags);
-void general_kfree(void *ptr, size_t *size, u32 flags);
-bool is_kmalloc_initialized(void);
+void
+early_init_kmalloc(void);
 
-bool kmalloc_create_heap(struct kmalloc_heap *h,
-                         ulong vaddr,
-                         size_t size,
-                         size_t min_block_size,
-                         size_t alloc_block_size, /* 0 if linear_mapping=1 */
-                         bool linear_mapping,
-                         void *metadata_nodes,               // optional
-                         virtual_alloc_and_map_func valloc,  // optional
-                         virtual_free_and_unmap_func vfree); // optional
+void
+init_kmalloc(void);
 
-struct kmalloc_heap *kmalloc_create_regular_heap(ulong vaddr,
-                                                 size_t size,
-                                                 size_t min_block_size);
+void *
+general_kmalloc(size_t *size, u32 flags);
+
+void
+general_kfree(void *ptr, size_t *size, u32 flags);
+
+bool
+is_kmalloc_initialized(void);
+
+bool
+kmalloc_create_heap(struct kmalloc_heap *h,
+                    ulong vaddr,
+                    size_t size,
+                    size_t min_block_size,
+                    size_t alloc_block_size, /* 0 if linear_mapping=1 */
+                    bool linear_mapping,
+                    void *metadata_nodes,               // optional
+                    virtual_alloc_and_map_func valloc,  // optional
+                    virtual_free_and_unmap_func vfree); // optional
+
+struct kmalloc_heap *
+kmalloc_create_regular_heap(ulong vaddr,
+                            size_t size,
+                            size_t min_block_size);
 
 
-void kmalloc_destroy_heap(struct kmalloc_heap *h);
-struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h);
+void
+kmalloc_destroy_heap(struct kmalloc_heap *h);
 
-void *per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags);
-void per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
+struct kmalloc_heap *
+kmalloc_heap_dup(struct kmalloc_heap *h);
+
+void *
+per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags);
+
+void
+per_heap_kfree(struct kmalloc_heap *h, void *ptr, size_t *size, u32 flags);
 
 struct kmalloc_acc {
 
@@ -69,37 +86,57 @@ struct kmalloc_acc {
    char *buf;
 };
 
-void kmalloc_create_accelerator(struct kmalloc_acc *a, u32 elem_s, u32 elem_c);
-void *kmalloc_accelerator_get_elem(struct kmalloc_acc *a);
-void kmalloc_destroy_accelerator(struct kmalloc_acc *a);
+void
+kmalloc_create_accelerator(struct kmalloc_acc *a, u32 elem_s, u32 elem_c);
+
+void *
+kmalloc_accelerator_get_elem(struct kmalloc_acc *a);
+
+void
+kmalloc_destroy_accelerator(struct kmalloc_acc *a);
 
 #ifndef UNIT_TEST_ENVIRONMENT
 
-static inline void *kmalloc(size_t size)
+static inline void *
+kmalloc(size_t size)
 {
    return general_kmalloc(&size, 0);
 }
 
-static inline void kfree2(void *ptr, size_t size)
+static inline void
+kfree2(void *ptr, size_t size)
 {
    general_kfree(ptr, &size, 0);
 }
 
 #else
 
-void *kmalloc(size_t size);
-void kfree2(void *ptr, size_t user_size);
+void *
+kmalloc(size_t size);
+
+void
+kfree2(void *ptr, size_t user_size);
 
 #endif
 
-void *kzmalloc(size_t size);
-size_t kmalloc_get_heap_struct_size(void);
-size_t kmalloc_get_max_tot_heap_free(void);
-void *aligned_kmalloc(size_t size, u32 align);
-void aligned_kfree2(void *ptr, size_t size);
+void *
+kzmalloc(size_t size);
+
+size_t
+kmalloc_get_heap_struct_size(void);
+
+size_t
+kmalloc_get_max_tot_heap_free(void);
+
+void *
+aligned_kmalloc(size_t size, u32 align);
+
+void
+aligned_kfree2(void *ptr, size_t size);
 
 /* Free function to use when we really don't know chunk's size */
-static inline void kfree(void *ptr)
+static inline void
+kfree(void *ptr)
 {
    kfree2(ptr, 0);
 }
