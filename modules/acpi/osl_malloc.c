@@ -14,6 +14,53 @@
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/acpiosxf.h>
 
+#define ACPI_HEAP_SIZE                 (128 * KB)
+#define ACPI_HEAP_MBS                          32
+#define ACPI_HEAP_MAX_OBJ_SIZE                128
+
+static struct kmalloc_heap *acpi_heap;
+static ulong acpi_heap_va;
+static ulong acpi_heap_last_obj_addr;
+
+static void *
+acpi_osl_do_alloc(size_t sz)
+{
+   void *vaddr = NULL;
+
+   if (sz <= ACPI_HEAP_MAX_OBJ_SIZE) {
+
+      disable_preemption();
+      {
+         vaddr = per_heap_kmalloc(acpi_heap, &sz, 0);
+      }
+      enable_preemption_nosched();
+   }
+
+   if (!vaddr)
+      vaddr = kmalloc(sz);
+
+   return vaddr;
+}
+
+static void
+acpi_osl_do_free(void *ptr)
+{
+   ulong va = (ulong)ptr;
+   size_t sz = 0;
+
+   if (IN_RANGE_INC(va, acpi_heap_va, acpi_heap_last_obj_addr)) {
+
+      disable_preemption();
+      {
+         per_heap_kfree(acpi_heap, ptr, &sz, 0);
+      }
+      enable_preemption_nosched();
+
+   } else {
+      kfree(ptr);
+   }
+}
+
 void *
 AcpiOsAllocate(ACPI_SIZE Size)
 {
@@ -41,7 +88,7 @@ AcpiOsAllocate(ACPI_SIZE Size)
 
    disable_interrupts(&var);
    {
-      vaddr = kmalloc(sz);
+      vaddr = acpi_osl_do_alloc(sz);
    }
    enable_interrupts(&var);
    return vaddr;
@@ -53,7 +100,7 @@ AcpiOsFree(void *Memory)
    ulong var;
    disable_interrupts(&var);
    {
-      kfree(Memory);
+      acpi_osl_do_free(Memory);
    }
    enable_interrupts(&var);
 }
@@ -61,5 +108,21 @@ AcpiOsFree(void *Memory)
 ACPI_STATUS
 osl_init_malloc(void)
 {
+   acpi_heap_va = (ulong)kmalloc(ACPI_HEAP_SIZE);
+
+   if (!acpi_heap_va)
+      return AE_NO_MEMORY;
+
+   acpi_heap = kmalloc_create_regular_heap(acpi_heap_va,
+                                           ACPI_HEAP_SIZE,
+                                           ACPI_HEAP_MBS);
+
+   if (!acpi_heap) {
+      kfree2((void *)acpi_heap_va, ACPI_HEAP_SIZE);
+      acpi_heap_va = 0;
+      return AE_NO_MEMORY;
+   }
+
+   acpi_heap_last_obj_addr = acpi_heap_va + ACPI_HEAP_SIZE - ACPI_HEAP_MBS;
    return AE_OK;
 }
