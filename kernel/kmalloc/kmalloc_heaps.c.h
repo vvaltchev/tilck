@@ -74,7 +74,7 @@ bool kmalloc_create_heap(struct kmalloc_heap *h,
       ASSERT(heaps[0] != NULL);
       ASSERT(heaps[0]->vaddr != 0);
 
-      metadata_nodes = kmalloc(h->metadata_size);
+      metadata_nodes = vmalloc(h->metadata_size);
 
       if (!metadata_nodes)
          return false;
@@ -126,7 +126,7 @@ struct kmalloc_heap *kmalloc_create_regular_heap(ulong vaddr,
 
 void kmalloc_destroy_heap(struct kmalloc_heap *h)
 {
-   kfree2(h->metadata_nodes, h->metadata_size);
+   vfree2(h->metadata_nodes, h->metadata_size);
    bzero(h, sizeof(struct kmalloc_heap));
 }
 
@@ -142,7 +142,7 @@ struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
 
    memcpy(new_heap, h, sizeof(struct kmalloc_heap));
 
-   new_heap->metadata_nodes = kmalloc(h->metadata_size);
+   new_heap->metadata_nodes = vmalloc(h->metadata_size);
 
    if (!new_heap->metadata_nodes) {
       kfree_obj(new_heap, struct kmalloc_heap);
