@@ -575,13 +575,21 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 
    if (pg_flags & PAGING_FL_DO_ALLOC) {
 
+      void *va;
       ASSERT(paddr == 0);
-      void *va = kmalloc(PAGE_SIZE);
 
-      if (!va)
+      if (!(va = kmalloc(PAGE_SIZE)))
          return -ENOMEM;
 
+      if (pg_flags & PAGING_FL_ZERO_PG)
+         bzero(va, PAGE_SIZE);
+
       paddr = KERNEL_VA_TO_PA(va);
+
+   } else {
+
+      /* PAGING_FL_ZERO_PG cannot be used without PAGING_FL_DO_ALLOC */
+      ASSERT(~pg_flags & PAGING_FL_ZERO_PG);
    }
 
    rc =

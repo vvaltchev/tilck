@@ -23,6 +23,7 @@
 #define PAGING_FL_BIG_PAGES_ALLOWED                       (1 << 2)
 #define PAGING_FL_SHARED                                  (1 << 3)
 #define PAGING_FL_DO_ALLOC                                (1 << 4)
+#define PAGING_FL_ZERO_PG                                 (1 << 5)
 
 /* Combo values */
 #define PAGING_FL_RWUS               (PAGING_FL_RW | PAGING_FL_US)
