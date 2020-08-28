@@ -568,11 +568,23 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool us = !!(pg_flags & PAGING_FL_US);
    u32 avail_bits = 0;
+   int rc;
 
    if (pg_flags & PAGING_FL_SHARED)
       avail_bits |= PAGE_SHARED;
 
-   return
+   if (pg_flags & PAGING_FL_DO_ALLOC) {
+
+      ASSERT(paddr == 0);
+      void *va = kmalloc(PAGE_SIZE);
+
+      if (!va)
+         return -ENOMEM;
+
+      paddr = KERNEL_VA_TO_PA(va);
+   }
+
+   rc =
       map_page_int(pdir,
                    vaddrp,
                    paddr,
@@ -581,6 +593,12 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
                    (u32)(rw << PG_RW_BIT_POS)            |
                    (u32)((!us) << PG_GLOBAL_BIT_POS));
                    /* Kernel pages are global */
+
+   if (UNLIKELY(rc != 0) && (pg_flags & PAGING_FL_DO_ALLOC)) {
+      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
+   }
+
+   return rc;
 }
 
 NODISCARD int
@@ -636,6 +654,9 @@ map_pages(pdir_t *pdir,
 
    if (pg_flags & PAGING_FL_SHARED)
       avail_bits |= PAGE_SHARED;
+
+   if (pg_flags & PAGING_FL_DO_ALLOC)
+      NOT_IMPLEMENTED();
 
    return
       map_pages_int(pdir,
