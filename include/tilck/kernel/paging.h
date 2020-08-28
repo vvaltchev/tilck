@@ -126,6 +126,9 @@ void *hi_vmem_reserve(size_t size);
  */
 void hi_vmem_release(void *ptr, size_t size);
 
+/* Returns true if the hi_vmem_heap has been initialized */
+bool hi_vmem_avail(void);
+
 int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len);
 int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len);
 

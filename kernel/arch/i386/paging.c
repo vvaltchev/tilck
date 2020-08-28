@@ -1143,6 +1143,11 @@ map_framebuffer(pdir_t *pdir,
    return (void *)vaddr;
 }
 
+bool hi_vmem_avail(void)
+{
+   return hi_vmem_heap != NULL;
+}
+
 void *hi_vmem_reserve(size_t size)
 {
    void *res;

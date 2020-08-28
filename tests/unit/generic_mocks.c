@@ -83,6 +83,8 @@ int virtual_write(void *pdir, void *extern_va, void *src, size_t len)
    return 0;
 }
 
+bool hi_vmem_avail(void) { return false; }
+
 int kthread_create2() { return -12; /* ENOMEM */}
 
 void invalidate_page() {}
