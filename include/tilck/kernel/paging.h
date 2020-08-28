@@ -100,6 +100,37 @@ static ALWAYS_INLINE pdir_t *get_kernel_pdir(void)
    return __kernel_pdir;
 }
 
+NODISCARD static ALWAYS_INLINE int
+map_kernel_page(void *vaddr, ulong paddr, u32 pg_flags)
+{
+   extern pdir_t *__kernel_pdir;
+   return map_page(__kernel_pdir, vaddr, paddr, pg_flags);
+}
+
+static ALWAYS_INLINE void
+unmap_kernel_page(void *vaddr, bool do_free)
+{
+   extern pdir_t *__kernel_pdir;
+   unmap_page(__kernel_pdir, vaddr, do_free);
+}
+
+NODISCARD static ALWAYS_INLINE size_t
+map_kernel_pages(void *vaddr,
+                 ulong paddr,
+                 size_t page_count,
+                 u32 pg_flags)
+{
+   extern pdir_t *__kernel_pdir;
+   return map_pages(__kernel_pdir, vaddr, paddr, page_count, pg_flags);
+}
+
+static ALWAYS_INLINE void
+unmap_kernel_pages(void *vaddr, size_t count, bool do_free)
+{
+   extern pdir_t *__kernel_pdir;
+   unmap_pages(__kernel_pdir, vaddr, count, do_free);
+}
+
 void *
 map_framebuffer(pdir_t *pdir,
                 ulong paddr,
