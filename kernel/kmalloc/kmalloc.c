@@ -859,6 +859,66 @@ void *kzmalloc(size_t size)
    return res;
 }
 
+static
+void vfree_internal(ulong va_begin, ulong va_end)
+{
+   for (ulong va = va_begin; va < va_end; va += PAGE_SIZE)
+      unmap_kernel_page(TO_PTR(va), true);
+}
+
+void *vmalloc(size_t size)
+{
+   size_t actual_sz = pow2_round_up_at(size, PAGE_SIZE);
+   ulong va, va_begin, va_end;
+   void *ptr;
+
+   if (!hi_vmem_avail())
+      return kmalloc(size);
+
+   ptr = kmalloc(size);
+
+   if (ptr)
+      return ptr;
+
+   ptr = hi_vmem_reserve(actual_sz);
+
+   va_begin = (ulong)ptr;
+   va_end = va_begin + actual_sz;
+
+   for (va = va_begin; va < va_end; va += PAGE_SIZE) {
+      if (map_kernel_page(TO_PTR(va), 0, PAGING_FL_RW | PAGING_FL_DO_ALLOC))
+         goto oom_case;
+   }
+
+   return TO_PTR(va_begin);
+
+oom_case:
+
+   va_end = va;
+   vfree_internal(va_begin, va_end);
+   hi_vmem_release(TO_PTR(va_begin), actual_sz);
+   return NULL;
+
+}
+
+void vfree2(void *ptr, size_t size)
+{
+   if (!ptr)
+      return;
+
+   if ((ulong)ptr < LINEAR_MAPPING_END)
+      return kfree2(ptr, size);
+
+   size_t actual_sz = pow2_round_up_at(size, PAGE_SIZE);
+   ulong va_begin, va_end;
+
+   va_begin = (ulong)ptr;
+   va_end = va_begin + actual_sz;
+
+   vfree_internal(va_begin, va_end);
+   hi_vmem_release(TO_PTR(va_begin), actual_sz);
+}
+
 /* Natural continuation of this source file. Purpose: make this file shorter. */
 #include "kmalloc_stats.c.h"
 #include "kmalloc_small_heaps.c.h"

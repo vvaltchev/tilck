@@ -134,6 +134,12 @@ aligned_kmalloc(size_t size, u32 align);
 void
 aligned_kfree2(void *ptr, size_t size);
 
+void *
+vmalloc(size_t size);
+
+void
+vfree2(void *ptr, size_t size);
+
 /* Free function to use when we really don't know chunk's size */
 static inline void
 kfree(void *ptr)

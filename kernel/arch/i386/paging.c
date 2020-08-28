@@ -1179,11 +1179,12 @@ bool hi_vmem_avail(void)
 
 void *hi_vmem_reserve(size_t size)
 {
-   void *res;
+   void *res = NULL;
 
    disable_preemption();
    {
-      res = per_heap_kmalloc(hi_vmem_heap, &size, 0);
+      if (LIKELY(hi_vmem_heap != NULL))
+         res = per_heap_kmalloc(hi_vmem_heap, &size, 0);
    }
    enable_preemption();
    return res;
