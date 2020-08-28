@@ -397,10 +397,7 @@ internal_kmalloc(struct kmalloc_heap *h,
 
       if (!n.split) {
          DEBUG_kmalloc_split;
-
          nodes[node].split = true;
-         nodes[NODE_LEFT(node)].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
-         nodes[NODE_RIGHT(node)].raw &= ~(FL_NODE_SPLIT & FL_NODE_FULL);
       }
 
       if (!nodes[NODE_LEFT(node)].full) {
