@@ -28,7 +28,8 @@ FONT_FILE = "@CMAKE_SOURCE_DIR@/modules/fb/font8x16.psf"
 KERNEL_GCOV = "@KERNEL_GCOV@"
 GEN_KCOV_REPORT = "@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report"
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
-QEMU_DEBUG_FILE = "@CMAKE_BINARY_DIR@/tmp/qemu_debug.log"
+QEMU_DEBUG_FILE = "@CMAKE_BINARY_DIR@/tmp/qemu_debugcon.log"
+QEMU_DEBUG_FILE2 = "@CMAKE_BINARY_DIR@/tmp/qemu_debug.log"
 
 CMAKE_CONFIG = {
    "EXTRA_VIM" : ("@EXTRA_VIM@", True),
@@ -504,12 +505,20 @@ def run_main_body():
       else:
          msg_print("Note: QEMU died with: {}".format(g_process.returncode))
 
-      msg_print("--- Dumping QEMU debug log: {} ---".format(QEMU_DEBUG_FILE))
+      msg_print("--- Dump QEMU debugcon log: {} ---".format(QEMU_DEBUG_FILE))
 
       with open(QEMU_DEBUG_FILE, 'r') as fh:
          raw_print(fh.read())
 
-      msg_print("--- END QEMU debug log file ---")
+      msg_print("--- END QEMU debugcon log file ---")
+
+      msg_print("--- Dump QEMU trace log: {} ---".format(QEMU_DEBUG_FILE2))
+
+      with open(QEMU_DEBUG_FILE2, 'r') as fh:
+         raw_print(fh.read())
+
+      msg_print("--- END QEMU trace log file ---")
+
       set_once_fail_reason(Fail.other)
 
    except Exception as e:
@@ -645,6 +654,8 @@ def run():
       '-drive', 'id=img1,format=raw,if=none,file=' + TILCK_IMAGE,
       '-device', 'ide-hd,drive=img1,@QEMU_CHS_GEOM@',
       '-debugcon', 'file:{}'.format(QEMU_DEBUG_FILE),
+      '-d', 'cpu_reset,guest_errors,trace:*monitor*',
+      '-D', QEMU_DEBUG_FILE2,
       '-global', 'isa-debugcon.iobase=0x402',
       '-serial', 'pty',
    ]
