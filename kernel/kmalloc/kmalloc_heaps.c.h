@@ -37,19 +37,32 @@ void *kmalloc_get_first_heap(size_t *size)
 
 #include "kmalloc_leak_detector.c.h"
 
-bool kmalloc_create_heap(struct kmalloc_heap *h,
-                         ulong vaddr,
-                         size_t size,
-                         size_t min_block_size,
-                         size_t alloc_block_size,
-                         bool linear_mapping,
-                         void *metadata_nodes,
-                         virtual_alloc_and_map_func valloc,
-                         virtual_free_and_unmap_func vfree)
+static void
+kmalloc_heap_set_pre_calculated_values(struct kmalloc_heap *h)
+{
+   h->heap_last_byte = h->vaddr + h->size - 1;
+   h->heap_data_size_log2 = log2_for_power_of_2(h->size);
+   h->alloc_block_size_log2 = log2_for_power_of_2(h->alloc_block_size);
+   h->metadata_size = calculate_heap_metadata_size(h->size, h->min_block_size);
+}
+
+bool
+kmalloc_create_heap(struct kmalloc_heap *h,
+                    ulong vaddr,
+                    size_t size,
+                    size_t min_block_size,
+                    size_t alloc_block_size,
+                    bool linear_mapping,
+                    void *metadata_nodes,
+                    virtual_alloc_and_map_func valloc,
+                    virtual_free_and_unmap_func vfree)
 {
    if (size != SMALL_HEAP_SIZE) {
       // heap size has to be a multiple of KMALLOC_MIN_HEAP_SIZE
       ASSERT((size & (KMALLOC_MIN_HEAP_SIZE - 1)) == 0);
+
+      // heap size must be a power of 2
+      ASSERT(roundup_next_power_of_2(size) == size);
 
       // vaddr must be aligned at least at KMALLOC_MAX_ALIGN
       ASSERT((vaddr & (KMALLOC_MAX_ALIGN - 1)) == 0);
@@ -86,19 +99,17 @@ bool kmalloc_create_heap(struct kmalloc_heap *h,
    h->alloc_block_size = alloc_block_size;
    h->metadata_nodes = metadata_nodes;
    h->region = -1;
-
-   h->heap_last_byte = vaddr + size - 1;
-   h->heap_data_size_log2 = log2_for_power_of_2(size);
-   h->alloc_block_size_log2 = log2_for_power_of_2(alloc_block_size);
+   kmalloc_heap_set_pre_calculated_values(h);
 
    bzero(h->metadata_nodes, h->metadata_size);
    h->linear_mapping = linear_mapping;
    return true;
 }
 
-struct kmalloc_heap *kmalloc_create_regular_heap(ulong vaddr,
-                                                 size_t size,
-                                                 size_t min_block_size)
+struct kmalloc_heap *
+kmalloc_create_regular_heap(ulong vaddr,
+                            size_t size,
+                            size_t min_block_size)
 {
    struct kmalloc_heap *h = kalloc_obj(struct kmalloc_heap);
    bool success;
@@ -130,27 +141,72 @@ void kmalloc_destroy_heap(struct kmalloc_heap *h)
    bzero(h, sizeof(struct kmalloc_heap));
 }
 
-struct kmalloc_heap *kmalloc_heap_dup(struct kmalloc_heap *h)
+struct kmalloc_heap *
+kmalloc_heap_dup_expanded(struct kmalloc_heap *h, size_t new_size)
 {
+   struct kmalloc_heap *new_heap;
+
+   /* `new_size` must at least as big as the old one */
+   ASSERT(new_size >= h->size);
+
+   /* `new_size` must be a power of 2 */
+   ASSERT(roundup_next_power_of_2(new_size) == new_size);
+
    if (!h)
       return NULL;
 
-   struct kmalloc_heap *new_heap = kalloc_obj(struct kmalloc_heap);
-
-   if (!new_heap)
+   if (!(new_heap = kalloc_obj(struct kmalloc_heap)))
       return NULL;
 
    memcpy(new_heap, h, sizeof(struct kmalloc_heap));
 
-   new_heap->metadata_nodes = vmalloc(h->metadata_size);
+   new_heap->size = new_size;
+   new_heap->metadata_size =
+      calculate_heap_metadata_size(new_size, new_heap->min_block_size);
+
+   new_heap->metadata_nodes = vmalloc(new_heap->metadata_size);
 
    if (!new_heap->metadata_nodes) {
       kfree_obj(new_heap, struct kmalloc_heap);
       return NULL;
    }
 
-   memcpy(new_heap->metadata_nodes, h->metadata_nodes, h->metadata_size);
+   if (new_size == h->size) {
+      memcpy(new_heap->metadata_nodes, h->metadata_nodes, h->metadata_size);
+      return new_heap;
+   }
+
+   kmalloc_heap_set_pre_calculated_values(new_heap);
+   bzero(new_heap->metadata_nodes, new_heap->metadata_size);
+
+   struct block_node *new_nodes = new_heap->metadata_nodes;
+   struct block_node *old_nodes = h->metadata_nodes;
+   size_t nodes_per_row = 1;
+   int new_idx, old_idx;
+
+   for (size_t size = new_heap->size; size >= h->min_block_size; size /= 2) {
+
+      new_idx = ptr_to_node(new_heap, TO_PTR(h->vaddr), size);
+
+      if (size > h->size) {
+
+         new_nodes[new_idx].split = true;
+
+      } else {
+
+         old_idx = ptr_to_node(h, TO_PTR(h->vaddr), size);
+         memcpy(&new_nodes[new_idx], &old_nodes[old_idx], nodes_per_row);
+         nodes_per_row *= 2;
+      }
+   }
+
    return new_heap;
+}
+
+struct kmalloc_heap *
+kmalloc_heap_dup(struct kmalloc_heap *h)
+{
+   return kmalloc_heap_dup_expanded(h, h->size);
 }
 
 static size_t find_biggest_heap_size(ulong vaddr, ulong limit)

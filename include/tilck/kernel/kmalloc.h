@@ -72,6 +72,9 @@ kmalloc_destroy_heap(struct kmalloc_heap *h);
 struct kmalloc_heap *
 kmalloc_heap_dup(struct kmalloc_heap *h);
 
+struct kmalloc_heap *
+kmalloc_heap_dup_expanded(struct kmalloc_heap *h, size_t sz);
+
 void *
 per_heap_kmalloc(struct kmalloc_heap *h, size_t *size, u32 flags);
 
