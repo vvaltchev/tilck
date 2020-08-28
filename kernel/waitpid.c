@@ -130,6 +130,16 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
       ASSERT(wo->type == WOBJ_TASK);
       struct task *task_to_wake_up = CONTAINER_OF(wo, struct task, wobj);
 
+      if (task_to_wake_up->state != TASK_STATE_SLEEPING) {
+
+         /*
+          * The task MUST be in waitpid(), but it's not sleeping. Because of
+          * the implementation of waitpid(), it's safe to just skip this task
+          * here as it will notice the event before going to sleep again.
+          */
+         continue;
+      }
+
       if (r == task_died ||
           (r == task_stopped && (wo->extra & WEXTRA_TASK_STOPPED)) ||
           (r == task_continued && (wo->extra & WEXTRA_TASK_CONTINUED)))
@@ -207,23 +217,23 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
          break; /* note: leave the preemption disabled */
       }
 
-      enable_preemption();
-
       /* No chtask has been found */
 
       if (!child_count) {
          /* No children to wait for */
+         enable_preemption();
          return -ECHILD;
       }
 
       if (options & WNOHANG) {
          /* With WNOHANG we must not hang until a child changes state */
+         enable_preemption();
          return 0;
       }
 
       /* Hang until a child changes state */
       task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), NO_EXTRA, wait_list);
-      kernel_yield();
+      kernel_yield_preempt_disabled();
 
       if (pending_signals())
          return -EINTR;
