@@ -152,6 +152,8 @@ duplicate_mappings_info(struct process *new_pi, struct mappings_info *mi)
    if (!(new_mi->mmap_heap = kmalloc_heap_dup(mi->mmap_heap)))
       goto oom_case;
 
+   new_mi->mmap_heap_size = mi->mmap_heap_size;
+
    list_for_each_ro(um, &mi->mappings, pi_node) {
 
       if (!(um2 = kalloc_obj(struct user_mapping)))

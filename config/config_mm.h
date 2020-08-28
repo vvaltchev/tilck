@@ -39,5 +39,7 @@
 #define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
 #define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
 #define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
-#define USER_MMAP_END            (0x80000000) /* +2 GB (virtual memory) */
+#define USER_MMAP_MIN_SZ            (16 * MB)
+#define USER_MMAP_MAX_SZ          (1024 * MB)
+
 #define USERMODE_STACK_MAX ((USERMODE_VADDR_END - 1) & POINTER_ALIGN_MASK)

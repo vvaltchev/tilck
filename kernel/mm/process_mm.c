@@ -118,11 +118,12 @@ static int create_process_mmap_heap(struct process *pi)
 
    list_init(&pi->mi->mappings);
    pi->mi->mmap_heap = mmap_heap;
+   pi->mi->mmap_heap_size = USER_MMAP_MIN_SZ;
 
    bool success =
       kmalloc_create_heap(mmap_heap,
                           USER_MMAP_BEGIN,
-                          USER_MMAP_END - USER_MMAP_BEGIN,
+                          pi->mi->mmap_heap_size,
                           PAGE_SIZE,
                           KMALLOC_MAX_ALIGN,    /* alloc block size */
                           false,                /* linear mapping */
@@ -163,12 +164,31 @@ mmap_on_user_heap(struct process *pi,
    void *res;
    struct user_mapping *um;
 
-   res = per_heap_kmalloc(pi->mi->mmap_heap,
-                          actual_len_ref,
-                          per_heap_kmalloc_flags);
+   while (true) {
 
-   if (!res)
-      return NULL;
+      struct kmalloc_heap *new_heap;
+      struct kmalloc_heap *h = pi->mi->mmap_heap;
+      size_t heap_sz = pi->mi->mmap_heap_size;
+
+      res = per_heap_kmalloc(h,
+                             actual_len_ref,
+                             per_heap_kmalloc_flags);
+
+      if (LIKELY(res != NULL))
+         break;        /* great! */
+
+      if (heap_sz == USER_MMAP_MAX_SZ)
+         return NULL; /* cannot expand the heap more than that */
+
+      new_heap = kmalloc_heap_dup_expanded(h, heap_sz * 2);
+
+      if (!new_heap)
+         return NULL; /* no enough memory */
+
+      pi->mi->mmap_heap_size = heap_sz * 2;
+      pi->mi->mmap_heap = new_heap;
+      kmalloc_destroy_heap(h);
+   }
 
    /* NOTE: here `handle` might be NULL (zero-map case) and that's OK */
    um = process_add_user_mapping(handle, res, *actual_len_ref, off, prot);
@@ -411,8 +431,12 @@ int sys_munmap(void *vaddrp, size_t len)
    if (!len || !pi->mi->mmap_heap)
       return -EINVAL;
 
-   if (vaddr < USER_MMAP_BEGIN || vaddr >= USER_MMAP_END)
+   if (!IN_RANGE(vaddr,
+                 USER_MMAP_BEGIN,
+                 USER_MMAP_BEGIN + pi->mi->mmap_heap_size))
+   {
       return -EINVAL;
+   }
 
    disable_preemption();
    {

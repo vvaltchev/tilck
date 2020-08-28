@@ -29,6 +29,7 @@ struct kernel_alloc {
 struct mappings_info {
 
    struct kmalloc_heap *mmap_heap;
+   size_t mmap_heap_size;
    struct list mappings;
 };
 
