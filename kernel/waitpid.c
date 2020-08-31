@@ -104,7 +104,7 @@ get_child_with_changed_status(struct process *pi,
 }
 
 static bool
-task_is_waiting_on_multiple_children(struct task *ti, int *tid)
+is_waiting_on_multiple_children(struct task *ti, int *tid)
 {
    struct wait_obj *wobj = &ti->wobj;
 
@@ -116,6 +116,15 @@ task_is_waiting_on_multiple_children(struct task *ti, int *tid)
 
    *tid = (int)wait_obj_get_data(wobj);
    return *tid < 0;
+}
+
+static bool
+is_good_reason_to_wake_up_task(struct wait_obj *wo, enum wakeup_reason r)
+{
+   return
+      r == task_died                                                    ||
+         (r == task_stopped && (wo->extra & WEXTRA_TASK_STOPPED))       ||
+         (r == task_continued && (wo->extra & WEXTRA_TASK_CONTINUED));
 }
 
 void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
@@ -140,12 +149,8 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
          continue;
       }
 
-      if (r == task_died ||
-          (r == task_stopped && (wo->extra & WEXTRA_TASK_STOPPED)) ||
-          (r == task_continued && (wo->extra & WEXTRA_TASK_CONTINUED)))
-      {
+      if (is_good_reason_to_wake_up_task(wo, r))
          task_reset_wait_obj(task_to_wake_up);
-      }
    }
 
    if (LIKELY(pi->parent_pid > 0)) {
@@ -153,9 +158,12 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
       struct task *parent_task = get_task(pi->parent_pid);
       int tid;
 
-      if (task_is_waiting_on_multiple_children(parent_task, &tid))
-         if (!waitpid_should_skip_child(parent_task, ti, tid))
-            task_reset_wait_obj(parent_task);
+      if (is_waiting_on_multiple_children(parent_task, &tid)      &&
+          !waitpid_should_skip_child(parent_task, ti, tid)        &&
+          is_good_reason_to_wake_up_task(&parent_task->wobj, r))
+      {
+         task_reset_wait_obj(parent_task);
+      }
    }
 }
 
@@ -172,7 +180,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
    int chtask_tid = -1;
-   u16 wobj_extra = 0;
+   u16 wobj_extra = NO_EXTRA;
 
    if (options & WUNTRACED)
       wobj_extra |= WEXTRA_TASK_STOPPED;
@@ -232,7 +240,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
       }
 
       /* Hang until a child changes state */
-      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), NO_EXTRA, wait_list);
+      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), wobj_extra, wait_list);
       kernel_yield_preempt_disabled();
 
       if (pending_signals())
