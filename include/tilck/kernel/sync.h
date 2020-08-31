@@ -95,7 +95,7 @@ void prepare_to_wait_on(enum wo_type type,
                         u16 extra,
                         struct list *wait_list);
 
-void *task_reset_wait_obj(struct task *ti);
+void *wake_up(struct task *ti);
 
 struct multi_obj_waiter *allocate_mobj_waiter(int elems);
 void free_mobj_waiter(struct multi_obj_waiter *w);

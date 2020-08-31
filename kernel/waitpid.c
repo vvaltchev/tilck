@@ -150,7 +150,7 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
       }
 
       if (is_good_reason_to_wake_up_task(wo, r))
-         task_reset_wait_obj(task_to_wake_up);
+         wake_up(task_to_wake_up);
    }
 
    if (LIKELY(pi->parent_pid > 0)) {
@@ -162,7 +162,7 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
           !waitpid_should_skip_child(parent_task, ti, tid)        &&
           is_good_reason_to_wake_up_task(&parent_task->wobj, r))
       {
-         task_reset_wait_obj(parent_task);
+         wake_up(parent_task);
       }
    }
 }

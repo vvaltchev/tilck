@@ -95,7 +95,7 @@ ksem_wakeup_task(struct ksem *s)
    struct task *ti = CONTAINER_OF(task_wo, struct task, wobj);
 
    ASSERT(ti->state == TASK_STATE_SLEEPING);
-   task_reset_wait_obj(ti);
+   wake_up(ti);
 }
 
 int ksem_signal(struct ksem *s, int units)

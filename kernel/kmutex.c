@@ -173,7 +173,7 @@ void kmutex_unlock(struct kmutex *m)
          m->lock_count++;
 
       ASSERT(ti->state == TASK_STATE_SLEEPING);
-      task_reset_wait_obj(ti);
+      wake_up(ti);
 
    } // if (!list_is_empty(&m->wait_list))
 

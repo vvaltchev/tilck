@@ -92,7 +92,7 @@ kcond_signal_single(struct kcond *c, struct wait_obj *wo)
    }
 
    wait_obj_reset(wo);
-   task_reset_wait_obj(ti);
+   wake_up(ti);
 }
 
 void kcond_signal_int(struct kcond *c, bool all)

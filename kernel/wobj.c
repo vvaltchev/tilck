@@ -63,7 +63,7 @@ void prepare_to_wait_on(enum wo_type type,
    enable_preemption();
 }
 
-void *task_reset_wait_obj(struct task *ti)
+void *wake_up(struct task *ti)
 {
    void *oldp;
    disable_preemption();
