@@ -152,20 +152,14 @@ void terminate_process(int exit_code, int term_sig)
       /*
        * If the task has been waiting on something, we have to reset its wobj
        * and remove its pointer from the target object's wait_list.
-       *
-       * NOTE: change first task's state to SLEEPING just to make happy
-       * task_reset_wait_obj(), which expects the process to be sleeping when
-       * it's called. In our case, because there's a wait obj set, this task
-       * have been forcibly awaken to die by a signal.
        */
 
-      task_change_state(ti, TASK_STATE_SLEEPING);
-      task_reset_wait_obj(ti);
+      wait_obj_reset(&ti->wobj);
    }
 
    /*
     * Sleep-based wake-up timers work without the wait_obj mechanism: we have
-    * to cancel any potential wake-up timer.
+    * to cancel any potential wake-up timer as well.
     */
    task_cancel_wakeup_timer(ti);
 
