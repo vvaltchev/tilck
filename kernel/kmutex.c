@@ -29,18 +29,10 @@ static ALWAYS_INLINE void
 kmutex_lock_enable_preemption_wrapper(struct kmutex *m)
 {
 #if KERNEL_SELFTESTS
-
-   if (LIKELY(!(m->flags & KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED))) {
-      enable_preemption_nosched(); /* default case */
-   } else {
+   if (UNLIKELY(m->flags & KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED)) {
       ASSERT(get_preempt_disable_count() == 2);
-      force_enable_preemption();   /* special case only for self tests */
+      enable_preemption();   /* special case only for self tests */
    }
-
-#else
-
-   enable_preemption(); /* the only case when self tests don't exist */
-
 #endif
 }
 
@@ -60,6 +52,7 @@ void kmutex_lock(struct kmutex *m)
       }
 
       kmutex_lock_enable_preemption_wrapper(m);
+      enable_preemption();
       return;
    }
 
@@ -89,7 +82,7 @@ void kmutex_lock(struct kmutex *m)
     * Go to sleep until someone else is holding the lock.
     * NOTE: we won't be woken up by a signal here, see signal.c.
     */
-   kernel_yield();
+   kernel_yield_preempt_disabled();
 
    /* ------------------- We've been woken up ------------------- */
 
