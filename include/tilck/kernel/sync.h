@@ -73,6 +73,7 @@ struct multi_obj_waiter {
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr_or_data,
+                  u16 extra,
                   struct list *wait_list);
 
 void *wait_obj_reset(struct wait_obj *wo);

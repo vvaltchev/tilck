@@ -10,6 +10,7 @@
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
+                  u16 extra,
                   struct list *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
@@ -20,6 +21,7 @@ void wait_obj_set(struct wait_obj *wo,
              list_node_is_empty(&wo->wait_list_node));
 
       wo->type = type;
+      wo->extra = extra;
       list_node_init(&wo->wait_list_node);
 
       if (wait_list)
@@ -53,8 +55,7 @@ void task_set_wait_obj(struct task *ti,
 {
    disable_preemption();
    {
-      wait_obj_set(&ti->wobj, type, ptr, wait_list);
-      ti->wobj.extra = extra;
+      wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
       ASSERT(ti->state != TASK_STATE_SLEEPING);
       task_change_state(ti, TASK_STATE_SLEEPING);
    }
@@ -117,7 +118,7 @@ mobj_waiter_set(struct multi_obj_waiter *w,
    ASSERT(type != WOBJ_MWO_WAITER && type != WOBJ_MWO_ELEM);
 
    struct mwobj_elem *e = &w->elems[index];
-   wait_obj_set(&e->wobj, WOBJ_MWO_ELEM, ptr, wait_list);
+   wait_obj_set(&e->wobj, WOBJ_MWO_ELEM, ptr, NO_EXTRA, wait_list);
    e->ti = get_curr_task();
    e->type = type;
 }
