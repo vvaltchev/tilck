@@ -472,10 +472,10 @@ void kthread_join(int tid)
 
    while ((ti = get_task(tid))) {
 
-      task_set_wait_obj(WOBJ_TASK,
-                        TO_PTR(ti->tid),
-                        NO_EXTRA,
-                        &ti->tasks_waiting_list);
+      prepare_to_wait_on(WOBJ_TASK,
+                         TO_PTR(ti->tid),
+                         NO_EXTRA,
+                         &ti->tasks_waiting_list);
 
       kernel_yield_preempt_disabled();
 

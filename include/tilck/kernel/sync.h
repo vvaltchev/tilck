@@ -90,10 +90,10 @@ wait_obj_get_data(struct wait_obj *wo)
    return wo->__data;
 }
 
-void task_set_wait_obj(enum wo_type type,
-                       void *ptr_or_data,
-                       u16 extra,
-                       struct list *wait_list);
+void prepare_to_wait_on(enum wo_type type,
+                        void *ptr_or_data,
+                        u16 extra,
+                        struct list *wait_list);
 
 void *task_reset_wait_obj(struct task *ti);
 

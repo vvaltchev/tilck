@@ -47,10 +47,10 @@ void *wait_obj_reset(struct wait_obj *wo)
    return oldp;
 }
 
-void task_set_wait_obj(enum wo_type type,
-                       void *ptr,
-                       u16 extra,
-                       struct list *wait_list)
+void prepare_to_wait_on(enum wo_type type,
+                        void *ptr,
+                        u16 extra,
+                        struct list *wait_list)
 {
    struct task *ti = get_curr_task();
 
@@ -139,6 +139,6 @@ void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
 
 void kernel_sleep_on_waiter(struct multi_obj_waiter *w)
 {
-   task_set_wait_obj(WOBJ_MWO_WAITER, w, NO_EXTRA, NULL);
+   prepare_to_wait_on(WOBJ_MWO_WAITER, w, NO_EXTRA, NULL);
    kernel_yield();
 }

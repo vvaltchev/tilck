@@ -75,7 +75,7 @@ void kmutex_lock(struct kmutex *m)
    m->max_num_waiters = MAX(m->num_waiters, m->max_num_waiters);
 #endif
 
-   task_set_wait_obj(WOBJ_KMUTEX, m, NO_EXTRA, &m->wait_list);
+   prepare_to_wait_on(WOBJ_KMUTEX, m, NO_EXTRA, &m->wait_list);
    kmutex_lock_enable_preemption_wrapper(m);
 
    /*
