@@ -170,7 +170,9 @@ select_wait_on_cond(struct select_ctx *c)
 
    while (true) {
 
-      kernel_sleep_on_waiter(waiter);
+      disable_preemption();
+      prepare_to_wait_on_multi_obj(waiter);
+      kernel_yield_preempt_disabled();
 
       if (pending_signals())
          break;

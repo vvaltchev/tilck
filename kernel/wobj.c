@@ -134,9 +134,7 @@ void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
    mobj_waiter_reset(e);
 }
 
-void kernel_sleep_on_waiter(struct multi_obj_waiter *w)
+void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w)
 {
-   disable_preemption();
    prepare_to_wait_on(WOBJ_MWO_WAITER, w, NO_EXTRA, NULL);
-   kernel_yield_preempt_disabled();
 }

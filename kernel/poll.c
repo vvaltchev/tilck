@@ -180,7 +180,9 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 
    while (true) {
 
-      kernel_sleep_on_waiter(waiter);
+      disable_preemption();
+      prepare_to_wait_on_multi_obj(waiter);
+      kernel_yield_preempt_disabled();
 
       if (pending_signals())
          break;

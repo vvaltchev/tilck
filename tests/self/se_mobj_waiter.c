@@ -44,7 +44,10 @@ static void mobj_waiter_wait_thread(void *arg)
    for (int i = 0; i < ARRAY_SIZE(conds); i++) {
 
       printk("[wait th]: going to sleep on waiter obj\n");
-      kernel_sleep_on_waiter(w);
+
+      disable_preemption();
+      prepare_to_wait_on_multi_obj(w);
+      kernel_yield_preempt_disabled();
 
       printk("[wait th ] wake up #%u\n", i);
 

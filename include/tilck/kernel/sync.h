@@ -107,7 +107,7 @@ void mobj_waiter_set(struct multi_obj_waiter *w,
                      void *ptr,
                      struct list *wait_list);
 
-void kernel_sleep_on_waiter(struct multi_obj_waiter *w);
+void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w);
 
 /*
  * The semaphore implementation used for locking in kernel mode.
