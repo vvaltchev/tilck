@@ -82,7 +82,7 @@ void kmutex_lock(struct kmutex *m)
     * Go to sleep until someone else is holding the lock.
     * NOTE: we won't be woken up by a signal here, see signal.c.
     */
-   kernel_yield_preempt_disabled();
+   enter_sleep_wait_state();
 
    /* ------------------- We've been woken up ------------------- */
 

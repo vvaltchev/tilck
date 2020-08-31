@@ -477,7 +477,7 @@ void kthread_join(int tid)
                          NO_EXTRA,
                          &ti->tasks_waiting_list);
 
-      kernel_yield_preempt_disabled();
+      enter_sleep_wait_state();
 
       /* here the preemption is guaranteed to be enabled */
       disable_preemption();

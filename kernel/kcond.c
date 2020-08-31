@@ -41,7 +41,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
    }
 
    /* Go to sleep until a signal is fired or timeout happens */
-   kernel_yield_preempt_disabled();
+   enter_sleep_wait_state();
 
    /* ------------------- We've been woken up ------------------- */
 

@@ -47,7 +47,7 @@ static void mobj_waiter_wait_thread(void *arg)
 
       disable_preemption();
       prepare_to_wait_on_multi_obj(w);
-      kernel_yield_preempt_disabled();
+      enter_sleep_wait_state();
 
       printk("[wait th ] wake up #%u\n", i);
 

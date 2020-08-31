@@ -172,7 +172,7 @@ select_wait_on_cond(struct select_ctx *c)
 
       disable_preemption();
       prepare_to_wait_on_multi_obj(waiter);
-      kernel_yield_preempt_disabled();
+      enter_sleep_wait_state();
 
       if (pending_signals())
          break;

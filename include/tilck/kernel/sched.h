@@ -279,6 +279,16 @@ get_curr_task_state(void)
    );
 }
 
+static ALWAYS_INLINE void
+enter_sleep_wait_state(void)
+{
+   ASSERT(!is_preemption_enabled());
+   ASSERT(get_curr_task_state() == TASK_STATE_SLEEPING);
+   ASSERT(get_curr_task()->wobj.type != WOBJ_NONE);
+
+   kernel_yield_preempt_disabled();
+}
+
 static ALWAYS_INLINE bool pending_signals(void)
 {
    struct task *curr = get_curr_task();

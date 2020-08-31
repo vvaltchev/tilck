@@ -52,7 +52,7 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
       prepare_to_wait_on(WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
 
       /* won't wakeup by a signal here, see signal.c */
-      kernel_yield_preempt_disabled();
+      enter_sleep_wait_state();
 
       /* here the preemption is guaranteed to be enabled, as for schedule() */
       disable_preemption();
