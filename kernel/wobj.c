@@ -53,14 +53,11 @@ void prepare_to_wait_on(enum wo_type type,
                         struct list *wait_list)
 {
    struct task *ti = get_curr_task();
+   ASSERT(!is_preemption_enabled());
 
-   disable_preemption();
-   {
-      wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
-      ASSERT(ti->state != TASK_STATE_SLEEPING);
-      task_change_state(ti, TASK_STATE_SLEEPING);
-   }
-   enable_preemption();
+   ASSERT(ti->state != TASK_STATE_SLEEPING);
+   wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
+   task_change_state(ti, TASK_STATE_SLEEPING);
 }
 
 void *wake_up(struct task *ti)
@@ -139,6 +136,7 @@ void mobj_waiter_reset2(struct multi_obj_waiter *w, int index)
 
 void kernel_sleep_on_waiter(struct multi_obj_waiter *w)
 {
+   disable_preemption();
    prepare_to_wait_on(WOBJ_MWO_WAITER, w, NO_EXTRA, NULL);
-   kernel_yield();
+   kernel_yield_preempt_disabled();
 }
