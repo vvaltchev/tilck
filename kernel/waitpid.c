@@ -240,7 +240,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
       }
 
       /* Hang until a child changes state */
-      task_set_wait_obj(curr, WOBJ_TASK, TO_PTR(tid), wobj_extra, wait_list);
+      task_set_wait_obj(WOBJ_TASK, TO_PTR(tid), wobj_extra, wait_list);
       kernel_yield_preempt_disabled();
 
       if (pending_signals())

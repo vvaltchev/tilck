@@ -49,7 +49,7 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
             break;
       }
 
-      task_set_wait_obj(curr, WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
+      task_set_wait_obj(WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
 
       /* won't wakeup by a signal here, see signal.c */
       kernel_yield_preempt_disabled();

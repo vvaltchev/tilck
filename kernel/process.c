@@ -472,8 +472,7 @@ void kthread_join(int tid)
 
    while ((ti = get_task(tid))) {
 
-      task_set_wait_obj(get_curr_task(),
-                        WOBJ_TASK,
+      task_set_wait_obj(WOBJ_TASK,
                         TO_PTR(ti->tid),
                         NO_EXTRA,
                         &ti->tasks_waiting_list);
