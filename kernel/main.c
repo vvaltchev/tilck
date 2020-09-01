@@ -378,14 +378,15 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_fpu_memcpy();
    init_kmalloc();
    init_paging();
+
+   acpi_mod_init_tables();
+
    init_console();
    init_self_tests();
    init_irq_handling();
    init_sched();
    init_syscall_interfaces();
    init_worker_threads();
-
-   acpi_mod_init_tables();
    init_pci();
    init_timer();
    init_system_time();
