@@ -11,7 +11,15 @@
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
 
+/* Global APIC initialization status */
 enum acpi_init_status acpi_init_status;
+
+/* Revision number of the FADT table */
+static u8 acpi_fadt_revision;
+
+/* HW flags read from FADT */
+static u16 acpi_iapc_boot_arch;
+static u32 acpi_fadt_flags;
 
 void
 print_acpi_failure(const char *func, ACPI_STATUS rc)
@@ -23,6 +31,61 @@ print_acpi_failure(const char *func, ACPI_STATUS rc)
    } else {
       printk("ERROR: %s() failed with: %d\n", func, rc);
    }
+}
+
+enum tristate
+acpi_is_8042_present(void)
+{
+   ASSERT(acpi_init_status >= ais_tables_initialized);
+
+   if (acpi_fadt_revision >= 3) {
+
+      if (acpi_iapc_boot_arch & ACPI_FADT_8042)
+         return tri_yes;
+
+      return tri_no;
+   }
+
+   return tri_unknown;
+}
+
+enum tristate
+acpi_is_vga_text_mode_avail(void)
+{
+   ASSERT(acpi_init_status >= ais_tables_initialized);
+
+   if (acpi_fadt_revision >= 4) {
+
+      if (acpi_iapc_boot_arch & ACPI_FADT_NO_VGA)
+         return tri_no;
+
+      return tri_yes;
+   }
+
+   return tri_unknown;
+}
+
+static void
+acpi_read_acpi_hw_flags(void)
+{
+   ACPI_STATUS rc;
+   struct acpi_table_fadt *fadt;
+
+   rc = AcpiGetTable(ACPI_SIG_FADT, 1, (struct acpi_table_header **)&fadt);
+
+   if (rc == AE_NOT_FOUND)
+      return;
+
+   if (ACPI_FAILURE(rc)) {
+      print_acpi_failure("AcpiGetTable", rc);
+      return;
+   }
+
+   acpi_fadt_revision = fadt->Header.Revision;
+   acpi_iapc_boot_arch = fadt->BootFlags;
+   acpi_fadt_flags = fadt->Flags;
+
+   AcpiPutTable((struct acpi_table_header *)fadt);
 }
 
 void
@@ -52,6 +115,7 @@ acpi_mod_init_tables(void)
    }
 
    acpi_init_status = ais_tables_initialized;
+   acpi_read_acpi_hw_flags();
 }
 
 void

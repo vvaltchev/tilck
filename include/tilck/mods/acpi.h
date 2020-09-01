@@ -35,3 +35,6 @@ static inline void acpi_mod_init_tables(void) { }
 static inline void acpi_set_root_pointer(ulong ptr) { }
 
 #endif
+
+enum tristate acpi_is_8042_present(void);
+enum tristate acpi_is_vga_text_mode_avail(void);
