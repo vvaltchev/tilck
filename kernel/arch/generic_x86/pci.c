@@ -403,7 +403,7 @@ init_pci_ecam(void)
       return;
    }
 
-   if (rc != AE_OK) {
+   if (ACPI_FAILURE(rc)) {
 
       ex = AcpiUtValidateException(rc);
 

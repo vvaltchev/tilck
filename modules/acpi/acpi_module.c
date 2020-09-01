@@ -36,7 +36,7 @@ acpi_mod_init_tables(void)
 
    rc = AcpiInitializeSubsystem();
 
-   if (rc != AE_OK) {
+   if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiInitializeSubsystem", rc);
       acpi_init_status = ais_failed;
       return;
@@ -44,7 +44,7 @@ acpi_mod_init_tables(void)
 
    rc = AcpiInitializeTables(NULL, 0, true);
 
-   if (rc != AE_OK) {
+   if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiInitializeTables", rc);
       acpi_init_status = ais_failed;
       return;
@@ -64,7 +64,7 @@ acpi_mod_load_tables(void)
    ASSERT(acpi_init_status == ais_tables_initialized);
    rc = AcpiLoadTables();
 
-   if (rc != AE_OK) {
+   if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiLoadTables", rc);
       acpi_init_status = ais_failed;
       return;
