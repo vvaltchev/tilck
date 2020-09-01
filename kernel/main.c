@@ -80,7 +80,24 @@ init_video_console(void)
           * to remove the link dependency on that symbol in case the console
           * module is _not_ built-in.
           */
-         init_textmode_console();
+
+         if (MOD_acpi &&
+             get_acpi_init_status() >= ais_tables_initialized &&
+             acpi_is_vga_text_mode_avail() == tri_no)
+         {
+
+            /* no text mode on this machine */
+            init_first_term_null();
+
+         } else {
+
+            /*
+             * No ACPI or ACPI tables are not initialized (panic?) or
+             * vga text mode is available or ACPI's FADT is too old to tell
+             * whether text mode is available or not so we assume it is.
+             */
+            init_textmode_console();
+         }
       }
 
       return;
