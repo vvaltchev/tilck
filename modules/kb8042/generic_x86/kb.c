@@ -16,6 +16,8 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/safe_ringbuf.h>
 
+#include <tilck/mods/acpi.h>
+
 #include "i8042.h"
 #include "kb_layouts.c.h"
 #include "kb_ansi_seq.c.h"
@@ -383,17 +385,26 @@ static bool hw_8042_init(void)
    return false;
 }
 
-/* This will be executed in a kernel thread */
-void init_kb(void)
+static void
+init_kb_internal(void)
 {
-   if (kopt_serial_console)
-      return;
+   const bool acpi_ok = get_acpi_init_status() == ais_fully_initialized;
 
-   disable_preemption();
+   if (MOD_acpi && acpi_ok) {
+      if (acpi_is_8042_present() == tri_no) {
+         printk("KB: no 8042 controller (PS/2) detected\n");
+         return;
+      }
+   }
 
    if (!hw_8042_init()) {
-      printk("KB: hw_8042_init() failed\n");
-      goto out;
+
+      if (acpi_ok)
+         printk("KB: no 8042 controller (PS/2) detected\n");
+      else
+         printk("KB: hw_8042_init() failed\n");
+
+      return;
    }
 
    if (in_hypervisor()) {
@@ -415,8 +426,18 @@ void init_kb(void)
    create_kb_worker_thread();
    irq_install_handler(X86_PC_KEYBOARD_IRQ, &keyboard);
    register_keyboard_device(&ps2_keyboard);
+}
 
-out:
+/* This will be executed in a kernel thread */
+void init_kb(void)
+{
+   if (kopt_serial_console)
+      return;
+
+   disable_preemption();
+   {
+      init_kb_internal();
+   }
    enable_preemption();
 }
 
