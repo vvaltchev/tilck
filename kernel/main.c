@@ -351,9 +351,7 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    call_kernel_global_ctors();
    save_multiboot_info(multiboot_magic, mbi_addr);
 
-   if (MOD_serial)
-      early_init_serial_ports();
-
+   early_init_serial_ports();
    init_cpu_exception_handling();
    early_init_paging();
    early_init_kmalloc();
