@@ -22,14 +22,14 @@ static u16 acpi_iapc_boot_arch;
 static u32 acpi_fadt_flags;
 
 void
-print_acpi_failure(const char *func, ACPI_STATUS rc)
+print_acpi_failure(const char *func, const char *farg, ACPI_STATUS rc)
 {
    const ACPI_EXCEPTION_INFO *ex = AcpiUtValidateException(rc);
 
    if (ex) {
-      printk("ERROR: %s() failed with: %s\n", func, ex->Name);
+      printk("ERROR: %s(%s) failed with: %s\n", func, farg ? farg:"", ex->Name);
    } else {
-      printk("ERROR: %s() failed with: %d\n", func, rc);
+      printk("ERROR: %s(%s) failed with: %d\n", func, farg ? farg : "", rc);
    }
 }
 
@@ -77,7 +77,7 @@ acpi_read_acpi_hw_flags(void)
       return;
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiGetTable", rc);
+      print_acpi_failure("AcpiGetTable", "FADT", rc);
       return;
    }
 
@@ -101,7 +101,7 @@ acpi_mod_init_tables(void)
    rc = AcpiInitializeSubsystem();
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiInitializeSubsystem", rc);
+      print_acpi_failure("AcpiInitializeSubsystem", NULL, rc);
       acpi_init_status = ais_failed;
       return;
    }
@@ -109,7 +109,7 @@ acpi_mod_init_tables(void)
    rc = AcpiInitializeTables(NULL, 0, true);
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiInitializeTables", rc);
+      print_acpi_failure("AcpiInitializeTables", NULL, rc);
       acpi_init_status = ais_failed;
       return;
    }
@@ -130,7 +130,7 @@ acpi_mod_load_tables(void)
    rc = AcpiLoadTables();
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiLoadTables", rc);
+      print_acpi_failure("AcpiLoadTables", NULL, rc);
       acpi_init_status = ais_failed;
       return;
    }
@@ -155,7 +155,7 @@ acpi_mod_enable_subsystem(void)
    rc = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiEnableSubsystem", rc);
+      print_acpi_failure("AcpiEnableSubsystem", NULL, rc);
       acpi_init_status = ais_failed;
       return;
    }
@@ -166,13 +166,13 @@ acpi_mod_enable_subsystem(void)
 
    if (ACPI_FAILURE(rc)) {
 
-      print_acpi_failure("AcpiInitializeObjects", rc);
+      print_acpi_failure("AcpiInitializeObjects", NULL, rc);
       acpi_init_status = ais_failed;
 
       rc = AcpiTerminate();
 
       if (ACPI_FAILURE(rc))
-         print_acpi_failure("AcpiTerminate", rc);
+         print_acpi_failure("AcpiTerminate", NULL, rc);
 
       return;
    }
