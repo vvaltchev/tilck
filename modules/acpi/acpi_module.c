@@ -94,7 +94,10 @@ acpi_mod_init_tables(void)
    ACPI_STATUS rc;
 
    ASSERT(acpi_init_status == ais_not_started);
-   AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
+
+   //AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
+   AcpiDbgLevel = ACPI_NORMAL_DEFAULT;
+
    AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
    AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
 
@@ -142,6 +145,64 @@ acpi_mod_load_tables(void)
    acpi_init_status = ais_tables_loaded;
 }
 
+static ACPI_STATUS
+walk_single_dev(ACPI_HANDLE ObjHandle,
+                UINT32 Level,
+                void *Context,
+                void **ReturnValue)
+{
+   ACPI_DEVICE_INFO *Info;
+   ACPI_BUFFER Path;
+   ACPI_STATUS rc;
+   char Buffer[256];
+   Path.Length = sizeof (Buffer);
+   Path.Pointer = Buffer;
+
+   /* Get the full path of this device and print it */
+   rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
+
+   if (!ACPI_SUCCESS(rc)) {
+      printk("Failed to get object name\n");
+      return AE_CTRL_TERMINATE;
+   }
+
+   printk("%s ", (char *)Path.Pointer);
+
+   /* Get the device info for this device and print it */
+   rc = AcpiGetObjectInfo(ObjHandle, &Info);
+
+   if (!ACPI_SUCCESS(rc)) {
+      printk("ERROR: Failed to get object info\n");
+      return AE_CTRL_TERMINATE;
+   }
+
+   if (Info->HardwareId.String) {
+      printk("(%#04x, HID: '%*s')\n",
+             Info->Type, Info->HardwareId.Length - 1, Info->HardwareId.String);
+   } else {
+      printk("(%#04x, HID: n/a)\n", Info->Type);
+   }
+
+   AcpiOsFree(Info);
+   return AE_OK;
+}
+
+
+static ACPI_STATUS
+acpi_walk_all_devices(void)
+{
+   printk("ACPI: dump all devices in the namespace:\n");
+
+   return AcpiWalkNamespace(
+      ACPI_TYPE_DEVICE,   // Type
+      ACPI_ROOT_OBJECT,   // StartObject
+      INT_MAX,            // MaxDepth
+      walk_single_dev,    // DescendingCallback
+      NULL,               // AscendingCallback
+      NULL,               // Context
+      NULL);              // ReturnValue
+}
+
 void
 acpi_mod_enable_subsystem(void)
 {
@@ -166,6 +227,22 @@ acpi_mod_enable_subsystem(void)
    }
 
    acpi_init_status = ais_subsystem_enabled;
+
+   rc = acpi_walk_all_devices();
+
+   if (ACPI_FAILURE(rc)) {
+
+      print_acpi_failure("acpi_walk_all_devices", NULL, rc);
+      acpi_init_status = ais_failed;
+
+      printk("ACPI: AcpiTerminate\n");
+      rc = AcpiTerminate();
+
+      if (ACPI_FAILURE(rc))
+         print_acpi_failure("AcpiTerminate", NULL, rc);
+
+      return;
+   }
 
    printk("ACPI: AcpiInitializeObjects\n");
    rc = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
