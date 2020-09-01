@@ -17,22 +17,6 @@
 
 static int row;
 
-static const char *mem_region_extra_to_str(u32 e)
-{
-   switch (e) {
-      case MEM_REG_EXTRA_RAMDISK:
-         return "RDSK";
-      case MEM_REG_EXTRA_KERNEL:
-         return "KRNL";
-      case MEM_REG_EXTRA_LOWMEM:
-         return "LMRS";
-      case MEM_REG_EXTRA_FRAMEBUFFER:
-         return "FBUF";
-      default:
-         return "    ";
-   }
-}
-
 static void dump_memory_map(void)
 {
    struct mem_region ma;

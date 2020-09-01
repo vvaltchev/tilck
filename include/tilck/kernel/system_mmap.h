@@ -25,6 +25,7 @@ void system_mmap_set(multiboot_info_t *mbi);
 int system_mmap_get_region_of(ulong paddr);
 bool linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend);
 bool system_mmap_check_for_extra_ramdisk_region(void *rd);
+const char *mem_region_extra_to_str(u32 e);
 
 static ALWAYS_INLINE int
 get_mem_regions_count(void)

@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/paging.h>
@@ -15,6 +16,22 @@ u32 __mem_upper_kb;
 
 struct mem_region mem_regions[MAX_MEM_REGIONS];
 int mem_regions_count;
+
+const char *mem_region_extra_to_str(u32 e)
+{
+   switch (e) {
+      case MEM_REG_EXTRA_RAMDISK:
+         return "RDSK";
+      case MEM_REG_EXTRA_KERNEL:
+         return "KRNL";
+      case MEM_REG_EXTRA_LOWMEM:
+         return "LMRS";
+      case MEM_REG_EXTRA_FRAMEBUFFER:
+         return "FBUF";
+      default:
+         return "    ";
+   }
+}
 
 void append_mem_region(struct mem_region r)
 {
@@ -442,6 +459,30 @@ STATIC void set_lower_and_upper_kb(void)
    }
 }
 
+static void dump_memory_map(void)
+{
+   struct mem_region ma;
+
+   printk("System memory map from multiboot:\n");
+   printk("\n");
+
+   printk("           START                 END        (T, Extr)\n");
+
+   for (int i = 0; i < get_mem_regions_count(); i++) {
+
+      get_mem_region(i, &ma);
+
+      printk("%02d) %#018" PRIx64 " - %#018"
+             PRIx64 " (%d, %s) [%8" PRIu64 " KB]\n",
+             i,
+             ma.addr, ma.addr + ma.len - 1,
+             ma.type, mem_region_extra_to_str(ma.extra),
+             ma.len / KB);
+   }
+
+   printk("\n");
+}
+
 void system_mmap_set(multiboot_info_t *mbi)
 {
    ulong ma_addr = mbi->mmap_addr;
@@ -486,6 +527,7 @@ void system_mmap_set(multiboot_info_t *mbi)
    add_kernel_phdrs_to_mmap();
    fix_mem_regions();
    set_lower_and_upper_kb();
+   dump_memory_map();
 }
 
 int system_mmap_get_region_of(ulong paddr)
@@ -565,3 +607,4 @@ bool system_mmap_check_for_extra_ramdisk_region(void *rd)
    /* No such extra region: it has been overridden by a reserved one */
    return false;
 }
+
