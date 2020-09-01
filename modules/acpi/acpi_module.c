@@ -98,6 +98,7 @@ acpi_mod_init_tables(void)
    AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
    AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
 
+   printk("ACPI: AcpiInitializeSubsystem\n");
    rc = AcpiInitializeSubsystem();
 
    if (ACPI_FAILURE(rc)) {
@@ -106,6 +107,7 @@ acpi_mod_init_tables(void)
       return;
    }
 
+   printk("ACPI: AcpiInitializeTables\n");
    rc = AcpiInitializeTables(NULL, 0, true);
 
    if (ACPI_FAILURE(rc)) {
@@ -127,6 +129,8 @@ acpi_mod_load_tables(void)
       return;
 
    ASSERT(acpi_init_status == ais_tables_initialized);
+
+   printk("ACPI: AcpiLoadTables\n");
    rc = AcpiLoadTables();
 
    if (ACPI_FAILURE(rc)) {
@@ -152,6 +156,7 @@ acpi_mod_enable_subsystem(void)
    AcpiUpdateInterfaces(ACPI_DISABLE_ALL_STRINGS);
    AcpiInstallInterface("Windows 2000");
 
+   printk("ACPI: AcpiEnableSubsystem\n");
    rc = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 
    if (ACPI_FAILURE(rc)) {
@@ -162,6 +167,7 @@ acpi_mod_enable_subsystem(void)
 
    acpi_init_status = ais_subsystem_enabled;
 
+   printk("ACPI: AcpiInitializeObjects\n");
    rc = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
 
    if (ACPI_FAILURE(rc)) {
@@ -169,6 +175,7 @@ acpi_mod_enable_subsystem(void)
       print_acpi_failure("AcpiInitializeObjects", NULL, rc);
       acpi_init_status = ais_failed;
 
+      printk("ACPI: AcpiTerminate\n");
       rc = AcpiTerminate();
 
       if (ACPI_FAILURE(rc))
