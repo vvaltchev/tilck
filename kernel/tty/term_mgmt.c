@@ -43,9 +43,9 @@ void register_term_intf(const struct term_interface *intf)
 
 void
 init_first_video_term(const struct video_interface *vi,
-                     u16 rows,
-                     u16 cols,
-                     int rows_buf)
+                      u16 rows,
+                      u16 cols,
+                      int rows_buf)
 {
    ASSERT(!term_is_initialized());
    __curr_term_intf = video_term_intf;

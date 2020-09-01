@@ -1098,10 +1098,21 @@ init_vterm(term *_t,
    ASSERT(t != &first_instance || !are_interrupts_enabled());
 
    t->tabsize = 8;
-   t->cols = cols;
-   t->rows = rows;
-   t->saved_vi = intf;
-   t->vi = (t == &first_instance) ? intf : &no_output_vi;
+
+   if (intf) {
+
+      t->cols = cols;
+      t->rows = rows;
+      t->saved_vi = intf;
+      t->vi = (t == &first_instance) ? intf : &no_output_vi;
+
+   } else {
+
+      t->cols = 80;
+      t->rows = 25;
+      t->saved_vi = &no_output_vi;
+      t->vi = &no_output_vi;
+   }
 
    t->main_scroll_region_start = t->alt_scroll_region_start = 0;
    t->main_scroll_region_end = t->alt_scroll_region_end = t->rows - 1;
@@ -1114,7 +1125,7 @@ init_vterm(term *_t,
                      sizeof(struct term_action),
                      t->actions_buf);
 
-   if (!in_panic()) {
+   if (!in_panic() && intf) {
 
       t->extra_buffer_rows =
          rows_buf >= 0
@@ -1159,7 +1170,7 @@ init_vterm(term *_t,
       t->total_buffer_rows = t->rows;
       t->buffer = failsafe_buffer;
 
-      if (!in_panic())
+      if (!in_panic() && intf)
          printk("ERROR: unable to allocate the term buffer.\n");
    }
 
