@@ -95,9 +95,7 @@ acpi_mod_init_tables(void)
 
    ASSERT(acpi_init_status == ais_not_started);
 
-   //AcpiDbgLevel = ACPI_DEBUG_DEFAULT;
-   AcpiDbgLevel = ACPI_NORMAL_DEFAULT;
-
+   AcpiDbgLevel = ACPI_NORMAL_DEFAULT | ACPI_LV_EVENTS;
    AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
    AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
 
@@ -203,6 +201,21 @@ acpi_walk_all_devices(void)
       NULL);              // ReturnValue
 }
 
+static void
+acpi_handle_fatal_failure_after_enable_subsys(void)
+{
+   ACPI_STATUS rc;
+   ASSERT(acpi_init_status >= ais_subsystem_enabled);
+
+   acpi_init_status = ais_failed;
+
+   printk("ACPI: AcpiTerminate\n");
+   rc = AcpiTerminate();
+
+   if (ACPI_FAILURE(rc))
+      print_acpi_failure("AcpiTerminate", NULL, rc);
+}
+
 void
 acpi_mod_enable_subsystem(void)
 {
@@ -231,16 +244,8 @@ acpi_mod_enable_subsystem(void)
    rc = acpi_walk_all_devices();
 
    if (ACPI_FAILURE(rc)) {
-
       print_acpi_failure("acpi_walk_all_devices", NULL, rc);
-      acpi_init_status = ais_failed;
-
-      printk("ACPI: AcpiTerminate\n");
-      rc = AcpiTerminate();
-
-      if (ACPI_FAILURE(rc))
-         print_acpi_failure("AcpiTerminate", NULL, rc);
-
+      acpi_handle_fatal_failure_after_enable_subsys();
       return;
    }
 
@@ -248,16 +253,8 @@ acpi_mod_enable_subsystem(void)
    rc = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
 
    if (ACPI_FAILURE(rc)) {
-
       print_acpi_failure("AcpiInitializeObjects", NULL, rc);
-      acpi_init_status = ais_failed;
-
-      printk("ACPI: AcpiTerminate\n");
-      rc = AcpiTerminate();
-
-      if (ACPI_FAILURE(rc))
-         print_acpi_failure("AcpiTerminate", NULL, rc);
-
+      acpi_handle_fatal_failure_after_enable_subsys();
       return;
    }
 
