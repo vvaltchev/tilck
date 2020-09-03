@@ -5,6 +5,7 @@
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/modules.h>
+#include <tilck/kernel/list.h>
 #include <tilck/mods/acpi.h>
 
 #include "osl.h"
@@ -20,6 +21,34 @@ static u8 acpi_fadt_revision;
 /* HW flags read from FADT */
 static u16 acpi_iapc_boot_arch;
 static u32 acpi_fadt_flags;
+
+/* Callback lists */
+static struct list on_subsystem_enabled_cb_list
+   = STATIC_LIST_INIT(on_subsystem_enabled_cb_list);
+
+void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *cbnode)
+{
+   list_add_tail(&on_subsystem_enabled_cb_list, &cbnode->node);
+}
+
+static ACPI_STATUS
+call_on_subsys_enabled_cbs(void)
+{
+   STATIC_ASSERT(sizeof(u32) == sizeof(ACPI_STATUS));
+
+   struct acpi_reg_callback_node *pos;
+   ACPI_STATUS rc;
+
+   list_for_each_ro(pos, &on_subsystem_enabled_cb_list, node) {
+
+      rc = (ACPI_STATUS)pos->cb(pos->ctx);
+
+      if (ACPI_FAILURE(rc))
+         return rc;
+   }
+
+   return AE_OK;
+}
 
 void
 print_acpi_failure(const char *func, const char *farg, ACPI_STATUS rc)
@@ -245,6 +274,15 @@ acpi_mod_enable_subsystem(void)
 
    if (ACPI_FAILURE(rc)) {
       print_acpi_failure("acpi_walk_all_devices", NULL, rc);
+      acpi_handle_fatal_failure_after_enable_subsys();
+      return;
+   }
+
+   printk("ACPI: Call on-subsys-enabled callbacks\n");
+   rc = call_on_subsys_enabled_cbs();
+
+   if (ACPI_FAILURE(rc)) {
+      print_acpi_failure("call_on_subsys_enabled_cbs", NULL, rc);
       acpi_handle_fatal_failure_after_enable_subsys();
       return;
    }

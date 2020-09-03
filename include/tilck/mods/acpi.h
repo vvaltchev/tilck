@@ -3,6 +3,7 @@
 #pragma once
 #include <tilck_gen_headers/mod_acpi.h>
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/list.h>
 
 enum acpi_init_status {
 
@@ -38,3 +39,14 @@ static inline void acpi_set_root_pointer(ulong ptr) { }
 
 enum tristate acpi_is_8042_present(void);
 enum tristate acpi_is_vga_text_mode_avail(void);
+
+typedef u32 (*acpi_reg_callback)(void *);
+
+struct acpi_reg_callback_node {
+
+   struct list_node node;
+   acpi_reg_callback cb;
+   void *ctx;
+};
+
+void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *node);
