@@ -2,7 +2,6 @@
 
 extern "C" {
    #include <tilck/common/basic_defs.h>
-   #include <limits.h>
 }
 
 #ifndef __cplusplus

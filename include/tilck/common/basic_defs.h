@@ -36,11 +36,13 @@
 
       /* Default case: real kernel build */
       #include <cstdint>     // system header
+      #include <climits>     // system header
 
    #else
 
       /* Special case: non-runnable static analysis build */
       #include <stdint.h>    // system header
+      #include <limits.h>     // system header
 
    #endif
 
@@ -53,6 +55,7 @@
    #include <stdbool.h>   // system header
    #include <stdalign.h>  // system header
    #include <inttypes.h>  // system header
+   #include <limits.h>     // system header
    #define STATIC_ASSERT(s) _Static_assert(s, "Static assertion failed")
 
 #endif // #ifdef __cplusplus
