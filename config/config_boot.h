@@ -25,6 +25,7 @@
 
 /* Boolean config variables */
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
+#cmakedefine01 BOOT_ASK_VIDEO_MODE
 
 
 /*

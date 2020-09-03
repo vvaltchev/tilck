@@ -165,6 +165,9 @@ set(KRN_PRINTK_ON_CURR_TTY ON CACHE BOOL
 set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
     "Include in Tilck's ramdisk some apps for testing the kernel")
 
+set(BOOT_ASK_VIDEO_MODE ON CACHE BOOL
+    "Make bootloaders to ask user choose a video mode before booting")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
@@ -333,6 +336,7 @@ list(
    KERNEL_SYMBOLS
    BOOTLOADER_LEGACY
    BOOTLOADER_EFI
+   BOOT_ASK_VIDEO_MODE
 
    # Boolean options DISABLED by default
    KERNEL_BIG_IO_BUF

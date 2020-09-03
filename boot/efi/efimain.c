@@ -30,7 +30,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    InitializeLib(image, ST);
 
-   EarlySetLowResolution(ST, BS);
+   EarlySetDefaultResolution(ST, BS);
    ST->ConOut->EnableCursor(ST->ConOut, true);
 
    Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");

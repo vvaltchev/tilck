@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
+
 #include "defs.h"
 #include "utils.h"
 #include <multiboot.h>
@@ -104,7 +106,7 @@ end:
 }
 
 EFI_STATUS
-EarlySetLowResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS)
+EarlySetDefaultResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS)
 {
    EFI_STATUS status;
    EFI_HANDLE handles[32];
@@ -217,6 +219,9 @@ SetupGraphicMode(EFI_BOOT_SERVICES *BS,
    mode = gProt->Mode;
    orig_mode = mode->Mode;
 
+   if (!BOOT_ASK_VIDEO_MODE)
+      goto after_user_choice;
+
 retry:
 
    for (UINTN i = 0; i < mode->MaxMode; i++) {
@@ -317,10 +322,12 @@ retry:
       }
    }
 
+after_user_choice:
+
    mode = gProt->Mode;
    *fb_addr = mode->FrameBufferBase;
    *mode_info = *mode->Info;
-   PrintModeFullInfo(mode);
+   // PrintModeFullInfo(mode);
 
 end:
    return status;

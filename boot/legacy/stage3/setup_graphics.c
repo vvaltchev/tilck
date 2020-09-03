@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/gfx.h>
@@ -85,7 +87,9 @@ show_modes_aux(u16 *modes,
       if (is_tilck_default_resolution(mi->XResolution, mi->YResolution))
          *default_mode_num = modes[i];
 
-      show_single_mode(*known_modes_count, mi, *default_mode_num == modes[i]);
+      if (BOOT_ASK_VIDEO_MODE)
+         show_single_mode(*known_modes_count, mi, *default_mode_num==modes[i]);
+
       known_modes[(*known_modes_count)++] = modes[i];
    }
 
@@ -94,9 +98,47 @@ show_modes_aux(u16 *modes,
       if (!vbe_get_mode_info(max_width_mode, mi))
          panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
 
-      show_single_mode(*known_modes_count, mi, false);
+      if (BOOT_ASK_VIDEO_MODE)
+         show_single_mode(*known_modes_count, mi, false);
+
       known_modes[(*known_modes_count)++] = max_width_mode;
    }
+}
+
+static u16
+do_get_user_video_mode_choice(u16 *modes, u16 count, u16 defmode)
+{
+   u16 mode;
+
+   if (!BOOT_ASK_VIDEO_MODE)
+      return defmode;
+
+   printk("\n");
+
+   while (true) {
+
+      printk("Select a video mode [%d - %d]: ", 0, count - 1);
+
+      char sel = bios_read_char();
+      int s = sel - '0';
+
+      if (sel == '\r') {
+         mode = defmode;
+         printk("DEFAULT\n");
+         break;
+      }
+
+      if (s < 0 || s > count - 1) {
+         printk("Invalid selection.\n");
+         continue;
+      }
+
+      printk("%d\n\n", s);
+      mode = modes[s];
+      break;
+   }
+
+   return mode;
 }
 
 void ask_user_video_mode(struct mem_info *minfo)
@@ -125,22 +167,31 @@ void ask_user_video_mode(struct mem_info *minfo)
    mi = (void *)free_mem;
 
    if (!vbe_get_info_block(vb)) {
-      printk("VBE get info failed. Only the text mode is available.\n");
-      printk("Press ANY key to boot in text mode\n");
-      bios_read_char();
+
+      if (BOOT_ASK_VIDEO_MODE) {
+         printk("VBE get info failed. Only the text mode is available.\n");
+         printk("Press ANY key to boot in text mode\n");
+         bios_read_char();
+      }
+
       return;
    }
 
    if (vb->VbeVersion < 0x200) {
-      printk("VBE older than 2.0 is not supported.\n");
-      printk("Press ANY key to boot in text mode\n");
-      bios_read_char();
+
+      if (BOOT_ASK_VIDEO_MODE) {
+         printk("VBE older than 2.0 is not supported.\n");
+         printk("Press ANY key to boot in text mode\n");
+         bios_read_char();
+      }
+
       return;
    }
 
    known_modes[known_modes_count++] = VGA_COLOR_TEXT_MODE_80x25;
-   printk("Mode [0]: text mode 80 x 25\n");
 
+   if (BOOT_ASK_VIDEO_MODE)
+      printk("Mode [0]: text mode 80 x 25\n");
 
    u16 *modes = get_flat_ptr(vb->VideoModePtr);
    u16 defmode;
@@ -158,30 +209,9 @@ void ask_user_video_mode(struct mem_info *minfo)
       show_modes_aux(modes, mi, known_modes, &known_modes_count, &defmode, 24);
    }
 
-   printk("\n");
-
-   while (true) {
-
-      printk("Select a video mode [%d - %d]: ", 0, known_modes_count - 1);
-
-      char sel = bios_read_char();
-      int s = sel - '0';
-
-      if (sel == '\r') {
-         selected_mode = defmode;
-         printk("DEFAULT\n");
-         break;
-      }
-
-      if (s < 0 || s > known_modes_count - 1) {
-         printk("Invalid selection.\n");
-         continue;
-      }
-
-      printk("%d\n\n", s);
-      selected_mode = known_modes[s];
-      break;
-   }
+   selected_mode = do_get_user_video_mode_choice(known_modes,
+                                                 known_modes_count,
+                                                 defmode);
 
    if (selected_mode == VGA_COLOR_TEXT_MODE_80x25) {
       graphics_mode = false;
