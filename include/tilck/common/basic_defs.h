@@ -338,6 +338,12 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
  */
 #define TO_PTR(n) ((void *)(ulong)(n))
 
+enum tristate {
+   tri_unknown = -1,
+   tri_no      = 0,
+   tri_yes     = 1,
+};
+
 /* Includes */
 #include <tilck/common/panic.h>
 
