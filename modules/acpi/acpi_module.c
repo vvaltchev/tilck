@@ -26,9 +26,17 @@ static u32 acpi_fadt_flags;
 static struct list on_subsystem_enabled_cb_list
    = STATIC_LIST_INIT(on_subsystem_enabled_cb_list);
 
+static struct list per_acpi_object_cb_list
+   = STATIC_LIST_INIT(per_acpi_object_cb_list);
+
 void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *cbnode)
 {
    list_add_tail(&on_subsystem_enabled_cb_list, &cbnode->node);
+}
+
+void acpi_reg_per_object_cb(struct acpi_reg_per_object_cb_node *cbnode)
+{
+   list_add_tail(&per_acpi_object_cb_list, &cbnode->node);
 }
 
 static ACPI_STATUS
@@ -181,9 +189,13 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
    ACPI_DEVICE_INFO *Info;
    ACPI_BUFFER Path;
    ACPI_STATUS rc;
-   char Buffer[256];
-   Path.Length = sizeof (Buffer);
-   Path.Pointer = Buffer;
+   char buf[256];
+   const char *hid, *uid, *cls;
+   u32 hid_l, uid_l, cls_l;
+   struct acpi_reg_per_object_cb_node *pos;
+
+   Path.Length = sizeof(buf);
+   Path.Pointer = buf;
 
    /* Get the full path of this device and print it */
    rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
@@ -203,31 +215,62 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
       return AE_CTRL_TERMINATE;
    }
 
-   if (Info->HardwareId.String) {
-      printk("(%#04x, HID: '%*s')\n",
-             Info->Type, Info->HardwareId.Length - 1, Info->HardwareId.String);
-   } else {
+   hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : NULL;
+   hid_l = Info->HardwareId.Length;
+
+   uid = (Info->Valid & ACPI_VALID_UID) ? Info->UniqueId.String : NULL;
+   uid_l = Info->UniqueId.Length;
+
+   cls = (Info->Valid & ACPI_VALID_CLS) ? Info->ClassCode.String : NULL;
+   cls_l = Info->ClassCode.Length;
+
+   if (hid)
+      printk("(%#04x, HID: '%*s')\n", Info->Type, hid_l - 1, hid);
+   else
       printk("(%#04x, HID: n/a)\n", Info->Type);
+
+   list_for_each_ro(pos, &per_acpi_object_cb_list, node) {
+
+      if (pos->hid && (!hid || strncmp(hid, pos->hid, hid_l)))
+         continue; // HID doesn't match
+
+      if (pos->uid && (!uid || strncmp(uid, pos->uid, uid_l)))
+         continue; // UID doesn't match
+
+      if (pos->cls && (!cls || strncmp(cls, pos->cls, cls_l)))
+         continue; // CLS doesn't match
+
+      rc = pos->cb(ObjHandle, Info, pos->ctx);
+
+      if (ACPI_FAILURE(rc)) {
+         *(ACPI_STATUS *)ReturnValue = rc;
+         AcpiOsFree(Info);
+         return AE_CTRL_TERMINATE;
+      }
    }
 
    AcpiOsFree(Info);
    return AE_OK;
 }
 
-
 static ACPI_STATUS
 acpi_walk_all_devices(void)
 {
+   ACPI_STATUS rc, ret = AE_OK;
    printk("ACPI: dump all devices in the namespace:\n");
 
-   return AcpiWalkNamespace(
-      ACPI_TYPE_DEVICE,   // Type
-      ACPI_ROOT_OBJECT,   // StartObject
-      INT_MAX,            // MaxDepth
-      walk_single_dev,    // DescendingCallback
-      NULL,               // AscendingCallback
-      NULL,               // Context
-      NULL);              // ReturnValue
+   rc = AcpiWalkNamespace(ACPI_TYPE_DEVICE,   // Type
+                          ACPI_ROOT_OBJECT,   // StartObject
+                          INT_MAX,            // MaxDepth
+                          walk_single_dev,    // DescendingCallback
+                          NULL,               // AscendingCallback
+                          NULL,               // Context
+                          (void **)&ret);     // ReturnValue
+
+   if (ACPI_FAILURE(rc))
+      return rc;
+
+   return ret;
 }
 
 static void

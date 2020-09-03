@@ -49,4 +49,31 @@ struct acpi_reg_callback_node {
    void *ctx;
 };
 
+/*
+ * Register a callback that will be called immediately the ACPI subsystem has
+ * been enabled at hardware level and we iterated through all the objects in
+ * ACPI namespace.
+ */
 void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *node);
+
+typedef u32 (*acpi_per_object_callback)(void *obj_handle,
+                                        void *device_info,
+                                        void *ctx);
+
+struct acpi_reg_per_object_cb_node {
+
+   struct list_node node;
+   acpi_per_object_callback cb;
+   void *ctx;
+
+   const char *hid;  /* Required matching HID (if not NULL) */
+   const char *uid;  /* Required matching UID (if not NULL) */
+   const char *cls;  /* Required matching CLS (if not NULL) */
+};
+
+/*
+ * Register a callback that will be called during the first iteration over all
+ * the objects in the ACPI namespace, immediately after the ACPI subsystem has
+ * been enabled.
+ */
+void acpi_reg_per_object_cb(struct acpi_reg_per_object_cb_node *cbnode);
