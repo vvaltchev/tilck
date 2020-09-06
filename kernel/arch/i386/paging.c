@@ -440,24 +440,38 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
    page_dir_entry_t e;
    page_t p;
 
-   if (IN_RANGE(vaddr, KERNEL_BASE_VA, LINEAR_MAPPING_END)) {
-      *pa_ref = KERNEL_VA_TO_PA(vaddr);
-      return 0;
-   }
-
+   /* Get page directory's entry for this vaddr */
    e.raw = pdir->entries[pd_index].raw;
 
    if (!e.present)
       return -EFAULT;
 
-   ASSERT(e.ptaddr != 0);
-   pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
-   p.raw = pt->pages[pt_index].raw;
+   if (!e.psize) {
 
-   if (!p.present)
-      return -EFAULT;
+      /* Regular entry, pointing to a page table */
 
-   *pa_ref = ((ulong) p.pageAddr << PAGE_SHIFT) | (vaddr & OFFSET_IN_PAGE_MASK);
+      ASSERT(e.ptaddr != 0);
+
+      /* Get the page table */
+      pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
+
+      /* Get the page entry for `vaddr` within the page table */
+      p.raw = pt->pages[pt_index].raw;
+
+      if (!p.present)
+         return -EFAULT;
+
+      *pa_ref = ((ulong) p.pageAddr << PAGE_SHIFT) |
+                (vaddr & OFFSET_IN_PAGE_MASK);
+
+   } else {
+
+      /* Big page (4 MB) entry */
+
+      *pa_ref = ((ulong) e.big_4mb_page.paddr << BIG_PAGE_SHIFT) |
+                (vaddr & (4 * MB - 1));
+   }
+
    return 0;
 }
 
