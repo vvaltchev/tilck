@@ -159,8 +159,31 @@ pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
    return 0;
 }
 
-void
-init_pci(void)
+int pci_device_get_info(struct pci_device_loc loc,
+                        struct pci_device_basic_info *nfo)
+{
+   int rc;
+   u32 tmp;
+
+   if ((rc = pci_config_read(loc, 0, 32, &nfo->__dev_and_vendor)))
+      return rc;
+
+   if ((rc = pci_config_read(loc, 8, 32, &nfo->__class_info)))
+      return rc;
+
+   if ((rc = pci_config_read(loc, 14, 8, &tmp)))
+      return rc;
+
+   nfo->header_type = tmp & 0xff;
+   return 0;
+}
+
+/*
+ * Initialize the support for the Enhanced Configuration Access Mechanism,
+ * used by PCI Express.
+ */
+static void
+init_pci_ecam(void)
 {
    ACPI_STATUS rc;
    ACPI_TABLE_HEADER *hdr;
@@ -211,4 +234,17 @@ init_pci(void)
    }
 
    AcpiPutTable(hdr);
+}
+
+static void
+init_pci_discover_devices(void)
+{
+   /* TODO: implement */
+}
+
+void
+init_pci(void)
+{
+   init_pci_ecam();
+   init_pci_discover_devices();
 }

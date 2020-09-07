@@ -25,6 +25,33 @@ struct pci_device_loc {
    u8 func : 3;   /* PCI Function Number */
 };
 
+struct pci_device_basic_info {
+
+   union {
+
+      struct {
+         u16 vendor_id;
+         u16 device_id;
+      };
+
+      u32 __dev_and_vendor;
+   };
+
+   union {
+
+      struct {
+         u8 rev_id;
+         u8 progif_id;
+         u8 subclass_id;
+         u8 class_id;
+      };
+
+      u32 __class_info;
+   };
+
+   u8 header_type;
+};
+
 const char *
 pci_find_vendor_name(u16 id);
 
