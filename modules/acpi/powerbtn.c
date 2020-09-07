@@ -53,25 +53,13 @@ powerbtn_reg_notify_cb(void *obj_handle,
                        void *ctx)
 {
    ACPI_STATUS rc = AE_OK;
-   ACPI_DEVICE_INFO *Info = __device_info;
-   ACPI_NOTIFY_HANDLER handler = NULL;
-   const char *hid = Info->HardwareId.String;
-   u32 hid_l = Info->HardwareId.Length;
+   ACPI_NOTIFY_HANDLER handler = ctx;
+   ASSERT(handler != NULL);
 
-   printk("ACPI: register notify handler for button HID=%*s\n", hid_l-1, hid);
-
-   if (!strcmp(hid, "PNP0C0C"))
-      handler = &powerbtn_notify_handler;
-   else if (!strcmp(hid, "PNP0C0D"))
-      handler = &lidswitch_notify_handler;
-
-   if (handler) {
-
-      rc = AcpiInstallNotifyHandler(obj_handle,
-                                    ACPI_ALL_NOTIFY,
-                                    handler,
-                                    NULL);
-   }
+   rc = AcpiInstallNotifyHandler(obj_handle,
+                                 ACPI_ALL_NOTIFY,
+                                 handler,
+                                 NULL);
 
    if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiInstallNotifyHandler", NULL, rc);
@@ -94,7 +82,7 @@ static void __reg_callbacks(void)
 
    static struct acpi_reg_per_object_cb_node pwbtn_notf = {
       .cb = &powerbtn_reg_notify_cb,
-      .ctx = NULL,
+      .ctx = &powerbtn_notify_handler,
       .hid = "PNP0C0C",
       .uid = NULL,
       .cls = NULL,
@@ -105,7 +93,7 @@ static void __reg_callbacks(void)
 
    static struct acpi_reg_per_object_cb_node lid_notf = {
       .cb = &powerbtn_reg_notify_cb,
-      .ctx = NULL,
+      .ctx = &lidswitch_notify_handler,
       .hid = "PNP0C0D",
       .uid = NULL,
       .cls = NULL,
