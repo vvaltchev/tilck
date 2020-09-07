@@ -761,22 +761,19 @@ pci_discover_segment(struct pci_segment *seg)
       return;
    }
 
-   if (!nfo.multi_func) {
-
-      /* Single PCI controller */
-      pci_discover_bus(seg, 0);
-
-   } else {
+   if (nfo.multi_func) {
 
       /* Multiple PCI controllers */
-      for (u8 func = 0; func < 8; func++) {
+      for (u8 func = 1; func < 8; func++) {
 
          if (pci_device_get_info(pci_make_loc(0, 0, 0, func), &nfo))
             break;
 
-         pci_discover_bus(seg, func);
+         pci_mark_bus_to_visit(func);
       }
    }
+
+   pci_discover_bus(seg, 0);
 
    /* Discover devices in the additional buses marked for visit */
    do {
