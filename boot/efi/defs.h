@@ -9,6 +9,7 @@
 #include <multiboot.h>
 
 extern multiboot_info_t *mbi;
+extern bool any_warnings;
 
 EFI_STATUS
 LoadKernelFile(EFI_BOOT_SERVICES *BS,

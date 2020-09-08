@@ -8,6 +8,13 @@
 
 #include <tilck/common/simple_elf_loader.c.h>
 
+/*
+ * Global variable that could be set by any function to ask
+ * the main function to wait for an additional user keypress
+ * after the video mode selection, before booting.
+ */
+
+bool any_warnings;
 
 /**
  * efi_main - The entry point for the EFI application
@@ -102,6 +109,14 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    // Print(L"Press ANY key to boot the kernel...\r\n");
    // WaitForKeyPress(ST);
    //
+
+   if (any_warnings) {
+      Print(L"\r\n\n");
+      Print(L"*** WARNINGS PRESENT ***\r\n");
+      Print(L"Please check them before booting.\r\n");
+      Print(L"Press ANY key to boot");
+      WaitForKeyPress(ST);
+   }
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
    HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");
