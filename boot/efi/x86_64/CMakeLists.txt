@@ -3,38 +3,51 @@ cmake_minimum_required(VERSION 3.2)
 
 set(EFI_ARCH x86_64)
 set(GNUEFI_DIR ${TCROOT}/x86_64/gnu-efi)
+file(GLOB SOURCES "../*.c" "*.S")
 
+file(RELATIVE_PATH relPath ${CMAKE_BINARY_DIR} ${EFI_${EFI_ARCH}_FILE})
 CHECK_C_COMPILER_FLAG(-maccumulate-outgoing-args ACC_OUTGOING_ARGS_SUPPORTED)
 
-if (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND ACC_OUTGOING_ARGS_SUPPORTED)
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
-   file(GLOB SOURCES "../*.c" "*.S")
+   if (ACC_OUTGOING_ARGS_SUPPORTED)
+      include (../GenericBuild.cmake)
+   else()
+      show_no_ms_abi_support_warning(${relPath})
+   endif()
+
+elseif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
+   # Building the BOOTX64.EFI file with Clang is tricky, in particular using
+   # gnu-efi. Even if recent clang versions support MS ABI, the GenericBuild
+   # used above doesn't work out-of-the-box. It requires a serious effort.
+   # Since Tilck's official toolchain is based on GCC and Clang is partially
+   # supported just for static analysis and devel builds with the -Wconversion
+   # option, making the EFI bootloaders build with Clang is *not* a must.
+   # Until now, this x86_64 target just created a fake empty file to make the
+   # build pass, after displaying a warning during run of CMake. That's the
+   # typical case of devel (contrib) builds (./scripts/cmake_run --contrib).
+   #
+   # Because this warning is annoying and it would be convenient to just behave
+   # as in the GCC case, here a small hack will be used. We'll use (assuming it
+   # exists) the system's GCC to build the 64-bit EFI bootloader. That's exactly
+   # what happens with the OFFICIAL (default) Tilck builds (just, there CC and
+   # CXX and not defined by the user). Because the build host must be a x86_64
+   # linux system and we have to build a 64-bit EFI bootloader, using the system
+   # compiler is perfectly fine. Again, even in this case where CC=clang.
+   # The CC=clang option has anyway meaning just for the C files in the kernel;
+   # the rest of the files and targets will be built anyway with the custom
+   # GCC-based toolchain.
+
+   set(CMAKE_C_COMPILER gcc)
+   set(CMAKE_CXX_COMPILER g++)
+   set(CMAKE_ASM_COMPILER gcc)
+
    include (../GenericBuild.cmake)
 
 else()
 
-   file(RELATIVE_PATH relPath ${CMAKE_BINARY_DIR} ${EFI_${EFI_ARCH}_FILE})
-
-   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      show_no_ms_abi_support_warning(${relPath})
-   else()
-      show_clang_not_supported_for_efi_warning(${relPath})
-   endif()
-
-   add_custom_command(
-      OUTPUT
-         ${EFI_${EFI_ARCH}_FILE}
-      COMMAND
-         touch ${EFI_${EFI_ARCH}_FILE}
-   )
-
-   add_custom_target(
-
-      efi_${EFI_ARCH}_bootloader
-
-      DEPENDS
-         ${EFI_${EFI_ARCH}_FILE}
-   )
+   message(FATAL_ERROR "Compiler ${CMAKE_C_COMPILER_ID} NOT supported")
 
 endif()
 

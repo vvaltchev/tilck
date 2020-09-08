@@ -112,14 +112,3 @@ function (show_no_ms_abi_support_warning relPath)
    message(WARNING "\n${msg}\n")
 
 endfunction()
-
-function (show_clang_not_supported_for_efi_warning)
-
-   set(msg "")
-   string(CONCAT msg "Build `${relPath}` with clang is not supported.\n"
-                     "If you need to use EFI boot on x86_64 machines "
-                     "please use a GCC as system compiler.")
-
-   message(WARNING "\n${msg}\n")
-
-endfunction()
