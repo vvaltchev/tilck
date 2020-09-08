@@ -238,3 +238,66 @@ MbiSetBootloaderName(void)
 end:
    return status;
 }
+
+EFI_STATUS
+MbiSetPointerToAcpiTable(void)
+{
+   static EFI_GUID gAcpi20Table = ACPI_20_TABLE_GUID;
+   EFI_PHYSICAL_ADDRESS tablePaddr;
+   void *table = NULL;
+
+   for (UINTN i = 0; i < ST->NumberOfTableEntries; i++) {
+
+      EFI_GUID *g = &ST->ConfigurationTable[i].VendorGuid;
+
+      if (!CompareGuid(g, &gAcpi20Table)) {
+         table = ST->ConfigurationTable[i].VendorTable;
+         break;
+      }
+   }
+
+   if (!table) {
+      Print(L"ERROR: ACPI 2.0 configuration table not found\r\n");
+      return EFI_NOT_FOUND;
+   }
+
+   tablePaddr = (EFI_PHYSICAL_ADDRESS)(ulong)table;
+
+   if (tablePaddr >= UINT32_MAX) {
+
+      Print(L"Warning: ACPI 2.0 RDSP (0x%08x) out of 32-bit space\r\n",
+            tablePaddr);
+
+      any_warnings = true;
+      return EFI_SUCCESS;
+   }
+
+   /*
+    * HACK: we're setting ACPI 2.0's RDSP to the `apm_table` field in
+    * multiboot's MBI struct. That's wrong to do (in general), but
+    * unfortunately multiboot 1 does not support ACPI. Until we make at
+    * least this EFI bootloader and the kernel to support multiboot 2.0,
+    * this hack will be used. Note: the "hack" is not an unsafe or dirty
+    * hack simply because:
+    *
+    *       - We're booting ONLY the Tilck kernel
+    *       - We didn't set MULTIBOOT_INFO_APM_TABLE in mbi->flags
+    *       - We set the mbi->boot_load_name to "TILCK_EFI" which allows the
+    *         kernel to recognize this particular bootloader.
+    *
+    * Of course, if Tilck is booted by GRUB in EFI mode, it won't get this
+    * precious pointer and it will have to resort searching the root pointer
+    * with AcpiFindRootPointer() which is unreliable on UEFI systems.
+    * As a result, ACPI might be unable to find its root pointer and the whole
+    * ACPICA won't be usable. This limitation will be removed when Tilck gets
+    * support for multiboot 2.0 as well.
+    *
+    * History note: why Tilck does not support multiboot 2.0 from the beginning?
+    * Because QEMU doesn't and it was so simply to just support only multiboot1
+    * everywhere. Supporting only multiboot2 was not an option because would
+    * require always booting Tilck with its bootloader under QEMU: that's slower
+    * for tests and limiting for debugging purposes.
+    */
+   mbi->apm_table = (u32)tablePaddr;
+   return EFI_SUCCESS;
+}

@@ -103,6 +103,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = MbiSetBootloaderName();
    HANDLE_EFI_ERROR("MbiSetBootloaderName");
 
+   status = MbiSetPointerToAcpiTable();
+   HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
+
    //
    // For debugging with GDB (see docs/efi_debug.md)
    //

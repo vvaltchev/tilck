@@ -18,6 +18,7 @@ LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
 EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
 EFI_STATUS MbiSetBootloaderName(void);
+EFI_STATUS MbiSetPointerToAcpiTable(void);
 EFI_STATUS MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr,
                          UINTN ramdisk_size);
 
