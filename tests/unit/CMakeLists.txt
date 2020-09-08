@@ -53,7 +53,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 
 string(
    CONCAT gtests_flags
-   "-DTESTING -fPIC "
+   "-DTESTING -fPIC -fno-strict-aliasing"
    " ${CLANG_OPTS} ${COMMON_FLAGS} ${GCOV_COMPILE_FLAGS}"
 )
 

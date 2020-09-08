@@ -37,7 +37,6 @@ set(
    OTHER_CFLAGS_LIST
 
    -ggdb
-   -fno-strict-aliasing
 )
 
 set(
@@ -101,6 +100,7 @@ set(
    -ffreestanding
    -fno-builtin
    -fno-omit-frame-pointer
+   -fno-strict-aliasing
    -fwrapv
    -Wundef
 )
