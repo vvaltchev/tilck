@@ -22,7 +22,7 @@ bool any_warnings;
  * @ST: EFI system table
  */
 EFI_STATUS
-efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
+efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 {
    EFI_STATUS status;
    EFI_LOADED_IMAGE *loaded_image;
@@ -32,12 +32,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    UINTN ramdisk_size, mapkey, fb_paddr;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;
-   EFI_BOOT_SERVICES *BS = ST->BootServices;
    void *kernel_entry = NULL;
 
-   InitializeLib(image, ST);
+   InitializeLib(image, __ST);
 
-   EarlySetDefaultResolution(ST, BS);
+   EarlySetDefaultResolution();
    ST->ConOut->EnableCursor(ST->ConOut, true);
 
    Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");
@@ -64,7 +63,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
-   status = LoadKernelFile(BS, fileProt, &kernel_file_paddr);
+   status = LoadKernelFile(fileProt, &kernel_file_paddr);
    HANDLE_EFI_ERROR("LoadKernelFile");
 
    status = BS->CloseProtocol(loaded_image->DeviceHandle,
@@ -76,8 +75,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
    // ------------------------------------------------------------------ //
 
-   status = LoadRamdisk(ST,
-                        image,
+   status = LoadRamdisk(image,
                         loaded_image,
                         &ramdisk_paddr,
                         &ramdisk_size,
@@ -87,7 +85,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    Print(L"\r\n");
 
    if (MOD_console && MOD_fb) {
-      status = SetupGraphicMode(BS, &fb_paddr, &gfx_mode_info);
+      status = SetupGraphicMode(&fb_paddr, &gfx_mode_info);
       HANDLE_EFI_ERROR("SetupGraphicMode() failed");
    }
 
@@ -118,7 +116,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
       Print(L"*** WARNINGS PRESENT ***\r\n");
       Print(L"Please check them before booting.\r\n");
       Print(L"Press ANY key to boot");
-      WaitForKeyPress(ST);
+      WaitForKeyPress();
    }
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
@@ -134,7 +132,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
 
          Print(L"Only the serial console is available. Use it.\r\n\n");
          Print(L"Press ANY key to boot");
-         WaitForKeyPress(ST);
+         WaitForKeyPress();
 
          ST->ConOut->ClearScreen(ST->ConOut);
          Print(L"<No video console>");
@@ -159,11 +157,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *ST)
    /* --- Point of no return: from here on, we MUST NOT fail --- */
 
    kernel_entry = simple_elf_loader(TO_PTR(kernel_file_paddr));
-   JumpToKernel(mbi, kernel_entry);
+   JumpToKernel(kernel_entry);
 
 end:
    /* --- we should never get here in the normal case --- */
-   WaitForKeyPress(ST);
+   WaitForKeyPress();
    return status;
 }
 

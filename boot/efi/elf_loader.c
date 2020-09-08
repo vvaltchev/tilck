@@ -86,15 +86,13 @@ end:
 }
 
 EFI_STATUS
-LoadKernelFile(EFI_BOOT_SERVICES *BS,
-               EFI_FILE_PROTOCOL *fileProt,
+LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
                EFI_PHYSICAL_ADDRESS *filePaddr)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
 
    /* Temporary load the whole kernel file in a safe location */
-   status = LoadFileFromDisk(BS,
-                             fileProt,
+   status = LoadFileFromDisk(fileProt,
                              KERNEL_MAX_SIZE / PAGE_SIZE,
                              filePaddr,
                              KERNEL_FILE);

@@ -106,13 +106,13 @@ end:
 }
 
 EFI_STATUS
-EarlySetDefaultResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS)
+EarlySetDefaultResolution(void)
 {
    EFI_STATUS status;
    EFI_HANDLE handles[32];
    UINTN handles_buf_size;
    UINTN handles_count;
-   INTN chosenMode, origMode;
+   INTN origMode, chosenMode = -1;
    EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 
    ST->ConOut->ClearScreen(ST->ConOut);
@@ -174,8 +174,7 @@ end:
 }
 
 EFI_STATUS
-SetupGraphicMode(EFI_BOOT_SERVICES *BS,
-                 UINTN *fb_addr,
+SetupGraphicMode(UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
 {
    EFI_STATUS status;
@@ -275,7 +274,7 @@ retry:
 
       int my_mode_sel;
       Print(L"Select mode [0-%d] (or ENTER for default): ", my_modes_count - 1);
-      k = WaitForKeyPress(ST);
+      k = WaitForKeyPress();
 
       if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
           wanted_mode = default_mode;

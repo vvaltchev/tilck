@@ -6,18 +6,16 @@ set(
 
    -fno-stack-protector
    -fshort-wchar
+   -fno-builtin
    -mno-red-zone
    -ggdb
-   -Wall
-   -Wextra
-   -Werror
    -Wundef
-   -Wno-unused-parameter
-   -Wno-unused-function
 
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
 )
+
+list(APPEND EFI_BUILD_BASE_FLAGS_LIST ${WARN_FLAGS_LIST})
 
 JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
 

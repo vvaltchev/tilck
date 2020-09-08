@@ -7,7 +7,7 @@
 
 #if defined(BITS32)
 
-void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
+void JumpToKernel(void *entry_point)
 {
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"
@@ -23,7 +23,7 @@ void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
 /* Defined in switchmode.S */
 void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
 
-void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
+void JumpToKernel(void *entry_point)
 {
    switch_to_pm32_and_jump_to_kernel(mbi, entry_point);
 }
@@ -34,7 +34,7 @@ void JumpToKernel(multiboot_info_t *mbi, void *entry_point)
 
 #endif
 
-EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
+EFI_INPUT_KEY WaitForKeyPress(void)
 {
     UINTN index;
     EFI_INPUT_KEY k;
@@ -49,8 +49,7 @@ EFI_INPUT_KEY WaitForKeyPress(EFI_SYSTEM_TABLE *ST)
 }
 
 EFI_STATUS
-LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
-                 EFI_FILE_PROTOCOL *fileProt,
+LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
                  INTN pagesCount,
                  EFI_PHYSICAL_ADDRESS *paddr,
                  CHAR16 *filePath)

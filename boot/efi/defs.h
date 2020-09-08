@@ -12,8 +12,7 @@ extern multiboot_info_t *mbi;
 extern bool any_warnings;
 
 EFI_STATUS
-LoadKernelFile(EFI_BOOT_SERVICES *BS,
-               EFI_FILE_PROTOCOL *fileProt,
+LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
                EFI_PHYSICAL_ADDRESS *filePaddr);
 
 EFI_STATUS AllocateMbi(void);
@@ -28,17 +27,15 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
                       UINTN fb_addr);
 
 EFI_STATUS
-LoadRamdisk(EFI_SYSTEM_TABLE *ST,
-            EFI_HANDLE image,
+LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
             UINTN *ramdisk_size,
             UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
 
 EFI_STATUS
-SetupGraphicMode(EFI_BOOT_SERVICES *BS                           /* in */,
-                 UINTN *fb_addr                                  /* out */,
+SetupGraphicMode(UINTN *fb_addr                                  /* out */,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info /* out */);
 
 EFI_STATUS
-EarlySetDefaultResolution(EFI_SYSTEM_TABLE *ST, EFI_BOOT_SERVICES *BS);
+EarlySetDefaultResolution(void);

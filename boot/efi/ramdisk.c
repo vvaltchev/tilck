@@ -204,8 +204,7 @@ end:
 }
 
 EFI_STATUS
-LoadRamdisk(EFI_SYSTEM_TABLE *ST,
-            EFI_HANDLE image,
+LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loadedImg,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
             UINTN *ramdisk_size,

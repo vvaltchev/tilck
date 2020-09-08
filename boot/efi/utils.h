@@ -25,7 +25,7 @@ extern UINTN mmap_size;
 extern UINTN desc_size;
 
 void
-JumpToKernel(multiboot_info_t *mbi, void *entry_point);
+JumpToKernel(void *entry_point);
 
 EFI_STATUS
 GetMemoryMap(UINTN *mapkey);
@@ -37,11 +37,10 @@ EFI_STATUS
 KernelLoadMemoryChecks(void);
 
 EFI_INPUT_KEY
-WaitForKeyPress(EFI_SYSTEM_TABLE *ST);
+WaitForKeyPress(void);
 
 EFI_STATUS
-LoadFileFromDisk(EFI_BOOT_SERVICES *BS,
-                 EFI_FILE_PROTOCOL *fileProt,
+LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
                  INTN pagesCount,
                  EFI_PHYSICAL_ADDRESS *paddr,
                  CHAR16 *filePath);
