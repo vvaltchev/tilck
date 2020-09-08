@@ -14,6 +14,7 @@ list(
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
 
+   ${GENERAL_DEFS_LIST}
    ${DBG_FLAGS_LIST}
    ${OPT_FLAGS_LIST}
    ${WARN_FLAGS_LIST}
