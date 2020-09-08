@@ -80,7 +80,7 @@ struct safe_ringbuf {
    struct generic_safe_ringbuf_stat s;
    u8 *buf;
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
    ATOMIC(int) nested_writes;
 #endif
 };

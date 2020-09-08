@@ -57,7 +57,7 @@ end_debug_write_checks(struct safe_ringbuf *rb)
 static ALWAYS_INLINE void
 begin_debug_read_checks(struct safe_ringbuf *rb)
 {
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 
    int nw = atomic_load_explicit(&rb->nested_writes, mo_relaxed);
 
@@ -85,7 +85,7 @@ safe_ringbuf_init(struct safe_ringbuf *rb, u16 max_elems, u16 e_size, void *buf)
    rb->buf = (u8 *)buf;
    rb->s.raw = 0;
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
    rb->nested_writes = 0;
 #endif
 }

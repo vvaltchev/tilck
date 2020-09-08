@@ -201,7 +201,7 @@ static ALWAYS_INLINE void disable_interrupts_forced(void)
 #endif
 }
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
 {
    return !!(get_eflags() & EFLAGS_IF);

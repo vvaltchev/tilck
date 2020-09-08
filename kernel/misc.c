@@ -23,7 +23,7 @@ char strtab_buf[1] __attribute__ ((section (".Strtab"))) = {0};
 
 bool __use_framebuffer;
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 
 const ulong init_st_begin = (ulong)&kernel_initial_stack;
 const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;

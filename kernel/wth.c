@@ -60,7 +60,7 @@ wth_enqueue_on(struct worker_thread *t, void (*func)(void *), void *arg)
 
    disable_preemption();
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 
    /*
     * Trying to enqueue a job from the same job thread can cause a deadlock when

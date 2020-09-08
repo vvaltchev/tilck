@@ -42,7 +42,6 @@
 #if DEBUG_CHECKS
    #ifdef NDEBUG
       #undef NDEBUG
-      #define TILCK_DEBUG
    #endif
 #endif
 

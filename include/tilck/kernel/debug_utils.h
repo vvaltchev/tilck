@@ -23,7 +23,7 @@ void register_tilck_cmd(int cmd_n, void *func);
 void *get_syscall_func_ptr(u32 n);
 int get_syscall_num(void *func);
 
-#if defined(TILCK_DEBUG) && !defined(UNIT_TEST_ENVIRONMENT)
+#if DEBUG_CHECKS && !defined(UNIT_TEST_ENVIRONMENT)
 
    #define DEBUG_VALIDATE_STACK_PTR() \
       validate_stack_pointer_int(__FILE__, __LINE__)

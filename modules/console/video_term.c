@@ -957,7 +957,7 @@ term_action_set_scroll_region(term *_t, u16 start, u16 end)
 
 #include "term_action_wrappers.c.h"
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 
 static void
 debug_term_dump_font_table(term *_t)
@@ -1216,7 +1216,7 @@ static const struct term_interface intf = {
    .free = free_term_struct,
    .dispose = dispose_term,
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
    .debug_dump_font_table = debug_term_dump_font_table,
 #endif
 };

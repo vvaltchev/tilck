@@ -343,7 +343,7 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
    }
 }
 
-#ifdef TILCK_DEBUG
+#if DEBUG_CHECKS
 
 void debug_dump_glyph(u32 n)
 {
