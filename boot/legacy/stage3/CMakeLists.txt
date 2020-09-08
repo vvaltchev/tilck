@@ -23,17 +23,12 @@ set(
    -D__TILCK_BOOTLOADER__
 
    -fno-omit-frame-pointer
-   -fno-pic
-   -fno-asynchronous-unwind-tables
-   -fno-exceptions
-   -fno-stack-protector
    -fwrapv
    -static
    -Wundef
 
    # Disable the generation of any kind of FPU instructions
    -mno-80387
-   -mno-fp-ret-in-387
    -mno-mmx
    -mno-sse
    -mno-avx
@@ -52,6 +47,7 @@ list(
    ${OPT_FLAGS_LIST}
    ${WARN_FLAGS_LIST}
    ${FREESTANDING_FLAGS_LIST}
+   ${LOWLEVEL_BINARIES_FLAGS_LIST}
 )
 
 JOIN("${STAGE3_BUILD_FLAGS_LIST}" ${SPACE} STAGE3_BUILD_FLAGS)

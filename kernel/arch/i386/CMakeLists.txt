@@ -11,12 +11,6 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(
    ACTUAL_KERNEL_ONLY_FLAGS_LIST
 
-   -fno-pic
-   -fno-asynchronous-unwind-tables
-   -fno-exceptions
-   -fno-stack-protector
-   -fno-non-call-exceptions
-
    # Disable the generation of any kind of FPU instructions
    -mno-80387
    -mno-mmx
@@ -27,6 +21,12 @@ set(
    # -mpush-args
    # -mno-accumulate-outgoing-args
    # -mno-stack-arg-probe
+)
+
+list(
+   APPEND ACTUAL_KERNEL_ONLY_FLAGS_LIST
+
+   ${LOWLEVEL_BINARIES_FLAGS_LIST}
 )
 
 if (KERNEL_GCOV)
