@@ -10,7 +10,6 @@ list(
 
    -fno-stack-protector
    -fshort-wchar
-   -Wundef
 
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
@@ -19,6 +18,7 @@ list(
    ${OPT_FLAGS_LIST}
    ${WARN_FLAGS_LIST}
    ${FREESTANDING_FLAGS_LIST}
+   ${SAFER_BEHAVIOR_FLAGS_LIST}
 )
 
 JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
