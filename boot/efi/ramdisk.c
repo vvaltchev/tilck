@@ -212,7 +212,7 @@ LoadRamdisk(EFI_HANDLE image,
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_STATUS status = EFI_SUCCESS;
-   EFI_HANDLE bioDeviceHandle;
+   EFI_HANDLE bioDeviceHandle = NULL;
    struct load_ramdisk_ctx ctx = {0};
 
    status = GetPhysBlockIODeviceHandle(loadedImg, &bioDeviceHandle);

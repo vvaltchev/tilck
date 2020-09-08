@@ -203,7 +203,7 @@ ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
    const UINTN ChunkSize = 256 * KB;
    const UINTN ChunkCount = BufferSize / ChunkSize;
    const UINTN rem = BufferSize - ChunkCount * ChunkSize;
-   EFI_STATUS status;
+   EFI_STATUS status = EFI_SUCCESS;
 
    for (u32 chunk = 0; chunk < ChunkCount; chunk++) {
 

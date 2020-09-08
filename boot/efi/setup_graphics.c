@@ -62,7 +62,7 @@ FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
                   INTN *choice)
 {
    INTN chosenMode = -1, minResPixels = 0, minResModeN = -1;
-   EFI_STATUS status;
+   EFI_STATUS status = EFI_SUCCESS;
 
    for (UINTN i = 0; i < gProt->Mode->MaxMode; i++) {
 

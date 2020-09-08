@@ -4,17 +4,24 @@ cmake_minimum_required(VERSION 3.2)
 set(
    EFI_BUILD_BASE_FLAGS_LIST
 
+   -D__TILCK_EFI_BOOTLOADER__
+
    -fno-stack-protector
    -fshort-wchar
-   -ggdb
    -Wundef
 
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
 )
 
-list(APPEND EFI_BUILD_BASE_FLAGS_LIST ${FREESTANDING_FLAGS_LIST})
-list(APPEND EFI_BUILD_BASE_FLAGS_LIST ${WARN_FLAGS_LIST})
+list(
+   APPEND EFI_BUILD_BASE_FLAGS_LIST
+
+   ${DBG_FLAGS_LIST}
+   ${OPT_FLAGS_LIST}
+   ${WARN_FLAGS_LIST}
+   ${FREESTANDING_FLAGS_LIST}
+)
 
 JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
 
