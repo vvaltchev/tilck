@@ -81,12 +81,20 @@ if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
 endif()
 
+set(
+   FREESTANDING_FLAGS_LIST
 
-JOIN("${GENERAL_DEFS_LIST}" ${SPACE} GENERAL_DEFS)
-JOIN("${DBG_FLAGS_LIST}"    ${SPACE} DBG_FLAGS)
-JOIN("${OPT_FLAGS_LIST}"    ${SPACE} OPT_FLAGS)
-JOIN("${WARN_FLAGS_LIST}"   ${SPACE} WARN_FLAGS)
+   -ffreestanding
+   -fno-builtin
+   -mno-red-zone
+)
+JOIN("${FREESTANDING_FLAGS_LIST}" ${SPACE} FREESTANDING_FLAGS)
 
+
+JOIN("${GENERAL_DEFS_LIST}"       ${SPACE} GENERAL_DEFS)
+JOIN("${DBG_FLAGS_LIST}"          ${SPACE} DBG_FLAGS)
+JOIN("${OPT_FLAGS_LIST}"          ${SPACE} OPT_FLAGS)
+JOIN("${WARN_FLAGS_LIST}"         ${SPACE} WARN_FLAGS)
 set(COMMON_FLAGS "${GENERAL_DEFS} ${DBG_FLAGS} ${OPT_FLAGS} ${WARN_FLAGS}")
 
 # Kernel flags
@@ -96,14 +104,13 @@ set(
 
    -D__TILCK_KERNEL__
 
-   -mno-red-zone
-   -ffreestanding
-   -fno-builtin
+   -fwrapv
    -fno-omit-frame-pointer
    -fno-strict-aliasing
-   -fwrapv
    -Wundef
 )
+
+list(APPEND GENERAL_KERNEL_FLAGS_LIST ${FREESTANDING_FLAGS_LIST})
 
 if (WCONV)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
@@ -126,8 +133,10 @@ JOIN("${KERNEL_NO_ARCH_FLAGS_LIST}" ${SPACE} KERNEL_NO_ARCH_FLAGS)
 set(
    KERNEL_CXX_FLAGS_LIST
 
+   -fno-exceptions
    -fno-use-cxa-atexit
    -fno-rtti
 )
 
 JOIN("${KERNEL_CXX_FLAGS_LIST}" ${SPACE} KERNEL_CXX_FLAGS)
+

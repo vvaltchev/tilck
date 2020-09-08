@@ -22,8 +22,6 @@ set(
 
    -D__TILCK_BOOTLOADER__
 
-   -ffreestanding
-   -fno-builtin
    -fno-omit-frame-pointer
    -fno-pic
    -fno-asynchronous-unwind-tables
@@ -31,7 +29,6 @@ set(
    -fno-stack-protector
    -fwrapv
    -static
-   -Wvla
    -Wundef
 
    # Disable the generation of any kind of FPU instructions
@@ -54,6 +51,7 @@ list(
    ${DBG_FLAGS_LIST}
    ${OPT_FLAGS_LIST}
    ${WARN_FLAGS_LIST}
+   ${FREESTANDING_FLAGS_LIST}
 )
 
 JOIN("${STAGE3_BUILD_FLAGS_LIST}" ${SPACE} STAGE3_BUILD_FLAGS)

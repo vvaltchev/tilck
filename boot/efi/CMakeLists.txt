@@ -6,8 +6,6 @@ set(
 
    -fno-stack-protector
    -fshort-wchar
-   -fno-builtin
-   -mno-red-zone
    -ggdb
    -Wundef
 
@@ -15,6 +13,7 @@ set(
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
 )
 
+list(APPEND EFI_BUILD_BASE_FLAGS_LIST ${FREESTANDING_FLAGS_LIST})
 list(APPEND EFI_BUILD_BASE_FLAGS_LIST ${WARN_FLAGS_LIST})
 
 JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
