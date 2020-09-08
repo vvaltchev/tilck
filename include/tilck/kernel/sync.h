@@ -179,7 +179,7 @@ bool kmutex_trylock(struct kmutex *m);
 void kmutex_unlock(struct kmutex *m);
 void kmutex_destroy(struct kmutex *m);
 
-#ifdef DEBUG
+#ifdef TILCK_DEBUG
 bool kmutex_is_curr_task_holding_lock(struct kmutex *m);
 #endif
 

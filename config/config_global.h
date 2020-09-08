@@ -42,7 +42,7 @@
 #if DEBUG_CHECKS
    #ifdef NDEBUG
       #undef NDEBUG
-      #define DEBUG
+      #define TILCK_DEBUG
    #endif
 #endif
 
@@ -52,7 +52,7 @@
    #define KERNEL_TEST_INT 0
 #endif
 
-#ifdef RELEASE
+#ifdef TILCK_RELEASE
    #define IS_RELEASE_BUILD 1
 #else
    #define IS_RELEASE_BUILD 0

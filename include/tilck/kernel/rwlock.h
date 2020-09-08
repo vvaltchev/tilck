@@ -13,7 +13,7 @@ struct rwlock_rp {
    struct ksem writers_sem;
    int readers_count;
 
-#ifdef DEBUG
+#ifdef TILCK_DEBUG
    struct task *ex_owner;
 #endif
 
@@ -26,7 +26,7 @@ void rwlock_rp_shunlock(struct rwlock_rp *r);
 void rwlock_rp_exlock(struct rwlock_rp *r);
 void rwlock_rp_exunlock(struct rwlock_rp *r);
 
-#ifdef DEBUG
+#ifdef TILCK_DEBUG
 
    static inline bool rwlock_rp_is_shlocked(struct rwlock_rp *r)
    {
@@ -60,7 +60,7 @@ void rwlock_wp_shunlock(struct rwlock_wp *rw);
 void rwlock_wp_exlock(struct rwlock_wp *rw);
 void rwlock_wp_exunlock(struct rwlock_wp *rw);
 
-#ifdef DEBUG
+#ifdef TILCK_DEBUG
 
    static inline bool rwlock_wp_is_shlocked(struct rwlock_wp *rw)
    {

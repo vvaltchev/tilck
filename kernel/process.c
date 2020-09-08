@@ -150,7 +150,7 @@ void free_mem_for_zombie_task(struct task *ti)
 {
    ASSERT(ti->state == TASK_STATE_ZOMBIE);
 
-#ifdef DEBUG
+#ifdef TILCK_DEBUG
 
    if (ti == get_curr_task()) {
 

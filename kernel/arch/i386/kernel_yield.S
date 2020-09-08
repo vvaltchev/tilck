@@ -36,7 +36,7 @@ FUNC(asm_kernel_yield):
    push eax
    call save_current_task_state
 
-#if defined(DEBUG) && KRN_TRACK_NESTED_INTERR
+#if defined(TILCK_DEBUG) && KRN_TRACK_NESTED_INTERR
    call check_not_in_irq_handler
 #endif
 
