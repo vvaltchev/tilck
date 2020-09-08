@@ -18,28 +18,14 @@ set(
    COMPILE_FLAGS_LIST
 
    -maccumulate-outgoing-args  # necessary for MS_ABI with older GCC compilers
-   -std=c99
-   -fno-stack-protector
-   -fpic
-   -fshort-wchar
-   -mno-red-zone
-   -ggdb
-   -Wall
-   -Wextra
-   -Werror
-   -Wundef
-   -Wno-unused-parameter
-   -Wno-unused-function
-
-   -DEFI_DEBUG=0                # Because of -Wundef
-   -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
+   -fPIC
 )
 
 set(
    LINK_FLAGS_LIST
 
-   -T${GNUEFI_DIR}/gnuefi/elf_${EFI_ARCH}_efi.lds
    -nostdlib
+   -Wl,--script=${GNUEFI_DIR}/gnuefi/elf_${EFI_ARCH}_efi.lds
    -Wl,-znocombreloc
    -Wl,-Bsymbolic
 )
@@ -52,7 +38,7 @@ set_target_properties(
    efi_app_${EFI_ARCH}
 
    PROPERTIES
-      COMPILE_FLAGS ${COMPILE_FLAGS}
+      COMPILE_FLAGS "${EFI_BUILD_BASE_FLAGS} ${COMPILE_FLAGS}"
       LINK_FLAGS ${LINK_FLAGS}
 )
 

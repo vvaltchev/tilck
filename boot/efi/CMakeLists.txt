@@ -2,6 +2,26 @@
 cmake_minimum_required(VERSION 3.2)
 
 set(
+   EFI_BUILD_BASE_FLAGS_LIST
+
+   -fno-stack-protector
+   -fshort-wchar
+   -mno-red-zone
+   -ggdb
+   -Wall
+   -Wextra
+   -Werror
+   -Wundef
+   -Wno-unused-parameter
+   -Wno-unused-function
+
+   -DEFI_DEBUG=0                # Because of -Wundef
+   -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
+)
+
+JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
+
+set(
    efi_bootloader_deps
 
    efi_ia32_bootloader
@@ -20,6 +40,7 @@ if ("${HOST_ARCH}" STREQUAL "x86_64")
       efi_x86_64_bootloader
       ${EFI_x86_64_FILE}
    )
+
 endif()
 
 add_custom_target(
