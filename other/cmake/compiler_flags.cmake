@@ -6,7 +6,7 @@ set(GENERAL_DEFS_LIST "")
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
 
    message(STATUS "Preparing a RELEASE build...")
-   list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DTILCK_RELEASE")
+   list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DTILCK_RELEASE_BUILD")
 
    if (TINY_KERNEL)
       set(OPT_FLAGS_LIST -Os)
@@ -17,7 +17,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 else()
 
    message(STATUS "Preparing a DEBUG build...")
-   list(APPEND GENERAL_DEFS_LIST "-DTILCK_DEBUG")
+   list(APPEND GENERAL_DEFS_LIST "-DTILCK_DEBUG_BUILD")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
 
 endif()

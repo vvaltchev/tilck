@@ -51,7 +51,7 @@
    #define KERNEL_TEST_INT 0
 #endif
 
-#ifdef TILCK_RELEASE
+#ifdef TILCK_RELEASE_BUILD
    #define IS_RELEASE_BUILD 1
 #else
    #define IS_RELEASE_BUILD 0
