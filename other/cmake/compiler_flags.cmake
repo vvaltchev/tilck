@@ -47,8 +47,10 @@ set(
    -Wextra
    -Werror
    -Wshadow
+   -Wvla
    -Wno-unused-function
    -Wno-unused-parameter
+   -Wno-unused-label
 )
 
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -100,8 +102,6 @@ set(
    -fno-builtin
    -fno-omit-frame-pointer
    -fwrapv
-   -Wno-unused-label
-   -Wvla
    -Wundef
 )
 
