@@ -37,6 +37,7 @@ set(
    DBG_FLAGS_LIST
 
    -ggdb
+   -fno-omit-frame-pointer
 )
 
 set(
@@ -105,7 +106,6 @@ set(
    -D__TILCK_KERNEL__
 
    -fwrapv
-   -fno-omit-frame-pointer
    -fno-strict-aliasing
    -Wundef
 )

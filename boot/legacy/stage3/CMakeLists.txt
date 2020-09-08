@@ -20,7 +20,6 @@ list(
 
    -D__TILCK_BOOTLOADER__
 
-   -fno-omit-frame-pointer
    -fwrapv
    -static
    -Wundef
