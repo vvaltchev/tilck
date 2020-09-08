@@ -7,7 +7,7 @@
 send_to_vm_and_find_text(r"dp{ret}", True, [
    "TilckDebugPanel",
    "TERM_ROWS",
-   "IS_RELEASE_BUILD",
+   "DEBUG_CHECKS",
 ])
 
 send_to_vm_and_find_text(r"2", True, [

@@ -42,9 +42,10 @@ static void dp_show_opts(void)
    int max_rows;
 
    DUMP_LABEL("Main");
-   DUMP_INT_OPT(IS_RELEASE_BUILD);
    DUMP_STR_OPT(BUILDTYPE_STR);
+   DUMP_INT_OPT(DEBUG_CHECKS);
    DUMP_INT_OPT(TIMER_HZ);
+   DUMP_INT_OPT(KERNEL_STACK_PAGES);
    DUMP_INT_OPT(USER_STACK_PAGES);
 
    DUMP_LABEL("Kernel modules");
