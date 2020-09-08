@@ -50,19 +50,21 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
+set(GTESTS_FLAGS_LIST "")
 
-set(
-   GTESTS_FLAGS_LIST
+list(
+   APPEND GTESTS_FLAGS_LIST
 
    -DTESTING
    -fPIC
    -fno-strict-aliasing
+
+   ${CLANG_OPTS}
+   ${COMMON_FLAGS}
+   ${GCOV_COMPILE_FLAGS}
 )
 
 JOIN("${GTESTS_FLAGS_LIST}" ${SPACE} GTESTS_FLAGS)
-string(APPEND GTESTS_FLAGS " ${CLANG_OPTS}")
-string(APPEND GTESTS_FLAGS " ${COMMON_FLAGS}")
-string(APPEND GTESTS_FLAGS " ${GCOV_COMPILE_FLAGS}")
 
 set_target_properties(
 

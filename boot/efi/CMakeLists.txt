@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-set(
-   EFI_BUILD_BASE_FLAGS_LIST
+set(EFI_BUILD_BASE_FLAGS_LIST "")
+
+list(
+   APPEND EFI_BUILD_BASE_FLAGS_LIST
 
    -D__TILCK_EFI_BOOTLOADER__
 
@@ -12,10 +14,6 @@ set(
 
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
-)
-
-list(
-   APPEND EFI_BUILD_BASE_FLAGS_LIST
 
    ${DBG_FLAGS_LIST}
    ${OPT_FLAGS_LIST}

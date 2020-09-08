@@ -4,29 +4,18 @@ cmake_minimum_required(VERSION 3.2)
 # Remove -rdynamic
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-
 # Options that will be used only when building the actual kernel, not when
 # building kernel's code for unit testing.
 
-set(
-   ACTUAL_KERNEL_ONLY_FLAGS_LIST
-
-   # Disable the generation of any kind of FPU instructions
-   -mno-80387
-   -mno-mmx
-   -mno-sse
-   -mno-avx
-
-   # Allow easier disassembly debugging
-   # -mpush-args
-   # -mno-accumulate-outgoing-args
-   # -mno-stack-arg-probe
-)
+set(ACTUAL_KERNEL_ONLY_FLAGS_LIST "")
 
 list(
    APPEND ACTUAL_KERNEL_ONLY_FLAGS_LIST
 
+   -D__ACTUAL_TILCK_KERNEL_BINARY__
+
    ${LOWLEVEL_BINARIES_FLAGS_LIST}
+   ${DISABLE_FPU_FLAGS_LIST}
 )
 
 if (KERNEL_GCOV)

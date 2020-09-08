@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
+smart_config_file(linker_script.ld ${STAGE3_SCRIPT})
+
 file(
    GLOB STAGE3_C_SOURCES
 
@@ -11,14 +13,10 @@ file(
 )
 
 set(STAGE3_ASM_SOURCES "entry.S" "rm_calls.S")
+set(STAGE3_BUILD_FLAGS_LIST "")
 
-smart_config_file(
-   linker_script.ld
-   ${STAGE3_SCRIPT}
-)
-
-set(
-   STAGE3_BUILD_FLAGS_LIST
+list(
+   APPEND STAGE3_BUILD_FLAGS_LIST
 
    -D__TILCK_BOOTLOADER__
 
@@ -27,27 +25,13 @@ set(
    -static
    -Wundef
 
-   # Disable the generation of any kind of FPU instructions
-   -mno-80387
-   -mno-mmx
-   -mno-sse
-   -mno-avx
-
-   # Allow easier disassembly debugging
-   # -mpush-args
-   # -mno-accumulate-outgoing-args
-   # -mno-stack-arg-probe
-)
-
-list(
-   APPEND STAGE3_BUILD_FLAGS_LIST
-
    ${GENERAL_DEFS_LIST}
    ${DBG_FLAGS_LIST}
    ${OPT_FLAGS_LIST}
    ${WARN_FLAGS_LIST}
    ${FREESTANDING_FLAGS_LIST}
    ${LOWLEVEL_BINARIES_FLAGS_LIST}
+   ${DISABLE_FPU_FLAGS_LIST}
 )
 
 JOIN("${STAGE3_BUILD_FLAGS_LIST}" ${SPACE} STAGE3_BUILD_FLAGS)

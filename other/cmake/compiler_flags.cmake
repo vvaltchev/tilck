@@ -147,5 +147,22 @@ set(
    -fno-exceptions
    -fno-stack-protector
    -fno-asynchronous-unwind-tables
+
+   # Allow easier disassembly debugging
+   # -mpush-args
+   # -mno-accumulate-outgoing-args
+   # -mno-stack-arg-probe
 )
 JOIN("${LOWLEVEL_BINARIES_FLAGS_LIST}" ${SPACE} LOWLEVEL_BINARIES_FLAGS)
+
+
+set(
+   DISABLE_FPU_FLAGS_LIST
+
+   # Disable the generation of any kind of FPU instructions
+   -mno-80387
+   -mno-mmx
+   -mno-sse
+   -mno-avx
+)
+JOIN("${DISABLE_FPU_FLAGS_LIST}" ${SPACE} DISABLE_FPU_FLAGS)
