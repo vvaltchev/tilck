@@ -288,6 +288,30 @@ acpi_handle_fatal_failure_after_enable_subsys(void)
       print_acpi_failure("AcpiTerminate", NULL, rc);
 }
 
+static void
+acpi_global_event_handler(UINT32 EventType,
+                          ACPI_HANDLE Device,
+                          UINT32 EventNumber,
+                          void *Context)
+{
+   u32 gpe;
+
+   if (EventType == ACPI_EVENT_TYPE_FIXED) {
+      printk("ACPI: fixed event #%u\n", EventNumber);
+      return;
+   }
+
+   if (EventType != ACPI_EVENT_TYPE_GPE) {
+      printk("ACPI: warning: unknown event type: %u\n", EventType);
+      return;
+   }
+
+   /* We received a GPE */
+   gpe = EventNumber;
+
+   printk("ACPI: got GPE #%u\n", gpe);
+}
+
 void
 acpi_mod_enable_subsystem(void)
 {
@@ -344,12 +368,21 @@ acpi_mod_enable_subsystem(void)
       return;
    }
 
+   rc = AcpiInstallGlobalEventHandler(&acpi_global_event_handler, NULL);
+
+   if (ACPI_FAILURE(rc)) {
+      print_acpi_failure("AcpiInstallGlobalEventHandler", NULL, rc);
+      acpi_handle_fatal_failure_after_enable_subsys();
+      return;
+   }
+
    acpi_init_status = ais_fully_initialized;
    rc = AcpiUpdateAllGpes();
 
    if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiUpdateAllGpes", NULL, rc);
-      /* NOTE: do not consider this as a fatal failure */
+      acpi_handle_fatal_failure_after_enable_subsys();
+      return;
    }
 }
 
