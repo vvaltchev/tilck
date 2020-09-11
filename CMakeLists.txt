@@ -477,6 +477,11 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_GCC_TC      "i686")
    set(ARCH_GCC_FLAGS   "-m32 -march=${ARCH_GCC_TC}")
 
+   # Fundamental kernel MM constants
+   set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
+   set(KERNEL_PADDR       0x00100000)  # Better not touch!
+   set(LINEAR_MAPPING_MB         896)  # Better not touch!
+
 else()
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
 endif()
@@ -603,11 +608,13 @@ set(QEMU_CHS_GEOM         "cyls=${CHS_CYLS},heads=${CHS_HPC},secs=${CHS_SPT}")
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
 
-# Fundamental kernel MM constants
-set(KERNEL_STACK_PAGES          1)  # 1 or 2.
-set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
-set(KERNEL_PADDR       0x00100000)  # Better not touch!
-set(LINEAR_MAPPING_MB         896)  # Better not touch!
+# Set kernel's stack size in number of pages. Valid range: [1, 2].
+
+if (MOD_acpi)
+   set(KERNEL_STACK_PAGES          2)
+else()
+   set(KERNEL_STACK_PAGES          1)
+endif()
 
 set(FATHACK ${BUILD_APPS}/fathack)
 set(ELFHACK ${BUILD_APPS}/elfhack)
