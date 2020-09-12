@@ -188,7 +188,7 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
 {
    ACPI_DEVICE_INFO *Info;
    ACPI_BUFFER Path;
-   ACPI_STATUS rc;
+   ACPI_STATUS rc = AE_OK;
    char buf[256];
    const char *hid, *uid, *cls;
    u32 hid_l, uid_l, cls_l;
@@ -197,22 +197,21 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
    Path.Length = sizeof(buf);
    Path.Pointer = buf;
 
-   /* Get the full path of this device and print it */
-   rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
-
-   if (!ACPI_SUCCESS(rc)) {
-      printk("Failed to get object name\n");
-      return AE_CTRL_TERMINATE;
-   }
-
-   printk("%s ", (char *)Path.Pointer);
-
    /* Get the device info for this device and print it */
    rc = AcpiGetObjectInfo(ObjHandle, &Info);
 
-   if (!ACPI_SUCCESS(rc)) {
+   if (ACPI_FAILURE(rc)) {
       printk("ERROR: Failed to get object info\n");
       return AE_CTRL_TERMINATE;
+   }
+
+   /* Get the full path of this device and print it */
+   rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
+
+   if (ACPI_FAILURE(rc)) {
+      printk("Failed to get full object name\n");
+      rc = AE_CTRL_TERMINATE;
+      goto out;
    }
 
    hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : NULL;
@@ -225,9 +224,9 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
    cls_l = Info->ClassCode.Length;
 
    if (hid)
-      printk("(%#04x, HID: '%*s')\n", Info->Type, hid_l - 1, hid);
+      printk("%s (%#04x, HID: '%*s')\n", buf, Info->Type, hid_l - 1, hid);
    else
-      printk("(%#04x, HID: n/a)\n", Info->Type);
+      printk("%s (%#04x, HID: n/a)\n", buf, Info->Type);
 
    list_for_each_ro(pos, &per_acpi_object_cb_list, node) {
 
@@ -244,11 +243,12 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
 
       if (ACPI_FAILURE(rc)) {
          *(ACPI_STATUS *)ReturnValue = rc;
-         AcpiOsFree(Info);
-         return AE_CTRL_TERMINATE;
+         rc = AE_CTRL_TERMINATE;
+         goto out;
       }
    }
 
+out:
    AcpiOsFree(Info);
    return AE_OK;
 }
@@ -299,8 +299,8 @@ acpi_mod_enable_subsystem(void)
    ASSERT(acpi_init_status == ais_tables_loaded);
    ASSERT(is_preemption_enabled());
 
-   AcpiUpdateInterfaces(ACPI_DISABLE_ALL_STRINGS);
-   AcpiInstallInterface("Windows 2000");
+   // AcpiUpdateInterfaces(ACPI_DISABLE_ALL_STRINGS);
+   // AcpiInstallInterface("Windows 2000");
 
    printk("ACPI: AcpiEnableSubsystem\n");
    rc = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
@@ -312,6 +312,20 @@ acpi_mod_enable_subsystem(void)
    }
 
    acpi_init_status = ais_subsystem_enabled;
+
+   printk("ACPI: AcpiInitializeObjects\n");
+   rc = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
+
+   if (ACPI_FAILURE(rc)) {
+      print_acpi_failure("AcpiInitializeObjects", NULL, rc);
+      acpi_handle_fatal_failure_after_enable_subsys();
+      return;
+   }
+
+   /*
+    * According to acpica-reference-18.pdf, 4.4.3.1, at this point we have to
+    * execute all the _PRW methods and install our GPE handlers.
+    */
 
    rc = acpi_walk_all_devices();
 
@@ -330,16 +344,13 @@ acpi_mod_enable_subsystem(void)
       return;
    }
 
-   printk("ACPI: AcpiInitializeObjects\n");
-   rc = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
+   acpi_init_status = ais_fully_initialized;
+   rc = AcpiUpdateAllGpes();
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiInitializeObjects", NULL, rc);
-      acpi_handle_fatal_failure_after_enable_subsys();
-      return;
+      print_acpi_failure("AcpiUpdateAllGpes", NULL, rc);
+      /* NOTE: do not consider this as a fatal failure */
    }
-
-   acpi_init_status = ais_fully_initialized;
 }
 
 static void
