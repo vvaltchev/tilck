@@ -304,12 +304,11 @@ devfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 }
 
 static void
-devfs_close(fs_handle h)
+devfs_on_close(fs_handle h)
 {
    struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
    kfree2(devh->write_buf, DEVFS_WRITE_BS);
-   vfs_free_handle(devh);
 }
 
 static int
@@ -484,7 +483,7 @@ static const struct fs_ops static_fsops_devfs =
 {
    .get_inode = devfs_get_inode,
    .open = devfs_open,
-   .close = devfs_close,
+   .on_close = devfs_on_close,
    .on_dup_cb = devfs_on_dup,
    .getdents = devfs_getdents,
    .unlink = NULL,
@@ -546,7 +545,8 @@ devfs_kernel_create_handle_for(void *devfile, fs_handle *out)
 void
 devfs_kernel_destory_handle(fs_handle h)
 {
-   devfs_close(h);
+   devfs_on_close(h);
+   vfs_free_handle(h);
 }
 
 void
