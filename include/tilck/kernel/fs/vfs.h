@@ -78,6 +78,7 @@ typedef int            (*func_munmap)       (fs_handle, void *, size_t);
 typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
 typedef int            (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
+typedef int            (*func_on_dup_cb)    (fs_handle);
 
 typedef ssize_t        (*func_readv)        (fs_handle,
                                              const struct iovec *,
@@ -110,6 +111,7 @@ struct fs_ops {
    func_open open;
    func_close close;
    func_dup dup;
+   func_on_dup_cb on_dup_cb;
    func_getdents getdents;
    func_unlink unlink;
    func_stat stat;

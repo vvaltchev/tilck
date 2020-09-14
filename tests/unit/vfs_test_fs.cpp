@@ -137,6 +137,7 @@ extern const struct fs_ops static_fsops_testfs = {
    .open                = nullptr,
    .close               = nullptr,
    .dup                 = nullptr,
+   .on_dup_cb           = nullptr,
    .getdents            = nullptr,
    .unlink              = nullptr,
    .stat                = nullptr,

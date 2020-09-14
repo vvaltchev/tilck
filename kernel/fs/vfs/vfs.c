@@ -75,13 +75,40 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
+   const struct fs_ops *fsops = hb->fs->fsops;
    int rc;
 
    if (!hb)
       return -EBADF;
 
-   if ((rc = hb->fs->fsops->dup(h, dup_h)))
-      return rc;
+   if (fsops->dup) {
+
+      if ((rc = fsops->dup(h, dup_h)))
+         return rc;
+
+   } else {
+
+      fs_handle new_handle = vfs_alloc_handle_raw();
+
+      if (!new_handle)
+         return -ENOMEM;
+
+      memcpy32(new_handle, h, MAX_FS_HANDLE_SIZE / 4);
+      fsops->retain_inode(hb->fs, fsops->get_inode(h));
+
+      if (fsops->on_dup_cb) {
+         if ((rc = fsops->on_dup_cb(new_handle))) {
+            fsops->release_inode(hb->fs, fsops->get_inode(h));
+            vfs_free_handle(new_handle);
+            return rc;
+         }
+      }
+
+      *dup_h = new_handle;
+   }
+
+   /* No matter the path taken, here *dup_h must be valid */
+   ASSERT(*dup_h != NULL);
 
    /* The new file descriptor does NOT share old file descriptor's fd_flags */
    ((struct fs_handle_base *) *dup_h)->fd_flags = 0;
@@ -94,7 +121,6 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
       retain_subsys_flock(hb->lf);
 
    retain_obj(hb->fs);
-   ASSERT(*dup_h != NULL);
    return 0;
 }
 
