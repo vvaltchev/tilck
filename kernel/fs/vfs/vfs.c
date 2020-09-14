@@ -885,3 +885,23 @@ int vfs_exunlock(struct fs *fs, vfs_inode_ptr_t i)
 
    return rc;
 }
+
+fs_handle vfs_alloc_handle_raw(void)
+{
+   return kmalloc(MAX_FS_HANDLE_SIZE);
+}
+
+void vfs_free_handle(fs_handle h)
+{
+   kfree2(h, MAX_FS_HANDLE_SIZE);
+}
+
+fs_handle vfs_alloc_handle(void)
+{
+   fs_handle h = vfs_alloc_handle_raw();
+
+   if (h)
+      bzero(h, MAX_FS_HANDLE_SIZE);
+
+   return h;
+}

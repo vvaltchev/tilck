@@ -264,6 +264,10 @@ u32 vfs_get_new_device_id(void);
 struct fs *create_fs_obj(const char *type);
 void destory_fs_obj(struct fs *fs);
 
+fs_handle vfs_alloc_handle(void);
+fs_handle vfs_alloc_handle_raw(void);  /* doesn't zero the data */
+void vfs_free_handle(fs_handle h);
+
 /* ------------ Current mount point interface ------------- */
 
 /*
