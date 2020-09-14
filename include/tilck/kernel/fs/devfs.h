@@ -19,7 +19,7 @@ struct devfs_file {
    const struct file_ops *fops;
    tilck_ino_t inode;
 
-   int spec_flags;
+   u16 spec_flags;
 };
 
 struct devfs_handle {
@@ -57,7 +57,7 @@ typedef int
 (*func_create_device_file)(int,
                            const struct file_ops **,
                            enum vfs_entry_type *,
-                           int *);
+                           u16 *);
 
 struct driver_info {
 

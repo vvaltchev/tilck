@@ -182,7 +182,7 @@ static int
 create_fb_device(int minor,
                  const struct file_ops **fops_ref,
                  enum vfs_entry_type *t,
-                 int *spec_flags_ref)
+                 u16 *spec_flags_ref)
 {
    static const struct file_ops static_ops_fb = {
       .read = fb_read,

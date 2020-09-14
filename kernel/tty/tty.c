@@ -87,7 +87,7 @@ static int
 tty_create_device_file(int minor,
                        const struct file_ops **fops_r,
                        enum vfs_entry_type *t,
-                       int *spec_flags_ref)
+                       u16 *spec_flags_ref)
 {
    static const struct file_ops static_ops_tty = {
 

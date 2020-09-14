@@ -97,9 +97,9 @@ struct fs {
    struct process *pi;           \
    struct fs *fs;                \
    const struct file_ops *fops;  \
-   int fd_flags;                 \
    int fl_flags;                 \
-   int spec_flags;               \
+   u16 fd_flags;                 \
+   u16 spec_flags;               \
    struct locked_file *lf;       \
    offt pos;                        /* file: offset, dir: opaque entry index */
 

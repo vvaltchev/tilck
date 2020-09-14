@@ -669,7 +669,7 @@ int sys_fcntl64(int fd, int cmd, int arg)
          }
 
       case F_SETFD:
-         hb->fd_flags = arg;
+         hb->fd_flags = arg & 0xffff;
          break;
 
       case F_GETFD:
