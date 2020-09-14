@@ -28,17 +28,19 @@ kernelfs_get_inode(fs_handle h)
 }
 
 static void
-kernelfs_close(fs_handle h)
+kernelfs_on_close(fs_handle h)
 {
    struct kfs_handle *kh = h;
 
    if (kh->kobj->on_handle_close)
       kh->kobj->on_handle_close(kh);
+}
 
-   if (release_obj(kh->kobj) == 0)
-      kh->kobj->destory_obj(kh->kobj);
-
-   vfs_free_handle(h);
+static void
+kernelfs_on_close_last_handle(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   kh->kobj->destory_obj(kh->kobj);
 }
 
 int
@@ -115,7 +117,8 @@ static const struct fs_ops static_fsops_kernelfs =
    .release_inode = kernelfs_release_inode,
 
    /* Implemented here */
-   .close = kernelfs_close,
+   .on_close = kernelfs_on_close,
+   .on_close_last_handle = kernelfs_on_close_last_handle,
    .on_dup_cb = kernelfs_on_dup,
    .get_inode = kernelfs_get_inode,
 
