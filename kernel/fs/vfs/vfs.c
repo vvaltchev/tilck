@@ -76,45 +76,33 @@ int vfs_dup(fs_handle h, fs_handle *dup_h)
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
    const struct fs_ops *fsops = hb->fs->fsops;
+   struct fs_handle_base *new_handle;
    int rc;
 
    if (!hb)
       return -EBADF;
 
-   if (fsops->dup) {
+   if (!(new_handle = vfs_alloc_handle_raw()))
+      return -ENOMEM;
 
-      if ((rc = fsops->dup(h, dup_h)))
+   memcpy32(new_handle, h, MAX_FS_HANDLE_SIZE / 4);
+   fsops->retain_inode(hb->fs, fsops->get_inode(h));
+
+   if (fsops->on_dup_cb) {
+      if ((rc = fsops->on_dup_cb(new_handle))) {
+         fsops->release_inode(hb->fs, fsops->get_inode(h));
+         vfs_free_handle(new_handle);
          return rc;
-
-   } else {
-
-      fs_handle new_handle = vfs_alloc_handle_raw();
-
-      if (!new_handle)
-         return -ENOMEM;
-
-      memcpy32(new_handle, h, MAX_FS_HANDLE_SIZE / 4);
-      fsops->retain_inode(hb->fs, fsops->get_inode(h));
-
-      if (fsops->on_dup_cb) {
-         if ((rc = fsops->on_dup_cb(new_handle))) {
-            fsops->release_inode(hb->fs, fsops->get_inode(h));
-            vfs_free_handle(new_handle);
-            return rc;
-         }
       }
-
-      *dup_h = new_handle;
    }
 
-   /* No matter the path taken, here *dup_h must be valid */
-   ASSERT(*dup_h != NULL);
+   *dup_h = new_handle;
 
    /* The new file descriptor does NOT share old file descriptor's fd_flags */
-   ((struct fs_handle_base *) *dup_h)->fd_flags = 0;
+   new_handle->fd_flags = 0;
 
    /* Check that the locked_file object (if any) is still the same */
-   ASSERT(((struct fs_handle_base *) *dup_h)->lf == hb->lf);
+   ASSERT(new_handle->lf == hb->lf);
 
    /* Retain locked_file object (if any) */
    if (hb->lf)

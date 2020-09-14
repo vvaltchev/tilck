@@ -31,7 +31,6 @@ typedef vfs_inode_ptr_t (*func_get_inode) (fs_handle);
 
 typedef void    (*func_close)     (fs_handle);
 typedef int     (*func_open)      (struct vfs_path *, fs_handle *, int, mode_t);
-typedef int     (*func_dup)       (fs_handle, fs_handle *);
 typedef int     (*func_getdents)  (fs_handle, get_dents_func_cb, void *);
 typedef int     (*func_unlink)    (struct vfs_path *p);
 typedef int     (*func_mkdir)     (struct vfs_path *p, mode_t);
@@ -110,7 +109,6 @@ struct fs_ops {
    func_get_inode get_inode;
    func_open open;
    func_close close;
-   func_dup dup;
    func_on_dup_cb on_dup_cb;
    func_getdents getdents;
    func_unlink unlink;
