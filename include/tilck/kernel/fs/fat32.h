@@ -40,6 +40,8 @@ struct fatfs_handle {
    u32 curr_cluster;
 };
 
+STATIC_ASSERT(sizeof(struct fatfs_handle) <= MAX_FS_HANDLE_SIZE);
+
 struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags);
 void fat_umount_ramdisk(struct fs *fs);
 

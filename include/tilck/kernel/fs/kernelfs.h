@@ -20,6 +20,8 @@ struct kfs_handle {
    struct kobj_base *kobj;
 };
 
+STATIC_ASSERT(sizeof(struct kfs_handle) <= MAX_FS_HANDLE_SIZE);
+
 void init_kernelfs(void);
 void kfs_destroy_handle(struct kfs_handle *h);
 struct kfs_handle *

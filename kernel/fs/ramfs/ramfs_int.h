@@ -113,6 +113,8 @@ struct ramfs_handle {
    };
 };
 
+STATIC_ASSERT(sizeof(struct ramfs_handle) <= MAX_FS_HANDLE_SIZE);
+
 struct ramfs_data {
 
    struct rwlock_wp rwlock;
