@@ -247,7 +247,7 @@ devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = kzalloc_obj(struct devfs_handle)))
+   if (!(h = vfs_alloc_handle()))
       return -ENOMEM;
 
    vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_devfs);
@@ -262,7 +262,7 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = kzalloc_obj(struct devfs_handle)))
+   if (!(h = vfs_alloc_handle()))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
@@ -309,7 +309,7 @@ devfs_close(fs_handle h)
    struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
    kfree2(devh->write_buf, DEVFS_WRITE_BS);
-   kfree_obj(devh, struct devfs_handle);
+   vfs_free_handle(devh);
 }
 
 static int
@@ -317,7 +317,7 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    struct devfs_handle *h = fsh;
    struct devfs_handle *h2;
-   h2 = kzalloc_obj(struct devfs_handle);
+   h2 = vfs_alloc_handle();
 
    if (!h2)
       return -ENOMEM;
@@ -329,7 +329,7 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
       h2->read_buf = kmalloc(DEVFS_READ_BS);
 
       if (!h2->read_buf) {
-         kfree_obj(h2, struct devfs_handle);
+         vfs_free_handle(h2);
          return -ENOMEM;
       }
 
@@ -341,8 +341,8 @@ devfs_dup(fs_handle fsh, fs_handle *dup_h)
       h2->write_buf = kmalloc(DEVFS_WRITE_BS);
 
       if (!h2->write_buf) {
-         kfree2(h->read_buf, DEVFS_READ_BS);
-         kfree_obj(h2, struct devfs_handle);
+         kfree2(h2->read_buf, DEVFS_READ_BS);
+         vfs_free_handle(h2);
          return -ENOMEM;
       }
    }

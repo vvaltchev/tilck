@@ -35,8 +35,7 @@ fat_fs_walk_generic(struct fat_fs_device_data *d,
 STATIC void
 fat_close(fs_handle handle)
 {
-   struct fatfs_handle *h = (struct fatfs_handle *)handle;
-   kfree_obj(h, struct fatfs_handle);
+   vfs_free_handle(handle);
 }
 
 STATIC ssize_t
@@ -482,7 +481,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = kzalloc_obj(struct fatfs_handle)))
+   if (!(h = vfs_alloc_handle()))
       return -ENOMEM;
 
    vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_fat);
@@ -499,7 +498,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
 
 STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
 {
-   struct fatfs_handle *new_h = kalloc_obj(struct fatfs_handle);
+   struct fatfs_handle *new_h = vfs_alloc_handle();
 
    if (!new_h)
       return -ENOMEM;

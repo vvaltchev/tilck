@@ -38,7 +38,7 @@ kernelfs_close(fs_handle h)
    if (release_obj(kh->kobj) == 0)
       kh->kobj->destory_obj(kh->kobj);
 
-   kfree_obj(h, struct kfs_handle);
+   vfs_free_handle(h);
 }
 
 int
@@ -63,7 +63,7 @@ kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
 {
    struct kfs_handle *n;
 
-   if (!(n = (void *)kalloc_obj(struct kfs_handle)))
+   if (!(n = vfs_alloc_handle()))
       return -ENOMEM;
 
    memcpy(n, fsh, sizeof(struct kfs_handle));
@@ -83,7 +83,7 @@ kfs_create_new_handle(const struct file_ops *fops,
 {
    struct kfs_handle *h;
 
-   if (!(h = (void *)kzalloc_obj(struct kfs_handle)))
+   if (!(h = vfs_alloc_handle()))
       return NULL;
 
    vfs_init_fs_handle_base_fields((void *)h, kernelfs, fops);
@@ -109,7 +109,7 @@ kfs_destroy_handle(struct kfs_handle *h)
    if (h->kobj)
       release_obj(h->kobj);
 
-   kfree_obj(h, struct kfs_handle);
+   vfs_free_handle(h);
    release_obj(kernelfs);
 }
 
