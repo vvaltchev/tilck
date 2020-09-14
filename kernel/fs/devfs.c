@@ -313,41 +313,33 @@ devfs_close(fs_handle h)
 }
 
 static int
-devfs_dup(fs_handle fsh, fs_handle *dup_h)
+devfs_on_dup(fs_handle new_h)
 {
-   struct devfs_handle *h = fsh;
-   struct devfs_handle *h2;
-   h2 = vfs_alloc_handle();
+   struct devfs_handle *h2 = new_h;
 
-   if (!h2)
-      return -ENOMEM;
+   if (h2->read_buf) {
 
-   memcpy(h2, h, sizeof(struct devfs_handle));
+      char *new_buf = kmalloc(DEVFS_READ_BS);
 
-   if (h->read_buf) {
-
-      h2->read_buf = kmalloc(DEVFS_READ_BS);
-
-      if (!h2->read_buf) {
-         vfs_free_handle(h2);
+      if (!new_buf)
          return -ENOMEM;
-      }
 
-      memcpy(h2->read_buf, h->read_buf, DEVFS_READ_BS);
+      memcpy(new_buf, h2->read_buf, DEVFS_READ_BS);
+      h2->read_buf = new_buf;
    }
 
-   if (h->write_buf) {
+   if (h2->write_buf) {
 
-      h2->write_buf = kmalloc(DEVFS_WRITE_BS);
+      char *new_buf = kmalloc(DEVFS_WRITE_BS);
 
-      if (!h2->write_buf) {
+      if (!new_buf) {
          kfree2(h2->read_buf, DEVFS_READ_BS);
-         vfs_free_handle(h2);
          return -ENOMEM;
       }
+
+      h2->write_buf = new_buf;
    }
 
-   *dup_h = h2;
    return 0;
 }
 
@@ -493,7 +485,7 @@ static const struct fs_ops static_fsops_devfs =
    .get_inode = devfs_get_inode,
    .open = devfs_open,
    .close = devfs_close,
-   .dup = devfs_dup,
+   .on_dup_cb = devfs_on_dup,
    .getdents = devfs_getdents,
    .unlink = NULL,
    .mkdir = NULL,
