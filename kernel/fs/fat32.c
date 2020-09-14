@@ -496,18 +496,6 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
    return 0;
 }
 
-STATIC int fat_dup(fs_handle h, fs_handle *dup_h)
-{
-   struct fatfs_handle *new_h = vfs_alloc_handle();
-
-   if (!new_h)
-      return -ENOMEM;
-
-   memcpy(new_h, h, sizeof(struct fatfs_handle));
-   *dup_h = new_h;
-   return 0;
-}
-
 static inline void
 fat_get_root_entry(struct fat_fs_device_data *d, struct fat_fs_path *fp)
 {
@@ -600,7 +588,6 @@ static const struct fs_ops static_fsops_fat =
    .get_inode = fat_get_inode,
    .open = fat_open,
    .close = fat_close,
-   .dup = fat_dup,
    .getdents = fat_getdents,
    .unlink = NULL,
    .mkdir = NULL,
