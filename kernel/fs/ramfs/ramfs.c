@@ -62,19 +62,6 @@ static int ramfs_unlink(struct vfs_path *p)
    return 0;
 }
 
-static int ramfs_dup(fs_handle h, fs_handle *dup_h)
-{
-   struct ramfs_handle *new_h = vfs_alloc_handle();
-
-   if (!new_h)
-      return -ENOMEM;
-
-   memcpy(new_h, h, sizeof(struct ramfs_handle));
-   retain_obj(new_h->inode);
-   *dup_h = new_h;
-   return 0;
-}
-
 static void ramfs_close(fs_handle h)
 {
    struct ramfs_handle *rh = h;
@@ -325,7 +312,6 @@ static const struct fs_ops static_fsops_ramfs =
    .get_inode = ramfs_getinode,
    .open = ramfs_open,
    .close = ramfs_close,
-   .dup = ramfs_dup,
    .getdents = ramfs_getdents,
    .unlink = ramfs_unlink,
    .mkdir = ramfs_mkdir,
