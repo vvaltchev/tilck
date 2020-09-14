@@ -53,25 +53,19 @@ kernelfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return retain_obj((struct kobj_base *)inode);
 }
 
-static int kernelfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int
+kernelfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
 {
    return release_obj((struct kobj_base *)inode);
 }
 
 static int
-kernelfs_dup(fs_handle fsh, fs_handle *dup_h)
+kernelfs_on_dup(fs_handle new_h)
 {
-   struct kfs_handle *n;
+   struct kfs_handle *kh = new_h;
 
-   if (!(n = vfs_alloc_handle()))
-      return -ENOMEM;
-
-   memcpy(n, fsh, sizeof(struct kfs_handle));
-   retain_obj(n->kobj);
-   *dup_h = n;
-
-   if (n->kobj->on_handle_dup)
-      n->kobj->on_handle_dup(n);
+   if (kh->kobj->on_handle_dup)
+      kh->kobj->on_handle_dup(kh);
 
    return 0;
 }
@@ -122,7 +116,7 @@ static const struct fs_ops static_fsops_kernelfs =
 
    /* Implemented here */
    .close = kernelfs_close,
-   .dup = kernelfs_dup,
+   .on_dup_cb = kernelfs_on_dup,
    .get_inode = kernelfs_get_inode,
 
    .fs_exlock = no_lock,
