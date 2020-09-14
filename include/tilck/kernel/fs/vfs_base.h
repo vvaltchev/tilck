@@ -135,7 +135,6 @@ int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
 int vfs_munmap(fs_handle h, void *vaddr, size_t len);
 bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
-void vfs_close2(struct process *pi, fs_handle h);
 void vfs_close(fs_handle h);
 fs_handle get_fs_handle(int fd);
 

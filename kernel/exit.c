@@ -87,13 +87,15 @@ handle_children_of_dying_process(struct task *ti)
    }
 }
 
-static void close_all_handles(struct process *pi)
+static void
+close_all_handles(void)
 {
+   struct process *pi = get_curr_proc();
    ASSERT(is_preemption_enabled());
 
    for (int i = 0; i < MAX_HANDLES; i++) {
       if (pi->handles[i]) {
-         vfs_close2(pi, pi->handles[i]);
+         vfs_close(pi->handles[i]);
          pi->handles[i] = NULL;
       }
    }
@@ -171,7 +173,7 @@ void terminate_process(int exit_code, int term_sig)
     */
    enable_preemption();
    {
-      close_all_handles(pi);
+      close_all_handles();
    }
    disable_preemption();
 

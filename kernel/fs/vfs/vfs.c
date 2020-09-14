@@ -35,11 +35,12 @@ vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
 
 /* ------------ handle-based functions ------------- */
 
-void vfs_close2(struct process *pi, fs_handle h)
+void vfs_close(fs_handle h)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
 
+   struct process *pi = get_curr_proc();
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
    struct fs *fs = hb->fs;
 
@@ -55,11 +56,6 @@ void vfs_close2(struct process *pi, fs_handle h)
 
    /* while a struct fs is mounted, the minimum ref-count it can have is 1 */
    ASSERT(get_ref_count(fs) > 0);
-}
-
-void vfs_close(fs_handle h)
-{
-   vfs_close2(get_curr_proc(), h);
 }
 
 /*
