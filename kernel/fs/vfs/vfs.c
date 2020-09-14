@@ -41,16 +41,26 @@ void vfs_close(fs_handle h)
    ASSERT(h != NULL);
 
    struct process *pi = get_curr_proc();
-   struct fs_handle_base *hb = (struct fs_handle_base *) h;
+   struct fs_handle_base *hb = h;
    struct fs *fs = hb->fs;
+   struct locked_file *lf = hb->lf;
+   const struct fs_ops *fsops = fs->fsops;
 
    if (!pi->vforked)
       remove_all_mappings_of_handle(pi, h);
 
-   fs->fsops->close(h);
+   if (fsops->close) {
 
-   if (hb->lf)
-      release_subsys_flock(hb->lf);
+      fsops->close(h);
+
+   } else {
+
+      fsops->release_inode(fs, fsops->get_inode(h));
+      vfs_free_handle(h);
+   }
+
+   if (lf)
+      release_subsys_flock(lf);
 
    release_obj(fs);
 

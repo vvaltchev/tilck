@@ -32,12 +32,6 @@ fat_fs_walk_generic(struct fat_fs_device_data *d,
                      : fat_get_first_cluster(e));
 }
 
-STATIC void
-fat_close(fs_handle handle)
-{
-   vfs_free_handle(handle);
-}
-
 STATIC ssize_t
 fat_read(fs_handle handle, char *buf, size_t bufsize)
 {
@@ -587,7 +581,6 @@ static const struct fs_ops static_fsops_fat =
 {
    .get_inode = fat_get_inode,
    .open = fat_open,
-   .close = fat_close,
    .getdents = fat_getdents,
    .unlink = NULL,
    .mkdir = NULL,
