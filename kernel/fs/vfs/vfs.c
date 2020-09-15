@@ -925,3 +925,14 @@ fs_handle vfs_alloc_handle(void)
 
    return h;
 }
+
+fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops)
+{
+   struct fs_handle_base *hb = vfs_alloc_handle();
+
+   if (!hb)
+      return NULL;
+
+   vfs_init_fs_handle_base_fields(hb, fs, fops);
+   return hb;
+}

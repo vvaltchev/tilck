@@ -268,6 +268,7 @@ void destory_fs_obj(struct fs *fs);
 fs_handle vfs_alloc_handle(void);
 fs_handle vfs_alloc_handle_raw(void);  /* doesn't zero the data */
 void vfs_free_handle(fs_handle h);
+fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops);
 
 /* ------------ Current mount point interface ------------- */
 
