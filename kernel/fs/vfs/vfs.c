@@ -22,17 +22,6 @@
 
 static u32 next_device_id;
 
-void
-vfs_init_fs_handle_base_fields(struct fs_handle_base *hb,
-                               struct fs *fs,
-                               const struct file_ops *fops)
-{
-   hb->pi = get_curr_proc();
-   hb->fs = fs;
-   hb->fops = fops;
-}
-
-
 /* ------------ handle-based functions ------------- */
 
 void vfs_close(fs_handle h)
@@ -933,6 +922,8 @@ fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops)
    if (!hb)
       return NULL;
 
-   vfs_init_fs_handle_base_fields(hb, fs, fops);
+   hb->pi = get_curr_proc();
+   hb->fs = fs;
+   hb->fops = fops;
    return hb;
 }
