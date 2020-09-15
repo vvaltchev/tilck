@@ -62,7 +62,7 @@ static int ramfs_unlink(struct vfs_path *p)
    return 0;
 }
 
-static void ramfs_close(fs_handle h)
+static void ramfs_on_close(fs_handle h)
 {
    struct ramfs_handle *rh = h;
    struct ramfs_inode *i = rh->inode;
@@ -71,10 +71,14 @@ static void ramfs_close(fs_handle h)
       /* Remove this handle from h->inode->handles_list */
       list_remove(&rh->node);
    }
+}
 
-   release_obj(i);
+static void ramfs_on_close_last_handle(fs_handle h)
+{
+   struct ramfs_handle *rh = h;
+   struct ramfs_inode *i = rh->inode;
 
-   if (!get_ref_count(i) && !i->nlink) {
+   if (!i->nlink) {
 
       /*
        * !get_ref_count(i) => no handle referring to this inode
@@ -91,9 +95,8 @@ static void ramfs_close(fs_handle h)
 
       ramfs_destroy_inode(rh->fs->device_data, i);
    }
-
-   vfs_free_handle(rh);
 }
+
 
 /*
  * This function is supposed to be called ONLY by ramfs_create() in its error
@@ -311,7 +314,8 @@ static const struct fs_ops static_fsops_ramfs =
 {
    .get_inode = ramfs_getinode,
    .open = ramfs_open,
-   .close = ramfs_close,
+   .on_close = ramfs_on_close,
+   .on_close_last_handle = ramfs_on_close_last_handle,
    .getdents = ramfs_getdents,
    .unlink = ramfs_unlink,
    .mkdir = ramfs_mkdir,
