@@ -108,7 +108,6 @@ struct fs_ops {
    func_get_entry get_entry;
    func_get_inode get_inode;
    func_open open;
-   func_close close;
    func_close on_close;
    func_close on_close_last_handle;
    func_on_dup_cb on_dup_cb;

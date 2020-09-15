@@ -49,25 +49,15 @@ void vfs_close(fs_handle h)
    if (!pi->vforked)
       remove_all_mappings_of_handle(pi, h);
 
-   if (fsops->close) {
+   if (fsops->on_close)
+      fsops->on_close(h);
 
-      ASSERT(!fsops->on_close);
-      ASSERT(!fsops->on_close_last_handle);
-
-      fsops->close(h);
-
-   } else {
-
-      if (fsops->on_close)
-         fsops->on_close(h);
-
-      if (fsops->release_inode(fs, fsops->get_inode(h)) == 0) {
-         if (fsops->on_close_last_handle)
-            fsops->on_close_last_handle(h);
-      }
-
-      vfs_free_handle(h);
+   if (fsops->release_inode(fs, fsops->get_inode(h)) == 0) {
+      if (fsops->on_close_last_handle)
+         fsops->on_close_last_handle(h);
    }
+
+   vfs_free_handle(h);
 
    if (lf)
       release_subsys_flock(lf);
