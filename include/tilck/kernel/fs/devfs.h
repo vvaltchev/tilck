@@ -8,18 +8,23 @@
 #define DEVFS_READ_BS   4096
 #define DEVFS_WRITE_BS  4096
 
+struct devfs_file_info {
+
+   const struct file_ops *fops;
+   u16 spec_flags;
+};
+
 struct devfs_file {
 
-   enum vfs_entry_type type;
+   enum vfs_entry_type type;     /* Must be FIRST, because of devfs_dir */
+
    struct list_node dir_node;
+   struct devfs_file_info nfo;
 
    u16 dev_major;
    u16 dev_minor;
    const char *name;
-   const struct file_ops *fops;
    tilck_ino_t inode;
-
-   u16 spec_flags;
 };
 
 struct devfs_handle {

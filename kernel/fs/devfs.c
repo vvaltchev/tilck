@@ -82,7 +82,7 @@ struct devfs_dir {
     * Yes, sub-directories are NOT supported by devfs. The whole filesystem is
     * just one flat directory.
     */
-   enum vfs_entry_type type;
+   enum vfs_entry_type type;     /* Must be FIRST, because of devfs_file */
    struct list files_list;
    tilck_ino_t inode;
 };
@@ -126,7 +126,7 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
    f->dev_minor = minor;
    list_node_init(&f->dir_node);
 
-   rc = dinfo->create_dev_file(minor, &f->fops, &f->type, &f->spec_flags);
+   rc = dinfo->create_dev_file(minor, &f->nfo.fops, &f->type, &f->nfo.spec_flags);
 
    if (rc < 0) {
       kfree_obj(f, struct devfs_file);
@@ -260,7 +260,7 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = vfs_create_new_handle(fs, pos->fops)))
+   if (!(h = vfs_create_new_handle(fs, pos->nfo.fops)))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
@@ -268,9 +268,9 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
       return -ENOMEM;
    }
 
-   h->type       = pos->type;
    h->file       = pos;
-   h->spec_flags = pos->spec_flags;
+   h->type       = pos->type;
+   h->spec_flags = pos->nfo.spec_flags;
 
    *out = h;
    return 0;
