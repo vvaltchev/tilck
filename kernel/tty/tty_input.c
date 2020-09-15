@@ -386,16 +386,17 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
 
 static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
 {
-   ssize_t rem = h->read_buf_used - h->read_pos;
+   struct tty_handle_extra *eh = (void *)&h->extra;
+   ssize_t rem = eh->read_buf_used - eh->read_pos;
    ASSERT(rem >= 0);
 
    size_t m = MIN((size_t)rem, size);
-   memcpy(buf, h->read_buf + h->read_pos, m);
-   h->read_pos += m;
+   memcpy(buf, eh->read_buf + eh->read_pos, m);
+   eh->read_pos += m;
 
-   if (h->read_pos == h->read_buf_used) {
-      h->read_buf_used = 0;
-      h->read_pos = 0;
+   if (eh->read_pos == eh->read_buf_used) {
+      eh->read_buf_used = 0;
+      eh->read_pos = 0;
    }
 
    return m;
@@ -411,8 +412,9 @@ tty_internal_read_single_char_from_kb(struct tty *t,
                                       struct devfs_handle *h,
                                       bool *delim_break)
 {
+   struct tty_handle_extra *eh = (void *)&h->extra;
    u8 c = tty_inbuf_read_elem(t);
-   h->read_buf[h->read_buf_used++] = (char)c;
+   eh->read_buf[eh->read_buf_used++] = (char)c;
 
    if (t->c_term.c_lflag & ICANON) {
 
@@ -423,7 +425,7 @@ tty_internal_read_single_char_from_kb(struct tty *t,
 
          /* All line delimiters except EOF are kept */
          if (c == t->c_term.c_cc[VEOF])
-            h->read_buf_used--;
+            eh->read_buf_used--;
       }
 
       return !*delim_break;
@@ -433,7 +435,7 @@ tty_internal_read_single_char_from_kb(struct tty *t,
     * In raw mode it makes no sense to read until a line delim is
     * found: we should read the minimum necessary.
     */
-   return !(h->read_buf_used >= t->c_term.c_cc[VMIN]);
+   return !(eh->read_buf_used >= t->c_term.c_cc[VMIN]);
 }
 
 static inline bool
@@ -442,11 +444,13 @@ tty_internal_should_read_return(struct tty *t,
                                 size_t read_cnt,
                                 bool delim_break)
 {
+   struct tty_handle_extra *eh = (void *)&h->extra;
+
    if (t->c_term.c_lflag & ICANON) {
       return
          delim_break ||
             (t->end_line_delim_count > 0 &&
-               (h->read_buf_used == DEVFS_READ_BS || read_cnt == TTY_INPUT_BS));
+               (eh->read_buf_used == TTY_READ_BS || read_cnt == TTY_INPUT_BS));
    }
 
    /* Raw mode handling */
@@ -455,8 +459,10 @@ tty_internal_should_read_return(struct tty *t,
 
 bool tty_read_ready_int(struct tty *t, struct devfs_handle *h)
 {
+   struct tty_handle_extra *eh = (void *)&h->extra;
+
    if (t->c_term.c_lflag & ICANON) {
-      return h->read_allowed_to_return || t->end_line_delim_count > 0;
+      return eh->read_allowed_to_return || t->end_line_delim_count > 0;
    }
 
    /* Raw mode handling */
@@ -466,6 +472,7 @@ bool tty_read_ready_int(struct tty *t, struct devfs_handle *h)
 ssize_t
 tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 {
+   struct tty_handle_extra *eh = (void *)&h->extra;
    struct process *pi = get_curr_proc();
    size_t read_count = 0;
    bool delim_break;
@@ -496,7 +503,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
    if (!size)
       return 0;
 
-   if (h->read_buf_used) {
+   if (eh->read_buf_used) {
 
       if (!(h->fl_flags & O_NONBLOCK))
          return (ssize_t) tty_flush_read_buf(h, buf, size);
@@ -513,12 +520,12 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
        * buffer was just not big enough.
        */
 
-      if (h->read_allowed_to_return) {
+      if (eh->read_allowed_to_return) {
 
          ssize_t ret = (ssize_t) tty_flush_read_buf(h, buf, size);
 
-         if (!h->read_buf_used)
-            h->read_allowed_to_return = false;
+         if (!eh->read_buf_used)
+            eh->read_allowed_to_return = false;
 
          return ret;
       }
@@ -527,7 +534,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
    if (t->c_term.c_lflag & ICANON)
       t->tintf->set_col_offset(t->tstate, -1 /* current col */);
 
-   h->read_allowed_to_return = false;
+   eh->read_allowed_to_return = false;
 
    do {
 
@@ -545,12 +552,12 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
       delim_break = false;
 
       if (!(h->fl_flags & O_NONBLOCK)) {
-         ASSERT(h->read_buf_used == 0);
-         ASSERT(h->read_pos == 0);
+         ASSERT(eh->read_buf_used == 0);
+         ASSERT(eh->read_pos == 0);
       }
 
       while (!tty_inbuf_is_empty(t) &&
-             h->read_buf_used < DEVFS_READ_BS &&
+             eh->read_buf_used < TTY_READ_BS &&
              tty_internal_read_single_char_from_kb(t, h, &delim_break)) { }
 
       if (!(h->fl_flags & O_NONBLOCK) || !(t->c_term.c_lflag & ICANON))
@@ -570,8 +577,8 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
       read_count += tty_flush_read_buf(h, buf+read_count, size-read_count);
 
-      if (h->read_buf_used)
-         h->read_allowed_to_return = true;
+      if (eh->read_buf_used)
+         eh->read_allowed_to_return = true;
    }
 
    return (ssize_t) read_count;

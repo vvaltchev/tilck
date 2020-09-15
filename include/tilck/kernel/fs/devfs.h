@@ -5,13 +5,20 @@
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/list.h>
 
-#define DEVFS_READ_BS   4096
-#define DEVFS_WRITE_BS  4096
+typedef int (*func_create_per_handle_extra)(int minor, void *extra);
+typedef int (*func_on_dup_per_handle_extra)(int minor, void *extra);
+typedef void (*func_destroy_per_handle_extra)(int minor, void *extra);
+
+#define DEVFS_EXTRA_SIZE            (7 * sizeof(void *))
 
 struct devfs_file_info {
 
    const struct file_ops *fops;
    u16 spec_flags;
+
+   func_create_per_handle_extra create_extra;
+   func_on_dup_per_handle_extra on_dup_extra;
+   func_destroy_per_handle_extra destroy_extra;
 };
 
 struct devfs_file {
@@ -41,11 +48,7 @@ struct devfs_handle {
 
       struct {
          struct devfs_file *file;            /* valid only if type != VFS_DIR */
-
-         offt read_pos;
-         offt read_buf_used;
-         char *read_buf;
-         bool read_allowed_to_return;
+         char extra[DEVFS_EXTRA_SIZE] ALIGNED_AT(sizeof(void *));
       };
    };
 

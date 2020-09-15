@@ -269,13 +269,14 @@ static int
 devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
+   int rc;
 
    if (!(h = vfs_create_new_handle(fs, pos->nfo.fops)))
       return -ENOMEM;
 
-   if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
-      vfs_free_handle(h);
-      return -ENOMEM;
+   if (pos->nfo.create_extra) {
+      if ((rc = pos->nfo.create_extra(pos->dev_minor, h->extra)))
+         return rc;
    }
 
    h->file       = pos;
@@ -314,26 +315,25 @@ static void
 devfs_on_close(fs_handle h)
 {
    struct devfs_handle *devh = h;
-   kfree2(devh->read_buf, DEVFS_READ_BS);
+
+   if (devh->type != VFS_DIR) {
+      if (devh->file->nfo.destroy_extra)
+         devh->file->nfo.destroy_extra(devh->file->dev_minor, devh->extra);
+   }
 }
 
 static int
 devfs_on_dup(fs_handle new_h)
 {
    struct devfs_handle *h2 = new_h;
+   int rc = 0;
 
-   if (h2->read_buf) {
-
-      char *new_buf = kmalloc(DEVFS_READ_BS);
-
-      if (!new_buf)
-         return -ENOMEM;
-
-      memcpy(new_buf, h2->read_buf, DEVFS_READ_BS);
-      h2->read_buf = new_buf;
+   if (h2->type != VFS_DIR) {
+      if (h2->file->nfo.on_dup_extra)
+         rc = h2->file->nfo.on_dup_extra(h2->file->dev_minor, h2->extra);
    }
 
-   return 0;
+   return rc;
 }
 
 static void

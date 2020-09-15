@@ -83,6 +83,41 @@ static int tty_read_ready(fs_handle h)
    return tty_read_ready_int(t, dh);
 }
 
+int
+tty_create_extra(int minor, void *extra)
+{
+   struct tty_handle_extra *eh = extra;
+   eh->read_buf = kzmalloc(TTY_READ_BS);
+
+   if (!eh->read_buf)
+      return -ENOMEM;
+
+   return 0;
+}
+
+int
+tty_on_dup_extra(int minor, void *extra)
+{
+   struct tty_handle_extra *eh = extra;
+   char *new_buf;
+   ASSERT(eh->read_buf);
+
+   if (!(new_buf = kmalloc(TTY_READ_BS)))
+      return -ENOMEM;
+
+   memcpy32(new_buf, eh->read_buf, TTY_READ_BS / 4);
+   eh->read_buf = new_buf;
+   return 0;
+}
+
+void
+tty_destroy_extra(int minor, void *extra)
+{
+   struct tty_handle_extra *eh = extra;
+   ASSERT(eh->read_buf);
+   kfree2(eh->read_buf, TTY_READ_BS);
+}
+
 static int
 tty_create_device_file(int minor,
                        enum vfs_entry_type *type,
@@ -104,6 +139,9 @@ tty_create_device_file(int minor,
 
    *type = VFS_CHAR_DEV;
    nfo->fops = &static_ops_tty;
+   nfo->create_extra = &tty_create_extra;
+   nfo->destroy_extra = &tty_destroy_extra;
+   nfo->on_dup_extra = &tty_on_dup_extra;
    return 0;
 }
 
