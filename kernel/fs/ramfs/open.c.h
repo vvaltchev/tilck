@@ -105,10 +105,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
          return -ENOSPC;
 
-      rc = acquire_subsys_flock(p->fs,
-                                         i,
-                                         SUBSYS_VFS,
-                                         &lf);
+      rc = acquire_subsys_flock(p->fs, i, SUBSYS_VFS, &lf);
 
       if (rc) {
          ramfs_destroy_inode(d, i);
@@ -130,10 +127,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
       if (i->type == VFS_FILE && (fl & (O_WRONLY | O_RDWR))) {
 
-         rc = acquire_subsys_flock(p->fs,
-                                            i,
-                                            SUBSYS_VFS,
-                                            &lf);
+         rc = acquire_subsys_flock(p->fs, i, SUBSYS_VFS, &lf);
 
          if (rc)
             return rc;
