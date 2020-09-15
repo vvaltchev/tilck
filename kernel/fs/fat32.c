@@ -475,10 +475,9 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
       if (fl & (O_WRONLY | O_RDWR))
          return -EROFS;
 
-   if (!(h = vfs_alloc_handle()))
+   if (!(h = vfs_create_new_handle(fs, &static_ops_fat)))
       return -ENOMEM;
 
-   vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_fat);
    h->e = e;
    h->pos = 0;
    h->curr_cluster = fat_get_first_cluster(e);

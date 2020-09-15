@@ -79,10 +79,9 @@ kfs_create_new_handle(const struct file_ops *fops,
 {
    struct kfs_handle *h;
 
-   if (!(h = vfs_alloc_handle()))
+   if (!(h = vfs_create_new_handle(kernelfs, fops)))
       return NULL;
 
-   vfs_init_fs_handle_base_fields((void *)h, kernelfs, fops);
    h->kobj = kobj;
    h->fl_flags = fl_flags;
    h->fd_flags = 0;

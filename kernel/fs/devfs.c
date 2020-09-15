@@ -247,12 +247,10 @@ devfs_open_root_dir(struct fs *fs, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = vfs_alloc_handle()))
+   if (!(h = vfs_create_new_handle(fs, &static_ops_devfs)))
       return -ENOMEM;
 
-   vfs_init_fs_handle_base_fields((void *)h, fs, &static_ops_devfs);
    h->type = VFS_DIR;
-
    *out = h;
    return 0;
 }
@@ -262,15 +260,14 @@ devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
 
-   if (!(h = vfs_alloc_handle()))
+   if (!(h = vfs_create_new_handle(fs, pos->fops)))
       return -ENOMEM;
 
    if (!(h->read_buf = kzmalloc(DEVFS_READ_BS))) {
-      kfree_obj(h, struct devfs_handle);
+      vfs_free_handle(h);
       return -ENOMEM;
    }
 
-   vfs_init_fs_handle_base_fields((void *)h, fs, pos->fops);
    h->type       = pos->type;
    h->file       = pos;
    h->spec_flags = pos->spec_flags;
