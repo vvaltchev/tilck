@@ -507,11 +507,13 @@ create_devfs(void)
    /* Disallow multiple instances of devfs */
    ASSERT(devfs == NULL);
 
-   if (!(fs = create_fs_obj("devfs")))
+   if (!(d = kzalloc_obj(struct devfs_data)))
       return NULL;
 
-   if (!(d = kzalloc_obj(struct devfs_data))) {
-      destory_fs_obj(fs);
+   fs = create_fs_obj("devfs", &static_fsops_devfs, d, VFS_FS_RW);
+
+   if (!fs) {
+      kfree_obj(d, struct devfs_data);
       return NULL;
    }
 
@@ -521,11 +523,6 @@ create_devfs(void)
    list_init(&d->root_dir.files_list);
    rwlock_wp_init(&d->rwlock, false);
    d->wrt_time = (time_t)get_timestamp();
-
-   fs->device_id = vfs_get_new_device_id();
-   fs->flags = VFS_FS_RW;
-   fs->device_data = d;
-   fs->fsops = &static_fsops_devfs;
 
    return fs;
 }

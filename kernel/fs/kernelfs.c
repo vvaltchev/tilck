@@ -134,15 +134,12 @@ static struct fs *create_kernelfs(void)
    /* Disallow multiple instances of kernelfs */
    ASSERT(kernelfs == NULL);
 
-   if (!(fs = create_fs_obj("kernelfs")))
+   fs = create_fs_obj("kernelfs", &static_fsops_kernelfs, NULL, VFS_FS_RW);
+
+   if (!fs)
       return NULL;
 
    fs->ref_count = 1;
-   fs->device_id = vfs_get_new_device_id();
-   fs->flags = VFS_FS_RW;
-   fs->device_data = NULL;
-   fs->fsops = &static_fsops_kernelfs;
-
    return fs;
 }
 

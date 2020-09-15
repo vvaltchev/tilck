@@ -343,15 +343,16 @@ struct fs *ramfs_create(void)
    struct fs *fs;
    struct ramfs_data *d;
 
-   if (!(fs = create_fs_obj("ramfs")))
+   if (!(d = kzalloc_obj(struct ramfs_data)))
       return NULL;
 
-   if (!(d = kzalloc_obj(struct ramfs_data))) {
-      ramfs_err_case_destroy(fs);
+   fs = create_fs_obj("ramfs", &static_fsops_ramfs, d, VFS_FS_RW);
+
+   if (!fs) {
+      kfree_obj(d, struct ramfs_data);
       return NULL;
    }
 
-   fs->device_data = d;
    rwlock_wp_init(&d->rwlock, false);
    d->next_inode_num = 1;
    d->root = ramfs_create_inode_dir(d, 0777, NULL);
@@ -361,9 +362,6 @@ struct fs *ramfs_create(void)
       return NULL;
    }
 
-   fs->device_id = vfs_get_new_device_id();
-   fs->flags = VFS_FS_RW;
-   fs->fsops = &static_fsops_ramfs;
    return fs;
 }
 

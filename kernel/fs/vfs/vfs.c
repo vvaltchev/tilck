@@ -821,7 +821,11 @@ u32 vfs_get_new_device_id(void)
    return next_device_id++;
 }
 
-struct fs *create_fs_obj(const char *type)
+struct fs *
+create_fs_obj(const char *type,
+              const struct fs_ops *fsops,
+              void *device_data,
+              u32 flags)
 {
    struct fs *fs = kzalloc_obj(struct fs);
 
@@ -830,6 +834,11 @@ struct fs *create_fs_obj(const char *type)
 
    fs->pss_lock_root = NULL;
    fs->fs_type_name = type;
+   fs->fsops = fsops;
+   fs->device_data = device_data;
+   fs->flags = flags;
+   fs->device_id = vfs_get_new_device_id();
+
    return fs;
 }
 

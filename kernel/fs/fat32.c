@@ -617,16 +617,15 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    d->cluster_size = d->hdr->BPB_SecPerClus * d->hdr->BPB_BytsPerSec;
    d->root_dir_entries = fat_get_rootdir(d->hdr, d->type, &d->root_cluster);
 
-   if (!(fs = create_fs_obj("fat"))) {
+   fs = create_fs_obj("fat",
+                      &static_fsops_fat,
+                      d,
+                      flags | VFS_FS_RQ_DE_SKIP);
+
+   if (!fs) {
       kfree_obj(d, struct fat_fs_device_data);
       return NULL;
    }
-
-   fs->flags = flags;
-   fs->device_id = vfs_get_new_device_id();
-   fs->device_data = d;
-   fs->fsops = &static_fsops_fat;
-   fs->flags |= VFS_FS_RQ_DE_SKIP;
 
    if (!fat_ramdisk_prepare_for_mmap(d, rd_size))
       d->mmap_support = true;

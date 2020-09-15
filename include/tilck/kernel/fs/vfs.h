@@ -257,8 +257,16 @@ void vfs_fs_shunlock(struct fs *fs);
 
 int
 compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s);
-u32 vfs_get_new_device_id(void);
-struct fs *create_fs_obj(const char *type);
+
+u32
+vfs_get_new_device_id(void);
+
+struct fs *
+create_fs_obj(const char *type,
+              const struct fs_ops *fsops,
+              void *device_data,
+              u32 flags);
+
 void destory_fs_obj(struct fs *fs);
 
 fs_handle vfs_alloc_handle(void);
