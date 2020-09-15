@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/fs/devfs.h>
 #include <tilck/kernel/fs/vfs.h>
@@ -126,11 +127,20 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
    f->dev_minor = minor;
    list_node_init(&f->dir_node);
 
-   rc = dinfo->create_dev_file(minor, &f->nfo.fops, &f->type, &f->nfo.spec_flags);
+   rc = dinfo->create_dev_file(minor, &f->type, &f->nfo);
 
    if (rc < 0) {
       kfree_obj(f, struct devfs_file);
       return rc;
+   }
+
+   if (f->type != VFS_CHAR_DEV && f->type != VFS_BLOCK_DEV) {
+
+      printk("ERROR: driver %s tried to create %s with type: %d\n",
+             dinfo->name, filename, f->type);
+
+      kfree_obj(f, struct devfs_file);
+      return -EINVAL;
    }
 
    list_add_tail(&d->root_dir.files_list, &f->dir_node);

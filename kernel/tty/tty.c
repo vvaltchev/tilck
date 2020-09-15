@@ -85,9 +85,8 @@ static int tty_read_ready(fs_handle h)
 
 static int
 tty_create_device_file(int minor,
-                       const struct file_ops **fops_r,
-                       enum vfs_entry_type *t,
-                       u16 *spec_flags_ref)
+                       enum vfs_entry_type *type,
+                       struct devfs_file_info *nfo)
 {
    static const struct file_ops static_ops_tty = {
 
@@ -103,8 +102,8 @@ tty_create_device_file(int minor,
        */
    };
 
-   *t = VFS_CHAR_DEV;
-   *fops_r = &static_ops_tty;
+   *type = VFS_CHAR_DEV;
+   nfo->fops = &static_ops_tty;
    return 0;
 }
 

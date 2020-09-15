@@ -50,9 +50,8 @@ static int ttyaux_read_ready(fs_handle h)
 
 static int
 ttyaux_create_device_file(int minor,
-                          const struct file_ops **fops,
-                          enum vfs_entry_type *t,
-                          u16 *spec_flags_ref)
+                          enum vfs_entry_type *type,
+                          struct devfs_file_info *nfo)
 {
    static const struct file_ops static_ops_ttyaux = {
 
@@ -63,8 +62,8 @@ ttyaux_create_device_file(int minor,
       .read_ready = ttyaux_read_ready,
    };
 
-   *t = VFS_CHAR_DEV;
-   *fops = &static_ops_ttyaux;
+   *type = VFS_CHAR_DEV;
+   nfo->fops = &static_ops_ttyaux;
    return 0;
 }
 

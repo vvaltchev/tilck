@@ -61,10 +61,9 @@ struct devfs_handle {
 STATIC_ASSERT(sizeof(struct devfs_handle) <= MAX_FS_HANDLE_SIZE);
 
 typedef int
-(*func_create_device_file)(int,
-                           const struct file_ops **,
-                           enum vfs_entry_type *,
-                           u16 *);
+(*func_create_device_file)(int minor,
+                           enum vfs_entry_type *type,
+                           struct devfs_file_info *nfo);
 
 struct driver_info {
 

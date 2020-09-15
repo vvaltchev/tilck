@@ -180,9 +180,8 @@ static int fbdev_munmap(fs_handle h, void *vaddr, size_t len)
 
 static int
 create_fb_device(int minor,
-                 const struct file_ops **fops_ref,
-                 enum vfs_entry_type *t,
-                 u16 *spec_flags_ref)
+                 enum vfs_entry_type *type,
+                 struct devfs_file_info *nfo)
 {
    static const struct file_ops static_ops_fb = {
       .read = fb_read,
@@ -193,9 +192,9 @@ create_fb_device(int minor,
       .munmap = fbdev_munmap,
    };
 
-   *t = VFS_CHAR_DEV;
-   *fops_ref = &static_ops_fb;
-   *spec_flags_ref = VFS_SPFL_NO_USER_COPY | VFS_SPFL_MMAP_SUPPORTED;
+   *type = VFS_CHAR_DEV;
+   nfo->fops = &static_ops_fb;
+   nfo->spec_flags = VFS_SPFL_NO_USER_COPY | VFS_SPFL_MMAP_SUPPORTED;
    return 0;
 }
 
