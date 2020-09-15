@@ -43,16 +43,9 @@ struct devfs_handle {
          struct devfs_file *file;            /* valid only if type != VFS_DIR */
 
          offt read_pos;
-         offt write_pos;
-
          offt read_buf_used;
-         offt write_buf_used;
-
          char *read_buf;
-         char *write_buf;
-
          bool read_allowed_to_return;
-         bool write_allowed_to_return;
       };
    };
 

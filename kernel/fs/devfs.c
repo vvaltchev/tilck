@@ -315,7 +315,6 @@ devfs_on_close(fs_handle h)
 {
    struct devfs_handle *devh = h;
    kfree2(devh->read_buf, DEVFS_READ_BS);
-   kfree2(devh->write_buf, DEVFS_WRITE_BS);
 }
 
 static int
@@ -332,18 +331,6 @@ devfs_on_dup(fs_handle new_h)
 
       memcpy(new_buf, h2->read_buf, DEVFS_READ_BS);
       h2->read_buf = new_buf;
-   }
-
-   if (h2->write_buf) {
-
-      char *new_buf = kmalloc(DEVFS_WRITE_BS);
-
-      if (!new_buf) {
-         kfree2(h2->read_buf, DEVFS_READ_BS);
-         return -ENOMEM;
-      }
-
-      h2->write_buf = new_buf;
    }
 
    return 0;
