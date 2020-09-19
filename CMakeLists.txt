@@ -19,7 +19,15 @@ if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
    set(HOST_ARCH "x86_64")
 
+elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "amd64")
+
+   set(HOST_ARCH "x86_64")
+
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686")
+
+   set(HOST_ARCH "i386")
+
+elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i386")
 
    set(HOST_ARCH "i386")
 
