@@ -55,5 +55,5 @@ steps:
     displayName: Build the unit tests
   - script: ./build/gtests
     displayName: Run the unit tests
-  - script: ./tests/system/runners/ci_run_all_tests_wrapper -c
+  - script: ./tests/runners/ci_run_all_tests_wrapper -c
     displayName: Run the system tests

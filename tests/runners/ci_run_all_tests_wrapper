@@ -2,7 +2,7 @@
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR="$(cd $SOURCE_DIR/../../.. && pwd)"
+MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
 DISTRO_FILE="$MAIN_DIR/toolchain2/.distro"
 
 if ! [ "$RUNNING_IN_CI" == 1 ]; then
