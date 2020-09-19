@@ -74,7 +74,7 @@ else
    exit 1
 fi
 
-GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g' -)
+GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
 GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
 MUSL_INSTALL=$TC/$ARCH/musl/install
 

@@ -39,14 +39,14 @@ function gcc_x86_glibc_patch {
 
    for x in *; do
       if [[ $x == i686* ]]; then
-         new_name=`echo $x | sed 's/i686/i386/g' -`
+         new_name=$(echo $x | sed 's/i686/i386/g')
          ln -s $x $new_name
       fi
    done
 
    for x in *; do
       if [[ $x == i386-linux-* ]]; then
-         new_name=`echo $x | sed 's/i386-linux-/i386-/g' -`
+         new_name=$(echo $x | sed 's/i386-linux-/i386-/g')
          ln -s $x $new_name
       fi
    done
