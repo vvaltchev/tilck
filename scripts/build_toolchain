@@ -32,9 +32,19 @@ BUILD_ARCH="x86_64" # the only arch accepted for the build machine
 
 HOST_ARCH="`uname -m`"
 
-if [[ "$HOST_ARCH" == "i686" ]]; then
+if [[ "$HOST_ARCH" == "x86_64" ]]; then
 
-   # We need to set HOST_ARCH to "i368", using the same convention
+   : # Great, that's what we expect: do nothing
+
+elif [[ "$HOST_ARCH" == "amd64" ]]; then
+
+   # An alias for x86_64: fix our variable
+   HOST_ARCH="x86_64"
+
+elif [[ "$HOST_ARCH" == "i686" ]]; then
+
+   # Special case, not "officially" supported.
+   # We need to set HOST_ARCH to "i386", to match the convention
    # used by ARCH and ld.
 
    HOST_ARCH="i386"
