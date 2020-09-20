@@ -8,13 +8,13 @@ pool:
 strategy:
   matrix:
     debian:
-      img: 'vvaltchev/debian:latest'
+      img: 'vvaltchev/debian:v2'
     fedora:
-      img: 'vvaltchev/fedora:latest'
+      img: 'vvaltchev/fedora:v2'
     arch:
-      img: 'vvaltchev/archlinux:latest'
+      img: 'vvaltchev/archlinux:v2'
     opensuse:
-      img: 'vvaltchev/opensuse:latest'
+      img: 'vvaltchev/opensuse:v2'
 
 
 container: $[ variables['img'] ]
