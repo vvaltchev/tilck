@@ -76,6 +76,7 @@ TEST(printk, rare)
 TEST(printk, varparam)
 {
    EXPECT_EQ(spk_wrapper("%.*s", 3, "abcdef"), "abc");   /* precision */
+   EXPECT_EQ(spk_wrapper("%.*s", 0, "abcdef"), "");      /* precision=0 */
    EXPECT_EQ(spk_wrapper("%*s", 6, "abc"), "   abc");    /* left-padding */
    EXPECT_EQ(spk_wrapper("%-*s", 6, "abc"), "abc   ");   /* right-padding */
    EXPECT_EQ(spk_wrapper("%0*d", 5, 23), "00023");       /* zero-pad */

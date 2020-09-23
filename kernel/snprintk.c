@@ -13,7 +13,7 @@ write_in_buf_str(char **buf_ref, char *buf_end, const char *s, int len)
 {
    char *ptr = *buf_ref;
 
-   if (len > 0) {
+   if (len >= 0) {
 
       while (*s && len > 0 && ptr < buf_end) {
          *ptr++ = *s++;
@@ -83,7 +83,7 @@ snprintk_ctx_reset_state(struct snprintk_ctx *ctx)
    ctx->width = pw_default;
    ctx->lpad = 0;
    ctx->rpad = 0;
-   ctx->precision = 0;
+   ctx->precision = -1;
    ctx->zero_lpad = false;
    ctx->hash_sign = false;
 }
@@ -123,7 +123,7 @@ write_str(struct snprintk_ctx *ctx, char fmtX, const char *str)
    /* Cannot have both left padding _and_ right padding */
    ASSERT(!lpad || !rpad);
 
-   if (ctx->precision && fmtX != 's') {
+   if (ctx->precision >= 0 && fmtX != 's') {
       /* Note: we don't support floating point numbers */
       zero_lpad = true;
       lpad = MAX(0, ctx->precision - sl);
