@@ -155,6 +155,12 @@ struct is_unsigned<u64> {
    enum { val = 1 };
 };
 
+#if NBITS == 32
+template <>
+struct is_unsigned<ulong> {
+   enum { val = 1 };
+};
+#endif
 
 /* numeric limits */
 
