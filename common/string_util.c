@@ -117,8 +117,10 @@ char *strncpy(char *dest, const char *src, size_t n)
    char *p = dest;
    size_t i = 0;
 
-   while (*src && i < n)
+   while (*src && i < n) {
       *p++ = *src++;
+      i++;
+   }
 
    if (i < n)
       *p = 0;
@@ -136,8 +138,10 @@ char *strncat(char *dest, const char *src, size_t n)
    char *p = dest + strlen(dest);
    size_t i = 0;
 
-   while (*src && i < n)
+   while (*src && i < n) {
       *p++ = *src++;
+      i++;
+   }
 
    *p = 0;
    return dest;
