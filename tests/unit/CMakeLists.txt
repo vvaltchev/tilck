@@ -62,6 +62,8 @@ list(
    ${CLANG_OPTS}
    ${COMMON_FLAGS}
    ${GCOV_COMPILE_FLAGS}
+
+   -Wno-format-security
 )
 
 JOIN("${GTESTS_FLAGS_LIST}" ${SPACE} GTESTS_FLAGS)

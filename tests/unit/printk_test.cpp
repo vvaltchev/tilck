@@ -82,7 +82,9 @@ TEST(printk, varparam)
    EXPECT_EQ(spk_wrapper("%0*d", 5, 23), "00023");       /* zero-pad */
    EXPECT_EQ(spk_wrapper("%*d", 5, 23), "   23");        /* numeric left-pad */
    EXPECT_EQ(spk_wrapper("%-*d", 5, 23), "23   ");       /* numeric right-pad */
-   EXPECT_EQ(spk_wrapper("%*d", -5, 23), "23");          /* negative lpad */
+   EXPECT_EQ(spk_wrapper("%*d", -5, 23), "23   ");       /* negative num lpad */
+   EXPECT_EQ(spk_wrapper("%-*d", -5, 23), "23   ");      /* negative num rpad */
+
 }
 
 TEST(printk, hashsign)
@@ -121,10 +123,10 @@ TEST(printk, incomplete_seq)
    EXPECT_EQ(spk_wrapper("%z, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%l, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%ll, hello"), "%, hello");
-   EXPECT_EQ(spk_wrapper("%0, hello"), "%, hello");
-   EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
-   EXPECT_EQ(spk_wrapper("%5, hello"), "%, hello");
-   EXPECT_EQ(spk_wrapper("%-5, hello"), "%, hello");
+   EXPECT_EQ(spk_wrapper("%0, hello"), "%0, hello");
+   EXPECT_EQ(spk_wrapper("%5, hello"), "%5, hello");
+   EXPECT_EQ(spk_wrapper("%-5, hello"), "%-5, hello");
+   EXPECT_EQ(spk_wrapper("%-0, hello"), "%, hello"); /* should be: %-, hello */
    EXPECT_EQ(spk_wrapper("%h, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%hh, hello"), "%, hello");
    EXPECT_EQ(spk_wrapper("%#, hello"), "%#, hello"); /* note: %# is kept */

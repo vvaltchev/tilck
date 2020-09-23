@@ -334,14 +334,22 @@ process_next_char_in_seq:
 
    case '*':
       /* Exactly like the 0-9 case, but we must take the value from a param */
-      ctx->lpad = MAX(0, (int)va_arg(ctx->args, long));
+      ctx->lpad = (int)va_arg(ctx->args, long);
+
+      if (ctx->lpad < 0) {
+         ctx->rpad = -ctx->lpad;
+         ctx->lpad = 0;
+      }
+
       goto move_to_next_char_in_seq;
 
    case '-':
       if (ctx->fmt[1] != '*') {
          ctx->rpad = (int)tilck_strtol(ctx->fmt + 1, &ctx->fmt, 10, NULL);
       } else {
-         ctx->rpad = MAX(0, (int)va_arg(ctx->args, long));
+         ctx->rpad = (int)va_arg(ctx->args, long);
+         if (ctx->rpad < 0)
+            ctx->rpad = -ctx->rpad;
          ctx->fmt += 2; /* skip '-' and '*' */
       }
       goto process_next_char_in_seq;
@@ -418,6 +426,22 @@ incomplete_seq:
 
       if (ctx->hash_sign)
          WRITE_CHAR('#');
+
+      if (ctx->zero_lpad) {
+         WRITE_CHAR('0');
+         ctx->zero_lpad = false;
+      }
+
+      if (ctx->rpad) {
+         ctx->lpad = -ctx->rpad;
+         ctx->rpad = 0;
+      }
+
+      if (ctx->lpad) {
+         itoaN(ctx->lpad, ctx->intbuf);
+         ctx->lpad = 0;
+         write_str(ctx, 'd', ctx->intbuf);
+      }
 
       WRITE_CHAR(*ctx->fmt);
       goto end_sequence;
