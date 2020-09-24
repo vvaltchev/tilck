@@ -243,6 +243,12 @@ KERNEL_SELFTESTS")
 set(INIT_REPORT_PROC_EXIT OFF CACHE BOOL
     "Make init to report on TTY when children (often acquired) exit")
 
+set(PREFERRED_GFX_MODE_W "800" CACHE STRING
+    "Preferred video mode (width)")
+
+set(PREFERRED_GFX_MODE_H "600" CACHE STRING
+    "Preferred video mode (height)")
+
 list(
    APPEND no_arch_modules_whitelist
 
@@ -330,6 +336,8 @@ list(
    TIMER_HZ
    USER_STACK_PAGES
    FATPART_CLUSTER_SIZE
+   PREFERRED_GFX_MODE_W
+   PREFERRED_GFX_MODE_H
 
    # Boolean options ENABLED by default
    KRN_TRACK_NESTED_INTERR

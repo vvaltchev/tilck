@@ -6,6 +6,7 @@
 
 #include <tilck_gen_headers/config_global.h>
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck_gen_headers/config_boot.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 #include <multiboot.h>
 
@@ -46,10 +47,10 @@ FUNC(_start):
    .long 0
    .long 0
 
-   .long 0 /* mode_type: unset */
-   .long 0 /* cols: unset */
-   .long 0 /* rows: unset */
-   .long 0 /* color depth: unset */
+   .long 0                       /* mode_type: graphic */
+   .long PREFERRED_GFX_MODE_W
+   .long PREFERRED_GFX_MODE_H
+   .long 32                      /* color depth */
 
 /* End multiboot header */
 

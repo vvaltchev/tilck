@@ -22,6 +22,8 @@
 #define BOOTPART_SZ_SEC        @BOOTPART_SZ_SEC@  /* size of the bootpart    */
 #define INITRD_SECTOR          @INITRD_SECTOR@    /* start of the initrd     */
 #define INITRD_SZ_SEC          @INITRD_SZ_SEC@    /* size of the initrd      */
+#define PREFERRED_GFX_MODE_W   @PREFERRED_GFX_MODE_W@
+#define PREFERRED_GFX_MODE_H   @PREFERRED_GFX_MODE_H@
 
 /* Boolean config variables */
 #cmakedefine01 BOOTLOADER_POISON_MEMORY

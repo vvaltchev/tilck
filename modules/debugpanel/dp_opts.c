@@ -90,6 +90,10 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(KMALLOC_SUPPORT_LEAK_DETECTOR);
    DUMP_BOOL_OPT(BOOTLOADER_POISON_MEMORY);
 
+   DUMP_LABEL("Other");
+   DUMP_INT_OPT(PREFERRED_GFX_MODE_W);
+   DUMP_INT_OPT(PREFERRED_GFX_MODE_H);
+
    rows_left = row - dp_screen_start_row - 1;
    row = dp_screen_start_row+1;
    col = dp_start_col + 48;
