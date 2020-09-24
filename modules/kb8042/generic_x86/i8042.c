@@ -382,6 +382,7 @@ bool i8042_read_regs(u8 *ctr, u8 *cto)
 // Reboot procedure using the 8042 PS/2 controller
 void i8042_reboot(void)
 {
+   disable_preemption();
    disable_interrupts_forced(); /* Disable the interrupts before rebooting */
 
    if (!i8042_send_cmd(I8042_CMD_CPU_RESET))
