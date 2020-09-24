@@ -166,7 +166,7 @@ typedef long offt;
 #define CONCAT(a, b) _CONCAT(a, b)
 
 /*
- * UNSAFE against double-evaluation MIN and MAX macros.
+ * UNSAFE against double-evaluation MIN, MAX, ABS, CLAMP macros.
  * They are necessary for all the cases when the compiler (GCC and Clang)
  * fails to compile with the other ones. The known cases are:
  *
@@ -183,8 +183,13 @@ typedef long offt;
 #define UNSAFE_MIN3(x, y, z) UNSAFE_MIN(UNSAFE_MIN((x), (y)), (z))
 #define UNSAFE_MAX3(x, y, z) UNSAFE_MAX(UNSAFE_MAX((x), (y)), (z))
 
+#define UNSAFE_ABS(x) ((x) >= 0 ? (x) : -(x))
+
+#define UNSAFE_CLAMP(val, minval, maxval)                             \
+   UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
+
 /*
- * SAFE against double-evaluation MIN and MAX macros.
+ * SAFE against double-evaluation MIN, MAX, ABS, CLAMP macros.
  * Use these when possible. In all the other cases, use their UNSAFE version.
  */
 #define MIN(a, b)                                                     \
@@ -221,9 +226,6 @@ typedef long offt;
                   CONCAT(_c, __LINE__));                              \
    })
 
-#define UNSAFE_CLAMP(val, minval, maxval)                             \
-   UNSAFE_MIN(UNSAFE_MAX((val), (minval)), (maxval))
-
 #define CLAMP(val, minval, maxval)                                    \
    ({                                                                 \
       const typeof(val) CONCAT(_v, __LINE__) = (val);                 \
@@ -234,11 +236,17 @@ typedef long offt;
                    CONCAT(_Mv, __LINE__));                            \
    })
 
+#define ABS(x)                                                        \
+   ({                                                                 \
+      const typeof(x) CONCAT(_v, __LINE__) = (x);                     \
+      UNSAFE_ABS(CONCAT(_v, __LINE__));                               \
+   })
+
 #define LIKELY(x) __builtin_expect((x), true)
 #define UNLIKELY(x) __builtin_expect((x), false)
 
 #define ARRAY_SIZE(a) ((int)(sizeof(a)/sizeof((a)[0])))
-#define CONTAINER_OF(elem_ptr, struct_type, mem_name) \
+#define CONTAINER_OF(elem_ptr, struct_type, mem_name)                 \
    ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
 
 #ifndef __clang__
@@ -302,7 +310,7 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
  *    u.a = var; // does NOT compile with -Wconversion
  *    u.a = LO_BITS(var, 20, u32); // always compiles
  *
- * NOTE: Tilck support only clang's -Wconversion, not GCC's.
+ * NOTE: Tilck support only Clang's -Wconversion, not GCC's.
  */
 
 #if defined(BITS64)
