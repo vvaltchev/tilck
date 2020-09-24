@@ -192,6 +192,42 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
    return fsops->stat(fs, fsops->get_inode(h), statbuf);
 }
 
+int vfs_fsync(fs_handle h)
+{
+   struct fs_handle_base *hb = h;
+   int rc = 0;
+   ASSERT(is_preemption_enabled());
+
+   if (~hb->fs->flags & VFS_FS_RW)
+      return -EROFS;
+
+   if (hb->fops->sync)
+      rc = hb->fops->sync(h);
+
+   return rc;
+}
+
+int vfs_fdatasync(fs_handle h)
+{
+   struct fs_handle_base *hb = h;
+   int rc = 0;
+   ASSERT(is_preemption_enabled());
+
+
+   if (~hb->fs->flags & VFS_FS_RW)
+      return -EROFS;
+
+   if (hb->fops->datasync)
+
+      rc = hb->fops->datasync(h);
+
+   else if (hb->fops->sync)
+
+      rc = hb->fops->sync(h);
+
+   return rc;
+}
+
 /* ----------- path-based functions -------------- */
 
 typedef int (*vfs_func_impl)(struct fs*, struct vfs_path*, ulong, ulong, ulong);

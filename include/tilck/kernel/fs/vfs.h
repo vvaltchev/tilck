@@ -87,6 +87,8 @@ typedef ssize_t        (*func_writev)       (fs_handle,
                                              const struct iovec *,
                                              int);
 
+typedef int            (*func_fsync)        (fs_handle);
+
 
 /*
  * Operations affecting the file system structure (directories, files, etc.).
@@ -146,6 +148,8 @@ struct file_ops {
    func_seek seek;                     /* if NULL -> -ESPIPE */
    func_mmap mmap;                     /* if NULL -> -ENODEV */
    func_munmap munmap;                 /* if NULL -> -ENODEV */
+   func_fsync sync;                    /* if NULL -> -EROFS or 0 */
+   func_fsync datasync;                /* if NULL -> -EROFS or 0 */
 
    func_readv readv;                   /* if NULL, emulated in non-atomic way */
    func_writev writev;                 /* if NULL, emulated in non-atomic way */
@@ -189,6 +193,8 @@ int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fchmod(fs_handle h, mode_t mode);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
+int vfs_fsync(fs_handle h);
+int vfs_fdatasync(fs_handle h);
 offt vfs_seek(fs_handle h, s64 off, int whence);
 
 int vfs_read_ready(fs_handle h);

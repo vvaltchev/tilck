@@ -736,8 +736,7 @@ int sys_lchown(const char *u_path, int owner, int group)
 
 int sys_fchown(int fd, uid_t owner, gid_t group)
 {
-   struct fs_handle_base *hb;
-   hb = get_fs_handle(fd);
+   struct fs_handle_base *hb = get_fs_handle(fd);
 
    if (!hb)
       return -EBADF;
@@ -746,6 +745,26 @@ int sys_fchown(int fd, uid_t owner, gid_t group)
       return -EROFS;
 
    return (owner == 0 && group == 0) ? 0 : -EPERM;
+}
+
+int sys_fsync(int fd)
+{
+   struct fs_handle_base *hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   return vfs_fsync(hb);
+}
+
+int sys_fdatasync(int fd)
+{
+   struct fs_handle_base *hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   return vfs_fsync(hb);
 }
 
 int sys_sync()

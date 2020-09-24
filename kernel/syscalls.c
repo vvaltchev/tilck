@@ -291,16 +291,6 @@ int sys_futimesat(int dirfd, const char *u_path,
    return -ENOSYS;
 }
 
-int sys_fsync(int fd)
-{
-   return 0;
-}
-
-int sys_fdatasync(int fd)
-{
-   return 0;
-}
-
 int sys_socketcall(int call, ulong *args)
 {
    return -ENOSYS;
