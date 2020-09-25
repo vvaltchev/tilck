@@ -473,7 +473,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_prlimit64)
 CREATE_STUB_SYSCALL_IMPL(sys_name_to_handle_at)
 CREATE_STUB_SYSCALL_IMPL(sys_open_by_handle_at)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_adjtime32)
-CREATE_STUB_SYSCALL_IMPL(sys_syncfs)
+
+int sys_syncfs(int fd);
+
 CREATE_STUB_SYSCALL_IMPL(sys_sendmmsg)
 CREATE_STUB_SYSCALL_IMPL(sys_setns)
 CREATE_STUB_SYSCALL_IMPL(sys_process_vm_readv)

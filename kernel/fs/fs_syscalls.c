@@ -767,9 +767,20 @@ int sys_fdatasync(int fd)
    return vfs_fsync(hb);
 }
 
+int sys_syncfs(int fd)
+{
+   struct fs_handle_base *hb = get_fs_handle(fd);
+
+   if (!hb)
+      return -EBADF;
+
+   vfs_syncfs(hb->fs);
+   return 0;
+}
+
 int sys_sync()
 {
-   /* Do nothing, for the moment */
+   vfs_sync();
    return 0;
 }
 

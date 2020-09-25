@@ -279,6 +279,8 @@ fs_handle vfs_alloc_handle(void);
 fs_handle vfs_alloc_handle_raw(void);  /* doesn't zero the data */
 void vfs_free_handle(fs_handle h);
 fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops);
+void vfs_syncfs(struct fs *fs);
+void vfs_sync(void);
 
 /* ------------ Current mount point interface ------------- */
 

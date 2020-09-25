@@ -150,3 +150,12 @@ int mp_remove(const char *target_path)
    NOT_IMPLEMENTED();
 }
 
+void vfs_syncfs(struct fs *fs)
+{
+   // TODO: implement
+}
+
+void vfs_sync(void)
+{
+   // TODO: implement
+}

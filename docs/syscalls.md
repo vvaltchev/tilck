@@ -75,7 +75,8 @@ considered as *not implemented yet*.
  sys_umask           | full
  sys_truncate64      | full
  sys_ftruncate64     | full
- sys_sync            | compliant [13]
+ sys_sync            | full
+ sys_syncfs          | full
  sys_chown           | limited [3]
  sys_fchown          | limited [3]
  sys_chmod           | full
@@ -83,7 +84,7 @@ considered as *not implemented yet*.
  sys_rename          | full
  sys_link            | full
  sys_pipe            | full
- sys_pipe2           | partial++ [14]
+ sys_pipe2           | partial++ [13]
  sys_sched_yield     | compliant
  sys_getsid          | full
  sys_setpgid         | full
@@ -145,7 +146,4 @@ Notes:
 
 12. [Limitation removed]
 
-13. Since there is no disk cache nor disk support in general, `sync()` just
-    does nothing.
-
-14. The O_DIRECT mode is not supported.
+13. The O_DIRECT mode is not supported.
