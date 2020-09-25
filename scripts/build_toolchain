@@ -66,13 +66,62 @@ if [[ "$ARCH" == "i386" ]]; then
    ARCH_GCC_TC="i686"
    ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
    ARCH_GCC_TC_CODENAME="x86-i686"
-   ARCH_GCC_TC_VER="stable-2018.02-2"
-   GCC_TC_VER="6.4.0"
 
 else
    echo "Architecture '$ARCH' not supported."
    exit 1
 fi
+
+# GCC toolchain configuration
+
+if [ -z "$GCC_TC_VER" ]; then
+   if [ -f $TC/.gcc_tc_ver ]; then
+      GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
+   else
+      GCC_TC_VER="6.4.0"
+   fi
+fi
+
+if [ -z "$ARCH_GCC_TC_VER" ]; then
+
+   if [ "$GCC_TC_VER" = "6.4.0" ]; then
+
+      ARCH_GCC_TC_VER="stable-2018.02-2"
+
+   elif [ "$GCC_TC_VER" = "7.3.0" ]; then
+
+      ARCH_GCC_TC_VER="stable-2018.11-1"
+
+   elif [ "$GCC_TC_VER" = "8.4.0" ]; then
+
+      ARCH_GCC_TC_VER="stable-2020.02-2"
+
+   else
+      echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
+      exit 1
+   fi
+fi
+
+if ! [ -f $TC/.gcc_tc_ver ]; then
+
+   echo -n $GCC_TC_VER > $TC/.gcc_tc_ver
+
+else
+
+   saved=$(cat $TC/.gcc_tc_ver)
+   v=$GCC_TC_VER
+
+   if ! [ "$GCC_TC_VER" = "$saved" ]; then
+      echo "WARNING: GCC_TC_VER ($v) does not match with saved one ($saved)"
+      echo "WARNING: This is NOT a supported scenario. Please delete:"
+      echo "   $TC/$ARCH"
+      echo "   $TC/.gcc_tc_ver"
+      echo "And run this script again to use the new toolchain."
+      exit 1
+   fi
+fi
+
+
 
 GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
 GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
@@ -80,6 +129,8 @@ MUSL_INSTALL=$TC/$ARCH/musl/install
 
 echo
 echo "ARCH=$ARCH"
+echo "GCC_TC_VER=$GCC_TC_VER"
+echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
 echo
 
 function save_cc_vars {

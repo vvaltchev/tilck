@@ -4,7 +4,7 @@
 ############################################
 # CONSTANTS
 
-VERSION_REGEX='[0-9]+[.][0-9]+[.][0-9]+'
+VERSION_REGEX='[0-9]+[.][0-9]+[.][0-9]+([.][0-9]+)*'
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -58,7 +58,7 @@ function get_version_comp {
 
 # $1 = program name
 function generic_get_version_str {
-   $1 --version | head -1 | grep -Eo "$VERSION_REGEX" | head -1
+   $1 --version | head -1 | grep -Eo "${VERSION_REGEX}[ ]*$" | head -1
 }
 
 # $1 = command
