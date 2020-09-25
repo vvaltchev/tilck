@@ -10,7 +10,7 @@ static int ramfs_mkdir(struct vfs_path *p, mode_t mode)
    if (rp->inode)
       return -EEXIST;
 
-   if (!(rp->dir_inode->mode & 0300)) /* write + execute */
+   if ((rp->dir_inode->mode & 0300) != 0300) /* write + execute */
       return -EACCES;
 
    if (!(new_dir = ramfs_create_inode_dir(d, mode, rp->dir_inode)))
@@ -35,7 +35,7 @@ static int ramfs_rmdir(struct vfs_path *p)
    if (rp->type != VFS_DIR)
       return -ENOTDIR;
 
-   if (!(rp->dir_inode->mode & 0200)) /* write permission */
+   if ((rp->dir_inode->mode & 0200) != 0200) /* write permission */
       return -EACCES;
 
    if (!rp->dir_entry)

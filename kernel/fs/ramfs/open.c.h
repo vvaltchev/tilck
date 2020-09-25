@@ -55,13 +55,13 @@ ramfs_open_int(struct fs *fs, struct ramfs_inode *inode, fs_handle *out, int fl)
 
 static int ramfs_open_existing_checks(int fl, struct ramfs_inode *i)
 {
-   if (!(fl & O_WRONLY) && !(i->mode & 0400))
+   if (!(fl & O_WRONLY) && (i->mode & 0400) != 0400)
       return -EACCES;
 
-   if ((fl & O_WRONLY) && !(i->mode & 0200))
+   if ((fl & O_WRONLY) && (i->mode & 0200) != 0200)
       return -EACCES;
 
-   if ((fl & O_RDWR) && !(i->mode & 0600))
+   if ((fl & O_RDWR) && (i->mode & 0600) != 0600)
       return -EACCES;
 
    if ((fl & O_DIRECTORY) && (i->type != VFS_DIR))
@@ -99,7 +99,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
       if (!(fl & O_CREAT))
          return -ENOENT;
 
-      if (!(idir->mode & 0300)) /* write + execute */
+      if ((idir->mode & 0300) != 0300) /* write + execute */
          return -EACCES;
 
       if (!(i = ramfs_create_inode_file(d, mod, idir)))
@@ -122,7 +122,7 @@ ramfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
 
    } else {
 
-      if (!(idir->mode & 0500)) /* read + execute */
+      if ((idir->mode & 0500) != 0500) /* read + execute */
          return -EACCES;
 
       if ((rc = ramfs_open_existing_checks(fl, i)))

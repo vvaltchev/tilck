@@ -9,7 +9,7 @@ static int ramfs_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
    if (inode->type != VFS_DIR)
       return -ENOTDIR;
 
-   if (!(inode->mode & 0400)) /* read permission */
+   if ((inode->mode & 0400) != 0400) /* read permission */
       return -EACCES;
 
    list_for_each_ro_kp(rh->dpos, &inode->entries_list, lnode) {

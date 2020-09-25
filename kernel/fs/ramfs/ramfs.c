@@ -34,7 +34,7 @@ static int ramfs_unlink(struct vfs_path *p)
    if (i->type == VFS_DIR)
       return -EISDIR;
 
-   if (!(idir->mode & 0200)) /* write permission */
+   if ((idir->mode & 0200) != 0200) /* write permission */
       return -EACCES;
 
    /*
@@ -313,7 +313,7 @@ int ramfs_futimens(struct fs *fs,
 {
    struct ramfs_inode *i = inode;
 
-   if (!(i->mode & 0200))
+   if ((i->mode & 0200) != 0200)
       return -EACCES;
 
    i->mtime = times[1];

@@ -7,7 +7,7 @@ ramfs_stat_nolock(struct fs *fs,
 {
    ASSERT(inode);
 
-   if (!(inode->parent_dir->mode & 0500)) /* read + execute */
+   if ((inode->parent_dir->mode & 0500) != 0500) /* read + execute */
       return -EACCES;
 
    bzero(statbuf, sizeof(struct stat64));
