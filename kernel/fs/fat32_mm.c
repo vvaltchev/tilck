@@ -100,7 +100,7 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    const size_t off_begin = um->off;
    const size_t off_end = off_begin + um->len;
    ulong vaddr = um->vaddr, off = 0;
-   size_t mapped_cnt;
+   size_t mapped_cnt, tot_mapped_cnt = 0;
    u32 clu;
 
    if (!d->mmap_support)
@@ -151,19 +151,16 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
                                 PAGING_FL_US | PAGING_FL_SHARED);
 
          if (mapped_cnt != pg_count) {
-
-            /* mmap failed, we have to unmap the pages already mappped */
-            vaddr -= PAGE_SIZE;
-
-            for (; vaddr >= um->vaddr; vaddr -= PAGE_SIZE) {
-               unmap_page_permissive(pdir, (void *)vaddr, false);
-            }
-
+            unmap_pages_permissive(pdir,
+                                   (void *)um->vaddr,
+                                   tot_mapped_cnt,
+                                   false);
             return -ENOMEM;
          }
 
          vaddr += pg_count << PAGE_SHIFT;
          off += pg_count << PAGE_SHIFT;
+         tot_mapped_cnt += mapped_cnt;
 
          // After each iteration, `off` must always be aligned at `cluster_size`
          ASSERT((off % d->cluster_size) == 0);
