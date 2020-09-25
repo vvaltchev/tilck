@@ -41,14 +41,16 @@ int cmd_loop(int argc, char **argv)
 
 int cmd_bad_read(int argc, char **argv)
 {
-   int ret;
+   int ret, err;
    void *addr = (void *) 0xB0000000;
    printf("[cmd] req. kernel to read unaccessibile user addr: %p\n", addr);
 
    /* write to stdout a buffer unaccessibile for the user */
    errno = 0;
    ret = write(1, addr, 16);
-   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   err = errno;
+   printf("ret: %i, errno: %i: %s\n", ret, err, strerror(err));
+   DEVSHELL_CMD_ASSERT(err == EFAULT);
 
    addr = (void *) 0xC0000000;
    printf("[cmd] req. kernel to read unaccessible user addr: %p\n", addr);
@@ -56,23 +58,30 @@ int cmd_bad_read(int argc, char **argv)
    /* write to stdout a buffer unaccessibile for the user */
    errno = 0;
    ret = write(1, addr, 16);
-   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   err = errno;
+   printf("ret: %i, errno: %i: %s\n", ret, err, strerror(err));
+   DEVSHELL_CMD_ASSERT(err == EFAULT);
 
    printf("Open with filename invalid ptr\n");
-   ret = open((char*)0xB0000000, 0);
 
+   errno = 0;
+   ret = open((char*)0xB0000000, 0);
+   err = errno;
    printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   DEVSHELL_CMD_ASSERT(err == EFAULT);
    return 0;
 }
 
 int cmd_bad_write(int argc, char **argv)
 {
-   int ret;
+   int ret, err;
    void *addr = (void *) 0xB0000000;
 
    errno = 0;
-   ret = stat("/", addr);
-   printf("ret: %i, errno: %i: %s\n", ret, errno, strerror(errno));
+   ret = syscall(SYS_gettimeofday, addr, NULL);
+   err = errno;
+   printf("ret: %i, errno: %i: %s\n", ret, err, strerror(err));
+   DEVSHELL_CMD_ASSERT(err == EFAULT);
    return 0;
 }
 
