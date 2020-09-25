@@ -152,10 +152,28 @@ int mp_remove(const char *target_path)
 
 void vfs_syncfs(struct fs *fs)
 {
-   // TODO: implement
+   ASSERT(is_preemption_enabled());
+
+   if (~fs->flags & VFS_FS_RW)
+      return;  /* the filesystem is mounted as read-only: nothing to sync */
+
+   if (fs->fsops->syncfs)
+      fs->fsops->syncfs(fs);
 }
 
 void vfs_sync(void)
 {
-   // TODO: implement
+   ASSERT(is_preemption_enabled());
+
+   kmutex_lock(&mp_mutex);
+   {
+      vfs_syncfs(mp_root);
+
+      for (int i = 0; i < ARRAY_SIZE(mps2); i++) {
+
+         if (mps2[i].host_fs)
+            vfs_syncfs(mps2[i].target_fs);
+      }
+   }
+   kmutex_unlock(&mp_mutex);
 }

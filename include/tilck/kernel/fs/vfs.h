@@ -88,7 +88,7 @@ typedef ssize_t        (*func_writev)       (fs_handle,
                                              int);
 
 typedef int            (*func_fsync)        (fs_handle);
-
+typedef void           (*func_syncfs)       (struct fs *);
 
 /*
  * Operations affecting the file system structure (directories, files, etc.).
@@ -127,6 +127,7 @@ struct fs_ops {
    func_futimens futimens;
    func_rr_inode retain_inode;
    func_rr_inode release_inode;
+   func_syncfs syncfs;
 
    /* file system structure lock funcs */
    func_fslock_t fs_exlock;
