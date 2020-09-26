@@ -162,6 +162,28 @@ function extract_cachefile_tar_bz {
    echo "Extracting completed."
 }
 
+function download_git_repo_in_cache {
+
+   local url="$1"
+   local tag="$2"
+   local tarname="$3"
+   local dirname="$4"
+
+   if [ -f $TC/cache/$tarname ]; then
+      return
+   fi
+
+   if [ -z "$tag" ]; then
+      git clone --depth 1 "$url" $dirname
+   else
+      git clone --branch $tag --depth 1 "$url" $dirname
+   fi
+
+   tar cfz $tarname $dirname
+   mv $tarname $TC/cache
+   rm -rf $dirname
+}
+
 function install_32bit_libs {
 
    if ! [ -f $TC/.distro ]; then
