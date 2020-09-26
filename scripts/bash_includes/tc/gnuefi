@@ -12,10 +12,13 @@
 # exclusively for performance reasons: SF sometimes is too slow for
 # CI builds.
 
-function clone_gnu_efi {
+function download_gnu_efi {
+
+   local tarname="gnu-efi-3.0.10.tgz"
    local url="https://github.com/vvaltchev/gnu-efi-fork.git"
-   git clone --branch 3.0.10 --depth 1 "$url" gnu-efi
-   cd gnu-efi
+
+   download_git_repo_in_cache "$url" 3.0.10 $tarname gnu-efi
+   extract_cachefile_tar_gz $tarname --
 }
 
 function build_gnuefi_arch {
@@ -26,7 +29,8 @@ function build_gnuefi_arch {
 
          show_work_on_component_msg "GNU-EFI (arch: $ARCH)"
          reset_cc_vars
-         clone_gnu_efi
+         download_gnu_efi
+         cd gnu-efi
 
          if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
             local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
@@ -52,7 +56,8 @@ function build_gnuefi_build_arch {
 
          show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
          reset_cc_vars
-         clone_gnu_efi
+         download_gnu_efi
+         cd gnu-efi
          run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
 
       else
