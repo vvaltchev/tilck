@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+function download_micropython {
+
+   local tarname="micropython-1.13.tgz"
+   local url="https://github.com/micropython/micropython.git"
+
+   download_git_repo_in_cache "$url" v1.13 $tarname micropython
+   extract_cachefile_tar_gz $tarname --
+}
+
 all_funcs_list+=(build_micropython)
 function build_micropython {
 
@@ -11,7 +20,7 @@ function build_micropython {
       show_work_on_component_msg "MICROPYTHON"
       reset_cc_vars
 
-      git clone --depth 1 https://github.com/micropython/micropython.git
+      download_micropython
       cd micropython
 
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
@@ -37,12 +46,12 @@ function build_micropython {
       export LDFLAGS_EXTRA="-static"
 
       pushd mpy-cross
-      run_command2 "make MICROPY_PY_FFI=0 -j" build.log
+      run_command2 "make MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 -j" build.log
       popd
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
-      run_command2 "make MICROPY_PY_FFI=0 -j" build.log
+      run_command2 "make MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 -j" build.log
       popd
 
       export LDFLAGS_EXTRA=""
