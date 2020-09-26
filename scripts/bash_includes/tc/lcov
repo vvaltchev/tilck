@@ -5,6 +5,15 @@
 # LCOV (front end for GCOV)
 ###############################
 
+function download_lcov {
+
+   local tarname="lcov-1.13.tgz"
+   local url="https://github.com/linux-test-project/lcov.git"
+
+   download_git_repo_in_cache "$url" v1.13 $tarname lcov
+   extract_cachefile_tar_gz $tarname --
+}
+
 all_funcs_list+=(build_lcov)
 function build_lcov {
 
@@ -14,9 +23,9 @@ function build_lcov {
 
       show_work_on_component_msg "LCOV"
 
-      local url="https://github.com/linux-test-project/lcov.git"
-      git clone --branch v1.13 --depth 1 "$url"
+      download_lcov
       cd lcov
+
    else
       show_skip_component_msg "LCOV"
    fi
