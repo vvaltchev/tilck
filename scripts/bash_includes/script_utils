@@ -139,8 +139,21 @@ function extract_cachefile_tar_gz {
    echo "Extracting $tarfile..."
    tar xfz $TC/cache/$tarfile
 
-   if ! [ "$internalDirName" = "$newDirName" ]; then
-      mv "$internalDirName" "$newDirName"
+   if ! [ "$internalDirName" = "--" ]; then
+      if ! [ "$internalDirName" = "$newDirName" ]; then
+
+         if ! [ -d "$internalDirName" ]; then
+            echo "ERROR: internal dir: '$internalDirName' not found"
+            exit 1
+         fi
+
+         if [ -d "$newDirName" ]; then
+            echo "ERROR: new dir: '$newDirName' exists"
+            exit 1
+         fi
+
+         mv "$internalDirName" "$newDirName"
+      fi
    fi
 
    echo "Extracting completed."
@@ -155,8 +168,21 @@ function extract_cachefile_tar_bz {
    echo "Extracting $tarfile..."
    tar xfj $TC/cache/$tarfile
 
-   if ! [ "$internalDirName" = "$newDirName" ]; then
-      mv "$internalDirName" "$newDirName"
+   if ! [ "$internalDirName" = "--" ]; then
+      if ! [ "$internalDirName" = "$newDirName" ]; then
+
+         if ! [ -d "$internalDirName" ]; then
+            echo "ERROR: internal dir: '$internalDirName' not found"
+            exit 1
+         fi
+
+         if [ -d "$newDirName" ]; then
+            echo "ERROR: new dir: '$newDirName' exists"
+            exit 1
+         fi
+
+         mv "$internalDirName" "$newDirName"
+      fi
    fi
 
    echo "Extracting completed."
