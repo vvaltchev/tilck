@@ -136,9 +136,14 @@ function extract_cachefile_tar_gz {
    local internalDirName="$2"
    local newDirName="$3"
 
-   echo "Extracting $tarname..."
-   tar xfz $TC/cache/$tarname
-   mv "$internalDirName" "$newDirName"
+   echo "Extracting $tarfile..."
+   tar xfz $TC/cache/$tarfile
+
+   if ! [ "$internalDirName" = "$newDirName" ]; then
+      mv "$internalDirName" "$newDirName"
+   fi
+
+   echo "Extracting completed."
 }
 
 function extract_cachefile_tar_bz {
@@ -147,9 +152,13 @@ function extract_cachefile_tar_bz {
    local internalDirName="$2"
    local newDirName="$3"
 
-   echo "Extracting $tarname..."
-   tar xfj $TC/cache/$tarname
-   mv "$internalDirName" "$newDirName"
+   echo "Extracting $tarfile..."
+   tar xfj $TC/cache/$tarfile
+
+   if ! [ "$internalDirName" = "$newDirName" ]; then
+      mv "$internalDirName" "$newDirName"
+   fi
+
    echo "Extracting completed."
 }
 
