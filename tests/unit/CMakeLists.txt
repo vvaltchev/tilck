@@ -7,8 +7,6 @@ else()
    set(TOOL_GCOV "${GCOV}")
 endif()
 
-set(GTEST_SOURCE_DIR "${TCROOT}/cache/googletest/googletest")
-
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)

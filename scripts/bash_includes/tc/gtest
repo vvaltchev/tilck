@@ -5,12 +5,48 @@
 # Build gtest
 ##############################
 
+GTEST_DIRNAME="gtest-1.8.1"
+GTEST_SRC_DIR="$TC/noarch/$GTEST_DIRNAME"
+
 function download_googletest {
 
-   if ! [ -d cache/googletest ]; then
-      pushd cache
-      local url="https://github.com/google/googletest.git"
-      git clone --branch release-1.8.1 --depth 1 "$url"
+   local tarname="$GTEST_DIRNAME.tgz"
+   local url="https://github.com/google/googletest.git"
+
+   if ! [ -d $GTEST_SRC_DIR ]; then
+
+      download_git_repo_in_cache "$url" release-1.8.1 $tarname googletest
+
+      pushd $TC/noarch
+      extract_cachefile_tar_gz $tarname "googletest" $GTEST_DIRNAME
+      popd
+
+      if [ -d $TC/cache/googletest ]; then
+         # Delete the old locations of googletest
+         rm -rf $TC/cache/googletest
+         rm -rf $TC/host_i386/gtest
+         rm -rf $TC/host_x86_64/gtest
+      fi
+
+      if ! [ -L $TC/cache/googletest ]; then
+         # Create a symlink to make older commits being able to but gtests
+         # using the old path.
+         pushd $TC/cache
+         ln -s $GTEST_SRC_DIR googletest
+         popd
+      fi
+   fi
+}
+
+function gtest_make_compact_symlinks {
+
+   if [ -d $TC/host_$1/googletest ]; then
+      rm -rf $TC/host_$1/gtest
+   fi
+
+   if ! [ -L $TC/host_$1/googletest ]; then
+      pushd $TC/host_$1
+      ln -s $GTEST_DIRNAME gtest
       popd
    fi
 }
@@ -21,15 +57,17 @@ function build_gtest {
    download_googletest
    pushd host_$HOST_ARCH
 
-   if ! [ -d gtest ]; then
+   if ! [ -d $GTEST_DIRNAME ]; then
 
       show_work_on_component_msg "GOOGLE TEST ($HOST_ARCH)"
-      mkdir gtest
-      cd gtest
+      mkdir $GTEST_DIRNAME
+      cd $GTEST_DIRNAME
 
       reset_cc_vars
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $GTEST_SRC_DIR/googletest
       run_command2 "make -j" build.log
+      gtest_make_compact_symlinks $HOST_ARCH
+
    else
       show_skip_component_msg "GOOGLE TEST ($HOST_ARCH)"
    fi
@@ -43,17 +81,19 @@ function build_gtest_arch {
    download_googletest
    pushd host_$ARCH
 
-   if ! [ -d gtest ]; then
+   if ! [ -d $GTEST_DIRNAME ]; then
 
       show_work_on_component_msg "GOOGLE TEST ($ARCH)"
       download_gcc_glibc_toolchain
 
-      mkdir gtest
-      cd gtest
+      mkdir $GTEST_DIRNAME
+      cd $GTEST_DIRNAME
 
       set_cc_vars_to_tc
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug $TC/cache/googletest/googletest
+      $CMAKE -DCMAKE_BUILD_TYPE=Debug $GTEST_SRC_DIR/googletest
       run_command2 "make -j" build.log
+      gtest_make_compact_symlinks $ARCH
+
    else
       show_skip_component_msg "GOOGLE TEST ($ARCH)"
    fi
