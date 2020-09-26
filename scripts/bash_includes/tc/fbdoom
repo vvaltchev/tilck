@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-all_funcs_list+=(build_fbdoom)
-function build_fbdoom {
+function download_fbdoom {
 
-   pushd $ARCH
-
-   if ! [ -d fbDOOM ]; then
-
-      show_work_on_component_msg "FBDOOM"
-      reset_cc_vars
+   if ! [ -f $TC/cache/fbdoom.tgz ]; then
 
       git clone --depth 1 https://github.com/maximevince/fbDOOM.git
-      cd fbDOOM
+      pushd fbDOOM
 
       local freedoom="https://github.com/freedoom/freedoom/releases/download"
       wget $freedoom/v0.12.1/freedoom-0.12.1.zip
@@ -23,6 +17,27 @@ function build_fbdoom {
       pushd freedoom
       gzip freedoom1.wad
       popd
+      popd
+
+      tar cfz fbdoom.tgz fbDOOM
+      mv fbdoom.tgz $TC/cache
+   fi
+
+   extract_cachefile_tar_gz fbdoom.tgz --
+}
+
+all_funcs_list+=(build_fbdoom)
+function build_fbdoom {
+
+   pushd $ARCH
+
+   if ! [ -d fbDOOM ]; then
+
+      show_work_on_component_msg "FBDOOM"
+      reset_cc_vars
+
+      download_fbdoom
+      cd fbDOOM
 
       if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
 
