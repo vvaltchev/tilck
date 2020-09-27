@@ -12,6 +12,10 @@ set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
 
+if (NOT ${CMAKE_VERSION} VERSION_LESS "3.12.0")
+   set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
+endif()
+
 set(DEFAULT_TARGET_ARCH "i386")
 set(BUILD_ARCH "x86_64")
 
@@ -311,7 +315,7 @@ list(
    kb8042
 )
 
-file(GLOB modules "${CMAKE_SOURCE_DIR}/modules/*")
+file(GLOB modules ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/modules/*")
 
 foreach(modpath ${modules})
 
@@ -597,7 +601,7 @@ add_subdirectory(scripts/build_apps)
 include(other/cmake/gen_config_post.cmake)
 
 set(BUILD_SCRIPTS_FILES_LIST "")
-file(GLOB files "${BUILD_SCRIPTS}/*")
+file(GLOB files ${GLOB_CONF_DEP} "${BUILD_SCRIPTS}/*")
 foreach (f ${files})
    list(APPEND BUILD_SCRIPTS_FILES_LIST "${file}")
 endforeach()

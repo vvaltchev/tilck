@@ -10,9 +10,23 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/other/alt_fonts/font16x32.psf)
 endif()
 
 if (${HAVE_ALT_FONTS} AND ${FB_CONSOLE_USE_ALT_FONTS})
-   file(GLOB font_files "${CMAKE_SOURCE_DIR}/other/alt_fonts/*.psf")
+
+   file(
+      GLOB
+      font_files
+      ${GLOB_CONF_DEP}
+      "${CMAKE_SOURCE_DIR}/other/alt_fonts/*.psf"
+   )
+
 else()
-   file(GLOB font_files "${CMAKE_SOURCE_DIR}/modules/fb/*.psf")
+
+   file(
+      GLOB
+      font_files
+      ${GLOB_CONF_DEP}
+      "${CMAKE_SOURCE_DIR}/modules/fb/*.psf"
+   )
+
 endif()
 
 

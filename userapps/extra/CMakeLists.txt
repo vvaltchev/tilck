@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-file(GLOB children RELATIVE
-     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*)
+file(GLOB children RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+     ${GLOB_CONF_DEP}
+     ${CMAKE_CURRENT_SOURCE_DIR}/*)
 
 set(EXTRA_APPS_LIST "")
 

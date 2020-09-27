@@ -34,7 +34,12 @@ function(build_and_link_module target modname)
       )
    endif()
 
-   file(GLOB MOD_${modname}_SOURCES ${MOD_${modname}_SOURCES_GLOB})
+   file(
+      GLOB
+      MOD_${modname}_SOURCES         # Output variable
+      ${GLOB_CONF_DEP}               # The CONFIGURE_DEPENDS option
+      ${MOD_${modname}_SOURCES_GLOB} # The input GLOB text
+   )
 
    # It's totally possible that some modules contain exclusively arch-only
    # code. In that case, the list of sources will be empty when the flag
