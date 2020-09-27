@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+function download_tcc {
+
+   local tarname="tcc.tgz"
+   local url="git://repo.or.cz/tinycc.git"
+
+   download_git_repo_in_cache "$url" "" $tarname tcc
+   extract_cachefile_tar_gz $tarname --
+}
 
 all_funcs_list+=(build_tcc)
 function build_tcc {
@@ -26,8 +34,8 @@ function build_tcc {
    if [ ! -d tcc ]; then
 
       show_work_on_component_msg "TCC"
-      git clone git://repo.or.cz/tinycc.git tcc
 
+      download_tcc
       cd tcc
 
       # Variables for making the compiler to work on Tilck
