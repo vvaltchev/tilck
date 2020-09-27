@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+function download_vim {
+
+   local tarname="vim.tgz"
+   local url="https://github.com/vim/vim.git"
+
+   download_git_repo_in_cache "$url" "" $tarname vim
+   extract_cachefile_tar_gz $tarname --
+}
+
 all_funcs_list+=(build_vim)
 function build_vim {
 
@@ -18,7 +27,7 @@ function build_vim {
          exit 1
       fi
 
-      git clone --depth 1 https://github.com/vim/vim.git
+      download_vim
       cd vim
 
       local curr="$PWD"
