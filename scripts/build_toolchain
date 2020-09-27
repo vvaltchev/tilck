@@ -301,8 +301,8 @@ function show_help {
 
    echo ""
    echo "Syntax:"
-   echo "      $0 [-n]        run default functions"
-   echo "      $0 -s <func>   run a specific function"
+   echo "      $0 [-n]                             run default functions"
+   echo "      $0 -s func1 [func2 [func3 [...]]]   run specific functions"
    echo ""
    echo "   -n    Do not check nor install system packages (advanced)"
    echo "           Even if many packages are downloaded & built by this script"
@@ -340,6 +340,38 @@ function show_help {
 
 function show_error_no_func {
    echo "ERROR: The function '$1' does not exist. Re-run with --help."
+}
+
+function execute_func {
+
+   if [ -n "$(type -t $1)" ] && [ "$(type -t $1)" = function ]; then
+
+      echo "[build_toolchain] Executing single function '$1'"
+      $1
+      echo "[build_toolchain] Executing single function: DONE"
+
+      return 0
+
+   else
+
+      return 1  # No such function
+   fi
+}
+
+function check_func {
+
+   local func="$1"
+
+   for x in ${all_funcs_list[@]}; do
+      if [[ "$x" == "$func" ||
+            "$x" == "build_$func" ||
+            "$x" == "download_$func" ]]
+      then
+         return 0
+      fi
+   done
+
+   return 1 # Function not found
 }
 
 ##########################################################
@@ -426,33 +458,29 @@ function main {
 
    if [ "$1" == "-s" ]; then
 
-      if [ $# -ne 2 ]; then
+      if [ $# -lt 2 ]; then
          echo "Expected the name of the function to call after the $1 option"
       fi
 
-      local func="$2"
+      shift  # Drop the first argument, $1
 
-      for x in ${all_funcs_list[@]}; do
-         if [ "$x" = "$func" ]; then
-            local func_found=1
-            break
+      for func in "$@"; do
+
+         if ! check_func "$func"; then
+            show_error_no_func "$func"
+            exit 1
          fi
+
+         if ! execute_func $func; then
+            if ! execute_func "build_$func"; then
+               if ! execute_func "download_$func"; then
+                  show_error_no_func "$func"
+                  exit 1
+               fi
+            fi
+         fi
+
       done
-
-      if [ -z "$func_found" ]; then
-         show_error_no_func "$func"
-         exit 1
-      fi
-
-      if [ -n "$(type -t $func)" ] && [ "$(type -t $func)" = function ]; then
-         echo "[build_toolchain] Executing single function '$func'"
-         $func
-         echo "[build_toolchain] Executing single function: DONE"
-      else
-         show_error_no_func "$func"
-         exit 1
-      fi
-
       exit 0
    fi
 
