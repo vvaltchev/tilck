@@ -13,3 +13,4 @@
 #cmakedefine01    MOD_serial
 #cmakedefine01    MOD_debugpanel
 #cmakedefine01    MOD_tracing
+#cmakedefine01    MOD_sysfs

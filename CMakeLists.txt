@@ -310,6 +310,7 @@ list(
 
    console
    tracing
+   sysfs
 )
 
 list(

@@ -25,7 +25,8 @@ void register_module(struct module *m);
 
 /*           Order of initialization of Tilck's modules            */
 
-#define MOD_kb_prio                           50  /* first */
+#define MOD_sysfs_prio                        10  /* first */
+#define MOD_kb_prio                           50
 #define MOD_tracing_prio                     100
 #define MOD_tty_prio                         200
 #define MOD_fbdev_prio                       300
