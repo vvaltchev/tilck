@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+function download_zlib {
+
+   local tarname="zlib-1.2.11.tgz"
+   local url="https://github.com/madler/zlib"
+
+   download_git_repo_in_cache "$url" v1.2.11 $tarname zlib
+   extract_cachefile_tar_gz $tarname --
+}
+
 all_funcs_list+=(build_zlib)
 function build_zlib {
 
@@ -11,7 +20,7 @@ function build_zlib {
       show_work_on_component_msg "ZLIB"
       reset_cc_vars
 
-      git clone --branch v1.2.11 --depth 1 https://github.com/madler/zlib
+      download_zlib
       cd zlib
 
       local p="$TC/$ARCH/zlib/install"
