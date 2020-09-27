@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+function download_libmusl {
+
+   local tarname="libmusl-1.1.24.tgz"
+   local url="git://git.musl-libc.org/musl"
+
+   download_git_repo_in_cache "$url" v1.1.24 $tarname musl
+   extract_cachefile_tar_gz $tarname --
+}
+
 all_funcs_list+=(build_libmusl)
 function build_libmusl {
 
@@ -36,7 +45,7 @@ function build_libmusl {
 
       show_work_on_component_msg "LIBMUSL"
 
-      git clone --branch v1.1.24 --depth 1 git://git.musl-libc.org/musl
+      download_libmusl
       cd musl
 
       local opts1="--target=${ARCH} --host=${ARCH}"
