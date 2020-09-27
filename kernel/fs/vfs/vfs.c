@@ -287,8 +287,10 @@ vfs_open_impl(struct fs *fs, struct vfs_path *p,
          hb->fd_flags |= FD_CLOEXEC;
 
       if (type == VFS_FILE && (fs->flags & VFS_FS_RW)) {
-         if (flags & (O_WRONLY | O_RDWR))
-            ASSERT(hb->lf != NULL);
+         if (flags & (O_WRONLY | O_RDWR)) {
+            if (~hb->spec_flags & VFS_SPFL_NO_LF)
+               ASSERT(hb->lf != NULL);
+         }
       }
    }
 
