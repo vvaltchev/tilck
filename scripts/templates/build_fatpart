@@ -248,6 +248,15 @@ function add_vim {
    cp $maindir/tests/interactive/vim_text_files/* usr/lib/vim/samples/
 }
 
+function add_tree_cmd {
+
+   if [ -z "@EXTRA_TREE_CMD_ENABLED@" ]; then
+      return
+   fi
+
+   link_or_copy $tc/$arch/tree_cmd/tree usr/bin
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -302,5 +311,6 @@ add_tcc
 add_micropython
 add_fbdoom
 add_vim
+add_tree_cmd
 
 make_fatpart

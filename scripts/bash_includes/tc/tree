@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+function download_tree_cmd {
+
+   local tarname="tree_cmd-1.8.0.tgz"
+   local url="https://github.com/vvaltchev/tree-command.git"
+
+   download_git_repo_in_cache "$url" tilck $tarname tree_cmd
+   extract_cachefile_tar_gz $tarname --
+}
+
+all_funcs_list+=(build_tree_cmd)
+function build_tree_cmd {
+
+   pushd $ARCH
+
+   if ! [ -d tree_cmd ]; then
+
+      show_work_on_component_msg "TREE (command)"
+      reset_cc_vars
+
+      download_tree_cmd
+      cd tree_cmd
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         #
+         # Note: NOT TESTED yet.
+         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # supported.
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+      else
+         # Default case
+         set_cc_vars_to_tc
+      fi
+
+      run_command2 "make" build.log
+
+   else
+      show_skip_component_msg "TREE (command)"
+   fi
+
+   popd
+}

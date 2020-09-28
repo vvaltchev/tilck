@@ -21,6 +21,12 @@ if (EXISTS ${TCROOT}/${ARCH}/micropython)
    message(STATUS "EXTRA_MICROPYTHON: ${EXTRA_MICROPYTHON}")
 endif()
 
+if (EXISTS ${TCROOT}/${ARCH}/tree_cmd)
+   set(EXTRA_TREE_CMD OFF CACHE BOOL "Load the tree command Tilck")
+   message(STATUS "EXTRA_TREE_CMD: ${EXTRA_TREE_CMD}")
+endif()
+
+
 if (EXTRA_VIM)
    set(EXTRA_VIM_ENABLED "1")
 endif()
@@ -49,4 +55,8 @@ if (EXTRA_MICROPYTHON)
                      "which is good enough only as a proof-of-concept.")
    message(WARNING "${msg}")
    set(EXTRA_MICROPYTHON_ENABLED "1")
+endif()
+
+if (EXTRA_TREE_CMD)
+   set(EXTRA_TREE_CMD_ENABLED "1")
 endif()
