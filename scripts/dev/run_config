@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
+
+function no_ccmake_error {
+
+   echo
+   echo "ERROR: the ccmake tool has not been found on this system."
+   echo "Install it on your system before re-running this command."
+   echo "Hint: on Ubuntu/Debian systems, its package name is: cmake-curses-gui."
+   echo
+   echo "Important remarks"
+   echo "----------------------"
+   echo "The ccmake tool is not installed automatically by the build_toolchain"
+   echo "script simply because it is not mandatory for building nor configuring"
+   echo "Tilck. It is just a nicer curses GUI alternative to re-running the"
+   echo "cmake_run script with the new options on the command line, like this: "
+   echo
+   echo "   ./script/cmake_run -DTERM_BIG_SCROLL_BUF=1 -DKERNEL_SHOW_LOGO=0"
+   echo
+}
+
+function no_build_dir_error {
+
+   echo
+   echo "ERROR: the build directory '$BUILD_DIR' does not exist."
+   echo
+   echo "Typical case"
+   echo "----------------------"
+   echo "The build directory does not exist because you haven't run yet the"
+   echo "cmake_run script in project's root directory. Run it first."
+   echo
+   echo "Advanced case"
+   echo "----------------------"
+   echo "If you're trying to configure a build directory outside of project's"
+   echo "root directory, run this script (TILCK_ROOT/scripts/dev/run_config)"
+   echo "by passing the build directory as argument."
+   echo
+}
+
+function invalid_build_directory {
+
+   echo
+   echo "ERROR: the build directory '$BUILD_DIR' is NOT a valid CMake build"
+   echo "ERROR: directory. Reason: it does not contain a CMakeCache.txt file."
+   echo
+   echo "Hint: run the cmake_run script first."
+   echo
+}
+
+if which bash &> /dev/null; then
+
+   # The "which" tool is installed, we can use it to check for `ccmake`
+
+   if ! which ccmake &> /dev/null; then
+      no_ccmake_error
+      exit 1
+   fi
+
+else
+
+   # No "which" tool. Try to determine if `ccmake` exists by calling it.
+
+   if ! ccmake --help &> /dev/null; then
+      no_ccmake_error
+      exit 1
+   fi
+fi
+
+# OK, ccmake exists.
+
+if [ -z "$1" ]; then
+   BUILD_DIR="$MAIN_DIR/build"
+else
+   BUILD_DIR="$1"
+fi
+
+if ! [ -d "$BUILD_DIR" ]; then
+   no_build_dir_error
+   exit 1
+fi
+
+# OK, also the BUILD_DIR exists. But is it a valid cmake directory?
+
+if ! [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+   invalid_build_directory
+   exit 1
+fi
+
+# Yes, everything is correct. Now run ccmake.
+ccmake "$BUILD_DIR"

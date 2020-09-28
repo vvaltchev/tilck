@@ -18,6 +18,7 @@ gtests: $(PREREQUISITES)
 clean: $(PREREQUISITES)
 	@$(MAKE) -C build clean
 
+# Rem is a shortcut for rebuild_img
 rem: $(PREREQUISITES)
 	@rm -rf ./build/fatpart ./build/tilck.img
 	@$(MAKE) -C build
@@ -26,8 +27,11 @@ rebuild_img: $(PREREQUISITES)
 	@rm -rf ./build/fatpart ./build/tilck.img
 	@$(MAKE) -C build
 
-gpt_image: $(PREREQUISITES)
-	@$(MAKE) -C build gpt_image
+config: $(PREREQUISITES)
+	@./scripts/dev/run_config
+
+menuconfig: $(PREREQUISITES)
+	@./scripts/dev/run_config
 
 $(TCROOT):
 	$(error Before building Tilck, you need to build the toolchain by running ./scripts/build_toolchain)
