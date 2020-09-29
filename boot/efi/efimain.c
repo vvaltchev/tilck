@@ -30,7 +30,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EFI_FILE_PROTOCOL *fileProt;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
    EFI_PHYSICAL_ADDRESS kernel_file_paddr;
-   UINTN ramdisk_size, mapkey, fb_paddr;
+   UINTN ramdisk_size, mapkey, fb_paddr = 0;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;
    void *kernel_entry = NULL;
 
