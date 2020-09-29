@@ -329,7 +329,7 @@ foreach(modpath ${modules})
 
          if (${_index} GREATER -1)
             if (MOD_${modname})
-               message(WARNING "TINY_KERNEL=1, force-setting MOD_{modname}=0")
+               message(WARNING "TINY_KERNEL=1, force-setting MOD_${modname}=0")
                set(MOD_${modname} OFF)
             endif()
          endif()
