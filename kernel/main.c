@@ -267,9 +267,6 @@ mount_initrd(void)
    if ((rc = mp_init(ramfs)))
       panic("mp_init() failed with error: %d", rc);
 
-   if ((rc = vfs_mkdir("/dev", 0777)))
-      panic("vfs_mkdir(\"/dev\") failed with error: %d", rc);
-
    if ((rc = vfs_mkdir("/tmp", 0777)))
       panic("vfs_mkdir(\"/tmp\") failed with error: %d", rc);
 

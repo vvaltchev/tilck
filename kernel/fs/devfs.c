@@ -544,6 +544,10 @@ void
 init_devfs(void)
 {
    int rc;
+
+   if ((rc = vfs_mkdir("/dev", 0777)))
+      panic("vfs_mkdir(\"/dev\") failed with error: %d", rc);
+
    devfs = create_devfs();
 
    if (!devfs)
