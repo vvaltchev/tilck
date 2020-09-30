@@ -26,6 +26,7 @@ STATIC size_t max_tot_heap_mem_free;
 void *kmalloc_get_first_heap(size_t *size)
 {
    static char buf[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
+   STATIC_ASSERT((KMALLOC_FIRST_HEAP_SIZE % (64 * KB)) == 0);
 
    if (size)
       *size = KMALLOC_FIRST_HEAP_SIZE;

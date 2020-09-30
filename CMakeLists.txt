@@ -299,6 +299,9 @@ set(PREFERRED_GFX_MODE_W "800" CACHE STRING
 set(PREFERRED_GFX_MODE_H "600" CACHE STRING
     "Preferred video mode (height)")
 
+set(KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
+    "Size in KB of kmalloc's first heap. Must be multiple of 64.")
+
 list(
    APPEND no_arch_modules_whitelist
 
@@ -371,6 +374,19 @@ if (TINY_KERNEL)
 
 endif()
 
+if (KMALLOC_FIRST_HEAP_SIZE_KB STREQUAL "auto")
+
+   if (TINY_KERNEL)
+      set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL 64)
+   else()
+      set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL 128)
+   endif()
+
+else()
+   set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL ${KMALLOC_FIRST_HEAP_SIZE_KB})
+endif()
+
+
 # Create a list with all the kernel opts, in order to dump it later
 # -------------------------------------------------------------------
 
@@ -388,6 +404,8 @@ list(
    FATPART_CLUSTER_SIZE
    PREFERRED_GFX_MODE_W
    PREFERRED_GFX_MODE_H
+   KMALLOC_FIRST_HEAP_SIZE_KB
+   KMALLOC_FIRST_HEAP_SIZE_KB_VAL
 
    # Boolean options ENABLED by default
    KRN_TRACK_NESTED_INTERR
