@@ -16,12 +16,12 @@
 
 #define USE_ELF32
 #include <tilck/common/elf_types.h>
-
-#define MMAP_SIZE (8 * 1024 * 1024)
+#include <tilck/common/utils.h>
 
 struct elf_file_info {
 
    const char *path;
+   size_t mmap_size;
    void *vaddr;
    int fd;
 };
@@ -305,7 +305,7 @@ drop_last_section(struct elf_file_info *nfo)
     * feature. Therefore, here we first unmap the memory-mapped ELF file and
     * then we truncate it.
     */
-   if (munmap(nfo->vaddr, MMAP_SIZE) < 0) {
+   if (munmap(nfo->vaddr, nfo->mmap_size) < 0) {
       perror("munmap() failed");
       exit(1);
    }
@@ -515,6 +515,8 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 int main(int argc, char **argv)
 {
    struct elf_file_info nfo;
+   struct stat statbuf;
+   size_t page_size;
 
    if (argc < 3) {
       show_help();
@@ -536,14 +538,29 @@ int main(int argc, char **argv)
    nfo.fd = open(nfo.path, O_RDWR);
 
    if (nfo.fd < 0) {
-      perror(NULL);
+      perror("open failed");
       return 1;
    }
 
-   errno = 0;
+   if (fstat(nfo.fd, &statbuf) < 0) {
+      perror("fstat failed");
+      close(nfo.fd);
+      return 1;
+   }
 
+   page_size = sysconf(_SC_PAGESIZE);
+
+   if (page_size <= 0) {
+      fprintf(stderr, "Unable to get page size. Got: %ld\n", (long)page_size);
+      close(nfo.fd);
+      return 1;
+   }
+
+   nfo.mmap_size = pow2_round_up_at((size_t)statbuf.st_size, page_size);
+
+   errno = 0;
    nfo.vaddr = mmap(NULL,                   /* addr */
-                    MMAP_SIZE,              /* length */
+                    nfo.mmap_size,          /* length */
                     PROT_READ | PROT_WRITE, /* prot */
                     MAP_SHARED,             /* flags */
                     nfo.fd,                 /* fd */
@@ -604,7 +621,7 @@ int main(int argc, char **argv)
     * have their reasons for calling munmap() earlier. Do avoid double-calling
     * it and getting an error, such functions will just set vaddr to NULL.
     */
-   if (nfo.vaddr && munmap(nfo.vaddr, MMAP_SIZE) < 0) {
+   if (nfo.vaddr && munmap(nfo.vaddr, nfo.mmap_size) < 0) {
       perror("munmap() failed");
    }
 
