@@ -6,7 +6,7 @@
  */
 
 #pragma once
-#include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_kernel.h>
 
 /* --------- Boolean config variables --------- */
 
