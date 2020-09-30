@@ -26,10 +26,10 @@ elf_calc_mem_size(Elf_Ehdr *h)
    for (uint32_t i = 0; i < h->e_phnum; i++) {
 
       Elf_Phdr *p = phdrs + i;
-      Elf_Addr pend = pow2_round_up_at(p->p_vaddr + p->p_memsz, p->p_align);
+      Elf_Addr pend = pow2_round_up_at(p->p_paddr + p->p_memsz, p->p_align);
 
-      if (i == 0 || p->p_vaddr < min_pbegin)
-         min_pbegin = p->p_vaddr;
+      if (i == 0 || p->p_paddr < min_pbegin)
+         min_pbegin = p->p_paddr;
 
       if (pend > max_pend)
          max_pend = pend;
