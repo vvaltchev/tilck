@@ -8,9 +8,11 @@
 #include <tilck/common/utils.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/common/arch/generic_x86/cpu_features.h>
-#include <tilck/common/simple_elf_loader.c.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
+#include <tilck/common/elf_types.h>
+#include <tilck/common/simple_elf_loader.c.h>
+#include <tilck/common/elf_calc_mem_size.c.h>
 
 #include <multiboot.h>
 
@@ -65,21 +67,23 @@ load_elf_kernel(struct mem_info *mi,
                 void **entry)
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
-   ulong free_space;
    struct fat_entry *e;
-
-   free_space = get_usable_mem(mi, ramdisk + ramdisk_size, KERNEL_MAX_SIZE);
-
-   if (!free_space)
-      panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
+   Elf32_Ehdr *header;
+   ulong free_space;
+   size_t len;
 
    if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL)))
       panic("Unable to open '%s'!", filepath);
 
-   fat_read_whole_file(hdr, e, (void *)free_space, KERNEL_MAX_SIZE);
+   free_space = get_usable_mem(mi, ramdisk + ramdisk_size, e->DIR_FileSize);
 
-   Elf32_Ehdr *header = (Elf32_Ehdr *)free_space;
+   if (!free_space)
+      panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
 
+   len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);
+   header = (Elf32_Ehdr *)free_space;
+
+   VERIFY(len == e->DIR_FileSize);
    VERIFY(header->e_ident[EI_MAG0] == ELFMAG0);
    VERIFY(header->e_ident[EI_MAG1] == ELFMAG1);
    VERIFY(header->e_ident[EI_MAG2] == ELFMAG2);
@@ -296,7 +300,7 @@ load_fat_ramdisk(const char *load_str,
 
    if (!free_mem) {
       panic("Unable to allocate %u KB after %p for the ramdisk",
-            SECTOR_SIZE * rd_sectors / KB, KERNEL_MAX_END_PADDR);
+            SECTOR_SIZE * rd_sectors / KB, min_paddr);
    }
 
    rd_paddr = free_mem;
