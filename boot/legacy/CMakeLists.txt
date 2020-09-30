@@ -48,6 +48,8 @@ add_custom_command(
       elfhack elf_stage3 --check-entry-point ${BL_BASE_ADDR}
    DEPENDS
       elf_stage3_unstripped
+      elfhack
+      ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack
 )
 
 add_custom_command(

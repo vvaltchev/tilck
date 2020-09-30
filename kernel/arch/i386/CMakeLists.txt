@@ -112,7 +112,9 @@ if (KERNEL_SYMBOLS)
       COMMAND
          elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
       DEPENDS
-         elfhack tilck_unstripped
+         tilck_unstripped
+         elfhack
+         ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack
       COMMENT
          "Preparing kernel's stripped binary"
    )
