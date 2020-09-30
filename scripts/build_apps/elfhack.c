@@ -15,6 +15,7 @@
 #include <fcntl.h>
 
 #define USE_ELF32
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/utils.h>
 
@@ -25,6 +26,18 @@ struct elf_file_info {
    void *vaddr;
    int fd;
 };
+
+struct elfhack_cmd {
+
+   const char *opt;
+   const char *help;
+   int nargs;
+   int (*func)(struct elf_file_info *, const char *, const char *);
+};
+
+int show_help(struct elf_file_info *nfo, const char *, const char *);
+
+/* --- Low-level ELF utility functions --- */
 
 Elf_Shdr *
 get_section(Elf_Ehdr *h, const char *section_name)
@@ -94,15 +107,18 @@ get_symbol(Elf_Ehdr *h, const char *sym_name)
    return NULL;
 }
 
-void
-section_dump(struct elf_file_info *nfo, const char *section_name)
+/* --- Actual commands --- */
+
+int
+section_dump(struct elf_file_info *nfo, const char *section_name, const char *u)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *s = get_section(nfo->vaddr, section_name);
    fwrite((char*)h + s->sh_offset, 1, s->sh_size, stdout);
+   return 0;
 }
 
-void
+int
 copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
@@ -110,15 +126,15 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
    Elf_Shdr *s_dst = get_section(nfo->vaddr, dst);
 
    if (!dst) {
-      fprintf(stderr, "Missing <dst section> argument\n");
-      exit(1);
+      fprintf(stderr, "Missing <dest section> argument\n");
+      return 1;
    }
 
    if (s_src->sh_size > s_dst->sh_size) {
       fprintf(stderr, "The source section '%s' is too big "
               "[%u bytes] to fit in the dest section '%s' [%u bytes]\n",
               src, s_src->sh_size, dst, s_dst->sh_size);
-      exit(1);
+      return 1;
    }
 
    memcpy((char*)h + s_dst->sh_offset,
@@ -130,29 +146,10 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
    s_dst->sh_type = s_src->sh_type;
    s_dst->sh_entsize = s_src->sh_entsize;
    s_dst->sh_size = s_src->sh_size;
+   return 0;
 }
 
-#define printerr(...) fprintf(stderr, __VA_ARGS__)
-#define print_help_line(...) printerr("    elfhack <file> " __VA_ARGS__)
-
-void
-show_help(void)
-{
-   printerr("Usage:\n");
-   print_help_line("[--dump <section name>]\n");
-   print_help_line("[--move-metadata]\n");
-   print_help_line("[--copy <src section> <dest section>]\n");
-   print_help_line("[--rename <section> <new_name>]\n");
-   print_help_line("[--link <section> <linked_section>]\n");
-   print_help_line("[--drop-last-section]\n");
-   print_help_line("[--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
-   print_help_line("[--verify-flat-elf]\n");
-   print_help_line("[--check-entry-point [<expected>]]\n");
-   print_help_line("[--set-sym-strval <sym> <string value>]\n");
-   exit(1);
-}
-
-void
+int
 rename_section(struct elf_file_info *nfo, const char *sec, const char *new_name)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
@@ -162,19 +159,20 @@ rename_section(struct elf_file_info *nfo, const char *sec, const char *new_name)
 
    if (!new_name) {
       fprintf(stderr, "Missing <new_name> argument\n");
-      exit(1);
+      return 1;
    }
 
    if (strlen(new_name) > strlen(sec)) {
       fprintf(stderr, "Section rename with length > old one NOT supported.\n");
-      exit(1);
+      return 1;
    }
 
    Elf_Shdr *s = get_section(nfo->vaddr, sec);
    strcpy(hc + shstrtab->sh_offset + s->sh_name, new_name);
+   return 0;
 }
 
-void
+int
 link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
@@ -183,7 +181,7 @@ link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
 
    if (!linked) {
       fprintf(stderr, "Missing <linked section> argument\n");
-      exit(1);
+      return 1;
    }
 
    Elf_Shdr *a = get_section(nfo->vaddr, sec);
@@ -191,10 +189,11 @@ link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
 
    unsigned bidx = (b - sections);
    a->sh_link = bidx;
+   return 0;
 }
 
-void
-move_metadata(struct elf_file_info *nfo)
+int
+move_metadata(struct elf_file_info *nfo, const char *u1, const char *u2)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -226,10 +225,12 @@ move_metadata(struct elf_file_info *nfo)
       if (s->sh_addr)
          s->sh_flags |= SHF_ALLOC;
    }
+
+   return 0;
 }
 
-void
-drop_last_section(struct elf_file_info *nfo)
+int
+drop_last_section(struct elf_file_info *nfo, const char *u1, const char *u2)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -242,7 +243,7 @@ drop_last_section(struct elf_file_info *nfo)
 
    if (!h->e_shnum) {
       fprintf(stderr, "ERROR: the ELF file has no sections!\n");
-      exit(1);
+      return 1;
    }
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
@@ -259,7 +260,7 @@ drop_last_section(struct elf_file_info *nfo)
    if (last_section == shstrtab) {
       fprintf(stderr,
               "The last section is .shstrtab and it cannot be removed!\n");
-      exit(1);
+      return 1;
    }
 
    if (last_section_index != h->e_shnum - 1) {
@@ -307,7 +308,7 @@ drop_last_section(struct elf_file_info *nfo)
     */
    if (munmap(nfo->vaddr, nfo->mmap_size) < 0) {
       perror("munmap() failed");
-      exit(1);
+      return 1;
    }
 
    nfo->vaddr = NULL;
@@ -317,11 +318,14 @@ drop_last_section(struct elf_file_info *nfo)
 
       fprintf(stderr, "ftruncate(%i, %li) failed with '%s'\n",
               nfo->fd, last_offset, strerror(errno));
-      exit(1);
+
+      return 1;
    }
+
+   return 0;
 }
 
-void
+int
 set_phdr_rwx_flags(struct elf_file_info *nfo,
                    const char *phdr_index,
                    const char *flags)
@@ -334,18 +338,18 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
 
    if (errno || *endptr != '\0') {
       fprintf(stderr, "Invalid phdr index '%s'\n", phdr_index);
-      exit(1);
+      return 1;
    }
 
    if (phindex >= h->e_phnum) {
       fprintf(stderr, "Phdr index %lu out-of-range [0, %u].\n",
               phindex, h->e_phnum - 1);
-      exit(1);
+      return 1;
    }
 
    if (!flags) {
       fprintf(stderr, "Missing <rwx flags> argument.\n");
-      exit(1);
+      return 1;
    }
 
    char *hc = (char *)h;
@@ -367,7 +371,7 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
             break;
          default:
             fprintf(stderr, "Invalid flag '%c'. Allowed: r,w,x.\n", *flags);
-            exit(1);
+            return 1;
       }
       flags++;
    }
@@ -377,10 +381,11 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
 
    // Then, set the new RWX flags.
    phdr->p_flags |= f;
+   return 0;
 }
 
-void
-verify_flat_elf_file(struct elf_file_info *nfo)
+int
+verify_flat_elf_file(struct elf_file_info *nfo, const char *u1, const char *u2)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *)((char*)h + h->e_shoff);
@@ -391,7 +396,7 @@ verify_flat_elf_file(struct elf_file_info *nfo)
 
    if (!h->e_shnum) {
       fprintf(stderr, "ERROR: the ELF file has no sections!\n");
-      exit(1);
+      return 1;
    }
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
@@ -438,34 +443,38 @@ verify_flat_elf_file(struct elf_file_info *nfo)
 
    if (failed) {
       fprintf(stderr, "ERROR: flat ELF check FAILED for file: %s\n", nfo->path);
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
-void
-check_entry_point(struct elf_file_info *nfo, const char *expected)
+int
+check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
 {
    char buf[64];
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
 
-   if (!expected) {
+   if (!exp) {
       printf("%p\n", (void *)(size_t)h->e_entry);
-      return;
+      return 0;
    }
 
    sprintf(buf, "%p", (void *)(size_t)h->e_entry);
 
-   if (strcmp(buf, expected)) {
+   if (strcmp(buf, exp)) {
 
       fprintf(stderr,
               "ERROR: entry point (%s) != expected (%s) for file %s\n",
-              buf, expected, nfo->path);
+              buf, exp, nfo->path);
 
-      exit(1);
+      return 1;
    }
+
+   return 0;
 }
 
-void
+int
 set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
@@ -475,28 +484,28 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 
    if (!sym_name || !val) {
       fprintf(stderr, "Missing arguments\n");
-      exit(1);
+      return 1;
    }
 
    section = get_section(h, ".rodata");
 
    if (!section) {
       fprintf(stderr, "Unable to find the .rodata section\n");
-      exit(1);
+      return 1;
    }
 
    sym = get_symbol(h, sym_name);
 
    if (!sym) {
       fprintf(stderr, "Unable to find the symbol '%s'\n", sym_name);
-      exit(1);
+      return 1;
    }
 
    if (sym->st_value < section->sh_addr ||
        sym->st_value + sym->st_size > section->sh_addr + section->sh_size)
    {
       fprintf(stderr, "Symbol '%s' not in .rodata\n", sym_name);
-      exit(1);
+      return 1;
    }
 
    len = strlen(val) + 1;
@@ -504,36 +513,146 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
    if (sym->st_size < len) {
       fprintf(stderr, "Symbol '%s' [%u bytes] not big enough for value\n",
               sym_name, (unsigned)sym->st_size);
-      exit(1);
+      return 1;
    }
 
    const long sym_sec_off = sym->st_value - section->sh_addr;
    const long sym_file_off = section->sh_offset + sym_sec_off;
    memcpy((char *)h + sym_file_off, val, len);
+   return 0;
 }
 
-int main(int argc, char **argv)
+static struct elfhack_cmd cmds_list[] =
 {
-   struct elf_file_info nfo;
+   {
+      .opt = "--help",
+      .help = "",
+      .nargs = 0,
+      .func = &show_help,
+   },
+
+   {
+      .opt = "--dump",
+      .help = "<section name>",
+      .nargs = 1,
+      .func = &section_dump,
+   },
+
+   {
+      .opt = "--move-metadata",
+      .help = "",
+      .nargs = 0,
+      .func = &move_metadata,
+   },
+
+   {
+      .opt = "--copy",
+      .help = "<src section> <dest section>",
+      .nargs = 2,
+      .func = &copy_section,
+   },
+
+   {
+      .opt = "--rename",
+      .help = "<section> <new_name>",
+      .nargs = 2,
+      .func = &rename_section,
+   },
+
+   {
+      .opt = "--link",
+      .help = "<section> <linked_section>",
+      .nargs = 2,
+      .func = &link_sections,
+   },
+
+   {
+      .opt = "--drop-last-section",
+      .help = "",
+      .nargs = 0,
+      .func = &drop_last_section,
+   },
+
+   {
+      .opt = "--set-phdr-rwx-flags",
+      .help = "<phdr index> <rwx flags>",
+      .nargs = 2,
+      .func = &set_phdr_rwx_flags,
+   },
+
+   {
+      .opt = "--verify-flat-elf",
+      .help = "",
+      .nargs = 0,
+      .func = &verify_flat_elf_file,
+   },
+
+   {
+      .opt = "--check-entry-point",
+      .help = "[<expected>]",
+      .nargs = 0, /* note: the `expected` param is optional */
+      .func = &check_entry_point,
+   },
+
+   {
+      .opt = "--set-sym-strval",
+      .help = "<sym> <string value>",
+      .nargs = 2,
+      .func = &set_sym_strval,
+   },
+};
+
+#define printerr(...) fprintf(stderr, __VA_ARGS__)
+#define print_help_line(...) printerr("    elfhack <file> " __VA_ARGS__)
+
+int
+show_help(struct elf_file_info *nfo, const char *u1, const char *u2)
+{
+   printerr("Usage:\n");
+   print_help_line("[--dump <section name>]\n");
+   print_help_line("[--move-metadata]\n");
+   print_help_line("[--copy <src section> <dest section>]\n");
+   print_help_line("[--rename <section> <new_name>]\n");
+   print_help_line("[--link <section> <linked_section>]\n");
+   print_help_line("[--drop-last-section]\n");
+   print_help_line("[--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
+   print_help_line("[--verify-flat-elf]\n");
+   print_help_line("[--check-entry-point [<expected>]]\n");
+   print_help_line("[--set-sym-strval <sym> <string value>]\n");
+   return 0;
+}
+
+int
+main(int argc, char **argv)
+{
+   struct elf_file_info nfo = {0};
    struct stat statbuf;
    size_t page_size;
-
-   if (argc < 3) {
-      show_help();
-   }
-
-   nfo.path = argv[1];
-
-   const char *opt = argv[2];
-   const char *opt_arg = NULL;
+   const char *opt = NULL;
+   const char *opt_arg1 = NULL;
    const char *opt_arg2 = NULL;
+   struct elfhack_cmd *cmd = NULL;
+   int rc;
 
-   if (argc > 3) {
-      opt_arg = argv[3];
+   if (argc > 2) {
 
-      if (argc > 4)
-         opt_arg2 = argv[4];
+      nfo.path = argv[1];
+      opt = argv[2];
+
+      if (argc > 3) {
+
+         opt_arg1 = argv[3];
+
+         if (argc > 4)
+            opt_arg2 = argv[4];
+      }
+
+   } else {
+
+      show_help(NULL, NULL, NULL);
+      return 1;
    }
+
 
    nfo.fd = open(nfo.path, O_RDWR);
 
@@ -571,49 +690,17 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   if (!strcmp(opt, "--dump")) {
-
-      section_dump(&nfo, opt_arg);
-
-   } else if (!strcmp(opt, "--move-metadata")) {
-
-      move_metadata(&nfo);
-
-   } else if (!strcmp(opt, "--copy")) {
-
-      copy_section(&nfo, opt_arg, opt_arg2);
-
-   } else if (!strcmp(opt, "--rename")) {
-
-      rename_section(&nfo, opt_arg, opt_arg2);
-
-   } else if (!strcmp(opt, "--link")) {
-
-      link_sections(&nfo, opt_arg, opt_arg2);
-
-   } else if (!strcmp(opt, "--drop-last-section")) {
-
-      drop_last_section(&nfo);
-
-   } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
-
-      set_phdr_rwx_flags(&nfo, opt_arg, opt_arg2);
-
-   } else if (!strcmp(opt, "--verify-flat-elf")) {
-
-      verify_flat_elf_file(&nfo);
-
-   } else if (!strcmp(opt, "--check-entry-point")) {
-
-      check_entry_point(&nfo, opt_arg);
-
-   } else if (!strcmp(opt, "--set-sym-strval")) {
-
-      set_sym_strval(&nfo, opt_arg, opt_arg2);
-
-   } else {
-      show_help();
+   for (int i = 0; i < ARRAY_SIZE(cmds_list); i++) {
+      if (!strcmp(opt, cmds_list[i].opt)) {
+         cmd = &cmds_list[i];
+         break;
+      }
    }
+
+   if (!cmd)
+      cmd = &cmds_list[0];    /* help */
+
+   rc = cmd->func(&nfo, opt_arg1, opt_arg2);
 
    /*
     * Do munmap() only if vaddr != NULL.
@@ -626,5 +713,5 @@ int main(int argc, char **argv)
    }
 
    close(nfo.fd);
-   return 0;
+   return rc;
 }
