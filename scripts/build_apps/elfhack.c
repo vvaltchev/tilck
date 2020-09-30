@@ -506,15 +506,15 @@ check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
 }
 
 int
-check_mem_size(struct elf_file_info *nfo, const char *exp, const char *u1)
+check_mem_size(struct elf_file_info *nfo, const char *exp, const char *kb)
 {
    size_t sz = elf_calc_mem_size(nfo->vaddr);
    size_t exp_val;
    char *endptr;
    int base = 10;
 
-   if (!exp) {
-      printf("%zu\n", sz);
+   if (!exp || !strcmp(exp, "kb")) {
+      printf("%zu\n", exp ? sz / KB : sz);
       return 0;
    }
 
@@ -528,6 +528,9 @@ check_mem_size(struct elf_file_info *nfo, const char *exp, const char *u1)
       fprintf(stderr, "Invalid value '%s' for expected_max.\n", exp);
       return 1;
    }
+
+   if (kb && !strcmp(kb, "kb"))
+      exp_val *= KB;
 
    if (sz > exp_val) {
 
@@ -663,8 +666,8 @@ static struct elfhack_cmd cmds_list[] =
 
    {
       .opt = "--check-mem-size",
-      .help = "[expected_max]",
-      .nargs = 0, /* note: the `expected_max` param is optional */
+      .help = "[expected_max] [kb]",
+      .nargs = 0, /* note: both the params are optional */
       .func = &check_mem_size,
    },
 
