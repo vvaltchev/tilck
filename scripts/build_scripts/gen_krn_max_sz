@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# $1 -> elfhack binary
+# $2 -> kernel elf file
+# $3 -> krn_max_sz file
+
+set -e
+
+# Get kernel's mem size
+sz=$($1 $2 --check-mem-size kb)
+
+# Round up the size at values divisible by 64
+sz=$(( (($sz + 64 - 1) / 64) * 64 ))
+
+# Prepare the define string
+str="#define KERNEL_MAX_SIZE ($sz * KB)"
+
+if [ -f "$3" ]; then
+   # The generated file already exists, read its value
+   curr_str=$(cat $3)
+fi
+
+if [[ "$str" != "$curr_str" ]]; then
+   # The file currently contains a different value. We need to update it.
+   echo "$str" > $3
+fi
+

@@ -542,6 +542,7 @@ set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
 set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
+set(KRN_MAX_SZ             ${CMAKE_BINARY_DIR}/tilck_gen_headers/krn_max_sz.h)
 
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
 
@@ -588,6 +589,27 @@ set(KERNEL_STACK_PAGES          1)  # 1 or 2.
 set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
 set(KERNEL_PADDR       0x00100000)  # Better not touch!
 set(LINEAR_MAPPING_MB         896)  # Better not touch!
+
+set(FATHACK ${BUILD_APPS}/fathack)
+set(ELFHACK ${BUILD_APPS}/elfhack)
+
+add_custom_command(
+   OUTPUT
+      ${KRN_MAX_SZ}
+   COMMAND
+      ${BUILD_SCRIPTS}/gen_krn_max_sz ${ELFHACK} ${KERNEL_FILE} ${KRN_MAX_SZ}
+   DEPENDS
+      kernel
+      ${KERNEL_FILE}
+)
+
+add_custom_target(
+
+    kernel_max_sz ALL
+
+    DEPENDS
+        ${KRN_MAX_SZ}
+)
 
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)
@@ -670,7 +692,6 @@ endif()
 
 # [begin] Set some convenience variables
    set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
-   set(FATHACK ${BUILD_APPS}/fathack)
    set(PARTED parted ${IMG_FILE} -s -a minimal)
    set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
 
@@ -749,7 +770,6 @@ endif()
    unset(MBRHACK_BPB)
    unset(CREATE_EMPTY_IMG)
    unset(PARTED)
-   unset(FATHACK)
    unset(MBRHACK)
 # [end]
 

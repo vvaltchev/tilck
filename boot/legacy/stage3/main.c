@@ -2,6 +2,7 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_modules.h>
+#include <tilck_gen_headers/krn_max_sz.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/fat32_base.h>
@@ -367,7 +368,7 @@ void bootloader_main(void)
    load_fat_ramdisk(LOADING_INITRD_STR,
                     &mi,
                     INITRD_SECTOR,
-                    KERNEL_MAX_END_PADDR,
+                    KERNEL_PADDR + KERNEL_MAX_SIZE,
                     &rd_paddr,
                     &rd_size,
                     true);       /* alloc_extra_page */

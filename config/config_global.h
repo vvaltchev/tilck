@@ -35,7 +35,7 @@
 #cmakedefine01 FAT_TEST_DIR
 #cmakedefine01 DEBUG_CHECKS
 #cmakedefine01 TINY_KERNEL
-#cmakedefine01 KERNEL_GCOV       /* Used for KERNEL_MAX_SIZE */
+#cmakedefine01 KERNEL_GCOV
 
 /* ----------- Convenience defines ------------ */
 

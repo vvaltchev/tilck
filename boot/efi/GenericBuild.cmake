@@ -76,6 +76,8 @@ target_link_libraries(
    ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a
 )
 
+add_dependencies(efi_app_${EFI_ARCH} kernel_max_sz)
+
 set(
    OBJCOPY_OPTS
 
@@ -91,7 +93,8 @@ add_custom_command(
    COMMAND
       objcopy ${OBJCOPY_OPTS} libefi_app_${EFI_ARCH}.so ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
-      ${SWITCHMODE_BIN} efi_app_${EFI_ARCH}
+      ${SWITCHMODE_BIN}
+      efi_app_${EFI_ARCH}
    COMMENT
       "Creating the final EFI file for ${EFI_ARCH}"
 )
