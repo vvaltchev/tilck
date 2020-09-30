@@ -23,6 +23,7 @@ struct elf_file_info {
 
    const char *path;
    void *vaddr;
+   int fd;
 };
 
 Elf_Shdr *
@@ -228,7 +229,7 @@ move_metadata(struct elf_file_info *nfo)
 }
 
 void
-drop_last_section(struct elf_file_info *nfo, int fd)
+drop_last_section(struct elf_file_info *nfo)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -312,10 +313,10 @@ drop_last_section(struct elf_file_info *nfo, int fd)
    nfo->vaddr = NULL;
 
    /* Physically remove the last section from the file, by truncating it */
-   if (ftruncate(fd, last_offset) < 0) {
+   if (ftruncate(nfo->fd, last_offset) < 0) {
 
       fprintf(stderr, "ftruncate(%i, %li) failed with '%s'\n",
-              fd, last_offset, strerror(errno));
+              nfo->fd, last_offset, strerror(errno));
       exit(1);
    }
 }
@@ -514,7 +515,6 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 int main(int argc, char **argv)
 {
    struct elf_file_info nfo;
-   int fd;
 
    if (argc < 3) {
       show_help();
@@ -533,9 +533,9 @@ int main(int argc, char **argv)
          opt_arg2 = argv[4];
    }
 
-   fd = open(nfo.path, O_RDWR);
+   nfo.fd = open(nfo.path, O_RDWR);
 
-   if (fd < 0) {
+   if (nfo.fd < 0) {
       perror(NULL);
       return 1;
    }
@@ -546,7 +546,7 @@ int main(int argc, char **argv)
                     MMAP_SIZE,              /* length */
                     PROT_READ | PROT_WRITE, /* prot */
                     MAP_SHARED,             /* flags */
-                    fd,                     /* fd */
+                    nfo.fd,                 /* fd */
                     0);                     /* offset */
 
    if (errno) {
@@ -576,7 +576,7 @@ int main(int argc, char **argv)
 
    } else if (!strcmp(opt, "--drop-last-section")) {
 
-      drop_last_section(&nfo, fd);
+      drop_last_section(&nfo);
 
    } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
 
@@ -608,6 +608,6 @@ int main(int argc, char **argv)
       perror("munmap() failed");
    }
 
-   close(fd);
+   close(nfo.fd);
    return 0;
 }
