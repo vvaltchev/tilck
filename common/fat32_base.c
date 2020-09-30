@@ -699,20 +699,19 @@ fat_read_whole_file(struct fat_hdr *hdr,
                     char *dest_buf,
                     size_t dest_buf_size)
 {
-   ASSERT(entry->DIR_FileSize <= dest_buf_size);
-
    const enum fat_type ft = fat_get_type(hdr);
    const u32 cs = fat_get_cluster_size(hdr);
+   const size_t fsize = entry->DIR_FileSize;
 
-   size_t written = 0;
-   size_t fsize = entry->DIR_FileSize;
    u32 cluster = fat_get_first_cluster(entry);
+   size_t written = 0;
 
    do {
 
       char *data = fat_get_pointer_to_cluster_data(hdr, cluster);
-
-      size_t rem = fsize - written;
+      const size_t file_rem = fsize - written;
+      const size_t dest_buf_rem = dest_buf_size - written;
+      const size_t rem = MIN(file_rem, dest_buf_rem);
 
       if (rem <= cs) {
          // read what is needed
