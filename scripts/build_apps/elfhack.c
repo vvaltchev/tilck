@@ -19,11 +19,14 @@
 
 #define MMAP_SIZE (8 * 1024 * 1024)
 
-/* Global variables */
-const char *elf_file_path;
-void *elf_file_vaddr;
+struct elf_file_info {
 
-Elf_Shdr *get_section(Elf_Ehdr *h, const char *section_name)
+   const char *path;
+   void *vaddr;
+};
+
+Elf_Shdr *
+get_section(Elf_Ehdr *h, const char *section_name)
 {
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
    Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
@@ -42,10 +45,10 @@ Elf_Shdr *get_section(Elf_Ehdr *h, const char *section_name)
    exit(1);
 }
 
-Elf_Phdr *get_phdr_for_section(Elf_Ehdr *h, Elf_Shdr *section)
+Elf_Phdr *
+get_phdr_for_section(Elf_Ehdr *h, Elf_Shdr *section)
 {
    Elf_Phdr *phdrs = (Elf_Phdr *)((char*)h + h->e_phoff);
-
    Elf_Addr sh_begin = section->sh_addr;
    Elf_Addr sh_end = section->sh_addr + section->sh_size;
 
@@ -61,7 +64,8 @@ Elf_Phdr *get_phdr_for_section(Elf_Ehdr *h, Elf_Shdr *section)
    return NULL;
 }
 
-Elf_Sym *get_symbol(Elf_Ehdr *h, const char *sym_name)
+Elf_Sym *
+get_symbol(Elf_Ehdr *h, const char *sym_name)
 {
    Elf_Shdr *symtab;
    Elf_Shdr *strtab;
@@ -89,18 +93,20 @@ Elf_Sym *get_symbol(Elf_Ehdr *h, const char *sym_name)
    return NULL;
 }
 
-void section_dump(const char *section_name)
+void
+section_dump(struct elf_file_info *nfo, const char *section_name)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
-   Elf_Shdr *s = get_section(elf_file_vaddr, section_name);
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Shdr *s = get_section(nfo->vaddr, section_name);
    fwrite((char*)h + s->sh_offset, 1, s->sh_size, stdout);
 }
 
-void copy_section(const char *src, const char *dst)
+void
+copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
-   Elf_Shdr *s_src = get_section(elf_file_vaddr, src);
-   Elf_Shdr *s_dst = get_section(elf_file_vaddr, dst);
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Shdr *s_src = get_section(nfo->vaddr, src);
+   Elf_Shdr *s_dst = get_section(nfo->vaddr, dst);
 
    if (!dst) {
       fprintf(stderr, "Missing <dst section> argument\n");
@@ -128,7 +134,8 @@ void copy_section(const char *src, const char *dst)
 #define printerr(...) fprintf(stderr, __VA_ARGS__)
 #define print_help_line(...) printerr("    elfhack <file> " __VA_ARGS__)
 
-void show_help(char **argv)
+void
+show_help(void)
 {
    printerr("Usage:\n");
    print_help_line("[--dump <section name>]\n");
@@ -144,9 +151,10 @@ void show_help(char **argv)
    exit(1);
 }
 
-void rename_section(const char *sec, const char *new_name)
+void
+rename_section(struct elf_file_info *nfo, const char *sec, const char *new_name)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
    Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
    Elf_Shdr *shstrtab = sections + h->e_shstrndx;
@@ -161,13 +169,14 @@ void rename_section(const char *sec, const char *new_name)
       exit(1);
    }
 
-   Elf_Shdr *s = get_section(elf_file_vaddr, sec);
+   Elf_Shdr *s = get_section(nfo->vaddr, sec);
    strcpy(hc + shstrtab->sh_offset + s->sh_name, new_name);
 }
 
-void link_sections(const char *sec, const char *linked)
+void
+link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
    Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
 
@@ -176,16 +185,17 @@ void link_sections(const char *sec, const char *linked)
       exit(1);
    }
 
-   Elf_Shdr *a = get_section(elf_file_vaddr, sec);
-   Elf_Shdr *b = get_section(elf_file_vaddr, linked);
+   Elf_Shdr *a = get_section(nfo->vaddr, sec);
+   Elf_Shdr *b = get_section(nfo->vaddr, linked);
 
    unsigned bidx = (b - sections);
    a->sh_link = bidx;
 }
 
-void move_metadata(void)
+void
+move_metadata(struct elf_file_info *nfo)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
 
    size_t off = h->e_ehsize;
@@ -217,9 +227,10 @@ void move_metadata(void)
    }
 }
 
-void drop_last_section(int fd)
+void
+drop_last_section(struct elf_file_info *nfo, int fd)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
    Elf_Shdr *sections = (Elf_Shdr *)(hc + h->e_shoff);
    Elf_Shdr *shstrtab = sections + h->e_shstrndx;
@@ -293,12 +304,12 @@ void drop_last_section(int fd)
     * feature. Therefore, here we first unmap the memory-mapped ELF file and
     * then we truncate it.
     */
-   if (munmap(elf_file_vaddr, MMAP_SIZE) < 0) {
+   if (munmap(nfo->vaddr, MMAP_SIZE) < 0) {
       perror("munmap() failed");
       exit(1);
    }
 
-   elf_file_vaddr = NULL;
+   nfo->vaddr = NULL;
 
    /* Physically remove the last section from the file, by truncating it */
    if (ftruncate(fd, last_offset) < 0) {
@@ -309,10 +320,12 @@ void drop_last_section(int fd)
    }
 }
 
-void set_phdr_rwx_flags(const char *phdr_index,
-                        const char *flags)
+void
+set_phdr_rwx_flags(struct elf_file_info *nfo,
+                   const char *phdr_index,
+                   const char *flags)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    errno = 0;
 
    char *endptr = NULL;
@@ -365,9 +378,10 @@ void set_phdr_rwx_flags(const char *phdr_index,
    phdr->p_flags |= f;
 }
 
-void verify_flat_elf_file(void)
+void
+verify_flat_elf_file(struct elf_file_info *nfo)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *)((char*)h + h->e_shoff);
    Elf_Shdr *shstrtab = sections + h->e_shstrndx;
    Elf_Addr lowest_addr = (Elf_Addr) -1;
@@ -422,15 +436,16 @@ void verify_flat_elf_file(void)
    }
 
    if (failed) {
-      fprintf(stderr, "ERROR: flat ELF check FAILED for file: %s\n", elf_file_path);
+      fprintf(stderr, "ERROR: flat ELF check FAILED for file: %s\n", nfo->path);
       exit(1);
    }
 }
 
-void check_entry_point(const char *expected)
+void
+check_entry_point(struct elf_file_info *nfo, const char *expected)
 {
    char buf[64];
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
 
    if (!expected) {
       printf("%p\n", (void *)(size_t)h->e_entry);
@@ -443,16 +458,16 @@ void check_entry_point(const char *expected)
 
       fprintf(stderr,
               "ERROR: entry point (%s) != expected (%s) for file %s\n",
-              buf, expected, elf_file_path);
+              buf, expected, nfo->path);
 
       exit(1);
    }
 }
 
 void
-set_sym_strval(const char *sym_name, const char *val)
+set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)elf_file_vaddr;
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *section;
    Elf_Sym *sym;
    size_t len;
@@ -498,13 +513,14 @@ set_sym_strval(const char *sym_name, const char *val)
 
 int main(int argc, char **argv)
 {
+   struct elf_file_info nfo;
    int fd;
 
    if (argc < 3) {
-      show_help(argv);
+      show_help();
    }
 
-   elf_file_path = argv[1];
+   nfo.path = argv[1];
 
    const char *opt = argv[2];
    const char *opt_arg = NULL;
@@ -517,7 +533,7 @@ int main(int argc, char **argv)
          opt_arg2 = argv[4];
    }
 
-   fd = open(elf_file_path, O_RDWR);
+   fd = open(nfo.path, O_RDWR);
 
    if (fd < 0) {
       perror(NULL);
@@ -526,12 +542,12 @@ int main(int argc, char **argv)
 
    errno = 0;
 
-   elf_file_vaddr = mmap(NULL,                   /* addr */
-                         MMAP_SIZE,              /* length */
-                         PROT_READ | PROT_WRITE, /* prot */
-                         MAP_SHARED,             /* flags */
-                         fd,                     /* fd */
-                         0);                     /* offset */
+   nfo.vaddr = mmap(NULL,                   /* addr */
+                    MMAP_SIZE,              /* length */
+                    PROT_READ | PROT_WRITE, /* prot */
+                    MAP_SHARED,             /* flags */
+                    fd,                     /* fd */
+                    0);                     /* offset */
 
    if (errno) {
       perror(NULL);
@@ -539,27 +555,47 @@ int main(int argc, char **argv)
    }
 
    if (!strcmp(opt, "--dump")) {
-      section_dump(opt_arg);
+
+      section_dump(&nfo, opt_arg);
+
    } else if (!strcmp(opt, "--move-metadata")) {
-      move_metadata();
+
+      move_metadata(&nfo);
+
    } else if (!strcmp(opt, "--copy")) {
-      copy_section(opt_arg, opt_arg2);
+
+      copy_section(&nfo, opt_arg, opt_arg2);
+
    } else if (!strcmp(opt, "--rename")) {
-      rename_section(opt_arg, opt_arg2);
+
+      rename_section(&nfo, opt_arg, opt_arg2);
+
    } else if (!strcmp(opt, "--link")) {
-      link_sections(opt_arg, opt_arg2);
+
+      link_sections(&nfo, opt_arg, opt_arg2);
+
    } else if (!strcmp(opt, "--drop-last-section")) {
-      drop_last_section(fd);
+
+      drop_last_section(&nfo, fd);
+
    } else if (!strcmp(opt, "--set-phdr-rwx-flags")) {
-      set_phdr_rwx_flags(opt_arg, opt_arg2);
+
+      set_phdr_rwx_flags(&nfo, opt_arg, opt_arg2);
+
    } else if (!strcmp(opt, "--verify-flat-elf")) {
-      verify_flat_elf_file();
+
+      verify_flat_elf_file(&nfo);
+
    } else if (!strcmp(opt, "--check-entry-point")) {
-      check_entry_point(opt_arg);
+
+      check_entry_point(&nfo, opt_arg);
+
    } else if (!strcmp(opt, "--set-sym-strval")) {
-      set_sym_strval(opt_arg, opt_arg2);
+
+      set_sym_strval(&nfo, opt_arg, opt_arg2);
+
    } else {
-      show_help(argv);
+      show_help();
    }
 
    /*
@@ -568,7 +604,7 @@ int main(int argc, char **argv)
     * have their reasons for calling munmap() earlier. Do avoid double-calling
     * it and getting an error, such functions will just set vaddr to NULL.
     */
-   if (elf_file_vaddr && munmap(elf_file_vaddr, MMAP_SIZE) < 0) {
+   if (nfo.vaddr && munmap(nfo.vaddr, MMAP_SIZE) < 0) {
       perror("munmap() failed");
    }
 
