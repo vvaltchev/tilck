@@ -6,6 +6,7 @@
  */
 
 #pragma once
+#include <tilck_gen_headers/config_global.h>
 #include <tilck/common/page_size.h>
 
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
@@ -29,7 +30,6 @@
 #cmakedefine01 BOOTLOADER_POISON_MEMORY
 #cmakedefine01 BOOT_ASK_VIDEO_MODE
 
-
 /*
  * --------------------------------------------------------------------------
  *                  Hard-coded global & derived constants
@@ -45,5 +45,17 @@
  * variable.
  */
 
+
+#if !KERNEL_GCOV
+
+   #if TINY_KERNEL
+      #define KERNEL_MAX_SIZE            ( 512 * KB)
+   #else
+      #define KERNEL_MAX_SIZE            (1024 * KB)
+   #endif
+
+#else
+   #define KERNEL_MAX_SIZE            (2048 * KB)
+#endif
 
 #define KERNEL_MAX_END_PADDR     (KERNEL_PADDR + KERNEL_MAX_SIZE)

@@ -59,18 +59,6 @@
 
 /* ----------- Derived constants ----------- */
 
-#if !KERNEL_GCOV
-
-   #if TINY_KERNEL
-      #define KERNEL_MAX_SIZE            ( 512 * KB)
-   #else
-      #define KERNEL_MAX_SIZE            (1024 * KB)
-   #endif
-
-#else
-   #define KERNEL_MAX_SIZE            (2048 * KB)
-#endif
-
 #if defined(TESTING) || defined(KERNEL_TEST)
 
    extern void *kernel_va;
