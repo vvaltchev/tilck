@@ -452,21 +452,29 @@ verify_flat_elf_file(struct elf_file_info *nfo, const char *u1, const char *u2)
 int
 check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
 {
-   char buf[64];
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   uintptr_t exp_val;
+   char *endptr;
 
    if (!exp) {
-      printf("%p\n", (void *)(size_t)h->e_entry);
+      printf("%p\n", TO_PTR(h->e_entry));
       return 0;
    }
 
-   sprintf(buf, "%p", (void *)(size_t)h->e_entry);
+   errno = 0;
+   exp_val = strtoul(exp, &endptr, 16);
 
-   if (strcmp(buf, exp)) {
+   if (errno || endptr == exp) {
+      fprintf(stderr, "Invalid value '%s' for expected entry point.\n", exp);
+      fprintf(stderr, "It must be a hex string like 0xc0101000.\n");
+      return 1;
+   }
+
+   if (h->e_entry != exp_val) {
 
       fprintf(stderr,
-              "ERROR: entry point (%s) != expected (%s) for file %s\n",
-              buf, exp, nfo->path);
+              "ERROR: entry point (%#lx) != expected (%#lx) for file %s\n",
+              (uintptr_t)h->e_entry, exp_val, nfo->path);
 
       return 1;
    }
