@@ -693,7 +693,7 @@ size_t fat_get_file_size(struct fat_entry *entry)
    return entry->DIR_FileSize;
 }
 
-void
+size_t
 fat_read_whole_file(struct fat_hdr *hdr,
                     struct fat_entry *entry,
                     char *dest_buf,
@@ -704,34 +704,35 @@ fat_read_whole_file(struct fat_hdr *hdr,
    const size_t fsize = entry->DIR_FileSize;
 
    u32 cluster = fat_get_first_cluster(entry);
-   size_t written = 0;
+   size_t tot_read = 0;
 
    do {
 
       char *data = fat_get_pointer_to_cluster_data(hdr, cluster);
-      const size_t file_rem = fsize - written;
-      const size_t dest_buf_rem = dest_buf_size - written;
+      const size_t file_rem = fsize - tot_read;
+      const size_t dest_buf_rem = dest_buf_size - tot_read;
       const size_t rem = MIN(file_rem, dest_buf_rem);
 
       if (rem <= cs) {
          // read what is needed
-         memcpy(dest_buf + written, data, rem);
-         /* written += rem; */ // Avoid SA warning "dead increment"
+         memcpy(dest_buf + tot_read, data, rem);
+         tot_read += rem;
          break;
       }
 
       // read the whole cluster
-      memcpy(dest_buf + written, data, cs);
-      written += cs;
+      memcpy(dest_buf + tot_read, data, cs);
+      tot_read += cs;
 
-      ASSERT((fsize - written) > 0);
+      ASSERT((fsize - tot_read) > 0);
 
       // find the next cluster
       u32 fatval = fat_read_fat_entry(hdr, ft, 0, cluster);
 
       if (fat_is_end_of_clusterchain(ft, fatval)) {
-         // rem is still > 0, this should NOT be the last cluster
-         NOT_REACHED();
+         // rem is still > 0, this should NOT be the last cluster.
+         // Still, everything could happen. Just stop.
+         break;
       }
 
       // we do not expect BAD CLUSTERS
@@ -739,7 +740,9 @@ fat_read_whole_file(struct fat_hdr *hdr,
 
       cluster = fatval; // go reading the new cluster in the chain.
 
-   } while (written < fsize);
+   } while (tot_read < fsize);
+
+   return tot_read;
 }
 
 struct compact_ctx {

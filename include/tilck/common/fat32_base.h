@@ -283,7 +283,7 @@ void fat_compact_clusters(struct fat_hdr *hdr);
 bool fat_is_first_data_sector_aligned(struct fat_hdr *hdr, u32 page_size);
 void fat_align_first_data_sector(struct fat_hdr *hdr, u32 page_size);
 
-void
+size_t
 fat_read_whole_file(struct fat_hdr *hdr,
                     struct fat_entry *entry,
                     char *dest_buf,
