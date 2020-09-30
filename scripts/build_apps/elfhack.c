@@ -107,6 +107,29 @@ get_symbol(Elf_Ehdr *h, const char *sym_name)
    return NULL;
 }
 
+size_t
+elf_calc_mem_size(Elf_Ehdr *h)
+{
+   Elf_Phdr *phdrs = (Elf_Phdr *)((char*)h + h->e_phoff);
+   Elf_Addr min_pbegin = 0;
+   Elf_Addr max_pend = 0;
+
+   for (uint32_t i = 0; i < h->e_phnum; i++) {
+
+      Elf_Phdr *p = phdrs + i;
+      Elf_Addr pend = pow2_round_up_at(p->p_vaddr + p->p_memsz, p->p_align);
+
+      if (i == 0 || p->p_vaddr < min_pbegin)
+         min_pbegin = p->p_vaddr;
+
+      if (pend > max_pend)
+         max_pend = pend;
+   }
+
+   return max_pend - min_pbegin;
+}
+
+
 /* --- Actual commands --- */
 
 int
@@ -483,6 +506,42 @@ check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
 }
 
 int
+check_mem_size(struct elf_file_info *nfo, const char *exp, const char *u1)
+{
+   size_t sz = elf_calc_mem_size(nfo->vaddr);
+   size_t exp_val;
+   char *endptr;
+   int base = 10;
+
+   if (!exp) {
+      printf("%zu\n", sz);
+      return 0;
+   }
+
+   if (exp[0] == '0' && exp[1] == 'x')
+      base = 16;
+
+   errno = 0;
+   exp_val = strtoul(exp, &endptr, base);
+
+   if (errno || endptr == exp) {
+      fprintf(stderr, "Invalid value '%s' for expected_max.\n", exp);
+      return 1;
+   }
+
+   if (sz > exp_val) {
+
+      fprintf(stderr,
+              "ELF's max in-memory size (%zu) > expected_max (%zu).\n",
+              sz, exp_val);
+
+      return 1;
+   }
+
+   return 0;
+}
+
+int
 set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
@@ -600,6 +659,13 @@ static struct elfhack_cmd cmds_list[] =
       .help = "[<expected>]",
       .nargs = 0, /* note: the `expected` param is optional */
       .func = &check_entry_point,
+   },
+
+   {
+      .opt = "--check-mem-size",
+      .help = "[expected_max]",
+      .nargs = 0, /* note: the `expected_max` param is optional */
+      .func = &check_mem_size,
    },
 
    {
