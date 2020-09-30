@@ -609,16 +609,12 @@ int
 show_help(struct elf_file_info *nfo, const char *u1, const char *u2)
 {
    printerr("Usage:\n");
-   print_help_line("[--dump <section name>]\n");
-   print_help_line("[--move-metadata]\n");
-   print_help_line("[--copy <src section> <dest section>]\n");
-   print_help_line("[--rename <section> <new_name>]\n");
-   print_help_line("[--link <section> <linked_section>]\n");
-   print_help_line("[--drop-last-section]\n");
-   print_help_line("[--set-phdr-rwx-flags <phdr index> <rwx flags>]\n");
-   print_help_line("[--verify-flat-elf]\n");
-   print_help_line("[--check-entry-point [<expected>]]\n");
-   print_help_line("[--set-sym-strval <sym> <string value>]\n");
+
+   for (int i = 0; i < ARRAY_SIZE(cmds_list); i++) {
+      struct elfhack_cmd *c = &cmds_list[i];
+      fprintf(stderr, "    elfhack <file> %s %s\n", c->opt, c->help);
+   }
+
    return 0;
 }
 
@@ -652,7 +648,6 @@ main(int argc, char **argv)
       show_help(NULL, NULL, NULL);
       return 1;
    }
-
 
    nfo.fd = open(nfo.path, O_RDWR);
 
@@ -695,6 +690,11 @@ main(int argc, char **argv)
          cmd = &cmds_list[i];
          break;
       }
+   }
+
+   if (cmd && argc-3 < cmd->nargs) {
+      fprintf(stderr, "ERROR: Invalid number of arguments for %s.\n\n", opt);
+      cmd = NULL;
    }
 
    if (!cmd)
