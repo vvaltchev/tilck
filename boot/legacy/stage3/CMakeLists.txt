@@ -51,7 +51,7 @@ add_executable(
    ${STAGE3_C_SOURCES}
 )
 
-add_dependencies(elf_stage3_unstripped kernel_max_sz)
+add_dependencies(elf_stage3_unstripped kernel)
 
 set_target_properties(
 

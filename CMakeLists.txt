@@ -593,24 +593,6 @@ set(LINEAR_MAPPING_MB         896)  # Better not touch!
 set(FATHACK ${BUILD_APPS}/fathack)
 set(ELFHACK ${BUILD_APPS}/elfhack)
 
-add_custom_command(
-   OUTPUT
-      ${KRN_MAX_SZ}
-   COMMAND
-      ${BUILD_SCRIPTS}/gen_krn_max_sz ${ELFHACK} ${KERNEL_FILE} ${KRN_MAX_SZ}
-   DEPENDS
-      kernel
-      ${KERNEL_FILE}
-)
-
-add_custom_target(
-
-    kernel_max_sz ALL
-
-    DEPENDS
-        ${KRN_MAX_SZ}
-)
-
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)
 

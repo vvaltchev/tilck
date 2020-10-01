@@ -76,7 +76,7 @@ target_link_libraries(
    ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a
 )
 
-add_dependencies(efi_app_${EFI_ARCH} kernel_max_sz)
+add_dependencies(efi_app_${EFI_ARCH} kernel)
 
 set(
    OBJCOPY_OPTS

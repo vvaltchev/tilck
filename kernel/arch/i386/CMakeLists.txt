@@ -111,10 +111,14 @@ if (KERNEL_SYMBOLS)
          elfhack ${KERNEL_FILE} --drop-last-section
       COMMAND
          elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
+      COMMAND
+         ${BUILD_SCRIPTS}/gen_krn_max_sz ${ELFHACK} ${KERNEL_FILE} ${KRN_MAX_SZ}
       DEPENDS
          tilck_unstripped
          elfhack
          ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack
+      BYPRODUCTS
+         ${KRN_MAX_SZ}
       COMMENT
          "Preparing kernel's stripped binary"
    )
@@ -130,8 +134,12 @@ else()
          ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
          elfhack ${KERNEL_FILE} --move-metadata
+      COMMAND
+         ${BUILD_SCRIPTS}/gen_krn_max_sz ${ELFHACK} ${KERNEL_FILE} ${KRN_MAX_SZ}
       DEPENDS
          elfhack tilck_unstripped
+      BYPRODUCTS
+         ${KRN_MAX_SZ}
       COMMENT
          "Preparing kernel's stripped binary"
    )
