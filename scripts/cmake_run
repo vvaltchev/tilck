@@ -37,7 +37,7 @@ elif [[ "$1" == "--intr" ]]; then
    export KERNEL_GCOV=1
    export CMAKE_ARGS="-DFB_CONSOLE_BANNER=0 -DFB_CONSOLE_CURSOR_BLINK=0"
    export CMAKE_ARGS="$CMAKE_ARGS -DFB_CONSOLE_USE_ALT_FONTS=0"
-   export CMAKE_ARGS="$CMAKE_ARGS -DEXTRA_VIM=1"
+   export CMAKE_ARGS="$CMAKE_ARGS -DEXTRA_VIM=1 -DKRN_NO_SYS_WARN=0"
 
    echo
    echo -e "${YELLOW}Interactive tests mode${RATTRS}"

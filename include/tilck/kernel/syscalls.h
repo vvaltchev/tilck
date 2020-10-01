@@ -18,8 +18,10 @@
    #define CREATE_STUB_SYSCALL_IMPL(name)                  \
       int name()                                           \
       {                                                    \
-         printk("[TID: %d] NOT IMPLEMENTED: %s()\n",       \
-                get_curr_tid(), #name);                    \
+         if (KRN_NO_SYS_WARN) {                            \
+            printk("[TID: %d] NOT IMPLEMENTED: %s()\n",    \
+                   get_curr_tid(), #name);                 \
+         }                                                 \
          return -ENOSYS;                                   \
       }
 

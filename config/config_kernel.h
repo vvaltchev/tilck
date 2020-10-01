@@ -9,6 +9,7 @@
 #include <tilck_gen_headers/config_global.h>
 
 /* --------- Boolean config variables --------- */
+#cmakedefine01 KRN_NO_SYS_WARN
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 #cmakedefine01 TINY_KERNEL
 #cmakedefine01 KERNEL_GCOV

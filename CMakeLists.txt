@@ -226,6 +226,9 @@ set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
 set(BOOT_ASK_VIDEO_MODE ON CACHE BOOL
     "Make bootloaders to ask user choose a video mode before booting")
 
+set(KRN_NO_SYS_WARN ON CACHE BOOL
+    "Show a warning when a not implemented syscall is called")
+
 # Kernel options (disabled by default)
 
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
@@ -421,6 +424,7 @@ list(
    BOOTLOADER_LEGACY
    BOOTLOADER_EFI
    BOOT_ASK_VIDEO_MODE
+   KRN_NO_SYS_WARN
 
    # Boolean options DISABLED by default
    KERNEL_BIG_IO_BUF
