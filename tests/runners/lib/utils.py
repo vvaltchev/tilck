@@ -33,7 +33,8 @@ class Fail(Enum):
    no_hello_message        = 10
    user_interruption       = 11
    qemu_msg_parsing_fail   = 12
-   other                   = 13
+   qemu_died_unexpectedly  = 13
+   other                   = 14
 
 # Globals
 __g_fail_reason = Fail.success

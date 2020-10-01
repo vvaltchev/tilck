@@ -14,5 +14,6 @@ do_interactive_actions(
       r"{esc}:open ruby.rb{ret}",
       r"{esc}:open shell.sh{ret}",
       r"{esc}:q{ret}cd /{ret}",
-   ]
+   ],
+   false_positive_handler_vim
 )

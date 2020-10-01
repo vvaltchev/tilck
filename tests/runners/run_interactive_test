@@ -60,7 +60,9 @@ g_tests = {}
 g_before_run_func = lambda: None
 g_filter_regex = None
 g_keyboard_interrupt = False
+g_qemu_died = False
 g_matching_list = None
+g_passed_list = []
 
 def set_once_qemu_process(p):
    global g_process
@@ -164,6 +166,11 @@ def echo_qemu_monitor(read_attempts = 3):
 
 def send_to_qemu_monitor(cmd, delay = 0.2):
 
+   global g_qemu_died
+
+   if g_qemu_died:
+      return
+
    try:
 
       g_process.stdin.raw.write("{}\n".format(cmd).encode('utf-8'))
@@ -171,6 +178,7 @@ def send_to_qemu_monitor(cmd, delay = 0.2):
    except BrokenPipeError:
 
       msg_print("BrokenPipeError in send_to_qemu_monitor('{}')".format(cmd))
+      g_qemu_died = True
       raise
 
    time.sleep(delay)
@@ -324,7 +332,61 @@ def make_and_save_text_screenshot_base(test_name, n):
    with gzip.open(fname, "w") as fh:
       fh.write(t.encode('utf-8'))
 
-def check_screenshot_base(test_name, n):
+def get_first_different_line(screen_a, screen_b):
+
+   a = screen_a.splitlines()
+   b = screen_b.splitlines()
+
+   if len(a) != len(b):
+      raise RuntimeError("The screens don't have the same number of rows")
+
+   for i in range(len(a)):
+      if a[i] != b[i]:
+         return (i, len(a), a[i], b[i])
+
+   return None
+
+def false_positive_handler_vim(t, exp_t):
+
+   # The vim test might fail because of localization. For example, the
+   # line before the last might begin with:
+   #
+   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292B
+   #
+   # OR
+   #
+   #     |"/usr/lib/vim/samples/numbers.txt" 100L, 292C
+   #
+   # The code below handles these subtle differences.
+   #
+   # FAQ
+   # --------
+   #
+   # Q: Why localization might be different? We're not running on Linux
+   #    but on Tilck, where we control everything.
+   #
+   # A: Well, yeah, but we also support different toolchains and versions of
+   #    libmusl. Also, different versions of vim might be used too. Instead of
+   #    creating an "expected" screen series for each test, for each build
+   #    configuration, just handle any eventual differences with code.
+
+   d = get_first_different_line(t, exp_t)
+   assert(d is not None)
+
+   dx, tot, row, exp_row = d
+
+   if tot > 2 and dx == tot-2:
+
+      # The line before the last one: now replace the 'B' with a 'C',
+      # like in the example above.
+      row2 = re.sub(r'(, [0-9]+)B', r'\1C', row)
+
+      if row2 == exp_row:
+         return True # Everything is fine.
+
+   return False
+
+def check_screenshot_base(test_name, n, false_positive_handler = None):
 
    fname = "{}-{}.gz".format(test_name, n)
    p = os.path.join(INTERACTIVE_EXP, fname)
@@ -337,23 +399,33 @@ def check_screenshot_base(test_name, n):
    if t.find("KERNEL PANIC") != -1:
       raise KernelPanicFailure(t)
 
-   if t != exp_t:
+   if t == exp_t:
+      return # Expectations match, everything is OK.
 
-      # Mmh.. this still could be a false positive: stable screenshots
-      # are not perfect. Let's try another screenshot before failing.
+   # Mmh.. this still could be a false positive: stable screenshots
+   # are not perfect. Let's try another screenshot before failing.
 
-      time.sleep(1)
-      t = screenshot_to_text(vm_take_stable_screenshot())
+   time.sleep(1)
+   t = screenshot_to_text(vm_take_stable_screenshot())
 
-      if t.find("KERNEL PANIC") != -1:
-         raise KernelPanicFailure(t)
+   if t.find("KERNEL PANIC") != -1:
+      raise KernelPanicFailure(t)
 
-      if t != exp_t:
-         # Ok, that's definitively a failure.
-         raise IntTestScreenshotNoMatchFailure(t, exp_t)
+   if t == exp_t:
+      return # Expectations match: the problem was non-stable screenshot.
+
+   # Ok, that's likely a failure, but it might be a special type of false
+   # positive, where there's a difference and it's still acceptable.
+
+   if false_positive_handler:
+
+      if false_positive_handler(t, exp_t):
+         return # The false positive handler told us that's fine.
+
+   raise IntTestScreenshotNoMatchFailure(t, exp_t)
 
 # NOTE: utility function used by the interactive tests
-def do_interactive_actions(test_name, inputs):
+def do_interactive_actions(test_name, inputs, false_positive_handler = None):
 
    counter = 0
 
@@ -364,7 +436,7 @@ def do_interactive_actions(test_name, inputs):
 
    def check_screenshot():
       nonlocal counter
-      check_screenshot_base(test_name, counter)
+      check_screenshot_base(test_name, counter, false_positive_handler)
       counter += 1
 
    action_func = save_screenshot if GEN_TEST_DATA else check_screenshot
@@ -455,6 +527,21 @@ def run_handle_boot():
 
    send_string_to_vm(r"clear{ret}")
 
+def dump_qemu_debug_files():
+
+   msg_print("--- Dump QEMU debugcon log: {} ---".format(QEMU_DEBUG_FILE))
+
+   with open(QEMU_DEBUG_FILE, 'r') as fh:
+      raw_print(fh.read())
+
+   msg_print("--- END QEMU debugcon log file ---")
+
+   msg_print("--- Dump QEMU trace log: {} ---".format(QEMU_DEBUG_FILE2))
+
+   with open(QEMU_DEBUG_FILE2, 'r') as fh:
+      raw_print(fh.read())
+
+   msg_print("--- END QEMU trace log file ---")
 
 def run_main_body():
 
@@ -485,6 +572,14 @@ def run_main_body():
             raw_stdout_write("\nExpected screenshot:\n")
             raw_stdout_write(e.expected_text)
 
+            d = get_first_different_line(e.screen_text, e.expected_text)
+
+            if d:
+               dx, tot, row, exp_row = d     # pylint: disable=unused-variable
+               raw_stdout_write("\n")
+               raw_stdout_write("First diff: {}\n".format(row))
+               raw_stdout_write("Expected:   {}\n".format(exp_row))
+
       if type(e) is NoTilckHelloMessage:
          set_once_fail_reason(Fail.no_hello_message)
       elif type(e) is KernelPanicFailure:
@@ -497,29 +592,19 @@ def run_main_body():
       msg_print("BrokenPipeError")
 
       if g_process.poll() is None:
+
          msg_print("Note: the QEMU process is still alive")
+
          try:
             echo_qemu_monitor()
          except Exception as e:
             msg_print("Cannot read from QEMU monitor: {}".format(str(e)))
+
       else:
          msg_print("Note: QEMU died with: {}".format(g_process.returncode))
 
-      msg_print("--- Dump QEMU debugcon log: {} ---".format(QEMU_DEBUG_FILE))
-
-      with open(QEMU_DEBUG_FILE, 'r') as fh:
-         raw_print(fh.read())
-
-      msg_print("--- END QEMU debugcon log file ---")
-
-      msg_print("--- Dump QEMU trace log: {} ---".format(QEMU_DEBUG_FILE2))
-
-      with open(QEMU_DEBUG_FILE2, 'r') as fh:
-         raw_print(fh.read())
-
-      msg_print("--- END QEMU trace log file ---")
-
-      set_once_fail_reason(Fail.other)
+      # dump_qemu_debug_files()
+      # set_once_fail_reason(Fail.qemu_died_unexpectedly)
 
    except Exception as e:
 
@@ -812,16 +897,23 @@ def dump_list_matching_tests_and_timeout():
 
 def run_all_tests():
 
+   global g_passed_list
+
    raw_stdout_write("\n")
    msg_print("Run interactive tests")
    msg_print("-" * 50)
 
    for k in g_matching_list:
+
+      if k in g_passed_list:
+         continue
+
       delete_old_screenshots()
       msg_print("Interactive test: {}".format(k))
       send_to_qemu_monitor("\n")
       exec(g_tests[k], globals(), {})
       raw_stdout_write("\n\n")
+      g_passed_list.append(k)
 
 def show_help():
    raw_print("Syntax: ")
@@ -889,9 +981,12 @@ def join_worker_thread(thread):
 def main():
 
    global g_keyboard_interrupt
+   global g_qemu_died
    global g_matching_list
    global g_timeout
+   global g_process
 
+   attempts = 0
    set_runner_name("interactive tests runner")
 
    if len(sys.argv) < 2:
@@ -916,18 +1011,46 @@ def main():
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
 
-   thread = threading.Thread(target = run)
-   thread.start()
+   while True:
 
-   try:
-      join_worker_thread(thread)
-   except KeyboardInterrupt:
-      g_keyboard_interrupt = True
-      msg_print("")
-      msg_print("KeyboardInterrupt")
-      set_once_fail_reason(Fail.user_interruption)
-      g_process.send_signal(signal.SIGINT)
-      thread.join(2)
+      # Reset global variables
+      g_process = None
+      g_qemu_died = False
+
+      # Create our runner thread
+      thread = threading.Thread(target = run)
+      thread.start()
+
+      try:
+
+         join_worker_thread(thread)
+
+      except KeyboardInterrupt:
+         g_keyboard_interrupt = True
+         msg_print("")
+         msg_print("KeyboardInterrupt")
+         set_once_fail_reason(Fail.user_interruption)
+         g_process.send_signal(signal.SIGINT)
+         thread.join(2)
+
+      if g_qemu_died and not g_keyboard_interrupt:
+
+         # It is unclear why while running this test suite in Azure Pipelines
+         # from time to time we get BrokenPipeError caused by the death of the
+         # QEMU process.
+
+         if attempts < 2:
+            msg_print("QEMU died unexpectedly: retry once more time in 5 secs")
+            time.sleep(5)
+            attempts += 1
+            continue
+
+         # QEMU died already twice. Do fail.
+         set_once_fail_reason(Fail.qemu_died_unexpectedly)
+
+      # Default case: we exit the loop after we ran all the test or there has
+      # been a keyboard interrupt.
+      break
 
    sys.exit(get_fail_reason().value)
 

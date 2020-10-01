@@ -18,5 +18,6 @@ do_interactive_actions(
       r"{up}",
       r"{up}",
       r"{esc}:q{ret}",
-   ]
+   ],
+   false_positive_handler_vim
 )
