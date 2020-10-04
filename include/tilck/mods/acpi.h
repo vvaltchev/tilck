@@ -77,3 +77,6 @@ struct acpi_reg_per_object_cb_node {
  * been enabled.
  */
 void acpi_reg_per_object_cb(struct acpi_reg_per_object_cb_node *cbnode);
+
+/* Reboot the machine using the official ACPI method */
+void acpi_reboot(void);

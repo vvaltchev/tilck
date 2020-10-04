@@ -6,6 +6,8 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/timer.h>
+#include <tilck/kernel/pci.h>
 #include <tilck/mods/acpi.h>
 
 #include "osl.h"
@@ -123,6 +125,53 @@ acpi_read_acpi_hw_flags(void)
    acpi_fadt_flags = fadt->Flags;
 
    AcpiPutTable((struct acpi_table_header *)fadt);
+}
+
+void
+acpi_reboot(void)
+{
+   struct acpi_table_fadt *fadt = &AcpiGbl_FADT;
+
+   printk("Performing ACPI reset...\n");
+
+   if (acpi_fadt_revision < 2) {
+      printk("ACPI reset failed: not supported (FADT too old)\n");
+      return;
+   }
+
+   if (~acpi_fadt_flags & ACPI_FADT_RESET_REGISTER) {
+      printk("ACPI reset failed: not supported\n");
+      return;
+   }
+
+   if (fadt->ResetRegister.SpaceId == ACPI_ADR_SPACE_PCI_CONFIG) {
+
+      pci_config_write(
+
+         pci_make_loc(
+            0,                                            /* segment */
+            0,                                            /* bus */
+            (fadt->ResetRegister.Address >> 32) & 0xffff, /* device */
+            (fadt->ResetRegister.Address >> 16) & 0xffff  /* function */
+         ),
+
+         fadt->ResetRegister.Address & 0xffff,            /* offset */
+         8,                                               /* width */
+         fadt->ResetValue
+      );
+
+   } else {
+
+      /* Supports both the memory and I/O port spaces */
+      AcpiReset();
+   }
+
+   /* Ok, now just loop tight for a bit, while the machine resets */
+   for (int i = 0; i < 100; i++)
+      delay_us(10 * 1000);
+
+   /* If we got here, something really weird happened */
+   printk("ACPI reset failed for an unknown reason\n");
 }
 
 void
