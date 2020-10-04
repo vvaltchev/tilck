@@ -379,16 +379,18 @@ bool i8042_read_regs(u8 *ctr, u8 *cto)
    return ok;
 }
 
-// Reboot procedure using the 8042 PS/2 controller
 void i8042_reboot(void)
 {
-   disable_preemption();
-   disable_interrupts_forced(); /* Disable the interrupts before rebooting */
+   printk("Performing i8042 reset...\n");
 
-   if (!i8042_send_cmd(I8042_CMD_CPU_RESET))
-      panic("Unable to reboot using the 8042 controller: timeout in send cmd");
-
-   while (true) {
-      halt();
+   if (!i8042_send_cmd(I8042_CMD_CPU_RESET)) {
+      printk("Unable to reboot using the 8042 controller\n");
+      return;
    }
+
+   /* Ok, now just loop tight for a bit, while the machine resets */
+   for (int i = 0; i < 100; i++)
+      delay_us(10 * 1000);
+
+   printk("ERROR: i8042 reset didn't work\n");
 }
