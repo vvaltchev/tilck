@@ -390,12 +390,22 @@ init_kb_internal(void)
 {
    const bool acpi_ok = get_acpi_init_status() == ais_fully_initialized;
 
-   if (MOD_acpi && acpi_ok) {
-      if (acpi_is_8042_present() == tri_no) {
-         printk("KB: no 8042 controller (PS/2) detected\n");
-         return;
+   /*
+    * While it would be great to not even try initializing the i8042 controller
+    * if ACPI says it's not present on the system, apparently that's not a good
+    * idea because the value of the ACPI_FADT_8042 flag in FADT's IAPC_BOOT_ARCH
+    * is not reliable. E.g.: I have a (pure UEFI) machine that has FADT v6 which
+    * has ACPI_FADT_8042 unset, even if a i8042 controller exists and Linux
+    * confirms that.
+    *
+      if (MOD_acpi && acpi_ok) {
+         if (acpi_is_8042_present() == tri_no) {
+            printk("KB: no 8042 controller (PS/2) detected\n");
+            return;
+         }
       }
-   }
+    */
+
 
    if (!hw_8042_init()) {
 
