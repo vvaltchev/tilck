@@ -38,22 +38,44 @@ powerbtn_notify_handler(ACPI_HANDLE Device,
           Device, Value);
 }
 
+static void
+lidswitch_notify_handler(ACPI_HANDLE Device,
+                         UINT32 Value,
+                         void *Context)
+{
+   printk("ACPI: lid switch notify event, device: %p, val: %#x\n",
+          Device, Value);
+}
+
 static ACPI_STATUS
 powerbtn_reg_notify_cb(void *obj_handle,
-                       void *device_info,
+                       void *__device_info,
                        void *ctx)
 {
-   ACPI_STATUS rc;
-   printk("ACPI: register notify handler for power button\n");
+   ACPI_STATUS rc = AE_OK;
+   ACPI_DEVICE_INFO *Info = __device_info;
+   ACPI_NOTIFY_HANDLER handler = NULL;
+   const char *hid = Info->HardwareId.String;
+   u32 hid_l = Info->HardwareId.Length;
 
-   rc = AcpiInstallNotifyHandler(obj_handle,
-                                 ACPI_ALL_NOTIFY,
-                                 &powerbtn_notify_handler,
-                                 NULL);
+   printk("ACPI: register notify handler for button HID=%*s\n", hid_l-1, hid);
+
+   if (!strcmp(hid, "PNP0C0C"))
+      handler = &powerbtn_notify_handler;
+   else if (!strcmp(hid, "PNP0C0D"))
+      handler = &lidswitch_notify_handler;
+
+   if (handler) {
+
+      rc = AcpiInstallNotifyHandler(obj_handle,
+                                    ACPI_ALL_NOTIFY,
+                                    handler,
+                                    NULL);
+   }
 
    if (ACPI_FAILURE(rc)) {
       print_acpi_failure("AcpiInstallNotifyHandler", NULL, rc);
-      return rc;
+      /* NOTE: Don't consider it as a fatal failure */
    }
 
    return AE_OK;
@@ -67,7 +89,10 @@ static void __reg_callbacks(void)
       .ctx = NULL
    };
 
-   static struct acpi_reg_per_object_cb_node notf = {
+   list_node_init(&fixh.node);
+   acpi_reg_on_subsys_enabled_cb(&fixh);
+
+   static struct acpi_reg_per_object_cb_node pwbtn_notf = {
       .cb = &powerbtn_reg_notify_cb,
       .ctx = NULL,
       .hid = "PNP0C0C",
@@ -75,9 +100,17 @@ static void __reg_callbacks(void)
       .cls = NULL,
    };
 
-   list_node_init(&fixh.node);
-   acpi_reg_on_subsys_enabled_cb(&fixh);
+   list_node_init(&pwbtn_notf.node);
+   acpi_reg_per_object_cb(&pwbtn_notf);
 
-   list_node_init(&notf.node);
-   acpi_reg_per_object_cb(&notf);
+   static struct acpi_reg_per_object_cb_node lid_notf = {
+      .cb = &powerbtn_reg_notify_cb,
+      .ctx = NULL,
+      .hid = "PNP0C0D",
+      .uid = NULL,
+      .cls = NULL,
+   };
+
+   list_node_init(&lid_notf.node);
+   acpi_reg_per_object_cb(&lid_notf);
 }
