@@ -47,10 +47,12 @@ NORETURN static void call_exit(int code)
 static void
 init_set_signal_mask(void)
 {
-   /* Ignore SIGINT, SIGQUIT, SIGTERM */
+   /* Ignore SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2 */
    signal(SIGINT, SIG_IGN);
    signal(SIGQUIT, SIG_IGN);
    signal(SIGTERM, SIG_IGN);
+   signal(SIGUSR1, SIG_IGN);
+   signal(SIGUSR2, SIG_IGN);
 }
 
 static void
@@ -59,6 +61,8 @@ init_reset_signal_mask(void)
    signal(SIGINT, SIG_DFL);
    signal(SIGQUIT, SIG_DFL);
    signal(SIGTERM, SIG_DFL);
+   signal(SIGUSR1, SIG_DFL);
+   signal(SIGUSR2, SIG_DFL);
 }
 
 static int get_video_tty_count(void)
