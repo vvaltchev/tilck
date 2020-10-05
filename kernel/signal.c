@@ -70,7 +70,9 @@ static void action_terminate(struct task *ti, int signum)
 
 static void action_ignore(struct task *ti, int signum)
 {
-   /* do nothing */
+   if (ti->tid == 1) {
+      printk("WARNING: ignoring signum %d sent to init (pid 1)\n", signum);
+   }
 }
 
 static void action_stop(struct task *ti, int signum)
@@ -140,7 +142,7 @@ static void do_send_signal(struct task *ti, int signum)
    __sighandler_t h = ti->pi->sa_handlers[signum];
 
    if (h == SIG_IGN)
-      return; /* the signal must be just ignored */
+      return action_ignore(ti, signum);
 
    if (h != SIG_DFL) {
 
