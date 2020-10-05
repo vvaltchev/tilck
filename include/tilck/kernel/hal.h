@@ -42,7 +42,8 @@ STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_SIZE == sizeof(arch_proc_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_ALIGN == alignof(arch_proc_members_t));
 
-void reboot();
+NORETURN void reboot(void);
+NORETURN void poweroff(void);
 void init_segmentation(void);
 void init_cpu_exception_handling(void);
 void init_syscall_interfaces(void);

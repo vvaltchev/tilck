@@ -8,6 +8,8 @@
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/pci.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/debug_utils.h>
 #include <tilck/mods/acpi.h>
 
 #include "osl.h"
@@ -172,6 +174,32 @@ acpi_reboot(void)
 
    /* If we got here, something really weird happened */
    printk("ACPI reset failed for an unknown reason\n");
+}
+
+void
+acpi_poweroff(void)
+{
+   ACPI_STATUS rc;
+   ASSERT(are_interrupts_enabled());
+
+   rc = AcpiEnterSleepStatePrep(ACPI_STATE_S5);
+
+   if (ACPI_FAILURE(rc)) {
+      print_acpi_failure("AcpiEnterSleepStatePrep", NULL, rc);
+      return;
+   }
+
+   /* AcpiEnterSleepState() requires to be called with interrupts disabled */
+   disable_interrupts_forced();
+
+   rc = AcpiEnterSleepState(ACPI_STATE_S5);
+
+   /*
+    * In theory, we should never get here but, in practice, everything could
+    * happen.
+    */
+
+   print_acpi_failure("AcpiEnterSleepState", NULL, rc);
 }
 
 void

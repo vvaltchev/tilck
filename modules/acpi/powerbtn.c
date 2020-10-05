@@ -2,13 +2,14 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
+#include <tilck/kernel/hal.h>
 
 #include "acpi_int.h"
 
 static ACPI_STATUS
 acpi_fix_power_button_handler(void *ctx)
 {
-   printk("ACPI: power button fixed event\n");
+   poweroff();
    return 0; /* MUST return 0 in ANY case. Other values are reserved */
 }
 

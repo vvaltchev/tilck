@@ -20,6 +20,8 @@
 
 #define LINUX_REBOOT_CMD_RESTART     0x1234567
 #define LINUX_REBOOT_CMD_RESTART2   0xa1b2c3d4
+#define LINUX_REBOOT_CMD_HALT       0xcdef0123
+#define LINUX_REBOOT_CMD_POWER_OFF  0x4321fedc
 
 int sys_madvise(void *addr, size_t len, int advice)
 {
@@ -214,8 +216,20 @@ int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
    if (cmd == LINUX_REBOOT_CMD_RESTART ||
        cmd == LINUX_REBOOT_CMD_RESTART2)
    {
-      printk("Restarting system\n");
       reboot();
+   }
+
+   switch (cmd) {
+
+      case LINUX_REBOOT_CMD_RESTART:
+      case LINUX_REBOOT_CMD_RESTART2:
+         reboot();
+         break;
+
+      case LINUX_REBOOT_CMD_HALT:
+      case LINUX_REBOOT_CMD_POWER_OFF:
+         poweroff();
+         break;
    }
 
    return -EINVAL;

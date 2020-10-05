@@ -4,14 +4,57 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
-#include <tilck/common/arch/generic_x86/x86_utils.h>
 
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/debug_utils.h>
 #include <tilck/mods/acpi.h>
 
-/* Reboot the machine, using the best method available */
-void reboot(void)
+NORETURN void poweroff(void)
 {
+   printk("Halting the system...\n");
+
+   disable_preemption();
+
+   if (MOD_acpi) {
+      if (get_acpi_init_status() >= ais_subsystem_enabled) {
+         acpi_poweroff();
+      }
+   }
+
+   disable_interrupts_forced();
+
+   /*
+    * We get here if one of the following statements is true:
+    *
+    *    - No acpi module
+    *    - The acpi initialization failed
+    *    - The acpi poweroff procedure failed
+    *
+    * Therefore, try the qemu debug power off method, if we're running on a
+    * hypervisor.
+    */
+
+   if (in_hypervisor())
+      debug_qemu_turn_off_machine();
+
+   /*
+    * Eveything failed. Just print a message confirming that's safe to turn off
+    * the machine.
+    */
+
+   printk("System halted.\n");
+
+   while (true) {
+      halt();
+   }
+}
+
+/* Reboot the machine, using the best method available */
+NORETURN void reboot(void)
+{
+   printk("Rebooting the machine...\n");
+
    disable_preemption();
    disable_interrupts_forced();
 
@@ -27,6 +70,8 @@ void reboot(void)
     *    - No acpi module
     *    - The acpi initialization failed
     *    - The acpi reboot procedure failed
+    *
+    * Therefore, try the legacy i8042 reset.
     */
 
    if (MOD_kb8042)

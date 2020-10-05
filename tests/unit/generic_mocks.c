@@ -122,6 +122,7 @@ void fpu_context_end() { }
 void map_zero_pages() { NOT_REACHED(); }
 void dump_var_mtrrs() { }
 void set_page_rw() { }
+void poweroff() { NOT_REACHED(); }
 int get_irq_num(void *ctx) { return -1; }
 int get_int_num(void *ctx) { return -1; }
 void retain_pageframes_mapped_at() { }
