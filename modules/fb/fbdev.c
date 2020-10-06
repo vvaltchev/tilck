@@ -220,7 +220,7 @@ static void init_fbdev(void)
 static struct module fb_module = {
 
    .name = "fb",
-   .priority = 300,
+   .priority = MOD_fbdev_prio,
    .init = &init_fbdev,
 };
 

@@ -423,7 +423,7 @@ out:
 static struct module kb_ps2_module = {
 
    .name = "kbps2",
-   .priority = 50,
+   .priority = MOD_kb_prio,
    .init = &init_kb,
 };
 

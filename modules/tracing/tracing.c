@@ -698,7 +698,7 @@ init_tracing(void)
 static struct module dp_module = {
 
    .name = "tracing",
-   .priority = 100,
+   .priority = MOD_tracing_prio,
    .init = &init_tracing,
 };
 

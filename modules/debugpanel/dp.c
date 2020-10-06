@@ -334,7 +334,7 @@ static void dp_init(void)
 static struct module dp_module = {
 
    .name = "debugpanel",
-   .priority = 1000,
+   .priority = MOD_dp_prio,
    .init = &dp_init,
 };
 

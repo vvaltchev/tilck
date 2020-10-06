@@ -411,7 +411,7 @@ static void init_tty(void)
 static struct module tty_module = {
 
    .name = "tty",
-   .priority = 200,
+   .priority = MOD_tty_prio,
    .init = &init_tty,
 };
 
