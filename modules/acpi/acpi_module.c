@@ -258,6 +258,43 @@ acpi_mod_load_tables(void)
 }
 
 static ACPI_STATUS
+call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
+{
+   struct acpi_reg_per_object_cb_node *pos;
+   const char *hid, *uid, *cls;
+   u32 hid_l, uid_l, cls_l;
+   ACPI_STATUS rc;
+
+   hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : NULL;
+   hid_l = Info->HardwareId.Length;
+
+   uid = (Info->Valid & ACPI_VALID_UID) ? Info->UniqueId.String : NULL;
+   uid_l = Info->UniqueId.Length;
+
+   cls = (Info->Valid & ACPI_VALID_CLS) ? Info->ClassCode.String : NULL;
+   cls_l = Info->ClassCode.Length;
+
+   list_for_each_ro(pos, &per_acpi_object_cb_list, node) {
+
+      if (pos->hid && (!hid || strncmp(hid, pos->hid, hid_l)))
+         continue; // HID doesn't match
+
+      if (pos->uid && (!uid || strncmp(uid, pos->uid, uid_l)))
+         continue; // UID doesn't match
+
+      if (pos->cls && (!cls || strncmp(cls, pos->cls, cls_l)))
+         continue; // CLS doesn't match
+
+      rc = pos->cb(ObjHandle, Info, pos->ctx);
+
+      if (ACPI_FAILURE(rc))
+         return rc;
+   }
+
+   return AE_OK;
+}
+
+static ACPI_STATUS
 walk_single_dev(ACPI_HANDLE ObjHandle,
                 UINT32 Level,
                 void *Context,
@@ -267,9 +304,7 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
    ACPI_BUFFER Path;
    ACPI_STATUS rc = AE_OK;
    char buf[256];
-   const char *hid, *uid, *cls;
-   u32 hid_l, uid_l, cls_l;
-   struct acpi_reg_per_object_cb_node *pos;
+   const char *hid;
 
    Path.Length = sizeof(buf);
    Path.Pointer = buf;
@@ -291,43 +326,19 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
       goto out;
    }
 
-   hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : NULL;
-   hid_l = Info->HardwareId.Length;
+   hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : "n/a";
+   printk("%s (%#04x, HID: %s)\n", buf, Info->Type, hid);
 
-   uid = (Info->Valid & ACPI_VALID_UID) ? Info->UniqueId.String : NULL;
-   uid_l = Info->UniqueId.Length;
+   rc = call_per_matching_device_cbs(ObjHandle, Info);
 
-   cls = (Info->Valid & ACPI_VALID_CLS) ? Info->ClassCode.String : NULL;
-   cls_l = Info->ClassCode.Length;
-
-   if (hid)
-      printk("%s (%#04x, HID: '%*s')\n", buf, Info->Type, hid_l - 1, hid);
-   else
-      printk("%s (%#04x, HID: n/a)\n", buf, Info->Type);
-
-   list_for_each_ro(pos, &per_acpi_object_cb_list, node) {
-
-      if (pos->hid && (!hid || strncmp(hid, pos->hid, hid_l)))
-         continue; // HID doesn't match
-
-      if (pos->uid && (!uid || strncmp(uid, pos->uid, uid_l)))
-         continue; // UID doesn't match
-
-      if (pos->cls && (!cls || strncmp(cls, pos->cls, cls_l)))
-         continue; // CLS doesn't match
-
-      rc = pos->cb(ObjHandle, Info, pos->ctx);
-
-      if (ACPI_FAILURE(rc)) {
-         *(ACPI_STATUS *)ReturnValue = rc;
-         rc = AE_CTRL_TERMINATE;
-         goto out;
-      }
+   if (ACPI_FAILURE(rc)) {
+      *(ACPI_STATUS *)ReturnValue = rc;
+      rc = AE_CTRL_TERMINATE;
    }
 
 out:
    AcpiOsFree(Info);
-   return AE_OK;
+   return rc;
 }
 
 static ACPI_STATUS
