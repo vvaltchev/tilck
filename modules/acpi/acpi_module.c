@@ -295,10 +295,7 @@ call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
 }
 
 static ACPI_STATUS
-acpi_walk_single_obj(ACPI_HANDLE ObjHandle,
-                     UINT32 Level,
-                     void *Context,
-                     void **ReturnValue)
+acpi_walk_single_obj(ACPI_HANDLE ObjHandle, ACPI_STATUS *RetVal)
 {
    ACPI_DEVICE_INFO *Info;
    ACPI_BUFFER Path;
@@ -317,6 +314,9 @@ acpi_walk_single_obj(ACPI_HANDLE ObjHandle,
       return AE_CTRL_TERMINATE;
    }
 
+   if (Info->Type != ACPI_TYPE_DEVICE)
+      return AE_OK;
+
    /* Get the full path of this device and print it */
    rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
 
@@ -326,27 +326,22 @@ acpi_walk_single_obj(ACPI_HANDLE ObjHandle,
       goto out;
    }
 
-   if (Info->Type == ACPI_TYPE_DEVICE)
-      if (Info->Valid & ACPI_VALID_HID)
-         hid = Info->HardwareId.String;
+   if (Info->Valid & ACPI_VALID_HID)
+      hid = Info->HardwareId.String;
 
    printk("%s (%#04x, HID: %s)\n", buf, Info->Type, hid ? hid : "n/a");
 
-   if (Info->Type == ACPI_TYPE_DEVICE) {
+   rc = call_per_matching_device_cbs(ObjHandle, Info);
 
-      rc = call_per_matching_device_cbs(ObjHandle, Info);
+   if (ACPI_FAILURE(rc)) {
 
-      if (ACPI_FAILURE(rc)) {
+      if (rc == AE_NO_MEMORY) {
 
-         if (rc == AE_NO_MEMORY) {
+         *RetVal = rc;
+         rc = AE_CTRL_TERMINATE;
 
-            *(ACPI_STATUS *)ReturnValue = rc;
-            rc = AE_CTRL_TERMINATE;
-
-         } else {
-
-            /* Do nothing: only the OOM condition requires the walk to stop */
-         }
+      } else {
+         /* Do nothing: only the OOM condition requires the walk to stop */
       }
    }
 
@@ -359,18 +354,39 @@ static ACPI_STATUS
 acpi_walk_ns(void)
 {
    ACPI_STATUS rc, ret = AE_OK;
+   ACPI_HANDLE parent, child;
+   int level = 1;
+
    printk("ACPI: walk through all objects in the namespace\n");
 
-   rc = AcpiWalkNamespace(ACPI_TYPE_DEVICE,        // Type
-                          ACPI_ROOT_OBJECT,        // StartObject
-                          INT_MAX,                 // MaxDepth
-                          acpi_walk_single_obj,    // DescendingCallback
-                          NULL,                    // AscendingCallback
-                          NULL,                    // Context
-                          (void **)&ret);          // ReturnValue
+   parent = NULL; /* root */
+   child = NULL;
 
-   if (ACPI_FAILURE(rc))
-      return rc;
+   while (level > 0) {
+
+      rc = AcpiGetNextObject(ACPI_TYPE_ANY, parent, child, &child);
+
+      if (ACPI_SUCCESS(rc)) {
+
+         if (acpi_walk_single_obj(child, &ret) == AE_CTRL_TERMINATE)
+            break;
+
+         rc = AcpiGetNextObject(ACPI_TYPE_ANY, child, NULL, NULL);
+
+         /* There is at least one child, visit the object */
+
+         level++;
+         parent = child;
+         child = NULL;
+
+      } else {
+
+         /* No more children, go back upwards */
+         level--;
+         child = parent;
+         AcpiGetParent(parent, &parent);
+      }
+   }
 
    return ret;
 }
