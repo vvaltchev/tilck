@@ -295,16 +295,16 @@ call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
 }
 
 static ACPI_STATUS
-walk_single_dev(ACPI_HANDLE ObjHandle,
-                UINT32 Level,
-                void *Context,
-                void **ReturnValue)
+acpi_walk_single_obj(ACPI_HANDLE ObjHandle,
+                     UINT32 Level,
+                     void *Context,
+                     void **ReturnValue)
 {
    ACPI_DEVICE_INFO *Info;
    ACPI_BUFFER Path;
    ACPI_STATUS rc = AE_OK;
    char buf[256];
-   const char *hid;
+   const char *hid = NULL;
 
    Path.Length = sizeof(buf);
    Path.Pointer = buf;
@@ -326,14 +326,28 @@ walk_single_dev(ACPI_HANDLE ObjHandle,
       goto out;
    }
 
-   hid = (Info->Valid & ACPI_VALID_HID) ? Info->HardwareId.String : "n/a";
-   printk("%s (%#04x, HID: %s)\n", buf, Info->Type, hid);
+   if (Info->Type == ACPI_TYPE_DEVICE)
+      if (Info->Valid & ACPI_VALID_HID)
+         hid = Info->HardwareId.String;
 
-   rc = call_per_matching_device_cbs(ObjHandle, Info);
+   printk("%s (%#04x, HID: %s)\n", buf, Info->Type, hid ? hid : "n/a");
 
-   if (ACPI_FAILURE(rc)) {
-      *(ACPI_STATUS *)ReturnValue = rc;
-      rc = AE_CTRL_TERMINATE;
+   if (Info->Type == ACPI_TYPE_DEVICE) {
+
+      rc = call_per_matching_device_cbs(ObjHandle, Info);
+
+      if (ACPI_FAILURE(rc)) {
+
+         if (rc == AE_NO_MEMORY) {
+
+            *(ACPI_STATUS *)ReturnValue = rc;
+            rc = AE_CTRL_TERMINATE;
+
+         } else {
+
+            /* Do nothing: only the OOM condition requires the walk to stop */
+         }
+      }
    }
 
 out:
@@ -342,18 +356,18 @@ out:
 }
 
 static ACPI_STATUS
-acpi_walk_all_devices(void)
+acpi_walk_ns(void)
 {
    ACPI_STATUS rc, ret = AE_OK;
-   printk("ACPI: dump all devices in the namespace:\n");
+   printk("ACPI: walk through all objects in the namespace\n");
 
-   rc = AcpiWalkNamespace(ACPI_TYPE_DEVICE,   // Type
-                          ACPI_ROOT_OBJECT,   // StartObject
-                          INT_MAX,            // MaxDepth
-                          walk_single_dev,    // DescendingCallback
-                          NULL,               // AscendingCallback
-                          NULL,               // Context
-                          (void **)&ret);     // ReturnValue
+   rc = AcpiWalkNamespace(ACPI_TYPE_DEVICE,        // Type
+                          ACPI_ROOT_OBJECT,        // StartObject
+                          INT_MAX,                 // MaxDepth
+                          acpi_walk_single_obj,    // DescendingCallback
+                          NULL,                    // AscendingCallback
+                          NULL,                    // Context
+                          (void **)&ret);          // ReturnValue
 
    if (ACPI_FAILURE(rc))
       return rc;
@@ -439,10 +453,10 @@ acpi_mod_enable_subsystem(void)
     * execute all the _PRW methods and install our GPE handlers.
     */
 
-   rc = acpi_walk_all_devices();
+   rc = acpi_walk_ns();
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("acpi_walk_all_devices", NULL, rc);
+      print_acpi_failure("acpi_walk_ns", NULL, rc);
       acpi_handle_fatal_failure_after_enable_subsys();
       return;
    }
