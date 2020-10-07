@@ -295,11 +295,11 @@ call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
 }
 
 static ACPI_STATUS
-acpi_walk_single_obj(ACPI_HANDLE ObjHandle, ACPI_STATUS *RetVal)
+acpi_walk_single_obj(ACPI_HANDLE ObjHandle)
 {
    ACPI_DEVICE_INFO *Info;
    ACPI_BUFFER Path;
-   ACPI_STATUS rc = AE_OK;
+   ACPI_STATUS rc;
    char buf[256];
    const char *hid = NULL;
 
@@ -310,8 +310,8 @@ acpi_walk_single_obj(ACPI_HANDLE ObjHandle, ACPI_STATUS *RetVal)
    rc = AcpiGetObjectInfo(ObjHandle, &Info);
 
    if (ACPI_FAILURE(rc)) {
-      printk("ERROR: Failed to get object info\n");
-      return AE_CTRL_TERMINATE;
+      print_acpi_failure("AcpiGetObjectInfo", ObjHandle, rc);
+      return rc; /* Fatal error */
    }
 
    if (Info->Type != ACPI_TYPE_DEVICE)
@@ -321,9 +321,8 @@ acpi_walk_single_obj(ACPI_HANDLE ObjHandle, ACPI_STATUS *RetVal)
    rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
 
    if (ACPI_FAILURE(rc)) {
-      printk("Failed to get full object name\n");
-      rc = AE_CTRL_TERMINATE;
-      goto out;
+      print_acpi_failure("AcpiGetName", ObjHandle, rc);
+      goto out; /* Fatal error */
    }
 
    if (Info->Valid & ACPI_VALID_HID)
@@ -335,14 +334,10 @@ acpi_walk_single_obj(ACPI_HANDLE ObjHandle, ACPI_STATUS *RetVal)
 
    if (ACPI_FAILURE(rc)) {
 
-      if (rc == AE_NO_MEMORY) {
+      if (rc == AE_NO_MEMORY)
+         goto out;
 
-         *RetVal = rc;
-         rc = AE_CTRL_TERMINATE;
-
-      } else {
-         /* Do nothing: only the OOM condition requires the walk to stop */
-      }
+      /* Note: only the OOM condition requires the walk to stop */
    }
 
 out:
@@ -353,42 +348,50 @@ out:
 static ACPI_STATUS
 acpi_walk_ns(void)
 {
-   ACPI_STATUS rc, ret = AE_OK;
+   ACPI_STATUS rc;
    ACPI_HANDLE parent, child;
-   int level = 1;
 
    printk("ACPI: walk through all objects in the namespace\n");
 
-   parent = NULL; /* root */
-   child = NULL;
+   parent = NULL; /* means root */
+   child = NULL;  /* means first child */
 
-   while (level > 0) {
+   while (true) {
 
       rc = AcpiGetNextObject(ACPI_TYPE_ANY, parent, child, &child);
 
-      if (ACPI_SUCCESS(rc)) {
+      if (ACPI_FAILURE(rc)) {
 
-         if (acpi_walk_single_obj(child, &ret) == AE_CTRL_TERMINATE)
-            break;
+         /* No more children */
 
-         rc = AcpiGetNextObject(ACPI_TYPE_ANY, child, NULL, NULL);
+         if (!parent)
+            break; /* This was the root: stop */
 
-         /* There is at least one child, visit the object */
-
-         level++;
-         parent = child;
-         child = NULL;
-
-      } else {
-
-         /* No more children, go back upwards */
-         level--;
+         /* Go back upwards */
          child = parent;
          AcpiGetParent(parent, &parent);
+         continue;
+      }
+
+      /* Call the per-obj function */
+
+      rc = acpi_walk_single_obj(child);
+
+      if (ACPI_FAILURE(rc))
+         return rc;  /* Likely, out-of-memory (OOM) condition. */
+
+      /* Check if `child` has any children */
+      rc = AcpiGetNextObject(ACPI_TYPE_ANY, child, NULL, NULL);
+
+      if (ACPI_SUCCESS(rc)) {
+
+         /* Yes, it does. Do DFS. */
+         parent = child;
+         child = NULL;     /* first child */
       }
    }
 
-   return ret;
+   return AE_OK;
 }
 
 static void
