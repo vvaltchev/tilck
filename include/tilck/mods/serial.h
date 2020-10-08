@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck_gen_headers/config_modules.h>
+#include <tilck_gen_headers/mod_serial.h>
 #include <tilck/common/basic_defs.h>
 
 void init_serial_port(u16 port);

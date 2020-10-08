@@ -14,60 +14,18 @@ math(EXPR BL_BASE_ADDR_DEC
 
 dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_global.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_global.h
-)
+file(GLOB config_glob ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/config/*.h")
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_boot.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_boot.h
-)
+foreach(config_path ${config_glob})
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_kernel.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_kernel.h
-)
+   get_filename_component(config_name ${config_path} NAME_WE)
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_sched.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_sched.h
-)
+   smart_config_file(
+      ${config_path}
+      ${CMAKE_BINARY_DIR}/tilck_gen_headers/${config_name}.h
+   )
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_kmalloc.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_kmalloc.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_console.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_console.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_mm.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_mm.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_debug.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_debug.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_userlim.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_userlim.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_8042.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_8042.h
-)
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/config_modules.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_modules.h
-)
+endforeach()
 
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h

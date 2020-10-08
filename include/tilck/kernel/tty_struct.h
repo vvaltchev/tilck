@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include <tilck_gen_headers/config_modules.h>
+#include <tilck_gen_headers/mod_console.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/term.h>
