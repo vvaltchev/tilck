@@ -12,14 +12,11 @@
 
 #define TTY_COUNT              @TTY_COUNT@
 #define TERM_SCROLL_LINES      @TERM_SCROLL_LINES@
-#define FBCON_BIGFONT_THR      @FBCON_BIGFONT_THR@
 
 /* --------- Boolean config variables --------- */
 
 #cmakedefine01 TERM_BIG_SCROLL_BUF
-#cmakedefine01 FB_CONSOLE_BANNER
-#cmakedefine01 FB_CONSOLE_CURSOR_BLINK
-#cmakedefine01 FB_CONSOLE_USE_ALT_FONTS
+
 #cmakedefine01 KERNEL_SHOW_LOGO
 #cmakedefine01 SERIAL_CON_IN_VIDEO_MODE
 #cmakedefine01 KRN_PRINTK_ON_CURR_TTY
@@ -38,5 +35,4 @@
  */
 
 #define TTY_INPUT_BS                                              1024
-#define FBCON_OPT_FUNCS_MIN_FREE_HEAP                        (16 * MB)
-#define FAILSAFE_FB_VADDR          (KERNEL_BASE_VA + (1024 - 64) * MB)
+
