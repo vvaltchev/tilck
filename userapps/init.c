@@ -17,7 +17,7 @@
 #include <sys/prctl.h>
 #include <sys/ioctl.h>
 
-#include <tilck_gen_headers/config_console.h>
+#include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/config_init.h>
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */

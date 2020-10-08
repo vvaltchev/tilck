@@ -3,7 +3,6 @@
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kmalloc.h>
-#include <tilck_gen_headers/config_console.h>
 #include <tilck_gen_headers/config_userlim.h>
 #include <tilck_gen_headers/config_mm.h>
 #include <tilck_gen_headers/config_sched.h>

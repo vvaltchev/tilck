@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_kernel.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_serial.h>
 #include <tilck_gen_headers/mod_fb.h>
-#include <tilck_gen_headers/config_console.h>
 
 #include "defs.h"
 #include "utils.h"
