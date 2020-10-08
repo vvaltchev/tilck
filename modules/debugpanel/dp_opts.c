@@ -6,7 +6,6 @@
 #include <tilck_gen_headers/config_console.h>
 #include <tilck_gen_headers/config_userlim.h>
 #include <tilck_gen_headers/config_mm.h>
-#include <tilck_gen_headers/config_8042.h>
 #include <tilck_gen_headers/mod_kb8042.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_fb.h>

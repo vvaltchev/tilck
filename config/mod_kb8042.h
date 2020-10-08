@@ -8,3 +8,5 @@
 #pragma once
 
 #cmakedefine01    MOD_kb8042
+#cmakedefine01    PS2_DO_SELFTEST
+#cmakedefine01    PS2_VERBOSE_DEBUG_LOG
