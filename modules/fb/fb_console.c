@@ -250,9 +250,77 @@ static void fb_setup_banner(void)
    fb_offset_y = (20 * font_h) / 10;
 }
 
-void fb_draw_banner(void)
+static int fb_banner_get_battery_pm(void)
 {
    static bool get_batt_charge_failed;
+   int rc, batt_charge_pm = -1;
+
+   if (get_acpi_init_status() == ais_fully_initialized) {
+
+      if (!get_batt_charge_failed) {
+
+         ulong charge;
+         rc = acpi_get_all_batteries_charge_per_mille(&charge);
+
+         if (!rc)
+            batt_charge_pm = (int)charge;
+         else if (rc != -ENOMEM)
+            get_batt_charge_failed = true;
+      }
+   }
+
+   return batt_charge_pm;
+}
+
+static u32 fb_banner_left_side(char *buf, size_t buf_sz)
+{
+   int ttynum = 1;
+   int rc;
+
+   if (get_curr_tty())
+      ttynum = get_curr_tty_num();
+
+   if (ttynum > 0) {
+      rc = snprintk(buf, buf_sz, "Tilck [%s] [tty %d]", BUILDTYPE_STR, ttynum);
+   } else {
+      rc = snprintk(buf, buf_sz, "Tilck [%s]", BUILDTYPE_STR);
+   }
+
+   ASSERT(rc >= 0);
+   return MIN((u32)rc, buf_sz);
+}
+
+static u32 fb_banner_right_side(char *buf, size_t buf_sz)
+{
+   int batt_charge_pm = fb_banner_get_battery_pm();
+   struct datetime d;
+   int rc;
+
+   timestamp_to_datetime(get_timestamp(), &d);
+
+   if (batt_charge_pm >= 0) {
+
+      rc = snprintk(buf, buf_sz,
+                    "[Battery: %d.%d%%] [%02i %s %i %02i:%02i]",
+                    batt_charge_pm / 10,
+                    batt_charge_pm % 10,
+                    d.day, months3[d.month - 1],
+                    d.year, d.hour, d.min);
+
+   } else {
+
+      rc = snprintk(buf, buf_sz,
+                    "[%02i %s %i %02i:%02i]",
+                    d.day, months3[d.month - 1],
+                    d.year, d.hour, d.min);
+   }
+
+   ASSERT(rc >= 0);
+   return MIN((u32)rc, buf_sz);
+}
+
+void fb_draw_banner(void)
+{
    static bool oom;
    static char *lbuf;
    static char *rbuf;
@@ -280,78 +348,49 @@ void fb_draw_banner(void)
       }
    }
 
-   u32 llen, rlen, padding, i;
-   struct datetime d;
-   int rc, ttynum = 1;
-   int batt_charge_pm = -1;
-
+   u32 llen, rlen, padding = 0;
    ASSERT(fb_offset_y >= font_h);
-   timestamp_to_datetime(get_timestamp(), &d);
 
-   if (get_curr_tty())
-      ttynum = get_curr_tty_num();
+   /*
+    * Prepare banner's content.
+    *
+    * It's worth remarking that we're passing to our aux funcs fb_term_cols + 1
+    * as length which is the real buffer's length, not `fb_term_cols`. That's
+    * because snprintk() will always zero-terminate the buffer and it cannot do
+    * that in the corner case where all the columns have been used, without
+    * dropping one column. I.e. with a buffer of 80 chars, we can have at most
+    * 79 chars of data + 1 for the NUL terminator. Therefore, our buffers are +1
+    * char bigger.
+    */
+   llen = fb_banner_left_side(lbuf, fb_term_cols + 1);
+   rlen = fb_banner_right_side(rbuf, fb_term_cols + 1 - llen);
 
-   if (ttynum > 0) {
-      rc = snprintk(lbuf, fb_term_cols - 1,
-                    "Tilck [%s] [tty %d]",
-                    BUILDTYPE_STR, ttynum);
-   } else {
-      rc = snprintk(lbuf, fb_term_cols - 1,
-                    "Tilck [%s] [tty: kernel debug panel]",
-                    BUILDTYPE_STR);
+   if (llen + rlen < fb_term_cols) {
+
+      /* Calculate the padding */
+      padding = fb_term_cols - llen - rlen;
+
+      /* Insert the padding after the content in the left buffer */
+      memset(lbuf + llen, ' ', padding);
    }
 
-   ASSERT(rc > 0);
-   llen = MIN((u16)rc, fb_term_cols - 1);
+   /* Copy the whole right buffer in the left buffer, after the padding */
+   memcpy(lbuf + llen + padding, rbuf, rlen);
 
-   if (get_acpi_init_status() == ais_fully_initialized) {
-
-      if (!get_batt_charge_failed) {
-
-         ulong charge;
-         rc = acpi_get_all_batteries_charge_per_mille(&charge);
-
-         if (!rc)
-            batt_charge_pm = (int)charge;
-         else if (rc != -ENOMEM)
-            get_batt_charge_failed = true;
-      }
-   }
-
-   if (batt_charge_pm >= 0) {
-
-      rc = snprintk(rbuf, fb_term_cols - 1 - llen,
-                    "[Battery: %d.%d%%] [%02i %s %i %02i:%02i]",
-                    batt_charge_pm / 10,
-                    batt_charge_pm % 10,
-                    d.day, months3[d.month - 1],
-                    d.year, d.hour, d.min);
-
-   } else {
-
-      rc = snprintk(rbuf, fb_term_cols - 1 - llen,
-                    "[%02i %s %i %02i:%02i]",
-                    d.day, months3[d.month - 1],
-                    d.year, d.hour, d.min);
-   }
-
-   ASSERT(rc > 0);
-   rlen = MIN((u32)rc, fb_term_cols - 1 - llen);
-
-   padding = fb_term_cols - llen - rlen;
-
-   for (i = llen; i < llen + padding; i++)
-      lbuf[i] = ' ';
-
-   memcpy(lbuf + i, rbuf, rlen);
+   /* Make sure that, if we used the whole buffer, it is NUL-terminated */
    lbuf[fb_term_cols] = 0;
 
+   /* Clear the banner area */
    fb_raw_color_lines(0, fb_offset_y, 0 /* black */);
+
+   /* Draw the horizontal banner separation line */
    fb_raw_color_lines(fb_offset_y - 4, 1, vga_rgb_colors[COLOR_BRIGHT_WHITE]);
+
+   /* Draw the actual banner's text */
    fb_draw_string_at_raw(0, font_h/2, lbuf, COLOR_BRIGHT_YELLOW);
 
+   /* Clear the remaining screen area below the banner and the text */
    u32 top_lines_used = fb_offset_y + font_h * fb_term_rows;
-
    fb_raw_color_lines(top_lines_used,
                       fb_get_height() - top_lines_used,
                       vga_rgb_colors[COLOR_BLACK]);
