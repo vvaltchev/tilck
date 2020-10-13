@@ -507,6 +507,13 @@ acpi_mod_enable_subsystem(void)
    }
 }
 
+bool
+acpi_has_method(ACPI_HANDLE obj, const char *name)
+{
+   ACPI_HANDLE ret;
+   return ACPI_SUCCESS(AcpiGetHandle(obj, (ACPI_STRING)name, &ret));
+}
+
 static void
 acpi_module_init(void)
 {

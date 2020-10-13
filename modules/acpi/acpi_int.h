@@ -9,3 +9,6 @@
 
 void
 print_acpi_failure(const char *func, const char *farg, ACPI_STATUS rc);
+
+bool
+acpi_has_method(ACPI_HANDLE obj, const char *name);
