@@ -6,7 +6,6 @@
 #include <tilck/common/color_defs.h>
 #include <tilck/common/printk.h>
 
-#include <tilck/mods/fb_console.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
@@ -14,6 +13,10 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/tty.h>
+#include <tilck/kernel/errno.h>
+
+#include <tilck/mods/fb_console.h>
+#include <tilck/mods/acpi.h>
 
 #include "fb_int.h"
 
@@ -249,6 +252,7 @@ static void fb_setup_banner(void)
 
 void fb_draw_banner(void)
 {
+   static bool get_batt_charge_failed;
    static bool oom;
    static char *lbuf;
    static char *rbuf;
@@ -279,6 +283,7 @@ void fb_draw_banner(void)
    u32 llen, rlen, padding, i;
    struct datetime d;
    int rc, ttynum = 1;
+   int batt_charge_pm = -1;
 
    ASSERT(fb_offset_y >= font_h);
    timestamp_to_datetime(get_timestamp(), &d);
@@ -288,21 +293,47 @@ void fb_draw_banner(void)
 
    if (ttynum > 0) {
       rc = snprintk(lbuf, fb_term_cols - 1,
-                    "Tilck [%s] fb console [tty %d]",
+                    "Tilck [%s] [tty %d]",
                     BUILDTYPE_STR, ttynum);
    } else {
       rc = snprintk(lbuf, fb_term_cols - 1,
-                    "Tilck [%s] fb console [tty: kernel debug panel]",
+                    "Tilck [%s] [tty: kernel debug panel]",
                     BUILDTYPE_STR);
    }
 
    ASSERT(rc > 0);
    llen = MIN((u16)rc, fb_term_cols - 1);
 
-   rc = snprintk(rbuf, fb_term_cols - 1 - llen,
-                 "%02i %s %i %02i:%02i",
-                 d.day, months3[d.month - 1],
-                 d.year, d.hour, d.min);
+   if (get_acpi_init_status() == ais_fully_initialized) {
+
+      if (!get_batt_charge_failed) {
+
+         ulong charge;
+         rc = acpi_get_all_batteries_charge_per_mille(&charge);
+
+         if (!rc)
+            batt_charge_pm = (int)charge;
+         else if (rc != -ENOMEM)
+            get_batt_charge_failed = true;
+      }
+   }
+
+   if (batt_charge_pm >= 0) {
+
+      rc = snprintk(rbuf, fb_term_cols - 1 - llen,
+                    "[Battery: %d.%d%%] [%02i %s %i %02i:%02i]",
+                    batt_charge_pm / 10,
+                    batt_charge_pm % 10,
+                    d.day, months3[d.month - 1],
+                    d.year, d.hour, d.min);
+
+   } else {
+
+      rc = snprintk(rbuf, fb_term_cols - 1 - llen,
+                    "[%02i %s %i %02i:%02i]",
+                    d.day, months3[d.month - 1],
+                    d.year, d.hour, d.min);
+   }
 
    ASSERT(rc > 0);
    rlen = MIN((u32)rc, fb_term_cols - 1 - llen);
@@ -333,9 +364,23 @@ static void fb_update_banner()
       if (!banner_refresh_disabled)
          fb_draw_banner();
 
-      kernel_sleep(60 * TIMER_HZ);
+      kernel_sleep(30 * TIMER_HZ);
    }
 }
+
+static u32 fb_console_on_acpi_full_init_func(void *ctx)
+{
+   if (!banner_refresh_disabled)
+      fb_draw_banner();
+
+   return 0;
+}
+
+static struct acpi_reg_callback_node fb_console_on_acpi_full_init_node = {
+   .node = STATIC_LIST_NODE_INIT(fb_console_on_acpi_full_init_node.node),
+   .cb = &fb_console_on_acpi_full_init_func,
+   .ctx = NULL
+};
 
 static void fb_scroll_one_line_up(void)
 {
@@ -470,7 +515,17 @@ void init_fb_console(void)
       fb_create_cursor_blinking_thread();
 
    if (fb_offset_y) {
-      if (kthread_create(fb_update_banner, 0, NULL) < 0)
+      if (kthread_create(fb_update_banner, 0, NULL) > 0) {
+
+         /* Success */
+         if (MOD_acpi) {
+            acpi_reg_on_full_init_cb(&fb_console_on_acpi_full_init_node);
+         }
+
+      } else {
+
+         /* Oops! Something went wrong */
          printk("WARNING: unable to create the fb_update_banner\n");
+      }
    }
 }

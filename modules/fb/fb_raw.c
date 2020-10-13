@@ -580,7 +580,7 @@ void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count, bool fpu)
 }
 
 
-#include <linux/fb.h>
+#include <linux/fb.h>         // system header
 
 void fb_fill_fix_info(void *fix_info)
 {
