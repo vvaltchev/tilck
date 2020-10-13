@@ -99,3 +99,6 @@ void acpi_reboot(void);
 
 /* Power-off the machine (transition to state ACPI S5) */
 void acpi_poweroff(void);
+
+/* Get the average charge per mille of all batteries */
+int acpi_get_all_batteries_charge_per_mille(ulong *ret);
