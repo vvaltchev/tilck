@@ -21,6 +21,11 @@ struct basic_battery_info {
 void
 print_acpi_failure(const char *func, const char *farg, ACPI_STATUS rc);
 
+ACPI_STATUS
+register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
+                           ACPI_HANDLE obj,
+                           ACPI_DEVICE_INFO *obj_info);
+
 bool
 acpi_has_method(ACPI_HANDLE obj, const char *name);
 

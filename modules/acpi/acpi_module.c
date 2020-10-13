@@ -331,6 +331,11 @@ acpi_walk_single_obj_with_info(ACPI_HANDLE parent,
          return rc; /* Only the OOM condition requires the walk to stop */
    }
 
+   rc = register_acpi_obj_in_sysfs(parent, obj, Info);
+
+   if (rc == AE_NO_MEMORY)
+      return rc;
+
    return AE_OK;
 }
 
@@ -365,6 +370,11 @@ acpi_walk_ns(void)
 
    parent = NULL; /* means root */
    child = NULL;  /* means first child */
+
+   rc = register_acpi_obj_in_sysfs(parent, child, NULL);
+
+   if (rc == AE_NO_MEMORY)
+      return rc;
 
    while (true) {
 
