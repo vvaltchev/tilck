@@ -819,7 +819,9 @@ static void term_action_restart_video_output(term *_t, ...)
    t->vi = t->saved_vi;
 
    term_redraw(t);
-   term_action_enable_cursor(t, t->cursor_enabled);
+
+   if (t->scroll == t->max_scroll)
+      term_action_enable_cursor(t, t->cursor_enabled);
 
    if (!in_panic()) {
       if (t->vi->redraw_static_elements)
