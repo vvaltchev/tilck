@@ -29,11 +29,9 @@ void acpi_set_root_pointer(ulong);
 
 #else
 
-static inline enum acpi_init_status
-get_acpi_init_status(void) { return ais_not_started; }
-
-static inline void acpi_mod_init_tables(void) { }
-static inline void acpi_set_root_pointer(ulong ptr) { }
+#define get_acpi_init_status()            ais_not_started
+#define acpi_mod_init_tables()
+#define acpi_set_root_pointer(...)
 
 #endif
 
