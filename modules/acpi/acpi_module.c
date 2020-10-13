@@ -210,9 +210,9 @@ acpi_mod_init_tables(void)
 
    ASSERT(acpi_init_status == ais_not_started);
 
-   AcpiDbgLevel = ACPI_NORMAL_DEFAULT | ACPI_LV_EVENTS;
-   AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
-   AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
+   AcpiDbgLevel = (ACPI_NORMAL_DEFAULT | ACPI_LV_EVENTS) & ~ACPI_LV_REPAIR;
+   //AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
+   //AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
 
    printk("ACPI: AcpiInitializeSubsystem\n");
    rc = AcpiInitializeSubsystem();
