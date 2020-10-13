@@ -13,6 +13,7 @@
 #include <tilck/mods/acpi.h>
 
 #include "osl.h"
+#include "acpi_int.h"
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
 
@@ -258,7 +259,7 @@ acpi_mod_load_tables(void)
 }
 
 static ACPI_STATUS
-call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
+call_per_matching_device_cbs(ACPI_HANDLE obj, ACPI_DEVICE_INFO *Info)
 {
    struct acpi_reg_per_object_cb_node *pos;
    const char *hid, *uid, *cls;
@@ -285,7 +286,7 @@ call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
       if (pos->cls && (!cls || strncmp(cls, pos->cls, cls_l)))
          continue; // CLS doesn't match
 
-      rc = pos->cb(ObjHandle, Info, pos->ctx);
+      rc = pos->cb(obj, Info, pos->ctx);
 
       if (ACPI_FAILURE(rc))
          return rc;
@@ -295,61 +296,49 @@ call_per_matching_device_cbs(ACPI_HANDLE ObjHandle, ACPI_DEVICE_INFO *Info)
 }
 
 static ACPI_STATUS
-acpi_walk_single_obj(ACPI_HANDLE ObjHandle)
+acpi_walk_single_obj_with_info(ACPI_HANDLE parent,
+                               ACPI_HANDLE obj,
+                               ACPI_DEVICE_INFO *Info)
+{
+   ACPI_STATUS rc;
+
+   if (Info->Type == ACPI_TYPE_DEVICE) {
+
+      rc = call_per_matching_device_cbs(obj, Info);
+
+      if (rc == AE_NO_MEMORY)
+         return rc; /* Only the OOM condition requires the walk to stop */
+   }
+
+   return AE_OK;
+}
+
+static ACPI_STATUS
+acpi_walk_single_obj(ACPI_HANDLE parent, ACPI_HANDLE obj)
 {
    ACPI_DEVICE_INFO *Info;
-   ACPI_BUFFER Path;
    ACPI_STATUS rc;
-   char buf[256];
-   const char *hid = NULL;
 
-   Path.Length = sizeof(buf);
-   Path.Pointer = buf;
-
-   /* Get the device info for this device and print it */
-   rc = AcpiGetObjectInfo(ObjHandle, &Info);
+   /* Get object's info */
+   rc = AcpiGetObjectInfo(obj, &Info);
 
    if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiGetObjectInfo", ObjHandle, rc);
+      print_acpi_failure("AcpiGetObjectInfo", NULL, rc);
       return rc; /* Fatal error */
    }
 
-   if (Info->Type != ACPI_TYPE_DEVICE)
-      return AE_OK;
+   /* Call the per-obj function */
+   rc = acpi_walk_single_obj_with_info(parent, obj, Info);
 
-   /* Get the full path of this device and print it */
-   rc = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
-
-   if (ACPI_FAILURE(rc)) {
-      print_acpi_failure("AcpiGetName", ObjHandle, rc);
-      goto out; /* Fatal error */
-   }
-
-   if (Info->Valid & ACPI_VALID_HID)
-      hid = Info->HardwareId.String;
-
-   printk("%s (%#04x, HID: %s)\n", buf, Info->Type, hid ? hid : "n/a");
-
-   rc = call_per_matching_device_cbs(ObjHandle, Info);
-
-   if (ACPI_FAILURE(rc)) {
-
-      if (rc == AE_NO_MEMORY)
-         goto out;
-
-      /* Note: only the OOM condition requires the walk to stop */
-   }
-
-out:
-   AcpiOsFree(Info);
+   ACPI_FREE(Info);
    return rc;
 }
 
 static ACPI_STATUS
 acpi_walk_ns(void)
 {
-   ACPI_STATUS rc;
    ACPI_HANDLE parent, child;
+   ACPI_STATUS rc;
 
    printk("ACPI: walk through all objects in the namespace\n");
 
@@ -374,8 +363,7 @@ acpi_walk_ns(void)
       }
 
       /* Call the per-obj function */
-
-      rc = acpi_walk_single_obj(child);
+      rc = acpi_walk_single_obj(parent, child);
 
       if (ACPI_FAILURE(rc))
          return rc;  /* Likely, out-of-memory (OOM) condition. */
@@ -476,8 +464,6 @@ acpi_mod_enable_subsystem(void)
 
    if (ACPI_FAILURE(rc)) {
       print_acpi_failure("acpi_walk_ns", NULL, rc);
-      acpi_handle_fatal_failure_after_enable_subsys();
-      return;
    }
 
    printk("ACPI: Call on-subsys-enabled callbacks\n");
