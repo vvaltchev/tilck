@@ -69,6 +69,14 @@ struct acpi_reg_per_object_cb_node {
    const char *hid;  /* Required matching HID (if not NULL) */
    const char *uid;  /* Required matching UID (if not NULL) */
    const char *cls;  /* Required matching CLS (if not NULL) */
+
+   /*
+    * Optional filter function.
+    * In case filtering using the fields above is not enough a filter function
+    * pointer can be provided. The callback `cb` will be called only when the
+    * filter has returned true.
+    */
+   bool (*filter)(void *obj_handle);
 };
 
 /*

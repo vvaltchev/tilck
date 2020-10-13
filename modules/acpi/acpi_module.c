@@ -286,6 +286,9 @@ call_per_matching_device_cbs(ACPI_HANDLE obj, ACPI_DEVICE_INFO *Info)
       if (pos->cls && (!cls || strncmp(cls, pos->cls, cls_l)))
          continue; // CLS doesn't match
 
+      if (pos->filter && !pos->filter(obj))
+         continue; // The filter discarded the object
+
       rc = pos->cb(obj, Info, pos->ctx);
 
       if (ACPI_FAILURE(rc))
