@@ -54,6 +54,16 @@ struct acpi_reg_callback_node {
  */
 void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *node);
 
+/*
+ * Register a callback that will be called once ACPI has been fully initialized.
+ *
+ * NOTE: any errors returned by the callbacks are IGNORED. The only reason they
+ * are required to return an integer it to reuse the same interface used by the
+ * acpi_reg_on_subsys_enabled_cb() function.
+ */
+void acpi_reg_on_full_init_cb(struct acpi_reg_callback_node *node);
+
+
 typedef u32 (*acpi_per_object_callback)(void *obj_handle,
                                         void *device_info,
                                         void *ctx);

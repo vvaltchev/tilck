@@ -31,12 +31,20 @@ static u32 acpi_fadt_flags;
 static struct list on_subsystem_enabled_cb_list
    = STATIC_LIST_INIT(on_subsystem_enabled_cb_list);
 
+static struct list on_full_init_cb_list
+   = STATIC_LIST_INIT(on_full_init_cb_list);
+
 static struct list per_acpi_object_cb_list
    = STATIC_LIST_INIT(per_acpi_object_cb_list);
 
 void acpi_reg_on_subsys_enabled_cb(struct acpi_reg_callback_node *cbnode)
 {
    list_add_tail(&on_subsystem_enabled_cb_list, &cbnode->node);
+}
+
+void acpi_reg_on_full_init_cb(struct acpi_reg_callback_node *cbnode)
+{
+   list_add_tail(&on_full_init_cb_list, &cbnode->node);
 }
 
 void acpi_reg_per_object_cb(struct acpi_reg_per_object_cb_node *cbnode)
@@ -61,6 +69,16 @@ call_on_subsys_enabled_cbs(void)
    }
 
    return AE_OK;
+}
+
+static void
+call_on_full_init_cbs(void)
+{
+   struct acpi_reg_callback_node *pos;
+
+   list_for_each_ro(pos, &on_full_init_cb_list, node) {
+      pos->cb(pos->ctx);
+   }
 }
 
 void
@@ -494,6 +512,9 @@ acpi_mod_enable_subsystem(void)
       acpi_handle_fatal_failure_after_enable_subsys();
       return;
    }
+
+   printk("ACPI: Call on-full-init callbacks\n");
+   call_on_full_init_cbs();
 }
 
 bool
