@@ -23,6 +23,9 @@ ramfs_dir_add_entry(struct ramfs_inode *idir,
    size_t enl = strlen(iname) + 1;
    ASSERT(idir->type == VFS_DIR);
 
+   if (enl == 1)
+      return -ENOENT;
+
    if (enl > sizeof(e->name))
       return -ENAMETOOLONG;
 
