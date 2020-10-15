@@ -13,6 +13,7 @@
 #include <tilck_gen_headers/mod_tracing.h>
 #include <tilck_gen_headers/mod_sysfs.h>
 #include <tilck_gen_headers/mod_acpi.h>
+#include <tilck_gen_headers/mod_pci.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -55,6 +56,7 @@ static void dp_show_opts(void)
 
    DUMP_LABEL("Kernel modules");
    DUMP_BOOL_OPT(MOD_acpi);
+   DUMP_BOOL_OPT(MOD_pci);
    DUMP_BOOL_OPT(MOD_kb8042);
    DUMP_BOOL_OPT(MOD_console);
    DUMP_BOOL_OPT(MOD_fb);
@@ -69,6 +71,7 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(FB_CONSOLE_CURSOR_BLINK);
    DUMP_BOOL_OPT(FB_CONSOLE_USE_ALT_FONTS);
    DUMP_BOOL_OPT(KERNEL_SHOW_LOGO);
+   DUMP_BOOL_OPT(PCI_VENDORS_LIST);
 
    DUMP_LABEL("Enabled by default");
    DUMP_BOOL_OPT(SERIAL_CON_IN_VIDEO_MODE);

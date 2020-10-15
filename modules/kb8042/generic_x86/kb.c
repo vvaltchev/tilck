@@ -453,7 +453,7 @@ void init_kb(void)
 
 static struct module kb_ps2_module = {
 
-   .name = "kbps2",
+   .name = "kb8042",
    .priority = MOD_kb_prio,
    .init = &init_kb,
 };

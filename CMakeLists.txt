@@ -305,7 +305,7 @@ set(PREFERRED_GFX_MODE_H "600" CACHE STRING
 set(KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
     "Size in KB of kmalloc's first heap. Must be multiple of 64.")
 
-set(KRN_PCI_VENDORS_LIST OFF CACHE BOOL
+set(PCI_VENDORS_LIST OFF CACHE BOOL
     "Compile-in the list of all known PCI vendors")
 
 list(
@@ -393,9 +393,9 @@ if (TINY_KERNEL)
       set(KERNEL_SHOW_LOGO OFF)
    endif()
 
-   if (KRN_PCI_VENDORS_LIST)
-      message(WARNING "TINY_KERNEL=1, force-setting KRN_PCI_VENDORS_LIST=0")
-      set(KRN_PCI_VENDORS_LIST OFF)
+   if (PCI_VENDORS_LIST)
+      message(WARNING "TINY_KERNEL=1, force-setting PCI_VENDORS_LIST=0")
+      set(PCI_VENDORS_LIST OFF)
    endif()
 
 endif()
@@ -472,7 +472,7 @@ list(
    FB_CONSOLE_USE_ALT_FONTS
    TINY_KERNEL
    INIT_REPORT_PROC_EXIT
-   KRN_PCI_VENDORS_LIST
+   PCI_VENDORS_LIST
 )
 
 ###########################################################
@@ -562,6 +562,10 @@ message(STATUS "**************** END KERNEL MODULES *****************")
 
 if (NOT ${MOD_console} AND NOT ${MOD_serial})
    message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
+endif()
+
+if (${MOD_acpi} AND NOT ${MOD_pci})
+   message(FATAL_ERROR "The module 'acpi' requires the module 'pci'")
 endif()
 
 ################################################################################

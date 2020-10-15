@@ -31,7 +31,6 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/process.h>
-#include <tilck/kernel/pci.h>
 #include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/fs/vfs.h>
 
@@ -123,6 +122,8 @@ init_video_console(void)
 void
 init_console(void)
 {
+   printk("*** Init the kernel console\n");
+
    if (kopt_serial_console) {
 
       if (!serial_term_intf) {
@@ -404,7 +405,6 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_sched();
    init_syscall_interfaces();
    init_worker_threads();
-   init_pci();
    init_timer();
    init_system_time();
    init_kernelfs();

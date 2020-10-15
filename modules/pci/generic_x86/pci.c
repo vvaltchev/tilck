@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_pci.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 
@@ -7,8 +9,9 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/paging.h>
-#include <tilck/kernel/pci.h>
+#include <tilck/kernel/modules.h>
 
+#include <tilck/mods/pci.h>
 #include <tilck/mods/acpi.h>
 
 #include <3rd_party/acpi/acpi.h>
@@ -16,7 +19,7 @@
 
 #include "pci_classes.c.h"
 
-#if KRN_PCI_VENDORS_LIST
+#if PCI_VENDORS_LIST
 
    #include "pci_vendors.c.h"
 
@@ -790,7 +793,7 @@ pci_discover_segment(struct pci_segment *seg)
    } while (visit_count > 0);
 }
 
-void
+static void
 init_pci(void)
 {
    list_init(&pci_device_list);
@@ -829,3 +832,12 @@ init_pci(void)
    kfree_array_obj(pci_buses, u8, 256);
    pci_buses = NULL;
 }
+
+static struct module pci_module = {
+
+   .name = "pci",
+   .priority = MOD_pci_prio,
+   .init = &init_pci,
+};
+
+REGISTER_MODULE(&pci_module);

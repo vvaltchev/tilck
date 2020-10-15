@@ -7,9 +7,10 @@
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/timer.h>
-#include <tilck/kernel/pci.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/debug_utils.h>
+
+#include <tilck/mods/pci.h>
 #include <tilck/mods/acpi.h>
 
 #include "osl.h"

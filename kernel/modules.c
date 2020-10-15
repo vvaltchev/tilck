@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/sort.h>
 
@@ -26,6 +28,7 @@ void init_modules(void)
 
    for (int i = 0; i < mods_count; i++) {
       struct module *m = modules[i];
+      printk("*** Init kernel module: %s\n", m->name);
       m->init();
    }
 }

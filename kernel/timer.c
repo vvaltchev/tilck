@@ -383,6 +383,8 @@ void init_timer(void)
 
    __tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
 
+   printk("*** Init the kernel timer\n");
+
    if (!wth_enqueue_anywhere(WTH_PRIO_HIGHEST, &do_bogomips_loop, &ctx))
       panic("Timer: unable to enqueue job in wth 0");
 

@@ -13,7 +13,6 @@
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 #cmakedefine01 TINY_KERNEL
 #cmakedefine01 KERNEL_GCOV
-#cmakedefine01 KRN_PCI_VENDORS_LIST
 
 /*
  * --------------------------------------------------------------------------

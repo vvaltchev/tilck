@@ -7,7 +7,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
-#include <tilck/kernel/pci.h>
+#include <tilck/mods/pci.h>
 
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>

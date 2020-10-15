@@ -14,6 +14,7 @@
 #include <tilck_gen_headers/mod_tracing.h>
 #include <tilck_gen_headers/mod_sysfs.h>
 #include <tilck_gen_headers/mod_acpi.h>
+#include <tilck_gen_headers/mod_pci.h>
 
 #include <tilck/mods/sysfs.h>
 #include <tilck/mods/sysfs_utils.h>
@@ -63,6 +64,7 @@ DEF_STATIC_CONF_RO(BOOL,  debugpanel,              MOD_debugpanel);
 DEF_STATIC_CONF_RO(BOOL,  tracing,                 MOD_tracing);
 DEF_STATIC_CONF_RO(BOOL,  sysfs,                   MOD_sysfs);
 DEF_STATIC_CONF_RO(BOOL,  acpi,                    MOD_acpi);
+DEF_STATIC_CONF_RO(BOOL,  pci,                     MOD_pci);
 
 void sysfs_create_config_obj(void)
 {
@@ -141,6 +143,7 @@ void sysfs_create_config_obj(void)
       SYSOBJ_CONF_PROP_PAIR(tracing),
       SYSOBJ_CONF_PROP_PAIR(sysfs),
       SYSOBJ_CONF_PROP_PAIR(acpi),
+      SYSOBJ_CONF_PROP_PAIR(pci),
       NULL
    );
 
