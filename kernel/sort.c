@@ -50,3 +50,18 @@ insertion_sort_generic(void *a, ulong elem_size, u32 elem_count, cmpfun_ptr cmp)
       memcpy(a + j * elem_size, &elem, elem_size); /* a[j] = elem */
    }
 }
+
+/* Reverse an array of pointer-sized elements */
+
+void
+array_reverse_ptr(void *a, u32 elem_count)
+{
+   ulong *arr = a;
+   ulong tmp;
+
+   for (u32 i = 0; i < elem_count / 2; i++) {
+      tmp = arr[i];
+      arr[i] = arr[elem_count - i - 1];
+      arr[elem_count - i - 1] = tmp;
+   }
+}

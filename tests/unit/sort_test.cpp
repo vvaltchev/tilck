@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <random>
 #include <vector>
+#include <algorithm>
 #include <gtest/gtest.h>
 
 using namespace std;
@@ -96,4 +97,23 @@ TEST(insertion_sort_generic, random)
    insertion_sort_generic((ulong *)&vec[0], sizeof(vec[0]),
                           vec.size(), less_than_cmp_int);
    ASSERT_TRUE(my_is_sorted((ulong *)&vec[0], vec.size(), less_than_cmp_int));
+}
+
+bool array_reverse_ptr_check(const vector<ulong> &vec)
+{
+   vector<ulong> copy = vec;
+
+   array_reverse_ptr((void *)&vec[0], (u32)vec.size());
+   reverse(copy.begin(), copy.end());
+
+   return copy == vec;
+}
+
+TEST(reverse_array, basic)
+{
+   EXPECT_TRUE(array_reverse_ptr_check({ }));
+   EXPECT_TRUE(array_reverse_ptr_check({ 1 }));
+   EXPECT_TRUE(array_reverse_ptr_check({ 1, 2 }));
+   EXPECT_TRUE(array_reverse_ptr_check({ 1, 2, 3 }));
+   EXPECT_TRUE(array_reverse_ptr_check({ 1, 2, 3, 4 }));
 }
