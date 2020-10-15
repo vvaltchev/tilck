@@ -338,32 +338,32 @@ foreach(modpath ${modules})
 
    get_filename_component(modname ${modpath} NAME_WE)
 
-   if (IS_DIRECTORY ${modpath})
+   if (NOT IS_DIRECTORY ${modpath})
+      continue()
+   endif()
 
-      if (TINY_KERNEL)
+   if (TINY_KERNEL)
 
-         list(FIND tiny_kernel_modules_blacklist ${modname} _index)
-
-         if (${_index} GREATER -1)
-            if (MOD_${modname})
-               message(WARNING "TINY_KERNEL=1, force-setting MOD_${modname}=0")
-               set(MOD_${modname} OFF)
-            endif()
-         endif()
-         unset(_index)
-
-      endif(TINY_KERNEL)
-
-      list(APPEND modules_list ${modname})
-
-      list(FIND disabled_modules_list ${modname} _index)
+      list(FIND tiny_kernel_modules_blacklist ${modname} _index)
 
       if (${_index} GREATER -1)
-         set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
-      else()
-         set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+         if (MOD_${modname})
+            message(WARNING "TINY_KERNEL=1, force-setting MOD_${modname}=0")
+            set(MOD_${modname} OFF)
+         endif()
       endif()
+      unset(_index)
 
+   endif(TINY_KERNEL)
+
+   list(APPEND modules_list ${modname})
+
+   list(FIND disabled_modules_list ${modname} _index)
+
+   if (${_index} GREATER -1)
+      set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
+   else()
+      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
    endif()
 
 endforeach()
@@ -564,9 +564,31 @@ if (NOT ${MOD_console} AND NOT ${MOD_serial})
    message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
 endif()
 
-if (${MOD_acpi} AND NOT ${MOD_pci})
-   message(FATAL_ERROR "The module 'acpi' requires the module 'pci'")
-endif()
+foreach (mod ${modules_list})
+
+   set(deps_file "${CMAKE_SOURCE_DIR}/modules/${mod}/module_deps")
+
+   if (NOT ${MOD_${mod}})
+      continue() # Module not compiled-in: skip it.
+   endif()
+
+   if (NOT EXISTS ${deps_file})
+      continue() # No dependencies. Great!
+   endif()
+
+   # Read the dependencies in the `deps` list
+   file(STRINGS ${deps_file} deps)
+
+   foreach (d ${deps})
+      if (NOT ${MOD_${d}})
+         message(FATAL_ERROR "The module '${mod}' requires the module '${d}'")
+      endif()
+   endforeach()
+
+   unset(deps)
+   unset(deps_file)
+
+endforeach()
 
 ################################################################################
 
