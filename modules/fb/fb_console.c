@@ -38,6 +38,18 @@ static struct task *blink_thread_ti;
 static const u32 blink_half_period = (TIMER_HZ * 45)/100;
 static u32 cursor_color;
 
+/*
+ * Battery charge per mille. Valid values in range [0, 1000].
+ *
+ * Special values:
+ *
+ *    -1    No initialized
+ *    -2    Read failed with an unrecoverable error
+ *
+ * See: fb_banner_update_battery_pm()
+ */
+static int batt_charge_pm = -1;
+
 static struct video_interface framebuffer_vi;
 
 static void fb_save_under_cursor_buf(void)
@@ -250,26 +262,24 @@ static void fb_setup_banner(void)
    fb_offset_y = (20 * font_h) / 10;
 }
 
-static int fb_banner_get_battery_pm(void)
+static void fb_banner_update_battery_pm(void)
 {
-   static bool get_batt_charge_failed;
-   int rc, batt_charge_pm = -1;
+   ulong charge;
+   int rc;
 
-   if (get_acpi_init_status() == ais_fully_initialized) {
+   if (batt_charge_pm == -2)
+      return; /* Read already failed with an unrecoverable error */
 
-      if (!get_batt_charge_failed) {
+   if (get_acpi_init_status() != ais_fully_initialized)
+      return; /* Do nothing */
 
-         ulong charge;
-         rc = acpi_get_all_batteries_charge_per_mille(&charge);
+   /* Do the actual read */
+   rc = acpi_get_all_batteries_charge_per_mille(&charge);
 
-         if (!rc)
-            batt_charge_pm = (int)charge;
-         else if (rc != -ENOMEM)
-            get_batt_charge_failed = true;
-      }
-   }
-
-   return batt_charge_pm;
+   if (!rc)
+      batt_charge_pm = (int)charge;
+   else if (rc != -ENOMEM)
+      batt_charge_pm = -2; /* Unrecoverable error (anything != out of memory) */
 }
 
 static u32 fb_banner_left_side(char *buf, size_t buf_sz)
@@ -292,9 +302,21 @@ static u32 fb_banner_left_side(char *buf, size_t buf_sz)
 
 static u32 fb_banner_right_side(char *buf, size_t buf_sz)
 {
-   int batt_charge_pm = fb_banner_get_battery_pm();
    struct datetime d;
    int rc;
+
+   if (batt_charge_pm == -1) {
+
+      /*
+       * Read the current battery charge per mille ONLY IF the value has never
+       * been read. The purpose of this is to avoid forcing battery's controller
+       * to do too many charge reads.
+       *
+       * The actual value is updated peridically by fb_update_banner().
+       */
+
+      fb_banner_update_battery_pm();
+   }
 
    timestamp_to_datetime(get_timestamp(), &d);
 
@@ -400,8 +422,10 @@ static void fb_update_banner()
 {
    while (true) {
 
-      if (!banner_refresh_disabled)
+      if (!banner_refresh_disabled) {
+         fb_banner_update_battery_pm();
          fb_draw_banner();
+      }
 
       kernel_sleep(30 * TIMER_HZ);
    }
