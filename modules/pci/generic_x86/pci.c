@@ -34,8 +34,6 @@
 #define PCI_CONFIG_ADDRESS              0xcf8
 #define PCI_CONFIG_DATA                 0xcfc
 
-#define PCI_CLASS_BRIDGE                 0x06
-#define PCI_SUBCLASS_PCI_BRIDGE          0x04
 #define PCI_DEV_BASE_INFO                0x00
 #define PCI_CLASS_INFO_OFF               0x08
 #define PCI_HDR_TYPE_OFF                 0x0e

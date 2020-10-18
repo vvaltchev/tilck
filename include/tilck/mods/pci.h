@@ -4,6 +4,32 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/list.h>
 
+#define PCI_CLASS_NONE                   0x00
+#define PCI_CLASS_MASS_STORAGE           0x01
+#define PCI_CLASS_NETWORK                0x02
+#define PCI_CLASS_DISPLAY                0x03
+#define PCI_CLASS_MULTIMEDIA             0x04
+#define PCI_CLASS_MEMORY                 0x05
+#define PCI_CLASS_BRIDGE                 0x06
+#define PCI_CLASS_COMMUNICATION          0x07
+#define PCI_CLASS_GENERIC_PERIPHERAL     0x08
+#define PCI_CLASS_INPUT                  0x09
+#define PCI_CLASS_DOCKING_STATION        0x0a
+#define PCI_CLASS_PROCESSOR              0x0b
+#define PCI_CLASS_SERIAL_BUS             0x0c
+#define PCI_CLASS_WIRELESS               0x0d
+#define PCI_CLASS_INTELLIGENT            0x0e
+#define PCI_CLASS_SATELLITE_COMM         0x0f
+#define PCI_CLASS_ENCRYPTION             0x10
+#define PCI_CLASS_SIGNAL_PROCESSING      0x11
+#define PCI_CLASS_PROC_ACC               0x12
+#define PCI_CLASS_NON_ESSENTIAL_INST     0x13
+#define PCI_CLASS_COPROC                 0x40
+#define PCI_CLASS_UNASSIGNED             0xff
+
+#define PCI_SUBCLASS_PCI_BRIDGE          0x04
+
+
 struct pci_vendor {
    u16 vendor_id;
    const char *name;
