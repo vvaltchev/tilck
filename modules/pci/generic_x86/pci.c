@@ -64,6 +64,8 @@ static struct pci_device_loc mmio_bus; /* valid if mmio_bus_va != 0 */
 int (*__pci_config_read_func)(struct pci_device_loc, u32, u32, u32 *);
 int (*__pci_config_write_func)(struct pci_device_loc, u32, u32, u32);
 
+#include "pci_sysfs.c.h"
+
 static void
 pci_mark_bus_to_visit(u8 bus)
 {
@@ -794,6 +796,8 @@ pci_discover_segment(struct pci_segment *seg)
 static void
 init_pci(void)
 {
+   int rc;
+
    list_init(&pci_device_list);
 
    /* Read the ACPI table MCFG (if any) */
@@ -829,6 +833,11 @@ init_pci(void)
    /* Free the temporary pci_buses buffer */
    kfree_array_obj(pci_buses, u8, 256);
    pci_buses = NULL;
+
+   rc = pci_create_sysfs_view();
+
+   if (rc)
+      printk("PCI: unable to create view in sysfs. Error: %d\n", -rc);
 }
 
 static struct module pci_module = {
