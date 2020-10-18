@@ -15,6 +15,7 @@
 #include "acpi_int.h"
 #include <3rd_party/acpi/acpi.h>
 #include <3rd_party/acpi/accommon.h>
+#include <3rd_party/acpi/acinterp.h>
 
 #define PROP_NAME_BUF_SZ                         32
 #define ACPI_SERIALIZE_MAX_DEPTH                  3
@@ -81,6 +82,14 @@ static offt
 acpi_serialize_long(ACPI_OBJECT *val, char *buf, offt buf_sz, int depth)
 {
    return acpi_serialize_long_raw(val->Integer.Value, buf, buf_sz, depth);
+}
+
+static offt
+acpi_serialize_eisaid(ACPI_OBJECT *val, char *buf, offt buf_sz, int depth)
+{
+   char tmpbuf[ACPI_EISAID_STRING_SIZE];
+   AcpiExEisaIdToString(tmpbuf, val->Integer.Value);
+   return snprintk(buf, buf_sz, "%s\n", tmpbuf);
 }
 
 static offt
@@ -177,39 +186,52 @@ gen_data_load_handle_pidx(ACPI_OBJECT *val,
 {
    offt len = 0;
 
-   if (val->Type != ACPI_TYPE_PACKAGE || (u32)pidx >= val->Package.Count)
-      return 0; /* Not a package: cannot get value at index `pdix` */
+   if (pidx >= 0) {
 
-   /* Read the element at index `pdix` */
-   val = &val->Package.Elements[pidx];
+      if (val->Type != ACPI_TYPE_PACKAGE || (u32)pidx >= val->Package.Count)
+         return 0; /* Not a package: cannot get value at index `pdix` */
 
-   if ((fmt != 's' || bitx >= 0) && val->Type != ACPI_TYPE_INTEGER)
-      return 0; /* We expected an integer, but we found something else */
+      /* Read the element at index `pdix` */
+      val = &val->Package.Elements[pidx];
+   }
 
    if (bitx >= 0) {
 
-      len = acpi_serialize_ul_raw(
-         !!(val->Integer.Value & (1 << bitx)), buf, buf_sz, 0
-      );
+      if (val->Type == ACPI_TYPE_INTEGER) {
+
+         len = acpi_serialize_ul_raw(
+            !!(val->Integer.Value & (1 << bitx)), buf, buf_sz, 0
+         );
+
+      }
 
    } else {
 
       switch (fmt) {
 
          case 0: /* no fmt */
-            len = acpi_serialize_obj(val, buf, buf_sz, 0);
+            if (val->Type == ACPI_TYPE_INTEGER)
+               len = acpi_serialize_obj(val, buf, buf_sz, 0);
             break;
 
          case 'u': /* unsigned integer (base 10) */
-            len = acpi_serialize_ul(val, buf, buf_sz, 0);
+            if (val->Type == ACPI_TYPE_INTEGER)
+               len = acpi_serialize_ul(val, buf, buf_sz, 0);
             break;
 
          case 'x': /* unsigned integer (base 16) */
-            len = acpi_serialize_hex(val, buf, buf_sz, 0);
+            if (val->Type == ACPI_TYPE_INTEGER)
+               len = acpi_serialize_hex(val, buf, buf_sz, 0);
             break;
 
          case 'd': /* signed integer (base 10) */
-            len = acpi_serialize_long(val, buf, buf_sz, 0);
+            if (val->Type == ACPI_TYPE_INTEGER)
+               len = acpi_serialize_long(val, buf, buf_sz, 0);
+            break;
+
+         case 'E': /* EISAID (ACPI HID in integer compressed form) */
+            if (val->Type == ACPI_TYPE_INTEGER)
+               len = acpi_serialize_eisaid(val, buf, buf_sz, 0);
             break;
 
          case 's': /* NUL-terminated string */
@@ -245,7 +267,7 @@ acpi_generic_data_load(struct sysobj *s_obj,
    res.Length = ACPI_ALLOCATE_BUFFER;
    res.Pointer = NULL;
 
-   if (child_expr) {
+   if (child_expr && ((char *)child_expr)[0] != ':') {
 
       strncpy(child_buf, child_expr, sizeof(child_buf) - 1);
       child = child_buf;
@@ -267,13 +289,17 @@ acpi_generic_data_load(struct sysobj *s_obj,
 
          child[4] = 0;
       }
+
+   } else if (child_expr && ((char *)child_expr)[0] == ':') {
+
+      fmt = ((char *)child_expr)[1];
    }
 
    if (ACPI_SUCCESS(AcpiEvaluateObject(obj_handle, child, NULL, &res))) {
 
       val = res.Pointer;
 
-      if (pidx >= 0)
+      if (pidx >= 0 || fmt)
          len = gen_data_load_handle_pidx(val, pidx, bitx, fmt, buf, buf_sz);
       else
          len = acpi_serialize_obj(val, buf, buf_sz, 0);
@@ -399,7 +425,12 @@ struct create_acpi_sys_obj_ctx {
 
    ACPI_HANDLE obj;
    ACPI_OBJECT_TYPE type;
-   const char *name;
+
+   union {
+      const char *name;
+      const u32 *name_int;
+   };
+
    const char *type_str;
    struct sysobj *view_dest_obj;
 };
@@ -458,17 +489,29 @@ static struct sysobj *
 create_acpi_sys_obj(struct create_acpi_sys_obj_ctx *ctx)
 {
    struct sysobj *s_obj = NULL;
+   const char *child_expr = NULL;
+   const char *type_str = ctx->type_str;
 
    switch (ctx->type) {
 
-      case ACPI_TYPE_INTEGER:   /* fall-through */
+      case ACPI_TYPE_INTEGER:
+
+         if (*ctx->name_int == *(u32 *)"_HID" ||
+             *ctx->name_int == *(u32 *)"_CID")
+         {
+            child_expr = ":E";
+            type_str = "EISAID";
+         }
+
+         /* fall-through */
+
       case ACPI_TYPE_STRING:    /* fall-through */
       case ACPI_TYPE_BUFFER:    /* fall-through */
       case ACPI_TYPE_PACKAGE:
          s_obj = sysfs_create_obj(&acpi_data_sysobj_type,
                                   NULL,                 /* hooks */
-                                  ctx->type_str,        /* data for `type` */
-                                  NULL);                /* data for `value` */
+                                  type_str,             /* data for `type` */
+                                  child_expr);          /* data for `value` */
 
          break;
 
@@ -479,7 +522,7 @@ create_acpi_sys_obj(struct create_acpi_sys_obj_ctx *ctx)
       default:
          s_obj = sysfs_create_obj(&acpi_basic_sysobj_type,
                                   NULL,                /* hooks */
-                                  ctx->type_str,       /* data for `type` */
+                                  type_str,            /* data for `type` */
                                   NULL);               /* data for `methods` */
    }
 
