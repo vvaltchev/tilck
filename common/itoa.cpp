@@ -4,6 +4,7 @@
 extern "C" {
 
    #include <tilck/common/basic_defs.h>
+   #include <tilck/common/failsafe_assert.h>
    #include <tilck/common/string_util.h>
    #include <tilck/kernel/errno.h>
 
