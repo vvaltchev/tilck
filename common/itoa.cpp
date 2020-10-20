@@ -71,6 +71,9 @@ T __tilck_strtol(const char *str, const char **endptr, int base, int *error)
 
    ASSERT(IN_RANGE_INC(base, 2, 16));
 
+   if (error)
+      *error = 0;
+
    if (!is_unsigned<T>::val) {
       if (*str == '-') {
          sign = (T) -1;
