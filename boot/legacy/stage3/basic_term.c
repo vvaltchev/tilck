@@ -73,8 +73,15 @@ void bt_write_char(char c)
    }
 
    if (c == '\r') {
-      curr_col = 0;                    /* just handle properly \r */
-      bt_movecur(curr_row, curr_col);
+      bt_movecur(curr_row, 0);
+      return;
+   }
+
+   if (c == '\b') {
+
+      if (curr_col > 0)
+         bt_movecur(curr_row, curr_col - 1);
+
       return;
    }
 
