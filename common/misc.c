@@ -2,35 +2,33 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/gfx.h>
 
 struct display_resolution {
    u32 width;
    u32 height;
 };
 
-static const struct display_resolution tilck_known_resolutions[] =
+bool is_tilck_usable_resolution(u32 w, u32 h)
 {
-   {640, 480},
-   {800, 600},
-   {1024, 600},
-   {1024, 768},
-   {1280, 1024},
-   {1440, 900},
-   {1600, 900},
-   {1600, 1200},
-   {1920, 1080},
-};
+   return w >= TILCK_MIN_RES_X && h >= TILCK_MIN_RES_Y;
+}
 
 bool is_tilck_known_resolution(u32 w, u32 h)
 {
-   const struct display_resolution *kr = tilck_known_resolutions;
+   if (!is_tilck_usable_resolution(w, h))
+      return false;
 
-   for (int i = 0; i < ARRAY_SIZE(tilck_known_resolutions); i++) {
-      if (kr[i].width == w && kr[i].height == h)
-         return true;
+   if (w % 8) {
+
+      /*
+       * Tilck's fb console won't be able to use the optimized functions in this
+       * case (they ultimately use a 256-bit wide memcpy()).
+       */
+      return false;
    }
 
-   return false;
+   return true;
 }
 
 bool is_tilck_default_resolution(u32 w, u32 h)

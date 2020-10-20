@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/page_size.h>
-
 #include "defs.h"
 #include "utils.h"
 
@@ -34,7 +32,8 @@ void JumpToKernel(void *entry_point)
 
 #endif
 
-EFI_INPUT_KEY WaitForKeyPress(void)
+EFI_INPUT_KEY
+WaitForKeyPress(void)
 {
     UINTN index;
     EFI_INPUT_KEY k;
@@ -46,6 +45,43 @@ EFI_INPUT_KEY WaitForKeyPress(void)
     // Read the key, allowing WaitForKey to block again.
     ST->ConIn->ReadKeyStroke(ST->ConIn, &k);
     return k;
+}
+
+UINTN
+ReadAsciiLine(char *buf, UINTN buf_sz)
+{
+   EFI_INPUT_KEY k;
+   UINTN len = 0;
+   CHAR16 uc;
+
+   while (true) {
+
+      k = WaitForKeyPress();
+      uc = k.UnicodeChar;
+
+      if (uc == '\n' || uc == '\r') {
+         Print(L"\r\n");
+         break;
+      }
+
+      if (!isprint(uc)) {
+
+         if (uc == '\b' && len > 0) {
+            Print(L"\b \b");
+            len--;
+         }
+
+         continue;
+      }
+
+      if (len < buf_sz - 1) {
+         Print(L"%c", uc);
+         buf[len++] = (char)uc;
+      }
+   }
+
+   buf[len] = 0;
+   return len;
 }
 
 EFI_STATUS

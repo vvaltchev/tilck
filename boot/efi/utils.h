@@ -39,6 +39,9 @@ KernelLoadMemoryChecks(void);
 EFI_INPUT_KEY
 WaitForKeyPress(void);
 
+UINTN
+ReadAsciiLine(char *buf, UINTN bufsz);
+
 EFI_STATUS
 LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
                  INTN pagesCount,

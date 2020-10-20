@@ -4,6 +4,7 @@
 
 #include "defs.h"
 #include "utils.h"
+
 #include <multiboot.h>
 
 static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
@@ -34,6 +35,12 @@ static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
 
+   if (!is_tilck_usable_resolution(mi->HorizontalResolution,
+                                   mi->VerticalResolution))
+   {
+      return false;
+   }
+
    return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
           mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
@@ -56,6 +63,14 @@ static bool IsTilckDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
                                         mi->VerticalResolution);
 }
 
+/*
+ * Find a good video mode for the bootloader itself.
+ *
+ * This function is called in EarlySetDefaultResolution(), before displaying
+ * anything on the screen. It solves the problem with modern machines with
+ * "retina" displays, where just using the native resolution with the default
+ * EFI font results in extremely tiny text, a pretty bad user experience.
+ */
 static EFI_STATUS
 FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
                   bool supported,
@@ -72,16 +87,18 @@ FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (mi->HorizontalResolution < 640)
-         continue; /* too small */
-
-      if (mi->VerticalResolution < 480)
-         continue; /* too small */
-
       if (supported && !IsSupported(mi))
          continue;
 
-      if (mi->HorizontalResolution == 800 && mi->VerticalResolution == 600) {
+      /*
+       * NOTE: it's fine to use a resolution not supported by Tilck here.
+       * We just need any good-enough and low resolution for the displaying
+       * stuff on the screen.
+       */
+
+      if (mi->HorizontalResolution == PREFERRED_GFX_MODE_W &&
+          mi->VerticalResolution == PREFERRED_GFX_MODE_H)
+      {
          chosenMode = (INTN) i;
          break; /* Our preferred resolution */
       }
@@ -173,6 +190,87 @@ end:
    return status;
 }
 
+static void
+PrintFailedModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt, UINTN failed_mode)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
+   UINTN sizeof_info = 0;
+   EFI_STATUS status;
+
+   status = gProt->QueryMode(gProt, failed_mode, &sizeof_info, &mi);
+
+   if (!EFI_ERROR(status)) {
+      Print(L"Failed mode info:\r\n");
+      PrintModeInfo(mi);
+   } else {
+      Print(L"ERROR: Unable to print failed mode info: %r\r\n", status);
+   }
+}
+
+static bool
+SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
+                         UINTN wanted_mode,
+                         UINTN orig_mode)
+{
+   EFI_STATUS status;
+
+   ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
+   status = gProt->SetMode(gProt, wanted_mode);
+
+   if (EFI_ERROR(status)) {
+
+      gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
+      ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
+
+      Print(L"ERROR: Unable to set desired mode: %r\r\n", status);
+      PrintFailedModeInfo(gProt, wanted_mode);
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+ExistsModeInArray(u32 mode, u32 *arr, u32 arr_size)
+{
+   for (u32 i = 0; i < arr_size; i++)
+      if (arr[i] == mode)
+         return true;
+
+   return false;
+}
+
+static UINTN
+GetUserModeChoice(u32 *my_modes, u32 my_modes_count, u32 default_mode)
+{
+   char buf[16];
+   UINTN len;
+   long sel;
+   int err;
+
+   while (true) {
+
+      Print(L"Select mode [0 - %d]: ", my_modes_count - 1);
+      len = ReadAsciiLine(buf, sizeof(buf));
+
+      if (!len) {
+         Print(L"<default>\r\n\r\n");
+         return default_mode;
+      }
+
+      sel = tilck_strtol(buf, NULL, 10, &err);
+
+      if (err || sel < 0 || sel >= (long)my_modes_count) {
+         Print(L"Invalid selection\n");
+         continue;
+      }
+
+      break;
+   }
+
+   return my_modes[sel];
+}
+
 EFI_STATUS
 SetupGraphicMode(UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
@@ -183,13 +281,12 @@ SetupGraphicMode(UINTN *fb_addr,
    UINTN handles_count;
    EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
-   EFI_INPUT_KEY k;
 
    UINTN wanted_mode;
    UINTN orig_mode;
    UINTN default_mode = (UINTN)-1;
 
-   u32 my_modes[10];
+   u32 my_modes[16];
    u32 my_modes_count = 0;
    u32 max_mode_pixels = 0;
    u32 max_mode_num = 0;
@@ -227,16 +324,30 @@ retry:
 
       EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
       UINTN sizeof_info = 0;
+      u32 pixels;
 
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (IsTilckDefaultMode(mi)) {
-         default_mode = i;
+      if (!IsSupported(mi))
+         continue;
+
+      pixels = mi->HorizontalResolution * mi->VerticalResolution;
+
+      if (pixels > max_mode_pixels) {
+         max_mode_pixels = pixels;
+         max_mode_num = i;
+         max_mode_xres = mi->HorizontalResolution;
+         max_mode_yres = mi->VerticalResolution;
       }
 
-      if (IsKnownAndSupported(mi) || (IsSupported(mi) && i == mode->MaxMode-1))
-      {
+      if (!IsKnownAndSupported(mi))
+         continue;
+
+      if (IsTilckDefaultMode(mi))
+         default_mode = i;
+
+      if (my_modes_count < ARRAY_SIZE(my_modes) - 1) {
          Print(L"Mode [%u]: %u x %u%s\n",
                my_modes_count,
                mi->HorizontalResolution,
@@ -245,15 +356,15 @@ retry:
 
          my_modes[my_modes_count++] = i;
       }
+   }
 
-      u32 pixels = mi->HorizontalResolution * mi->VerticalResolution;
+   if (!ExistsModeInArray(max_mode_num, my_modes, my_modes_count)) {
 
-      if (IsSupported(mi) && pixels > max_mode_pixels) {
-         max_mode_pixels = pixels;
-         max_mode_num = i;
-         max_mode_xres = mi->HorizontalResolution;
-         max_mode_yres = mi->VerticalResolution;
-      }
+      Print(L"Mode [%u]: %u x %u%s\n",
+            my_modes_count, max_mode_xres,
+            max_mode_yres, max_mode_num == default_mode ? L" [DEFAULT]" : L"");
+
+      my_modes[my_modes_count++] = max_mode_num;
    }
 
    if (!my_modes_count) {
@@ -262,63 +373,11 @@ retry:
       goto end;
    }
 
-   if (max_mode_num != my_modes[my_modes_count - 1]) {
-      Print(L"Mode [%u]: %u x %u%s\n",
-            my_modes_count, max_mode_xres,
-            max_mode_yres, max_mode_num == default_mode ? L" [DEFAULT]" : L"");
-      my_modes[my_modes_count++] = max_mode_num;
-   }
-
-
-   while (true) {
-
-      int my_mode_sel;
-      Print(L"Select mode [0-%d] (or ENTER for default): ", my_modes_count - 1);
-      k = WaitForKeyPress();
-
-      if (k.UnicodeChar == '\n' || k.UnicodeChar == '\r') {
-          wanted_mode = default_mode;
-          Print(L"<default>\r\n\r\n");
-          break;
-      }
-
-      my_mode_sel = k.UnicodeChar - '0';
-
-      if (my_mode_sel < 0 || my_mode_sel >= (int)my_modes_count) {
-         Print(L"Invalid selection\n");
-         continue;
-      }
-
-      wanted_mode = my_modes[my_mode_sel];
-      break;
-   }
+   wanted_mode = GetUserModeChoice(my_modes, my_modes_count, default_mode);
 
    if (wanted_mode != orig_mode) {
-
-      ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
-      status = gProt->SetMode(gProt, wanted_mode);
-
-      if (EFI_ERROR(status)) {
-
-         gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
-         ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
-
-         Print(L"ERROR: Unable to set desired mode: %r\r\n", status);
-
-         EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
-         UINTN sizeof_info = 0;
-
-         status = gProt->QueryMode(gProt, wanted_mode, &sizeof_info, &mi);
-
-         if (!EFI_ERROR(status)) {
-            Print(L"Failed mode info:\r\n");
-            PrintModeInfo(mi);
-         } else {
-            Print(L"ERROR: Unable to print failed mode info: %r\r\n", status);
-         }
-
+      if (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode))
          goto retry;
-      }
    }
 
 after_user_choice:
@@ -326,7 +385,6 @@ after_user_choice:
    mode = gProt->Mode;
    *fb_addr = mode->FrameBufferBase;
    *mode_info = *mode->Info;
-   // PrintModeFullInfo(mode);
 
 end:
    return status;

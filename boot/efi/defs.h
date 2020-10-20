@@ -2,7 +2,11 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/page_size.h>
 #include <tilck/common/gfx.h>
+#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/string_util.h>
+#undef ASSERT
 
 #include <efi.h>
 #include <efilib.h>
