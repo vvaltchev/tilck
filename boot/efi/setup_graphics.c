@@ -45,24 +45,6 @@ static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
           mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
-static bool IsKnownAndSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
-{
-   if (is_tilck_known_resolution(mi->HorizontalResolution,
-                                 mi->VerticalResolution))
-   {
-      return IsSupported(mi);
-   }
-
-   return false;
-}
-
-static bool IsTilckDefaultMode(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
-{
-   return IsSupported(mi) &&
-            is_tilck_default_resolution(mi->HorizontalResolution,
-                                        mi->VerticalResolution);
-}
-
 /*
  * Find a good video mode for the bootloader itself.
  *
@@ -230,18 +212,8 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
    return true;
 }
 
-static bool
-ExistsModeInArray(u32 mode, u32 *arr, u32 arr_size)
-{
-   for (u32 i = 0; i < arr_size; i++)
-      if (arr[i] == mode)
-         return true;
-
-   return false;
-}
-
 static UINTN
-GetUserModeChoice(u32 *my_modes, u32 my_modes_count, u32 default_mode)
+GetUserModeChoice(struct ok_modes_info *okm)
 {
    char buf[16];
    UINTN len;
@@ -250,17 +222,17 @@ GetUserModeChoice(u32 *my_modes, u32 my_modes_count, u32 default_mode)
 
    while (true) {
 
-      Print(L"Select mode [0 - %d]: ", my_modes_count - 1);
+      Print(L"Select mode [0 - %d]: ", okm->ok_modes_cnt - 1);
       len = ReadAsciiLine(buf, sizeof(buf));
 
       if (!len) {
          Print(L"<default>\r\n\r\n");
-         return default_mode;
+         return okm->defmode;
       }
 
       sel = tilck_strtol(buf, NULL, 10, &err);
 
-      if (err || sel < 0 || sel >= (long)my_modes_count) {
+      if (err || sel < 0 || sel > okm->ok_modes_cnt - 1) {
          Print(L"Invalid selection\n");
          continue;
       }
@@ -268,31 +240,92 @@ GetUserModeChoice(u32 *my_modes, u32 my_modes_count, u32 default_mode)
       break;
    }
 
-   return my_modes[sel];
+   return okm->ok_modes[sel];
 }
+
+static bool
+efi_boot_get_mode_info(void *ctx,
+                       video_mode_t m,
+                       void *opaque_info,
+                       struct generic_video_mode_info *gi)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
+   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt = ctx;
+   UINTN sizeof_info = 0;
+   EFI_STATUS status;
+
+   *mi_ref = NULL;
+   status = gProt->QueryMode(gProt, m, &sizeof_info, mi_ref);
+
+   if (EFI_ERROR(status))
+      return false;
+
+   mi = *mi_ref;
+
+   gi->xres = mi->HorizontalResolution;
+   gi->yres = mi->VerticalResolution;
+   gi->bpp = 0;
+
+   if (mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
+       mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor)
+   {
+      gi->bpp = 32;
+   }
+
+   return true;
+}
+
+static bool
+efi_boot_is_mode_usable(void *ctx, void *opaque_info)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
+   return IsSupported(mi);
+}
+
+static void
+efi_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
+
+   Print(L"Mode [%d]: %u x %u%s\n",
+         num,
+         mi->HorizontalResolution,
+         mi->VerticalResolution,
+         is_default ? L" [DEFAULT]" : L"");
+}
+
+static const struct bootloader_intf efi_boot_intf = {
+   .get_mode_info = &efi_boot_get_mode_info,
+   .is_mode_usable = &efi_boot_is_mode_usable,
+   .show_mode = &efi_boot_show_mode,
+};
 
 EFI_STATUS
 SetupGraphicMode(UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
 {
+   static video_mode_t ok_modes[16];   /* static: reduce stack usage */
+   static EFI_HANDLE handles[32];      /* static: reduce stack usage */
+
    EFI_STATUS status;
-   EFI_HANDLE handles[32];
-   UINTN handles_buf_size;
    UINTN handles_count;
+   UINTN handles_buf_size;
    EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
 
-   UINTN wanted_mode;
-   UINTN orig_mode;
-   UINTN default_mode = (UINTN)-1;
+   video_mode_t wanted_mode;
+   video_mode_t orig_mode;
 
-   u32 my_modes[16];
-   u32 my_modes_count = 0;
-   u32 max_mode_pixels = 0;
-   u32 max_mode_num = 0;
-   u32 max_mode_xres = 0;
-   u32 max_mode_yres = 0;
-
+   struct ok_modes_info okm = {
+      .ok_modes = ok_modes,
+      .ok_modes_array_size = ARRAY_SIZE(ok_modes),
+      .ok_modes_cnt = 0,
+      .defmode = INVALID_VIDEO_MODE,
+   };
 
    handles_buf_size = sizeof(handles);
 
@@ -320,60 +353,23 @@ SetupGraphicMode(UINTN *fb_addr,
 
 retry:
 
-   for (UINTN i = 0; i < mode->MaxMode; i++) {
+   filter_video_modes(&efi_boot_intf,  /* intf */
+                      NULL,            /* all_modes */
+                      mode->MaxMode,   /* all_modes_cnt */
+                      &mi,             /* opaque_mode_info_buf */
+                      true,            /* show_modes */
+                      32,              /* bpp */
+                      0,               /* ok_modes_start */
+                      &okm,            /* okm */
+                      gProt);          /* ctx */
 
-      EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
-      UINTN sizeof_info = 0;
-      u32 pixels;
-
-      status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
-      HANDLE_EFI_ERROR("QueryMode() failed");
-
-      if (!IsSupported(mi))
-         continue;
-
-      pixels = mi->HorizontalResolution * mi->VerticalResolution;
-
-      if (pixels > max_mode_pixels) {
-         max_mode_pixels = pixels;
-         max_mode_num = i;
-         max_mode_xres = mi->HorizontalResolution;
-         max_mode_yres = mi->VerticalResolution;
-      }
-
-      if (!IsKnownAndSupported(mi))
-         continue;
-
-      if (IsTilckDefaultMode(mi))
-         default_mode = i;
-
-      if (my_modes_count < ARRAY_SIZE(my_modes) - 1) {
-         Print(L"Mode [%u]: %u x %u%s\n",
-               my_modes_count,
-               mi->HorizontalResolution,
-               mi->VerticalResolution,
-               i == default_mode ? L" [DEFAULT]" : L"");
-
-         my_modes[my_modes_count++] = i;
-      }
-   }
-
-   if (!ExistsModeInArray(max_mode_num, my_modes, my_modes_count)) {
-
-      Print(L"Mode [%u]: %u x %u%s\n",
-            my_modes_count, max_mode_xres,
-            max_mode_yres, max_mode_num == default_mode ? L" [DEFAULT]" : L"");
-
-      my_modes[my_modes_count++] = max_mode_num;
-   }
-
-   if (!my_modes_count) {
+   if (!okm.ok_modes_cnt) {
       Print(L"No supported modes available\n");
       status = EFI_LOAD_ERROR;
       goto end;
    }
 
-   wanted_mode = GetUserModeChoice(my_modes, my_modes_count, default_mode);
+   wanted_mode = GetUserModeChoice(&okm);
 
    if (wanted_mode != orig_mode) {
       if (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode))

@@ -622,7 +622,7 @@ set(BL_ST2_DATA_SEG       0x2000)  # Better not touch!
 set(EARLY_BOOT_SZ           4096)  # Better not touch!
 set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
 set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
-set(MAX_BOOTLOADER_BIN_SZ_KB  48)  # Max size of bootloader.bin (keep updated!)
+set(MAX_BOOTLOADER_BIN_SZ_KB  64)  # Max size of bootloader.bin (keep updated!)
 set(IMG_SZ_MB                 36)  # Total size of tilck.img
 set(INITRD_SZ_MB              32)  # Size of the initrd RAMDISK in MB
 set(BOOTPART_SZ_SEC         6144)  # Size of the boot partition in sectors
