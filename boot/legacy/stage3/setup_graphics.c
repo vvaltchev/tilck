@@ -106,7 +106,7 @@ show_modes_aux(u16 *modes,                  /* IN */
 
       if (cnt < max_known_modes - 1) {
 
-         if (BOOT_ASK_VIDEO_MODE)
+         if (BOOT_INTERACTIVE)
             show_single_mode(cnt, mi, *default_mode_num == modes[i]);
 
          known_modes[cnt++] = modes[i];
@@ -118,7 +118,7 @@ show_modes_aux(u16 *modes,                  /* IN */
       if (!vbe_get_mode_info(max_width_mode, mi))
          panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
 
-      if (BOOT_ASK_VIDEO_MODE)
+      if (BOOT_INTERACTIVE)
          show_single_mode(cnt, mi, false);
 
       known_modes[cnt++] = max_width_mode;
@@ -169,7 +169,7 @@ do_get_user_video_mode_choice(u16 *modes, u16 count, u16 defmode)
    char buf[16];
    long s;
 
-   if (!BOOT_ASK_VIDEO_MODE)
+   if (!BOOT_INTERACTIVE)
       return defmode;
 
    printk("\n");
@@ -227,7 +227,7 @@ void ask_user_video_mode(struct mem_info *minfo)
 
    if (!vbe_get_info_block(vb)) {
 
-      if (BOOT_ASK_VIDEO_MODE) {
+      if (BOOT_INTERACTIVE) {
          printk("VBE get info failed. Only the text mode is available.\n");
          printk("Press ANY key to boot in text mode\n");
          bios_read_char();
@@ -238,7 +238,7 @@ void ask_user_video_mode(struct mem_info *minfo)
 
    if (vb->VbeVersion < 0x200) {
 
-      if (BOOT_ASK_VIDEO_MODE) {
+      if (BOOT_INTERACTIVE) {
          printk("VBE older than 2.0 is not supported.\n");
          printk("Press ANY key to boot in text mode\n");
          bios_read_char();
@@ -249,7 +249,7 @@ void ask_user_video_mode(struct mem_info *minfo)
 
    known_modes[0] = VGA_COLOR_TEXT_MODE_80x25;
 
-   if (BOOT_ASK_VIDEO_MODE)
+   if (BOOT_INTERACTIVE)
       printk("Mode [0]: text mode 80 x 25\n");
 
    modes = get_flat_ptr(vb->VideoModePtr);

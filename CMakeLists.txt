@@ -223,8 +223,8 @@ set(KRN_PRINTK_ON_CURR_TTY ON CACHE BOOL
 set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
     "Include in Tilck's ramdisk some apps for testing the kernel")
 
-set(BOOT_ASK_VIDEO_MODE ON CACHE BOOL
-    "Make bootloaders to ask user choose a video mode before booting")
+set(BOOT_INTERACTIVE ON CACHE BOOL
+    "Have user-interactive commands in the bootloaders")
 
 set(KRN_NO_SYS_WARN ON CACHE BOOL
     "Show a warning when a not implemented syscall is called")
@@ -446,7 +446,7 @@ list(
    KERNEL_SYMBOLS
    BOOTLOADER_LEGACY
    BOOTLOADER_EFI
-   BOOT_ASK_VIDEO_MODE
+   BOOT_INTERACTIVE
    KRN_NO_SYS_WARN
 
    # Boolean options DISABLED by default

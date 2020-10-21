@@ -315,7 +315,7 @@ SetupGraphicMode(UINTN *fb_addr,
    mode = gProt->Mode;
    orig_mode = mode->Mode;
 
-   if (!BOOT_ASK_VIDEO_MODE)
+   if (!BOOT_INTERACTIVE)
       goto after_user_choice;
 
 retry:

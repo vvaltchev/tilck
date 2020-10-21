@@ -416,7 +416,7 @@ void bootloader_main(void)
 
    } else if (!MOD_fb) {
 
-      if (BOOT_ASK_VIDEO_MODE) {
+      if (BOOT_INTERACTIVE) {
          printk("WARNING: MOD_fb=0, Tilck won't support graphics mode.\n");
          printk("Force-selecting text-mode.\n\n");
          printk("Press ANY key to boot");
