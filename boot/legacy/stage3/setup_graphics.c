@@ -51,82 +51,6 @@ exists_mode_in_array(u16 mode, u16 *arr, int array_sz)
    return false;
 }
 
-static void
-show_modes_aux(u16 *modes,                  /* IN */
-               struct ModeInfoBlock *mi,    /* IN */
-               int min_bpp,                 /* IN */
-               int known_modes_start,       /* IN */
-               u16 *known_modes,            /* OUT */
-               int *known_modes_cnt,        /* IN/OUT */
-               u16 *default_mode_num)       /* OUT */
-
-{
-   u32 max_width = 0;
-   u16 max_width_mode = 0;
-   int max_known_modes = *known_modes_cnt;
-   int cnt = known_modes_start;
-
-   *default_mode_num = 0xffff;
-
-   for (u32 i = 0; modes[i] != 0xffff; i++) {
-
-      if (!vbe_get_mode_info(modes[i], mi))
-         continue;
-
-      /* skip text modes */
-      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_GFX_MODE))
-         continue;
-
-      /* skip graphics mode not supporting a linear framebuffer */
-      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LINEAR_FB))
-         continue;
-
-      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_SUPPORTED))
-         continue;
-
-      if (mi->MemoryModel != VB_MEM_MODEL_DIRECT_COLOR)
-         continue;
-
-      if (mi->BitsPerPixel < min_bpp)
-         continue;
-
-      if (!is_tilck_usable_resolution(mi->XResolution, mi->YResolution))
-         continue;
-
-      if (mi->XResolution > max_width) {
-         max_width = mi->XResolution;
-         max_width_mode = modes[i];
-      }
-
-      if (!is_tilck_known_resolution(mi->XResolution, mi->YResolution))
-         continue;
-
-      if (is_tilck_default_resolution(mi->XResolution, mi->YResolution))
-         *default_mode_num = modes[i];
-
-      if (cnt < max_known_modes - 1) {
-
-         if (BOOT_INTERACTIVE)
-            show_single_mode(cnt, mi, *default_mode_num == modes[i]);
-
-         known_modes[cnt++] = modes[i];
-      }
-   }
-
-   if (max_width && !exists_mode_in_array(max_width_mode, known_modes, cnt)) {
-
-      if (!vbe_get_mode_info(max_width_mode, mi))
-         panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
-
-      if (BOOT_INTERACTIVE)
-         show_single_mode(cnt, mi, false);
-
-      known_modes[cnt++] = max_width_mode;
-   }
-
-   *known_modes_cnt = cnt;
-}
-
 static int
 bios_read_line(char *buf, int buf_sz)
 {
@@ -162,32 +86,37 @@ bios_read_line(char *buf, int buf_sz)
    return len;
 }
 
+struct ok_modes_info {
+
+   u16 *ok_modes;
+   int ok_modes_array_size;
+   int ok_modes_cnt;
+   u16 defmode;
+};
+
 static u16
-do_get_user_video_mode_choice(u16 *modes, u16 count, u16 defmode)
+do_get_user_video_mode_choice(struct ok_modes_info *okm)
 {
    int len, err = 0;
    char buf[16];
    long s;
 
-   if (!BOOT_INTERACTIVE)
-      return defmode;
-
    printk("\n");
 
    while (true) {
 
-      printk("Select a video mode [0 - %d]: ", count - 1);
+      printk("Select a video mode [0 - %d]: ", okm->ok_modes_cnt - 1);
 
       len = bios_read_line(buf, sizeof(buf));
 
       if (!len) {
          printk("DEFAULT\n");
-         return defmode;
+         return okm->defmode;
       }
 
       s = tilck_strtol(buf, NULL, 10, &err);
 
-      if (err || s < 0 || s > count - 1) {
+      if (err || s < 0 || s > okm->ok_modes_cnt - 1) {
          printk("Invalid selection.\n");
          continue;
       }
@@ -195,7 +124,91 @@ do_get_user_video_mode_choice(u16 *modes, u16 count, u16 defmode)
       break;
    }
 
-   return modes[s];
+   return okm->ok_modes[s];
+}
+
+static void
+filter_modes(u16 *all_modes,              /* IN */
+             struct ModeInfoBlock *mi,    /* IN */
+             bool show_modes,             /* IN */
+             int bpp,                     /* IN */
+             int ok_modes_start,          /* IN */
+             struct ok_modes_info *okm)   /* IN/OUT */
+{
+   u32 max_width = 0;
+   u16 max_width_mode = 0;
+   int cnt = ok_modes_start;
+
+   okm->defmode = 0xffff;
+
+   for (u32 i = 0; all_modes[i] != 0xffff; i++) {
+
+      if (!vbe_get_mode_info(all_modes[i], mi))
+         continue;
+
+      /* skip text modes */
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_GFX_MODE))
+         continue;
+
+      /* skip graphics mode not supporting a linear framebuffer */
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LINEAR_FB))
+         continue;
+
+      if (!(mi->ModeAttributes & VBE_MODE_ATTRS_SUPPORTED))
+         continue;
+
+      if (mi->MemoryModel != VB_MEM_MODEL_DIRECT_COLOR)
+         continue;
+
+      if (mi->BitsPerPixel != bpp)
+         continue;
+
+      if (!is_tilck_usable_resolution(mi->XResolution, mi->YResolution))
+         continue;
+
+      if (mi->XResolution > max_width) {
+         max_width = mi->XResolution;
+         max_width_mode = all_modes[i];
+      }
+
+      if (!is_tilck_known_resolution(mi->XResolution, mi->YResolution))
+         continue;
+
+      if (is_tilck_default_resolution(mi->XResolution, mi->YResolution))
+         okm->defmode = all_modes[i];
+
+      if (cnt < okm->ok_modes_array_size - 1) {
+
+         if (show_modes)
+            show_single_mode(cnt, mi, okm->defmode == all_modes[i]);
+
+         okm->ok_modes[cnt++] = all_modes[i];
+      }
+   }
+
+   if (max_width) {
+
+      if (!exists_mode_in_array(max_width_mode, okm->ok_modes, cnt)) {
+
+         if (!vbe_get_mode_info(max_width_mode, mi))
+            panic("vbe_get_mode_info(0x%x) failed", max_width_mode);
+
+         if (show_modes)
+            show_single_mode(cnt, mi, false);
+
+         okm->ok_modes[cnt++] = max_width_mode;
+
+         if (okm->defmode == 0xffff)
+            okm->defmode = max_width_mode;
+      }
+   }
+
+   if (okm->defmode == 0xffff) {
+      if (ok_modes_start > 0)
+         okm->defmode = all_modes[0];
+   }
+
+   okm->ok_modes_cnt = cnt;
 }
 
 void ask_user_video_mode(struct mem_info *minfo)
@@ -203,10 +216,15 @@ void ask_user_video_mode(struct mem_info *minfo)
    ulong free_mem;
    struct VbeInfoBlock *vb;
    struct ModeInfoBlock *mi;
-   u16 known_modes[16];
-   int known_modes_cnt = ARRAY_SIZE(known_modes);
-   u16 defmode;
-   u16 *modes;
+   u16 ok_modes[16];
+   u16 *all_modes;
+
+   struct ok_modes_info okm = {
+      .ok_modes = ok_modes,
+      .ok_modes_array_size = ARRAY_SIZE(ok_modes),
+      .ok_modes_cnt = 0,
+      .defmode = 0xffff,
+   };
 
    free_mem = get_usable_mem(minfo, 0x1000, 4 * KB);
 
@@ -247,15 +265,15 @@ void ask_user_video_mode(struct mem_info *minfo)
       return;
    }
 
-   known_modes[0] = VGA_COLOR_TEXT_MODE_80x25;
+   ok_modes[0] = VGA_COLOR_TEXT_MODE_80x25;
 
    if (BOOT_INTERACTIVE)
       printk("Mode [0]: text mode 80 x 25\n");
 
-   modes = get_flat_ptr(vb->VideoModePtr);
-   show_modes_aux(modes, mi, 32, 1, known_modes, &known_modes_cnt, &defmode);
+   all_modes = get_flat_ptr(vb->VideoModePtr);
+   filter_modes(all_modes, mi, BOOT_INTERACTIVE, 32, 1, &okm);
 
-   if (known_modes_cnt == 1) {
+   if (okm.ok_modes_cnt == 1) {
 
       /*
        * Extremely unfortunate case: no modes with bpp = 32 are available.
@@ -263,12 +281,12 @@ void ask_user_video_mode(struct mem_info *minfo)
        * the available modes.
        */
 
-      show_modes_aux(modes, mi, 24, 1, known_modes, &known_modes_cnt, &defmode);
+      filter_modes(all_modes, mi, BOOT_INTERACTIVE, 24, 1, &okm);
    }
 
-   selected_mode = do_get_user_video_mode_choice(known_modes,
-                                                 known_modes_cnt,
-                                                 defmode);
+   selected_mode = BOOT_INTERACTIVE
+      ? do_get_user_video_mode_choice(&okm)
+      : okm.defmode;
 
    if (selected_mode == VGA_COLOR_TEXT_MODE_80x25) {
       graphics_mode = false;
@@ -294,6 +312,4 @@ void ask_user_video_mode(struct mem_info *minfo)
 
    if (vb->VbeVersion >= 0x300)
       fb_pitch = mi->LinBytesPerScanLine;
-
-   //debug_show_detailed_mode_info(mi);
 }
