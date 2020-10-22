@@ -25,7 +25,6 @@ struct bootloader_intf {
                          struct generic_video_mode_info *gi);
 
    bool (*is_mode_usable)(void *ctx, void *opaque_info);
-   void (*show_mode)(void *ctx, int num, void *opaque_info, bool is_default);
    int (*read_line)(char *buf, int buf_sz);
 };
 

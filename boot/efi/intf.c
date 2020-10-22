@@ -87,22 +87,8 @@ efi_boot_is_mode_usable(void *ctx, void *opaque_info)
    return IsSupported(mi);
 }
 
-static void
-efi_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-
-   Print(L"Mode [%d]: %u x %u x 32%s\n",
-         num,
-         mi->HorizontalResolution,
-         mi->VerticalResolution,
-         is_default ? L" [DEFAULT]" : L"");
-}
-
 const struct bootloader_intf efi_boot_intf = {
    .get_mode_info = &efi_boot_get_mode_info,
    .is_mode_usable = &efi_boot_is_mode_usable,
-   .show_mode = &efi_boot_show_mode,
    .read_line = &ReadAsciiLine,
 };

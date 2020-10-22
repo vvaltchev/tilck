@@ -84,19 +84,8 @@ legacy_boot_is_mode_usable(void *ctx, void *opaque_info)
    return true;
 }
 
-static void
-legacy_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
-{
-   struct ModeInfoBlock *mi = opaque_info;
-
-   printk("Mode [%d]: %d x %d x %d%s\n",
-          num, mi->XResolution, mi->YResolution,
-          mi->BitsPerPixel, is_default ? " [DEFAULT]" : "");
-}
-
 const struct bootloader_intf legacy_boot_intf = {
    .get_mode_info = &legacy_boot_get_mode_info,
    .is_mode_usable = &legacy_boot_is_mode_usable,
-   .show_mode = &legacy_boot_show_mode,
    .read_line = &bios_read_line,
 };

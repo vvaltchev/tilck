@@ -62,6 +62,23 @@ exists_mode_in_array(video_mode_t mode, video_mode_t *arr, int array_sz)
    return false;
 }
 
+static void
+show_mode(int num, struct generic_video_mode_info *gi, bool is_default)
+{
+#ifdef __TILCK_EFI_BOOTLOADER__
+
+   printk("Mode [%d]: %d x %d x %d%a\n",
+          num, gi->xres, gi->yres,
+          gi->bpp, is_default ? " [DEFAULT]" : "");
+
+#else
+
+   printk("Mode [%d]: %d x %d x %d%s\n",
+          num, gi->xres, gi->yres,
+          gi->bpp, is_default ? " [DEFAULT]" : "");
+#endif
+}
+
 void
 filter_video_modes(video_mode_t *all_modes,
                    int all_modes_cnt,
@@ -112,7 +129,7 @@ filter_video_modes(video_mode_t *all_modes,
       if (cnt < okm->ok_modes_array_size - 1) {
 
          if (show_modes)
-            intf->show_mode(ctx, cnt, opaque_mi, okm->defmode == curr_mode_num);
+            show_mode(cnt, &gi, okm->defmode == curr_mode_num);
 
          okm->ok_modes[cnt++] = curr_mode_num;
       }
@@ -126,7 +143,7 @@ filter_video_modes(video_mode_t *all_modes,
             panic("get_mode_info(0x%x) failed", max_mode);
 
          if (show_modes)
-            intf->show_mode(ctx, cnt, opaque_mi, false);
+            show_mode(cnt, &gi, false);
 
          okm->ok_modes[cnt++] = max_mode;
 
