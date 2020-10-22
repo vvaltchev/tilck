@@ -22,12 +22,13 @@ bool is_tilck_usable_resolution(u32 w, u32 h)
    return w >= TILCK_MIN_RES_X && h >= TILCK_MIN_RES_Y;
 }
 
-bool is_tilck_known_resolution(u32 w, u32 h)
+static bool
+is_optimal_video_mode(struct generic_video_mode_info *gi)
 {
-   if (!is_tilck_usable_resolution(w, h))
+   if (!is_tilck_usable_resolution(gi->xres, gi->yres))
       return false;
 
-   if (w % 8) {
+   if (gi->xres % 8) {
 
       /*
        * Tilck's fb console won't be able to use the optimized functions in this
@@ -39,7 +40,8 @@ bool is_tilck_known_resolution(u32 w, u32 h)
    return true;
 }
 
-bool is_tilck_default_resolution(u32 w, u32 h)
+static bool
+is_default_resolution(u32 w, u32 h)
 {
    return w == PREFERRED_GFX_MODE_W && h == PREFERRED_GFX_MODE_H;
 }
@@ -103,10 +105,10 @@ filter_video_modes(video_mode_t *all_modes,
          max_mode = curr_mode_num;
       }
 
-      if (!is_tilck_known_resolution(gi.xres, gi.yres))
+      if (!is_optimal_video_mode(&gi))
          continue;
 
-      if (is_tilck_default_resolution(gi.xres, gi.yres))
+      if (is_default_resolution(gi.xres, gi.yres))
          okm->defmode = curr_mode_num;
 
       if (cnt < okm->ok_modes_array_size - 1) {

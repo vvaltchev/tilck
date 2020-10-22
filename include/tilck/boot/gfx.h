@@ -17,8 +17,6 @@ struct ok_modes_info {
    video_mode_t defmode;
 };
 
-bool is_tilck_known_resolution(u32 w, u32 h);
-bool is_tilck_default_resolution(u32 w, u32 h);
 bool is_tilck_usable_resolution(u32 w, u32 h);
 
 void
