@@ -10,40 +10,10 @@
 #include "utils.h"
 
 static int
-ReadAsciiLine(char *buf, int buf_sz)
+efi_boot_read_key(void)
 {
-   EFI_INPUT_KEY k;
-   int len = 0;
-   CHAR16 uc;
-
-   while (true) {
-
-      k = WaitForKeyPress();
-      uc = k.UnicodeChar;
-
-      if (uc == '\n' || uc == '\r') {
-         Print(L"\r\n");
-         break;
-      }
-
-      if (!isprint(uc)) {
-
-         if (uc == '\b' && len > 0) {
-            Print(L"\b \b");
-            len--;
-         }
-
-         continue;
-      }
-
-      if (len < buf_sz - 1) {
-         Print(L"%c", uc);
-         buf[len++] = (char)uc;
-      }
-   }
-
-   buf[len] = 0;
-   return len;
+   EFI_INPUT_KEY k = WaitForKeyPress();
+   return k.UnicodeChar & 0xff;
 }
 
 static bool
@@ -90,5 +60,5 @@ efi_boot_is_mode_usable(void *ctx, void *opaque_info)
 const struct bootloader_intf efi_boot_intf = {
    .get_mode_info = &efi_boot_get_mode_info,
    .is_mode_usable = &efi_boot_is_mode_usable,
-   .read_line = &ReadAsciiLine,
+   .read_key = &efi_boot_read_key,
 };

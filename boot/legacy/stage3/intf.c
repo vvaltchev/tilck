@@ -7,38 +7,9 @@
 #include "vbe.h"
 
 static int
-bios_read_line(char *buf, int buf_sz)
+legacy_boot_read_key(void)
 {
-   int len = 0;
-   char c;
-
-   while (true) {
-
-      c = bios_read_char();
-
-      if (c == '\r') {
-         printk("\n");
-         break;
-      }
-
-      if (!isprint(c)) {
-
-         if (c == '\b' && len > 0) {
-            printk("\b \b");
-            len--;
-         }
-
-         continue;
-      }
-
-      if (len < buf_sz - 1) {
-         printk("%c", c);
-         buf[len++] = c;
-      }
-   }
-
-   buf[len] = 0;
-   return len;
+   return bios_read_char();
 }
 
 static bool
@@ -87,5 +58,5 @@ legacy_boot_is_mode_usable(void *ctx, void *opaque_info)
 const struct bootloader_intf legacy_boot_intf = {
    .get_mode_info = &legacy_boot_get_mode_info,
    .is_mode_usable = &legacy_boot_is_mode_usable,
-   .read_line = &bios_read_line,
+   .read_key = &legacy_boot_read_key,
 };

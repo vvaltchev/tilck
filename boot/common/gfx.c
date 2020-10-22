@@ -171,7 +171,7 @@ get_user_video_mode_choice(struct ok_modes_info *okm)
 
       printk("Select a video mode [0 - %d]: ", okm->ok_modes_cnt - 1);
 
-      len = intf->read_line(buf, sizeof(buf));
+      len = read_line(buf, sizeof(buf));
 
       if (!len) {
          printk("<default>\n");

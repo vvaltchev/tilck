@@ -25,8 +25,9 @@ struct bootloader_intf {
                          struct generic_video_mode_info *gi);
 
    bool (*is_mode_usable)(void *ctx, void *opaque_info);
-   int (*read_line)(char *buf, int buf_sz);
+   int (*read_key)(void);
 };
 
 void init_common_bootloader_code(const struct bootloader_intf *);
 void *simple_elf_loader(void *elf);
+int read_line(char *buf, int buf_sz);
