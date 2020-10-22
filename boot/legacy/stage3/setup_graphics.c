@@ -44,25 +44,6 @@ legacy_boot_count_modes(video_mode_t *modes)
    return cnt;
 }
 
-static void
-filter_modes(video_mode_t *all_modes,
-             int all_modes_cnt,
-             void *opaque_mi,
-             bool show_modes,
-             int bpp,
-             int ok_modes_start,
-             struct ok_modes_info *okm)
-{
-   filter_video_modes(all_modes,
-                      all_modes_cnt,
-                      opaque_mi,
-                      show_modes,
-                      bpp,
-                      ok_modes_start,
-                      okm,
-                      NULL);
-}
-
 void ask_user_video_mode(struct mem_info *minfo)
 {
    static video_mode_t ok_modes[16];
@@ -127,7 +108,7 @@ void ask_user_video_mode(struct mem_info *minfo)
    if (BOOT_INTERACTIVE)
       printk("Mode [0]: text mode 80 x 25\n");
 
-   filter_modes(all_modes, all_modes_cnt, mi, BOOT_INTERACTIVE, 32, 1, &okm);
+   filter_video_modes(all_modes,all_modes_cnt,mi,BOOT_INTERACTIVE,32,1,&okm);
 
    if (okm.ok_modes_cnt == 1) {
 
@@ -137,7 +118,7 @@ void ask_user_video_mode(struct mem_info *minfo)
        * the available modes.
        */
 
-      filter_modes(all_modes, all_modes_cnt, mi, BOOT_INTERACTIVE, 24, 1, &okm);
+      filter_video_modes(all_modes,all_modes_cnt,mi,BOOT_INTERACTIVE,24,1,&okm);
    }
 
    selected_mode = BOOT_INTERACTIVE

@@ -19,12 +19,11 @@ struct generic_video_mode_info {
 
 struct bootloader_intf {
 
-   bool (*get_mode_info)(void *ctx,
-                         video_mode_t m,
+   bool (*get_mode_info)(video_mode_t m,
                          void *opaque_info_buf,
                          struct generic_video_mode_info *gi);
 
-   bool (*is_mode_usable)(void *ctx, void *opaque_info);
+   bool (*is_mode_usable)(void *opaque_info);
    int (*read_key)(void);
    void (*write_char)(char c);
 };

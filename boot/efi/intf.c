@@ -23,14 +23,12 @@ efi_boot_read_key(void)
 }
 
 static bool
-efi_boot_get_mode_info(void *ctx,
-                       video_mode_t m,
+efi_boot_get_mode_info(video_mode_t m,
                        void *opaque_info,
                        struct generic_video_mode_info *gi)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt = ctx;
    UINTN sizeof_info = 0;
    EFI_STATUS status;
 
@@ -56,7 +54,7 @@ efi_boot_get_mode_info(void *ctx,
 }
 
 static bool
-efi_boot_is_mode_usable(void *ctx, void *opaque_info)
+efi_boot_is_mode_usable(void *opaque_info)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;

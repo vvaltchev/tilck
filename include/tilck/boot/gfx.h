@@ -26,8 +26,7 @@ filter_video_modes(video_mode_t *all_modes,
                    bool show_modes,
                    int bpp,
                    int ok_modes_start,
-                   struct ok_modes_info *okm,
-                   void *ctx);
+                   struct ok_modes_info *okm);
 
 video_mode_t
 get_user_video_mode_choice(struct ok_modes_info *okm);

@@ -8,6 +8,8 @@
 
 #include <multiboot.h>
 
+EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
+
 static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    Print(L"Resolution: %u x %u\n",
@@ -55,9 +57,7 @@ bool IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
  * EFI font results in extremely tiny text, a pretty bad user experience.
  */
 static EFI_STATUS
-FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
-                  bool supported,
-                  INTN *choice)
+FindGoodVideoMode(bool supported, INTN *choice)
 {
    INTN chosenMode = -1, minResPixels = 0, minResModeN = -1;
    EFI_STATUS status = EFI_SUCCESS;
@@ -108,12 +108,12 @@ end:
 EFI_STATUS
 EarlySetDefaultResolution(void)
 {
+   static EFI_HANDLE handles[32];      /* static: reduce stack usage */
+
    EFI_STATUS status;
-   EFI_HANDLE handles[32];
    UINTN handles_buf_size;
    UINTN handles_count;
    INTN origMode, chosenMode = -1;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 
    ST->ConOut->ClearScreen(ST->ConOut);
    handles_buf_size = sizeof(handles);
@@ -134,7 +134,7 @@ EarlySetDefaultResolution(void)
                                (void **)&gProt);
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
-   FindGoodVideoMode(gProt, true, &chosenMode);
+   status = FindGoodVideoMode(true, &chosenMode);
    HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
    if (chosenMode < 0) {
@@ -147,7 +147,7 @@ EarlySetDefaultResolution(void)
        * directly by the user, among the available ones.
        */
 
-      FindGoodVideoMode(gProt, false, &chosenMode);
+      status = FindGoodVideoMode(false, &chosenMode);
       HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
       if (chosenMode < 0) {
@@ -174,7 +174,7 @@ end:
 }
 
 static void
-PrintFailedModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt, UINTN failed_mode)
+PrintFailedModeInfo(UINTN failed_mode)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
    UINTN sizeof_info = 0;
@@ -191,9 +191,7 @@ PrintFailedModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt, UINTN failed_mode)
 }
 
 static bool
-SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
-                         UINTN wanted_mode,
-                         UINTN orig_mode)
+SwitchToUserSelectedMode(UINTN wanted_mode, UINTN orig_mode)
 {
    EFI_STATUS status;
 
@@ -209,7 +207,7 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
       ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
 
       Print(L"ERROR: Unable to set desired mode: %r\n", status);
-      PrintFailedModeInfo(gProt, wanted_mode);
+      PrintFailedModeInfo(wanted_mode);
       return false;
    }
 
@@ -217,8 +215,7 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
 }
 
 static EFI_STATUS
-DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
-                             EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode,
+DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode,
                              struct ok_modes_info *okm)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
@@ -227,14 +224,13 @@ DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
 
    do {
 
-      filter_video_modes(NULL,           /* all_modes */
-                        mode->MaxMode,   /* all_modes_cnt */
-                        &mi,             /* opaque_mode_info_buf */
-                        true,            /* show_modes */
-                        32,              /* bpp */
-                        0,               /* ok_modes_start */
-                        okm,             /* okm */
-                        gProt);          /* ctx */
+      filter_video_modes(NULL,            /* all_modes */
+                         mode->MaxMode,   /* all_modes_cnt */
+                         &mi,             /* opaque_mode_info_buf */
+                         true,            /* show_modes */
+                         32,              /* bpp */
+                         0,               /* ok_modes_start */
+                         okm);            /* okm */
 
       if (!okm->ok_modes_cnt) {
          Print(L"No supported modes available\n");
@@ -243,7 +239,7 @@ DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
 
       wanted_mode = get_user_video_mode_choice(okm);
 
-   } while (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode));
+   } while (!SwitchToUserSelectedMode(wanted_mode, orig_mode));
 
    return EFI_SUCCESS;
 }
@@ -252,12 +248,8 @@ EFI_STATUS
 SetupGraphicMode(void)
 {
    static video_mode_t ok_modes[16];   /* static: reduce stack usage */
-   static EFI_HANDLE handles[32];      /* static: reduce stack usage */
 
    EFI_STATUS status;
-   UINTN handles_count;
-   UINTN handles_buf_size;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
 
    struct ok_modes_info okm = {
@@ -267,28 +259,10 @@ SetupGraphicMode(void)
       .defmode = INVALID_VIDEO_MODE,
    };
 
-   handles_buf_size = sizeof(handles);
-
-   status = BS->LocateHandle(ByProtocol,
-                             &GraphicsOutputProtocol,
-                             NULL,
-                             &handles_buf_size,
-                             handles);
-
-   HANDLE_EFI_ERROR("LocateHandle() failed");
-
-   handles_count = handles_buf_size / sizeof(EFI_HANDLE);
-   CHECK(handles_count > 0);
-
-   status = BS->HandleProtocol(handles[0],
-                               &GraphicsOutputProtocol,
-                               (void **)&gProt);
-   HANDLE_EFI_ERROR("HandleProtocol() failed");
-
    mode = gProt->Mode;
 
    if (BOOT_INTERACTIVE) {
-      status = DoAskUserAndSetupGraphicMode(gProt, mode, &okm);
+      status = DoAskUserAndSetupGraphicMode(mode, &okm);
       HANDLE_EFI_ERROR("DoAskUserAndSetupGraphicMode() failed");
    }
 

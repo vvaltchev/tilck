@@ -15,8 +15,7 @@ legacy_boot_read_key(void)
 }
 
 static bool
-legacy_boot_get_mode_info(void *ctx,
-                          video_mode_t m,
+legacy_boot_get_mode_info(video_mode_t m,
                           void *opaque_info,
                           struct generic_video_mode_info *gi)
 {
@@ -38,7 +37,7 @@ legacy_boot_get_mode_info(void *ctx,
 }
 
 static bool
-legacy_boot_is_mode_usable(void *ctx, void *opaque_info)
+legacy_boot_is_mode_usable(void *opaque_info)
 {
    struct ModeInfoBlock *mi = opaque_info;
 

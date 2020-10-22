@@ -71,8 +71,7 @@ filter_video_modes(video_mode_t *all_modes,
                    bool show_modes,
                    int bpp,
                    int ok_modes_start,
-                   struct ok_modes_info *okm,
-                   void *ctx)
+                   struct ok_modes_info *okm)
 {
    struct generic_video_mode_info gi;
    u32 p, max_mode_pixels = 0;
@@ -86,10 +85,10 @@ filter_video_modes(video_mode_t *all_modes,
 
       curr_mode_num = all_modes ? all_modes[i] : (video_mode_t)i;
 
-      if (!intf->get_mode_info(ctx, curr_mode_num, opaque_mi, &gi))
+      if (!intf->get_mode_info(curr_mode_num, opaque_mi, &gi))
          continue;
 
-      if (!intf->is_mode_usable(ctx, opaque_mi))
+      if (!intf->is_mode_usable(opaque_mi))
          continue;
 
       if (gi.bpp != bpp)
@@ -124,7 +123,7 @@ filter_video_modes(video_mode_t *all_modes,
 
       if (!exists_mode_in_array(max_mode, okm->ok_modes, cnt)) {
 
-         if (!intf->get_mode_info(ctx, max_mode, opaque_mi, &gi))
+         if (!intf->get_mode_info(max_mode, opaque_mi, &gi))
             panic("get_mode_info(0x%x) failed", max_mode);
 
          if (show_modes)

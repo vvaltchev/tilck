@@ -12,6 +12,7 @@
 extern bool any_warnings;
 extern multiboot_info_t *mbi;
 extern EFI_HANDLE gImageHandle;
+extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 extern const struct bootloader_intf efi_boot_intf;
 
 EFI_STATUS
