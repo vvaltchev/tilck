@@ -42,7 +42,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EarlySetDefaultResolution();
    ST->ConOut->EnableCursor(ST->ConOut, true);
 
-   Print(L"----- Hello from Tilck's UEFI bootloader! -----\r\n\r\n");
+   Print(L"----- Hello from Tilck's UEFI bootloader! -----\n\n");
 
    status = BS->OpenProtocol(image,
                              &LoadedImageProtocol,
@@ -85,7 +85,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
                         2); /* CurrConsoleRow (HACK). See ShowProgress() */
 
    HANDLE_EFI_ERROR("LoadRamdisk failed");
-   Print(L"\r\n");
+   Print(L"\n");
 
    if (MOD_console && MOD_fb) {
       status = SetupGraphicMode(&fb_paddr, &gfx_mode_info);
@@ -110,17 +110,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    //
    // For debugging with GDB (see docs/efi_debug.md)
    //
-   // Print(L"Pointer size: %d\r\n", sizeof(void *));
-   // Print(L"JumpToKernel: 0x%x\r\n", (void *)JumpToKernel);
-   // Print(L"BaseAddr: 0x%x\r\n", loaded_image->ImageBase + 0x1000);
-   // Print(L"Press ANY key to boot the kernel...\r\n");
+   // Print(L"Pointer size: %d\n", sizeof(void *));
+   // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
+   // Print(L"BaseAddr: 0x%x\n", loaded_image->ImageBase + 0x1000);
+   // Print(L"Press ANY key to boot the kernel...\n");
    // WaitForKeyPress(ST);
    //
 
    if (any_warnings) {
-      Print(L"\r\n\n");
-      Print(L"*** WARNINGS PRESENT ***\r\n");
-      Print(L"Please check them before booting.\r\n");
+      Print(L"\n\n");
+      Print(L"*** WARNINGS PRESENT ***\n");
+      Print(L"Please check them before booting.\n");
       Print(L"Press ANY key to boot");
       WaitForKeyPress();
    }
@@ -131,12 +131,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    if (!(MOD_console && MOD_fb)) {
 
-      Print(L"WARNING: MOD_fb=0, Tilck won't support graphics mode.\r\n");
-      Print(L"WARNING: text mode is NOT available with UEFI boot.\r\n\n");
+      Print(L"WARNING: MOD_fb=0, Tilck won't support graphics mode.\n");
+      Print(L"WARNING: text mode is NOT available with UEFI boot.\n\n");
 
       if (MOD_serial && (TINY_KERNEL || SERIAL_CON_IN_VIDEO_MODE)) {
 
-         Print(L"Only the serial console is available. Use it.\r\n\n");
+         Print(L"Only the serial console is available. Use it.\n\n");
          Print(L"Press ANY key to boot");
          WaitForKeyPress();
 
@@ -145,7 +145,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
       } else {
 
-         Print(L"ERROR: No serial console enabled. Refuse to boot.\r\n");
+         Print(L"ERROR: No serial console enabled. Refuse to boot.\n");
          status = EFI_ABORTED;
          goto end;
       }

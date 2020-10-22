@@ -71,9 +71,9 @@ LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
    HANDLE_EFI_ERROR("fileProt->Read");
 
    // UINT32 crc32 = 0;
-   // Print(L"Size read: %d\r\n", bufSize);
+   // Print(L"Size read: %d\n", bufSize);
    // BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
-   // Print(L"Crc32: 0x%x\r\n", crc32);
+   // Print(L"Crc32: 0x%x\n", crc32);
 
    status = fileHandle->Close(fileHandle);
    HANDLE_EFI_ERROR("fileHandle->Close");
@@ -180,9 +180,9 @@ ReadAlignedBlock(EFI_BLOCK_IO_PROTOCOL *blockio,
 
    if (EFI_ERROR(status)) {
 
-      Print(L"offset: %u\r\n", offset);
-      Print(L"length: %u\r\n", len);
-      Print(L"logical part: %u\r\n", blockio->Media->LogicalPartition);
+      Print(L"offset: %u\n", offset);
+      Print(L"length: %u\n", len);
+      Print(L"logical part: %u\n", blockio->Media->LogicalPartition);
       HANDLE_EFI_ERROR("ReadBlocks");
    }
 
@@ -276,10 +276,10 @@ GetHandlerForDevicePath(EFI_DEVICE_PATH *dp,
    HANDLE_EFI_ERROR("LocateDevicePath");
 
    if (!IsDevicePathEnd(dpCopy)) {
-      Print(L"ERROR: Cannot get a handler for device path:\r\n");
-      Print(L"    \"%s\"\r\n", DevicePathToStr(dp));
-      Print(L"ERROR: Closest match:\r\n");
-      Print(L"    \"%s\"\r\n", DevicePathToStr(dpCopy));
+      Print(L"ERROR: Cannot get a handler for device path:\n");
+      Print(L"    \"%s\"\n", DevicePathToStr(dp));
+      Print(L"ERROR: Closest match:\n");
+      Print(L"    \"%s\"\n", DevicePathToStr(dpCopy));
       status = EFI_ABORTED;
    }
 

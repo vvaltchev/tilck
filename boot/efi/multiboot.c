@@ -257,7 +257,7 @@ MbiSetPointerToAcpiTable(void)
    }
 
    if (!table) {
-      Print(L"ERROR: ACPI 2.0 configuration table not found\r\n");
+      Print(L"ERROR: ACPI 2.0 configuration table not found\n");
       return EFI_NOT_FOUND;
    }
 
@@ -265,7 +265,7 @@ MbiSetPointerToAcpiTable(void)
 
    if (tablePaddr >= UINT32_MAX) {
 
-      Print(L"Warning: ACPI 2.0 RDSP (0x%08x) out of 32-bit space\r\n",
+      Print(L"Warning: ACPI 2.0 RDSP (0x%08x) out of 32-bit space\n",
             tablePaddr);
 
       any_warnings = true;

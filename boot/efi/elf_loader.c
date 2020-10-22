@@ -36,17 +36,17 @@ KernelLoadMemoryChecks(void)
 
       if (!m) {
          Print(L"ERROR: unable to find memory region for kernel's paddr: "
-               "0x%08x\r\n", p);
+               "0x%08x\n", p);
          return EFI_LOAD_ERROR;
       }
 
       if (!IsMemRegionUsable(m)) {
 
-         Print(L"ERROR: kernel's load area contains unusable mem areas\r\n");
-         Print(L"Kernel's load area:  0x%08x - 0x%08x\r\n", KERNEL_PADDR, pend);
-         Print(L"Unusable mem region: 0x%08x - 0x%08x\r\n",
+         Print(L"ERROR: kernel's load area contains unusable mem areas\n");
+         Print(L"Kernel's load area:  0x%08x - 0x%08x\n", KERNEL_PADDR, pend);
+         Print(L"Unusable mem region: 0x%08x - 0x%08x\n",
                m->PhysicalStart, GetEndOfRegion(m));
-         Print(L"Region type: %d\r\n", m->Type);
+         Print(L"Region type: %d\n", m->Type);
 
          return EFI_LOAD_ERROR;
       }

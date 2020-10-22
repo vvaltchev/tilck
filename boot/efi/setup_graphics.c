@@ -183,10 +183,10 @@ PrintFailedModeInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt, UINTN failed_mode)
    status = gProt->QueryMode(gProt, failed_mode, &sizeof_info, &mi);
 
    if (!EFI_ERROR(status)) {
-      Print(L"Failed mode info:\r\n");
+      Print(L"Failed mode info:\n");
       PrintModeInfo(mi);
    } else {
-      Print(L"ERROR: Unable to print failed mode info: %r\r\n", status);
+      Print(L"ERROR: Unable to print failed mode info: %r\n", status);
    }
 }
 
@@ -205,7 +205,7 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
       gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
       ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
 
-      Print(L"ERROR: Unable to set desired mode: %r\r\n", status);
+      Print(L"ERROR: Unable to set desired mode: %r\n", status);
       PrintFailedModeInfo(gProt, wanted_mode);
       return false;
    }

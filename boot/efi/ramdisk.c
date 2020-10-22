@@ -120,14 +120,14 @@ LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx)
 
       if (ctx->tot_used_bytes != ff_clu_off) {
 
-         Print(L"fat_compact_clusters failed: %u != %u\r\n",
+         Print(L"fat_compact_clusters failed: %u != %u\n",
                ctx->tot_used_bytes, ff_clu_off);
 
          status = EFI_ABORTED;
          goto end;
       }
 
-      Print(L"[ OK ]\r\n");
+      Print(L"[ OK ]\n");
    }
 
 end:
@@ -252,7 +252,7 @@ LoadRamdisk(EFI_HANDLE image,
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
-   Print(L"[ OK ]\r\n");
+   Print(L"[ OK ]\n");
 
    status = LoadRamdisk_CompactClusters(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_CompactClusters");
