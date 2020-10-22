@@ -38,8 +38,7 @@ LoadRamdisk(EFI_HANDLE image,
             UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
 
 EFI_STATUS
-SetupGraphicMode(UINTN *fb_addr                                  /* out */,
-                 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info /* out */);
+SetupGraphicMode(void);
 
 EFI_STATUS
 EarlySetDefaultResolution(void);

@@ -32,8 +32,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EFI_FILE_PROTOCOL *fileProt;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
    EFI_PHYSICAL_ADDRESS kernel_file_paddr;
-   UINTN ramdisk_size, mapkey, fb_paddr = 0;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;
+   UINTN ramdisk_size, mapkey;
    void *kernel_entry = NULL;
 
    init_common_bootloader_code(&efi_boot_intf);
@@ -88,16 +87,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    HANDLE_EFI_ERROR("LoadRamdisk failed");
    Print(L"\n");
 
-   if (MOD_console && MOD_fb) {
-      status = SetupGraphicMode(&fb_paddr, &gfx_mode_info);
-      HANDLE_EFI_ERROR("SetupGraphicMode() failed");
-   }
-
    status = AllocateMbi();
    HANDLE_EFI_ERROR("AllocateMbi");
-
-   status = MbiSetFramebufferInfo(&gfx_mode_info, fb_paddr);
-   HANDLE_EFI_ERROR("MbiSetFramebufferInfo");
 
    status = MbiSetRamdisk(ramdisk_paddr, ramdisk_size);
    HANDLE_EFI_ERROR("MbiSetRamdisk");
@@ -107,6 +98,11 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = MbiSetPointerToAcpiTable();
    HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
+
+   if (MOD_console && MOD_fb) {
+      status = SetupGraphicMode();
+      HANDLE_EFI_ERROR("SetupGraphicMode() failed");
+   }
 
    //
    // For debugging with GDB (see docs/efi_debug.md)

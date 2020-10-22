@@ -249,8 +249,7 @@ DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
 }
 
 EFI_STATUS
-SetupGraphicMode(UINTN *fb_addr,
-                 EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
+SetupGraphicMode(void)
 {
    static video_mode_t ok_modes[16];   /* static: reduce stack usage */
    static EFI_HANDLE handles[32];      /* static: reduce stack usage */
@@ -294,8 +293,8 @@ SetupGraphicMode(UINTN *fb_addr,
    }
 
    mode = gProt->Mode;
-   *fb_addr = mode->FrameBufferBase;
-   *mode_info = *mode->Info;
+   status = MbiSetFramebufferInfo(mode->Info, mode->FrameBufferBase);
+   HANDLE_EFI_ERROR("MbiSetFramebufferInfo");
 
 end:
    return status;
