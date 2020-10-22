@@ -197,6 +197,9 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
 {
    EFI_STATUS status;
 
+   if (wanted_mode == orig_mode)
+      return true;
+
    ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
    status = gProt->SetMode(gProt, wanted_mode);
 
@@ -213,6 +216,38 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
    return true;
 }
 
+static EFI_STATUS
+DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
+                             EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode,
+                             struct ok_modes_info *okm)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
+   video_mode_t orig_mode = mode->Mode;
+   video_mode_t wanted_mode;
+
+   do {
+
+      filter_video_modes(NULL,           /* all_modes */
+                        mode->MaxMode,   /* all_modes_cnt */
+                        &mi,             /* opaque_mode_info_buf */
+                        true,            /* show_modes */
+                        32,              /* bpp */
+                        0,               /* ok_modes_start */
+                        okm,             /* okm */
+                        gProt);          /* ctx */
+
+      if (!okm->ok_modes_cnt) {
+         Print(L"No supported modes available\n");
+         return EFI_LOAD_ERROR;
+      }
+
+      wanted_mode = get_user_video_mode_choice(okm);
+
+   } while (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode));
+
+   return EFI_SUCCESS;
+}
+
 EFI_STATUS
 SetupGraphicMode(UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
@@ -225,10 +260,6 @@ SetupGraphicMode(UINTN *fb_addr,
    UINTN handles_buf_size;
    EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
    EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
-
-   video_mode_t wanted_mode;
-   video_mode_t orig_mode;
 
    struct ok_modes_info okm = {
       .ok_modes = ok_modes,
@@ -256,36 +287,11 @@ SetupGraphicMode(UINTN *fb_addr,
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
    mode = gProt->Mode;
-   orig_mode = mode->Mode;
 
-   if (!BOOT_INTERACTIVE)
-      goto after_user_choice;
-
-retry:
-
-   filter_video_modes(NULL,            /* all_modes */
-                      mode->MaxMode,   /* all_modes_cnt */
-                      &mi,             /* opaque_mode_info_buf */
-                      true,            /* show_modes */
-                      32,              /* bpp */
-                      0,               /* ok_modes_start */
-                      &okm,            /* okm */
-                      gProt);          /* ctx */
-
-   if (!okm.ok_modes_cnt) {
-      Print(L"No supported modes available\n");
-      status = EFI_LOAD_ERROR;
-      goto end;
+   if (BOOT_INTERACTIVE) {
+      status = DoAskUserAndSetupGraphicMode(gProt, mode, &okm);
+      HANDLE_EFI_ERROR("DoAskUserAndSetupGraphicMode() failed");
    }
-
-   wanted_mode = get_user_video_mode_choice(&okm);
-
-   if (wanted_mode != orig_mode) {
-      if (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode))
-         goto retry;
-   }
-
-after_user_choice:
 
    mode = gProt->Mode;
    *fb_addr = mode->FrameBufferBase;
