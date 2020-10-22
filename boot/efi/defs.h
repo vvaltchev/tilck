@@ -12,8 +12,10 @@
 #include <efilib.h>
 #include <multiboot.h>
 
-extern multiboot_info_t *mbi;
 extern bool any_warnings;
+extern multiboot_info_t *mbi;
+extern EFI_HANDLE gImageHandle;
+extern const struct bootloader_intf efi_boot_intf;
 
 EFI_STATUS
 LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
@@ -45,6 +47,6 @@ SetupGraphicMode(UINTN *fb_addr                                  /* out */,
 EFI_STATUS
 EarlySetDefaultResolution(void);
 
+bool
+IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);
 
-bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);
-extern const struct bootloader_intf efi_boot_intf;

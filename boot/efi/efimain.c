@@ -38,6 +38,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    init_common_bootloader_code(&efi_boot_intf);
    InitializeLib(image, __ST);
+   gImageHandle = image;
 
    EarlySetDefaultResolution();
    ST->ConOut->EnableCursor(ST->ConOut, true);

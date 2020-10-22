@@ -14,7 +14,7 @@
 
    /*
     * NOTE: this case exists ONLY to make the file to compile!
-    * The bootloader and the kernel MUST have their custom panic() function.
+    * The bootloaders and the kernel MUST have their custom panic() function.
     */
    #include <tilck/common/printk.h>
    #define abort() while (1)

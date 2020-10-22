@@ -2,6 +2,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
 
 NORETURN void panic(const char *fmt, ...)
 {
@@ -15,6 +16,6 @@ NORETURN void panic(const char *fmt, ...)
    printk("\n");
 
    while (true) {
-      asmVolatile("hlt");
+      halt();
    }
 }
