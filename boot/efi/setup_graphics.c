@@ -31,7 +31,7 @@ static void PrintModeFullInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    PrintModeInfo(mode->Info);
 }
 
-bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+bool IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
@@ -70,7 +70,7 @@ FindGoodVideoMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
       status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
       HANDLE_EFI_ERROR("QueryMode() failed");
 
-      if (supported && !IsSupported(mi))
+      if (supported && !IsVideoModeSupported(mi))
          continue;
 
       /*

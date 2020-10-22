@@ -3,10 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/page_size.h>
-#include <tilck/common/failsafe_assert.h>
-#include <tilck/common/string_util.h>
 #include <tilck/boot/common.h>
-#undef ASSERT
 
 #include <efi.h>
 #include <efilib.h>
@@ -48,5 +45,4 @@ EFI_STATUS
 EarlySetDefaultResolution(void);
 
 bool
-IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);
-
+IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);

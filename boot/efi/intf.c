@@ -60,7 +60,7 @@ efi_boot_is_mode_usable(void *ctx, void *opaque_info)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-   return IsSupported(mi);
+   return IsVideoModeSupported(mi);
 }
 
 const struct bootloader_intf efi_boot_intf = {
