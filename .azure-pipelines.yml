@@ -14,6 +14,9 @@ jobs:
         -DEXTRA_VIM=1
         -DFB_CONSOLE_BANNER=0
         -DFB_CONSOLE_CURSOR_BLINK=0
+        -DBOOT_INTERACTIVE=0
+        -DPREFERRED_GFX_MODE_W=640
+        -DPREFERRED_GFX_MODE_H=480
     steps:
       - script: printenv
         displayName: Dump env

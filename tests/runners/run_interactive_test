@@ -499,12 +499,6 @@ def run_handle_boot():
    # Wait for the bootloader to load everything
    time.sleep(3)
 
-   # Take a stable screenshot -> the bootloader has done
-   vm_take_stable_screenshot()
-
-   # Now choose the 640x480 mode
-   send_string_to_vm("1")
-
    # Wait a little for Tilck to boot
    time.sleep(1)
 
