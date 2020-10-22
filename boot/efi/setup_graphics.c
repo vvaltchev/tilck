@@ -212,37 +212,6 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
    return true;
 }
 
-static UINTN
-GetUserModeChoice(struct ok_modes_info *okm)
-{
-   char buf[16];
-   UINTN len;
-   long sel;
-   int err;
-
-   while (true) {
-
-      Print(L"Select mode [0 - %d]: ", okm->ok_modes_cnt - 1);
-      len = ReadAsciiLine(buf, sizeof(buf));
-
-      if (!len) {
-         Print(L"<default>\r\n\r\n");
-         return okm->defmode;
-      }
-
-      sel = tilck_strtol(buf, NULL, 10, &err);
-
-      if (err || sel < 0 || sel > okm->ok_modes_cnt - 1) {
-         Print(L"Invalid selection\n");
-         continue;
-      }
-
-      break;
-   }
-
-   return okm->ok_modes[sel];
-}
-
 static bool
 efi_boot_get_mode_info(void *ctx,
                        video_mode_t m,
@@ -290,7 +259,7 @@ efi_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
 
-   Print(L"Mode [%d]: %u x %u%s\n",
+   Print(L"Mode [%d]: %u x %u x 32%s\n",
          num,
          mi->HorizontalResolution,
          mi->VerticalResolution,
@@ -301,6 +270,7 @@ static const struct bootloader_intf efi_boot_intf = {
    .get_mode_info = &efi_boot_get_mode_info,
    .is_mode_usable = &efi_boot_is_mode_usable,
    .show_mode = &efi_boot_show_mode,
+   .read_line = &ReadAsciiLine,
 };
 
 EFI_STATUS
@@ -369,7 +339,7 @@ retry:
       goto end;
    }
 
-   wanted_mode = GetUserModeChoice(&okm);
+   wanted_mode = get_user_video_mode_choice(&efi_boot_intf, &okm);
 
    if (wanted_mode != orig_mode) {
       if (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode))

@@ -68,39 +68,6 @@ bios_read_line(char *buf, int buf_sz)
    return len;
 }
 
-static video_mode_t
-do_get_user_video_mode_choice(struct ok_modes_info *okm)
-{
-   int len, err = 0;
-   char buf[16];
-   long s;
-
-   printk("\n");
-
-   while (true) {
-
-      printk("Select a video mode [0 - %d]: ", okm->ok_modes_cnt - 1);
-
-      len = bios_read_line(buf, sizeof(buf));
-
-      if (!len) {
-         printk("DEFAULT\n");
-         return okm->defmode;
-      }
-
-      s = tilck_strtol(buf, NULL, 10, &err);
-
-      if (err || s < 0 || s > okm->ok_modes_cnt - 1) {
-         printk("Invalid selection.\n");
-         continue;
-      }
-
-      break;
-   }
-
-   return okm->ok_modes[s];
-}
-
 static bool
 legacy_boot_get_mode_info(void *ctx,
                           video_mode_t m,
@@ -158,6 +125,7 @@ static const struct bootloader_intf legacy_boot_intf = {
    .get_mode_info = &legacy_boot_get_mode_info,
    .is_mode_usable = &legacy_boot_is_mode_usable,
    .show_mode = &legacy_boot_show_mode,
+   .read_line = &bios_read_line,
 };
 
 static int
@@ -269,7 +237,7 @@ void ask_user_video_mode(struct mem_info *minfo)
    }
 
    selected_mode = BOOT_INTERACTIVE
-      ? do_get_user_video_mode_choice(&okm)
+      ? get_user_video_mode_choice(&legacy_boot_intf, &okm)
       : okm.defmode;
 
    if (selected_mode == INVALID_VIDEO_MODE)

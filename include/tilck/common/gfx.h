@@ -7,16 +7,12 @@
 #define TILCK_MIN_RES_Y                            480
 
 #ifdef __TILCK_EFI_BOOTLOADER__
-
    typedef ulong video_mode_t;
-   #define INVALID_VIDEO_MODE       0xffffffff
-
 #else
-
    typedef u16 video_mode_t;
-   #define INVALID_VIDEO_MODE       0xffff
-
 #endif
+
+#define INVALID_VIDEO_MODE             ((video_mode_t)~0)
 
 struct generic_video_mode_info {
 
@@ -34,6 +30,7 @@ struct bootloader_intf {
 
    bool (*is_mode_usable)(void *ctx, void *opaque_info);
    void (*show_mode)(void *ctx, int num, void *opaque_info, bool is_default);
+   int (*read_line)(char *buf, int buf_sz);
 };
 
 struct ok_modes_info {
@@ -59,3 +56,7 @@ filter_video_modes(const struct bootloader_intf *intf,
                    int ok_modes_start,
                    struct ok_modes_info *okm,
                    void *ctx);
+
+video_mode_t
+get_user_video_mode_choice(const struct bootloader_intf *intf,
+                           struct ok_modes_info *okm);

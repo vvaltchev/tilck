@@ -47,11 +47,11 @@ WaitForKeyPress(void)
     return k;
 }
 
-UINTN
-ReadAsciiLine(char *buf, UINTN buf_sz)
+int
+ReadAsciiLine(char *buf, int buf_sz)
 {
    EFI_INPUT_KEY k;
-   UINTN len = 0;
+   int len = 0;
    CHAR16 uc;
 
    while (true) {

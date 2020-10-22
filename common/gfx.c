@@ -3,8 +3,19 @@
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/gfx.h>
+#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/string_util.h>
 
 #if defined(__TILCK_BOOTLOADER__) || defined(__TILCK_EFI_BOOTLOADER__)
+
+#ifdef __TILCK_EFI_BOOTLOADER__
+   #undef ASSERT
+   #include <efi.h>
+   #include <efilib.h>
+   #define printk(fmt, ...) Print(CONCAT(L, fmt), ##__VA_ARGS__)
+#else
+   #include <tilck/common/printk.h>
+#endif
 
 bool is_tilck_usable_resolution(u32 w, u32 h)
 {
@@ -123,6 +134,38 @@ filter_video_modes(const struct bootloader_intf *intf,
    }
 
    okm->ok_modes_cnt = cnt;
+}
+
+video_mode_t
+get_user_video_mode_choice(const struct bootloader_intf *intf,
+                           struct ok_modes_info *okm)
+{
+   int len, err = 0;
+   char buf[16];
+   long s;
+
+   while (true) {
+
+      printk("Select a video mode [0 - %d]: ", okm->ok_modes_cnt - 1);
+
+      len = intf->read_line(buf, sizeof(buf));
+
+      if (!len) {
+         printk("<default>\n");
+         return okm->defmode;
+      }
+
+      s = tilck_strtol(buf, NULL, 10, &err);
+
+      if (err || s < 0 || s > okm->ok_modes_cnt - 1) {
+         printk("Invalid selection.\n");
+         continue;
+      }
+
+      break;
+   }
+
+   return okm->ok_modes[s];
 }
 
 #endif // defined(__TILCK_BOOTLOADER__) || defined(__TILCK_EFI_BOOTLOADER__)
