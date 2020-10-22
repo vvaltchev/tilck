@@ -5,7 +5,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
-#include <tilck/common/gfx.h>
+#include <tilck/boot/gfx.h>
 
 #include "realmode_call.h"
 #include "vbe.h"

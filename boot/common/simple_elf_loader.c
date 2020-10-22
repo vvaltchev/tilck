@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#pragma once
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
 #include <elf.h>
 
@@ -9,10 +10,6 @@
  * It assumes that the whole ELF file is loaded in memory at the address
  * pointed by `elf`. It returns the physical address of executable's entry
  * point, even when `header->e_entry` is a virtual address (see the code).
- *
- * NOTE: the code is in a source-header (.c.h) in order to avoid it to be
- * compiled and linked in binaries that don't need it, with the whole package
- * of C files in common/.
  */
 
 void *simple_elf_loader(void *elf)

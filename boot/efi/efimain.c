@@ -8,7 +8,7 @@
 #include "defs.h"
 #include "utils.h"
 
-#include <tilck/common/simple_elf_loader.c.h>
+#include <tilck/boot/common.h>
 
 /*
  * Global variable that could be set by any function to ask

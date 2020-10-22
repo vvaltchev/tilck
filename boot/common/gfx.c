@@ -2,9 +2,9 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/gfx.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
+#include <tilck/boot/gfx.h>
 
 #if defined(__TILCK_BOOTLOADER__) || defined(__TILCK_EFI_BOOTLOADER__)
 

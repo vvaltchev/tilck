@@ -7,6 +7,7 @@ file(
    GLOB STAGE3_C_SOURCES
 
    "*.c"
+   "${CMAKE_SOURCE_DIR}/boot/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.cpp"
    "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"

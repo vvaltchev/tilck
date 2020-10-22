@@ -5,6 +5,7 @@ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 file(GLOB COMMON_SOURCES ${GLOB_CONF_DEP}
 
+   "${CMAKE_SOURCE_DIR}/boot/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.cpp"
 )
