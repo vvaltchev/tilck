@@ -4,17 +4,9 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include "common_int.h"
-
-#ifdef __TILCK_EFI_BOOTLOADER__
-   #undef ASSERT
-   #include <efi.h>
-   #include <efilib.h>
-   #define printk(fmt, ...) Print(CONCAT(L, fmt), ##__VA_ARGS__)
-#else
-   #include <tilck/common/printk.h>
-#endif
 
 int
 read_line(char *buf, int buf_sz)

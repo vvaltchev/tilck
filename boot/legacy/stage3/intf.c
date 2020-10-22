@@ -4,6 +4,8 @@
 #include <tilck/common/printk.h>
 #include <tilck/common/string_util.h>
 #include <tilck/boot/common.h>
+
+#include "basic_term.h"
 #include "vbe.h"
 
 static int
@@ -59,4 +61,5 @@ const struct bootloader_intf legacy_boot_intf = {
    .get_mode_info = &legacy_boot_get_mode_info,
    .is_mode_usable = &legacy_boot_is_mode_usable,
    .read_key = &legacy_boot_read_key,
+   .write_char = &bt_write_char,
 };

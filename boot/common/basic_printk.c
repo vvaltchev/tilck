@@ -1,16 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
-#include "basic_term.h"
-
-/* This extra-limited printk implementation treats %ld as %d */
-STATIC_ASSERT(sizeof(long) == sizeof(int));
+#include "common_int.h"
 
 static void print_string(const char *s)
 {
    while (*s)
-      bt_write_char(*s++);
+      intf->write_char(*s++);
 }
 
 static void print_ll(char fmtX, char *buf, u64 val)
@@ -45,7 +43,7 @@ void vprintk(const char *fmt, va_list args)
    for (const char *ptr = fmt; *ptr; ptr++) {
 
       if (*ptr != '%') {
-         bt_write_char(*ptr);
+         intf->write_char(*ptr);
          continue;
       }
 
@@ -55,12 +53,11 @@ void vprintk(const char *fmt, va_list args)
       switch (*ptr) {
 
       case '%':
-         bt_write_char(*ptr);
+         intf->write_char(*ptr);
          break;
 
       case 'l':
 
-         /* Just skip 'l', treating %ld and %d the same way */
          ptr++;
 
          if (!*ptr)
@@ -75,7 +72,16 @@ void vprintk(const char *fmt, va_list args)
                return;
 
             print_ll(*ptr, buf, va_arg(args, u64));
+
+         } else {
+
+            if (sizeof(long) > sizeof(int)) {
+               print_ll(*ptr, buf, va_arg(args, u64));
+            } else {
+               /* Just ignore %l and treat %ld as %d */
+            }
          }
+
          break;
 
       case 'd':
@@ -95,7 +101,7 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       case 'c':
-         bt_write_char((char)va_arg(args, int));
+         intf->write_char((char)va_arg(args, int));
          break;
 
       case 's':
@@ -109,8 +115,8 @@ void vprintk(const char *fmt, va_list args)
          break;
 
       default:
-         bt_write_char('%');
-         bt_write_char(*ptr);
+         intf->write_char('%');
+         intf->write_char(*ptr);
       }
    }
 }

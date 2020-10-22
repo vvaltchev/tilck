@@ -9,6 +9,12 @@
 #include "defs.h"
 #include "utils.h"
 
+static void
+efi_boot_write_char(char c)
+{
+   Print(L"%c", c);
+}
+
 static int
 efi_boot_read_key(void)
 {
@@ -61,4 +67,5 @@ const struct bootloader_intf efi_boot_intf = {
    .get_mode_info = &efi_boot_get_mode_info,
    .is_mode_usable = &efi_boot_is_mode_usable,
    .read_key = &efi_boot_read_key,
+   .write_char = &efi_boot_write_char,
 };

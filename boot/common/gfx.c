@@ -4,6 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/boot/gfx.h>
 #include "common_int.h"
@@ -15,15 +16,6 @@ void init_common_bootloader_code(const struct bootloader_intf *i)
    if (!intf)
       intf = i;
 }
-
-#ifdef __TILCK_EFI_BOOTLOADER__
-   #undef ASSERT
-   #include <efi.h>
-   #include <efilib.h>
-   #define printk(fmt, ...) Print(CONCAT(L, fmt), ##__VA_ARGS__)
-#else
-   #include <tilck/common/printk.h>
-#endif
 
 bool is_tilck_usable_resolution(u32 w, u32 h)
 {
@@ -65,18 +57,9 @@ exists_mode_in_array(video_mode_t mode, video_mode_t *arr, int array_sz)
 static void
 show_mode(int num, struct generic_video_mode_info *gi, bool is_default)
 {
-#ifdef __TILCK_EFI_BOOTLOADER__
-
-   printk("Mode [%d]: %d x %d x %d%a\n",
-          num, gi->xres, gi->yres,
-          gi->bpp, is_default ? " [DEFAULT]" : "");
-
-#else
-
    printk("Mode [%d]: %d x %d x %d%s\n",
           num, gi->xres, gi->yres,
           gi->bpp, is_default ? " [DEFAULT]" : "");
-#endif
 }
 
 void
