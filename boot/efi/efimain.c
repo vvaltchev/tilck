@@ -36,6 +36,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION gfx_mode_info;
    void *kernel_entry = NULL;
 
+   init_common_bootloader_code(&efi_boot_intf);
    InitializeLib(image, __ST);
 
    EarlySetDefaultResolution();

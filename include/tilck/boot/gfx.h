@@ -2,36 +2,12 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/boot/common.h>
 
-#define TILCK_MIN_RES_X                            640
-#define TILCK_MIN_RES_Y                            480
-
-#ifdef __TILCK_EFI_BOOTLOADER__
-   typedef ulong video_mode_t;
-#else
-   typedef u16 video_mode_t;
-#endif
+#define TILCK_MIN_RES_X                               640
+#define TILCK_MIN_RES_Y                               480
 
 #define INVALID_VIDEO_MODE             ((video_mode_t)~0)
-
-struct generic_video_mode_info {
-
-   u16 xres;
-   u16 yres;
-   u8 bpp;
-};
-
-struct bootloader_intf {
-
-   bool (*get_mode_info)(void *ctx,
-                         video_mode_t m,
-                         void *opaque_info_buf,
-                         struct generic_video_mode_info *gi);
-
-   bool (*is_mode_usable)(void *ctx, void *opaque_info);
-   void (*show_mode)(void *ctx, int num, void *opaque_info, bool is_default);
-   int (*read_line)(char *buf, int buf_sz);
-};
 
 struct ok_modes_info {
 
@@ -41,14 +17,12 @@ struct ok_modes_info {
    video_mode_t defmode;
 };
 
-
 bool is_tilck_known_resolution(u32 w, u32 h);
 bool is_tilck_default_resolution(u32 w, u32 h);
 bool is_tilck_usable_resolution(u32 w, u32 h);
 
 void
-filter_video_modes(const struct bootloader_intf *intf,
-                   video_mode_t *all_modes,
+filter_video_modes(video_mode_t *all_modes,
                    int all_modes_cnt,
                    void *opaque_mode_info_buf,
                    bool show_modes,
@@ -58,5 +32,4 @@ filter_video_modes(const struct bootloader_intf *intf,
                    void *ctx);
 
 video_mode_t
-get_user_video_mode_choice(const struct bootloader_intf *intf,
-                           struct ok_modes_info *okm);
+get_user_video_mode_choice(struct ok_modes_info *okm);

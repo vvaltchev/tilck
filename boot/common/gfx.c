@@ -4,9 +4,17 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
-#include <tilck/boot/gfx.h>
 
-#if defined(__TILCK_BOOTLOADER__) || defined(__TILCK_EFI_BOOTLOADER__)
+#include <tilck/boot/gfx.h>
+#include "common_int.h"
+
+const struct bootloader_intf *intf;
+
+void init_common_bootloader_code(const struct bootloader_intf *i)
+{
+   if (!intf)
+      intf = i;
+}
 
 #ifdef __TILCK_EFI_BOOTLOADER__
    #undef ASSERT
@@ -55,8 +63,7 @@ exists_mode_in_array(video_mode_t mode, video_mode_t *arr, int array_sz)
 }
 
 void
-filter_video_modes(const struct bootloader_intf *intf,
-                   video_mode_t *all_modes,
+filter_video_modes(video_mode_t *all_modes,
                    int all_modes_cnt,
                    void *opaque_mi,
                    bool show_modes,
@@ -137,8 +144,7 @@ filter_video_modes(const struct bootloader_intf *intf,
 }
 
 video_mode_t
-get_user_video_mode_choice(const struct bootloader_intf *intf,
-                           struct ok_modes_info *okm)
+get_user_video_mode_choice(struct ok_modes_info *okm)
 {
    int len, err = 0;
    char buf[16];
@@ -167,5 +173,3 @@ get_user_video_mode_choice(const struct bootloader_intf *intf,
 
    return okm->ok_modes[s];
 }
-
-#endif // defined(__TILCK_BOOTLOADER__) || defined(__TILCK_EFI_BOOTLOADER__)

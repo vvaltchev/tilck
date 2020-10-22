@@ -5,7 +5,7 @@
 #include <tilck/common/page_size.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
-#include <tilck/boot/gfx.h>
+#include <tilck/boot/common.h>
 #undef ASSERT
 
 #include <efi.h>
@@ -44,3 +44,7 @@ SetupGraphicMode(UINTN *fb_addr                                  /* out */,
 
 EFI_STATUS
 EarlySetDefaultResolution(void);
+
+
+bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);
+extern const struct bootloader_intf efi_boot_intf;

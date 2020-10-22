@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.2)
 smart_config_file(linker_script.ld ${STAGE3_SCRIPT})
 
 file(
-   GLOB STAGE3_C_SOURCES
+   GLOB STAGE3_C_SOURCES ${GLOB_CONF_DEP}
 
    "*.c"
    "${CMAKE_SOURCE_DIR}/boot/common/*.c"

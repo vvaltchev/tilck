@@ -47,43 +47,6 @@ WaitForKeyPress(void)
     return k;
 }
 
-int
-ReadAsciiLine(char *buf, int buf_sz)
-{
-   EFI_INPUT_KEY k;
-   int len = 0;
-   CHAR16 uc;
-
-   while (true) {
-
-      k = WaitForKeyPress();
-      uc = k.UnicodeChar;
-
-      if (uc == '\n' || uc == '\r') {
-         Print(L"\r\n");
-         break;
-      }
-
-      if (!isprint(uc)) {
-
-         if (uc == '\b' && len > 0) {
-            Print(L"\b \b");
-            len--;
-         }
-
-         continue;
-      }
-
-      if (len < buf_sz - 1) {
-         Print(L"%c", uc);
-         buf[len++] = (char)uc;
-      }
-   }
-
-   buf[len] = 0;
-   return len;
-}
-
 EFI_STATUS
 LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
                  INTN pagesCount,

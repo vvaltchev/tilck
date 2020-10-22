@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck/boot/common.h>
 
 /*
  * Static address of a single bios memory area struct: it must be in the lowest
@@ -23,3 +24,5 @@ extern u8 fb_blue_mask_size;
 
 extern bool graphics_mode;
 extern u16 selected_mode;
+
+extern const struct bootloader_intf legacy_boot_intf;

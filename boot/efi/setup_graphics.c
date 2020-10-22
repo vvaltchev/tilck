@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_boot.h>
+#include <tilck/boot/gfx.h>
 
 #include "defs.h"
 #include "utils.h"
@@ -30,7 +31,7 @@ static void PrintModeFullInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    PrintModeInfo(mode->Info);
 }
 
-static bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
+bool IsSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
       return false;
@@ -212,67 +213,6 @@ SwitchToUserSelectedMode(EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt,
    return true;
 }
 
-static bool
-efi_boot_get_mode_info(void *ctx,
-                       video_mode_t m,
-                       void *opaque_info,
-                       struct generic_video_mode_info *gi)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt = ctx;
-   UINTN sizeof_info = 0;
-   EFI_STATUS status;
-
-   *mi_ref = NULL;
-   status = gProt->QueryMode(gProt, m, &sizeof_info, mi_ref);
-
-   if (EFI_ERROR(status))
-      return false;
-
-   mi = *mi_ref;
-
-   gi->xres = mi->HorizontalResolution;
-   gi->yres = mi->VerticalResolution;
-   gi->bpp = 0;
-
-   if (mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
-       mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor)
-   {
-      gi->bpp = 32;
-   }
-
-   return true;
-}
-
-static bool
-efi_boot_is_mode_usable(void *ctx, void *opaque_info)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-   return IsSupported(mi);
-}
-
-static void
-efi_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-
-   Print(L"Mode [%d]: %u x %u x 32%s\n",
-         num,
-         mi->HorizontalResolution,
-         mi->VerticalResolution,
-         is_default ? L" [DEFAULT]" : L"");
-}
-
-static const struct bootloader_intf efi_boot_intf = {
-   .get_mode_info = &efi_boot_get_mode_info,
-   .is_mode_usable = &efi_boot_is_mode_usable,
-   .show_mode = &efi_boot_show_mode,
-   .read_line = &ReadAsciiLine,
-};
-
 EFI_STATUS
 SetupGraphicMode(UINTN *fb_addr,
                  EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info)
@@ -323,8 +263,7 @@ SetupGraphicMode(UINTN *fb_addr,
 
 retry:
 
-   filter_video_modes(&efi_boot_intf,  /* intf */
-                      NULL,            /* all_modes */
+   filter_video_modes(NULL,            /* all_modes */
                       mode->MaxMode,   /* all_modes_cnt */
                       &mi,             /* opaque_mode_info_buf */
                       true,            /* show_modes */
@@ -339,7 +278,7 @@ retry:
       goto end;
    }
 
-   wanted_mode = get_user_video_mode_choice(&efi_boot_intf, &okm);
+   wanted_mode = get_user_video_mode_choice(&okm);
 
    if (wanted_mode != orig_mode) {
       if (!SwitchToUserSelectedMode(gProt, wanted_mode, orig_mode))

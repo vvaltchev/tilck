@@ -34,101 +34,6 @@ static void debug_show_detailed_mode_info(struct ModeInfoBlock *mi)
 }
 
 static int
-bios_read_line(char *buf, int buf_sz)
-{
-   int len = 0;
-   char c;
-
-   while (true) {
-
-      c = bios_read_char();
-
-      if (c == '\r') {
-         printk("\n");
-         break;
-      }
-
-      if (!isprint(c)) {
-
-         if (c == '\b' && len > 0) {
-            printk("\b \b");
-            len--;
-         }
-
-         continue;
-      }
-
-      if (len < buf_sz - 1) {
-         printk("%c", c);
-         buf[len++] = c;
-      }
-   }
-
-   buf[len] = 0;
-   return len;
-}
-
-static bool
-legacy_boot_get_mode_info(void *ctx,
-                          video_mode_t m,
-                          void *opaque_info,
-                          struct generic_video_mode_info *gi)
-{
-   if (vbe_get_mode_info(m, opaque_info)) {
-
-      if (gi) {
-
-         struct ModeInfoBlock *mi = opaque_info;
-
-         gi->xres = mi->XResolution;
-         gi->yres = mi->YResolution;
-         gi->bpp = mi->BitsPerPixel;
-      }
-
-      return true;
-   }
-
-   return false;
-}
-
-static bool
-legacy_boot_is_mode_usable(void *ctx, void *opaque_info)
-{
-   struct ModeInfoBlock *mi = opaque_info;
-
-   if (!(mi->ModeAttributes & VBE_MODE_ATTRS_GFX_MODE))
-      return false;
-
-   if (!(mi->ModeAttributes & VBE_MODE_ATTRS_LINEAR_FB))
-      return false;
-
-   if (!(mi->ModeAttributes & VBE_MODE_ATTRS_SUPPORTED))
-      return false;
-
-   if (mi->MemoryModel != VB_MEM_MODEL_DIRECT_COLOR)
-      return false;
-
-   return true;
-}
-
-static void
-legacy_boot_show_mode(void *ctx, int num, void *opaque_info, bool is_default)
-{
-   struct ModeInfoBlock *mi = opaque_info;
-
-   printk("Mode [%d]: %d x %d x %d%s\n",
-          num, mi->XResolution, mi->YResolution,
-          mi->BitsPerPixel, is_default ? " [DEFAULT]" : "");
-}
-
-static const struct bootloader_intf legacy_boot_intf = {
-   .get_mode_info = &legacy_boot_get_mode_info,
-   .is_mode_usable = &legacy_boot_is_mode_usable,
-   .show_mode = &legacy_boot_show_mode,
-   .read_line = &bios_read_line,
-};
-
-static int
 legacy_boot_count_modes(video_mode_t *modes)
 {
    int cnt = 0;
@@ -148,8 +53,7 @@ filter_modes(video_mode_t *all_modes,
              int ok_modes_start,
              struct ok_modes_info *okm)
 {
-   filter_video_modes(&legacy_boot_intf,
-                      all_modes,
+   filter_video_modes(all_modes,
                       all_modes_cnt,
                       opaque_mi,
                       show_modes,
@@ -237,7 +141,7 @@ void ask_user_video_mode(struct mem_info *minfo)
    }
 
    selected_mode = BOOT_INTERACTIVE
-      ? get_user_video_mode_choice(&legacy_boot_intf, &okm)
+      ? get_user_video_mode_choice(&okm)
       : okm.defmode;
 
    if (selected_mode == INVALID_VIDEO_MODE)

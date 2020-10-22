@@ -15,7 +15,6 @@
 #include <tilck/common/color_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/elf_calc_mem_size.c.h>
-#include <tilck/boot/common.h>
 
 #include <multiboot.h>
 
@@ -333,6 +332,7 @@ void bootloader_main(void)
    bool success;
    struct mem_info mi;
 
+   init_common_bootloader_code(&legacy_boot_intf);
    vga_set_video_mode(VGA_COLOR_TEXT_MODE_80x25);
    init_bt();
 
