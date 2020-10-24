@@ -56,9 +56,16 @@ legacy_boot_is_mode_usable(void *opaque_info)
    return true;
 }
 
+static void
+legacy_boot_clear_screen(void)
+{
+   init_bt();
+}
+
 const struct bootloader_intf legacy_boot_intf = {
    .get_mode_info = &legacy_boot_get_mode_info,
    .is_mode_usable = &legacy_boot_is_mode_usable,
    .read_key = &legacy_boot_read_key,
    .write_char = &bt_write_char,
+   .clear_screen = &legacy_boot_clear_screen,
 };

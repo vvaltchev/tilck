@@ -63,9 +63,16 @@ efi_boot_is_mode_usable(void *opaque_info)
           mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
+static void
+efi_boot_clear_screen(void)
+{
+   ST->ConOut->ClearScreen(ST->ConOut);
+}
+
 const struct bootloader_intf efi_boot_intf = {
    .get_mode_info = &efi_boot_get_mode_info,
    .is_mode_usable = &efi_boot_is_mode_usable,
    .read_key = &efi_boot_read_key,
    .write_char = &efi_boot_write_char,
+   .clear_screen = &efi_boot_clear_screen,
 };

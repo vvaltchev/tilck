@@ -26,6 +26,7 @@ struct bootloader_intf {
    bool (*is_mode_usable)(void *opaque_info);
    int (*read_key)(void);
    void (*write_char)(char c);
+   void (*clear_screen)(void);
 };
 
 void init_common_bootloader_code(const struct bootloader_intf *);
