@@ -23,44 +23,31 @@ efi_boot_read_key(void)
 }
 
 static bool
-efi_boot_get_mode_info(video_mode_t m,
-                       void *opaque_info,
-                       struct generic_video_mode_info *gi)
+efi_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
 {
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
    UINTN sizeof_info = 0;
    EFI_STATUS status;
 
-   *mi_ref = NULL;
-   status = gProt->QueryMode(gProt, m, &sizeof_info, mi_ref);
+   status = gProt->QueryMode(gProt, m, &sizeof_info, &mi);
 
    if (EFI_ERROR(status))
       return false;
 
-   mi = *mi_ref;
-
    gi->xres = mi->HorizontalResolution;
    gi->yres = mi->VerticalResolution;
    gi->bpp = 0;
+   gi->is_text_mode = false;
+   gi->is_usable = false;
 
    if (mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
        mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor)
    {
       gi->bpp = 32;
+      gi->is_usable = true;
    }
 
    return true;
-}
-
-static bool
-efi_boot_is_mode_usable(void *opaque_info)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-
-   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
-          mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
 static void
@@ -69,10 +56,51 @@ efi_boot_clear_screen(void)
    ST->ConOut->ClearScreen(ST->ConOut);
 }
 
+static video_mode_t
+efi_boot_get_curr_video_mode(void)
+{
+   return gProt->Mode->Mode;
+}
+
+bool
+efi_boot_set_curr_video_mode(video_mode_t wanted_mode)
+{
+   video_mode_t orig_mode = gProt->Mode->Mode;
+   EFI_STATUS status = EFI_SUCCESS;
+
+   if (wanted_mode != orig_mode) {
+
+      ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
+      status = gProt->SetMode(gProt, wanted_mode);
+
+      if (EFI_ERROR(status)) {
+
+         gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
+         ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
+      }
+   }
+
+   return status == EFI_SUCCESS;
+}
+
+static void
+efi_boot_get_all_video_modes(video_mode_t **modes, int *count)
+{
+   *modes = NULL;
+   *count = (int)gProt->Mode->MaxMode;
+}
+
 const struct bootloader_intf efi_boot_intf = {
-   .get_mode_info = &efi_boot_get_mode_info,
-   .is_mode_usable = &efi_boot_is_mode_usable,
+
+   /* Methods */
    .read_key = &efi_boot_read_key,
    .write_char = &efi_boot_write_char,
    .clear_screen = &efi_boot_clear_screen,
+   .get_all_video_modes = &efi_boot_get_all_video_modes,
+   .get_mode_info = &efi_boot_get_mode_info,
+   .get_curr_video_mode = &efi_boot_get_curr_video_mode,
+   .set_curr_video_mode = &efi_boot_set_curr_video_mode,
+
+   /* Configuration values */
+   .text_mode = INVALID_VIDEO_MODE,
 };

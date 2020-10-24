@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/boot/common.h>
+#include <multiboot.h>
 
 /*
  * Static address of a single bios memory area struct: it must be in the lowest
@@ -9,20 +10,27 @@
  */
 #define BIOS_MEM_AREA_BUF   (16 * KB)
 
-extern u32 fb_paddr;
-extern u32 fb_pitch;
-extern u32 fb_width;
-extern u32 fb_height;
-extern u32 fb_bpp;
-
-extern u8 fb_red_pos;
-extern u8 fb_red_mask_size;
-extern u8 fb_green_pos;
-extern u8 fb_green_mask_size;
-extern u8 fb_blue_pos;
-extern u8 fb_blue_mask_size;
-
-extern bool graphics_mode;
-extern u16 selected_mode;
+struct mem_info;
 
 extern const struct bootloader_intf legacy_boot_intf;
+extern struct ModeInfoBlock *usable_vbe_mode_info_block;
+extern struct VbeInfoBlock *vbe_info_block;
+extern video_mode_t selected_mode;
+extern struct mem_info g_meminfo;
+
+multiboot_info_t *
+setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size);
+
+u32
+do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size);
+
+void
+load_fat_ramdisk(const char *load_str,
+                 u32 first_sec,
+                 ulong min_paddr,
+                 ulong *ref_rd_paddr,
+                 u32 *ref_rd_size,
+                 bool alloc_extra_page);
+
+void
+write_ok_msg(void);

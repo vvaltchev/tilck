@@ -92,18 +92,12 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = MbiSetPointerToAcpiTable();
    HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
 
-   if (MOD_console && MOD_fb) {
-
-      if (BOOT_INTERACTIVE) {
-         do {
-
-            AskUserToChooseVideoMode();
-
-         } while (!SwitchToUserSelectedMode());
-      }
-
-      MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
+   if (!common_bootloader_logic()) {
+      status = EFI_ABORTED;
+      goto end;
    }
+
+   MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
 
    //
    // For debugging with GDB (see docs/efi_debug.md)
@@ -118,28 +112,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
    HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");
    loaded_image = NULL;
-
-   if (!(MOD_console && MOD_fb)) {
-
-      Print(L"WARNING: MOD_fb=0, Tilck won't support graphics mode.\n");
-      Print(L"WARNING: text mode is NOT available with UEFI boot.\n\n");
-
-      if (MOD_serial && (TINY_KERNEL || SERIAL_CON_IN_VIDEO_MODE)) {
-
-         Print(L"Only the serial console is available. Use it.\n\n");
-         Print(L"Press ANY key to boot");
-         WaitForKeyPress();
-
-         ST->ConOut->ClearScreen(ST->ConOut);
-         Print(L"<No video console>");
-
-      } else {
-
-         Print(L"ERROR: No serial console enabled. Refuse to boot.\n");
-         status = EFI_ABORTED;
-         goto end;
-      }
-   }
 
    status = MultibootSaveMemoryMap(&mapkey);
    HANDLE_EFI_ERROR("MultibootSaveMemoryMap");

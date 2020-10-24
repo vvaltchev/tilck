@@ -6,12 +6,36 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 
-#include <tilck/boot/gfx.h>
 #include "common_int.h"
 
-const struct bootloader_intf *intf;
+#define TILCK_MIN_RES_X                               640
+#define TILCK_MIN_RES_Y                               480
 
-void init_common_bootloader_code(const struct bootloader_intf *i)
+struct ok_mode {
+
+   video_mode_t mode;
+   struct generic_video_mode_info gi;
+};
+
+const struct bootloader_intf *intf;
+video_mode_t g_defmode = INVALID_VIDEO_MODE;
+
+static struct ok_mode ok_modes[16];
+static int ok_modes_cnt;
+
+static void
+append_ok_mode(video_mode_t mode, struct generic_video_mode_info *gi)
+{
+   if (ok_modes_cnt == ok_modes_cnt - 1)
+      return;
+
+   ok_modes[ok_modes_cnt].mode = mode;
+   ok_modes[ok_modes_cnt].gi = *gi;
+   ok_modes_cnt++;
+}
+
+void
+init_common_bootloader_code(const struct bootloader_intf *i)
 {
    if (!intf)
       intf = i;
@@ -48,10 +72,10 @@ is_default_resolution(u32 w, u32 h)
 }
 
 static bool
-exists_mode_in_array(video_mode_t mode, video_mode_t *arr, int array_sz)
+is_mode_in_ok_list(video_mode_t mode)
 {
-   for (int i = 0; i < array_sz; i++)
-      if (arr[i] == mode)
+   for (int i = 0; i < ok_modes_cnt; i++)
+      if (ok_modes[i].mode == mode)
          return true;
 
    return false;
@@ -60,19 +84,27 @@ exists_mode_in_array(video_mode_t mode, video_mode_t *arr, int array_sz)
 static void
 show_mode(int num, struct generic_video_mode_info *gi, bool is_default)
 {
-   printk("Mode [%d]: %d x %d x %d%s\n",
-          num, gi->xres, gi->yres,
-          gi->bpp, is_default ? " [DEFAULT]" : "");
+   if (gi->is_text_mode)
+
+      printk("Mode [%d]: text mode %u x %u%s\n",
+             num, gi->xres, gi->yres, is_default ? " [DEFAULT]" : "");
+
+   else
+
+      printk("Mode [%d]: %u x %u x %d%s\n",
+             num, gi->xres, gi->yres,
+             gi->bpp, is_default ? " [DEFAULT]" : "");
 }
 
 void
-filter_video_modes(video_mode_t *all_modes,
-                   int all_modes_cnt,
-                   void *opaque_mi,
-                   bool show_modes,
-                   int bpp,
-                   video_mode_t text_mode,
-                   struct ok_modes_info *okm)
+show_video_modes(void)
+{
+   for (int i = 0; i < ok_modes_cnt; i++)
+      show_mode(i, &ok_modes[i].gi, ok_modes[i].mode == g_defmode);
+}
+
+static video_mode_t
+filter_modes_int(video_mode_t *all_modes, int all_modes_cnt, int bpp)
 {
    struct generic_video_mode_info gi;
    video_mode_t curr_mode_num;
@@ -80,27 +112,28 @@ filter_video_modes(video_mode_t *all_modes,
    video_mode_t min_mode = INVALID_VIDEO_MODE;
    u32 min_mode_pixels = 0;
    u32 max_mode_pixels = 0;
-   int cnt = 0;
    u32 p;
 
-   okm->defmode = INVALID_VIDEO_MODE;
+   if (intf->text_mode != INVALID_VIDEO_MODE) {
 
-   if (text_mode != INVALID_VIDEO_MODE) {
+      gi = (struct generic_video_mode_info) {
+         .xres = 80,
+         .yres = 25,
+         .bpp = 0,
+         .is_text_mode = true,
+      };
 
-      if (show_modes)
-         printk("Mode [0]: text mode 80 x 25\n");
-
-      okm->ok_modes[cnt++] = text_mode;
+      append_ok_mode(intf->text_mode, &gi);
    }
 
    for (int i = 0; i < all_modes_cnt; i++) {
 
       curr_mode_num = all_modes ? all_modes[i] : (video_mode_t)i;
 
-      if (!intf->get_mode_info(curr_mode_num, opaque_mi, &gi))
+      if (!intf->get_mode_info(curr_mode_num, &gi))
          continue;
 
-      if (!intf->is_mode_usable(opaque_mi))
+      if (!gi.is_usable)
          continue;
 
       if (gi.bpp != bpp)
@@ -125,55 +158,68 @@ filter_video_modes(video_mode_t *all_modes,
          continue;
 
       if (is_default_resolution(gi.xres, gi.yres))
-         okm->defmode = curr_mode_num;
+         g_defmode = curr_mode_num;
 
-      if (cnt < okm->ok_modes_array_size - 1) {
-
-         if (show_modes)
-            show_mode(cnt, &gi, okm->defmode == curr_mode_num);
-
-         okm->ok_modes[cnt++] = curr_mode_num;
-      }
+      if (ok_modes_cnt < ARRAY_SIZE(ok_modes) - 1)
+         append_ok_mode(curr_mode_num, &gi);
    }
 
-   if (okm->defmode == INVALID_VIDEO_MODE) {
-      okm->defmode = min_mode;
+   if (g_defmode == INVALID_VIDEO_MODE) {
+      g_defmode = min_mode;
    }
 
    if (max_mode != INVALID_VIDEO_MODE) {
 
       /* Display the max mode, even if might not be optimal for Tilck */
-      if (!exists_mode_in_array(max_mode, okm->ok_modes, cnt)) {
+      if (!is_mode_in_ok_list(max_mode)) {
 
-         if (!intf->get_mode_info(max_mode, opaque_mi, &gi))
+         if (!intf->get_mode_info(max_mode, &gi))
             panic("get_mode_info(0x%x) failed", max_mode);
 
-         if (show_modes)
-            show_mode(cnt, &gi, false);
+         append_ok_mode(max_mode, &gi);
 
-         okm->ok_modes[cnt++] = max_mode;
-
-         if (okm->defmode == INVALID_VIDEO_MODE)
-            okm->defmode = max_mode;
+         if (g_defmode == INVALID_VIDEO_MODE)
+            g_defmode = max_mode;
       }
    }
 
-   if (okm->defmode == INVALID_VIDEO_MODE) {
+   if (g_defmode == INVALID_VIDEO_MODE) {
 
-      if (cnt > 0) {
+      if (ok_modes_cnt > 0) {
 
-         okm->defmode = okm->ok_modes[0];
+         g_defmode = ok_modes[0].mode;
 
-         if (okm->defmode == text_mode && cnt > 1)
-            okm->defmode = okm->ok_modes[1];
+         if (g_defmode == intf->text_mode && ok_modes_cnt > 1)
+            g_defmode = ok_modes[1].mode;
       }
    }
 
-   okm->ok_modes_cnt = cnt;
+   return g_defmode;
 }
 
 video_mode_t
-get_user_video_mode_choice(struct ok_modes_info *okm)
+filter_video_modes(video_mode_t *all_modes, int all_modes_cnt)
+{
+   if (g_defmode != INVALID_VIDEO_MODE)
+      panic("filter_video_modes() called twice");
+
+   filter_modes_int(all_modes, all_modes_cnt, 32);
+
+   if (g_defmode == INVALID_VIDEO_MODE || g_defmode == intf->text_mode) {
+
+      all_modes_cnt = 0;
+      g_defmode = INVALID_VIDEO_MODE;
+      filter_modes_int(all_modes, all_modes_cnt, 24);
+
+      if (g_defmode == INVALID_VIDEO_MODE)
+         g_defmode = intf->get_curr_video_mode();
+   }
+
+   return g_defmode;
+}
+
+video_mode_t
+get_user_video_mode_choice(void)
 {
    int len, err = 0;
    char buf[16];
@@ -181,18 +227,18 @@ get_user_video_mode_choice(struct ok_modes_info *okm)
 
    while (true) {
 
-      printk("Select a video mode [0 - %d]: ", okm->ok_modes_cnt - 1);
+      printk("Select a video mode [0 - %d]: ", ok_modes_cnt - 1);
 
       len = read_line(buf, sizeof(buf));
 
       if (!len) {
          printk("<default>\n");
-         return okm->defmode;
+         return g_defmode;
       }
 
       s = tilck_strtol(buf, NULL, 10, &err);
 
-      if (err || s < 0 || s > okm->ok_modes_cnt - 1) {
+      if (err || s < 0 || s > ok_modes_cnt - 1) {
          printk("Invalid selection.\n");
          continue;
       }
@@ -200,5 +246,24 @@ get_user_video_mode_choice(struct ok_modes_info *okm)
       break;
    }
 
-   return okm->ok_modes[s];
+   return ok_modes[s].mode;
+}
+
+void
+fetch_all_video_modes_once(void)
+{
+   video_mode_t *all_modes = NULL;
+   int all_modes_cnt = 0;
+
+   if (g_defmode == INVALID_VIDEO_MODE) {
+      intf->get_all_video_modes(&all_modes, &all_modes_cnt);
+      filter_video_modes(all_modes, all_modes_cnt);
+   }
+}
+
+video_mode_t
+find_default_video_mode(void)
+{
+   fetch_all_video_modes_once();
+   return g_defmode;
 }
