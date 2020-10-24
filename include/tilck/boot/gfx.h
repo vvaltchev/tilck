@@ -23,7 +23,7 @@ filter_video_modes(video_mode_t *all_modes,
                    void *opaque_mode_info_buf,
                    bool show_modes,
                    int bpp,
-                   int ok_modes_start,
+                   video_mode_t text_mode,
                    struct ok_modes_info *okm);
 
 video_mode_t

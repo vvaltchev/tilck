@@ -71,7 +71,7 @@ filter_video_modes(video_mode_t *all_modes,
                    void *opaque_mi,
                    bool show_modes,
                    int bpp,
-                   int ok_modes_start,
+                   video_mode_t text_mode,
                    struct ok_modes_info *okm)
 {
    struct generic_video_mode_info gi;
@@ -80,10 +80,18 @@ filter_video_modes(video_mode_t *all_modes,
    video_mode_t min_mode = INVALID_VIDEO_MODE;
    u32 min_mode_pixels = 0;
    u32 max_mode_pixels = 0;
-   int cnt = ok_modes_start;
+   int cnt = 0;
    u32 p;
 
    okm->defmode = INVALID_VIDEO_MODE;
+
+   if (text_mode != INVALID_VIDEO_MODE) {
+
+      if (show_modes)
+         printk("Mode [0]: text mode 80 x 25\n");
+
+      okm->ok_modes[cnt++] = text_mode;
+   }
 
    for (int i = 0; i < all_modes_cnt; i++) {
 
@@ -151,8 +159,14 @@ filter_video_modes(video_mode_t *all_modes,
    }
 
    if (okm->defmode == INVALID_VIDEO_MODE) {
-      if (ok_modes_start > 0)
+
+      if (cnt > 0) {
+
          okm->defmode = okm->ok_modes[0];
+
+         if (okm->defmode == text_mode && cnt > 1)
+            okm->defmode = okm->ok_modes[1];
+      }
    }
 
    okm->ok_modes_cnt = cnt;

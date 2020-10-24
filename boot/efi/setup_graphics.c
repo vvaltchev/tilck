@@ -62,7 +62,7 @@ FindGoodVideoMode(int bpp, video_mode_t *choice)
                       &mi,                    /* opaque_mode_info_buf */
                       false,                  /* show_modes */
                       bpp,                    /* bpp */
-                      0,                      /* ok_modes_start */
+                      INVALID_VIDEO_MODE,     /* text_mode */
                       &okm);                  /* okm */
 
    if (okm.ok_modes_cnt)
@@ -194,7 +194,7 @@ AskUserToChooseVideoMode(void)
                       &mi,                    /* opaque_mode_info_buf */
                       true,                   /* show_modes */
                       32,                     /* bpp */
-                      0,                      /* ok_modes_start */
+                      INVALID_VIDEO_MODE,     /* text_mode */
                       &okm);                  /* okm */
 
    wanted_mode = get_user_video_mode_choice(&okm);

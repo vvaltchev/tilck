@@ -103,12 +103,13 @@ void ask_user_video_mode(struct mem_info *minfo)
    all_modes = get_flat_ptr(vb->VideoModePtr);
    all_modes_cnt = legacy_boot_count_modes(all_modes);
 
-   ok_modes[0] = VGA_COLOR_TEXT_MODE_80x25;
-
-   if (BOOT_INTERACTIVE)
-      printk("Mode [0]: text mode 80 x 25\n");
-
-   filter_video_modes(all_modes,all_modes_cnt,mi,BOOT_INTERACTIVE,32,1,&okm);
+   filter_video_modes(all_modes,
+                      all_modes_cnt,
+                      mi,
+                      BOOT_INTERACTIVE,
+                      32,
+                      VGA_COLOR_TEXT_MODE_80x25,
+                      &okm);
 
    if (okm.ok_modes_cnt == 1) {
 
@@ -118,38 +119,42 @@ void ask_user_video_mode(struct mem_info *minfo)
        * the available modes.
        */
 
-      filter_video_modes(all_modes,all_modes_cnt,mi,BOOT_INTERACTIVE,24,1,&okm);
+      filter_video_modes(all_modes,
+                         all_modes_cnt,
+                         mi,
+                         BOOT_INTERACTIVE,
+                         24,
+                         VGA_COLOR_TEXT_MODE_80x25,
+                         &okm);
    }
+
+   if (okm.defmode == INVALID_VIDEO_MODE)
+      panic("Unable to determine a default video mode");
 
    selected_mode = BOOT_INTERACTIVE
       ? get_user_video_mode_choice(&okm)
       : okm.defmode;
 
-   if (selected_mode == INVALID_VIDEO_MODE)
-      panic("Unable to determine a default video mode");
+   if (selected_mode != VGA_COLOR_TEXT_MODE_80x25) {
 
-   if (selected_mode == VGA_COLOR_TEXT_MODE_80x25) {
-      graphics_mode = false;
-      return;
+      if (!vbe_get_mode_info(selected_mode, mi))
+         panic("vbe_get_mode_info(0x%x) failed", selected_mode);
+
+      graphics_mode = true;
+      fb_paddr = mi->PhysBasePtr;
+      fb_width = mi->XResolution;
+      fb_height = mi->YResolution;
+      fb_pitch = mi->BytesPerScanLine;
+      fb_bpp = mi->BitsPerPixel;
+
+      fb_red_pos = mi->RedFieldPosition;
+      fb_red_mask_size = mi->RedMaskSize;
+      fb_green_pos = mi->GreenFieldPosition;
+      fb_green_mask_size = mi->GreenMaskSize;
+      fb_blue_pos = mi->BlueFieldPosition;
+      fb_blue_mask_size = mi->BlueMaskSize;
+
+      if (vb->VbeVersion >= 0x300)
+         fb_pitch = mi->LinBytesPerScanLine;
    }
-
-   if (!vbe_get_mode_info(selected_mode, mi))
-      panic("vbe_get_mode_info(0x%x) failed", selected_mode);
-
-   graphics_mode = true;
-   fb_paddr = mi->PhysBasePtr;
-   fb_width = mi->XResolution;
-   fb_height = mi->YResolution;
-   fb_pitch = mi->BytesPerScanLine;
-   fb_bpp = mi->BitsPerPixel;
-
-   fb_red_pos = mi->RedFieldPosition;
-   fb_red_mask_size = mi->RedMaskSize;
-   fb_green_pos = mi->GreenFieldPosition;
-   fb_green_mask_size = mi->GreenMaskSize;
-   fb_blue_pos = mi->BlueFieldPosition;
-   fb_blue_mask_size = mi->BlueMaskSize;
-
-   if (vb->VbeVersion >= 0x300)
-      fb_pitch = mi->LinBytesPerScanLine;
 }
