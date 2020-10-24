@@ -10,6 +10,16 @@
 
 EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 
+static video_mode_t ok_modes[16];
+static video_mode_t wanted_mode;
+
+static struct ok_modes_info okm = {
+   .ok_modes = ok_modes,
+   .ok_modes_array_size = ARRAY_SIZE(ok_modes),
+   .ok_modes_cnt = 0,
+   .defmode = INVALID_VIDEO_MODE,
+};
+
 static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    Print(L"Resolution: %u x %u\n",
@@ -190,86 +200,65 @@ PrintFailedModeInfo(UINTN failed_mode)
    }
 }
 
-static bool
-SwitchToUserSelectedMode(UINTN wanted_mode, UINTN orig_mode)
+bool
+SwitchToUserSelectedMode(void)
 {
-   EFI_STATUS status;
+   video_mode_t orig_mode = gProt->Mode->Mode;
+   EFI_STATUS status = EFI_SUCCESS;
 
-   if (wanted_mode == orig_mode)
-      return true;
+   if (wanted_mode != orig_mode) {
 
-   ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
-   status = gProt->SetMode(gProt, wanted_mode);
+      ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
+      status = gProt->SetMode(gProt, wanted_mode);
 
-   if (EFI_ERROR(status)) {
+      if (EFI_ERROR(status)) {
 
-      gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
-      ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
+         gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
+         ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
 
-      Print(L"ERROR: Unable to set desired mode: %r\n", status);
-      PrintFailedModeInfo(wanted_mode);
-      return false;
+         Print(L"ERROR: Unable to set desired mode: %r\n", status);
+         PrintFailedModeInfo(wanted_mode);
+      }
    }
 
-   return true;
-}
-
-static EFI_STATUS
-DoAskUserAndSetupGraphicMode(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode,
-                             struct ok_modes_info *okm)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
-   video_mode_t orig_mode = mode->Mode;
-   video_mode_t wanted_mode;
-
-   do {
-
-      filter_video_modes(NULL,            /* all_modes */
-                         mode->MaxMode,   /* all_modes_cnt */
-                         &mi,             /* opaque_mode_info_buf */
-                         true,            /* show_modes */
-                         32,              /* bpp */
-                         0,               /* ok_modes_start */
-                         okm);            /* okm */
-
-      if (!okm->ok_modes_cnt) {
-         Print(L"No supported modes available\n");
-         return EFI_LOAD_ERROR;
-      }
-
-      wanted_mode = get_user_video_mode_choice(okm);
-
-   } while (!SwitchToUserSelectedMode(wanted_mode, orig_mode));
-
-   return EFI_SUCCESS;
+   MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
+   return status == EFI_SUCCESS;
 }
 
 EFI_STATUS
-SetupGraphicMode(void)
+IterateThroughVideoModes(void)
 {
-   static video_mode_t ok_modes[16];   /* static: reduce stack usage */
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
 
-   EFI_STATUS status;
-   EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode;
+   filter_video_modes(NULL,                   /* all_modes */
+                      gProt->Mode->MaxMode,   /* all_modes_cnt */
+                      &mi,                    /* opaque_mode_info_buf */
+                      false,                  /* show_modes */
+                      32,                     /* bpp */
+                      0,                      /* ok_modes_start */
+                      &okm);                  /* okm */
 
-   struct ok_modes_info okm = {
-      .ok_modes = ok_modes,
-      .ok_modes_array_size = ARRAY_SIZE(ok_modes),
-      .ok_modes_cnt = 0,
-      .defmode = INVALID_VIDEO_MODE,
-   };
-
-   mode = gProt->Mode;
-
-   if (BOOT_INTERACTIVE) {
-      status = DoAskUserAndSetupGraphicMode(mode, &okm);
-      HANDLE_EFI_ERROR("DoAskUserAndSetupGraphicMode() failed");
+   if (!okm.ok_modes_cnt) {
+      Print(L"No supported modes available\n");
+      return EFI_LOAD_ERROR;
    }
 
-   mode = gProt->Mode;
-   status = MbiSetFramebufferInfo(mode->Info, mode->FrameBufferBase);
-   HANDLE_EFI_ERROR("MbiSetFramebufferInfo");
+   wanted_mode = okm.defmode;
+   return EFI_SUCCESS;
+}
 
-end:
-   return status;
+void
+AskUserToChooseVideoMode(void)
+{
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
+
+   filter_video_modes(NULL,                   /* all_modes */
+                      gProt->Mode->MaxMode,   /* all_modes_cnt */
+                      &mi,                    /* opaque_mode_info_buf */
+                      true,                   /* show_modes */
+                      32,                     /* bpp */
+                      0,                      /* ok_modes_start */
+                      &okm);                  /* okm */
+
+   wanted_mode = get_user_video_mode_choice(&okm);
 }

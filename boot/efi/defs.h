@@ -9,7 +9,6 @@
 #include <efilib.h>
 #include <multiboot.h>
 
-extern bool any_warnings;
 extern multiboot_info_t *mbi;
 extern EFI_HANDLE gImageHandle;
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
@@ -27,7 +26,7 @@ EFI_STATUS MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr,
                          UINTN ramdisk_size);
 
 
-EFI_STATUS
+void
 MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
                       UINTN fb_addr);
 
@@ -39,7 +38,13 @@ LoadRamdisk(EFI_HANDLE image,
             UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
 
 EFI_STATUS
-SetupGraphicMode(void);
+IterateThroughVideoModes(void);
+
+void
+AskUserToChooseVideoMode(void);
+
+bool
+SwitchToUserSelectedMode(void);
 
 EFI_STATUS
 EarlySetDefaultResolution(void);

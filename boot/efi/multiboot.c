@@ -34,12 +34,10 @@ end:
    return status;
 }
 
-EFI_STATUS
+void
 MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
                       UINTN fb_addr)
 {
-   EFI_STATUS status = EFI_SUCCESS;
-
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
    mbi->framebuffer_addr = fb_addr;
    mbi->framebuffer_pitch =
@@ -62,8 +60,6 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
    mbi->framebuffer_red_mask_size = 8;
    mbi->framebuffer_green_mask_size = 8;
    mbi->framebuffer_blue_mask_size = 8;
-
-   return status;
 }
 
 static UINT32 EfiToMultibootMemType(UINT32 type)
@@ -268,7 +264,6 @@ MbiSetPointerToAcpiTable(void)
       Print(L"Warning: ACPI 2.0 RDSP (0x%08x) out of 32-bit space\n",
             tablePaddr);
 
-      any_warnings = true;
       return EFI_SUCCESS;
    }
 

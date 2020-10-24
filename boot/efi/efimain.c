@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_serial.h>
@@ -9,14 +10,6 @@
 #include "utils.h"
 
 #include <tilck/boot/common.h>
-
-/*
- * Global variable that could be set by any function to ask
- * the main function to wait for an additional user keypress
- * after the video mode selection, before booting.
- */
-
-bool any_warnings;
 
 /**
  * efi_main - The entry point for the EFI application
@@ -100,8 +93,17 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
 
    if (MOD_console && MOD_fb) {
-      status = SetupGraphicMode();
-      HANDLE_EFI_ERROR("SetupGraphicMode() failed");
+
+      status = IterateThroughVideoModes();
+      HANDLE_EFI_ERROR("IterateThroughVideoModes() failed");
+
+      do {
+
+         if (BOOT_INTERACTIVE)
+            AskUserToChooseVideoMode();
+
+      } while (!SwitchToUserSelectedMode());
+
    }
 
    //
@@ -113,14 +115,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    // Print(L"Press ANY key to boot the kernel...\n");
    // WaitForKeyPress(ST);
    //
-
-   if (any_warnings) {
-      Print(L"\n\n");
-      Print(L"*** WARNINGS PRESENT ***\n");
-      Print(L"Please check them before booting.\n");
-      Print(L"Press ANY key to boot");
-      WaitForKeyPress();
-   }
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
    HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");
