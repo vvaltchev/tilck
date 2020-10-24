@@ -58,7 +58,9 @@ efi_boot_is_mode_usable(void *opaque_info)
 {
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **mi_ref = opaque_info;
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = *mi_ref;
-   return IsVideoModeSupported(mi);
+
+   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
+          mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
 const struct bootloader_intf efi_boot_intf = {

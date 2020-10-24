@@ -11,7 +11,7 @@
 EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 
 static video_mode_t ok_modes[16];
-static video_mode_t wanted_mode;
+static video_mode_t wanted_mode = INVALID_VIDEO_MODE;
 
 static struct ok_modes_info okm = {
    .ok_modes = ok_modes,
@@ -41,21 +41,6 @@ static void PrintModeFullInfo(EFI_GRAPHICS_OUTPUT_PROTOCOL_MODE *mode)
    Print(L"Framebuffer addr: 0x%x\n", mode->FrameBufferBase);
    Print(L"Framebuffer size: %u\n", mode->FrameBufferSize);
    PrintModeInfo(mode->Info);
-}
-
-bool IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
-{
-   if (sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) != 4)
-      return false;
-
-   if (!is_tilck_usable_resolution(mi->HorizontalResolution,
-                                   mi->VerticalResolution))
-   {
-      return false;
-   }
-
-   return mi->PixelFormat == PixelBlueGreenRedReserved8BitPerColor ||
-          mi->PixelFormat == PixelRedGreenBlueReserved8BitPerColor;
 }
 
 /*
@@ -95,7 +80,7 @@ EarlySetDefaultResolution(void)
    UINTN handles_buf_size;
    UINTN handles_count;
    video_mode_t origMode;
-   video_mode_t chosenMode = -1;
+   video_mode_t chosenMode = INVALID_VIDEO_MODE;
 
    ST->ConOut->ClearScreen(ST->ConOut);
    handles_buf_size = sizeof(handles);
@@ -116,6 +101,9 @@ EarlySetDefaultResolution(void)
                                (void **)&gProt);
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
+   origMode = gProt->Mode->Mode;
+   wanted_mode = origMode;
+
    status = FindGoodVideoMode(32, &chosenMode);
    HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
@@ -134,24 +122,22 @@ EarlySetDefaultResolution(void)
 
       if (chosenMode == INVALID_VIDEO_MODE) {
          /* Do nothing: just keep the current video mode */
-         return status;
+         goto end;
+      }
+   }
+
+   if (chosenMode != origMode) {
+
+      status = gProt->SetMode(gProt, chosenMode);
+
+      if (EFI_ERROR(status)) {
+         /* Something went wrong: just restore the previous video mode */
+         status = gProt->SetMode(gProt, origMode);
+         HANDLE_EFI_ERROR("SetMode() failed");
       }
    }
 
    wanted_mode = chosenMode;
-   origMode = gProt->Mode->Mode;
-
-   if (chosenMode == origMode)
-      return status; /* We're already using a "good" video mode */
-
-   status = gProt->SetMode(gProt, chosenMode);
-
-   if (EFI_ERROR(status)) {
-      /* Something went wrong: just restore the previous video mode */
-      wanted_mode = origMode;
-      status = gProt->SetMode(gProt, origMode);
-      HANDLE_EFI_ERROR("SetMode() failed");
-   }
 
 end:
    return status;

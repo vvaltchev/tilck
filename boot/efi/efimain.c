@@ -112,7 +112,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
    // Print(L"BaseAddr: 0x%x\n", loaded_image->ImageBase + 0x1000);
    // Print(L"Press ANY key to boot the kernel...\n");
-   // WaitForKeyPress(ST);
+   // WaitForKeyPress();
    //
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);

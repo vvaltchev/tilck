@@ -17,15 +17,16 @@ void init_common_bootloader_code(const struct bootloader_intf *i)
       intf = i;
 }
 
-bool is_tilck_usable_resolution(u32 w, u32 h)
+static bool
+is_usable_video_mode(struct generic_video_mode_info *gi)
 {
-   return w >= TILCK_MIN_RES_X && h >= TILCK_MIN_RES_Y;
+   return gi->xres >= TILCK_MIN_RES_X && gi->yres >= TILCK_MIN_RES_Y;
 }
 
 static bool
 is_optimal_video_mode(struct generic_video_mode_info *gi)
 {
-   if (!is_tilck_usable_resolution(gi->xres, gi->yres))
+   if (!is_usable_video_mode(gi))
       return false;
 
    if (gi->xres % 8) {
@@ -74,10 +75,13 @@ filter_video_modes(video_mode_t *all_modes,
                    struct ok_modes_info *okm)
 {
    struct generic_video_mode_info gi;
-   u32 p, max_mode_pixels = 0;
-   video_mode_t max_mode = 0;
-   int cnt = ok_modes_start;
    video_mode_t curr_mode_num;
+   video_mode_t max_mode = INVALID_VIDEO_MODE;
+   video_mode_t min_mode = INVALID_VIDEO_MODE;
+   u32 min_mode_pixels = 0;
+   u32 max_mode_pixels = 0;
+   int cnt = ok_modes_start;
+   u32 p;
 
    okm->defmode = INVALID_VIDEO_MODE;
 
@@ -94,10 +98,15 @@ filter_video_modes(video_mode_t *all_modes,
       if (gi.bpp != bpp)
          continue;
 
-      if (!is_tilck_usable_resolution(gi.xres, gi.yres))
+      if (!is_usable_video_mode(&gi))
          continue;
 
       p = gi.xres * gi.yres;
+
+      if (!min_mode_pixels || p < min_mode_pixels) {
+         min_mode_pixels = p;
+         min_mode = curr_mode_num;
+      }
 
       if (p > max_mode_pixels) {
          max_mode_pixels = p;
@@ -119,8 +128,13 @@ filter_video_modes(video_mode_t *all_modes,
       }
    }
 
-   if (max_mode_pixels) {
+   if (okm->defmode == INVALID_VIDEO_MODE) {
+      okm->defmode = min_mode;
+   }
 
+   if (max_mode != INVALID_VIDEO_MODE) {
+
+      /* Display the max mode, even if might not be optimal for Tilck */
       if (!exists_mode_in_array(max_mode, okm->ok_modes, cnt)) {
 
          if (!intf->get_mode_info(max_mode, opaque_mi, &gi))

@@ -45,6 +45,3 @@ SwitchToUserSelectedMode(void);
 
 EFI_STATUS
 EarlySetDefaultResolution(void);
-
-bool
-IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi);
