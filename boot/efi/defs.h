@@ -37,9 +37,6 @@ LoadRamdisk(EFI_HANDLE image,
             UINTN *ramdisk_size,
             UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
 
-EFI_STATUS
-IterateThroughVideoModes(void);
-
 void
 AskUserToChooseVideoMode(void);
 

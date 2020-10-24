@@ -67,54 +67,23 @@ bool IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
  * EFI font results in extremely tiny text, a pretty bad user experience.
  */
 static EFI_STATUS
-FindGoodVideoMode(bool supported, video_mode_t *choice)
+FindGoodVideoMode(int bpp, video_mode_t *choice)
 {
-   video_mode_t minResModeN = INVALID_VIDEO_MODE;
-   video_mode_t chosenMode = INVALID_VIDEO_MODE;
-   EFI_STATUS status = EFI_SUCCESS;
-   u32 p, minResPixels = 0;
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
+   *choice = INVALID_VIDEO_MODE;
 
-   for (video_mode_t i = 0; i < gProt->Mode->MaxMode; i++) {
+   filter_video_modes(NULL,                   /* all_modes */
+                      gProt->Mode->MaxMode,   /* all_modes_cnt */
+                      &mi,                    /* opaque_mode_info_buf */
+                      false,                  /* show_modes */
+                      bpp,                    /* bpp */
+                      0,                      /* ok_modes_start */
+                      &okm);                  /* okm */
 
-      EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
-      UINTN sizeof_info = 0;
+   if (okm.ok_modes_cnt)
+      *choice = okm.defmode;
 
-      status = gProt->QueryMode(gProt, i, &sizeof_info, &mi);
-      HANDLE_EFI_ERROR("QueryMode() failed");
-
-      if (supported && !IsVideoModeSupported(mi))
-         continue;
-
-      /*
-       * NOTE: it's fine to use a resolution not supported by Tilck here.
-       * We just need any good-enough and low resolution for the displaying
-       * stuff on the screen.
-       */
-
-      if (mi->HorizontalResolution == PREFERRED_GFX_MODE_W &&
-          mi->VerticalResolution == PREFERRED_GFX_MODE_H)
-      {
-         chosenMode = i;
-         break; /* Our preferred resolution */
-      }
-
-      p = mi->HorizontalResolution * mi->VerticalResolution;
-
-      if (p < minResPixels) {
-         minResPixels = p;
-         minResModeN = i;
-      }
-   }
-
-   if (chosenMode != INVALID_VIDEO_MODE)
-      *choice = chosenMode;
-   else if (minResModeN != INVALID_VIDEO_MODE)
-      *choice = minResModeN;
-   else
-      *choice = INVALID_VIDEO_MODE;
-
-end:
-   return status;
+   return EFI_SUCCESS;
 }
 
 EFI_STATUS
@@ -147,7 +116,7 @@ EarlySetDefaultResolution(void)
                                (void **)&gProt);
    HANDLE_EFI_ERROR("HandleProtocol() failed");
 
-   status = FindGoodVideoMode(true, &chosenMode);
+   status = FindGoodVideoMode(32, &chosenMode);
    HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
    if (chosenMode == INVALID_VIDEO_MODE) {
@@ -160,7 +129,7 @@ EarlySetDefaultResolution(void)
        * directly by the user, among the available ones.
        */
 
-      status = FindGoodVideoMode(false, &chosenMode);
+      status = FindGoodVideoMode(24, &chosenMode);
       HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
       if (chosenMode == INVALID_VIDEO_MODE) {
@@ -169,6 +138,7 @@ EarlySetDefaultResolution(void)
       }
    }
 
+   wanted_mode = chosenMode;
    origMode = gProt->Mode->Mode;
 
    if (chosenMode == origMode)
@@ -178,6 +148,7 @@ EarlySetDefaultResolution(void)
 
    if (EFI_ERROR(status)) {
       /* Something went wrong: just restore the previous video mode */
+      wanted_mode = origMode;
       status = gProt->SetMode(gProt, origMode);
       HANDLE_EFI_ERROR("SetMode() failed");
    }
@@ -224,30 +195,7 @@ SwitchToUserSelectedMode(void)
       }
    }
 
-   MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
    return status == EFI_SUCCESS;
-}
-
-EFI_STATUS
-IterateThroughVideoModes(void)
-{
-   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi;
-
-   filter_video_modes(NULL,                   /* all_modes */
-                      gProt->Mode->MaxMode,   /* all_modes_cnt */
-                      &mi,                    /* opaque_mode_info_buf */
-                      false,                  /* show_modes */
-                      32,                     /* bpp */
-                      0,                      /* ok_modes_start */
-                      &okm);                  /* okm */
-
-   if (!okm.ok_modes_cnt) {
-      Print(L"No supported modes available\n");
-      return EFI_LOAD_ERROR;
-   }
-
-   wanted_mode = okm.defmode;
-   return EFI_SUCCESS;
 }
 
 void

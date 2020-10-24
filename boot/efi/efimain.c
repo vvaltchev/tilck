@@ -94,16 +94,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    if (MOD_console && MOD_fb) {
 
-      status = IterateThroughVideoModes();
-      HANDLE_EFI_ERROR("IterateThroughVideoModes() failed");
+      if (BOOT_INTERACTIVE) {
+         do {
 
-      do {
-
-         if (BOOT_INTERACTIVE)
             AskUserToChooseVideoMode();
 
-      } while (!SwitchToUserSelectedMode());
+         } while (!SwitchToUserSelectedMode());
+      }
 
+      MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
    }
 
    //
