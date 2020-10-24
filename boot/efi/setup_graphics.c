@@ -67,12 +67,14 @@ bool IsVideoModeSupported(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
  * EFI font results in extremely tiny text, a pretty bad user experience.
  */
 static EFI_STATUS
-FindGoodVideoMode(bool supported, INTN *choice)
+FindGoodVideoMode(bool supported, video_mode_t *choice)
 {
-   INTN chosenMode = -1, minResPixels = 0, minResModeN = -1;
+   video_mode_t minResModeN = INVALID_VIDEO_MODE;
+   video_mode_t chosenMode = INVALID_VIDEO_MODE;
    EFI_STATUS status = EFI_SUCCESS;
+   u32 p, minResPixels = 0;
 
-   for (UINTN i = 0; i < gProt->Mode->MaxMode; i++) {
+   for (video_mode_t i = 0; i < gProt->Mode->MaxMode; i++) {
 
       EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
       UINTN sizeof_info = 0;
@@ -92,24 +94,24 @@ FindGoodVideoMode(bool supported, INTN *choice)
       if (mi->HorizontalResolution == PREFERRED_GFX_MODE_W &&
           mi->VerticalResolution == PREFERRED_GFX_MODE_H)
       {
-         chosenMode = (INTN) i;
+         chosenMode = i;
          break; /* Our preferred resolution */
       }
 
-      const INTN p = (INTN)(mi->HorizontalResolution * mi->VerticalResolution);
+      p = mi->HorizontalResolution * mi->VerticalResolution;
 
       if (p < minResPixels) {
          minResPixels = p;
-         minResModeN = (INTN) i;
+         minResModeN = i;
       }
    }
 
-   if (chosenMode >= 0)
+   if (chosenMode != INVALID_VIDEO_MODE)
       *choice = chosenMode;
-   else if (minResModeN >= 0)
+   else if (minResModeN != INVALID_VIDEO_MODE)
       *choice = minResModeN;
    else
-      *choice = -1;
+      *choice = INVALID_VIDEO_MODE;
 
 end:
    return status;
@@ -123,7 +125,8 @@ EarlySetDefaultResolution(void)
    EFI_STATUS status;
    UINTN handles_buf_size;
    UINTN handles_count;
-   INTN origMode, chosenMode = -1;
+   video_mode_t origMode;
+   video_mode_t chosenMode = -1;
 
    ST->ConOut->ClearScreen(ST->ConOut);
    handles_buf_size = sizeof(handles);
@@ -147,7 +150,7 @@ EarlySetDefaultResolution(void)
    status = FindGoodVideoMode(true, &chosenMode);
    HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
-   if (chosenMode < 0) {
+   if (chosenMode == INVALID_VIDEO_MODE) {
 
       /*
        * We were unable to find a good and supported (= 32 bps) video mode.
@@ -160,22 +163,22 @@ EarlySetDefaultResolution(void)
       status = FindGoodVideoMode(false, &chosenMode);
       HANDLE_EFI_ERROR("FindGoodVideoMode() failed");
 
-      if (chosenMode < 0) {
+      if (chosenMode == INVALID_VIDEO_MODE) {
          /* Do nothing: just keep the current video mode */
          return status;
       }
    }
 
-   origMode = (INTN) gProt->Mode->Mode;
+   origMode = gProt->Mode->Mode;
 
    if (chosenMode == origMode)
       return status; /* We're already using a "good" video mode */
 
-   status = gProt->SetMode(gProt, (UINTN)chosenMode);
+   status = gProt->SetMode(gProt, chosenMode);
 
    if (EFI_ERROR(status)) {
       /* Something went wrong: just restore the previous video mode */
-      status = gProt->SetMode(gProt, (UINTN)origMode);
+      status = gProt->SetMode(gProt, origMode);
       HANDLE_EFI_ERROR("SetMode() failed");
    }
 
