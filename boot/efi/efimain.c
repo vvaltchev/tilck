@@ -22,8 +22,6 @@ EFI_STATUS
 efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 {
    EFI_STATUS status;
-   EFI_LOADED_IMAGE *loaded_image;
-   EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
    void *kernel_entry;
    UINTN mapkey;
 
@@ -38,28 +36,28 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = BS->OpenProtocol(image,
                              &LoadedImageProtocol,
-                             (void**) &loaded_image,
+                             (void**) &gLoadedImage,
                              image,
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol(LoadedImageProtocol)");
 
-   status = BS->OpenProtocol(loaded_image->DeviceHandle,
+   status = BS->OpenProtocol(gLoadedImage->DeviceHandle,
                              &FileSystemProtocol,
-                             (void **)&fileFsProt,
+                             (void **)&gFileFsProt,
                              image,
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
 
-   status = fileFsProt->OpenVolume(fileFsProt, &gFileProt);
+   status = gFileFsProt->OpenVolume(gFileFsProt, &gFileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
    status = ReserveMemAreaForKernelImage();
    HANDLE_EFI_ERROR("ReserveMemAreaForKernelImage");
 
    status = LoadRamdisk(image,
-                        loaded_image,
+                        gLoadedImage,
                         &gRamdiskPaddr,
                         &gRamdiskSize,
                         2); /* CurrConsoleRow (HACK). See ShowProgress() */
@@ -90,21 +88,21 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    //
    // Print(L"Pointer size: %d\n", sizeof(void *));
    // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
-   // Print(L"BaseAddr: 0x%x\n", loaded_image->ImageBase + 0x1000);
+   // Print(L"BaseAddr: 0x%x\n", gLoadedImage->ImageBase + 0x1000);
    // Print(L"Press ANY key to boot the kernel...\n");
    // WaitForKeyPress();
    //
 
-   status = BS->CloseProtocol(loaded_image->DeviceHandle,
+   status = BS->CloseProtocol(gLoadedImage->DeviceHandle,
                               &FileSystemProtocol,
                               image,
                               NULL);
    HANDLE_EFI_ERROR("CloseProtocol(FileSystemProtocol)");
-   fileFsProt = NULL;
+   gFileFsProt = NULL;
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
    HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");
-   loaded_image = NULL;
+   gLoadedImage = NULL;
 
    status = MultibootSaveMemoryMap(&mapkey);
    HANDLE_EFI_ERROR("MultibootSaveMemoryMap");
