@@ -32,8 +32,10 @@ u32 sectors_per_track;
 u32 heads_per_cylinder;
 u32 cylinders_count;
 
-ulong bp_paddr;         /* bootpart's physical address */
-u32 bp_size;            /* bootpart's size (used bytes, as rd_size) */
+ulong initrd_paddr;    /* initrd's physical address */
+u32 initrd_size;       /* initrd's size (used bytes in the fat partition) */
+ulong bp_paddr;        /* bootpart's physical address */
+u32 bp_size;           /* bootpart's size (used bytes in the fat partition) */
 
 static struct mem_area ma_buf[64];
 struct mem_info g_meminfo;
@@ -80,8 +82,6 @@ load_kernel_file(ulong ramdisk,
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
-   ulong rd_paddr;         /* initrd's physical address */
-   u32 rd_size;            /* initrd's size (used bytes in the fat partition) */
    ulong bp_min_paddr;
    void *entry;
    bool success;
@@ -123,12 +123,12 @@ void bootloader_main(void)
    load_fat_ramdisk(LOADING_INITRD_STR,
                     INITRD_SECTOR,
                     KERNEL_PADDR + KERNEL_MAX_SIZE,
-                    &rd_paddr,
-                    &rd_size,
+                    &initrd_paddr,
+                    &initrd_size,
                     true);       /* alloc_extra_page */
 
    /* Set bootpart's lowest paddr, leaving some safe margin */
-   bp_min_paddr = rd_paddr + rd_size + 2 * PAGE_SIZE;
+   bp_min_paddr = initrd_paddr + initrd_size + 2 * PAGE_SIZE;
 
    /* Round-up bootpart's lowest paddr at page boundary */
    bp_min_paddr = round_up_at(bp_min_paddr, PAGE_SIZE);
@@ -142,13 +142,13 @@ void bootloader_main(void)
                     false);       /* alloc_extra_page */
 
    /* Compact initrd's clusters, if necessary */
-   rd_size = do_ramdisk_compact_clusters((void *)rd_paddr, rd_size);
+   initrd_size = do_ramdisk_compact_clusters((void *)initrd_paddr, initrd_size);
 
    /*
-    * Increase rd_size by 1 page in order to allow Tilck's kernel to
+    * Increase initrd_size by 1 page in order to allow Tilck's kernel to
     * align the first data sector, if necessary.
     */
-   rd_size += 4 * KB;
+   initrd_size += 4 * KB;
 
    success = common_bootloader_logic();
 
@@ -156,7 +156,7 @@ void bootloader_main(void)
       panic("Boot aborted");
 
    entry = load_kernel_image();
-   mbi = setup_multiboot_info(rd_paddr, rd_size);
+   mbi = setup_multiboot_info(initrd_paddr, initrd_size);
 
    /* Jump to the kernel */
    asmVolatile("jmp *%%ecx"

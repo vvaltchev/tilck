@@ -17,6 +17,8 @@ extern struct ModeInfoBlock *usable_vbe_mode_info_block;
 extern struct VbeInfoBlock *vbe_info_block;
 extern video_mode_t selected_mode;
 extern struct mem_info g_meminfo;
+extern ulong initrd_paddr;
+extern u32 initrd_size;
 extern ulong bp_paddr;
 extern u32 bp_size;
 extern void *loaded_kernel_file;
