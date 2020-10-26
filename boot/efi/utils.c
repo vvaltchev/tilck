@@ -12,7 +12,7 @@ void JumpToKernel(void *entry_point)
    asmVolatile("jmp *%%ecx"
                : /* no output */
                : "a" (MULTIBOOT_BOOTLOADER_MAGIC),
-                 "b" (mbi),
+                 "b" (gMbi),
                  "c" (entry_point)
                : /* no clobber */);
 }
@@ -24,7 +24,7 @@ void switch_to_pm32_and_jump_to_kernel(multiboot_info_t *mbi, void *entry);
 
 void JumpToKernel(void *entry_point)
 {
-   switch_to_pm32_and_jump_to_kernel(mbi, entry_point);
+   switch_to_pm32_and_jump_to_kernel(gMbi, entry_point);
 }
 
 #else

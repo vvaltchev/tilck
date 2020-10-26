@@ -50,7 +50,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol FileSystemProtocol");
 
-   status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
+   status = fileFsProt->OpenVolume(fileFsProt, &gFileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
    status = ReserveMemAreaForKernelImage();
@@ -58,8 +58,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = LoadRamdisk(image,
                         loaded_image,
-                        &ramdisk_paddr,
-                        &ramdisk_size,
+                        &gRamdiskPaddr,
+                        &gRamdiskSize,
                         2); /* CurrConsoleRow (HACK). See ShowProgress() */
    HANDLE_EFI_ERROR("LoadRamdisk failed");
 

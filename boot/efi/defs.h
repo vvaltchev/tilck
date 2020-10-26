@@ -9,12 +9,12 @@
 #include <efilib.h>
 #include <multiboot.h>
 
-extern multiboot_info_t *mbi;
+extern multiboot_info_t *gMbi;
 extern EFI_HANDLE gImageHandle;
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
-extern EFI_FILE_PROTOCOL *fileProt;
-extern EFI_PHYSICAL_ADDRESS ramdisk_paddr;
-extern UINTN ramdisk_size;
+extern EFI_FILE_PROTOCOL *gFileProt;
+extern EFI_PHYSICAL_ADDRESS gRamdiskPaddr;
+extern UINTN gRamdiskSize;
 
 extern const struct bootloader_intf efi_boot_intf;
 
@@ -37,7 +37,7 @@ EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *ramdisk_size,
+            UINTN *gRamdiskSize,
             UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
 
 EFI_STATUS

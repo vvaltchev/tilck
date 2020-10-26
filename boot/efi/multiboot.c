@@ -11,7 +11,7 @@ EFI_MEMORY_DESCRIPTOR mmap[512];
 UINTN mmap_size;
 UINTN desc_size;
 
-multiboot_info_t *mbi;
+multiboot_info_t *gMbi;
 multiboot_memory_map_t *multiboot_mmap;
 UINT32 mmap_elems_count;
 
@@ -28,7 +28,7 @@ AllocateMbi(void)
    HANDLE_EFI_ERROR("AllocatePages");
 
    BS->SetMem(TO_PTR(multiboot_buffer), 1 * PAGE_SIZE, 0);
-   mbi = TO_PTR(multiboot_buffer);
+   gMbi = TO_PTR(multiboot_buffer);
 
 end:
    return status;
@@ -38,28 +38,28 @@ void
 MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
                       UINTN fb_addr)
 {
-   mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
-   mbi->framebuffer_addr = fb_addr;
-   mbi->framebuffer_pitch =
+   gMbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
+   gMbi->framebuffer_addr = fb_addr;
+   gMbi->framebuffer_pitch =
       mode_info->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
-   mbi->framebuffer_width = mode_info->HorizontalResolution,
-   mbi->framebuffer_height = mode_info->VerticalResolution,
-   mbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
-   mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
+   gMbi->framebuffer_width = mode_info->HorizontalResolution,
+   gMbi->framebuffer_height = mode_info->VerticalResolution,
+   gMbi->framebuffer_bpp = sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL) * 8;
+   gMbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
 
    if (mode_info->PixelFormat == PixelBlueGreenRedReserved8BitPerColor) {
-      mbi->framebuffer_red_field_position = 16;
-      mbi->framebuffer_green_field_position = 8;
-      mbi->framebuffer_blue_field_position = 0;
+      gMbi->framebuffer_red_field_position = 16;
+      gMbi->framebuffer_green_field_position = 8;
+      gMbi->framebuffer_blue_field_position = 0;
    } else if (mode_info->PixelFormat == PixelRedGreenBlueReserved8BitPerColor) {
-      mbi->framebuffer_red_field_position = 0;
-      mbi->framebuffer_green_field_position = 8;
-      mbi->framebuffer_blue_field_position = 16;
+      gMbi->framebuffer_red_field_position = 0;
+      gMbi->framebuffer_green_field_position = 8;
+      gMbi->framebuffer_blue_field_position = 16;
    }
 
-   mbi->framebuffer_red_mask_size = 8;
-   mbi->framebuffer_green_mask_size = 8;
-   mbi->framebuffer_blue_mask_size = 8;
+   gMbi->framebuffer_red_mask_size = 8;
+   gMbi->framebuffer_green_mask_size = 8;
+   gMbi->framebuffer_blue_mask_size = 8;
 }
 
 static UINT32 EfiToMultibootMemType(UINT32 type)
@@ -100,14 +100,14 @@ static UINT32 EfiToMultibootMemType(UINT32 type)
 
 static void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
 {
-   mbi->flags |= MULTIBOOT_INFO_MEMORY;
+   gMbi->flags |= MULTIBOOT_INFO_MEMORY;
 
    if (type == MULTIBOOT_MEMORY_AVAILABLE) {
-      if (start < mbi->mem_lower * KB)
-         mbi->mem_lower = start / KB;
+      if (start < gMbi->mem_lower * KB)
+         gMbi->mem_lower = start / KB;
 
-      if (end > mbi->mem_upper * KB)
-         mbi->mem_upper = end / KB;
+      if (end > gMbi->mem_upper * KB)
+         gMbi->mem_upper = end / KB;
    }
 
    multiboot_mmap[mmap_elems_count++] = (multiboot_memory_map_t) {
@@ -141,7 +141,7 @@ MultibootSaveMemoryMap(UINTN *mapkey)
    status = GetMemoryMap(mapkey);
    HANDLE_EFI_ERROR("GetMemoryMap");
 
-   mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
+   gMbi->flags |= MULTIBOOT_INFO_MEM_MAP;
    desc = (void *)mmap;
 
    do {
@@ -179,8 +179,8 @@ MultibootSaveMemoryMap(UINTN *mapkey)
 
    AddMemoryRegion(last_start, last_end, last_type);
 
-   mbi->mmap_addr = (UINTN)multiboot_mmap;
-   mbi->mmap_length = mmap_elems_count * sizeof(multiboot_memory_map_t);
+   gMbi->mmap_addr = (UINTN)multiboot_mmap;
+   gMbi->mmap_length = mmap_elems_count * sizeof(multiboot_memory_map_t);
 
 end:
    return status;
@@ -202,12 +202,12 @@ MbiSetRamdisk(void)
    BS->SetMem(TO_PTR(multiboot_mod_addr), 1 * PAGE_SIZE, 0);
 
    mod = TO_PTR(multiboot_mod_addr);
-   mod->mod_start = ramdisk_paddr;
-   mod->mod_end = mod->mod_start + ramdisk_size;
+   mod->mod_start = gRamdiskPaddr;
+   mod->mod_end = mod->mod_start + gRamdiskSize;
 
-   mbi->flags |= MULTIBOOT_INFO_MODS;
-   mbi->mods_addr = (UINTN)mod;
-   mbi->mods_count = 1;
+   gMbi->flags |= MULTIBOOT_INFO_MODS;
+   gMbi->mods_addr = (UINTN)mod;
+   gMbi->mods_count = 1;
 
 end:
    return status;
@@ -228,8 +228,8 @@ MbiSetBootloaderName(void)
    HANDLE_EFI_ERROR("AllocatePages");
 
    BS->CopyMem(TO_PTR(paddr), BootloaderName, sizeof(BootloaderName));
-   mbi->boot_loader_name = (u32)paddr;
-   mbi->flags |= MULTIBOOT_INFO_BOOT_LOADER_NAME;
+   gMbi->boot_loader_name = (u32)paddr;
+   gMbi->flags |= MULTIBOOT_INFO_BOOT_LOADER_NAME;
 
 end:
    return status;
@@ -276,8 +276,8 @@ MbiSetPointerToAcpiTable(void)
     * hack simply because:
     *
     *       - We're booting ONLY the Tilck kernel
-    *       - We didn't set MULTIBOOT_INFO_APM_TABLE in mbi->flags
-    *       - We set the mbi->boot_load_name to "TILCK_EFI" which allows the
+    *       - We didn't set MULTIBOOT_INFO_APM_TABLE in gMbi->flags
+    *       - We set the gMbi->boot_load_name to "TILCK_EFI" which allows the
     *         kernel to recognize this particular bootloader.
     *
     * Of course, if Tilck is booted by GRUB in EFI mode, it won't get this
@@ -293,6 +293,6 @@ MbiSetPointerToAcpiTable(void)
     * require always booting Tilck with its bootloader under QEMU: that's slower
     * for tests and limiting for debugging purposes.
     */
-   mbi->apm_table = (u32)tablePaddr;
+   gMbi->apm_table = (u32)tablePaddr;
    return EFI_SUCCESS;
 }

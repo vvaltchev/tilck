@@ -68,7 +68,7 @@ LoadKernelFile(CHAR16 *filePath, EFI_PHYSICAL_ADDRESS *paddr)
    }
 
    /* Temporary load the whole kernel file in a safe location */
-   status = LoadFileFromDisk(fileProt,
+   status = LoadFileFromDisk(gFileProt,
                              &sPaddr,
                              &sSize,
                              filePath);
