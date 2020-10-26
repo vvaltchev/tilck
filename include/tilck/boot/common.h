@@ -44,6 +44,8 @@ void init_common_bootloader_code(const struct bootloader_intf *);
 bool common_bootloader_logic(void);
 video_mode_t find_default_video_mode(void);
 void *load_kernel_image(void);
+size_t get_loaded_kernel_mem_sz(void);
+
 void write_bootloader_hello_msg(void);
 void write_ok_msg(void);
 void write_fail_msg(void);

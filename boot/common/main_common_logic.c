@@ -86,6 +86,15 @@ check_elf_kernel(void)
    return true;
 }
 
+size_t
+get_loaded_kernel_mem_sz(void)
+{
+   if (!kernel_elf_file_paddr)
+      panic("No loaded kernel");
+
+   return elf_calc_mem_size(kernel_elf_file_paddr);
+}
+
 static bool
 load_kernel_file(void)
 {

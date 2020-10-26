@@ -26,7 +26,7 @@ KernelLoadMemoryChecks(void)
 {
    EFI_MEMORY_DESCRIPTOR *m;
    EFI_PHYSICAL_ADDRESS p = KERNEL_PADDR;
-   EFI_PHYSICAL_ADDRESS pend = KERNEL_PADDR + KERNEL_MAX_SIZE;
+   EFI_PHYSICAL_ADDRESS pend = KERNEL_PADDR + get_loaded_kernel_mem_sz();
 
    while (p < pend) {
 
