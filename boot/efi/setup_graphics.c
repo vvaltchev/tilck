@@ -7,8 +7,6 @@
 
 #include <multiboot.h>
 
-EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
-
 static void PrintModeInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi)
 {
    Print(L"Resolution: %u x %u\n",

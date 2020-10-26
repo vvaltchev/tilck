@@ -9,12 +9,18 @@
 #include <efilib.h>
 #include <multiboot.h>
 
-extern multiboot_info_t *gMbi;
-extern EFI_HANDLE gImageHandle;
-extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
-extern EFI_FILE_PROTOCOL *gFileProt;
-extern EFI_PHYSICAL_ADDRESS gRamdiskPaddr;
-extern UINTN gRamdiskSize;
+#ifndef __EFI_MAIN__
+   #define EXTERN extern
+#else
+   #define EXTERN
+#endif
+
+EXTERN multiboot_info_t *gMbi;
+EXTERN EFI_HANDLE gImageHandle;
+EXTERN EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
+EXTERN EFI_FILE_PROTOCOL *gFileProt;
+EXTERN EFI_PHYSICAL_ADDRESS gRamdiskPaddr;
+EXTERN UINTN gRamdiskSize;
 
 extern const struct bootloader_intf efi_boot_intf;
 
