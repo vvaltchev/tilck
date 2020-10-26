@@ -117,6 +117,7 @@
 #define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
 #define ALIGNED_AT(x) __attribute__ ((aligned(x)))
 #define ATTR_PRINTF_LIKE(c) __attribute__ ((__format__ (__printf__, c, c+1)))
+#define ATTR_SECTION(s) __attribute__ ((section (s)))
 
 #ifdef BITS32
    #define FASTCALL __attribute__((fastcall))

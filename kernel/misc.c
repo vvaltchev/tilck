@@ -14,11 +14,11 @@
 char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 #if KERNEL_SYMBOLS
-char symtab_buf[SYMTAB_MAX_SIZE] __attribute__ ((section (".Symtab"))) = {0};
-char strtab_buf[STRTAB_MAX_SIZE] __attribute__ ((section (".Strtab"))) = {0};
+char symtab_buf[SYMTAB_MAX_SIZE] ATTR_SECTION(".Symtab") = {0};
+char strtab_buf[STRTAB_MAX_SIZE] ATTR_SECTION(".Strtab") = {0};
 #else
-char symtab_buf[1] __attribute__ ((section (".Symtab"))) = {0};
-char strtab_buf[1] __attribute__ ((section (".Strtab"))) = {0};
+char symtab_buf[1] ATTR_SECTION(".Symtab") = {0};
+char strtab_buf[1] ATTR_SECTION(".Strtab") = {0};
 #endif
 
 bool __use_framebuffer;
