@@ -52,14 +52,21 @@ load_kernel_file(ulong ramdisk,
    ulong free_space;
    size_t len;
 
-   if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL)))
-      panic("Unable to open '%s'!", filepath);
+   if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL))) {
+      printk("Unable to open '%s'\n", filepath);
+      return false;
+   }
 
    free_space =
       get_usable_mem(&g_meminfo, ramdisk + ramdisk_size, e->DIR_FileSize);
 
-   if (!free_space)
-      panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
+   if (!free_space) {
+
+      printk("No free space for kernel file at %p\n",
+             TO_PTR(ramdisk + ramdisk_size));
+
+      return false;
+   }
 
    loaded_kernel_file = NULL;
    len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);

@@ -77,7 +77,7 @@ ElfChecks(EFI_PHYSICAL_ADDRESS filePaddr)
 
       CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
       CHECK(phdr->p_paddr >= KERNEL_PADDR);
-      CHECK(phdr->p_paddr < KERNEL_PADDR + KERNEL_MAX_SIZE);
+      CHECK(phdr->p_paddr + phdr->p_memsz <= KERNEL_PADDR + KERNEL_MAX_SIZE);
    }
 
 end:
@@ -89,12 +89,15 @@ LoadKernelFile(CHAR16 *filePath)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
 
+   if (kernel_file_paddr) {
+      BS->FreePages(kernel_file_paddr, kernel_file_size);
+   }
+
    /* Temporary load the whole kernel file in a safe location */
    status = LoadFileFromDisk(fileProt,
-                             KERNEL_MAX_SIZE / PAGE_SIZE,
                              &kernel_file_paddr,
+                             &kernel_file_size,
                              filePath);
-
    HANDLE_EFI_ERROR("LoadFileFromDisk");
    status = ElfChecks(kernel_file_paddr);
 

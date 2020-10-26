@@ -2,6 +2,7 @@
 
 #include "defs.h"
 #include "utils.h"
+#include <tilck/common/utils.h>
 
 #if defined(BITS32)
 
@@ -49,13 +50,26 @@ WaitForKeyPress(void)
 
 EFI_STATUS
 LoadFileFromDisk(EFI_FILE_PROTOCOL *fProt,
-                 INTN pagesCount,
                  EFI_PHYSICAL_ADDRESS *paddr,
+                 UINTN *fileSz,
                  CHAR16 *filePath)
 {
+   EFI_FILE_PROTOCOL *fileHandle = NULL;
    EFI_STATUS status = EFI_SUCCESS;
-   EFI_FILE_PROTOCOL *fileHandle;
-   UINTN bufSize = pagesCount * PAGE_SIZE;
+   UINTN pagesCount, fileInfoBufSz, readSz;
+   char fileInfoBuf[sizeof(EFI_FILE_INFO) + 64];
+   EFI_FILE_INFO *nfo = (void *)fileInfoBuf;
+
+   status = fProt->Open(fProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
+   HANDLE_EFI_ERROR("fileProt->Open");
+
+   fileInfoBufSz = sizeof(fileInfoBuf);
+   status = fProt->GetInfo(fileHandle, &gEfiFileInfoGuid, &fileInfoBufSz, nfo);
+   HANDLE_EFI_ERROR("fileProt->GetInfo");
+
+   readSz = (UINTN)nfo->FileSize;
+   *fileSz = pow2_round_up_at(readSz, PAGE_SIZE);
+   pagesCount = *fileSz / PAGE_SIZE;
 
    status = BS->AllocatePages(AllocateAnyPages,
                               EfiLoaderData,
@@ -63,21 +77,15 @@ LoadFileFromDisk(EFI_FILE_PROTOCOL *fProt,
                               paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   status = fProt->Open(fProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
-   HANDLE_EFI_ERROR("fileProt->Open");
-
-   status = fProt->Read(fileHandle, &bufSize, TO_PTR(*paddr));
+   status = fProt->Read(fileHandle, &readSz, TO_PTR(*paddr));
    HANDLE_EFI_ERROR("fileProt->Read");
 
-   // UINT32 crc32 = 0;
-   // Print(L"Size read: %d\n", bufSize);
-   // BS->CalculateCrc32((void*)(UINTN)paddr, bufSize, &crc32);
-   // Print(L"Crc32: 0x%x\n", crc32);
-
-   status = fileHandle->Close(fileHandle);
-   HANDLE_EFI_ERROR("fileHandle->Close");
-
 end:
+
+   if (fileHandle) {
+      fileHandle->Close(fileHandle);
+   }
+
    return status;
 }
 

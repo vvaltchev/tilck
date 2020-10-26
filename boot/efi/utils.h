@@ -41,8 +41,8 @@ WaitForKeyPress(void);
 
 EFI_STATUS
 LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
-                 INTN pagesCount,
                  EFI_PHYSICAL_ADDRESS *paddr,
+                 UINTN *fileSz,
                  CHAR16 *filePath);
 
 void

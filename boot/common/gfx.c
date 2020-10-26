@@ -81,19 +81,21 @@ is_mode_in_ok_list(video_mode_t mode)
    return false;
 }
 
-static void
+void
 show_mode(int num, struct generic_video_mode_info *gi, bool is_default)
 {
+   if (num >= 0)
+      printk("Mode [%d]: ", num);
+
    if (gi->is_text_mode)
 
-      printk("Mode [%d]: text mode %u x %u%s\n",
-             num, gi->xres, gi->yres, is_default ? " [DEFAULT]" : "");
+      printk("text mode %u x %u%s\n",
+             gi->xres, gi->yres, is_default ? " [DEFAULT]" : "");
 
    else
 
-      printk("Mode [%d]: %u x %u x %d%s\n",
-             num, gi->xres, gi->yres,
-             gi->bpp, is_default ? " [DEFAULT]" : "");
+      printk("%u x %u x %d%s\n",
+             gi->xres, gi->yres, gi->bpp, is_default ? " [DEFAULT]" : "");
 }
 
 void

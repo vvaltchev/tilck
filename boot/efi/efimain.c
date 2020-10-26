@@ -13,6 +13,7 @@
 
 EFI_FILE_PROTOCOL *fileProt;
 EFI_PHYSICAL_ADDRESS kernel_file_paddr;
+UINTN kernel_file_size;
 
 /**
  * efi_main - The entry point for the EFI application
