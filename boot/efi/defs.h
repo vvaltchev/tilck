@@ -13,6 +13,9 @@ extern multiboot_info_t *mbi;
 extern EFI_HANDLE gImageHandle;
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
 extern EFI_FILE_PROTOCOL *fileProt;
+extern EFI_PHYSICAL_ADDRESS ramdisk_paddr;
+extern UINTN ramdisk_size;
+
 extern const struct bootloader_intf efi_boot_intf;
 
 EFI_STATUS LoadKernelFile(CHAR16 *filePath, EFI_PHYSICAL_ADDRESS *paddr);
@@ -20,8 +23,7 @@ EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
 EFI_STATUS MbiSetBootloaderName(void);
 EFI_STATUS MbiSetPointerToAcpiTable(void);
-EFI_STATUS MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr,
-                         UINTN ramdisk_size);
+EFI_STATUS MbiSetRamdisk(void);
 
 
 void

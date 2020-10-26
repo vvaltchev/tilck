@@ -187,7 +187,7 @@ end:
 }
 
 EFI_STATUS
-MbiSetRamdisk(EFI_PHYSICAL_ADDRESS ramdisk_paddr, UINTN ramdisk_size)
+MbiSetRamdisk(void)
 {
    EFI_STATUS status = EFI_SUCCESS;
    EFI_PHYSICAL_ADDRESS multiboot_mod_addr = EFI_MBI_MAX_ADDR;

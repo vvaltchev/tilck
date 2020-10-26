@@ -234,8 +234,8 @@ ReserveMemAreaForKernelImage(void)
 EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loadedImg,
-            EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *ramdisk_size,
+            EFI_PHYSICAL_ADDRESS *rd_paddr_ref,
+            UINTN *rd_size_ref,
             UINTN CurrConsoleRow)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
@@ -295,10 +295,10 @@ LoadRamdisk(EFI_HANDLE image,
     * Note[2]: previously we allocated one additional page.
     */
 
-   *ramdisk_size = ctx.tot_used_bytes + PAGE_SIZE;
+   *rd_size_ref = ctx.tot_used_bytes + PAGE_SIZE;
 
    /* Return (as OUR param) a pointer to the ramdisk */
-   *ramdisk_paddr_ref = (UINTN)ctx.fat_hdr;
+   *rd_paddr_ref = (UINTN)ctx.fat_hdr;
 
 end:
    if (ctx.blockio)

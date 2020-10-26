@@ -22,9 +22,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EFI_STATUS status;
    EFI_LOADED_IMAGE *loaded_image;
    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
-   EFI_PHYSICAL_ADDRESS ramdisk_paddr;
-   UINTN ramdisk_size, mapkey;
-   void *kernel_entry = NULL;
+   void *kernel_entry;
+   UINTN mapkey;
 
    init_common_bootloader_code(&efi_boot_intf);
    InitializeLib(image, __ST);
@@ -72,7 +71,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = AllocateMbi();
    HANDLE_EFI_ERROR("AllocateMbi");
 
-   status = MbiSetRamdisk(ramdisk_paddr, ramdisk_size);
+   status = MbiSetRamdisk();
    HANDLE_EFI_ERROR("MbiSetRamdisk");
 
    status = MbiSetBootloaderName();
