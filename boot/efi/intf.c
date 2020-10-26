@@ -95,6 +95,7 @@ efi_boot_load_kernel_file(const char *path, void **paddr)
 {
    static CHAR16 tmp_path[128];
 
+   EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    const char *p = path;
    int i;
 
@@ -109,7 +110,7 @@ efi_boot_load_kernel_file(const char *path, void **paddr)
 
    tmp_path[i] = 0;
 
-   if (EFI_ERROR(LoadKernelFile(tmp_path)))
+   if (EFI_ERROR(LoadKernelFile(tmp_path, &kernel_file_paddr)))
       return false;
 
    *paddr = TO_PTR(kernel_file_paddr);

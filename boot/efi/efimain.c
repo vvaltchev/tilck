@@ -11,10 +11,6 @@
 
 #include <tilck/boot/common.h>
 
-EFI_FILE_PROTOCOL *fileProt;
-EFI_PHYSICAL_ADDRESS kernel_file_paddr;
-UINTN kernel_file_size;
-
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -120,7 +116,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    /* --- Point of no return: from here on, we MUST NOT fail --- */
 
-   kernel_entry = simple_elf_loader(TO_PTR(kernel_file_paddr));
+   kernel_entry = load_kernel_image();
    JumpToKernel(kernel_entry);
 
 end:

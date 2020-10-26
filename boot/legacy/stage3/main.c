@@ -34,7 +34,6 @@ u32 cylinders_count;
 
 ulong bp_paddr;         /* bootpart's physical address */
 u32 bp_size;            /* bootpart's size (used bytes, as rd_size) */
-void *loaded_kernel_file;
 
 static struct mem_area ma_buf[64];
 struct mem_info g_meminfo;
@@ -42,7 +41,8 @@ struct mem_info g_meminfo;
 bool
 load_kernel_file(ulong ramdisk,
                  ulong ramdisk_size,
-                 const char *filepath)
+                 const char *filepath,
+                 void **file_paddr)
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    struct fat_entry *e;
@@ -65,7 +65,7 @@ load_kernel_file(ulong ramdisk,
       return false;
    }
 
-   loaded_kernel_file = NULL;
+   *file_paddr = NULL;
    len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);
 
    if (len != e->DIR_FileSize) {
@@ -73,7 +73,7 @@ load_kernel_file(ulong ramdisk,
       return false;
    }
 
-   loaded_kernel_file = (void *)free_space;
+   *file_paddr = (void *)free_space;
    return true;
 }
 
@@ -157,7 +157,7 @@ void bootloader_main(void)
    if (!success)
       panic("Boot aborted");
 
-   entry = simple_elf_loader(loaded_kernel_file);
+   entry = load_kernel_image();
    mbi = setup_multiboot_info(rd_paddr, rd_size);
 
    /* Jump to the kernel */

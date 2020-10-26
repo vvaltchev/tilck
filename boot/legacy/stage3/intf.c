@@ -160,11 +160,7 @@ legacy_boot_get_all_video_modes(video_mode_t **modes, int *count)
 static bool
 legacy_boot_load_kernel_file(const char *path, void **paddr)
 {
-   if (!load_kernel_file(bp_paddr, bp_size, path))
-      return false;
-
-   *paddr = loaded_kernel_file;
-   return true;
+   return load_kernel_file(bp_paddr, bp_size, path, paddr);
 }
 
 const struct bootloader_intf legacy_boot_intf = {

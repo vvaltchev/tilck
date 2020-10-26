@@ -42,8 +42,8 @@ struct bootloader_intf {
 
 void init_common_bootloader_code(const struct bootloader_intf *);
 bool common_bootloader_logic(void);
-void *simple_elf_loader(void *elf);
 video_mode_t find_default_video_mode(void);
+void *load_kernel_image(void);
 
 void write_ok_msg(void);
 void write_fail_msg(void);

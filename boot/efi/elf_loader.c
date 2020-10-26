@@ -56,20 +56,24 @@ KernelLoadMemoryChecks(void)
 }
 
 EFI_STATUS
-LoadKernelFile(CHAR16 *filePath)
+LoadKernelFile(CHAR16 *filePath, EFI_PHYSICAL_ADDRESS *paddr)
 {
+   static EFI_PHYSICAL_ADDRESS sPaddr;
+   static UINTN sSize;
+
    EFI_STATUS status = EFI_LOAD_ERROR;
 
-   if (kernel_file_paddr) {
-      BS->FreePages(kernel_file_paddr, kernel_file_size);
+   if (sPaddr) {
+      BS->FreePages(sPaddr, sSize);
    }
 
    /* Temporary load the whole kernel file in a safe location */
    status = LoadFileFromDisk(fileProt,
-                             &kernel_file_paddr,
-                             &kernel_file_size,
+                             &sPaddr,
+                             &sSize,
                              filePath);
    HANDLE_EFI_ERROR("LoadFileFromDisk");
+   *paddr = sPaddr;
 
 end:
    return status;

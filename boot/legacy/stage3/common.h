@@ -38,5 +38,6 @@ load_fat_ramdisk(const char *load_str,
 bool
 load_kernel_file(ulong ramdisk,
                  ulong ramdisk_size,
-                 const char *filepath);
+                 const char *filepath,
+                 void **file_paddr);
 

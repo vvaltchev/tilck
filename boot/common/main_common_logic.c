@@ -26,7 +26,13 @@
 static video_mode_t selected_mode = INVALID_VIDEO_MODE;
 static char kernel_file_path[64] = KERNEL_FILE_PATH;
 static char line_buf[64];
-static void *kernel_paddr;
+static void *kernel_elf_file_paddr;
+
+void *
+load_kernel_image(void)
+{
+   return simple_elf_loader(kernel_elf_file_paddr);
+}
 
 void
 write_ok_msg(void)
@@ -47,7 +53,7 @@ write_fail_msg(void)
 static bool
 check_elf_kernel(void)
 {
-   Elf32_Ehdr *header = kernel_paddr;
+   Elf32_Ehdr *header = kernel_elf_file_paddr;
    Elf32_Phdr *phdr = (Elf32_Phdr *)(header + 1);
 
    CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
@@ -66,7 +72,6 @@ check_elf_kernel(void)
       CHECK(phdr->p_paddr >= KERNEL_PADDR);
    }
 
-   CHECK(elf_calc_mem_size(header) <= KERNEL_MAX_SIZE);
    return true;
 }
 
@@ -75,7 +80,7 @@ load_kernel_file(void)
 {
    printk("Loading the ELF kernel... ");
 
-   if (!intf->load_kernel_file(kernel_file_path, &kernel_paddr)) {
+   if (!intf->load_kernel_file(kernel_file_path, &kernel_elf_file_paddr)) {
       write_fail_msg();
       return false;
    }
