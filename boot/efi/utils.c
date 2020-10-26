@@ -48,7 +48,7 @@ WaitForKeyPress(void)
 }
 
 EFI_STATUS
-LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
+LoadFileFromDisk(EFI_FILE_PROTOCOL *fProt,
                  INTN pagesCount,
                  EFI_PHYSICAL_ADDRESS *paddr,
                  CHAR16 *filePath)
@@ -63,11 +63,10 @@ LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
                               paddr);
    HANDLE_EFI_ERROR("AllocatePages");
 
-   status =
-      fileProt->Open(fileProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
+   status = fProt->Open(fProt, &fileHandle, filePath, EFI_FILE_MODE_READ, 0);
    HANDLE_EFI_ERROR("fileProt->Open");
 
-   status = fileProt->Read(fileHandle, &bufSize, TO_PTR(*paddr));
+   status = fProt->Read(fileHandle, &bufSize, TO_PTR(*paddr));
    HANDLE_EFI_ERROR("fileProt->Read");
 
    // UINT32 crc32 = 0;

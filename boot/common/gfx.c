@@ -232,7 +232,6 @@ get_user_video_mode_choice(void)
       len = read_line(buf, sizeof(buf));
 
       if (!len) {
-         printk("<default>\n");
          return g_defmode;
       }
 

@@ -90,17 +90,52 @@ efi_boot_get_all_video_modes(video_mode_t **modes, int *count)
    *count = (int)gProt->Mode->MaxMode;
 }
 
+static bool
+efi_boot_load_kernel_file(const char *path, void **paddr)
+{
+   static CHAR16 tmp_path[128];
+
+   const char *p = path;
+   int i;
+
+   for (i = 0; *p && i < ARRAY_SIZE(tmp_path); i++, p++) {
+      tmp_path[i] = *p != '/' ? *p : '\\';
+   }
+
+   if (i == ARRAY_SIZE(tmp_path)) {
+      Print(L"File path too long\n");
+      return false;
+   }
+
+   tmp_path[i] = 0;
+
+   if (EFI_ERROR(LoadKernelFile(tmp_path)))
+      return false;
+
+   *paddr = TO_PTR(kernel_file_paddr);
+   return true;
+}
+
+static void
+efi_boot_set_color(u8 color)
+{
+   /* do nothing */
+}
+
 const struct bootloader_intf efi_boot_intf = {
 
    /* Methods */
    .read_key = &efi_boot_read_key,
    .write_char = &efi_boot_write_char,
    .clear_screen = &efi_boot_clear_screen,
+   .set_color = &efi_boot_set_color,
    .get_all_video_modes = &efi_boot_get_all_video_modes,
    .get_mode_info = &efi_boot_get_mode_info,
    .get_curr_video_mode = &efi_boot_get_curr_video_mode,
    .set_curr_video_mode = &efi_boot_set_curr_video_mode,
+   .load_kernel_file = &efi_boot_load_kernel_file,
 
    /* Configuration values */
    .text_mode = INVALID_VIDEO_MODE,
+   .efi = true,
 };

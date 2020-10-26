@@ -2,18 +2,32 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
-#include <tilck_gen_headers/mod_console.h>
-#include <tilck_gen_headers/mod_serial.h>
-#include <tilck_gen_headers/mod_fb.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/color_defs.h>
 
 #include "common_int.h"
 
 static video_mode_t selected_mode = INVALID_VIDEO_MODE;
+
+void
+write_ok_msg(void)
+{
+   intf->set_color(COLOR_GREEN);
+   printk("[  OK  ]\n");
+   intf->set_color(DEFAULT_FG_COLOR);
+}
+
+void
+write_fail_msg(void)
+{
+   intf->set_color(COLOR_RED);
+   printk("[ FAIL ]\n");
+   intf->set_color(DEFAULT_FG_COLOR);
+}
 
 static bool
 run_interactive_logic(void)
@@ -26,8 +40,20 @@ run_interactive_logic(void)
 bool
 common_bootloader_logic(void)
 {
+   void *kernel_file;
+
    fetch_all_video_modes_once();
    selected_mode = g_defmode;
+
+   printk("Loading the ELF kernel... ");
+
+   if (!intf->load_kernel_file(KERNEL_FILE_PATH, &kernel_file)) {
+      write_fail_msg();
+      return false;
+   }
+
+   write_ok_msg();
+   printk("\n");
 
 retry:
 

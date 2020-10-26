@@ -610,8 +610,6 @@ if (${BOOTLOADER_LEGACY} OR ${BOOTLOADER_EFI})
    set(KERNEL_FATPART_PATH    "EFI/BOOT/tilck")
 endif()
 
-string(REPLACE "/" "\\\\" KERNEL_FATPART_PATH_EFI "${KERNEL_FATPART_PATH}")
-
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 

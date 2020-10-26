@@ -7,8 +7,6 @@
 #include "utils.h"
 #include <elf.h>
 
-#define KERNEL_FILE        CONCAT(L, KERNEL_FILE_PATH_EFI)
-
 static inline bool
 IsMemRegionUsable(EFI_MEMORY_DESCRIPTOR *m)
 {
@@ -87,20 +85,18 @@ end:
 }
 
 EFI_STATUS
-LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
-               EFI_PHYSICAL_ADDRESS *filePaddr)
+LoadKernelFile(CHAR16 *filePath)
 {
    EFI_STATUS status = EFI_LOAD_ERROR;
 
    /* Temporary load the whole kernel file in a safe location */
    status = LoadFileFromDisk(fileProt,
                              KERNEL_MAX_SIZE / PAGE_SIZE,
-                             filePaddr,
-                             KERNEL_FILE);
+                             &kernel_file_paddr,
+                             filePath);
 
    HANDLE_EFI_ERROR("LoadFileFromDisk");
-   // Print(L"Kernel file loaded at temporary paddr: 0x%08x\n", *filePaddr);
-   status = ElfChecks(*filePaddr);
+   status = ElfChecks(kernel_file_paddr);
 
 end:
    return status;

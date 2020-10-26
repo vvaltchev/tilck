@@ -11,6 +11,9 @@
 
 #include <tilck/boot/common.h>
 
+EFI_FILE_PROTOCOL *fileProt;
+EFI_PHYSICAL_ADDRESS kernel_file_paddr;
+
 /**
  * efi_main - The entry point for the EFI application
  * @image: firmware-allocated handle that identifies the image
@@ -22,9 +25,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EFI_STATUS status;
    EFI_LOADED_IMAGE *loaded_image;
    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fileFsProt;
-   EFI_FILE_PROTOCOL *fileProt;
    EFI_PHYSICAL_ADDRESS ramdisk_paddr;
-   EFI_PHYSICAL_ADDRESS kernel_file_paddr;
    UINTN ramdisk_size, mapkey;
    void *kernel_entry = NULL;
 
@@ -45,8 +46,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol(LoadedImageProtocol)");
 
+   status = LoadRamdisk(image,
+                        loaded_image,
+                        &ramdisk_paddr,
+                        &ramdisk_size,
+                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
 
-   // ------------------------------------------------------------------ //
+   HANDLE_EFI_ERROR("LoadRamdisk failed");
 
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &FileSystemProtocol,
@@ -59,26 +65,10 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
 
-   status = LoadKernelFile(fileProt, &kernel_file_paddr);
-   HANDLE_EFI_ERROR("LoadKernelFile");
-
-   status = BS->CloseProtocol(loaded_image->DeviceHandle,
-                              &FileSystemProtocol,
-                              image,
-                              NULL);
-   HANDLE_EFI_ERROR("CloseProtocol(FileSystemProtocol)");
-   fileFsProt = NULL;
-
-   // ------------------------------------------------------------------ //
-
-   status = LoadRamdisk(image,
-                        loaded_image,
-                        &ramdisk_paddr,
-                        &ramdisk_size,
-                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
-
-   HANDLE_EFI_ERROR("LoadRamdisk failed");
-   Print(L"\n");
+   if (!common_bootloader_logic()) {
+      status = EFI_ABORTED;
+      goto end;
+   }
 
    status = AllocateMbi();
    HANDLE_EFI_ERROR("AllocateMbi");
@@ -92,12 +82,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = MbiSetPointerToAcpiTable();
    HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
 
-   if (!common_bootloader_logic()) {
-      status = EFI_ABORTED;
-      goto end;
-   }
-
    MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
+
 
    //
    // For debugging with GDB (see docs/efi_debug.md)
@@ -108,6 +94,13 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    // Print(L"Press ANY key to boot the kernel...\n");
    // WaitForKeyPress();
    //
+
+   status = BS->CloseProtocol(loaded_image->DeviceHandle,
+                              &FileSystemProtocol,
+                              image,
+                              NULL);
+   HANDLE_EFI_ERROR("CloseProtocol(FileSystemProtocol)");
+   fileFsProt = NULL;
 
    status = BS->CloseProtocol(image, &LoadedImageProtocol, image, NULL);
    HANDLE_EFI_ERROR("CloseProtocol(LoadedImageProtocol)");

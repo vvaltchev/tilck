@@ -21,14 +21,6 @@ dump_progress(const char *prefix_str, u32 curr, u32 tot)
    printk("%s%u%% ", prefix_str, 100 * curr / tot);
 }
 
-void
-write_ok_msg(void)
-{
-   bt_setcolor(COLOR_GREEN);
-   printk("[ OK ]\n");
-   bt_setcolor(DEFAULT_FG_COLOR);
-}
-
 static u32
 calc_fat_ramdisk_metadata_sz(struct fat_hdr *hdr)
 {

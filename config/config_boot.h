@@ -10,7 +10,6 @@
 #include <tilck/common/page_size.h>
 
 #define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
-#define KERNEL_FILE_PATH_EFI   "\\@KERNEL_FATPART_PATH_EFI@"
 
 #define SECTOR_SIZE            @SECTOR_SIZE@
 #define BL_ST2_DATA_SEG        @BL_ST2_DATA_SEG@

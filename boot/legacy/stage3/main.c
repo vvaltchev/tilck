@@ -34,14 +34,17 @@ u32 sectors_per_track;
 u32 heads_per_cylinder;
 u32 cylinders_count;
 
+ulong bp_paddr;         /* bootpart's physical address */
+u32 bp_size;            /* bootpart's size (used bytes, as rd_size) */
+void *loaded_kernel_file;
+
 static struct mem_area ma_buf[64];
 struct mem_info g_meminfo;
 
-static void
-load_elf_kernel(ulong ramdisk,
-                ulong ramdisk_size,
-                const char *filepath,
-                void **entry)
+bool
+load_kernel_file(ulong ramdisk,
+                 ulong ramdisk_size,
+                 const char *filepath)
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    struct fat_entry *e;
@@ -58,17 +61,22 @@ load_elf_kernel(ulong ramdisk,
    if (!free_space)
       panic("No free space for kernel file after %p", ramdisk + ramdisk_size);
 
+   loaded_kernel_file = NULL;
    len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);
    header = (Elf32_Ehdr *)free_space;
 
-   VERIFY(len == e->DIR_FileSize);
-   VERIFY(header->e_ident[EI_MAG0] == ELFMAG0);
-   VERIFY(header->e_ident[EI_MAG1] == ELFMAG1);
-   VERIFY(header->e_ident[EI_MAG2] == ELFMAG2);
-   VERIFY(header->e_ident[EI_MAG3] == ELFMAG3);
-   VERIFY(header->e_ehsize == sizeof(*header));
+   if (len != e->DIR_FileSize              ||
+       header->e_ident[EI_MAG0] != ELFMAG0 ||
+       header->e_ident[EI_MAG1] != ELFMAG1 ||
+       header->e_ident[EI_MAG2] != ELFMAG2 ||
+       header->e_ident[EI_MAG3] != ELFMAG3 ||
+       header->e_ehsize != sizeof(*header))
+   {
+      return false;
+   }
 
-   *entry = simple_elf_loader(header);
+   loaded_kernel_file = header;
+   return true;
 }
 
 void bootloader_main(void)
@@ -76,8 +84,6 @@ void bootloader_main(void)
    multiboot_info_t *mbi;
    ulong rd_paddr;         /* initrd's physical address */
    u32 rd_size;            /* initrd's size (used bytes in the fat partition) */
-   ulong bp_paddr;         /* bootpart's physical address */
-   u32 bp_size;            /* bootpart's size (used bytes, as rd_size) */
    ulong bp_min_paddr;
    void *entry;
    bool success;
@@ -148,16 +154,12 @@ void bootloader_main(void)
     */
    rd_size += 4 * KB;
 
-   printk("Loading the ELF kernel... ");
-   load_elf_kernel(bp_paddr, bp_size, KERNEL_FILE_PATH, &entry);
-   write_ok_msg();
-   printk("\n");
-
    success = common_bootloader_logic();
 
    if (!success)
       panic("Boot aborted");
 
+   entry = simple_elf_loader(loaded_kernel_file);
    mbi = setup_multiboot_info(rd_paddr, rd_size);
 
    /* Jump to the kernel */

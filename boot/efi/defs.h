@@ -12,12 +12,11 @@
 extern multiboot_info_t *mbi;
 extern EFI_HANDLE gImageHandle;
 extern EFI_GRAPHICS_OUTPUT_PROTOCOL *gProt;
+extern EFI_FILE_PROTOCOL *fileProt;
+extern EFI_PHYSICAL_ADDRESS kernel_file_paddr;
 extern const struct bootloader_intf efi_boot_intf;
 
-EFI_STATUS
-LoadKernelFile(EFI_FILE_PROTOCOL *fileProt,
-               EFI_PHYSICAL_ADDRESS *filePaddr);
-
+EFI_STATUS LoadKernelFile(CHAR16 *filePath);
 EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
 EFI_STATUS MbiSetBootloaderName(void);

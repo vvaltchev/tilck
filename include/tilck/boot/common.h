@@ -26,17 +26,24 @@ struct bootloader_intf {
    int (*read_key)(void);
    void (*write_char)(char c);
    void (*clear_screen)(void);
+   void (*set_color)(u8 color);
 
    video_mode_t (*get_curr_video_mode)(void);
    bool (*set_curr_video_mode)(video_mode_t);
    void (*get_all_video_modes)(video_mode_t **modes, int *count);
    bool (*get_mode_info)(video_mode_t m, struct generic_video_mode_info *gi);
 
+   bool (*load_kernel_file)(const char *path, void **paddr);
+
    /* Const configuration values that must be provided */
    video_mode_t text_mode;
+   bool efi;
 };
 
 void init_common_bootloader_code(const struct bootloader_intf *);
 bool common_bootloader_logic(void);
 void *simple_elf_loader(void *elf);
 video_mode_t find_default_video_mode(void);
+
+void write_ok_msg(void);
+void write_fail_msg(void);

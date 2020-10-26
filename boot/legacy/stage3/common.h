@@ -17,6 +17,9 @@ extern struct ModeInfoBlock *usable_vbe_mode_info_block;
 extern struct VbeInfoBlock *vbe_info_block;
 extern video_mode_t selected_mode;
 extern struct mem_info g_meminfo;
+extern ulong bp_paddr;
+extern u32 bp_size;
+extern void *loaded_kernel_file;
 
 multiboot_info_t *
 setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size);
@@ -32,5 +35,8 @@ load_fat_ramdisk(const char *load_str,
                  u32 *ref_rd_size,
                  bool alloc_extra_page);
 
-void
-write_ok_msg(void);
+bool
+load_kernel_file(ulong ramdisk,
+                 ulong ramdisk_size,
+                 const char *filepath);
+

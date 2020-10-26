@@ -157,17 +157,30 @@ legacy_boot_get_all_video_modes(video_mode_t **modes, int *count)
    *count = all_modes_cnt;
 }
 
+static bool
+legacy_boot_load_kernel_file(const char *path, void **paddr)
+{
+   if (!load_kernel_file(bp_paddr, bp_size, path))
+      return false;
+
+   *paddr = loaded_kernel_file;
+   return true;
+}
+
 const struct bootloader_intf legacy_boot_intf = {
 
    /* Methods */
    .read_key = &legacy_boot_read_key,
    .write_char = &bt_write_char,
    .clear_screen = &legacy_boot_clear_screen,
+   .set_color = &bt_setcolor,
    .get_all_video_modes = &legacy_boot_get_all_video_modes,
    .get_mode_info = &legacy_boot_get_mode_info,
    .get_curr_video_mode = &legacy_boot_get_curr_video_mode,
    .set_curr_video_mode = &legacy_boot_set_curr_video_mode,
+   .load_kernel_file = &legacy_boot_load_kernel_file,
 
    /* Configuration values */
    .text_mode = VGA_COLOR_TEXT_MODE_80x25,
+   .efi = false,
 };
