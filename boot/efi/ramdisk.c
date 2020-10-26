@@ -127,7 +127,7 @@ LoadRamdisk_CompactClusters(struct load_ramdisk_ctx *ctx)
          goto end;
       }
 
-      Print(L"[ OK ]\n");
+      write_ok_msg();
    }
 
 end:
@@ -204,6 +204,34 @@ end:
 }
 
 EFI_STATUS
+ReserveMemAreaForKernelImage(void)
+{
+   EFI_PHYSICAL_ADDRESS p;
+
+   for (p = KERNEL_PADDR; p < KERNEL_PADDR + 4 * MB; p += 16 * PAGE_SIZE) {
+
+      EFI_PHYSICAL_ADDRESS tmp = p;
+
+      BS->AllocatePages(AllocateAddress,
+                        EfiBootServicesData,
+                        16,
+                        &tmp);
+
+      /*
+       * NOTE: it does NOT matter if AllocatePages() fails or not. What we need
+       * to enforce is just that after KERNEL_PADDR there are at least 4 MB of
+       * memory not usable for the ramdisk. That's because AllocatePages() does
+       * not have an "AllocateMinAddress" parameter and it's unsafe to assume
+       * that the ramdisk just won't be placed there. If the ramdisk is placed
+       * there, kernel's image (see simple_elf_loader()) will simply overwrite
+       * it and that's pretty undesirable.
+       */
+   }
+
+   return EFI_SUCCESS;
+}
+
+EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loadedImg,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
@@ -252,7 +280,7 @@ LoadRamdisk(EFI_HANDLE image,
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
    Print(LOADING_RAMDISK_STR);
-   Print(L"[ OK ]\n");
+   write_ok_msg();
 
    status = LoadRamdisk_CompactClusters(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_CompactClusters");

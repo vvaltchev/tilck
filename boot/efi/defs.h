@@ -31,6 +31,9 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
                       UINTN fb_addr);
 
 EFI_STATUS
+ReserveMemAreaForKernelImage(void);
+
+EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,

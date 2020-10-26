@@ -47,14 +47,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol(LoadedImageProtocol)");
 
-   status = LoadRamdisk(image,
-                        loaded_image,
-                        &ramdisk_paddr,
-                        &ramdisk_size,
-                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
-
-   HANDLE_EFI_ERROR("LoadRamdisk failed");
-
    status = BS->OpenProtocol(loaded_image->DeviceHandle,
                              &FileSystemProtocol,
                              (void **)&fileFsProt,
@@ -65,6 +57,16 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = fileFsProt->OpenVolume(fileFsProt, &fileProt);
    HANDLE_EFI_ERROR("OpenVolume");
+
+   status = ReserveMemAreaForKernelImage();
+   HANDLE_EFI_ERROR("ReserveMemAreaForKernelImage");
+
+   status = LoadRamdisk(image,
+                        loaded_image,
+                        &ramdisk_paddr,
+                        &ramdisk_size,
+                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
+   HANDLE_EFI_ERROR("LoadRamdisk failed");
 
    if (!common_bootloader_logic()) {
       status = EFI_ABORTED;
