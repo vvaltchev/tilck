@@ -32,7 +32,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    EarlySetDefaultResolution();
    ST->ConOut->EnableCursor(ST->ConOut, true);
 
-   Print(L"----- Hello from Tilck's UEFI bootloader! -----\n\n");
+   write_bootloader_hello_msg();
 
    status = BS->OpenProtocol(image,
                              &LoadedImageProtocol,

@@ -28,6 +28,17 @@ static char kernel_file_path[64] = KERNEL_FILE_PATH;
 static char line_buf[64];
 static void *kernel_elf_file_paddr;
 
+void
+write_bootloader_hello_msg(void)
+{
+   intf->set_color(COLOR_BRIGHT_WHITE);
+
+   printk("----- Hello from Tilck's %s bootloader! -----\n\n",
+          intf->efi ? "UEFI" : "legacy");
+
+   intf->set_color(DEFAULT_FG_COLOR);
+}
+
 void *
 load_kernel_image(void)
 {
@@ -130,27 +141,29 @@ run_interactive_logic(void)
 {
    struct generic_video_mode_info gi;
    char buf[8];
+   printk("\n");
 
    while (true) {
-
-      printk("\n\n");
 
       if (!intf->get_mode_info(selected_mode, &gi)) {
          printk("ERROR: get_mode_info() failed");
          return false;
       }
 
-      printk("Kernel file (k): %s\n", kernel_file_path);
-      printk("Video mode (v):  ");
+      printk("Menu:\n");
+      printk("---------------------------------------------------\n");
+      printk("k) Kernel file: %s\n", kernel_file_path);
+      printk("v) Video mode:  ");
       show_mode(-1, &gi, false);
+      printk("b) Boot\n");
 
-      printk("---------------------------------------\n");
-      printk("Command (ENTER to boot): ");
+      printk("\n> ");
       read_line(buf, sizeof(buf));
 
       switch (buf[0]) {
 
          case 0:
+         case 'b':
             return true;
 
          case 'k':
@@ -160,11 +173,17 @@ run_interactive_logic(void)
          case 'v':
             show_video_modes();
             selected_mode = get_user_video_mode_choice();
+            printk("Accepted.\n");
             break;
 
          default:
             printk("Invalid command\n");
       }
+
+      printk("Press ANY key to continue");
+      intf->read_key();
+      intf->clear_screen();
+      write_bootloader_hello_msg();
    }
 
    return true;

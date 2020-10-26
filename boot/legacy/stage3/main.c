@@ -95,9 +95,7 @@ void bootloader_main(void)
    ASSERT(!heads_per_cylinder);
    ASSERT(!cylinders_count);
 
-   bt_setcolor(COLOR_BRIGHT_WHITE);
-   printk("----- Hello from Tilck's legacy bootloader! -----\n\n");
-   bt_setcolor(DEFAULT_FG_COLOR);
+   write_bootloader_hello_msg();
 
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();

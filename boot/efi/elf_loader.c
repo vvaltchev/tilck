@@ -64,7 +64,7 @@ LoadKernelFile(CHAR16 *filePath, EFI_PHYSICAL_ADDRESS *paddr)
    EFI_STATUS status = EFI_LOAD_ERROR;
 
    if (sPaddr) {
-      BS->FreePages(sPaddr, sSize);
+      BS->FreePages(sPaddr, sSize / PAGE_SIZE);
    }
 
    /* Temporary load the whole kernel file in a safe location */
