@@ -13,8 +13,6 @@
 #include <tilck/common/arch/generic_x86/cpu_features.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
-#include <tilck/common/elf_types.h>
-#include <tilck/common/elf_calc_mem_size.c.h>
 
 #include <multiboot.h>
 
@@ -48,12 +46,11 @@ load_kernel_file(ulong ramdisk,
 {
    struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
    struct fat_entry *e;
-   Elf32_Ehdr *header;
    ulong free_space;
    size_t len;
 
    if (!(e = fat_search_entry(hdr, fat_get_type(hdr), filepath, NULL))) {
-      printk("Unable to open '%s'\n", filepath);
+      printk("ERROR: Unable to open '%s'\n", filepath);
       return false;
    }
 
@@ -62,7 +59,7 @@ load_kernel_file(ulong ramdisk,
 
    if (!free_space) {
 
-      printk("No free space for kernel file at %p\n",
+      printk("ERROR: No free space for kernel file at %p\n",
              TO_PTR(ramdisk + ramdisk_size));
 
       return false;
@@ -70,19 +67,13 @@ load_kernel_file(ulong ramdisk,
 
    loaded_kernel_file = NULL;
    len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);
-   header = (Elf32_Ehdr *)free_space;
 
-   if (len != e->DIR_FileSize              ||
-       header->e_ident[EI_MAG0] != ELFMAG0 ||
-       header->e_ident[EI_MAG1] != ELFMAG1 ||
-       header->e_ident[EI_MAG2] != ELFMAG2 ||
-       header->e_ident[EI_MAG3] != ELFMAG3 ||
-       header->e_ehsize != sizeof(*header))
-   {
+   if (len != e->DIR_FileSize) {
+      printk("ERROR: Couldn't read the whole file\n");
       return false;
    }
 
-   loaded_kernel_file = header;
+   loaded_kernel_file = (void *)free_space;
    return true;
 }
 

@@ -1,15 +1,27 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#define USE_ELF32
+
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck_gen_headers/krn_max_sz.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
+#include <tilck/common/elf_calc_mem_size.c.h>
 
 #include "common_int.h"
+
+#define CHECK(cond)                                  \
+   do {                                              \
+      if (!(cond)) {                                 \
+         printk("CHECK '%s' FAILED\n", #cond);       \
+         return false;                               \
+      }                                              \
+   } while(0)
 
 static video_mode_t selected_mode = INVALID_VIDEO_MODE;
 static char kernel_file_path[64] = KERNEL_FILE_PATH;
@@ -33,11 +45,42 @@ write_fail_msg(void)
 }
 
 static bool
+check_elf_kernel(void)
+{
+   Elf32_Ehdr *header = kernel_paddr;
+   Elf32_Phdr *phdr = (Elf32_Phdr *)(header + 1);
+
+   CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
+   CHECK(header->e_ident[EI_MAG1] == ELFMAG1);
+   CHECK(header->e_ident[EI_MAG2] == ELFMAG2);
+   CHECK(header->e_ident[EI_MAG3] == ELFMAG3);
+   CHECK(header->e_ehsize == sizeof(*header));
+
+   for (int i = 0; i < header->e_phnum; i++, phdr++) {
+
+      // Ignore non-load segments.
+      if (phdr->p_type != PT_LOAD)
+         continue;
+
+      CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
+      CHECK(phdr->p_paddr >= KERNEL_PADDR);
+   }
+
+   CHECK(elf_calc_mem_size(header) <= KERNEL_MAX_SIZE);
+   return true;
+}
+
+static bool
 load_kernel_file(void)
 {
    printk("Loading the ELF kernel... ");
 
    if (!intf->load_kernel_file(kernel_file_path, &kernel_paddr)) {
+      write_fail_msg();
+      return false;
+   }
+
+   if (!check_elf_kernel()) {
       write_fail_msg();
       return false;
    }
