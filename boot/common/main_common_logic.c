@@ -180,8 +180,10 @@ run_interactive_logic(void)
 {
    struct generic_video_mode_info gi;
    bool wait_for_key, dirty_comm;
-   char *commit_str;
+   char *commit, *commit_end;
+   char commit_buf[40];
    char buf[8];
+   size_t len;
 
    while (true) {
 
@@ -193,13 +195,18 @@ run_interactive_logic(void)
       }
 
       dirty_comm = !strncmp(kernel_build_info->commit, "dirty:", 6);
-      commit_str = kernel_build_info->commit + (dirty_comm ? 6 : 0);
+      commit = kernel_build_info->commit + (dirty_comm ? 6 : 0);
+      commit_end = strstr(commit, " ");
+      len = commit_end ? (size_t)(commit_end - commit) : strlen(commit);
+      strncpy(commit_buf, commit, len);
+      commit_buf[len] = 0;
 
       printk("Menu:\n");
       printk("---------------------------------------------------\n");
       printk("k) Kernel file: %s\n", kernel_file_path);
       printk("     version: %s\n", kernel_build_info->ver);
-      printk("     commit:  %s%s\n", commit_str, dirty_comm ? " (dirty)" : "");
+      printk("     commit:  %s%s\n", commit_buf, dirty_comm ? " (dirty)" : "");
+      printk("     date:    %s\n", commit_end ? commit_end+1 : "<unknown>");
       printk("     modules: %s\n", kernel_build_info->modules_list);
       printk("\n");
       printk("v) Video mode:  ");

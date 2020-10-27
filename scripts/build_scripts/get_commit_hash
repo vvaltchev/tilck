@@ -7,9 +7,10 @@ fi
 
 set -e
 ver=`git rev-parse --short=8 HEAD`
+commit_date=`git --no-pager log -1 --format="%ai"`
 
 if [[ $(git diff --stat) != '' ]]; then
-   echo "dirty:$ver"
+   echo "dirty:$ver $commit_date"
 else
-   echo "$ver"
+   echo "$ver $commit_date"
 fi

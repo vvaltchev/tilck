@@ -249,7 +249,12 @@ static void
 show_hello_message(void)
 {
    const bool dirty = !strncmp(tilck_build_info.commit, "dirty:", 6);
-   const char *const hash = tilck_build_info.commit + (dirty ? 6 : 0);
+   const char *const commit = tilck_build_info.commit + (dirty ? 6 : 0);
+   const char *const commit_end = strstr(commit, " ");
+   const int commit_len =
+      commit_end
+         ? (int)(commit_end - commit)
+         : (int)strlen(commit);
 
    if (VER_PATCH > 0)
       printk("Hello from Tilck \e[1m%d.%d.%d\e[m",
@@ -258,7 +263,7 @@ show_hello_message(void)
       printk("Hello from Tilck \e[1m%d.%d\e[m",
              VER_MAJOR, VER_MINOR);
 
-   printk(", commit: \e[1m%s\e[m", hash);
+   printk(", commit: \e[1m%.*s\e[m", commit_len, commit);
    printk("%s\n", dirty ? " (dirty)" : "");
 
    printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);

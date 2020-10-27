@@ -78,9 +78,16 @@ int sys_newuname(struct utsname *user_buf)
 {
    struct utsname buf = {0};
 
+   char *commit = tilck_build_info.commit;
+   char *commit_end = strstr(commit, " ");
+   const size_t commit_len =
+      commit_end ?
+         (size_t)(commit_end - commit)
+         : strlen(commit);
+
    strcpy(buf.sysname, "Tilck");
    strcpy(buf.nodename, "tilck");
-   strcpy(buf.version, tilck_build_info.commit);
+   strncpy(buf.version, commit, commit_len);
    strcpy(buf.release, tilck_build_info.ver);
    strcpy(buf.machine, tilck_build_info.arch);
 
