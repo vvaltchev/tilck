@@ -5,6 +5,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/build_info.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>
@@ -101,3 +102,9 @@ void show_tilck_logo(void)
 }
 
 #endif
+
+struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
+   .commit = {0}, /* It will get patched after the build */
+   .ver = VER_MAJOR_STR "." VER_MINOR_STR "." VER_PATCH_STR,
+   .arch = ARCH_GCC_TC,
+};

@@ -3,6 +3,7 @@
 #define __SYSCALLS_C__
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/build_info.h>
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/debug_utils.h>
@@ -73,21 +74,15 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
    return 0;
 }
 
-const char u_name[16] = "Tilck";
-const char u_nodename[16] = "tilck";
-const char u_release[16] = VER_MAJOR_STR "." VER_MINOR_STR "." VER_PATCH_STR;
-const char u_arch[16] = ARCH_GCC_TC;
-const char commit_hash[65] = {0};
-
 int sys_newuname(struct utsname *user_buf)
 {
-   struct utsname buf;
+   struct utsname buf = {0};
 
-   memcpy(buf.sysname, u_name, ARRAY_SIZE(u_name));
-   memcpy(buf.nodename, u_nodename, ARRAY_SIZE(u_nodename));
-   memcpy(buf.release, u_release, ARRAY_SIZE(u_release));
-   memcpy(buf.version, commit_hash, strlen(commit_hash) + 1);
-   memcpy(buf.machine, u_arch, ARRAY_SIZE(u_arch));
+   strcpy(buf.sysname, "Tilck");
+   strcpy(buf.nodename, "tilck");
+   strcpy(buf.version, tilck_build_info.commit);
+   strcpy(buf.release, tilck_build_info.ver);
+   strcpy(buf.machine, tilck_build_info.arch);
 
    if (copy_to_user(user_buf, &buf, sizeof(struct utsname)) < 0)
       return -EFAULT;

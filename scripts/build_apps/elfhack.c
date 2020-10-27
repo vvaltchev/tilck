@@ -32,10 +32,10 @@ struct elfhack_cmd {
    const char *opt;
    const char *help;
    int nargs;
-   int (*func)(struct elf_file_info *, const char *, const char *);
+   int (*func)(struct elf_file_info *, ...);
 };
 
-int show_help(struct elf_file_info *nfo, const char *, const char *);
+int show_help(struct elf_file_info *nfo, ...);
 
 /* --- Low-level ELF utility functions --- */
 
@@ -110,7 +110,7 @@ get_symbol(Elf_Ehdr *h, const char *sym_name)
 /* --- Actual commands --- */
 
 int
-section_dump(struct elf_file_info *nfo, const char *section_name, const char *u)
+section_dump(struct elf_file_info *nfo, const char *section_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *s = get_section(nfo->vaddr, section_name);
@@ -119,7 +119,7 @@ section_dump(struct elf_file_info *nfo, const char *section_name, const char *u)
 }
 
 int
-copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
+copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *s_src = get_section(nfo->vaddr, src);
@@ -150,7 +150,10 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst)
 }
 
 int
-rename_section(struct elf_file_info *nfo, const char *sec, const char *new_name)
+rename_section(struct elf_file_info *nfo,
+               const char *sec,
+               const char *new_name,
+               ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -173,7 +176,10 @@ rename_section(struct elf_file_info *nfo, const char *sec, const char *new_name)
 }
 
 int
-link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
+link_sections(struct elf_file_info *nfo,
+              const char *sec,
+              const char *linked,
+              ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -193,7 +199,7 @@ link_sections(struct elf_file_info *nfo, const char *sec, const char *linked)
 }
 
 int
-move_metadata(struct elf_file_info *nfo, const char *u1, const char *u2)
+move_metadata(struct elf_file_info *nfo, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -230,7 +236,7 @@ move_metadata(struct elf_file_info *nfo, const char *u1, const char *u2)
 }
 
 int
-drop_last_section(struct elf_file_info *nfo, const char *u1, const char *u2)
+drop_last_section(struct elf_file_info *nfo, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -328,7 +334,8 @@ drop_last_section(struct elf_file_info *nfo, const char *u1, const char *u2)
 int
 set_phdr_rwx_flags(struct elf_file_info *nfo,
                    const char *phdr_index,
-                   const char *flags)
+                   const char *flags,
+                   ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    errno = 0;
@@ -385,7 +392,7 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
 }
 
 int
-verify_flat_elf_file(struct elf_file_info *nfo, const char *u1, const char *u2)
+verify_flat_elf_file(struct elf_file_info *nfo, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *)((char*)h + h->e_shoff);
@@ -450,7 +457,7 @@ verify_flat_elf_file(struct elf_file_info *nfo, const char *u1, const char *u2)
 }
 
 int
-check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
+check_entry_point(struct elf_file_info *nfo, const char *exp, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    uintptr_t exp_val;
@@ -483,7 +490,7 @@ check_entry_point(struct elf_file_info *nfo, const char *exp, const char *u1)
 }
 
 int
-check_mem_size(struct elf_file_info *nfo, const char *exp, const char *kb)
+check_mem_size(struct elf_file_info *nfo, const char *exp, const char *kb, ...)
 {
    size_t sz = elf_calc_mem_size(nfo->vaddr);
    size_t exp_val;
@@ -522,7 +529,11 @@ check_mem_size(struct elf_file_info *nfo, const char *exp, const char *kb)
 }
 
 int
-set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
+set_sym_strval(struct elf_file_info *nfo,
+               const char *section_name,
+               const char *sym_name,
+               const char *val,
+               ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *section;
@@ -534,10 +545,10 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
       return 1;
    }
 
-   section = get_section(h, ".rodata");
+   section = get_section(h, section_name);
 
    if (!section) {
-      fprintf(stderr, "Unable to find the .rodata section\n");
+      fprintf(stderr, "Unable to find the '%s' section\n", section_name);
       return 1;
    }
 
@@ -551,7 +562,9 @@ set_sym_strval(struct elf_file_info *nfo, const char *sym_name, const char *val)
    if (sym->st_value < section->sh_addr ||
        sym->st_value + sym->st_size > section->sh_addr + section->sh_size)
    {
-      fprintf(stderr, "Symbol '%s' not in .rodata\n", sym_name);
+      fprintf(stderr,
+              "Symbol '%s' not in section '%s'\n", sym_name, section_name);
+
       return 1;
    }
 
@@ -575,84 +588,84 @@ static struct elfhack_cmd cmds_list[] =
       .opt = "--help",
       .help = "",
       .nargs = 0,
-      .func = &show_help,
+      .func = (void *)&show_help,
    },
 
    {
       .opt = "--dump",
       .help = "<section name>",
       .nargs = 1,
-      .func = &section_dump,
+      .func = (void *)&section_dump,
    },
 
    {
       .opt = "--move-metadata",
       .help = "",
       .nargs = 0,
-      .func = &move_metadata,
+      .func = (void *)&move_metadata,
    },
 
    {
       .opt = "--copy",
       .help = "<src section> <dest section>",
       .nargs = 2,
-      .func = &copy_section,
+      .func = (void *)&copy_section,
    },
 
    {
       .opt = "--rename",
       .help = "<section> <new_name>",
       .nargs = 2,
-      .func = &rename_section,
+      .func = (void *)&rename_section,
    },
 
    {
       .opt = "--link",
       .help = "<section> <linked_section>",
       .nargs = 2,
-      .func = &link_sections,
+      .func = (void *)&link_sections,
    },
 
    {
       .opt = "--drop-last-section",
       .help = "",
       .nargs = 0,
-      .func = &drop_last_section,
+      .func = (void *)&drop_last_section,
    },
 
    {
       .opt = "--set-phdr-rwx-flags",
       .help = "<phdr index> <rwx flags>",
       .nargs = 2,
-      .func = &set_phdr_rwx_flags,
+      .func = (void *)&set_phdr_rwx_flags,
    },
 
    {
       .opt = "--verify-flat-elf",
       .help = "",
       .nargs = 0,
-      .func = &verify_flat_elf_file,
+      .func = (void *)&verify_flat_elf_file,
    },
 
    {
       .opt = "--check-entry-point",
       .help = "[<expected>]",
       .nargs = 0, /* note: the `expected` param is optional */
-      .func = &check_entry_point,
+      .func = (void *)&check_entry_point,
    },
 
    {
       .opt = "--check-mem-size",
       .help = "[expected_max] [kb]",
       .nargs = 0, /* note: both the params are optional */
-      .func = &check_mem_size,
+      .func = (void *)&check_mem_size,
    },
 
    {
       .opt = "--set-sym-strval",
-      .help = "<sym> <string value>",
-      .nargs = 2,
-      .func = &set_sym_strval,
+      .help = "<section> <sym> <string value>",
+      .nargs = 3,
+      .func = (void *)&set_sym_strval,
    },
 };
 
@@ -660,7 +673,7 @@ static struct elfhack_cmd cmds_list[] =
 #define print_help_line(...) printerr("    elfhack <file> " __VA_ARGS__)
 
 int
-show_help(struct elf_file_info *nfo, const char *u1, const char *u2)
+show_help(struct elf_file_info *nfo, ...)
 {
    printerr("Usage:\n");
 
@@ -681,6 +694,7 @@ main(int argc, char **argv)
    const char *opt = NULL;
    const char *opt_arg1 = NULL;
    const char *opt_arg2 = NULL;
+   const char *opt_arg3 = NULL;
    struct elfhack_cmd *cmd = NULL;
    int rc;
 
@@ -693,8 +707,13 @@ main(int argc, char **argv)
 
          opt_arg1 = argv[3];
 
-         if (argc > 4)
+         if (argc > 4) {
+
             opt_arg2 = argv[4];
+
+            if (argc > 5)
+               opt_arg3 = argv[5];
+         }
       }
 
    } else {
@@ -754,7 +773,7 @@ main(int argc, char **argv)
    if (!cmd)
       cmd = &cmds_list[0];    /* help */
 
-   rc = cmd->func(&nfo, opt_arg1, opt_arg2);
+   rc = cmd->func(&nfo, opt_arg1, opt_arg2, opt_arg3);
 
    /*
     * Do munmap() only if vaddr != NULL.

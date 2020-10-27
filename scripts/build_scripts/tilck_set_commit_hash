@@ -6,4 +6,4 @@
 set -e
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 hash=`$SOURCE_DIR/get_commit_hash`
-exec "$1" "$2" --set-sym-strval commit_hash "$hash"
+exec "$1" "$2" --set-sym-strval .tilck_info tilck_build_info "$hash"

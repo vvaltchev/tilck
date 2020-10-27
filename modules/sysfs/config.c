@@ -16,18 +16,17 @@
 #include <tilck_gen_headers/mod_acpi.h>
 #include <tilck_gen_headers/mod_pci.h>
 
+#include <tilck/common/build_info.h>
+
 #include <tilck/mods/sysfs.h>
 #include <tilck/mods/sysfs_utils.h>
 
-extern const char u_release[16];
-extern const char u_arch[16];
-extern const char commit_hash[65];
 
 /* config */
 DEF_STATIC_CONF_RO(STRING, buildtype,              BUILDTYPE_STR);
-DEF_STATIC_CONF_RO(STRING, version,                u_release);
-DEF_STATIC_CONF_RO(STRING, arch,                   u_arch);
-DEF_STATIC_CONF_RO(STRING, commit,                 commit_hash);
+DEF_STATIC_CONF_RO(STRING, version,                tilck_build_info.ver);
+DEF_STATIC_CONF_RO(STRING, arch,                   tilck_build_info.arch);
+DEF_STATIC_CONF_RO(STRING, commit,                 tilck_build_info.commit);
 DEF_STATIC_CONF_RO(BOOL,   debugchecks,            DEBUG_CHECKS);
 
 /* config/kernel */
