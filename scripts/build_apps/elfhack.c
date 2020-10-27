@@ -18,6 +18,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/elf_calc_mem_size.c.h>
+#include <tilck/common/elf_get_section.c.h>
 
 struct elf_file_info {
 
@@ -38,25 +39,6 @@ struct elfhack_cmd {
 int show_help(struct elf_file_info *nfo, ...);
 
 /* --- Low-level ELF utility functions --- */
-
-Elf_Shdr *
-get_section(Elf_Ehdr *h, const char *section_name)
-{
-   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
-   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
-
-   for (uint32_t i = 0; i < h->e_shnum; i++) {
-
-      Elf_Shdr *s = sections + i;
-      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
-
-      if (!strcmp(name, section_name)) {
-         return s;
-      }
-   }
-
-   return NULL;
-}
 
 Elf_Phdr *
 get_phdr_for_section(Elf_Ehdr *h, Elf_Shdr *section)

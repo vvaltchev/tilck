@@ -16,24 +16,21 @@
  * USE_ELF64 to work with ELF files having bitness different than your NBITS.
  */
 
-static size_t
-elf_calc_mem_size(Elf_Ehdr *h)
+static Elf_Shdr *
+get_section(Elf_Ehdr *h, const char *section_name)
 {
-   Elf_Phdr *phdrs = (Elf_Phdr *)((char*)h + h->e_phoff);
-   Elf_Addr min_pbegin = 0;
-   Elf_Addr max_pend = 0;
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
-   for (uint32_t i = 0; i < h->e_phnum; i++) {
+   for (uint32_t i = 0; i < h->e_shnum; i++) {
 
-      Elf_Phdr *p = phdrs + i;
-      Elf_Addr pend = pow2_round_up_at(p->p_paddr + p->p_memsz, p->p_align);
+      Elf_Shdr *s = sections + i;
+      char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
-      if (i == 0 || p->p_paddr < min_pbegin)
-         min_pbegin = p->p_paddr;
-
-      if (pend > max_pend)
-         max_pend = pend;
+      if (!strcmp(name, section_name)) {
+         return s;
+      }
    }
 
-   return max_pend - min_pbegin;
+   return NULL;
 }
