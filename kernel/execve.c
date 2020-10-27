@@ -261,7 +261,6 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
    regs_t user_regs;
    int rc;
 
-   DEBUG_VALIDATE_STACK_PTR();
    ASSERT(is_preemption_enabled());
 
    if ((rc = execve_load_elf(ctx, path, argv, &pinfo)))

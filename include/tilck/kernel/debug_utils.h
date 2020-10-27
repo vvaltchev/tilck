@@ -14,7 +14,6 @@ size_t stackwalk32(void **frames, size_t count,
 void dump_stacktrace(void *ebp, pdir_t *pdir);
 void dump_regs(regs_t *r);
 
-void validate_stack_pointer_int(const char *file, int line);
 void debug_qemu_turn_off_machine(void);
 void kmain_early_checks(void);
 void init_extra_debug_features(void);
@@ -22,17 +21,6 @@ void set_sched_alive_thread_enabled(bool enabled);
 void register_tilck_cmd(int cmd_n, void *func);
 void *get_syscall_func_ptr(u32 n);
 int get_syscall_num(void *func);
-
-#if DEBUG_CHECKS && !defined(UNIT_TEST_ENVIRONMENT)
-
-   #define DEBUG_VALIDATE_STACK_PTR() \
-      validate_stack_pointer_int(__FILE__, __LINE__)
-
-#else
-
-   #define DEBUG_VALIDATE_STACK_PTR()
-
-#endif
 
 /*
  * Debug-only checks useful to verify that kernel_yield() + context_switch()
@@ -46,10 +34,10 @@ int get_syscall_num(void *func);
  * wth_run()'s code: it is the perfect place for such checks, because
  * it really often yields and gets the control back.
  *
- * The DEBUG_VALIDATE_STACK_PTR() sure works as well, but it catches bugs only
+ * The KERNEL_STACK_ISOLATION sure works as well, but it catches bugs only
  * when the stack pointer is completely out of the allocated stack area for the
- * current task. This following code allows instead, any kind of such problems
- * to be caught much earlier.
+ * current task. With following macros allows instead, any kind of such problems
+ * will be caught much earlier.
  */
 #if !defined(NDEBUG) && !defined(RELEASE)
 

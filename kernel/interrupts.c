@@ -202,7 +202,6 @@ static void irq_resched(regs_t *r)
 
 void irq_entry(regs_t *r)
 {
-   DEBUG_VALIDATE_STACK_PTR();
    ASSERT(get_curr_task() != NULL);
    DEBUG_check_not_same_interrupt_nested(regs_intnum(r));
 

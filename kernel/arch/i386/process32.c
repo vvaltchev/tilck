@@ -407,7 +407,6 @@ void save_current_task_state(regs_t *r)
 
    ASSERT(curr != NULL);
    curr->state_regs = r;
-   DEBUG_VALIDATE_STACK_PTR();
 }
 
 /*
@@ -505,7 +504,6 @@ NORETURN void switch_to_task(struct task *ti)
     * preemption disabled. That would be pretty bad.
     */
    ASSERT(is_preemption_enabled());
-   DEBUG_VALIDATE_STACK_PTR();
 
    if (!ti->running_in_kernel) {
 

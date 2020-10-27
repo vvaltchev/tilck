@@ -486,8 +486,6 @@ void handle_syscall(regs_t *r)
    struct task *const curr = get_curr_task();
    const bool traced = curr->traced;
 
-   DEBUG_VALIDATE_STACK_PTR();
-
    /*
     * In case of a sysenter syscall, the eflags are saved in kernel mode after
     * the cpu disabled the interrupts. Therefore, with the statement below we
@@ -507,7 +505,6 @@ void handle_syscall(regs_t *r)
    }
 
    set_current_task_in_kernel();
-   DEBUG_VALIDATE_STACK_PTR();
    enable_preemption();
    {
       process_signals();
@@ -524,7 +521,6 @@ void handle_syscall(regs_t *r)
       process_signals();
    }
    disable_preemption();
-   DEBUG_VALIDATE_STACK_PTR();
    set_current_task_in_user_mode();
 }
 

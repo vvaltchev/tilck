@@ -26,38 +26,8 @@ char strtab_buf[1] ATTR_SECTION(".Strtab") = {0};
 bool __use_framebuffer;
 
 #if DEBUG_CHECKS
-
 const ulong init_st_begin = (ulong)&kernel_initial_stack;
 const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
-
-void validate_stack_pointer_int(const char *file, int line)
-{
-   ulong stack_var = 123;
-   const ulong stack_var_page = (ulong)&stack_var & PAGE_MASK;
-   const ulong st_begin = (ulong)get_curr_task()->kernel_stack;
-   const ulong st_end = st_begin + KERNEL_STACK_SIZE;
-
-   if (IN_RANGE(stack_var_page, init_st_begin, init_st_end)) {
-
-      /*
-       * That's fine: we are in the initialization or in task_switch() called
-       * by sys_exit().
-       */
-      return;
-   }
-
-   if (!IN_RANGE(stack_var_page, st_begin, st_end)) {
-
-      panic("Invalid kernel stack pointer.\n"
-            "File %s at line %i\n"
-            "[validate stack] stack page: %p\n"
-            "[validate stack] expected:   %p\n",
-            file, line,
-            ((ulong)&stack_var & PAGE_MASK),
-            get_curr_task()->kernel_stack);
-   }
-}
-
 #endif
 
 #if KERNEL_SHOW_LOGO

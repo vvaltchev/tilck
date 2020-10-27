@@ -68,8 +68,6 @@ __vfs_resolve_get_entry(vfs_inode_ptr_t idir,
                         struct vfs_path *rp,
                         bool exlock)
 {
-   DEBUG_VALIDATE_STACK_PTR();
-
    vfs_get_entry(rp->fs, idir, pc, path - pc, &rp->fs_path);
    rp->last_comp = pc;
 
@@ -310,7 +308,6 @@ __vfs_resolve(struct vfs_resolve_int_ctx *ctx, bool res_last_sl)
    const char *path = ctx->orig_paths[ctx->ss - 1];
    struct vfs_path *rp = vfs_resolve_stack_top(ctx);
    struct vfs_path np = *rp;
-   DEBUG_VALIDATE_STACK_PTR();
 
    if (!*path)
       return -ENOENT;

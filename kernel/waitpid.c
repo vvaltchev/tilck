@@ -189,7 +189,6 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
       wobj_extra |= WEXTRA_TASK_CONTINUED;
 
    ASSERT(are_interrupts_enabled());
-   DEBUG_VALIDATE_STACK_PTR();
 
    while (true) {
 
