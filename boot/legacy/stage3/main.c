@@ -36,17 +36,16 @@ ulong initrd_paddr;    /* initrd's physical address */
 u32 initrd_size;       /* initrd's size (used bytes in the fat partition) */
 ulong bp_paddr;        /* bootpart's physical address */
 u32 bp_size;           /* bootpart's size (used bytes in the fat partition) */
+ulong kernel_file_pa;
+u32 kernel_file_sz;
 
 static struct mem_area ma_buf[64];
 struct mem_info g_meminfo;
 
 bool
-load_kernel_file(ulong ramdisk,
-                 ulong ramdisk_size,
-                 const char *filepath,
-                 void **file_paddr)
+load_kernel_file(const char *filepath)
 {
-   struct fat_hdr *hdr = (struct fat_hdr *)ramdisk;
+   struct fat_hdr *hdr = (struct fat_hdr *)bp_paddr;
    struct fat_entry *e;
    ulong free_space;
    size_t len;
@@ -56,18 +55,15 @@ load_kernel_file(ulong ramdisk,
       return false;
    }
 
-   free_space =
-      get_usable_mem(&g_meminfo, ramdisk + ramdisk_size, e->DIR_FileSize);
+   free_space = get_high_usable_mem(&g_meminfo, e->DIR_FileSize);
 
    if (!free_space) {
-
-      printk("ERROR: No free space for kernel file at %p\n",
-             TO_PTR(ramdisk + ramdisk_size));
-
+      printk("ERROR: No free space for kernel file\n");
       return false;
    }
 
-   *file_paddr = NULL;
+   kernel_file_pa = 0;
+   kernel_file_sz = 0;
    len = fat_read_whole_file(hdr, e, (void *)free_space, e->DIR_FileSize);
 
    if (len != e->DIR_FileSize) {
@@ -75,7 +71,8 @@ load_kernel_file(ulong ramdisk,
       return false;
    }
 
-   *file_paddr = (void *)free_space;
+   kernel_file_pa = free_space;
+   kernel_file_sz = e->DIR_FileSize;
    return true;
 }
 

@@ -21,7 +21,8 @@ extern ulong initrd_paddr;
 extern u32 initrd_size;
 extern ulong bp_paddr;
 extern u32 bp_size;
-extern void *loaded_kernel_file;
+extern ulong kernel_file_pa;
+extern u32 kernel_file_sz;
 
 multiboot_info_t *
 setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size);
@@ -38,8 +39,6 @@ load_fat_ramdisk(const char *load_str,
                  bool alloc_extra_page);
 
 bool
-load_kernel_file(ulong ramdisk,
-                 ulong ramdisk_size,
-                 const char *filepath,
-                 void **file_paddr);
+load_kernel_file(const char *filepath);
+
 

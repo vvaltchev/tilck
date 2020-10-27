@@ -102,11 +102,14 @@ void poison_usable_memory(struct mem_info *mi)
 
 ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size)
 {
+   struct mem_area *ma;
+   u64 mbase, mend;
+
    for (u32 i = 0; i < mi->count; i++) {
 
-      struct mem_area *ma = mi->mem_areas + i;
-      ulong mbase = ma->base;
-      ulong mend = ma->base + ma->len;
+      ma = mi->mem_areas + i;
+      mbase = ma->base;
+      mend = ma->base + ma->len;
 
       if (ma->type != MEM_USABLE)
          continue;
@@ -122,7 +125,10 @@ ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size)
          mbase = min_paddr;
       }
 
-      if ((mend - mbase) >= size) {
+      if (mbase + size >= (1ull << 32))
+         continue;
+
+      if (mend - mbase >= size) {
 
          /* Great, we have enough space in this area. */
          return mbase;
@@ -140,4 +146,51 @@ ulong get_usable_mem_or_panic(struct mem_info *mi, ulong min_paddr, ulong size)
       panic("Unable to allocate %u bytes after %p", size, min_paddr);
 
    return free_mem;
+}
+
+ulong get_high_usable_mem(struct mem_info *mi, ulong size)
+{
+   struct mem_area *ma;
+   u64 mbase, mend;
+   u64 candidate = 0;
+
+   for (u32 i = 0; i < mi->count; i++) {
+
+      ma = mi->mem_areas + i;
+      mbase = ma->base;
+      mend = ma->base + ma->len;
+
+      if (ma->type != MEM_USABLE)
+         continue;
+
+      if (ma->len < size)
+         continue;
+
+      if (mend - size >= (1ull << 32)) {
+
+         if ((1ull << 32) - size >= mbase) {
+
+            /*
+             * This is, by definition, the highest possible addr in the 32-bit
+             * address space. Since it belongs to this free mem area, it's the
+             * ultimate candidate addr.
+             */
+
+            candidate = (1ull << 32) - size;
+            break;
+         }
+
+         /*
+          * The mem area goes beyond the 32-bit limit, but it cannot contain
+          * a chunk of our size within the 32-bit limit.
+          */
+         continue;
+      }
+
+      /* If the end of this area is higher than the candidate, take it */
+      if (mend - size > candidate)
+         candidate = mend - size;
+   }
+
+   return (ulong)candidate;
 }
