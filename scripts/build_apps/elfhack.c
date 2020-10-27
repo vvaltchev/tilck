@@ -67,8 +67,8 @@ get_symbol(Elf_Ehdr *h, const char *sym_name)
    Elf_Sym *syms;
    unsigned sym_count;
 
-   symtab = get_section(h, ".symtab");
-   strtab = get_section(h, ".strtab");
+   symtab = elf_get_section(h, ".symtab");
+   strtab = elf_get_section(h, ".strtab");
 
    if (!symtab || !strtab)
       return NULL;
@@ -94,7 +94,7 @@ int
 section_dump(struct elf_file_info *nfo, const char *section_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
-   Elf_Shdr *s = get_section(nfo->vaddr, section_name);
+   Elf_Shdr *s = elf_get_section(nfo->vaddr, section_name);
 
    if (!s) {
       fprintf(stderr, "No section '%s'\n", section_name);
@@ -121,14 +121,14 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
       return 1;
    }
 
-   s_src = get_section(nfo->vaddr, src);
+   s_src = elf_get_section(nfo->vaddr, src);
 
    if (!s_src) {
       fprintf(stderr, "No section '%s'\n", src);
       return 1;
    }
 
-   s_dst = get_section(nfo->vaddr, dst);
+   s_dst = elf_get_section(nfo->vaddr, dst);
 
    if (!s_dst) {
       fprintf(stderr, "No section '%s'\n", dst);
@@ -175,7 +175,7 @@ rename_section(struct elf_file_info *nfo,
       return 1;
    }
 
-   Elf_Shdr *s = get_section(nfo->vaddr, section_name);
+   Elf_Shdr *s = elf_get_section(nfo->vaddr, section_name);
 
    if (!s) {
       fprintf(stderr, "No section '%s'\n", section_name);
@@ -201,8 +201,8 @@ link_sections(struct elf_file_info *nfo,
       return 1;
    }
 
-   Elf_Shdr *a = get_section(nfo->vaddr, section_name);
-   Elf_Shdr *b = get_section(nfo->vaddr, linked);
+   Elf_Shdr *a = elf_get_section(nfo->vaddr, section_name);
+   Elf_Shdr *b = elf_get_section(nfo->vaddr, linked);
 
    if (!a) {
       fprintf(stderr, "No section '%s'\n", section_name);
@@ -566,7 +566,7 @@ set_sym_strval(struct elf_file_info *nfo,
       return 1;
    }
 
-   section = get_section(h, section_name);
+   section = elf_get_section(h, section_name);
 
    if (!section) {
       fprintf(stderr, "No section '%s'\n", section_name);

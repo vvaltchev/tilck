@@ -17,7 +17,7 @@
  */
 
 static Elf_Shdr *
-get_section(Elf_Ehdr *h, const char *section_name)
+elf_get_section(Elf_Ehdr *h, const char *section_name)
 {
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
    Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
