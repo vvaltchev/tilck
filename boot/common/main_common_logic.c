@@ -11,6 +11,8 @@
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
 #include <tilck/common/elf_calc_mem_size.c.h>
+#include <tilck/common/elf_get_section.c.h>
+#include <tilck/common/build_info.h>
 
 #include "common_int.h"
 
@@ -26,6 +28,7 @@ static video_mode_t selected_mode = INVALID_VIDEO_MODE;
 static char kernel_file_path[64] = KERNEL_FILE_PATH;
 static char line_buf[64];
 static void *kernel_elf_file_paddr;
+static struct build_info *kernel_build_info;
 
 void
 write_bootloader_hello_msg(void)
@@ -63,14 +66,22 @@ write_fail_msg(void)
 static bool
 check_elf_kernel(void)
 {
-   Elf32_Ehdr *header = kernel_elf_file_paddr;
-   Elf32_Phdr *phdr = (Elf32_Phdr *)(header + 1);
+   Elf_Ehdr *header = kernel_elf_file_paddr;
+   Elf_Phdr *phdr = (Elf_Phdr *)(header + 1);
 
-   CHECK(header->e_ident[EI_MAG0] == ELFMAG0);
-   CHECK(header->e_ident[EI_MAG1] == ELFMAG1);
-   CHECK(header->e_ident[EI_MAG2] == ELFMAG2);
-   CHECK(header->e_ident[EI_MAG3] == ELFMAG3);
-   CHECK(header->e_ehsize == sizeof(*header));
+   if (header->e_ident[EI_MAG0] != ELFMAG0 ||
+       header->e_ident[EI_MAG1] != ELFMAG1 ||
+       header->e_ident[EI_MAG2] != ELFMAG2 ||
+       header->e_ident[EI_MAG3] != ELFMAG3)
+   {
+      printk("Not an ELF file\n");
+      return false;
+   }
+
+   if (header->e_ehsize != sizeof(*header)) {
+      printk("Not an ELF32 file\n");
+      return false;
+   }
 
    for (int i = 0; i < header->e_phnum; i++, phdr++) {
 
@@ -97,6 +108,9 @@ get_loaded_kernel_mem_sz(void)
 static bool
 load_kernel_file(void)
 {
+   Elf_Shdr *section;
+   Elf_Ehdr *header;
+
    printk("Loading the ELF kernel... ");
 
    if (!intf->load_kernel_file(kernel_file_path, &kernel_elf_file_paddr)) {
@@ -109,6 +123,16 @@ load_kernel_file(void)
       return false;
    }
 
+   header = kernel_elf_file_paddr;
+   section = elf_get_section(header, ".tilck_info");
+
+   if (!section) {
+      printk("Not a Tilck ELF kernel file\n");
+      write_fail_msg();
+      return false;
+   }
+
+   kernel_build_info = (void *)((char *)header + section->sh_offset);
    write_ok_msg();
    return true;
 }
@@ -155,7 +179,8 @@ static bool
 run_interactive_logic(void)
 {
    struct generic_video_mode_info gi;
-   bool wait_for_key;
+   bool wait_for_key, dirty_comm;
+   char *commit_str;
    char buf[8];
 
    while (true) {
@@ -167,9 +192,16 @@ run_interactive_logic(void)
          return false;
       }
 
+      dirty_comm = !strncmp(kernel_build_info->commit, "dirty:", 6);
+      commit_str = kernel_build_info->commit + (dirty_comm ? 6 : 0);
+
       printk("Menu:\n");
       printk("---------------------------------------------------\n");
       printk("k) Kernel file: %s\n", kernel_file_path);
+      printk("     version: %s\n", kernel_build_info->ver);
+      printk("     commit:  %s%s\n", commit_str, dirty_comm ? " (dirty)" : "");
+      printk("     modules: %s\n", kernel_build_info->modules_list);
+      printk("\n");
       printk("v) Video mode:  ");
       show_mode(-1, &gi, false);
       printk("b) Boot\n");
