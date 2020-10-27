@@ -149,10 +149,13 @@ static bool
 run_interactive_logic(void)
 {
    struct generic_video_mode_info gi;
+   bool wait_for_key;
    char buf[8];
    printk("\n");
 
    while (true) {
+
+      wait_for_key = true;
 
       if (!intf->get_mode_info(selected_mode, &gi)) {
          printk("ERROR: get_mode_info() failed");
@@ -181,16 +184,20 @@ run_interactive_logic(void)
 
          case 'v':
             show_video_modes();
+            printk("\n");
             selected_mode = get_user_video_mode_choice();
-            printk("Accepted.\n");
+            wait_for_key = false;
             break;
 
          default:
             printk("Invalid command\n");
       }
 
-      printk("Press ANY key to continue");
-      intf->read_key();
+      if (wait_for_key) {
+         printk("Press ANY key to continue");
+         intf->read_key();
+      }
+
       intf->clear_screen();
       write_bootloader_hello_msg();
    }
