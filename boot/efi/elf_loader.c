@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_boot.h>
-#include <tilck_gen_headers/krn_max_sz.h>
 
 #include "defs.h"
 #include "utils.h"

@@ -4,7 +4,6 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
-#include <tilck_gen_headers/krn_max_sz.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/failsafe_assert.h>

@@ -602,8 +602,6 @@ set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
 set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
-set(KRN_MAX_SZ             ${CMAKE_BINARY_DIR}/tilck_gen_headers/krn_max_sz.h)
-
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
 
 if (${BOOTLOADER_LEGACY} OR ${BOOTLOADER_EFI})

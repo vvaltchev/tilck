@@ -3,7 +3,6 @@
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_fb.h>
-#include <tilck_gen_headers/krn_max_sz.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
