@@ -123,6 +123,23 @@ efi_boot_set_color(u8 color)
    /* do nothing */
 }
 
+static bool
+efi_boot_load_initrd(void)
+{
+   EFI_STATUS status;
+
+   status = LoadRamdisk(gImageHandle,
+                        gLoadedImage,
+                        &gRamdiskPaddr,
+                        &gRamdiskSize,
+                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
+
+   HANDLE_EFI_ERROR("LoadRamdisk failed");
+
+end:
+   return status == EFI_SUCCESS;
+}
+
 const struct bootloader_intf efi_boot_intf = {
 
    /* Methods */
@@ -135,6 +152,7 @@ const struct bootloader_intf efi_boot_intf = {
    .get_curr_video_mode = &efi_boot_get_curr_video_mode,
    .set_curr_video_mode = &efi_boot_set_curr_video_mode,
    .load_kernel_file = &efi_boot_load_kernel_file,
+   .load_initrd = &efi_boot_load_initrd,
 
    /* Configuration values */
    .text_mode = INVALID_VIDEO_MODE,

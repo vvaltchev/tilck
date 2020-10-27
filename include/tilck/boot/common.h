@@ -3,10 +3,18 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+#define LOADING_INITRD_STR          "Loading ramdisk... "
+#define LOADING_BOOTPART_STR        "Loading bootpart... "
+
 #ifdef __TILCK_EFI_BOOTLOADER__
+
    typedef ulong video_mode_t;
+   #define LOADING_INITRD_STR_U     CONCAT(L, LOADING_INITRD_STR)
+
 #else
+
    typedef u16 video_mode_t;
+
 #endif
 
 #define INVALID_VIDEO_MODE             ((video_mode_t)~0)
@@ -34,6 +42,7 @@ struct bootloader_intf {
    bool (*get_mode_info)(video_mode_t m, struct generic_video_mode_info *gi);
 
    bool (*load_kernel_file)(const char *path, void **paddr);
+   bool (*load_initrd)(void);
 
    /* Const configuration values that must be provided */
    video_mode_t text_mode;

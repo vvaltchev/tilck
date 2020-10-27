@@ -167,6 +167,36 @@ legacy_boot_load_kernel_file(const char *path, void **paddr)
    return true;
 }
 
+static bool
+legacy_boot_load_initrd(void)
+{
+   bool success;
+
+   if (!kernel_file_pa)
+      panic("No loaded kernel file");
+
+   success =
+      load_fat_ramdisk(LOADING_INITRD_STR,
+                       INITRD_SECTOR,
+                       KERNEL_PADDR + get_loaded_kernel_mem_sz(),
+                       &initrd_paddr,
+                       &initrd_size,
+                       true);       /* alloc_extra_page */
+
+   if (!success)
+      return false;
+
+   /* Compact initrd's clusters, if necessary */
+   initrd_size = rd_compact_clusters((void *)initrd_paddr, initrd_size);
+
+   /*
+    * Increase initrd_size by 1 page in order to allow Tilck's kernel to
+    * align the first data sector, if necessary.
+    */
+   initrd_size += 4 * KB;
+   return true;
+}
+
 const struct bootloader_intf legacy_boot_intf = {
 
    /* Methods */
@@ -179,6 +209,7 @@ const struct bootloader_intf legacy_boot_intf = {
    .get_curr_video_mode = &legacy_boot_get_curr_video_mode,
    .set_curr_video_mode = &legacy_boot_set_curr_video_mode,
    .load_kernel_file = &legacy_boot_load_kernel_file,
+   .load_initrd = &legacy_boot_load_initrd,
 
    /* Configuration values */
    .text_mode = VGA_COLOR_TEXT_MODE_80x25,

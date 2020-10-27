@@ -22,9 +22,6 @@
 #include "mm.h"
 #include "common.h"
 
-#define LOADING_INITRD_STR            "Loading ramdisk... "
-#define LOADING_BOOTPART_STR          "Loading bootpart... "
-
 video_mode_t selected_mode = VGA_COLOR_TEXT_MODE_80x25;
 
 u8 current_device;
@@ -57,8 +54,11 @@ load_kernel_file(const char *filepath)
 
    free_space = get_high_usable_mem(&g_meminfo, e->DIR_FileSize);
 
+   if (IN_RANGE(free_space, bp_paddr, bp_size))
+      free_space = 0; /* The kernel would overlap with the bootpart */
+
    if (!free_space) {
-      printk("ERROR: No free space for kernel file\n");
+      printk("ERROR: No free memory for the kernel file\n");
       return false;
    }
 
@@ -79,7 +79,6 @@ load_kernel_file(const char *filepath)
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
-   ulong bp_min_paddr;
    void *entry;
    bool success;
 
@@ -116,41 +115,22 @@ void bootloader_main(void)
    if (!success)
       panic("read_write_params failed");
 
-   /* Load the INITRD */
-   load_fat_ramdisk(LOADING_INITRD_STR,
-                    INITRD_SECTOR,
-                    KERNEL_PADDR + KERNEL_MAX_SIZE,
-                    &initrd_paddr,
-                    &initrd_size,
-                    true);       /* alloc_extra_page */
-
-   /* Set bootpart's lowest paddr, leaving some safe margin */
-   bp_min_paddr = initrd_paddr + initrd_size + 2 * PAGE_SIZE;
-
-   /* Round-up bootpart's lowest paddr at page boundary */
-   bp_min_paddr = round_up_at(bp_min_paddr, PAGE_SIZE);
-
    /* Load the BOOTPART from which we'll load the kernel */
-   load_fat_ramdisk(LOADING_BOOTPART_STR,
-                    BOOTPART_SEC,
-                    bp_min_paddr,
-                    &bp_paddr,
-                    &bp_size,
-                    false);       /* alloc_extra_page */
+   success =
+      load_fat_ramdisk(LOADING_BOOTPART_STR,
+                       BOOTPART_SEC,
+                       KERNEL_PADDR,
+                       &bp_paddr,
+                       &bp_size,
+                       false);       /* alloc_extra_page */
 
-   /* Compact initrd's clusters, if necessary */
-   initrd_size = rd_compact_clusters((void *)initrd_paddr, initrd_size);
-
-   /*
-    * Increase initrd_size by 1 page in order to allow Tilck's kernel to
-    * align the first data sector, if necessary.
-    */
-   initrd_size += 4 * KB;
+   if (!success)
+      goto boot_aborted;
 
    success = common_bootloader_logic();
 
    if (!success)
-      panic("Boot aborted");
+      goto boot_aborted;
 
    entry = load_kernel_image();
    mbi = setup_multiboot_info(initrd_paddr, initrd_size);
@@ -162,4 +142,7 @@ void bootloader_main(void)
                  "b" (mbi),
                  "c" (entry)
                : /* no clobber */);
+
+boot_aborted:
+   panic("Boot aborted");
 }

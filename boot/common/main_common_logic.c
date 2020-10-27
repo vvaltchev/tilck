@@ -145,13 +145,19 @@ read_kernel_file_path(void)
    }
 }
 
+static void
+clear_screen(void)
+{
+   intf->clear_screen();
+   write_bootloader_hello_msg();
+}
+
 static bool
 run_interactive_logic(void)
 {
    struct generic_video_mode_info gi;
    bool wait_for_key;
    char buf[8];
-   printk("\n");
 
    while (true) {
 
@@ -198,27 +204,54 @@ run_interactive_logic(void)
          intf->read_key();
       }
 
-      intf->clear_screen();
-      write_bootloader_hello_msg();
+      clear_screen();
    }
 
    return true;
 }
 
+static void
+wait_for_any_key(void)
+{
+   printk("Press ANY key to continue");
+   intf->read_key();
+}
+
 bool
 common_bootloader_logic(void)
 {
+   bool in_retry = false;
+
    fetch_all_video_modes_once();
    selected_mode = g_defmode;
 
    if (!load_kernel_file())
       return false;
 
+   printk("\n");
+
 retry:
+
+   if (in_retry) {
+      wait_for_any_key();
+      clear_screen();
+   }
+
+   in_retry = true;
 
    if (BOOT_INTERACTIVE) {
       if (!run_interactive_logic())
          return false;
+   }
+
+   clear_screen();
+
+   if (!intf->load_initrd()) {
+
+      if (BOOT_INTERACTIVE)
+         goto retry;
+
+      return false;
    }
 
    if (!intf->set_curr_video_mode(selected_mode)) {

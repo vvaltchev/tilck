@@ -56,13 +56,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = ReserveMemAreaForKernelImage();
    HANDLE_EFI_ERROR("ReserveMemAreaForKernelImage");
 
-   status = LoadRamdisk(image,
-                        gLoadedImage,
-                        &gRamdiskPaddr,
-                        &gRamdiskSize,
-                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
-   HANDLE_EFI_ERROR("LoadRamdisk failed");
-
    if (!common_bootloader_logic()) {
       status = EFI_ABORTED;
       goto end;

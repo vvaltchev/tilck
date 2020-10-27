@@ -18,8 +18,6 @@
 
 #include "utils.h"
 
-#define LOADING_RAMDISK_STR            L"Loading ramdisk... "
-
 struct load_ramdisk_ctx {
 
    EFI_BLOCK_IO_PROTOCOL *blockio;
@@ -254,7 +252,7 @@ LoadRamdisk(EFI_HANDLE image,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol(BlockIoProtocol)");
 
-   Print(LOADING_RAMDISK_STR);
+   Print(LOADING_INITRD_STR_U);
 
    status = LoadRamdisk_GetTotFatSize(&ctx);
    HANDLE_EFI_ERROR("LoadRamdisk_GetTotFatSize");
@@ -267,7 +265,7 @@ LoadRamdisk(EFI_HANDLE image,
 
    status = ReadDiskWithProgress(ST->ConOut,
                                  CurrConsoleRow,
-                                 LOADING_RAMDISK_STR,
+                                 LOADING_INITRD_STR_U,
                                  ctx.blockio,
                                  initrd_off,
                                  ctx.rounded_tot_used_bytes,
@@ -279,7 +277,7 @@ LoadRamdisk(EFI_HANDLE image,
    ctx.blockio = NULL;
 
    ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
-   Print(LOADING_RAMDISK_STR);
+   Print(LOADING_INITRD_STR_U);
    write_ok_msg();
 
    status = LoadRamdisk_CompactClusters(&ctx);

@@ -84,7 +84,15 @@ rd_compact_clusters(void *ramdisk, u32 rd_size)
    return rd_size;
 }
 
-void
+static bool
+overlap_with_kernel_file(ulong pa, ulong sz)
+{
+   const ulong kbegin = kernel_file_pa;
+   const ulong kend = kernel_file_pa + kernel_file_sz;
+   return IN_RANGE(pa, kbegin, kend) || IN_RANGE(pa + sz, kbegin, kend);
+}
+
+bool
 load_fat_ramdisk(const char *load_str,
                  u32 first_sec,
                  ulong min_paddr,
@@ -100,17 +108,22 @@ load_fat_ramdisk(const char *load_str,
    ulong size_to_alloc;
 
    printk("%s", load_str);
-   free_mem = get_usable_mem_or_panic(&g_meminfo, min_paddr, SECTOR_SIZE);
+   free_mem = get_usable_mem(&g_meminfo, min_paddr, SECTOR_SIZE);
+
+   if (!free_mem || overlap_with_kernel_file(free_mem, SECTOR_SIZE))
+      goto oom;
 
    // Read FAT's header
    read_sectors(free_mem, first_sec, 1 /* read just 1 sector */);
 
+   // Determine FAT's metadata size
    rd_metadata_sz = calc_fat_ramdisk_metadata_sz((void *)free_mem);
 
-   free_mem =
-      get_usable_mem_or_panic(&g_meminfo,
-                              min_paddr,
-                              rd_metadata_sz);
+   // Get a free mem area big enough for it
+   free_mem = get_usable_mem(&g_meminfo, min_paddr, rd_metadata_sz);
+
+   if (!free_mem || overlap_with_kernel_file(free_mem, rd_metadata_sz))
+      goto oom;
 
    // Now read all the meta-data up to the first data sector.
    read_sectors(free_mem, first_sec, rd_metadata_sz / SECTOR_SIZE);
@@ -126,12 +139,11 @@ load_fat_ramdisk(const char *load_str,
    if (alloc_extra_page)
       size_to_alloc += PAGE_SIZE;
 
+   // Finally, get a mem area big enough for the whole FAT partition
    free_mem = get_usable_mem(&g_meminfo, min_paddr, size_to_alloc);
 
-   if (!free_mem) {
-      panic("Unable to allocate %u KB after %p for the ramdisk",
-            SECTOR_SIZE * rd_sectors / KB, min_paddr);
-   }
+   if (!free_mem || overlap_with_kernel_file(free_mem, size_to_alloc))
+      goto oom;
 
    rd_paddr = free_mem;
    read_sectors_with_progress(load_str,
@@ -146,4 +158,10 @@ load_fat_ramdisk(const char *load_str,
    /* Return ramdisk's paddr and size using the OUT parameters */
    *ref_rd_paddr = rd_paddr;
    *ref_rd_size = rd_size;
+   return true;
+
+oom:
+   printk("No free memory for loading the ramdisk\n");
+   write_fail_msg();
+   return false;
 }
