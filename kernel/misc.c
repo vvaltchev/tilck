@@ -6,6 +6,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/compiler.h>
 #include <tilck/common/build_info.h>
 
 #include <tilck/kernel/process.h>
@@ -30,8 +31,6 @@ const ulong init_st_begin = (ulong)&kernel_initial_stack;
 const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
 #endif
 
-#if KERNEL_SHOW_LOGO
-
 static void print_banner_line(const u8 *s)
 {
    printk(NO_PREFIX "\033(0");
@@ -44,7 +43,7 @@ static void print_banner_line(const u8 *s)
    printk(NO_PREFIX "\n");
 }
 
-void show_tilck_logo(void)
+static void show_tilck_logo(void)
 {
    char *banner[] =
    {
@@ -72,7 +71,49 @@ void show_tilck_logo(void)
    }
 }
 
-#endif
+static void
+show_system_info(void)
+{
+   const int time_slice = 1000 / (TIMER_HZ / TIME_SLICE_TICKS);
+   const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
+
+   printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
+   printk("; time_slice: \e[1m%i\e[m", time_slice);
+   printk(" ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
+}
+
+void
+show_hello_message(void)
+{
+   const bool dirty = !strncmp(tilck_build_info.commit, "dirty:", 6);
+   const char *const commit = tilck_build_info.commit + (dirty ? 6 : 0);
+   const char *const commit_end = strstr(commit, " ");
+   const int commit_len =
+      commit_end
+         ? (int)(commit_end - commit)
+         : (int)strlen(commit);
+
+   if (VER_PATCH > 0)
+      printk("Hello from Tilck \e[1m%d.%d.%d\e[m",
+             VER_MAJOR, VER_MINOR, VER_PATCH);
+   else
+      printk("Hello from Tilck \e[1m%d.%d\e[m",
+             VER_MAJOR, VER_MINOR);
+
+   printk(", commit: \e[1m%.*s\e[m", commit_len, commit);
+   printk("%s\n", dirty ? " (dirty)" : "");
+
+   printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
+   printk(", compiler: \e[1m%s %d.%d.%d\e[m\n",
+          COMPILER_NAME,
+          COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
+
+   show_system_info();
+
+   if (KERNEL_SHOW_LOGO)
+      show_tilck_logo();
+}
+
 
 struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
    .commit = {0}, /* It will get patched after the build */

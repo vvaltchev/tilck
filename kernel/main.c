@@ -9,8 +9,6 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
-#include <tilck/common/compiler.h>
-#include <tilck/common/build_info.h>
 
 #include <multiboot.h>
 
@@ -246,49 +244,6 @@ out:
 }
 
 static void
-show_hello_message(void)
-{
-   const bool dirty = !strncmp(tilck_build_info.commit, "dirty:", 6);
-   const char *const commit = tilck_build_info.commit + (dirty ? 6 : 0);
-   const char *const commit_end = strstr(commit, " ");
-   const int commit_len =
-      commit_end
-         ? (int)(commit_end - commit)
-         : (int)strlen(commit);
-
-   if (VER_PATCH > 0)
-      printk("Hello from Tilck \e[1m%d.%d.%d\e[m",
-             VER_MAJOR, VER_MINOR, VER_PATCH);
-   else
-      printk("Hello from Tilck \e[1m%d.%d\e[m",
-             VER_MAJOR, VER_MINOR);
-
-   printk(", commit: \e[1m%.*s\e[m", commit_len, commit);
-   printk("%s\n", dirty ? " (dirty)" : "");
-
-   printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
-   printk(", compiler: \e[1m%s %d.%d.%d\e[m\n",
-          COMPILER_NAME,
-          COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
-}
-
-static void
-show_system_info(void)
-{
-   void show_tilck_logo(void);
-
-   const int time_slice = 1000 / (TIMER_HZ / TIME_SLICE_TICKS);
-   const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
-
-   printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
-   printk("; time_slice: \e[1m%i\e[m", time_slice);
-   printk(" ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
-
-   if (KERNEL_SHOW_LOGO)
-      show_tilck_logo();
-}
-
-static void
 mount_initrd(void)
 {
    /* declare the ramfs_create() function */
@@ -366,13 +321,15 @@ run_init_or_selftest(void)
 
 static void do_async_init()
 {
+   /* declare the show_hello_message() function */
+   void show_hello_message(void);
+
    mount_initrd();
    init_devfs();
    init_modules();
    init_extra_debug_features();
 
    show_hello_message();
-   show_system_info();
    run_init_or_selftest();
 }
 
