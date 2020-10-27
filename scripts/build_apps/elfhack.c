@@ -55,8 +55,7 @@ get_section(Elf_Ehdr *h, const char *section_name)
       }
    }
 
-   fprintf(stderr, "No section '%s'\n", section_name);
-   exit(1);
+   return NULL;
 }
 
 Elf_Phdr *
@@ -114,6 +113,12 @@ section_dump(struct elf_file_info *nfo, const char *section_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *s = get_section(nfo->vaddr, section_name);
+
+   if (!s) {
+      fprintf(stderr, "No section '%s'\n", section_name);
+      return 1;
+   }
+
    fwrite((char*)h + s->sh_offset, 1, s->sh_size, stdout);
    return 0;
 }
@@ -122,11 +127,29 @@ int
 copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
-   Elf_Shdr *s_src = get_section(nfo->vaddr, src);
-   Elf_Shdr *s_dst = get_section(nfo->vaddr, dst);
+   Elf_Shdr *s_src, *s_dst;
+
+   if (!src) {
+      fprintf(stderr, "Missing <source section> argument\n");
+      return 1;
+   }
 
    if (!dst) {
       fprintf(stderr, "Missing <dest section> argument\n");
+      return 1;
+   }
+
+   s_src = get_section(nfo->vaddr, src);
+
+   if (!s_src) {
+      fprintf(stderr, "No section '%s'\n", src);
+      return 1;
+   }
+
+   s_dst = get_section(nfo->vaddr, dst);
+
+   if (!s_dst) {
+      fprintf(stderr, "No section '%s'\n", dst);
       return 1;
    }
 
@@ -151,7 +174,7 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
 
 int
 rename_section(struct elf_file_info *nfo,
-               const char *sec,
+               const char *section_name,
                const char *new_name,
                ...)
 {
@@ -165,19 +188,25 @@ rename_section(struct elf_file_info *nfo,
       return 1;
    }
 
-   if (strlen(new_name) > strlen(sec)) {
+   if (strlen(new_name) > strlen(section_name)) {
       fprintf(stderr, "Section rename with length > old one NOT supported.\n");
       return 1;
    }
 
-   Elf_Shdr *s = get_section(nfo->vaddr, sec);
+   Elf_Shdr *s = get_section(nfo->vaddr, section_name);
+
+   if (!s) {
+      fprintf(stderr, "No section '%s'\n", section_name);
+      return 1;
+   }
+
    strcpy(hc + shstrtab->sh_offset + s->sh_name, new_name);
    return 0;
 }
 
 int
 link_sections(struct elf_file_info *nfo,
-              const char *sec,
+              const char *section_name,
               const char *linked,
               ...)
 {
@@ -190,8 +219,18 @@ link_sections(struct elf_file_info *nfo,
       return 1;
    }
 
-   Elf_Shdr *a = get_section(nfo->vaddr, sec);
+   Elf_Shdr *a = get_section(nfo->vaddr, section_name);
    Elf_Shdr *b = get_section(nfo->vaddr, linked);
+
+   if (!a) {
+      fprintf(stderr, "No section '%s'\n", section_name);
+      return 1;
+   }
+
+   if (!b) {
+      fprintf(stderr, "No section '%s'\n", linked);
+      return 1;
+   }
 
    unsigned bidx = (b - sections);
    a->sh_link = bidx;
@@ -548,7 +587,7 @@ set_sym_strval(struct elf_file_info *nfo,
    section = get_section(h, section_name);
 
    if (!section) {
-      fprintf(stderr, "Unable to find the '%s' section\n", section_name);
+      fprintf(stderr, "No section '%s'\n", section_name);
       return 1;
    }
 
