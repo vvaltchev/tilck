@@ -142,7 +142,7 @@ void bootloader_main(void)
                     false);       /* alloc_extra_page */
 
    /* Compact initrd's clusters, if necessary */
-   initrd_size = do_ramdisk_compact_clusters((void *)initrd_paddr, initrd_size);
+   initrd_size = rd_compact_clusters((void *)initrd_paddr, initrd_size);
 
    /*
     * Increase initrd_size by 1 page in order to allow Tilck's kernel to

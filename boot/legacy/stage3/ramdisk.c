@@ -59,7 +59,7 @@ read_sectors_with_progress(const char *prefix_str,
 }
 
 u32
-do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size)
+rd_compact_clusters(void *ramdisk, u32 rd_size)
 {
    u32 ff_clu_off;         /* offset of ramdisk's first free cluster */
 

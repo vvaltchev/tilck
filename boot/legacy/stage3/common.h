@@ -27,7 +27,7 @@ multiboot_info_t *
 setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size);
 
 u32
-do_ramdisk_compact_clusters(void *ramdisk, u32 rd_size);
+rd_compact_clusters(void *ramdisk, u32 rd_size);
 
 void
 load_fat_ramdisk(const char *load_str,
