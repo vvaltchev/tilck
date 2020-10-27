@@ -2,6 +2,7 @@
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/mod_console.h>
+#include <tilck_gen_headers/modules_list.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -107,4 +108,5 @@ struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
    .commit = {0}, /* It will get patched after the build */
    .ver = VER_MAJOR_STR "." VER_MINOR_STR "." VER_PATCH_STR,
    .arch = ARCH_GCC_TC,
+   .modules_list = ENABLED_MODULES_LIST,
 };

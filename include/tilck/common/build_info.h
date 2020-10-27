@@ -8,6 +8,7 @@ struct build_info {
    char commit[65];
    char ver[16];
    char arch[16];
+   char modules_list[144];
 };
 
 extern struct build_info tilck_build_info;

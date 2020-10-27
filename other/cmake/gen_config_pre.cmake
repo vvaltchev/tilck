@@ -28,6 +28,11 @@ foreach(config_path ${config_glob})
 endforeach()
 
 smart_config_file(
+   ${CMAKE_SOURCE_DIR}/config/modules_list.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_list.h
+)
+
+smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_init.h
 )

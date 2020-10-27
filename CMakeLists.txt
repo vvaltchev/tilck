@@ -572,6 +572,8 @@ foreach (mod ${modules_list})
       continue() # Module not compiled-in: skip it.
    endif()
 
+   list(APPEND enabled_modules_list ${mod})
+
    if (NOT EXISTS ${deps_file})
       continue() # No dependencies. Great!
    endif()
@@ -589,6 +591,9 @@ foreach (mod ${modules_list})
    unset(deps_file)
 
 endforeach()
+
+JOIN("${enabled_modules_list}" ${SPACE} ENABLED_MODULES_LIST)
+unset(enabled_modules_list)
 
 ################################################################################
 
