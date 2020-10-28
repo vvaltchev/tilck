@@ -5,8 +5,12 @@
 #include <tilck/common/page_size.h>
 #include <tilck/boot/common.h>
 
+#undef ASSERT
 #include <efi.h>
 #include <efilib.h>
+#include <efierr.h>
+#include <tilck/common/assert.h>
+
 #include <multiboot.h>
 
 #ifndef __EFI_MAIN__
@@ -23,6 +27,7 @@ EXTERN EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *gFileFsProt;
 EXTERN EFI_FILE_PROTOCOL *gFileProt;
 EXTERN EFI_PHYSICAL_ADDRESS gRamdiskPaddr;
 EXTERN UINTN gRamdiskSize;
+EXTERN bool gExitBootServicesCalled;
 
 extern const struct bootloader_intf efi_boot_intf;
 

@@ -8,25 +8,30 @@
 
 NORETURN void panic(const char *fmt, ...)
 {
-   printk("\n******************* UEFI BOOTLOADER PANIC ********************\n");
-
    UINTN mapkey;
    va_list args;
 
-   va_start(args, fmt);
-   vprintk(fmt, args);
-   va_end(args);
+   if (!gExitBootServicesCalled) {
 
-   printk("\n");
+      printk("\n");
+      printk("******************* UEFI BOOTLOADER PANIC ********************");
+      printk("\n");
 
-   if (GetMemoryMap(&mapkey) == EFI_SUCCESS) {
+      va_start(args, fmt);
+      vprintk(fmt, args);
+      va_end(args);
 
-      if (BS->ExitBootServices(gImageHandle, mapkey) != EFI_SUCCESS)
-         Print(L"Error in panic: ExitBootServices() failed.\n");
+      printk("\n");
 
-   } else {
+      if (GetMemoryMap(&mapkey) == EFI_SUCCESS) {
 
-      Print(L"Error in panic: GetMemoryMap() failed.\n");
+         if (BS->ExitBootServices(gImageHandle, mapkey) != EFI_SUCCESS)
+            Print(L"Error in panic: ExitBootServices() failed.\n");
+
+      } else {
+
+         Print(L"Error in panic: GetMemoryMap() failed.\n");
+      }
    }
 
    disable_interrupts_forced();

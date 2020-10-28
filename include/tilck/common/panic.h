@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#define __TILCK_PANIC_H__
 
 NORETURN void panic(const char *fmt, ...);
-NORETURN void assert_failed(const char *expr, const char *file, int line);
 NORETURN void not_reached(const char *file, int line);
 NORETURN void not_implemented(const char *file, int line);
 
@@ -14,17 +14,6 @@ static ALWAYS_INLINE bool in_panic(void)
 }
 
 #ifndef NDEBUG
-
-   #ifndef NO_TILCK_ASSERT
-
-      #define ASSERT(x)                                                    \
-         do {                                                              \
-            if (UNLIKELY(!(x))) {                                          \
-               assert_failed(#x , __FILE__, __LINE__);                     \
-            }                                                              \
-         } while (0)
-
-   #endif
 
    #define DEBUG_ONLY(x) x
    #define DEBUG_ONLY_UNSAFE(x) x
@@ -43,10 +32,6 @@ static ALWAYS_INLINE bool in_panic(void)
 
 #else
 
-   #ifndef NO_TILCK_ASSERT
-      #define ASSERT(x) do { /* nothing */ } while (0)
-   #endif
-
    #define DEBUG_ONLY_UNSAFE(x) /* expand to nothing */
    #define DEBUG_ONLY(x) do { /* nothing */ } while (0)
    #define NO_TEST_ASSERT(x) do { /* nothing */ } while (0)
@@ -54,7 +39,7 @@ static ALWAYS_INLINE bool in_panic(void)
 
 #endif
 
-/* VERIFY is like ASSERT, but it's enabled on release builds as well */
+/* VERIFY is like ASSERT, but it's always enabled */
 #define VERIFY(x)                                                    \
    do {                                                              \
       if (UNLIKELY(!(x))) {                                          \
@@ -65,3 +50,8 @@ static ALWAYS_INLINE bool in_panic(void)
 
 #define NOT_REACHED() not_reached(__FILE__, __LINE__)
 #define NOT_IMPLEMENTED() not_implemented(__FILE__, __LINE__)
+
+
+#ifndef NO_TILCK_ASSERT
+   #include <tilck/common/assert.h>
+#endif

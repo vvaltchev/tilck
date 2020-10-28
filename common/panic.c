@@ -8,7 +8,7 @@
  */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/assert.h>
 
 #ifndef USERMODE_APP
 

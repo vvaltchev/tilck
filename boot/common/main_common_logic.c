@@ -6,7 +6,7 @@
 #include <tilck_gen_headers/config_kernel.h>
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/assert.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>

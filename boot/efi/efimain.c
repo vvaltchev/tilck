@@ -103,6 +103,7 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = KernelLoadMemoryChecks();
    HANDLE_EFI_ERROR("KernelLoadMemoryChecks");
 
+   gExitBootServicesCalled = true;
    status = BS->ExitBootServices(image, mapkey);
    HANDLE_EFI_ERROR("BS->ExitBootServices");
 

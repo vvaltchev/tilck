@@ -4,18 +4,11 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/page_size.h>
-#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/assert.h>
 #include <tilck/common/fat32_base.h>
 #include <tilck/common/utils.h>
 
-/* We HAVE to undef our ASSERT because the gnu-efi headers define it */
-#undef ASSERT
-
-#include <efi.h>
-#include <efilib.h>
-#include <multiboot.h>
-#include <efierr.h>
-
+#include "defs.h"
 #include "utils.h"
 
 struct load_ramdisk_ctx {

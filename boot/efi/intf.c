@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
-#include <tilck/common/failsafe_assert.h>
+#include <tilck/common/assert.h>
 #include <tilck/common/string_util.h>
 #include <tilck/boot/common.h>
 
-#undef ASSERT
 #include "defs.h"
 #include "utils.h"
 
