@@ -9,7 +9,7 @@
 
 /*
  * Special selftest that cannot be run by the system test runner.
- * It has to be run manually by passing to the kernel -s panic_manual.
+ * It has to be run manually.
  */
 void selftest_panic_manual(void)
 {

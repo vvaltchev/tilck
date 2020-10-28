@@ -74,15 +74,20 @@ static void
 parse_arg_set_tty_count(int arg_num, const char *arg, size_t arg_len)
 {
    if (kopt_serial_console) {
-      printk("Ignored -tty_count because of -sercon\n");
+      printk("WARNING: Ignored -ttys because of -sercon\n");
       return;
    }
 
-   if (arg[0] < '1' || arg[0] > (MAX_TTYS + '0'))
-      panic("Invalid tty_count value '%s'. Expected range: [1, %d].",
-            arg, MAX_TTYS);
+   if (IN_RANGE_INC(arg[0], '0', (MAX_TTYS + '0'))) {
 
-   kopt_tty_count = arg[0] - '0';
+      kopt_tty_count = arg[0] - '0';
+
+   } else {
+
+      printk("WARNING: Invalid value '%s' for ttys. Expected range: [1, %d].",
+             arg, MAX_TTYS);
+   }
+
    kernel_arg_parser_state = INITIAL_STATE;
 }
 
@@ -103,7 +108,7 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
       return;
    }
 
-   if (!strcmp(arg, "-tty_count")) {
+   if (!strcmp(arg, "-ttys")) {
       kernel_arg_parser_state = SET_TTY_COUNT;
       return;
    }
@@ -113,12 +118,12 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
       return;
    }
 
-   if (!strcmp(arg, "-s")) {
+   if (!strcmp(arg, "-selftest")) {
       kernel_arg_parser_state = SET_SELFTEST;
       return;
    }
 
-   panic("Unrecognized option '%s'", arg);
+   printk("WARNING: Unrecognized cmdline option '%s'\n", arg);
 }
 
 STATIC void use_kernel_arg(int arg_num, const char *arg)
@@ -147,6 +152,10 @@ void parse_kernel_cmdline(const char *cmdline)
    char buf[MAX_CMD_ARG_LEN + 1];
    char *argbuf = buf;
    int arg_count = 0;
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   printk("Kernel cmdline: '%s'\n", cmdline);
+#endif
 
    for (const char *p = cmdline; *p;) {
 
