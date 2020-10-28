@@ -36,6 +36,6 @@ if [ -s "@EFI_ia32_FILE@" ]; then
    $mcopy -i $dest "@EFI_ia32_FILE@" ::/EFI/BOOT/
 fi
 
-if [ -n "@KERNEL_FATPART_PATH@" ]; then
-   $mcopy -i $dest @KERNEL_FILE@ ::/@KERNEL_FATPART_PATH@
+if [ -n "@KERNEL_BOOTPART_PATH@" ]; then
+   $mcopy -i $dest @KERNEL_FILE@ ::/@KERNEL_BOOTPART_PATH@
 fi

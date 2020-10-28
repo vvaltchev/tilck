@@ -610,7 +610,7 @@ set(IMG_FILE               ${CMAKE_BINARY_DIR}/tilck.img)
 set(TILCK_DEVSHELL_PATH    "/initrd/usr/bin/devshell")
 
 if (${BOOTLOADER_LEGACY} OR ${BOOTLOADER_EFI})
-   set(KERNEL_FATPART_PATH    "EFI/BOOT/tilck")
+   set(KERNEL_BOOTPART_PATH    "tilck")
 endif()
 
 ################################################################################

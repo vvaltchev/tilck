@@ -9,7 +9,7 @@
 #include <tilck_gen_headers/config_global.h>
 #include <tilck/common/page_size.h>
 
-#define KERNEL_FILE_PATH       "/@KERNEL_FATPART_PATH@"
+#define KERNEL_FILE_PATH       "/@KERNEL_BOOTPART_PATH@"
 
 #define SECTOR_SIZE            @SECTOR_SIZE@
 #define BL_ST2_DATA_SEG        @BL_ST2_DATA_SEG@
