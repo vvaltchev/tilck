@@ -19,8 +19,8 @@ static void debug_dump_slow_irq_handler_count(void)
    extern u32 slow_timer_irq_handler_count;
 
    if (KRN_TRACK_NESTED_INTERR) {
-      dp_write(row++, 0, "   Slow timer irq handler counter: %u",
-               slow_timer_irq_handler_count);
+      dp_writeln("   Slow timer irq handler counter: %u",
+                 slow_timer_irq_handler_count);
    }
 }
 
@@ -30,12 +30,11 @@ static void debug_dump_spur_irq_count(void)
    const u64 ticks = get_ticks();
 
    if (ticks > TIMER_HZ)
-      dp_write(row++, 0, "   Spurious IRQ count: %u (%u/sec)",
-               spur_irq_count,
-               spur_irq_count / (ticks / TIMER_HZ));
+      dp_writeln("   Spurious IRQ count: %u (%u/sec)",
+                 spur_irq_count,
+                 spur_irq_count / (ticks / TIMER_HZ));
    else
-      dp_write(row++, 0, "   Spurious IRQ count: %u (< 1 sec)",
-               spur_irq_count, spur_irq_count);
+      dp_writeln("   Spurious IRQ count: %u", spur_irq_count);
 }
 
 static void debug_dump_unhandled_irq_count(void)
@@ -49,27 +48,39 @@ static void debug_dump_unhandled_irq_count(void)
    if (!tot_count)
       return;
 
-   row++;
-   dp_write(row, 0, "Unhandled IRQs count table\n");
+   dp_writeln("");
+   dp_writeln("Unhandled IRQs count table");
 
    for (int i = 0; i < ARRAY_SIZE(unhandled_irq_count); i++) {
 
       if (unhandled_irq_count[i])
-         dp_write(row, 0, "   IRQ #%3u: %3u unhandled", i,
-                  unhandled_irq_count[i]);
+         dp_writeln("   IRQ #%3u: %3u unhandled", i,
+                    unhandled_irq_count[i]);
+   }
+}
+
+static void debug_dump_masked_irqs(void)
+{
+   dp_writeln("");
+   dp_writeln("Unmasked IRQs: ");
+
+   for (int i = 0; i < 16; i++) {
+      if (!irq_is_masked(i))
+         dp_write_raw("#%u ", i);
    }
 
-   row++;
+   dp_writeln("");
 }
 
 static void dp_show_irq_stats(void)
 {
    row = dp_screen_start_row;
 
-   dp_write(row++, 0, "Kernel IRQ-related counters");
+   dp_writeln("Kernel IRQ-related counters");
    debug_dump_slow_irq_handler_count();
    debug_dump_spur_irq_count();
    debug_dump_unhandled_irq_count();
+   debug_dump_masked_irqs();
 }
 
 static struct dp_screen dp_irqs_screen =
