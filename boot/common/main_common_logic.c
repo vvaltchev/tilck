@@ -178,6 +178,25 @@ load_kernel_file(void)
 
    kernel_build_info = (void *)((char *)header + section->sh_offset);
    parse_kernel_mods_list();
+
+   if (kmod_console) {
+
+      if (kmod_fb) {
+
+         if (selected_mode == INVALID_VIDEO_MODE ||
+             selected_mode == intf->text_mode)
+         {
+            selected_mode = g_defmode;
+         }
+
+      } else {
+         selected_mode = intf->text_mode;
+      }
+
+   } else {
+      selected_mode = INVALID_VIDEO_MODE;
+   }
+
    write_ok_msg();
    return true;
 }
@@ -261,9 +280,11 @@ run_interactive_logic(void)
 
       wait_for_key = true;
 
-      if (!intf->get_mode_info(selected_mode, &gi)) {
-         printk("ERROR: get_mode_info() failed");
-         return false;
+      if (selected_mode != INVALID_VIDEO_MODE) {
+         if (!intf->get_mode_info(selected_mode, &gi)) {
+            printk("ERROR: get_mode_info() failed");
+            return false;
+         }
       }
 
       extract_commit_hash_and_date(kernel_build_info, &comm);
@@ -278,7 +299,12 @@ run_interactive_logic(void)
       printk("\n");
 
       printk("v) Video mode: ");
-      show_mode(-1, &gi, false);
+
+      if (selected_mode != INVALID_VIDEO_MODE)
+         show_mode(-1, &gi, false);
+      else
+         printk("<none>\n");
+
       printk("e) Cmdline:    '%s'\n", cmdline_buf);
       printk("b) Boot\n");
 
@@ -298,10 +324,18 @@ run_interactive_logic(void)
             break;
 
          case 'v':
-            show_video_modes();
-            printk("\n");
-            selected_mode = get_user_video_mode_choice();
-            wait_for_key = false;
+
+            if (selected_mode != INVALID_VIDEO_MODE && kmod_fb) {
+
+               show_video_modes();
+               printk("\n");
+               selected_mode = get_user_video_mode_choice();
+               wait_for_key = false;
+
+            } else {
+               printk("Cannot change video mode with this kernel\n");
+            }
+
             break;
 
          case 'e':
@@ -380,14 +414,41 @@ retry:
       return false;
    }
 
-   if (!intf->set_curr_video_mode(selected_mode)) {
+   if (selected_mode != INVALID_VIDEO_MODE) {
 
-      if (BOOT_INTERACTIVE) {
-         printk("ERROR: cannot set the selected video mode\n");
-         goto retry;
+      if (!intf->set_curr_video_mode(selected_mode)) {
+
+         if (BOOT_INTERACTIVE) {
+            printk("ERROR: cannot set the selected video mode\n");
+            goto retry;
+         }
+
+         /* In this other case, the current video mode will be kept */
       }
 
-      /* In this other case, the current video mode will be kept */
+   } else {
+
+      /* No video mode */
+
+      if (kmod_serial) {
+
+         intf->clear_screen();
+         printk("<No video console>");
+
+      } else {
+
+         printk("\n");
+         printk("*** FATAL ERROR ***\n");
+         printk("The kernel supports neither video nor serial console.\n");
+
+         if (kmod_console) {
+            printk("The kernel supports text mode but text mode is NOT ");
+            printk("available when\nbooting with UEFI.\n\n");
+         }
+
+         printk("Refuse to boot.\n");
+         goto retry;
+      }
    }
 
    return true;
