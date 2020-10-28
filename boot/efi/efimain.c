@@ -61,20 +61,8 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
       goto end;
    }
 
-   status = AllocateMbi();
-   HANDLE_EFI_ERROR("AllocateMbi");
-
-   status = MbiSetRamdisk();
-   HANDLE_EFI_ERROR("MbiSetRamdisk");
-
-   status = MbiSetBootloaderName();
-   HANDLE_EFI_ERROR("MbiSetBootloaderName");
-
-   status = MbiSetPointerToAcpiTable();
-   HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
-
-   MbiSetFramebufferInfo(gProt->Mode->Info, gProt->Mode->FrameBufferBase);
-
+   status = SetupMultibootInfo();
+   HANDLE_EFI_ERROR("SetupMultibootInfo");
 
    //
    // For debugging with GDB (see docs/efi_debug.md)

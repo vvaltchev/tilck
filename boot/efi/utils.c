@@ -95,8 +95,8 @@ GetMemoryMap(UINTN *mapkey)
    UINT32 desc_ver;
    EFI_STATUS status;
 
-   mmap_size = sizeof(mmap);
-   status = BS->GetMemoryMap(&mmap_size, mmap, mapkey, &desc_size, &desc_ver);
+   gMmap_size = sizeof(gMmap);
+   status = BS->GetMemoryMap(&gMmap_size,gMmap,mapkey,&gDesc_size,&desc_ver);
    HANDLE_EFI_ERROR("BS->GetMemoryMap");
 
 end:
@@ -107,7 +107,7 @@ EFI_MEMORY_DESCRIPTOR *
 GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr)
 {
    EFI_MEMORY_DESCRIPTOR *desc = NULL;
-   desc = (void *)mmap;
+   desc = (void *)gMmap;
 
    do {
 
@@ -117,9 +117,9 @@ GetMemDescForAddress(EFI_PHYSICAL_ADDRESS paddr)
       if (IN_RANGE(paddr, start, end))
          return desc;
 
-      desc = (void *)desc + desc_size;
+      desc = (void *)desc + gDesc_size;
 
-   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
+   } while ((UINTN)desc < (UINTN)gMmap + gMmap_size);
 
    return NULL;
 }

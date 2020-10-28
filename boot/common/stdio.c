@@ -14,6 +14,11 @@ read_line(char *buf, int buf_sz)
    int len = 0;
    int c;
 
+   for (char *s = buf; *s; s++) {
+      printk("%c", *s);
+      len++;
+   }
+
    while (true) {
 
       c = intf->read_key();

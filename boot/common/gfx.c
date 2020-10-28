@@ -229,8 +229,9 @@ get_user_video_mode_choice(void)
 
    while (true) {
 
-      printk("Select a video mode [0 - %d]: ", ok_modes_cnt - 1);
+      buf[0] = 0;
 
+      printk("Select a video mode [0 - %d]: ", ok_modes_cnt - 1);
       len = read_line(buf, sizeof(buf));
 
       if (!len) {

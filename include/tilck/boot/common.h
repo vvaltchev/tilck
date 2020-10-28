@@ -18,6 +18,7 @@
 #endif
 
 #define INVALID_VIDEO_MODE             ((video_mode_t)~0)
+#define CMDLINE_BUF_SZ                                 80
 
 struct generic_video_mode_info {
 
@@ -43,6 +44,8 @@ struct bootloader_intf {
 
    bool (*load_kernel_file)(const char *path, void **paddr);
    bool (*load_initrd)(void);
+
+   char *(*get_cmdline_buf)(u32 *buf_sz);
 
    /* Const configuration values that must be provided */
    video_mode_t text_mode;

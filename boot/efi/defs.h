@@ -19,6 +19,8 @@
    #define EXTERN
 #endif
 
+#define EFI_MBI_MAX_ADDR                                 (64 * KB)
+
 EXTERN multiboot_info_t *gMbi;
 EXTERN EFI_HANDLE gImageHandle;
 EXTERN EFI_LOADED_IMAGE *gLoadedImage;
@@ -27,21 +29,17 @@ EXTERN EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *gFileFsProt;
 EXTERN EFI_FILE_PROTOCOL *gFileProt;
 EXTERN EFI_PHYSICAL_ADDRESS gRamdiskPaddr;
 EXTERN UINTN gRamdiskSize;
+EXTERN EFI_MEMORY_DESCRIPTOR gMmap[512];
+EXTERN UINTN gMmap_size;
+EXTERN UINTN gDesc_size;
+EXTERN char *gCmdlineBuf;
 EXTERN bool gExitBootServicesCalled;
 
 extern const struct bootloader_intf efi_boot_intf;
 
 EFI_STATUS LoadKernelFile(CHAR16 *filePath, EFI_PHYSICAL_ADDRESS *paddr);
-EFI_STATUS AllocateMbi(void);
 EFI_STATUS MultibootSaveMemoryMap(UINTN *mapkey);
-EFI_STATUS MbiSetBootloaderName(void);
-EFI_STATUS MbiSetPointerToAcpiTable(void);
-EFI_STATUS MbiSetRamdisk(void);
-
-
-void
-MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
-                      UINTN fb_addr);
+EFI_STATUS SetupMultibootInfo(void);
 
 EFI_STATUS
 ReserveMemAreaForKernelImage(void);

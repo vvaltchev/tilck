@@ -210,6 +210,7 @@ const struct bootloader_intf legacy_boot_intf = {
    .set_curr_video_mode = &legacy_boot_set_curr_video_mode,
    .load_kernel_file = &legacy_boot_load_kernel_file,
    .load_initrd = &legacy_boot_load_initrd,
+   .get_cmdline_buf = &legacy_boot_get_cmdline_buf,
 
    /* Configuration values */
    .text_mode = VGA_COLOR_TEXT_MODE_80x25,

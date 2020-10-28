@@ -8,34 +8,57 @@
 #include "mm.h"
 #include "vbe.h"
 
-multiboot_info_t *
-setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size)
+static multiboot_info_t *mbi;
+static multiboot_module_t *mod;
+static multiboot_memory_map_t *mmmap;
+static char *cmdline_buf;
+
+char *
+legacy_boot_get_cmdline_buf(u32 *buf_sz)
+{
+   ASSERT(cmdline_buf != NULL);
+   *buf_sz = CMDLINE_BUF_SZ;
+
+   return cmdline_buf;
+}
+
+void
+alloc_mbi(void)
 {
    ulong free_mem;
-   multiboot_info_t *mbi;
-   multiboot_module_t *mod;
 
-   /* Try first in the 1st 64 KB segment */
    free_mem = get_usable_mem(&g_meminfo, 16 * KB, 48 * KB);
 
-   if (!free_mem) {
-
-      /* Second try in the 2nd 64 KB segment */
-      free_mem = get_usable_mem(&g_meminfo, 64 * KB, 48 * KB);
-
-      if (!free_mem)
-         panic("Unable to allocate memory for the multiboot info");
-   }
+   if (!free_mem)
+      panic("Unable to allocate memory for the multiboot info");
 
    mbi = (multiboot_info_t *) free_mem;
    bzero(mbi, sizeof(*mbi));
 
-   mod = (multiboot_module_t *)((char*)mbi + sizeof(*mbi));
+   mod = (multiboot_module_t *)((char *)mbi + sizeof(*mbi));
    bzero(mod, sizeof(*mod));
+
+   cmdline_buf = (char *)mod + (1 /* count */ * sizeof(multiboot_module_t));
+   bzero(cmdline_buf, CMDLINE_BUF_SZ);
+
+   mmmap = (void *)(cmdline_buf + CMDLINE_BUF_SZ);
+   bzero(mmmap, g_meminfo.count * sizeof(multiboot_memory_map_t));
+}
+
+multiboot_info_t *
+setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size)
+{
+   ASSERT(mbi != NULL);
+   ASSERT(mod != NULL);
 
    mbi->flags |= MULTIBOOT_INFO_MEMORY;
    mbi->mem_lower = 0;
    mbi->mem_upper = 0;
+
+   if (cmdline_buf[0]) {
+      mbi->flags |= MULTIBOOT_INFO_CMDLINE;
+      mbi->cmdline = (u32) cmdline_buf;
+   }
 
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
 
@@ -79,10 +102,6 @@ setup_multiboot_info(ulong ramdisk_paddr, ulong ramdisk_size)
    mod->mod_end = mod->mod_start + ramdisk_size;
 
    mbi->flags |= MULTIBOOT_INFO_MEM_MAP;
-
-   multiboot_memory_map_t *mmmap =
-      (void *)mbi->mods_addr + (mbi->mods_count * sizeof(multiboot_module_t));
-
    mbi->mmap_addr = (u32)mmmap;
    mbi->mmap_length = g_meminfo.count * sizeof(multiboot_memory_map_t);
 

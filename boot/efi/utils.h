@@ -20,10 +20,6 @@
        }                                                     \
     } while (0)
 
-extern EFI_MEMORY_DESCRIPTOR mmap[512];
-extern UINTN mmap_size;
-extern UINTN desc_size;
-
 void
 JumpToKernel(void *entry_point);
 

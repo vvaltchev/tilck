@@ -29,6 +29,8 @@ static char kernel_file_path[64] = KERNEL_FILE_PATH;
 static char line_buf[64];
 static void *kernel_elf_file_paddr;
 static struct build_info *kernel_build_info;
+static char *cmdline_buf;
+static u32 cmdline_buf_sz;
 static u8 mods_start[32];
 static u8 mods_len[32];
 static int mods_cnt;
@@ -221,8 +223,8 @@ clear_screen(void)
 static void
 print_kernel_mods(void)
 {
-   static char prefix[]         = "     modules: ";
-   static char prefix_padding[] = "              ";
+   static char prefix[]         = "     modules:  ";
+   static char prefix_padding[] = "               ";
 
    char *mods = kernel_build_info->modules_list;
    int per_line_len = sizeof(prefix) - 1;
@@ -269,17 +271,20 @@ run_interactive_logic(void)
       printk("Menu\n");
       printk("---------------------------------------------------\n");
       printk("k) Kernel file: %s\n", kernel_file_path);
-      printk("     version: %s\n", kernel_build_info->ver);
-      printk("     commit:  %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
-      printk("     date:    %s\n", comm.date);
+      printk("     version:  %s\n", kernel_build_info->ver);
+      printk("     commit:   %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
+      printk("     date:     %s\n", comm.date);
       print_kernel_mods();
       printk("\n");
 
-      printk("v) Video mode:  ");
+      printk("v) Video mode: ");
       show_mode(-1, &gi, false);
+      printk("e) Cmdline:    '%s'\n", cmdline_buf);
       printk("b) Boot\n");
 
       printk("\n> ");
+
+      buf[0] = 0;
       read_line(buf, sizeof(buf));
 
       switch (buf[0]) {
@@ -296,6 +301,12 @@ run_interactive_logic(void)
             show_video_modes();
             printk("\n");
             selected_mode = get_user_video_mode_choice();
+            wait_for_key = false;
+            break;
+
+         case 'e':
+            printk("Cmdline: ");
+            read_line(cmdline_buf, MIN(70, (int)cmdline_buf_sz));
             wait_for_key = false;
             break;
 
@@ -328,6 +339,17 @@ common_bootloader_logic(void)
 
    fetch_all_video_modes_once();
    selected_mode = g_defmode;
+   cmdline_buf = intf->get_cmdline_buf(&cmdline_buf_sz);
+
+   if (!cmdline_buf)
+      panic("No cmdline buffer");
+
+   if (cmdline_buf_sz < CMDLINE_BUF_SZ)
+      panic("Cmdline buffer too small");
+
+   strcpy(cmdline_buf, "tilck "); /* 1st argument, always ignored */
+   cmdline_buf += 6;
+   cmdline_buf_sz -= 6;
 
    if (!load_kernel_file())
       return false;

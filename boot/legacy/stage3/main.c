@@ -75,6 +75,15 @@ load_kernel_file(const char *filepath)
    return true;
 }
 
+static void
+check_cpu_features(void)
+{
+   get_cpu_features();
+
+   if (!x86_cpu_features.edx1.pse)
+      panic("Sorry, but your CPU is too old: no PSE (page size extension)");
+}
+
 void bootloader_main(void)
 {
    multiboot_info_t *mbi;
@@ -95,15 +104,15 @@ void bootloader_main(void)
    /* Sanity check: realmode_call should be able to return all reg values */
    test_rm_call_working();
 
-   get_cpu_features();
-
-   if (!x86_cpu_features.edx1.pse)
-      panic("Sorry, but your CPU is too old: no PSE (page size extension)");
+   /* Check if the CPU has the minimum set of features we need */
+   check_cpu_features();
 
    read_memory_map(ma_buf, sizeof(ma_buf), &g_meminfo);
 
    if (BOOTLOADER_POISON_MEMORY)
       poison_usable_memory(&g_meminfo);
+
+   alloc_mbi();
 
    success =
       read_drive_params(current_device,

@@ -37,9 +37,6 @@ void poison_usable_memory(struct mem_info *mi);
  */
 ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size);
 
-/* Wrapper of get_usable_mem() which triggers PANIC instead of returning 0 */
-ulong get_usable_mem_or_panic(struct mem_info *mi, ulong min_paddr, ulong size);
-
 /* Get usable memory at the highest address possible */
 ulong get_high_usable_mem(struct mem_info *mi, ulong size);
 

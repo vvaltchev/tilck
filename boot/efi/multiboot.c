@@ -5,17 +5,10 @@
 #include "defs.h"
 #include "utils.h"
 
-#define EFI_MBI_MAX_ADDR (64 * KB)
+static multiboot_memory_map_t *multiboot_mmap;
+static UINT32 mmap_elems_count;
 
-EFI_MEMORY_DESCRIPTOR mmap[512];
-UINTN mmap_size;
-UINTN desc_size;
-
-multiboot_info_t *gMbi;
-multiboot_memory_map_t *multiboot_mmap;
-UINT32 mmap_elems_count;
-
-EFI_STATUS
+static EFI_STATUS
 AllocateMbi(void)
 {
    EFI_STATUS status = EFI_SUCCESS;
@@ -34,10 +27,12 @@ end:
    return status;
 }
 
-void
-MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
-                      UINTN fb_addr)
+static void
+MbiSetFramebufferInfo(void)
 {
+   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info = gProt->Mode->Info;
+   UINTN fb_addr = gProt->Mode->FrameBufferBase;
+
    gMbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
    gMbi->framebuffer_addr = fb_addr;
    gMbi->framebuffer_pitch =
@@ -62,7 +57,8 @@ MbiSetFramebufferInfo(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mode_info,
    gMbi->framebuffer_blue_mask_size = 8;
 }
 
-static UINT32 EfiToMultibootMemType(UINT32 type)
+static UINT32
+EfiToMultibootMemType(UINT32 type)
 {
    switch (type) {
 
@@ -98,7 +94,8 @@ static UINT32 EfiToMultibootMemType(UINT32 type)
    }
 }
 
-static void AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
+static void
+AddMemoryRegion(UINT64 start, UINT64 end, UINT32 type)
 {
    gMbi->flags |= MULTIBOOT_INFO_MEMORY;
 
@@ -142,7 +139,7 @@ MultibootSaveMemoryMap(UINTN *mapkey)
    HANDLE_EFI_ERROR("GetMemoryMap");
 
    gMbi->flags |= MULTIBOOT_INFO_MEM_MAP;
-   desc = (void *)mmap;
+   desc = (void *)gMmap;
 
    do {
 
@@ -173,9 +170,9 @@ MultibootSaveMemoryMap(UINTN *mapkey)
        */
       last_end = end;
 
-      desc = (void *)desc + desc_size;
+      desc = (void *)desc + gDesc_size;
 
-   } while ((UINTN)desc < (UINTN)mmap + mmap_size);
+   } while ((UINTN)desc < (UINTN)gMmap + gMmap_size);
 
    AddMemoryRegion(last_start, last_end, last_type);
 
@@ -186,7 +183,7 @@ end:
    return status;
 }
 
-EFI_STATUS
+static EFI_STATUS
 MbiSetRamdisk(void)
 {
    EFI_STATUS status = EFI_SUCCESS;
@@ -213,7 +210,7 @@ end:
    return status;
 }
 
-EFI_STATUS
+static EFI_STATUS
 MbiSetBootloaderName(void)
 {
    static char BootloaderName[] = "TILCK_EFI";
@@ -235,7 +232,7 @@ end:
    return status;
 }
 
-EFI_STATUS
+static EFI_STATUS
 MbiSetPointerToAcpiTable(void)
 {
    static EFI_GUID gAcpi20Table = ACPI_20_TABLE_GUID;
@@ -287,12 +284,50 @@ MbiSetPointerToAcpiTable(void)
     * ACPICA won't be usable. This limitation will be removed when Tilck gets
     * support for multiboot 2.0 as well.
     *
-    * History note: why Tilck does not support multiboot 2.0 from the beginning?
-    * Because QEMU doesn't and it was so simply to just support only multiboot1
-    * everywhere. Supporting only multiboot2 was not an option because would
-    * require always booting Tilck with its bootloader under QEMU: that's slower
-    * for tests and limiting for debugging purposes.
+    * History notes
+    * -----------------
+    *
+    *    Q: Why Tilck does not support multiboot 2.0 from the beginning?
+    *
+    *    A: Because QEMU doesn't and it was so simply to just support only
+    *       multiboot 1.0 everywhere. Supporting only multiboot 2.0 was not an
+    *       option because would require always booting Tilck with its
+    *       bootloader under QEMU: that's slower for tests and limiting for
+    *       debugging purposes.
     */
    gMbi->apm_table = (u32)tablePaddr;
    return EFI_SUCCESS;
+}
+
+static void
+MbiSetKernelCmdline(void)
+{
+   if (gCmdlineBuf[0]) {
+      gMbi->flags |= MULTIBOOT_INFO_CMDLINE;
+      gMbi->cmdline = (u32)(ulong)gCmdlineBuf;
+   }
+}
+
+EFI_STATUS
+SetupMultibootInfo(void)
+{
+   EFI_STATUS status;
+
+   status = AllocateMbi();
+   HANDLE_EFI_ERROR("AllocateMbi");
+
+   status = MbiSetRamdisk();
+   HANDLE_EFI_ERROR("MbiSetRamdisk");
+
+   status = MbiSetBootloaderName();
+   HANDLE_EFI_ERROR("MbiSetBootloaderName");
+
+   status = MbiSetPointerToAcpiTable();
+   HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
+
+   MbiSetFramebufferInfo();
+   MbiSetKernelCmdline();
+
+end:
+   return status;
 }

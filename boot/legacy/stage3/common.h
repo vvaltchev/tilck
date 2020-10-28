@@ -41,4 +41,8 @@ load_fat_ramdisk(const char *load_str,
 bool
 load_kernel_file(const char *filepath);
 
+void
+alloc_mbi(void);
 
+char *
+legacy_boot_get_cmdline_buf(u32 *buf_sz);

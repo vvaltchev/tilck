@@ -139,6 +139,31 @@ end:
    return status == EFI_SUCCESS;
 }
 
+char *efi_boot_get_cmdline_buf(UINT32 *buf_sz)
+{
+   EFI_PHYSICAL_ADDRESS buf = EFI_MBI_MAX_ADDR;
+   EFI_STATUS status = EFI_SUCCESS;
+
+   if (!gCmdlineBuf) {
+
+      status = BS->AllocatePages(AllocateMaxAddress,
+                                 EfiLoaderData,
+                                 1,
+                                 &buf);
+
+      if (EFI_ERROR(status)) {
+         Print(L"ERROR: cannot allocate cmdline buffer\n");
+         return NULL;
+      }
+
+      gCmdlineBuf = TO_PTR(buf);
+      BS->SetMem(gCmdlineBuf, CMDLINE_BUF_SZ, 0);
+   }
+
+   *buf_sz = CMDLINE_BUF_SZ;
+   return gCmdlineBuf;
+}
+
 const struct bootloader_intf efi_boot_intf = {
 
    /* Methods */
@@ -152,6 +177,7 @@ const struct bootloader_intf efi_boot_intf = {
    .set_curr_video_mode = &efi_boot_set_curr_video_mode,
    .load_kernel_file = &efi_boot_load_kernel_file,
    .load_initrd = &efi_boot_load_initrd,
+   .get_cmdline_buf = &efi_boot_get_cmdline_buf,
 
    /* Configuration values */
    .text_mode = INVALID_VIDEO_MODE,

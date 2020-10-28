@@ -138,16 +138,6 @@ ulong get_usable_mem(struct mem_info *mi, ulong min_paddr, ulong size)
    return 0;
 }
 
-ulong get_usable_mem_or_panic(struct mem_info *mi, ulong min_paddr, ulong size)
-{
-   ulong free_mem = get_usable_mem(mi, min_paddr, size);
-
-   if (!free_mem)
-      panic("Unable to allocate %u bytes after %p", size, min_paddr);
-
-   return free_mem;
-}
-
 ulong get_high_usable_mem(struct mem_info *mi, ulong size)
 {
    struct mem_area *ma;
