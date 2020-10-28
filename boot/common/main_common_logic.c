@@ -29,6 +29,12 @@ static char kernel_file_path[64] = KERNEL_FILE_PATH;
 static char line_buf[64];
 static void *kernel_elf_file_paddr;
 static struct build_info *kernel_build_info;
+static u8 mods_start[32];
+static u8 mods_len[32];
+static int mods_cnt;
+static bool kmod_console;
+static bool kmod_fb;
+static bool kmod_serial;
 
 void
 write_bootloader_hello_msg(void)
@@ -105,6 +111,42 @@ get_loaded_kernel_mem_sz(void)
    return elf_calc_mem_size(kernel_elf_file_paddr);
 }
 
+static void
+parse_kernel_mods_list(void)
+{
+   char *mods = kernel_build_info->modules_list;
+   char *begin = mods;
+   u8 len;
+
+   mods_cnt = 0;
+   kmod_console = false;
+   kmod_fb = false;
+   kmod_serial = false;
+
+   for (char *p = mods; *p; p++) {
+
+      if (*p != ' ' && p[1])
+         continue;
+
+      len = p - begin + !p[1];
+
+      if (!strncmp(begin, "console", 7))
+         kmod_console = true;
+      else if (!strncmp(begin, "fb", 2))
+         kmod_fb = true;
+      else if (!strncmp(begin, "serial", 6))
+         kmod_serial = true;
+
+      if (mods_cnt == ARRAY_SIZE(mods_start))
+         continue;
+
+      mods_start[mods_cnt] = begin - mods;
+      mods_len[mods_cnt] = len;
+      begin = p + 1;
+      mods_cnt++;
+   }
+}
+
 static bool
 load_kernel_file(void)
 {
@@ -133,6 +175,7 @@ load_kernel_file(void)
    }
 
    kernel_build_info = (void *)((char *)header + section->sh_offset);
+   parse_kernel_mods_list();
    write_ok_msg();
    return true;
 }
@@ -175,6 +218,35 @@ clear_screen(void)
    write_bootloader_hello_msg();
 }
 
+static void
+print_kernel_mods(void)
+{
+   static char prefix[]         = "     modules: ";
+   static char prefix_padding[] = "              ";
+
+   char *mods = kernel_build_info->modules_list;
+   int per_line_len = sizeof(prefix) - 1;
+   char tmp[32];
+
+   printk("%s", prefix);
+
+   for (int i = 0; i < mods_cnt; i++) {
+
+      strncpy(tmp, mods + mods_start[i], mods_len[i]);
+      tmp[mods_len[i]] = 0;
+
+      if (per_line_len + mods_len[i] > 75) {
+         printk("\n%s", prefix_padding);
+         per_line_len = sizeof(prefix) - 1;
+      }
+
+      printk("%s ", tmp);
+      per_line_len += mods_len[i] + 1;
+   }
+
+   printk("\n");
+}
+
 static bool
 run_interactive_logic(void)
 {
@@ -194,14 +266,15 @@ run_interactive_logic(void)
 
       extract_commit_hash_and_date(kernel_build_info, &comm);
 
-      printk("Menu:\n");
+      printk("Menu\n");
       printk("---------------------------------------------------\n");
       printk("k) Kernel file: %s\n", kernel_file_path);
       printk("     version: %s\n", kernel_build_info->ver);
       printk("     commit:  %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
       printk("     date:    %s\n", comm.date);
-      printk("     modules: %s\n", kernel_build_info->modules_list);
+      print_kernel_mods();
       printk("\n");
+
       printk("v) Video mode:  ");
       show_mode(-1, &gi, false);
       printk("b) Boot\n");
