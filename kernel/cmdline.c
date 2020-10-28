@@ -14,8 +14,9 @@
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 int kopt_tty_count = TTY_COUNT;
-bool kopt_sched_alive_thread;
+bool kopt_sched_alive_thread; /* false */
 bool kopt_serial_console = !MOD_console;
+bool kopt_noacpi; /* false */
 
 /* static variables */
 
@@ -97,19 +98,28 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
    if (arg_num == 0)
       return;
 
+   /* User options */
+
    if (!strcmp(arg, "-sercon")) {
       kopt_serial_console = true;
       kopt_tty_count = 1;
       return;
    }
 
-   if (!strcmp(arg, "-sat")) {
-      kopt_sched_alive_thread = true;
+   if (!strcmp(arg, "-ttys")) {
+      kernel_arg_parser_state = SET_TTY_COUNT;
       return;
    }
 
-   if (!strcmp(arg, "-ttys")) {
-      kernel_arg_parser_state = SET_TTY_COUNT;
+   if (!strcmp(arg, "-noacpi")) {
+      kopt_noacpi = true;
+      return;
+   }
+
+   /* Internal options, used by tests */
+
+   if (!strcmp(arg, "-sat")) {
+      kopt_sched_alive_thread = true;
       return;
    }
 

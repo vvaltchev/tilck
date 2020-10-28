@@ -9,6 +9,7 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <tilck/mods/pci.h>
 #include <tilck/mods/acpi.h>
@@ -538,6 +539,11 @@ acpi_has_method(ACPI_HANDLE obj, const char *name)
 static void
 acpi_module_init(void)
 {
+   if (kopt_noacpi) {
+      printk("ACPI: don't load tables and switch to ACPI mode (-noacpi)\n");
+      return;
+   }
+
    acpi_mod_load_tables();
    acpi_mod_enable_subsystem();
 }
