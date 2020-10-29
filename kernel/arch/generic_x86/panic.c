@@ -86,10 +86,14 @@ static void panic_print_task_info(struct task *curr)
 NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
+   static bool first_in_panic_double_fault;
+   static const char *saved_fmt;
+   static va_list saved_args;
 
    ulong rc;
    va_list args;
    struct task *curr;
+   bool panic_triggered_df = false;
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
 
@@ -97,13 +101,38 @@ NORETURN void panic(const char *fmt, ...)
 
       /* Ouch, nested panic! */
 
-      if (first_printk_ok)
-         printk("FATAL: got panic while in panic state. Halt.\n");
+      if (!__in_double_fault || first_in_panic_double_fault) {
 
-      goto end;
+         /*
+          * If we're NOT in double fault or we're in a double fault occurred
+          * BEFORE the first call to panic(), we're in a pathologic panic loop
+          * and there's nothing more we can do.
+          */
+
+         if (first_printk_ok)
+            printk("[panic] Got panic while in panic state. Halt.\n");
+
+         goto end;
+      }
+
+      /*
+       * In this case we're in double fault caused by panic() itself because of
+       * stack overflow. Since the double fault handler uses a separate stack,
+       * we can continue.
+       */
+
+      panic_triggered_df = true;
    }
 
    __in_panic = true;
+   first_in_panic_double_fault = __in_double_fault;
+
+   va_start(args, fmt);
+
+   if (!saved_fmt) {
+      saved_fmt = fmt;
+      va_copy(saved_args, args);
+   }
 
    disable_fpu_features();
 
@@ -139,8 +168,6 @@ NORETURN void panic(const char *fmt, ...)
 
    first_printk_ok = true;
 
-   va_start(args, fmt);
-
    /* print the arguments in a fault-safe way */
    rc = fault_resumable_call(ALL_FAULTS_MASK, vprintk, 2, fmt, args);
 
@@ -151,6 +178,24 @@ NORETURN void panic(const char *fmt, ...)
 
    va_end(args);
    printk("\n");
+
+   if (panic_triggered_df) {
+
+      printk("[panic] The double fault occurred in panic (stack overflow)\n");
+      printk("[panic] Original panic message: <<\n");
+
+      /* print the arguments in a fault-safe way */
+      rc = fault_resumable_call(ALL_FAULTS_MASK,
+                                vprintk,
+                                2, saved_fmt, saved_args);
+
+      if (rc != 0) {
+         printk("[panic] Got fault %d while trying to print "
+                "the panic message.", get_fault_num(rc));
+      }
+
+      printk(">>\n");
+   }
 
    panic_print_task_info(curr);
    panic_dump_nested_interrupts();
