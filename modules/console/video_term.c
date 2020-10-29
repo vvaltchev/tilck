@@ -185,7 +185,7 @@ static void term_action_enable_cursor(term *_t, u16 val, ...)
 static void term_redraw2(term *_t, u16 s, u16 e)
 {
    struct vterm *const t = _t;
-   const bool fpu_allowed = !in_irq();
+   const bool fpu_allowed = !in_irq() && !in_panic();
 
    if (!t->buffer)
       return;
@@ -821,11 +821,13 @@ static void term_action_restart_video_output(term *_t, ...)
    term_redraw(t);
    term_action_enable_cursor(t, t->cursor_enabled);
 
-   if (t->vi->redraw_static_elements)
-      t->vi->redraw_static_elements();
+   if (!in_panic()) {
+      if (t->vi->redraw_static_elements)
+         t->vi->redraw_static_elements();
 
-   if (t->vi->enable_static_elems_refresh)
-      t->vi->enable_static_elems_refresh();
+      if (t->vi->enable_static_elems_refresh)
+         t->vi->enable_static_elems_refresh();
+   }
 }
 
 static int
