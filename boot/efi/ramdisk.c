@@ -226,8 +226,7 @@ EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loadedImg,
             EFI_PHYSICAL_ADDRESS *rd_paddr_ref,
-            UINTN *rd_size_ref,
-            UINTN CurrConsoleRow)
+            UINTN *rd_size_ref)
 {
    const UINTN initrd_off = INITRD_SECTOR * SECTOR_SIZE;
    EFI_STATUS status = EFI_SUCCESS;
@@ -257,7 +256,6 @@ LoadRamdisk(EFI_HANDLE image,
    HANDLE_EFI_ERROR("LoadRamdisk_AllocMem");
 
    status = ReadDiskWithProgress(ST->ConOut,
-                                 CurrConsoleRow,
                                  LOADING_INITRD_STR_U,
                                  ctx.blockio,
                                  initrd_off,
@@ -269,7 +267,7 @@ LoadRamdisk(EFI_HANDLE image,
    BS->CloseProtocol(bioDeviceHandle, &BlockIoProtocol, image, NULL);
    ctx.blockio = NULL;
 
-   ST->ConOut->SetCursorPosition(ST->ConOut, 0, CurrConsoleRow);
+   ST->ConOut->SetCursorPosition(ST->ConOut, 0, ST->ConOut->Mode->CursorRow);
    Print(LOADING_INITRD_STR_U);
    write_ok_msg();
 

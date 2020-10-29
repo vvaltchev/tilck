@@ -164,8 +164,7 @@ efi_boot_load_initrd(void)
    status = LoadRamdisk(gImageHandle,
                         gLoadedImage,
                         &gRamdiskPaddr,
-                        &gRamdiskSize,
-                        2); /* CurrConsoleRow (HACK). See ShowProgress() */
+                        &gRamdiskSize);
 
    HANDLE_EFI_ERROR("LoadRamdisk failed");
 

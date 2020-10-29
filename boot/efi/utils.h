@@ -43,14 +43,12 @@ LoadFileFromDisk(EFI_FILE_PROTOCOL *fileProt,
 
 void
 ShowProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
-             UINTN CurrRow,
              const CHAR16 *PrefixStr,
              UINTN curr,
              UINTN tot);
 
 EFI_STATUS
 ReadDiskWithProgress(SIMPLE_TEXT_OUTPUT_INTERFACE *ConOut,
-                     UINTN CurrRow,
                      const CHAR16 *loadingStr,
                      EFI_BLOCK_IO_PROTOCOL *blockio,
                      UINT64 Offset,

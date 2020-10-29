@@ -48,8 +48,7 @@ EFI_STATUS
 LoadRamdisk(EFI_HANDLE image,
             EFI_LOADED_IMAGE *loaded_image,
             EFI_PHYSICAL_ADDRESS *ramdisk_paddr_ref,
-            UINTN *gRamdiskSize,
-            UINTN CurrentConsoleRow); /* HACK: see ShowProgress() */
+            UINTN *gRamdiskSize);
 
 EFI_STATUS
 EarlySetDefaultResolution(void);
