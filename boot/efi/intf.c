@@ -52,7 +52,42 @@ efi_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
 static void
 efi_boot_clear_screen(void)
 {
-   ST->ConOut->ClearScreen(ST->ConOut);
+   EFI_STATUS status;
+   UINTN rows, cols;
+
+   /*
+    * Unfortunately, on some machines, the UEFI firmware doesn't do what we
+    * expect when we call:
+    *
+    *    ST->ConOut->ClearScreen(ST->ConOut);
+    *
+    * Instead, it resets the video mode back to its DEFAULT mode and only then
+    * clears the screen. That's particularly bad for high-res displays where
+    * when using the native resolution is the text is almost unreadable and,
+    * in general, such behavior completely defeats the purpose of our nice
+    * EarlySetDefaultResolution() function.
+    *
+    * Therefore, we're clear the screen in a different way.
+    */
+
+   status = ST->ConOut->QueryMode(ST->ConOut,
+                                  ST->ConOut->Mode->Mode,
+                                  &cols, &rows);
+
+   if (EFI_ERROR(status)) {
+      Print(L"ERROR: unable to query the current text mode: %r\n", status);
+      return;
+   }
+
+   status = ST->ConOut->SetCursorPosition(ST->ConOut, 0, 0);
+
+   if (EFI_ERROR(status))
+      return;
+
+   for (UINTN i = 0; i < (rows * cols); i += 30)
+      ST->ConOut->OutputString(ST->ConOut, L"                              ");
+
+   ST->ConOut->SetCursorPosition(ST->ConOut, 0, 0);
 }
 
 static video_mode_t
@@ -69,13 +104,12 @@ efi_boot_set_curr_video_mode(video_mode_t wanted_mode)
 
    if (wanted_mode != orig_mode) {
 
-      ST->ConOut->ClearScreen(ST->ConOut);    /* NOTE: do not handle failures */
+      efi_boot_clear_screen();
       status = gProt->SetMode(gProt, wanted_mode);
 
       if (EFI_ERROR(status)) {
-
          gProt->SetMode(gProt, orig_mode);    /* NOTE: do not handle failures */
-         ST->ConOut->ClearScreen(ST->ConOut); /* NOTE: do not handle failures */
+         efi_boot_clear_screen();
       }
    }
 
