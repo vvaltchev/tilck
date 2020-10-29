@@ -3,8 +3,10 @@
 #pragma once
 
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
-#error Never include this header directly. Do #include <tilck/kernel/hal.h>.
+   #error Never include this header directly. Do #include <tilck/kernel/hal.h>.
 #endif
+
+#include <tilck_gen_headers/config_kernel.h>
 
 struct x86_64_regs {
    /* STUB struct */
@@ -32,13 +34,12 @@ static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
    NOT_IMPLEMENTED();
 }
 
-static ALWAYS_INLINE ulong get_curr_stack_ptr(void)
-{
-   NOT_IMPLEMENTED();
-   return 0;
-}
-
 NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)
 {
    NOT_IMPLEMENTED();
+}
+
+static ALWAYS_INLINE ulong get_rem_stack(void)
+{
+   return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));
 }

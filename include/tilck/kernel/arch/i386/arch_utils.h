@@ -3,9 +3,10 @@
 #pragma once
 
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
-#error Never include this header directly. Do #include <tilck/kernel/hal.h>.
+   #error Never include this header directly. Do #include <tilck/kernel/hal.h>.
 #endif
 
+#include <tilck_gen_headers/config_kernel.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 
@@ -40,6 +41,8 @@ struct x86_arch_task_members {
    void *aligned_fpu_regs;
 };
 
+NORETURN void context_switch(regs_t *r);
+
 static ALWAYS_INLINE int regs_intnum(regs_t *r)
 {
    return r->int_num;
@@ -50,5 +53,7 @@ static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
    r->eax = value;
 }
 
-NORETURN void context_switch(regs_t *r);
-
+static ALWAYS_INLINE ulong get_rem_stack(void)
+{
+   return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));
+}
