@@ -3,10 +3,11 @@
 
 function download_micropython {
 
-   local tarname="micropython-1.13.tgz"
-   local url="https://github.com/micropython/micropython.git"
+   local ver="1.13-tilck"
+   local tarname="micropython-$ver.tgz"
+   local url="https://github.com/vvaltchev/micropython.git"
 
-   download_git_repo_in_cache "$url" v1.13 $tarname micropython
+   download_git_repo_in_cache "$url" v$ver $tarname micropython
    extract_cachefile_tar_gz $tarname --
 }
 
@@ -44,14 +45,15 @@ function build_micropython {
       fi
 
       export LDFLAGS_EXTRA="-static"
+      local opts="MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
 
       pushd mpy-cross
-      run_command2 "make MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 -j" build.log
+      run_command2 "make $opts -j" build.log
       popd
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
-      run_command2 "make MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 -j" build.log
+      run_command2 "make $opts -j" build.log
       popd
 
       export LDFLAGS_EXTRA=""

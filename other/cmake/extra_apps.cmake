@@ -45,15 +45,6 @@ if (EXTRA_FBDOOM)
 endif()
 
 if (EXTRA_MICROPYTHON)
-   set(msg "")
-   string(CONCAT msg "Micropython works only partially in Tilck: it cannot "
-                     "for example load a python file from the command line "
-                     "because it uses libmusl's realpath() function which, "
-                     "unfortunately, uses /proc/self/fd/<N>. Tilck does not "
-                     "support /proc at all, for the moment. Therefore, "
-                     "at the moment micropython works only in REPL mode, "
-                     "which is good enough only as a proof-of-concept.")
-   message(WARNING "${msg}")
    set(EXTRA_MICROPYTHON_ENABLED "1")
 endif()
 
