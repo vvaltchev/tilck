@@ -14,6 +14,17 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/datetime.h>
 
+#define PRINTK_BUF_SZ                         224
+#define PRINTK_PREFIXBUF_SZ                   32
+
+#ifdef BITS32
+   #define PRINTK_SAFE_STACK_SPACE         1536
+#else
+   #define PRINTK_SAFE_STACK_SPACE         2048   /* TODO: check this */
+#endif
+
+
+
 #define PRINTK_COLOR                          COLOR_GREEN
 #define PRINTK_RINGBUF_FLUSH_COLOR            COLOR_CYAN
 #define PRINTK_NOSPACE_IN_RBUF_FLUSH_COLOR    COLOR_MAGENTA
@@ -265,11 +276,14 @@ vsnprintk_with_truc_suffix(char *buf, u32 bufsz, const char *fmt, va_list args)
    return written;
 }
 
-void tilck_vprintk(u32 flags, const char *fmt, va_list args)
+static void
+__tilck_vprintk(char *prefixbuf,
+                char *buf,
+                u32 bufsz,
+                u32 flags,
+                const char *fmt,
+                va_list args)
 {
-   char prefixbuf[32];
-   char buf[224];
-
    bool prefix = !in_panic();
    bool has_newline = false;
    struct ringbuf_stat old;
@@ -286,7 +300,7 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
    if (flags & PRINTK_FL_NO_PREFIX)
       prefix = false;
 
-   written = vsnprintk_with_truc_suffix(buf, sizeof(buf), fmt, args);
+   written = vsnprintk_with_truc_suffix(buf, bufsz, fmt, args);
 
    for (int i = 0; i < written; i++) {
       if (buf[i] == '\n') {
@@ -302,9 +316,10 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
       const u64 systime = get_sys_time();
 
       prefix_sz = snprintk(
-         prefixbuf, sizeof(prefixbuf), "[%5u.%03u] ",
+         prefixbuf, PRINTK_PREFIXBUF_SZ, "[%5u.%03u] %s",
          (u32)(systime / TS_SCALE),
-         (u32)((systime % TS_SCALE) / (TS_SCALE / 1000))
+         (u32)((systime % TS_SCALE) / (TS_SCALE / 1000)),
+         bufsz < PRINTK_BUF_SZ ? "[LOWSS] " : ""
       );
 
    } else {
@@ -338,7 +353,7 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
 
          printk_direct_flush(prefixbuf, (size_t) prefix_sz, PRINTK_COLOR);
          printk_direct_flush(buf, (size_t) written, PRINTK_COLOR);
-         __printk_flush_ringbuf(buf, sizeof(buf));
+         __printk_flush_ringbuf(buf, bufsz);
 
          /*
           * No need to call restore_first_printk_value(): printk_flush_ringbuf
@@ -359,6 +374,40 @@ void tilck_vprintk(u32 flags, const char *fmt, va_list args)
       }
    }
    enable_preemption();
+}
+
+static void
+__regular_tilck_vprintk(u32 flags, const char *fmt, va_list args)
+{
+   char prefixbuf[PRINTK_PREFIXBUF_SZ];
+   char buf[PRINTK_BUF_SZ];
+
+   __tilck_vprintk(prefixbuf, buf, sizeof(buf), flags, fmt, args);
+}
+
+static void
+__low_ssp_tilck_vprintk(u32 flags, const char *fmt, va_list args)
+{
+   char prefixbuf[PRINTK_PREFIXBUF_SZ];
+   char buf[64];
+
+   __tilck_vprintk(prefixbuf, buf, sizeof(buf), flags, fmt, args);
+}
+
+void
+tilck_vprintk(u32 flags, const char *fmt, va_list args)
+{
+   static char p_prefixbuf[PRINTK_PREFIXBUF_SZ];
+   static char p_buf[PRINTK_BUF_SZ];
+
+   if (in_panic())
+      __tilck_vprintk(p_prefixbuf, p_buf, sizeof(p_buf), flags, fmt, args);
+   else if (get_rem_stack() < PRINTK_SAFE_STACK_SPACE)
+      panic("No stack space for vprintk(\"%s\")", fmt);
+   else if (get_rem_stack() < PRINTK_SAFE_STACK_SPACE + 512)
+      __low_ssp_tilck_vprintk(flags, fmt, args);
+   else
+      __regular_tilck_vprintk(flags, fmt, args);
 }
 
 void printk(const char *fmt, ...)
