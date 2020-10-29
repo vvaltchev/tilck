@@ -70,6 +70,11 @@ vterm_write(term *t, const char *buf, size_t len, u8 color)
    struct term_action a;
    ASSERT(len < MB);
 
+   if (in_panic()) {
+      term_action_write(t, (char *)buf, (u32)len, color);
+      return;
+   }
+
    term_make_action_write(&a, buf, len, color);
    term_execute_or_enqueue_action(t, &a);
 }
