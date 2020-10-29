@@ -5,7 +5,8 @@
 # Build gtest
 ##############################
 
-GTEST_DIRNAME="gtest-1.8.1"
+GTEST_VER="1.8.1"
+GTEST_DIRNAME="gtest-$GTEST_VER"
 GTEST_SRC_DIR="$TC/noarch/$GTEST_DIRNAME"
 
 function download_googletest {
@@ -15,7 +16,7 @@ function download_googletest {
 
    if ! [ -d $GTEST_SRC_DIR ]; then
 
-      download_git_repo_in_cache "$url" release-1.8.1 $tarname googletest
+      download_git_repo_in_cache "$url" release-$GTEST_VER $tarname googletest
 
       pushd $TC/noarch
       extract_cachefile_tar_gz $tarname "googletest" $GTEST_DIRNAME
@@ -64,7 +65,12 @@ function build_gtest {
       cd $GTEST_DIRNAME
 
       reset_cc_vars
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug $GTEST_SRC_DIR/googletest
+
+      $CMAKE                              \
+         -DCMAKE_BUILD_TYPE=Debug         \
+         -DGOOGLETEST_VERSION=$GTEST_VER  \
+         $GTEST_SRC_DIR/googletest
+
       run_command2 "make -j" build.log
       gtest_make_compact_symlinks $HOST_ARCH
 
@@ -90,7 +96,12 @@ function build_gtest_arch {
       cd $GTEST_DIRNAME
 
       set_cc_vars_to_tc
-      $CMAKE -DCMAKE_BUILD_TYPE=Debug $GTEST_SRC_DIR/googletest
+
+      $CMAKE                              \
+         -DCMAKE_BUILD_TYPE=Debug         \
+         -DGOOGLETEST_VERSION=$GTEST_VER  \
+         $GTEST_SRC_DIR/googletest
+
       run_command2 "make -j" build.log
       gtest_make_compact_symlinks $ARCH
 
