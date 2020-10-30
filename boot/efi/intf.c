@@ -153,7 +153,7 @@ efi_boot_load_kernel_file(const char *path, void **paddr)
 static void
 efi_boot_set_color(u8 color)
 {
-   /* do nothing */
+   ST->ConOut->SetAttribute(ST->ConOut, color);
 }
 
 static bool
