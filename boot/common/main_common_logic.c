@@ -242,8 +242,8 @@ clear_screen(void)
 static void
 print_kernel_mods(void)
 {
-   static char prefix[]         = "     modules:  ";
-   static char prefix_padding[] = "               ";
+   static char prefix[]         = "    modules:  ";
+   static char prefix_padding[] = "              ";
 
    char *mods = kernel_build_info->modules_list;
    int per_line_len = sizeof(prefix) - 1;
@@ -268,6 +268,53 @@ print_kernel_mods(void)
    printk("\n");
 }
 
+static void
+show_menu_item(const char *cmd,
+               const char *name,
+               const char *value,
+               bool q,
+               bool nl)
+{
+   const size_t namelen = strlen(name);
+   char pad[] = "           ";
+
+   intf->set_color(COLOR_GREEN);
+   printk("%s", cmd);
+   intf->set_color(DEFAULT_FG_COLOR);
+
+   if (value) {
+
+      if (namelen <= sizeof(pad) - 1)
+         pad[sizeof(pad) - 1 - namelen] = 0;
+      else
+         pad[0] = 0;
+
+      printk(") %s:%s ", name, pad);
+
+      if (q) {
+         intf->set_color(COLOR_MAGENTA);
+         printk("\'");
+      } else {
+         intf->set_color(COLOR_CYAN);
+      }
+
+      printk("%s", value);
+
+      if (q) {
+         printk("\'");
+      }
+
+      intf->set_color(DEFAULT_FG_COLOR);
+
+      if (nl)
+         printk("\n");
+
+   } else {
+
+      printk(") %s\n", name);
+   }
+}
+
 static bool
 run_interactive_logic(void)
 {
@@ -289,25 +336,28 @@ run_interactive_logic(void)
 
       extract_commit_hash_and_date(kernel_build_info, &comm);
 
+      intf->set_color(COLOR_GREEN);
       printk("Menu\n");
+      intf->set_color(DEFAULT_FG_COLOR);
       printk("---------------------------------------------------\n");
-      printk("k) Kernel file: %s\n", kernel_file_path);
-      printk("     version:  %s\n", kernel_build_info->ver);
-      printk("     commit:   %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
-      printk("     date:     %s\n", comm.date);
+
+      show_menu_item("k", "Kernel file", kernel_file_path, false, true);
+
+      printk("    version:  %s\n", kernel_build_info->ver);
+      printk("    commit:   %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
+      printk("    date:     %s\n", comm.date);
       print_kernel_mods();
       printk("\n");
 
-      printk("v) Video mode: ");
+      show_menu_item("v", "Video mode", "", false, false);
 
       if (selected_mode != INVALID_VIDEO_MODE)
          show_mode(-1, &gi, false);
       else
          printk("<none>\n");
 
-      printk("e) Cmdline:    '%s'\n", cmdline_buf);
-      printk("b) Boot\n");
-
+      show_menu_item("e", "Cmdline", cmdline_buf, true, true);
+      show_menu_item("b", "Boot", NULL, false, true);
       printk("\n> ");
 
       buf[0] = 0;
