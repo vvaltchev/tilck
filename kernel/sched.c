@@ -31,6 +31,14 @@ static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 static struct task *idle_task;
 
+const char *const task_state_str[5] = {
+   [TASK_STATE_INVALID]  = "invalid",
+   [TASK_STATE_RUNNABLE] = "runnable",
+   [TASK_STATE_RUNNING]  = "running",
+   [TASK_STATE_SLEEPING] = "sleeping",
+   [TASK_STATE_ZOMBIE]   = "zombie",
+};
+
 void enable_preemption(void)
 {
    int oldval =

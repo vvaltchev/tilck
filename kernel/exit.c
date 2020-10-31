@@ -112,7 +112,7 @@ close_all_handles(void)
 NORETURN static NO_INLINE void
 switch_stack_free_mem_and_schedule(void)
 {
-   ASSERT(get_curr_task_state() == TASK_STATE_ZOMBIE);
+   ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();

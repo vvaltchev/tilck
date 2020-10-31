@@ -121,6 +121,7 @@ extern struct process *kernel_process_pi;
 extern struct list runnable_tasks_list;
 extern struct list sleeping_tasks_list;
 extern struct list zombie_tasks_list;
+extern const char *const task_state_str[5];
 
 #define KTH_ALLOC_BUFS                       (1 << 0)
 #define KTH_WORKER_THREAD                    (1 << 1)
@@ -279,11 +280,23 @@ get_curr_task_state(void)
    );
 }
 
+#if DEBUG_CHECKS
+   #define ASSERT_CURR_TASK_STATE(exp)                            \
+      do {                                                        \
+         if (get_curr_task_state() != (exp))                      \
+            panic("Curr task state (%s) != expected (%s)",        \
+                  task_state_str[get_curr_task_state()],          \
+                  task_state_str[exp]);                           \
+      } while (0)
+#else
+   #define ASSERT_CURR_TASK_STATE(s)
+#endif
+
 static ALWAYS_INLINE void
 enter_sleep_wait_state(void)
 {
    ASSERT(!is_preemption_enabled());
-   ASSERT(get_curr_task_state() == TASK_STATE_SLEEPING);
+   ASSERT_CURR_TASK_STATE(TASK_STATE_SLEEPING);
    ASSERT(get_curr_task()->wobj.type != WOBJ_NONE);
 
    kernel_yield_preempt_disabled();
