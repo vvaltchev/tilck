@@ -621,11 +621,6 @@ void schedule(void)
        */
 
       if (curr_state != TASK_STATE_RUNNING) {
-
-         /* The current state is either RUNNING or SLEEPING */
-         ASSERT_TASK_STATE(curr_state, TASK_STATE_SLEEPING);
-
-         /* Since it was SLEEPING, we must restore it to RUNNING */
          task_change_state(get_curr_task(), TASK_STATE_RUNNING);
       }
 
