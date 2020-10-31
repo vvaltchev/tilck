@@ -224,7 +224,7 @@ def run_the_vm():
    if is_kvm_installed():
       args += ['-enable-kvm', '-cpu', 'host']
 
-   kernel_cmdline = '-sercon '
+   kernel_cmdline = '-sercon -noacpi '
    cmdline = DEVSHELL_PATH
    init_opts = '-ns -nr'
 

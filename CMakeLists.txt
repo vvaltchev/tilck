@@ -329,7 +329,7 @@ list(
 list(
    APPEND disabled_modules_list
 
-   acpi
+   # No modules in this list, at the moment
 )
 
 file(GLOB modules ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/modules/*")
