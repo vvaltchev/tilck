@@ -309,8 +309,23 @@ static ALWAYS_INLINE void
 enter_sleep_wait_state(void)
 {
    ASSERT(!is_preemption_enabled());
-   ASSERT_CURR_TASK_STATE(TASK_STATE_SLEEPING);
+
+   /* Cannot call enter_sleep_wait_state() before setting a wait obj */
    ASSERT(get_curr_task()->wobj.type != WOBJ_NONE);
+
+   if (get_curr_task_state() != TASK_STATE_SLEEPING) {
+
+      /*
+       * Corner case: we set a timer, then we called prepare_to_wait_on() which
+       * set task's wobj and changed task's state to SLEEPING, but the timer
+       * fired before we called this function. Timer_ready MUST BE set.
+       *
+       * Otherwise, that's simply a logic error: we called this function without
+       * calling first prepare_to_wait_on().
+       */
+
+      ASSERT(get_curr_task()->timer_ready);
+   }
 
    kernel_yield_preempt_disabled();
 }
