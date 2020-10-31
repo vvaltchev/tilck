@@ -66,7 +66,7 @@ int do_fork(bool vfork)
    pdir_t *new_pdir = NULL;
 
    disable_preemption();
-   ASSERT(curr->state == TASK_STATE_RUNNING);
+   ASSERT_TASK_STATE(curr->state, TASK_STATE_RUNNING);
 
    if ((pid = create_new_pid()) < 0)
       goto out; /* NOTE: rc is already set to -EAGAIN */

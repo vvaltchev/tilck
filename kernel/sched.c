@@ -554,7 +554,7 @@ void remove_task(struct task *ti)
 {
    disable_preemption();
    {
-      ASSERT(ti->state == TASK_STATE_ZOMBIE);
+      ASSERT_TASK_STATE(ti->state, TASK_STATE_ZOMBIE);
 
       task_remove_from_state_list(ti);
 
@@ -623,7 +623,7 @@ void schedule(void)
       if (curr_state != TASK_STATE_RUNNING) {
 
          /* The current state is either RUNNING or SLEEPING */
-         ASSERT(curr_state == TASK_STATE_SLEEPING);
+         ASSERT_TASK_STATE(curr_state, TASK_STATE_SLEEPING);
 
          /* Since it was SLEEPING, we must restore it to RUNNING */
          task_change_state(get_curr_task(), TASK_STATE_RUNNING);
@@ -649,7 +649,7 @@ void schedule(void)
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
-      ASSERT(pos->state == TASK_STATE_RUNNABLE);
+      ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
 
       if (pos->stopped || pos == idle_task)
          continue;

@@ -306,7 +306,7 @@ finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
 {
    ASSERT(!is_preemption_enabled());
 
-   ASSERT(ti->state == TASK_STATE_RUNNING);
+   ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNING);
    task_change_state(ti, TASK_STATE_RUNNABLE);
 
    ti->running_in_kernel = false;
@@ -461,7 +461,7 @@ NORETURN void switch_to_task(struct task *ti)
 
    ASSERT(curr != NULL);
    ASSERT(curr->state != TASK_STATE_RUNNING);
-   ASSERT(ti->state == TASK_STATE_RUNNABLE);
+   ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
    ASSERT(!is_preemption_enabled());
 
    /*

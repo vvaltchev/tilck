@@ -148,7 +148,7 @@ void free_common_task_allocs(struct task *ti)
 
 void free_mem_for_zombie_task(struct task *ti)
 {
-   ASSERT(ti->state == TASK_STATE_ZOMBIE);
+   ASSERT_TASK_STATE(ti->state, TASK_STATE_ZOMBIE);
 
 #if DEBUG_CHECKS
 
@@ -339,7 +339,7 @@ static void free_process_int(struct process *pi)
 
 void free_task(struct task *ti)
 {
-   ASSERT(ti->state == TASK_STATE_ZOMBIE);
+   ASSERT_TASK_STATE(ti->state, TASK_STATE_ZOMBIE);
    arch_specific_free_task(ti);
 
    ASSERT(!ti->kernel_stack);

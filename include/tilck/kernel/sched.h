@@ -281,6 +281,7 @@ get_curr_task_state(void)
 }
 
 #if DEBUG_CHECKS
+
    #define ASSERT_CURR_TASK_STATE(exp)                            \
       do {                                                        \
          if (get_curr_task_state() != (exp))                      \
@@ -288,8 +289,20 @@ get_curr_task_state(void)
                   task_state_str[get_curr_task_state()],          \
                   task_state_str[exp]);                           \
       } while (0)
+
+   #define ASSERT_TASK_STATE(s, exp)                              \
+      do {                                                        \
+         if ((s) != (exp))                                        \
+            panic("Task state (%s) != expected (%s)",             \
+                  task_state_str[s],                              \
+                  task_state_str[exp]);                           \
+      } while (0)
+
 #else
-   #define ASSERT_CURR_TASK_STATE(s)
+
+   #define ASSERT_CURR_TASK_STATE(exp)
+   #define ASSERT_TASK_STATE(s, exp)
+
 #endif
 
 static ALWAYS_INLINE void

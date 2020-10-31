@@ -66,7 +66,7 @@ void *wake_up(struct task *ti)
    disable_preemption();
    {
       oldp = wait_obj_reset(&ti->wobj);
-      ASSERT(ti->state == TASK_STATE_SLEEPING);
+      ASSERT_TASK_STATE(ti->state, TASK_STATE_SLEEPING);
       task_change_state(ti, TASK_STATE_RUNNABLE);
    }
    enable_preemption();
