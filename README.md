@@ -6,108 +6,138 @@ Tilck (Tiny Linux-Compatible Kernel)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 <p align="center">
-    <img src="http://vvaltchev.github.io/tilck_imgs/screen1v2.png" alt="Tilck">
+    <img src="http://vvaltchev.github.io/tilck_imgs/v2/main.png" alt="Tilck">
 </p>
 
 What is Tilck?
 ----------------------------------------
 
 `Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
-binary level. Project's small-scale and intentional simplification makes it suitable
-people who want to learn kernel development and play with a simple Linux-like system
-and, maybe, for some particular operating system research projects where a huge code
-base (like the Linux kernel) might be an obstacle for implementing a new idea as a
-proof-of-concept or at prototype level. In addition to that, in the long term,
-`Tilck` might become suitable for **embedded systems** where a kernel as simple as
-possible is required or, at least, it is considered the optimal solution. One can
-think about `Tilck` as a kernel as simple to build and customize as a *unikernel*,
-but which offers a fair amount of features typically provided by traditional
-operating systems. As a consequence of that, the development of `Tilck` will answer
-the following two questions:
+binary level. Project's small-scale and simple design makes it the **perfect playground**
+for playing in kernel mode while retaining the ability to compare how the *very same*
+*usermode bits* run on the Linux kernel as well. That's a **unique feature** in the
+realm of educational kernels. Thanks to that, to build a program for Tilck it's enough to
+use a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
+has **no need** have its own set of custom written applications, like most educational
+kernels do. It just runs mainstream Linux programs like the **BusyBox** suite.
+While the Linux-compatibility and the monolithic design might be a limitation from
+the research point of view, on the other side, such decisions bring the whole project
+much closer to *real-world* applications in the future, compared to the case where
+some serious (or huge) effort is required to port pre-existing software on it. Also,
+nothing stops Tilck from implementing custom non-Linux syscalls that aware apps might
+take advantage of. Therefore, the amount of constraints and limitations for further
+development is smaller than it looks like.
 
-> 1) How simple could possibly be a kernel able to run a fair-amount of useful Linux
-> console programs?
+#### Future plans
+In the long term, depending on how successful the project will be, `Tilck` might
+become suitable for **embedded systems** on which an extra-simple and fully deterministic
+kernel is required or, at least, it is considered the optimal solution. With a fair
+amount of luck, `Tilck` might be able to fill the gap between *Embedded Linux* and
+typical real-time operating systems like *FreeRTOS* or *Zephyr*. In any case, at some
+point it will be ported to `ARM` and it might be adapted to run on MMU-less CPUs
+as well. That would be great because consuming a tiny amount of RAM has always been
+a key point in Tilck's design. Indeed, the kernel can *comfortably* boot and run
+on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's pointless
+on x86, but on ARM it won't be anymore.
 
-> 2) How fast a given syscall / kernel subsystem can get if we get rid of its most
-> complex features?
 
 What Tilck is NOT ?
 ----------------------------------------
 
 An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
-take advantage of the programs (and toolchains) already written for it. Also,
-that allows to validate its correctness: if a program works correctly on Linux,
-it must work the same way on Tilck as well (except for not-implemented features).
-**But**, having a fair amount of Linux programs working on it, is just a starting
-point: after that, Tilck will evolve in a different way and it will have its own
-unique set of features. Tilck is fundamentally different from Linux in its design
-and its trade-offs as it **does not** aim to target multi-user server or desktop
-machines.
+take advantage of its programs and toolchains. Also, that helps a lot to validate
+its correctness: if a program works correctly on Linux, it must work the same way
+on Tilck as well (except for the not-implemented features). **But**, having a fair
+amount of Linux programs working on it, is just a starting point: after that, Tilck
+will evolve in a different way and it will have its own unique set of features as
+well. Tilck is fundamentally different from Linux in its design and its trade-offs
+as it **does not** aim to target multi-user server or desktop machines. Currently,
+it targets the educational world, while in the future it might target embedded
+systems or something else, who knows.
 
-[article]: https://github.com/vvaltchev/tilck/wiki/Getting-performance-through-simplification:-Tilck's-console
-
-Current state of the kernel
+Features
 ----------------------------------------
 
-Today that project is **far** from being ready for any kind of production use, but
-it is growing very fast with major patch series being merged every week.
-It has a read-only support to `FAT32` ramdisk, and it can run a discrete amount of
-`busybox` applications compiled for embedded Linux. Also, it has a console
-(supporting both text-mode and framebuffer) which understands most of the
-escape sequences supported by the Linux console: that allows even applications like
-`vim` to work. Finally, the kernel supports graphical Linux applications using the
-framebuffer.
+Tilck is a preemptable monolithic (but with compile-time modules) *NIX kernel,
+implementing about ~100 Linux syscalls (both via `int 0x80` and `sysenter`) on
+x86. At its core, the kernel is not x86-centric even if it runs only on x86 at
+the moment. Everything arch-specific is isolated. Because of that, most of
+kernel's code can be already compiled for any architecture and can be used in
+kernel's unit tests.
 
-For a slightly more accurate idea of kernel's features, please check the list of
-[supported Linux syscalls] or see what `Tilck` can do at any time by building it.
-**Note**: the project's build system has been designed to work *effortlessly* on
-a variety of Linux distributions and it offers to automatically install (using
-distribution's package management system) the missing packages. About that, it's
-worth mentioning that it's part of project's philosophy to require as few as
-possible packages to be installed on the machine (e.g. `bintools`, `gcc`, `git`,
-`wget` etc.): the rest of the required packages are downloaded and compiled in
-the `toolchain` directory.
+#### Hardware
+While the kernel uses a fair amount of legacy hardware like the 8259 PICs for
+IRQs, the legacy 8254 PIT for the system timer, the legacy 16550 UART for serial
+communication, and the 8042 kb controller, it has support for some recent hardware
+features (when available) like SSE, AVX and AVX2 fpu instructions, PAT, sysenter,
+enumeration of PCI Express devices (via ECAM) and, above all, **ACPI** support via
+ACPICA. In particular, ACPI is used to receive power-button events, to reboot or
+power-off the machine, and to read the current parameters of machine's batteries
+(when implemented via ACPI control methods).
 
-In case of any problems with the build system, please don't hesitate to file an
-issue describing your problem.
+#### File systems
+Tilck has a simple but full-featured (both soft and hard links, file holes, memory
+mapping, etc.) **ramfs** implementation, a minimalistic **devfs** implementation,
+read-only support for FAT16 and **FAT32** (used for initrd) allowing memory-mapping
+of files, and a nice **sysfs** implementation used to provide a full view of ACPI's
+namespace, the list of all PCI(e) devices and Tilck's compile-time configuration.
+Clearly, in order Tilck to be able to work via multiple file systems like that,
+it has a simple **VFS** implementation as well.
+
+#### Processes and signals
+While Tilck uses internally the concept of thread, multi-threading is not currently
+exposed to userspace (kernel threads exist, of course). Both fork() and vfork() are
+properly implemented and copy-on-write is used for fork-ed processes. The waitpid()
+syscall is fully implemented (which implies process groups etc.). However, the support
+for signals is limited to using the default action or ignoring the signal, except for
+the SIGSTOP and SIGCONT signals which do what they're actually supposed to do.
+
+One interesting feature in this area deserves a special mention: despite the lack of
+multi-threading in userspace, Tilck has full support for TLS (thread-local storage) via
+`set_thread_area()`, because `libmusl` really wants to use it, even in classic
+single-threaded processes.
+
+#### I/O
+In addition to the classic read() and write() syscalls, Tilck supports vectored I/O
+via readv() and writev() as well. In addition to that, non blocking I/O, select() and
+poll() are supported too. Fortunately, no program so far needed epoll :-)
+
+#### Console
+Tilck has a console supporting more than 90% of Linux's console's features. It works
+in the same way (using layers of abstraction) both in text mode and in framebuffer mode.
+The effort to implement such a powerful console was driven by the goal to make **Vim** work
+smoothly on Tilck, with syntax highlighting etc. While it's true that such a thing has a
+little to do with "proper" kernel development, being able to run a "beast" like Vim on a
+simple kernel like Tilck, is a great achievement by itself because it shows that Tilck
+can run correctly programs having a discrete amount of complexity.
+
+#### Userspace applications
+Tilck can run a fair amount of console applications like the **BusyBox** suite,
+**Vim**, **TinyCC**, **Micropython**, **Lua**, and framebuffer applications like
+a port of DOOM for the Linux console called **fbDOOM**. Check project's [wiki page]
+for more info about that.
 
 #### Screenshots
+![Tilck screenshots](http://vvaltchev.github.io/tilck_imgs/v2/thumbnails.png)
 
-<p align="center">
-    <a href="https://github.com/vvaltchev/tilck/wiki/Screenshots">
-        <img src="http://vvaltchev.github.io/tilck_imgs/thumbnails.png">
-    </a>
-</p>
+For full-size screenshots and much more stuff, check Tilck's [wiki page].
 
-For full-size screenshots, see the [screenshots] page in Tilck's wiki.
+[wiki page]: https://github.com/vvaltchev/tilck/wiki
 
-[supported Linux syscalls]: docs/syscalls.md
-[screenshots]: https://github.com/vvaltchev/tilck/wiki/Screenshots
+Tilck's bootloader
+----------------------------------------
+`Tilck` comes with an interactive bootloader working both on legacy BIOS and on
+UEFI systems as well. The bootloader allows the user to choose the desired video
+mode, the kernel file itself and to edit kernel's cmdline.
 
-The legacy bootloader
+![Tilck's bootloader](http://vvaltchev.github.io/tilck_imgs/v2/bootloader.png)
+
+3rd-party bootloaders
 ----------------------------------------
 
-`Tilck` includes a 3-stage multiboot bootloader able to load in memory the
-contents of the boot-drive at a pre-defined physical address. In its 3rd stage
-(written in C), the bootloader loads from an in-memory `FAT32` partition the ELF
-kernel of `Tilck` [it understands the ELF format] and jumps to its entry-point.
-Before the final jump to the kernel, the bootloader allows the user the choose
-the resolution of a graphics video mode. The VGA text-mode is supported as well.
-
-The UEFI bootloader
-----------------------------------------
-
-`Tilck` includes also a fully-working multiboot EFI bootloader which boots the
-kernel in graphics mode (text mode is not available when booting using UEFI).
-From kernel's point-of-view, the two bootloaders are equivalent.
-
-Other bootloaders
-----------------------------------------
-
-`Tilck` can be booted by any bootloader supporting `multiboot 1.0`. For example,
-qemu's simple bootloader designed as a shortcut for loading directly the Linux
-kernel, without any on-disk bootloaders can perfectly work with `Tilck`:
+`Tilck` can be loaded by any bootloader supporting `multiboot 1.0`. For example,
+qemu's built-in bootloader works perfectly with `Tilck`:
 
     qemu-system-i386 -kernel ./build/tilck -initrd ./build/fatpart
 
@@ -123,8 +153,8 @@ file (or create another one) by adding an entry like:
 
 ```
 menuentry "Tilck" {
-    multiboot <PATH-TO-TILCK>/tilck/build/tilck
-    module --nounzip <PATH-TO-TILCK>/tilck/build/fatpart
+    multiboot <PATH-TO-TILCK-BUILD-DIR>/tilck
+    module --nounzip <PATH-TO-TILCK-BUILD-DIR>/fatpart
     boot
 }
 ```
