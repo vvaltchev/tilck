@@ -96,8 +96,13 @@ show_hello_message(void)
              VER_MAJOR, VER_MINOR);
 
    printk(", commit: \e[1m%s\e[m", comm.hash);
-   printk("%s\n", comm.dirty ? " (dirty)" : "");
 
+   if (comm.dirty)
+      printk(" (dirty)");
+   else if (comm.tags[0])
+      printk(" (%s)", comm.tags);
+
+   printk("\n");
    printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
    printk(", compiler: \e[1m%s %d.%d.%d\e[m\n",
           COMPILER_NAME,

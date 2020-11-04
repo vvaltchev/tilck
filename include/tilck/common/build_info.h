@@ -5,16 +5,20 @@
 
 struct build_info {
 
-   char commit[65];
-   char ver[16];
-   char arch[16];
-   char modules_list[144];
+   char commit[160];          /* hash + commit date + tags + [other stuff] */
+   char ver[32];              /* string version, like "0.1.0" */
+   char arch[32];             /* arch name, like "i686" */
+   char extra[32];            /* unused, at the moment */
+   char modules_list[256];    /* space-separated list of built-in modules */
 };
+
+STATIC_ASSERT(sizeof(struct build_info) == 512);
 
 struct commit_hash_and_date {
 
    char hash[16];
-   char date[30];
+   char date[26];
+   char tags[53];
    bool dirty;
 };
 

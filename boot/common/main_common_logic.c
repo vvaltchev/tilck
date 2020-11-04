@@ -344,7 +344,14 @@ run_interactive_logic(void)
       show_menu_item("k", "Kernel file", kernel_file_path, false, true);
 
       printk("    version:  %s\n", kernel_build_info->ver);
-      printk("    commit:   %s%s\n", comm.hash, comm.dirty ? " (dirty)" : "");
+      printk("    commit:   %s", comm.hash);
+
+      if (comm.dirty)
+         printk(" (dirty)");
+      else if (comm.tags[0])
+         printk(" (%s)", comm.tags);
+
+      printk("\n");
       printk("    date:     %s\n", comm.date);
       print_kernel_mods();
       printk("\n");
