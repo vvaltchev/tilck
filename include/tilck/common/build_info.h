@@ -18,8 +18,8 @@ struct commit_hash_and_date {
    bool dirty;
 };
 
-extern struct build_info tilck_build_info;
+extern const struct build_info tilck_build_info;
 
 void
-extract_commit_hash_and_date(struct build_info *bi,
+extract_commit_hash_and_date(const struct build_info *bi,
                              struct commit_hash_and_date *c);

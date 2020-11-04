@@ -39,6 +39,12 @@ SECTIONS
       *(.rodata .rodata.* .gnu.linkonce.r.*)
    } : ro_segment
 
+   .tilck_info : AT(kernel_text_paddr + (tilck_info - text))
+   {
+      tilck_info = .;
+      *(.tilck_info)
+   } : ro_segment
+
    .data ALIGN(4K) : AT(kernel_text_paddr + (data - text))
    {
       data = .;

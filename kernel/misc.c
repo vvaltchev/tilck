@@ -110,7 +110,7 @@ show_hello_message(void)
 }
 
 
-struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
+const struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
    .commit = {0}, /* It will get patched after the build */
    .ver = VER_MAJOR_STR "." VER_MINOR_STR "." VER_PATCH_STR,
    .arch = ARCH_GCC_TC,

@@ -6,10 +6,11 @@
 #include <tilck/common/build_info.h>
 
 void
-extract_commit_hash_and_date(struct build_info *bi,
+extract_commit_hash_and_date(const struct build_info *bi,
                              struct commit_hash_and_date *c)
 {
-   char *comm, *comm_end;
+   const char *comm_end;
+   const char *comm;
    size_t len;
 
    c->dirty = !strncmp(bi->commit, "dirty:", 6);
