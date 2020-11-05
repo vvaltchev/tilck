@@ -1,6 +1,6 @@
 
-trigger:
-  none
+trigger: none
+pr: none
 
 jobs:
   - job: coverage_build
