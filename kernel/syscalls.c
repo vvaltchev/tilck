@@ -245,21 +245,34 @@ int sys_utimes(const char *u_path, const struct timeval u_times[2])
    struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
 
-   if (copy_from_user(ts, u_times, sizeof(ts)))
-      return -EFAULT;
-
    if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
       return -EFAULT;
 
-   new_ts[0] = (struct k_timespec64) {
-      .tv_sec = ts[0].tv_sec,
-      .tv_nsec = ((long)ts[0].tv_usec) * 1000,
-   };
+   if (u_times) {
 
-   new_ts[1] = (struct k_timespec64) {
-      .tv_sec = ts[1].tv_sec,
-      .tv_nsec = ((long)ts[1].tv_usec) * 1000,
-   };
+      if (copy_from_user(ts, u_times, sizeof(ts)))
+         return -EFAULT;
+
+      new_ts[0] = (struct k_timespec64) {
+         .tv_sec = ts[0].tv_sec,
+         .tv_nsec = ((long)ts[0].tv_usec) * 1000,
+      };
+
+      new_ts[1] = (struct k_timespec64) {
+         .tv_sec = ts[1].tv_sec,
+         .tv_nsec = ((long)ts[1].tv_usec) * 1000,
+      };
+
+   } else {
+
+      /*
+       * If `u_times` is NULL, the access and modification times of the file
+       * are set to the current time.
+       */
+
+      real_time_get_timespec(&new_ts[0]);
+      new_ts[1] = new_ts[0];
+   }
 
    return vfs_utimens(path, new_ts);
 }

@@ -581,6 +581,9 @@ vfs_utimens_impl(struct fs *fs,
    if (!fs->fsops->futimens)
       return -EROFS;
 
+   if (!p->fs_path.inode)
+      return -ENOENT;
+
    return fs->fsops->futimens(fs, p->fs_path.inode, ts);
 }
 
