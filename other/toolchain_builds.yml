@@ -1,6 +1,6 @@
 
-trigger:
-  none
+trigger: none    # Do not trigger this on pushed branches
+pr: none         # Do not trigger this on issues
 
 pool:
   vmImage: 'ubuntu-18.04'
