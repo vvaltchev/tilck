@@ -253,6 +253,62 @@ execve_load_elf(struct execve_ctx *ctx,
    return 0;
 }
 
+static void
+handle_noexec(struct elf_program_info *pinfo, const char *path)
+{
+   int term_sig = 0;
+
+   if (pinfo->wrong_arch) {
+
+     /*
+      * [BE_NICE]
+      *
+      * Tilck has no problem to just return -ENOEXEC in this case, but
+      * ASH's implementation in busybox does not behave as it should: it
+      * tries to interpret ELF's content AS IF it were a shell script: that
+      * causes weird failures, not affecting Tilck's kernel but still, it
+      * makes harder to realize that the ELF had just the wrong arch (e.g.
+      * compiled for x86_64 instead of i686).
+      */
+
+      printk("ERROR: Pid %d tried to execute wrong arch ELF: %s\n",
+             get_curr_pid(), path);
+
+      term_sig = SIGKILL;
+
+   } else if (pinfo->dyn_exec) {
+
+     /*
+      * [BE_NICE]
+      *
+      * Since Tilck has no support for dynamic executables, in this case it
+      * will ignore the INTERP segment and it will jump directly to ELF's entry
+      * point, instead of jumping to dynamic linker's entry point. Therefore,
+      * at the first access to a symbol not in the ELF file itself we'll get a
+      * SIGSEGV.
+      *
+      * In order to avoid wasting people's time debugging why a given program
+      * crashes on Tilck, but not on Linux, it's nice to fail early, and display
+      * a meaningful message.
+      */
+
+      printk("ERROR: Pid %d tried to execute a dynamic executable: %s\n",
+             get_curr_pid(), path);
+
+      term_sig = SIGKILL;
+
+   } else {
+
+      /*
+       * Not a special error case, just do nothing. The caller will return
+       * the -ENOEXEC error to userspace.
+       */
+   }
+
+   if (term_sig)
+      terminate_process(0, term_sig);
+}
+
 static int
 do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 {
@@ -265,26 +321,12 @@ do_execve_int(struct execve_ctx *ctx, const char *path, const char *const *argv)
 
    if ((rc = execve_load_elf(ctx, path, argv, &pinfo))) {
 
-      if (rc == -ENOEXEC && pinfo.wrong_arch) {
+      /* load failed */
 
-         /*
-          * [BE_NICE]
-          *
-          * Tilck has no problem to just return -ENOEXEC in this case, but
-          * ASH's implementation in busybox does not behave as it should: it
-          * tries to interpret ELF's content AS IF it were a shell script: that
-          * causes weird failures, not affecting Tilck's kernel but still, it
-          * makes harder to realize that the ELF had just the wrong arch (e.g.
-          * compiled for x86_64 instead of i686).
-          */
+      if (rc == -ENOEXEC)
+         handle_noexec(&pinfo, path);
 
-         printk("ERROR: Pid %d tried to execute wrong arch ELF: %s\n",
-                get_curr_pid(), path);
-
-         terminate_process(0, SIGKILL);
-      }
-
-      return rc;                 /* load failed */
+      return rc;
    }
 
    disable_preemption();

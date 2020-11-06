@@ -11,12 +11,13 @@ struct locked_file; /* forward declaration */
 
 struct elf_program_info {
 
-   pdir_t *pdir;           // the pdir used for the program
-   void *entry;            // the address of program's entry point
-   void *stack;            // the initial value of the stack pointer
-   void *brk;              // the first invalid vaddr (program break)
+   pdir_t *pdir;           // The pdir used for the program
+   void *entry;            // The address of program's entry point
+   void *stack;            // The initial value of the stack pointer
+   void *brk;              // The first invalid vaddr (program break)
    struct locked_file *lf; // ELF's file lock (can be NULL)
-   bool wrong_arch;        // Set in case the ELF has the wrong arch
+   bool wrong_arch;        // The ELF is compiled for the wrong arch
+   bool dyn_exec;          // The ELF is a dynamic executable (not supported)
 };
 
 /*

@@ -338,6 +338,22 @@ open_elf_file(const char *filepath, fs_handle *elf_file_ref)
    return 0;
 }
 
+static bool
+is_dyn_exec(struct elf_headers *eh)
+{
+   Elf_Ehdr *hdr = eh->header;
+
+   for (int i = 0; i < hdr->e_phnum; i++) {
+
+      Elf_Phdr *phdr = eh->phdrs + i;
+
+      if (phdr->p_type == PT_INTERP)
+         return true;
+   }
+
+   return false;
+}
+
 int
 load_elf_program(const char *filepath,
                  char *header_buf,
@@ -351,6 +367,7 @@ load_elf_program(const char *filepath,
    int rc;
 
    pinfo->wrong_arch = false;
+   pinfo->dyn_exec = false;
 
    if ((rc = open_elf_file(filepath, &elf_h)))
       return rc;
@@ -363,6 +380,12 @@ load_elf_program(const char *filepath,
    if ((rc = load_elf_headers(elf_h, header_buf, &eh, &pinfo->wrong_arch))) {
       vfs_close(elf_h);
       return rc;
+   }
+
+   if (is_dyn_exec(&eh)) {
+      pinfo->dyn_exec = true;
+      rc = -ENOEXEC;
+      goto out;
    }
 
    load_seg = is_mmap_supported(elf_h)
