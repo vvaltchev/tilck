@@ -49,6 +49,8 @@ steps:
     displayName: "[toolchain] Build vim"
   - script: sudo -E ./scripts/build_toolchain -s build_tfblib
     displayName: "[toolchain] Build tfblib"
+  - script: sudo -E ./scripts/build_toolchain -s build_lua
+    displayName: "[toolchain] Build Lua"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests
