@@ -11,3 +11,4 @@ extra = @USERAPPS_extra@
 fbtest = @USERAPPS_fbtest@
 ncapp = @USERAPPS_ncapp@
 termtest = @USERAPPS_termtest@
+lua = @EXTRA_LUA@
