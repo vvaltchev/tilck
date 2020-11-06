@@ -257,6 +257,21 @@ function add_tree_cmd {
    link_or_copy $tc/$arch/tree_cmd/tree usr/bin
 }
 
+function add_lua {
+
+   if [ -z "@EXTRA_LUA_ENABLED@" ]; then
+      return
+   fi
+
+   if [ -f $tc/$arch/lua/src/lua ]; then
+      link_or_copy $tc/$arch/lua/src/lua bin/
+   fi
+
+   if [ -f $tc/$arch/lua/src/luac ]; then
+      link_or_copy $tc/$arch/lua/src/luac bin/
+   fi
+}
+
 function make_fatpart {
 
    create_fatpart_if_necessary
@@ -312,5 +327,6 @@ add_micropython
 add_fbdoom
 add_vim
 add_tree_cmd
+add_lua
 
 make_fatpart
