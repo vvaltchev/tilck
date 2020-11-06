@@ -2,48 +2,58 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 function download_lua {
-   local lua=$1
-   local version=$2
-   local filename=${lua}
-   local tarname="${lua}-${version}.tar.gz"
+   local version="5.4.1"
+   local filename="lua"
+   local tarname="lua-$version.tar.gz"
    local url="https://www.lua.org/ftp/"
 
-   download_file_in_cache "${url}" "${tarname}" lua
-   extract_cachefile_tar_gz "${tarname}" "${lua}-${version}" "${lua}"
+   download_file_in_cache "$url" "$tarname" lua
+   extract_cachefile_tar_gz "$tarname" "lua-$version" "lua"
 }
 
 all_funcs_list+=(build_lua)
 function build_lua {
 
-   pushd ${ARCH}
-
-   lua="lua"
-   lua_version="5.4.1"
+   pushd $ARCH
    reset_cc_vars
 
    show_work_on_component_msg "LUA"
 
-   if ! [ -d "${lua}" ]; then
-      echo "${TC}/${ARCH}/${lua} not found...downloading"
-      download_lua "${lua}" "${lua_version}"
+   if ! [ -d "lua" ]; then
+
+      download_lua
+      cd lua
+
+      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+
+         # Case HOST_ARCH == ARCH
+         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+         #
+         # Note: NOT TESTED yet.
+         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # supported.
+
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+      else
+         set_cc_vars_to_tc
+      fi
+
+      echo "Bulding lua..."
+      make clean
+      #build lua and luac static binaries
+      local flags=""
+      flags="$flags CC=\"$CC\" MYCFLAGS=\"-std=gnu99\""
+      flags="$flags AR=\"$AR rcu\" RANLIB=\"$RANLIB\""
+      flags="$flags MYLDFLAGS=\"-static\""
+      run_command2 "make $flags" build.log
+
+      echo "Built lua successfully"
+
+   else
+      show_skip_component_msg "LUA"
    fi
-
-   cd ${lua}
-
-   set_cc_vars_to_tc
-   echo "Bulding lua..."
-
-   make clean
-
-   #build lua and luac static binaries
-   make generic CC="${CC} -std=gnu99" \
-      MYCFLAGS="-static" \
-      AR="${AR} rcu" RANLIB=${RANLIB} \
-      MYLDFLAGS="-static" \
-      SYSLIBS="-Wl,-E,-strip-all" \
-      &> build.log
-
-   echo "Built lua successfully"
 
    popd
 }
