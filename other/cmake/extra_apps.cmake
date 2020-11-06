@@ -26,6 +26,10 @@ if (EXISTS ${TCROOT}/${ARCH}/tree_cmd)
    message(STATUS "EXTRA_TREE_CMD: ${EXTRA_TREE_CMD}")
 endif()
 
+if (EXISTS ${TCROOT}/${ARCH}/lua)
+   set(EXTRA_LUA OFF CACHE BOOL "Load LUA in Tilck")
+   message(STATUS "EXTRA_LUA: ${EXTRA_LUA}")
+endif()
 
 if (EXTRA_VIM)
    set(EXTRA_VIM_ENABLED "1")
@@ -50,4 +54,8 @@ endif()
 
 if (EXTRA_TREE_CMD)
    set(EXTRA_TREE_CMD_ENABLED "1")
+endif()
+
+if (EXTRA_LUA)
+   set(EXTRA_LUA_ENABLED "1")
 endif()
