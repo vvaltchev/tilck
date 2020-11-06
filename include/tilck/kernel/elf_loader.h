@@ -16,6 +16,7 @@ struct elf_program_info {
    void *stack;            // the initial value of the stack pointer
    void *brk;              // the first invalid vaddr (program break)
    struct locked_file *lf; // ELF's file lock (can be NULL)
+   bool wrong_arch;        // Set in case the ELF has the wrong arch
 };
 
 /*

@@ -226,7 +226,10 @@ static void free_elf_headers(struct elf_headers *eh)
 }
 
 static int
-load_elf_headers(fs_handle elf_h, char *hdr_buf, struct elf_headers *eh)
+load_elf_headers(fs_handle elf_h,
+                 char *hdr_buf,
+                 struct elf_headers *eh,
+                 bool *wrong_arch)
 {
    ssize_t rc;
    bzero(eh, sizeof(*eh));
@@ -244,14 +247,15 @@ load_elf_headers(fs_handle elf_h, char *hdr_buf, struct elf_headers *eh)
    if (strncmp((const char *)eh->header->e_ident, ELFMAG, 4))
       return -ENOEXEC;
 
-   if (eh->header->e_ident[EI_CLASS] != ELF_CURR_CLASS)
-      return -ENOEXEC;
-
    if (eh->header->e_type != ET_EXEC)
       return -ENOEXEC;
 
-   if (eh->header->e_machine != ELF_CURR_ARCH)
+   if (eh->header->e_ident[EI_CLASS] != ELF_CURR_CLASS ||
+       eh->header->e_machine != ELF_CURR_ARCH)
+   {
+      *wrong_arch = true;
       return -ENOEXEC;
+   }
 
    if (eh->header->e_ehsize < sizeof(eh->header))
       return -ENOEXEC;
@@ -346,6 +350,8 @@ load_elf_program(const char *filepath,
    size_t count;
    int rc;
 
+   pinfo->wrong_arch = false;
+
    if ((rc = open_elf_file(filepath, &elf_h)))
       return rc;
 
@@ -354,7 +360,7 @@ load_elf_program(const char *filepath,
       return rc == -EBADF ? -ENOEXEC : rc;
    }
 
-   if ((rc = load_elf_headers(elf_h, header_buf, &eh))) {
+   if ((rc = load_elf_headers(elf_h, header_buf, &eh, &pinfo->wrong_arch))) {
       vfs_close(elf_h);
       return rc;
    }
