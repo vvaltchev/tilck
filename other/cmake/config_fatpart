@@ -4,6 +4,9 @@
 fbdoom = @EXTRA_FBDOOM@
 micropython = @EXTRA_MICROPYTHON@
 tcc = @EXTRA_TCC@
+lua = @EXTRA_LUA@
+vim = @EXTRA_VIM@
+tree_cmd = @EXTRA_TREE_CMD@
 
 devshell = @USERAPPS_devshell@
 dp = @USERAPPS_dp@
@@ -11,4 +14,5 @@ extra = @USERAPPS_extra@
 fbtest = @USERAPPS_fbtest@
 ncapp = @USERAPPS_ncapp@
 termtest = @USERAPPS_termtest@
-lua = @EXTRA_LUA@
+filedump = @USERAPPS_filedump@
+extra = @USERAPPS_extra@
