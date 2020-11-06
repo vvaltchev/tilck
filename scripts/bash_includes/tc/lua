@@ -7,7 +7,7 @@ function download_lua {
    local filename=${lua}
    local tarname="${lua}-${version}.tar.gz"
    local url="https://www.lua.org/ftp/"
-   
+
    download_file_in_cache "${url}" "${tarname}" lua
    extract_cachefile_tar_gz "${tarname}" "${lua}-${version}" "${lua}"
 }
@@ -15,7 +15,7 @@ function download_lua {
 all_funcs_list+=(build_lua)
 function build_lua {
 
-   pushd ${ARCH} 
+   pushd ${ARCH}
 
    lua="lua"
    lua_version="5.4.1"
@@ -34,16 +34,16 @@ function build_lua {
    echo "Bulding lua..."
 
    make clean
-   
+
    #build lua and luac static binaries
    make generic CC="${CC} -std=gnu99" \
       MYCFLAGS="-static" \
       AR="${AR} rcu" RANLIB=${RANLIB} \
       MYLDFLAGS="-static" \
       SYSLIBS="-Wl,-E,-strip-all" \
-      &> build.log 
-   
+      &> build.log
+
    echo "Built lua successfully"
-   
+
    popd
 }
