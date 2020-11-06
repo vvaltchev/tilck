@@ -258,6 +258,11 @@ function add_tree_cmd {
 }
 
 function add_lua {
+
+   if [ -z "@EXTRA_LUA_ENABLED@" ]; then
+      return
+   fi
+
    if [ -f $tc/$arch/lua/src/lua ]; then
       link_or_copy $tc/$arch/lua/src/lua bin/
    fi
