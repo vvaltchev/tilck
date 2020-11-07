@@ -44,7 +44,7 @@ if ! [ -d $VIMRUNTIME ]; then
 fi
 
 if ! [ -f $vim_binary ]; then
-   gzip -d $VIM_GZ > $vim_binary
+   gzip -cd $VIM_GZ > $vim_binary
    chmod 755 $vim_binary
 fi
 
