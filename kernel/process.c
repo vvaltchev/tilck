@@ -91,22 +91,37 @@ STATIC_ASSERT(
 
 #undef TOT_IOBUF_AND_ARGS_BUF_PG
 
-static bool do_common_task_allocs(struct task *ti, bool alloc_bufs)
+static void alloc_kernel_stack(struct task *ti)
 {
    if (KERNEL_STACK_ISOLATION) {
       ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
    } else {
       ti->kernel_stack = kzmalloc(KERNEL_STACK_SIZE);
    }
+}
+
+static void free_kernel_stack(struct task *ti)
+{
+   if (KERNEL_STACK_ISOLATION) {
+      free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
+   } else {
+      kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
+   }
+}
+
+static bool do_common_task_allocs(struct task *ti, bool alloc_bufs)
+{
+   alloc_kernel_stack(ti);
 
    if (!ti->kernel_stack)
       return false;
 
    if (alloc_bufs) {
+
       ti->io_copybuf = kmalloc(IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
 
       if (!ti->io_copybuf) {
-         kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
+         free_kernel_stack(ti);
          return false;
       }
 
@@ -133,12 +148,7 @@ void free_common_task_allocs(struct task *ti)
    struct process *pi = ti->pi;
    process_free_mappings_info(pi);
 
-   if (KERNEL_STACK_ISOLATION) {
-      free_kernel_isolated_stack(pi, ti->kernel_stack);
-   } else {
-      kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);
-   }
-
+   free_kernel_stack(ti);
    kfree2(ti->io_copybuf, IO_COPYBUF_SIZE + ARGS_COPYBUF_SIZE);
 
    ti->io_copybuf = NULL;
