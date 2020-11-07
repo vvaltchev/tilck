@@ -176,14 +176,15 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
          set(msg1 "")
          string(CONCAT msg1 "The busybox build in the toolchain has a "
                             "different config than the one in the source. "
-                            "This might have undesired effects. ")
+                            "This might have undesired effects. "
+                            "Please update your busybox build.")
 
          if ("$ENV{CIRCLECI}" STREQUAL "" AND
              "$ENV{TRAVIS}" STREQUAL "" AND
              "$ENV{CI}" STREQUAL "")
 
             set(msg2 "")
-            string(CONCAT msg2 "How to fix it: \n"
+            string(CONCAT msg2 "How to do that: \n"
                                "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
                                "   2) ${BTC_SCRIPT_REL} -s build_busybox")
 
@@ -191,7 +192,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
          else()
 
-            message(WARNING "\n${msg1}\n${msg2}")
+            message(WARNING "\n${msg1}")
 
          endif()
 
