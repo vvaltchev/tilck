@@ -20,6 +20,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process_mm.h>
+#include <tilck/kernel/process.h>
 
 #include "paging_int.h"
 
@@ -146,7 +147,7 @@ bool handle_potential_cow(void *context)
 
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
-   void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
+   const void *const page_vaddr = (void *)(vaddr & PAGE_MASK);
    page_table_t *pt = pdir_get_page_table(get_curr_pdir(), pd_index);
 
    if (!(pt->pages[pt_index].avail & PAGE_COW_ORIG_RW))
@@ -164,34 +165,53 @@ bool handle_potential_cow(void *context)
       return true;
    }
 
-   // Decrease the ref-count of the original pageframe.
-   pf_ref_count_dec(orig_page_paddr);
-
-   // Copy the whole page to our temporary buffer.
-   memcpy32(page_size_buf, page_vaddr, PAGE_SIZE / 4);
-
-   // Allocate and set a new page.
+   // Allocate a new page.
    void *new_page_vaddr = kmalloc(PAGE_SIZE);
 
-   if (!new_page_vaddr)
-      panic("Out-of-memory: unable to copy a CoW page. No OOM killer.");
+   if (!new_page_vaddr) {
+
+      // Out-of-memory case
+      struct task *curr = get_curr_task();
+
+      if (!curr->running_in_kernel) {
+
+         // The task was not running in kernel: we can safely kill it.
+         printk("Out-of-memory: killing pid %d\n", get_curr_pid());
+         exit_fault_handler_state();
+         terminate_process(0, SIGKILL);
+
+      } else {
+
+         // We cannot kill a task running in kernel during a CoW page fault
+         // In this case (but in the one above too), Linux puts the process to
+         // sleep, while the OOM killer runs and frees some memory.
+         panic("Out-of-memory: can't copy a CoW page [pid %d]", get_curr_pid());
+      }
+   }
 
    ASSERT(IS_PAGE_ALIGNED(new_page_vaddr));
 
+   // Copy page's contents
+   memcpy32(new_page_vaddr, page_vaddr, PAGE_SIZE / 4);
+
+   // Get the paddr of the new page
    const ulong paddr = KERNEL_VA_TO_PA(new_page_vaddr);
 
-   /* Sanity-check: a newly allocated pageframe MUST have ref-count == 0 */
+   // A just-allocated pageframe MUST have ref-count == 0
    ASSERT(pf_ref_count_get(paddr) == 0);
+
+   // Increase the ref-count of the new pageframe
    pf_ref_count_inc(paddr);
 
+   // Decrease the ref-count of the original pageframe.
+   pf_ref_count_dec(orig_page_paddr);
+
+   // Re-map the vaddr to its new (writable) pageframe
    pt->pages[pt_index].pageAddr = SHR_BITS(paddr, PAGE_SHIFT, u32);
    pt->pages[pt_index].rw = true;
    pt->pages[pt_index].avail = 0;
 
    invalidate_page_hw(vaddr);
-
-   // Copy back the page.
-   memcpy32(page_vaddr, page_size_buf, PAGE_SIZE / 4);
    return true;
 }
 
