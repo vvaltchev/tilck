@@ -40,11 +40,11 @@ function build_lua {
          set_cc_vars_to_tc
       fi
 
+      # Build lua and luac static binaries
+
       echo "Building lua..."
-      make clean
-      #build lua and luac static binaries
       local flags=""
-      flags="$flags CC=\"$CC\" MYCFLAGS=\"-std=gnu99\""
+      flags="CC=\"$CC\" MYCFLAGS=\"-std=gnu99\""
       flags="$flags AR=\"$AR rcu\" RANLIB=\"$RANLIB\""
       flags="$flags MYLDFLAGS=\"-static\""
       run_command2 "make $flags" build.log
