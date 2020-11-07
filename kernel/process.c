@@ -230,6 +230,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    pi->pid = pid;
    pi->did_call_execve = false;
    pi->cwd.fs = NULL;
+   pi->vforked = false;
 
    if (new_pdir != parent_pi->pdir) {
 
