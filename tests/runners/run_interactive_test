@@ -482,6 +482,7 @@ def send_to_vm_and_find_text(cmd, dump, patterns):
 def just_run_vim_and_exit():
 
    send_string_to_vm(r"vim{ret}")
+   attempts = 0
 
    while True:
 
@@ -490,7 +491,11 @@ def just_run_vim_and_exit():
       if t.find("VIM - Vi IMproved") != -1:
          break
 
+      if attempts >= 4:
+         raise RuntimeError("Cannot start vim")
+
       time.sleep(2)
+      attempts += 1
 
    send_string_to_vm(r"{esc}:q{ret}")
 
