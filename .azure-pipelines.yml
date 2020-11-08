@@ -1,7 +1,7 @@
 
 jobs:
   - job: interactive
-    container: 'vvaltchev/tilck_build:v6'
+    container: 'vvaltchev/tilck_build:v7'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -34,7 +34,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: build
-    container: 'vvaltchev/tilck_build:v6'
+    container: 'vvaltchev/tilck_build:v7'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
