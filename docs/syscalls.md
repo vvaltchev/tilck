@@ -9,91 +9,104 @@ syscalls having some degree of support. The missing syscalls have to be
 considered as *not implemented yet*.
 
 
- Syscall             | Support level
----------------------|-------------------------
- sys_exit            | full
- sys_fork            | full
- sys_read            | full
- sys_write           | full
- sys_open            | partial++ [1]
- sys_close           | full
- sys_waitpid         | full
- sys_execve          | full
- sys_chdir           | full
- sys_getpid          | full
- sys_setuid16        | limited [3]
- sys_getuid16        | limited [3]
- sys_pause           | minimal [2]
- sys_access          | partial
- sys_brk             | full
- sys_setgid16        | limited [3]
- sys_getgid16        | limited [3]
- sys_seteuid16       | limited [3]
- sys_setegid16       | limited [3]
- sys_ioctl           | partial
- sys_getppid         | full
- sys_gettimeofday    | full
- sys_munmap          | full
- sys_wait4           | partial [7]
- sys_newuname        | full
- sys_llseek          | full
- sys_readv           | full
- sys_writev          | full
- sys_nanosleep       | full
- sys_prctl           | stub
- sys_getcwd          | full
- sys_mmap_pgoff      | full
- sys_stat64          | full
- sys_fstat64         | full
- sys_lstat64         | partial
- sys_getuid          | limited [3]
- sys_getgid          | limited [3]
- sys_geteuid         | limited [3]
- sys_getegid         | limited [3]
- sys_setuid          | limited [3]
- sys_setgid          | limited [3]
- sys_getdents64      | full
- sys_fcntl64         | partial
- sys_gettid          | minimal [4]
- sys_set_thread_area | full
- sys_exit_group      | minimal [5]
- sys_set_tid_address | stub
- sys_tkill           | partial++ [6]
- sys_tgkill          | partial++ [6]
- sys_kill            | full
- sys_setsid          | full
- sys_times           | minimal [9]
- sys_clock_gettime   | compliant [10]
- sys_clock_getres    | compliant [10]
- sys_select          | full
- sys_poll            | full
- sys_readlink        | full
- sys_creat           | full
- sys_unlink          | full
- sys_symlink         | full
- sys_vfork           | compliant [11]
- sys_umask           | full
- sys_truncate64      | full
- sys_ftruncate64     | full
- sys_sync            | full
- sys_syncfs          | full
- sys_chown           | limited [3]
- sys_fchown          | limited [3]
- sys_chmod           | full
- sys_fchmod          | full
- sys_rename          | full
- sys_link            | full
- sys_pipe            | full
- sys_pipe2           | partial++ [13]
- sys_sched_yield     | compliant
- sys_getsid          | full
- sys_setpgid         | full
- sys_getpgid         | full
- sys_getpgrp         | full
- sys_utime           | full
- sys_utimes          | full
- sys_fsync           | compliant
- sys_fdatasync       | compliant
+ Syscall               | Support level
+-----------------------|-------------------------
+ sys_exit              | full
+ sys_fork              | full
+ sys_read              | full
+ sys_write             | full
+ sys_open              | partial++ [1]
+ sys_close             | full
+ sys_waitpid           | full
+ sys_execve            | full
+ sys_chdir             | full
+ sys_getpid            | full
+ sys_setuid16          | limited [3]
+ sys_getuid16          | limited [3]
+ sys_pause             | minimal [2]
+ sys_access            | partial
+ sys_brk               | full
+ sys_setgid16          | limited [3]
+ sys_getgid16          | limited [3]
+ sys_seteuid16         | limited [3]
+ sys_setegid16         | limited [3]
+ sys_geteuid16         | limited [3]
+ sys_getegid16         | limited [3]
+ sys_ioctl             | partial
+ sys_getppid           | full
+ sys_gettimeofday      | full
+ sys_munmap            | full
+ sys_wait4             | partial [7]
+ sys_newuname          | full
+ sys_llseek            | full
+ sys_readv             | full
+ sys_writev            | full
+ sys_nanosleep_time32  | full
+ sys_prctl             | stub
+ sys_getcwd            | full
+ sys_mmap_pgoff        | full
+ sys_stat64            | full
+ sys_fstat64           | full
+ sys_lstat64           | partial
+ sys_getuid            | limited [3]
+ sys_getgid            | limited [3]
+ sys_geteuid           | limited [3]
+ sys_getegid           | limited [3]
+ sys_setuid            | limited [3]
+ sys_setgid            | limited [3]
+ sys_getdents64        | full
+ sys_fcntl64           | partial
+ sys_gettid            | minimal [4]
+ sys_set_thread_area   | full
+ sys_exit_group        | minimal [5]
+ sys_set_tid_address   | stub
+ sys_tkill             | partial++ [6]
+ sys_tgkill            | partial++ [6]
+ sys_kill              | full
+ sys_setsid            | full
+ sys_times             | minimal [9]
+ sys_clock_gettime     | compliant [10]
+ sys_clock_gettime32   | compliant [10]
+ sys_clock_getres      | compliant [10]
+ sys_clock_getres32    | compliant [10]
+ sys_select            | full
+ sys_poll              | full
+ sys_readlink          | full
+ sys_creat             | full
+ sys_unlink            | full
+ sys_symlink           | full
+ sys_vfork             | compliant [11]
+ sys_umask             | full
+ sys_truncate64        | full
+ sys_ftruncate64       | full
+ sys_sync              | full
+ sys_syncfs            | full
+ sys_chown             | limited [3]
+ sys_fchown            | limited [3]
+ sys_lchown            | limited [3]
+ sys_chmod             | full
+ sys_fchmod            | full
+ sys_rename            | full
+ sys_link              | full
+ sys_pipe              | full
+ sys_pipe2             | partial++ [13]
+ sys_sched_yield       | full
+ sys_getsid            | full
+ sys_setpgid           | full
+ sys_getpgid           | full
+ sys_getpgrp           | full
+ sys_utime             | full
+ sys_utimes            | full
+ sys_fsync             | compliant
+ sys_fdatasync         | compliant
+ sys_dup               | full
+ sys_dup2              | full
+ sys_reboot            | full
+ sys_sigaction         | minimal [14]
+ sys_sigprocmask       | minimal [14]
+ sys_rt_sigaction      | minimal [14]
+ sys_rt_sigprocmask    | minimal [14]
+
 
 Definitions:
 
@@ -147,3 +160,7 @@ Notes:
 12. [Limitation removed]
 
 13. The O_DIRECT mode is not supported.
+
+14. Tilck has a limited support for signals. They can both either ignored or
+    perform their default action (typically terminate or ignore). Custom signal
+    handler are just ignored.
