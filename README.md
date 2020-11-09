@@ -18,7 +18,7 @@ for playing in kernel mode while retaining the ability to compare how the *very 
 *usermode bits* run on the Linux kernel as well. That's a **unique feature** in the
 realm of educational kernels. Thanks to that, to build a program for Tilck it's enough to
 use a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
-has **no need** have its own set of custom written applications, like most educational
+has **no need** to have its own set of custom written applications, like most educational
 kernels do. It just runs mainstream Linux programs like the **BusyBox** suite.
 While the Linux-compatibility and the monolithic design might be a limitation from
 the research point of view, on the other side, such decisions bring the whole project
@@ -54,7 +54,7 @@ will evolve in a different way and it will have its own unique set of features a
 well. Tilck is fundamentally different from Linux in its design and its trade-offs
 as it **does not** aim to target multi-user server or desktop machines. Currently,
 it targets the educational world, while in the future it might target embedded
-systems or something else, who knows.
+systems or something else.
 
 Features
 ----------------------------------------
@@ -82,8 +82,8 @@ mapping, etc.) **ramfs** implementation, a minimalistic **devfs** implementation
 read-only support for FAT16 and **FAT32** (used for initrd) allowing memory-mapping
 of files, and a nice **sysfs** implementation used to provide a full view of ACPI's
 namespace, the list of all PCI(e) devices and Tilck's compile-time configuration.
-Clearly, in order Tilck to be able to work via multiple file systems like that,
-it has a simple **VFS** implementation as well.
+Clearly, in order to work with multiple file systems at once, Tilck has a simple
+**VFS** implementation as well.
 
 #### Processes and signals
 While Tilck uses internally the concept of thread, multi-threading is not currently
@@ -95,7 +95,7 @@ the SIGSTOP and SIGCONT signals which do what they're actually supposed to do.
 
 One interesting feature in this area deserves a special mention: despite the lack of
 multi-threading in userspace, Tilck has full support for TLS (thread-local storage) via
-`set_thread_area()`, because `libmusl` really wants to use it, even in classic
+`set_thread_area()`, because `libmusl` really requires it, even in classic
 single-threaded processes.
 
 #### I/O
