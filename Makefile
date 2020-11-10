@@ -28,10 +28,10 @@ rebuild_img: $(PREREQUISITES)
 	@$(MAKE) -C build
 
 config: $(PREREQUISITES)
-	@./scripts/dev/run_config
+	@./scripts/run_config
 
 menuconfig: $(PREREQUISITES)
-	@./scripts/dev/run_config
+	@./scripts/run_config
 
 $(TCROOT):
 	$(error Before building Tilck, you need to build the toolchain by running ./scripts/build_toolchain)

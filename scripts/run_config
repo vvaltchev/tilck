@@ -3,7 +3,7 @@
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR="$(cd $SOURCE_DIR/../.. && pwd)"
+MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 
 function no_ccmake_error {
 
@@ -36,7 +36,7 @@ function no_build_dir_error {
    echo "Advanced case"
    echo "----------------------"
    echo "If you're trying to configure a build directory outside of project's"
-   echo "root directory, run this script (TILCK_ROOT/scripts/dev/run_config)"
+   echo "root directory, run this script (TILCK_ROOT/scripts/run_config)"
    echo "by passing the build directory as argument."
    echo
 }
