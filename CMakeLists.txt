@@ -370,8 +370,8 @@ endforeach()
 
 if (TINY_KERNEL)
 
-   if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "Release")
-      message(FATAL_ERROR "TINY_KERNEL=1 requires CMAKE_BUILD_TYPE=Release")
+   if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
+      message(FATAL_ERROR "TINY_KERNEL=1 requires CMAKE_BUILD_TYPE=MinSizeRel")
    endif()
 
    if (KERNEL_GCOV)
