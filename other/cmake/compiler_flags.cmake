@@ -14,11 +14,21 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
       set(OPT_FLAGS_LIST -O3)
    endif()
 
-else()
+elseif (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+
+   message(STATUS "Preparing a MinSizeRel build...")
+   list(APPEND GENERAL_DEFS_LIST "-DNDEBUG -DTILCK_RELEASE_BUILD")
+   set(OPT_FLAGS_LIST -Os)
+
+elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
    message(STATUS "Preparing a DEBUG build...")
    list(APPEND GENERAL_DEFS_LIST "-DTILCK_DEBUG_BUILD")
    set(OPT_FLAGS_LIST -O0 -fno-inline-functions)
+
+else()
+
+   message(FATAL_ERROR "Unknown build type: '${CMAKE_BUILD_TYPE}'")
 
 endif()
 
