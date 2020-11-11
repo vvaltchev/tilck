@@ -94,7 +94,7 @@ macro (no_googletest_lib_fake_error_target)
       COMMAND echo
       COMMAND echo "Instructions:"
       COMMAND echo "  - Run ${BTC_SCRIPT_REL} -s ${GTEST_BTC_COMMAND}"
-      COMMAND echo "  - rm -rf ${CMAKE_BINARY_DIR}"
+      COMMAND echo "  - ./scripts/cmake_run ${CMAKE_BINARY_DIR}"
       COMMAND echo "  - Run this command again"
       COMMAND echo
    )
