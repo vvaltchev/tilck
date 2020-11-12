@@ -39,6 +39,12 @@ SECTIONS
       *(.rodata .rodata.* .gnu.linkonce.r.*)
    } : ro_segment
 
+   .ctors : AT(kernel_text_paddr + (ctors - text))
+   {
+      ctors = .;
+      *(.ctors .ctors.*)
+   } : ro_segment
+
    .tilck_info : AT(kernel_text_paddr + (tilck_info - text))
    {
       tilck_info = .;
@@ -72,7 +78,7 @@ SECTIONS
    _end = .;
 
    /* Completely drop out from the file the following sections */
-   /DISCARD/ : { *(.eh_frame*) }
+   /DISCARD/ : { *(.eh_frame* .dtors .dtors.*) }
 }
 
 
