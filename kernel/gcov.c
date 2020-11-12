@@ -13,11 +13,157 @@ typedef u32 gcov_unsigned_t;
 /*
  * Unfortunately, GCOV_COUNTERS changes with GCC's versions. Hopefully, the
  * following logic is correct and we've missed no cases.
+ *
+ * Q: How the value of GCOV_COUNTERS for each GCC version has been found?
+ * A: Short story: using GCC's git history.
+ *
+ * Long story: the value of GCOV_COUNTERS depends on the number of
+ * DEF_GCOV_COUNTER() instances in gcc/gcov-counter.def
+ *
+ * List of changes (excluding updates of copyright years) affecting
+ * gcov-counter.def (from git://gcc.gnu.org/git/gcc.git)
+ *
+ *  596341c741a Rename SINGE_VALUE to TOPN_VALUES counters.
+ *     BASE-VER: 10.0.0
+ *     GCOV_COUNTERS: 8
+ *
+ *  e37333bad7b Remove indirect call top N counter type.
+ *     BASE-VER: 10.0.0
+ *     GCOV_COUNTERS: 8
+ *
+ *  571e95ccc90 Merged to ToT dated 13th Feb 2017.
+ *     BASE-VER: 7.0.1
+ *     GCOV_COUNTERS: 9
+ *
+ *  56b653f1a37 Remove __gcov_merge_delta (PR bootstrap/77749)
+ *     BASE-VER: 7.0.0
+ *     GCOV_COUNTERS: 9
+ *
+ *  afe0c5ee91a Makefile.in: Fix dependence.
+ *     BASE-VER: 5.0.0
+ *     GCOV_COUNTERS: 10
+ *     Notes: in basepoints/gcc-5 GCOV_COUNTERS is still 9, but there has never
+ *            been a gcc 5.0 release. The project jumped from 4.9.4 to 5.1.0.
+ *
+ *  c77556a5d1e Add gcov-tool: an offline gcda profile processing tool Support.
+ *     BASE-VER: 4.10.0
+ *     GCOV_COUNTERS: 9
+ *
+ * Before that, the value was explicitly defined in gcc/gcov-io.h and commit
+ * that made GCOV_COUNTERS=9 was:
+ *
+ *  86ce5d2fc19 Time profiler introduced
+ *     BASE-VER: 4.9.0
+ *     GCOV_COUNTERS: 9
+
+ * Before that, the value of GCOV_COUNTERS was 8, but it doesn't make sense to
+ * go further back, because older GCC versions than 4.9.0 are not supported
+ * anyway.
+ *
+ * As a double-check, the following bash script checked the value of
+ * GCOV_COUNTERS for each released version after gcc 4.0:
+ *
+ * for x in `git tag | grep -E '^releases/gcc-(4|5|6|7|8|9|10).' | sort -V`;
+ * do
+ *    git reset --hard &> /dev/null;
+ *    git clean -fd &> /dev/null;
+ *    git checkout "$x" &> /dev/null;
+ *    echo -n "$x -> ";
+ *    if [ -f gcc/gcov-counter.def ]; then
+ *       grep 'DEF_GCOV_COUNTER(GCOV_' gcc/gcov-counter.def | wc -l;
+ *    else
+ *       grep -Eo '#define GCOV_COUNTERS[^_]+[0-9]+' gcc/gcov-io.h |
+ *       grep -Eo '[0-9]+';
+ *    fi;
+ * done
+ *
+ * Its output was:
+ *
+ *    releases/gcc-4.0.0 -> 5
+ *    releases/gcc-4.0.1 -> 5
+ *    releases/gcc-4.0.2 -> 5
+ *    releases/gcc-4.0.3 -> 5
+ *    releases/gcc-4.0.4 -> 5
+ *    releases/gcc-4.1.0 -> 5
+ *    releases/gcc-4.1.1 -> 5
+ *    releases/gcc-4.1.2 -> 5
+ *    releases/gcc-4.2.0 -> 5
+ *    releases/gcc-4.2.1 -> 5
+ *    releases/gcc-4.2.2 -> 5
+ *    releases/gcc-4.2.3 -> 5
+ *    releases/gcc-4.2.4 -> 5
+ *    releases/gcc-4.3.0 -> 8
+ *    releases/gcc-4.3.1 -> 8
+ *    releases/gcc-4.3.2 -> 8
+ *    releases/gcc-4.3.3 -> 8
+ *    releases/gcc-4.3.4 -> 8
+ *    releases/gcc-4.3.5 -> 8
+ *    releases/gcc-4.3.6 -> 8
+ *    releases/gcc-4.4.0 -> 8
+ *    releases/gcc-4.4.1 -> 8
+ *    releases/gcc-4.4.2 -> 8
+ *    releases/gcc-4.4.3 -> 8
+ *    releases/gcc-4.4.4 -> 8
+ *    releases/gcc-4.4.5 -> 8
+ *    releases/gcc-4.4.6 -> 8
+ *    releases/gcc-4.4.7 -> 8
+ *    releases/gcc-4.5.0 -> 8
+ *    releases/gcc-4.5.1 -> 8
+ *    releases/gcc-4.5.2 -> 8
+ *    releases/gcc-4.5.3 -> 8
+ *    releases/gcc-4.5.4 -> 8
+ *    releases/gcc-4.6.0 -> 8
+ *    releases/gcc-4.6.1 -> 8
+ *    releases/gcc-4.6.2 -> 8
+ *    releases/gcc-4.6.3 -> 8
+ *    releases/gcc-4.6.4 -> 8
+ *    releases/gcc-4.7.0 -> 8
+ *    releases/gcc-4.7.1 -> 8
+ *    releases/gcc-4.7.2 -> 8
+ *    releases/gcc-4.7.3 -> 8
+ *    releases/gcc-4.7.4 -> 8
+ *    releases/gcc-4.8.0 -> 8
+ *    releases/gcc-4.8.1 -> 8
+ *    releases/gcc-4.8.2 -> 8
+ *    releases/gcc-4.8.3 -> 8
+ *    releases/gcc-4.8.4 -> 8
+ *    releases/gcc-4.8.5 -> 8
+ *    releases/gcc-4.9.0 -> 9
+ *    releases/gcc-4.9.1 -> 9
+ *    releases/gcc-4.9.2 -> 9
+ *    releases/gcc-4.9.3 -> 9
+ *    releases/gcc-4.9.4 -> 9
+ *    releases/gcc-5.1.0 -> 10
+ *    releases/gcc-5.2.0 -> 10
+ *    releases/gcc-5.3.0 -> 10
+ *    releases/gcc-5.4.0 -> 10
+ *    releases/gcc-5.5.0 -> 10
+ *    releases/gcc-6.1.0 -> 10
+ *    releases/gcc-6.2.0 -> 10
+ *    releases/gcc-6.3.0 -> 10
+ *    releases/gcc-6.4.0 -> 10
+ *    releases/gcc-6.5.0 -> 10
+ *    releases/gcc-7.1.0 -> 9
+ *    releases/gcc-7.2.0 -> 9
+ *    releases/gcc-7.3.0 -> 9
+ *    releases/gcc-7.4.0 -> 9
+ *    releases/gcc-7.5.0 -> 9
+ *    releases/gcc-8.1.0 -> 9
+ *    releases/gcc-8.2.0 -> 9
+ *    releases/gcc-8.3.0 -> 9
+ *    releases/gcc-8.4.0 -> 9
+ *    releases/gcc-9.1.0 -> 9
+ *    releases/gcc-9.2.0 -> 9
+ *    releases/gcc-9.3.0 -> 9
+ *    releases/gcc-10.1.0 -> 8
+ *    releases/gcc-10.2.0 -> 8
  */
 
-#if (__GNUC__ >= 7)
+#if __GNUC__ >= 10
+   #define GCOV_COUNTERS 8
+#elif __GNUC__ >= 7
    #define GCOV_COUNTERS 9
-#elif (__GNUC__ > 5) || (__GNUC__ == 5 && __GNUC_MINOR__ >= 1)
+#elif __GNUC__ >= 5
    #define GCOV_COUNTERS 10
 #elif __GNUC__ == 4 && __GNUC_MINOR__ >= 9
    #define GCOV_COUNTERS 9
