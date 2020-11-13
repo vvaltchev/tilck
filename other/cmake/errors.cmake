@@ -79,8 +79,8 @@ function (show_clang_and_syscc_error)
 endfunction()
 
 macro (show_missing_lcov_error)
-   message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov in toolchain. "
-                       "Run ${BTC_SCRIPT_REL} -s build_lcov first.")
+   message(FATAL_ERROR "TEST_GCOV/KERNEL_GCOV set but no lcov-${LCOV_VER} in "
+                       "toolchain. Run ${BTC_SCRIPT_REL} -s build_lcov first.")
 endmacro()
 
 macro (no_googletest_lib_fake_error_target)

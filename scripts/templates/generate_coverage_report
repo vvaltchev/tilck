@@ -22,8 +22,9 @@ BUILD="@CMAKE_BINARY_DIR@"
 HTML_DIR="@COVERAGE_HTML_DIR@"
 GCOV="@TOOL_GCOV@"
 
-LCOV="$TC/noarch/lcov/bin/lcov"
-GENHTML="$TC/noarch/lcov/bin/genhtml"
+LCOV_DIR="$TC/noarch/lcov-@LCOV_VER@"
+LCOV="$LCOV_DIR/bin/lcov"
+GENHTML="$LCOV_DIR/bin/genhtml"
 
 function show_help {
    echo "Usage:"
