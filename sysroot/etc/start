@@ -36,6 +36,9 @@ done
 # Create symlinks for all the busybox's applets
 /initrd/bin/busybox --install -s /bin
 
+# Create a symlink for the `env` applet in /usr/bin/env
+ln -s /initrd/bin/busybox /usr/bin/env
+
 # Create symlinks for some devshell cmds
 cd /usr/bin
 ln -s devshell runall
