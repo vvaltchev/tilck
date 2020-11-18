@@ -85,6 +85,12 @@ function create_sysroot_skeleton {
    rm README
 }
 
+# Copy the shell-script extra system tests in <SYSROOT>/usr/local/tests
+function add_script_tests {
+   mkdir -p usr/local/tests
+   cp $maindir/tests/system/scripts/* ./usr/local/tests
+}
+
 function add_apps {
 
    IFS=";"
@@ -96,7 +102,12 @@ function add_apps {
       local dest_dir="usr/bin"
 
       if [[ "$name" == "init" ]]; then
+
          dest_dir="bin"
+
+      elif [[ "$name" == "devshell" ]]; then
+
+         add_script_tests
       fi
 
       cp "$x" $dest_dir
