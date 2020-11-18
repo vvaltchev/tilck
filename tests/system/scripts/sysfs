@@ -1,0 +1,66 @@
+#!/initrd/bin/busybox ash
+
+set -e
+
+if ! [ -d /syst ]; then
+   echo "No sysfs mounted at /syst: skipping the test"
+   exit 0
+fi
+
+echo
+echo "[Enter in /syst]"
+cd /syst
+echo "[ls]"
+ls
+
+if ! [ -d config ]; then
+   echo "FAIL: /syst/config not found"
+   exit 1
+fi
+
+if ! [ -d hw ]; then
+   echo "FAIL: /syst/hw not found"
+   exit 1
+fi
+
+echo
+echo "[Enter in /syst/config]"
+cd config
+echo "[ls -R]"
+ls -R
+
+echo
+echo "[Read all the files in config/]"
+
+# Read all the files, expecting no errors
+for x in `find .`; do
+   if [ -f $x ]; then
+      echo $x: `cat $x`;
+   fi
+done
+
+if ! [ -f commit ]; then
+   echo "FAIL: no commit file in /syst/config"
+   exit 1
+fi
+
+# Get kernel's commit's SHA-1
+sha1=`uname -v`
+
+echo
+echo "[Check the content of /syst/config/commit]"
+
+if ! cat commit | grep $sha1; then
+   echo "FAIL: commit's sha-1: $sha1 not found in the commit file"
+   echo "FAIL: file's contents: "
+   cat commit
+   exit 1
+fi
+
+echo
+echo "[Enter in /syst/hw]"
+cd /syst/hw
+echo "[ls -Rl]"
+ls -Rl
+
+exit 0
