@@ -45,6 +45,11 @@ static void sek_thread(void *unused)
 {
    for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++) {
 
+      if (UNLIKELY(se_is_stop_requested())) {
+         printk("sek_thread: STOP at iter %d/%d\n", iter, KMUTEX_SEK_TH_ITERS);
+         break;
+      }
+
       kmutex_lock(&test_mutex);
       {
          kernel_yield();
@@ -71,6 +76,7 @@ static void sek_thread(void *unused)
 void selftest_kmutex_med()
 {
    int local_tids[3];
+
    kmutex_init(&test_mutex, 0);
    sek_set_vars(sek_set_1);
 
@@ -87,7 +93,11 @@ void selftest_kmutex_med()
    debug_reset_no_deadlock_set();
 
    kmutex_destroy(&test_mutex);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex_med)
@@ -215,7 +225,7 @@ DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec_med)
 
 static void kmutex_ord_th()
 {
-   int tid = get_curr_task()->tid;
+   int tid = get_curr_tid();
 
    /*
     * Since in practice, currently on Tilck, threads are executed pretty much
@@ -224,6 +234,9 @@ static void kmutex_ord_th()
     * simulating the general case where the `order_mutex` is strictly required.
     */
    kernel_sleep( ((u32)tid / sizeof(void *)) % 7 );
+
+   if (se_is_stop_requested())
+      return;
 
    kmutex_lock(&order_mutex);
    {
@@ -259,8 +272,8 @@ static void kmutex_ord_th()
        * with preemption disabled. That's because of the "magic" kmutex flag
        * KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED designed specifically for
        * this self test. It allows the lock to be called while preemption is
-       * disabled and it enables it forcibly, no matter what, before going to
-       * sleep.
+       * disabled and it enables preemption forcibly, no matter what, before
+       * going to sleep.
        */
 
       ASSERT(is_preemption_enabled());
@@ -282,7 +295,8 @@ static void kmutex_ord_th()
        * equals to almost its maxiumum (127). Typically, it's ~122.
        */
 
-      kernel_sleep(1);
+      if (!se_is_stop_requested())
+         kernel_sleep(1);
    }
    kmutex_unlock(&test_mutex);
 }
@@ -301,10 +315,16 @@ void selftest_kmutex_ord_med()
       if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
+      if (se_is_stop_requested())
+         goto end;
+
       tids[i] = tid;
    }
 
    kthread_join_all(tids, ARRAY_SIZE(tids), true);
+
+   if (se_is_stop_requested())
+      goto end;
 
 #if KMUTEX_STATS_ENABLED
    printk("order_mutex max waiters: %u\n", order_mutex.max_num_waiters);
@@ -338,9 +358,16 @@ void selftest_kmutex_ord_med()
              unlucky_threads, ARRAY_SIZE(tids));
    }
 
+
+end:
+
    kmutex_destroy(&order_mutex);
    kmutex_destroy(&test_mutex);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord_med)

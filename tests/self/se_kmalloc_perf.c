@@ -83,11 +83,19 @@ void selftest_kmalloc_perf_med(void)
           "Cycles per kmalloc(RANDOM) + kfree: %" PRIu64 "\n", duration);
 
    for (u32 s = 32; s <= 256*KB; s *= 2) {
+
+      if (se_is_stop_requested())
+         break;
+
       kmalloc_perf_per_size(s);
    }
 
    kfree_array_obj(allocations, void *, 10000);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmalloc_perf,

@@ -70,6 +70,11 @@ do_bintree_perf_test(u32 elems,
 
    VERIFY(elems <= RANDOM_VALUES_COUNT);
 
+   kernel_yield();
+
+   if (se_is_stop_requested())
+      return;
+
    nodes = kalloc_array_obj(struct simple_obj, elems);
 
    if (!nodes)
@@ -153,8 +158,13 @@ selftest_bintree_perf_med(void)
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
 
-   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++)
+   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++) {
+
       do_bintree_perf_test(lookup_elems[i], true, find_obj_with_bst);
+
+      if (se_is_stop_requested())
+         return;
+   }
 
    printk("\n");
    printk("Tilck's BST generic-lookup performance compared to linked list\n");
@@ -162,8 +172,13 @@ selftest_bintree_perf_med(void)
    printk("    elems    |     bst    |     list\n");
    printk("-------------+------------+--------------\n");
 
-   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++)
+   for (int i = 0; i < ARRAY_SIZE(lookup_elems); i++) {
+
       do_bintree_perf_test(lookup_elems[i], true, find_obj_with_bst2);
+
+      if (se_is_stop_requested())
+         return;
+   }
 
    printk("\n");
    printk("Tilck's BST insert performance compared to linked list\n");

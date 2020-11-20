@@ -39,7 +39,11 @@ void simple_test_kthread(void *arg)
 #endif
 
       if (!(i % (8*MB))) {
+
          printk("[kthread] i = %i\n", i/MB);
+
+         if (se_is_stop_requested())
+            break;
       }
    }
 
@@ -54,7 +58,11 @@ void selftest_kthread_med(void)
       panic("Unable to create the simple test kthread");
 
    kthread_join(tid, true);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread_med)
@@ -91,7 +99,11 @@ void selftest_join_med()
    kthread_join(tid, true);
 
    printk("[selftest join] kernel thread exited\n");
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(join, se_med, &selftest_join_med)

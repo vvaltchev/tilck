@@ -75,6 +75,9 @@ static void se_rwlock_read_thread(void *arg)
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
 
+      if (se_is_stop_requested())
+         break;
+
       ctx->shlock(ctx->arg);
       {
          if (se_rwlock_vars[0] == se_rwlock_set_1[0])
@@ -94,6 +97,9 @@ static void se_rwlock_write_thread(void *arg)
    writers_running++;
 
    for (int iter = 0; iter < RWLOCK_TH_ITERS; iter++) {
+
+      if (se_is_stop_requested())
+         break;
 
       ctx->exlock(ctx->arg);
       {
@@ -157,6 +163,12 @@ void selftest_rwlock_rp_med()
       printk("After readers, running writers: %d\n", writers_running);
 
       if (writers_running == 0) {
+
+         kthread_join_all(wt, ARRAY_SIZE(wt), true);
+
+         if (se_is_stop_requested())
+            break;
+
          printk("running writers == 0, expected > 0. Re-try sub-test\n");
          continue;
       }
@@ -165,15 +177,30 @@ void selftest_rwlock_rp_med()
       kthread_join_all(wt, ARRAY_SIZE(wt), true);
       break;
    }
+
    VERIFY(retry < RETRY_COUNT);
+
+   if (se_is_stop_requested())
+      goto end;
 
    printk("-------- sub-test: join writers and then readers -----------\n");
    for (retry = 0; retry < RETRY_COUNT; retry++) {
+
       se_rwlock_common(rt, wt, &se_rp_ctx);
       kthread_join_all(wt, ARRAY_SIZE(wt), true);
+
+      if (se_is_stop_requested())
+         goto end;
+
       printk("After writers, running readers: %d\n", readers_running);
 
       if (readers_running > 0) {
+
+         kthread_join_all(rt, ARRAY_SIZE(rt), true);
+
+         if (se_is_stop_requested())
+            break;
+
          printk("running readers > 0, expected == 0. Re-try subtest.\n");
          continue;
       }
@@ -184,8 +211,13 @@ void selftest_rwlock_rp_med()
    }
    VERIFY(retry < RETRY_COUNT);
 
+end:
    rwlock_rp_destroy(&test_rwlrp);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp_med)
@@ -214,8 +246,13 @@ void selftest_rwlock_wp_med()
       printk("After readers, running writers: %d\n", writers_running);
 
       if (writers_running > 0) {
-         printk("running writers > 0, expected == 0. Re-try sub-test.\n");
+
          kthread_join_all(wt, ARRAY_SIZE(wt), true);
+
+         if (se_is_stop_requested())
+            break;
+
+         printk("running writers > 0, expected == 0. Re-try sub-test.\n");
          continue;
       }
 
@@ -224,6 +261,9 @@ void selftest_rwlock_wp_med()
       break;
    }
    VERIFY(retry < RETRY_COUNT);
+
+   if (se_is_stop_requested())
+      goto end;
 
    printk("-------- sub-test: join writers and then readers -----------\n");
 
@@ -234,8 +274,13 @@ void selftest_rwlock_wp_med()
       printk("After writers, running readers: %d\n", readers_running);
 
       if (readers_running == 0) {
-         printk("running readers == 0, expected > 0. Re-try sub-test\n");
+
          kthread_join_all(rt, ARRAY_SIZE(rt), true);
+
+         if (se_is_stop_requested())
+            break;
+
+         printk("running readers == 0, expected > 0. Re-try sub-test\n");
          continue;
       }
 
@@ -245,8 +290,13 @@ void selftest_rwlock_wp_med()
    }
    VERIFY(retry < RETRY_COUNT);
 
+end:
    rwlock_wp_destroy(&test_rwlwp);
-   se_regular_end();
+
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp_med)
