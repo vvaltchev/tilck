@@ -185,7 +185,7 @@ void selftest_rwlock_rp_med()
    VERIFY(retry < RETRY_COUNT);
 
    rwlock_rp_destroy(&test_rwlrp);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp_med)
@@ -246,7 +246,7 @@ void selftest_rwlock_wp_med()
    VERIFY(retry < RETRY_COUNT);
 
    rwlock_wp_destroy(&test_rwlwp);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp_med)

@@ -93,7 +93,7 @@ retry:
    if (mobj_se_test_assumption_failed)
       goto retry;
 
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(mobj_waiter,

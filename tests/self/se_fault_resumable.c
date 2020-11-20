@@ -121,7 +121,7 @@ void selftest_fault_res_short(void)
                             1); // arg1: level
    printk("[level 0]: call returned %u\n", r);
    VERIFY(r == 0);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res_short)
@@ -159,7 +159,7 @@ void selftest_fault_res_perf_short(void)
    duration = RDTSC() - start;
 
    printk("fault resumable call: %llu cycles\n", duration/iters);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(fault_res_perf,

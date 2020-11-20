@@ -87,7 +87,7 @@ void selftest_kcond_short()
 
    kthread_join_all(tids, ARRAY_SIZE(tids), true);
    kcond_destory(&cond);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond_short)

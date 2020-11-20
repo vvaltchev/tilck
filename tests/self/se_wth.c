@@ -167,7 +167,7 @@ void selftest_wth_short(void)
    kcond_destory(&ctx.c);
    kmutex_destroy(&ctx.m);
    printk("[se_wth] END\n");
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth_short)
@@ -227,7 +227,7 @@ void selftest_wth_perf_short(void)
 
    ASSERT(n > 0); // SA: avoid division by zero warning
    printk("Avg. job enqueue cycles: %" PRIu64 " [%i jobs]\n", elapsed/n, n);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf_short)

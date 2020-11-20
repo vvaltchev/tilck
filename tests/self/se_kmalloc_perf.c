@@ -87,7 +87,7 @@ void selftest_kmalloc_perf_med(void)
    }
 
    kfree_array_obj(allocations, void *, 10000);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmalloc_perf,

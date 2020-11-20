@@ -87,7 +87,7 @@ void selftest_kmutex_med()
    debug_reset_no_deadlock_set();
 
    kmutex_destroy(&test_mutex);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex_med)
@@ -181,7 +181,7 @@ void selftest_kmutex_rec_med()
 
    kthread_join_all(local_tids, ARRAY_SIZE(local_tids), true);
    kmutex_destroy(&test_mutex);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec_med)
@@ -340,7 +340,7 @@ void selftest_kmutex_ord_med()
 
    kmutex_destroy(&order_mutex);
    kmutex_destroy(&test_mutex);
-   regular_self_test_end();
+   se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord_med)

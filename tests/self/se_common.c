@@ -133,7 +133,7 @@ se_keypress_handler(struct kb_dev *kb, struct key_event ke)
    return ret;
 }
 
-void regular_self_test_end(void)
+void se_regular_end(void)
 {
    printk("Self-test completed.\n");
 }
