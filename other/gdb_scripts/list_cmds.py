@@ -45,6 +45,7 @@ class cmd_list_tasks(gdb.Command):
          pid_field = ""
          state = str(t['state'])[11:] # Skip "TASK_STATE_"
          what_field = ""
+         what_str = ""
 
          if kernel_only:
             if t['tid'] <= 10000:
@@ -66,14 +67,16 @@ class cmd_list_tasks(gdb.Command):
 
          if t['tid'] > 10000:
             what_field = t['kthread_name'].string()
+            what_str = 'kthread_name'
          else:
             pid_field = "pid = {:>5}, ".format(pid)
             what_field = pi['debug_cmdline'].string().rstrip()
+            what_str = 'cmdline'
 
          print(
             "        "
-            "{{tid = {:>5}, {}{}, kthread_name: {}}}\n".format(
-               tid, pid_field, state, what_field
+            "{{tid = {:>5}, {}{}, {} = {}}}\n".format(
+               tid, pid_field, state, what_str, what_field
             )
          )
 
