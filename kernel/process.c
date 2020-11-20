@@ -474,7 +474,7 @@ int sys_gettid()
    return get_curr_task()->tid;
 }
 
-int kthread_join(int tid)
+int kthread_join(int tid, bool ignore_signals)
 {
    struct task *curr = get_curr_task();
    struct task *ti;
@@ -486,9 +486,13 @@ int kthread_join(int tid)
    while ((ti = get_task(tid))) {
 
       if (curr->pending_signal) {
+
          wait_obj_reset(&curr->wobj);
-         rc = -EINTR;
-         break;
+
+         if (!ignore_signals) {
+            rc = -EINTR;
+            break;
+         }
       }
 
       prepare_to_wait_on(WOBJ_TASK,
@@ -506,13 +510,13 @@ int kthread_join(int tid)
    return rc;
 }
 
-int kthread_join_all(const int *tids, size_t n)
+int kthread_join_all(const int *tids, size_t n, bool ignore_signals)
 {
    int rc = 0;
 
    for (size_t i = 0; i < n; i++) {
 
-      rc = kthread_join(tids[i]);
+      rc = kthread_join(tids[i], ignore_signals);
 
       if (rc)
          break;

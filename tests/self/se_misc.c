@@ -53,7 +53,7 @@ void selftest_kthread_med(void)
    if (tid < 0)
       panic("Unable to create the simple test kthread");
 
-   kthread_join(tid);
+   kthread_join(tid, true);
    regular_self_test_end();
 }
 
@@ -88,7 +88,7 @@ void selftest_join_med()
       panic("Unable to create simple_test_kthread");
 
    printk("[selftest join] join()\n");
-   kthread_join(tid);
+   kthread_join(tid, true);
 
    printk("[selftest join] kernel thread exited\n");
    regular_self_test_end();

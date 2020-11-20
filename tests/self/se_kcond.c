@@ -67,7 +67,7 @@ static void kcond_thread_signal_generator()
    if ((tid = kthread_create(&kcond_thread_wait_ticks, 0, NULL)) < 0)
       panic("Unable to create a thread for kcond_thread_wait_ticks()");
 
-   kthread_join(tid);
+   kthread_join(tid, true);
 }
 
 void selftest_kcond_short()
@@ -85,7 +85,7 @@ void selftest_kcond_short()
    tids[2] = kthread_create(&kcond_thread_signal_generator, 0, NULL);
    VERIFY(tids[2] > 0);
 
-   kthread_join_all(tids, ARRAY_SIZE(tids));
+   kthread_join_all(tids, ARRAY_SIZE(tids), true);
    kcond_destory(&cond);
    regular_self_test_end();
 }

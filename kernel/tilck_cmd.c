@@ -58,7 +58,7 @@ static int sys_tilck_run_selftest(const char *u_selftest)
    if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, se)) < 0)
       return tid;
 
-   kthread_join(tid);
+   kthread_join(tid, true);
    return 0;
 }
 

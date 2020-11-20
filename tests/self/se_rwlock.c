@@ -153,7 +153,7 @@ void selftest_rwlock_rp_med()
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
       se_rwlock_common(rt, wt, &se_rp_ctx);
-      kthread_join_all(rt, ARRAY_SIZE(rt));
+      kthread_join_all(rt, ARRAY_SIZE(rt), true);
       printk("After readers, running writers: %d\n", writers_running);
 
       if (writers_running == 0) {
@@ -162,7 +162,7 @@ void selftest_rwlock_rp_med()
       }
 
       /* writers_running > 0: ideal case */
-      kthread_join_all(wt, ARRAY_SIZE(wt));
+      kthread_join_all(wt, ARRAY_SIZE(wt), true);
       break;
    }
    VERIFY(retry < RETRY_COUNT);
@@ -170,7 +170,7 @@ void selftest_rwlock_rp_med()
    printk("-------- sub-test: join writers and then readers -----------\n");
    for (retry = 0; retry < RETRY_COUNT; retry++) {
       se_rwlock_common(rt, wt, &se_rp_ctx);
-      kthread_join_all(wt, ARRAY_SIZE(wt));
+      kthread_join_all(wt, ARRAY_SIZE(wt), true);
       printk("After writers, running readers: %d\n", readers_running);
 
       if (readers_running > 0) {
@@ -179,7 +179,7 @@ void selftest_rwlock_rp_med()
       }
 
       /* readers_running == 0: ideal case */
-      kthread_join_all(rt, ARRAY_SIZE(rt));
+      kthread_join_all(rt, ARRAY_SIZE(rt), true);
       break;
    }
    VERIFY(retry < RETRY_COUNT);
@@ -210,17 +210,17 @@ void selftest_rwlock_wp_med()
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
       se_rwlock_common(rt, wt, &se_wp_ctx);
-      kthread_join_all(rt, ARRAY_SIZE(rt));
+      kthread_join_all(rt, ARRAY_SIZE(rt), true);
       printk("After readers, running writers: %d\n", writers_running);
 
       if (writers_running > 0) {
          printk("running writers > 0, expected == 0. Re-try sub-test.\n");
-         kthread_join_all(wt, ARRAY_SIZE(wt));
+         kthread_join_all(wt, ARRAY_SIZE(wt), true);
          continue;
       }
 
       /* writers_running == 0: that's exactly we'd expect in the ideal case */
-      kthread_join_all(wt, ARRAY_SIZE(wt));
+      kthread_join_all(wt, ARRAY_SIZE(wt), true);
       break;
    }
    VERIFY(retry < RETRY_COUNT);
@@ -230,17 +230,17 @@ void selftest_rwlock_wp_med()
    for (retry = 0; retry < RETRY_COUNT; retry++) {
 
       se_rwlock_common(rt, wt, &se_wp_ctx);
-      kthread_join_all(wt, ARRAY_SIZE(wt));
+      kthread_join_all(wt, ARRAY_SIZE(wt), true);
       printk("After writers, running readers: %d\n", readers_running);
 
       if (readers_running == 0) {
          printk("running readers == 0, expected > 0. Re-try sub-test\n");
-         kthread_join_all(rt, ARRAY_SIZE(rt));
+         kthread_join_all(rt, ARRAY_SIZE(rt), true);
          continue;
       }
 
       /* readers_running > 0: ideal case */
-      kthread_join_all(rt, ARRAY_SIZE(rt));
+      kthread_join_all(rt, ARRAY_SIZE(rt), true);
       break;
    }
    VERIFY(retry < RETRY_COUNT);

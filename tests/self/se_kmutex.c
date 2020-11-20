@@ -83,7 +83,7 @@ void selftest_kmutex_med()
    }
 
    debug_add_task_to_no_deadlock_set(get_curr_tid());
-   kthread_join_all(local_tids, ARRAY_SIZE(local_tids));
+   kthread_join_all(local_tids, ARRAY_SIZE(local_tids), true);
    debug_reset_no_deadlock_set();
 
    kmutex_destroy(&test_mutex);
@@ -159,7 +159,7 @@ void selftest_kmutex_rec_med()
 
    local_tids[0] = kthread_create(test_kmutex_thread_trylock, 0, NULL);
    VERIFY(local_tids[0] > 0);
-   kthread_join(local_tids[0]);
+   kthread_join(local_tids[0], true);
 
    kmutex_unlock(&test_mutex);
    printk("Unlocked once\n");
@@ -179,7 +179,7 @@ void selftest_kmutex_rec_med()
    local_tids[2] = kthread_create(&test_kmutex_thread_trylock, 0, NULL);
    VERIFY(local_tids[2] > 0);
 
-   kthread_join_all(local_tids, ARRAY_SIZE(local_tids));
+   kthread_join_all(local_tids, ARRAY_SIZE(local_tids), true);
    kmutex_destroy(&test_mutex);
    regular_self_test_end();
 }
@@ -304,7 +304,7 @@ void selftest_kmutex_ord_med()
       tids[i] = tid;
    }
 
-   kthread_join_all(tids, ARRAY_SIZE(tids));
+   kthread_join_all(tids, ARRAY_SIZE(tids), true);
 
 #if KMUTEX_STATS_ENABLED
    printk("order_mutex max waiters: %u\n", order_mutex.max_num_waiters);
