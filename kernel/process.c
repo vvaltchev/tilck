@@ -476,6 +476,7 @@ int sys_gettid()
 
 void kthread_join(int tid)
 {
+   struct task *curr = get_curr_task();
    struct task *ti;
 
    ASSERT(is_preemption_enabled());
@@ -483,14 +484,19 @@ void kthread_join(int tid)
 
    while ((ti = get_task(tid))) {
 
+      if (curr->pending_signal) {
+         wait_obj_reset(&curr->wobj);
+         break;
+      }
+
       prepare_to_wait_on(WOBJ_TASK,
                          TO_PTR(ti->tid),
                          NO_EXTRA,
                          &ti->tasks_waiting_list);
 
       enter_sleep_wait_state();
+      /* after enter_sleep_wait_state() the preemption is be enabled */
 
-      /* here the preemption is guaranteed to be enabled */
       disable_preemption();
    }
 
