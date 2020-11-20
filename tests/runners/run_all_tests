@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import signal
+import argparse
 import subprocess
 import threading
 import concurrent.futures as ft
@@ -193,50 +194,55 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
       return future.result()
 
-def show_help_and_exit():
-   raw_print("Syntax:")
-   raw_print("     run_all_tests -l")
-   raw_print("     run_all_tests [-c] [-o] <regex> [<max_timeout>]")
-   sys.exit(Fail.invalid_args.value)
-
-def show_tests_and_exit():
+def list_tests(reg_filter, max_timeout, test_type):
 
    col_names = [['test name', 30], ['test type', 12], ['timeout', 10]]
-   raw_print("")
+   raw_stdout_write("\n")
 
    for x in col_names:
-      sys.stdout.write('+-')
-      sys.stdout.write(''.center(x[1], '-'))
-   sys.stdout.write('+\n')
+      raw_stdout_write('+-')
+      raw_stdout_write(''.center(x[1], '-'))
+   raw_stdout_write('+\n')
 
    for x in col_names:
-      sys.stdout.write('| ')
-      sys.stdout.write(x[0].center(x[1], ' '))
-   sys.stdout.write('|\n')
+      raw_stdout_write('| ')
+      raw_stdout_write(x[0].center(x[1], ' '))
+   raw_stdout_write('|\n')
 
    for x in col_names:
-      sys.stdout.write('+-')
-      sys.stdout.write(''.center(x[1], '-'))
-   sys.stdout.write('+\n')
+      raw_stdout_write('+-')
+      raw_stdout_write(''.center(x[1], '-'))
+   raw_stdout_write('+\n')
 
    for tt in TEST_TYPES:
 
+      count = 0
+
+      if test_type and tt != test_type:
+         continue
+
       for x in tests_by_type[tt]:
-         sys.stdout.write('| ')
-         sys.stdout.write(x[0].ljust(col_names[0][1]))
-         sys.stdout.write('| ')
-         sys.stdout.write(tt.ljust(col_names[1][1]))
-         sys.stdout.write('| ')
-         sys.stdout.write(str(x[1]).ljust(col_names[2][1]))
-         sys.stdout.write('|\n')
 
-      for x in col_names:
-         sys.stdout.write('+-')
-         sys.stdout.write(''.center(x[1], '-'))
-      sys.stdout.write('+\n')
+         name = x[0]
+         timeout = x[1]
 
-   sys.stdout.write('\n')
-   sys.exit(0)
+         if timeout <= max_timeout and re.match(reg_filter, name):
+            raw_stdout_write('| ')
+            raw_stdout_write(name.ljust(col_names[0][1]))
+            raw_stdout_write('| ')
+            raw_stdout_write(tt.ljust(col_names[1][1]))
+            raw_stdout_write('| ')
+            raw_stdout_write(str(timeout).ljust(col_names[2][1]))
+            raw_stdout_write('|\n')
+            count += 1
+
+      if count > 0:
+         for x in col_names:
+            raw_stdout_write('+-')
+            raw_stdout_write(''.center(x[1], '-'))
+         raw_stdout_write('+\n')
+
+   raw_stdout_write('\n')
 
 def get_sum(per_test_counter):
    return sum(per_test_counter[k] for k in per_test_counter)
@@ -252,9 +258,13 @@ def run_test(test_type, x, show_output):
    if internal_run_test(test_type, x[0], x[1], show_output):
       tests_passed[test_type] += 1
 
-def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
+def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
 
    for tt in TEST_TYPES:
+
+      if test_type and tt != test_type:
+         continue
+
       for x in tests_by_type[tt]:
          if re.match(reg, x[0]) and x[1] <= max_test_timeout:
             run_test(tt, x, show_output)
@@ -283,7 +293,7 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero):
             for x in found:
                raw_print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
 
-         sys.exit(1)
+         sys.exit(Fail.no_tests_matching.value)
 
 def dump_test_stats():
 
@@ -296,48 +306,71 @@ def dump_test_stats():
                              tests_passed[tt],
                              tests_to_run[tt]))
 
+def parse_args():
+
+   parser = argparse.ArgumentParser()
+
+   parser.add_argument(
+      "-l", "--list-tests",
+      action = "store_true",
+      help = "list all tests and exit"
+   )
+
+   parser.add_argument(
+      "-c", "--compact-run",
+      action = "store_true",
+      help = "run all the shellcmds in a single VM run (faster)"
+   )
+
+   parser.add_argument(
+      "-o", "--show-output",
+      action = "store_true",
+      help = "always show test's output"
+   )
+
+   parser.add_argument(
+      "-r", "--regex_filter",
+      type = str,
+      default = ".*",
+      help = "run only the tests matching the given regex"
+   )
+
+   parser.add_argument(
+      "-t", "--max-timeout",
+      type = int,
+      default = MED_TEST_TIMEOUT,
+      help = "run only the tests having timeout <= MAX_TIMEOUT"
+   )
+
+   parser.add_argument(
+      "-T", "--test_type",
+      type = str,
+      choices = TEST_TYPES,
+      help = "run only tests of the given type"
+   )
+
+   try:
+      args = parser.parse_args()
+   except SystemExit:
+      sys.exit(Fail.invalid_args.value)
+
+   return args
+
 def main():
 
    global tests_by_type
    global tests_to_run
-   set_runner_name("tests runner")
-
-   # Options
-   max_test_timeout = MED_TEST_TIMEOUT
-   show_output = False
-   compact_shellcmds = False
-   reg_filter = ".*"
-   # ------------
+   set_runner_name("test runner")
 
    load_all_tests()
+   args = parse_args()
 
-   if len(sys.argv) >= 2 and sys.argv[1] == '-c':
-      compact_shellcmds = True
+   if args.list_tests:
+      list_tests(args.regex_filter, args.max_timeout, args.test_type)
+      sys.exit(0)
+
+   if args.compact_run:
       tests_by_type['shellcmd'] = []
-      del sys.argv[1]
-
-   if len(sys.argv) >= 2 and sys.argv[1] == '-o':
-      show_output = True
-      del sys.argv[1]
-
-   if len(sys.argv) >= 2:
-
-      if sys.argv[1] == '-l':
-         show_tests_and_exit()
-
-      if sys.argv[1].startswith('-'):
-         show_help_and_exit()
-
-      try:
-         max_test_timeout = int(sys.argv[1])
-      except:
-         reg_filter = sys.argv[1]
-
-      if len(sys.argv) >= 3:
-         try:
-            max_test_timeout = int(sys.argv[2])
-         except:
-            show_help_and_exit()
 
    detect_kvm()
 
@@ -346,22 +379,26 @@ def main():
 
    try:
 
-      run_all_tests(max_test_timeout,
-                  show_output,
-                  reg_filter,
-                  not compact_shellcmds)
+      run_all_tests(args.max_timeout,
+                    args.show_output,
+                    args.regex_filter,
+                    not args.compact_run,
+                    args.test_type)
 
-      if compact_shellcmds:
-         run_test('shellcmd', ['runall', MED_TEST_TIMEOUT * 4], show_output)
+      if args.compact_run:
+         if not args.test_type or args.test_type == 'shellcmd':
+            run_test('shellcmd',
+                     ['runall', MED_TEST_TIMEOUT * 4],
+                     args.show_output)
 
    except KeyboardInterrupt:
       msg_print("KeyboardInterrupt")
-      sys.exit(1)
+      sys.exit(Fail.user_interruption.value)
 
    dump_test_stats()
 
    if get_sum(tests_passed) != get_sum(tests_to_run):
-      sys.exit(1)
+      sys.exit(Fail.some_tests_failed.value)
 
 ###############################
 if __name__ == '__main__':

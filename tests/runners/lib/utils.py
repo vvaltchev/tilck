@@ -34,7 +34,9 @@ class Fail(Enum):
    user_interruption       = 11
    qemu_msg_parsing_fail   = 12
    qemu_died_unexpectedly  = 13
-   other                   = 14
+   some_tests_failed       = 14
+   no_tests_matching       = 15
+   other                   = 16
 
 # Globals
 __g_fail_reason = Fail.success
