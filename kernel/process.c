@@ -474,10 +474,11 @@ int sys_gettid()
    return get_curr_task()->tid;
 }
 
-void kthread_join(int tid)
+int kthread_join(int tid)
 {
    struct task *curr = get_curr_task();
    struct task *ti;
+   int rc = 0;
 
    ASSERT(is_preemption_enabled());
    disable_preemption();
@@ -486,6 +487,7 @@ void kthread_join(int tid)
 
       if (curr->pending_signal) {
          wait_obj_reset(&curr->wobj);
+         rc = -EINTR;
          break;
       }
 
@@ -501,12 +503,22 @@ void kthread_join(int tid)
    }
 
    enable_preemption();
+   return rc;
 }
 
-void kthread_join_all(const int *tids, size_t n)
+int kthread_join_all(const int *tids, size_t n)
 {
-   for (size_t i = 0; i < n; i++)
-      kthread_join(tids[i]);
+   int rc = 0;
+
+   for (size_t i = 0; i < n; i++) {
+
+      rc = kthread_join(tids[i]);
+
+      if (rc)
+         break;
+   }
+
+   return rc;
 }
 
 void

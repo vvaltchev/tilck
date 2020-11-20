@@ -354,8 +354,8 @@ void init_task_lists(struct task *ti);
 // It is called when each kernel thread returns. May be called explicitly too.
 void kthread_exit(void);
 
-void kthread_join(int tid);
-void kthread_join_all(const int *tids, size_t n);
+int kthread_join(int tid);
+int kthread_join_all(const int *tids, size_t n);
 
 void task_set_wakeup_timer(struct task *task, u32 ticks);
 void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
