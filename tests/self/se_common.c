@@ -16,11 +16,12 @@
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/cmdline.h>
-#include <tilck/kernel/kb.h>
+#include <tilck/kernel/errno.h>
 
 static struct list se_list = STATIC_LIST_INIT(se_list);
 static volatile bool se_stop_requested;
 static struct self_test *se_running;
+static struct task *se_user_task;
 
 static void
 se_actual_register(struct self_test *se)
@@ -90,8 +91,10 @@ struct self_test *se_find(const char *name)
    return NULL;
 }
 
-void se_internal_run(struct self_test *se)
+static void se_internal_run(struct self_test *se)
 {
+   ASSERT(se_user_task != NULL);
+
    /* Common self test setup code */
    disable_preemption();
    {
@@ -112,25 +115,50 @@ void se_internal_run(struct self_test *se)
    enable_preemption();
 }
 
-static enum kb_handler_action
-se_keypress_handler(struct kb_dev *kb, struct key_event ke)
+int se_run(struct self_test *se)
 {
-   enum kb_handler_action ret = kb_handler_nak;
-
-   if (!se_running)
-      return ret;
+   int tid;
+   int rc = 0;
 
    disable_preemption();
+   {
+      if (se_running) {
 
-   if (se_running) {
-      if (ke.print_char == 'c' && kb_is_ctrl_pressed(kb)) {
-         se_stop_requested = true;
-         ret = kb_handler_ok_and_stop;
+         printk("self-tests: parallel runs not allowed (tid: %d)\n",
+                get_curr_tid());
+
+         enable_preemption();
+         return -EBUSY;
       }
+
+      se_user_task = get_curr_task();
+   }
+   enable_preemption();
+
+   tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, se);
+
+   if (tid > 0) {
+
+      rc = kthread_join(tid, false);
+
+      if (rc) {
+         se_stop_requested = true;
+         printk("self-tests: stop requested\n");
+         rc = kthread_join(tid, true);
+      }
+
+   } else {
+
+      printk("self-tests: kthread_create() failed with: %d\n", tid);
+      rc = tid;
    }
 
+   disable_preemption();
+   {
+      se_user_task = NULL;
+   }
    enable_preemption();
-   return ret;
+   return rc;
 }
 
 void se_regular_end(void)
@@ -138,10 +166,10 @@ void se_regular_end(void)
    printk("Self-test completed.\n");
 }
 
-static struct keypress_handler_elem se_handler =
+void se_interrupted_end(void)
 {
-   .handler = &se_keypress_handler
-};
+   printk("Self-test interrupted.\n");
+}
 
 void init_self_tests(void)
 {
@@ -149,8 +177,6 @@ void init_self_tests(void)
    list_for_each_ro(se, &se_list, node) {
       se_actual_register(se);
    }
-
-   register_keypress_handler(&se_handler);
 }
 
 void selftest_list_manual(void)

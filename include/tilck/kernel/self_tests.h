@@ -43,11 +43,12 @@ struct self_test {
 #endif
 
 struct self_test *se_find(const char *name);
-void se_internal_run(struct self_test *se);
+int se_run(struct self_test *se);
 bool se_is_stop_requested(void);
 void se_register(struct self_test *se);
 
 void se_regular_end(void);
+void se_interrupted_end(void);
 void simple_test_kthread(void *arg);
 void selftest_kmalloc_perf_med(void);
 

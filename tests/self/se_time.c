@@ -122,7 +122,10 @@ void selftest_time_manual(void)
       enable_interrupts(&var);
    }
 
-   se_regular_end();
+   if (se_is_stop_requested())
+      se_interrupted_end();
+   else
+      se_regular_end();
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time_manual)

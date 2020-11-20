@@ -36,7 +36,6 @@ void register_tilck_cmd(int cmd_n, void *func)
 static int sys_tilck_run_selftest(const char *u_selftest)
 {
    int rc;
-   int tid;
    struct self_test *se;
    char buf[96];
 
@@ -54,12 +53,7 @@ static int sys_tilck_run_selftest(const char *u_selftest)
       return -EINVAL;
 
    printk("Running self-test: %s\n", buf);
-
-   if ((tid = kthread_create(se_internal_run, KTH_ALLOC_BUFS, se)) < 0)
-      return tid;
-
-   kthread_join(tid, true);
-   return 0;
+   return se_run(se);
 }
 
 int sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4)
