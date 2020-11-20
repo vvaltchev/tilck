@@ -53,11 +53,12 @@ bool se_is_stop_requested(void)
 
 struct self_test *se_find(const char *name)
 {
-   char shortname[SELF_TEST_MAX_NAME_LEN+1];
+   char name_buf[SELF_TEST_MAX_NAME_LEN+1];
+   const char *name_to_use = name;
    size_t len = strlen(name);
    const char *p = name + len - 1;
    const char *p2 = name;
-   char *s = shortname;
+   char *s = name_buf;
    struct self_test *pos;
 
    if (len >= SELF_TEST_MAX_NAME_LEN)
@@ -69,22 +70,37 @@ struct self_test *se_find(const char *name)
     */
    while (p > name) {
 
-      if (*p == '_')
+      if (*p == '_') {
+
+         if (strcmp(p, "_manual") &&
+             strcmp(p, "_short")  &&
+             strcmp(p, "_med")    &&
+             strcmp(p, "_long"))
+         {
+            /*
+             * Some self-tests like kmutex_ord use '_' in their name. In those
+             * cases, we should never discard whatever was after the last '_'.
+             */
+            p = name;
+         }
+
          break;
+      }
 
       p--;
    }
 
-   if (p <= name)
-      return NULL;
+   if (p > name) {
 
-   while (p2 < p)
-      *s++ = *p2++;
+      while (p2 < p)
+         *s++ = *p2++;
 
-   *s = 0;
+      *s = 0;
+      name_to_use = name_buf;
+   }
 
    list_for_each_ro(pos, &se_list, node) {
-      if (!strcmp(pos->name, shortname))
+      if (!strcmp(pos->name, name_to_use))
          return pos;
    }
 
