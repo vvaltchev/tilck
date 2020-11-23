@@ -27,10 +27,10 @@ from lib.exceptions import *
 
 # Constants
 
-SHORT_TEST_TIMEOUT = 12
-MED_TEST_TIMEOUT   = 36
-LONG_TEST_TIMEOUT  = 72
-
+SHORT_TEST_TIMEOUT  =    12
+MED_TEST_TIMEOUT    =    36
+LONG_TEST_TIMEOUT   =    72
+MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
 
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
@@ -85,7 +85,7 @@ def load_list_of_shell_cmd_tests():
       tt = locals()[tt]
       result.append([name, tt])
 
-   return result
+   return sorted(result, key = lambda x: x[1])
 
 def load_list_of_kernel_self_tests():
 
@@ -98,6 +98,7 @@ def load_list_of_kernel_self_tests():
    t_short = SHORT_TEST_TIMEOUT
    t_med = MED_TEST_TIMEOUT
    t_long = LONG_TEST_TIMEOUT
+   t_manual = MANUAL_TEST_TIMEOUT
 
    for row in rows:
 
@@ -114,14 +115,14 @@ def load_list_of_kernel_self_tests():
       comps = name.split('_')
       tt = comps[-1]
 
-      if tt not in ['short', 'med', 'long']:
+      if tt not in ['short', 'med', 'long', 'manual']:
          continue
 
       name = '_'.join(comps[1:])
       tt = locals()["t_" + tt]
       result.append([name, tt])
 
-   return result
+   return sorted(result, key = lambda x: x[1])
 
 
 def internal_single_test_runner_thread(test_type, test, timeout, show_output):
@@ -225,6 +226,7 @@ def list_tests(reg_filter, max_timeout, test_type):
 
          name = x[0]
          timeout = x[1]
+         ts = str(timeout) if timeout != MANUAL_TEST_TIMEOUT else "<manual>"
 
          if timeout <= max_timeout and re.match(reg_filter, name):
             raw_stdout_write('| ')
@@ -232,7 +234,7 @@ def list_tests(reg_filter, max_timeout, test_type):
             raw_stdout_write('| ')
             raw_stdout_write(tt.ljust(col_names[1][1]))
             raw_stdout_write('| ')
-            raw_stdout_write(str(timeout).ljust(col_names[2][1]))
+            raw_stdout_write(ts.ljust(col_names[2][1]))
             raw_stdout_write('|\n')
             count += 1
 
@@ -267,7 +269,8 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
 
       for x in tests_by_type[tt]:
          if re.match(reg, x[0]) and x[1] <= max_test_timeout:
-            run_test(tt, x, show_output)
+            if x[1] != MANUAL_TEST_TIMEOUT:
+               run_test(tt, x, show_output)
 
    if fail_on_zero:
       if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
@@ -291,7 +294,10 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
                   .format(max_test_timeout)
             )
             for x in found:
-               raw_print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
+               if x[1] != MANUAL_TEST_TIMEOUT:
+                  raw_print("  {} [timeout: {}s]".format(x[0].ljust(20), x[1]))
+               else:
+                  raw_print("  {} [manual test]".format(x[0].ljust(20)))
 
          sys.exit(Fail.no_tests_matching.value)
 
@@ -310,10 +316,18 @@ def parse_args():
 
    parser = argparse.ArgumentParser()
 
-   parser.add_argument(
+   g = parser.add_mutually_exclusive_group()
+
+   g.add_argument(
       "-l", "--list-tests",
       action = "store_true",
-      help = "list all tests and exit"
+      help = "list all tests matching the criteria (dry-run)"
+   )
+
+   g.add_argument(
+      "-L", "--list-all-tests",
+      action = "store_true",
+      help = "list ALL tests"
    )
 
    parser.add_argument(
@@ -364,6 +378,14 @@ def main():
 
    load_all_tests()
    args = parse_args()
+
+   if args.list_all_tests:
+      args.max_timeout = MANUAL_TEST_TIMEOUT
+      args.regex_filter = ".*"
+      args.list_tests = True
+
+   if args.max_timeout == 0:
+      args.max_timeout = MANUAL_TEST_TIMEOUT
 
    if args.list_tests:
       list_tests(args.regex_filter, args.max_timeout, args.test_type)
