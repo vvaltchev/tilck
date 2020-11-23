@@ -32,6 +32,9 @@ MED_TEST_TIMEOUT    =    36
 LONG_TEST_TIMEOUT   =    72
 MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
 
+# Timeout used for the `runall` shellcmd (-c option)
+ALL_TESTS_TIMEOUT   = 4 * MED_TEST_TIMEOUT
+
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
    'load_list_of_shell_cmd_tests'
@@ -195,7 +198,17 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
       return future.result()
 
-def list_tests(reg_filter, max_timeout, test_type):
+def does_test_match_criteria(x, reg, max_timeout, allow_manual):
+
+   name = x[0]
+   timeout = x[1]
+   is_runall = name in ['runall', 'runall_manual']
+   is_manual = timeout == MANUAL_TEST_TIMEOUT
+   matches_filter = re.match(reg, name) and timeout <= max_timeout
+
+   return is_runall or (matches_filter and (not is_manual or allow_manual))
+
+def list_tests(reg, max_timeout, test_type):
 
    col_names = [['test name', 30], ['test type', 12], ['timeout', 10]]
    raw_stdout_write("\n")
@@ -223,14 +236,10 @@ def list_tests(reg_filter, max_timeout, test_type):
          continue
 
       for x in tests_by_type[tt]:
-
-         name = x[0]
-         timeout = x[1]
-         ts = str(timeout) if timeout != MANUAL_TEST_TIMEOUT else "<manual>"
-
-         if timeout <= max_timeout and re.match(reg_filter, name):
+         if does_test_match_criteria(x, reg, max_timeout, True):
+            ts = str(x[1]) if x[1] != MANUAL_TEST_TIMEOUT else "<manual>"
             raw_stdout_write('| ')
-            raw_stdout_write(name.ljust(col_names[0][1]))
+            raw_stdout_write(x[0].ljust(col_names[0][1]))
             raw_stdout_write('| ')
             raw_stdout_write(tt.ljust(col_names[1][1]))
             raw_stdout_write('| ')
@@ -260,7 +269,7 @@ def run_test(test_type, x, show_output):
    if internal_run_test(test_type, x[0], x[1], show_output):
       tests_passed[test_type] += 1
 
-def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
+def run_all_tests(max_timeout, show_output, reg, fail_on_zero, test_type):
 
    for tt in TEST_TYPES:
 
@@ -268,9 +277,8 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
          continue
 
       for x in tests_by_type[tt]:
-         if re.match(reg, x[0]) and x[1] <= max_test_timeout:
-            if x[1] != MANUAL_TEST_TIMEOUT:
-               run_test(tt, x, show_output)
+         if does_test_match_criteria(x, reg, max_timeout, False):
+            run_test(tt, x, show_output)
 
    if fail_on_zero:
       if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
@@ -287,11 +295,11 @@ def run_all_tests(max_test_timeout, show_output, reg, fail_on_zero, test_type):
             raw_print(
                "ERROR: No tests matching "
                "the '{}' regex having timeout <= {}"
-                  .format(reg, max_test_timeout)
+                  .format(reg, max_timeout)
             )
             raw_print(
                "Tests matching the regex with timeout > {}:"
-                  .format(max_test_timeout)
+                  .format(max_timeout)
             )
             for x in found:
                if x[1] != MANUAL_TEST_TIMEOUT:
@@ -327,7 +335,7 @@ def parse_args():
    g.add_argument(
       "-L", "--list-all-tests",
       action = "store_true",
-      help = "list ALL tests"
+      help = "list all tests, no matter their timeout (same as -l -t 0)"
    )
 
    parser.add_argument(
@@ -343,17 +351,18 @@ def parse_args():
    )
 
    parser.add_argument(
-      "-r", "--regex_filter",
+      "-f", "--filter",
       type = str,
       default = ".*",
-      help = "run only the tests matching the given regex"
+      help = "run only tests matching the given regex filter"
    )
 
    parser.add_argument(
       "-t", "--max-timeout",
       type = int,
       default = MED_TEST_TIMEOUT,
-      help = "run only the tests having timeout <= MAX_TIMEOUT"
+      help = "run only tests having timeout <= MAX_TIMEOUT "
+             "(default: {})".format(MED_TEST_TIMEOUT)
    )
 
    parser.add_argument(
@@ -379,20 +388,19 @@ def main():
    load_all_tests()
    args = parse_args()
 
+   if args.compact_run:
+      tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
    if args.list_all_tests:
       args.max_timeout = MANUAL_TEST_TIMEOUT
-      args.regex_filter = ".*"
       args.list_tests = True
 
    if args.max_timeout == 0:
       args.max_timeout = MANUAL_TEST_TIMEOUT
 
    if args.list_tests:
-      list_tests(args.regex_filter, args.max_timeout, args.test_type)
+      list_tests(args.filter, args.max_timeout, args.test_type)
       sys.exit(0)
-
-   if args.compact_run:
-      tests_by_type['shellcmd'] = []
 
    detect_kvm()
 
@@ -403,15 +411,9 @@ def main():
 
       run_all_tests(args.max_timeout,
                     args.show_output,
-                    args.regex_filter,
+                    args.filter,
                     not args.compact_run,
                     args.test_type)
-
-      if args.compact_run:
-         if not args.test_type or args.test_type == 'shellcmd':
-            run_test('shellcmd',
-                     ['runall', MED_TEST_TIMEOUT * 4],
-                     args.show_output)
 
    except KeyboardInterrupt:
       msg_print("KeyboardInterrupt")
