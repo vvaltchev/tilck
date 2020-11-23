@@ -39,30 +39,21 @@ static int get_cmds_count(void) {
 
 int cmd_selftest(int argc, char **argv)
 {
-   char buf[256];
+   int rc;
 
    if (argc < 1) {
-      fprintf(stderr, PFX "Expected selftest name argument.\n");
+      fprintf(stderr, PFX "Expected a <selftest> argument.\n");
       return 1;
    }
 
-   int rc = sysenter_call3(TILCK_CMD_SYSCALL,
-                           TILCK_CMD_RUN_SELFTEST,
-                           argv[0], /* self test name */
-                           NULL);
+   rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                       TILCK_CMD_RUN_SELFTEST,
+                       argv[0], /* self test name */
+                       NULL);
 
    if (rc != 0) {
-
-      sprintf(buf, "%s_manual", argv[0]);
-      rc = sysenter_call3(TILCK_CMD_SYSCALL,
-                          TILCK_CMD_RUN_SELFTEST,
-                          buf,  /* self test name */
-                          NULL);
-
-      if (rc != 0) {
-         fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
-         return 1;
-      }
+      fprintf(stderr, PFX "Invalid selftest '%s'\n", argv[0]);
+      return 1;
    }
 
    return 0;
