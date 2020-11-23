@@ -1,3 +1,15 @@
+trigger:
+
+  branches:
+    exclude:
+      - readme*
+      - temp-*
+      - exp-*
+
+  paths:
+    exclude:
+      - README.md
+      - docs/*
 
 jobs:
   - job: interactive
