@@ -27,8 +27,6 @@ from lib.exceptions import *
 
 # Constants
 
-MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
-
 TIMEOUTS = {
    'short': 12,
    'med': 36,
@@ -36,7 +34,13 @@ TIMEOUTS = {
    'long': 108,
 }
 
+INV_TIMEOUTS = { TIMEOUTS[k]: k for k in TIMEOUTS }
 INF_STR_TIMEOUTS = ['any', 'all', 'inf']
+
+ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
+
+# Placeholder timeout value for manual tests, convenient than 0 for sorting
+MANUAL_TEST_TIMEOUT = 10000
 
 # Timeout used for the `runall` shellcmd (-c option)
 ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
@@ -65,6 +69,18 @@ tests_by_type : Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
 tests_to_run  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 tests_passed  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
+
+def timeout_name(val):
+
+   if val in INV_TIMEOUTS:
+      return INV_TIMEOUTS[val]
+
+   for t in ordered_timeouts:
+
+      if val <= t:
+         return INV_TIMEOUTS[t]
+
+   return "(other)"
 
 def arg_type_timeout(s):
 
@@ -280,7 +296,11 @@ def does_test_match_criteria(x, reg, max_timeout, allow_manual):
 
 def list_tests(reg, max_timeout, test_type):
 
-   col_names = [['test name', 30], ['test type', 12], ['timeout', 10]]
+   col_names = [
+      ['test name', 30],
+      ['test type', 12],
+      ['timeout', 10],
+   ]
    raw_stdout_write("\n")
 
    for x in col_names:
@@ -307,13 +327,20 @@ def list_tests(reg, max_timeout, test_type):
 
       for x in tests_by_type[tt]:
          if does_test_match_criteria(x, reg, max_timeout, True):
-            ts = str(x[1]) if x[1] != MANUAL_TEST_TIMEOUT else "<manual>"
+
+            tval = x[1]
+
+            if tval != MANUAL_TEST_TIMEOUT:
+               t = "{}".format(tval)
+            else:
+               t = "<manual>"
+
             raw_stdout_write('| ')
             raw_stdout_write(x[0].ljust(col_names[0][1]))
             raw_stdout_write('| ')
             raw_stdout_write(tt.ljust(col_names[1][1]))
             raw_stdout_write('| ')
-            raw_stdout_write(ts.ljust(col_names[2][1]))
+            raw_stdout_write(t.ljust(col_names[2][1]))
             raw_stdout_write('|\n')
             count += 1
 
@@ -408,6 +435,12 @@ def parse_args():
       help = "list all tests, no matter their timeout (same as -l -t 0)"
    )
 
+   g.add_argument(
+      "-j", "--list-timeouts",
+      action = "store_true",
+      help = "list the predefined timeout values with labels usable with -t"
+   )
+
    parser.add_argument(
       "-c", "--compact-run",
       action = "store_true",
@@ -449,6 +482,14 @@ def parse_args():
 
    return args
 
+def list_timeouts():
+
+   for tname in TIMEOUTS:
+      raw_print("{:8}: {:3} seconds".format(tname, TIMEOUTS[tname]))
+
+   for s in INF_STR_TIMEOUTS:
+      raw_print("{:8}: <no timeout>".format(s))
+
 def main():
 
    global tests_by_type
@@ -460,6 +501,10 @@ def main():
 
    if args.compact_run:
       tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+
+   if args.list_timeouts:
+      list_timeouts()
+      sys.exit(0)
 
    if args.list_all_tests:
       args.max_timeout = MANUAL_TEST_TIMEOUT
