@@ -928,13 +928,7 @@ def parse_args():
 
    parser = argparse.ArgumentParser()
 
-   g = parser.add_mutually_exclusive_group()
-
-   g.add_argument(
-      "test_name",
-      nargs = "?",
-      help = "name of the test to run"
-   )
+   g = parser.add_mutually_exclusive_group(required = True)
 
    g.add_argument(
       "-l", "--list",
@@ -948,10 +942,17 @@ def parse_args():
       help = "run all the tests"
    )
 
+   g.add_argument(
+      "test_name",
+      nargs = "?",
+      help = "name of the test to run"
+   )
+
    parser.add_argument(
-      "-t", "--tot_timeout",
+      "tot_timeout",
+      nargs = "?",
       type = int,
-      help = "set total test run timeout"
+      help = "total run timeout"
    )
 
    try:
@@ -967,10 +968,6 @@ def parse_args():
 
    if args.tot_timeout:
       g_timeout = args.tot_timeout
-
-   if not args.test_name and not args.run_all and not args.list:
-      parser.print_help()
-      sys.exit(Fail.invalid_args.value)
 
 def join_worker_thread(thread):
 
