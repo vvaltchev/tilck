@@ -27,21 +27,18 @@ from lib.exceptions import *
 
 # Constants
 
-SHORT_TEST_TIMEOUT  =    12
-MED_TEST_TIMEOUT    =    36
-LONG_TEST_TIMEOUT   =    72
 MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
 
-STR_TIMEOUTS = {
-   'short': SHORT_TEST_TIMEOUT,
-   'med': MED_TEST_TIMEOUT,
-   'long': LONG_TEST_TIMEOUT,
+TIMEOUTS = {
+   'short': 12,
+   'med': 36,
+   'long': 72,
 }
 
 INF_STR_TIMEOUTS = ['any', 'all', 'inf']
 
 # Timeout used for the `runall` shellcmd (-c option)
-ALL_TESTS_TIMEOUT   = 4 * MED_TEST_TIMEOUT
+ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
 
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
@@ -70,8 +67,8 @@ test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
 
 def arg_type_timeout(s):
 
-   if s in STR_TIMEOUTS:
-      return STR_TIMEOUTS[s]
+   if s in TIMEOUTS:
+      return TIMEOUTS[s]
 
    if s in INF_STR_TIMEOUTS:
       return 0
@@ -86,7 +83,7 @@ def arg_type_timeout(s):
 
       raise argparse.ArgumentTypeError(
          "Timeout must be an integer or one of: {}"
-            .format(", ".join(list(STR_TIMEOUTS.keys()) + INF_STR_TIMEOUTS))
+            .format(", ".join(list(TIMEOUTS.keys()) + INF_STR_TIMEOUTS))
       )
 
 def load_all_tests():
@@ -128,7 +125,7 @@ def load_list_of_interactive_tests():
       r = r.strip()
 
       if r:
-         result.append([r, LONG_TEST_TIMEOUT])
+         result.append([r, TIMEOUTS['med']])
 
    test_runners["interactive"] = "@CMAKE_BINARY_DIR@/st/run_interactive_test"
    return result
@@ -136,10 +133,6 @@ def load_list_of_interactive_tests():
 def load_list_of_shell_cmd_tests():
 
    result = []
-
-   tt_short = SHORT_TEST_TIMEOUT
-   tt_med = MED_TEST_TIMEOUT
-   tt_long = LONG_TEST_TIMEOUT
 
    devshell = os.path.join(BUILD_DIR, 'userapps', 'devshell')
    output = subprocess.check_output([devshell, '-l']).decode("utf-8")
@@ -153,8 +146,12 @@ def load_list_of_shell_cmd_tests():
          continue
 
       name, tt = r.split(' ')
-      tt = locals()[tt]
-      result.append([name, tt])
+
+      if not tt.startswith('tt_'):
+         continue
+
+      tt = tt[3:] # Skip the "tt_" prefix
+      result.append([name, TIMEOUTS[tt]])
 
    test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
@@ -167,11 +164,6 @@ def load_list_of_kernel_self_tests():
                .decode("utf-8")                  \
                   .split("\n")
 
-   t_short = SHORT_TEST_TIMEOUT
-   t_med = MED_TEST_TIMEOUT
-   t_long = LONG_TEST_TIMEOUT
-   t_manual = MANUAL_TEST_TIMEOUT
-
    for row in rows:
 
       row = row.rstrip()
@@ -179,7 +171,7 @@ def load_list_of_kernel_self_tests():
       if not row:
          continue
 
-      vaddr, t, name = row.split(' ')
+      vaddr, t, name = row.split(' ')      # pylint: disable=unused-variable
 
       if not name.startswith('selftest_'):
          continue
@@ -187,11 +179,16 @@ def load_list_of_kernel_self_tests():
       comps = name.split('_')
       tt = comps[-1]
 
-      if tt not in ['short', 'med', 'long', 'manual']:
+      if tt not in (list(TIMEOUTS.keys()) + ['manual']):
          continue
 
       name = '_'.join(comps[1:])
-      tt = locals()["t_" + tt]
+
+      if tt == 'manual':
+         tt = MANUAL_TEST_TIMEOUT
+      else:
+         tt = TIMEOUTS[tt]
+
       result.append([name, tt])
 
    test_runners["selftest"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
@@ -432,9 +429,9 @@ def parse_args():
    parser.add_argument(
       "-t", "--max-timeout",
       type = arg_type_timeout,
-      default = MED_TEST_TIMEOUT,
+      default = TIMEOUTS['med'],
       help = "run only tests having timeout <= MAX_TIMEOUT "
-             "(default: {})".format(MED_TEST_TIMEOUT)
+             "(default: {})".format(TIMEOUTS['med'])
    )
 
    parser.add_argument(
