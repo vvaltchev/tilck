@@ -32,6 +32,14 @@ MED_TEST_TIMEOUT    =    36
 LONG_TEST_TIMEOUT   =    72
 MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
 
+STR_TIMEOUTS = {
+   'short': SHORT_TEST_TIMEOUT,
+   'med': MED_TEST_TIMEOUT,
+   'long': LONG_TEST_TIMEOUT,
+}
+
+INF_STR_TIMEOUTS = ['any', 'all', 'inf']
+
 # Timeout used for the `runall` shellcmd (-c option)
 ALL_TESTS_TIMEOUT   = 4 * MED_TEST_TIMEOUT
 
@@ -59,6 +67,27 @@ tests_by_type : Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
 tests_to_run  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 tests_passed  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
 test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
+
+def arg_type_timeout(s):
+
+   if s in STR_TIMEOUTS:
+      return STR_TIMEOUTS[s]
+
+   if s in INF_STR_TIMEOUTS:
+      return 0
+
+   # OK, at this point 's' must be an integer
+
+   try:
+
+      return int(s)
+
+   except:
+
+      raise argparse.ArgumentTypeError(
+         "Timeout must be an integer or one of: {}"
+            .format(", ".join(list(STR_TIMEOUTS.keys()) + INF_STR_TIMEOUTS))
+      )
 
 def load_all_tests():
 
@@ -402,7 +431,7 @@ def parse_args():
 
    parser.add_argument(
       "-t", "--max-timeout",
-      type = int,
+      type = arg_type_timeout,
       default = MED_TEST_TIMEOUT,
       help = "run only tests having timeout <= MAX_TIMEOUT "
              "(default: {})".format(MED_TEST_TIMEOUT)
