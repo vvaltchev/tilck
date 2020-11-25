@@ -955,6 +955,12 @@ def parse_args():
       help = "total run timeout"
    )
 
+   parser.add_argument(
+      "qemu_kvm_version",
+      nargs = "?",
+      help = argparse.SUPPRESS
+   )
+
    try:
       args = parser.parse_args()
    except SystemExit:
@@ -968,6 +974,9 @@ def parse_args():
 
    if args.tot_timeout:
       g_timeout = args.tot_timeout
+
+   if args.qemu_kvm_version:
+      set_qemu_kvm_version(args.qemu_kvm_version)
 
 def join_worker_thread(thread):
 

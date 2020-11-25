@@ -35,6 +35,10 @@ def detect_kvm():
 
    global kvm_installed, qemu_kvm_version
 
+   if qemu_kvm_version:
+      raw_print("Assumed qemu-kvm version: {}".format(qemu_kvm_version))
+      return
+
    try:
       r = subprocess.check_output(['kvm', '--version']).decode('utf-8')
       kvm_installed = True

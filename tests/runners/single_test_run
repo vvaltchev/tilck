@@ -348,13 +348,11 @@ def main():
 
    if len(sys.argv) >= 5 and len(sys.argv[4]) > 0:
       set_qemu_kvm_version(sys.argv[4])
-      raw_print("Assumed qemu-kvm version: {}".format(get_qemu_kvm_version()))
-   else:
-      detect_kvm()
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
 
+   detect_kvm()
    thread = threading.Thread(target = run_the_vm)
    thread.start()
 
