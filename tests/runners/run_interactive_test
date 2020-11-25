@@ -57,12 +57,12 @@ g_dumping_gcda_files = False
 g_timeout = None
 g_next_screenshot = 0
 g_tests = {}
-g_before_run_func = lambda: None
 g_test_name = None
 g_keyboard_interrupt = False
 g_qemu_died = False
 g_matching_list = None
 g_passed_list = []
+g_just_list = False
 
 def set_once_qemu_process(p):
    global g_process
@@ -835,7 +835,6 @@ def check_tool_works(tool, help_opt, keyword):
 
    return found, exTrace
 
-# NOTE: unused function
 def check_imagemagick_installed():
 
    found, exTrace = check_tool_works("convert", "-h", "ImageMagick")
@@ -921,13 +920,11 @@ def dump_list_of_tests():
    for k in g_tests:
       raw_print(k)
 
-   sys.exit(0)
-
 def parse_args():
 
-   global g_before_run_func
    global g_test_name
    global g_timeout
+   global g_just_list
 
    parser = argparse.ArgumentParser()
 
@@ -966,8 +963,7 @@ def parse_args():
       g_test_name = args.test_name
 
    if args.list:
-      g_before_run_func = dump_list_of_tests
-      return
+      g_just_list = True
 
    if args.tot_timeout:
       g_timeout = args.tot_timeout
@@ -1004,6 +1000,7 @@ def main():
    global g_matching_list
    global g_timeout
    global g_process
+   global g_just_list
 
    attempts = 0
    set_runner_name("interactive tests runner")
@@ -1014,7 +1011,10 @@ def main():
    check_pnm2text()
    setup_tmp_dir()
    load_tests()
-   g_before_run_func()
+
+   if g_just_list:
+      dump_list_of_tests()
+      sys.exit(0)
 
    g_matching_list = compute_matching_tests_list()
 
