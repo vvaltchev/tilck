@@ -13,6 +13,7 @@ import struct
 import zlib
 import base64
 import fcntl
+import argparse
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -317,12 +318,6 @@ def run_the_vm():
 
    raw_print('-' * 80)
 
-def show_help_and_exit():
-   raw_print("Syntax: ")
-   raw_print("  single_test_run selftest <name> <timeout>")
-   raw_print("  single_test_run shellcmd <name> <timeout>")
-   sys.exit(Fail.invalid_args.value)
-
 def generate_coverage_if_enabled():
 
    if not DUMP_COV or not REPORT_COV:
@@ -331,6 +326,21 @@ def generate_coverage_if_enabled():
    if not run_gen_coverage_report_tool(GEN_KCOV_REPORT):
       sys.exit(Fail.gcov_error.value)
 
+def arg_type_timeout(s):
+
+   try:
+
+      value = int(s)
+
+      if value <= 0:
+         raise TypeError()
+
+   except:
+
+      raise argparse.ArgumentTypeError("expected a positive integer")
+
+   return value
+
 ###############################################################################
 
 def main():
@@ -338,16 +348,41 @@ def main():
    global g_params
    set_runner_name("single test runner")
 
-   if len(sys.argv) < 4:
-      show_help_and_exit()
+   parser = argparse.ArgumentParser()
 
-   if sys.argv[1] not in TEST_TYPES:
-      show_help_and_exit()
+   parser.add_argument(
+      'test_type',
+      choices = ['selftest', 'shellcmd'],
+      help = 'type of the test'
+   )
 
-   g_params = TestParamsType(sys.argv[1], sys.argv[2], int(sys.argv[3]))
+   parser.add_argument(
+      'test_name',
+      type = str,
+      help = 'name of the test to run'
+   )
 
-   if len(sys.argv) >= 5 and len(sys.argv[4]) > 0:
-      set_qemu_kvm_version(sys.argv[4])
+   parser.add_argument(
+      'timeout',
+      type = arg_type_timeout,
+      help = 'max test run time before timeout (seconds)'
+   )
+
+   parser.add_argument(
+      'qemu_kvm_version',
+      nargs = "?",
+      help = argparse.SUPPRESS
+   )
+
+   try:
+      args = parser.parse_args()
+   except SystemExit:
+      sys.exit(Fail.invalid_args.value)
+
+   g_params = TestParamsType(args.test_type, args.test_name, args.timeout)
+
+   if args.qemu_kvm_version:
+      set_qemu_kvm_version(args.qemu_kvm_version)
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
