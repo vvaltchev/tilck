@@ -58,7 +58,7 @@ g_timeout = None
 g_next_screenshot = 0
 g_tests = {}
 g_before_run_func = lambda: None
-g_filter_regex = None
+g_test_name = None
 g_keyboard_interrupt = False
 g_qemu_died = False
 g_matching_list = None
@@ -878,24 +878,22 @@ def load_tests():
 
 def compute_matching_tests_list():
 
-   if not g_filter_regex:
+   if not g_test_name or g_test_name == "runall":
       return g_tests
 
-   re_filter = re.compile(g_filter_regex)
-   return list(filter(lambda x: re_filter.match(x), g_tests))
+   return list(filter(lambda x: x == g_test_name, g_tests))
 
 def dump_list_matching_tests_and_timeout():
 
    if not g_matching_list:
-      msg_print("ERROR: no tests matching '{}'".format(g_filter_regex))
+      msg_print("ERROR: no such test '{}'".format(g_test_name))
       sys.exit(Fail.invalid_args.value)
 
    msg_print("Total timeout: {}s".format(g_timeout))
-   msg_print("Matching tests: {} ({})".format(
-      "ALL" if g_matching_list == g_tests else g_filter_regex,
-      " ".join(g_matching_list))
-   )
-
+   msg_print("Tests to run: {}{}".format(
+      "(ALL) " if g_matching_list == g_tests else "",
+      " ".join(g_matching_list)
+   ))
    raw_print("")
 
 def run_all_tests():
@@ -928,19 +926,27 @@ def dump_list_of_tests():
 def parse_args():
 
    global g_before_run_func
-   global g_filter_regex
+   global g_test_name
    global g_timeout
 
    parser = argparse.ArgumentParser()
 
-   parser.add_argument(
+   g = parser.add_mutually_exclusive_group()
+
+   g.add_argument(
+      "test_name",
+      nargs = "?",
+      help = "name of the test to run"
+   )
+
+   g.add_argument(
       "-l", "--list",
       action = "store_true",
       help = "list all the tests"
    )
 
-   parser.add_argument(
-      "-a", "--all",
+   g.add_argument(
+      "-a", "--run_all",
       action = "store_true",
       help = "run all the tests"
    )
@@ -951,26 +957,24 @@ def parse_args():
       help = "set total test run timeout"
    )
 
-   parser.add_argument(
-      "-f", "--filter",
-      help = "set test name regex filter"
-   )
-
    try:
       args = parser.parse_args()
    except SystemExit:
       sys.exit(Fail.invalid_args.value)
 
+   if args.test_name:
+      g_test_name = args.test_name
+
    if args.list:
       g_before_run_func = dump_list_of_tests
       return
 
-   if args.filter:
-      g_filter_regex = args.filter
-
    if args.tot_timeout:
       g_timeout = args.tot_timeout
 
+   if not args.test_name and not args.run_all and not args.list:
+      parser.print_help()
+      sys.exit(Fail.invalid_args.value)
 
 def join_worker_thread(thread):
 
@@ -1045,7 +1049,8 @@ def main():
          g_process.send_signal(signal.SIGINT)
          thread.join(2)
 
-      if g_qemu_died and not g_keyboard_interrupt:
+      if (g_qemu_died and not g_keyboard_interrupt and
+          get_fail_reason() != Fail.timeout):
 
          # It is unclear why while running this test suite in Azure Pipelines
          # from time to time we get BrokenPipeError caused by the death of the
@@ -1060,7 +1065,7 @@ def main():
          # QEMU died already twice. Do fail.
          set_once_fail_reason(Fail.qemu_died_unexpectedly)
 
-      # Default case: we exit the loop after we ran all the test or there has
+      # Default case: we exit the loop after we ran all the tests or there has
       # been a keyboard interrupt.
       break
 

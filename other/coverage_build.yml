@@ -38,7 +38,7 @@ jobs:
         displayName: Gen unit tests coverage report
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
-      - script: ./build/st/run_interactive_test --all
+      - script: ./build/st/run_interactive_test -a
         displayName: Run the interactive tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
         displayName: Gen kernel gcov report and upload to codecov

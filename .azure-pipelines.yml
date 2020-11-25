@@ -42,7 +42,7 @@ jobs:
         displayName: Run the unit tests
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
-      - script: ./build/st/run_interactive_test --all
+      - script: ./build/st/run_interactive_test -a
         displayName: Run the interactive tests
 
   - job: build
