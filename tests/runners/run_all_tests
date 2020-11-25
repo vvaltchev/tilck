@@ -32,7 +32,8 @@ MANUAL_TEST_TIMEOUT = 10000         # More convenient than 0 for sorting
 TIMEOUTS = {
    'short': 12,
    'med': 36,
-   'long': 72,
+   'medlong': 72,
+   'long': 108,
 }
 
 INF_STR_TIMEOUTS = ['any', 'all', 'inf']
@@ -125,7 +126,7 @@ def load_list_of_interactive_tests():
       r = r.strip()
 
       if r:
-         result.append([r, TIMEOUTS['med']])
+         result.append([r, TIMEOUTS['medlong']])
 
    test_runners["interactive"] = "@CMAKE_BINARY_DIR@/st/run_interactive_test"
    return result
