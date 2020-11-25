@@ -14,6 +14,7 @@ import struct
 import fcntl
 import filecmp
 import traceback
+import argparse
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -917,17 +918,6 @@ def run_all_tests():
       raw_stdout_write("\n\n")
       g_passed_list.append(k)
 
-def show_help():
-   raw_print("Syntax: ")
-   raw_print("  run_interactive_test <tests_filter_regex> [<timeout>]")
-   raw_print("  run_interactive_test -h, --help")
-   raw_print("  run_interactive_test -a, --all")
-   raw_print("  run_interactive_test -l, --list")
-
-def show_help_and_exit():
-   show_help()
-   sys.exit(Fail.invalid_args.value)
-
 def dump_list_of_tests():
 
    for k in g_tests:
@@ -941,23 +931,46 @@ def parse_args():
    global g_filter_regex
    global g_timeout
 
-   if sys.argv[1] in ["-h", "--help"]:
-      show_help()
-      sys.exit(0)
+   parser = argparse.ArgumentParser()
 
-   if sys.argv[1] in ["-l", "--list"]:
+   parser.add_argument(
+      "-l", "--list",
+      action = "store_true",
+      help = "list all the tests"
+   )
+
+   parser.add_argument(
+      "-a", "--all",
+      action = "store_true",
+      help = "run all the tests"
+   )
+
+   parser.add_argument(
+      "-t", "--tot_timeout",
+      type = int,
+      help = "set total test run timeout"
+   )
+
+   parser.add_argument(
+      "-f", "--filter",
+      help = "set test name regex filter"
+   )
+
+   try:
+      args = parser.parse_args()
+   except SystemExit:
+      sys.exit(Fail.invalid_args.value)
+
+   if args.list:
       g_before_run_func = dump_list_of_tests
       return
 
-   if sys.argv[1] in ["-a", "--all"]:
-      # Do nothing: keep g_filter_regex set to None
-      return
+   if args.filter:
+      g_filter_regex = args.filter
 
-   # Assume argv[1] is the test name filter regex
-   g_filter_regex = sys.argv[1]
+   if args.tot_timeout:
+      g_timeout = args.tot_timeout
 
-   if len(sys.argv) >= 3:
-      g_timeout = int(sys.argv[2])
 
 def join_worker_thread(thread):
 
@@ -965,7 +978,7 @@ def join_worker_thread(thread):
 
    if thread.is_alive():
 
-      # If we get here, after `g_params.timeout`, the test is still running
+      # If we get here, after `g_timeout` seconds, the test is still running
 
       if g_dumping_gcda_files:
 
@@ -990,9 +1003,6 @@ def main():
 
    attempts = 0
    set_runner_name("interactive tests runner")
-
-   if len(sys.argv) < 2:
-      show_help_and_exit()
 
    parse_args()
    check_cmake_config()
