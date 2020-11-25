@@ -11,7 +11,7 @@ import argparse
 import subprocess
 import threading
 import concurrent.futures as ft
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
 RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
@@ -37,7 +37,8 @@ ALL_TESTS_TIMEOUT   = 4 * MED_TEST_TIMEOUT
 
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
-   'load_list_of_shell_cmd_tests'
+   'load_list_of_shell_cmd_tests',
+   'load_list_of_interactive_tests',
 ]
 
 tt_pretty_names = {
@@ -54,9 +55,10 @@ tt_indexes = {
 
 # Global variables
 
-tests_by_type : Dict[str, List[str]] = { k: [] for k in TEST_TYPES }
-tests_to_run  : Dict[str, int]       = { k:  0 for k in TEST_TYPES }
-tests_passed  : Dict[str, int]       = { k:  0 for k in TEST_TYPES }
+tests_by_type : Dict[str, List[Tuple[str,int]]] = { k: [] for k in TEST_TYPES }
+tests_to_run  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
+tests_passed  : Dict[str, int]                  = { k:  0 for k in TEST_TYPES }
+test_runners  : Dict[str, str]                  = { k: "" for k in TEST_TYPES }
 
 def load_all_tests():
 
@@ -64,6 +66,43 @@ def load_all_tests():
 
    for tt in TEST_TYPES:
       tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
+
+def load_list_of_interactive_tests():
+
+   result = []
+
+   rit = os.path.join(BUILD_DIR, 'st', 'run_interactive_test')
+
+   try:
+
+      output = subprocess.check_output([rit, '-l']).decode("utf-8")
+
+   except subprocess.CalledProcessError as e:
+
+      if e.returncode == Fail.invalid_build_config.value:
+         # That's perfectly fine: this build has not been configured for
+         # running interactive tests. Just return an empty list.
+         return []
+
+      if e.returncode == Fail.invalid_system_config.value:
+         # That's also possible (i.e. ImageMagick is not installed). Return
+         # an empty list as above
+         return []
+
+      # Oops, something weird happened: we cannot ignore the error.
+      raise
+
+   arr = output.split("\n")
+
+   for r in arr:
+
+      r = r.strip()
+
+      if r:
+         result.append([r, LONG_TEST_TIMEOUT])
+
+   test_runners["interactive"] = "@CMAKE_BINARY_DIR@/st/run_interactive_test"
+   return result
 
 def load_list_of_shell_cmd_tests():
 
@@ -88,6 +127,7 @@ def load_list_of_shell_cmd_tests():
       tt = locals()[tt]
       result.append([name, tt])
 
+   test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
 
 def load_list_of_kernel_self_tests():
@@ -125,6 +165,7 @@ def load_list_of_kernel_self_tests():
       tt = locals()["t_" + tt]
       result.append([name, tt])
 
+   test_runners["selftest"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
 
 
@@ -134,19 +175,21 @@ def internal_single_test_runner_thread(test_type, test, timeout, show_output):
       "[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout)
    )
 
+   cmdline = [
+      test_runners[test_type],
+      test_type,
+      test,
+      str(timeout),
+      get_qemu_kvm_version(),
+   ]
+
    start_time = time.time()
 
    p = subprocess.Popen(
-      [
-         '@CMAKE_BINARY_DIR@/st/single_test_run',
-         test_type,
-         test,
-         str(timeout),
-         get_qemu_kvm_version()
-      ],
-      stdin=subprocess.DEVNULL,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.STDOUT,
+      cmdline,
+      stdin = subprocess.DEVNULL,
+      stdout = subprocess.PIPE,
+      stderr = subprocess.STDOUT,
    )
 
    if show_output:
@@ -281,7 +324,7 @@ def run_all_tests(max_timeout, show_output, reg, fail_on_zero, test_type):
             run_test(tt, x, show_output)
 
    if fail_on_zero:
-      if tests_to_run['selftest'] + tests_to_run['shellcmd'] == 0:
+      if sum(tests_to_run.values()) == 0:
 
          found = []
          for tt in TEST_TYPES:
