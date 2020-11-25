@@ -82,6 +82,21 @@ def timeout_name(val):
 
    return "(other)"
 
+def arg_type_test(s):
+
+   if s in TEST_TYPES:
+      return s
+
+   tt = list(filter(lambda x: x.startswith(s), TEST_TYPES))
+
+   if len(tt) == 0:
+      raise argparse.ArgumentTypeError("No such test type: '{}'".format(s))
+
+   if len(tt) > 1:
+      raise argparse.ArgumentTypeError("Ambiguous test type: '{}'".format(s))
+
+   return tt[0]
+
 def arg_type_timeout(s):
 
    if s in TIMEOUTS:
@@ -432,7 +447,7 @@ def parse_args():
    g.add_argument(
       "-L", "--list-all-tests",
       action = "store_true",
-      help = "list all tests, no matter their timeout (same as -l -t 0)"
+      help = "list all tests, no matter their timeout (same as -l -t any)"
    )
 
    g.add_argument(
@@ -450,7 +465,7 @@ def parse_args():
    parser.add_argument(
       "-o", "--show-output",
       action = "store_true",
-      help = "always show test's output"
+      help = "show test's output even in case of success"
    )
 
    parser.add_argument(
@@ -470,8 +485,7 @@ def parse_args():
 
    parser.add_argument(
       "-T", "--test_type",
-      type = str,
-      choices = TEST_TYPES,
+      type = arg_type_test,
       help = "run only tests of the given type"
    )
 
