@@ -678,7 +678,7 @@ def dump_coverage_data(pts_file):
 
    # Import the pySerial module here, locally. That allows the script to run
    # also when pySerial is not present, just coverage reporting won't work.
-   import serial
+   import serial # type: ignore
 
    if not is_cmake_opt_enabled(KERNEL_GCOV):
       msg_print("ERROR: kernel not compiled with KERNEL_GCOV=1")
@@ -961,8 +961,15 @@ def parse_args():
       help = argparse.SUPPRESS
    )
 
+   input_args = sys.argv[1:]
+
+   if input_args and input_args[0] == "interactive":
+      # Skip the first argument if it's the test type, in order to support the
+      # same interface as `single_test_run`
+      del input_args[0]
+
    try:
-      args = parser.parse_args()
+      args = parser.parse_args(input_args)
    except SystemExit:
       sys.exit(Fail.invalid_args.value)
 
