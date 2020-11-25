@@ -14,7 +14,6 @@ import struct
 import fcntl
 import filecmp
 import traceback
-import serial
 from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
@@ -675,6 +674,10 @@ def dump_coverage_data_int(lines):
    return True
 
 def dump_coverage_data(pts_file):
+
+   # Import the pySerial module here, locally. That allows the script to run
+   # also when pySerial is not present, just coverage reporting won't work.
+   import serial
 
    if not is_cmake_opt_enabled(KERNEL_GCOV):
       msg_print("ERROR: kernel not compiled with KERNEL_GCOV=1")
