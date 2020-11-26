@@ -34,11 +34,11 @@ become suitable for **embedded systems** on which an extra-simple and fully dete
 kernel is required or, at least, it is considered the optimal solution. With a fair
 amount of luck, `Tilck` might be able to fill the gap between *Embedded Linux* and
 typical real-time operating systems like *FreeRTOS* or *Zephyr*. In any case, at some
-point it will be ported to `ARM` and it might be adapted to run on MMU-less CPUs
+point it will be ported to `ARM` family and it might be adapted to run on MMU-less CPUs
 as well. That would be great because consuming a tiny amount of RAM has always been
 a key point in Tilck's design. Indeed, the kernel can *comfortably* boot and run
 on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's pointless
-on x86, but on ARM it won't be anymore.
+on x86, but on an ARM Cortex-R it won't be anymore the case.
 
 
 What Tilck is NOT ?
@@ -182,36 +182,51 @@ both on UEFI systems and on legacy ones. Just flush the image file with `dd`
 to a usb stick and reboot your machine.
 
 #### Other configurations
-To learn much more about how to configure and build Tilck, check the [building]
+To learn much more about how to build and configure Tilck, check the [building]
 guide in the `docs/` directory.
 
 [building]: docs/building.md
 
-Unit tests
--------------
-
-In order to build kernel's unit tests, it is necessary first
-to build the `googletest` framework with:
-
-    ./scripts/build_toolchain -s build_gtest
-
-Then, the tests could be built this way:
-
-    make -j gtests
-
-And run with:
-
-    ./build/gtests
-
-System tests
+Testing Tilck
 --------------
 
-You can run kernel's system tests this way:
+Tilck has **unit tests**, **kernel self-tests**, **system tests** (using the
+syscall interface), and **automated interactive system tests** (simulating real
+user input through QEMU's monitor) all in the same repository, completely
+integrated with its build system. In addition to that, there's full code
+coverage support and useful scripts for generating HTML reports (see the
+[coverage] guide). Finally, Tilck is fully integrated with the [Azure Pipelines]
+[CI], which validates each pushed branch with builds and test runs in a variety
+of configurations. Kernel's coverage data is also uploaded to [CodeCov]. Below,
+there are some basic instructions to run most of Tilck's tests. For the whole
+story, please read the [testing] document.
 
-    ./build/st/run_all_tests -c
+[Azure Pipelines]: https://azure.microsoft.com/en-us/services/devops/pipelines
+[CI]: https://en.wikipedia.org/wiki/Continuous_integration
+[CodeCov]: https://codecov.io
 
-**NOTE**: in order the script to work, you need to have `python` 3
-installed as `/usr/bin/python3`.
+#### Running Tilck's tests
+
+Running Tilck's tests is extremely simple: it just requires to have `python 3`
+installed on the machine. For the **self-tests** and the classic
+**system tests**, run:
+
+    <BUILD_DIR>/st/run_all_tests -c
+
+To run the **unit tests** instead:
+
+   * Install the [googletest] library (once) with:
+     `./scripts/build_toolchain -s build_gtest`
+
+   * Build the unit tests with: `make -j gtests`
+
+   * Run them with: `<BUILD_DIR>/gtests`
+
+To learn much more about Tilck's tests in general and to understand how to run
+its *interactive* system tests as well, read the [testing] document.
+
+[testing]: docs/testing.md
+[googletest]: https://github.com/google/googletest
 
 Tilck's debug panel
 ---------------------
@@ -258,16 +273,6 @@ the project includes also scripts for running Tilck in QEMU with various
 configurations (bios boot, efi boot, direct (multi)boot with QEMU's -kernel
 option, etc.).
 
-#### Tests
-Tilck has **unit tests**, **kernel self tests**, **traditional system tests**
-(passive, using the syscall interface) and **automated interactive system tests**
-all in the same repository, completely integrated with its build system.
-In addition, there's full code coverage support and useful scripts for generating
-HTML reports (see the [coverage] guide). Finally, Tilck is fully integrated with
-`Azure Pipelines`, which validates each push with builds and test runs in a
-variety of configurations. The integration with `CodeCov` for checking online the
-coverage is another nice perk.
-
 #### Motivation
 The reason for having the above mentioned features is to offer its users and
 potential contributors a really **nice** experience, avoiding any kind of
@@ -275,8 +280,8 @@ frustration. Hopefully, even the most experienced engineers will enjoy a zero
 effort experience. But it's not all about reducing the frustration. It's also
 about _not scaring_ students and junior developers who might be just curious to
 see what this project is all about and maybe eager to write a simple program for
-it and/or add a couple of printk()'s here and there in their fork. Hopefully,
-some of those people "just playing" with Tilck might actually want to contribute
+it and/or add a couple of `printk()`'s here and there in their fork. Hopefully,
+some of those people *just playing* with Tilck might actually want to contribute
 to its development.
 
 In conclusion, even if some parts of the project itself are be pretty complex,
