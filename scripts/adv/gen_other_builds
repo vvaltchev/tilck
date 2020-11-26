@@ -43,15 +43,16 @@ function show_help {
    echo ""
    echo "Build configurations that will be generated and built:"
 
-   for x in ${builds[@]}; do
-      echo "   - $x"
+   for x in $MAIN_DIR/scripts/build_generators/*; do
+      echo "   - $(basename $x)"
    done
 
    echo ""
    echo -ne "${RED}WARNING${RATTRS}: if you're new to Tilck, that's probably "
    echo -ne "${RED}not${RATTRS} the script you're looking\nfor. "
-   echo -ne "${BROWN}Check out${RATTRS} the main README.md file for info about "
-   echo -ne "how to build Tilck and\nrun its tests.\n"
+   echo -ne "${BROWN}Check out${RATTRS} the docs/building.md file for info "
+   echo -ne "about how to build Tilck and\nthe docs/testing.md file for info "
+   echo -ne "about how to run its tests.\n"
    echo ""
 }
 
