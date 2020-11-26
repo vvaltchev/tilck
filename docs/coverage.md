@@ -72,6 +72,10 @@ input (keystrokes on a virtual PS/2 keyboard) and check Tilck's fb console's
 output by parsing screenshots.) To run them and get the full test coverage
 it's necessary to:
 
+ * Check that you have the [pySerial] python-3 module installed on the system
+
+ * Check that you have [ImageMagick] installed on the system
+
  * Replace the **step 1** above with:
 
         TEST_GCOV=1 KERNEL_GCOV=1 <TILCK>/scripts/cmake_run --intr
@@ -82,3 +86,6 @@ it's necessary to:
 
 The rest of the steps are the same. We just changed build's configuration and
 run another test before generating the html report.
+
+[pySerial]: https://pyserial.readthedocs.io/en/latest/pyserial.html
+[ImageMagick]: https://imagemagick.org/
