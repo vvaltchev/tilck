@@ -5,13 +5,43 @@ Tilck (Tiny Linux-Compatible Kernel)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
+Contents
+----------------------------------------
+* [Overview](#overview)
+  - [What is Tilck?](#what-is-tilck)
+    * [Future plans](#future-plans)
+  - [What Tilck is NOT ?](#what-tilck-is-not-)
+* [Features](#features)
+   - [Hardware support](#hardware-support)
+   - [File systems](#file-systems)
+   - [Processes and signals](#processes-and-signals)
+   - [I/O](#io)
+   - [Console](#console)
+   - [Userspace applications](#userspace-applications)
+   - [Screenshots](#screenshots)
+* [Booting Tilck](#booting-tilck)
+  - [Tilck's bootloader](#tilcks-bootloader)
+  - [3rd-party bootloaders](#3rd-party-bootloaders)
+    * [Grub support](#grub-support)
+* [Building Tilck](#building-tilck)
+* [Testing Tilck](#testing-tilck)
+* [Tilck's debug panel](#tilcks-debug-panel)
+* [A comment about user experience](#a-comment-about-user-experience)
+* [FAQ](#faq-by-vvaltchev)
+  - [Why Tilck does not have the feature/abstraction XYZ?](#why-tilck-does-not-have-the-featureabstraction-xyz-like-other-kernels-do)
+  - [Why Tilck runs only on x86 (ia-32)?](#why-tilck-runs-only-on-x86-ia-32)
+  - [Why having support for FAT32?](#why-having-support-for-fat32)
+  - [Why using 3 spaces as (soft) tab size?](#why-using-3-spaces-as-soft-tab-size)
+  - [Why many commit messages are so short?](#why-many-commit-messages-are-so-short)
+
 <p align="center">
     <img src="http://vvaltchev.github.io/tilck_imgs/v2/main.png" alt="Tilck">
 </p>
 
-What is Tilck?
+Overview
 ----------------------------------------
 
+### What is Tilck?
 `Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
 binary level. Project's small-scale and simple design makes it the **perfect playground**
 for playing in kernel mode while retaining the ability to compare how the *very same*
@@ -41,9 +71,7 @@ on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's point
 on x86, but on an ARM Cortex-R it won't be anymore the case.
 
 
-What Tilck is NOT ?
-----------------------------------------
-
+### What Tilck is NOT ?
 An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
 take advantage of its programs and toolchains. Also, that helps a lot to validate
@@ -66,7 +94,7 @@ the moment. Everything arch-specific is isolated. Because of that, most of
 kernel's code can be already compiled for any architecture and can be used in
 kernel's unit tests.
 
-#### Hardware
+#### Hardware support
 While the kernel uses a fair amount of legacy hardware like the 8259 PICs for
 IRQs, the legacy 8254 PIT for the system timer, the legacy 16550 UART for serial
 communication, and the 8042 kb controller, it has support for some recent hardware
@@ -125,17 +153,17 @@ For full-size screenshots and much more stuff, check Tilck's [wiki page].
 
 [wiki page]: https://github.com/vvaltchev/tilck/wiki
 
-Tilck's bootloader
+Booting Tilck
 ----------------------------------------
+
+### Tilck's bootloader
 `Tilck` comes with an interactive bootloader working both on legacy BIOS and on
 UEFI systems as well. The bootloader allows the user to choose the desired video
 mode, the kernel file itself and to edit kernel's cmdline.
 
 ![Tilck's bootloader](http://vvaltchev.github.io/tilck_imgs/v2/bootloader.png)
 
-3rd-party bootloaders
-----------------------------------------
-
+### 3rd-party bootloaders
 `Tilck` can be loaded by any bootloader supporting `multiboot 1.0`. For example,
 qemu's built-in bootloader works perfectly with `Tilck`:
 
@@ -147,7 +175,6 @@ for it is:
     ./build/run_multiboot_qemu
 
 #### Grub support
-
 `Tilck` can be easily booted with GRUB. Just edit your `/etc/grub.d/40_custom`
 file (or create another one) by adding an entry like:
 
