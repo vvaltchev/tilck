@@ -1,6 +1,18 @@
 
-Building & configuring Tilck
--------------------------------------------------
+# Building & configuring Tilck
+
+## Contents
+
+  * [Introduction](#introduction)
+  * [Building Tilck's toolchain](#building-tilcks-toolchain)
+    - [Extra packages](#extra-packages)
+  * [Building Tilck](#building-tilck)
+  * [Configuring Tilck](#configuring-tilck)
+  * [Build types](#build-types)
+  * [Running the UEFI bootloader on QEMU](#running-the-uefi-bootloader-on-qemu)
+  * [Building Tilck's unit tests](#building-tilcks-unit-tests)
+  * [Building Tilck with Clang (advanced)](#building-tilck-with-clang-advanced)
+  * [Special build configurations (advanced)](#special-build-configurations-advanced)
 
 ## Introduction
 
@@ -29,7 +41,7 @@ are supported. In the case you're using a distro not supported, the script will
 just dump a list of programs that need to be installed manually on the system
 before the script could continue further.
 
-#### Extra packages
+### Extra packages
 After the first run of `build_toolchain` finishes, it's possible to build Tilck
 but, that doesn't mean the script becomes useless. Actually, most of the
 packages that it can install are not installed by default. The idea behind that
