@@ -25,9 +25,11 @@ Contents
   - [Tilck's bootloader](#tilcks-bootloader)
   - [3rd-party bootloaders](#3rd-party-bootloaders)
     * [Grub support](#grub-support)
-* [Building Tilck](#building-tilck)
-* [Testing Tilck](#testing-tilck)
-* [Tilck's debug panel](#tilcks-debug-panel)
+* [Documentation and HOWTOs](#documentation-and-howtos)
+  - [Building Tilck](#building-tilck)
+  - [Testing Tilck](#testing-tilck)
+  - [Debugging Tilck](#debugging-tilck)
+    * [Tilck's debug panel](#tilcks-debug-panel)
 * [A comment about user experience](#a-comment-about-user-experience)
 * [FAQ](#faq-by-vvaltchev)
   - [Why Tilck does not have the feature/abstraction XYZ?](#why-tilck-does-not-have-the-featureabstraction-xyz-like-other-kernels-do)
@@ -121,8 +123,8 @@ the SIGSTOP and SIGCONT signals which do what they're actually supposed to do.
 
 One interesting feature in this area deserves a special mention: despite the lack of
 multi-threading in userspace, Tilck has full support for TLS (thread-local storage) via
-`set_thread_area()`, because `libmusl` really requires it, even in classic
-single-threaded processes.
+`set_thread_area()`, because `libmusl` requires it, even for classic single-threaded
+processes.
 
 #### I/O
 In addition to the classic read() and write() syscalls, Tilck supports vectored I/O
@@ -185,9 +187,16 @@ menuentry "Tilck" {
 ```
 After that, just run `update-grub` as root and reboot your machine.
 
-Building Tilck
----------------------
+Documentation and HOWTOs
+--------------------------
 
+Project's main documentation can be found in the `docs/` directory. However,
+[Tilck's wiki](https://github.com/vvaltchev/tilck/wiki) can be used to
+navigate through those documention files with the addition of much extra content
+like screenshots. Here below, instead, there's a quick *starter* guide, focusing
+on the most common scenarios.
+
+### Building Tilck
 The project supports a fair amount of build configurations and customizations
 but building using its default configuration can be described in just a few
 steps. The *only* true requirement for building Tilck is having a Linux
@@ -212,9 +221,7 @@ guide in the `docs/` directory.
 
 [building]: docs/building.md
 
-Testing Tilck
---------------
-
+### Testing Tilck
 Tilck has **unit tests**, **kernel self-tests**, **system tests** (using the
 syscall interface), and **automated interactive system tests** (simulating real
 user input through QEMU's monitor) all in the same repository, completely
@@ -231,7 +238,6 @@ story, please read the [testing] document.
 [CodeCov]: https://codecov.io
 
 #### Running Tilck's tests
-
 Running Tilck's tests is extremely simple: it just requires to have `python 3`
 installed on the machine. For the **self-tests** and the classic
 **system tests**, run:
@@ -253,31 +259,56 @@ its *interactive* system tests as well, read the [testing] document.
 [testing]: docs/testing.md
 [googletest]: https://github.com/google/googletest
 
-Tilck's debug panel
----------------------
+### Debugging Tilck
+With `QEMU`'s integrated `GDB` server, it's possible to debug the Tilck kernel
+with GDB almost as if it were a regular process. It just gets tricky when
+context switches happen, but GDB cannot help with that. To debug it with GDB,
+follow the steps:
 
-Tilck has a nice developer-only feature called **debug panel** or **dp** that
-allows people to get some very useful stats about the kernel, in real time.
-To open it, just run the `dp` program. The most interesting of those features
-is probably its embedded syscall tracer. To use it, go to the `tasks` tab,
-select a user process, mark it as *traced* by pressing `t`, and then enter in
-tracing mode by pressing `Ctrl+T`. Once there, press `ENTER` to start/stop the
-syscall tracing. That is particularly useful if the debug panel is run on a
-serial console: this way its possibile to see at the same time the traced
-program *and* its syscall trace. To do that, run the `qemu` VM this way:
+  - (Optional) Prepare a debug build of Tilck, for a better debugging experience.
 
-    ./build/run_qemu -serial pty
+  - Run Tilck's VM with: `./build/run_nokvm_qemu` but, remain at the bootloader
+    stage.
 
-In addition to the VM window, you'll see on the terminal something like:
+  - In a different terminal, run: `gdb ./build/tilck_unstripped`.
 
-    char device redirected to /dev/pts/4 (label serial0)
+  - In GDB, run: `target remote :1234` to connect to QEMU's gdb server.
 
-Open another virtual terminal, install `screen` if you don't have it, and run:
+  - Set one or more breakpoints using commands like: `break kmain`.
 
-    screen /dev/pts/4
+  - Type `c` to allow execution to continue and boot the OS by pressing ENTER
+    in the bootloader.
 
-You'll just connect to a Tilck serial console. Just press ENTER there and run
-`dp` as previously explained. Enjoy!
+In order to make the debugging experience better, Tilck comes with a set of
+**GDB scripts** (see `other/gdb_scripts`). With them, it's super-easy to list
+all the tasks on the system, the handles currently opened by any given process
+and more. In order to learn how to take advantage of those GDB scripts and anything
+else related to debugging the Tilck project, check the [debugging] document.
+
+[debugging]: docs/debugging.md
+
+#### Tilck's debug panel
+
+<img align="right"
+src="http://vvaltchev.github.io/tilck_imgs/v2/screenshots/dp04.png"
+alt="Tilck's debug panel" width="50%" height="50%">
+
+Debugging Tilck with GDB while it's running inside a VM is very convenient, but
+in other cases (e.g. Tilck on real hardware) we don't have GDB support. In
+addition to that, even when the kernel is running inside a VM, there are some
+features that are just much more convient to expose directly from the kernel
+itself rather than through GDB scripts. One way to expose kernel info to
+userspace is to use `sysfs`, but that's not necessarily the most convenient way
+for everything (still, Tilck does have [sysfs] implementation), especially when
+*interaction* with the kernel itself is needed for debugging purposes. To help
+in those cases, a *debug panel* has been introduced inside Tilck itself. It
+started as something like Linux's [Magic SysRq] which evolved in a sort of TUI
+application with debug info plus tracing capabilities for user processes. In the
+future, it will support some proper debugging features as well. To learn more
+about it, check the the [debugging] document.
+
+[sysfs]: https://github.com/vvaltchev/tilck/wiki/Tilck's-sysfs
+[Magic SysRq]: https://en.wikipedia.org/wiki/Magic_SysRq_key
 
 A comment about user experience
 ----------------------------------
@@ -295,7 +326,7 @@ Linux distributions and a powerful CMake-based build system. The build of Tilck
 produces an image ready to be tested with QEMU or written on a USB stick. (To
 some degree, it's like what the `buildroot` project does for Linux.) Of course,
 the project includes also scripts for running Tilck in QEMU with various
-configurations (bios boot, efi boot, direct (multi)boot with QEMU's -kernel
+configurations (bios boot, UEFI boot, direct (multi-)boot with QEMU's `-kernel`
 option, etc.).
 
 #### Motivation
