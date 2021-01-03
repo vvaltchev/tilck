@@ -5,6 +5,8 @@ Tilck (Tiny Linux-Compatible Kernel)
 [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
+<img align="right" src="http://vvaltchev.github.io/tilck_imgs/v2/main2-smaller-70p.png" alt="Tilck">
+
 Contents
 ----------------------------------------
 * [Overview](#overview)
@@ -33,10 +35,6 @@ Contents
   - [Why having support for FAT32?](#why-having-support-for-fat32)
   - [Why using 3 spaces as (soft) tab size?](#why-using-3-spaces-as-soft-tab-size)
   - [Why many commit messages are so short?](#why-many-commit-messages-are-so-short)
-
-<p align="center">
-    <img src="http://vvaltchev.github.io/tilck_imgs/v2/main.png" alt="Tilck">
-</p>
 
 Overview
 ----------------------------------------
