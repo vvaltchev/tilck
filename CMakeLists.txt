@@ -309,6 +309,9 @@ set(KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
 set(PCI_VENDORS_LIST OFF CACHE BOOL
     "Compile-in the list of all known PCI vendors")
 
+set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
+    "Enable an early DEBUG dialog (see docs/debugging.md)")
+
 list(
    APPEND no_arch_modules_whitelist
 
@@ -473,6 +476,7 @@ list(
    TINY_KERNEL
    INIT_REPORT_PROC_EXIT
    PCI_VENDORS_LIST
+   EFI_BOOTLOADER_DEBUG
 )
 
 ###########################################################

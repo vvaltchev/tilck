@@ -29,11 +29,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    InitializeLib(image, __ST);
    gImageHandle = image;
 
-   EarlySetDefaultResolution();
-   ST->ConOut->EnableCursor(ST->ConOut, true);
-
-   write_bootloader_hello_msg();
-
    status = BS->OpenProtocol(image,
                              &LoadedImageProtocol,
                              (void**) &gLoadedImage,
@@ -41,6 +36,24 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
                              NULL,
                              EFI_OPEN_PROTOCOL_GET_PROTOCOL);
    HANDLE_EFI_ERROR("OpenProtocol(LoadedImageProtocol)");
+
+   //
+   // For debugging with GDB (see docs/debugging.md)
+   //
+
+   if (EFI_BOOTLOADER_DEBUG) {
+      Print(L"\n");
+      Print(L"------------ EFI BOOTLOADER DEBUG ------------\n");
+      Print(L"Pointer size:  %d\n", sizeof(void *));
+      Print(L"JumpToKernel:  0x%x\n", (void *)JumpToKernel);
+      Print(L"BaseAddr:      0x%x\n", gLoadedImage->ImageBase + 0x1000);
+      Print(L"Press ANY key to continue...");
+      WaitForKeyPress();
+   }
+
+   EarlySetDefaultResolution();
+   ST->ConOut->EnableCursor(ST->ConOut, true);
+   write_bootloader_hello_msg();
 
    status = BS->OpenProtocol(gLoadedImage->DeviceHandle,
                              &FileSystemProtocol,
@@ -55,15 +68,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = ReserveMemAreaForKernelImage();
    HANDLE_EFI_ERROR("ReserveMemAreaForKernelImage");
-
-   //
-   // For debugging with GDB (see docs/debugging.md)
-   //
-   // Print(L"Pointer size: %d\n", sizeof(void *));
-   // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
-   // Print(L"BaseAddr: 0x%x\n", gLoadedImage->ImageBase + 0x1000);
-   // Print(L"Press ANY key to continue...\n");
-   // WaitForKeyPress();
 
    if (!common_bootloader_logic()) {
       status = EFI_ABORTED;
