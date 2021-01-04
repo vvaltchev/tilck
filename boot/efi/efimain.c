@@ -56,6 +56,15 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
    status = ReserveMemAreaForKernelImage();
    HANDLE_EFI_ERROR("ReserveMemAreaForKernelImage");
 
+   //
+   // For debugging with GDB (see docs/debugging.md)
+   //
+   // Print(L"Pointer size: %d\n", sizeof(void *));
+   // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
+   // Print(L"BaseAddr: 0x%x\n", gLoadedImage->ImageBase + 0x1000);
+   // Print(L"Press ANY key to continue...\n");
+   // WaitForKeyPress();
+
    if (!common_bootloader_logic()) {
       status = EFI_ABORTED;
       goto end;
@@ -63,16 +72,6 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *__ST)
 
    status = SetupMultibootInfo();
    HANDLE_EFI_ERROR("SetupMultibootInfo");
-
-   //
-   // For debugging with GDB (see docs/efi_debug.md)
-   //
-   // Print(L"Pointer size: %d\n", sizeof(void *));
-   // Print(L"JumpToKernel: 0x%x\n", (void *)JumpToKernel);
-   // Print(L"BaseAddr: 0x%x\n", gLoadedImage->ImageBase + 0x1000);
-   // Print(L"Press ANY key to boot the kernel...\n");
-   // WaitForKeyPress();
-   //
 
    status = BS->CloseProtocol(gLoadedImage->DeviceHandle,
                               &FileSystemProtocol,
