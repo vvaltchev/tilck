@@ -21,10 +21,9 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/system_mmap_int.h>
 
 #include "fb_int.h"
-
-void append_mem_region(struct mem_region r);
 
 static ulong fb_paddr;
 static u32 fb_pitch;

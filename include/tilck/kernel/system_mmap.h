@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <system_headers/multiboot.h>
 
-#define MAX_MEM_REGIONS             512
+#define MAX_MEM_REGIONS                    512
 
 #define MEM_REG_EXTRA_RAMDISK         (1 << 0)
 #define MEM_REG_EXTRA_KERNEL          (1 << 1)

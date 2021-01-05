@@ -135,3 +135,6 @@ void on_first_pdir_update(void) { }
 
 void *get_syscall_func_ptr(u32 n) { return NULL; }
 int get_syscall_num(void *func) { return -1; }
+
+void arch_add_initial_mem_regions() { }
+bool arch_add_final_mem_regions() { return false; }
