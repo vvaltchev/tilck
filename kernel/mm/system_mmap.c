@@ -20,6 +20,8 @@ int mem_regions_count;
 const char *mem_region_extra_to_str(u32 e)
 {
    switch (e) {
+      case 0:
+         return "    ";
       case MEM_REG_EXTRA_RAMDISK:
          return "RDSK";
       case MEM_REG_EXTRA_KERNEL:
@@ -28,8 +30,10 @@ const char *mem_region_extra_to_str(u32 e)
          return "LMRS";
       case MEM_REG_EXTRA_FRAMEBUFFER:
          return "FBUF";
+      case MEM_REG_EXTRA_DMA:
+         return "DMA ";
       default:
-         return "    ";
+         return "MIXD";
    }
 }
 
@@ -296,14 +300,14 @@ STATIC bool handle_region_overlap(int r1_index, int r2_index)
 
          } else if (s1 == s2) {
 
-            /* Corner case 2b: region 1-1 is empty" */
+            /* Corner case 2b: region 1-1 is empty */
 
             r1->addr = e2;
             r1->len = e1 - r1->addr;
 
          } else if (e1 == e2) {
 
-            /* Corner case 2c: region 1-2 is empty" */
+            /* Corner case 2c: region 1-2 is empty */
 
             r1->len = s2 - s1;
 
@@ -483,12 +487,8 @@ static void dump_memory_map(void)
    printk("\n");
 }
 
-void system_mmap_set(multiboot_info_t *mbi)
+STATIC void x86_add_initial_regions(void)
 {
-   ulong ma_addr = mbi->mmap_addr;
-
-#ifdef arch_x86_family
-
    /* We want to keep the first 64 KB as reserved */
    append_mem_region((struct mem_region) {
       .addr = 0,
@@ -509,7 +509,78 @@ void system_mmap_set(multiboot_info_t *mbi)
       .type = MULTIBOOT_MEMORY_AVAILABLE,
       .extra = MEM_REG_EXTRA_LOWMEM,
    });
+}
 
+STATIC bool x86_add_dma_regions(void)
+{
+   bool need_sort = false;
+
+   for (int i = 0; i < mem_regions_count; i++) {
+
+      struct mem_region *m = mem_regions + i;
+
+      if (m->type != MULTIBOOT_MEMORY_AVAILABLE || m->extra || m->addr > 16*MB)
+         continue;
+
+      /*
+       * We found a mem region that:
+       *   - is available
+       *   - begins in the first 16 MB
+       *   - has no extra flags
+       */
+
+      if (m->addr + m->len <= 16 * MB) {
+
+         /* The whole region ends in the first 16 MB, just mark it as DMA */
+         m->extra |= MEM_REG_EXTRA_DMA;
+
+      } else {
+
+         /*
+          * The region ends AFTER the first 16 MB.
+          *
+          *  +--------------------------------------------+
+          *  |                  Region                    |
+          *  +--------------------------------------------+
+          *  +----------------------------+
+          *  |        Usable by DMA       |
+          *  +----------------------------+
+          *
+          * In this case we're going to add a new DMA region and shrink the
+          * current one:
+          *
+          *                               +---------------+
+          *                               |    Region     |
+          *                               +---------------+
+          *  +----------------------------+
+          *  |        Usable by DMA       |
+          *  +----------------------------+
+          *
+          */
+
+         append_mem_region((struct mem_region) {
+            .addr = m->addr,
+            .len = 16 * MB - m->addr,
+            .type = MULTIBOOT_MEMORY_AVAILABLE,
+            .extra = MEM_REG_EXTRA_DMA,
+         });
+
+         m->len = m->addr + m->len - 16 * MB;
+         m->addr = 16 * MB;
+
+         need_sort = true;
+      }
+   }
+
+   return need_sort;
+}
+
+void system_mmap_set(multiboot_info_t *mbi)
+{
+   ulong ma_addr = mbi->mmap_addr;
+
+#ifdef arch_x86_family
+   x86_add_initial_regions();
 #endif
 
    while (ma_addr < mbi->mmap_addr + mbi->mmap_length) {
@@ -527,6 +598,12 @@ void system_mmap_set(multiboot_info_t *mbi)
    add_kernel_phdrs_to_mmap();
    fix_mem_regions();
    set_lower_and_upper_kb();
+
+#ifdef arch_x86_family
+   if (x86_add_dma_regions())
+      sort_mem_regions();
+#endif
+
    dump_memory_map();
 }
 

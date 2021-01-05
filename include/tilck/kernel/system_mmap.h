@@ -6,10 +6,11 @@
 
 #define MAX_MEM_REGIONS             512
 
-#define MEM_REG_EXTRA_RAMDISK         1
-#define MEM_REG_EXTRA_KERNEL          2
-#define MEM_REG_EXTRA_LOWMEM          4
-#define MEM_REG_EXTRA_FRAMEBUFFER     8
+#define MEM_REG_EXTRA_RAMDISK         (1 << 0)
+#define MEM_REG_EXTRA_KERNEL          (1 << 1)
+#define MEM_REG_EXTRA_LOWMEM          (1 << 2)
+#define MEM_REG_EXTRA_FRAMEBUFFER     (1 << 3)
+#define MEM_REG_EXTRA_DMA             (1 << 4)
 
 struct mem_region {
 
