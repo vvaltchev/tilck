@@ -15,6 +15,7 @@
 #include <tilck_gen_headers/mod_sysfs.h>
 #include <tilck_gen_headers/mod_acpi.h>
 #include <tilck_gen_headers/mod_pci.h>
+#include <tilck_gen_headers/mod_sb16.h>
 
 #include <tilck/common/build_info.h>
 
@@ -55,15 +56,16 @@ DEF_STATIC_CONF_RO(BOOL,  show_logo,               KERNEL_SHOW_LOGO);
 DEF_STATIC_CONF_RO(BOOL,  big_scroll_buf,          TERM_BIG_SCROLL_BUF);
 
 /* config/modules */
+DEF_STATIC_CONF_RO(BOOL,  sysfs,                   MOD_sysfs);
+DEF_STATIC_CONF_RO(BOOL,  pci,                     MOD_pci);
+DEF_STATIC_CONF_RO(BOOL,  acpi,                    MOD_acpi);
 DEF_STATIC_CONF_RO(BOOL,  kb8042,                  MOD_kb8042);
+DEF_STATIC_CONF_RO(BOOL,  tracing,                 MOD_tracing);
 DEF_STATIC_CONF_RO(BOOL,  console,                 MOD_console);
 DEF_STATIC_CONF_RO(BOOL,  fb,                      MOD_fb);
 DEF_STATIC_CONF_RO(BOOL,  serial,                  MOD_serial);
+DEF_STATIC_CONF_RO(BOOL,  sb16,                    MOD_sb16);
 DEF_STATIC_CONF_RO(BOOL,  debugpanel,              MOD_debugpanel);
-DEF_STATIC_CONF_RO(BOOL,  tracing,                 MOD_tracing);
-DEF_STATIC_CONF_RO(BOOL,  sysfs,                   MOD_sysfs);
-DEF_STATIC_CONF_RO(BOOL,  acpi,                    MOD_acpi);
-DEF_STATIC_CONF_RO(BOOL,  pci,                     MOD_pci);
 
 void sysfs_create_config_obj(void)
 {
@@ -134,15 +136,16 @@ void sysfs_create_config_obj(void)
    modules = sysfs_create_custom_obj(
       "modules",
       NULL,       /* hooks */
+      SYSOBJ_CONF_PROP_PAIR(sysfs),
+      SYSOBJ_CONF_PROP_PAIR(pci),
+      SYSOBJ_CONF_PROP_PAIR(acpi),
       SYSOBJ_CONF_PROP_PAIR(kb8042),
+      SYSOBJ_CONF_PROP_PAIR(tracing),
       SYSOBJ_CONF_PROP_PAIR(console),
       SYSOBJ_CONF_PROP_PAIR(fb),
       SYSOBJ_CONF_PROP_PAIR(serial),
+      SYSOBJ_CONF_PROP_PAIR(sb16),
       SYSOBJ_CONF_PROP_PAIR(debugpanel),
-      SYSOBJ_CONF_PROP_PAIR(tracing),
-      SYSOBJ_CONF_PROP_PAIR(sysfs),
-      SYSOBJ_CONF_PROP_PAIR(acpi),
-      SYSOBJ_CONF_PROP_PAIR(pci),
       NULL
    );
 

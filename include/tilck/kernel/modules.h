@@ -33,4 +33,5 @@ void register_module(struct module *m);
 #define MOD_tty_prio                         200
 #define MOD_fbdev_prio                       300
 #define MOD_serial_prio                      400
+#define MOD_sb16_prio                        410
 #define MOD_dp_prio                         1000  /* last */

@@ -14,6 +14,7 @@
 #include <tilck_gen_headers/mod_sysfs.h>
 #include <tilck_gen_headers/mod_acpi.h>
 #include <tilck_gen_headers/mod_pci.h>
+#include <tilck_gen_headers/mod_sb16.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -64,6 +65,7 @@ static void dp_show_opts(void)
    DUMP_BOOL_OPT(MOD_debugpanel);
    DUMP_BOOL_OPT(MOD_tracing);
    DUMP_BOOL_OPT(MOD_sysfs);
+   DUMP_BOOL_OPT(MOD_sb16);
 
    DUMP_LABEL("Modules config");
    DUMP_INT_OPT(FBCON_BIGFONT_THR);
