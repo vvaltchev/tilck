@@ -304,7 +304,8 @@ static long greater_than_heap_cmp(const void *a, const void *b)
    return -1;
 }
 
-static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
+static void
+init_kmalloc_fill_region(int region, ulong vaddr, ulong limit, bool dma)
 {
    int heap_index;
    vaddr = pow2_round_up_at(
@@ -331,6 +332,7 @@ static void init_kmalloc_fill_region(int region, ulong vaddr, ulong limit)
       }
 
       heaps[heap_index]->region = region;
+      heaps[heap_index]->dma = dma;
       vaddr = heaps[heap_index]->vaddr + heaps[heap_index]->size;
    }
 }
@@ -383,8 +385,10 @@ void init_kmalloc(void)
 
       if (r.type == MULTIBOOT_MEMORY_AVAILABLE) {
 
-         if (!r.extra || r.extra == MEM_REG_EXTRA_DMA)
-            init_kmalloc_fill_region(i, vbegin, vend);
+         const bool dma = r.extra == MEM_REG_EXTRA_DMA;
+
+         if (!r.extra || dma)
+            init_kmalloc_fill_region(i, vbegin, vend, dma);
 
          if (vend == LINEAR_MAPPING_END)
             break;

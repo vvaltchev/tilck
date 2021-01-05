@@ -35,6 +35,9 @@ main_heaps_kmalloc(size_t *size, u32 flags)
       if (heap_size < *size || heap_free < *size)
          continue;
 
+      if (heaps[i]->dma != !!(flags & KMALLOC_FL_DMA))
+         continue;
+
       if ((vaddr = per_heap_kmalloc(heaps[i], size, flags))) {
 
          if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
@@ -103,9 +106,16 @@ void *general_kmalloc(size_t *size, u32 flags)
       if (*size <= SMALL_HEAP_MAX_ALLOC ||
           UNLIKELY(sub_block_sz && sub_block_sz <= SMALL_HEAP_MAX_ALLOC))
       {
+         /* Small DMA allocations are not allowed */
+         ASSERT(~flags & KMALLOC_FL_DMA);
          res = small_heaps_kmalloc(size, flags);
+
       } else {
+
          res = main_heaps_kmalloc(size, flags);
+
+         if (UNLIKELY(res == NULL && ~flags & KMALLOC_FL_DMA))
+            res = main_heaps_kmalloc(size, flags | KMALLOC_FL_DMA);
       }
 
       if (KMALLOC_HEAVY_STATS && res != NULL)

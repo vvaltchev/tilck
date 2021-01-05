@@ -31,6 +31,7 @@ struct kmalloc_heap {
    /* -- */
 
    bool linear_mapping;
+   bool dma;
 
    /*
     * Explicit stack used by per_heap_kmalloc()
