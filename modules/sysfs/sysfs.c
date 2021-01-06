@@ -719,6 +719,8 @@ main_sysfs_create_default_objects(void)
       return rc;
    if ((rc = REGISTER_SYSFS_HW_OBJ("comm", &sysfs_comm_obj)))
       return rc;
+   if ((rc = REGISTER_SYSFS_HW_OBJ("generic", &sysfs_genp_obj)))
+      return rc;
    if ((rc = REGISTER_SYSFS_HW_OBJ("input", &sysfs_input_obj)))
       return rc;
    if ((rc = REGISTER_SYSFS_HW_OBJ("serbus", &sysfs_serbus_obj)))
