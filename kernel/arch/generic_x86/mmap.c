@@ -3,6 +3,11 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/system_mmap_int.h>
 
+#define MAX_DMA                                (256 * KB)
+
+STATIC_ASSERT(MAX_DMA <= 16 * MB);
+STATIC_ASSERT((MAX_DMA & (64 * KB - 1)) == 0);
+
 void arch_add_initial_mem_regions()
 {
    /* We want to keep the first 64 KB as reserved */
@@ -29,7 +34,7 @@ void arch_add_initial_mem_regions()
 
 bool arch_add_final_mem_regions()
 {
-   bool need_sort = false;
+   u64 tot_dma = 0;
 
    for (int i = 0; i < mem_regions_count; i++) {
 
@@ -38,55 +43,49 @@ bool arch_add_final_mem_regions()
       if (m->type != MULTIBOOT_MEMORY_AVAILABLE || m->extra || m->addr > 16*MB)
          continue;
 
+      if (tot_dma >= MAX_DMA)
+         break;
+
       /*
        * We found a mem region that:
        *   - is available
        *   - begins in the first 16 MB
        *   - has no extra flags
+       *
+       *
+       *  +--------------------------------------------+
+       *  |                  Region                    |
+       *  +--------------------------------------------+
+       *  +----------------------------+
+       *  |        Usable by DMA       |
+       *  +----------------------------+
+       *
+       * In this case we're going to add a new DMA region and shrink the
+       * current one:
+       *
+       *                               +---------------+
+       *                               |    Region     |
+       *                               +---------------+
+       *  +----------------------------+
+       *  |        Usable by DMA       |
+       *  +----------------------------+
+       *
        */
 
-      if (m->addr + m->len <= 16 * MB) {
+      u64 dma_len = MIN(16 * MB - m->addr, MAX_DMA - tot_dma);
 
-         /* The whole region ends in the first 16 MB, just mark it as DMA */
-         m->extra |= MEM_REG_EXTRA_DMA;
+      append_mem_region((struct mem_region) {
+         .addr = m->addr,
+         .len = dma_len,
+         .type = MULTIBOOT_MEMORY_AVAILABLE,
+         .extra = MEM_REG_EXTRA_DMA,
+      });
 
-      } else {
+      m->addr += dma_len;
+      m->len -= dma_len;
 
-         /*
-          * The region ends AFTER the first 16 MB.
-          *
-          *  +--------------------------------------------+
-          *  |                  Region                    |
-          *  +--------------------------------------------+
-          *  +----------------------------+
-          *  |        Usable by DMA       |
-          *  +----------------------------+
-          *
-          * In this case we're going to add a new DMA region and shrink the
-          * current one:
-          *
-          *                               +---------------+
-          *                               |    Region     |
-          *                               +---------------+
-          *  +----------------------------+
-          *  |        Usable by DMA       |
-          *  +----------------------------+
-          *
-          */
-
-         append_mem_region((struct mem_region) {
-            .addr = m->addr,
-            .len = 16 * MB - m->addr,
-            .type = MULTIBOOT_MEMORY_AVAILABLE,
-            .extra = MEM_REG_EXTRA_DMA,
-         });
-
-         m->len = m->addr + m->len - 16 * MB;
-         m->addr = 16 * MB;
-
-         need_sort = true;
-      }
+      tot_dma += dma_len;
    }
 
-   return need_sort;
+   return true;
 }
