@@ -1,5 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_sysfs.h>
+
+#if MOD_sysfs
+
 #include <tilck/mods/sysfs.h>
 #include <tilck/mods/sysfs_utils.h>
 
@@ -148,3 +152,13 @@ pci_create_sysfs_view(void)
 
    return rc;
 }
+
+#else
+
+static int
+pci_create_sysfs_view(void)
+{
+   return 0;
+}
+
+#endif

@@ -17,6 +17,8 @@
 #include <3rd_party/acpi/accommon.h>
 #include <3rd_party/acpi/acinterp.h>
 
+#if MOD_sysfs
+
 #define PROP_NAME_BUF_SZ                         32
 #define ACPI_SERIALIZE_MAX_DEPTH                  3
 
@@ -552,9 +554,6 @@ register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
    char name[8] = {0};
    ACPI_STATUS rc;
 
-   if (!MOD_sysfs)
-      return AE_OK;
-
    if (parent_obj) {
 
       void *ptr;
@@ -653,3 +652,15 @@ register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
 
    return AE_OK;
 }
+
+#else
+
+ACPI_STATUS
+register_acpi_obj_in_sysfs(ACPI_HANDLE parent_obj,
+                           ACPI_HANDLE obj,
+                           ACPI_DEVICE_INFO *obj_info)
+{
+   return AE_OK;
+}
+
+#endif
