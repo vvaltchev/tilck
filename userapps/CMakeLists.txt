@@ -66,6 +66,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
    add_usermode_app(init)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
+   add_usermode_app(play)
 
    if (MOD_debugpanel)
       add_usermode_app(dp)

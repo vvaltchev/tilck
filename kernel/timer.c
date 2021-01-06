@@ -372,7 +372,6 @@ static void do_bogomips_loop(void *arg)
 void delay_us(u32 us)
 {
    FASTCALL void asm_nop_loop(u32 iters);
-   ASSERT(!is_preemption_enabled());
    asm_nop_loop(us * loops_per_us);
 }
 

@@ -57,7 +57,7 @@ register_driver(struct driver_info *info, int arg_major)
 
    if (arg_major < 0) {
 
-      major = 0;
+      major = 900; /* Dynamic major start */
 
       for (int i = 0; i < ARRAY_SIZE(drivers) && drivers[i]; i++) {
          if (drivers[i]->major == major)
