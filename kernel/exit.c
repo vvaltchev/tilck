@@ -101,6 +101,69 @@ close_all_handles(void)
    }
 }
 
+struct on_task_exit_cb {
+   struct list_node node;
+   void (*cb)(struct task *);
+};
+
+int
+register_on_task_exit_cb(void (*cb)(struct task *))
+{
+   struct task *ti = get_curr_task();
+   int rc = 0;
+
+   disable_preemption();
+   {
+      struct on_task_exit_cb *obj = kalloc_obj(struct on_task_exit_cb);
+
+      if (obj) {
+
+         list_node_init(&obj->node);
+         list_add_tail(&ti->on_exit, &obj->node);
+         obj->cb = cb;
+
+      } else {
+
+         rc = -ENOMEM;
+      }
+   }
+   enable_preemption();
+   return rc;
+}
+
+int
+unregister_on_task_exit_cb(void (*cb)(struct task *))
+{
+   struct task *ti = get_curr_task();
+   struct on_task_exit_cb *pos, *tmp;
+   int rc = -ENOENT;
+
+   disable_preemption();
+   {
+      list_for_each(pos, tmp, &ti->on_exit, node) {
+         if (pos->cb == cb) {
+            list_remove(&pos->node);
+            rc = 0;
+            break;
+         }
+      }
+   }
+   enable_preemption();
+   return rc;
+}
+
+static void
+call_on_task_exit_callbacks(void)
+{
+   struct task *ti = get_curr_task();
+   struct on_task_exit_cb *pos, *tmp;
+
+   list_for_each(pos, tmp, &ti->on_exit, node) {
+      pos->cb(ti);
+      kfree_obj(pos, struct on_task_exit_cb);
+   }
+}
+
 /*
  * Note: we HAVE TO make this function NO_INLINE otherwise clang in release
  * builds generates code that is incompatible with asm hacks changing both
@@ -181,6 +244,7 @@ void terminate_process(int exit_code, int term_sig)
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->wstatus = EXITCODE(exit_code, term_sig);
 
+   call_on_task_exit_callbacks();
    task_free_all_kernel_allocs(ti);
 
    if (!vforked) {

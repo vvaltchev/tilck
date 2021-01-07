@@ -96,6 +96,9 @@ struct task {
    struct wait_obj wobj;
    u32 ticks_before_wake_up;
 
+   /* List of callbacks to call on exit */
+   struct list on_exit;
+
    /* Temp kernel allocations for user requests */
    struct kernel_alloc *kallocs_tree_root;
 
@@ -383,3 +386,5 @@ void set_current_task_in_kernel(void);
 void set_current_task_in_user_mode(void);
 void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
+int register_on_task_exit_cb(void (*cb)(struct task *));
+int unregister_on_task_exit_cb(void (*cb)(struct task *));

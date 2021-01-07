@@ -184,6 +184,7 @@ void init_task_lists(struct task *ti)
    list_node_init(&ti->siblings_node);
 
    list_init(&ti->tasks_waiting_list);
+   list_init(&ti->on_exit);
    bzero(&ti->wobj, sizeof(struct wait_obj));
 }
 
