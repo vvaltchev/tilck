@@ -216,7 +216,7 @@ fi
 if ! [ -f $fbdoom ]; then
    echo -n "Uncompressing ${fbdoomgz}... "
    cp $fbdoomgz /tmp
-   gzip -d /tmp/fbdoom.gz > $fbdoom
+   gunzip -c /tmp/fbdoom.gz > $fbdoom
    chmod 755 $fbdoom
    rm /tmp/fbdoom.gz
    echo "[ OK ]"
@@ -231,7 +231,7 @@ if ! [ -f $wad ]; then
 
    echo -n "Uncompressing ${wadgz}... "
    cp $wadgz /tmp
-   gzip -d /tmp/freedoom1.wad.gz > $wad
+   gunzip -c /tmp/freedoom1.wad.gz > $wad
    rm /tmp/freedoom1.wad.gz
    echo "[ OK ]"
 fi
