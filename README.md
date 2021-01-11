@@ -41,6 +41,10 @@ Contents
 Overview
 ----------------------------------------
 
+<p align="center">
+    <img src="http://vvaltchev.github.io/tilck_imgs/v2/overview.png" border="0">
+</p>
+
 ### What is Tilck?
 `Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
 binary level. Project's small-scale and simple design makes it the **perfect playground**
@@ -50,13 +54,12 @@ realm of educational kernels. Thanks to that, to build a program for Tilck it's 
 use a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
 has **no need** to have its own set of custom written applications, like most educational
 kernels do. It just runs mainstream Linux programs like the **BusyBox** suite.
-While the Linux-compatibility and the monolithic design might be a limitation from
-the research point of view, on the other side, such decisions bring the whole project
+While the Linux-compatibility and the monolithic design might seem a limitation from
+the OS research point of view, on the other side, such design bring the whole project
 much closer to *real-world* applications in the future, compared to the case where
 some serious (or huge) effort is required to port pre-existing software on it. Also,
 nothing stops Tilck from implementing custom non-Linux syscalls that aware apps might
-take advantage of. Therefore, the amount of constraints and limitations for further
-development is smaller than it looks like.
+take advantage of.
 
 #### Future plans
 In the long term, depending on how successful the project will be, `Tilck` might
@@ -64,11 +67,11 @@ become suitable for **embedded systems** on which an extra-simple and fully dete
 kernel is required or, at least, it is considered the optimal solution. With a fair
 amount of luck, `Tilck` might be able to fill the gap between *Embedded Linux* and
 typical real-time operating systems like *FreeRTOS* or *Zephyr*. In any case, at some
-point it will be ported to `ARM` family and it might be adapted to run on MMU-less CPUs
-as well. That would be great because consuming a tiny amount of RAM has always been
-a key point in Tilck's design. Indeed, the kernel can *comfortably* boot and run
-on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's pointless
-on x86, but on an ARM Cortex-R it won't be anymore the case.
+point it will be ported to the `ARM` family and it might be adapted to run on MMU-less
+CPUs as well. Tilck would be a perfect fit for that because consuming a tiny amount of
+RAM has always been a key point in Tilck's design. Indeed, the kernel can *comfortably*
+boot and run on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's
+pointless on x86, but on an ARM Cortex-R it won't be anymore the case.
 
 
 ### What Tilck is NOT ?
@@ -95,28 +98,29 @@ kernel's code can be already compiled for any architecture and can be used in
 kernel's unit tests.
 
 #### Hardware support
-While the kernel uses a fair amount of legacy hardware like the 8259 PICs for
+While the kernel uses a fair amount of **legacy hardware** like the 8259 PICs for
 IRQs, the legacy 8254 PIT for the system timer, the legacy 16550 UART for serial
-communication, and the 8042 kb controller, it has support for some recent hardware
-features (when available) like SSE, AVX and AVX2 fpu instructions, PAT, sysenter,
-enumeration of PCI Express devices (via ECAM) and, above all, **ACPI** support via
-ACPICA. In particular, ACPI is used to receive power-button events, to reboot or
-power-off the machine, and to read the current parameters of machine's batteries
-(when implemented via ACPI control methods).
+communication, the 8042 kb controller, the 8237 ISA DMA, and the Sound Blaster
+16 sound card (QEMU only), it has also support for some **recent hardware** features
+like SSE, AVX and AVX2 fpu instructions, PAT, i686 sysenter, enumeration of PCI Express
+devices (via ECAM) and, above all, **ACPI** support via ACPICA. ACPI is currently
+used to receive power-button events, to reboot or power-off the machine, and to
+read the current parameters of machine's batteries (when implemented via ACPI control
+methods).
 
 #### File systems
 Tilck has a simple but full-featured (both soft and hard links, file holes, memory
 mapping, etc.) **ramfs** implementation, a minimalistic **devfs** implementation,
 read-only support for FAT16 and **FAT32** (used for initrd) allowing memory-mapping
-of files, and a nice **sysfs** implementation used to provide a full view of ACPI's
-namespace, the list of all PCI(e) devices and Tilck's compile-time configuration.
+of files, and a **sysfs** implementation used to provide a full view of **ACPI's**
+**namespace**, the list of all PCI(e) devices and Tilck's compile-time configuration.
 Clearly, in order to work with multiple file systems at once, Tilck has a simple
 **VFS** implementation as well.
 
 #### Processes and signals
 While Tilck uses internally the concept of thread, multi-threading is not currently
-exposed to userspace (kernel threads exist, of course). Both fork() and vfork() are
-properly implemented and copy-on-write is used for fork-ed processes. The waitpid()
+exposed to userspace (kernel threads exist, of course). Both `fork()` and `vfork()` are
+properly implemented and copy-on-write is used for fork-ed processes. The `waitpid()`
 syscall is fully implemented (which implies process groups etc.). However, the support
 for signals is limited to using the default action or ignoring the signal, except for
 the SIGSTOP and SIGCONT signals which do what they're actually supposed to do.
@@ -127,9 +131,9 @@ multi-threading in userspace, Tilck has full support for TLS (thread-local stora
 processes.
 
 #### I/O
-In addition to the classic read() and write() syscalls, Tilck supports vectored I/O
-via readv() and writev() as well. In addition to that, non blocking I/O, select() and
-poll() are supported too. Fortunately, no program so far needed epoll :-)
+In addition to the classic `read()` and `write()` syscalls, Tilck supports vectored I/O
+via `readv()` and `writev()` as well. In addition to that, non blocking I/O, `select()`
+and `poll()` are supported too. Fortunately, no program so far needed `epoll` :-)
 
 #### Console
 Tilck has a console supporting more than 90% of Linux's console's features. It works
@@ -138,7 +142,7 @@ The effort to implement such a powerful console was driven by the goal to make *
 smoothly on Tilck, with syntax highlighting etc. While it's true that such a thing has a
 little to do with "proper" kernel development, being able to run a "beast" like Vim on a
 simple kernel like Tilck, is a great achievement by itself because it shows that Tilck
-can run correctly programs having a discrete amount of complexity.
+can run correctly programs having a fair amount of complexity.
 
 #### Userspace applications
 Tilck can run a fair amount of console applications like the **BusyBox** suite,
