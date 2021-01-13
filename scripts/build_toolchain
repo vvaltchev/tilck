@@ -78,7 +78,7 @@ if [ -z "$GCC_TC_VER" ]; then
    if [ -f $TC/.gcc_tc_ver ]; then
       GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
    else
-      GCC_TC_VER="6.4.0"
+      GCC_TC_VER="7.3.0"
    fi
 fi
 
@@ -104,6 +104,7 @@ fi
 
 if ! [ -f $TC/.gcc_tc_ver ]; then
 
+   mkdir -p $TC
    echo -n $GCC_TC_VER > $TC/.gcc_tc_ver
 
 else
