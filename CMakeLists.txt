@@ -647,7 +647,14 @@ unset(SEC_PER_CYL)
 # For qemu run scripts
 set(QEMU_CHS_GEOM         "cyls=${CHS_CYLS},heads=${CHS_HPC},secs=${CHS_SPT}")
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
-set(QEMU_COMMON_OPTS      "-rtc base=localtime -soundhw sb16")
+set(QEMU_COMMON_OPTS      "-rtc base=localtime")
+
+execute_process(COMMAND uname -r OUTPUT_VARIABLE UNAME_R)
+string(FIND ${UNAME_R} "Microsoft" _index)
+
+if (${_index} EQUAL -1)
+   set(QEMU_COMMON_OPTS "${QEMU_COMMON_OPTS} -soundhw sb16")
+endif()
 
 # Set kernel's stack size in number of pages. Valid range: [1, 2].
 
