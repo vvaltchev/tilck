@@ -89,7 +89,6 @@ list(
 
    run_nokvm_qemu
    run_qemu
-   run_nokvm_qemu_with_usbdisk
    run_multiboot_nokvm_qemu
    run_multiboot_qemu
    run_efi_nokvm_qemu32
