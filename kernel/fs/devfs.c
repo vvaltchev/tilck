@@ -154,13 +154,13 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
 static ssize_t
 devfs_dir_read(fs_handle h, char *buf, size_t len)
 {
-   return -EINVAL;
+   return -EISDIR;
 }
 
 static ssize_t
 devfs_dir_write(fs_handle h, char *buf, size_t len)
 {
-   return -EINVAL;
+   return -EISDIR;
 }
 
 static offt

@@ -40,6 +40,9 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
    offt fsize = (offt)h->e->DIR_FileSize;
    offt written_to_buf = 0;
 
+   if (h->e->directory)
+      return -EISDIR;
+
    if (h->pos >= fsize) {
 
       /*
@@ -425,9 +428,13 @@ STATIC void fat_shared_unlock(struct fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC ssize_t fat_write(fs_handle h, char *buf, size_t len)
+STATIC ssize_t fat_write(fs_handle handle, char *buf, size_t len)
 {
-   struct fs *fs = get_fs(h);
+   struct fatfs_handle *h = (struct fatfs_handle *) handle;
+   struct fs *fs = h->fs;
+
+   if (h->e->directory)
+      return -EISDIR;
 
    if (!(fs->flags & VFS_FS_RW))
       return -EBADF; /* read-only file system: can't write */

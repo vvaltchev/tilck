@@ -254,10 +254,11 @@ ramfs_read_nolock(struct ramfs_handle *rh, char *buf, size_t len)
    struct ramfs_inode *inode = rh->inode;
    offt tot_read = 0;
    offt buf_rem = (offt) len;
-   ASSERT(inode->type == VFS_FILE);
 
    if (inode->type == VFS_DIR)
       return -EISDIR;
+
+   ASSERT(inode->type == VFS_FILE);
 
    while (buf_rem > 0) {
 
