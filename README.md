@@ -41,7 +41,8 @@ Contents
   - [Why Tilck does not have the feature/abstraction XYZ?](#why-tilck-does-not-have-the-featureabstraction-xyz-like-other-kernels-do)
   - [Why Tilck runs only on x86 (ia-32)?](#why-tilck-runs-only-on-x86-ia-32)
   - [Why having support for FAT32?](#why-having-support-for-fat32)
-  - [Why using 3 spaces as (soft) tab size?](#why-using-3-spaces-as-soft-tab-size)
+  - [Why keeping the initrd mounted?](#why-keeping-the-initrd-mounted)
+  - [Why using 3 spaces as indentation?](#why-using-3-spaces-as-indentation)
   - [Why many commit messages are so short?](#why-many-commit-messages-are-so-short)
 
 Overview
@@ -330,14 +331,14 @@ complex to build and configure; it's not a project requiring 200 things to be
 installed on the host machine. Building such projects may require hours or even
 days of effort (think about special configurations e.g. building with a
 cross-compiler). Tilck instead, has been designed to be trivial to build and
-test even for inexperienced people with basic knowledge of Linux. It has a
+test even by inexperienced people with basic knowledge of Linux. It has a
 sophisticated script for building its own toolchain that works on all the major
 Linux distributions and a powerful CMake-based build system. The build of Tilck
 produces an image ready to be tested with QEMU or written on a USB stick. (To
-some degree, it's like what the `buildroot` project does for Linux.) Of course,
-the project includes also scripts for running Tilck in QEMU with various
-configurations (bios boot, UEFI boot, direct (multi-)boot with QEMU's `-kernel`
-option, etc.).
+some degree, it's like what the `buildroot` project does for Linux, but it's
+much simpler.) Finally, the project includes also scripts for running Tilck
+on QEMU with various configurations (BIOS boot, UEFI boot, direct (multi-)boot
+with QEMU's `-kernel` option, etc.).
 
 #### Motivation
 The reason for having the above mentioned features is to offer its users and
@@ -413,27 +414,36 @@ powerful enough has absolute priority over the support for any specific architec
 
 #### Why having support for FAT32?
 
-The 1st reason for using FAT32 was that it is required for booting using UEFI.
-Therefore, it was convienent in terms of reduced complexity (compared to
-supporting `tgz` in the kernel) to store there also all the rest of the "initrd"
-files (init, busybox etc.). After the boot, `ramfs` is mounted at root, while
-the FAT32 boot partition is mounted at /initrd. The 2nd reason for keeping
-/initrd mounted instead of just copying everything in / and then unmounting it,
-is to minimize the peak in memory usage during boot. Consider the idea if having
+The first reason for supporting FAT32 (and FAT16) was that a FAT partition is required
+for booting with UEFI. Therefore, it was convienent at the time to store there also
+all the rest of the "initrd" files (init, busybox etc.). After the boot, `ramfs` is
+mounted at root, while the FAT32 boot partition is mounted at /initrd. Part of the FAT32
+code in the kernel is reused by the legacy bootloader in order to read the kernel
+file from the boot partition. Today, the "initrd" files are NOT stored anymore in the
+boot partition; there are two separate FAT partitions instead: `bootpart`, a
+small partition containing just the kernel file and the EFI bootloaders, and
+`fatpart`, a slightly bigger partition (depending on the configration) containing
+the initial ramdisk files (e.g. busybox) instead. After the boot, `fatpart` remains
+mounted at `/initrd`, while none of the contents of `bootpart` are kept.
+
+#### Why keeping the initrd mounted?
+
+To minimize the peak in memory usage during boot. Consider the idea of having
 a `tgz` archive and having to extract all of its files in the root directory:
-doing that will require, even for short period of time, keeping both the archive
+doing that will require, even for a short period of time, keeping both the archive
 and all of its contents in memory. This is against Tilck's effort to reduce its
-memory footprint as much as possible, allowing it to run, potentially, on very
-limited systems.
+memory footprint as much as possible; part of project's goals is being able to
+run on very limited systems.
 
-#### Why using 3 spaces as (soft) tab size?
+#### Why using 3 spaces as indentation?
 
-Long story. It all started after using that coding style for 5 years at VMware.
+Long story. It all started after using that coding style for years at VMware.
 Initially, it looked pretty weird to me, but at some point I felt in love with
-the way my code looked with soft tabs of length=3. I got convinced that 2 spaces
-are just not enough, while 4 spaces are somehow "too much". Therefore, when I
-started the project in 2016, I decided to stick with tab size I liked more, even
-if I totally agree that using 4 spaces would have been better for most people.
+the way code looked. I got convinced that 2 spaces are just not enough, while 4
+spaces are somehow "too much". Therefore, when I started the project in 2016,
+I decided to stick with the indentation size I liked most, even if I knew that
+using 4 spaces would have been better for most people. Today, I'm not sure if
+that was the right decision, but I still like the way Tilck's code looks.
 
 #### Why many commit messages are so short?
 
@@ -450,7 +460,7 @@ observe how they improved, both from the *message* point of view and from the
 *content* point of view as well. In particular, during the last ~1,000 commits I
 started not only re-ordering commits but to split, edit, and squash them all the
 time. Git's `add -p` became a friend too. That's because today Tilck is pretty
-stable and it starts to be a medium-sized project with its ~91,500 *physical*
+stable and it starts to be a medium-sized project with its ~94,000 *physical*
 lines of code and a git history of ~4,900 commits. It deserves much more effort
 on each commit, compared to the past.
 
