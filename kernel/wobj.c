@@ -66,8 +66,16 @@ void *wake_up(struct task *ti)
    disable_preemption();
    {
       oldp = wait_obj_reset(&ti->wobj);
-      ASSERT_TASK_STATE(ti->state, TASK_STATE_SLEEPING);
-      task_change_state(ti, TASK_STATE_RUNNABLE);
+
+      if (ti != get_curr_task()) {
+
+         /*
+          * TODO: if SMP will be ever introduced, here we should call a
+          * function that does NOT "downgrade" a task from RUNNING to RUNNABLE.
+          * Until then, checking that ti != current is enough.
+          */
+         task_change_state_idempotent(ti, TASK_STATE_RUNNABLE);
+      }
    }
    enable_preemption();
    return oldp;

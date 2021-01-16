@@ -138,6 +138,7 @@ void init_sched(void);
 struct task *get_task(int tid);
 struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
+void task_change_state_idempotent(struct task *ti, enum task_state new_state);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {

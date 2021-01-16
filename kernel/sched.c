@@ -528,8 +528,20 @@ void task_change_state(struct task *ti, enum task_state new_state)
    disable_interrupts(&var);
    {
       task_remove_from_state_list(ti);
-      ti->state = new_state;
+      atomic_store_explicit(&ti->state, new_state, mo_relaxed);
       task_add_to_state_list(ti);
+   }
+   enable_interrupts(&var);
+}
+
+void task_change_state_idempotent(struct task *ti, enum task_state new_state)
+{
+   ulong var;
+   disable_interrupts(&var);
+   {
+      if (atomic_load_explicit(&ti->state, mo_relaxed) != new_state) {
+         task_change_state(ti, new_state);
+      }
    }
    enable_interrupts(&var);
 }
