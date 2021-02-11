@@ -214,7 +214,7 @@ steps. The *only* true requirement for building Tilck is having a Linux
 x86_64 host system or Microsoft's `WSL`. Steps:
 
 * Enter project's root directory.
-* Build the toolchain (just the first time) with: `./scripts/build_toolchian`
+* Build the toolchain (just the first time) with: `./scripts/build_toolchain`
 * Compile the kernel and prepare the bootable image with: `make -j`
 
 At this point, there will be an image file named `tilck.img` in the `build`
