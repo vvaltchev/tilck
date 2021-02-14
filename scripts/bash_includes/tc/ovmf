@@ -7,6 +7,10 @@ function download_ovmf_internal {
    local ovmf_arch="$1"
    local url="https://www.kraxel.org/repos/jenkins/edk2/"
 
+   # Unfortunately, the OVMF builds on kraxel.org are in the RPM format.
+   # Therefore, we need to make sure that rpm2cpio is installed.
+   install_rpm2cpio
+
    wget -nd -r --no-parent -A "edk2.git-ovmf-${ovmf_arch}*" "$url"
    rpm2cpio edk2.git-ovmf-${ovmf_arch}* | cpio -idmv
 
