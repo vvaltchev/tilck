@@ -210,6 +210,19 @@ function download_git_repo_in_cache {
    rm -rf $dirname
 }
 
+function install_pkg_on_demand {
+
+   local pkg=$1
+   local distro=`cat $TC/.distro`
+   local install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $install_pkg -ci $pkg
+   else
+      $install_pkg $pkg
+   fi
+}
+
 function install_32bit_libs {
 
    if ! [ -f $TC/.distro ]; then
@@ -225,13 +238,5 @@ function install_32bit_libs {
       return
    fi
 
-   distro=`cat $TC/.distro`
-   pkg=`cat $TC/.32bit_libs_pkg`
-   install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
-
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      $install_pkg -ci $pkg
-   else
-      $install_pkg $pkg
-   fi
+   install_pkg_on_demand `cat $TC/.32bit_libs_pkg`
 }
