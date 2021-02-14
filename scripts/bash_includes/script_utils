@@ -245,6 +245,41 @@ function get_32bit_libs_pkg {
    esac
 }
 
+function get_rpm2cpio_pkg {
+
+   if ! [ -f $TC/.distro ]; then
+      echo "Linux distribution not fully supported by this script."
+      exit 1
+   fi
+
+   local distro=`cat $TC/.distro`
+
+   case $distro in
+
+      debian)
+         echo rpm2cpio
+      ;;
+
+      fedora)
+         echo cpio
+      ;;
+
+      arch)
+         echo rpmextract
+      ;;
+
+      opensuse)
+         echo cpio
+      ;;
+
+      *)
+         echo "Unknown Linux distribution"
+         exit 1
+      ;;
+
+   esac
+}
+
 function install_pkg_on_demand {
 
    local pkg=$1
@@ -261,12 +296,23 @@ function install_pkg_on_demand {
 function install_32bit_libs {
 
    if ! [ -f $TC/.distro ]; then
-
       echo "Unable to check the presence of 32-bit glibc on this system: "
-      echo "Linux distribution not fully supported by this script"
-      echo "WARNING: the current operation might fail"
+      echo "Linux distribution not fully supported by this script."
+      echo "WARNING: the current operation might fail."
       return
    fi
 
    install_pkg_on_demand $(get_32bit_libs_pkg)
+}
+
+function install_rpm2cpio {
+
+   if ! [ -f $TC/.distro ]; then
+      echo "Linux distribution not fully supported by this script."
+      echo "Please make sure that \"rpm2cpio\" is installed on the system."
+      echo "WARNING: the current operation might fail."
+      return
+   fi
+
+   install_pkg_on_demand $(get_rpm2cpio_pkg)
 }
