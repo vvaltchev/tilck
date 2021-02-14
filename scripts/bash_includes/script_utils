@@ -210,6 +210,41 @@ function download_git_repo_in_cache {
    rm -rf $dirname
 }
 
+function get_32bit_libs_pkg {
+
+   if ! [ -f $TC/.distro ]; then
+      echo "Linux distribution not fully supported by this script."
+      exit 1
+   fi
+
+   local distro=`cat $TC/.distro`
+
+   case $distro in
+
+      debian)
+         echo gcc-multilib
+      ;;
+
+      fedora)
+         echo glibc-devel.i686
+      ;;
+
+      arch)
+         echo lib32-glibc
+      ;;
+
+      opensuse)
+         echo glibc-devel-32bit
+      ;;
+
+      *)
+         echo "Unknown Linux distribution"
+         exit 1
+      ;;
+
+   esac
+}
+
 function install_pkg_on_demand {
 
    local pkg=$1
@@ -233,10 +268,5 @@ function install_32bit_libs {
       return
    fi
 
-   if ! [ -f $TC/.32bit_libs_pkg ]; then
-      echo "Internal error: $TC/.32bit_libs_pkg does not exist"
-      return
-   fi
-
-   install_pkg_on_demand `cat $TC/.32bit_libs_pkg`
+   install_pkg_on_demand $(get_32bit_libs_pkg)
 }
