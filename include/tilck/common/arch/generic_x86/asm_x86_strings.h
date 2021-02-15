@@ -50,10 +50,17 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
 
    /*
     * (Partial) No-overlap check.
-    * NOTE: this check allows intentionally an overlap in the case where
+    * NOTE: this check allows intentionally an overlap in the following cases:
     *
-    *                         [ dest + n >= src ]
+    * 1.
+    *    +----------------+
+    *    |      DEST      |
+    *    +----------------+
+    *                        +----------------+
+    *                        |       SRC      |
+    *                        +----------------+
     *
+    * 2.
     *    +----------------+
     *    |      DEST      |
     *    +----------------+
@@ -61,9 +68,30 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
     *            |       SRC      |
     *            +----------------+
     *
-    * But, given the forward direction of copy this is perfectly fine.
+    * 3.
+    *    +----------------+
+    *    |      DEST      |
+    *    +----------------+
+    *    +----------+
+    *    |    SRC   |
+    *    +----------+
+    *
+    * Which can be expressed with:
+    *                            [ DEST <= SRC ]
+    *
+    *
+    * 4.
+    *                          +----------------+
+    *                          |       DEST     |
+    *                          +----------------+
+    *    +----------------+
+    *    |       SRC      |
+    *    +----------------+
+    *
+    * Which can be expressed with:
+    *                            [ SRC + n <= DEST ]
     */
-   ASSERT( dest < src || ((ulong)src + n <= (ulong)dest) );
+   ASSERT( dest <= src || ((ulong)src + n <= (ulong)dest) );
 
    asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
@@ -78,7 +106,7 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
 EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 {
    u32 unused;
-   ASSERT( dest < src || ((ulong)src + n <= (ulong)dest) );
+   ASSERT( dest <= src || ((ulong)src + n <= (ulong)dest) );
 
    asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n times
                : "=c" (n), "=S" (src), "=D" (unused)
@@ -91,16 +119,14 @@ EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 /* dest and src might overlap anyhow */
 EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 {
-   if (dest < src || ((ulong)src + n <= (ulong)dest)) {
+   if (dest <= src || ((ulong)src + n <= (ulong)dest)) {
 
       memcpy(dest, src, n);
 
    } else {
 
       /*
-       * In this case dest > src but they overlap this way:
-       *
-       *                   [ src + n <= dest ]
+       * In this SRC + n >= DEST:
        *
        *            +----------------+
        *            |       DEST     |
@@ -109,7 +135,7 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
        *    |       SRC      |
        *    +----------------+
        *
-       * Using the forward direction will cause a corruption of the src buffer,
+       * Using the forward direction will cause a corruption of the SRC buffer,
        * while, the backwards direction solves the problem.
        */
 
