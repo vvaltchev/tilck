@@ -279,8 +279,21 @@ static enum irq_action keyboard_irq_handler(void *ctx)
    }
 
    /* Everything is fine: we read at least one scancode */
-   if (!wth_enqueue_on(kb_worker_thread, &kb_irq_bottom_half, NULL))
-      panic("KB: unable to enqueue job");
+   if (!wth_enqueue_on(kb_worker_thread, &kb_irq_bottom_half, NULL)) {
+
+      /*
+       * While on real hardware this should NEVER happen, on some slow emulators
+       * that's totally possible. For example, on this pure browser emulator:
+       * https://copy.sh/v86/
+       *
+       * If we scroll fast up and down immediately after boot while the
+       * fb_pre_render_char_scanlines() function has not completed yet,
+       * the scroll will be so slow that sometimes the queue of tasks for this
+       * bottom half will fill up.
+       */
+
+      printk("WARNING: KB: unable to enqueue job\n");
+   }
 
    return IRQ_HANDLED;
 }
