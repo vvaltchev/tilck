@@ -26,7 +26,7 @@ switch_to_pm32_and_jump_to_kernel:
    lea rdx, [rip + compat32]
    push 0x08
    push rdx
-   rex.W retf # perform a 32-bit far ret (=> far jmp to 0x08:compat32)
+   rex.W retf # perform a 64-bit far ret (=> far jmp to 0x08:compat32)
 
 .code32
 compat32:
