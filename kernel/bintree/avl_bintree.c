@@ -13,13 +13,13 @@
 static ALWAYS_INLINE struct bintree_node *
 obj_to_bintree_node(void *obj, long offset)
 {
-   return obj ? (struct bintree_node *)((char*)obj + offset) : NULL;
+   return obj ? (struct bintree_node *)((void *)obj + offset) : NULL;
 }
 
 static ALWAYS_INLINE void *
 bintree_node_to_obj(struct bintree_node *node, long offset)
 {
-   return node ? (void *)((char*)node - offset) : NULL;
+   return node ? ((void *)node - offset) : NULL;
 }
 
 #define OBJTN(o) (obj_to_bintree_node((o), bintree_offset))
@@ -220,15 +220,15 @@ bintree_get_last_obj_internal(void *root_obj, long bintree_offset)
 static ALWAYS_INLINE long
 bintree_insrem_ptr_cmp(const void *a, const void *b, long field_off)
 {
-   const char *f1 = (const char *)a + field_off;
-   const char *f2 = (const char *)b + field_off;
+   const void *f1 = a + field_off;
+   const void *f2 = b + field_off;
    return *(long *)f1 - *(long *)f2;
 }
 
 static ALWAYS_INLINE long
 bintree_find_ptr_cmp(const void *obj, const void *val, long field_off)
 {
-   long obj_field_val = *(long *)((const char *)obj + field_off);
+   long obj_field_val = *(long *)((const void *)obj + field_off);
    return obj_field_val - (long)val;
 }
 

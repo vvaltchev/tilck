@@ -290,10 +290,10 @@ __tilck_vprintk(char *prefixbuf,
    int written, prefix_sz = 0;
 
    if (*fmt == PRINTK_CTRL_CHAR) {
-      u32 cmd = *(u32 *)fmt;
+      u32 cmd = *(volatile u32 *)(void *)fmt; // maybe unaligned
       fmt += 4;
 
-      if (cmd == *(u32 *)NO_PREFIX)
+      if (cmd == *(volatile u32 *)(void *)NO_PREFIX) // maybe unaligned
          prefix = false;
    }
 

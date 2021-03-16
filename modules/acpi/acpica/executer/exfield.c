@@ -500,7 +500,7 @@ AcpiExWriteDataToField (
                 "PCC COMD field has been written. Invoking PCC handler now.\n"));
 
             Status = AcpiExAccessRegion (
-                ObjDesc, 0, (UINT64 *) ObjDesc->Field.RegionObj->Field.InternalPccBuffer,
+                ObjDesc, 0, (UINT64 *)(void *)ObjDesc->Field.RegionObj->Field.InternalPccBuffer,
                 ACPI_WRITE);
             return_ACPI_STATUS (Status);
         }

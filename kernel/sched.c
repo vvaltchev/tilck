@@ -390,7 +390,7 @@ static void create_kernel_process(void)
 {
    static char kernel_proc_buf[
       sizeof(struct process) + sizeof(struct task)
-   ];
+   ] ALIGNED_AT(sizeof(void *));
 
    struct task *s_kernel_ti = (struct task *)kernel_proc_buf;
    struct process *s_kernel_pi = (struct process *)(s_kernel_ti + 1);

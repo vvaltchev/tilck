@@ -53,6 +53,7 @@ set(
    -Werror
    -Wshadow
    -Wvla
+   -Wcast-align
    -Wno-unused-function
    -Wno-unused-parameter
    -Wno-unused-label
@@ -99,6 +100,7 @@ JOIN("${FREESTANDING_FLAGS_LIST}" ${SPACE} FREESTANDING_FLAGS)
 set(
    SAFER_BEHAVIOR_FLAGS_LIST
 
+   -fno-strict-aliasing
    -fwrapv
    -Wundef
 )
@@ -118,7 +120,6 @@ list(
    APPEND GENERAL_KERNEL_FLAGS_LIST
 
    -D__TILCK_KERNEL__
-   -fno-strict-aliasing
 
    ${FREESTANDING_FLAGS_LIST}
    ${SAFER_BEHAVIOR_FLAGS_LIST}

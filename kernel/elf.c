@@ -487,7 +487,7 @@ void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
       return;
 
    VERIFY(h->e_shentsize == sizeof(Elf_Shdr));
-   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
 
    for (u32 i = 0; i < h->e_shnum; i++) {
       Elf_Shdr *s = sections + i;
@@ -610,7 +610,7 @@ find_sym_at_addr_safe(ulong vaddr, long *offset, u32 *sym_size)
 static Elf_Shdr *kernel_elf_get_section(const char *section_name)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
-   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
    Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
    for (uint32_t i = 0; i < h->e_shnum; i++) {
