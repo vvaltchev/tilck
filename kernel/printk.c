@@ -290,10 +290,10 @@ __tilck_vprintk(char *prefixbuf,
    int written, prefix_sz = 0;
 
    if (*fmt == PRINTK_CTRL_CHAR) {
-      u32 cmd = *(u32 *)fmt;
+      u32 cmd = READ_U32(fmt);
       fmt += 4;
 
-      if (cmd == *(u32 *)NO_PREFIX)
+      if (cmd == READ_U32(NO_PREFIX))
          prefix = false;
    }
 

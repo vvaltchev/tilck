@@ -70,7 +70,7 @@ execve_get_args(const char *const *user_argv,
    size_t written = 0;
 
    if (user_argv) {
-      argv = (char *const *) (dest + written);
+      argv = (char *const *)(void *)(dest + written);
       rc = duplicate_user_argv(dest,
                                user_argv,
                                ARGS_COPYBUF_SIZE,
@@ -80,7 +80,7 @@ execve_get_args(const char *const *user_argv,
    }
 
    if (user_env) {
-      env = (char *const *) (dest + written);
+      env = (char *const *)(void *)(dest + written);
       rc = duplicate_user_argv(dest,
                                user_env,
                                ARGS_COPYBUF_SIZE,

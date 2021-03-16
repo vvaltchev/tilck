@@ -498,8 +498,8 @@ create_acpi_sys_obj(struct create_acpi_sys_obj_ctx *ctx)
 
       case ACPI_TYPE_INTEGER:
 
-         if (*ctx->name_int == *(u32 *)"_HID" ||
-             *ctx->name_int == *(u32 *)"_CID")
+         if (*ctx->name_int == READ_U32("_HID") ||
+             *ctx->name_int == READ_U32("_CID"))
          {
             child_expr = ":E";
             type_str = "EISAID";

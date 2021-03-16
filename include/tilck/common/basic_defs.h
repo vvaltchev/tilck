@@ -248,7 +248,11 @@ typedef long offt;
 
 #define ARRAY_SIZE(a) ((int)(sizeof(a)/sizeof((a)[0])))
 #define CONTAINER_OF(elem_ptr, struct_type, mem_name)                 \
-   ((struct_type *)(((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)))
+   (                                                                  \
+      (struct_type *)(void *)(                                        \
+         ((char *)elem_ptr) - OFFSET_OF(struct_type, mem_name)        \
+      )                                                               \
+   )
 
 #ifndef __clang__
 

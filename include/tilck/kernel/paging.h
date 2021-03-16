@@ -35,8 +35,8 @@
 #define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
 
-extern char page_size_buf[PAGE_SIZE];
-extern char zero_page[PAGE_SIZE];
+extern char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 void early_init_paging();
 bool handle_potential_cow(void *r);
