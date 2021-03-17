@@ -3,6 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 
+#define BUILTIN_SIZE_THRESHOLD      16
+
 EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
@@ -93,6 +95,9 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
     */
    ASSERT( dest <= src || ((ulong)src + n <= (ulong)dest) );
 
+   if (__builtin_constant_p(n) && n <= BUILTIN_SIZE_THRESHOLD)
+      return __builtin_memcpy(dest, src, n);
+
    asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
                "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
                "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
@@ -119,6 +124,9 @@ EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 /* dest and src might overlap anyhow */
 EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 {
+   if (__builtin_constant_p(n) && n <= BUILTIN_SIZE_THRESHOLD)
+      return __builtin_memmove(dest, src, n);
+
    if (dest <= src || ((ulong)src + n <= (ulong)dest)) {
 
       memcpy(dest, src, n);
@@ -158,6 +166,9 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
 EXTERN inline void *memset(void *s, int c, size_t n)
 {
    ulong unused; /* See the comment in strlen() about the unused variable */
+
+   if (__builtin_constant_p(n) && n <= BUILTIN_SIZE_THRESHOLD)
+      return __builtin_memset(s, c, n);
 
    asmVolatile("rep stosb"
                : "=D" (unused), "=a" (c), "=c" (n)
