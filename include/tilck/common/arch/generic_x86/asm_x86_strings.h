@@ -165,17 +165,15 @@ EXTERN inline void *memmove(void *dest, const void *src, size_t n)
  */
 EXTERN inline void *memset(void *s, int c, size_t n)
 {
-   ulong unused; /* See the comment in strlen() about the unused variable */
+   void *saved = s;
 
    if (__builtin_constant_p(n) && n <= BUILTIN_SIZE_THRESHOLD)
       return __builtin_memset(s, c, n);
 
-   asmVolatile("rep stosb"
-               : "=D" (unused), "=a" (c), "=c" (n)
-               :  "D" (s), "a" (c), "c" (n)
-               : "cc", "memory");
+   asm("rep stosb"
+       : "+D" (s), "+a" (c), "+c" (n), "=m"(*(char (*)[n])s));
 
-   return s;
+   return saved;
 }
 
 /*
@@ -183,14 +181,12 @@ EXTERN inline void *memset(void *s, int c, size_t n)
  */
 EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
 {
-   ulong unused; /* See the comment in strlen() about the unused variable */
+   void *saved = s;
 
-   asmVolatile("rep stosw"
-               : "=D" (unused), "=a" (val), "=c" (n)
-               :  "D" (s), "a" (val), "c" (n)
-               : "cc", "memory");
+   asm("rep stosw"
+       : "+D" (s), "+a" (val), "+c" (n), "=m"(*(char (*)[n << 1])s));
 
-   return s;
+   return saved;
 }
 
 /*
@@ -198,14 +194,12 @@ EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
  */
 EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
 {
-   ulong unused; /* See the comment in strlen() about the unused variable */
+   void *saved = s;
 
-   asmVolatile("rep stosl"
-               : "=D" (unused), "=a" (val), "=c" (n)
-               :  "D" (s), "a" (val), "c" (n)
-               : "cc", "memory");
+   asm("rep stosl"
+       : "+D" (s), "+a" (val), "+c" (n), "=m"(*(char (*)[n << 2])s));
 
-   return s;
+   return saved;
 }
 
 EXTERN inline void bzero(void *s, size_t n)
