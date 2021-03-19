@@ -1,4 +1,20 @@
 #!/usr/bin/env sh
 
-nm_opts='--radix=d --print-size --size-sort'
+if [ -z "$1" ]; then
+   echo
+   echo "dump_all_funcs: a script for listing all the functions in a binary "
+   echo "along with their size. Designed to be used in combination with the"
+   echo "'cmp_funcs_size' script. Requires: nm, grep, cut, sort."
+   echo
+   echo "Syntax:"
+   echo "    dump_all_funcs <binary>"
+   exit 1
+fi
+
+if ! [ -f "$1" ]; then
+   echo "The file '$1' does not exist"
+   exit 1
+fi
+
+nm_opts='--radix=d --print-size'
 exec nm $nm_opts "$1" | grep -E ' [Tt] ' | cut -d ' ' -f 2,4 | sort -t ' ' -k 2

@@ -1,0 +1,105 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: BSD-2-Clause
+
+import os
+import sys
+
+def help():
+   print("cmp_funcs_size: a tool for comparing the size of functions inside")
+   print("a translation unit between two builds.")
+   print()
+   print("How to use")
+   print("-----------------------------")
+   print("1. Generate functions list with:")
+   print("     dump_all_funcs EXECUTABLE-before > before")
+   print("     dump_all_funcs EXECUTABLE-after > after")
+   print()
+   print("2. Compare the two lists by running this script:")
+   print("     cmp_funcs_size <funcs_before> <funcs_after>")
+   print()
+
+def read_syms_dict(fname):
+
+   with open(fname, 'r') as fh:
+
+      syms = []
+
+      while True:
+
+         ln = fh.readline()
+
+         if not ln:
+            break
+
+         ln = ln.strip()
+         sz, name = ln.split(" ")
+         syms.append([name, int(sz)])
+
+   return dict(syms)
+
+def main():
+
+   if len(sys.argv) < 3:
+      help()
+      return
+
+   f1, f2 = sys.argv[1], sys.argv[2]
+   before = read_syms_dict(f1)
+   after = read_syms_dict(f2)
+
+   diffs = {}  # func -> [size before, size after]
+
+   for f in before:
+      sz_before = before.get(f, 0)
+      sz_after = after.get(f, 0)
+
+      if sz_after != sz_before:
+         diffs[f] = [sz_before, sz_after]
+
+   for f in after:
+      if not f in before:
+         diffs[f] = [0, after[f]]
+
+   darr = list(diffs.items())
+   darr.sort(key = lambda p: p[1][1] - p[1][0])
+
+   before_funcs = 0
+   after_funcs = 0
+
+   print("Differences for common symbols (size after vs before)")
+   print("-" * 60)
+
+   for p in darr:
+      bsz, asz = p[1]
+      if bsz and asz:
+         before_funcs += 1
+         after_funcs += 1
+         print("{:<60}  {:>10}".format(p[0], asz - bsz))
+      elif bsz:
+         before_funcs += 1
+      else:
+         after_funcs += 1
+
+   if before_funcs > after_funcs:
+      print()
+      print("Symbols existing only in <before>: {}".format(f1))
+      print("-" * 60)
+
+      for p in darr:
+         bsz, asz = p[1]
+         if bsz and not asz:
+            print("{:<60}  {:>10}".format(p[0], bsz))
+
+   if after_funcs > before_funcs:
+      print()
+      print("Symbols existing only in <after>: {}".format(f2))
+      print("-" * 60)
+
+      for p in darr:
+         bsz, asz = p[1]
+         if not bsz and asz:
+            print("{:<110}  {:>10}".format(p[0], asz))
+
+
+if __name__ == '__main__':
+   main()

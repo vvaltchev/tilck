@@ -1,0 +1,112 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: BSD-2-Clause
+
+import os
+import sys
+
+def help():
+   print("cmp_build_dirs: a tool for comparing the size all the object files")
+   print("between two builds of the same project")
+   print()
+   print("Syntax:")
+   print("    cmp_build_dirs <build_dir_before> <build_dir_after> "
+         "[exclude subdirs...]")
+   print()
+
+def not_a_directory_error(d):
+   print("{} is not a directory".format(d))
+
+def get_object_files_dict(d, ex_dirs):
+
+   obj_files = {}
+
+   for folder, subfolders, files in os.walk(d):
+
+      folder_rel = os.path.relpath(folder, d)
+      skip = False
+
+      for ex in ex_dirs:
+         if folder_rel.startswith(ex):
+            skip = True
+            break
+
+      if skip:
+         continue
+
+      for f in files:
+
+         fname, fext = os.path.splitext(f)
+
+         if fext == '.o':
+            path = os.path.join(folder,f)
+            rel_path = os.path.relpath(path, d)
+            obj_files[rel_path] = os.stat(path).st_size
+
+   return obj_files
+
+def main():
+
+   if len(sys.argv) < 3:
+      help()
+      return
+
+   dir1 = sys.argv[1]
+   dir2 = sys.argv[2]
+   ex_dirs = sys.argv[3:]
+
+   if not os.path.isdir(dir1):
+      not_a_directory_error(dir1)
+      return
+
+   if not os.path.isdir(dir2):
+      not_a_directory_error(dir2)
+      return
+
+   before = get_object_files_dict(dir1, ex_dirs)
+   after = get_object_files_dict(dir2, ex_dirs)
+
+   diffs = {}  # file -> [size_before, size_after]
+
+   for f in before:
+      sz_before = before.get(f, 0)
+      sz_after = after.get(f, 0)
+
+      if sz_after != sz_before:
+         diffs[f] = [sz_before, sz_after]
+
+   for f in after:
+      if not f in before:
+         diffs[f] = [0, after[f]]
+
+   darr = list(diffs.items())
+   darr.sort(key = lambda p: p[1][1] - p[1][0])
+
+   print("Differences for common files (size after vs before)")
+   print("-" * 100)
+
+   for p in darr:
+      bsz, asz = p[1]
+      if bsz and asz:
+         print("{:<110}  {:>10}".format(p[0], asz - bsz))
+
+   print()
+   print("Files existing only in the <before> directory: {}".format(dir1))
+   print("-" * 100)
+
+   for p in darr:
+      bsz, asz = p[1]
+      if bsz and not asz:
+         print("{:<110}  {:>10}".format(p[0], bsz))
+
+   print()
+   print("Files existing only in the <after> directory: {}".format(dir2))
+   print("-" * 100)
+
+   for p in darr:
+      bsz, asz = p[1]
+      if not bsz and asz:
+         print("{:<110}  {:>10}".format(p[0], asz))
+
+
+if __name__ == '__main__':
+   main()
