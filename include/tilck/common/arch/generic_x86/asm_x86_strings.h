@@ -5,6 +5,9 @@
 
 #define BUILTIN_SIZE_THRESHOLD      16
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvla"
+
 EXTERN inline size_t strlen(const char *str)
 {
    register u32 count asm("ecx");
@@ -47,8 +50,7 @@ EXTERN inline size_t strlen(const char *str)
 /* dest and src can overloap only partially */
 EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
 {
-   u32 unused; /* See the comment in strlen() about the unused variable */
-   u32 unused2;
+   void *saved_dest = dest;
 
    /*
     * (Partial) No-overlap check.
@@ -98,27 +100,25 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
    if (__builtin_constant_p(n) && n <= BUILTIN_SIZE_THRESHOLD)
       return __builtin_memcpy(dest, src, n);
 
-   asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
-               "mov %%ebx, %%ecx\n\t"  // then: ecx = ebx = n % 4
-               "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
-               : "=b" (unused), "=c" (n), "=S" (src), "=D" (unused2)
-               : "b" (n & 3), "c" (n >> 2), "S"(src), "D"(dest)
-               : "cc", "memory");
+   asm("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
+       "mov %k5, %%ecx\n\t"    // then: ecx = (register) = n%4
+       "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
+       : "+D"(dest), "+S"(src), "=c"(n), "=m"(*(char (*)[n])dest)
+       : "c"(n >> 2), "r"(n & 3), "m"(*(const char (*)[n])src));
 
-   return dest;
+   return saved_dest;
 }
 
 EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
 {
-   u32 unused;
+   void *saved_dest = dest;
    ASSERT( dest <= src || ((ulong)src + n <= (ulong)dest) );
 
-   asmVolatile("rep movsl\n\t"         // copy 4 bytes at a time, n times
-               : "=c" (n), "=S" (src), "=D" (unused)
-               : "c" (n), "S"(src), "D"(dest)
-               : "cc", "memory");
+   asm("rep movsl\n\t"
+       : "+D"(dest), "+S"(src), "=c"(n), "=m"(*(char (*)[n << 2])dest)
+       : "c"(n), "m"(*(const char (*)[n << 2])src));
 
-   return dest;
+   return saved_dest;
 }
 
 /* dest and src might overlap anyhow */
@@ -221,3 +221,4 @@ EXTERN inline void bzero(void *s, size_t n)
                : "cc", "memory", "%eax");
 }
 
+#pragma GCC diagnostic pop
