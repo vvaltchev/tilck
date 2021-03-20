@@ -11,10 +11,10 @@
 
 EXTERN inline size_t strlen(const char *str)
 {
-   register u32 count asm("ecx");
-   ulong unused;
-
    /*
+    * Algorithm
+    * --------------
+    *
     * 0. ASSUME DF = 0 (the compiler assumes that already everywhere!)
     * 1. ecx = -1
     * 2. eax = 0
@@ -30,13 +30,37 @@ EXTERN inline size_t strlen(const char *str)
     *
     * For more details: https://stackoverflow.com/questions/26783797/
     *
-    * The story behind "unused": because of the way repne scasb works,
-    * the pointer has to be stored in EDI, but it will also be modified by it.
-    * At that point, it would sound reasonable to put EDI in clobbers, but gcc
-    * does not allow that. The work-around suggested by the official
-    * documentation: https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
+    * The story behind the "unused" variable
+    * ----------------------------------------
+    *
+    * Because of the way repne scasb works, the pointer has to be stored in EDI,
+    * but it will also be modified by it. At that point, it would sound
+    * reasonable to put EDI in clobbers, but GCC does not allow that. The
+    * work-around suggested by the official documentation:
+    *    https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
     * is to store the modified input register into an (unused) output variable.
+    *
+    *
+    * Alternative implementation without "volatile"
+    * -----------------------------------------------
+    *
+    * The following implementation doesn't use "volatile", it's much simpler and
+    * allows, in theory, the compiler to generate better code. Unfortunately,
+    * at the moment, this alternative implementation causes GCC to generate more
+    * instructions, rising the code size of Tilck by ~600 bytes. The code-size
+    * impact per-se would not be problem, but the extra instructions slowing
+    * down strlen() are. It's unclear why that's happening. The "nice" code is
+    * left here for further research in the future.
+    *
+    *  u32 count;
+    *  asm("repne scasb\n\t"
+    *      : "=c" (count), "+D" (str)
+    *      : "a" (0), "c" (-1), "m" MEM_CLOBBER_NOSZ(str, const char));
+    *  return (~count)-1;
     */
+
+   register u32 count asm("ecx");
+   ulong unused;
 
    asmVolatile("repne scasb\n\t"
                "notl %%ecx\n\t"
