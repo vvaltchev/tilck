@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
 
 #define BUILTIN_SIZE_THRESHOLD      16
 
@@ -103,8 +104,8 @@ EXTERN inline void *memcpy(void *dest, const void *src, size_t n)
    asm("rep movsl\n\t"         // copy 4 bytes at a time, n/4 times
        "mov %k5, %%ecx\n\t"    // then: ecx = (register) = n%4
        "rep movsb\n\t"         // copy 1 byte at a time, n%4 times
-       : "+D"(dest), "+S"(src), "=c"(n), "=m"(*(char (*)[n])dest)
-       : "c"(n >> 2), "r"(n & 3), "m"(*(const char (*)[n])src));
+       : "+D"(dest), "+S"(src), "=c"(n), "=m" MEM_CLOBBER(dest, char, n)
+       : "c"(n >> 2), "r"(n & 3), "m" MEM_CLOBBER(src, const char, n));
 
    return saved_dest;
 }
@@ -115,8 +116,8 @@ EXTERN inline void *memcpy32(void *dest, const void *src, size_t n)
    ASSERT( dest <= src || ((ulong)src + n <= (ulong)dest) );
 
    asm("rep movsl\n\t"
-       : "+D"(dest), "+S"(src), "=c"(n), "=m"(*(char (*)[n << 2])dest)
-       : "c"(n), "m"(*(const char (*)[n << 2])src));
+       : "+D"(dest), "+S"(src), "=c"(n), "=m" MEM_CLOBBER(dest, u32, n)
+       : "c"(n), "m" MEM_CLOBBER(src, u32, n));
 
    return saved_dest;
 }
@@ -171,7 +172,7 @@ EXTERN inline void *memset(void *s, int c, size_t n)
       return __builtin_memset(s, c, n);
 
    asm("rep stosb"
-       : "+D" (s), "+a" (c), "+c" (n), "=m"(*(char (*)[n])s));
+       : "+D" (s), "+a" (c), "+c" (n), "=m" MEM_CLOBBER(s, char, n));
 
    return saved;
 }
@@ -184,7 +185,7 @@ EXTERN inline void *memset16(u16 *s, u16 val, size_t n)
    void *saved = s;
 
    asm("rep stosw"
-       : "+D" (s), "+a" (val), "+c" (n), "=m"(*(char (*)[n << 1])s));
+       : "+D" (s), "+a" (val), "+c" (n), "=m" MEM_CLOBBER(s, u16, n));
 
    return saved;
 }
@@ -197,7 +198,7 @@ EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
    void *saved = s;
 
    asm("rep stosl"
-       : "+D" (s), "+a" (val), "+c" (n), "=m"(*(char (*)[n << 2])s));
+       : "+D" (s), "+a" (val), "+c" (n), "=m" MEM_CLOBBER(s, u32, n));
 
    return saved;
 }
@@ -207,7 +208,7 @@ EXTERN inline void bzero(void *s, size_t n)
    asm("rep stosl\n\t"           // zero 4 byte at a time, n / 4 times
        "mov %k5, %%ecx\n\t"      // ecx = (register) = n % 4
        "rep stosb\n\t"           // zero 1 byte at a time, n % 3 times
-       : "+D" (s), "=c" (n), "=m"(*(char (*)[n])s)
+       : "+D" (s), "=c" (n), "=m" MEM_CLOBBER(s, char, n)
        : "a" (0), "c" (n >> 2), "r" (n & 3));
 }
 

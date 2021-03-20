@@ -91,6 +91,26 @@
 
 #define RDTSC() __rdtsc()
 
+
+#define MEM_CLOBBER(var, type, size)  (*(type (*)[size])(var))
+
+#if defined(__GNUC__) && !defined(__clang__)
+
+   #define MEM_CLOBBER_NOSZ(var, type)   (*(type (*)[])(var))
+
+#else
+
+   /*
+    * NOTE: clang does not support the *(type (*)[])(var) syntax to clobber
+    * memory areas with unspecified size.
+    *
+    * See: https://bugs.llvm.org/show_bug.cgi?id=47866
+    */
+
+   #define MEM_CLOBBER_NOSZ(var, type)   MEM_CLOBBER((var), type, 64 * KB)
+
+#endif
+
 static ALWAYS_INLINE void outb(u16 port, u8 val)
 {
    asmVolatile(
