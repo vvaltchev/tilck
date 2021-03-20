@@ -289,12 +289,18 @@ __tilck_vprintk(char *prefixbuf,
    struct ringbuf_stat old;
    int written, prefix_sz = 0;
 
-   if (*fmt == PRINTK_CTRL_CHAR) {
-      u32 cmd = READ_U32(fmt);
+   if (fmt[0] == PRINTK_CTRL_CHAR) {
+
+      char cmd = fmt[1];
       fmt += 4;
 
-      if (cmd == READ_U32(NO_PREFIX))
-         prefix = false;
+      if (NO_PREFIX[0]) {
+
+         /* NO_PREFIX is not empty, so we're not in unit tests */
+
+         if (cmd == NO_PREFIX[1])
+            prefix = false;
+      }
    }
 
    if (flags & PRINTK_FL_NO_PREFIX)
