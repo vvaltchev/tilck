@@ -204,15 +204,11 @@ EXTERN inline void *memset32(u32 *s, u32 val, size_t n)
 
 EXTERN inline void bzero(void *s, size_t n)
 {
-   ulong unused; /* See the comment in strlen() about the unused variable */
-
-   asmVolatile("xor %%eax, %%eax\n\t"    // eax = 0
-               "rep stosl\n\t"           // zero 4 byte at a time, n / 4 times
-               "mov %%ebx, %%ecx\n\t"    // ecx = ebx = n % 4
-               "rep stosb\n\t"           // zero 1 byte at a time, n % 3 times
-               : "=D" (s), "=c" (n), "=b" (unused)
-               :  "D" (s), "c" (n >> 2), "b" (n & 3)
-               : "cc", "memory", "%eax");
+   asm("rep stosl\n\t"           // zero 4 byte at a time, n / 4 times
+       "mov %k5, %%ecx\n\t"      // ecx = (register) = n % 4
+       "rep stosb\n\t"           // zero 1 byte at a time, n % 3 times
+       : "+D" (s), "=c" (n), "=m"(*(char (*)[n])s)
+       : "a" (0), "c" (n >> 2), "r" (n & 3));
 }
 
 #pragma GCC diagnostic pop
