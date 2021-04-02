@@ -92,8 +92,8 @@ for gen_script in $MAIN_DIR/scripts/build_generators/*; do
    mkdir -p $name
    pushd $name
    $gen_script
-   make -j
-   make -j gtests
+   make -j 4
+   make -j 4 gtests
    popd
 
 done
