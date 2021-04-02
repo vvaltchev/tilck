@@ -29,6 +29,8 @@
                               MULTIBOOT_VIDEO_MODE)
 
 #define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
+#define MAKE_BIG_PAGE(paddr) \
+   (1 /* present */ | 2 /*RW*/ | (1 << 7) /* bigpage */ | (paddr))
 
 FUNC(_start):
 
@@ -77,18 +79,22 @@ multiboot_entry:
    jne 1b
 
    # Set our flags (note the absence of a paddr since it is 0)
-   mov ecx, 1 /* present */ | 2 /* RW */ | (1 << 7) /* 4-MB page */
+   # mov ecx, 1 /* present */ | 2 /* RW */ | (1 << 7) /* 4-MB page */
 
    mov edx, PAGE_DIR_PADDR
 
-   # Identity map the first 4 MB
-   mov [edx], ecx
+   # Identity map the first 8 MB: that's necessary in order to avoid crashing
+   # due to a page fault once we execute: mov cr3, edx, below.
+   mov dword ptr [edx + 0], MAKE_BIG_PAGE(0)
+   mov dword ptr [edx + 4], MAKE_BIG_PAGE(4 * MB)
 
-   # Map the first 4 MB at KERNEL_BASE_VA
-   mov [edx + (KERNEL_BASE_VA >> 20)], ecx
+   # Map the first 8 MB also at KERNEL_BASE_VA
+   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 0], MAKE_BIG_PAGE(0)
+   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 4], MAKE_BIG_PAGE(4 * MB)
 
+   # Make sure PAGING is disabled
    mov ecx, cr0
-   and ecx, ~CR0_PG  # Make sure PAGING is disabled
+   and ecx, ~CR0_PG
    mov cr0, ecx
 
    mov ecx, cr4
