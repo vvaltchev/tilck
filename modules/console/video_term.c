@@ -164,6 +164,17 @@ static ALWAYS_INLINE u8 get_curr_cell_color(term *_t)
    return vgaentry_get_color(buf_get_entry(t, t->r, t->c));
 }
 
+static ALWAYS_INLINE u8 get_curr_cell_fg_color(term *_t)
+{
+   struct vterm *const t = _t;
+
+   if (!t->buffer)
+      return 0;
+
+   return vgaentry_get_fg(buf_get_entry(t, t->r, t->c));
+}
+
+
 static void term_action_enable_cursor(term *_t, u16 val, ...)
 {
    struct vterm *const t = _t;
@@ -177,7 +188,7 @@ static void term_action_enable_cursor(term *_t, u16 val, ...)
 
       ASSERT(val == 1);
       t->vi->enable_cursor();
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
       t->cursor_enabled = true;
    }
 }
@@ -299,7 +310,7 @@ static void term_int_scroll_up(term *_t, u32 lines)
       } else {
 
          t->vi->enable_cursor();
-         t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+         t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
       }
    }
 }
@@ -313,7 +324,7 @@ static void term_int_scroll_down(term *_t, u32 lines)
    if (t->cursor_enabled) {
       if (ts_is_at_bottom(t)) {
          t->vi->enable_cursor();
-         t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+         t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
       }
    }
 }
@@ -397,7 +408,7 @@ static void term_action_move_ch_and_cur(term *_t, int row, int col, ...)
    t->c = (u16) CLAMP(col, 0, t->cols - 1);
 
    if (t->cursor_enabled)
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
 static void term_internal_incr_row(term *_t)
@@ -588,7 +599,7 @@ static void term_action_write(term *_t, char *buf, u32 len, u8 color)
    }
 
    if (t->cursor_enabled)
-      vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
 /* Direct write without any filter nor move_cursor/flush */
@@ -618,7 +629,7 @@ static void term_action_move_ch_and_cur_rel(term *_t, s8 dr, s8 dc, ...)
    t->c = (u16) CLAMP((int)t->c + dc, 0, t->cols - 1);
 
    if (t->cursor_enabled)
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_color(t));
+      t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
 static void term_action_reset(term *_t, ...)
@@ -1178,13 +1189,12 @@ init_vterm(term *_t,
          printk("ERROR: unable to allocate the term buffer.\n");
    }
 
-   t->cursor_enabled = true;
-   t->vi->enable_cursor();
-   term_action_move_ch_and_cur(t, 0, 0);
-
    for (u16 i = 0; i < t->rows; i++)
       ts_clear_row(t, i, DEFAULT_COLOR16);
 
+   t->cursor_enabled = true;
+   t->vi->enable_cursor();
+   term_action_move_ch_and_cur(t, 0, 0);
    t->initialized = true;
    return 0;
 }
