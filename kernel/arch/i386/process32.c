@@ -96,13 +96,13 @@ push_args_on_user_stack(regs_t *r,
 
    // push argv data on stack (it could be anywhere else, as well)
    for (u32 i = 0; i < argc; i++) {
-      push_string_on_user_stack(r, argv[i]);
+      push_string_on_user_stack(r, READ_PTR(&argv[i]));
       pointers[i] = r->useresp;
    }
 
    // push env data on stack (it could be anywhere else, as well)
    for (u32 i = 0; i < envc; i++) {
-      push_string_on_user_stack(r, env[i]);
+      push_string_on_user_stack(r, READ_PTR(&env[i]));
       env_pointers[i] = r->useresp;
    }
 
@@ -339,8 +339,8 @@ int setup_process(struct elf_program_info *pinfo,
    old_pdir = get_curr_pdir();
    set_curr_pdir(pinfo->pdir);
 
-   while (argv[argv_elems]) argv_elems++;
-   while (env[env_elems]) env_elems++;
+   while (READ_PTR(&argv[argv_elems])) argv_elems++;
+   while (READ_PTR(&env[env_elems])) env_elems++;
 
    if ((rc = push_args_on_user_stack(r, argv, argv_elems, env, env_elems)))
       goto err;
