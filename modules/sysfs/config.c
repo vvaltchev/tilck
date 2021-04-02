@@ -46,6 +46,7 @@ DEF_STATIC_CONF_RO(BOOL,  big_io_buf,              KERNEL_BIG_IO_BUF);
 DEF_STATIC_CONF_RO(BOOL,  gcov,                    KERNEL_GCOV);
 DEF_STATIC_CONF_RO(BOOL,  fork_no_cow,             FORK_NO_COW);
 DEF_STATIC_CONF_RO(BOOL,  mmap_no_cow,             MMAP_NO_COW);
+DEF_STATIC_CONF_RO(BOOL,  ubsan,                   KERNEL_UBSAN);
 
 /* config/console */
 DEF_STATIC_CONF_RO(ULONG, big_font_threshold,      FBCON_BIGFONT_THR);
@@ -106,6 +107,7 @@ void sysfs_create_config_obj(void)
       SYSOBJ_CONF_PROP_PAIR(gcov),
       SYSOBJ_CONF_PROP_PAIR(fork_no_cow),
       SYSOBJ_CONF_PROP_PAIR(mmap_no_cow),
+      SYSOBJ_CONF_PROP_PAIR(ubsan),
       NULL
    );
 

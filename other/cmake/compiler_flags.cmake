@@ -129,6 +129,41 @@ if (WCONV)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
 endif()
 
+if (KERNEL_UBSAN)
+
+   list(
+      APPEND GENERAL_KERNEL_FLAGS_LIST
+
+      -fsanitize=shift,shift-exponent,shift-base,integer-divide-by-zero
+      -fsanitize=nonnull-attribute,returns-nonnull-attribute
+      -fsanitize=bool,enum
+      -fsanitize=unreachable
+      -fsanitize=null
+   )
+
+   #
+   # Cannot enable -fsanitize=alignment, with Clang because it generates leaf
+   # functions which misalign the stack pointer. What happens when get an IRQ
+   # while running one of those functions? If UBSAN is enabled, we'll get
+   # panic, otherwise everything is fine, because x86 allows unaligned access.
+   #
+   # See:
+   #  - https://bugs.llvm.org/show_bug.cgi?id=49828
+   #  - https://forum.osdev.org/viewtopic.php?f=13&t=42430&start=0
+   #
+
+   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+
+      list(
+         APPEND GENERAL_KERNEL_FLAGS_LIST
+
+         -fsanitize=alignment
+         -fsanitize-recover=alignment
+      )
+
+   endif()
+endif()
+
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
 set(KERNEL_FLAGS "${COMMON_FLAGS} ${GENERAL_KERNEL_FLAGS}")
 

@@ -232,6 +232,8 @@ set(KRN_NO_SYS_WARN ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
+set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
+
 set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
 
 set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
@@ -453,6 +455,7 @@ list(
    KRN_NO_SYS_WARN
 
    # Boolean options DISABLED by default
+   KERNEL_UBSAN
    KERNEL_BIG_IO_BUF
    KRN_RESCHED_ENABLE_PREEMPT
    TERM_BIG_SCROLL_BUF
@@ -629,8 +632,15 @@ set(STAGE3_ENTRY_OFF        4096)  # Better not touch!
 set(DISK_UUID         0x4906062b)  # UUID of Tilck's disk image ${IMG_FILE}
 set(MAX_BOOTLOADER_BIN_SZ_KB  64)  # Max size of bootloader.bin (keep updated!)
 set(IMG_SZ_MB                 36)  # Total size of tilck.img
-set(INITRD_SZ_MB              32)  # Size of the initrd RAMDISK in MB
-set(BOOTPART_SZ_SEC         6144)  # Size of the boot partition in sectors
+
+if (KERNEL_UBSAN)
+   set(INITRD_SZ_MB              30)  # Size of the initrd RAMDISK in MB
+   set(BOOTPART_SZ_SEC        10240)  # Size of the boot partition in sectors
+else()
+   set(INITRD_SZ_MB              32)  # Size of the initrd RAMDISK in MB
+   set(BOOTPART_SZ_SEC         6144)  # Size of the boot partition in sectors
+endif()
+
 
 math(EXPR IMG_SZ_SEC        "${IMG_SZ_MB} * 1024 * 1024 / ${SECTOR_SIZE}")
 math(EXPR BOOT_SECTORS      "${MAX_BOOTLOADER_BIN_SZ_KB}*1024/${SECTOR_SIZE}")

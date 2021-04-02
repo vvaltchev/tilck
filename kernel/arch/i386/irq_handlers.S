@@ -22,7 +22,7 @@ FUNC(asm_irq_entry):
    push eax
    call irq_entry
 
-   add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
+   add esp, 8     # Discard the previousy-pushed 'eax' and .irq_resume
 
 .irq_resume:
    pop_custom_flags

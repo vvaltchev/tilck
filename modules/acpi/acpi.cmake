@@ -80,6 +80,7 @@ set(
    -include tilck/common/string_util.h
 
    -Wno-unused-variable
+   -fno-sanitize=all
 )
 
 if (FLAG_WNO_UNUSED_BUT_SET_VAR)
