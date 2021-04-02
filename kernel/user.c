@@ -88,7 +88,6 @@ int copy_str_from_user(void *dest,
    return rc;
 }
 
-
 static void
 internal_copy_str_array_from_user(void *dest,
                                   const char *const *user_arr,
@@ -130,14 +129,16 @@ internal_copy_str_array_from_user(void *dest,
       goto out;
    }
 
-   dest_arr[argc] = NULL; /* this is safe, we've just checked that */
+   /* this is safe, we've just checked that */
+   WRITE_PTR(&dest_arr[argc], NULL);
+
    after_ptrs_arr = (char *) &dest_arr[argc + 1];
    written += (u32)(after_ptrs_arr - (char *)dest_arr);
 
    for (int i = 0; i < argc; i++) {
 
       size_t local_written = 0;
-      dest_arr[i] = after_ptrs_arr;
+      WRITE_PTR(&dest_arr[i], after_ptrs_arr);
 
       internal_copy_user_str(after_ptrs_arr,
                              user_arr[i],
