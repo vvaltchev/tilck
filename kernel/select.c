@@ -252,7 +252,7 @@ select_read_user_tv(struct timeval *user_tv,
 
    if (user_tv) {
 
-      tv = (void *) ((fd_set *) curr->args_copybuf) + 3;
+      tv = (void *) ((fd_set *)curr->args_copybuf + 3);
 
       if (copy_from_user(tv, user_tv, sizeof(struct timeval)))
          return -EFAULT;
