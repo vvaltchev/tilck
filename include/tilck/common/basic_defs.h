@@ -393,6 +393,7 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
 #define READ_S64(addr)          SAFE_READ((addr), s64)
 #define READ_ULONG(addr)        SAFE_READ((addr), ulong)
 #define READ_LONG(addr)         SAFE_READ((addr), long)
+#define READ_PTR(addr)          SAFE_READ((addr), void *)
 
 #define WRITE_U16(addr, val)    SAFE_WRITE((addr), u16, (val))
 #define WRITE_S16(addr, val)    SAFE_WRITE((addr), s16, (val))
@@ -402,7 +403,7 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
 #define WRITE_S64(addr, val)    SAFE_WRITE((addr), s64, (val))
 #define WRITE_ULONG(addr, val)  SAFE_WRITE((addr), ulong, (val))
 #define WRITE_LONG(addr, val)   SAFE_WRITE((addr), long, (val))
-
+#define WRITE_PTR(addr, val)    SAFE_WRITE((addr), void *, (val))
 
 
 /* Other utils */
