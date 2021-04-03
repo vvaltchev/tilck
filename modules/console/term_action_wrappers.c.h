@@ -1,6 +1,6 @@
-/* ---------------- term action engine --------------------- */
+/* SPDX-License-Identifier: BSD-2-Clause */
 
-typedef void (*action_func)(struct vterm *t, ...);
+typedef void (*action_func)(struct vterm *, long, long, long);
 
 struct actions_table_item {
 
@@ -8,7 +8,7 @@ struct actions_table_item {
    u32 args_count;
 };
 
-#define ENTRY(func, n) { (action_func)(func), n }
+#define ENTRY(func, n) { (void *)(func), n }
 
 static const struct actions_table_item actions_table[] = {
    [a_write]                = ENTRY(term_action_write, 3),
@@ -42,13 +42,13 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
 
    switch (it->args_count) {
       case 3:
-         it->func(t, a->ptr, a->len, a->col);
+         CALL_ACTION_FUNC_3(it->func, t, a->ptr, a->len, a->col);
          break;
       case 2:
-         it->func(t, a->arg1, a->arg2);
+         CALL_ACTION_FUNC_2(it->func, t, a->arg1, a->arg2);
          break;
       case 1:
-         it->func(t, a->arg);
+         CALL_ACTION_FUNC_1(it->func, t, a->arg);
          break;
       default:
          NOT_REACHED();
@@ -71,7 +71,7 @@ vterm_write(term *t, const char *buf, size_t len, u8 color)
    ASSERT(len < MB);
 
    if (in_panic()) {
-      term_action_write(t, (char *)buf, (u32)len, color);
+      CALL_ACTION_FUNC_3(term_action_write, t, buf, len, color);
       return;
    }
 

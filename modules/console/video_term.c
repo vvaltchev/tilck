@@ -138,47 +138,37 @@ static const struct video_interface no_output_vi =
 #define buf_get_char_at(t, r, c) (vgaentry_get_char(buf_get_entry((t),(r),(c))))
 
 static void
-buf_copy_row(term *_t, u32 dest, u32 src)
+buf_copy_row(struct vterm *t, u32 dest, u32 src)
 {
-   struct vterm *const t = _t;
-
    if (UNLIKELY(dest == src))
       return;
 
    memcpy(get_buf_row(t, dest), get_buf_row(t, src), t->cols * 2);
 }
 
-static ALWAYS_INLINE bool ts_is_at_bottom(term *_t)
+static ALWAYS_INLINE bool ts_is_at_bottom(struct vterm *t)
 {
-   struct vterm *const t = _t;
    return t->scroll == t->max_scroll;
 }
 
-static ALWAYS_INLINE u8 get_curr_cell_color(term *_t)
+static ALWAYS_INLINE u8 get_curr_cell_color(struct vterm *t)
 {
-   struct vterm *const t = _t;
-
    if (!t->buffer)
       return 0;
 
    return vgaentry_get_color(buf_get_entry(t, t->r, t->c));
 }
 
-static ALWAYS_INLINE u8 get_curr_cell_fg_color(term *_t)
+static ALWAYS_INLINE u8 get_curr_cell_fg_color(struct vterm *t)
 {
-   struct vterm *const t = _t;
-
    if (!t->buffer)
       return 0;
 
    return vgaentry_get_fg(buf_get_entry(t, t->r, t->c));
 }
 
-
-static void term_action_enable_cursor(term *_t, u16 val, ...)
+static void term_int_enable_cursor(struct vterm *t, u16 val)
 {
-   struct vterm *const t = _t;
-
    if (val == 0) {
 
       t->vi->disable_cursor();
@@ -193,9 +183,8 @@ static void term_action_enable_cursor(term *_t, u16 val, ...)
    }
 }
 
-static void term_redraw2(term *_t, u16 s, u16 e)
+static void term_redraw2(struct vterm *t, u16 s, u16 e)
 {
-   struct vterm *const t = _t;
    const bool fpu_allowed = !in_irq() && !in_panic();
 
    if (!t->buffer)
@@ -211,22 +200,18 @@ static void term_redraw2(term *_t, u16 s, u16 e)
       fpu_context_end();
 }
 
-static inline void term_redraw(term *_t)
+static inline void term_redraw(struct vterm *t)
 {
-   struct vterm *const t = _t;
    term_redraw2(t, 0, t->rows);
 }
 
-static inline void term_redraw_scroll_region(term *_t)
+static inline void term_redraw_scroll_region(struct vterm *t)
 {
-   struct vterm *const t = _t;
    term_redraw2(t, *t->start_scroll_region, *t->end_scroll_region + 1);
 }
 
-static void ts_set_scroll(term *_t, u32 requested_scroll)
+static void ts_set_scroll(struct vterm *t, u32 requested_scroll)
 {
-   struct vterm *const t = _t;
-
    /*
     * 1. scroll cannot be > max_scroll
     * 2. scroll cannot be < max_scroll - extra_buffer_rows, where
@@ -250,55 +235,42 @@ static void ts_set_scroll(term *_t, u32 requested_scroll)
    term_redraw(t);
 }
 
-static ALWAYS_INLINE void ts_scroll_up(term *_t, u32 lines)
+static ALWAYS_INLINE void ts_scroll_up(struct vterm *t, u32 lines)
 {
-   struct vterm *const t = _t;
-
    if (lines > t->scroll)
       ts_set_scroll(t, 0);
    else
       ts_set_scroll(t, t->scroll - lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_down(term *_t, u32 lines)
+static ALWAYS_INLINE void ts_scroll_down(struct vterm *t, u32 lines)
 {
-   struct vterm *const t = _t;
    ts_set_scroll(t, t->scroll + lines);
 }
 
-static ALWAYS_INLINE void ts_scroll_to_bottom(term *_t)
+static ALWAYS_INLINE void ts_scroll_to_bottom(struct vterm *t)
 {
-   struct vterm *const t = _t;
    if (t->scroll != t->max_scroll) {
       ts_set_scroll(t, t->max_scroll);
    }
 }
 
-static void ts_buf_clear_row(term *_t, u16 row, u8 color)
+static void ts_buf_clear_row(struct vterm *t, u16 row, u8 color)
 {
-   struct vterm *const t = _t;
-
    if (!t->buffer)
       return;
 
    memset16(get_buf_row(t, row), make_vgaentry(' ', color), t->cols);
 }
 
-static void ts_clear_row(term *_t, u16 row, u8 color)
+static void ts_clear_row(struct vterm *t, u16 row, u8 color)
 {
-   struct vterm *const t = _t;
    ts_buf_clear_row(t, row, color);
    t->vi->clear_row(row, color);
 }
 
-/* ---------------- term actions --------------------- */
-
-static void term_execute_action(struct vterm *t, struct term_action *a);
-
-static void term_int_scroll_up(term *_t, u32 lines)
+static void term_int_scroll_up(struct vterm *t, u32 lines)
 {
-   struct vterm *const t = _t;
-
    ts_scroll_up(t, lines);
 
    if (t->cursor_enabled) {
@@ -315,10 +287,8 @@ static void term_int_scroll_up(term *_t, u32 lines)
    }
 }
 
-static void term_int_scroll_down(term *_t, u32 lines)
+static void term_int_scroll_down(struct vterm *t, u32 lines)
 {
-   struct vterm *const t = _t;
-
    ts_scroll_down(t, lines);
 
    if (t->cursor_enabled) {
@@ -329,22 +299,8 @@ static void term_int_scroll_down(term *_t, u32 lines)
    }
 }
 
-static void
-term_action_scroll(term *_t, u32 lines, enum term_scroll_type st, ...)
+static void term_internal_non_buf_scroll_up(struct vterm *t, u16 n)
 {
-   struct vterm *const t = _t;
-
-   if (st == term_scroll_up) {
-      term_int_scroll_up(t, lines);
-   } else {
-      ASSERT(st == term_scroll_down);
-      term_int_scroll_down(t, lines);
-   }
-}
-
-static void term_action_non_buf_scroll_up(term *_t, u16 n, ...)
-{
-   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -362,9 +318,8 @@ static void term_action_non_buf_scroll_up(term *_t, u16 n, ...)
    term_redraw_scroll_region(t);
 }
 
-static void term_action_non_buf_scroll_down(term *_t, u16 n, ...)
+static void term_internal_non_buf_scroll_down(struct vterm *t, u16 n)
 {
-   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -382,25 +337,8 @@ static void term_action_non_buf_scroll_down(term *_t, u16 n, ...)
    term_redraw_scroll_region(t);
 }
 
-static void term_action_non_buf_scroll(term *_t, u16 n, u16 dir, ...)
+static void term_int_move_ch_and_cur(struct vterm *t, int row, int col)
 {
-   struct vterm *const t = _t;
-
-   if (dir == term_scroll_up) {
-
-      term_action_non_buf_scroll_up(t, n);
-
-   } else {
-
-      ASSERT(dir == term_scroll_down);
-      term_action_non_buf_scroll_down(t, n);
-   }
-}
-
-static void term_action_move_ch_and_cur(term *_t, int row, int col, ...)
-{
-   struct vterm *const t = _t;
-
    if (!t->buffer)
       return;
 
@@ -411,9 +349,8 @@ static void term_action_move_ch_and_cur(term *_t, int row, int col, ...)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
-static void term_internal_incr_row(term *_t)
+static void term_internal_incr_row(struct vterm *t)
 {
-   struct vterm *const t = _t;
    const u16 sR = *t->start_scroll_region;
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -426,10 +363,10 @@ static void term_internal_incr_row(term *_t)
 
    if (sR || eR < t->rows) {
 
-      term_action_move_ch_and_cur(t, t->r, 0);
+      term_int_move_ch_and_cur(t, t->r, 0);
 
       if (t->r == eR - 1)
-         term_action_non_buf_scroll_up(t, 1);
+         term_internal_non_buf_scroll_up(t, 1);
       else if (t->r < t->rows - 1)
          ++t->r;
 
@@ -448,18 +385,16 @@ static void term_internal_incr_row(term *_t)
    ts_clear_row(t, t->rows - 1, DEFAULT_COLOR16);
 }
 
-static void term_internal_write_printable_char(term *_t, u8 c, u8 color)
+static void term_internal_write_printable_char(struct vterm *t, u8 c, u8 color)
 {
-   struct vterm *const t = _t;
    const u16 entry = make_vgaentry(c, color);
    buf_set_entry(t, t->r, t->c, entry);
    t->vi->set_char_at(t->r, t->c, entry);
    t->c++;
 }
 
-static void term_internal_write_tab(term *_t, u8 color)
+static void term_internal_write_tab(struct vterm *t, u8 color)
 {
-   struct vterm *const t = _t;
    int rem = t->cols - t->c - 1;
 
    if (!t->tabs_buf) {
@@ -475,10 +410,8 @@ static void term_internal_write_tab(term *_t, u8 color)
    t->c = (u16)(tab_col + 1);
 }
 
-static void term_internal_write_backspace(term *_t, u8 color)
+static void term_internal_write_backspace(struct vterm *t, u8 color)
 {
-   struct vterm *const t = _t;
-
    if (!t->c || t->c <= t->col_offset)
       return;
 
@@ -509,9 +442,8 @@ static void term_internal_write_backspace(term *_t, u8 color)
    }
 }
 
-static void term_internal_delete_last_word(term *_t, u8 color)
+static void term_internal_delete_last_word(struct vterm *t, u8 color)
 {
-   struct vterm *const t = _t;
    u8 c;
 
    while (t->c > 0) {
@@ -535,10 +467,8 @@ static void term_internal_delete_last_word(term *_t, u8 color)
    }
 }
 
-static void term_internal_write_char2(term *_t, char c, u8 color)
+static void term_internal_write_char2(struct vterm *t, char c, u8 color)
 {
-   struct vterm *const t = _t;
-
    switch (c) {
 
       case '\n':
@@ -565,288 +495,9 @@ static void term_internal_write_char2(term *_t, char c, u8 color)
    }
 }
 
-static void term_action_write(term *_t, char *buf, u32 len, u8 color)
-{
-   struct vterm *const t = _t;
-   const struct video_interface *const vi = t->vi;
-
-   ts_scroll_to_bottom(t);
-   vi->enable_cursor();
-
-   for (u32 i = 0; i < len; i++) {
-
-      if (UNLIKELY(t->filter == NULL)) {
-         /* Early term use by printk(), before tty has been initialized */
-         term_internal_write_char2(t, buf[i], color);
-         continue;
-      }
-
-      /*
-       * NOTE: We MUST store buf[i] in a local variable because the filter
-       * function is absolutely allowed to modify its contents!!
-       *
-       * (Of course, buf is *not* required to point to writable memory.)
-       */
-      char c = buf[i];
-      struct term_action a = { .type1 = a_none };
-      enum term_fret r = t->filter((u8 *)&c, &color, &a, t->filter_ctx);
-
-      if (LIKELY(r == TERM_FILTER_WRITE_C))
-         term_internal_write_char2(t, c, color);
-
-      if (UNLIKELY(a.type1 != a_none))
-         term_execute_action(t, &a);
-   }
-
-   if (t->cursor_enabled)
-      vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
-}
-
-/* Direct write without any filter nor move_cursor/flush */
-static void
-term_action_dwrite_no_filter(term *_t, char *buf, u32 len, u8 color)
-{
-   struct vterm *const t = _t;
-
-   for (u32 i = 0; i < len; i++)
-      term_internal_write_char2(t, buf[i], color);
-}
-
-static void term_action_set_col_offset(term *_t, u16 off, ...)
-{
-   struct vterm *const t = _t;
-   t->col_offset = off;
-}
-
-static void term_action_move_ch_and_cur_rel(term *_t, s8 dr, s8 dc, ...)
-{
-   struct vterm *const t = _t;
-
-   if (!t->buffer)
-      return;
-
-   t->r = (u16) CLAMP((int)t->r + dr, 0, t->rows - 1);
-   t->c = (u16) CLAMP((int)t->c + dc, 0, t->cols - 1);
-
-   if (t->cursor_enabled)
-      t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
-}
-
-static void term_action_reset(term *_t, ...)
-{
-   struct vterm *const t = _t;
-
-   t->vi->enable_cursor();
-   term_action_move_ch_and_cur(t, 0, 0);
-   t->scroll = t->max_scroll = 0;
-
-   for (u16 i = 0; i < t->rows; i++)
-      ts_clear_row(t, i, DEFAULT_COLOR16);
-
-   if (t->tabs_buf)
-      memset(t->tabs_buf, 0, t->cols * t->rows);
-}
-
-static void term_action_erase_in_display(term *_t, int mode, ...)
-{
-   struct vterm *const t = _t;
-   const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
-
-   switch (mode) {
-
-      case 0:
-
-         /* Clear the screen from the cursor position up to the end */
-
-         for (u16 col = t->c; col < t->cols; col++) {
-            buf_set_entry(t, t->r, col, entry);
-            t->vi->set_char_at(t->r, col, entry);
-         }
-
-         for (u16 i = t->r + 1; i < t->rows; i++)
-            ts_clear_row(t, i, DEFAULT_COLOR16);
-
-         break;
-
-      case 1:
-
-         /* Clear the screen from the beginning up to cursor's position */
-
-         for (u16 i = 0; i < t->r; i++)
-            ts_clear_row(t, i, DEFAULT_COLOR16);
-
-         for (u16 col = 0; col < t->c; col++) {
-            buf_set_entry(t, t->r, col, entry);
-            t->vi->set_char_at(t->r, col, entry);
-         }
-
-         break;
-
-      case 2:
-
-         /* Clear the whole screen */
-
-         for (u16 i = 0; i < t->rows; i++)
-            ts_clear_row(t, i, DEFAULT_COLOR16);
-
-         break;
-
-      case 3:
-         /* Clear the whole screen and erase the scroll buffer */
-         {
-            u16 row = t->r;
-            u16 col = t->c;
-            term_action_reset(t);
-
-            if (t->cursor_enabled)
-               t->vi->move_cursor(row, col, DEFAULT_COLOR16);
-         }
-         break;
-
-      default:
-         return;
-   }
-}
-
-static void term_action_erase_in_line(term *_t, int mode, ...)
-{
-   struct vterm *const t = _t;
-   const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
-
-   switch (mode) {
-
-      case 0:
-         for (u16 col = t->c; col < t->cols; col++) {
-            buf_set_entry(t, t->r, col, entry);
-            t->vi->set_char_at(t->r, col, entry);
-         }
-         break;
-
-      case 1:
-         for (u16 col = 0; col < t->c; col++) {
-            buf_set_entry(t, t->r, col, entry);
-            t->vi->set_char_at(t->r, col, entry);
-         }
-         break;
-
-      case 2:
-         ts_clear_row(t, t->r, vgaentry_get_color(entry));
-         break;
-
-      default:
-         return;
-   }
-}
-
-static void
-term_action_del(term *_t, enum term_del_type del_type, int m, ...)
-{
-   struct vterm *const t = _t;
-
-   switch (del_type) {
-
-      case TERM_DEL_PREV_CHAR:
-         term_internal_write_backspace(t, get_curr_cell_color(t));
-         break;
-
-      case TERM_DEL_PREV_WORD:
-         term_internal_delete_last_word(t, get_curr_cell_color(t));
-         break;
-
-      case TERM_DEL_ERASE_IN_DISPLAY:
-         term_action_erase_in_display(t, m);
-         break;
-
-      case TERM_DEL_ERASE_IN_LINE:
-         term_action_erase_in_line(t, m);
-         break;
-
-      default:
-         NOT_REACHED();
-   }
-}
-
-static void term_action_ins_blank_chars(term *_t, u16 n, ...)
-{
-   struct vterm *const t = _t;
-   const u16 row = t->r;
-   u16 *const buf_row = get_buf_row(t, row);
-   n = (u16)MIN(n, t->cols - t->c);
-
-   memmove(&buf_row[t->c + n], &buf_row[t->c], 2 * (t->cols - t->c - n));
-
-   for (u16 c = t->c; c < t->c + n; c++)
-      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
-
-   for (u16 c = t->c; c < t->cols; c++)
-      t->vi->set_char_at(row, c, buf_row[c]);
-}
-
-static void term_action_del_chars_in_line(term *_t, u16 n, ...)
-{
-   struct vterm *const t = _t;
-   const u16 row = t->r;
-   u16 *const buf_row = get_buf_row(t, row);
-   const u16 maxN = (u16)MIN(n, t->cols - t->c);
-   const u16 cN = t->cols - t->c - maxN; /* copied count */
-
-   memmove(&buf_row[t->c], &buf_row[t->c + maxN], 2 * cN);
-
-   for (u16 c = t->c + cN; c < MIN(t->c + cN + n - maxN, t->cols); c++)
-      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
-
-   for (u16 c = t->c; c < t->cols; c++)
-      t->vi->set_char_at(row, c, buf_row[c]);
-}
-
-static void term_action_erase_chars_in_line(term *_t, u16 n, ...)
-{
-   struct vterm *const t = _t;
-   const u16 row = t->r;
-   u16 *const buf_row = get_buf_row(t, row);
-
-   for (u16 c = t->c; c < MIN(t->cols, t->c + n); c++)
-      buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
-
-   for (u16 c = t->c; c < t->cols; c++)
-      t->vi->set_char_at(row, c, buf_row[c]);
-}
-
-static void term_action_pause_video_output(term *_t, ...)
-{
-   struct vterm *const t = _t;
-
-   if (t->vi->disable_static_elems_refresh)
-      t->vi->disable_static_elems_refresh();
-
-   t->vi->disable_cursor();
-   t->saved_vi = t->vi;
-   t->vi = &no_output_vi;
-}
-
-static void term_action_restart_video_output(term *_t, ...)
-{
-   struct vterm *const t = _t;
-   t->vi = t->saved_vi;
-
-   term_redraw(t);
-
-   if (t->scroll == t->max_scroll)
-      term_action_enable_cursor(t, t->cursor_enabled);
-
-   if (!in_panic()) {
-      if (t->vi->redraw_static_elements)
-         t->vi->redraw_static_elements();
-
-      if (t->vi->enable_static_elems_refresh)
-         t->vi->enable_static_elems_refresh();
-   }
-}
-
 static int
-term_allocate_alt_buffers(term *_t)
+term_allocate_alt_buffers(struct vterm *t)
 {
-   struct vterm *const t = _t;
    t->screen_buf_copy = kalloc_array_obj(u16, t->rows * t->cols);
 
    if (!t->screen_buf_copy)
@@ -866,110 +517,9 @@ term_allocate_alt_buffers(term *_t)
    return 0;
 }
 
-static void
-term_action_use_alt_buffer(term *_t, bool use_alt_buffer, ...)
-{
-   struct vterm *const t = _t;
-   u16 *b = get_buf_row(t, 0);
+static void term_execute_action(struct vterm *t, struct term_action *a);
 
-   if (t->using_alt_buffer == use_alt_buffer)
-      return;
-
-   if (use_alt_buffer) {
-
-      if (!t->screen_buf_copy) {
-
-         if (term_allocate_alt_buffers(t) < 0)
-            return; /* just do nothing: the main buffer will be used */
-      }
-
-      t->start_scroll_region = &t->alt_scroll_region_start;
-      t->end_scroll_region = &t->alt_scroll_region_end;
-      t->tabs_buf = t->alt_tabs_buf;
-      t->saved_cur_row = t->r;
-      t->saved_cur_col = t->c;
-      memcpy(t->screen_buf_copy, b, sizeof(u16) * t->rows * t->cols);
-
-   } else {
-
-      ASSERT(t->screen_buf_copy != NULL);
-
-      memcpy(b, t->screen_buf_copy, sizeof(u16) * t->rows * t->cols);
-      t->r = t->saved_cur_row;
-      t->c = t->saved_cur_col;
-      t->tabs_buf = t->main_tabs_buf;
-      t->start_scroll_region = &t->main_scroll_region_start;
-      t->end_scroll_region = &t->main_scroll_region_end;
-   }
-
-   t->using_alt_buffer = use_alt_buffer;
-   t->vi->disable_cursor();
-   term_redraw(t);
-   term_action_enable_cursor(t, t->cursor_enabled);
-}
-
-static void
-term_action_ins_blank_lines(term *_t, u32 n)
-{
-   struct vterm *const t = _t;
-   const u16 eR = *t->end_scroll_region + 1;
-
-   if (!t->buffer || !n)
-      return;
-
-   if (t->r >= eR)
-      return; /* we're outside the scrolling region: do nothing */
-
-   t->c = 0;
-   n = MIN(n, (u32)(eR - t->r));
-
-   for (u32 row = eR - n; row > t->r; row--)
-      buf_copy_row(t, row - 1 + n, row - 1);
-
-   for (u16 row = t->r; row < t->r + n; row++)
-      ts_buf_clear_row(t, row, DEFAULT_COLOR16);
-
-   term_redraw_scroll_region(t);
-}
-
-static void
-term_action_del_lines(term *_t, u32 n)
-{
-   struct vterm *const t = _t;
-   const u16 eR = *t->end_scroll_region + 1;
-
-   if (!t->buffer || !n)
-      return;
-
-   if (t->r >= eR)
-      return; /* we're outside the scrolling region: do nothing */
-
-   n = MIN(n, (u32)(eR - t->r));
-
-   for (u32 row = t->r; row <= t->r + n; row++)
-      buf_copy_row(t, row, row + n);
-
-   for (u32 row = eR - n; row < eR; row++)
-      ts_buf_clear_row(t, (u16)row, DEFAULT_COLOR16);
-
-   term_redraw_scroll_region(t);
-}
-
-static void
-term_action_set_scroll_region(term *_t, u16 start, u16 end)
-{
-   struct vterm *const t = _t;
-   start = (u16) CLAMP(start, 0u, t->rows - 1u);
-   end = (u16) CLAMP(end, 0u, t->rows - 1u);
-
-   if (start >= end)
-      return;
-
-   *t->start_scroll_region = start;
-   *t->end_scroll_region = end;
-   term_action_move_ch_and_cur(t, 0, 0);
-}
-
+#include "term_actions.c.h"
 #include "term_action_wrappers.c.h"
 
 #if DEBUG_CHECKS
@@ -1194,7 +744,7 @@ init_vterm(term *_t,
 
    t->cursor_enabled = true;
    t->vi->enable_cursor();
-   term_action_move_ch_and_cur(t, 0, 0);
+   term_int_move_ch_and_cur(t, 0, 0);
    t->initialized = true;
    return 0;
 }
