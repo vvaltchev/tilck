@@ -70,6 +70,7 @@ fault 31
    .long fault\num
 .endm
 
+.align 4
 fault_entry_points:
 .set i, 0
 .rept 32

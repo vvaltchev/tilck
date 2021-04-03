@@ -50,6 +50,7 @@ END_FUNC(asm_irq_entry)
    .long irq\num
 .endm
 
+.align 4
 irq_entry_points:
 .set i, 0
 .rept 16
