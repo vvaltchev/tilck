@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-typedef void (*action_func)(struct vterm *, long, long, long);
+typedef void (*action_func)(struct vterm *, ulong, ulong, ulong);
 
 struct actions_table_item {
 
@@ -8,28 +8,28 @@ struct actions_table_item {
    u32 args_count;
 };
 
-#define ENTRY(func, n) { (void *)(func), n }
+#define ENTRY(func, n) { (void *)(term_action_##func), n }
 
 static const struct actions_table_item actions_table[] = {
-   [a_write]                = ENTRY(term_action_write, 3),
-   [a_dwrite_no_filter]     = ENTRY(term_action_dwrite_no_filter, 3),
-   [a_del_generic]          = ENTRY(term_action_del, 2),
-   [a_scroll]               = ENTRY(term_action_scroll, 2),
-   [a_set_col_offset]       = ENTRY(term_action_set_col_offset, 1),
-   [a_move_ch_and_cur]      = ENTRY(term_action_move_ch_and_cur, 2),
-   [a_move_ch_and_cur_rel]  = ENTRY(term_action_move_ch_and_cur_rel, 2),
-   [a_reset]                = ENTRY(term_action_reset, 1),
-   [a_pause_video_output]   = ENTRY(term_action_pause_video_output, 1),
-   [a_restart_video_output] = ENTRY(term_action_restart_video_output, 1),
-   [a_enable_cursor]        = ENTRY(term_action_enable_cursor, 1),
-   [a_non_buf_scroll]       = ENTRY(term_action_non_buf_scroll, 2),
-   [a_use_alt_buffer]       = ENTRY(term_action_use_alt_buffer, 1),
-   [a_insert_blank_lines]   = ENTRY(term_action_ins_blank_lines, 1),
-   [a_delete_lines]         = ENTRY(term_action_del_lines, 1),
-   [a_set_scroll_region]    = ENTRY(term_action_set_scroll_region, 2),
-   [a_insert_blank_chars]   = ENTRY(term_action_ins_blank_chars, 1),
-   [a_simple_del_chars]     = ENTRY(term_action_del_chars_in_line, 1),
-   [a_simple_erase_chars]   = ENTRY(term_action_erase_chars_in_line, 1),
+   [a_write]                = ENTRY(write, 3),
+   [a_dwrite_no_filter]     = ENTRY(dwrite_no_filter, 3),
+   [a_del_generic]          = ENTRY(del, 2),
+   [a_scroll]               = ENTRY(scroll, 2),
+   [a_set_col_offset]       = ENTRY(set_col_offset, 1),
+   [a_move_ch_and_cur]      = ENTRY(move_ch_and_cur, 2),
+   [a_move_ch_and_cur_rel]  = ENTRY(move_ch_and_cur_rel, 2),
+   [a_reset]                = ENTRY(reset, 1),
+   [a_pause_video_output]   = ENTRY(pause_video_output, 1),
+   [a_restart_video_output] = ENTRY(restart_video_output, 1),
+   [a_enable_cursor]        = ENTRY(enable_cursor, 1),
+   [a_non_buf_scroll]       = ENTRY(non_buf_scroll, 2),
+   [a_use_alt_buffer]       = ENTRY(use_alt_buffer, 1),
+   [a_insert_blank_lines]   = ENTRY(ins_blank_lines, 1),
+   [a_delete_lines]         = ENTRY(del_lines, 1),
+   [a_set_scroll_region]    = ENTRY(set_scroll_region, 2),
+   [a_insert_blank_chars]   = ENTRY(ins_blank_chars, 1),
+   [a_simple_del_chars]     = ENTRY(del_chars_in_line, 1),
+   [a_simple_erase_chars]   = ENTRY(erase_chars_in_line, 1),
 };
 
 #undef ENTRY
