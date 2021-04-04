@@ -12,8 +12,8 @@ trigger:
       - docs/*
 
 jobs:
-  - job: interactive
-    container: 'vvaltchev/tilck_build:v8'
+  - job: interactive_tests
+    container: 'vvaltchev/tilck_build:v9'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -45,8 +45,8 @@ jobs:
       - script: ./build/st/run_interactive_test -a
         displayName: Run the interactive tests
 
-  - job: build
-    container: 'vvaltchev/tilck_build:v8'
+  - job: gcc_6_4
+    container: 'vvaltchev/tilck_build:v9'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -54,6 +54,7 @@ jobs:
       TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
+      GCC_TC_VER: 6.4.0
     strategy:
       matrix:
         release:
@@ -68,13 +69,101 @@ jobs:
           GEN: 'gcc_no_nested_irq_tracking'
         minimal:
           GEN: 'minimal'
-        syscc:
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/$(GEN)
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+
+  - job: gcc_7_3
+    container: 'vvaltchev/tilck_build:v9'
+    pool:
+      vmImage: 'ubuntu-18.04'
+    variables:
+      CI: 1
+      TCROOT_PARENT: /tc
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 7.3.0
+      CMAKE_ARGS: >
+        -DKERNEL_UBSAN=1
+    strategy:
+      matrix:
+        debug:
+          GEN: 'gcc'
+        release:
+          GEN: 'gcc_rel'
+        fast_release:
+          GEN: 'gcc_fast_rel'
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/$(GEN)
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+
+  - job: gcc_8_4
+    container: 'vvaltchev/tilck_build:v9'
+    pool:
+      vmImage: 'ubuntu-18.04'
+    variables:
+      CI: 1
+      TCROOT_PARENT: /tc
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 8.4.0
+      CMAKE_ARGS: >
+        -DKERNEL_UBSAN=1
+    strategy:
+      matrix:
+        debug:
+          GEN: 'gcc'
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/$(GEN)
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+
+  - job: syscc
+    container: 'vvaltchev/tilck_build:v9'
+    pool:
+      vmImage: 'ubuntu-18.04'
+    variables:
+      CI: 1
+      TCROOT_PARENT: /tc
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+    strategy:
+      matrix:
+        gcc:
           GEN: 'gcc_syscc'
         clang:
           GEN: 'clang_wconv'
         clang_tc_isystem:
           GEN: 'clang_tc_isystem'
-      maxParallel: 10
     steps:
       - script: printenv
         displayName: Dump env
