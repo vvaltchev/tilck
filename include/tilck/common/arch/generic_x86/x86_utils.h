@@ -83,7 +83,7 @@
 
 #define TABLE_GDT 0
 #define TABLE_LDT 1
-#define X86_SELECTOR(idx, table, rpl) ((idx << 3) | (table << 2) | (rpl))
+#define X86_SELECTOR(idx, table, rpl) ((u16)((idx << 3) | (table << 2) | (rpl)))
 
 /* Defines useful when calling fault_resumable_call() */
 #define ALL_FAULTS_MASK (0xFFFFFFFF)

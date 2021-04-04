@@ -54,9 +54,9 @@ void register_double_fault_tss_entry(void)
 
    /* Install the task gate for the double fault */
    idt_set_entry(FAULT_DOUBLE_FAULT,
-                 NULL, /* handler (offset): zero */
-                 (u16)(X86_SELECTOR(double_fault_tss_num, TABLE_GDT, 0)),
-                 (IDT_FLAG_PRESENT | IDT_FLAG_TASK_GATE | IDT_FLAG_DPL0));
+                 NULL, /* offset is not used for task gates: must be 0 */
+                 X86_SELECTOR(double_fault_tss_num, TABLE_GDT, 0),
+                 IDT_FLAG_PRESENT | IDT_FLAG_TASK_GATE | IDT_FLAG_DPL0);
 }
 
 void double_fault_handler(void)
