@@ -666,13 +666,8 @@ if (${_index} EQUAL -1)
    set(QEMU_COMMON_OPTS "${QEMU_COMMON_OPTS} -soundhw sb16")
 endif()
 
-# Set kernel's stack size in number of pages. Valid range: [1, 2].
-
-if (MOD_acpi)
-   set(KERNEL_STACK_PAGES          2)
-else()
-   set(KERNEL_STACK_PAGES          1)
-endif()
+# Set kernel's stack size in number of pages.
+set(KERNEL_STACK_PAGES          2)
 
 set(FATHACK ${BUILD_APPS}/fathack)
 set(ELFHACK ${BUILD_APPS}/elfhack)
