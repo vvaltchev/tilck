@@ -47,7 +47,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
       return NULL;
    }
 
-   vaddr_in_block = (void *)((ulong)block_vaddr + KERNEL_STACK_SIZE);
+   vaddr_in_block = (void *)((ulong)block_vaddr + PAGE_SIZE);
 
    count = map_pages(pi->pdir,
                      vaddr_in_block,
@@ -68,7 +68,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
 static void
 free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
-   void *block_vaddr = (void *)((ulong)vaddr_in_block - KERNEL_STACK_SIZE);
+   void *block_vaddr = (void *)((ulong)vaddr_in_block - PAGE_SIZE);
    ulong direct_pa = get_mapping(pi->pdir, vaddr_in_block);
    void *direct_va = KERNEL_PA_TO_VA(direct_pa);
 
