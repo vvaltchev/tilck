@@ -49,14 +49,14 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
 
    vaddr_in_block = (void *)((ulong)block_vaddr + PAGE_SIZE);
 
-   count = map_pages(pi->pdir,
+   count = map_pages(get_kernel_pdir(),
                      vaddr_in_block,
                      direct_pa,
-                     KERNEL_STACK_SIZE / PAGE_SIZE,
+                     KERNEL_STACK_PAGES,
                      PAGING_FL_RW);
 
-   if (count != KERNEL_STACK_SIZE / PAGE_SIZE) {
-      unmap_pages(pi->pdir, vaddr_in_block, count, false);
+   if (count != KERNEL_STACK_PAGES) {
+      unmap_pages(get_kernel_pdir(), vaddr_in_block, count, false);
       hi_vmem_release(block_vaddr, ISOLATED_STACK_HI_VMEM_SPACE);
       kfree2(direct_va, KERNEL_STACK_SIZE);
       return NULL;
@@ -69,10 +69,10 @@ static void
 free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
    void *block_vaddr = (void *)((ulong)vaddr_in_block - PAGE_SIZE);
-   ulong direct_pa = get_mapping(pi->pdir, vaddr_in_block);
+   ulong direct_pa = get_mapping(get_kernel_pdir(), vaddr_in_block);
    void *direct_va = KERNEL_PA_TO_VA(direct_pa);
 
-   unmap_pages(pi->pdir, vaddr_in_block, KERNEL_STACK_SIZE / PAGE_SIZE, false);
+   unmap_pages(get_kernel_pdir(), vaddr_in_block, KERNEL_STACK_PAGES, false);
    hi_vmem_release(block_vaddr, ISOLATED_STACK_HI_VMEM_SPACE);
    kfree2(direct_va, KERNEL_STACK_SIZE);
 }
