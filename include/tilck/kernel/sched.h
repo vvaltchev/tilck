@@ -114,8 +114,8 @@ struct task {
    /* Kernel thread name, NULL for user tasks */
    const char *kthread_name;
 
-   /* See the comment above struct process' arch_fields */
-   char arch_fields[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
+   /* See the comment above struct process' pi_arch */
+   char ti_arch[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
 
 extern struct task *kernel_process;

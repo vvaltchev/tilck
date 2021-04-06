@@ -417,8 +417,8 @@ static void create_kernel_process(void)
 
 #ifndef UNIT_TEST_ENVIRONMENT
    if (!in_panic()) {
-      bzero(s_kernel_ti->arch_fields, sizeof(s_kernel_ti->arch_fields));
-      bzero(s_kernel_pi->arch_fields, sizeof(s_kernel_pi->arch_fields));
+      bzero(s_kernel_ti->ti_arch, sizeof(s_kernel_ti->ti_arch));
+      bzero(s_kernel_pi->pi_arch, sizeof(s_kernel_pi->pi_arch));
       add_task(kernel_process);
    }
 #endif

@@ -65,5 +65,5 @@ void copy_main_tss_on_regs(regs_t *ctx);
 void arch_add_initial_mem_regions();
 bool arch_add_final_mem_regions();
 
-#define get_task_arch_fields(ti) ((arch_task_members_t *)(ti)->arch_fields)
-#define get_proc_arch_fields(pi) ((arch_proc_members_t *)(pi)->arch_fields)
+#define get_task_arch_fields(ti) ((arch_task_members_t*)(void*)((ti)->ti_arch))
+#define get_proc_arch_fields(pi) ((arch_proc_members_t*)(void*)((pi)->pi_arch))

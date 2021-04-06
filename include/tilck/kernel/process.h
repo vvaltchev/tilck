@@ -87,7 +87,7 @@ struct process {
     * separation of arch from non-arch code without introducing any runtime
     * cost for that.
     */
-   char arch_fields[ARCH_PROC_MEMBERS_SIZE] ALIGNED_AT(ARCH_PROC_MEMBERS_ALIGN);
+   char pi_arch[ARCH_PROC_MEMBERS_SIZE] ALIGNED_AT(ARCH_PROC_MEMBERS_ALIGN);
 
    /* large members */
    char str_cwd[MAX_PATH];                /* current working directory */

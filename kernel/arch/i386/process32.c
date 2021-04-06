@@ -630,7 +630,7 @@ arch_specific_new_proc_setup(struct process *pi, struct process *parent)
    if (!parent)
       return;      /* we're done */
 
-   memcpy(&pi->arch_fields, &parent->arch_fields, sizeof(pi->arch_fields));
+   memcpy(&pi->pi_arch, &parent->pi_arch, sizeof(pi->pi_arch));
 
    if (arch->ldt)
       gdt_entry_inc_ref_count(arch->ldt_index_in_gdt);

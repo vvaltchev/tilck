@@ -374,9 +374,9 @@ static int get_user_task_slot_for_gdt_entry(u32 gdt_entry_num)
    return -1;
 }
 
-static void gdt_set_slot_in_task(struct task *ti, u16 slot, u16 gdt_index)
+static void gdt_set_slot(struct process *pi, u16 slot, u16 gdt_index)
 {
-   get_proc_arch_fields(ti)->gdt_entries[slot] = gdt_index;
+   get_proc_arch_fields(pi)->gdt_entries[slot] = gdt_index;
 }
 
 int sys_set_thread_area(void *arg)
@@ -435,7 +435,7 @@ int sys_set_thread_area(void *arg)
          ASSERT(dc.entry_number != INVALID_ENTRY_NUM);
       }
 
-      gdt_set_slot_in_task(get_curr_task(), (u16)slot, (u16)dc.entry_number);
+      gdt_set_slot(get_curr_proc(), (u16)slot, (u16)dc.entry_number);
       goto out;
    }
 
@@ -461,7 +461,7 @@ int sys_set_thread_area(void *arg)
          goto out;
       }
 
-      gdt_set_slot_in_task(get_curr_task(), (u16)slot, (u16)dc.entry_number);
+      gdt_set_slot(get_curr_proc(), (u16)slot, (u16)dc.entry_number);
    }
 
    ASSERT(dc.entry_number < gdt_size);
