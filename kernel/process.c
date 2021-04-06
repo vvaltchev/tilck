@@ -326,15 +326,6 @@ static void free_process_int(struct process *pi)
 {
    ASSERT(get_ref_count(pi) > 0);
 
-   if (release_obj(pi) == 0) {
-
-      arch_specific_free_proc(pi);
-      kfree2(get_process_task(pi), TOT_PROC_AND_TASK_SIZE);
-
-      if (MOD_debugpanel)
-         kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
-   }
-
    if (LIKELY(pi->cwd.fs != NULL)) {
 
       /*
@@ -346,6 +337,15 @@ static void free_process_int(struct process *pi)
 
       vfs_release_inode_at(&pi->cwd);
       release_obj(pi->cwd.fs);
+   }
+
+   if (release_obj(pi) == 0) {
+
+      arch_specific_free_proc(pi);
+      kfree2(get_process_task(pi), TOT_PROC_AND_TASK_SIZE);
+
+      if (MOD_debugpanel)
+         kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
    }
 }
 
