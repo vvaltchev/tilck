@@ -29,6 +29,7 @@ jobs:
         -DBOOT_INTERACTIVE=0
         -DPREFERRED_GFX_MODE_W=640
         -DPREFERRED_GFX_MODE_H=480
+        -DKMALLOC_FREE_MEM_POISONING=1
     steps:
       - script: printenv
         displayName: Dump env
@@ -55,6 +56,8 @@ jobs:
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 6.4.0
+      CMAKE_ARGS: >
+        -DKMALLOC_FREE_MEM_POISONING=1
     strategy:
       matrix:
         release:
@@ -95,6 +98,7 @@ jobs:
       GCC_TC_VER: 7.3.0
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
+        -DKMALLOC_FREE_MEM_POISONING=1
     strategy:
       matrix:
         debug:
@@ -129,6 +133,7 @@ jobs:
       GCC_TC_VER: 8.4.0
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
+        -DKMALLOC_FREE_MEM_POISONING=1
     strategy:
       matrix:
         debug:
@@ -156,6 +161,8 @@ jobs:
       TCROOT_PARENT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
+      CMAKE_ARGS: >
+        -DKMALLOC_FREE_MEM_POISONING=1
     strategy:
       matrix:
         gcc:
