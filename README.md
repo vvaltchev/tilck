@@ -364,16 +364,14 @@ FAQ (by vvaltchev)
 `Tilck` is **not** meant to be a full-featured production kernel. Please, refer to
 Linux (or other kernels) for that. The idea for the moment was just to implement an
 educational kernel able to run a class of Linux console applications on real hardware.
-At some point in the future and with a lot of luck, `Tilck` might actually have a chance
-to be used in production embedded environments (as mentioned above) but it will still be
-*by design* limited in terms of features compared to the Embedded Linux. For example,
-`Tilck` will *probably* never support things like swap and SMP as they introduce a
-substantial amount of complexity and nondeterminism in a kernel. This kernel will
-always try to be very different from Linux, simply because Linux is already great
+At some point in the future and **with a lot of luck**, `Tilck` might actually have a
+chance to be used in production embedded environments (as mentioned above) but it will
+still be *by design* limited in terms of features compared to Embedded Linux. `Tilck`
+will always try to be different from Linux, simply because Linux is already great
 per se and it does not make any sense trying to reimplement it. Instead, it's worth
-trying to do something new while playing, at the same time, the "linux-compatibility card".
-What I expect is Tilck to start "stealing" ideas from hard real-time kernels, once it
-gets ported to ARM and MMU-less CPUs. But today, the project is not there yet.
+trying to create something *new* while playing the "linux-compatibility card".
+What I expect is `Tilck` to start "stealing" ideas from hard real-time kernels,
+once it gets ported to ARM and MMU-less CPUs. But today, the project is not there yet.
 
 #### Why Tilck runs only on x86 (ia-32)?
 
