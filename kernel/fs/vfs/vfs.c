@@ -213,7 +213,6 @@ int vfs_fdatasync(fs_handle h)
    int rc = 0;
    ASSERT(is_preemption_enabled());
 
-
    if (~hb->fs->flags & VFS_FS_RW)
       return -EROFS;
 
@@ -434,9 +433,9 @@ vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
       return -ENOENT;
 
    rc = acquire_subsys_flock(fs,
-                                      p->fs_path.inode,
-                                      SUBSYS_VFS,
-                                      &lf);
+                             p->fs_path.inode,
+                             SUBSYS_VFS,
+                             &lf);
 
    if (rc)
       return rc; /* We couldn't acquire the lock */
