@@ -1,7 +1,13 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-project(tilck VERSION 0.1.1 LANGUAGES C CXX ASM)
+#
+# Project name and base version.
+#
+# Note: the version here is the one currently *under development*. For released
+# versions, checkout GIT tags like "release-0.1.1".
+#
+project(tilck VERSION 0.1.2 LANGUAGES C CXX ASM)
 
 include(CheckCCompilerFlag)
 include(other/cmake/utils.cmake)
