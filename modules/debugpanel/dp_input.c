@@ -398,7 +398,7 @@ int dp_read_line(char *buf, int buf_size)
 
       if (line_len < max_line_len) {
 
-         if (c == DP_KEY_BACKSPACE) {
+         if (c == DP_KEY_BACKSPACE || c == '\b') {
 
             handle_backspace(buf, buf_size);
 
