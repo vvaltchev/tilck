@@ -18,9 +18,9 @@ static const struct actions_table_item actions_table[] = {
    [a_set_col_offset]       = ENTRY(set_col_offset, 1),
    [a_move_ch_and_cur]      = ENTRY(move_ch_and_cur, 2),
    [a_move_ch_and_cur_rel]  = ENTRY(move_ch_and_cur_rel, 2),
-   [a_reset]                = ENTRY(reset, 1),
-   [a_pause_video_output]   = ENTRY(pause_video_output, 1),
-   [a_restart_video_output] = ENTRY(restart_video_output, 1),
+   [a_reset]                = ENTRY(reset, 0),
+   [a_pause_video_output]   = ENTRY(pause_video_output, 0),
+   [a_restart_video_output] = ENTRY(restart_video_output, 0),
    [a_enable_cursor]        = ENTRY(enable_cursor, 1),
    [a_non_buf_scroll]       = ENTRY(non_buf_scroll, 2),
    [a_use_alt_buffer]       = ENTRY(use_alt_buffer, 1),
@@ -49,6 +49,9 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
          break;
       case 1:
          CALL_ACTION_FUNC_1(it->func, t, a->arg);
+         break;
+      case 0:
+         CALL_ACTION_FUNC_0(it->func, t);
          break;
       default:
          NOT_REACHED();
