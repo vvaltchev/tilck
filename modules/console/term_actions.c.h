@@ -22,14 +22,11 @@
       __term_action_##name(t, (t1)__a1, (t2)__a2);                          \
    }
 
-#define DEFINE_TERM_ACTION_3(name, t1, a1, t2, a2, t3, a3, ...)             \
+#define DEFINE_TERM_ACTION_3(name, t1, t2, t3)                              \
    static void                                                              \
-   term_action_##name(term *_t, ulong __##a1, ulong __##a2, ulong __##a3) { \
+   term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __a3) {       \
       struct vterm *const t = _t;                                           \
-      t1 a1 = (t1)__##a1;                                                   \
-      t2 a2 = (t2)__##a2;                                                   \
-      t3 a3 = (t3)__##a3;                                                   \
-      __VA_ARGS__                                                           \
+      __term_action_##name(t, (t1)__a1, (t2)__a2, (t3)__a3);                \
    }
 
 #define CALL_ACTION_FUNC_0(func, t)                                \
@@ -98,7 +95,8 @@ __term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
 
 DEFINE_TERM_ACTION_2(move_ch_and_cur, int, int)
 
-DEFINE_TERM_ACTION_3(write, char *, buf, u32, len, u8, color,
+static void
+__term_action_write(struct vterm *const t, char * buf, u32 len, u8 color)
 {
    const struct video_interface *const vi = t->vi;
 
@@ -131,15 +129,19 @@ DEFINE_TERM_ACTION_3(write, char *, buf, u32, len, u8, color,
 
    if (t->cursor_enabled)
       vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
-})
+}
+
+DEFINE_TERM_ACTION_3(write, char *, u32, u8)
 
 /* Direct write without any filter nor move_cursor/flush */
-DEFINE_TERM_ACTION_3(direct_write, char *, buf, u32, len, u8, color,
+static void
+__term_action_direct_write(struct vterm *const t, char *buf, u32 len, u8 color)
 {
    for (u32 i = 0; i < len; i++)
       term_internal_write_char2(t, buf[i], color);
-})
+}
 
+DEFINE_TERM_ACTION_3(direct_write, char *, u32, u8)
 
 static void
 __term_action_set_col_offset(struct vterm *const t, u16 off)
