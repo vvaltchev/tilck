@@ -11,6 +11,7 @@ struct actions_table_item {
 #define ENTRY(func, n) { (void *)(term_action_##func), n }
 
 static const struct actions_table_item actions_table[] = {
+   [a_none]                 = ENTRY(none, 0),
    [a_write]                = ENTRY(write, 3),
    [a_direct_write]         = ENTRY(direct_write, 3),
    [a_del_generic]          = ENTRY(del, 2),

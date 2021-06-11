@@ -4,6 +4,7 @@
    static void                                                              \
    term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {       \
       struct vterm *const t = _t;                                           \
+      (void)t; /* silence the unused variable warning */                    \
       __VA_ARGS__                                                           \
    }
 
@@ -45,6 +46,10 @@
 
 #define CALL_ACTION_FUNC_3(func, t, a1, a2, a3)                    \
    (func)((t), (ulong)(a1), (ulong)(a2), (ulong)(a3))
+
+DEFINE_TERM_ACTION_0(none, {
+   /* do nothing */
+})
 
 DEFINE_TERM_ACTION_1(enable_cursor, u16, val, {
    term_int_enable_cursor(t, val);
@@ -106,8 +111,7 @@ DEFINE_TERM_ACTION_3(write, char *, buf, u32, len, u8, color,
       if (LIKELY(r == TERM_FILTER_WRITE_C))
          term_internal_write_char2(t, c, color);
 
-      if (UNLIKELY(a.type1 != a_none))
-         term_execute_action(t, &a);
+      term_execute_action(t, &a);
    }
 
    if (t->cursor_enabled)
