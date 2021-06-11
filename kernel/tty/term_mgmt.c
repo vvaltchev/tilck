@@ -16,7 +16,7 @@ void set_curr_video_term(term *t)
    ASSERT(__curr_term_intf != NULL);
    ASSERT(__curr_term_intf->get_type() == term_type_video);
 
-   __curr_term_intf->pause_video_output(__curr_term);
+   __curr_term_intf->pause_output(__curr_term);
    __curr_term = t;
    __curr_term_intf->restart_video_output(__curr_term);
 }

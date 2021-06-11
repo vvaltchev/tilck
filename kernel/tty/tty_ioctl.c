@@ -163,7 +163,7 @@ static int tty_ioctl_kdsetmode(struct tty *t, void *argp)
    }
 
    if (opt == KD_GRAPHICS) {
-      t->tintf->pause_video_output(t->tstate);
+      t->tintf->pause_output(t->tstate);
       t->kd_gfx_mode = KD_GRAPHICS;
       return 0;
    }

@@ -20,7 +20,7 @@ static const struct actions_table_item actions_table[] = {
    [a_move_cur]             = ENTRY(move_cur, 2),
    [a_move_cur_rel]         = ENTRY(move_cur_rel, 2),
    [a_reset]                = ENTRY(reset, 0),
-   [a_pause_video_output]   = ENTRY(pause_video_output, 0),
+   [a_pause_output]         = ENTRY(pause_output, 0),
    [a_restart_video_output] = ENTRY(restart_video_output, 0),
    [a_enable_cursor]        = ENTRY(enable_cursor, 1),
    [a_non_buf_scroll]       = ENTRY(non_buf_scroll, 2),
@@ -109,10 +109,10 @@ vterm_set_col_offset(term *_t, int off)
 }
 
 static void
-vterm_pause_video_output(term *t)
+vterm_pause_output(term *t)
 {
    struct term_action a;
-   term_make_action_pause_video_output(&a);
+   term_make_action_pause_output(&a);
    term_execute_or_enqueue_action(t, &a);
 }
 

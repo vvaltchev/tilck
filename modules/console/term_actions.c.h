@@ -359,7 +359,7 @@ term_action_erase_chars_in_line(struct vterm *const t, u16 n)
 DEFINE_TERM_ACTION_1(erase_chars_in_line, u16)
 
 static void
-term_action_pause_video_output(struct vterm *const t)
+term_action_pause_output(struct vterm *const t)
 {
    if (t->vi->disable_static_elems_refresh)
       t->vi->disable_static_elems_refresh();
@@ -369,7 +369,7 @@ term_action_pause_video_output(struct vterm *const t)
    t->vi = &no_output_vi;
 }
 
-DEFINE_TERM_ACTION_0(pause_video_output)
+DEFINE_TERM_ACTION_0(pause_output)
 
 static void
 term_action_restart_video_output(struct vterm *const t)
