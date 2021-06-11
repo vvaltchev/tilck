@@ -88,12 +88,12 @@ term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
 DEFINE_TERM_ACTION_2(non_buf_scroll, u16, u16)
 
 static void
-term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
+term_action_move_cur(struct vterm *const t, int row, int col)
 {
-   term_int_move_ch_and_cur(t, row, col);
+   term_int_move_cur(t, row, col);
 }
 
-DEFINE_TERM_ACTION_2(move_ch_and_cur, int, int)
+DEFINE_TERM_ACTION_2(move_cur, int, int)
 
 static void
 term_action_write(struct vterm *const t, const char *buf, u32 len, u8 color)
@@ -169,7 +169,7 @@ DEFINE_TERM_ACTION_2(move_cur_rel, s8, s8)
 static void term_action_reset(struct vterm *const t)
 {
    t->vi->enable_cursor();
-   term_int_move_ch_and_cur(t, 0, 0);
+   term_int_move_cur(t, 0, 0);
    t->scroll = t->max_scroll = 0;
 
    for (u16 i = 0; i < t->rows; i++)
@@ -494,7 +494,7 @@ term_action_set_scroll_region(struct vterm *const t, u16 start, u16 end)
 
    *t->start_scroll_region = start;
    *t->end_scroll_region = end;
-   term_int_move_ch_and_cur(t, 0, 0);
+   term_int_move_cur(t, 0, 0);
 }
 
 DEFINE_TERM_ACTION_2(set_scroll_region, u16, u16)

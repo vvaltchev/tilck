@@ -337,7 +337,7 @@ static void term_internal_non_buf_scroll_down(struct vterm *t, u16 n)
    term_redraw_scroll_region(t);
 }
 
-static void term_int_move_ch_and_cur(struct vterm *t, int row, int col)
+static void term_int_move_cur(struct vterm *t, int row, int col)
 {
    if (!t->buffer)
       return;
@@ -363,7 +363,7 @@ static void term_internal_incr_row(struct vterm *t)
 
    if (sR || eR < t->rows) {
 
-      term_int_move_ch_and_cur(t, t->r, 0);
+      term_int_move_cur(t, t->r, 0);
 
       if (t->r == eR - 1)
          term_internal_non_buf_scroll_up(t, 1);
@@ -744,7 +744,7 @@ init_vterm(term *_t,
 
    t->cursor_enabled = true;
    t->vi->enable_cursor();
-   term_int_move_ch_and_cur(t, 0, 0);
+   term_int_move_cur(t, 0, 0);
    t->initialized = true;
    return 0;
 }
