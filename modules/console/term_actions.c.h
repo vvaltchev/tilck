@@ -230,7 +230,7 @@ __term_action_erase_in_display(struct vterm *const t, int mode)
          {
             u16 row = t->r;
             u16 col = t->c;
-            CALL_ACTION_FUNC_0(term_action_reset, t);
+            __term_action_reset(t);
 
             if (t->cursor_enabled)
                t->vi->move_cursor(row, col, DEFAULT_COLOR16);
@@ -291,11 +291,11 @@ __term_action_del(struct vterm *const t,
          break;
 
       case TERM_DEL_ERASE_IN_DISPLAY:
-         CALL_ACTION_FUNC_1(term_action_erase_in_display, t, m);
+         __term_action_erase_in_display(t, m);
          break;
 
       case TERM_DEL_ERASE_IN_LINE:
-         CALL_ACTION_FUNC_1(term_action_erase_in_line, t, m);
+         __term_action_erase_in_line(t, m);
          break;
 
       default:
