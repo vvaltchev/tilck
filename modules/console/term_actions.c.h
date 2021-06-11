@@ -4,7 +4,6 @@
    static void                                                              \
    term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {       \
       struct vterm *const t = _t;                                           \
-      (void)t; /* silence the unused variable warning */                    \
       __term_action_##name(t);                                              \
    }
 
@@ -50,16 +49,17 @@ __term_action_none(struct vterm *const t)
 DEFINE_TERM_ACTION_0(none)
 
 static void
-__term_action_enable_cursor(struct vterm *const t, u16 val)
+__term_action_enable_cursor(struct vterm *const t, bool val)
 {
    term_int_enable_cursor(t, val);
 }
 
-DEFINE_TERM_ACTION_1(enable_cursor, u16)
+DEFINE_TERM_ACTION_1(enable_cursor, bool)
 
 static void
 __term_action_scroll(struct vterm *const t,
-                     u32 lines, enum term_scroll_type st)
+                     u32 lines,
+                     enum term_scroll_type st)
 {
    if (st == term_scroll_up) {
       term_int_scroll_up(t, lines);
@@ -96,7 +96,7 @@ __term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
 DEFINE_TERM_ACTION_2(move_ch_and_cur, int, int)
 
 static void
-__term_action_write(struct vterm *const t, char * buf, u32 len, u8 color)
+__term_action_write(struct vterm *const t, char *buf, u32 len, u8 color)
 {
    const struct video_interface *const vi = t->vi;
 

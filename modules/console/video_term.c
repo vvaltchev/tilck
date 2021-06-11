@@ -167,7 +167,7 @@ static ALWAYS_INLINE u8 get_curr_cell_fg_color(struct vterm *t)
    return vgaentry_get_fg(buf_get_entry(t, t->r, t->c));
 }
 
-static void term_int_enable_cursor(struct vterm *t, u16 val)
+static void term_int_enable_cursor(struct vterm *t, bool val)
 {
    if (val == 0) {
 
