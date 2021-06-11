@@ -115,7 +115,7 @@ DEFINE_TERM_ACTION_3(write, char *, buf, u32, len, u8, color,
 })
 
 /* Direct write without any filter nor move_cursor/flush */
-DEFINE_TERM_ACTION_3(dwrite_no_filter, char *, buf, u32, len, u8, color,
+DEFINE_TERM_ACTION_3(direct_write, char *, buf, u32, len, u8, color,
 {
    for (u32 i = 0; i < len; i++)
       term_internal_write_char2(t, buf[i], color);

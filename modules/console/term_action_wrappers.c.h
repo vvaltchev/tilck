@@ -12,7 +12,7 @@ struct actions_table_item {
 
 static const struct actions_table_item actions_table[] = {
    [a_write]                = ENTRY(write, 3),
-   [a_dwrite_no_filter]     = ENTRY(dwrite_no_filter, 3),
+   [a_direct_write]         = ENTRY(direct_write, 3),
    [a_del_generic]          = ENTRY(del, 2),
    [a_scroll]               = ENTRY(scroll, 2),
    [a_set_col_offset]       = ENTRY(set_col_offset, 1),

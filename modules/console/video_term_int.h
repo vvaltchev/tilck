@@ -14,7 +14,7 @@ enum term_action_type {
 
    a_none,
    a_write,
-   a_dwrite_no_filter,           // [1]
+   a_direct_write,               // [1]
    a_del_generic,
    a_scroll,                     // [2]
    a_set_col_offset,
@@ -114,7 +114,7 @@ term_make_action_direct_write(struct term_action *a,
                               u8 color)
 {
    *a = (struct term_action) {
-      .type3 = a_dwrite_no_filter,
+      .type3 = a_direct_write,
       .len = UNSAFE_MIN((u32)len, MAX_TERM_WRITE_LEN),
       .col = color,
       .ptr = (ulong)buf,
