@@ -5,7 +5,7 @@
    term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {       \
       struct vterm *const t = _t;                                           \
       (void)t; /* silence the unused variable warning */                    \
-      __VA_ARGS__                                                           \
+      __term_action_##name(t);                                              \
    }
 
 #define DEFINE_TERM_ACTION_1(name, t1, a1, ...)                             \
@@ -47,9 +47,12 @@
 #define CALL_ACTION_FUNC_3(func, t, a1, a2, a3)                    \
    (func)((t), (ulong)(a1), (ulong)(a2), (ulong)(a3))
 
-DEFINE_TERM_ACTION_0(none, {
+static void __term_action_none(struct vterm *const t)
+{
    /* do nothing */
-})
+}
+
+DEFINE_TERM_ACTION_0(none)
 
 DEFINE_TERM_ACTION_1(enable_cursor, u16, val, {
    term_int_enable_cursor(t, val);
@@ -142,7 +145,7 @@ DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, dr, s8, dc,
       t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 })
 
-DEFINE_TERM_ACTION_0(reset,
+static void __term_action_reset(struct vterm *const t)
 {
    t->vi->enable_cursor();
    term_int_move_ch_and_cur(t, 0, 0);
@@ -153,7 +156,9 @@ DEFINE_TERM_ACTION_0(reset,
 
    if (t->tabs_buf)
       memset(t->tabs_buf, 0, t->cols * t->rows);
-})
+}
+
+DEFINE_TERM_ACTION_0(reset)
 
 DEFINE_TERM_ACTION_1(erase_in_display, int, mode,
 {
@@ -312,7 +317,8 @@ DEFINE_TERM_ACTION_1(erase_chars_in_line, u16, n,
       t->vi->set_char_at(row, c, buf_row[c]);
 })
 
-DEFINE_TERM_ACTION_0(pause_video_output,
+static void
+__term_action_pause_video_output(struct vterm *const t)
 {
    if (t->vi->disable_static_elems_refresh)
       t->vi->disable_static_elems_refresh();
@@ -320,9 +326,12 @@ DEFINE_TERM_ACTION_0(pause_video_output,
    t->vi->disable_cursor();
    t->saved_vi = t->vi;
    t->vi = &no_output_vi;
-})
+}
 
-DEFINE_TERM_ACTION_0(restart_video_output,
+DEFINE_TERM_ACTION_0(pause_video_output)
+
+static void
+__term_action_restart_video_output(struct vterm *const t)
 {
    t->vi = t->saved_vi;
    term_redraw(t);
@@ -337,7 +346,9 @@ DEFINE_TERM_ACTION_0(restart_video_output,
       if (t->vi->enable_static_elems_refresh)
          t->vi->enable_static_elems_refresh();
    }
-})
+}
+
+DEFINE_TERM_ACTION_0(restart_video_output)
 
 DEFINE_TERM_ACTION_1(use_alt_buffer, bool, use_alt_buffer,
 {
