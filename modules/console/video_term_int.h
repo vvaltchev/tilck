@@ -19,7 +19,7 @@ enum term_action_type {
    a_scroll,                     // [2]
    a_set_col_offset,
    a_move_ch_and_cur,
-   a_move_ch_and_cur_rel,
+   a_move_cur_rel,
    a_reset,
    a_pause_video_output,
    a_restart_video_output,
@@ -194,7 +194,7 @@ static ALWAYS_INLINE void
 term_make_action_move_cursor_rel(struct term_action *a, int dr, int dc)
 {
    *a = (struct term_action) {
-      .type2 = a_move_ch_and_cur_rel,
+      .type2 = a_move_cur_rel,
       .arg1 = LO_BITS((u32)dr, 8, u32),
       .arg2 = LO_BITS((u32)dc, 8, u32),
    };
