@@ -147,7 +147,7 @@ NORETURN void panic(const char *fmt, ...)
          tty_setup_for_panic(get_curr_tty());
 
       /* In case the video output has been paused, we MUST restart it */
-      term_restart_video_output();
+      term_restart_output();
 
    } else {
 

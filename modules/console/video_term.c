@@ -770,7 +770,7 @@ static const struct term_interface intf = {
    .scroll_down = vterm_scroll_down,
    .set_col_offset = vterm_set_col_offset,
    .pause_output = vterm_pause_output,
-   .restart_video_output = vterm_restart_video_output,
+   .restart_output = vterm_restart_output,
    .set_filter = vterm_set_filter,
 
    .get_first_term = vterm_get_first_inst,

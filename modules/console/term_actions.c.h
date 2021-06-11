@@ -372,7 +372,7 @@ term_action_pause_output(struct vterm *const t)
 DEFINE_TERM_ACTION_0(pause_output)
 
 static void
-term_action_restart_video_output(struct vterm *const t)
+term_action_restart_output(struct vterm *const t)
 {
    t->vi = t->saved_vi;
    term_redraw(t);
@@ -389,7 +389,7 @@ term_action_restart_video_output(struct vterm *const t)
    }
 }
 
-DEFINE_TERM_ACTION_0(restart_video_output)
+DEFINE_TERM_ACTION_0(restart_output)
 
 static void
 term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)

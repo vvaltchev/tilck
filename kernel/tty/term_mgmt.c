@@ -18,7 +18,7 @@ void set_curr_video_term(term *t)
 
    __curr_term_intf->pause_output(__curr_term);
    __curr_term = t;
-   __curr_term_intf->restart_video_output(__curr_term);
+   __curr_term_intf->restart_output(__curr_term);
 }
 
 void register_term_intf(const struct term_interface *intf)

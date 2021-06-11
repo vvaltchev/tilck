@@ -22,7 +22,7 @@ enum term_action_type {
    a_move_cur_rel,
    a_reset,
    a_pause_output,
-   a_restart_video_output,
+   a_restart_output,
    a_enable_cursor,
    a_use_alt_buffer,
    a_non_buf_scroll,             // [3]
@@ -218,10 +218,10 @@ term_make_action_pause_output(struct term_action *a)
 }
 
 static ALWAYS_INLINE void
-term_make_action_restart_video_output(struct term_action *a)
+term_make_action_restart_output(struct term_action *a)
 {
    *a = (struct term_action) {
-      .type1 = a_restart_video_output,
+      .type1 = a_restart_output,
       .arg = 0,
    };
 }

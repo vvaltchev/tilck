@@ -65,7 +65,7 @@ struct term_interface {
    void (*scroll_down)(term *t, u32 lines);
    void (*set_col_offset)(term *t, int off);
    void (*pause_output)(term *t);
-   void (*restart_video_output)(term *t);
+   void (*restart_output)(term *t);
    void (*set_filter)(term *t, term_filter func, void *ctx);
 
    /*
@@ -143,10 +143,10 @@ static ALWAYS_INLINE void term_pause_output(void)
    __curr_term_intf->pause_output(__curr_term);
 }
 
-static ALWAYS_INLINE void term_restart_video_output(void)
+static ALWAYS_INLINE void term_restart_output(void)
 {
    extern term *__curr_term;
    extern const struct term_interface *__curr_term_intf;
 
-   __curr_term_intf->restart_video_output(__curr_term);
+   __curr_term_intf->restart_output(__curr_term);
 }

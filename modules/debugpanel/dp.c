@@ -233,7 +233,7 @@ dp_main_body(enum term_type tt, struct key_event ke)
       }
 
       if (tt == term_type_video)
-         term_restart_video_output();
+         term_restart_output();
    }
 
    return dp_screen_key_handled;

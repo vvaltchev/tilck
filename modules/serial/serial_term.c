@@ -152,7 +152,7 @@ static const struct term_interface intf = {
    .scroll_down = (void*)sterm_ignored,
    .set_col_offset = (void*)sterm_ignored,
    .pause_output = (void*)sterm_ignored,
-   .restart_video_output = (void*)sterm_ignored,
+   .restart_output = (void*)sterm_ignored,
    .set_filter = (void*)sterm_ignored,
 
    .get_first_term = sterm_get_first_inst,

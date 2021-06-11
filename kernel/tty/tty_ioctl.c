@@ -137,9 +137,9 @@ void tty_setup_for_panic(struct tty *t)
        * we have no other choice, if we wanna see something on the screen.
        *
        * TODO: investigate whether it is possible to make
-       * term_restart_video_output() safer in panic scenarios.
+       * term_restart_output() safer in panic scenarios.
        */
-      t->tintf->restart_video_output(t->tstate);
+      t->tintf->restart_output(t->tstate);
       t->kd_gfx_mode = KD_TEXT;
    }
 }
@@ -149,7 +149,7 @@ void tty_restore_kd_text_mode(struct tty *t)
    if (t->kd_gfx_mode == KD_TEXT)
       return;
 
-   t->tintf->restart_video_output(t->tstate);
+   t->tintf->restart_output(t->tstate);
    t->kd_gfx_mode = KD_TEXT;
 }
 
