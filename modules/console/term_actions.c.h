@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#define DEFINE_TERM_ACTION_0(name, ...)                                     \
+#define DEFINE_TERM_ACTION_0(name)                                          \
    static void                                                              \
    term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {       \
       struct vterm *const t = _t;                                           \
@@ -8,20 +8,18 @@
       __term_action_##name(t);                                              \
    }
 
-#define DEFINE_TERM_ACTION_1(name, t1, ...)                                 \
+#define DEFINE_TERM_ACTION_1(name, t1)                                      \
    static void                                                              \
    term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) {       \
       struct vterm *const t = _t;                                           \
       __term_action_##name(t, (t1)__a1);                                    \
    }
 
-#define DEFINE_TERM_ACTION_2(name, t1, a1, t2, a2, ...)                     \
+#define DEFINE_TERM_ACTION_2(name, t1, t2)                                  \
    static void                                                              \
-   term_action_##name(term *_t, ulong __##a1, ulong __##a2, ulong __u1) {   \
+   term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __u1) {       \
       struct vterm *const t = _t;                                           \
-      t1 a1 = (t1)__##a1;                                                   \
-      t2 a2 = (t2)__##a2;                                                   \
-      __VA_ARGS__                                                           \
+      __term_action_##name(t, (t1)__a1, (t2)__a2);                          \
    }
 
 #define DEFINE_TERM_ACTION_3(name, t1, a1, t2, a2, t3, a3, ...)             \
@@ -62,7 +60,9 @@ __term_action_enable_cursor(struct vterm *const t, u16 val)
 
 DEFINE_TERM_ACTION_1(enable_cursor, u16)
 
-DEFINE_TERM_ACTION_2(scroll, u32, lines, enum term_scroll_type, st,
+static void
+__term_action_scroll(struct vterm *const t,
+                     u32 lines, enum term_scroll_type st)
 {
    if (st == term_scroll_up) {
       term_int_scroll_up(t, lines);
@@ -70,9 +70,12 @@ DEFINE_TERM_ACTION_2(scroll, u32, lines, enum term_scroll_type, st,
       ASSERT(st == term_scroll_down);
       term_int_scroll_down(t, lines);
    }
-})
+}
 
-DEFINE_TERM_ACTION_2(non_buf_scroll, u16, n, u16, dir,
+DEFINE_TERM_ACTION_2(scroll, u32, enum term_scroll_type)
+
+static void
+__term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
 {
    if (dir == term_scroll_up) {
 
@@ -83,12 +86,17 @@ DEFINE_TERM_ACTION_2(non_buf_scroll, u16, n, u16, dir,
       ASSERT(dir == term_scroll_down);
       term_internal_non_buf_scroll_down(t, n);
    }
-})
+}
 
-DEFINE_TERM_ACTION_2(move_ch_and_cur, int, row, int, col,
+DEFINE_TERM_ACTION_2(non_buf_scroll, u16, u16)
+
+static void
+__term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
 {
    term_int_move_ch_and_cur(t, row, col);
-})
+}
+
+DEFINE_TERM_ACTION_2(move_ch_and_cur, int, int)
 
 DEFINE_TERM_ACTION_3(write, char *, buf, u32, len, u8, color,
 {
@@ -141,7 +149,8 @@ __term_action_set_col_offset(struct vterm *const t, u16 off)
 
 DEFINE_TERM_ACTION_1(set_col_offset, u16)
 
-DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, dr, s8, dc,
+static void
+__term_action_move_ch_and_cur_rel(struct vterm *const t, s8 dr, s8 dc)
 {
    if (!t->buffer)
       return;
@@ -151,7 +160,9 @@ DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, dr, s8, dc,
 
    if (t->cursor_enabled)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
-})
+}
+
+DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, s8)
 
 static void __term_action_reset(struct vterm *const t)
 {
@@ -263,7 +274,9 @@ __term_action_erase_in_line(struct vterm *const t, int mode)
 
 DEFINE_TERM_ACTION_1(erase_in_line, int)
 
-DEFINE_TERM_ACTION_2(del, enum term_del_type, del_type, int, m,
+static void
+__term_action_del(struct vterm *const t,
+                  enum term_del_type del_type, int m)
 {
    switch (del_type) {
 
@@ -286,7 +299,9 @@ DEFINE_TERM_ACTION_2(del, enum term_del_type, del_type, int, m,
       default:
          NOT_REACHED();
    }
-})
+}
+
+DEFINE_TERM_ACTION_2(del, enum term_del_type, int)
 
 static void
 __term_action_ins_blank_chars(struct vterm *const t, u16 n)
@@ -465,7 +480,8 @@ __term_action_del_lines(struct vterm *const t, u32 n)
 
 DEFINE_TERM_ACTION_1(del_lines, u32)
 
-DEFINE_TERM_ACTION_2(set_scroll_region, u16, start, u16, end,
+static void
+__term_action_set_scroll_region(struct vterm *const t, u16 start, u16 end)
 {
    start = (u16) CLAMP(start, 0u, t->rows - 1u);
    end = (u16) CLAMP(end, 0u, t->rows - 1u);
@@ -476,4 +492,6 @@ DEFINE_TERM_ACTION_2(set_scroll_region, u16, start, u16, end,
    *t->start_scroll_region = start;
    *t->end_scroll_region = end;
    term_int_move_ch_and_cur(t, 0, 0);
-})
+}
+
+DEFINE_TERM_ACTION_2(set_scroll_region, u16, u16)
