@@ -8,12 +8,11 @@
       __term_action_##name(t);                                              \
    }
 
-#define DEFINE_TERM_ACTION_1(name, t1, a1, ...)                             \
+#define DEFINE_TERM_ACTION_1(name, t1, ...)                                 \
    static void                                                              \
-   term_action_##name(term *_t, ulong __##a1, ulong __u1, ulong __u2) {     \
+   term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) {       \
       struct vterm *const t = _t;                                           \
-      t1 a1 = (t1)__##a1;                                                   \
-      __VA_ARGS__                                                           \
+      __term_action_##name(t, (t1)__a1);                                    \
    }
 
 #define DEFINE_TERM_ACTION_2(name, t1, a1, t2, a2, ...)                     \
@@ -47,16 +46,21 @@
 #define CALL_ACTION_FUNC_3(func, t, a1, a2, a3)                    \
    (func)((t), (ulong)(a1), (ulong)(a2), (ulong)(a3))
 
-static void __term_action_none(struct vterm *const t)
+static void
+__term_action_none(struct vterm *const t)
 {
    /* do nothing */
 }
 
 DEFINE_TERM_ACTION_0(none)
 
-DEFINE_TERM_ACTION_1(enable_cursor, u16, val, {
+static void
+__term_action_enable_cursor(struct vterm *const t, u16 val)
+{
    term_int_enable_cursor(t, val);
-})
+}
+
+DEFINE_TERM_ACTION_1(enable_cursor, u16)
 
 DEFINE_TERM_ACTION_2(scroll, u32, lines, enum term_scroll_type, st,
 {
@@ -128,10 +132,14 @@ DEFINE_TERM_ACTION_3(direct_write, char *, buf, u32, len, u8, color,
       term_internal_write_char2(t, buf[i], color);
 })
 
-DEFINE_TERM_ACTION_1(set_col_offset, u16, off,
+
+static void
+__term_action_set_col_offset(struct vterm *const t, u16 off)
 {
    t->col_offset = off;
-})
+}
+
+DEFINE_TERM_ACTION_1(set_col_offset, u16)
 
 DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, dr, s8, dc,
 {
@@ -160,7 +168,8 @@ static void __term_action_reset(struct vterm *const t)
 
 DEFINE_TERM_ACTION_0(reset)
 
-DEFINE_TERM_ACTION_1(erase_in_display, int, mode,
+static void
+__term_action_erase_in_display(struct vterm *const t, int mode)
 {
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
@@ -218,9 +227,12 @@ DEFINE_TERM_ACTION_1(erase_in_display, int, mode,
       default:
          return;
    }
-})
+}
 
-DEFINE_TERM_ACTION_1(erase_in_line, int, mode,
+DEFINE_TERM_ACTION_1(erase_in_display, int)
+
+static void
+__term_action_erase_in_line(struct vterm *const t, int mode)
 {
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
@@ -247,7 +259,9 @@ DEFINE_TERM_ACTION_1(erase_in_line, int, mode,
       default:
          return;
    }
-})
+}
+
+DEFINE_TERM_ACTION_1(erase_in_line, int)
 
 DEFINE_TERM_ACTION_2(del, enum term_del_type, del_type, int, m,
 {
@@ -274,7 +288,8 @@ DEFINE_TERM_ACTION_2(del, enum term_del_type, del_type, int, m,
    }
 })
 
-DEFINE_TERM_ACTION_1(ins_blank_chars, u16, n,
+static void
+__term_action_ins_blank_chars(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -287,9 +302,12 @@ DEFINE_TERM_ACTION_1(ins_blank_chars, u16, n,
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-})
+}
 
-DEFINE_TERM_ACTION_1(del_chars_in_line, u16, n,
+DEFINE_TERM_ACTION_1(ins_blank_chars, u16)
+
+static void
+__term_action_del_chars_in_line(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -303,9 +321,12 @@ DEFINE_TERM_ACTION_1(del_chars_in_line, u16, n,
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-})
+}
 
-DEFINE_TERM_ACTION_1(erase_chars_in_line, u16, n,
+DEFINE_TERM_ACTION_1(del_chars_in_line, u16)
+
+static void
+__term_action_erase_chars_in_line(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -315,7 +336,9 @@ DEFINE_TERM_ACTION_1(erase_chars_in_line, u16, n,
 
    for (u16 c = t->c; c < t->cols; c++)
       t->vi->set_char_at(row, c, buf_row[c]);
-})
+}
+
+DEFINE_TERM_ACTION_1(erase_chars_in_line, u16)
 
 static void
 __term_action_pause_video_output(struct vterm *const t)
@@ -350,7 +373,8 @@ __term_action_restart_video_output(struct vterm *const t)
 
 DEFINE_TERM_ACTION_0(restart_video_output)
 
-DEFINE_TERM_ACTION_1(use_alt_buffer, bool, use_alt_buffer,
+static void
+__term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
 {
    u16 *b = get_buf_row(t, 0);
 
@@ -388,9 +412,12 @@ DEFINE_TERM_ACTION_1(use_alt_buffer, bool, use_alt_buffer,
    t->vi->disable_cursor();
    term_redraw(t);
    term_int_enable_cursor(t, t->cursor_enabled);
-})
+}
 
-DEFINE_TERM_ACTION_1(ins_blank_lines, u32, n,
+DEFINE_TERM_ACTION_1(use_alt_buffer, bool)
+
+static void
+__term_action_ins_blank_lines(struct vterm *const t, u32 n)
 {
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -410,9 +437,12 @@ DEFINE_TERM_ACTION_1(ins_blank_lines, u32, n,
       ts_buf_clear_row(t, row, DEFAULT_COLOR16);
 
    term_redraw_scroll_region(t);
-})
+}
 
-DEFINE_TERM_ACTION_1(del_lines, u32, n,
+DEFINE_TERM_ACTION_1(ins_blank_lines, u32)
+
+static void
+__term_action_del_lines(struct vterm *const t, u32 n)
 {
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -431,7 +461,9 @@ DEFINE_TERM_ACTION_1(del_lines, u32, n,
       ts_buf_clear_row(t, (u16)row, DEFAULT_COLOR16);
 
    term_redraw_scroll_region(t);
-})
+}
+
+DEFINE_TERM_ACTION_1(del_lines, u32)
 
 DEFINE_TERM_ACTION_2(set_scroll_region, u16, start, u16, end,
 {
