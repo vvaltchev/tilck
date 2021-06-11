@@ -8,7 +8,7 @@ struct actions_table_item {
    u32 args_count;
 };
 
-#define ENTRY(func, n) { (void *)(term_action_##func), n }
+#define ENTRY(func, n) { (void *)(__term_action_##func), n }
 
 static const struct actions_table_item actions_table[] = {
    [a_none]                 = ENTRY(none, 0),
@@ -75,11 +75,11 @@ vterm_write(term *t, const char *buf, size_t len, u8 color)
    ASSERT(len < MB);
 
    if (in_panic()) {
-      CALL_ACTION_FUNC_3(term_action_write, t, buf, len, color);
+      term_action_write(t, buf, (u32)len, color);
       return;
    }
 
-   term_make_action_write(&a, buf, len, color);
+   term_make_action_write(&a, buf, (u32)len, color);
    term_execute_or_enqueue_action(t, &a);
 }
 

@@ -2,30 +2,30 @@
 
 #define DEFINE_TERM_ACTION_0(name)                                          \
    static void                                                              \
-   term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {       \
+   __term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {     \
       struct vterm *const t = _t;                                           \
-      __term_action_##name(t);                                              \
+      term_action_##name(t);                                                \
    }
 
 #define DEFINE_TERM_ACTION_1(name, t1)                                      \
    static void                                                              \
-   term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) {       \
+   __term_action_##name(term *_t, ulong __a1, ulong __u1, ulong __u2) {     \
       struct vterm *const t = _t;                                           \
-      __term_action_##name(t, (t1)__a1);                                    \
+      term_action_##name(t, (t1)__a1);                                      \
    }
 
 #define DEFINE_TERM_ACTION_2(name, t1, t2)                                  \
    static void                                                              \
-   term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __u1) {       \
+   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __u1) {     \
       struct vterm *const t = _t;                                           \
-      __term_action_##name(t, (t1)__a1, (t2)__a2);                          \
+      term_action_##name(t, (t1)__a1, (t2)__a2);                            \
    }
 
 #define DEFINE_TERM_ACTION_3(name, t1, t2, t3)                              \
    static void                                                              \
-   term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __a3) {       \
+   __term_action_##name(term *_t, ulong __a1, ulong __a2, ulong __a3) {     \
       struct vterm *const t = _t;                                           \
-      __term_action_##name(t, (t1)__a1, (t2)__a2, (t3)__a3);                \
+      term_action_##name(t, (t1)__a1, (t2)__a2, (t3)__a3);                  \
    }
 
 #define CALL_ACTION_FUNC_0(func, t)                                \
@@ -41,7 +41,7 @@
    (func)((t), (ulong)(a1), (ulong)(a2), (ulong)(a3))
 
 static void
-__term_action_none(struct vterm *const t)
+term_action_none(struct vterm *const t)
 {
    /* do nothing */
 }
@@ -49,7 +49,7 @@ __term_action_none(struct vterm *const t)
 DEFINE_TERM_ACTION_0(none)
 
 static void
-__term_action_enable_cursor(struct vterm *const t, bool val)
+term_action_enable_cursor(struct vterm *const t, bool val)
 {
    term_int_enable_cursor(t, val);
 }
@@ -57,9 +57,9 @@ __term_action_enable_cursor(struct vterm *const t, bool val)
 DEFINE_TERM_ACTION_1(enable_cursor, bool)
 
 static void
-__term_action_scroll(struct vterm *const t,
-                     u32 lines,
-                     enum term_scroll_type st)
+term_action_scroll(struct vterm *const t,
+                   u32 lines,
+                   enum term_scroll_type st)
 {
    if (st == term_scroll_up) {
       term_int_scroll_up(t, lines);
@@ -72,7 +72,7 @@ __term_action_scroll(struct vterm *const t,
 DEFINE_TERM_ACTION_2(scroll, u32, enum term_scroll_type)
 
 static void
-__term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
+term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
 {
    if (dir == term_scroll_up) {
 
@@ -88,7 +88,7 @@ __term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
 DEFINE_TERM_ACTION_2(non_buf_scroll, u16, u16)
 
 static void
-__term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
+term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
 {
    term_int_move_ch_and_cur(t, row, col);
 }
@@ -96,7 +96,7 @@ __term_action_move_ch_and_cur(struct vterm *const t, int row, int col)
 DEFINE_TERM_ACTION_2(move_ch_and_cur, int, int)
 
 static void
-__term_action_write(struct vterm *const t, char *buf, u32 len, u8 color)
+term_action_write(struct vterm *const t, const char *buf, u32 len, u8 color)
 {
    const struct video_interface *const vi = t->vi;
 
@@ -131,11 +131,11 @@ __term_action_write(struct vterm *const t, char *buf, u32 len, u8 color)
       vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
-DEFINE_TERM_ACTION_3(write, char *, u32, u8)
+DEFINE_TERM_ACTION_3(write, const char *, u32, u8)
 
 /* Direct write without any filter nor move_cursor/flush */
 static void
-__term_action_direct_write(struct vterm *const t, char *buf, u32 len, u8 color)
+term_action_direct_write(struct vterm *const t, char *buf, u32 len, u8 color)
 {
    for (u32 i = 0; i < len; i++)
       term_internal_write_char2(t, buf[i], color);
@@ -144,7 +144,7 @@ __term_action_direct_write(struct vterm *const t, char *buf, u32 len, u8 color)
 DEFINE_TERM_ACTION_3(direct_write, char *, u32, u8)
 
 static void
-__term_action_set_col_offset(struct vterm *const t, u16 off)
+term_action_set_col_offset(struct vterm *const t, u16 off)
 {
    t->col_offset = off;
 }
@@ -152,7 +152,7 @@ __term_action_set_col_offset(struct vterm *const t, u16 off)
 DEFINE_TERM_ACTION_1(set_col_offset, u16)
 
 static void
-__term_action_move_ch_and_cur_rel(struct vterm *const t, s8 dr, s8 dc)
+term_action_move_ch_and_cur_rel(struct vterm *const t, s8 dr, s8 dc)
 {
    if (!t->buffer)
       return;
@@ -166,7 +166,7 @@ __term_action_move_ch_and_cur_rel(struct vterm *const t, s8 dr, s8 dc)
 
 DEFINE_TERM_ACTION_2(move_ch_and_cur_rel, s8, s8)
 
-static void __term_action_reset(struct vterm *const t)
+static void term_action_reset(struct vterm *const t)
 {
    t->vi->enable_cursor();
    term_int_move_ch_and_cur(t, 0, 0);
@@ -182,7 +182,7 @@ static void __term_action_reset(struct vterm *const t)
 DEFINE_TERM_ACTION_0(reset)
 
 static void
-__term_action_erase_in_display(struct vterm *const t, int mode)
+term_action_erase_in_display(struct vterm *const t, int mode)
 {
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
@@ -230,7 +230,7 @@ __term_action_erase_in_display(struct vterm *const t, int mode)
          {
             u16 row = t->r;
             u16 col = t->c;
-            __term_action_reset(t);
+            term_action_reset(t);
 
             if (t->cursor_enabled)
                t->vi->move_cursor(row, col, DEFAULT_COLOR16);
@@ -245,7 +245,7 @@ __term_action_erase_in_display(struct vterm *const t, int mode)
 DEFINE_TERM_ACTION_1(erase_in_display, int)
 
 static void
-__term_action_erase_in_line(struct vterm *const t, int mode)
+term_action_erase_in_line(struct vterm *const t, int mode)
 {
    const u16 entry = make_vgaentry(' ', DEFAULT_COLOR16);
 
@@ -277,8 +277,9 @@ __term_action_erase_in_line(struct vterm *const t, int mode)
 DEFINE_TERM_ACTION_1(erase_in_line, int)
 
 static void
-__term_action_del(struct vterm *const t,
-                  enum term_del_type del_type, int m)
+term_action_del(struct vterm *const t,
+                enum term_del_type del_type,
+                int m)
 {
    switch (del_type) {
 
@@ -291,11 +292,11 @@ __term_action_del(struct vterm *const t,
          break;
 
       case TERM_DEL_ERASE_IN_DISPLAY:
-         __term_action_erase_in_display(t, m);
+         term_action_erase_in_display(t, m);
          break;
 
       case TERM_DEL_ERASE_IN_LINE:
-         __term_action_erase_in_line(t, m);
+         term_action_erase_in_line(t, m);
          break;
 
       default:
@@ -306,7 +307,7 @@ __term_action_del(struct vterm *const t,
 DEFINE_TERM_ACTION_2(del, enum term_del_type, int)
 
 static void
-__term_action_ins_blank_chars(struct vterm *const t, u16 n)
+term_action_ins_blank_chars(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -324,7 +325,7 @@ __term_action_ins_blank_chars(struct vterm *const t, u16 n)
 DEFINE_TERM_ACTION_1(ins_blank_chars, u16)
 
 static void
-__term_action_del_chars_in_line(struct vterm *const t, u16 n)
+term_action_del_chars_in_line(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -343,7 +344,7 @@ __term_action_del_chars_in_line(struct vterm *const t, u16 n)
 DEFINE_TERM_ACTION_1(del_chars_in_line, u16)
 
 static void
-__term_action_erase_chars_in_line(struct vterm *const t, u16 n)
+term_action_erase_chars_in_line(struct vterm *const t, u16 n)
 {
    const u16 row = t->r;
    u16 *const buf_row = get_buf_row(t, row);
@@ -358,7 +359,7 @@ __term_action_erase_chars_in_line(struct vterm *const t, u16 n)
 DEFINE_TERM_ACTION_1(erase_chars_in_line, u16)
 
 static void
-__term_action_pause_video_output(struct vterm *const t)
+term_action_pause_video_output(struct vterm *const t)
 {
    if (t->vi->disable_static_elems_refresh)
       t->vi->disable_static_elems_refresh();
@@ -371,7 +372,7 @@ __term_action_pause_video_output(struct vterm *const t)
 DEFINE_TERM_ACTION_0(pause_video_output)
 
 static void
-__term_action_restart_video_output(struct vterm *const t)
+term_action_restart_video_output(struct vterm *const t)
 {
    t->vi = t->saved_vi;
    term_redraw(t);
@@ -391,7 +392,7 @@ __term_action_restart_video_output(struct vterm *const t)
 DEFINE_TERM_ACTION_0(restart_video_output)
 
 static void
-__term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
+term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
 {
    u16 *b = get_buf_row(t, 0);
 
@@ -434,7 +435,7 @@ __term_action_use_alt_buffer(struct vterm *const t, bool use_alt_buffer)
 DEFINE_TERM_ACTION_1(use_alt_buffer, bool)
 
 static void
-__term_action_ins_blank_lines(struct vterm *const t, u32 n)
+term_action_ins_blank_lines(struct vterm *const t, u32 n)
 {
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -459,7 +460,7 @@ __term_action_ins_blank_lines(struct vterm *const t, u32 n)
 DEFINE_TERM_ACTION_1(ins_blank_lines, u32)
 
 static void
-__term_action_del_lines(struct vterm *const t, u32 n)
+term_action_del_lines(struct vterm *const t, u32 n)
 {
    const u16 eR = *t->end_scroll_region + 1;
 
@@ -483,7 +484,7 @@ __term_action_del_lines(struct vterm *const t, u32 n)
 DEFINE_TERM_ACTION_1(del_lines, u32)
 
 static void
-__term_action_set_scroll_region(struct vterm *const t, u16 start, u16 end)
+term_action_set_scroll_region(struct vterm *const t, u16 start, u16 end)
 {
    start = (u16) CLAMP(start, 0u, t->rows - 1u);
    end = (u16) CLAMP(end, 0u, t->rows - 1u);
