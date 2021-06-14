@@ -38,36 +38,51 @@ void real_time_get_timespec(struct k_timespec64 *tp);
 void monotonic_time_get_timespec(struct k_timespec64 *tp);
 void clock_get_resync_stats(struct clock_resync_stats *s);
 
+union k_compat_timespec_u {
+   struct k_timespec64 ts64;
+   struct timespec ts;
+};
+
 static ALWAYS_INLINE struct timespec
 to_timespec(struct k_timespec64 tp)
 {
-   struct timespec res;
-   STATIC_ASSERT(sizeof(res.tv_nsec) == sizeof(res.tv_nsec));
+   union k_compat_timespec_u res;
+   STATIC_ASSERT(sizeof(res.ts.tv_nsec) == sizeof(res.ts64.tv_nsec));
 
-   if (sizeof(res.tv_sec) == tp.tv_sec)
-      return *(struct timespec *)&tp;
+   if (sizeof(res.ts.tv_sec) != sizeof(res.ts64.tv_sec)) {
 
-   res = (struct timespec) {
-      .tv_sec = (s32)tp.tv_sec,
-      .tv_nsec = tp.tv_nsec,
-   };
+      res.ts = (struct timespec) {
+         .tv_sec = (s32)tp.tv_sec, // NOTE: truncation
+         .tv_nsec = tp.tv_nsec,
+      };
 
-   return res;
+   } else {
+
+      /* We're on a 64-bit architecture and ts and ts64 are the same type */
+      res.ts64 = tp;
+   }
+
+   return res.ts;
 }
 
 static ALWAYS_INLINE struct k_timespec64
 from_timespec(struct timespec tp)
 {
-   struct k_timespec64 res;
-   STATIC_ASSERT(sizeof(res.tv_nsec) == sizeof(res.tv_nsec));
+   union k_compat_timespec_u res;
+   STATIC_ASSERT(sizeof(res.ts.tv_nsec) == sizeof(res.ts64.tv_nsec));
 
-   if (sizeof(res.tv_sec) == tp.tv_sec)
-      return *(struct k_timespec64 *)&tp;
+   if (sizeof(res.ts.tv_sec) != sizeof(res.ts64.tv_sec)) {
 
-   res = (struct k_timespec64) {
-      .tv_sec = tp.tv_sec,
-      .tv_nsec = tp.tv_nsec,
-   };
+      res.ts64 = (struct k_timespec64) {
+         .tv_sec = tp.tv_sec,    // NOTE: extension
+         .tv_nsec = tp.tv_nsec,
+      };
 
-   return res;
+   } else {
+
+      /* We're on a 64-bit architecture and ts and ts64 are the same type */
+      res.ts = tp;
+   }
+
+   return res.ts64;
 }
