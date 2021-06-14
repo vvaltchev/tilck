@@ -5,7 +5,7 @@ typedef void (*action_func)(struct vterm *, ulong, ulong, ulong);
 struct actions_table_item {
 
    action_func func;
-   u32 args_count;
+   u32 action_kind;
 };
 
 #define ENTRY(func, n) { (void *)(__term_action_##func), n }
@@ -17,8 +17,8 @@ static const struct actions_table_item actions_table[] = {
    [a_del_generic]          = ENTRY(del, 2),
    [a_scroll]               = ENTRY(scroll, 2),
    [a_set_col_offset]       = ENTRY(set_col_offset, 1),
-   [a_move_cur]             = ENTRY(move_cur, 2),
-   [a_move_cur_rel]         = ENTRY(move_cur_rel, 2),
+   [a_move_cur]             = ENTRY(move_cur, 4),
+   [a_move_cur_rel]         = ENTRY(move_cur_rel, 4),
    [a_reset]                = ENTRY(reset, 0),
    [a_pause_output]         = ENTRY(pause_output, 0),
    [a_restart_output]       = ENTRY(restart_output, 0),
@@ -41,18 +41,21 @@ static void term_execute_action(struct vterm *t, struct term_action *a)
 
    const struct actions_table_item *it = &actions_table[a->type3];
 
-   switch (it->args_count) {
-      case 3:
-         CALL_ACTION_FUNC_3(it->func, t, a->ptr, a->len, a->col);
-         break;
-      case 2:
-         CALL_ACTION_FUNC_2(it->func, t, a->arg1, a->arg2);
+   switch (it->action_kind) {
+      case 0:
+         CALL_ACTION_FUNC_0(it->func, t);
          break;
       case 1:
          CALL_ACTION_FUNC_1(it->func, t, a->arg);
          break;
-      case 0:
-         CALL_ACTION_FUNC_0(it->func, t);
+      case 2:
+         CALL_ACTION_FUNC_2(it->func, t, a->arg1, a->arg2);
+         break;
+      case 3:
+         CALL_ACTION_FUNC_3(it->func, t, a->ptr, a->len, a->col);
+         break;
+      case 4:
+         CALL_ACTION_FUNC_2(it->func, t, a->arg16_1, a->arg16_2);
          break;
       default:
          NOT_REACHED();

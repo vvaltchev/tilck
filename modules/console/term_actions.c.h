@@ -151,7 +151,7 @@ term_action_set_col_offset(struct vterm *const t, u16 off)
 DEFINE_TERM_ACTION_1(set_col_offset, u16)
 
 static void
-term_action_move_cur_rel(struct vterm *const t, s8 dr, s8 dc)
+term_action_move_cur_rel(struct vterm *const t, s16 dr, s16 dc)
 {
    if (!t->buffer)
       return;
@@ -163,7 +163,7 @@ term_action_move_cur_rel(struct vterm *const t, s8 dr, s8 dc)
       t->vi->move_cursor(t->r, t->c, get_curr_cell_fg_color(t));
 }
 
-DEFINE_TERM_ACTION_2(move_cur_rel, s8, s8)
+DEFINE_TERM_ACTION_2(move_cur_rel, s16, s16)
 
 static void term_action_reset(struct vterm *const t)
 {

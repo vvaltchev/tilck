@@ -67,9 +67,8 @@ struct term_action {
    union {
 
       struct {
-         u32 type3 :  8;
-         u32 len   : 16;
-         u32 col   :  8;
+         u32 type1 :  8;
+         u32 arg   : 24;
       };
 
       struct {
@@ -79,13 +78,20 @@ struct term_action {
       };
 
       struct {
-         u32 type1 :  8;
-         u32 arg   : 24;
+         u32 type3 :  8;
+         u32 len   : 16;
+         u32 col   :  8;
+         void *ptr;
       };
 
-   };
+      struct {
+         u32 type4 :  8;
+         u32 unused: 24;
 
-   ulong ptr;
+         u16 arg16_1;
+         u16 arg16_2;
+      };
+   };
 };
 
 STATIC_ASSERT(sizeof(struct term_action) == (2 * sizeof(ulong)));
@@ -103,7 +109,7 @@ term_make_action_write(struct term_action *a,
       .type3 = a_write,
       .len = UNSAFE_MIN((u32)len, MAX_TERM_WRITE_LEN),
       .col = color,
-      .ptr = (ulong)buf,
+      .ptr = (void *)buf,
    };
 }
 
@@ -117,7 +123,7 @@ term_make_action_direct_write(struct term_action *a,
       .type3 = a_direct_write,
       .len = UNSAFE_MIN((u32)len, MAX_TERM_WRITE_LEN),
       .col = color,
-      .ptr = (ulong)buf,
+      .ptr = (void *)buf,
    };
 }
 
@@ -184,9 +190,9 @@ static ALWAYS_INLINE void
 term_make_action_move_cursor(struct term_action *a, u32 row, u32 col)
 {
    *a = (struct term_action) {
-      .type2 = a_move_cur,
-      .arg1 = row,
-      .arg2 = col,
+      .type4 = a_move_cur,
+      .arg16_1 = LO_BITS(row, 16, u16),
+      .arg16_2 = LO_BITS(col, 16, u16),
    };
 }
 
@@ -194,9 +200,9 @@ static ALWAYS_INLINE void
 term_make_action_move_cursor_rel(struct term_action *a, int dr, int dc)
 {
    *a = (struct term_action) {
-      .type2 = a_move_cur_rel,
-      .arg1 = LO_BITS((u32)dr, 8, u32),
-      .arg2 = LO_BITS((u32)dc, 8, u32),
+      .type4 = a_move_cur_rel,
+      .arg16_1 = LO_BITS((u32)dr, 16, u16),
+      .arg16_2 = LO_BITS((u32)dc, 16, u16),
    };
 }
 
