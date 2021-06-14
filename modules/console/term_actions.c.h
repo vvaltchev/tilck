@@ -61,31 +61,30 @@ term_action_scroll(struct vterm *const t,
                    u32 lines,
                    enum term_scroll_type st)
 {
-   if (st == term_scroll_up) {
+   ASSERT(st == term_scroll_up || st == term_scroll_down);
+
+   if (st == term_scroll_up)
       term_int_scroll_up(t, lines);
-   } else {
-      ASSERT(st == term_scroll_down);
+   else
       term_int_scroll_down(t, lines);
-   }
 }
 
 DEFINE_TERM_ACTION_2(scroll, u32, enum term_scroll_type)
 
 static void
-term_action_non_buf_scroll(struct vterm *const t, u16 n, u16 dir)
+term_action_non_buf_scroll(struct vterm *const t,
+                           u16 n,
+                           enum term_scroll_type st)
 {
-   if (dir == term_scroll_up) {
+   ASSERT(st == term_scroll_up || st == term_scroll_down);
 
+   if (st == term_scroll_up)
       term_internal_non_buf_scroll_up(t, n);
-
-   } else {
-
-      ASSERT(dir == term_scroll_down);
+   else
       term_internal_non_buf_scroll_down(t, n);
-   }
 }
 
-DEFINE_TERM_ACTION_2(non_buf_scroll, u16, u16)
+DEFINE_TERM_ACTION_2(non_buf_scroll, u16, enum term_scroll_type)
 
 static void
 term_action_move_cur(struct vterm *const t, int row, int col)
