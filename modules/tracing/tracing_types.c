@@ -340,3 +340,28 @@ const struct sys_param_type ptype_u64_ptr = {
    .dump = dump_param_u64_ptr,
    .dump_from_val = NULL,
 };
+
+static bool
+dump_signum_param(ulong val, long hlp, char *dest, size_t dest_buf_size)
+{
+   int signum = (int)val;
+   int written = snprintk(
+      dest, dest_buf_size,
+      "%d [%s]", signum, get_signal_name(signum)
+   );
+
+   if (written <= 0 || written == (int)dest_buf_size)
+      return false;
+
+   return true;
+}
+
+const struct sys_param_type ptype_signum = {
+
+   .name = "signum",
+   .slot_size = 0,
+
+   .save = NULL,
+   .dump = NULL,
+   .dump_from_val = dump_signum_param,
+};

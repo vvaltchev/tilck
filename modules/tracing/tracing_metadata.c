@@ -48,8 +48,6 @@ static const struct syscall_info __tracing_metadata[] =
 
    SYSCALL_TYPE_5(SYS_setpgid, "pid", "pgid"),
    SYSCALL_TYPE_5(SYS_dup2, "oldfd", "newfd"),
-   SYSCALL_TYPE_5(SYS_kill, "pid", "sig"),
-   SYSCALL_TYPE_5(SYS_tkill, "tid", "sig"),
 
 #if defined(__i386__)
    SYSCALL_TYPE_6(SYS_chown16, "path", "owner", "group"),
@@ -67,6 +65,28 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_RW(SYS_write, "fd", "buf", &ptype_big_buf, sys_param_in, "count"),
    SYSCALL_RW(SYS_readv, "fd", "iov", &ptype_iov_out, sys_param_out, "iovcnt"),
    SYSCALL_RW(SYS_writev, "fd", "iov", &ptype_iov_in, sys_param_in, "iovcnt"),
+
+   {
+      .sys_n = SYS_kill,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("sig", &ptype_signum, sys_param_in),
+      }
+   },
+
+   {
+      .sys_n = SYS_tkill,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("tid", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("sig", &ptype_signum, sys_param_in),
+      }
+   },
 
    {
       .sys_n = SYS_exit,

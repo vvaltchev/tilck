@@ -235,6 +235,7 @@ extern const struct sys_param_type ptype_int32_pair;
 extern const struct sys_param_type ptype_doff64;
 extern const struct sys_param_type ptype_whence;
 extern const struct sys_param_type ptype_u64_ptr;
+extern const struct sys_param_type ptype_signum;
 
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
