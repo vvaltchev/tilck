@@ -215,6 +215,9 @@ trace_syscall_enter_int(u32 sys,
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
+   if (!get_curr_task()->traced)
+      return; /* the current task is not traced */
+
    if (si && !exp_block(si))
       return; /* don't trace the enter event */
 
@@ -244,6 +247,9 @@ trace_syscall_exit_int(u32 sys,
                        ulong a6)
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
+
+   if (!get_curr_task()->traced)
+      return; /* the current task is not traced */
 
    struct trace_event e = {
       .type = te_sys_exit,
@@ -288,6 +294,9 @@ trace_printk_int(int level, const char *fmt, ...)
 void
 trace_signal_delivered_int(int signum)
 {
+   if (!get_curr_task()->traced)
+      return; /* the current task is not traced */
+
    struct trace_event e = {
       .type = te_signal_delivered,
       .tid = get_curr_tid(),

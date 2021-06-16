@@ -306,21 +306,25 @@ tracing_set_printk_lvl(int lvl)
 
 
 #define trace_sys_enter(sn, ...)                                               \
-   if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
-      trace_syscall_enter_int(sn, __VA_ARGS__);                                \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
+      if (UNLIKELY(get_curr_task()->traced))                                   \
+         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
+            trace_syscall_enter_int(sn, __VA_ARGS__);                          \
    }
 
 #define trace_sys_exit(sn, ret, ...)                                           \
-   if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
-      trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);                    \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
+      if (UNLIKELY(get_curr_task()->traced))                                   \
+         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
+            trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);              \
    }
 
 #define trace_printk(lvl, fmt, ...)                                            \
-   if (MOD_tracing && tracing_is_enabled()) {                                  \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
       trace_printk_int((lvl), fmt, __VA_ARGS__);                               \
    }
 
 #define trace_signal_delivered(signum)                                         \
-   if (MOD_tracing && tracing_is_enabled()) {                                  \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
       trace_signal_delivered_int(signum);                                      \
    }

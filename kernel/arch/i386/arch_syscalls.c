@@ -483,9 +483,6 @@ int get_syscall_num(void *func)
 
 void handle_syscall(regs_t *r)
 {
-   struct task *const curr = get_curr_task();
-   const bool traced = curr->traced;
-
    /*
     * In case of a sysenter syscall, the eflags are saved in kernel mode after
     * the cpu disabled the interrupts. Therefore, with the statement below we
@@ -508,16 +505,12 @@ void handle_syscall(regs_t *r)
    enable_preemption();
    {
       process_signals();
-
-      if (traced)
-         trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+      trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
       *(void **)(&fptr) = syscalls[sn];
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-      if (traced)
-         trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-
+      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
       process_signals();
    }
    disable_preemption();
