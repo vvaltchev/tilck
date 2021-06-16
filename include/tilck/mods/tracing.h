@@ -177,7 +177,7 @@ void
 trace_printk_int(int level, const char *fmt, ...);
 
 void
-trace_signal_delivered_int(int signum);
+trace_signal_delivered_int(int target_tid, int signum);
 
 void
 trace_task_killed_int(int signum);
@@ -330,9 +330,9 @@ tracing_set_printk_lvl(int lvl)
       trace_printk_int((lvl), fmt, __VA_ARGS__);                               \
    }
 
-#define trace_signal_delivered(signum)                                         \
+#define trace_signal_delivered(target_tid, signum)                             \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      trace_signal_delivered_int(signum);                                      \
+      trace_signal_delivered_int(target_tid, signum);                          \
    }
 
 #define trace_task_killed(signum)                                              \

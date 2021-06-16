@@ -332,14 +332,24 @@ trace_printk_int(int level, const char *fmt, ...)
 }
 
 void
-trace_signal_delivered_int(int signum)
+trace_signal_delivered_int(int target_tid, int signum)
 {
-   if (!get_curr_task()->traced)
-      return; /* the current task is not traced */
+   struct task *ti;
+   disable_preemption();
+   {
+      ti = get_task(target_tid);
+   }
+   enable_preemption();
+
+   if (!ti)
+      return;
+
+   if (!ti->traced)
+      return; /* the task is not traced */
 
    struct trace_event e = {
       .type = te_signal_delivered,
-      .tid = get_curr_tid(),
+      .tid = target_tid,
       .sys_time = get_sys_time(),
       .sig_ev = {
          .signum = signum

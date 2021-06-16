@@ -21,7 +21,7 @@ void process_signals(void)
    struct task *curr = get_curr_task();
 
    if (curr->pending_signal) {
-      trace_signal_delivered(curr->pending_signal);
+      trace_signal_delivered(curr->tid, curr->pending_signal);
       terminate_process(0, curr->pending_signal);
    }
 }
@@ -85,6 +85,7 @@ static void action_stop(struct task *ti, int signum)
 {
    ASSERT(!is_kernel_thread(ti));
 
+   trace_signal_delivered(ti->tid, signum);
    ti->stopped = true;
    ti->wstatus = STOPCODE(signum);
    wake_up_tasks_waiting_on(ti, task_stopped);
@@ -101,6 +102,7 @@ static void action_continue(struct task *ti, int signum)
    if (ti->vfork_stopped)
       return;
 
+   trace_signal_delivered(ti->tid, signum);
    ti->stopped = false;
    ti->wstatus = CONTINUED;
    wake_up_tasks_waiting_on(ti, task_continued);
