@@ -14,12 +14,7 @@ enum trace_event_type {
    te_sys_exit,
 };
 
-struct trace_event {
-
-   enum trace_event_type type;
-   int tid;
-
-   u64 sys_time;
+struct syscall_event_data {
 
    u32 sys;
    long retval;
@@ -39,6 +34,18 @@ struct trace_event {
          char d1[32];
          char d2[16];
       } fmt1;
+   };
+};
+
+struct trace_event {
+
+   enum trace_event_type type;
+   int tid;
+
+   u64 sys_time;
+
+   union {
+      struct syscall_event_data sys_ev;
    };
 };
 

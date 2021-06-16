@@ -116,15 +116,18 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name)
    return -1;
 }
 
-static void trace_syscall_enter_save_params(const struct syscall_info *si,
-                                            struct trace_event *e)
+static void
+trace_syscall_enter_save_params(const struct syscall_info *si,
+                                struct trace_event *e)
 {
+   if (!si)
+      return;
+
+   struct syscall_event_data *se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
    int idx;
 
-   if (!si)
-      return;
 
    for (int i = 0; i < si->n_params; i++) {
 
@@ -140,13 +143,13 @@ static void trace_syscall_enter_save_params(const struct syscall_info *si,
             idx = tracing_get_param_idx(si, p->helper_param_name);
             ASSERT(idx >= 0);
 
-            sz = (long) e->args[idx];
+            sz = (long) se->args[idx];
          }
 
          tracing_get_slot(e, si, i, &buf, &bs);
          ASSERT(buf && bs > 0);
 
-         t->save(TO_PTR(e->args[i]), sz, buf, bs);
+         t->save(TO_PTR(se->args[i]), sz, buf, bs);
       }
    }
 }
@@ -155,12 +158,13 @@ static void
 trace_syscall_exit_save_params(const struct syscall_info *si,
                                struct trace_event *e)
 {
+   if (!si)
+      return;
+
+   struct syscall_event_data *se = &e->sys_ev;
    char *buf = NULL;
    size_t bs = 0;
    int idx;
-
-   if (!si)
-      return;
 
    for (int i = 0; i < si->n_params; i++) {
 
@@ -177,13 +181,13 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
             idx = tracing_get_param_idx(si, p->helper_param_name);
             ASSERT(idx >= 0);
 
-            sz = (long) e->args[idx];
+            sz = (long) se->args[idx];
          }
 
          tracing_get_slot(e, si, i, &buf, &bs);
          ASSERT(buf && bs > 0);
 
-         t->save(TO_PTR(e->args[i]), sz, buf, bs);
+         t->save(TO_PTR(se->args[i]), sz, buf, bs);
       }
    }
 }
@@ -203,11 +207,14 @@ trace_syscall_enter_int(u32 sys,
       return; /* don't trace the enter event */
 
    struct trace_event e = {
+
       .type = te_sys_enter,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
-      .sys = sys,
-      .args = {a1,a2,a3,a4,a5,a6}
+      .sys_ev = {
+         .sys = sys,
+         .args = {a1,a2,a3,a4,a5,a6}
+      }
    };
 
    trace_syscall_enter_save_params(si, &e);
@@ -236,9 +243,11 @@ trace_syscall_exit_int(u32 sys,
       .type = te_sys_exit,
       .tid = get_curr_tid(),
       .sys_time = get_sys_time(),
-      .sys = sys,
-      .retval = retval,
-      .args = {a1,a2,a3,a4,a5,a6}
+      .sys_ev = {
+         .sys = sys,
+         .retval = retval,
+         .args = {a1,a2,a3,a4,a5,a6}
+      }
    };
 
    trace_syscall_exit_save_params(si, &e);
@@ -287,7 +296,7 @@ tracing_get_syscall_info(u32 n)
 
 #define NULL_TRACE_EVENT                           ((struct trace_event *)0)
 
-#define GET_SLOT(e, fmt_n, slot_n)               ((e)->fmt##fmt_n.d##slot_n)
+#define GET_SLOT(e, fmt_n, slot_n)       ((e)->sys_ev.fmt##fmt_n.d##slot_n)
 
 #define GET_SLOT_ABS_OFF(fmt_n, slot_n)                                    \
    ((ulong)GET_SLOT(NULL_TRACE_EVENT, fmt_n, slot_n))
@@ -346,7 +355,8 @@ tracing_get_slot(struct trace_event *e,
                  char **buf,
                  size_t *size)
 {
-   const s8 slot = (*params_slots)[e->sys][p_idx];
+   ASSERT(e->type == te_sys_enter || e->type == te_sys_exit);
+   const s8 slot = (*params_slots)[e->sys_ev.sys][p_idx];
    s8 fmt;
 
    if (slot == NO_SLOT)

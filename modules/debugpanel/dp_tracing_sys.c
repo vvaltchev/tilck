@@ -68,7 +68,7 @@ dp_dump_rendered_params(const char *sys_name, const struct syscall_info *si)
 
 static void
 dp_render_full_dump_single_param(int i,
-                                 struct trace_event *e,
+                                 struct trace_event *event,
                                  const struct syscall_info *si,
                                  const struct sys_param_info *p,
                                  const struct sys_param_type *type)
@@ -76,6 +76,7 @@ dp_render_full_dump_single_param(int i,
    char *data;
    size_t data_size;
    long hlp = -1; /* helper param, means "real_size" for ptype_buffer */
+   struct syscall_event_data *e = &event->sys_ev;
 
    if (p->helper_param_name) {
 
@@ -85,7 +86,7 @@ dp_render_full_dump_single_param(int i,
       hlp = (long) e->args[idx];
    }
 
-   if (!tracing_get_slot(e, si, i, &data, &data_size)) {
+   if (!tracing_get_slot(event, si, i, &data, &data_size)) {
 
       ASSERT(type->dump_from_val);
 
@@ -102,7 +103,7 @@ dp_render_full_dump_single_param(int i,
 
       sz = MIN(sz, (long)data_size);
 
-      if (p->real_sz_in_ret && e->type == te_sys_exit)
+      if (p->real_sz_in_ret && event->type == te_sys_exit)
          hlp = e->retval >= 0 ? e->retval : 0;
 
       if (!type->dump(e->args[i], data, sz, hlp, rend_bufs[i], REND_BUF_SZ))
@@ -111,8 +112,10 @@ dp_render_full_dump_single_param(int i,
 }
 
 static void
-dp_render_minimal_dump_single_param(int i, struct trace_event *e)
+dp_render_minimal_dump_single_param(int i, struct trace_event *event)
 {
+   struct syscall_event_data *e = &event->sys_ev;
+
    if (!ptype_voidp.dump_from_val(e->args[i], -1, rend_bufs[i], REND_BUF_SZ))
       panic("Unable to serialize a ptype_voidp in a render buf");
 }
@@ -192,12 +195,14 @@ dp_dump_ret_val(const struct syscall_info *si, long retval)
    );
 }
 
-void
-dp_dump_syscall_event(struct trace_event *e,
+static void
+dp_dump_syscall_event(struct trace_event *event,
                       const char *sys_name,
                       const struct syscall_info *si)
 {
-   if (e->type == te_sys_enter) {
+   struct syscall_event_data *e = &event->sys_ev;
+
+   if (event->type == te_sys_enter) {
 
       dp_write_raw(E_COLOR_BR_GREEN "ENTER" RESET_ATTRS " ");
 
@@ -210,11 +215,11 @@ dp_dump_syscall_event(struct trace_event *e,
    }
 
    if (si)
-      dp_dump_syscall_with_info(e, sys_name, si);
+      dp_dump_syscall_with_info(event, sys_name, si);
    else
       dp_write_raw("%s()", sys_name);
 
-   if (e->type == te_sys_exit) {
+   if (event->type == te_sys_exit) {
 
       dp_write_raw(" -> ");
       dp_dump_ret_val(si, e->retval);
@@ -223,5 +228,18 @@ dp_dump_syscall_event(struct trace_event *e,
    dp_write_raw("\r\n");
 }
 
+void
+dp_handle_syscall_event(struct trace_event *e)
+{
+   const char *sys_name = NULL;
+   const struct syscall_info *si = NULL;
+   struct syscall_event_data *se = &e->sys_ev;
+
+   sys_name = tracing_get_syscall_name(se->sys);
+   ASSERT(sys_name);
+   sys_name += 4; /* skip the "sys_" prefix */
+   si = tracing_get_syscall_info(se->sys);
+   dp_dump_syscall_event(e, sys_name, si);
+}
 
 #endif // #if MOD_tracing
