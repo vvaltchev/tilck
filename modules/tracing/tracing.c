@@ -309,6 +309,24 @@ trace_signal_delivered_int(int signum)
    enqueue_trace_event(&e);
 }
 
+void
+trace_task_killed_int(int signum)
+{
+   if (!get_curr_task()->traced)
+      return; /* the current task is not traced */
+
+   struct trace_event e = {
+      .type = te_killed,
+      .tid = get_curr_tid(),
+      .sys_time = get_sys_time(),
+      .sig_ev = {
+         .signum = signum
+      }
+   };
+
+   enqueue_trace_event(&e);
+}
+
 bool read_trace_event_noblock(struct trace_event *e)
 {
    bool ret;

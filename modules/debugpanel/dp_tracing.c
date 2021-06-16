@@ -20,16 +20,9 @@
 
 static char *line_buf;
 
-/* Forward declartions of functions in dp_tracing_sys.c */
-
-void
-dp_handle_syscall_event(struct trace_event *e);
-
 /* Shared data with dp_tracing_sys.c */
-
 char *rend_bufs[6];
 int used_rend_bufs;
-
 /* -- */
 
 void init_dp_tracing(void)
@@ -181,7 +174,14 @@ dp_dump_tracing_event(struct trace_event *e)
 
       case te_signal_delivered:
          dp_write_raw(
-            E_COLOR_BR_RED "GOT SIGNAL: " RESET_ATTRS "%d\r\n",
+            E_COLOR_YELLOW "GOT SIGNAL: " RESET_ATTRS "%d\r\n",
+            e->sig_ev.signum
+         );
+         break;
+
+      case te_killed:
+         dp_write_raw(
+            E_COLOR_BR_RED "KILLED BY SIGNAL: " RESET_ATTRS "%d\r\n",
             e->sig_ev.signum
          );
          break;

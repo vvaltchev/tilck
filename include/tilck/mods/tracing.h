@@ -14,6 +14,7 @@ enum trace_event_type {
    te_sys_exit,
    te_printk,
    te_signal_delivered,
+   te_killed,
 };
 
 struct syscall_event_data {
@@ -40,7 +41,6 @@ struct syscall_event_data {
 };
 
 struct printk_event_data {
-
    int level;      /* Verbosity level. Must be > 1 */
    char buf[192];  /* Actual log entry */
 };
@@ -178,6 +178,9 @@ trace_printk_int(int level, const char *fmt, ...);
 
 void
 trace_signal_delivered_int(int signum);
+
+void
+trace_task_killed_int(int signum);
 
 const char *
 tracing_get_syscall_name(u32 n);
@@ -327,4 +330,9 @@ tracing_set_printk_lvl(int lvl)
 #define trace_signal_delivered(signum)                                         \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
       trace_signal_delivered_int(signum);                                      \
+   }
+
+#define trace_task_killed(signum)                                              \
+   if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
+      trace_task_killed_int(signum);                                           \
    }
