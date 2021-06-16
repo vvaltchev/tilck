@@ -179,6 +179,13 @@ dp_dump_tracing_event(struct trace_event *e)
          );
          break;
 
+      case te_signal_delivered:
+         dp_write_raw(
+            E_COLOR_BR_RED "GOT SIGNAL: " RESET_ATTRS "%d\r\n",
+            e->sig_ev.signum
+         );
+         break;
+
       default:
          dp_write_raw(
             E_COLOR_BR_RED "<unknown event %d>\r\n" RESET_ATTRS,

@@ -193,6 +193,17 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
    }
 }
 
+static void
+enqueue_trace_event(struct trace_event *e)
+{
+   kmutex_lock(&tracing_lock);
+   {
+      ringbuf_write_elem(&tracing_rb, e);
+      kcond_signal_one(&tracing_cond);
+   }
+   kmutex_unlock(&tracing_lock);
+}
+
 void
 trace_syscall_enter_int(u32 sys,
                         ulong a1,
@@ -219,13 +230,7 @@ trace_syscall_enter_int(u32 sys,
    };
 
    trace_syscall_enter_save_params(si, &e);
-
-   kmutex_lock(&tracing_lock);
-   {
-      ringbuf_write_elem(&tracing_rb, &e);
-      kcond_signal_one(&tracing_cond);
-   }
-   kmutex_unlock(&tracing_lock);
+   enqueue_trace_event(&e);
 }
 
 void
@@ -252,13 +257,7 @@ trace_syscall_exit_int(u32 sys,
    };
 
    trace_syscall_exit_save_params(si, &e);
-
-   kmutex_lock(&tracing_lock);
-   {
-      ringbuf_write_elem(&tracing_rb, &e);
-      kcond_signal_one(&tracing_cond);
-   }
-   kmutex_unlock(&tracing_lock);
+   enqueue_trace_event(&e);
 }
 
 void
@@ -283,12 +282,22 @@ trace_printk_int(int level, const char *fmt, ...)
    vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
    va_end(args);
 
-   kmutex_lock(&tracing_lock);
-   {
-      ringbuf_write_elem(&tracing_rb, &e);
-      kcond_signal_one(&tracing_cond);
-   }
-   kmutex_unlock(&tracing_lock);
+   enqueue_trace_event(&e);
+}
+
+void
+trace_signal_delivered_int(int signum)
+{
+   struct trace_event e = {
+      .type = te_signal_delivered,
+      .tid = get_curr_tid(),
+      .sys_time = get_sys_time(),
+      .sig_ev = {
+         .signum = signum
+      }
+   };
+
+   enqueue_trace_event(&e);
 }
 
 bool read_trace_event_noblock(struct trace_event *e)

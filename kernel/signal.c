@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_tracing.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 
@@ -10,14 +12,18 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/sys_types.h>
 
+#include <tilck/mods/tracing.h>
+
 typedef void (*action_type)(struct task *, int signum);
 
 void process_signals(void)
 {
    struct task *curr = get_curr_task();
 
-   if (curr->pending_signal)
+   if (curr->pending_signal) {
+      trace_signal_delivered(curr->pending_signal);
       terminate_process(0, curr->pending_signal);
+   }
 }
 
 static void action_terminate(struct task *ti, int signum)
