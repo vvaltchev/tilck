@@ -49,6 +49,46 @@ bool __tracing_on;
 bool __tracing_dump_big_bufs;
 int __tracing_printk_lvl = 10;
 
+const char *get_signal_name(int signum)
+{
+   static const char *sig_names[_NSIG] =
+   {
+      [SIGHUP]    = "SIGHUP",
+      [SIGINT]    = "SIGINT",
+      [SIGQUIT]   = "SIGQUIT",
+      [SIGILL]    = "SIGILL",
+      [SIGABRT]   = "SIGABRT",
+      [SIGFPE]    = "SIGFPE",
+      [SIGKILL]   = "SIGKILL",
+      [SIGSEGV]   = "SIGSEGV",
+      [SIGPIPE]   = "SIGPIPE",
+      [SIGALRM]   = "SIGALRM",
+      [SIGTERM]   = "SIGTERM",
+      [SIGUSR1]   = "SIGUSR1",
+      [SIGUSR2]   = "SIGUSR2",
+      [SIGCHLD]   = "SIGCHLD",
+      [SIGCONT]   = "SIGCONT",
+      [SIGSTOP]   = "SIGSTOP",
+      [SIGTSTP]   = "SIGTSTP",
+      [SIGTTIN]   = "SIGTTIN",
+      [SIGTTOU]   = "SIGTTOU",
+      [SIGBUS]    = "SIGBUS",
+      [SIGPOLL]   = "SIGPOLL",
+      [SIGPROF]   = "SIGPROF",
+      [SIGSYS]    = "SIGSYS",
+      [SIGTRAP]   = "SIGTRAP",
+      [SIGURG]    = "SIGURG",
+      [SIGVTALRM] = "SIGVTALRM",
+      [SIGXCPU]   = "SIGXCPU",
+      [SIGXFSZ]   = "SIGXFSZ",
+   };
+
+   if (!sig_names[signum])
+      return "unknown";
+
+   return sig_names[signum];
+}
+
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
 {

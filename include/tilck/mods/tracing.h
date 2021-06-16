@@ -201,6 +201,9 @@ tracing_get_param_idx(const struct syscall_info *si, const char *name);
 const char *
 get_errno_name(int errno);
 
+const char *
+get_signal_name(int signum);
+
 int
 get_traced_syscalls_count(void);
 
