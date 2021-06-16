@@ -12,6 +12,7 @@ enum trace_event_type {
    te_invalid,
    te_sys_enter,
    te_sys_exit,
+   te_printk,
 };
 
 struct syscall_event_data {
@@ -37,6 +38,12 @@ struct syscall_event_data {
    };
 };
 
+struct printk_event_data {
+
+   int level;      /* Verbosity level. Must be > 1 */
+   char buf[192];  /* Actual log entry */
+};
+
 struct trace_event {
 
    enum trace_event_type type;
@@ -46,6 +53,7 @@ struct trace_event {
 
    union {
       struct syscall_event_data sys_ev;
+      struct printk_event_data p_ev;
    };
 };
 
@@ -159,6 +167,9 @@ trace_syscall_exit_int(u32 sys,
                        ulong a5,
                        ulong a6);
 
+void
+trace_printk_int(int level, const char *fmt, ...);
+
 const char *
 tracing_get_syscall_name(u32 n);
 
@@ -270,6 +281,21 @@ tracing_set_dump_big_bufs_opt(bool enabled)
    __tracing_dump_big_bufs = enabled;
 }
 
+static ALWAYS_INLINE int
+tracing_get_printk_lvl(void)
+{
+   extern int __tracing_printk_lvl;
+   return __tracing_printk_lvl;
+}
+
+static ALWAYS_INLINE void
+tracing_set_printk_lvl(int lvl)
+{
+   extern int __tracing_printk_lvl;
+   __tracing_printk_lvl = lvl;
+}
+
+
 #define trace_sys_enter(sn, ...)                                               \
    if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
       trace_syscall_enter_int(sn, __VA_ARGS__);                                \
@@ -278,4 +304,9 @@ tracing_set_dump_big_bufs_opt(bool enabled)
 #define trace_sys_exit(sn, ret, ...)                                           \
    if (MOD_tracing && tracing_is_enabled() && tracing_is_enabled_on_sys(sn)) { \
       trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);                    \
+   }
+
+#define trace_printk(lvl, fmt, ...)                                            \
+   if (MOD_tracing && tracing_is_enabled()) {                                  \
+      trace_printk_int((lvl), fmt, __VA_ARGS__);                               \
    }

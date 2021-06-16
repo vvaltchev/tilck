@@ -47,6 +47,7 @@ bool *traced_syscalls;
 bool __force_exp_block;
 bool __tracing_on;
 bool __tracing_dump_big_bufs;
+int __tracing_printk_lvl = 10;
 
 static int
 elf_symbol_cb(struct elf_symbol_info *i, void *arg)
@@ -251,6 +252,36 @@ trace_syscall_exit_int(u32 sys,
    };
 
    trace_syscall_exit_save_params(si, &e);
+
+   kmutex_lock(&tracing_lock);
+   {
+      ringbuf_write_elem(&tracing_rb, &e);
+      kcond_signal_one(&tracing_cond);
+   }
+   kmutex_unlock(&tracing_lock);
+}
+
+void
+trace_printk_int(int level, const char *fmt, ...)
+{
+   ASSERT(level >= 1);
+
+   if (__tracing_printk_lvl < level)
+      return;
+
+   struct trace_event e = {
+      .type = te_printk,
+      .tid = get_curr_tid(),
+      .sys_time = get_sys_time(),
+      .p_ev = {
+         .level = level,
+      }
+   };
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
+   va_end(args);
 
    kmutex_lock(&tracing_lock);
    {
@@ -585,9 +616,6 @@ set_traced_syscalls_int(const char *str)
 
    if (len >= TRACED_SYSCALLS_STR_LEN)
       return -ENAMETOOLONG;
-
-   if (len == 0)
-      return -EINVAL;
 
    for (p = buf; *s; s++) {
 

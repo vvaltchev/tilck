@@ -71,6 +71,12 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "p" RESET_ATTRS "     : Set trace_printk() level\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW "  "
       E_COLOR_YELLOW "l" RESET_ATTRS "     : List traced syscalls\r\n"
       RESET_ATTRS
    );
@@ -117,10 +123,12 @@ tracing_ui_msg(void)
    dp_write_raw(
 
       TERM_VLINE " Always ENTER+EXIT: %s "
-      TERM_VLINE " Big bufs: %s "
+      TERM_VLINE " Big bufs: %s  "
       TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
       TERM_VLINE " #Tasks traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
-      TERM_VLINE "\r\n",
+      TERM_VLINE "\r\n"
+      TERM_VLINE " Printk lvl: " E_COLOR_BR_BLUE "%d" RESET_ATTRS
+      "\r\n",
 
       tracing_is_force_exp_block_enabled()
          ? E_COLOR_GREEN "ON" RESET_ATTRS
@@ -131,14 +139,16 @@ tracing_ui_msg(void)
          : E_COLOR_RED "OFF" RESET_ATTRS,
 
       get_traced_syscalls_count(),
-      get_traced_tasks_count()
+      get_traced_tasks_count(),
+      tracing_get_printk_lvl()
    );
 
    get_traced_syscalls_str(line_buf, TRACED_SYSCALLS_STR_LEN);
 
    dp_write_raw(
       TERM_VLINE
-      " Trace expr: " E_COLOR_YELLOW "%s" RESET_ATTRS "\r\n", line_buf
+      " Trace expr: " E_COLOR_YELLOW "%s" RESET_ATTRS,
+      line_buf
    );
 
    dp_write_raw("\r\n");
@@ -149,7 +159,7 @@ static void
 dp_dump_tracing_event(struct trace_event *e)
 {
    dp_write_raw(
-      "%05u.%03u [%04d] ",
+      "%05u.%03u [%05d] ",
       (u32)(e->sys_time / TS_SCALE),
       (u32)((e->sys_time % TS_SCALE) / (TS_SCALE / 1000)),
       e->tid
@@ -159,8 +169,14 @@ dp_dump_tracing_event(struct trace_event *e)
 
       case te_sys_enter:
       case te_sys_exit:
-
          dp_handle_syscall_event(e);
+         break;
+
+      case te_printk:
+         dp_write_raw(
+            E_COLOR_YELLOW "PRINTK" RESET_ATTRS "[%d]: %s\r\n",
+            e->p_ev.level, e->p_ev.buf
+         );
          break;
 
       default:
@@ -205,7 +221,7 @@ dp_tracing_screen_main_loop(void)
 }
 
 static void
-dp_exit_trace_syscall_str(void)
+dp_edit_trace_syscall_str(void)
 {
    dp_move_left(2);
    dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
@@ -215,6 +231,27 @@ dp_exit_trace_syscall_str(void)
 
    if (set_traced_syscalls(line_buf) < 0)
       dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+}
+
+static void dp_edit_trace_printk_level(void)
+{
+   line_buf[0] = 0;
+   dp_move_left(2);
+   dp_write_raw(E_COLOR_YELLOW "Level [0, 100]: " RESET_ATTRS);
+   dp_set_input_blocking(true);
+   dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
+   dp_set_input_blocking(false);
+
+   int err = 0;
+   long val = tilck_strtol(line_buf, NULL, 10, &err);
+
+   if (err || val < 0 || val > 100) {
+      dp_write_raw("\r\n");
+      dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+      return;
+   }
+
+   tracing_set_printk_lvl((int) val);
 }
 
 static void
@@ -347,7 +384,11 @@ dp_tracing_screen(void)
             break;
 
          case 'e':
-            dp_exit_trace_syscall_str();
+            dp_edit_trace_syscall_str();
+            break;
+
+         case 'p':
+            dp_edit_trace_printk_level();
             break;
 
          case 'l':
