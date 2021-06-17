@@ -82,6 +82,12 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "t" RESET_ATTRS "     : Edit list of traced PIDs\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW "  "
       E_COLOR_YELLOW "q" RESET_ATTRS "     : Back to the debug panel\r\n"
       RESET_ATTRS
    );
@@ -238,6 +244,7 @@ dp_tracing_screen_main_loop(void)
 static void
 dp_edit_trace_syscall_str(void)
 {
+   get_traced_syscalls_str(line_buf, TRACED_SYSCALLS_STR_LEN);
    dp_move_left(2);
    dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
    dp_set_input_blocking(true);
@@ -248,7 +255,8 @@ dp_edit_trace_syscall_str(void)
       dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
 }
 
-static void dp_edit_trace_printk_level(void)
+static void
+dp_edit_trace_printk_level(void)
 {
    line_buf[0] = 0;
    dp_move_left(2);
@@ -267,6 +275,127 @@ static void dp_edit_trace_printk_level(void)
    }
 
    tracing_set_printk_lvl((int) val);
+}
+
+struct traced_list_cb_ctx {
+
+   char *buf;
+   size_t buf_sz;
+   size_t written;
+};
+
+static int
+dp_tracing_get_traced_list_str_cb(void *obj, void *arg)
+{
+   struct task *ti = obj;
+   struct traced_list_cb_ctx *ctx = arg;
+   char tidstr[16];
+   size_t s;
+
+   if (!ti->traced)
+      return 0;
+
+   s = (size_t)snprintk(tidstr, sizeof(tidstr), "%d,", ti->tid);
+
+   if (ctx->written + s + 1 < ctx->buf_sz) {
+      strcpy(ctx->buf + ctx->written, tidstr);
+      ctx->written += s;
+   }
+
+   /* Disable tracing */
+   ti->traced = false;
+   return 0;
+}
+
+static int
+dp_set_task_as_traced(const char *tidstr, int *traced_cnt)
+{
+   long tid = tilck_strtol(tidstr, NULL, 10, NULL);
+
+   if (tid <= 0)
+      return -1;
+
+   struct task *ti;
+   disable_preemption();
+   {
+      ti = get_task((int)tid);
+
+      if (ti) {
+         ti->traced = true;
+         (*traced_cnt)++;
+      }
+   }
+   enable_preemption();
+   return 0;
+}
+
+static int
+dp_set_traced_tids_str(const char *str, int *traced_cnt)
+{
+   const char *s = str;
+   char *p, buf[32];
+   int rc;
+
+   for (p = buf; *s; s++) {
+
+      if (p == buf + sizeof(buf))
+         return -ENAMETOOLONG;
+
+      if (*s == ',' || *s == ' ') {
+         *p = 0;
+         p = buf;
+
+         if ((rc = dp_set_task_as_traced(buf, traced_cnt)))
+            return rc;
+
+         continue;
+      }
+
+      *p++ = *s;
+   }
+
+   if (p > buf) {
+
+      *p = 0;
+
+      if ((rc = dp_set_task_as_traced(buf, traced_cnt)))
+         return rc;
+   }
+
+   return 0;
+}
+
+static void
+dp_edit_traced_list(void)
+{
+   int traced_cnt = 0;
+   line_buf[0] = 0;
+
+   struct traced_list_cb_ctx ctx = {
+      .buf = line_buf,
+      .buf_sz = TRACED_SYSCALLS_STR_LEN,
+      .written = 0,
+   };
+
+   disable_preemption();
+   {
+      iterate_over_tasks(dp_tracing_get_traced_list_str_cb, &ctx);
+   }
+   enable_preemption();
+
+   dp_move_left(2);
+   dp_write_raw(E_COLOR_YELLOW "PIDs> " RESET_ATTRS);
+   dp_set_input_blocking(true);
+   dp_read_line(line_buf, TRACED_SYSCALLS_STR_LEN);
+   dp_set_input_blocking(false);
+
+   dp_write_raw("\r\n");
+
+   if (dp_set_traced_tids_str(line_buf, &traced_cnt) < 0) {
+      dp_write_raw("Invalid input\r\n");
+   } else {
+      dp_write_raw("Tracing %d tasks\r\n", traced_cnt);
+   }
 }
 
 static void
@@ -382,21 +511,31 @@ dp_tracing_screen(void)
          continue;
       }
 
-      if (c == 'o' || c == 'h' || c == 'l')
-         dp_write_raw("%c", c);
-
       switch (c) {
 
          case 'o':
+            dp_write_raw("%c", c);
             tracing_set_force_exp_block(!tracing_is_force_exp_block_enabled());
             break;
 
          case 'b':
+            dp_write_raw("%c", c);
             tracing_set_dump_big_bufs_opt(!tracing_are_dump_big_bufs_on());
             break;
 
          case 'h':
+            dp_write_raw("%c", c);
             tracing_ui_show_help();
+            break;
+
+         case 'p':
+            dp_write_raw("%c", c);
+            dp_dump_task_list();
+            break;
+
+         case 'l':
+            dp_write_raw("%c", c);
+            dp_list_traced_syscalls();
             break;
 
          case 'e':
@@ -407,12 +546,8 @@ dp_tracing_screen(void)
             dp_edit_trace_printk_level();
             break;
 
-         case 'p':
-            dp_dump_task_list();
-            break;
-
-         case 'l':
-            dp_list_traced_syscalls();
+         case 't':
+            dp_edit_traced_list();
             break;
 
          default:
