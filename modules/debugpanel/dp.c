@@ -35,6 +35,7 @@ int dp_start_col;
 int dp_screen_start_row;
 int dp_screen_rows;
 bool ui_need_update;
+bool dp_in_tracing_screen;
 const char *modal_msg;
 struct dp_screen *dp_ctx;
 fs_handle dp_input_handle;

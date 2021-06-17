@@ -194,39 +194,55 @@ static int debug_per_task_cb(void *obj, void *arg)
       }
    }
 
-   bool sel = false;
+   if (!dp_in_tracing_screen) {
 
-   if (mode == dp_tasks_mode_sel) {
+      bool sel = false;
 
-      if (sel_tid > 0) {
+      if (mode == dp_tasks_mode_sel) {
 
-         if (ti->tid == sel_tid) {
-            sel_index = curr_idx;
-            dp_reverse_colors();
-            sel = true;
-         }
+         if (sel_tid > 0) {
 
-      } else if (sel_index >= 0) {
+            if (ti->tid == sel_tid) {
+               sel_index = curr_idx;
+               dp_reverse_colors();
+               sel = true;
+            }
 
-         if (curr_idx == sel_index) {
-            sel_tid = ti->tid;
-            dp_reverse_colors();
-            sel = true;
+         } else if (sel_index >= 0) {
+
+            if (curr_idx == sel_index) {
+               sel_tid = ti->tid;
+               dp_reverse_colors();
+               sel = true;
+            }
          }
       }
+
+      dp_writeln(fmt,
+                 ti->tid,
+                 pi->pgid,
+                 pi->sid,
+                 pi->parent_pid,
+                 state_str,
+                 ttynum,
+                 buf);
+
+      if (sel)
+         dp_reset_attrs();
+
+   } else {
+
+      dp_write_raw(fmt,
+                   ti->tid,
+                   pi->pgid,
+                   pi->sid,
+                   pi->parent_pid,
+                   state_str,
+                   ttynum,
+                   buf);
+
+      dp_write_raw("\r\n");
    }
-
-   dp_writeln(fmt,
-              ti->tid,
-              pi->pgid,
-              pi->sid,
-              pi->parent_pid,
-              state_str,
-              ttynum,
-              buf);
-
-   if (sel)
-      dp_reset_attrs();
 
    curr_idx++;
    return 0;
@@ -234,7 +250,11 @@ static int debug_per_task_cb(void *obj, void *arg)
 
 static void debug_dump_task_table_hr(void)
 {
-   dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
+   if (dp_in_tracing_screen)
+      dp_write_raw(GFX_ON "%s" GFX_OFF "\r\n",
+                   debug_get_task_dump_util_str(HLINE));
+   else
+      dp_writeln(GFX_ON "%s" GFX_OFF, debug_get_task_dump_util_str(HLINE));
 }
 
 static bool is_tid_off_limits(int tid)
@@ -499,12 +519,13 @@ static void show_actions_menu(void)
    dp_writeln("");
 }
 
-static void dp_show_tasks(void)
+void dp_dump_task_list(void)
 {
-   row = dp_screen_start_row;
+   if (dp_in_tracing_screen)
+      dp_write_raw("\r\n%s\r\n", debug_get_task_dump_util_str(HEADER));
+   else
+      dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
 
-   show_actions_menu();
-   dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
    debug_dump_task_table_hr();
 
    disable_preemption();
@@ -530,7 +551,17 @@ static void dp_show_tasks(void)
       iterate_over_tasks(debug_per_task_cb, NULL);
    }
    enable_preemption();
-   dp_writeln("");
+
+   if (!dp_in_tracing_screen)
+      dp_writeln("");
+}
+
+static void dp_show_tasks(void)
+{
+   row = dp_screen_start_row;
+
+   show_actions_menu();
+   dp_dump_task_list();
 }
 
 static void dp_tasks_enter(void)

@@ -51,7 +51,7 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
-      E_COLOR_YELLOW "b" RESET_ATTRS "     : Dump big buffers\r\n"
+      E_COLOR_YELLOW "b" RESET_ATTRS "     : Toggle dump big buffers\r\n"
       RESET_ATTRS
    );
 
@@ -71,6 +71,12 @@ tracing_ui_show_help(void)
    dp_write_raw(
       E_COLOR_YELLOW "  "
       E_COLOR_YELLOW "l" RESET_ATTRS "     : List traced syscalls\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "p" RESET_ATTRS "     : Dump process list\r\n"
       RESET_ATTRS
    );
 
@@ -327,6 +333,7 @@ dp_tracing_screen(void)
    char c;
    int rc;
    bool should_continue;
+   dp_in_tracing_screen = true;
 
    dp_set_cursor_enabled(true);
    dp_clear();
@@ -400,6 +407,10 @@ dp_tracing_screen(void)
             dp_edit_trace_printk_level();
             break;
 
+         case 'p':
+            dp_dump_task_list();
+            break;
+
          case 'l':
             dp_list_traced_syscalls();
             break;
@@ -414,6 +425,7 @@ dp_tracing_screen(void)
 
    ui_need_update = true;
    dp_set_cursor_enabled(false);
+   dp_in_tracing_screen = false;
    return kb_handler_ok_and_continue;
 }
 
