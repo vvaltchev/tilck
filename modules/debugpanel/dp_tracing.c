@@ -64,7 +64,7 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
-      E_COLOR_YELLOW "p" RESET_ATTRS "     : Set trace_printk() level\r\n"
+      E_COLOR_YELLOW "k" RESET_ATTRS "     : Set trace_printk() level\r\n"
       RESET_ATTRS
    );
 
@@ -396,7 +396,7 @@ dp_tracing_screen(void)
             dp_edit_trace_syscall_str();
             break;
 
-         case 'p':
+         case 'k':
             dp_edit_trace_printk_level();
             break;
 
