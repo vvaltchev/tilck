@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_tracing.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/syscalls.h>
@@ -253,7 +255,8 @@ void dp_set_input_blocking(bool blocking)
    enable_preemption();
 }
 
-static void dp_tilck_cmd()
+static void
+dp_common_entry(bool only_tracing)
 {
    enum term_type tt;
    struct key_event ke;
@@ -294,18 +297,25 @@ static void dp_tilck_cmd()
    bzero(&ke, sizeof(ke));
    ui_need_update = true;
 
-   while (true) {
+   if (only_tracing) {
 
-      rc = dp_main_body(tt, ke);
+      dp_tracing_screen();
 
-      if (!rc && ke.print_char == 'q')
-         break;
+   } else {
 
-      if (dp_read_ke_from_tty(&ke) < 0)
-         break;
+      while (true) {
 
-      if (ke.print_char == DP_KEY_CTRL_C)
-         break;
+         rc = dp_main_body(tt, ke);
+
+         if (!rc && ke.print_char == 'q')
+            break;
+
+         if (dp_read_ke_from_tty(&ke) < 0)
+            break;
+
+         if (ke.print_char == DP_KEY_CTRL_C)
+            break;
+      }
    }
 
    disable_preemption();
@@ -319,10 +329,25 @@ static void dp_tilck_cmd()
    dp_running = false;
 }
 
+static void
+dp_default_entry()
+{
+   dp_common_entry(false);
+}
+
+static void
+dp_direct_tracing_mode_entry()
+{
+   dp_common_entry(true);
+}
+
 static void dp_init(void)
 {
    struct dp_screen *pos;
-   register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_tilck_cmd);
+   register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_default_entry);
+
+   if (MOD_tracing)
+      register_tilck_cmd(TILCK_CMD_TRACING_TOOL, dp_direct_tracing_mode_entry);
 
    list_for_each_ro(pos, &dp_screens_list, node) {
 

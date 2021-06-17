@@ -14,7 +14,7 @@
 typedef int (*tilck_cmd_func)();
 static int sys_tilck_run_selftest(const char *user_selftest);
 
-static void *tilck_cmds[] = {
+static void *tilck_cmds[TILCK_CMD_COUNT] = {
 
    [TILCK_CMD_RUN_SELFTEST] = sys_tilck_run_selftest,
    [TILCK_CMD_GCOV_GET_NUM_FILES] = sys_gcov_get_file_count,
@@ -23,6 +23,7 @@ static void *tilck_cmds[] = {
    [TILCK_CMD_QEMU_POWEROFF] = debug_qemu_turn_off_machine,
    [TILCK_CMD_SET_SAT_ENABLED] = set_sched_alive_thread_enabled,
    [TILCK_CMD_DEBUG_PANEL] = NULL,
+   [TILCK_CMD_TRACING_TOOL] = NULL,
 };
 
 void register_tilck_cmd(int cmd_n, void *func)

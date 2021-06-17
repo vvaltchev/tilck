@@ -14,9 +14,10 @@ enum tilck_cmd {
    TILCK_CMD_QEMU_POWEROFF       = 4,
    TILCK_CMD_SET_SAT_ENABLED     = 5,
    TILCK_CMD_DEBUG_PANEL         = 6,
+   TILCK_CMD_TRACING_TOOL        = 7,
 
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 7,
+   TILCK_CMD_COUNT               = 8,
 };
 
 #if defined(__x86_64__)

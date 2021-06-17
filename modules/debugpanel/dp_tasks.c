@@ -18,7 +18,6 @@
 #define MAX_EXEC_PATH_LEN     34
 
 void init_dp_tracing(void);
-enum kb_handler_action dp_tracing_screen(void);
 
 /* Gfx state */
 static int row;
