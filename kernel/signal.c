@@ -147,6 +147,20 @@ static const action_type signal_default_actions[_NSIG] =
 static void do_send_signal(struct task *ti, int signum)
 {
    ASSERT(IN_RANGE(signum, 0, _NSIG));
+
+   if (signum == 0) {
+
+      /*
+       * Do nothing, but don't treat it as an error.
+       *
+       * From kill(2):
+       *    If sig is 0, then no signal is sent, but error checking is still
+       *    performed; this can be used to check for the existence of a
+       *    process ID or process group ID.
+       */
+      return;
+   }
+
    __sighandler_t h = ti->pi->sa_handlers[signum];
 
    if (h == SIG_IGN)
