@@ -161,7 +161,7 @@ static void do_send_signal(struct task *ti, int signum)
       return;
    }
 
-   __sighandler_t h = ti->pi->sa_handlers[signum];
+   __sighandler_t h = ti->pi->sa_handlers[signum - 1];
 
    if (h == SIG_IGN)
       return action_ignore(ti, signum);
@@ -254,7 +254,7 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
       // return -EINVAL;
    }
 
-   curr->pi->sa_handlers[signum] = act.handler;
+   curr->pi->sa_handlers[signum - 1] = act.handler;
    curr->pi->sa_flags = act.sa_flags;
    memcpy(curr->pi->sa_mask, act.sa_mask, sizeof(act.sa_mask));
    return 0;
@@ -284,7 +284,7 @@ sys_rt_sigaction(int signum,
       if (user_oldact != NULL) {
 
          oldact = (struct k_sigaction) {
-            .handler = curr->pi->sa_handlers[signum],
+            .handler = curr->pi->sa_handlers[signum - 1],
             .sa_flags = curr->pi->sa_flags,
          };
 
