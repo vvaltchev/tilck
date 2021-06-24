@@ -269,7 +269,8 @@ typedef long offt;
 
 #endif
 
-#define POINTER_ALIGN_MASK (~(sizeof(void *) - 1))
+#define ALIGNED_MASK(n)                               (~((n) - 1))
+#define POINTER_ALIGN_MASK            ALIGNED_MASK(sizeof(void *))
 
 // Standard compare function signature among generic objects.
 typedef long (*cmpfun_ptr)(const void *a, const void *b);
