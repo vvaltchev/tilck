@@ -325,12 +325,70 @@ sys_rt_sigaction(int signum,
 
 int
 sys_rt_sigprocmask(int how,
-                   sigset_t *set,
-                   sigset_t *oset,
+                   sigset_t *user_set,
+                   sigset_t *user_oldset,
                    size_t sigsetsize)
 {
-   // TODO: implement sys_rt_sigprocmask
-   // printk("rt_sigprocmask\n");
+   struct process *pi = get_curr_proc();
+   int rc;
+
+   if (user_oldset) {
+
+      rc = copy_to_user(user_oldset, pi->sa_mask, sigsetsize);
+
+      if (rc)
+         return -EFAULT;
+
+      if (sigsetsize > sizeof(pi->sa_mask)) {
+
+         const size_t diff = sigsetsize - sizeof(pi->sa_mask);
+
+         rc = copy_to_user(
+            (char *)user_oldset + sizeof(pi->sa_mask),
+            zero_page,
+            diff
+         );
+
+         if (rc)
+            return -EFAULT;
+      }
+   }
+
+   if (user_set) {
+
+      for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
+
+         ulong w = 0;
+
+         rc = copy_from_user(
+            &w,
+            (char *)user_set + i * sizeof(ulong),
+            sizeof(ulong)
+         );
+
+         if (rc)
+            return -EFAULT;
+
+         switch (how) {
+
+            case SIG_BLOCK:
+               pi->sa_mask[i] |= w;
+               break;
+
+            case SIG_UNBLOCK:
+               pi->sa_mask[i] &= ~w;
+               break;
+
+            case SIG_SETMASK:
+               pi->sa_mask[i] = w;
+               break;
+
+            default:
+               return -EINVAL;
+         }
+      }
+   }
+
    return 0;
 }
 

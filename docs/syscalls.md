@@ -102,10 +102,8 @@ considered as *not implemented yet*.
  sys_dup               | full
  sys_dup2              | full
  sys_reboot            | full
- sys_sigaction         | minimal [14]
- sys_sigprocmask       | minimal [14]
  sys_rt_sigaction      | minimal [14]
- sys_rt_sigprocmask    | minimal [14]
+ sys_rt_sigprocmask    | full
 
 
 Definitions:

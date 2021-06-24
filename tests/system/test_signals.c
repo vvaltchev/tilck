@@ -151,3 +151,79 @@ int cmd_sig1(int argc, char **argv)
 {
    return test_sig(child_generate_and_ignore_sigint, NULL, 0, 0);
 }
+
+static int compare_sig_tests(int id, sigset_t *set, sigset_t *oldset)
+{
+   for (int i = 1; i < 32; i++) {
+
+      if (sigismember(set, i) != sigismember(oldset, i)) {
+
+         printf(
+            "[case %d], set[%d]: %d != oldset[%d]: %d\n",
+            id, i, sigismember(set, i), i, sigismember(oldset, i)
+         );
+         return 1;
+      }
+   }
+
+   return 0;
+}
+
+int cmd_sigmask(int argc, char **argv)
+{
+   int rc;
+   sigset_t set, oldset;
+
+   sigemptyset(&set);
+
+   rc = sigprocmask(SIG_SETMASK, &set, NULL);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = sigprocmask(0 /* how ignored */, NULL, &oldset);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   if (compare_sig_tests(0, &set, &oldset))
+      return 1;
+
+   sigemptyset(&set);
+   rc = sigprocmask(SIG_SETMASK, &set, NULL);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = sigprocmask(0 /* how ignored */, NULL, &oldset);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   if (compare_sig_tests(1, &set, &oldset))
+      return 1;
+
+   sigemptyset(&set);
+   sigaddset(&set, 5);
+   sigaddset(&set, 10);
+   sigaddset(&set, 12);
+   sigaddset(&set, 20);
+
+   rc = sigprocmask(SIG_BLOCK, &set, NULL);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   rc = sigprocmask(0 /* how ignored */, NULL, &oldset);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   if (compare_sig_tests(2, &set, &oldset))
+      return 1;
+
+   sigemptyset(&set);
+   sigaddset(&set, 12);
+
+   rc = sigprocmask(SIG_UNBLOCK, &set, NULL);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   sigdelset(&oldset, 12);
+   memcpy(&set, &oldset, sizeof(sigset_t));
+
+   rc = sigprocmask(0 /* how ignored */, NULL, &oldset);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   if (compare_sig_tests(3, &set, &oldset))
+      return 1;
+
+   return 0;
+}
