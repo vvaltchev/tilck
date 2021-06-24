@@ -4,6 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
@@ -16,13 +17,78 @@
 
 typedef void (*action_type)(struct task *, int signum);
 
+static void add_pending_sig(struct task *ti, int signum)
+{
+   ASSERT(signum > 0);
+   signum--;
+
+   int slot = signum / NBITS;
+   int index = signum % NBITS;
+
+   if (slot >= K_SIGACTION_MASK_WORDS)
+      return; /* just silently ignore signals that we don't support */
+
+   ti->pending_signums[slot] |= (1 << index);
+}
+
+static void del_pending_sig(struct task *ti, int signum)
+{
+   ASSERT(signum > 0);
+   signum--;
+
+   int slot = signum / NBITS;
+   int index = signum % NBITS;
+
+   if (slot >= K_SIGACTION_MASK_WORDS)
+      return; /* just silently ignore signals that we don't support */
+
+   ti->pending_signums[slot] &= ~(1 << index);
+}
+
+static bool is_pending_sig(struct task *ti, int signum)
+{
+   ASSERT(signum > 0);
+   signum--;
+
+   int slot = signum / NBITS;
+   int index = signum % NBITS;
+
+   if (slot >= K_SIGACTION_MASK_WORDS)
+      return false; /* just silently ignore signals that we don't support */
+
+   return !!(ti->pending_signums[slot] & (1 << index));
+}
+
+static int get_first_pending_sig(struct task *ti)
+{
+   for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
+
+      ulong val = ti->pending_signums[i];
+
+      if (val != 0) {
+         u32 idx = get_first_set_bit_index_l(val);
+         u32 signum = i * NBITS + idx + 1;
+         return (int)signum;
+      }
+   }
+
+   return -1;
+}
+
 void process_signals(void)
 {
    struct task *curr = get_curr_task();
+   int sig;
 
-   if (pending_signals()) {
-      trace_signal_delivered(curr->tid, curr->pending_signal);
-      terminate_process(0, curr->pending_signal);
+   disable_preemption();
+   {
+      sig = get_first_pending_sig(curr);
+   }
+   enable_preemption();
+
+   if (sig > 0) {
+      trace_signal_delivered(curr->tid, sig);
+      terminate_process(0, sig);
    }
 }
 
@@ -40,7 +106,7 @@ static void action_terminate(struct task *ti, int signum)
       NOT_REACHED();
    }
 
-   ti->pending_signal = signum;
+   add_pending_sig(ti, signum);
 
    if (!ti->vfork_stopped) {
 
@@ -64,10 +130,10 @@ static void action_terminate(struct task *ti, int signum)
 
       /*
        * The task is vfork_stopped: we cannot make it runnable, nor kill it
-       * right now. Just registering `pending_signal` is enough. As soon as the
-       * process wakes up, the killing signal will be delivered. Supporting
-       * the killing a vforked process (while its child is still alive and has
-       * not called execve()) is just tricky.
+       * right now. Just registering the signal as pending is enough. As soon
+       * as the process wakes up, the killing signal will be delivered.
+       * Supporting the killing a of vforked process (while its child is still
+       * alive and has not called execve()) is just too tricky.
        *
        * TODO: consider supporting killing of vforked process.
        */

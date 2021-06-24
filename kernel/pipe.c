@@ -10,7 +10,7 @@
 #include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
-#include <tilck/kernel/signal.h>
+#include <tilck/kernel/sched.h>
 
 struct pipe {
 

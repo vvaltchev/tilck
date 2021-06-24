@@ -9,6 +9,7 @@
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/worker_thread.h>
+#include <tilck/kernel/signal.h>
 
 #include <tilck_gen_headers/config_sched.h>
 
@@ -70,7 +71,7 @@ struct task {
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
-   ATOMIC(int) pending_signal;               /* see docs/atomics.md */
+   ulong pending_signums[K_SIGACTION_MASK_WORDS];
    void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
@@ -337,8 +338,16 @@ enter_sleep_wait_state(void)
 static ALWAYS_INLINE bool pending_signals(void)
 {
    struct task *curr = get_curr_task();
-   int sig = atomic_load_explicit(&curr->pending_signal, mo_relaxed);
-   return sig != 0;
+   STATIC_ASSERT(K_SIGACTION_MASK_WORDS <= 2);
+
+   if (K_SIGACTION_MASK_WORDS == 1)
+
+      return curr->pending_signums[0] != 0;
+
+   else
+
+      return curr->pending_signums[0] != 0 ||
+             curr->pending_signums[1] != 0;
 }
 
 NORETURN void switch_to_task(struct task *ti);
