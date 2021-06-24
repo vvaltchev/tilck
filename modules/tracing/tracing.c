@@ -81,6 +81,8 @@ const char *get_signal_name(int signum)
       [SIGVTALRM] = "SIGVTALRM",
       [SIGXCPU]   = "SIGXCPU",
       [SIGXFSZ]   = "SIGXFSZ",
+      [SIGPWR]    = "SIGPWR",
+      [SIGWINCH]  = "SIGWINCH",
    };
 
    if (!sig_names[signum])
