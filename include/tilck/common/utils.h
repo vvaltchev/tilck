@@ -50,7 +50,7 @@ make_bitmask(ulong width)
 
 
 CONSTEXPR static inline u32
-get_first_zero_bit_index(u32 num)
+get_first_zero_bit_index32(u32 num)
 {
    u32 i;
 
@@ -64,7 +64,7 @@ get_first_zero_bit_index(u32 num)
 }
 
 CONSTEXPR static inline u32
-get_first_set_bit_index(u32 num)
+get_first_set_bit_index32(u32 num)
 {
    u32 i;
    ASSERT(num != 0);

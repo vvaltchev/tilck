@@ -37,7 +37,7 @@ static bool enable_sse(void)
 
    if (res) {
 
-      u32 n = get_first_set_bit_index(res);
+      u32 n = get_first_set_bit_index32(res);
 
       printk("CPU: Enable SSE failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
@@ -77,7 +77,7 @@ static bool enable_osxsave(void)
 
    if (res) {
 
-      u32 n = get_first_set_bit_index(res);
+      u32 n = get_first_set_bit_index32(res);
 
       printk("CPU: Enable OSXSAVE failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
@@ -94,7 +94,7 @@ static bool enable_avx(void)
 
    if (res) {
 
-      u32 n = get_first_set_bit_index(res);
+      u32 n = get_first_set_bit_index32(res);
 
       printk("CPU: Enable AVX failed: fault %i [%s]\n",
              n, x86_exception_names[n]);
