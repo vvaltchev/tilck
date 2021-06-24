@@ -328,7 +328,7 @@ tracing_set_printk_lvl(int lvl)
 
 #define trace_printk(lvl, fmt, ...)                                            \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      trace_printk_int((lvl), fmt, __VA_ARGS__);                               \
+      trace_printk_int((lvl), fmt, ##__VA_ARGS__);                             \
    }
 
 #define trace_signal_delivered(target_tid, signum)                             \
