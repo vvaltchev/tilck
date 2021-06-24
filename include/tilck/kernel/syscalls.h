@@ -97,7 +97,7 @@ void *sys_brk(void *vaddr);
 int sys_setgid16(ulong gid);
 int sys_getgid16();
 
-CREATE_STUB_SYSCALL_IMPL(sys_signal)
+__sighandler_t sys_signal(int signum, __sighandler_t handler); // deprecated
 
 int sys_geteuid16();
 int sys_getegid16();

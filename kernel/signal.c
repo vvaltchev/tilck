@@ -312,3 +312,8 @@ int sys_sigaction(ulong a1, ulong a2, ulong a3)
 {
    NOT_IMPLEMENTED(); // deprecated interface
 }
+
+__sighandler_t sys_signal(int signum, __sighandler_t handler)
+{
+   NOT_IMPLEMENTED(); // deprecated interface
+}
