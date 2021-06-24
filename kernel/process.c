@@ -486,7 +486,7 @@ int kthread_join(int tid, bool ignore_signals)
 
    while ((ti = get_task(tid))) {
 
-      if (curr->pending_signal) {
+      if (pending_signals()) {
 
          wait_obj_reset(&curr->wobj);
 

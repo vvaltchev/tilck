@@ -20,7 +20,7 @@ void process_signals(void)
 {
    struct task *curr = get_curr_task();
 
-   if (curr->pending_signal) {
+   if (pending_signals()) {
       trace_signal_delivered(curr->tid, curr->pending_signal);
       terminate_process(0, curr->pending_signal);
    }
@@ -67,7 +67,7 @@ static void action_terminate(struct task *ti, int signum)
        * right now. Just registering `pending_signal` is enough. As soon as the
        * process wakes up, the killing signal will be delivered. Supporting
        * the killing a vforked process (while its child is still alive and has
-       * not called execve()) and just tricky.
+       * not called execve()) is just tricky.
        *
        * TODO: consider supporting killing of vforked process.
        */
