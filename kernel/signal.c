@@ -241,22 +241,39 @@ sigaction_int(int signum, const struct k_sigaction *user_act)
    if (copy_from_user(&act, user_act, sizeof(act)) != 0)
       return -EFAULT;
 
-   if (act.sa_flags & SA_SIGINFO) {
-      //printk("rt_sigaction: SA_SIGINFO not supported");
-      return -EINVAL;
+   if (act.sa_flags & SA_NOCLDSTOP) {
+      return -EINVAL; /* not supported */
    }
 
-   // TODO: actually support custom signal handlers
+   if (act.sa_flags & SA_NOCLDWAIT) {
+      return -EINVAL; /* not supported */
+   }
 
-   if (act.handler != SIG_DFL && act.handler != SIG_IGN) {
+   if (act.sa_flags & SA_SIGINFO) {
+      return -EINVAL; /* not supported */
+   }
 
-      // printk("rt_sigaction: sa_handler [%p] not supported\n", act.handler);
-      // return -EINVAL;
+   if (act.sa_flags & SA_ONSTACK) {
+      return -EINVAL; /* not supported */
+   }
+
+   if (act.sa_flags & SA_RESETHAND) {
+      /* TODO: add support for this simple flag */
+   }
+
+   if (act.sa_flags & SA_NODEFER) {
+
+      /*
+       * Just ignore this. For the moment, Tilck will block the delivery of
+       * signals with custom handlers, if ANY signal handler is running.
+       */
+   }
+
+   if (act.sa_flags & SA_RESTART) {
+      /* For the moment, silently signore this important flag too. */
    }
 
    curr->pi->sa_handlers[signum - 1] = act.handler;
-   curr->pi->sa_flags = act.sa_flags;
-   memcpy(curr->pi->sa_mask, act.sa_mask, sizeof(act.sa_mask));
    return 0;
 }
 
@@ -285,7 +302,7 @@ sys_rt_sigaction(int signum,
 
          oldact = (struct k_sigaction) {
             .handler = curr->pi->sa_handlers[signum - 1],
-            .sa_flags = curr->pi->sa_flags,
+            .sa_flags = 0,
          };
 
          memcpy(oldact.sa_mask, curr->pi->sa_mask, sizeof(oldact.sa_mask));
