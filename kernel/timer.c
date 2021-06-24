@@ -108,25 +108,43 @@ static void tick_all_timers(void)
    /*
     * This is *NOT* the best we can do. In particular, it's terrible to keep
     * the interrupts disabled while iterating the _whole_ timer_wakeup_list.
-    * A better solution is to keep the tasks to wake-up in a sort of ordered
-    * list and then use relative timers. This way, at each tick we'll have to
-    * decrement just one single counter. We'll start decrement the next counter
-    * only when the first counter reaches 0 and the list node is removed.
     *
-    * Of course, if we cannot use kmalloc() in case of sleep, it gets much
-    * harder to create such an ordered list and make it live inside a member
-    * of struct task. Maybe a BST will do the job, but that would require
-    * paying O(logN) per tick for finding the earliest timer. Not sure how
-    * better would be now for N < 50 (typical), given the huge added constant
-    * for the BST functions. Also, the cancellation of a timer would require
-    * some extra effort in order to re-calculate the relative timer values,
-    * while we want the cancellation to be light-fast because it's run by IRQ
-    * handlers.
+    * Possible better solutions
+    * -----------------------------
+    * 1. Keep the tasks to wake-up in a sort of ordered list and then use
+    * relative timers. This way, at each tick we'll have to decrement just one
+    * single counter. We'll start decrement the next counter only when the first
+    * counter reaches 0 and its list node is removed. Of course, if we cannot
+    * use kmalloc() in case of sleep, it gets much harder to create such an
+    * ordered list and make it live inside a member of struct task. Maybe a BST
+    * will do the job, but that would require paying O(logN) per tick for
+    * finding the earliest timer. Not sure how better would be now for N < 50
+    * (typical), given the huge added constant for the BST functions. Also, the
+    * cancellation of a timer would require some extra effort in order to
+    * re-calculate the relative timer values, while we want the cancellation to
+    * be light-fast because it's run by IRQ handlers.
     *
-    * In conclusion, for the moment, given the very limited scale of Tilck (tens
-    * of tasks at most running on the whole system), this solution is safe and
-    * good-enough but, at some point a smarter ad-hoc solution for Tilck should
-    * be devised.
+    * 2. Use a fixed number of wakeup lists like: short-term, mid-term and
+    * long-term. Current task's wakeup list node will be placed in one those
+    * lists, depending on far in the future the task is supposted to be woke up.
+    * On every tick, here in tick_all_timers(), ONLY the short-term list will be
+    * iterated. That's a considerable improvement. In a system, there might be
+    * even 1,000 active timers, but how many of them will expire in the next
+    * second? Only a small percentage of them. To further improve the
+    * scalability, it's possible to have even more than 3 lists, or to further
+    * reduce the time-horizon of the short-term list. Periodically, but NOT on
+    * every tick, the `ticks_before_wake_up` field belonging to tasks in the
+    * other wakeup lists will adjusted with bigger decrements and tasks will be
+    * moved from one list to another. That will also happen in case the wakeup
+    * timer is changed for task with an already active timer. This solution
+    * looks much better than solution 1.
+    *
+    * Conclusion
+    * ---------------------
+    * For the moment, given the very limited scale of Tilck (tens of tasks at
+    * most running on the whole system), the current solution is safe and
+    * good-enough but, at some point, a smarter ad-hoc solution should be
+    * devised. Probably solution 2 is the right candidate.
     */
    disable_interrupts(&var);
 
