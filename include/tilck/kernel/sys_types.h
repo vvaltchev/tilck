@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/signal.h>
 
 #include <features.h>   // system header
 
@@ -45,8 +46,6 @@ struct linux_dirent64 {
    unsigned char  d_type;   /* File type */
    char           d_name[]; /* Filename (null-terminated) */
 };
-
-#define K_SIGACTION_MASK_WORDS 2
 
 struct k_sigaction {
 
