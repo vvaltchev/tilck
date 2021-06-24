@@ -92,7 +92,7 @@ struct process {
    /* large members */
    char str_cwd[MAX_PATH];                /* current working directory */
 
-   __sighandler_t sa_handlers[_NSIG];
+   __sighandler_t sa_handlers[_NSIG - 1];
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
    ulong sa_flags;
 };
