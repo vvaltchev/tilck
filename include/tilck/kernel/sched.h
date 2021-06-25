@@ -43,6 +43,17 @@ struct sched_ticks {
    u64 total_kernel;    /* total life-time ticks spent in kernel */
 };
 
+enum sig_state {
+
+   no_sig_handling = 0,
+   sig_pre_syscall = 1,
+   sig_in_syscall = 2,
+   sig_in_usermode = 3,
+
+} PACKED;
+
+STATIC_ASSERT(sizeof(enum sig_state) == 1);
+
 struct task {
 
    union {
@@ -112,11 +123,18 @@ struct task {
    /* The task was sleeping on a timer and has just been woken up */
    bool timer_ready;
 
+   /* Signal handling state for the task */
+   enum sig_state sig_state;
+
    /* Kernel thread name, NULL for user tasks */
    const char *kthread_name;
 
    /* See the comment above struct process' pi_arch */
    char ti_arch[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
+
+   /* Signal handling state */
+   regs_t *before_sig_handler_state;
+   ulong saved_syscall_ret;
 };
 
 extern struct task *kernel_process;

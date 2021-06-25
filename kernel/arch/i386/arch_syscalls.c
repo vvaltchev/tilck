@@ -481,8 +481,33 @@ int get_syscall_num(void *func)
    return -1;
 }
 
+static void do_syscall(regs_t *r)
+{
+   const u32 sn = r->eax;
+   syscall_type fptr;
+
+   if (UNLIKELY(sn >= ARRAY_SIZE(syscalls) || !syscalls[sn])) {
+      printk("Unknown syscall #%i\n", sn);
+      r->eax = (ulong) -ENOSYS;
+      return;
+   }
+
+   enable_preemption();
+   {
+      trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
+      *(void **)(&fptr) = syscalls[sn];
+      r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+
+      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   }
+   disable_preemption();
+}
+
 void handle_syscall(regs_t *r)
 {
+   struct task *curr = get_curr_task();
+
    /*
     * In case of a sysenter syscall, the eflags are saved in kernel mode after
     * the cpu disabled the interrupts. Therefore, with the statement below we
@@ -491,29 +516,26 @@ void handle_syscall(regs_t *r)
     */
    r->eflags |= EFLAGS_IF;
    save_current_task_state(r);
-
-   const u32 sn = r->eax;
-   syscall_type fptr;
-
-   if (sn >= ARRAY_SIZE(syscalls) || !syscalls[sn]) {
-      printk("Unknown syscall #%i\n", sn);
-      r->eax = (ulong) -ENOSYS;
-      return;
-   }
-
    set_current_task_in_kernel();
-   enable_preemption();
-   {
-      process_signals();
-      trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-      *(void **)(&fptr) = syscalls[sn];
-      r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-
-      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-      process_signals();
+   if (UNLIKELY(process_signals())) {
+      curr->saved_syscall_ret = (ulong)-EINTR;
+      curr->sig_state = sig_pre_syscall;
+      task_change_state(curr, TASK_STATE_RUNNABLE);
+      switch_to_task(curr);
+      NOT_REACHED();
    }
-   disable_preemption();
+
+   do_syscall(r);
+
+   if (UNLIKELY(process_signals())) {
+      curr->saved_syscall_ret = r->eax;
+      curr->sig_state = sig_in_syscall;
+      task_change_state(curr, TASK_STATE_RUNNABLE);
+      switch_to_task(curr);
+      NOT_REACHED();
+   }
+
    set_current_task_in_user_mode();
 }
 

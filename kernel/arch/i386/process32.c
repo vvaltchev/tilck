@@ -522,8 +522,16 @@ switch_to_task(struct task *ti)
          arch_proc_members_t *arch = get_proc_arch_fields(ti->pi);
          set_curr_pdir(ti->pi->pdir);
 
-         if (arch->ldt)
+         if (UNLIKELY(arch->ldt != NULL))
             load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
+      }
+
+      if (!ti->running_in_kernel) {
+         if (ti->sig_state == no_sig_handling) {
+            if (process_signals()) {
+               ti->sig_state = sig_in_usermode;
+            }
+         }
       }
 
       if (is_fpu_enabled_for_task(ti)) {
