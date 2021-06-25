@@ -300,7 +300,8 @@ dp_common_entry(bool only_tracing)
 
    if (only_tracing) {
 
-      dp_tracing_screen();
+      if (MOD_tracing)
+         dp_tracing_screen();
 
    } else {
 
