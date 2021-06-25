@@ -59,6 +59,20 @@ static bool is_pending_sig(struct task *ti, int signum)
    return !!(ti->pending_signums[slot] & (1 << index));
 }
 
+static bool is_sig_masked(struct task *ti, int signum)
+{
+   ASSERT(signum > 0);
+   signum--;
+
+   int slot = signum / NBITS;
+   int index = signum % NBITS;
+
+   if (slot >= K_SIGACTION_MASK_WORDS)
+      return true; /* signals we don't support are always "masked" */
+
+   return !!(ti->pi->sa_mask[slot] & (1 << index));
+}
+
 static int get_first_pending_sig(struct task *ti)
 {
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
@@ -67,8 +81,10 @@ static int get_first_pending_sig(struct task *ti)
 
       if (val != 0) {
          u32 idx = get_first_set_bit_index_l(val);
-         u32 signum = i * NBITS + idx + 1;
-         return (int)signum;
+         int signum = (int)(i * NBITS + idx + 1);
+
+         if (!is_sig_masked(ti, signum))
+            return signum;
       }
    }
 
