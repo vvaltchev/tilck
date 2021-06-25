@@ -481,7 +481,7 @@ int get_syscall_num(void *func)
    return -1;
 }
 
-static void do_syscall(regs_t *r)
+static ulong do_syscall(regs_t *r)
 {
    const u32 sn = r->eax;
    syscall_type fptr;
@@ -489,7 +489,7 @@ static void do_syscall(regs_t *r)
    if (UNLIKELY(sn >= ARRAY_SIZE(syscalls) || !syscalls[sn])) {
       printk("Unknown syscall #%i\n", sn);
       r->eax = (ulong) -ENOSYS;
-      return;
+      return r->eax;
    }
 
    enable_preemption();
@@ -502,11 +502,13 @@ static void do_syscall(regs_t *r)
       trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
+   return r->eax;
 }
 
 void handle_syscall(regs_t *r)
 {
    struct task *curr = get_curr_task();
+   bool have_sig_handler = false;
 
    /*
     * In case of a sysenter syscall, the eflags are saved in kernel mode after
@@ -519,24 +521,29 @@ void handle_syscall(regs_t *r)
    set_current_task_in_kernel();
 
    if (UNLIKELY(process_signals())) {
+
       curr->saved_syscall_ret = (ulong)-EINTR;
       curr->sig_state = sig_pre_syscall;
-      task_change_state(curr, TASK_STATE_RUNNABLE);
-      switch_to_task(curr);
-      NOT_REACHED();
-   }
+      have_sig_handler = true;
 
-   do_syscall(r);
+   } else {
 
-   if (UNLIKELY(process_signals())) {
-      curr->saved_syscall_ret = r->eax;
-      curr->sig_state = sig_in_syscall;
-      task_change_state(curr, TASK_STATE_RUNNABLE);
-      switch_to_task(curr);
-      NOT_REACHED();
+      ulong ret = do_syscall(r);
+
+      if (UNLIKELY(process_signals())) {
+         curr->saved_syscall_ret = ret;
+         curr->sig_state = sig_in_syscall;
+         have_sig_handler = true;
+      }
    }
 
    set_current_task_in_user_mode();
+
+   if (UNLIKELY(have_sig_handler)) {
+      task_change_state(curr, TASK_STATE_RUNNABLE);
+      switch_to_task(curr);
+      NOT_REACHED();
+   }
 }
 
 void init_syscall_interfaces(void)

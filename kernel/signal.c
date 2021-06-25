@@ -81,16 +81,43 @@ bool process_signals(void)
    struct task *curr = get_curr_task();
    int sig;
 
-   sig = get_first_pending_sig(curr);
+   if (is_pending_sig(curr, SIGKILL)) {
 
-   if (sig > 0) {
-      trace_signal_delivered(curr->tid, sig);
-      enable_preemption();
-      terminate_process(0, sig);
-      NOT_REACHED();
+      /* Don't check for any other signals if SIGKILL is pending. */
+      sig = SIGKILL;
+
+   } else {
+
+      sig = get_first_pending_sig(curr);
    }
 
-   return false;
+   if (sig < 0)
+      return false;
+
+   trace_signal_delivered(curr->tid, sig);
+   __sighandler_t handler = curr->pi->sa_handlers[sig - 1];
+
+   if (handler) {
+
+      trace_printk(10, "[%d] Run signal handler %p for signal %s[%d]",
+                   curr->tid, handler, get_signal_name(sig), sig);
+
+      del_pending_sig(curr, sig);
+      return false; /* temp */
+
+   } else {
+
+      /*
+       * If we got here, there is no registered custom handler for the signal,
+       * the signal has not been ignored explicitly and the default action for
+       * the signal is terminate.
+       */
+
+      enable_preemption();
+      terminate_process(0, sig);
+   }
+
+   return true;
 }
 
 static void action_terminate(struct task *ti, int signum)
@@ -212,6 +239,7 @@ static const action_type signal_default_actions[_NSIG] =
    [SIGVTALRM] = action_terminate,
    [SIGXCPU] = action_terminate,
    [SIGXFSZ] = action_terminate,
+   [SIGWINCH] = action_terminate,
 };
 
 static void do_send_signal(struct task *ti, int signum)
@@ -231,32 +259,29 @@ static void do_send_signal(struct task *ti, int signum)
       return;
    }
 
+   if (signum >= _NSIG)
+      return; /* ignore unknown and unsupported signal */
+
    __sighandler_t h = ti->pi->sa_handlers[signum - 1];
 
-   if (h == SIG_IGN)
-      return action_ignore(ti, signum);
+   if (h == SIG_IGN) {
 
-   if (h != SIG_DFL) {
+      action_ignore(ti, signum);
 
-      /* DIRTY HACK: treat custom signal handlers as SIG_IGN */
-      return;
+   } else if (h == SIG_DFL) {
+
+      action_type action_func =
+         signal_default_actions[signum] != NULL
+            ? signal_default_actions[signum]
+            : action_terminate;
+
+      if (action_func)
+         action_func(ti, signum);
+
+   } else {
+
+      add_pending_sig(ti, signum);
    }
-
-   /*
-    * For the moment, we don't support anything else than SIG_DFL and SIG_IGN.
-    * TODO: actually support custom signal handlers.
-    */
-   ASSERT(h == SIG_DFL);
-
-   action_type action_func =
-      signal_default_actions[signum] != NULL
-         ? signal_default_actions[signum]
-         : action_terminate;
-
-   if (!action_func)
-      return; /* unknown signal, just do nothing */
-
-   action_func(ti, signum);
 }
 
 int send_signal2(int pid, int tid, int signum, bool whole_process)
