@@ -75,21 +75,22 @@ static int get_first_pending_sig(struct task *ti)
    return -1;
 }
 
-void process_signals(void)
+bool process_signals(void)
 {
+   ASSERT(!is_preemption_enabled());
    struct task *curr = get_curr_task();
    int sig;
 
-   disable_preemption();
-   {
-      sig = get_first_pending_sig(curr);
-   }
-   enable_preemption();
+   sig = get_first_pending_sig(curr);
 
    if (sig > 0) {
       trace_signal_delivered(curr->tid, sig);
+      enable_preemption();
       terminate_process(0, sig);
+      NOT_REACHED();
    }
+
+   return false;
 }
 
 static void action_terminate(struct task *ti, int signum)
