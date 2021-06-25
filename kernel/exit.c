@@ -49,7 +49,8 @@ static void init_terminated(struct task *ti, int exit_code, int term_sig)
    if (!term_sig)
       panic("Init exited with code: %d\n", exit_code);
    else
-      panic("Init terminated by signal %d\n", term_sig);
+      panic("Init terminated by signal %s[%d]\n",
+            get_signal_name(term_sig), term_sig);
 }
 
 static struct process *get_child_reaper(struct process *pi)

@@ -85,10 +85,7 @@ const char *get_signal_name(int signum)
       [SIGWINCH]  = "SIGWINCH",
    };
 
-   if (!sig_names[signum])
-      return "unknown";
-
-   return sig_names[signum];
+   return sig_names[signum] ? sig_names[signum] : "";
 }
 
 static int

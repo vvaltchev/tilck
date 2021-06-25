@@ -114,6 +114,9 @@ show_hello_message(void)
       show_tilck_logo();
 }
 
+WEAK const char *get_signal_name(int signum) {
+   return "";
+}
 
 const struct build_info tilck_build_info ATTR_SECTION(".tilck_info") = {
    .commit = {0}, /* It will get patched after the build */
