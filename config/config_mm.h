@@ -34,7 +34,7 @@
  */
 
 
-#define USER_VSDO_LIKE_PAGE_VADDR                 (LINEAR_MAPPING_END)
+#define USER_VDSO_VADDR  (LINEAR_MAPPING_END)
 
 #define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
 #define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */

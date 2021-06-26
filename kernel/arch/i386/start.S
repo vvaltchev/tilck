@@ -13,15 +13,10 @@
 .code32
 
 .section bss
-
 .global kernel_initial_stack
-.global vsdo_like_page
-
 .comm kernel_initial_stack, ASM_KERNEL_STACK_SZ, 4096
-.comm vsdo_like_page, 4096, 4096
 
 .section .text.start
-
 .global _start
 
 #define MULTIBOOT_FLAGS      (MULTIBOOT_PAGE_ALIGN |   \
