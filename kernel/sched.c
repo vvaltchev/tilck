@@ -675,10 +675,16 @@ void schedule(void)
    if (!selected) {
 
       if (get_curr_task_state() == TASK_STATE_RUNNABLE) {
+
          selected = get_curr_task();
-         task_change_state(selected, TASK_STATE_RUNNING);
          selected->ticks.timeslice = 0;
-         return;
+
+         if (LIKELY(!pending_signals())) {
+            task_change_state(selected, TASK_STATE_RUNNING);
+            return;
+         }
+
+         switch_to_task(selected);
       }
 
       selected = idle_task;

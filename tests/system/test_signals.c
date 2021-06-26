@@ -228,14 +228,73 @@ int cmd_sigmask(int argc, char **argv)
    return 0;
 }
 
-static bool test_got_sig[_NSIG];
+static volatile bool test_got_sig[_NSIG];
 
-void child_sig_handler(int signum) {
+static void child_sig_handler(int signum) {
    printf("child handle signal: %d\n", signum);
    test_got_sig[signum] = true;
+   fflush(stdout);
 }
 
-static int test_sig_n(int n)
+static bool got_all_signals(int n)
+{
+   switch (n) {
+
+      case 1:
+         return test_got_sig[SIGHUP];
+
+      case 2:
+         return test_got_sig[SIGHUP] && test_got_sig[SIGINT];
+
+      default:
+         abort();
+   }
+}
+
+static void test_sig_child_body(int n, bool busy_loop)
+{
+   memset((void *)test_got_sig, 0, sizeof(test_got_sig));
+
+   signal(SIGHUP, &child_sig_handler);
+   signal(SIGINT, &child_sig_handler);
+
+   if (busy_loop) {
+
+      for (int i = 0; i < 100*1000*1000; i++) {
+         if (got_all_signals(n))
+            break;
+      }
+
+   } else {
+
+      pause();
+   }
+
+   if (!got_all_signals(n)) {
+
+      int count = 0;
+
+      if (n >= 1) {
+         count += test_got_sig[SIGHUP];
+
+         if (n >= 2)
+            count += test_got_sig[SIGINT];
+      }
+
+      if (busy_loop)
+         printf("child: timeout!\n");
+
+      printf("child: didn't run handlers for all expected signals [%d/%d]\n",
+             count, n);
+
+      fflush(stdout);
+      exit(1);
+   }
+
+   exit(0);
+}
+
+static int test_sig_n(int n, bool busy_loop, int exp_term_sig)
 {
    int code, term_sig;
    int child_pid;
@@ -246,34 +305,22 @@ static int test_sig_n(int n)
    child_pid = fork();
 
    if (!child_pid) {
-
-      /* children's code */
-      memset(test_got_sig, 0, sizeof(test_got_sig));
-
-      signal(SIGHUP, &child_sig_handler);
-      signal(SIGINT, &child_sig_handler);
-      pause();
-
-      if (!test_got_sig[SIGHUP]) {
-         printf("child: handler for SIGHUP didn't get executed\n");
-         exit(1);
-      }
-
-      if (n >= 2) {
-         if (!test_got_sig[SIGINT]) {
-            printf("child: handler for SIGHUP didn't get executed\n");
-            exit(1);
-         }
-      }
-
-      exit(0);
+      test_sig_child_body(n, busy_loop);
    }
 
    usleep(100 * 1000);
-   kill(child_pid, SIGHUP);
 
-   if (n >= 2)
-      kill(child_pid, SIGINT);
+   if (exp_term_sig) {
+
+      kill(child_pid, exp_term_sig);
+
+   } else {
+
+      kill(child_pid, SIGHUP);
+
+      if (n >= 2)
+         kill(child_pid, SIGINT);
+   }
 
    rc = waitpid(child_pid, &wstatus, 0);
 
@@ -287,20 +334,45 @@ static int test_sig_n(int n)
 
    printf("Child exit code: %d, term_sig: %d\n", code, term_sig);
 
-   if (term_sig || code != 0) {
-      printf("FAIL: expected the child to exit gracefully. It did not.\n");
-      return 1;
+   if (exp_term_sig) {
+
+      if (term_sig != exp_term_sig) {
+         printf("FAIL: expected child to be killed by sig %d. It did not.\n",
+                exp_term_sig);
+         return 1;
+      }
+
+   } else {
+
+      if (term_sig || code != 0) {
+         printf("FAIL: expected child to exit gracefully. It did not.\n");
+         return 1;
+      }
    }
 
    return 0;
 }
 
+/* Test delivery of single signal durning syscall */
 int cmd_sig1(int argc, char **argv)
 {
-   return test_sig_n(1);
+   return test_sig_n(1, false, 0);
 }
 
+/* Test delivery of two signals durning syscall */
 int cmd_sig2(int argc, char **argv)
 {
-   return test_sig_n(2);
+   return test_sig_n(2, false, 0);
+}
+
+/* Test signal delivery while user space is running */
+int cmd_sig3(int argc, char **argv)
+{
+   return test_sig_n(1, true, 0);
+}
+
+/* Test killing signal delivery while user space is running */
+int cmd_sig4(int argc, char **argv)
+{
+   return test_sig_n(1, true, SIGKILL);
 }

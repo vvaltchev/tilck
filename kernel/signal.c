@@ -113,13 +113,31 @@ void reset_all_custom_signal_handlers(void *__curr)
    }
 }
 
-bool process_signals(enum sig_state sig_state, void *regs)
+static void kill_task_now_or_later(struct task *ti, void *regs, int signum)
+{
+   if (ti == get_curr_task()) {
+
+      /* We can terminate the task immediately */
+      enable_preemption();
+      terminate_process(0, signum);
+      NOT_REACHED();
+
+   } else {
+
+      /* We have to setup a trampline to any syscall */
+      setup_pause_trampline(regs);
+   }
+}
+
+bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 {
    ASSERT(!is_preemption_enabled());
-   struct task *curr = get_curr_task();
+   struct task *ti = __ti;
    int sig;
 
-   if (is_pending_sig(curr, SIGKILL)) {
+   ASSERT(ti == get_curr_task() || sig_state == sig_in_usermode);
+
+   if (is_pending_sig(ti, SIGKILL)) {
 
       /*
        * SIGKILL will always have absolute priority over anything else: no
@@ -127,12 +145,11 @@ bool process_signals(enum sig_state sig_state, void *regs)
        * a custom signal handler.
        */
 
-      enable_preemption();
-      terminate_process(0, SIGKILL);
-      NOT_REACHED();
+      kill_task_now_or_later(ti, regs, SIGKILL);
+      return true;
    }
 
-   if (curr->nested_sig_handlers > 0 && sig_state != sig_in_restart_syscall) {
+   if (ti->nested_sig_handlers > 0 && sig_state != sig_in_restart_syscall) {
       /*
        * For the moment, in Tilck only signal handlers (even of different types)
        * will not be able to interrupt each other. This is the equivalent of
@@ -141,21 +158,21 @@ bool process_signals(enum sig_state sig_state, void *regs)
       return false;
    }
 
-   sig = get_first_pending_sig(curr);
+   sig = get_first_pending_sig(ti);
 
    if (sig < 0)
       return false;
 
-   trace_signal_delivered(curr->tid, sig);
-   __sighandler_t handler = curr->pi->sa_handlers[sig - 1];
+   trace_signal_delivered(ti->tid, sig);
+   __sighandler_t handler = ti->pi->sa_handlers[sig - 1];
 
    if (handler) {
 
-      trace_printk(10, "[%d] Run signal handler %p for signal %s[%d]",
-                   curr->tid, handler, get_signal_name(sig), sig);
+      trace_printk(10, "Setup signal handler %p for TID %d for signal %s[%d]",
+                   handler, ti->tid, get_signal_name(sig), sig);
 
-      del_pending_sig(curr, sig);
-      setup_sig_handler(sig_state, regs, (ulong)handler, sig);
+      del_pending_sig(ti, sig);
+      setup_sig_handler(ti, sig_state, regs, (ulong)handler, sig);
 
    } else {
 
@@ -165,8 +182,7 @@ bool process_signals(enum sig_state sig_state, void *regs)
        * the signal is terminate.
        */
 
-      enable_preemption();
-      terminate_process(0, sig);
+      kill_task_now_or_later(ti, regs, sig);
    }
 
    return true;

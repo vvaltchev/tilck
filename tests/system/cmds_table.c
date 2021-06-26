@@ -74,6 +74,8 @@ DECL_CMD(fatmm1);
 DECL_CMD(sigmask);
 DECL_CMD(sig1);
 DECL_CMD(sig2);
+DECL_CMD(sig3);
+DECL_CMD(sig4);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -147,6 +149,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sigmask,      TT_SHORT,  true),
    CMD_ENTRY(sig1,         TT_SHORT,  true),
    CMD_ENTRY(sig2,         TT_SHORT,  true),
+   CMD_ENTRY(sig3,         TT_SHORT,  true),
+   CMD_ENTRY(sig4,         TT_SHORT,  true),
 
    CMD_END(),
 };
