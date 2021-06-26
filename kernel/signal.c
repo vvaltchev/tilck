@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck_gen_headers/mod_tracing.h>
-
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/utils.h>
@@ -12,6 +10,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/sys_types.h>
+#include <tilck/kernel/hal.h>
 
 #include <tilck/mods/tracing.h>
 
@@ -114,7 +113,7 @@ void reset_all_custom_signal_handlers(void *__curr)
    }
 }
 
-bool process_signals(void)
+bool process_signals(enum sig_state sig_state, void *regs)
 {
    ASSERT(!is_preemption_enabled());
    struct task *curr = get_curr_task();
@@ -122,13 +121,27 @@ bool process_signals(void)
 
    if (is_pending_sig(curr, SIGKILL)) {
 
-      /* Don't check for any other signals if SIGKILL is pending. */
-      sig = SIGKILL;
+      /*
+       * SIGKILL will always have absolute priority over anything else: no
+       * matter if there are other pending signals or we're already running
+       * a custom signal handler.
+       */
 
-   } else {
-
-      sig = get_first_pending_sig(curr);
+      enable_preemption();
+      terminate_process(0, SIGKILL);
+      NOT_REACHED();
    }
+
+   if (curr->nested_sig_handlers > 0 && sig_state != sig_in_restart_syscall) {
+      /*
+       * For the moment, in Tilck only signal handlers (even of different types)
+       * will not be able to interrupt each other. This is the equivalent of
+       * having each sigaction's sa_mask = 0xffffffff[...].
+       */
+      return false;
+   }
+
+   sig = get_first_pending_sig(curr);
 
    if (sig < 0)
       return false;
@@ -142,7 +155,7 @@ bool process_signals(void)
                    curr->tid, handler, get_signal_name(sig), sig);
 
       del_pending_sig(curr, sig);
-      return false; /* temp */
+      setup_sig_handler(sig_state, regs, (ulong)handler, sig);
 
    } else {
 
@@ -159,35 +172,21 @@ bool process_signals(void)
    return true;
 }
 
-static void action_terminate(struct task *ti, int signum)
+static void signal_wakeup_task(struct task *ti)
 {
-   ASSERT(!is_preemption_enabled());
-   ASSERT(!is_kernel_thread(ti));
-
-   if (ti == get_curr_task()) {
-
-      enable_preemption();
-      ASSERT(is_preemption_enabled());
-
-      terminate_process(0, signum);
-      NOT_REACHED();
-   }
-
-   add_pending_sig(ti, signum);
-
    if (!ti->vfork_stopped) {
 
       if (ti->state == TASK_STATE_SLEEPING) {
 
          /*
           * We must NOT wake up tasks waiting on a mutex or on a semaphore:
-          * supporting spurious wake-ups there is just a waste of resources.
+          * supporting spurious wake-ups there, is just a waste of resources.
           * On the contrary, if a task is waiting on a condition or sleeping
           * in kernel_sleep(), we HAVE to wake it up.
           */
 
          if (ti->wobj.type != WOBJ_KMUTEX && ti->wobj.type != WOBJ_SEM)
-            task_change_state(ti, TASK_STATE_RUNNABLE);
+            wake_up(ti);
       }
 
 
@@ -205,6 +204,24 @@ static void action_terminate(struct task *ti, int signum)
        * TODO: consider supporting killing of vforked process.
        */
    }
+}
+
+static void action_terminate(struct task *ti, int signum)
+{
+   ASSERT(!is_preemption_enabled());
+   ASSERT(!is_kernel_thread(ti));
+
+   if (ti == get_curr_task()) {
+
+      enable_preemption();
+      ASSERT(is_preemption_enabled());
+
+      terminate_process(0, signum);
+      NOT_REACHED();
+   }
+
+   add_pending_sig(ti, signum);
+   signal_wakeup_task(ti);
 }
 
 static void action_ignore(struct task *ti, int signum)
@@ -320,6 +337,7 @@ static void do_send_signal(struct task *ti, int signum)
    } else {
 
       add_pending_sig(ti, signum);
+      signal_wakeup_task(ti);
    }
 }
 
@@ -522,6 +540,17 @@ sys_rt_sigprocmask(int how,
          }
       }
    }
+
+   return 0;
+}
+
+int sys_pause(void)
+{
+   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+   kernel_yield();
+
+   if (pending_signals())
+      return -EINTR;
 
    return 0;
 }

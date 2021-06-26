@@ -19,6 +19,9 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/irq.h>
+#include <tilck/kernel/user.h>
+
+#include <tilck/mods/tracing.h>
 
 #include "gdt_int.h"
 
@@ -134,6 +137,87 @@ push_args_on_user_stack(regs_t *r,
    // push argc as last (since it will be the first to be pop-ed)
    push_on_user_stack(r, (ulong)argc);
    return 0;
+}
+
+static void save_regs_on_user_stack(regs_t *r)
+{
+   ulong new_useresp = r->useresp;
+   int rc;
+
+   /* Align the user ESP */
+   new_useresp &= POINTER_ALIGN_MASK;
+
+   /* Allocate space on the user stack */
+   new_useresp -= sizeof(*r);
+
+   /* Save the registers to the user stack */
+   rc = copy_to_user(TO_PTR(new_useresp), r, sizeof(*r));
+
+   if (rc) {
+      /* Oops, stack overflow: terminate the process */
+      enable_preemption();
+      terminate_process(0, SIGSEGV);
+      NOT_REACHED();
+   }
+
+   /* Now, after we saved the registers, update r->useresp */
+   r->useresp = new_useresp;
+}
+
+static void restore_regs_from_user_stack(regs_t *r)
+{
+   ulong old_regs = r->useresp;
+   int rc;
+
+   /* Restore the registers we previously changed */
+   rc = copy_from_user(r, TO_PTR(old_regs), sizeof(*r));
+
+   if (rc) {
+      /* Oops, something really weird happened here */
+      enable_preemption();
+      terminate_process(0, SIGSEGV);
+      NOT_REACHED();
+   }
+
+   /* Don't trust user space */
+   r->cs = X86_USER_CODE_SEL;
+   r->eflags |= EFLAGS_IF;
+}
+
+void setup_sig_handler(enum sig_state sig_state,
+                       regs_t *r,
+                       ulong user_func,
+                       int signum)
+{
+   struct task *curr = get_curr_task();
+
+   if (curr->nested_sig_handlers == 0) {
+
+      if (sig_state == sig_pre_syscall)
+         r->eax = (ulong) -EINTR;
+
+      save_regs_on_user_stack(r);
+   }
+
+   r->eip = user_func;
+   push_on_user_stack(r, (ulong)signum);
+   push_on_user_stack(r, post_sig_handler_user_vaddr);
+   curr->nested_sig_handlers++;
+   curr->running_in_kernel = false;
+}
+
+void sys_restart_syscall_impl(regs_t *r)
+{
+   struct task *curr = get_curr_task();
+   trace_printk(10, "[%d] Done running signal handler", curr->tid);
+   curr->running_in_kernel = false;
+   r->useresp += sizeof(ulong); /* compensate the "push signum" above */
+
+   if (!process_signals(sig_in_restart_syscall, r))
+      restore_regs_from_user_stack(r);
+
+   curr->nested_sig_handlers--;
+   ASSERT(curr->nested_sig_handlers >= 0);
 }
 
 NODISCARD int
@@ -526,13 +610,10 @@ switch_to_task(struct task *ti)
             load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
       }
 
-      if (!ti->running_in_kernel) {
-         if (ti->sig_state == no_sig_handling) {
-            if (process_signals()) {
-               ti->sig_state = sig_in_usermode;
-            }
-         }
-      }
+      // if (!ti->running_in_kernel) {
+      //    if (ti->sig_state == no_sig_handling)
+      //       process_signals(sig_in_usermode, state);
+      // }
 
       if (is_fpu_enabled_for_task(ti)) {
          hw_fpu_enable();

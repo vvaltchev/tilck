@@ -12,6 +12,7 @@
 .global vdso_begin
 .global vsdo_end
 .global sysexit_user_code_user_vaddr
+.global post_sig_handler_user_vaddr
 
 .align 4096
 vdso_begin:
@@ -25,8 +26,17 @@ pop edx
 pop ecx
 ret
 
+.align 4
+# When each signal handler returns, it will jump here
+.post_sig_handler:
+xor eax, eax # syscall #0 (restart_syscall)
+int 0x80     # do the syscall
+
 .space 4096-(.-vdso_begin), 0
 vdso_end:
 
 sysexit_user_code_user_vaddr:
 .long USER_VDSO_VADDR + (offset .sysexit_user_code - vdso_begin)
+
+post_sig_handler_user_vaddr:
+.long USER_VDSO_VADDR + (offset .post_sig_handler - vdso_begin)

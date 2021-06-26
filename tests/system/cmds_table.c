@@ -35,7 +35,7 @@ DECL_CMD(sigsegv2);
 DECL_CMD(sigill);
 DECL_CMD(sigfpe);
 DECL_CMD(sigabrt);
-DECL_CMD(sig1);
+DECL_CMD(sig_ignore);
 DECL_CMD(select1);
 DECL_CMD(select2);
 DECL_CMD(select3);
@@ -72,6 +72,8 @@ DECL_CMD(vfork0);
 DECL_CMD(extra);
 DECL_CMD(fatmm1);
 DECL_CMD(sigmask);
+DECL_CMD(sig1);
+DECL_CMD(sig2);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -106,7 +108,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sigill,       TT_SHORT,  true),
    CMD_ENTRY(sigfpe,       TT_SHORT,  true),
    CMD_ENTRY(sigabrt,      TT_SHORT,  true),
-   CMD_ENTRY(sig1,         TT_SHORT,  true),
+   CMD_ENTRY(sig_ignore,   TT_SHORT,  true),
    CMD_ENTRY(bigargv,      TT_SHORT,  true),
    CMD_ENTRY(cloexec,      TT_SHORT,  true),
    CMD_ENTRY(fs1,          TT_SHORT,  true),
@@ -143,6 +145,8 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(extra,        TT_MED,    true),
    CMD_ENTRY(fatmm1,       TT_SHORT,  true),
    CMD_ENTRY(sigmask,      TT_SHORT,  true),
+   CMD_ENTRY(sig1,         TT_SHORT,  true),
+   CMD_ENTRY(sig2,         TT_SHORT,  true),
 
    CMD_END(),
 };
