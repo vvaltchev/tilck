@@ -67,13 +67,12 @@ class printer_regs:
          ss = r["ss"] & 0xffff
 
          res += [
-            ("useresp     ", fixhex32(r["useresp"])),
             ("ss          ", fixhex16(ss)),
          ]
       else:
 
          # asm_kernel_yield() does NOT save SS on the stack. What we see there
-         # instead is it's first argument, caller's return EIP.
+         # instead is its 1st argument, caller's return EIP.
          calc_eip = gdb.parse_and_eval("(void *){}".format(r["ss"]))
          res.append(("[true_eip]  ", calc_eip))
 
