@@ -240,6 +240,10 @@ void terminate_process(int exit_code, int term_sig)
    /* Here we can either be RUNNABLE (if ti->wobj was set) or RUNNING */
    ASSERT(ti->state == TASK_STATE_RUNNING || ti->state == TASK_STATE_RUNNABLE);
 
+   /* Drop the any pending signals and prevent new from being enqueued */
+   drop_all_pending_signals(ti);
+   ti->nested_sig_handlers = -1;
+
    /*
     * Close all the handles, keeping the preemption enabled while doing so.
     */
@@ -316,7 +320,6 @@ void terminate_process(int exit_code, int term_sig)
       }
    }
 
-   /* This function has been called by sys_exit(): we won't return */
    set_curr_pdir(get_kernel_pdir());
 
    if (!vforked)
