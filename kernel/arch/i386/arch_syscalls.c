@@ -486,7 +486,7 @@ static void do_syscall(regs_t *r)
    syscall_type fptr;
 
    if (UNLIKELY(sn >= ARRAY_SIZE(syscalls) || !syscalls[sn])) {
-      printk("Unknown syscall #%i\n", sn);
+      trace_printk(5, "Unknown syscall %i", sn);
       r->eax = (ulong) -ENOSYS;
       return;
    }
@@ -505,6 +505,7 @@ static void do_syscall(regs_t *r)
 
 void handle_syscall(regs_t *r)
 {
+   struct task *curr = get_curr_task();
    const u32 sn = r->eax;
 
    /*
@@ -519,9 +520,9 @@ void handle_syscall(regs_t *r)
 
    if (LIKELY(sn != SYS_restart_syscall)) {
 
-      process_signals(sig_pre_syscall, r);
+      process_signals(curr, sig_pre_syscall, r);
       do_syscall(r);
-      process_signals(sig_in_syscall, r);
+      process_signals(curr, sig_in_syscall, r);
 
    } else {
 

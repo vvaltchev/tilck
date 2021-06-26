@@ -20,7 +20,7 @@ enum sig_state {
 int send_signal_to_group(int pgid, int sig);
 int send_signal_to_session(int sid, int sig);
 int send_signal2(int pid, int tid, int signum, bool whole_process);
-bool process_signals(enum sig_state new_sig_state, void *regs);
+bool process_signals(void *curr, enum sig_state new_sig_state, void *regs);
 void drop_all_pending_signals(void *curr);
 void reset_all_custom_signal_handlers(void *curr);
 

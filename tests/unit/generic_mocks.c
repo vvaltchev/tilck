@@ -140,3 +140,4 @@ int get_syscall_num(void *func) { return -1; }
 void arch_add_initial_mem_regions() { }
 bool arch_add_final_mem_regions() { return false; }
 void setup_sig_handler() { NOT_REACHED(); }
+void setup_pause_trampline() { NOT_REACHED(); }

@@ -184,14 +184,18 @@ static void restore_regs_from_user_stack(regs_t *r)
    r->eflags |= EFLAGS_IF;
 }
 
-void setup_sig_handler(enum sig_state sig_state,
+void setup_pause_trampline(regs_t *r)
+{
+   r->eip = pause_trampline_user_vaddr;
+}
+
+void setup_sig_handler(struct task *ti,
+                       enum sig_state sig_state,
                        regs_t *r,
                        ulong user_func,
                        int signum)
 {
-   struct task *curr = get_curr_task();
-
-   if (curr->nested_sig_handlers == 0) {
+   if (ti->nested_sig_handlers == 0) {
 
       if (sig_state == sig_pre_syscall)
          r->eax = (ulong) -EINTR;
@@ -202,18 +206,18 @@ void setup_sig_handler(enum sig_state sig_state,
    r->eip = user_func;
    push_on_user_stack(r, (ulong)signum);
    push_on_user_stack(r, post_sig_handler_user_vaddr);
-   curr->nested_sig_handlers++;
-   curr->running_in_kernel = false;
+   ti->nested_sig_handlers++;
 }
 
 void sys_restart_syscall_impl(regs_t *r)
 {
    struct task *curr = get_curr_task();
-   trace_printk(10, "[%d] Done running signal handler", curr->tid);
-   curr->running_in_kernel = false;
+   ASSERT(curr->nested_sig_handlers > 0);
+
+   trace_printk(10, "Done running signal handler");
    r->useresp += sizeof(ulong); /* compensate the "push signum" above */
 
-   if (!process_signals(sig_in_restart_syscall, r))
+   if (!process_signals(curr, sig_in_restart_syscall, r))
       restore_regs_from_user_stack(r);
 
    curr->nested_sig_handlers--;
@@ -610,10 +614,8 @@ switch_to_task(struct task *ti)
             load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
       }
 
-      // if (!ti->running_in_kernel) {
-      //    if (ti->sig_state == no_sig_handling)
-      //       process_signals(sig_in_usermode, state);
-      // }
+      if (!ti->running_in_kernel)
+         process_signals(ti, sig_in_usermode, state);
 
       if (is_fpu_enabled_for_task(ti)) {
          hw_fpu_enable();
@@ -635,7 +637,7 @@ switch_to_task(struct task *ti)
 
    set_curr_task(ti);
    ti->timer_ready = false;
-   set_kernel_stack((u32)ti->state_regs);
+   set_kernel_stack((ulong)ti->state_regs);
    context_switch(state);
 }
 
