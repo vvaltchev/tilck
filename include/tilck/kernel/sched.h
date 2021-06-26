@@ -43,15 +43,6 @@ struct sched_ticks {
    u64 total_kernel;    /* total life-time ticks spent in kernel */
 };
 
-enum sig_state {
-
-   no_sig_handling = 0,
-   sig_pre_syscall = 1,
-   sig_in_syscall = 2,
-   sig_in_usermode = 3,
-
-} PACKED;
-
 STATIC_ASSERT(sizeof(enum sig_state) == 1);
 
 struct task {
@@ -123,18 +114,14 @@ struct task {
    /* The task was sleeping on a timer and has just been woken up */
    bool timer_ready;
 
-   /* Signal handling state for the task */
-   enum sig_state sig_state;
+   /* Number of nested custom signal handlers (at most 1, at the moment). */
+   int nested_sig_handlers;
 
    /* Kernel thread name, NULL for user tasks */
    const char *kthread_name;
 
    /* See the comment above struct process' pi_arch */
    char ti_arch[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
-
-   /* Signal handling state */
-   regs_t *before_sig_handler_state;
-   ulong saved_syscall_ret;
 };
 
 extern struct task *kernel_process;
@@ -357,6 +344,18 @@ static ALWAYS_INLINE bool pending_signals(void)
 {
    struct task *curr = get_curr_task();
    STATIC_ASSERT(K_SIGACTION_MASK_WORDS <= 2);
+
+   if (curr->nested_sig_handlers > 0) {
+
+      /*
+       * Because we don't support nested signal handlers at the moment, it's
+       * much better to return false inconditionally here. Otherwise, in case
+       * a signal was sent during a signal handler, most syscalls will return
+       * -EINTR and the user program will likely end up in an stuck in an
+       * endless loop.
+       */
+      return false;
+   }
 
    if (K_SIGACTION_MASK_WORDS == 1)
 

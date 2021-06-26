@@ -200,6 +200,9 @@
       "bit": "c",
       "netfwd": "c",
       "signal.h": "c"
+      "netfwd": "c",
+      "tracing.h": "c",
+      "mod_tracing.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }

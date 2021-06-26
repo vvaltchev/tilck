@@ -32,7 +32,8 @@
 
 #endif
 
-CREATE_STUB_SYSCALL_IMPL(sys_restart_syscall)
+/* called explicitly after each signal handler returns */
+void sys_restart_syscall_impl(regs_t *);
 
 int sys_exit(int code);
 int sys_fork(void);
@@ -77,7 +78,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_ptrace)
 CREATE_STUB_SYSCALL_IMPL(sys_alarm)
 CREATE_STUB_SYSCALL_IMPL(sys_oldfstat)
 
-int sys_pause(); // TODO: update once signals are implemented
+int sys_pause(void);
 int sys_utime(const char *u_path, const struct utimbuf *u_times);
 int sys_access(const char *u_path, mode_t mode);
 

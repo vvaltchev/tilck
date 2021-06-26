@@ -454,17 +454,6 @@ mode_t sys_umask(mode_t mask)
    return old;
 }
 
-int sys_pause()
-{
-   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-   kernel_yield();
-
-   if (pending_signals())
-      return -EINTR;
-
-   return 0;
-}
-
 int sys_getpid()
 {
    return get_curr_proc()->pid;
