@@ -44,7 +44,6 @@
 
 /* ---------------------------------------------- */
 
-extern char vsdo_like_page[PAGE_SIZE];
 extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 pdir_t *__kernel_pdir;
@@ -1050,7 +1049,7 @@ static void init_hi_vmem_heap(void)
 void init_paging(void)
 {
    int rc;
-   void *user_vsdo_like_page_vaddr;
+   void *user_vsdo_vaddr;
    size_t pagesframes_refcount_bufsize;
 
    phys_mem_lim = get_phys_mem_size();
@@ -1080,20 +1079,20 @@ void init_paging(void)
 
    /*
     * Now use the just-created hi vmem heap to reserve a page for the user
-    * vsdo-like page and expect it to be == USER_VSDO_LIKE_PAGE_VADDR.
+    * vsdo-like page and expect it to be == USER_VDSO_VADDR.
     */
-   user_vsdo_like_page_vaddr = hi_vmem_reserve(PAGE_SIZE);
+   user_vsdo_vaddr = hi_vmem_reserve(PAGE_SIZE);
 
-   if (user_vsdo_like_page_vaddr != (void *)USER_VSDO_LIKE_PAGE_VADDR)
-      panic("user_vsdo_like_page_vaddr != USER_VSDO_LIKE_PAGE_VADDR");
+   if (user_vsdo_vaddr != (void *)USER_VDSO_VADDR)
+      panic("user_vsdo_vaddr != USER_VDSO_VADDR");
 
    /*
     * Map a special vdso-like page used for the sysenter interface.
     * This is the only user-mapped page with a vaddr in the kernel space.
     */
    rc = map_page(__kernel_pdir,
-                 user_vsdo_like_page_vaddr,
-                 KERNEL_VA_TO_PA(&vsdo_like_page),
+                 user_vsdo_vaddr,
+                 KERNEL_VA_TO_PA(&vdso_begin),
                  PAGING_FL_US);
 
    if (rc < 0)

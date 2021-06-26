@@ -21,7 +21,6 @@
 
 void syscall_int80_entry(void);
 void sysenter_entry(void);
-void asm_sysenter_setup(void);
 
 typedef long (*syscall_type)();
 
@@ -557,7 +556,5 @@ void init_syscall_interfaces(void)
    /* Setup the sysenter interface */
    wrmsr(MSR_IA32_SYSENTER_CS, X86_KERNEL_CODE_SEL);
    wrmsr(MSR_IA32_SYSENTER_EIP, (ulong) &sysenter_entry);
-
-   asm_sysenter_setup();
 }
 
