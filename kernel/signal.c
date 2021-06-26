@@ -318,6 +318,9 @@ static void do_send_signal(struct task *ti, int signum)
    if (signum >= _NSIG)
       return; /* ignore unknown and unsupported signal */
 
+   if (ti->nested_sig_handlers < 0)
+      return; /* the task is dying, no signals allowed */
+
    __sighandler_t h = ti->pi->sa_handlers[signum - 1];
 
    if (h == SIG_IGN) {
