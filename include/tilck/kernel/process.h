@@ -93,7 +93,6 @@ struct process {
    char str_cwd[MAX_PATH];                /* current working directory */
 
    void *sa_handlers[_NSIG - 1];
-   ulong sa_mask[K_SIGACTION_MASK_WORDS];
 };
 
 STATIC_ASSERT(sizeof(struct misc_buf) <= PAGE_SIZE);

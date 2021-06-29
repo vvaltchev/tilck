@@ -120,6 +120,9 @@ struct task {
    /* Kernel thread name, NULL for user tasks */
    const char *kthread_name;
 
+   /* Signal mask */
+   ulong sa_mask[K_SIGACTION_MASK_WORDS];
+
    /* See the comment above struct process' pi_arch */
    char ti_arch[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
 };
