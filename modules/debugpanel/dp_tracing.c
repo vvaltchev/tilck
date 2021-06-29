@@ -76,7 +76,13 @@ tracing_ui_show_help(void)
 
    dp_write_raw(
       E_COLOR_YELLOW "  "
-      E_COLOR_YELLOW "p" RESET_ATTRS "     : Dump process list\r\n"
+      E_COLOR_YELLOW "p" RESET_ATTRS "     : Dump user tasks list\r\n"
+      RESET_ATTRS
+   );
+
+   dp_write_raw(
+      E_COLOR_YELLOW "  "
+      E_COLOR_YELLOW "P" RESET_ATTRS "     : Dump full task list\r\n"
       RESET_ATTRS
    );
 
@@ -530,7 +536,12 @@ dp_tracing_screen(void)
 
          case 'p':
             dp_write_raw("%c", c);
-            dp_dump_task_list();
+            dp_dump_task_list(false);
+            break;
+
+         case 'P':
+            dp_write_raw("%c", c);
+            dp_dump_task_list(true);
             break;
 
          case 'l':

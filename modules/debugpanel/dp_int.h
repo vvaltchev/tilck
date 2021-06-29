@@ -47,4 +47,4 @@ int dp_read_ke_from_tty(struct key_event *ke);
 void dp_set_input_blocking(bool blocking);
 int dp_read_line(char *buf, int buf_size);
 enum kb_handler_action dp_tracing_screen(void);
-void dp_dump_task_list(void);
+void dp_dump_task_list(bool kernel_tasks);
