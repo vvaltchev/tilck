@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include <sys/prctl.h>
 #include <sys/ioctl.h>
+#include <sys/reboot.h>
+#include <linux/reboot.h>
 
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/config_init.h>
@@ -45,21 +47,34 @@ NORETURN static void call_exit(int code)
 }
 
 static void
+init_handle_sig_term(int sig)
+{
+   reboot(LINUX_REBOOT_CMD_RESTART);
+}
+
+static void
+init_handle_sig_usr1(int sig)
+{
+   reboot(LINUX_REBOOT_CMD_HALT);
+}
+
+static void
+init_handle_sig_usr2(int sig)
+{
+   reboot(LINUX_REBOOT_CMD_POWER_OFF);
+}
+
+static void
 init_set_signal_mask(void)
 {
-   /* Ignore SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2 */
-   signal(SIGINT, SIG_IGN);
-   signal(SIGQUIT, SIG_IGN);
-   signal(SIGTERM, SIG_IGN);
-   signal(SIGUSR1, SIG_IGN);
-   signal(SIGUSR2, SIG_IGN);
+   signal(SIGTERM, &init_handle_sig_term);
+   signal(SIGUSR1, &init_handle_sig_usr1);
+   signal(SIGUSR2, &init_handle_sig_usr2);
 }
 
 static void
 init_reset_signal_mask(void)
 {
-   signal(SIGINT, SIG_DFL);
-   signal(SIGQUIT, SIG_DFL);
    signal(SIGTERM, SIG_DFL);
    signal(SIGUSR1, SIG_DFL);
    signal(SIGUSR2, SIG_DFL);
