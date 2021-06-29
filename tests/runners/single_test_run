@@ -227,7 +227,7 @@ def run_the_vm():
 
    kernel_cmdline = '-sercon -noacpi '
    cmdline = DEVSHELL_PATH
-   init_opts = '-ns -nr'
+   init_opts = '-ns -nr -e'
 
    if DUMP_COV:
       cmdline += ' -dcov'

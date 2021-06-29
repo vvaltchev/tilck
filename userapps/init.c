@@ -27,8 +27,10 @@
 static char *start_script_args[2] = { START_SCRIPT, NULL };
 static char *shell_args[16] = { DEFAULT_SHELL, [1 ... 15] = NULL };
 static int shell_pids[128] = {0};
+static volatile bool in_shutdown;
 static int video_tty_count;
 static FILE *tty0;
+static int reboot_cmd;
 
 static int fork_and_run_shell_on_tty(int tty);
 
@@ -37,31 +39,48 @@ static int fork_and_run_shell_on_tty(int tty);
 static bool opt_quiet;
 static bool opt_nostart;
 static bool opt_no_shell_respawn;
+static bool opt_do_exit;
 
 /* -- end -- */
 
-NORETURN static void call_exit(int code)
+NORETURN static void
+call_exit(int code)
 {
    printf("[init] exit with code: %i\n", code);
    exit(code);
 }
 
 static void
+do_graceful_shutdown(void)
+{
+   in_shutdown = true;
+   printf("[init] Sending SIGTERM to all tasks...\n");
+   kill(-1, SIGTERM);
+   printf("[init] Waiting at most 1 sec...\n");
+}
+
+static void
 init_handle_sig_term(int sig)
 {
-   reboot(LINUX_REBOOT_CMD_RESTART);
+   printf("[init] Reboot...\n");
+   do_graceful_shutdown();
+   reboot_cmd = LINUX_REBOOT_CMD_RESTART;
 }
 
 static void
 init_handle_sig_usr1(int sig)
 {
-   reboot(LINUX_REBOOT_CMD_HALT);
+   printf("[init] Halt...\n");
+   do_graceful_shutdown();
+   reboot_cmd = LINUX_REBOOT_CMD_HALT;
 }
 
 static void
 init_handle_sig_usr2(int sig)
 {
-   reboot(LINUX_REBOOT_CMD_POWER_OFF);
+   printf("[init] Poweroff...\n");
+   do_graceful_shutdown();
+   reboot_cmd = LINUX_REBOOT_CMD_POWER_OFF;
 }
 
 static void
@@ -239,11 +258,17 @@ static int get_tty_for_shell_pid(pid_t shell_pid)
 static void report_shell_exit(pid_t pid, int tty, int wstatus)
 {
    const int status = WEXITSTATUS(wstatus);
+   const int term_sig = WTERMSIG(wstatus);
 
-   fprintf(tty0, "[init] the shell with pid %d exited with status: %d\n",
-           pid, status);
+   if (term_sig) {
+      fprintf(tty0, "[init] the shell with pid %d was killed by signal %d\n",
+              pid, term_sig);
+   } else {
+      fprintf(tty0, "[init] the shell with pid %d exited with status: %d\n",
+              pid, status);
+   }
 
-   if (opt_no_shell_respawn)
+   if (opt_no_shell_respawn || in_shutdown)
       return;
 
    fprintf(tty0, "\n");
@@ -305,6 +330,12 @@ begin:
       goto begin;
    }
 
+   if (!strcmp(*argv, "-e")) {
+      opt_do_exit = true;
+      argc--; argv++;
+      goto begin;
+   }
+
    if (!strcmp(*argv, "--")) {
       const int elems = MIN(ARRAY_SIZE(shell_args), argc - 1);
       memcpy(shell_args, argv + 1, elems * sizeof(char *));
@@ -315,12 +346,49 @@ begin:
    printf("[init] Unknown option '%s'\n", *argv);
 }
 
-static void wait_for_children(void)
+static void wait_for_children(int timeout_ms)
 {
+   const bool was_in_shutdown = in_shutdown;
    int shell_tty, wstatus;
+   int elapsed_ms = timeout_ms ? 0 : -1;
    pid_t pid;
 
-   while ((pid = waitpid(-1, &wstatus, 0)) > 0) {
+   while (elapsed_ms < timeout_ms) {
+
+      if (!timeout_ms) {
+
+         pid = waitpid(-1, &wstatus, 0);
+
+      } else {
+
+         pid = waitpid(-1, &wstatus, WNOHANG);
+
+         if (pid == 0) {
+
+            /* no child changed its state */
+            usleep(100 * 1000); /* 100 ms */
+            elapsed_ms += 100;
+            continue;
+         }
+      }
+
+      if (pid < 0) {
+
+         if (errno == EINTR) {
+
+            if (was_in_shutdown != in_shutdown) {
+               /* Graceful shutdown started */
+               break;
+            }
+
+            continue;
+         }
+
+         if (errno == ECHILD)
+            break;
+
+         printf("[init] waitpid() returned: %d (%s)\n", errno, strerror(errno));
+      }
 
       shell_tty = get_tty_for_shell_pid(pid);
 
@@ -404,6 +472,18 @@ static void tilck_console_msg_loop(int tty)
    printf("\n");
 }
 
+static void getty_handle_sigterm(int sig)
+{
+   /* clear the screen */
+   printf("\033[2J\033[1;1H");
+
+   /* write a meaningful message on the screen */
+   printf("System shutdown.\n");
+
+   /* graceful exit */
+   exit(0);
+}
+
 static int fork_and_run_shell_on_tty(int tty)
 {
    static bool already_run;
@@ -416,12 +496,15 @@ static int fork_and_run_shell_on_tty(int tty)
    }
 
    if (pid) {
+      /* Parent process */
       already_run = true;
       return pid;
    }
 
+   /* Child process */
    setup_console_for_shell(tty);
    init_reset_signal_mask();
+   signal(SIGTERM, &getty_handle_sigterm);
 
    if (video_tty_count && (tty > 1 || already_run)) {
 
@@ -493,7 +576,31 @@ int main(int argc, char **argv, char **env)
       }
    }
 
-   wait_for_children();
-   call_exit(0);
+   wait_for_children(0);
+
+   if (opt_do_exit) {
+
+      /*
+       * This option is used by automated system tests run on QEMU.
+       * In that context, init is expected to just exit after all of its
+       * children died. That triggers a call to debug_qemu_turn_off_machine(),
+       * instead of a regular kernel panic.
+       */
+      exit(0);
+   }
+
+   wait_for_children(1000);
+
+   printf("[init] Sync...\n");
+   sync();
+   printf("[init] Sending SIGKILL to all tasks...\n");
+   kill(-1, SIGKILL);
+
+   wait_for_children(1000);
+
+   if (reboot(reboot_cmd)) {
+      /* Restart, halt or power-off failed */
+      exit(2);
+   }
 }
 
