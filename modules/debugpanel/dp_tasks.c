@@ -163,6 +163,7 @@ static int debug_per_task_cb(void *obj, void *arg)
    char *path = buf;
    char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
    const char *orig_path = pi->debug_cmdline ? pi->debug_cmdline : "<n/a>";
+   bool kernel_tasks = *(bool *)arg;
 
    STATIC_ASSERT(sizeof(buf) >= (2 * MAX_EXEC_PATH_LEN + 2));
 
@@ -180,6 +181,9 @@ static int debug_per_task_cb(void *obj, void *arg)
    int ttynum = tty_get_num(ti->pi->proc_tty);
 
    if (is_kernel_thread(ti)) {
+
+      if (!kernel_tasks)
+         return 0;
 
       const char *name = ti->kthread_name;
       ttynum = 0;
@@ -519,7 +523,7 @@ static void show_actions_menu(void)
    dp_writeln("");
 }
 
-void dp_dump_task_list(void)
+void dp_dump_task_list(bool kernel_tasks)
 {
    if (dp_in_tracing_screen)
       dp_write_raw("\r\n%s\r\n", debug_get_task_dump_util_str(HEADER));
@@ -548,7 +552,7 @@ void dp_dump_task_list(void)
       if (sel_index >= 0)
          sel_index = MIN(sel_index, max_idx);
 
-      iterate_over_tasks(debug_per_task_cb, NULL);
+      iterate_over_tasks(debug_per_task_cb, &kernel_tasks);
    }
    enable_preemption();
 
@@ -561,7 +565,7 @@ static void dp_show_tasks(void)
    row = dp_screen_start_row;
 
    show_actions_menu();
-   dp_dump_task_list();
+   dp_dump_task_list(true);
 }
 
 static void dp_tasks_enter(void)
