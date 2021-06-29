@@ -73,7 +73,6 @@ struct task {
    regs_t *state_regs;
    regs_t *fault_resume_regs;
    u32 faults_resume_mask;
-   ulong pending_signums[K_SIGACTION_MASK_WORDS];
    void *worker_thread;                      /* only for worker threads */
 
    struct bintree_node tree_by_tid_node;
@@ -120,7 +119,10 @@ struct task {
    /* Kernel thread name, NULL for user tasks */
    const char *kthread_name;
 
-   /* Signal mask */
+   /* Pending signals bitset */
+   ulong pending_signums[K_SIGACTION_MASK_WORDS];
+
+   /* Blocked signals mask */
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
 
    /* See the comment above struct process' pi_arch */
