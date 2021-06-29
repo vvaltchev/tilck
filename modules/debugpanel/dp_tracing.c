@@ -185,24 +185,24 @@ dp_dump_tracing_event(struct trace_event *e)
 
       case te_printk:
          dp_write_raw(
-            E_COLOR_YELLOW "PRINTK" RESET_ATTRS "[%d]: %s\r\n",
+            E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s\r\n",
             e->p_ev.level, e->p_ev.buf
          );
          break;
 
       case te_signal_delivered:
          dp_write_raw(
-            E_COLOR_YELLOW "GOT SIGNAL: " RESET_ATTRS "%d [%s]\r\n",
-            e->sig_ev.signum,
-            get_signal_name(e->sig_ev.signum)
+            E_COLOR_YELLOW "GOT SIGNAL: " RESET_ATTRS "%s[%d]\r\n",
+            get_signal_name(e->sig_ev.signum),
+            e->sig_ev.signum
          );
          break;
 
       case te_killed:
          dp_write_raw(
-            E_COLOR_BR_RED "KILLED BY SIGNAL: " RESET_ATTRS "%d [%s]\r\n",
-            e->sig_ev.signum,
-            get_signal_name(e->sig_ev.signum)
+            E_COLOR_BR_RED "KILLED BY SIGNAL: " RESET_ATTRS "%s[%d]\r\n",
+            get_signal_name(e->sig_ev.signum),
+            e->sig_ev.signum
          );
          break;
 
