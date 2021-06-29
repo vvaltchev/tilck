@@ -100,6 +100,7 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
       DEVSHELL_SOURCES
 
       "devshell/*.c"
+      "devshell/${ARCH}.S"
       "${CMAKE_SOURCE_DIR}/tests/system/*.c"
       "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
    )

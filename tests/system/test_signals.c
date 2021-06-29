@@ -230,8 +230,15 @@ int cmd_sigmask(int argc, char **argv)
 
 static volatile bool test_got_sig[_NSIG];
 
-static void child_sig_handler(int signum) {
-   printf("child handle signal: %d\n", signum);
+void child_sig_handler(int signum)
+{
+   printf("child: handle signal: %d\n", signum);
+
+   if (!is_stack_aligned_16()) {
+      printf("child: stack is NOT aligned at 16-bytes boundary\n");
+      exit(1);
+   }
+
    test_got_sig[signum] = true;
    fflush(stdout);
 }
@@ -253,6 +260,16 @@ static bool got_all_signals(int n)
 
 static void test_sig_child_body(int n, bool busy_loop)
 {
+   /*
+    * Special variables FORCED to be on the stack by using "volatile" and the
+    * magic DO_NOT_OPTIMIZE_AWAY(). We need them to check that the kernel
+    * restored correctly the stack pointer after the signal handler run.
+    */
+   volatile unsigned magic1 = 0xcafebabe;
+   volatile unsigned magic2 = 0x11223344;
+   DO_NOT_OPTIMIZE_AWAY(magic1);
+   DO_NOT_OPTIMIZE_AWAY(magic2);
+
    memset((void *)test_got_sig, 0, sizeof(test_got_sig));
 
    signal(SIGHUP, &child_sig_handler);
@@ -288,6 +305,11 @@ static void test_sig_child_body(int n, bool busy_loop)
              count, n);
 
       fflush(stdout);
+      exit(1);
+   }
+
+   if (magic1 != 0xcafebabe || magic2 != 0x11223344) {
+      printf("child: magic variables got corrupted!\n");
       exit(1);
    }
 
@@ -332,7 +354,7 @@ static int test_sig_n(int n, bool busy_loop, int exp_term_sig)
    code = WEXITSTATUS(wstatus);
    term_sig = WTERMSIG(wstatus);
 
-   printf("Child exit code: %d, term_sig: %d\n", code, term_sig);
+   printf("parent: child exit code: %d, term_sig: %d\n", code, term_sig);
 
    if (exp_term_sig) {
 
