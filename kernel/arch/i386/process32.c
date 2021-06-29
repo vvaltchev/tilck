@@ -20,6 +20,7 @@
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/user.h>
+#include <tilck/kernel/vdso.h>
 
 #include <tilck/mods/tracing.h>
 
