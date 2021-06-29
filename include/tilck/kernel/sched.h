@@ -120,7 +120,7 @@ struct task {
    const char *kthread_name;
 
    /* Pending signals bitset */
-   ulong pending_signums[K_SIGACTION_MASK_WORDS];
+   ulong sa_pending[K_SIGACTION_MASK_WORDS];
 
    /* Blocked signals mask */
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
@@ -364,12 +364,12 @@ static ALWAYS_INLINE bool pending_signals(void)
 
    if (K_SIGACTION_MASK_WORDS == 1)
 
-      return curr->pending_signums[0] != 0;
+      return curr->sa_pending[0] != 0;
 
    else
 
-      return curr->pending_signums[0] != 0 ||
-             curr->pending_signums[1] != 0;
+      return curr->sa_pending[0] != 0 ||
+             curr->sa_pending[1] != 0;
 }
 
 NORETURN void switch_to_task(struct task *ti);
