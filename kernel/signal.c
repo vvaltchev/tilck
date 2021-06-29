@@ -494,11 +494,11 @@ sys_rt_sigaction(int signum,
    return rc;
 }
 
-int
-sys_rt_sigprocmask(int how,
-                   sigset_t *user_set,
-                   sigset_t *user_oldset,
-                   size_t sigsetsize)
+static int
+__sys_rt_sigprocmask(int how,
+                     sigset_t *user_set,
+                     sigset_t *user_oldset,
+                     size_t sigsetsize)
 {
    struct task *ti = get_curr_task();
    int rc;
@@ -561,6 +561,64 @@ sys_rt_sigprocmask(int how,
    }
 
    return 0;
+}
+
+int
+sys_rt_sigprocmask(int how,
+                   sigset_t *user_set,
+                   sigset_t *user_oldset,
+                   size_t sigsetsize)
+{
+   int rc;
+   disable_preemption();
+   {
+      rc = __sys_rt_sigprocmask(how, user_set, user_oldset, sigsetsize);
+   }
+   enable_preemption();
+   return rc;
+}
+
+static int
+__sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
+{
+   struct task *ti = get_curr_task();
+   int rc;
+
+   if (!u_set)
+      return 0;
+
+   rc = copy_to_user(u_set, ti->pending_signums, sigsetsize);
+
+   if (rc)
+      return -EFAULT;
+
+   if (sigsetsize > sizeof(ti->pending_signums)) {
+
+      const size_t diff = sigsetsize - sizeof(ti->pending_signums);
+
+      rc = copy_to_user(
+         (char *)u_set + sizeof(ti->pending_signums),
+         zero_page,
+         diff
+      );
+
+      if (rc)
+         return -EFAULT;
+   }
+
+   return 0;
+}
+
+int
+sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
+{
+   int rc;
+   disable_preemption();
+   {
+      rc = __sys_rt_sigpending(u_set, sigsetsize);
+   }
+   enable_preemption();
+   return rc;
 }
 
 int sys_pause(void)

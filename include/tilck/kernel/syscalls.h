@@ -274,10 +274,12 @@ sys_rt_sigaction(int signum,
                  size_t sigsetsize);
 
 int
-sys_rt_sigprocmask(int how, sigset_t *set,
-                   sigset_t *oldset, size_t sigsetsize);
+sys_rt_sigprocmask(int how, sigset_t *u_set,
+                   sigset_t *u_oldset, size_t sigsetsize);
 
-CREATE_STUB_SYSCALL_IMPL(sys_rt_sigpending)
+int
+sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize);
+
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigqueueinfo)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigsuspend)
