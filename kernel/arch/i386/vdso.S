@@ -27,7 +27,7 @@ ret
 .align 4
 # When each signal handler returns, it will jump here
 .post_sig_handler:
-xor eax, eax # syscall #0 (restart_syscall)
+mov eax, 173 # sys_rt_sigreturn_impl()
 int 0x80     # do the syscall
 
 .align 4

@@ -27,7 +27,7 @@ typedef long (*syscall_type)();
 // The syscall numbers are ARCH-dependent
 static void *syscalls[MAX_SYSCALLS] =
 {
-   [0] = NULL,       /* sys_restart_syscall_impl() is called explicitly */
+   [0] = sys_restart_syscall,
    [1] = sys_exit,
    [2] = sys_fork,
    [3] = sys_read,
@@ -200,7 +200,7 @@ static void *syscalls[MAX_SYSCALLS] =
    [170] = sys_setresgid16,
    [171] = sys_getresgid16,
    [172] = sys_prctl,
-   [173] = sys_rt_sigreturn,
+   [173] = NULL,              /* sys_rt_sigreturn_impl() is called explicitly */
    [174] = sys_rt_sigaction,
    [175] = sys_rt_sigprocmask,
    [176] = sys_rt_sigpending,
@@ -518,7 +518,7 @@ void handle_syscall(regs_t *r)
    save_current_task_state(r);
    set_current_task_in_kernel();
 
-   if (LIKELY(sn != SYS_restart_syscall)) {
+   if (LIKELY(sn != SYS_rt_sigreturn)) {
 
       process_signals(curr, sig_pre_syscall, r);
       do_syscall(r);
@@ -527,7 +527,7 @@ void handle_syscall(regs_t *r)
    } else {
 
       /* run with preemption disabled */
-      sys_restart_syscall_impl(r);
+      sys_rt_sigreturn_impl(r);
    }
 
    set_current_task_in_user_mode();
