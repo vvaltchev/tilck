@@ -10,6 +10,7 @@
 
 /* --------- Boolean config variables --------- */
 #cmakedefine01 KRN_NO_SYS_WARN
+#cmakedefine01 KRN_PAGE_FAULT_PRINTK
 #cmakedefine01 KERNEL_FORCE_TC_ISYSTEM
 #cmakedefine01 TINY_KERNEL
 #cmakedefine01 KERNEL_GCOV

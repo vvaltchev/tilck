@@ -22,6 +22,8 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process.h>
 
+#include <tilck/mods/tracing.h>
+
 #include "paging_int.h"
 
 #include <sys/mman.h>      // system header
@@ -265,11 +267,26 @@ void handle_page_fault_int(regs_t *r)
       }
    }
 
-   printk("USER PAGE FAULT in attempt to %s %p%s\n",
-          rw ? "WRITE" : "READ", TO_PTR(vaddr),
-          !p ? " (NON present)." : ".");
+   if (KRN_PAGE_FAULT_PRINTK) {
 
-   printk("EIP: %p\n", TO_PTR(r->eip));
+      printk("[%d] USER PAGE FAULT in attempt to %s %p%s\n",
+             get_curr_pid(),
+             rw ? "WRITE" : "READ", TO_PTR(vaddr),
+             !p ? " (NON present)." : ".");
+
+      printk("EIP: %p\n", TO_PTR(r->eip));
+
+      if (get_curr_proc()->debug_cmdline)
+         printk("Cmdline: %s\n", get_curr_proc()->debug_cmdline);
+   }
+
+   trace_printk(
+      5, "USER PAGE FAULT in attempt to %s %p%s, EIP: %p, Cmdline: '%s'",
+      rw ? "WRITE" : "READ", TO_PTR(vaddr),
+      !p ? " (NON present)" : "",
+      TO_PTR(r->eip),
+      get_curr_proc()->debug_cmdline
+   );
 
    exit_fault_handler_state();
    send_signal(get_curr_tid(), sig, true);
