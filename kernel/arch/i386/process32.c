@@ -210,7 +210,7 @@ void setup_sig_handler(struct task *ti,
    ti->nested_sig_handlers++;
 }
 
-void sys_restart_syscall_impl(regs_t *r)
+void sys_rt_sigreturn_impl(regs_t *r)
 {
    struct task *curr = get_curr_task();
    ASSERT(curr->nested_sig_handlers > 0);
@@ -218,7 +218,7 @@ void sys_restart_syscall_impl(regs_t *r)
    trace_printk(10, "Done running signal handler");
    r->useresp += sizeof(ulong); /* compensate the "push signum" above */
 
-   if (!process_signals(curr, sig_in_restart_syscall, r))
+   if (!process_signals(curr, sig_in_return, r))
       restore_regs_from_user_stack(r);
 
    curr->nested_sig_handlers--;

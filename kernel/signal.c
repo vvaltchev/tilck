@@ -149,7 +149,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
       return true;
    }
 
-   if (ti->nested_sig_handlers > 0 && sig_state != sig_in_restart_syscall) {
+   if (ti->nested_sig_handlers > 0 && sig_state != sig_in_return) {
       /*
        * For the moment, in Tilck only signal handlers (even of different types)
        * will not be able to interrupt each other. This is the equivalent of

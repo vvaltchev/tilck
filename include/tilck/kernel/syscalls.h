@@ -32,8 +32,7 @@
 
 #endif
 
-/* called explicitly after each signal handler returns */
-void sys_restart_syscall_impl(regs_t *);
+CREATE_STUB_SYSCALL_IMPL(sys_restart_syscall);
 
 int sys_exit(int code);
 int sys_fork(void);
@@ -192,8 +191,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_sysinfo)
 CREATE_STUB_SYSCALL_IMPL(sys_ipc)
 
 int sys_fsync(int fd);
+CREATE_STUB_SYSCALL_IMPL(sys_sigreturn);
 
-CREATE_STUB_SYSCALL_IMPL(sys_sigreturn)
 CREATE_STUB_SYSCALL_IMPL(sys_clone)
 CREATE_STUB_SYSCALL_IMPL(sys_setdomainname)
 
@@ -264,8 +263,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
 
 int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5);
-
-CREATE_STUB_SYSCALL_IMPL(sys_rt_sigreturn)
+void sys_rt_sigreturn_impl(regs_t *);
 
 int
 sys_rt_sigaction(int signum,

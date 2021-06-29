@@ -9,11 +9,11 @@
 
 enum sig_state {
 
-   no_sig_handling = 0,
+   sig_none = 0,
    sig_pre_syscall = 1,
    sig_in_syscall = 2,
    sig_in_usermode = 3,
-   sig_in_restart_syscall = 4,
+   sig_in_return = 4,
 
 } PACKED;
 
