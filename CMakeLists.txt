@@ -235,8 +235,11 @@ set(BOOT_INTERACTIVE ON CACHE BOOL
 
 # Kernel options (disabled by default)
 
+set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
+    "Use printk() to display info when a process is killed due to page fault")
+
 set(KRN_NO_SYS_WARN OFF CACHE BOOL
-    "Show a warning when a not implemented syscall is called")
+    "Show a warning when a not-implemented syscall is called")
 
 set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
 
