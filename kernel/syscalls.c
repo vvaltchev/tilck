@@ -130,6 +130,17 @@ int sys_tgkill(int pid /* linux: tgid */, int tid, int sig)
    return send_signal2(pid, tid, sig, false);
 }
 
+static int kill_each_task(void *obj, void *arg)
+{
+   struct task *ti = obj;
+   int sig = *(int *)arg;
+
+   if (ti != get_curr_task() && !is_kernel_thread(ti)) {
+      send_signal(ti->tid, sig, false);
+   }
+
+   return 0;
+}
 
 int sys_kill(int pid, int sig)
 {
@@ -142,16 +153,17 @@ int sys_kill(int pid, int sig)
    if (pid == -1) {
 
       /*
-       * In theory, pid == -1, means:
-       *    "sig is sent to every process for which the calling process has
-       *     permission to send signals, except for process 1 (init)".
-       *
-       * But Tilck does not have a permission model nor multi-user support.
-       * So, what to do here? Kill everything except init? Mmh, not sure.
-       * It looks acceptable for the moment to just kill all the processes in
-       * the current session.
+       * From kill(2):
+       *    sig is sent to every process for which the calling process has
+       *    permission to send signals, except for process 1 (init)
        */
-      return send_signal_to_session(get_curr_proc()->sid, sig);
+
+      disable_preemption();
+      {
+         iterate_over_tasks(&kill_each_task, &sig);
+      }
+      enable_preemption();
+      return 0;
    }
 
    if (pid < -1)
