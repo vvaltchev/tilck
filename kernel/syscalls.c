@@ -198,6 +198,12 @@ int sys_vfork(void)
    return do_fork(true);
 }
 
+static void
+kernel_shutdown(void)
+{
+   /* This is just a stub */
+}
+
 int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
 {
    if (magic != LINUX_REBOOT_MAGIC1)
@@ -211,26 +217,30 @@ int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
       return -EINVAL;
    }
 
-   if (cmd == LINUX_REBOOT_CMD_RESTART ||
-       cmd == LINUX_REBOOT_CMD_RESTART2)
-   {
-      reboot();
-   }
-
    switch (cmd) {
 
       case LINUX_REBOOT_CMD_RESTART:
       case LINUX_REBOOT_CMD_RESTART2:
+         kernel_shutdown();
          reboot();
          break;
 
       case LINUX_REBOOT_CMD_HALT:
+         kernel_shutdown();
+         disable_interrupts_forced();
+         while (true) { halt(); }
+         break;
+
       case LINUX_REBOOT_CMD_POWER_OFF:
+         kernel_shutdown();
          poweroff();
          break;
+
+      default:
+         return -EINVAL;
    }
 
-   return -EINVAL;
+   return 0;
 }
 
 int sys_sched_yield(void)
