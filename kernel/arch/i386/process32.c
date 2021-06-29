@@ -146,7 +146,7 @@ static void save_regs_on_user_stack(regs_t *r)
    int rc;
 
    /* Align the user ESP */
-   new_useresp &= POINTER_ALIGN_MASK;
+   new_useresp &= ALIGNED_MASK(USERMODE_STACK_ALIGN);
 
    /* Allocate space on the user stack */
    new_useresp -= sizeof(*r);
@@ -190,6 +190,16 @@ void setup_pause_trampoline(regs_t *r)
    r->eip = pause_trampoline_user_vaddr;
 }
 
+/* See the comments below in setup_sig_handler() */
+#define SIG_HANDLER_ALIGN_ADJUST                        \
+   (                                                    \
+      (                                                 \
+         + USERMODE_STACK_ALIGN                         \
+         - sizeof(regs_t)               /* regs */      \
+         - sizeof(ulong)                /* signum */    \
+      ) % USERMODE_STACK_ALIGN                          \
+   )
+
 void setup_sig_handler(struct task *ti,
                        enum sig_state sig_state,
                        regs_t *r,
@@ -205,18 +215,42 @@ void setup_sig_handler(struct task *ti,
    }
 
    r->eip = user_func;
+   r->useresp -= SIG_HANDLER_ALIGN_ADJUST;
    push_on_user_stack(r, (ulong)signum);
    push_on_user_stack(r, post_sig_handler_user_vaddr);
    ti->nested_sig_handlers++;
+
+   /*
+    * Check that the stack pointer + 4 is aligned at a 16-bytes boundary.
+    * The reason for that +4 (word size) is that the stack must be aligned
+    * BEFORE the call instruction, not after it. So, at the first instruction,
+    * the callee will see its ESP in hex ending with a "c", like this:
+    *
+    *    0xbfffce2c             # if we add +4, it's aligned at 16
+    *
+    * and NOT like this:
+    *
+    *    0xbfffce20             # it's already aligned at 16
+    */
+   ASSERT(((r->useresp + sizeof(ulong)) & (USERMODE_STACK_ALIGN - 1)) == 0);
 }
 
 void sys_rt_sigreturn_impl(regs_t *r)
 {
    struct task *curr = get_curr_task();
-   ASSERT(curr->nested_sig_handlers > 0);
+
+   if (curr->nested_sig_handlers == 0) {
+
+      /* An user process tried to call directly rt_sigreturn() */
+      r->eax = (ulong) -ENOSYS;
+      return;
+   }
 
    trace_printk(10, "Done running signal handler");
-   r->useresp += sizeof(ulong); /* compensate the "push signum" above */
+
+   r->useresp +=
+      sizeof(ulong)                /* compensate the "push signum" above    */
+      + SIG_HANDLER_ALIGN_ADJUST;  /* compensate the forced stack alignment */
 
    if (!process_signals(curr, sig_in_return, r))
       restore_regs_from_user_stack(r);
