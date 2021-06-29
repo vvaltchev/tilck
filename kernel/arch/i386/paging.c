@@ -21,6 +21,7 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process.h>
+#include <tilck/kernel/vdso.h>
 
 #include <tilck/mods/tracing.h>
 
