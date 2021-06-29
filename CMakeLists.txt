@@ -233,10 +233,10 @@ set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
 set(BOOT_INTERACTIVE ON CACHE BOOL
     "Have user-interactive commands in the bootloaders")
 
-set(KRN_NO_SYS_WARN ON CACHE BOOL
-    "Show a warning when a not implemented syscall is called")
-
 # Kernel options (disabled by default)
+
+set(KRN_NO_SYS_WARN OFF CACHE BOOL
+    "Show a warning when a not implemented syscall is called")
 
 set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
 

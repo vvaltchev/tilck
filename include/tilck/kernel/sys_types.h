@@ -33,6 +33,8 @@
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
 
+#define MAX_SYSCALLS 500
+
 typedef u64 tilck_ino_t;
 
 /* From the man page of getdents64() */
