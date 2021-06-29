@@ -27,7 +27,7 @@ static void add_pending_sig(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
 
-   ti->pending_signums[slot] |= (1 << index);
+   ti->sa_pending[slot] |= (1 << index);
 }
 
 static void del_pending_sig(struct task *ti, int signum)
@@ -41,7 +41,7 @@ static void del_pending_sig(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
 
-   ti->pending_signums[slot] &= ~(1 << index);
+   ti->sa_pending[slot] &= ~(1 << index);
 }
 
 static bool is_pending_sig(struct task *ti, int signum)
@@ -55,7 +55,7 @@ static bool is_pending_sig(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return false; /* just silently ignore signals that we don't support */
 
-   return !!(ti->pending_signums[slot] & (1 << index));
+   return !!(ti->sa_pending[slot] & (1 << index));
 }
 
 static bool is_sig_masked(struct task *ti, int signum)
@@ -76,7 +76,7 @@ static int get_first_pending_sig(struct task *ti)
 {
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
 
-      ulong val = ti->pending_signums[i];
+      ulong val = ti->sa_pending[i];
 
       if (val != 0) {
          u32 idx = get_first_set_bit_index_l(val);
@@ -96,7 +96,7 @@ void drop_all_pending_signals(void *__curr)
    struct task *ti = __curr;
 
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
-      ti->pending_signums[i] = 0;
+      ti->sa_pending[i] = 0;
    }
 }
 
@@ -587,17 +587,17 @@ __sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
    if (!u_set)
       return 0;
 
-   rc = copy_to_user(u_set, ti->pending_signums, sigsetsize);
+   rc = copy_to_user(u_set, ti->sa_pending, sigsetsize);
 
    if (rc)
       return -EFAULT;
 
-   if (sigsetsize > sizeof(ti->pending_signums)) {
+   if (sigsetsize > sizeof(ti->sa_pending)) {
 
-      const size_t diff = sigsetsize - sizeof(ti->pending_signums);
+      const size_t diff = sigsetsize - sizeof(ti->sa_pending);
 
       rc = copy_to_user(
-         (char *)u_set + sizeof(ti->pending_signums),
+         (char *)u_set + sizeof(ti->sa_pending),
          zero_page,
          diff
       );
