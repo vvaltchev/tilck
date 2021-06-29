@@ -69,7 +69,7 @@ static bool is_sig_masked(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return true; /* signals we don't support are always "masked" */
 
-   return !!(ti->pi->sa_mask[slot] & (1 << index));
+   return !!(ti->sa_mask[slot] & (1 << index));
 }
 
 static int get_first_pending_sig(struct task *ti)
@@ -476,7 +476,7 @@ sys_rt_sigaction(int signum,
             .sa_flags = 0,
          };
 
-         memcpy(oldact.sa_mask, curr->pi->sa_mask, sizeof(oldact.sa_mask));
+         memcpy(oldact.sa_mask, curr->sa_mask, sizeof(oldact.sa_mask));
       }
 
       if (user_act != NULL) {
@@ -500,22 +500,22 @@ sys_rt_sigprocmask(int how,
                    sigset_t *user_oldset,
                    size_t sigsetsize)
 {
-   struct process *pi = get_curr_proc();
+   struct task *ti = get_curr_task();
    int rc;
 
    if (user_oldset) {
 
-      rc = copy_to_user(user_oldset, pi->sa_mask, sigsetsize);
+      rc = copy_to_user(user_oldset, ti->sa_mask, sigsetsize);
 
       if (rc)
          return -EFAULT;
 
-      if (sigsetsize > sizeof(pi->sa_mask)) {
+      if (sigsetsize > sizeof(ti->sa_mask)) {
 
-         const size_t diff = sigsetsize - sizeof(pi->sa_mask);
+         const size_t diff = sigsetsize - sizeof(ti->sa_mask);
 
          rc = copy_to_user(
-            (char *)user_oldset + sizeof(pi->sa_mask),
+            (char *)user_oldset + sizeof(ti->sa_mask),
             zero_page,
             diff
          );
@@ -543,15 +543,15 @@ sys_rt_sigprocmask(int how,
          switch (how) {
 
             case SIG_BLOCK:
-               pi->sa_mask[i] |= w;
+               ti->sa_mask[i] |= w;
                break;
 
             case SIG_UNBLOCK:
-               pi->sa_mask[i] &= ~w;
+               ti->sa_mask[i] &= ~w;
                break;
 
             case SIG_SETMASK:
-               pi->sa_mask[i] = w;
+               ti->sa_mask[i] = w;
                break;
 
             default:
