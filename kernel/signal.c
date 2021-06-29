@@ -339,6 +339,18 @@ static void do_send_signal(struct task *ti, int signum)
 
    __sighandler_t h = ti->pi->sa_handlers[signum - 1];
 
+   if (ti->tid == 1 && h == SIG_DFL) {
+
+      /*
+       * From kill(2):
+       *    The only signals that can be sent to process ID 1, the init process,
+       *    are those for which init has explicitly installed signal handlers.
+       *    This is done to assure the system is not brought down accidentally.
+       */
+
+      h = SIG_IGN;
+   }
+
    if (h == SIG_IGN) {
 
       action_ignore(ti, signum);
