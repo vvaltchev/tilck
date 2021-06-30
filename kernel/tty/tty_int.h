@@ -34,7 +34,10 @@ ssize_t
 tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
 
 ssize_t
-tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size);
+tty_write_int(struct tty *t,
+              struct devfs_handle *h,
+              const char *buf,
+              size_t size);
 
 int
 tty_ioctl_int(struct tty *t, struct devfs_handle *h, ulong request, void *argp);

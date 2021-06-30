@@ -355,7 +355,10 @@ struct tty *get_serial_tty(int n)
 }
 
 ssize_t
-tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
+tty_write_int(struct tty *t,
+              struct devfs_handle *h,
+              const char *buf,
+              size_t size)
 {
    size = MIN(size, MAX_TERM_WRITE_LEN);
    t->tintf->write(t->tstate, buf, size, t->curr_color);
@@ -364,7 +367,7 @@ tty_write_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
 ssize_t tty_curr_proc_write(const char *buf, size_t size)
 {
-   return tty_write_int(get_curr_process_tty(), NULL, (char *)buf, size);
+   return tty_write_int(get_curr_process_tty(), NULL, buf, size);
 }
 
 static void init_tty(void)
