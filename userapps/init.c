@@ -354,6 +354,56 @@ static void setup_console_for_shell(int tty)
    tcsetpgrp(0, getpgid(0)); /* Make this pgid the foreground process group */
 }
 
+static void tilck_console_msg_loop(int tty)
+{
+   char buf[32];
+   int poll_timeout = -1;                    /* infinite */
+   int rc;
+
+   struct pollfd fd = {
+      .fd = 0,
+      .events = POLLIN,
+   };
+
+   do {
+
+      const char *serial_tty_suffix = "";
+      int user_tty_num = tty;
+
+      if (tty >= TTYS0_MINOR) {
+
+         poll_timeout = 3000;                /* 3 seconds */
+         serial_tty_suffix = "S";
+         user_tty_num = tty - TTYS0_MINOR;
+
+         /* clear the screen */
+         printf("\033[2J\033[1;1H");
+      }
+
+      printf("Tilck console on /dev/tty%s%d\n",
+               serial_tty_suffix,
+               user_tty_num);
+
+      printf("------------------------------------------\n\n");
+      printf("Press ENTER to run the shell");
+
+      fflush(stdout);
+
+   } while (poll(&fd, 1, poll_timeout) <= 0);
+
+   /* drain the input buffer */
+   do {
+
+      rc = read(0, buf, sizeof(buf));
+
+      if (rc < 0 && errno == EINTR)
+         continue;
+
+   } while (rc == sizeof(buf));
+
+   printf("\n");
+}
+
 static int fork_and_run_shell_on_tty(int tty)
 {
    static bool already_run;
@@ -380,45 +430,7 @@ static int fork_and_run_shell_on_tty(int tty)
        * until an user is connected and presses ENTER.
        */
 
-      char buf[32];
-      int poll_timeout = -1;                    /* infinite */
-
-      struct pollfd fd = {
-         .fd = 0,
-         .events = POLLIN,
-      };
-
-      do {
-
-         const char *serial_tty_suffix = "";
-         int user_tty_num = tty;
-
-         if (tty >= TTYS0_MINOR) {
-
-            poll_timeout = 3000;                /* 3 seconds */
-            serial_tty_suffix = "S";
-            user_tty_num = tty - TTYS0_MINOR;
-
-            /* clear the screen */
-            printf("\033[2J\033[1;1H");
-         }
-
-         printf("Tilck console on /dev/tty%s%d\n",
-                serial_tty_suffix,
-                user_tty_num);
-
-         printf("------------------------------------------\n\n");
-         printf("Press ENTER to run the shell");
-
-         fflush(stdout);
-
-      } while (poll(&fd, 1, poll_timeout) <= 0);
-
-      while (read(0, buf, 32) == 32) {
-         /* drain the input buffer */
-      }
-
-      printf("\n");
+      tilck_console_msg_loop(tty);
    }
 
    execve(shell_args[0], shell_args, NULL);
