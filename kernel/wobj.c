@@ -32,16 +32,22 @@ void wait_obj_set(struct wait_obj *wo,
 
 void *wait_obj_reset(struct wait_obj *wo)
 {
-   void *oldp = atomic_exchange_explicit(&wo->__ptr, (void*)NULL, mo_relaxed);
+   void *oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
    disable_preemption();
    {
-      wo->type = WOBJ_NONE;
+      if (oldp) {
 
-      if (list_is_node_in_list(&wo->wait_list_node)) {
-         list_remove(&wo->wait_list_node);
+         wo->type = WOBJ_NONE;
+
+         if (list_is_node_in_list(&wo->wait_list_node))
+            list_remove(&wo->wait_list_node);
+
+         list_node_init(&wo->wait_list_node);
+
+      } else {
+
+         ASSERT(wo->type == WOBJ_NONE);
       }
-
-      list_node_init(&wo->wait_list_node);
    }
    enable_preemption();
    return oldp;
