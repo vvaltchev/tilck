@@ -202,6 +202,9 @@ static void
 kernel_shutdown(void)
 {
    /* This is just a stub */
+   extern volatile bool __in_kernel_shutdown;
+   __in_kernel_shutdown = true;
+   printk("The system is shutting down.\n");
 }
 
 int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
