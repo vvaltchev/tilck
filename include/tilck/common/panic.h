@@ -13,6 +13,12 @@ static ALWAYS_INLINE bool in_panic(void)
    return __in_panic;
 }
 
+static ALWAYS_INLINE bool in_kernel_shutdown(void)
+{
+   extern volatile bool __in_kernel_shutdown;
+   return __in_kernel_shutdown;
+}
+
 #ifndef NDEBUG
 
    #define DEBUG_ONLY(x) x

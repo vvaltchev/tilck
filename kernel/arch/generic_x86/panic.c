@@ -19,6 +19,7 @@
 
 volatile bool __in_panic;
 volatile bool __in_double_fault;
+volatile bool __in_kernel_shutdown;
 
 void init_console(void);         /* defined in main.c */
 void panic_save_current_state(); /* defined in kernel_yield.S */
