@@ -370,6 +370,15 @@ ssize_t tty_curr_proc_write(const char *buf, size_t size)
    return tty_write_int(get_curr_process_tty(), NULL, buf, size);
 }
 
+void tty_write_on_all_ttys(const char *buf, size_t size)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(ttys); i++) {
+
+      if (ttys[i])
+         tty_write_int(ttys[i], NULL, buf, size);
+   }
+}
+
 static void init_tty(void)
 {
    process_term_read_info(&first_term_i);
