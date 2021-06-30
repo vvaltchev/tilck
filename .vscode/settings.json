@@ -43,6 +43,7 @@
    "C_Cpp.errorSquiggles": "Disabled",
    "cmake.generator": "Unix Makefiles",
    "workbench.editor.enablePreview": false,
+   "python.analysis.extraPaths": ["${workspaceFolder}/tests/runners"],
    "files.associations": {
       "x86_utils.h": "c",
       "time.h": "c",
