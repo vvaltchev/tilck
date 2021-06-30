@@ -21,6 +21,7 @@ void tty_reset_termios(struct tty *t);
 struct tty *get_curr_process_tty(void);
 int get_curr_proc_tty_term_type(void);
 ssize_t tty_curr_proc_write(const char *buf, size_t size);
+void tty_write_on_all_ttys(const char *buf, size_t size);
 
 static inline int get_curr_tty_num(void)
 {
