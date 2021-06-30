@@ -16,7 +16,7 @@
 
 typedef void (*action_type)(struct task *, int signum);
 
-static void add_pending_sig(struct task *ti, int signum)
+static void __add_sig(ulong *set, int signum)
 {
    ASSERT(signum > 0);
    signum--;
@@ -27,24 +27,34 @@ static void add_pending_sig(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
 
-   ti->sa_pending[slot] |= (1 << index);
+   set[slot] |= (1 << index);
+}
+
+static void add_pending_sig(struct task *ti, int signum)
+{
+   __add_sig(ti->sa_pending, signum);
+}
+
+static void __del_sig(ulong *set, int signum)
+{
+   ASSERT(signum > 0);
+   signum--;
+
+   int slot = signum / NBITS;
+   int index = signum % NBITS;
+
+   if (slot >= K_SIGACTION_MASK_WORDS)
+      return; /* just silently ignore signals that we don't support */
+
+   set[slot] &= ~(1 << index);
 }
 
 static void del_pending_sig(struct task *ti, int signum)
 {
-   ASSERT(signum > 0);
-   signum--;
-
-   int slot = signum / NBITS;
-   int index = signum % NBITS;
-
-   if (slot >= K_SIGACTION_MASK_WORDS)
-      return; /* just silently ignore signals that we don't support */
-
-   ti->sa_pending[slot] &= ~(1 << index);
+   __del_sig(ti->sa_pending, signum);
 }
 
-static bool is_pending_sig(struct task *ti, int signum)
+static bool __is_sig_set(ulong *set, int signum)
 {
    ASSERT(signum > 0);
    signum--;
@@ -55,21 +65,17 @@ static bool is_pending_sig(struct task *ti, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return false; /* just silently ignore signals that we don't support */
 
-   return !!(ti->sa_pending[slot] & (1 << index));
+   return !!(set[slot] & (1 << index));
+}
+
+static bool is_pending_sig(struct task *ti, int signum)
+{
+   return __is_sig_set(ti->sa_pending, signum);
 }
 
 static bool is_sig_masked(struct task *ti, int signum)
 {
-   ASSERT(signum > 0);
-   signum--;
-
-   int slot = signum / NBITS;
-   int index = signum % NBITS;
-
-   if (slot >= K_SIGACTION_MASK_WORDS)
-      return true; /* signals we don't support are always "masked" */
-
-   return !!(ti->sa_mask[slot] & (1 << index));
+   return __is_sig_set(ti->sa_mask, signum);
 }
 
 static int get_first_pending_sig(struct task *ti)
@@ -476,7 +482,7 @@ sys_rt_sigaction(int signum,
    if (signum == SIGKILL || signum == SIGSTOP)
       return -EINVAL;
 
-   if (sigsetsize != sizeof(user_act->sa_mask))
+   if (sigsetsize < sizeof(oldact.sa_mask))
       return -EINVAL;
 
    disable_preemption();
@@ -486,9 +492,17 @@ sys_rt_sigaction(int signum,
          oldact = (struct k_sigaction) {
             .handler = curr->pi->sa_handlers[signum - 1],
             .sa_flags = 0,
+            .restorer = NULL
          };
 
-         memcpy(oldact.sa_mask, curr->sa_mask, sizeof(oldact.sa_mask));
+         /*
+          * Since we don't support per-signal masks, just made up on-the-fly
+          * the "mask" we're using: all signals are masked except for SIGKILL
+          * and SIGSTOP.
+          */
+         memset(&oldact.sa_mask, 0xff, sizeof(oldact.sa_mask));
+         __del_sig(oldact.sa_mask, SIGKILL);
+         __del_sig(oldact.sa_mask, SIGSTOP);
       }
 
       if (user_act != NULL) {
@@ -499,8 +513,26 @@ sys_rt_sigaction(int signum,
 
    if (!rc && user_oldact != NULL) {
 
-      if (copy_to_user(user_oldact, &oldact, sizeof(oldact)) != 0)
+      rc = copy_to_user(user_oldact, &oldact, sizeof(oldact));
+
+      if (!rc) {
+
+         if (sigsetsize > sizeof(oldact.sa_mask)) {
+
+            ulong diff = sigsetsize - sizeof(oldact.sa_mask);
+
+            rc = copy_to_user(
+               (char *)user_oldact + sizeof(oldact), zero_page, diff
+            );
+
+            if (rc)
+               rc = -EFAULT;
+         }
+
+      } else {
+
          rc = -EFAULT;
+      }
    }
 
    return rc;
