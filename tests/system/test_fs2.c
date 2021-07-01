@@ -93,7 +93,7 @@ int cmd_fmmap1(int argc, char **argv)
    do_mm_read(vaddr);
 
    printf("- Check we can fork() a process with ramfs mmaps\n");
-   if (test_sig(do_mm_read, vaddr, 0, 0))
+   if (test_sig(do_mm_read, vaddr, 0, 0, 0))
       goto err_case;
 
    printf("- Check that reading at `vaddr` still succeeds from parent\n");
@@ -110,7 +110,7 @@ int cmd_fmmap1(int argc, char **argv)
    vaddr[file_size + 11] = '\n';       // gets ignored as past of EOF
 
    printf("- Check that read mapped area past EOF triggers SIGBUS\n");
-   if (test_sig(do_mm_read, vaddr + page_size, SIGBUS, 0))
+   if (test_sig(do_mm_read, vaddr + page_size, SIGBUS, 0, 0))
       goto err_case;
 
    printf("- Close the file descriptor and re-open the file\n");
@@ -225,7 +225,7 @@ static void fmmap2_read_unmapped_mem(void *unused_arg)
 /* mmap file and then do a partial unmap */
 int cmd_fmmap2(int argc, char **argv)
 {
-   int rc = test_sig(fmmap2_read_unmapped_mem, NULL, SIGSEGV, 0);
+   int rc = test_sig(fmmap2_read_unmapped_mem, NULL, SIGSEGV, 0, 0);
    unlink(test_file);
    return rc;
 }
@@ -343,10 +343,10 @@ int cmd_fmmap4(int argc, char **argv)
 {
    int rc;
 
-   if ((rc = test_sig(fmmap4_read_after_eof, NULL, SIGBUS, 0)))
+   if ((rc = test_sig(fmmap4_read_after_eof, NULL, SIGBUS, 0, 0)))
       goto end;
 
-   if ((rc = test_sig(fmmap4_write_after_eof, NULL, SIGBUS, 0)))
+   if ((rc = test_sig(fmmap4_write_after_eof, NULL, SIGBUS, 0, 0)))
       goto end;
 
 end:
@@ -571,7 +571,7 @@ static void fmmap7_child(void *unused_arg)
 /* mmap file and then trucate it */
 int cmd_fmmap7(int argc, char **argv)
 {
-   int rc = test_sig(fmmap7_child, NULL, SIGBUS, 0);
+   int rc = test_sig(fmmap7_child, NULL, SIGBUS, 0, 0);
    unlink(test_file);
    return rc;
 }
