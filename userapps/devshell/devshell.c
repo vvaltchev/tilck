@@ -303,18 +303,37 @@ const char *get_devshell_path(void)
    return DEVSHELL_PATH;
 }
 
+static void setup_signals(void)
+{
+   sigset_t set;
+   int rc;
+
+   signal(SIGINT, SIG_IGN);
+   signal(SIGQUIT, SIG_IGN);
+
+   sigemptyset(&set);
+   rc = sigprocmask(SIG_SETMASK, &set, NULL);
+
+   if (rc) {
+
+      fprintf(stderr,
+              "devshell: sigprocmask() failed with: %s (%d)\n",
+              strerror(errno), errno);
+
+      exit(1);
+   }
+}
+
 int main(int argc, char **argv, char **env)
 {
    static char cmdline_buf[256];
    static char cwd_buf[256];
    static struct termios orig_termios;
    const char *cmdname;
-
    char uc = '#';
    int rc;
 
-   signal(SIGINT, SIG_IGN);
-   signal(SIGQUIT, SIG_IGN);
+   setup_signals();
 
    /* Save current term's mode */
    tcgetattr(0, &orig_termios);

@@ -5,6 +5,7 @@
 .text
 
 .global is_stack_aligned_16
+.global execute_illegal_instruction
 
 # This function checks if ESP was aligned at 16-bytes boundary *before* the
 # function was called. That's why we add +4 in the 2nd instruction: because
@@ -22,3 +23,8 @@ is_stack_aligned_16:
    mov eax, 1
 .out:
    ret
+
+execute_illegal_instruction:
+   .byte 0x0f
+   .byte 0x0b
+   ret # We should never get here

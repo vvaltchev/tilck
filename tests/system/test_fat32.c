@@ -76,7 +76,7 @@ int cmd_fatmm1(int argc, char **argv)
    printf("- Content matches!\n");
 
    printf("- Check we can fork() a process with fat mmaps\n");
-   if (test_sig(do_mm_read, vaddr, 0, 0))
+   if (test_sig(do_mm_read, vaddr, 0, 0, 0))
       goto err_end;
 
    printf("- Check that reading at `vaddr` still succeeds from parent\n");
@@ -85,7 +85,7 @@ int cmd_fatmm1(int argc, char **argv)
    printf("- Now check for SIGSEGV in the unmapped areas\n");
    printf("- vaddr + mmap_off + mmap_size\n");
 
-   if (test_sig(do_mm_read, vaddr + mmap_off + mmap_size, SIGSEGV, 0))
+   if (test_sig(do_mm_read, vaddr + mmap_off + mmap_size, SIGSEGV, 0, 0))
       goto err_end;
 
    printf("DONE\n");

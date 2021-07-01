@@ -73,6 +73,7 @@ void forced_memcpy(void *dest, const void *src, size_t n);
 void do_mm_read(void *ptr);
 void do_cmd_exit(int code);
 bool is_stack_aligned_16(void);
+void execute_illegal_instruction(void);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {
