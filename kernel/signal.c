@@ -124,8 +124,8 @@ static void kill_task_now_or_later(struct task *ti, void *regs, int signum)
 
    } else {
 
-      /* We have to setup a trampline to any syscall */
-      setup_pause_trampline(regs);
+      /* We have to setup a trampoline to any syscall */
+      setup_pause_trampoline(regs);
    }
 }
 

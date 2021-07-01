@@ -185,9 +185,9 @@ static void restore_regs_from_user_stack(regs_t *r)
    r->eflags |= EFLAGS_IF;
 }
 
-void setup_pause_trampline(regs_t *r)
+void setup_pause_trampoline(regs_t *r)
 {
-   r->eip = pause_trampline_user_vaddr;
+   r->eip = pause_trampoline_user_vaddr;
 }
 
 void setup_sig_handler(struct task *ti,
