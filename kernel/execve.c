@@ -137,6 +137,14 @@ execve_final_steps(struct task *ti,
    pi->did_call_execve = true;
    ti->timer_ready = false;
 
+   /*
+    * From sigpending(2):
+    *    A child created via fork(2) initially has an empty pending signal
+    *    set; the pending signal set is preserved across an execve(2).
+    */
+   ti->nested_sig_handlers = 0;
+   reset_all_custom_signal_handlers(ti);
+
    if (pi->debug_cmdline)
       save_cmdline(pi, argv);
 
