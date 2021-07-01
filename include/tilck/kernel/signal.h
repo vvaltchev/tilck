@@ -12,6 +12,7 @@ int send_signal_to_session(int sid, int sig);
 int send_signal2(int pid, int tid, int signum, bool whole_process);
 bool process_signals(void);
 void drop_all_pending_signals(void *curr);
+void reset_all_custom_signal_handlers(void *curr);
 
 static inline int send_signal(int tid, int signum, bool whole_process)
 {
