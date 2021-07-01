@@ -101,6 +101,19 @@ void drop_all_pending_signals(void *__curr)
    }
 }
 
+void reset_all_custom_signal_handlers(void *__curr)
+{
+   ASSERT(!is_preemption_enabled());
+   struct task *ti = __curr;
+   struct process *pi = ti->pi;
+
+   for (u32 i = 1; i < _NSIG; i++) {
+
+      if (pi->sa_handlers[i-1] != SIG_DFL && pi->sa_handlers[i-1] != SIG_IGN)
+         pi->sa_handlers[i-1] = SIG_DFL;
+   }
+}
+
 bool process_signals(void)
 {
    ASSERT(!is_preemption_enabled());
