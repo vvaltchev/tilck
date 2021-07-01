@@ -91,6 +91,16 @@ static int get_first_pending_sig(struct task *ti)
    return -1;
 }
 
+void drop_all_pending_signals(void *__curr)
+{
+   ASSERT(!is_preemption_enabled());
+   struct task *ti = __curr;
+
+   for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
+      ti->pending_signums[i] = 0;
+   }
+}
+
 bool process_signals(void)
 {
    ASSERT(!is_preemption_enabled());
