@@ -233,17 +233,18 @@ static void action_terminate(struct task *ti, int signum)
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
 
-   if (ti == get_curr_task()) {
-
-      enable_preemption();
-      ASSERT(is_preemption_enabled());
-
-      terminate_process(0, signum);
-      NOT_REACHED();
-   }
-
    add_pending_sig(ti, signum);
-   signal_wakeup_task(ti);
+
+   if (!is_sig_masked(ti, signum)) {
+
+      if (ti == get_curr_task()) {
+         enable_preemption();
+         terminate_process(0, signum);
+         NOT_REACHED();
+      }
+
+      signal_wakeup_task(ti);
+   }
 }
 
 static void action_ignore(struct task *ti, int signum)
@@ -374,7 +375,9 @@ static void do_send_signal(struct task *ti, int signum)
    } else {
 
       add_pending_sig(ti, signum);
-      signal_wakeup_task(ti);
+
+      if (!is_sig_masked(ti, signum))
+         signal_wakeup_task(ti);
    }
 }
 
@@ -413,6 +416,33 @@ end:
 err_end:
    enable_preemption();
    return rc;
+}
+
+bool pending_signals(void)
+{
+   struct task *curr = get_curr_task();
+   STATIC_ASSERT(K_SIGACTION_MASK_WORDS <= 2);
+
+   if (curr->nested_sig_handlers > 0) {
+
+      /*
+       * Because we don't support nested signal handlers at the moment, it's
+       * much better to return false inconditionally here. Otherwise, in case
+       * a signal was sent during a signal handler, most syscalls will return
+       * -EINTR and the user program will likely end up in an stuck in an
+       * endless loop.
+       */
+      return false;
+   }
+
+   if (K_SIGACTION_MASK_WORDS == 1)
+
+      return (curr->sa_pending[0] & ~curr->sa_mask[0]) != 0;
+
+   else
+
+      return (curr->sa_pending[0] & ~curr->sa_mask[0]) != 0 ||
+             (curr->sa_pending[1] & ~curr->sa_mask[1]) != 0;
 }
 
 /*
@@ -602,6 +632,9 @@ __sys_rt_sigprocmask(int how,
                return -EINVAL;
          }
       }
+
+      __del_sig(ti->sa_mask, SIGSTOP);
+      __del_sig(ti->sa_mask, SIGKILL);
    }
 
    return 0;

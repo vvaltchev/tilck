@@ -345,35 +345,10 @@ enter_sleep_wait_state(void)
    kernel_yield_preempt_disabled();
 }
 
-static ALWAYS_INLINE bool pending_signals(void)
-{
-   struct task *curr = get_curr_task();
-   STATIC_ASSERT(K_SIGACTION_MASK_WORDS <= 2);
-
-   if (curr->nested_sig_handlers > 0) {
-
-      /*
-       * Because we don't support nested signal handlers at the moment, it's
-       * much better to return false inconditionally here. Otherwise, in case
-       * a signal was sent during a signal handler, most syscalls will return
-       * -EINTR and the user program will likely end up in an stuck in an
-       * endless loop.
-       */
-      return false;
-   }
-
-   if (K_SIGACTION_MASK_WORDS == 1)
-
-      return curr->sa_pending[0] != 0;
-
-   else
-
-      return curr->sa_pending[0] != 0 ||
-             curr->sa_pending[1] != 0;
-}
 
 NORETURN void switch_to_task(struct task *ti);
 
+bool pending_signals(void);
 void schedule(void);
 int get_curr_tid(void);
 int get_curr_pid(void);
