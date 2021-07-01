@@ -253,6 +253,16 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    ti->is_main_thread = true;
    ti->timer_ready = false;
 
+   /*
+    * From fork(2):
+    *    The child's set of pending signals is initially empty.
+    *
+    * From sigpending(2):
+    *    A child created via fork(2) initially has an empty pending signal
+    *    set; the pending signal set is preserved across an execve(2).
+    */
+   drop_all_pending_signals(ti);
+
    /* Reset sched ticks in the new process */
    bzero(&ti->ticks, sizeof(ti->ticks));
 
