@@ -778,7 +778,7 @@ int sys_syncfs(int fd)
    return 0;
 }
 
-int sys_sync()
+int sys_sync(void)
 {
    vfs_sync();
    return 0;

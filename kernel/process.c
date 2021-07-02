@@ -464,12 +464,12 @@ mode_t sys_umask(mode_t mask)
    return old;
 }
 
-int sys_getpid()
+int sys_getpid(void)
 {
    return get_curr_proc()->pid;
 }
 
-int sys_gettid()
+int sys_gettid(void)
 {
    return get_curr_task()->tid;
 }
@@ -544,7 +544,7 @@ handle_vforked_child_move_on(struct process *pi)
    pi->vforked = false;
 }
 
-int sys_getppid()
+int sys_getppid(void)
 {
    return get_curr_proc()->parent_pid;
 }

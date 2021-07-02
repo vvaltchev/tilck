@@ -62,19 +62,19 @@ int sys_setgid16(ulong gid)
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-int sys_getgid16()
+int sys_getgid16(void)
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root user exists. */
-int sys_geteuid16()
+int sys_geteuid16(void)
 {
    return 0;
 }
 
 /* Actual implementation, not a stub: only the root group exists. */
-int sys_getegid16()
+int sys_getegid16(void)
 {
    return 0;
 }
