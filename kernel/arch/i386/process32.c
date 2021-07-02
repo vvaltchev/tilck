@@ -235,28 +235,46 @@ void setup_sig_handler(struct task *ti,
    ASSERT(((r->useresp + sizeof(ulong)) & (USERMODE_STACK_ALIGN - 1)) == 0);
 }
 
-void sys_rt_sigreturn_impl(regs_t *r)
+ulong sys_rt_sigreturn(void)
 {
    struct task *curr = get_curr_task();
+   regs_t *r = curr->state_regs;
 
-   if (curr->nested_sig_handlers == 0) {
+   if (LIKELY(curr->nested_sig_handlers > 0)) {
+
+      trace_printk(10, "Done running signal handler");
+
+      r->useresp +=
+         sizeof(ulong)               /* compensate the "push signum" above    */
+         + SIG_HANDLER_ALIGN_ADJUST; /* compensate the forced stack alignment */
+
+      if (!process_signals(curr, sig_in_return, r))
+         restore_regs_from_user_stack(r);
+
+      curr->nested_sig_handlers--;
+      ASSERT(curr->nested_sig_handlers >= 0);
+
+   } else {
 
       /* An user process tried to call directly rt_sigreturn() */
       r->eax = (ulong) -ENOSYS;
-      return;
    }
 
-   trace_printk(10, "Done running signal handler");
-
-   r->useresp +=
-      sizeof(ulong)                /* compensate the "push signum" above    */
-      + SIG_HANDLER_ALIGN_ADJUST;  /* compensate the forced stack alignment */
-
-   if (!process_signals(curr, sig_in_return, r))
-      restore_regs_from_user_stack(r);
-
-   curr->nested_sig_handlers--;
-   ASSERT(curr->nested_sig_handlers >= 0);
+   /*
+    * NOTE: we must return r->eax because syscalls are called by handle_syscall
+    * in a generic way like:
+    *
+    *     r->eax = (ulong) fptr(...)
+    *
+    * Returning anything else than r->eax would change that register and we
+    * don't wanna do that in a special NORETURN function such this. Here we're
+    * supposed to restore all the user registers as they were before the signal
+    * handler ran. Failing to do that, has an especially visible effect when
+    * a signal handler run after preempting running code in userspace: in that
+    * case, no syscall was made and no register is expected to ever change,
+    * exactly like in context switch.
+    */
+   return r->eax;
 }
 
 NODISCARD int

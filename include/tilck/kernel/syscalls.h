@@ -59,7 +59,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_break)
 CREATE_STUB_SYSCALL_IMPL(sys_oldstat)
 CREATE_STUB_SYSCALL_IMPL(sys_lseek)
 
-int sys_getpid();
+int sys_getpid(void);
 
 int sys_mount(const char *u_source,
               const char *u_target,
@@ -70,7 +70,7 @@ int sys_mount(const char *u_source,
 CREATE_STUB_SYSCALL_IMPL(sys_oldumount)
 
 int sys_setuid16(ulong uid);
-int sys_getuid16();
+int sys_getuid16(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_stime)
 CREATE_STUB_SYSCALL_IMPL(sys_ptrace)
@@ -83,7 +83,7 @@ int sys_access(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)
 
-int sys_sync();
+int sys_sync(void);
 int sys_kill(int pid, int sig);
 int sys_rename(const char *u_oldpath, const char *u_newpath);
 int sys_mkdir(const char *u_path, mode_t mode);
@@ -95,12 +95,12 @@ int sys_pipe(int u_pipefd[2]);
 ulong sys_times(struct tms *u_buf);
 void *sys_brk(void *vaddr);
 int sys_setgid16(ulong gid);
-int sys_getgid16();
+int sys_getgid16(void);
 
 __sighandler_t sys_signal(int signum, __sighandler_t handler); // deprecated
 
-int sys_geteuid16();
-int sys_getegid16();
+int sys_geteuid16(void);
+int sys_getegid16(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_acct)
 
@@ -119,10 +119,10 @@ CREATE_STUB_SYSCALL_IMPL(sys_chroot)
 CREATE_STUB_SYSCALL_IMPL(sys_ustat)
 
 int sys_dup2(int oldfd, int newfd);
-int sys_getppid();
+int sys_getppid(void);
 int sys_getpgrp(void);
-
 int sys_setsid(void);
+
 int sys_sigaction(ulong a1, ulong a2, ulong a3); // deprecated interface
 
 CREATE_STUB_SYSCALL_IMPL(sys_sgetmask)
@@ -263,7 +263,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setresgid16)
 CREATE_STUB_SYSCALL_IMPL(sys_getresgid16)
 
 int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5);
-void sys_rt_sigreturn_impl(regs_t *);
+ulong sys_rt_sigreturn(void);
 
 int
 sys_rt_sigaction(int signum,
@@ -335,7 +335,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_mincore)
 int sys_madvise(void *addr, size_t len, int advice);
 int sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
 int sys_fcntl64(int fd, int cmd, int arg);
-int sys_gettid();
+int sys_gettid(void);
 
 CREATE_STUB_SYSCALL_IMPL(sys_readahead)
 CREATE_STUB_SYSCALL_IMPL(sys_setxattr)
