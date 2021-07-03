@@ -30,5 +30,5 @@ $CM                                   \
       -DMOD_serial=1                  \
       -DTINY_KERNEL=1                 \
       -DUSERAPPS_extra=0              \
-      -DTYPICAL_DEVEL_USERAPPS=0
-
+      -DTYPICAL_DEVEL_USERAPPS=0      \
+      "$@"

@@ -19,4 +19,4 @@ if [ -n "$AZURE_HTTP_USER_AGENT" ]; then
    sudo -E $MAIN_DIR/scripts/build_toolchain -s build_libmusl
 fi
 
-USE_SYSCC=1 $CM
+USE_SYSCC=1 $CM "$@"
