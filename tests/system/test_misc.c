@@ -109,28 +109,41 @@ int cmd_sysenter(int argc, char **argv)
 
 int cmd_syscall_perf(int argc, char **argv)
 {
+   const int major_iters = 100;
    const int iters = 1000;
    ull_t start, duration;
-   pid_t uid = getuid();
+   ull_t best = (ull_t) -1;
 
-   start = RDTSC();
+   for (int j = 0; j < major_iters; j++) {
 
-   for (int i = 0; i < iters; i++) {
-      syscall(SYS_setuid, uid);
+      start = RDTSC();
+
+      for (int i = 0; i < iters; i++)
+         syscall(SYS_getuid);
+
+      duration = RDTSC() - start;
+
+      if (duration < best)
+         best = duration;
    }
 
-   duration = RDTSC() - start;
+   printf("int 0x80 getuid(): %llu cycles\n", best/iters);
+   best = (ull_t) -1;
 
-   printf("int 0x80 setuid(): %llu cycles\n", duration/iters);
+   for (int j = 0; j < major_iters; j++) {
 
-   start = RDTSC();
+      start = RDTSC();
 
-   for (int i = 0; i < iters; i++)
-      sysenter_call1(23 /* setuid */, uid /* uid */);
+      for (int i = 0; i < iters; i++)
+         sysenter_call0(SYS_getuid);
 
-   duration = RDTSC() - start;
+      duration = RDTSC() - start;
 
-   printf("sysenter setuid(): %llu cycles\n", duration/iters);
+      if (duration < best)
+         best = duration;
+   }
+
+   printf("sysenter getuid(): %llu cycles\n", best/iters);
    return 0;
 }
 

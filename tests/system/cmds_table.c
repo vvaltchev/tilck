@@ -99,7 +99,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(bad_write,    TT_SHORT,  true),
    CMD_ENTRY(fork_perf,    TT_LONG,   true),
    CMD_ENTRY(vfork_perf,   TT_LONG,   true),
-   CMD_ENTRY(syscall_perf, TT_SHORT,  true),
+   CMD_ENTRY(syscall_perf, TT_MED,    true),
    CMD_ENTRY(fpu,          TT_SHORT,  true),
    CMD_ENTRY(fpu_loop,     TT_LONG,  false),
    CMD_ENTRY(brk,          TT_SHORT,  true),
