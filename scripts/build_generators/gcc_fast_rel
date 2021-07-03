@@ -19,4 +19,5 @@ CM=$MAIN_DIR/scripts/cmake_run
 RELEASE=1 $CM                              \
    -DKRN_TRACK_NESTED_INTERR=0             \
    -DDEBUG_CHECKS=0                        \
-   -DKERNEL_STACK_ISOLATION=0
+   -DKERNEL_STACK_ISOLATION=0              \
+   "$@"
