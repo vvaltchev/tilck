@@ -249,7 +249,7 @@ static void action_terminate(struct task *ti, int signum)
 
 static void action_ignore(struct task *ti, int signum)
 {
-   if (ti->tid == 1) {
+   if (ti->tid == 1 && signum != SIGCHLD) {
       printk(
          "WARNING: ignoring signal %s[%d] sent to init (pid 1)\n",
          get_signal_name(signum), signum

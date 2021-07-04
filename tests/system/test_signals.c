@@ -935,3 +935,62 @@ int cmd_sig12(int argc, char **argv)
 
    return 0;
 }
+
+static volatile int sig_chld_count;
+
+static void
+handle_sigchld(int sig)
+{
+   printf("parent: got SIGCHLD, count: %d\n", ++sig_chld_count);
+}
+
+/* That that SIGCHLD is sent when a child changes its state */
+int cmd_sig13(int argc, char **argv)
+{
+   int child_pid;
+   int wstatus;
+   int rc;
+
+   sig_chld_count = 0;
+   child_pid = fork();
+
+   if (child_pid < 0) {
+      printf("parent: fork() failed with %s (%d)\n", strerror(errno), errno);
+      exit(1);
+   }
+
+   if (!child_pid) {
+
+      printf("child: hello!\n");
+      printf("child: waiting a little...\n");
+      usleep(300 * 1000);
+      printf("child: done\n");
+      usleep(50 * 1000);
+      printf("child: exit(42)\n");
+      exit(42);
+   }
+
+   signal(SIGCHLD, &handle_sigchld);
+
+   printf("parent: wait...\n");
+   usleep(50 * 1000);
+   printf("parent: send SIGSTOP..\n");
+   kill(child_pid, SIGSTOP);
+   printf("parent: wait...\n");
+   usleep(50 * 1000);
+   printf("parent: send SIGCONT..\n");
+   kill(child_pid, SIGCONT);
+   printf("parent: wait...\n");
+   usleep(200 * 1000);
+   printf("parent: waitpid()\n");
+
+   do {
+      rc = waitpid(child_pid, &wstatus, 0);
+   } while (rc < 0 && errno == EINTR);
+
+   DEVSHELL_CMD_ASSERT(rc == child_pid);
+   DEVSHELL_CMD_ASSERT(WEXITSTATUS(wstatus) == 42);
+   DEVSHELL_CMD_ASSERT(WTERMSIG(wstatus) == 0);
+   DEVSHELL_CMD_ASSERT(sig_chld_count == 3);
+   return 0;
+}
