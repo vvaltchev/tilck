@@ -128,9 +128,12 @@ Clearly, in order to work with multiple file systems at once, Tilck has a simple
 While Tilck uses internally the concept of thread, multi-threading is not currently
 exposed to userspace (kernel threads exist, of course). Both `fork()` and `vfork()` are
 properly implemented and copy-on-write is used for fork-ed processes. The `waitpid()`
-syscall is fully implemented (which implies process groups etc.). However, the support
-for signals is limited to using the default action or ignoring the signal, except for
-the SIGSTOP and SIGCONT signals which do what they're actually supposed to do.
+syscall is fully implemented (which implies process groups etc.). The support for
+POSIX signals is partial: custom signal handlers are supported using the `rt_sigaction()`
+interface, but most of the SA_* flags are not supported and handlers cannot interrupt
+each other, yet. `rt_sigprocmask()`, `sys_rt_sigpending()`, `sys_rt_sigsuspend()`
+work as expected, as well as special signals like SIGSTOP, SIGCONT and SIGCHLD.
+For more details, see the [syscalls] document.
 
 One interesting feature in this area deserves a special mention: despite the lack of
 multi-threading in userspace, Tilck has full support for TLS (thread-local storage) via
@@ -162,6 +165,7 @@ for more info about that.
 
 For full-size screenshots and much more stuff, check Tilck's [wiki page].
 
+[syscalls]: docs/syscalls.md
 [wiki page]: https://github.com/vvaltchev/tilck/wiki
 
 Booting Tilck
