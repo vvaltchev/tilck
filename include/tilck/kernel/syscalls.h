@@ -280,7 +280,9 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize);
 
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigqueueinfo)
-CREATE_STUB_SYSCALL_IMPL(sys_rt_sigsuspend)
+
+int sys_rt_sigsuspend(sigset_t *u_mask, size_t sigsetsize);
+
 CREATE_STUB_SYSCALL_IMPL(sys_pread64)
 CREATE_STUB_SYSCALL_IMPL(sys_pwrite64)
 CREATE_STUB_SYSCALL_IMPL(sys_chown16)

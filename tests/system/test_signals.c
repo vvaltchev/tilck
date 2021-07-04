@@ -865,3 +865,73 @@ int cmd_sig11(int argc, char **argv)
       SIGUSR1
    );
 }
+
+/* Test sigsuspend() */
+int cmd_sig12(int argc, char **argv)
+{
+   sigset_t set, saved_mask;
+   int rc;
+
+   printf("sigsuspend() test: setup the initial mask\n");
+   sigemptyset(&saved_mask);
+   sigaddset(&saved_mask, SIGINT);
+   sigaddset(&saved_mask, SIGQUIT);
+   sigaddset(&saved_mask, SIGPWR);
+
+   rc = sigprocmask(SIG_SETMASK, &saved_mask, NULL);
+
+   if (rc) {
+      printf("sigprocmask() failed with %s (%d)\n", strerror(errno), errno);
+      exit(1);
+   }
+
+   printf("mask SIGUSR1 and SIGUSR2\n");
+   mask_signal(SIGUSR1);
+   mask_signal(SIGUSR2);
+   memset((void *)test_got_sig, 0, sizeof(test_got_sig));
+
+   signal(SIGUSR1, &child_sig_handler);
+   signal(SIGUSR2, &child_sig_handler);
+
+   printf("send both SIGUSR1 and SIGUSR2 to myself\n");
+   kill(getpid(), SIGUSR1);
+   kill(getpid(), SIGUSR2);
+
+   printf("prepare the new mask which blocks everything but SIGUSR1\n");
+   sigfillset(&set);
+   sigdelset(&set, SIGUSR1);
+
+   DEVSHELL_CMD_ASSERT(test_got_sig[SIGUSR1] == false);
+
+   /* Call sigsupend and expect SIGUSR1 to be delievered */
+   printf("call sigsuspend()\n");
+   sigsuspend(&set);
+
+   DEVSHELL_CMD_ASSERT(test_got_sig[SIGUSR1] == true);
+   DEVSHELL_CMD_ASSERT(test_got_sig[SIGUSR2] == false);
+
+   printf("unmask SIGUSR2\n");
+   unmask_signal(SIGUSR2);
+   DEVSHELL_CMD_ASSERT(test_got_sig[SIGUSR2] == true);
+
+   unmask_signal(SIGUSR1);
+   printf("retrive the original mask, expecting no change.\n");
+   rc = sigprocmask(0, NULL, &set);
+
+  if (rc) {
+      printf("sigprocmask() failed with %s (%d)\n", strerror(errno), errno);
+      exit(1);
+   }
+
+   for (int i = 1; i < _NSIG; i++) {
+
+      if (sigismember(&set, i) != sigismember(&saved_mask, i)) {
+
+         printf("FAIL: the current and saved mask differ\n");
+         printf("current mask[%d]: %d\n", i, sigismember(&set, i));
+         printf("saved mask[%d]:   %d\n", i, sigismember(&saved_mask, i));
+      }
+   }
+
+   return 0;
+}

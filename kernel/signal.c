@@ -431,6 +431,8 @@ bool pending_signals(void)
        * a signal was sent during a signal handler, most syscalls will return
        * -EINTR and the user program will likely end up in an stuck in an
        * endless loop.
+       *
+       * TODO: add support for nested signal handlers.
        */
       return false;
    }
@@ -701,6 +703,7 @@ sys_rt_sigprocmask(int how,
 
       __del_sig(ti->sa_mask, SIGSTOP);
       __del_sig(ti->sa_mask, SIGKILL);
+
    }
 
    return 0;
@@ -738,15 +741,87 @@ sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
    return 0;
 }
 
+int sys_rt_sigsuspend(sigset_t *u_mask, size_t sigsetsize)
+{
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
+   struct task *curr = get_curr_task();
+   int rc;
+
+   if (curr->nested_sig_handlers > 0) {
+
+      /*
+       * For the moment, we don't support nested signal handlers. Therefore,
+       * it doesn't make sense allowing sigsuspend() to be called from a signal
+       * handler and expect a signal to be delivered.
+       *
+       * TODO: add support for nested signal handlers.
+       */
+
+      return -EPERM;
+   }
+
+   /*
+    * The `in_sigsuspend` flag must NOT be set here, as we already checked
+    * that we're not running inside a signal handler.
+    */
+   ASSERT(!curr->in_sigsuspend);
+
+   if (sigsetsize < sizeof(curr->sa_mask))
+      return -EINVAL;
+
+   /* OK, we're not in a signal handler. Now, save the current signal mask. */
+   memcpy(curr->sa_old_mask, curr->sa_mask, sizeof(curr->sa_old_mask));
+
+   /* Now try to set the new mask */
+   rc = copy_from_user(curr->sa_mask, u_mask, sizeof(curr->sa_mask));
+
+   if (rc) {
+
+      /* Oops, u_mask pointed to invalid memory in userspace */
+      /* Restore the saved mask */
+      memcpy(curr->sa_mask, curr->sa_old_mask, sizeof(curr->sa_old_mask));
+      return -EFAULT;
+   }
+
+   /*
+    * We must raise the `in_sigsuspend` flag, otherwise the old mask won't be
+    * restored.
+    */
+   curr->in_sigsuspend = true;
+
+   /*
+    * OK, now the signal mask has been updated, but we cannot still fully trust
+    * user code and allow it to mask SIGKILL and SIGSTOP.
+    */
+
+   __del_sig(curr->sa_mask, SIGKILL);
+   __del_sig(curr->sa_mask, SIGSTOP);
+
+   /*
+    * OK, now go to sleep, behaving like sys_pause(). sys_rt_sigreturn() will
+    * restore the old mask.
+    */
+
+   return sys_pause();
+}
+
 int sys_pause(void)
 {
-   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-   kernel_yield();
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
 
-   if (pending_signals())
-      return -EINTR;
+   /*
+    * Note: sys_pause() doesn't really need to run with preemption disabled like
+    * sys_rt_sigsuspend() does. It's just more convenient this way because it
+    * allows sys_rt_sigsuspend() to call it directly.
+    */
 
-   return 0;
+   while (!pending_signals()) {
+      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      kernel_yield_preempt_disabled();
+      disable_preemption();
+   }
+
+   return -EINTR;
 }
 
 int sys_sigprocmask(ulong a1, ulong a2, ulong a3)

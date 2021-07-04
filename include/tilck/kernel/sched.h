@@ -113,6 +113,9 @@ struct task {
    /* The task was sleeping on a timer and has just been woken up */
    bool timer_ready;
 
+   /* The current sa_mask has been altered by sigsuspend() */
+   bool in_sigsuspend;
+
    /* Number of nested custom signal handlers (at most 1, at the moment). */
    int nested_sig_handlers;
 
@@ -122,8 +125,11 @@ struct task {
    /* Pending signals bitset */
    ulong sa_pending[K_SIGACTION_MASK_WORDS];
 
-   /* Blocked signals mask */
+   /* Blocked signals mask, updated by sigprocmask() and sigsuspend() */
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
+
+   /* Old blocked signals mask, saved by sys_rt_sigsuspend() */
+   ulong sa_old_mask[K_SIGACTION_MASK_WORDS];
 
    /* See the comment above struct process' pi_arch */
    char ti_arch[ARCH_TASK_MEMBERS_SIZE] ALIGNED_AT(ARCH_TASK_MEMBERS_ALIGN);
