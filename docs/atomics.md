@@ -47,12 +47,9 @@ Therefore, it makes sense to have:
    - volatile variables which are *not* also atomic
    - volatile atomic variables
 
-An example: the `state` field in `struct task`. It needs to be atomic because
+An example: the `state` field in `struct task`. It needs to be *atomic* because
 its value can be read and updated by interrupt handlers (see `wth.c`), but
 it also needs to be *volatile* because it is read in loops (see `sys_waitpid`)
 waiting for it to change. Theoretically, in case of consecutive atomic loads,
 the compiler is *not* obliged to perform every time an actual read and it might
-cache the value in a register, according to the C11 atomic model. In practice,
-with GCC this can happen only with relaxed atomics (the ones used in Tilck), at
-best of my knowledge, but it is still good write C11-compliant code, instead of
-relying on the compilers' behavior.
+cache the value in a register, according to the C11 atomics model.
