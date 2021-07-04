@@ -164,6 +164,8 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
       {
          wake_up(parent_task);
       }
+
+      send_signal(pi->parent_pid, SIGCHLD, true);
    }
 }
 
