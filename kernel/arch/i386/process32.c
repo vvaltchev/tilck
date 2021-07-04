@@ -237,6 +237,7 @@ void setup_sig_handler(struct task *ti,
 
 ulong sys_rt_sigreturn(void)
 {
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *curr = get_curr_task();
    regs_t *r = curr->state_regs;
 
@@ -248,8 +249,15 @@ ulong sys_rt_sigreturn(void)
          sizeof(ulong)               /* compensate the "push signum" above    */
          + SIG_HANDLER_ALIGN_ADJUST; /* compensate the forced stack alignment */
 
-      if (!process_signals(curr, sig_in_return, r))
+      if (!process_signals(curr, sig_in_return, r)) {
+
+         if (curr->in_sigsuspend) {
+            memcpy(curr->sa_mask, curr->sa_old_mask, sizeof(curr->sa_mask));
+            curr->in_sigsuspend = false;
+         }
+
          restore_regs_from_user_stack(r);
+      }
 
       curr->nested_sig_handlers--;
       ASSERT(curr->nested_sig_handlers >= 0);

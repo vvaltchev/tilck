@@ -141,8 +141,13 @@ execve_final_steps(struct task *ti,
     * From sigpending(2):
     *    A child created via fork(2) initially has an empty pending signal
     *    set; the pending signal set is preserved across an execve(2).
+    *
+    * From sigsuspend(2):
+    *    A child created via fork(2) inherits a copy of its parent's
+    *    signal mask; the signal mask is preserved across execve(2).
     */
    ti->nested_sig_handlers = 0;
+   ti->in_sigsuspend = false;
    reset_all_custom_signal_handlers(ti);
 
    if (pi->debug_cmdline)
