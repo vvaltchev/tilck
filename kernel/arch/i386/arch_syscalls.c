@@ -236,8 +236,8 @@ static struct syscall syscalls[MAX_SYSCALLS] =
       0 | SYSFL_NO_TRACE | SYSFL_NO_SIG | SYSFL_NO_PREEMPT
    ),
    [174] = DECL_SYS(sys_rt_sigaction, 0),
-   [175] = DECL_SYS(sys_rt_sigprocmask, 0),
-   [176] = DECL_SYS(sys_rt_sigpending, 0),
+   [175] = DECL_SYS(sys_rt_sigprocmask, SYSFL_NO_PREEMPT),
+   [176] = DECL_SYS(sys_rt_sigpending, SYSFL_NO_PREEMPT),
    [177] = DECL_SYS(sys_rt_sigtimedwait_time32, 0),
    [178] = DECL_SYS(sys_rt_sigqueueinfo, 0),
    [179] = DECL_SYS(sys_rt_sigsuspend, 0),

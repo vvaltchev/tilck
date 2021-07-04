@@ -633,12 +633,13 @@ sys_rt_sigaction(int signum,
    return rc;
 }
 
-static int
-__sys_rt_sigprocmask(int how,
-                     sigset_t *user_set,
-                     sigset_t *user_oldset,
-                     size_t sigsetsize)
+int
+sys_rt_sigprocmask(int how,
+                   sigset_t *user_set,
+                   sigset_t *user_oldset,
+                   size_t sigsetsize)
 {
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *ti = get_curr_task();
    int rc;
 
@@ -706,23 +707,9 @@ __sys_rt_sigprocmask(int how,
 }
 
 int
-sys_rt_sigprocmask(int how,
-                   sigset_t *user_set,
-                   sigset_t *user_oldset,
-                   size_t sigsetsize)
+sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
 {
-   int rc;
-   disable_preemption();
-   {
-      rc = __sys_rt_sigprocmask(how, user_set, user_oldset, sigsetsize);
-   }
-   enable_preemption();
-   return rc;
-}
-
-static int
-__sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
-{
+   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
    struct task *ti = get_curr_task();
    int rc;
 
@@ -749,18 +736,6 @@ __sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
    }
 
    return 0;
-}
-
-int
-sys_rt_sigpending(sigset_t *u_set, size_t sigsetsize)
-{
-   int rc;
-   disable_preemption();
-   {
-      rc = __sys_rt_sigpending(u_set, sigsetsize);
-   }
-   enable_preemption();
-   return rc;
 }
 
 int sys_pause(void)
