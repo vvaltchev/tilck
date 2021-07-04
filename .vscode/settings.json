@@ -197,7 +197,8 @@
       "valarray": "c",
       "variant": "c",
       "bit": "c",
-      "netfwd": "c"
+      "netfwd": "c",
+      "signal.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3"
 }
