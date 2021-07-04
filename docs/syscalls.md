@@ -102,8 +102,11 @@ considered as *not implemented yet*.
  sys_dup               | full
  sys_dup2              | full
  sys_reboot            | full
- sys_rt_sigaction      | minimal [14]
  sys_rt_sigprocmask    | full
+ sys_rt_sigpending     | full
+ sys_rt_sigreturn      | partial [14]
+ sys_rt_sigaction      | partial [14]
+ sys_rt_sigsuspend     | partial [14]
 
 
 Definitions:
@@ -159,6 +162,21 @@ Notes:
 
 13. The O_DIRECT mode is not supported.
 
-14. Tilck has a limited support for signals. They can both either ignored or
-    perform their default action (typically terminate or ignore). Custom signal
-    handler are just ignored.
+14. Tilck has a partial support for POSIX signals. SIG_IGN and SIG_DFL are
+    fully supported. Custom signal handlers are supported as well, but signal
+    handlers (even of different type) cannot interrupt each other. In other
+    words, nested custom signal handlers are not supported, yet. Also, even if
+    the modern sys_rt_sigaction() interface is implemented, none of its flags
+    like SA_NODEFER, SA_ONSTACK, SA_RESETHAND, SA_RESTART, SA_SIGINFO are
+    supported, at the moment. The per-signal sa_mask is also fixed: while a
+    custom handler is running, all the other signals having a custom handler
+    are masked (terminating signals instead, can always we delieved).
+    In addition, the order of delivery of all signals is unspecified and there
+    is no distinction between regular signals and real-time ones. Also, at the
+    moment, no syscall can be restarted if a signal interrupted it. The syscall
+    sys_rt_sigsuspend() works as expected if we're not calling it from a signal
+    handler otherwise, it returns -EPERM (not allowed according to POSIX).
+
+    NOTE: while the just-described limited support for POSIX reliable signals
+    might seem too limited, it's worth noting that it already opened a
+    considerable amount of uses, like graceful process termination with SIGTERM.
