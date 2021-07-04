@@ -51,11 +51,10 @@ struct process {
 
    void *proc_tty;
    bool did_call_execve;
-   bool did_set_tty_medium_raw;
-
-   /* This process is a result of vfork(), before any call to execve() */
-   bool vforked;
+   bool automatic_reaping;       /* the parent explicitly ignored SIGCHLD */
+   bool vforked;                 /* after vfork(), before execve() */
    bool inherited_mmap_heap;
+   bool did_set_tty_medium_raw;
 
    int *set_child_tid;                    /* NOTE: this is an user pointer */
 

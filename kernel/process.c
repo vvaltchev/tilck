@@ -161,17 +161,19 @@ void free_mem_for_zombie_task(struct task *ti)
    ASSERT_TASK_STATE(ti->state, TASK_STATE_ZOMBIE);
 
 #if DEBUG_CHECKS
-
    if (ti == get_curr_task()) {
-
-      ulong stack_var = 123;
+      volatile ulong stack_var = 123;
       if (!IN_RANGE((ulong)&stack_var & PAGE_MASK, init_st_begin, init_st_end))
          panic("free_mem_for_zombie_task() called w/o switch to initial stack");
    }
-
 #endif
 
    free_common_task_allocs(ti);
+
+   if (ti->pi->automatic_reaping) {
+      /* The SIGCHLD signal has been EXPLICITLY ignored by the parent */
+      remove_task(ti);
+   }
 }
 
 void init_task_lists(struct task *ti)
@@ -230,6 +232,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    pi->ref_count = 1;
    pi->pid = pid;
    pi->did_call_execve = false;
+   pi->automatic_reaping = false;
    pi->cwd.fs = NULL;
    pi->vforked = false;
 
