@@ -75,7 +75,11 @@ handle_children_of_dying_process(struct task *ti)
 
       list_remove(&pos->siblings_node);
       list_add_tail(&child_reaper->children, &pos->siblings_node);
+
       pos->pi->parent_pid = child_reaper->pid;
+
+      if (pi->sa_handlers[SIGCHLD - 1] == SIG_IGN)
+         pos->pi->automatic_reaping = true;
 
       if (pos->state == TASK_STATE_ZOMBIE) {
 
@@ -180,6 +184,7 @@ call_on_task_exit_callbacks(void)
 NORETURN static NO_INLINE void
 switch_stack_free_mem_and_schedule(void)
 {
+   /* WARNING: DO NOT USE ANY STACK VARIABLES HERE */
    ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
@@ -210,6 +215,7 @@ void terminate_process(int exit_code, int term_sig)
 {
    struct task *const ti = get_curr_task();
    struct process *const pi = ti->pi;
+   struct task *parent;
    const bool vforked = pi->vforked;
 
    ASSERT(ti->state != TASK_STATE_ZOMBIE);
@@ -256,6 +262,7 @@ void terminate_process(int exit_code, int term_sig)
    /* OK, from now on the preemption won't be enabled until the end */
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->wstatus = EXITCODE(exit_code, term_sig);
+   parent = get_task(pi->parent_pid);
 
    call_on_task_exit_callbacks();
    task_free_all_kernel_allocs(ti);
@@ -304,8 +311,6 @@ void terminate_process(int exit_code, int term_sig)
 
       if (!pi->inherited_mmap_heap) {
 
-         struct task *parent = get_task(pi->parent_pid);
-
          /* We're in a vfork-ed child: the parent cannot die */
          ASSERT(parent != NULL);
 
@@ -318,6 +323,11 @@ void terminate_process(int exit_code, int term_sig)
          /* Transfer the ownership of our mappings info back to our parent */
          parent->pi->mi = pi->mi;
       }
+   }
+
+   if (parent) {
+      if (parent->pi->sa_handlers[SIGCHLD - 1] == SIG_IGN)
+         pi->automatic_reaping = true;
    }
 
    set_curr_pdir(get_kernel_pdir());
