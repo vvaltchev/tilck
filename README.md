@@ -462,8 +462,8 @@ observe how they improved, both from the *message* point of view and from the
 *content* point of view as well. In particular, during the last ~1,000 commits I
 started not only re-ordering commits but to split, edit, and squash them all the
 time. Git's `add -p` became a friend too. That's because today Tilck is pretty
-stable and it starts to be a medium-sized project with its ~94,000 *physical*
-lines of code and a git history of ~4,900 commits. It deserves much more effort
+stable and it starts to be a medium-sized project with its 97,000+ *physical*
+lines of code and a git history of 5,000+ commits. It deserves much more effort
 on each commit, compared to the past.
 
 At the beginning, Tilck was just a small experimental and unstable project on
