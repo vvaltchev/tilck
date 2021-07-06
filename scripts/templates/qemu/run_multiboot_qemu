@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if uname -a | grep Microsoft &> /dev/null; then
+if uname -a | grep -i microsoft &> /dev/null; then
    echo "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
    echo "therefore, KVM is not available."
    echo "Just run the *nokvm* version of this script."
