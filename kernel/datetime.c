@@ -436,6 +436,29 @@ void ticks_to_timespec(u64 ticks, struct k_timespec64 *tp)
       tp->tv_nsec = (tot % TS_SCALE) / (TS_SCALE / BILLION);
 }
 
+u64 timespec_to_ticks(const struct k_timespec64 *tp)
+{
+   u64 ticks = 0;
+   ticks += div_round_up64((u64)tp->tv_sec * TS_SCALE, __tick_duration);
+
+   if (TS_SCALE <= BILLION) {
+
+      ticks +=
+         div_round_up64(
+            (u64)tp->tv_nsec / (BILLION / TS_SCALE), __tick_duration
+         );
+
+   } else {
+
+      ticks +=
+         div_round_up64(
+            (u64)tp->tv_nsec * (TS_SCALE / BILLION), __tick_duration
+         );
+   }
+
+   return ticks;
+}
+
 void real_time_get_timespec(struct k_timespec64 *tp)
 {
    const u64 t = get_sys_time();
