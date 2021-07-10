@@ -31,28 +31,40 @@ int sys_madvise(void *addr, size_t len, int advice)
 }
 
 int
-do_nanosleep(const struct k_timespec64 *req)
+do_nanosleep(const struct k_timespec64 *req, struct k_timespec64 *rem)
 {
-   u64 ticks_to_sleep = 0;
+   u64 ticks_to_sleep;
+   u64 exp_wake_up_ticks;
 
-   ticks_to_sleep += (ulong) TIMER_HZ * (ulong) req->tv_sec;
-   ticks_to_sleep += (ulong) req->tv_nsec / (1000000000 / TIMER_HZ);
+   ticks_to_sleep = timespec_to_ticks(req);
+   exp_wake_up_ticks = get_ticks() + ticks_to_sleep;
    kernel_sleep(ticks_to_sleep);
 
-   if (pending_signals())
-      return -EINTR;
+   /* After wake-up */
+   rem->tv_sec = 0;
+   rem->tv_nsec = 0;
 
-   // TODO (future): use HPET in order to improve the sleep precision
-   // TODO (nanosleep): set rem if the call has been interrupted by a signal
+   if (pending_signals()) {
+
+      u64 ticks = get_ticks();
+
+      if (ticks < exp_wake_up_ticks)
+         ticks_to_timespec(exp_wake_up_ticks - ticks, rem);
+
+      return -EINTR;
+   }
+
    return 0;
 }
 
 int
 sys_nanosleep_time32(const struct k_timespec32 *user_req,
-                     struct k_timespec32 *rem)
+                     struct k_timespec32 *user_rem)
 {
    struct k_timespec32 req32;
    struct k_timespec64 req;
+   struct k_timespec32 rem32;
+   struct k_timespec64 rem;
    int rc;
 
    if (copy_from_user(&req32, user_req, sizeof(req)))
@@ -63,15 +75,20 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
       .tv_nsec = req32.tv_nsec,
    };
 
-   if ((rc = do_nanosleep(&req)))
-      return rc;
+   rc = do_nanosleep(&req, &rem);
 
-   bzero(&req32, sizeof(req32));
+   if (user_rem) {
 
-   if (copy_to_user(rem, &req32, sizeof(req32)))
-      return -EFAULT;
+      rem32 = (struct k_timespec32) {
+         .tv_sec = (s32) rem.tv_sec,
+         .tv_nsec = rem.tv_nsec,
+      };
 
-   return 0;
+      if (copy_to_user(user_rem, &rem32, sizeof(rem32)))
+         return -EFAULT;
+   }
+
+   return rc;
 }
 
 int sys_newuname(struct utsname *user_buf)
