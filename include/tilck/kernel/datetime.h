@@ -34,6 +34,7 @@ void init_system_time(void);
 int clock_get_second_drift(void);
 bool clock_in_resync(void);
 bool clock_in_full_resync(void);
+void ticks_to_timespec(u64 ticks, struct k_timespec64 *tp);
 void real_time_get_timespec(struct k_timespec64 *tp);
 void monotonic_time_get_timespec(struct k_timespec64 *tp);
 void clock_get_resync_stats(struct clock_resync_stats *s);

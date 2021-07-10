@@ -424,6 +424,18 @@ s64 get_timestamp(void)
    return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
+void ticks_to_timespec(u64 ticks, struct k_timespec64 *tp)
+{
+   const u64 tot = ticks * __tick_duration;
+
+   tp->tv_sec = (s64)(tot / TS_SCALE);
+
+   if (TS_SCALE <= BILLION)
+      tp->tv_nsec = (tot % TS_SCALE) * (BILLION / TS_SCALE);
+   else
+      tp->tv_nsec = (tot % TS_SCALE) / (TS_SCALE / BILLION);
+}
+
 void real_time_get_timespec(struct k_timespec64 *tp)
 {
    const u64 t = get_sys_time();
@@ -449,14 +461,7 @@ task_cpu_get_timespec(struct k_timespec64 *tp)
 
    disable_preemption();
    {
-      const u64 tot = ti->ticks.total * __tick_duration;
-
-      tp->tv_sec = (s64)(tot / TS_SCALE);
-
-      if (TS_SCALE <= BILLION)
-         tp->tv_nsec = (tot % TS_SCALE) * (BILLION / TS_SCALE);
-      else
-         tp->tv_nsec = (tot % TS_SCALE) / (TS_SCALE / BILLION);
+      ticks_to_timespec(ti->ticks.total, tp);
    }
    enable_preemption();
 }
