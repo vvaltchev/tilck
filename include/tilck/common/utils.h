@@ -18,15 +18,27 @@ pow2_round_up_at64(u64 n, u64 pow2unit)
 }
 
 CONSTEXPR static ALWAYS_INLINE ulong
+div_round_up(ulong n, ulong unit)
+{
+   return ((n + unit - 1) / unit);
+}
+
+CONSTEXPR static ALWAYS_INLINE u64
+div_round_up64(u64 n, u64 unit)
+{
+   return ((n + unit - 1) / unit);
+}
+
+CONSTEXPR static ALWAYS_INLINE ulong
 round_up_at(ulong n, ulong unit)
 {
-   return ((n + unit - 1) / unit) * unit;
+   return div_round_up(n, unit) * unit;
 }
 
 CONSTEXPR static ALWAYS_INLINE u64
 round_up_at64(u64 n, u64 unit)
 {
-   return ((n + unit - 1) / unit) * unit;
+   return div_round_up64(n, unit) * unit;
 }
 
 CONSTEXPR static ALWAYS_INLINE ulong
