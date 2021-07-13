@@ -142,6 +142,8 @@ void tty_setup_for_panic(struct tty *t)
       t->tintf->restart_output(t->tstate);
       t->kd_gfx_mode = KD_TEXT;
    }
+
+   tty_reset_termios(t);
 }
 
 void tty_restore_kd_text_mode(struct tty *t)
