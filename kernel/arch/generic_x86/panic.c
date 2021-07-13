@@ -156,11 +156,8 @@ NORETURN void panic(const char *fmt, ...)
    }
 
 
-   /* Hopefully, we can print something on screen */
-
-   printk("*********************************"
-          " KERNEL PANIC "
-          "********************************\n");
+   /* Hopefully, we can show something on the screen */
+   printk("\n********************** KERNEL PANIC **********************\n");
 
    /*
     * Register the fact that the first printk() succeeded: in case of panic
