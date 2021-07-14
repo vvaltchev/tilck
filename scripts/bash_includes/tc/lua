@@ -29,19 +29,24 @@ function build_lua {
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          #
-         # Note: NOT TESTED yet.
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
+         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
+
       else
          set_cc_vars_to_tc
       fi
 
-      # Build lua and luac static binaries
+      # Patch Lua's Makefile to remove "-Wl,-E"
+      sed -i 's/-Wl,-E//g' src/Makefile
 
+      # Build the lua and luac static binaries
       echo "Building lua..."
       local flags=""
       flags="CC=\"$CC\" MYCFLAGS=\"-std=gnu99\""
@@ -55,5 +60,6 @@ function build_lua {
       show_skip_component_msg "LUA"
    fi
 
+   reset_cc_vars
    popd
 }

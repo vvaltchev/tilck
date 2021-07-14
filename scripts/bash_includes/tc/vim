@@ -37,13 +37,15 @@ function build_vim {
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          #
-         # Note: NOT TESTED yet.
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+
+         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
+         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
 
       else
          # Default case
@@ -82,5 +84,6 @@ function build_vim {
       show_skip_component_msg "VIM"
    fi
 
+   reset_cc_vars
    popd
 }
