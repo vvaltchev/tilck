@@ -229,15 +229,16 @@ dp_tracing_screen_main_loop(void)
       if (rc < 0 && rc != -EAGAIN)
          return false; /* exit because of an error */
 
-      /* rc == 1 */
+      if (rc == 1) {
 
-      switch (c) {
+         switch (c) {
 
-         case 'q':
-            return false; /* clean exit */
+            case 'q':
+               return false; /* clean exit */
 
-         case DP_KEY_ENTER:
-            return true; /* stop dumping the trace buffer */
+            case DP_KEY_ENTER:
+               return true; /* stop dumping the trace buffer */
+         }
       }
 
       if (read_trace_event(&e, TIMER_HZ / 10))
