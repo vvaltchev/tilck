@@ -36,6 +36,11 @@ function download_googletest {
          ln -s $GTEST_SRC_DIR googletest
          popd
       fi
+
+      # Fix for GCC 11.x
+      pushd googletest
+      sed '1222s/int dummy/int dummy=0/g' googletest/src/gtest-death-test.cc
+      popd
    fi
 }
 
