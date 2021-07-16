@@ -30,16 +30,15 @@ function download_googletest {
       fi
 
       if ! [ -L $TC/cache/googletest ]; then
-         # Create a symlink to make older commits being able to but gtests
-         # using the old path.
+         # Create a symlink to allow older commits being able to build
          pushd $TC/cache
          ln -s $GTEST_SRC_DIR googletest
          popd
       fi
 
       # Fix for GCC 11.x
-      pushd googletest
-      sed '1222s/int dummy/int dummy=0/g' googletest/src/gtest-death-test.cc
+      pushd $TC/noarch/$GTEST_DIRNAME
+      sed -i '1222s/int dummy/int dummy=0/g' googletest/src/gtest-death-test.cc
       popd
    fi
 }
