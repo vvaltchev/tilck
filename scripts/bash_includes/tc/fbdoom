@@ -61,7 +61,7 @@ function build_fbdoom {
       export LDFLAGS="-static"
 
       pushd fbdoom
-      run_command2 "make NOSDL=1 -j" build.log
+      run_command2 "make NOSDL=1 -j$BUILD_PAR" build.log
       ${ARCH_GCC_TC}-linux-strip --strip-all fbdoom
       gzip fbdoom
       popd

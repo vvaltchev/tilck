@@ -90,7 +90,7 @@ function build_tcc {
       local af="$af --crtprefix=$lib --libpaths=$lib"
 
       run_command2 "./configure $af" configure.log
-      run_command2 "make -j" build.log
+      run_command2 "make -j$BUILD_PAR" build.log
 
       # Just to test on the local machine
       # run_command2 "make install" install.log

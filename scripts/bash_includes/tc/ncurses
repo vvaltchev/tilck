@@ -37,7 +37,7 @@ function build_ncurses {
       fi
 
       run_command2 "./configure $o1 $o2 $o3 $o4 $o5" configure.log
-      run_command2 "make -j" build.log
+      run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
       export CC_POST_FLAGS=""
 

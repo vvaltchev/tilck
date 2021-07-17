@@ -75,7 +75,7 @@ function build_gtest {
          -DGOOGLETEST_VERSION=$GTEST_VER  \
          $GTEST_SRC_DIR/googletest
 
-      run_command2 "make -j" build.log
+      run_command2 "make -j$BUILD_PAR" build.log
       gtest_make_compact_symlinks $HOST_ARCH
 
    else

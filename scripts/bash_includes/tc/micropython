@@ -48,12 +48,12 @@ function build_micropython {
       local opts="MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
 
       pushd mpy-cross
-      run_command2 "make $opts -j" build.log
+      run_command2 "make $opts -j$BUILD_PAR" build.log
       popd
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
-      run_command2 "make $opts -j" build.log
+      run_command2 "make $opts -j$BUILD_PAR" build.log
       popd
 
       export LDFLAGS_EXTRA=""

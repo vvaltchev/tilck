@@ -58,7 +58,7 @@ function build_vim {
 
       local c_opts="--with-features=normal"
       run_command2 "./configure --prefix=$curr/install $c_opts" configure.log
-      run_command2 "make -j" build.log
+      run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
 
       pushd install

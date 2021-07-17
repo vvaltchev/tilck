@@ -41,7 +41,7 @@ function build_zlib {
       fi
 
       run_command2 "./configure --prefix='$p' --static" configure.log
-      run_command2 "make -j" build.log
+      run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
       export CROSS_PREFIX=""
 

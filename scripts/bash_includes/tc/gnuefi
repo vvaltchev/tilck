@@ -39,7 +39,7 @@ function build_gnuefi_arch {
             local arch_flags="ARCH=${ARCH_EFI}"
          fi
 
-         run_command2 "make $arch_flags -j" build_${ARCH_EFI}.log
+         run_command2 "make $arch_flags -j$BUILD_PAR" build_${ARCH_EFI}.log
 
       else
          show_skip_component_msg "GNU-EFI (arch: $ARCH)"
@@ -58,7 +58,9 @@ function build_gnuefi_build_arch {
          reset_cc_vars
          download_gnu_efi
          cd gnu-efi
-         run_command2 "make ARCH=${BUILD_ARCH} -j" build_${BUILD_ARCH}.log
+
+         run_command2 \
+            "make ARCH=${BUILD_ARCH} -j$BUILD_PAR" build_${BUILD_ARCH}.log
 
       else
 

@@ -24,7 +24,7 @@ function internal_build_busybox {
 
    export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
-   run_command2 "make -j" build.log
+   run_command2 "make -j$BUILD_PAR" build.log
 
    export CROSS_COMPILE=""
    export CC_POST_FLAGS=""
