@@ -747,7 +747,7 @@ bool vfs_handle_fault(struct user_mapping *um, void *va, bool p, bool rw)
    if (!fops->handle_fault)
       return false;
 
-   return fops->handle_fault(um->h, va, p, rw);
+   return fops->handle_fault(um, va, p, rw);
 }
 
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2])

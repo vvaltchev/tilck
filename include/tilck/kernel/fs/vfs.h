@@ -74,7 +74,11 @@ typedef int            (*func_mmap)         (struct user_mapping *,
                                              int);
 
 typedef int            (*func_munmap)       (fs_handle, void *, size_t);
-typedef bool           (*func_handle_fault) (fs_handle, void *, bool, bool);
+typedef bool           (*func_handle_fault) (struct user_mapping *,
+                                             void *,
+                                             bool,
+                                             bool);
+
 typedef int            (*func_rwe_ready)    (fs_handle);
 typedef struct kcond  *(*func_get_rwe_cond) (fs_handle);
 typedef int            (*func_on_dup_cb)    (fs_handle);

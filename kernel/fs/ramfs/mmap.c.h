@@ -76,21 +76,18 @@ register_mapping:
 
 static bool
 ramfs_handle_fault_int(struct process *pi,
-                       struct ramfs_handle *rh,
+                       struct user_mapping *um,
                        void *vaddrp,
                        bool p,
                        bool rw)
 {
+   struct ramfs_handle *rh = um->h;
    ulong vaddr = (ulong) vaddrp;
    ulong abs_off;
    struct ramfs_block *block;
    int rc;
-   struct user_mapping *um = process_get_user_mapping(vaddrp);
 
-   if (!um)
-      return false; /* Weird, but it's OK */
-
-   ASSERT(um->h == rh);
+   ASSERT(um != NULL);
 
    if (p) {
 
@@ -132,14 +129,14 @@ ramfs_handle_fault_int(struct process *pi,
 
 
 static bool
-ramfs_handle_fault(fs_handle h, void *vaddrp, bool p, bool rw)
+ramfs_handle_fault(struct user_mapping *um, void *vaddrp, bool p, bool rw)
 {
    bool ret;
    struct process *pi = get_curr_proc();
 
    disable_preemption();
    {
-      ret = ramfs_handle_fault_int(pi, h, vaddrp, p, rw);
+      ret = ramfs_handle_fault_int(pi, um, vaddrp, p, rw);
    }
    enable_preemption();
    return ret;
