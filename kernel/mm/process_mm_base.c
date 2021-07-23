@@ -53,13 +53,25 @@ struct user_mapping *process_get_user_mapping(void *vaddrp)
 
    ASSERT(!is_preemption_enabled());
 
-   if (!pi->mi)
-      return NULL;
+   if (pi->mi) {
 
-   list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
+      /*
+       * Given that pi->mi->mappings contains at the moment only the memory
+       * mappings done with mmap(), some small processes that don't use dynamic
+       * memory allocation will not even have this field (pi->mi == NULL).
+       *
+       * For the rest, the list is supposed to be *short*, so a linear scan
+       * is acceptable for the moment. If in the future we start to put
+       * there also the mappings for program's text and data and expect to have
+       * more than a few elements, it will be necessary to use a BST to perform
+       * the lookup here below.
+       */
 
-      if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
-         return pos;
+      list_for_each_ro(pos, &pi->mi->mappings, pi_node) {
+
+         if (IN_RANGE(vaddr, pos->vaddr, pos->vaddr + pos->len))
+            return pos;
+      }
    }
 
    return NULL;

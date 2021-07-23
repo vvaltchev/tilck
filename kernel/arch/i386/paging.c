@@ -260,7 +260,7 @@ void handle_page_fault_int(regs_t *r)
        */
       if (!!(um->prot & PROT_WRITE) || !rw) {
 
-         if (vfs_handle_fault(um->h, (void *)vaddr, p, rw))
+         if (vfs_handle_fault(um, (void *)vaddr, p, rw))
             return;
 
          sig = SIGBUS;

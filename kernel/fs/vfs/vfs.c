@@ -739,15 +739,15 @@ int vfs_munmap(fs_handle h, void *vaddr, size_t len)
    return fops->munmap(h, vaddr, len);
 }
 
-bool vfs_handle_fault(fs_handle h, void *va, bool p, bool rw)
+bool vfs_handle_fault(struct user_mapping *um, void *va, bool p, bool rw)
 {
-   struct fs_handle_base *hb = h;
+   struct fs_handle_base *hb = um->h;
    const struct file_ops *fops = hb->fops;
 
    if (!fops->handle_fault)
       return false;
 
-   return fops->handle_fault(h, va, p, rw);
+   return fops->handle_fault(um->h, va, p, rw);
 }
 
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2])
