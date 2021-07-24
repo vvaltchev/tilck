@@ -309,9 +309,9 @@ bool user_map_zero_page(ulong user_vaddr, size_t page_count)
    return true;
 }
 
-int generic_fs_munmap(fs_handle h, void *vaddrp, size_t len)
+int generic_fs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 {
-   struct fs_handle_base *hb = h;
+   struct fs_handle_base *hb = um->h;
    struct process *pi = hb->pi;
    ulong vaddr = (ulong)vaddrp;
    ulong vend = vaddr + len;

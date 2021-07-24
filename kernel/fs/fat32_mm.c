@@ -182,13 +182,13 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    return 0;
 }
 
-int fat_munmap(fs_handle h, void *vaddrp, size_t len)
+int fat_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 {
-   struct fatfs_handle *fh = h;
+   struct fatfs_handle *fh = um->h;
    struct fat_fs_device_data *d = fh->fs->device_data;
 
    if (!d->mmap_support)
       return -ENODEV; /* We do NOT support mmap for this "superblock" */
 
-   return generic_fs_munmap(h, vaddrp, len);
+   return generic_fs_munmap(um, vaddrp, len);
 }

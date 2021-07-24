@@ -736,7 +736,7 @@ int vfs_munmap(struct user_mapping *um, void *vaddr, size_t len)
       return -ENODEV;
 
    ASSERT(fops->mmap != NULL);
-   return fops->munmap(hb, vaddr, len);
+   return fops->munmap(um, vaddr, len);
 }
 
 bool vfs_handle_fault(struct user_mapping *um, void *va, bool p, bool rw)

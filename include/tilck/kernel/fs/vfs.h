@@ -73,7 +73,10 @@ typedef int            (*func_mmap)         (struct user_mapping *,
                                              pdir_t *,
                                              int);
 
-typedef int            (*func_munmap)       (fs_handle, void *, size_t);
+typedef int            (*func_munmap)       (struct user_mapping *,
+                                             void *,
+                                             size_t);
+
 typedef bool           (*func_handle_fault) (struct user_mapping *,
                                              void *,
                                              bool,

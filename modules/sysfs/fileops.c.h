@@ -392,9 +392,9 @@ int sysfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    return 0;
 }
 
-int sysfs_munmap(fs_handle h, void *vaddrp, size_t len)
+int sysfs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 {
-   struct sysfs_handle *sh = h;
+   struct sysfs_handle *sh = um->h;
 
    if (sh->type != VFS_FILE)
       return -EACCES;
@@ -402,7 +402,7 @@ int sysfs_munmap(fs_handle h, void *vaddrp, size_t len)
    if (sh->file.data_max_len >= 0)
       return -EACCES; /* Do not support mmap in the = 0 and > 0 cases */
 
-   return generic_fs_munmap(h, vaddrp, len);
+   return generic_fs_munmap(um, vaddrp, len);
 }
 
 static const struct file_ops static_ops_file_sysfs =

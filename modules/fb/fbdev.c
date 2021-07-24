@@ -137,9 +137,9 @@ register_mapping:
    return 0;
 }
 
-static int fbdev_munmap(fs_handle h, void *vaddr, size_t len)
+static int fbdev_munmap(struct user_mapping *um, void *vaddr, size_t len)
 {
-   struct fs_handle_base *hb = h;
+   struct fs_handle_base *hb = um->h;
    size_t unmapped_count;
    bool dying_task = false;
 
