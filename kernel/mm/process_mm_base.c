@@ -125,7 +125,7 @@ void full_remove_user_mapping(struct process *pi, struct user_mapping *um)
    ASSERT(mi->mmap_heap);
 
    if (um->h)
-      vfs_munmap(um->h, um->vaddrp, actual_len);
+      vfs_munmap(um, um->vaddrp, actual_len);
 
    per_heap_kfree(mi->mmap_heap,
                   um->vaddrp,

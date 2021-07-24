@@ -397,7 +397,7 @@ static int munmap_int(struct process *pi, void *vaddrp, size_t len)
    if (um->h) {
 
       kfree_flags |= KFREE_FL_NO_ACTUAL_FREE;
-      rc = vfs_munmap(um->h, vaddrp, actual_len);
+      rc = vfs_munmap(um, vaddrp, actual_len);
 
       /*
        * If there's an actual user_mapping entry, it means um->h's fops MUST

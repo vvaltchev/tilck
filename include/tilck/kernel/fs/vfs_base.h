@@ -133,7 +133,7 @@ struct fs_handle_base {
 #define VFS_MM_DONT_REGISTER        (1 << 1)
 
 int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
-int vfs_munmap(fs_handle h, void *vaddr, size_t len);
+int vfs_munmap(struct user_mapping *um, void *vaddr, size_t len);
 bool vfs_handle_fault(struct user_mapping *um, void *va, bool p, bool rw);
 int vfs_dup(fs_handle h, fs_handle *dup_h);
 void vfs_close(fs_handle h);

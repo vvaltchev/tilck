@@ -727,16 +727,16 @@ int vfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    return fops->mmap(um, pdir, flags);
 }
 
-int vfs_munmap(fs_handle h, void *vaddr, size_t len)
+int vfs_munmap(struct user_mapping *um, void *vaddr, size_t len)
 {
-   struct fs_handle_base *hb = h;
+   struct fs_handle_base *hb = um->h;
    const struct file_ops *fops = hb->fops;
 
    if (!fops->munmap)
       return -ENODEV;
 
    ASSERT(fops->mmap != NULL);
-   return fops->munmap(h, vaddr, len);
+   return fops->munmap(hb, vaddr, len);
 }
 
 bool vfs_handle_fault(struct user_mapping *um, void *va, bool p, bool rw)
