@@ -61,11 +61,16 @@ acpi_battery_get_basic_info(ACPI_HANDLE obj, struct basic_battery_info *bi)
    // has_BIX = acpi_has_method(obj, "_BIX");
 
    if (has_BIX) {
+
       bi->bif_method = "_BIX";
       bi->lfc_idx++;
       bi->has_BIX = true;
       pu_idx++;
       dcap_idx++;
+
+   } else {
+
+      bi->has_BIX = false;
    }
 
    rc = AcpiEvaluateObject(obj, (char *)bi->bif_method, NULL, &res);
