@@ -157,7 +157,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
 
 # Non-boolean kernel options
-set(TIMER_HZ            100 CACHE STRING "System timer HZ")
+set(TIMER_HZ            250 CACHE STRING "System timer HZ")
 set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
 set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
 set(MAX_HANDLES          16 CACHE STRING "Max handles/process (keep small)")
