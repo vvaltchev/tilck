@@ -605,17 +605,9 @@ void sched_account_ticks(void)
    }
 }
 
-void schedule(void)
+static bool
+sched_should_return_immediately(enum task_state curr_state)
 {
-   enum task_state curr_state = get_curr_task_state();
-   struct task *selected = NULL;
-   struct task *pos;
-
-   ASSERT(!is_preemption_enabled());
-
-   /* Essential: clear the `__need_resched` flag */
-   sched_clear_need_resched();
-
    if (UNLIKELY(get_curr_task()->timer_ready)) {
 
       /*
@@ -636,10 +628,28 @@ void schedule(void)
       }
 
       get_curr_task()->timer_ready = false;
-      return; /* Give the control back to current task */
+      return true; /* Give the control back to current task */
    }
 
-   /* Look for worker threads ready to run */
+   return false;
+}
+
+void schedule(void)
+{
+   enum task_state curr_state = get_curr_task_state();
+   struct task *selected = NULL;
+   struct task *pos;
+
+   ASSERT(!is_preemption_enabled());
+
+   /* Essential: clear the `__need_resched` flag */
+   sched_clear_need_resched();
+
+   /* Handle special corner cases */
+   if (sched_should_return_immediately(curr_state))
+      return;
+
+   /* Check for worker threads ready to run */
    selected = wth_get_runnable_thread();
 
    if (selected == get_curr_task())
