@@ -161,13 +161,34 @@ int sys_vfork(void)
    return do_fork(true);
 }
 
+static int
+stop_all_user_tasks(void *task, void *unused)
+{
+   struct task *ti = task;
+
+   if (!is_kernel_thread(ti)) {
+      printk("Stopping TID %d\n", ti->tid);
+      ti->stopped = true;
+   }
+
+   return 0;
+}
+
 static void
 kernel_shutdown(void)
 {
    /* This is just a stub */
    extern volatile bool __in_kernel_shutdown;
    __in_kernel_shutdown = true;
+
    printk("The system is shutting down.\n");
+
+   disable_preemption();
+   {
+      iterate_over_tasks(&stop_all_user_tasks, NULL);
+   }
+   enable_preemption();
+   printk("Shutdown complete.\n");
 }
 
 int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
