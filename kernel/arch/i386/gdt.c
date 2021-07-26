@@ -314,16 +314,18 @@ void init_segmentation(void)
    /* GDT entry for our TSS */
    set_entry_num2(5,
                   (ulong)&tss_array[TSS_MAIN],  /* TSS addr */
-                  sizeof(tss_array[TSS_MAIN]), /* limit: struct TSS size */
-                  GDT_DESC_TYPE_TSS,
+                  sizeof(tss_array[TSS_MAIN]),  /* limit: struct TSS size */
+                  GDT_DESC_TYPE_TSS | GDT_ACCESS_PL0,
                   GDT_GRAN_BYTE | GDT_32BIT);
 
    /* Register other special GDT entires */
    register_double_fault_tss_entry();
 
-   /* Load the GDT and the TSS */
+   /* Load the GDT */
    load_gdt(gdt, gdt_size);
-   load_tss(5 /* TSS index in GDT */, 3 /* priv. level */);
+
+   /* Load the TSS */
+   load_tss(5 /* TSS index in GDT */, 0 /* priv. level */);
 }
 
 static void DEBUG_set_thread_area(struct user_desc *d)

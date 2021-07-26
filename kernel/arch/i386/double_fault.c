@@ -44,7 +44,7 @@ void register_double_fault_tss_entry(void)
    gdt_set_entry(&e,
                  (ulong)&tss_array[TSS_DOUBLE_FAULT],
                  sizeof(tss_array[TSS_DOUBLE_FAULT]),
-                 GDT_DESC_TYPE_TSS,
+                 GDT_DESC_TYPE_TSS | GDT_ACCESS_PL0,
                  GDT_GRAN_BYTE | GDT_32BIT);
 
    double_fault_tss_num = gdt_add_entry(&e);
