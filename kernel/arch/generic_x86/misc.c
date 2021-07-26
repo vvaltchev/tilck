@@ -14,8 +14,6 @@ NORETURN void poweroff(void)
 {
    printk("Halting the system...\n");
 
-   disable_preemption();
-
    if (MOD_acpi) {
       if (get_acpi_init_status() >= ais_subsystem_enabled) {
          acpi_poweroff();
@@ -55,7 +53,6 @@ NORETURN void reboot(void)
 {
    printk("Rebooting the machine...\n");
 
-   disable_preemption();
    disable_interrupts_forced();
 
    if (MOD_acpi) {
