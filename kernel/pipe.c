@@ -19,9 +19,9 @@ struct pipe {
    char *buf;
    struct ringbuf rb;
    struct kmutex mutex;
-   struct kcond rcond;
-   struct kcond wcond;
-   struct kcond errcond;
+   struct kcond not_full_cond;
+   struct kcond not_empty_cond;
+   struct kcond err_cond;
 
    ATOMIC(int) read_handles;
    ATOMIC(int) write_handles;
@@ -31,124 +31,121 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   bool was_buffer_full;
+   bool sig_pending = false;
    ssize_t rc = 0;
 
    if (!size)
       return 0;
 
    kmutex_lock(&p->mutex);
-   {
-   again:
-      was_buffer_full = ringbuf_is_full(&p->rb);
 
-      if (!(rc = (ssize_t)ringbuf_read_bytes(&p->rb, (u8 *)buf, size))) {
+   while (true) {
 
-         if (atomic_load_explicit(&p->write_handles, mo_relaxed) == 0) {
-            /* No more writers, always return 0, no matter what. */
-            goto end;
-         }
+      rc = (ssize_t)ringbuf_read_bytes(&p->rb, (u8 *)buf, size);
 
-         if (kh->fl_flags & O_NONBLOCK) {
-            rc = -EAGAIN;
-            goto end;
-         }
+      if (rc)
+         break; /* Everything is alright, we read something */
 
-         /* Wake-up all the writers waiting on the readers cond */
-         kcond_signal_all(&p->rcond);
-
-         /* Wait on the writers cond */
-         kcond_wait(&p->wcond, &p->mutex, KCOND_WAIT_FOREVER);
-
-         if (pending_signals())
-            goto end;
-
-         goto again;
+      if (atomic_load_explicit(&p->write_handles, mo_relaxed) == 0) {
+         /* No more writers, always return 0, no matter what. */
+         break;
       }
 
-      if (!ringbuf_is_empty(&p->rb)) {
-         /* Notify other readers that's possible to read from the pipe */
-         kcond_signal_all(&p->rcond);
+      if (kh->fl_flags & O_NONBLOCK) {
+         rc = -EAGAIN;
+         break;
       }
 
-      if (was_buffer_full) {
-         /* Notify all writers that now is possible to write to the pipe */
-         kcond_signal_all(&p->wcond);
-      }
+      /* Wait for writers to fill up the buffer */
+      kcond_wait(&p->not_empty_cond, &p->mutex, KCOND_WAIT_FOREVER);
 
-   end:;
+      /* After wake up */
+      if (pending_signals()) {
+         sig_pending = true;
+         break;
+      }
    }
+
+   /*
+    * Wake up one blocked writer instead of all of them.
+    *
+    * Rationale: it is totally possible that just a single writer will fill up
+    * the whole buffer and, after that, the other writers will wake up just to
+    * discover they need to go back sleeping again. To spare those unnecessary
+    * context switches, we just wake up a single writer and, after it's done it
+    * will wake up writer if the buffer is still not full.
+    *
+    * The situation is perfectly symmetric for the readers as well, that's why
+    * here below we wake up another reader if the buffer is not empty.
+    */
+   kcond_signal_one(&p->not_full_cond);
+
+   if (!ringbuf_is_empty(&p->rb)) {
+      /* The buffer is not empty: wake up one more reader, if any */
+      kcond_signal_one(&p->not_empty_cond);
+   }
+
+   /* Unlock the pipe's state lock and return */
    kmutex_unlock(&p->mutex);
-
-   if (pending_signals())
-      return -EINTR;
-
-   return rc;
+   return !sig_pending ? rc : -EINTR;
 }
 
 static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
+   bool sig_pending = false;
    ssize_t rc = 0;
-   bool was_buffer_empty;
 
    if (!size)
       return 0;
 
    kmutex_lock(&p->mutex);
-   {
-   again:
-      was_buffer_empty = ringbuf_is_empty(&p->rb);
+
+   while (true) {
 
       if (atomic_load_explicit(&p->read_handles, mo_relaxed) == 0) {
 
          /* Broken pipe */
-
-         int pid = get_curr_pid();
-         send_signal(pid, SIGPIPE, true);
-
+         send_signal(get_curr_pid(), SIGPIPE, true);
          rc = -EPIPE;
-         goto end;
+         break;
       }
 
-      if (!(rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size))) {
+      rc = (ssize_t)ringbuf_write_bytes(&p->rb, (u8 *)buf, size);
 
-         if (kh->fl_flags & O_NONBLOCK) {
-            rc = -EAGAIN;
-            goto end;
-         }
+      if (rc)
+         break; /* Everything is alright, we wrote something */
 
-         /* Wake-up all the readers waiting on the writers cond */
-         kcond_signal_all(&p->wcond);
-
-         /* Wait on the readers cond */
-         kcond_wait(&p->rcond, &p->mutex, KCOND_WAIT_FOREVER);
-
-         if (pending_signals())
-            goto end;
-
-         goto again;
+      if (kh->fl_flags & O_NONBLOCK) {
+         rc = -EAGAIN;
+         break;
       }
 
-      if (!ringbuf_is_full(&p->rb)) {
-         /* Notify other writers that now it possible to write on the pipe */
-         kcond_signal_all(&p->wcond);
-      }
+      /* Wait for readers to empty the buffer */
+      kcond_wait(&p->not_full_cond, &p->mutex, KCOND_WAIT_FOREVER);
 
-      if (was_buffer_empty) {
-         /* Notify all readers that now is possible to read from the pipe */
-         kcond_signal_all(&p->rcond);
+      /* After wake up */
+      if (pending_signals()) {
+         sig_pending = true;
+         break;
       }
-
-   end:;
    }
+
+   /*
+    * Wake up one blocked reader, instead of all of them.
+    * See the comments in pipe_read() above.
+    */
+   kcond_signal_one(&p->not_empty_cond);
+
+   if (!ringbuf_is_full(&p->rb)) {
+      /* The buffer is not full: wake up one more writer, if any */
+      kcond_signal_one(&p->not_full_cond);
+   }
+
+   /* Unlock the pipe's state lock and return */
    kmutex_unlock(&p->mutex);
-
-   if (pending_signals())
-      return -EINTR;
-
-   return rc;
+   return !sig_pending ? rc : -EINTR;
 }
 
 static int pipe_read_ready(fs_handle h)
@@ -170,7 +167,7 @@ static struct kcond *pipe_get_rready_cond(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   return &p->rcond;
+   return &p->not_empty_cond;
 }
 
 static int pipe_write_ready(fs_handle h)
@@ -186,6 +183,13 @@ static int pipe_write_ready(fs_handle h)
    }
    kmutex_unlock(&p->mutex);
    return ret;
+}
+
+static struct kcond *pipe_get_wready_cond(fs_handle h)
+{
+   struct kfs_handle *kh = h;
+   struct pipe *p = (void *)kh->kobj;
+   return &p->not_full_cond;
 }
 
 static int pipe_except_ready(fs_handle h)
@@ -206,18 +210,11 @@ static int pipe_except_ready(fs_handle h)
    return ret;
 }
 
-static struct kcond *pipe_get_wready_cond(fs_handle h)
-{
-   struct kfs_handle *kh = h;
-   struct pipe *p = (void *)kh->kobj;
-   return &p->wcond;
-}
-
 static struct kcond *pipe_get_except_cond(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
-   return &p->errcond;
+   return &p->err_cond;
 }
 
 static const struct file_ops static_ops_pipe_read_end =
@@ -240,9 +237,9 @@ static const struct file_ops static_ops_pipe_write_end =
 
 void destroy_pipe(struct pipe *p)
 {
-   kcond_destory(&p->errcond);
-   kcond_destory(&p->wcond);
-   kcond_destory(&p->rcond);
+   kcond_destory(&p->err_cond);
+   kcond_destory(&p->not_empty_cond);
+   kcond_destory(&p->not_full_cond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
    kfree2(p->buf, PIPE_BUF_SIZE);
@@ -264,9 +261,9 @@ static void pipe_on_handle_close(fs_handle h)
    ASSERT(old > 0);
 
    if (old == 1) {
-      kcond_signal_all(&p->rcond);
-      kcond_signal_all(&p->wcond);
-      kcond_signal_all(&p->errcond);
+      kcond_signal_all(&p->not_full_cond);
+      kcond_signal_all(&p->not_empty_cond);
+      kcond_signal_all(&p->err_cond);
    }
 }
 
@@ -299,9 +296,9 @@ struct pipe *create_pipe(void)
    p->destory_obj = (void *)&destroy_pipe;
    ringbuf_init(&p->rb, PIPE_BUF_SIZE, 1, p->buf);
    kmutex_init(&p->mutex, 0);
-   kcond_init(&p->rcond);
-   kcond_init(&p->wcond);
-   kcond_init(&p->errcond);
+   kcond_init(&p->not_full_cond);
+   kcond_init(&p->not_empty_cond);
+   kcond_init(&p->err_cond);
    return p;
 }
 
