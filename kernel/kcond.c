@@ -48,7 +48,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
    /*
     * wait_obj_reset() returns the older value of wobj.ptr: in case it was
     * NULL, we'll return true (no timeout). Note: that happens (no wobj) because
-    * in kcond_signal_single() we reset task's wobj before wakeing it up.
+    * in kcond_signal_int() we reset task's wobj before wakeing it up.
     *
     * In case `wobj.ptr` was != NULL, we woke up because of the timeout (which
     * doesn't reset the wobj), therefore return false.
@@ -64,7 +64,7 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 }
 
 static void
-kcond_signal_single(struct kcond *c, struct wait_obj *wo)
+kcond_signal_int(struct kcond *c, struct wait_obj *wo)
 {
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -95,7 +95,24 @@ kcond_signal_single(struct kcond *c, struct wait_obj *wo)
    wake_up(ti);
 }
 
-void kcond_signal_int(struct kcond *c, bool all)
+void kcond_signal_one(struct kcond *c)
+{
+   disable_preemption();
+   {
+      DEBUG_ONLY(check_not_in_irq_handler());
+
+      if (!list_is_empty(&c->wait_list)) {
+
+         struct wait_obj *wobj =
+            list_first_obj(&c->wait_list, struct wait_obj, wait_list_node);
+
+         kcond_signal_int(c, wobj);
+      }
+   }
+   enable_preemption();
+}
+
+void kcond_signal_all(struct kcond *c)
 {
    struct wait_obj *wo_pos, *temp;
    disable_preemption();
@@ -103,11 +120,7 @@ void kcond_signal_int(struct kcond *c, bool all)
       DEBUG_ONLY(check_not_in_irq_handler());
 
       list_for_each(wo_pos, temp, &c->wait_list, wait_list_node) {
-
-         kcond_signal_single(c, wo_pos);
-
-         if (!all) /* the non-broadcast signal() just signals the first task */
-            break;
+         kcond_signal_int(c, wo_pos);
       }
    }
    enable_preemption();
