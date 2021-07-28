@@ -65,6 +65,7 @@ DECL_CMD(pipe1);
 DECL_CMD(pipe2);
 DECL_CMD(pipe3);
 DECL_CMD(pipe4);
+DECL_CMD(pipe5);
 DECL_CMD(pollerr);
 DECL_CMD(pollhup);
 DECL_CMD(execve0);
@@ -142,6 +143,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(pipe2,        TT_SHORT,  true),
    CMD_ENTRY(pipe3,        TT_SHORT,  true),
    CMD_ENTRY(pipe4,        TT_SHORT,  true),
+   CMD_ENTRY(pipe5,        TT_SHORT,  true),
    CMD_ENTRY(pollerr,      TT_SHORT,  true),
    CMD_ENTRY(pollhup,      TT_SHORT,  true),
    CMD_ENTRY(poll1,        TT_SHORT,  true),

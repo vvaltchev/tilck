@@ -298,3 +298,174 @@ int cmd_pipe4(int argc, char **argv)
    close(pipefd[1]);
    return 0;
 }
+
+static void
+pipe_reader_child(int id, int fd)
+{
+   int tot_read = 0;
+   char buf[4096];
+   int rc;
+   int fail = 0;
+   int to_read;
+
+   while (true) {
+
+      to_read = rand() % sizeof(buf) + 1;
+      rc = read(fd, buf, to_read);
+
+      if (rc < 0) {
+
+         printf("[reader %d]: read(%d) failed with %s\n",
+                id, to_read, strerror(errno));
+
+         fail = 1;
+         break;
+      }
+
+      if (rc == 0)
+         break;
+
+      tot_read += rc;
+   }
+
+   printf("[reader %d]: tot_read: %d (%d KB)\n", id, tot_read, tot_read / KB);
+   exit(fail);
+}
+
+static void
+pipe_writer_child(int id, int fd, int write_lim)
+{
+   int tot_written = 0;
+   char buf[4096];
+   int rc;
+   int fail = 0;
+   int to_write = 0;
+
+   while (tot_written < write_lim) {
+
+      to_write = rand() % sizeof(buf) + 1;
+
+      if (tot_written + to_write > write_lim) {
+         /* Make sure to write no more than `write_lim` */
+         to_write = write_lim - tot_written;
+      }
+
+      rc = write(fd, buf, to_write);
+
+      if (rc < 0) {
+
+         printf("[writer %d]: write(%d) failed with %s\n",
+                id, to_write, strerror(errno));
+
+         fail = 1;
+         break;
+      }
+
+      tot_written += rc;
+   }
+
+   printf("[writer %d]: tot_written: %d (%d KB)\n",
+          id, tot_written, tot_written / KB);
+
+   close(fd);
+   exit(fail);
+}
+
+static int
+pipe_random_test(int readers, int writers)
+{
+   int pipefd[2];
+   int wstatus;
+   int rc;
+   int fail = 0;
+
+   printf("[Pipe random test] readers: %d, writers: %d\n", readers, writers);
+
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   if (!getenv("TILCK")) {
+      fcntl(pipefd[0], F_SETPIPE_SZ, 4096);
+      fcntl(pipefd[1], F_SETPIPE_SZ, 4096);
+   }
+
+   for (int i = 0; i < writers; i++) {
+
+      rc = fork();
+
+      if (rc < 0) {
+         printf("[Pipe random test] fork failed with %s\n", strerror(errno));
+         fail = 1;
+         break;
+      }
+
+      if (!rc) {
+         close(pipefd[0]);
+         pipe_writer_child(i, pipefd[1], readers * 32 * KB);
+      }
+   }
+
+   for (int i = 0; i < readers; i++) {
+
+      rc = fork();
+
+      if (rc < 0) {
+         printf("[Pipe random test] fork failed with %s\n", strerror(errno));
+         fail = 1;
+         break;
+      }
+
+      if (!rc) {
+         close(pipefd[1]);
+         pipe_reader_child(i, pipefd[0]);
+      }
+   }
+
+   close(pipefd[0]);
+   close(pipefd[1]);
+   printf("[Pipe random test] wait for children\n");
+
+   do {
+
+      rc = waitpid(-1, &wstatus, 0);
+
+      if (rc > 0) {
+
+
+         int code = WEXITSTATUS(wstatus);
+         int term_sig = WTERMSIG(wstatus);
+
+         if (code || term_sig) {
+
+            printf("[Pipe random test] child %d failed, "
+                   "code: %d, sig: %d\n", rc, code, term_sig);
+
+            fail = 1;
+         }
+      }
+
+   } while (rc > 0);
+
+   printf("[Pipe random test] done\n");
+   return fail;
+}
+
+int cmd_pipe5(int argc, char **argv)
+{
+   int rc;
+
+   if ((rc = pipe_random_test(10, 1)))
+      return rc;
+
+   if ((rc = pipe_random_test(1, 10)))
+      return rc;
+
+   if ((rc = pipe_random_test(5, 5)))
+      return rc;
+
+   return 0;
+}
