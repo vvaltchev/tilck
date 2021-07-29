@@ -115,6 +115,20 @@ used to receive power-button events, to reboot or power-off the machine, and to
 read the current parameters of machine's batteries (when implemented via ACPI control
 methods).
 
+##### Comments about physical hardware
+The operating system has been regularly tested on physical hardware from its inception
+by booting it with an USB stick (see the notes below). Test machines include actual i686
+machines, older x86_64 machines with BIOS-only firmware, newer x86_64 machines with
+UEFI+CSM and finally super-recent pure-UEFI machines. For a long time, Tilck's development
+strictly complied with the following rule: *if you cannot test it on real hardware, do not
+implement it in Tilck*. Only recently, that rule has been relaxed a little in order to play
+with SB16. It is possible that, in the future, there might be a few other drivers that
+would be tested only on virtual machines: their development is justified by the educational
+value it will bring to the operating system and the infrastructure built for them will be
+reused for other drivers of the same kind. **But** that will *never* become a common practice.
+Tilck is designed to work on real hardware, where any kind of weird things happen. Being
+reliable there is *critical* for Tilck's success.
+
 #### File systems
 Tilck has a simple but full-featured (both soft and hard links, file holes, memory
 mapping, etc.) **ramfs** implementation, a minimalistic **devfs** implementation,
