@@ -14,6 +14,8 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/datetime.h>
 
+FASTCALL void asm_nop_loop(u32 iters);
+
 /* Jiffies */
 static u64 __ticks;        /* ticks since the timer started */
 
@@ -31,8 +33,9 @@ volatile ATOMIC(u32) __bogo_loops;
 
 /* Static variables */
 static struct list timer_wakeup_list = STATIC_LIST_INIT(timer_wakeup_list);
-static u32 loops_per_tick;        /* Tilck bogoMips expressed as loops/tick */
-static u32 loops_per_us = 5000;   /* loops/microsecond (initial value) */
+static u32 loops_per_tick;         /* Tilck bogoMips as loops/tick    */
+static u32 loops_per_ms = 5000000; /* loops/millisecond (initial val)  */
+static u32 loops_per_us = 5000;    /* loops/microsecond (initial val) */
 
 u64 get_ticks(void)
 {
@@ -363,7 +366,8 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
       disable_interrupts_forced();
       {
          loops_per_tick = __bogo_loops * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
-         loops_per_us = loops_per_tick / (1000000 / TIMER_HZ);
+         loops_per_ms = loops_per_tick / (1000 / TIMER_HZ);
+         loops_per_us = loops_per_ms / 1000;
          __bogo_loops = -1;
       }
       enable_interrupts_forced();
@@ -384,13 +388,20 @@ static void do_bogomips_loop(void *arg)
       asm_do_bogomips_loop();
    }
    enable_preemption();
-   printk("Tilck bogoMips: %u\n", loops_per_us);
+   printk("Tilck bogoMips: %u.%03u\n", loops_per_us, loops_per_ms % 1000);
 }
 
 void delay_us(u32 us)
 {
-   FASTCALL void asm_nop_loop(u32 iters);
-   asm_nop_loop(us * loops_per_us);
+   u32 loops;
+
+   if (LIKELY(loops_per_us >= 10))
+      loops = us * loops_per_us;
+   else
+      loops = (us * loops_per_ms) / 1000;
+
+   if (LIKELY(loops > 0))
+      asm_nop_loop(loops);
 }
 
 void init_timer(void)
