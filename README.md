@@ -37,13 +37,7 @@ Contents
   - [Debugging Tilck](#debugging-tilck)
     * [Tilck's debug panel](#tilcks-debug-panel)
 * [A comment about user experience](#a-comment-about-user-experience)
-* [FAQ](#faq-by-vvaltchev)
-  - [Why Tilck does not have the feature/abstraction XYZ?](#why-tilck-does-not-have-the-featureabstraction-xyz-like-other-kernels-do)
-  - [Why Tilck runs only on x86 (ia-32)?](#why-tilck-runs-only-on-x86-ia-32)
-  - [Why having support for FAT32?](#why-having-support-for-fat32)
-  - [Why keeping the initrd mounted?](#why-keeping-the-initrd-mounted)
-  - [Why using 3 spaces as indentation?](#why-using-3-spaces-as-indentation)
-  - [Why many commit messages are so short?](#why-many-commit-messages-are-so-short)
+* [FAQ](#faq)
 
 Overview
 ----------------------------------------
@@ -374,123 +368,26 @@ at least building and running its tests **must be** something anyone can do.
 
 [coverage]: docs/coverage.md
 
-FAQ (by vvaltchev)
+FAQ
 ---------------------
 
-#### Why Tilck does not have the feature/abstraction XYZ like other kernels do?
+Here below, there is a list of *frequently* asked questions.
+This list is *not* supposed to be exaustive and it will change over time.
+For the *full list* of questions on Tilck, check the [Q & A page] in the [Discussions] section instead.
 
-`Tilck` is **not** meant to be a full-featured production kernel. Please, refer to
-Linux (or other kernels) for that. The idea for the moment was just to implement an
-educational kernel able to run a class of Linux console applications on real hardware.
-At some point in the future and **with a lot of luck**, `Tilck` might actually have a
-chance to be used in production embedded environments (as mentioned above) but it will
-still be *by design* limited in terms of features compared to Embedded Linux. `Tilck`
-will always try to be different from Linux, simply because Linux is already great
-per se and it does not make any sense trying to reimplement it. Instead, it's worth
-trying to create something *new* while playing the "linux-compatibility card".
-What I expect is `Tilck` to start "stealing" ideas from hard real-time kernels,
-once it gets ported to ARM and MMU-less CPUs. But today, the project is not there yet.
+[Q & A page]: https://github.com/vvaltchev/tilck/discussions/categories/q-a
+[Discussions]: https://github.com/vvaltchev/tilck/discussions
 
-#### Why Tilck runs only on x86 (ia-32)?
+- [Why Tilck does not have the feature/abstraction XYZ like other kernels do?](https://github.com/vvaltchev/tilck/discussions/83)
 
-Actually Tilck runs only on x86 *for the moment*. The kernel was born as a purely
-educational project and the x86 architecture was already very friendly to me at
-the time. Moving from x86 usermode assembly to "kernel" mode (real-mode and the
-transitions back and forth to protected mode for the bootloader) required quite an
-effort, but it still was, in my opinion, easier than "jumping" directly into a
-completely unknown (for me) architecture, like `ARM`. I've also considered writing
-from the beginning a `x86_64` kernel running completely in `long mode` but I
-decided to stick initially with the `i686` architecture for the following reasons:
+- [Why Tilck runs only on x86 (ia-32)?](https://github.com/vvaltchev/tilck/discussions/84)
 
-* The `long mode` is, roughly, another "layer" added on the top of 32-bit
-  protected mode: in order to have a full understanding of its complexity, I
-  thought it was better to start first with its legacy.
+- [Why having support for FAT32?](https://github.com/vvaltchev/tilck/discussions/85)
 
-* The `long mode` does not have a full support for segmentation, while I wanted
-  to get confident with this technology as well.
+- [Why keeping the initrd mounted?](https://github.com/vvaltchev/tilck/discussions/86)
 
-* The `long mode` has a 4-level paging system, which is more complex to use that
-  the classic 2-level paging supported by `ia-32` (it was better to start with
-  something simpler).
+- [Why using 3 spaces as indentation?](https://github.com/vvaltchev/tilck/discussions/88)
 
-* I never considered the idea of writing a kernel for desktop or server-class
-  machines where supporting a huge amount of memory is a must. We already have
-  Linux for that.
+- [Why many commit messages are so short?](https://github.com/vvaltchev/tilck/discussions/89)
 
-* It seemed to me at the time, that more online "starters" documentation existed
-  (like the articles on https://wiki.osdev.org/) for `i686` compared to any other
-  architecture.
-
-Said that, likely I'll make `Tilck` to support also `x86_64` and being able to run
-in `long mode` at some point but, given the long-term plans for it as a tiny kernel
-for embedded systems, making it to run on `ARM` machines has priority over supporting
-`x86_64`. Anyway, at this stage, making the kernel (mostly arch-independent code)
-powerful enough has absolute priority over the support for any specific architecture.
-`x86` was just a pragmatic choice for its first archicture.
-
-#### Why having support for FAT32?
-
-The first reason for supporting FAT32 (and FAT16) was that a FAT partition is required
-for booting with UEFI. Therefore, it was convienent at the time to store there also
-all the rest of the "initrd" files (init, busybox etc.). After the boot, `ramfs` is
-mounted at root, while the FAT32 boot partition is mounted at /initrd. Part of the FAT32
-code in the kernel is reused by the legacy bootloader in order to read the kernel
-file from the boot partition. Today, the "initrd" files are NOT stored anymore in the
-boot partition; there are two separate FAT partitions instead: `bootpart`, a
-small partition containing just the kernel file and the EFI bootloaders, and
-`fatpart`, a slightly bigger partition (depending on the configration) containing
-the initial ramdisk files (e.g. busybox) instead. After the boot, `fatpart` remains
-mounted at `/initrd`, while none of the contents of `bootpart` are kept.
-
-#### Why keeping the initrd mounted?
-
-To minimize the peak in memory usage during boot. Consider the idea of having
-a `tgz` archive and having to extract all of its files in the root directory:
-doing that will require, even for a short period of time, keeping both the archive
-and all of its contents in memory. This is against Tilck's effort to reduce its
-memory footprint as much as possible; part of project's goals is being able to
-run on very limited systems.
-
-#### Why using 3 spaces as indentation?
-
-Long story. It all started after using that coding style for years at VMware.
-Initially, it looked pretty weird to me, but at some point I felt in love with
-the way code looked. I got convinced that 2 spaces are just not enough, while 4
-spaces are somehow "too much". Therefore, when I started the project in 2016,
-I decided to stick with the indentation size I liked most, even if I knew that
-using 4 spaces would have been better for most people. Today, I'm not sure if
-that was the right decision, but I still like the way Tilck's code looks.
-
-#### Why many commit messages are so short?
-
-It is well-known that all popular open source projects care about having good
-commit messages and nice git history. It is an investment that at some point
-pays off. A few years ago, I even wrote a [blog post] about that. The problem is
-that such investment actually starts paying off only when multiple people
-contribute to a project or the project is really *mature enough*. It took a
-*long* time for me to start considering Tilck as *kind of* mature. Actually,
-that's not even a binary value, it's a slow process instead: with time (and
-commits!), the project matured even if it still has a long way to go. Therefore,
-by looking at the commits from the initial one to today, it's possible to
-observe how they improved, both from the *message* point of view and from the
-*content* point of view as well. In particular, during the last ~1,000 commits I
-started not only re-ordering commits but to split, edit, and squash them all the
-time. Git's `add -p` became a friend too. That's because today Tilck is pretty
-stable and it starts to be a medium-sized project with its 97,000+ *physical*
-lines of code and a git history of 5,000+ commits. It deserves much more effort
-on each commit, compared to the past.
-
-At the beginning, Tilck was just a small experimental and unstable project on
-which I worked alone in my free time. It had even a different name,
-`ExperimentOS`. Its source was also subject to drastic changes very often and I
-didn't have a clear roadmap for it either. It was an overkill to spend so much
-effort on each commit message as if I were preparing it for the Linux kernel.
-Tilck is still *obviously* not Linux so, don't expect to see 30+ lines of
-description for EVERY commit message from now on, BUT, the quality is raising
-through a gradual process and that's pretty natural. As other people start to
-contribute to the project, we all will have to raise further the bar in order to
-the collaboration to succeed and being able to understand each other's code
-faster. Today, the project still doesn't have regular contributors other than
-myself and that's why many commits still have short commit messages.
-
-[blog post]: https://blogs.vmware.com/opensource/2017/12/28/open-source-proprietary-software-engineer
+- [Can a lightweight X server run on Tilck today?](https://github.com/vvaltchev/tilck/discussions/81)
