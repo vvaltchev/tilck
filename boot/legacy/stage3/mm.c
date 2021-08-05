@@ -72,7 +72,7 @@ void read_memory_map(void *buf, size_t buf_size, struct mem_info *mi)
          .acpi = bios_mem_area->acpi,
       };
 
-      if ((ulong)(mem_areas+mem_areas_count+sizeof(struct mem_area)) > buf_end)
+      if ((ulong)(mem_areas + mem_areas_count) >= buf_end)
          panic("No enough memory for the memory map");
 
       memcpy(mem_areas + mem_areas_count, &m, sizeof(struct mem_area));
