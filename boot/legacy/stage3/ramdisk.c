@@ -87,6 +87,9 @@ rd_compact_clusters(void *ramdisk, u32 rd_size)
 static bool
 overlap_with_kernel_file(ulong pa, ulong sz)
 {
+   if (!kernel_file_pa)
+      return false; /* The kernel hasn't been loaded yet */
+
    const ulong kbegin = kernel_file_pa;
    const ulong kend = kernel_file_pa + kernel_file_sz;
    return IN_RANGE(pa, kbegin, kend) || IN_RANGE(pa + sz, kbegin, kend);
