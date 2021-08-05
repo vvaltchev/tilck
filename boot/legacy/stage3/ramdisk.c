@@ -95,6 +95,68 @@ overlap_with_kernel_file(ulong pa, ulong sz)
    return IN_RANGE(pa, kbegin, kend) || IN_RANGE(pa + sz, kbegin, kend);
 }
 
+static bool
+check_fat_header(struct fat_hdr *hdr)
+{
+   /*
+    * Minimum sanity checks for determining if we correctly read a real FAT
+    * header or some corrupted data.
+    */
+
+   if (hdr->BPB_BytsPerSec != SECTOR_SIZE)
+      return false;
+
+   switch (fat_get_type(hdr)) {
+
+      case fat12_type:
+         /* We never use FAT12: something must be wrong */
+         return false;
+
+      case fat16_type:
+
+         {
+            struct fat16_header2 *h2 = (void *)(hdr + 1);
+
+            if (h2->BS_FilSysType[0] != 'F' ||
+                h2->BS_FilSysType[1] != 'A' ||
+                h2->BS_FilSysType[2] != 'T')
+            {
+               /*
+               * The FAT specification does not require BS_FilSysType to be set,
+               * but the Tilck tools and most of the FAT tools in general do set
+               * this field to a reasonable value like FAT16 or FAT32. If it
+               * does not start with "FAT", something is wrong.
+               */
+               return false;
+            }
+         }
+         break;
+
+      case fat32_type:
+
+         {
+            struct fat32_header2 *h2 = (void *)(hdr + 1);
+
+            if (h2->BS_FilSysType[0] != 'F' ||
+                h2->BS_FilSysType[1] != 'A' ||
+                h2->BS_FilSysType[2] != 'T')
+            {
+               /* Same as for fat16_type */
+               return false;
+            }
+         }
+
+         break;
+
+      default:
+
+         /* We couldn't determine the FAT type */
+         return false;
+   }
+
+   return true;
+}
+
 bool
 load_fat_ramdisk(const char *load_str,
                  u32 first_sec,
@@ -118,6 +180,10 @@ load_fat_ramdisk(const char *load_str,
 
    // Read FAT's header
    read_sectors(free_mem, first_sec, 1 /* read just 1 sector */);
+
+   // Do some sanity checks against data corruption
+   if (!check_fat_header((void *)free_mem))
+      goto corrupted;
 
    // Determine FAT's metadata size
    rd_metadata_sz = calc_fat_ramdisk_metadata_sz((void *)free_mem);
@@ -165,6 +231,13 @@ load_fat_ramdisk(const char *load_str,
 
 oom:
    printk("No free memory for loading the ramdisk\n");
+   goto end;
+
+corrupted:
+   printk("FAT header corrupted\n");
+   goto end;
+
+end:
    write_fail_msg();
    return false;
 }
