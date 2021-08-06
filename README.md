@@ -19,6 +19,7 @@ Contents
   - [What is Tilck?](#what-is-tilck)
     * [Future plans](#future-plans)
   - [What Tilck is NOT ?](#what-tilck-is-not-)
+    * [Tilck vs Linux](#tilck-vs-linux)
 * [Features](#features)
    - [Hardware support](#hardware-support)
    - [File systems](#file-systems)
@@ -51,8 +52,8 @@ Overview
 binary level. Project's small-scale and simple design makes it the **perfect playground**
 for playing in kernel mode while retaining the ability to compare how the *very same*
 *usermode bits* run on the Linux kernel as well. That's a **unique feature** in the
-realm of educational kernels. Thanks to that, to build a program for Tilck it's enough to
-use a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
+realm of educational kernels. Because of that, building a program for Tilck requires just
+a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
 has **no need** to have its own set of custom written applications, like most educational
 kernels do. It just runs mainstream Linux programs like the **BusyBox** suite.
 While the Linux-compatibility and the monolithic design might seem a limitation from
@@ -64,29 +65,45 @@ take advantage of.
 
 #### Future plans
 In the long term, depending on how successful the project will be, `Tilck` might
-become suitable for **embedded systems** on which an extra-simple and fully deterministic
-kernel is required or, at least, it is considered the optimal solution. With a fair
-amount of luck, `Tilck` might be able to fill the gap between *Embedded Linux* and
-typical real-time operating systems like *FreeRTOS* or *Zephyr*. In any case, at some
-point it will be ported to the `ARM` family and it might be adapted to run on MMU-less
-CPUs as well. Tilck would be a perfect fit for that because consuming a tiny amount of
-RAM has always been a key point in Tilck's design. Indeed, the kernel can *comfortably*
-boot and run on a i686 QEMU machine with just 4 MB of memory *today*. Of course, that's
-pointless on x86, but on an ARM Cortex-R it won't be anymore the case.
-
+become suitable for **embedded systems** on which a fully deterministic and ultra
+low-latency system is required. With a fair amount of luck, `Tilck` might be able
+to fill the gap between *Embedded Linux* and typical real-time operating systems
+like *FreeRTOS* or *Zephyr*. In any case, at some point it will be ported to the
+`ARM` family and it might be adapted to run on MMU-less CPUs as well. Tilck would
+be a perfect fit for that because consuming a tiny amount of RAM has always been
+a key point in Tilck's design. Indeed, the kernel can boot and run on a i686 QEMU
+machine with just 3 MB of memory *today*. Of course, that's pointless on x86, but
+on an ARM Cortex-R that won't be anymore the case.
 
 ### What Tilck is NOT ?
 An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
 take advantage of its programs and toolchains. Also, that helps a lot to validate
 its correctness: if a program works correctly on Linux, it must work the same way
-on Tilck as well (except for the not-implemented features). **But**, having a fair
-amount of Linux programs working on it, is just a starting point: after that, Tilck
+on Tilck as well (minus not-implemented features). **But**, having a fair
+amount of Linux programs working on it, is just a *starting point*: with time, Tilck
 will evolve in a different way and it will have its own unique set of features as
-well. Tilck is fundamentally different from Linux in its design and its trade-offs
-as it **does not** aim to target multi-user server or desktop machines. Currently,
-it targets the educational world, while in the future it might target embedded
-systems or something else.
+well.
+
+#### Tilck vs Linux
+Tilck is fundamentally different from Linux as it **does not** aim to target
+multi-user server nor desktop machines, at all because that would be pointless:
+Linux is **not** big & complex because of a *poor* implementation, but because
+of the incredible amount of features it offers and the *intrinsic* complexity they
+require. In other words, **Linux is great** given the problem it solves. Tilck will
+offer *fewer* features in exchange for:
+
+ - simpler code (by far)
+ - smaller binary size
+ - extremely deterministic behavior
+ - ultra low-latency
+ - easier development & testing
+ - extra robustness
+
+In conclusion, while this is still an educational project at the moment, it has been
+written keeping in mind the those goals. Because of that, it also has
+a test infrastructure that ambitiously tries to be almost *enterprise-level*
+(see [Testing](#testing-tilck)).
 
 Features
 ----------------------------------------
