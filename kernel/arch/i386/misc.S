@@ -21,6 +21,8 @@
 .global __asm_fpu_cpy_single_256_nt
 .global __asm_fpu_cpy_single_256_nt_read
 
+# Loop used to perform short delays, used by delay_us(). It requires the
+# bogoMIPS measurement to be completed in order to be accurate.
 
 FUNC(asm_nop_loop):
 
@@ -33,11 +35,27 @@ FUNC(asm_nop_loop):
 
 END_FUNC(asm_nop_loop)
 
+# Function used to measure Tilck's bogoMIPS, a "bogus" way to measure time which
+# stands for "millions of iterations per second". See do_bogomips_loop().
+#
+# How it works
+# ----------------
+#
+# In measure_bogomips_irq_handler() we'll going to measure the number of
+# iterations of the inner loop by calculating: __bogo_loops * BOGOMIPS_CONST.
+# Why the double loop? Because __bogo_loops needs to be atomic and atomic
+# operations have a significant overhead. To make it negligible, we increment
+# __bogo_loops by 1 only once every BOGOMIPS_CONST iterations of the inner loop.
+#
+# The loop terminates when `__bogo_loops` becomes 0 and that happens when after
+# MEASURE_BOGOMIPS_TICKS ticks, measure_bogomips_irq_handler() sets it to -1.
+#
+
 FUNC(asm_do_bogomips_loop):
 
-# Note: these NOPs are important to align the instructions
-# in the inner loop. Trying removing them and looping.
-# On my machine, the loop count drops in half!
+# Note: these NOPs are important to align the instructions in the inner loop.
+# Try removing them and performing the loop: on my machine, the loop count
+# drops by half!
 
    nop
    nop
@@ -46,6 +64,7 @@ FUNC(asm_do_bogomips_loop):
 .outer_loop:
    mov    eax, BOGOMIPS_CONST
 
+# Loop identical to asm_nop_loop(), except for the ECX -> EAX replacement
 .inner_loop:
    nop
    sub eax, 1
