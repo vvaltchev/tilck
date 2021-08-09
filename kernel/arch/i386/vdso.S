@@ -10,14 +10,14 @@
 .text
 
 .global vdso_begin
-.global vsdo_end
+.global vdso_end
 
 .align 4096
 vdso_begin:
 
 .align 4
 # Sysexit will jump to here when returning to usermode and will
-# do EXACTLY what the Linux kernel does in VSDO after sysexit.
+# do EXACTLY what the Linux kernel does in VDSO after sysexit.
 .sysexit_user_code:
 pop ebp
 pop edx
