@@ -100,10 +100,9 @@ offer *fewer* features in exchange for:
  - easier development & testing
  - extra robustness
 
-In conclusion, while this is still an educational project at the moment, it has been
-written keeping in mind the those goals. Because of that, it also has
-a test infrastructure that ambitiously tries to be almost *enterprise-level*
-(see [Testing](#testing-tilck)).
+In conclusion, while this is still an *educational* project at the moment, it has been
+written keeping in mind those goals and it has a test infrastructure that ambitiously
+tries to be almost *enterprise-level* (see [Testing](#testing-tilck)).
 
 Features
 ----------------------------------------
