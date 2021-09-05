@@ -13,7 +13,7 @@
 #include "devshell.h"
 #include "sysenter.h"
 
-struct test_cmd_entry *cmds_table;
+extern struct test_cmd_entry *cmds_table;
 
 static const char *tt_str[] =
 {
