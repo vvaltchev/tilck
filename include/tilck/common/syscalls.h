@@ -65,6 +65,8 @@ enum tilck_cmd {
 
    #define SYS_llseek            140
 
+   #undef SYS_gettimeofday
+   #define SYS_gettimeofday       78
 
 #else
    #error Architecture not supported
