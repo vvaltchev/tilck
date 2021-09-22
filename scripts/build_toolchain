@@ -96,6 +96,10 @@ if [ -z "$ARCH_GCC_TC_VER" ]; then
 
       ARCH_GCC_TC_VER="stable-2020.02-2"
 
+   elif [ "$GCC_TC_VER" = "9.3.0" ]; then
+
+      ARCH_GCC_TC_VER="stable-2020.08-1"
+
    else
       echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
       exit 1
