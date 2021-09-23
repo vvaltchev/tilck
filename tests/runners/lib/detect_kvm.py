@@ -35,6 +35,10 @@ def detect_kvm():
 
    global kvm_installed, qemu_kvm_version
 
+   if IN_ANY_CI:
+      raw_print("IN_ANY_CI=1, assuming KVM is not usable")
+      return
+
    if qemu_kvm_version:
       raw_print("Assumed qemu-kvm version: {}".format(qemu_kvm_version))
       return
@@ -54,16 +58,14 @@ def detect_kvm():
 
    except:
 
-      if not IN_ANY_CI:
-         raw_print(
-            "\n"
-            "*** WARNING: qemu-kvm not found on the system ***\n"
-            "Running the tests without hardware virtualization is slow and "
-            "inefficient.\n"
-            "Install qemu-kvm on your system for a better performance."
-            "\n"
-         )
-      pass
+      raw_print(
+         "\n"
+         "*** WARNING: qemu-kvm not found on the system ***\n"
+         "Running the tests without hardware virtualization is slow and "
+         "inefficient.\n"
+         "Install qemu-kvm on your system for a better performance."
+         "\n"
+      )
 
 
 def print_timeout_kill_vm_msg(timeout):
