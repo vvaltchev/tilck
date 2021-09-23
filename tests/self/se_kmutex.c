@@ -13,15 +13,18 @@
 #include <tilck/kernel/timer.h>
 
 #define KMUTEX_SEK_TH_ITERS 100000
+#define KMUTEX_TH_COUNT        128
 
 static struct kmutex test_mutex;
 static int sek_vars[3];
 static const int sek_set_1[3] = {1, 2, 3};
 static const int sek_set_2[3] = {10, 20, 30};
 
-static int tids[128];
-static int tid_by_idx1[128];
-static int tid_by_idx2[128];
+static int tids[KMUTEX_TH_COUNT];
+static int tid_by_idx1[KMUTEX_TH_COUNT];
+static int tid_by_idx2[KMUTEX_TH_COUNT];
+static volatile u8 ord_th_states[KMUTEX_TH_COUNT];
+static volatile bool ord_test_done;
 static int idx1, idx2;
 static struct kmutex order_mutex;
 
@@ -223,9 +226,11 @@ DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec_med)
  * comments below.
  */
 
-static void kmutex_ord_th()
+static void kmutex_ord_th(void *arg)
 {
    int tid = get_curr_tid();
+   int local_id = (int)(long)arg;
+   ord_th_states[local_id] = 1;
 
    /*
     * Since in practice, currently on Tilck, threads are executed pretty much
@@ -234,10 +239,12 @@ static void kmutex_ord_th()
     * simulating the general case where the `order_mutex` is strictly required.
     */
    kernel_sleep( ((u32)tid / sizeof(void *)) % 7 );
+   ord_th_states[local_id] = 2;
 
    if (se_is_stop_requested())
-      return;
+      goto end;
 
+   ord_th_states[local_id] = 3;
    kmutex_lock(&order_mutex);
    {
       tid_by_idx1[idx1++] = tid;
@@ -248,9 +255,11 @@ static void kmutex_ord_th()
        * this test, where HACKS are needed in order to test the properties of
        * kmutex itself.
        */
+      ord_th_states[local_id] = 4;
       disable_preemption();
    }
    kmutex_unlock(&order_mutex);
+   ord_th_states[local_id] = 5;
 
    /*
     * Note: calling kmutex_lock() with preemption disabled! This is even worse
@@ -276,6 +285,7 @@ static void kmutex_ord_th()
        * going to sleep.
        */
 
+      ord_th_states[local_id] = 6;
       ASSERT(is_preemption_enabled());
       tid_by_idx2[idx2++] = tid;
 
@@ -295,24 +305,64 @@ static void kmutex_ord_th()
        * equals to almost its maxiumum (127). Typically, it's ~122.
        */
 
-      if (!se_is_stop_requested())
+      if (!se_is_stop_requested()) {
+         ord_th_states[local_id] = 7;
          kernel_sleep(1);
+         ord_th_states[local_id] = 8;
+      }
    }
    kmutex_unlock(&test_mutex);
+
+end:
+   ord_th_states[local_id] = 9;
+}
+
+static void
+kmutex_ord_supervisor_thread()
+{
+   int time_ms = 0;
+
+   while (!ord_test_done) {
+
+      if (se_is_stop_requested())
+         break;
+
+      if (time_ms > 0 && (time_ms % 5000) == 0) {
+
+         printk("[kmutex_ord_supervisor] %d sec elapsed\n", time_ms / 1000);
+
+         int cnt[10] = {0};
+
+         for (int i = 0; i < KMUTEX_TH_COUNT; i++)
+            cnt[ord_th_states[i]]++;
+
+         printk("[kmutex_ord_supervisor] Report per state:\n");
+
+         for (int i = 0; i < 10; i++)
+            printk("[kmutex_ord_supervisor] state %d: %d threads\n", i, cnt[i]);
+
+         printk("\n\n");
+      }
+
+      kernel_sleep_ms(100);
+      time_ms += 100;
+   }
 }
 
 void selftest_kmutex_ord_med()
 {
    u32 unlucky_threads = 0;
-   int tid;
+   int tid, supervisor_tid;
 
    idx1 = idx2 = 0;
+   ord_test_done = false;
+   bzero((void *)ord_th_states, sizeof(ord_th_states));
    kmutex_init(&test_mutex, KMUTEX_FL_ALLOW_LOCK_WITH_PREEMPT_DISABLED);
    kmutex_init(&order_mutex, 0);
 
    for (int i = 0; i < ARRAY_SIZE(tids); i++) {
 
-      if ((tid = kthread_create(&kmutex_ord_th, 0, NULL)) < 0)
+      if ((tid = kthread_create(&kmutex_ord_th, 0, TO_PTR(i))) < 0)
          panic("[selftest] Unable to create kthread for kmutex_ord_th()");
 
       if (se_is_stop_requested())
@@ -321,7 +371,15 @@ void selftest_kmutex_ord_med()
       tids[i] = tid;
    }
 
+   supervisor_tid = kthread_create(&kmutex_ord_supervisor_thread, 0, NULL);
+
+   if (supervisor_tid < 0)
+      panic("[selftest] Unable to create the supervisor kthread");
+
    kthread_join_all(tids, ARRAY_SIZE(tids), true);
+
+   ord_test_done = true;
+   kthread_join(supervisor_tid, true);
 
    if (se_is_stop_requested())
       goto end;
@@ -344,9 +402,8 @@ void selftest_kmutex_ord_med()
          continue;
       }
 
-      if (t2 != t1) {
+      if (t2 != t1)
          panic("kmutex strong order test failed");
-      }
    }
 
    if (unlucky_threads > 0) {
@@ -357,7 +414,6 @@ void selftest_kmutex_ord_med()
       printk("[selftests] Note: there were %u/%u unlucky threads",
              unlucky_threads, ARRAY_SIZE(tids));
    }
-
 
 end:
 
