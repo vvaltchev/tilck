@@ -618,7 +618,7 @@ int sys_clock_gettime(clockid_t clk_id, struct k_timespec64 *user_tp)
    return 0;
 }
 
-int sys_clock_getres32(clockid_t clk_id, struct k_timespec32 *user_res)
+int sys_clock_getres_time32(clockid_t clk_id, struct k_timespec32 *user_res)
 {
    struct k_timespec64 tp64;
    struct k_timespec32 tp32;

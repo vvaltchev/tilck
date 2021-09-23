@@ -199,7 +199,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setdomainname)
 int sys_newuname(struct utsname *buf);
 
 CREATE_STUB_SYSCALL_IMPL(sys_modify_ldt)
-CREATE_STUB_SYSCALL_IMPL(sys_adjtimex)
+CREATE_STUB_SYSCALL_IMPL(sys_adjtimex_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_mprotect)
 
 int sys_sigprocmask(ulong a1, ulong a2, ulong a3); // deprecated interface
@@ -301,8 +301,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 long sys_mmap_pgoff(void *addr, size_t length, int prot,
                     int flags, int fd, size_t pgoffset);
 
-int sys_truncate64(const char *u_path, s64 length);
-int sys_ftruncate64(int fd, s64 length);
+int sys_ia32_truncate64(const char *u_path, s64 length);
+int sys_ia32_ftruncate64(int fd, s64 length);
 int sys_stat64(const char *u_path, struct stat64 *u_statbuf);
 int sys_lstat64(const char *u_path, struct stat64 *u_statbuf);
 int sys_fstat64(int fd, struct stat64 *u_statbuf);
@@ -339,7 +339,7 @@ int sys_getdents64(int fd, struct linux_dirent64 *dirp, u32 buf_size);
 int sys_fcntl64(int fd, int cmd, int arg);
 int sys_gettid(void);
 
-CREATE_STUB_SYSCALL_IMPL(sys_readahead)
+CREATE_STUB_SYSCALL_IMPL(sys_ia32_readahead)
 CREATE_STUB_SYSCALL_IMPL(sys_setxattr)
 CREATE_STUB_SYSCALL_IMPL(sys_lsetxattr)
 CREATE_STUB_SYSCALL_IMPL(sys_fsetxattr)
@@ -365,10 +365,10 @@ int sys_set_thread_area(void *u_info);
 CREATE_STUB_SYSCALL_IMPL(sys_get_thread_area)
 CREATE_STUB_SYSCALL_IMPL(sys_io_setup)
 CREATE_STUB_SYSCALL_IMPL(sys_io_destroy)
-CREATE_STUB_SYSCALL_IMPL(sys_io_getevents)
+CREATE_STUB_SYSCALL_IMPL(sys_io_getevents_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_io_submit)
 CREATE_STUB_SYSCALL_IMPL(sys_io_cancel)
-CREATE_STUB_SYSCALL_IMPL(sys_fadvise64)
+CREATE_STUB_SYSCALL_IMPL(sys_ia32_fadvise64)
 
 NORETURN int sys_exit_group(int status);
 
@@ -389,16 +389,16 @@ CREATE_STUB_SYSCALL_IMPL(sys_timer_delete)
 CREATE_STUB_SYSCALL_IMPL(sys_clock_settime32)
 
 int sys_clock_gettime32(clockid_t clk_id, struct k_timespec32 *tp);
-int sys_clock_getres32(clockid_t clk_id, struct k_timespec32 *res);
+int sys_clock_getres_time32(clockid_t clk_id, struct k_timespec32 *res);
 
-CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep32)
+CREATE_STUB_SYSCALL_IMPL(sys_clock_nanosleep_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs64)
 
 int sys_tgkill(int pid /* linux: tgid */, int tid, int sig);
 int sys_utimes(const char *u_path, const struct k_timeval u_times[2]);
 
-CREATE_STUB_SYSCALL_IMPL(sys_fadvise64_64)
+CREATE_STUB_SYSCALL_IMPL(sys_ia32_fadvise64_64)
 CREATE_STUB_SYSCALL_IMPL(sys_mbind)
 CREATE_STUB_SYSCALL_IMPL(sys_get_mempolicy)
 CREATE_STUB_SYSCALL_IMPL(sys_set_mempolicy)
@@ -424,7 +424,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_mkdirat)
 CREATE_STUB_SYSCALL_IMPL(sys_mknodat)
 CREATE_STUB_SYSCALL_IMPL(sys_fchownat)
 
-int sys_futimesat(int dirfd, const char *u_path,
+int sys_futimesat_time32(int dirfd, const char *u_path,
                   const struct k_timeval times[2]);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fstatat64)
@@ -441,7 +441,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_unshare)
 CREATE_STUB_SYSCALL_IMPL(sys_set_robust_list)
 CREATE_STUB_SYSCALL_IMPL(sys_get_robust_list)
 CREATE_STUB_SYSCALL_IMPL(sys_splice)
-CREATE_STUB_SYSCALL_IMPL(sys_sync_file_range)
+CREATE_STUB_SYSCALL_IMPL(sys_ia32_sync_file_range)
 CREATE_STUB_SYSCALL_IMPL(sys_tee)
 CREATE_STUB_SYSCALL_IMPL(sys_vmsplice)
 CREATE_STUB_SYSCALL_IMPL(sys_move_pages)
@@ -569,5 +569,18 @@ CREATE_STUB_SYSCALL_IMPL(sys_fsmount)
 CREATE_STUB_SYSCALL_IMPL(sys_fspick)
 CREATE_STUB_SYSCALL_IMPL(sys_pidfd_open)
 CREATE_STUB_SYSCALL_IMPL(sys_clone3)
+CREATE_STUB_SYSCALL_IMPL(sys_close_range)
+CREATE_STUB_SYSCALL_IMPL(sys_openat2)
+CREATE_STUB_SYSCALL_IMPL(sys_pidfd_getfd)
+CREATE_STUB_SYSCALL_IMPL(sys_faccessat2)
+CREATE_STUB_SYSCALL_IMPL(sys_process_madvise)
+CREATE_STUB_SYSCALL_IMPL(sys_epoll_pwait2)
+CREATE_STUB_SYSCALL_IMPL(sys_mount_setattr)
+CREATE_STUB_SYSCALL_IMPL(sys_quotactl_fd)
+CREATE_STUB_SYSCALL_IMPL(sys_landlock_create_ruleset)
+CREATE_STUB_SYSCALL_IMPL(sys_landlock_add_rule)
+CREATE_STUB_SYSCALL_IMPL(sys_landlock_restrict_self)
+CREATE_STUB_SYSCALL_IMPL(sys_memfd_secret)
+CREATE_STUB_SYSCALL_IMPL(sys_process_mrelease)
 
 int sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4);

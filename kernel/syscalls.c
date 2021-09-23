@@ -306,10 +306,10 @@ int sys_utimensat_time32(int dirfd, const char *u_path,
    return -ENOSYS;
 }
 
-int sys_futimesat(int dirfd, const char *u_path,
+int sys_futimesat_time32(int dirfd, const char *u_path,
                   const struct k_timeval times[2])
 {
-   // TODO (future): consider implementing sys_futimesat() [obsolete]
+   // TODO (future): consider implementing sys_futimesat_time32() [obsolete]
    return -ENOSYS;
 }
 

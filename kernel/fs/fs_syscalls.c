@@ -422,7 +422,7 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
    return (int) ret_bs;
 }
 
-int sys_truncate64(const char *u_path, s64 len)
+int sys_ia32_truncate64(const char *u_path, s64 len)
 {
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
@@ -443,7 +443,7 @@ int sys_truncate64(const char *u_path, s64 len)
    return vfs_truncate(path, (offt)len);
 }
 
-int sys_ftruncate64(int fd, s64 len)
+int sys_ia32_ftruncate64(int fd, s64 len)
 {
    fs_handle h;
 

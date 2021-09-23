@@ -55,7 +55,16 @@ static void __unknown_syscall(void)
 #define DECL_SYS(func, flags) { {func}, flags }
 #define DECL_UNKNOWN_SYSCALL  DECL_SYS(__unknown_syscall, 0)
 
-// The syscall numbers are ARCH-dependent
+/*
+ * The syscall numbers are ARCH-dependent
+ *
+ * The numbers and the syscall names MUST BE in sync with the following file
+ * in the Linux kernel:
+ *
+ *    arch/x86/entry/syscalls/syscall_32.tbl
+ *
+ * Lasy synced with Linux 5.15-rc2.
+ */
 static struct syscall syscalls[MAX_SYSCALLS] =
 {
    [0] = DECL_SYS(sys_restart_syscall, 0),
@@ -182,7 +191,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [121] = DECL_SYS(sys_setdomainname, 0),
    [122] = DECL_SYS(sys_newuname, 0),
    [123] = DECL_SYS(sys_modify_ldt, 0),
-   [124] = DECL_SYS(sys_adjtimex, 0),
+   [124] = DECL_SYS(sys_adjtimex_time32, 0),
    [125] = DECL_SYS(sys_mprotect, 0),
    [126] = DECL_SYS(sys_sigprocmask, 0),
    [127] = DECL_UNKNOWN_SYSCALL,
@@ -254,8 +263,8 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [190] = DECL_SYS(sys_vfork, 0),
    [191] = DECL_SYS(sys_getrlimit, 0),
    [192] = DECL_SYS(sys_mmap_pgoff, 0),
-   [193] = DECL_SYS(sys_truncate64, 0),
-   [194] = DECL_SYS(sys_ftruncate64, 0),
+   [193] = DECL_SYS(sys_ia32_truncate64, 0),
+   [194] = DECL_SYS(sys_ia32_ftruncate64, 0),
    [195] = DECL_SYS(sys_stat64, 0),
    [196] = DECL_SYS(sys_lstat64, 0),
    [197] = DECL_SYS(sys_fstat64, 0),
@@ -286,7 +295,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [222] = DECL_UNKNOWN_SYSCALL,
    [223] = DECL_UNKNOWN_SYSCALL,
    [224] = DECL_SYS(sys_gettid, 0),
-   [225] = DECL_SYS(sys_readahead, 0),
+   [225] = DECL_SYS(sys_ia32_readahead, 0),
    [226] = DECL_SYS(sys_setxattr, 0),
    [227] = DECL_SYS(sys_lsetxattr, 0),
    [228] = DECL_SYS(sys_fsetxattr, 0),
@@ -308,10 +317,10 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [244] = DECL_SYS(sys_get_thread_area, 0),
    [245] = DECL_SYS(sys_io_setup, 0),
    [246] = DECL_SYS(sys_io_destroy, 0),
-   [247] = DECL_SYS(sys_io_getevents, 0),
+   [247] = DECL_SYS(sys_io_getevents_time32, 0),
    [248] = DECL_SYS(sys_io_submit, 0),
    [249] = DECL_SYS(sys_io_cancel, 0),
-   [250] = DECL_SYS(sys_fadvise64, 0),
+   [250] = DECL_SYS(sys_ia32_fadvise64, 0),
    [251] = DECL_UNKNOWN_SYSCALL,
    [252] = DECL_SYS(sys_exit_group, 0),
    [253] = DECL_SYS(sys_lookup_dcookie, 0),
@@ -327,21 +336,21 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [263] = DECL_SYS(sys_timer_delete, 0),
    [264] = DECL_SYS(sys_clock_settime32, 0),
    [265] = DECL_SYS(sys_clock_gettime32, 0),
-   [266] = DECL_SYS(sys_clock_getres32, 0),
-   [267] = DECL_SYS(sys_clock_nanosleep32, 0),
+   [266] = DECL_SYS(sys_clock_getres_time32, 0),
+   [267] = DECL_SYS(sys_clock_nanosleep_time32, 0),
    [268] = DECL_SYS(sys_statfs64, 0),
    [269] = DECL_SYS(sys_fstatfs64, 0),
    [270] = DECL_SYS(sys_tgkill, 0),
    [271] = DECL_SYS(sys_utimes, 0),
-   [272] = DECL_SYS(sys_fadvise64_64, 0),
+   [272] = DECL_SYS(sys_ia32_fadvise64_64, 0),
    [273] = DECL_UNKNOWN_SYSCALL,
    [274] = DECL_SYS(sys_mbind, 0),
    [275] = DECL_SYS(sys_get_mempolicy, 0),
    [276] = DECL_SYS(sys_set_mempolicy, 0),
    [277] = DECL_SYS(sys_mq_open, 0),
    [278] = DECL_SYS(sys_mq_unlink, 0),
-   [279] = DECL_SYS(sys_mq_timedsend, 0),
-   [280] = DECL_SYS(sys_mq_timedreceive, 0),
+   [279] = DECL_SYS(sys_mq_timedsend_time32, 0),
+   [280] = DECL_SYS(sys_mq_timedreceive_time32, 0),
    [281] = DECL_SYS(sys_mq_notify, 0),
    [282] = DECL_SYS(sys_mq_getsetattr, 0),
    [283] = DECL_SYS(sys_kexec_load, 0),
@@ -360,7 +369,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [296] = DECL_SYS(sys_mkdirat, 0),
    [297] = DECL_SYS(sys_mknodat, 0),
    [298] = DECL_SYS(sys_fchownat, 0),
-   [299] = DECL_SYS(sys_futimesat, 0),
+   [299] = DECL_SYS(sys_futimesat_time32, 0),
    [300] = DECL_SYS(sys_fstatat64, 0),
    [301] = DECL_SYS(sys_unlinkat, 0),
    [302] = DECL_SYS(sys_renameat, 0),
@@ -375,7 +384,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [311] = DECL_SYS(sys_set_robust_list, 0),
    [312] = DECL_SYS(sys_get_robust_list, 0),
    [313] = DECL_SYS(sys_splice, 0),
-   [314] = DECL_SYS(sys_sync_file_range, 0),
+   [314] = DECL_SYS(sys_ia32_sync_file_range, 0),
    [315] = DECL_SYS(sys_tee, 0),
    [316] = DECL_SYS(sys_vmsplice, 0),
    [317] = DECL_SYS(sys_move_pages, 0),
@@ -472,8 +481,8 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [414] = DECL_SYS(sys_ppoll, 0),
    [416] = DECL_SYS(sys_io_pgetevents, 0),
    [417] = DECL_SYS(sys_recvmmsg, 0),
-   [418] = DECL_SYS(sys_mq_timedsend_time32, 0),
-   [419] = DECL_SYS(sys_mq_timedreceive_time32, 0),
+   [418] = DECL_SYS(sys_mq_timedsend, 0),
+   [419] = DECL_SYS(sys_mq_timedreceive, 0),
    [420] = DECL_SYS(sys_semtimedop, 0),
    [421] = DECL_SYS(sys_rt_sigtimedwait, 0),
    [422] = DECL_SYS(sys_futex, 0),
@@ -490,6 +499,19 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [433] = DECL_SYS(sys_fspick, 0),
    [434] = DECL_SYS(sys_pidfd_open, 0),
    [435] = DECL_SYS(sys_clone3, 0),
+   [436] = DECL_SYS(sys_close_range, 0),
+   [437] = DECL_SYS(sys_openat2, 0),
+   [438] = DECL_SYS(sys_pidfd_getfd, 0),
+   [439] = DECL_SYS(sys_faccessat2, 0),
+   [440] = DECL_SYS(sys_process_madvise, 0),
+   [441] = DECL_SYS(sys_epoll_pwait2, 0),
+   [442] = DECL_SYS(sys_mount_setattr, 0),
+   [443] = DECL_SYS(sys_quotactl_fd, 0),
+   [444] = DECL_SYS(sys_landlock_create_ruleset, 0),
+   [445] = DECL_SYS(sys_landlock_add_rule, 0),
+   [446] = DECL_SYS(sys_landlock_restrict_self, 0),
+   [447] = DECL_SYS(sys_memfd_secret, 0),
+   [448] = DECL_SYS(sys_process_mrelease, 0),
 
    [TILCK_CMD_SYSCALL] = DECL_SYS(sys_tilck_cmd, 0),
 };
