@@ -8,7 +8,7 @@ pool:
 strategy:
   matrix:
     debian:
-      img: 'vvaltchev/debian:v2'
+      img: 'vvaltchev/debian:v3'
     fedora:
       img: 'vvaltchev/fedora:v2'
     arch:
