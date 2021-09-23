@@ -59,10 +59,19 @@ struct k_sigaction {
    ulong sa_mask[K_SIGACTION_MASK_WORDS];
 };
 
+/*
+ * Default (classic) timeval struct, with pointer-size tv_sec and tv_usec.
+ */
+struct k_timeval {
+
+   long tv_sec;
+   long tv_usec;
+};
+
 struct k_rusage {
 
-   struct timeval ru_utime;
-   struct timeval ru_stime;
+   struct k_timeval ru_utime;
+   struct k_timeval ru_stime;
 
 /* linux extentions */
    long ru_maxrss;

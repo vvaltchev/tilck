@@ -13,8 +13,8 @@ struct select_ctx {
    int nfds;
    fd_set *sets[3];
    fd_set *u_sets[3];
-   struct timeval *tv;
-   struct timeval *user_tv;
+   struct k_timeval *tv;
+   struct k_timeval *user_tv;
    int cond_cnt;
    u32 timeout_ticks;
 };
@@ -243,18 +243,18 @@ select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
 }
 
 static int
-select_read_user_tv(struct timeval *user_tv,
-                    struct timeval **tv_ref,
+select_read_user_tv(struct k_timeval *user_tv,
+                    struct k_timeval **tv_ref,
                     u32 *timeout)
 {
    struct task *curr = get_curr_task();
-   struct timeval *tv = NULL;
+   struct k_timeval *tv = NULL;
 
    if (user_tv) {
 
       tv = (void *) ((fd_set *)curr->args_copybuf + 3);
 
-      if (copy_from_user(tv, user_tv, sizeof(struct timeval)))
+      if (copy_from_user(tv, user_tv, sizeof(struct k_timeval)))
          return -EFAULT;
 
       u64 tmp = 0;
@@ -299,7 +299,7 @@ select_write_user_sets(struct select_ctx *c)
          return -EFAULT;
    }
 
-   if (c->tv && copy_to_user(c->user_tv, c->tv, sizeof(struct timeval)))
+   if (c->tv && copy_to_user(c->user_tv, c->tv, sizeof(struct k_timeval)))
       return -EFAULT;
 
    return total_ready_count;
@@ -309,7 +309,7 @@ int sys_select(int user_nfds,
                fd_set *user_rfds,
                fd_set *user_wfds,
                fd_set *user_efds,
-               struct timeval *user_tv)
+               struct k_timeval *user_tv)
 {
    struct select_ctx ctx = (struct select_ctx) {
 

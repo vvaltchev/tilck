@@ -236,9 +236,9 @@ int sys_sched_yield(void)
    return 0;
 }
 
-int sys_utimes(const char *u_path, const struct timeval u_times[2])
+int sys_utimes(const char *u_path, const struct k_timeval u_times[2])
 {
-   struct timeval ts[2];
+   struct k_timeval ts[2];
    struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
 
@@ -307,7 +307,7 @@ int sys_utimensat_time32(int dirfd, const char *u_path,
 }
 
 int sys_futimesat(int dirfd, const char *u_path,
-                  const struct timeval times[2])
+                  const struct k_timeval times[2])
 {
    // TODO (future): consider implementing sys_futimesat() [obsolete]
    return -ENOSYS;

@@ -489,9 +489,9 @@ task_cpu_get_timespec(struct k_timespec64 *tp)
    enable_preemption();
 }
 
-int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
+int sys_gettimeofday(struct k_timeval *user_tv, struct timezone *user_tz)
 {
-   struct timeval tv;
+   struct k_timeval tv;
    struct k_timespec64 tp;
 
    struct timezone tz = {
@@ -501,7 +501,7 @@ int sys_gettimeofday(struct timeval *user_tv, struct timezone *user_tz)
 
    real_time_get_timespec(&tp);
 
-   tv = (struct timeval) {
+   tv = (struct k_timeval) {
       .tv_sec = (long)tp.tv_sec,
       .tv_usec = tp.tv_nsec / 1000,
    };

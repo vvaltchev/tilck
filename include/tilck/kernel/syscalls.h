@@ -136,7 +136,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_setrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_old_getrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_getrusage)
 
-int sys_gettimeofday(struct timeval *tv, struct timezone *tz);
+int sys_gettimeofday(struct k_timeval *tv, struct timezone *tz);
 
 CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)
 CREATE_STUB_SYSCALL_IMPL(sys_getgroups16)
@@ -222,7 +222,7 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence);
 CREATE_STUB_SYSCALL_IMPL(sys_getdents)
 
 int sys_select(int nfds, fd_set *readfds, fd_set *writefds,
-               fd_set *exceptfds, struct timeval *timeout);
+               fd_set *exceptfds, struct k_timeval *timeout);
 
 CREATE_STUB_SYSCALL_IMPL(sys_flock)
 CREATE_STUB_SYSCALL_IMPL(sys_msync)
@@ -396,7 +396,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_statfs64)
 CREATE_STUB_SYSCALL_IMPL(sys_fstatfs64)
 
 int sys_tgkill(int pid /* linux: tgid */, int tid, int sig);
-int sys_utimes(const char *u_path, const struct timeval u_times[2]);
+int sys_utimes(const char *u_path, const struct k_timeval u_times[2]);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fadvise64_64)
 CREATE_STUB_SYSCALL_IMPL(sys_mbind)
@@ -425,7 +425,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_mknodat)
 CREATE_STUB_SYSCALL_IMPL(sys_fchownat)
 
 int sys_futimesat(int dirfd, const char *u_path,
-                  const struct timeval times[2]);
+                  const struct k_timeval times[2]);
 
 CREATE_STUB_SYSCALL_IMPL(sys_fstatat64)
 CREATE_STUB_SYSCALL_IMPL(sys_unlinkat)
