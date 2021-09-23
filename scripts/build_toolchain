@@ -459,11 +459,11 @@ function main {
    mkdir -p $TC/host_i386
    mkdir -p $TC/host_x86_64
 
-   if ! [ -L $TC/host ]; then
-      ln -s $TC/host_${HOST_ARCH} $TC/host
-   fi
-
    cd $TC
+
+   if ! [ -L host ]; then
+      ln -s host_${HOST_ARCH} host
+   fi
 
    # Set the CMAKE variable in order to single functions to be able to use it
    if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
