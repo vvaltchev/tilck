@@ -291,7 +291,7 @@ fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
    return (tilck_ino_t)((long)e - (long)hdr);
 }
 
-STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct fat_entry *e = i;
    struct datetime crt_time, wrt_time;
@@ -299,7 +299,7 @@ STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
    if (!e)
       return -ENOENT;
 
-   bzero(statbuf, sizeof(struct stat64));
+   bzero(statbuf, sizeof(struct k_stat64));
 
    statbuf->st_dev = fs->device_id;
    statbuf->st_ino = fat_entry_to_inode(fs->device_data, e);

@@ -59,7 +59,7 @@ typedef void    (*func_get_entry) (struct fs *fs,
                                    struct fs_path *fs_path);
 
 /* mixed fs/file ops */
-typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct stat64 *);
+typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct k_stat64*);
 typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
 typedef int     (*func_exlock_noblk) (struct fs *, vfs_inode_ptr_t);
 
@@ -181,7 +181,7 @@ struct file_ops {
    func_get_rwe_cond get_except_cond;  /* if NULL, return NULL */
 };
 
-int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl);
+int vfs_stat64(const char *path, struct k_stat64 *statbuf, bool res_last_sl);
 int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode);
 int vfs_unlink(const char *path);
 int vfs_mkdir(const char *path, mode_t mode);
@@ -197,7 +197,7 @@ int vfs_utimens(const char *path, const struct k_timespec64 times[2]);
 
 int vfs_ftruncate(fs_handle h, offt length);
 int vfs_ioctl(fs_handle h, ulong request, void *argp);
-int vfs_fstat64(fs_handle h, struct stat64 *statbuf);
+int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf);
 int vfs_getdents64(fs_handle h, struct linux_dirent64 *dirp, u32 bs);
 int vfs_fchmod(fs_handle h, mode_t mode);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);

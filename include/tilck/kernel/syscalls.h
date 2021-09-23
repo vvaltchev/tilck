@@ -303,9 +303,9 @@ long sys_mmap_pgoff(void *addr, size_t length, int prot,
 
 int sys_ia32_truncate64(const char *u_path, s64 length);
 int sys_ia32_ftruncate64(int fd, s64 length);
-int sys_stat64(const char *u_path, struct stat64 *u_statbuf);
-int sys_lstat64(const char *u_path, struct stat64 *u_statbuf);
-int sys_fstat64(int fd, struct stat64 *u_statbuf);
+int sys_stat64(const char *u_path, struct k_stat64 *u_statbuf);
+int sys_lstat64(const char *u_path, struct k_stat64 *u_statbuf);
+int sys_fstat64(int fd, struct k_stat64 *u_statbuf);
 int sys_lchown(const char *u_path, int owner, int group);
 
 int sys_getuid(void);

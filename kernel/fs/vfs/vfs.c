@@ -180,7 +180,7 @@ int vfs_ftruncate(fs_handle h, offt length)
    return fsops->truncate(hb->fs, fsops->get_inode(h), length);
 }
 
-int vfs_fstat64(fs_handle h, struct stat64 *statbuf)
+int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -314,7 +314,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 static ALWAYS_INLINE int
 vfs_stat64_impl(struct fs *fs,
                 struct vfs_path *p,
-                struct stat64 *statbuf,
+                struct k_stat64 *statbuf,
                 bool res_last_sl,
                 ulong unused1)
 {
@@ -324,7 +324,7 @@ vfs_stat64_impl(struct fs *fs,
    return fs->fsops->stat(fs, p->fs_path.inode, statbuf);
 }
 
-int vfs_stat64(const char *path, struct stat64 *statbuf, bool res_last_sl)
+int vfs_stat64(const char *path, struct k_stat64 *statbuf, bool res_last_sl)
 {
    return vfs_path_funcs_wrapper(
       path,

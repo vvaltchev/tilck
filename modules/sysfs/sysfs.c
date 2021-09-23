@@ -70,13 +70,13 @@ sysfs_get_inode(fs_handle h)
 }
 
 static int
-sysfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+sysfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct sysfs_inode *inode = i;
    struct sysfs_data *d = fs->device_data;
    const struct sysobj_prop_type *pt;
 
-   bzero(statbuf, sizeof(struct stat64));
+   bzero(statbuf, sizeof(struct k_stat64));
 
    switch (inode->type) {
 

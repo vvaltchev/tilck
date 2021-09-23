@@ -306,12 +306,12 @@ int sys_readv(int fd, const struct iovec *u_iov, int u_iovcnt)
 
 static int
 call_vfs_stat64(const char *u_path,
-                struct stat64 *u_statbuf,
+                struct k_stat64 *u_statbuf,
                 bool res_last_sl)
 {
    struct task *curr = get_curr_task();
    char *path = curr->args_copybuf;
-   struct stat64 statbuf;
+   struct k_stat64 statbuf;
    int rc = 0;
 
    rc = copy_str_from_user(path, u_path, MAX_PATH, NULL);
@@ -325,25 +325,25 @@ call_vfs_stat64(const char *u_path,
    if ((rc = vfs_stat64(path, &statbuf, res_last_sl)))
       return rc;
 
-   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct stat64)))
+   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64)))
       rc = -EFAULT;
 
    return rc;
 }
 
-int sys_stat64(const char *u_path, struct stat64 *u_statbuf)
+int sys_stat64(const char *u_path, struct k_stat64 *u_statbuf)
 {
    return call_vfs_stat64(u_path, u_statbuf, true);
 }
 
-int sys_lstat64(const char *u_path, struct stat64 *u_statbuf)
+int sys_lstat64(const char *u_path, struct k_stat64 *u_statbuf)
 {
    return call_vfs_stat64(u_path, u_statbuf, false);
 }
 
-int sys_fstat64(int fd, struct stat64 *u_statbuf)
+int sys_fstat64(int fd, struct k_stat64 *u_statbuf)
 {
-   struct stat64 statbuf;
+   struct k_stat64 statbuf;
    fs_handle h;
    int rc = 0;
 
@@ -353,7 +353,7 @@ int sys_fstat64(int fd, struct stat64 *u_statbuf)
    if ((rc = vfs_fstat64(h, &statbuf)))
       return rc;
 
-   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct stat64)))
+   if (copy_to_user(u_statbuf, &statbuf, sizeof(struct k_stat64)))
       rc = -EFAULT;
 
    return rc;

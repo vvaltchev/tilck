@@ -3,14 +3,14 @@
 static int
 ramfs_stat_nolock(struct fs *fs,
                   struct ramfs_inode *inode,
-                  struct stat64 *statbuf)
+                  struct k_stat64 *statbuf)
 {
    ASSERT(inode);
 
    if ((inode->parent_dir->mode & 0500) != 0500) /* read + execute */
       return -EACCES;
 
-   bzero(statbuf, sizeof(struct stat64));
+   bzero(statbuf, sizeof(struct k_stat64));
 
    statbuf->st_dev = fs->device_id;
    statbuf->st_ino = inode->ino;
@@ -44,14 +44,14 @@ ramfs_stat_nolock(struct fs *fs,
    statbuf->st_blocks =
       (typeof(statbuf->st_blocks)) (inode->blocks_count * (PAGE_SIZE / 512));
 
-   statbuf->st_ctim = to_timespec(inode->ctime);
-   statbuf->st_mtim = to_timespec(inode->mtime);
-   statbuf->st_atim = to_timespec(inode->mtime);
+   statbuf->st_ctim = to_stat_timespec(inode->ctime);
+   statbuf->st_mtim = to_stat_timespec(inode->mtime);
+   statbuf->st_atim = to_stat_timespec(inode->mtime);
    return 0;
 }
 
 static int
-ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct ramfs_inode *inode = i;
    int rc;

@@ -44,7 +44,7 @@ kernelfs_on_close_last_handle(fs_handle h)
 }
 
 int
-kernelfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+kernelfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    NOT_IMPLEMENTED();
 }

@@ -18,17 +18,7 @@
 #include <time.h>       // system header
 #include <poll.h>       // system header
 #include <utime.h>      // system header
-
-#ifndef __GLIBC__
-   #define stat stat64
-#endif
-
 #include <sys/stat.h>   // system header
-
-#ifndef __GLIBC__
-   #undef stat
-#endif
-
 #include <unistd.h>       // system header
 #include <sys/utsname.h>  // system header
 #include <sys/stat.h>     // system header
@@ -108,7 +98,7 @@ struct k_rusage {
 #endif
 
 /*
- * Classic (old) timespec. Suffers from the Y2038 bug.
+ * Classic (old) timespec. Suffers from the Y2038 bug on ALL systems.
  */
 struct k_timespec32 {
 
@@ -116,11 +106,78 @@ struct k_timespec32 {
    long tv_nsec;
 };
 
+/*
+ * Modern timespec struct.
+ */
 struct k_timespec64 {
 
    s64 tv_sec;
    long tv_nsec;
 };
+
+#ifdef BITS32
+
+/*
+ * Classic stat64 struct for 32-bit systems.
+ *
+ * It replaced the older "struct stat" which had no forced 64-bit fields on
+ * 32-bit systems. For example, st_dev was just a long. But the story is not
+ * over: before "struct stat" there was a version of that struct now called
+ * "__old_kernel_stat" in Linux that used short for many fields like st_dev,
+ * st_ino, st_uid etc.
+ *
+ * Suffers from the Y2038 bug because of the k_timespec32 fields. Workaround
+ * used by libmusl? Using statx() and struct statx.
+ */
+struct k_stat64 {
+   u64 st_dev;
+   u32 __st_dev_padding;
+   ulong __st_ino_truncated;
+   u32 st_mode;
+   u32 st_nlink;
+   ulong st_uid;
+   ulong st_gid;
+   u64 st_rdev;
+   u32 __st_rdev_padding;
+   s64 st_size;
+   ulong st_blksize;
+   s64 st_blocks;
+   struct k_timespec32 st_atim;
+   struct k_timespec32 st_mtim;
+   struct k_timespec32 st_ctim;
+   u64 st_ino;
+};
+
+#else
+
+/*
+ * Modern struct stat for 64-bit systems.
+ *
+ * Note: it's called simply "stat" in the Linux kernel.
+ */
+struct k_stat64 {
+
+   ulong st_dev;
+   ulong st_ino;
+   ulong st_nlink;
+
+   u32 st_mode;
+   u32 st_uid;
+   u32 st_gid;
+   u32 __pad0;
+   ulong	st_rdev;
+   long st_size;
+   long st_blksize;
+   long st_blocks;
+
+   struct k_timespec64 st_atim;
+   struct k_timespec64 st_mtim;
+   struct k_timespec64 st_ctim;
+
+   long __unused[3];
+};
+
+#endif
 
 #ifndef O_DIRECTORY
    #define O_DIRECTORY __O_DIRECTORY

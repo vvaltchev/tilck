@@ -307,7 +307,7 @@ alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
 static int
 open_elf_file(const char *filepath, fs_handle *elf_file_ref)
 {
-   struct stat64 statbuf;
+   struct k_stat64 statbuf;
    fs_handle h;
    int rc;
 

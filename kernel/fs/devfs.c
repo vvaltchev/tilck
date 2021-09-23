@@ -198,12 +198,12 @@ devfs_dir_ioctl(fs_handle h, ulong request, void *arg)
 }
 
 int
-devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct stat64 *statbuf)
+devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct devfs_file *df = i;
    struct devfs_data *ddata = fs->device_data;
 
-   bzero(statbuf, sizeof(struct stat64));
+   bzero(statbuf, sizeof(struct k_stat64));
 
    statbuf->st_dev = fs->device_id;
 
