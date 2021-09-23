@@ -227,7 +227,7 @@ def run_the_vm():
 
    kernel_cmdline = '-sercon -noacpi '
    cmdline = DEVSHELL_PATH
-   init_opts = '-ns -nr -e'
+   init_opts = '-nr -e'
 
    if DUMP_COV:
       cmdline += ' -dcov'
@@ -247,6 +247,7 @@ def run_the_vm():
 
       raw_print("Running the VM with selftest '{}'...".format(g_params.name))
       cmdline += ' -c selftest ' + g_params.name
+      init_opts += ' -ns'
 
    else:
       sys.exit(Fail.invalid_args.value)
