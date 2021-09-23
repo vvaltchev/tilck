@@ -5,8 +5,9 @@ function download_tcc {
 
    local tarname="tcc.tgz"
    local url="git://repo.or.cz/tinycc.git"
+   local ver="15e9b7384e7091200aa33499b1ddcbf6e2f6a959"
 
-   download_git_repo_in_cache "$url" "" $tarname tcc
+   download_git_repo_in_cache "$url" $ver $tarname tcc
    extract_cachefile_tar_gz $tarname --
 }
 
@@ -84,13 +85,22 @@ function build_tcc {
          ln -s /usr/include/$ARCH-linux-gnu/gnu include/
       fi
 
+      # Hack: unfortunately, the TCC build wants to build, with the
+      # cross-compiler, the c2str tool, from the conftest.c file, instead of
+      # using a system compiler. In other words, c2str is incompatible with the
+      # cross build support (for the TinyCC itself, not its targets!). The only
+      # solution appears to be at the moment to just patch the Makefile to
+      # use it always just the system "gcc" to build that tool.
+
+      sed -i -e 's/$S$(CC) -DC2STR/gcc -DC2STR/g' Makefile
+
       local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
       local flags="$flags --enable-static --cpu=$ARCH"
       local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
       local af="$af --crtprefix=$lib --libpaths=$lib"
 
       run_command2 "./configure $af" configure.log
-      run_command2 "make -j$BUILD_PAR" build.log
+      run_command2 "make cross-$ARCH" build.log
 
       # Just to test on the local machine
       # run_command2 "make install" install.log
