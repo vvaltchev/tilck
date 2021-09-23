@@ -6,6 +6,7 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/datetime.h>
 
 #include <sys/prctl.h>        // system header
 #include <sys/wait.h>         // system header
@@ -177,7 +178,7 @@ void wake_up_tasks_waiting_on(struct task *ti, enum wakeup_reason r)
  * ***************************************************************
  */
 
-int sys_waitpid(int tid, int *user_wstatus, int options)
+int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
 {
    struct task *curr = get_curr_task();
    struct task *chtask = NULL;
@@ -260,6 +261,25 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
          chtask_tid = -EFAULT;
    }
 
+   if (user_rusage) {
+
+      struct k_rusage ru = {0};
+      struct k_timespec64 tp;
+      u64 user_ticks = chtask->ticks.total - chtask->ticks.total_kernel;
+
+      ticks_to_timespec(user_ticks, &tp);
+
+      ru.ru_utime.tv_sec = (long) tp.tv_sec;
+      ru.ru_utime.tv_usec = tp.tv_nsec / 1000;
+
+      ticks_to_timespec(chtask->ticks.total_kernel, &tp);
+      ru.ru_stime.tv_sec = (long) tp.tv_sec;
+      ru.ru_stime.tv_usec = tp.tv_nsec / 1000;
+
+      if (copy_to_user(user_rusage, &ru, sizeof(ru)) < 0)
+         chtask_tid = -EFAULT;
+   }
+
    if (chtask->state == TASK_STATE_ZOMBIE)
       remove_task(chtask);
 
@@ -267,15 +287,7 @@ int sys_waitpid(int tid, int *user_wstatus, int options)
    return chtask_tid;
 }
 
-int sys_wait4(int tid, int *user_wstatus, int options, void *user_rusage)
+int sys_waitpid(int tid, int *user_wstatus, int options)
 {
-   struct k_rusage ru = {0};
-
-   if (user_rusage) {
-      // TODO: update when rusage is actually supported
-      if (copy_to_user(user_rusage, &ru, sizeof(ru)) < 0)
-         return -EFAULT;
-   }
-
-   return sys_waitpid(tid, user_wstatus, options);
+   return sys_wait4(tid, user_wstatus, options, NULL);
 }

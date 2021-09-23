@@ -36,7 +36,7 @@ considered as *not implemented yet*.
  sys_getppid                | full
  sys_gettimeofday           | full
  sys_munmap                 | full
- sys_wait4                  | partial [7]
+ sys_wait4                  | full
  sys_newuname               | full
  sys_llseek                 | full
  sys_readv                  | full
@@ -147,8 +147,7 @@ Notes:
 6. Because the lack of thread support, `tgkill()` works only when
    `tgid` == `tid`.
 
-7. Currently `wait4()` behaves like `waitpid()` and the `rusage` buffer is just
-   zero-ed.
+7. [Limitation removed]
 
 8. [Limitation removed]
 
