@@ -61,6 +61,7 @@ struct k_sigaction {
 
 /*
  * Classic timeval struct, with pointer-size tv_sec and tv_usec.
+ * Suffers from the Y2038 bug on 32-bit systems.
  */
 struct k_timeval {
 
@@ -69,7 +70,8 @@ struct k_timeval {
 };
 
 /*
- * Classic utimbuf using pointer-size as time_t
+ * Classic utimbuf using pointer-size as time_t.
+ * Suffers from the Y2038 bug on 32-bit systems.
  */
 struct k_utimbuf {
 
@@ -105,6 +107,9 @@ struct k_rusage {
    STATIC_ASSERT(sizeof(struct k_rusage) == 136);
 #endif
 
+/*
+ * Classic (old) timespec. Suffers from the Y2038 bug.
+ */
 struct k_timespec32 {
 
    s32 tv_sec;
