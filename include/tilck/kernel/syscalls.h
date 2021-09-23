@@ -72,13 +72,13 @@ CREATE_STUB_SYSCALL_IMPL(sys_oldumount)
 int sys_setuid16(ulong uid);
 int sys_getuid16(void);
 
-CREATE_STUB_SYSCALL_IMPL(sys_stime)
+CREATE_STUB_SYSCALL_IMPL(sys_stime32)
 CREATE_STUB_SYSCALL_IMPL(sys_ptrace)
 CREATE_STUB_SYSCALL_IMPL(sys_alarm)
 CREATE_STUB_SYSCALL_IMPL(sys_oldfstat)
 
 int sys_pause(void);
-int sys_utime(const char *u_path, const struct utimbuf *u_times);
+int sys_utime32(const char *u_path, const struct k_utimbuf *u_times);
 int sys_access(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_nice)

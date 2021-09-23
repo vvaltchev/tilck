@@ -60,12 +60,21 @@ struct k_sigaction {
 };
 
 /*
- * Default (classic) timeval struct, with pointer-size tv_sec and tv_usec.
+ * Classic timeval struct, with pointer-size tv_sec and tv_usec.
  */
 struct k_timeval {
 
    long tv_sec;
    long tv_usec;
+};
+
+/*
+ * Classic utimbuf using pointer-size as time_t
+ */
+struct k_utimbuf {
+
+   long actime;
+   long modtime;
 };
 
 struct k_rusage {

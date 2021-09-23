@@ -95,7 +95,7 @@ considered as *not implemented yet*.
  sys_setpgid           | full
  sys_getpgid           | full
  sys_getpgrp           | full
- sys_utime             | full
+ sys_utime32           | full
  sys_utimes            | full
  sys_fsync             | compliant
  sys_fdatasync         | compliant

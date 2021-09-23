@@ -274,9 +274,9 @@ int sys_utimes(const char *u_path, const struct k_timeval u_times[2])
    return vfs_utimens(path, new_ts);
 }
 
-int sys_utime(const char *u_path, const struct utimbuf *u_times)
+int sys_utime32(const char *u_path, const struct k_utimbuf *u_times)
 {
-   struct utimbuf ts;
+   struct k_utimbuf ts;
    struct k_timespec64 new_ts[2];
    char *path = get_curr_task()->args_copybuf;
 
