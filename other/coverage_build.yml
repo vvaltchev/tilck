@@ -4,7 +4,7 @@ pr: none
 
 jobs:
   - job: coverage_build
-    container: 'vvaltchev/tilck_build:v9'
+    container: 'vvaltchev/tilck_build:v10'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -14,6 +14,7 @@ jobs:
       DUMP_COV: 1
       REPORT_COV: 1
       TILCK_NO_LOGO: 1
+      GCC_TC_VER: 8.4.0
       CMAKE_ARGS: >
         -DMOD_acpi=0
         -DEXTRA_TCC=1
