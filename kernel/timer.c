@@ -174,6 +174,16 @@ static void tick_all_timers(void)
       sched_set_need_resched();
 }
 
+static void do_sleep_internal(u32 ticks)
+{
+   ASSERT(are_interrupts_enabled());
+
+   disable_preemption();
+   task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+   task_set_wakeup_timer(get_curr_task(), ticks);
+   kernel_yield_preempt_disabled();
+}
+
 void kernel_sleep(u64 ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
@@ -222,35 +232,28 @@ void kernel_sleep(u64 ticks)
    const u32 rem = ticks & 0xffffffff;
    const u32 q = ticks >> 32;
 
-   for (u32 i = 0; i < q; i++) {
-      task_set_wakeup_timer(get_curr_task(), 0xffffffff);
-      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-      kernel_yield();
+   if (q) {
+
+      for (u32 i = 0; i < q; i++) {
+
+         do_sleep_internal(0xffffffff);
+
+         if (pending_signals())
+            return;
+      }
+
+      do_sleep_internal(q);
 
       if (pending_signals())
          return;
    }
 
-   if (q) {
-      task_set_wakeup_timer(get_curr_task(), q);
-      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-
-      if (rem) {
-         /* Yield only if we're going to sleep again because rem > 0 */
-         kernel_yield();
-
-         if (pending_signals())
-            return;
-      }
-   }
-
    if (rem) {
-      task_set_wakeup_timer(get_curr_task(), rem);
-      task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
+      do_sleep_internal(rem);
    }
 
-   /* We must yield at least once, even if ticks == 0 */
-   kernel_yield();
+   if (!q && !rem)
+      kernel_yield();
 }
 
 void kernel_sleep_ms(u64 ms)
