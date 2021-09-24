@@ -842,7 +842,7 @@ def check_imagemagick_installed():
    if not found:
       msg_print("ERROR: ImageMagick (convert tool) not found on the system")
       msg_print("Exception:\n{}".format(exTrace))
-      sys.exit(Fail.invalid_system_config)
+      sys.exit(Fail.invalid_system_config.value)
 
 def check_system_config():
    check_imagemagick_installed()
@@ -855,7 +855,7 @@ def check_pnm2text():
       msg_print("ERROR: pnm2text not found in the build directory")
       msg_print("ERROR: you might need to run `make`")
       msg_print("Exception:\n{}".format(exTrace))
-      sys.exit(Fail.invalid_build_config)
+      sys.exit(Fail.invalid_build_config.value)
 
 def load_tests():
 
