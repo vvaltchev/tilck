@@ -48,9 +48,10 @@ send_to_vm_and_find_text(r"ls{ret}", True, [])
 # Switch back to tty2 and check the tracing output
 send_to_vm_and_find_text(r"{alt-f2}", True, [
    "open",
-   "readv",
+   "wait4",
    "close",
    "poll",
+   "writev",
 ])
 
 # Stop the actual tracing
