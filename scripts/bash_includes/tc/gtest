@@ -96,9 +96,17 @@ function build_gtest_arch {
       show_work_on_component_msg "GOOGLE TEST ($ARCH)"
       download_gcc_glibc_toolchain
 
+      # We have to save the current path and prepend the GLIBC toolchain
+      # to it, because we're targeting the host system.
+
+      local saved_path="$PATH"
+      export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
+
       mkdir $GTEST_DIRNAME
       cd $GTEST_DIRNAME
 
+      # After this, we'll use the $GCC_TOOLCHAIN_GLIBC toolchain, which is
+      # a cross-toolchain, but uses glibc.
       set_cc_vars_to_tc
 
       $CMAKE                              \
@@ -108,6 +116,10 @@ function build_gtest_arch {
 
       run_command2 "make -j" build.log
       gtest_make_compact_symlinks $ARCH
+
+      # Restore the PATH so that other functions will end up calling the musl
+      # toolchain with $ARCH-linux-gcc.
+      export PATH="$saved_path"
 
    else
       show_skip_component_msg "GOOGLE TEST ($ARCH)"
