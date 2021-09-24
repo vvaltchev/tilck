@@ -9,6 +9,9 @@ export FFLAGS=""
 export CXXFLAGS=""
 export CFFLAGS=""
 
+# Default GCC toolchain version to use
+DEFAULT_GCC_TC_VERSION="8.4.0"
+
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
@@ -78,7 +81,7 @@ if [ -z "$GCC_TC_VER" ]; then
    if [ -f $TC/.gcc_tc_ver ]; then
       GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
    else
-      GCC_TC_VER="7.3.0"
+      GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
    fi
 fi
 
