@@ -19,9 +19,8 @@ ATOMIC(bool) __need_resched;              /* see docs/atomics.md */
 struct task *kernel_process;
 struct process *kernel_process_pi;
 
+/* Task lists */
 struct list runnable_tasks_list;
-struct list sleeping_tasks_list;
-struct list zombie_tasks_list;
 
 /* Static variables */
 static struct task *tree_by_tid_root;
@@ -396,9 +395,6 @@ static void create_kernel_process(void)
    struct process *s_kernel_pi = (struct process *)(s_kernel_ti + 1);
 
    list_init(&runnable_tasks_list);
-   list_init(&sleeping_tasks_list);
-   list_init(&zombie_tasks_list);
-
    s_kernel_pi->pid = create_new_pid();
    s_kernel_ti->tid = create_new_kernel_tid();
    s_kernel_pi->ref_count = 1;
@@ -474,7 +470,7 @@ static void task_add_to_state_list(struct task *ti)
          break;
 
       case TASK_STATE_SLEEPING:
-         list_add_tail(&sleeping_tasks_list, &ti->sleeping_node);
+         /* no dedicated list */
          break;
 
       case TASK_STATE_RUNNING:
@@ -482,7 +478,7 @@ static void task_add_to_state_list(struct task *ti)
          break;
 
       case TASK_STATE_ZOMBIE:
-         list_add_tail(&zombie_tasks_list, &ti->zombie_node);
+         /* no dedicated list */
          break;
 
       default:
@@ -504,14 +500,15 @@ static void task_remove_from_state_list(struct task *ti)
          break;
 
       case TASK_STATE_SLEEPING:
-         list_remove(&ti->sleeping_node);
+         /* no dedicated list */
          break;
 
       case TASK_STATE_RUNNING:
+         /* no dedicated list */
          break;
 
       case TASK_STATE_ZOMBIE:
-         list_remove(&ti->zombie_node);
+         /* no dedicated list */
          break;
 
       default:

@@ -77,8 +77,6 @@ struct task {
 
    struct bintree_node tree_by_tid_node;
    struct list_node runnable_node;
-   struct list_node sleeping_node;
-   struct list_node zombie_node;
    struct list_node wakeup_timer_node;
    struct list_node siblings_node;    /* nodes in parent's pi's children list */
 
@@ -139,8 +137,6 @@ extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
 
 extern struct list runnable_tasks_list;
-extern struct list sleeping_tasks_list;
-extern struct list zombie_tasks_list;
 extern const char *const task_state_str[5];
 
 #define KTH_ALLOC_BUFS                       (1 << 0)

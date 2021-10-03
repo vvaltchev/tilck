@@ -180,8 +180,6 @@ void init_task_lists(struct task *ti)
 {
    bintree_node_init(&ti->tree_by_tid_node);
    list_node_init(&ti->runnable_node);
-   list_node_init(&ti->sleeping_node);
-   list_node_init(&ti->zombie_node);
    list_node_init(&ti->wakeup_timer_node);
    list_node_init(&ti->siblings_node);
 
