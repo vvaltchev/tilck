@@ -626,9 +626,9 @@ void sched_account_ticks(void)
 }
 
 static bool
-sched_should_return_immediately(enum task_state curr_state)
+sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 {
-   if (UNLIKELY(get_curr_task()->timer_ready)) {
+   if (UNLIKELY(curr->timer_ready)) {
 
       /*
        * Corner case: call to the scheduler with timer_ready set.
@@ -644,10 +644,10 @@ sched_should_return_immediately(enum task_state curr_state)
        */
 
       if (curr_state != TASK_STATE_RUNNING) {
-         task_change_state(get_curr_task(), TASK_STATE_RUNNING);
+         task_change_state(curr, TASK_STATE_RUNNING);
       }
 
-      get_curr_task()->timer_ready = false;
+      curr->timer_ready = false;
       return true; /* Give the control back to current task */
    }
 
@@ -699,7 +699,7 @@ void schedule(void)
    sched_clear_need_resched();
 
    /* Handle special corner cases */
-   if (sched_should_return_immediately(curr_state))
+   if (sched_should_return_immediately(curr, curr_state))
       return;
 
    /* Check for worker threads ready to run */
@@ -714,24 +714,31 @@ void schedule(void)
          selected = idle_task; /* fall-back to the idle task */
    }
 
+   /* Sanity check */
+   ASSERT(!selected->stopped);
+
    if (selected != curr) {
 
       /* If we preempted the process, it is still `running` */
       if (curr_state == TASK_STATE_RUNNING)
          task_change_state(curr, TASK_STATE_RUNNABLE);
 
+      /* A task switch is required */
+      switch_to_task(selected);
+
    } else {
 
       if (LIKELY(!pending_signals())) {
+
+         /* Just reset the current timeslice */
          selected->ticks.timeslice = 0;
-         return; /* reset the current timeslice and return */
+
+      } else {
+
+         /* There are pending signals: do a complete task switch */
+         switch_to_task(selected);
       }
-
-      /* there are pending signals: do a complete task switch */
    }
-
-   ASSERT(!selected->stopped);
-   switch_to_task(selected);
 }
 
 struct task *get_task(int tid)
