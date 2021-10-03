@@ -637,11 +637,36 @@ sched_should_return_immediately(enum task_state curr_state)
    return false;
 }
 
+static struct task *
+sched_do_select_runnable_task(void)
+{
+   struct task *selected = NULL;
+   struct task *pos;
+
+   list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
+
+      ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
+      ASSERT(pos != get_curr_task());
+
+      if (pos->stopped || pos == idle_task)
+         continue;
+
+      if (pos->timer_ready) {
+         selected = pos;
+         break;
+      }
+
+      if (!selected || pos->ticks.total < selected->ticks.total)
+         selected = pos;
+   }
+
+   return selected;
+}
+
 void schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
    struct task *selected = NULL;
-   struct task *pos;
 
    ASSERT(!is_preemption_enabled());
 
@@ -658,50 +683,33 @@ void schedule(void)
    if (selected == get_curr_task())
       return;
 
-   /* If we preempted the process, it is still `running` */
-   if (curr_state == TASK_STATE_RUNNING) {
-      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
-   }
-
-   if (selected)
-      switch_to_task(selected);
-
-   list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
-
-      ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
-
-      if (pos->stopped || pos == idle_task)
-         continue;
-
-      if (pos->timer_ready) {
-         selected = pos;
-         break;
-      }
-
-      if (pos == get_curr_task())
-         continue;
-
-      if (!selected || pos->ticks.total < selected->ticks.total)
-         selected = pos;
-   }
-
    if (!selected) {
 
-      if (get_curr_task_state() == TASK_STATE_RUNNABLE) {
+      selected = sched_do_select_runnable_task();
 
-         selected = get_curr_task();
-         selected->ticks.timeslice = 0;
+      /* If there is still no selected task, check for the current */
+      if (!selected) {
 
-         if (LIKELY(!pending_signals())) {
-            task_change_state(selected, TASK_STATE_RUNNING);
-            return;
+         if (curr_state == TASK_STATE_RUNNING) {
+
+            selected = get_curr_task();
+            selected->ticks.timeslice = 0;
+
+            if (LIKELY(!pending_signals()))
+               return; /* just return, there's nothing else to do */
+
+            /* there are pending signals: do a complete task switch */
+
+         } else {
+
+            selected = idle_task;
          }
-
-         switch_to_task(selected);
       }
-
-      selected = idle_task;
    }
+
+   /* If we preempted the process, it is still `running` */
+   if (curr_state == TASK_STATE_RUNNING)
+      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
 
    ASSERT(!selected->stopped);
    switch_to_task(selected);
