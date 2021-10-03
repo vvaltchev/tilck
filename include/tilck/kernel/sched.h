@@ -13,7 +13,7 @@
 
 #include <tilck_gen_headers/config_sched.h>
 
-#define TIME_SLICE_TICKS (TIMER_HZ / 20)
+#define TIME_SLICE_TICKS (TIMER_HZ / 25)
 
 enum task_state {
    TASK_STATE_INVALID   = 0,
