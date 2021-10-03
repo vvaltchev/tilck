@@ -584,7 +584,8 @@ void sched_account_ticks(void)
 {
    struct task *curr = get_curr_task();
    const enum task_state state = get_curr_task_state();
-   const bool runner = is_worker_thread(curr);
+   const bool is_running = (state == TASK_STATE_RUNNING);
+   const bool is_worker = is_worker_thread(curr);
    struct sched_ticks *t = &curr->ticks;
 
    ASSERT(curr != NULL);
@@ -596,13 +597,15 @@ void sched_account_ticks(void)
    if (curr->running_in_kernel)
       t->total_kernel++;
 
-   if (curr->stopped                                 ||
-       state != TASK_STATE_RUNNING                   ||
-         (!runner && t->timeslice >= TIME_SLICE_TICKS)
-       )
-   {
+   /*
+    * need_resched is never set for worker threads when they used too much
+    * CPU time: their timeslice is unlimited and can preempted only be another
+    * worker thread.
+    */
+   const bool timeout = !is_worker && t->timeslice >= TIME_SLICE_TICKS;
+
+   if (curr->stopped || !is_running || timeout)
       sched_set_need_resched();
-   }
 }
 
 static bool
