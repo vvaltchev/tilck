@@ -41,6 +41,7 @@ struct sched_ticks {
    u32 timeslice;       /* ticks counter for the current time slice */
    u64 total;           /* total life-time ticks */
    u64 total_kernel;    /* total life-time ticks spent in kernel */
+   u64 vruntime;        /* a brutal approx. of Linux's vruntime */
 };
 
 STATIC_ASSERT(sizeof(enum sig_state) == 1);

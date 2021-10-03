@@ -594,6 +594,26 @@ void sched_account_ticks(void)
    if (curr->running_in_kernel)
       t->total_kernel++;
 
+   if (curr != idle_task) {
+
+      /*
+       * The more currently runnable tasks are, the higher vruntime has to
+       * grow: if case of just 1 runnable task (+1 for idle ignored), vruntime
+       * will increase by just +1. In case of 15 runnable tasks, vruntime will
+       * increase by +15. The logic behind is the following: supposing all the
+       * 15 tasks are runnable and they all start with vruntime = 0, after the
+       * first has run, it will have vruntime = 15 * TIME_SLICE_TICKS and will
+       * have to wait until all the other 14 tasks ran until it can be picked
+       * again.
+       *
+       * Now, picking the task with the lowest vruntime will be more fair than
+       * picking the task with the lowest `total` number of ticks, because
+       * tasks that that consumed 100% of the CPU when no other task was
+       * runnable won't be so much penalized.
+       */
+      t->vruntime += (u64)(runnable_tasks_count - 1);
+   }
+
    /*
     * need_resched is never set for worker threads when they used too much
     * CPU time: their timeslice is unlimited and can preempted only be another
@@ -635,15 +655,15 @@ sched_should_return_immediately(enum task_state curr_state)
 }
 
 static struct task *
-sched_do_select_runnable_task(void)
+sched_do_select_runnable_task(enum task_state curr_state)
 {
+   struct task *curr = get_curr_task();
    struct task *selected = NULL;
    struct task *pos;
 
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
       ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
-      ASSERT(pos != get_curr_task());
 
       if (pos->stopped || pos == idle_task)
          continue;
@@ -653,8 +673,15 @@ sched_do_select_runnable_task(void)
          break;
       }
 
-      if (!selected || pos->ticks.total < selected->ticks.total)
+      if (!selected || pos->ticks.vruntime < selected->ticks.vruntime)
          selected = pos;
+   }
+
+   /* If there is still no selected task, check for current task */
+   if (!selected) {
+
+      if (curr_state == TASK_STATE_RUNNING)
+         selected = curr;
    }
 
    return selected;
@@ -663,6 +690,7 @@ sched_do_select_runnable_task(void)
 void schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
+   struct task *curr = get_curr_task();
    struct task *selected = NULL;
 
    ASSERT(!is_preemption_enabled());
@@ -677,36 +705,30 @@ void schedule(void)
    /* Check for worker threads ready to run */
    selected = wth_get_runnable_thread();
 
-   if (selected == get_curr_task())
-      return;
-
+   /* Check for regular runnable tasks */
    if (!selected) {
 
-      selected = sched_do_select_runnable_task();
+      selected = sched_do_select_runnable_task(curr_state);
 
-      /* If there is still no selected task, check for the current */
-      if (!selected) {
-
-         if (curr_state == TASK_STATE_RUNNING) {
-
-            selected = get_curr_task();
-            selected->ticks.timeslice = 0;
-
-            if (LIKELY(!pending_signals()))
-               return; /* just return, there's nothing else to do */
-
-            /* there are pending signals: do a complete task switch */
-
-         } else {
-
-            selected = idle_task;
-         }
-      }
+      if (!selected)
+         selected = idle_task; /* fall-back to the idle task */
    }
 
-   /* If we preempted the process, it is still `running` */
-   if (curr_state == TASK_STATE_RUNNING)
-      task_change_state(get_curr_task(), TASK_STATE_RUNNABLE);
+   if (selected != curr) {
+
+      /* If we preempted the process, it is still `running` */
+      if (curr_state == TASK_STATE_RUNNING)
+         task_change_state(curr, TASK_STATE_RUNNABLE);
+
+   } else {
+
+      if (LIKELY(!pending_signals())) {
+         selected->ticks.timeslice = 0;
+         return; /* reset the current timeslice and return */
+      }
+
+      /* there are pending signals: do a complete task switch */
+   }
 
    ASSERT(!selected->stopped);
    switch_to_task(selected);
