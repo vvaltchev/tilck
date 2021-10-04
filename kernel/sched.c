@@ -680,7 +680,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
    /* If there is still no selected task, check for current task */
    if (!selected) {
 
-      if (curr_state == TASK_STATE_RUNNING)
+      if (curr_state == TASK_STATE_RUNNING && !curr->stopped)
          selected = curr;
    }
 
@@ -693,7 +693,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
        * state is typically RUNNING, so it's not present in the runnable_list.
        */
 
-      if (curr_state == TASK_STATE_RUNNING)
+      if (curr_state == TASK_STATE_RUNNING && !curr->stopped)
          if (curr->ticks.vruntime < selected->ticks.vruntime)
             selected = curr;
    }

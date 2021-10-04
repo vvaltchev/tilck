@@ -166,7 +166,7 @@ stop_all_user_tasks(void *task, void *unused)
 {
    struct task *ti = task;
 
-   if (!is_kernel_thread(ti)) {
+   if (!is_kernel_thread(ti) && ti->tid != 1) {
       printk("Stopping TID %d\n", ti->tid);
       ti->stopped = true;
    }

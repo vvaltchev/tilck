@@ -266,9 +266,8 @@ static void action_stop(struct task *ti, int signum)
    ti->wstatus = STOPCODE(signum);
    wake_up_tasks_waiting_on(ti, task_stopped);
 
-   if (ti == get_curr_task()) {
-      kernel_yield_preempt_disabled();
-   }
+   if (ti == get_curr_task())
+      schedule_preempt_disabled();
 }
 
 static void action_continue(struct task *ti, int signum)
