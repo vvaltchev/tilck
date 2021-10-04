@@ -245,7 +245,7 @@ static ALWAYS_INLINE bool kernel_yield(void)
  *
  * WARNING: this function excepts to be called with __disable_preempt == 1 while
  * it will always return with __disable_preempt == 0. It is asymmetric but
- * that's the same as schedule(): we want to call it with preemption disabled
+ * that's the same as do_schedule(): we want to call it with preemption disabled
  * in order to safely do stuff before calling it, but we EXPECT that calling it
  * WILL very likely "preempt" us and do a context switch, so we clearly expect
  * preemption to be enabled when it returns.
@@ -351,8 +351,14 @@ enter_sleep_wait_state(void)
 
 NORETURN void switch_to_task(struct task *ti);
 
+/*
+ * Run the scheduler directly without saving the current state.
+ * Expects preemption to be disabled.
+ */
+void do_schedule(void);
+
+
 bool pending_signals(void);
-void schedule(void);
 int get_curr_tid(void);
 int get_curr_pid(void);
 void save_current_task_state(regs_t *);

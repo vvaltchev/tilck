@@ -403,7 +403,7 @@ void kthread_exit(void)
       set_curr_task(kernel_process);
    }
    enable_interrupts_forced();
-   schedule();
+   do_schedule();
 }
 
 static void

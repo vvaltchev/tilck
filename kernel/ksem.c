@@ -54,7 +54,7 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
       /* won't wakeup by a signal here, see signal.c */
       enter_sleep_wait_state();
 
-      /* here the preemption is guaranteed to be enabled, as for schedule() */
+      /* here the preemption is guaranteed to be enabled */
       disable_preemption();
    }
 

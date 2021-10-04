@@ -687,7 +687,7 @@ sched_do_select_runnable_task(enum task_state curr_state)
    return selected;
 }
 
-void schedule(void)
+void do_schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
    struct task *curr = get_curr_task();

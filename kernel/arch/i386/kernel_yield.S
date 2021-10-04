@@ -40,9 +40,9 @@ FUNC(asm_kernel_yield):
    call check_not_in_irq_handler
 #endif
 
-   call schedule
+   call do_schedule
 
-   # schedule() just returned: restore ESP and just return
+   # do_schedule() just returned: restore ESP and just return
 
    add esp, SIZEOF_REGS - 8 + 4 # -8 : we skipped ss, useresp
                                 # +4 : compensate the last push eax above

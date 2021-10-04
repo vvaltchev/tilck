@@ -195,8 +195,8 @@ static void irq_resched(regs_t *r)
       /* Re-enable the interrupts, keeping preemption disabled */
       enable_interrupts_forced();
 
-      /* Call schedule() with preemption disabled, as mandatory */
-      schedule();
+      /* Call do_schedule() with preemption disabled, as mandatory */
+      do_schedule();
    }
 }
 
@@ -231,7 +231,7 @@ void irq_entry(regs_t *r)
       irq_resched(r);
 
    /*
-    * In case schedule() returned or there was no need for resched, just
+    * In case do_schedule() returned or there was no need for resched, just
     * re-enable the preemption and return.
     */
    enable_preemption_nosched();

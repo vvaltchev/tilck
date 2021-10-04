@@ -194,9 +194,9 @@ switch_stack_free_mem_and_schedule(void)
    free_mem_for_zombie_task(get_curr_task());
 
    /* Run the scheduler */
-   schedule();
+   do_schedule();
 
-   /* Reassure the compiler that we won't return (schedule() is not NORETURN) */
+   /* Reassure the compiler that we won't return */
    NOT_REACHED();
 }
 
