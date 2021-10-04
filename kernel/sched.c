@@ -714,10 +714,10 @@ void schedule(void)
          selected = idle_task; /* fall-back to the idle task */
    }
 
-   /* Sanity check */
-   ASSERT(!selected->stopped);
-
    if (selected != curr) {
+
+      /* Sanity check */
+      ASSERT(!selected->stopped);
 
       /* If we preempted the process, it is still `running` */
       if (curr_state == TASK_STATE_RUNNING)
