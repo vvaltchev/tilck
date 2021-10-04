@@ -293,23 +293,34 @@ enter_32bit_protected_mode:
    cli
 
    lidt [idtr]
-   lgdt [gdtr_base_X]
+   lgdt [gdtr_flat]
 
    # enable protected mode
    mov eax, cr0
    or al, 1
    mov cr0, eax
 
-   jmp 0x08:complete_flush
+   # Use 0x66 (Operand Size Override Prefix) before push and retf to use the
+   # 32-bit version of those instructions. That is NECESSARY if we want to do
+   # a 32-bit far jump. Otherwise, the complete_flush code has to be copied to
+   # a low address (< 64 K), in order to the 16-bit far jump to able able to get
+   # there. Or, in alternative, we'd need to setup first a non-flat GDT with
+   # BASE = BL_ST2_DATA_SEG * 16 for all the segments, then we'd need to load
+   # the "flat GDT" with BASE = 0 and perform another far RET.
+
+   mov eax, (offset BL_ST2_DATA_SEG * 16 + complete_flush)
+
+   push 0x08
+
+   .byte 0x66
+   push eax
+
+   .byte 0x66
+   retf
 
 .code32
 
 complete_flush:
-
-   lgdt [gdtr_flat]
-   jmp 0x08:(BL_ST2_DATA_SEG * 16 + complete_flush2)
-
-complete_flush2:
 
    mov ax, 0x10
    mov ds, ax
@@ -326,37 +337,10 @@ complete_flush2:
 
 #########################################################
 
-gdt_base_X:
-.byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
-
-# code base = BL_ST2_DATA_SEG*16
-.byte 0xFF, 0xFF # limit
-
-# base (first 24-bit bits)
-.byte ((BL_ST2_DATA_SEG * 16) & 0xff)
-.byte (((BL_ST2_DATA_SEG * 16) >> 8) & 0xff)
-.byte (((BL_ST2_DATA_SEG * 16) >> 16) & 0xff)
-
-.byte 0x9A, 0xCF, 0x00 # access, granularity and high base
-
-# data base = BL_ST2_DATA_SEG*16
-.byte 0xFF, 0xFF # limit
-
-# base (first 24-bit bits)
-.byte ((BL_ST2_DATA_SEG * 16) & 0xff)
-.byte (((BL_ST2_DATA_SEG * 16) >> 8) & 0xff)
-.byte (((BL_ST2_DATA_SEG * 16) >> 16) & 0xff)
-
-.byte 0x92, 0xCF, 0x00 # access, granularity and high base
-
 gdt32_flat:
 .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 # NULL segment
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x9A, 0xCF, 0x00 # code base = 0
 .byte 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00 # data base = 0
-
-gdtr_base_X:
-   .word 0x23
-   .long (BL_ST2_DATA_SEG * 16 + offset gdt_base_X)
 
 gdtr_flat:
    .word 0x23
