@@ -209,7 +209,7 @@ $33 = *(struct task *) 0xc0062c00 = {
     tid = <any child>
   },
   state_regs           = *(struct x86_regs *) 0xf802fd34 = {
-    resume_eip   = 0xc010321d <asm_kernel_yield+45>,
+    resume_eip   = 0xc010321d <asm_save_regs_and_schedule+45>,
     custom_flags = 0x00000000,
     gs           = 0x0010,
     es           = 0x0010,

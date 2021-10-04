@@ -15,14 +15,14 @@
 
 .code32
 
-.global asm_kernel_yield
+.global asm_save_regs_and_schedule
 .global panic_save_current_state
 .global switch_to_initial_kernel_stack
 
 # Saves the current (kernel) state as if an interrupt occurred while running
 # in kernel mode.
 
-FUNC(asm_kernel_yield):
+FUNC(asm_save_regs_and_schedule):
 
    pushf             # push EFLAGS
    sub esp, 16       # skip cs, eip, err_code, int_num
@@ -59,7 +59,7 @@ FUNC(asm_kernel_yield):
    mov eax, 1      # Context-switch return value
    ret
 
-END_FUNC(asm_kernel_yield)
+END_FUNC(asm_save_regs_and_schedule)
 
 FUNC(panic_save_current_state):
 

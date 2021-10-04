@@ -61,7 +61,7 @@ class printer_regs:
          ("useresp     ", fixhex32(r["useresp"])),
       ]
 
-      if resume_eip_str.find("asm_kernel_yield") == -1:
+      if resume_eip_str.find("asm_save_regs_and_schedule") == -1:
 
          # Actual value of the stack segment
          ss = r["ss"] & 0xffff
@@ -71,8 +71,8 @@ class printer_regs:
          ]
       else:
 
-         # asm_kernel_yield() does NOT save SS on the stack. What we see there
-         # instead is its 1st argument, caller's return EIP.
+         # asm_save_regs_and_schedule() does NOT save SS on the stack.
+         # What we see there instead is its 1st argument, caller's return EIP.
          calc_eip = gdb.parse_and_eval("(void *){}".format(r["ss"]))
          res.append(("[true_eip]  ", calc_eip))
 

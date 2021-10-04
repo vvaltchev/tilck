@@ -54,7 +54,7 @@ void enable_preemption(void)
 bool __kernel_yield(bool skip_disable_preempt)
 {
    /* Private declaraction of the low-level yield function */
-   extern bool asm_kernel_yield(void *);
+   extern bool asm_save_regs_and_schedule(void *);
 
    bool context_switch;
 
@@ -65,7 +65,7 @@ bool __kernel_yield(bool skip_disable_preempt)
       disable_preemption();
    }
 
-   context_switch = asm_kernel_yield(
+   context_switch = asm_save_regs_and_schedule(
       __builtin_extract_return_addr(__builtin_return_address(0))
    );
 
