@@ -47,7 +47,7 @@ void enable_preemption(void)
 
    if (KRN_RESCHED_ENABLE_PREEMPT) {
       if (oldval == 1 && need_reschedule())
-         kernel_yield();
+         schedule();
    }
 }
 
@@ -380,7 +380,7 @@ static void idle(void)
       halt();
 
       if (need_reschedule() || runnable_tasks_count > 1)
-         kernel_yield();
+         schedule();
    }
 }
 

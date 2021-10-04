@@ -817,7 +817,7 @@ int sys_pause(void)
 
    while (!pending_signals()) {
       task_change_state(get_curr_task(), TASK_STATE_SLEEPING);
-      kernel_yield_preempt_disabled();
+      schedule_preempt_disabled();
       disable_preemption();
    }
 

@@ -265,6 +265,16 @@ static ALWAYS_INLINE bool schedule(void)
    return save_regs_and_schedule(false);
 }
 
+/*
+ * Just save the state and call the scheduler, without forcing a yield.
+ * Expects the preemption to be already disabled.
+ */
+static ALWAYS_INLINE bool schedule_preempt_disabled(void)
+{
+   return save_regs_and_schedule(true);
+}
+
+
 static ALWAYS_INLINE struct task *get_curr_task(void)
 {
    extern struct task *__current;
@@ -354,7 +364,7 @@ enter_sleep_wait_state(void)
       ASSERT(get_curr_task()->timer_ready);
    }
 
-   kernel_yield_preempt_disabled();
+   schedule_preempt_disabled();
 }
 
 
