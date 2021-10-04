@@ -379,7 +379,7 @@ static void idle(void)
       idle_ticks++;
       halt();
 
-      if (need_reschedule() || runnable_tasks_count > 0)
+      if (need_reschedule() || runnable_tasks_count > 1)
          kernel_yield();
    }
 }
@@ -655,7 +655,7 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 }
 
 static struct task *
-sched_do_select_runnable_task(enum task_state curr_state)
+sched_do_select_runnable_task(enum task_state curr_state, bool resched)
 {
    struct task *curr = get_curr_task();
    struct task *selected = NULL;
@@ -684,12 +684,27 @@ sched_do_select_runnable_task(enum task_state curr_state)
          selected = curr;
    }
 
+   if (!resched && selected) {
+
+      /*
+       * If need_resched is not set, the caller didn't want necessarily to
+       * yield, but just give the scheduler an opportunity to switch the current
+       * task. In the loop avoid, the current task was not included because its
+       * state is typically RUNNING, so it's not present in the runnable_list.
+       */
+
+      if (curr_state == TASK_STATE_RUNNING)
+         if (curr->ticks.vruntime < selected->ticks.vruntime)
+            selected = curr;
+   }
+
    return selected;
 }
 
 void do_schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
+   const bool resched = need_reschedule();
    struct task *curr = get_curr_task();
    struct task *selected = NULL;
 
@@ -708,7 +723,7 @@ void do_schedule(void)
    /* Check for regular runnable tasks */
    if (!selected) {
 
-      selected = sched_do_select_runnable_task(curr_state);
+      selected = sched_do_select_runnable_task(curr_state, resched);
 
       if (!selected)
          selected = idle_task; /* fall-back to the idle task */

@@ -236,6 +236,7 @@ static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
  */
 static ALWAYS_INLINE bool kernel_yield(void)
 {
+   sched_set_need_resched();
    return save_regs_and_schedule(false);
 }
 
@@ -252,7 +253,16 @@ static ALWAYS_INLINE bool kernel_yield(void)
  */
 static ALWAYS_INLINE bool kernel_yield_preempt_disabled(void)
 {
+   sched_set_need_resched();
    return save_regs_and_schedule(true);
+}
+
+/*
+ * Just save the state and call the scheduler, without forcing a yield.
+ */
+static ALWAYS_INLINE bool schedule(void)
+{
+   return save_regs_and_schedule(false);
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)

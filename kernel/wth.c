@@ -181,7 +181,7 @@ void wth_run(void *arg)
 
       if (t->waiting_for_jobs) {
          kcond_signal_all(&t->completion);
-         kernel_yield();
+         schedule();
       }
    }
 }
