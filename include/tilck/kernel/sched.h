@@ -157,20 +157,20 @@ bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
-   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, true, mo_relaxed);
+   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
+   atomic_store_explicit(&__need_resched, 1, mo_relaxed);
 }
 
 static ALWAYS_INLINE void sched_clear_need_resched(void)
 {
-   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
-   atomic_store_explicit(&__need_resched, false, mo_relaxed);
+   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
+   atomic_store_explicit(&__need_resched, 0, mo_relaxed);
 }
 
 static ALWAYS_INLINE bool need_reschedule(void)
 {
-   extern ATOMIC(bool) __need_resched; /* see docs/atomics.md */
-   return atomic_load_explicit(&__need_resched, mo_relaxed);
+   extern ATOMIC(int) __need_resched; /* see docs/atomics.md */
+   return (bool) atomic_load_explicit(&__need_resched, mo_relaxed);
 }
 
 static ALWAYS_INLINE void disable_preemption(void)

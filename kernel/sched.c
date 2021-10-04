@@ -14,7 +14,7 @@
 /* Shared global variables */
 struct task *__current;
 ATOMIC(int) __disable_preempt = 1;        /* see docs/atomics.md */
-ATOMIC(bool) __need_resched;              /* see docs/atomics.md */
+ATOMIC(int) __need_resched;              /* see docs/atomics.md */
 
 struct task *kernel_process;
 struct process *kernel_process_pi;
