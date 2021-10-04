@@ -153,6 +153,7 @@ struct task *get_task(int tid);
 struct process *get_process(int pid);
 void task_change_state(struct task *ti, enum task_state new_state);
 void task_change_state_idempotent(struct task *ti, enum task_state new_state);
+bool save_regs_and_schedule(bool skip_disable_preempt);
 
 static ALWAYS_INLINE void sched_set_need_resched(void)
 {
@@ -235,8 +236,7 @@ static ALWAYS_INLINE bool is_worker_thread(struct task *ti)
  */
 static ALWAYS_INLINE bool kernel_yield(void)
 {
-   extern bool __kernel_yield(bool skip_disable_preempt);
-   return __kernel_yield(false);
+   return save_regs_and_schedule(false);
 }
 
 /*
@@ -252,8 +252,7 @@ static ALWAYS_INLINE bool kernel_yield(void)
  */
 static ALWAYS_INLINE bool kernel_yield_preempt_disabled(void)
 {
-   extern bool __kernel_yield(bool skip_disable_preempt);
-   return __kernel_yield(true);
+   return save_regs_and_schedule(true);
 }
 
 static ALWAYS_INLINE struct task *get_curr_task(void)

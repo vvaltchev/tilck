@@ -51,7 +51,7 @@ void enable_preemption(void)
    }
 }
 
-bool __kernel_yield(bool skip_disable_preempt)
+bool save_regs_and_schedule(bool skip_disable_preempt)
 {
    /* Private declaraction of the low-level yield function */
    extern bool asm_save_regs_and_schedule(void *);
