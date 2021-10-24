@@ -407,3 +407,5 @@ For the *full list* of questions on Tilck, check the [Q & A page] in the [Discus
 - [Why many commit messages are so short?](https://github.com/vvaltchev/tilck/discussions/89)
 
 - [Can a lightweight X server run on Tilck today?](https://github.com/vvaltchev/tilck/discussions/81)
+
+- [Compiling Tilck with TCC & self-hosting?](https://github.com/vvaltchev/tilck/discussions/93)
