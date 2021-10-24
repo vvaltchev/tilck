@@ -14,10 +14,11 @@
 
 function download_gnu_efi {
 
-   local tarname="gnu-efi-3.0.10.tgz"
+   local ver="3.0.14"
+   local tarname="gnu-efi-$ver.tgz"
    local url="https://github.com/vvaltchev/gnu-efi-fork.git"
 
-   download_git_repo_in_cache "$url" 3.0.10 $tarname gnu-efi
+   download_git_repo_in_cache "$url" $ver $tarname gnu-efi
    extract_cachefile_tar_gz $tarname --
 }
 
