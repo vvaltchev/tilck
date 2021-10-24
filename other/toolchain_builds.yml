@@ -12,7 +12,7 @@ strategy:
     fedora:
       img: 'vvaltchev/fedora:v2'
     arch:
-      img: 'vvaltchev/archlinux:v3'
+      img: 'vvaltchev/archlinux:v4'
     opensuse:
       img: 'vvaltchev/opensuse:v2'
 
