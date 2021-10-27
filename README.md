@@ -146,7 +146,8 @@ read-only support for FAT16 and **FAT32** (used for initrd) allowing memory-mapp
 of files, and a **sysfs** implementation used to provide a full view of **ACPI's**
 **namespace**, the list of all PCI(e) devices and Tilck's compile-time configuration.
 Clearly, in order to work with multiple file systems at once, Tilck has a simple
-**VFS** implementation as well.
+**VFS** implementation as well. **Note**: there is no support for block devices in Tilck
+yet, so everything is in-memory.
 
 #### Processes and signals
 While Tilck uses internally the concept of thread, multi-threading is not currently
