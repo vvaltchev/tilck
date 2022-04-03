@@ -18,7 +18,7 @@
 
 #include <dirent.h> // system header
 
-static struct fs *devfs;
+static struct mnt_fs *devfs;
 
 /*
  * Registered drivers.
@@ -26,7 +26,7 @@ static struct fs *devfs;
 static struct driver_info *drivers[32];
 static u32 drivers_count;
 
-struct fs *
+struct mnt_fs *
 get_devfs(void)
 {
    return devfs;
@@ -105,7 +105,7 @@ devfs_get_next_inode(struct devfs_data *d)
 int
 create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
 {
-   struct fs *fs = devfs;
+   struct mnt_fs *fs = devfs;
    struct driver_info *dinfo;
    struct devfs_data *d;
    struct devfs_file *f;
@@ -198,7 +198,7 @@ devfs_dir_ioctl(fs_handle h, ulong request, void *arg)
 }
 
 int
-devfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
+devfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct devfs_file *df = i;
    struct devfs_data *ddata = fs->device_data;
@@ -253,7 +253,7 @@ static const struct file_ops static_ops_devfs =
 };
 
 static int
-devfs_open_root_dir(struct fs *fs, fs_handle *out)
+devfs_open_root_dir(struct mnt_fs *fs, fs_handle *out)
 {
    struct devfs_handle *h;
 
@@ -266,7 +266,7 @@ devfs_open_root_dir(struct fs *fs, fs_handle *out)
 }
 
 static int
-devfs_open_file(struct fs *fs, struct devfs_file *pos, fs_handle *out)
+devfs_open_file(struct mnt_fs *fs, struct devfs_file *pos, fs_handle *out)
 {
    struct devfs_handle *h;
    int rc;
@@ -337,28 +337,28 @@ devfs_on_dup(fs_handle new_h)
 }
 
 static void
-devfs_exclusive_lock(struct fs *fs)
+devfs_exclusive_lock(struct mnt_fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_exlock(&d->rwlock);
 }
 
 static void
-devfs_exclusive_unlock(struct fs *fs)
+devfs_exclusive_unlock(struct mnt_fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_exunlock(&d->rwlock);
 }
 
 static void
-devfs_shared_lock(struct fs *fs)
+devfs_shared_lock(struct mnt_fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_shlock(&d->rwlock);
 }
 
 static void
-devfs_shared_unlock(struct fs *fs)
+devfs_shared_unlock(struct mnt_fs *fs)
 {
    struct devfs_data *d = fs->device_data;
    rwlock_wp_shunlock(&d->rwlock);
@@ -397,7 +397,7 @@ devfs_getdents(fs_handle h, get_dents_func_cb vfs_cb, void *arg)
 }
 
 static void
-devfs_get_entry(struct fs *fs,
+devfs_get_entry(struct mnt_fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t nl,
@@ -460,14 +460,14 @@ devfs_get_inode(fs_handle h)
 }
 
 static int
-devfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+devfs_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
 }
 
 static int
-devfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+devfs_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    /* devfs does not support removal of inodes after boot */
    return 1;
@@ -498,10 +498,10 @@ static const struct fs_ops static_fsops_devfs =
    .fs_shunlock = devfs_shared_unlock,
 };
 
-struct fs *
+struct mnt_fs *
 create_devfs(void)
 {
-   struct fs *fs;
+   struct mnt_fs *fs;
    struct devfs_data *d;
 
    /* Disallow multiple instances of devfs */

@@ -37,31 +37,37 @@ typedef int     (*func_mkdir)     (struct vfs_path *p, mode_t);
 typedef int     (*func_rmdir)     (struct vfs_path *p);
 typedef int     (*func_symlink)   (const char *, struct vfs_path *);
 typedef int     (*func_readlink)  (struct vfs_path *, char *);
-typedef int     (*func_chmod)     (struct fs *, vfs_inode_ptr_t, mode_t);
-typedef void    (*func_fslock_t)  (struct fs *);
-typedef int     (*func_rr_inode)  (struct fs *, vfs_inode_ptr_t);
+typedef int     (*func_chmod)     (struct mnt_fs *, vfs_inode_ptr_t, mode_t);
+typedef void    (*func_fslock_t)  (struct mnt_fs *);
+typedef int     (*func_rr_inode)  (struct mnt_fs *, vfs_inode_ptr_t);
 
-typedef int     (*func_futimens)  (struct fs *,
+typedef int     (*func_futimens)  (struct mnt_fs *,
                                    vfs_inode_ptr_t,
                                    const struct k_timespec64 times[2]);
 
-typedef int     (*func_2paths)    (struct fs *,
+typedef int     (*func_2paths)    (struct mnt_fs *,
                                    struct vfs_path *,
                                    struct vfs_path *);
 
 typedef         func_2paths       func_rename;
 typedef         func_2paths       func_link;
 
-typedef void    (*func_get_entry) (struct fs *fs,
+typedef void    (*func_get_entry) (struct mnt_fs *fs,
                                    void *dir_inode,
                                    const char *name,
                                    ssize_t name_len,
                                    struct fs_path *fs_path);
 
 /* mixed fs/file ops */
-typedef int     (*func_stat)   (struct fs *, vfs_inode_ptr_t, struct k_stat64*);
-typedef int     (*func_trunc)  (struct fs *, vfs_inode_ptr_t, offt);
-typedef int     (*func_exlock_noblk) (struct fs *, vfs_inode_ptr_t);
+typedef int     (*func_stat)   (struct mnt_fs *,
+                                vfs_inode_ptr_t,
+                                struct k_stat64 *);
+
+typedef int     (*func_trunc)  (struct mnt_fs *,
+                                vfs_inode_ptr_t,
+                                offt);
+
+typedef int     (*func_exlock_noblk) (struct mnt_fs *, vfs_inode_ptr_t);
 
 /* file ops */
 typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
@@ -95,7 +101,7 @@ typedef ssize_t        (*func_writev)       (fs_handle,
                                              int);
 
 typedef int            (*func_fsync)        (fs_handle);
-typedef void           (*func_syncfs)       (struct fs *);
+typedef void           (*func_syncfs)       (struct mnt_fs *);
 
 /*
  * Operations affecting the file system structure (directories, files, etc.).
@@ -104,7 +110,7 @@ typedef void           (*func_syncfs)       (struct fs *);
  * ---------------------------------
  *
  * The four fs-lock funcs below are supposed to be implemented by each
- * struct fs in order to protect its tree structure from races, typically by
+ * struct mnt_fs in order to protect its tree structure from races, typically by
  * using a read-write lock under the hood. Yes, that means that for example two
  * creat() operations even in separate directories cannot happen at the same
  * time, on the same FS. But, given that Tilck does NOT support SMP, this
@@ -217,15 +223,15 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
 ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
 
-int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i);
-int vfs_exunlock(struct fs *fs, vfs_inode_ptr_t i);
+int vfs_exlock_noblock(struct mnt_fs *fs, vfs_inode_ptr_t i);
+int vfs_exunlock(struct mnt_fs *fs, vfs_inode_ptr_t i);
 
-static inline void vfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static inline void vfs_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    fs->fsops->retain_inode(fs, inode);
 }
 
-static inline void vfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static inline void vfs_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    fs->fsops->release_inode(fs, inode);
 }
@@ -240,14 +246,14 @@ static inline void vfs_release_inode_at(struct vfs_path *p)
    vfs_release_inode(p->fs, p->fs_path.inode);
 }
 
-static ALWAYS_INLINE struct fs *get_fs(fs_handle h)
+static ALWAYS_INLINE struct mnt_fs *get_fs(fs_handle h)
 {
    ASSERT(h != NULL);
    return ((struct fs_handle_base *)h)->fs;
 }
 
 static ALWAYS_INLINE void
-vfs_get_entry(struct fs *fs,
+vfs_get_entry(struct mnt_fs *fs,
               vfs_inode_ptr_t inode,
               const char *name,
               ssize_t name_len,
@@ -257,16 +263,16 @@ vfs_get_entry(struct fs *fs,
 }
 
 static ALWAYS_INLINE void
-vfs_get_root_entry(struct fs *fs, struct fs_path *fs_path)
+vfs_get_root_entry(struct mnt_fs *fs, struct fs_path *fs_path)
 {
    vfs_get_entry(fs, NULL, NULL, 0, fs_path);
 }
 
-/* Whole-struct fs locks */
-void vfs_fs_exlock(struct fs *fs);
-void vfs_fs_exunlock(struct fs *fs);
-void vfs_fs_shlock(struct fs *fs);
-void vfs_fs_shunlock(struct fs *fs);
+/* Whole-struct mnt_fs locks */
+void vfs_fs_exlock(struct mnt_fs *fs);
+void vfs_fs_exunlock(struct mnt_fs *fs);
+void vfs_fs_shlock(struct mnt_fs *fs);
+void vfs_fs_shunlock(struct mnt_fs *fs);
 /* --- */
 
 int
@@ -275,26 +281,26 @@ compute_abs_path(const char *path, const char *str_cwd, char *dest, u32 dest_s);
 u32
 vfs_get_new_device_id(void);
 
-struct fs *
+struct mnt_fs *
 create_fs_obj(const char *type,
               const struct fs_ops *fsops,
               void *device_data,
               u32 flags);
 
-void destory_fs_obj(struct fs *fs);
+void destory_fs_obj(struct mnt_fs *fs);
 
 fs_handle vfs_alloc_handle(void);
 fs_handle vfs_alloc_handle_raw(void);  /* doesn't zero the data */
 void vfs_free_handle(fs_handle h);
-fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops);
-void vfs_syncfs(struct fs *fs);
+fs_handle vfs_create_new_handle(struct mnt_fs *fs, const struct file_ops *fops);
+void vfs_syncfs(struct mnt_fs *fs);
 void vfs_sync(void);
 
 /* ------------ Current mount point interface ------------- */
 
 /*
  * Resolves `path` and returns in `rp` the corresponding VFS path with the
- * struct fs retained and locked, in case of success (return 0).
+ * struct mnt_fs retained and locked, in case of success (return 0).
  *
  * In case of failure, it returns a value < 0 and the it does *not* require
  * any further clean-up.
@@ -305,8 +311,12 @@ vfs_resolve(const char *path,
             bool exlock,
             bool res_last_sl);
 
-int mp_init(struct fs *root_fs);
-int mp_add(struct fs *fs, const char *target_path);
+int mp_init(struct mnt_fs *root_fs);
+int mp_add(struct mnt_fs *fs, const char *target_path);
 int mp_remove(const char *target_path);
-struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode);
-struct fs *mp_get_root(void);
+
+struct mnt_fs *
+mp_get_retained_at(struct mnt_fs *host_fs,
+                   vfs_inode_ptr_t inode);
+
+struct mnt_fs *mp_get_root(void);

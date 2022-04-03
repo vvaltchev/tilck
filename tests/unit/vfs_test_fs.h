@@ -47,9 +47,9 @@ void test_fs_clear_mps();
 bool test_fs_is_mountpoint(tfs_entry *e);
 void test_fs_check_refcounts(tfs_entry *node);
 
-inline struct fs create_test_fs(const char *name, tfs_entry *root)
+inline struct mnt_fs create_test_fs(const char *name, tfs_entry *root)
 {
-   struct fs fs {
+   struct mnt_fs fs {
 
       .ref_count        = 1,
       .pss_lock_root    = nullptr,

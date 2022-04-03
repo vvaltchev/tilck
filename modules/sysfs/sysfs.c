@@ -25,7 +25,7 @@
 #include "lock_and_retain.c.h"
 
 void sysfs_create_config_obj(void);
-static struct fs *sysfs;
+static struct mnt_fs *sysfs;
 
 static int
 sysfs_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mod)
@@ -70,7 +70,7 @@ sysfs_get_inode(fs_handle h)
 }
 
 static int
-sysfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
+sysfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct sysfs_inode *inode = i;
    struct sysfs_data *d = fs->device_data;
@@ -144,7 +144,7 @@ static int sysfs_readlink(struct vfs_path *p, char *buf)
 }
 
 static void
-sysfs_syncfs(struct fs *fs)
+sysfs_syncfs(struct mnt_fs *fs)
 {
    struct sysfs_data *d = fs->device_data;
    struct sysfs_handle *h;
@@ -398,7 +398,7 @@ sysfs_create_custom_obj(const char *type_name, struct sysobj_hooks *hooks, ...)
 }
 
 static int
-sysfs_create_files_for_obj(struct fs *fs, struct sysobj *obj)
+sysfs_create_files_for_obj(struct mnt_fs *fs, struct sysobj *obj)
 {
    struct sysobj_prop **ptr, *prop;
    struct sysfs_inode *i;
@@ -444,7 +444,7 @@ sysfs_destroy_unregistered_obj(struct sysobj *obj)
 }
 
 int
-sysfs_register_obj(struct fs *fs,
+sysfs_register_obj(struct mnt_fs *fs,
                    struct sysobj *parent,
                    const char *name,
                    struct sysobj *obj)
@@ -518,7 +518,7 @@ sysfs_get_path_to_root(struct sysobj *obj, struct sysobj **path, int pl)
 }
 
 int
-sysfs_symlink_obj(struct fs *fs,
+sysfs_symlink_obj(struct mnt_fs *fs,
                   struct sysobj *new_parent,
                   const char *new_name,
                   struct sysobj *obj)
@@ -635,10 +635,10 @@ oom:
    goto out;
 }
 
-struct fs *
+struct mnt_fs *
 create_sysfs(void)
 {
-   struct fs *fs;
+   struct mnt_fs *fs;
    struct sysfs_data *d;
 
    if (!(d = kzalloc_obj(struct sysfs_data)))

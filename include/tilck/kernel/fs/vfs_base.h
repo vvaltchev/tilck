@@ -61,18 +61,18 @@ CREATE_FS_PATH_STRUCT(fs_path, vfs_inode_ptr_t, void *);
 
 struct vfs_path {
 
-   struct fs *fs;
+   struct mnt_fs *fs;
    struct fs_path fs_path;
 
    /* other fields */
    const char *last_comp;
 };
 
-#define VFS_FS_RW             (1 << 0)  /* struct fs mounted in RW mode */
+#define VFS_FS_RW             (1 << 0)  /* struct mnt_fs mounted in RW mode */
 #define VFS_FS_RQ_DE_SKIP     (1 << 1)  /* FS requires vfs dents skip */
 
 /* This struct is Tilck's analogue of Linux's "superblock" */
-struct fs {
+struct mnt_fs {
 
    REF_COUNTED_OBJECT;
 
@@ -95,7 +95,7 @@ struct fs {
 
 #define FS_HANDLE_BASE_FIELDS    \
    struct process *pi;           \
-   struct fs *fs;                \
+   struct mnt_fs *fs;            \
    const struct file_ops *fops;  \
    int fl_flags;                 \
    u16 fd_flags;                 \

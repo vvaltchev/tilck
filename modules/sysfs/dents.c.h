@@ -58,7 +58,7 @@ sysfs_dir_get_entry_by_name(struct sysfs_inode *idir,
 }
 
 static void
-sysfs_get_entry(struct fs *fs,
+sysfs_get_entry(struct mnt_fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,

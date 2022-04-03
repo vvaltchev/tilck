@@ -247,9 +247,9 @@ static void
 mount_initrd(void)
 {
    /* declare the ramfs_create() function */
-   struct fs *ramfs_create(void);
+   struct mnt_fs *ramfs_create(void);
 
-   struct fs *initrd, *ramfs;
+   struct mnt_fs *initrd, *ramfs;
    void *ramdisk;
    size_t ramdisk_size;
    int rc;

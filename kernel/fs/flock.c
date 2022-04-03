@@ -14,12 +14,12 @@ struct locked_file {
    struct bintree_node node;
    enum subsystem owner;
 
-   struct fs *fs;
+   struct mnt_fs *fs;
    vfs_inode_ptr_t inode;
 };
 
 int
-acquire_subsys_flock(struct fs *fs,
+acquire_subsys_flock(struct mnt_fs *fs,
                      vfs_inode_ptr_t i,
                      enum subsystem subsys,
                      struct locked_file **lock_ref)
@@ -157,7 +157,7 @@ acquire_subsys_flock_h(fs_handle h,
                        struct locked_file **lock_ref)
 {
    struct fs_handle_base *hb = h;
-   struct fs *fs = hb->fs;
+   struct mnt_fs *fs = hb->fs;
    vfs_inode_ptr_t i = fs->fsops->get_inode(hb);
 
    if (!i)

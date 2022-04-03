@@ -133,7 +133,7 @@ extern struct sysobj sysfs_other_obj;
  *    - Maybe replace Tilck's devfs (future)
  */
 
-struct fs *
+struct mnt_fs *
 create_sysfs(void);
 
 /*
@@ -265,7 +265,7 @@ sysfs_destroy_unregistered_obj(struct sysobj *obj);
  */
 
 int
-sysfs_register_obj(struct fs *fs,
+sysfs_register_obj(struct mnt_fs *fs,
                    struct sysobj *parent,
                    const char *name,
                    struct sysobj *obj);
@@ -275,7 +275,7 @@ sysfs_register_obj(struct fs *fs,
  */
 
 int
-sysfs_symlink_obj(struct fs *fs,
+sysfs_symlink_obj(struct mnt_fs *fs,
                   struct sysobj *new_parent,
                   const char *new_name,
                   struct sysobj *obj);

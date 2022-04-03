@@ -8,8 +8,8 @@ struct mountpoint {
    REF_COUNTED_OBJECT;
 
    vfs_inode_ptr_t host_fs_inode;
-   struct fs *host_fs;
-   struct fs *target_fs;
+   struct mnt_fs *host_fs;
+   struct mnt_fs *target_fs;
 };
 
 #define RESOLVE_STACK_SIZE       4

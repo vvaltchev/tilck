@@ -103,7 +103,7 @@ static void ramfs_on_close_last_handle(fs_handle h)
  * path, as a clean-up. It is *not* a proper way to destroy a whole ramfs
  * instance after unmounting it.
  */
-static void ramfs_err_case_destroy(struct fs *fs)
+static void ramfs_err_case_destroy(struct mnt_fs *fs)
 {
    struct ramfs_data *d = fs->device_data;
 
@@ -121,7 +121,7 @@ static void ramfs_err_case_destroy(struct fs *fs)
 }
 
 static void
-ramfs_get_entry(struct fs *fs,
+ramfs_get_entry(struct mnt_fs *fs,
                 void *dir_inode,
                 const char *name,
                 ssize_t name_len,
@@ -183,7 +183,7 @@ static int ramfs_readlink(struct vfs_path *p, char *buf)
    return (int) i->path_len;
 }
 
-static int ramfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int ramfs_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    ASSERT(inode != NULL);
 
@@ -193,7 +193,7 @@ static int ramfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return retain_obj((struct ramfs_inode *)inode);
 }
 
-static int ramfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int ramfs_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    ASSERT(inode != NULL);
 
@@ -203,7 +203,7 @@ static int ramfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return release_obj((struct ramfs_inode *)inode);
 }
 
-static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
+static int ramfs_chmod(struct mnt_fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 {
    struct ramfs_inode *i = inode;
    int rc;
@@ -229,7 +229,7 @@ static int ramfs_chmod(struct fs *fs, vfs_inode_ptr_t inode, mode_t mode)
 }
 
 static int
-ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
+ramfs_rename(struct mnt_fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -283,7 +283,7 @@ ramfs_rename(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 }
 
 static int
-ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
+ramfs_link(struct mnt_fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
 {
    struct ramfs_path *oldp = (void *)&voldp->fs_path;
    struct ramfs_path *newp = (void *)&vnewp->fs_path;
@@ -297,7 +297,7 @@ ramfs_link(struct fs *fs, struct vfs_path *voldp, struct vfs_path *vnewp)
    return ramfs_dir_add_entry(newp->dir_inode, vnewp->last_comp, oldp->inode);
 }
 
-int ramfs_futimens(struct fs *fs,
+int ramfs_futimens(struct mnt_fs *fs,
                    vfs_inode_ptr_t inode,
                    const struct k_timespec64 times[2])
 {
@@ -338,9 +338,9 @@ static const struct fs_ops static_fsops_ramfs =
    .fs_shunlock = ramfs_shunlock,
 };
 
-struct fs *ramfs_create(void)
+struct mnt_fs *ramfs_create(void)
 {
-   struct fs *fs;
+   struct mnt_fs *fs;
    struct ramfs_data *d;
 
    if (!(d = kzalloc_obj(struct ramfs_data)))
