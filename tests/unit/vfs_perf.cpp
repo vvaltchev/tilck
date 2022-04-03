@@ -7,15 +7,15 @@ using namespace std;
 class ramfs_perf : public vfs_test_base {
 
 protected:
-   struct fs *fs;
+   struct mnt_fs *mnt_fs;
 
    void SetUp() override {
 
       vfs_test_base::SetUp();
 
-      fs = ramfs_create();
-      ASSERT_TRUE(fs != NULL);
-      mp_init(fs);
+      mnt_fs = ramfs_create();
+      ASSERT_TRUE(mnt_fs != NULL);
+      mp_init(mnt_fs);
    }
 
    void TearDown() override {

@@ -16,7 +16,7 @@ class vfs_misc : public vfs_test_base {
 
 protected:
 
-   struct fs *fat_fs;
+   struct mnt_fs *fat_fs;
    size_t fatpart_size;
 
    void SetUp() override {

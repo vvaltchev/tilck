@@ -56,7 +56,7 @@ static const struct file_ops static_ops_dir_sysfs =
 };
 
 static int
-sysfs_open_dir(struct fs *fs, struct sysfs_inode *pos, fs_handle *out)
+sysfs_open_dir(struct mnt_fs *fs, struct sysfs_inode *pos, fs_handle *out)
 {
    struct sysfs_handle *h;
 

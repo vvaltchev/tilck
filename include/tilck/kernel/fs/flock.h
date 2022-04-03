@@ -11,7 +11,7 @@
 struct locked_file; /* forward declaration */
 
 int
-acquire_subsys_flock(struct fs *fs,
+acquire_subsys_flock(struct mnt_fs *fs,
                      vfs_inode_ptr_t i,
                      enum subsystem subsys,
                      struct locked_file **lock_ref);   /* out */

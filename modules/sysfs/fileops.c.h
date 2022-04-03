@@ -418,7 +418,7 @@ static const struct file_ops static_ops_file_sysfs =
 };
 
 static int
-sysfs_open_file(struct fs *fs, struct sysfs_inode *pos, fs_handle *out)
+sysfs_open_file(struct mnt_fs *fs, struct sysfs_inode *pos, fs_handle *out)
 {
    struct sysfs_handle *h;
    struct sysobj_prop *prop = pos->file.prop;

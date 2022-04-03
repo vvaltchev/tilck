@@ -243,7 +243,7 @@ ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len, bool no_perm_check)
    return rc;
 }
 
-static int ramfs_truncate(struct fs *fs, vfs_inode_ptr_t i, offt len)
+static int ramfs_truncate(struct mnt_fs *fs, vfs_inode_ptr_t i, offt len)
 {
    return ramfs_inode_truncate_safe(i, len, false);
 }

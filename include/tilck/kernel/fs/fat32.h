@@ -42,8 +42,8 @@ struct fatfs_handle {
 
 STATIC_ASSERT(sizeof(struct fatfs_handle) <= MAX_FS_HANDLE_SIZE);
 
-struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags);
-void fat_umount_ramdisk(struct fs *fs);
+struct mnt_fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags);
+void fat_umount_ramdisk(struct mnt_fs *fs);
 
 struct datetime
 fat_datetime_to_regular_datetime(u16 date, u16 time, u8 timetenth);

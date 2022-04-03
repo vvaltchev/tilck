@@ -17,9 +17,9 @@
  * Currently, only pipes use it.
  */
 
-static struct fs *kernelfs;
+static struct mnt_fs *kernelfs;
 
-static void no_lock(struct fs *fs) { }
+static void no_lock(struct mnt_fs *fs) { }
 
 static vfs_inode_ptr_t
 kernelfs_get_inode(fs_handle h)
@@ -44,19 +44,19 @@ kernelfs_on_close_last_handle(fs_handle h)
 }
 
 int
-kernelfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
+kernelfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    NOT_IMPLEMENTED();
 }
 
 static int
-kernelfs_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+kernelfs_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    return retain_obj((struct kobj_base *)inode);
 }
 
 static int
-kernelfs_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+kernelfs_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    return release_obj((struct kobj_base *)inode);
 }
@@ -127,9 +127,9 @@ static const struct fs_ops static_fsops_kernelfs =
    .fs_shunlock = no_lock,
 };
 
-static struct fs *create_kernelfs(void)
+static struct mnt_fs *create_kernelfs(void)
 {
-   struct fs *fs;
+   struct mnt_fs *fs;
 
    /* Disallow multiple instances of kernelfs */
    ASSERT(kernelfs == NULL);

@@ -291,7 +291,9 @@ fat_entry_to_inode(struct fat_hdr *hdr, struct fat_entry *e)
    return (tilck_ino_t)((long)e - (long)hdr);
 }
 
-STATIC int fat_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
+STATIC int fat_stat(struct mnt_fs *fs,
+                    vfs_inode_ptr_t i,
+                    struct k_stat64 *statbuf)
 {
    struct fat_entry *e = i;
    struct datetime crt_time, wrt_time;
@@ -396,7 +398,7 @@ static int fat_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
    return rc ? rc : ctx.rc;
 }
 
-STATIC void fat_exclusive_lock(struct fs *fs)
+STATIC void fat_exclusive_lock(struct mnt_fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -404,7 +406,7 @@ STATIC void fat_exclusive_lock(struct fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_exclusive_unlock(struct fs *fs)
+STATIC void fat_exclusive_unlock(struct mnt_fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -412,7 +414,7 @@ STATIC void fat_exclusive_unlock(struct fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_shared_lock(struct fs *fs)
+STATIC void fat_shared_lock(struct mnt_fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -420,7 +422,7 @@ STATIC void fat_shared_lock(struct fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC void fat_shared_unlock(struct fs *fs)
+STATIC void fat_shared_unlock(struct mnt_fs *fs)
 {
    if (!(fs->flags & VFS_FS_RW))
       return; /* read-only: no lock is needed */
@@ -431,7 +433,7 @@ STATIC void fat_shared_unlock(struct fs *fs)
 STATIC ssize_t fat_write(fs_handle handle, char *buf, size_t len)
 {
    struct fatfs_handle *h = (struct fatfs_handle *) handle;
-   struct fs *fs = h->fs;
+   struct mnt_fs *fs = h->fs;
 
    if (h->e->directory)
       return -EISDIR;
@@ -461,7 +463,7 @@ STATIC int
 fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
 {
    struct fatfs_handle *h;
-   struct fs *fs = p->fs;
+   struct mnt_fs *fs = p->fs;
    struct fat_fs_path *fp = (struct fat_fs_path *)&p->fs_path;
    struct fat_entry *e = fp->entry;
    struct fat_fs_device_data *d = fs->device_data;
@@ -508,7 +510,7 @@ fat_get_root_entry(struct fat_fs_device_data *d, struct fat_fs_path *fp)
 }
 
 static void
-fat_get_entry(struct fs *fs,
+fat_get_entry(struct mnt_fs *fs,
               void *dir_inode,
               const char *name,
               ssize_t name_len,
@@ -567,7 +569,7 @@ static vfs_inode_ptr_t fat_get_inode(fs_handle h)
    return ((struct fatfs_handle *)h)->e;
 }
 
-static int fat_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int fat_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    if (fs->flags & VFS_FS_RW)
       NOT_IMPLEMENTED();
@@ -575,7 +577,7 @@ static int fat_retain_inode(struct fs *fs, vfs_inode_ptr_t inode)
    return 1;
 }
 
-static int fat_release_inode(struct fs *fs, vfs_inode_ptr_t inode)
+static int fat_release_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {
    if (fs->flags & VFS_FS_RW)
       NOT_IMPLEMENTED();
@@ -606,10 +608,10 @@ static const struct fs_ops static_fsops_fat =
    .fs_shunlock = fat_shared_unlock,
 };
 
-struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
+struct mnt_fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
 {
    struct fat_fs_device_data *d;
-   struct fs *fs;
+   struct mnt_fs *fs;
 
    if (flags & VFS_FS_RW)
       panic("fat_mount_ramdisk: r/w mode is NOT currently supported");
@@ -640,7 +642,7 @@ struct fs *fat_mount_ramdisk(void *vaddr, size_t rd_size, u32 flags)
    return fs;
 }
 
-void fat_umount_ramdisk(struct fs *fs)
+void fat_umount_ramdisk(struct mnt_fs *fs)
 {
    kfree_obj(fs->device_data, struct fat_fs_device_data);
    destory_fs_obj(fs);

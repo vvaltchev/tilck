@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static int
-ramfs_stat_nolock(struct fs *fs,
+ramfs_stat_nolock(struct mnt_fs *fs,
                   struct ramfs_inode *inode,
                   struct k_stat64 *statbuf)
 {
@@ -51,7 +51,7 @@ ramfs_stat_nolock(struct fs *fs,
 }
 
 static int
-ramfs_stat(struct fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
+ramfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
    struct ramfs_inode *inode = i;
    int rc;

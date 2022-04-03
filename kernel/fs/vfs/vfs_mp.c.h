@@ -2,11 +2,11 @@
 
 static struct kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
 static struct mountpoint mps2[MAX_MOUNTPOINTS];
-static struct fs *mp_root;
+static struct mnt_fs *mp_root;
 
-int mp_init(struct fs *root_fs)
+int mp_init(struct mnt_fs *root_fs)
 {
-   /* do not support changing the root struct fs */
+   /* do not support changing the root struct mnt_fs */
    NO_TEST_ASSERT(!mp_root);
 
 #ifdef UNIT_TEST_ENVIRONMENT
@@ -18,13 +18,13 @@ int mp_init(struct fs *root_fs)
    return 0;
 }
 
-struct fs *mp_get_root(void)
+struct mnt_fs *mp_get_root(void)
 {
    ASSERT(mp_root != NULL);
    return mp_root;
 }
 
-struct fs *mp_get_at_nolock(struct fs *host_fs, vfs_inode_ptr_t inode)
+struct mnt_fs *mp_get_at_nolock(struct mnt_fs *host_fs, vfs_inode_ptr_t inode)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&mp_mutex));
 
@@ -35,9 +35,9 @@ struct fs *mp_get_at_nolock(struct fs *host_fs, vfs_inode_ptr_t inode)
    return NULL;
 }
 
-struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
+struct mnt_fs *mp_get_retained_at(struct mnt_fs *host_fs, vfs_inode_ptr_t inode)
 {
-   struct fs *ret;
+   struct mnt_fs *ret;
    kmutex_lock(&mp_mutex);
    {
       if ((ret = mp_get_at_nolock(host_fs, inode)))
@@ -47,7 +47,7 @@ struct fs *mp_get_retained_at(struct fs *host_fs, vfs_inode_ptr_t inode)
    return ret;
 }
 
-struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
+struct mountpoint *mp_get_retained_mp_of(struct mnt_fs *target_fs)
 {
    int i;
    struct mountpoint *res = NULL;
@@ -67,7 +67,7 @@ struct mountpoint *mp_get_retained_mp_of(struct fs *target_fs)
    return res;
 }
 
-int mp_add(struct fs *target_fs, const char *target_path)
+int mp_add(struct mnt_fs *target_fs, const char *target_path)
 {
    struct vfs_path p;
    int i, rc;
@@ -96,7 +96,7 @@ int mp_add(struct fs *target_fs, const char *target_path)
    vfs_fs_shunlock(p.fs);
    kmutex_lock(&mp_mutex);
 
-   /* we need to have the root struct fs set */
+   /* we need to have the root struct mnt_fs set */
    ASSERT(mp_root != NULL);
 
    if (mp_get_at_nolock(p.fs, p.fs_path.inode)) {
@@ -150,7 +150,7 @@ int mp_remove(const char *target_path)
    NOT_IMPLEMENTED();
 }
 
-void vfs_syncfs(struct fs *fs)
+void vfs_syncfs(struct mnt_fs *fs)
 {
    ASSERT(is_preemption_enabled());
 

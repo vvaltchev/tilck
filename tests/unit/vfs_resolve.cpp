@@ -63,9 +63,9 @@ static tfs_entry *root3 =
       N_FILE("fd2")
    );
 
-static struct fs fs1 = create_test_fs("fs1", root1);
-static struct fs fs2 = create_test_fs("fs2", root2);
-static struct fs fs3 = create_test_fs("fs3", root3);
+static struct mnt_fs fs1 = create_test_fs("fs1", root1);
+static struct mnt_fs fs2 = create_test_fs("fs2", root2);
+static struct mnt_fs fs3 = create_test_fs("fs3", root3);
 
 static void reset_all_fs_refcounts()
 {
@@ -140,7 +140,7 @@ protected:
 
       /*
        * Compensate the effect of mp_init, mp_add etc.
-       * TODO: implement and call mp_remove() for each fs instead.
+       * TODO: implement and call mp_remove() for each mnt_fs instead.
        */
 
       release_obj(&fs1); /* mp_init(&fs1) */
@@ -426,7 +426,7 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    int rc;
    struct vfs_path p;
 
-   /* target-fs's root without slash */
+   /* target-mnt_fs's root without slash */
    rc = resolve("/a/b/c2", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
@@ -434,7 +434,7 @@ TEST_F(vfs_resolve_multi_fs, basic_case)
    ASSERT_STREQ(p.last_comp, "c2");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
-   /* target-fs's root with slash */
+   /* target-mnt_fs's root with slash */
    rc = resolve("/a/b/c2/", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);
@@ -528,7 +528,7 @@ TEST_F(vfs_resolve_multi_fs, dot_dot)
    ASSERT_STREQ(p.last_comp, "../");
    ASSERT_NO_FATAL_FAILURE({ check_all_fs_refcounts(); });
 
-   /* ../ crossing the fs-boundary [c2 is a mount-point] */
+   /* ../ crossing the mnt_fs-boundary [c2 is a mount-point] */
    rc = resolve("/a/b/c2/x/../..", &p, true);
    ASSERT_EQ(rc, 0);
    ASSERT_TRUE(p.fs_path.inode != nullptr);

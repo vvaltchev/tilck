@@ -39,11 +39,11 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
    if (ctx->fs_flags & VFS_FS_RQ_DE_SKIP) {
 
       /*
-       * Pseudo-hack used fortunately *only* by the FAT32 struct fs: it
+       * Pseudo-hack used fortunately *only* by the FAT32 struct mnt_fs: it
        * implements here in the VFS layer a trivial mechanism to skip the first
-       * `pos` entries of a directory in case the struct fs does not have a
+       * `pos` entries of a directory in case the struct mnt_fs does not have a
        * way to just "save" the current position and resume from there in each
-       * call of the fs-op getdents().
+       * call of the mnt_fs-op getdents().
        *
        * TODO: implement in FAT32 a way to walk a directory step-by-step,
        * instead of having to walk all the entries every time and skipping the

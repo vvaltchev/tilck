@@ -31,7 +31,7 @@ void vfs_close(fs_handle h)
 
    struct process *pi = get_curr_proc();
    struct fs_handle_base *hb = h;
-   struct fs *fs = hb->fs;
+   struct mnt_fs *fs = hb->fs;
    struct locked_file *lf = hb->lf;
    const struct fs_ops *fsops = fs->fsops;
 
@@ -53,7 +53,7 @@ void vfs_close(fs_handle h)
 
    release_obj(fs);
 
-   /* while a struct fs is mounted, the minimum ref-count it can have is 1 */
+   /* the minimum ref-count that a mounted fs can have is 1 */
    ASSERT(get_ref_count(fs) > 0);
 }
 
@@ -186,7 +186,7 @@ int vfs_fstat64(fs_handle h, struct k_stat64 *statbuf)
    ASSERT(h != NULL);
 
    struct fs_handle_base *hb = (struct fs_handle_base *) h;
-   struct fs *fs = hb->fs;
+   struct mnt_fs *fs = hb->fs;
    const struct fs_ops *fsops = fs->fsops;
 
    return fsops->stat(fs, fsops->get_inode(h), statbuf);
@@ -229,7 +229,9 @@ int vfs_fdatasync(fs_handle h)
 
 /* ----------- path-based functions -------------- */
 
-typedef int (*vfs_func_impl)(struct fs*, struct vfs_path*, ulong, ulong, ulong);
+typedef int (*vfs_func_impl)(struct mnt_fs *,
+                             struct vfs_path *,
+                             ulong, ulong, ulong);
 
 static ALWAYS_INLINE int
 __vfs_path_funcs_wrapper(const char *path,
@@ -262,7 +264,7 @@ __vfs_path_funcs_wrapper(const char *path,
                             (ulong)a1, (ulong)a2, (ulong)a3)
 
 static ALWAYS_INLINE int
-vfs_open_impl(struct fs *fs, struct vfs_path *p,
+vfs_open_impl(struct mnt_fs *fs, struct vfs_path *p,
               fs_handle *out, int flags, mode_t mode)
 {
    const enum vfs_entry_type type = p->fs_path.type;
@@ -293,7 +295,7 @@ vfs_open_impl(struct fs *fs, struct vfs_path *p,
       }
    }
 
-   /* file handles retain their struct fs */
+   /* file handles retain their struct mnt_fs */
    retain_obj(fs);
    return 0;
 }
@@ -312,7 +314,7 @@ int vfs_open(const char *path, fs_handle *out, int flags, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_stat64_impl(struct fs *fs,
+vfs_stat64_impl(struct mnt_fs *fs,
                 struct vfs_path *p,
                 struct k_stat64 *statbuf,
                 bool res_last_sl,
@@ -338,7 +340,10 @@ int vfs_stat64(const char *path, struct k_stat64 *statbuf, bool res_last_sl)
 }
 
 static ALWAYS_INLINE int
-vfs_mkdir_impl(struct fs *fs, struct vfs_path *p, mode_t mode, ulong x, ulong y)
+vfs_mkdir_impl(struct mnt_fs *fs,
+               struct vfs_path *p,
+               mode_t mode,
+               ulong x, ulong y)
 {
    if (!fs->fsops->mkdir)
       return -EPERM;
@@ -366,7 +371,9 @@ int vfs_mkdir(const char *path, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_rmdir_impl(struct fs *fs, struct vfs_path *p, ulong u1, ulong u2, ulong u3)
+vfs_rmdir_impl(struct mnt_fs *fs,
+               struct vfs_path *p,
+               ulong u1, ulong u2, ulong u3)
 {
    if (!fs->fsops->rmdir)
       return -EPERM;
@@ -392,7 +399,9 @@ int vfs_rmdir(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_unlink_impl(struct fs *fs, struct vfs_path *p, ulong u1, ulong u2, ulong u3)
+vfs_unlink_impl(struct mnt_fs *fs,
+                struct vfs_path *p,
+                ulong u1, ulong u2, ulong u3)
 {
    if (!fs->fsops->unlink)
       return -EPERM;
@@ -418,7 +427,9 @@ int vfs_unlink(const char *path)
 }
 
 static ALWAYS_INLINE int
-vfs_truncate_impl(struct fs *fs, struct vfs_path *p, offt len, ulong x, ulong y)
+vfs_truncate_impl(struct mnt_fs *fs,
+                  struct vfs_path *p,
+                  offt len, ulong x, ulong y)
 {
    struct locked_file *lf = NULL;
    int rc;
@@ -461,7 +472,7 @@ int vfs_truncate(const char *path, offt len)
 }
 
 static ALWAYS_INLINE int
-vfs_symlink_impl(struct fs *fs,
+vfs_symlink_impl(struct mnt_fs *fs,
                  struct vfs_path *p, const char *target, ulong u1, ulong u2)
 {
    if (!fs->fsops->symlink)
@@ -489,7 +500,7 @@ int vfs_symlink(const char *target, const char *linkpath)
 }
 
 static ALWAYS_INLINE int
-vfs_readlink_impl(struct fs *fs,
+vfs_readlink_impl(struct mnt_fs *fs,
                   struct vfs_path *p,
                   char *buf,
                   ulong u1,
@@ -523,7 +534,7 @@ int vfs_readlink(const char *path, char *buf)
 }
 
 static ALWAYS_INLINE int
-vfs_chown_impl(struct fs *fs,
+vfs_chown_impl(struct mnt_fs *fs,
                struct vfs_path *p,
                int owner,
                int group,
@@ -546,7 +557,7 @@ int vfs_chown(const char *path, int owner, int group, bool reslink)
 }
 
 static ALWAYS_INLINE int
-vfs_chmod_impl(struct fs *fs, struct vfs_path *p, mode_t mode)
+vfs_chmod_impl(struct mnt_fs *fs, struct vfs_path *p, mode_t mode)
 {
    if (!fs->fsops->chmod)
       return -EPERM;
@@ -573,7 +584,7 @@ int vfs_chmod(const char *path, mode_t mode)
 }
 
 static ALWAYS_INLINE int
-vfs_utimens_impl(struct fs *fs,
+vfs_utimens_impl(struct mnt_fs *fs,
                  struct vfs_path *p,
                  const struct k_timespec64 ts[2])
 {
@@ -601,9 +612,9 @@ int vfs_utimens(const char *path, const struct k_timespec64 times[2])
 static int
 vfs_rename_or_link(const char *oldpath,
                    const char *newpath,
-                   func_2paths (*get_func_ptr)(struct fs *))
+                   func_2paths (*get_func_ptr)(struct mnt_fs *))
 {
-   struct fs *fs;
+   struct mnt_fs *fs;
    func_2paths func;
    struct vfs_path oldp, newp;
    int rc;
@@ -646,7 +657,7 @@ vfs_rename_or_link(const char *oldpath,
 
    /*
     * OK, now we're at a crucial point: check if the two files belong to the
-    * same struct fs.
+    * same struct mnt_fs.
     */
 
    if (newp.fs != fs) {
@@ -654,7 +665,7 @@ vfs_rename_or_link(const char *oldpath,
       /*
        * They do *not* belong to the same fs. It's impossible to continue.
        * We have to release: the exlock and the retain count of the new
-       * fs plus the retain count of old's inode and its struct fs.
+       * fs plus the retain count of old's inode and its struct mnt_fs.
        */
 
       vfs_smart_fs_unlock(newp.fs, true);
@@ -673,13 +684,13 @@ vfs_rename_or_link(const char *oldpath,
    release_obj(fs);
    vfs_release_inode_at(&oldp); /* note: we're still holding an exlock on fs */
 
-   /* Finally, we can call struct fs's func (if any) */
+   /* Finally, we can call struct mnt_fs's func (if any) */
    func = get_func_ptr(fs);
 
    rc = func
       ? fs->flags & VFS_FS_RW
          ? func(fs, &oldp, &newp)
-         : -EROFS /* read-only struct fs */
+         : -EROFS /* read-only struct mnt_fs */
       : -EPERM; /* not supported */
 
    /* We're done, release fs's exlock and its retain count */
@@ -688,12 +699,12 @@ vfs_rename_or_link(const char *oldpath,
    return rc;
 }
 
-static ALWAYS_INLINE func_2paths vfs_get_rename_func(struct fs *fs)
+static ALWAYS_INLINE func_2paths vfs_get_rename_func(struct mnt_fs *fs)
 {
    return fs->fsops->rename;
 }
 
-static ALWAYS_INLINE func_2paths vfs_get_link_func(struct fs *fs)
+static ALWAYS_INLINE func_2paths vfs_get_link_func(struct mnt_fs *fs)
 {
    return fs->fsops->link;
 }
@@ -861,13 +872,13 @@ u32 vfs_get_new_device_id(void)
    return next_device_id++;
 }
 
-struct fs *
+struct mnt_fs *
 create_fs_obj(const char *type,
               const struct fs_ops *fsops,
               void *device_data,
               u32 flags)
 {
-   struct fs *fs = kzalloc_obj(struct fs);
+   struct mnt_fs *fs = kzalloc_obj(struct mnt_fs);
 
    if (!fs)
       return NULL;
@@ -882,13 +893,13 @@ create_fs_obj(const char *type,
    return fs;
 }
 
-void destory_fs_obj(struct fs *fs)
+void destory_fs_obj(struct mnt_fs *fs)
 {
    ASSERT(!fs->pss_lock_root);
-   kfree_obj(fs, struct fs);
+   kfree_obj(fs, struct mnt_fs);
 }
 
-int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i)
+int vfs_exlock_noblock(struct mnt_fs *fs, vfs_inode_ptr_t i)
 {
    int rc;
 
@@ -918,7 +929,7 @@ int vfs_exlock_noblock(struct fs *fs, vfs_inode_ptr_t i)
    return rc;
 }
 
-int vfs_exunlock(struct fs *fs, vfs_inode_ptr_t i)
+int vfs_exunlock(struct mnt_fs *fs, vfs_inode_ptr_t i)
 {
    int rc;
 
@@ -964,7 +975,7 @@ fs_handle vfs_alloc_handle(void)
    return h;
 }
 
-fs_handle vfs_create_new_handle(struct fs *fs, const struct file_ops *fops)
+fs_handle vfs_create_new_handle(struct mnt_fs *fs, const struct file_ops *fops)
 {
    struct fs_handle_base *hb = vfs_alloc_handle();
 

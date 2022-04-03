@@ -69,12 +69,12 @@ struct driver_info {
 };
 
 
-struct fs *create_devfs(void);
+struct mnt_fs *create_devfs(void);
 void init_devfs(void);
 int register_driver(struct driver_info *info, int major);
 
 int create_dev_file(const char *filename, u16 major, u16 minor, void **devfile);
-struct fs *get_devfs(void);
+struct mnt_fs *get_devfs(void);
 struct driver_info *get_driver_info(u16 major);
 
 /* Special interface for in-kernel use of devfs handles */
