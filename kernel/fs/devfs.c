@@ -152,13 +152,13 @@ create_dev_file(const char *filename, u16 major, u16 minor, void **devfile)
 }
 
 static ssize_t
-devfs_dir_read(fs_handle h, char *buf, size_t len)
+devfs_dir_read(fs_handle h, char *buf, size_t len, offt *pos)
 {
    return -EISDIR;
 }
 
 static ssize_t
-devfs_dir_write(fs_handle h, char *buf, size_t len)
+devfs_dir_write(fs_handle h, char *buf, size_t len, offt *pos)
 {
    return -EISDIR;
 }
@@ -184,8 +184,8 @@ devfs_dir_seek(fs_handle h, offt target_off, int whence)
 
    if (off == target_off) {
       dh->dpos = pos;
-      dh->pos = off;
-      return dh->pos;
+      dh->dir_pos = off;
+      return dh->dir_pos;
    }
 
    return -EINVAL;

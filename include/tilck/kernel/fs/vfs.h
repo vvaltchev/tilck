@@ -70,8 +70,8 @@ typedef int     (*func_trunc)  (struct mnt_fs *,
 typedef int     (*func_exlock_noblk) (struct mnt_fs *, vfs_inode_ptr_t);
 
 /* file ops */
-typedef ssize_t        (*func_read)         (fs_handle, char *, size_t);
-typedef ssize_t        (*func_write)        (fs_handle, char *, size_t);
+typedef ssize_t        (*func_read)         (fs_handle, char *, size_t, offt *);
+typedef ssize_t        (*func_write)        (fs_handle, char *, size_t, offt *);
 typedef offt           (*func_seek)         (fs_handle, offt, int);
 typedef int            (*func_ioctl)        (fs_handle, ulong, void *);
 

@@ -27,12 +27,13 @@ struct pipe {
    ATOMIC(int) write_handles;
 };
 
-static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
+static ssize_t pipe_read(fs_handle h, char *buf, size_t size, offt *pos)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
    bool sig_pending = false;
    ssize_t rc = 0;
+   ASSERT(*pos == 0);
 
    if (!size)
       return 0;
@@ -90,12 +91,13 @@ static ssize_t pipe_read(fs_handle h, char *buf, size_t size)
    return !sig_pending ? rc : -EINTR;
 }
 
-static ssize_t pipe_write(fs_handle h, char *buf, size_t size)
+static ssize_t pipe_write(fs_handle h, char *buf, size_t size, offt *pos)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
    bool sig_pending = false;
    ssize_t rc = 0;
+   ASSERT(*pos == 0);
 
    if (!size)
       return 0;

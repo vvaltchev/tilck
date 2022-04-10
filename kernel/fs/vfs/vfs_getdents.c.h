@@ -50,7 +50,7 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
        * already "returned" entries. This way we could drop VFS_FS_RQ_DE_SKIP.
        */
 
-      if (ctx->off < ctx->h->pos) {
+      if (ctx->off < ctx->h->dir_pos) {
          ctx->off++;
          return 0; /* skip the dentry */
       }
@@ -88,7 +88,7 @@ static int vfs_getdents_cb(struct vfs_dent64 *vde, void *arg)
 
    ctx->offset += entry_size;
    ctx->off++;
-   ctx->h->pos++;
+   ctx->h->dir_pos++;
    return 0;
 }
 
@@ -107,7 +107,7 @@ int vfs_getdents64(fs_handle h, struct linux_dirent64 *user_dirp, u32 buf_size)
       .buf_size      = buf_size,
       .offset        = 0,
       .fs_flags      = hb->fs->flags,
-      .off           = hb->fs->flags & VFS_FS_RQ_DE_SKIP ? 0 : ctx.h->pos,
+      .off           = hb->fs->flags & VFS_FS_RQ_DE_SKIP ? 0 : ctx.h->dir_pos,
       .ent           = { 0 },
    };
 

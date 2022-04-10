@@ -33,7 +33,7 @@ fat_fs_walk_generic(struct fat_fs_device_data *d,
 }
 
 STATIC ssize_t
-fat_read(fs_handle handle, char *buf, size_t bufsize)
+fat_read(fs_handle handle, char *buf, size_t bufsize, offt *pos)
 {
    struct fatfs_handle *h = (struct fatfs_handle *) handle;
    struct fat_fs_device_data *d = h->fs->device_data;
@@ -43,7 +43,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
    if (h->e->directory)
       return -EISDIR;
 
-   if (h->pos >= fsize) {
+   if (*pos >= fsize) {
 
       /*
        * The cursor is at the end or past the end: nothing to read.
@@ -56,9 +56,9 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 
       char *data = fat_get_pointer_to_cluster_data(d->hdr, h->curr_cluster);
 
-      const offt file_rem       = fsize - h->pos;
+      const offt file_rem       = fsize - *pos;
       const offt buf_rem        = (offt)bufsize - written_to_buf;
-      const offt cluster_off    = h->pos % (offt)d->cluster_size;
+      const offt cluster_off    = *pos % (offt)d->cluster_size;
       const offt cluster_rem    = (offt)d->cluster_size - cluster_off;
       const offt to_read        = MIN3(cluster_rem, buf_rem, file_rem);
 
@@ -66,7 +66,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
 
       memcpy(buf + written_to_buf, data + cluster_off, (size_t)to_read);
       written_to_buf += to_read;
-      h->pos += to_read;
+      *pos += to_read;
 
       if (to_read < cluster_rem) {
 
@@ -82,7 +82,7 @@ fat_read(fs_handle handle, char *buf, size_t bufsize)
       u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
-         ASSERT(h->pos == fsize);
+         ASSERT(*pos == fsize);
          break;
       }
 
@@ -101,7 +101,7 @@ STATIC int
 fat_rewind(fs_handle handle)
 {
    struct fatfs_handle *h = (struct fatfs_handle *) handle;
-   h->pos = 0;
+   h->h_fpos = 0;
    h->curr_cluster = fat_get_first_cluster(h->e);
    return 0;
 }
@@ -115,27 +115,27 @@ fat_seek_forward(fs_handle handle, offt dist)
    offt moved_distance = 0;
 
    if (dist == 0)
-      return h->pos;
+      return h->h_fpos;
 
-   if (h->pos + dist > fsize) {
+   if (h->h_fpos + dist > fsize) {
       /* Allow, like Linux does, to seek past the end of a file. */
-      h->pos += dist;
+      h->h_fpos += dist;
       h->curr_cluster = (u32) -1; /* invalid cluster */
-      return (offt) h->pos;
+      return (offt) h->h_fpos;
    }
 
    do {
 
-      const offt file_rem       = fsize - h->pos;
+      const offt file_rem       = fsize - h->h_fpos;
       const offt dist_rem       = dist - moved_distance;
-      const offt cluster_off    = h->pos % (offt)d->cluster_size;
+      const offt cluster_off    = h->h_fpos % (offt)d->cluster_size;
       const offt cluster_rem    = (offt)d->cluster_size - cluster_off;
       const offt to_move        = MIN3(cluster_rem, dist_rem, file_rem);
 
       ASSERT(to_move >= 0);
 
       moved_distance += to_move;
-      h->pos += to_move;
+      h->h_fpos += to_move;
 
       if (to_move < cluster_rem)
          break;
@@ -144,7 +144,7 @@ fat_seek_forward(fs_handle handle, offt dist)
       u32 fatval = fat_read_fat_entry(d->hdr, d->type, 0, h->curr_cluster);
 
       if (fat_is_end_of_clusterchain(d->type, fatval)) {
-         ASSERT(h->pos == fsize);
+         ASSERT(h->h_fpos == fsize);
          break;
       }
 
@@ -155,7 +155,7 @@ fat_seek_forward(fs_handle handle, offt dist)
 
    } while (true);
 
-   return (offt)h->pos;
+   return (offt)h->h_fpos;
 }
 
 struct fat_count_dirents_ctx {
@@ -203,8 +203,8 @@ static offt fat_seek_dir(struct fatfs_handle *fh, offt off)
    if (off > fat_count_dirents(fh->fs->device_data, fh->e))
       return -EINVAL;
 
-   fh->pos = off;
-   return fh->pos;
+   fh->dir_pos = off;
+   return fh->dir_pos;
 }
 
 STATIC offt
@@ -220,7 +220,7 @@ fat_seek(fs_handle handle, offt off, int whence)
       return fat_seek_dir(fh, off);
    }
 
-   offt curr_pos = fh->pos;
+   offt curr_pos = fh->h_fpos;
 
    switch (whence) {
 
@@ -430,7 +430,7 @@ STATIC void fat_shared_unlock(struct mnt_fs *fs)
    NOT_IMPLEMENTED();
 }
 
-STATIC ssize_t fat_write(fs_handle handle, char *buf, size_t len)
+STATIC ssize_t fat_write(fs_handle handle, char *buf, size_t len, offt *pos)
 {
    struct fatfs_handle *h = (struct fatfs_handle *) handle;
    struct mnt_fs *fs = h->fs;
@@ -488,7 +488,7 @@ fat_open(struct vfs_path *p, fs_handle *out, int fl, mode_t mode)
       return -ENOMEM;
 
    h->e = e;
-   h->pos = 0;
+   h->h_fpos = 0;
    h->curr_cluster = fat_get_first_cluster(e);
 
    if (d->mmap_support)

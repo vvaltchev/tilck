@@ -38,21 +38,23 @@ static struct keypress_handler_elem tty_keypress_handler_elem =
 
 STATIC_ASSERT(ARRAY_SIZE(ttys) > MAX_TTYS);
 
-static ssize_t tty_read(fs_handle h, char *buf, size_t size)
+static ssize_t tty_read(fs_handle h, char *buf, size_t size, offt *pos)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
    struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
+   ASSERT(*pos == 0);
    return tty_read_int(t, dh, buf, size);
 }
 
-static ssize_t tty_write(fs_handle h, char *buf, size_t size)
+static ssize_t tty_write(fs_handle h, char *buf, size_t size, offt *pos)
 {
    struct devfs_handle *dh = h;
    struct devfs_file *df = dh->file;
    struct tty *t = df->dev_minor ? ttys[df->dev_minor] : get_curr_tty();
 
+   ASSERT(*pos == 0);
    return tty_write_int(t, dh, buf, size);
 }
 

@@ -14,7 +14,7 @@ static offt ramfs_dir_seek(struct ramfs_handle *rh, offt target_off)
    list_for_each_ro(dpos, &i->entries_list, lnode) {
 
       if (off == target_off) {
-         rh->pos = off;
+         rh->dir_pos = off;
          rh->dpos = dpos;
          break;
       }
@@ -22,7 +22,7 @@ static offt ramfs_dir_seek(struct ramfs_handle *rh, offt target_off)
       off++;
    }
 
-   return rh->pos;
+   return rh->dir_pos;
 }
 
 static offt
@@ -48,27 +48,27 @@ ramfs_seek_nolock(struct ramfs_handle *rh, offt off, int whence)
    switch (whence) {
 
       case SEEK_SET:
-         rh->pos = off;
+         rh->h_fpos = off;
          break;
 
       case SEEK_CUR:
-         rh->pos += off;
+         rh->h_fpos += off;
          break;
 
       case SEEK_END:
-         rh->pos = (offt)i->fsize + off;
+         rh->h_fpos = (offt)i->fsize + off;
          break;
 
       default:
          return -EINVAL;
    }
 
-   if (rh->pos < 0) {
-      rh->pos = 0;
+   if (rh->h_fpos < 0) {
+      rh->h_fpos = 0;
       return -EINVAL;
    }
 
-   return rh->pos;
+   return rh->h_fpos;
 }
 
 static offt ramfs_seek(fs_handle h, offt off, int whence)
@@ -249,7 +249,7 @@ static int ramfs_truncate(struct mnt_fs *fs, vfs_inode_ptr_t i, offt len)
 }
 
 static ssize_t
-ramfs_read_nolock(struct ramfs_handle *rh, char *buf, size_t len)
+ramfs_read_nolock(struct ramfs_handle *rh, char *buf, size_t len, offt *pos)
 {
    struct ramfs_inode *inode = rh->inode;
    offt tot_read = 0;
@@ -263,13 +263,13 @@ ramfs_read_nolock(struct ramfs_handle *rh, char *buf, size_t len)
    while (buf_rem > 0) {
 
       struct ramfs_block *block;
-      const offt page     = rh->pos & (offt)PAGE_MASK;
-      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page     = *pos & (offt)PAGE_MASK;
+      const offt page_off = *pos & (offt)OFFSET_IN_PAGE_MASK;
       const offt page_rem = (offt)PAGE_SIZE - page_off;
-      const offt file_rem = inode->fsize - rh->pos;
+      const offt file_rem = inode->fsize - *pos;
       const offt to_read  = MIN3(page_rem, buf_rem, file_rem);
 
-      if (rh->pos >= inode->fsize)
+      if (*pos >= inode->fsize)
          break;
 
       ASSERT(to_read >= 0);
@@ -292,28 +292,28 @@ ramfs_read_nolock(struct ramfs_handle *rh, char *buf, size_t len)
       }
 
       tot_read += to_read;
-      rh->pos  += to_read;
+      *pos  += to_read;
       buf_rem  -= to_read;
    }
 
    return (ssize_t) tot_read;
 }
 
-static ssize_t ramfs_read(fs_handle h, char *buf, size_t len)
+static ssize_t ramfs_read(fs_handle h, char *buf, size_t len, offt *pos)
 {
    struct ramfs_handle *rh = h;
    ssize_t ret;
 
    ramfs_file_shlock(h);
    {
-      ret = ramfs_read_nolock(rh, buf, len);
+      ret = ramfs_read_nolock(rh, buf, len, pos);
    }
    ramfs_file_shunlock(h);
    return ret;
 }
 
 static ssize_t
-ramfs_write_nolock(struct ramfs_handle *rh, char *buf, size_t len)
+ramfs_write_nolock(struct ramfs_handle *rh, char *buf, size_t len, offt *pos)
 {
    struct ramfs_inode *inode = rh->inode;
    offt tot_written = 0;
@@ -323,13 +323,13 @@ ramfs_write_nolock(struct ramfs_handle *rh, char *buf, size_t len)
    ASSERT(inode->type == VFS_FILE);
 
    if (rh->fl_flags & O_APPEND)
-      rh->pos = inode->fsize;
+      *pos = inode->fsize;
 
    while (buf_rem > 0) {
 
       struct ramfs_block *block;
-      const offt page     = rh->pos & (offt)PAGE_MASK;
-      const offt page_off = rh->pos & (offt)OFFSET_IN_PAGE_MASK;
+      const offt page     = *pos & (offt)PAGE_MASK;
+      const offt page_off = *pos & (offt)OFFSET_IN_PAGE_MASK;
       const offt page_rem = (offt)PAGE_SIZE - page_off;
       const offt to_write = MIN(page_rem, buf_rem);
 
@@ -355,10 +355,10 @@ ramfs_write_nolock(struct ramfs_handle *rh, char *buf, size_t len)
       memcpy(block->vaddr + page_off, buf + tot_written, (size_t)to_write);
       tot_written += to_write;
       buf_rem     -= to_write;
-      rh->pos     += to_write;
+      *pos     += to_write;
 
-      if (rh->pos > inode->fsize)
-         inode->fsize = rh->pos;
+      if (*pos > inode->fsize)
+         inode->fsize = *pos;
    }
 
    if (len > 0 && !tot_written)
@@ -367,14 +367,14 @@ ramfs_write_nolock(struct ramfs_handle *rh, char *buf, size_t len)
    return (ssize_t)tot_written;
 }
 
-static ssize_t ramfs_write(fs_handle h, char *buf, size_t len)
+static ssize_t ramfs_write(fs_handle h, char *buf, size_t len, offt *pos)
 {
    struct ramfs_handle *rh = h;
    ssize_t ret;
 
    ramfs_file_exlock(h);
    {
-      ret = ramfs_write_nolock(rh, buf, len);
+      ret = ramfs_write_nolock(rh, buf, len, pos);
    }
    ramfs_file_exunlock(h);
    return ret;
@@ -391,7 +391,7 @@ ramfs_readv_nolock(struct ramfs_handle *rh, const struct iovec *iov, int iovcnt)
    for (int i = 0; i < iovcnt; i++) {
 
       len = MIN(iov[i].iov_len, IO_COPYBUF_SIZE);
-      rc = ramfs_read_nolock(rh, curr->io_copybuf, len);
+      rc = ramfs_read_nolock(rh, curr->io_copybuf, len, &rh->h_fpos);
 
       if (rc < 0) {
          ret = rc;
@@ -439,7 +439,7 @@ ramfs_writev_nolock(struct ramfs_handle *h, const struct iovec *iov, int iovcnt)
       if (copy_from_user(curr->io_copybuf, iov[i].iov_base, len))
          return -EFAULT;
 
-      rc = ramfs_write_nolock(h, curr->io_copybuf, len);
+      rc = ramfs_write_nolock(h, curr->io_copybuf, len, &h->h_fpos);
 
       if (rc < 0) {
          ret = rc;

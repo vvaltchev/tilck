@@ -28,13 +28,12 @@ extern u32 fb_size;
 static ssize_t total_fb_pages_mapped;
 static struct list mappings_list = STATIC_LIST_INIT(mappings_list);
 
-static ssize_t fb_read(fs_handle h, char *user_buf, size_t size)
+static ssize_t fb_read(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
-   struct devfs_handle *dh = h;
-   ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
-   void *src = (char *)fb_vaddr + dh->pos;
+   ssize_t actual_size = MIN((offt)fb_size - *pos, (offt)size);
+   void *src = (char *)fb_vaddr + *pos;
 
-   dh->pos += actual_size;
+   *pos += actual_size;
 
    if (copy_to_user(user_buf, src, (size_t)actual_size))
       return -EFAULT;
@@ -42,12 +41,11 @@ static ssize_t fb_read(fs_handle h, char *user_buf, size_t size)
    return actual_size;
 }
 
-static ssize_t fb_write(fs_handle h, char *user_buf, size_t size)
+static ssize_t fb_write(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
-   struct devfs_handle *dh = h;
-   ssize_t actual_size = MIN((offt)fb_size - dh->pos, (offt)size);
-   void *dest = (char *)fb_vaddr + dh->pos;
-   dh->pos += (offt)actual_size;
+   ssize_t actual_size = MIN((offt)fb_size - *pos, (offt)size);
+   void *dest = (char *)fb_vaddr + *pos;
+   *pos += (offt)actual_size;
 
    if (copy_from_user(dest, user_buf, (size_t)actual_size))
       return -EFAULT;
@@ -67,19 +65,19 @@ static offt fb_seek(fs_handle h, offt off, int whence)
          break;
 
       case SEEK_CUR:
-         new_pos = dh->pos + off;
+         new_pos = dh->h_fpos + off;
          break;
 
       case SEEK_END:
-         new_pos = dh->pos - off;
+         new_pos = dh->h_fpos - off;
          break;
    }
 
    if (new_pos < 0 || (size_t)new_pos > fb_size)
       return -EINVAL;
 
-   dh->pos = new_pos;
-   return dh->pos;
+   dh->h_fpos = new_pos;
+   return dh->h_fpos;
 }
 
 static int fb_ioctl(fs_handle h, ulong request, void *argp)

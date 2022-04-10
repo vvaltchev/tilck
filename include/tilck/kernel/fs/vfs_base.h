@@ -93,15 +93,18 @@ struct mnt_fs {
  * thread support.
  */
 
-#define FS_HANDLE_BASE_FIELDS    \
-   struct process *pi;           \
-   struct mnt_fs *fs;            \
-   const struct file_ops *fops;  \
-   int fl_flags;                 \
-   u16 fd_flags;                 \
-   u16 spec_flags;               \
-   struct locked_file *lf;       \
-   offt pos;                        /* file: offset, dir: opaque entry index */
+#define FS_HANDLE_BASE_FIELDS                         \
+   struct process *pi;                                \
+   struct mnt_fs *fs;                                 \
+   const struct file_ops *fops;                       \
+   int fl_flags;                                      \
+   u16 fd_flags;                                      \
+   u16 spec_flags;                                    \
+   struct locked_file *lf;                            \
+   union {                                            \
+      offt h_fpos;               /* file offset  */   \
+      offt dir_pos;              /* dir position */   \
+   };
 
 struct fs_handle_base {
    FS_HANDLE_BASE_FIELDS
