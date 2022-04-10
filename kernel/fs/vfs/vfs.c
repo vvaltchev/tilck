@@ -120,7 +120,7 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size)
    if ((hb->fl_flags & O_WRONLY) && !(hb->fl_flags & O_RDWR))
       return -EBADF; /* file not opened for reading */
 
-   return hb->fops->read(h, buf, buf_size);
+   return hb->fops->read(h, buf, buf_size, &hb->h_fpos);
 }
 
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
@@ -136,7 +136,7 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    if (!(hb->fl_flags & (O_WRONLY | O_RDWR)))
       return -EBADF; /* file not opened for writing */
 
-   return hb->fops->write(h, buf, buf_size);
+   return hb->fops->write(h, buf, buf_size, &hb->h_fpos);
 }
 
 offt vfs_seek(fs_handle h, s64 off, int whence)

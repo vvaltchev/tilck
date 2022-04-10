@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 static ssize_t
-sysfs_dir_read(fs_handle h, char *buf, size_t len)
+sysfs_dir_read(fs_handle h, char *buf, size_t len, offt *pos)
 {
    return -EISDIR;
 }
 
 static ssize_t
-sysfs_dir_write(fs_handle h, char *buf, size_t len)
+sysfs_dir_write(fs_handle h, char *buf, size_t len, offt *pos)
 {
    return -EISDIR;
 }
@@ -38,8 +38,8 @@ sysfs_dir_seek(fs_handle h, offt target_off, int whence)
 
    if (off == target_off) {
       sh->dir.dpos = pos;
-      sh->pos = off;
-      return sh->pos;
+      sh->dir_pos = off;
+      return sh->dir_pos;
    }
 
    return -EINVAL;

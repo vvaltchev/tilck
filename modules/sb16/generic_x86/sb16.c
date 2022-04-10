@@ -110,7 +110,7 @@ sb16_install_irq_handler(void)
 }
 
 static ssize_t
-sb16_read(fs_handle h, char *user_buf, size_t size)
+sb16_read(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
    return 0;
 }
@@ -171,7 +171,7 @@ do_start_play(u8 next_slot, u32 sz)
 }
 
 static ssize_t
-sb16_write(fs_handle h, char *user_buf, size_t size)
+sb16_write(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
    if (get_curr_task() != owner) {
       /* The current task, does not own the resource */

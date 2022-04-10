@@ -159,7 +159,7 @@ sysfs_fsync(fs_handle h)
 }
 
 static ssize_t
-sysfs_file_read(fs_handle h, char *buf, size_t len)
+sysfs_file_read(fs_handle h, char *buf, size_t len, offt *pos)
 {
    struct sysfs_handle *sh = h;
    struct sysfs_inode *i = sh->inode;
@@ -173,19 +173,19 @@ sysfs_file_read(fs_handle h, char *buf, size_t len)
 
    if (LIKELY(sh->file.data_max_len == 0)) {
 
-      if (sh->pos == 0) {
+      if (*pos == 0) {
          rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, 0);
-         sh->pos = LONG_MAX;
+         *pos = LONG_MAX;
       } else {
          rc = 0;
       }
 
    } else if (sh->file.data_max_len < 0) {
 
-      rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, sh->pos);
+      rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, *pos);
 
       if (rc > 0)
-         sh->pos += rc;
+         *pos += rc;
 
    } else {
 
@@ -194,19 +194,19 @@ sysfs_file_read(fs_handle h, char *buf, size_t len)
             return 0;   /* no memory for the per-handle buffer */
       }
 
-      rem = sh->file.data_len - sh->pos;
+      rem = sh->file.data_len - *pos;
       ASSERT(rem >= 0);
 
       rc = CLAMP(rem, 0, (offt)len);
-      memcpy(buf, sh->file.data + sh->pos, (size_t)rc);
-      sh->pos += rc;
+      memcpy(buf, sh->file.data + *pos, (size_t)rc);
+      *pos += rc;
    }
 
    return rc;
 }
 
 static ssize_t
-sysfs_file_write(fs_handle h, char *buf, size_t len)
+sysfs_file_write(fs_handle h, char *buf, size_t len, offt *pos)
 {
    struct sysfs_handle *sh = h;
    struct sysfs_inode *i = sh->inode;
@@ -240,17 +240,17 @@ sysfs_file_write(fs_handle h, char *buf, size_t len)
             return -ENOSPC;   /* no memory for the per-handle buffer */
       }
 
-      rem = sh->file.data_max_len - sh->pos;
+      rem = sh->file.data_max_len - *pos;
       ASSERT(rem >= 0);
 
       rc = CLAMP(rem, 0, (offt)len);
-      memcpy(sh->file.data + sh->pos, buf, (size_t)rc);
-      sh->pos += rc;
+      memcpy(sh->file.data + *pos, buf, (size_t)rc);
+      *pos += rc;
 
       disable_preemption();
       {
-         if (sh->pos > sh->file.data_len)
-            sh->file.data_len = sh->pos;
+         if (*pos > sh->file.data_len)
+            sh->file.data_len = *pos;
 
          list_add_tail(&d->dirty_handles, &sh->file.dirty_node);
       }
@@ -271,7 +271,7 @@ sysfs_file_seek(fs_handle h, offt target_off, int whence)
 {
    struct sysfs_handle *sh = h;
    const offt len = ABS(sh->file.data_max_len);
-   offt new_pos = sh->pos;
+   offt new_pos = sh->h_fpos;
 
    switch (whence) {
 
@@ -294,7 +294,7 @@ sysfs_file_seek(fs_handle h, offt target_off, int whence)
    if (new_pos < 0 || (!len && new_pos > 0))
       return -EINVAL;
 
-   sh->pos = new_pos;
+   sh->h_fpos = new_pos;
    return new_pos;
 }
 

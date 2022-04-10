@@ -23,13 +23,15 @@ struct tty *get_curr_process_tty(void)
    return get_curr_proc()->proc_tty;
 }
 
-static ssize_t ttyaux_read(fs_handle h, char *buf, size_t size)
+static ssize_t ttyaux_read(fs_handle h, char *buf, size_t size, offt *pos)
 {
+   ASSERT(*pos == 0);
    return tty_read_int(get_curr_process_tty(), h, buf, size);
 }
 
-static ssize_t ttyaux_write(fs_handle h, char *buf, size_t size)
+static ssize_t ttyaux_write(fs_handle h, char *buf, size_t size, offt *pos)
 {
+   ASSERT(*pos == 0);
    return tty_write_int(get_curr_process_tty(), h, buf, size);
 }
 
