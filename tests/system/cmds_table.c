@@ -86,6 +86,7 @@ DECL_CMD(sig10);
 DECL_CMD(sig11);
 DECL_CMD(sig12);
 DECL_CMD(sig13);
+DECL_CMD(fork_oom);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -171,6 +172,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sig11,        TT_SHORT,  true),
    CMD_ENTRY(sig12,        TT_SHORT,  true),
    CMD_ENTRY(sig13,        TT_SHORT,  true),
+   CMD_ENTRY(fork_oom,     TT_SHORT,  true),
 
    CMD_END(),
 };

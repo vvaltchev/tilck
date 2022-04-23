@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_mm.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -15,6 +17,7 @@
 
 #include "devshell.h"
 #include "sysenter.h"
+#include "test_common.h"
 
 int cmd_brk(int argc, char **argv)
 {
@@ -134,7 +137,7 @@ static void no_munmap_bad_child(void)
                     0);
 
    if (res == (void*) -1) {
-      printf(STR_CHILD "mmap 128 KB failed!\n");
+      printf(STR_CHILD "mmap %d KB failed!\n", alloc_size / KB);
       exit(1);
    }
 
@@ -154,4 +157,45 @@ int cmd_mmap2(int argc, char **argv)
 
    waitpid(child, &wstatus, 0);
    return 0;
+}
+
+static const size_t fork_oom_alloc_size = 96 * MB;
+
+static void fork_oom_child(void *buf)
+{
+   printf("Child [%d]: writing to the whole CoW buffer...\n", getpid());
+   memset(buf, 0xBB, fork_oom_alloc_size);
+   printf("Child [%d]: done, without failing! [unexpected]\n", getpid());
+   exit(0);
+}
+
+/*
+ * Alloc a lot of CoW memory and check that the kernel kills the process in
+ * case an attempt to copy a CoW page fails because we're out of memory.
+ */
+int cmd_fork_oom(int argc, char **argv)
+{
+   void *buf;
+   int rc;
+
+   if (FORK_NO_COW) {
+      printf(PFX "[SKIP] because FORK_NO_COW=1\n");
+      return 0;
+   }
+
+   printf("Alloc %d MB...\n", fork_oom_alloc_size / MB);
+   buf = malloc(fork_oom_alloc_size);
+
+   if (!buf) {
+      printf("Alloc of %d MB failed!\n", fork_oom_alloc_size / MB);
+      exit(1);
+   }
+
+   printf("Write to the buffer...\n");
+   memset(buf, 0xAA, fork_oom_alloc_size);
+   printf("Done. Now, fork()..\n");
+
+   rc = test_sig(&fork_oom_child, buf, SIGKILL, 0, 0);
+   free(buf);
+   return rc;
 }
