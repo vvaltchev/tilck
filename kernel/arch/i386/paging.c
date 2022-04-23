@@ -179,8 +179,8 @@ bool handle_potential_cow(void *context)
 
          // The task was not running in kernel: we can safely kill it.
          printk("Out-of-memory: killing pid %d\n", get_curr_pid());
-         exit_fault_handler_state();
-         terminate_process(0, SIGKILL);
+         send_signal(get_curr_pid(), SIGKILL, SIG_FL_PROCESS | SIG_FL_FAULT);
+         return true;
 
       } else {
 
@@ -289,7 +289,6 @@ void handle_page_fault_int(regs_t *r)
    );
 
    send_signal(get_curr_tid(), sig, SIG_FL_PROCESS | SIG_FL_FAULT);
-   DEBUG_CHECKED_SUCCESS(process_signals(get_curr_task(), sig_in_fault, r));
 }
 
 void handle_page_fault(regs_t *r)

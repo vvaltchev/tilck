@@ -31,9 +31,12 @@ static void __add_sig(ulong *set, int signum)
    set[slot] |= (1 << index);
 }
 
-static void add_pending_sig(struct task *ti, int signum)
+static void add_pending_sig(struct task *ti, int signum, int fl)
 {
    __add_sig(ti->sa_pending, signum);
+
+   if (fl & SIG_FL_FAULT)
+      __add_sig(ti->sa_fault_pending, signum);
 }
 
 static void __del_sig(ulong *set, int signum)
@@ -53,6 +56,7 @@ static void __del_sig(ulong *set, int signum)
 static void del_pending_sig(struct task *ti, int signum)
 {
    __del_sig(ti->sa_pending, signum);
+   __del_sig(ti->sa_fault_pending, signum);
 }
 
 static bool __is_sig_set(ulong *set, int signum)
@@ -90,7 +94,7 @@ static int get_first_pending_sig(struct task *ti, enum sig_state sig_state)
          u32 idx = get_first_set_bit_index_l(val);
          int signum = (int)(i * NBITS + idx + 1);
 
-         if (sig_state == sig_in_fault || !is_sig_masked(ti, signum))
+         if (!is_sig_masked(ti, signum))
             return signum;
       }
    }
@@ -105,6 +109,7 @@ void drop_all_pending_signals(void *__curr)
 
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
       ti->sa_pending[i] = 0;
+      ti->sa_fault_pending[i] = 0;
    }
 }
 
@@ -121,7 +126,11 @@ void reset_all_custom_signal_handlers(void *__curr)
    }
 }
 
-static void kill_task_now_or_later(struct task *ti, void *regs, int signum)
+static void
+kill_task_now_or_later(struct task *ti,
+                       void *regs,
+                       int signum,
+                       enum sig_state sig_state)
 {
    if (ti == get_curr_task()) {
 
@@ -145,6 +154,11 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 
    ASSERT(ti == get_curr_task() || sig_state == sig_in_usermode);
 
+   /* Unmask the pending signals caused by HW faults */
+   for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
+      ti->sa_mask[i] &= ~ti->sa_fault_pending[i];
+   }
+
    if (is_pending_sig(ti, SIGKILL)) {
 
       /*
@@ -153,7 +167,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
        * a custom signal handler.
        */
 
-      kill_task_now_or_later(ti, regs, SIGKILL);
+      kill_task_now_or_later(ti, regs, SIGKILL, sig_state);
       return true;
    }
 
@@ -190,7 +204,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
        * the signal is terminate.
        */
 
-      kill_task_now_or_later(ti, regs, sig);
+      kill_task_now_or_later(ti, regs, sig, sig_state);
    }
 
    return true;
@@ -235,20 +249,9 @@ static void action_terminate(struct task *ti, int signum, int fl)
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
 
-   add_pending_sig(ti, signum);
+   add_pending_sig(ti, signum, fl);
 
-   if ((fl & SIG_FL_FAULT) || !is_sig_masked(ti, signum)) {
-
-      if (ti == get_curr_task()) {
-
-         if (fl & SIG_FL_FAULT)
-            exit_fault_handler_state();
-
-         enable_preemption();
-         terminate_process(0, signum);
-         NOT_REACHED();
-      }
-
+   if (!is_sig_masked(ti, signum)) {
       signal_wakeup_task(ti);
    }
 }
@@ -379,7 +382,7 @@ static void do_send_signal(struct task *ti, int signum, int fl)
 
    } else {
 
-      add_pending_sig(ti, signum);
+      add_pending_sig(ti, signum, fl);
 
       if (!is_sig_masked(ti, signum))
          signal_wakeup_task(ti);

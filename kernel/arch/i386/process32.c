@@ -819,7 +819,6 @@ static void
 handle_fatal_error(regs_t *r, int signum)
 {
    send_signal(get_curr_tid(), signum, SIG_FL_PROCESS | SIG_FL_FAULT);
-   DEBUG_CHECKED_SUCCESS(process_signals(get_curr_task(), sig_in_fault, r));
 }
 
 /* General protection fault handler */
