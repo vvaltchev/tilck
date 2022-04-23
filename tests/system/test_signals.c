@@ -16,15 +16,108 @@
 
 #include "devshell.h"
 
+static void child_generate_gpf(void *unused)
+{
+   /* cause a general fault protection */
+   asmVolatile("hlt");
+}
+
+static void child_generate_non_cow_page_fault(void *unused)
+{
+   /* cause non-CoW page fault */
+   int val = 25;
+   memcpy((int *)0xabc, &val, sizeof(val));
+}
+
+static void child_generate_sigill(void *unused)
+{
+   execute_illegal_instruction();
+}
+
+static void child_generate_sigfpe(void *unused)
+{
+   volatile int zero_val = 0;
+   volatile int val = 35 / zero_val;
+
+   printf("FAIL: expected SIGFPE, got val: %d\n", val);
+   exit(1);
+}
+
+static void child_generate_sigabrt(void *unused)
+{
+   abort();
+}
+
+static void child_generate_and_ignore_sigint(void *unused)
+{
+   signal(SIGINT, SIG_IGN); /* ignore SIGINT */
+   raise(SIGINT);           /* expect nothing to happen */
+   exit(0);
+}
+
 struct generic_child_ctx {
 
    int sig;
    void *handler;
    int masked_sig1;
    int masked_sig2;
+   void (*main_action_cb)(struct generic_child_ctx *);
    void (*after_unmask_cb)(void);
-   bool self_kill;
 };
+
+static void gc_action_pause(struct generic_child_ctx *ctx)
+{
+   pause();
+}
+
+static void gc_action_self_kill(struct generic_child_ctx *ctx)
+{
+   kill(getpid(), ctx->sig);
+}
+
+static void gc_action_gen_gpf(struct generic_child_ctx *ctx)
+{
+   child_generate_gpf(NULL);
+}
+
+static void gc_action_gen_page_fault(struct generic_child_ctx *ctx)
+{
+   child_generate_non_cow_page_fault(NULL);
+}
+
+void mask_signal(int sig)
+{
+   sigset_t set;
+   int rc;
+
+   sigemptyset(&set);
+   sigaddset(&set, sig);
+
+   rc = sigprocmask(SIG_BLOCK, &set, NULL);
+
+   if (rc != 0) {
+      printf("FAIL: sigprocmask() failed with %s (%d)\n",
+             strerror(errno), errno);
+      exit(1);
+   }
+}
+
+void unmask_signal(int sig)
+{
+   sigset_t set;
+   int rc;
+
+   sigemptyset(&set);
+   sigaddset(&set, sig);
+
+   rc = sigprocmask(SIG_UNBLOCK, &set, NULL);
+
+   if (rc != 0) {
+      printf("FAIL: sigprocmask() failed with %s (%d)\n",
+             strerror(errno), errno);
+      exit(1);
+   }
+}
 
 static void
 generic_child_do_mask(struct generic_child_ctx *ctx, sigset_t *set)
@@ -87,8 +180,8 @@ generic_child(void *arg)
    if (ctx->masked_sig1 || ctx->masked_sig2)
       generic_child_do_mask(ctx, &set);
 
-   if (ctx->self_kill)
-      kill(getpid(), ctx->sig);
+   if (ctx->main_action_cb)
+      ctx->main_action_cb(ctx);
    else
       pause();
 
@@ -196,61 +289,37 @@ test_sig(void (*child_func)(void *),
    return 0;
 }
 
-static void child_generate_gpf(void *unused)
-{
-   /* cause a general fault protection */
-   asmVolatile("hlt");
-}
-
-static void child_generate_non_cow_page_fault(void *unused)
-{
-   /* cause non-CoW page fault */
-   *(volatile int *)0xabc = 25;
-}
-
-static void child_generate_sigill(void *unused)
-{
-   execute_illegal_instruction();
-}
-
-static void child_generate_sigfpe(void *unused)
-{
-   volatile int zero_val = 0;
-   volatile int val = 35 / zero_val;
-
-   printf("FAIL: expected SIGFPE, got val: %d\n", val);
-   exit(1);
-}
-
-static void child_generate_sigabrt(void *unused)
-{
-   abort();
-}
-
-static void child_generate_and_ignore_sigint(void *unused)
-{
-   signal(SIGINT, SIG_IGN); /* ignore SIGINT */
-   raise(SIGINT);           /* expect nothing to happen */
-   exit(0);
-}
-
-int cmd_sigsegv1(int argc, char **argv)
+/* Trigger SIGSEGV it with a real fault */
+int cmd_sigsegv0(int argc, char **argv)
 {
    return test_sig(child_generate_gpf, NULL, SIGSEGV, 0, 0);
 }
 
+/* Mask SIGSEGV and then trigger it with a real GPF */
+int cmd_sigsegv1(int argc, char **argv)
+{
+   mask_signal(SIGSEGV);
+   return test_sig(child_generate_gpf, NULL, SIGSEGV, 0, 0);
+}
+
+/* Mask SIGSEGV and then trigger it with a real page-fault */
 int cmd_sigsegv2(int argc, char **argv)
 {
+   mask_signal(SIGSEGV);
    return test_sig(child_generate_non_cow_page_fault, NULL, SIGSEGV, 0, 0);
 }
 
+/* Mask SIGILL and then trigger it with a real fault */
 int cmd_sigill(int argc, char **argv)
 {
+   mask_signal(SIGILL);
    return test_sig(child_generate_sigill, NULL, SIGILL, 0, 0);
 }
 
+/* Mask SIGFPE and then trigger it with a real fault */
 int cmd_sigfpe(int argc, char **argv)
 {
+   mask_signal(SIGFPE);
    return test_sig(child_generate_sigfpe, NULL, SIGFPE, 0, 0);
 }
 
@@ -531,7 +600,7 @@ int cmd_sig5(int argc, char **argv)
       .handler = &sig_handler_call_exit,
       .masked_sig1 = 0,
       .masked_sig2 = 0,
-      .self_kill = false,
+      .main_action_cb = &gc_action_pause,
    };
 
    return test_sig(
@@ -556,7 +625,7 @@ int cmd_sig6(int argc, char **argv)
       .handler = &sig_handler_self_kill,
       .masked_sig1 = 0,
       .masked_sig2 = 0,
-      .self_kill = false,
+      .main_action_cb = &gc_action_pause,
    };
 
    return test_sig(
@@ -580,7 +649,7 @@ int cmd_sig7(int argc, char **argv)
       .masked_sig1 = SIGTERM,
       .masked_sig2 = 0,
       .after_unmask_cb = &increase_call_exit_code,
-      .self_kill = true,
+      .main_action_cb = &gc_action_self_kill,
    };
 
    return test_sig(
@@ -600,7 +669,27 @@ int cmd_sig8(int argc, char **argv)
       .handler = SIG_DFL, /* default action: terminate for SIGTERM */
       .masked_sig1 = SIGTERM,
       .masked_sig2 = 0,
-      .self_kill = true,
+      .main_action_cb = &gc_action_self_kill,
+   };
+
+   return test_sig(
+      &generic_child,
+      &ctx,
+      0,
+      0,
+      0
+   );
+}
+
+/* Test that with sigprocmask() a SIGSEGV signal will still be masked */
+int cmd_sigsegv3(int argc, char **argv)
+{
+   struct generic_child_ctx ctx = {
+      .sig = SIGSEGV,
+      .handler = SIG_DFL, /* default action: terminate for SIGSEGV */
+      .masked_sig1 = SIGSEGV,
+      .masked_sig2 = 0,
+      .main_action_cb = &gc_action_self_kill,
    };
 
    return test_sig(
@@ -620,7 +709,7 @@ int cmd_sig9(int argc, char **argv)
       .handler = SIG_DFL,
       .masked_sig1 = SIGKILL,
       .masked_sig2 = 0,
-      .self_kill = false,
+      .main_action_cb = &gc_action_pause,
    };
 
    return test_sig(
@@ -649,40 +738,6 @@ static bool is_single_signal_pending(int sig)
    }
 
    return sigismember(&set, sig);
-}
-
-void mask_signal(int sig)
-{
-   sigset_t set;
-   int rc;
-
-   sigemptyset(&set);
-   sigaddset(&set, sig);
-
-   rc = sigprocmask(SIG_BLOCK, &set, NULL);
-
-   if (rc != 0) {
-      printf("FAIL: sigprocmask() failed with %s (%d)\n",
-             strerror(errno), errno);
-      exit(1);
-   }
-}
-
-void unmask_signal(int sig)
-{
-   sigset_t set;
-   int rc;
-
-   sigemptyset(&set);
-   sigaddset(&set, sig);
-
-   rc = sigprocmask(SIG_UNBLOCK, &set, NULL);
-
-   if (rc != 0) {
-      printf("FAIL: sigprocmask() failed with %s (%d)\n",
-             strerror(errno), errno);
-      exit(1);
-   }
 }
 
 static void forking_sig_handler(int sig)
@@ -768,7 +823,7 @@ int cmd_sig10(int argc, char **argv)
       .handler = &forking_sig_handler,
       .masked_sig1 = SIGUSR2,
       .masked_sig2 = 0,
-      .self_kill = false,
+      .main_action_cb = &gc_action_pause,
    };
 
    return test_sig(
@@ -854,7 +909,7 @@ int cmd_sig11(int argc, char **argv)
       .handler = &execve_sig_handler,
       .masked_sig1 = SIGUSR2,
       .masked_sig2 = 0,
-      .self_kill = false,
+      .main_action_cb = &gc_action_pause,
    };
 
    return test_sig(
@@ -944,7 +999,7 @@ handle_sigchld(int sig)
    printf("parent: got SIGCHLD, count: %d\n", ++sig_chld_count);
 }
 
-/* That that SIGCHLD is sent when a child changes its state */
+/* Test that SIGCHLD is sent when a child changes its state */
 int cmd_sig13(int argc, char **argv)
 {
    int child_pid;
@@ -993,4 +1048,44 @@ int cmd_sig13(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(WTERMSIG(wstatus) == 0);
    DEVSHELL_CMD_ASSERT(sig_chld_count == 3);
    return 0;
+}
+
+/* Test that we can handle SIGSEGV, triggered by GPF */
+int cmd_sigsegv4(int argc, char **argv)
+{
+   struct generic_child_ctx ctx = {
+      .sig = SIGSEGV,
+      .handler = &sig_handler_call_exit,
+      .masked_sig1 = SIGSEGV, /* mask the signal: that should have no effect */
+      .masked_sig2 = 0,
+      .main_action_cb = &gc_action_gen_gpf,
+   };
+
+   return test_sig(
+      &generic_child,
+      &ctx,
+      0,
+      42,
+      0
+   );
+}
+
+/* Test that we can handle SIGSEGV, triggered by page fault */
+int cmd_sigsegv5(int argc, char **argv)
+{
+   struct generic_child_ctx ctx = {
+      .sig = SIGSEGV,
+      .handler = &sig_handler_call_exit,
+      .masked_sig1 = SIGSEGV, /* mask the signal: that should have no effect */
+      .masked_sig2 = 0,
+      .main_action_cb = &gc_action_gen_page_fault,
+   };
+
+   return test_sig(
+      &generic_child,
+      &ctx,
+      0,
+      42,
+      0
+   );
 }

@@ -288,9 +288,8 @@ void handle_page_fault_int(regs_t *r)
       get_curr_proc()->debug_cmdline
    );
 
-   exit_fault_handler_state();
-   send_signal(get_curr_tid(), sig, true);
-   NOT_REACHED();
+   send_signal(get_curr_tid(), sig, SIG_FL_PROCESS | SIG_FL_FAULT);
+   DEBUG_CHECKED_SUCCESS(process_signals(get_curr_task(), sig_in_fault, r));
 }
 
 void handle_page_fault(regs_t *r)

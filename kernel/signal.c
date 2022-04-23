@@ -11,10 +11,11 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/sys_types.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/interrupts.h>
 
 #include <tilck/mods/tracing.h>
 
-typedef void (*action_type)(struct task *, int signum);
+typedef void (*action_type)(struct task *, int signum, int fl);
 
 static void __add_sig(ulong *set, int signum)
 {
@@ -78,17 +79,18 @@ static bool is_sig_masked(struct task *ti, int signum)
    return __is_sig_set(ti->sa_mask, signum);
 }
 
-static int get_first_pending_sig(struct task *ti)
+static int get_first_pending_sig(struct task *ti, enum sig_state sig_state)
 {
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
 
       ulong val = ti->sa_pending[i];
 
       if (val != 0) {
+
          u32 idx = get_first_set_bit_index_l(val);
          int signum = (int)(i * NBITS + idx + 1);
 
-         if (!is_sig_masked(ti, signum))
+         if (sig_state == sig_in_fault || !is_sig_masked(ti, signum))
             return signum;
       }
    }
@@ -164,7 +166,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
       return false;
    }
 
-   sig = get_first_pending_sig(ti);
+   sig = get_first_pending_sig(ti, sig_state);
 
    if (sig < 0)
       return false;
@@ -228,16 +230,20 @@ static void signal_wakeup_task(struct task *ti)
    }
 }
 
-static void action_terminate(struct task *ti, int signum)
+static void action_terminate(struct task *ti, int signum, int fl)
 {
    ASSERT(!is_preemption_enabled());
    ASSERT(!is_kernel_thread(ti));
 
    add_pending_sig(ti, signum);
 
-   if (!is_sig_masked(ti, signum)) {
+   if ((fl & SIG_FL_FAULT) || !is_sig_masked(ti, signum)) {
 
       if (ti == get_curr_task()) {
+
+         if (fl & SIG_FL_FAULT)
+            exit_fault_handler_state();
+
          enable_preemption();
          terminate_process(0, signum);
          NOT_REACHED();
@@ -247,7 +253,7 @@ static void action_terminate(struct task *ti, int signum)
    }
 }
 
-static void action_ignore(struct task *ti, int signum)
+static void action_ignore(struct task *ti, int signum, int fl)
 {
    if (ti->tid == 1 && signum != SIGCHLD) {
       printk(
@@ -257,7 +263,7 @@ static void action_ignore(struct task *ti, int signum)
    }
 }
 
-static void action_stop(struct task *ti, int signum)
+static void action_stop(struct task *ti, int signum, int fl)
 {
    ASSERT(!is_kernel_thread(ti));
 
@@ -270,7 +276,7 @@ static void action_stop(struct task *ti, int signum)
       schedule_preempt_disabled();
 }
 
-static void action_continue(struct task *ti, int signum)
+static void action_continue(struct task *ti, int signum, int fl)
 {
    ASSERT(!is_kernel_thread(ti));
 
@@ -320,7 +326,7 @@ static const action_type signal_default_actions[_NSIG] =
    [SIGWINCH] = action_terminate,
 };
 
-static void do_send_signal(struct task *ti, int signum)
+static void do_send_signal(struct task *ti, int signum, int fl)
 {
    ASSERT(IN_RANGE(signum, 0, _NSIG));
 
@@ -359,7 +365,7 @@ static void do_send_signal(struct task *ti, int signum)
 
    if (h == SIG_IGN) {
 
-      action_ignore(ti, signum);
+      action_ignore(ti, signum, fl);
 
    } else if (h == SIG_DFL) {
 
@@ -369,7 +375,7 @@ static void do_send_signal(struct task *ti, int signum)
             : action_terminate;
 
       if (action_func)
-         action_func(ti, signum);
+         action_func(ti, signum, fl);
 
    } else {
 
@@ -380,7 +386,7 @@ static void do_send_signal(struct task *ti, int signum)
    }
 }
 
-int send_signal2(int pid, int tid, int signum, bool whole_process)
+int send_signal2(int pid, int tid, int signum, int flags)
 {
    struct task *ti;
    int rc = -ESRCH;
@@ -394,7 +400,7 @@ int send_signal2(int pid, int tid, int signum, bool whole_process)
       goto err_end; /* cannot send signals to kernel threads */
 
    /* When `whole_process` is true, tid must be == pid */
-   if (whole_process && ti->pi->pid != tid)
+   if ((flags & SIG_FL_PROCESS) && ti->pi->pid != tid)
       goto err_end;
 
    if (ti->pi->pid != pid)
@@ -407,7 +413,7 @@ int send_signal2(int pid, int tid, int signum, bool whole_process)
       goto end; /* do nothing */
 
    /* TODO: update this code when thread support is added */
-   do_send_signal(ti, signum);
+   do_send_signal(ti, signum, flags);
 
 end:
    rc = 0;
