@@ -134,7 +134,7 @@ if (KERNEL_UBSAN)
    list(
       APPEND GENERAL_KERNEL_FLAGS_LIST
 
-      -fsanitize=shift,shift-exponent,shift-base,integer-divide-by-zero
+      -fsanitize=integer-divide-by-zero
       -fsanitize=nonnull-attribute,returns-nonnull-attribute
       -fsanitize=bool,enum
       -fsanitize=unreachable
@@ -159,6 +159,19 @@ if (KERNEL_UBSAN)
 
          -fsanitize=alignment
          -fsanitize-recover=alignment
+      )
+
+   endif()
+
+   if (NOT ${GCC_TC_VER} VERSION_LESS "7.3.0")
+
+      # Older GCC versions do NOT support some UBSAN features.
+
+      list(
+         APPEND GENERAL_KERNEL_FLAGS_LIST
+
+         -fsanitize=shift-exponent
+         -fsanitize=shift-base
       )
 
    endif()
