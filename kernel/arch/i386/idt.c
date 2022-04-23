@@ -119,39 +119,34 @@ static void fault_in_panic(regs_t *r)
 void handle_fault(regs_t *r)
 {
    const int int_num = r->int_num;
-   VERIFY(is_fault(int_num));
+   bool cow = false;
+
+   ASSERT(is_fault(int_num));
 
    if (UNLIKELY(in_panic()))
       return fault_in_panic(r);
 
    if (LIKELY(int_num == FAULT_PAGE_FAULT)) {
-
-      bool was_cow;
-
-      enable_interrupts_forced();
-      {
-         was_cow = handle_potential_cow(r);
-      }
-      disable_interrupts_forced();
-
-      if (was_cow)
-         return;
+      cow = handle_potential_cow(r);
    }
 
-   if (is_fault_resumable(int_num))
-      return handle_resumable_fault(r);
+   if (!cow) {
 
-   if (LIKELY(fault_handlers[int_num] != NULL)) {
+      if (is_fault_resumable(int_num))
+         return handle_resumable_fault(r);
 
-      fault_handlers[int_num](r);
+      if (LIKELY(fault_handlers[int_num] != NULL)) {
 
-   } else {
+         fault_handlers[int_num](r);
 
-      panic("Unhandled fault #%i: %s [err: %p] EIP: %p",
-            int_num,
-            x86_exception_names[int_num],
-            r->err_code,
-            r->eip);
+      } else {
+
+         panic("Unhandled fault #%i: %s [err: %p] EIP: %p",
+               int_num,
+               x86_exception_names[int_num],
+               r->err_code,
+               r->eip);
+      }
    }
 }
 

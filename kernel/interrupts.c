@@ -273,7 +273,7 @@ void soft_interrupt_entry(regs_t *r)
    const bool in_syscall = (int_num == SYSCALL_SOFT_INTERRUPT);
    ASSERT(!are_interrupts_enabled());
 
-   if (LIKELY(in_syscall))
+   if (in_syscall)
       DEBUG_check_preemption_enabled_for_usermode();
 
    enter_fault_handler_state(int_num);
@@ -287,7 +287,17 @@ void soft_interrupt_entry(regs_t *r)
    disable_interrupts_forced();
    exit_fault_handler_state();
 
-   if (LIKELY(in_syscall))
+   if (in_syscall) {
+
       DEBUG_check_preemption_enabled_for_usermode();
+
+   } else {
+
+      disable_preemption();
+      {
+         process_signals(get_curr_task(), sig_in_fault, r);
+      }
+      enable_preemption();
+   }
 }
 
