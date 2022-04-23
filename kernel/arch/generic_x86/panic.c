@@ -97,6 +97,7 @@ NORETURN void panic(const char *fmt, ...)
    bool panic_triggered_df = false;
 
    disable_interrupts_forced(); /* No interrupts: we're in a panic state */
+   force_enable_preemption();   /* Set a predefined and sane state */
 
    if (__in_panic) {
 
