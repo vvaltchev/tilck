@@ -139,7 +139,7 @@ ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size)
    return hb->fops->write(h, buf, buf_size, &hb->h_fpos);
 }
 
-offt vfs_seek(fs_handle h, s64 off, int whence)
+offt vfs_seek(fs_handle h, offt off, int whence)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
    ASSERT(h != NULL);
@@ -152,8 +152,7 @@ offt vfs_seek(fs_handle h, s64 off, int whence)
    if (!hb->fops->seek)
       return -ESPIPE;
 
-   // NOTE: this won't really work for big offsets in case offt is 32-bit.
-   return hb->fops->seek(h, (offt) off, whence);
+   return hb->fops->seek(h, off, whence);
 }
 
 int vfs_ioctl(fs_handle h, ulong request, void *argp)

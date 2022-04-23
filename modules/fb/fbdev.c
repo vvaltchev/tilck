@@ -30,7 +30,7 @@ static struct list mappings_list = STATIC_LIST_INIT(mappings_list);
 
 static ssize_t fb_read(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
-   ssize_t actual_size = MIN((offt)fb_size - *pos, (offt)size);
+   ssize_t actual_size = MIN((ssize_t)fb_size - (ssize_t)*pos, (ssize_t)size);
    void *src = (char *)fb_vaddr + *pos;
 
    *pos += actual_size;
@@ -43,9 +43,9 @@ static ssize_t fb_read(fs_handle h, char *user_buf, size_t size, offt *pos)
 
 static ssize_t fb_write(fs_handle h, char *user_buf, size_t size, offt *pos)
 {
-   ssize_t actual_size = MIN((offt)fb_size - *pos, (offt)size);
+   ssize_t actual_size = MIN((ssize_t)fb_size - (ssize_t)*pos, (ssize_t)size);
    void *dest = (char *)fb_vaddr + *pos;
-   *pos += (offt)actual_size;
+   *pos += actual_size;
 
    if (copy_from_user(dest, user_buf, (size_t)actual_size))
       return -EFAULT;

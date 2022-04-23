@@ -166,7 +166,7 @@ sysfs_file_read(fs_handle h, char *buf, size_t len, offt *pos)
    struct sysobj_prop *prop = i->file.prop;
    struct sysobj *obj = i->file.obj;
    void *pd = i->file.prop_data;
-   ssize_t rc, rem;
+   offt rc, rem;
 
    if (!prop->type || !prop->type->load)
       return 0;
@@ -202,7 +202,7 @@ sysfs_file_read(fs_handle h, char *buf, size_t len, offt *pos)
       *pos += rc;
    }
 
-   return rc;
+   return (ssize_t)rc;
 }
 
 static ssize_t
@@ -214,7 +214,7 @@ sysfs_file_write(fs_handle h, char *buf, size_t len, offt *pos)
    struct sysobj *obj = i->file.obj;
    void *pd = i->file.prop_data;
    struct sysfs_data *d = sh->fs->device_data;
-   ssize_t rc, rem;
+   offt rc, rem;
 
    if (!prop->type || !prop->type->store)
       return -EINVAL;
@@ -257,7 +257,7 @@ sysfs_file_write(fs_handle h, char *buf, size_t len, offt *pos)
       enable_preemption();
    }
 
-   return rc;
+   return (ssize_t)rc;
 }
 
 static int

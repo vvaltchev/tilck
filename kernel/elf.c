@@ -37,7 +37,7 @@ load_segment_by_copy(fs_handle *elf_h,
                      Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
 {
-   ssize_t rc;
+   offt rc;
    ulong va = phdr->p_vaddr;
    size_t filesz_rem = phdr->p_filesz;
    char *vaddr = (char *) (phdr->p_vaddr & PAGE_MASK);
@@ -50,7 +50,7 @@ load_segment_by_copy(fs_handle *elf_h,
 
    *end_vaddr_ref = (ulong)vaddr + (page_count << PAGE_SHIFT);
 
-   rc = vfs_seek(elf_h, (s64)phdr->p_offset, SEEK_SET);
+   rc = vfs_seek(elf_h, (offt)phdr->p_offset, SEEK_SET);
 
    if (rc < 0)
       return (int)rc; /* I/O error during seek */
@@ -231,7 +231,7 @@ load_elf_headers(fs_handle elf_h,
                  struct elf_headers *eh,
                  bool *wrong_arch)
 {
-   ssize_t rc;
+   offt rc;
    bzero(eh, sizeof(*eh));
 
    if ((rc = vfs_seek(elf_h, 0, SEEK_SET)))
@@ -266,7 +266,7 @@ load_elf_headers(fs_handle elf_h,
    if (!eh->phdrs)
       return -ENOMEM;
 
-   rc = vfs_seek(elf_h, (s64)eh->header->e_phoff, SEEK_SET);
+   rc = vfs_seek(elf_h, (offt)eh->header->e_phoff, SEEK_SET);
 
    if (rc != (ssize_t)eh->header->e_phoff) {
       rc = -ENOEXEC;

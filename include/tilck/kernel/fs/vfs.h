@@ -209,7 +209,7 @@ int vfs_fchmod(fs_handle h, mode_t mode);
 int vfs_futimens(fs_handle h, const struct k_timespec64 times[2]);
 int vfs_fsync(fs_handle h);
 int vfs_fdatasync(fs_handle h);
-offt vfs_seek(fs_handle h, s64 off, int whence);
+offt vfs_seek(fs_handle h, offt off, int whence);
 
 int vfs_read_ready(fs_handle h);
 int vfs_write_ready(fs_handle h);
