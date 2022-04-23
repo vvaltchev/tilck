@@ -30,6 +30,7 @@ DECL_CMD(wpid3);
 DECL_CMD(wpid4);
 DECL_CMD(wpid5);
 DECL_CMD(wpid6);
+DECL_CMD(sigsegv0);
 DECL_CMD(sigsegv1);
 DECL_CMD(sigsegv2);
 DECL_CMD(sigill);
@@ -87,6 +88,9 @@ DECL_CMD(sig11);
 DECL_CMD(sig12);
 DECL_CMD(sig13);
 DECL_CMD(fork_oom);
+DECL_CMD(sigsegv3);
+DECL_CMD(sigsegv4);
+DECL_CMD(sigsegv5);
 
 static struct test_cmd_entry _cmds_table[] =
 {
@@ -116,6 +120,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(wpid4,        TT_SHORT,  true),
    CMD_ENTRY(wpid5,        TT_SHORT,  true),
    CMD_ENTRY(wpid6,        TT_SHORT,  true),
+   CMD_ENTRY(sigsegv0,     TT_SHORT,  true),
    CMD_ENTRY(sigsegv1,     TT_SHORT,  true),
    CMD_ENTRY(sigsegv2,     TT_SHORT,  true),
    CMD_ENTRY(sigill,       TT_SHORT,  true),
@@ -173,6 +178,9 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sig12,        TT_SHORT,  true),
    CMD_ENTRY(sig13,        TT_SHORT,  true),
    CMD_ENTRY(fork_oom,     TT_SHORT,  true),
+   CMD_ENTRY(sigsegv3,     TT_SHORT,  true),
+   CMD_ENTRY(sigsegv4,     TT_SHORT,  true),
+   CMD_ENTRY(sigsegv5,     TT_SHORT,  true),
 
    CMD_END(),
 };

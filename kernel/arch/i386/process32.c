@@ -815,15 +815,20 @@ arch_specific_free_proc(struct process *pi)
    }
 }
 
+static void
+handle_fatal_error(regs_t *r, int signum)
+{
+   send_signal(get_curr_tid(), signum, SIG_FL_PROCESS | SIG_FL_FAULT);
+   DEBUG_CHECKED_SUCCESS(process_signals(get_curr_task(), sig_in_fault, r));
+}
+
 /* General protection fault handler */
 void handle_gpf(regs_t *r)
 {
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("General protection fault. Error: %p\n", r->err_code);
 
-   exit_fault_handler_state();
-   send_signal(get_curr_tid(), SIGSEGV, true);
-   NOT_REACHED();
+   handle_fatal_error(r, SIGSEGV);
 }
 
 /* Illegal instruction fault handler */
@@ -832,9 +837,7 @@ void handle_ill(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Illegal instruction fault. Error: %p\n", r->err_code);
 
-   exit_fault_handler_state();
-   send_signal(get_curr_tid(), SIGILL, true);
-   NOT_REACHED();
+   handle_fatal_error(r, SIGILL);
 }
 
 /* Division by zero fault handler */
@@ -843,9 +846,7 @@ void handle_div0(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Division by zero fault. Error: %p\n", r->err_code);
 
-   exit_fault_handler_state();
-   send_signal(get_curr_tid(), SIGFPE, true);
-   NOT_REACHED();
+   handle_fatal_error(r, SIGFPE);
 }
 
 /* Coproc fault handler */
@@ -854,7 +855,5 @@ void handle_cpf(regs_t *r)
    if (!get_curr_task() || is_kernel_thread(get_curr_task()))
       panic("Co-processor (fpu) fault. Error: %p\n", r->err_code);
 
-   exit_fault_handler_state();
-   send_signal(get_curr_tid(), SIGFPE, true);
-   NOT_REACHED();
+   handle_fatal_error(r, SIGFPE);
 }
