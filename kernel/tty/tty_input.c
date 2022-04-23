@@ -387,7 +387,7 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
 static size_t tty_flush_read_buf(struct devfs_handle *h, char *buf, size_t size)
 {
    struct tty_handle_extra *eh = (void *)&h->extra;
-   ssize_t rem = eh->read_buf_used - eh->read_pos;
+   offt rem = eh->read_buf_used - eh->read_pos;
    ASSERT(rem >= 0);
 
    size_t m = MIN((size_t)rem, size);

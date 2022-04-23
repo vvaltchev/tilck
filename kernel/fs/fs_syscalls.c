@@ -194,6 +194,8 @@ int sys_read(int fd, void *u_buf, size_t count)
     * return type of sys_read().
     */
 
+   count = MIN(count, (size_t)INT32_MAX);
+
    if (h->spec_flags & VFS_SPFL_NO_USER_COPY)
       return (int) vfs_read(h, u_buf, count);
 
@@ -217,6 +219,8 @@ int sys_write(int fd, const void *u_buf, size_t count)
 
    if (!(h = get_fs_handle(fd)))
       return -EBADF;
+
+   count = MIN(count, (size_t)INT32_MAX);
 
    if (h->spec_flags & VFS_SPFL_NO_USER_COPY)
       return (int)vfs_write(h, (void *)u_buf, count);
@@ -454,23 +458,36 @@ int sys_ia32_ftruncate64(int fd, s64 len)
    return vfs_ftruncate(h, (offt)len);
 }
 
-int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *result, u32 whence)
+int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *u_result, u32 whence)
 {
    const s64 off64 = (s64)(((u64)off_hi << 32) | off_low);
    fs_handle handle;
-   s64 new_off;
+   offt new_off;
+   u64 res;
 
    STATIC_ASSERT(sizeof(new_off) >= sizeof(offt));
 
    if (!(handle = get_fs_handle(fd)))
       return -EBADF;
 
-   new_off = vfs_seek(handle, off64, (int)whence);
+   if (sizeof(off64) > sizeof(offt)) {
+
+      /*
+       * Check if we can handle such an offset. See the definition of `offt`
+       * for comments about that.
+       */
+      if (off64 < INT32_MIN || off64 > INT32_MAX)
+         return -EINVAL;
+   }
+
+   new_off = vfs_seek(handle, (offt)off64, (int)whence);
 
    if (new_off < 0)
       return (int) new_off; /* return back vfs_seek's error */
 
-   if (copy_to_user(result, &new_off, sizeof(*result)))
+   res = (u64)new_off;
+
+   if (copy_to_user(u_result, &res, sizeof(res)))
       return -EBADF;
 
    return 0;

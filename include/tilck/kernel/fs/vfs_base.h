@@ -110,7 +110,7 @@ struct fs_handle_base {
    FS_HANDLE_BASE_FIELDS
 };
 
-#define MAX_FS_HANDLE_SIZE        (16 * sizeof(void *))  /* 64 or 128 bytes */
+#define MAX_FS_HANDLE_SIZE        (32 * sizeof(void *))  /* 128 or 256 bytes */
 
 /* File handle's special flags (spec_flags) */
 #define VFS_SPFL_NO_USER_COPY                  (1 << 0)
