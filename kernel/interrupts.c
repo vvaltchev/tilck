@@ -165,22 +165,9 @@ void panic_dump_nested_interrupts(void)
    printk("%s", buf);
 }
 
-/*
- * This sanity check is essential: it assures us that in no case
- * we're running an usermode thread with preemption disabled.
- */
-static void DEBUG_check_preemption_enabled_for_usermode(void)
-{
-   struct task *curr = get_curr_task();
-   if (curr && !running_in_kernel(curr) && !nested_interrupts_count) {
-      ASSERT(is_preemption_enabled());
-   }
-}
-
 #else
 
 static ALWAYS_INLINE void DEBUG_check_not_same_interrupt_nested(int n) { }
-static ALWAYS_INLINE void DEBUG_check_preemption_enabled_for_usermode(void) { }
 
 #endif // KRN_TRACK_NESTED_INTERR
 
@@ -237,67 +224,52 @@ void irq_entry(regs_t *r)
    enable_preemption_nosched();
 }
 
-/*
- * Common fault handler prologue, used only by soft_interrupt_entry().
- *
- * Note: introduced just for symmetry with exit_fault_handler_state(), which
- * is used outside of this file as well.
- */
-static void enter_fault_handler_state(int int_num)
+void syscall_entry(regs_t *r)
 {
-   push_nested_interrupt(int_num);
-   disable_preemption();
-}
-
-/*
- * Exit from the fault handler with the correct sequence, the counter-part of
- * enter_fault_handler_state().
- *
- * WARNING: To be used *ONLY* by fault handlers that DO NOT return.
- *
- *    - re-enable the preemption (the last thing disabled)
- *    - pop the last "nested interrupt" caused by the fault
- *
- * See soft_interrupt_entry() for more.
- */
-
-void exit_fault_handler_state(void)
-{
-   enable_preemption_nosched();
-   pop_nested_interrupt();
-}
-
-void soft_interrupt_entry(regs_t *r)
-{
-   const int int_num = regs_intnum(r);
-   const bool in_syscall = (int_num == SYSCALL_SOFT_INTERRUPT);
+   /*
+    * Interrupts are disabled in order to have a slightly better tracking of
+    * the nested interrupts (debug feature). The preemption must always be
+    * enabled here.
+    */
    ASSERT(!are_interrupts_enabled());
+   ASSERT(is_preemption_enabled());
 
-   if (in_syscall)
-      DEBUG_check_preemption_enabled_for_usermode();
-
-   enter_fault_handler_state(int_num);
+   push_nested_interrupt(0x80);
+   disable_preemption();
    enable_interrupts_forced();
    {
-      if (LIKELY(in_syscall))
-         handle_syscall(r);
-      else
-         handle_fault(r);
+      handle_syscall(r);
    }
    disable_interrupts_forced();
-   exit_fault_handler_state();
+   enable_preemption_nosched();
+   pop_nested_interrupt();
 
-   if (in_syscall) {
+   ASSERT(is_preemption_enabled());
+}
 
-      DEBUG_check_preemption_enabled_for_usermode();
+void fault_entry(regs_t *r)
+{
+   /*
+    * Here preemption could be either enabled or disabled. Typically is enabled,
+    * but it's totally possible for example a page fault to occur in the kernel
+    * while preemption is disabled.
+    */
+   ASSERT(!are_interrupts_enabled());
 
-   } else {
+   push_nested_interrupt(regs_intnum(r));
+   disable_preemption();
+   enable_interrupts_forced();
 
-      disable_preemption();
-      {
-         process_signals(get_curr_task(), sig_in_fault, r);
-      }
-      enable_preemption();
-   }
+   handle_fault(r);
+
+   /*
+    * Pop the nested interrupt and process signals while preemption is
+    * still disabled.
+    */
+   pop_nested_interrupt();
+   process_signals(get_curr_task(), sig_in_fault, r);
+
+   enable_preemption();
+   disable_interrupts_forced();
 }
 

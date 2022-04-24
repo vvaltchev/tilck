@@ -8,7 +8,6 @@
 #include <tilck/kernel/hal_types.h>
 
 void set_fault_handler(int fault, void *ptr);
-void exit_fault_handler_state(void);
 
 static ALWAYS_INLINE bool in_irq(void)
 {
