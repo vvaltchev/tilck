@@ -282,9 +282,9 @@ CREATE_STUB_SYSCALL_IMPL(sys_rt_sigtimedwait_time32)
 CREATE_STUB_SYSCALL_IMPL(sys_rt_sigqueueinfo)
 
 int sys_rt_sigsuspend(sigset_t *u_mask, size_t sigsetsize);
+int sys_pread64(int fd, void *buf, size_t count, s64 off);
+int sys_pwrite64(int fd, const void *buf, size_t count, s64 off);
 
-CREATE_STUB_SYSCALL_IMPL(sys_pread64)
-CREATE_STUB_SYSCALL_IMPL(sys_pwrite64)
 CREATE_STUB_SYSCALL_IMPL(sys_chown16)
 
 int sys_getcwd(char *buf, size_t size);

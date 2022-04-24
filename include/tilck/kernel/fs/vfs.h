@@ -222,6 +222,8 @@ ssize_t vfs_read(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_write(fs_handle h, void *buf, size_t buf_size);
 ssize_t vfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
 ssize_t vfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
+ssize_t vfs_pread(fs_handle h, void *buf, size_t buf_size, offt off);
+ssize_t vfs_pwrite(fs_handle h, void *buf, size_t buf_size, offt off);
 
 int vfs_exlock_noblock(struct mnt_fs *fs, vfs_inode_ptr_t i);
 int vfs_exunlock(struct mnt_fs *fs, vfs_inode_ptr_t i);
