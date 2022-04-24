@@ -14,14 +14,14 @@
    FUNC(fault\number):
    push 0
    push \number
-   jmp asm_soft_interrupt_entry
+   jmp asm_fault_entry
    END_FUNC(fault\number)
 .endm
 
 .macro fault_with_err_code number
    FUNC(fault\number):
    push \number
-   jmp asm_soft_interrupt_entry
+   jmp asm_fault_entry
    END_FUNC(fault\number)
 .endm
 
@@ -84,3 +84,25 @@ FUNC(double_fault_handler_asm):
    jmp double_fault_handler # Direct jmp, no call: the callee won't return
 
 END_FUNC(double_fault_handler_asm)
+
+
+FUNC(asm_fault_entry):
+
+   kernel_entry_common
+   push_custom_flags (0)
+
+   push offset fault_entry_resume
+   mov eax, esp
+   cld            # Set DF = 0, as C compilers by default assume that.
+   push eax
+   call fault_entry
+
+   add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
+
+# NOTE: this must be identical to `soft_interrupt_resume` defined in
+# syscall_entry.S. Here it's simply copy-pasted to save an extra jump.
+fault_entry_resume:
+   pop_custom_flags
+   kernel_exit_common
+
+END_FUNC(asm_fault_entry)

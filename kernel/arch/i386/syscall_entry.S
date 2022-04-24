@@ -16,7 +16,6 @@
 
 .global syscall_int80_entry
 .global sysenter_entry
-.global asm_soft_interrupt_entry
 .global context_switch
 .global soft_interrupt_resume
 
@@ -56,7 +55,7 @@ FUNC(sysenter_entry):
    mov eax, esp
    cld            # set DF = 0, as C compilers by default assume that.
    push eax
-   call soft_interrupt_entry
+   call syscall_entry
 
    add esp, 8     # skip the previousy-pushed 'eax' and kernel_resume_eip
 
@@ -81,16 +80,6 @@ FUNC(syscall_int80_entry):
    push 0
    push 0x80
 
-   /*
-    * No need to jump here because asm_soft_interrupt_entry is right
-    * below this function. We're happy to easily skip an useless jump.
-    */
-
-END_FUNC(syscall_int80_entry)
-
-# Soft interrupts common entry point
-FUNC(asm_soft_interrupt_entry):
-
    kernel_entry_common
    push_custom_flags (0)
 
@@ -98,7 +87,7 @@ FUNC(asm_soft_interrupt_entry):
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
    push eax
-   call soft_interrupt_entry
+   call syscall_entry
 
    add esp, 8     # Discard the previousy-pushed 'eax' and kernel_resume_eip
 
@@ -106,7 +95,7 @@ soft_interrupt_resume:
    pop_custom_flags
    kernel_exit_common
 
-END_FUNC(asm_soft_interrupt_entry)
+END_FUNC(syscall_int80_entry)
 
 FUNC(context_switch):
 
