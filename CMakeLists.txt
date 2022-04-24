@@ -233,6 +233,9 @@ set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
 set(BOOT_INTERACTIVE ON CACHE BOOL
     "Have user-interactive commands in the bootloaders")
 
+set(KERNEL_64BIT_OFFT ON CACHE BOOL
+    "Make offt be 64-bit even on 32-bit systems")
+
 # Kernel options (disabled by default)
 
 set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
@@ -462,6 +465,7 @@ list(
    BOOTLOADER_EFI
    BOOT_INTERACTIVE
    KRN_NO_SYS_WARN
+   KERNEL_64BIT_OFFT
 
    # Boolean options DISABLED by default
    KERNEL_UBSAN

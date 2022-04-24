@@ -8,6 +8,8 @@
 #pragma once
 #include <tilck_gen_headers/config_global.h>
 
+#define HAVE_KERNEL_CONFIG
+
 /* --------- Boolean config variables --------- */
 #cmakedefine01 KRN_NO_SYS_WARN
 #cmakedefine01 KRN_PAGE_FAULT_PRINTK
@@ -15,6 +17,7 @@
 #cmakedefine01 TINY_KERNEL
 #cmakedefine01 KERNEL_GCOV
 #cmakedefine01 KERNEL_UBSAN
+#cmakedefine01 KERNEL_64BIT_OFFT
 
 /*
  * --------------------------------------------------------------------------

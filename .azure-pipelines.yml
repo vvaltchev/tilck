@@ -188,6 +188,8 @@ jobs:
           GEN: 'gcc_no_nested_irq_tracking'
         minimal:
           GEN: 'minimal'
+        small-offt:
+          GEN: 'gcc_small_offt'
     steps:
       - script: printenv
         displayName: Dump env
@@ -222,6 +224,8 @@ jobs:
           GEN: 'clang_wconv'
         clang_tc_isystem:
           GEN: 'clang_tc_isystem'
+        clang_small_offt:
+          GEN: 'clang_small_offt'
     steps:
       - script: printenv
         displayName: Dump env
