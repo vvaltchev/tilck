@@ -46,7 +46,7 @@ void enable_preemption(void)
    ASSERT(oldval > 0);
 
    if (KRN_RESCHED_ENABLE_PREEMPT) {
-      if (oldval == 1 && need_reschedule())
+      if (oldval == 1 && need_reschedule() && are_interrupts_enabled())
          schedule();
    }
 }
