@@ -147,8 +147,31 @@ typedef uint64_t u64;
 STATIC_ASSERT(sizeof(ulong) == sizeof(long));
 STATIC_ASSERT(sizeof(ulong) == sizeof(void *));
 
-/* Tilck's off_t, unrelated with any external files and pointer-size long */
-typedef long offt;
+/*
+ * Tilck's off_t, unrelated with any external files.
+ *
+ * The size of `offt` determine the max size of files and devices that Tilck
+ * can access. By default, it's a signed 64-bit integer and that doesn't have
+ * a measurable impact on Tilck's performance even on 32-bit systems where
+ * 64-bit integers require multiple instructions and two registers. But, the
+ * size of `offt` is configurable in order to force the code to not make direct
+ * assumptions about its size. Also, on some small-scale embedded systems, it
+ * might be convenient to consider disabling the KERNEL_64BIT_OFFT and save
+ * some space in structs, along with a few CPU cycles.
+ */
+
+#ifdef HAVE_KERNEL_CONFIG
+
+   #if KERNEL_64BIT_OFFT
+      typedef int64_t offt;
+      #define OFFT_MAX        ((offt)INT64_MAX)
+   #else
+      typedef long offt;
+      #define OFFT_MAX        ((offt)LONG_MAX)
+   #endif
+
+   STATIC_ASSERT(sizeof(offt) >= sizeof(long));
+#endif
 
 /*
  * An useful two-pass concatenation macro.
