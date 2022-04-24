@@ -221,12 +221,10 @@ static ALWAYS_INLINE void disable_interrupts_forced(void)
 #endif
 }
 
-#if DEBUG_CHECKS
 static ALWAYS_INLINE bool are_interrupts_enabled(void)
 {
    return !!(get_eflags() & EFLAGS_IF);
 }
-#endif
 
 static ALWAYS_INLINE void disable_interrupts(ulong *const var)
 {
