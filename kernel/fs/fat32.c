@@ -40,6 +40,15 @@ fat_read(fs_handle handle, char *buf, size_t bufsize, offt *pos)
    offt fsize = (offt)h->e->DIR_FileSize;
    offt written_to_buf = 0;
 
+   if (pos != &h->h_fpos) {
+
+      /*
+       * We don't support pread() for this filesystem, at the moment.
+       * TODO: make fat32 support pread64().
+       */
+      return -EPERM;
+   }
+
    if (h->e->directory)
       return -EISDIR;
 

@@ -75,6 +75,8 @@ considered as *not implemented yet*.
  sys_creat                  | full
  sys_unlink                 | full
  sys_symlink                | full
+ sys_pread64                | full
+ sys_pwrite64               | full
  sys_vfork                  | compliant [11]
  sys_umask                  | full
  sys_ia32_truncate64        | full
