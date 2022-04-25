@@ -12,7 +12,7 @@
 using namespace std;
 using namespace testing;
 
-class vfs_misc : public vfs_test_base {
+class vfs_fat32 : public vfs_test_base {
 
 protected:
 
@@ -37,7 +37,7 @@ protected:
    }
 };
 
-TEST_F(vfs_misc, read_content_of_longname_file)
+TEST_F(vfs_fat32, read_content_of_longname_file)
 {
    int r;
    char data[128] = {0};
@@ -56,7 +56,7 @@ TEST_F(vfs_misc, read_content_of_longname_file)
    ASSERT_STREQ("Content of file with a long name\n", data);
 }
 
-TEST_F(vfs_misc, fseek)
+TEST_F(vfs_fat32, fseek)
 {
    random_device rdev;
    const auto seed = rdev();
@@ -156,7 +156,7 @@ TEST_F(vfs_misc, fseek)
 
          test_dump_buf(buf_linux, "Linux buf:  ", 0, sizeof(buf_linux));
          test_dump_buf(buf_linux, "Tilck buf:  ", 0, sizeof(buf_linux));
-         FAIL();
+         FAIL() << "memcmp failed";
       }
 
       last_pos = linux_pos;
@@ -164,6 +164,265 @@ TEST_F(vfs_misc, fseek)
 
    vfs_close(h);
    close(fd);
+}
+
+TEST_F(vfs_fat32, pread_not_supported)
+{
+   const char *fatpart_file_path = "/bigfile";
+   fs_handle h = NULL;
+   char buf[32];
+   int rc;
+
+   rc = vfs_open(fatpart_file_path, &h, 0, O_RDONLY);
+   ASSERT_TRUE(rc == 0);
+   ASSERT_TRUE(h != NULL);
+
+   rc = vfs_pread(h, buf, sizeof(buf), 0 /* offset */);
+   EXPECT_EQ(rc, -EPERM);
+
+   rc = vfs_pread(h, buf, sizeof(buf), 10 /* offset */);
+   EXPECT_EQ(rc, -EPERM);
+
+   vfs_close(h);
+}
+
+class vfs_ramfs : public vfs_test_base {
+
+protected:
+   struct mnt_fs *mnt_fs;
+
+   void SetUp() override {
+
+      vfs_test_base::SetUp();
+
+      mnt_fs = ramfs_create();
+      ASSERT_TRUE(mnt_fs != NULL);
+      mp_init(mnt_fs);
+   }
+
+   void TearDown() override {
+
+      // TODO: destroy ramfs
+      vfs_test_base::TearDown();
+   }
+
+   /* Custom test helper functions */
+   void test_pread_pwrite_seek(bool fseek);
+};
+
+TEST_F(vfs_ramfs, create_and_unlink_file)
+{
+   static const char my_data[] = "hello world";
+
+   fs_handle h;
+   int rc;
+   char buf[32];
+
+   rc = vfs_open("/file1", &h, O_CREAT | O_RDWR, 0644);
+   ASSERT_EQ(rc, 0);
+
+   rc = vfs_write(h, (void *)my_data, sizeof(my_data));
+   ASSERT_EQ(rc, (int)sizeof(my_data));
+
+   vfs_close(h);
+
+   rc = vfs_open("/file1", &h, O_RDWR, 0644);
+   ASSERT_EQ(rc, 0);
+
+   rc = vfs_read(h, buf, sizeof(buf));
+   ASSERT_EQ(rc, (int)sizeof(my_data));
+
+   ASSERT_STREQ(buf, my_data);
+   vfs_close(h);
+
+   rc = vfs_unlink("/file1");
+   ASSERT_EQ(rc, 0);
+
+   rc = vfs_open("/file1", &h, O_RDWR, 0);
+   ASSERT_EQ(rc, -ENOENT);
+}
+
+void vfs_ramfs::test_pread_pwrite_seek(bool fseek)
+{
+   const off_t data_size = 2 * MB;
+   const int iters = 10000;
+   const char *const path = "/bigfile_random_data";
+   constexpr size_t buf_size = 64;
+
+   random_device rdev;
+   const auto seed = rdev();
+   default_random_engine engine(seed);
+   lognormal_distribution<> off_dist(4.0, 3);
+   uniform_int_distribution<uint8_t> data_dist(0, 255);
+   uniform_int_distribution<uint8_t> op_dist(0, 1);
+
+   fs_handle h;
+   char buf[buf_size] = {0};
+   vector<uint8_t> data;
+   char *data_buf;
+   off_t rc, curr_pos = 0;
+
+   data.reserve(data_size);
+
+   cout << "[ INFO     ] random seed: " << seed << endl;
+
+   for (int i = 0; i < data_size; i++) {
+      data.push_back(data_dist(engine));
+   }
+
+   ASSERT_EQ(data.size(), (size_t)data_size);
+   data_buf = (char *)&data[0];
+
+   rc = vfs_open(path, &h, O_CREAT | O_RDWR, 0644);
+   ASSERT_EQ(rc, 0);
+
+   auto clean_up = [&]() {
+
+      if (h) {
+         vfs_close(h);
+
+         rc = vfs_unlink(path);
+         ASSERT_EQ(rc, 0);
+
+         rc = vfs_open(path, &h, O_RDWR, 0);
+         ASSERT_EQ(rc, -ENOENT);
+      }
+   };
+
+   {
+      off_t written = 0;
+
+      while (written < data_size) {
+
+         rc = vfs_write(h, data_buf + written, data_size - written);
+
+         if (rc <= 0) {
+            clean_up();
+            FAIL() << "initial vfs_write() failed with: " << rc;
+         }
+
+         written += rc;
+      }
+   }
+
+   vfs_close(h);
+
+   rc = vfs_open(path, &h, O_RDWR, 0644);
+   ASSERT_EQ(rc, 0);
+
+   for (int i = 0; i < iters; i++) {
+
+      const uint8_t op = op_dist(engine);
+      const off_t off = (off_t) ( off_dist(engine) - off_dist(engine)/1.3 );
+      const off_t target_pos = off + curr_pos;
+
+      if (target_pos < 0 || target_pos >= data_size) {
+         i--;
+         continue; /* invalid offset, re-try the iteration */
+      }
+
+      const off_t rem = data_size - target_pos;
+
+      if (fseek) {
+
+         /* Change the offset with a seek operation */
+         off_t res = vfs_seek(h, off, SEEK_CUR);
+
+         if (res < 0) {
+            clean_up();
+            FAIL() << "vfs_seek() failed with: " << res;
+         }
+
+         if (res != target_pos) {
+            clean_up();
+            ASSERT_EQ(res, target_pos);
+         }
+
+         if ((res = vfs_seek(h, 0, SEEK_CUR)) != target_pos) {
+            clean_up();
+            FAIL() << "pos(" << res << ") != target_pos(" << target_pos << ")";
+         }
+
+         if ((res = vfs_seek(h, target_pos, SEEK_SET)) != target_pos) {
+            clean_up();
+            FAIL() << "pos(" << res << ") != target_pos(" << target_pos << ")";
+         }
+
+         curr_pos = target_pos;
+      }
+
+      if (op == 0) {
+
+         /* read */
+         off_t to_read = min((off_t)sizeof(buf), rem);
+
+         if (fseek) {
+            rc = vfs_read(h, buf, to_read);
+         } else {
+            rc = vfs_pread(h, buf, to_read, target_pos);
+         }
+
+         if (rc < 0) {
+            clean_up();
+            FAIL() << "vfs_read() failed with: " << rc;
+         }
+
+         if (rc != to_read) {
+            clean_up();
+            ASSERT_EQ(rc, to_read);
+         }
+
+         /* Compare the data in the mem buffer with what we read from VFS */
+         if (memcmp(data_buf + target_pos, buf, to_read) != 0) {
+            clean_up();
+            test_dump_buf(data_buf, "Expected: ", target_pos, to_read);
+            test_dump_buf(buf,      "Read:     ", 0, to_read);
+            FAIL() << "memcmp failed";
+         }
+
+         if (fseek)
+            curr_pos += rc;
+
+      } else {
+
+         /* write */
+         off_t to_write = min((off_t)sizeof(buf), rem);
+
+         if (fseek) {
+            rc = vfs_write(h, buf, to_write);
+         } else {
+            rc = vfs_pwrite(h, buf, to_write, target_pos);
+         }
+
+         if (rc < 0) {
+            clean_up();
+            FAIL() << "vfs_write() failed with: " << rc;
+         }
+
+         if (rc != to_write) {
+            clean_up();
+            ASSERT_EQ(rc, to_write);
+         }
+
+         /* Write the new data on the curr_pos in our mem buffer */
+         memmove(data_buf + target_pos, buf, to_write);
+
+         if (fseek)
+            curr_pos += rc;
+      }
+   }
+
+   clean_up();
+}
+
+TEST_F(vfs_ramfs, pread_pwrite)
+{
+   ASSERT_NO_FATAL_FAILURE({ test_pread_pwrite_seek(false); });
+}
+
+TEST_F(vfs_ramfs, seek)
+{
+   ASSERT_NO_FATAL_FAILURE({ test_pread_pwrite_seek(true); });
 }
 
 class compute_abs_path_test :
