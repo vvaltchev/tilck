@@ -1,5 +1,5 @@
 <p align="center">
-   <img src="http://vvaltchev.github.io/tilck_imgs/v2/tilck-logo-v6.png" alt="Tilck - A Tiny Linux-Compatible Kernel">
+   <img src="http://vvaltchev.github.io/tilck_imgs/v2/tilck-logo-v5.png" alt="Tilck - A Tiny Linux-Compatible Kernel">
 </p>
 
 [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status/Tilck?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=1&branchName=master)
