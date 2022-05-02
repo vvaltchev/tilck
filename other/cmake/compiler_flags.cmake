@@ -165,7 +165,7 @@ if (KERNEL_UBSAN)
 
    if (NOT ${GCC_TC_VER} VERSION_LESS "7.3.0")
 
-      # Older GCC versions do NOT support some UBSAN features.
+      # GCC >= 7.3.0 support some additional UBSAN features.
 
       list(
          APPEND GENERAL_KERNEL_FLAGS_LIST
@@ -217,13 +217,70 @@ set(
 JOIN("${LOWLEVEL_BINARIES_FLAGS_LIST}" ${SPACE} LOWLEVEL_BINARIES_FLAGS)
 
 
-set(
-   DISABLE_FPU_FLAGS_LIST
+#
+# On x86, -mgeneral-regs-only is supported only by GCC >= 7.0.
+# Clang supports it only on Aarch64 and the patch for making it generic
+# has been abandoned: https://reviews.llvm.org/D38479
+#
+set(MGENERAL_REGS_ONLY_SUPPORTED OFF)
 
-   # Disable the generation of any kind of FPU instructions
-   -mno-80387
-   -mno-mmx
-   -mno-sse
-   -mno-avx
-)
+if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+
+   # Special case: we're using the system compiler
+   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS "7.3.0")
+
+         # GCC-only flags for older GCC compilers
+         list(
+            APPEND DISABLE_FPU_FLAGS_LIST
+
+            -mno-fp-ret-in-387
+            -mskip-rax-setup
+         )
+
+      else()
+         set(MGENERAL_REGS_ONLY_SUPPORTED ON)
+      endif()
+   endif()
+
+else()
+
+   # DEFAULT CASE: we're using a GCC compiler from our toolchain
+   if (${GCC_TC_VER} VERSION_LESS "7.3.0")
+
+      # GCC-only flags for older GCC compilers
+      list(
+         APPEND DISABLE_FPU_FLAGS_LIST
+
+         -mno-fp-ret-in-387
+         -mskip-rax-setup
+      )
+
+   else()
+      set(MGENERAL_REGS_ONLY_SUPPORTED ON)
+   endif()
+endif()
+
+# Disable the generation of any kind of FPU instructions
+if (${MGENERAL_REGS_ONLY_SUPPORTED})
+
+   list(
+      APPEND DISABLE_FPU_FLAGS_LIST -mgeneral-regs-only
+   )
+
+else()
+
+list(
+      APPEND DISABLE_FPU_FLAGS_LIST
+
+      -mno-80387
+      -mno-mmx
+      -mno-3dnow
+      -mno-sse
+      -mno-sse2
+      -mno-avx
+   )
+
+endif()
+
 JOIN("${DISABLE_FPU_FLAGS_LIST}" ${SPACE} DISABLE_FPU_FLAGS)
