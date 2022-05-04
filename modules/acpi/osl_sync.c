@@ -7,6 +7,7 @@
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/timer.h>
 
 #include <limits.h>           // system header
 
@@ -116,6 +117,7 @@ AcpiOsWaitSemaphore(
     UINT16                  Timeout)
 {
    struct ksem *s = Handle;
+   u64 ticks;
    int rc;
 
    ACPI_FUNCTION_TRACE(__FUNC__);
@@ -123,7 +125,12 @@ AcpiOsWaitSemaphore(
    if (Units > INT_MAX || !Handle)
       return_ACPI_STATUS(AE_BAD_PARAMETER);
 
-   rc = ksem_wait(s, (int)Units, (int)Timeout);
+   ticks = ms_to_ticks(Timeout);
+
+   if (ticks > INT_MAX)
+      return_ACPI_STATUS(AE_BAD_PARAMETER);
+
+   rc = ksem_wait(s, (int)Units, (int)ticks);
 
    switch (rc) {
 
