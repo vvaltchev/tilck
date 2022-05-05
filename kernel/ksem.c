@@ -49,7 +49,7 @@ ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
             break;
       }
 
-      prepare_to_wait_on(WOBJ_SEM, s, NO_EXTRA, &s->wait_list);
+      prepare_to_wait_on(WOBJ_SEM, s, (u32)units, &s->wait_list);
 
       /* won't wakeup by a signal here, see signal.c */
       enter_sleep_wait_state();
@@ -86,22 +86,10 @@ int ksem_wait(struct ksem *s, int units, int timeout_ticks)
    return rc;
 }
 
-static void
-ksem_wakeup_task(struct ksem *s)
-{
-   struct wait_obj *task_wo =
-      list_first_obj(&s->wait_list, struct wait_obj, wait_list_node);
-
-   struct task *ti = CONTAINER_OF(task_wo, struct task, wobj);
-
-   ASSERT_TASK_STATE(ti->state, TASK_STATE_SLEEPING);
-   wake_up(ti);
-}
-
 int ksem_signal(struct ksem *s, int units)
 {
-   int rc = 0;
-   int max_to_wakeup;
+   struct wait_obj *wo, *tmp;
+   int rem_counter, rc = 0;
    ASSERT(units > 0);
 
    disable_preemption();
@@ -124,33 +112,23 @@ int ksem_signal(struct ksem *s, int units)
       }
    }
 
-   /* OK, it's safe to increase the counter by `units` */
    s->counter += units;
+   rem_counter = s->counter;
 
-   if (s->counter <= 0)
-      goto out; /* not enough units to unblock anybody */
+   list_for_each(wo, tmp, &s->wait_list, wait_list_node) {
 
-   /*
-    * Now, we don't know each of the waiters for how many units is waiting for.
-    * The only thing we know is that each waiter must be waiting for AT LEAST
-    * 1 unit. How many waiters should we wake up at most? If the available
-    * units (counter) are less than `units`, wake `counter` waiters. Otherwise,
-    * we have to be careful (in order to avoid waste of resourced): we should
-    * NOT wake up more than `units` waiters, even if `counter` is much bigger.
-    * Why? They were waiting with `counter > 0` even before this SIGNAL and
-    * didn't stop waiting because the counter's value was not big enough.
-    * Therefore, we've contributed to its value with `units` so, wake up at most
-    * `units` waiters.
-    */
+      if (rem_counter <= 0)
+         break; /* not enough units to unblock anybody */
 
-   max_to_wakeup = MIN(s->counter, units);
+      int wait_units = (int)wo->extra;
+      ASSERT(wo->type == WOBJ_SEM);
+      ASSERT(wait_units > 0);
 
-   for (int i = 0; i < max_to_wakeup; i++) {
-
-      if (list_is_empty(&s->wait_list))
-         break;
-
-      ksem_wakeup_task(s);
+      if (wait_units <= rem_counter) {
+         struct task *ti = CONTAINER_OF(wo, struct task, wobj);
+         rem_counter -= wait_units;
+         wake_up(ti);
+      }
    }
 
 out:
