@@ -38,7 +38,7 @@ struct wait_obj {
       long __data;                   /* data field (id) describing the obj  */
    };
 
-   u16 extra;                        /* extra info about the waiting reason  */
+   u32 extra;                        /* extra info about the waiting reason  */
    enum wo_type type;                /* type of the object we're waiting for */
    struct list_node wait_list_node;  /* node in waited object's waiting list */
 };
@@ -73,7 +73,7 @@ struct multi_obj_waiter {
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr_or_data,
-                  u16 extra,
+                  u32 extra,
                   struct list *wait_list);
 
 void *wait_obj_reset(struct wait_obj *wo);
@@ -92,7 +92,7 @@ wait_obj_get_data(struct wait_obj *wo)
 
 void prepare_to_wait_on(enum wo_type type,
                         void *ptr_or_data,
-                        u16 extra,
+                        u32 extra,
                         struct list *wait_list);
 
 void *wake_up(struct task *ti);

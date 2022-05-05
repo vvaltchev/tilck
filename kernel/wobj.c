@@ -10,7 +10,7 @@
 void wait_obj_set(struct wait_obj *wo,
                   enum wo_type type,
                   void *ptr,
-                  u16 extra,
+                  u32 extra,
                   struct list *wait_list)
 {
    atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
@@ -55,7 +55,7 @@ void *wait_obj_reset(struct wait_obj *wo)
 
 void prepare_to_wait_on(enum wo_type type,
                         void *ptr,
-                        u16 extra,
+                        u32 extra,
                         struct list *wait_list)
 {
    struct task *ti = get_curr_task();
