@@ -25,7 +25,7 @@ struct list runnable_tasks_list;
 /* Static variables */
 static struct task *tree_by_tid_root;
 static u64 idle_ticks;
-static int runnable_tasks_count;
+static volatile int runnable_tasks_count;
 static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 static struct task *idle_task;
@@ -382,6 +382,17 @@ static void idle(void)
       if (need_reschedule() || runnable_tasks_count > 1)
          schedule();
    }
+}
+
+void yield_until_last(void)
+{
+   ASSERT(is_preemption_enabled());
+
+   do {
+
+      kernel_yield();
+
+   } while (runnable_tasks_count > 2);
 }
 
 __attribute__((constructor))

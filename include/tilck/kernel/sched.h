@@ -426,3 +426,4 @@ void *task_temp_kernel_alloc(size_t size);
 void task_temp_kernel_free(void *ptr);
 int register_on_task_exit_cb(void (*cb)(struct task *));
 int unregister_on_task_exit_cb(void (*cb)(struct task *));
+void yield_until_last(void);
