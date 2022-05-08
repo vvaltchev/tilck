@@ -13,5 +13,7 @@ extern int kopt_tty_count;
 extern bool kopt_serial_console;
 extern bool kopt_sched_alive_thread;
 extern bool kopt_noacpi;
+extern bool kopt_fb_no_opt;
+extern bool kopt_fb_no_wc;
 
 void parse_kernel_cmdline(const char *cmdline);

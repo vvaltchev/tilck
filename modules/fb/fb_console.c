@@ -14,6 +14,7 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <tilck/mods/fb_console.h>
 #include <tilck/mods/acpi.h>
@@ -483,6 +484,11 @@ static void fb_use_optimized_funcs_if_possible(void)
 
    if (in_panic())
       return;
+
+   if (kopt_fb_no_opt) {
+      printk("fb_console: optimized funcs won't be used (kopt_fb_no_opt)\n");
+      return;
+   }
 
    if (font_w % 8) {
       printk("fb_console: WARNING: using slower code for font %d x %d\n",

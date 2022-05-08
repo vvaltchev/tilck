@@ -22,6 +22,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/vdso.h>
+#include <tilck/kernel/cmdline.h>
 
 #include <tilck/mods/tracing.h>
 
@@ -1184,6 +1185,11 @@ map_framebuffer(pdir_t *pdir,
        */
 
       panic("Unable to map the framebuffer in the virtual space");
+   }
+
+   if (kopt_fb_no_wc) {
+      printk("paging: skip marking framebuffer pages as WC (kopt_fb_no_wc)\n");
+      return (void *)vaddr;
    }
 
    if (x86_cpu_features.edx1.pat) {

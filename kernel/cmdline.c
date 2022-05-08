@@ -17,6 +17,8 @@ int kopt_tty_count = TTY_COUNT;
 bool kopt_sched_alive_thread; /* false */
 bool kopt_serial_console = !MOD_console;
 bool kopt_noacpi; /* false */
+bool kopt_fb_no_opt; /* false */
+bool kopt_fb_no_wc; /* false */
 
 /* static variables */
 
@@ -115,6 +117,17 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
       kopt_noacpi = true;
       return;
    }
+
+   if (!strcmp(arg, "-fb_no_opt")) {
+      kopt_fb_no_opt = true;
+      return;
+   }
+
+   if (!strcmp(arg, "-fb_no_wc")) {
+      kopt_fb_no_wc = true;
+      return;
+   }
+
 
    /* Internal options, used by tests */
 
