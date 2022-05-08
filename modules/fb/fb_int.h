@@ -28,4 +28,4 @@ void fb_draw_banner(void);
 
 void fb_fill_fix_info(void *fix_info);
 void fb_fill_var_info(void *var_info);
-void fb_user_mmap(pdir_t *pdir, void *vaddr, size_t mmap_len);
+int fb_user_mmap(pdir_t *pdir, void *vaddr, size_t mmap_len);

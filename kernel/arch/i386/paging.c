@@ -1143,6 +1143,7 @@ map_framebuffer(pdir_t *pdir,
 
    if (!vaddr) {
 
+      ASSERT(!user_mmap); /* user mappings always have a vaddr at this layer */
       vaddr = (ulong) hi_vmem_reserve(size);
 
       if (!vaddr) {
@@ -1178,6 +1179,14 @@ map_framebuffer(pdir_t *pdir,
                      pg_flags);
 
    if (count < page_count) {
+
+      if (user_mmap) {
+
+         /* This is bad, but not terrible */
+         printk("WARNING: unable to mmap framebuffer at %p\n", (void *)vaddr);
+         unmap_pages_permissive(pdir, (void *)vaddr, count, false);
+         return NULL;
+      }
 
       /*
        * What if this is the only framebuffer available for showing something

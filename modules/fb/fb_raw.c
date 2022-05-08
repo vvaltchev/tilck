@@ -22,6 +22,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/system_mmap_int.h>
+#include <tilck/kernel/errno.h>
 
 #include "fb_int.h"
 
@@ -206,9 +207,12 @@ u32 fb_get_bpp(void)
    return fb_bpp;
 }
 
-void fb_user_mmap(pdir_t *pdir, void *vaddr, size_t mmap_len)
+int fb_user_mmap(pdir_t *pdir, void *vaddr, size_t mmap_len)
 {
-   map_framebuffer(pdir, fb_paddr, (ulong)vaddr, mmap_len, true);
+   if (!map_framebuffer(pdir, fb_paddr, (ulong)vaddr, mmap_len, true))
+      return -ENOMEM;
+
+   return 0;
 }
 
 void fb_map_in_kernel_space(void)
