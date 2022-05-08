@@ -15,5 +15,6 @@ extern bool kopt_sched_alive_thread;
 extern bool kopt_noacpi;
 extern bool kopt_fb_no_opt;
 extern bool kopt_fb_no_wc;
+extern bool kopt_no_fpu_memcpy;
 
 void parse_kernel_cmdline(const char *cmdline);

@@ -19,6 +19,7 @@ bool kopt_serial_console = !MOD_console;
 bool kopt_noacpi; /* false */
 bool kopt_fb_no_opt; /* false */
 bool kopt_fb_no_wc; /* false */
+bool kopt_no_fpu_memcpy; /* false */
 
 /* static variables */
 
@@ -128,6 +129,10 @@ parse_arg_state_initial(int arg_num, const char *arg, size_t arg_len)
       return;
    }
 
+   if (!strcmp(arg, "-no_fpu_memcpy")) {
+      kopt_no_fpu_memcpy = true;
+      return;
+   }
 
    /* Internal options, used by tests */
 

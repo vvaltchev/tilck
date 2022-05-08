@@ -22,8 +22,10 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/elf_utils.h>
+#include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/arch/generic_x86/fpu_memcpy.h>
 
 void
@@ -157,14 +159,17 @@ init_fpu_memcpy_internal_check(void *func, const char *fname, u32 size)
 
 static void *get_fpu_cpy_single_256_nt_func(void)
 {
-   if (x86_cpu_features.can_use_avx2)
-      return &fpu_cpy_single_256_nt_avx2;
+   if (!kopt_no_fpu_memcpy) {
 
-   if (x86_cpu_features.can_use_sse2)
-      return &fpu_cpy_single_256_nt_sse2;
+      if (x86_cpu_features.can_use_avx2)
+         return &fpu_cpy_single_256_nt_avx2;
 
-   if (x86_cpu_features.can_use_sse)
-      return &fpu_cpy_single_256_nt_sse;
+      if (x86_cpu_features.can_use_sse2)
+         return &fpu_cpy_single_256_nt_sse2;
+
+      if (x86_cpu_features.can_use_sse)
+         return &fpu_cpy_single_256_nt_sse;
+   }
 
    /* See the comment below in init_fpu_memcpy() */
    return IS_RELEASE_BUILD ? &memcpy_single_256_failsafe : NULL;
@@ -172,17 +177,20 @@ static void *get_fpu_cpy_single_256_nt_func(void)
 
 static void *get_fpu_cpy_single_256_nt_read_func(void)
 {
-   if (x86_cpu_features.can_use_avx2)
-      return &fpu_cpy_single_256_nt_read_avx2;
+   if (!kopt_no_fpu_memcpy) {
 
-   if (x86_cpu_features.can_use_sse4_1)
-      return &fpu_cpy_single_256_nt_read_sse4_1;
+      if (x86_cpu_features.can_use_avx2)
+         return &fpu_cpy_single_256_nt_read_avx2;
 
-   if (x86_cpu_features.can_use_sse2)
-      return &fpu_cpy_single_256_sse2;     /* no "nt" read here */
+      if (x86_cpu_features.can_use_sse4_1)
+         return &fpu_cpy_single_256_nt_read_sse4_1;
 
-   if (x86_cpu_features.can_use_sse)
-      return &fpu_cpy_single_256_sse;      /* no "nt" read here */
+      if (x86_cpu_features.can_use_sse2)
+         return &fpu_cpy_single_256_sse2;     /* no "nt" read here */
+
+      if (x86_cpu_features.can_use_sse)
+         return &fpu_cpy_single_256_sse;      /* no "nt" read here */
+   }
 
    /* See the comment below in init_fpu_memcpy() */
    return IS_RELEASE_BUILD ? &memcpy_single_256_failsafe : NULL;
@@ -211,6 +219,18 @@ void init_fpu_memcpy(void)
 {
    void *func;
 
+   if (kopt_no_fpu_memcpy) {
+
+      /*
+       * NOTE: Just show the message, do NOT return. Perform the hot patch with
+       * the failsafe functions in order to skip the JMP in the original code.
+       *
+       * See __asm_fpu_cpy_single_256_nt and __asm_fpu_cpy_single_256_nt_read.
+       */
+
+      printk("INFO: fpu_memcpy is disabled (kopt_no_fpu_memcpy)\n");
+   }
+
    /*
     * NOTE: don't hot-patch the *_fpu_cpy_single_* funcs in the failsafe case.
     * Reason: unless we're using GCC, this file won't be compiled with -O3
@@ -229,6 +249,8 @@ void init_fpu_memcpy(void)
     * their original body: this means just making an unconditional jmp to
     * memcpy_single_256_failsafe() and from there a call to memset32(). It seems
     * by far the less evil solution.
+    *
+    *
     */
 
    if ((func = get_fpu_cpy_single_256_nt_func())) {
