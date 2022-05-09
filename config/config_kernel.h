@@ -18,6 +18,7 @@
 #cmakedefine01 KERNEL_GCOV
 #cmakedefine01 KERNEL_UBSAN
 #cmakedefine01 KERNEL_64BIT_OFFT
+#cmakedefine01 KRN_CLOCK_DRIFT_COMP
 
 /*
  * --------------------------------------------------------------------------

@@ -43,8 +43,11 @@ const char *months3[12] =
 
 static s64 boot_timestamp;
 static bool in_full_resync;
+
+#if KRN_CLOCK_DRIFT_COMP
 static bool first_sssync_failed; /* first_sub_second_sync_failed */
 static int adj_cnt;              /* adjustments count (temporary, gets reset) */
+#endif
 
 /* lifetime statistics about re-syncs */
 static struct clock_resync_stats clock_rstats;
@@ -81,11 +84,12 @@ bool clock_in_resync(void)
    return rem != 0;
 }
 
-
 void clock_get_resync_stats(struct clock_resync_stats *s)
 {
    *s = clock_rstats;
 }
+
+#if KRN_CLOCK_DRIFT_COMP
 
 static int clock_get_second_drift2(bool enable_preempt_on_exit)
 {
@@ -129,11 +133,6 @@ static int clock_get_second_drift2(bool enable_preempt_on_exit)
 
    hw_ts = datetime_to_timestamp(d);
    return (int)(sys_ts - hw_ts);
-}
-
-int clock_get_second_drift(void)
-{
-   return clock_get_second_drift2(true);
 }
 
 static bool clock_sub_second_resync(void)
@@ -322,7 +321,7 @@ static void check_drift_and_sync(void)
    enable_preemption();
 }
 
-void clock_drift_adj()
+static void clock_drift_adj()
 {
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(TIMER_HZ);
@@ -390,12 +389,28 @@ void clock_drift_adj()
    }
 }
 
+int clock_get_second_drift(void)
+{
+   return clock_get_second_drift2(true);
+}
+
+#else
+
+int clock_get_second_drift(void)
+{
+   return 0;
+}
+
+#endif // KRN_CLOCK_DRIFT_COMP
+
 void init_system_time(void)
 {
    struct datetime d;
 
-   if (kthread_create(&clock_drift_adj, 0, NULL) < 0)
-      printk("WARNING: unable to create a kthread for clock_drift_adj()\n");
+#if KRN_CLOCK_DRIFT_COMP
+      if (kthread_create(&clock_drift_adj, 0, NULL) < 0)
+         printk("WARNING: unable to create a kthread for clock_drift_adj()\n");
+#endif
 
    hw_read_clock(&d);
    boot_timestamp = datetime_to_timestamp(d);

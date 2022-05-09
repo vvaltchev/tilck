@@ -236,6 +236,9 @@ set(BOOT_INTERACTIVE ON CACHE BOOL
 set(KERNEL_64BIT_OFFT ON CACHE BOOL
     "Make offt be 64-bit even on 32-bit systems")
 
+set(KRN_CLOCK_DRIFT_COMP ON CACHE BOOL
+    "Compensate periodically for the clock drift in the system time")
+
 # Kernel options (disabled by default)
 
 set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
@@ -466,6 +469,7 @@ list(
    BOOT_INTERACTIVE
    KRN_NO_SYS_WARN
    KERNEL_64BIT_OFFT
+   KRN_CLOCK_DRIFT_COMP
 
    # Boolean options DISABLED by default
    KERNEL_UBSAN
