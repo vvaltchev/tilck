@@ -159,7 +159,7 @@ int cmd_mmap2(int argc, char **argv)
    return 0;
 }
 
-static const size_t fork_oom_alloc_size = 96 * MB;
+static size_t fork_oom_alloc_size;
 
 static void fork_oom_child(void *buf)
 {
@@ -167,6 +167,127 @@ static void fork_oom_child(void *buf)
    memset(buf, 0xBB, fork_oom_alloc_size);
    printf("Child [%d]: done, without failing! [unexpected]\n", getpid());
    exit(0);
+}
+
+/*
+ * This is a simply code to empirically discover how much memory we can commit
+ * at the moment.
+ */
+static void estimate_usable_mem_child(int rfd, int wfd)
+{
+   size_t sz = 1 * MB;
+   size_t mem = 0;
+   int rc;
+
+   printf(STR_CHILD "Pid: %d\n", getpid());
+
+   while (true) {
+
+      char *buf = malloc(sz);
+      memset(buf, 'A', sz);
+      mem += sz;
+
+      //printf(STR_CHILD "Committed mem: %zu MB\n", mem / MB);
+      rc = write(wfd, &mem, sizeof(mem));
+
+      if (rc < 0) {
+         printf(STR_CHILD "write on pipe failed: %s\n", strerror(errno));
+         break;
+      }
+   }
+
+   /* We're not supposed to get here */
+}
+
+size_t mm_estimate_usable_mem(void)
+{
+   int rc, pipefd[2];
+   int rfd, wfd, wstatus;
+   size_t msg, mem = 0;
+   pid_t childpid;
+
+   printf(STR_PARENT "Estimating usable memory..\n");
+
+   rc = pipe(pipefd);
+   DEVSHELL_CMD_ASSERT(rc >= 0);
+
+   rfd = pipefd[0];
+   wfd = pipefd[1];
+
+   childpid = fork();
+   DEVSHELL_CMD_ASSERT(childpid >= 0);
+
+   if (!childpid) {
+      estimate_usable_mem_child(rfd, wfd);
+      exit(0);
+   }
+
+   rc = fcntl(rfd, F_SETFL, O_NONBLOCK);
+
+   if (rc < 0) {
+      printf(STR_PARENT "fcntl failed: %s\n", strerror(errno));
+      goto out;
+   }
+
+   while (true) {
+
+      rc = read(rfd, &msg, sizeof(msg));
+
+      if (rc < 0) {
+
+         if (errno == EAGAIN) {
+
+            rc = waitpid(childpid, &wstatus, WNOHANG);
+
+            if (rc < 0) {
+               printf(STR_PARENT "waitpid failed: %s\n", strerror(errno));
+               break;
+            }
+
+            if (rc == childpid) {
+
+               if (WIFEXITED(wstatus)) {
+                  printf(STR_PARENT "[unexpected] child exited with: %d\n",
+                         WEXITSTATUS(wstatus));
+               } else {
+                  printf(STR_PARENT "Child killed by signal %d\n",
+                         WTERMSIG(wstatus));
+               }
+
+               break;
+            }
+
+            usleep(50 * 1000);
+            continue;
+         }
+
+         printf(STR_PARENT "read from pipe failed: %s\n", strerror(errno));
+         mem = 0;
+         goto out;
+      }
+
+      if (rc == 0) {
+
+         if (mem > 0)
+            printf(STR_PARENT "read 0\n");
+         else
+            printf(STR_PARENT "unexpected read 0\n");
+
+         break;
+      }
+
+      /* Update the max memory we were able to commit */
+      mem = msg;
+   }
+
+   if (mem) {
+      printf(STR_PARENT "Estimated usable memory: %zu MB\n", mem / MB);
+   }
+
+out:
+   close(rfd);
+   close(wfd);
+   return mem;
 }
 
 /*
@@ -182,6 +303,26 @@ int cmd_fork_oom(int argc, char **argv)
       printf(PFX "[SKIP] because FORK_NO_COW=1\n");
       return 0;
    }
+
+   if (!getenv("TILCK")) {
+      printf(PFX "[SKIP] because we're not running on Tilck\n");
+      return 0;
+   }
+
+   fork_oom_alloc_size = mm_estimate_usable_mem();
+
+   if (!fork_oom_alloc_size) {
+      printf("ERROR: unable to estimate usable memory!\n");
+      return 1;
+   }
+
+   /*
+    * Alloc just a bit more than half of the available memory, because in any
+    * case it won't be possible both the parent and child process to commit all
+    * of that. This makes the test a bit faster ;-)
+    */
+   fork_oom_alloc_size /= 2;
+   fork_oom_alloc_size += 4 * MB;
 
    printf("Alloc %d MB...\n", fork_oom_alloc_size / MB);
    buf = malloc(fork_oom_alloc_size);

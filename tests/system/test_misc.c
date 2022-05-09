@@ -286,6 +286,11 @@ static int run_extra_test(const char *name)
    int rc, pid, wstatus;
    char buf[64];
 
+   if (!getenv("TILCK")) {
+      printf(PFX "[SKIP] because we're not running on Tilck\n");
+      return 0;
+   }
+
    printf("%s Extra: %s\n", STR_RUN, name);
    sprintf(buf, "/initrd/usr/local/tests/%s", name);
 
