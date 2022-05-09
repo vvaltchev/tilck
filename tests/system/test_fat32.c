@@ -32,6 +32,11 @@ int cmd_fatmm1(int argc, char **argv)
    const size_t mmap_size = page_size * 2;
    const size_t mmap_off = page_size * 4;
 
+   if (!getenv("TILCK")) {
+      printf(PFX "[SKIP] because we're not running on Tilck\n");
+      return 0;
+   }
+
    printf("Using '%s' as test file\n", test_file_name);
    fd = open(test_file_name, O_RDONLY, 0644);
    DEVSHELL_CMD_ASSERT(fd > 0);
