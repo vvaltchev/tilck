@@ -677,7 +677,7 @@ string(TOLOWER ${UNAME_R} UNAME_R)
 string(FIND ${UNAME_R} "microsoft" _index)
 
 if (${_index} EQUAL -1)
-   set(QEMU_COMMON_OPTS "${QEMU_COMMON_OPTS} -soundhw sb16")
+   set(QEMU_COMMON_OPTS "${QEMU_COMMON_OPTS} -device sb16")
 endif()
 
 # Set kernel's stack size in number of pages.
