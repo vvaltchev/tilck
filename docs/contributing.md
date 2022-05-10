@@ -19,8 +19,7 @@ requirements:
 **NOTE:** don't be scared to propose an imperfect pull request. You will get help!
  
 Code-free contributions are also welcome. The project would benefit from more
-documentation (HOWTOs, tutorials etc.), but also from artistic assets like a
-classic (square) logo and a banner.
+documentation (HOWTOs, tutorials etc.), but also from artistic assets.
 
 [building]: docs/building.md
 [testing]: docs/testing.md
@@ -63,6 +62,35 @@ to quickly mention a few points:
     }
     ```
   - The braces should be omitted for single-statement blocks unless that generates confusion
+  - It is often better to leave an empty line after `if (...) {` or `for (...) {`, when the
+    condition/loop header is long compared to the next line, the body is non-trivial and the
+    open brace is on the same line as the `if`/`for` statement.
+    For example, this is good:
+    ```C
+     for (int i = (int)h->heap_data_size_log2 - 1; i >= 0 && tot < size; i--) {
+
+        const size_t sub_block_size = (1 << i);
+
+        if (!(size & sub_block_size))
+           continue;
+        
+        /* ... */
+     }
+    ```
+    While this looks kind of ugly:
+    ```C
+     for (int i = (int)h->heap_data_size_log2 - 1; i >= 0 && tot < size; i--) {
+        const size_t sub_block_size = (1 << i);
+
+        if (!(size & sub_block_size))
+           continue;
+        
+        /* ... */
+     }
+     ```
+     Simply because in the second case, the first line of the body gets partially hidden
+     by loop's header.
+    
   - For long function signatures, the type goes on the previous line, and the parameters
     are aligned like this:
       ```C
