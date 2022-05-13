@@ -511,7 +511,16 @@ static int test_sig_n(int n, bool busy_loop, int exp_term_sig)
       test_sig_child_body(n, busy_loop);
    }
 
-   usleep(100 * 1000);
+   /* --- parent --- */
+
+   /*
+    * Sleep a bit in order to give some time to the child to enter in the busy
+    * loop. NOTE: this is an extremely poor way of synchronizing two tasks,
+    * even if it's simple and "just works" for tests.
+    *
+    * TODO: impl. a proper synchronization mechanism for sig3 and sig4 tests.
+    */
+   usleep(25 * 1000);
 
    if (exp_term_sig) {
 
