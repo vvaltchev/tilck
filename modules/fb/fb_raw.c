@@ -351,26 +351,20 @@ void fb_copy_to_screen(u32 ix, u32 iy, u32 w, u32 h, u32 *buf)
 
 void debug_dump_glyph(u32 n)
 {
-   static const char fgbg[2] = {'-', '#'};
-
    if (!font_glyph_data) {
       printk("debug_dump_glyph: font_glyph_data == 0: are we in text mode?\n");
       return;
    }
 
-   // ASSUMPTION: width is divisible by 8
-   const u32 width_bytes = font_w >> 3;
+   const char fgbg[2] = {'#', '.'};
    u8 *data = font_glyph_data + font_bytes_per_glyph * n;
 
    printk(NO_PREFIX "\nGlyph #%u:\n\n", n);
 
-   for (u32 row = 0; row < font_h; row++) {
-      for (u32 b = 0; b < width_bytes; b++) {
-
-         u8 sl = data[b + width_bytes * row];
-
-         for (int bit = 7; bit >= 0; bit--) {
-            printk(NO_PREFIX "%c", fgbg[!!(sl & (1 << bit))]);
+   for (u32 row = 0; row < font_h; row++, data += font_width_bytes) {
+      for (u32 b = 0; b < font_width_bytes; b++) {
+         for (u32 i = 0; i < 8; i++) {
+            printk(NO_PREFIX "%c", fgbg[!(data[b] & (1 << i))]);
          }
       }
 
