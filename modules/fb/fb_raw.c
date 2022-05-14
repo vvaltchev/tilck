@@ -10,6 +10,7 @@
 #endif
 
 #include <tilck_gen_headers/config_debug.h>
+#include <tilck_gen_headers/mod_fb.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
@@ -402,33 +403,40 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
       vga_rgb_colors[vgaentry_get_bg(e)],
    };
 
-   /*
-    * PERFORMANCE NOTE: using the following if (...) else if (...) sequence is
-    * measurably faster on modern CPUs compared to turning the whole
-    * fb_draw_char_failsafe() into a function pointer and having a separate
-    * function per case because of the branch prediction.
-    */
+   if (FB_CONSOLE_FAILSAFE_OPT) {
 
-   if (LIKELY(font_width_bytes == 1))
+      if (LIKELY(font_width_bytes == 1))
 
-      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
-         draw_char_partial(0);
-      }
+         for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes) {
+            draw_char_partial(0);
+         }
 
-   else if (font_width_bytes == 2)
+      else if (font_width_bytes == 2)
 
-      for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
-         draw_char_partial(0);
-         draw_char_partial(1);
-      }
+         for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes) {
+            draw_char_partial(0);
+            draw_char_partial(1);
+         }
 
-   else
+      else
+
+         for (u32 row = y; row < (y+font_h); row++, data += font_width_bytes) {
+            for (u32 b = 0; b < font_width_bytes; b++) {
+               draw_char_partial(b);
+            }
+         }
+
+   } else {
 
       for (u32 row = y; row < (y + font_h); row++, data += font_width_bytes) {
          for (u32 b = 0; b < font_width_bytes; b++) {
-            draw_char_partial(b);
+            for (u32 i = 0; i < 8; i++)
+               fb_draw_pixel(x + (b << 3) + (8 - i - 1),   /* x */
+                             row,                          /* y */
+                             arr[!(data[b] & (1 << i))]);  /* color */
          }
       }
+   }
 }
 
 
