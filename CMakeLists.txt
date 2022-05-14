@@ -329,6 +329,9 @@ set(PCI_VENDORS_LIST OFF CACHE BOOL
 set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
     "Enable an early DEBUG dialog (see docs/debugging.md)")
 
+set(FB_CONSOLE_FAILSAFE_OPT OFF CACHE BOOL
+    "Optimize fb_console's failsafe mode for older machines")
+
 list(
    APPEND no_arch_modules_whitelist
 
@@ -497,6 +500,7 @@ list(
    INIT_REPORT_PROC_EXIT
    PCI_VENDORS_LIST
    EFI_BOOTLOADER_DEBUG
+   FB_CONSOLE_FAILSAFE_OPT
 )
 
 ###########################################################

@@ -18,7 +18,7 @@
 #cmakedefine01    FB_CONSOLE_BANNER
 #cmakedefine01    FB_CONSOLE_CURSOR_BLINK
 #cmakedefine01    FB_CONSOLE_USE_ALT_FONTS
-
+#cmakedefine01    FB_CONSOLE_FAILSAFE_OPT
 
 /*
  * --------------------------------------------------------------------------
