@@ -200,13 +200,65 @@ function download_git_repo_in_cache {
    fi
 
    if [ -z "$tag" ]; then
+
       git clone --depth 1 "$url" $dirname
+
    else
-      git clone --branch $tag --depth 1 "$url" $dirname
+
+      if ! git clone --branch "$tag" --depth 1 "$url" $dirname; then
+
+         # Git clone failed. There could be several reasons for that:
+         #
+         #     - The remote git server is down
+         #
+         #     - The pointed branch/tag/commit does not exist anymore because
+         #       the ref has been deleted or the history has been rewritten.
+         #
+         #     - In some corner cases, like BitBucket, fetching individual
+         #       untagged commits is not allowed. This is the only case for
+         #       which an actual workaround is possible.
+         #       See: https://stackoverflow.com/a/51002078/2077198
+         #
+
+         if echo "$tag" | grep -E "^[0-9a-z]+$"; then
+
+            # It's worth trying this approach only if the tag looks like a
+            # commit SHA.
+
+            if git clone "$url" $dirname; then
+
+               cd $dirname
+
+               if ! git checkout "$tag"; then
+                  echo "ERROR: the git ref $tag does not exist anymore!"
+                  exit 1
+               fi
+
+               # Delete the .git directory which is not needed anymore and takes
+               # quite some space. We just need one commit, not the whole
+               # git history.
+               rm -rf .git
+
+               # Go back to the parent directory
+               cd ..
+            fi
+         fi
+      fi
+   fi
+
+   if ! [ -d "$dirname" ]; then
+      echo "ERROR: git clone failed for: $url"
+      exit 1
    fi
 
    tar cfz $tarname $dirname
-   mv $tarname $TC/cache
+
+   if ! [ -f $tarname ]; then
+      echo "ERROR: tar failed"
+      exit 1
+   fi
+
+   mv $tarname $TC/cache || exit 1
    rm -rf $dirname
 }
 

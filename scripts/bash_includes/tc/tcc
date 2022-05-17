@@ -3,9 +3,9 @@
 
 function download_tcc {
 
-   local tarname="tcc.tgz"
    local url="git://repo.or.cz/tinycc.git"
-   local ver="15e9b7384e7091200aa33499b1ddcbf6e2f6a959"
+   local ver="15e9b7384e709120"
+   local tarname="tcc-$ver.tgz"
 
    download_git_repo_in_cache "$url" $ver $tarname tcc
    extract_cachefile_tar_gz $tarname --
