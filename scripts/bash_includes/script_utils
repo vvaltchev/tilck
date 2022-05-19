@@ -234,6 +234,12 @@ function download_git_repo_in_cache {
                   exit 1
                fi
 
+               # Save the git commit info before deleting the .git directory
+               git rev-parse --abbrev-ref HEAD > .ref_name
+               git rev-parse --short HEAD > .ref_short
+               git rev-parse HEAD > .ref
+               echo "$tag" > .our_tag
+
                # Delete the .git directory which is not needed anymore and takes
                # quite some space. We just need one commit, not the whole
                # git history.

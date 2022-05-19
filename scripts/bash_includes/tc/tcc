@@ -99,8 +99,15 @@ function build_tcc {
       local af="$flags --prefix=$p --extra-ldflags='$ldflags'"
       local af="$af --crtprefix=$lib --libpaths=$lib"
 
+      if [ -f .our_tag ]; then
+         local tag=`cat .our_tag`
+         local githash="$tag"
+         local def_githash="-DTCC_GITHASH=\\\\\\\"${githash}\\\\\\\""
+         local make_vars="DEF_GITHASH=\"$def_githash\""
+      fi
+
       run_command2 "./configure $af" configure.log
-      run_command2 "make cross-$ARCH" build.log
+      run_command2 "make $make_vars cross-$ARCH" build.log
 
       # Just to test on the local machine
       # run_command2 "make install" install.log
