@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
+#include <time.h>
 #include <x86intrin.h>    /* for __rdtsc() */
 
 #ifdef USERMODE_APP
@@ -172,15 +173,36 @@ void write_to_stdin(void)
    printf("read(%d): %#x\n", r, c);
 }
 
+double timespec_diff(const struct timespec *t1,
+                     const struct timespec *t0)
+{
+   return (t1->tv_sec - t0->tv_sec) + (t1->tv_nsec - t0->tv_nsec) / 1.0e9;
+}
+
+void timespec_to_human_str(char *buf, size_t bufsz, double t)
+{
+   if (t >= 1.0)
+      snprintf(buf, bufsz, "%7.3f  s", t);
+   else if (t >= 0.001)
+      snprintf(buf, bufsz, "%7.3f ms", t * 1.0e3);
+   else if (t >= 0.000001)
+      snprintf(buf, bufsz, "%7.3f us", t * 1.0e6);
+   else
+      snprintf(buf, bufsz, "%7.3f ns", t * 1.0e9);
+}
+
 void console_perf_test(void)
 {
    static const char letters[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-   const int iters = 10;
+   int iters = 3;
    struct winsize w;
-   char *buf;
+   char *buf, tot_time_s[32], c_time_s[32];
    ssize_t r, tot, written;
+   struct timespec ts_before, ts_after;
+   uint64_t start, end, c;
+   double tot_time_real, tot_time, time_c, cycles_per_sec;
 
    if (ioctl(1, TIOCGWINSZ, &w) != 0) {
       perror("ioctl() failed");
@@ -201,7 +223,9 @@ void console_perf_test(void)
 
    printf("%s", CSI_ERASE_DISPLAY CSI_MOVE_CURSOR_TOP_LEFT);
 
-   uint64_t start = RDTSC();
+retry:
+   clock_gettime(CLOCK_REALTIME, &ts_before);
+   start = RDTSC();
 
    for (int i = 0; i < iters; i++) {
       for (r = 0, written = 0; written < tot; written += r) {
@@ -215,12 +239,34 @@ void console_perf_test(void)
       }
    }
 
-   uint64_t end = RDTSC();
-   uint64_t c = (end - start) / iters;
+   end = RDTSC();
+   clock_gettime(CLOCK_REALTIME, &ts_after);
+
+   c = (end - start) / iters;
+   tot_time_real = timespec_diff(&ts_after, &ts_before);
+   tot_time = tot_time_real / iters;
+   time_c = tot_time / (double)tot;
+   cycles_per_sec = (end - start) / tot_time_real;
+
+   if (tot_time_real <= 0.1) {
+
+      /*
+       * We're way too fast: it makes sense to do more iterations to gain a
+       * more accurate measurement.
+       */
+
+      iters *= 10;
+      goto retry;
+   }
+
+   timespec_to_human_str(tot_time_s, sizeof(tot_time_s), tot_time);
+   timespec_to_human_str(c_time_s, sizeof(c_time_s), time_c);
 
    printf("Term size: %d rows x %d cols\n", w.ws_row, w.ws_col);
-   printf("Screen redraw:       %10llu cycles\n", c);
-   printf("Avg. character cost: %10llu cycles\n", c / (w.ws_row * w.ws_col));
+   printf("Tot iterations: %d\n\n", iters);
+   printf("Screen redraw:       %12llu cycles (%s)\n", c, tot_time_s);
+   printf("Avg. character cost: %12llu cycles (%s)\n", c / tot, c_time_s);
+   printf("Cycles per sec:      %12.0f cycles/sec\n", cycles_per_sec);
    free(buf);
 }
 
