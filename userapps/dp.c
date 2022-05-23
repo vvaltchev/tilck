@@ -23,6 +23,21 @@ static int tracer_tool(int argc, char **argv)
    return rc;
 }
 
+static int ps_tool(int argc, char **argv)
+{
+   if (argc > 0) {
+      printf("ERROR: unknown option '%s'\n", argv[0]);
+      return 1;
+   }
+
+   int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_PS_TOOL);
+
+   if (rc < 0)
+      printf("ERROR: the ps tool is not compiled-in\n");
+
+   return rc;
+}
+
 static int debug_panel(int argc, char **argv)
 {
    if (argc > 0) {
@@ -67,6 +82,10 @@ int main(int argc, char **argv)
    } else if (!strcmp(prog_name, "tracer")) {
 
       rc = tracer_tool(argc-1, argv+1);
+
+   } else if (!strcmp(prog_name, "ps")) {
+
+      rc = ps_tool(argc-1, argv+1);
 
    } else {
 
