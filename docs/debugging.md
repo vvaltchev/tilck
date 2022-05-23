@@ -371,7 +371,7 @@ probably its embedded **syscall tracer**. To use it, first go to the `tasks` tab
 
 Then, enter in *select mode* by pressing ENTER and select a user process. After that,
 mark it as *traced* by pressing `t`. Finally, enter in *tracing mode* by pressing `Ctrl+T`.
-In alternative, it's possible to enter in tracing mode directly by running `dp -t`. Once
+In alternative, it's possible to enter in tracing mode directly by running `tracer`. Once
 there, press `h` for the help menu.
 
 ![Tilck's debug panel](http://vvaltchev.github.io/tilck_imgs/v2/screenshots/tracing01.png)
