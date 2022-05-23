@@ -35,7 +35,6 @@ int dp_start_col;
 int dp_screen_start_row;
 int dp_screen_rows;
 bool ui_need_update;
-bool dp_in_tracing_screen;
 const char *modal_msg;
 struct dp_screen *dp_ctx;
 fs_handle dp_input_handle;
@@ -343,10 +342,24 @@ dp_direct_tracing_mode_entry()
    dp_common_entry(true);
 }
 
+static void dp_ps_tool()
+{
+   struct tty *t = get_curr_process_tty();
+
+   if (!t) {
+      printk("ERROR: debugpanel: the current process has no attached TTY\n");
+      return;
+   }
+
+   dp_dump_task_list(false, true);
+   dp_write_raw("\r\n");
+}
+
 static void dp_init(void)
 {
    struct dp_screen *pos;
    register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_default_entry);
+   register_tilck_cmd(TILCK_CMD_PS_TOOL, dp_ps_tool);
 
    if (MOD_tracing)
       register_tilck_cmd(TILCK_CMD_TRACING_TOOL, dp_direct_tracing_mode_entry);

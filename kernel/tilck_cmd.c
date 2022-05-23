@@ -24,6 +24,7 @@ static void *tilck_cmds[TILCK_CMD_COUNT] = {
    [TILCK_CMD_SET_SAT_ENABLED] = set_sched_alive_thread_enabled,
    [TILCK_CMD_DEBUG_PANEL] = NULL,
    [TILCK_CMD_TRACING_TOOL] = NULL,
+   [TILCK_CMD_PS_TOOL] = NULL,
 };
 
 void register_tilck_cmd(int cmd_n, void *func)

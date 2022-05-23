@@ -44,5 +44,6 @@ cd /usr/bin
 ln -s devshell runall
 ln -s devshell selftest
 
-# Create a symlink for the tracer tool (dp -t)
+# Create a symlink for the debug-panel tools
 ln -s /initrd/usr/bin/dp tracer
+ln -s /initrd/usr/bin/dp ps

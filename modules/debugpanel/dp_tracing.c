@@ -469,7 +469,6 @@ dp_tracing_screen(void)
    char c;
    int rc;
    bool should_continue;
-   dp_in_tracing_screen = true;
 
    dp_set_cursor_enabled(true);
    dp_clear();
@@ -537,12 +536,12 @@ dp_tracing_screen(void)
 
          case 'p':
             dp_write_raw("%c", c);
-            dp_dump_task_list(false);
+            dp_dump_task_list(false, true);
             break;
 
          case 'P':
             dp_write_raw("%c", c);
-            dp_dump_task_list(true);
+            dp_dump_task_list(true, true);
             break;
 
          case 'l':
@@ -572,7 +571,6 @@ dp_tracing_screen(void)
 
    ui_need_update = true;
    dp_set_cursor_enabled(false);
-   dp_in_tracing_screen = false;
    return kb_handler_ok_and_continue;
 }
 

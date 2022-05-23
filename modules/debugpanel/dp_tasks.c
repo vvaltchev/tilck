@@ -153,6 +153,12 @@ debug_get_task_dump_util_str(enum task_dump_util_str t)
    }
 }
 
+struct per_task_cb_opts {
+
+   bool kernel_tasks;
+   bool plain_text;
+};
+
 static int debug_per_task_cb(void *obj, void *arg)
 {
    const char *fmt = debug_get_task_dump_util_str(ROW_FMT);
@@ -163,7 +169,9 @@ static int debug_per_task_cb(void *obj, void *arg)
    char *path = buf;
    char *path2 = buf + MAX_EXEC_PATH_LEN + 1;
    const char *orig_path = pi->debug_cmdline ? pi->debug_cmdline : "<n/a>";
-   bool kernel_tasks = *(bool *)arg;
+   struct per_task_cb_opts *opts = arg;
+   const bool kernel_tasks = opts->kernel_tasks;
+   const bool plain_text = opts->plain_text;
 
    STATIC_ASSERT(sizeof(buf) >= (2 * MAX_EXEC_PATH_LEN + 2));
 
@@ -198,7 +206,7 @@ static int debug_per_task_cb(void *obj, void *arg)
       }
    }
 
-   if (!dp_in_tracing_screen) {
+   if (!plain_text) {
 
       bool sel = false;
 
@@ -252,9 +260,9 @@ static int debug_per_task_cb(void *obj, void *arg)
    return 0;
 }
 
-static void debug_dump_task_table_hr(void)
+static void debug_dump_task_table_hr(bool plain_text)
 {
-   if (dp_in_tracing_screen)
+   if (plain_text)
       dp_write_raw(GFX_ON "%s" GFX_OFF "\r\n",
                    debug_get_task_dump_util_str(HLINE));
    else
@@ -523,14 +531,19 @@ static void show_actions_menu(void)
    dp_writeln("");
 }
 
-void dp_dump_task_list(bool kernel_tasks)
+void dp_dump_task_list(bool kernel_tasks, bool plain_text)
 {
-   if (dp_in_tracing_screen)
+   struct per_task_cb_opts opts = {
+      .kernel_tasks = kernel_tasks,
+      .plain_text = plain_text,
+   };
+
+   if (plain_text)
       dp_write_raw("\r\n%s\r\n", debug_get_task_dump_util_str(HEADER));
    else
       dp_writeln("%s", debug_get_task_dump_util_str(HEADER));
 
-   debug_dump_task_table_hr();
+   debug_dump_task_table_hr(plain_text);
 
    disable_preemption();
    {
@@ -552,11 +565,11 @@ void dp_dump_task_list(bool kernel_tasks)
       if (sel_index >= 0)
          sel_index = MIN(sel_index, max_idx);
 
-      iterate_over_tasks(debug_per_task_cb, &kernel_tasks);
+      iterate_over_tasks(debug_per_task_cb, &opts);
    }
    enable_preemption();
 
-   if (!dp_in_tracing_screen)
+   if (!plain_text)
       dp_writeln("");
 }
 
@@ -565,7 +578,7 @@ static void dp_show_tasks(void)
    row = dp_screen_start_row;
 
    show_actions_menu();
-   dp_dump_task_list(true);
+   dp_dump_task_list(true, false);
 }
 
 static void dp_tasks_enter(void)
