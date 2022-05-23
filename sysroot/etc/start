@@ -43,3 +43,6 @@ ln -s /initrd/bin/busybox /usr/bin/env
 cd /usr/bin
 ln -s devshell runall
 ln -s devshell selftest
+
+# Create a symlink for the tracer tool (dp -t)
+ln -s /initrd/usr/bin/dp tracer
