@@ -192,10 +192,10 @@ static void fb_set_row_failsafe(u16 row, u16 *data, bool fpu_allowed)
 
 static void fb_set_row_optimized(u16 row, u16 *data, bool fpu_allowed)
 {
-   fb_draw_char_optimized_row(fb_offset_y + row * font_h,
-                              data,
-                              fb_term_cols,
-                              fpu_allowed);
+   fb_draw_row_optimized(fb_offset_y + row * font_h,
+                         data,
+                         fb_term_cols,
+                         fpu_allowed);
 
    fb_reset_blink_timer();
 }
