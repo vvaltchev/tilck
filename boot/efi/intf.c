@@ -27,6 +27,7 @@ efi_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *mi = NULL;
    UINTN sizeof_info = 0;
    EFI_STATUS status;
+   bzero(gi, sizeof(*gi));
 
    status = gProt->QueryMode(gProt, m, &sizeof_info, &mi);
 

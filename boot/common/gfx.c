@@ -48,24 +48,6 @@ is_usable_video_mode(struct generic_video_mode_info *gi)
 }
 
 static bool
-is_optimal_video_mode(struct generic_video_mode_info *gi)
-{
-   if (!is_usable_video_mode(gi))
-      return false;
-
-   if (gi->xres % 8) {
-
-      /*
-       * Tilck's fb console won't be able to use the optimized functions in this
-       * case (they ultimately use a 256-bit wide memcpy()).
-       */
-      return false;
-   }
-
-   return true;
-}
-
-static bool
 is_default_resolution(u32 w, u32 h)
 {
    return w == PREFERRED_GFX_MODE_W && h == PREFERRED_GFX_MODE_H;
@@ -155,9 +137,6 @@ filter_modes_int(video_mode_t *all_modes, int all_modes_cnt, int bpp)
          max_mode_pixels = p;
          max_mode = curr_mode_num;
       }
-
-      if (!is_optimal_video_mode(&gi))
-         continue;
 
       if (is_default_resolution(gi.xres, gi.yres))
          g_defmode = curr_mode_num;
