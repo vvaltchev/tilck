@@ -198,7 +198,7 @@ static void estimate_usable_mem_child(size_t step_size, int rfd, int wfd)
    /* We're not supposed to get here */
 }
 
-size_t mm_estimate_usable_mem(size_t step_size)
+static size_t mm_estimate_usable_mem_int(size_t step_size)
 {
    int rc, pipefd[2];
    int rfd, wfd, wstatus;
@@ -289,6 +289,41 @@ out:
    return mem;
 }
 
+size_t mm_estimate_usable_mem(void)
+{
+   static size_t est_usable_mem;
+
+   if (!est_usable_mem) {
+
+      est_usable_mem = mm_estimate_usable_mem_int(1 * MB);
+
+      if (est_usable_mem < 16 * MB) {
+
+         /* We'd need a more accurate estimate */
+         printf("Pid [%d]: Too little usable memory: %zu MB. "
+                "Let's do a finer estimation.\n",
+                getpid(), fork_oom_alloc_size / MB);
+
+         est_usable_mem = mm_estimate_usable_mem_int(4 * KB);
+
+         if (!est_usable_mem) {
+            printf("ERROR: unable to estimate usable memory!\n");
+            return 0;
+         }
+
+         printf("Pid [%d]: Estimated usable mem: %zu KB\n",
+                getpid(), est_usable_mem / KB);
+
+      } else {
+
+         printf("Pid [%d]: Estimated usable mem: %zu MB\n",
+                getpid(), est_usable_mem / MB);
+      }
+   }
+
+   return est_usable_mem;
+}
+
 /*
  * Alloc a lot of CoW memory and check that the kernel kills the process in
  * case an attempt to copy a CoW page fails because we're out of memory.
@@ -308,29 +343,8 @@ int cmd_fork_oom(int argc, char **argv)
       return 0;
    }
 
-   fork_oom_alloc_size = mm_estimate_usable_mem(1 * MB);
-
-   if (fork_oom_alloc_size < 16 * MB) {
-
-      /* We'd need a more accurate estimate */
-      printf("Parent [%d]: Too little usable memory: %zu MB. "
-             "Let's do a finer estimation.\n",
-             getpid(), fork_oom_alloc_size / MB);
-
-      fork_oom_alloc_size = mm_estimate_usable_mem(4 * KB);
-
-      if (!fork_oom_alloc_size) {
-         printf("ERROR: unable to estimate usable memory!\n");
-         return 1;
-      }
-
-      printf("Parent [%d]: Estimated usable mem: %zu KB\n",
-             getpid(), fork_oom_alloc_size / KB);
-   } else {
-
-      printf("Parent [%d]: Estimated usable mem: %zu MB\n",
-             getpid(), fork_oom_alloc_size / MB);
-   }
+   fork_oom_alloc_size = mm_estimate_usable_mem();
+   DEVSHELL_CMD_ASSERT(fork_oom_alloc_size != 0);
 
    if (fork_oom_alloc_size <= 500 * MB) {
 
