@@ -304,6 +304,7 @@ bool user_map_zero_page(ulong user_vaddr, size_t page_count)
 
    if (count != page_count) {
       user_unmap_zero_page(user_vaddr, count);
+      return false;
    }
 
    return true;
