@@ -522,7 +522,7 @@ void fb_draw_char_optimized(u32 x, u32 y, u16 e)
       return;
 }
 
-void fb_draw_char_optimized_row(u32 y, u16 *entries, u32 count, bool fpu)
+void fb_draw_row_optimized(u32 y, u16 *entries, u32 count, bool fpu)
 {
    static const void *ops[] = {
       &&width_1_nofpu, &&width_1_fpu, &&width_2_nofpu, &&width_2_fpu
