@@ -14,10 +14,10 @@ size_t stackwalk32(void **frames, size_t count,
 void dump_stacktrace(void *ebp, pdir_t *pdir);
 void dump_regs(regs_t *r);
 
-void debug_qemu_turn_off_machine(void);
+int debug_qemu_turn_off_machine(void);
 void kmain_early_checks(void);
 void init_extra_debug_features(void);
-void set_sched_alive_thread_enabled(bool enabled);
+int set_sched_alive_thread_enabled(bool enabled);
 void register_tilck_cmd(int cmd_n, void *func);
 void *get_syscall_func_ptr(u32 n);
 int get_syscall_num(void *func);

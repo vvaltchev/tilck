@@ -46,9 +46,10 @@ void init_extra_debug_features(void)
          panic("Unable to create a kthread for sched_alive_thread()");
 }
 
-void set_sched_alive_thread_enabled(bool enabled)
+int set_sched_alive_thread_enabled(bool enabled)
 {
    sched_alive_thread_enabled = enabled;
+   return 0;
 }
 
 void kmain_early_checks(void)
