@@ -173,9 +173,8 @@ static void fork_oom_child(void *buf)
  * This is a simply code to empirically discover how much memory we can commit
  * at the moment.
  */
-static void estimate_usable_mem_child(int rfd, int wfd)
+static void estimate_usable_mem_child(size_t step_size, int rfd, int wfd)
 {
-   size_t sz = 1 * MB;
    size_t mem = 0;
    int rc;
 
@@ -183,9 +182,9 @@ static void estimate_usable_mem_child(int rfd, int wfd)
 
    while (true) {
 
-      char *buf = malloc(sz);
-      memset(buf, 'A', sz);
-      mem += sz;
+      char *buf = malloc(step_size);
+      memset(buf, 'A', step_size);
+      mem += step_size;
 
       //printf(STR_CHILD "Committed mem: %zu MB\n", mem / MB);
       rc = write(wfd, &mem, sizeof(mem));
@@ -199,7 +198,7 @@ static void estimate_usable_mem_child(int rfd, int wfd)
    /* We're not supposed to get here */
 }
 
-size_t mm_estimate_usable_mem(void)
+size_t mm_estimate_usable_mem(size_t step_size)
 {
    int rc, pipefd[2];
    int rfd, wfd, wstatus;
@@ -218,7 +217,7 @@ size_t mm_estimate_usable_mem(void)
    DEVSHELL_CMD_ASSERT(childpid >= 0);
 
    if (!childpid) {
-      estimate_usable_mem_child(rfd, wfd);
+      estimate_usable_mem_child(step_size, rfd, wfd);
       exit(0);
    }
 
@@ -309,32 +308,70 @@ int cmd_fork_oom(int argc, char **argv)
       return 0;
    }
 
-   fork_oom_alloc_size = mm_estimate_usable_mem();
+   fork_oom_alloc_size = mm_estimate_usable_mem(1 * MB);
 
-   if (!fork_oom_alloc_size) {
-      printf("ERROR: unable to estimate usable memory!\n");
-      return 1;
+   if (fork_oom_alloc_size < 16 * MB) {
+
+      /* We'd need a more accurate estimate */
+      printf("Parent [%d]: Too little usable memory: %zu MB. "
+             "Let's do a finer estimation.\n",
+             getpid(), fork_oom_alloc_size / MB);
+
+      fork_oom_alloc_size = mm_estimate_usable_mem(4 * KB);
+
+      if (!fork_oom_alloc_size) {
+         printf("ERROR: unable to estimate usable memory!\n");
+         return 1;
+      }
+
+      printf("Parent [%d]: Estimated usable mem: %zu KB\n",
+             getpid(), fork_oom_alloc_size / KB);
+   } else {
+
+      printf("Parent [%d]: Estimated usable mem: %zu MB\n",
+             getpid(), fork_oom_alloc_size / MB);
    }
 
-   /*
-    * Alloc just a bit more than half of the available memory, because in any
-    * case it won't be possible both the parent and child process to commit all
-    * of that. This makes the test a bit faster ;-)
-    */
-   fork_oom_alloc_size /= 2;
-   fork_oom_alloc_size += 4 * MB;
+   if (fork_oom_alloc_size <= 500 * MB) {
 
-   printf("Alloc %d MB...\n", fork_oom_alloc_size / MB);
+      /*
+       * Alloc just a bit more than half of the available memory, because in any
+       * case it won't be possible both the parent and child process to commit
+       * all of that. This makes the test a bit faster ;-)
+       */
+
+      fork_oom_alloc_size = fork_oom_alloc_size / 2 + fork_oom_alloc_size / 8;
+
+   } else {
+
+      /*
+       * We're running on a machine with plenty of memory, but Tilck's heap
+       * for user mappings is limited to 512 MB at the moment. Therefore, if
+       * we don't commit enough memory, it's possible this test to fail because
+       * the overall memory on the system will be enough for both the parent
+       * and the child.
+       *
+       * Therefore, in this case we just alloc a bit less than the maximum
+       * possible, leaving some space for the fork() itself to succeed.
+       */
+      fork_oom_alloc_size -= 1 * MB;
+   }
+
+   if (fork_oom_alloc_size >= 8 * MB)
+      printf("Parent [%d]: Alloc %d MB...\n", getpid(), fork_oom_alloc_size/MB);
+   else
+      printf("Parent [%d]: Alloc %d KB...\n", getpid(), fork_oom_alloc_size/KB);
+
    buf = malloc(fork_oom_alloc_size);
 
    if (!buf) {
-      printf("Alloc of %d MB failed!\n", fork_oom_alloc_size / MB);
+      printf("Parent [%d]: Alloc failed!\n", getpid());
       exit(1);
    }
 
-   printf("Write to the buffer...\n");
+   printf("Parent [%d]: Write to the buffer...\n", getpid());
    memset(buf, 0xAA, fork_oom_alloc_size);
-   printf("Done. Now, fork()..\n");
+   printf("Parent: Done. Now, fork()..\n");
 
    rc = test_sig(&fork_oom_child, buf, SIGKILL, 0, 0);
    free(buf);

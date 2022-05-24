@@ -74,7 +74,7 @@ void do_mm_read(void *ptr);
 void do_cmd_exit(int code);
 bool is_stack_aligned_16(void);
 void execute_illegal_instruction(void);
-size_t mm_estimate_usable_mem(void);
+size_t mm_estimate_usable_mem(size_t step_size);
 
 /* From the man page of getdents64() */
 struct linux_dirent64 {
