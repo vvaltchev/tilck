@@ -52,7 +52,7 @@ pdir_t *__kernel_pdir;
 
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 
-static u16 *pageframes_refcount;
+static u32 *pageframes_refcount;
 static ulong phys_mem_lim;
 static struct kmalloc_heap *hi_vmem_heap;
 
@@ -162,6 +162,14 @@ bool handle_potential_cow(void *context)
    if (pf_ref_count_get(orig_page_paddr) == 1) {
 
       /* This page is not shared anymore. No need for copying it. */
+
+#if DEBUG_CHECKS
+      const ulong paddr = (ulong)
+         pt->pages[pt_index].pageAddr << PAGE_SHIFT;
+
+      ASSERT(KERNEL_PA_TO_VA(paddr) != &zero_page);
+#endif
+
       pt->pages[pt_index].rw = true;
       pt->pages[pt_index].avail = 0;
       invalidate_page_hw(vaddr);
