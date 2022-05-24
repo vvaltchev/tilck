@@ -77,6 +77,7 @@ legacy_boot_get_mode_info(video_mode_t m, struct generic_video_mode_info *gi)
 {
    struct ModeInfoBlock *mi = usable_vbe_mode_info_block;
    bool success = false;
+   bzero(gi, sizeof(*gi));
 
    if (m == VGA_COLOR_TEXT_MODE_80x25) {
 
