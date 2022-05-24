@@ -330,29 +330,33 @@ dp_common_entry(bool only_tracing)
    dp_running = false;
 }
 
-static void
+static int
 dp_default_entry()
 {
    dp_common_entry(false);
+   return 0;
 }
 
-static void
+static int
 dp_direct_tracing_mode_entry()
 {
    dp_common_entry(true);
+   return 0;
 }
 
-static void dp_ps_tool()
+static int
+dp_ps_tool()
 {
    struct tty *t = get_curr_process_tty();
 
    if (!t) {
       printk("ERROR: debugpanel: the current process has no attached TTY\n");
-      return;
+      return -ENOTTY;
    }
 
    dp_dump_task_list(false, true);
    dp_write_raw("\r\n");
+   return 0;
 }
 
 static void dp_init(void)

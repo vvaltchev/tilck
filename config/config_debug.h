@@ -58,8 +58,8 @@
  *    -device isa-debug-exit,iobase=0xf4,iosize=0x04
  *
  * debug_qemu_turn_off_machine() won't turn off the VM. Also it's worth
- * remarking debug_qemu_turn_off_machine() does nothing if we're not running if
- * we're running on real HW (it checks x86_cpu_features.ecx1.hypervisor).
+ * remarking debug_qemu_turn_off_machine() does *nothing* if we're running on
+ * real HW (because it checks x86_cpu_features.ecx1.hypervisor).
  */
 
 #define DEBUG_QEMU_EXIT_ON_INIT_EXIT   1

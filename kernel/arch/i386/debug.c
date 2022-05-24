@@ -9,6 +9,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/errno.h>
 
 #include <elf.h>
 #include <multiboot.h>
@@ -105,12 +106,13 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
    printk("\n");
 }
 
-void debug_qemu_turn_off_machine(void)
+int debug_qemu_turn_off_machine(void)
 {
    if (!in_hypervisor())
-      return;
+      return -ENXIO;
 
    outb(0xf4, 0x00);
+   return -EIO;
 }
 
 void dump_eflags(u32 f)
