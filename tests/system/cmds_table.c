@@ -177,7 +177,7 @@ static struct test_cmd_entry _cmds_table[] =
    CMD_ENTRY(sig11,        TT_SHORT,  true),
    CMD_ENTRY(sig12,        TT_SHORT,  true),
    CMD_ENTRY(sig13,        TT_SHORT,  true),
-   CMD_ENTRY(fork_oom,     TT_SHORT,  true),
+   CMD_ENTRY(fork_oom,     TT_MED,    true),
    CMD_ENTRY(sigsegv3,     TT_SHORT,  true),
    CMD_ENTRY(sigsegv4,     TT_SHORT,  true),
    CMD_ENTRY(sigsegv5,     TT_SHORT,  true),
