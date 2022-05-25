@@ -16,3 +16,9 @@ function build_tfblib {
       show_skip_component_msg "TFBLIB"
    fi
 }
+
+function build_tfblib_installed_status {
+   if [ -d $TC/noarch/tfblib ]; then
+      echo "installed noarch"
+   fi
+}

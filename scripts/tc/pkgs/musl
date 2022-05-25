@@ -91,3 +91,13 @@ function build_libmusl {
    export PATH="$saved_path"
    popd
 }
+
+function build_libmusl_installed_status {
+   if [ -d $TC/$ARCH/musl ]; then
+      if [ -f $TC/$ARCH/musl/install/lib/libc.a ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

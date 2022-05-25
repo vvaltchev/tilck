@@ -51,3 +51,13 @@ function build_zlib {
 
    popd
 }
+
+function build_zlib_installed_status {
+   if [ -d $TC/$ARCH/zlib ]; then
+      if [ -f $TC/$ARCH/zlib/install/lib/libz.a ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

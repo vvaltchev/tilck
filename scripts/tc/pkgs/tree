@@ -52,3 +52,13 @@ function build_tree_cmd {
    reset_cc_vars
    popd
 }
+
+function build_tree_cmd_installed_status {
+   if [ -d $TC/$ARCH/tree_cmd ]; then
+      if [ -f $TC/$ARCH/tree_cmd/tree ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

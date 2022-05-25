@@ -47,3 +47,13 @@ function build_ncurses {
 
    popd
 }
+
+function build_ncurses_installed_status {
+   if [ -d $TC/$ARCH/ncurses ]; then
+      if [ -f $TC/$ARCH/ncurses/install/lib/libncurses.a ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

@@ -43,3 +43,24 @@ function download_ovmf {
    check_and_download_ovmf ia32 i386
    check_and_download_ovmf x64 x86_64
 }
+
+function download_ovmf_installed_status {
+   if [ -d $TC/$ARCH/ovmf ]; then
+
+      local ret=""
+
+      if [ -f $TC/$ARCH/ovmf/OVMF-pure-efi.fd ]; then
+         ret="$ret $ARCH"
+      fi
+
+      if [ -f $TC/$HOST_ARCH/ovmf/OVMF-pure-efi.fd ]; then
+         ret="$ret $HOST_ARCH"
+      fi
+
+      if [ -n "ret" ]; then
+         echo "installed$ret"
+      else
+         echo "error"
+      fi
+   fi
+}

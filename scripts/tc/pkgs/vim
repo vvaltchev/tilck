@@ -87,3 +87,13 @@ function build_vim {
    reset_cc_vars
    popd
 }
+
+function build_vim_installed_status {
+   if [ -d $TC/$ARCH/vim ]; then
+      if [ -f $TC/$ARCH/vim/install/vim.gz ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

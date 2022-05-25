@@ -65,3 +65,11 @@ function build_micropython {
 
    popd
 }
+
+function build_micropython_installed_status {
+   if [ -d $TC/$ARCH/micropython ]; then
+      if [ -f $TC/$ARCH/micropython/ports/unix/micropython ]; then
+         echo "installed $ARCH"
+      fi
+   fi
+}

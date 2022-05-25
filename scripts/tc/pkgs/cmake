@@ -80,3 +80,11 @@ function download_cmake {
 
    popd
 }
+
+function download_cmake_installed_status {
+   if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
+      echo "installed"
+   elif cmake --version &> /dev/null; then
+      echo "skipped"
+   fi
+}
