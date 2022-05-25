@@ -63,3 +63,13 @@ function build_lua {
    reset_cc_vars
    popd
 }
+
+function build_lua_installed_status {
+   if [ -d $TC/$ARCH/lua ]; then
+      if [ -f $TC/$ARCH/lua/src/lua ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

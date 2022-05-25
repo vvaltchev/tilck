@@ -92,6 +92,16 @@ function build_busybox {
    popd
 }
 
+function build_busybox_installed_status {
+   if [ -d $TC/$ARCH/busybox ]; then
+      if [ -f $TC/$ARCH/busybox/busybox ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}
+
 function busybox_fix_config_file {
 
    # Remove the date-time row (in order to allow config diff to work)

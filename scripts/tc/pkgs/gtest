@@ -85,6 +85,16 @@ function build_gtest {
    popd
 }
 
+function build_gtest_installed_status {
+   if [ -d $TC/host_$HOST_ARCH/$GTEST_DIRNAME ]; then
+      if [ -f $TC/host_$HOST_ARCH/$GTEST_DIRNAME/libgtestd.a ]; then
+         echo "installed host_$HOST_ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}
+
 all_funcs_list+=(build_gtest_arch)
 function build_gtest_arch {
 
@@ -126,4 +136,14 @@ function build_gtest_arch {
    fi
 
    popd
+}
+
+function build_gtest_arch_installed_status {
+   if [ -d $TC/host_$ARCH/$GTEST_DIRNAME ]; then
+      if [ -f $TC/host_$ARCH/$GTEST_DIRNAME/libgtestd.a ]; then
+         echo "installed host_$ARCH"
+      else
+         echo "failed"
+      fi
+   fi
 }

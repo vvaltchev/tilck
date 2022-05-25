@@ -129,3 +129,13 @@ function build_fbdoom {
 
    popd
 }
+
+function build_fbdoom_installed_status {
+   if [ -d $TC/$ARCH/fbDOOM/ ]; then
+      if [ -f $TC/$ARCH/fbDOOM/fbdoom/fbdoom.gz ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

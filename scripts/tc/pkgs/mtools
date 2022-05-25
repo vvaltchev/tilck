@@ -30,3 +30,13 @@ function build_mtools {
 
    popd
 }
+
+function build_mtools_installed_status {
+   if [ -d $TC/host_${HOST_ARCH}/mtools ]; then
+      if [ -f $TC/host_${HOST_ARCH}/mtools/mtools ]; then
+         echo "installed host_${HOST_ARCH}"
+      else
+         echo "error"
+      fi
+   fi
+}

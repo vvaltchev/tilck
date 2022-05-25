@@ -306,6 +306,74 @@ function compiler_checks {
    fi
 }
 
+function print_func {
+
+   local fname="$1"
+   local has_printf="$2"
+   local is_default="$3"
+   local def=""
+
+   if [[ $is_default = 1 ]]; then
+      def=" (*)"
+   fi
+
+   if [[ $has_printf = 1 ]]; then
+
+      local attrs=""
+      local extra_info=""
+      local installed_func="${fname}_installed_status"
+
+      if [[ "$(type -t $installed_func)" == 'function' ]]; then
+
+         local status="$(eval $installed_func)"
+
+         if [[ -n "$status" ]]; then
+
+            if [[ "$status" =~ installed* ]]; then
+
+               if ! [[ "$status" = "installed" ]]; then
+
+                  extra_info=$(echo "$status" | cut -d ' ' -f 2-)
+                  status="installed"
+               fi
+            fi
+
+            status=$(printf "%-9s" "$status")
+         fi
+
+         case "$status" in
+
+            installed*)
+               status="$GREEN${status}$RATTRS"
+            ;;
+
+            error*)
+               status="$RED${status}$RATTRS"
+            ;;
+
+            skipped*)
+               status="$YELLOW${status}$RATTRS"
+            ;;
+
+         esac
+
+         if [[ -n "$status" ]]; then
+            attrs="$attrs[ $status ]"
+         fi
+
+         if [[ -n "$extra_info" ]]; then
+            attrs="$attrs[ $extra_info ]"
+         fi
+      fi
+
+      printf "%-35s $attrs\n" "$fname$def"
+
+   else
+
+      echo "   - $1 $def"
+   fi
+}
+
 function show_help {
 
    echo ""
@@ -330,21 +398,40 @@ function show_help {
    echo "Functions supported by this script (with -s):"
    echo ""
 
+   local has_printf=0
+   local all_def_funcs=" ${default_funcs[*]} "
+
+   if printf "" &> /dev/null; then
+      has_printf=1
+   fi
+
    for x in ${default_funcs[@]}; do
-      echo "   - $x (*)"
+      print_func "$x" $has_printf 1
    done
 
    for x in ${all_funcs_list[@]}; do
-      for y in ${default_funcs[@]}; do
-         if [ "$x" == "$y" ]; then
-            continue 2
-         fi
-      done
-      echo "   - $x"
+
+      if [[ "$all_def_funcs" =~ " ${x} " ]]; then
+         continue 2
+      fi
+
+      # Skip the config_* functions, in order to print them last
+      if [[ "$x" =~ config_* ]]; then
+         continue 2
+      fi
+
+      print_func "$x" $has_printf 0
+   done
+
+   # Now print all the config_* funcs
+   for x in ${all_funcs_list[@]}; do
+      if [[ "$x" =~ config_* ]]; then
+         print_func "$x" $has_printf 0
+      fi
    done
 
    echo ""
-   echo -e "(*) Default functions\n"
+   echo -e "(*) Functions ran by default\n"
 }
 
 function show_error_no_func {

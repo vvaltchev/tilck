@@ -122,3 +122,13 @@ function build_tcc {
 
    popd
 }
+
+function build_tcc_installed_status {
+   if [ -d $TC/$ARCH/tcc ]; then
+      if [ -f $TC/$ARCH/tcc/${ARCH}-tcc ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

@@ -118,6 +118,13 @@ function download_gcc_toolchain {
    fi
 }
 
+function download_gcc_toolchain_installed_status {
+   if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_musl ]; then
+     echo "installed"
+   fi
+}
+
+
 all_funcs_list+=(download_gcc_glibc_toolchain)
 function download_gcc_glibc_toolchain {
 
@@ -131,4 +138,10 @@ function download_gcc_glibc_toolchain {
    fi
 
    popd
+}
+
+function download_gcc_glibc_toolchain_installed_status {
+   if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_glibc ]; then
+     echo "installed"
+   fi
 }

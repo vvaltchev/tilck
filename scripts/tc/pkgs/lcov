@@ -43,3 +43,9 @@ function build_lcov {
 
    popd
 }
+
+function build_lcov_installed_status {
+   if [ -d $TC/noarch/lcov-${LCOV_VER} ]; then
+      echo "installed noarch"
+   fi
+}
