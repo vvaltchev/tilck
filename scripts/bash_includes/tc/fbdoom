@@ -5,21 +5,75 @@ function download_fbdoom {
 
    if ! [ -f $TC/cache/fbdoom.tgz ]; then
 
-      git clone --depth 1 https://github.com/maximevince/fbDOOM.git
-      pushd fbDOOM
+      local fbdoom="https://github.com/maximevince/fbDOOM.git"
+      local fd_url="https://github.com/freedoom/freedoom/releases/download"
+      local ver="0.12.1"
+      local freedoom="freedoom-$ver"
+      local freedoom_zip="$freedoom.zip"
 
-      local freedoom="https://github.com/freedoom/freedoom/releases/download"
-      wget $freedoom/v0.12.1/freedoom-0.12.1.zip
-      unzip freedoom-0.12.1.zip
-      mv freedoom-0.12.1 freedoom
-      rm freedoom-0.12.1.zip
+      if ! git clone --depth 1 "$fbdoom"; then
+         echo "ERROR: unable to clone $fbdoom"
+         rm -rf fbDOOM
+         exit 1
+      fi
+
+      pushd fbDOOM || exit 1
+
+      if ! [ -d fbdoom ]; then
+         echo "ERROR: the directory `pwd`/fbdoom does not exist!"
+         exit 1
+      fi
+
+      pushd fbdoom
+
+      if ! [ -f m_config.c ]; then
+         echo "ERROR: cannot file m_config.c"
+         exit 1
+      fi
+
+      if grep 'homedir = "/mnt"' m_config.c; then
+         sed -i 's/homedir = "\/mnt";/homedir = "\/tmp";/g' m_config.c
+      else
+         echo "WARNING: unable to find the homedir hack in m_config.c"
+      fi
+
+      if ! [ -f config.h ]; then
+         echo "ERROR: cannot file config.h"
+         exit 1
+      fi
+
+      if ! grep FILES_DIR config.h &> /dev/null; then
+         echo "ERROR: cannot file the FILES_DIR define in config.h!"
+         exit 1
+      fi
+
+      sed -E -i 's/FILES_DIR .+/FILES_DIR "\/tmp"/g' config.h
+      popd
+
+      wget $fd_url/v$ver/$freedoom_zip
+
+      if ! [ -f $freedoom_zip ]; then
+         echo "ERROR: unable to download $fd_url/v$ver/$freedoom_zip"
+         rm -rf fbDOOM
+         exit 1
+      fi
+
+      unzip $freedoom_zip || exit 1
+      mv $freedoom freedoom || exit 1
+      rm $freedoom_zip
 
       pushd freedoom
+
+      if ! [ -f freedoom1.wad ]; then
+         echo "ERROR: unable to find the freedoom1.wad file"
+         exit 1
+      fi
+
       gzip freedoom1.wad
       popd
       popd
 
-      tar cfz fbdoom.tgz fbDOOM
+      tar cfz fbdoom.tgz fbDOOM || exit 1
       mv fbdoom.tgz $TC/cache
    fi
 
