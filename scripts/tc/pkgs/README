@@ -7,7 +7,9 @@
 #
 # Each one of them, contains one or more "functions" that build or download
 # an external component (e.g. busybox). The user can "install" that component
-# in the toolchain by running the `build_toolchian` script with the `-s` option.
+# in the toolchain by running the `build_toolchian` script with the `-s`
+# option.
 #
-# N.B.: every line in this text file begins with '#' because all the files in
+# Note: every line in this text file begins with '#' because all the files in
 # this directory are treated as bash source files by `build_toolchian`.
+#

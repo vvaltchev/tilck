@@ -539,7 +539,7 @@ function main {
 # Entry point: load package funcs and run main()
 ##########################################################
 
-for x in $MAIN_DIR/scripts/bash_includes/tc/*; do
+for x in $MAIN_DIR/scripts/tc/pkgs/*; do
    source $x
 done
 
