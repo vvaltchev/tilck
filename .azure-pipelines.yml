@@ -160,7 +160,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_8_4
-    container: 'vvaltchev/tilck_build:v10'
+    container: 'vvaltchev/tilck_build:v11'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -205,7 +205,7 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck_build:v10'
+    container: 'vvaltchev/tilck_build:v11'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
