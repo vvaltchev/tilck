@@ -2,6 +2,20 @@
 
 #include <tilck/common/basic_defs.h>
 
+#if defined(__GNUC__) && (__GNUC__ >= 12)
+
+   /*
+    * In the following tricky macros, we store the address of a labels in our
+    * stack using the GCC extension &&label. On newer compilers this triggers
+    * the dangling-pointer warning, because the compiler is not able to prove
+    * that is safe to do so (false positive).
+    *
+    * Therefore, we're suppressing this warning for all the files that include
+    * this header.
+    */
+   #pragma GCC diagnostic ignored "-Wdangling-pointer"
+#endif
+
 #ifndef STACK_VAR
    #define STACK_VAR stack
 #endif
