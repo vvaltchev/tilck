@@ -129,6 +129,8 @@ int timestamp_to_datetime(int64_t t, struct datetime *d)
 
 static int64_t __year_to_secs(int64_t year, int *is_leap)
 {
+   int is_leap_ignored = 0;
+
    if ((uint64_t)year-2ULL <= 136) {
 
       int y = (int)year;
@@ -150,7 +152,7 @@ static int64_t __year_to_secs(int64_t year, int *is_leap)
    int cycles, centuries, leaps, rem;
 
    if (!is_leap)
-      is_leap = &(int){0};
+      is_leap = &is_leap_ignored;
 
    cycles = (int)((year-100) / 400);
    rem = (year-100) % 400;
