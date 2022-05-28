@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+LIBMUSL_VER="1.1.24"
+
 function download_libmusl {
 
-   local tarname="libmusl-1.1.24.tgz"
+   local ver="$LIBMUSL_VER"
+   local tarname="libmusl-$ver.tgz"
    local url="git://git.musl-libc.org/musl"
 
-   download_git_repo_in_cache "$url" v1.1.24 $tarname musl
+   download_git_repo_in_cache "$url" v$ver $tarname musl
    extract_cachefile_tar_gz $tarname --
 }
 

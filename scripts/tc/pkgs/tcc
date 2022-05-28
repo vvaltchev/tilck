@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+TCC_VER="15e9b7384e709120"
+
 function download_tcc {
 
    local url="git://repo.or.cz/tinycc.git"
-   local ver="15e9b7384e709120"
+   local ver="$TCC_VER"
    local tarname="tcc-$ver.tgz"
 
    download_git_repo_in_cache "$url" $ver $tarname tcc
