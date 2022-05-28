@@ -12,9 +12,11 @@
 # exclusively for performance reasons: SF sometimes is too slow for
 # CI builds.
 
+GNU_EFI_VER="3.0.14"
+
 function download_gnu_efi {
 
-   local ver="3.0.14"
+   local ver="$GNU_EFI_VER"
    local tarname="gnu-efi-$ver.tgz"
    local url="https://github.com/vvaltchev/gnu-efi-fork.git"
 

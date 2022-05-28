@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+TFBLIB_VER="latest"
+
 all_funcs_list+=(build_tfblib)
 function build_tfblib {
 

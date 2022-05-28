@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+LUA_VER="5.4.1"
+
 function download_lua {
-   local version="5.4.1"
+   local version="$LUA_VER"
    local filename="lua"
    local tarname="lua-$version.tar.gz"
    local url="https://www.lua.org/ftp/"

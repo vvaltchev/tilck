@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+VIM_VER="latest"
+
 function download_vim {
 
-   local tarname="vim.tgz"
+   local tarname="vim-$VIM_VER.tgz"
    local url="https://github.com/vim/vim.git"
+   local tag=""
 
-   download_git_repo_in_cache "$url" "" $tarname vim
+   if [[ "$VIM_VER" != "latest" ]]; then
+      tag="$VIM_VER"
+   fi
+
+   download_git_repo_in_cache "$url" "$tag" $tarname vim
    extract_cachefile_tar_gz $tarname --
 }
 

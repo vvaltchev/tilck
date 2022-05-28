@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+OVMF_VER="latest"
+
 # $1: omvf_arch
 function download_ovmf_internal {
 

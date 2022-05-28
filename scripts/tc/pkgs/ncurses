@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+NCURSES_VER="6.1"
+
 all_funcs_list+=(build_ncurses)
 function build_ncurses {
 
@@ -11,7 +13,7 @@ function build_ncurses {
       show_work_on_component_msg "NCURSES"
       reset_cc_vars
 
-      local ver=6.1
+      local ver="$NCURSES_VER"
       local tarname=ncurses-$ver.tar.gz
       local install_dir=$TC/$ARCH/ncurses/install
       download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
