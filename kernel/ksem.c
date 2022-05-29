@@ -25,7 +25,7 @@ void ksem_destroy(struct ksem *s)
 static void
 ksem_do_wait(struct ksem *s, int units, int timeout_ticks)
 {
-   u64 start_ticks, end_ticks;
+   u64 start_ticks = 0, end_ticks = 0;
    struct task *curr = get_curr_task();
    ASSERT(!is_preemption_enabled());
 
