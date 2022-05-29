@@ -125,6 +125,31 @@ list(
    ${SAFER_BEHAVIOR_FLAGS_LIST}
 )
 
+if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+
+      #
+      # Unfortunately, when FORTIFY_SOURCE is enabled, new GCC compilers like
+      # 9.x require the libc to implement extra functions and, apparently, they
+      # don't care about -ffreestanding, nor care to put those functions in
+      # libgcc, which Tilck links, statically.
+      #
+      # Therefore, in SYSCC builds, we fail with:
+      #
+      #     select.c:126: undefined reference to `__fdelt_chk'
+      #
+      # For the moment, it's OK to just disable those extra checks.
+      # TODO: consider enabling _FORTIFY_SOURCE in Tilck.
+      #
+
+      list(
+         APPEND GENERAL_KERNEL_FLAGS_LIST
+         -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+      )
+
+   endif()
+endif()
+
 if (WCONV)
    list(APPEND GENERAL_KERNEL_FLAGS_LIST "-Wconversion")
 endif()
