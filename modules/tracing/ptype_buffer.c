@@ -8,19 +8,33 @@
 #include <tilck/mods/tracing.h>
 
 static bool
-save_param_buffer(void *data, long data_sz, char *dest_buf, size_t __dest_bs)
+save_param_buffer(void *data, long data_sz, char *dest_buf, size_t dest_bs)
 {
-   const long dest_bs = (long) __dest_bs;
-
    if (data_sz == -1) {
+
       /* assume that `data` is a C string */
-      data_sz = (long)strlen(data) + 1;
-   }
+      int rc = copy_str_from_user(dest_buf, data, dest_bs, NULL);
 
-   const long actual_sz = MIN(data_sz, dest_bs);
+      if (rc < 0) {
 
-   if (copy_from_user(dest_buf, data, (size_t)actual_sz)) {
-      memcpy(dest_buf, "<fault>", 8);
+         /* Reading from `data` caused a PAGE fault */
+         memcpy(dest_buf, "<fault>", 8);
+
+      } else if (rc > 0) {
+
+         /*
+          * The user buffer is bigger than our reserved space: just truncate it.
+          */
+         dest_buf[dest_bs - 1] = 0;
+      }
+
+   } else {
+
+      ASSERT(data_sz >= 0);
+      const size_t actual_sz = MIN((size_t)data_sz, dest_bs);
+
+      if (copy_from_user(dest_buf, data, actual_sz))
+         memcpy(dest_buf, "<fault>", 8);
    }
 
    return true;
