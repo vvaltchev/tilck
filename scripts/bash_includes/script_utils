@@ -347,7 +347,7 @@ function get_rpm2cpio_pkg {
       ;;
 
       arch)
-         echo rpmextract
+         echo rpm-tools
       ;;
 
       opensuse)
