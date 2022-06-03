@@ -34,8 +34,12 @@ function install_debian_family {
    pkg_list+=(unzip)
    pkg_list+=(cpio)
    pkg_list+=(parted)
-   pkg_list+=(qemu-system-x86)
-   pkg_list+=(qemu-system-gui)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu-system-x86)
+      pkg_list+=(qemu-system-gui)
+      pkg_list+=(python3)
+   fi
 
    to_install=()
    echo Checking the packages that need to be installed
@@ -99,8 +103,12 @@ function install_fedora {
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
-   pkg_list+=(qemu-system-x86)
-   pkg_list+=(qemu-ui-gtk)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu-system-x86)
+      pkg_list+=(qemu-ui-gtk)
+      pkg_list+=(python3)
+   fi
 
    to_install=()
    echo Checking the packages that need to be installed
@@ -154,11 +162,14 @@ function install_arch {
    pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
-   pkg_list+=(cpio)
-   pkg_list+=(qemu)
    pkg_list+=(parted)
-   pkg_list+=(qemu-system-x86)
-   pkg_list+=(qemu-ui-gtk)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu)
+      pkg_list+=(qemu-system-x86)
+      pkg_list+=(qemu-ui-gtk)
+      pkg_list+=(python3)
+   fi
 
    to_install=()
    echo Checking the packages that need to be installed
@@ -215,8 +226,12 @@ function install_openSUSE {
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
-   pkg_list+=(qemu-x86)
-   pkg_list+=(qemu-ui-gtk)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu-x86)
+      pkg_list+=(qemu-ui-gtk)
+      pkg_list+=(python3)
+   fi
 
    to_install=()
    echo Checking the packages that need to be installed
