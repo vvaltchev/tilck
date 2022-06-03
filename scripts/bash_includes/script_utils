@@ -343,11 +343,47 @@ function get_rpm2cpio_pkg {
       ;;
 
       fedora)
-         echo cpio
+         echo ""
       ;;
 
       arch)
          echo rpmextract
+      ;;
+
+      opensuse)
+         echo ""
+      ;;
+
+      *)
+         echo "Unknown Linux distribution"
+         exit 1
+      ;;
+
+   esac
+}
+
+
+function get_cpio_pkg {
+
+   if ! [ -f $TC/.distro ]; then
+      echo "Linux distribution not fully supported by this script."
+      exit 1
+   fi
+
+   local distro=`cat $TC/.distro`
+
+   case $distro in
+
+      debian)
+         echo cpio
+      ;;
+
+      fedora)
+         echo cpio
+      ;;
+
+      arch)
+         echo cpio
       ;;
 
       opensuse)
@@ -364,14 +400,17 @@ function get_rpm2cpio_pkg {
 
 function install_pkg_on_demand {
 
-   local pkg=$1
+   local pkg="$1"
    local distro=`cat $TC/.distro`
    local install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
 
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      $install_pkg -ci $pkg
-   else
-      $install_pkg $pkg
+   if [[ "$pkg" != "" ]]; then
+
+      if [ "$RUNNING_IN_CI" == 1 ]; then
+         $install_pkg -ci $pkg
+      else
+         $install_pkg $pkg
+      fi
    fi
 }
 
@@ -396,5 +435,6 @@ function install_rpm2cpio {
       return
    fi
 
+   install_pkg_on_demand $(get_cpio_pkg)
    install_pkg_on_demand $(get_rpm2cpio_pkg)
 }
