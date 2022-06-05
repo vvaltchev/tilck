@@ -158,7 +158,7 @@ int cmd_select1(int argc, char **argv)
       goto wait_child_and_return;
    }
 
-   printf(STR_PARENT "selected() completed as expected\n");
+   printf(STR_PARENT "select() completed as expected\n");
 
 wait_child_and_return:
 
