@@ -639,7 +639,7 @@ void sched_account_ticks(void)
 static bool
 sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 {
-   if (UNLIKELY(curr->timer_ready)) {
+   if (UNLIKELY(curr->timer_ready && curr_state != TASK_STATE_ZOMBIE)) {
 
       /*
        * Corner case: call to the scheduler with timer_ready set.
