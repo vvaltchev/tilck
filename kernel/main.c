@@ -123,7 +123,7 @@ init_console(void)
 {
    printk("*** Init the kernel console\n");
 
-   if (kopt_serial_console) {
+   if (kopt_sercon) {
 
       if (!serial_term_intf) {
 
@@ -136,7 +136,7 @@ init_console(void)
          if (!video_term_intf)
             goto we_are_doomed;
 
-         kopt_serial_console = false;
+         kopt_sercon = false;
          panic("Unable to init the serial console without the serial module!");
       }
 
@@ -156,7 +156,7 @@ init_console(void)
       if (!serial_term_intf)
          goto we_are_doomed;
 
-      kopt_serial_console = true;
+      kopt_sercon = true;
       panic("Unable to init the video console without the console module!");
    }
 
