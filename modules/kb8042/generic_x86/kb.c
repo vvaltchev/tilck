@@ -278,6 +278,28 @@ static enum irq_action keyboard_irq_handler(void *ctx)
       return IRQ_HANDLED;
    }
 
+   if (in_panic()) {
+
+      /*
+       * During panic() typically IRQs are completely disabled BUT, when the
+       * the -panic_kb is passed to the kernel cmdline, we allow just PS/2 KB
+       * IRQs to run, so that we can scroll the term buffer. Because we don't
+       * have the timer IRQ, we have to process everything in the IRQ handler
+       * itself. For the panic case, that's totally fine.
+       */
+      u8 scancode;
+      ulong val;
+
+      disable_interrupts(&val);
+
+      while (safe_ringbuf_read_1(&kb_input_rb, &scancode)) {
+         kb_process_scancode(scancode);
+      }
+
+      enable_interrupts(&val);
+      return IRQ_HANDLED;
+   }
+
    /* Everything is fine: we read at least one scancode */
    if (!wth_enqueue_on(kb_worker_thread, &kb_irq_bottom_half, NULL)) {
 

@@ -16,6 +16,7 @@
 #include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/irq.h>
 
 volatile bool __in_panic;
 volatile bool __in_double_fault;
@@ -96,7 +97,33 @@ NORETURN void panic(const char *fmt, ...)
    struct task *curr;
    bool panic_triggered_df = false;
 
-   disable_interrupts_forced(); /* No interrupts: we're in a panic state */
+   if (!kopt_panic_kb) {
+
+      /* No interrupts: we're in a panic state */
+      disable_interrupts_forced();
+
+   } else {
+
+      /*
+       * While it's a good idea to disable ALL the interrupts during panic(),
+       * sometimes the panic code path does not affect screen scrolling nor
+       * the console, nor the PS/2 driver. Therefore, in those cases, it's
+       * great to reproduce the bug and being able to scroll.
+       *
+       * Therefore, let's mask all the IRQs except the IRQ for the PS/2
+       * keyboard.
+       */
+
+      disable_interrupts_forced();
+
+      for (int irq = 0; irq < 16; irq++) {
+         if (irq != X86_PC_KEYBOARD_IRQ)
+            irq_set_mask(irq);
+      }
+
+      enable_interrupts_forced();
+   }
+
    force_enable_preemption();   /* Set a predefined and sane state */
 
    if (__in_panic) {
