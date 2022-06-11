@@ -136,12 +136,13 @@ ALL_KOPTS_BEGIN
 
    /*          name              ,alias, type, default            */
    DEFINE_KOPT(ttys              ,     , long, TTY_COUNT)
-   DEFINE_KOPT(sched_alive_thread,  sat, bool, false)
+   DEFINE_KOPT(sched_alive_thread, sat , bool, false)
    DEFINE_KOPT(sercon            ,     , bool, !MOD_console)
    DEFINE_KOPT(noacpi            ,     , bool, false)
    DEFINE_KOPT(fb_no_opt         ,     , bool, false)
    DEFINE_KOPT(fb_no_wc          ,     , bool, false)
    DEFINE_KOPT(no_fpu_memcpy     ,     , bool, false)
+   DEFINE_KOPT(panic_kb          , pk  , bool, false)
    DEFINE_KOPT(selftest          ,     , wordstr, NULL)
 
 ALL_KOPTS_END

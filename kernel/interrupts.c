@@ -5,6 +5,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 
+#include <tilck/kernel/cmdline.h>
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/sched.h>
@@ -149,7 +150,10 @@ void nested_interrupts_drop_top_syscall(void)
 void panic_dump_nested_interrupts(void)
 {
    VERIFY(in_panic());
-   ASSERT(!are_interrupts_enabled());
+
+   if (!kopt_panic_kb) {
+      ASSERT(!are_interrupts_enabled());
+   }
 
    char buf[128];
    int written = 0;
