@@ -9,8 +9,8 @@
 extern const char *cmd_args[MAX_CMD_ARGS];
 extern void (*self_test_to_run)(void);
 
-extern int kopt_tty_count;
-extern bool kopt_serial_console;
+extern long kopt_ttys;
+extern bool kopt_sercon;
 extern bool kopt_sched_alive_thread;
 extern bool kopt_noacpi;
 extern bool kopt_fb_no_opt;

@@ -141,7 +141,7 @@ static void dp_show_opts(void)
       DUMP_INT("FB_FONT_H", fbi.font_h);
    }
 
-   DUMP_INT("TTY_COUNT", kopt_tty_count);
+   DUMP_INT("TTY_COUNT", kopt_ttys);
 
    DUMP_LABEL("System clock");
    {

@@ -366,7 +366,7 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
 
       if (fn > 0 && t->kd_gfx_mode == KD_TEXT) {
 
-         if (fn > kopt_tty_count)
+         if (fn > kopt_ttys)
             return kb_handler_ok_and_stop; /* just ignore the key stroke */
 
          other_tty = ttys[fn];

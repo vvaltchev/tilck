@@ -454,7 +454,7 @@ init_kb_internal(void)
 /* This will be executed in a kernel thread */
 void init_kb(void)
 {
-   if (kopt_serial_console)
+   if (kopt_sercon)
       return;
 
    disable_preemption();

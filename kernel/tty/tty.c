@@ -264,7 +264,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    init_tty_struct(t, minor, serial_port_fwd);
    new_term_intf = serial_port_fwd ? serial_term_intf : video_term_intf;
 
-   if (minor != 1 && !kopt_serial_console) {
+   if (minor != 1 && !kopt_sercon) {
 
       new_term =
          serial_port_fwd
@@ -324,14 +324,14 @@ static int internal_init_tty(u16 major, u16 minor, u16 serial_port_fwd)
 
 static void init_video_ttys(void)
 {
-   for (u16 i = 1; i <= kopt_tty_count; i++) {
+   for (u16 i = 1; i <= kopt_ttys; i++) {
       if (internal_init_tty(TTY_MAJOR, i, 0) < 0) {
 
          if (i <= 1)
             panic("No enough memory for any TTY device");
 
          printk("WARNING: no enough memory for creating /dev/tty%d\n", i);
-         kopt_tty_count = i - 1;
+         kopt_ttys = i - 1;
          break;
       }
    }
@@ -399,7 +399,7 @@ static void init_tty(void)
     */
    tty_create_devfile_or_panic("tty0", di->major, 0, NULL);
 
-   if (!kopt_serial_console)
+   if (!kopt_sercon)
       if (video_term_intf)
          init_video_ttys();
 
@@ -407,17 +407,17 @@ static void init_tty(void)
       init_serial_ttys();
 
    /* Make init's process group to be the fg process group for the first tty */
-   ttys[kopt_serial_console ? TTYS0_MINOR : 1]->fg_pgid = 1;
+   ttys[kopt_sercon ? TTYS0_MINOR : 1]->fg_pgid = 1;
 
    disable_preemption();
    {
-      if (!kopt_serial_console)
+      if (!kopt_sercon)
          register_keypress_handler(&tty_keypress_handler_elem);
    }
    enable_preemption();
 
    init_ttyaux();
-   __curr_tty = ttys[kopt_serial_console ? TTYS0_MINOR : 1];
+   __curr_tty = ttys[kopt_sercon ? TTYS0_MINOR : 1];
 
    process_set_tty(kernel_process_pi, get_curr_tty());
 }
