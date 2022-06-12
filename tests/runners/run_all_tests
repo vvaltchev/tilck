@@ -270,7 +270,11 @@ def internal_single_test_runner_thread(test_type, test, timeout, show_output):
 
    elapsed = time.time() - start_time
 
-   if p.returncode != 0:
+   if p.returncode == Fail.success.value:
+
+      raw_print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
+
+   else:
 
       if not show_output:
          raw_print("")
@@ -280,10 +284,8 @@ def internal_single_test_runner_thread(test_type, test, timeout, show_output):
          "[ FAILED  ] after {:.2f} seconds with: {}\n"
             .format(elapsed, get_fail_by_code(p.returncode))
       )
-      return False
 
-   raw_print("[ PASSED  ] after {:.2f} seconds\n".format(elapsed))
-   return True
+   return p.returncode
 
 def internal_run_test(test_type, test, timeout, show_output = False):
 
@@ -378,8 +380,31 @@ def run_test(test_type, x, show_output):
       raw_print("")
 
    tests_to_run[test_type] += 1
-   if internal_run_test(test_type, x[0], x[1], show_output):
+   ret = internal_run_test(test_type, x[0], x[1], show_output)
+
+   if ret == Fail.success.value:
+
       tests_passed[test_type] += 1
+
+   elif ret == Fail.shell_unknown_exit_code.value:
+
+      # From time to time, the per-second message by the "sched alive thread"
+      # interleaves the shell's exit code like that:
+      #
+      # [init] the shell with [    2.139] ---- Sched alive thread: 2 ----
+      # pid 2 exited with status: 0
+      #
+      # And this prevents the runner to correctly parse shell's exit code,
+      # resulting in a false positive failure.
+      #
+      # To mitigate this problem, let's re-run the test just once, if it has
+      # failed with: shell_unknown_exit_code.
+
+      ret = internal_run_test(test_type, x[0], x[1], show_output)
+
+      if ret == Fail.success.value:
+         tests_passed[test_type] += 1
+
 
 def run_all_tests(max_timeout, show_output, reg, fail_on_zero, test_type):
 
