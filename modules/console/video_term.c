@@ -67,7 +67,7 @@ struct vterm {
 };
 
 static struct vterm first_instance;
-static u16 failsafe_buffer[80 * 25];
+static u16 failsafe_buffer[FAILSAFE_COLS * FAILSAFE_ROWS];
 
 /* ------------ No-output video-interface ------------------ */
 
@@ -728,8 +728,8 @@ init_vterm(term *_t,
       if (t != &first_instance)
          return -ENOMEM;
 
-      t->cols = (u16) MIN((u16)80, t->cols);
-      t->rows = (u16) MIN((u16)25, t->rows);
+      t->cols = (u16) MIN((u16)FAILSAFE_COLS, t->cols);
+      t->rows = (u16) MIN((u16)FAILSAFE_ROWS, t->rows);
 
       t->extra_buffer_rows = 0;
       t->total_buffer_rows = t->rows;

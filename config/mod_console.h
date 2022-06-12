@@ -34,3 +34,5 @@
  */
 
 #define TTY_INPUT_BS                                              1024
+#define FAILSAFE_COLS                                              80u
+#define FAILSAFE_ROWS                                              25u
