@@ -139,6 +139,7 @@ struct task {
 
 extern struct task *kernel_process;
 extern struct process *kernel_process_pi;
+extern struct task *idle_task;
 
 extern struct list runnable_tasks_list;
 extern const char *const task_state_str[5];

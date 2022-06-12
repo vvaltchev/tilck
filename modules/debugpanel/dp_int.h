@@ -47,3 +47,5 @@ void dp_set_input_blocking(bool blocking);
 int dp_read_line(char *buf, int buf_size);
 enum kb_handler_action dp_tracing_screen(void);
 void dp_dump_task_list(bool kernel_tasks, bool plain_text);
+void handle_set_blocking(fs_handle h, bool blocking);
+int dp_mini_debugger_tool();

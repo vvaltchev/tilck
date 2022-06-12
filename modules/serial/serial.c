@@ -71,6 +71,19 @@ static enum irq_action serial_con_irq_handler(void *ctx)
    if (dev->jobs_cnt >= 2)
       return IRQ_HANDLED;
 
+   if (UNLIKELY(in_panic())) {
+
+      /* Special panic-only trick: see the comment in keyboard_irq_handler() */
+      ulong val;
+      disable_interrupts(&val);
+      {
+         dev->jobs_cnt++;
+         ser_bh_handler(dev);
+      }
+      enable_interrupts(&val);
+      return IRQ_HANDLED;
+   }
+
    if (!wth_enqueue_on(dev->wth, &ser_bh_handler, dev)) {
       printk("Serial: WARNING: hit job queue limit\n");
       return IRQ_HANDLED;

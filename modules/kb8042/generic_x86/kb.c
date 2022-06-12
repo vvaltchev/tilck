@@ -278,7 +278,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
       return IRQ_HANDLED;
    }
 
-   if (in_panic()) {
+   if (UNLIKELY(in_panic())) {
 
       /*
        * During panic() typically IRQs are completely disabled BUT, when the
@@ -286,16 +286,14 @@ static enum irq_action keyboard_irq_handler(void *ctx)
        * IRQs to run, so that we can scroll the term buffer. Because we don't
        * have the timer IRQ, we have to process everything in the IRQ handler
        * itself. For the panic case, that's totally fine.
+       *
+       * When kopt_sercon is enabled, we allow IRQ 4 instead of IRQ 1.
        */
-      u8 scancode;
       ulong val;
-
       disable_interrupts(&val);
-
-      while (safe_ringbuf_read_1(&kb_input_rb, &scancode)) {
-         kb_process_scancode(scancode);
+      {
+         kb_irq_bottom_half(NULL);
       }
-
       enable_interrupts(&val);
       return IRQ_HANDLED;
    }
