@@ -3,6 +3,7 @@
 #ifndef CMDLINE_INCL_HACK
 
 #include <tilck_gen_headers/mod_console.h>
+#include <tilck_gen_headers/mod_kb8042.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -146,6 +147,8 @@ ALL_KOPTS_BEGIN
    DEFINE_KOPT(no_fpu_memcpy     ,     , bool, false)
    DEFINE_KOPT(panic_kb          , pk  , bool, false)
    DEFINE_KOPT(big_scroll_buf    , bb  , bool, TERM_BIG_SCROLL_BUF)
+   DEFINE_KOPT(ps2_log           , plg , bool, PS2_VERBOSE_DEBUG_LOG)
+   DEFINE_KOPT(ps2_selftest      , pse , bool, PS2_DO_SELFTEST)
 
 ALL_KOPTS_END
 
