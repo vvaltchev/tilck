@@ -149,9 +149,9 @@ void process_set_cwd2_nolock(struct vfs_path *tp);
 void process_set_cwd2_nolock_raw(struct process *pi, struct vfs_path *tp);
 void terminate_process(int exit_code, int term_sig);
 void close_cloexec_handles(struct process *pi);
-void setup_sig_handler(struct task *ti,
-                       enum sig_state sig_state,
-                       regs_t *r,
-                       ulong user_func,
-                       int signum);
+int setup_sig_handler(struct task *ti,
+                      enum sig_state sig_state,
+                      regs_t *r,
+                      ulong user_func,
+                      int signum);
 void setup_pause_trampoline(regs_t *r);

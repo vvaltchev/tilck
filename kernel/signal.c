@@ -194,7 +194,13 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
                    handler, ti->tid, get_signal_name(sig), sig);
 
       del_pending_sig(ti, sig);
-      setup_sig_handler(ti, sig_state, regs, (ulong)handler, sig);
+
+      if (setup_sig_handler(ti, sig_state, regs, (ulong)handler, sig) < 0) {
+
+         /* We got a FAULT while trying to setup the user stack */
+         printk("WARNING: can't setup stack for task %d: kill\n", ti->tid);
+         kill_task_now_or_later(ti, regs, SIGKILL, sig_state);
+      }
 
    } else {
 

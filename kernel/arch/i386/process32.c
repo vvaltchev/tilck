@@ -140,7 +140,7 @@ push_args_on_user_stack(regs_t *r,
    return 0;
 }
 
-static void save_regs_on_user_stack(regs_t *r)
+static int save_regs_on_user_stack(regs_t *r)
 {
    ulong new_useresp = r->useresp;
    int rc;
@@ -155,14 +155,13 @@ static void save_regs_on_user_stack(regs_t *r)
    rc = copy_to_user(TO_PTR(new_useresp), r, sizeof(*r));
 
    if (rc) {
-      /* Oops, stack overflow: terminate the process */
-      enable_preemption();
-      terminate_process(0, SIGSEGV);
-      NOT_REACHED();
+      /* Oops, stack overflow */
+      return -EFAULT;
    }
 
    /* Now, after we saved the registers, update r->useresp */
    r->useresp = new_useresp;
+   return 0;
 }
 
 static void restore_regs_from_user_stack(regs_t *r)
@@ -200,18 +199,21 @@ void setup_pause_trampoline(regs_t *r)
       ) % USERMODE_STACK_ALIGN                          \
    )
 
-void setup_sig_handler(struct task *ti,
-                       enum sig_state sig_state,
-                       regs_t *r,
-                       ulong user_func,
-                       int signum)
+int setup_sig_handler(struct task *ti,
+                      enum sig_state sig_state,
+                      regs_t *r,
+                      ulong user_func,
+                      int signum)
 {
    if (ti->nested_sig_handlers == 0) {
+
+      int rc;
 
       if (sig_state == sig_pre_syscall)
          r->eax = (ulong) -EINTR;
 
-      save_regs_on_user_stack(r);
+      if ((rc = save_regs_on_user_stack(r)) < 0)
+         return rc;
    }
 
    r->eip = user_func;
@@ -233,6 +235,7 @@ void setup_sig_handler(struct task *ti,
     *    0xbfffce20             # it's already aligned at 16
     */
    ASSERT(((r->useresp + sizeof(ulong)) & (USERMODE_STACK_ALIGN - 1)) == 0);
+   return 0;
 }
 
 ulong sys_rt_sigreturn(void)
