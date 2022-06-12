@@ -29,8 +29,9 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
    struct task *curr = get_curr_task();
    bool ret;
 
-   disable_preemption();
+panic_retry_hack:
 
+   disable_preemption();
    prepare_to_wait_on(WOBJ_KCOND, c, NO_EXTRA, &c->wait_list);
 
    if (timeout_ticks != KCOND_WAIT_FOREVER)
@@ -40,8 +41,23 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
       kmutex_unlock(m);
    }
 
-   /* Go to sleep until a signal is fired or timeout happens */
-   enter_sleep_wait_state();
+   if (UNLIKELY(in_panic())) {
+
+      /*
+       * During panic, everything is special. When kopt_panic_kb is enabled,
+       * there's a single task, the current one, and IRQ 1 is enabled too.
+       * Waiting for an event means just waiting for an IRQ. Halting the CPU
+       * is what sleeping means in the special single-task mode we have in
+       * panic, when kopt_panic_kb is enabled.
+       */
+      halt();
+      enable_preemption();
+
+   } else {
+
+      /* Go to sleep until a signal is fired or timeout happens */
+      enter_sleep_wait_state();
+   }
 
    /* ------------------- We've been woken up ------------------- */
 
@@ -60,6 +76,27 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
       kmutex_lock(m); // Re-acquire the lock [if any]
    }
 
+   if (UNLIKELY(in_panic())) {
+
+      /*
+       * When we're in panic and kopt_panic_kb is enabled, we have just a single
+       * task, no scheduler and no IRQs other than from PS/2 or COM1. Still,
+       * the TTY layer needs condition variables to work in order to canonical
+       * mode to work. We cannot sleep in the proper sense, by we can HALT the
+       * the CPU and wait for an IRQ to wake us up. Now, the problem is that we
+       * will wake up on every IRQ, even if we never got signalled. That would
+       * incorrect behavior from the caller point of view therefore, we need
+       * to check if the wait_obj_reset() succeeded: in the positive case, we
+       * know that's not a timeout here (because signal resets the wobj for us),
+       * so we retry the whole thing. If it didn't succeed, we have been
+       * signalled, so return. In other words, kcond_wait() returns ALWAYS true
+       * during panic.
+       */
+
+      if (!ret)
+         goto panic_retry_hack;
+   }
+
    return ret;
 }
 
@@ -73,6 +110,19 @@ kcond_signal_int(struct kcond *c, struct wait_obj *wo)
       wo->type != WOBJ_MWO_ELEM
          ? CONTAINER_OF(wo, struct task, wobj)
          : CONTAINER_OF(wo, struct mwobj_elem, wobj)->ti;
+
+   if (UNLIKELY(in_panic())) {
+
+      /*
+       * In this case, we have to ignore the task's state, which cannot change
+       * and just reset the wait object, in order to kcond_wait() to understand
+       * that this condition has been actually signalled.
+       *
+       * See the comments above in kcond_wait() for more context.
+       */
+      wait_obj_reset(wo);
+      return;
+   }
 
    if (ti->state != TASK_STATE_SLEEPING) {
 

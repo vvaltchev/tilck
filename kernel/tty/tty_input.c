@@ -160,7 +160,7 @@ static inline bool tty_inbuf_drop_last_written_elem(struct tty *t)
 static void
 tty_inbuf_write_elem(struct tty *t, u8 c, bool block)
 {
-   ASSERT(!block || is_preemption_enabled());
+   ASSERT(in_panic() || !block || is_preemption_enabled());
    bool ok;
 
    while (true) {
@@ -479,7 +479,7 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
    ASSERT(is_preemption_enabled());
 
-   if (!t->serial_port_fwd) {
+   if (!t->serial_port_fwd && !in_panic()) {
 
       if (pi->proc_tty != t) {
 

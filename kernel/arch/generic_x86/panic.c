@@ -17,6 +17,7 @@
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/irq.h>
+#include <tilck/kernel/syscalls.h>
 
 volatile bool __in_panic;
 volatile bool __in_double_fault;
@@ -85,6 +86,18 @@ static void panic_print_task_info(struct task *curr)
    }
 }
 
+static int
+stop_all_other_tasks(void *task, void *unused)
+{
+   struct task *ti = task;
+
+   if (ti != get_curr_task()) {
+      ti->stopped = true;
+   }
+
+   return 0;
+}
+
 NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
@@ -114,13 +127,18 @@ NORETURN void panic(const char *fmt, ...)
        * keyboard.
        */
 
+      int keep = kopt_sercon ? X86_PC_COM1_COM3_IRQ : X86_PC_KEYBOARD_IRQ;
+
       disable_interrupts_forced();
 
       for (int irq = 0; irq < 16; irq++) {
-         if (irq != X86_PC_KEYBOARD_IRQ)
+
+         if (irq != keep)
             irq_set_mask(irq);
       }
 
+      disable_preemption();
+      iterate_over_tasks(&stop_all_other_tasks, NULL);
       enable_interrupts_forced();
    }
 
@@ -182,7 +200,6 @@ NORETURN void panic(const char *fmt, ...)
 
       init_console();
    }
-
 
    /* Hopefully, we can show something on the screen */
    printk("\n********************** KERNEL PANIC **********************\n");
@@ -246,7 +263,12 @@ NORETURN void panic(const char *fmt, ...)
    if (DEBUG_QEMU_EXIT_ON_PANIC)
       debug_qemu_turn_off_machine();
 
+   if (kopt_panic_kb) {
+      sys_tilck_cmd(TILCK_CMD_DEBUGGER_TOOL, 0, 0, 0, 0);
+   }
+
 end:
    /* Halt the CPU forever */
+   disable_interrupts_forced();
    while (true) { halt(); }
 }

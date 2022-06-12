@@ -55,7 +55,7 @@ NORETURN void reboot(void)
 
    disable_interrupts_forced();
 
-   if (MOD_acpi) {
+   if (MOD_acpi && !in_panic()) {
       if (get_acpi_init_status() >= ais_subsystem_enabled) {
          acpi_reboot();
       }

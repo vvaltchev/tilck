@@ -985,13 +985,45 @@ int vfs_exunlock(struct mnt_fs *fs, vfs_inode_ptr_t i)
    return rc;
 }
 
+#define PANIC_HANDLES      4
+
+static char
+panic_handles[PANIC_HANDLES][MAX_FS_HANDLE_SIZE] ALIGNED_AT(MAX_FS_HANDLE_SIZE);
+
+static bool
+panic_handles_used[PANIC_HANDLES];
+
 fs_handle vfs_alloc_handle_raw(void)
 {
+   if (UNLIKELY(in_panic())) {
+
+      for (int i = 0; i < PANIC_HANDLES; i++) {
+         if (!panic_handles_used[i]) {
+            panic_handles_used[i] = true;
+            return panic_handles[i];
+         }
+      }
+
+      return NULL;
+   }
+
    return kmalloc(MAX_FS_HANDLE_SIZE);
 }
 
 void vfs_free_handle(fs_handle h)
 {
+   if (UNLIKELY(in_panic())) {
+
+      for (int i = 0; i < PANIC_HANDLES; i++) {
+         if (&panic_handles[i] == h) {
+            panic_handles_used[i] = false;
+            break;
+         }
+      }
+
+      return;
+   }
+
    kfree2(h, MAX_FS_HANDLE_SIZE);
 }
 

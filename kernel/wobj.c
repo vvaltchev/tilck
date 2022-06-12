@@ -61,6 +61,16 @@ void prepare_to_wait_on(enum wo_type type,
    struct task *ti = get_curr_task();
    ASSERT(!is_preemption_enabled());
 
+   if (UNLIKELY(in_panic())) {
+
+      /*
+       * Just set the wait object, don't change task's state.
+       * See the comments in kcond_wait() for more context about that.
+       */
+      wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
+      return;
+   }
+
    ASSERT(ti->state != TASK_STATE_SLEEPING);
    wait_obj_set(&ti->wobj, type, ptr, extra, wait_list);
    task_change_state(ti, TASK_STATE_SLEEPING);

@@ -241,18 +241,23 @@ dp_main_body(enum term_type tt, struct key_event ke)
    return dp_screen_key_handled;
 }
 
-void dp_set_input_blocking(bool blocking)
+void handle_set_blocking(fs_handle h, bool blocking)
 {
-   struct fs_handle_base *h = dp_input_handle;
+   struct fs_handle_base *hb = h;
 
    disable_preemption();
    {
       if (blocking)
-         h->fl_flags &= ~O_NONBLOCK;
+         hb->fl_flags &= ~O_NONBLOCK;
       else
-         h->fl_flags |= O_NONBLOCK;
+         hb->fl_flags |= O_NONBLOCK;
    }
    enable_preemption();
+}
+
+void dp_set_input_blocking(bool blocking)
+{
+   handle_set_blocking(dp_input_handle, blocking);
 }
 
 static void
@@ -364,6 +369,7 @@ static void dp_init(void)
    struct dp_screen *pos;
    register_tilck_cmd(TILCK_CMD_DEBUG_PANEL, dp_default_entry);
    register_tilck_cmd(TILCK_CMD_PS_TOOL, dp_ps_tool);
+   register_tilck_cmd(TILCK_CMD_DEBUGGER_TOOL, dp_mini_debugger_tool);
 
    if (MOD_tracing)
       register_tilck_cmd(TILCK_CMD_TRACING_TOOL, dp_direct_tracing_mode_entry);

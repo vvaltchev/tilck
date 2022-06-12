@@ -14,7 +14,7 @@
 /* Shared global variables */
 struct task *__current;
 ATOMIC(int) __disable_preempt = 1;        /* see docs/atomics.md */
-ATOMIC(int) __need_resched;              /* see docs/atomics.md */
+ATOMIC(int) __need_resched;               /* see docs/atomics.md */
 
 struct task *kernel_process;
 struct process *kernel_process_pi;
@@ -28,7 +28,7 @@ static u64 idle_ticks;
 static volatile int runnable_tasks_count;
 static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
-static struct task *idle_task;
+struct task *idle_task;
 
 const char *const task_state_str[5] = {
    [TASK_STATE_INVALID]  = "invalid",
@@ -639,6 +639,9 @@ void sched_account_ticks(void)
 static bool
 sched_should_return_immediately(struct task *curr, enum task_state curr_state)
 {
+   if (UNLIKELY(in_panic()))
+      return true;
+
    if (UNLIKELY(curr->timer_ready && curr_state != TASK_STATE_ZOMBIE)) {
 
       /*

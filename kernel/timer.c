@@ -186,6 +186,19 @@ static void do_sleep_internal(u32 ticks)
 
 void kernel_sleep(u64 ticks)
 {
+   if (in_panic()) {
+
+      /*
+       * Typically, we don't sleep in panic of course but, if the kopt_panic_kb
+       * is enabled we'll run a mini interactive debugger, which might run the
+       * debug panel itself, which calls kernel_sleep(). Because don't really
+       * have a scheduler nor a timer anymore, just fake it by returning
+       * immediately. All the code after panic(), run under special conditions
+       * where every hack is allowed :-)
+       */
+      return;
+   }
+
    DEBUG_ONLY(check_not_in_irq_handler());
 
    /*
