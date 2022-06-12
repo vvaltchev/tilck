@@ -14,6 +14,7 @@
 #include <tilck/kernel/interrupts.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "video_term_int.h"
 
@@ -646,7 +647,7 @@ static u32 term_calc_extra_buf_rows(u16 rows, u16 cols)
    else
       buf_size = 256 * KB;
 
-   if (TERM_BIG_SCROLL_BUF)
+   if (kopt_big_scroll_buf)
       buf_size *= 4;
 
    return (buf_size / 2) / cols - rows;
@@ -746,6 +747,8 @@ init_vterm(term *_t,
    t->vi->enable_cursor();
    term_int_move_cur(t, 0, 0);
    t->initialized = true;
+   printk("video_term: buffer rows: %u (%u screens)\n",
+          t->total_buffer_rows, t->total_buffer_rows / t->rows);
    return 0;
 }
 
