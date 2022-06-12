@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/mod_fb.h>
+#include <tilck_gen_headers/mod_console.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/color_defs.h>
@@ -557,10 +558,16 @@ void init_fb_console(void)
    fb_term_cols = fb_get_width() / font_w;
 
    if (!in_panic()) {
+
       under_cursor_buf = kalloc_array_obj(u32, font_w * font_h);
 
       if (!under_cursor_buf)
          printk("WARNING: fb_console: unable to allocate under_cursor_buf!\n");
+
+   } else {
+
+      fb_term_cols = MIN(fb_term_cols, FAILSAFE_COLS);
+      fb_term_rows = MIN(fb_term_rows, FAILSAFE_ROWS);
    }
 
    init_first_video_term(&framebuffer_vi,
