@@ -18,5 +18,7 @@ extern bool kopt_fb_no_wc;
 extern bool kopt_no_fpu_memcpy;
 extern bool kopt_panic_kb;
 extern bool kopt_big_scroll_buf;
+extern bool kopt_ps2_log;
+extern bool kopt_ps2_selftest;
 
 void parse_kernel_cmdline(const char *cmdline);

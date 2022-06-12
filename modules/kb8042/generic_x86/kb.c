@@ -270,7 +270,7 @@ static enum irq_action keyboard_irq_handler(void *ctx)
 
       /* Got IRQ *without* output buffer full set in the status register */
 
-      if (PS2_VERBOSE_DEBUG_LOG) {
+      if (kopt_ps2_log) {
          printk("KB: Got IRQ#1 with OBF=0 in status register\n");
       }
 
@@ -360,7 +360,7 @@ DEFINE_IRQ_HANDLER_NODE(keyboard, keyboard_irq_handler, &ps2_keyboard);
 static bool hw_8042_init_first_steps(void)
 {
    u8 status, ctr = 0, cto = 0;
-   bool dump_regs = PS2_VERBOSE_DEBUG_LOG;
+   bool dump_regs = kopt_ps2_log;
 
    status = i8042_read_status();
 
@@ -403,7 +403,7 @@ static bool hw_8042_init(void)
    if (!ok)
       return false;
 
-   if (!PS2_DO_SELFTEST)
+   if (!kopt_ps2_selftest)
       return true;
 
    if (i8042_self_test())
