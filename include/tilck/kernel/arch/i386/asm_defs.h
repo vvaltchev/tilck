@@ -8,6 +8,8 @@
    #define ASM_KERNEL_STACK_SZ      4096
 #elif KERNEL_STACK_PAGES == 2
    #define ASM_KERNEL_STACK_SZ      8192
+#elif KERNEL_STACK_PAGES == 4
+   #define ASM_KERNEL_STACK_SZ      16384
 #else
    #error Unsupported value of KERNEL_STACK_PAGES
 #endif
