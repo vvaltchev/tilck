@@ -166,7 +166,7 @@ stop_all_user_tasks(void *task, void *unused)
 {
    struct task *ti = task;
 
-   if (!is_kernel_thread(ti) && ti->tid != 1) {
+   if (!is_kernel_thread(ti) && ti != get_curr_task()) {
       printk("Stopping TID %d\n", ti->tid);
       ti->stopped = true;
    }
@@ -188,6 +188,11 @@ kernel_shutdown(void)
       iterate_over_tasks(&stop_all_user_tasks, NULL);
    }
    enable_preemption();
+
+   /* Give kernel threads a chance to run and complete their work */
+   for (int i = 0; i < 10; i++)
+      kernel_yield();
+
    printk("Shutdown complete.\n");
 }
 
