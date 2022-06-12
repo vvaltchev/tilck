@@ -265,8 +265,9 @@ use_kernel_arg(struct arg_parse_ctx *ctx, int arg_num, const char *arg)
             if (!strcmp(arg+1, all_kopts[i].name))
                break;
 
-            if (!strcmp(arg+1, all_kopts[i].alias))
-               break;
+            if (all_kopts[i].alias[0] != '\0')
+               if (!strcmp(arg+1, all_kopts[i].alias))
+                  break;
          }
 
          if (i == ARRAY_SIZE(all_kopts)) {
@@ -325,6 +326,42 @@ end_arg(struct arg_parse_ctx *ctx,
    use_kernel_arg(ctx, (*arg_count_ref)++, buf);
 }
 
+static void debug_check_all_kopts(void)
+{
+   for (u32 i = 0; i < ARRAY_SIZE(all_kopts); i++) {
+      for (u32 j = 0; j < ARRAY_SIZE(all_kopts); j++) {
+
+         if (i <= j) {
+
+            /*
+             * Avoid comparing twice the same pair and skip the comparison
+             * between an element and itself.
+             */
+            continue;
+         }
+
+         const char *ni = all_kopts[i].name;
+         const char *nj = all_kopts[j].name;
+         const char *ai = all_kopts[i].alias;
+         const char *aj = all_kopts[j].alias;
+
+         if (!strcmp(ni, nj) ||
+             (aj[0] && !strcmp(ni, aj)) ||
+             (ai[0] && !strcmp(ai, nj)) ||
+             (ai[0] && aj[0] && !strcmp(ai, aj)))
+         {
+            panic("Name conflict between kopt[%u] and kopt[%u]", i, j);
+         }
+      }
+
+      if (!strcmp(all_kopts[i].name, "cmd") ||
+          !strcmp(all_kopts[i].alias, "cmd"))
+      {
+         panic("Cannot use 'cmd' as name or alias for kopt[%u]", i);
+      }
+   }
+}
+
 void parse_kernel_cmdline(const char *cmdline)
 {
    char buf[MAX_CMD_ARG_LEN + 1];
@@ -335,6 +372,8 @@ void parse_kernel_cmdline(const char *cmdline)
 #ifndef UNIT_TEST_ENVIRONMENT
    printk("Kernel cmdline: '%s'\n", cmdline);
 #endif
+
+   DEBUG_ONLY(debug_check_all_kopts());
 
    for (const char *p = cmdline; *p;) {
 
