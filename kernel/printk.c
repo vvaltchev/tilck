@@ -348,7 +348,8 @@ __tilck_vprintk(char *prefixbuf,
    }
 
    if (in_panic()) {
-      printk_direct_flush(buf, (size_t) written, PRINTK_PANIC_COLOR);
+      u8 color = in_panic_debugger() ? DEFAULT_FG_COLOR : PRINTK_PANIC_COLOR;
+      printk_direct_flush(buf, (size_t) written, color);
       restore_first_printk_value();
       return;
    }
