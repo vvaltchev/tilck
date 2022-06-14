@@ -23,6 +23,7 @@
 volatile bool __in_panic;
 volatile bool __in_double_fault;
 volatile bool __in_kernel_shutdown;
+volatile bool __in_panic_debugger;
 
 void init_console(void);         /* defined in main.c */
 void panic_save_current_state(); /* defined in kernel_yield.S */
@@ -268,6 +269,7 @@ NORETURN void panic(const char *fmt, ...)
       debug_qemu_turn_off_machine();
 
    if (kopt_panic_kb) {
+      __in_panic_debugger = true;
       sys_tilck_cmd(TILCK_CMD_DEBUGGER_TOOL, 0, 0, 0, 0);
    }
 

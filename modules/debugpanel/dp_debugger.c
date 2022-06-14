@@ -13,6 +13,7 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/system_mmap.h>
 
 #include "termutil.h"
 #include "dp_int.h"
@@ -49,6 +50,12 @@ static int cmd_quit(int argc, char **argv)
 {
    dp_write_raw("Debugger exit: leaving the system fully halted.");
    return -1;
+}
+
+static int cmd_mmap(int argc, char **argv)
+{
+   dump_memory_map();
+   return 0;
 }
 
 static void cmd_print_help(void)
@@ -261,6 +268,7 @@ static const struct debugger_cmd all_debug_cmds[] =
    { "resolve", "res", &cmd_resolve, "resolve a symbol to a vaddr" },
    { "print", "p", &cmd_print, "print <n> <fmt> <vaddr/sym>: reads from mem" },
    { "va2pa", NULL, &cmd_va2pa, "va2pa <vaddr>: convert a vaddr to paddr" },
+   { "mmap", NULL, &cmd_mmap, "Dump system's memory map" },
    { "quit", NULL, &cmd_quit, "quit the debugger and halt the machine" },
    { "reboot", NULL, &cmd_reboot, "reboot the machine" },
 };

@@ -13,6 +13,12 @@ static ALWAYS_INLINE bool in_panic(void)
    return __in_panic;
 }
 
+static ALWAYS_INLINE bool in_panic_debugger(void)
+{
+   extern volatile bool __in_panic_debugger;
+   return __in_panic_debugger;
+}
+
 static ALWAYS_INLINE bool in_kernel_shutdown(void)
 {
    extern volatile bool __in_kernel_shutdown;

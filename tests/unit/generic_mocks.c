@@ -14,6 +14,7 @@ u32 unhandled_irq_count[256];
 bool suppress_printk;
 volatile bool __in_panic;
 volatile bool __in_kernel_shutdown;
+volatile bool __in_panic_debugger;
 void *__kernel_pdir;
 
 void panic(const char *fmt, ...)
