@@ -19,6 +19,7 @@ extern bool kopt_no_fpu_memcpy;
 extern bool kopt_panic_kb;
 extern bool kopt_panic_nobt;
 extern bool kopt_panic_regs;
+extern bool kopt_panic_mmap;
 extern bool kopt_big_scroll_buf;
 extern bool kopt_ps2_log;
 extern bool kopt_ps2_selftest;

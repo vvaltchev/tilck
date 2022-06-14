@@ -17,7 +17,7 @@
 
 static int row;
 
-static void dump_memory_map(void)
+static void dp_dump_mmap(void)
 {
    struct mem_region ma;
 
@@ -176,7 +176,7 @@ static void dp_show_sys_mmap(void)
    }
    enable_preemption();
 
-   dump_memory_map();
+   dp_dump_mmap();
 
 #ifdef arch_x86_family
    dump_var_mtrrs();
