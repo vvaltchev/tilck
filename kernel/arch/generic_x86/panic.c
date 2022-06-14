@@ -246,11 +246,11 @@ NORETURN void panic(const char *fmt, ...)
    if (__in_double_fault) {
       copy_main_tss_on_regs(&panic_state_regs);
 
-      if (!PANIC_SHOW_REGS)
+      if (!kopt_panic_regs)
          printk("ESP: %p\n", TO_PTR(panic_state_regs.esp));
    }
 
-   if (PANIC_SHOW_REGS)
+   if (kopt_panic_regs)
       dump_regs(&panic_state_regs);
 
    if (!kopt_panic_nobt) {

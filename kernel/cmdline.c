@@ -148,6 +148,7 @@ ALL_KOPTS_BEGIN
    DEFINE_KOPT(no_fpu_memcpy     ,     , bool, false)
    DEFINE_KOPT(panic_kb          , pk  , bool, false)
    DEFINE_KOPT(panic_nobt        , nobt, bool, !PANIC_SHOW_STACKTRACE)
+   DEFINE_KOPT(panic_regs        , pr  , bool, PANIC_SHOW_REGS)
    DEFINE_KOPT(big_scroll_buf    , bb  , bool, TERM_BIG_SCROLL_BUF)
    DEFINE_KOPT(ps2_log           , plg , bool, PS2_VERBOSE_DEBUG_LOG)
    DEFINE_KOPT(ps2_selftest      , pse , bool, PS2_DO_SELFTEST)
