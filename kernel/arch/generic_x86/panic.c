@@ -18,6 +18,7 @@
 #include <tilck/kernel/fault_resumable.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/syscalls.h>
+#include <tilck/kernel/system_mmap.h>
 
 volatile bool __in_panic;
 volatile bool __in_double_fault;
@@ -259,6 +260,9 @@ NORETURN void panic(const char *fmt, ...)
          curr->pi->pdir
       );
    }
+
+   if (kopt_panic_mmap)
+      dump_memory_map();
 
    if (DEBUG_QEMU_EXIT_ON_PANIC)
       debug_qemu_turn_off_machine();

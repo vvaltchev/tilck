@@ -463,7 +463,7 @@ STATIC void set_lower_and_upper_kb(void)
    }
 }
 
-static void dump_memory_map(void)
+void dump_memory_map(void)
 {
    struct mem_region ma;
 
