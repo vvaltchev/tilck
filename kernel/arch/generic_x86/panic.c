@@ -253,7 +253,7 @@ NORETURN void panic(const char *fmt, ...)
    if (PANIC_SHOW_REGS)
       dump_regs(&panic_state_regs);
 
-   if (PANIC_SHOW_STACKTRACE) {
+   if (!kopt_panic_nobt) {
       dump_stacktrace(
          __in_double_fault ? (void*)panic_state_regs.ebp : NULL,
          curr->pi->pdir
