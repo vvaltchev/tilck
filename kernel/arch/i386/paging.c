@@ -1060,7 +1060,8 @@ void init_paging(void)
    void *user_vdso_vaddr;
    size_t pagesframes_refcount_bufsize;
 
-   phys_mem_lim = get_phys_mem_size();
+   phys_mem_lim = (ulong)MIN(get_phys_mem_size(),
+                             (u64)LINEAR_MAPPING_SIZE);
 
    /*
     * Allocate the buffer used for keeping a ref-count for each pageframe.
@@ -1068,7 +1069,7 @@ void init_paging(void)
     */
 
    pagesframes_refcount_bufsize =
-      (get_phys_mem_size() >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
+      (phys_mem_lim >> PAGE_SHIFT) * sizeof(pageframes_refcount[0]);
 
    pageframes_refcount = kzmalloc(pagesframes_refcount_bufsize);
 
