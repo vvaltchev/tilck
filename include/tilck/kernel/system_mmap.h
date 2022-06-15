@@ -50,9 +50,9 @@ get_phys_mem_mb(void)
    return __mem_upper_kb >> 10;
 }
 
-static ALWAYS_INLINE ulong
+static ALWAYS_INLINE u64
 get_phys_mem_size(void)
 {
    extern u32 __mem_upper_kb;
-   return __mem_upper_kb << 10;
+   return ((u64)__mem_upper_kb) << 10;
 }
