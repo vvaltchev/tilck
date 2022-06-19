@@ -94,7 +94,13 @@ AcpiOsStall(UINT32 Microseconds)
 {
    disable_preemption();
    {
-      delay_us(Microseconds);
+      UINT32 n = Microseconds / 100000;
+      UINT32 rem = Microseconds % 100000;
+
+      for (UINT32 i = 0; i < n; i++)
+         delay_us(100000);
+
+      delay_us(rem);
    }
    enable_preemption_nosched();
 }

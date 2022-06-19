@@ -410,6 +410,7 @@ static void do_bogomips_loop(void *arg)
 void delay_us(u32 us)
 {
    u32 loops;
+   ASSERT(us <= 100 * 1000);
 
    if (LIKELY(loops_per_us >= 10))
       loops = us * loops_per_us;
