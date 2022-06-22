@@ -302,9 +302,9 @@ function install_packages {
       echo ""
       install_fedora
 
-   elif echo $rel_files | grep -Ei 'arch|manjaro' - &> /dev/null; then
+   elif echo $rel_files | grep -Ei 'arch|manjaro|artix' - &> /dev/null; then
 
-      echo "Distribution detected: Arch or Manjaro"
+      echo "Distribution detected: Arch or Manjaro or Artix"
       echo ""
       install_arch
 
@@ -364,6 +364,7 @@ function install_packages {
          echo "  * Fedora"
          echo "  * Arch"
          echo "  * Manjaro"
+         echo "  * Artix"
          echo "  * openSUSE"
          echo "In order to build Tilck on this distro, please make sure the "
          echo "following programs are installed:"
