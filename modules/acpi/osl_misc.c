@@ -149,7 +149,7 @@ AcpiOsEnterSleep(
     UINT32                  RegbValue)
 {
    ACPI_FUNCTION_TRACE(__FUNC__);
-   printk("ACPI sleep: %u, 0x%x, 0x%x\n", SleepState, RegaValue, RegaValue);
+   printk("ACPI sleep: %u, 0x%x, 0x%x\n", SleepState, RegaValue, RegbValue);
    return_ACPI_STATUS(AE_OK);
 }
 
