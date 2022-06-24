@@ -68,7 +68,7 @@ In order to build the unit tests, it is necessary to download and build the
 #### Build and run
 Building the unit tests is as simple as running:
 
-    make -j gtests
+    make gtests
 
 And running them is simple as:
 
@@ -317,7 +317,7 @@ packages in the toolchain. Please check [building] before proceeding further.
 
    - Run: `<TILCK>/cmake_run --intr`
 
-   - Build the kernel as always with `make -j`
+   - Build the kernel as always with `make`
 
    - Run the tests with: `./st/run_interactive_test -a`
 

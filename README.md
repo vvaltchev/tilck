@@ -245,7 +245,7 @@ x86_64 host system or Microsoft's `WSL`. Steps:
 
 * Enter project's root directory.
 * Build the toolchain (just the first time) with: `./scripts/build_toolchain`
-* Compile the kernel and prepare the bootable image with: `make -j`
+* Compile the kernel and prepare the bootable image with: `make`
 
 At this point, there will be an image file named `tilck.img` in the `build`
 directory. The easiest way for actually trying `Tilck` at that point is to run:
@@ -290,7 +290,7 @@ To run the **unit tests** instead:
    * Install the [googletest] library (once) with:
      `./scripts/build_toolchain -s build_gtest`
 
-   * Build the unit tests with: `make -j gtests`
+   * Build the unit tests with: `make gtests`
 
    * Run them with: `<BUILD_DIR>/gtests`
 

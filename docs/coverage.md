@@ -30,7 +30,7 @@ require a special build configuration as well (see below).
 
 2. Build Tilck and its unit tests:
 
-        make -j && make -j gtests
+        make && make gtests
 
 3. Clean coverage data from previous runs:
 

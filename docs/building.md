@@ -57,7 +57,7 @@ name, it accepts also short names like `gtest` instead of `build_gtest` and
 
 To build Tilck, it's necessary to run first `<TILCK_DIR>/scripts/cmake_run` in
 the chosen build directory (e.g. `~john/builds/tilck01`) and then just run
-`make` or `make -j` there. That means that **out-of-tree builds** are supported
+`make` there. That means that **out-of-tree builds** are supported
 effortlessly.
 
 But, because 99% of the time it's just fine to have a `build` directory inside
@@ -70,6 +70,28 @@ run `make` in project's main directory, using the trivial wrapper Makefile
 included in Tilck's source: it will simply run `$(MAKE) -C build`. In case the
 `build/` directory does not exist yet, it will also run the `cmake_run` wrapper
 script first.
+
+#### Build performance notes
+
+To speed up Tilck's build, it's possible to increase the level of parallelism
+with GNU make's option `-j<N>`. For example, `make -j4` means that at most
+4 instances of the compiler will be run in parallel. **WARNING**: increasing
+the level of parallelism requires significantly more memory in the host system
+It's hard to estimate in general how much memory each instance of GCC or Clang
+will use for compiling a C or C++ file, but it makes sense to be conservative
+and to account for ~1 GB of RAM per GCC/Clang instance. Therefore, `make -j4`
+would require at least 4 GB of available memory in the host system used for
+building Tilck. Still, it's possible to increase the level of parallelism at
+your own discretion, keeping in mind that in case the Linux host system runs
+out of memory while building this project (or anything else!), the OOM killer
+will run and **that will make the system potentially unstable/unusable**.
+
+**See:**
+   * Issue https://github.com/vvaltchev/tilck/issues/101
+   * https://unix.stackexchange.com/questions/316644/
+   * https://unix.stackexchange.com/questions/208568/
+   * https://unix.stackexchange.com/questions/153585/
+   * https://lwn.net/Articles/317814/
 
 ## Configuring Tilck
 
@@ -183,7 +205,7 @@ Or:
 
 Finally, just build the unit tests with:
 
-    make -j gtests
+    make gtests
 
 To run them, execute:
 
@@ -263,7 +285,7 @@ moment. But, it still has partial support for Clang because:
 
    1. Install `clang` and `clang++` and make sure it can build i686 binaries.
    2. Run: `CC=clang CXX=clang++ ./scripts/cmake_run -DKERNEL_SYSCC=1`
-   3. Build as always with `make -j`
+   3. Build as always with `make`
 
 The `KERNEL_SYSCC` option makes the build system to use `CC` and `CXX` to build
 kernel's C and C++ files, while still building the assembly files with the
