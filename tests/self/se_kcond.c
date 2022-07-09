@@ -70,7 +70,7 @@ static void kcond_thread_signal_generator()
    kthread_join(tid, true);
 }
 
-void selftest_kcond_short()
+void selftest_kcond()
 {
    int tids[3];
    kmutex_init(&cond_mutex, 0);
@@ -90,4 +90,4 @@ void selftest_kcond_short()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond_short)
+DECLARE_AND_REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond)

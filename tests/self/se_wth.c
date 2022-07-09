@@ -54,7 +54,7 @@ static void end_test(void *arg)
    printk("[se_wth] end_test() func completed\n");
 }
 
-void selftest_wth_short(void)
+void selftest_wth(void)
 {
    const u32 attempts_check = 500 * 1000;
    struct se_wth_ctx ctx;
@@ -170,9 +170,9 @@ void selftest_wth_short(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth_short)
+DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth)
 
-void selftest_wth2_short(void)
+void selftest_wth2(void)
 {
    struct worker_thread *wth;
    bool added;
@@ -202,9 +202,9 @@ void selftest_wth2_short(void)
    printk("[se_wth] everything is OK\n");
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2_short)
+DECLARE_AND_REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2)
 
-void selftest_wth_perf_short(void)
+void selftest_wth_perf(void)
 {
    struct worker_thread *wth = wth_find_worker(WTH_PRIO_LOWEST);
    bool added;
@@ -230,4 +230,4 @@ void selftest_wth_perf_short(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf_short)
+DECLARE_AND_REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf)

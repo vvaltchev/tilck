@@ -76,7 +76,7 @@ static void sek_thread(void *unused)
    } // for (int iter = 0; iter < KMUTEX_SEK_TH_ITERS; iter++)
 }
 
-void selftest_kmutex_med()
+void selftest_kmutex()
 {
    int local_tids[3];
 
@@ -103,7 +103,7 @@ void selftest_kmutex_med()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex_med)
+DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex)
 
 /* -------------------------------------------------- */
 /*               Recursive mutex test                 */
@@ -148,7 +148,7 @@ static void test_kmutex_thread_trylock()
    }
 }
 
-void selftest_kmutex_rec_med()
+void selftest_kmutex_rec()
 {
    bool success;
    int local_tids[3];
@@ -197,7 +197,7 @@ void selftest_kmutex_rec_med()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec_med)
+DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec)
 
 /* -------------------------------------------------- */
 /*               Strong order test                    */
@@ -349,7 +349,7 @@ kmutex_ord_supervisor_thread()
    }
 }
 
-void selftest_kmutex_ord_med()
+void selftest_kmutex_ord()
 {
    u32 unlucky_threads = 0;
    int tid, supervisor_tid;
@@ -426,4 +426,4 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord_med)
+DECLARE_AND_REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord)

@@ -49,7 +49,7 @@ static void kmalloc_perf_per_size(u32 size)
           size, duration / (u64) iters);
 }
 
-void selftest_kmalloc_perf_med(void)
+void selftest_kmalloc_perf(void)
 {
    const int iters = 1000;
    printk("*** kmalloc perf test ***\n");
@@ -100,4 +100,4 @@ void selftest_kmalloc_perf_med(void)
 
 DECLARE_AND_REGISTER_SELF_TEST(kmalloc_perf,
                                se_med,
-                               &selftest_kmalloc_perf_med)
+                               &selftest_kmalloc_perf)

@@ -91,7 +91,7 @@ static void nested_faulting_code(int level)
    printk("[level %i]: we reached the end\n", level);
 }
 
-void selftest_fault_res_short(void)
+void selftest_fault_res(void)
 {
    u32 r;
 
@@ -124,7 +124,7 @@ void selftest_fault_res_short(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res_short)
+DECLARE_AND_REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res)
 
 static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
                                  ulong a4, ulong a5, ulong a6)
@@ -137,7 +137,7 @@ static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
    DO_NOT_OPTIMIZE_AWAY(a6);
 }
 
-void selftest_fault_res_perf_short(void)
+void selftest_fault_res_perf(void)
 {
    const int iters = 100000;
    u64 start, duration;
@@ -164,6 +164,6 @@ void selftest_fault_res_perf_short(void)
 
 DECLARE_AND_REGISTER_SELF_TEST(fault_res_perf,
                                se_short,
-                               &selftest_fault_res_perf_short)
+                               &selftest_fault_res_perf)
 
 #endif

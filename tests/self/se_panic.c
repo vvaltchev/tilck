@@ -11,24 +11,24 @@
  * Special selftest that cannot be run by the system test runner.
  * It has to be run manually.
  */
-void selftest_panic_manual(void)
+void selftest_panic(void)
 {
    printk("[panic selftest] I'll panic now\n");
    panic("test panic [str: '%s'][num: %d]", "test string", -123);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(panic, se_manual, &selftest_panic_manual)
+DECLARE_AND_REGISTER_SELF_TEST(panic, se_manual, &selftest_panic)
 
-void selftest_panic2_manual(void)
+void selftest_panic2(void)
 {
    printk("[panic selftest] I'll panic with bad pointers\n");
    panic("test panic [str: '%s'][num: %d]", (char *)1234, -123);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(panic2, se_manual, &selftest_panic2_manual)
+DECLARE_AND_REGISTER_SELF_TEST(panic2, se_manual, &selftest_panic2)
 
 /* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
-void selftest_so1_manual(void)
+void selftest_so1(void)
 {
    char buf[16];
 
@@ -42,10 +42,10 @@ void selftest_so1_manual(void)
    memset(ptr, 'x', KERNEL_STACK_SIZE);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(so1, se_manual, &selftest_so1_manual)
+DECLARE_AND_REGISTER_SELF_TEST(so1, se_manual, &selftest_so1)
 
 /* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
-void selftest_so2_manual(void)
+void selftest_so2(void)
 {
    char buf[16];
 
@@ -59,7 +59,7 @@ void selftest_so2_manual(void)
    memset(ptr - KERNEL_STACK_SIZE, 'y', KERNEL_STACK_SIZE);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(so2, se_manual, &selftest_so2_manual)
+DECLARE_AND_REGISTER_SELF_TEST(so2, se_manual, &selftest_so2)
 
 static void NO_INLINE do_cause_double_fault(void)
 {
@@ -67,10 +67,10 @@ static void NO_INLINE do_cause_double_fault(void)
    memset(buf, 'z', KERNEL_STACK_SIZE);
 }
 
-void selftest_so3_manual(void)
+void selftest_so3(void)
 {
    printk("Causing intentionally a double fault: expect panic\n");
    do_cause_double_fault();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(so3, se_manual, &selftest_so3_manual)
+DECLARE_AND_REGISTER_SELF_TEST(so3, se_manual, &selftest_so3)

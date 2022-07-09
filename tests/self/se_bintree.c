@@ -147,7 +147,7 @@ do_bintree_perf_test(u32 elems,
 }
 
 void
-selftest_bintree_perf_med(void)
+selftest_bintree_perf(void)
 {
    static const u32 lookup_elems[] = {
       10, 15, 20, 25, 35, 50, 75, 100, 250, 500, 1000
@@ -194,4 +194,4 @@ selftest_bintree_perf_med(void)
 
 DECLARE_AND_REGISTER_SELF_TEST(bintree_perf,
                                se_med,
-                               &selftest_bintree_perf_med)
+                               &selftest_bintree_perf)
