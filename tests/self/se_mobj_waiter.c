@@ -65,7 +65,7 @@ static void mobj_waiter_wait_thread(void *arg)
    free_mobj_waiter(w);
 }
 
-void selftest_mobj_waiter_short()
+void selftest_mobj_waiter()
 {
    int tids[ARRAY_SIZE(conds)];
    int w_tid;
@@ -98,4 +98,4 @@ retry:
 
 DECLARE_AND_REGISTER_SELF_TEST(mobj_waiter,
                                se_short,
-                               &selftest_mobj_waiter_short)
+                               &selftest_mobj_waiter)

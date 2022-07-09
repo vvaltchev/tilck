@@ -50,7 +50,7 @@ void simple_test_kthread(void *arg)
    printk("[kthread] completed\n");
 }
 
-void selftest_kthread_med(void)
+void selftest_kthread(void)
 {
    int tid = kthread_create(simple_test_kthread, 0, (void *)1);
 
@@ -65,9 +65,9 @@ void selftest_kthread_med(void)
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread_med)
+DECLARE_AND_REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
-void selftest_sleep_short()
+void selftest_sleep()
 {
    const u64 wait_ticks = TIMER_HZ;
    u64 before = get_ticks();
@@ -84,9 +84,9 @@ void selftest_sleep_short()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep_short)
+DECLARE_AND_REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep)
 
-void selftest_join_med()
+void selftest_join()
 {
    int tid;
 
@@ -106,4 +106,4 @@ void selftest_join_med()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(join, se_med, &selftest_join_med)
+DECLARE_AND_REGISTER_SELF_TEST(join, se_med, &selftest_join)

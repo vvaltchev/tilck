@@ -195,7 +195,7 @@ void init_self_tests(void)
    }
 }
 
-void selftest_list_manual(void)
+void selftest_list(void)
 {
    static const char *se_kind_str[] = {
       [se_short] = "short",
@@ -210,4 +210,4 @@ void selftest_list_manual(void)
    }
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(list, se_manual, &selftest_list_manual)
+DECLARE_AND_REGISTER_SELF_TEST(list, se_manual, &selftest_list)

@@ -139,7 +139,7 @@ static void se_rwlock_common(int *rt, int *wt, struct se_rwlock_ctx *ctx)
    }
 }
 
-void selftest_rwlock_rp_med()
+void selftest_rwlock_rp()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
@@ -220,9 +220,9 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp_med)
+DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp)
 
-void selftest_rwlock_wp_med()
+void selftest_rwlock_wp()
 {
    int rt[RWLOCK_READERS];
    int wt[RWLOCK_WRITERS];
@@ -299,4 +299,4 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp_med)
+DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp)

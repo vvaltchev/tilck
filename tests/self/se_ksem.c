@@ -71,7 +71,7 @@ static void wait_for_all_blocked(void)
    }
 }
 
-void selftest_ksem_short()
+void selftest_ksem()
 {
    int tid, rc;
    ksem_init(&test_sem, 0, 1000);
@@ -147,4 +147,4 @@ void selftest_ksem_short()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(ksem, se_short, &selftest_ksem_short)
+DECLARE_AND_REGISTER_SELF_TEST(ksem, se_short, &selftest_ksem)

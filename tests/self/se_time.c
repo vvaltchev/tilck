@@ -16,7 +16,7 @@ extern u32 __tick_duration;
 extern int __tick_adj_ticks_rem;
 extern u32 clock_drift_adj_loop_delay;
 
-void selftest_time_manual(void)
+void selftest_time(void)
 {
    int drift;
    u32 orig_tick_duration = 0;
@@ -136,9 +136,9 @@ out:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time_manual)
+DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time)
 
-void selftest_delay_manual(void)
+void selftest_delay(void)
 {
    u64 before, after, elapsed;
    u32 us = 50000; /* 50 ms */
@@ -156,4 +156,4 @@ void selftest_delay_manual(void)
    printk("Actual ticks:      %" PRIu64 "\n", elapsed);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(delay, se_manual, &selftest_delay_manual)
+DECLARE_AND_REGISTER_SELF_TEST(delay, se_manual, &selftest_delay)

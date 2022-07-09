@@ -51,7 +51,7 @@ void se_register(struct self_test *se);
 void se_regular_end(void);
 void se_interrupted_end(void);
 void simple_test_kthread(void *arg);
-void selftest_kmalloc_perf_med(void);
+void selftest_kmalloc_perf(void);
 
 /* Deadlock detection functions */
 void debug_reset_no_deadlock_set(void);

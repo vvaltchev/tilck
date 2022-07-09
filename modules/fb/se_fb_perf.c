@@ -48,23 +48,23 @@ void internal_selftest_fb_perf(bool use_fpu)
    fb_draw_banner();
 }
 
-void selftest_fbperf_nofpu_manual(void)
+void selftest_fbperf_nofpu(void)
 {
    internal_selftest_fb_perf(false);
 }
 
-void selftest_fbperf_fpu_manual(void)
+void selftest_fbperf_fpu(void)
 {
    internal_selftest_fb_perf(true);
 }
 
 DECLARE_AND_REGISTER_SELF_TEST(fbperf_nofpu,
                                se_manual,
-                               &selftest_fbperf_nofpu_manual);
+                               &selftest_fbperf_nofpu);
 
 
 DECLARE_AND_REGISTER_SELF_TEST(fbperf_fpu,
                                se_manual,
-                               &selftest_fbperf_fpu_manual);
+                               &selftest_fbperf_fpu);
 
 #endif // #if KERNEL_SELFTESTS
