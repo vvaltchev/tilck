@@ -24,7 +24,7 @@ struct self_test {
    void (*func)(void);
 };
 
-#define DECLARE_AND_REGISTER_SELF_TEST(__name, __kind, __func)  \
+#define REGISTER_SELF_TEST(__name, __kind, __func)  \
                                                                 \
    static struct self_test se_##__name##_inst = {               \
       .name = #__name,                                          \

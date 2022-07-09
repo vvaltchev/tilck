@@ -210,4 +210,4 @@ void selftest_list(void)
    }
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(list, se_manual, &selftest_list)
+REGISTER_SELF_TEST(list, se_manual, &selftest_list)

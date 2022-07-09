@@ -65,7 +65,7 @@ void selftest_kthread(void)
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
+REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
 void selftest_sleep()
 {
@@ -84,7 +84,7 @@ void selftest_sleep()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep)
+REGISTER_SELF_TEST(sleep, se_short, &selftest_sleep)
 
 void selftest_join()
 {
@@ -106,4 +106,4 @@ void selftest_join()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(join, se_med, &selftest_join)
+REGISTER_SELF_TEST(join, se_med, &selftest_join)

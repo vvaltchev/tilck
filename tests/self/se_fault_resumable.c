@@ -124,7 +124,7 @@ void selftest_fault_res(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res)
+REGISTER_SELF_TEST(fault_res, se_short, &selftest_fault_res)
 
 static NO_INLINE void do_nothing(ulong a1, ulong a2, ulong a3,
                                  ulong a4, ulong a5, ulong a6)
@@ -162,8 +162,5 @@ void selftest_fault_res_perf(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(fault_res_perf,
-                               se_short,
-                               &selftest_fault_res_perf)
-
+REGISTER_SELF_TEST(fault_res_perf, se_short, &selftest_fault_res_perf)
 #endif

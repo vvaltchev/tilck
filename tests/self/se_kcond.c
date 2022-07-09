@@ -90,4 +90,4 @@ void selftest_kcond()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond)
+REGISTER_SELF_TEST(kcond, se_short, &selftest_kcond)

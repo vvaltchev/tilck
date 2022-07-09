@@ -96,6 +96,4 @@ retry:
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(mobj_waiter,
-                               se_short,
-                               &selftest_mobj_waiter)
+REGISTER_SELF_TEST(mobj_waiter, se_short, &selftest_mobj_waiter)

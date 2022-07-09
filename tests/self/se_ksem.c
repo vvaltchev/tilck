@@ -147,4 +147,4 @@ void selftest_ksem()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(ksem, se_short, &selftest_ksem)
+REGISTER_SELF_TEST(ksem, se_short, &selftest_ksem)

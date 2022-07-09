@@ -136,7 +136,7 @@ out:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(time, se_manual, &selftest_time)
+REGISTER_SELF_TEST(time, se_manual, &selftest_time)
 
 void selftest_delay(void)
 {
@@ -156,4 +156,4 @@ void selftest_delay(void)
    printk("Actual ticks:      %" PRIu64 "\n", elapsed);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(delay, se_manual, &selftest_delay)
+REGISTER_SELF_TEST(delay, se_manual, &selftest_delay)

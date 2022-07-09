@@ -170,7 +170,7 @@ void selftest_wth(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth, se_short, &selftest_wth)
+REGISTER_SELF_TEST(wth, se_short, &selftest_wth)
 
 void selftest_wth2(void)
 {
@@ -202,7 +202,7 @@ void selftest_wth2(void)
    printk("[se_wth] everything is OK\n");
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2)
+REGISTER_SELF_TEST(wth2, se_short, &selftest_wth2)
 
 void selftest_wth_perf(void)
 {
@@ -230,4 +230,4 @@ void selftest_wth_perf(void)
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf)
+REGISTER_SELF_TEST(wth_perf, se_short, &selftest_wth_perf)
