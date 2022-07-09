@@ -13,6 +13,7 @@ enum se_kind {
    se_manual,
    se_short,
    se_med,
+   se_medlong,
    se_long
 };
 

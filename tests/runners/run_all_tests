@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-# pylint: disable=unused-wildcard-import
+# pylint: disable=unused-wildcard-import, bad-indentation, wildcard-import
+# pylint: disable=missing-function-docstring, wrong-import-position
+# pylint: disable=invalid-name, raise-missing-from, missing-class-docstring
 
 import os
 import re
 import sys
 import time
-import signal
 import argparse
 import subprocess
-import threading
+import ctypes
 import concurrent.futures as ft
 from typing import List, Dict, Tuple
 
@@ -18,6 +19,7 @@ RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
 KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
+ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -27,20 +29,24 @@ from lib.exceptions import *
 
 # Constants
 
+# Placeholder timeout value for manual tests, more convenient than 0 for sorting
+MANUAL_TEST_TIMEOUT = 10000
+
+# Must match with `enum se_kind` in self_tests.h
 TIMEOUTS = {
+   'manual' : MANUAL_TEST_TIMEOUT,
    'short': 12,
    'med': 36,
    'medlong': 72,
    'long': 108,
 }
 
+
+TIMEOUTS_BY_KIND_NUM = list(TIMEOUTS.values())
 INV_TIMEOUTS = { TIMEOUTS[k]: k for k in TIMEOUTS }
 INF_STR_TIMEOUTS = ['any', 'all', 'inf']
 
 ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
-
-# Placeholder timeout value for manual tests, convenient than 0 for sorting
-MANUAL_TEST_TIMEOUT = 10000
 
 # Timeout used for the `runall` shellcmd (-c option)
 ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
@@ -120,8 +126,6 @@ def arg_type_timeout(s):
 
 def load_all_tests():
 
-   global tests_by_type
-
    for tt in TEST_TYPES:
       tests_by_type[tt] = globals()[load_tests_func_by_type[tt]]()
 
@@ -188,6 +192,27 @@ def load_list_of_shell_cmd_tests():
    test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
 
+# Mapping of struct self_test defined in self_tests.h
+# TODO: make it work for 64-bit kernels as well
+class kernel_selftest_struct(ctypes.Structure):
+   _fields_ = [("node", ctypes.c_char * 8),
+               ("name", ctypes.c_char * 4),
+               ("kind", ctypes.c_int),
+               ("func", ctypes.c_char * 4)]
+
+def get_sym_data(sym):
+
+   raw = subprocess                                                      \
+            .check_output([ELFHACK, KERNEL_FILE, '--dump-sym', sym])     \
+               .decode('utf-8')
+
+   raw_arr = raw.split(' ')[:-1]
+   data = [ int('0x' + x, 16) for x in raw_arr ]
+   return bytes(data)
+
+def get_selftest_obj(sym):
+   return kernel_selftest_struct.from_buffer_copy(get_sym_data(sym))
+
 def load_list_of_kernel_self_tests():
 
    result = []
@@ -205,23 +230,16 @@ def load_list_of_kernel_self_tests():
 
       vaddr, t, name = row.split(' ')      # pylint: disable=unused-variable
 
-      if not name.startswith('selftest_'):
+      m = re.match(r'^se_(.+)_inst$', name)
+
+      if not m:
          continue
 
-      comps = name.split('_')
-      tt = comps[-1]
-
-      if tt not in (list(TIMEOUTS.keys()) + ['manual']):
-         continue
-
-      name = '_'.join(comps[1:])
-
-      if tt == 'manual':
-         tt = MANUAL_TEST_TIMEOUT
-      else:
-         tt = TIMEOUTS[tt]
-
-      result.append([name, tt])
+      sym_name = name
+      test_name = m.group(1)
+      obj = get_selftest_obj(sym_name)
+      tt = TIMEOUTS_BY_KIND_NUM[obj.kind]
+      result.append([test_name, tt])
 
    test_runners["selftest"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
