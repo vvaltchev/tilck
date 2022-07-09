@@ -603,6 +603,29 @@ set_sym_strval(struct elf_file_info *nfo,
    return 0;
 }
 
+int
+dump_sym(struct elf_file_info *nfo, const char *sym_name)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Sym *sym = get_symbol(h, sym_name);
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   Elf_Shdr *section = sections + sym->st_shndx;
+   const long sym_sec_off = sym->st_value - section->sh_addr;
+   const long sym_file_off = section->sh_offset + sym_sec_off;
+
+   for (u32 i = 0; i < sym->st_size; i++)
+      printf("%02x ", *((unsigned char *)h + sym_file_off + i));
+
+   printf("\n");
+   return 0;
+}
+
 static struct elfhack_cmd cmds_list[] =
 {
    {
@@ -688,6 +711,13 @@ static struct elfhack_cmd cmds_list[] =
       .nargs = 3,
       .func = (void *)&set_sym_strval,
    },
+
+   {
+      .opt = "--dump-sym",
+      .help = "<sym_name>",
+      .nargs = 1,
+      .func = (void *)&dump_sym,
+   }
 };
 
 #define printerr(...) fprintf(stderr, __VA_ARGS__)
