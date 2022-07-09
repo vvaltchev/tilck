@@ -2,13 +2,15 @@
 
 #include <iostream>
 #include <random>
-#include <unordered_set>
 #include <memory>
-
+#include <set>
+#include <unordered_set>
+#include <inttypes.h>
 #include <gtest/gtest.h>
 
 extern "C" {
    #include <tilck/kernel/bintree.h>
+   #include <tilck/common/arch/generic_x86/x86_utils.h>
 }
 
 using namespace std;
@@ -23,6 +25,14 @@ struct int_struct {
    int_struct(int v) {
       val = v;
       bintree_node_init(&node);
+   }
+
+   bool operator<(const int_struct& rhs) const {
+      return val < rhs.val;
+   }
+
+   bool operator<(const int& rhs) const {
+      return this->val < rhs;
    }
 };
 
@@ -485,6 +495,10 @@ void remove_rand_data(const int elems, const int iters)
       int_struct *root = &data->nodes[0];
       generate_random_array(e, dist, data->arr, elems);
 
+      for (int i = 0; i < elems; i++) {
+         data->nodes[i] = int_struct(data->arr[i]);
+      }
+
       if (iter == 0) {
          cout << "[ INFO     ] random seed: " << seed << endl;
          cout << "[ INFO     ] sample numbers: ";
@@ -495,7 +509,6 @@ void remove_rand_data(const int elems, const int iters)
       }
 
       for (int i = 0; i < elems; i++) {
-         data->nodes[i] = int_struct(data->arr[i]);
          bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
       }
 
@@ -579,3 +592,84 @@ TEST(avl_bintree, DISABLED_test_insert_rand_data_tree_1m_elems)
    test_insert_rand_data(1, 1000*1000, false);
 }
 
+template <bool use_std_set = false>
+static void
+benchmark_avl_bintree_rand_data(const int elems, const int iters)
+{
+   // prefer always the same seed for comparing results
+   const unsigned long seed = 1094638824;
+   default_random_engine e(seed);
+   lognormal_distribution<> dist(6.0, elems <= 100*1000 ? 3 : 5);
+   unique_ptr<test_data> data{new test_data};
+   u64 tot = 0;
+
+   for (int iter = 0; iter < iters; iter++) {
+
+      int_struct *root = &data->nodes[0];
+      generate_random_array(e, dist, data->arr, elems);
+
+      for (int i = 0; i < elems; i++) {
+         data->nodes[i] = int_struct(data->arr[i]);
+      }
+
+      set<int_struct> S;
+      u64 start = RDTSC();
+
+      for (int i = 0; i < elems; i++) {
+
+         if (use_std_set) {
+
+            S.insert(data->nodes[i]);
+
+         } else {
+
+            bintree_insert(&root, &data->nodes[i], my_cmpfun, int_struct, node);
+         }
+      }
+
+      for (int i = 0; i < elems; i++) {
+
+         if (use_std_set) {
+
+            auto it = S.find(data->arr[i]);
+            VERIFY(it != S.end());
+            VERIFY(it->val == data->arr[i]);
+
+            size_t count = S.erase(data->arr[i]);
+            VERIFY(count > 0);
+
+         } else {
+
+            void *res = bintree_find(root, &data->arr[i],
+                                     cmpfun_objval, int_struct, node);
+
+            VERIFY(res != NULL);
+            VERIFY(((int_struct*)res)->val == data->arr[i]);
+
+            void *removed_obj =
+               bintree_remove(&root, &data->arr[i],
+                              cmpfun_objval, int_struct, node);
+
+            VERIFY(removed_obj != NULL);
+            VERIFY(((int_struct*)removed_obj)->val == data->arr[i]);
+         }
+      }
+
+      u64 end = RDTSC();
+      tot += end - start;
+   }
+
+   unsigned long cycles_per_iter = (unsigned long)(tot / iters);
+   unsigned long cycles_per_elem = cycles_per_iter / elems;
+   printf("[ INFO     ] Avg. cycles per elem: %lu\n", cycles_per_elem);
+}
+
+TEST(avl_bintree, DISABLED_benchmark)
+{
+   benchmark_avl_bintree_rand_data<false>(10000, 100);
+}
+
+TEST(avl_bintree, DISABLED_benchmark_std_set)
+{
+   benchmark_avl_bintree_rand_data<true>(10000, 100);
+}
