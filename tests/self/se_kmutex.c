@@ -103,7 +103,7 @@ void selftest_kmutex()
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex)
+REGISTER_SELF_TEST(kmutex, se_med, &selftest_kmutex)
 
 /* -------------------------------------------------- */
 /*               Recursive mutex test                 */
@@ -197,7 +197,7 @@ void selftest_kmutex_rec()
    se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec)
+REGISTER_SELF_TEST(kmutex_rec, se_med, &selftest_kmutex_rec)
 
 /* -------------------------------------------------- */
 /*               Strong order test                    */
@@ -426,4 +426,4 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord)
+REGISTER_SELF_TEST(kmutex_ord, se_med, &selftest_kmutex_ord)

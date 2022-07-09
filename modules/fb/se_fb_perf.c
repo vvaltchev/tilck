@@ -58,13 +58,7 @@ void selftest_fbperf_fpu(void)
    internal_selftest_fb_perf(true);
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(fbperf_nofpu,
-                               se_manual,
-                               &selftest_fbperf_nofpu);
-
-
-DECLARE_AND_REGISTER_SELF_TEST(fbperf_fpu,
-                               se_manual,
-                               &selftest_fbperf_fpu);
+REGISTER_SELF_TEST(fbperf_nofpu, se_manual, &selftest_fbperf_nofpu)
+REGISTER_SELF_TEST(fbperf_fpu, se_manual, &selftest_fbperf_fpu)
 
 #endif // #if KERNEL_SELFTESTS

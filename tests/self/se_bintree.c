@@ -192,6 +192,4 @@ selftest_bintree_perf(void)
    printk("\n");
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(bintree_perf,
-                               se_med,
-                               &selftest_bintree_perf)
+REGISTER_SELF_TEST(bintree_perf, se_med, &selftest_bintree_perf)

@@ -220,7 +220,7 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp)
+REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp)
 
 void selftest_rwlock_wp()
 {
@@ -299,4 +299,4 @@ end:
       se_regular_end();
 }
 
-DECLARE_AND_REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp)
+REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp)
