@@ -8,6 +8,8 @@
 #include <inttypes.h>
 #include <gtest/gtest.h>
 
+#include "trivial_allocator.h"
+
 extern "C" {
    #include <tilck/kernel/bintree.h>
    #include <tilck/common/arch/generic_x86/x86_utils.h>
@@ -612,7 +614,17 @@ benchmark_avl_bintree_rand_data(const int elems, const int iters)
          data->nodes[i] = int_struct(data->arr[i]);
       }
 
-      set<int_struct> S;
+      set<
+
+          int_struct,
+          std::less<int_struct>,
+          MyTrivialAllocator<int_struct>
+
+      > S(
+          ((std::less<int_struct>())),
+          ((MyTrivialAllocator<int_struct>( use_std_set ? 1024 * 1024 : 0 )))
+      );
+
       u64 start = RDTSC();
 
       for (int i = 0; i < elems; i++) {
