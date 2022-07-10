@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-# pylint: disable=unused-wildcard-import
+# pylint: disable=unused-wildcard-import, bad-indentation, wildcard-import
+# pylint: disable=missing-function-docstring, wrong-import-position
+# pylint: disable=invalid-name, raise-missing-from, missing-class-docstring
+# pylint: disable=consider-using-f-string, global-statement
 
-import os
 import re
 import sys
 import time
 import signal
 import subprocess
 import threading
-import struct
-import zlib
-import base64
-import fcntl
 import argparse
 from collections import namedtuple
 
