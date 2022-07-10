@@ -3,6 +3,7 @@
 # pylint: disable=unused-wildcard-import, bad-indentation, wildcard-import
 # pylint: disable=missing-function-docstring, wrong-import-position
 # pylint: disable=invalid-name, raise-missing-from, missing-class-docstring
+# pylint: disable=consider-using-f-string
 
 import os
 import re
@@ -132,7 +133,6 @@ def load_all_tests():
 def load_list_of_interactive_tests():
 
    result = []
-
    rit = os.path.join(BUILD_DIR, 'st', 'run_interactive_test')
 
    try:
@@ -206,7 +206,7 @@ def get_sym_data(sym):
             .check_output([ELFHACK, KERNEL_FILE, '--dump-sym', sym])     \
                .decode('utf-8')
 
-   raw_arr = raw.split(' ')[:-1]
+   raw_arr = raw.split(' ')[:-1] # skip the last '\n' char
    data = [ int('0x' + x, 16) for x in raw_arr ]
    return bytes(data)
 
@@ -228,8 +228,7 @@ def load_list_of_kernel_self_tests():
       if not row:
          continue
 
-      vaddr, t, name = row.split(' ')      # pylint: disable=unused-variable
-
+      _, _, name = row.split(' ')
       m = re.match(r'^se_(.+)_inst$', name)
 
       if not m:
@@ -245,7 +244,10 @@ def load_list_of_kernel_self_tests():
    return sorted(result, key = lambda x: x[1])
 
 
-def internal_single_test_runner_thread(test_type, test, timeout, show_output):
+def internal_single_test_runner_thread(test_type : str,
+                                       test : str,
+                                       timeout : int,
+                                       show_output : bool):
 
    raw_print(
       "[ RUNNING ] {}: '{}' [timeout: {}]".format(test_type, test, timeout)
@@ -305,7 +307,10 @@ def internal_single_test_runner_thread(test_type, test, timeout, show_output):
 
    return p.returncode
 
-def internal_run_test(test_type, test, timeout, show_output = False):
+def internal_run_test(test_type : str,
+                      test : str,
+                      timeout : int,
+                      show_output : bool = False):
 
    with ft.ThreadPoolExecutor(max_workers = 1) as executor:
 
@@ -319,22 +324,27 @@ def internal_run_test(test_type, test, timeout, show_output = False):
 
       return future.result()
 
-def does_test_match_criteria(x, reg, max_timeout, allow_manual):
+def does_test_match_criteria(x : Tuple[str,int],
+                             reg : str,
+                             max_timeout : int,
+                             allow_manual : bool):
 
-   name = x[0]
-   timeout = x[1]
+   name : str = x[0]
+   timeout : int = x[1]
    is_runall = name in ['runall', 'runall_manual']
    is_manual = timeout == MANUAL_TEST_TIMEOUT
-   matches_filter = re.match(reg, name) and timeout <= max_timeout
+   timeout_check = timeout <= max_timeout
+   manual_check = not is_manual or allow_manual
+   matches_filter = re.match(reg, name) and (timeout_check or manual_check)
 
-   return is_runall or (matches_filter and (not is_manual or allow_manual))
+   return is_runall or (matches_filter and manual_check)
 
-def list_tests(reg, max_timeout, test_type):
+def list_tests(reg : str, max_timeout : int, test_type : str):
 
-   col_names = [
-      ['test name', 30],
-      ['test type', 12],
-      ['timeout', 10],
+   col_names : List[Tuple[str, int]] = [
+      ('test name', 30),
+      ('test type', 12),
+      ('timeout', 10),
    ]
    raw_stdout_write("\n")
 
@@ -390,9 +400,9 @@ def list_tests(reg, max_timeout, test_type):
 def get_sum(per_test_counter):
    return sum(per_test_counter[k] for k in per_test_counter)
 
-def run_test(test_type, x, show_output):
-
-   global tests_to_run, tests_passed
+def run_test(test_type : str,
+             x : Tuple[str,int],  # test, timeout
+             show_output : bool):
 
    if get_sum(tests_to_run) == 0:
       raw_print("")
@@ -424,7 +434,12 @@ def run_test(test_type, x, show_output):
          tests_passed[test_type] += 1
 
 
-def run_all_tests(max_timeout, show_output, reg, fail_on_zero, test_type):
+def run_all_tests(max_timeout : int,
+                  show_output : bool,
+                  reg : str,
+                  fail_on_zero : bool,
+                  test_type : str,
+                  allow_manual : bool):
 
    for tt in TEST_TYPES:
 
@@ -432,7 +447,7 @@ def run_all_tests(max_timeout, show_output, reg, fail_on_zero, test_type):
          continue
 
       for x in tests_by_type[tt]:
-         if does_test_match_criteria(x, reg, max_timeout, False):
+         if does_test_match_criteria(x, reg, max_timeout, allow_manual):
             run_test(tt, x, show_output)
 
    if fail_on_zero:
@@ -484,52 +499,60 @@ def parse_args():
    g.add_argument(
       "-l", "--list-tests",
       action = "store_true",
-      help = "list all tests matching the criteria (dry-run)"
+      help = "List all tests matching the criteria (dry-run)"
    )
 
    g.add_argument(
       "-L", "--list-all-tests",
       action = "store_true",
-      help = "list all tests, no matter their timeout (same as -l -t any)"
+      help = "List all tests, no matter their timeout (same as -l -t any)"
    )
 
    g.add_argument(
       "-j", "--list-timeouts",
       action = "store_true",
-      help = "list the predefined timeout values with labels usable with -t"
+      help = "List the predefined timeout values with labels usable with -t"
    )
 
    parser.add_argument(
       "-c", "--compact-run",
       action = "store_true",
-      help = "run all the shellcmds in a single VM run (faster)"
+      help = "Run all the shellcmds in a single VM run (faster)"
    )
 
    parser.add_argument(
       "-o", "--show-output",
       action = "store_true",
-      help = "show test's output even in case of success"
+      help = "Show test's output even in case of success"
    )
 
+   parser.add_argument(
+      "-a", "--allow-manual",
+      action = "store_true",
+      help = "Allow manual tests to be run by this script. "
+             "Warning: some manual tests make the kernel to panic and that "
+             "will be interpreted as a failure by this test runner."
+   )
    parser.add_argument(
       "-f", "--filter",
       type = str,
       default = ".*",
-      help = "run only tests matching the given regex filter"
+      help = "Run only tests matching the given regex filter"
    )
 
    parser.add_argument(
       "-t", "--max-timeout",
       type = arg_type_timeout,
       default = TIMEOUTS['med'],
-      help = "run only tests having timeout <= MAX_TIMEOUT "
+      help = "Run only tests having timeout <= MAX_TIMEOUT "
              "(default: {})".format(TIMEOUTS['med'])
    )
 
    parser.add_argument(
       "-T", "--test_type",
       type = arg_type_test,
-      help = "run only tests of the given type"
+      help = "Run only tests of the given type. Minimal prefixes are "
+             "accepted (e.g. 'se' is interpreted as selftest)."
    )
 
    try:
@@ -541,18 +564,16 @@ def parse_args():
 
 def list_timeouts():
 
-   for tname in TIMEOUTS:
-      raw_print("{:8}: {:3} seconds".format(tname, TIMEOUTS[tname]))
+   for tname, tval in TIMEOUTS.items():
+      if tname != 'manual':
+         raw_print("{:8}: {:3} seconds".format(tname, tval))
 
    for s in INF_STR_TIMEOUTS:
       raw_print("{:8}: <no timeout>".format(s))
 
 def main():
 
-   global tests_by_type
-   global tests_to_run
    set_runner_name("test runner")
-
    load_all_tests()
    args = parse_args()
 
@@ -585,7 +606,8 @@ def main():
                     args.show_output,
                     args.filter,
                     not args.compact_run,
-                    args.test_type)
+                    args.test_type,
+                    args.allow_manual)
 
    except KeyboardInterrupt:
       msg_print("KeyboardInterrupt")

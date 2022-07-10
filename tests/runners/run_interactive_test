@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-2-Clause
-# pylint: disable=unused-wildcard-import
+# pylint: disable=unused-wildcard-import, bad-indentation, wildcard-import
+# pylint: disable=missing-function-docstring, wrong-import-position
+# pylint: disable=invalid-name, raise-missing-from, missing-class-docstring
+# pylint: disable=consider-using-f-string
 
 import os
 import re
@@ -10,12 +13,9 @@ import gzip
 import signal
 import subprocess
 import threading
-import struct
-import fcntl
 import filecmp
 import traceback
 import argparse
-from collections import namedtuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
 RUNNERS_DIR = "@CMAKE_SOURCE_DIR@/tests/runners"
@@ -71,9 +71,8 @@ def set_once_qemu_process(p):
 
 def check_cmake_config():
 
-   for k in CMAKE_CONFIG:
+   for k, pair in CMAKE_CONFIG.items():
 
-      pair = CMAKE_CONFIG[k]
       val, exp = is_cmake_opt_enabled(pair[0]), pair[1]
 
       if val != exp:
