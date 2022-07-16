@@ -1,0 +1,35 @@
+trigger: none
+pr: parser
+
+pool:
+  vmImage: 'ubuntu-18.04'
+strategy:
+  matrix:
+    Python36:
+      python.version: '3.6'
+    Python37:
+      python.version: '3.7'
+    Python38:
+      python.version: '3.8'
+    Python39:
+      python.version: '3.9'
+    Python310:
+      python.version: '3.10'
+
+steps:
+  - task: UsePythonVersion@@
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
+
+  - script:
+      cd scripts/parser/backend |
+      pip3 install coverage
+      displayName: setup
+  - script:
+      coverage run -m unittest discover |
+    displayName: run unit tests on parser
+    script:
+      coverage report |
+      bash <  (curl -s https://codecov.io/bash)
+    displayName: generate report coverage report and send to codecov
