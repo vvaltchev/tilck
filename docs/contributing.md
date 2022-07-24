@@ -17,7 +17,7 @@ requirements:
   - Implement features aligned with the goals of the Tilck project
 
 **NOTE:** don't be scared to propose an imperfect pull request. You will get help!
- 
+
 Code-free contributions are also welcome. The project would benefit from more
 documentation (HOWTOs, tutorials etc.), but also from artistic assets.
 
@@ -32,7 +32,7 @@ to quickly mention a few points:
 
   - The snake_case is used
   - The line length is *strictly* limited to 80 columns
-  - The indentation is *3 spaces* (see https://github.com/vvaltchev/tilck/discussions/88)
+  - The indentation is *3 spaces* [see here](https://github.com/vvaltchev/tilck/discussions/88)
   - The opening braces are generally on the same line for all code blocks except
     for functions bodies and the initialization of arrays:
       ```C
@@ -73,7 +73,7 @@ to quickly mention a few points:
 
         if (!(size & sub_block_size))
            continue;
-        
+
         /* ... */
      }
     ```
@@ -84,13 +84,13 @@ to quickly mention a few points:
 
         if (!(size & sub_block_size))
            continue;
-        
+
         /* ... */
      }
      ```
      Simply because in the second case, the first line of the body gets partially hidden
      by loop's header.
-    
+
   - For long function signatures, the type goes on the previous line, and the parameters
     are aligned like this:
       ```C
@@ -144,7 +144,7 @@ to quickly mention a few points:
     ```C
     if (ptr)
       do_something();
-      
+
     if (!ptr_b)
       return;
     ```
@@ -153,14 +153,14 @@ to quickly mention a few points:
       new_term =
          serial_port_fwd
             ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
-            : tty_allocate_and_init_new_video_term(rows_buf);      
+            : tty_allocate_and_init_new_video_term(rows_buf);
       ```
- 
+
  **NOTE[1]:** all the rules above can be broken if there is enough benefit for doing so.
  The only rule that has no exceptions so far is the 80-column limit for lines. Keeping
  that rule improves the readability of the code and prevents the use of excessively long
  names for identifiers.
- 
+
  **NOTE[2]:** project's coding style is *not* written in stone. Proposals to change it
  will be carefully considered, as long as the person advocating for the change is
  willing to invest some effort in converting the pre-existing code to the new style.
