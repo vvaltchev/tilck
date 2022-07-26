@@ -9,7 +9,8 @@ trigger:
   paths:
     exclude:
       - README.md
-      - docs/*
+      - 'docs/**'
+      - 'scripts/cmake-configurator/**'
 
 jobs:
   - job: interactive_gcc73
