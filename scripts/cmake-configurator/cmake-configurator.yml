@@ -6,7 +6,7 @@ trigger:
     include:
       - 'scripts/cmake-configurator/**'
 
-jobs:     
+jobs:
   - job: cmakeconfigurator
     pool:
       vmImage: 'ubuntu-18.04'
@@ -28,21 +28,10 @@ jobs:
       displayName: 'Use Python $(python.version)'
       inputs:
         versionSpec: '$(python.version)'
-  
+
     - script: pip3 install coverage
       displayName: Setup
 
-    - script: |
+    - script:
         coverage run -m unittest discover scripts/cmake-configurator/parser
       displayName: 'run unit tests'
-    
-    - script: |
-        coverage report 
-        coverage xml
-      displayName: 'get report in xml'
-
-    - script: |   
-        curl -Os https://uploader.codecov.io/latest/linux/codecov 
-        chmod +x codecov 
-        ./codecov
-      displayName: 'download codecov and upload' 
