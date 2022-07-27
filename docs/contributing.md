@@ -32,7 +32,7 @@ to quickly mention a few points:
 
   - The snake_case is used
   - The line length is *strictly* limited to 80 columns
-  - The indentation is *3 spaces* [see here](https://github.com/vvaltchev/tilck/discussions/88)
+  - The indentation is *3 spaces* ([see here](https://github.com/vvaltchev/tilck/discussions/88))
   - The opening braces are generally on the same line for all code blocks except
     for functions bodies and the initialization of arrays:
       ```C
