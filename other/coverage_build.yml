@@ -43,5 +43,19 @@ jobs:
         displayName: Run the interactive tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
         displayName: Gen kernel gcov report and upload to codecov
-        env:
-          CODECOV_TOKEN: $(CODECOV_TOKEN)
+      - script: 
+          pip3 install coverage
+        displayName: install coverage
+      - script:
+          python3 -m coverage run -m unittest discover scripts/cmake-configurator/parser/
+        displayName: run unit tests
+      - script: | 
+          python3 -m coverage report
+          python3 -m coverage xml
+        displayName: generate coverage xml
+      - script: |   
+          curl -Os https://uploader.codecov.io/latest/linux/codecov 
+          chmod +x codecov 
+          ./codecov
+        displayName: 'download codecov and upload'
+
