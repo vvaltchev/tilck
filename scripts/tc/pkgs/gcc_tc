@@ -5,7 +5,7 @@
 # NOTE
 #
 # This "script" is NOT meant to be executed directly.
-# It is included as a source file by scripts/build_toolchian.
+# It is included as a source file by scripts/build_toolchain.
 #
 # ---------------------------------------------------------------
 

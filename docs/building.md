@@ -176,7 +176,7 @@ it's very convenient (and quicker) to test it on a VM, before running it on real
 hardware. To do that, it's necessary to first to ask the `build_toolchain` script
 to download the Open Virtual Machine Firmware ([OVMF]) with:
 
-    ./scripts/build_toolchian -s download_ovmf
+    ./scripts/build_toolchain -s download_ovmf
 
 After that, it will be possible to boot Tilck by running:
 
@@ -190,10 +190,10 @@ to the kernel.
 ## Building Tilck's unit tests
 
 Tilck uses the [googletest] framework for unit tests and that's not downloaded
-by `build_toolchian` when it's run without arguments. In order to install that
+by `build_toolchain` when it's run without arguments. In order to install that
 framework in the toolchain, just run:
 
-    ./scripts/build_toolchian -s gtest
+    ./scripts/build_toolchain -s gtest
 
 After that, you'll need to run the `cmake_run` script again:
 
