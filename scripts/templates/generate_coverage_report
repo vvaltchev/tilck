@@ -130,19 +130,32 @@ if [[ "$1" == "--codecov" ]]; then
    remove_gcda_files
 
    # Upload report to CodeCov
+   if ! [ -d "$BUILD/tmp" ]; then
+      mkdir -p "$BUILD/tmp"
+   fi
 
-   if ! bash <(curl -s https://codecov.io/bash) -X gcov; then
+   pushd "$BUILD/tmp"
 
-      echo "ERROR: codecov did not collect coverage reports"
-      echo "Trying again in 1 minute..."
-      sleep 60
+   if ! [ -f codecov ]; then
 
-      if ! bash <(curl -s https://codecov.io/bash) -X gcov; then
-         echo "FATAL ERROR: Codecov cannot collect the coverage reports"
-         exit 1
+      curl -Os https://uploader.codecov.io/latest/linux/codecov
+      if ! [ -f codecov ]; then
+         echo "ERROR: codecov did not collect coverage reports"
+         echo "Trying again in 1 minute..."
+         sleep 60
+
+         curl -Os https://uploader.codecov.io/latest/linux/codecov
+         if ! [ -f codecov ]; then
+            echo "FATAL ERROR: Codecov cannot collect the coverage reports"
+            exit 1
+         fi
       fi
    fi
 
+   popd
+   chmod +x "$BUILD/tmp/codecov"
+
+   "$BUILD/tmp/codecov" -X gcov
    exit 0
 fi
 
