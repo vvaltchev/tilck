@@ -45,17 +45,17 @@ jobs:
         displayName: Gen kernel gcov report and upload to codecov
       - script: 
           pip3 install coverage
-        displayName: install coverage
+        displayName: Install python pip3 coverage
       - script:
           python3 -m coverage run -m unittest discover scripts/cmake-configurator/parser/
-        displayName: run unit tests
+        displayName: 'CMake-configurator: run unit tests'
       - script: | 
           python3 -m coverage report
           python3 -m coverage xml
-        displayName: generate coverage xml
+        displayName: 'CMake-configurator: generate coverage report'
       - script: |   
           curl -Os https://uploader.codecov.io/latest/linux/codecov 
           chmod +x codecov 
-          ./codecov
-        displayName: 'download codecov and upload'
-
+        displayName: 'Download the codecov binary'
+      - script: ./codecov
+        displayName: 'Run ./codecov'
