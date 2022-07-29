@@ -872,14 +872,18 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-set(GTEST_SOURCE_DIR "${TCROOT}/noarch/gtest-1.12.1/googletest")
+set(GTEST_VER "1.12.1")
+set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googletest)
+set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googlemock)
 
 if (ARCH_GTESTS)
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-1.12.1)
-   set(GTEST_BTC_COMMAND build_gtest_arch)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-${GTEST_VER})
+   set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gmock-${GTEST_VER})
+   set(GTEST_BTC_COMMAND "build_gtest_arch build_gmock_arch")
 else()
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-1.12.1)
-   set(GTEST_BTC_COMMAND build_gtest)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-${GTEST_VER})
+   set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gmock-${GTEST_VER})
+   set(GTEST_BTC_COMMAND "build_gtest build_gmock")
 endif()
 
 add_custom_command(
@@ -906,7 +910,7 @@ add_custom_target(
       test_fatpart
 )
 
-if (EXISTS ${GTEST_TC_BUILD_DIR})
+if (EXISTS ${GTEST_TC_BUILD_DIR} AND EXISTS ${GMOCK_TC_BUILD_DIR})
    add_subdirectory(tests/unit)
    add_dependencies(gtests test_fatpart_target)
 else()

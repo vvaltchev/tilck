@@ -12,6 +12,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
 
 include_directories(${GTEST_SOURCE_DIR}/include)
+include_directories(${GMOCK_SOURCE_DIR}/include)
 
 # Create a static library target for kernel's arch-independent code.
 add_library(
@@ -95,6 +96,8 @@ JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
 target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest.a)
 target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest_main.a)
+target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock.a)
+target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests "${WRAPPINGS}")
 target_link_libraries(gtests kernel_noarch_for_test)
