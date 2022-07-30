@@ -89,6 +89,9 @@ set(
    wth_create_thread_for
    wth_wakeup
    check_in_irq_handler
+
+   experiment_bar
+   experiment_foo
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
