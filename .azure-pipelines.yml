@@ -123,10 +123,10 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
 
-#### Newest "focal" container image v10 ####
+#### Newest "focal" container image ####
 
   - job: interactive_gcc84
-    container: 'vvaltchev/tilck_build:v9'
+    container: 'vvaltchev/tilck_build:v12'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -161,7 +161,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_8_4
-    container: 'vvaltchev/tilck_build:v11'
+    container: 'vvaltchev/tilck_build:v12'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -206,7 +206,7 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck_build:v11'
+    container: 'vvaltchev/tilck_build:v12'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
