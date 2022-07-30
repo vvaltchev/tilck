@@ -864,13 +864,13 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-set(GTEST_SOURCE_DIR "${TCROOT}/noarch/gtest-1.8.1/googletest")
+set(GTEST_SOURCE_DIR "${TCROOT}/noarch/gtest-1.12.1/googletest")
 
 if (ARCH_GTESTS)
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-1.8.1)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-1.12.1)
    set(GTEST_BTC_COMMAND build_gtest_arch)
 else()
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-1.8.1)
+   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-1.12.1)
    set(GTEST_BTC_COMMAND build_gtest)
 endif()
 
