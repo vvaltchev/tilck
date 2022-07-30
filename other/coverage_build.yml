@@ -4,7 +4,7 @@ pr: none
 
 jobs:
   - job: coverage_build
-    container: 'vvaltchev/tilck_build:v11'
+    container: 'vvaltchev/tilck_build:v12'
     pool:
       vmImage: 'ubuntu-18.04'
     variables:
@@ -43,19 +43,19 @@ jobs:
         displayName: Run the interactive tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
         displayName: Gen kernel gcov report and upload to codecov
-      - script: 
+      - script:
           pip3 install coverage
         displayName: Install python pip3 coverage
       - script:
           python3 -m coverage run -m unittest discover scripts/cmake-configurator/parser/
         displayName: 'CMake-configurator: run unit tests'
-      - script: | 
+      - script: |
           python3 -m coverage report
           python3 -m coverage xml
         displayName: 'CMake-configurator: generate coverage report'
-      - script: |   
-          curl -Os https://uploader.codecov.io/latest/linux/codecov 
-          chmod +x codecov 
+      - script: |
+          curl -Os https://uploader.codecov.io/latest/linux/codecov
+          chmod +x codecov
         displayName: 'Download the codecov binary'
       - script: ./codecov
         displayName: 'Run ./codecov'
