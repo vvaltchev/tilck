@@ -129,7 +129,7 @@ make_regions_list_pair(const vector<test_mem_reg> &a,
    return make_pair(a, b);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    do_nothing,
    mem_regions_test,
@@ -175,7 +175,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    reorder,
    mem_regions_test,
@@ -195,7 +195,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    align_to_4k,
    mem_regions_test,
@@ -217,7 +217,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    merge,
    mem_regions_test,
@@ -271,7 +271,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    full_overlap,
    mem_regions_test,
@@ -425,7 +425,7 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    full_overlap_rev,
    mem_regions_test,
@@ -558,7 +558,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    partial_overlap,
    mem_regions_test,

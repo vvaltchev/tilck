@@ -93,8 +93,8 @@ set(
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
 JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
 
-target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/libgtestd.a)
-target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/libgtest_maind.a)
+target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest.a)
+target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests "${WRAPPINGS}")
 target_link_libraries(gtests kernel_noarch_for_test)
