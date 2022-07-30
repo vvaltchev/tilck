@@ -447,7 +447,7 @@ TEST_P(compute_abs_path_test, check)
    ASSERT_STREQ(output, expected);
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    abs_path,
    compute_abs_path_test,
@@ -460,7 +460,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    rel_path,
    compute_abs_path_test,
@@ -473,7 +473,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    rel_dot_slash_path,
    compute_abs_path_test,
@@ -486,7 +486,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    rel_path_cwd_not_root,
    compute_abs_path_test,
@@ -505,7 +505,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    try_go_beyond_root,
    compute_abs_path_test,
@@ -516,7 +516,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    multiple_slashes,
    compute_abs_path_test,
@@ -527,7 +527,7 @@ INSTANTIATE_TEST_CASE_P(
    )
 );
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
 
    other,
    compute_abs_path_test,

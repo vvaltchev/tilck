@@ -5,7 +5,7 @@
 # Build gtest
 ##############################
 
-GTEST_VER="1.8.1"
+GTEST_VER="1.12.1"
 GTEST_DIRNAME="gtest-$GTEST_VER"
 GTEST_SRC_DIR="$TC/noarch/$GTEST_DIRNAME"
 
@@ -43,19 +43,6 @@ function download_googletest {
    fi
 }
 
-function gtest_make_compact_symlinks {
-
-   if [ -d $TC/host_$1/googletest ]; then
-      rm -rf $TC/host_$1/gtest
-   fi
-
-   if ! [ -L $TC/host_$1/googletest ]; then
-      pushd $TC/host_$1
-      ln -s $GTEST_DIRNAME gtest
-      popd
-   fi
-}
-
 all_funcs_list+=(build_gtest)
 function build_gtest {
 
@@ -76,7 +63,6 @@ function build_gtest {
          $GTEST_SRC_DIR/googletest
 
       run_command2 "make -j$BUILD_PAR" build.log
-      gtest_make_compact_symlinks $HOST_ARCH
 
    else
       show_skip_component_msg "GOOGLE TEST ($HOST_ARCH)"
@@ -87,7 +73,7 @@ function build_gtest {
 
 function build_gtest_installed_status {
    if [ -d $TC/host_$HOST_ARCH/$GTEST_DIRNAME ]; then
-      if [ -f $TC/host_$HOST_ARCH/$GTEST_DIRNAME/libgtestd.a ]; then
+      if [ -f $TC/host_$HOST_ARCH/$GTEST_DIRNAME/lib/libgtest.a ]; then
          echo "installed host_$HOST_ARCH"
       else
          echo "error"
@@ -125,7 +111,6 @@ function build_gtest_arch {
          $GTEST_SRC_DIR/googletest
 
       run_command2 "make -j" build.log
-      gtest_make_compact_symlinks $ARCH
 
       # Restore the PATH so that other functions will end up calling the musl
       # toolchain with $ARCH-linux-gcc.
@@ -140,7 +125,7 @@ function build_gtest_arch {
 
 function build_gtest_arch_installed_status {
    if [ -d $TC/host_$ARCH/$GTEST_DIRNAME ]; then
-      if [ -f $TC/host_$ARCH/$GTEST_DIRNAME/libgtestd.a ]; then
+      if [ -f $TC/host_$ARCH/$GTEST_DIRNAME/lib/libgtest.a ]; then
          echo "installed host_$ARCH"
       else
          echo "failed"
