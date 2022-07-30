@@ -10,7 +10,7 @@
 #include <memory>
 
 #include <gtest/gtest.h>
-#include "mocks.h"
+#include "fake_funcs_utils.h"
 #include "kernel_init_funcs.h"
 
 extern "C" {
