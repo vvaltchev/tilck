@@ -36,6 +36,24 @@ set_target_properties(
 set(LIB_KERNEL "libkernel_test_patched.a")
 set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
 
+set(
+   WRAPPED_SYMS
+
+   assert_failed
+   not_reached
+   not_implemented
+   printk
+   kmutex_lock
+   kmutex_unlock
+   fat_ramdisk_prepare_for_mmap
+   wth_create_thread_for
+   wth_wakeup
+   check_in_irq_handler
+
+   experiment_bar
+   experiment_foo
+)
+
 add_custom_command(
 
    OUTPUT
@@ -43,7 +61,7 @@ add_custom_command(
    COMMAND
       cp libkernel_for_test.a ${LIB_KERNEL}
    COMMAND
-      ${TOOL_WS} ${LIB_KERNEL} experiment_bar experiment_foo
+      ${TOOL_WS} ${LIB_KERNEL} ${WRAPPED_SYMS}
    DEPENDS
       kernel_for_test
       ${TOOL_WS}
@@ -110,30 +128,11 @@ set_target_properties(
       LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
-set(
-   WRAPPED_SYMS
-
-   assert_failed
-   not_reached
-   not_implemented
-   printk
-   kmutex_lock
-   kmutex_unlock
-   fat_ramdisk_prepare_for_mmap
-   wth_create_thread_for
-   wth_wakeup
-   check_in_irq_handler
-)
-
-PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
-JOIN("${WRAPPED_SYMS_LIST}" ${SPACE} WRAPPINGS)
-
 target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest.a)
 target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest_main.a)
 target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock.a)
 target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
-target_link_libraries(gtests "${WRAPPINGS}")
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
 build_all_modules(gtests "_noarch")
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
