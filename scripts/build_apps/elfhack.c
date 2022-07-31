@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define USE_ELF32
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/elf_calc_mem_size.c.h>
@@ -137,8 +136,9 @@ copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
 
    if (s_src->sh_size > s_dst->sh_size) {
       fprintf(stderr, "The source section '%s' is too big "
-              "[%u bytes] to fit in the dest section '%s' [%u bytes]\n",
-              src, s_src->sh_size, dst, s_dst->sh_size);
+              "[%lu bytes] to fit in the dest section '%s' [%lu bytes]\n",
+              src, (unsigned long)s_src->sh_size,
+              dst, (unsigned long)s_dst->sh_size);
       return 1;
    }
 
@@ -626,6 +626,52 @@ dump_sym(struct elf_file_info *nfo, const char *sym_name)
    return 0;
 }
 
+int
+get_sym(struct elf_file_info *nfo, const char *sym_name)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   printf("0x%08lx\n", (unsigned long)sym->st_value);
+   return 0;
+}
+
+int
+get_text_sym(struct elf_file_info *nfo, const char *sym_name)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   if (sym->st_shndx > h->e_shnum) {
+      fprintf(stderr, "ERROR: unknown section for symbol %s\n", sym_name);
+      return 1;
+   }
+
+   Elf_Shdr *s = sections + sym->st_shndx;
+   char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+
+   if (strcmp(name, ".text")) {
+      fprintf(stderr, "ERROR: the symbol belongs to section: %s\n", name);
+      return 1;
+   }
+
+   printf("0x%08lx\n", (unsigned long)sym->st_value);
+   return 0;
+}
+
+
 static struct elfhack_cmd cmds_list[] =
 {
    {
@@ -717,7 +763,21 @@ static struct elfhack_cmd cmds_list[] =
       .help = "<sym_name>",
       .nargs = 1,
       .func = (void *)&dump_sym,
-   }
+   },
+
+   {
+      .opt = "--get-sym",
+      .help = "<sym_name>",
+      .nargs = 1,
+      .func = (void *)&get_sym,
+   },
+
+   {
+      .opt = "--get-text-sym",
+      .help = "<sym_name>",
+      .nargs = 1,
+      .func = (void *)&get_text_sym,
+   },
 };
 
 #define printerr(...) fprintf(stderr, __VA_ARGS__)
@@ -731,6 +791,29 @@ show_help(struct elf_file_info *nfo, ...)
    for (int i = 0; i < ARRAY_SIZE(cmds_list); i++) {
       struct elfhack_cmd *c = &cmds_list[i];
       fprintf(stderr, "    elfhack <file> %s %s\n", c->opt, c->help);
+   }
+
+   return 0;
+}
+
+int
+elf_header_type_check(struct elf_file_info *nfo)
+{
+   Elf32_Ehdr *h = nfo->vaddr;
+
+   if (sizeof(Elf_Addr) == 4) {
+
+      if (h->e_ident[EI_CLASS] != ELFCLASS32) {
+         fprintf(stderr, "ERROR: expected 32-bit binary\n");
+         return 1;
+      }
+
+   } else {
+
+      if (h->e_ident[EI_CLASS] != ELFCLASS64) {
+         fprintf(stderr, "ERROR: expected 64-bit binary\n");
+         return 1;
+      }
    }
 
    return 0;
@@ -809,6 +892,11 @@ main(int argc, char **argv)
       return 1;
    }
 
+   if (elf_header_type_check(&nfo)) {
+      rc = 1;
+      goto end;
+   }
+
    for (int i = 0; i < ARRAY_SIZE(cmds_list); i++) {
       if (!strcmp(opt, cmds_list[i].opt)) {
          cmd = &cmds_list[i];
@@ -826,6 +914,7 @@ main(int argc, char **argv)
 
    rc = cmd->func(&nfo, opt_arg1, opt_arg2, opt_arg3);
 
+end:
    /*
     * Do munmap() only if vaddr != NULL.
     * Reason: some functions (at the moment only drop_last_section()) may

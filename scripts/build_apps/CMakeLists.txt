@@ -13,6 +13,23 @@ file(
 )
 
 add_executable(fathack ${FATHACK_SRC})
-add_executable(elfhack "elfhack.c")
 add_executable(pnm2text "pnm2text.c")
 add_executable(mbrhack "mbrhack.c")
+
+add_executable(elfhack32 "elfhack.c")
+set_target_properties(
+
+   elfhack32
+
+   PROPERTIES
+      COMPILE_DEFINITIONS "USE_ELF32"
+)
+
+add_executable(elfhack64 "elfhack.c")
+set_target_properties(
+
+   elfhack64
+
+   PROPERTIES
+      COMPILE_DEFINITIONS "USE_ELF64"
+)

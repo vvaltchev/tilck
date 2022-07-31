@@ -28,18 +28,22 @@ set(BUILD_ARCH "x86_64")
 if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
    set(HOST_ARCH "x86_64")
+   set(HOST_ARCH_BITS 64)
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "amd64")
 
    set(HOST_ARCH "x86_64")
+   set(HOST_ARCH_BITS 64)
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686")
 
    set(HOST_ARCH "i386")
+   set(HOST_ARCH_BITS 32)
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i386")
 
    set(HOST_ARCH "i386")
+   set(HOST_ARCH_BITS 32)
 
 endif()
 
@@ -512,6 +516,7 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_LD_OUTPUT   "elf_i386")
    set(ARCH_GCC_TC      "i686")
    set(ARCH_GCC_FLAGS   "-m32 -march=${ARCH_GCC_TC}")
+   set(ARCH_BITS        32)
 
    # Fundamental kernel MM constants
    set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
@@ -690,7 +695,12 @@ endif()
 set(KERNEL_STACK_PAGES          2)
 
 set(FATHACK ${BUILD_APPS}/fathack)
-set(ELFHACK ${BUILD_APPS}/elfhack)
+
+if (${ARCH_BITS} EQUAL 32)
+   set(ELFHACK ${BUILD_APPS}/elfhack32)
+else()
+   set(ELFHACK ${BUILD_APPS}/elfhack64)
+endif()
 
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)
