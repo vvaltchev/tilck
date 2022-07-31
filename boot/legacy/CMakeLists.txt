@@ -43,13 +43,13 @@ add_custom_command(
    COMMAND
       ${CMAKE_STRIP} --strip-debug stage3/elf_stage3_unstripped -o elf_stage3
    COMMAND
-      elfhack elf_stage3 --verify-flat-elf
+      elfhack32 elf_stage3 --verify-flat-elf
    COMMAND
-      elfhack elf_stage3 --check-entry-point ${BL_BASE_ADDR}
+      elfhack32 elf_stage3 --check-entry-point ${BL_BASE_ADDR}
    DEPENDS
       elf_stage3_unstripped
-      elfhack
-      ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack
+      elfhack32
+      ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack32
 )
 
 add_custom_command(
