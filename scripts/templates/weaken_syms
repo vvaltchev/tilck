@@ -1,0 +1,84 @@
+#!/bin/bash
+
+AR="@CMAKE_AR@"
+RANLIB="@CMAKE_RANLIB@"
+OBJCOPY="@CMAKE_OBJCOPY@"
+ELFHACK_PREFIX="@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack"
+ARCH_GTESTS="@ARCH_GTESTS@"
+ARCH_BITS="@ARCH_BITS@"
+HOST_ARCH_BITS="@HOST_ARCH_BITS@"
+
+if [[ $ARCH_GTESTS == OFF || $ARCH_GTESTS == false || $ARCH_GTEST == 0 ]]; then
+   ELFHACK=${ELFHACK_PREFIX}${HOST_ARCH_BITS}
+else
+   ELFHACK=${ELFHACK_PREFIX}${ARCH_BITS}
+fi
+
+if [ -z "$1" ]; then
+   >&2 echo "Expected archive file"
+   exit 1
+fi
+
+if ! [ -f "$1" ]; then
+   >&2 echo "The file '$1' does not exist"
+   exit 1
+fi
+
+file=$(realpath $1)
+shift
+
+TEMPDIR=$(mktemp -d -p .)
+
+if ! [ -d $TEMPDIR ]; then
+   >&2 echo "Failed to create temp directory"
+   exit 1
+fi
+
+pushd $TEMPDIR &> /dev/null
+echo "Extract all object files from archive $file ..."
+
+last_obj=""
+count=1
+
+for obj in `ar t $file | sort`; do
+
+   if [[ "$obj" != "$last_obj" ]]; then
+      count=1
+   else
+      count=$((count + 1))
+   fi
+
+   $AR xoN $count $file $obj
+   mv $obj $obj.$count.o
+   last_obj=$obj
+done
+
+echo "Patch all the object files..."
+
+for obj in *; do
+
+   for sym in "$@"; do
+
+      if $ELFHACK $obj --get-sym $sym &> /dev/null; then
+
+         echo "Sym: $sym"
+         addr=$($ELFHACK $obj --get-sym $sym)
+         echo "      addr: $addr"
+
+         $OBJCOPY $obj \
+            --add-symbol __real_$sym=.text:$addr,function,global \
+            --globalize-symbol=$sym \
+            --weaken-symbol=$sym \
+
+      fi
+
+   done
+done
+
+echo "Re-create the archive file $file ..."
+rm $file
+$AR qc $file *.o
+$RANLIB $file
+
+popd &> /dev/null
+rm -rf $TEMPDIR

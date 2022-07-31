@@ -15,9 +15,6 @@ using namespace testing;
 
 extern "C" {
 
-   bool experiment_bar(void);
-   int experiment_foo(int n);
-
    bool __real_experiment_bar(void);
    int __real_experiment_foo(int);
 };
@@ -52,11 +49,11 @@ ExpGlobalFuncs *ExpGlobalFuncs::gInstance = new ExpGlobalFuncs;
 
 extern "C" {
 
-bool __wrap_experiment_bar(void) {
+bool experiment_bar(void) {
    return ExpGlobalFuncs::gInstance->bar();
 }
 
-int __wrap_experiment_foo(int n) {
+int experiment_foo(int n) {
    return ExpGlobalFuncs::gInstance->foo(n);
 }
 
