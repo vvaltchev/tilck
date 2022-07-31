@@ -88,7 +88,7 @@ if (KERNEL_SYMBOLS)
       COMMAND
          ${BUILD_SCRIPTS}/tilck_set_commit_hash ${ELFHACK} ${KERNEL_UNSTRIPPED}
       COMMAND
-         ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
+         ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
          elfhack ${KERNEL_FILE} --copy .symtab .Symtab
       COMMAND
@@ -127,7 +127,7 @@ else()
       COMMAND
          ${BUILD_SCRIPTS}/tilck_set_commit_hash ${ELFHACK} ${KERNEL_UNSTRIPPED}
       COMMAND
-         ${TOOL_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
+         ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
          elfhack ${KERNEL_FILE} --move-metadata
       DEPENDS

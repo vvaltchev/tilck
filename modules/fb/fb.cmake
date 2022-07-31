@@ -44,7 +44,7 @@ foreach(font_file ${font_files})
       OUTPUT
          ${obj_file}
       COMMAND
-         ${TOOL_OBJCOPY} ${B2O} ${font_name}.psf ${obj_file}
+         ${CMAKE_OBJCOPY} ${B2O} ${font_name}.psf ${obj_file}
       WORKING_DIRECTORY
          ${font_dir}
       DEPENDS
