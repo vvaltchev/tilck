@@ -30,7 +30,7 @@ void panic(const char *fmt, ...)
    abort();
 }
 
-void __wrap_printk(const char *fmt, ...)
+void printk(const char *fmt, ...)
 {
    if (suppress_printk)
       return;
@@ -41,32 +41,32 @@ void __wrap_printk(const char *fmt, ...)
    va_end(args);
 }
 
-void __wrap_assert_failed(const char *expr, const char *file, int line)
+void assert_failed(const char *expr, const char *file, int line)
 {
    printf("Kernel assertion '%s' FAILED in %s:%d\n", expr, file, line);
    abort();
 }
 
-void __wrap_not_reached(const char *file, int line)
+void not_reached(const char *file, int line)
 {
    printf("Kernel NOT_REACHED statement in %s:%d\n", file, line);
    abort();
 }
 
-void __wrap_not_implemented(const char *file, int line)
+void not_implemented(const char *file, int line)
 {
    printf("Kernel NOT_IMPLEMENTED at %s:%d\n", file, line);
    abort();
 }
 
-int __wrap_fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
+int fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
 {
    return -1;
 }
 
-int __wrap_wth_create_thread_for(void *t) { return 0; }
-void __wrap_wth_wakeup() { /* do nothing */ }
-void __wrap_check_in_irq_handler() { /* do nothing */ }
+int wth_create_thread_for(void *t) { return 0; }
+void wth_wakeup() { /* do nothing */ }
+void check_in_irq_handler() { /* do nothing */ }
 
 void hw_read_clock(struct datetime *out)
 {
