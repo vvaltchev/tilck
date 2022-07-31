@@ -16,18 +16,51 @@ include_directories(${GMOCK_SOURCE_DIR}/include)
 
 # Create a static library target for kernel's arch-independent code.
 add_library(
-   kernel_noarch_for_test
-   STATIC EXCLUDE_FROM_ALL ${KERNEL_NOARCH_SOURCES}
+
+   kernel_for_test
+
+   STATIC EXCLUDE_FROM_ALL
+
+   ${KERNEL_NOARCH_SOURCES}
+   ${CMAKE_SOURCE_DIR}/other/mock_experiments.c
 )
 
 set_target_properties(
 
-   kernel_noarch_for_test
+   kernel_for_test
 
    PROPERTIES
       COMPILE_FLAGS "${KERNEL_NO_ARCH_FLAGS}"
 )
 
+set(LIB_KERNEL "libkernel_test_patched.a")
+set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
+
+add_custom_command(
+
+   OUTPUT
+      ${LIB_KERNEL}
+   COMMAND
+      cp libkernel_for_test.a ${LIB_KERNEL}
+   COMMAND
+      ${TOOL_WS} ${LIB_KERNEL} experiment_bar experiment_foo
+   DEPENDS
+      kernel_for_test
+      ${TOOL_WS}
+      elfhack32
+      elfhack64
+   COMMENT
+      "Patching the kernel archive to allow wrapping of symbols in the same TU"
+   VERBATIM
+)
+
+add_custom_target(
+
+   kernel_test_patched
+
+   DEPENDS
+      ${LIB_KERNEL}
+)
 
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
@@ -47,6 +80,7 @@ file(
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 
 add_executable(gtests EXCLUDE_FROM_ALL ${SOURCES})
+add_dependencies(gtests kernel_test_patched)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 set(GTESTS_FLAGS_LIST "")
@@ -89,9 +123,6 @@ set(
    wth_create_thread_for
    wth_wakeup
    check_in_irq_handler
-
-   experiment_bar
-   experiment_foo
 )
 
 PREPEND(WRAPPED_SYMS_LIST "-Wl,--wrap," ${WRAPPED_SYMS})
@@ -103,6 +134,6 @@ target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock.a)
 target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests "${WRAPPINGS}")
-target_link_libraries(gtests kernel_noarch_for_test)
+target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
 build_all_modules(gtests "_noarch")
-target_link_libraries(gtests kernel_noarch_for_test)
+target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
