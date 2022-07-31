@@ -78,8 +78,6 @@ build_all_modules(tilck_unstripped)
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
 
-set(ELFHACK ${BUILD_APPS}/elfhack)
-
 if (KERNEL_SYMBOLS)
 
    add_custom_command(
@@ -90,31 +88,31 @@ if (KERNEL_SYMBOLS)
       COMMAND
          ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
-         elfhack ${KERNEL_FILE} --copy .symtab .Symtab
+         elfhack32 ${KERNEL_FILE} --copy .symtab .Symtab
       COMMAND
-         elfhack ${KERNEL_FILE} --copy .strtab .Strtab
+         elfhack32 ${KERNEL_FILE} --copy .strtab .Strtab
       COMMAND
-         elfhack ${KERNEL_FILE} --link .Symtab .Strtab
+         elfhack32 ${KERNEL_FILE} --link .Symtab .Strtab
       COMMAND
-         elfhack ${KERNEL_FILE} --rename .symtab osymtab
+         elfhack32 ${KERNEL_FILE} --rename .symtab osymtab
       COMMAND
-         elfhack ${KERNEL_FILE} --rename .strtab ostrtab
+         elfhack32 ${KERNEL_FILE} --rename .strtab ostrtab
       COMMAND
-         elfhack ${KERNEL_FILE} --rename .Symtab .symtab
+         elfhack32 ${KERNEL_FILE} --rename .Symtab .symtab
       COMMAND
-         elfhack ${KERNEL_FILE} --rename .Strtab .strtab
+         elfhack32 ${KERNEL_FILE} --rename .Strtab .strtab
       COMMAND
-         elfhack ${KERNEL_FILE} --move-metadata
+         elfhack32 ${KERNEL_FILE} --move-metadata
       COMMAND
-         elfhack ${KERNEL_FILE} --drop-last-section
+         elfhack32 ${KERNEL_FILE} --drop-last-section
       COMMAND
-         elfhack ${KERNEL_FILE} --drop-last-section
+         elfhack32 ${KERNEL_FILE} --drop-last-section
       COMMAND
-         elfhack ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
+         elfhack32 ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
       DEPENDS
          tilck_unstripped
-         elfhack
-         ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack
+         elfhack32
+         ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack32
       COMMENT
          "Preparing kernel's stripped binary"
    )
@@ -129,9 +127,9 @@ else()
       COMMAND
          ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
-         elfhack ${KERNEL_FILE} --move-metadata
+         elfhack32 ${KERNEL_FILE} --move-metadata
       DEPENDS
-         elfhack tilck_unstripped
+         elfhack32 tilck_unstripped
       COMMENT
          "Preparing kernel's stripped binary"
    )
