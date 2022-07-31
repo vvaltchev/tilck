@@ -56,14 +56,12 @@ done
 echo "Patch all the object files..."
 
 for obj in *; do
-
    for sym in "$@"; do
 
-      if $ELFHACK $obj --get-sym $sym &> /dev/null; then
+      if $ELFHACK $obj --get-text-sym $sym &> /dev/null; then
 
-         echo "Sym: $sym"
-         addr=$($ELFHACK $obj --get-sym $sym)
-         echo "      addr: $addr"
+         addr=$($ELFHACK $obj --get-text-sym $sym)
+         echo "Weaken symbol $sym in $obj, addr: $addr"
 
          $OBJCOPY $obj \
             --add-symbol __real_$sym=.text:$addr,function,global \
@@ -71,7 +69,6 @@ for obj in *; do
             --weaken-symbol=$sym \
 
       fi
-
    done
 done
 
