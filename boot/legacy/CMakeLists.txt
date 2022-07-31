@@ -41,7 +41,7 @@ add_custom_command(
    OUTPUT
       elf_stage3
    COMMAND
-      ${TOOL_STRIP} --strip-debug stage3/elf_stage3_unstripped -o elf_stage3
+      ${CMAKE_STRIP} --strip-debug stage3/elf_stage3_unstripped -o elf_stage3
    COMMAND
       elfhack elf_stage3 --verify-flat-elf
    COMMAND
