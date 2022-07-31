@@ -82,6 +82,11 @@ smart_config_file(
    ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
 )
 
+smart_config_file(
+   ${CMAKE_SOURCE_DIR}/scripts/templates/weaken_syms
+   ${CMAKE_BINARY_DIR}/scripts/weaken_syms
+)
+
 # Run qemu scripts
 
 list(
