@@ -54,8 +54,6 @@ define_env_cache_bool_var(KERNEL_GCOV)
 
 # USE_SYSCC-related variables
 define_env_cache_bool_var(USE_SYSCC)
-define_env_cache_str_var(OBJCOPY "${CMAKE_OBJCOPY}")
-define_env_cache_str_var(STRIP "${CMAKE_STRIP}")
 define_env_cache_str_var(GCOV "gcov")
 
 # Debug cache variables
