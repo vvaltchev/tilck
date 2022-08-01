@@ -99,8 +99,6 @@ kmalloc_accelerator_get_elem(struct kmalloc_acc *a);
 void
 kmalloc_destroy_accelerator(struct kmalloc_acc *a);
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
 static inline void *
 kmalloc(size_t size)
 {
@@ -112,16 +110,6 @@ kfree2(void *ptr, size_t size)
 {
    general_kfree(ptr, &size, 0);
 }
-
-#else
-
-void *
-kmalloc(size_t size);
-
-void
-kfree2(void *ptr, size_t user_size);
-
-#endif
 
 void *
 kzmalloc(size_t size);
