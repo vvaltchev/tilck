@@ -49,25 +49,34 @@ fi
 
 if [ -n "$TRAVIS" ]; then
 
-   echo "CI Detected: TRAVIS"
+   if [[ $QUIET != 1 ]]; then
+      echo "CI Detected: TRAVIS"
+   fi
    export RUNNING_IN_CI=1
 
 elif [ -n "$CIRCLECI" ]; then
 
-   echo "CI Detected: CIRCLE"
+   if [[ $QUIET != 1 ]]; then
+      echo "CI Detected: CIRCLE"
+   fi
+
    export RUNNING_IN_CI=1
 
 elif [ -n "$AZURE_HTTP_USER_AGENT" ]; then
 
-   echo "CI Detected: AZURE PIPELINES"
+   if [[ $QUIET != 1 ]]; then
+      echo "CI Detected: AZURE PIPELINES"
+   fi
    export RUNNING_IN_CI=1
 
 else
 
-   if [[ "$RUNNING_IN_CI" == "1" ]]; then
-      echo "CI Detected: UNKNOWN"
-   else
-      echo "CI Detected: None [Assuming user machine]"
+   if [[ $QUIET != 1 ]]; then
+      if [[ "$RUNNING_IN_CI" == "1" ]]; then
+         echo "CI Detected: UNKNOWN"
+      else
+         echo "CI Detected: None [Assuming user machine]"
+      fi
    fi
 fi
 
