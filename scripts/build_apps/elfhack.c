@@ -671,6 +671,49 @@ get_text_sym(struct elf_file_info *nfo, const char *sym_name)
    return 0;
 }
 
+int
+list_text_syms(struct elf_file_info *nfo)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *text = elf_get_section(h, ".text");
+   Elf_Shdr *symtab;
+   Elf_Shdr *strtab;
+   Elf_Sym *syms;
+   unsigned sym_count;
+   unsigned text_sh_index;
+
+   if (!text) {
+      fprintf(stderr, "ERROR: cannot find the .text section\n");
+      return 1;
+   }
+
+   text_sh_index = text - sections;
+
+   symtab = elf_get_section(h, ".symtab");
+   strtab = elf_get_section(h, ".strtab");
+
+   if (!symtab || !strtab) {
+      fprintf(stderr, "ERROR: no .symtab or .strtab in the binary\n");
+      return 1;
+   }
+
+   syms = (Elf_Sym *)((char *)h + symtab->sh_offset);
+   sym_count = symtab->sh_size / sizeof(Elf_Sym);
+
+   for (unsigned i = 0; i < sym_count; i++) {
+
+      Elf_Sym *s = syms + i;
+      const char *s_name = (char *)h + strtab->sh_offset + s->st_name;
+
+      if (s->st_shndx != text_sh_index)
+         continue;
+
+      printf("%s\n", s_name);
+   }
+
+   return 0;
+}
 
 static struct elfhack_cmd cmds_list[] =
 {
@@ -778,6 +821,13 @@ static struct elfhack_cmd cmds_list[] =
       .nargs = 1,
       .func = (void *)&get_text_sym,
    },
+
+   {
+      .opt = "--list-text-syms",
+      .help = "",
+      .nargs = 0,
+      .func = (void *)&list_text_syms,
+   },
 };
 
 #define printerr(...) fprintf(stderr, __VA_ARGS__)
@@ -800,6 +850,15 @@ int
 elf_header_type_check(struct elf_file_info *nfo)
 {
    Elf32_Ehdr *h = nfo->vaddr;
+
+   if (h->e_ident[EI_MAG0] != ELFMAG0 ||
+       h->e_ident[EI_MAG1] != ELFMAG1 ||
+       h->e_ident[EI_MAG2] != ELFMAG2 ||
+       h->e_ident[EI_MAG3] != ELFMAG3)
+   {
+      fprintf(stderr, "Not a valid ELF binary (magic doesn't match)\n");
+      return 1;
+   }
 
    if (sizeof(Elf_Addr) == 4) {
 
