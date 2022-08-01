@@ -49,6 +49,9 @@ set(
    wth_create_thread_for
    wth_wakeup
    check_in_irq_handler
+   general_kmalloc
+   general_kfree
+   kmalloc_get_first_heap
 
    experiment_bar
    experiment_foo

@@ -39,6 +39,9 @@ bool mock_kmalloc = false;
 
 static unordered_map<ulong, ulong> mappings;
 
+void *__real_general_kmalloc(size_t *size, u32 flags);
+void __real_general_kfree(void *ptr, size_t *size, u32 flags);
+
 void initialize_test_kernel_heap()
 {
    const ulong test_mem_size = 256 * MB;
@@ -149,20 +152,20 @@ ulong get_mapping(pdir_t *, void *vaddrp)
    return mappings[(ulong)vaddrp];
 }
 
-void *kmalloc(size_t size)
+void *general_kmalloc(size_t *size, u32 flags)
 {
    if (mock_kmalloc)
-      return malloc(size);
+      return malloc(*size);
 
-   return general_kmalloc(&size, 0);
+   return __real_general_kmalloc(size, 0);
 }
 
-void kfree2(void *ptr, size_t size)
+void general_kfree(void *ptr, size_t *size, u32 flags)
 {
    if (mock_kmalloc)
       return free(ptr);
 
-   return general_kfree(ptr, &size, 0);
+   return __real_general_kfree(ptr, size, 0);
 }
 
 void *kmalloc_get_first_heap(size_t *size)
@@ -179,6 +182,18 @@ void *kmalloc_get_first_heap(size_t *size)
       *size = KMALLOC_FIRST_HEAP_SIZE;
 
    return buf;
+}
+
+int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len)
+{
+   memcpy(dest, extern_va, len);
+   return 0;
+}
+
+int virtual_write(pdir_t *pdir, void *extern_va, void *src, size_t len)
+{
+   memcpy(extern_va, src, len);
+   return 0;
 }
 
 } // extern "C"

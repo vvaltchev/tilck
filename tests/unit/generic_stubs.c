@@ -8,81 +8,9 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/datetime.h>
 
-u32 spur_irq_count;
-u32 unhandled_irq_count[256];
-
-bool suppress_printk;
-volatile bool __in_panic;
-volatile bool __in_kernel_shutdown;
-volatile bool __in_panic_debugger;
-void *__kernel_pdir;
-
-void panic(const char *fmt, ...)
-{
-   printf("\n--- KERNEL PANIC ---\n");
-
-   va_list args;
-   va_start(args, fmt);
-   vprintf(fmt, args);
-   va_end(args);
-
-   printf("\n--- END PANIC MESSAGE ---\n");
-   abort();
-}
-
-void printk(const char *fmt, ...)
-{
-   if (suppress_printk)
-      return;
-
-   va_list args;
-   va_start(args, fmt);
-   vprintf(fmt, args);
-   va_end(args);
-}
-
-void assert_failed(const char *expr, const char *file, int line)
-{
-   printf("Kernel assertion '%s' FAILED in %s:%d\n", expr, file, line);
-   abort();
-}
-
-void not_reached(const char *file, int line)
-{
-   printf("Kernel NOT_REACHED statement in %s:%d\n", file, line);
-   abort();
-}
-
-void not_implemented(const char *file, int line)
-{
-   printf("Kernel NOT_IMPLEMENTED at %s:%d\n", file, line);
-   abort();
-}
-
-int fat_ramdisk_prepare_for_mmap(void *hdr, size_t rd_size)
-{
-   return -1;
-}
-
-int wth_create_thread_for(void *t) { return 0; }
-void wth_wakeup() { /* do nothing */ }
-void check_in_irq_handler() { /* do nothing */ }
-
 void hw_read_clock(struct datetime *out)
 {
    memset(out, 0, sizeof(*out));
-}
-
-int virtual_read(void *pdir, void *extern_va, void *dest, size_t len)
-{
-   memcpy(dest, extern_va, len);
-   return 0;
-}
-
-int virtual_write(void *pdir, void *extern_va, void *src, size_t len)
-{
-   memcpy(extern_va, src, len);
-   return 0;
 }
 
 bool hi_vmem_avail(void) { return false; }

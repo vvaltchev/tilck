@@ -21,8 +21,6 @@ STATIC struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
 STATIC int used_heaps;
 STATIC size_t max_tot_heap_mem_free;
 
-#ifndef UNIT_TEST_ENVIRONMENT
-
 void *kmalloc_get_first_heap(size_t *size)
 {
    static char buf[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
@@ -33,8 +31,6 @@ void *kmalloc_get_first_heap(size_t *size)
 
    return buf;
 }
-
-#endif
 
 #include "kmalloc_leak_detector.c.h"
 
