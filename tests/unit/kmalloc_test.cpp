@@ -10,8 +10,11 @@
 #include <memory>
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
 #include "fake_funcs_utils.h"
 #include "kernel_init_funcs.h"
+#include "mocking.h"
 
 extern "C" {
 

@@ -14,13 +14,12 @@ using namespace std;
 
 extern "C" {
 
-#include <tilck_gen_headers/config_kmalloc.h>
 #include <tilck/common/utils.h>
 
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/paging.h>
-
+#include <tilck/kernel/kmalloc.h>
 #include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
 #include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
 
@@ -35,12 +34,7 @@ extern struct mem_region mem_regions[MAX_MEM_REGIONS];
 extern int mem_regions_count;
 
 void *kernel_va = nullptr;
-bool mock_kmalloc = false;
-
 static unordered_map<ulong, ulong> mappings;
-
-void *__real_general_kmalloc(size_t *size, u32 flags);
-void __real_general_kfree(void *ptr, size_t *size, u32 flags);
 
 void initialize_test_kernel_heap()
 {
@@ -150,38 +144,6 @@ bool is_mapped(pdir_t *, void *vaddrp)
 ulong get_mapping(pdir_t *, void *vaddrp)
 {
    return mappings[(ulong)vaddrp];
-}
-
-void *general_kmalloc(size_t *size, u32 flags)
-{
-   if (mock_kmalloc)
-      return malloc(*size);
-
-   return __real_general_kmalloc(size, 0);
-}
-
-void general_kfree(void *ptr, size_t *size, u32 flags)
-{
-   if (mock_kmalloc)
-      return free(ptr);
-
-   return __real_general_kfree(ptr, size, 0);
-}
-
-void *kmalloc_get_first_heap(size_t *size)
-{
-   static void *buf;
-
-   if (!buf) {
-      buf = aligned_alloc(KMALLOC_MAX_ALIGN, KMALLOC_FIRST_HEAP_SIZE);
-      VERIFY(buf);
-      VERIFY( ((ulong)buf & (KMALLOC_MAX_ALIGN - 1)) == 0 );
-   }
-
-   if (size)
-      *size = KMALLOC_FIRST_HEAP_SIZE;
-
-   return buf;
 }
 
 int virtual_read(pdir_t *pdir, void *extern_va, void *dest, size_t len)
