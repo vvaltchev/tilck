@@ -1,5 +1,6 @@
-from cmake_parser import cmake_parser
+from re import L
 from unittest import TestCase
+from cmake_parser import parse_rows, configurator_type, write_file, row_type
 
 file_lines_generic = """
 # KEY:TYPE=VALUE
@@ -51,16 +52,15 @@ expected_comments = [
 ""
 ]
 
-
 class test_cmake_parser_lines(TestCase):
-   parser = cmake_parser()
+   splitted_lines = file_lines_generic.splitlines()
+   def test_serialization(self):
+      rows = parse_rows(self.splitted_lines)
+      for row, line in zip(rows, self.splitted_lines):
+         self.assertEqual(row.serialize(), line)
 
-   def test_parser_read_and_write(self):
-      vars = self.parser.lines_to_vars(file_lines_generic.splitlines())
-      new_lines = self.parser.vars_to_lines(vars)
-      self.assertEqual(file_lines_generic.splitlines(), new_lines)
-
-   def test_single_comments(self):
-      vars = self.parser.lines_to_vars(file_lines_generic.splitlines())
-      for var, comment in zip(vars, expected_comments):
-         self.assertEqual(var.comment, comment)
+   def test_variable_comments(self):
+      rows = parse_rows(self.splitted_lines)
+      var_rows = [row for row in rows if row.row_type == row_type.VARIABLE]
+      for row, comment in zip(var_rows, expected_comments):
+         self.assertEqual(row.comment, comment)
