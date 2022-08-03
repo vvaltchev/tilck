@@ -2,12 +2,13 @@ trigger:
   branches:
     include:
       - cmake-configurator*
+      - configurator*
   paths:
     include:
-      - 'scripts/cmake-configurator/**'
+      - 'scripts/configurator/**'
 
 jobs:
-  - job: cmakeconfigurator
+  - job: configurator
     pool:
       vmImage: 'ubuntu-18.04'
     strategy:
@@ -33,5 +34,5 @@ jobs:
       displayName: Setup
 
     - script:
-        coverage run -m unittest discover scripts/cmake-configurator/parser
+        coverage run -m unittest discover scripts/configurator/parser
       displayName: 'run unit tests'
