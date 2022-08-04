@@ -3,62 +3,43 @@
 #include <tilck/common/basic_defs.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include "mocking.h"
 
 using namespace std;
 using namespace testing;
 
 /*
- * -----------------------------------------------------
- * Mocking of C functions
- * -----------------------------------------------------
+ * Mocking of C functions in the kernel
+ *
+ * Instructions:
+ *
+ *    1. add all the functions that we would like to mock in the WRAPPED_SYMS
+ *       list in tests/unit/CMakeLists.txt
+ *
+ *    2. add all of those functions in tests/unit/mocked_funcs.h, with their
+ *       correct signature
+ *
+ *    3. create gMOCK classes with one or more mocked "methods" like MockingBar
+ *
+ *    4. instantiate ONE mock object per TEST and use it with EXPECT_CALL or
+ *       ON_CALL, as explained in the gmock documentation
  */
 
 extern "C" {
+bool experiment_bar();
+int experiment_foo(int);
+}
 
-   bool __real_experiment_bar(void);
-   int __real_experiment_foo(int);
-};
-
-class ExpGlobalFuncs {
-
-   ExpGlobalFuncs *previous_inst;
-
-public:
-   ExpGlobalFuncs() {
-      previous_inst = gInstance;
-      gInstance = this;
-   }
-
-   virtual ~ExpGlobalFuncs() {
-      gInstance = previous_inst;
-   }
-
-   virtual bool bar() { return __real_experiment_bar(); }
-   virtual int foo(int n) { return __real_experiment_foo(n); }
-
-   static ExpGlobalFuncs *gInstance;
-};
-
-class MockExpGlobalFuncs : public ExpGlobalFuncs {
+class MockingBar : public KernelSingleton {
 public:
 
-   MOCK_METHOD(bool, bar, (), (override));
+   MOCK_METHOD(bool, experiment_bar, (), (override));
 };
 
-ExpGlobalFuncs *ExpGlobalFuncs::gInstance = new ExpGlobalFuncs;
 
-extern "C" {
-
-bool experiment_bar(void) {
-   return ExpGlobalFuncs::gInstance->bar();
-}
-
-int experiment_foo(int n) {
-   return ExpGlobalFuncs::gInstance->foo(n);
-}
-
-}
-
+/*
+ * Base case: call the functions without any mocking, and expect them to work.
+ */
 TEST(experiment, gfuncs1)
 {
    ASSERT_EQ(experiment_bar(), true);
@@ -66,74 +47,19 @@ TEST(experiment, gfuncs1)
    ASSERT_EQ(experiment_foo(6), 60);
 }
 
+/*
+ * Basic mocking: mock experiment_bar() to first fail and then to succeed.
+ * Note: experiment_foo() remains in its original form, despite the jump
+ * through KernelSingleton's vtable.
+ */
 TEST(experiment, gfuncs2)
 {
-   NiceMock<MockExpGlobalFuncs> mock;
+   MockingBar mock;
 
-   EXPECT_CALL(mock, bar())
+   EXPECT_CALL(mock, experiment_bar)
       .WillOnce(Return(false))
       .WillOnce(Return(true));
 
    ASSERT_EQ(experiment_foo(5), -1);
    ASSERT_EQ(experiment_foo(5), 50);
-}
-
-/*
- * -----------------------------------------------------
- * Simple mocking of classes
- * -----------------------------------------------------
- */
-
-class Type1 {
-public:
-
-   virtual bool bar() {
-      return true;
-   }
-
-   virtual int foo(int n) {
-
-      if (!bar())
-         return -1;
-
-      return n * 10;
-   }
-
-   virtual ~Type1() = default;
-};
-
-class MockType1 : public Type1 {
-public:
-
-   MOCK_METHOD(bool, bar, (), (override));
-   MOCK_METHOD(int, foo, (int), (override));
-};
-
-TEST(experiment, ex1)
-{
-   NiceMock<MockType1> mock;
-
-   EXPECT_CALL(mock, bar()).WillRepeatedly([&mock] () {
-      return mock.Type1::bar();
-   });
-
-   ON_CALL(mock, foo).WillByDefault([&mock](int n) {
-      return mock.Type1::foo(n);
-   });
-
-   ASSERT_EQ(mock.foo(5), 50);
-   ASSERT_EQ(mock.foo(6), 60);
-}
-
-TEST(experiment, ex2)
-{
-   NiceMock<MockType1> mock;
-
-   EXPECT_CALL(mock, bar()).WillOnce(Return(false));
-
-   ON_CALL(mock, foo).WillByDefault([&mock](int n) {
-      return mock.Type1::foo(n);
-   });
-
-   ASSERT_EQ(mock.foo(5), -1);
 }
