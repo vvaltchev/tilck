@@ -13,8 +13,9 @@ if [[ "$TRAVIS" != "" || "$CIRCLECI" != "" ]]; then
 fi
 
 set -e # exit if any command fails
+SRC="@CMAKE_SOURCE_DIR@"
 
-source @CMAKE_SOURCE_DIR@/scripts/bash_includes/script_utils
+source $SRC/scripts/bash_includes/script_utils
 
 TC="@TCROOT@"
 BUILD="@CMAKE_BINARY_DIR@"
@@ -171,9 +172,28 @@ if [[ "$1" != "--acc" ]]; then
    remote_all_lcov_files
 fi
 
-exclude_dirs="'@TCROOT@/*' '/usr/include/*'"
+ex_list=""
+
+# we're not interested in the 3rd-party code in the toolchain
+ex_list="$ex_list '@TCROOT@/*'"
+
+# of course we're not interested in system headers
+ex_list="$ex_list '/usr/include/*'"
+
+# the header is not used anywhere. It's useful only for manual instrumentation
+ex_list="$ex_list '$SRC/include/tilck/common/debug/termios_debug.c.h'"
+
+# syscalls.h contains wrapper funcs for all the Linux syscalls
+ex_list="$ex_list '$SRC/include/tilck/kernel/syscalls.h'"
+
+# the common panic() is not used in Tilck
+ex_list="$ex_list '$SRC/common/panic.c'"
+
+# we don't have tests triggering an actual kernel panic
+ex_list="$ex_list '$SRC/common/asserts.c'"
+
 run_command "$LCOV -d . --capture --gcov-tool '$GCOV' -o lcov.info"
-run_command "$LCOV --remove lcov.info $exclude_dirs -o lcov.info"
+run_command "$LCOV --remove lcov.info $ex_list -o lcov.info"
 
 if [[ "$1" == "--acc" && -f coverage.info ]]; then
    $LCOV -a coverage.info -a lcov.info -o merged.info
