@@ -47,15 +47,11 @@ jobs:
           pip3 install coverage
         displayName: Install python pip3 coverage
       - script:
-          python3 -m coverage run -m unittest discover scripts/cmake-configurator/parser/
+          python3 -m coverage run -m unittest discover scripts/configurator/parser/
         displayName: 'CMake-configurator: run unit tests'
       - script: |
           python3 -m coverage report
           python3 -m coverage xml
         displayName: 'CMake-configurator: generate coverage report'
-      - script: |
-          curl -Os https://uploader.codecov.io/latest/linux/codecov
-          chmod +x codecov
-        displayName: 'Download the codecov binary'
-      - script: ./codecov
-        displayName: 'Run ./codecov'
+      - script: ./build/tmp/codecov
+        displayName: 'Run codecov'
