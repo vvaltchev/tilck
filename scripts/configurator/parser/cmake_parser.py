@@ -1,4 +1,4 @@
-from cmake_row import cmake_row, configurator_type, row_type
+from cmake_row import cmake_row, row_type
 from typing import List
 
 def read_file(filepath):

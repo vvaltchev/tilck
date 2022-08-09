@@ -1,8 +1,7 @@
-from multiprocessing.sharedctypes import Value
 from unittest import TestCase
-from cmake_row import cmake_row, configurator_type,  row_type
+from cmake_row import cmake_row, row_type
 
-class test_cmake_cache_variable(TestCase):
+class test_cmake_row(TestCase):
    commentline = ""
    filepath_var_valid = "CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line"
    noname_var = ":FILEPATH=/usr/bin/addr2line"
@@ -15,11 +14,9 @@ class test_cmake_cache_variable(TestCase):
       with self.subTest():
          self.assertEqual(row.name, var_name)
       with self.subTest():
-         self.assertEqual(row.configurator_type, configurator_type.FILEPATH)
-      with self.subTest():
          self.assertEqual(row.row_type, row_type.VARIABLE)
       with self.subTest():
-         self.assertEqual(row.val,  "/usr/bin/addr2line")
+         self.assertEqual(row.get_val(), "/usr/bin/addr2line")
       with self.subTest():
          self.assertEqual(row.row_number, 0)
 
@@ -48,9 +45,13 @@ class test_cmake_cache_variable(TestCase):
       self.assertRaises(ValueError, cmake_row, self.notype_var, 0)
 
    def test_bool_row(self):
+      """
+      we use assertEqual instead of assertTrue to avoid false positives with
+      casting any other value to bool.
+      """
       row = cmake_row(self.bool_var, 0)
       with self.subTest():
-         self.assertTrue(row.val)
+         self.assertEqual(row.val.value, True)
       with self.subTest():
          self.assertEqual(row.serialize(), self.bool_var)
 

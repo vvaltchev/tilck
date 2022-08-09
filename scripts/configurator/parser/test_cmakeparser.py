@@ -1,6 +1,5 @@
-from re import L
 from unittest import TestCase
-from cmake_parser import parse_rows, configurator_type, write_file, row_type
+from cmake_parser import parse_rows, row_type
 
 file_lines_generic = """
 # KEY:TYPE=VALUE
