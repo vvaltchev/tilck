@@ -1,18 +1,13 @@
 import re
 from typing import Match, Optional
 from enum import Enum, auto
+from cmake_var import cmake_var, build_cmake_var
 
 class row_type(Enum):
    EMPTY = auto()
    SLASH_COMMENT = auto()
    POUND_COMMENT = auto()
    VARIABLE = auto()
-
-class configurator_type(Enum):
-   BOOL = auto()
-   FILEPATH = auto()
-   STRING = auto()
-   INTERNAL = auto()
 
 class cmake_row:
    """
@@ -21,39 +16,22 @@ class cmake_row:
    """
    regex_expression = re.compile(r"^([A-Za-z_0-9]+?):([A-Za-z]+?)=(.*)$")
 
-   NORMALIZED_BOOLS = {
-      "ON" : True,
-      "OFF": False,
-      "1" : True,
-      "0" : False,
-      "TRUE": True,
-      "FALSE": False,
-   }
-
-   cmake_type_to_conf_type  = {
-      "BOOL": configurator_type.BOOL,
-      "FILEPATH": configurator_type.FILEPATH,
-      "STRING": configurator_type.STRING,
-      "INTERNAL": configurator_type.INTERNAL,
-   }
-
    def __init__(self, raw_row: str, row_number: int, comment: str = ""):
       """
       strips variable and assigns its correct type by matching the regex
       and verifying if it's a comment.
       """
       row  = raw_row.strip()
-      variable_match: Optional[Match[str]]  = re.match(self.regex_expression, row)
-      self.row_type: row_type | None = None
-      self.val: str | bool | None = None
+      variable_match: Optional[Match[str]] = re.match(self.regex_expression, row)
+      self.val: str | cmake_var | None = None
       self.name: str = ""
-      self._cmake_type_str: str # used to serialize back the value
-      self.configurator_type: configurator_type
+      self._cmake_type: str # used to serialize back the value
       self.row_number: int = row_number
       self.comment: str = comment
 
       if not len(row):
          self.row_type = row_type.EMPTY
+         self.val = ""
 
       elif self.is_slash_comment(row):
          self.row_type = row_type.SLASH_COMMENT
@@ -67,12 +45,10 @@ class cmake_row:
          groups = variable_match.groups()
          self.name = groups[0]
          self.row_type = row_type.VARIABLE
-         self.val = groups[2]
-         self._cmake_type_str = groups[1]
-         self.configurator_type = \
-            self.cmake_type_to_conf_type[self._cmake_type_str]
-         if self.configurator_type == configurator_type.BOOL:
-            self.val = self.normalize_bool(self.val)
+         val = groups[2]
+         self._cmake_type = groups[1]
+         self.val = build_cmake_var(self._cmake_type, val)
+
       else:
          raise ValueError("Could not parse variable")
 
@@ -87,18 +63,19 @@ class cmake_row:
       return row[0] == "#"
 
    def serialize(self) -> str:
-      serialized_val: str
       if self.row_type == row_type.VARIABLE:
-         if self.configurator_type == configurator_type.BOOL:
-            serialized_val = "ON" if self.val else "OFF"
-         else:
-            serialized_val = str(self.val)
-         return self.name + ":" + self._cmake_type_str + "="  + serialized_val
+         return self.name + ":" + self._cmake_type + "=" + self.val.serialize()
       elif self.row_type == row_type.POUND_COMMENT:
-         return "#" + self.val
+         return "#" + str(self.val)
       elif self.row_type == row_type.SLASH_COMMENT:
-         return "//" + self.val
-      return "" # in case of empty string
+         return "//" + str(self.val)
+      elif self.row_type == row_type.EMPTY:
+         return ""
+      else:
+         raise ValueError("Row does not have a defined type")
 
-   def normalize_bool(self, val: str) -> bool:
-      return self.NORMALIZED_BOOLS[val]
+   def get_val(self):
+      if self.row_type == row_type.VARIABLE:
+         return  self.val.serialize()
+      else:
+         return self.val
