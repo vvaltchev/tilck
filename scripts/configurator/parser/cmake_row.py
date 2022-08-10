@@ -1,5 +1,5 @@
 import re
-from typing import Match, Optional
+from typing import Match, Optional, Type
 from enum import Enum, auto
 from cmake_var import cmake_var, build_cmake_var
 
@@ -28,6 +28,7 @@ class cmake_row:
       self._cmake_type: str # used to serialize back the value
       self.row_number: int = row_number
       self.comment: str = comment
+      self.row_type: row_type
 
       if not len(row):
          self.row_type = row_type.EMPTY
