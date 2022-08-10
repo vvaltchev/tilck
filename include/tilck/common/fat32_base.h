@@ -119,9 +119,6 @@ static inline bool is_long_name_entry(struct fat_entry *e)
    return e->readonly && e->hidden && e->system && e->volume_id;
 }
 
-// DEBUG functions
-void fat_dump_info(void *fatpart_begin);
-
 // FAT INTERNALS ---------------------------------------------------------------
 
 enum fat_type fat_get_type(struct fat_hdr *hdr);
