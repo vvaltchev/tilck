@@ -31,6 +31,7 @@ const ulong init_st_begin = (ulong)&kernel_initial_stack;
 const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
 #endif
 
+#ifdef KERNEL_SHOW_LOGO
 static void print_banner_line(const u8 *s)
 {
    printk(NO_PREFIX "\033(0");
@@ -70,6 +71,7 @@ static void show_tilck_logo(void)
       print_banner_line((u8 *)banner[i]);
    }
 }
+#endif
 
 static void
 show_system_info(void)
