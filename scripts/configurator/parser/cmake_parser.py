@@ -14,7 +14,7 @@ def parse_rows(file_lines: List[str]) -> List[cmake_row]:
       if current_row.row_type == row_type.VARIABLE:
          j = i-1
          while j >= 0 and cmake_rows[j].row_type == row_type.SLASH_COMMENT:
-            comment = cmake_rows[j].val  + comment
+            comment = cmake_rows[j].get_val() + comment
             j -= 1
          current_row.comment = comment
          comment = ""

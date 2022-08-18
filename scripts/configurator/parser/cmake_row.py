@@ -1,5 +1,4 @@
 import re
-from typing import Match, Optional
 from enum import Enum, auto
 from cmake_var import cmake_var, build_cmake_var
 
@@ -21,8 +20,8 @@ class cmake_row:
       strips variable and assigns its correct type by matching the regex
       and verifying if it's a comment.
       """
-      row  = raw_row.strip()
-      variable_match: Optional[Match[str]] = re.match(self.regex_expression, row)
+      row = raw_row.strip()
+      variable_match = re.match(self.regex_expression, row)
       self.val: str | cmake_var | None = None
       self.name: str = ""
       self._cmake_type: str # used to serialize back the value
@@ -41,7 +40,7 @@ class cmake_row:
          self.row_type = row_type.POUND_COMMENT
          self.val = row[1:]
 
-      elif variable_match: # this guarantees that the regex has exactly 3 matches
+      elif variable_match: # guarantees that the regex has exactly 3 matches
          groups = variable_match.groups()
          self.name = groups[0]
          self.row_type = row_type.VARIABLE
@@ -74,8 +73,8 @@ class cmake_row:
       else:
          raise ValueError("Row does not have a defined type")
 
-   def get_val(self):
+   def get_val(self) -> str:
       if self.row_type == row_type.VARIABLE:
-         return  self.val.serialize()
+         return self.val.serialize()
       else:
-         return self.val
+         return str(self.val)
