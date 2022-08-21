@@ -388,11 +388,8 @@ void yield_until_last(void)
 {
    ASSERT(is_preemption_enabled());
 
-   do {
-
-      kernel_yield();
-
-   } while (runnable_tasks_count > 2);
+   do { kernel_yield(); } while (runnable_tasks_count > 2);
+   kernel_yield();
 }
 
 __attribute__((constructor))
