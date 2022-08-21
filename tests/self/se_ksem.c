@@ -25,20 +25,23 @@ struct sem_test_data {
 
    int units;
    ATOMIC(enum sem_test_state) state;
+   int tid;
 };
 
 static struct sem_test_data sem_test_waiters[] =
 {
-   { 1, NOT_STARTED },
-   { 3, NOT_STARTED },
-   { 5, NOT_STARTED },
-   { 10, NOT_STARTED },
+   { 1, NOT_STARTED, -1 },
+   { 3, NOT_STARTED, -1 },
+   { 5, NOT_STARTED, -1 },
+   { 10, NOT_STARTED, -1 },
 };
 
 static void ksem_test_wait_thread(void *arg)
 {
    struct sem_test_data *ctx = arg;
    int rc;
+
+   printk("ksem wait thread %d, wait: %d\n", get_curr_tid(), ctx->units);
 
    ctx->state = BLOCKED;
    rc = ksem_wait(&test_sem, ctx->units, KSEM_WAIT_FOREVER);
@@ -71,6 +74,32 @@ static void wait_for_all_blocked(void)
    }
 }
 
+static void
+ksem_test_check_sem_counter(int expected)
+{
+   disable_preemption();
+
+   if (test_sem.counter == expected)
+      goto out;
+
+   printk("FAIL: counter: %d != expected: %d\n", test_sem.counter, expected);
+
+   for (u32 i = 0; i < ARRAY_SIZE(sem_test_waiters); i++) {
+
+      struct task *task = get_task(sem_test_waiters[i].tid);
+
+      printk("waiter[%u, tid: %d]: units: %d, state: %d, task state: %s\n",
+             i, sem_test_waiters[i].tid,
+             sem_test_waiters[i].units, sem_test_waiters[i].state,
+             task ? task_state_str[task->state] : "N/A");
+   }
+
+   panic("ksem test failure");
+
+out:
+   enable_preemption();
+}
+
 void selftest_ksem()
 {
    int tid, rc;
@@ -82,6 +111,7 @@ void selftest_ksem()
       for (u32 i = 0; i < ARRAY_SIZE(sem_test_waiters); i++) {
          tid = kthread_create(ksem_test_wait_thread, 0, &sem_test_waiters[i]);
          VERIFY(tid > 0);
+         sem_test_waiters[i].tid = tid;
       }
    }
    printk("Waiting for them to block...\n");
@@ -92,14 +122,14 @@ void selftest_ksem()
    VERIFY(sem_test_waiters[1].state == BLOCKED);
    VERIFY(sem_test_waiters[2].state == BLOCKED);
    VERIFY(sem_test_waiters[3].state == BLOCKED);
-   VERIFY(test_sem.counter == 0);
+   ksem_test_check_sem_counter(0);
 
    printk("signal(2)\n");
    rc = ksem_signal(&test_sem, 2);
    VERIFY(rc == 0);
    yield_until_last();
 
-   VERIFY(test_sem.counter == 1);
+   ksem_test_check_sem_counter(1);
    VERIFY(sem_test_waiters[0].state == DONE);
    VERIFY(sem_test_waiters[1].state == BLOCKED);
    VERIFY(sem_test_waiters[2].state == BLOCKED);
@@ -110,7 +140,7 @@ void selftest_ksem()
    VERIFY(rc == 0);
    yield_until_last();
 
-   VERIFY(test_sem.counter == 2);
+   ksem_test_check_sem_counter(2);
    VERIFY(sem_test_waiters[0].state == DONE);
    VERIFY(sem_test_waiters[1].state == DONE);
    VERIFY(sem_test_waiters[2].state == DONE);
@@ -121,7 +151,7 @@ void selftest_ksem()
    VERIFY(rc == 0);
    yield_until_last();
 
-   VERIFY(test_sem.counter == 2+5);
+   ksem_test_check_sem_counter(2+5);
    VERIFY(sem_test_waiters[0].state == DONE);
    VERIFY(sem_test_waiters[1].state == DONE);
    VERIFY(sem_test_waiters[2].state == DONE);
@@ -132,7 +162,7 @@ void selftest_ksem()
    VERIFY(rc == 0);
    yield_until_last();
 
-   VERIFY(test_sem.counter == 0);
+   ksem_test_check_sem_counter(0);
    VERIFY(sem_test_waiters[0].state == DONE);
    VERIFY(sem_test_waiters[1].state == DONE);
    VERIFY(sem_test_waiters[2].state == DONE);
