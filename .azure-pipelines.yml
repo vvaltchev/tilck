@@ -16,7 +16,7 @@ jobs:
   - job: interactive_gcc73
     container: 'vvaltchev/tilck_build:v9'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
@@ -51,7 +51,7 @@ jobs:
   - job: gcc_6_4
     container: 'vvaltchev/tilck_build:v9'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
@@ -91,7 +91,7 @@ jobs:
   - job: gcc_7_3
     container: 'vvaltchev/tilck_build:v9'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
@@ -128,7 +128,7 @@ jobs:
   - job: interactive_gcc84
     container: 'vvaltchev/tilck_build:v12'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
@@ -163,7 +163,7 @@ jobs:
   - job: gcc_8_4
     container: 'vvaltchev/tilck_build:v12'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
@@ -208,7 +208,7 @@ jobs:
   - job: syscc
     container: 'vvaltchev/tilck_build:v12'
     pool:
-      vmImage: 'ubuntu-18.04'
+      vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
       TCROOT_PARENT: /tc
