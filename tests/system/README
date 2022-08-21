@@ -12,11 +12,7 @@ clearly should remain in the userapps/ directory.
 
 NOTE: for info about to run those tests, see the main README.md file.
 
-
-DON'T FORGET:
-In order to add a new system test, don't forget to edit `cmds_table.c`, by
-adding an entry in `_cmds_table`.
-
+DON'T FORGET: to add a new system test, add an entry in `cmds_table.h`.
 
 Other
 ======
