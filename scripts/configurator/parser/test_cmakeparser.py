@@ -33,8 +33,7 @@ CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 //Example Internal variable
 CMAKE_AR:INTERNAL=/usr/bin/ar
 
-//Path to a program.
-//Example Internal variable
+//Path to a program.Example Internal variable
 CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 
 CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
