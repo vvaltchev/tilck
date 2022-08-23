@@ -1,8 +1,13 @@
 import re
 from enum import Enum, auto
 from cmake_var import cmake_var, build_cmake_var
+from typing import List
 
 class row_type(Enum):
+   """
+   The various types a cmake_row can have. Cmake_row is always one and only one
+   of these types.
+   """
    EMPTY = auto()
    SLASH_COMMENT = auto()
    POUND_COMMENT = auto()
@@ -10,23 +15,28 @@ class row_type(Enum):
 
 class cmake_row:
    """
-   simple utility class that abstracts away some details from the parsing
-   process from a single CMakeCache.txt row.
+   Simple utility class that abstracts away some details from the parsing
+   process from a single CMakeCache.txt row. Assumes that different comments are
+   concatenated to each other using a newline. This is needed to distinguish
+   between the actual comment and metadata.
    """
-   regex_expression = re.compile(r"^([A-Za-z_0-9]+?):([A-Za-z]+?)=(.*)$")
+   _variable_expr = re.compile(r"^([A-Za-z_0-9]+?):([A-Za-z]+?)=(.*)$")
 
-   def __init__(self, raw_row: str, row_number: int, comment: str = ""):
+   def __init__(self, raw_row: str, row_number: int, comment: List[str]=[]):
       """
-      strips variable and assigns its correct type by matching the regex
-      and verifying if it's a comment.
+      Strips variable and assigns its correct type by matching the regex
+      and verifying if it's a comment. Assumes that a variable has maximum one
+      line of comments, and the rest is metadata used by the parser to determine
+      other properties of cmake_var.
       """
       row = raw_row.strip()
-      variable_match = re.match(self.regex_expression, row)
+      variable_match = self._variable_expr.match(row)
       self.val: str | cmake_var | None = None
       self.name: str = ""
       self._cmake_type: str # used to serialize back the value
-      self.row_number: int = row_number
-      self.comment: str = comment
+      self.row_number = row_number
+      self.comment = comment[0].strip() if comment else ""
+      self.row_type: row_type
 
       if not len(row):
          self.row_type = row_type.EMPTY
@@ -40,13 +50,13 @@ class cmake_row:
          self.row_type = row_type.POUND_COMMENT
          self.val = row[1:]
 
-      elif variable_match: # guarantees that the regex has exactly 3 matches
+      elif variable_match:
          groups = variable_match.groups()
          self.name = groups[0]
          self.row_type = row_type.VARIABLE
          val = groups[2]
          self._cmake_type = groups[1]
-         self.val = build_cmake_var(self._cmake_type, val)
+         self.val = build_cmake_var(self._cmake_type, val, comment)
 
       else:
          raise ValueError("Could not parse variable")
