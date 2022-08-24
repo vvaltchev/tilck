@@ -26,9 +26,5 @@ jobs:
       inputs:
         versionSpec: '$(python.version)'
 
-    - script: pip3 install coverage
-      displayName: Setup
-
-    - script:
-        coverage run -m unittest discover scripts/configurator/parser
-      displayName: 'run unit tests'
+    - script: python -m unittest discover scripts/configurator/parser
+      displayName: 'Run unit tests'
