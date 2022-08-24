@@ -1,7 +1,8 @@
 from unittest import TestCase
-from cmake_parser import parse_rows, row_type
+from unittest.mock import patch
+from cmake_parser import parse_rows, row_type, write_file
 
-file_lines_generic = """
+test_file1 = """
 # KEY:TYPE=VALUE
 # KEY is the name of a variable in the cache.
 # TYPE is a hint to GUIs for the type of VALUE, DO NOT EDIT TYPE!.
@@ -39,27 +40,58 @@ CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 """
 
-expected_comments = [
-"Build unit tests for the target arch",
-"Build the EFI bootloader",
-"Build the legacy bootloader",
-"Make the bootloader to poison all the available memory",
-"Have user-interactive commands in the bootloaders",
-"Path to a program.",
-"Example Internal variable",
-"Path to a program.Example Internal variable",
-""
+test_file1_lines = test_file1.splitlines()
+
+expected_comments_file1 = [
+   "Build unit tests for the target arch",
+   "Build the EFI bootloader",
+   "Build the legacy bootloader",
+   "Make the bootloader to poison all the available memory",
+   "Have user-interactive commands in the bootloaders",
+   "Path to a program.",
+   "Example Internal variable",
+   "Path to a program.Example Internal variable",
+   ""
 ]
 
 class test_cmake_parser_lines(TestCase):
-   splitted_lines = file_lines_generic.splitlines()
+
    def test_serialization(self):
-      rows = parse_rows(self.splitted_lines)
-      for row, line in zip(rows, self.splitted_lines):
+      rows = parse_rows(test_file1_lines)
+      for row, line in zip(rows, test_file1_lines):
          self.assertEqual(row.serialize(), line)
 
    def test_variable_comments(self):
-      rows = parse_rows(self.splitted_lines)
+      rows = parse_rows(test_file1_lines)
       var_rows = [row for row in rows if row.row_type == row_type.VARIABLE]
-      for row, comment in zip(var_rows, expected_comments):
+      for row, comment in zip(var_rows, expected_comments_file1):
          self.assertEqual(row.comment, comment)
+
+class test_cmake_parser_io(TestCase):
+
+   def test_write_file(self):
+
+      filebuf = ""
+
+      class fake_file_handle:
+         def write(self, data):
+            nonlocal filebuf
+            filebuf += data
+
+      class fake_open:
+
+         def __init__(self, filepath, mode):
+            pass
+
+         def __enter__(self):
+            return fake_file_handle()
+
+         def __exit__(self, type, value, traceback):
+            pass
+
+      rows = parse_rows(test_file1_lines)
+
+      with patch('builtins.open', new = fake_open):
+         write_file(None, rows)
+
+      self.assertEqual(filebuf, test_file1)
