@@ -1,8 +1,4 @@
 trigger:
-  branches:
-    include:
-      - cmake-configurator*
-      - configurator*
   paths:
     include:
       - 'scripts/configurator/**'
