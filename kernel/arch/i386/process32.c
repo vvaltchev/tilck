@@ -650,8 +650,12 @@ switch_to_task(struct task *ti)
    struct task *curr = get_curr_task();
 
    ASSERT(curr != NULL);
-   ASSERT(curr->state != TASK_STATE_RUNNING);
-   ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
+
+   if (UNLIKELY(ti != curr)) {
+      ASSERT(curr->state != TASK_STATE_RUNNING);
+      ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
+   }
+
    ASSERT(!is_preemption_enabled());
 
    /*
@@ -661,7 +665,7 @@ switch_to_task(struct task *ti)
    ASSERT(state->eflags & EFLAGS_IF);
 
    /* Do as much as possible work before disabling the interrupts */
-   task_change_state(ti, TASK_STATE_RUNNING);
+   task_change_state_idempotent(ti, TASK_STATE_RUNNING);
    ti->ticks.timeslice = 0;
 
    if (!is_kernel_thread(curr) && curr->state != TASK_STATE_ZOMBIE)
