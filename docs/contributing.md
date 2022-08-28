@@ -21,8 +21,8 @@ requirements:
 Code-free contributions are also welcome. The project would benefit from more
 documentation (HOWTOs, tutorials etc.), but also from artistic assets.
 
-[building]: docs/building.md
-[testing]: docs/testing.md
+[building]: building.md
+[testing]: testing.md
 
 Coding style
 -------------------------
