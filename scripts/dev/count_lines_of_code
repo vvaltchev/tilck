@@ -4,6 +4,7 @@
 import os
 import sys
 import subprocess
+from typing import List, Optional, Dict, Tuple, Any
 
 # Constants
 
@@ -60,11 +61,11 @@ optPrintFileNames = False
 optShowLongLines = False
 optCheckLineEnding = False
 
-longLines = {} # file -> list of pairs (line#, cols)
+longLines: Dict[str, List[Tuple[int, int]]] = {} # file -> list of (line#, cols)
 nonUnixLeFiles = set()
 #####################################################
 
-def GetNoExtFileType(fpath):
+def GetNoExtFileType(fpath: str) -> Optional[str]:
 
    out = subprocess.check_output(['file', fpath]).decode('utf-8')
 
@@ -76,7 +77,7 @@ def GetNoExtFileType(fpath):
 
    return None
 
-def GetFileType(f, folder):
+def GetFileType(f: str, folder: str) -> Optional[str]:
 
    if f == "CMakeLists.txt":
       return "CMake"
@@ -93,11 +94,11 @@ def GetFileType(f, folder):
    return extToType[fext]
 
 
-def CountLinesInFile(f, ft):
+def CountLinesInFile(f: str, ft: str) -> List[int]:
 
    global longLines
    global nonUnixLeFiles
-   res = [0, 0]  # tot lines, empty lines
+   res = [0, 0] # tot lines, empty lines
 
    if optPrintFileNames:
       print(("file: {0}   -> {1}".format(f, ft)))
@@ -129,7 +130,7 @@ def CountLinesInFile(f, ft):
 
    return res
 
-def IsDirExcluded(path):
+def IsDirExcluded(path: str) -> bool:
 
    if os.path.basename(path) == 'build_apps':
       return False
@@ -140,15 +141,15 @@ def IsDirExcluded(path):
 
    return False
 
-def IsFileExcluded(fname):
+def IsFileExcluded(fname: str) -> bool:
    return fname in excludedFiles
 
-def AccumulateCounters(destArr, arr):
+def AccumulateCounters(destArr: Dict[str, int], arr: Dict[str, int]):
 
    for ft in fileTypes:
       destArr[ft] += arr[ft]
 
-def PrintRow(cols):
+def PrintRow(cols: List[Any]) -> None:
 
    s = PREFIX
 
@@ -161,10 +162,10 @@ def PrintRow(cols):
 
    print(s)
 
-def GetEmptyPercStr(t, e):
+def GetEmptyPercStr(t: int, e: int) -> str:
    return str(round(100.0 * e/t, 1)) + "%"
 
-def PrintCounters(arr, eArr, total, eTot):
+def PrintCounters(arr, eArr, total: int, eTot: int) -> None:
 
    PrintRow(["File type", "Tot", "Empty", "Empty%"])
 
