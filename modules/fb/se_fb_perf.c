@@ -41,8 +41,8 @@ void internal_selftest_fb_perf(bool use_fpu)
 
    u32 pixels = fb_get_width() * fb_get_height();
    printk("fb size (pixels): %u\n", pixels);
-   printk("cycles per redraw: %llu\n", cycles);
-   printk("cycles per 32 pixels: %llu\n", 32 * cycles / pixels);
+   printk("cycles per redraw: %" PRIu64 "\n", cycles);
+   printk("cycles per 32 pixels: %" PRIu64 "\n", 32 * cycles / pixels);
    printk("use_fpu: %d\n", use_fpu);
 
    fb_draw_banner();

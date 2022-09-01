@@ -2,6 +2,12 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/list.h>
+
+extern const char *x86_exception_names[32];
+extern struct list irq_handlers_lists[16];
+extern void (*irq_entry_points[16])(void);
+extern soft_int_handler_t fault_handlers[32];
 
 static ALWAYS_INLINE int int_to_irq(int int_num)
 {

@@ -7,10 +7,14 @@
 #endif
 
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck/kernel/arch/x86_64/asm_defs.h>
 
 struct x86_64_regs {
    /* STUB struct */
-   ulong some_var; /* avoid error: empty struct has size 0 in C, 1 in C++ */
+   s32 int_num;
+   u32 err_code;
+   u64 rsp, rbp, rax, rip;
+   u32 custom_flags;
 };
 
 struct x86_64_arch_proc_members {
@@ -19,7 +23,7 @@ struct x86_64_arch_proc_members {
 };
 
 struct x86_64_arch_task_members {
-   /* STUB struct */
+   u16 fpu_regs_size;
    void *aligned_fpu_regs;
 };
 
@@ -42,4 +46,19 @@ NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)
 static ALWAYS_INLINE ulong get_rem_stack(void)
 {
    return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));
+}
+
+static ALWAYS_INLINE void *regs_get_stack_ptr(regs_t *r)
+{
+   return TO_PTR(r->rsp);
+}
+
+static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
+{
+   return TO_PTR(r->rbp);
+}
+
+static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
+{
+   return TO_PTR(r->rip);
 }

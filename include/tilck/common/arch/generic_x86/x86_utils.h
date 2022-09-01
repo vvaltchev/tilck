@@ -9,7 +9,15 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/arch/generic_x86/asm_consts.h>
 
-#include <x86intrin.h>
+/*
+ * HACK: include directly <ia32intrin.h> because <x86intrin.h> includes too much
+ * stuff like FPU-related funcs which don't compile on x86_64 because we have
+ * disabled FPU instructions.
+ */
+#define _X86INTRIN_H_INCLUDED    /* for GCC */
+#define _X86GPRINTRIN_H_INCLUDED /* for GCC 11 */
+#define __X86INTRIN_H            /* for clang */
+#include <ia32intrin.h>
 
 #define X86_PC_TIMER_IRQ           0
 #define X86_PC_KEYBOARD_IRQ        1

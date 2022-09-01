@@ -27,7 +27,7 @@
    typedef struct x86_64_arch_task_members arch_task_members_t;
    typedef struct x86_64_arch_proc_members arch_proc_members_t;
 
-   #define ARCH_TASK_MEMBERS_SIZE     8
+   #define ARCH_TASK_MEMBERS_SIZE    16
    #define ARCH_TASK_MEMBERS_ALIGN    8
 
    #define ARCH_PROC_MEMBERS_SIZE     8

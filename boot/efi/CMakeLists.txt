@@ -26,14 +26,22 @@ JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
 
 set(
    efi_bootloader_deps
-
-   efi_ia32_bootloader
-   ${EFI_ia32_FILE}
 )
 
-add_subdirectory(ia32)
+if (${ARCH} STREQUAL "i386")
 
-if ("${HOST_ARCH}" STREQUAL "x86_64")
+   add_subdirectory(ia32)
+
+   list(
+      APPEND efi_bootloader_deps
+
+      efi_ia32_bootloader
+      ${EFI_ia32_FILE}
+   )
+
+endif()
+
+if (${HOST_ARCH} STREQUAL "x86_64")
 
    add_subdirectory(x86_64)
 

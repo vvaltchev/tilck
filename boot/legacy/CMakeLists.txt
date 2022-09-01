@@ -4,7 +4,30 @@ cmake_minimum_required(VERSION 3.2)
 # Remove -rdynamic
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-set_cross_compiler()
+
+if (${ARCH} STREQUAL "i386")
+
+   set_cross_compiler()
+
+else()
+
+   # If we're compiling the legacy bootloader, ${ARCH} is either i386 or x86_64
+   # but that doesn't really matter, because the bootloader itself will be
+   # always 32-bit. Now, since ${ARCH} is x86_64, we cannot really use our
+   # pre-built GCC toolchain because it has been configured to work only
+   # for its target architecture (x86_64 in this case) and fails in a cumbersome
+   # ways if we try to use it with -m32 etc. Better just stick with the system
+   # GCC. Fortunately, for the bootloader we won't need anything libmusl etc.
+   # so it _should_ always work.
+
+   set(CMAKE_C_FLAGS "-m32 -march=i686")
+   set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${KERNEL_CXX_FLAGS}")
+   set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}")
+
+   set(TOOL_GCOV "${GCOV}")
+
+endif()
+
 
 # Common directories, both for early_boot and for elf_stage3_unstripped
 include_directories(

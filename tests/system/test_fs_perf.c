@@ -60,14 +60,14 @@ int cmd_fs_perf1(int argc, char **argv)
    elapsed = (end - start) / n;
    start = RDTSC();
 
-   printf("Avg. creat() cost:  %4llu cycles\n", elapsed);
+   printf("Avg. creat() cost:  %4" PRIu64 " cycles\n", elapsed);
 
    for (int i = 0; i < n; i++)
      remove_test_file_expecting_success(dest_dir, i);
 
    end = RDTSC();
    elapsed = (end - start) / n;
-   printf("Avg. unlink() cost: %4llu cycles\n", elapsed);
+   printf("Avg. unlink() cost: %4" PRIu64 " cycles\n", elapsed);
    return 0;
 }
 
@@ -103,7 +103,7 @@ int cmd_fs_perf2(int argc, char **argv)
    close(fd);
 
    printf("Tot written: %d KB\n", n);
-   printf("Avg. cost per KB: %4llu cycles\n", elapsed / KB);
+   printf("Avg. cost per KB: %4" PRIu64 " cycles\n", elapsed / KB);
 
    rc = unlink(path);
    DEVSHELL_CMD_ASSERT(rc == 0);

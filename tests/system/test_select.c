@@ -317,7 +317,7 @@ again:
    ts1 = (u64)rtv1.tv_sec * 1000 + rtv1.tv_usec / 1000;
    ts2 = (u64)rtv2.tv_sec * 1000 + rtv2.tv_usec / 1000;
    elapsed = ts2 - ts1;
-   printf("Elapsed: %llu ms\n", elapsed);
+   printf("Elapsed: %" PRIu64 " ms\n", elapsed);
 
    if ((elapsed < 90 * sleep_ms / 100) || (elapsed > 110 * sleep_ms / 100)) {
       printf("Elapsed was more than expected (%d <= t <= %d ms)\n",

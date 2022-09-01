@@ -38,6 +38,8 @@ function build_libmusl {
          download_gcc_glibc_toolchain
          export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
 
+         # Force use the our cross-compiler when when $ARCH == $HOST_ARCH
+         export CC="$ARCH-linux-gcc"
 
       else
 
@@ -51,7 +53,7 @@ function build_libmusl {
       download_libmusl
       cd musl
 
-      local opts1="--target=${ARCH} --host=${ARCH}"
+      local opts1="--target=${ARCH} --build=${HOST_ARCH}"
       local opts2="--disable-shared --prefix=$MUSL_INSTALL"
       local opts3="--exec-prefix=$MUSL_INSTALL --enable-debug"
       local opts4="--syslibdir=$MUSL_INSTALL/lib"

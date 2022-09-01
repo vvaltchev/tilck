@@ -204,7 +204,20 @@
       "mod_tracing.h": "c",
       "devshell.h": "c",
       "utils.h": "c",
-      "elf.h": "c"
+      "elf.h": "c",
+      "immintrin.h": "c",
+      "printk.h": "c",
+      "paging_hw.h": "c",
+      "paging_int.h": "c",
+      "config_kernel.h": "c",
+      "test_common.h": "c",
+      "sysenter.h": "c",
+      "elf_get_section.c.h": "c",
+      "elf_types.h": "c",
+      "inttypes.h": "c",
+      "stddef.h": "c",
+      "stdint.h": "c",
+      "alltypes.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3",
 }

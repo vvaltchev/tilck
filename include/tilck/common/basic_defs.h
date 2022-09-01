@@ -64,6 +64,7 @@
    #define __USE_MISC
 #endif
 
+
 #include <stdarg.h>
 #include <sys/types.h>    // system header (just for ulong)
 
@@ -277,9 +278,24 @@ STATIC_ASSERT(sizeof(ulong) == sizeof(void *));
       )                                                               \
    )
 
+/*
+ * Brutal double-cast converting any integer to a void * pointer.
+ *
+ * This unsafe macro is a nice cosmetic sugar for all the cases where a integer
+ * not always having pointer-size width has to be converted to a pointer.
+ *
+ * Typical use cases:
+ *    - multiboot 1 code uses 32-bit integers for rappresenting addresses, even
+ *      on 64-bit architectures.
+ *
+ *    - in EFI code, EFI_PHYSICAL_ADDRESS is 64-bit wide, even on 32-bit
+ *      machines.
+ */
+#define TO_PTR(n) ((void *)(ulong)(n))
+
 #ifndef __clang__
 
-   #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( (void *)(x) ))
+   #define DO_NOT_OPTIMIZE_AWAY(x) asmVolatile("" : "+r" ( TO_PTR(x) ))
 
 #else
 
@@ -361,22 +377,6 @@ typedef long (*cmpfun_ptr)(const void *a, const void *b);
 
 /* Checks if 'addr' is in the range [begin, end] */
 #define IN_RANGE_INC(addr, begin, end) ((begin) <= (addr) && (addr) <= (end))
-
-
-/*
- * Brutal double-cast converting any integer to a void * pointer.
- *
- * This unsafe macro is a nice cosmetic sugar for all the cases where a integer
- * not always having pointer-size width has to be converted to a pointer.
- *
- * Typical use cases:
- *    - multiboot 1 code uses 32-bit integers for rappresenting addresses, even
- *      on 64-bit architectures.
- *
- *    - in EFI code, EFI_PHYSICAL_ADDRESS is 64-bit wide, even on 32-bit
- *      machines.
- */
-#define TO_PTR(n) ((void *)(ulong)(n))
 
 /*
  * With modern GCC compilers, things like *(u32 *)(ptr + off) are undefined

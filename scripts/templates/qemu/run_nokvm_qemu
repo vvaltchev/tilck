@@ -5,6 +5,6 @@ if [ -z "$GDB_PORT" ]; then
 fi
 
 BUILD_DIR=@CMAKE_BINARY_DIR@
-qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT @QEMU_RAM_OPT@   \
-   -drive id=img1,format=raw,if=none,file=@IMG_FILE@                     \
+qemu-system-@ARCH@ @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT @QEMU_RAM_OPT@   \
+   -drive id=img1,format=raw,if=none,file=@IMG_FILE@                       \
    -device ide-hd,drive=img1,@QEMU_CHS_GEOM@ "$@"

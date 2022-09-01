@@ -9,8 +9,27 @@ export FFLAGS=""
 export CXXFLAGS=""
 export CFFLAGS=""
 
-# Default GCC toolchain version to use
-DEFAULT_GCC_TC_VERSION="8.4.0"
+if [[ "$ARCH" == "" ]]; then
+   export ARCH="i386" # default target arch
+fi
+
+# Default GCC toolchain version to use. Unfortunately, it depends on the target
+# architecture, because the list of available pre-built toolchains on
+# https://toolchains.bootlin.com depends on the architecture.
+
+if [[ "$ARCH" == "i386" ]]; then
+
+   DEFAULT_GCC_TC_VERSION="8.4.0"
+
+elif [[ "$ARCH" == "x86_64" ]]; then
+
+   DEFAULT_GCC_TC_VERSION="8.4.0"
+
+else
+   echo "Architecture '$ARCH' not supported."
+   exit 1
+fi
+
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -55,8 +74,35 @@ fi
 
 # ARCH and ARCH_* variables are all about the TARGET architecture
 
-if [[ "$ARCH" == "" ]]; then
-   export ARCH="i386" # default target arch
+if [ -z "$GCC_TC_VER" ]; then
+
+   if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+
+      GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
+
+   else
+
+      if [ -f $TC/.gcc_tc_ver ]; then
+
+         # TODO: drop this once we upgrade to toolchain3
+
+         if [[ "$ARCH" == "i386" ]]; then
+            # Small hack to support older toolchains
+            GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
+         fi
+
+         # Upgrade the toolchain to the latest format
+         if [[ "$RUNNING_IN_CI" != "1" ]]; then
+
+            # Keep the old .gcc_tc_ver file to support building older commits
+            cp $TC/.gcc_tc_ver $TC/.gcc_tc_ver_i386
+         fi
+      fi
+   fi
+fi
+
+if [ -z "$GCC_TC_VER" ]; then
+   GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
 fi
 
 if [[ "$ARCH" == "i386" ]]; then
@@ -70,60 +116,93 @@ if [[ "$ARCH" == "i386" ]]; then
    ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
    ARCH_GCC_TC_CODENAME="x86-i686"
 
+   if [ -z "$ARCH_GCC_TC_VER" ]; then
+
+      if [ "$GCC_TC_VER" = "6.4.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2018.02-2"
+
+      elif [ "$GCC_TC_VER" = "7.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2018.11-1"
+
+      elif [ "$GCC_TC_VER" = "8.4.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2020.02-2"
+
+      elif [ "$GCC_TC_VER" = "9.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2020.08-1"
+
+      elif [ "$GCC_TC_VER" = "10.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2021.11-1"
+
+      else
+         echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
+         exit 1
+      fi
+   fi
+
+elif [[ "$ARCH" == "x86_64" ]]; then
+
+   ARCH_SHORT="x86_64"
+   ARCH_FAMILY="generic_x86"
+   ARCH_ELF_NAME="elf64-x86-64"
+   ARCH_LD_OUTPUT="elf_x86_64"
+   ARCH_EFI="x86_64"
+   ARCH_GCC_TC="x86_64"
+   ARCH_GCC_FLAGS="-m64"
+   ARCH_GCC_TC_CODENAME="x86-64-core-i7"
+
+   if [ -z "$ARCH_GCC_TC_VER" ]; then
+
+      if [ "$GCC_TC_VER" = "6.4.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2018.02-2"
+
+      elif [ "$GCC_TC_VER" = "7.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2018.11-1"
+
+      elif [ "$GCC_TC_VER" = "8.4.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2020.02-2"
+
+      elif [ "$GCC_TC_VER" = "9.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2020.08-1"
+
+      elif [ "$GCC_TC_VER" = "10.3.0" ]; then
+
+         ARCH_GCC_TC_VER="stable-2021.11-1"
+
+      else
+         echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
+         exit 1
+      fi
+   fi
+
 else
    echo "Architecture '$ARCH' not supported."
    exit 1
 fi
 
-# GCC toolchain configuration
-
-if [ -z "$GCC_TC_VER" ]; then
-   if [ -f $TC/.gcc_tc_ver ]; then
-      GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
-   else
-      GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
-   fi
-fi
-
-if [ -z "$ARCH_GCC_TC_VER" ]; then
-
-   if [ "$GCC_TC_VER" = "6.4.0" ]; then
-
-      ARCH_GCC_TC_VER="stable-2018.02-2"
-
-   elif [ "$GCC_TC_VER" = "7.3.0" ]; then
-
-      ARCH_GCC_TC_VER="stable-2018.11-1"
-
-   elif [ "$GCC_TC_VER" = "8.4.0" ]; then
-
-      ARCH_GCC_TC_VER="stable-2020.02-2"
-
-   elif [ "$GCC_TC_VER" = "9.3.0" ]; then
-
-      ARCH_GCC_TC_VER="stable-2020.08-1"
-
-   else
-      echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
-      exit 1
-   fi
-fi
-
-if ! [ -f $TC/.gcc_tc_ver ]; then
+if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
 
    mkdir -p $TC
-   echo -n $GCC_TC_VER > $TC/.gcc_tc_ver
+   echo -n $GCC_TC_VER > $TC/.gcc_tc_ver_$ARCH
 
 else
 
-   saved=$(cat $TC/.gcc_tc_ver)
+   saved=$(cat $TC/.gcc_tc_ver_$ARCH)
    v=$GCC_TC_VER
 
    if ! [ "$GCC_TC_VER" = "$saved" ]; then
       echo "WARNING: GCC_TC_VER ($v) does not match with saved one ($saved)"
       echo "WARNING: This is NOT a supported scenario. Please delete:"
       echo "   $TC/$ARCH"
-      echo "   $TC/.gcc_tc_ver"
+      echo "   $TC/.gcc_tc_ver_$ARCH"
       echo "And run this script again to use the new toolchain."
       exit 1
    fi

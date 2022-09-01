@@ -137,7 +137,7 @@ static void no_munmap_bad_child(void)
                     0);
 
    if (res == (void*) -1) {
-      printf(STR_CHILD "mmap %d KB failed!\n", alloc_size / KB);
+      printf(STR_CHILD "mmap %zu KB failed!\n", alloc_size / KB);
       exit(1);
    }
 
@@ -372,9 +372,9 @@ int cmd_fork_oom(int argc, char **argv)
    }
 
    if (fork_oom_alloc_size >= 8 * MB)
-      printf("Parent [%d]: Alloc %d MB...\n", getpid(), fork_oom_alloc_size/MB);
+      printf("Parent [%d]: Alloc %zu MB...\n", getpid(),fork_oom_alloc_size/MB);
    else
-      printf("Parent [%d]: Alloc %d KB...\n", getpid(), fork_oom_alloc_size/KB);
+      printf("Parent [%d]: Alloc %zu KB...\n", getpid(),fork_oom_alloc_size/KB);
 
    buf = malloc(fork_oom_alloc_size);
 

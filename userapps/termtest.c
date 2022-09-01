@@ -1,9 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <errno.h>
+#include <time.h>
+#include <inttypes.h>
 
 #include <unistd.h>
 #include <termios.h>
@@ -13,9 +18,7 @@
 #include <sys/stat.h>
 #include <sys/kd.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <poll.h>
-#include <time.h>
 #include <x86intrin.h>    /* for __rdtsc() */
 
 #ifdef USERMODE_APP
@@ -264,8 +267,8 @@ retry:
 
    printf("Term size: %d rows x %d cols\n", w.ws_row, w.ws_col);
    printf("Tot iterations: %d\n\n", iters);
-   printf("Screen redraw:       %12llu cycles (%s)\n", c, tot_time_s);
-   printf("Avg. character cost: %12llu cycles (%s)\n", c / tot, c_time_s);
+   printf("Screen redraw:       %12" PRIu64 " cycles (%s)\n", c, tot_time_s);
+   printf("Avg. character cost: %12" PRIu64 " cycles (%s)\n", c/tot, c_time_s);
    printf("Cycles per sec:      %12.0f cycles/sec\n", cycles_per_sec);
    free(buf);
 }

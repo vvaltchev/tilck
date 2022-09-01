@@ -31,7 +31,7 @@ endif()
 
 
 # B2O = Binary to Object file [options]
-list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH} -I binary)
+list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH_BFD} -I binary)
 
 foreach(font_file ${font_files})
 
