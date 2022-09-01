@@ -57,3 +57,18 @@ static ALWAYS_INLINE ulong get_rem_stack(void)
 {
    return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));
 }
+
+static ALWAYS_INLINE void *regs_get_stack_ptr(regs_t *r)
+{
+   return TO_PTR(r->esp);
+}
+
+static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
+{
+   return TO_PTR(r->ebp);
+}
+
+static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
+{
+   return TO_PTR(r->eip);
+}

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec $SYS_CXX "$@" $CC_POST_FLAGS

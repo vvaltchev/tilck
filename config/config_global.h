@@ -28,7 +28,9 @@
 #define KERNEL_STACK_PAGES     @KERNEL_STACK_PAGES@
 #define KERNEL_PADDR           @KERNEL_PADDR@
 #define KERNEL_BASE_VA         @KERNEL_BASE_VA@
-#define LINEAR_MAPPING_MB      @LINEAR_MAPPING_MB@
+#define LINEAR_MAPPING_MB      @LINEAR_MAPPING_MB@UL
+
+#define ARCH_BITS              @ARCH_BITS@
 
 /* --------- Boolean config variables --------- */
 

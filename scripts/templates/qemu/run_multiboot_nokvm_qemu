@@ -7,5 +7,5 @@ if [ -z "$GDB_PORT" ]; then
    GDB_PORT=1234
 fi
 
-qemu-system-i386 @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
+qemu-system-@ARCH@ @QEMU_COMMON_OPTS@ -gdb tcp::$GDB_PORT \
    @QEMU_RAM_OPT@ -kernel "@KERNEL_FILE@" -initrd "$FATPART" "$@"

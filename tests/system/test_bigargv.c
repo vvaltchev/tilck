@@ -112,12 +112,12 @@ int cmd_bigargv(int argc, char **argv)
    size_t grand_tot = argv_len + env_len;
    size_t expected_tot = USER_ARGS_PAGE_COUNT * getpagesize();
 
-   printf("fix argv[0] length: %u\n", a0);
-   printf("max argv[1] length: %u\n", v);
-   printf("tot argv    length: %u\n", argv_len);
-   printf("tot env     length: %u\n", env_len);
-   printf("grand_tot         : %u\n", grand_tot);
-   printf("expected_tot      : %u\n", expected_tot);
+   printf("fix argv[0] length: %zu\n", a0);
+   printf("max argv[1] length: %zu\n", v);
+   printf("tot argv    length: %zu\n", argv_len);
+   printf("tot env     length: %zu\n", env_len);
+   printf("grand_tot         : %zu\n", grand_tot);
+   printf("expected_tot      : %zu\n", expected_tot);
 
    DEVSHELL_CMD_ASSERT(grand_tot == expected_tot);
    return 0;

@@ -446,8 +446,8 @@ static void test_sig_child_body(int n, bool busy_loop)
     * magic DO_NOT_OPTIMIZE_AWAY(). We need them to check that the kernel
     * restored correctly the stack pointer after the signal handler run.
     */
-   volatile unsigned magic1 = 0xcafebabe;
-   volatile unsigned magic2 = 0x11223344;
+   volatile unsigned long magic1 = 0xcafebabe;
+   volatile unsigned long magic2 = 0x11223344;
    DO_NOT_OPTIMIZE_AWAY(magic1);
    DO_NOT_OPTIMIZE_AWAY(magic2);
 

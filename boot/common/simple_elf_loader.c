@@ -1,8 +1,18 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_boot.h>
+#include <tilck_gen_headers/config_kernel.h>
+
+#if ARCH_BITS == 32
+   #define USE_ELF32
+#else
+   #define USE_ELF64
+#endif
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/assert.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/elf_types.h>
 #include <elf.h>
 
 /*
@@ -14,8 +24,8 @@
 
 void *simple_elf_loader(void *elf)
 {
-   Elf32_Ehdr *header = elf;
-   Elf32_Phdr *phdr = (Elf32_Phdr *)((char*)header + header->e_phoff);
+   Elf_Ehdr *header = elf;
+   Elf_Phdr *phdr = (Elf_Phdr *)((char*)header + header->e_phoff);
    void *entry;
 
    /* Just set the entry in case the search with IN_RANGE() below fails */

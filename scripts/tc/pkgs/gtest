@@ -26,6 +26,7 @@ function download_googletest {
 
       if [ -d $TC/cache/googletest ]; then
          # Delete the old locations of googletest
+         # TODO: drop this once we upgrade to toolchain3
          rm -rf $TC/cache/googletest
          rm -rf $TC/host_i386/gtest
          rm -rf $TC/host_x86_64/gtest
@@ -33,15 +34,11 @@ function download_googletest {
 
       if ! [ -L $TC/cache/googletest ]; then
          # Create a symlink to allow older commits being able to build
+         # TODO: drop this once we upgrade to toolchain3
          pushd $TC/cache
          ln -s $GTEST_SRC_DIR googletest
          popd
       fi
-
-      # Fix for GCC 11.x
-      pushd $TC/noarch/$GTEST_DIRNAME
-      sed -i '1222s/int dummy/int dummy=0/g' googletest/src/gtest-death-test.cc
-      popd
    fi
 }
 

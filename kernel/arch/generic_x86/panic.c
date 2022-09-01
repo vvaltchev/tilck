@@ -36,12 +36,17 @@ void panic_save_current_task_state(regs_t *r)
     * Clear the higher (unused) bits of the segment registers for a nicer
     * panic regs_t dump.
     */
+
+#if NBITS == 32
    r->ss &= 0xffff;
    r->cs &= 0xffff;
    r->ds &= 0xffff;
    r->es &= 0xffff;
    r->fs &= 0xffff;
    r->gs &= 0xffff;
+#else
+   // TODO: add code here
+#endif
 
    /*
     * Since in panic we need just to save the state without doing a context
@@ -247,9 +252,8 @@ NORETURN void panic(const char *fmt, ...)
 
    if (__in_double_fault) {
       copy_main_tss_on_regs(&panic_state_regs);
-
       if (!kopt_panic_regs)
-         printk("ESP: %p\n", TO_PTR(panic_state_regs.esp));
+         printk("SP: %p\n", regs_get_stack_ptr(&panic_state_regs));
    }
 
    if (kopt_panic_regs)
@@ -257,7 +261,9 @@ NORETURN void panic(const char *fmt, ...)
 
    if (!kopt_panic_nobt) {
       dump_stacktrace(
-         __in_double_fault ? (void*)panic_state_regs.ebp : NULL,
+         __in_double_fault
+            ? regs_get_frame_ptr(&panic_state_regs)
+            : NULL,
          curr->pi->pdir
       );
    }

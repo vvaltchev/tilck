@@ -8,9 +8,6 @@
 extern const ulong init_st_begin;
 extern const ulong init_st_end;
 
-size_t stackwalk32(void **frames, size_t count,
-                   void *ebp, pdir_t *pdir);
-
 void dump_stacktrace(void *ebp, pdir_t *pdir);
 void dump_regs(regs_t *r);
 

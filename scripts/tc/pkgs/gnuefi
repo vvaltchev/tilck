@@ -93,8 +93,10 @@ function build_gnuefi_installed_status {
          ret="$ret $ARCH"
       fi
 
-      if [ -f $TC/$BUILD_ARCH/gnu-efi/$BUILD_ARCH/gnuefi/libgnuefi.a ]; then
-         ret="$ret $BUILD_ARCH"
+      if [[ "$ARCH" != "$BUILD_ARCH" ]]; then
+         if [ -f $TC/$BUILD_ARCH/gnu-efi/$BUILD_ARCH/gnuefi/libgnuefi.a ]; then
+            ret="$ret $BUILD_ARCH"
+         fi
       fi
 
       if [ -n "ret" ]; then

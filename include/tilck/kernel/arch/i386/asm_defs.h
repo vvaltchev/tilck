@@ -32,6 +32,8 @@
 /* Some useful asm macros */
 #ifdef ASM_FILE
 
+#define NBITS           32
+
 #define FUNC(x) .type x, @function; x
 #define END_FUNC(x) .size x, .-(x)
 
@@ -49,7 +51,7 @@
    mov eax, CR0
    and eax, 8       // CR0_TS
    xor eax, 8       // flip the bit:
-                    //     we use FPU_ENABLED while TS=1 means FPU disabled
+                    // we use FPU_ENABLED while TS=1 means FPU disabled
 
    or eax, \additional_flags
    push eax         // custom_flags

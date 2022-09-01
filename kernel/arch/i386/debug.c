@@ -10,14 +10,16 @@
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/arch/generic_x86/debug_utils_x86.h>
 
 #include <elf.h>
 #include <multiboot.h>
 
-size_t stackwalk32(void **frames,
-                   size_t count,
-                   void *ebp,
-                   pdir_t *pdir)
+static size_t
+stackwalk32(void **frames,
+            size_t count,
+            void *ebp,
+            pdir_t *pdir)
 {
    bool curr_pdir = false;
    void *retAddr;
@@ -59,7 +61,6 @@ size_t stackwalk32(void **frames,
 
    return i;
 }
-
 
 void dump_stacktrace(void *ebp, pdir_t *pdir)
 {
@@ -106,38 +107,6 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
    printk("\n");
 }
 
-int debug_qemu_turn_off_machine(void)
-{
-   if (!in_hypervisor())
-      return -ENXIO;
-
-   outb(0xf4, 0x00);
-   return -EIO;
-}
-
-void dump_eflags(u32 f)
-{
-   printk("eflags: %p [ %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s], IOPL: %u\n",
-          TO_PTR(f),
-          f & EFLAGS_CF ? "CF " : "",
-          f & EFLAGS_PF ? "PF " : "",
-          f & EFLAGS_AF ? "AF " : "",
-          f & EFLAGS_ZF ? "ZF " : "",
-          f & EFLAGS_SF ? "SF " : "",
-          f & EFLAGS_TF ? "TF " : "",
-          f & EFLAGS_IF ? "IF " : "",
-          f & EFLAGS_DF ? "DF " : "",
-          f & EFLAGS_OF ? "OF " : "",
-          f & EFLAGS_NT ? "NT " : "",
-          f & EFLAGS_RF ? "RF " : "",
-          f & EFLAGS_VM ? "VM " : "",
-          f & EFLAGS_AC ? "AC " : "",
-          f & EFLAGS_VIF ? "VIF " : "",
-          f & EFLAGS_VIP ? "VIP " : "",
-          f & EFLAGS_ID ? "ID " : "",
-          f & EFLAGS_IOPL);
-}
-
 void dump_regs(regs_t *r)
 {
    dump_eflags(r->eflags);
@@ -150,21 +119,4 @@ void dump_regs(regs_t *r)
 
    printk("ebx: %p, ebp: %p, esi: %p, edi: %p\n",
           TO_PTR(r->ebx), TO_PTR(r->ebp), TO_PTR(r->esi), TO_PTR(r->edi));
-}
-
-void dump_raw_stack(ulong addr)
-{
-   printk("Raw stack dump:\n");
-
-   for (int i = 0; i < 36; i += 4) {
-
-      printk("%p: ", TO_PTR(addr));
-
-      for (int j = 0; j < 4; j++) {
-         printk("%p ", *(void **)addr);
-         addr += sizeof(ulong);
-      }
-
-      printk("\n");
-   }
 }

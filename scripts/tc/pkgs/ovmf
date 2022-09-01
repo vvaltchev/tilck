@@ -55,8 +55,10 @@ function download_ovmf_installed_status {
          ret="$ret $ARCH"
       fi
 
-      if [ -f $TC/$HOST_ARCH/ovmf/OVMF-pure-efi.fd ]; then
-         ret="$ret $HOST_ARCH"
+      if [[ "$ARCH" != "$HOST_ARCH" ]]; then
+         if [ -f $TC/$HOST_ARCH/ovmf/OVMF-pure-efi.fd ]; then
+            ret="$ret $HOST_ARCH"
+         fi
       fi
 
       if [ -n "ret" ]; then

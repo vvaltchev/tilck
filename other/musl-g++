@@ -1,12 +1,15 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: BSD-2-Clause
 
 PROJ_DIR="@CMAKE_SOURCE_DIR@"
 TCROOT="@TCROOT@"
 ARCH="@ARCH@"
+HOST_ARCH="@HOST_ARCH@"
+VER="@GCC_TC_VER_@"
 
 if [ @USE_SYSCC@ = 0 ]; then
-   export PATH="$TCROOT/x86_gcc_toolchain_glibc/bin:$PATH"
+   GCC_TC="$TCROOT/host_$HOST_ARCH/gcc_${VER}_${ARCH}_glibc/bin"
+   export PATH="$GCC_TC:$PATH"
 else
    export SYS_CC="@SYS_CC@"
    export SYS_CXX="@SYS_CXX@"
