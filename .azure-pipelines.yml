@@ -126,7 +126,7 @@ jobs:
 #### Newest "focal" container image ####
 
   - job: interactive_gcc84
-    container: 'vvaltchev/tilck_build:v12'
+    container: 'vvaltchev/tilck-ci-build:v1'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -161,7 +161,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_8_4
-    container: 'vvaltchev/tilck_build:v12'
+    container: 'vvaltchev/tilck-ci-build:v1'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -206,7 +206,7 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck_build:v12'
+    container: 'vvaltchev/tilck-ci-build:v1'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
