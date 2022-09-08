@@ -4,7 +4,7 @@ pr: none
 
 jobs:
   - job: coverage_build
-    container: 'vvaltchev/tilck_build:v12'
+    container: 'vvaltchev/tilck-ci-build:v1'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
