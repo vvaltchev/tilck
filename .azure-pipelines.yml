@@ -14,12 +14,12 @@ trigger:
 
 jobs:
   - job: interactive_gcc73
-    container: 'vvaltchev/tilck_build:v9'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc73
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 7.3.0
@@ -49,12 +49,12 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_6_4
-    container: 'vvaltchev/tilck_build:v9'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc64
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 6.4.0
@@ -89,12 +89,12 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_7_3
-    container: 'vvaltchev/tilck_build:v9'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc73
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 7.3.0
@@ -123,10 +123,8 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
 
-#### Newest "focal" container image ####
-
   - job: interactive_gcc84
-    container: 'vvaltchev/tilck-ci-build:v1'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -161,7 +159,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_8_4
-    container: 'vvaltchev/tilck-ci-build:v1'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -206,7 +204,7 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck-ci-build:v1'
+    container: 'vvaltchev/tilck-ci-build:v2'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
