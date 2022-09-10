@@ -33,6 +33,10 @@ steps:
     displayName: "[toolchain] Build gtest"
   - script: sudo -E ./scripts/build_toolchain -s build_gtest_arch
     displayName: "[toolchain] Build gtest_arch"
+  - script: sudo -E ./scripts/build_toolchain -s build_gmock
+    displayName: "[toolchain] Build gmock"
+  - script: sudo -E ./scripts/build_toolchain -s build_gmock_arch
+    displayName: "[toolchain] Build gmock_arch"
   - script: sudo -E ./scripts/build_toolchain -s build_lcov
     displayName: "[toolchain] Build lcov"
   - script: sudo -E ./scripts/build_toolchain -s build_libmusl
