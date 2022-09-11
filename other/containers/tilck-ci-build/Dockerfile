@@ -8,7 +8,7 @@ ENV TCROOT=/tc/toolchain2
 # Install the required system packages
 RUN apt update && apt upgrade -y && \
 apt install git-core gcc g++ gcc-multilib g++-multilib clang cmake \
-python3-minimal python3-serial apt gawk unzip parted wget \
+python3-minimal python3-serial apt gawk unzip parted wget curl \
 qemu-system-x86 imagemagick -y
 
 # Create the shared directories will need for all the toolchains
