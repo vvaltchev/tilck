@@ -98,4 +98,4 @@ void selftest_kmalloc_perf(void)
       se_regular_end();
 }
 
-REGISTER_SELF_TEST(kmalloc_perf, se_med, &selftest_kmalloc_perf)
+REGISTER_SELF_TEST(kmalloc_perf, se_long, &selftest_kmalloc_perf)
