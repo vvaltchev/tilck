@@ -1,9 +1,10 @@
-# version: v2
+# version: v3
 FROM ubuntu:20.04
 
 # We don't want any of the interactive features of apt, so we just disable them.
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TCROOT=/tc/toolchain2
+ENV ARCH=i386
 
 # Install the required system packages
 RUN apt update && apt upgrade -y && \
@@ -36,9 +37,18 @@ RUN git clone https://github.com/vvaltchev/tilck.git /tilck-tmp && \
 /tilck-tmp/scripts/build_toolchain -s lcov libmusl lua micropython ncurses && \
 /tilck-tmp/scripts/build_toolchain -s tcc vim gcc_glibc_toolchain
 
-# Switch the TCROOT and GCC_TC_VER to 6.4.0 and re-build the toolchain
+# Prepare the default toolchain for ARCH=x86_64
+ENV ARCH=x86_64
+RUN /tilck-tmp/scripts/build_toolchain && \
+/tilck-tmp/scripts/build_toolchain -s gnuefi mtools zlib busybox && \
+/tilck-tmp/scripts/build_toolchain -s gmock gmock_arch gtest gtest_arch && \
+/tilck-tmp/scripts/build_toolchain -s lcov libmusl lua micropython ncurses && \
+/tilck-tmp/scripts/build_toolchain -s tcc vim gcc_glibc_toolchain
+
+# Back to ARCH=i386. Switch the TCROOT and GCC_TC_VER to 6.4.0 and re-build
 ENV TCROOT=/tc/toolchain2-gcc64
 ENV GCC_TC_VER=6.4.0
+ENV ARCH=i386
 
 RUN /tilck-tmp/scripts/build_toolchain && \
 /tilck-tmp/scripts/build_toolchain -s gnuefi mtools zlib busybox && \
