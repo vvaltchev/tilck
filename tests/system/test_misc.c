@@ -322,3 +322,16 @@ int cmd_extra(int argc, char **argv)
 
    return rc;
 }
+
+int cmd_getuids(void)
+{
+   DEVSHELL_CMD_ASSERT(syscall(SYS_getuid) == 0);
+   DEVSHELL_CMD_ASSERT(syscall(SYS_getgid) == 0);
+   DEVSHELL_CMD_ASSERT(syscall(SYS_geteuid) == 0);
+   #ifdef __i386__
+      DEVSHELL_CMD_ASSERT(syscall(SYS_getuid16) == 0);
+      DEVSHELL_CMD_ASSERT(syscall(SYS_getgid16) == 0);
+      DEVSHELL_CMD_ASSERT(syscall(SYS_geteuid16) == 0);
+      DEVSHELL_CMD_ASSERT(syscall(SYS_getegid16) == 0);
+   #endif
+}
