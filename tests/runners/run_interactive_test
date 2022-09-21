@@ -1070,12 +1070,36 @@ def main():
 
          if attempts < 2:
             msg_print("QEMU died unexpectedly: retry once more time in 5 secs")
+            reset_fail_reason()
             time.sleep(5)
             attempts += 1
             continue
 
          # QEMU died already twice. Do fail.
          set_once_fail_reason(Fail.qemu_died_unexpectedly)
+
+      if IN_ANY_CI and get_fail_reason() == Fail.some_tests_failed:
+         if attempts < 2:
+
+            #
+            # While running in CI like Azure Pipelines, timing is uncertain:
+            # because of that, it happens (rarely!) that some of the most
+            # demaning interactive tests like `vim` fail because the output
+            # doesn't match exactly the expected one.
+            #
+            # A workaround to this problem could be to increase the internal
+            # delays, making everything to go slower: that might accomodate
+            # the CI case in the < 1% of the cases, but it will make the test
+            # run significantly slower in 99% of the cases. Therefore, we're
+            # taking the opposite approach: run with the same speed and take 2x
+            # of the time, in case of failure.
+            #
+
+            msg_print("Some tests failed, but we're running in CI: retry once")
+            reset_fail_reason()
+            time.sleep(5)
+            attempts += 1
+            continue
 
       # Default case: we exit the loop after we ran all the tests or there has
       # been a keyboard interrupt.
