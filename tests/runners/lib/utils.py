@@ -58,6 +58,11 @@ def no_failures():
 def any_failures():
    return __g_fail_reason != Fail.success
 
+def reset_fail_reason():
+
+   global __g_fail_reason
+   __g_fail_reason = Fail.success
+
 def get_fail_by_code(err_code):
 
    for f in Fail:
