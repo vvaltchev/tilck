@@ -48,12 +48,12 @@ smart_config_file(
 )
 
 smart_config_file(
-   ${CMAKE_SOURCE_DIR}/other/musl-gcc
+   ${CMAKE_SOURCE_DIR}/scripts/templates/musl-gcc
    ${MUSL_GCC}
 )
 
 smart_config_file(
-   ${CMAKE_SOURCE_DIR}/other/musl-g++
+   ${CMAKE_SOURCE_DIR}/scripts/templates/musl-g++
    ${MUSL_GXX}
 )
 
