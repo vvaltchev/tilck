@@ -52,6 +52,8 @@ set(
    general_kmalloc
    general_kfree
    kmalloc_get_first_heap
+   vfs_dup
+   vfs_close
 
    experiment_bar
    experiment_foo
