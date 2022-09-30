@@ -88,7 +88,7 @@ void __wrap_kmutex_unlock(struct kmutex *m) {
 }
 
 /*
- * Decide with just a global flag wheather to use glibc's malloc() or Tilck's
+ * Decide with just a global flag whether to use glibc's malloc() or Tilck's
  * kmalloc() implementation, instead of using a proper GMock in kmalloc_test.cpp
  * with ON_CALL(mock, general_kmalloc).WillByDefault([&mock](...) { ... }),
  * simply because that is too slow for performance measurements. Otherwise, the
