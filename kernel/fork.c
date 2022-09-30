@@ -10,7 +10,7 @@
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/process_mm.h>
 
-static int fork_dup_all_handles(struct process *pi)
+STATIC int fork_dup_all_handles(struct process *pi)
 {
    ASSERT(!is_preemption_enabled());
 
