@@ -583,7 +583,7 @@ def run_main_body():
       elif type(e) is KernelPanicFailure:
          set_once_fail_reason(Fail.panic)
       else:
-         set_once_fail_reason(Fail.other)
+         set_once_fail_reason(Fail.some_tests_failed)
 
    except BrokenPipeError:
 
