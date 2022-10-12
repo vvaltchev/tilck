@@ -113,3 +113,13 @@ void uitoaN_hex_fixed(ulong value, char *buf);    /* pointer-size */
 
 long tilck_strtol(const char *str, const char **endptr, int base, int *error);
 ulong tilck_strtoul(const char *str, const char **endptr, int base, int *error);
+int tilck_strcmp(const char *s1, const char *s2);
+int tilck_strncmp(const char *s1, const char *s2, size_t n);
+int tilck_memcmp(const void *m1, const void *m2, size_t n);
+char *tilck_strstr(const char *haystack, const char *needle);
+char *tilck_strcpy(char *dest, const char *src);
+char *tilck_strncpy(char *dest, const char *src, size_t n);
+char *tilck_strcat(char *dest, const char *src);
+char *tilck_strncat(char *dest, const char *src, size_t n);
+int tilck_isxdigit(int c);
+int tilck_isspace(int c);
