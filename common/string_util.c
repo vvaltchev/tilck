@@ -79,7 +79,7 @@ int memcmp(const void *_m1, const void *_m2, size_t n)
    return i == n ? 0 : (int)*m1 - (int)*m2;
 }
 
-char *strstr(const char *haystack, const char *needle)
+char *tilck_strstr(const char *haystack, const char *needle)
 {
    size_t sl, nl;
 
@@ -101,6 +101,12 @@ char *strstr(const char *haystack, const char *needle)
    return NULL;
 }
 
+#if !defined(TESTING) && !defined(USERMODE_APP)
+   char *strstr(const char *haystack, const char *needle) \
+   __attribute__((alias("tilck_strstr")));
+#endif
+
+
 char *strcpy(char *dest, const char *src)
 {
    char *p = dest;
@@ -112,7 +118,7 @@ char *strcpy(char *dest, const char *src)
    return dest;
 }
 
-char *strncpy(char *dest, const char *src, size_t n)
+char *tilck_strncpy(char *dest, const char *src, size_t n)
 {
    char *p = dest;
    size_t i = 0;
@@ -128,12 +134,17 @@ char *strncpy(char *dest, const char *src, size_t n)
    return dest;
 }
 
+#if !defined(TESTING) && !defined(USERMODE_APP)
+   char *strncpy(char *dest, const char *src, size_t n) \
+   __attribute__((alias("tilck_strncpy")));
+#endif
+
 char *strcat(char *dest, const char *src)
 {
    return strcpy(dest + strlen(dest), src);
 }
 
-char *strncat(char *dest, const char *src, size_t n)
+char *tilck_strncat(char *dest, const char *src, size_t n)
 {
    char *p = dest + strlen(dest);
    size_t i = 0;
@@ -147,17 +158,29 @@ char *strncat(char *dest, const char *src, size_t n)
    return dest;
 }
 
+#if !defined(TESTING) && !defined(USERMODE_APP)
+   char *strncat(char *dest, const char *src, size_t n) \
+   __attribute__((alias("tilck_strncat")));
+#endif
 
-int isxdigit(int c)
+int tilck_isxdigit(int c)
 {
    return c < 128 && digit_to_val[c] >= 0;
 }
 
-int isspace(int c)
+#if !defined(TESTING) && !defined(USERMODE_APP)
+   int isxdigit(int c) __attribute__((alias("tilck_isxdigit")));
+#endif
+
+int tilck_isspace(int c)
 {
    return c == ' ' || c == '\t' || c == '\r' ||
           c == '\n' || c == '\v' || c == '\f';
 }
+
+#if !defined(TESTING) && !defined(USERMODE_APP)
+   int isspace(int c) __attribute__((alias("tilck_isspace")));
+#endif
 
 #endif // #if !defined(TESTING) && !defined(USERMODE_APP)
 
