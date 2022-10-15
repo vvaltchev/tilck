@@ -78,7 +78,7 @@ machine with just 3 MB of memory *today*. Of course, that's pointless on x86, bu
 on an ARM Cortex-R that won't be anymore the case.
 
 ### What Tilck is NOT ?
-An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
+ * An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
 take advantage of its programs and toolchains. Also, that helps a lot to validate
 its correctness: if a program works correctly on Linux, it must work the same way
@@ -86,6 +86,11 @@ on Tilck as well (minus not-implemented features). **But**, having a fair
 amount of Linux programs working on it, is just a *starting point*: with time, Tilck
 will evolve in a different way and it will have its own unique set of features as
 well.
+
+* A kernel suitable for a *desktop* operating system. No X server works on Tilck,
+not only because a considerable amount of extra features will be required for that,
+but because working in that direction is *completely outside* of project's goals. 
+See also: https://github.com/vvaltchev/tilck/discussions/81
 
 #### Tilck vs Linux
 Tilck is fundamentally different from Linux as it **does not** aim to target
