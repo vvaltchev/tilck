@@ -13,8 +13,8 @@ list(
    APPEND ACTUAL_KERNEL_ONLY_FLAGS_LIST
 
    -D__ACTUAL_TILCK_KERNEL_BINARY__
+   -mcmodel=kernel
 
-   -mcmodel=large
    ${LOWLEVEL_BINARIES_FLAGS_LIST}
    ${DISABLE_FPU_FLAGS_LIST}
 )

@@ -229,7 +229,7 @@ JOIN("${KERNEL_CXX_FLAGS_LIST}" ${SPACE} KERNEL_CXX_FLAGS)
 set(
    LOWLEVEL_BINARIES_FLAGS_LIST
 
-   -fno-pic
+   -fno-common
    -fno-exceptions
    -fno-stack-protector
    -fno-asynchronous-unwind-tables

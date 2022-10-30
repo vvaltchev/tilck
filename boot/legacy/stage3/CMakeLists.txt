@@ -21,6 +21,7 @@ list(
 
    -D__TILCK_BOOTLOADER__
    -static
+   -fno-pic
 
    ${GENERAL_DEFS_LIST}
    ${DBG_FLAGS_LIST}

@@ -7,9 +7,9 @@ ENTRY(_start)
 SEARCH_DIR("=/tmp/x86-64--glibc--stable/usr/x86-64-buildroot-linux-gnu/lib64");
 SEARCH_DIR("=/tmp/x86-64--glibc--stable/usr/x86-64-buildroot-linux-gnu/lib");
 
-kernel_base_va      = @KERNEL_BASE_VA@;
 kernel_paddr        = @KERNEL_PADDR@;
 kernel_text_paddr   = kernel_paddr + 0x1000;
+kernel_va           = 0xFFFFFFFF80000000; /* -2 GB */
 
 PHDRS
 {
@@ -20,7 +20,7 @@ PHDRS
 
 SECTIONS
 {
-   . = SEGMENT_START("text-segment", kernel_base_va + kernel_text_paddr);
+   . = SEGMENT_START("text-segment", kernel_va);
 
    .text : AT(kernel_text_paddr)
    {

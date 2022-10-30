@@ -553,7 +553,7 @@ elseif(${ARCH} STREQUAL "x86_64")
    # Fundamental kernel MM constants
    set(KERNEL_BASE_VA      0x100000000000)  # +16 TB
    set(KERNEL_PADDR            0x00100000)  # Better not touch!
-   set(LINEAR_MAPPING_MB             4096)
+   set(LINEAR_MAPPING_MB             4096)  # Might be updated.
 
 else()
 
