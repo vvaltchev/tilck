@@ -20,28 +20,26 @@ extern "C" {
    #include <tilck/kernel/kmalloc.h>
    #include <tilck/kernel/worker_thread.h>
    #include "kernel/wth_int.h" // private header
-
-   extern u32 worker_threads_cnt;
-
-   void destroy_last_worker_thread(void)
-   {
-      assert(worker_threads_cnt > 0);
-
-      const u32 wth = --worker_threads_cnt;
-      struct worker_thread *t = worker_threads[wth];
-      const u32 queue_size = t->rb.max_elems;
-      assert(t != NULL);
-
-      safe_ringbuf_destory(&t->rb);
-      kfree_array_obj(t->jobs, struct wjob, queue_size);
-      kfree_obj(t, struct worker_thread);
-      bzero((void *)t, sizeof(*t));
-      worker_threads[wth] = NULL;
-   }
 }
 
 using namespace std;
 using namespace testing;
+
+static void destroy_last_worker_thread(void)
+{
+   assert(worker_threads_cnt > 0);
+
+   const u32 wth = --worker_threads_cnt;
+   struct worker_thread *t = worker_threads[wth];
+   const u32 queue_size = t->rb.max_elems;
+   assert(t != NULL);
+
+   safe_ringbuf_destory(&t->rb);
+   kfree_array_obj(t->jobs, struct wjob, queue_size);
+   kfree_obj(t, struct worker_thread);
+   bzero((void *)t, sizeof(*t));
+   worker_threads[wth] = NULL;
+}
 
 class worker_thread_test : public Test {
 

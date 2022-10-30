@@ -22,16 +22,10 @@ extern "C" {
 #include <tilck/kernel/kmalloc.h>
 #include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
 #include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
+#include <tilck/kernel/test/mem_regions.h>
+#include <tilck/kernel/test/kmalloc.h>
 
 extern bool suppress_printk;
-
-extern bool kmalloc_initialized;
-extern struct kmalloc_heap first_heap_struct;
-extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
-extern int used_heaps;
-extern size_t max_tot_heap_mem_free;
-extern struct mem_region mem_regions[MAX_MEM_REGIONS];
-extern int mem_regions_count;
 
 void *kernel_va = nullptr;
 static unordered_map<ulong, ulong> mappings;

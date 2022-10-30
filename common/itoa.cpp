@@ -7,6 +7,7 @@ extern "C" {
    #include <tilck/common/assert.h>
    #include <tilck/common/string_util.h>
    #include <tilck/kernel/errno.h>
+   #include <tilck/kernel/test/itoa.h>
 
    extern const s8 digit_to_val[128];
 }

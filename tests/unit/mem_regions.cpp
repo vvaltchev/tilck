@@ -19,15 +19,9 @@ using namespace std;
 using namespace testing;
 
 extern "C" {
-
    #include <tilck/kernel/system_mmap.h>
    #include <tilck/kernel/system_mmap_int.h>
-
-   void fix_mem_regions(void);
-   void align_mem_regions_to_page_boundary(void);
-   void sort_mem_regions(void);
-   void merge_adj_mem_regions(void);
-   void handle_overlapping_regions(void);
+   #include <tilck/kernel/test/mem_regions.h>
 }
 
 struct test_mem_reg {

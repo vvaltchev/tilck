@@ -9,7 +9,7 @@ using namespace std;
 
 extern "C" {
    #include <tilck/kernel/cmdline.h>
-   void use_kernel_arg(void *ctx, int arg_num, const char *arg);
+   #include <tilck/kernel/test/cmdline.h>
 }
 
 using tvec = vector<string>;
@@ -22,7 +22,7 @@ static const tvec& parse_wrapper(const char *cmdline)
    return args;
 }
 
-void use_kernel_arg(void *, int arg_num, const char *arg)
+void use_kernel_arg(arg_parse_ctx *, int arg_num, const char *arg)
 {
    ASSERT_EQ(arg_num, (int)args.size());
    args.push_back(arg);

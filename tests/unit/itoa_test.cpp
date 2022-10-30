@@ -12,11 +12,7 @@ using namespace std;
 
 extern "C" {
    #include <tilck/common/string_util.h>
-
-   s32 tilck_strtol32(const char *s, const char **endptr, int base, int *err);
-   s64 tilck_strtol64(const char *s, const char **endptr, int base, int *err);
-   u32 tilck_strtoul32(const char *s, const char **endptr, int base, int *err);
-   u64 tilck_strtoul64(const char *s, const char **endptr, int base, int *err);
+   #include <tilck/kernel/test/itoa.h>
 }
 
 // Wrapper defined only for s32, s64, u32, u64.

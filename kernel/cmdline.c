@@ -13,6 +13,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/test/cmdline.h>
 
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);

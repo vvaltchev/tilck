@@ -54,6 +54,7 @@ set(
    kmalloc_get_first_heap
    vfs_dup
    vfs_close
+   use_kernel_arg
 
    experiment_bar
    experiment_foo

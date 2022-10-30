@@ -10,6 +10,7 @@
 #include <tilck/kernel/sort.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/test/mem_regions.h>
 
 u32 __mem_lower_kb;
 u32 __mem_upper_kb;

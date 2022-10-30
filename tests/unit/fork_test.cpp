@@ -8,7 +8,7 @@ using namespace testing;
 
 extern "C" {
    #include <tilck/kernel/process.h>
-   int fork_dup_all_handles(struct process *pi);
+   #include <tilck/kernel/test/fork.h>
 }
 
 class vfs_mock : public KernelSingleton {

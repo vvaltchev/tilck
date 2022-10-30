@@ -7,6 +7,7 @@
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/fs/flock.h>
+#include <tilck/kernel/test/vfs.h>
 
 #include <sys/mman.h>      // system header
 
