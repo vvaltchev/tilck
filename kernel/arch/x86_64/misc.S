@@ -70,9 +70,7 @@ FUNC(asm_do_bogomips_loop):
    jne .inner_loop
 
    mov eax, 1
-   movabs rcx, offset __bogo_loops
-   lock xadd [rcx], eax
-
+   lock xadd DWORD PTR [rip+__bogo_loops], eax
    test eax, eax
    jns .outer_loop
 

@@ -7,9 +7,9 @@ ENTRY(_start)
 SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib32");
 SEARCH_DIR("=/tmp/x86-i686--glibc--stable/usr/i686-buildroot-linux-gnu/lib");
 
-kernel_base_va      = @KERNEL_BASE_VA@;
 kernel_paddr        = @KERNEL_PADDR@;
 kernel_text_paddr   = kernel_paddr + 0x1000;
+kernel_va           = @KERNEL_BASE_VA@ + kernel_text_paddr;
 
 PHDRS
 {
@@ -20,7 +20,7 @@ PHDRS
 
 SECTIONS
 {
-   . = SEGMENT_START("text-segment", kernel_base_va + kernel_text_paddr);
+   . = SEGMENT_START("text-segment", kernel_va);
 
    .text : AT(kernel_text_paddr)
    {
