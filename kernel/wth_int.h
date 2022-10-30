@@ -21,6 +21,7 @@ struct worker_thread {
 };
 
 extern struct worker_thread *worker_threads[WTH_MAX_THREADS];
+extern int worker_threads_cnt;
 
 void wth_run(void *arg);
 void wth_wakeup(struct worker_thread *t);

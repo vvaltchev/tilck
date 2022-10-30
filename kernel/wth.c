@@ -16,7 +16,7 @@
 
 #include "wth_int.h"
 
-STATIC int worker_threads_cnt;
+int worker_threads_cnt;
 struct worker_thread *worker_threads[WTH_MAX_THREADS];
 
 u32 wth_get_queue_size(struct worker_thread *wth)

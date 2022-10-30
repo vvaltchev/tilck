@@ -9,9 +9,8 @@ extern "C" {
    #include <tilck/kernel/sched.h>
    #include <tilck/kernel/process.h>
    #include <tilck/kernel/fs/fat32.h>
+   #include <tilck/kernel/test/vfs.h>
    #include "kernel/fs/fs_int.h"
-
-   struct mnt_fs *ramfs_create(void);
 }
 
 #define TEST_FATPART_FILE     PROJ_BUILD_DIR "/test_fatpart"

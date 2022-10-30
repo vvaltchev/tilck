@@ -1,0 +1,8 @@
+This directory contains special test headers, where STATIC kernel functions
+are declared. STATIC kernel functions are functions that are static only when
+the real kernel is compiled, while they turn to regular functions when the
+kernel is compiled as a static library for unit tests.
+
+The reason for having such headers and including the both in the kernel's and
+in the unit tests' code is to make impossible to have a function signature
+mismatch without breaking the build.

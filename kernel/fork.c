@@ -9,6 +9,7 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/process_mm.h>
+#include <tilck/kernel/test/fork.h>
 
 STATIC int fork_dup_all_handles(struct process *pi)
 {

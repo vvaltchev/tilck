@@ -12,8 +12,8 @@ extern "C" {
    #include <tilck/kernel/fs/fat32.h>
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/common/utils.h>
+   #include <tilck/kernel/test/fat32.h>
    #include <3rd_party/crc32.h>
-   void fat_dump_info(void *fatpart_begin);
 }
 
 using namespace std;
