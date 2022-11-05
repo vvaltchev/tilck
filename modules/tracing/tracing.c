@@ -40,7 +40,7 @@ static const struct syscall_info **syscalls_info;
 static s8 (*params_slots)[MAX_SYSCALLS][6];
 static s8 *syscalls_fmts;
 
-static char *traced_syscalls_str;
+STATIC char *traced_syscalls_str;
 static int traced_syscalls_count;
 
 bool *traced_syscalls;
@@ -634,7 +634,7 @@ get_traced_syscalls_count(void)
  *    ab*c     matches NOTHING because '*' must be the last char, if present.
  *
  */
-static bool
+STATIC bool
 simple_wildcard_match(const char *str, const char *expr)
 {
    for (; *str && *expr; str++, expr++) {
@@ -657,7 +657,7 @@ simple_wildcard_match(const char *str, const char *expr)
    return false; /* not a match */
 }
 
-static int
+STATIC int
 handle_sys_trace_arg(const char *arg)
 {
    struct bintree_walk_ctx ctx;
@@ -691,7 +691,7 @@ handle_sys_trace_arg(const char *arg)
    return 0;
 }
 
-static int
+STATIC int
 set_traced_syscalls_int(const char *str)
 {
    const size_t len = strlen(str);

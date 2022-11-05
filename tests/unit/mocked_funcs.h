@@ -17,3 +17,4 @@ DEF_0(real, experiment_bar, bool)
 DEF_1(real, experiment_foo, int, int)
 DEF_2(real, vfs_dup, int, fs_handle, fs_handle *)
 DEF_1(real, vfs_close, void, fs_handle)
+DEF_1(real, handle_sys_trace_arg, int , const char *);

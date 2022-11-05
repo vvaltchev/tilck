@@ -20,6 +20,7 @@ set(
    vfs_dup
    vfs_close
    use_kernel_arg
+   handle_sys_trace_arg
 
    experiment_bar
    experiment_foo
