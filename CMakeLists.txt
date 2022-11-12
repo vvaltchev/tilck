@@ -607,6 +607,7 @@ include(other/cmake/compiler_flags.cmake)
 # Include the funcs for building the kernel modules, used both by the kernel
 # and the gtests targets.
 
+include(other/cmake/wrapped_syms.cmake)
 include(other/cmake/build_modules.cmake)
 
 foreach (opt ${kernel_opts_list})
