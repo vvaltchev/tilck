@@ -14,7 +14,7 @@ using namespace testing;
  * Instructions:
  *
  *    1. add all the functions that we would like to mock in the WRAPPED_SYMS
- *       list in tests/unit/CMakeLists.txt
+ *       list in other/cmake/wrapped_syms.cmake
  *
  *    2. add all of those functions in tests/unit/mocked_funcs.h, with their
  *       correct signature
