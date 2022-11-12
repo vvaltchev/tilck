@@ -1,16 +1,55 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
+set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
+
+#
+# Internal macro use by the build_and_link_module() function
+#
+
+macro(__build_and_link_module_patch_logic)
+
+   set(PATCHED_MOD_FILE "libmod_${modname}_patched.a")
+
+   add_custom_command(
+
+      OUTPUT
+         ${PATCHED_MOD_FILE}
+      COMMAND
+         cp libmod_${modname}${variant}.a ${PATCHED_MOD_FILE}
+      COMMAND
+         ${TOOL_WS} ${PATCHED_MOD_FILE} ${WRAPPED_SYMS}
+      DEPENDS
+         mod_${modname}${variant}
+         ${TOOL_WS}
+         elfhack32
+         elfhack64
+      COMMENT
+         "Patching the module ${modname} to allow wrapping of symbols"
+      VERBATIM
+   )
+
+   add_custom_target(
+      mod_${modname}_patched
+      DEPENDS ${PATCHED_MOD_FILE}
+   )
+
+endmacro()
+
 #
 # Build and statically link a kernel module
 #
 # ARGV0: target
 # ARGV1: module name
 # ARGV2: special flag: If equal to "_noarch", don't build the arch code.
+# ARGV3: patch flag: run the WS_TOOL to weaken all the symbols in the static
+#        archive if the flag is true.
 #
+
 function(build_and_link_module target modname)
 
    set(variant "${ARGV2}")
+   set(DO_PATCH "${ARGV3}")
    set(MOD_${modname}_SOURCES_GLOB "")
 
    # message(STATUS "build_module(${target} ${modname} ${variant})")
@@ -62,6 +101,10 @@ function(build_and_link_module target modname)
                COMPILE_FLAGS "${KERNEL_NO_ARCH_FLAGS}"
          )
 
+         if (DO_PATCH)
+            __build_and_link_module_patch_logic()
+         endif(DO_PATCH)
+
       else()
 
          set_target_properties(
@@ -73,9 +116,22 @@ function(build_and_link_module target modname)
          )
 
       endif()
-      target_link_libraries(${target} mod_${modname}${variant})
-   endif()
 
+      # Link the patched or the regular module version
+
+      if (DO_PATCH)
+
+         add_dependencies(${target} mod_${modname}_patched)
+
+         target_link_libraries(
+            ${target} ${CMAKE_CURRENT_BINARY_DIR}/${PATCHED_MOD_FILE}
+         )
+
+      else()
+         target_link_libraries(${target} mod_${modname}${variant})
+      endif()
+
+   endif(MOD_${modname}_SOURCES)
 endfunction()
 
 #
@@ -84,6 +140,7 @@ endfunction()
 function(build_all_modules TARGET_NAME)
 
    set(TARGET_VARIANT "${ARGV1}")
+   set(DO_PATCH "${ARGV2}")
    target_link_libraries(${TARGET_NAME} -Wl,--whole-archive)
 
    foreach (mod ${modules_list})
@@ -100,9 +157,17 @@ function(build_all_modules TARGET_NAME)
       endif()
 
       if (EXISTS ${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+
+         # Use the custom per-module CMake file
          include(${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+
       else()
-         build_and_link_module(${TARGET_NAME} ${mod} ${TARGET_VARIANT})
+
+         # Use the generic build & link code
+         build_and_link_module(
+            ${TARGET_NAME} ${mod} ${TARGET_VARIANT} ${DO_PATCH}
+         )
+
       endif()
 
    endforeach()

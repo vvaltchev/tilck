@@ -34,31 +34,6 @@ set_target_properties(
 )
 
 set(LIB_KERNEL "libkernel_test_patched.a")
-set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
-
-set(
-   WRAPPED_SYMS
-
-   assert_failed
-   not_reached
-   not_implemented
-   tilck_vprintk
-   kmutex_lock
-   kmutex_unlock
-   fat_ramdisk_prepare_for_mmap
-   wth_create_thread_for
-   wth_wakeup
-   check_in_irq_handler
-   general_kmalloc
-   general_kfree
-   kmalloc_get_first_heap
-   vfs_dup
-   vfs_close
-   use_kernel_arg
-
-   experiment_bar
-   experiment_foo
-)
 
 add_custom_command(
 
@@ -140,5 +115,5 @@ target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock.a)
 target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
-build_all_modules(gtests "_noarch")
+build_all_modules(gtests "_noarch" TRUE)
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
