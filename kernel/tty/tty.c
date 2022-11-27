@@ -433,7 +433,7 @@ REGISTER_MODULE(&tty_module);
 
 /* No console funcs */
 
-#if !MOD_console
+#if !MOD_console && !defined(KERNEL_TEST)
 
 void tty_update_default_state_tables(struct tty *t)
 {

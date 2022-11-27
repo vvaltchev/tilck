@@ -145,13 +145,16 @@ function(build_all_modules TARGET_NAME)
 
    foreach (mod ${modules_list})
 
-      if (NOT MOD_${mod})
-         continue()
-      endif()
-
       if ("${TARGET_VARIANT}" STREQUAL "_noarch")
          list(FIND no_arch_modules_whitelist ${mod} _index)
          if (${_index} EQUAL -1)
+            continue()
+         endif()
+      else()
+         # Even if it's ugly, check here if the module should be compiled-in
+         # or not. In the "noarch" case, always compile the modules in, because
+         # they are needed for unit tests.
+         if (NOT MOD_${mod})
             continue()
          endif()
       endif()
