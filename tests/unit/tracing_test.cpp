@@ -22,9 +22,39 @@ TEST(simple_wildcard_match, basic)
    ASSERT_TRUE(simple_wildcard_match("test string", "test string*"));
    ASSERT_TRUE(simple_wildcard_match("test string", "tes? string"));
    ASSERT_TRUE(simple_wildcard_match("test string", "test *"));
+   ASSERT_FALSE(simple_wildcard_match("test string", "?"));
    ASSERT_FALSE(simple_wildcard_match("test string", "test strin1"));
    ASSERT_FALSE(simple_wildcard_match("test string", "te*t"));
    ASSERT_FALSE(simple_wildcard_match("test string", "test string1"));
+   ASSERT_TRUE(simple_wildcard_match("", ""));
+}
+
+TEST(simple_wildcard_match, questionmark)
+{
+   ASSERT_TRUE(simple_wildcard_match("abc", "a?c"));
+   ASSERT_TRUE(simple_wildcard_match("abc", "??c"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "abc?"));
+   ASSERT_TRUE(simple_wildcard_match("a,c", "a?c"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "abc??"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "?"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "?"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "??"));
+   ASSERT_TRUE(simple_wildcard_match("abc", "???"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "????"));
+   ASSERT_FALSE(simple_wildcard_match("", "?"));
+}
+
+TEST(simple_wildcard_match, star)
+{
+   ASSERT_TRUE(simple_wildcard_match("abc", "*"));
+   ASSERT_TRUE(simple_wildcard_match("abc", "ab*"));
+   ASSERT_TRUE(simple_wildcard_match("abc", "a*"));
+   ASSERT_TRUE(simple_wildcard_match("abc", "abc*"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "*b"));
+   ASSERT_FALSE(simple_wildcard_match("abc", "*abc"));
+   ASSERT_TRUE(simple_wildcard_match("", "*"));
+   ASSERT_FALSE(simple_wildcard_match("", "**"));
+   ASSERT_FALSE(simple_wildcard_match("ab", "**"));
 }
 
 TEST(set_traced_syscalls_int, basic)
