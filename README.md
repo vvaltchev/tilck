@@ -53,7 +53,7 @@ Overview
 `Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
 binary level. Project's small-scale and simple design makes it the **perfect playground**
 for playing in kernel mode while retaining the ability to compare how the *very same*
-*usermode bits* run on the Linux kernel as well. That's a **unique feature** in the
+*usermode bits* run on the Linux kernel as well. That's a **rare feature** in the
 realm of educational kernels. Because of that, building a program for Tilck requires just
 a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
 has **no need** to have its own set of custom written applications, like most educational
