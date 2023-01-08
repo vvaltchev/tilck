@@ -77,6 +77,17 @@ a key point in Tilck's design. Indeed, the kernel can boot and run on a i686 QEM
 machine with just 3 MB of memory *today*. Of course, that's pointless on x86, but
 on an ARM Cortex-R that won't be anymore the case.
 
+In addition to that, adding a basic support for networking and storage is part of
+the plans even if details have not been defined yet. Networking support might be
+limited to UDP + IP (at least at the beginning) and usable on a limited set of
+network cards. The same applies for storage: not all kinds of block devices will
+be supported, and a few filesystems (maybe just fat32 and ext2) will implemented
+in the kernel. The support for FUSE filesystems will be considered.
+
+One major milestone for the project will be to support both networking and storage
+for a specific SoC like Raspberry Pi 3 (or 4) but that could possibly happen only
+after Tilck has been ported to ARM64.
+
 ### What Tilck is NOT ?
  * An attempt to re-write and/or replace the Linux kernel. Tilck is a completely
 different kernel that has a *partial* compatibility with Linux just in order to
