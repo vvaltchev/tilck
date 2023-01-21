@@ -35,9 +35,16 @@ function install_debian_family {
    pkg_list+=(parted)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
+
       pkg_list+=(qemu-system-x86)
-      pkg_list+=(qemu-system-gui)
       pkg_list+=(python3)
+
+      # qemu-system-gui exists only in 20.04 and newer, so we need to check
+      # the distro's major version before checking for that package.
+      major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
+      if [ $major_ver -ge 20 ]; then
+         pkg_list+=(qemu-system-gui)
+      fi
    fi
 
    to_install=()
