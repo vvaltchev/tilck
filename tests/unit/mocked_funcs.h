@@ -18,3 +18,5 @@ DEF_1(real, experiment_foo, int, int)
 DEF_2(real, vfs_dup, int, fs_handle, fs_handle *)
 DEF_1(real, vfs_close, void, fs_handle)
 DEF_1(real, handle_sys_trace_arg, int , const char *);
+DEF_4(real, copy_str_from_user, int, void *, const void *, size_t, size_t *);
+DEF_3(real, copy_from_user, int, void *, const void *, size_t);
