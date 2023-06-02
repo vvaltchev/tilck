@@ -7,7 +7,7 @@
 #include <tilck/kernel/user.h>
 #include <tilck/mods/tracing.h>
 
-static bool
+STATIC bool
 save_param_buffer(void *data, long data_sz, char *dest_buf, size_t dest_bs)
 {
    if (data_sz == -1) {
@@ -40,7 +40,7 @@ save_param_buffer(void *data, long data_sz, char *dest_buf, size_t dest_bs)
    return true;
 }
 
-static bool
+STATIC bool
 dump_param_buffer(ulong orig,
                   char *data,
                   long data_bs,

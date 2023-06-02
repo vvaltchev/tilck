@@ -21,6 +21,8 @@ set(
    vfs_close
    use_kernel_arg
    handle_sys_trace_arg
+   copy_str_from_user
+   copy_from_user
 
    experiment_bar
    experiment_foo
