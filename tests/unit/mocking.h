@@ -17,6 +17,11 @@
    ret __real_##name(t1, t2, t3);                   \
    ret __wrap_##name(t1, t2, t3);
 
+#define DECL_FUNCS_4(name, ret, t1, t2, t3, t4)     \
+   ret __real_##name(t1, t2, t3, t4);               \
+   ret __wrap_##name(t1, t2, t3, t4);
+
+
 
 extern "C" {
 
@@ -30,6 +35,7 @@ extern "C" {
 #define DEF_1(x, n, ret, t1) DECL_FUNCS_1(n, ret, t1)
 #define DEF_2(x, n, ret, t1, t2) DECL_FUNCS_2(n, ret, t1, t2)
 #define DEF_3(x, n, ret, t1, t2, t3) DECL_FUNCS_3(n, ret, t1, t2, t3)
+#define DEF_4(x, n, ret, t1, t2, t3, t4) DECL_FUNCS_4(n, ret, t1, t2, t3, t4)
 
 #include "mocked_funcs.h"
 
@@ -37,6 +43,7 @@ extern "C" {
 #undef DEF_1
 #undef DEF_2
 #undef DEF_3
+#undef DEF_4
 }
 
 #define DEF_0(what, name, ret)                        \
@@ -58,6 +65,12 @@ extern "C" {
    virtual ret name(t1 a1, t2 a2, t3 a3) {            \
       return __##what##_##name(a1, a2, a3);           \
    }
+
+#define DEF_4(what, name, ret, t1, t2, t3, t4)        \
+   virtual ret name(t1 a1, t2 a2, t3 a3, t4 a4) {     \
+      return __##what##_##name(a1, a2, a3, a4);       \
+   }
+
 
 
 class KernelSingleton {
@@ -85,8 +98,10 @@ protected:
 #undef DECL_FUNCS_1
 #undef DECL_FUNCS_2
 #undef DECL_FUNCS_3
+#undef DECL_FUNCS_4
 
 #undef DEF_0
 #undef DEF_1
 #undef DEF_2
 #undef DEF_3
+#undef DEF_4
