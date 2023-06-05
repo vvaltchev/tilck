@@ -60,3 +60,52 @@ TEST(tracer_test, save_param_buffer)
    EXPECT_TRUE(save_param_buffer(data, data_sz, dest_buf_3, dest_bs_3));
    EXPECT_STREQ(dest_buf_3, "<fault>");
 }
+
+TEST(tracer_test, dump_param_buffer)
+{
+   MockingTracer mock;
+
+   ulong orig = 1;
+   long data_bs = -1;
+   long real_sz = -1;
+
+   char *data_1 = (char *)"\r";
+   char dest_1[10];
+   size_t dest_bs_1 = sizeof(dest_1);
+
+   char *data_2 = (char *)"\"";
+   char dest_2[10];
+   size_t dest_bs_2 = sizeof(dest_2);
+
+   char *data_3 = (char *)"\\";
+   char dest_3[10];
+   size_t dest_bs_3 = sizeof(dest_3);
+
+   EXPECT_TRUE(dump_param_buffer(orig, data_1, data_bs, real_sz, dest_1, dest_bs_1));
+   EXPECT_STREQ(dest_1, "\"\\r\"");
+
+   EXPECT_TRUE(dump_param_buffer(orig, data_2, data_bs, real_sz, dest_2, dest_bs_2));
+   EXPECT_STREQ(dest_2, "\"\\\"\"");
+
+   EXPECT_TRUE(dump_param_buffer(orig, data_3, data_bs, real_sz, dest_3, dest_bs_3));
+   EXPECT_STREQ(dest_3, "\"\\\\\"");
+
+   // For `if (dest_end - dest < ml - 1)` path
+   // and `if (dest >= dest_end - 4)` path
+   char *data_4 = (char *)"VeryVeryLong";
+   char dest_4[10];
+   size_t dest_bs_4 = sizeof(dest_4);
+
+   EXPECT_TRUE(dump_param_buffer(orig, data_4, data_bs, real_sz, dest_4, dest_bs_4));
+   EXPECT_STREQ(dest_4, "\"Very...\"");
+
+   // For `if (s == data_end && real_sz > 0 && data_bs < real_sz)` path
+   char *data_5 = (char *)"abcd";
+   char dest_5[10];
+   size_t dest_bs_5 = sizeof(dest_5);
+
+   real_sz = 2;
+
+   EXPECT_TRUE(dump_param_buffer(orig, data_5, data_bs, real_sz, dest_5, dest_bs_5));
+   EXPECT_STREQ(dest_5, "\"ab\"");
+}
