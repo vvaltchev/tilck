@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__aarch64__)
 
    #define PAGE_SHIFT 12u
 

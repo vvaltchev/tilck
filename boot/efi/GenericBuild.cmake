@@ -96,7 +96,7 @@ add_custom_command(
    OUTPUT
       ${EFI_${EFI_ARCH}_FILE}
    COMMAND
-      objcopy ${OBJCOPY_OPTS} libefi_app_${EFI_ARCH}.so ${EFI_${EFI_ARCH}_FILE}
+      ${CMAKE_OBJCOPY} ${OBJCOPY_OPTS} libefi_app_${EFI_ARCH}.so ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
       ${SWITCHMODE_BIN}
       efi_app_${EFI_ARCH}

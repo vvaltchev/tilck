@@ -27,10 +27,7 @@ function build_ncurses {
       local o4="--without-progs --without-cxx --without-cxx-binding"
       local o5="--without-ada --without-manpages --without-dlsym"
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
-
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"

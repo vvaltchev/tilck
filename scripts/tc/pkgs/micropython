@@ -13,8 +13,16 @@ function download_micropython {
    extract_cachefile_tar_gz $tarname --
 }
 
-all_funcs_list+=(build_micropython)
+if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
+   all_funcs_list+=(build_micropython)
+fi
+
 function build_micropython {
+
+   if [[ $HOST_ARCH != "i386" ]] && [[ $HOST_ARCH != "x86_64" ]]; then
+      echo "ERROR: HOST_ARCH=$HOST_ARCH not supported"
+      return
+   fi
 
    pushd $ARCH
 

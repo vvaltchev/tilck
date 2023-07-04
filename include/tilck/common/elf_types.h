@@ -16,7 +16,8 @@
    typedef Elf32_Shdr Elf_Shdr;
    typedef Elf32_Sym Elf_Sym;
 
-#elif defined(USE_ELF64) || (defined(__x86_64__) && !defined(USE_ELF32))
+#elif defined(USE_ELF64) || ((defined(__x86_64__) || defined(__aarch64__)) \
+                             && !defined(USE_ELF32))
 
    typedef Elf64_Addr Elf_Addr;
    typedef Elf64_Ehdr Elf_Ehdr;

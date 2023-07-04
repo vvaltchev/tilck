@@ -100,7 +100,10 @@ function download_gcc_tc_internal {
 
 ############################################################
 
-all_funcs_list+=(download_gcc_toolchain)
+if [[ "$HOST_ARCH" == "x86_64" ]]; then
+   all_funcs_list+=(download_gcc_toolchain)
+fi
+
 function download_gcc_toolchain {
 
    if [[ "$DOWNLOAD_IGNORING_SYSCC" != 1 && "$USE_SYSCC" == 1 ]]; then
@@ -118,7 +121,10 @@ function download_gcc_toolchain_installed_status {
 }
 
 
-all_funcs_list+=(download_gcc_glibc_toolchain)
+if [[ "$HOST_ARCH" == "x86_64" ]]; then
+   all_funcs_list+=(download_gcc_glibc_toolchain)
+fi
+
 function download_gcc_glibc_toolchain {
 
    pushd $TC

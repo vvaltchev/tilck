@@ -95,11 +95,8 @@ function build_fbdoom {
       download_fbdoom
       cd fbDOOM
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-         #
          # Note: NOT TESTED yet.
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.

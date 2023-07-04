@@ -4,6 +4,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/build_info.h>
+#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/debug_utils.h>

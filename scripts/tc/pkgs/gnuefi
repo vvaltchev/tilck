@@ -26,6 +26,8 @@ function download_gnu_efi {
 
 function build_gnuefi_arch {
 
+   echo build_gnuefi_arch
+
    pushd $ARCH
 
       if ! [ -d gnu-efi ]; then
@@ -35,10 +37,9 @@ function build_gnuefi_arch {
          download_gnu_efi
          cd gnu-efi
 
-         if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+         if [[ "$HOST_ARCH" != "$ARCH" ]]; then
             local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
          else
-            # HOST_ARCH must be == ARCH
             local arch_flags="ARCH=${ARCH_EFI}"
          fi
 
@@ -52,6 +53,8 @@ function build_gnuefi_arch {
 }
 
 function build_gnuefi_build_arch {
+
+   echo build_gnuefi_build_arch
 
    pushd $BUILD_ARCH
 

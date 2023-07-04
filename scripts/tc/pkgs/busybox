@@ -10,10 +10,8 @@ function internal_build_busybox {
 
    cp $MAIN_DIR/other/busybox.config .config
 
-   if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
 
-      # Case HOST_ARCH == ARCH
-      # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
       export SYS_CC="$CC"
       export SYS_CXX="$CXX"
       export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
@@ -25,7 +23,6 @@ function internal_build_busybox {
    fi
 
    export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
-
    run_command2 "make -j$BUILD_PAR" build.log
 
    export CROSS_COMPILE=""

@@ -28,10 +28,8 @@ function build_zlib {
 
       local p="$TC/$ARCH/zlib/install"
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
          export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"

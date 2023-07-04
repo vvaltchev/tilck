@@ -7,6 +7,7 @@
 
 static const struct syscall_info __tracing_metadata[] =
 {
+#if defined(__i386__) || defined(__x86_64)
    SYSCALL_TYPE_0(SYS_fork),
    SYSCALL_TYPE_0(SYS_pause),
    SYSCALL_TYPE_0(SYS_getuid),
@@ -375,6 +376,14 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("whence", &ptype_whence, sys_param_in),
       },
    },
+#endif
+
+#else
+
+/*
+ * TODO: add tracing metadata for AARCH64
+ */
+
 #endif
 
    { .sys_n = INVALID_SYSCALL },

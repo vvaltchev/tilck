@@ -26,11 +26,8 @@ function build_tree_cmd {
       download_tree_cmd
       cd tree_cmd
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-         #
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.
 
@@ -42,6 +39,7 @@ function build_tree_cmd {
          export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
 
       else
+
          # Default case
          set_cc_vars_to_tc
       fi

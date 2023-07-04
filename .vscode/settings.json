@@ -217,7 +217,8 @@
       "inttypes.h": "c",
       "stddef.h": "c",
       "stdint.h": "c",
-      "alltypes.h": "c"
+      "alltypes.h": "c",
+      "kmalloc_block_node.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3",
 }

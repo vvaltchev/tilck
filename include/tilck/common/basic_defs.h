@@ -84,6 +84,19 @@
    #define BITS64
    #define NBITS 64
 
+#elif defined(__aarch64__) && (defined(USERMODE_APP) || defined(UNIT_TEST_ENVIRONMENT))
+
+   /*
+    * The Tilck kernel doesn't support ARM or AARCH64 (yet), but it can be
+    * compiled on Linux-aarch64 as host architecture. Therefore, we need
+    * to build the build apps for aarch64.
+    */
+   STATIC_ASSERT(sizeof(void *) == 8);
+   STATIC_ASSERT(sizeof(long) == sizeof(void *));
+
+   #define BITS64
+   #define NBITS 64
+
 #else
 
    #error Architecture not supported.

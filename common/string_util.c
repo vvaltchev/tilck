@@ -216,3 +216,33 @@ inline void str_reverse(char *str, size_t len)
       end--;
    }
 }
+
+#if defined(__aarch64__) && defined(KERNEL_TEST)
+
+void *memset16(u16 *s, u16 val, size_t n)
+{
+   for (size_t i = 0; i < n; i++)
+      s[i] = val;
+
+   return s;
+}
+
+void *memset32(u32 *s, u32 val, size_t n)
+{
+   for (size_t i = 0; i < n; i++)
+      s[i] = val;
+
+   return s;
+}
+
+void *memcpy16(void *dest, const void *src, size_t n)
+{
+   return memcpy(dest, src, n * 2);
+}
+
+void *memcpy32(void *dest, const void *src, size_t n)
+{
+   return memcpy(dest, src, n * 4);
+}
+
+#endif

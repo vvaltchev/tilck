@@ -2,6 +2,7 @@
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/sched.h>

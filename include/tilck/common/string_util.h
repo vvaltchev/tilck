@@ -29,6 +29,13 @@
 
 #endif
 
+#if !(defined(__aarch64__) && defined(KERNEL_TEST))
+
+/*
+ * Don't define this function in this special case, because we're going to
+ * include <string.h>.
+ */
+
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
 int memcmp(const void *m1, const void *m2, size_t n);
@@ -40,6 +47,8 @@ char *strncat(char *dest, const char *src, size_t n);
 
 int isxdigit(int c);
 int isspace(int c);
+
+#endif
 
 EXTERN inline bool isalpha_lower(int c) {
    return IN_RANGE_INC(c, 'a', 'z');
@@ -70,7 +79,22 @@ EXTERN inline int isprint(int c) {
 }
 
 #if defined(__i386__) || defined(__x86_64__)
+
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
+
+#elif defined(__aarch64__) && defined(KERNEL_TEST)
+
+   /*
+    * The Tilck kernel has no support for AARCH64 per se, but its noarch
+    * code can be compiled as part of the unit tests on an AARCH64 host.
+    */
+
+   #include <string.h>
+   void *memset16(u16 *s, u16 val, size_t n);
+   void *memset32(u32 *s, u32 val, size_t n);
+   void *memcpy16(void *dest, const void *src, size_t n);
+   void *memcpy32(void *dest, const void *src, size_t n);
+
 #endif
 
 #undef EXTERN

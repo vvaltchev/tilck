@@ -66,14 +66,28 @@ smart_config_file(
    ${CMAKE_BINARY_DIR}/scripts/generate_test_coverage_report
 )
 
-file(
-   GLOB SOURCES
+if (${HOST_ARCH_FAMILY} STREQUAL "generic_x86")
 
-   "*.c"
-   "*.cpp"
-   "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
-   "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
-)
+   file(
+      GLOB SOURCES
+
+      "*.c"
+      "*.cpp"
+      "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
+      "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
+   )
+
+else()
+
+   file(
+      GLOB SOURCES
+
+      "*.c"
+      "*.cpp"
+      "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
+   )
+
+endif()
 
 # Override CMake's default executable output directory
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})

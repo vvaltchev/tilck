@@ -33,6 +33,19 @@
    #define ARCH_PROC_MEMBERS_SIZE     8
    #define ARCH_PROC_MEMBERS_ALIGN    8
 
+#elif defined(__aarch64__)
+
+   typedef void *pdir_t;
+   typedef u64 regs_t;
+   typedef u64 arch_task_members_t;
+   typedef u64 arch_proc_members_t;
+
+   #define ARCH_TASK_MEMBERS_SIZE     8
+   #define ARCH_TASK_MEMBERS_ALIGN    8
+
+   #define ARCH_PROC_MEMBERS_SIZE     8
+   #define ARCH_PROC_MEMBERS_ALIGN    8
+
 #else
 
    #error Unsupported architecture.

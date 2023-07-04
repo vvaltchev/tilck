@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/string_util.h>
+
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/sched.h>
