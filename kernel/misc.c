@@ -8,6 +8,7 @@
 #include <tilck/common/printk.h>
 #include <tilck/common/compiler.h>
 #include <tilck/common/build_info.h>
+#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>

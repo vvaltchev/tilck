@@ -13,8 +13,16 @@ function download_tcc {
    extract_cachefile_tar_gz $tarname --
 }
 
-all_funcs_list+=(build_tcc)
+if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
+   all_funcs_list+=(build_tcc)
+fi
+
 function build_tcc {
+
+   if [[ $HOST_ARCH != "i386" ]] && [[ $HOST_ARCH != "x86_64" ]]; then
+      echo "ERROR: HOST_ARCH=$HOST_ARCH not supported"
+      return
+   fi
 
    if [ ! -d $ARCH/tcc ]; then
 
@@ -56,17 +64,7 @@ function build_tcc {
 
       local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
 
-
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-         # Default case
-         set_cc_vars_to_tc
-
-      else
-
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"
@@ -85,6 +83,11 @@ function build_tcc {
          ln -s /usr/include/$ARCH-linux-gnu/sys include/
          ln -s /usr/include/$ARCH-linux-gnu/bits include/
          ln -s /usr/include/$ARCH-linux-gnu/gnu include/
+
+      else
+
+         # Default case
+         set_cc_vars_to_tc
       fi
 
       # Hack: unfortunately, the TCC build wants to build, with the

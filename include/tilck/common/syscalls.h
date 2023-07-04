@@ -70,6 +70,12 @@ enum tilck_cmd {
    #undef SYS_gettimeofday
    #define SYS_gettimeofday       78
 
+#elif defined(__aarch64__) && (defined(KERNEL_TEST) || defined(TESTING))
+
+   /* Allow this just for the unit tests */
+
 #else
+
    #error Architecture not supported
+
 #endif

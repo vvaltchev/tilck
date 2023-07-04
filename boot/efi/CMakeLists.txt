@@ -10,6 +10,7 @@ list(
 
    -fno-stack-protector
    -fshort-wchar
+   -mno-red-zone
 
    -DEFI_DEBUG=0                # Because of -Wundef
    -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef

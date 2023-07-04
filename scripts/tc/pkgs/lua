@@ -26,11 +26,8 @@ function build_lua {
       download_lua
       cd lua
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-         #
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.
 

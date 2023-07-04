@@ -3,6 +3,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/color_defs.h>
+#include <tilck/common/string_util.h>
 
 #include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/fs/devfs.h>

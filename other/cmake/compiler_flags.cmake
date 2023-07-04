@@ -93,7 +93,6 @@ set(
 
    -ffreestanding
    -fno-builtin
-   -mno-red-zone
 )
 JOIN("${FREESTANDING_FLAGS_LIST}" ${SPACE} FREESTANDING_FLAGS)
 
@@ -233,6 +232,7 @@ set(
    -fno-exceptions
    -fno-stack-protector
    -fno-asynchronous-unwind-tables
+   -mno-red-zone
 
    # Allow easier disassembly debugging
    # -mpush-args

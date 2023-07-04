@@ -21,7 +21,10 @@ function download_cmake_internal {
    CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
 }
 
-all_funcs_list+=(download_cmake)
+if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
+   all_funcs_list+=(download_cmake)
+fi
+
 function download_cmake {
 
    pushd host_$HOST_ARCH

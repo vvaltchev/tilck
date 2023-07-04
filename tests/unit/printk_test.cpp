@@ -63,9 +63,9 @@ TEST(printk, rare)
    EXPECT_EQ(spk_wrapper("%jx", 0xaabbccddeeffll), "aabbccddeeff");
 
    /* Half (short) and half half (char) */
-   EXPECT_EQ(spk_wrapper("%x", (char)-1), "ffffffff"); /* just for comparison */
-   EXPECT_EQ(spk_wrapper("%hx", (char)-1), "ffff");
-   EXPECT_EQ(spk_wrapper("%hhx", (char)-1), "ff");
+   EXPECT_EQ(spk_wrapper("%x", (signed char)-1), "ffffffff");
+   EXPECT_EQ(spk_wrapper("%hx", (signed char)-1), "ffff");
+   EXPECT_EQ(spk_wrapper("%hhx", (signed char)-1), "ff");
    EXPECT_EQ(spk_wrapper("%hd", (short)-1234), "-1234");
    EXPECT_EQ(spk_wrapper("%hhd", (signed char)-123), "-123");
 
