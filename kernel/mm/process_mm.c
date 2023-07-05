@@ -125,7 +125,7 @@ static int create_process_mmap_heap(struct process *pi)
                           USER_MMAP_BEGIN,
                           pi->mi->mmap_heap_size,
                           PAGE_SIZE,
-                          KMALLOC_MAX_ALIGN,    /* alloc block size */
+                          PAGE_SIZE,            /* alloc block size */
                           false,                /* linear mapping */
                           NULL,                 /* metadata_nodes */
 #if MMAP_NO_COW
