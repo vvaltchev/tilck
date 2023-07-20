@@ -323,7 +323,7 @@ int cmd_extra(int argc, char **argv)
    return rc;
 }
 
-int cmd_getuids(void)
+int cmd_getuids(int argc, char **argv)
 {
    DEVSHELL_CMD_ASSERT(syscall(SYS_getuid) == 0);
    DEVSHELL_CMD_ASSERT(syscall(SYS_getgid) == 0);
@@ -336,5 +336,56 @@ int cmd_getuids(void)
       DEVSHELL_CMD_ASSERT(syscall(SYS_getegid16) == 0);
    #endif
 
+   return 0;
+}
+
+int cmd_exit_cb(int argc, char **argv)
+{
+   int wstatus;
+   int child_pid;
+   long before_cb;
+   long after_cb;
+   int rc;
+
+   rc = sysenter_call3(TILCK_CMD_SYSCALL,
+                       TILCK_CMD_GET_VAR_LONG,
+                       "test_on_exit_cb_counter",
+                       &before_cb);
+
+   if(rc == -ENOENT) {
+      printf(PFX "[SKIP] No kernel symbols\n");
+      return 0;
+   }
+
+   DEVSHELL_CMD_ASSERT(before_cb == 3);
+   child_pid = fork();
+
+   if (child_pid < 0) {
+      fprintf(stderr, "%s\n", "fork() failed");
+      return 1;
+   }
+
+   if (!child_pid) {
+
+      int ret = sysenter_call2(TILCK_CMD_SYSCALL,
+                               TILCK_CMD_CALL_FUNC_0,
+                               "register_test_on_exit_callback");
+
+      exit(ret == -ENOENT ? 99 : ret);
+   }
+
+   waitpid(child_pid, &wstatus, 0);
+   DEVSHELL_CMD_ASSERT(WEXITSTATUS(wstatus) == 0);
+
+   sysenter_call3(TILCK_CMD_SYSCALL,
+                  TILCK_CMD_GET_VAR_LONG,
+                  "test_on_exit_cb_counter",
+                  &after_cb);
+
+   sysenter_call2(TILCK_CMD_SYSCALL,
+                  TILCK_CMD_CALL_FUNC_0,
+                  "unregister_test_on_exit_callback");
+
+   DEVSHELL_CMD_ASSERT(after_cb == before_cb + 1);
    return 0;
 }
