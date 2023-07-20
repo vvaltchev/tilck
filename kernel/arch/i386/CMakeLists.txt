@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.2)
 # Remove -rdynamic
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
+
 # Options that will be used only when building the actual kernel, not when
 # building kernel's code for unit testing.
 

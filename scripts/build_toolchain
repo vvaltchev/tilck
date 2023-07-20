@@ -116,7 +116,7 @@ if [[ "$ARCH" == "i386" ]]; then
    ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
    ARCH_GCC_TC_CODENAME="x86-i686"
 
-   if [ -z "$ARCH_GCC_TC_VER" ]; then
+   if [[ "$ARCH_GCC_TC_VER" == "" ]] && [[ "$HOST_ARCH" != "aarch64" ]]; then
 
       if [ "$GCC_TC_VER" = "6.4.0" ]; then
 
@@ -155,7 +155,7 @@ elif [[ "$ARCH" == "x86_64" ]]; then
    ARCH_GCC_FLAGS="-m64"
    ARCH_GCC_TC_CODENAME="x86-64-core-i7"
 
-   if [ -z "$ARCH_GCC_TC_VER" ]; then
+   if [[ "$ARCH_GCC_TC_VER" == "" ]] && [[ "$HOST_ARCH" != "aarch64" ]]; then
 
       if [ "$GCC_TC_VER" = "6.4.0" ]; then
 
@@ -187,6 +187,15 @@ else
    echo "Architecture '$ARCH' not supported."
    exit 1
 fi
+
+#
+# Support for AARCH64 as build machine (limited)
+#
+if [[ "$HOST_ARCH" == "aarch64" ]]; then
+   GCC_TC_VER="9.4.0"
+   ARCH_GCC_TC_VER=""
+fi
+
 
 if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
 
@@ -223,9 +232,7 @@ echo
 
 function save_cc_vars {
 
-   if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
-
-      # HOST_ARCH == ARCH case
+   if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
       if [ -z "$AR" ]; then
          export AR="ar"
@@ -249,10 +256,9 @@ function save_cc_vars {
 
 function set_cc_vars_to_tc {
 
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
 
-      # Default case: use our cross toolchain
-
+      # Default case
       export CC="${ARCH_GCC_TC}-linux-gcc"
       export CXX="${ARCH_GCC_TC}-linux-g++"
       export AR="${ARCH_GCC_TC}-linux-ar"
@@ -297,9 +303,15 @@ function arch_checks {
       echo
       echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
       echo
-      echo "The only (unofficially supported) scenario allowing "
-      echo "HOST_ARCH != $BUILD_ARCH is to have HOST_ARCH == ARCH and the env "
-      echo "variables USE_SYSCC, CC, CXX set correctly."
+      echo "However, there is *unofficial* support for the following"
+      echo "alternative scenarios: "
+      echo
+      echo "   1. HOST_ARCH == ARCH"
+      echo "   2. HOST_ARCH == aarch64"
+      echo
+      echo "Scenario 1. requires the environment variables USE_SYSCC, CC and "
+      echo "CXX to be set correctly. Scenario 2 is will download and build"
+      echo "a whole cross-gcc toolchain for the selected ARCH".
       echo
 
       if [[ "$HOST_ARCH" == "$ARCH" ]]; then
@@ -325,6 +337,22 @@ function arch_checks {
 
             echo "In this case USE_SYSCC, CC and CXX are NOT set."
             echo "Unable to continue."
+            exit 1
+         fi
+
+      elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
+         echo "This scenario is absolutely EXPERIMENTAL and will require"
+         echo "the download and the build of a custom cross GCC toolchain"
+         echo ""
+         echo -n "Proceed [Y/n] ? "
+
+         read ans
+
+         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
+            echo "OK."
+         else
+            echo "Aborted."
             exit 1
          fi
 
@@ -460,19 +488,23 @@ function show_help {
    echo "      $0 [-n]                             run default functions"
    echo "      $0 -s func1 [func2 [func3 [...]]]   run specific functions"
    echo ""
-   echo "   -n    Do not check nor install system packages (advanced)"
-   echo "           Even if many packages are downloaded & built by this script"
-   echo "           without touching the system, some packages are required to"
-   echo "           be installed in the system. For example: wget, git, make,"
-   echo "           binutils, bzip2, rpmextract and others similar. When -n"
-   echo "           is NOT passed, the script first tries to detect the current"
-   echo "           Linux distribution and then it checks if all the required"
-   echo "           packages are already installed. In case some packages need"
-   echo "           to be installed, this script will show a list and run:"
-   echo "               sudo <package manager> install [pkg1 [pkg2 [pkg3 ...]]]"
-   echo "           In case the user does not want this script to install the "
-   echo "           necessary packages he/she could just interrupt this script"
-   echo "           with Ctrl+C, without affecting the system."
+   echo "   -n        Do not check nor install system packages (advanced)"
+   echo "                Even if many packages are downloaded & built by this"
+   echo "                script without touching the system, some packages are"
+   echo "                required to be installed in the system. For example: "
+   echo "                wget, git, make, binutils, bzip2, rpmextract and "
+   echo "                others similar. When -n is NOT passed, the script "
+   echo "                first tries to detect the current Linux distribution "
+   echo "                and then it checks if all the required packages are "
+   echo "                already installed. In case some packages need to be "
+   echo "                installed, this script will show a list and run: "
+   echo "                    sudo <package manager> install [pkg1 [pkg2 ...]]"
+   echo "                In case the user does not want this script to install "
+   echo "                the necessary packages he/she could just interrupt "
+   echo "                this script with Ctrl+C, without affecting the "
+   echo "                system."
+   echo
+   echo "   --clean   Remove everything from the toolchain, except the cache"
    echo ""
    echo "Functions supported by this script (with -s):"
    echo ""
@@ -549,6 +581,26 @@ function check_func {
    return 1 # Function not found
 }
 
+function perform_full_clean {
+
+   echo "*** TOOLCHAIN CLEAN ***"
+   if ! [ -d "$TC" ]; then
+      exit 0
+   fi
+
+   cd "$TC"
+   for x in *; do
+      if [[ "$x" != "cache" ]]; then
+         echo "Deleting '$x'..."
+         rm -rf "$x"
+      fi
+   done
+   rm -f .gcc_tc_ver_*
+   echo "DONE"
+   exit 0
+}
+
+
 ##########################################################
 #
 # MAIN
@@ -557,18 +609,28 @@ function check_func {
 
 function main {
 
+   if [[ "$1" == "--clean" ]]; then
+      perform_full_clean
+   fi
+
    default_funcs=()
 
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-      default_funcs+=(download_gcc_toolchain)   # note: this is the default case
-   else
+      # Default case: we're building on a x86-64 machine
+      default_funcs+=(download_gcc_toolchain)
+   elif [[ "$HOST_ARCH" == "$ARCH" ]]; then
       # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
       # we *must* build also libmusl, in order to link with musl programs
       # compiled with the system compiler.
       default_funcs+=(build_libmusl)
+   elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+      default_funcs+=(custom_gcc_cross_tc)
    fi
 
-   default_funcs+=(download_cmake)
+   if [[ "$HOST_ARCH" == "x86_64" ]]; then
+      default_funcs+=(download_cmake)
+   fi
+
    default_funcs+=(build_gnuefi)
    default_funcs+=(build_mtools)
    default_funcs+=(build_zlib)
@@ -594,7 +656,7 @@ function main {
 
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
 
       local ha=$TC/host_${HOST_ARCH}
       GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
@@ -629,8 +691,13 @@ function main {
    mkdir -p $TC/noarch
    mkdir -p $TC/i386
    mkdir -p $TC/x86_64
-   mkdir -p $TC/host_i386
-   mkdir -p $TC/host_x86_64
+
+   if [[ "$HOST_ARCH" == "aarch64" ]]; then
+      mkdir -p $TC/host_aarch64
+   else
+      mkdir -p $TC/host_i386
+      mkdir -p $TC/host_x86_64
+   fi
 
    cd $TC
 

@@ -15,7 +15,7 @@ host_arch="@HOST_ARCH@"
 arch="@ARCH@"
 spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
 
-if [ "@HOST_ARCH@" == "x86_64" ]; then
+if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
       strip="$gcctc/$archgcc-linux-strip"
    fi

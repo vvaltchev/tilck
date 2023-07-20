@@ -23,27 +23,36 @@ if (NOT ${CMAKE_VERSION} VERSION_LESS "3.12.0")
 endif()
 
 set(DEFAULT_TARGET_ARCH "i386")
-set(BUILD_ARCH "x86_64")
 
 if ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
 
    set(HOST_ARCH "x86_64")
    set(HOST_ARCH_BITS 64)
+   set(HOST_ARCH_FAMILY "generic_x86")
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "amd64")
 
    set(HOST_ARCH "x86_64")
    set(HOST_ARCH_BITS 64)
+   set(HOST_ARCH_FAMILY "generic_x86")
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i686")
 
    set(HOST_ARCH "i386")
    set(HOST_ARCH_BITS 32)
+   set(HOST_ARCH_FAMILY "generic_x86")
 
 elseif ("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "i386")
 
    set(HOST_ARCH "i386")
    set(HOST_ARCH_BITS 32)
+   set(HOST_ARCH_FAMILY "generic_x86")
+
+elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+
+   set(HOST_ARCH "aarch64")
+   set(HOST_ARCH_BITS 64)
+   set(HOST_ARCH_FAMILY "arm")
 
 endif()
 
@@ -81,7 +90,7 @@ set(BUILD_SCRIPTS       ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
-set(TCROOT_BA           ${TCROOT}/host_${BUILD_ARCH})
+set(TCROOT_BA           ${TCROOT}/host)
 set(LCOV_VER            "1.15")
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -143,10 +152,8 @@ if (USE_SYSCC)
    set(SYS_CXX "${CMAKE_CXX_COMPILER}")
 endif()
 
-if (NOT "${HOST_ARCH}" STREQUAL "x86_64")
-   if (NOT "${HOST_ARCH}" STREQUAL "${ARCH}")
-      show_wrong_arch_error()
-   else()
+if ("${ARCH}" STREQUAL "i386")
+   if ("${HOST_ARCH}" STREQUAL "${ARCH}")
       if (USE_SYSCC)
          show_same_arch_build_warning()
       else()
@@ -916,6 +923,11 @@ set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googletest)
 set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googlemock)
 
 if (ARCH_GTESTS)
+
+   if (NOT ${HOST_ARCH_FAMILY} STREQUAL ${ARCH_FAMILY})
+      show_arch_gtests_require_same_target_family_error()
+   endif()
+
    set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-${GTEST_VER})
    set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gmock-${GTEST_VER})
    set(GTEST_BTC_COMMAND "build_gtest_arch build_gmock_arch")

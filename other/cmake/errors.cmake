@@ -1,21 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.2)
 
-function (show_wrong_arch_error)
-
-   set(msg "")
-   string(CONCAT msg "Tilck has been designed to be built on x86_64 host "
-                     "machines no matter which target architecture has been "
-                     "chosen. Reason: the build system uses a toolchain "
-                     "pre-compiled for x86_64 hosts. Current system CPU: "
-                     "'${CMAKE_SYSTEM_PROCESSOR}'. However, in a *non* "
-                     "official way, building on HOST_ARCH == ARCH is "
-                     "supported, if USE_SYSCC, CC, CXX are set.")
-
-   message(FATAL_ERROR "\n${msg}")
-
-endfunction()
-
 function (show_missing_use_syscc_error)
 
    set(msg "")
@@ -110,5 +95,17 @@ function (show_no_ms_abi_support_warning relPath)
                      "please use a non-ancient GCC compiler.")
 
    message(WARNING "\n${msg}\n")
+
+endfunction()
+
+function (show_arch_gtests_require_same_target_family_error)
+
+   set(msg "")
+   string(CONCAT msg "Building the arch gtests requires the host to have "
+                     "the same arch of the target, or be in the same family. "
+                     "ARCH_FAMILY: ${ARCH_FAMILY} vs "
+                     "HOST_ARCH_FAMILY: ${HOST_ARCH_FAMILY}")
+
+   message(FATAL_ERROR "\n${msg}\n")
 
 endfunction()

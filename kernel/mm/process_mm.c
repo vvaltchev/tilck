@@ -125,7 +125,7 @@ static int create_process_mmap_heap(struct process *pi)
                           USER_MMAP_BEGIN,
                           pi->mi->mmap_heap_size,
                           PAGE_SIZE,
-                          KMALLOC_MAX_ALIGN,    /* alloc block size */
+                          PAGE_SIZE,            /* alloc block size */
                           false,                /* linear mapping */
                           NULL,                 /* metadata_nodes */
 #if MMAP_NO_COW
@@ -270,9 +270,11 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
       per_heap_kmalloc_flags |= KMALLOC_FL_NO_ACTUAL_ALLOC;
    }
 
-   if (!pi->mi)
-      if ((rc = create_process_mmap_heap(pi)))
+   if (!pi->mi) {
+      if ((rc = create_process_mmap_heap(pi))) {
          return rc;
+      }
+   }
 
    disable_preemption();
    {

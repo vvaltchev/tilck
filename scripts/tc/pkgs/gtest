@@ -118,7 +118,10 @@ function build_gmock_installed_status {
    fi
 }
 
-all_funcs_list+=(build_gtest_arch)
+if [[ "$HOST_ARCH" == "x86_64" || "$HOST_ARCH" == "i386" ]]; then
+   all_funcs_list+=(build_gtest_arch)
+fi
+
 function build_gtest_arch {
 
    download_googletest
@@ -171,7 +174,10 @@ function build_gtest_arch_installed_status {
 }
 
 
-all_funcs_list+=(build_gmock_arch)
+if [[ "$HOST_ARCH" == "x86_64" || "$HOST_ARCH" == "i386" ]]; then
+   all_funcs_list+=(build_gmock_arch)
+fi
+
 function build_gmock_arch {
 
    download_googletest

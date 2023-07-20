@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# ---------------------------------------------------------------
+# NOTE
+#
+# This "script" is NOT meant to be executed directly.
+# It is included as a source file by scripts/build_toolchain.
+#
+# ---------------------------------------------------------------
+
+
+function custom_gcc_cross_tc {
+
+   url="https://vvaltchev.github.io/cache"
+   tarname="x86-i386-musl-1.1.24-gcc-9.4.0-aarch64.tar.bz2"
+
+   pushd $TC/host
+
+   if ! [ -d gcc_9_4_0_i386_musl ]; then
+
+      download_file_in_cache "$url" "$tarname"
+      extract_cachefile_tar_bz $tarname --
+      cd gcc_9_4_0_i386_musl/bin
+
+      for x in i686-linux-musl-*; do
+         n=$(echo $x | sed s/musl-//);
+         mv $x $n;
+      done
+      rm i686-linux-cc
+   fi
+
+   popd
+}
+
+function custom_gcc_cross_tc_installed_status {
+
+   if [ -d $TC/host_${HOST_ARCH}/gcc_9_4_0_i386_musl ]; then
+      echo "installed i386"
+   fi
+}
