@@ -338,3 +338,37 @@ int cmd_getuids(void)
 
    return 0;
 }
+
+int cmd_exit_cb(void)
+{
+   int wstatus;
+   int child_pid;
+   long f, c;
+
+   do_sysenter_call3(TILCK_CMD_SYSCALL,
+                     TO_PTR(TILCK_CMD_GET_VAR_LONG),
+                     "cmd_exit_cb_var_0",
+                     &f);
+
+   child_pid = fork();
+
+   if (child_pid < 0) {
+      fprintf(stderr, "%s\n", "fork() failed");
+      return 1;
+   }
+
+   if (!child_pid) {
+      do_sysenter_call2(TILCK_CMD_SYSCALL,
+                        TO_PTR(TILCK_CMD_CALL_FUNC_0),
+                        "cmd_exit_cb_func_0");
+      exit(0);
+   }
+   waitpid(child_pid, &wstatus, 0);
+   do_sysenter_call3(TILCK_CMD_SYSCALL,
+                     TO_PTR(TILCK_CMD_GET_VAR_LONG),
+                     "cmd_exit_cb_var_0",
+                     &c);
+   if (c != f + 1)
+      return 1;
+   return 0;
+}

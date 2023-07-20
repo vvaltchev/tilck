@@ -13,6 +13,8 @@
 
 typedef int (*tilck_cmd_func)();
 static int sys_tilck_run_selftest(const char *user_selftest);
+static int tilck_call_fn_0(const char *fn_name);
+static int tilck_get_var_long(const char *var_name, long *buf);
 
 static void *tilck_cmds[TILCK_CMD_COUNT] = {
 
@@ -26,6 +28,8 @@ static void *tilck_cmds[TILCK_CMD_COUNT] = {
    [TILCK_CMD_TRACING_TOOL] = NULL,
    [TILCK_CMD_PS_TOOL] = NULL,
    [TILCK_CMD_DEBUGGER_TOOL] = NULL,
+   [TILCK_CMD_CALL_FUNC_0] = tilck_call_fn_0,
+   [TILCK_CMD_GET_VAR_LONG] = tilck_get_var_long,
 };
 
 void register_tilck_cmd(int cmd_n, void *func)
@@ -72,4 +76,27 @@ int sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4)
       return -EINVAL;
 
    return func(a1, a2, a3, a4);
+}
+
+static int tilck_call_fn_0(const char *fn_name)
+{
+   const ulong fn_addr = find_addr_of_symbol(fn_name);
+
+   if (fn_addr)
+      ((void (*)(void))fn_addr)();
+   else {
+      printk("Global function %s not found\n", fn_name);
+      return 1;
+   }
+
+   return 0;
+}
+
+static int tilck_get_var_long(const char *var_name, long *buf)
+{
+   const ulong var_addr = find_addr_of_symbol(var_name);
+   *buf = *((long*)var_addr);
+
+
+   return 0;
 }
