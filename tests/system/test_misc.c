@@ -323,7 +323,7 @@ int cmd_extra(int argc, char **argv)
    return rc;
 }
 
-int cmd_getuids(void)
+int cmd_getuids(int argc, char **argv)
 {
    DEVSHELL_CMD_ASSERT(syscall(SYS_getuid) == 0);
    DEVSHELL_CMD_ASSERT(syscall(SYS_getgid) == 0);
@@ -339,7 +339,7 @@ int cmd_getuids(void)
    return 0;
 }
 
-int cmd_exit_cb(void)
+int cmd_exit_cb(int argc, char **argv)
 {
    int wstatus;
    int child_pid;
