@@ -343,12 +343,12 @@ int cmd_exit_cb(int argc, char **argv)
 {
    int wstatus;
    int child_pid;
-   long f, c;
+   long before_cb, after_cb;
 
    do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
-                     "cmd_exit_cb_var_0",
-                     &f);
+                     "test_on_exist_cb_counter",
+                     &before_cb);
 
    child_pid = fork();
 
@@ -360,15 +360,21 @@ int cmd_exit_cb(int argc, char **argv)
    if (!child_pid) {
       do_sysenter_call2(TILCK_CMD_SYSCALL,
                         TO_PTR(TILCK_CMD_CALL_FUNC_0),
-                        "cmd_exit_cb_func_0");
+                        "register_test_on_exit_callback");
       exit(0);
    }
    waitpid(child_pid, &wstatus, 0);
+
+   do_sysenter_call2(TILCK_CMD_SYSCALL,
+                     TO_PTR(TILCK_CMD_CALL_FUNC_0),
+                     "unregister_test_on_exit_callback");
+
    do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
-                     "cmd_exit_cb_var_0",
-                     &c);
-   if (c != f + 1)
-      return 1;
+                     "test_on_exist_cb_counter",
+                     &after_cb);
+
+   DEVSHELL_CMD_ASSERT(after_cb == before_cb + 1);
+
    return 0;
 }
