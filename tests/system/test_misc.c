@@ -343,12 +343,15 @@ int cmd_exit_cb(int argc, char **argv)
 {
    int wstatus;
    int child_pid;
-   long before_cb, after_cb;
+   long before_cb;
+   long after_cb;
 
    do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
-                     "test_on_exist_cb_counter",
+                     "test_on_exit_cb_counter",
                      &before_cb);
+
+   DEVSHELL_CMD_ASSERT(before_cb == 3);
 
    child_pid = fork();
 
@@ -365,14 +368,14 @@ int cmd_exit_cb(int argc, char **argv)
    }
    waitpid(child_pid, &wstatus, 0);
 
+   do_sysenter_call3(TILCK_CMD_SYSCALL,
+                     TO_PTR(TILCK_CMD_GET_VAR_LONG),
+                     "test_on_exit_cb_counter",
+                     &after_cb);
+
    do_sysenter_call2(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_CALL_FUNC_0),
                      "unregister_test_on_exit_callback");
-
-   do_sysenter_call3(TILCK_CMD_SYSCALL,
-                     TO_PTR(TILCK_CMD_GET_VAR_LONG),
-                     "test_on_exist_cb_counter",
-                     &after_cb);
 
    DEVSHELL_CMD_ASSERT(after_cb == before_cb + 1);
 

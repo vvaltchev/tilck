@@ -35,4 +35,4 @@ void register_module(struct module *m);
 #define MOD_serial_prio                      400
 #define MOD_sb16_prio                        410
 #define MOD_dp_prio                         1000
-#define MOD_systests                        1010  /* last */
+#define MOD_systests_prio                   1010  /* last */
