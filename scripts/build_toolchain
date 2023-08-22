@@ -33,7 +33,13 @@ fi
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
+
+if [[ "$MAIN_DIR" = *" "* ]]; then
+   echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
+   echo "Current path: '$MAIN_DIR'"
+   exit 1
+fi
 
 # Global toolchain directory
 
