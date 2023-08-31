@@ -5,8 +5,11 @@
 #include "defs.h"
 #include "utils.h"
 
+#include <tilck/common/boot.h>
+
 static multiboot_memory_map_t *multiboot_mmap;
 static UINT32 mmap_elems_count;
+static struct tilck_extra_boot_info extra_boot_info;
 
 static EFI_STATUS
 AllocateMbi(void)
@@ -58,14 +61,31 @@ MbiSetFramebufferInfo(void)
 }
 
 static UINT32
-EfiToMultibootMemType(UINT32 type)
+EfiToMultibootMemType(UINT32 type, UINT64 attribute)
 {
    switch (type) {
 
       case EfiReservedMemoryType:
+         return MULTIBOOT_MEMORY_RESERVED;
+
       case EfiRuntimeServicesCode:
       case EfiRuntimeServicesData:
-         return MULTIBOOT_MEMORY_RESERVED;
+         if (!(attribute & EFI_MEMORY_RUNTIME))
+            return MULTIBOOT_MEMORY_RESERVED;
+
+         /*
+          * EFI_MEMORY_RUNTIME specifies that the
+          * memory region is required at runtime and
+          * hence should be given a virtual mapping when
+          * SetVirtualAddressMap() is called.
+          *
+          * Consider Write-Protected (WP) (or Read-Only (RO),
+          * UEFI Spec 2.5+) regions as Runtime Code regions
+          * and the rest as Runtime Data regions.
+          */
+         return (attribute & EFI_MEMORY_WP)
+            ? TILCK_BOOT_EFI_RUNTIME_RO
+            : TILCK_BOOT_EFI_RUNTIME_RW;
 
       case EfiLoaderCode:
       case EfiLoaderData:
@@ -143,7 +163,7 @@ MultibootSaveMemoryMap(UINTN *mapkey)
 
    do {
 
-      UINT32 type = EfiToMultibootMemType(desc->Type);
+      UINT32 type = EfiToMultibootMemType(desc->Type, desc->Attribute);
       UINT64 start = desc->PhysicalStart;
       UINT64 end = start + desc->NumberOfPages * PAGE_SIZE;
 
@@ -264,6 +284,35 @@ MbiSetPointerToAcpiTable(void)
       return EFI_SUCCESS;
    }
 
+   extra_boot_info.RSDP = (u32)tablePaddr;
+   return EFI_SUCCESS;
+}
+
+static EFI_STATUS
+MbiSetPointerToRuntimeServices(void)
+{
+#if defined(BITS64)
+   extra_boot_info.RT = 0;
+#else
+   extra_boot_info.RT = (EFI_PHYSICAL_ADDRESS)(ulong)ST->RuntimeServices;
+#endif
+   return EFI_SUCCESS;
+}
+
+static EFI_STATUS
+MbiSetExtraBootInfo(void)
+{
+   EFI_STATUS status = EFI_SUCCESS;
+   EFI_PHYSICAL_ADDRESS paddr = EFI_MBI_MAX_ADDR;
+
+   status = BS->AllocatePages(AllocateMaxAddress,
+                              EfiLoaderData,
+                              1,
+                              &paddr);
+   HANDLE_EFI_ERROR("AllocatePages");
+
+   BS->CopyMem(TO_PTR(paddr), &extra_boot_info, sizeof(extra_boot_info));
+
    /*
     * HACK: we're setting ACPI 2.0's RDSP to the `apm_table` field in
     * multiboot's MBI struct. That's wrong to do (in general), but
@@ -294,9 +343,20 @@ MbiSetPointerToAcpiTable(void)
     *       option because would require always booting Tilck with its
     *       bootloader under QEMU: that's slower for tests and limiting for
     *       debugging purposes.
+    *
+    * Update
+    * -----------------
+    * We set struct tilck_extra_boot_info to the `apm_table` field
+    * instead of RSDP as mentioned earlier.
+    *
+    * Struct tilck_extra_boot_info stores RSDP and
+    * RT (UEFI Runtime Services pointer).
     */
-   gMbi->apm_table = (u32)tablePaddr;
-   return EFI_SUCCESS;
+   
+   gMbi->apm_table = (u32)paddr;
+
+end:
+   return status;
 }
 
 static void
@@ -324,6 +384,12 @@ SetupMultibootInfo(void)
 
    status = MbiSetPointerToAcpiTable();
    HANDLE_EFI_ERROR("MbiSetPointerToAcpiTable");
+
+   status = MbiSetPointerToRuntimeServices();
+   HANDLE_EFI_ERROR("MbiSetPointerToRuntimeServices");
+
+   status = MbiSetExtraBootInfo();
+   HANDLE_EFI_ERROR("MbiSetExtraBootInfo");
 
    MbiSetFramebufferInfo();
    MbiSetKernelCmdline();

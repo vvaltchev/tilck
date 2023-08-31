@@ -14,6 +14,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
 include_directories(${GTEST_SOURCE_DIR}/include)
 include_directories(${GMOCK_SOURCE_DIR}/include)
 
+include_directories(${TCROOT}/i386/gnu-efi/inc)
+
 # Create a static library target for kernel's arch-independent code.
 add_library(
 
