@@ -6,6 +6,7 @@
 #include <tilck_gen_headers/mod_acpi.h>
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/boot.h>
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/utils.h>
@@ -32,6 +33,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/fs/kernelfs.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/uefi.h>
 
 #include <tilck/mods/console.h>
 #include <tilck/mods/fb_console.h>
@@ -200,10 +202,13 @@ read_multiboot_info(void)
       const char *name = TO_PTR(mbi->boot_loader_name);
 
       if (!strcmp(name, "TILCK_EFI")) {
+         struct tilck_extra_boot_info *extra_boot_info = TO_PTR(mbi->apm_table);
 
          printk("Multiboot: detected the TILCK_EFI bootloader\n");
-         printk("Multiboot: ACPI root ptr: %p\n", TO_PTR(mbi->apm_table));
-         acpi_set_root_pointer(mbi->apm_table);
+         printk("Multiboot: ACPI root ptr: %p\n", TO_PTR(extra_boot_info->RSDP));
+         printk("Multiboot: UEFI RT ptr: %p\n", TO_PTR(extra_boot_info->RT));
+         acpi_set_root_pointer(extra_boot_info->RSDP);
+         uefi_set_rt_pointer(extra_boot_info->RT);
       }
    }
 
@@ -359,6 +364,7 @@ kmain(u32 multiboot_magic, u32 mbi_addr)
    init_kmalloc();
    init_paging();
 
+   setup_uefi_runtime_services();
    acpi_mod_init_tables();
 
    init_console();
