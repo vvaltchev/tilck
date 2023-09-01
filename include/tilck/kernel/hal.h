@@ -168,7 +168,8 @@ void restore_current_fpu_regs(bool in_kernel);
 int get_irq_num(regs_t *context);
 int get_int_num(regs_t *context);
 void on_first_pdir_update(void);
-void hw_read_clock(struct datetime *out);
+extern void (*hw_read_clock)(struct datetime *out);
+void hw_read_clock_cmos(struct datetime *out);
 u32 hw_timer_setup(u32 hz);
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields);
