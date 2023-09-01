@@ -157,3 +157,27 @@ void selftest_delay(void)
 }
 
 REGISTER_SELF_TEST(delay, se_manual, &selftest_delay)
+
+void selftest_clock_latency(void)
+{
+   struct datetime d;
+   const int iters = 50000;
+   u64 start, duration;
+
+   printk("\n");
+   printk("Clock read-latency self-test\n");
+   printk("---------------------------------------------\n\n");
+
+   start = RDTSC();
+   disable_preemption();
+
+   for (int i = 0; i < iters; i++) {
+      hw_read_clock(&d);
+   }
+
+   enable_preemption();
+   duration = (RDTSC() - start) / iters;
+   printk("Latency: %" PRIu64 " RDTSC cycles\n", duration);
+}
+
+REGISTER_SELF_TEST(clock_latency, se_long, &selftest_clock_latency)
