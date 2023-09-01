@@ -5,6 +5,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 
+#include <tilck/kernel/hal.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/process.h>
@@ -13,12 +14,35 @@
 #include <efi.h>
 #include <efiapi.h>
 
+void (*hw_read_clock)(struct datetime *out) = &hw_read_clock_cmos;
 static ulong uefi_rt_addr;
 
 void uefi_set_rt_pointer(ulong addr)
 {
    ASSERT(!uefi_rt_addr);
    uefi_rt_addr = addr;
+}
+
+void hw_read_clock_uefi(struct datetime *out)
+{
+   struct datetime d;
+   EFI_STATUS status;
+   EFI_TIME Time;
+   EFI_RUNTIME_SERVICES *RT = TO_PTR(KERNEL_PA_TO_VA(uefi_rt_addr));
+
+   status = RT->GetTime(&Time, NULL);
+
+   if (status != EFI_SUCCESS)
+      panic("UEFI: Failed to get time");
+
+   d.sec = Time.Second;
+   d.min = Time.Minute;
+   d.hour = Time.Hour;
+   d.day = Time.Day;
+   d.month = Time.Month;
+   d.year = Time.Year;
+
+   *out = d;
 }
 
 void setup_uefi_runtime_services(void)
@@ -159,4 +183,6 @@ void setup_uefi_runtime_services(void)
 
    if (status != EFI_SUCCESS)
       panic("Failed to setup UEFI runtime services");
+
+   hw_read_clock = &hw_read_clock_uefi;
 }
