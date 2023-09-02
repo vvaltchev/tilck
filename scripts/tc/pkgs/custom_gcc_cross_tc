@@ -9,25 +9,60 @@
 #
 # ---------------------------------------------------------------
 
+function custom_gcc_cross_tc_internal {
+
+   local arch="$1"
+   local arch_gcc="$2"
+   local url="https://vvaltchev.github.io/cache"
+
+   if [[ $arch == i386 ]]; then
+      local arch_prefix="x86-i386"
+   elif [[ $arch == x86_64 ]]; then
+      local arch_prefix="x86-64"
+   fi
+
+   local tarname="${arch_prefix}-musl-1.1.24-gcc-$GCC_TC_VER-aarch64.tar.bz2"
+
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_bz $tarname --
+
+   # Adapt toolchains built with: https://github.com/richfelker/musl-cross-make
+   # but support also toolchains that contains the necessary renamings, by
+   # checking if the file exists first.
+
+   pushd gcc_${GCC_TC_VER_}_${arch}_musl/bin
+   for x in ${arch_gcc}-linux-musl-*; do
+      if [ -f "$x" ]; then
+         n=$(echo $x | sed s/musl-//)
+         mv $x $n;
+      fi
+   done
+   popd
+   rm -f ${arch_gcc}-linux-cc
+}
 
 function custom_gcc_cross_tc {
 
-   url="https://vvaltchev.github.io/cache"
-   tarname="x86-i386-musl-1.1.24-gcc-9.4.0-aarch64.tar.bz2"
+   if [[ "$HOST_ARCH" != "aarch64" ]]; then
+      echo "ERROR: this function is supported only on HOST_ARCH=aarch64"
+      exit 1
+   fi
 
    pushd $TC/host
 
-   if ! [ -d gcc_9_4_0_i386_musl ]; then
+   if [[ $ARCH == i386 ]] || [[ $ARCH == x86_64 ]]; then
 
-      download_file_in_cache "$url" "$tarname"
-      extract_cachefile_tar_bz $tarname --
-      cd gcc_9_4_0_i386_musl/bin
+      # Always download the i386 toolchain for the legacy bootloader
+      if ! [ -d "gcc_${GCC_TC_VER_}_i386_musl" ]; then
+         custom_gcc_cross_tc_internal "i386" "i686"
+      fi
 
-      for x in i686-linux-musl-*; do
-         n=$(echo $x | sed s/musl-//);
-         mv $x $n;
-      done
-      rm i686-linux-cc
+      # Download the x86_64 TC only if we're targeting that architecture
+      if [[ $ARCH == x86_64 ]]; then
+         if ! [ -d "gcc_${GCC_TC_VER_}_x86_64_musl" ]; then
+            custom_gcc_cross_tc_internal "x86_64" "x86_64"
+         fi
+      fi
    fi
 
    popd
@@ -35,7 +70,22 @@ function custom_gcc_cross_tc {
 
 function custom_gcc_cross_tc_installed_status {
 
-   if [ -d $TC/host_${HOST_ARCH}/gcc_9_4_0_i386_musl ]; then
-      echo "installed i386"
+   local arch_list=""
+
+   if [ -d $TC/host_${HOST_ARCH}/gcc_${GCC_TC_VER_}_i386_musl ]; then
+      arch_list="${arch_list}i386 "
+   fi
+
+   if [ -d $TC/host_${HOST_ARCH}/gcc_${GCC_TC_VER_}_x86_64_musl ]; then
+      arch_list="${arch_list}x86_64 "
+   fi
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
    fi
 }

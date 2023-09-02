@@ -85,6 +85,19 @@ macro(define_env_cache_bool_var)
 
 endmacro()
 
+macro(set_cross_compiler_internal)
+
+   set(CMAKE_C_COMPILER ${ARGV0}/${ARGV1}-linux-gcc)
+   set(CMAKE_CXX_COMPILER ${ARGV0}/${ARGV1}-linux-g++)
+   set(CMAKE_ASM_COMPILER ${ARGV0}/${ARGV1}-linux-gcc)
+   set(CMAKE_OBJCOPY ${ARGV0}/${ARGV1}-linux-objcopy)
+   set(CMAKE_STRIP ${ARGV0}/${ARGV1}-linux-strip)
+   set(CMAKE_AR ${ARGV0}/${ARGV1}-linux-ar)
+   set(CMAKE_RANLIB ${ARGV0}/${ARGV1}-linux-ranlib)
+   set(TOOL_GCOV ${ARGV0}/${ARGV1}-linux-gcov)
+
+endmacro()
+
 macro(set_cross_compiler)
 
    if (USE_SYSCC)
@@ -103,15 +116,7 @@ macro(set_cross_compiler)
    else()
 
       # DEFAULT CASE: use our pre-built toolchain
-
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
-      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-      set(CMAKE_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
-      set(CMAKE_AR ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ar)
-      set(CMAKE_RANLIB ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ranlib)
-      set(TOOL_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
+      set_cross_compiler_internal(${GCC_TOOLCHAIN} ${ARCH_GCC_TC})
 
    endif()
 
