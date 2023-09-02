@@ -45,6 +45,12 @@ SECTIONS
       *(.ctors .ctors.*)
    } : ro_segment
 
+   .init_array : AT(kernel_text_paddr + (init_array - text))
+   {
+      init_array = .;
+      *(.init_array)
+   } : ro_segment
+
    .tilck_info : AT(kernel_text_paddr + (tilck_info - text))
    {
       tilck_info = .;
@@ -69,7 +75,7 @@ SECTIONS
       *(.Symtab)
    } : special_ro
 
-   .Strtab ALIGN(4): AT(kernel_text_paddr + (Strtab - text))
+   .Strtab ALIGN(4) : AT(kernel_text_paddr + (Strtab - text))
    {
       Strtab = .;
       *(.Strtab)
