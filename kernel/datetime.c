@@ -14,17 +14,6 @@
 
 #define FULL_RESYNC_MAX_ATTEMPTS       10
 
-const char *weekdays[7] =
-{
-   "Sunday",
-   "Monday",
-   "Tuesday",
-   "Wednesday",
-   "Thursday",
-   "Friday",
-   "Saturday",
-};
-
 const char *months3[12] =
 {
    "Jan",

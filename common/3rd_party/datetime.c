@@ -50,7 +50,8 @@ int timestamp_to_datetime(int64_t t, struct datetime *d)
    int remdays, remsecs, remyears;
    int qc_cycles, c_cycles, q_cycles;
    int months;
-   int wday, yday, leap;
+   // int wday;
+   int yday, leap;
    static const char days_in_month[] = {31,30,31,30,31,31,30,31,30,31,31,29};
 
    /* Reject time_t values whose year would overflow int */
@@ -66,10 +67,10 @@ int timestamp_to_datetime(int64_t t, struct datetime *d)
       days--;
    }
 
-   wday = (3 + days) % 7;
+   // wday = (3 + days) % 7;
 
-   if (wday < 0)
-      wday += 7;
+   // if (wday < 0)
+   //    wday += 7;
 
    qc_cycles = (int)(days / (s64)DAYS_PER_400Y);
    remdays = days % DAYS_PER_400Y;
@@ -119,7 +120,7 @@ int timestamp_to_datetime(int64_t t, struct datetime *d)
    d->year     = (u16)(years + 2000);
    d->month    = ( u8)(months + 3);
    d->day      = ( u8)(remdays + 1);
-   d->weekday  = ( u8)(wday);
+   // d->weekday  = ( u8)(wday);
    d->hour     = ( u8)(remsecs / 3600);
    d->min      = ( u8)((remsecs / 60) % 60);
    d->sec      = ( u8)(remsecs % 60);
