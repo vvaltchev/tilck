@@ -202,11 +202,12 @@ read_multiboot_info(void)
       const char *name = TO_PTR(mbi->boot_loader_name);
 
       if (!strcmp(name, "TILCK_EFI")) {
+
          struct tilck_extra_boot_info *extra_boot_info = TO_PTR(mbi->apm_table);
 
          printk("Multiboot: detected the TILCK_EFI bootloader\n");
-         printk("Multiboot: ACPI root ptr: %p\n", TO_PTR(extra_boot_info->RSDP));
-         printk("Multiboot: UEFI RT ptr: %p\n", TO_PTR(extra_boot_info->RT));
+         printk("Multiboot: ACPI RSDP: %p\n", TO_PTR(extra_boot_info->RSDP));
+         printk("Multiboot: UEFI RT:   %p\n", TO_PTR(extra_boot_info->RT));
          acpi_set_root_pointer(extra_boot_info->RSDP);
          uefi_set_rt_pointer(extra_boot_info->RT);
       }

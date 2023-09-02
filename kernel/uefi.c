@@ -14,7 +14,7 @@
 #include <efi.h>
 #include <efiapi.h>
 
-void (*hw_read_clock)(struct datetime *out) = &hw_read_clock_cmos;
+void (*hw_read_clock)(struct datetime *) = &hw_read_clock_cmos;
 static ulong uefi_rt_addr;
 
 void uefi_set_rt_pointer(ulong addr)
@@ -25,24 +25,23 @@ void uefi_set_rt_pointer(ulong addr)
 
 void hw_read_clock_uefi(struct datetime *out)
 {
-   struct datetime d;
+   EFI_RUNTIME_SERVICES *RT = KERNEL_PA_TO_VA(uefi_rt_addr);
    EFI_STATUS status;
-   EFI_TIME Time;
-   EFI_RUNTIME_SERVICES *RT = TO_PTR(KERNEL_PA_TO_VA(uefi_rt_addr));
+   EFI_TIME t;
 
-   status = RT->GetTime(&Time, NULL);
+   status = RT->GetTime(&t, NULL);
 
    if (status != EFI_SUCCESS)
-      panic("UEFI: Failed to get time");
+      panic("UEFI: GetTime() failed with: %lu", status);
 
-   d.sec = Time.Second;
-   d.min = Time.Minute;
-   d.hour = Time.Hour;
-   d.day = Time.Day;
-   d.month = Time.Month;
-   d.year = Time.Year;
-
-   *out = d;
+   *out = (struct datetime) {
+      .sec = t.Second,
+      .min = t.Minute,
+      .hour = t.Hour,
+      .day = t.Day,
+      .month = t.Month,
+      .year = t.Year
+   };
 }
 
 void setup_uefi_runtime_services(void)
@@ -51,6 +50,7 @@ void setup_uefi_runtime_services(void)
    EFI_STATUS status;
    EFI_RUNTIME_SERVICES *RT;
    EFI_MEMORY_DESCRIPTOR *virt_map;
+   EFI_TIME t;
    unsigned int num_entries = 0;
 
    if (!uefi_rt_addr)
@@ -85,15 +85,16 @@ void setup_uefi_runtime_services(void)
       }
 
       const ulong pbegin = (ulong)ma.addr;
-      const ulong pend = MIN((ulong)(ma.addr+ma.len), (ulong)LINEAR_MAPPING_SIZE);
+      const ulong pend = MIN(
+         (ulong)(ma.addr + ma.len),
+         (ulong)LINEAR_MAPPING_SIZE
+      );
       const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;
       const bool rw = (ma.type == TILCK_BOOT_EFI_RUNTIME_RW);
 
-      ulong *vbegin = TO_PTR(pbegin);
-
-      size_t count =
+      const size_t count =
          map_pages(get_kernel_pdir(),
-                   vbegin,
+                   TO_PTR(pbegin),
                    pbegin,
                    page_count,
                    (rw ? PAGING_FL_RW : 0));
@@ -102,9 +103,7 @@ void setup_uefi_runtime_services(void)
          panic("Unable to map regions in the virtual space");
    }
 
-   virt_map = kmalloc((size_t)num_entries);
-
-   if (!virt_map)
+   if (!(virt_map = kmalloc(num_entries * sizeof(EFI_MEMORY_DESCRIPTOR))))
       panic("Failed to allocate the UEFI virtual map");
 
    num_entries = 0;
@@ -138,18 +137,22 @@ void setup_uefi_runtime_services(void)
       virt_map[num_entries++] = desc;
    }
 
-   status = RT->SetVirtualAddressMap(num_entries * sizeof(EFI_MEMORY_DESCRIPTOR),
-                                     sizeof(EFI_MEMORY_DESCRIPTOR),
-                                     EFI_MEMORY_DESCRIPTOR_VERSION,
-                                     virt_map);
+   status =
+      RT->SetVirtualAddressMap(num_entries * sizeof(EFI_MEMORY_DESCRIPTOR),
+                               sizeof(EFI_MEMORY_DESCRIPTOR),
+                               EFI_MEMORY_DESCRIPTOR_VERSION,
+                               virt_map);
 
    if (status != EFI_SUCCESS)
       panic("Failed to set the UEFI virtual map");
 
    RT = KERNEL_PA_TO_VA(RT);
 
-   memset(virt_map, 0, (size_t)num_entries * sizeof(EFI_MEMORY_DESCRIPTOR));
-   kfree(virt_map);
+   /* Pollute the virtual map object, to make sure it's not used anymore */
+   memset(virt_map, 0xAA, num_entries * sizeof(EFI_MEMORY_DESCRIPTOR));
+
+   /* Free the virtual map object */
+   kfree2(virt_map, num_entries * sizeof(EFI_MEMORY_DESCRIPTOR));
 
    for (int i = 0; i < get_mem_regions_count(); i++) {
 
@@ -162,13 +165,13 @@ void setup_uefi_runtime_services(void)
       }
 
       const ulong pbegin = (ulong)ma.addr;
-      const ulong pend = MIN((ulong)(ma.addr+ma.len), (ulong)LINEAR_MAPPING_SIZE);
+      const ulong pend = MIN(
+         (ulong)(ma.addr + ma.len),
+         (ulong)LINEAR_MAPPING_SIZE
+      );
       const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;
-
-      ulong *vbegin = TO_PTR(pbegin);
-
       unmap_pages(get_kernel_pdir(),
-                  vbegin,
+                  TO_PTR(pbegin),
                   page_count,
                   false);
    }
@@ -178,8 +181,7 @@ void setup_uefi_runtime_services(void)
     * actually work by calling GetTime() and
     * fail early if they don't.
     */
-   EFI_TIME Time;
-   status = RT->GetTime(&Time, NULL);
+   status = RT->GetTime(&t, NULL);
 
    if (status != EFI_SUCCESS)
       panic("Failed to setup UEFI runtime services");

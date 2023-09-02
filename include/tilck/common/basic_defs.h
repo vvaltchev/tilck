@@ -84,7 +84,8 @@
    #define BITS64
    #define NBITS 64
 
-#elif defined(__aarch64__) && (defined(USERMODE_APP) || defined(UNIT_TEST_ENVIRONMENT))
+#elif defined(__aarch64__) && \
+      (defined(USERMODE_APP) || defined(UNIT_TEST_ENVIRONMENT))
 
    /*
     * The Tilck kernel doesn't support ARM or AARCH64 (yet), but it can be
