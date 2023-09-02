@@ -11,7 +11,6 @@
 
 #define TS_SCALE                        BILLION
 
-extern const char *weekdays[7];
 extern const char *months3[12];
 
 struct clock_resync_stats {
