@@ -9,7 +9,7 @@ if (${ARCH} STREQUAL "i386")
 
    set_cross_compiler()
 
-else()
+elseif("${HOST_ARCH}" STREQUAL "x86_64")
 
    # If we're compiling the legacy bootloader, ${ARCH} is either i386 or x86_64
    # but that doesn't really matter, because the bootloader itself will be
@@ -25,6 +25,14 @@ else()
    set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}")
 
    set(TOOL_GCOV "${GCOV}")
+
+else("${HOST_ARCH}" STREQUAL "aarch64")
+
+   set(NAME_PFX_i386       gcc_${GCC_TC_VER_}_i386)
+   set(TC_ROOT_i386        ${TCROOT_BA}/${NAME_PFX_i386}_musl)
+   set(TOOLCHAIN_i386      ${TC_ROOT_i386}/bin)
+
+   set_cross_compiler_internal(${TOOLCHAIN_i386} i686)
 
 endif()
 

@@ -20,10 +20,12 @@ fi
 if [[ "$ARCH" == "i386" ]]; then
 
    DEFAULT_GCC_TC_VERSION="8.4.0"
+   ARCH_GCC_TC="i686"
 
 elif [[ "$ARCH" == "x86_64" ]]; then
 
    DEFAULT_GCC_TC_VERSION="8.4.0"
+   ARCH_GCC_TC="x86_64"
 
 else
    echo "Architecture '$ARCH' not supported."

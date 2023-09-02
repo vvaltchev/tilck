@@ -62,6 +62,7 @@ set(
 
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
+   -Wl,-z,max-page-size=0x1000
 )
 
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
