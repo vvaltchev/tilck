@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+HOST_ARCH="@HOST_ARCH"
 f="@IMG_FILE@"
 tc="@TCROOT@"
 tc_bios="$tc/x86_64/ovmf/OVMF-pure-efi.fd"
+
+if [[ $HOST_ARCH != x86_64 ]]; then
+   QEMU_BIOS="tc"
+fi
 
 if [ -z "$QEMU_BIOS" ]; then
 
