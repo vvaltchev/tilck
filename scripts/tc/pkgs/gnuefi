@@ -26,8 +26,6 @@ function download_gnu_efi {
 
 function build_gnuefi_arch {
 
-   echo build_gnuefi_arch
-
    pushd $ARCH
 
       if ! [ -d gnu-efi ]; then
@@ -53,8 +51,6 @@ function build_gnuefi_arch {
 }
 
 function build_gnuefi_build_arch {
-
-   echo build_gnuefi_build_arch
 
    pushd $BUILD_ARCH
 
