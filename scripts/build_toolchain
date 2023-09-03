@@ -669,13 +669,18 @@ function main {
       local ha=$TC/host_${HOST_ARCH}
       GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
       GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # NOTE: not in $PATH!
-      unset ha
 
       # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
       # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
       # its version and NOT the wrapper script in build_scripts which simulates
       # its behavior using -m32 and -specs.
       export PATH="$GCC_TOOLCHAIN:$PATH"
+
+      if [ -d $ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin ]; then
+         export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
+      fi
+
+      unset ha
    fi
 
 

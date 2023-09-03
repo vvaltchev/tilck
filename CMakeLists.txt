@@ -671,10 +671,7 @@ unset(enabled_modules_list)
 
 set(BOOTLOADER_BIN_FILE    ${CMAKE_BINARY_DIR}/boot/legacy/bootloader.bin)
 
-if ("${HOST_ARCH}" STREQUAL "x86_64")
-   set(EFI_x86_64_FILE     ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
-endif()
-
+set(EFI_x86_64_FILE        ${CMAKE_BINARY_DIR}/boot/efi/BOOTX64.EFI)
 set(EFI_ia32_FILE          ${CMAKE_BINARY_DIR}/boot/efi/BOOTIA32.EFI)
 set(KERNEL_UNSTRIPPED      ${CMAKE_BINARY_DIR}/tilck_unstripped)
 set(KERNEL_FILE            ${CMAKE_BINARY_DIR}/tilck)
