@@ -52,16 +52,15 @@ function custom_gcc_cross_tc {
 
    if [[ $ARCH == i386 ]] || [[ $ARCH == x86_64 ]]; then
 
-      # Always download the i386 toolchain for the legacy bootloader
+      # Always download the i386 toolchain to build the legacy bootloader
+
       if ! [ -d "gcc_${GCC_TC_VER_}_i386_musl" ]; then
          custom_gcc_cross_tc_internal "i386" "i686"
       fi
 
-      # Download the x86_64 TC only if we're targeting that architecture
-      if [[ $ARCH == x86_64 ]]; then
-         if ! [ -d "gcc_${GCC_TC_VER_}_x86_64_musl" ]; then
-            custom_gcc_cross_tc_internal "x86_64" "x86_64"
-         fi
+      # Always download the x86_64 toolchain to build the 64-bit UEFI bootloader
+      if ! [ -d "gcc_${GCC_TC_VER_}_x86_64_musl" ]; then
+         custom_gcc_cross_tc_internal "x86_64" "x86_64"
       fi
    fi
 

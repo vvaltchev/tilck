@@ -29,6 +29,8 @@ set(
    efi_bootloader_deps
 )
 
+# We want to build the 32-bit UEFI bootloader only when the target arch is
+# i386, otherwise let's just stick with a full 64-bit stack.
 if (${ARCH} STREQUAL "i386")
 
    add_subdirectory(ia32)
@@ -42,7 +44,11 @@ if (${ARCH} STREQUAL "i386")
 
 endif()
 
-if (${HOST_ARCH} STREQUAL "x86_64")
+# We want to build the 64-bit UEFI bootloader both when the build host is
+# x86_64 and when the host is aarch64. Only when the host is i386 doesn't
+# make any sense.
+
+if (NOT ${HOST_ARCH} STREQUAL "i386")
 
    add_subdirectory(x86_64)
 
