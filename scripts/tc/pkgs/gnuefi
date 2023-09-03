@@ -26,25 +26,29 @@ function download_gnu_efi {
 
 function build_gnuefi_arch {
 
-   pushd $ARCH
+   local arch="$1"
+   local arch_efi="$2"
+   local arch_tc="$3"
+
+   pushd $arch
 
       if ! [ -d gnu-efi ]; then
 
-         show_work_on_component_msg "GNU-EFI (arch: $ARCH)"
+         show_work_on_component_msg "GNU-EFI (arch: $arch)"
          reset_cc_vars
          download_gnu_efi
          cd gnu-efi
 
-         if [[ "$HOST_ARCH" != "$ARCH" ]]; then
-            local arch_flags="ARCH=${ARCH_EFI} prefix=${ARCH_GCC_TC}-linux-"
+         if [[ "$HOST_ARCH" != "$arch" ]]; then
+            local arch_flags="ARCH=${arch_efi} prefix=${arch_tc}-linux-"
          else
-            local arch_flags="ARCH=${ARCH_EFI}"
+            local arch_flags="ARCH=${arch_efi}"
          fi
 
-         run_command2 "make $arch_flags -j$BUILD_PAR" build_${ARCH_EFI}.log
+         run_command2 "make $arch_flags -j$BUILD_PAR" build_${arch_efi}.log
 
       else
-         show_skip_component_msg "GNU-EFI (arch: $ARCH)"
+         show_skip_component_msg "GNU-EFI (arch: $arch)"
       fi
 
    popd
@@ -75,10 +79,12 @@ function build_gnuefi_build_arch {
 all_funcs_list+=(build_gnuefi)
 function build_gnuefi {
 
-   build_gnuefi_arch
+   build_gnuefi_arch $ARCH $ARCH_EFI $ARCH_GCC_TC
 
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
       build_gnuefi_build_arch
+   elif [[ "$HOST_ARCH" != i386 ]]; then
+      build_gnuefi_arch x86_64 x86_64 x86_64
    fi
 }
 

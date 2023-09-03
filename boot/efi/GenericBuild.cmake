@@ -84,7 +84,7 @@ target_link_libraries(
 add_dependencies(efi_app_${EFI_ARCH} kernel)
 
 set(
-   OBJCOPY_OPTS
+   OC_OPTS # objcopy options
 
    -j .text -j .sdata -j .data -j .dynamic
    -j .dynsym -j .rel -j .rela -j .reloc
@@ -92,17 +92,21 @@ set(
    --target=efi-app-${EFI_ARCH}
 )
 
+set(EFI_APP_SO libefi_app_${EFI_ARCH}.so)
+
 add_custom_command(
    OUTPUT
       ${EFI_${EFI_ARCH}_FILE}
    COMMAND
-      ${CMAKE_OBJCOPY} ${OBJCOPY_OPTS} libefi_app_${EFI_ARCH}.so ${EFI_${EFI_ARCH}_FILE}
+      ${CMAKE_OBJCOPY} ${OC_OPTS} ${EFI_APP_SO} ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
       ${SWITCHMODE_BIN}
       efi_app_${EFI_ARCH}
    COMMENT
       "Creating the final EFI file for ${EFI_ARCH}"
 )
+
+unset(EFI_APP_SO)
 
 add_custom_target(
 
