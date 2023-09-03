@@ -47,24 +47,27 @@ function download_ovmf {
 }
 
 function download_ovmf_installed_status {
-   if [ -d $TC/$ARCH/ovmf ]; then
 
-      local ret=""
+   local arch_list=""
 
-      if [ -f $TC/$ARCH/ovmf/OVMF-pure-efi.fd ]; then
-         ret="$ret $ARCH"
-      fi
+   for x in i386 x86_64; do
 
-      if [[ "$ARCH" != "$HOST_ARCH" ]]; then
-         if [ -f $TC/$HOST_ARCH/ovmf/OVMF-pure-efi.fd ]; then
-            ret="$ret $HOST_ARCH"
+      if [ -d $TC/$x/ovmf ]; then
+         if ! [ -f $TC/$x/ovmf/OVMF-pure-efi.fd ]; then
+            echo "error"
+            return
          fi
+         arch_list="${arch_list}$x "
       fi
 
-      if [ -n "ret" ]; then
-         echo "installed$ret"
-      else
-         echo "error"
-      fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
    fi
 }

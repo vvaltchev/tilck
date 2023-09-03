@@ -72,13 +72,11 @@ function custom_gcc_cross_tc_installed_status {
 
    local arch_list=""
 
-   if [ -d $TC/host_${HOST_ARCH}/gcc_${GCC_TC_VER_}_i386_musl ]; then
-      arch_list="${arch_list}i386 "
-   fi
-
-   if [ -d $TC/host_${HOST_ARCH}/gcc_${GCC_TC_VER_}_x86_64_musl ]; then
-      arch_list="${arch_list}x86_64 "
-   fi
+   for x in i386 x86_64; do
+      if [ -d $TC/host_${HOST_ARCH}/gcc_${GCC_TC_VER_}_${x}_musl ]; then
+         arch_list="${arch_list}${x} "
+      fi
+   done
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
