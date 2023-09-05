@@ -12,7 +12,7 @@
 # exclusively for performance reasons: SF sometimes is too slow for
 # CI builds.
 
-GNU_EFI_VER="3.0.14"
+GNU_EFI_VER="3.0.17"
 
 function download_gnu_efi {
 
@@ -22,6 +22,27 @@ function download_gnu_efi {
 
    download_git_repo_in_cache "$url" $ver $tarname gnu-efi
    extract_cachefile_tar_gz $tarname --
+}
+
+#
+# HACK: patch the GNU-EFI library to force CHAR16 to always be an unsigned
+# short, as the L"string" literals when -fshort-wchar is used. That is necessary
+# because with the custom cross musl toolchain built for host=aarch64, wchar_t
+# is always defined as "int".
+#
+function gnuefi_patch {
+
+   old="typedef wchar_t CHAR16"
+   new="typedef unsigned short CHAR16"
+
+   for x in ia32 x86_64; do
+      file="inc/${x}/efibind.h"
+      if ! [ -f $file ]; then
+         echo "ERROR: file $file not found!"
+         exit 1
+      fi
+      run_command "sed -i 's/${old}/${new}/' $file"
+   done
 }
 
 function build_gnuefi_arch {
@@ -37,7 +58,8 @@ function build_gnuefi_arch {
          show_work_on_component_msg "GNU-EFI (arch: $arch)"
          reset_cc_vars
          download_gnu_efi
-         cd gnu-efi
+         pushd gnu-efi
+         gnuefi_patch
 
          if [[ "$HOST_ARCH" != "$arch" ]]; then
             local arch_flags="ARCH=${arch_efi} prefix=${arch_tc}-linux-"
@@ -46,6 +68,7 @@ function build_gnuefi_arch {
          fi
 
          run_command2 "make $arch_flags -j$BUILD_PAR" build_${arch_efi}.log
+         popd
 
       else
          show_skip_component_msg "GNU-EFI (arch: $arch)"
@@ -54,7 +77,7 @@ function build_gnuefi_arch {
    popd
 }
 
-function build_gnuefi_build_arch {
+function build_gnuefi_system_compiler {
 
    pushd $BUILD_ARCH
 
@@ -63,11 +86,13 @@ function build_gnuefi_build_arch {
          show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
          reset_cc_vars
          download_gnu_efi
-         cd gnu-efi
+         pushd gnu-efi
+         gnuefi_patch
 
          run_command2 \
             "make ARCH=${BUILD_ARCH} -j$BUILD_PAR" build_${BUILD_ARCH}.log
 
+         popd
       else
 
          show_skip_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
@@ -82,7 +107,7 @@ function build_gnuefi {
    build_gnuefi_arch $ARCH $ARCH_EFI $ARCH_GCC_TC
 
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-      build_gnuefi_build_arch
+      build_gnuefi_system_compiler
    elif [[ "$HOST_ARCH" != i386 ]]; then
       build_gnuefi_arch x86_64 x86_64 x86_64
    fi
@@ -90,24 +115,27 @@ function build_gnuefi {
 
 function build_gnuefi_installed_status {
 
-   if [ -d $TC/$ARCH/gnu-efi ]; then
+   local arch_list=""
 
-      local ret=""
+   for x in i386 x86_64; do
 
-      if [ -f $TC/$ARCH/gnu-efi/$ARCH_EFI/gnuefi/libgnuefi.a ]; then
-         ret="$ret $ARCH"
-      fi
-
-      if [[ "$ARCH" != "$BUILD_ARCH" ]]; then
-         if [ -f $TC/$BUILD_ARCH/gnu-efi/$BUILD_ARCH/gnuefi/libgnuefi.a ]; then
-            ret="$ret $BUILD_ARCH"
+      if [ -d $TC/$x/gnu-efi ]; then
+         y=$(get_efi_arch $x)
+         if ! [ -f $TC/$x/gnu-efi/$y/gnuefi/libgnuefi.a ]; then
+            echo "error"
+            return
          fi
+         arch_list="${arch_list}$x "
       fi
 
-      if [ -n "ret" ]; then
-         echo "installed$ret"
-      else
-         echo "error"
-      fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
    fi
 }
