@@ -113,44 +113,40 @@ if [ -z "$GCC_TC_VER" ]; then
    GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
 fi
 
+#
+# Given an architecture name using Linux's convention, return the EFI name
+# for the same architecture. The result is the same for almost all architectures
+# except for "i386" which becomes "ia32".
+#
+function get_efi_arch {
+
+   local ret="$1"
+
+   if [[ "$x" == i386 ]]; then
+      ret="ia32"
+   fi
+
+   echo "$ret"
+}
+
+#
+# Support for AARCH64 as build machine (limited)
+#
+if [[ "$HOST_ARCH" == "aarch64" ]]; then
+   GCC_TC_VER="9.4.0"
+   ARCH_GCC_TC_VER="custom"
+fi
+
 if [[ "$ARCH" == "i386" ]]; then
 
    ARCH_SHORT="x86"
    ARCH_FAMILY="generic_x86"
    ARCH_ELF_NAME="elf32-i386"
    ARCH_LD_OUTPUT="elf_i386"
-   ARCH_EFI="ia32"
+   ARCH_EFI=$(get_efi_arch $ARCH)
    ARCH_GCC_TC="i686"
    ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
    ARCH_GCC_TC_CODENAME="x86-i686"
-
-   if [[ "$ARCH_GCC_TC_VER" == "" ]] && [[ "$HOST_ARCH" != "aarch64" ]]; then
-
-      if [ "$GCC_TC_VER" = "6.4.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2018.02-2"
-
-      elif [ "$GCC_TC_VER" = "7.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2018.11-1"
-
-      elif [ "$GCC_TC_VER" = "8.4.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2020.02-2"
-
-      elif [ "$GCC_TC_VER" = "9.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2020.08-1"
-
-      elif [ "$GCC_TC_VER" = "10.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2021.11-1"
-
-      else
-         echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
-         exit 1
-      fi
-   fi
 
 elif [[ "$ARCH" == "x86_64" ]]; then
 
@@ -158,38 +154,10 @@ elif [[ "$ARCH" == "x86_64" ]]; then
    ARCH_FAMILY="generic_x86"
    ARCH_ELF_NAME="elf64-x86-64"
    ARCH_LD_OUTPUT="elf_x86_64"
-   ARCH_EFI="x86_64"
+   ARCH_EFI=$(get_efi_arch $ARCH)
    ARCH_GCC_TC="x86_64"
    ARCH_GCC_FLAGS="-m64"
    ARCH_GCC_TC_CODENAME="x86-64-core-i7"
-
-   if [[ "$ARCH_GCC_TC_VER" == "" ]] && [[ "$HOST_ARCH" != "aarch64" ]]; then
-
-      if [ "$GCC_TC_VER" = "6.4.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2018.02-2"
-
-      elif [ "$GCC_TC_VER" = "7.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2018.11-1"
-
-      elif [ "$GCC_TC_VER" = "8.4.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2020.02-2"
-
-      elif [ "$GCC_TC_VER" = "9.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2020.08-1"
-
-      elif [ "$GCC_TC_VER" = "10.3.0" ]; then
-
-         ARCH_GCC_TC_VER="stable-2021.11-1"
-
-      else
-         echo "ERROR: unknown value of ARCH_GCC_TC_VER for GCC $GCC_TC_VER"
-         exit 1
-      fi
-   fi
 
 else
    echo "Architecture '$ARCH' not supported."
@@ -197,13 +165,22 @@ else
 fi
 
 #
-# Support for AARCH64 as build machine (limited)
+# If $ARCH_GCC_TC_VER has not been set externally or by the check above,
+# we'll use the pre-built bootlin toolchains, which do not use the GCC
+# version in their name, but a year/month combination with additional
+# fields. Therefore, let's map our desired GCC version to the bootlin
+# toolchain name.
 #
-if [[ "$HOST_ARCH" == "aarch64" ]]; then
-   GCC_TC_VER="9.4.0"
-   ARCH_GCC_TC_VER=""
+if [[ "$ARCH_GCC_TC_VER" == "" ]]; then
+   case $GCC_TC_VER in
+      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2";;
+      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1";;
+      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2";;
+      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1";;
+      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1";;
+      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
+   esac
 fi
-
 
 if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
 
@@ -226,7 +203,7 @@ else
 fi
 
 
-
+# Compute $GCC_TC_VER_ from the base $GCC_TC_VER (e.g. "1.2.3" -> "1_2_3")
 GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
 GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
 MUSL_INSTALL=$TC/$ARCH/musl/install
