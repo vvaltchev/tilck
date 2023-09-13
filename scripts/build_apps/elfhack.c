@@ -604,7 +604,7 @@ set_sym_strval(struct elf_file_info *nfo,
 }
 
 int
-dump_sym(struct elf_file_info *nfo, const char *sym_name)
+dump_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -619,7 +619,7 @@ dump_sym(struct elf_file_info *nfo, const char *sym_name)
    const long sym_sec_off = sym->st_value - section->sh_addr;
    const long sym_file_off = section->sh_offset + sym_sec_off;
 
-   for (u32 i = 0; i < sym->st_size; i++)
+   for (unsigned i = 0; i < sym->st_size; i++)
       printf("%02x ", *((unsigned char *)h + sym_file_off + i));
 
    printf("\n");
@@ -627,7 +627,7 @@ dump_sym(struct elf_file_info *nfo, const char *sym_name)
 }
 
 int
-get_sym(struct elf_file_info *nfo, const char *sym_name)
+get_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Sym *sym = get_symbol(h, sym_name);
@@ -642,7 +642,7 @@ get_sym(struct elf_file_info *nfo, const char *sym_name)
 }
 
 int
-get_text_sym(struct elf_file_info *nfo, const char *sym_name)
+get_text_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -672,7 +672,7 @@ get_text_sym(struct elf_file_info *nfo, const char *sym_name)
 }
 
 int
-list_text_syms(struct elf_file_info *nfo)
+list_text_syms(struct elf_file_info *nfo, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -808,7 +808,7 @@ sym_get_visibility_str(unsigned visibility)
 }
 
 int
-get_sym_info(struct elf_file_info *nfo, const char *sym_name)
+get_sym_info(struct elf_file_info *nfo, const char *sym_name, ...)
 {
    Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
    Elf_Sym *sym = get_symbol(h, sym_name);
@@ -845,6 +845,75 @@ get_sym_info(struct elf_file_info *nfo, const char *sym_name)
 
    return 0;
 }
+
+int
+set_sym_bind(struct elf_file_info *nfo,
+             const char *sym_name,
+             const char *bind_str,
+             ...)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+   const char *exp_end = bind_str + strlen(bind_str);
+   char *endptr = NULL;
+   unsigned long bind_n;
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   errno = 0;
+   bind_n = strtoul(bind_str, &endptr, 10);
+
+   if (errno || endptr != exp_end) {
+      fprintf(stderr, "error: invalid bind param\n");
+      return 1;
+   }
+
+   if (bind_n > STB_HIPROC) {
+      fprintf(stderr, "error: bind is too high");
+      return 1;
+   }
+
+   sym->st_info = ELF_ST_INFO(bind_n, ELF_ST_TYPE(sym->st_info));
+   return 0;
+}
+
+int
+set_sym_type(struct elf_file_info *nfo,
+             const char *sym_name,
+             const char *type_str,
+             ...)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+   const char *exp_end = type_str + strlen(type_str);
+   char *endptr = NULL;
+   unsigned long type_n;
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   errno = 0;
+   type_n = strtoul(type_str, &endptr, 10);
+
+   if (errno || endptr != exp_end) {
+      fprintf(stderr, "error: invalid type param\n");
+      return 1;
+   }
+
+   if (type_n > STT_HIPROC) {
+      fprintf(stderr, "error: type is too high");
+      return 1;
+   }
+
+   sym->st_info = ELF_ST_INFO(ELF_ST_BIND(sym->st_info), type_n);
+   return 0;
+}
+
 
 static struct elfhack_cmd cmds_list[] =
 {
@@ -966,6 +1035,20 @@ static struct elfhack_cmd cmds_list[] =
       .help = "<sym_name>",
       .nargs = 1,
       .func = (void *)&get_sym_info,
+   },
+
+   {
+      .opt = "--set-sym-bind",
+      .help = "<sym_name> <bind num>",
+      .nargs = 2,
+      .func = (void *)&set_sym_bind,
+   },
+
+   {
+      .opt = "--set-sym-type",
+      .help = "<sym_name> <type num>",
+      .nargs = 2,
+      .func = (void *)&set_sym_type,
    },
 };
 
