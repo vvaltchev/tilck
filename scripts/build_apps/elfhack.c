@@ -715,6 +715,137 @@ list_text_syms(struct elf_file_info *nfo)
    return 0;
 }
 
+
+const char *
+sym_get_bind_str(unsigned bind)
+{
+   switch (bind) {
+
+      case STB_LOCAL:
+         return "local";
+
+      case STB_GLOBAL:
+         return "global";
+
+      case STB_WEAK:
+         return "weak";
+
+      case STB_GNU_UNIQUE:
+         return "unique";
+
+      default:
+
+         if (STB_LOOS <= bind && bind <= STB_HIOS)
+            return "os-spec-bind";
+
+         if (STB_LOPROC <= bind && bind <= STB_HIPROC)
+            return "cpu-spec-bind";
+   }
+
+   return "?";
+}
+
+const char *
+sym_get_type_str(unsigned type)
+{
+   switch (type) {
+
+      case STT_NOTYPE:
+         return "notype";
+
+      case STT_OBJECT:
+         return "object";
+
+      case STT_FUNC:
+         return "func";
+
+      case STT_SECTION:
+         return "section";
+
+      case STT_FILE:
+         return "file";
+
+      case STT_COMMON:
+         return "common";
+
+      case STT_TLS:
+         return "tls";
+
+      case STT_GNU_IFUNC:
+         return "ifunc";
+
+      default:
+
+         if (STT_LOOS <= type && type <= STT_HIOS)
+            return "os-spec-type";
+
+         if (STT_LOPROC <= type && type <= STT_HIPROC)
+            return "cpu-spec-type";
+   }
+
+   return "?";
+}
+
+const char *
+sym_get_visibility_str(unsigned visibility)
+{
+   switch (visibility) {
+
+      case STV_DEFAULT:
+         return "default";
+
+      case STV_INTERNAL:
+         return "internal";
+
+      case STV_HIDDEN:
+         return "hidden";
+
+      case STV_PROTECTED:
+         return "protected";
+   }
+
+   return "?";
+}
+
+int
+get_sym_info(struct elf_file_info *nfo, const char *sym_name)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   Elf_Shdr *s = sections + sym->st_shndx;
+   char *sh_name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
+
+   printf("st_info:  0x%02x # bind: %d (%s), type: %d (%s)\n",
+          sym->st_info,
+          ELF_ST_BIND(sym->st_info),
+          sym_get_bind_str(ELF_ST_BIND(sym->st_info)),
+          ELF_ST_TYPE(sym->st_info),
+          sym_get_type_str(ELF_ST_TYPE(sym->st_info)));
+
+   printf("st_other: 0x%02x # visibility: %d (%s)\n",
+          sym->st_other,
+          ELF_ST_VISIBILITY(sym->st_other),
+          sym_get_visibility_str(ELF_ST_VISIBILITY(sym->st_other)));
+
+   if (sym->st_shndx)
+      printf("st_shndx: %d # %s\n", sym->st_shndx, sh_name);
+   else
+      printf("st_shndx: %d\n", sym->st_shndx);
+
+   printf("st_value: 0x%08lx\n", sym->st_value);
+   printf("st_size:  0x%08lx\n", sym->st_size);
+
+   return 0;
+}
+
 static struct elfhack_cmd cmds_list[] =
 {
    {
@@ -827,6 +958,14 @@ static struct elfhack_cmd cmds_list[] =
       .help = "",
       .nargs = 0,
       .func = (void *)&list_text_syms,
+   },
+
+
+   {
+      .opt = "--get-sym-info",
+      .help = "<sym_name>",
+      .nargs = 1,
+      .func = (void *)&get_sym_info,
    },
 };
 
