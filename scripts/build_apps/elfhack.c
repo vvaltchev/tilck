@@ -914,6 +914,26 @@ set_sym_type(struct elf_file_info *nfo,
    return 0;
 }
 
+int
+undef_sym(struct elf_file_info *nfo, const char *sym_name, ...)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)nfo->vaddr;
+   Elf_Sym *sym = get_symbol(h, sym_name);
+   Elf_Shdr *sections = (Elf_Shdr *) ((char *)h + h->e_shoff);
+   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+
+   if (!sym) {
+      fprintf(stderr, "Symbol '%s' not found\n", sym_name);
+      return 1;
+   }
+
+   sym->st_info = ELF_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+   sym->st_other = 0;
+   sym->st_shndx = 0;
+   sym->st_value = 0;
+   sym->st_size = 0;
+   return 0;
+}
 
 static struct elfhack_cmd cmds_list[] =
 {
@@ -1049,6 +1069,13 @@ static struct elfhack_cmd cmds_list[] =
       .help = "<sym_name> <type num>",
       .nargs = 2,
       .func = (void *)&set_sym_type,
+   },
+
+   {
+      .opt = "--undef-sym",
+      .help = "<sym_name>",
+      .nargs = 1,
+      .func = (void *)&undef_sym,
    },
 };
 
