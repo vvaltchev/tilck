@@ -122,7 +122,7 @@ function get_efi_arch {
 
    local ret="$1"
 
-   if [[ "$x" == i386 ]]; then
+   if [[ "$ret" == i386 ]]; then
       ret="ia32"
    fi
 
