@@ -840,8 +840,8 @@ get_sym_info(struct elf_file_info *nfo, const char *sym_name, ...)
    else
       printf("st_shndx: %d\n", sym->st_shndx);
 
-   printf("st_value: 0x%08lx\n", sym->st_value);
-   printf("st_size:  0x%08lx\n", sym->st_size);
+   printf("st_value: 0x%08lx\n", (long) sym->st_value);
+   printf("st_size:  0x%08lx\n", (long) sym->st_size);
 
    return 0;
 }
