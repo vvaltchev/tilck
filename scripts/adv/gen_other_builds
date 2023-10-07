@@ -22,7 +22,7 @@ function show_help {
    echo "script needs to be run multiple times in order to download & build "
    echo "optional components. In particular:"
    echo ""
-   echo "   - gcc-multilib (debian package name)"
+   echo "   - gcc-multilib and g++-multilib (debian package names)"
    echo "         [A version of gcc able to build i386 binaries on x86_64]"
    echo "         [Use your package manager to install that on your system]"
    echo ""

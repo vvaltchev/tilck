@@ -64,6 +64,7 @@ set(
 
    -DACPI_DEBUG_OUTPUT=1
    -Wno-conversion
+   -Wno-error
 )
 
 if (ACPI_DEBUGGER_ENABLED)
