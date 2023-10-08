@@ -27,8 +27,9 @@
 
 #define KERNEL_STACK_PAGES     @KERNEL_STACK_PAGES@
 #define KERNEL_PADDR           @KERNEL_PADDR@
-#define KERNEL_BASE_VA         @KERNEL_BASE_VA@
+#define BASE_VA                @BASE_VA@
 #define LINEAR_MAPPING_MB      @LINEAR_MAPPING_MB@UL
+#define KERNEL_VADDR           @KERNEL_VADDR@
 
 #define ARCH_BITS              @ARCH_BITS@
 
@@ -61,19 +62,19 @@
 
 #if defined(TESTING) || defined(KERNEL_TEST)
 
-   extern void *kernel_va;
+   extern void *base_va;
 
    /* For the unit tests, we need to override the following defines */
-   #undef KERNEL_BASE_VA
+   #undef BASE_VA
    #undef LINEAR_MAPPING_MB
 
-   #define KERNEL_BASE_VA             ((ulong)kernel_va)
+   #define BASE_VA                    ((ulong)base_va)
    #define LINEAR_MAPPING_MB          (128u)
 
 #endif
 
 #define LINEAR_MAPPING_SIZE        (LINEAR_MAPPING_MB << 20)
-#define LINEAR_MAPPING_END         (KERNEL_BASE_VA + LINEAR_MAPPING_SIZE)
+#define LINEAR_MAPPING_END         (BASE_VA + LINEAR_MAPPING_SIZE)
 
 /* Constants that have no reason to be changed */
 #define FREE_MEM_POISON_VAL    0xFAABCAFE

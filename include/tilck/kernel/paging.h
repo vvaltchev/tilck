@@ -32,8 +32,17 @@
  * These MACROs can be used for the linear mapping region in the kernel space.
  */
 
-#define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
-#define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
+#if defined(TESTING) || defined(KERNEL_TEST)
+
+   #define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
+   #define KERNEL_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
+
+#else
+
+   #define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + KERNEL_VADDR - KERNEL_PADDR))
+   #define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_VADDR + KERNEL_PADDR)
+
+#endif
 
 extern char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);

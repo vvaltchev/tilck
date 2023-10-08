@@ -36,7 +36,7 @@
 
 #define USER_VDSO_VADDR  (LINEAR_MAPPING_END)
 
-#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
+#define USERMODE_VADDR_END          (BASE_VA) /* biggest user vaddr + 1 */
 #define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
 #define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
 #define USER_MMAP_MIN_SZ            (16 * MB)

@@ -102,7 +102,7 @@ AcpiOsReadable(
    ulong va_end = va + Length;
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (va < KERNEL_BASE_VA)
+   if (va < BASE_VA)
       return_UINT8(false);
 
    if (va_end <= LINEAR_MAPPING_END)
@@ -130,7 +130,7 @@ AcpiOsWritable(
    int reg_count = get_mem_regions_count();
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (va < KERNEL_BASE_VA)
+   if (va < BASE_VA)
       return_UINT8(false);
 
    for (int i = 0; i < reg_count; i++) {

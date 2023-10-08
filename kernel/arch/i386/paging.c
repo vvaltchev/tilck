@@ -349,7 +349,7 @@ ulong get_mapping(pdir_t *pdir, void *vaddrp)
     * This function shall be never called for the linear-mapped zone of the
     * the kernel virtual memory.
     */
-   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
+   ASSERT(vaddr < BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
    e.raw = pdir->entries[pd_index].raw;
    ASSERT(e.present);
@@ -929,7 +929,7 @@ void *failsafe_map_framebuffer(ulong paddr, ulong size)
    /*
     * Paging has not been initialized yet: probably we're in panic.
     * At this point, the kernel still uses page_size_buf as pdir, with only
-    * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
+    * the first 8 MB of the physical mapped at BASE_VA.
     */
 
    ulong vaddr = FAILSAFE_FB_VADDR;

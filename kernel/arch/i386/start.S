@@ -23,7 +23,7 @@
                               MULTIBOOT_MEMORY_INFO |  \
                               MULTIBOOT_VIDEO_MODE)
 
-#define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
+#define PAGE_DIR_PADDR ((offset page_size_buf) - KERNEL_VADDR + KERNEL_PADDR)
 #define MAKE_BIG_PAGE(paddr) \
    (1 /* present */ | 2 /*RW*/ | (1 << 7) /* bigpage */ | (paddr))
 
@@ -58,7 +58,7 @@ multiboot_entry:
 
    /*
     * Before jump to kernel, we have to setup a basic paging in order to map
-    * the first 4-MB both at 0 and at +KERNEL_BASE_VA. Using 4-MB pages.
+    * the first 8-MB both at 0 and at +(KERNEL_VADDR - KERNEL_PADDR), using 4-MB pages.
     * NOTE: the registers EAX and EBX cannot be used since they contain
     * multiboot information!
     */
@@ -83,9 +83,9 @@ multiboot_entry:
    mov dword ptr [edx + 0], MAKE_BIG_PAGE(0)
    mov dword ptr [edx + 4], MAKE_BIG_PAGE(4 * MB)
 
-   # Map the first 8 MB also at KERNEL_BASE_VA
-   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 0], MAKE_BIG_PAGE(0)
-   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 4], MAKE_BIG_PAGE(4 * MB)
+   # Map the first 8 MB also at +(KERNEL_VADDR - KERNEL_PADDR)
+   mov dword ptr [edx + ((KERNEL_VADDR - KERNEL_PADDR) >> 20) + 0], MAKE_BIG_PAGE(0)
+   mov dword ptr [edx + ((KERNEL_VADDR - KERNEL_PADDR) >> 20) + 4], MAKE_BIG_PAGE(4 * MB)
 
    # Make sure PAGING is disabled
    mov ecx, cr0
@@ -114,7 +114,7 @@ multiboot_entry:
                   # is removed. We need to continue using high (+3 GB)
                   # virtual addresses. The trick works because this file is
                   # part of the kernel ELF binary where the ORG is set to
-                  # 0xC0100000 (KERNEL_BASE_VA + KERNEL_PADDR).
+                  # 0xC0100000 (KERNEL_VADDR).
 
 .next_step:
    mov esp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 4
@@ -122,6 +122,6 @@ multiboot_entry:
    push ebx    # 2st argument: multiboot information structure
    push eax    # 1nd argument: multiboot magic
    call kmain  # Now call kernel's kmain() which uses
-               # KERNEL_BASE_VA + KERNEL_PADDR as ORG
+               # KERNEL_VADDR as ORG
 
 END_FUNC(_start)

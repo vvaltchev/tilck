@@ -133,7 +133,7 @@ LoadRamdisk_AllocMem(struct load_ramdisk_ctx *ctx)
 
    /*
     * Because Tilck is 32-bit and it maps the first LINEAR_MAPPING_SIZE of
-    * physical memory at KERNEL_BASE_VA, we really cannot accept ANY address
+    * physical memory at BASE_VA, we really cannot accept ANY address
     * in the 64-bit space, because from Tilck we won't be able to read from
     * there. The address of the ramdisk we actually be at most:
     *

@@ -5,7 +5,7 @@
 
 static inline bool user_out_of_range(const void *user_ptr, size_t n)
 {
-   return ((ulong)user_ptr + n) > KERNEL_BASE_VA;
+   return ((ulong)user_ptr + n) > BASE_VA;
 }
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n);

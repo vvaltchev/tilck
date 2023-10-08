@@ -542,9 +542,10 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_BITS        32)
 
    # Fundamental kernel MM constants
-   set(KERNEL_BASE_VA     0xC0000000)  # Better not touch!
+   set(BASE_VA            0xC0000000)  # Better not touch!
    set(KERNEL_PADDR       0x00100000)  # Better not touch!
    set(LINEAR_MAPPING_MB         896)  # Better not touch!
+   set(KERNEL_VADDR       0xC0100000)
 
 elseif(${ARCH} STREQUAL "x86_64")
 
@@ -558,9 +559,10 @@ elseif(${ARCH} STREQUAL "x86_64")
    set(ARCH_BITS        64)
 
    # Fundamental kernel MM constants
-   set(KERNEL_BASE_VA      0x100000000000)  # +16 TB
-   set(KERNEL_PADDR            0x00100000)  # Better not touch!
-   set(LINEAR_MAPPING_MB             4096)  # Might be updated.
+   set(BASE_VA                0x100000000000)  # +16 TB
+   set(KERNEL_PADDR               0x00100000)  # Better not touch!
+   set(LINEAR_MAPPING_MB                4096)  # Might be updated.
+   set(KERNEL_VADDR       0xFFFFFFFF80000000)
 
 else()
 
