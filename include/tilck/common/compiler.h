@@ -16,6 +16,6 @@
 
 #else
 
-   #error Compiler not supported
+   #error "Compiler not supported!"
 
 #endif
