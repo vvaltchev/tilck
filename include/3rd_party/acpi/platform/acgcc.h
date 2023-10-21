@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2020, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -203,7 +203,7 @@ typedef __builtin_va_list       va_list;
 #endif
 
 /*
- * Explictly mark intentional explicit fallthrough to silence
+ * Explicitly mark intentional explicit fallthrough to silence
  * -Wimplicit-fallthrough in GCC 7.1+.
  */
 
