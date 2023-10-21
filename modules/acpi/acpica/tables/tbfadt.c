@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -472,7 +472,7 @@ AcpiTbParseFadt (
      * Validate the FADT checksum before we copy the table. Ignore
      * checksum error as we want to try to get the DSDT and FACS.
      */
-    (void) AcpiTbVerifyChecksum (Table, Length);
+    (void) AcpiUtVerifyChecksum (Table, Length);
 
     /* Create a local copy of the FADT in common ACPI 2.0+ format */
 
