@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -481,6 +481,12 @@ AcpiExWriteSerialBus (
     case ACPI_ADR_SPACE_PLATFORM_RT:
 
         BufferLength = ACPI_PRM_INPUT_BUFFER_SIZE;
+        Function = ACPI_WRITE;
+        break;
+
+    case ACPI_ADR_SPACE_FIXED_HARDWARE:
+
+        BufferLength = ACPI_FFH_INPUT_BUFFER_SIZE;
         Function = ACPI_WRITE;
         break;
 

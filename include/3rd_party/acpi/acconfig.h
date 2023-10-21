@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -334,6 +334,8 @@
 #define ACPI_MAX_GSBUS_BUFFER_SIZE      ACPI_SERIAL_HEADER_SIZE + ACPI_MAX_GSBUS_DATA_SIZE
 
 #define ACPI_PRM_INPUT_BUFFER_SIZE      26
+
+#define ACPI_FFH_INPUT_BUFFER_SIZE      256
 
 /* _SxD and _SxW control methods */
 

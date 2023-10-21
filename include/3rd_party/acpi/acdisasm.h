@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -206,6 +206,7 @@ typedef enum
     ACPI_DMT_FLAGS0,
     ACPI_DMT_FLAGS1,
     ACPI_DMT_FLAGS2,
+    ACPI_DMT_FLAGS8_2,
     ACPI_DMT_FLAGS4,
     ACPI_DMT_FLAGS4_0,
     ACPI_DMT_FLAGS4_4,
@@ -259,6 +260,7 @@ typedef enum
     ACPI_DMT_AEST_XRUPT,
     ACPI_DMT_AGDI,
     ACPI_DMT_ASF,
+    ACPI_DMT_CDAT,
     ACPI_DMT_CEDT,
     ACPI_DMT_DMAR,
     ACPI_DMT_DMAR_SCOPE,
@@ -388,6 +390,7 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAestGicError[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAestXface[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAestXrupt[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAgdi[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoApmtNode[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAsf0[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAsf1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoAsf1a[];
@@ -400,8 +403,20 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoBdat[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoBoot[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoBert[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoBgrt[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCcel[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdatTableHdr[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdatHeader[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat0[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat1[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat2[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat3[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat4[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdat5[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCdatEntries[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCedtHdr[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCedt0[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCedt1[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCedt1_te[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCpep[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCpep0[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoCsrt0[];
@@ -423,6 +438,7 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDmar1[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDmar2[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDmar3[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDmar4[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDmar5[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDrtm[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDrtm0[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoDrtm0a[];
@@ -529,6 +545,7 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadt13[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadt14[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadt15[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadt16[];
+extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadt17[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMadtHdr[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMcfg[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoMcfg0[];
@@ -571,7 +588,6 @@ extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt6b[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt7[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt7a[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt7b[];
-extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt8[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoNhlt9[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoPhatHdr[];
 extern ACPI_DMTABLE_INFO        AcpiDmTableInfoPhat0[];
@@ -735,7 +751,19 @@ AcpiDmDumpAest (
     ACPI_TABLE_HEADER       *Table);
 
 void
+AcpiDmDumpApmt (
+    ACPI_TABLE_HEADER       *Table);
+
+void
 AcpiDmDumpAsf (
+    ACPI_TABLE_HEADER       *Table);
+
+void
+AcpiDmDumpCcel (
+    ACPI_TABLE_HEADER       *Table);
+
+void
+AcpiDmDumpCdat (
     ACPI_TABLE_HEADER       *Table);
 
 void
