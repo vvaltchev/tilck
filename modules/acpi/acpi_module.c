@@ -10,6 +10,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/uefi.h>
 
 #include <tilck/mods/pci.h>
 #include <tilck/mods/acpi.h>
@@ -233,6 +234,31 @@ acpi_mod_init_tables(void)
    AcpiDbgLevel = (ACPI_NORMAL_DEFAULT | ACPI_LV_EVENTS) & ~ACPI_LV_REPAIR;
    //AcpiGbl_TraceDbgLevel = ACPI_TRACE_LEVEL_ALL;
    //AcpiGbl_TraceDbgLayer = ACPI_TRACE_LAYER_ALL;
+
+   if (!is_uefi_boot()) {
+      /*
+       * Unfortunately, when we're not booting using UEFI, at least in some
+       * cases (e.g. QEMU), memory regions that ACPICA would like to write
+       * to perform automatic repairs are not marked as ACPI_RECLAIMABLE (3)
+       * but as RESERVED (2) instead. Even if this might be a defect in QEMU's
+       * legacy BIOS firmware, we should handle that somehow. On a first glance
+       * it might look like that we could just temporarily map as R/W all the
+       * RESERVED regions during the ACPI initialization. Unfortunately, it
+       * looks like that functions like AcpiNsRepair_HID() could be called
+       * inconditionally every time when an ACPI object is evaluated and there
+       * is some metadata with expectations about that object. It looks like
+       * that ACPI doesn't check if writing is really necessary before doing so.
+       * For example, in AcpiNsRepair_HID(), the TOUPPER operation is performed
+       * even when the string is already completely in upper case. Fixing ACPICA
+       * to not do any repairs when it's not strictly necessary might be an
+       * alternative (because we evaluate all the objects during the init), but
+       * then it would be cumbersome to upgrade ACPICA because of those custom
+       * changes. Therefore, the simplest thing to do now is just to disable the
+       * auto repair when we're not booting with UEFI. In addition to that, we
+       * need to map the regions of type 3 (ACPI_RECLAIMABLE) as R/W.
+       */
+      AcpiGbl_DisableAutoRepair = TRUE;
+   }
 
    printk("ACPI: AcpiInitializeSubsystem\n");
    rc = AcpiInitializeSubsystem();
