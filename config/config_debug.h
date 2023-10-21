@@ -52,8 +52,8 @@
 
    #define STRTAB_MAX_SIZE            (  96 * KB)
 #else
-   #define SYMTAB_MAX_SIZE            ( 224 * KB)
-   #define STRTAB_MAX_SIZE            ( 224 * KB)
+   #define SYMTAB_MAX_SIZE            ( 256 * KB)
+   #define STRTAB_MAX_SIZE            ( 256 * KB)
 #endif
 
 
