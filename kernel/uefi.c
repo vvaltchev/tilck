@@ -15,7 +15,7 @@
 #include <efiapi.h>
 
 void (*hw_read_clock)(struct datetime *) = &hw_read_clock_cmos;
-static ulong uefi_rt_addr;
+ulong uefi_rt_addr;
 
 void uefi_set_rt_pointer(ulong addr)
 {

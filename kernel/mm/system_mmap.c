@@ -539,6 +539,7 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    const ulong pend = MIN((ulong)(r->addr+r->len), (ulong)LINEAR_MAPPING_SIZE);
 
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
+                   (r->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) ||
                    (r->extra & MEM_REG_EXTRA_KERNEL);
 
    /*
