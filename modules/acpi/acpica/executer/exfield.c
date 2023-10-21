@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -296,7 +296,8 @@ AcpiExReadDataFromField (
         (ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_SMBUS ||
          ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_GSBUS ||
          ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_IPMI  ||
-         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_PLATFORM_RT))
+         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_PLATFORM_RT ||
+         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_FIXED_HARDWARE))
     {
         /* SMBus, GSBus, IPMI serial */
 
@@ -469,7 +470,8 @@ AcpiExWriteDataToField (
         (ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_SMBUS ||
          ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_GSBUS ||
          ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_IPMI  ||
-         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_PLATFORM_RT))
+         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_PLATFORM_RT ||
+         ObjDesc->Field.RegionObj->Region.SpaceId == ACPI_ADR_SPACE_FIXED_HARDWARE))
     {
         /* SMBus, GSBus, IPMI serial */
 

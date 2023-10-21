@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -724,7 +724,7 @@ AcpiTbVerifyTempTable (
     {
         /* Verify the checksum */
 
-        Status = AcpiTbVerifyChecksum (TableDesc->Pointer, TableDesc->Length);
+        Status = AcpiUtVerifyChecksum (TableDesc->Pointer, TableDesc->Length);
         if (ACPI_FAILURE (Status))
         {
             ACPI_EXCEPTION ((AE_INFO, AE_NO_MEMORY,

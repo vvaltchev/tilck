@@ -8,7 +8,7 @@
  *
  * 1. Copyright Notice
  *
- * Some or all of this work - Copyright (c) 1999 - 2021, Intel Corp.
+ * Some or all of this work - Copyright (c) 1999 - 2022, Intel Corp.
  * All rights reserved.
  *
  * 2. License
@@ -471,7 +471,7 @@ AcpiTbParseRootTable (
 
     /* Validate the root table checksum */
 
-    Status = AcpiTbVerifyChecksum (Table, Length);
+    Status = AcpiUtVerifyChecksum (Table, Length);
     if (ACPI_FAILURE (Status))
     {
         AcpiOsUnmapMemory (Table, Length);
