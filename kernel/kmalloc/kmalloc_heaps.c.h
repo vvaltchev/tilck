@@ -30,7 +30,15 @@ void *kmalloc_get_first_heap(size_t *size)
    if (size)
       *size = KMALLOC_FIRST_HEAP_SIZE;
 
-   return buf;
+   /*
+    * In the simple case when the kernel is mapped in the linear VA starting
+    * from BASE_VA, we can just return the vaddr of `buf`. But, in the general
+    * case where the kernel is mapped elsewhere, we need to return the VA of
+    * the linear mapping corresponding to the address of `buf`. If we don't do
+    * that, the paging code will convert wrongly the VAs to PAs when creating
+    * new page tables, during the early initialization.
+    */
+   return PA_TO_LIN_VA(KERNEL_VA_TO_PA(buf));
 }
 
 #include "kmalloc_leak_detector.c.h"
@@ -371,7 +379,7 @@ void init_kmalloc(void)
    ASSERT(used_heaps == 1);
 
    heaps[0]->region =
-      system_mmap_get_region_of(KERNEL_VA_TO_PA(kmalloc_get_first_heap(NULL)));
+      system_mmap_get_region_of(LIN_VA_TO_PA(kmalloc_get_first_heap(NULL)));
 
    for (int i = 0; i < get_mem_regions_count(); i++) {
 

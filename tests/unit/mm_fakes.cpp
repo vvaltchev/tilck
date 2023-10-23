@@ -27,21 +27,21 @@ extern "C" {
 
 extern bool suppress_printk;
 
-void *kernel_va = nullptr;
+void *base_va = nullptr;
 static unordered_map<ulong, ulong> mappings;
 
 void initialize_test_kernel_heap()
 {
    const ulong test_mem_size = 256 * MB;
 
-   if (kernel_va != nullptr) {
-      bzero(kernel_va, test_mem_size);
+   if (base_va != nullptr) {
+      bzero(base_va, test_mem_size);
       mappings.clear();
       return;
    }
 
-   kernel_va = aligned_alloc(MB, test_mem_size);
-   bzero(kernel_va, test_mem_size);
+   base_va = aligned_alloc(MB, test_mem_size);
+   bzero(base_va, test_mem_size);
 
    mem_regions_count = 1;
    mem_regions[0] = (struct mem_region) {

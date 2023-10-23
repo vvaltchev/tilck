@@ -101,7 +101,6 @@ check_elf_kernel(void)
       if (phdr->p_type != PT_LOAD)
          continue;
 
-      CHECK(phdr->p_vaddr >= KERNEL_BASE_VA);
       CHECK(phdr->p_paddr >= KERNEL_PADDR);
    }
 

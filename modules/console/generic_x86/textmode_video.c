@@ -8,7 +8,7 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/term.h>
 
-#define VIDEO_ADDR ((u16 *) KERNEL_PA_TO_VA(0xB8000))
+#define VIDEO_ADDR ((u16 *) PA_TO_LIN_VA(0xB8000))
 #define VIDEO_COLS 80
 #define VIDEO_ROWS 25
 
@@ -124,7 +124,7 @@ void init_textmode_console(void)
    if (pdir != NULL && !is_mapped(pdir, VIDEO_ADDR)) {
       int rc = map_page(pdir,
                         VIDEO_ADDR,
-                        KERNEL_VA_TO_PA(VIDEO_ADDR),
+                        LIN_VA_TO_PA(VIDEO_ADDR),
                         PAGING_FL_RW);
 
       if (rc < 0)

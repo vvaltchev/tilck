@@ -14,7 +14,7 @@ bu.set_build_config(
    bu.BuildConfig(
       "@CMAKE_SOURCE_DIR@",
       int("@MAX_HANDLES@"),
-      int("@KERNEL_BASE_VA@", 16),
+      int("@BASE_VA@", 16),
    )
 )
 

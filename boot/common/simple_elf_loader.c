@@ -47,7 +47,7 @@ void *simple_elf_loader(void *elf)
                    phdr->p_vaddr + phdr->p_filesz))
       {
          /*
-          * If e_entry is a vaddr (address >= KERNEL_BASE_VA), we need to
+          * If e_entry is a vaddr (address >= KERNEL_VADDR), we need to
           * calculate its paddr because here paging is OFF. Therefore,
           * compute its offset from the beginning of the segment and add it
           * to the paddr of the segment.

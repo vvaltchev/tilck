@@ -25,7 +25,7 @@ void uefi_set_rt_pointer(ulong addr)
 
 void hw_read_clock_uefi(struct datetime *out)
 {
-   EFI_RUNTIME_SERVICES *RT = KERNEL_PA_TO_VA(uefi_rt_addr);
+   EFI_RUNTIME_SERVICES *RT = PA_TO_LIN_VA(uefi_rt_addr);
    EFI_STATUS status;
    EFI_TIME t;
 
@@ -130,7 +130,7 @@ void setup_uefi_runtime_services(void)
             : EfiRuntimeServicesData;
 
       desc.PhysicalStart = (ulong)ma.addr;
-      desc.VirtualStart = (ulong)KERNEL_PA_TO_VA(ma.addr);
+      desc.VirtualStart = (ulong)PA_TO_LIN_VA(ma.addr);
       desc.NumberOfPages = ma.len >> PAGE_SHIFT;
       desc.Attribute = EFI_MEMORY_RUNTIME;
 
@@ -146,7 +146,7 @@ void setup_uefi_runtime_services(void)
    if (status != EFI_SUCCESS)
       panic("Failed to set the UEFI virtual map");
 
-   RT = KERNEL_PA_TO_VA(RT);
+   RT = PA_TO_LIN_VA(RT);
 
    /* Pollute the virtual map object, to make sure it's not used anymore */
    memset(virt_map, 0xAA, num_entries * sizeof(EFI_MEMORY_DESCRIPTOR));

@@ -56,7 +56,7 @@ sb16_alloc_buf(void)
    if (!sb16_info.buf)
       return -ENOMEM;
 
-   sb16_info.buf_paddr = KERNEL_VA_TO_PA(sb16_info.buf);
+   sb16_info.buf_paddr = LIN_VA_TO_PA(sb16_info.buf);
 
    /* The buffer must be aligned at 64-KB boundary */
    ASSERT((sb16_info.buf_paddr & (64 * KB - 1)) == 0);

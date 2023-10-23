@@ -8,7 +8,7 @@ BuildConfig = namedtuple(
    "BuildConfig", [
       "CMAKE_SOURCE_DIR",
       "MAX_HANDLES",
-      "KERNEL_BASE_VA"
+      "BASE_VA"
    ]
 )
 

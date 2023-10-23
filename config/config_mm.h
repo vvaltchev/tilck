@@ -33,10 +33,12 @@
  * variable.
  */
 
+#define HI_VMEM_START    (BASE_VA + 896 * MB)
+#define HI_VMEM_SIZE             (128ul * MB)
 
-#define USER_VDSO_VADDR  (LINEAR_MAPPING_END)
+#define USER_VDSO_VADDR       (HI_VMEM_START)
 
-#define USERMODE_VADDR_END   (KERNEL_BASE_VA) /* biggest user vaddr + 1 */
+#define USERMODE_VADDR_END          (BASE_VA) /* biggest user vaddr + 1 */
 #define MAX_BRK                  (0x40000000) /* +1 GB (virtual memory) */
 #define USER_MMAP_BEGIN               MAX_BRK /* +1 GB (virtual memory) */
 #define USER_MMAP_MIN_SZ            (16 * MB)
