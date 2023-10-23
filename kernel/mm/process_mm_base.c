@@ -246,7 +246,7 @@ bool user_valloc_and_map_slow(ulong user_vaddr, size_t page_count)
          return false;
       }
 
-      pa = KERNEL_VA_TO_PA(kernel_vaddr);
+      pa = LIN_VA_TO_PA(kernel_vaddr);
 
       if (map_page(pdir, (void *)va, pa, PAGING_FL_RWUS) != 0) {
          kfree2(kernel_vaddr, PAGE_SIZE);
@@ -274,7 +274,7 @@ bool user_valloc_and_map(ulong user_vaddr, size_t page_count)
 
    count = map_pages(pdir,
                      (void *)user_vaddr,
-                     KERNEL_VA_TO_PA(kernel_vaddr),
+                     LIN_VA_TO_PA(kernel_vaddr),
                      page_count,
                      PAGING_FL_US | PAGING_FL_RW);
 

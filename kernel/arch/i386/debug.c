@@ -36,7 +36,7 @@ stackwalk32(void **frames,
 
    for (i = 0; i < count; i++) {
 
-      if ((ulong)ebp < KERNEL_BASE_VA)
+      if ((ulong)ebp < BASE_VA)
          break;
 
       if (curr_pdir) {

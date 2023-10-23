@@ -146,7 +146,7 @@ int fat_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 
          mapped_cnt = map_pages(pdir,
                                 (void *)vaddr,
-                                KERNEL_VA_TO_PA(data),
+                                LIN_VA_TO_PA(data),
                                 pg_count,
                                 PAGING_FL_US | PAGING_FL_SHARED);
 

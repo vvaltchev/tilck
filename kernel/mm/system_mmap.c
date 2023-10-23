@@ -107,7 +107,7 @@ int system_mmap_get_ramdisk(int ramdisk_index, void **va, size_t *size)
          if (rd_count == ramdisk_index) {
 
             if (va)
-               *va = KERNEL_PA_TO_VA((ulong)m->addr);
+               *va = PA_TO_LIN_VA((ulong)m->addr);
 
             if (size)
                *size = (size_t)m->len;
@@ -420,7 +420,7 @@ STATIC void fix_mem_regions(void)
 
 STATIC void add_kernel_phdrs_to_mmap(void)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
    Elf_Phdr *phdrs = (void *)h + h->e_phoff;
 
    for (int i = 0; i < h->e_phnum; i++) {
@@ -550,8 +550,8 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    const bool big_pages = !(r->extra & MEM_REG_EXTRA_RAMDISK);
    const size_t page_count = (pend - pbegin) >> PAGE_SHIFT;
 
-   *vbegin = (ulong)KERNEL_PA_TO_VA(pbegin);
-   *vend = (ulong)KERNEL_PA_TO_VA(pend);
+   *vbegin = (ulong)PA_TO_LIN_VA(pbegin);
+   *vend = (ulong)PA_TO_LIN_VA(pend);
 
    size_t count =
       map_pages(get_kernel_pdir(),
@@ -574,7 +574,7 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 
 bool system_mmap_check_for_extra_ramdisk_region(void *rd)
 {
-   int ri = system_mmap_get_region_of(KERNEL_VA_TO_PA(rd));
+   int ri = system_mmap_get_region_of(LIN_VA_TO_PA(rd));
    struct mem_region *r;
    VERIFY(ri >= 0);
 

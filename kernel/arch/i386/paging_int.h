@@ -43,7 +43,7 @@
 
 #define PAGE_FAULT_FL_COW (PAGE_FAULT_FL_PRESENT | PAGE_FAULT_FL_RW)
 #define BIG_PAGE_SHIFT                                            22
-#define KERNEL_BASE_PD_IDX        (KERNEL_BASE_VA >> BIG_PAGE_SHIFT)
+#define BASE_VADDR_PD_IDX                (BASE_VA >> BIG_PAGE_SHIFT)
 
 // A page table entry
 

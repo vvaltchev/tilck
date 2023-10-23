@@ -29,10 +29,23 @@
 #define PAGING_FL_RWUS               (PAGING_FL_RW | PAGING_FL_US)
 
 /*
- * These MACROs can be used for the linear mapping region in the kernel space.
+ * These MACROs convert addresses to/from the linear mapping at BASE_VA to the
+ * physical address space.
  */
+#define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
+#define LIN_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
 
-#define KERNEL_PA_TO_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
+/*
+ * These MACROs convert addresses to/from the kernel base virtual mapping to
+ * the physical address space. When KRN32_LIN_VADDR is enabled, KERNEL_BASE_VA
+ * is the same as BASE_VA, so the following macros are identical to the ones
+ * above. When KRN32_LIN_VADDR is disabled, KERNEL_BASE_VA will be != BASE_VA.
+ *
+ * In the 64-bit case, the kernel will always be mapped at a non linear, as if
+ * KRN32_LIN_VADDR were always disabled. Indeed, its value is ignored in the 64
+ * bit case.
+ */
+#define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
 #define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
 
 extern char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);

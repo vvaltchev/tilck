@@ -37,7 +37,7 @@ static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
 static ALWAYS_INLINE page_table_t *
 pdir_get_page_table(pdir_t *pdir, u32 i)
 {
-   return KERNEL_PA_TO_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
+   return PA_TO_LIN_VA(pdir->entries[i].ptaddr << PAGE_SHIFT);
 }
 
 bool handle_potential_cow(void *context)
@@ -69,7 +69,7 @@ bool handle_potential_cow(void *context)
       const ulong paddr = (ulong)
          pt->pages[pt_index].pageAddr << PAGE_SHIFT;
 
-      ASSERT(KERNEL_PA_TO_VA(paddr) != &zero_page);
+      ASSERT(paddr != KERNEL_VA_TO_PA(&zero_page));
 #endif
 
       pt->pages[pt_index].rw = true;
@@ -108,7 +108,7 @@ bool handle_potential_cow(void *context)
    memcpy32(new_page_vaddr, page_vaddr, PAGE_SIZE / 4);
 
    // Get the paddr of the new page
-   const ulong paddr = KERNEL_VA_TO_PA(new_page_vaddr);
+   const ulong paddr = LIN_VA_TO_PA(new_page_vaddr);
 
    // A just-allocated pageframe MUST have ref-count == 0
    ASSERT(pf_ref_count_get(paddr) == 0);
@@ -217,7 +217,7 @@ bool is_mapped(pdir_t *pdir, void *vaddrp)
    if (e->psize) /* 4-MB page */
       return e->present;
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    return pt->pages[pt_index].present;
 }
 
@@ -237,7 +237,7 @@ bool is_rw_mapped(pdir_t *pdir, void *vaddrp)
    if (e->psize) /* 4-MB page */
       return e->present && e->rw;
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    page = pt->pages[pt_index];
    return page.present && page.rw;
 }
@@ -249,8 +249,8 @@ void set_page_rw(pdir_t *pdir, void *vaddrp, bool rw)
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
-   ASSERT(KERNEL_VA_TO_PA(pt) != 0);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   ASSERT(LIN_VA_TO_PA(pt) != 0);
    pt->pages[pt_index].rw = rw;
    invalidate_page_hw(vaddr);
 }
@@ -263,18 +263,18 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
 
    if (permissive) {
 
-      if (KERNEL_VA_TO_PA(pt) == 0)
+      if (LIN_VA_TO_PA(pt) == 0)
          return -EINVAL;
 
       if (!pt->pages[pt_index].present)
          return -EINVAL;
 
    } else {
-      ASSERT(KERNEL_VA_TO_PA(pt) != 0);
+      ASSERT(LIN_VA_TO_PA(pt) != 0);
       ASSERT(pt->pages[pt_index].present);
    }
 
@@ -286,7 +286,7 @@ __unmap_page(pdir_t *pdir, void *vaddrp, bool free_pageframe, bool permissive)
 
    if (!pf_ref_count_dec(paddr) && free_pageframe) {
       ASSERT(paddr != KERNEL_VA_TO_PA(zero_page));
-      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
+      kfree2(PA_TO_LIN_VA(paddr), PAGE_SIZE);
    }
 
    return 0;
@@ -349,13 +349,13 @@ ulong get_mapping(pdir_t *pdir, void *vaddrp)
     * This function shall be never called for the linear-mapped zone of the
     * the kernel virtual memory.
     */
-   ASSERT(vaddr < KERNEL_BASE_VA || vaddr >= LINEAR_MAPPING_END);
+   ASSERT(vaddr < BASE_VA || vaddr >= LINEAR_MAPPING_END);
 
    e.raw = pdir->entries[pd_index].raw;
    ASSERT(e.present);
    ASSERT(e.ptaddr != 0);
 
-   pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(e.ptaddr << PAGE_SHIFT);
    p.raw = pt->pages[pt_index].raw;
    ASSERT(p.present);
 
@@ -384,7 +384,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
       ASSERT(e.ptaddr != 0);
 
       /* Get the page table */
-      pt = KERNEL_PA_TO_VA(e.ptaddr << PAGE_SHIFT);
+      pt = PA_TO_LIN_VA(e.ptaddr << PAGE_SHIFT);
 
       /* Get the page entry for `vaddr` within the page table */
       p.raw = pt->pages[pt_index].raw;
@@ -417,10 +417,10 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
    ASSERT(!(paddr & OFFSET_IN_PAGE_MASK)); // the paddr must be page-aligned
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(IS_PAGE_ALIGNED(pt));
 
-   if (UNLIKELY(KERNEL_VA_TO_PA(pt) == 0)) {
+   if (UNLIKELY(LIN_VA_TO_PA(pt) == 0)) {
 
       // we have to create a page table for mapping 'vaddr'.
       pt = kzalloc_obj(page_table_t);
@@ -434,7 +434,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
          PG_PRESENT_BIT |
          PG_RW_BIT |
          (hw_flags & PG_US_BIT) |
-         KERNEL_VA_TO_PA(pt);
+         LIN_VA_TO_PA(pt);
    }
 
    if (pt->pages[pt_index].present)
@@ -529,7 +529,7 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
       if (pg_flags & PAGING_FL_ZERO_PG)
          bzero(va, PAGE_SIZE);
 
-      paddr = KERNEL_VA_TO_PA(va);
+      paddr = LIN_VA_TO_PA(va);
 
    } else {
 
@@ -548,7 +548,7 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
                    /* Kernel pages are global */
 
    if (UNLIKELY(rc != 0) && (pg_flags & PAGING_FL_DO_ALLOC)) {
-      kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
+      kfree2(PA_TO_LIN_VA(paddr), PAGE_SIZE);
    }
 
    return rc;
@@ -616,7 +616,7 @@ pdir_t *pdir_clone(pdir_t *pdir)
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
    memcpy32(new_pdir, pdir, sizeof(pdir_t) / 4);
 
-   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
+   for (u32 i = 0; i < BASE_VADDR_PD_IDX; i++) {
 
       /* User-space cannot use 4-MB pages */
       ASSERT(!pdir->entries[i].psize);
@@ -638,10 +638,10 @@ pdir_t *pdir_clone(pdir_t *pdir)
       }
 
       ASSERT(IS_PAGE_ALIGNED(pt));
-      new_pdir->entries[i].ptaddr=SHR_BITS(KERNEL_VA_TO_PA(pt),PAGE_SHIFT,u32);
+      new_pdir->entries[i].ptaddr=SHR_BITS(LIN_VA_TO_PA(pt),PAGE_SHIFT,u32);
    }
 
-   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
+   for (u32 i = 0; i < BASE_VADDR_PD_IDX; i++) {
 
       if (!pdir->entries[i].present)
          continue;
@@ -696,7 +696,7 @@ pdir_deep_clone(pdir_t *pdir)
 
    ASSERT(IS_PAGE_ALIGNED(new_pdir));
 
-   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
+   for (u32 i = 0; i < BASE_VADDR_PD_IDX; i++) {
 
       new_pdir->entries[i].raw = pdir->entries[i].raw;
 
@@ -731,9 +731,9 @@ pdir_deep_clone(pdir_t *pdir)
          ulong orig_page_paddr =
             (ulong)orig_pt->pages[j].pageAddr << PAGE_SHIFT;
 
-         void *orig_page = KERNEL_PA_TO_VA(orig_page_paddr);
+         void *orig_page = PA_TO_LIN_VA(orig_page_paddr);
 
-         u32 new_page_paddr = KERNEL_VA_TO_PA(new_page);
+         u32 new_page_paddr = LIN_VA_TO_PA(new_page);
          ASSERT(pf_ref_count_get(new_page_paddr) == 0);
          pf_ref_count_inc(new_page_paddr);
 
@@ -742,10 +742,10 @@ pdir_deep_clone(pdir_t *pdir)
       }
 
       new_pdir->entries[i].ptaddr =
-         SHR_BITS(KERNEL_VA_TO_PA(new_pt), PAGE_SHIFT, u32);
+         SHR_BITS(LIN_VA_TO_PA(new_pt), PAGE_SHIFT, u32);
    }
 
-   for (u32 i = KERNEL_BASE_PD_IDX; i < 1024; i++) {
+   for (u32 i = BASE_VADDR_PD_IDX; i < 1024; i++) {
       new_pdir->entries[i].raw = pdir->entries[i].raw;
    }
 
@@ -767,7 +767,7 @@ void pdir_destroy(pdir_t *pdir)
    // Kernel's pdir cannot be destroyed!
    ASSERT(pdir != __kernel_pdir);
 
-   for (u32 i = 0; i < KERNEL_BASE_PD_IDX; i++) {
+   for (u32 i = 0; i < BASE_VADDR_PD_IDX; i++) {
 
       if (!pdir->entries[i].present)
          continue;
@@ -782,7 +782,7 @@ void pdir_destroy(pdir_t *pdir)
          const ulong paddr = (ulong)pt->pages[j].pageAddr << PAGE_SHIFT;
 
          if (pf_ref_count_dec(paddr) == 0)
-            kfree2(KERNEL_PA_TO_VA(paddr), PAGE_SIZE);
+            kfree2(PA_TO_LIN_VA(paddr), PAGE_SIZE);
       }
 
       // We freed all the pages, now free the whole page-table.
@@ -846,7 +846,7 @@ static void set_4kb_page_pat_wc(pdir_t *pdir, void *vaddrp)
 
    ASSERT(!(vaddr & OFFSET_IN_PAGE_MASK)); // the vaddr must be page-aligned
 
-   pt = KERNEL_PA_TO_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
+   pt = PA_TO_LIN_VA(pdir->entries[pd_index].ptaddr << PAGE_SHIFT);
    ASSERT(IS_PAGE_ALIGNED(pt));
    ASSERT(pt != NULL);
 
@@ -881,29 +881,51 @@ void set_pages_pat_wc(pdir_t *pdir, void *vaddr, size_t size)
 void early_init_paging(void)
 {
    set_fault_handler(FAULT_PAGE_FAULT, handle_page_fault);
-   __kernel_pdir = (pdir_t *) kpdir_buf;
+   __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(kpdir_buf));
    set_kernel_process_pdir(__kernel_pdir);
+   printk("kernel base va:    %p\n", TO_PTR(KERNEL_BASE_VA));
+   printk("kernel vaddr:      %p\n", TO_PTR(KERNEL_VADDR));
+   printk("base va:           %p\n", TO_PTR(BASE_VA));
+   printk("linear mapping:    %lu MB\n", LINEAR_MAPPING_MB);
+   printk("\n");
+
+   if (KRN32_LIN_VADDR) {
+      /* We're all set up */
+      return;
+   }
+
+   /*
+    * We need to map the kernel's binary into its new pdir.
+    *
+    * TODO: replace the 8 * MB literal with a well-defined constant.
+    */
+   size_t kernel_tot_pages = (8 * MB) >> PAGE_SHIFT;
+   size_t count =
+      map_pages(__kernel_pdir,
+                TO_PTR(KERNEL_BASE_VA),
+                0,
+                kernel_tot_pages,
+                PAGING_FL_BIG_PAGES_ALLOWED | PAGING_FL_RW);
+
+   if (count != kernel_tot_pages) {
+      panic("Unable to map the kernel pages into the new pdir");
+   }
 }
 
 void init_hi_vmem_heap(void)
 {
-   size_t hi_vmem_size;
-   ulong hi_vmem_start;
    u32 hi_vmem_start_pidx;
    u32 hi_vmem_end_pidx;
 
-   if (LINEAR_MAPPING_MB <= 896) {
-      hi_vmem_size = 128 * MB;
-   } else {
+   if (LINEAR_MAPPING_END > HI_VMEM_START) {
       panic("LINEAR_MAPPING_MB (%d) is too big", LINEAR_MAPPING_MB);
    }
 
-   hi_vmem_start = LINEAR_MAPPING_END;
-   hi_vmem_start_pidx = hi_vmem_start >> BIG_PAGE_SHIFT;
-   hi_vmem_end_pidx = hi_vmem_start_pidx + (hi_vmem_size >> BIG_PAGE_SHIFT);
+   hi_vmem_start_pidx = HI_VMEM_START >> BIG_PAGE_SHIFT;
+   hi_vmem_end_pidx = hi_vmem_start_pidx + (HI_VMEM_SIZE >> BIG_PAGE_SHIFT);
 
-   hi_vmem_heap = kmalloc_create_regular_heap(hi_vmem_start,
-                                              hi_vmem_size,
+   hi_vmem_heap = kmalloc_create_regular_heap(HI_VMEM_START,
+                                              HI_VMEM_SIZE,
                                               4 * PAGE_SIZE);  // min_block_size
 
    if (!hi_vmem_heap)
@@ -920,7 +942,7 @@ void init_hi_vmem_heap(void)
          panic("Unable to alloc ptable for hi_vmem at %p", i << BIG_PAGE_SHIFT);
 
       ASSERT(IS_PAGE_ALIGNED(pt));
-      e->raw = PG_PRESENT_BIT | PG_RW_BIT | PG_US_BIT | KERNEL_VA_TO_PA(pt);
+      e->raw = PG_PRESENT_BIT | PG_RW_BIT | PG_US_BIT | LIN_VA_TO_PA(pt);
    }
 }
 
@@ -929,11 +951,11 @@ void *failsafe_map_framebuffer(ulong paddr, ulong size)
    /*
     * Paging has not been initialized yet: probably we're in panic.
     * At this point, the kernel still uses page_size_buf as pdir, with only
-    * the first 4 MB of the physical mapped at KERNEL_BASE_VA.
+    * the first 4 MB of the physical mapped at BASE_VA.
     */
 
    ulong vaddr = FAILSAFE_FB_VADDR;
-   __kernel_pdir = (pdir_t *)page_size_buf;
+   __kernel_pdir = PA_TO_LIN_VA(KERNEL_VA_TO_PA(page_size_buf));
 
    u32 big_pages_to_use = pow2_round_up_at(size, 4 * MB) / (4 * MB);
 
@@ -964,7 +986,7 @@ virtual_read_unsafe(pdir_t *pdir, void *extern_va, void *dest, size_t len)
       pgoff = ((ulong)extern_va) & OFFSET_IN_PAGE_MASK;
       to_read = MIN(PAGE_SIZE - pgoff, len - tot);
 
-      va = KERNEL_PA_TO_VA(pa);
+      va = PA_TO_LIN_VA(pa);
       memcpy(dest + tot, va, to_read);
    }
 
@@ -988,7 +1010,7 @@ virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
       pgoff = ((ulong)extern_va) & OFFSET_IN_PAGE_MASK;
       to_write = MIN(PAGE_SIZE - pgoff, len - tot);
 
-      va = KERNEL_PA_TO_VA(pa);
+      va = PA_TO_LIN_VA(pa);
       memcpy(va, src + tot, to_write);
    }
 

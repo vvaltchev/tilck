@@ -40,7 +40,7 @@ static void *alloc_kernel_isolated_stack(struct process *pi)
    if (!direct_va)
       return NULL;
 
-   direct_pa = KERNEL_VA_TO_PA(direct_va);
+   direct_pa = LIN_VA_TO_PA(direct_va);
    block_vaddr = hi_vmem_reserve(ISOLATED_STACK_HI_VMEM_SPACE);
 
    if (!block_vaddr) {
@@ -71,7 +71,7 @@ free_kernel_isolated_stack(struct process *pi, void *vaddr_in_block)
 {
    void *block_vaddr = (void *)((ulong)vaddr_in_block - PAGE_SIZE);
    ulong direct_pa = get_mapping(get_kernel_pdir(), vaddr_in_block);
-   void *direct_va = KERNEL_PA_TO_VA(direct_pa);
+   void *direct_va = PA_TO_LIN_VA(direct_pa);
 
    unmap_pages(get_kernel_pdir(), vaddr_in_block, KERNEL_STACK_PAGES, false);
    hi_vmem_release(block_vaddr, ISOLATED_STACK_HI_VMEM_SPACE);

@@ -28,7 +28,7 @@ AcpiOsMapMemory(
    ACPI_FUNCTION_TRACE(__FUNC__);
 
    if (paddr + Length <= LINEAR_MAPPING_SIZE)
-      return_PTR(KERNEL_PA_TO_VA(Where));
+      return_PTR(PA_TO_LIN_VA(Where));
 
    // printk("ACPI: mmap 0x%08llx (len: %zu -> %zuK)\n",
    //        paddr, RawLength, Length/KB);
@@ -102,7 +102,7 @@ AcpiOsReadable(
    ulong va_end = va + Length;
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (va < KERNEL_BASE_VA)
+   if (va < BASE_VA)
       return_UINT8(false);
 
    if (va_end <= LINEAR_MAPPING_END)
@@ -130,7 +130,7 @@ AcpiOsWritable(
    int reg_count = get_mem_regions_count();
    ACPI_FUNCTION_TRACE(__FUNC__);
 
-   if (va < KERNEL_BASE_VA)
+   if (va < BASE_VA)
       return_UINT8(false);
 
    for (int i = 0; i < reg_count; i++) {
@@ -192,7 +192,7 @@ AcpiOsReadMemory(
       NOT_IMPLEMENTED();
 
    } else {
-      va = KERNEL_PA_TO_VA(Address);
+      va = PA_TO_LIN_VA(Address);
    }
 
    switch (Width) {
@@ -230,7 +230,7 @@ AcpiOsWriteMemory(
       NOT_IMPLEMENTED();
 
    } else {
-      va = KERNEL_PA_TO_VA(Address);
+      va = PA_TO_LIN_VA(Address);
    }
 
    switch (Width) {

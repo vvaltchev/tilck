@@ -35,4 +35,4 @@
 
 
 #define FBCON_OPT_FUNCS_MIN_FREE_HEAP                        (16 * MB)
-#define FAILSAFE_FB_VADDR          (KERNEL_BASE_VA + (1024 - 64) * MB)
+#define FAILSAFE_FB_VADDR                 (BASE_VA + (1024 - 64) * MB)
