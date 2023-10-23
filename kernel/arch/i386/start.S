@@ -58,7 +58,7 @@ multiboot_entry:
 
    /*
     * Before jump to kernel, we have to setup a basic paging in order to map
-    * the first 4-MB both at 0 and at +KERNEL_BASE_VA. Using 4-MB pages.
+    * the first 4-MB both at 0 and at +BASE_VA. Using 4-MB pages.
     * NOTE: the registers EAX and EBX cannot be used since they contain
     * multiboot information!
     */
@@ -80,12 +80,25 @@ multiboot_entry:
 
    # Identity map the first 8 MB: that's necessary in order to avoid crashing
    # due to a page fault once we execute: mov cr3, edx, below.
+   #
+   # TODO: replace the 8 * MB fixed mapping with a well-defined constant
+   # and use the GAS macros to implement a loop to map an abitrary-sized
+   # mapping (aligned at BIG_PAGE_SIZE, of course).
+   #
    mov dword ptr [edx + 0], MAKE_BIG_PAGE(0)
    mov dword ptr [edx + 4], MAKE_BIG_PAGE(4 * MB)
 
-   # Map the first 8 MB also at KERNEL_BASE_VA
-   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 0], MAKE_BIG_PAGE(0)
-   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) + 4], MAKE_BIG_PAGE(4 * MB)
+   # Map the first 8 MB also at BASE_VA
+   mov dword ptr [edx + (BASE_VA >> 20) + 0], MAKE_BIG_PAGE(0)
+   mov dword ptr [edx + (BASE_VA >> 20) + 4], MAKE_BIG_PAGE(4 * MB)
+
+#if !KRN32_LIN_VADDR
+
+   # Map 8 MB starting at KERNEL_PADDR to KERNEL_VADDR
+   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) +  0], MAKE_BIG_PAGE(0)
+   mov dword ptr [edx + (KERNEL_BASE_VA >> 20) +  4], MAKE_BIG_PAGE(4  * MB)
+
+#endif
 
    # Make sure PAGING is disabled
    mov ecx, cr0
@@ -114,7 +127,7 @@ multiboot_entry:
                   # is removed. We need to continue using high (+3 GB)
                   # virtual addresses. The trick works because this file is
                   # part of the kernel ELF binary where the ORG is set to
-                  # 0xC0100000 (KERNEL_BASE_VA + KERNEL_PADDR).
+                  # 0xC0100000 (KERNEL_VADDR).
 
 .next_step:
    mov esp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 4
@@ -122,6 +135,6 @@ multiboot_entry:
    push ebx    # 2st argument: multiboot information structure
    push eax    # 1nd argument: multiboot magic
    call kmain  # Now call kernel's kmain() which uses
-               # KERNEL_BASE_VA + KERNEL_PADDR as ORG
+               # KERNEL_VADDR as ORG
 
 END_FUNC(_start)

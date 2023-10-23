@@ -25,7 +25,7 @@ class printer_regs:
       eip = r["eip"]
       eip_str = None
 
-      if eip < bu.config.KERNEL_BASE_VA:
+      if eip < bu.config.BASE_VA:
          eip_str = fixhex32(r["eip"])
       else:
          eip_str = gdb.parse_and_eval(

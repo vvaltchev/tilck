@@ -70,7 +70,7 @@ load_segment_by_copy(fs_handle *elf_h,
          if (!(p = kzmalloc(PAGE_SIZE)))
             return -ENOMEM;
 
-         if ((rc = map_page(pdir, vaddr, KERNEL_VA_TO_PA(p), PAGING_FL_RWUS))) {
+         if ((rc = map_page(pdir, vaddr, LIN_VA_TO_PA(p), PAGING_FL_RWUS))) {
             kfree2(p, PAGE_SIZE);
             return (int)rc;
          }
@@ -78,7 +78,7 @@ load_segment_by_copy(fs_handle *elf_h,
       } else {
 
          /* Get user's vaddr as a kernel vaddr */
-         p = KERNEL_PA_TO_VA(get_mapping(pdir, vaddr));
+         p = PA_TO_LIN_VA(get_mapping(pdir, vaddr));
       }
 
       if (filesz_rem) {
@@ -301,7 +301,7 @@ alloc_and_map_stack_page(pdir_t *pdir, void *stack_top, u32 i)
 
    rc = map_page(pdir,
                  (void *)stack_top + (i << PAGE_SHIFT),
-                 KERNEL_VA_TO_PA(p),
+                 LIN_VA_TO_PA(p),
                  PAGING_FL_RW | PAGING_FL_US);
 
    return rc;
@@ -482,7 +482,7 @@ out:
 
 void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
    *symtab = NULL;
    *strtab = NULL;
 
@@ -612,7 +612,7 @@ find_sym_at_addr_safe(ulong vaddr, long *offset, u32 *sym_size)
 
 static Elf_Shdr *kernel_elf_get_section(const char *section_name)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)(KERNEL_PA_TO_VA(KERNEL_PADDR));
+   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
    Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
    Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 

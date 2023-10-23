@@ -48,7 +48,7 @@ ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 
       rc = map_page(pdir,
                     (void *)vaddr,
-                    KERNEL_VA_TO_PA(b->vaddr),
+                    LIN_VA_TO_PA(b->vaddr),
                     pg_flags);
 
       if (rc) {
@@ -117,7 +117,7 @@ ramfs_handle_fault_int(struct process *pi,
 
    rc = map_page(pi->pdir,
                  (void *)(vaddr & PAGE_MASK),
-                 KERNEL_VA_TO_PA(rw ? block->vaddr : &zero_page),
+                 rw ? LIN_VA_TO_PA(block->vaddr) : KERNEL_VA_TO_PA(&zero_page),
                  PAGING_FL_US | PAGING_FL_RW | PAGING_FL_SHARED);
 
    if (rc)
