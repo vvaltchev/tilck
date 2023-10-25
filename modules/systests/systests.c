@@ -6,6 +6,7 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/modules.h>
 #include <tilck/common/printk.h>
+#include <tilck/kernel/errno.h>
 #include <tilck/kernel/sched.h>
 
 #define TEST_VAR_VALUE 3
@@ -37,12 +38,10 @@ tilck_call_fn_0(const char *fn_name)
 {
    const ulong fn_addr = find_addr_of_symbol(fn_name);
 
-   if (fn_addr) {
-      ((void (*)(void))fn_addr)();
-   } else {
-      printk("Global function %s not found\n", fn_name);
-      return 1;
-   }
+   if (!fn_addr)
+      return -ENOENT;
+
+   ((void (*)(void))fn_addr)();
 
    return 0;
 }
