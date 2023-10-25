@@ -361,12 +361,24 @@ int cmd_exit_cb(int argc, char **argv)
    }
 
    if (!child_pid) {
-      do_sysenter_call2(TILCK_CMD_SYSCALL,
+      int ret;
+
+      ret = do_sysenter_call2(TILCK_CMD_SYSCALL,
                         TO_PTR(TILCK_CMD_CALL_FUNC_0),
                         "register_test_on_exit_callback");
+
+      if(ret == -ENOENT)
+         exit(99);
+
       exit(0);
    }
+
    waitpid(child_pid, &wstatus, 0);
+
+   if(WEXITSTATUS(wstatus) == 99) {
+      printf("%s\n", "Skipping the test because there are no symbols in the kernel");
+      return 0;
+   }
 
    do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
