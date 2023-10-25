@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <asm-generic/errno-base.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -345,11 +346,15 @@ int cmd_exit_cb(int argc, char **argv)
    int child_pid;
    long before_cb;
    long after_cb;
+   int rc;
 
-   do_sysenter_call3(TILCK_CMD_SYSCALL,
+   rc = do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
                      "test_on_exit_cb_counter",
                      &before_cb);
+
+   if(rc == -ENOENT)
+      goto cmd_exit_cb_skip_test;
 
    DEVSHELL_CMD_ASSERT(before_cb == 3);
 
@@ -375,10 +380,8 @@ int cmd_exit_cb(int argc, char **argv)
 
    waitpid(child_pid, &wstatus, 0);
 
-   if(WEXITSTATUS(wstatus) == 99) {
-      printf("%s\n", "Skipping the test because there are no symbols in the kernel");
-      return 0;
-   }
+   if(WEXITSTATUS(wstatus) == 99)
+      goto cmd_exit_cb_skip_test;
 
    do_sysenter_call3(TILCK_CMD_SYSCALL,
                      TO_PTR(TILCK_CMD_GET_VAR_LONG),
@@ -391,5 +394,9 @@ int cmd_exit_cb(int argc, char **argv)
 
    DEVSHELL_CMD_ASSERT(after_cb == before_cb + 1);
 
+   return 0;
+
+cmd_exit_cb_skip_test:
+   printf("%s\n", "Skipping the test because there are no symbols in the kernel");
    return 0;
 }
