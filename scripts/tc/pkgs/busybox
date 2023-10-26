@@ -10,7 +10,7 @@ function internal_build_busybox {
 
    cp $MAIN_DIR/other/busybox.config .config
 
-   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
+   if [[ "$USE_SYSCC" == 1 ]]; then
 
       export SYS_CC="$CC"
       export SYS_CXX="$CXX"

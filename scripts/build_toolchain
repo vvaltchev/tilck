@@ -241,7 +241,7 @@ function save_cc_vars {
 
 function set_cc_vars_to_tc {
 
-   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
+   if [[ "$USE_SYSCC" != 1 ]]; then
 
       # Default case
       export CC="${ARCH_GCC_TC}-linux-gcc"
@@ -641,7 +641,7 @@ function main {
 
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
-   if [[ "$HOST_ARCH" != "$ARCH" ]]; then
+   if [[ "$USE_SYSCC" != 1 ]]; then
 
       local ha=$TC/host_${HOST_ARCH}
       GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler

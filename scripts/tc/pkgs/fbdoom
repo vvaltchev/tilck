@@ -95,7 +95,7 @@ function build_fbdoom {
       download_fbdoom
       cd fbDOOM
 
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
          # Note: NOT TESTED yet.
          # Remember: this scenario (building on $ARCH) is _not_ officially

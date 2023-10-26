@@ -26,7 +26,7 @@ function build_libmusl {
 
    if ! [ -d musl ]; then
 
-      if [[ "$USE_SYSCC" == "" || "$USE_SYSCC" == 0 ]]; then
+      if [[ "$USE_SYSCC" != 1 ]]; then
 
          # The glibc gcc toolchain is necessary in order to build libmusl and
          # make its build system generate the musl-gcc script. Attempting to

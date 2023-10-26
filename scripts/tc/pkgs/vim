@@ -49,7 +49,7 @@ function build_vim {
 
       local curr="$PWD"
 
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
          # Remember: this scenario (building on $ARCH) is _not_ officially
          # supported.
