@@ -28,7 +28,7 @@ function build_zlib {
 
       local p="$TC/$ARCH/zlib/install"
 
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"

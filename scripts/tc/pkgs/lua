@@ -26,9 +26,9 @@ function build_lua {
       download_lua
       cd lua
 
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
-         # Remember: this scenario (building on $ARCH) is _not_ officially
+         # Remember: this scenario is _not_ officially
          # supported.
 
          export SYS_CC="$CC"

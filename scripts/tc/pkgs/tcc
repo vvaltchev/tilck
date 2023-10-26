@@ -64,7 +64,7 @@ function build_tcc {
 
       local ldflags="-Wl,--oformat=$ARCH_ELF_NAME -static"
 
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
          export SYS_CC="$CC"
          export SYS_CXX="$CXX"

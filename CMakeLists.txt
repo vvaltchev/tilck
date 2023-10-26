@@ -825,17 +825,23 @@ endif()
 
 if (BOOTLOADER_EFI)
 
-   list(
-      APPEND mbr_img_deps
+   if (${HOST_ARCH} STREQUAL "i386")
 
-      efi_bootloader
-      ${EFI_x86_64_FILE}
-   )
+      if (NOT ${ARCH} STREQUAL "i386")
+         message(FATAL_ERROR "On i386, we can only build i386 Tilck")
+      endif()
 
-   if (${ARCH} STREQUAL "i386")
-      list(APPEND mbr_img_deps ${EFI_ia32_FILE})
+      list(APPEND mbr_img_deps efi_bootloader ${EFI_ia32_FILE})
+
+   else()
+
+      list(APPEND mbr_img_deps efi_bootloader ${EFI_x86_64_FILE})
+
+      if (${ARCH} STREQUAL "i386")
+         list(APPEND mbr_img_deps ${EFI_ia32_FILE})
+      endif()
+
    endif()
-
 endif()
 
 # [begin] Set some convenience variables

@@ -34,7 +34,7 @@ function build_micropython {
       download_micropython
       cd micropython
 
-      if [[ "$HOST_ARCH" != "$BUILD_ARCH" ]]; then
+      if [[ "$USE_SYSCC" == 1 ]]; then
 
          # Case HOST_ARCH == ARCH
          # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
