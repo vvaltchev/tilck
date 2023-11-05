@@ -43,14 +43,19 @@ struct kopt {
 
 static void kopt_handle_bool(bool *var, const char *arg)
 {
-   if (*arg == '-')
-      *var = true;
-   else if (!strcmp(arg, "0"))
+   switch (*arg) {
+   case '0':
       *var = false;
-   else if (!strcmp(arg, "1"))
+      break;
+
+   case '-':
+   case '1':
       *var = true;
-   else
+      break;
+
+   default:
       NOT_REACHED();
+   }
 }
 
 static void kopt_handle_long(long *var, const char *arg)
