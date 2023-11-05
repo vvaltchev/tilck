@@ -3,8 +3,8 @@ Contributing to Tilck
 
 First off, thanks for taking the time to contribute!
 
-Any kind of contribution to the Tilck project is more than welcome. The project
-needs features and tests in many areas in order to become production-ready. Pull
+Contributions to the Tilck project are more than welcome. The project needs
+features and tests in many areas in order to become production-ready. Pull
 requests will be reviewed and, after addressing any eventual comments from the
 maintainer, will be merged in the master branch. Pull requests should meet a few
 requirements:
@@ -16,13 +16,29 @@ requirements:
   - Contain expressive commit messages
   - Implement features aligned with the goals of the Tilck project
 
-**NOTE:** don't be scared to propose an imperfect pull request. You will get help!
-
-Code-free contributions are also welcome. The project would benefit from more
-documentation (HOWTOs, tutorials etc.), but also from artistic assets.
-
 [building]: building.md
 [testing]: testing.md
+
+Required knowledge
+-------------------------
+
+The required knowledge depends a lot on the type of contributions you're
+interested in making. Unit tests require a fair amount of C++ experience.
+The system tests (shellcmds) require experience with C and system programming.
+Working on the test runners require some experience with Python. Changes to
+the `build_toolchain` script and related require good Bash skills and
+deep knowledge about how to build C/C++ projects with cross-compilers. Tilck's
+build itself requires CMake experience.
+
+Contributions to the kernel Tilck are the generally harder compared to the
+rest of the components and require a *significant* experience with C, *good*
+theoretical understanding of operating systems and at least *some* practical
+experience with embedded or OS development or at least good knowledge of x86
+assembly. More or less knowledge is required to start contributing in the kernel,
+depending on the task. For beginners in the field, refer to:
+
+- https://wiki.osdev.org/Introduction
+- https://wiki.osdev.org/Required_Knowledge
 
 Coding style
 -------------------------
