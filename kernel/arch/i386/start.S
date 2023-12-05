@@ -130,7 +130,7 @@ multiboot_entry:
                   # 0xC0100000 (KERNEL_VADDR).
 
 .next_step:
-   mov esp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 4
+   mov esp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 16
 
    push ebx    # 2st argument: multiboot information structure
    push eax    # 1nd argument: multiboot magic

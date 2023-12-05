@@ -8,8 +8,9 @@ SEARCH_DIR("=/tmp/x86-64--glibc--stable/usr/x86-64-buildroot-linux-gnu/lib64");
 SEARCH_DIR("=/tmp/x86-64--glibc--stable/usr/x86-64-buildroot-linux-gnu/lib");
 
 kernel_paddr        = @KERNEL_PADDR@;
-kernel_text_paddr   = kernel_paddr + 0x1000;
-kernel_va           = 0xFFFFFFFF80000000; /* -2 GB */
+kernel_text_offset  = 0x1000;
+kernel_text_paddr   = kernel_paddr + kernel_text_offset;
+kernel_va           = @KERNEL_VADDR@ + kernel_text_offset;
 
 PHDRS
 {
