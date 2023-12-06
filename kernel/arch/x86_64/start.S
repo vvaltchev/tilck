@@ -25,6 +25,9 @@
                               MULTIBOOT_VIDEO_MODE)
 
 #define PML4_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
+#define PDPT_PADDR ((offset early_pdpt) - KERNEL_BASE_VA)
+#define PDT_PADDR  ((offset early_pdt) - KERNEL_BASE_VA)
+
 #define MAKE_BIG_PAGE(paddr) \
    (1 /* present */ | 2 /*RW*/ | (1 << 7) /* bigpage */ | (paddr))
 
@@ -57,9 +60,9 @@ multiboot_entry:
    /* Clear the direction flag */
    cld
 
-   /* Save multiboot information for now and restore it later */
-   mov edx, ebx    # multiboot information structure
-   mov esi, eax    # multiboot magic
+   /* Store the multiboot information in the first two args of main() */
+   mov edi, eax    # multiboot magic
+   mov esi, ebx    # multiboot information structure
 
    /*
     * Long mode is supported if:
@@ -70,11 +73,8 @@ multiboot_entry:
     */
 
    /*
-    * 1. CPUID is supported:
+    * 1. Assume that CPUID is supported.
     *
-    * Assume that CPUID is supported */
-
-   /*
     * 2. CPUID Extended Functions are available:
     *
     * Maximum Input Value for Extended Function CPUID Information
@@ -161,13 +161,14 @@ multiboot_entry:
     * CR3 -> PML4T -> PDPT -> PDT -> 2MB page
     */
 
-   mov edx, PML4_PADDR  # edx points to PML4
-   # Set the first entry of PML4 (0 - 512 GB)
-   mov dword ptr [edx], PML4_PADDR + 0x1003
-   add edx, 0x1000      # edx points to PDPT
-   # Set the first entry of PDPT (0 - 1 GB)
-   mov dword ptr [edx], PML4_PADDR + 0x2003
-   add edx, 0x1000      # edx points to PDT
+   // Set the first entry of PML4 (0 - 512 GB)
+   mov edx, PML4_PADDR
+   mov dword ptr [edx], PDPT_PADDR + 0x3
+
+   // Set the first entry of PDPT (0 - 1 GB)
+   mov edx, PDPT_PADDR
+   mov dword ptr [edx], PDT_PADDR + 0x3
+   mov edx, PDT_PADDR
 
    /*
     * Set the first 4 entries of PDT (0 - 8 MB)
@@ -201,10 +202,11 @@ multiboot_entry:
    # So it becomes:
    #    (KERNEL_BASE_VA & 0xFF8000000000) >> 39 // to get 9 bits
    #    (KERNEL_BASE_VA & 0xFF8000000000) >> 36 // multiply by 8
-   mov dword ptr [edx + ((KERNEL_BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
-   add edx, 0x1000      # edx points to PDPT
+   mov dword ptr [edx + ((KERNEL_BASE_VA & 0xFF8000000000) >> 36)], PDPT_PADDR + 0x3
+
    # Set the entry specified by bits 38-30 of KERNEL_BASE_VA (-2GB)
-   mov dword ptr [edx + ((KERNEL_BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
+   mov edx, PDPT_PADDR
+   mov dword ptr [edx + ((KERNEL_BASE_VA & 0x007F80000000) >> 27)], PDT_PADDR + 0x3
    # Now there is no need to set entries in PDT because that is
    # already set up by the identity mapping part
 
@@ -212,10 +214,11 @@ multiboot_entry:
 
    mov edx, PML4_PADDR
    # Set the entry specified by bits 47-39 of BASE_VA (+16TB)
-   mov dword ptr [edx + ((BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
-   add edx, 0x1000      # edx points to PDPT
+   mov dword ptr [edx + ((BASE_VA & 0xFF8000000000) >> 36)], PDPT_PADDR + 0x3
+
    # Set the entry specified by bits 38-30 of BASE_VA (+16TB)
-   mov dword ptr [edx + ((BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
+   mov edx, PDPT_PADDR
+   mov dword ptr [edx + ((BASE_VA & 0x007F80000000) >> 27)], PDT_PADDR + 0x3
    # Now there is no need to set entries in PDT because that is
    # already set up by the identity mapping part
 
