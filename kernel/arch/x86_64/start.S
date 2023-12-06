@@ -69,11 +69,7 @@ multiboot_entry:
     * 3. CPUID.80000001H:EDX.[29] == 1
     */
 
-   # `cpuid` and `readmsr` change edx but multiboot info
-   # is stored there. Temporarily move that info to edi
-   mov edi, edx
-
-   /* 
+   /*
     * 1. CPUID is supported:
     *
     * Assume that CPUID is supported */
@@ -128,9 +124,6 @@ multiboot_entry:
    bts eax, 8
    wrmsr
 
-   # Now restore multiboot info into edx
-   mov edx, edi
-
    /*
     * 2. Enable Physical Address Extension (PAE):
     *
@@ -156,26 +149,7 @@ multiboot_entry:
     * PML4T is located at PML4_PADDR and subsequent
     * tables at PML4_PADDR + 0x1000, PML4_PADDR + 0x2000
     * and PML4_PADDR + 0x3000.
-    */
-
-   /* Clear the tables */
-   mov edi, PML4_PADDR
-   xor eax, eax
-   mov ecx, 4096 # update to 768 for 3 tables
-   /*
-    * Store contents of eax to where edi
-    * points to, repeat for ecx number of
-    * times, each time incrementing (because of `cld`)
-    * edi by dword (4 bytes).
     *
-    * Effectively zeroing 4096 * 4 bytes of memory
-    * starting from PML4_PADDR.
-    */
-   rep stosd
-
-   /* Identity map the first 8MB */
-
-   /*
     * The first two bits of an entry in a table specify
     * PRESENT and R/W respectively. Hence, the `3` is used.
     * (Intel Manual Vol. 3: Figure 4-11)
@@ -187,13 +161,13 @@ multiboot_entry:
     * CR3 -> PML4T -> PDPT -> PDT -> 2MB page
     */
 
-   mov edi, PML4_PADDR  # edi points to PML4
+   mov edx, PML4_PADDR  # edx points to PML4
    # Set the first entry of PML4 (0 - 512 GB)
-   mov dword ptr [edi], PML4_PADDR + 0x1003
-   add edi, 0x1000      # edi points to PDPT
+   mov dword ptr [edx], PML4_PADDR + 0x1003
+   add edx, 0x1000      # edx points to PDPT
    # Set the first entry of PDPT (0 - 1 GB)
-   mov dword ptr [edi], PML4_PADDR + 0x2003
-   add edi, 0x1000      # edi points to PDT
+   mov dword ptr [edx], PML4_PADDR + 0x2003
+   add edx, 0x1000      # edx points to PDT
 
    /*
     * Set the first 4 entries of PDT (0 - 8 MB)
@@ -209,9 +183,9 @@ multiboot_entry:
    mov ecx, 4 # how many times to loop for
 
 .set_entry:
-   mov dword ptr [edi], ebx
+   mov dword ptr [edx], ebx
    add ebx, 0x200000 # 2 MB
-   add edi, 8
+   add edx, 8
    loop .set_entry
 
    /*
@@ -219,7 +193,7 @@ multiboot_entry:
     * This will contain the kernel.
     */
 
-   mov edi, PML4_PADDR
+   mov edx, PML4_PADDR
    # Set the entry specified by bits 47-39 of KERNEL_BASE_VA (-2GB)
    # The 9 bits specify the nth entry in the table
    # Multiply it by 8 (size of an entry) to get the offset
@@ -227,27 +201,27 @@ multiboot_entry:
    # So it becomes:
    #    (KERNEL_BASE_VA & 0xFF8000000000) >> 39 // to get 9 bits
    #    (KERNEL_BASE_VA & 0xFF8000000000) >> 36 // multiply by 8
-   mov dword ptr [edi + ((KERNEL_BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
-   add edi, 0x1000      # edi points to PDPT
+   mov dword ptr [edx + ((KERNEL_BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
+   add edx, 0x1000      # edx points to PDPT
    # Set the entry specified by bits 38-30 of KERNEL_BASE_VA (-2GB)
-   mov dword ptr [edi + ((KERNEL_BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
+   mov dword ptr [edx + ((KERNEL_BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
    # Now there is no need to set entries in PDT because that is
    # already set up by the identity mapping part
 
    /* Map the first 8MB also at BASE_VA (+16TB) */
 
-   mov edi, PML4_PADDR
+   mov edx, PML4_PADDR
    # Set the entry specified by bits 47-39 of BASE_VA (+16TB)
-   mov dword ptr [edi + ((BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
-   add edi, 0x1000      # edi points to PDPT
+   mov dword ptr [edx + ((BASE_VA & 0xFF8000000000) >> 36)], PML4_PADDR + 0x1003
+   add edx, 0x1000      # edx points to PDPT
    # Set the entry specified by bits 38-30 of BASE_VA (+16TB)
-   mov dword ptr [edi + ((BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
+   mov dword ptr [edx + ((BASE_VA & 0x007F80000000) >> 27)], PML4_PADDR + 0x2003
    # Now there is no need to set entries in PDT because that is
    # already set up by the identity mapping part
 
    # Set cr3 register to the physical address of PML4
-   mov edi, PML4_PADDR
-   mov cr3, edi
+   mov edx, PML4_PADDR
+   mov cr3, edx
 
    /*
     * 4. Enable Paging (PG):
@@ -262,7 +236,7 @@ multiboot_entry:
     * We use 4-level paging, for which the values of the
     * bits should be 1, 0 and 1 respectively.
     * (Intel Manual Vol. 3: 4.1, 4.1.1)
-    */ 
+    */
    mov eax, cr4
    btr eax, 12 # LA57 is bit 12
    mov cr4, eax
@@ -308,7 +282,7 @@ multiboot_entry:
     * address. Then from there do a near jump
     * to 64 bit address.
     */
-   mov eax, offset trampoline - KERNEL_BASE_VA 
+   mov eax, offset trampoline - KERNEL_BASE_VA
    push 0x08 # SI=1, TI=0, RPL=00
    push eax
    retf
@@ -409,9 +383,6 @@ trampoline:
 long_mode:
    cli
    mov rsp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 16
-
-   push rdx    # 2st argument: multiboot information structure
-   push rsi    # 1nd argument: multiboot magic
    call kmain  # Now call kernel's kmain() which uses
                # KERNEL_VADDR as ORG
 
