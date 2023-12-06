@@ -53,7 +53,10 @@ void handle_page_fault_int(regs_t *r)
 
 bool is_mapped(pdir_t *pdir, void *vaddrp)
 {
-   NOT_IMPLEMENTED();
+   /*
+    * TODO: implement is_mapped() for x86-64.
+    */
+   return true;
 }
 
 bool is_rw_mapped(pdir_t *pdir, void *vaddrp)

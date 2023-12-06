@@ -16,10 +16,10 @@
 
 void dump_stacktrace(void *ebp, pdir_t *pdir)
 {
-   NOT_IMPLEMENTED();
+   // TODO: implement dump_stacktrace for x86-64
 }
 
 void dump_regs(regs_t *r)
 {
-   NOT_IMPLEMENTED();
+   // TODO: implement dump_regs for x86-64
 }
