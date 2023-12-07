@@ -150,6 +150,13 @@ parse_kernel_mods_list(void)
       begin = p + 1;
       mods_cnt++;
    }
+
+   if (ARCH_BITS == 64) {
+      // Temporary hack: we don't support the framebuffer yet on Tilck 64, so
+      // forcibly assume that we don't have the "fb" module, so that we'll
+      // default to text mode.
+      kmod_fb = false;
+   }
 }
 
 static bool
