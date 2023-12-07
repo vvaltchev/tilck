@@ -28,8 +28,32 @@
 #define PDPT_PADDR ((offset early_pdpt) - KERNEL_BASE_VA)
 #define PDT_PADDR  ((offset early_pdt) - KERNEL_BASE_VA)
 
-#define MAKE_BIG_PAGE(paddr) \
-   (1 /* present */ | 2 /*RW*/ | (1 << 7) /* bigpage */ | (paddr))
+#define FL_PRESENT      (1 << 0)
+#define FL_RW           (1 << 1)
+#define FL_PAGE_SIZE    (1 << 7)
+
+#define MAKE_2MB_PAGE(paddr) \
+   (FL_PRESENT | FL_RW | FL_PAGE_SIZE | (paddr))
+
+/*
+ * Generic macro for making a table entry in both PDPT and PDT.
+ * HACK: use '+' instead of '|' because the paddr is a symbol and we cannot
+ * emit a symbol relocation that needs to be calculated with an OR operation.
+ */
+#define MAKE_ENTRY(paddr) \
+   (paddr + (FL_PRESENT | FL_RW))
+
+/* Offset of an entry in the PML4 table */
+#define PML4E_OFF(va) \
+   (8 * (((va) & 0xFF8000000000) >> 39))
+
+/* Offset of an entry in the PDPT table */
+#define PDPTE_OFF(va) \
+   (8 * (((va) & 0x007F80000000) >> 30))
+
+/* Offset of an entry in the PDT table */
+#define PDTE_OFF(va) \
+   (8 * (((va) & 0xFF80000) >> 21))
 
 FUNC(_start):
 
@@ -143,87 +167,34 @@ multiboot_entry:
     *
     * Each table (PML4T, PDPT, PDT, PT) has
     * 512 entries and each entry is 8 bytes.
-    * So, each table requires
-    * 512 * 8 = 4096 bytes = 0x1000.
     *
-    * PML4T is located at PML4_PADDR and subsequent
-    * tables at PML4_PADDR + 0x1000, PML4_PADDR + 0x2000
-    * and PML4_PADDR + 0x3000.
-    *
-    * The first two bits of an entry in a table specify
-    * PRESENT and R/W respectively. Hence, the `3` is used.
-    * (Intel Manual Vol. 3: Figure 4-11)
-    *
-    * PT intentionally left since we are using 2MB pages.
-    * See identity mapping for more information.
-    *
-    * This is effectively:
+    * Since we skip the 4 KB pages here, this is effectively:
     * CR3 -> PML4T -> PDPT -> PDT -> 2MB page
     */
 
-   // Set the first entry of PML4 (0 - 512 GB)
-   mov edx, PML4_PADDR
-   mov dword ptr [edx], PDPT_PADDR + 0x3
-
-   // Set the first entry of PDPT (0 - 1 GB)
-   mov edx, PDPT_PADDR
-   mov dword ptr [edx], PDT_PADDR + 0x3
+   // First, build a PDT (Page Directory) with the first 8 MB mapped to 0-8 MB.
    mov edx, PDT_PADDR
+   mov dword ptr [edx + PDTE_OFF(0 * MB)], MAKE_2MB_PAGE(0 * MB)
+   mov dword ptr [edx + PDTE_OFF(2 * MB)], MAKE_2MB_PAGE(2 * MB)
+   mov dword ptr [edx + PDTE_OFF(4 * MB)], MAKE_2MB_PAGE(4 * MB)
+   mov dword ptr [edx + PDTE_OFF(6 * MB)], MAKE_2MB_PAGE(6 * MB)
 
-   /*
-    * Set the first 4 entries of PDT (0 - 8 MB)
-    *
-    * Use the first 4 2MB pages for identity mapping.
-    * To use 2MB pages, set Bit 7 of an entry of PDT.
-    * Note: there are no 4MB pages in x86-64,
-    *       only 4KB, 2MB and 1GB pages are available.
-    * (Intel Manual Vol. 3: Figure 4-11)
-    */
-   mov ebx, 0x3
-   bts ebx, 7
-   mov ecx, 4 # how many times to loop for
-
-.set_entry:
-   mov dword ptr [edx], ebx
-   add ebx, 0x200000 # 2 MB
-   add edx, 8
-   loop .set_entry
-
-   /*
-    * Map the first 8MB also at KERNEL_BASE_VA (-2GB).
-    * This will contain the kernel.
-    */
-
-   mov edx, PML4_PADDR
-   # Set the entry specified by bits 47-39 of KERNEL_BASE_VA (-2GB)
-   # The 9 bits specify the nth entry in the table
-   # Multiply it by 8 (size of an entry) to get the offset
-   # from the base of the table
-   # So it becomes:
-   #    (KERNEL_BASE_VA & 0xFF8000000000) >> 39 // to get 9 bits
-   #    (KERNEL_BASE_VA & 0xFF8000000000) >> 36 // multiply by 8
-   mov dword ptr [edx + ((KERNEL_BASE_VA & 0xFF8000000000) >> 36)], PDPT_PADDR + 0x3
-
-   # Set the entry specified by bits 38-30 of KERNEL_BASE_VA (-2GB)
+   // Second, build a PDPT (a Page-Directory-Pointer Table) that will map in
+   // its first entry (0 - 1 GB) our PDT for identity mapping. We'll later
+   // refer this PDPT in multiple entries in the PML4.
    mov edx, PDPT_PADDR
-   mov dword ptr [edx + ((KERNEL_BASE_VA & 0x007F80000000) >> 27)], PDT_PADDR + 0x3
-   # Now there is no need to set entries in PDT because that is
-   # already set up by the identity mapping part
+   mov dword ptr [edx + PDPTE_OFF(0)], MAKE_ENTRY(PDT_PADDR)
+   mov dword ptr [edx + PDPTE_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDT_PADDR)
+   mov dword ptr [edx + PDPTE_OFF(BASE_VA)], MAKE_ENTRY(PDT_PADDR)
 
-   /* Map the first 8MB also at BASE_VA (+16TB) */
-
+   // Third, build a PML4 with the identity mapping, the kernel mapping and
+   // the base mapping for the physical mem.
    mov edx, PML4_PADDR
-   # Set the entry specified by bits 47-39 of BASE_VA (+16TB)
-   mov dword ptr [edx + ((BASE_VA & 0xFF8000000000) >> 36)], PDPT_PADDR + 0x3
+   mov dword ptr [edx + PML4E_OFF(0)], MAKE_ENTRY(PDPT_PADDR)
+   mov dword ptr [edx + PML4E_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDPT_PADDR)
+   mov dword ptr [edx + PML4E_OFF(BASE_VA)], MAKE_ENTRY(PDPT_PADDR)
 
-   # Set the entry specified by bits 38-30 of BASE_VA (+16TB)
-   mov edx, PDPT_PADDR
-   mov dword ptr [edx + ((BASE_VA & 0x007F80000000) >> 27)], PDT_PADDR + 0x3
-   # Now there is no need to set entries in PDT because that is
-   # already set up by the identity mapping part
-
-   # Set cr3 register to the physical address of PML4
-   mov edx, PML4_PADDR
+   // Set cr3 register to the physical address of PML4
    mov cr3, edx
 
    /*
@@ -241,7 +212,7 @@ multiboot_entry:
     * (Intel Manual Vol. 3: 4.1, 4.1.1)
     */
    mov eax, cr4
-   btr eax, 12 # LA57 is bit 12
+   btr eax, 12 // LA57 is bit 12
    mov cr4, eax
 
    mov eax, cr0
@@ -286,7 +257,7 @@ multiboot_entry:
     * to 64 bit address.
     */
    mov eax, offset trampoline - KERNEL_BASE_VA
-   push 0x08 # SI=1, TI=0, RPL=00
+   push 0x08 // SI=1, TI=0, RPL=00
    push eax
    retf
 
@@ -324,7 +295,7 @@ gdt:
     * (AMD Manual Vol. 2, section 4.8)
     */
 
-   # D=0, L=1, P=1, DPL=00, S=1, Bit 11=1, C=0, R=1
+   // D=0, L=1, P=1, DPL=00, S=1, Bit 11=1, C=0, R=1
    .quad 0x00209A0000000000
 
    /*
@@ -346,7 +317,7 @@ gdt:
     * (AMD Manual Vol. 2, section 4.8)
     */
 
-   # P=1, S=1, W=1, Bit 11=0
+   // P=1, S=1, W=1, Bit 11=0
    .quad 0x0000920000000000
 gdt_end:
 
@@ -358,9 +329,9 @@ gdtr:
     *                     in virtual memory space
     */
 
-   .word gdt_end - gdt - 1 # subtract 1 because limit + base
-                           # should specify the address of the
-                           # last valid byte in gdt
+   .word gdt_end - gdt - 1 // subtract 1 because limit + base
+                           // should specify the address of the
+                           // last valid byte in gdt
    .quad offset gdt - KERNEL_BASE_VA
 
 no_long_mode:
@@ -369,8 +340,8 @@ no_long_mode:
 .code64
 
 trampoline:
-   # 0x10 is ds segment selector
-   # SI=2, TI=0, RPL=00
+   // 0x10 is DS segment selector
+   // SI=2, TI=0, RPL=00
    mov ax, 0x10
    mov ds, ax
    mov es, ax
@@ -378,15 +349,14 @@ trampoline:
    mov gs, ax
    mov ss, ax
 
-   # Perform a near jump to 64 bit address
-   # to enter 64 bit long mode
+   // Perform a near jump to 64 bit address
+   // to enter 64 bit long mode
    movabs rax, offset long_mode
    jmp rax
 
 long_mode:
    cli
    mov rsp, offset kernel_initial_stack + ASM_KERNEL_STACK_SZ - 16
-   call kmain  # Now call kernel's kmain() which uses
-               # KERNEL_VADDR as ORG
+   call kmain
 
 END_FUNC(_start)
