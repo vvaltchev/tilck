@@ -13,8 +13,9 @@
 #include "../generic_x86/paging_generic_x86.h"
 
 pdir_t *__kernel_pdir;
-char early_pdpt[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
-char early_pdt[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+char early_pdpt0[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+char early_pdpt1[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
+char early_pdt0[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
 void early_init_paging(void)
 {
