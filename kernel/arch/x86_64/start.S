@@ -24,9 +24,10 @@
                               MULTIBOOT_MEMORY_INFO |  \
                               MULTIBOOT_VIDEO_MODE)
 
-#define PML4_PADDR ((offset page_size_buf) - KERNEL_BASE_VA)
-#define PDPT_PADDR ((offset early_pdpt) - KERNEL_BASE_VA)
-#define PDT_PADDR  ((offset early_pdt) - KERNEL_BASE_VA)
+#define PML4 ((offset page_size_buf) - KERNEL_BASE_VA)
+#define PDPT0 ((offset early_pdpt0) - KERNEL_BASE_VA)
+#define PDPT1 ((offset early_pdpt1) - KERNEL_BASE_VA)
+#define PDT0  ((offset early_pdt0) - KERNEL_BASE_VA)
 
 #define FL_PRESENT      (1 << 0)
 #define FL_RW           (1 << 1)
@@ -173,26 +174,30 @@ multiboot_entry:
     */
 
    // First, build a PDT (Page Directory) with the first 8 MB mapped to 0-8 MB.
-   mov edx, PDT_PADDR
+   mov edx, PDT0
    mov dword ptr [edx + PDTE_OFF(0 * MB)], MAKE_2MB_PAGE(0 * MB)
    mov dword ptr [edx + PDTE_OFF(2 * MB)], MAKE_2MB_PAGE(2 * MB)
    mov dword ptr [edx + PDTE_OFF(4 * MB)], MAKE_2MB_PAGE(4 * MB)
    mov dword ptr [edx + PDTE_OFF(6 * MB)], MAKE_2MB_PAGE(6 * MB)
 
-   // Second, build a PDPT (a Page-Directory-Pointer Table) that will map in
+   // Second, build a PDPT (Page-Directory-Pointer Table) that will map in
    // its first entry (0 - 1 GB) our PDT for identity mapping. We'll later
    // refer this PDPT in multiple entries in the PML4.
-   mov edx, PDPT_PADDR
-   mov dword ptr [edx + PDPTE_OFF(0)], MAKE_ENTRY(PDT_PADDR)
-   mov dword ptr [edx + PDPTE_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDT_PADDR)
-   mov dword ptr [edx + PDPTE_OFF(BASE_VA)], MAKE_ENTRY(PDT_PADDR)
+   mov edx, PDPT0
+   mov dword ptr [edx + PDPTE_OFF(0)], MAKE_ENTRY(PDT0)
+   mov dword ptr [edx + PDPTE_OFF(BASE_VA)], MAKE_ENTRY(PDT0)
 
-   // Third, build a PML4 with the identity mapping, the kernel mapping and
-   // the base mapping for the physical mem.
-   mov edx, PML4_PADDR
-   mov dword ptr [edx + PML4E_OFF(0)], MAKE_ENTRY(PDPT_PADDR)
-   mov dword ptr [edx + PML4E_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDPT_PADDR)
-   mov dword ptr [edx + PML4E_OFF(BASE_VA)], MAKE_ENTRY(PDPT_PADDR)
+   // Third, build another PDPT for the kernel mappings. Reuse PDT0, since
+   // we're still assuming that the kernel is physically mapped at +1 MB.
+   mov edx, PDPT1
+   mov dword ptr [edx + PDPTE_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDT0)
+
+   // Fourth, build a PML4 referring the PDPT0 for two virtual addresses
+   // [0 (early identity mapping) and BASE_VA] and PDPT1 at KERNEL_BASE_VA.
+   mov edx, PML4
+   mov dword ptr [edx + PML4E_OFF(0)], MAKE_ENTRY(PDPT0)
+   mov dword ptr [edx + PML4E_OFF(BASE_VA)], MAKE_ENTRY(PDPT0)
+   mov dword ptr [edx + PML4E_OFF(KERNEL_BASE_VA)], MAKE_ENTRY(PDPT1)
 
    // Set cr3 register to the physical address of PML4
    mov cr3, edx
