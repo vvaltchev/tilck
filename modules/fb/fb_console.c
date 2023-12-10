@@ -480,8 +480,34 @@ static void async_pre_render_scanlines()
 
 static void fb_use_optimized_funcs_if_possible(void)
 {
-   if (in_hypervisor())
-      framebuffer_vi.scroll_one_line_up = fb_scroll_one_line_up;
+   if (false) {
+      /*
+       * The special fb_scroll_one_line_up() function was an attempt to make
+       * the fb console before the framebuffer was mapped in WC mode using PAT.
+       * Then, it began to be obsolete as the basic full screen redraw was much
+       * faster on real hardware because we didn't need to read from the frame
+       * buffer, which is pretty slow. However, the function remained used in
+       * case of QEMU VMs, simply because it was a bit faster than the full
+       * redraw. Now, I just discovered that on WSL, when KVM is used (nested
+       * virtualization), this function is insanely slow, while when pure
+       * software virtualization is used, it's just fine. I'm not sure if this
+       * behavior depends on how the nested virtualization works in general,
+       * on how Windows 11 works, on QEMU, on KVM, on hardware that I'm using
+       * etc. But, I'm sure that we don't need this function anymore. Even if on
+       * QEMU on Linux with single level virtualization, the scroll with full
+       * redraw will be a bit slower the difference is negligible, while the
+       * effect of using it with nested virtualization at least on some hardware
+       * is awfully slow. I'm not aware of any fancy way to detect within the
+       * kernel or the bootloader that nested virtualization is used, therefore,
+       * I'm disabling it. Not removing the code yet, because at some point I
+       * might find a way to detect this precise use-case and skip the function
+       * only then. Possible idea: use the SMBIOS data to learn more about the
+       * hypervisor used. Maybe somehow QEMU will expose a bit of extra
+       * information in addition to its name, but that's a long shot.
+       */
+      if (in_hypervisor())
+         framebuffer_vi.scroll_one_line_up = fb_scroll_one_line_up;
+   }
 
    if (in_panic())
       return;
