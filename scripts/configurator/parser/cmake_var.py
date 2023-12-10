@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 from collections import namedtuple
 from typing import Dict, Any, Optional, Type, Mapping, List
 import re
@@ -114,8 +116,9 @@ class cmake_var_bool(cmake_var):
    def serialize(self) -> str:
       return "ON" if self.value else "OFF"
 
-def build_cmake_var(type: str, cmake_var_str: str, comment: List[str]
-                    ) -> cmake_var:
+def build_cmake_var(type: str,
+                    cmake_var_str: str,
+                    comment: List[str]) -> cmake_var:
    """
    Factory function that associates the correct type of variable and handles
    metadata, provided by the row's associated comments.

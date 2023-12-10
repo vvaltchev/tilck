@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 from unittest import TestCase
 from unittest.mock import patch
 from cmake_parser import parse_rows, row_type, write_file

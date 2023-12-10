@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 from cmake_row import cmake_row, row_type
 from typing import Deque, List
 from collections import deque
