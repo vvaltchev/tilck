@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 from unittest import TestCase
 from cmake_row import cmake_row, row_type
 
@@ -45,10 +47,9 @@ class test_cmake_row(TestCase):
       self.assertRaises(ValueError, cmake_row, self.notype_var, 0)
 
    def test_bool_row(self):
-      """
-      we use assertEqual instead of assertTrue to avoid false positives with
-      casting any other value to bool.
-      """
+      # we use assertEqual instead of assertTrue to avoid false positives with
+      # casting any other value to bool.
+
       row = cmake_row(self.bool_var, 0)
       with self.subTest():
          self.assertEqual(row.val.value, True)

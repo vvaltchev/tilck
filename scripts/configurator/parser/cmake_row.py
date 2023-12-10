@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
 import re
 from enum import Enum, auto
 from cmake_var import cmake_var, build_cmake_var
