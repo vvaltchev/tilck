@@ -20,6 +20,12 @@
 #cmakedefine01    SERIAL_CON_IN_VIDEO_MODE
 #cmakedefine01    KRN_PRINTK_ON_CURR_TTY
 
+#ifdef KERNEL_TEST
+   #define MOD_console_actual 1
+#else
+   #define MOD_console_actual MOD_console
+#endif
+
 /*
  * --------------------------------------------------------------------------
  *                  Hard-coded global & derived constants

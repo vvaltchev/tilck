@@ -17,6 +17,7 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/term.h>
 #include <tilck/kernel/sched.h>
+#include <tilck/kernel/test/tty_test.h>
 
 #include <tilck/mods/console.h>
 
@@ -156,7 +157,7 @@ static void init_tty_struct(struct tty *t, u16 minor, u16 serial_port_fwd)
    t->curr_color = make_color(DEFAULT_FG_COLOR, DEFAULT_BG_COLOR);
    tty_reset_termios(t);
 
-   if (MOD_console && !serial_port_fwd)
+   if (MOD_console_actual && !serial_port_fwd)
       reset_console_data(t);
 }
 
@@ -225,7 +226,7 @@ tty_full_destroy(struct tty *t)
       t->tintf->free(t->tstate);
    }
 
-   if (MOD_console) {
+   if (MOD_console_actual) {
       free_console_data(t->console_data);
    }
 
@@ -235,7 +236,7 @@ tty_full_destroy(struct tty *t)
 }
 
 
-static struct tty *
+STATIC struct tty *
 allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
 {
    struct tty *t;
@@ -255,7 +256,7 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
       return NULL;
    }
 
-   if (MOD_console && !serial_port_fwd) {
+   if (MOD_console_actual && !serial_port_fwd) {
       if (!(t->console_data = alloc_console_data())) {
          tty_full_destroy(t);
          return NULL;
@@ -382,7 +383,7 @@ void tty_write_on_all_ttys(const char *buf, size_t size)
    }
 }
 
-static void init_tty(void)
+STATIC void init_tty(void)
 {
    process_term_read_info(&first_term_i);
    struct driver_info *di = kzalloc_obj(struct driver_info);

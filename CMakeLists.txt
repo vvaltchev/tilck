@@ -375,6 +375,7 @@ list(
    tracing
    kb8042
    acpi
+   sb16
 )
 
 list(

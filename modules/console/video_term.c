@@ -662,7 +662,10 @@ init_vterm(term *_t,
            int rows_buf)
 {
    struct vterm *const t = _t;
+
+#ifndef KERNEL_TEST
    ASSERT(t != &first_instance || !are_interrupts_enabled());
+#endif
 
    t->tabsize = 8;
 

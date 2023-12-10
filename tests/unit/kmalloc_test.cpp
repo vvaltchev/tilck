@@ -27,8 +27,6 @@ extern "C" {
    #include <kernel/kmalloc/kmalloc_heap_struct.h> // kmalloc private header
    #include <kernel/kmalloc/kmalloc_block_node.h>  // kmalloc private header
 
-   extern bool mock_kmalloc;
-   extern bool suppress_printk;
    extern struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
    void selftest_kmalloc_perf_per_size(int size);
    void kmalloc_dump_heap_stats(void);
