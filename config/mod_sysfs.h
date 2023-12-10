@@ -8,3 +8,9 @@
 #pragma once
 
 #cmakedefine01    MOD_sysfs
+
+#ifdef KERNEL_TEST
+   #define MOD_sysfs_actual 1
+#else
+   #define MOD_sysfs_actual MOD_sysfs
+#endif

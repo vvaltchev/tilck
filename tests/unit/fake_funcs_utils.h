@@ -5,4 +5,6 @@
 
 extern "C" {
    void initialize_test_kernel_heap();
+   extern bool mock_kmalloc;
+   extern bool suppress_printk;
 }
