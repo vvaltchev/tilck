@@ -8,3 +8,9 @@
 #pragma once
 
 #cmakedefine01    MOD_tracing
+
+#ifdef KERNEL_TEST
+   #define MOD_tracing_actual 1
+#else
+   #define MOD_tracing_actual MOD_tracing
+#endif
