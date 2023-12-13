@@ -58,9 +58,20 @@ tilck_get_var_long(const char *var_name, long *buf)
    return 0;
 }
 
+
+static int
+tilck_busy_wait(ulong n)
+{
+   for (ulong i = 0; i < n; i++)
+      asmVolatile("nop"); // Avoid optimization
+   return 0;
+}
+
+
 static void
 systests_init(void)
 {
+   register_tilck_cmd(TILCK_CMD_BUSY_WAIT, &tilck_busy_wait);
    register_tilck_cmd(TILCK_CMD_CALL_FUNC_0, &tilck_call_fn_0);
    register_tilck_cmd(TILCK_CMD_GET_VAR_LONG, &tilck_get_var_long);
    printk("Module systests initialized\n");

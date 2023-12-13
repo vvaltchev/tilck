@@ -12,6 +12,7 @@
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/datetime.h>
 #include <tilck/kernel/fs/vfs.h>
 
 #define LINUX_REBOOT_MAGIC1         0xfee1dead
@@ -150,6 +151,73 @@ ulong sys_times(struct tms *user_buf)
       return (ulong) -EBADF;
 
    return (ulong) get_ticks();
+}
+
+int sys_getrusage(int who, struct k_rusage *user_buf)
+{
+   struct task *curr = get_curr_task();
+   struct k_rusage buf;
+   u64 utime_ticks;
+   u64 stime_ticks;
+   struct k_timespec64 utime;
+   struct k_timespec64 stime;
+
+   /*
+    * Of course in the syscall entry point
+    * interrupts are enabled
+    */
+   ASSERT(are_interrupts_enabled());
+
+   if (who == RUSAGE_CHILDREN)
+      /*
+       * TODO: Resource usage of a process's children
+       *       isn't supported yet!
+       */
+      return -EINVAL;
+
+   if (who != RUSAGE_SELF && who != RUSAGE_THREAD)
+      return -EINVAL;
+
+   /*
+    * Since there can only be one thread per process,
+    * RUSAGE_SELF and RUSAGE_THREAD have the same meaning.
+    */
+   disable_interrupts_forced();
+   {
+      stime_ticks = curr->ticks.total_kernel;
+      utime_ticks = curr->ticks.total - curr->ticks.total_kernel;
+   }
+   enable_interrupts_forced();
+
+   ticks_to_timespec(utime_ticks, &utime);
+   ticks_to_timespec(stime_ticks, &stime);
+
+   buf = (struct k_rusage) {
+
+      .ru_utime = k_ts64_to_k_timeval(utime),
+      .ru_stime = k_ts64_to_k_timeval(stime),
+
+      /* linux extentions */
+      .ru_maxrss = 0,
+      .ru_ixrss  = 0,
+      .ru_idrss  = 0,
+      .ru_isrss  = 0,
+      .ru_minflt = 0,
+      .ru_majflt = 0,
+      .ru_nswap  = 0,
+      .ru_inblock = 0,
+      .ru_oublock = 0,
+      .ru_msgsnd = 0,
+      .ru_msgrcv = 0,
+      .ru_nsignals = 0,
+      .ru_nvcsw  = 0,
+      .ru_nivcsw = 0,
+   };
+
+   if (copy_to_user(user_buf, &buf, sizeof(buf)))
+      return -EFAULT;
+
+   return 0;
 }
 
 int sys_fork(void)

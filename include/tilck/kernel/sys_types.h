@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/signal.h>
 
@@ -10,19 +11,28 @@
    #define __USE_LARGEFILE64
 #endif
 
-#include <sys/types.h>  // system header
-#include <sys/time.h>   // system header
-#include <sys/times.h>  // system header
-#include <sys/uio.h>    // system header
-#include <sys/select.h> // system header
-#include <time.h>       // system header
-#include <poll.h>       // system header
-#include <utime.h>      // system header
-#include <sys/stat.h>   // system header
+#include <sys/types.h>    // system header
+#include <sys/time.h>     // system header
+#include <sys/times.h>    // system header
+#include <sys/uio.h>      // system header
+#include <sys/select.h>   // system header
+#include <sys/resource.h> // system header
+#include <time.h>         // system header
+#include <poll.h>         // system header
+#include <utime.h>        // system header
+#include <sys/stat.h>     // system header
 #include <unistd.h>       // system header
 #include <sys/utsname.h>  // system header
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
+
+/*
+ * RUSAGE_THREAD is linux-specific, so it
+ * may not be defined by sys/resource.h
+ */
+#ifndef RUSAGE_THREAD
+#define RUSAGE_THREAD 1
+#endif
 
 #define MAX_SYSCALLS 500
 
