@@ -395,3 +395,100 @@ int cmd_exit_cb(int argc, char **argv)
    DEVSHELL_CMD_ASSERT(after_cb == before_cb + 1);
    return 0;
 }
+
+static bool
+comes_after(struct timeval t2,
+            struct timeval t1)
+{
+   // t1 must come before t2
+   return t2.tv_sec > t1.tv_sec 
+       || (t2.tv_sec == t1.tv_sec 
+         && t2.tv_usec > t1.tv_usec);
+}
+
+static void busy_wait(void)
+{
+   // Arbitrary amount of work
+   for (int i = 0; i < 10000; i++)
+      asmVolatile("nop"); // Don't let the compiler optimize this loop
+}
+
+static void busy_wait_kernel(void)
+{
+   int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_BUSY_WAIT, 10000);
+   DEVSHELL_CMD_ASSERT(!rc); /* TILCK_CMD_BUSY_WAIT must never fail */
+}
+
+int cmd_getrusage(int argc, char **argv)
+{
+   int rc, n, max;
+   struct rusage buf_0;
+   struct rusage buf_1;
+
+   // Try RUSAGE_SELF
+   rc = getrusage(RUSAGE_SELF, &buf_0);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   // Check that the reported times increase as expected.
+   // Do some work in both user and kernel space and then
+   // check that the reported time increased relative to
+   // the first call to "getrusage". If the busy wait didn't
+   // trigger an increment, try again. The test fails on
+   // timeout or the number of attempts reaches a given
+   // threshold.
+   {
+      max = 10000;
+
+      busy_wait();
+      busy_wait_kernel();
+
+      rc = getrusage(RUSAGE_SELF, &buf_1);
+      DEVSHELL_CMD_ASSERT(rc == 0);
+
+      // Note that user and system time are increased
+      // indipendantly to do the least amount of busy
+      // wait.
+
+      for (n = 0; !comes_after(buf_1.ru_utime, buf_0.ru_utime); n++) {
+
+         busy_wait();
+
+         rc = getrusage(RUSAGE_SELF, &buf_1);
+         DEVSHELL_CMD_ASSERT(rc == 0);
+         DEVSHELL_CMD_ASSERT(++n < max);
+      };
+
+      for (n = 0; !comes_after(buf_1.ru_stime, buf_0.ru_stime); n++) {
+
+         busy_wait_kernel();
+
+         rc = getrusage(RUSAGE_SELF, &buf_1);
+         DEVSHELL_CMD_ASSERT(rc == 0);
+         DEVSHELL_CMD_ASSERT(++n < max);
+      }
+   }
+
+   // Try RUSAGE_THREAD
+   rc = getrusage(RUSAGE_THREAD, &buf_1);
+   DEVSHELL_CMD_ASSERT(rc == 0);
+
+   // Now check that RUSAGE_CHILDREN doesn't work.
+   // At the moment it's not implemented so for it to work
+   // there bust be a bug!
+   rc = getrusage(RUSAGE_CHILDREN, &buf_0);
+   DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
+
+   // Check failure when the "who" argument is invalid.
+   int bad_who = 1000;
+   rc = getrusage(bad_who, &buf_0);
+   DEVSHELL_CMD_ASSERT(rc == -1 && errno == EINVAL);
+
+   // Check failure when the provided buffer pointer
+   // doesn't refer to an accessible page
+   void *bad_ptr = NULL;
+   rc = getrusage(RUSAGE_SELF, bad_ptr);
+   DEVSHELL_CMD_ASSERT(rc == -1 && errno == EFAULT);
+
+   printf("OK\n");
+   return 0;
+}

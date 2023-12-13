@@ -15,6 +15,7 @@ typedef int (*tilck_cmd_func)();
 static int sys_tilck_run_selftest(const char *user_selftest);
 static int tilck_call_fn_0(const char *fn_name);
 static int tilck_get_var_long(const char *var_name, long *buf);
+static int tilck_busy_wait(ulong n);
 
 static void *tilck_cmds[TILCK_CMD_COUNT] = {
 
@@ -30,6 +31,7 @@ static void *tilck_cmds[TILCK_CMD_COUNT] = {
    [TILCK_CMD_DEBUGGER_TOOL] = NULL,
    [TILCK_CMD_CALL_FUNC_0] = NULL,
    [TILCK_CMD_GET_VAR_LONG] = NULL,
+   [TILCK_CMD_BUSY_WAIT] = NULL,
 };
 
 void register_tilck_cmd(int cmd_n, void *func)

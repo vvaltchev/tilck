@@ -33,6 +33,7 @@ void init_system_time(void);
 int clock_get_second_drift(void);
 bool clock_in_resync(void);
 bool clock_in_full_resync(void);
+struct k_timeval k_ts64_to_k_timeval(struct k_timespec64 ts);
 void ticks_to_timespec(u64 ticks, struct k_timespec64 *tp);
 u64 timespec_to_ticks(const struct k_timespec64 *tp);
 void real_time_get_timespec(struct k_timespec64 *tp);

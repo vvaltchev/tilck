@@ -134,8 +134,8 @@ CREATE_STUB_SYSCALL_IMPL(sys_sigpending)
 CREATE_STUB_SYSCALL_IMPL(sys_sethostname)
 CREATE_STUB_SYSCALL_IMPL(sys_setrlimit)
 CREATE_STUB_SYSCALL_IMPL(sys_old_getrlimit)
-CREATE_STUB_SYSCALL_IMPL(sys_getrusage)
 
+int sys_getrusage(int who, struct k_rusage *user_buf);
 int sys_gettimeofday(struct k_timeval *tv, struct timezone *tz);
 
 CREATE_STUB_SYSCALL_IMPL(sys_settimeofday)

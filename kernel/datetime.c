@@ -428,6 +428,15 @@ s64 get_timestamp(void)
    return boot_timestamp + (s64)(ts / TS_SCALE);
 }
 
+struct k_timeval
+k_ts64_to_k_timeval(struct k_timespec64 ts)
+{
+   return (struct k_timeval) {
+      .tv_sec = (long) ts.tv_sec,
+      .tv_usec = ts.tv_nsec / 1000,
+   };
+}
+
 void ticks_to_timespec(u64 ticks, struct k_timespec64 *tp)
 {
    const u64 tot = ticks * __tick_duration;
