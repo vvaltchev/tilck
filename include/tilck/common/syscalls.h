@@ -19,9 +19,10 @@ enum tilck_cmd {
    TILCK_CMD_DEBUGGER_TOOL       = 9,
    TILCK_CMD_CALL_FUNC_0         = 10,
    TILCK_CMD_GET_VAR_LONG        = 11,
+   TILCK_CMD_BUSY_WAIT           = 12,
 
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 12,
+   TILCK_CMD_COUNT               = 13,
 };
 
 #if defined(__x86_64__)
