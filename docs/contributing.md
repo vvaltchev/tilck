@@ -63,6 +63,17 @@ during the review iterations and updated via `git push --force` on the topic bra
 until the pull request is merged (**model 1**) OR by a curated *series* of micro-commits
 in the Linux kernel style that is edited *as series* on each review iteration (**model 2**).
 
+#### Model 1
+Model 1 is simple and requires just a single change to be correct polished and overall
+good-enough to be merged into Tilck's source. The only thing that contributors need to
+do is to keep a single commit into the topic branch and save changes to it with
+`git commit --amend` and then update the remote branch with `push --force`. (Note for
+people scaried by the force push and re-writing of history: the history of *private* topic
+branches does **not** matter. Git is designed to be used that way. Those branches are deleted
+once are merged into the master branch. The history that must not be re-written is the one of
+*public* branches.)
+
+#### Model 2
 Using model 2 means making the logical steps as small as possible and always separate
 changes in several layers in different commits. Each mechanical operation (e.g. rename)
 has it's own commit with summary etc. Each dependency is addressed as a separate commit,
@@ -74,19 +85,28 @@ can be self-contained and have a logical consistency. For example, typically it 
 to write the code of a new function in multiple steps, but it might make sense to introduce
 a "skeleton change" with empty functions, in certain cases. If changes to pre-existing
 functions can be split in smaller still-working steps that are logically separated, using
-dedicated commits would be the way to go.
+dedicated commits would be the way to go. **NOTE:** in case it wasn't completely clear:
+with model 2 we do **not** care about the actual steps that the developer did to get to the final
+change, as many people believe. That series of steps is typically driven by trial-and-error and
+is awful to have in the git history because it is full of mistakes. The series of steps that must
+be presented in model 2 is the a series of micro-changes that tell a *perfect story*, where the author
+already knows *everything* and there are no mistakes immediately followed by fixes (clearly, we can
+have fixes after the series is merged, but that's OK). Because of that, model 2 is way harder to
+follow compared to model 1: it's because it requires people to write changes that extend both
+in *space* (files and lines) and *time* (commits). Doing that, often means re-writing from scratch
+the whole change, step by step, once it's finished and it's clear how to make it *right*.
 
-**Model 2** is *superior* compared to model 1 because it makes the reviews and the later debugging
-or bisect easier: that's why it's used by the **Linux kernel community**. However, it imposes a
-*very significant* overhead on the contributors, not only because it requires more work for
+**Model 2** is *superior* compared to model 1 because it makes the reviews and the later reading,
+debugging or bisect easier: that's why it's used by the **Linux kernel community**. However, it
+imposes a *very significant* overhead on the contributors, not only because it requires more work for
 each pull request to be prepared in the first place, but because it requires significantly much
-more work on each review iteration. Indeed, with model 2, on each review iteration, it will be
+more work on each review *iteration*. Indeed, with model 2, on each review iteration, it will be
 necessary to modify one or more commits, therefore re-writing the history of the topic-branch with
 the git interactive rebase feature (`rebase -i`) and resolving all the rebase conflicts that will
 be generated because of that. Also, commits might be re-ordered, squashed or split. Finally, because
 that is error-prone even for expert developers, on each iteration, it is necessary to rebuild Tilck
 in *all* the configurations, for *every* single commit in the series, to make sure that the series
-doesn't break anything, at no point in time.
+don't break anything, at no point in time.
 
 Because of model 2's overhead and complexity, the preferred model in Tilck is **model 1**. We can
 afford that since Tilck is a medium-sized project and doesn't have many contributors. However,
