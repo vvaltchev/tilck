@@ -60,7 +60,7 @@ except for rare cases like subtle bug fixes.
 
 A **pull request** is either made by one *single* polished commit that is edited
 during the review iterations and updated via `git push --force` on the topic branch
-until the pull request is merged (**model 1**) OR by a curated *series* of micro-commits
+until the pull request is merged (**model 1**) OR by a *curated series* of micro-commits
 in the Linux kernel style that is edited *as series* on each review iteration (**model 2**).
 
 #### Model 1
@@ -86,15 +86,16 @@ to write the code of a new function in multiple steps, but it might make sense t
 a "skeleton change" with empty functions, in certain cases. If changes to pre-existing
 functions can be split in smaller still-working steps that are logically separated, using
 dedicated commits would be the way to go. **NOTE:** in case it wasn't completely clear:
-with model 2 we do **not** care about the actual steps that the developer did to get to the final
-change, as many people believe. That series of steps is typically driven by trial-and-error and
-is awful to have in the git history because it is full of mistakes. The series of steps that must
-be presented in model 2 is the a series of micro-changes that tell a *perfect story*, where the author
-already knows *everything* and there are no mistakes immediately followed by fixes (clearly, we can
-have fixes after the series is merged, but that's OK). Because of that, model 2 is way harder to
-follow compared to model 1: it's because it requires people to write changes that extend both
-in *space* (files and lines) and *time* (commits). Doing that, often means re-writing from scratch
-the whole change, step by step, once it's finished and it's clear how to make it *right*.
+with model 2 we do **not** want to see the *actual* steps that the developer did to get the code
+in the final shape, as many people believe. That series of steps is typically driven by trial-and-error
+and is awful to have in the git history, because it is full of mistakes and causes only confusion
+to any future readers. The series of steps that must be presented in model 2 is the a series of
+micro-changes that tell a *perfect story*, where the author already knows *everything* and
+there are no mistakes immediately followed by fixes (clearly, we can have fixes after the series
+is merged, but that's OK). Because of that, model 2 is way harder to follow compared to model 1:
+it's because it requires people to write changes that extend both in *space* (files and lines) and
+*time* (commits). Doing that, often means re-writing from scratch the whole change, step by step,
+once it's finished and it's clear how to make it *right*.
 
 **Model 2** is *superior* compared to model 1 because it makes the reviews and the later reading,
 debugging or bisect easier: that's why it's used by the **Linux kernel community**. However, it
