@@ -40,6 +40,63 @@ depending on the task. For beginners in the field, refer to:
 - https://wiki.osdev.org/Introduction
 - https://wiki.osdev.org/Required_Knowledge
 
+Commit style & pull requests
+------------------------------
+
+Each **commit** must be self-contained: no ugly temporary hacks between commits, no commits
+that do not compile individually, no commits that do not all the pre-existing pass tests.
+That is *critical* in order to `git bisect` to be useable. If a commit does not compile
+or breaks tests because it is incomplete somehow, it will be much harder to reason about
+whether that specific commit introduced a subtle regression or not. Otherwise, with
+`git bisect` is easy to narrow down a subtle regression to a single commit.
+
+However, a commit might contain only dead code that is activated in follow-up changes:
+as long as everything builds, that's totally fine. Also, an *accurate* 1-line summary
+is mandatory for each commit, using at most 74 characters, 80 as absolute max. Ideally,
+after leaving an empty line, there should be also a detailed description on the reasons
+behind the change and implementation details, depending on the complexity of the change.
+However, at least at the moment, having anything beyond a good 1-line summary is optional,
+except for rare cases like subtle bug fixes.
+
+A **pull request** is either made by one *single* polished commit that is edited
+during the review iterations and updated via `git push --force` on the topic branch
+until the pull request is merged (**model 1**) OR by a curated *series* of micro-commits
+in the Linux kernel style that is edited *as series* on each review iteration (**model 2**).
+
+Using model 2 means making the logical steps as small as possible and always separate
+changes in several layers in different commits. Each mechanical operation (e.g. rename)
+has it's own commit with summary etc. Each dependency is addressed as a separate commit,
+for example: if the new feature X requires a code change in the pre-existing subsystem Y,
+the improvement in Y happens first in a dedicated commit and then X is implemented.
+Almost every commit is a *preparation* for the following one, while still being completely
+*self-contained* as in model 1. The granularity is as fine as possible, as long as the change
+can be self-contained and have a logical consistency. For example, typically it makes no sense
+to write the code of a new function in multiple steps, but it might make sense to introduce
+a "skeleton change" with empty functions, in certain cases. If changes to pre-existing
+functions can be split in smaller still-working steps that are logically separated, using
+dedicated commits would be the way to go.
+
+**Model 2** is *superior* compared to model 1 because it makes the reviews and the later debugging
+or bisect easier: that's why it's used by the **Linux kernel community**. However, it imposes a
+*very significant* overhead on the contributors, not only because it requires more work for
+each pull request to be prepared in the first place, but because it requires significantly much
+more work on each review iteration. Indeed, with model 2, on each review iteration, it will be
+necessary to modify one or more commits, therefore re-writing the history of the topic-branch with
+the git interactive rebase feature (`rebase -i`) and resolving all the rebase conflicts that will
+be generated because of that. Also, commits might be re-ordered, squashed or split. Finally, because
+that is error-prone even for expert developers, on each iteration, it is necessary to rebuild Tilck
+in *all* the configurations, for *every* single commit in the series, to make sure that the series
+doesn't break anything, at no point in time.
+
+Because of model 2's overhead and complexity, the preferred model in Tilck is **model 1**. We can
+afford that since Tilck is a medium-sized project and doesn't have many contributors. However,
+contributors exicited to learn the Linux-kernel contribution style, who want to use Tilck as a
+form of *preparation* for contributing to a major open source project like Linux, might use
+model 2, accepting the extra overhead for that.
+
+**TL;DR;** Unless you want to learn the Linux kernel contribution style and have plenty of time for
+that, use **model 1** and always squash your temporary commits before preparing the pull-request.
+
 Coding style
 -------------------------
 
