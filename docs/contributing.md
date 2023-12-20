@@ -44,19 +44,19 @@ Commit style & pull requests
 ------------------------------
 
 Each **commit** must be self-contained: no ugly temporary hacks between commits, no commits
-that do not compile individually, no commits that do not all the pre-existing pass tests.
-That is *critical* in order to `git bisect` to be useable. If a commit does not compile
-or breaks tests because it is incomplete somehow, it will be much harder to reason about
-whether that specific commit introduced a subtle regression or not. Otherwise, with
-`git bisect` is easy to narrow down a subtle regression to a single commit.
+that do not compile individually, no commits that do pass not all the pre-existing pass tests.
+That is *critical* in order to `git bisect` to be useable. When a commit does not compile
+or breaks tests because it is not self-contained, it is *much harder* to reason about
+whether that specific commit introduced a subtle regression or not.
 
-However, a commit might contain only dead code that is activated in follow-up changes:
-as long as everything builds, that's totally fine. Also, an *accurate* 1-line summary
-is mandatory for each commit, using at most 74 characters, 80 as absolute max. Ideally,
-after leaving an empty line, there should be also a detailed description on the reasons
-behind the change and implementation details, depending on the complexity of the change.
-However, at least at the moment, having anything beyond a good 1-line summary is optional,
-except for rare cases like subtle bug fixes.
+However, it is acceptable a commit to contain only dead code that is activated in follow-up
+changes: as long as everything builds and tests pass (or there aren't any yet for the new code),
+that's totally fine. Also, an *accurate* 1-line summary is mandatory for each commit, using
+at most 74 characters, 80 as absolute max. Ideally, after leaving an empty line, there
+should be also a detailed description on the reasons behind the change and implementation
+details, depending on the complexity of the change. However, at least at the moment,
+having anything beyond a good 1-line summary is *optional*, except for rare cases like
+subtle bug fixes.
 
 A **pull request** is either made by one *single* polished commit that is edited
 during the review iterations and updated via `git push --force` on the topic branch
