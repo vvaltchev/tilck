@@ -9,12 +9,12 @@ requests will be reviewed and, after addressing any eventual comments from the
 maintainer, will be merged in the master branch. Pull requests should meet a few
 requirements:
 
-  - Contain high-quality code following Tilck's coding style
+  - Contain high-quality code following Tilck's coding style (see [coding style](#coding-style))
   - Build with *all* the currently supported configurations (see [building])
   - Pass *all* the existing tests (see [testing])
   - Contain tests for the new code
-  - Contain expressive commit messages
   - Implement features aligned with the goals of the Tilck project
+  - Follow one of the two accepted models for pull requests (see [commit style & pull requests](#commit-style--pull-requests))
 
 [building]: building.md
 [testing]: testing.md
