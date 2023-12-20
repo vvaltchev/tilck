@@ -68,10 +68,11 @@ Model 1 is simple and requires just a single change to be correct polished and o
 good-enough to be merged into Tilck's source. The only thing that contributors need to
 do is to keep a single commit into the topic branch and save changes to it with
 `git commit --amend` and then update the remote branch with `push --force`. (Note for
-people scaried by the force push and re-writing of history: the history of *private* topic
-branches does **not** matter. Git is designed to be used that way. Those branches are deleted
-once are merged into the master branch. The history that must not be re-written is the one of
-*public* branches.)
+people scaried by the force push and history re-writing: the history of *private*
+branches does **not** matter. Git is designed to be used that way. Private branches
+are deleted once merged into the master branch. The history that must not be re-written
+is the one of *public* branches, that are supposed to persist and being used by multiple
+people.)
 
 #### Model 2
 Using model 2 means making the logical steps as small as possible and always separate
