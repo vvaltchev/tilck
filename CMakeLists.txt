@@ -368,17 +368,6 @@ list(
 )
 
 list(
-   APPEND tiny_kernel_modules_blacklist
-
-   fb
-   console
-   tracing
-   kb8042
-   acpi
-   sb16
-)
-
-list(
    APPEND disabled_modules_list
 
    # No modules in this list, at the moment
@@ -394,22 +383,7 @@ foreach(modpath ${modules})
       continue()
    endif()
 
-   if (TINY_KERNEL)
-
-      list(FIND tiny_kernel_modules_blacklist ${modname} _index)
-
-      if (${_index} GREATER -1)
-         if (MOD_${modname})
-            message(WARNING "TINY_KERNEL=1, force-setting MOD_${modname}=0")
-            set(MOD_${modname} OFF)
-         endif()
-      endif()
-      unset(_index)
-
-   endif(TINY_KERNEL)
-
    list(APPEND modules_list ${modname})
-
    list(FIND disabled_modules_list ${modname} _index)
 
    if (${_index} GREATER -1)
@@ -431,23 +405,19 @@ if (TINY_KERNEL)
    endif()
 
    if (KERNEL_SELFTESTS)
-      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SELFTESTS=0")
-      set(KERNEL_SELFTESTS OFF)
+      message(WARNING "TINY_KERNEL=1, expected KERNEL_SELFTESTS=0")
    endif()
 
    if (KERNEL_SYMBOLS)
-      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SYMBOLS=0")
-      set(KERNEL_SYMBOLS OFF)
+      message(WARNING "TINY_KERNEL=1, expected KERNEL_SYMBOLS=0")
    endif()
 
    if (KERNEL_SHOW_LOGO)
-      message(WARNING "TINY_KERNEL=1, force-setting KERNEL_SHOW_LOGO=0")
-      set(KERNEL_SHOW_LOGO OFF)
+      message(WARNING "TINY_KERNEL=1, expected KERNEL_SHOW_LOGO=0")
    endif()
 
    if (PCI_VENDORS_LIST)
-      message(WARNING "TINY_KERNEL=1, force-setting PCI_VENDORS_LIST=0")
-      set(PCI_VENDORS_LIST OFF)
+      message(WARNING "TINY_KERNEL=1, expected PCI_VENDORS_LIST=0")
    endif()
 
 endif()

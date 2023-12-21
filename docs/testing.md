@@ -200,8 +200,9 @@ Kernel self-tests
 Tilck's self-tests are, roughly speaking, just a bunch of kernel functions that
 our `devshell` run by calling a special syscall, `sys_tilck_cmd()`. Their source
 is located in the `tests/self` directory. By default, they're built-in Tilck, on
-any configuration except when `TINY_KERNEL` is enabled. To compile them out of the
-kernel's binary, just disable the `KERNEL_SELFTESTS` CMake option (see [building]).
+any configuration except when in the `minimal` configuration. To compile the
+out of the kernel's binary, just disable the `KERNEL_SELFTESTS` CMake option
+(see [building]).
 
 ## Running the self-tests
 
