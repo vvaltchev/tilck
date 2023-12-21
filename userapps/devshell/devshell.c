@@ -29,7 +29,8 @@ static char *cmd_argv[MAX_ARGS];
 static const char *devshell_path[] = {
 
    "/bin/",
-   "/usr/bin/"
+   "/usr/bin/",
+   "/initrd/usr/bin/"
 };
 
 static bool contains_slash(const char *s) {
