@@ -164,52 +164,56 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
 # [busybox]
 
-   if (EXISTS ${BUSYBOX_CONFIG})
-      execute_process(
-         COMMAND ${CMAKE_COMMAND}
-         -E compare_files
-            ${BUSYBOX_CONFIG}
-            ${CMAKE_SOURCE_DIR}/other/busybox.config
-         RESULT_VARIABLE result
-      )
+   if (USERAPPS_busybox)
 
-      if (result EQUAL 1)
+      if (EXISTS ${BUSYBOX_CONFIG})
+         execute_process(
+            COMMAND ${CMAKE_COMMAND}
+            -E compare_files
+               ${BUSYBOX_CONFIG}
+               ${CMAKE_SOURCE_DIR}/other/busybox.config
+            RESULT_VARIABLE result
+         )
 
-         set(msg1 "")
-         string(CONCAT msg1 "The busybox build in the toolchain has a "
-                            "different config than the one in the source. "
-                            "This might have undesired effects. "
-                            "Please update your busybox build.")
+         if (result EQUAL 1)
 
-         if ("$ENV{CIRCLECI}" STREQUAL "" AND
-             "$ENV{TRAVIS}" STREQUAL "" AND
-             "$ENV{CI}" STREQUAL "")
+            set(msg1 "")
+            string(CONCAT msg1 "The busybox build in the toolchain has a "
+                              "different config than the one in the source. "
+                              "This might have undesired effects. "
+                              "Please update your busybox build.")
 
-            set(msg2 "")
-            string(CONCAT msg2 "How to do that: \n"
-                               "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
-                               "   2) ${BTC_SCRIPT_REL} -s build_busybox")
+            if ("$ENV{CIRCLECI}" STREQUAL "" AND
+               "$ENV{TRAVIS}" STREQUAL "" AND
+               "$ENV{CI}" STREQUAL "")
 
-            message(FATAL_ERROR "\n${msg1}\n${msg2}")
+               set(msg2 "")
+               string(CONCAT msg2 "How to do that: \n"
+                                 "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
+                                 "   2) ${BTC_SCRIPT_REL} -s build_busybox")
+
+               message(FATAL_ERROR "\n${msg1}\n${msg2}")
+
+            else()
+
+               message(WARNING "\n${msg1}")
+
+            endif()
+
+         elseif (result EQUAL 0)
+
+            # Nothing to do, everything is fine :-)
 
          else()
-
-            message(WARNING "\n${msg1}")
-
+            message(FATAL_ERROR
+                    "Error while comparing the busybox config files.")
          endif()
 
-      elseif (result EQUAL 0)
-
-         # Nothing to do, everything is fine :-)
-
       else()
-         message(FATAL_ERROR "Error while comparing the busybox config files.")
+
+         message(WARNING "\nNo busybox in toolchain.")
+
       endif()
-
-   else()
-
-      message(WARNING "\nNo busybox in toolchain.")
-
-   endif()
+   endif(USERAPPS_busybox)
 
 # [/busybox]

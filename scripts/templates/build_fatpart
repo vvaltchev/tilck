@@ -118,6 +118,15 @@ function add_apps {
 }
 
 function add_busybox {
+
+   if [[ "@USERAPPS_busybox@" == "0"   ||
+         "@USERAPPS_busybox@" == "off" ||
+         "@USERAPPS_busybox@" == "OFF" ||
+         "@USERAPPS_busybox@" == "false" ]]
+   then
+      return
+   fi
+
    if [ -d $tc/$arch/busybox ]; then
       link_or_copy $tc/$arch/busybox/busybox bin/
    fi

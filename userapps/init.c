@@ -165,6 +165,11 @@ static void run_start_script(void)
    struct stat statbuf;
    pid_t pid;
 
+   if (strlen(START_SCRIPT) == 0) {
+      /* There is no start script */
+      return;
+   }
+
    rc = stat(BUSYBOX, &statbuf);
 
    if (rc < 0 || (statbuf.st_mode & S_IFMT) != S_IFREG) {
@@ -555,6 +560,13 @@ int main(int argc, char **argv, char **env)
       run_start_script();
    } else {
       printf("[init] Skipping the start script\n");
+   }
+
+   if (stat(shell_args[0], &statbuf) < 0) {
+      printf("[init] FATAL: the shell `%s` does not exist.\n", shell_args[0]);
+      while (1) {
+         pause();
+      }
    }
 
    for (int tty = 1; tty <= video_tty_count; tty++) {

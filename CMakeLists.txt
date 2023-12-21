@@ -266,6 +266,8 @@ set(KRN_CLOCK_DRIFT_COMP ON CACHE BOOL
 set(KRN32_LIN_VADDR ON CACHE BOOL
     "Place the 32-bit kernel in the default linear mapping")
 
+set(USERAPPS_busybox ON CACHE BOOL "Include BUSYBOX (recommended)")
+
 # Kernel options (disabled by default)
 
 set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
@@ -723,6 +725,14 @@ if (${ARCH_BITS} EQUAL 32)
    set(ELFHACK ${BUILD_APPS}/elfhack32)
 else()
    set(ELFHACK ${BUILD_APPS}/elfhack64)
+endif()
+
+if (USERAPPS_busybox)
+   set(DEFAULT_SHELL "/bin/ash")
+   set(START_SCRIPT "/initrd/etc/start")
+else()
+   set(DEFAULT_SHELL "/initrd/usr/bin/devshell")
+   set(START_SCRIPT "")
 endif()
 
 # Options for extra apps

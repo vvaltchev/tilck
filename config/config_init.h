@@ -7,9 +7,13 @@
 
 #pragma once
 
+#define START_SCRIPT    "@START_SCRIPT@"
+#define DEFAULT_SHELL   "@DEFAULT_SHELL@"
+
 /* --------- Boolean config variables --------- */
 
 #cmakedefine01 INIT_REPORT_PROC_EXIT
+#cmakedefine01 USERAPPS_busybox
 
 /*
  * --------------------------------------------------------------------------
@@ -26,6 +30,4 @@
  */
 
 #define BUSYBOX         "/initrd/bin/busybox"
-#define START_SCRIPT    "/initrd/etc/start"
-#define DEFAULT_SHELL   "/bin/ash"
 #define TTYS0_MINOR     64

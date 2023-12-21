@@ -286,11 +286,6 @@ static int run_extra_test(const char *name)
    int rc, pid, wstatus;
    char buf[64];
 
-   if (!getenv("TILCK")) {
-      printf(PFX "[SKIP] because we're not running on Tilck\n");
-      return 0;
-   }
-
    printf("%s Extra: %s\n", STR_RUN, name);
    sprintf(buf, "/initrd/usr/local/tests/%s", name);
 
@@ -314,6 +309,17 @@ static int run_extra_test(const char *name)
 int cmd_extra(int argc, char **argv)
 {
    int rc = 0;
+   struct stat statbuf;
+
+   if (!getenv("TILCK")) {
+      printf(PFX "[SKIP] because we're not running on Tilck\n");
+      return 0;
+   }
+
+   if (stat("/bin/ash", &statbuf) < 0) {
+      printf(PFX "[SKIP] because busybox is not present\n");
+      return 0;
+   }
 
    for (int i = 0; i < ARRAY_SIZE(extra_test_scripts); i++) {
       if ((rc = run_extra_test(extra_test_scripts[i])))
