@@ -62,13 +62,72 @@ A **pull request** is either made by one *single* polished commit that is edited
 during the review iterations and updated via `git push --force` on the topic branch
 until the pull request is merged (**model 1**) OR by a *curated series* of micro-commits
 in the Linux kernel style that is edited *as series* on each review iteration (**model 2**).
+If the contributors prefers, a hybrid approach between model 1 and model 2 is also possible
+(= a short but *curated* series of medium-sized commits), after synching up with the maintainer
+about how to properly split the work in a way that makes sense. The only model that definitively
+is *not* acceptable in Tilck is what we call here **model 0**. It is described below for
+completeness.
+
+#### Model 0 [UNACCEPTABLE!]
+This model appears to be widespead in small private individual software projects.
+In this model, typically only the master/main branch is used and commits are saved
+in a sort of *natural way*, matching the *true* history about how the code evolved.
+Each commit is like a snapshot of the current progress and it is done without following
+any rules *consistently*. Sometimes a commit is done because a new functionality has been
+added, sometimes a fix has been written, sometimes there was simply some progress in a
+certain area, even by fixing a small mistake done two commits before. In this model, a
+commit is NOT *self-contained* because there is *no* guarnatee (or attempt of such) that
+*after* the commit both the build (in all of its configurations) and project's tests pass.
+That might or might not happen, depending on pure chance. The developer treats the commit
+as a way to save the *current progress* without the expectation that any started work has been
+fully completed or fully reverted. The developer makes quickly multiple commits as he/she/they
+change their mind on something.
+
+While that approach _appears_ perfectly reasonable for personal projects, in the long run,
+after a projects reaches a critical mass, problems start to emerge. First of all, as the
+project grows, regressions are introduced. Because full testing is not done for each commit,
+bugs are discovered at a much later stage. Even if full testing was done for some commits,
+because testing is not typically exaustive, later it can be discovered that a particular commit
+introduced a regression for which the project didn't have a test for. While for small and simple
+projects it doesn't really matter *which* commit introduced a bug, starting from a certain scale
+(e.g. tens of thousands of LoC), debugging starts to be very time consuming. In certain cases,
+knowing which commit introduced the regression is fundamental for the root-causing of the problem
+in a reasonable time frame. To do that, `git bisect` is used. But, in order that to work, each
+commit MUST be self-contained, build correctly and pass all the pre-existing tests. This way,
+it's relatively easy to pin-down the *guitly* commit in `log2(N)` steps. If a commit doesn't build
+or doesn't pass the tests, it's typically hard to decide if that commit did or did not cause the
+regression. If that happens for too many commits, for all pratical purposes, `git bisect` is unusable
+for that project. And that is a **big loss**.
+
+Another major limitation of model 0 is that, when a second person gets involved, reading and
+understanding the history becomes a nightmare. That applies also for the single-person project,
+in the long run (thousands of commits over multiple years), simply because people forget all
+the small details of every single commit. At that point, reading a *natural* history to understand
+why something works in a given way becomes a hard task: things are changed chaotically and it's
+not clear when things work and when they don't. Typically, in model 0, commits don't have long
+and curated messages, therefore, even the original author will be completely lost trying to understand
+his/hers/their work over the course of years.
+
+A good analogy of this model in the world of literature would be writing a novel in one go,
+exactly as it comes to author's mind. While the content might be good, the shape in which it is
+presented, very likely won't be. Good authors write and re-write their text multiple times until
+they are satisfied with it. Text is written mostly not to express author's immediate thoughts on
+paper, but to communicate them to the _readers_. In the same way, the `git` history should be
+written for the convenience of the *readers*, not as a bare mechanism to save changes in a repo
+for the author. Sooner or later, even the author himself/herself will become a reader of their
+own work.
 
 #### Model 1
-Model 1 is simple and requires just a single change to be correct polished and overall
-good-enough to be merged into Tilck's source. The only thing that contributors need to
-do is to keep a single commit into the topic branch and save changes to it with
-`git commit --amend` and then update the remote branch with `push --force`. (Note for
-people scaried by the force push and history re-writing: the history of *private*
+Model 1 is simple and requires just a single change to be correct, polished, tested and
+overall good-enough to be merged into Tilck's source. The only thing that contributors
+need to do is to keep a single commit into the topic branch and save changes to it with
+`git commit --amend` and then update the remote branch with `push --force`. This approach
+doesn't have any of the issues of model 0, because it is, by definition, self-consistent
+work. Clearly, it can be the result of multiple temporary commits that got squashed
+together or not. That is an irrelevant detail. In the bigger picture of project's history,
+the medium-sized commit will be an atomic piece of work and `git bisect` will be useable.
+
+(Note for people scaried by the force push and history re-writing: the history of *private*
 branches does **not** matter. Git is designed to be used that way. Private branches
 are deleted once merged into the master branch. The history that must not be re-written
 is the one of *public* branches, that are supposed to persist and being used by multiple
