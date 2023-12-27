@@ -174,7 +174,7 @@ trace_syscall_exit_int(u32 sys,
                        ulong a5,
                        ulong a6);
 
-void
+ATTR_PRINTF_LIKE(2) void
 trace_printk_int(int level, const char *fmt, ...);
 
 void
