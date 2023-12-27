@@ -9,6 +9,7 @@
 #include <tilck/common/compiler.h>
 #include <tilck/common/build_info.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/color_defs.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>
@@ -33,16 +34,16 @@ const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
 #endif
 
 #ifdef KERNEL_SHOW_LOGO
-static void print_banner_line(const u8 *s)
+static void print_banner_line(const char *s)
 {
-   printk(NO_PREFIX "\033(0");
+   term_write("\033(0", 3, 0);
 
-   for (const u8 *p = s; *p; p++) {
-      printk(NO_PREFIX "%c", *p);
+   for (const char *p = s; *p; p++) {
+      term_write(p, 1, COLOR_GREEN);
    }
 
-   printk(NO_PREFIX "\033(B");
-   printk(NO_PREFIX "\n");
+   term_write("\033(B", 3, COLOR_GREEN);
+   term_write("\n", 1, COLOR_GREEN);
 }
 
 static void show_tilck_logo(void)
@@ -67,9 +68,9 @@ static void show_tilck_logo(void)
    for (int i = 0; i < ARRAY_SIZE(banner); i++) {
 
       for (u32 j = 0; j < padding; j++)
-         printk(NO_PREFIX " ");
+         term_write(" ", 1, COLOR_GREEN);
 
-      print_banner_line((u8 *)banner[i]);
+      print_banner_line(banner[i]);
    }
 }
 #endif
