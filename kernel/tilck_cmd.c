@@ -12,14 +12,14 @@
 #include <tilck/kernel/debug_utils.h>
 
 typedef int (*tilck_cmd_func)();
-static int sys_tilck_run_selftest(const char *user_selftest);
+static int tilck_sys_run_selftest(const char *user_selftest);
 static int tilck_call_fn_0(const char *fn_name);
 static int tilck_get_var_long(const char *var_name, long *buf);
 static int tilck_busy_wait(ulong n);
 
 static void *tilck_cmds[TILCK_CMD_COUNT] = {
 
-   [TILCK_CMD_RUN_SELFTEST] = sys_tilck_run_selftest,
+   [TILCK_CMD_RUN_SELFTEST] = tilck_sys_run_selftest,
    [TILCK_CMD_GCOV_GET_NUM_FILES] = sys_gcov_get_file_count,
    [TILCK_CMD_GCOV_FILE_INFO] = sys_gcov_get_file_info,
    [TILCK_CMD_GCOV_GET_FILE] = sys_gcov_get_file,
@@ -42,7 +42,7 @@ void register_tilck_cmd(int cmd_n, void *func)
    tilck_cmds[cmd_n] = func;
 }
 
-static int sys_tilck_run_selftest(const char *u_selftest)
+static int tilck_sys_run_selftest(const char *u_selftest)
 {
    int rc;
    struct self_test *se;
