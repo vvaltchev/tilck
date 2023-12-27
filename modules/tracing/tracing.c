@@ -99,8 +99,22 @@ elf_symbol_cb(struct elf_symbol_info *i, void *arg)
    if (!i->name || strncmp(i->name, "sys_", 4))
       return 0; /* not a syscall symbol */
 
-   if ((sys_n = get_syscall_num(i->vaddr)) < 0)
-      return 0; /* not a syscall, just a function start with sys_ */
+   if ((sys_n = get_syscall_num(i->vaddr)) < 0) {
+
+      /*
+       * Not a syscall, just a function starting with "sys_". While apparently
+       * we can remove all the non-syscall functions starting with "sys_" and
+       * panic in this case, unfortunately that's not possible. The reason is
+       * that in optimized builds the compiler is allowed to emit multiple
+       * symbols for a given function like "foo.cold.1" or "foo.hot.2" in order
+       * to separate the cold paths from the hot paths. Therefore, that does
+       * happen also for actual syscall functions, but we don't recognize those
+       * compiler-generated symbols as syscall functions, because they are not
+       * in the syscall table. For those reasons, we cannot just panic here and
+       * replace this whole check with an ASSERT().
+       */
+      return 0;
+   }
 
    sym_node = &syms_buf[syms_count];
 
