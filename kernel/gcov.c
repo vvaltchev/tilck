@@ -308,15 +308,15 @@ static u32 compute_gcda_file_size(const struct gcov_info *info)
 // ----------------------------------------------------------------
 
 
-int sys_gcov_get_file_count(void)
+int tilck_sys_gcov_get_file_count(void)
 {
    return files_count;
 }
 
-int sys_gcov_get_file_info(int fn,
-                           char *user_fname_buf,
-                           u32 fname_buf_size,
-                           u32 *user_fsize)
+int tilck_sys_gcov_get_file_info(int fn,
+                                 char *user_fname_buf,
+                                 u32 fname_buf_size,
+                                 u32 *user_fsize)
 {
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
@@ -407,7 +407,7 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
    } // for (u32 i = 0; i < info->n_functions; i++)
 }
 
-int sys_gcov_get_file(int fn, char *user_buf)
+int tilck_sys_gcov_get_file(int fn, char *user_buf)
 {
    if (fn < 0 || fn >= files_count)
       return -EINVAL;
