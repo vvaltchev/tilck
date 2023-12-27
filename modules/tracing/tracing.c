@@ -48,6 +48,7 @@ bool *traced_syscalls;
 bool __force_exp_block;
 bool __tracing_on;
 bool __tracing_dump_big_bufs;
+bool __tracing_initialized;
 int __tracing_printk_lvl = 10;
 
 const char *get_signal_name(int signum)
@@ -309,7 +310,11 @@ trace_syscall_exit_int(u32 sys,
 void
 trace_printk_int(int level, const char *fmt, ...)
 {
+   int written;
    ASSERT(level >= 1);
+
+   if (!__tracing_initialized)
+      return;
 
    if (__tracing_printk_lvl < level)
       return;
@@ -325,8 +330,11 @@ trace_printk_int(int level, const char *fmt, ...)
 
    va_list args;
    va_start(args, fmt);
-   vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
+   written = vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
    va_end(args);
+
+   if (written > 0 && e.p_ev.buf[written - 1] == '\n')
+      e.p_ev.buf[written - 1] = 0;
 
    enqueue_trace_event(&e);
 }
@@ -817,6 +825,7 @@ init_tracing(void)
    tracing_allocate_slots_for_params();
 
    set_traced_syscalls("*");
+   __tracing_initialized = true;
 }
 
 static struct module dp_module = {
