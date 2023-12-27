@@ -20,9 +20,9 @@ static int tilck_busy_wait(ulong n);
 static void *tilck_cmds[TILCK_CMD_COUNT] = {
 
    [TILCK_CMD_RUN_SELFTEST] = tilck_sys_run_selftest,
-   [TILCK_CMD_GCOV_GET_NUM_FILES] = sys_gcov_get_file_count,
-   [TILCK_CMD_GCOV_FILE_INFO] = sys_gcov_get_file_info,
-   [TILCK_CMD_GCOV_GET_FILE] = sys_gcov_get_file,
+   [TILCK_CMD_GCOV_GET_NUM_FILES] = tilck_sys_gcov_get_file_count,
+   [TILCK_CMD_GCOV_FILE_INFO] = tilck_sys_gcov_get_file_info,
+   [TILCK_CMD_GCOV_GET_FILE] = tilck_sys_gcov_get_file,
    [TILCK_CMD_QEMU_POWEROFF] = debug_qemu_turn_off_machine,
    [TILCK_CMD_SET_SAT_ENABLED] = set_sched_alive_thread_enabled,
    [TILCK_CMD_DEBUG_PANEL] = NULL,
