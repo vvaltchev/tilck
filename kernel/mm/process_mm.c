@@ -17,7 +17,8 @@
 
 char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-static inline void sys_brk_internal(struct process *pi, void *new_brk)
+static void
+brk_syscall_int(struct process *pi, void *new_brk)
 {
    ASSERT(!is_preemption_enabled());
 
@@ -97,7 +98,7 @@ void *sys_brk(void *new_brk)
 
    disable_preemption();
    {
-      sys_brk_internal(pi, new_brk);
+      brk_syscall_int(pi, new_brk);
    }
    enable_preemption();
    return pi->brk;
