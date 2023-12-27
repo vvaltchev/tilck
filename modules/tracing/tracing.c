@@ -49,6 +49,7 @@ bool __force_exp_block;
 bool __tracing_on;
 bool __tracing_dump_big_bufs;
 bool __tracing_initialized;
+bool __trace_printk_initialized;
 int __tracing_printk_lvl = 10;
 
 const char *get_signal_name(int signum)
@@ -327,7 +328,7 @@ trace_printk_int(int level, const char *fmt, ...)
    int written;
    ASSERT(level >= 1);
 
-   if (!__tracing_initialized)
+   if (!__trace_printk_initialized)
       return;
 
    if (__tracing_printk_lvl < level)
@@ -802,10 +803,28 @@ tracing_init_oom_panic(const char *buf_name)
 }
 
 void
-init_tracing(void)
+init_trace_printk(void)
 {
+   if (__trace_printk_initialized)
+      return;
+
    if (!(tracing_buf = kzmalloc(TRACE_BUF_SIZE)))
       tracing_init_oom_panic("tracing_buf");
+
+   ringbuf_init(&tracing_rb,
+                TRACE_BUF_SIZE / sizeof(struct trace_event),
+                sizeof(struct trace_event),
+                tracing_buf);
+
+   kmutex_init(&tracing_lock, 0);
+   kcond_init(&tracing_cond);
+   __trace_printk_initialized = true;
+}
+
+void
+init_tracing(void)
+{
+   init_trace_printk();
 
    if (!(syms_buf = kalloc_array_obj(struct symbol_node, MAX_SYSCALLS)))
       tracing_init_oom_panic("syms_buf");
@@ -824,14 +843,6 @@ init_tracing(void)
 
    if (!(traced_syscalls_str = kmalloc(TRACED_SYSCALLS_STR_LEN)))
       tracing_init_oom_panic("traced_syscalls_str");
-
-   ringbuf_init(&tracing_rb,
-                TRACE_BUF_SIZE / sizeof(struct trace_event),
-                sizeof(struct trace_event),
-                tracing_buf);
-
-   kmutex_init(&tracing_lock, 0);
-   kcond_init(&tracing_cond);
 
    foreach_symbol(elf_symbol_cb, NULL);
 
