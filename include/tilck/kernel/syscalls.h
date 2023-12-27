@@ -55,12 +55,11 @@ CREATE_STUB_SYSCALL_IMPL(sys_mknod)
 int sys_chmod(const char *u_path, mode_t mode);
 
 CREATE_STUB_SYSCALL_IMPL(sys_lchown16)
-CREATE_STUB_SYSCALL_IMPL(sys_break)
+/* sys_break does NOT exist on Linux, see break(2) */
 CREATE_STUB_SYSCALL_IMPL(sys_oldstat)
 CREATE_STUB_SYSCALL_IMPL(sys_lseek)
 
 int sys_getpid(void);
-
 int sys_mount(const char *u_source,
               const char *u_target,
               const char *u_fstype,
