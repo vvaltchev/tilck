@@ -3,8 +3,11 @@
 /*                literal string             */
 
 static offt
-sys_str_literal_load(struct sysobj *obj,
-                     void *data, void *buf, offt buf_sz, offt off)
+sysfs_str_literal_load(struct sysobj *obj,
+                       void *data,
+                       void *buf,
+                       offt buf_sz,
+                       offt off)
 {
    ASSERT(off == 0);
 
@@ -15,41 +18,51 @@ sys_str_literal_load(struct sysobj *obj,
 }
 
 const struct sysobj_prop_type sysobj_ptype_ro_string_literal = {
-   .load = &sys_str_literal_load
+   .load = &sysfs_str_literal_load
 };
 
 /*                literal ulong             */
 
 static offt
-sys_ulong_literal_load(struct sysobj *obj,
-                       void *data, void *buf, offt buf_sz, offt off)
+sysfs_ulong_literal_load(struct sysobj *obj,
+                         void *data,
+                         void *buf,
+                         offt buf_sz,
+                         offt off)
 {
    ASSERT(off == 0);
    return snprintk(buf, (size_t)buf_sz, "%lu\n", (ulong)data);
 }
 
 const struct sysobj_prop_type sysobj_ptype_ro_ulong_literal = {
-   .load = &sys_ulong_literal_load
+   .load = &sysfs_ulong_literal_load
 };
 
 /*                literal ulong_hex             */
 
 static offt
-sys_ulong_hex_literal_load(struct sysobj *obj,
-                           void *data, void *buf, offt buf_sz, offt off)
+sysfs_ulong_hex_literal_load(struct sysobj *obj,
+                             void *data,
+                             void *buf,
+                             offt buf_sz,
+                             offt off)
 {
    ASSERT(off == 0);
    return snprintk(buf, (size_t)buf_sz, "%#lx\n", (ulong)data);
 }
 
 const struct sysobj_prop_type sysobj_ptype_ro_ulong_hex_literal = {
-   .load = &sys_ulong_hex_literal_load
+   .load = &sysfs_ulong_hex_literal_load
 };
 
 /*                ulong             */
 
 static offt
-sys_ulong_load(struct sysobj *obj, void *data, void *buf, offt buf_sz, offt off)
+sysfs_ulong_load(struct sysobj *obj,
+                 void *data,
+                 void *buf,
+                 offt buf_sz,
+                 offt off)
 {
    ASSERT(off == 0);
    const ulong val = *(ulong *)data;
@@ -57,7 +70,10 @@ sys_ulong_load(struct sysobj *obj, void *data, void *buf, offt buf_sz, offt off)
 }
 
 static offt
-sys_ulong_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
+sysfs_ulong_store(struct sysobj *obj,
+                  void *data,
+                  void *buf,
+                  offt buf_sz)
 {
    int err = 0;
    ulong val;
@@ -78,19 +94,23 @@ sys_ulong_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
 }
 
 const struct sysobj_prop_type sysobj_ptype_rw_ulong = {
-   .load = &sys_ulong_load,
-   .store = &sys_ulong_store,
+   .load = &sysfs_ulong_load,
+   .store = &sysfs_ulong_store,
 };
 
 const struct sysobj_prop_type sysobj_ptype_ro_ulong = {
-   .load = &sys_ulong_load,
+   .load = &sysfs_ulong_load,
 };
 
 
 /*                long             */
 
 static offt
-sys_long_load(struct sysobj *obj, void *data, void *buf, offt buf_sz, offt off)
+sysfs_long_load(struct sysobj *obj,
+                void *data,
+                void *buf,
+                offt buf_sz,
+                offt off)
 {
    ASSERT(off == 0);
    const long val = *(long *)data;
@@ -98,7 +118,10 @@ sys_long_load(struct sysobj *obj, void *data, void *buf, offt buf_sz, offt off)
 }
 
 static offt
-sys_long_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
+sysfs_long_store(struct sysobj *obj,
+                 void *data,
+                 void *buf,
+                 offt buf_sz)
 {
    int err = 0;
    long val;
@@ -119,26 +142,33 @@ sys_long_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
 }
 
 const struct sysobj_prop_type sysobj_ptype_rw_long = {
-   .load = &sys_long_load,
-   .store = &sys_long_store,
+   .load = &sysfs_long_load,
+   .store = &sysfs_long_store,
 };
 
 const struct sysobj_prop_type sysobj_ptype_ro_long = {
-   .load = &sys_long_load,
+   .load = &sysfs_long_load,
    .store = NULL,
 };
 
 /*               bool             */
 
 static offt
-sys_bool_load(struct sysobj *obj, void *data, void *buf, offt buf_sz, offt off)
+sysfs_bool_load(struct sysobj *obj,
+                void *data,
+                void *buf,
+                offt buf_sz,
+                offt off)
 {
    ASSERT(off == 0);
    return snprintk(buf, (size_t)buf_sz, "%u\n", *(bool *)data);
 }
 
 static offt
-sys_bool_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
+sysfs_bool_store(struct sysobj *obj,
+                 void *data,
+                 void *buf,
+                 offt buf_sz)
 {
    char *s = buf;
 
@@ -152,20 +182,23 @@ sys_bool_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
 }
 
 const struct sysobj_prop_type sysobj_ptype_rw_bool = {
-   .load = &sys_bool_load,
-   .store = &sys_bool_store,
+   .load = &sysfs_bool_load,
+   .store = &sysfs_bool_store,
 };
 
 const struct sysobj_prop_type sysobj_ptype_ro_bool = {
-   .load = &sys_bool_load,
+   .load = &sysfs_bool_load,
 };
 
 
 /*                config string             */
 
 static offt
-sys_config_str_load(struct sysobj *obj,
-                    void *data, void *buf, offt buf_sz, offt off)
+sysfs_config_str_load(struct sysobj *obj,
+                      void *data,
+                      void *buf,
+                      offt buf_sz,
+                      offt off)
 {
    ASSERT(off == 0);
    struct sysfs_buffer *str = data;
@@ -173,7 +206,10 @@ sys_config_str_load(struct sysobj *obj,
 }
 
 static offt
-sys_config_str_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
+sysfs_config_str_store(struct sysobj *obj,
+                       void *data,
+                       void *buf,
+                       offt buf_sz)
 {
    struct sysfs_buffer *str = data;
    offt len = 0, lim = MIN(buf_sz, (offt)str->buf_sz - 1);
@@ -188,12 +224,12 @@ sys_config_str_store(struct sysobj *obj, void *data, void *buf, offt buf_sz)
 }
 
 const struct sysobj_prop_type sysobj_ptype_rw_config_str = {
-   .load = &sys_config_str_load,
-   .store = &sys_config_str_store,
+   .load = &sysfs_config_str_load,
+   .store = &sysfs_config_str_store,
 };
 
 const struct sysobj_prop_type sysobj_ptype_ro_config_str = {
-   .load = &sys_config_str_load,
+   .load = &sysfs_config_str_load,
 };
 
 /*                immutable data             */
@@ -213,8 +249,11 @@ sysobj_imm_data_get_data_ptr(struct sysobj *obj, void *prop_data)
 }
 
 static offt
-sys_imm_data_load(struct sysobj *obj,
-                  void *prop_data, void *buf, offt buf_sz, offt off)
+sysfs_imm_data_load(struct sysobj *obj,
+                    void *prop_data,
+                    void *buf,
+                    offt buf_sz,
+                    offt off)
 {
    struct sysfs_buffer *databuf = prop_data;
    offt to_read;
@@ -232,7 +271,7 @@ sys_imm_data_load(struct sysobj *obj,
 
 const struct sysobj_prop_type sysobj_ptype_imm_data = {
    .get_buf_sz = &sysobj_imm_data_get_buf_sz,
-   .load = &sys_imm_data_load,
+   .load = &sysfs_imm_data_load,
    .get_data_ptr = &sysobj_imm_data_get_data_ptr,
 };
 
@@ -248,8 +287,11 @@ sysobj_databuf_get_buf_sz(struct sysobj *obj, void *prop_data)
 }
 
 static offt
-sys_databuf_load(struct sysobj *obj,
-                 void *prop_data, void *dest, offt dest_buf_sz, offt off)
+sysfs_databuf_load(struct sysobj *obj,
+                   void *prop_data,
+                   void *dest,
+                   offt dest_buf_sz,
+                   offt off)
 {
    ASSERT(off == 0);
    struct sysfs_buffer *databuf = prop_data;
@@ -259,8 +301,10 @@ sys_databuf_load(struct sysobj *obj,
 }
 
 static offt
-sys_databuf_store(struct sysobj *obj,
-                  void *prop_data, void *src, offt src_buf_sz)
+sysfs_databuf_store(struct sysobj *obj,
+                    void *prop_data,
+                    void *src,
+                    offt src_buf_sz)
 {
    struct sysfs_buffer *databuf = prop_data;
    offt to_write = MIN(src_buf_sz, (offt)databuf->buf_sz);
@@ -271,6 +315,6 @@ sys_databuf_store(struct sysobj *obj,
 
 const struct sysobj_prop_type sysobj_ptype_databuf = {
    .get_buf_sz = &sysobj_databuf_get_buf_sz,
-   .load = &sys_databuf_load,
-   .store = &sys_databuf_store,
+   .load = &sysfs_databuf_load,
+   .store = &sysfs_databuf_store,
 };
