@@ -177,6 +177,9 @@ trace_syscall_exit_int(u32 sys,
                        ulong a5,
                        ulong a6);
 
+void
+trace_printk_raw_int(int level, const char *buf, size_t buf_size);
+
 ATTR_PRINTF_LIKE(2) void
 trace_printk_int(int level, const char *fmt, ...);
 
@@ -340,6 +343,12 @@ tracing_set_printk_lvl(int lvl)
    if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {                   \
       trace_printk_int((lvl), fmt, ##__VA_ARGS__);                             \
    }
+
+#define trace_printk_raw(lvl, buf, buf_sz)                                     \
+   if (MOD_tracing && UNLIKELY(trace_printk_is_enabled())) {                   \
+      trace_printk_raw_int((lvl), (buf), (buf_sz));                            \
+   }
+
 
 #define trace_signal_delivered(target_tid, signum)                             \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \

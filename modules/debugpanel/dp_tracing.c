@@ -167,7 +167,7 @@ tracing_ui_msg(void)
 }
 
 static void
-dp_dump_tracing_event(struct trace_event *e)
+dp_dump_trace_event_prefix(struct trace_event *e)
 {
    dp_write_raw(
       "%05u.%03u [%05d] ",
@@ -175,6 +175,54 @@ dp_dump_tracing_event(struct trace_event *e)
       (u32)((e->sys_time % TS_SCALE) / (TS_SCALE / 1000)),
       e->tid
    );
+}
+
+static void
+dp_dump_trace_printk_event(struct trace_event *e)
+{
+   const char *buf = e->p_ev.buf;
+   size_t len;
+
+   if (*buf == '\n') {
+      /*
+       * We want to skip a single leading newline that is often used in
+       * printk() so that the next will look better on the screen.
+       */
+      buf++;
+   }
+
+   len = strlen(buf);
+
+   if (!len) {
+      /* Empty text, skip */
+      return;
+   }
+
+   const char last = buf[len - 1];
+   const char *endstr = (last == '\n' ? "\r" : "\r\n");
+
+   if (len == 1 && last == '\n') {
+      /* Just a newline and nothing else, skip */
+      return;
+   }
+
+   dp_dump_trace_event_prefix(e);
+   dp_write_raw(
+      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s%s",
+      e->p_ev.level, buf, endstr
+   );
+}
+
+static void
+dp_dump_tracing_event(struct trace_event *e)
+{
+   if (e->type != te_printk) {
+      /*
+       * Since we want to skip empty logs for trace printk events, we cannot
+       * unconditionally print the prefix here.
+       */
+      dp_dump_trace_event_prefix(e);
+   }
 
    switch (e->type) {
 
@@ -184,10 +232,7 @@ dp_dump_tracing_event(struct trace_event *e)
          break;
 
       case te_printk:
-         dp_write_raw(
-            E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s\r\n",
-            e->p_ev.level, e->p_ev.buf
-         );
+         dp_dump_trace_printk_event(e);
          break;
 
       case te_signal_delivered:
