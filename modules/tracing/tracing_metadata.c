@@ -378,6 +378,27 @@ static const struct syscall_info __tracing_metadata[] =
    },
 #endif
 
+   {
+      .sys_n = SYS_getrusage,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("who", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("usage", &ptype_voidp, sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = TILCK_CMD_SYSCALL,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("cmd", &ptype_int, sys_param_in),
+      },
+   },
+
 #else
 
 /*
