@@ -458,6 +458,7 @@ pci_dump_device_info(struct pci_device_loc loc,
 {
    struct pci_device_class dc = {0};
    const char *vendor;
+   char prefix[64];
 
    dc.class_id = nfo->class_id;
    dc.subclass_id = nfo->subclass_id;
@@ -466,47 +467,55 @@ pci_dump_device_info(struct pci_device_loc loc,
    pci_find_device_class_name(&dc);
    vendor = pci_find_vendor_name(nfo->vendor_id);
 
-   printk("PCI: %04x:%02x:%02x.%x: ", loc.seg, loc.bus, loc.dev, loc.func);
+   snprintk(prefix, sizeof(prefix),
+            "PCI: %04x:%02x:%02x.%x",
+            loc.seg, loc.bus, loc.dev, loc.func);
 
    if (dc.subclass_name && dc.progif_name) {
 
-      if (vendor)
-         printk("%s: %s %s\n", dc.subclass_name, vendor, dc.progif_name);
-      else
-         printk("%s (%s)\n", dc.subclass_name, dc.progif_name);
+      if (vendor) {
+         printk("%s: %s: %s %s\n",
+                prefix, dc.subclass_name, vendor, dc.progif_name);
+      } else {
+         printk("%s: %s (%s)\n", prefix, dc.subclass_name, dc.progif_name);
+      }
 
    } else if (dc.subclass_name) {
 
       if (vendor)
-         printk("%s: %s\n", dc.subclass_name, vendor);
+         printk("%s: %s: %s\n", prefix, dc.subclass_name, vendor);
       else
-         printk("%s\n", dc.subclass_name);
+         printk("%s: %s\n", prefix, dc.subclass_name);
 
    } else if (dc.class_name) {
 
       if (vendor) {
 
          if (dc.subclass_id)
-            printk("%s: %s (subclass: %#x)\n",
-                   dc.class_name, vendor, dc.subclass_id);
+            printk("%s: %s: %s (subclass: %#x)\n",
+                   prefix, dc.class_name, vendor, dc.subclass_id);
          else
-            printk("%s: %s\n", dc.class_name, vendor);
+            printk("%s: %s: %s\n", prefix, dc.class_name, vendor);
 
       } else {
 
-         if (dc.subclass_id)
-            printk("%s (subclass: %#x)\n", dc.class_name, dc.subclass_id);
-         else
-            printk("%s\n", dc.class_name);
+         if (dc.subclass_id) {
+            printk("%s: %s (subclass: %#x)\n",
+                   prefix, dc.class_name, dc.subclass_id);
+         } else {
+            printk("%s: %s\n", prefix, dc.class_name);
+         }
       }
 
    } else {
 
-      if (vendor)
-         printk("vendor: %s, class: %#x, subclass: %#x\n",
-                vendor, dc.class_id, dc.subclass_id);
-      else
-         printk("class: %#x, subclass: %#x\n", dc.class_id, dc.subclass_id);
+      if (vendor) {
+         printk("%s: vendor: %s, class: %#x, subclass: %#x\n",
+                prefix, vendor, dc.class_id, dc.subclass_id);
+      } else {
+         printk("%s: class: %#x, subclass: %#x\n",
+                prefix, dc.class_id, dc.subclass_id);
+      }
    }
 }
 
