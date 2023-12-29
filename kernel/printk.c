@@ -14,6 +14,8 @@
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/datetime.h>
 
+#include <tilck/mods/tracing.h>
+
 #define PRINTK_BUF_SZ                         224
 #define PRINTK_PREFIXBUF_SZ                   32
 
@@ -128,6 +130,16 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 {
    struct ringbuf_stat cs, ns;
    u32 used, to_read = 0;
+
+   if (MOD_tracing_actual) {
+      static bool printk_flush_ringbuf_done_once;
+      if (UNLIKELY(!printk_flush_ringbuf_done_once)) {
+         printk_flush_ringbuf_done_once = true;
+         if (!in_panic()) {
+            init_trace_printk();
+         }
+      }
+   }
 
    while (true) {
 
@@ -290,7 +302,8 @@ __tilck_vprintk(char *prefixbuf,
                 const char *fmt,
                 va_list args)
 {
-   bool prefix = !in_panic();
+   const bool panic = in_panic();
+   bool prefix = !panic;
    bool has_newline = false;
    struct ringbuf_stat old;
    int written, prefix_sz = 0;
@@ -347,13 +360,14 @@ __tilck_vprintk(char *prefixbuf,
       return;
    }
 
-   if (in_panic()) {
+   if (panic) {
       u8 color = in_panic_debugger() ? DEFAULT_FG_COLOR : PRINTK_PANIC_COLOR;
       printk_direct_flush(buf, (size_t) written, color);
       restore_first_printk_value();
       return;
    }
 
+   trace_printk_raw(1, buf, (size_t) written);
    disable_preemption();
    {
       if (!old.first_printk) {
