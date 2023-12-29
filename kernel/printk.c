@@ -86,6 +86,84 @@ printk_direct_flush_no_tty(const char *buf, size_t size, u8 color)
    }
 }
 
+static ALWAYS_INLINE u32
+printk_calc_used(const struct ringbuf_stat *cs)
+{
+   u32 used = (cs->write_pos - cs->read_pos) % sizeof(printk_rbuf);
+
+   if (!used)
+      used = cs->full ? sizeof(printk_rbuf) : 0;
+
+   return used;
+}
+
+static void
+printk_write_early_ringbuf_to_trace_printk(void)
+{
+   char buf[sizeof(((struct printk_event_data *)0)->buf)];
+   u32 rpos, buf_pos, used, to_read;
+   char val;
+
+   ASSERT(!are_interrupts_enabled());
+   used = printk_calc_used((struct ringbuf_stat *)&printk_rbuf_stat);
+   rpos = printk_rbuf_stat.read_pos;
+
+   while (used) {
+
+      /* Determine how many bytes we can read */
+      to_read = MIN(used, (u32)sizeof(buf) - 1);
+
+      /* Read the first char and check if it's the printk prefix */
+      val = printk_rbuf[rpos % sizeof(printk_rbuf)];
+
+      if (val == '[') {
+
+         /*
+          * Yes, it looks like the printk prefix '[    0.000] '. So, check if
+          * the char ']' is exactly where we expect it to be and skip the whole
+          * prefix.
+          */
+         if (printk_rbuf[(rpos + 10) % sizeof(printk_rbuf)] == ']') {
+            ASSERT(printk_rbuf[(rpos + 11) % sizeof(printk_rbuf)] == ' ');
+            rpos += 12;
+         }
+      }
+
+      /* OK, now we can read the actual message on that line */
+      for (buf_pos = 0; buf_pos < to_read && val != '\n';) {
+         val = printk_rbuf[rpos++ % sizeof(printk_rbuf)];
+         buf[buf_pos++] = val;
+      }
+
+      /* Account all the chars that we put into our buffer */
+      used -= buf_pos;
+      buf[buf_pos] = 0;
+
+      if (val != '\n' && buf_pos == sizeof(buf) - 1) {
+         /*
+          * The trace buffer line is full but we didn't hit a newline delimiter:
+          * this means that we're dealing with a too long line that must be
+          * truncated.
+          */
+         char trunc[] = TRACE_PRINTK_TRUNC_STR;
+         memcpy(buf + sizeof(buf) - sizeof(trunc), trunc, sizeof(trunc));
+
+         /*
+          * Now skip the rest of the text line from the ring buffer, so that
+          * we don't see it as a different trace event on the next iteration.
+          */
+         while (used > 0) {
+            if (printk_rbuf[rpos++ % sizeof(printk_rbuf)] == '\n') {
+               used--;
+               break;
+            }
+            used--;
+         }
+      }
+      trace_printk_raw(1, buf, buf_pos + 1);
+   }
+}
+
 static void
 printk_direct_flush(const char *buf, size_t size, u8 color)
 {
@@ -114,17 +192,6 @@ printk_direct_flush(const char *buf, size_t size, u8 color)
    return;
 }
 
-static ALWAYS_INLINE u32
-printk_calc_used(const struct ringbuf_stat *cs)
-{
-   u32 used = (cs->write_pos - cs->read_pos) % sizeof(printk_rbuf);
-
-   if (!used)
-      used = cs->full ? sizeof(printk_rbuf) : 0;
-
-   return used;
-}
-
 static void
 __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
 {
@@ -135,8 +202,9 @@ __printk_flush_ringbuf(char *tmpbuf, u32 buf_size)
       static bool printk_flush_ringbuf_done_once;
       if (UNLIKELY(!printk_flush_ringbuf_done_once)) {
          printk_flush_ringbuf_done_once = true;
-         if (!in_panic()) {
+         if (trace_printk_is_enabled() && !in_panic()) {
             init_trace_printk();
+            printk_write_early_ringbuf_to_trace_printk();
          }
       }
    }

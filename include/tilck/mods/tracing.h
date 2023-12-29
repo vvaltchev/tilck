@@ -8,6 +8,7 @@
 #define INVALID_SYSCALL           ((u32) -1)
 #define NO_SLOT                           -1
 #define TRACED_SYSCALLS_STR_LEN         128u
+#define TRACE_PRINTK_TRUNC_STR       "{...}"
 
 enum trace_event_type {
    te_invalid,
