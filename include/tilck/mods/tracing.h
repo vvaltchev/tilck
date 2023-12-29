@@ -276,7 +276,7 @@ tracing_is_enabled(void)
 static ALWAYS_INLINE bool
 trace_printk_is_enabled(void)
 {
-   return tracing_is_enabled();
+   return TRACE_PRINTK_ENABLED_ON_BOOT || tracing_is_enabled();
 }
 
 static ALWAYS_INLINE void
