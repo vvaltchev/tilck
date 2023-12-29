@@ -81,9 +81,10 @@ show_system_info(void)
    const int time_slice = 1000 / (TIMER_HZ / TIME_SLICE_TICKS);
    const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
 
-   printk("timer_hz: \e[1m%i\e[m", TIMER_HZ);
-   printk("; time_slice: \e[1m%i\e[m", time_slice);
-   printk(" ms; in_hypervisor: \e[1m%s\e[m\n", in_hyp_str);
+   printk("\e[32mtimer_hz: \e[m\e[1m%i\e[m\e[32m"
+          "; time_slice: \e[m\e[1m%i\e[m\e[32m"
+          " ms; in_hypervisor: \e[m\e[1m%s\e[m\n",
+          TIMER_HZ, time_slice, in_hyp_str);
 }
 
 void
@@ -92,25 +93,23 @@ show_hello_message(void)
    struct commit_hash_and_date comm;
    extract_commit_hash_and_date(&tilck_build_info, &comm);
 
-   if (VER_PATCH > 0)
-      printk("Hello from Tilck \e[1m%d.%d.%d\e[m",
-             VER_MAJOR, VER_MINOR, VER_PATCH);
-   else
-      printk("Hello from Tilck \e[1m%d.%d\e[m",
-             VER_MAJOR, VER_MINOR);
+   printk("\e[32mHello from Tilck \e[m\e[1m%d.%d.%d\e[m\e[32m, "
+          "commit: \e[m\e[1m%s\e[m\e[32m (%s)\e[m\n",
+          VER_MAJOR, VER_MINOR, VER_PATCH,
+          comm.hash,
+          comm.dirty
+            ? "dirty"
+            : comm.tags[0]
+               ? comm.tags
+               : "untagged");
 
-   printk(", commit: \e[1m%s\e[m", comm.hash);
-
-   if (comm.dirty)
-      printk(" (dirty)");
-   else if (comm.tags[0])
-      printk(" (%s)", comm.tags);
-
-   printk("\n");
-   printk("Build type: \e[1m%s\e[m", BUILDTYPE_STR);
-   printk(", compiler: \e[1m%s %d.%d.%d\e[m\n",
+   printk("\e[32mBuild type: \e[m\e[1m%s\e[m\e[32m, "
+          "compiler: \e[m\e[1m%s %d.%d.%d\e[m\n",
+          BUILDTYPE_STR,
           COMPILER_NAME,
-          COMPILER_MAJOR, COMPILER_MINOR, COMPILER_PATCHLEVEL);
+          COMPILER_MAJOR,
+          COMPILER_MINOR,
+          COMPILER_PATCHLEVEL);
 
    show_system_info();
 
