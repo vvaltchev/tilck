@@ -185,6 +185,7 @@ dp_dump_trace_printk_event(struct trace_event *e)
    size_t max_len = sizeof(e->p_ev.buf) - 1;
    const char *buf = e->p_ev.buf;
    const char *trunc = "";
+   const char *log_color = "";
    size_t len;
 
    if (*buf == '\n') {
@@ -234,9 +235,13 @@ dp_dump_trace_printk_event(struct trace_event *e)
       trunc = E_COLOR_BR_RED TRACE_PRINTK_TRUNC_STR RESET_ATTRS;
    }
 
+   if (len >= 4 && !strncmp(buf, "*** ", 4)) {
+      log_color = ATTR_BOLD;
+   }
+
    dp_write_raw(
-      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %.*s%s%s",
-      e->p_ev.level, len, buf, trunc, endstr
+      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s%.*s%s%s",
+      e->p_ev.level, log_color, len, buf, trunc, endstr
    );
 }
 
