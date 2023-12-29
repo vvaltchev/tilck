@@ -8,6 +8,7 @@
 #pragma once
 
 #cmakedefine01    MOD_tracing
+#cmakedefine01    TRACE_PRINTK_ENABLED_ON_BOOT
 
 #ifdef KERNEL_TEST
    #define MOD_tracing_actual 1

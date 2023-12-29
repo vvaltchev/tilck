@@ -268,6 +268,9 @@ set(KRN32_LIN_VADDR ON CACHE BOOL
 
 set(USERAPPS_busybox ON CACHE BOOL "Include BUSYBOX (recommended)")
 
+set(TRACE_PRINTK_ENABLED_ON_BOOT ON CACHE BOOL
+    "Make trace_printk() to be always enabled since boot time")
+
 # Kernel options (disabled by default)
 
 set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
@@ -473,6 +476,9 @@ list(
    KRN_NO_SYS_WARN
    KERNEL_64BIT_OFFT
    KRN_CLOCK_DRIFT_COMP
+   KRN32_LIN_VADDR
+   USERAPPS_busybox
+   TRACE_PRINTK_ENABLED_ON_BOOT
 
    # Boolean options DISABLED by default
    KERNEL_UBSAN
