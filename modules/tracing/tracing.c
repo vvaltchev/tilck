@@ -334,9 +334,8 @@ trace_syscall_exit_int(u32 sys,
 }
 
 void
-trace_printk_int(int level, const char *fmt, ...)
+trace_printk_raw_int(int level, const char *buf, size_t buf_size)
 {
-   int written;
    ASSERT(level >= 1);
 
    if (!__trace_printk_initialized)
@@ -354,13 +353,35 @@ trace_printk_int(int level, const char *fmt, ...)
       }
    };
 
-   va_list args;
-   va_start(args, fmt);
-   written = vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
-   va_end(args);
+   buf_size = MIN(buf_size, sizeof(e.p_ev.buf));
+   memcpy(e.p_ev.buf, buf, buf_size);
+   enqueue_trace_event(&e);
+}
 
-   if (written > 0 && e.p_ev.buf[written - 1] == '\n')
-      e.p_ev.buf[written - 1] = 0;
+void
+trace_printk_int(int level, const char *fmt, ...)
+{
+   va_list args;
+   ASSERT(level >= 1);
+
+   if (!__trace_printk_initialized)
+      return;
+
+   if (__tracing_printk_lvl < level)
+      return;
+
+   struct trace_event e = {
+      .type = te_printk,
+      .tid = get_curr_tid(),
+      .sys_time = get_sys_time(),
+      .p_ev = {
+         .level = level,
+      }
+   };
+
+   va_start(args, fmt);
+   vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
+   va_end(args);
 
    enqueue_trace_event(&e);
 }
