@@ -14,6 +14,7 @@
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/debug_utils.h>
+#include <tilck/kernel/interrupts.h>
 
 #include <tilck/mods/tracing.h>
 
@@ -28,7 +29,6 @@ struct symbol_node {
    const char *name;
 };
 
-static struct kmutex tracing_lock;
 static struct kcond tracing_cond;
 static struct ringbuf tracing_rb;
 static void *tracing_buf;
@@ -252,12 +252,23 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
 static void
 enqueue_trace_event(struct trace_event *e)
 {
-   kmutex_lock(&tracing_lock);
+   ulong var;
+   bool success;
+   disable_interrupts(&var);
    {
-      ringbuf_write_elem(&tracing_rb, e);
+      success = ringbuf_write_elem(&tracing_rb, e);
+   }
+   enable_interrupts(&var);
+
+   if (success && !in_irq()) {
+      /*
+       * Signal the condition only we succeeded in writing the event to our
+       * ring buffer and we're not inside an IRQ handler. Not signaling a few
+       * events is not a problem because by the reader cannot be stuck forever
+       * and it *must* give up and retry periodically.
+       */
       kcond_signal_one(&tracing_cond);
    }
-   kmutex_unlock(&tracing_lock);
 }
 
 void
@@ -402,27 +413,32 @@ trace_task_killed_int(int signum)
 
 bool read_trace_event_noblock(struct trace_event *e)
 {
-   bool ret;
-   kmutex_lock(&tracing_lock);
+   bool success;
+
+   /* We must NOT consume trace events from IRQ handlers, of course */
+   ASSERT(!in_irq());
+   ASSERT(are_interrupts_enabled());
+   disable_interrupts_forced();
    {
-      ret = ringbuf_read_elem(&tracing_rb, e);
+      success = ringbuf_read_elem(&tracing_rb, e);
    }
-   kmutex_unlock(&tracing_lock);
-   return ret;
+   enable_interrupts_forced();
+   return success;
 }
 
 bool read_trace_event(struct trace_event *e, u32 timeout_ticks)
 {
-   bool ret;
-   kmutex_lock(&tracing_lock);
-   {
-      if (ringbuf_is_empty(&tracing_rb))
-         kcond_wait(&tracing_cond, &tracing_lock, timeout_ticks);
+   bool success = read_trace_event_noblock(e);
 
-      ret = ringbuf_read_elem(&tracing_rb, e);
+   if (!success) {
+
+      success = kcond_wait(&tracing_cond, NULL, timeout_ticks);
+
+      if (success)
+         success = read_trace_event_noblock(e);
    }
-   kmutex_unlock(&tracing_lock);
-   return ret;
+
+   return success;
 }
 
 const struct syscall_info *
@@ -787,12 +803,14 @@ set_traced_syscalls(const char *s)
 int
 tracing_get_in_buffer_events_count(void)
 {
+   ulong var;
    int rc;
-   kmutex_lock(&tracing_lock);
+
+   disable_interrupts(&var);
    {
       rc = (int)ringbuf_get_elems(&tracing_rb); // integer narrowing
    }
-   kmutex_unlock(&tracing_lock);
+   enable_interrupts(&var);
    return rc;
 }
 
@@ -816,7 +834,6 @@ init_trace_printk(void)
                 sizeof(struct trace_event),
                 tracing_buf);
 
-   kmutex_init(&tracing_lock, 0);
    kcond_init(&tracing_cond);
    __trace_printk_initialized = true;
 }
