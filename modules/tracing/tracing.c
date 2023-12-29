@@ -362,6 +362,7 @@ void
 trace_printk_int(int level, const char *fmt, ...)
 {
    va_list args;
+   int written;
    ASSERT(level >= 1);
 
    if (!__trace_printk_initialized)
@@ -380,8 +381,15 @@ trace_printk_int(int level, const char *fmt, ...)
    };
 
    va_start(args, fmt);
-   vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
+   written = vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
    va_end(args);
+
+   if (written == (int)sizeof(e.p_ev.buf)) {
+      char trunc[] = TRACE_PRINTK_TRUNC_STR;
+      memcpy(e.p_ev.buf + sizeof(e.p_ev.buf) - sizeof(trunc),
+             trunc,
+             sizeof(trunc));
+   }
 
    enqueue_trace_event(&e);
 }

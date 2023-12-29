@@ -180,21 +180,35 @@ dp_dump_trace_event_prefix(struct trace_event *e)
 static void
 dp_dump_trace_printk_event(struct trace_event *e)
 {
+   const char default_trunc_str[] = TRACE_PRINTK_TRUNC_STR;
+   const size_t trunc_str_len = sizeof(default_trunc_str) - 1;
+   size_t max_len = sizeof(e->p_ev.buf) - 1;
    const char *buf = e->p_ev.buf;
+   const char *trunc = "";
    size_t len;
 
    if (*buf == '\n') {
       /*
        * We want to skip a single leading newline that is often used in
-       * printk() so that the next will look better on the screen.
+       * printk() so that the next line will look better on the screen.
        */
       buf++;
+      max_len--;
    }
 
-   len = strlen(buf);
+   if (buf[max_len] == '\0') {
+      len = strlen(buf);
+   } else {
+      /*
+       * The buffer doesn't end with \0: therefore, it must have been truncated.
+       * Set our nice `trunc` string so that this fact will become clear.
+       */
+      len = max_len;
+      trunc = E_COLOR_BR_RED TRACE_PRINTK_TRUNC_STR RESET_ATTRS;
+   }
 
    if (!len) {
-      /* Empty text, skip */
+      /* Empty text, skip the whole event */
       return;
    }
 
@@ -202,14 +216,27 @@ dp_dump_trace_printk_event(struct trace_event *e)
    const char *endstr = (last == '\n' ? "\r" : "\r\n");
 
    if (len == 1 && last == '\n') {
-      /* Just a newline and nothing else, skip */
+      /* Just a newline and nothing else, skip the whole event */
       return;
    }
 
    dp_dump_trace_event_prefix(e);
+
+   if (len >= trunc_str_len &&
+       !strcmp(buf + len - trunc_str_len, TRACE_PRINTK_TRUNC_STR))
+   {
+      /*
+       * The string has been trucated during the early conversion of printk
+       * ringbuf to trace_printk events. Therefore, we want simply to drop that
+       * and replace it with the same text, but colorful.
+       */
+      len -= trunc_str_len;
+      trunc = E_COLOR_BR_RED TRACE_PRINTK_TRUNC_STR RESET_ATTRS;
+   }
+
    dp_write_raw(
-      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s%s",
-      e->p_ev.level, buf, endstr
+      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %.*s%s%s",
+      e->p_ev.level, len, buf, trunc, endstr
    );
 }
 
