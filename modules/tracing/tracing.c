@@ -384,11 +384,21 @@ trace_printk_int(int level, const char *fmt, ...)
    written = vsnprintk(e.p_ev.buf, sizeof(e.p_ev.buf), fmt, args);
    va_end(args);
 
-   if (written == (int)sizeof(e.p_ev.buf)) {
+   if (UNLIKELY(written == 0))
+      return;
+
+   if (UNLIKELY(written == (int)sizeof(e.p_ev.buf))) {
+
       char trunc[] = TRACE_PRINTK_TRUNC_STR;
       memcpy(e.p_ev.buf + sizeof(e.p_ev.buf) - sizeof(trunc),
              trunc,
              sizeof(trunc));
+
+   } else if (e.p_ev.buf[written - 1] != '\n') {
+
+      ASSERT(e.p_ev.buf[written] == '\0');
+      e.p_ev.buf[written] = '\n';
+      e.p_ev.buf[written + 1] = '\0';
    }
 
    enqueue_trace_event(&e);

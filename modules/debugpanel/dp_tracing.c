@@ -177,18 +177,31 @@ dp_dump_trace_event_prefix(struct trace_event *e)
    );
 }
 
+struct dump_trace_event_context {
+   bool last_tp_incomplete_line;
+   int last_tp_tid;
+   u64 last_tp_sys_time;
+};
+
 static void
-dp_dump_trace_printk_event(struct trace_event *e)
+dp_dump_trace_printk_event(struct trace_event *e,
+                           struct dump_trace_event_context *ctx)
 {
+   struct dump_trace_event_context empty_ctx = {0};
    const char default_trunc_str[] = TRACE_PRINTK_TRUNC_STR;
    const size_t trunc_str_len = sizeof(default_trunc_str) - 1;
    size_t max_len = sizeof(e->p_ev.buf) - 1;
    const char *buf = e->p_ev.buf;
+   const char *endln = "";
    const char *trunc = "";
    const char *log_color = "";
-   size_t len;
+   size_t len = 0;
+   bool continuation = false;
 
-   if (*buf == '\n') {
+   if (!ctx)
+      ctx = &empty_ctx;
+
+   if (*buf == '\n' && !ctx->last_tp_incomplete_line) {
       /*
        * We want to skip a single leading newline that is often used in
        * printk() so that the next line will look better on the screen.
@@ -197,31 +210,61 @@ dp_dump_trace_printk_event(struct trace_event *e)
       max_len--;
    }
 
-   if (buf[max_len] == '\0') {
-      len = strlen(buf);
-   } else {
+   /*
+    * Simple strnlen() implementation.
+    * TODO: introduce strnlen().
+    */
+   while (len < max_len && buf[len] != '\0') {
+      len++;
+   }
+
+   if (buf[len] != '\0') {
       /*
        * The buffer doesn't end with \0: therefore, it must have been truncated.
        * Set our nice `trunc` string so that this fact will become clear.
        */
-      len = max_len;
+      ASSERT(len == max_len);
       trunc = E_COLOR_BR_RED TRACE_PRINTK_TRUNC_STR RESET_ATTRS;
    }
 
-   if (!len) {
+   if (UNLIKELY(len == 0)) {
       /* Empty text, skip the whole event */
       return;
    }
 
-   const char last = buf[len - 1];
-   const char *endstr = (last == '\n' ? "\r" : "\r\n");
+   if (ctx->last_tp_incomplete_line) {
 
-   if (len == 1 && last == '\n') {
-      /* Just a newline and nothing else, skip the whole event */
-      return;
+      /*
+       * Oops, the last line was incomplete. Is this a continuation of the
+       * same log line?
+       */
+
+      if (ctx->last_tp_tid == e->tid && ctx->last_tp_sys_time == e->sys_time) {
+
+         /*
+          * The TID and the SYS TIME match, we assume it's the same event:
+          * mark this as a continuation and skip the prefix.
+          */
+         continuation = true;
+
+      } else {
+
+         /* Nope, the context is different. Write a new line */
+         dp_write_raw("\r\n");
+      }
    }
 
-   dp_dump_trace_event_prefix(e);
+   if (buf[len - 1] == '\n') {
+      ctx->last_tp_incomplete_line = false;
+      ctx->last_tp_sys_time = 0;
+      ctx->last_tp_tid = 0;
+      endln = "\r";
+   } else if (trunc[0] == '\0') {
+      /* Treat this an incomplete line only if it hasn't been truncated */
+      ctx->last_tp_incomplete_line = true;
+      ctx->last_tp_sys_time = e->sys_time;
+      ctx->last_tp_tid = e->tid;
+   }
 
    if (len >= trunc_str_len &&
        !strcmp(buf + len - trunc_str_len, TRACE_PRINTK_TRUNC_STR))
@@ -235,18 +278,48 @@ dp_dump_trace_printk_event(struct trace_event *e)
       trunc = E_COLOR_BR_RED TRACE_PRINTK_TRUNC_STR RESET_ATTRS;
    }
 
+   if (trunc[0] != '\0') {
+      /*
+       * Either the buffer doesn't end with '\0' or we found "{...}" at the
+       * end of it. That means it has been truncated. Therefore, we must never
+       * treat this as an incomplete line.
+       */
+      ctx->last_tp_incomplete_line = false;
+      ctx->last_tp_sys_time = 0;
+      ctx->last_tp_tid = 0;
+      endln = "\r\n";
+   }
+
    if (len >= 4 && !strncmp(buf, "*** ", 4)) {
       log_color = ATTR_BOLD;
    }
 
-   dp_write_raw(
-      E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s%.*s%s%s",
-      e->p_ev.level, log_color, len, buf, trunc, endstr
-   );
+   if (continuation) {
+
+      /*
+       * We believe that the previous log statment has been split in multiple
+       * printk() calls, therefore, we're skipping the LOG[] prefix here.
+       */
+
+      dp_write_raw(
+         E_COLOR_MAGENTA "%s%.*s%s%s" RESET_ATTRS,
+         log_color, len, buf, trunc, endln
+      );
+
+   } else {
+
+      /* Default case */
+      dp_dump_trace_event_prefix(e);
+      dp_write_raw(
+         E_COLOR_YELLOW "LOG" RESET_ATTRS "[%02d]: %s%.*s%s%s" RESET_ATTRS,
+         e->p_ev.level, log_color, len, buf, trunc, endln
+      );
+   }
 }
 
 static void
-dp_dump_tracing_event(struct trace_event *e)
+dp_dump_tracing_event(struct trace_event *e,
+                      struct dump_trace_event_context *ctx)
 {
    if (e->type != te_printk) {
       /*
@@ -264,7 +337,7 @@ dp_dump_tracing_event(struct trace_event *e)
          break;
 
       case te_printk:
-         dp_dump_trace_printk_event(e);
+         dp_dump_trace_printk_event(e, ctx);
          break;
 
       case te_signal_delivered:
@@ -294,7 +367,9 @@ dp_dump_tracing_event(struct trace_event *e)
 static bool
 dp_tracing_screen_main_loop(void)
 {
+   struct dump_trace_event_context ctx = {0};
    struct trace_event e;
+   bool ret = false;
    int rc;
    char c;
 
@@ -304,25 +379,30 @@ dp_tracing_screen_main_loop(void)
       rc = vfs_read(dp_input_handle, &c, 1);
 
       if (rc < 0 && rc != -EAGAIN)
-         return false; /* exit because of an error */
+         goto out; /* exit because of an error */
 
       if (rc == 1) {
 
          switch (c) {
 
             case 'q':
-               return false; /* clean exit */
+               goto out; /* clean exit */
 
             case DP_KEY_ENTER:
-               return true; /* stop dumping the trace buffer */
+               ret = true; /* stop dumping the trace buffer */
+               goto out;
          }
       }
 
       if (read_trace_event(&e, TIMER_HZ / 10))
-         dp_dump_tracing_event(&e);
+         dp_dump_tracing_event(&e, &ctx);
    }
 
-   NOT_REACHED();
+out:
+   if (ctx.last_tp_incomplete_line) {
+      dp_write_raw("\r\n");
+   }
+   return ret;
 }
 
 static void
@@ -533,7 +613,7 @@ dp_tracing_dump_remaining_events(void)
          break;
 
       if (c == 'n')
-         dp_dump_tracing_event(&e);
+         dp_dump_tracing_event(&e, NULL);
    }
 
    dp_write_raw("\r\n");
