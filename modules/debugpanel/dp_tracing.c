@@ -179,6 +179,7 @@ dp_dump_trace_event_prefix(struct trace_event *e)
 
 struct dump_trace_event_context {
    bool last_tp_incomplete_line;
+   bool last_tp_in_irq;
    int last_tp_tid;
    u64 last_tp_sys_time;
 };
@@ -187,7 +188,7 @@ static void
 dp_dump_trace_printk_event(struct trace_event *e,
                            struct dump_trace_event_context *ctx)
 {
-   struct dump_trace_event_context empty_ctx = {0};
+   struct dump_trace_event_context default_ctx = {0};
    const char default_trunc_str[] = TRACE_PRINTK_TRUNC_STR;
    const size_t trunc_str_len = sizeof(default_trunc_str) - 1;
    size_t max_len = sizeof(e->p_ev.buf) - 1;
@@ -199,7 +200,7 @@ dp_dump_trace_printk_event(struct trace_event *e,
    bool continuation = false;
 
    if (!ctx)
-      ctx = &empty_ctx;
+      ctx = &default_ctx;
 
    if (*buf == '\n' && !ctx->last_tp_incomplete_line) {
       /*
@@ -239,31 +240,33 @@ dp_dump_trace_printk_event(struct trace_event *e,
        * same log line?
        */
 
-      if (ctx->last_tp_tid == e->tid && ctx->last_tp_sys_time == e->sys_time) {
-
+      if (ctx->last_tp_tid == e->tid &&
+          ctx->last_tp_sys_time == e->sys_time &&
+          ctx->last_tp_in_irq == e->p_ev.in_irq)
+      {
          /*
-          * The TID and the SYS TIME match, we assume it's the same event:
+          * All the attributes match, so we assume it's the same event:
           * mark this as a continuation and skip the prefix.
           */
          continuation = true;
 
       } else {
 
-         /* Nope, the context is different. Write a new line */
+         /* Nope, the context is different. Write a new line and discard ctx */
+         *ctx = default_ctx;
          dp_write_raw("\r\n");
       }
    }
 
    if (buf[len - 1] == '\n') {
-      ctx->last_tp_incomplete_line = false;
-      ctx->last_tp_sys_time = 0;
-      ctx->last_tp_tid = 0;
+      *ctx = default_ctx;
       endln = "\r";
    } else if (trunc[0] == '\0') {
       /* Treat this an incomplete line only if it hasn't been truncated */
       ctx->last_tp_incomplete_line = true;
       ctx->last_tp_sys_time = e->sys_time;
       ctx->last_tp_tid = e->tid;
+      ctx->last_tp_in_irq = e->p_ev.in_irq;
    }
 
    if (len >= trunc_str_len &&
@@ -284,9 +287,7 @@ dp_dump_trace_printk_event(struct trace_event *e,
        * end of it. That means it has been truncated. Therefore, we must never
        * treat this as an incomplete line.
        */
-      ctx->last_tp_incomplete_line = false;
-      ctx->last_tp_sys_time = 0;
-      ctx->last_tp_tid = 0;
+      *ctx = default_ctx;
       endln = "\r\n";
    }
 

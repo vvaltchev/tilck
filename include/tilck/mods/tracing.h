@@ -43,8 +43,10 @@ struct syscall_event_data {
 };
 
 struct printk_event_data {
-   int level;      /* Verbosity level. Must be > 1 */
-   char buf[192];  /* Actual log entry */
+   short level;      /* Verbosity level. Must be > 1 */
+   bool in_irq;
+   bool __unused_0;
+   char buf[192];    /* Actual log entry */
 };
 
 struct signal_event_data {
@@ -179,10 +181,10 @@ trace_syscall_exit_int(u32 sys,
                        ulong a6);
 
 void
-trace_printk_raw_int(int level, const char *buf, size_t buf_size);
+trace_printk_raw_int(short level, const char *buf, size_t buf_size);
 
 ATTR_PRINTF_LIKE(2) void
-trace_printk_int(int level, const char *fmt, ...);
+trace_printk_int(short level, const char *fmt, ...);
 
 void
 trace_signal_delivered_int(int target_tid, int signum);
