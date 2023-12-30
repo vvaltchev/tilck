@@ -334,7 +334,7 @@ trace_syscall_exit_int(u32 sys,
 }
 
 void
-trace_printk_raw_int(int level, const char *buf, size_t buf_size)
+trace_printk_raw_int(short level, const char *buf, size_t buf_size)
 {
    ASSERT(level >= 1);
 
@@ -359,7 +359,7 @@ trace_printk_raw_int(int level, const char *buf, size_t buf_size)
 }
 
 void
-trace_printk_int(int level, const char *fmt, ...)
+trace_printk_int(short level, const char *fmt, ...)
 {
    va_list args;
    int written;
@@ -377,6 +377,7 @@ trace_printk_int(int level, const char *fmt, ...)
       .sys_time = get_sys_time(),
       .p_ev = {
          .level = level,
+         .in_irq = in_irq(),
       }
    };
 
