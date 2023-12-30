@@ -14,7 +14,7 @@ trigger:
 
 jobs:
   - job: interactive_gcc73
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -49,7 +49,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_6_4
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -89,7 +89,7 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_7_3
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
@@ -124,12 +124,12 @@ jobs:
         displayName: Run the system tests
 
   - job: interactive_gcc84
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc84
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 8.4.0
@@ -159,12 +159,12 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_8_4
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc84
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 8.4.0
@@ -203,13 +203,58 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
 
-  - job: syscc
-    container: 'vvaltchev/tilck-ci-build:v3'
+  - job: gcc_9_3
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc93
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 9.3.0
+      CMAKE_ARGS: >
+        -DKERNEL_UBSAN=1
+        -DKMALLOC_FREE_MEM_POISONING=1
+    strategy:
+      matrix:
+        debug:
+          GEN: 'gcc'
+        release:
+          GEN: 'gcc_rel'
+        fast_release:
+          GEN: 'gcc_fast_rel'
+        arch_gtests:
+          GEN: 'gcc_arch_gtests'
+        nocow:
+          GEN: 'gcc_nocow'
+        no_nested_irq_tracking:
+          GEN: 'gcc_no_nested_irq_tracking'
+        minimal:
+          GEN: 'minimal'
+        small-offt:
+          GEN: 'gcc_small_offt'
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/$(GEN)
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+
+  - job: syscc
+    container: 'vvaltchev/tilck-ci-build:v4'
+    pool:
+      vmImage: 'ubuntu-20.04'
+    variables:
+      CI: 1
+      TCROOT: /tc/toolchain2-gcc84
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 8.4.0
@@ -240,12 +285,12 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_8_4_x86_64
-    container: 'vvaltchev/tilck-ci-build:v3'
+    container: 'vvaltchev/tilck-ci-build:v4'
     pool:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc84-x86-64
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 8.4.0
