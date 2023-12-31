@@ -49,32 +49,26 @@ function build_vim {
 
       local curr="$PWD"
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-
-         # Remember: this scenario (building on $ARCH) is _not_ officially
-         # supported.
-
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-
-         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
-         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
-
-      else
-
-         # Default case
-         set_cc_vars_to_tc
-      fi
-
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
       export CFLAGS="-ggdb -Os"
       export LDFLAGS="-static -L$ncurses/lib"
       export CPPFLAGS="-I$ncurses/include/ncurses"
 
       local c_opts="--with-features=normal"
       run_command2 "./configure --prefix=$curr/install $c_opts" configure.log
+
+      set +e
       run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
+      dump_cross_compiler_env "build.log"
+
+      if ! [ -f install/bin/vim ]; then
+         echo "ERROR: build failed !!!" >> build.log
+         exit 1
+      fi
+
+      set -e
 
       pushd install
 
@@ -90,6 +84,11 @@ function build_vim {
          gzip -c --best ./bin/vim > vim.gz
          chmod 644 vim.gz
       popd
+
+      if ! [ -f $TC/$ARCH/vim/install/vim.gz ]; then
+         echo "ERROR: the install failed !!!" >> install.log
+         exit 1
+      fi
 
       export CFLAGS=""
       export LDFLAGS=""

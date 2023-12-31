@@ -32,11 +32,7 @@ function build_tcc {
          install_32bit_libs
       fi
 
-      # Download the gcc toolchain even in the case HOST != BUILD_ARCH
-      # because we'll need its sysroot to be deployed in Tilck's image.
-      DOWNLOAD_IGNORING_SYSCC="1"
       download_gcc_toolchain
-      DOWNLOAD_IGNORING_SYSCC=""
    fi
 
 
@@ -66,8 +62,13 @@ function build_tcc {
 
       if [[ "$USE_SYSCC" == 1 ]]; then
 
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
+         if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+            export SYS_CC="$CC"
+            export SYS_CXX="$CXX"
+         else
+            export SYS_CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
+            export SYS_CXX="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-g++"
+         fi
          export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
 
          # Hack: unfortunately, while tcc's build system uses the
@@ -112,8 +113,17 @@ function build_tcc {
       fi
 
       run_command2 "./configure $af" configure.log
-      run_command2 "make $make_vars cross-$ARCH" build.log
 
+      set +e
+      run_command2 "make $make_vars cross-$ARCH" build.log
+      dump_cross_compiler_env "build.log"
+
+      if ! [ -f $TC/$ARCH/tcc/${ARCH}-tcc ]; then
+         echo "ERROR: build failed !!!" >> build.log
+         exit 1
+      fi
+
+      set -e
       # Just to test on the local machine
       # run_command2 "make install" install.log
 

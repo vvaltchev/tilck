@@ -27,17 +27,21 @@ function build_ncurses {
       local o4="--without-progs --without-cxx --without-cxx-binding"
       local o5="--without-ada --without-manpages --without-dlsym"
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-      else
-         set_cc_vars_to_tc
-      fi
-
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
       run_command2 "./configure $o1 $o2 $o3 $o4 $o5" configure.log
+
+      set +e
       run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
+      dump_cross_compiler_env "build.log"
+
+      if ! [ -f $TC/$ARCH/ncurses/install/lib/libncurses.a ]; then
+         echo "ERROR: build failed !!!" >> build.log
+         exit 1
+      fi
+
+      set -e
       export CC_POST_FLAGS=""
 
    else

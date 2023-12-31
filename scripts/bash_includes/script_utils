@@ -447,3 +447,31 @@ function install_rpm2cpio {
    install_pkg_on_demand $(get_cpio_pkg)
    install_pkg_on_demand $(get_rpm2cpio_pkg)
 }
+
+function dump_cross_compiler_env {
+
+   echo "[DEBUG] CC=$CC" >> $1
+   echo "[DEBUG] CXX=$CXX" >> $1
+   echo "[DEBUG] SYS_CC=$SYS_CC" >> $1
+   echo "[DEBUG] SYS_CXX=$SYS_CXX" >> $1
+   echo "[DEBUG] CC_POST_FLAGS=$CC_POST_FLAGS" >> $1
+   echo "[DEBUG] CROSS_COMPILE=$CROSS_COMPILE" >> $1
+   echo "[DEBUG] i386-linux-gcc: $(which i386-linux-gcc)" >> $1
+   echo "[DEBUG] i686-linux-gcc: $(which i686-linux-gcc)" >> $1
+   echo "[DEBUG] x86_64-linux-gcc: $(which x86_64-linux-gcc)" >> $1
+   echo "[DEBUG] PATH: $PATH" >> $1
+}
+
+function do_common_cross_compiler_setup {
+
+   if [[ "$USE_SYSCC" == 1 ]]; then
+      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
+         export SYS_CC="$CC"
+         export SYS_CXX="$CXX"
+      else
+         export SYS_CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
+         export SYS_CXX="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-g++"
+      fi
+      export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
+   fi
+}

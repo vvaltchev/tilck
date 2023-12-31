@@ -35,36 +35,32 @@ function build_micropython {
       cd micropython
 
       if [[ "$USE_SYSCC" == 1 ]]; then
-
-         # Case HOST_ARCH == ARCH
-         # Note: if HOST_ARCH not in [BUILD_ARCH, ARCH], we fail earlier.
-         #
-         # Note: NOT TESTED yet.
-         # Remember: this scenario (building on $ARCH) is _not_ officially
-         # supported.
-
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-
-      else
-
-         # Default case
-         set_cc_vars_to_tc
-         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+         echo "ERROR: micropython doesn't support USE_SYSCC=1 at the moment"
+         exit 1
       fi
 
+      set_cc_vars_to_tc
+      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       export LDFLAGS_EXTRA="-static"
-      local opts="MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
+      local opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
 
+      set +e
       pushd mpy-cross
-      run_command2 "make $opts -j$BUILD_PAR" build.log
+      run_command2 "make $opts -j$BUILD_PAR" build_1.log
+      dump_cross_compiler_env "build_1.log"
       popd
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
-      run_command2 "make $opts -j$BUILD_PAR" build.log
+      run_command2 "make $opts -j$BUILD_PAR" build_2.log
+      dump_cross_compiler_env "build_2.log"
+
+      if ! [ -f $TC/$ARCH/micropython/ports/unix/micropython ]; then
+         echo "ERROR: build failed !!!" >> build_2.log
+         exit 1
+      fi
       popd
+      set -e
 
       export LDFLAGS_EXTRA=""
       export CROSS_COMPILE=""

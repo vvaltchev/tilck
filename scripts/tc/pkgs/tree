@@ -26,24 +26,8 @@ function build_tree_cmd {
       download_tree_cmd
       cd tree_cmd
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-
-         # Remember: this scenario (building on $ARCH) is _not_ officially
-         # supported.
-
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-
-         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
-         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
-
-      else
-
-         # Default case
-         set_cc_vars_to_tc
-      fi
-
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
       run_command2 "make" build.log
 
    else
