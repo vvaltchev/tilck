@@ -98,13 +98,12 @@ function (show_no_ms_abi_support_warning relPath)
 
 endfunction()
 
-function (show_arch_gtests_require_same_target_family_error)
+function (show_arch_gtests_arch_error)
 
    set(msg "")
-   string(CONCAT msg "Building the arch gtests requires the host to have "
-                     "the same arch of the target, or be in the same family. "
-                     "ARCH_FAMILY: ${ARCH_FAMILY} vs "
-                     "HOST_ARCH_FAMILY: ${HOST_ARCH_FAMILY}")
+   string(CONCAT msg "Building the arch gtests make sense only when the host "
+                     "arch is x86_64 and the target arch is i386. \n"
+                     "ARCH: ${ARCH}, HOST_ARCH: ${HOST_ARCH}")
 
    message(FATAL_ERROR "\n${msg}\n")
 

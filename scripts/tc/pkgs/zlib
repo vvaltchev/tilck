@@ -28,21 +28,19 @@ function build_zlib {
 
       local p="$TC/$ARCH/zlib/install"
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-
-      else
-
-         # Default case
-         export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
-         set_cc_vars_to_tc
-      fi
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
+      export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
 
       run_command2 "./configure --prefix='$p' --static" configure.log
+
+      set +e
+      dump_cross_compiler_env "configure.log"
+
       run_command2 "make -j$BUILD_PAR" build.log
+      dump_cross_compiler_env "build.log"
+
+      set -e
       run_command2 "make install" install.log
       export CROSS_PREFIX=""
 

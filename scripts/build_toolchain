@@ -213,6 +213,9 @@ echo "ARCH=$ARCH"
 echo "HOST_ARCH=$HOST_ARCH"
 echo "GCC_TC_VER=$GCC_TC_VER"
 echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
+echo "USE_SYSCC=$USE_SYSCC"
+echo "CC=$CC"
+echo "CXX=$CXX"
 echo
 
 function save_cc_vars {
@@ -241,16 +244,11 @@ function save_cc_vars {
 
 function set_cc_vars_to_tc {
 
-   if [[ "$USE_SYSCC" != 1 ]]; then
-
-      # Default case
-      export CC="${ARCH_GCC_TC}-linux-gcc"
-      export CXX="${ARCH_GCC_TC}-linux-g++"
-      export AR="${ARCH_GCC_TC}-linux-ar"
-      export NM="${ARCH_GCC_TC}-linux-nm"
-      export RANLIB="${ARCH_GCC_TC}-linux-ranlib"
-
-   fi
+   export CC="${ARCH_GCC_TC}-linux-gcc"
+   export CXX="${ARCH_GCC_TC}-linux-g++"
+   export AR="${ARCH_GCC_TC}-linux-ar"
+   export NM="${ARCH_GCC_TC}-linux-nm"
+   export RANLIB="${ARCH_GCC_TC}-linux-ranlib"
 }
 
 function reset_cc_vars_to_null {
@@ -301,7 +299,7 @@ function arch_checks {
 
       if [[ "$HOST_ARCH" == "$ARCH" ]]; then
 
-         if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+         if [[ "$USE_SYSCC" == 1 ]]; then
 
             echo "In this case, HOST_ARCH == ARCH and USE_SYSCC is set."
             echo "The script can continue, but WARNING: this scenario is not "
@@ -352,7 +350,7 @@ function arch_checks {
 
 function compiler_checks {
 
-   if [[ "$USE_SYSCC" != "" && "$USE_SYSCC" != 0 ]]; then
+   if [[ "$USE_SYSCC" == 1 ]]; then
 
       if [[ "$CC" == "" || "$CXX" == "" ]]; then
 
@@ -601,8 +599,16 @@ function main {
    default_funcs=()
 
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+
       # Default case: we're building on a x86-64 machine
       default_funcs+=(download_gcc_toolchain)
+
+      if [[ "$USE_SYSCC" == 1 ]]; then
+         # Even we're building on a x86-64 machine, if the system compiler
+         # was requested, we need to also build libmusl.
+         default_funcs+=(build_libmusl)
+      fi
+
    elif [[ "$HOST_ARCH" == "$ARCH" ]]; then
       # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
       # we *must* build also libmusl, in order to link with musl programs
@@ -641,11 +647,14 @@ function main {
 
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
 
-   if [[ "$USE_SYSCC" != 1 ]]; then
+   local ha=$TC/host_${HOST_ARCH}
 
-      local ha=$TC/host_${HOST_ARCH}
+   if [[ "$USE_SYSCC" != 1 ]] || [[ "$HOST_ARCH" != "$ARCH " ]]; then
       GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
-      GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # NOTE: not in $PATH!
+      GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # glibc cross-compiler
+   fi
+
+   if [[ "$USE_SYSCC" != 1 ]]; then
 
       # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
       # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use

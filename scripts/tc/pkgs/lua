@@ -18,7 +18,6 @@ function build_lua {
 
    pushd $ARCH
    reset_cc_vars
-
    show_work_on_component_msg "LUA"
 
    if ! [ -d "lua" ]; then
@@ -26,21 +25,8 @@ function build_lua {
       download_lua
       cd lua
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-
-         # Remember: this scenario is _not_ officially
-         # supported.
-
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-         export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-
-         export CC="$MAIN_DIR/scripts/build_scripts/${ARCH}-gcc"
-         export CXX="$MAIN_DIR/scripts/build_scripts/${ARCH}-g++"
-
-      else
-         set_cc_vars_to_tc
-      fi
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
 
       # Patch Lua's Makefile to remove "-Wl,-E"
       sed -i 's/-Wl,-E//g' src/Makefile

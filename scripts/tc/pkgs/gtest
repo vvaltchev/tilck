@@ -138,6 +138,8 @@ function build_gtest_arch {
       local saved_path="$PATH"
       export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
 
+      echo "VLAD: PATH: $PATH"
+
       mkdir $GTEST_DIRNAME
       cd $GTEST_DIRNAME
 

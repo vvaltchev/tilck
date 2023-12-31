@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.2)
 
 if (ARCH_GTESTS)
    set_cross_compiler_gtests()
+   include_directories(${TCROOT}/${ARCH}/gnu-efi/inc)
 else()
    set(TOOL_GCOV "${GCOV}")
+   include_directories(${TCROOT}/${HOST_ARCH}/gnu-efi/inc)
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR})
@@ -14,7 +16,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
 include_directories(${GTEST_SOURCE_DIR}/include)
 include_directories(${GMOCK_SOURCE_DIR}/include)
 
-include_directories(${TCROOT}/i386/gnu-efi/inc)
 
 # Create a static library target for kernel's arch-independent code.
 add_library(

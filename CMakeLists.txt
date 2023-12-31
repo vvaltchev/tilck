@@ -929,7 +929,11 @@ set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googlemock)
 if (ARCH_GTESTS)
 
    if (NOT ${HOST_ARCH_FAMILY} STREQUAL ${ARCH_FAMILY})
-      show_arch_gtests_require_same_target_family_error()
+      show_arch_gtests_arch_error()
+   endif()
+
+   if (NOT ${ARCH} STREQUAL "i386")
+      show_arch_gtests_arch_error()
    endif()
 
    set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-${GTEST_VER})
