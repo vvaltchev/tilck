@@ -1,6 +1,8 @@
-
-trigger: none    # Do not trigger this on pushed branches
-pr: none         # Do not trigger this on issues
+trigger:
+  paths:
+    include:
+      - 'scripts/build_toolchain'
+      - 'scripts/tc/pkgs/**'
 
 pool:
   vmImage: 'ubuntu-20.04'
@@ -8,13 +10,13 @@ pool:
 strategy:
   matrix:
     debian:
-      img: 'vvaltchev/debian:v3'
+      img: 'vvaltchev/debian:v4'
     fedora:
-      img: 'vvaltchev/fedora:v2'
+      img: 'vvaltchev/fedora:v3'
     arch:
       img: 'vvaltchev/archlinux:v5'
     opensuse:
-      img: 'vvaltchev/opensuse:v2'
+      img: 'vvaltchev/opensuse:v3'
 
 
 container: $[ variables['img'] ]
@@ -53,6 +55,8 @@ steps:
     displayName: "[toolchain] Build tfblib"
   - script: sudo -E ./scripts/build_toolchain -s build_lua
     displayName: "[toolchain] Build Lua"
+  - script: sudo -E ./scripts/build_toolchain -s tree_cmd
+    displayName: "[toolchain] Build tree_cmd"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests
