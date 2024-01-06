@@ -39,11 +39,18 @@ function install_debian_family {
       pkg_list+=(qemu-system-x86)
       pkg_list+=(python3)
 
-      # qemu-system-gui exists only in 20.04 and newer, so we need to check
-      # the distro's major version before checking for that package.
-      major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
-      if [ $major_ver -ge 20 ]; then
-         pkg_list+=(qemu-system-gui)
+      if [[ "$DETECTED_UBUNTU_OR_MINT" == 1 ]]; then
+         # On Ubuntu, qemu-system-gui exists only in 20.04 and newer,
+         # so we need to check the distro's major version before checking
+         # for that package. In some very corner cases, e.g. the arm64v8/ubuntu
+         # Docker container, lsb_release is not installed. Therefore, check
+         # for that as well.
+         if which lsb_release &> /dev/null; then
+            major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
+            if [ $major_ver -ge 20 ]; then
+               pkg_list+=(qemu-system-gui)
+            fi
+         fi
       fi
    fi
 
@@ -293,6 +300,7 @@ function install_packages {
 
       echo "Distribution detected: Ubuntu (any) or Mint"
       echo ""
+      DETECTED_UBUNTU_OR_MINT=1
       install_debian_family
 
    # Debian does not contain the lsb-release file.
