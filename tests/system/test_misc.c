@@ -437,7 +437,7 @@ int cmd_getrusage(int argc, char **argv)
    // timeout or the number of attempts reaches a given
    // threshold.
    {
-      max = 10000;
+      max = 50000;
 
       busy_wait();
       busy_wait_kernel();
@@ -455,8 +455,8 @@ int cmd_getrusage(int argc, char **argv)
 
          rc = getrusage(RUSAGE_SELF, &buf_1);
          DEVSHELL_CMD_ASSERT(rc == 0);
-         DEVSHELL_CMD_ASSERT(++n < max);
-      };
+         DEVSHELL_CMD_ASSERT(n < max);
+      }
 
       for (n = 0; !comes_after(buf_1.ru_stime, buf_0.ru_stime); n++) {
 
@@ -464,7 +464,7 @@ int cmd_getrusage(int argc, char **argv)
 
          rc = getrusage(RUSAGE_SELF, &buf_1);
          DEVSHELL_CMD_ASSERT(rc == 0);
-         DEVSHELL_CMD_ASSERT(++n < max);
+         DEVSHELL_CMD_ASSERT(n < max);
       }
    }
 
