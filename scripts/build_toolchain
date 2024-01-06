@@ -646,7 +646,6 @@ function main {
    set -e
 
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
-
    local ha=$TC/host_${HOST_ARCH}
 
    if [[ "$USE_SYSCC" != 1 ]] || [[ "$HOST_ARCH" != "$ARCH " ]]; then
@@ -661,11 +660,16 @@ function main {
       # its version and NOT the wrapper script in build_scripts which simulates
       # its behavior using -m32 and -specs.
       export PATH="$GCC_TOOLCHAIN:$PATH"
+      local gcc_x86_64_bin="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin"
 
-      if [ -d $ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin ]; then
+      if [ -d $gcc_x86_64_bin ] || [[ "$HOST_ARCH" == "aarch64" ]]; then
+         # Also export the x86_64 cross-toolchain if it exists or if the host
+         # is aarch64 since on that architecture, we need both the i386 and the
+         # x86_64 toolchain in any case.
          export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
       fi
 
+      unset gcc_x86_64_bin
       unset ha
    fi
 
