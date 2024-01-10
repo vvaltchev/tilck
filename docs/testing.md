@@ -63,7 +63,7 @@ build and in **under 2 seconds** in the case of release builds.
 In order to build the unit tests, it is necessary to download and build the
 [googletest] library in Tilck's toolchain. To do that, just run:
 
-    ./scripts/build_toolchain -s build_gtest
+    ./scripts/build_toolchain -s build_gtest build_gmock
 
 #### Build and run
 Building the unit tests is as simple as running:
