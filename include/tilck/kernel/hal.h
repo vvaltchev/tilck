@@ -30,6 +30,25 @@
 
    #endif
 
+#elif defined(__riscv)
+
+   #include <tilck/common/arch/riscv/riscv_utils.h>
+   #include <tilck/common/arch/riscv/utils.h>
+   #include <tilck/common/arch/riscv/image.h>
+   #include <tilck/kernel/arch/riscv/sbi.h>
+   #include <tilck/kernel/arch/riscv/mmio.h>
+   #include <tilck/kernel/arch/riscv/ioremap.h>
+   #include <tilck/kernel/arch/riscv/arch_ints.h>
+   #include <tilck/kernel/arch/riscv/asm_defs.h>
+   #include <tilck/kernel/arch/riscv/arch_utils.h>
+   #include <tilck/kernel/arch/riscv/fpu_memcpy.h>
+   #include <tilck/kernel/arch/riscv/cpu_features.h>
+
+   static ALWAYS_INLINE void init_segmentation(void)
+   {
+      /* STUB function: do nothing */
+   }
+
 #elif defined(__aarch64__) && defined(KERNEL_TEST)
 
    /*

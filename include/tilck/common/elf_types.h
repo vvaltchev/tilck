@@ -21,8 +21,8 @@
    #define ELF_ST_INFO(bind, type)  ELF32_ST_INFO ((bind), (type))
    #define ELF_ST_VISIBILITY(o)     ELF32_ST_VISIBILITY (o)
 
-#elif defined(USE_ELF64) || ((defined(__x86_64__) || defined(__aarch64__)) \
-                             && !defined(USE_ELF32))
+#elif defined(USE_ELF64) || ((defined(__x86_64__) || defined(__aarch64__) \
+                              || defined(__riscv64)) && !defined(USE_ELF32))
 
    typedef Elf64_Addr Elf_Addr;
    typedef Elf64_Ehdr Elf_Ehdr;

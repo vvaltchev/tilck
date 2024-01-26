@@ -280,3 +280,28 @@ end:
 
    return ready_fds_cnt;
 }
+
+long sys_ppoll(struct pollfd *ufds, unsigned int nfds,
+               struct k_timespec64 *tsp, const sigset_t *sigmask,
+               size_t sigsetsize)
+{
+   //TODO: Add support for fully ppoll() features
+
+   int rc = 0;
+
+   if (!ufds && !nfds && !tsp && !sigmask && !sigsetsize) {
+
+      disable_preemption();
+      rc = sys_pause();
+      enable_preemption();
+
+      return rc;
+
+   } else if (!sigmask && (sigsetsize == _NSIG/8)) {
+
+      return sys_poll(ufds, nfds,
+               tsp ? (int)(tsp->tv_sec*1000 + tsp->tv_nsec/1000000) : -1);
+
+   } else
+      return -ENOSYS;
+}

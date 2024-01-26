@@ -33,4 +33,4 @@ static inline int send_signal(int tid, int signum, int flags)
    return send_signal2(tid, tid, signum, flags);
 }
 
-#define K_SIGACTION_MASK_WORDS                                             2
+#define K_SIGACTION_MASK_WORDS                                 (_NSIG / NBITS)

@@ -77,6 +77,18 @@ enum tilck_cmd {
 
    /* Allow this just for the unit tests */
 
+#elif defined(__riscv)
+
+#if __riscv_xlen == 64
+
+   #define STAT_SYSCALL_N      sys_fstatat64
+   #define LSTAT_SYSCALL_N     sys_fstatat64
+   #define FSTAT_SYSCALL_N     sys_fstat64
+   #define FCNTL_SYSCALL_N     SYS_fcntl64
+   #define MMAP_SYSCALL_N      SYS_mmap
+
+#endif
+
 #else
 
    #error Architecture not supported

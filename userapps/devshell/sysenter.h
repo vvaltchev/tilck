@@ -5,11 +5,11 @@
 #include <stdlib.h>
 
 static inline int
-do_sysenter_call0(int syscall)
+do_sysenter_call0(int sysno)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -19,8 +19,12 @@ do_sysenter_call0(int syscall)
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall)
+                : "a" (sysno)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno);
 
 #else
 
@@ -32,11 +36,11 @@ do_sysenter_call0(int syscall)
 }
 
 static inline int
-do_sysenter_call1(int syscall, void *arg1)
+do_sysenter_call1(int sysno, void *arg1)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -46,8 +50,12 @@ do_sysenter_call1(int syscall, void *arg1)
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall), "b" (arg1)
+                : "a" (sysno), "b" (arg1)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno, arg1);
 
 #else
 
@@ -59,11 +67,11 @@ do_sysenter_call1(int syscall, void *arg1)
 }
 
 static inline int
-do_sysenter_call2(int syscall, void *arg1, void *arg2)
+do_sysenter_call2(int sysno, void *arg1, void *arg2)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -73,8 +81,12 @@ do_sysenter_call2(int syscall, void *arg1, void *arg2)
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall), "b" (arg1), "c" (arg2)
+                : "a" (sysno), "b" (arg1), "c" (arg2)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno, arg1, arg2);
 
 #else
 
@@ -86,11 +98,11 @@ do_sysenter_call2(int syscall, void *arg1, void *arg2)
 }
 
 static inline int
-do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
+do_sysenter_call3(int sysno, void *arg1, void *arg2, void *arg3)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -100,8 +112,12 @@ do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall), "b" (arg1), "c" (arg2), "d" (arg3)
+                : "a" (sysno), "b" (arg1), "c" (arg2), "d" (arg3)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno, arg1, arg2, arg3);
 
 #else
 
@@ -113,11 +129,11 @@ do_sysenter_call3(int syscall, void *arg1, void *arg2, void *arg3)
 }
 
 static inline int
-do_sysenter_call4(int syscall, void *a1, void *a2, void *a3, void *a4)
+do_sysenter_call4(int sysno, void *a1, void *a2, void *a3, void *a4)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -127,8 +143,12 @@ do_sysenter_call4(int syscall, void *a1, void *a2, void *a3, void *a4)
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
+                : "a" (sysno), "b" (a1), "c" (a2), "d" (a3), "S" (a4)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno, a1, a2, a3, a4);
 
 #else
 
@@ -140,12 +160,12 @@ do_sysenter_call4(int syscall, void *a1, void *a2, void *a3, void *a4)
 }
 
 static inline int
-do_sysenter_call5(int syscall,
+do_sysenter_call5(int sysno,
                   void *a1, void *a2, void *a3, void *a4, void *a5)
 {
    int ret;
 
-#ifdef __i386__
+#if defined(__i386__)
 
    asmVolatile ("pushl $1f\n\t"
                 "pushl %%ecx\n\t"
@@ -155,8 +175,12 @@ do_sysenter_call5(int syscall,
                 "sysenter\n\t"
                 "1:\n\t"
                 : "=a" (ret)
-                : "a" (syscall),"b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
+                : "a" (sysno),"b" (a1), "c" (a2), "d" (a3), "S" (a4), "D" (a5)
                 : "memory", "cc");
+
+#elif defined(__riscv)
+
+   ret = syscall(sysno, a1, a2, a3, a4, a5);
 
 #else
 

@@ -375,3 +375,33 @@ int sys_select(int user_nfds,
 
    return select_write_user_sets(&ctx);
 }
+
+long sys_pselect6(int nfds, fd_set *readfds,
+                  fd_set *writefds, fd_set *exceptfds,
+                  struct k_timespec64 *u_timeout, sigset_t *u_sig)
+{
+   //TODO: Add support for fully pselect6() features
+
+   ulong sigmask[K_SIGACTION_MASK_WORDS];
+   struct k_timespec64 k_timeout;
+
+   if (copy_from_user(sigmask, u_sig, sizeof(sigmask)))
+      return -EFAULT;
+
+   if (sigmask[0] != 0)
+      return -ENOSYS;
+
+   if (u_timeout) {
+
+      if (copy_from_user(&k_timeout, u_timeout, sizeof(* u_timeout)))
+         return -EFAULT;
+
+      k_timeout.tv_nsec = k_timeout.tv_nsec / 1000;
+
+      if (copy_to_user(u_timeout, &k_timeout, sizeof(* u_timeout)))
+         return -EFAULT;
+   }
+
+   return sys_select(nfds, readfds, writefds, exceptfds,
+                     (struct k_timeval *)u_timeout);
+}

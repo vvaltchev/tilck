@@ -90,7 +90,7 @@ int cmd_sysenter(int argc, char **argv)
    const char *str = "hello from a sysenter call!\n";
    size_t len = strlen(str);
 
-   int ret = sysenter_call3(4  /* write */,
+   int ret = sysenter_call3(SYS_write  /* write */,
                             1  /* stdout */,
                             str,
                             len);
@@ -102,7 +102,12 @@ int cmd_sysenter(int argc, char **argv)
    printf("same sleep, but with sysenter:\n");
 
    struct timespec req = { .tv_sec = 0, .tv_nsec = 100*1000*1000 };
-   sysenter_call3(162 /* nanosleep_time32 */, &req, NULL, NULL);
+
+#ifdef __i386__
+   ASSERT(SYS_nanosleep == 162);
+#endif
+
+   sysenter_call3(SYS_nanosleep /* nanosleep_time32 */, &req, NULL, NULL);
    printf("after sleep, everything is fine. Prev ret: %i\n", ret);
    return 0;
 }
@@ -401,8 +406,8 @@ comes_after(struct timeval t2,
             struct timeval t1)
 {
    // t1 must come before t2
-   return t2.tv_sec > t1.tv_sec 
-       || (t2.tv_sec == t1.tv_sec 
+   return t2.tv_sec > t1.tv_sec
+       || (t2.tv_sec == t1.tv_sec
          && t2.tv_usec > t1.tv_usec);
 }
 

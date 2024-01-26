@@ -84,6 +84,23 @@ smart_config_file(
    ${CMAKE_BINARY_DIR}/scripts/weaken_syms
 )
 
+if (${BOOTLOADER_U_BOOT})
+   smart_config_file(
+      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/fit-image.its
+      ${CMAKE_BINARY_DIR}/boot/u_boot/fit-image.its
+   )
+
+   smart_config_file(
+      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/u-boot.cmd
+      ${CMAKE_BINARY_DIR}/boot/u_boot/u-boot.cmd
+   )
+
+   smart_config_file(
+      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/uEnv.txt
+      ${CMAKE_BINARY_DIR}/boot/u_boot/uEnv.txt
+   )
+endif()
+
 # Run qemu scripts
 
 list(
