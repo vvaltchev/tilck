@@ -200,13 +200,9 @@ can run correctly programs having a fair amount of complexity.
 #### Userspace applications
 Tilck can run a fair amount of console applications like the **BusyBox** suite,
 **Vim**, **TinyCC**, **Micropython**, **Lua**, and framebuffer applications like
-a port of DOOM for the Linux console called **fbDOOM**. Check project's [wiki page]
-for more info about that.
-
-#### Screenshots
-![Tilck screenshots](http://vvaltchev.github.io/tilck_imgs/v2/thumbnails.png)
-
-For full-size screenshots and much more stuff, check Tilck's [wiki page].
+**fbDOOM** just for fun, despite that being completely out of project's scope.
+Check project's [wiki page] for more info about the software that can run on
+Tilck.
 
 [syscalls]: docs/syscalls.md
 [wiki page]: https://github.com/vvaltchev/tilck/wiki
