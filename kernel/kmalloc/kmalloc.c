@@ -650,8 +650,8 @@ debug_check_block_size(struct kmalloc_heap *h, ulong vaddr, size_t size)
    size_t cs = calculate_block_size(h, vaddr);
 
    if (cs != size) {
-      panic("calculated_size[%u] != user_size[%u] for block at: %p\n",
-            cs, size, vaddr);
+      panic("calculated_size[%u] != user_size[%u] for block at: %p. "
+            "Double free?", cs, size, vaddr);
    }
 }
 
