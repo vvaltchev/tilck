@@ -118,7 +118,9 @@ task_is_parent(struct task *parent, struct task *child)
 }
 
 int do_fork(bool vfork);
-void handle_vforked_child_move_on(struct process *pi);
+void unblock_parent_of_vforked_child(struct process *pi);
+void vforked_child_transfer_dispose_mi(struct process *pi);
+
 int first_execve(const char *abs_path, const char *const *argv);
 
 int setup_process(struct elf_program_info *pinfo,
