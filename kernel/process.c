@@ -135,7 +135,7 @@ void process_free_mappings_info(struct process *pi)
 {
    struct mappings_info *mi = pi->mi;
 
-   if (mi && !pi->vforked) {
+   if (mi) {
       ASSERT(mi->mmap_heap);
       kmalloc_destroy_heap(mi->mmap_heap);
       kfree2(mi->mmap_heap, kmalloc_get_heap_struct_size());
@@ -234,6 +234,7 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
    pi->automatic_reaping = false;
    pi->cwd.fs = NULL;
    pi->vforked = false;
+   pi->inherited_mmap_heap = false;
 
    if (new_pdir != parent_pi->pdir) {
 
@@ -247,9 +248,9 @@ allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 
    } else {
       pi->vforked = true;
+      pi->inherited_mmap_heap = !!pi->mi;
    }
 
-   pi->inherited_mmap_heap = !!pi->mi;
    ti->pi = pi;
    ti->tid = pid;
    ti->is_main_thread = true;
@@ -528,7 +529,7 @@ int kthread_join_all(const int *tids, size_t n, bool ignore_signals)
 }
 
 void
-handle_vforked_child_move_on(struct process *pi)
+unblock_parent_of_vforked_child(struct process *pi)
 {
    struct task *parent;
 
@@ -542,8 +543,56 @@ handle_vforked_child_move_on(struct process *pi)
 
    parent->stopped = false;
    parent->vfork_stopped = false;
+}
 
-   pi->vforked = false;
+void
+vforked_child_transfer_dispose_mi(struct process *pi)
+{
+   struct task *parent;
+   ASSERT(pi->vforked);
+
+   parent = get_task(pi->parent_pid);
+
+   if (!pi->inherited_mmap_heap) {
+
+      /* We're in a vfork-ed child: the parent cannot die */
+      ASSERT(parent != NULL);
+
+      /*
+      * If we didn't inherit mappings info from the parent and the parent
+      * didn't run the whole time: its `mi` must continue to be NULL.
+      */
+      ASSERT(!parent->pi->mi);
+
+      /*
+      * Transfer the ownership of our mappings info, created after vfork(),
+      * back to our parent. We do this trick because in Tilck processes
+      * are so lightweight that they don't have even a mappings object.
+      * Since a vforked-child is allowed to use mmap() and that must affect
+      * parent's address space, because that's the *same* address space,
+      * in the corner case the child called mmap(), we must transfer that
+      * object back to the parent.
+      */
+      parent->pi->mi = pi->mi;
+
+   } else {
+
+      /*
+       * The pi->mi object was inherited and, therefore, the one in the parent
+       * MUST BE the same.
+       */
+      ASSERT(parent->pi->mi != NULL);
+      ASSERT(parent->pi->mi == pi->mi);
+   }
+
+  /*
+   * Reset the mappings info object, no matter if we inherited it from the
+   * parent or not. In case we did inherited, that was never ours. In the
+   * other case, we didn't inherit it, but we just transferred its ownership
+   * to the parent process. So, we want process_free_mappings_info() to
+   * never found it non-null the case of vforked-processes.
+   */
+   pi->mi = NULL;
 }
 
 int sys_getppid(void)

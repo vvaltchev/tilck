@@ -267,10 +267,17 @@ void terminate_process(int exit_code, int term_sig)
    call_on_task_exit_callbacks();
    task_free_all_kernel_allocs(ti);
 
-   if (!vforked) {
+   if (vforked) {
+
+      /*
+       * In case of vforked processes, we cannot remove any mappings and we
+       * need some special management for the mappings info object (pi->mi).
+       */
+      vforked_child_transfer_dispose_mi(pi);
+
+   }  else {
 
       remove_all_user_zero_mem_mappings(pi);
-
       if (pi->elf)
          release_subsys_flock(pi->elf);
    }
@@ -306,23 +313,7 @@ void terminate_process(int exit_code, int term_sig)
    }
 
    if (vforked) {
-      handle_vforked_child_move_on(pi);
-      pi->vforked = true; /* handle_vforked_child_move_on() unsets this */
-
-      if (!pi->inherited_mmap_heap) {
-
-         /* We're in a vfork-ed child: the parent cannot die */
-         ASSERT(parent != NULL);
-
-         /*
-          * If we didn't inherit mappings info from the parent and the parent
-          * didn't run the whole time: its `mi` must continue to be NULL.
-          */
-         ASSERT(!parent->pi->mi);
-
-         /* Transfer the ownership of our mappings info back to our parent */
-         parent->pi->mi = pi->mi;
-      }
+      unblock_parent_of_vforked_child(pi);
    }
 
    if (parent) {

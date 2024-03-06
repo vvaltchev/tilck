@@ -516,7 +516,16 @@ int setup_process(struct elf_program_info *pinfo,
 
       pi = ti->pi;
 
-      if (!pi->vforked) {
+      if (pi->vforked) {
+
+        /*
+         * In case of vforked processes, we cannot remove any mappings and we
+         * need some special management for the mappings info object (pi->mi).
+         */
+         vforked_child_transfer_dispose_mi(pi);
+
+      } else {
+
          remove_all_user_zero_mem_mappings(pi);
          remove_all_file_mappings(pi);
          process_free_mappings_info(pi);

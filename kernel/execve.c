@@ -154,8 +154,10 @@ execve_final_steps(struct task *ti,
    if (pi->debug_cmdline)
       save_cmdline(pi, argv);
 
-   if (pi->vforked)
-      handle_vforked_child_move_on(pi);
+   if (pi->vforked) {
+      unblock_parent_of_vforked_child(pi);
+      pi->vforked = false;
+   }
 }
 
 static inline int
