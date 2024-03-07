@@ -104,9 +104,13 @@ void *sys_brk(void *new_brk)
    return pi->brk;
 }
 
-static int create_process_mmap_heap(struct process *pi)
+static int
+create_process_mmap_heap(struct process *pi)
 {
    struct kmalloc_heap *mmap_heap;
+   void *valloc_func = &user_map_zero_page;
+   void *vfree_func = &user_unmap_zero_page;
+
    ASSERT(!pi->mi);
 
    if (!(pi->mi = kalloc_obj(struct mappings_info)))
@@ -121,6 +125,11 @@ static int create_process_mmap_heap(struct process *pi)
    pi->mi->mmap_heap = mmap_heap;
    pi->mi->mmap_heap_size = USER_MMAP_MIN_SZ;
 
+   if (MMAP_NO_COW) {
+      valloc_func = &user_valloc_and_map;
+      vfree_func = &user_vfree_and_unmap;
+   }
+
    bool success =
       kmalloc_create_heap(mmap_heap,
                           USER_MMAP_BEGIN,
@@ -129,16 +138,14 @@ static int create_process_mmap_heap(struct process *pi)
                           PAGE_SIZE,            /* alloc block size */
                           false,                /* linear mapping */
                           NULL,                 /* metadata_nodes */
-#if MMAP_NO_COW
-                          user_valloc_and_map,
-                          user_vfree_and_unmap);
-#else
-                          user_map_zero_page,
-                          user_unmap_zero_page);
-#endif
+                          valloc_func,
+                          vfree_func);
 
-   if (!success)
+   if (!success) {
+      kfree2(pi->mi->mmap_heap, kmalloc_get_heap_struct_size());
+      kfree_obj(pi->mi, struct mappings_info);
       return -ENOMEM;
+   }
 
    return 0;
 }
