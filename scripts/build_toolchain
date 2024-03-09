@@ -178,6 +178,8 @@ if [[ "$ARCH_GCC_TC_VER" == "" ]]; then
       8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2";;
       9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1";;
       10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1";;
+      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1";;
+      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1";;
       *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
    esac
 fi
