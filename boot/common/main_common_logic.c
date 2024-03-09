@@ -250,7 +250,7 @@ clear_screen(void)
 }
 
 static void
-print_kernel_mods(void)
+menu_print_kernel_mods(void)
 {
    static char prefix[]         = "    modules:  ";
    static char prefix_padding[] = "              ";
@@ -325,6 +325,32 @@ show_menu_item(const char *cmd,
    }
 }
 
+static void
+menu_print_kernel_info(struct commit_hash_and_date *comm)
+{
+   printk("    version:  %s\n", kernel_build_info->ver);
+   printk("    commit:   %s", comm->hash);
+
+   if (comm->dirty)
+      printk(" (dirty)");
+   else if (comm->tags[0])
+      printk(" (%s)", comm->tags);
+
+   printk("\n");
+   printk("    date:     %s\n", comm->date);
+}
+
+static void
+menu_print_video_mode(struct generic_video_mode_info *gi)
+{
+   show_menu_item("v", "Video mode", "", false, false);
+
+   if (selected_mode != INVALID_VIDEO_MODE)
+      show_mode(-1, gi, false);
+   else
+      printk("<none>\n");
+}
+
 static bool
 run_interactive_logic(void)
 {
@@ -352,27 +378,11 @@ run_interactive_logic(void)
       printk("---------------------------------------------------\n");
 
       show_menu_item("k", "Kernel file", kernel_file_path, false, true);
-
-      printk("    version:  %s\n", kernel_build_info->ver);
-      printk("    commit:   %s", comm.hash);
-
-      if (comm.dirty)
-         printk(" (dirty)");
-      else if (comm.tags[0])
-         printk(" (%s)", comm.tags);
-
-      printk("\n");
-      printk("    date:     %s\n", comm.date);
-      print_kernel_mods();
+      menu_print_kernel_info(&comm);
+      menu_print_kernel_mods();
       printk("\n");
 
-      show_menu_item("v", "Video mode", "", false, false);
-
-      if (selected_mode != INVALID_VIDEO_MODE)
-         show_mode(-1, &gi, false);
-      else
-         printk("<none>\n");
-
+      menu_print_video_mode(&gi);
       show_menu_item("e", "Cmdline", cmdline_buf, true, true);
       show_menu_item("b", "Boot", NULL, false, true);
       printk("\n> ");
