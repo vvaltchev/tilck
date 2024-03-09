@@ -6,22 +6,28 @@
 #define MAX_CMD_ARGS 16
 #define MAX_CMD_ARG_LEN 255
 
+
+enum kopt_type {
+   KOPT_TYPE_bool,
+   KOPT_TYPE_long,
+   KOPT_TYPE_ulong,
+   KOPT_TYPE_wordstr,
+};
+
+struct kopt {
+   const char *name;
+   const char *alias;
+   enum kopt_type type;
+   void *data;
+};
+
+typedef const char *wordstr;
+
 extern const char *cmd_args[MAX_CMD_ARGS];
 extern void (*self_test_to_run)(void);
 
-extern long kopt_ttys;
-extern bool kopt_sercon;
-extern bool kopt_sched_alive_thread;
-extern bool kopt_noacpi;
-extern bool kopt_fb_no_opt;
-extern bool kopt_fb_no_wc;
-extern bool kopt_no_fpu_memcpy;
-extern bool kopt_panic_kb;
-extern bool kopt_panic_nobt;
-extern bool kopt_panic_regs;
-extern bool kopt_panic_mmap;
-extern bool kopt_big_scroll_buf;
-extern bool kopt_ps2_log;
-extern bool kopt_ps2_selftest;
+#define DEFINE_KOPT(name, alias, type, default) extern type kopt_##name;
+   #include <tilck/common/cmdline_opts.h>
+#undef DEFINE_KOPT
 
 void parse_kernel_cmdline(const char *cmdline);

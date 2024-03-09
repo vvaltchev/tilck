@@ -1,7 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#ifndef CMDLINE_INCL_HACK
-
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_kb8042.h>
 #include <tilck_gen_headers/config_debug.h>
@@ -18,39 +16,30 @@
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
 
-typedef const char *wordstr;
+
 typedef void (*kopt_handler)(const char *arg);
 
 static char args_buf[PAGE_SIZE];
 static size_t args_buf_used;
 static size_t last_custom_cmd_n;
 
-enum kopt_type {
+static bool kopt_is_bool_value(const char *arg)
+{
+   return !strcmp(arg, "0") || !strcmp(arg, "false") ||
+          !strcmp(arg, "1") || !strcmp(arg, "true");
+}
 
-   KOPT_TYPE_bool,
-   KOPT_TYPE_long,
-   KOPT_TYPE_ulong,
-   KOPT_TYPE_wordstr,
-};
-
-struct kopt {
-
-   const char *name;
-   const char *alias;
-   enum kopt_type type;
-   void *data;
-};
 
 static void kopt_handle_bool(bool *var, const char *arg)
 {
    if (*arg == '-')
       *var = true;
-   else if (!strcmp(arg, "0"))
+   else if (!strcmp(arg, "0") || !strcmp(arg, "false"))
       *var = false;
-   else if (!strcmp(arg, "1"))
+   else if (!strcmp(arg, "1") || !strcmp(arg, "true"))
       *var = true;
    else
-      NOT_REACHED();
+      printk("WARNING: Invalid value '%s' for a bool option", arg);
 }
 
 static void kopt_handle_long(long *var, const char *arg)
@@ -102,62 +91,17 @@ static void kopt_handle_wordstr(const char **var, const char *arg)
    args_buf_used += len + 1;
 }
 
-#define CMDLINE_INCL_HACK
-#define ALL_KOPTS_BEGIN
-#define ALL_KOPTS_END
-
-#define DEFINE_KOPT(name, alias, type, default)           \
-   type kopt_##name = default;
-
-#include "cmdline.c"
-
-#undef ALL_KOPTS_BEGIN
-#undef ALL_KOPTS_END
-#undef CMDLINE_INCL_HACK
+#define DEFINE_KOPT(name, alias, type, default) type kopt_##name = default;
+#include <tilck/common/cmdline_opts.h>
 #undef DEFINE_KOPT
-
-#define ALL_KOPTS_BEGIN static const struct kopt all_kopts[] = {
-#define ALL_KOPTS_END };
 
 #define DEFINE_KOPT(name, alias, type, default)           \
    { #name, #alias, KOPT_TYPE_##type, &kopt_##name },
 
-#endif // #ifndef CMDLINE_INCL_HACK
-
-/*
- * HACK: the following piece of code will be emitted twice, because this file
- * includes itself. The first time CMDLINE_INCL_HACK will be defined (see the
- * include "cmdline.c" above: this will make DEFINE_KOPT() generate global vars
- * and funcs. The second time (here), CMDLINE_INCL_HACK won't be defined, and
- * DEFINE_KOPT() will generate entries in the `all_kopts` array.
- *
- * It's worth remarking that however dirty, this trick is well-known and used
- * multiple times in the Linux kernel as well.
- */
-
-ALL_KOPTS_BEGIN
-
-   /*          name              ,alias, type, default            */
-   DEFINE_KOPT(ttys              ,     , long, TTY_COUNT)
-   DEFINE_KOPT(selftest          ,     , wordstr, NULL)
-
-   DEFINE_KOPT(sched_alive_thread, sat , bool, false)
-   DEFINE_KOPT(sercon            ,     , bool, !MOD_console)
-   DEFINE_KOPT(noacpi            ,     , bool, false)
-   DEFINE_KOPT(fb_no_opt         ,     , bool, false)
-   DEFINE_KOPT(fb_no_wc          ,     , bool, false)
-   DEFINE_KOPT(no_fpu_memcpy     ,     , bool, false)
-   DEFINE_KOPT(panic_kb          , pk  , bool, false)
-   DEFINE_KOPT(panic_nobt        , nobt, bool, !PANIC_SHOW_STACKTRACE)
-   DEFINE_KOPT(panic_regs        , pr  , bool, PANIC_SHOW_REGS)
-   DEFINE_KOPT(panic_mmap        , pm  , bool, false)
-   DEFINE_KOPT(big_scroll_buf    , bb  , bool, TERM_BIG_SCROLL_BUF)
-   DEFINE_KOPT(ps2_log           , plg , bool, PS2_VERBOSE_DEBUG_LOG)
-   DEFINE_KOPT(ps2_selftest      , pse , bool, PS2_DO_SELFTEST)
-
-ALL_KOPTS_END
-
-#ifndef CMDLINE_INCL_HACK
+static const struct kopt all_kopts[] = {
+   #include <tilck/common/cmdline_opts.h>
+};
+#undef DEFINE_KOPT
 
 static void
 handle_cmdline_arg(const char *arg)
@@ -255,11 +199,31 @@ use_kernel_arg(struct arg_parse_ctx *ctx, int arg_num, const char *arg)
 
       case INITIAL_STATE:
       {
-         if (!strcmp(arg, "0") || !strcmp(arg, "1")) {
-            if (ctx->last_opt && ctx->last_opt->type == KOPT_TYPE_bool) {
-               handle_arg_generic(ctx->last_opt, arg);
-               break;
+         if (kopt_is_bool_value(arg)) {
+
+            /*
+             * Even if we're in the initial state, check for bool values
+             * because boolean options accept a value optionally. For example,
+             * "-pk" means flips its default configuration from false to true.
+             * However, the explicit form "-pk true" is also support, as well
+             * as the form "-pk false" which has no effect, when the default
+             * value is already false.
+             */
+
+            if (ctx->last_opt) {
+
+               if (ctx->last_opt->type == KOPT_TYPE_bool) {
+                  handle_arg_generic(ctx->last_opt, arg);
+                  ctx->last_opt = NULL;
+               } else {
+                  printk("WARNING: Unexpected bool value '%s'\n", arg);
+               }
+
+            } else {
+               printk("WARNING: Unexpected naked bool value '%s'\n", arg);
             }
+
+            break;
          }
 
          if (!strcmp(arg, "-cmd") || !strcmp(arg, "--")) {
@@ -412,5 +376,3 @@ void parse_kernel_cmdline(const char *cmdline)
 
    do_args_validation();
 }
-
-#endif // #ifndef CMDLINE_INCL_HACK
