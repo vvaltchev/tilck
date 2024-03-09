@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # Constants
-GCC_MIN_VERSION="6.4.0"
-GXX_MIN_VERSION="6.4.0"
+GCC_MIN_VERSION="8.4.0"
+GXX_MIN_VERSION="8.4.0"
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
