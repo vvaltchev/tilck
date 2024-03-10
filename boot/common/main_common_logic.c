@@ -2,6 +2,9 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck_gen_headers/mod_console.h>
+#include <tilck_gen_headers/mod_kb8042.h>
+#include <tilck_gen_headers/config_debug.h>
 
 #if ARCH_BITS == 32
    #define USE_ELF32
@@ -363,9 +366,9 @@ menu_print_video_mode(struct generic_video_mode_info *gi)
 
 
 #define DEFINE_KOPT(name, alias, type, default) \
-   { #name, #alias, KOPT_TYPE_##type, },
+   { #name, #alias, KOPT_TYPE_##type, TO_PTR(default) },
 
-static const struct kopt_help all_kopts[] = {
+static const struct kopt all_kopts[] = {
    #include <tilck/common/cmdline_opts.h>
 };
 
@@ -384,23 +387,60 @@ kopt_type_to_str(enum kopt_type type)
 }
 
 static void
+serialize_kopt_data(const struct kopt *opt, char *buf, size_t n)
+{
+      memset(buf, ' ', n);
+
+      switch (opt->type) {
+         case KOPT_TYPE_bool:
+            buf[0] = '0' + (ulong)opt->data;
+            break;
+         case KOPT_TYPE_long:
+            itoa64((long)opt->data, buf);
+            break;
+         case KOPT_TYPE_ulong:
+            uitoa64((ulong)opt->data, buf, 10);
+            break;
+         case KOPT_TYPE_wordstr:
+            if (opt->data)
+               strncpy(buf, opt->data, n);
+            else
+               strncpy(buf, "(NULL)", n);
+            break;
+      }
+
+      /* Place a NUL terminator at the end */
+      buf[n - 1] = '\0';
+
+      /* Remove the last NUL terminator so that our string is padded */
+      for (size_t j = n - 1; j > 0; j--) {
+         if (buf[j - 1] == '\0') {
+            buf[j - 1] = ' ';
+            break;
+         }
+      }
+}
+
+static void
 menu_show_help(void)
 {
    char padded_name[23];
    char padded_alias[5];
+   char default_str[12];
    size_t len;
 
    printk("List of boot options\n");
-   printk("+-------------------------------------------+\n");
-   printk("| long name               | alias | type    |\n");
-   printk("+-------------------------------------------+\n");
+   printk("+-------------------------+-------+---------+-------------+\n");
+   printk("| long name               | alias | type    | default     |\n");
+   printk("+-------------------------+-------+---------+-------------+\n");
 
    for (u32 i = 0; i < ARRAY_SIZE(all_kopts); i++) {
 
-      const struct kopt_help *opt = &all_kopts[i];
+      const struct kopt *opt = &all_kopts[i];
       const char *name_ptr = opt->name;
       const char *alias_ptr = opt->alias;
       const bool has_alias = opt->alias[0] != '\0';
+      const char *type_str = kopt_type_to_str(opt->type);
 
       /* basic_printk.c has no support for padding specifiers */
       len = strlen(opt->name);
@@ -421,14 +461,17 @@ menu_show_help(void)
          }
       }
 
+      serialize_kopt_data(opt, default_str, sizeof(default_str));
+
       if (has_alias) {
-         printk("| -%s | -%s | %s |\n", name_ptr, alias_ptr, kopt_type_to_str(opt->type));
+         printk("| -%s | -%s | %s | %s |\n",
+                name_ptr, alias_ptr, type_str, default_str);
       } else {
-         printk("| -%s |       | %s |\n", name_ptr, kopt_type_to_str(opt->type));
+         printk("| -%s |       | %s | %s |\n", name_ptr, type_str, default_str);
       }
    }
 
-   printk("+-------------------------------------------+\n");
+   printk("+-------------------------+-------+---------+-------------+\n");
    printk("\n");
 }
 
