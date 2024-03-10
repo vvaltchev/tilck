@@ -17,6 +17,7 @@
 #include <tilck/common/elf_calc_mem_size.c.h>
 #include <tilck/common/elf_get_section.c.h>
 #include <tilck/common/build_info.h>
+#include <tilck/common/cmdline_types.h>
 
 #include "common_int.h"
 
@@ -345,10 +346,90 @@ menu_print_video_mode(struct generic_video_mode_info *gi)
 {
    show_menu_item("v", "Video mode", "", false, false);
 
-   if (selected_mode != INVALID_VIDEO_MODE)
+   if (selected_mode != INVALID_VIDEO_MODE) {
+
+      if (selected_mode != g_defmode)
+         intf->set_color(COLOR_CYAN);
+
       show_mode(-1, gi, false);
-   else
+
+      if (selected_mode != g_defmode)
+         intf->set_color(DEFAULT_FG_COLOR);
+
+   } else {
       printk("<none>\n");
+   }
+}
+
+
+#define DEFINE_KOPT(name, alias, type, default) \
+   { #name, #alias, KOPT_TYPE_##type, },
+
+static const struct kopt_help all_kopts[] = {
+   #include <tilck/common/cmdline_opts.h>
+};
+
+#undef DEFINE_KOPT
+
+static const char *
+kopt_type_to_str(enum kopt_type type)
+{
+   switch (type) {
+      case KOPT_TYPE_bool:    return "bool   ";
+      case KOPT_TYPE_long:    return "long   ";
+      case KOPT_TYPE_ulong:   return "ulong  ";
+      case KOPT_TYPE_wordstr: return "wordstr";
+      default:                return "???????";
+   }
+}
+
+static void
+menu_show_help(void)
+{
+   char padded_name[23];
+   char padded_alias[5];
+   size_t len;
+
+   printk("List of boot options\n");
+   printk("+-------------------------------------------+\n");
+   printk("| long name               | alias | type    |\n");
+   printk("+-------------------------------------------+\n");
+
+   for (u32 i = 0; i < ARRAY_SIZE(all_kopts); i++) {
+
+      const struct kopt_help *opt = &all_kopts[i];
+      const char *name_ptr = opt->name;
+      const char *alias_ptr = opt->alias;
+      const bool has_alias = opt->alias[0] != '\0';
+
+      /* basic_printk.c has no support for padding specifiers */
+      len = strlen(opt->name);
+      if (len < sizeof(padded_name) - 1) {
+         memset(padded_name, ' ', sizeof(padded_name));
+         padded_name[sizeof(padded_name) - 1] = 0;
+         memcpy(padded_name, opt->name, len);
+         name_ptr = padded_name;
+      }
+
+      if (has_alias) {
+         len = strlen(opt->alias);
+         if (len < sizeof(padded_alias) - 1) {
+            memset(padded_alias, ' ', sizeof(padded_alias));
+            padded_alias[sizeof(padded_alias) - 1] = 0;
+            memcpy(padded_alias, opt->alias, len);
+            alias_ptr = padded_alias;
+         }
+      }
+
+      if (has_alias) {
+         printk("| -%s | -%s | %s |\n", name_ptr, alias_ptr, kopt_type_to_str(opt->type));
+      } else {
+         printk("| -%s |       | %s |\n", name_ptr, kopt_type_to_str(opt->type));
+      }
+   }
+
+   printk("+-------------------------------------------+\n");
+   printk("\n");
 }
 
 static bool
@@ -384,6 +465,7 @@ run_interactive_logic(void)
 
       menu_print_video_mode(&gi);
       show_menu_item("e", "Cmdline", cmdline_buf, true, true);
+      show_menu_item("h", "Help", NULL, false, true);
       show_menu_item("b", "Boot", NULL, false, true);
       printk("\n> ");
 
@@ -419,6 +501,10 @@ run_interactive_logic(void)
             printk("Cmdline: ");
             read_line(cmdline_buf, MIN(70, (int)cmdline_buf_sz));
             wait_for_key = false;
+            break;
+
+         case 'h':
+            menu_show_help();
             break;
 
          default:

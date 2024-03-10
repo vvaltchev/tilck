@@ -92,15 +92,15 @@ static void kopt_handle_wordstr(const char **var, const char *arg)
 }
 
 #define DEFINE_KOPT(name, alias, type, default) type kopt_##name = default;
-#include <tilck/common/cmdline_opts.h>
+   #include <tilck/common/cmdline_opts.h>
 #undef DEFINE_KOPT
 
-#define DEFINE_KOPT(name, alias, type, default)           \
-   { #name, #alias, KOPT_TYPE_##type, &kopt_##name },
+#define DEFINE_KOPT KOPT_DEFAULT_ELEM
 
 static const struct kopt all_kopts[] = {
    #include <tilck/common/cmdline_opts.h>
 };
+
 #undef DEFINE_KOPT
 
 static void
