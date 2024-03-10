@@ -18,11 +18,4 @@ struct kopt {
    void *data;
 };
 
-/* Used by the bootloader UI for the help message */
-struct kopt_help {
-   const char *name;
-   const char *alias;
-   enum kopt_type type;
-};
-
 typedef const char *wordstr;

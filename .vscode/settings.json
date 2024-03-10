@@ -221,7 +221,8 @@
       "kmalloc_block_node.h": "c",
       "mod_console.h": "c",
       "compare": "c",
-      "cmdline_opts.h": "c"
+      "cmdline_opts.h": "c",
+      "mod_kb8042.h": "c"
    },
    "python.pythonPath": "/usr/bin/python3",
 }
