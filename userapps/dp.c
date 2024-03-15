@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <libgen.h>
 
 static int tracer_tool(int argc, char **argv)
 {
