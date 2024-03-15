@@ -456,6 +456,9 @@ function dump_cross_compiler_env {
    echo "[DEBUG] SYS_CXX=$SYS_CXX" >> $1
    echo "[DEBUG] CC_POST_FLAGS=$CC_POST_FLAGS" >> $1
    echo "[DEBUG] CROSS_COMPILE=$CROSS_COMPILE" >> $1
+   echo "[DEBUG] CFLAGS=$CFLAGS" >> $1
+   echo "[DEBUG] LDFLAGS=$LDFLAGS" >> $1
+   echo "[DEBUG] CPPFLAGS=$CPPFLAGS" >> $1
    echo "[DEBUG] i386-linux-gcc: $(which i386-linux-gcc)" >> $1
    echo "[DEBUG] i686-linux-gcc: $(which i686-linux-gcc)" >> $1
    echo "[DEBUG] x86_64-linux-gcc: $(which x86_64-linux-gcc)" >> $1
