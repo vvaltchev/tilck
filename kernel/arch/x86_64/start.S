@@ -365,3 +365,6 @@ long_mode:
    call kmain
 
 END_FUNC(_start)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

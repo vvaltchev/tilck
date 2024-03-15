@@ -77,3 +77,6 @@ FUNC(fault_resumable_call):
    ret
 
 END_FUNC(fault_resumable_call)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

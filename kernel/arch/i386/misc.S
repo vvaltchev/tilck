@@ -130,3 +130,6 @@ FUNC(__asm_fpu_cpy_single_256_nt_read):
    jmp memcpy_single_256_failsafe
    .space 128
 END_FUNC(__asm_fpu_cpy_single_256_nt_read)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

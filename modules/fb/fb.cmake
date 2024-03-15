@@ -33,6 +33,13 @@ endif()
 # B2O = Binary to Object file [options]
 list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH_BFD} -I binary)
 
+# Add the empty ".note.GNU-stack" to the object file in order to avoid
+# an ugly warning in recent versions of LD about potentially executable
+# stack. We clearly don't have an executable stack here, but LD doesn't know
+# that.
+list(APPEND B2O --add-section .note.GNU-stack=/dev/null)
+list(APPEND B2O --set-section-flags .note.GNU-stack=contents,readonly)
+
 foreach(font_file ${font_files})
 
    get_filename_component(font_name ${font_file} NAME_WE)

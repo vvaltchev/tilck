@@ -51,3 +51,6 @@ post_sig_handler_user_vaddr:
 .global pause_trampoline_user_vaddr
 pause_trampoline_user_vaddr:
 .long USER_VDSO_VADDR + (offset .pause_trampoline - vdso_begin)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

@@ -218,3 +218,6 @@ curr_sec:             .long 0
 last_sec:             .long 0
 actual_sectors_read:  .long 0
 ramdisk_dest_addr32:  .long 0
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits
