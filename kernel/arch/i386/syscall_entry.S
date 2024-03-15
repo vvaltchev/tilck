@@ -106,3 +106,6 @@ FUNC(context_switch):
               # in special occasions (e.g. sysenter/sysexit).
 
 END_FUNC(context_switch)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

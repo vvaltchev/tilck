@@ -57,3 +57,6 @@ irq_entry_points:
    insert_irq_addr %i
    .set i, i+1
 .endr
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

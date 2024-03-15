@@ -48,3 +48,5 @@ FUNC(switch_to_initial_kernel_stack):
 
 END_FUNC(switch_to_initial_kernel_stack)
 
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

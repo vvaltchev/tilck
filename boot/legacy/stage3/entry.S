@@ -368,3 +368,7 @@ rm16_stack:
    .space 1024, 0
 
 .space (4096)-(.-_start), 0
+
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

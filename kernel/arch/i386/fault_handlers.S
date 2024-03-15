@@ -106,3 +106,6 @@ fault_entry_resume:
    kernel_exit_common
 
 END_FUNC(asm_fault_entry)
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits

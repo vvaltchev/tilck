@@ -28,3 +28,7 @@ execute_illegal_instruction:
    .byte 0x0f
    .byte 0x0b
    ret # We should never get here
+
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits
