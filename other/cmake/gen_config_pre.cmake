@@ -7,12 +7,9 @@ set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
 set(MUSL_GCC ${CMAKE_BINARY_DIR}/scripts/musl-gcc)
 set(MUSL_GXX ${CMAKE_BINARY_DIR}/scripts/musl-g++)
 
-hex2dec(${BL_ST2_DATA_SEG} BL_ST2_DATA_SEG_DEC)
-
-math(EXPR BL_BASE_ADDR_DEC
-      "${BL_ST2_DATA_SEG_DEC} * 16 + ${EARLY_BOOT_SZ} + ${STAGE3_ENTRY_OFF}")
-
-dec2hex(${BL_BASE_ADDR_DEC} BL_BASE_ADDR)
+math(EXPR BL_BASE_ADDR
+     "${BL_ST2_DATA_SEG} * 16 + ${EARLY_BOOT_SZ} + ${STAGE3_ENTRY_OFF}"
+     OUTPUT_FORMAT HEXADECIMAL)
 
 file(GLOB config_glob ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/config/*.h")
 
