@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 add_definitions(-DUSERMODE_APP)

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 set(BUILD_BOOTPART ${CMAKE_BINARY_DIR}/scripts/build_bootpart)
 set(BUILD_FATPART ${CMAKE_BINARY_DIR}/scripts/build_fatpart)

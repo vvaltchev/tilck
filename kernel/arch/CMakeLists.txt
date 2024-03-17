@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 if (${KERNEL_SYSCC} OR ${USE_SYSCC})
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 set(EFI_ARCH ia32)
 set(GNUEFI_DIR ${TCROOT}/i386/gnu-efi)
