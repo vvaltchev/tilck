@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
 

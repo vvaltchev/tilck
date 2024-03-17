@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-CMAKE_VERSION_TO_DOWNLOAD="3.2.3"
-CMAKE_MIN_VERSION="3.2.0"
+CMAKE_VERSION_TO_DOWNLOAD="3.22.6"
+CMAKE_MIN_VERSION="3.22.0"
 
 function download_cmake_internal {
 
@@ -12,7 +12,7 @@ function download_cmake_internal {
    local ver2=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 2)
    local ver3=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 3)
 
-   local filename=cmake-${ver1}.${ver2}.${ver3}-Linux-x86_64
+   local filename=cmake-${ver1}.${ver2}.${ver3}-linux-x86_64
    local tarname=$filename.tar.gz
 
    download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
@@ -41,9 +41,9 @@ function download_cmake {
             # Default case: we have to download CMake.
             download_cmake_internal
          else
-            echo "ERROR: cmake >= 3.2 NOT FOUND on the system"
+            echo "ERROR: cmake >= ${CMAKE_MIN_VERSION} NOT FOUND on the system"
             echo "In this *unofficially* supported scenario where HOST_ARCH !="
-            echo " $BUILD_ARCH you have to manually install cmake on the system"
+            echo "$BUILD_ARCH you have to manually install cmake on the system"
             exit 1
          fi
 

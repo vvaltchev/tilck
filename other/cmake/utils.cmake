@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 set(SPACE " ")
 
@@ -304,16 +304,9 @@ function(smart_config_file src dest)
 
    else()
 
-      if(${CMAKE_VERSION} VERSION_LESS "3.17.0")
-         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E remove ${dest}.tmp
-         )
-      else()
-         # The `remove` command has been deprecated in CMake 3.17
-         execute_process(
-            COMMAND ${CMAKE_COMMAND} -E rm ${dest}.tmp
-         )
-      endif()
+      execute_process(
+         COMMAND ${CMAKE_COMMAND} -E rm ${dest}.tmp
+      )
 
    endif()
 

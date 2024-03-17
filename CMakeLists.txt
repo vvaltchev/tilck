@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.22)
 
 #
 # Project name and base version.
@@ -17,10 +17,7 @@ set(CMAKE_VERBOSE_MAKEFILE off)
 set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
-
-if (NOT ${CMAKE_VERSION} VERSION_LESS "3.12.0")
-   set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
-endif()
+set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 
 set(DEFAULT_TARGET_ARCH "i386")
 
