@@ -595,8 +595,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "SYS CC compiler name: ${CMAKE_C_COMPILER_ID}")
-message(STATUS "SYS CXX compiler name: ${CMAKE_CXX_COMPILER_ID}")
+set(msg "SYS C compiler: ${CMAKE_C_COMPILER_ID}")
+set(msg "${msg} ${CMAKE_C_COMPILER_VERSION}")
+message(STATUS "${msg}")
+
+set(msg "SYS CXX compiler: ${CMAKE_CXX_COMPILER_ID}")
+set(msg "${msg} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "${msg}")
 
 # Include the main lists of compiler flags used in the project
 include(other/cmake/compiler_flags.cmake)
