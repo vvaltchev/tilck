@@ -64,20 +64,27 @@ set(
    -Wl,--script=${KERNEL_SCRIPT}
 )
 
-if (USE_SYSCC)
-   set(COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
-else()
-   set(COMPILER_VERSION "${GCC_TC_VER}")
-endif()
+# Because of the properties way the Tilck kernel is linked, in its ELF
+# binary it looks like that it has an executable stack, while that's
+# clearly not the case, because it's not a userspace application and the
+# kernel stack has nothing to do with the LOAD segments in the ELF binary.
+# Simply, the GCC toolchain doesn't know that and prints a warning. It's
+# totally safe to disable this warning, in this case.
 
-if (${COMPILER_VERSION} VERSION_GREATER_EQUAL "12.0.0")
-   # Because of the properties way the Tilck kernel is linked, in its ELF
-   # binary it looks like that it has an executable stack, while that's
-   # clearly not the case, because it's not a userspace application and the
-   # kernel stack has nothing to do with the LOAD segments in the ELF binary.
-   # Simply, the GCC toolchain doesn't know that and prints a warning. It's
-   # totally safe to disable this warning, in this case.
-   list(APPEND KERNEL_LINK_FLAGS_LIST "-Wl,--no-warn-rwx")
+if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+
+   if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      if (${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "12.0.0")
+         list(APPEND KERNEL_LINK_FLAGS_LIST "-Wl,--no-warn-rwx")
+      endif()
+   endif()
+
+else()
+
+   # Default case (using the GCC from the pre-built toolchain)
+   if (${GCC_TC_VER} VERSION_GREATER_EQUAL "12.0.0")
+      list(APPEND KERNEL_LINK_FLAGS_LIST "-Wl,--no-warn-rwx")
+   endif()
 endif()
 
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)

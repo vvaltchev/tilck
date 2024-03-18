@@ -65,14 +65,7 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
       show_wconv_warning()
    endif()
 
-   if (CMAKE_C_COMPILER_VERSION VERSION_LESS "5.0.0")
-      # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=53119
-      list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
-      list(APPEND WARN_FLAGS_LIST "-Wno-missing-field-initializers")
-   endif()
-endif()
-
-if (CMAKE_C_COMPILER_ID STREQUAL "Clang")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
 
@@ -163,6 +156,8 @@ if (KERNEL_UBSAN)
       -fsanitize=bool,enum
       -fsanitize=unreachable
       -fsanitize=null
+      -fsanitize=shift-exponent
+      -fsanitize=shift-base
    )
 
    #
@@ -187,18 +182,6 @@ if (KERNEL_UBSAN)
 
    endif()
 
-   if (NOT ${GCC_TC_VER} VERSION_LESS "7.3.0")
-
-      # GCC >= 7.3.0 support some additional UBSAN features.
-
-      list(
-         APPEND GENERAL_KERNEL_FLAGS_LIST
-
-         -fsanitize=shift-exponent
-         -fsanitize=shift-base
-      )
-
-   endif()
 endif()
 
 JOIN("${GENERAL_KERNEL_FLAGS_LIST}" ${SPACE} GENERAL_KERNEL_FLAGS)
@@ -253,49 +236,23 @@ if (${KERNEL_SYSCC} OR ${USE_SYSCC})
 
    # Special case: we're using the system compiler
    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS "7.3.0")
-
-         # GCC-only flags for older GCC compilers
-         list(
-            APPEND DISABLE_FPU_FLAGS_LIST
-
-            -mno-fp-ret-in-387
-            -mskip-rax-setup
-         )
-
-      else()
-         set(MGENERAL_REGS_ONLY_SUPPORTED ON)
-      endif()
+      set(MGENERAL_REGS_ONLY_SUPPORTED ON)
    endif()
 
 else()
 
    # DEFAULT CASE: we're using a GCC compiler from our toolchain
-   if (${GCC_TC_VER} VERSION_LESS "7.3.0")
-
-      # GCC-only flags for older GCC compilers
-      list(
-         APPEND DISABLE_FPU_FLAGS_LIST
-
-         -mno-fp-ret-in-387
-         -mskip-rax-setup
-      )
-
-   else()
-      set(MGENERAL_REGS_ONLY_SUPPORTED ON)
-   endif()
+   set(MGENERAL_REGS_ONLY_SUPPORTED ON)
 endif()
 
 # Disable the generation of any kind of FPU instructions
 if (${MGENERAL_REGS_ONLY_SUPPORTED})
 
-   list(
-      APPEND DISABLE_FPU_FLAGS_LIST -mgeneral-regs-only
-   )
+   list(APPEND DISABLE_FPU_FLAGS_LIST -mgeneral-regs-only)
 
 else()
 
-list(
+   list(
       APPEND DISABLE_FPU_FLAGS_LIST
 
       -mno-80387
