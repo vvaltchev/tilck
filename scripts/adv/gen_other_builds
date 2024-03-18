@@ -41,6 +41,11 @@ function show_help {
    echo "   - toolchain2/i386/musl"
    echo "         [Get with: build_toolchain -s build_libmusl]"
    echo ""
+   echo "   - expect (debian package name) [optional]"
+   echo "         [necessary for 'unbuffer' to work, which is useful to see"
+   echo "          the build progress in color, while redirecting the output"
+   echo "          with 'tee'.]"
+   echo ""
    echo "Build configurations that will be generated and built:"
 
    for x in $MAIN_DIR/scripts/build_generators/*; do
@@ -85,15 +90,25 @@ fi
 mkdir -p $MAIN_DIR/other_builds
 cd $MAIN_DIR/other_builds
 
+if which bash &> /dev/null; then
+
+   # The `which` command is present
+   if which unbuffer &> /dev/null; then
+
+      # The command `unbuffer` is present, let's use it
+      UNBUFFER="unbuffer"
+   fi
+fi
+
 for gen_script in $MAIN_DIR/scripts/build_generators/*; do
 
    name=$(basename $gen_script)
    echo "************ Build: $name ************"
    mkdir -p $name
    pushd $name
-   $gen_script
-   make -j 4
-   make -j 4 gtests
+   $UNBUFFER $gen_script | tee cmake.log
+   $UNBUFFER make -j 4 | tee build.log
+   $UNBUFFER make -j 4 gtests | tee build_gtests.log
    popd
 
 done
