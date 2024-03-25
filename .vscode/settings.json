@@ -36,8 +36,6 @@
    "editor.emptySelectionClipboard": false,
    "git.ignoreLimitWarning": true,
    "cmake.configureOnOpen": false,
-   "python.linting.pylintEnabled": true,
-   "python.linting.enabled": true,
    "C_Cpp.dimInactiveRegions": false,
    "C_Cpp.configurationWarnings": "Disabled",
    "C_Cpp.errorSquiggles": "Disabled",
@@ -224,5 +222,4 @@
       "cmdline_opts.h": "c",
       "mod_kb8042.h": "c"
    },
-   "python.pythonPath": "/usr/bin/python3",
 }
