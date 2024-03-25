@@ -78,14 +78,14 @@ static void panic_print_task_info(struct task *curr)
 
       if (!is_kernel_thread(curr)) {
 
-         printk("Current task [USER]: tid: %i, pid: %i\n",
-                curr->tid, curr->pi->pid);
+         printk("Current task [USER]: tid: %i, pid: %i, kernel stack: %p\n",
+                curr->tid, curr->pi->pid, curr->kernel_stack);
 
       } else {
 
          str = curr->kthread_name;
-         printk("Current task [KERNEL]: tid: %i [%s]\n",
-                curr->tid, str ? str : "???");
+         printk("Current task [KERNEL]: tid: %i [%s], kernel stack: %p\n",
+                curr->tid, str ? str : "???", curr->kernel_stack);
       }
 
    } else {
