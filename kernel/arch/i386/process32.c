@@ -396,18 +396,11 @@ void kthread_exit(void)
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
-   /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
-
-   /* Remove the from the scheduler and free its struct */
-   remove_task(get_curr_task());
-
-   disable_interrupts_forced();
-   {
-      set_curr_task(kernel_process);
-   }
-   enable_interrupts_forced();
+   /* Run the scheduler */
    do_schedule();
+
+   /* The scheduler will never return! */
+   NOT_REACHED();
 }
 
 static void
@@ -617,19 +610,6 @@ save_curr_fpu_ctx_if_enabled(void)
 }
 
 static inline void
-switch_to_task_pop_nested_interrupts(void)
-{
-   if (KRN_TRACK_NESTED_INTERR) {
-
-      ASSERT(get_curr_task() != NULL);
-
-      if (get_curr_task()->running_in_kernel)
-         if (!is_kernel_thread(get_curr_task()))
-            nested_interrupts_drop_top_syscall();
-   }
-}
-
-static inline void
 adjust_nested_interrupts_for_task_in_kernel(struct task *ti)
 {
    /*
@@ -646,17 +626,15 @@ adjust_nested_interrupts_for_task_in_kernel(struct task *ti)
     * was running on behalf of the task). In that case, when for the first
     * time the user task got to the kernel, we had a nice 0x80 added in our
     * nested_interrupts array [even in the case of sysenter] by the function
-    * syscall_entry(). The kernel started to work on behalf of the
-    * user process but, for some reason (typically kernel preemption or
-    * wait on condition) the task was scheduled out. When that happened,
-    * because of the function switch_to_task_pop_nested_interrupts() called
-    * above, the 0x80 value was dropped from `nested_interrupts`. Now that
-    * we have to resume the execution of the user task (but in kernel mode),
-    * we MUST push back that 0x80 in order to compensate the pop that will
-    * occur in kernel's syscall_entry() just before returning back
-    * to the user. That's because the nested_interrupts array is global and
-    * not specific to any given task. Like the registers, it has to be saved
-    * and restored in a consistent way.
+    * syscall_entry(). The kernel started to work on behalf of the user process
+    * but, for some reason (typically kernel preemption or wait on condition)
+    * the task was scheduled out. When that happened, the 0x80 value was dropped
+    * from `nested_interrupts`. Now that we have to resume the execution of the
+    * user task (but in kernel mode), we MUST push back that 0x80 in order to
+    * compensate the pop that will occur in kernel's syscall_entry() just before
+    * returning back to the user. That's because the nested_interrupts array is
+    * global and not specific to any given task. Like the registers, it has to
+    * be saved and restored in a consistent way.
     */
 
    if (!is_kernel_thread(ti)) {
@@ -754,6 +732,7 @@ switch_to_task(struct task *ti)
    /* Save the value of ti->state_regs as it will be reset below */
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
+   bool should_drop_top_syscall = false;
 
    ASSERT(curr != NULL);
 
@@ -793,9 +772,29 @@ switch_to_task(struct task *ti)
       }
    }
 
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (curr->running_in_kernel)
+         if (!is_kernel_thread(curr))
+            should_drop_top_syscall = true;
+   }
+
+   if (UNLIKELY(curr->state == TASK_STATE_ZOMBIE)) {
+      disable_interrupts_forced();
+      {
+         set_curr_task(kernel_process);
+      }
+      enable_interrupts_forced();
+      free_mem_for_zombie_task(curr);
+   }
+
    /* From here until the end, we have to be as fast as possible */
    disable_interrupts_forced();
-   switch_to_task_pop_nested_interrupts();
+
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (should_drop_top_syscall)
+         nested_interrupts_drop_top_syscall();
+   }
+
    enable_preemption_nosched();
    ASSERT(is_preemption_enabled());
 

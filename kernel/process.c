@@ -171,8 +171,11 @@ void free_mem_for_zombie_task(struct task *ti)
 
    free_common_task_allocs(ti);
 
-   if (ti->pi->automatic_reaping) {
-      /* The SIGCHLD signal has been EXPLICITLY ignored by the parent */
+   if (ti->pi->automatic_reaping || is_kernel_thread(ti)) {
+      /*
+       * The SIGCHLD signal has been EXPLICITLY ignored by the parent or this
+       * is a kernel thread and we don't do any reaping.
+       */
       remove_task(ti);
    }
 }
