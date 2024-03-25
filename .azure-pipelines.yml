@@ -32,6 +32,8 @@ jobs:
         -DPREFERRED_GFX_MODE_W=640
         -DPREFERRED_GFX_MODE_H=480
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     steps:
       - script: printenv
         displayName: Dump env
@@ -61,6 +63,8 @@ jobs:
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
@@ -106,6 +110,8 @@ jobs:
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
@@ -151,6 +157,8 @@ jobs:
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
@@ -196,6 +204,8 @@ jobs:
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
@@ -240,6 +250,8 @@ jobs:
       GCC_TC_VER: 8.4.0
       CMAKE_ARGS: >
         -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         gcc:
