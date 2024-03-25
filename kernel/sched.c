@@ -640,7 +640,10 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
    if (UNLIKELY(in_panic()))
       return true;
 
-   if (UNLIKELY(curr->timer_ready && curr_state != TASK_STATE_ZOMBIE)) {
+   if (UNLIKELY(curr_state == TASK_STATE_ZOMBIE))
+      return false;
+
+   if (UNLIKELY(curr->timer_ready)) {
 
       /*
        * Corner case: call to the scheduler with timer_ready set.
@@ -766,6 +769,8 @@ void do_schedule(void)
          switch_to_task(selected);
       }
    }
+
+   ASSERT(curr_state != TASK_STATE_ZOMBIE);
 }
 
 struct task *get_task(int tid)

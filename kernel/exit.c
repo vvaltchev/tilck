@@ -182,16 +182,14 @@ call_on_task_exit_callbacks(void)
  * following function be non-inlineable and take no arguments.
  */
 NORETURN static NO_INLINE void
-switch_stack_free_mem_and_schedule(void)
+switch_stack_and_reschedule(void)
 {
    /* WARNING: DO NOT USE ANY STACK VARIABLES HERE */
    ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
+   ASSERT(!is_preemption_enabled());
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
-
-   /* Free the heap allocations used, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
 
    /* Run the scheduler */
    do_schedule();
@@ -259,7 +257,10 @@ void terminate_process(int exit_code, int term_sig)
    }
    disable_preemption();
 
-   /* OK, from now on the preemption won't be enabled until the end */
+   /*
+    * OK, from now on the preemption won't be enabled until we switch to
+    * a different task.
+    */
    task_change_state(ti, TASK_STATE_ZOMBIE);
    ti->wstatus = EXITCODE(exit_code, term_sig);
    parent = get_task(pi->parent_pid);
@@ -326,5 +327,5 @@ void terminate_process(int exit_code, int term_sig)
    if (!vforked)
       pdir_destroy(pi->pdir);
 
-   switch_stack_free_mem_and_schedule();
+   switch_stack_and_reschedule();
 }
