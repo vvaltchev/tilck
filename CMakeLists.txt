@@ -728,7 +728,7 @@ if (${_index} EQUAL -1)
 endif()
 
 # Set kernel's stack size in number of pages.
-set(KERNEL_STACK_PAGES          2)
+set(KERNEL_STACK_PAGES          4)
 
 set(FATHACK ${BUILD_APPS}/fathack)
 
