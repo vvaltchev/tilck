@@ -12,6 +12,7 @@
 
 /* --------- Boolean config variables --------- */
 #cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
+#cmakedefine01 KRN_MINIMAL_TIME_SLICE
 
 /*
  * --------------------------------------------------------------------------
@@ -27,3 +28,19 @@
  */
 #define MEASURE_BOGOMIPS_TICKS        (TIMER_HZ / 10)
 #define BOGOMIPS_CONST                          10000
+
+
+#if !KRN_MINIMAL_TIME_SLICE
+
+   /* Default case */
+   #define TIME_SLICE_TICKS (TIMER_HZ / 25)
+
+#else
+
+   /*
+    * DEBUG configuration used trigger as many context switches as possible
+    * and reproduce race conditions in the kernel.
+    */
+   #define TIME_SLICE_TICKS 1
+
+#endif
