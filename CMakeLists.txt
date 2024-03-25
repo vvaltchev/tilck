@@ -334,6 +334,9 @@ set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
 set(KRN_RESCHED_ENABLE_PREEMPT OFF CACHE BOOL
     "Check for need_resched and yield in enable_preemption()")
 
+set(KRN_MINIMAL_TIME_SLICE OFF CACHE BOOL
+    "Make the time slice to be 1 tick in order to trigger more race conditions")
+
 set(TINY_KERNEL OFF CACHE BOOL "\
 Advanced option, use carefully. Forces the Tilck kernel \
 to be as small as possible. Incompatibile with many modules \
