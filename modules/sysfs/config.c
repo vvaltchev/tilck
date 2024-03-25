@@ -32,6 +32,7 @@ DEF_STATIC_CONF_RO(BOOL,   debugchecks,            DEBUG_CHECKS);
 
 /* config/kernel */
 DEF_STATIC_CONF_RO(ULONG, timer_hz,                TIMER_HZ);
+DEF_STATIC_CONF_RO(ULONG, time_slice_ticks,        TIME_SLICE_TICKS);
 DEF_STATIC_CONF_RO(ULONG, stack_pages,             KERNEL_STACK_PAGES);
 DEF_STATIC_CONF_RO(ULONG, user_stack_pages,        USER_STACK_PAGES);
 DEF_STATIC_CONF_RO(BOOL,  track_nested_int,        KRN_TRACK_NESTED_INTERR);
@@ -96,6 +97,7 @@ void sysfs_create_config_obj(void)
       "kernel",
       NULL,       /* hooks */
       SYSOBJ_CONF_PROP_PAIR(timer_hz),
+      SYSOBJ_CONF_PROP_PAIR(time_slice_ticks),
       SYSOBJ_CONF_PROP_PAIR(stack_pages),
       SYSOBJ_CONF_PROP_PAIR(user_stack_pages),
       SYSOBJ_CONF_PROP_PAIR(track_nested_int),
