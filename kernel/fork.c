@@ -67,6 +67,8 @@ int do_fork(bool vfork)
    pdir_t *new_pdir = NULL;
 
    disable_preemption();
+
+   ASSERT(curr != NULL);
    ASSERT_TASK_STATE(curr->state, TASK_STATE_RUNNING);
 
    if ((pid = create_new_pid()) < 0)
@@ -100,6 +102,9 @@ int do_fork(bool vfork)
    child->state = TASK_STATE_RUNNABLE;
    child->running_in_kernel = false;
    task_info_reset_kernel_stack(child);
+
+   ASSERT(curr != NULL);
+   ASSERT(curr->state_regs != NULL);
 
    child->state_regs--; // make room for a regs_t struct in child's stack
    *child->state_regs = *curr->state_regs; // copy parent's regs_t
