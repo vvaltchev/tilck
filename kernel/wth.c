@@ -79,11 +79,16 @@ wth_enqueue_on(struct worker_thread *t, void (*func)(void *), void *arg)
 
 #endif
 
-   success = safe_ringbuf_write_elem(&t->rb, &new_job, &was_empty);
+   ulong var;
+   disable_interrupts(&var);
+   {
+      success = safe_ringbuf_write_elem(&t->rb, &new_job, &was_empty);
 
-   if (success && was_empty && t->waiting_for_jobs) {
-      wth_wakeup(t);
+      if (success && was_empty && t->waiting_for_jobs) {
+         wth_wakeup(t);
+      }
    }
+   enable_interrupts(&var);
 
    enable_preemption();
    return success;
@@ -97,7 +102,7 @@ wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg)
    if (lowest_prio == 0) /* optimization for highest prio case */
       return wth_enqueue_on(worker_threads[0], func, arg);
 
-   for (int i = worker_threads_cnt-1; i >= 0; i--) {
+   for (int i = worker_threads_cnt - 1; i >= 0; i--) {
 
       wth = worker_threads[i];
 
@@ -122,7 +127,7 @@ wth_find_worker(int lowest_prio)
    if (lowest_prio == 0) /* optimization for highest prio case */
       return worker_threads[0];
 
-   for (int i = worker_threads_cnt-1; i >= 0; i--) {
+   for (int i = worker_threads_cnt - 1; i >= 0; i--) {
 
       wth = worker_threads[i];
 
@@ -140,8 +145,13 @@ bool wth_process_single_job(struct worker_thread *t)
 {
    bool success;
    struct wjob job_to_run;
+   ASSERT(are_interrupts_enabled());
 
-   success = safe_ringbuf_read_elem(&t->rb, &job_to_run);
+   disable_interrupts_forced();
+   {
+      success = safe_ringbuf_read_elem(&t->rb, &job_to_run);
+   }
+   enable_interrupts_forced();
 
    if (success) {
       /* Run the job with preemption enabled */
@@ -190,7 +200,9 @@ struct task *wth_get_runnable_thread(void)
 {
    ASSERT(!is_preemption_enabled());
    struct worker_thread *selected = NULL;
+   ulong var;
 
+   disable_interrupts(&var);
    for (int i = 0; i < worker_threads_cnt; i++) {
 
       struct worker_thread *t = worker_threads[i];
@@ -199,6 +211,7 @@ struct task *wth_get_runnable_thread(void)
          if (!selected || t->priority < selected->priority)
             selected = t;
    }
+   enable_interrupts(&var);
 
    return selected ? selected->task : NULL;
 }

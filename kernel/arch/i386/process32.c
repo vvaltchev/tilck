@@ -43,8 +43,13 @@ STATIC_ASSERT(TOT_PROC_AND_TASK_SIZE <= 1024);
 
 void task_info_reset_kernel_stack(struct task *ti)
 {
-   ulong bottom = (ulong)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
-   ti->state_regs = (regs_t *)(bottom & POINTER_ALIGN_MASK);
+   ASSERT(ti->kernel_stack != NULL);
+
+   ulong stack_ptr = (ulong)ti->kernel_stack;
+   ulong stack_bottom = stack_ptr + KERNEL_STACK_SIZE - 1;
+   ASSERT(stack_bottom > stack_ptr);
+
+   ti->state_regs = (regs_t *)(stack_bottom & POINTER_ALIGN_MASK);
 }
 
 static inline void push_on_stack(ulong **stack_ptr_ref, ulong val)
