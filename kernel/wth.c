@@ -180,10 +180,12 @@ void wth_run(void *arg)
 
       } while (job_run);
 
+      disable_preemption();
       disable_interrupts_forced();
       {
          if (safe_ringbuf_is_empty(&t->rb)) {
-            t->task->state = TASK_STATE_SLEEPING;
+            //t->task->state = TASK_STATE_SLEEPING;
+            prepare_to_wait_on(WOBJ_WORKER, t, 0, NULL);
             t->waiting_for_jobs = true;
          }
       }
@@ -191,7 +193,7 @@ void wth_run(void *arg)
 
       if (t->waiting_for_jobs) {
          kcond_signal_all(&t->completion);
-         schedule();
+         schedule_preempt_disabled();
       }
    }
 }

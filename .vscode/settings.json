@@ -222,5 +222,6 @@
       "cmdline_opts.h": "c",
       "mod_kb8042.h": "c",
       "process_mm.h": "c"
+      "wth_int.h": "c"
    },
 }

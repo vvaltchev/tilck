@@ -12,6 +12,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/kernel/sync.h>
 
 #include "wth_int.h"
 
@@ -29,18 +30,19 @@ int wth_create_thread_for(struct worker_thread *t)
 void wth_wakeup(struct worker_thread *t)
 {
    struct task *curr = get_curr_task();
-   enum task_state exp_state = TASK_STATE_SLEEPING;
+   //enum task_state exp_state = TASK_STATE_SLEEPING;
 
    t->waiting_for_jobs = false;
-   atomic_cas_strong(&t->task->state,
-                     &exp_state,
-                     TASK_STATE_RUNNABLE,
-                     mo_relaxed, mo_relaxed);
-   /*
-    * Note: we don't care whether atomic_cas_strong() succeeded or not.
-    * Reason: if it didn't succeed, that's because an IRQ preempted us
-    * and made its state to be runnable.
-    */
+   // atomic_cas_strong(&t->task->state,
+   //                   &exp_state,
+   //                   TASK_STATE_RUNNABLE,
+   //                   mo_relaxed, mo_relaxed);
+   // /*
+   //  * Note: we don't care whether atomic_cas_strong() succeeded or not.
+   //  * Reason: if it didn't succeed, that's because an IRQ preempted us
+   //  * and made its state to be runnable.
+   //  */
+   wake_up(t->task);
 
    struct worker_thread *curr_tt = curr->worker_thread;
 

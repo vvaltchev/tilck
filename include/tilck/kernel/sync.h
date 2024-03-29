@@ -15,9 +15,9 @@ enum wo_type {
    WOBJ_KCOND,
    WOBJ_TASK,
    WOBJ_SEM,
+   WOBJ_WORKER,
 
    /* Special "meta-object" types */
-
    WOBJ_MWO_WAITER, /* struct multi_obj_waiter */
    WOBJ_MWO_ELEM    /* a pointer to this wobj is castable to mwobj_elem */
 };
