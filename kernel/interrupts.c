@@ -181,7 +181,7 @@ static void irq_resched(regs_t *r)
    if (get_preempt_disable_count() == 1) {
 
       /* It wasn't disabled before: save the current state (registers) */
-      save_current_task_state(r);
+      save_current_task_state(r, true /* irq */);
 
       /* Re-enable the interrupts, keeping preemption disabled */
       enable_interrupts_forced();

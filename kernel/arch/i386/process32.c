@@ -562,11 +562,23 @@ err:
    return rc;
 }
 
-void save_current_task_state(regs_t *r)
+void save_current_task_state(regs_t *r, bool irq)
 {
    struct task *curr = get_curr_task();
 
    ASSERT(curr != NULL);
+   ASSERT(r != NULL);
+
+   if (irq) {
+      /*
+       * In case of preemption while in userspace that happens while the
+       * interrupts are disabled. Make sure we ignore that fact while saving
+       * the current state and always keep the IF flag set in the EFLAGS
+       * register.
+       */
+      r->eflags |= EFLAGS_IF;
+   }
+
    curr->state_regs = r;
 }
 
