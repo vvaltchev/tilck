@@ -554,7 +554,9 @@ void task_change_state_idempotent(struct task *ti, enum task_state new_state)
 
 void add_task(struct task *ti)
 {
-   disable_preemption();
+   ulong var;
+   disable_interrupts(&var);
+   //disable_preemption();
    {
       task_add_to_state_list(ti);
 
@@ -564,12 +566,15 @@ void add_task(struct task *ti)
                          tree_by_tid_node,
                          tid);
    }
-   enable_preemption();
+   //enable_preemption();
+   enable_interrupts(&var);
 }
 
 void remove_task(struct task *ti)
 {
-   disable_preemption();
+   ulong var;
+   disable_interrupts(&var);
+   //disable_preemption();
    {
       ASSERT_TASK_STATE(ti->state, TASK_STATE_ZOMBIE);
 
@@ -583,7 +588,8 @@ void remove_task(struct task *ti)
 
       free_task(ti);
    }
-   enable_preemption();
+   //enable_preemption();
+   enable_interrupts(&var);
 }
 
 void sched_account_ticks(void)
