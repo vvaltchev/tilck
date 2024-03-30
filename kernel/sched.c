@@ -675,7 +675,9 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
    struct task *curr = get_curr_task();
    struct task *selected = NULL;
    struct task *pos;
+   ulong var;
 
+   disable_interrupts(&var);
    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
       ASSERT_TASK_STATE(pos->state, TASK_STATE_RUNNABLE);
@@ -711,7 +713,7 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
          if (curr->ticks.vruntime < selected->ticks.vruntime)
             selected = curr;
    }
-
+   enable_interrupts(&var);
    return selected;
 }
 
