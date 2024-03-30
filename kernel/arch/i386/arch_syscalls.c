@@ -596,7 +596,7 @@ void handle_syscall(regs_t *r)
     */
    r->eflags |= EFLAGS_IF;
 
-   save_current_task_state(r);
+   save_current_task_state(r, false);
    set_current_task_in_kernel();
 
    if (LIKELY(sn < ARRAY_SIZE(syscalls))) {

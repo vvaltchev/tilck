@@ -95,7 +95,7 @@ void task_info_reset_kernel_stack(struct task *ti)
    NOT_IMPLEMENTED();
 }
 
-void save_current_task_state(regs_t *r)
+void save_current_task_state(regs_t *r, bool irq)
 {
    NOT_IMPLEMENTED();
 }
