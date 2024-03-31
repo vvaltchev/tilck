@@ -34,6 +34,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     steps:
       - script: printenv
@@ -66,6 +67,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -114,6 +116,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -162,6 +165,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -210,6 +214,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -257,6 +262,7 @@ jobs:
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DBOOTLOADER_POISON_MEMORY=1
         -DTIMER_HZ=500
     strategy:
       matrix:
