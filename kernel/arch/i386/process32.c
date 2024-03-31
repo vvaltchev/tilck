@@ -739,6 +739,11 @@ switch_to_task(struct task *ti)
    struct task *curr = get_curr_task();
    bool should_drop_top_syscall = false;
 
+   // XXX
+   debug_switch_task_counter++;
+   debug_switch_task_last_task = curr;
+   // XXX
+
    ASSERT(curr != NULL);
 
    if (UNLIKELY(ti != curr)) {
@@ -784,11 +789,12 @@ switch_to_task(struct task *ti)
    }
 
    if (UNLIKELY(curr->state == TASK_STATE_ZOMBIE)) {
-      disable_interrupts_forced();
+      ulong var;
+      disable_interrupts(&var);
       {
          set_curr_task(kernel_process);
       }
-      enable_interrupts_forced();
+      enable_interrupts(&var);
       free_mem_for_zombie_task(curr);
    }
 
@@ -811,6 +817,9 @@ switch_to_task(struct task *ti)
    set_curr_task(ti);
    ti->timer_ready = false;
    set_kernel_stack((ulong)ti->state_regs);
+
+   // XXX
+   debug_switch_task_counter++;
    context_switch(state);
 }
 

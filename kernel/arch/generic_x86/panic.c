@@ -247,6 +247,49 @@ NORETURN void panic(const char *fmt, ...)
       printk(">>\n");
    }
 
+   if (debug_switch_task_last_task != debug_sched_next_task) {
+
+      printk("debug_switch_task_counter: %u\n", debug_switch_task_counter);
+
+      if (!is_kernel_thread(debug_switch_task_last_task)) {
+
+         printk("LAST task [USER]: tid: %i, pid: %i, kernel stack: %p\n",
+                debug_switch_task_last_task->tid,
+                debug_switch_task_last_task->pi->pid,
+                debug_switch_task_last_task->kernel_stack);
+
+      } else {
+
+         const char *str;
+         str = debug_switch_task_last_task->kthread_name;
+         printk("LAST task [KERNEL]: tid: %i [%s], kernel stack: %p\n",
+                debug_switch_task_last_task->tid,
+                str ? str : "???",
+                debug_switch_task_last_task->kernel_stack);
+      }
+
+      if (!is_kernel_thread(debug_sched_next_task)) {
+
+         printk("NEXT task [USER]: tid: %i, pid: %i, kernel stack: %p\n",
+                debug_sched_next_task->tid,
+                debug_sched_next_task->pi->pid,
+                debug_sched_next_task->kernel_stack);
+
+      } else {
+
+         const char *str;
+         str = debug_sched_next_task->kthread_name;
+         printk("NEXT task [KERNEL]: tid: %i [%s], kernel stack: %p\n",
+                debug_sched_next_task->tid,
+                str ? str : "???",
+                debug_sched_next_task->kernel_stack);
+      }
+
+      printk("Debug sched next task regs:\n");
+      dump_regs(debug_sched_next_task->state_regs);
+      printk("--------------\n");
+   }
+
    panic_print_task_info(curr);
    panic_dump_nested_interrupts();
 

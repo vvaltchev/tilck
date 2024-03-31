@@ -148,6 +148,13 @@ extern const char *const task_state_str[5];
 #define KERNEL_TID_START                        10000
 #define KERNEL_MAX_TID                           1024 /* + KERNEL_TID_START */
 
+//////////////////////////////////////////
+
+extern struct task *debug_sched_next_task;
+extern struct task *debug_switch_task_last_task;
+extern ATOMIC(u32) debug_switch_task_counter;
+
+/////////////////////////////////////////
 STATIC_ASSERT(MAX_PID < KERNEL_TID_START);
 
 void init_sched(void);
