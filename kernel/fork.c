@@ -104,6 +104,7 @@ int do_fork(regs_t *user_regs, bool vfork)
    task_info_reset_kernel_stack(child);
 
    ASSERT(curr != NULL);
+   ASSERT(curr == get_curr_task());
    ASSERT(curr->state_regs != NULL);
 
    child->state_regs--; // make room for a regs_t struct in child's stack
