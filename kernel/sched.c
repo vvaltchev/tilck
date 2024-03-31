@@ -649,6 +649,13 @@ sched_should_return_immediately(struct task *curr, enum task_state curr_state)
    if (UNLIKELY(curr_state == TASK_STATE_ZOMBIE))
       return false;
 
+   // XXX
+   if (curr && curr->running_in_kernel && curr != idle_task) {
+      if (curr_state == TASK_STATE_RUNNING || curr_state == TASK_STATE_RUNNABLE)
+         if (!curr->stopped)
+            return true; // disable kernel preemption
+   }
+
    if (UNLIKELY(curr->timer_ready)) {
 
       /*
