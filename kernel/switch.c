@@ -306,6 +306,11 @@ switch_to_task(struct task *ti)
    bool should_drop_top_syscall = false;
    const bool zombie = (curr->state == TASK_STATE_ZOMBIE);
 
+   // XXX
+   debug_switch_task_counter++;
+   debug_switch_task_last_task = curr;
+   // XXX
+
    ASSERT(curr != NULL);
 
    if (UNLIKELY(ti != curr)) {
@@ -362,6 +367,10 @@ switch_to_task(struct task *ti)
    set_curr_task(ti);
    ti->timer_ready = false;
    set_kernel_stack((ulong)ti->state_regs);
+
+   // XXX
+   debug_switch_task_counter++;
+   // XXX
    context_switch(state);
 }
 

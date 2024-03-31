@@ -713,6 +713,10 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
    return selected;
 }
 
+struct task *debug_sched_next_task;
+struct task *debug_switch_task_last_task;
+ATOMIC(u32) debug_switch_task_counter;
+
 void do_schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
@@ -740,6 +744,9 @@ void do_schedule(void)
       if (!selected)
          selected = idle_task; /* fall-back to the idle task */
    }
+
+   // XXX
+   debug_sched_next_task = selected;
 
    if (selected != curr) {
 
