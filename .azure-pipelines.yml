@@ -33,6 +33,7 @@ jobs:
         -DPREFERRED_GFX_MODE_H=480
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     steps:
       - script: printenv
@@ -64,6 +65,7 @@ jobs:
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -111,6 +113,7 @@ jobs:
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -158,6 +161,7 @@ jobs:
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -205,6 +209,7 @@ jobs:
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     strategy:
       matrix:
@@ -251,6 +256,7 @@ jobs:
       CMAKE_ARGS: >
         -DKMALLOC_FREE_MEM_POISONING=1
         -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
     strategy:
       matrix:
