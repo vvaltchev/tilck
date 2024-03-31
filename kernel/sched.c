@@ -699,13 +699,12 @@ sched_do_select_runnable_task(enum task_state curr_state, bool resched)
          selected = curr;
    }
 
-   if (!resched && selected) {
+   if (!resched && selected && curr != idle_task) {
 
       /*
        * If need_resched is not set, the caller didn't want necessarily to
-       * yield, but just give the scheduler an opportunity to switch the current
-       * task. In the loop avoid, the current task was not included because its
-       * state is typically RUNNING, so it's not present in the runnable_list.
+       * yield, unless the current task is the idle task. In that case, always
+       * yield to any other task.
        */
 
       if (curr_state == TASK_STATE_RUNNING && !curr->stopped)
