@@ -253,7 +253,9 @@ NORETURN void panic(const char *fmt, ...)
 
       if (!is_kernel_thread(debug_switch_task_last_task)) {
 
-         printk("LAST task [USER]: tid: %i, pid: %i, kernel stack: %p\n",
+         printk("LAST task [USER running in %s]: "
+                "tid: %i, pid: %i, kernel stack: %p\n",
+                debug_switch_task_last_task->running_in_kernel ? "kernel" : "user",
                 debug_switch_task_last_task->tid,
                 debug_switch_task_last_task->pi->pid,
                 debug_switch_task_last_task->kernel_stack);
@@ -270,7 +272,9 @@ NORETURN void panic(const char *fmt, ...)
 
       if (!is_kernel_thread(debug_sched_next_task)) {
 
-         printk("NEXT task [USER]: tid: %i, pid: %i, kernel stack: %p\n",
+         printk("NEXT task [USER running in %s]: "
+                "tid: %i, pid: %i, kernel stack: %p\n",
+                debug_sched_next_task->running_in_kernel ? "kernel" : "user",
                 debug_sched_next_task->tid,
                 debug_sched_next_task->pi->pid,
                 debug_sched_next_task->kernel_stack);
