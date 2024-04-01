@@ -294,6 +294,7 @@ static ALWAYS_INLINE bool timer_nested_irq(void)
    return res;
 }
 
+#include <tilck/kernel/process.h>
 static enum irq_action timer_irq_handler(void *ctx)
 {
    u32 ns_delta;
@@ -302,6 +303,17 @@ static enum irq_action timer_irq_handler(void *ctx)
    if (KRN_TRACK_NESTED_INTERR)
       if (timer_nested_irq())
          return IRQ_HANDLED;
+
+   disable_interrupts_forced();
+   {
+      struct task *pos;
+      list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
+
+         if (pos->state != TASK_STATE_ZOMBIE)
+            debug_validate_resume_ip_task(pos);
+      }
+   }
+   enable_interrupts_forced();
 
    /*
     * Compute `ns_delta` by reading `__tick_duration` and `__tick_adj_val` here

@@ -22,12 +22,16 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/vdso.h>
+#include <tilck/kernel/elf_utils.h>
 
 #include <tilck/mods/tracing.h>
 
 #include "gdt_int.h"
 
 void soft_interrupt_resume(void);
+void sysenter_resume(void);
+void kernel_yield_resume(void);
+void irq_resume(void);
 
 //#define DEBUG_printk printk
 #define DEBUG_printk(...)
@@ -585,6 +589,7 @@ void save_current_task_state(regs_t *r, bool irq)
    }
 
    curr->state_regs = r;
+   debug_validate_resume_ip_task(curr);
 }
 
 /*
@@ -739,6 +744,71 @@ switch_to_task_safety_checks(struct task *curr, struct task *next)
    }
 }
 
+bool
+debug_validate_resume_ip(void *kernel_stack,
+                         regs_t *state,
+                         ulong *resume_eip_out)
+{
+   int rc;
+   ulong flags;
+
+   if (!state)
+      return true;
+
+   disable_interrupts(&flags);
+
+   rc = virtual_read(get_kernel_pdir(),
+                     state,
+                     resume_eip_out,
+                     sizeof(*resume_eip_out));
+
+   if (rc != (int)sizeof(*resume_eip_out)) {
+      panic("virtual_read() failed for: %p", state);
+   }
+
+   if (*resume_eip_out != (ulong)&sysenter_resume &&
+       *resume_eip_out != (ulong)&soft_interrupt_resume &&
+       *resume_eip_out != (ulong)&kernel_yield_resume &&
+       *resume_eip_out != (ulong)&irq_resume &&
+       *resume_eip_out != 0)
+   {
+      printk("Invalid resume_eip: %p at stack ptr: %p\n",
+             TO_PTR(*resume_eip_out), state);
+
+      ulong curr = (ulong)state;
+      const ulong start = (ulong)kernel_stack;
+      const ulong end = start + KERNEL_STACK_SIZE;
+      const ulong loop_start = curr - 8;
+      const ulong loop_end = end; //UNSAFE_MIN(end, curr + 64);
+
+      printk("start: %p, end: %p, curr: %p, loop_start: %p, loop_end: %p\n",
+             TO_PTR(start), TO_PTR(end), TO_PTR(curr),
+             TO_PTR(loop_start), TO_PTR(loop_end));
+
+      for (curr = loop_start; curr < loop_end; curr += 4) {
+
+         ulong val = *(ulong *)curr;
+         const char *sym = NULL;
+
+         if (KERNEL_VADDR <= val && val <= KERNEL_VADDR + 16 * MB) {
+            sym = find_sym_at_addr_safe(val, NULL, NULL);
+         }
+
+         printk("[%p] %p (%s) %s\n",
+                TO_PTR(curr),
+                TO_PTR(val),
+                sym ? sym : "",
+                curr == (ulong)state ? "<---- state" : "");
+      }
+
+      enable_interrupts(&flags);
+      return false;
+   }
+
+   enable_interrupts(&flags);
+   return true;
+}
+
 NORETURN void
 switch_to_task(struct task *ti)
 {
@@ -805,6 +875,7 @@ switch_to_task(struct task *ti)
       }
       enable_interrupts(&var);
       free_mem_for_zombie_task(curr);
+      curr = NULL;
    }
 
    /* From here until the end, we have to be as fast as possible */
@@ -823,8 +894,30 @@ switch_to_task(struct task *ti)
    else
       adjust_nested_interrupts_for_task_in_kernel(ti);
 
+   // XXX: debug
+   if (curr)
+      debug_validate_resume_ip_task(curr);
+   // ------------------------------------------
+
    set_curr_task(ti);
    ti->timer_ready = false;
+
+   {
+      void *stack_bottom = ti->state_regs;
+      void *stack_top = ti->kernel_stack;
+      ulong stack_lim = (ulong)stack_bottom - 1 + KERNEL_STACK_SIZE;
+      ulong resume_eip;
+
+      VERIFY((ulong)ti->kernel_stack >= BASE_VA);
+      VERIFY((ulong)stack_bottom >= BASE_VA);
+      VERIFY((ulong)stack_bottom >= (ulong)stack_top);
+      VERIFY((ulong)stack_bottom <= stack_lim);
+
+      if (!debug_validate_resume_ip(stack_top, state, &resume_eip)) {
+         panic("Invalid resume_eip: %p", resume_eip);
+      }
+   }
+
    set_kernel_stack((ulong)ti->state_regs);
 
    // XXX

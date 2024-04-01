@@ -103,6 +103,10 @@ static void alloc_kernel_stack(struct task *ti)
 
 static void free_kernel_stack(struct task *ti)
 {
+   // XXX: debug
+   bzero(ti->kernel_stack, KERNEL_STACK_SIZE);
+   //
+
    if (KERNEL_STACK_ISOLATION) {
       free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
    } else {
@@ -732,4 +736,15 @@ int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
 
    printk("[TID: %d] Unknown option: %d\n", get_curr_tid(), option);
    return -EINVAL;
+}
+
+void
+debug_validate_resume_ip_task(struct task *ti)
+{
+   ulong resume_eip;
+
+   if (!debug_validate_resume_ip(ti->kernel_stack, ti->state_regs, &resume_eip)) {
+      panic("Invalid resume_eip: %p for task %d, running in kernel: %u",
+            resume_eip, ti->tid, ti->running_in_kernel);
+   }
 }

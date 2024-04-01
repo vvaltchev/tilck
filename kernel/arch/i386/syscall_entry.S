@@ -18,6 +18,7 @@
 .global sysenter_entry
 .global context_switch
 .global soft_interrupt_resume
+.global sysenter_resume
 
 FUNC(sysenter_entry):
 
@@ -51,7 +52,7 @@ FUNC(sysenter_entry):
    kernel_entry_common
    push_custom_flags (REGS_FL_SYSENTER)
 
-   push offset .sysenter_resume
+   push offset sysenter_resume
    mov eax, esp
    cld            # set DF = 0, as C compilers by default assume that.
    push eax
@@ -59,7 +60,7 @@ FUNC(sysenter_entry):
 
    add esp, 8     # skip the previousy-pushed 'eax' and kernel_resume_eip
 
-.sysenter_resume:
+sysenter_resume:
 
    pop_custom_flags
    resume_base_regs

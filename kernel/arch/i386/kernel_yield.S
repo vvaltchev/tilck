@@ -18,6 +18,7 @@
 .global asm_save_regs_and_schedule
 .global panic_save_current_state
 .global switch_to_initial_kernel_stack
+.global kernel_yield_resume
 
 # Saves the current (kernel) state as if an interrupt occurred while running
 # in kernel mode.
@@ -30,7 +31,7 @@ FUNC(asm_save_regs_and_schedule):
    save_base_regs
    skip_push_custom_flags
 
-   push offset .kernel_yield_resume
+   push offset kernel_yield_resume
    mov eax, esp
 
    push eax
@@ -50,7 +51,7 @@ FUNC(asm_save_regs_and_schedule):
    mov eax, 0      # No context-switch return value
    ret
 
-.kernel_yield_resume:
+kernel_yield_resume:
 
    skip_pop_custom_flags
    resume_base_regs
@@ -75,7 +76,7 @@ FUNC(panic_save_current_state):
    save_base_regs
    skip_push_custom_flags
 
-   push offset .kernel_yield_resume
+   push offset kernel_yield_resume
    mov eax, esp
 
    mov ecx, [esp + SIZEOF_REGS]             # ecx = caller's EIP

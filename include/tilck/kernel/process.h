@@ -157,3 +157,9 @@ int setup_sig_handler(struct task *ti,
                       ulong user_func,
                       int signum);
 void setup_pause_trampoline(regs_t *r);
+
+bool debug_validate_resume_ip(void *kernel_stack,
+                              regs_t *state,
+                              ulong *resume_eip_out);
+
+void debug_validate_resume_ip_task(struct task *ti);

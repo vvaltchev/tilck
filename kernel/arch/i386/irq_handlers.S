@@ -9,6 +9,7 @@
 .section .text
 .global irq_entry_points
 .global asm_irq_entry
+.global irq_resume
 
 # IRQs common entry point
 FUNC(asm_irq_entry):
@@ -16,7 +17,7 @@ FUNC(asm_irq_entry):
    kernel_entry_common
    push_custom_flags (0)
 
-   push offset .irq_resume
+   push offset irq_resume
    mov eax, esp
    cld            # Set DF = 0, as C compilers by default assume that.
    push eax
@@ -24,7 +25,7 @@ FUNC(asm_irq_entry):
 
    add esp, 8     # Discard the previousy-pushed 'eax' and .irq_resume
 
-.irq_resume:
+irq_resume:
    pop_custom_flags
    kernel_exit_common
 

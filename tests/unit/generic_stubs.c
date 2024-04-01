@@ -69,3 +69,4 @@ void arch_add_initial_mem_regions() { }
 bool arch_add_final_mem_regions() { return false; }
 void setup_sig_handler() { NOT_REACHED(); }
 void setup_pause_trampoline() { NOT_REACHED(); }
+void debug_validate_resume_ip(void *state) { }
