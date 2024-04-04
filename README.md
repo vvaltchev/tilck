@@ -38,7 +38,6 @@ Contents
   - [Testing Tilck](#testing-tilck)
   - [Debugging Tilck](#debugging-tilck)
     * [Tilck's debug panel](#tilcks-debug-panel)
-  - [Contributing to Tilck](#contributing-to-tilck)
 * [A comment about user experience](#a-comment-about-user-experience)
 * [FAQ](#faq)
 
@@ -363,13 +362,6 @@ about it, check the the [debugging] document.
 
 [sysfs]: https://github.com/vvaltchev/tilck/wiki/Tilck's-sysfs
 [Magic SysRq]: https://en.wikipedia.org/wiki/Magic_SysRq_key
-
-### Contributing to Tilck
-
-Contributing to the Tilck project is not only possible, but it's encouraged.
-For more about that, check the guidelines in the [contributing] document.
-
-[contributing]: docs/contributing.md
 
 A comment about user experience
 ----------------------------------
