@@ -45,10 +45,15 @@ bool handle_potential_cow(void *context)
    regs_t *r = context;
    u32 vaddr;
 
-   if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW)
-      return false;
-
    asmVolatile("movl %%cr2, %0" : "=r"(vaddr));
+
+   if ((r->err_code & PAGE_FAULT_FL_COW) != PAGE_FAULT_FL_COW) {
+      trace_printk(1, "Page fault at %p NOT a CoW!", TO_PTR(vaddr));
+      return false;
+   }
+
+
+   trace_printk(1, "check for CoW at %p", TO_PTR(vaddr));
 
    const u32 pt_index = (vaddr >> PAGE_SHIFT) & 1023;
    const u32 pd_index = (vaddr >> BIG_PAGE_SHIFT);
@@ -75,6 +80,7 @@ bool handle_potential_cow(void *context)
       pt->pages[pt_index].rw = true;
       pt->pages[pt_index].avail = 0;
       invalidate_page_hw(vaddr);
+      trace_printk(1, "Handled CoW at %p without copy", TO_PTR(vaddr));
       return true;
    }
 
@@ -125,6 +131,7 @@ bool handle_potential_cow(void *context)
    pt->pages[pt_index].avail = 0;
 
    invalidate_page_hw(vaddr);
+   trace_printk(1, "Handled CoW at %p with copy", TO_PTR(vaddr));
    return true;
 }
 

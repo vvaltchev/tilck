@@ -105,6 +105,10 @@ stop_all_other_tasks(void *task, void *unused)
    return 0;
 }
 
+
+void
+dp_panic_dump_all_trace_events(void);
+
 NORETURN void panic(const char *fmt, ...)
 {
    static bool first_printk_ok;
@@ -314,6 +318,8 @@ NORETURN void panic(const char *fmt, ...)
          curr->pi->pdir
       );
    }
+
+   dp_panic_dump_all_trace_events();
 
    if (kopt_panic_mmap)
       dump_memory_map();

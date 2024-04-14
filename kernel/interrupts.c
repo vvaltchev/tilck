@@ -11,6 +11,7 @@
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/mods/tracing.h>
 
 void handle_syscall(regs_t *);
 void handle_fault(regs_t *);
@@ -202,6 +203,8 @@ void irq_entry(regs_t *r)
    /* We expect here that the CPU disabled the interrupts */
    ASSERT(!are_interrupts_enabled());
 
+   trace_printk(1, "IRQ entry %d", regs_intnum(r) - 32);
+
    /* Disable the preemption */
    disable_preemption();
 
@@ -220,9 +223,13 @@ void irq_entry(regs_t *r)
    /* Check that the preemption is disabled as well */
    ASSERT(!is_preemption_enabled());
 
+   trace_printk(1, "IRQ exit %d", regs_intnum(r)- 32);
+
    /* Run the scheduler if necessary (it will enable interrupts) */
-   if (need_reschedule())
+   if (need_reschedule()) {
+      trace_printk(1, "IRQ resched");
       irq_resched(r);
+   }
 
    /*
     * In case do_schedule() returned or there was no need for resched, just
@@ -264,6 +271,7 @@ void fault_entry(regs_t *r)
    ASSERT(!are_interrupts_enabled());
 
    get_curr_task()->running_in_kernel++;
+   trace_printk(1, "fault entry %d", regs_intnum(r));
    push_nested_interrupt(regs_intnum(r));
    disable_preemption();
    enable_interrupts_forced();
@@ -279,6 +287,7 @@ void fault_entry(regs_t *r)
    if (!in_syscall(get_curr_task()))
       process_signals(get_curr_task(), sig_in_fault, r);
 
+   trace_printk(1, "fault exit %d", regs_intnum(r));
    enable_preemption();
    disable_interrupts_forced();
    get_curr_task()->running_in_kernel--;

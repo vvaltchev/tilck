@@ -581,6 +581,18 @@ dp_list_traced_syscalls(void)
    dp_write_raw("\r\n");
 }
 
+void
+dp_panic_dump_all_trace_events(void)
+{
+   struct trace_event e;
+
+   while (read_trace_event_noblock(&e)) {
+      dp_dump_tracing_event(&e, NULL);
+   }
+
+   dp_write_raw("\r\n");
+}
+
 static int
 dp_tracing_dump_remaining_events(void)
 {
