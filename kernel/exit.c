@@ -191,6 +191,8 @@ switch_stack_and_reschedule(void)
    // XXX: tmp
    bzero(kernel_initial_stack, KERNEL_STACK_SIZE);
 
+   disable_interrupts_forced(); // XXX
+
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 

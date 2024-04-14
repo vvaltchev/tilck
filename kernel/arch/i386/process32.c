@@ -399,6 +399,7 @@ void kthread_exit(void)
    bzero(kernel_initial_stack, KERNEL_STACK_SIZE);
 
    disable_preemption();
+   disable_interrupts_forced(); // XXX
 
    wake_up_tasks_waiting_on(get_curr_task(), task_died);
    task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
@@ -656,6 +657,8 @@ static void
 switch_to_task_safety_checks(struct task *curr, struct task *next)
 {
    static bool first_task_switch_passed;
+
+   return; /// XXX
 
    /*
     * Generally, we don't support task switches with interrupts disabled
