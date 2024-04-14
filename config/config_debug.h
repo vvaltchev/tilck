@@ -14,12 +14,15 @@
 #cmakedefine01 KRN_TRACK_NESTED_INTERR
 #cmakedefine01 PANIC_SHOW_STACKTRACE
 #cmakedefine01 KERNEL_SELFTESTS
-#cmakedefine01 KERNEL_STACK_ISOLATION
+//#cmakedefine01 KERNEL_STACK_ISOLATION
 #cmakedefine01 KERNEL_SYMBOLS
 
 /* disabled by default */
 #cmakedefine01 PANIC_SHOW_REGS
 
+
+/// XXX
+#define KERNEL_STACK_ISOLATION 0
 
 /*
  * --------------------------------------------------------------------------
