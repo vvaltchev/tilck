@@ -304,16 +304,16 @@ static enum irq_action timer_irq_handler(void *ctx)
       if (timer_nested_irq())
          return IRQ_HANDLED;
 
-   disable_interrupts_forced();
-   {
-      struct task *pos;
-      list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
+   // disable_interrupts_forced();
+   // {
+   //    struct task *pos;
+   //    list_for_each_ro(pos, &runnable_tasks_list, runnable_node) {
 
-         if (pos->state != TASK_STATE_ZOMBIE)
-            debug_validate_resume_ip_task(pos);
-      }
-   }
-   enable_interrupts_forced();
+   //       if (pos->state != TASK_STATE_ZOMBIE)
+   //          debug_validate_resume_ip_task(pos);
+   //    }
+   // }
+   // enable_interrupts_forced();
 
    /*
     * Compute `ns_delta` by reading `__tick_duration` and `__tick_adj_val` here

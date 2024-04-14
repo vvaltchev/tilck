@@ -46,11 +46,11 @@ static int traced_syscalls_count;
 
 bool *traced_syscalls;
 bool __force_exp_block;
-bool __tracing_on;
+bool __tracing_on = true;
 bool __tracing_dump_big_bufs;
 bool __tracing_initialized;
 bool __trace_printk_initialized;
-int __tracing_printk_lvl = 10;
+int __tracing_printk_lvl = 100;
 
 const char *get_signal_name(int signum)
 {
@@ -252,13 +252,21 @@ trace_syscall_exit_save_params(const struct syscall_info *si,
 static void
 enqueue_trace_event(struct trace_event *e)
 {
+   static struct trace_event sink;
+
    ulong var;
    bool success;
    disable_interrupts(&var);
    {
+      if (ringbuf_is_full(&tracing_rb))
+         ringbuf_read_elem(&tracing_rb, &sink);
+
       success = ringbuf_write_elem(&tracing_rb, e);
    }
    enable_interrupts(&var);
+
+   if (!success)
+      panic("Failed to enqueue event");
 
    if (success && !in_irq()) {
       /*
@@ -282,8 +290,8 @@ trace_syscall_enter_int(u32 sys,
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
-   if (!get_curr_task()->traced)
-      return; /* the current task is not traced */
+   //if (!get_curr_task()->traced)
+   //   return; /* the current task is not traced */
 
    if (si && !exp_block(si))
       return; /* don't trace the enter event */
@@ -315,8 +323,8 @@ trace_syscall_exit_int(u32 sys,
 {
    const struct syscall_info *si = tracing_get_syscall_info(sys);
 
-   if (!get_curr_task()->traced)
-      return; /* the current task is not traced */
+   //if (!get_curr_task()->traced)
+   //   return; /* the current task is not traced */
 
    struct trace_event e = {
       .type = te_sys_exit,
@@ -454,6 +462,11 @@ trace_task_killed_int(int signum)
 bool read_trace_event_noblock(struct trace_event *e)
 {
    bool success;
+
+   if (UNLIKELY(in_panic())) {
+      disable_interrupts_forced();
+      return ringbuf_read_elem(&tracing_rb, e);
+   }
 
    /* We must NOT consume trace events from IRQ handlers, of course */
    ASSERT(!in_irq());

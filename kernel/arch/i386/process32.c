@@ -824,6 +824,19 @@ switch_to_task(struct task *ti)
 
    ASSERT(curr != NULL);
 
+   /////////////////////////
+
+   trace_printk(1,
+                "Task switch from tid %d [%s/%s] => tid %d [%s/%s]",
+                curr->tid,
+                is_kernel_thread(curr) ? "KRN" : "US",
+                curr->running_in_kernel ? "KRN" : "US",
+                ti->tid,
+                is_kernel_thread(ti) ? "KRN" : "US",
+                ti->running_in_kernel ? "KRN" : "US");
+
+   /////////////////////////
+
    if (UNLIKELY(ti != curr)) {
       ASSERT(curr->state != TASK_STATE_RUNNING);
       ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
