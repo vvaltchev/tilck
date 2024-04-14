@@ -187,6 +187,9 @@ switch_stack_and_reschedule(void)
    /* WARNING: DO NOT USE ANY STACK VARIABLES HERE */
    ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
 
+   // XXX: tmp
+   bzero(kernel_initial_stack, KERNEL_STACK_SIZE);
+
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
