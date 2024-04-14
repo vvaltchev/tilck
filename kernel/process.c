@@ -397,15 +397,21 @@ void *task_temp_kernel_alloc(size_t size)
 
          if (alloc) {
 
+            ulong flags;
+
             bintree_node_init(&alloc->node);
             alloc->vaddr = ptr;
             alloc->size = size;
+
+            disable_interrupts(&flags);
 
             bintree_insert_ptr(&curr->kallocs_tree_root,
                                alloc,
                                struct kernel_alloc,
                                node,
                                vaddr);
+
+            enable_interrupts(&flags);
 
          } else {
 
