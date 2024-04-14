@@ -17,6 +17,9 @@
 #include <tilck/kernel/vdso.h>
 #include <tilck/kernel/hal.h>
 
+//XXX
+#include <tilck/mods/tracing.h>
+
 void save_current_task_state(regs_t *r,  bool irq)
 {
    struct task *curr = get_curr_task();
@@ -312,6 +315,19 @@ switch_to_task(struct task *ti)
    // XXX
 
    ASSERT(curr != NULL);
+
+   ///////////////////////// XXX
+
+   trace_printk(1,
+                "Task switch from tid %d [%s/%s] => tid %d [%s/%s]",
+                curr->tid,
+                is_kernel_thread(curr) ? "KRN" : "US",
+                curr->running_in_kernel ? "KRN" : "US",
+                ti->tid,
+                is_kernel_thread(ti) ? "KRN" : "US",
+                ti->running_in_kernel ? "KRN" : "US");
+
+   ///////////////////////// XXX
 
    if (UNLIKELY(ti != curr)) {
       ASSERT(curr->state != TASK_STATE_RUNNING);
