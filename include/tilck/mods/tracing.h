@@ -277,6 +277,7 @@ tracing_is_enabled(void)
 {
    extern bool __tracing_on;
    return __tracing_on;
+   return true;
 }
 
 static ALWAYS_INLINE bool
@@ -330,16 +331,12 @@ tracing_set_printk_lvl(int lvl)
 
 #define trace_sys_enter(sn, ...)                                               \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      if (UNLIKELY(get_curr_task()->traced))                                   \
-         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
-            trace_syscall_enter_int(sn, __VA_ARGS__);                          \
+      trace_syscall_enter_int(sn, __VA_ARGS__);                          \
    }
 
 #define trace_sys_exit(sn, ret, ...)                                           \
    if (MOD_tracing && UNLIKELY(tracing_is_enabled())) {                        \
-      if (UNLIKELY(get_curr_task()->traced))                                   \
-         if (UNLIKELY(tracing_is_enabled_on_sys(sn)))                          \
-            trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);              \
+      trace_syscall_exit_int(sn, (long)(ret), __VA_ARGS__);              \
    }
 
 #define trace_printk(lvl, fmt, ...)                                            \
