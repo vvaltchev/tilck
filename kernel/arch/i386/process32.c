@@ -393,6 +393,11 @@ void kthread_exit(void)
     * This function gets called automatically when a kernel thread function
     * returns, but it can be called manually as well at any point.
     */
+
+
+   // XXX: tmp
+   bzero(kernel_initial_stack, KERNEL_STACK_SIZE);
+
    disable_preemption();
 
    wake_up_tasks_waiting_on(get_curr_task(), task_died);

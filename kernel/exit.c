@@ -188,6 +188,9 @@ switch_stack_and_reschedule(void)
    ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
    ASSERT(!is_preemption_enabled());
 
+   // XXX: tmp
+   bzero(kernel_initial_stack, KERNEL_STACK_SIZE);
+
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
