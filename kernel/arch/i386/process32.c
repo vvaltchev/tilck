@@ -772,8 +772,9 @@ switch_to_task(struct task *ti)
             load_ldt(arch->ldt_index_in_gdt, arch->ldt_size);
       }
 
-      if (!ti->running_in_kernel)
-         process_signals(ti, sig_in_usermode, state);
+      // XXX: disabled process signals during context switch
+      //if (!ti->running_in_kernel)
+      //   process_signals(ti, sig_in_usermode, state);
 
       if (is_fpu_enabled_for_task(ti)) {
          hw_fpu_enable();
