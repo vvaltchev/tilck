@@ -66,6 +66,7 @@ int do_fork(bool vfork)
    struct process *curr_pi = curr->pi;
    pdir_t *new_pdir = NULL;
 
+   disable_interrupts_forced(); /// XXX
    disable_preemption();
 
    ASSERT(curr != NULL);
@@ -137,6 +138,7 @@ int do_fork(bool vfork)
    }
 
    enable_preemption();
+   enable_interrupts_forced(); // XXX
 
    if (vfork) {
 
@@ -175,5 +177,6 @@ oom_case:
 
 out:
    enable_preemption();
+   enable_interrupts_forced(); // XXX
    return rc;
 }
