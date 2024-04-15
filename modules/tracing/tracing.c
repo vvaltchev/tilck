@@ -45,12 +45,12 @@ STATIC char *traced_syscalls_str;
 static int traced_syscalls_count;
 
 bool *traced_syscalls;
-bool __force_exp_block;
-bool __tracing_on = true;
+bool __force_exp_block = true; // XXX
+bool __tracing_on = true;      // XXX
 bool __tracing_dump_big_bufs;
 bool __tracing_initialized;
 bool __trace_printk_initialized;
-int __tracing_printk_lvl = 100;
+int __tracing_printk_lvl = 100; // XXX
 
 const char *get_signal_name(int signum)
 {
