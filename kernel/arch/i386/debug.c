@@ -16,7 +16,7 @@
 #include <elf.h>
 #include <multiboot.h>
 
-static size_t
+size_t
 stackwalk32(void **frames,
             size_t count,
             void *ebp,
