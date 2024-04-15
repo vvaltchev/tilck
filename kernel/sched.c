@@ -751,7 +751,8 @@ void do_schedule(void)
 
    /* Handle special corner cases */
    if (sched_should_return_immediately(curr, curr_state)) {
-      trace_printk(1, "sched -> return immediately");
+      trace_printk(1, "sched -> return immediately (with switch)");
+      switch_to_task(curr);
       return;
    }
 
@@ -798,7 +799,8 @@ void do_schedule(void)
    }
 
    ASSERT(curr_state != TASK_STATE_ZOMBIE);
-   trace_printk(1, "sched -> return");
+   trace_printk(1, "sched -> return (with switch)");
+   switch_to_task(selected);
 }
 
 struct task *get_task(int tid)
