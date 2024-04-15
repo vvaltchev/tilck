@@ -162,6 +162,14 @@ def process_line(line: str):
          handle_tilck_shell_str()
          return
 
+
+   ##### XXX
+
+   if not stripped:
+      return
+
+   #### XXX
+
    if not g_dumping_gcda_files:
 
       append_to_output(stripped + "\n")
