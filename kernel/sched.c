@@ -11,6 +11,7 @@
 #include <tilck/kernel/worker_thread.h>
 #include <tilck/kernel/timer.h>
 #include <tilck/kernel/errno.h>
+#include <tilck/mods/tracing.h>
 
 /* Shared global variables */
 struct task *__current;
@@ -729,9 +730,13 @@ void do_schedule(void)
    /* Essential: clear the `__need_resched` flag */
    sched_clear_need_resched();
 
+   trace_printk(1, "do_schedule");
+
    /* Handle special corner cases */
-   if (sched_should_return_immediately(curr, curr_state))
+   if (sched_should_return_immediately(curr, curr_state)) {
+      trace_printk(1, "sched -> return immediately");
       return;
+   }
 
    /* Check for worker threads ready to run */
    selected = wth_get_runnable_thread();
@@ -747,6 +752,7 @@ void do_schedule(void)
 
    // XXX
    debug_sched_next_task = selected;
+   trace_printk(1, "sched -> selected: %d", selected->tid);
 
    if (selected != curr) {
 
@@ -775,6 +781,7 @@ void do_schedule(void)
    }
 
    ASSERT(curr_state != TASK_STATE_ZOMBIE);
+   trace_printk(1, "sched -> return");
 }
 
 struct task *get_task(int tid)
