@@ -133,6 +133,14 @@ def process_line(line: str):
    #    set_once_fail_reason(Fail.panic)
    #    g_process.send_signal(signal.SIGINT)
 
+
+   ##### XXX
+
+   if not stripped:
+      return
+
+   #### XXX
+
    if not g_dumping_gcda_files:
 
       append_to_output(stripped + "\n")
