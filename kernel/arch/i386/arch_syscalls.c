@@ -604,6 +604,7 @@ void handle_syscall(regs_t *r)
 
    save_current_task_state(r, false);
    set_current_task_in_kernel();
+   enable_interrupts_forced(); // XXX
 
    if (LIKELY(sn < ARRAY_SIZE(syscalls))) {
 
@@ -617,6 +618,7 @@ void handle_syscall(regs_t *r)
       unknown_syscall_int(r, sn);
    }
 
+   disable_interrupts_forced(); // XXX
    set_current_task_in_user_mode();
 }
 

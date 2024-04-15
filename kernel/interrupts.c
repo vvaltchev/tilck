@@ -247,11 +247,11 @@ void syscall_entry(regs_t *r)
 
    push_nested_interrupt(0x80);
    disable_preemption();
-   enable_interrupts_forced();
+   //enable_interrupts_forced();
    {
       handle_syscall(r);
    }
-   disable_interrupts_forced();
+   //disable_interrupts_forced();
    enable_preemption_nosched();
    pop_nested_interrupt();
 
