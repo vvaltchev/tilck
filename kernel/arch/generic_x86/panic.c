@@ -212,6 +212,10 @@ NORETURN void panic(const char *fmt, ...)
       init_console();
    }
 
+   printk("\n********************** TRACE EVENTS **********************\n");
+
+   dp_panic_dump_all_trace_events();
+
    /* Hopefully, we can show something on the screen */
    printk("\n********************** KERNEL PANIC **********************\n");
 
@@ -318,8 +322,6 @@ NORETURN void panic(const char *fmt, ...)
          curr->pi->pdir
       );
    }
-
-   dp_panic_dump_all_trace_events();
 
    if (kopt_panic_mmap)
       dump_memory_map();
