@@ -110,6 +110,10 @@ int do_fork(bool vfork)
 
    child->state_regs--; // make room for a regs_t struct in child's stack
    *child->state_regs = *curr->state_regs; // copy parent's regs_t
+
+   /// XXX: debug
+   debug_validate_resume_ip_task(child);
+
    set_return_register(child->state_regs, 0);
 
    // Make the parent to get child's pid as return value.
