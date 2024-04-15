@@ -223,5 +223,7 @@
       "mod_kb8042.h": "c",
       "process_mm.h": "c"
       "wth_int.h": "c"
+      "wth_int.h": "c",
+      "debug_utils_x86.h": "c"
    },
 }

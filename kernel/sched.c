@@ -735,6 +735,61 @@ struct task *debug_sched_next_task;
 struct task *debug_switch_task_last_task;
 ATOMIC(u32) debug_switch_task_counter;
 
+
+#ifndef UNIT_TEST_ENVIRONMENT
+
+size_t
+stackwalk32(void **frames,
+            size_t count,
+            void *ebp,
+            pdir_t *pdir);
+
+#include <tilck/kernel/elf_utils.h> // for find_sym_at_addr
+
+static void debug_trace_stacktrace(void)
+{
+   void *frames[32] = {0};
+   size_t c = stackwalk32(frames, ARRAY_SIZE(frames), NULL, NULL);
+
+   trace_printk(1, "Stacktrace (%zu frames):\n", c);
+
+   for (size_t i = 0; i < c; i++) {
+
+      long off = 0;
+      u32 sym_size;
+      ulong va = (ulong)frames[i];
+      const char *sym_name;
+
+      sym_name = find_sym_at_addr_safe(va, &off, &sym_size);
+
+      if (sym_name && off == 0) {
+
+         /*
+          * Since we're resolving return addresses, not addresses, we have to
+          * keep in mind that offset == 0 means that the next instruction after
+          * a call was the beginning of a new function. This happens when a
+          * function calls a NORETURN function like panic(). In this case, in
+          * order to correctly resolve the caller's function name, we need to
+          * decrease the vaddr when searching for the symbol name.
+          */
+
+         sym_name = find_sym_at_addr(va - 1, &off, &sym_size);
+
+         /*
+          * Now we have to increase the offset value because in the backtrace
+          * the original vaddr will be shown. [We passed "va-1" instead of "va"
+          * because we wanted the previous function, now we have to adjust the
+          * offset.]
+          */
+
+         off++;
+      }
+
+      trace_printk(1, "[%p] %s + %ld\n", TO_PTR(va), sym_name ? sym_name : "???", off);
+   }
+}
+#endif
+
 void do_schedule(void)
 {
    enum task_state curr_state = get_curr_task_state();
@@ -748,6 +803,10 @@ void do_schedule(void)
    sched_clear_need_resched();
 
    trace_printk(1, "do_schedule");
+
+#ifndef UNIT_TEST_ENVIRONMENT
+   debug_trace_stacktrace();
+#endif
 
    /* Handle special corner cases */
    if (sched_should_return_immediately(curr, curr_state)) {
