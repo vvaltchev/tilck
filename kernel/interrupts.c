@@ -223,10 +223,10 @@ void irq_entry(regs_t *r)
    trace_printk(1, "IRQ exit %d", regs_intnum(r)- 32);
 
    /* Run the scheduler if necessary (it will enable interrupts) */
-   if (need_reschedule()) {
-      trace_printk(1, "IRQ resched");
-      irq_resched(r);
-   }
+   // if (need_reschedule()) {
+   //    trace_printk(1, "IRQ resched");
+   //    irq_resched(r);
+   // }
 
    /*
     * In case do_schedule() returned or there was no need for resched, just

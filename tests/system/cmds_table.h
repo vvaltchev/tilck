@@ -81,9 +81,9 @@ CMD_ENTRY(sigmask,      TT_SHORT,  true)
 CMD_ENTRY(sig1,         TT_SHORT,  true)
 CMD_ENTRY(sig2,         TT_SHORT,  true)
 
-CMD_ENTRY(sig3,         TT_SHORT,  false) // XXX: hack
+CMD_ENTRY(sig3,         TT_SHORT,  false) // XXX: hack because we disabled preemption
+CMD_ENTRY(sig4,         TT_SHORT,  false) // XXX: hack because we disabled preemption
 
-CMD_ENTRY(sig4,         TT_SHORT,  true)
 CMD_ENTRY(sig5,         TT_SHORT,  true)
 CMD_ENTRY(sig6,         TT_SHORT,  true)
 CMD_ENTRY(sig7,         TT_SHORT,  true)
