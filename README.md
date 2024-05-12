@@ -410,6 +410,8 @@ For the *full list* of questions on Tilck, check the [Q & A page] in the [Discus
 
 - [Why Tilck does not have the feature/abstraction XYZ like other kernels do?](https://github.com/vvaltchev/tilck/discussions/83)
 
+- [Can Tilck be used to build other projects on the top of it?](https://github.com/vvaltchev/tilck/discussions/185)
+
 - [Why Tilck runs only on x86 (ia-32)?](https://github.com/vvaltchev/tilck/discussions/84)
 
 - [Why having support for FAT32?](https://github.com/vvaltchev/tilck/discussions/85)
