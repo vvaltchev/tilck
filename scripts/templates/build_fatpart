@@ -77,8 +77,29 @@ function format_fatpart {
 }
 
 function create_sysroot_skeleton {
+
+   # Remove the sysroot directory created by the previous build
    rm -rf $bdir/sysroot
+
+   # Check if the sysroot directory contains any paths with whitespaces,
+   # because we don't support that and it's better to fail with a graceful
+   # error, in case someone places such a file/directory there.
+   if [ -n "$(find $maindir/sysroot -name "* *")" ]; then
+      echo "-----------------------------------------------------------------"
+      echo "ERROR: $maindir/sysroot contains paths with whitespaces "
+      echo "ERROR: and that is not supported. Here's the list of such paths:"
+      echo
+      find $maindir/sysroot -name "* *"
+      echo "-----------------------------------------------------------------"
+      exit 1
+   fi
+
+   # Copy our skeleton sysroot/ directory to the configured build directory
+   # so that in the next steps we can fill it with build-generated artifacts
+   # like binaries and libraries.
    cp -r $maindir/sysroot $bdir/
+
+   # Enter in the temporary sysroot directory for this build
    cd $bdir/sysroot
 
    # Remove the README file that is not supposed to be in the actual sysroot
