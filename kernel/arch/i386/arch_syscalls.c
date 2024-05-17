@@ -536,6 +536,12 @@ int get_syscall_num(void *func)
    return -1;
 }
 
+static NO_INLINE void
+do_syscall_int(syscall_type fptr, regs_t *r)
+{
+   r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+}
+
 static void do_special_syscall(regs_t *r)
 {
    struct task *curr = get_curr_task();
@@ -555,7 +561,7 @@ static void do_special_syscall(regs_t *r)
    if (traceable)
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-   r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   do_syscall_int(fptr, r);
 
    if (traceable)
       trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
@@ -577,7 +583,7 @@ static void do_syscall(regs_t *r)
    enable_preemption();
    {
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-      r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+      do_syscall_int(fptr, r);
       trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
