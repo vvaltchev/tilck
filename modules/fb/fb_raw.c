@@ -127,23 +127,23 @@ void fb_set_font(void *font)
       u32 width;            /* width in pixels */
    } *h2 = font;
 
-   if (read_unaligned_field(h2, magic) == PSF2_FONT_MAGIC) {
+   if (READ_FIELD(h2, magic) == PSF2_FONT_MAGIC) {
 
-      font_w = read_unaligned_field(h2, width);
-      font_h = read_unaligned_field(h2, height);
-      font_width_bytes = read_unaligned_field(h2, bytes_per_glyph) / font_h;
-      font_glyph_data = (u8 *)h2 + read_unaligned_field(h2, header_size);
-      font_bytes_per_glyph = read_unaligned_field(h2, bytes_per_glyph);
+      font_w = READ_FIELD(h2, width);
+      font_h = READ_FIELD(h2, height);
+      font_width_bytes = READ_FIELD(h2, bytes_per_glyph) / font_h;
+      font_glyph_data = (u8 *)h2 + READ_FIELD(h2, header_size);
+      font_bytes_per_glyph = READ_FIELD(h2, bytes_per_glyph);
 
    } else {
 
-      VERIFY(read_unaligned_field(h1, magic) == PSF1_FONT_MAGIC);
+      VERIFY(READ_FIELD(h1, magic) == PSF1_FONT_MAGIC);
 
       font_w = 8;
-      font_h = read_unaligned_field(h1, bytes_per_glyph);
+      font_h = READ_FIELD(h1, bytes_per_glyph);
       font_width_bytes = 1;
       font_glyph_data = (u8 *)h1 + sizeof(*h1);
-      font_bytes_per_glyph = read_unaligned_field(h1, bytes_per_glyph);
+      font_bytes_per_glyph = READ_FIELD(h1, bytes_per_glyph);
    }
 }
 
