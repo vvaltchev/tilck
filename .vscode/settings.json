@@ -220,6 +220,7 @@
       "mod_console.h": "c",
       "compare": "c",
       "cmdline_opts.h": "c",
-      "mod_kb8042.h": "c"
+      "mod_kb8042.h": "c",
+      "process_mm.h": "c"
    },
 }

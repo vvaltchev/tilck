@@ -5,6 +5,7 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/utils.h>
+#include <tilck/common/unaligned.h>
 
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/process.h>

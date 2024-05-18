@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/string_util.h>
+#include <tilck/common/unaligned.h>
 
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>

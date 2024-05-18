@@ -5,6 +5,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/unaligned.h>
 
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
