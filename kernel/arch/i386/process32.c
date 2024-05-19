@@ -812,6 +812,8 @@ debug_validate_resume_ip(void *kernel_stack,
 NORETURN void
 switch_to_task(struct task *ti)
 {
+   disable_interrupts_forced(); /// XXX: hack!
+
    /* Save the value of ti->state_regs as it will be reset below */
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
