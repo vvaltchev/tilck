@@ -555,19 +555,19 @@ static void do_special_syscall(regs_t *r)
    if (signals)
       process_signals(curr, sig_pre_syscall, r);
 
-   if (preemptable)
-      enable_preemption();
-
    if (traceable)
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-   do_syscall_int(fptr, r);
+   if (preemptable)
+      enable_preemption();
 
-   if (traceable)
-      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   do_syscall_int(fptr, r);
 
    if (preemptable)
       disable_preemption();
+
+   if (traceable)
+      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
    if (signals)
       process_signals(curr, sig_in_syscall, r);
@@ -580,13 +580,13 @@ static void do_syscall(regs_t *r)
    const syscall_type fptr = syscalls[sn].fptr;
 
    process_signals(curr, sig_pre_syscall, r);
+   trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    enable_preemption();
    {
-      trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
       do_syscall_int(fptr, r);
-      trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();
+   trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    process_signals(curr, sig_in_syscall, r);
 }
 
