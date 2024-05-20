@@ -589,8 +589,6 @@ dp_panic_dump_all_trace_events(void)
    while (read_trace_event_noblock(&e)) {
       dp_dump_tracing_event(&e, NULL);
    }
-
-   dp_write_raw("\r\n");
 }
 
 static int
