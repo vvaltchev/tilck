@@ -225,7 +225,7 @@ dp_dump_syscall_event(struct trace_event *event,
       dp_dump_ret_val(si, e->retval);
    }
 
-   dp_write_raw("\r\n");
+   dp_write_raw("\n");
 }
 
 void
