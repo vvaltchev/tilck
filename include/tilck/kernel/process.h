@@ -117,7 +117,7 @@ task_is_parent(struct task *parent, struct task *child)
    return child->pi->parent_pid == parent->pi->pid;
 }
 
-int do_fork(bool vfork);
+int do_fork(regs_t *user_regs, bool vfork);
 void unblock_parent_of_vforked_child(struct process *pi);
 void vforked_child_transfer_dispose_mi(struct process *pi);
 

@@ -27,6 +27,7 @@ typedef long (*syscall_type)();
 #define SYSFL_NO_TRACE                      0b00000001
 #define SYSFL_NO_SIG                        0b00000010
 #define SYSFL_NO_PREEMPT                    0b00000100
+#define SYSFL_RAW_REGS                      0b00001000
 
 struct syscall {
 
@@ -69,7 +70,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
 {
    [0] = DECL_SYS(sys_restart_syscall, 0),
    [1] = DECL_SYS(sys_exit, 0),
-   [2] = DECL_SYS(sys_fork, 0),
+   [2] = DECL_SYS(sys_fork, SYSFL_RAW_REGS),
    [3] = DECL_SYS(sys_read, 0),
    [4] = DECL_SYS(sys_write, 0),
    [5] = DECL_SYS(sys_open, 0),
@@ -260,7 +261,7 @@ static struct syscall syscalls[MAX_SYSCALLS] =
    [187] = DECL_SYS(sys_sendfile, 0),
    [188] = DECL_UNKNOWN_SYSCALL,
    [189] = DECL_UNKNOWN_SYSCALL,
-   [190] = DECL_SYS(sys_vfork, 0),
+   [190] = DECL_SYS(sys_vfork, SYSFL_RAW_REGS),
    [191] = DECL_SYS(sys_getrlimit, 0),
    [192] = DECL_SYS(sys_mmap_pgoff, 0),
    [193] = DECL_SYS(sys_ia32_truncate64, 0),
@@ -537,9 +538,12 @@ int get_syscall_num(void *func)
 }
 
 static NO_INLINE void
-do_syscall_int(syscall_type fptr, regs_t *r)
+do_syscall_int(syscall_type fptr, regs_t *r, bool raw_regs)
 {
-   r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   if (!raw_regs)
+      r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   else
+      r->eax = (u32) fptr(r, r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 }
 
 static void do_special_syscall(regs_t *r)
@@ -551,6 +555,7 @@ static void do_special_syscall(regs_t *r)
    const bool signals = ~fl & SYSFL_NO_SIG;
    const bool preemptable = ~fl & SYSFL_NO_PREEMPT;
    const bool traceable = ~fl & SYSFL_NO_TRACE;
+   const bool raw_regs = fl & SYSFL_RAW_REGS;
 
    if (signals)
       process_signals(curr, sig_pre_syscall, r);
@@ -561,7 +566,7 @@ static void do_special_syscall(regs_t *r)
    if (traceable)
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
 
-   do_syscall_int(fptr, r);
+   do_syscall_int(fptr, r, raw_regs);
 
    if (traceable)
       trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
@@ -583,7 +588,7 @@ static void do_syscall(regs_t *r)
    enable_preemption();
    {
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-      do_syscall_int(fptr, r);
+      do_syscall_int(fptr, r, false);
       trace_sys_exit(sn,r->eax,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
    }
    disable_preemption();

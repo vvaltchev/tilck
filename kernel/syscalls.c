@@ -220,14 +220,14 @@ int sys_getrusage(int who, struct k_rusage *user_buf)
    return 0;
 }
 
-int sys_fork(void)
+int sys_fork(void *u_regs)
 {
-   return do_fork(false);
+   return do_fork(u_regs, false);
 }
 
-int sys_vfork(void)
+int sys_vfork(void *u_regs)
 {
-   return do_fork(true);
+   return do_fork(u_regs, true);
 }
 
 static int
