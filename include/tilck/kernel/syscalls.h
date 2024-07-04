@@ -35,7 +35,7 @@
 CREATE_STUB_SYSCALL_IMPL(sys_restart_syscall);
 
 int sys_exit(int code);
-int sys_fork(void);
+int sys_fork(void *u_regs);
 int sys_read(int fd, void *buf, size_t count);
 int sys_write(int fd, const void *buf, size_t count);
 int sys_open(const char *u_path, int flags, mode_t mode);
@@ -293,7 +293,7 @@ CREATE_STUB_SYSCALL_IMPL(sys_capset)
 CREATE_STUB_SYSCALL_IMPL(sys_sigaltstack)
 CREATE_STUB_SYSCALL_IMPL(sys_sendfile)
 
-int sys_vfork(void);
+int sys_vfork(void *u_regs);
 
 CREATE_STUB_SYSCALL_IMPL(sys_getrlimit)
 
