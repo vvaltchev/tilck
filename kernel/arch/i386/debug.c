@@ -11,6 +11,7 @@
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/arch/generic_x86/debug_utils_x86.h>
+#include <tilck/common/unaligned.h>
 
 #include <elf.h>
 #include <multiboot.h>
@@ -41,8 +42,8 @@ stackwalk32(void **frames,
 
       if (curr_pdir) {
 
-         retAddr = *((void **)ebp + 1);
-         ebp = *((void **)ebp);
+         retAddr = READ_PTR((void **)ebp + 1);
+         ebp = READ_PTR((void **)ebp);
 
       } else {
 
