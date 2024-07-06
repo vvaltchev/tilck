@@ -22,7 +22,6 @@ stackwalk32(void **frames,
             void *ebp,
             pdir_t *pdir)
 {
-   bool curr_pdir = false;
    void *retAddr;
    size_t i;
 
@@ -32,7 +31,6 @@ stackwalk32(void **frames,
 
    if (!pdir) {
       pdir = get_curr_pdir();
-      curr_pdir = true;
    }
 
    for (i = 0; i < count; i++) {
@@ -40,18 +38,14 @@ stackwalk32(void **frames,
       if ((ulong)ebp < BASE_VA)
          break;
 
-      if (curr_pdir) {
+      if (virtual_read(pdir, (void **)ebp + 1, &retAddr, 4) < 0) {
+         printk("debug: failed to read ret addr at ebp+1: %p\n", (void **)ebp+1);
+         break;
+      }
 
-         retAddr = READ_PTR((void **)ebp + 1);
-         ebp = READ_PTR((void **)ebp);
-
-      } else {
-
-         if (virtual_read(pdir, (void **)ebp + 1, &retAddr, 4) < 0)
-            break;
-
-         if (virtual_read(pdir, (void **)ebp, &ebp, 4) < 0)
-            break;
+      if (virtual_read(pdir, (void **)ebp, &ebp, 4) < 0) {
+         printk("debug: failed to read ebp at ebp: %p\n", (void **)ebp);
+         break;
       }
 
       if (!ebp || !retAddr)
