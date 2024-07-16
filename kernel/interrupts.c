@@ -188,6 +188,9 @@ static void irq_resched(regs_t *r)
 
       /* Call do_schedule() with preemption disabled, as mandatory */
       do_schedule();
+
+      /* Disable the interrupts, if do_schedule() just returned */
+      disable_interrupts_forced();
    }
 }
 
