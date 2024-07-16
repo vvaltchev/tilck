@@ -58,7 +58,10 @@ term_execute_or_enqueue_action_template(term *t,
 {
    bool was_empty;
 
+   disable_preemption();
    if (UNLIKELY(!safe_ringbuf_write_elem(&rb_data->rb, a, &was_empty))) {
+
+      enable_preemption_nosched();
 
       term_handle_full_ringbuf(t,
                                rb_data,
@@ -67,6 +70,9 @@ term_execute_or_enqueue_action_template(term *t,
                                exec);
 
       /* NOTE: do not return */
+   } else {
+
+      enable_preemption_nosched();
    }
 
    if (!was_empty) {
