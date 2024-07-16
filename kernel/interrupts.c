@@ -271,7 +271,9 @@ void fault_entry(regs_t *r)
     * still disabled.
     */
    pop_nested_interrupt();
-   process_signals(get_curr_task(), sig_in_fault, r);
+
+   if (!get_curr_task()->running_in_kernel)
+      process_signals(get_curr_task(), sig_in_fault, r);
 
    enable_preemption();
    disable_interrupts_forced();
