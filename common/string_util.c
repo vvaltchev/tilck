@@ -217,7 +217,7 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-#if defined(__aarch64__) && defined(KERNEL_TEST)
+#if (defined(__aarch64__) && defined(KERNEL_TEST)) || defined(__riscv)
 
 void *memset16(u16 *s, u16 val, size_t n)
 {
@@ -243,6 +243,114 @@ void *memcpy16(void *dest, const void *src, size_t n)
 void *memcpy32(void *dest, const void *src, size_t n)
 {
    return memcpy(dest, src, n * 4);
+}
+
+
+size_t strlen(const char *s)
+{
+   const char *sc;
+
+   for (sc = s; *sc != '\0'; ++sc)
+      /* nothing */;
+   return sc - s;
+}
+
+/* dest and src can overloap only partially */
+void *memcpy(void *dest, const void *src, size_t count)
+{
+   char *tmp = (char *)dest;
+   const char *s = (char *)src;
+
+   while (count--)
+      *tmp++ = *s++;
+   return dest;
+}
+
+/* dest and src might overlap anyhow */
+void *memmove(void *dest, const void *src, size_t count)
+{
+   char *tmp;
+   const char *s;
+
+   if (dest <= src) {
+      tmp = (char *)dest;
+      s = (const char *)src;
+      while (count--)
+         *tmp++ = *s++;
+   } else {
+      tmp = (char *)dest;
+      tmp += count;
+      s = (const char *)src;
+      s += count;
+      while (count--)
+         *--tmp = *--s;
+   }
+   return dest;
+
+}
+
+/*
+ * Set 'n' bytes pointed by 's' to 'c'.
+ */
+void *memset(void *s, int c, size_t count)
+{
+   char *xs = (char *)s;
+
+   while (count--)
+      *xs++ = c;
+   return s;
+}
+
+void bzero(void *s, size_t n)
+{
+   memset(s, 0, n);
+}
+
+size_t strnlen(const char *str, size_t count)
+{
+   unsigned long ret = 0;
+
+   while (*str != '\0' && ret < count) {
+      ret++;
+      str++;
+   }
+
+   return ret;
+}
+
+void *memchr(const void *s, int c, size_t count)
+{
+   const unsigned char *temp = (const unsigned char *)s;
+
+   while (count > 0) {
+      if ((unsigned char)c == *temp++) {
+         return (void *)(temp - 1);
+      }
+      count--;
+   }
+
+   return NULL;
+}
+
+char *strrchr(const char *s, int c)
+{
+   const char *last = s + strlen(s);
+
+   while (last > s && *last != (char)c)
+      last--;
+
+   if (*last != (char)c)
+      return NULL;
+   else
+      return (char *)last;
+}
+
+char *strchr(const char *s, int c)
+{
+   for (; *s != (char)c; ++s)
+      if (*s == '\0')
+         return NULL;
+   return (char *)s;
 }
 
 #endif

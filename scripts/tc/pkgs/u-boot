@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+U_BOOT_VER="2024.04"
+
+function internal_build_u_boot {
+
+   echo "Building u-boot... "
+   reset_cc_vars
+
+   cp $MAIN_DIR/other/bsp/$ARCH/u-boot.config .config
+
+   do_common_cross_compiler_setup
+   set_cc_vars_to_tc
+   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+
+   set +e
+   run_command2 "make V=1 -j$BUILD_PAR" build.log
+   dump_cross_compiler_env "build.log"
+
+   if ! [ -f $TC/$ARCH/u-boot/u-boot ]; then
+      echo "ERROR: build failed !!!" >> build.log
+      exit 1
+   fi
+   set -e
+   export CROSS_COMPILE=""
+   export CC_POST_FLAGS=""
+
+   u_boot_fix_config_file
+
+   # Save a copy of the last built .config file
+   cp .config .last_build_config
+}
+
+#
+# HACK: patch the include/configs/qemu-riscv.h to let u-boot to load
+# the boot.scr to an address in the 128M range. With he original address to
+# start the qemu with 128 MB memory will be failed.
+#
+function u_boot_patch {
+
+   old="scriptaddr=0x8c100000"
+   new="scriptaddr=0x80200000"
+
+   file="include/configs/qemu-riscv.h"
+   if ! [ -f $file ]; then
+      echo "ERROR: file $file not found!"
+      exit 1
+   fi
+   run_command "sed -i 's/${old}/${new}/' $file"
+}
+
+all_funcs_list+=(build_u_boot)
+function build_u_boot {
+
+   pushd $ARCH
+
+   if [ -d u-boot ]; then
+      s1=`sha1sum ./u-boot/.config | cut -d " " -f 1`
+      s2=`sha1sum ./u-boot/.last_build_config | cut -d " " -f 1`
+
+      if [ "$s1" != "$s2" ]; then
+
+         echo "U-boot: .config != .last_build_config"
+         echo -n "Do you want to rebuild with the new config? [Y/n]: "
+         read answer
+
+         if [[ "$answer" == "" || "$answer" == "y" ]]; then
+
+            echo -n "Do you want an incremental build? [Y/n]: "
+            read answer
+            if [[ "$answer" == "" || "$answer" == "y" ]]; then
+               pushd u-boot
+               internal_build_u_boot
+               popd
+            else
+               rm -rf u-boot
+            fi
+         fi
+      fi
+   fi
+
+   if ! [ -d u-boot ]; then
+
+      show_work_on_component_msg "U-BOOT"
+
+      local ver="$U_BOOT_VER"
+      local tarname=u-boot-$ver.tar.bz2
+
+      download_file_in_cache "https://ftp.denx.de/pub/u-boot" "$tarname"
+      extract_cachefile_tar_bz $tarname u-boot-$ver u-boot
+
+      pushd u-boot
+      u_boot_patch
+      internal_build_u_boot
+      popd
+
+   elif [ "$REBUILD" == "1" ]; then
+
+      pushd u-boot
+      internal_build_u_boot
+      popd
+
+   else
+      show_skip_component_msg "U-BOOT"
+   fi
+
+   popd
+}
+
+function build_u_boot_installed_status {
+   if [ -d $TC/$ARCH/u-boot ]; then
+      if [ -f $TC/$ARCH/u-boot/u-boot.bin ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}
+
+function u_boot_fix_config_file {
+
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   LC_ALL=C sort -sr .config > .config_sorted
+   mv .config_sorted .config
+}
+
+all_funcs_list+=(config_u_boot)
+function config_u_boot {
+
+   pushd $ARCH
+
+   if ! [ -d u-boot ]; then
+      echo "ERROR: u-boot not found in toolchain"
+      exit 1
+   fi
+
+   pushd u-boot
+
+   make menuconfig
+
+   echo -n "Do you want to update u-boot.config with the new config? [Y/n]: "
+   read answer
+
+   busybox_fix_config_file
+
+   if [[ "$answer" == "" || "$answer" == "y" ]]; then
+      cp .config $MAIN_DIR/other/bsp/$ARCH/u-boot.config
+      echo "Source file $MAIN_DIR/other/bsp/$ARCH/u-boot.config UPDATED"
+   fi
+
+   popd
+   popd
+
+   build_u_boot
+}

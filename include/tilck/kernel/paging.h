@@ -6,7 +6,7 @@
 #include <tilck/common/page_size.h>
 #include <tilck/kernel/hal_types.h>
 
-#ifdef __i386__
+#if defined(__i386__) || defined(__riscv)
    #define PAGE_DIR_SIZE (PAGE_SIZE)
 #endif
 
@@ -32,9 +32,18 @@
  * These MACROs convert addresses to/from the linear mapping at BASE_VA to the
  * physical address space.
  */
-#define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
-#define LIN_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
+#if defined(__i386__) || defined(__x86_64__)
 
+   #define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
+   #define LIN_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
+
+#elif defined(__riscv)
+
+   extern ulong linear_va_pa_offset;
+   #define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + linear_va_pa_offset))
+   #define LIN_VA_TO_PA(va) ((ulong)(va) - linear_va_pa_offset)
+
+#endif
 /*
  * These MACROs convert addresses to/from the kernel base virtual mapping to
  * the physical address space. When KRN32_LIN_VADDR is enabled, KERNEL_BASE_VA
@@ -45,8 +54,18 @@
  * KRN32_LIN_VADDR were always disabled. Indeed, its value is ignored in the 64
  * bit case.
  */
-#define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
-#define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
+#if defined(__i386__) || defined(__x86_64__)
+
+   #define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + KERNEL_BASE_VA))
+   #define KERNEL_VA_TO_PA(va) ((ulong)(va) - KERNEL_BASE_VA)
+
+#elif defined(__riscv)
+
+   extern ulong kernel_va_pa_offset;
+   #define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + kernel_va_pa_offset))
+   #define KERNEL_VA_TO_PA(va) ((ulong)(va) - kernel_va_pa_offset)
+
+#endif
 
 extern char page_size_buf[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 extern char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);

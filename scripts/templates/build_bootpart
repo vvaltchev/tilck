@@ -39,3 +39,26 @@ fi
 if [ -n "@KERNEL_BOOTPART_PATH@" ]; then
    $mcopy -i $dest @KERNEL_FILE@ ::/@KERNEL_BOOTPART_PATH@
 fi
+
+if [ -n "@IMAGE_FIT@" ]; then
+
+   force_fat32=""
+   spc="@FATPART_CLUSTER_SIZE@"
+
+   if [[ "$spc" == "1" ]]; then
+      force_fat32="-F"
+   fi
+
+   $mformat -i $dest -d 1 $force_fat32 -c $spc -T @INITRD_SZ_SEC@ ::
+   $mlabel -i $dest ::TILCK
+   $mcopy -i @CMAKE_BINARY_DIR@/fatpart @IMAGE_FIT@ ::/
+
+fi
+
+if [ -n "@BOOT_SCR@" ]; then
+   $mcopy -i $dest @BOOT_SCR@ ::/
+fi
+
+if [ -n "@BOOT_ENVTXT@" ]; then
+   $mcopy -i $dest @BOOT_ENVTXT@ ::/
+fi

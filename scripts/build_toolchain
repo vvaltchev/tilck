@@ -27,6 +27,11 @@ elif [[ "$ARCH" == "x86_64" ]]; then
    DEFAULT_GCC_TC_VERSION="8.4.0"
    ARCH_GCC_TC="x86_64"
 
+elif [[ "$ARCH" == "riscv64" ]]; then
+
+   DEFAULT_GCC_TC_VERSION="12.3.0"
+   ARCH_GCC_TC="riscv64"
+
 else
    echo "Architecture '$ARCH' not supported."
    exit 1
@@ -158,6 +163,16 @@ elif [[ "$ARCH" == "x86_64" ]]; then
    ARCH_GCC_TC="x86_64"
    ARCH_GCC_FLAGS="-m64"
    ARCH_GCC_TC_CODENAME="x86-64-core-i7"
+
+elif [[ "$ARCH" == "riscv64" ]]; then
+
+   ARCH_SHORT="riscv64"
+   ARCH_FAMILY="riscv"
+   ARCH_ELF_NAME="elf64-littleriscv"
+   ARCH_LD_OUTPUT="elf64lriscv"
+   ARCH_GCC_TC="riscv64"
+   ARCH_GCC_FLAGS=""
+   ARCH_GCC_TC_CODENAME="riscv64-lp64d"
 
 else
    echo "Architecture '$ARCH' not supported."
@@ -632,6 +647,11 @@ function main {
       default_funcs+=(build_busybox)
    fi
 
+   if [[ "$ARCH" == "riscv64" ]]; then
+      default_funcs+=(build_u_boot)
+      default_funcs+=(build_libfdt)
+   fi
+
    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
       show_help
       exit 0
@@ -696,6 +716,7 @@ function main {
    mkdir -p $TC/noarch
    mkdir -p $TC/i386
    mkdir -p $TC/x86_64
+   mkdir -p $TC/riscv64
 
    if [[ "$HOST_ARCH" == "aarch64" ]]; then
       mkdir -p $TC/host_aarch64

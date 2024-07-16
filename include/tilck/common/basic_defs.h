@@ -84,6 +84,24 @@
    #define BITS64
    #define NBITS 64
 
+#elif defined(__riscv)
+
+#if __riscv_xlen == 32
+
+   STATIC_ASSERT(sizeof(void *) == 4);
+   STATIC_ASSERT(sizeof(long) == sizeof(void *));
+   #define BITS32
+   #define NBITS 32
+
+#else
+
+   STATIC_ASSERT(sizeof(void *) == 8);
+   STATIC_ASSERT(sizeof(long) == sizeof(void *));
+   #define BITS64
+   #define NBITS 64
+
+#endif
+
 #elif defined(__aarch64__) && \
       (defined(USERMODE_APP) || defined(UNIT_TEST_ENVIRONMENT))
 
@@ -131,6 +149,7 @@
 #define NODISCARD __attribute__((warn_unused_result))
 #define ASSUME_WITHOUT_CHECK(x) if (!(x)) __builtin_unreachable();
 #define ALIGNED_AT(x) __attribute__ ((aligned(x)))
+#define ALIGNAS(x) _Alignas(x)
 #define ATTR_PRINTF_LIKE(c) __attribute__ ((__format__ (__printf__, c, c+1)))
 #define ATTR_SECTION(s) __attribute__ ((section (s)))
 

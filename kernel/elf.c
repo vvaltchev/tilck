@@ -25,6 +25,12 @@
 #elif defined(__i386__)
    #define ELF_CURR_ARCH   EM_386
    #define ELF_CURR_CLASS  ELFCLASS32
+#elif defined(__riscv) && __riscv_xlen == 32
+   #define ELF_CURR_ARCH   EM_RISCV
+   #define ELF_CURR_CLASS  ELFCLASS32
+#elif defined(__riscv) && __riscv_xlen == 64
+   #define ELF_CURR_ARCH   EM_RISCV
+   #define ELF_CURR_CLASS  ELFCLASS64
 #elif defined(__aarch64__)
    #define ELF_CURR_ARCH   EM_AARCH64
    #define ELF_CURR_CLASS  ELFCLASS64

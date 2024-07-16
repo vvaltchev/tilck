@@ -19,7 +19,11 @@
 
 static int sysenter_fork(void)
 {
-   return sysenter_call0(2 /* fork */);
+#if defined(__i386__) || defined(__x86_64__)
+   return sysenter_call0(SYS_fork /* fork */);
+#elif defined(__riscv)
+   return fork();
+#endif
 }
 
 static int fork_test(int (*fork_func)(void))

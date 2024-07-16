@@ -1,0 +1,42 @@
+/dts-v1/;
+
+/ {
+	description = "U-boot FIT image for qemu-riscv64";
+	#address-cells = <2>;
+
+	images {
+		tilck {
+			description = "tilck";
+			data = /incbin/("@KERNEL_FILE@");
+			type = "kernel";
+			arch = "riscv";
+			os = "linux";
+			load = <0x0 @KERNEL_LOAD@>;
+			entry = <0x0 @KERNEL_ENTRY@>;
+			compression = "none";
+		};
+
+		ramdisk {
+			description = "buildroot initramfs";
+			data = /incbin/("@CMAKE_BINARY_DIR@/fatpart");
+			type = "ramdisk";
+			arch = "riscv";
+			os = "linux";
+			load = <0x0 @INITRD_LOAD@>;
+			compression = "none";
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+	};
+
+	configurations {
+		default = "config-1";
+
+		config-1 {
+			description = "qemu-riscv64";
+			kernel = "tilck";
+			ramdisk = "ramdisk";
+		};
+	};
+};

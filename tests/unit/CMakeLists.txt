@@ -77,7 +77,7 @@ if (${HOST_ARCH_FAMILY} STREQUAL "generic_x86")
       "*.c"
       "*.cpp"
       "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
-      "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
+      "${CMAKE_SOURCE_DIR}/common/arch/${HOST_ARCH_FAMILY}/*.c"
    )
 
 else()

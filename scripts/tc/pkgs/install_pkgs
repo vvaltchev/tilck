@@ -33,6 +33,10 @@ function install_debian_family {
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(libssl-dev)
+   pkg_list+=(device-tree-compiler)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
 
