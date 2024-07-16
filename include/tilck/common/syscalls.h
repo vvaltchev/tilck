@@ -77,6 +77,10 @@ enum tilck_cmd {
 
    /* Allow this just for the unit tests */
 
+#elif defined(__riscv)
+
+   /* TODO */
+
 #else
 
    #error Architecture not supported

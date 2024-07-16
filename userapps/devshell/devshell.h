@@ -4,7 +4,13 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+
+#if defined(__i386__) || defined(__x86_64__)
 #include <x86intrin.h>    /* for __rdtsc() */
+#elif defined(__riscv)
+   #include <tilck/common/arch/riscv/riscv_utils.h>
+   #undef RDTSC
+#endif
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/syscalls.h>
@@ -88,7 +94,11 @@ struct linux_dirent64 {
 static inline int
 getdents64(unsigned fd, struct linux_dirent64 *dirp, unsigned count)
 {
-   return sysenter_call3(220, fd, dirp, count);
+#ifdef __i386__
+   ASSERT(SYS_getdents64 == 220);
+#endif
+
+   return sysenter_call3(SYS_getdents64, fd, dirp, count);
 }
 
 static inline int tilck_get_num_gcov_files(void)

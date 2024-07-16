@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+LIBFDT_VER="1.7.0"
+
+function internal_build_libfdt {
+
+   echo "Building libfdt... "
+   reset_cc_vars
+
+   do_common_cross_compiler_setup
+   set_cc_vars_to_tc
+   export STATIC_BUILD=1
+   export EXTRA_CFLAGS="-fno-stack-protector"
+
+   set +e
+   run_command2 "make clean" build.log
+   run_command2 "make libfdt V=1 -j$BUILD_PAR" build.log
+   dump_cross_compiler_env "build.log"
+
+   if ! [ -f $TC/$ARCH/dtc/libfdt/libfdt.a ]; then
+      echo "ERROR: build failed !!!" >> build.log
+      exit 1
+   fi
+   set -e
+
+   export STATIC_BUILD=""
+   export EXTRA_CFLAGS=""
+}
+
+all_funcs_list+=(build_libfdt)
+function build_libfdt {
+
+   pushd $ARCH
+
+   if ! [ -d dtc ]; then
+
+      show_work_on_component_msg "libfdt"
+
+      local ver="$LIBFDT_VER"
+      local tarname=dtc-$ver.tar.gz
+      local url1="https://mirrors.edge.kernel.org/"
+      local url2="pub/software/utils/dtc/"
+
+      download_file_in_cache $url1$url2 "$tarname"
+      extract_cachefile_tar_gz $tarname dtc-$ver dtc
+
+      pushd dtc
+      internal_build_libfdt
+      popd
+
+   elif [ "$REBUILD" == "1" ]; then
+
+      pushd dtc
+      internal_build_libfdt
+      popd
+
+   else
+      show_skip_component_msg "libfdt"
+   fi
+
+   popd
+}
+
+function build_libfdt_installed_status {
+   if [ -d $TC/$ARCH/dtc ]; then
+      if [ -f $TC/$ARCH/dtc/libfdt/libfdt.a ]; then
+         echo "installed $ARCH"
+      else
+         echo "error"
+      fi
+   fi
+}

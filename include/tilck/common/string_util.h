@@ -82,7 +82,11 @@ EXTERN inline int isprint(int c) {
 
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 
-#elif defined(__aarch64__) && defined(KERNEL_TEST)
+#elif defined(__riscv)
+
+   #include <tilck/common/arch/riscv/asm_riscv_strings.h>
+
+#elif (defined(__aarch64__) && defined(KERNEL_TEST))
 
    /*
     * The Tilck kernel has no support for AARCH64 per se, but its noarch
