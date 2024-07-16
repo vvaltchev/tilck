@@ -19,7 +19,13 @@
 #include <sys/kd.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <x86intrin.h>    /* for __rdtsc() */
+
+#if defined(__i386__) || defined(__x86_64)
+   #include <x86intrin.h>    /* for __rdtsc() */
+#elif defined(__riscv)
+   #include <tilck/common/arch/riscv/riscv_utils.h>
+   #undef RDTSC
+#endif
 
 #ifdef USERMODE_APP
    /* The application is compiled with Tilck's build system */

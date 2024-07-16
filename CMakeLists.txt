@@ -236,11 +236,16 @@ endif()
 set(KERNEL_SYMBOLS ON CACHE BOOL
     "Keep symbol tables loaded in the kernel for backtraces and self tests")
 
-set(BOOTLOADER_LEGACY ON CACHE BOOL
-    "Build the legacy bootloader")
+if (${ARCH} STREQUAL "riscv64")
+   set(BOOTLOADER_U_BOOT ON CACHE BOOL
+       "Build the U-BOOT bootloader")
+else()
+   set(BOOTLOADER_LEGACY ON CACHE BOOL
+       "Build the legacy bootloader")
 
-set(BOOTLOADER_EFI ON CACHE BOOL
-    "Build the EFI bootloader")
+   set(BOOTLOADER_EFI ON CACHE BOOL
+       "Build the EFI bootloader")
+endif()
 
 set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
     "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
@@ -378,6 +383,17 @@ list(
    # No modules in this list, at the moment
 )
 
+if (${ARCH} STREQUAL "riscv64")
+
+   list(
+      APPEND disabled_modules_list
+
+      # The riscv compiler does not support the acpi module
+      acpi
+)
+
+endif()
+
 file(GLOB modules ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/modules/*")
 
 foreach(modpath ${modules})
@@ -472,6 +488,7 @@ list(
    KERNEL_SYMBOLS
    BOOTLOADER_LEGACY
    BOOTLOADER_EFI
+   BOOTLOADER_U_BOOT
    BOOT_INTERACTIVE
    KRN_NO_SYS_WARN
    KERNEL_64BIT_OFFT
@@ -537,7 +554,7 @@ if (${ARCH} STREQUAL "i386")
       set(KERNEL_VADDR       0xF7100000)  # LINEAR_MAPPING_END + KERNEL_PADDR
    endif()
 
-elseif(${ARCH} STREQUAL "x86_64")
+elseif (${ARCH} STREQUAL "x86_64")
 
    set(ARCH_SHORT       "x86_64")
    set(ARCH_FAMILY      "generic_x86")
@@ -554,6 +571,40 @@ elseif(${ARCH} STREQUAL "x86_64")
    set(LINEAR_MAPPING_MB                4096)  # Might be updated.
    set(KERNEL_BASE_VA     0xFFFFFFFF80000000)
    set(KERNEL_VADDR       0xFFFFFFFF80100000)  # -2 GB + 1 MB
+
+elseif (${ARCH} STREQUAL "riscv64")
+
+   set(ARCH_SHORT       "riscv64")
+   set(ARCH_FAMILY      "riscv")
+   set(ARCH_ELF_NAME    "elf64-littleriscv")
+   set(ARCH_LD_OUTPUT   "elf64lriscv")
+   set(ARCH_BFD         "riscv:rv64")
+   set(ARCH_GCC_TC      "riscv64")
+   set(ARCH_GCC_FLAGS   "-march=rv64imafdc -mabi=lp64d -mcmodel=medany")
+   set(ARCH_GCC_FLAGS   "${ARCH_GCC_FLAGS} -D__riscv64")
+   set(ARCH_BITS        64)
+
+   # Fundamental kernel MM constants
+   set(BASE_VA                     0x2000000000)  # +128 GB
+   set(KERNEL_PADDR                  0x80200000)  # Default
+
+   # Parameters required by boot script of u-boot
+   math(EXPR KERNEL_ENTRY "${KERNEL_PADDR} + 0x1000"
+         OUTPUT_FORMAT HEXADECIMAL)
+   math(EXPR KERNEL_LOAD "${KERNEL_PADDR} + 0x800000"
+         OUTPUT_FORMAT HEXADECIMAL)
+   math(EXPR INITRD_LOAD "${KERNEL_PADDR} + 0x1400000"
+         OUTPUT_FORMAT HEXADECIMAL)
+
+   if (KRN32_LIN_VADDR)
+      set(LINEAR_MAPPING_MB                 896)  # Cannot be > 896 MB
+      set(KERNEL_BASE_VA             ${BASE_VA})
+      set(KERNEL_VADDR             0x2000200000)  # BASE_VA + 2MB
+   else()
+      set(LINEAR_MAPPING_MB                 896)  # todo: Cannot be > 896 MB
+      set(KERNEL_BASE_VA     0xFFFFFFFF80000000)  # -2 GB
+      set(KERNEL_VADDR       0xFFFFFFFF80200000)  # -2 GB + 2MB
+   endif()
 
 else()
 
@@ -680,6 +731,15 @@ if (${BOOTLOADER_LEGACY} OR ${BOOTLOADER_EFI})
    set(KERNEL_BOOTPART_PATH    "tilck")
 endif()
 
+if (${BOOTLOADER_U_BOOT})
+   set(BOOTCMD_FILE        ${CMAKE_BINARY_DIR}/boot/u_boot/u-boot.cmd)
+   set(IMAGE_ITS_FILE      ${CMAKE_BINARY_DIR}/boot/u_boot/fit-image.its)
+   set(BOOT_ENVTXT         ${CMAKE_BINARY_DIR}/boot/u_boot/uEnv.txt)
+   set(BOOT_SCR            ${CMAKE_BINARY_DIR}/boot.scr)
+   set(IMAGE_FIT           ${CMAKE_BINARY_DIR}/image.fit)
+   set(U_BOOT_BIN          ${TCROOT}/${ARCH}/u-boot/u-boot.bin)
+endif()
+
 ################################################################################
 # Bootloaders, build-scripts and link-scripts config
 
@@ -718,6 +778,17 @@ unset(SEC_PER_CYL)
 set(QEMU_CHS_GEOM         "cyls=${CHS_CYLS},heads=${CHS_HPC},secs=${CHS_SPT}")
 set(QEMU_RAM_OPT          "")  # use qemu's default: 128 MB
 set(QEMU_COMMON_OPTS      "-rtc base=localtime")
+
+if (${ARCH} STREQUAL "i386")
+
+   set(QEMU_ARCH_OPTS      "-device ide-hd,drive=img1,${QEMU_CHS_GEOM$}")
+
+elseif (${ARCH} STREQUAL "riscv64")
+
+   set(QEMU_ARCH_OPTS      "-device virtio-blk-device,drive=img1 \
+-nographic -M virt -kernel ${U_BOOT_BIN}")
+
+endif()
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE UNAME_R)
 string(TOLOWER ${UNAME_R} UNAME_R)
@@ -836,6 +907,21 @@ if (BOOTLOADER_EFI)
    endif()
 endif()
 
+if (BOOTLOADER_U_BOOT)
+   list(
+      APPEND mbr_img_deps
+
+
+      ${BOOT_ENVTXT}
+      ${BOOTCMD_FILE}
+      ${IMAGE_ITS_FILE}
+      ${U_BOOT_BIN}
+      ${TCROOT}/${ARCH}/u-boot/tools/mkimage
+   )
+
+   set(MKIMAGE ${TCROOT}/${ARCH}/u-boot/tools/mkimage)
+endif()
+
 # [begin] Set some convenience variables
    set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
    set(PARTED parted ${IMG_FILE} -s -a minimal)
@@ -880,7 +966,7 @@ if (BOOTLOADER_LEGACY)
          "Creating a dual-bootable (legacy+efi) image file (MBR)"
       VERBATIM
    )
-else()
+elseif (BOOTLOADER_EFI)
    add_custom_command(
       OUTPUT
          ${IMG_FILE}
@@ -910,6 +996,41 @@ else()
          "Creating a EFI-only bootable image file (MBR)"
       VERBATIM
    )
+elseif (BOOTLOADER_U_BOOT)
+   add_custom_command(
+      OUTPUT
+         ${IMG_FILE}
+      COMMAND
+         ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
+      COMMAND
+         ${PARTED} mklabel msdos
+      COMMAND
+         ${PARTED} mkpart primary FAT16 ${BOOTPART_SEC}s ${BOOTPART_LAST_SEC}s
+      COMMAND
+         ${PARTED} mkpart primary FAT16 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
+      COMMAND
+         ${BUILD_FATPART}
+      COMMAND
+         ${FATHACK} --truncate fatpart
+      COMMAND
+         ${FATHACK} --align_first_data_sector fatpart
+      COMMAND
+         ${MKIMAGE} -f ${IMAGE_ITS_FILE} ${IMAGE_FIT}
+      COMMAND
+         ${MKIMAGE} -C none -T script -d ${BOOTCMD_FILE} ${BOOT_SCR}
+      COMMAND
+         ${BUILD_BOOTPART}
+      COMMAND
+         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+      COMMAND
+         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+      DEPENDS
+         ${mbr_img_deps}
+      COMMENT
+         "Creating a U-boot fit image"
+      VERBATIM
+   )
+   unset(MKIMAGE)
 endif()
 
 # [begin] Unset the convenience variables

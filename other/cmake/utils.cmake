@@ -115,6 +115,15 @@ macro(set_cross_compiler)
 
    else()
 
+      if (${ARCH} STREQUAL "riscv64")
+         set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+         set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
+         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
+      else()
+         # Assume that the system's compiler is already able to build for
+         # the given target architecture without additional flags.
+      endif()
+
       # DEFAULT CASE: use our pre-built toolchain
       set_cross_compiler_internal(${GCC_TOOLCHAIN} ${ARCH_GCC_TC})
 

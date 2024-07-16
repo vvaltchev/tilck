@@ -33,6 +33,34 @@
    #define ARCH_PROC_MEMBERS_SIZE     8
    #define ARCH_PROC_MEMBERS_ALIGN    8
 
+#elif defined(__riscv)
+
+   typedef union riscv_page page_t;
+   typedef struct riscv_page_table page_table_t;
+   typedef struct riscv_page_table pdir_t;
+   typedef struct riscv_regs regs_t;
+   typedef struct riscv_arch_task_members arch_task_members_t;
+   typedef struct riscv_arch_proc_members arch_proc_members_t;
+
+#if __riscv_xlen == 64
+
+   #define ARCH_TASK_MEMBERS_SIZE     16
+   #define ARCH_TASK_MEMBERS_ALIGN    8
+
+   #define ARCH_PROC_MEMBERS_SIZE    8//TODO
+   #define ARCH_PROC_MEMBERS_ALIGN    8//TODO
+
+#else
+
+   #define ARCH_TASK_MEMBERS_SIZE     0
+   #define ARCH_TASK_MEMBERS_ALIGN    0
+
+   #define ARCH_PROC_MEMBERS_SIZE    0
+   #define ARCH_PROC_MEMBERS_ALIGN    0
+
+#endif
+
+
 #elif defined(__aarch64__)
 
    typedef void *pdir_t;

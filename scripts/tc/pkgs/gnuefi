@@ -35,13 +35,18 @@ function gnuefi_patch {
    old="typedef wchar_t CHAR16"
    new="typedef unsigned short CHAR16"
 
-   for x in ia32 x86_64; do
+   # Fix definition confusion on riscv64
+   old1="typedef uint8_t                 BOOLEAN;"
+   new1="typedef char       CHAR8;"
+
+   for x in ia32 x86_64 riscv64; do
       file="inc/${x}/efibind.h"
       if ! [ -f $file ]; then
          echo "ERROR: file $file not found!"
          exit 1
       fi
       run_command "sed -i 's/${old}/${new}/' $file"
+      run_command "sed -i 's/${old1}/${new1}/' $file"
    done
 }
 
