@@ -101,8 +101,8 @@ static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
 
 static ALWAYS_INLINE u32 get_boothartid(void)
 {
-   extern u32 boot_cpu_hartid;
-   return boot_cpu_hartid;
+   extern u32 _boot_cpu_hartid;
+   return _boot_cpu_hartid;
 }
 
 static ALWAYS_INLINE void *fdt_get_address(void)
