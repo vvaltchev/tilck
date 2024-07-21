@@ -34,6 +34,8 @@
 
    #include <tilck/common/arch/riscv/riscv_utils.h>
    #include <tilck/common/arch/riscv/utils.h>
+   #include <tilck/common/arch/riscv/image.h>
+   #include <tilck/kernel/arch/riscv/sbi.h>
    #include <tilck/kernel/arch/riscv/mmio.h>
    #include <tilck/kernel/arch/riscv/ioremap.h>
    #include <tilck/kernel/arch/riscv/arch_ints.h>
