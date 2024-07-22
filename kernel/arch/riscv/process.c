@@ -164,3 +164,4 @@ void handle_bus_fault_int(regs_t *r, const char *fault_name)
 {
    NOT_IMPLEMENTED();
 }
+

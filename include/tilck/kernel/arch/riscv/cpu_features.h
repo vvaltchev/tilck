@@ -55,3 +55,4 @@ extern volatile struct riscv_cpu_features riscv_cpu_features;
 
 void get_cpu_features(void);
 void dump_riscv_features(void);
+

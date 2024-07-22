@@ -29,3 +29,4 @@ static ALWAYS_INLINE bool is_fault(int int_num)
 {
    return IN_RANGE(int_num, 0, 32);
 }
+

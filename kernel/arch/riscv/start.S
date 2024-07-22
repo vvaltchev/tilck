@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
-
 #define ASM_FILE 1
 
 #include <tilck_gen_headers/config_global.h>
@@ -154,3 +153,4 @@ _boot_lottery:
    RISCV_PTR   0
 _boot_cpu_hartid:
    .word   0
+

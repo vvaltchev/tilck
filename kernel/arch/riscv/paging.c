@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+
 #include <tilck_gen_headers/config_mm.h>
 
 #include <tilck/common/basic_defs.h>
@@ -299,3 +300,4 @@ virtual_write_unsafe(pdir_t *pdir, void *extern_va, void *src, size_t len)
 {
    NOT_IMPLEMENTED();
 }
+

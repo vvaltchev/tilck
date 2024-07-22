@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-
 #include <tilck/common/basic_defs.h>
 
 #define mb()    asmVolatile("fence iorw, iorw" : : : "memory")
@@ -71,3 +70,4 @@ mmio_writeq(u64 val, volatile void *addr)
    wmb();
    *(volatile u64 *)addr = val;
 }
+
