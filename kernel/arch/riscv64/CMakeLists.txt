@@ -21,11 +21,6 @@ list(
    -fno-exceptions
    -fno-stack-protector
    -fno-asynchronous-unwind-tables
-
-   # Allow easier disassembly debugging
-   # -mpush-args
-   # -mno-accumulate-outgoing-args
-   # -mno-stack-arg-probe
 )
 
 if (KERNEL_GCOV)
@@ -73,7 +68,7 @@ set(
 
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
-   -Wl,-Map=${CMAKE_SOURCE_DIR}/tilck.map
+   -Wl,-Map=${CMAKE_BINARY_DIR}/tilck.map
 )
 
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
