@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+
 #include <tilck_gen_headers/config_mm.h>
 #include <tilck_gen_headers/mod_fb.h>
 
@@ -103,3 +104,4 @@ void handle_page_fault(regs_t *r)
 {
    NOT_IMPLEMENTED();
 }
+

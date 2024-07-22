@@ -23,3 +23,4 @@ NORETURN void reboot(void)
 {
    NOT_IMPLEMENTED();
 }
+

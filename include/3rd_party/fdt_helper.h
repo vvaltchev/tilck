@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BSD-2-Clause
+
 /*
  * fdt_helper.h - Flat Device Tree parsing helper routines
  * Implement helper routines to parse FDT nodes on top of
@@ -44,3 +45,4 @@ int fdt_get_node_addr_size_by_name(void *fdt, int node, const char *name,
 bool fdt_node_is_enabled(void *fdt, int nodeoff);
 
 #endif /* __FDT_HELPER_H__ */
+

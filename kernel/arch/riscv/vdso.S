@@ -40,3 +40,4 @@ RISCV_PTR USER_VDSO_VADDR + (.post_sig_handler - vdso_begin)
 .global pause_trampoline_user_vaddr
 pause_trampoline_user_vaddr:
 RISCV_PTR USER_VDSO_VADDR + (.pause_trampoline - vdso_begin)
+

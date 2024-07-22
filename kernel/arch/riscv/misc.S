@@ -44,3 +44,4 @@ FUNC(asm_do_bogomips_loop):
    ret
 
 END_FUNC(asm_do_bogomips_loop)
+

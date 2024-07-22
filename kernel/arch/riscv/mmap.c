@@ -19,3 +19,4 @@ bool arch_add_final_mem_regions()
 {
    NOT_IMPLEMENTED();
 }
+

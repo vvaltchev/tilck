@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/boot.h>
 #include <tilck/common/string_util.h>
@@ -14,13 +15,13 @@
 #define CMDLINE_BUF_SZ 1024
 
 struct simplefb_bitfield {
-   u8 offset;   /* beginning of bitfield */
-   u8 size;       /* length of bitfield */
+   u8 offset;                       /* beginning of bitfield */
+   u8 size;                         /* length of bitfield */
 };
 
 struct simplefb_format {
    const char *name;
-   u8 bpp;  /* bits per pixel */
+   u8 bpp;                          /* bits per pixel */
    struct simplefb_bitfield red;
    struct simplefb_bitfield green;
    struct simplefb_bitfield blue;
@@ -83,7 +84,6 @@ add_multiboot_mmap(u64 addr, u64 size, u32 type)
       mmmap--;
 
    mmmap_count++;
-
    bzero(mmmap, sizeof(multiboot_memory_map_t));
 
    if (addr < mbi->mem_lower * KB)
@@ -176,7 +176,6 @@ fdt_add_multiboot_mmap(void *fdt, int node, u32 type)
    while (fdt_get_node_linux_usable_memory(fdt, node, index,
                                            &addr, &size) == 0)
    {
-
       if (size == 0)
          continue;
 
@@ -192,7 +191,6 @@ fdt_add_multiboot_mmap(void *fdt, int node, u32 type)
    while (fdt_get_node_addr_size(fdt, node,
                                  index, &addr, &size) == 0)
    {
-
       if (size == 0)
          continue;
 
@@ -232,11 +230,13 @@ static int fdt_parse_chosen(void *fdt)
    prop = fdt_getprop(fdt, node, "linux,initrd-start", &len);
    if (!prop)
       goto parse_cmd;
+
    start = fdt_read64(prop, len);
 
    prop = fdt_getprop(fdt, node, "linux,initrd-end", &len);
    if (!prop)
       goto parse_cmd;
+
    end = fdt_read64(prop, len);
 
    if (start > end)
@@ -260,6 +260,7 @@ static int fdt_parse_memory(void *fdt)
    int node, nomem = 1;
 
    fdt_for_each_subnode(node, fdt, 0) {
+
       const char *type = fdt_getprop(fdt, node, "device_type", NULL);
 
       /* We are scanning "memory" nodes only */
@@ -277,9 +278,8 @@ static int fdt_parse_memory(void *fdt)
 
 static int fdt_parse_reserved_memory(void *fdt)
 {
-   int n;
    u64 base, size;
-   int node, child;
+   int n, node, child;
 
    /* process fdt /reserved-memory node */
    node = fdt_path_offset(fdt, "/reserved-memory");
@@ -365,13 +365,11 @@ static int fdt_parse_framebuffer(void *fdt)
       mbi->framebuffer_green_mask_size = format->green.size;
       mbi->framebuffer_blue_field_position = format->blue.offset;
       mbi->framebuffer_blue_mask_size = format->blue.size;
-
       break;
    }
 
    mbi->framebuffer_type = MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
    mbi->flags |= MULTIBOOT_INFO_FRAMEBUFFER_INFO;
-
    return 0;
 }
 

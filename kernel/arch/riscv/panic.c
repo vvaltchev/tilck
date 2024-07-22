@@ -38,3 +38,4 @@ NORETURN void panic(const char *fmt, ...)
 {
    NOT_IMPLEMENTED();
 }
+

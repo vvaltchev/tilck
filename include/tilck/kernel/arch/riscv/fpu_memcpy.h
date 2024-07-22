@@ -5,9 +5,9 @@
 #include <tilck/common/string_util.h>
 
 #ifdef __FPU_MEMCPY_C__
-#define EXTERN extern
+   #define EXTERN extern
 #else
-#define EXTERN
+   #define EXTERN
 #endif
 
 
@@ -56,3 +56,4 @@ fpu_cpy_single_256_nt_read(void *dest, const void *src)
 
 
 void init_fpu_memcpy(void);
+

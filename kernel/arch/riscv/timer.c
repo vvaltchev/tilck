@@ -19,3 +19,4 @@ u32 hw_timer_setup(u32 interval)
 {
    NOT_IMPLEMENTED();
 }
+

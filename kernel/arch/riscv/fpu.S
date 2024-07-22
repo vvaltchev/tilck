@@ -24,3 +24,4 @@ FUNC(asm_restore_fpu):
    ret
 
 END_FUNC(asm_restore_fpu)
+

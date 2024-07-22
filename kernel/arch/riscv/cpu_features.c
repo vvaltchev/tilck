@@ -98,8 +98,10 @@ fdt_parse_hart_id(void *fdt, int cpu_offset, u32 *hartid)
       return -1;
 
    prop = fdt_getprop(fdt, cpu_offset, "device_type", &len);
+
    if (!prop || !len)
       return -1;
+
    if (strncmp (prop, "cpu", strlen ("cpu")))
       return -1;
 
@@ -135,7 +137,7 @@ static int fdt_parse_isa_extensions(void *fdt)
       prop = fdt_getprop(fdt, cpu_node, "device_type", NULL);
 
       if (prop &&
-         !strcmp((void *)prop, "cpu") &&
+          !strcmp((void *)prop, "cpu") &&
           hart_id == get_boothartid())
       {
          prop = fdt_getprop(fdt, cpu_node, "riscv,isa", &len);
@@ -167,7 +169,7 @@ static bool isa_ext_string_match(const char *string)
 
    for (char *ptr = buf; ptr < end; ptr += strlen(ptr) + 1) {
 
-      if (strcmp(string, ptr) == 0)
+      if (!strcmp(string, ptr))
          return true;
    }
 
@@ -203,7 +205,7 @@ static bool isa_ext_string_match(const char *string)
          len = (chr ? chr : end) - ptr;
          if (strncmp(string, ptr, len) == 0)
             return true;
-   }
+      }
    }
 
    return false;
@@ -217,7 +219,6 @@ static bool isa_ext_string_match(const char *string)
 void early_get_cpu_features(void)
 {
    struct riscv_cpu_features *f = (void *)&riscv_cpu_features;
-
    bool *flags = (bool *)&f->isa_exts;
 
    if (sbi_get_spec_version().error) {
@@ -226,6 +227,7 @@ void early_get_cpu_features(void)
       f->vendor_id = 0;
       f->arch_id = 0;
       f->imp_id = 0;
+
    } else {
 
       f->vendor_id = sbi_get_mvendorid().value;
@@ -235,7 +237,6 @@ void early_get_cpu_features(void)
 
    fdt_parse_model(fdt_get_address());
    fdt_parse_isa_extensions(fdt_get_address());
-
    bzero(&f->isa_exts, sizeof(f->isa_exts));
 
    for (u32 i = 0; i < ARRAY_SIZE(isa_exts_names); i++) {
