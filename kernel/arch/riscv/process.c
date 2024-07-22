@@ -36,7 +36,7 @@ STATIC_ASSERT(
    OFFSET_OF(struct task, faults_resume_mask) == TI_FAULTS_MASK_OFF
 );
 
-STATIC_ASSERT(TOT_PROC_AND_TASK_SIZE <= 2048);
+STATIC_ASSERT(sizeof(struct task_and_process) <= 2048);
 
 void task_info_reset_kernel_stack(struct task *ti)
 {

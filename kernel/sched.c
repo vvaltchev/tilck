@@ -396,12 +396,10 @@ void yield_until_last(void)
 __attribute__((constructor))
 static void create_kernel_process(void)
 {
-   static char ALIGNAS(struct task) kernel_proc_buf[
-      sizeof(struct process) + sizeof(struct task)
-   ];
+   static struct task_and_process tp;
 
-   struct task *s_kernel_ti = (void *)kernel_proc_buf;
-   struct process *s_kernel_pi = (struct process *)(s_kernel_ti + 1);
+   struct task *s_kernel_ti = &tp.main_task_obj;
+   struct process *s_kernel_pi = &tp.process_obj;
 
    list_init(&runnable_tasks_list);
    s_kernel_pi->pid = create_new_pid();

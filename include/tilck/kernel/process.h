@@ -94,12 +94,20 @@ struct process {
    void *sa_handlers[_NSIG - 1];
 };
 
+/*
+ * Simple struct used for allocating/freeing the first task of an userspace
+ * process. It combines both the struct task and the struct process in one
+ * single allocation.
+ */
+struct task_and_process {
+   struct task main_task_obj;
+   struct process process_obj;
+};
+
 STATIC_ASSERT(sizeof(struct misc_buf) <= PAGE_SIZE);
-
-#define TOT_PROC_AND_TASK_SIZE    (sizeof(struct task) + sizeof(struct process))
-
 STATIC_ASSERT((sizeof(struct task) & ~POINTER_ALIGN_MASK) == 0);
 STATIC_ASSERT((sizeof(struct process) & ~POINTER_ALIGN_MASK) == 0);
+STATIC_ASSERT(OFFSET_OF(struct task_and_process, main_task_obj) == 0);
 
 static ALWAYS_INLINE struct task *
 get_process_task(struct process *pi)

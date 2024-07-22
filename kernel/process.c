@@ -199,14 +199,16 @@ struct task *
 allocate_new_process(struct task *parent, int pid, pdir_t *new_pdir)
 {
    struct process *pi, *parent_pi = parent->pi;
+   struct task_and_process *tp;
    struct task *ti = NULL;
    bool common_allocs = false;
    bool arch_fields = false;
 
-   if (UNLIKELY(!(ti = kmalloc(TOT_PROC_AND_TASK_SIZE))))
+   if (UNLIKELY(!(tp = kalloc_obj(struct task_and_process))))
       goto oom_case;
 
-   pi = (struct process *)(ti + 1);
+   ti = &tp->main_task_obj;
+   pi = &tp->process_obj;
 
    /* The first process (init) has as parent == kernel_process */
    ASSERT(parent != NULL);
@@ -306,7 +308,7 @@ oom_case:
       if (MOD_debugpanel && pi->debug_cmdline)
          kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
 
-      kfree2(ti, TOT_PROC_AND_TASK_SIZE);
+      kfree_obj((void *)ti, struct task_and_process);
    }
 
    return NULL;
@@ -355,7 +357,7 @@ static void free_process_int(struct process *pi)
    if (release_obj(pi) == 0) {
 
       arch_specific_free_proc(pi);
-      kfree2(get_process_task(pi), TOT_PROC_AND_TASK_SIZE);
+      kfree_obj((void *)get_process_task(pi), struct task_and_process);
 
       if (MOD_debugpanel)
          kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
