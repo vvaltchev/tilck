@@ -20,10 +20,13 @@
 #define X86_PC_COM2_COM4_IRQ       3
 #define X86_PC_COM1_COM3_IRQ       4
 
+int console_irq;
 
 void init_serial_port(u16 port)
 {
-   /* do nothing */
+   /* TODO: just for debug now, this code will be removed soon */
+   extern bool kopt_sercon;
+   kopt_sercon = true;
 }
 
 bool serial_read_ready(u16 port)
@@ -54,5 +57,6 @@ char serial_read(u16 port)
 
 void serial_write(u16 port, char c)
 {
-   NOT_IMPLEMENTED();
+   /* TODO: just for debug now, this code will be removed soon */
+   sbi_console_putchar(c);
 }
