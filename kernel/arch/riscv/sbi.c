@@ -64,3 +64,4 @@ void sbi_init(void)
    if (sbi_probe_extension(SBI_SRST_EXT_ID) != 0)
       has_srst_ext = true;
 }
+

@@ -110,3 +110,4 @@ static ALWAYS_INLINE void *fdt_get_address(void)
    extern void * fdt_blob;
    return fdt_blob;
 }
+

@@ -62,30 +62,32 @@
 
 #if __riscv_xlen == 32
 
-/* Size of region mapped by a page global directory */
-#define PGDIR_SHIFT     22
-#define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
+   /* Size of region mapped by a page global directory */
+   #define PGDIR_SHIFT     22
+   #define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
 
-#define L0_PAGE_SHIFT       PAGE_SHIFT
-#define L1_PAGE_SHIFT       PGDIR_SHIFT
-#define L1_PAGE_SIZE        PGDIR_SIZE
-#define RV_PAGE_LEVEL        1
+   #define L0_PAGE_SHIFT   PAGE_SHIFT
+   #define L1_PAGE_SHIFT   PGDIR_SHIFT
+   #define L1_PAGE_SIZE    PGDIR_SIZE
+   #define RV_PAGE_LEVEL   1
 
 #else
 
-#define PGDIR_SHIFT     30
-/* Size of region mapped by a page global directory */
-#define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
-#define PMD_SHIFT       21
-/* Size of region mapped by a page middle directory */
-#define PMD_SIZE        (1UL << PMD_SHIFT)
+   #define PGDIR_SHIFT     30
 
-#define L0_PAGE_SHIFT       PAGE_SHIFT
-#define L1_PAGE_SHIFT       PMD_SHIFT
-#define L1_PAGE_SIZE        PMD_SIZE
-#define L2_PAGE_SHIFT       PGDIR_SHIFT
-#define L2_PAGE_SIZE        PGDIR_SIZE
-#define RV_PAGE_LEVEL        2
+   /* Size of region mapped by a page global directory */
+   #define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
+   #define PMD_SHIFT       21
+
+/* Size of region mapped by a page middle directory */
+   #define PMD_SIZE        (1UL << PMD_SHIFT)
+
+   #define L0_PAGE_SHIFT   PAGE_SHIFT
+   #define L1_PAGE_SHIFT   PMD_SHIFT
+   #define L1_PAGE_SIZE    PMD_SIZE
+   #define L2_PAGE_SHIFT   PGDIR_SHIFT
+   #define L2_PAGE_SIZE    PGDIR_SIZE
+   #define RV_PAGE_LEVEL   2
 
 #endif
 
@@ -96,12 +98,13 @@
 #define PFN(x) ((x) >> PAGE_SHIFT)
 
 /* Extract the each level page table indices from a virtual address */
-#define PTE_SHIFT(level)   (PAGE_SHIFT+(9*(level)))
-#define PTE_INDEX(level, vaddr)  ((((ulong)(vaddr)) >>   \
-                                  PTE_SHIFT(level)) & (PTRS_PER_PT - 1))
+#define PTE_SHIFT(level)         (PAGE_SHIFT + (9*(level)))
 
-#define MAKE_BIG_PAGE(paddr) (_PAGE_BASE | _PAGE_WRITE | _PAGE_GLOBAL \
-                        | (PFN(paddr) << _PAGE_PFN_SHIFT))
+#define PTE_INDEX(level, vaddr)  \
+   ((((ulong)(vaddr)) >> PTE_SHIFT(level)) & (PTRS_PER_PT - 1))
+
+#define MAKE_BIG_PAGE(paddr) \
+   (_PAGE_BASE | _PAGE_WRITE | _PAGE_GLOBAL | (PFN(paddr) << _PAGE_PFN_SHIFT))
 
 #define BASE_VADDR_PD_IDX                (USERMODE_VADDR_END >> PGDIR_SHIFT)
 
@@ -144,3 +147,4 @@ void map_big_page_int(pdir_t *pdir,
                       u32 flags);
 
 void set_pages_io(pdir_t *pdir, void *vaddr, size_t size);
+

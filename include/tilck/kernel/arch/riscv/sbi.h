@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-
 #include <tilck/common/basic_defs.h>
 
 /* Standard SBI Errors */
@@ -108,3 +107,4 @@ struct sbiret sbi_get_marchid(void);
 struct sbiret sbi_get_mimpid(void);
 void sbi_system_reset(u32 type, u32 reason);
 void sbi_shutdown(void);
+
