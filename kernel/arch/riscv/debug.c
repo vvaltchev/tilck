@@ -93,7 +93,6 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
 {
    void *frames[32] = {0};
    size_t c = stackwalk_riscv(frames, ARRAY_SIZE(frames), ebp, pdir);
-
    printk("Stacktrace (%lu frames):\n", c);
 
    for (size_t i = 0; i < c; i++) {
