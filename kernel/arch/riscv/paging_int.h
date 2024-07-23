@@ -30,8 +30,8 @@
 #define _PAGE_CB      (riscv_cpu_features.page_cb) /* Cacheble & bufferable */
 #define _PAGE_WT      (riscv_cpu_features.page_wt) /* Write through */
 #define _PAGE_IO      (riscv_cpu_features.page_io) /* Strongly-ordered,
-                                                     Non-cacheable,
-                                                     Non-bufferable */
+                                                      Non-cacheable,
+                                                      Non-bufferable */
 
 #define _PAGE_PROT_NONE _PAGE_READ
 
@@ -59,7 +59,6 @@
 
 #define PAGE_TABLE      (_PAGE_PRESENT)
 
-
 #if __riscv_xlen == 32
 
    /* Size of region mapped by a page global directory */
@@ -79,7 +78,7 @@
    #define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
    #define PMD_SHIFT       21
 
-/* Size of region mapped by a page middle directory */
+   /* Size of region mapped by a page middle directory */
    #define PMD_SIZE        (1UL << PMD_SHIFT)
 
    #define L0_PAGE_SHIFT   PAGE_SHIFT
@@ -92,9 +91,16 @@
 #endif
 
 /* helper macros */
+
+/* Check address alignment */
+#define IS_L2_PAGE_ALIGNED(addr) (!((ulong)addr & (L2_PAGE_SIZE - 1)))
+#define IS_L1_PAGE_ALIGNED(addr) (!((ulong)addr & (L1_PAGE_SIZE - 1)))
+#define IS_L0_PAGE_ALIGNED(addr) IS_PAGE_ALIGNED(addr)
+
 /* Number of entries in the page table */
 #define PTRS_PER_PT    (PAGE_DIR_SIZE / sizeof(ulong))
 
+/* Page frame number */
 #define PFN(x) ((x) >> PAGE_SHIFT)
 
 /* Extract the each level page table indices from a virtual address */
