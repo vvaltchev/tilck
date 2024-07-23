@@ -26,9 +26,9 @@ static bool fp_is_valid(ulong fp, ulong sp)
 
 static size_t
 stackwalk_riscv(void **frames,
-            size_t count,
-            void *fp,
-            pdir_t *pdir)
+                size_t count,
+                void *fp,
+                pdir_t *pdir)
 {
    bool curr_pdir = false;
    void *retAddr;
@@ -92,8 +92,7 @@ stackwalk_riscv(void **frames,
 void dump_stacktrace(void *ebp, pdir_t *pdir)
 {
    void *frames[32] = {0};
-   size_t c = stackwalk32(frames, ARRAY_SIZE(frames), ebp, pdir);
-
+   size_t c = stackwalk_riscv(frames, ARRAY_SIZE(frames), ebp, pdir);
    printk("Stacktrace (%lu frames):\n", c);
 
    for (size_t i = 0; i < c; i++) {
