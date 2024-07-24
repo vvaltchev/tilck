@@ -5,18 +5,23 @@
 
 #include "paging_int.h"
 
-#define MAX_DMA                                (256 * KB)
-
-STATIC_ASSERT(MAX_DMA <= 16 * MB);
-STATIC_ASSERT((MAX_DMA & (64 * KB - 1)) == 0);
-
 void arch_add_initial_mem_regions()
 {
-   NOT_IMPLEMENTED();
+   /*
+    * Reserve 1MB below kernel's head, where
+    * the flattened device tree is located.
+    */
+   append_mem_region((struct mem_region) {
+      .addr = KERNEL_VA_TO_PA(KERNEL_VADDR) - (1 * MB),
+      .len = 1 * MB,
+      .type = MULTIBOOT_MEMORY_RESERVED,
+      .extra = MEM_REG_EXTRA_LOWMEM,
+   });
 }
 
 bool arch_add_final_mem_regions()
 {
-   NOT_IMPLEMENTED();
+   /* do nothing */
+   return false;
 }
 
