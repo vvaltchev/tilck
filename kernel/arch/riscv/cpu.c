@@ -17,7 +17,8 @@ void asm_restore_fpu(void *buf);
 
 void enable_cpu_features(void)
 {
-   NOT_IMPLEMENTED();
+   /* TODO: will be completed soon in later commit */
+   get_cpu_features();
 }
 
 void save_current_fpu_regs(bool in_kernel)

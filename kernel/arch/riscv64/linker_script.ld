@@ -48,20 +48,6 @@ SECTIONS
       *(.init_array)
    } : ro_segment
 
-   . = ALIGN(4);
-   .modules : AT(kernel_text_paddr + (modules - text))
-   {
-      modules = .;
-      KEEP(*(SORT(.modules.*)));
-   } : ro_segment
-
-   .simplebus_driver : AT(kernel_text_paddr + (_simplebus_start - text))
-   {
-      _simplebus_start = .;
-      *(.simplebus_driver)
-      _simplebus_end = .;
-   } : ro_segment
-
    .tilck_info : AT(kernel_text_paddr + (tilck_info - text))
    {
       tilck_info = .;
@@ -85,12 +71,6 @@ SECTIONS
    {
       bss = .;
       *(.bss .bss.* .gnu.linkonce.b.*)
-   } : rw_segment
-
-   .sbss : AT(kernel_text_paddr + (sbss - text))
-   {
-      sbss = .;
-      *(.sbss .sbss.*)
    } : rw_segment
    __bss_stop = .;
 
