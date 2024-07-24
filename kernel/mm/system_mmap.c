@@ -532,11 +532,12 @@ int system_mmap_get_region_of(ulong paddr)
 bool
 linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
 {
-   if (r->addr >= LINEAR_MAPPING_SIZE)
+   if (r->addr >= LIN_VA_TO_PA(BASE_VA) + LINEAR_MAPPING_SIZE)
       return false;
 
    const ulong pbegin = (ulong) r->addr;
-   const ulong pend = MIN((ulong)(r->addr+r->len), (ulong)LINEAR_MAPPING_SIZE);
+   const ulong pend = MIN((ulong)(r->addr+r->len),
+                          (ulong)LIN_VA_TO_PA(BASE_VA) + LINEAR_MAPPING_SIZE);
 
    const bool rw = (r->type == MULTIBOOT_MEMORY_AVAILABLE) ||
                    (r->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE) ||
@@ -564,7 +565,9 @@ linear_map_mem_region(struct mem_region *r, ulong *vbegin, ulong *vend)
    if (count != page_count)
       panic("kmalloc: unable to map regions in the virtual space");
 
-   if (still_using_orig_pdir() && pend >= 4 * MB) {
+   if (still_using_orig_pdir() &&
+       pend >= KERNEL_VA_TO_PA(KERNEL_BASE_VA) + 4 * MB)
+   {
       set_curr_pdir(get_kernel_pdir());
       on_first_pdir_update();
    }
