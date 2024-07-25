@@ -276,8 +276,9 @@ void push_string_on_user_stack(regs_t *r, const char *str)
    memcpy(TO_PTR(user_sp), str, aligned_len);
 
    if (rem > 0) {
-      ulong smallbuf = 0;
+      char smallbuf[USER_STACK_STRING_ALIGN] = {0};
       memcpy(&smallbuf, str + aligned_len, rem);
       memcpy(TO_PTR(user_sp + aligned_len), &smallbuf, sizeof(smallbuf));
    }
 }
+
