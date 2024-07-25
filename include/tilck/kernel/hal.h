@@ -7,7 +7,7 @@
 #include <tilck/common/datetime.h>
 #include <tilck/kernel/hal_types.h>
 
-#define USERMODE_STACK_ALIGN              16u
+#define USERMODE_STACK_ALIGN              16ul
 
 #if defined(__i386__) || defined(__x86_64__)
 
