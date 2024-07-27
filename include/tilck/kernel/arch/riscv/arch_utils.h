@@ -79,6 +79,11 @@ static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
    r->a0 = value;
 }
 
+static ALWAYS_INLINE ulong get_return_register(regs_t *r)
+{
+   return r->a0;
+}
+
 static ALWAYS_INLINE ulong get_rem_stack(void)
 {
    return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));

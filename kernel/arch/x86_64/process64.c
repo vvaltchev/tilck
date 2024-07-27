@@ -34,6 +34,11 @@ push_args_on_user_stack(regs_t *r,
    NOT_IMPLEMENTED();
 }
 
+void restore_regs_from_user_stack(regs_t *r)
+{
+   NOT_IMPLEMENTED();
+}
+
 void
 setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 {

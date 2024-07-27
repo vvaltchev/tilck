@@ -17,6 +17,7 @@ bool hi_vmem_avail(void) { return false; }
 int kthread_create2() { return -12; /* ENOMEM */}
 
 void push_args_on_user_stack() { }
+void restore_regs_from_user_stack() { }
 void setup_usermode_task_regs() { }
 void invalidate_page() {}
 void init_serial_port() { }

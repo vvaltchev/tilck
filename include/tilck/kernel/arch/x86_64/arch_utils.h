@@ -36,7 +36,12 @@ static ALWAYS_INLINE int regs_intnum(regs_t *r)
 
 static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
 {
-   NOT_IMPLEMENTED();
+   r->rax = value;
+}
+
+static ALWAYS_INLINE ulong get_return_register(regs_t *r)
+{
+   return r->rax;
 }
 
 NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)

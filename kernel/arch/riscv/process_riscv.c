@@ -43,14 +43,10 @@ void setup_pause_trampoline(regs_t *r)
    NOT_IMPLEMENTED();
 }
 
-/* See the comments below in setup_sig_handler() */
-#define SIG_HANDLER_ALIGN_ADJUST                        \
-   (                                                    \
-      (                                                 \
-         + USERMODE_STACK_ALIGN                         \
-         - sizeof(regs_t)               /* regs */      \
-      ) % USERMODE_STACK_ALIGN                          \
-   )
+void restore_regs_from_user_stack(regs_t *r)
+{
+   NOT_IMPLEMENTED();
+}
 
 int
 push_args_on_user_stack(regs_t *r,
@@ -73,11 +69,6 @@ int setup_sig_handler(struct task *ti,
                       regs_t *r,
                       ulong user_func,
                       int signum)
-{
-   NOT_IMPLEMENTED();
-}
-
-ulong sys_rt_sigreturn(void)
 {
    NOT_IMPLEMENTED();
 }
