@@ -16,6 +16,8 @@ void hw_read_clock(struct datetime *out)
 bool hi_vmem_avail(void) { return false; }
 int kthread_create2() { return -12; /* ENOMEM */}
 
+void push_args_on_user_stack() { }
+void setup_usermode_task_regs() { }
 void invalidate_page() {}
 void init_serial_port() { }
 void serial_write() { }
@@ -23,11 +25,9 @@ void handle_fault() { }
 void handle_syscall() { }
 void arch_irq_handling() { }
 void pic_send_eoi() { }
-void task_info_reset_kernel_stack() { }
 void set_kernel_stack() { }
 void irq_clear_mask() { }
 void debug_qemu_turn_off_machine() { }
-void setup_process() { }
 void gdt_install() { }
 void idt_install() { }
 void irq_install() { }
