@@ -7,9 +7,26 @@
 
 /* Internal stuff (used by process.c, process32.c, misc.c, sched.c, fork.c) */
 extern char *kernel_initial_stack[KERNEL_STACK_SIZE];
+
+/* See the comments below in setup_sig_handler() */
+#define SIG_HANDLER_ALIGN_ADJUST                        \
+   (                                                    \
+      (                                                 \
+         + USERMODE_STACK_ALIGN                         \
+         - sizeof(regs_t)               /* regs */      \
+         - sizeof(ulong)                /* signum */    \
+      ) % USERMODE_STACK_ALIGN                          \
+   )
+
 void switch_to_initial_kernel_stack(void);
+int save_regs_on_user_stack(regs_t *r);
+void restore_regs_from_user_stack(regs_t *r);
 void free_common_task_allocs(struct task *ti);
 void process_free_mappings_info(struct process *pi);
+void task_info_reset_kernel_stack(struct task *ti);
+int setup_first_process(pdir_t *pdir, struct task **ti_ref);
+void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
+void setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr);
 
 static ALWAYS_INLINE void set_curr_task(struct task *ti)
 {

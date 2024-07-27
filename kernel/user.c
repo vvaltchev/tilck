@@ -2,10 +2,15 @@
 
 #include <tilck/common/string_util.h>
 #include <tilck/common/unaligned.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/paging.h>
+
+#include <linux/auxvec.h> // system header
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
@@ -236,5 +241,120 @@ int duplicate_user_argv(char *dest,
       return -E2BIG;
 
    *written_ptr += curr_written;
+   return 0;
+}
+
+void push_on_stack(ulong **stack_ptr_ref, ulong val)
+{
+   (*stack_ptr_ref)--;     // Decrease the value of the stack pointer
+   **stack_ptr_ref = val;  // *stack_ptr = val
+}
+
+void push_on_stack2(pdir_t *pdir, ulong **stack_ptr_ref, ulong val)
+{
+   // Decrease the value of the stack pointer
+   (*stack_ptr_ref)--;
+
+   // *stack_ptr = val
+   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(ulong));
+}
+
+void push_on_user_stack(regs_t *r, ulong val)
+{
+   ulong user_sp = regs_get_usersp(r);
+   push_on_stack((ulong **)&user_sp, val);
+   regs_set_usersp(r, user_sp);
+}
+
+void push_string_on_user_stack(regs_t *r, const char *str)
+{
+   const size_t len = strlen(str) + 1; // count also the '\0'
+   const size_t aligned_len = round_down_at(len, USERMODE_STACK_ALIGN);
+   const size_t rem = len - aligned_len;
+
+   ulong user_sp = regs_get_usersp(r);
+   user_sp -= aligned_len + (rem > 0 ? USERMODE_STACK_ALIGN : 0);
+   regs_set_usersp(r, user_sp);
+   memcpy(TO_PTR(user_sp), str, aligned_len);
+
+   if (rem > 0) {
+      char smallbuf[USERMODE_STACK_ALIGN] = {0};
+      memcpy(&smallbuf, str + aligned_len, rem);
+      memcpy(TO_PTR(user_sp + aligned_len), &smallbuf, sizeof(smallbuf));
+   }
+}
+
+int
+push_args_on_user_stack(regs_t *r,
+                        const char *const *argv,
+                        u32 argc,
+                        const char *const *env,
+                        u32 envc)
+{
+   ulong pointers[32];
+   ulong env_pointers[96];
+   ulong aligned_len, len, rem;
+
+   if (argc > ARRAY_SIZE(pointers))
+      return -E2BIG;
+
+   if (envc > ARRAY_SIZE(env_pointers))
+      return -E2BIG;
+
+   // push argv data on stack (it could be anywhere else, as well)
+   for (u32 i = 0; i < argc; i++) {
+      push_string_on_user_stack(r, READ_PTR(&argv[i]));
+      pointers[i] = regs_get_usersp(r);
+   }
+
+   // push env data on stack (it could be anywhere else, as well)
+   for (u32 i = 0; i < envc; i++) {
+      push_string_on_user_stack(r, READ_PTR(&env[i]));
+      env_pointers[i] = regs_get_usersp(r);
+   }
+
+   // make stack pointer align to 16 bytes
+
+   len = (
+      2 + // AT_NULL vector
+      2 + // AT_PAGESZ vector
+      1 + // mandatory final NULL pointer (end of 'env' ptrs)
+      envc +
+      1 + // mandatory final NULL pointer (end of 'argv')
+      argc +
+      1   // push argc as last (since it will be the first to be pop-ed)
+   ) * sizeof(ulong);
+   aligned_len = round_up_at(len, USERMODE_STACK_ALIGN);
+   rem = aligned_len - len;
+
+   for (u32 i = 0; i < rem / sizeof(ulong); i++) {
+      push_on_user_stack(r, 0);
+   }
+
+   // push the aux array (in reverse order)
+
+   push_on_user_stack(r, AT_NULL); // AT_NULL vector
+   push_on_user_stack(r, 0);
+
+   push_on_user_stack(r, PAGE_SIZE); // AT_PAGESZ vector
+   push_on_user_stack(r, AT_PAGESZ);
+
+   // push the env array (in reverse order)
+
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'env' ptrs)
+
+   for (u32 i = envc; i > 0; i--) {
+      push_on_user_stack(r, env_pointers[i - 1]);
+   }
+
+   // push the argv array (in reverse order)
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'argv')
+
+   for (u32 i = argc; i > 0; i--) {
+      push_on_user_stack(r, pointers[i - 1]);
+   }
+
+   // push argc as last (since it will be the first to be pop-ed)
+   push_on_user_stack(r, (ulong)argc);
    return 0;
 }

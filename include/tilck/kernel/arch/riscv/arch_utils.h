@@ -79,6 +79,21 @@ static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
    r->a0 = value;
 }
 
+static ALWAYS_INLINE ulong get_return_register(regs_t *r)
+{
+   return r->a0;
+}
+
+static ALWAYS_INLINE void set_return_addr(regs_t *r, ulong value)
+{
+   r->ra = value;
+}
+
+static ALWAYS_INLINE ulong get_return_addr(regs_t *r)
+{
+   return r->ra;
+}
+
 static ALWAYS_INLINE ulong get_rem_stack(void)
 {
    return (get_stack_ptr() & ((ulong)KERNEL_STACK_SIZE - 1));
@@ -97,6 +112,31 @@ static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
 static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
 {
    return TO_PTR(r->sepc);
+}
+
+static ALWAYS_INLINE void regs_set_ip(regs_t *r, ulong value)
+{
+   r->sepc = value;
+}
+
+static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
+{
+   return r->usersp;
+}
+
+static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong value)
+{
+   r->usersp = value;
+}
+
+static ALWAYS_INLINE ulong regs_get_sp(regs_t *r)
+{
+   return r->sp;
+}
+
+static ALWAYS_INLINE void regs_set_sp(regs_t *r, ulong value)
+{
+   r->sp = value;
 }
 
 static ALWAYS_INLINE u32 get_boothartid(void)

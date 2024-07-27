@@ -6,6 +6,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/unaligned.h>
 
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_mm.h>
@@ -16,6 +17,8 @@
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/process_int.h>
 
 #include <sys/prctl.h>        // system header
 
@@ -725,4 +728,176 @@ int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
 
    printk("[TID: %d] Unknown option: %d\n", get_curr_tid(), option);
    return -EINVAL;
+}
+
+
+int
+setup_first_process(pdir_t *pdir, struct task **ti_ref)
+{
+   struct task *ti;
+   struct process *pi;
+
+   VERIFY(create_new_pid() == 1);
+
+   if (!(ti = allocate_new_process(kernel_process, 1, pdir)))
+      return -ENOMEM;
+
+   pi = ti->pi;
+   pi->pgid = 1;
+   pi->sid = 1;
+   pi->umask = 0022;
+   ti->state = TASK_STATE_RUNNING;
+   add_task(ti);
+   memcpy(pi->str_cwd, "/", 2);
+   *ti_ref = ti;
+   return 0;
+}
+
+void
+finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
+{
+   ASSERT(!is_preemption_enabled());
+
+   ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNING);
+   task_change_state(ti, TASK_STATE_RUNNABLE);
+
+   ti->running_in_kernel = false;
+   ASSERT(ti->kernel_stack != NULL);
+
+   task_info_reset_kernel_stack(ti);
+   ti->state_regs--;             // make room for a regs_t struct in the stack
+   *ti->state_regs = *user_regs; // copy the regs_t struct we prepared before
+}
+
+int setup_process(struct elf_program_info *pinfo,
+                  struct task *ti,
+                  const char *const *argv,
+                  const char *const *env,
+                  struct task **ti_ref,
+                  regs_t *r)
+{
+   int rc = 0;
+   u32 argv_elems = 0;
+   u32 env_elems = 0;
+   pdir_t *old_pdir;
+   struct process *pi = NULL;
+
+   ASSERT(!is_preemption_enabled());
+
+   *ti_ref = NULL;
+   setup_usermode_task_regs(r, pinfo->entry, pinfo->stack);
+
+   /* Switch to the new page directory (we're going to write on user's stack) */
+   old_pdir = get_curr_pdir();
+   set_curr_pdir(pinfo->pdir);
+
+   while (READ_PTR(&argv[argv_elems])) argv_elems++;
+   while (READ_PTR(&env[env_elems])) env_elems++;
+
+   if ((rc = push_args_on_user_stack(r, argv, argv_elems, env, env_elems)))
+      goto err;
+
+   if (UNLIKELY(!ti)) {
+
+      /* Special case: applies only for `init`, the first process */
+
+      if ((rc = setup_first_process(pinfo->pdir, &ti)))
+         goto err;
+
+      ASSERT(ti != NULL);
+      pi = ti->pi;
+
+   } else {
+
+      /*
+       * Common case: we're creating a new process using the data structures
+       * and the PID from a forked child (the `ti` task).
+       */
+
+      pi = ti->pi;
+
+      if (pi->vforked) {
+
+        /*
+         * In case of vforked processes, we cannot remove any mappings and we
+         * need some special management for the mappings info object (pi->mi).
+         */
+         vforked_child_transfer_dispose_mi(pi);
+
+      } else {
+
+         remove_all_user_zero_mem_mappings(pi);
+         remove_all_file_mappings(pi);
+         process_free_mappings_info(pi);
+
+         ASSERT(old_pdir == pi->pdir);
+         pdir_destroy(pi->pdir);
+
+         if (pi->elf)
+            release_subsys_flock(pi->elf);
+      }
+
+      pi->pdir = pinfo->pdir;
+      old_pdir = NULL;
+
+      /* NOTE: not calling arch_specific_free_task() */
+      VERIFY(arch_specific_new_task_setup(ti, NULL));
+
+      arch_specific_free_proc(pi);
+      arch_specific_new_proc_setup(pi, NULL);
+   }
+
+   pi->elf = pinfo->lf;
+   *ti_ref = ti;
+   return 0;
+
+err:
+   ASSERT(rc != 0);
+
+   if (old_pdir) {
+      set_curr_pdir(old_pdir);
+      pdir_destroy(pinfo->pdir);
+   }
+
+   return rc;
+}
+
+void task_info_reset_kernel_stack(struct task *ti)
+{
+   ulong bottom = (ulong)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
+   ti->state_regs = (regs_t *)(bottom & POINTER_ALIGN_MASK);
+}
+
+void kthread_exit(void)
+{
+   /*
+    * WARNING: DO NOT USE ANY STACK VARIABLES HERE.
+    *
+    * The call to switch_to_initial_kernel_stack() will mess-up your whole stack
+    * (but that's what it is supposed to do). In this function, only global
+    * variables can be accessed.
+    *
+    * This function gets called automatically when a kernel thread function
+    * returns, but it can be called manually as well at any point.
+    */
+   disable_preemption();
+
+   wake_up_tasks_waiting_on(get_curr_task(), task_died);
+   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
+
+   /* WARNING: the following call discards the whole stack! */
+   switch_to_initial_kernel_stack();
+
+   /* Free the heap allocations used by the task, including the kernel stack */
+   free_mem_for_zombie_task(get_curr_task());
+
+   /* Remove the from the scheduler and free its struct */
+   remove_task(get_curr_task());
+
+   disable_interrupts_forced();
+   {
+      set_curr_task(kernel_process);
+   }
+   enable_interrupts_forced();
+   do_schedule();
 }

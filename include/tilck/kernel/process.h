@@ -165,3 +165,4 @@ int setup_sig_handler(struct task *ti,
                       ulong user_func,
                       int signum);
 void setup_pause_trampoline(regs_t *r);
+

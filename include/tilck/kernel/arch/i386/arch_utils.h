@@ -38,7 +38,7 @@ struct x86_arch_proc_members {
 
 struct x86_arch_task_members {
    u16 fpu_regs_size;
-   void *aligned_fpu_regs;
+   void *fpu_regs;
 };
 
 NORETURN void context_switch(regs_t *r);
@@ -51,6 +51,11 @@ static ALWAYS_INLINE int regs_intnum(regs_t *r)
 static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
 {
    r->eax = value;
+}
+
+static ALWAYS_INLINE ulong get_return_register(regs_t *r)
+{
+   return r->eax;
 }
 
 static ALWAYS_INLINE ulong get_rem_stack(void)
@@ -71,4 +76,19 @@ static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
 static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
 {
    return TO_PTR(r->eip);
+}
+
+static ALWAYS_INLINE void regs_set_ip(regs_t *r, ulong value)
+{
+   r->eip = value;
+}
+
+static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
+{
+   return r->useresp;
+}
+
+static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong value)
+{
+   r->useresp = value;
 }
