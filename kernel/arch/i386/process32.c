@@ -105,7 +105,7 @@ push_args_on_user_stack(regs_t *r,
 /*
  * TODO: refactor this into portable code and move it to process.c.
  */
-static int save_regs_on_user_stack(regs_t *r)
+int save_regs_on_user_stack(regs_t *r)
 {
    ulong new_useresp = r->useresp;
    int rc;
@@ -132,7 +132,7 @@ static int save_regs_on_user_stack(regs_t *r)
 /*
  * TODO: refactor this into portable code and move it to process.c.
  */
-static void restore_regs_from_user_stack(regs_t *r)
+void restore_regs_from_user_stack(regs_t *r)
 {
    ulong old_regs = r->useresp;
    int rc;
@@ -156,16 +156,6 @@ void setup_pause_trampoline(regs_t *r)
 {
    r->eip = pause_trampoline_user_vaddr;
 }
-
-/* See the comments below in setup_sig_handler() */
-#define SIG_HANDLER_ALIGN_ADJUST                        \
-   (                                                    \
-      (                                                 \
-         + USERMODE_STACK_ALIGN                         \
-         - sizeof(regs_t)               /* regs */      \
-         - sizeof(ulong)                /* signum */    \
-      ) % USERMODE_STACK_ALIGN                          \
-   )
 
 int setup_sig_handler(struct task *ti,
                       enum sig_state sig_state,
@@ -204,56 +194,6 @@ int setup_sig_handler(struct task *ti,
     */
    ASSERT(((r->useresp + sizeof(ulong)) & (USERMODE_STACK_ALIGN - 1)) == 0);
    return 0;
-}
-
-ulong sys_rt_sigreturn(void)
-{
-   ASSERT(!is_preemption_enabled()); /* Thanks to SYSFL_NO_PREEMPT */
-   struct task *curr = get_curr_task();
-   regs_t *r = curr->state_regs;
-
-   if (LIKELY(curr->nested_sig_handlers > 0)) {
-
-      trace_printk(10, "Done running signal handler");
-
-      r->useresp +=
-         sizeof(ulong)               /* compensate the "push signum" above    */
-         + SIG_HANDLER_ALIGN_ADJUST; /* compensate the forced stack alignment */
-
-      if (!process_signals(curr, sig_in_return, r)) {
-
-         if (curr->in_sigsuspend) {
-            memcpy(curr->sa_mask, curr->sa_old_mask, sizeof(curr->sa_mask));
-            curr->in_sigsuspend = false;
-         }
-
-         restore_regs_from_user_stack(r);
-      }
-
-      curr->nested_sig_handlers--;
-      ASSERT(curr->nested_sig_handlers >= 0);
-
-   } else {
-
-      /* An user process tried to call directly rt_sigreturn() */
-      r->eax = (ulong) -ENOSYS;
-   }
-
-   /*
-    * NOTE: we must return r->eax because syscalls are called by handle_syscall
-    * in a generic way like:
-    *
-    *     r->eax = (ulong) fptr(...)
-    *
-    * Returning anything else than r->eax would change that register and we
-    * don't wanna do that in a special NORETURN function such this. Here we're
-    * supposed to restore all the user registers as they were before the signal
-    * handler ran. Failing to do that, has an especially visible effect when
-    * a signal handler run after preempting running code in userspace: in that
-    * case, no syscall was made and no register is expected to ever change,
-    * exactly like in context switch.
-    */
-   return r->eax;
 }
 
 NODISCARD int
