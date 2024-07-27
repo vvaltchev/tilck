@@ -41,7 +41,9 @@ STATIC_ASSERT(
 
 STATIC_ASSERT(sizeof(struct task_and_process) <= 1024);
 
-
+/*
+ * TODO: refactor this into portable code and move it to process.c.
+ */
 int
 push_args_on_user_stack(regs_t *r,
                         const char *const *argv,
@@ -100,6 +102,9 @@ push_args_on_user_stack(regs_t *r,
    return 0;
 }
 
+/*
+ * TODO: refactor this into portable code and move it to process.c.
+ */
 static int save_regs_on_user_stack(regs_t *r)
 {
    ulong new_useresp = r->useresp;
@@ -124,6 +129,9 @@ static int save_regs_on_user_stack(regs_t *r)
    return 0;
 }
 
+/*
+ * TODO: refactor this into portable code and move it to process.c.
+ */
 static void restore_regs_from_user_stack(regs_t *r)
 {
    ulong old_regs = r->useresp;
@@ -333,40 +341,6 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
 
 end:
    return ret; /* tid or error */
-}
-
-void kthread_exit(void)
-{
-   /*
-    * WARNING: DO NOT USE ANY STACK VARIABLES HERE.
-    *
-    * The call to switch_to_initial_kernel_stack() will mess-up your whole stack
-    * (but that's what it is supposed to do). In this function, only global
-    * variables can be accessed.
-    *
-    * This function gets called automatically when a kernel thread function
-    * returns, but it can be called manually as well at any point.
-    */
-   disable_preemption();
-
-   wake_up_tasks_waiting_on(get_curr_task(), task_died);
-   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
-
-   /* WARNING: the following call discards the whole stack! */
-   switch_to_initial_kernel_stack();
-
-   /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
-
-   /* Remove the from the scheduler and free its struct */
-   remove_task(get_curr_task());
-
-   disable_interrupts_forced();
-   {
-      set_curr_task(kernel_process);
-   }
-   enable_interrupts_forced();
-   do_schedule();
 }
 
 void

@@ -88,11 +88,6 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
    NOT_IMPLEMENTED();
 }
 
-void kthread_exit(void)
-{
-   NOT_IMPLEMENTED();
-}
-
 void save_current_task_state(regs_t *r,  bool irq)
 {
    NOT_IMPLEMENTED();
