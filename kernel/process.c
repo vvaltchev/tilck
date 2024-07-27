@@ -18,6 +18,7 @@
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/fs/vfs.h>
 #include <tilck/kernel/paging_hw.h>
+#include <tilck/kernel/process_int.h>
 
 #include <sys/prctl.h>        // system header
 
@@ -865,4 +866,38 @@ void task_info_reset_kernel_stack(struct task *ti)
 {
    ulong bottom = (ulong)ti->kernel_stack + KERNEL_STACK_SIZE - 1;
    ti->state_regs = (regs_t *)(bottom & POINTER_ALIGN_MASK);
+}
+
+void kthread_exit(void)
+{
+   /*
+    * WARNING: DO NOT USE ANY STACK VARIABLES HERE.
+    *
+    * The call to switch_to_initial_kernel_stack() will mess-up your whole stack
+    * (but that's what it is supposed to do). In this function, only global
+    * variables can be accessed.
+    *
+    * This function gets called automatically when a kernel thread function
+    * returns, but it can be called manually as well at any point.
+    */
+   disable_preemption();
+
+   wake_up_tasks_waiting_on(get_curr_task(), task_died);
+   task_change_state(get_curr_task(), TASK_STATE_ZOMBIE);
+
+   /* WARNING: the following call discards the whole stack! */
+   switch_to_initial_kernel_stack();
+
+   /* Free the heap allocations used by the task, including the kernel stack */
+   free_mem_for_zombie_task(get_curr_task());
+
+   /* Remove the from the scheduler and free its struct */
+   remove_task(get_curr_task());
+
+   disable_interrupts_forced();
+   {
+      set_curr_task(kernel_process);
+   }
+   enable_interrupts_forced();
+   do_schedule();
 }
