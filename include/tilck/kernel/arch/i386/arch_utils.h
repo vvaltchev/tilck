@@ -72,3 +72,13 @@ static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
 {
    return TO_PTR(r->eip);
 }
+
+static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
+{
+   return r->useresp;
+}
+
+static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong value)
+{
+   r->useresp = value;
+}

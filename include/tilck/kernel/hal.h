@@ -7,6 +7,8 @@
 #include <tilck/common/datetime.h>
 #include <tilck/kernel/hal_types.h>
 
+#define USERMODE_STACK_ALIGN              16u
+
 #if defined(__i386__) || defined(__x86_64__)
 
    #define arch_x86_family
@@ -30,6 +32,12 @@
 
    #endif
 
+   /*
+    * Why USER_STACK_STRING_ALIGN != USERMODE_STACK_ALIGN on x86?
+    * TODO: investigate on this. It might be related with the missing AUXV.
+    */
+   #define USER_STACK_STRING_ALIGN (sizeof(ulong))
+
 #elif defined(__riscv)
 
    #include <tilck/common/arch/riscv/riscv_utils.h>
@@ -43,6 +51,8 @@
    #include <tilck/kernel/arch/riscv/arch_utils.h>
    #include <tilck/kernel/arch/riscv/fpu_memcpy.h>
    #include <tilck/kernel/arch/riscv/cpu_features.h>
+
+   #define USER_STACK_STRING_ALIGN 16
 
    static ALWAYS_INLINE void init_segmentation(void)
    {

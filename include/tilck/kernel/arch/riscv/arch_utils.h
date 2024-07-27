@@ -99,6 +99,16 @@ static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
    return TO_PTR(r->sepc);
 }
 
+static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
+{
+   return r->usersp;
+}
+
+static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong value)
+{
+   r->usersp = value;
+}
+
 static ALWAYS_INLINE u32 get_boothartid(void)
 {
    extern u32 _boot_cpu_hartid;

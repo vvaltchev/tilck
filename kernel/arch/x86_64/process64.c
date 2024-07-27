@@ -24,6 +24,22 @@
 
 #include <tilck/mods/tracing.h>
 
+int
+push_args_on_user_stack(regs_t *r,
+                        const char *const *argv,
+                        u32 argc,
+                        const char *const *env,
+                        u32 envc)
+{
+   NOT_IMPLEMENTED();
+}
+
+void
+setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
+{
+   NOT_IMPLEMENTED();
+}
+
 bool
 arch_specific_new_task_setup(struct task *ti, struct task *parent)
 {
@@ -60,22 +76,6 @@ switch_to_task(struct task *ti)
    NOT_IMPLEMENTED();
 }
 
-void
-finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
-{
-   NOT_IMPLEMENTED();
-}
-
-int setup_process(struct elf_program_info *pinfo,
-                  struct task *ti,
-                  const char *const *argv,
-                  const char *const *env,
-                  struct task **ti_ref,
-                  regs_t *r)
-{
-   NOT_IMPLEMENTED();
-}
-
 void setup_pause_trampoline(regs_t *r)
 {
    NOT_IMPLEMENTED();
@@ -86,11 +86,6 @@ int setup_sig_handler(struct task *ti,
                       regs_t *r,
                       ulong user_func,
                       int signum)
-{
-   NOT_IMPLEMENTED();
-}
-
-void task_info_reset_kernel_stack(struct task *ti)
 {
    NOT_IMPLEMENTED();
 }

@@ -2,10 +2,13 @@
 
 #include <tilck/common/string_util.h>
 #include <tilck/common/unaligned.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fault_resumable.h>
+#include <tilck/kernel/hal.h>
+#include <tilck/kernel/paging.h>
 
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
@@ -237,4 +240,44 @@ int duplicate_user_argv(char *dest,
 
    *written_ptr += curr_written;
    return 0;
+}
+
+void push_on_stack(ulong **stack_ptr_ref, ulong val)
+{
+   (*stack_ptr_ref)--;     // Decrease the value of the stack pointer
+   **stack_ptr_ref = val;  // *stack_ptr = val
+}
+
+void push_on_stack2(pdir_t *pdir, ulong **stack_ptr_ref, ulong val)
+{
+   // Decrease the value of the stack pointer
+   (*stack_ptr_ref)--;
+
+   // *stack_ptr = val
+   debug_checked_virtual_write(pdir, *stack_ptr_ref, &val, sizeof(ulong));
+}
+
+void push_on_user_stack(regs_t *r, ulong val)
+{
+   ulong user_sp = regs_get_usersp(r);
+   push_on_stack((ulong **)&user_sp, val);
+   regs_set_usersp(r, user_sp);
+}
+
+void push_string_on_user_stack(regs_t *r, const char *str)
+{
+   const size_t len = strlen(str) + 1; // count also the '\0'
+   const size_t aligned_len = round_down_at(len, USER_STACK_STRING_ALIGN);
+   const size_t rem = len - aligned_len;
+
+   ulong user_sp = regs_get_usersp(r);
+   user_sp -= aligned_len + (rem > 0 ? USER_STACK_STRING_ALIGN : 0);
+   regs_set_usersp(r, user_sp);
+   memcpy(TO_PTR(user_sp), str, aligned_len);
+
+   if (rem > 0) {
+      ulong smallbuf = 0;
+      memcpy(&smallbuf, str + aligned_len, rem);
+      memcpy(TO_PTR(user_sp + aligned_len), &smallbuf, sizeof(smallbuf));
+   }
 }

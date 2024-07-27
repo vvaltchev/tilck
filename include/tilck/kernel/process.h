@@ -165,3 +165,13 @@ int setup_sig_handler(struct task *ti,
                       ulong user_func,
                       int signum);
 void setup_pause_trampoline(regs_t *r);
+void task_info_reset_kernel_stack(struct task *ti);
+int setup_first_process(pdir_t *pdir, struct task **ti_ref);
+void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
+void setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr);
+int setup_process(struct elf_program_info *pinfo,
+                  struct task *ti,
+                  const char *const *argv,
+                  const char *const *env,
+                  struct task **ti_ref,
+                  regs_t *r);
