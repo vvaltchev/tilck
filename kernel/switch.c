@@ -2,7 +2,9 @@
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
 
+#include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>
 #include <tilck/kernel/list.h>
@@ -103,4 +105,100 @@ void setup_pause_trampoline(regs_t *r)
 #else
    regs_set_ip(r, pause_trampoline_user_vaddr);
 #endif
+}
+
+void
+switch_to_task_safety_checks(struct task *curr, struct task *next)
+{
+   static bool first_task_switch_passed;
+   bool cond;
+
+   /*
+    * Generally, we don't support task switches with interrupts disabled
+    * simply because the current task might have ended up in the scheduler
+    * by mistake, while doing a critical operation. That looks weird, but
+    * why not checking against that? We have so far only *ONE* legit case
+    * where entering in switch_to_task() is intentional: the first task
+    * switch in kmain() to the init processs.
+    *
+    * In case it turns out that there are more *legit* cases where we need
+    * switch to a new task with interrupts disabled, we might fix those cases
+    * or decide to support that use-case, by replacing the checks below with
+    * forced setting of the EFLAGS_IF bit:
+    *
+    *    state->eflags |= EFLAGS_IF
+    *
+    * For the moment, that is not necessary.
+    */
+   if (UNLIKELY(!are_interrupts_enabled())) {
+
+      /*
+       * Interrupts are disabled in this corner case: it's totally safe to read
+       * and write the static boolean.
+       */
+      if (!first_task_switch_passed) {
+
+         first_task_switch_passed = true;
+
+      } else {
+
+         /*
+          * Oops! We're not in the first task switch and interrupts are
+          * disabled: very likely there's a bug!
+          */
+         panic("Cannot switch away from task with interrupts disabled");
+      }
+   }
+
+#if defined(__i386__)
+   cond = !(next->state_regs->eflags & EFLAGS_IF);
+#elif defined(__x86_64__)
+   cond = !(next->state_regs->rflags & EFLAGS_IF);
+#elif defined(__riscv)
+   cond = !(next->state_regs->sstatus & SR_SIE) &&
+          !(next->state_regs->sstatus & SR_SPIE);
+#else
+   cond = false;
+#endif
+
+   /*
+    * Make sure in NO WAY we'll switch to a user task keeping interrupts
+    * disabled. That would be a disaster. And if that happens due to a weird
+    * bug, let's try to learn as much as possible about why that happened.
+    */
+   if (UNLIKELY(cond)) {
+
+      const char *curr_str =
+         curr->kthread_name
+            ? curr->kthread_name
+            : curr->pi->debug_cmdline;
+
+      const char *next_str =
+         next->kthread_name
+            ? next->kthread_name
+            : next->pi->debug_cmdline;
+
+      printk("[sched] task: %d (%p, %s) => %d (%p, %s)\n",
+             curr->tid, curr, curr_str,
+             next->tid, next, next_str);
+
+      if (next->running_in_kernel) {
+         dump_stacktrace(
+            regs_get_frame_ptr(next->state_regs),
+            next->pi->pdir
+         );
+      }
+
+      panic("[sched] Next task does not have interrupts enabled. "
+            "In kernel: %u, timer_ready: %u, is_sigsuspend: %u, "
+            "sa_pending: %p, sa_fault_pending: %p, "
+            "sa_mask: %p, sa_old_mask: %p",
+            next->running_in_kernel,
+            next->timer_ready,
+            next->in_sigsuspend,
+            next->sa_pending[0],
+            next->sa_fault_pending[0],
+            next->sa_mask[0],
+            next->sa_old_mask[0]);
+   }
 }
