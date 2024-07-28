@@ -217,18 +217,6 @@ switch_to_task(struct task *ti)
    context_switch(state);
 }
 
-int
-sys_set_tid_address(int *tidptr)
-{
-   /*
-    * NOTE: this syscall must always succeed. In case the user pointer
-    * is not valid, we'll send SIGSEGV to the just created thread.
-    */
-
-   get_curr_proc()->set_child_tid = tidptr;
-   return get_curr_task()->tid;
-}
-
 bool
 arch_specific_new_task_setup(struct task *ti, struct task *parent)
 {
