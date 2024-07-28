@@ -54,3 +54,6 @@ adjust_nested_interrupts_for_task_in_kernel(struct task *ti)
       push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
    }
 }
+
+void
+switch_to_task_safety_checks(struct task *curr, struct task *next);
