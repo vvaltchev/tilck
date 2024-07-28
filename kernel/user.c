@@ -10,6 +10,8 @@
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/paging.h>
 
+#include <linux/auxvec.h> // system header
+
 int copy_from_user(void *dest, const void *user_ptr, size_t n)
 {
    if (user_out_of_range(user_ptr, n))
@@ -282,3 +284,77 @@ void push_string_on_user_stack(regs_t *r, const char *str)
    }
 }
 
+int
+push_args_on_user_stack(regs_t *r,
+                        const char *const *argv,
+                        u32 argc,
+                        const char *const *env,
+                        u32 envc)
+{
+   ulong pointers[32];
+   ulong env_pointers[96];
+   ulong aligned_len, len, rem;
+
+   if (argc > ARRAY_SIZE(pointers))
+      return -E2BIG;
+
+   if (envc > ARRAY_SIZE(env_pointers))
+      return -E2BIG;
+
+   // push argv data on stack (it could be anywhere else, as well)
+   for (u32 i = 0; i < argc; i++) {
+      push_string_on_user_stack(r, READ_PTR(&argv[i]));
+      pointers[i] = regs_get_usersp(r);
+   }
+
+   // push env data on stack (it could be anywhere else, as well)
+   for (u32 i = 0; i < envc; i++) {
+      push_string_on_user_stack(r, READ_PTR(&env[i]));
+      env_pointers[i] = regs_get_usersp(r);
+   }
+
+   // make stack pointer align to 16 bytes
+
+   len = (
+      2 + // AT_NULL vector
+      2 + // AT_PAGESZ vector
+      1 + // mandatory final NULL pointer (end of 'env' ptrs)
+      envc +
+      1 + // mandatory final NULL pointer (end of 'argv')
+      argc +
+      1   // push argc as last (since it will be the first to be pop-ed)
+   ) * sizeof(ulong);
+   aligned_len = round_up_at(len, USERMODE_STACK_ALIGN);
+   rem = aligned_len - len;
+
+   for (u32 i = 0; i < rem / sizeof(ulong); i++) {
+      push_on_user_stack(r, 0);
+   }
+
+   // push the aux array (in reverse order)
+
+   push_on_user_stack(r, AT_NULL); // AT_NULL vector
+   push_on_user_stack(r, 0);
+
+   push_on_user_stack(r, PAGE_SIZE); // AT_PAGESZ vector
+   push_on_user_stack(r, AT_PAGESZ);
+
+   // push the env array (in reverse order)
+
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'env' ptrs)
+
+   for (u32 i = envc; i > 0; i--) {
+      push_on_user_stack(r, env_pointers[i - 1]);
+   }
+
+   // push the argv array (in reverse order)
+   push_on_user_stack(r, 0); // mandatory final NULL pointer (end of 'argv')
+
+   for (u32 i = argc; i > 0; i--) {
+      push_on_user_stack(r, pointers[i - 1]);
+   }
+
+   // push argc as last (since it will be the first to be pop-ed)
+   push_on_user_stack(r, (ulong)argc);
+   return 0;
+}
