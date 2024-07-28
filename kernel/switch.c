@@ -202,3 +202,19 @@ switch_to_task_safety_checks(struct task *curr, struct task *next)
             next->sa_old_mask[0]);
    }
 }
+
+void
+set_current_task_in_user_mode(void)
+{
+   ASSERT(!is_preemption_enabled());
+   struct task *curr = get_curr_task();
+
+   curr->running_in_kernel = false;
+   task_info_reset_kernel_stack(curr);
+
+#if defined(__i386__)
+   set_kernel_stack((u32)curr->state_regs);
+#elif defined(__x86_64__)
+   NOT_IMPLEMENTED();
+#endif
+}

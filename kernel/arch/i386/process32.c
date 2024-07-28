@@ -194,18 +194,6 @@ setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
  * Sched functions that are here because of arch-specific statements.
  */
 
-void
-set_current_task_in_user_mode(void)
-{
-   ASSERT(!is_preemption_enabled());
-   struct task *curr = get_curr_task();
-
-   curr->running_in_kernel = false;
-
-   task_info_reset_kernel_stack(curr);
-   set_kernel_stack((u32)curr->state_regs);
-}
-
 static inline bool
 is_fpu_enabled_for_task(struct task *ti)
 {
