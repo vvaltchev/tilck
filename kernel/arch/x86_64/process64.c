@@ -30,18 +30,6 @@ setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
    NOT_IMPLEMENTED();
 }
 
-bool
-arch_specific_new_task_setup(struct task *ti, struct task *parent)
-{
-   NOT_IMPLEMENTED();
-}
-
-void
-arch_specific_free_task(struct task *ti)
-{
-   NOT_IMPLEMENTED();
-}
-
 void
 arch_specific_new_proc_setup(struct process *pi, struct process *parent)
 {
