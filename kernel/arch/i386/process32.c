@@ -197,7 +197,7 @@ setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 static inline bool
 is_fpu_enabled_for_task(struct task *ti)
 {
-   return get_task_arch_fields(ti)->aligned_fpu_regs &&
+   return get_task_arch_fields(ti)->fpu_regs &&
           (ti->state_regs->custom_flags & REGS_FL_FPU_ENABLED);
 }
 
@@ -293,13 +293,13 @@ arch_specific_new_task_setup(struct task *ti, struct task *parent)
          bzero(arch, sizeof(arch_task_members_t));
       }
 
-      if (arch->aligned_fpu_regs) {
+      if (arch->fpu_regs) {
 
          /*
           * We already have an FPU regs buffer: just clear its contents and
           * keep it allocated.
           */
-         bzero(arch->aligned_fpu_regs, arch->fpu_regs_size);
+         bzero(arch->fpu_regs, arch->fpu_regs_size);
 
       } else {
 
@@ -331,8 +331,8 @@ void
 arch_specific_free_task(struct task *ti)
 {
    arch_task_members_t *arch = get_task_arch_fields(ti);
-   aligned_kfree2(arch->aligned_fpu_regs, arch->fpu_regs_size);
-   arch->aligned_fpu_regs = NULL;
+   aligned_kfree2(arch->fpu_regs, arch->fpu_regs_size);
+   arch->fpu_regs = NULL;
    arch->fpu_regs_size = 0;
 }
 
