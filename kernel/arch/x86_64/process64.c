@@ -24,16 +24,6 @@
 
 #include <tilck/mods/tracing.h>
 
-int
-push_args_on_user_stack(regs_t *r,
-                        const char *const *argv,
-                        u32 argc,
-                        const char *const *env,
-                        u32 envc)
-{
-   NOT_IMPLEMENTED();
-}
-
 void
 setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 {
