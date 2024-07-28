@@ -161,7 +161,6 @@ save_curr_fpu_ctx_if_enabled(void)
    }
 }
 
-
 NORETURN void
 switch_to_task(struct task *ti)
 {
@@ -215,69 +214,6 @@ switch_to_task(struct task *ti)
    ti->timer_ready = false;
 
    context_switch(state);
-}
-
-bool
-arch_specific_new_task_setup(struct task *ti, struct task *parent)
-{
-   arch_task_members_t *arch = get_task_arch_fields(ti);
-
-   if (FORK_NO_COW) {
-
-      if (parent) {
-
-         /*
-          * We parent is set, we're forking a task and we must NOT preserve the
-          * arch fields. But, if we're not forking (parent is set), it means
-          * we're in execve(): in that case there's no point to reset the arch
-          * fields. Actually, here, in the NO_COW case, we MUST NOT do it, in
-          * order to be sure we won't fail.
-          */
-
-         bzero(arch, sizeof(arch_task_members_t));
-      }
-
-      if (arch->fpu_regs) {
-
-         /*
-          * We already have an FPU regs buffer: just clear its contents and
-          * keep it allocated.
-          */
-         bzero(arch->fpu_regs, arch->fpu_regs_size);
-
-      } else {
-
-         /* We don't have a FPU regs buffer: unless this is kthread, allocate */
-         if (LIKELY(!is_kernel_thread(ti)))
-            if (!allocate_fpu_regs(arch))
-               return false; // out-of-memory
-      }
-
-   } else {
-
-      /*
-       * We're not in the NO_COW case. We have to free the arch specific fields
-       * (like the fpu_regs buffer) if the parent is NULL. Otherwise, just reset
-       * its members to zero.
-       */
-
-      if (parent) {
-         bzero(arch, sizeof(*arch));
-      } else {
-         arch_specific_free_task(ti);
-      }
-   }
-
-   return true;
-}
-
-void
-arch_specific_free_task(struct task *ti)
-{
-   arch_task_members_t *arch = get_task_arch_fields(ti);
-   kfree2(arch->fpu_regs, arch->fpu_regs_size);
-   arch->fpu_regs = NULL;
-   arch->fpu_regs_size = 0;
 }
 
 void
