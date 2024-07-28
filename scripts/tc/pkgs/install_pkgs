@@ -14,7 +14,7 @@ function install_debian_family {
    echo debian > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
-      $MAIN_DIR/scripts/tc/debian/update
+      $MAIN_DIR/scripts/tc/debian/update -ci
    fi
 
    pkg_list=()
@@ -101,7 +101,7 @@ function install_fedora {
    echo fedora > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
-      $MAIN_DIR/scripts/tc/fedora/update
+      $MAIN_DIR/scripts/tc/fedora/update -ci
    fi
 
    pkg_list=()
@@ -162,7 +162,7 @@ function install_arch {
    echo arch > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
-      $MAIN_DIR/scripts/tc/arch/update
+      $MAIN_DIR/scripts/tc/arch/update -ci
    fi
 
    pkg_list=()
@@ -223,7 +223,7 @@ function install_openSUSE {
    echo opensuse > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
-      $MAIN_DIR/scripts/tc/opensuse/update
+      $MAIN_DIR/scripts/tc/opensuse/update -ci
    fi
 
    pkg_list=()
