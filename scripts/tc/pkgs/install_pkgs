@@ -259,6 +259,8 @@ function install_openSUSE {
 
       if rpm -q $x &> /dev/null; then
          echo OK
+      elif rpm -q busybox-$x &> /dev/null; then
+         echo OK
       else
          echo NOT found
          to_install+=($x)
