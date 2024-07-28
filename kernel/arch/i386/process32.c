@@ -22,6 +22,7 @@
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/user.h>
 #include <tilck/kernel/vdso.h>
+#include <tilck/kernel/switch.h>
 
 #include <tilck/mods/tracing.h>
 
@@ -100,61 +101,6 @@ push_args_on_user_stack(regs_t *r,
    // push argc as last (since it will be the first to be pop-ed)
    push_on_user_stack(r, (ulong)argc);
    return 0;
-}
-
-/*
- * TODO: refactor this into portable code and move it to process.c.
- */
-int save_regs_on_user_stack(regs_t *r)
-{
-   ulong new_useresp = r->useresp;
-   int rc;
-
-   /* Align the user ESP */
-   new_useresp &= ALIGNED_MASK(USERMODE_STACK_ALIGN);
-
-   /* Allocate space on the user stack */
-   new_useresp -= sizeof(*r);
-
-   /* Save the registers to the user stack */
-   rc = copy_to_user(TO_PTR(new_useresp), r, sizeof(*r));
-
-   if (rc) {
-      /* Oops, stack overflow */
-      return -EFAULT;
-   }
-
-   /* Now, after we saved the registers, update r->useresp */
-   r->useresp = new_useresp;
-   return 0;
-}
-
-/*
- * TODO: refactor this into portable code and move it to process.c.
- */
-void restore_regs_from_user_stack(regs_t *r)
-{
-   ulong old_regs = r->useresp;
-   int rc;
-
-   /* Restore the registers we previously changed */
-   rc = copy_from_user(r, TO_PTR(old_regs), sizeof(*r));
-
-   if (rc) {
-      /* Oops, something really weird happened here */
-      enable_preemption();
-      terminate_process(0, SIGSEGV);
-      NOT_REACHED();
-   }
-
-   /* Don't trust user space */
-   r->cs = X86_USER_CODE_SEL;
-   r->eflags |= EFLAGS_IF;
-}
-
-void setup_pause_trampoline(regs_t *r)
-{
-   r->eip = pause_trampoline_user_vaddr;
 }
 
 int setup_sig_handler(struct task *ti,
@@ -305,26 +251,6 @@ setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
    };
 }
 
-void save_current_task_state(regs_t *r, bool irq)
-{
-   struct task *curr = get_curr_task();
-
-   ASSERT(curr != NULL);
-   ASSERT(r != NULL);
-
-   if (irq) {
-      /*
-       * In case of preemption while in userspace that happens while the
-       * interrupts are disabled. Make sure we ignore that fact while saving
-       * the current state and always keep the IF flag set in the EFLAGS
-       * register.
-       */
-      r->eflags |= EFLAGS_IF;
-   }
-
-   curr->state_regs = r;
-}
-
 /*
  * Sched functions that are here because of arch-specific statements.
  */
@@ -355,54 +281,6 @@ save_curr_fpu_ctx_if_enabled(void)
       hw_fpu_enable();
       save_current_fpu_regs(false);
       hw_fpu_disable();
-   }
-}
-
-static inline void
-switch_to_task_pop_nested_interrupts(void)
-{
-   if (KRN_TRACK_NESTED_INTERR) {
-
-      ASSERT(get_curr_task() != NULL);
-
-      if (get_curr_task()->running_in_kernel)
-         if (!is_kernel_thread(get_curr_task()))
-            nested_interrupts_drop_top_syscall();
-   }
-}
-
-static inline void
-adjust_nested_interrupts_for_task_in_kernel(struct task *ti)
-{
-   /*
-    * The new task was running in kernel when it was preempted.
-    *
-    * In theory, there's nothing we have to do here, and that's exactly
-    * what happens when KRN_TRACK_NESTED_INTERR is 0. But, our nice
-    * debug feature for nested interrupts tracking requires a little work:
-    * because of its assumptions (hard-coded in ASSERTS) are that when the
-    * kernel is running, it's always inside some kind of interrupt handler
-    * (fault, int 0x80 [syscall], IRQ) before resuming the next task, we have
-    * to resume the state of the nested_interrupts in one case: the one when
-    * we're resuming a USER task that was running in KERNEL MODE (the kernel
-    * was running on behalf of the task). In that case, when for the first
-    * time the user task got to the kernel, we had a nice 0x80 added in our
-    * nested_interrupts array [even in the case of sysenter] by the function
-    * syscall_entry(). The kernel started to work on behalf of the
-    * user process but, for some reason (typically kernel preemption or
-    * wait on condition) the task was scheduled out. When that happened,
-    * because of the function switch_to_task_pop_nested_interrupts() called
-    * above, the 0x80 value was dropped from `nested_interrupts`. Now that
-    * we have to resume the execution of the user task (but in kernel mode),
-    * we MUST push back that 0x80 in order to compensate the pop that will
-    * occur in kernel's syscall_entry() just before returning back
-    * to the user. That's because the nested_interrupts array is global and
-    * not specific to any given task. Like the registers, it has to be saved
-    * and restored in a consistent way.
-    */
-
-   if (!is_kernel_thread(ti)) {
-      push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
    }
 }
 
