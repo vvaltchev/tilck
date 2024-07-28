@@ -26,7 +26,7 @@ struct x86_64_arch_proc_members {
 
 struct x86_64_arch_task_members {
    u16 fpu_regs_size;
-   void *aligned_fpu_regs;
+   void *fpu_regs;
 };
 
 static ALWAYS_INLINE int regs_intnum(regs_t *r)

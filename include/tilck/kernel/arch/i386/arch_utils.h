@@ -38,7 +38,7 @@ struct x86_arch_proc_members {
 
 struct x86_arch_task_members {
    u16 fpu_regs_size;
-   void *aligned_fpu_regs;
+   void *fpu_regs;
 };
 
 NORETURN void context_switch(regs_t *r);

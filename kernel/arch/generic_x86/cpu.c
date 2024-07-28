@@ -191,7 +191,7 @@ void save_current_fpu_regs(bool in_kernel)
       return;
 
    arch_task_members_t *arch_fields = get_task_arch_fields(get_curr_task());
-   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
+   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
 
@@ -225,7 +225,7 @@ void restore_fpu_regs(void *task, bool in_kernel)
       return;
 
    arch_task_members_t *arch_fields = get_task_arch_fields((struct task *)task);
-   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->aligned_fpu_regs;
+   void *buf = in_kernel ? fpu_kernel_regs : arch_fields->fpu_regs;
 
    ASSERT(buf != NULL);
 
@@ -252,27 +252,27 @@ void restore_current_fpu_regs(bool in_kernel)
 
 bool allocate_fpu_regs(arch_task_members_t *arch_fields)
 {
-   ASSERT(arch_fields->aligned_fpu_regs == NULL);
+   ASSERT(arch_fields->fpu_regs == NULL);
 
    if (x86_cpu_features.can_use_avx) {
 
-      arch_fields->aligned_fpu_regs =
+      arch_fields->fpu_regs =
          aligned_kmalloc(CPU_XSAVE_AREA_SIZE, 8 * sizeof(void *));
 
       arch_fields->fpu_regs_size = CPU_XSAVE_AREA_SIZE;
 
    } else {
 
-      arch_fields->aligned_fpu_regs =
+      arch_fields->fpu_regs =
          aligned_kmalloc(CPU_FXSAVE_AREA_SIZE, 4 * sizeof(void *));
 
       arch_fields->fpu_regs_size = CPU_FXSAVE_AREA_SIZE;
    }
 
-   if (!arch_fields->aligned_fpu_regs)
+   if (!arch_fields->fpu_regs)
       return false;
 
-   bzero(arch_fields->aligned_fpu_regs, arch_fields->fpu_regs_size);
+   bzero(arch_fields->fpu_regs, arch_fields->fpu_regs_size);
    return true;
 }
 
@@ -303,17 +303,17 @@ handle_no_coproc_fault(regs_t *r)
 
 #if FORK_NO_COW
 
-   ASSERT(arch_fields->aligned_fpu_regs != NULL);
+   ASSERT(arch_fields->fpu_regs != NULL);
 
    /*
-    * With the current implementation, even when the aligned_fpu_regs are
+    * With the current implementation, even when the fpu_regs are
     * pre-allocated tasks cannot by default use the FPU. This approach has PROs
     * and CONs.
     *
     *    PROs:
     *       - the kernel doesn't have to save/restore unnecessarily the FPU ctx
     *       - tasks using the FPU can be distinguished from the others
-    *       - it is simpler to make aligned_fpu_regs pre-allocated work this way
+    *       - it is simpler to make fpu_regs pre-allocated work this way
     *
     *    CONs:
     *       - paying the overhead of a not-strictly necessary fault, once.
@@ -323,11 +323,11 @@ handle_no_coproc_fault(regs_t *r)
 
     /*
      * We can hit this fault at MOST once in the lifetime of a task. These
-     * sanity checks ensures that, in no case, we allocated the aligned_fpu_regs
+     * sanity checks ensures that, in no case, we allocated the fpu_regs
      * and then, for any reason, we scheduled the task with FPU disabled.
      */
 
-   ASSERT(arch_fields->aligned_fpu_regs == NULL);
+   ASSERT(arch_fields->fpu_regs == NULL);
 
    if (!allocate_fpu_regs(arch_fields)) {
       panic("Cannot allocate memory for the FPU context");
