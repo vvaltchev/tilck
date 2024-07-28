@@ -34,11 +34,6 @@ push_args_on_user_stack(regs_t *r,
    NOT_IMPLEMENTED();
 }
 
-void restore_regs_from_user_stack(regs_t *r)
-{
-   NOT_IMPLEMENTED();
-}
-
 void
 setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr)
 {
@@ -81,21 +76,11 @@ switch_to_task(struct task *ti)
    NOT_IMPLEMENTED();
 }
 
-void setup_pause_trampoline(regs_t *r)
-{
-   NOT_IMPLEMENTED();
-}
-
 int setup_sig_handler(struct task *ti,
                       enum sig_state sig_state,
                       regs_t *r,
                       ulong user_func,
                       int signum)
-{
-   NOT_IMPLEMENTED();
-}
-
-void save_current_task_state(regs_t *r, bool irq)
 {
    NOT_IMPLEMENTED();
 }

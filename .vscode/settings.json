@@ -222,6 +222,7 @@
       "cmdline_opts.h": "c",
       "mod_kb8042.h": "c",
       "process_mm.h": "c",
-      "hal_types.h": "c"
+      "hal_types.h": "c",
+      "vdso.h": "c"
    },
 }
