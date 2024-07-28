@@ -269,16 +269,16 @@ void push_on_user_stack(regs_t *r, ulong val)
 void push_string_on_user_stack(regs_t *r, const char *str)
 {
    const size_t len = strlen(str) + 1; // count also the '\0'
-   const size_t aligned_len = round_down_at(len, USER_STACK_STRING_ALIGN);
+   const size_t aligned_len = round_down_at(len, USERMODE_STACK_ALIGN);
    const size_t rem = len - aligned_len;
 
    ulong user_sp = regs_get_usersp(r);
-   user_sp -= aligned_len + (rem > 0 ? USER_STACK_STRING_ALIGN : 0);
+   user_sp -= aligned_len + (rem > 0 ? USERMODE_STACK_ALIGN : 0);
    regs_set_usersp(r, user_sp);
    memcpy(TO_PTR(user_sp), str, aligned_len);
 
    if (rem > 0) {
-      char smallbuf[USER_STACK_STRING_ALIGN] = {0};
+      char smallbuf[USERMODE_STACK_ALIGN] = {0};
       memcpy(&smallbuf, str + aligned_len, rem);
       memcpy(TO_PTR(user_sp + aligned_len), &smallbuf, sizeof(smallbuf));
    }
