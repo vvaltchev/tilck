@@ -14,6 +14,7 @@ struct x86_64_regs {
    s32 int_num;
    u32 err_code;
    u64 rsp, rbp, rax, rip;
+   u64 rflags;
    u64 userrsp;
    u32 custom_flags;
 };
@@ -67,6 +68,11 @@ static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
 static ALWAYS_INLINE void *regs_get_ip(regs_t *r)
 {
    return TO_PTR(r->rip);
+}
+
+static ALWAYS_INLINE void regs_set_ip(regs_t *r, ulong value)
+{
+   r->rip = value;
 }
 
 static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
