@@ -14,9 +14,9 @@ strategy:
     fedora:
       img: 'vvaltchev/fedora:v3'
     arch:
-      img: 'vvaltchev/archlinux:v5'
+      img: 'vvaltchev/archlinux:v6'
     opensuse:
-      img: 'vvaltchev/opensuse:v3'
+      img: 'vvaltchev/opensuse:v4'
 
 
 container: $[ variables['img'] ]
