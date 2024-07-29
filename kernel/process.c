@@ -901,3 +901,57 @@ void kthread_exit(void)
    enable_interrupts_forced();
    do_schedule();
 }
+
+NODISCARD int
+kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
+{
+   struct task *ti;
+   int tid, ret = -ENOMEM;
+   regs_t r;
+
+   ASSERT(name != NULL);
+   kthread_create_init_regs_arch(&r, func);
+   disable_preemption();
+
+   tid = create_new_kernel_tid();
+
+   if (tid < 0) {
+      ret = -EAGAIN;
+      goto end;
+   }
+
+   ti = allocate_new_thread(kernel_process->pi, tid, !!(fl & KTH_ALLOC_BUFS));
+
+   if (!ti)
+      goto end;
+
+   ASSERT(is_kernel_thread(ti));
+
+   if (*name == '&')
+      name++;         /* see the macro kthread_create() */
+
+   ti->kthread_name = name;
+   ti->state = TASK_STATE_RUNNABLE;
+   ti->running_in_kernel = true;
+   task_info_reset_kernel_stack(ti);
+   kthread_create_setup_initial_stack(ti, &r, arg);
+
+   ret = ti->tid;
+
+   if (fl & KTH_WORKER_THREAD)
+      ti->worker_thread = arg;
+
+   /*
+    * After the following call to add_task(), given that preemption is enabled,
+    * there is NO GUARANTEE that the `tid` returned by this function will still
+    * belong to a valid kernel thread. For example, the kernel thread might run
+    * and terminate before the caller has the chance to run. Therefore, it is up
+    * to the caller to be prepared for that.
+    */
+
+   add_task(ti);
+   enable_preemption();
+
+end:
+   return ret; /* tid or error */
+}

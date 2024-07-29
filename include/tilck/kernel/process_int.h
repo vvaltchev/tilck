@@ -27,6 +27,8 @@ void task_info_reset_kernel_stack(struct task *ti);
 int setup_first_process(pdir_t *pdir, struct task **ti_ref);
 void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
 void setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr);
+void kthread_create_init_regs_arch(regs_t *r, void *func);
+void kthread_create_setup_initial_stack(struct task *ti, regs_t *r, void *arg);
 
 static ALWAYS_INLINE void set_curr_task(struct task *ti)
 {

@@ -14,8 +14,6 @@ void hw_read_clock(struct datetime *out)
 }
 
 bool hi_vmem_avail(void) { return false; }
-int kthread_create2() { return -12; /* ENOMEM */}
-
 void setup_usermode_task_regs() { }
 void invalidate_page() {}
 void init_serial_port() { }
@@ -54,6 +52,8 @@ void release_pageframes_mapped_at() { }
 bool irq_is_masked() { NOT_REACHED(); return false; }
 void dump_stacktrace() { NOT_REACHED(); }
 bool allocate_fpu_regs() { NOT_REACHED(); return false; }
+void kthread_create_init_regs_arch() { NOT_REACHED(); }
+void kthread_create_setup_initial_stack() { NOT_REACHED(); }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }
