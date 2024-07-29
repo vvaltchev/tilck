@@ -127,6 +127,8 @@ struct k_timespec64 {
 
 #ifdef BITS32
 
+#if defined(__i386__)
+
 /*
  * Classic stat64 struct for 32-bit systems.
  *
@@ -160,6 +162,31 @@ struct k_stat64 {
 
 #else
 
+struct k_stat64 {
+   u64 st_dev;
+   u64 st_ino;
+   u32 st_mode;
+   u32 st_nlink;
+   u32 st_uid;
+   u32 st_gid;
+   u64 st_rdev;
+   u64 __pad1;
+   s64 st_size;
+   int st_blksize;
+   int __pad2;
+   s64 st_blocks;
+   struct k_timespec32 st_atim;
+   struct k_timespec32 st_mtim;
+   struct k_timespec32 st_ctim;
+   u32 __unused4;
+   u32 __unused5;
+};
+
+#endif /* defined(__i386__) */
+
+#else
+
+#if defined(__x86_64__)
 /*
  * Modern struct stat for 64-bit systems.
  *
@@ -175,7 +202,7 @@ struct k_stat64 {
    u32 st_uid;
    u32 st_gid;
    u32 __pad0;
-   ulong	st_rdev;
+   ulong st_rdev;
    long st_size;
    long st_blksize;
    long st_blocks;
@@ -187,7 +214,30 @@ struct k_stat64 {
    long __unused[3];
 };
 
-#endif
+#else
+
+struct k_stat64 {
+   ulong st_dev;
+   ulong st_ino;
+   u32 st_mode;
+   u32 st_nlink;
+   u32 st_uid;
+   u32 st_gid;
+   ulong st_rdev;
+   ulong __pad1;
+   long st_size;
+   int st_blksize;
+   int __pad2;
+   long st_blocks;
+   struct k_timespec64 st_atim;
+   struct k_timespec64 st_mtim;
+   struct k_timespec64 st_ctim;
+   u32 __unused4;
+   u32 __unused5;
+};
+
+#endif /* defined(__x86_64__) */
+#endif /* BITS32 */
 
 #ifndef O_DIRECTORY
    #define O_DIRECTORY __O_DIRECTORY
@@ -221,3 +271,4 @@ struct k_stat64 {
 #define STOPCODE(sig)          ((sig) << 8 | 0x7f)
 #define CONTINUED                           0xffff
 #define COREFLAG                              0x80
+

@@ -329,6 +329,16 @@ sys_mmap_pgoff(void *addr, size_t len, int prot,
    return (long)um->vaddr;
 }
 
+long sys_mmap(void *addr, size_t len, int prot,
+              int flags, int fd, size_t offset)
+{
+   if (UNLIKELY(offset & (~PAGE_MASK)))
+      return -EINVAL;
+
+   return sys_mmap_pgoff(addr, len, prot, flags, fd,
+                         offset >> PAGE_SHIFT);
+}
+
 static int munmap_int(struct process *pi, void *vaddrp, size_t len)
 {
    u32 kfree_flags = KFREE_FL_ALLOW_SPLIT | KFREE_FL_MULTI_STEP;
@@ -455,3 +465,4 @@ int sys_munmap(void *vaddrp, size_t len)
    enable_preemption();
    return rc;
 }
+

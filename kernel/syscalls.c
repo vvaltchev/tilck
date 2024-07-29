@@ -93,6 +93,26 @@ sys_nanosleep_time32(const struct k_timespec32 *user_req,
    return rc;
 }
 
+long sys_nanosleep(const struct k_timespec64 *u_req,
+                   struct k_timespec64 *u_rem)
+{
+   struct k_timespec64 req;
+   struct k_timespec64 rem;
+   int rc;
+
+   if (copy_from_user(&req, u_req, sizeof(req)))
+      return -EFAULT;
+
+   rc = do_nanosleep(&req, &rem);
+
+   if (u_rem) {
+      if (copy_to_user(u_rem, &rem, sizeof(rem)))
+         return -EFAULT;
+   }
+
+   return rc;
+}
+
 int sys_newuname(struct utsname *user_buf)
 {
    struct commit_hash_and_date comm;
@@ -228,6 +248,22 @@ int sys_fork(void *u_regs)
 int sys_vfork(void *u_regs)
 {
    return do_fork(u_regs, true);
+}
+
+long sys_clone(regs_t *u_regs, ulong clone_flags, ulong newsp,
+               int *u_parent_tidptr, int *u_child_tidptr, ulong tls)
+{
+   //TODO: Add support for fully clone() features
+
+#define CLONE_VM	0x00000100
+#define CLONE_VFORK	0x00004000
+
+   if (clone_flags == SIGCHLD)
+      return sys_fork(u_regs);
+   else if (clone_flags == (CLONE_VFORK | CLONE_VM | SIGCHLD))
+      return sys_vfork(u_regs);
+   else
+      return -ENOSYS;
 }
 
 static int
@@ -373,6 +409,40 @@ int sys_utime32(const char *u_path, const struct k_utimbuf *u_times)
    return vfs_utimens(path, new_ts);
 }
 
+long sys_utimensat(int dirfd, const char *u_path,
+                   struct k_timespec64 utimes[2], int flags)
+{
+   //TODO: Add support for fully utimensat() features
+
+   struct k_timeval ts[2];
+   struct k_timespec64 new_ts[2];
+   char *path = get_curr_task()->args_copybuf;
+
+   if (flags || (dirfd != AT_FDCWD))
+      return -ENOSYS;
+
+   if (copy_str_from_user(path, u_path, MAX_PATH, NULL))
+      return -EFAULT;
+
+   if (utimes) {
+
+      if (copy_from_user(ts, utimes, sizeof(ts)))
+         return -EFAULT;
+
+   } else {
+
+      /*
+       * If `u_times` is NULL, the access and modification times of the file
+       * are set to the current time.
+       */
+
+      real_time_get_timespec(&new_ts[0]);
+      new_ts[1] = new_ts[0];
+   }
+
+   return vfs_utimens(path, new_ts);
+}
+
 int sys_utimensat_time32(int dirfd, const char *u_path,
                          const struct k_timespec32 times[2], int flags)
 {
@@ -391,3 +461,4 @@ int sys_socketcall(int call, ulong *args)
 {
    return -ENOSYS;
 }
+

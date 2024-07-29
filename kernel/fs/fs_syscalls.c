@@ -107,6 +107,16 @@ no_fds:
    goto end;
 }
 
+long sys_openat(int dfd, const char *u_path, int flags, mode_t mode)
+{
+   //TODO: Add support for fully openat() features
+
+   if (dfd == AT_FDCWD)
+      return sys_open(u_path, flags, mode);
+   else
+      return -ENOSYS;
+}
+
 int sys_creat(const char *u_path, mode_t mode)
 {
    return sys_open(u_path, O_CREAT | O_WRONLY | O_TRUNC, mode);
@@ -123,6 +133,18 @@ int sys_unlink(const char *u_path)
       return ret;
 
    return vfs_unlink(path);
+}
+
+long sys_unlinkat(int dfd, const char *pathname, int flag)
+{
+   //TODO: Add support for fully unlinkat() features
+
+   if (dfd == AT_FDCWD && flag == 0)
+      return sys_unlink(pathname);
+   else if (dfd == AT_FDCWD && flag == AT_REMOVEDIR)
+      return sys_rmdir(pathname);
+   else
+      return -ENOSYS;
 }
 
 int sys_rmdir(const char *u_path)
@@ -170,6 +192,16 @@ int sys_mkdir(const char *u_path, mode_t mode)
       return ret;
 
    return vfs_mkdir(path, mode);
+}
+
+long sys_mkdirat(int dfd, const char *pathname, mode_t mode)
+{
+   //TODO: Add support for fully mkdirat() features
+
+   if (dfd == AT_FDCWD)
+      return sys_mkdir(pathname, mode);
+   else
+      return -ENOSYS;
 }
 
 int sys_read(int fd, void *u_buf, size_t count)
@@ -439,6 +471,26 @@ int sys_fstat64(int fd, struct k_stat64 *u_statbuf)
    return rc;
 }
 
+long sys_fstatat64(int dfd, const char *filename,
+                        struct k_stat64 *statbuf, int flag)
+{
+   //TODO: Add support for fully fstatat() features
+
+// Fix gtests build
+#ifndef AT_EMPTY_PATH
+#define AT_EMPTY_PATH 0x1000
+#endif
+
+   if (dfd == AT_FDCWD && flag == AT_SYMLINK_NOFOLLOW)
+      return sys_lstat64(filename, statbuf);
+   else if (dfd == AT_FDCWD && flag == 0)
+      return sys_stat64(filename, statbuf);
+   else if (flag == AT_EMPTY_PATH && filename[0] == 0)
+      return sys_fstat64(dfd, statbuf);
+   else
+      return -ENOSYS;
+}
+
 int sys_symlink(const char *u_target, const char *u_linkpath)
 {
    struct task *curr     = get_curr_task();
@@ -468,6 +520,17 @@ int sys_symlink(const char *u_target, const char *u_linkpath)
       return -ENOENT; /* target or linkpath is an empty string */
 
    return vfs_symlink(target, linkpath);
+}
+
+long sys_symlinkat(const char *u_oldname,
+                   int newdfd, const char *u_newname)
+{
+   //TODO: Add support for fully symlinkat() features
+
+   if (newdfd == AT_FDCWD)
+      return sys_symlink(u_oldname, u_newname);
+   else
+      return -ENOSYS;
 }
 
 int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
@@ -500,6 +563,17 @@ int sys_readlink(const char *u_pathname, char *u_buf, size_t u_bufsize)
       return -EFAULT;
 
    return (int) ret_bs;
+}
+
+long sys_readlinkat(int dfd, const char *u_pathname,
+                    char *u_buf, size_t u_bufsize)
+{
+   //TODO: Add support for fully readlinkat() features
+
+   if (dfd == AT_FDCWD)
+      return sys_readlink(u_pathname, u_buf, u_bufsize);
+   else
+      return -ENOSYS;
 }
 
 int sys_ia32_truncate64(const char *u_path, s64 len)
@@ -569,6 +643,18 @@ int sys_llseek(int fd, size_t off_hi, size_t off_low, u64 *u_result, u32 whence)
    return 0;
 }
 
+long sys_lseek(int fd, offt offset, u32 whence)
+{
+   fs_handle handle;
+   offt new_off;
+
+   if (!(handle = get_fs_handle(fd)))
+      return -EBADF;
+
+   new_off = vfs_seek(handle, offset, (int)whence);
+   return (long)new_off;
+}
+
 int sys_getdents64(int fd, struct linux_dirent64 *u_dirp, u32 buf_size)
 {
    fs_handle handle;
@@ -580,6 +666,12 @@ int sys_getdents64(int fd, struct linux_dirent64 *u_dirp, u32 buf_size)
 }
 
 int sys_access(const char *u_path, mode_t mode)
+{
+   // TODO: check mode and file r/w flags.
+   return 0;
+}
+
+long sys_faccessat(int dfd, const char *u_path, int mode)
 {
    // TODO: check mode and file r/w flags.
    return 0;
@@ -653,6 +745,16 @@ int sys_dup2(int oldfd, int newfd)
 out:
    kmutex_unlock(&curr->pi->fslock);
    return rc;
+}
+
+long sys_dup3(int oldfd, int newfd, int flags)
+{
+   //TODO: Add support for fully dup3() features
+
+   if (!flags)
+      return sys_dup2(oldfd, newfd);
+
+   return -ENOSYS;
 }
 
 int sys_dup(int oldfd)
@@ -840,6 +942,21 @@ int sys_fchown(int fd, uid_t owner, gid_t group)
    return (owner == 0 && group == 0) ? 0 : -EPERM;
 }
 
+long sys_fchownat(int dfd, const char *u_path,
+                  int user, int group, int flag)
+{
+   //TODO: Add support for fully fchownat() features
+   if (dfd != AT_FDCWD)
+      return -ENOSYS;
+
+   if (flag == 0)
+      return sys_chown(u_path, user, group);
+   else if (flag == AT_SYMLINK_NOFOLLOW)
+      return sys_lchown(u_path, user, group);
+   else
+      return -ENOSYS;
+}
+
 int sys_fsync(int fd)
 {
    struct fs_handle_base *hb = get_fs_handle(fd);
@@ -908,6 +1025,16 @@ int sys_fchmod(int fd, mode_t mode)
    return vfs_fchmod(hb, mode);
 }
 
+long sys_fchmodat(int dfd, const char *u_path, mode_t mode)
+{
+   //TODO: Add support for fully fchmodat() features
+
+   if (dfd == AT_FDCWD)
+      return sys_chmod(u_path, mode);
+   else
+      return -ENOSYS;
+}
+
 static int
 call_rename_or_link(const char *u_oldpath,
                     const char *u_newpath,
@@ -937,9 +1064,31 @@ int sys_rename(const char *u_oldpath, const char *u_newpath)
    return call_rename_or_link(u_oldpath, u_newpath, &vfs_rename);
 }
 
+long sys_renameat2(int olddfd, const char *oldname,
+                   int newdfd, const char *newname, u32 flags)
+{
+   //TODO: Add support for fully renameat2() features
+
+   if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
+      return sys_rename(oldname, newname);
+   else
+      return -ENOSYS;
+}
+
 int sys_link(const char *u_oldpath, const char *u_newpath)
 {
    return call_rename_or_link(u_oldpath, u_newpath, &vfs_link);
+}
+
+long sys_linkat(int olddfd, const char *oldname,
+                int newdfd, const char *newname, int flags)
+{
+   //TODO: Add support for fully linkat() features
+
+   if (olddfd == AT_FDCWD && newdfd == AT_FDCWD && !flags)
+      return sys_link(oldname, newname);
+   else
+      return -ENOSYS;
 }
 
 int sys_pipe(int u_pipefd[2])
@@ -1047,3 +1196,4 @@ no_fds:
    ret = -EMFILE;
    goto err_end;
 }
+
