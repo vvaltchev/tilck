@@ -42,8 +42,14 @@ arch_specific_free_proc(struct process *pi)
    NOT_IMPLEMENTED();
 }
 
-NODISCARD int
-kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
+void
+kthread_create_init_regs_arch(regs_t *r, void *func)
+{
+   NOT_IMPLEMENTED();
+}
+
+void
+kthread_create_setup_initial_stack(struct task *ti, regs_t *r, void *arg)
 {
    NOT_IMPLEMENTED();
 }
