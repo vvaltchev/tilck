@@ -241,7 +241,7 @@ void syscall_entry(regs_t *r)
    ASSERT(!are_interrupts_enabled());
    ASSERT(is_preemption_enabled());
 
-   push_nested_interrupt(0x80);
+   push_nested_interrupt(SYSCALL_SOFT_INTERRUPT);
    disable_preemption();
    enable_interrupts_forced();
    {
