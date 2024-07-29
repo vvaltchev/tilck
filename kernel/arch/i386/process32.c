@@ -81,14 +81,10 @@ int setup_sig_handler(struct task *ti,
    return 0;
 }
 
-NODISCARD int
-kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
+void
+kthread_create_init_regs_arch(regs_t *r, void *func)
 {
-   struct task *ti;
-   int tid, ret = -ENOMEM;
-   ASSERT(name != NULL);
-
-   regs_t r = {
+   *r = (regs_t) {
       .kernel_resume_eip = (ulong)&soft_interrupt_resume,
       .custom_flags = 0,
       .gs = X86_KERNEL_DATA_SEL,
@@ -105,31 +101,11 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
       .useresp = 0,
       .ss = X86_KERNEL_DATA_SEL,
    };
+}
 
-   disable_preemption();
-
-   tid = create_new_kernel_tid();
-
-   if (tid < 0) {
-      ret = -EAGAIN;
-      goto end;
-   }
-
-   ti = allocate_new_thread(kernel_process->pi, tid, !!(fl & KTH_ALLOC_BUFS));
-
-   if (!ti)
-      goto end;
-
-   ASSERT(is_kernel_thread(ti));
-
-   if (*name == '&')
-      name++;         /* see the macro kthread_create() */
-
-   ti->kthread_name = name;
-   ti->state = TASK_STATE_RUNNABLE;
-   ti->running_in_kernel = true;
-   task_info_reset_kernel_stack(ti);
-
+void
+kthread_create_setup_initial_stack(struct task *ti, regs_t *r, void *arg)
+{
    /*
     * 1) Push into the stack, function's argument, `arg`.
     *
@@ -146,26 +122,7 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
    push_on_stack((ulong **)&ti->state_regs, (ulong)arg);
    push_on_stack((ulong **)&ti->state_regs, (ulong)&kthread_exit);
    ti->state_regs = (void *)ti->state_regs - sizeof(regs_t) + 8;
-   memcpy(ti->state_regs, &r, sizeof(r) - 8);
-
-   ret = ti->tid;
-
-   if (fl & KTH_WORKER_THREAD)
-      ti->worker_thread = arg;
-
-   /*
-    * After the following call to add_task(), given that preemption is enabled,
-    * there is NO GUARANTEE that the `tid` returned by this function will still
-    * belong to a valid kernel thread. For example, the kernel thread might run
-    * and terminate before the caller has the chance to run. Therefore, it is up
-    * to the caller to be prepared for that.
-    */
-
-   add_task(ti);
-   enable_preemption();
-
-end:
-   return ret; /* tid or error */
+   memcpy(ti->state_regs, r, sizeof(*r) - 8);
 }
 
 void
