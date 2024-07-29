@@ -18,6 +18,10 @@
 FUNC(asm_nop_loop):
 
 .loop:
+   nop
+   nop
+   addi a0, a0, -1
+   bnez a0, .loop
 
    ret
 
@@ -40,6 +44,25 @@ END_FUNC(asm_nop_loop)
 #
 
 FUNC(asm_do_bogomips_loop):
+
+   nop
+   nop
+   nop
+
+.outer_loop:
+   li    a0, BOGOMIPS_CONST
+
+# Loop identical to asm_nop_loop()
+.inner_loop:
+   nop
+   nop
+   addi a0, a0, -1
+   bnez a0, .inner_loop
+
+   li a0, 1
+   la a1, __bogo_loops
+   amoadd.w a0, a0, (a1)
+   bgez a0, .outer_loop
 
    ret
 

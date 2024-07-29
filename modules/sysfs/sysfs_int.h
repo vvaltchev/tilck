@@ -6,7 +6,7 @@
 
 struct sysfs_inode;
 
-#define SYSFS_ENTRY_SIZE                       64
+#define SYSFS_ENTRY_SIZE                       128
 #define SYSFS_ENTRY_MAX_LEN (                   \
    SYSFS_ENTRY_SIZE                             \
    - sizeof(struct bintree_node)                \
