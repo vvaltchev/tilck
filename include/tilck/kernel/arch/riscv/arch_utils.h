@@ -129,6 +129,16 @@ static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong value)
    r->usersp = value;
 }
 
+static ALWAYS_INLINE ulong regs_get_sp(regs_t *r)
+{
+   return r->sp;
+}
+
+static ALWAYS_INLINE void regs_set_sp(regs_t *r, ulong value)
+{
+   r->sp = value;
+}
+
 static ALWAYS_INLINE u32 get_boothartid(void)
 {
    extern u32 _boot_cpu_hartid;

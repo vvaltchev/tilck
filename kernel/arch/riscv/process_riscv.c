@@ -48,7 +48,7 @@ int setup_sig_handler(struct task *ti,
       int rc;
 
       if (sig_state == sig_pre_syscall)
-         r->a0 = (ulong) -EINTR;
+         set_return_register(r, -EINTR);
 
       if ((rc = save_regs_on_user_stack(r)) < 0)
          return rc;
@@ -104,9 +104,9 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
    ti->running_in_kernel = true;
    task_info_reset_kernel_stack(ti);
 
-   r.a0 = (ulong)arg;
-   r.ra = (ulong)&kthread_exit;
-   r.sp = (ulong)ti->state_regs;
+   set_return_register(&r, (ulong)arg);
+   set_return_addr(&r, (ulong)&kthread_exit);
+   regs_set_sp(&r, (ulong)ti->state_regs);
    ti->state_regs = (void *)ti->state_regs - sizeof(regs_t);
    memcpy(ti->state_regs, &r, sizeof(r));
 
