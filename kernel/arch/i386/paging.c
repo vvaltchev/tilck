@@ -86,7 +86,7 @@ bool handle_potential_cow(void *context)
       // Out-of-memory case
       struct task *curr = get_curr_task();
 
-      if (!curr->running_in_kernel) {
+      if (!in_syscall(curr)) {
 
          // The task was not running in kernel: we can safely kill it.
          printk("Out-of-memory: killing pid %d\n", get_curr_pid());

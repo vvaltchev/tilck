@@ -410,7 +410,7 @@ static void create_kernel_process(void)
    init_process_lists(s_kernel_pi);
 
    s_kernel_ti->is_main_thread = true;
-   s_kernel_ti->running_in_kernel = true;
+   s_kernel_ti->running_in_kernel = IN_SYSCALL_FLAG;
    memcpy(s_kernel_pi->str_cwd, "/", 2);
 
    s_kernel_ti->state = TASK_STATE_SLEEPING;
@@ -461,7 +461,7 @@ void init_sched(void)
 void set_current_task_in_kernel(void)
 {
    ASSERT(!is_preemption_enabled());
-   get_curr_task()->running_in_kernel = true;
+   get_curr_task()->running_in_kernel |= IN_SYSCALL_FLAG;
 }
 
 static void task_add_to_state_list(struct task *ti)

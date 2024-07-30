@@ -219,9 +219,9 @@ switch_to_task(struct task *ti)
    enable_preemption_nosched();
    ASSERT(is_preemption_enabled());
 
-   if (!ti->running_in_kernel)
+   if (!running_in_kernel(ti))
       task_info_reset_kernel_stack(ti);
-   else
+   else if (in_syscall(ti))
       adjust_nested_interrupts_for_task_in_kernel(ti);
 
    set_curr_task(ti);
