@@ -25,7 +25,7 @@ static void handle_inst_illegal_fpu_fault(regs_t *r)
    struct task *curr = get_curr_task();
    const int int_num = r->int_num;
 
-   if (is_kernel_thread(curr) || running_in_kernel(curr))
+   if (is_kernel_thread(curr) || in_syscall(curr))
       goto normal_illegal_fault;
 
    if (r->sstatus & SR_FS)

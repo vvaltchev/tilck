@@ -100,7 +100,7 @@ int do_fork(regs_t *user_regs, bool vfork)
    ASSERT(child->kernel_stack != NULL);
 
    child->state = TASK_STATE_RUNNABLE;
-   child->running_in_kernel = false;
+   child->running_in_kernel = 0;
    task_info_reset_kernel_stack(child);
 
    ASSERT(curr != NULL);

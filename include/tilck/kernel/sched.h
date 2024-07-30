@@ -13,6 +13,8 @@
 
 #include <tilck_gen_headers/config_sched.h>
 
+#define IN_SYSCALL_FLAG (1u << 31)
+
 enum task_state {
    TASK_STATE_INVALID   = 0,
    TASK_STATE_RUNNABLE  = 1,
@@ -62,8 +64,8 @@ struct task {
 
    struct process *pi;
 
+   u32 running_in_kernel;
    bool is_main_thread;                      /* value of `tid == pi->pid` */
-   bool running_in_kernel;
    bool stopped;
    bool was_stopped;
 
@@ -212,7 +214,11 @@ static ALWAYS_INLINE bool is_preemption_enabled(void)
 
 static ALWAYS_INLINE bool running_in_kernel(struct task *t)
 {
-   return t->running_in_kernel;
+   return !!t->running_in_kernel;
+}
+
+static ALWAYS_INLINE bool in_syscall(struct task *t) {
+   return t->running_in_kernel & IN_SYSCALL_FLAG;
 }
 
 static ALWAYS_INLINE bool is_kernel_thread(struct task *ti)

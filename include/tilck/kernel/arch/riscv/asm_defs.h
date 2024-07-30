@@ -14,8 +14,8 @@
    #error Unsupported value of KERNEL_STACK_PAGES
 #endif
 #if __riscv_xlen == 64
-   #define TI_F_RESUME_RS_OFF     32 /* offset of: fault_resume_regs */
-   #define TI_FAULTS_MASK_OFF     40 /* offset of: faults_resume_mask */
+   #define TI_F_RESUME_RS_OFF     40 /* offset of: fault_resume_regs */
+   #define TI_FAULTS_MASK_OFF     48 /* offset of: faults_resume_mask */
 #else
    #define TI_F_RESUME_RS_OFF     20 /* TODO: riscv32 */
    #define TI_FAULTS_MASK_OFF     24 /* TODO: riscv32 */

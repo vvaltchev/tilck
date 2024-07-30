@@ -211,7 +211,7 @@ set_current_task_in_user_mode(void)
    ASSERT(!is_preemption_enabled());
    struct task *curr = get_curr_task();
 
-   curr->running_in_kernel = false;
+   curr->running_in_kernel &= ~((u32)IN_SYSCALL_FLAG);
    task_info_reset_kernel_stack(curr);
 
 #if defined(__i386__)

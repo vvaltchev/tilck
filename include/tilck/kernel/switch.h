@@ -13,7 +13,7 @@ switch_to_task_pop_nested_interrupts(void)
 
       ASSERT(get_curr_task() != NULL);
 
-      if (get_curr_task()->running_in_kernel)
+      if (in_syscall(get_curr_task()))
          if (!is_kernel_thread(get_curr_task()))
             nested_interrupts_drop_top_syscall();
    }

@@ -263,6 +263,7 @@ void fault_entry(regs_t *r)
     */
    ASSERT(!are_interrupts_enabled());
 
+   get_curr_task()->running_in_kernel++;
    push_nested_interrupt(regs_intnum(r));
    disable_preemption();
    enable_interrupts_forced();
@@ -275,10 +276,11 @@ void fault_entry(regs_t *r)
     */
    pop_nested_interrupt();
 
-   if (!get_curr_task()->running_in_kernel)
+   if (!in_syscall(get_curr_task()))
       process_signals(get_curr_task(), sig_in_fault, r);
 
    enable_preemption();
    disable_interrupts_forced();
+   get_curr_task()->running_in_kernel--;
 }
 

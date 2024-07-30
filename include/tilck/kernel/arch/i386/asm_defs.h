@@ -14,8 +14,8 @@
    #error Unsupported value of KERNEL_STACK_PAGES
 #endif
 
-#define TI_F_RESUME_RS_OFF     20 /* offset of: fault_resume_regs */
-#define TI_FAULTS_MASK_OFF     24 /* offset of: faults_resume_mask */
+#define TI_F_RESUME_RS_OFF     24 /* offset of: fault_resume_regs */
+#define TI_FAULTS_MASK_OFF     28 /* offset of: faults_resume_mask */
 
 #define SIZEOF_REGS            84
 #define REGS_EIP_OFF           64
