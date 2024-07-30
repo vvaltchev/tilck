@@ -761,7 +761,7 @@ finalize_usermode_task_setup(struct task *ti, regs_t *user_regs)
    ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNING);
    task_change_state(ti, TASK_STATE_RUNNABLE);
 
-   ti->running_in_kernel = false;
+   ti->running_in_kernel = 0;
    ASSERT(ti->kernel_stack != NULL);
 
    task_info_reset_kernel_stack(ti);
@@ -932,7 +932,7 @@ kthread_create2(kthread_func_ptr func, const char *name, int fl, void *arg)
 
    ti->kthread_name = name;
    ti->state = TASK_STATE_RUNNABLE;
-   ti->running_in_kernel = true;
+   ti->running_in_kernel = IN_SYSCALL_FLAG;
    task_info_reset_kernel_stack(ti);
    kthread_create_setup_initial_stack(ti, &r, arg);
 

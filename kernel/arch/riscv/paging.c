@@ -110,7 +110,7 @@ bool handle_potential_cow(void *context)
       // Out-of-memory case
       struct task *curr = get_curr_task();
 
-      if (curr->running_in_kernel) {
+      if (in_syscall(curr)) {
 
          // We cannot kill a task running in kernel during a CoW page fault
          // In this case (but in the one above too), Linux puts the process to
