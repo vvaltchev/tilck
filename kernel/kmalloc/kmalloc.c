@@ -503,6 +503,9 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
                               true,              /* mark node as allocated */
                               do_actual_alloc);
 
+      if (!addr)
+         return NULL;
+
       ASSERT(addr == big_block + tot);
 
       if (sub_blocks_min_size) {
