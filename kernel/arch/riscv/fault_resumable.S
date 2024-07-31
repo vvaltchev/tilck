@@ -108,6 +108,8 @@ FUNC(fault_resumable_call):
 
 .asm_fault_resumable_call_resume:
 
+   REG_L a0, 10 * RISCV_SZPTR(sp)    # extracted a0 value which
+                                     # set in handle_resumable_fault()
    resume_callee_regs
 
    la t0, __current
