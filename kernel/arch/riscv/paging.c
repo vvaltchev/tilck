@@ -693,8 +693,11 @@ pdir_clone_int(pdir_t *old_pdir,pdir_t *new_pdir,
          }
       }
 
-      // copy the page table
-      memcpy(new_pdir, old_pdir, sizeof(page_table_t));
+      if (!deep) {
+         // copy the page table
+         memcpy(new_pdir, old_pdir, sizeof(page_table_t));
+      }
+
       return 0;
    }
 
