@@ -489,14 +489,52 @@ TEST_F(kmalloc_test, coalesce_block)
    kmalloc_destroy_heap(&h);
 }
 
+static bool fake_alloc_fail_enabled;
+static unsigned fake_alloc_fail_after_n;
+static set<pair<ulong, size_t>> fake_allocs;
+
+struct FakeAllocFailure {
+
+   FakeAllocFailure(unsigned n) {
+
+      if (!fake_allocs.empty())
+         throw runtime_error("fake_allocs is not empty");
+
+      fake_alloc_fail_enabled = true;
+      fake_alloc_fail_after_n = n;
+   }
+
+   ~FakeAllocFailure() {
+      fake_alloc_fail_enabled = false;
+      fake_alloc_fail_after_n = 0;
+   }
+};
+
 static bool fake_alloc_and_map_func(ulong vaddr, size_t page_count)
 {
+   if (fake_alloc_fail_enabled) {
+
+      if (!fake_alloc_fail_after_n) {
+         return false; /* simulate failure */
+      }
+
+      fake_alloc_fail_after_n--;
+      fake_allocs.emplace(vaddr, page_count);
+   }
    return true;
 }
 
 static void fake_free_and_map_func(ulong vaddr, size_t page_count)
 {
-   /* do nothing */
+   if (fake_alloc_fail_enabled) {
+
+      auto it = fake_allocs.find({vaddr, page_count});
+
+      if (it == fake_allocs.end())
+         throw runtime_error("Unbalanced fake_free_and_map_func() call");
+
+      fake_allocs.erase(it);
+   }
 }
 
 TEST_F(kmalloc_test, multi_step_alloc)
@@ -580,6 +618,51 @@ TEST_F(kmalloc_test, multi_step_alloc2)
       "|  A-F  |  A-F  |  A-F  |  A-F  |  A-F  |  AS-  |  ---  |  ---  |",
       "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
       "|---|---|---|---|---|---|---|---|---|---|--F|---|---|---|---|---|",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
+   });
+
+   kmalloc_destroy_heap(&h);
+}
+
+TEST_F(kmalloc_test, multi_step_alloc3)
+{
+   void *ptr;
+   size_t s;
+
+   struct kmalloc_heap h;
+   kmalloc_create_heap(&h,
+                       MB,                           /* vaddr */
+                       KMALLOC_MIN_HEAP_SIZE,        /* heap size */
+                       KMALLOC_MIN_HEAP_SIZE / 16,   /* min block size */
+                       KMALLOC_MIN_HEAP_SIZE / 8,    /* alloc block size */
+                       false,                        /* linear mapping */
+                       NULL,                         /* metadata_nodes */
+                       fake_alloc_and_map_func,
+                       fake_free_and_map_func);
+
+   struct block_node *nodes = (struct block_node *)h.metadata_nodes;
+
+   s = 11 * h.min_block_size;
+
+   EXPECT_NO_THROW({
+      FakeAllocFailure f(5);
+      ptr = per_heap_kmalloc(&h, &s, KMALLOC_FL_MULTI_STEP);
+   });
+
+   EXPECT_TRUE(fake_allocs.empty());
+   EXPECT_EQ(ptr, nullptr);
+   dump_heap_subtree(&h, 0, 5);
+   check_metadata(nodes, {
+      "+---------------------------------------------------------------+",
+      "|                              ---                              |",
+      "+-------------------------------+-------------------------------+",
+      "|              ---              |              ---              |",
+      "+---------------+---------------+---------------+---------------+",
+      "|      ---      |      ---      |      ---      |      ---      |",
+      "+-------+-------+-------+-------+-------+-------+-------+-------+",
+      "|  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |  ---  |",
+      "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+",
+      "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
       "+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+"
    });
 
