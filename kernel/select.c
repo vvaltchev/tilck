@@ -376,11 +376,14 @@ int sys_select(int user_nfds,
    return select_write_user_sets(&ctx);
 }
 
-long sys_pselect6(int nfds, fd_set *readfds,
-                  fd_set *writefds, fd_set *exceptfds,
-                  struct k_timespec64 *u_timeout, sigset_t *u_sig)
+long sys_pselect6(int user_nfds,
+                  fd_set *user_rfds,
+                  fd_set *user_wfds,
+                  fd_set *user_efds,
+                  struct k_timespec64 *u_timeout,
+                  sigset_t *u_sig)
 {
-   //TODO: Add support for fully pselect6() features
+   // TODO: Add full support for pselect6()
 
    ulong sigmask[K_SIGACTION_MASK_WORDS];
    struct k_timespec64 k_timeout;
@@ -389,8 +392,13 @@ long sys_pselect6(int nfds, fd_set *readfds,
    if (copy_from_user(sigmask, u_sig, sizeof(sigmask)))
       return -EFAULT;
 
-   if (sigmask[0] != 0)
-      return -ENOSYS;
+   for (int i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
+
+      if (sigmask[i]) {
+         /* We don't support signal masks here yet. */
+         return -ENOSYS;
+      }
+   }
 
    if (u_timeout) {
       if (copy_from_user(&k_timeout, u_timeout, sizeof(* u_timeout)))
@@ -402,8 +410,11 @@ long sys_pselect6(int nfds, fd_set *readfds,
          return -EFAULT;
    }
 
-   rc = sys_select(nfds, readfds, writefds, exceptfds,
-                     (struct k_timeval *)u_timeout);
+   rc = sys_select(user_nfds,
+                   user_rfds,
+                   user_wfds,
+                   user_efds,
+                   (struct k_timeval *)u_timeout);
 
    if (u_timeout) {
       if (copy_from_user(&k_timeout, u_timeout, sizeof(* u_timeout)))
@@ -417,4 +428,3 @@ long sys_pselect6(int nfds, fd_set *readfds,
 
    return rc;
 }
-

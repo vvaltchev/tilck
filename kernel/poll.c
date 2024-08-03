@@ -285,7 +285,7 @@ long sys_ppoll(struct pollfd *ufds, unsigned int nfds,
                struct k_timespec64 *tsp, const sigset_t *sigmask,
                size_t sigsetsize)
 {
-   //TODO: Add support for fully ppoll() features
+   // TODO: Add full support for ppoll()
 
    int rc = 0;
 
