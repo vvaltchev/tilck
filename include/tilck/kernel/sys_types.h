@@ -31,7 +31,11 @@
  * may not be defined by sys/resource.h
  */
 #ifndef RUSAGE_THREAD
-#define RUSAGE_THREAD 1
+   #define RUSAGE_THREAD 1
+#endif
+
+#ifndef AT_EMPTY_PATH
+   #define AT_EMPTY_PATH 0x1000
 #endif
 
 #define MAX_SYSCALLS 500
@@ -125,7 +129,7 @@ struct k_timespec64 {
    long tv_nsec;
 };
 
-#ifdef BITS32
+
 
 #if defined(__i386__)
 
@@ -160,7 +164,7 @@ struct k_stat64 {
    u64 st_ino;
 };
 
-#else
+#elif defined(__riscv) && __riscv_xlen == 32
 
 struct k_stat64 {
    u64 st_dev;
@@ -182,22 +186,16 @@ struct k_stat64 {
    u32 __unused5;
 };
 
-#endif /* defined(__i386__) */
+#elif defined(__x86_64__)
 
-#else
-
-#if defined(__x86_64__)
 /*
  * Modern struct stat for 64-bit systems.
- *
  * Note: it's called simply "stat" in the Linux kernel.
  */
 struct k_stat64 {
-
    ulong st_dev;
    ulong st_ino;
    ulong st_nlink;
-
    u32 st_mode;
    u32 st_uid;
    u32 st_gid;
@@ -206,15 +204,13 @@ struct k_stat64 {
    long st_size;
    long st_blksize;
    long st_blocks;
-
    struct k_timespec64 st_atim;
    struct k_timespec64 st_mtim;
    struct k_timespec64 st_ctim;
-
    long __unused[3];
 };
 
-#else
+#elif defined(__riscv) && __riscv_xlen == 64
 
 struct k_stat64 {
    ulong st_dev;
@@ -236,8 +232,8 @@ struct k_stat64 {
    u32 __unused5;
 };
 
-#endif /* defined(__x86_64__) */
-#endif /* BITS32 */
+#endif
+
 
 #ifndef O_DIRECTORY
    #define O_DIRECTORY __O_DIRECTORY

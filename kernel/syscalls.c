@@ -15,6 +15,9 @@
 #include <tilck/kernel/datetime.h>
 #include <tilck/kernel/fs/vfs.h>
 
+#include <linux/sched.h> // system header
+
+
 #define LINUX_REBOOT_MAGIC1         0xfee1dead
 #define LINUX_REBOOT_MAGIC2          672274793
 #define LINUX_REBOOT_MAGIC2A          85072278
@@ -253,10 +256,7 @@ int sys_vfork(void *u_regs)
 long sys_clone(regs_t *u_regs, ulong clone_flags, ulong newsp,
                int *u_parent_tidptr, int *u_child_tidptr, ulong tls)
 {
-   //TODO: Add support for fully clone() features
-
-#define CLONE_VM	0x00000100
-#define CLONE_VFORK	0x00004000
+   // TODO: Add full support for clone()
 
    if (clone_flags == SIGCHLD)
       return sys_fork(u_regs);

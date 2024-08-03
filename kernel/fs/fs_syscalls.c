@@ -12,8 +12,6 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/pipe.h>
 
-#include <fcntl.h>      // system header
-
 static inline bool is_fd_in_valid_range(int fd)
 {
    return IN_RANGE(fd, 0, MAX_HANDLES);
@@ -109,7 +107,7 @@ no_fds:
 
 long sys_openat(int dfd, const char *u_path, int flags, mode_t mode)
 {
-   //TODO: Add support for fully openat() features
+   // TODO: Add full support for openat()
 
    if (dfd == AT_FDCWD)
       return sys_open(u_path, flags, mode);
@@ -474,12 +472,7 @@ int sys_fstat64(int fd, struct k_stat64 *u_statbuf)
 long sys_fstatat64(int dfd, const char *filename,
                         struct k_stat64 *statbuf, int flag)
 {
-   //TODO: Add support for fully fstatat() features
-
-// Fix gtests build
-#ifndef AT_EMPTY_PATH
-#define AT_EMPTY_PATH 0x1000
-#endif
+   // TODO: Add support for fully fstatat() features
 
    if (dfd == AT_FDCWD && flag == AT_SYMLINK_NOFOLLOW)
       return sys_lstat64(filename, statbuf);
