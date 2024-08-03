@@ -176,7 +176,7 @@ static ALWAYS_INLINE void halt(void)
 
 static ALWAYS_INLINE bool in_hypervisor(void)
 {
-   //TODO
+   // TODO: implement in_hypervisor() for RISCV
    return false;
 }
 
