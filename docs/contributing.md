@@ -243,7 +243,18 @@ to quickly mention a few points:
      }
      ```
      Simply because in the second case, the first line of the body gets partially hidden
-     by loop's header.
+     by loop's header. **However**, when the statement line is *shorter* than the following
+     line, there shouldn't be an empty line, because the hiding effect is not there anymore.
+     For example:
+
+    ```C
+     if (cmdline_buf[0]) {
+        mbi->flags |= MULTIBOOT_INFO_CMDLINE;
+        mbi->cmdline = (u32) cmdline_buf;
+     }
+    ```
+    The rationale for such a "complex" set of rules, is the preference for *perfectly* looking
+    good code over code that can be *trivially* formatted.
 
   - For long function signatures, the type goes on the previous line, and the parameters
     are aligned like this:
@@ -302,13 +313,48 @@ to quickly mention a few points:
     if (!ptr_b)
       return;
     ```
-  - Long expressions involving the ternary operator `?:` can be formatted like this:
+  - Long expressions involving the ternary operator `?:` should be formatted like this:
       ```C
       new_term =
          serial_port_fwd
             ? tty_allocate_and_init_new_serial_term(serial_port_fwd)
             : tty_allocate_and_init_new_video_term(rows_buf);
       ```
+  - The #defines are aligned:
+    ```C
+    #define X86_PC_TIMER_IRQ           0
+    #define X86_PC_KEYBOARD_IRQ        1
+    #define X86_PC_COM2_COM4_IRQ       3
+    #define X86_PC_COM1_COM3_IRQ       4
+    #define X86_PC_SOUND_IRQ           5
+    #define X86_PC_FLOPPY_IRQ          6
+    #define X86_PC_LPT1_OR_SLAVE_IRQ   7
+    #define X86_PC_RTC_IRQ             8
+    #define X86_PC_ACPI_IRQ            9
+    #define X86_PC_PCI1_IRQ           10
+    #define X86_PC_PCI2_IRQ           11
+    #define X86_PC_PS2_MOUSE_IRQ      12
+    #define X86_PC_MATH_COPROC_IRQ    13
+    #define X86_PC_HD_IRQ             14
+    ```
+  - #ifdefs are indented if they are reasonably small in scope and
+    don't intermix with actual code. For example:
+    ```C
+    #ifndef TESTING
+    
+       #ifndef __cplusplus
+          #define NORETURN _Noreturn /* C11 no return attribute */
+       #else
+          #undef NULL
+          #define NULL nullptr
+          #define NORETURN [[ noreturn ]] /* C++11 no return attribute */
+       #endif
+    
+    #else
+       #define NORETURN
+    #endif
+    ```
+
 
  **NOTE[1]:** all the rules above can be broken if there is enough benefit for doing so.
  The only rule that has no exceptions so far is the 80-column limit for lines. Keeping
