@@ -40,6 +40,19 @@ static const struct block_node s_new_node; // Just zeros.
 #define NODE_PARENT(n) (HALF(n-1))
 #define NODE_IS_LEFT(n) (((n) & 1) != 0)
 
+static void
+per_heap_kfree_unsafe(struct kmalloc_heap *h,
+                      void *ptr,
+                      size_t *user_size,
+                      u32 flags);
+
+static void
+internal_kfree(struct kmalloc_heap *h,
+               void *ptr,
+               size_t size,
+               bool allow_split,
+               bool do_actual_free);
+
 bool is_kmalloc_initialized(void)
 {
    return kmalloc_initialized;
@@ -372,18 +385,18 @@ internal_kmalloc(struct kmalloc_heap *h,
          if (UNLIKELY(!success)) {
 
             /*
-             * Corner case: in case of non-linearly mapped heaps, a successfull
-             * allocation in the heap metadata does not always mean a sucessfull
+             * Corner case: in case of non-linearly mapped heaps, a successful
+             * allocation in the heap metadata does not always mean a successful
              * kmalloc(), because the underlying allocator [h->valloc_and_map]
              * might have failed. In this case we have to call per_heap_kfree
              * and restore kmalloc's heap metadata to the previous state. Also,
-             * all the alloc nodes we be either marked as allocated or
+             * all the alloc nodes should be either marked as allocated or
              * alloc_failed.
              */
 
             DEBUG_kmalloc_bad_end;
             size_t actual_size = node_size;
-            per_heap_kfree(h, vaddr, &actual_size, 0);
+            per_heap_kfree_unsafe(h, vaddr, &actual_size, 0);
             return NULL;
          }
 
@@ -439,23 +452,34 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
    const bool multi_step_alloc = !!(flags & KMALLOC_FL_MULTI_STEP);
    const bool do_actual_alloc = !(flags & KMALLOC_FL_NO_ACTUAL_ALLOC);
    const u32 sub_blocks_min_size = flags & KMALLOC_FL_SUB_BLOCK_MIN_SIZE_MASK;
+   const bool do_split = (sub_blocks_min_size != 0);
+   const size_t original_desired_size = *size;
 
-   ASSERT(*size != 0);
-   ASSERT(!sub_blocks_min_size || sub_blocks_min_size >= h->min_block_size);
+   ASSERT(original_desired_size != 0);
+   ASSERT(!do_split || sub_blocks_min_size >= h->min_block_size);
    ASSERT(!is_preemption_enabled());
 
    DEBUG_kmalloc_begin;
 
-   if (UNLIKELY(*size > h->size))
+   if (UNLIKELY(original_desired_size > h->size)) {
+      /* The requested memory chunk is bigger than the heap. */
       return NULL;
+   }
 
+   /*
+    * Round-up `original_desired_size` to the minimal block size for the heap.
+    */
    const size_t rounded_up_size =
-      MAX(roundup_next_power_of_2(*size), h->min_block_size);
+      MAX(roundup_next_power_of_2(original_desired_size), h->min_block_size);
 
-   if (!multi_step_alloc || ((rounded_up_size - *size) < h->min_block_size)) {
-
+   if (!multi_step_alloc ||
+       ((rounded_up_size - original_desired_size) < h->min_block_size))
+   {
+      /*
+       * This is not a multi-step allocation, or it is but the rounded-up size
+       * is closer to the desired chunk size than our smallest block.
+       */
       *size = rounded_up_size;
-
       addr = internal_kmalloc(h,          /* heap */
                               *size,      /* block size */
                               0,          /* start node */
@@ -463,55 +487,126 @@ per_heap_kmalloc_unsafe(struct kmalloc_heap *h, size_t *size, u32 flags)
                               true,       /* mark node as allocated */
                               do_actual_alloc);
 
-      if (sub_blocks_min_size && addr) {
+      if (do_split && addr) {
          internal_kmalloc_split_block(h, addr, *size, sub_blocks_min_size);
       }
-
       return addr;
    }
 
    /*
     * multi_step_alloc is true, therefore we can do multiple allocations in
-    * order to allocate almost exactly (round-up at min_block_size) bytes.
+    * order to allocate almost exactly original_desired_size bytes, with a
+    * waste smaller than `h->min_block_size`.
     *
     * NOTE: we don't have to mark as free the remaining of big_block after the
-    * "for" loop below, because we called internal_kmalloc() with
-    * do_actual_alloc = false.
+    * "for" loop below, because the first internal_kmalloc() below is called
+    * with mark_node_as_allocated = false and do_actual_alloc = false. In other
+    * words, the following call has no side effects. We just need to find
+    * the biggest block that could contain our allocation.
     */
 
    const size_t desired_size = *size;
-   void *big_block =
-      internal_kmalloc(h, rounded_up_size, 0, h->size, false, false);
+   void *big_block = internal_kmalloc(h,                /* heap */
+                                      rounded_up_size,  /* chunk size */
+                                      0,                /* start node */
+                                      h->size,          /* start node size */
+                                      false,            /* mark as allocated */
+                                      false);           /* do actual alloc */
 
    if (!big_block)
       return NULL;
 
    const int big_block_node = ptr_to_node(h, big_block, rounded_up_size);
+   const int power_of_two_start = (int)h->heap_data_size_log2 - 1;
    size_t tot = 0;
 
-   for (int i=(int)h->heap_data_size_log2-1; i >= 0 && tot < desired_size; i--)
+   /*
+    * Allocate `desired_size`, one power-of-two at a time, starting from the
+    * power immediately after the heap_size_log2. The allocations are guaranteed
+    * to be contiguous because we already checked that the whole big_block is
+    * available for us.
+    */
+   for (int i = power_of_two_start; i >= 0 && tot < desired_size; i--)
    {
-      const size_t s = (1u << i);
+      size_t sub_block_size = (1u << i);
 
-      if (!(desired_size & s))
+      if (!(desired_size & sub_block_size)) {
+         /*
+          * desired_size (a regular not-power-of-two number) does not have the
+          * N-th bit set, corresponding to `sub_block_size`. Therefore, we skip
+          * allocating a sub-block of this size.
+          */
          continue;
+      }
 
+      /*
+       * Do one power-of-two allocation of size `sub_block_size`. Note that we
+       * ALWAYS start from `big_block_node`, on each iteration. The internal
+       * implementation will always gives us the next address. We ASSERT for
+       * that below.
+       */
       addr = internal_kmalloc(h,
-                              s,
+                              sub_block_size,
                               big_block_node,
                               rounded_up_size,
                               true,              /* mark node as allocated */
                               do_actual_alloc);
 
-      ASSERT(addr == big_block + tot);
+      if (UNLIKELY(!addr)) {
 
-      if (sub_blocks_min_size) {
-         internal_kmalloc_split_block(h, addr, s, sub_blocks_min_size);
+         /*
+          * The internal_kmalloc() above can fail only if `do_actual_alloc`
+          * is set (and the underlying call to valloc_and_map() failed).
+          */
+         ASSERT(do_actual_alloc);
+
+         /*
+          * We need to roll-back the whole thing. Start from the last value of
+          * `i` that might have been used and end only when `tot` becomes 0.
+          */
+         for  (int j = i + 1; tot > 0; j++) {
+
+            ASSERT(j <= power_of_two_start);
+
+            sub_block_size = (1u << j);
+            if (!(desired_size & sub_block_size)) {
+               /* sub_block_size not used, see the longer comment above. */
+               continue;
+            }
+
+            /*
+             * To calculate backwards the pointer to the last sub-block,
+             * we must first subtract its size from `tot`, because the last
+             * block is within the following range:
+             *    [big_block + tot - sub_block_size, big_block + tot).
+             */
+            tot -= sub_block_size;
+            internal_kfree(h,
+                           big_block + tot,
+                           sub_block_size,
+                           do_split,            /* allow split */
+                           do_actual_alloc);
+         }
+         return NULL;
       }
 
-      tot += s;
+      /*
+       * Make absolutely sure that the address we got is immediately
+       * adjacent to the last allocated sub-block.
+       */
+      ASSERT(addr == big_block + tot);
+
+      if (do_split) {
+         internal_kmalloc_split_block(h,
+                                      addr,
+                                      sub_block_size,
+                                      sub_blocks_min_size);
+      }
+
+      tot += sub_block_size;
    }
 
+   ASSERT(tot >= original_desired_size);
    *size = tot;
    return big_block;
 }
@@ -802,8 +897,7 @@ per_heap_kfree_used_heap_corner_case(struct kmalloc_heap *h,
 
    if (!ctx) {
 
-      /* Could we get more unlucky that this? */
-
+      /* Could we get more unlucky than that? */
       ctx = get_emergency_deferred_kfree_ctx(ptr);
 
       if (!ctx) {
