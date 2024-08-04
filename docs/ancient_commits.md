@@ -26,7 +26,7 @@ How to build and test the ancient versions of Tilck
 
 2. Install the following packages:
    git, gcc, nasm, GNU make, gcc-mingw-w64-i686, qemu-system-i386
-   
+
 3. Enter in the Tilck main directory and run (using Bash):
    ```
    w=/usr/bin/i686-w64-mingw32 && mkdir bin &&                     \
@@ -34,36 +34,36 @@ How to build and test the ancient versions of Tilck
    export PATH="`pwd`/bin:$PATH"
    ```
 4. Compile with: `make`
-   
+
 5. Run: `qemu-system-i386 -fda os2.img`
 
 **Cygwin instructions** (more complicated, but 99% close to the original setup):
-   
+
 1. Pick up a Windows system. At the time Windows 7 64-bit was used,
    but an up-to-date Windows 10 works too.
-   
+
 2. Install a 32-bit version of Cygwin from the Cygwin Time Machine:
-   
+
    http://ctm.crouchingtigerhiddenfruitbat.org/pub/cygwin/setup/setup.html
-   
+
    Even the latest 32-bit version (2.918) will work. On Windows 10. The original
    setup used Windows 7. It's not clear if that might make a difference.
-      
+
 3. Run from a Windows Command Prompt as Administrator: `setup-x86.exe -X`.
    That is necessary in order to use the Cygwin Time Machine mirrors.
-   
+
 4. When asked to choose the mirror, use:
    http://ctm.crouchingtigerhiddenfruitbat.org/pub/cygwin/circa/2016/03/02/124013
-   
+
    Or, in general, one from March 2016. The full list is here:
    http://ctm.crouchingtigerhiddenfruitbat.org/pub/cygwin/circa/index.html
 
 5. Install the cygwin gcc 5.3.0 package (not mingw!), nasm, GNU make and git.
 
 6. Run: `git config --global core.autocrlf false`
-   
+
 7. Clone Tilck's repo with: `git clone https://github.com/vvaltchev/tilck`
-   
+
 8. Checkout an ancient commit, before 4e8c99d6c8cc3dae5ef6faf52968c389939e5b74,
    like z-ancient-01.
 
@@ -73,7 +73,7 @@ How to build and test the ancient versions of Tilck
     https://www.qemu.org/download/#windows
     The following version has been tested to work on Windows 10:
     https://qemu.weilnetz.de/w64/qemu-w64-setup-20220419.exe
-   
+
 11. Run the Win32 QEMU from Cygwin to test the kernel with:
     ```
     "/cygdrive/c/Program Files/qemu/qemu-system-i386.exe" -fda os2.img
@@ -105,7 +105,7 @@ How to build and test the ancient versions of Tilck
    git, gcc, nasm, GNU make, qemu-system-i386
 
 2. Compile with: `make`
-  
+
 3. Run: `qemu-system-i386 -fda os2.img`
 
 -------------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ How to build and test the ancient versions of Tilck
 3. Compile the kernel with: `make`
 
 4. [optional] Compile the unit tests with: `make tests`
-   
+
 5. Run: `./run_qemu_linux` or `./run_qemu`
 
 6. [optional] Run the unit tests with: `./build/unittests`
@@ -142,7 +142,7 @@ How to build and test the ancient versions of Tilck
 
 **Notes:**
    Commits in this group are built with CMake for the first time.
-   A simple `build_toolchain.sh` script has been just introduced. 
+   A simple `build_toolchain.sh` script has been just introduced.
 
 **Instructions:**
 
@@ -215,18 +215,18 @@ How to build and test the ancient versions of Tilck
    like read(), write() etc. Process management, scheduling and memory management
    have a fair amount of functionalities. The framebuffer console and the
    interactive EFI bootloader have been added here.
-   
+
    Ubuntu 18.04 is required because the run_qemu scripts pass deprecated
    options to qemu-system-i386, which have been removed in the newer releases
    of QEMU.
 
 **Instructions:**
 
-   1. Pick up *64-bit* Ubuntu 18.04 LTS. 
+   1. Pick up *64-bit* Ubuntu 18.04 LTS.
    2. Install: git.
    3. Run: `./scripts/build_toolchain`
    4. Configure the CMake build and build with just: `make`
-   5. Test the OS with: `./build/run_qemu` (or `./build/run_nokvm_qemu`)
+   5. Test the OS with: `./build/run_qemu` (or `./build/run_qemu`)
    6. [Optional] Test the UEFI boot with: `./build/run_efi_qemu32` [requires extra toolchain steps]
    7. [Optional] Build unit tests with: `make gtests`
    8. [Optional] Run the unit tests with: `./build/gtests`
@@ -235,21 +235,21 @@ How to build and test the ancient versions of Tilck
 
 **Key-commits:**
    * z-ancient-13 "Update README.md"
-   
+
 **Notes:**
    The commits in this group finally have a minimal devshell with `ls` working.
    The musl library is used by default. The shell forwards the unknown commands
    to busybox. Also, project's name changes from "experimentOS" to "Tilck".
-   
+
 **Instructions:**
    Exactly as above. Ubuntu 18.04 LTS is still required because of the QEMU scripts.
-   
+
 -------------------------------------------------------------------------------------
 
 **Key-commits:**
    * z-ancient-14 "[term] Fix a bug related with \n + improve debug_per_task_cb()"
    * z-ancient-15 "Merge pull request #57 from vvaltchev/term"
-   
+
 **Notes:**
    This is the last group of "ancient" commits before the stable-* series
    starts. Here the devshell and the console get improved. Multiple TTYs
@@ -257,8 +257,8 @@ How to build and test the ancient versions of Tilck
 
 **Instructions:**
    Exactly as above. Ubuntu 18.04 LTS is still required because of the QEMU scripts.
-   
-   
+
+
 -------------------------------------------------------------------------------------
 
 Starting from the commit tagged as stable-001, it's possible to build and run Tilck
