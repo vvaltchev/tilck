@@ -76,12 +76,20 @@ DEF_STATIC_CONF_RO(BOOL,  debugpanel,              MOD_debugpanel);
 DEF_STATIC_CONF_RO(BOOL,  goldfish,                MOD_goldfish);
 DEF_STATIC_CONF_RO(BOOL,  riscv_intc,              MOD_riscv_intc);
 
-void sysfs_create_config_obj(void)
+static void
+sysfs_fail_to_register_obj(const char *name)
 {
-   struct sysobj *config, *kernel, *console, *modules;
+   panic("sysfs: unable to register object '%s'", name);
+}
 
-   config = sysfs_create_custom_obj(
-      "config",
+static void
+sysfs_create_build_config_obj(void)
+{
+   struct sysobj *obj;
+   const char *name = "config";
+
+   obj = sysfs_create_custom_obj(
+      name,
       NULL,       /* hooks */
       SYSOBJ_CONF_PROP_PAIR(buildtype),
       SYSOBJ_CONF_PROP_PAIR(version),
@@ -91,14 +99,21 @@ void sysfs_create_config_obj(void)
       NULL
    );
 
-   if (!config)
-      goto fail;
+   if (!obj)
+      sysfs_fail_to_register_obj(name);
 
-   if (sysfs_register_obj(NULL, &sysfs_root_obj, "config", config))
-      goto fail;
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, name, obj))
+      sysfs_fail_to_register_obj(name);
+}
 
-   kernel = sysfs_create_custom_obj(
-      "kernel",
+static void
+sysfs_create_kernel_obj(void)
+{
+   struct sysobj *obj;
+   const char *name = "kernel";
+
+   obj = sysfs_create_custom_obj(
+      name,
       NULL,       /* hooks */
       SYSOBJ_CONF_PROP_PAIR(timer_hz),
       SYSOBJ_CONF_PROP_PAIR(time_slice_ticks),
@@ -122,14 +137,21 @@ void sysfs_create_config_obj(void)
       NULL
    );
 
-   if (!kernel)
-      goto fail;
+   if (!obj)
+      sysfs_fail_to_register_obj(name);
 
-   if (sysfs_register_obj(NULL, config, "kernel", kernel))
-      goto fail;
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, name, obj))
+      sysfs_fail_to_register_obj(name);
+}
 
-   console = sysfs_create_custom_obj(
-      "console",
+static void
+sysfs_create_console_obj(void)
+{
+   struct sysobj *obj;
+   const char *name = "console";
+
+   obj = sysfs_create_custom_obj(
+      name,
       NULL,       /* hooks */
       SYSOBJ_CONF_PROP_PAIR(big_font_threshold),
       SYSOBJ_CONF_PROP_PAIR(banner),
@@ -141,14 +163,21 @@ void sysfs_create_config_obj(void)
       NULL
    );
 
-   if (!console)
-      goto fail;
+   if (!obj)
+      sysfs_fail_to_register_obj(name);
 
-   if (sysfs_register_obj(NULL, config, "console", console))
-      goto fail;
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, name, obj))
+      sysfs_fail_to_register_obj(name);
+}
 
-   modules = sysfs_create_custom_obj(
-      "modules",
+static void
+sysfs_create_modules_obj(void)
+{
+   struct sysobj *obj;
+   const char *name = "modules";
+
+   obj = sysfs_create_custom_obj(
+      name,
       NULL,       /* hooks */
       SYSOBJ_CONF_PROP_PAIR(sysfs),
       SYSOBJ_CONF_PROP_PAIR(pci),
@@ -165,15 +194,17 @@ void sysfs_create_config_obj(void)
       NULL
    );
 
-   if (!modules)
-      goto fail;
+   if (!obj)
+      sysfs_fail_to_register_obj(name);
 
-   if (sysfs_register_obj(NULL, config, "modules", modules))
-      goto fail;
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, name, obj))
+      sysfs_fail_to_register_obj(name);
+}
 
-   /* Success */
-   return;
-
-fail:
-   panic("Unable to create the sysfs config obj");
+void sysfs_create_config_obj(void)
+{
+   sysfs_create_build_config_obj();
+   sysfs_create_kernel_obj();
+   sysfs_create_console_obj();
+   sysfs_create_modules_obj();
 }
