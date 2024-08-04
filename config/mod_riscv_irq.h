@@ -7,4 +7,4 @@
 
 #pragma once
 
-#cmakedefine01    MOD_riscv_intc
+#cmakedefine01    MOD_riscv_irq
