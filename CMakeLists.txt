@@ -783,6 +783,10 @@ if (${ARCH} STREQUAL "i386")
 
    set(QEMU_ARCH_OPTS      "-device ide-hd,drive=img1,${QEMU_CHS_GEOM$}")
 
+elseif (${ARCH} STREQUAL "x86_64")
+
+   set(QEMU_ARCH_OPTS      "-device ide-hd,drive=img1,${QEMU_CHS_GEOM$}")
+
 elseif (${ARCH} STREQUAL "riscv64")
 
    set(QEMU_ARCH_OPTS      "-device virtio-blk-device,drive=img1 \
