@@ -230,6 +230,9 @@
       "mod_sysfs.h": "c",
       "mod_debugpanel.h": "c",
       "config_debug.h": "c",
-      "generated_config.h": "c"
+      "generated_config.h": "c",
+      "build_info.h": "c",
+      "config_userlim.h": "c",
+      "config_boot.h": "c"
    },
 }

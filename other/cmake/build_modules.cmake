@@ -3,6 +3,42 @@ cmake_minimum_required(VERSION 3.22)
 
 set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
 
+# --------------------------------------------------------------------
+# Sysfs-only special code for the generated config objects
+
+set(
+   GENERATED_CONFIG_FILE
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/generated_config.h
+)
+
+set(
+   RO_CONFIG_VARS_HEADER
+   ${CMAKE_SOURCE_DIR}/modules/sysfs/ro_config_vars.h
+)
+
+add_custom_command(
+
+   OUTPUT
+      ${GENERATED_CONFIG_FILE}
+
+   COMMAND
+      ${BUILD_APPS}/gen_config ${CMAKE_SOURCE_DIR} ${GENERATED_CONFIG_FILE}
+
+   DEPENDS
+      ${RO_CONFIG_VARS_HEADER}
+      gen_config
+)
+
+add_custom_target(
+
+   generated_configuration
+
+   DEPENDS
+      ${GENERATED_CONFIG_FILE}
+)
+
+# ----------------------------------------------------------------------
+
 #
 # Internal macro use by the build_and_link_module() function
 #
@@ -90,6 +126,10 @@ function(build_and_link_module target modname)
          mod_${modname}${variant} STATIC EXCLUDE_FROM_ALL
          ${MOD_${modname}_SOURCES}
       )
+
+      if (${modname} STREQUAL "sysfs")
+         add_dependencies(mod_${modname}${variant} generated_configuration)
+      endif()
 
       if ("${variant}" STREQUAL "_noarch")
 
