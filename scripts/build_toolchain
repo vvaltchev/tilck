@@ -88,34 +88,16 @@ fi
 # ARCH and ARCH_* variables are all about the TARGET architecture
 
 if [ -z "$GCC_TC_VER" ]; then
-
    if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
-
       GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
-
    else
-
-      if [ -f $TC/.gcc_tc_ver ]; then
-
-         # TODO: drop this once we upgrade to toolchain3
-
-         if [[ "$ARCH" == "i386" ]]; then
-            # Small hack to support older toolchains
-            GCC_TC_VER=$(cat $TC/.gcc_tc_ver)
-         fi
-
-         # Upgrade the toolchain to the latest format
-         if [[ "$RUNNING_IN_CI" != "1" ]]; then
-
-            # Keep the old .gcc_tc_ver file to support building older commits
-            cp $TC/.gcc_tc_ver $TC/.gcc_tc_ver_i386
-         fi
-      fi
+      GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
    fi
 fi
 
 if [ -z "$GCC_TC_VER" ]; then
-   GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
+   echo "ERROR: GCC_TC_VER is not set"
+   exit 1
 fi
 
 #

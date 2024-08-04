@@ -103,39 +103,14 @@ endif()
 # the GCC_TC_VER environment variable or the default value if it was unset.
 #
 
-if (EXISTS ${TCROOT}/.gcc_tc_ver)
-
-   if (NOT "$ENV{CI}")
-      # Small hack to support older toolchains (and upgrade them)
-      # TODO: drop this once we upgrade to toolchain3
-      file(RENAME ${TCROOT}/.gcc_tc_ver ${TCROOT}/.gcc_tc_ver_i386)
-   endif()
-
-endif()
-
 if (EXISTS ${TCROOT}/.gcc_tc_ver_${ARCH})
 
    file(READ ${TCROOT}/.gcc_tc_ver_${ARCH} SAVED_GCC_TC_VAR)
 
 else()
 
-   if (NOT "$ENV{CI}")
-
-      message(FATAL_ERROR
-              "${TCROOT}/.gcc_tc_ver_${ARCH} not found: run ${BTC_SCRIPT_REL}")
-
-   else()
-
-      if (EXISTS ${TCROOT}/.gcc_tc_ver)
-         # Support older pre-built toolchains in docker images used by CI
-         # TODO: drop this once we upgrade to toolchain3
-         file(READ ${TCROOT}/.gcc_tc_ver SAVED_GCC_TC_VAR)
-      endif()
-
-      # Small hack to make older container builds to work
-      set(SAVED_GCC_TC_VAR "6.4.0")
-
-   endif()
+   message(FATAL_ERROR
+           "${TCROOT}/.gcc_tc_ver_${ARCH} not found: run ${BTC_SCRIPT_REL}")
 
 endif()
 
