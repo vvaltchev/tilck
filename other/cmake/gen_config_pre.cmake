@@ -107,18 +107,16 @@ list(
    APPEND run_qemu_files
 
    run_qemu
-   run_multiboot_qemu
-   run_efi_qemu64
    debug_run_qemu
 )
 
-if (${ARCH} STREQUAL "i386")
+if (${ARCH_FAMILY} STREQUAL "generic_x86")
 
-   list(
-      APPEND run_qemu_files
+   if (${ARCH} STREQUAL "i386")
+      list(APPEND run_qemu_files run_efi_qemu32)
+   endif()
 
-      run_efi_qemu32
-   )
+   list(APPEND run_qemu_files run_multiboot_qemu run_efi_qemu64)
 
 endif()
 
