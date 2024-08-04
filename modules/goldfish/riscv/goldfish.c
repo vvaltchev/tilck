@@ -8,6 +8,7 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/datetime.h>
+
 #include <3rd_party/fdt_helper.h>
 #include <libfdt.h>
 #include "fdt_rtc.h"
