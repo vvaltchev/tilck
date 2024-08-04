@@ -224,6 +224,10 @@
       "process_mm.h": "c",
       "hal_types.h": "c",
       "vdso.h": "c",
-      "image.h": "c"
+      "image.h": "c",
+      "mod_sb16.h": "c",
+      "mod_pci.h": "c",
+      "mod_sysfs.h": "c",
+      "mod_debugpanel.h": "c"
    },
 }
