@@ -106,11 +106,8 @@ endif()
 list(
    APPEND run_qemu_files
 
-   run_nokvm_qemu
    run_qemu
-   run_multiboot_nokvm_qemu
    run_multiboot_qemu
-   run_efi_nokvm_qemu64
    run_efi_qemu64
    debug_run_qemu
 )
@@ -120,7 +117,6 @@ if (${ARCH} STREQUAL "i386")
    list(
       APPEND run_qemu_files
 
-      run_efi_nokvm_qemu32
       run_efi_qemu32
    )
 

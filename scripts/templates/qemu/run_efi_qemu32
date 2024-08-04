@@ -1,32 +1,29 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+f="@IMG_FILE@"
+tc="@TCROOT@"
 
-if uname -a | grep -i microsoft &> /dev/null; then
-   echo "It looks like you're using WSL (a.k.a. \"Bash for Windows\"): "
-   echo "therefore, KVM is not available."
-   echo "Just run the *nokvm* version of this script."
+if [ -z "$QEMU_BIOS" ]; then
+   QEMU_BIOS="$tc/i386/ovmf/OVMF-pure-efi.fd"
+fi
+
+if ! [ -f "$QEMU_BIOS" ]; then
+   echo "In order to boot with EFI, you need to download OVMF first."
+   echo "To do that, just run in project's main directory:"
+   echo "   ./scripts/build_toolchain -s download_ovmf"
    exit 1
 fi
 
-if ! lsmod | grep kvm &> /dev/null; then
-
-   echo "WARNING: it looks like KVM is not installed on this machine."
-   echo "Please install qemu-kvm and add the current user to the kvm group "
-   echo "OR just run the *nokvm* version of this script."
-   echo "The launch of QEMU with the -enable-kvm option will likely fail."
-   echo
-
-else
-
-   if [[ $EUID -ne 0 ]]; then
-      if ! getent group kvm | grep &>/dev/null "\b${USER}\b"; then
-         echo "WARNING: it looks like the current user is not in the 'kvm'"
-         echo "group. Likely the launch of QEMU with the -enable-kvm option "
-         echo "will fail."
-         echo
-      fi
-   fi
+if [ -z "$GDB_PORT" ]; then
+   GDB_PORT=1234
 fi
 
-$BUILD_DIR/run_efi_nokvm_qemu32 -enable-kvm -cpu host "$@"
+echo "Run QEMU with -bios $QEMU_BIOS -gdb tcp::$GDB_PORT"
+
+qemu-system-i386                                       \
+   @QEMU_COMMON_OPTS@                                  \
+   @QEMU_RAM_OPT@                                      \
+   -gdb tcp::$GDB_PORT                                 \
+   -bios "$QEMU_BIOS"                                  \
+   -drive index=0,media=disk,format=raw,file=$f "$@"

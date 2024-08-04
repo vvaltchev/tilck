@@ -21,7 +21,7 @@
 
 ## Debugging the kernel with GDB
 As explained in the README.md file, it's easy to debug Tilck's kernel while it's
-running inside a QEMU virtual machine. By default, the `run_nokvm_qemu` script
+running inside a QEMU virtual machine. By default, the `run_qemu` script
 runs `QEMU` with the `-s` option, a shorthand for `-gdb tcp::1234`. Therefore,
 once Tilck has booted we can connect with GDB as if we'd do for any other process
 debugged remotely:
@@ -45,10 +45,10 @@ server using the GDB_PORT environment variable:
 GDB_PORT=9999 ./build/run_qemu
 ```
 
-Another detail omitted in the README.md is that running `run_nokvm_qemu` is
-necessary, even if we have `KVM` installed on the machine. That's because QEMU
-has *limited* support for debugging VMs using hardware-virtualization. For
-example, it happens that breakpoints are missed.
+Another detail omitted in the README.md is that running `run_qemu` without
+`-enable-kvm` is necessary, even if we have `KVM` installed on the machine.
+That's because QEMU has *limited* support for debugging VMs using
+hardware-virtualization. For example, it happens that breakpoints are missed.
 
 ### Custom GDB commands
 One "detail" omitted until now is that running GDB like explained, triggers
@@ -427,7 +427,7 @@ never really need to be touched. Therefore, we'll talk only about debugging the 
 stage, which runs in 32-bit [protected mode] like the whole Tilck kernel and it's
 also mostly written in C. Steps:
 
-  * Run: `./build/run_nokvm_qemu -S`. The `-S` option will force QEMU to stop
+  * Run: `./build/run_qemu -S`. The `-S` option will force QEMU to stop
     before the boot stage.
 
   * In a different console, run GDB with:

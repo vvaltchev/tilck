@@ -99,7 +99,7 @@ well.
 
 * A kernel suitable for a *desktop* operating system. No X server works on Tilck,
 not only because a considerable amount of extra features will be required for that,
-but because working in that direction is *completely outside* of project's goals. 
+but because working in that direction is *completely outside* of project's goals.
 See also: https://github.com/vvaltchev/tilck/discussions/81
 
 #### Tilck vs Linux
@@ -320,7 +320,7 @@ follow the steps:
 
   - (Optional) Prepare a debug build of Tilck, for a better debugging experience.
 
-  - Run Tilck's VM with: `./build/run_nokvm_qemu` but, remain at the bootloader
+  - Run Tilck's VM with: `./build/run_qemu` but, remain at the bootloader
     stage.
 
   - In a different terminal, run: `gdb ./build/tilck_unstripped`.
