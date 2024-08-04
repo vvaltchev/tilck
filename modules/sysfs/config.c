@@ -17,7 +17,7 @@
 #include <tilck_gen_headers/mod_pci.h>
 #include <tilck_gen_headers/mod_sb16.h>
 #include <tilck_gen_headers/mod_goldfish.h>
-#include <tilck_gen_headers/mod_riscv_intc.h>
+#include <tilck_gen_headers/mod_riscv_irq.h>
 
 #include <tilck/common/build_info.h>
 
@@ -74,7 +74,7 @@ DEF_STATIC_CONF_RO(BOOL,  serial,                  MOD_serial);
 DEF_STATIC_CONF_RO(BOOL,  sb16,                    MOD_sb16);
 DEF_STATIC_CONF_RO(BOOL,  debugpanel,              MOD_debugpanel);
 DEF_STATIC_CONF_RO(BOOL,  goldfish,                MOD_goldfish);
-DEF_STATIC_CONF_RO(BOOL,  riscv_intc,              MOD_riscv_intc);
+DEF_STATIC_CONF_RO(BOOL,  riscv_irq,               MOD_riscv_irq);
 
 static void
 sysfs_fail_to_register_obj(const char *name)
@@ -190,7 +190,7 @@ sysfs_create_modules_obj(void)
       SYSOBJ_CONF_PROP_PAIR(sb16),
       SYSOBJ_CONF_PROP_PAIR(debugpanel),
       SYSOBJ_CONF_PROP_PAIR(goldfish),
-      SYSOBJ_CONF_PROP_PAIR(riscv_intc),
+      SYSOBJ_CONF_PROP_PAIR(riscv_irq),
       NULL
    );
 
