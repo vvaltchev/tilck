@@ -228,6 +228,8 @@
       "mod_sb16.h": "c",
       "mod_pci.h": "c",
       "mod_sysfs.h": "c",
-      "mod_debugpanel.h": "c"
+      "mod_debugpanel.h": "c",
+      "config_debug.h": "c",
+      "generated_config.h": "c"
    },
 }
