@@ -72,6 +72,13 @@ struct sysobj_type {
                                        pointers to sysobj_prop objects */
 };
 
+struct sysobj_type_data_pair {
+
+   struct sysobj_type *type;
+   void *data;
+};
+
+
 struct sysobj_hooks {
 
    offt (*pre_load)(struct sysobj *, struct sysobj_prop *, void *);

@@ -35,40 +35,34 @@ static void
 gen_globals(ostream &out, const gen_data &data)
 {
    out << "/* modules */\n";
-   for (const string &mod: data.modules) {
+   for (const string &mod : data.modules) {
       out << "DEF_STATIC_CONF_RO(BOOL, " << mod << ", MOD_" << mod << ");\n";
    }
    out << "\n";
-}
 
-static void
-gen_config_directory(ostream &out,
-                     const string &name,
-                     const vector<string> &objects)
-{
-   out << "\n";
-   out << "   name = \"" << name << "\";\n";
-   out << R"(
-   obj = sysfs_create_custom_obj(
-      name,
-      NULL,       /* hooks */
+   for (auto &[cat, opts] : data.option_categories) {
 
-)";
+      out << "DEF_STATIC_SYSOBJ_TYPE(\n";
+      out << "   type_" << cat << ",\n";
 
-   for (const string &obj : objects) {
-      out << "      SYSOBJ_CONF_PROP_PAIR(" << obj << "),\n";
+      for (const string &name : opts) {
+         out << "   &prop_" << name << ",\n";
+      }
+
+      out << "   NULL\n";
+      out << ");\n";
+      out << "\n";
+
+      out << "DEF_STATIC_SYSOBJ(\n";
+      out << "   obj_" << cat << ",\n";
+      out << "   &type_" << cat << ",\n";
+      out << "   NULL /* hooks */,\n";
+      for (const string &name : opts) {
+         out << "   &conf_" << name << ",\n";
+      }
+      out << ");\n";
+      out << "\n";
    }
-
-   out <<R"(
-      NULL
-   );
-
-   if (!obj)
-      sysfs_fail_to_register_obj(name);
-
-   if (sysfs_register_obj(NULL, &sysfs_root_obj, name, obj))
-      sysfs_fail_to_register_obj(name);
-)";
 }
 
 static void
@@ -78,18 +72,22 @@ gen_functions(ostream &out, const gen_data &data)
 void
 sysfs_create_config_obj(void)
 {
-   struct sysobj *obj;
+   struct sysobj *root = &sysfs_root_obj;
    const char *name;
-
 
 )";
 
-   gen_config_directory(out, "modules", data.modules);
-   for (auto &[cat, opts] : data.option_categories) {
-      gen_config_directory(out, cat, opts);
+   for (auto &[c, opts] : data.option_categories) {
+      out << "   name = \"" << c << "\";\n";
+      out << "   if (sysfs_register_obj(NULL, root, name, &obj_" << c << "))\n";
+      out << "      goto fail;\n\n";
    }
 
 out << R"(
+   return; /* success */
+
+fail:
+   sysfs_fail_to_register_obj(name);
 }
 )";
 
@@ -103,7 +101,9 @@ get_modules_list(gen_data &data, const path &projRoot)
    /* Find all the 1st-level sub-directories of modules/ */
    for (auto &entry : directory_iterator(modulesDir)) {
       if (entry.is_directory()) {
-         data.modules.push_back(entry.path().filename());
+         const string &filename = entry.path().filename();
+         data.modules.push_back(filename);
+         data.option_categories["modules"].push_back(filename);
       }
    }
 }
