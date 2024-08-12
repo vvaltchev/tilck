@@ -42,6 +42,9 @@
 #define IER_SLEEP_MODE_INTR        0b00010000
 #define IER_LOW_PWR_INTR           0b00100000
 
+/* Interrupt Identification Register (IIR) */
+#define IIR_RCV_AVAIL              0b00000100
+
 /* Line Status Register (LSR) */
 #define LSR_DATA_READY             0b00000001
 #define LSR_OVERRUN_ERROR          0b00000010
@@ -162,8 +165,12 @@ static void ns16550_wait_for_read(void *priv)
 static char ns16550_read(void *priv)
 {
    struct ns16550 *uart = priv;
+   char c;
+
    ns16550_wait_for_read(uart);
-   return (char) ns16550_reg_rd(uart, UART_RBR);
+   c = (char)ns16550_reg_rd(uart, UART_RBR);
+   ns16550_reg_wr(uart, UART_IER, IER_RCV_AVAIL_INTR);
+   return c;
 }
 
 static bool ns16550_write_ready(void *priv)
@@ -185,6 +192,14 @@ static void ns16550_write(void *priv, char c)
    ns16550_reg_wr(uart, UART_THR,(u8)c);
 }
 
+static void ns16550_clear_irq(void *priv)
+{
+   struct ns16550 *uart = priv;
+
+   if (ns16550_reg_rd(uart, UART_IIR) & IIR_RCV_AVAIL)
+      ns16550_reg_wr(uart, UART_IER, IER_NO_INTR);
+}
+
 static void ns16550_set_baud_divisor(struct ns16550 *uart, int baud_divisor)
 {
    int lcr_val = ns16550_reg_rd(uart, UART_LCR) & ~LCR_SET_DIV_LATCH_ACC_BIT;
@@ -203,7 +218,15 @@ static void ns16550_uart_init(struct ns16550 *uart, int baud_divisor)
                                  FCR_CLEAR_RECV_FIFO |
                                  FCR_CLEAR_TR_FIFO);
    ns16550_reg_wr(uart, UART_LCR, LCR_8_BITS | LCR_1_STOP_BIT | LCR_NO_PARITY);
-   ns16550_set_baud_divisor(uart, baud_divisor);
+
+   /*
+    * TODO: Since tilck does not currently implement the "clock" framework,
+    * if it is not specify the clock frequency at the uart node of the device
+    * tree, then we just do not touch the baud divisor register.
+    */
+   if (baud_divisor)
+      ns16550_set_baud_divisor(uart, baud_divisor);
+
    ns16550_reg_wr(uart, UART_IER, IER_RCV_AVAIL_INTR);
 }
 
@@ -253,6 +276,7 @@ struct fdt_serial_ops ns16550_ops = {
    .rx_rdy = ns16550_read_ready,
    .rx_c = ns16550_read,
    .tx_c = ns16550_write,
+   .clr_i = ns16550_clear_irq,
 };
 
 int ns16550_init(void *fdt, int node, const struct fdt_match *match)
@@ -277,15 +301,6 @@ int ns16550_init(void *fdt, int node, const struct fdt_match *match)
       goto bad;
    }
 
-   /*
-    * TODO: Since tilck does not currently implement the "clock" framework,
-    * we must specify the clock frequency at the uart node of the device tree
-    */
-   if (!uart->uartclk) {
-      printk("ns16550: ERROR: UART frequency undefined!\n");
-      uart->uartclk = 384000; //try default frequency
-   }
-
    uart->irq = irqchip_alloc_irq(fdt, node, 0);
    if (uart->irq < 0) {
       printk("ns16550: ERROR: cannot alloc globle irq number!\n");
@@ -293,11 +308,9 @@ int ns16550_init(void *fdt, int node, const struct fdt_match *match)
       goto bad;
    }
 
+   ns16550_uart_init(uart, uart->uartclk / (16 * 115200));
    fdt_serial_register(uart, &ns16550_ops, uart->irq,
                        fdt_serial_generic_irq_handler);
-
-   ns16550_uart_init(uart, uart->uartclk / (16 * 115200));
-
    return 0;
 
 bad:

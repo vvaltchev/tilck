@@ -16,6 +16,7 @@ struct fdt_serial_ops {
    bool (*rx_rdy)(void *priv);
    char (*rx_c)(void *priv);
    void (*tx_c)(void *priv, char c);
+   void (*clr_i)(void *priv);
 };
 
 struct fdt_serial_dev {
