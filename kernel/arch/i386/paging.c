@@ -407,7 +407,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
 }
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
+map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, ulong hw_flags)
 {
    page_table_t *pt;
    const u32 vaddr = (u32) vaddrp;
@@ -452,7 +452,7 @@ map_pages_int(pdir_t *pdir,
               ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
-              u32 hw_flags)
+              ulong hw_flags)
 {
    int rc;
    size_t pages = 0;
