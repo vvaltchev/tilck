@@ -134,7 +134,13 @@ union riscv_page {
       ulong access : 1;
       ulong dirty : 1;
       ulong reserved : 2;
-      ulong pfn : (__riscv_xlen - 10);
+#if __riscv_xlen == 64
+      ulong pfn : 44;
+      ulong custom : 10;
+#else
+      ulong pfn : 22;
+      ulong custom : 0;
+#endif
    };
 
    ulong raw;
@@ -150,7 +156,7 @@ STATIC_ASSERT(sizeof(struct riscv_page_table) == PAGE_DIR_SIZE);
 void map_big_page_int(pdir_t *pdir,
                       void *vaddr,
                       ulong paddr,
-                      u32 flags);
+                      ulong flags);
 
 void set_pages_io(pdir_t *pdir, void *vaddr, size_t size);
 
