@@ -354,8 +354,11 @@ static int fdt_parse_framebuffer(void *fdt)
 
    for (int i = 0; i < ARRAY_SIZE(simplefb_formats); i++) {
 
-      if (strcmp((void *)prop, simplefb_formats[i].name))
+      if (strcmp((void *)prop,
+            (void *)KERNEL_VA_TO_PA(simplefb_formats[i].name)))
+      {
          continue;
+      }
 
       format = &simplefb_formats[i];
       mbi->framebuffer_bpp = format->bpp;
