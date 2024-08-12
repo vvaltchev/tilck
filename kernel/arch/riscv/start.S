@@ -97,10 +97,15 @@ clear_bss_done:
    call sbi_init
 
    mv a0, s1
-   call init_early_mapping
+   call prepare_early_mapping
 
    call parse_fdt
    mv s2, a0   /* Save multiboot info structure physical address */
+
+   call early_get_cpu_features
+
+   mv a0, s1
+   call init_early_mapping
 
    la a0, page_size_buf
    li a1, SATP_MODE
@@ -122,8 +127,6 @@ clear_bss_done:
    ret
 
 .next_step:
-
-   call early_get_cpu_features
 
    /* Enable access to user memory */
    li t0, SR_SUM

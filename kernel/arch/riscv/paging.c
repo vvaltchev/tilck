@@ -31,6 +31,7 @@
 
 ulong kernel_va_pa_offset;
 ulong linear_va_pa_offset;
+static ulong base_pa;
 
 pdir_t *__kernel_pdir;
 static char kpdir_buf[sizeof(pdir_t)] ALIGNED_AT(PAGE_SIZE);
@@ -912,23 +913,32 @@ create_early_page_table(pdir_t *pdir,
    }
 }
 
-void *init_early_mapping(ulong fdt_paddr)
+void *prepare_early_mapping(ulong fdt_paddr)
 {
    extern char _start;
-
-   pdir_t *pgd = (void *)&page_size_buf[0];
    ulong kernel_pa = (ulong)&_start - 0x1000;
    ulong text_offset = ((struct linux_image_h *)(void *)&_start)->text_offset;
-   ulong base_pa = kernel_pa - text_offset;
+
+   base_pa = kernel_pa - text_offset;
 
    kernel_va_pa_offset = KERNEL_BASE_VA - base_pa;
    linear_va_pa_offset = BASE_VA - base_pa;
 
+   /* Kernel physical address must be aligned to L1 level big pages(2/4 MB) */
+   ASSERT(IS_L1_PAGE_ALIGNED(kernel_pa));
+
    /* Copy the flattened device tree to 1MB below kernel's head */
    memcpy((void *)(kernel_pa - MB), (void *)fdt_paddr, MB);
 
-   /* Kernel physical address must be aligned to L1 level big pages(2/4 MB) */
-   ASSERT(IS_L1_PAGE_ALIGNED(kernel_pa));
+   /* Return physical addr of FDT */
+   return (void *)(kernel_pa - MB);
+}
+
+void init_early_mapping(void)
+{
+   extern char _start;
+
+   pdir_t *pgd = (void *)&page_size_buf[0];
 
    /* Identity map the first 8 MB */
    create_early_page_table(pgd, base_pa, base_pa, EARLY_MAP_SIZE, false);
@@ -947,9 +957,7 @@ void *init_early_mapping(ulong fdt_paddr)
 
    /* Flush entire TLB */
    invalidate_page_hw(0);
-
-   /* Return physical addr of FDT */
-   return (void *)(kernel_pa - MB);
+   return;
 }
 
 static inline bool
