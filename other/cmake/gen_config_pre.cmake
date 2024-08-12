@@ -86,17 +86,17 @@ smart_config_file(
 
 if (${BOOTLOADER_U_BOOT})
    smart_config_file(
-      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/fit-image.its
+      ${BOARD_BSP}/fit-image.its
       ${CMAKE_BINARY_DIR}/boot/u_boot/fit-image.its
    )
 
    smart_config_file(
-      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/u-boot.cmd
+      ${BOARD_BSP}/u-boot.cmd
       ${CMAKE_BINARY_DIR}/boot/u_boot/u-boot.cmd
    )
 
    smart_config_file(
-      ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/uEnv.txt
+      ${BOARD_BSP}/uEnv.txt
       ${CMAKE_BINARY_DIR}/boot/u_boot/uEnv.txt
    )
 endif()

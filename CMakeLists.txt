@@ -59,6 +59,7 @@ endif()
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
 define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain2)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
+define_env_cache_str_var(BOARD)
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
 
@@ -549,6 +550,17 @@ elseif (${ARCH} STREQUAL "x86_64")
 
 elseif (${ARCH} STREQUAL "riscv64")
 
+   if ("${BOARD}" STREQUAL "")
+      set(BOARD    "qemu-virt") # Default
+   endif()
+
+   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
+   include(${BOARD_BSP}/board_bsp.cmake)
+   list(
+      APPEND kernel_opts_list
+      BOARD
+   )
+
    set(ARCH_SHORT       "riscv64")
    set(ARCH_FAMILY      "riscv")
    set(ARCH_ELF_NAME    "elf64-littleriscv")
@@ -561,15 +573,6 @@ elseif (${ARCH} STREQUAL "riscv64")
 
    # Fundamental kernel MM constants
    set(BASE_VA                     0x2000000000)  # +128 GB
-   set(KERNEL_PADDR                  0x80200000)  # Default
-
-   # Parameters required by boot script of u-boot
-   math(EXPR KERNEL_ENTRY "${KERNEL_PADDR} + 0x1000"
-         OUTPUT_FORMAT HEXADECIMAL)
-   math(EXPR KERNEL_LOAD "${KERNEL_PADDR} + 0x800000"
-         OUTPUT_FORMAT HEXADECIMAL)
-   math(EXPR INITRD_LOAD "${KERNEL_PADDR} + 0x1400000"
-         OUTPUT_FORMAT HEXADECIMAL)
 
    if (KRN32_LIN_VADDR)
       set(LINEAR_MAPPING_MB                 896)  # Cannot be > 896 MB
@@ -712,7 +715,7 @@ if (${BOOTLOADER_U_BOOT})
    set(BOOT_ENVTXT         ${CMAKE_BINARY_DIR}/boot/u_boot/uEnv.txt)
    set(BOOT_SCR            ${CMAKE_BINARY_DIR}/boot.scr)
    set(IMAGE_FIT           ${CMAKE_BINARY_DIR}/image.fit)
-   set(U_BOOT_BIN          ${TCROOT}/${ARCH}/u-boot/u-boot.bin)
+   set(U_BOOT_BIN          ${BOARD_BSP_BOOTLOADER})
 endif()
 
 ################################################################################
@@ -887,10 +890,9 @@ if (BOOTLOADER_U_BOOT)
       ${BOOTCMD_FILE}
       ${IMAGE_ITS_FILE}
       ${U_BOOT_BIN}
-      ${TCROOT}/${ARCH}/u-boot/tools/mkimage
    )
 
-   set(MKIMAGE ${TCROOT}/${ARCH}/u-boot/tools/mkimage)
+   set(MKIMAGE ${BOARD_BSP_MKIMAGE})
 endif()
 
 # [begin] Set some convenience variables

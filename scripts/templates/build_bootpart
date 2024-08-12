@@ -62,3 +62,8 @@ fi
 if [ -n "@BOOT_ENVTXT@" ]; then
    $mcopy -i $dest @BOOT_ENVTXT@ ::/
 fi
+
+if [ -n "@U_BOOT_BIN@" ]; then
+   $mcopy -i $dest @U_BOOT_BIN@ ::/
+fi
+
