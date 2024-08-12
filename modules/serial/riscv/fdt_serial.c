@@ -69,7 +69,7 @@ bool serial_read_ready(u16 port)
    struct fdt_serial_dev *uart;
 
    uart = get_fdt_serial_by_port(port);
-   return uart->ops->rx_rdy(uart->priv);
+   return uart ? uart->ops->rx_rdy(uart->priv) : false;
 }
 
 void serial_wait_for_read(u16 port)
@@ -93,7 +93,7 @@ char serial_read(u16 port)
    struct fdt_serial_dev *uart;
 
    uart = get_fdt_serial_by_port(port);
-   return uart->ops->rx_c(uart->priv);
+   return uart ? uart->ops->rx_c(uart->priv) : 0;
 }
 
 void serial_write(u16 port, char c)
@@ -106,7 +106,8 @@ void serial_write(u16 port, char c)
    }
 
    uart = get_fdt_serial_by_port(port);
-   uart->ops->tx_c(uart->priv, c);
+   if (uart)
+      uart->ops->tx_c(uart->priv, c);
 }
 
 enum irq_action fdt_serial_generic_irq_handler(void *ctx)
@@ -114,6 +115,7 @@ enum irq_action fdt_serial_generic_irq_handler(void *ctx)
    struct fdt_serial_dev *serial = ctx;
    enum irq_action hret = IRQ_NOT_HANDLED;
 
+   serial->ops->clr_i(serial->priv);
    hret = generic_irq_handler(serial->x86_irq);
    return hret;
 }
