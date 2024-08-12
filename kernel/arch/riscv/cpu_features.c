@@ -7,6 +7,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/arch/riscv/riscv_utils.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/paging.h>
 #include <3rd_party/fdt_helper.h>
 #include <libfdt.h>
 
@@ -132,7 +133,7 @@ static int fdt_parse_isa_extensions(void *fdt)
 
       rc = fdt_parse_hart_id(fdt, cpu_node, &hart_id);
       if (rc)
-         return rc;
+         continue;
 
       prop = fdt_getprop(fdt, cpu_node, "device_type", NULL);
 
@@ -220,6 +221,7 @@ void early_get_cpu_features(void)
 {
    struct riscv_cpu_features *f = (void *)&riscv_cpu_features;
    bool *flags = (bool *)&f->isa_exts;
+   void *dtb = (void *)LIN_VA_TO_PA(fdt_get_address());
 
    if (sbi_get_spec_version().error) {
 
@@ -235,13 +237,14 @@ void early_get_cpu_features(void)
       f->imp_id = sbi_get_mimpid().value;
    }
 
-   fdt_parse_model(fdt_get_address());
-   fdt_parse_isa_extensions(fdt_get_address());
+   fdt_parse_model(dtb);
+   fdt_parse_isa_extensions(dtb);
    bzero(&f->isa_exts, sizeof(f->isa_exts));
 
    for (u32 i = 0; i < ARRAY_SIZE(isa_exts_names); i++) {
 
-      flags[i] = isa_ext_string_match(isa_exts_names[i]) ? true : false;
+      flags[i] = isa_ext_string_match(
+         (void *)KERNEL_VA_TO_PA(isa_exts_names[i]));
    }
 
    if (f->isa_exts.svpbmt) {
