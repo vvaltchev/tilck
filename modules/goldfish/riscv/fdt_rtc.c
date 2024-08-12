@@ -66,6 +66,8 @@ void hw_read_clock_cmos(struct datetime *out)
    }
 
    if (rtc)
-    rtc->rtc_get(rtc->priv, out);
+      rtc->rtc_get(rtc->priv, out);
+   else
+      timestamp_to_datetime(0, out);
 }
 
