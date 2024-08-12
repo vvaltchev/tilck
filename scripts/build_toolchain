@@ -635,7 +635,14 @@ function main {
    fi
 
    if [[ "$ARCH" == "riscv64" ]]; then
-      default_funcs+=(build_u_boot)
+      if [[ "$BOARD" == "" || "$BOARD" == "qemu-virt" ]]; then
+         export BOARD=qemu-virt
+      fi
+
+      export BOARD_BSP="$MAIN_DIR/other/bsp/$ARCH/$BOARD"
+      source $BOARD_BSP/bootloader
+
+      default_funcs+=(build_bootloader)
       default_funcs+=(build_libfdt)
    fi
 

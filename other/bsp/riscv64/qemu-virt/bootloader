@@ -3,12 +3,12 @@
 
 U_BOOT_VER="2024.04"
 
-function internal_build_u_boot {
+function internal_build_bootloader {
 
    echo "Building u-boot... "
    reset_cc_vars
 
-   cp $MAIN_DIR/other/bsp/$ARCH/u-boot.config .config
+   cp $BOARD_BSP/u-boot.config .config
 
    do_common_cross_compiler_setup
    set_cc_vars_to_tc
@@ -26,7 +26,7 @@ function internal_build_u_boot {
    export CROSS_COMPILE=""
    export CC_POST_FLAGS=""
 
-   u_boot_fix_config_file
+   bootloader_fix_config_file
 
    # Save a copy of the last built .config file
    cp .config .last_build_config
@@ -37,7 +37,7 @@ function internal_build_u_boot {
 # the boot.scr to an address in the 128M range. With he original address to
 # start the qemu with 128 MB memory will be failed.
 #
-function u_boot_patch {
+function bootloader_patch {
 
    old="scriptaddr=0x8c100000"
    new="scriptaddr=0x80200000"
@@ -50,8 +50,8 @@ function u_boot_patch {
    run_command "sed -i 's/${old}/${new}/' $file"
 }
 
-all_funcs_list+=(build_u_boot)
-function build_u_boot {
+all_funcs_list+=(build_bootloader)
+function build_bootloader {
 
    pushd $ARCH
 
@@ -71,7 +71,7 @@ function build_u_boot {
             read answer
             if [[ "$answer" == "" || "$answer" == "y" ]]; then
                pushd u-boot
-               internal_build_u_boot
+               internal_build_bootloader
                popd
             else
                rm -rf u-boot
@@ -91,14 +91,14 @@ function build_u_boot {
       extract_cachefile_tar_bz $tarname u-boot-$ver u-boot
 
       pushd u-boot
-      u_boot_patch
-      internal_build_u_boot
+      bootloader_patch
+      internal_build_bootloader
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
       pushd u-boot
-      internal_build_u_boot
+      internal_build_bootloader
       popd
 
    else
@@ -108,7 +108,7 @@ function build_u_boot {
    popd
 }
 
-function build_u_boot_installed_status {
+function build_bootloader_installed_status {
 
    local arch_list=""
 
@@ -133,7 +133,7 @@ function build_u_boot_installed_status {
    fi
 }
 
-function u_boot_fix_config_file {
+function bootloader_fix_config_file {
 
    # Remove the date-time row (in order to allow config diff to work)
    sed -i -e '4d' .config
@@ -146,8 +146,8 @@ function u_boot_fix_config_file {
    mv .config_sorted .config
 }
 
-all_funcs_list+=(config_u_boot)
-function config_u_boot {
+all_funcs_list+=(config_bootloader)
+function config_bootloader {
 
    pushd $ARCH
 
@@ -166,12 +166,12 @@ function config_u_boot {
    busybox_fix_config_file
 
    if [[ "$answer" == "" || "$answer" == "y" ]]; then
-      cp .config $MAIN_DIR/other/bsp/$ARCH/u-boot.config
-      echo "Source file $MAIN_DIR/other/bsp/$ARCH/u-boot.config UPDATED"
+      cp .config $BOARD_BSP/u-boot.config
+      echo "Source file $BOARD_BSP/u-boot.config UPDATED"
    fi
 
    popd
    popd
 
-   build_u_boot
+   build_bootloader
 }
