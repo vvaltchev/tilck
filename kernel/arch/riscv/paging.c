@@ -429,7 +429,7 @@ int get_mapping2(pdir_t *pdir, void *vaddrp, ulong *pa_ref)
 }
 
 NODISCARD int
-map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, u32 hw_flags)
+map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, ulong hw_flags)
 {
    page_table_t *pt;
    const ulong vaddr = (ulong) vaddrp;
@@ -479,13 +479,13 @@ map_pages_int(pdir_t *pdir,
               ulong paddr,
               size_t page_count,
               bool big_pages_allowed,
-              u32 hw_flags)
+              ulong hw_flags)
 {
    int rc;
    size_t pages = 0;
    size_t big_pages = 0;
    size_t rem_pages = page_count;
-   u32 big_page_flags;
+   ulong big_page_flags;
 
    ASSERT(IS_L0_PAGE_ALIGNED(vaddr));
    ASSERT(IS_L0_PAGE_ALIGNED(paddr));
@@ -539,8 +539,8 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 {
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool us = !!(pg_flags & PAGING_FL_US);
-   u32 avail_bits = 0;
-   u32 hw_pg_flags = 0;
+   ulong avail_bits = 0;
+   ulong hw_pg_flags = 0;
    int rc;
 
    if (pg_flags & PAGING_FL_SHARED)
@@ -583,8 +583,8 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 NODISCARD int
 map_zero_page(pdir_t *pdir, void *vaddrp, u32 pg_flags)
 {
-   u32 avail_bits = 0;
-   u32 hw_pg_flags = 0;
+   ulong avail_bits = 0;
+   ulong hw_pg_flags = 0;
    const bool us = !!(pg_flags & PAGING_FL_US);
 
    /* Zero pages are always private */
@@ -614,8 +614,8 @@ map_pages(pdir_t *pdir,
    const bool us = !!(pg_flags & PAGING_FL_US);
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool big_pages = !!(pg_flags & PAGING_FL_BIG_PAGES_ALLOWED);
-   u32 avail_bits = 0;
-   u32 hw_pg_flags = 0;
+   ulong avail_bits = 0;
+   ulong hw_pg_flags = 0;
 
    if (pg_flags & PAGING_FL_SHARED)
       avail_bits |= PAGE_SHARED;
@@ -818,7 +818,7 @@ pdir_deep_clone(pdir_t *pdir)
 void map_big_page_int(pdir_t *pdir,
                       void *vaddrp,
                       ulong paddr,
-                      u32 hw_flags)
+                      ulong hw_flags)
 {
    page_table_t *pmd;
    const ulong vaddr = (ulong)vaddrp;
