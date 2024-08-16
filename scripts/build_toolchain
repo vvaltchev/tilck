@@ -9,6 +9,8 @@ export FFLAGS=""
 export CXXFLAGS=""
 export CFFLAGS=""
 
+ALL_ARCH_LIST="i386 x86_64 riscv64"
+
 if [[ "$ARCH" == "" ]]; then
    export ARCH="i386" # default target arch
 fi
@@ -621,7 +623,10 @@ function main {
       default_funcs+=(download_cmake)
    fi
 
-   default_funcs+=(build_gnuefi)
+   if [[ $ARCH_FAMILY == "generic_x86" ]]; then
+      default_funcs+=(build_gnuefi)
+   fi
+
    default_funcs+=(build_mtools)
    default_funcs+=(build_zlib)
 

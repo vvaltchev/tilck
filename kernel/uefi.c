@@ -10,10 +10,6 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/process.h>
 
-#define EFI_DEBUG 0
-#include <efi.h>
-#include <efiapi.h>
-
 void (*hw_read_clock)(struct datetime *) = &hw_read_clock_cmos;
 ulong uefi_rt_addr;
 
@@ -22,6 +18,12 @@ void uefi_set_rt_pointer(ulong addr)
    ASSERT(!uefi_rt_addr);
    uefi_rt_addr = addr;
 }
+
+#if defined(__i386__) || defined(__x86_64__)
+
+#define EFI_DEBUG 0
+#include <efi.h>
+#include <efiapi.h>
 
 void hw_read_clock_uefi(struct datetime *out)
 {
@@ -188,3 +190,12 @@ void setup_uefi_runtime_services(void)
 
    hw_read_clock = &hw_read_clock_uefi;
 }
+
+#else
+
+void setup_uefi_runtime_services(void)
+{
+   /* do nothing */
+}
+
+#endif
