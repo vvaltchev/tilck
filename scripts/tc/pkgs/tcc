@@ -139,11 +139,26 @@ function build_tcc {
 }
 
 function build_tcc_installed_status {
-   if [ -d $TC/$ARCH/tcc ]; then
-      if [ -f $TC/$ARCH/tcc/${ARCH}-tcc ]; then
-         echo "installed $ARCH"
-      else
-         echo "error"
+
+   local arch_list=""
+
+   for x in $ALL_ARCH_LIST; do
+      if [ -d $TC/$x/tcc ]; then
+         if [ -f $TC/$x/tcc/${x}-tcc ]; then
+            arch_list="${arch_list}$x "
+         else
+            echo "error"
+            return
+         fi
       fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
    fi
 }

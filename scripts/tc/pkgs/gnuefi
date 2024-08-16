@@ -115,6 +115,10 @@ function build_gnuefi_system_compiler {
 all_funcs_list+=(build_gnuefi)
 function build_gnuefi {
 
+   if [[ $ARCH != "i386" && $ARCH != "x86_64" ]]; then
+      return
+   fi
+
    build_gnuefi_arch $ARCH $ARCH_EFI $ARCH_GCC_TC
 
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
@@ -128,7 +132,7 @@ function build_gnuefi_installed_status {
 
    local arch_list=""
 
-   for x in i386 x86_64; do
+   for x in $ALL_ARCH_LIST; do
 
       if [ -d $TC/$x/gnu-efi ]; then
          y=$(get_efi_arch $x)

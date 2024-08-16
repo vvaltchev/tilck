@@ -50,16 +50,15 @@ function download_ovmf_installed_status {
 
    local arch_list=""
 
-   for x in i386 x86_64; do
-
+   for x in $ALL_ARCH_LIST; do
       if [ -d $TC/$x/ovmf ]; then
-         if ! [ -f $TC/$x/ovmf/OVMF-pure-efi.fd ]; then
+         if [ -f $TC/$x/ovmf/OVMF-pure-efi.fd ]; then
+            arch_list="${arch_list}$x "
+         else
             echo "error"
             return
          fi
-         arch_list="${arch_list}$x "
       fi
-
    done
 
    # Drop the trailing " "
