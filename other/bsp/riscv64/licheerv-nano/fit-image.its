@@ -1,0 +1,54 @@
+/dts-v1/;
+
+/ {
+   description = "U-boot FIT image for licheerv-nano";
+   #address-cells = <2>;
+
+   images {
+      tilck {
+         description = "tilck";
+         data = /incbin/("@KERNEL_FILE@");
+         type = "kernel";
+         arch = "riscv";
+         os = "linux";
+         load = <0x0 @KERNEL_LOAD@>;
+         entry = <0x0 @KERNEL_ENTRY@>;
+         compression = "none";
+      };
+
+      ramdisk {
+         description = "buildroot initramfs";
+         data = /incbin/("@CMAKE_BINARY_DIR@/fatpart");
+         type = "ramdisk";
+         arch = "riscv";
+         os = "linux";
+         load = <0x0 0x0>;
+         compression = "none";
+         hash-1 {
+            algo = "sha256";
+         };
+      };
+
+      fdt {
+          description = "licheerv-nano device tree";
+          data = /incbin/("@BOARD_DTB_FILE@");
+          type = "flat_dt";
+          arch = "riscv";
+          compression = "none";
+          hash-1 {
+              algo = "sha256";
+          };
+      };
+   };
+
+   configurations {
+      default = "config-1";
+
+      config-1 {
+         description = "qemu-riscv64";
+         kernel = "tilck";
+         ramdisk = "ramdisk";
+         fdt = "fdt";
+      };
+   };
+};
