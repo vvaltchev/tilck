@@ -1,0 +1,1 @@
+echo licheerv-nano bsp
