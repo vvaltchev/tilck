@@ -59,9 +59,17 @@ endif()
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
 define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain2)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
-define_env_cache_str_var(BOARD)
+
 define_env_cache_bool_var(TEST_GCOV)
 define_env_cache_bool_var(KERNEL_GCOV)
+
+# Board defaults and stick variable
+if (${ARCH} STREQUAL "riscv64")
+   set(ARCH_DEFAULT_BOARD     "qemu-virt")
+else()
+   set(ARCH_DEFAULT_BOARD     "")
+endif()
+define_env_cache_str_var(BOARD "${ARCH_DEFAULT_BOARD}")
 
 # USE_SYSCC-related variables
 define_env_cache_bool_var(USE_SYSCC)
@@ -440,6 +448,7 @@ list(
 
    # Various options
    ARCH
+   BOARD
    USE_SYSCC
    ARCH_GTESTS
 
@@ -504,6 +513,10 @@ list(
 
 ###########################################################
 
+if (BOARD)
+   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
+   include(${BOARD_BSP}/board_bsp.cmake)
+endif()
 
 if (${ARCH} STREQUAL "i386")
 
@@ -550,17 +563,6 @@ elseif (${ARCH} STREQUAL "x86_64")
 
 elseif (${ARCH} STREQUAL "riscv64")
 
-   if ("${BOARD}" STREQUAL "")
-      set(BOARD    "qemu-virt") # Default
-   endif()
-
-   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
-   include(${BOARD_BSP}/board_bsp.cmake)
-   list(
-      APPEND kernel_opts_list
-      BOARD
-   )
-
    set(ARCH_SHORT       "riscv64")
    set(ARCH_FAMILY      "riscv")
    set(ARCH_ELF_NAME    "elf64-littleriscv")
@@ -587,6 +589,7 @@ elseif (${ARCH} STREQUAL "riscv64")
 else()
 
    message(FATAL_ERROR "Architecture '${ARCH}' not supported.")
+
 endif()
 
 message(STATUS "TCROOT: ${TCROOT}")
