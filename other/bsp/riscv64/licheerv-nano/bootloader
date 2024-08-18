@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+function internal_build_bootloader {
+
+   echo "Building bootloader... "
+   reset_cc_vars_to_null
+
+   set +e
+   run_command2 "source build/cvisetup.sh" build.log
+   run_command2 "defconfig sg2002_licheervnano_sd" build.log
+   run_command2 "build_uboot" build.log
+   set -e
+}
+
+#
+# Note: patch the fsbl/plat/sg200x/bl2/bl2_main.c to set the uart baudrate to
+# 115200. Otherwise, a hardware error may occur in the uart after the chip
+# is reset, and this error will cause the uart to interrupt continuously.
+#
+function bootloader_patch {
+
+   old1="if (v == BOOT_SRC_UART)"
+   new1="if (v == BOOT_SRC_SD)"
+   old2="console_init(0, PLAT_UART_CLK_IN_HZ, UART_DL_BAUDRATE)"
+   new2="console_init(0, 25804800, 115200)"
+
+   file="fsbl/plat/sg200x/bl2/bl2_main.c"
+   if ! [ -f $file ]; then
+      echo "ERROR: file $file not found!"
+      exit 1
+   fi
+   run_command "sed -i 's/${old1}/${new1}/' $file"
+   run_command "sed -i 's/${old2}/${new2}/' $file"
+}
+
+all_funcs_list+=(build_bootloader)
+function build_bootloader {
+
+   pushd $ARCH
+
+   if ! [ -d bootloader ]; then
+
+      show_work_on_component_msg "bootloader"
+
+      local url="https://github.com/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
+      local ver="20240726"
+      local tarname=$ver.tar.gz
+
+      download_file_in_cache "$url" "$tarname"
+      extract_cachefile_tar_gz $tarname LicheeRV-Nano-Build-$ver bootloader
+
+      pushd bootloader
+
+      url="https://github.com/sophgo/host-tools/archive/refs/tags"
+      ver="1.6"
+      tarname=$ver.tar.gz
+
+      download_file_in_cache "$url" "$tarname"
+      extract_cachefile_tar_gz $tarname host-tools-$ver host-tools
+
+      bootloader_patch
+      (internal_build_bootloader)
+
+      local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
+      if ! [ -f $TC/$ARCH/bootloader/$fip_bin ]; then
+         echo "ERROR: build failed !!!" >> build.log
+         exit 1
+      fi
+
+      popd
+
+   elif [ "$REBUILD" == "1" ]; then
+
+      pushd bootloader
+      (internal_build_bootloader)
+      popd
+
+   else
+      show_skip_component_msg "bootloader"
+   fi
+
+   popd
+}
+
+function build_bootloader_installed_status {
+
+   local arch_list=""
+   local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
+   for x in $ALL_ARCH_LIST; do
+      if [ -d $TC/$x/bootloader ]; then
+         if [ -f $TC/$x/bootloader/$fip_bin ]; then
+            arch_list="${arch_list}$x "
+         else
+            echo "error"
+            return
+         fi
+      fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
+   fi
+}

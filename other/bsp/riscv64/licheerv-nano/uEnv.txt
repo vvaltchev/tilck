@@ -1,0 +1,41 @@
+# This is the sample uEnv.txt file for licheerv-nano U-boot
+
+# Select LCD model
+# Default LCD is for MaixCAM
+panel=st7701_hd228001c31
+
+# kernel command line can be modified here
+bootargs=tilck -sercon -panic_regs -panic_mmap -panic_kb
+
+# When bootelf kernel, do not directly jump into kernel, bootelf is only used
+# to properly load tilck in elf format.
+# After bootelf, we use a 'bootm go' to jump into kernel, because boom can
+# pass the device tree pointer and boothart accurately to kernel.
+autostart=no
+
+# no need to relocate initrd
+# initrd_high=ffffffffffffffff
+
+# The FIT file to boot from
+fitfile=image.fit
+
+# kerneladdr must match what's in FIT
+# Note: loading kernel is divided into two steps
+# 1. The bootm loados command loads the kernel into kerneladdr(@KERNEL_LOAD@ which
+#       is defined in fit-image.its)
+# 2. The bootelf -p command loads the kernel into 0x80200000(the
+#      load address defined by the elf header)
+kerneladdr=@KERNEL_LOAD@
+
+# load fit image from fatpart
+loadfit=echo Boot from SD dev ${sddev} ...;mmc dev ${sddev} && fatload mmc ${sddev}:2 ${uImage_addr} ${fitfile};
+
+# load kernel and initrd into ram
+loadkernel=bootm start ${uImage_addr}; bootm loados ${uImage_addr}; bootm ramdisk ${uImage_addr}; bootelf -p ${kerneladdr}; bootm prep ${uImage_addr};
+
+# just for debug
+message=echo bootm go ...;echo ${bootargs};
+
+# the real boot command be executed
+sdboot=run loadfit; run loadkernel; run message; bootm go ${uImage_addr};
+
