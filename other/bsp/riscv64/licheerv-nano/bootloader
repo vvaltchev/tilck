@@ -5,12 +5,16 @@ function internal_build_bootloader {
 
    echo "Building bootloader... "
    reset_cc_vars_to_null
+   local saved_path="$PATH"
+   export PATH=${PATH//$GCC_TOOLCHAIN:/}
 
    set +e
    run_command2 "source build/cvisetup.sh" build.log
    run_command2 "defconfig sg2002_licheervnano_sd" build.log
    run_command2 "build_uboot" build.log
    set -e
+
+   export PATH="$saved_path"
 }
 
 #
