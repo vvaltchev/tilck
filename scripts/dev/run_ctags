@@ -8,8 +8,8 @@ fi
 
 echo "Running CTAGS..."
 
-ctags --languages=C,C++,Python -R                \
-   common/ kernel/ include/ modules/             \
+ctags --languages=C,C++,Python -R                  \
+   config/ common/ kernel/ include/ modules/       \
    tests/ boot/ userapps/ scripts/build_apps/
 
 if ! [ -f tags ]; then
