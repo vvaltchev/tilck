@@ -21,6 +21,11 @@ BUILD_DIR = '@CMAKE_BINARY_DIR@'
 FATPART_FILE = '@CMAKE_BINARY_DIR@/fatpart'
 GEN_KCOV_REPORT = '@CMAKE_BINARY_DIR@/scripts/generate_kernel_coverage_report'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
+ARCH = '@ARCH@'
+
+CMAKE_CONFIG = {
+   "MOD_serial" : ("@MOD_serial@", True)
+}
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -40,6 +45,7 @@ TestParamsType = namedtuple(
 INIT_PATH = '/initrd/bin/init'
 DEVSHELL_PATH = '/initrd/usr/bin/devshell'
 KERNEL_HELLO_MSG = 'Hello from Tilck!'
+TILCK_SHELL_STR = 'root@tilck'
 
 # Global variables
 
@@ -50,6 +56,7 @@ g_params:TestParamsType = None
 g_output = ""
 g_process = None
 g_hello_msg_found = False
+g_shell_cmdline_found = False
 g_shell_exit_code = None
 g_dumping_gcda_files = False
 g_gcda_buf = None
@@ -98,6 +105,31 @@ def handle_hello_msg(line: str):
    set_once_fail_reason(Fail.reboot)
    g_process.send_signal(signal.SIGINT)
 
+def handle_tilck_shell_str():
+
+   global g_shell_cmdline_found
+
+   if g_shell_cmdline_found:
+      return
+
+   g_shell_cmdline_found = True
+   msg_print("Shell cmd found, writing command to stdin!")
+
+   cmd = "kill -SIGURG 1; devshell "
+
+   if DUMP_COV:
+      cmd += "-dcov "
+
+   if g_params.type == 'shellcmd':
+      cmd += "-c {}".format(g_params.name)
+   else:
+      cmd += "-c selftest {}".format(g_params.name)
+
+   cmd += "; exit\n"
+   g_process.stdin.write(cmd.encode('utf-8'))
+   g_process.stdin.flush()
+   msg_print("Shell cmd written to stdin")
+
 def process_line(line: str):
 
    global g_dumping_gcda_files
@@ -107,7 +139,7 @@ def process_line(line: str):
    stripped = line.rstrip()
    #raw_print(stripped)
 
-   if stripped and stripped[0] == '[' and stripped.startswith('[init]'):
+   if stripped and stripped.find('[init]') != -1:
 
       m = re.search(
          r'the shell with pid ([0-9]+) exited with status: ([0-9]+)',
@@ -120,18 +152,15 @@ def process_line(line: str):
          raw_print(stripped)
          return
 
-   if stripped.find(KERNEL_HELLO_MSG) != -1:
-      handle_hello_msg(stripped)
-      return
+   if not g_hello_msg_found:
+      if stripped.find(KERNEL_HELLO_MSG) != -1:
+         handle_hello_msg(stripped)
+         return
 
-   # NOTE: we could kill the VM immediately after a kernel panic, but we'll
-   # loose the backtrace. TODO: detect kernel panic here, but kill the VM after
-   # some timeout (e.g. 1 sec).
-   #
-   # if stripped.find("KERNEL PANIC") != -1:
-   #    raw_print("[system test runner] Detected kernel panic: KILLING the VM.")
-   #    set_once_fail_reason(Fail.panic)
-   #    g_process.send_signal(signal.SIGINT)
+   if not g_shell_cmdline_found:
+      if stripped.find(TILCK_SHELL_STR) != -1:
+         handle_tilck_shell_str()
+         return
 
    if not g_dumping_gcda_files:
 
@@ -214,44 +243,36 @@ def run_the_vm():
    global g_gcda_buf
    global g_gcda_file
 
-   args = ['qemu-system-i386',
-           '-m', str(VM_MEMORY_SIZE_IN_MB),
-           '-kernel', KERNEL_FILE,
-           '-nographic', '-device',
-           'isa-debug-exit,iobase=0xf4,iosize=0x04']
+   arch_opts = "@QEMU_ARCH_OPTS@".split(' ')
+   args = [
+      'qemu-system-@ARCH@',
+      '-m', str(VM_MEMORY_SIZE_IN_MB),
+      '-vga', 'none',
+      '-nographic',
+      '-drive', 'id=img1,format=raw,if=none,file=@IMG_FILE@',
+      *arch_opts,
+   ]
+
+   if ARCH in ['i386', 'x86_64']:
+      args += [
+         '-device', 'isa-debug-exit,iobase=0xf4,iosize=0x04',
+      ]
 
    if is_kvm_installed():
       args += ['-enable-kvm', '-cpu', 'host']
-
-   kernel_cmdline = '-sercon -noacpi -pr '
-   cmdline = DEVSHELL_PATH
-   init_opts = '-nr -e'
-
-   if DUMP_COV:
-      cmdline += ' -dcov'
-      init_opts += ' -q'
-
-   if IN_ANY_CI:
-      kernel_cmdline += ' -sat' # enable sched alive (debug) thread
 
    if g_params.type == 'shellcmd':
 
       raw_print(
          "Running the VM with shell command '{}'...".format(g_params.name)
       )
-      cmdline += ' -c ' + g_params.name
 
    elif g_params.type == 'selftest':
 
       raw_print("Running the VM with selftest '{}'...".format(g_params.name))
-      cmdline += ' -c selftest ' + g_params.name
-      init_opts += ' -ns'
 
    else:
       sys.exit(Fail.invalid_args.value)
-
-   kernel_cmdline += ' -cmd {} {} -- {}'.format(INIT_PATH, init_opts, cmdline)
-   args += ['-initrd', FATPART_FILE, '-append', kernel_cmdline]
 
    if VERBOSE:
       raw_print(" ".join(args))
@@ -260,7 +281,10 @@ def run_the_vm():
    raw_print("")
 
    # Run the QEMU process by using a PIPE for its stdout
-   p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE)
+   p = subprocess.Popen(args,
+                        stdin=subprocess.PIPE,
+                        stdout=subprocess.PIPE,
+                        bufsize=0)
    set_once_qemu_process(p)
 
    # Make the `stdout` file descriptor non-blocking
@@ -268,7 +292,8 @@ def run_the_vm():
 
    read_anything = False
    first_output = True
-   start_time = time.time()
+   boot_time = time.time()
+   checkpoint_time = boot_time
    incomplete_line = ''
 
    while True:
@@ -293,22 +318,29 @@ def run_the_vm():
             time.sleep(0.1)
             continue
 
+         if not g_shell_cmdline_found:
+            if incomplete_line.find(TILCK_SHELL_STR) != -1:
+               if incomplete_line.endswith(':/# '):
+                  handle_tilck_shell_str()
+
          curr_time = time.time()
-         e = curr_time - start_time
+         e = curr_time - checkpoint_time
 
          if e >= 1.0:
             msg_print("WARNING: got nothing in {:.2f} sec".format(e))
-            start_time = curr_time
+            checkpoint_time = curr_time
+
 
          time.sleep(0.1)
          continue
 
+      # We got some text to process...
       if not read_anything:
-         elapsed = time.time() - start_time
+         elapsed = time.time() - checkpoint_time
          read_anything = True
          msg_print("First output after {:.2f} s".format(elapsed))
 
-      start_time = time.time()
+      checkpoint_time = time.time()
       text = incomplete_line + text.decode('latin-1')
       incomplete_line = process_text(text, first_output)
 
@@ -378,15 +410,19 @@ def main():
    except SystemExit:
       sys.exit(Fail.invalid_args.value)
 
+   check_cmake_config(CMAKE_CONFIG)
    g_params = TestParamsType(args.test_type, args.test_name, args.timeout)
-
-   if args.qemu_kvm_version:
-      set_qemu_kvm_version(args.qemu_kvm_version)
 
    if is_cmake_opt_enabled(KERNEL_FORCE_TC_ISYSTEM):
       unrunnable_build_graceful_exit()
 
-   detect_kvm()
+   if ARCH in ['i386', 'x86_64']:
+
+      if args.qemu_kvm_version:
+         set_qemu_kvm_version(args.qemu_kvm_version)
+
+      detect_kvm()
+
    thread = threading.Thread(target = run_the_vm)
    thread.start()
 

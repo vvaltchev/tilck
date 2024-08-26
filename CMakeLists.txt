@@ -780,8 +780,10 @@ elseif (${ARCH} STREQUAL "x86_64")
 
 elseif (${ARCH} STREQUAL "riscv64")
 
-   set(QEMU_ARCH_OPTS      "-device virtio-blk-device,drive=img1 \
--nographic -M virt -kernel ${U_BOOT_BIN}")
+   set(QEMU_ARCH_OPTS      "-device virtio-blk-device,drive=img1")
+   set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -nographic")
+   set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -M virt")
+   set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -kernel ${U_BOOT_BIN}")
 
 endif()
 

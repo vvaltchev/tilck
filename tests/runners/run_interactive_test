@@ -69,21 +69,6 @@ def set_once_qemu_process(p):
    assert(g_process is None)
    g_process = p
 
-def check_cmake_config():
-
-   for k, pair in CMAKE_CONFIG.items():
-
-      val, exp = is_cmake_opt_enabled(pair[0]), pair[1]
-
-      if val != exp:
-         msg_print("INVALID CONFIG: expected {} to be `{}`".format(k, exp))
-
-         if no_failures():
-            set_once_fail_reason(Fail.invalid_build_config)
-
-   if any_failures():
-      sys.exit(get_fail_reason().value)
-
 def wait_for_qemu_to_exit():
    while g_process.poll() is None:
       time.sleep(0.1)
@@ -1018,7 +1003,7 @@ def main():
    set_runner_name("interactive tests runner")
 
    parse_args()
-   check_cmake_config()
+   check_cmake_config(CMAKE_CONFIG)
    check_system_config()
    check_pnm2text()
    setup_tmp_dir()
