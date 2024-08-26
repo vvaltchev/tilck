@@ -74,6 +74,22 @@ def get_fail_by_code(err_code):
 def is_cmake_opt_enabled(opt):
    return opt.lower() in ["on", "1", "true", "yes", "y"]
 
+def check_cmake_config(config):
+
+   for k, pair in config.items():
+
+      val, exp = is_cmake_opt_enabled(pair[0]), pair[1]
+
+      if val != exp:
+         msg_print("INVALID CONFIG: expected {} to be `{}`".format(k, exp))
+
+         if no_failures():
+            set_once_fail_reason(Fail.invalid_build_config)
+
+   if any_failures():
+      sys.exit(get_fail_reason().value)
+
+
 def fh_set_blocking_mode(fh, blocking):
 
    sys_fd = fh.fileno()

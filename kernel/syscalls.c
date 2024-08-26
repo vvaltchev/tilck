@@ -282,10 +282,12 @@ stop_all_user_tasks(void *task, void *unused)
 static void
 kernel_shutdown(void)
 {
-   /* This is just a stub */
    extern volatile bool __in_kernel_shutdown;
-   __in_kernel_shutdown = true;
 
+   if (__in_kernel_shutdown)
+      return;
+
+   __in_kernel_shutdown = true;
    printk("The system is shutting down.\n");
 
    disable_preemption();
