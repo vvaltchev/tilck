@@ -148,82 +148,6 @@ count_ready_streams(int nfds, fd_set *sets[3])
 }
 
 static int
-select_wait_on_cond(struct select_ctx *c)
-{
-   struct task *curr = get_curr_task();
-   struct multi_obj_waiter *waiter = NULL;
-   int idx = 0;
-   int rc = 0;
-
-   if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))
-      return -ENOMEM;
-
-   for (int i = 0; i < 3; i++) {
-      if ((rc = select_set_kcond(c->nfds, waiter, &idx, c->sets[i], gcf[i])))
-         goto out;
-   }
-
-   if (c->tv) {
-      ASSERT(c->timeout_ticks > 0);
-      task_set_wakeup_timer(curr, c->timeout_ticks);
-   }
-
-   while (true) {
-
-      disable_preemption();
-      prepare_to_wait_on_multi_obj(waiter);
-      enter_sleep_wait_state();
-
-      if (pending_signals())
-         break;
-
-      if (c->tv) {
-
-         if (curr->wobj.type) {
-
-            /* we woke-up because of the timeout */
-            wait_obj_reset(&curr->wobj);
-            c->tv->tv_sec = 0;
-            c->tv->tv_usec = 0;
-
-         } else {
-
-            /*
-             * We woke-up because of a kcond was signaled, but that does NOT
-             * mean that even the signaled conditions correspond to ready
-             * streams. We have to check that.
-             */
-
-            if (!count_ready_streams(c->nfds, c->sets))
-               continue; /* No ready streams, we have to wait again. */
-
-            u32 rem = task_cancel_wakeup_timer(curr);
-            c->tv->tv_sec = rem / TIMER_HZ;
-            c->tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
-         }
-
-      } else {
-
-         /* No timeout: we woke-up because of a kcond was signaled */
-
-         if (!count_ready_streams(c->nfds, c->sets))
-            continue; /* No ready streams, we have to wait again. */
-      }
-
-      /* count_ready_streams() returned > 0 */
-      break;
-   }
-
-out:
-   free_mobj_waiter(waiter);
-
-   if (pending_signals())
-      return -EINTR;
-
-   return rc;
-}
-
-static int
 select_read_user_sets(fd_set *sets[3], fd_set *u_sets[3])
 {
    struct task *curr = get_curr_task();
@@ -303,6 +227,96 @@ select_write_user_sets(struct select_ctx *c)
       return -EFAULT;
 
    return total_ready_count;
+}
+
+static int
+select_wait_on_cond(struct select_ctx *c)
+{
+   struct task *curr = get_curr_task();
+   struct multi_obj_waiter *waiter = NULL;
+   int idx = 0;
+   int rc = 0;
+
+   if (!(waiter = allocate_mobj_waiter(c->cond_cnt)))
+      return -ENOMEM;
+
+   for (int i = 0; i < 3; i++) {
+      if ((rc = select_set_kcond(c->nfds, waiter, &idx, c->sets[i], gcf[i])))
+         goto out;
+   }
+
+   if (c->tv) {
+      ASSERT(c->timeout_ticks > 0);
+      task_set_wakeup_timer(curr, c->timeout_ticks);
+   }
+
+   while (true) {
+
+      disable_preemption();
+
+      /*
+       * Even if we already checked for READY streams, we need to check that
+       * again here, after disabling the preemption since the situation might
+       * have changed in the meanwhile. Without this change, we could go to
+       * sleep while a stream is ready and hang forever waiting for an event
+       * that has already come.
+       */
+      if (count_ready_streams(c->nfds, c->sets) > 0) {
+         rc = select_write_user_sets(c);
+         enable_preemption();
+         break;
+      }
+
+      prepare_to_wait_on_multi_obj(waiter);
+      enter_sleep_wait_state();
+
+      if (pending_signals())
+         break;
+
+      if (c->tv) {
+
+         if (curr->wobj.type) {
+
+            /* we woke-up because of the timeout */
+            wait_obj_reset(&curr->wobj);
+            c->tv->tv_sec = 0;
+            c->tv->tv_usec = 0;
+
+         } else {
+
+            /*
+             * We woke-up because of a kcond was signaled, but that does NOT
+             * mean that even the signaled conditions correspond to ready
+             * streams. We have to check that.
+             */
+
+            if (!count_ready_streams(c->nfds, c->sets))
+               continue; /* No ready streams, we have to wait again. */
+
+            u32 rem = task_cancel_wakeup_timer(curr);
+            c->tv->tv_sec = rem / TIMER_HZ;
+            c->tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
+         }
+
+      } else {
+
+         /* No timeout: we woke-up because of a kcond was signaled */
+
+         if (!count_ready_streams(c->nfds, c->sets))
+            continue; /* No ready streams, we have to wait again. */
+      }
+
+      /* count_ready_streams() returned > 0 */
+      break;
+   }
+
+out:
+   free_mobj_waiter(waiter);
+
+   if (pending_signals())
+      return -EINTR;
+
+   return rc;
 }
 
 int sys_select(int user_nfds,

@@ -74,7 +74,6 @@ poll_set_conds(struct multi_obj_waiter *w,
          struct kcond *c = vfs_get_rready_cond(h);
 
          if (c != NULL) {
-
             ASSERT(idx < cond_cnt);
             mobj_waiter_set(w, idx++, WOBJ_KCOND, c, &c->wait_list);
          }
@@ -85,7 +84,6 @@ poll_set_conds(struct multi_obj_waiter *w,
          struct kcond *c = vfs_get_wready_cond(h);
 
          if (c != NULL) {
-
             ASSERT(idx < cond_cnt);
             mobj_waiter_set(w, idx++, WOBJ_KCOND, c, &c->wait_list);
          }
@@ -101,7 +99,6 @@ poll_set_conds(struct multi_obj_waiter *w,
          struct kcond *c = vfs_get_except_cond(h);
 
          if (c != NULL) {
-
             ASSERT(idx < cond_cnt);
             mobj_waiter_set(w, idx++, WOBJ_KCOND, c, &c->wait_list);
          }
@@ -181,6 +178,20 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
    while (true) {
 
       disable_preemption();
+
+      /*
+       * Even if we already checked for READY streams, we need to check that
+       * again here, after disabling the preemption since the situation might
+       * have changed in the meanwhile. Without this change, we could go to
+       * sleep while a stream is ready and hang forever waiting for an event
+       * that has already come.
+       */
+      ready_fds_cnt = poll_count_ready_fds(fds, nfds);
+      if (ready_fds_cnt > 0) {
+         enable_preemption();
+         break;
+      }
+
       prepare_to_wait_on_multi_obj(waiter);
       enter_sleep_wait_state();
 
