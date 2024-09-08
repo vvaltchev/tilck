@@ -214,9 +214,21 @@ wait_child_and_return:
 
 int cmd_poll2(int argc, char **argv)
 {
+   struct pollfd fds[1];
+   int pipefd[2];
    int rc;
-   struct pollfd fds[] = {
-      { .fd = 0, .events = POLLIN }
+
+   printf("Creating a pipe...\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   fds[0] = (struct pollfd) {
+      .fd = pipefd[0],
+      .events = POLLIN
    };
 
    /* NOTE: using timeout of 1 ms which is < 1 tick */
@@ -225,18 +237,25 @@ int cmd_poll2(int argc, char **argv)
 
    if (rc < 0) {
       perror("poll");
-      return 1;
+      goto err_end;
    }
 
    printf("poll() returned: %d\n", rc);
 
    if (rc != 0) {
       printf("poll() did *not* timeout as expected\n");
-      return 1;
+      goto err_end;
    }
 
    printf("poll() timed out, as expected\n");
+   close(pipefd[0]);
+   close(pipefd[1]);
    return 0;
+
+err_end:
+   close(pipefd[0]);
+   close(pipefd[1]);
+   return 1;
 }
 
 int cmd_poll3(int argc, char **argv)
@@ -264,14 +283,14 @@ int cmd_poll3(int argc, char **argv)
 
    if (rc < 0) {
       perror("poll");
-      return 1;
+      goto err_end;
    }
 
    printf("poll() returned (immediately): %d\n", rc);
 
    if (rc != 0) {
       printf("poll() did *not* return 0 as expected\n");
-      return 1;
+      goto err_end;
    }
 
    printf("Write something on the pipe\n");
@@ -284,21 +303,21 @@ int cmd_poll3(int argc, char **argv)
 
    if (rc < 0) {
       perror("poll");
-      return 1;
+      goto err_end;
    }
 
    printf("poll() returned (immediately): %d\n", rc);
 
    if (rc != 1) {
       printf("poll() did return 1 as expected\n");
-      return 1;
+      goto err_end;
    }
 
    printf("fds[0].revents = %p\n", (void*)(long)fds[0].revents);
 
    if (!(fds[0].revents & POLLIN)) {
       printf("ERROR: fds[0].revents did *not* contain POLLIN, as expected\n");
-      return 1;
+      goto err_end;
    }
 
    printf("Everything is alright, got POLLIN\n");
@@ -312,6 +331,11 @@ int cmd_poll3(int argc, char **argv)
    close(pipefd[0]);
    close(pipefd[1]);
    return 0;
+
+err_end:
+   close(pipefd[0]);
+   close(pipefd[1]);
+   return 1;
 }
 
 static void wait_and_close_child(int fd)
