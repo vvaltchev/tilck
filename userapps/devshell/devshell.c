@@ -26,15 +26,15 @@ char **shell_env;
 static char cmd_arg_buffers[MAX_ARGS][256];
 static char *cmd_argv[MAX_ARGS];
 
-static const char *devshell_path[] = {
-
+static const char *devshell_path[] =
+{
    "/bin/",
    "/usr/bin/",
    "/initrd/usr/bin/"
 };
 
-static bool contains_slash(const char *s) {
-
+static bool contains_slash(const char *s)
+{
    for (; *s; s++) {
       if (*s == '/')
          return true;

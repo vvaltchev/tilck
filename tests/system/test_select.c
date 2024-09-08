@@ -263,10 +263,19 @@ int cmd_select3(int argc, char **argv)
 {
    struct timeval tv;
    fd_set readfds;
+   int pipefd[2];
    int rc;
 
+   printf("Creating a pipe...\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf("pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
    FD_ZERO(&readfds);
-   FD_SET(0 /* stdin */, &readfds);
+   FD_SET(pipefd[0], &readfds);
    tv.tv_sec = 0;
    tv.tv_usec = 100 * 1000;
 
@@ -275,16 +284,23 @@ int cmd_select3(int argc, char **argv)
 
    if (rc < 0) {
       perror("select");
-      return 1;
+      goto err_end;
    }
 
    if (rc > 0) {
       printf("ERROR: unexpected return value %d > 0\n", rc);
-      return 1;
+      goto err_end;
    }
 
    printf("select() returned 0 (timeout), as expected\n");
+   close(pipefd[0]);
+   close(pipefd[1]);
    return 0;
+
+err_end:
+   close(pipefd[0]);
+   close(pipefd[1]);
+   return 1;
 }
 
 /* Select as nanosleep() */
