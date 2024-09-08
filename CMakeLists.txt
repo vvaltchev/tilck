@@ -353,6 +353,16 @@ set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
 set(FB_CONSOLE_FAILSAFE_OPT OFF CACHE BOOL
     "Optimize fb_console's failsafe mode for older machines")
 
+# KERNEL_SERCON is different than SERIAL_CON_IN_VIDEO_MODE because it makes
+# the serial console and primary and only console. SERIAL_CON_IN_VIDEO_MODE
+# simply enables _also_ the serial console even when booted in video mode,
+# as a second console.
+set(KERNEL_SERCON OFF CACHE BOOL
+    "Boot only using the serial console even if we have a console module")
+
+set(KERNEL_SAT OFF CACHE BOOL
+    "Enable the sched alive thread on boot (used for CI/CD runs)")
+
 list(
    APPEND no_arch_modules_whitelist
 

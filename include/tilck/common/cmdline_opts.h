@@ -13,8 +13,8 @@
 DEFINE_KOPT(ttys              ,     , long,    TTY_COUNT)
 DEFINE_KOPT(selftest          ,     , wordstr, NULL)
 
-DEFINE_KOPT(sched_alive_thread, sat , bool,    false)
-DEFINE_KOPT(sercon            ,     , bool,    !MOD_console)
+DEFINE_KOPT(sched_alive_thread, sat , bool,    KERNEL_SAT)
+DEFINE_KOPT(sercon            ,     , bool,    KERNEL_SERCON || !MOD_console)
 DEFINE_KOPT(noacpi            ,     , bool,    false)
 DEFINE_KOPT(fb_no_opt         ,     , bool,    false)
 DEFINE_KOPT(fb_no_wc          ,     , bool,    false)

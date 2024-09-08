@@ -15,7 +15,7 @@
 #include <multiboot.h>   // system header in include/system_headers
 
 /*
- * NOTE: this flag affect affect sched_alive_thread() only when it is actually
+ * NOTE: this flag does affect sched_alive_thread() only when it is actually
  * running. By default it does *not* run. It gets activated only by the kernel
  * cmdline option -sat.
  */
