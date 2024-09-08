@@ -126,7 +126,7 @@ kcond_signal_int(struct kcond *c, struct wait_obj *wo)
       return;
    }
 
-   if (ti->state != TASK_STATE_SLEEPING) {
+   if (!ti || ti->state != TASK_STATE_SLEEPING) {
 
       /* the signal is lost, that's typical for conditions */
 
