@@ -19,6 +19,7 @@
 #cmakedefine01    KERNEL_SHOW_LOGO
 #cmakedefine01    SERIAL_CON_IN_VIDEO_MODE
 #cmakedefine01    KRN_PRINTK_ON_CURR_TTY
+#cmakedefine01    KERNEL_SERCON
 
 #ifdef KERNEL_TEST
    #define MOD_console_actual 1

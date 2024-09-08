@@ -3,6 +3,7 @@
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_kb8042.h>
 #include <tilck_gen_headers/config_debug.h>
+#include <tilck_gen_headers/config_kernel.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
