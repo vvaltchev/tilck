@@ -141,7 +141,7 @@ legacy_boot_get_all_video_modes(video_mode_t **modes, int *count)
       vb = NULL;
    }
 
-   if (vb->VbeVersion < 0x200) {
+   if (vb && vb->VbeVersion < 0x200) {
 
       if (BOOT_INTERACTIVE)
          printk("VBE older than 2.0 is not supported.\n");
