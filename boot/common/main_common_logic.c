@@ -575,9 +575,11 @@ wait_for_any_key(void)
 bool
 common_bootloader_logic(void)
 {
+   bool interactive = BOOT_INTERACTIVE;
    bool in_retry = false;
+   int video_modes_cnt;
 
-   fetch_all_video_modes_once();
+   video_modes_cnt = fetch_all_video_modes_once();
    selected_mode = g_defmode;
    cmdline_buf = intf->get_cmdline_buf(&cmdline_buf_sz);
 
@@ -596,6 +598,25 @@ common_bootloader_logic(void)
 
    printk("\n");
 
+   if (kmod_serial && !video_modes_cnt) {
+      /*
+       * There is not a single video mode available according to VBE: either
+       * we're running on a very old machine on which Tilck won't boot anyway
+       * or QEMU was run with `-vga none` and there is no video card on the VM.
+       * Since the former case does not matter much and we can reasonably
+       * assume here we're always in the latter case, let's disable the
+       * interactive mode and append "-sercon" to Tilck's cmdline, so that it
+       * will use the serial port 0 for the primary console. This behavior
+       * is very convenient for tests because it doesn't require rebuilding
+       * the kernel with different configuration options. We can use the same
+       * build for both automated tests and for interactive manual testing
+       * by simply assuming that no video modes / VBE failure means that we
+       * should use the serial console and boot in a non-interactive way.
+       */
+      interactive = false;
+      strcat(cmdline_buf, "-sercon ");
+   }
+
 retry:
 
    if (in_retry) {
@@ -605,7 +626,7 @@ retry:
 
    in_retry = true;
 
-   if (BOOT_INTERACTIVE) {
+   if (interactive) {
       if (!run_interactive_logic())
          return false;
    }
@@ -614,7 +635,7 @@ retry:
 
    if (!intf->load_initrd()) {
 
-      if (BOOT_INTERACTIVE)
+      if (interactive)
          goto retry;
 
       return false;
@@ -624,7 +645,7 @@ retry:
 
       if (!intf->set_curr_video_mode(selected_mode)) {
 
-         if (BOOT_INTERACTIVE) {
+         if (interactive) {
             printk("ERROR: cannot set the selected video mode\n");
             goto retry;
          }

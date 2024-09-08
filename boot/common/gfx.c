@@ -230,16 +230,18 @@ get_user_video_mode_choice(void)
    return ok_modes[s].mode;
 }
 
-void
+int
 fetch_all_video_modes_once(void)
 {
-   video_mode_t *all_modes = NULL;
-   int all_modes_cnt = 0;
+   static video_mode_t *all_modes = NULL;
+   static int all_modes_cnt = 0;
 
    if (g_defmode == INVALID_VIDEO_MODE) {
       intf->get_all_video_modes(&all_modes, &all_modes_cnt);
       filter_video_modes(all_modes, all_modes_cnt);
    }
+
+   return all_modes_cnt;
 }
 
 video_mode_t
