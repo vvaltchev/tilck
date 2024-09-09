@@ -1,6 +1,15 @@
+trigger:
 
-trigger: none
-pr: none
+  branches:
+    exclude:
+      - readme*
+      - temp-*
+      - exp-*
+
+  paths:
+    exclude:
+      - README.md
+      - docs/**
 
 jobs:
   - job: coverage_build
