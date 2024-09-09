@@ -17,6 +17,7 @@ from typing import List, Dict, Tuple
 
 # Constants coming from CMake (this file gets pre-processed by CMake)
 RUNNERS_DIR = '@CMAKE_SOURCE_DIR@/tests/runners'
+SHELLCMDS_TABLE = '@CMAKE_SOURCE_DIR@/tests/system/cmds_table.h'
 KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
@@ -170,24 +171,26 @@ def load_list_of_shell_cmd_tests():
 
    result = []
 
-   devshell = os.path.join(BUILD_DIR, 'userapps', 'devshell')
-   output = subprocess.check_output([devshell, '-l']).decode("utf-8")
-   arr = output.split("\n")
+   with open(SHELLCMDS_TABLE, 'r') as fh:
 
-   for r in arr:
+      lines = fh.readlines()
 
-      r = r.rstrip()
+      for line in lines:
 
-      if not r:
-         continue
+         line = line.strip()
+         m = re.match(r'CMD_ENTRY\((\w+),\s*(\w+),\s*(false|true)\)', line)
 
-      name, tt = r.split(' ')
+         if not m:
+            continue
 
-      if not tt.startswith('tt_'):
-         continue
+         name = m[1]
+         timeout_str = m[2].lower()
+         enabled_str = m[3]
 
-      tt = tt[3:] # Skip the "tt_" prefix
-      result.append([name, TIMEOUTS[tt]])
+         if enabled_str == 'true':
+            if timeout_str.startswith("tt_"):
+               t = timeout_str[3:]
+               result.append([name, TIMEOUTS[t]])
 
    test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
