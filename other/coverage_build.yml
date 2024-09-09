@@ -9,7 +9,7 @@ jobs:
       vmImage: 'ubuntu-20.04'
     variables:
       CI: 1
-      TCROOT_PARENT: /tc
+      TCROOT: /tc/toolchain2-gcc84
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
       REPORT_COV: 1
