@@ -20,8 +20,8 @@ enum se_kind {
 struct self_test {
    struct list_node node;
    const char *name;
-   enum se_kind kind;
    void (*func)(void);
+   enum se_kind kind;
 };
 
 #define REGISTER_SELF_TEST(__name, __kind, __func)  \

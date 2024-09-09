@@ -22,6 +22,7 @@ KERNEL_FILE = '@KERNEL_FILE@'
 BUILD_DIR = '@CMAKE_BINARY_DIR@'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack@ARCH_BITS@'
+ARCH_BITS = int('@ARCH_BITS@')
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -195,13 +196,13 @@ def load_list_of_shell_cmd_tests():
    test_runners["shellcmd"] = "@CMAKE_BINARY_DIR@/st/single_test_run"
    return sorted(result, key = lambda x: x[1])
 
-# Mapping of struct self_test defined in self_tests.h
-# TODO: make it work for 64-bit kernels as well
 class kernel_selftest_struct(ctypes.Structure):
-   _fields_ = [("node", ctypes.c_char * 8),
-               ("name", ctypes.c_char * 4),
-               ("kind", ctypes.c_int),
-               ("func", ctypes.c_char * 4)]
+   _fields_ = [
+      ("node", ctypes.c_char * 8 * (ARCH_BITS // 32)),
+      ("name", ctypes.c_char * 4 * (ARCH_BITS // 32)),
+      ("func", ctypes.c_char * 4 * (ARCH_BITS // 32)),
+      ("kind", ctypes.c_int),
+   ]
 
 def get_sym_data(sym):
 
