@@ -44,9 +44,9 @@ void register_tilck_cmd(int cmd_n, void *func)
 
 static int tilck_sys_run_selftest(const char *u_selftest)
 {
-   int rc;
    struct self_test *se;
    char buf[96];
+   int rc;
 
    if (!KERNEL_SELFTESTS)
       return -EINVAL;
@@ -55,6 +55,10 @@ static int tilck_sys_run_selftest(const char *u_selftest)
 
    if (rc != 0)
       return -EFAULT;
+
+   if (!strcmp(buf, "runall")) {
+      return se_runall();
+   }
 
    se = se_find(buf);
 
