@@ -288,21 +288,4 @@ jobs:
       - script: make -j
         displayName: Build the kernel
 
-  - job: gcc_12_3_riscv64
-    container: 'vvaltchev/tilck-ci-build:v6'
-    pool:
-      vmImage: 'ubuntu-20.04'
-    variables:
-      CI: 1
-      TCROOT: /tc/toolchain2-gcc123-riscv64
-      GTEST_SHUFFLE: 0
-      TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
-      ARCH: riscv64
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: ./scripts/cmake_run
-        displayName: Run CMake
-      - script: make -j
-        displayName: Build the kernel
+

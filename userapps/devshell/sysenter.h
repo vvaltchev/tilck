@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-#include <tilck/common/basic_defs.h>
+
 #include <stdlib.h>
+#include <errno.h>
+
+#include <tilck/common/basic_defs.h>
 
 static inline int
 do_sysenter_call0(int sysno)
