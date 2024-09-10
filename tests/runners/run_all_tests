@@ -23,6 +23,7 @@ BUILD_DIR = '@CMAKE_BINARY_DIR@'
 KERNEL_FORCE_TC_ISYSTEM = '@KERNEL_FORCE_TC_ISYSTEM@'
 ELFHACK = '@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack@ARCH_BITS@'
 ARCH_BITS = int('@ARCH_BITS@')
+KERNEL_SELFTESTS = '@KERNEL_SELFTESTS@'
 
 sys.path.append(RUNNERS_DIR)
 from lib.utils import *
@@ -51,7 +52,8 @@ INF_STR_TIMEOUTS = ['any', 'all', 'inf']
 
 ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
 
-# Timeout used for the `runall` shellcmd (-c option)
+# Timeout used for the *compact mode* where we run all the tests of a given
+# type at once, by an inner runner (not by this script), with single VM boot.
 ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
 
 load_tests_func_by_type_list = [
@@ -521,7 +523,8 @@ def parse_args():
    parser.add_argument(
       "-c", "--compact-run",
       action = "store_true",
-      help = "Run all the shellcmds in a single VM run (faster)"
+      help = "Run all the tests of a each type "
+             "in a single VM boot (filters ignored)",
    )
 
    parser.add_argument(
@@ -583,6 +586,8 @@ def main():
 
    if args.compact_run:
       tests_by_type['shellcmd'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
+      if is_cmake_opt_enabled(KERNEL_SELFTESTS):
+         tests_by_type['selftest'] = [ ['runall', ALL_TESTS_TIMEOUT] ]
 
    if args.list_timeouts:
       list_timeouts()

@@ -45,6 +45,7 @@ struct self_test {
 
 struct self_test *se_find(const char *name);
 int se_run(struct self_test *se);
+int se_runall(void);
 bool se_is_stop_requested(void);
 void se_register(struct self_test *se);
 

@@ -54,58 +54,35 @@ bool se_is_stop_requested(void)
 
 struct self_test *se_find(const char *name)
 {
-   char name_buf[SELF_TEST_MAX_NAME_LEN+1];
-   const char *name_to_use = name;
-   size_t len = strlen(name);
-   const char *p = name + len - 1;
-   const char *p2 = name;
-   char *s = name_buf;
    struct self_test *pos;
 
-   if (len >= SELF_TEST_MAX_NAME_LEN)
-      return NULL;
-
-   /*
-    * Find the position of the last '_', going backwards.
-    * Reason: drop the {_manual, _short, _med, _long} suffix.
-    */
-   while (p > name) {
-
-      if (*p == '_') {
-
-         if (strcmp(p, "_manual") &&
-             strcmp(p, "_short")  &&
-             strcmp(p, "_med")    &&
-             strcmp(p, "_long"))
-         {
-            /*
-             * Some self-tests like kmutex_ord use '_' in their name. In those
-             * cases, we should never discard whatever was after the last '_'.
-             */
-            p = name;
-         }
-
-         break;
-      }
-
-      p--;
-   }
-
-   if (p > name) {
-
-      while (p2 < p)
-         *s++ = *p2++;
-
-      *s = 0;
-      name_to_use = name_buf;
-   }
-
    list_for_each_ro(pos, &se_list, node) {
-      if (!strcmp(pos->name, name_to_use))
+      if (!strcmp(pos->name, name))
          return pos;
    }
 
    return NULL;
+}
+
+int se_runall(void)
+{
+   struct self_test *pos;
+   int rc = 0;
+
+   list_for_each_ro(pos, &se_list, node) {
+
+      if (pos->kind != se_manual) {
+         printk("\033[93m[selftest]\033[0m [RUN   ] %s\n", pos->name);
+
+         if ((rc = se_run(pos))) {
+            printk("\033[93m[selftest]\033[0m [FAILED] %s\n", pos->name);
+            break;
+         }
+         printk("\033[93m[selftest]\033[0m [PASSED] %s\n", pos->name);
+      }
+   }
+
+   return rc;
 }
 
 static void se_internal_run(struct self_test *se)
