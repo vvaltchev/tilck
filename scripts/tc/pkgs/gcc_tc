@@ -9,6 +9,7 @@
 #
 # ---------------------------------------------------------------
 
+BOOTLIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains"
 
 ###############################
 # x86-i686 GNU toolchain
@@ -23,13 +24,19 @@ function raw_gcc_tc_download {
    local dest="$1"
    local arch="$2"
    local tcname_suffix="$3"
+   local tcfile_ext="$4"
 
    local tcname="${arch}--${tcname_suffix}"
-   local tarname=$tcname.tar.bz2
-   local url="https://toolchains.bootlin.com/downloads/releases/toolchains"
+   local tarname=""
 
-   download_file_in_cache "$url/$arch/tarballs" "$tarname"
-   extract_cachefile_tar_bz "$tarname" $tcname $dest
+   if [[ "$tcfile_ext" == "" ]]; then
+      tarname="$tcname.tar.bz2"
+   else
+      tarname="$tcname.$tcfile_ext"
+   fi
+
+   download_file_in_cache "$BOOTLIN_URL/$arch/tarballs" "$tarname"
+   extract_cachefile_tar_generic "$tarname" $tcname $dest
 }
 
 function gcc_x86_glibc_patch {
@@ -67,7 +74,8 @@ function download_gcc_tc_internal {
       raw_gcc_tc_download                    \
          "${GCC_NAME_PFX}_${libc}"           \
          "$ARCH_GCC_TC_CODENAME"             \
-         "$libc--$ARCH_GCC_TC_VER"
+         "$libc--$ARCH_GCC_TC_VER"           \
+         "$ARCH_GCC_TC_EXT"
 
       if [[ "$libc" == "glibc" && "$ARCH" == "i386" ]]; then
          gcc_x86_glibc_patch

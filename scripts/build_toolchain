@@ -172,13 +172,14 @@ fi
 #
 if [[ "$ARCH_GCC_TC_VER" == "" ]]; then
    case $GCC_TC_VER in
-      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2";;
-      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1";;
-      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2";;
-      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1";;
-      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1";;
-      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1";;
-      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1";;
+      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
       *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
    esac
 fi
@@ -214,6 +215,7 @@ echo "ARCH=$ARCH"
 echo "HOST_ARCH=$HOST_ARCH"
 echo "GCC_TC_VER=$GCC_TC_VER"
 echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
+echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
 echo "USE_SYSCC=$USE_SYSCC"
 echo "CC=$CC"
 echo "CXX=$CXX"
