@@ -163,14 +163,28 @@ function download_file_in_cache {
    fi
 }
 
-function extract_cachefile_tar_gz {
+function extract_cachefile_tar_generic {
 
    local tarfile="$1"
    local internalDirName="$2"
    local newDirName="$3"
+   local tarOpt=""
+
+   if [[ "$tarfile" == *.gz ]]; then
+      tarOpt="xfz"
+   elif [[ "$tarfile" == *.bz2 ]]; then
+      tarOpt="xfj"
+   elif [[ "$tarfile" == *.xz ]]; then
+      tarOpt="xfJ"
+   elif [[ "$tarfile" == *.tgz ]]; then
+      tarOpt="xfz"
+   else
+      echo "ERROR: extension of '$tarfile' not supported!"
+      exit 1
+   fi
 
    echo "Extracting $tarfile..."
-   tar xfz $TC/cache/$tarfile
+   tar $tarOpt $TC/cache/$tarfile
 
    if ! [ "$internalDirName" = "--" ]; then
       if ! [ "$internalDirName" = "$newDirName" ]; then
@@ -192,33 +206,16 @@ function extract_cachefile_tar_gz {
    echo "Extracting completed."
 }
 
+function extract_cachefile_tar_gz {
+   extract_cachefile_tar_generic "$1" "$2" "$3"
+}
+
 function extract_cachefile_tar_bz {
+   extract_cachefile_tar_generic "$1" "$2" "$3"
+}
 
-   local tarfile="$1"
-   local internalDirName="$2"
-   local newDirName="$3"
-
-   echo "Extracting $tarfile..."
-   tar xfj $TC/cache/$tarfile
-
-   if ! [ "$internalDirName" = "--" ]; then
-      if ! [ "$internalDirName" = "$newDirName" ]; then
-
-         if ! [ -d "$internalDirName" ]; then
-            echo "ERROR: internal dir: '$internalDirName' not found"
-            exit 1
-         fi
-
-         if [ -d "$newDirName" ]; then
-            echo "ERROR: new dir: '$newDirName' exists"
-            exit 1
-         fi
-
-         mv "$internalDirName" "$newDirName"
-      fi
-   fi
-
-   echo "Extracting completed."
+function extract_cachefile_tar_xz {
+   extract_cachefile_tar_generic "$1" "$2" "$3"
 }
 
 function download_git_repo_in_cache {
