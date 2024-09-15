@@ -17,14 +17,14 @@
 .global _start
 .global _boot_cpu_hartid
 
-#define RISCV_IMAGE_MAGIC   "RISCV\0\0\0"
-#define RISCV_IMAGE_MAGIC2   "RSC\x05"
+#define RISCV_IMAGE_MAGIC            "RISCV\0\0\0"
+#define RISCV_IMAGE_MAGIC2           "RSC\x05"
 
-#define RISCV_HEADER_VERSION_MAJOR 0
-#define RISCV_HEADER_VERSION_MINOR 2
+#define RISCV_HEADER_VERSION_MAJOR   0
+#define RISCV_HEADER_VERSION_MINOR   2
 
-#define RISCV_HEADER_VERSION (RISCV_HEADER_VERSION_MAJOR << 16 | \
-               RISCV_HEADER_VERSION_MINOR)
+#define RISCV_HEADER_VERSION \
+   (RISCV_HEADER_VERSION_MAJOR << 16 | RISCV_HEADER_VERSION_MINOR)
 
 FUNC(_start):
    /*
@@ -36,8 +36,10 @@ FUNC(_start):
    /* jump to start kernel */
    j _start_kernel
    /* reserved */
+
    .word 0
    .balign 8
+
 #if __riscv_xlen == 64
    /* Image load offset(2MB) from start of RAM */
    .dword 0x200000
@@ -45,9 +47,10 @@ FUNC(_start):
    /* Image load offset(4MB) from start of RAM */
    .dword 0x400000
 #endif
+
    /*
-    * Effective size of kernel image , Note tilck
-    * has an elf header(0x1000 bytes long) before the _start symbol
+    * Effective size of kernel image. Note that we marked also the ELF headers
+    * as LOAD segments, and they take 4K (0x1000) bytes, before _start.
     */
    .dword _end - _start + 0x1000
    .dword 0
