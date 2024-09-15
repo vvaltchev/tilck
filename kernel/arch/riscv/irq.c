@@ -111,13 +111,13 @@ void init_irq_handling(void)
    ASSERT(!are_interrupts_enabled());
 
    /* Make all irq numbers available */
-   for (ulong i = 0; i < MAX_IRQ_NUM / sizeof(ulong); i++) {
-      irq_bitmap[i] = 0;
-   }
+   bzero(irq_bitmap, sizeof(irq_bitmap));
 
    /*
-    * The serial port and timer interrupt numbers in tilck are fixed numbers,
+    * The serial port and timer interrupt numbers in Tilck are fixed numbers,
     * we reserve 0 ~ 15 IRQ numbers.
+    *
+    * TODO: reconsider the IRQ numbers in Tilck so that they are not fixed.
     */
    irq_bitmap[0] |= 0xffffUL;
 

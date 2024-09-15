@@ -25,7 +25,7 @@ struct intc_dev {
 };
 
 struct irq_data irq_datas[MAX_IRQ_NUM];
-ulong irq_bitmap[MAX_IRQ_NUM / (sizeof(ulong) * 8)];
+ulong irq_bitmap[DIV_ROUND_UP(MAX_IRQ_NUM, sizeof(ulong) * 8)];
 
 u32 spur_irq_count = 0;
 u32 unhandled_irq_count[MAX_IRQ_NUM];
