@@ -106,9 +106,14 @@ for gen_script in $MAIN_DIR/scripts/build_generators/*; do
    echo "************ Build: $name ************"
    mkdir -p $name
    pushd $name
+
    $UNBUFFER $gen_script | tee cmake.log
-   $UNBUFFER make -j 4 | tee build.log
-   $UNBUFFER make -j 4 gtests | tee build_gtests.log
+
+   if ! [ -f skipped ]; then
+      $UNBUFFER make -j 4 | tee build.log
+      $UNBUFFER make -j 4 gtests | tee build_gtests.log
+   fi
+
    popd
 
 done
