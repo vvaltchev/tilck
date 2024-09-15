@@ -915,9 +915,11 @@ create_early_page_table(pdir_t *pdir,
 
 void *prepare_early_mapping(ulong fdt_paddr)
 {
+   extern struct linux_image_h linux_image;
    extern char _start;
-   ulong kernel_pa = (ulong)&_start - 0x1000;
-   ulong text_offset = ((struct linux_image_h *)(void *)&_start)->text_offset;
+
+   const ulong kernel_pa = (ulong)&_start - 0x1000;
+   const ulong text_offset = linux_image.text_offset;
 
    base_pa = kernel_pa - text_offset;
 

@@ -15,6 +15,7 @@
 
 .section .text.start
 .global _start
+.global linux_image
 .global _boot_cpu_hartid
 
 #define RISCV_IMAGE_MAGIC            "RISCV\0\0\0"
@@ -26,6 +27,7 @@
 #define RISCV_HEADER_VERSION \
    (RISCV_HEADER_VERSION_MAJOR << 16 | RISCV_HEADER_VERSION_MINOR)
 
+linux_image:
 FUNC(_start):
    /*
     * Image header expected by Linux boot-loaders. The image header data
