@@ -8,49 +8,32 @@
 
 #ifndef __cplusplus
 
-   #if defined(UNIT_TEST_ENVIRONMENT) &&   \
-      !defined(__clang__)  &&              \
-      defined(__GNUC__) &&                 \
-      __GNUC__ <= 4 &&                     \
-      __GNUC_MINOR__ <= 8
+   #include <stdatomic.h> // system header
 
-      /*
-       * This is NOT a real kernel build, it's OK to use the fake atomics for
-       * unit tests if the compiler is too old and does not support C11 atomics.
-       */
-      #include <tilck/common/fake_atomics.h>
-
+   #ifdef __riscv64
+      STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE >= 1);
+      STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE >= 1);
+      STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE >= 1);
    #else
+      STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE == 2);
+      STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE == 2);
+      STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE == 2);
+   #endif
 
-      /* DEFAULT case: the Tilck kernel, compiled with a modern C compiler. */
+   STATIC_ASSERT(ATOMIC_INT_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_LONG_LOCK_FREE == 2);
+   STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 
-      #include <stdatomic.h> // system header
+   #define ATOMIC(x) _Atomic(x)
 
-      #ifdef __riscv64
-         STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE >= 1);
-         STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE >= 1);
-         STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE >= 1);
-      #else
-         STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE == 2);
-         STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE == 2);
-         STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE == 2);
-      #endif
+   /* Convenience macros */
+   #define mo_relaxed memory_order_relaxed
+   #define mo_consume memory_order_consume
+   #define mo_acquire memory_order_acquire
+   #define mo_release memory_order_release
+   #define mo_acq_rel memory_order_acq_rel
+   #define mo_seq_cst memory_order_seq_cst
 
-      STATIC_ASSERT(ATOMIC_INT_LOCK_FREE == 2);
-      STATIC_ASSERT(ATOMIC_LONG_LOCK_FREE == 2);
-      STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
-
-      #define ATOMIC(x) _Atomic(x)
-
-      /* Convenience macros */
-      #define mo_relaxed memory_order_relaxed
-      #define mo_consume memory_order_consume
-      #define mo_acquire memory_order_acquire
-      #define mo_release memory_order_release
-      #define mo_acq_rel memory_order_acq_rel
-      #define mo_seq_cst memory_order_seq_cst
-
-   #endif // #if defined(UNIT_TEST_ENVIRONMENT) && ...
 
 #else
 
