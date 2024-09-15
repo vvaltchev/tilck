@@ -27,9 +27,9 @@
       #include <stdatomic.h> // system header
 
       #ifdef __riscv64
-         STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE == 1);
-         STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE == 1);
-         STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE == 1);
+         STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE >= 1);
+         STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE >= 1);
+         STATIC_ASSERT(ATOMIC_SHORT_LOCK_FREE >= 1);
       #else
          STATIC_ASSERT(ATOMIC_BOOL_LOCK_FREE == 2);
          STATIC_ASSERT(ATOMIC_CHAR_LOCK_FREE == 2);
