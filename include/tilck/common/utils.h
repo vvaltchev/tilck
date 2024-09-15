@@ -4,6 +4,16 @@
 #include <tilck/common/basic_defs.h>
 #include <3rd_party/bithacks.h>
 
+/*
+ * MACRO versions of the constexpr functions below. We need those because
+ * unfortunately C doesn't allow us to use constexpr functions when declaring
+ * the size of arrays. Despite everything being at compile-time, in many case
+ * we still need a macro :-(
+ */
+
+#define DIV_ROUND_UP(n, unit) ( ( (n) + (unit) - 1 ) / (unit) )
+#define ROUND_UP_AT(n, unit) ( DIV_ROUND_UP( (n), (unit) ) * (unit) )
+#define ROUND_DOWN_AT(n, unit) ( ( (n) / (unit) ) * (unit) )
 
 CONSTEXPR static ALWAYS_INLINE ulong
 pow2_round_up_at(ulong n, ulong pow2unit)
@@ -20,37 +30,37 @@ pow2_round_up_at64(u64 n, u64 pow2unit)
 CONSTEXPR static ALWAYS_INLINE ulong
 div_round_up(ulong n, ulong unit)
 {
-   return ((n + unit - 1) / unit);
+   return DIV_ROUND_UP(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE u64
 div_round_up64(u64 n, u64 unit)
 {
-   return ((n + unit - 1) / unit);
+   return DIV_ROUND_UP(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE ulong
 round_up_at(ulong n, ulong unit)
 {
-   return div_round_up(n, unit) * unit;
+   return ROUND_UP_AT(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE u64
 round_up_at64(u64 n, u64 unit)
 {
-   return div_round_up64(n, unit) * unit;
+   return ROUND_UP_AT(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE ulong
 round_down_at(ulong n, ulong unit)
 {
-   return (n / unit) * unit;
+   return ROUND_DOWN_AT(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE u64
 round_down_at64(u64 n, u64 unit)
 {
-   return (n / unit) * unit;
+   return ROUND_DOWN_AT(n, unit);
 }
 
 CONSTEXPR static ALWAYS_INLINE ulong
