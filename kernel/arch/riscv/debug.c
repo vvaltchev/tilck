@@ -127,7 +127,7 @@ void dump_stacktrace(void *ebp, pdir_t *pdir)
          off++;
       }
 
-      printk("[%p] %s + 0X%lx\n", TO_PTR(va), sym_name ? sym_name : "???", off);
+      printk("[%p] %s + 0x%lx\n", TO_PTR(va), sym_name ? sym_name : "???", off);
    }
 
    printk("\n");
