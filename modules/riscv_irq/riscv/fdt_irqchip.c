@@ -115,7 +115,7 @@ int fdt_parse_one_hwirq(void *fdt, int node, int index,
 {
    int len, rc;
    int intc_node, parent_node;
-   const fdt32_t *val;
+   const fdt32_t *val = NULL;
    u32 ints_cells, intc_phandle;
    struct fdt_phandle_args pargs;
 
@@ -146,6 +146,9 @@ int fdt_parse_one_hwirq(void *fdt, int node, int index,
          break;
       }
    }
+
+   if (!val)
+      return -ENODEV;
 
    intc_node = fdt_node_offset_by_phandle(fdt, intc_phandle);
    if (intc_node < 0 || fdt_node_depth(fdt, parent_node) <= 0)
