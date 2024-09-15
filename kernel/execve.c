@@ -32,7 +32,7 @@ struct execve_ctx {
    const char *const *env;
    int reclvl;
 
-   char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE];
+   char hdr_stack[MAX_SCRIPT_REC + 1][ELF_RAW_HEADER_SIZE] ALIGNED_AT(8);
    const char *argv_stack[MAX_SCRIPT_REC][USERAPP_MAX_ARGS_COUNT];
 };
 
