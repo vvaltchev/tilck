@@ -33,14 +33,22 @@ function install_debian_family {
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
-   pkg_list+=(bison)
-   pkg_list+=(flex)
-   pkg_list+=(libssl-dev)
-   pkg_list+=(device-tree-compiler)
+
+   if [[ "$ARCH" == "riscv64" ]]; then
+      pkg_list+=(bison)
+      pkg_list+=(flex)
+      pkg_list+=(libssl-dev)
+      pkg_list+=(device-tree-compiler)
+   fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
 
-      pkg_list+=(qemu-system-x86)
+      if [[ "$ARCH" == "i386" ]] || [[ "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-system-riscv64)
+      fi
+
       pkg_list+=(python3)
 
       if [[ "$DETECTED_UBUNTU_OR_MINT" == 1 ]]; then
