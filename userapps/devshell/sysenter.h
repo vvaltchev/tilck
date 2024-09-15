@@ -55,7 +55,10 @@ do_sysenter_call1(int sysno, void *arg1)
 
 #elif defined(__riscv)
 
+   errno = 0;
    ret = syscall(sysno, arg1);
+   if (errno)
+      ret = -errno;
 
 #else
 
@@ -86,7 +89,10 @@ do_sysenter_call2(int sysno, void *arg1, void *arg2)
 
 #elif defined(__riscv)
 
+   errno = 0;
    ret = syscall(sysno, arg1, arg2);
+   if (errno)
+      ret = -errno;
 
 #else
 
@@ -117,7 +123,10 @@ do_sysenter_call3(int sysno, void *arg1, void *arg2, void *arg3)
 
 #elif defined(__riscv)
 
+   errno = 0;
    ret = syscall(sysno, arg1, arg2, arg3);
+   if (errno)
+      ret = -errno;
 
 #else
 
@@ -148,7 +157,10 @@ do_sysenter_call4(int sysno, void *a1, void *a2, void *a3, void *a4)
 
 #elif defined(__riscv)
 
+   errno = 0;
    ret = syscall(sysno, a1, a2, a3, a4);
+   if (errno)
+      ret = -errno;
 
 #else
 
@@ -180,7 +192,10 @@ do_sysenter_call5(int sysno,
 
 #elif defined(__riscv)
 
+   errno = 0;
    ret = syscall(sysno, a1, a2, a3, a4, a5);
+   if (errno)
+      ret = -errno;
 
 #else
 

@@ -363,7 +363,7 @@ int cmd_exit_cb(int argc, char **argv)
                        "test_on_exit_cb_counter",
                        &before_cb);
 
-   if(rc == -ENOENT) {
+   if (rc == -ENOENT) {
       printf(PFX "[SKIP] No kernel symbols\n");
       return 0;
    }
