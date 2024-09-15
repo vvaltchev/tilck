@@ -56,7 +56,7 @@ bool irq_is_masked(int irq)
    ulong var;
    u32 hwirq;
    struct irq_domain *domain;
-   bool ret;
+   bool ret = false;
 
    ASSERT(IN_RANGE_INC(irq, 0, MAX_IRQ_NUM - 1));
 
