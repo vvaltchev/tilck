@@ -1,4 +1,4 @@
-# version: v6
+# version: v1
 FROM ubuntu:22.04
 
 # We don't want any of the interactive features of apt, so we just disable them.
