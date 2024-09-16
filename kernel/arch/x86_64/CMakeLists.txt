@@ -16,6 +16,7 @@ list(
 
    -D__ACTUAL_TILCK_KERNEL_BINARY__
    -mcmodel=kernel
+   -fno-pic
 
    ${LOWLEVEL_BINARIES_FLAGS_LIST}
    ${DISABLE_FPU_FLAGS_LIST}
