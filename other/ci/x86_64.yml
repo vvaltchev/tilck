@@ -1,0 +1,72 @@
+trigger:
+
+  branches:
+    exclude:
+      - readme*
+      - temp-*
+      - exp-*
+
+  paths:
+    exclude:
+      - README.md
+      - docs/**
+      - scripts/configurator/**
+
+  - job: gcc_9_3_x86_64
+    container: 'vvaltchev/tilck-ci-build:v6'
+    pool:
+      vmImage: 'ubuntu-20.04'
+    variables:
+      CI: 1
+      TCROOT: /tc/toolchain2-gcc93
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 9.3.0
+      ARCH: x86_64
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/cmake_run
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+
+  - job: gcc_10_3_x86_64
+    container: 'vvaltchev/tilck-ci-build:v6'
+    pool:
+      vmImage: 'ubuntu-20.04'
+    variables:
+      CI: 1
+      TCROOT: /tc/toolchain2-gcc103
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 10.3.0
+      ARCH: x86_64
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/cmake_run
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+
+  - job: gcc_11_3_x86_64
+    container: 'vvaltchev/tilck-ci-build:v6'
+    pool:
+      vmImage: 'ubuntu-20.04'
+    variables:
+      CI: 1
+      TCROOT: /tc/toolchain2-gcc113
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 11.3.0
+      ARCH: x86_64
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/cmake_run
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+
+
