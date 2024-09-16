@@ -9,37 +9,6 @@ export FFLAGS=""
 export CXXFLAGS=""
 export CFFLAGS=""
 
-ALL_ARCH_LIST="i386 x86_64 riscv64"
-
-if [[ "$ARCH" == "" ]]; then
-   export ARCH="i386" # default target arch
-fi
-
-# Default GCC toolchain version to use. Unfortunately, it depends on the target
-# architecture, because the list of available pre-built toolchains on
-# https://toolchains.bootlin.com depends on the architecture.
-
-if [[ "$ARCH" == "i386" ]]; then
-
-   DEFAULT_GCC_TC_VERSION="8.4.0"
-   ARCH_GCC_TC="i686"
-
-elif [[ "$ARCH" == "x86_64" ]]; then
-
-   DEFAULT_GCC_TC_VERSION="8.4.0"
-   ARCH_GCC_TC="x86_64"
-
-elif [[ "$ARCH" == "riscv64" ]]; then
-
-   DEFAULT_GCC_TC_VERSION="12.3.0"
-   ARCH_GCC_TC="riscv64"
-
-else
-   echo "Architecture '$ARCH' not supported."
-   exit 1
-fi
-
-
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
@@ -49,6 +18,52 @@ if [[ "$MAIN_DIR" = *" "* ]]; then
    echo "Current path: '$MAIN_DIR'"
    exit 1
 fi
+
+
+#
+# Given an architecture name using Linux's convention, return the EFI name
+# for the same architecture. The result is the same for almost all architectures
+# except for "i386" which becomes "ia32".
+#
+function get_efi_arch {
+
+   local ret="$1"
+
+   if [[ "$ret" == "i386" ]]; then
+      ret="ia32"
+   fi
+
+   echo "$ret"
+}
+
+ALL_ARCH_LIST="i386 x86_64 riscv64"
+DEFAULT_ARCH="i386"
+
+if [[ "$ARCH" == "" ]]; then
+   export ARCH=$DEFAULT_ARCH
+fi
+
+#
+# Setup the ARCH name according to convention used by pre-built toolchains
+#
+case $ARCH in
+   i386) ARCH_GCC_TC="i686";;
+   x86_64) ARCH_GCC_TC="x86_64";;
+   riscv64) ARCH_GCC_TC="riscv64";;
+   *) echo "Architecture '$ARCH' not supported."; exit 1;;
+esac
+
+# Default GCC toolchain version to use. Unfortunately, it depends on the target
+# architecture, because the list of available pre-built toolchains on
+# https://toolchains.bootlin.com depends on the architecture.
+
+if ! [ -f $MAIN_DIR/other/min_gcc_tc_ver/$ARCH ]; then
+   echo "ERROR: file $MAIN_DIR/other/min_gcc_tc_ver/$ARCH not found!"
+   exit 1
+fi
+
+DEFAULT_GCC_TC_VERSION=$(cat $MAIN_DIR/other/min_gcc_tc_ver/$ARCH)
+
 
 # Global toolchain directory
 
@@ -103,28 +118,13 @@ if [ -z "$GCC_TC_VER" ]; then
 fi
 
 #
-# Given an architecture name using Linux's convention, return the EFI name
-# for the same architecture. The result is the same for almost all architectures
-# except for "i386" which becomes "ia32".
-#
-function get_efi_arch {
-
-   local ret="$1"
-
-   if [[ "$ret" == i386 ]]; then
-      ret="ia32"
-   fi
-
-   echo "$ret"
-}
-
-#
 # Support for AARCH64 as build machine (limited)
 #
 if [[ "$HOST_ARCH" == "aarch64" ]]; then
    GCC_TC_VER="9.4.0"
    ARCH_GCC_TC_VER="custom"
 fi
+
 
 if [[ "$ARCH" == "i386" ]]; then
 
@@ -214,6 +214,7 @@ echo
 echo "ARCH=$ARCH"
 echo "HOST_ARCH=$HOST_ARCH"
 echo "GCC_TC_VER=$GCC_TC_VER"
+echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
 echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
 echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
 echo "USE_SYSCC=$USE_SYSCC"
@@ -396,6 +397,41 @@ function compiler_checks {
          exit 1
       fi
 
+   fi
+
+   #
+   # GCC_TC_VER check: we need check that the current GCC_TC_VER is supported.
+   # Since DEFAULT_GCC_TC_VERSION is the oldest one we support, we should check
+   # against that.
+   #
+
+   major=$(get_version_comp "$GCC_TC_VER" 1)
+   minor=$(get_version_comp "$GCC_TC_VER" 2)
+
+   min_major=$(get_version_comp "$DEFAULT_GCC_TC_VERSION" 1)
+   min_minor=$(get_version_comp "$DEFAULT_GCC_TC_VERSION" 2)
+
+   if [[ $major -lt $min_major ||
+         ( $major -eq $min_major && $minor -lt $min_minor ) ]]
+   then
+      echo -n "ERROR: GCC_TC_VER ($GCC_TC_VER) < "
+      echo    "minimum supported ($DEFAULT_GCC_TC_VERSION)"
+      echo
+
+      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+         echo -n "This looks like caused by a new change in the source "
+         echo    "tree updating the minimum GCC version."
+         echo
+      fi
+
+      echo "Steps to fix:"
+      echo
+      echo "   1. unset \$GCC_TC_VER"
+      echo "   2. ./scripts/build_toolchain --clean"
+      echo "   3. rm -rf ./build # or any other build directory"
+      echo "   4. ./scripts/build_toolchain"
+      echo
+      exit 1
    fi
 }
 

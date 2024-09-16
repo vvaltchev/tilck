@@ -16,7 +16,7 @@ jobs:
   - job: interactive_gcc93
     container: 'vvaltchev/tilck-i386:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc93
@@ -51,7 +51,7 @@ jobs:
   - job: gcc_9_3
     container: 'vvaltchev/tilck-i386:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc93
@@ -97,7 +97,7 @@ jobs:
   - job: gcc_10_3
     container: 'vvaltchev/tilck-i386:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc103
@@ -143,7 +143,7 @@ jobs:
   - job: gcc_11_3
     container: 'vvaltchev/tilck-i386:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
@@ -189,7 +189,7 @@ jobs:
   - job: syscc
     container: 'vvaltchev/tilck-i386:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc93
