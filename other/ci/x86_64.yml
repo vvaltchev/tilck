@@ -12,6 +12,7 @@ trigger:
       - docs/**
       - scripts/configurator/**
 
+jobs:
   - job: gcc_9_3_x86_64
     container: 'vvaltchev/tilck-ci-build:v6'
     pool:
