@@ -144,9 +144,9 @@ function fail_if_too_old {
    min_major=$(get_version_comp $3 1)
    min_minor=$(get_version_comp $3 2)
 
-   if [ $major -lt $min_major ]; then
-      show_too_old_and_exit $1 $3
-   elif [ $major -eq $min_major ] && [ $minor -lt $min_minor ]; then
+   if [[ $major -lt $min_major ||
+         ( $major -eq $min_major && $minor -lt $min_minor ) ]]
+   then
       show_too_old_and_exit $1 $3
    fi
 }
@@ -475,3 +475,5 @@ function do_common_cross_compiler_setup {
       export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
    fi
 }
+
+

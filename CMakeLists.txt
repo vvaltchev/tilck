@@ -126,6 +126,34 @@ endif()
 # Define our special "sticky" env. variable GCC_TC_VER
 define_env_cache_str_var(GCC_TC_VER "${SAVED_GCC_TC_VAR}")
 
+#
+# GCC_TC_VER check
+#
+
+file(READ ${CMAKE_SOURCE_DIR}/other/min_gcc_tc_ver/${ARCH} MIN_GCC_TC_VER)
+
+if ("${GCC_TC_VER}" VERSION_LESS "${MIN_GCC_TC_VER}")
+
+   set (msg, "")
+
+   string(
+      CONCAT msg
+
+      "GCC_TC_VER (${GCC_TC_VER}) < "
+      "MIN_GCC_TC_VER (${MIN_GCC_TC_VER}).\n"
+      "This probably happened because the minimum GCC version has been bumped "
+      "by a source change. It's perfectly normal. Steps to fix:\n"
+      "   0. unset \$GCC_TC_VER # if set\n"
+      "   1. rm -rf ${CMAKE_BINARY_DIR}\n"
+      "   2. ${BTC_SCRIPT_REL} --clean\n"
+      "   3. ${BTC_SCRIPT_REL}\n"
+      "   4. rebuild"
+   )
+   message(FATAL_ERROR "${msg}")
+   unset(msg)
+
+endif()
+
 # END [Setup of toolchain-related variables]
 
 if (USE_SYSCC)
