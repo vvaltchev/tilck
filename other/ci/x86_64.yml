@@ -14,9 +14,9 @@ trigger:
 
 jobs:
   - job: gcc_9_3_x86_64
-    container: 'vvaltchev/tilck-ci-build:v6'
+    container: 'vvaltchev/tilck-x86_64:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc93
@@ -33,9 +33,9 @@ jobs:
         displayName: Build the kernel
 
   - job: gcc_10_3_x86_64
-    container: 'vvaltchev/tilck-ci-build:v6'
+    container: 'vvaltchev/tilck-x86_64:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc103
@@ -52,9 +52,9 @@ jobs:
         displayName: Build the kernel
 
   - job: gcc_11_3_x86_64
-    container: 'vvaltchev/tilck-ci-build:v6'
+    container: 'vvaltchev/tilck-x86_64:v1'
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-22.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
