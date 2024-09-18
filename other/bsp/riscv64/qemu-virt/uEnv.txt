@@ -1,7 +1,7 @@
 # This is the sample uEnv.txt file for qemu-virt U-boot
 
 # kernel command line can be modified here
-bootargs=tilck -sercon -panic_regs -panic_mmap -panic_kb
+bootargs=tilck -sercon -panic_regs -panic_mmap
 
 # When bootelf kernel, do not directly jump into kernel, bootelf is only used
 # to properly load tilck in elf format.
