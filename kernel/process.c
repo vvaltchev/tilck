@@ -359,11 +359,11 @@ static void free_process_int(struct process *pi)
 
    if (release_obj(pi) == 0) {
 
-      arch_specific_free_proc(pi);
-      kfree_obj((void *)get_process_task(pi), struct task_and_process);
-
       if (MOD_debugpanel)
          kfree2(pi->debug_cmdline, PROCESS_CMDLINE_BUF_SIZE);
+
+      arch_specific_free_proc(pi);
+      kfree_obj((void *)get_process_task(pi), struct task_and_process);
    }
 }
 
