@@ -85,8 +85,8 @@
    REG_S s10, 26 * RISCV_SZPTR(sp)
    REG_S s11, 27 * RISCV_SZPTR(sp)
 
-   csrr s1, sstatus
-   REG_S s1, 33 * RISCV_SZPTR(sp)
+   csrr t0, sstatus
+   REG_S t0, 33 * RISCV_SZPTR(sp)
 
 .endm
 
@@ -150,20 +150,20 @@
    REG_S x30, 30 * RISCV_SZPTR(sp)
    REG_S x31, 31 * RISCV_SZPTR(sp)
 
-   csrr s0, sepc
-   csrr s1, sstatus
-   csrr s2, stval
-   csrr s3, scause
-   csrr s4, sscratch
+   csrr t0, sepc
+   csrr t1, sstatus
+   csrr t2, stval
+   csrr t3, scause
+   csrr t4, sscratch
 
-   REG_S s0, 32 * RISCV_SZPTR(sp)
-   REG_S s1, 33 * RISCV_SZPTR(sp)
-   REG_S s2, 34 * RISCV_SZPTR(sp)
-   REG_S s3, 35 * RISCV_SZPTR(sp)
-   REG_S s4, 38 * RISCV_SZPTR(sp)
+   REG_S t0, 32 * RISCV_SZPTR(sp)
+   REG_S t1, 33 * RISCV_SZPTR(sp)
+   REG_S t2, 34 * RISCV_SZPTR(sp)
+   REG_S t3, 35 * RISCV_SZPTR(sp)
+   REG_S t4, 38 * RISCV_SZPTR(sp)
 
-   addi s0, sp, SIZEOF_REGS
-   REG_S s0,  2 * RISCV_SZPTR(sp)
+   addi t0, sp, SIZEOF_REGS
+   REG_S t0,  2 * RISCV_SZPTR(sp)
 
 .endm
 
