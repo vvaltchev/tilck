@@ -3,14 +3,14 @@
 </p>
 
    
-What                   | Status badge
------------------------|---------------------
-i386 (build & tests)   | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20i386?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=15&branchName=master)
-x86_64 (build only)    | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20x86_64?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=16&branchName=master)
-riscv64 (build only)   | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20riscv64%20build?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=17&branchName=master)
-i386 (toolchain)       | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20toolchain%20build?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=2&branchName=master)
-Coverage (%)           | [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
-License                | [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+What             | Status badge
+-----------------|---------------------
+i386             | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20i386?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=15&branchName=master)
+riscv64          | [![Build Status](https://dev.azure.com/vkvaltchev/Tilck/_apis/build/status%2FTilck%20riscv64?branchName=master)](https://dev.azure.com/vkvaltchev/Tilck/_build/latest?definitionId=14&branchName=master)
+x86_64 (build)   | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20x86_64?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=16&branchName=master)
+i386 (toolchain) | [![Build Status](https://vkvaltchev.visualstudio.com/Tilck/_apis/build/status%2FTilck%20toolchain%20build?branchName=master)](https://vkvaltchev.visualstudio.com/Tilck/_build/latest?definitionId=2&branchName=master)
+Coverage (%)     | [![codecov](https://codecov.io/gh/vvaltchev/tilck/branch/master/graph/badge.svg)](https://codecov.io/gh/vvaltchev/tilck)
+License          | [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
 <a href="https://youtu.be/Ce1pMlZO_mI">
    <img
