@@ -24,6 +24,10 @@ typedef u32 gcov_unsigned_t;
  * List of changes (excluding updates of copyright years) affecting
  * gcov-counter.def (from git://gcc.gnu.org/git/gcc.git)
  *
+ * 08a52331803f Add condition coverage (MC/DC)
+ *    BASE-VER: 14.0.1
+ *    GCOV_COUNTERS: 9
+ *
  *  596341c741a Rename SINGE_VALUE to TOPN_VALUES counters.
  *     BASE-VER: 10.0.0
  *     GCOV_COUNTERS: 8
@@ -158,9 +162,28 @@ typedef u32 gcov_unsigned_t;
  *    releases/gcc-9.3.0 -> 9
  *    releases/gcc-10.1.0 -> 8
  *    releases/gcc-10.2.0 -> 8
+ *    releases/gcc-10.3.0 -> 8
+ *    releases/gcc-10.4.0 -> 8
+ *    releases/gcc-10.5.0 -> 8
+ *    releases/gcc-11.1.0 -> 8
+ *    releases/gcc-11.2.0 -> 8
+ *    releases/gcc-11.3.0 -> 8
+ *    releases/gcc-11.4.0 -> 8
+ *    releases/gcc-11.5.0 -> 8
+ *    releases/gcc-12.1.0 -> 8
+ *    releases/gcc-12.2.0 -> 8
+ *    releases/gcc-12.3.0 -> 8
+ *    releases/gcc-12.4.0 -> 8
+ *    releases/gcc-13.1.0 -> 8
+ *    releases/gcc-13.2.0 -> 8
+ *    releases/gcc-13.3.0 -> 8
+ *    releases/gcc-14.1.0 -> 9
+ *    releases/gcc-14.2.0 -> 9
  */
 
-#if __GNUC__ >= 10
+#if __GNUC__ >= 14
+   #define GCOV_COUNTERS 9
+#elif __GNUC__ >= 10
    #define GCOV_COUNTERS 8
 #elif __GNUC__ >= 7
    #define GCOV_COUNTERS 9
@@ -210,6 +233,12 @@ struct gcov_info
   gcov_unsigned_t version;      /* expected version number */
   struct gcov_info *next;       /* link to next, used by libgcov */
   gcov_unsigned_t stamp;        /* uniquifying time stamp */
+
+#if (__GNUC__ >= 12)
+   /* Introduced with commit 72e0c742bd01f8e7e6 */
+   gcov_unsigned_t checksum;        /* unique object checksum */
+#endif
+
   const char *filename;         /* output file name */
   gcov_merge_fn merge[GCOV_COUNTERS];  /* merge functions (null for unused) */
   unsigned n_functions;         /* number of functions */
@@ -262,12 +291,11 @@ void __gcov_init(struct gcov_info *info)
  */
 
 /* File magic. Must not be palindromes.  */
-#define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461) /* "gcda" */
+#define GCOV_DATA_MAGIC              ((gcov_unsigned_t)0x67636461) /* "gcda" */
 
-
-#define GCOV_TAG_FUNCTION        ((gcov_unsigned_t)0x01000000)
-#define GCOV_TAG_FUNCTION_LENGTH (3)
-#define GCOV_TAG_COUNTER_BASE    ((gcov_unsigned_t)0x01a10000)
+#define GCOV_TAG_FUNCTION            ((gcov_unsigned_t)0x01000000)
+#define GCOV_TAG_FUNCTION_LENGTH     (3)
+#define GCOV_TAG_COUNTER_BASE        ((gcov_unsigned_t)0x01a10000)
 #define GCOV_TAG_COUNTER_LENGTH(NUM) ((NUM) * 2)
 
 /* Convert a counter index to a tag.  */
@@ -282,8 +310,12 @@ static u32 compute_gcda_file_size(const struct gcov_info *info)
 
    u32 size = 0;
 
-   // header
+   // file header
    size += 3 * sizeof(u32);
+
+#if (__GNUC__ >= 12)
+   size += 1 * sizeof(u32);  /* checksum */
+#endif
 
    for (u32 i = 0; i < info->n_functions; i++) {
 
@@ -375,12 +407,22 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
    *ptr++ = gi->version;
    *ptr++ = gi->stamp;
 
+#if (__GNUC__ >= 12)
+   *ptr++ = 0; /* checksum of the compilation unit */
+#endif
+
    for (u32 i = 0; i < gi->n_functions; i++) {
 
       func = gi->functions[i];
 
       *ptr++ = GCOV_TAG_FUNCTION;
-      *ptr++ = GCOV_TAG_FUNCTION_LENGTH;
+
+#if (__GNUC__ >= 12)
+      *ptr++ = GCOV_TAG_FUNCTION_LENGTH * 4; /* bytes */
+#else
+      *ptr++ = GCOV_TAG_FUNCTION_LENGTH * 1; /* words */
+#endif
+
       *ptr++ = func->ident;
       *ptr++ = func->lineno_checksum;
       *ptr++ = func->cfg_checksum;
@@ -393,7 +435,12 @@ static void gcov_dump_file_to_buf(const struct gcov_info *gi, void *buf)
             continue; /* no merge func -> the counter is NOT used */
 
          *ptr++ = GCOV_TAG_FOR_COUNTER(j);
-         *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num);
+
+#if (__GNUC__ >= 12)
+         *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num) * 4; /* bytes */
+#else
+         *ptr++ = GCOV_TAG_COUNTER_LENGTH(counters->num) * 1; /* words */
+#endif
 
          for (u32 k = 0; k < counters->num; k++) {
             u64 val = counters->values[k];
