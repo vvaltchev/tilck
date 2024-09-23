@@ -223,3 +223,55 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
 
+  - job: coverage
+    container: 'vvaltchev/tilck-i386:v1'
+    pool:
+      vmImage: 'ubuntu-22.04'
+    variables:
+      CI: 1
+      TCROOT: /tc/toolchain2-gcc93
+      GTEST_SHUFFLE: 0
+      DUMP_COV: 1
+      REPORT_COV: 1
+      TILCK_NO_LOGO: 1
+      GCC_TC_VER: 9.3.0
+      CMAKE_ARGS: >
+        -DMOD_acpi=0
+        -DEXTRA_TCC=1
+        -DEXTRA_VIM=1
+        -DFB_CONSOLE_BANNER=0
+        -DFB_CONSOLE_CURSOR_BLINK=0
+        -DBOOT_INTERACTIVE=0
+        -DPREFERRED_GFX_MODE_W=640
+        -DPREFERRED_GFX_MODE_H=480
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: ./scripts/build_generators/gcc_gcov
+        displayName: Run CMake
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./build/scripts/generate_test_coverage_report
+        displayName: Gen unit tests coverage report
+      - script: ./build/st/run_all_tests -c
+        displayName: Run the system tests
+      - script: ./build/st/run_interactive_test -a
+        displayName: Run the interactive tests
+      - script: ./build/scripts/generate_kernel_coverage_report --codecov
+        displayName: Gen kernel gcov report and upload to codecov
+      - script:
+          pip3 install coverage
+        displayName: Install python pip3 coverage
+      - script:
+          python3 -m coverage run -m unittest discover scripts/configurator/parser/
+        displayName: 'CMake-configurator: run unit tests'
+      - script: |
+          python3 -m coverage report
+          python3 -m coverage xml
+        displayName: 'CMake-configurator: generate coverage report'
+      - script: ./build/tmp/codecov
+        displayName: 'Run codecov'
