@@ -622,7 +622,7 @@ static Elf_Shdr *kernel_elf_get_section(const char *section_name)
    Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
    Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
-   for (uint32_t i = 0; i < h->e_shnum; i++) {
+   for (u32 i = 0; i < h->e_shnum; i++) {
 
       Elf_Shdr *s = sections + i;
       char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
@@ -634,23 +634,11 @@ static Elf_Shdr *kernel_elf_get_section(const char *section_name)
    return NULL;
 }
 
-void call_kernel_global_ctors(void)
+static void run_ctors(void **begin, void **end)
 {
    void (*ctor)(void);
-   Elf_Shdr *ctors = kernel_elf_get_section(".ctors");
 
-   if (!ctors) {
-
-      ctors = kernel_elf_get_section(".init_array");
-
-      if (!ctors)
-         return;
-   }
-
-   void **ctors_begin = (void **)ctors->sh_addr;
-   void **ctors_end = (void **)(ctors->sh_addr + ctors->sh_size);
-
-   for (void **p = ctors_begin; p < ctors_end; p++) {
+   for (void **p = begin; p < end; p++) {
 
       /*
        * The C99 standard leaves casting from "void *" to a function pointer
@@ -659,5 +647,48 @@ void call_kernel_global_ctors(void)
        */
       *(void **)(&ctor) = *p;
       ctor();
+   }
+}
+
+void call_kernel_global_ctors(void)
+{
+   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
+   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
+   u32 init_sections_count = 0;
+   Elf_Shdr *sec;
+   void **begin;
+   void **end;
+
+   for (u32 i = 0; i < h->e_shnum; i++) {
+
+      sec = sections + i;
+      begin = (void **)sec->sh_addr;
+      end = (void **)(sec->sh_addr + sec->sh_size);
+
+      if (sec->sh_type == SHT_INIT_ARRAY) {
+         init_sections_count++;
+         run_ctors(begin, end);
+      }
+   }
+
+   if (!init_sections_count) {
+
+      /*
+       * We haven't found any sections having type == SHT_INIT_ARRAY: probably
+       * an older compiler has been used. Let's check for the `.ctors` section
+       * which is of type PROGBITS. If also that fails, check for .init_array
+       * by name, disregarding its type.
+       */
+
+      sec = kernel_elf_get_section(".ctors");
+      if (!sec) {
+         sec = kernel_elf_get_section(".init_array");
+         if (!sec)
+            panic("No ctors/init_array section found");
+      }
+
+      begin = (void **)sec->sh_addr;
+      end = (void **)(sec->sh_addr + sec->sh_size);
+      run_ctors(begin, end);
    }
 }
