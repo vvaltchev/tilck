@@ -174,8 +174,11 @@ void free_mem_for_zombie_task(struct task *ti)
 
    free_common_task_allocs(ti);
 
-   if (ti->pi->automatic_reaping) {
-      /* The SIGCHLD signal has been EXPLICITLY ignored by the parent */
+   if (ti->pi->automatic_reaping || is_kernel_thread(ti)) {
+      /*
+       * The SIGCHLD signal has been EXPLICITLY ignored by the parent or this
+       * is a kernel thread and we don't do any reaping.
+       */
       remove_task(ti);
    }
 }
@@ -888,18 +891,11 @@ void kthread_exit(void)
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
 
-   /* Free the heap allocations used by the task, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
-
-   /* Remove the from the scheduler and free its struct */
-   remove_task(get_curr_task());
-
-   disable_interrupts_forced();
-   {
-      set_curr_task(kernel_process);
-   }
-   enable_interrupts_forced();
+   /* Run the scheduler */
    do_schedule();
+
+   /* The scheduler will never return to a ZOMBIE task */
+   NOT_REACHED();
 }
 
 NODISCARD int

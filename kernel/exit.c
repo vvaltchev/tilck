@@ -182,16 +182,13 @@ call_on_task_exit_callbacks(void)
  * following function be non-inlineable and take no arguments.
  */
 NORETURN static NO_INLINE void
-switch_stack_free_mem_and_schedule(void)
+switch_stack_and_reschedule(void)
 {
    /* WARNING: DO NOT USE ANY STACK VARIABLES HERE */
    ASSERT_CURR_TASK_STATE(TASK_STATE_ZOMBIE);
 
    /* WARNING: the following call discards the whole stack! */
    switch_to_initial_kernel_stack();
-
-   /* Free the heap allocations used, including the kernel stack */
-   free_mem_for_zombie_task(get_curr_task());
 
    /* Run the scheduler */
    do_schedule();
@@ -326,5 +323,5 @@ void terminate_process(int exit_code, int term_sig)
    if (!vforked)
       pdir_destroy(pi->pdir);
 
-   switch_stack_free_mem_and_schedule();
+   switch_stack_and_reschedule();
 }
