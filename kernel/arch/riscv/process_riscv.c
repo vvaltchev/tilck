@@ -124,6 +124,8 @@ switch_to_task(struct task *ti)
    /* Save the value of ti->state_regs as it will be reset below */
    regs_t *state = ti->state_regs;
    struct task *curr = get_curr_task();
+   bool should_drop_top_syscall = false;
+   const bool zombie = (curr->state == TASK_STATE_ZOMBIE);
 
    ASSERT(curr != NULL);
 
@@ -139,7 +141,7 @@ switch_to_task(struct task *ti)
    task_change_state_idempotent(ti, TASK_STATE_RUNNING);
    ti->ticks.timeslice = 0;
 
-   if (!is_kernel_thread(curr) && curr->state != TASK_STATE_ZOMBIE)
+   if (!is_kernel_thread(curr) && !zombie)
       save_curr_fpu_ctx_if_enabled();
 
    if (!is_kernel_thread(ti)) {
@@ -157,9 +159,29 @@ switch_to_task(struct task *ti)
       }
    }
 
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (running_in_kernel(curr) && !is_kernel_thread(curr))
+         should_drop_top_syscall = true;
+   }
+
+   if (UNLIKELY(zombie)) {
+      ulong var;
+      disable_interrupts(&var);
+      {
+         set_curr_task(kernel_process);
+      }
+      enable_interrupts(&var);
+      free_mem_for_zombie_task(curr);
+   }
+
    /* From here until the end, we have to be as fast as possible */
    disable_interrupts_forced();
-   switch_to_task_pop_nested_interrupts();
+
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (should_drop_top_syscall)
+         nested_interrupts_drop_top_syscall();
+   }
+
    enable_preemption_nosched();
    ASSERT(is_preemption_enabled());
 
