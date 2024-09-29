@@ -29,6 +29,8 @@ void finalize_usermode_task_setup(struct task *ti, regs_t *user_regs);
 void setup_usermode_task_regs(regs_t *r, void *entry, void *stack_addr);
 void kthread_create_init_regs_arch(regs_t *r, void *func);
 void kthread_create_setup_initial_stack(struct task *ti, regs_t *r, void *arg);
+void arch_usermode_task_switch(struct task *ti);
+void save_curr_fpu_ctx_if_enabled(void);
 
 static ALWAYS_INLINE void set_curr_task(struct task *ti)
 {

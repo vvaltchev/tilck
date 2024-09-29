@@ -32,7 +32,6 @@ void hw_timer_setup() { }
 void irq_install_handler() { }
 void irq_uninstall_handler() { }
 void setup_sysenter_interface() { }
-void switch_to_task() { }
 void pdir_clone() { }
 void pdir_deep_clone() { }
 void pdir_destroy() { }
@@ -54,6 +53,8 @@ void dump_stacktrace() { NOT_REACHED(); }
 bool allocate_fpu_regs() { NOT_REACHED(); return false; }
 void kthread_create_init_regs_arch() { NOT_REACHED(); }
 void kthread_create_setup_initial_stack() { NOT_REACHED(); }
+void save_curr_fpu_ctx_if_enabled() { }
+void arch_usermode_task_switch() { }
 
 void *hi_vmem_reserve(size_t size) { return NULL; }
 void hi_vmem_release(void *ptr, size_t size) { }

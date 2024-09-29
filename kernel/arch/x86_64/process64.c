@@ -54,17 +54,30 @@ kthread_create_setup_initial_stack(struct task *ti, regs_t *r, void *arg)
    NOT_IMPLEMENTED();
 }
 
-NORETURN void
-switch_to_task(struct task *ti)
+void
+save_curr_fpu_ctx_if_enabled(void)
 {
    NOT_IMPLEMENTED();
 }
 
-int setup_sig_handler(struct task *ti,
-                      enum sig_state sig_state,
-                      regs_t *r,
-                      ulong user_func,
-                      int signum)
+void
+arch_usermode_task_switch(struct task *ti)
+{
+   NOT_IMPLEMENTED();
+}
+
+void
+set_kernel_stack(ulong addr)
+{
+   NOT_IMPLEMENTED();
+}
+
+int
+setup_sig_handler(struct task *ti,
+                  enum sig_state sig_state,
+                  regs_t *r,
+                  ulong user_func,
+                  int signum)
 {
    NOT_IMPLEMENTED();
 }

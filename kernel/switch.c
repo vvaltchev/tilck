@@ -6,6 +6,7 @@
 #include <tilck/common/string_util.h>
 #include <tilck/common/printk.h>
 
+#include <tilck/kernel/switch.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/process.h>
 #include <tilck/kernel/process_int.h>
@@ -295,3 +296,72 @@ arch_specific_free_task(struct task *ti)
    arch->fpu_regs = NULL;
    arch->fpu_regs_size = 0;
 }
+
+NORETURN void
+switch_to_task(struct task *ti)
+{
+   /* Save the value of ti->state_regs as it will be reset below */
+   regs_t *state = ti->state_regs;
+   struct task *curr = get_curr_task();
+   bool should_drop_top_syscall = false;
+   const bool zombie = (curr->state == TASK_STATE_ZOMBIE);
+
+   ASSERT(curr != NULL);
+
+   if (UNLIKELY(ti != curr)) {
+      ASSERT(curr->state != TASK_STATE_RUNNING);
+      ASSERT_TASK_STATE(ti->state, TASK_STATE_RUNNABLE);
+   }
+
+   ASSERT(!is_preemption_enabled());
+   switch_to_task_safety_checks(curr, ti);
+
+   /* Do as much as possible work before disabling the interrupts */
+   task_change_state_idempotent(ti, TASK_STATE_RUNNING);
+   ti->ticks.timeslice = 0;
+
+   if (!is_kernel_thread(curr) && !zombie) {
+      save_curr_fpu_ctx_if_enabled();
+   }
+
+   if (!is_kernel_thread(ti)) {
+      arch_usermode_task_switch(ti);
+   }
+
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (running_in_kernel(curr) && !is_kernel_thread(curr))
+         should_drop_top_syscall = true;
+   }
+
+   if (UNLIKELY(zombie)) {
+      ulong var;
+      disable_interrupts(&var);
+      {
+         set_curr_task(kernel_process);
+      }
+      enable_interrupts(&var);
+      free_mem_for_zombie_task(curr);
+   }
+
+   /* From here until the end, we have to be as fast as possible */
+   disable_interrupts_forced();
+
+   if (KRN_TRACK_NESTED_INTERR) {
+      if (should_drop_top_syscall)
+         nested_interrupts_drop_top_syscall();
+   }
+
+   enable_preemption_nosched();
+   ASSERT(is_preemption_enabled());
+
+   if (!running_in_kernel(ti))
+      task_info_reset_kernel_stack(ti);
+   else if (in_syscall(ti))
+      adjust_nested_interrupts_for_task_in_kernel(ti);
+
+   set_curr_task(ti);
+   ti->timer_ready = false;
+   set_kernel_stack((ulong)ti->state_regs);
+   context_switch(state);
+}
+
