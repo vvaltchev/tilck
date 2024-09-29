@@ -65,6 +65,7 @@ jobs:
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
+        -DKRN_CLOCK_DRIFT_COMP=0
     strategy:
       matrix:
         debug:
@@ -114,6 +115,7 @@ jobs:
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
+        -DKRN_CLOCK_DRIFT_COMP=0
     strategy:
       matrix:
         debug:
@@ -163,6 +165,7 @@ jobs:
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
+        -DKRN_CLOCK_DRIFT_COMP=0
     strategy:
       matrix:
         debug:
@@ -211,6 +214,7 @@ jobs:
         -DKRN_MINIMAL_TIME_SLICE=1
         -DKRN_RESCHED_ENABLE_PREEMPT=1
         -DTIMER_HZ=500
+        -DKRN_CLOCK_DRIFT_COMP=0
     strategy:
       matrix:
         gcc:
