@@ -459,6 +459,7 @@ void set_kernel_process_pdir(pdir_t *pdir)
    kernel_process_pi->pdir = pdir;
 }
 
+
 /*
  * ***************************************************************
  *
