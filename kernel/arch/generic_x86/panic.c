@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_debug.h>
+#include <tilck_gen_headers/mod_debugpanel.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -212,9 +213,10 @@ NORETURN void panic(const char *fmt, ...)
       init_console();
    }
 
-   printk("\n********************** TRACE EVENTS **********************\n");
-
-   dp_panic_dump_all_trace_events();
+   if (MOD_tracing_actual && MOD_debugpanel) {
+      printk("\n********************** TRACE EVENTS **********************\n");
+      dp_panic_dump_all_trace_events();
+   }
 
    /* Hopefully, we can show something on the screen */
    printk("\n********************** KERNEL PANIC **********************\n");
