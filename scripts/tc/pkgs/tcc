@@ -14,7 +14,9 @@ function download_tcc {
 }
 
 if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   all_funcs_list+=(build_tcc)
+   if [[ "$ARCH" == "i386" ]]; then
+      all_funcs_list+=(build_tcc)
+   fi
 fi
 
 function build_tcc {

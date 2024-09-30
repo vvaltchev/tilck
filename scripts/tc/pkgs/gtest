@@ -119,7 +119,9 @@ function build_gmock_installed_status {
 }
 
 if [[ "$HOST_ARCH" == "x86_64" || "$HOST_ARCH" == "i386" ]]; then
-   all_funcs_list+=(build_gtest_arch)
+   if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+      all_funcs_list+=(build_gtest_arch)
+   fi
 fi
 
 function build_gtest_arch {
@@ -177,7 +179,9 @@ function build_gtest_arch_installed_status {
 
 
 if [[ "$HOST_ARCH" == "x86_64" || "$HOST_ARCH" == "i386" ]]; then
-   all_funcs_list+=(build_gmock_arch)
+   if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+      all_funcs_list+=(build_gmock_arch)
+   fi
 fi
 
 function build_gmock_arch {

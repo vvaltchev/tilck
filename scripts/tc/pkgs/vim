@@ -27,7 +27,9 @@ function download_vim {
    extract_cachefile_tar_gz $tarname --
 }
 
-all_funcs_list+=(build_vim)
+if [[ "$ARCH" == "i386" ]]; then
+   all_funcs_list+=(build_vim)
+fi
 function build_vim {
 
    pushd $ARCH

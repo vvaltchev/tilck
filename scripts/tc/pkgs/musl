@@ -14,7 +14,9 @@ function download_libmusl {
 }
 
 if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   all_funcs_list+=(build_libmusl)
+   if [[ "$ARCH" == "i386" ]]; then
+      all_funcs_list+=(build_libmusl)
+   fi
 fi
 
 function build_libmusl {

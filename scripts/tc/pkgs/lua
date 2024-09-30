@@ -13,7 +13,9 @@ function download_lua {
    extract_cachefile_tar_gz "$tarname" "lua-$version" "lua"
 }
 
-all_funcs_list+=(build_lua)
+if [[ "$ARCH" == "i386" ]]; then
+   all_funcs_list+=(build_lua)
+fi
 function build_lua {
 
    pushd $ARCH
