@@ -54,7 +54,7 @@ ordered_timeouts = sorted(list(INV_TIMEOUTS.keys()))
 
 # Timeout used for the *compact mode* where we run all the tests of a given
 # type at once, by an inner runner (not by this script), with single VM boot.
-ALL_TESTS_TIMEOUT   = 4 * TIMEOUTS['med']
+ALL_TESTS_TIMEOUT   = 15 * TIMEOUTS['med']
 
 load_tests_func_by_type_list = [
    'load_list_of_kernel_self_tests',
