@@ -3,7 +3,9 @@
 
 TFBLIB_VER="latest"
 
-all_funcs_list+=(build_tfblib)
+if [[ "$ARCH" == "i386" ]]; then
+   all_funcs_list+=(build_tfblib)
+fi
 function build_tfblib {
 
    if [ ! -d noarch/tfblib ]; then
