@@ -303,32 +303,15 @@ static enum irq_action timer_irq_handler(void *ctx)
       if (timer_nested_irq())
          return IRQ_HANDLED;
 
-   /*
-    * Compute `ns_delta` by reading `__tick_duration` and `__tick_adj_val` here
-    * without disabling interrupts, because it's safe to do so. Also, decrement
-    * `__tick_adj_ticks_rem` too. Why it's safe:
-    *
-    *    1. `__tick_duration` is immutable
-    *    2. `__tick_adj_val` is changed only by datetime.c while keeping
-    *       interrupts disabled and it's read only here. Nested timer IRQs
-    *       will be ignored (see above). No other IRQ handler should read it.
-    */
-
-   if (__tick_adj_ticks_rem) {
-      ns_delta = (u32)((s32)__tick_duration + __tick_adj_val);
-      __tick_adj_ticks_rem--;
-   } else {
-      ns_delta = __tick_duration;
-   }
-
    disable_interrupts_forced();
    {
-      /*
-       * Alter __ticks and __time_ns here, while keeping the interrupts disabled
-       * because other IRQ handlers might need to use them. While, as explained
-       * above, `__tick_adj_val` and `__tick_adj_ticks_rem` will never need to
-       * be read or written by IRQ handlers.
-       */
+      if (__tick_adj_ticks_rem) {
+         ns_delta = (u32)((s32)__tick_duration + __tick_adj_val);
+         __tick_adj_ticks_rem--;
+      } else {
+         ns_delta = __tick_duration;
+      }
+
       __ticks++;
       __time_ns += ns_delta;
    }
