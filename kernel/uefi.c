@@ -19,7 +19,7 @@ void uefi_set_rt_pointer(ulong addr)
    uefi_rt_addr = addr;
 }
 
-#if defined(__i386__) || defined(__x86_64__)
+#if !defined(KERNEL_TEST) && (defined(__i386__) || defined(__x86_64__))
 
 #define EFI_DEBUG 0
 #include <efi.h>
