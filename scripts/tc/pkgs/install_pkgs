@@ -43,7 +43,7 @@ function install_debian_family {
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
 
-      if [[ "$ARCH" == "i386" ]] || [[ "$ARCH" == "x86_64" ]]; then
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
          pkg_list+=(qemu-system-x86)
       elif [[ "$ARCH" == "riscv64" ]]; then
          pkg_list+=(qemu-system-riscv64)
@@ -128,9 +128,21 @@ function install_fedora {
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
+   pkg_list+=(glibc-gconv-extra)
+
+   if [[ "$ARCH" == "riscv64" ]]; then
+      pkg_list+=(bison)
+      pkg_list+=(flex)
+      pkg_list+=(openssl-devel)
+      pkg_list+=(dtc)
+   fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
-      pkg_list+=(qemu-system-x86)
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-system-riscv)
+      fi
       pkg_list+=(qemu-ui-gtk)
       pkg_list+=(python3)
    fi
@@ -189,9 +201,19 @@ function install_arch {
    pkg_list+=(unzip)
    pkg_list+=(parted)
 
+   if [[ "$ARCH" == "riscv64" ]]; then
+      pkg_list+=(bison)
+      pkg_list+=(flex)
+      pkg_list+=(dtc)
+   fi
+
    if [[ "$TC_MINIMAL" != "1" ]]; then
       pkg_list+=(qemu)
-      pkg_list+=(qemu-system-x86)
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-system-riscv)
+      fi
       pkg_list+=(qemu-ui-gtk)
       pkg_list+=(python3)
    fi
@@ -253,8 +275,19 @@ function install_openSUSE {
    pkg_list+=(glibc-locale-base)
    pkg_list+=(glibc-gconv-modules-extra)
 
+   if [[ "$ARCH" == "riscv64" ]]; then
+      pkg_list+=(bison)
+      pkg_list+=(flex)
+      pkg_list+=(libopenssl-devel)
+      pkg_list+=(dtc)
+   fi
+
    if [[ "$TC_MINIMAL" != "1" ]]; then
-      pkg_list+=(qemu-x86)
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-extra)
+      fi
       pkg_list+=(qemu-ui-gtk)
       pkg_list+=(python3)
    fi
