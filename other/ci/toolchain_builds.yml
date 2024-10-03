@@ -1,4 +1,10 @@
 trigger:
+  branches:
+    exclude:
+      - readme*
+      - temp-*
+      - exp-*
+
   paths:
     include:
       - 'scripts/build_toolchain'
@@ -9,13 +15,17 @@ pool:
 
 strategy:
   matrix:
-    debian:
+    debian-i386:
+      ARCH: i386
       img: 'vvaltchev/debian:v4'
-    fedora:
+    fedora-i386:
+      ARCH: i386
       img: 'vvaltchev/fedora:v3'
-    arch:
+    arch-i386:
+      ARCH: i386
       img: 'vvaltchev/archlinux:v6'
-    opensuse:
+    opensuse-i386:
+      ARCH: i386
       img: 'vvaltchev/opensuse:v4'
 
 
