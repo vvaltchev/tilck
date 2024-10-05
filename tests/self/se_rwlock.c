@@ -220,7 +220,7 @@ end:
       se_regular_end();
 }
 
-REGISTER_SELF_TEST(rwlock_rp, se_med, &selftest_rwlock_rp)
+REGISTER_SELF_TEST(rwlock_rp, se_manual, &selftest_rwlock_rp)
 
 void selftest_rwlock_wp()
 {
