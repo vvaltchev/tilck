@@ -69,7 +69,7 @@ CMD_ENTRY(pollhup,      TT_SHORT,  true)
 CMD_ENTRY(poll1,        TT_SHORT,  true)
 CMD_ENTRY(poll2,        TT_SHORT,  true)
 CMD_ENTRY(poll3,        TT_SHORT,  true)
-CMD_ENTRY(select1,      TT_SHORT,  true)
+CMD_ENTRY(select1,      TT_SHORT,  false) // XXX: temporary
 CMD_ENTRY(select2,      TT_SHORT,  true)
 CMD_ENTRY(select3,      TT_SHORT,  true)
 CMD_ENTRY(select4,      TT_SHORT,  true)
