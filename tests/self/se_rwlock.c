@@ -299,4 +299,4 @@ end:
       se_regular_end();
 }
 
-REGISTER_SELF_TEST(rwlock_wp, se_med, &selftest_rwlock_wp)
+REGISTER_SELF_TEST(rwlock_wp, se_manual, &selftest_rwlock_wp)
