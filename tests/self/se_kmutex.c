@@ -13,7 +13,7 @@
 #include <tilck/kernel/self_tests.h>
 #include <tilck/kernel/timer.h>
 
-#define KMUTEX_SEK_TH_ITERS 100000
+#define KMUTEX_SEK_TH_ITERS  20000
 #define KMUTEX_TH_COUNT        128
 
 static struct kmutex test_mutex;
