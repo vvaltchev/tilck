@@ -102,11 +102,29 @@ run_child(int argc, char **argv, cmd_func_type func, const char *name)
       exit(func(argc, argv));
    }
 
-   rc = waitpid(child_pid, &wstatus, 0);
+   while (true) {
+      rc = waitpid(child_pid, &wstatus, WNOHANG);
 
-   if (rc < 0) {
-      perror("waitpid() failed");
-      return false;
+      if (rc < 0) {
+         perror("waitpid() failed");
+         return false;
+      }
+
+      if (rc == 0) {
+
+         end_ms = get_monotonic_time_ms();
+
+         if ((end_ms - start_ms) >= 30000) {
+            printf(COLOR_YELLOW PFX RESET_ATTRS "TIMEOUT\n");
+            break;
+         }
+
+         sleep(1);
+         continue;
+      }
+
+      /* rc > 0 */
+      break;
    }
 
    if (rc != child_pid) {
