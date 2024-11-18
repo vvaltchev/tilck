@@ -14,7 +14,7 @@ function download_micropython {
 }
 
 if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   if [[ "$ARCH" == "i386" ]]; then
+   if [[ "$ARCH" == "i386" ]] || [[ "$ARCH" == "riscv64" ]]; then
       all_funcs_list+=(build_micropython)
    fi
 fi
@@ -41,8 +41,6 @@ function build_micropython {
          exit 1
       fi
 
-      set_cc_vars_to_tc
-      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       export LDFLAGS_EXTRA="-static"
       local opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
 
@@ -51,6 +49,9 @@ function build_micropython {
       run_command2 "make $opts -j$BUILD_PAR" build_1.log
       dump_cross_compiler_env "build_1.log"
       popd
+
+      set_cc_vars_to_tc
+      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
