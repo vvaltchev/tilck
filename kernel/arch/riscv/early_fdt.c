@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_ramfb.h>
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/boot.h>
 #include <tilck/common/string_util.h>
@@ -27,6 +28,8 @@ struct simplefb_format {
    struct simplefb_bitfield blue;
    struct simplefb_bitfield alpha;
 };
+
+int init_ramfb(void *fdt);
 
 void *fdt_blob;   //save virtual address of fdt
 
@@ -392,6 +395,12 @@ multiboot_info_t *parse_fdt(void *fdt_pa)
    fdt_parse_memory(fdt_pa);
    fdt_parse_reserved_memory(fdt_pa);
    fdt_parse_framebuffer(fdt_pa);
+
+   if (MOD_ramfb) {
+      if (init_ramfb(fdt_pa) == -ENODEV) {
+         strcat(cmdline_buf, " -sercon");
+      }
+   }
 
    setup_multiboot_info(initrd_paddr, initrd_size);
 
