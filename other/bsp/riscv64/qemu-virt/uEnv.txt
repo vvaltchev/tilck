@@ -30,7 +30,7 @@ setupfdt1=setexpr newfdt @KERNEL_LOAD@ + 0x800000;fdt move ${fdtaddr} ${newfdt};
 setupird=fdt set /chosen linux,initrd-start <0x0 0x${initrd_start}>; fdt set /chosen linux,initrd-end <0x0 0x${initrd_end}>
 
 # set fdt simple-framebuffer
-setupfb=setexpr simplefb_addr @KERNEL_LOAD@ + 0x900000; fdt mknode / simplefb; fdt set /simplefb compatible "simple-framebuffer"; fdt set /simplefb width <0x190>; fdt set /simplefb height <0x12c>; fdt set /simplefb stride <0x4b0>; fdt set /simplefb format "r8g8b8"; fdt set /simplefb reg <0x0 0x${simplefb_addr} 0x0 0x0>
+setupfb=setexpr simplefb_addr @KERNEL_LOAD@ + 0x900000; fdt mknode / simplefb; fdt set /simplefb compatible "simple-framebuffer"; fdt set /simplefb width <0x280>; fdt set /simplefb height <0x1e0>; fdt set /simplefb stride <0x780>; fdt set /simplefb format "r8g8b8"; fdt set /simplefb reg <0x0 0x${simplefb_addr} 0x0 0x0>
 
 # set fdt bootargs
 setupfdt2=fdt set /chosen bootargs "${bootargs}"
