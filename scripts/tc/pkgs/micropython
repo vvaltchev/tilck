@@ -41,6 +41,12 @@ function build_micropython {
          exit 1
       fi
 
+      if [[ $HOST_ARCH == "i386" ]]; then
+         # TODO: this is a hack, fix this.
+         set_cc_vars_to_tc
+         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      fi
+
       export LDFLAGS_EXTRA="-static"
       local opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
 
@@ -50,8 +56,11 @@ function build_micropython {
       dump_cross_compiler_env "build_1.log"
       popd
 
-      set_cc_vars_to_tc
-      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      if [[ $HOST_ARCH == "riscv64" ]]; then
+         # TODO: this is a hack, fix this.
+         set_cc_vars_to_tc
+         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      fi
 
       pushd ports/unix
       run_command2 "make submodules" make_submodules.log
