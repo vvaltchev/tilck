@@ -2,6 +2,8 @@
 
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/mod_console.h>
+#include <tilck_gen_headers/mod_fb.h>
+#include <tilck_gen_headers/mod_ramfb.h>
 #include <tilck_gen_headers/modules_list.h>
 
 #include <tilck/common/basic_defs.h>
@@ -46,7 +48,8 @@ static void print_banner_line(const char *s)
    term_write("\n", 1, COLOR_GREEN);
 }
 
-static void show_tilck_logo(void)
+static void
+show_tilck_logo(void)
 {
    char *banner[] =
    {
@@ -87,6 +90,49 @@ show_system_info(void)
           TIMER_HZ, time_slice, in_hyp_str);
 }
 
+#ifdef __riscv64
+#if MOD_ramfb && MOD_console && MOD_fb
+static void
+fb_show_no_keyboard_banner(void)
+{
+   extern ulong fb_vaddr;
+
+   if (!fb_vaddr)
+      return;
+
+   char *banner[] =
+   {
+      "+-------------- WARNING -------------+\n",
+      "|                                    |\n",
+      "|  Keyboard input is NOT supported.  |\n",
+      "|  Use the serial console.           |\n",
+      "|                                    |\n",
+      "+-------------- WARNING -------------+\n",
+      "\n",
+   };
+
+   struct term_params tparams;
+   process_term_read_info(&tparams);
+   const u32 cols = tparams.cols;
+   const u32 padding = (u32)(cols / 2 - strlen(banner[1]) / 2);
+
+   for (int i = 0; i < ARRAY_SIZE(banner); i++) {
+
+      for (u32 j = 0; j < padding; j++)
+         term_write(" ", 1, COLOR_BLACK);
+
+      term_write(banner[i], strlen(banner[i]), COLOR_BRIGHT_WHITE);
+   }
+}
+#else
+static void
+fb_show_no_keyboard_banner(void)
+{
+   /* Do nothing */
+}
+#endif
+#endif
+
 void
 show_hello_message(void)
 {
@@ -115,6 +161,12 @@ show_hello_message(void)
 
    if (KERNEL_SHOW_LOGO)
       show_tilck_logo();
+
+#ifdef __riscv64
+   if (MOD_ramfb && MOD_console && MOD_fb) {
+      fb_show_no_keyboard_banner();
+   }
+#endif
 }
 
 WEAK const char *get_signal_name(int signum) {
