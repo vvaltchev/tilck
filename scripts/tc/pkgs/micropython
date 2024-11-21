@@ -41,7 +41,7 @@ function build_micropython {
          exit 1
       fi
 
-      if [[ $HOST_ARCH == "i386" ]]; then
+      if [[ $ARCH == "i386" ]]; then
          # TODO: this is a hack, fix this.
          set_cc_vars_to_tc
          export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
@@ -56,7 +56,7 @@ function build_micropython {
       dump_cross_compiler_env "build_1.log"
       popd
 
-      if [[ $HOST_ARCH == "riscv64" ]]; then
+      if [[ $ARCH == "riscv64" ]]; then
          # TODO: this is a hack, fix this.
          set_cc_vars_to_tc
          export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
