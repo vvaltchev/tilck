@@ -1,0 +1,68 @@
+trigger:
+  branches:
+    exclude:
+      - readme*
+      - temp-*
+      - exp-*
+
+  paths:
+    include:
+      - 'scripts/build_toolchain'
+      - 'scripts/tc/pkgs/**'
+
+pool:
+  vmImage: 'ubuntu-22.04'
+
+strategy:
+  matrix:
+    debian-i386:
+      ARCH: i386
+      img: 'vvaltchev/debian:v4'
+
+
+container: $[ variables['img'] ]
+
+variables:
+  CI: 1
+  RUNNING_IN_CI: 1
+  GTEST_SHUFFLE: 0
+
+steps:
+  - script: printenv
+    displayName: Dump env
+  - script: sudo -E ./scripts/build_toolchain
+    displayName: "[toolchain] Default run"
+  - script: sudo -E ./scripts/build_toolchain -s build_gtest
+    displayName: "[toolchain] Build gtest"
+  - script: sudo -E ./scripts/build_toolchain -s build_gtest_arch
+    displayName: "[toolchain] Build gtest_arch"
+  - script: sudo -E ./scripts/build_toolchain -s build_gmock
+    displayName: "[toolchain] Build gmock"
+  - script: sudo -E ./scripts/build_toolchain -s build_gmock_arch
+    displayName: "[toolchain] Build gmock_arch"
+  - script: sudo -E ./scripts/build_toolchain -s build_lcov
+    displayName: "[toolchain] Build lcov"
+  - script: sudo -E ./scripts/build_toolchain -s build_libmusl
+    displayName: "[toolchain] Build libmusl"
+  - script: sudo -E ./scripts/build_toolchain -s build_ncurses
+    displayName: "[toolchain] Build ncurses"
+  - script: sudo -E ./scripts/build_toolchain -s build_tcc
+    displayName: "[toolchain] Build tcc"
+  - script: sudo -E ./scripts/build_toolchain -s build_micropython
+    displayName: "[toolchain] Build micropython"
+  - script: sudo -E ./scripts/build_toolchain -s build_vim
+    displayName: "[toolchain] Build vim"
+  - script: sudo -E ./scripts/build_toolchain -s build_tfblib
+    displayName: "[toolchain] Build tfblib"
+  - script: sudo -E ./scripts/build_toolchain -s build_lua
+    displayName: "[toolchain] Build Lua"
+  - script: sudo -E ./scripts/build_toolchain -s tree_cmd
+    displayName: "[toolchain] Build tree_cmd"
+  - script: make -j
+    displayName: Build the kernel
+  - script: make -j gtests
+    displayName: Build the unit tests
+  - script: ./build/gtests
+    displayName: Run the unit tests
+  - script: ./tests/runners/ci_run_all_tests_wrapper -c
+    displayName: Run the system tests
