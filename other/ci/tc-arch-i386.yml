@@ -25,6 +25,7 @@ variables:
   CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
+  GCC_TC_VER: 11.3.0
 
 steps:
   - script: printenv
@@ -47,8 +48,6 @@ steps:
     displayName: "[toolchain] Build ncurses"
   - script: sudo -E ./scripts/build_toolchain -s build_tcc
     displayName: "[toolchain] Build tcc"
-  - script: sudo -E ./scripts/build_toolchain -s build_micropython
-    displayName: "[toolchain] Build micropython"
   - script: sudo -E ./scripts/build_toolchain -s build_vim
     displayName: "[toolchain] Build vim"
   - script: sudo -E ./scripts/build_toolchain -s build_tfblib
