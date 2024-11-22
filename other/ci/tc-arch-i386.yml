@@ -9,6 +9,9 @@ trigger:
     include:
       - 'scripts/build_toolchain'
       - 'scripts/tc/pkgs/**'
+    exclude:
+      - README.md
+      - *.md
 
 pool:
   vmImage: 'ubuntu-22.04'
