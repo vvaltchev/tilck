@@ -385,6 +385,8 @@ static int fdt_parse_framebuffer(void *fdt)
  */
 multiboot_info_t *parse_fdt(void *fdt_pa)
 {
+   int rc;
+
    /* check device tree validity */
    if (fdt_check_header(fdt_pa))
       return NULL;
@@ -397,8 +399,9 @@ multiboot_info_t *parse_fdt(void *fdt_pa)
    fdt_parse_framebuffer(fdt_pa);
 
    if (MOD_ramfb) {
-      if (init_ramfb(fdt_pa) == -ENODEV) {
-         strcat(cmdline_buf, " -sercon");
+      rc = init_ramfb(fdt_pa);
+      if (rc < 0) {
+         mbi->flags &= ~MULTIBOOT_INFO_FRAMEBUFFER_INFO;
       }
    }
 
