@@ -29,13 +29,13 @@ Contents
   - [What Tilck is NOT ?](#what-tilck-is-not-)
     * [Tilck vs Linux](#tilck-vs-linux)
 * [Features](#features)
-   - [Hardware support](#hardware-support)
+   - [i686 support](#i686-support)
+   - [riscv64 support](#riscv64-support)
    - [File systems](#file-systems)
    - [Processes and signals](#processes-and-signals)
    - [I/O](#io)
    - [Console](#console)
    - [Userspace applications](#userspace-applications)
-   - [Screenshots](#screenshots)
 * [Booting Tilck](#booting-tilck)
   - [Tilck's bootloader](#tilcks-bootloader)
   - [3rd-party bootloaders](#3rd-party-bootloaders)
@@ -56,32 +56,32 @@ Overview
 </p>
 
 ### What is Tilck?
-`Tilck` is an educational *monolithic* x86 kernel designed to be Linux-compatible at
-binary level. Project's small-scale and simple design makes it the **perfect playground**
-for playing in kernel mode while retaining the ability to compare how the *very same*
-*usermode bits* run on the Linux kernel as well. That's a **rare feature** in the
-realm of educational kernels. Because of that, building a program for Tilck requires just
-a `i686-musl` toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck
-has **no need** to have its own set of custom written applications, like most educational
-kernels do. It just runs mainstream Linux programs like the **BusyBox** suite.
-While the Linux-compatibility and the monolithic design might seem a limitation from
-the OS research point of view, on the other side, such design bring the whole project
-much closer to *real-world* applications in the future, compared to the case where
-some serious (or huge) effort is required to port pre-existing software on it. Also,
-nothing stops Tilck from implementing custom non-Linux syscalls that aware apps might
-take advantage of.
+`Tilck` is an educational *monolithic* kernel designed to be Linux-compatible at
+binary level. It runs on i686 and RISCV64 at the moment. Project's small-scale
+and simple design makes it the **perfect playground** for playing in kernel mode
+while retaining the ability to compare how the *very same* *usermode bits* run on
+the Linux kernel as well. That's a **rare feature** in the realm of educational
+kernels. Because of that, building a program for Tilck requires just a `gcc-musl`
+toolchain from [bootlin.com](https://toolchains.bootlin.com). Tilck has **no need**
+to have its own set of custom written applications, like most educational kernels do.
+It just runs mainstream Linux programs like the **BusyBox** suite. While the
+Linux-compatibility and the monolithic design might seem a limitation from the OS
+research point of view, on the other side, such design bring the whole project much
+closer to *real-world* applications in the future, compared to the case where some
+serious (or huge) effort is required to port pre-existing software on it. Also, nothing
+stops Tilck from implementing custom non-Linux syscalls that aware apps might take
+advantage of.
 
 #### Future plans
-In the long term, depending on how successful the project will be, `Tilck` might
-become suitable for **embedded systems** on which a fully deterministic and ultra
-low-latency system is required. With a fair amount of luck, `Tilck` might be able
-to fill the gap between *Embedded Linux* and typical real-time operating systems
-like *FreeRTOS* or *Zephyr*. In any case, at some point it will be ported to the
-`ARM` family and it might be adapted to run on MMU-less CPUs as well. Tilck would
-be a perfect fit for that because consuming a tiny amount of RAM has always been
-a key point in Tilck's design. Indeed, the kernel can boot and run on a i686 QEMU
-machine with just 3 MB of memory *today*. Of course, that's pointless on x86, but
-on an ARM Cortex-R that won't be anymore the case.
+In the long term, `Tilck` might become widespread for **embedded systems** on
+which a fully deterministic and ultra low-latency system is required. 
+With a fair amount of luck, `Tilck` might be able to fill the gap between
+*Embedded Linux* and typical real-time operating systems like *FreeRTOS* or
+*Zephyr*. The kernel already runs on RISCV64 and at some point it will be ported
+to the `ARM` family. It might be adapted to run on MMU-less CPUs as well. Tilck
+would be a perfect fit for such use cases because consuming a tiny amount of RAM
+has always been a key point in Tilck's design. Indeed, the kernel can boot and
+run on a QEMU machine with just 3 MB of memory *today*. 
 
 In addition to that, adding a basic support for networking and storage is part of
 the plans even if details have not been defined yet. Networking support might be
@@ -99,8 +99,8 @@ after Tilck has been ported to ARM64.
 different kernel that has a *partial* compatibility with Linux just in order to
 take advantage of its programs and toolchains. Also, that helps a lot to validate
 its correctness: if a program works correctly on Linux, it must work the same way
-on Tilck as well (minus not-implemented features). **But**, having a fair
-amount of Linux programs working on it, is just a *starting point*: with time, Tilck
+on Tilck as well (minus not-implemented features). **But**, having a fair amount
+of Linux programs working on it, is just a *starting point*: with time, Tilck
 will evolve in a different way and it will have its own unique set of features as
 well.
 
@@ -138,7 +138,7 @@ the moment. Everything arch-specific is isolated. Because of that, most of
 kernel's code can be already compiled for any architecture and can be used in
 kernel's unit tests.
 
-#### Hardware support
+#### i686 support
 While the kernel uses a fair amount of **legacy hardware** like the 8259 PICs for
 IRQs, the legacy 8254 PIT for the system timer, the legacy 16550 UART for serial
 communication, the 8042 kb controller, the 8237 ISA DMA, and the Sound Blaster
@@ -149,7 +149,7 @@ used to receive power-button events, to reboot or power-off the machine, and to
 read the current parameters of machine's batteries (when implemented via ACPI control
 methods).
 
-##### Comments about physical hardware
+##### Running on physical x86 hardware
 The operating system has been regularly tested on physical hardware from its inception
 by booting it with an USB stick (see the notes below). Test machines include actual i686
 machines, older x86_64 machines with BIOS-only firmware, newer x86_64 machines with
@@ -162,6 +162,38 @@ value it will bring to the operating system and the infrastructure built for the
 reused for other drivers of the same kind. **But** that will *never* become a common practice.
 Tilck is designed to work on real hardware, where any kind of weird things happen. Being
 reliable there is *critical* for Tilck's success.
+
+#### riscv64 support
+
+Tilck's support for the riscv64 architecture mainly focuses on embedded applications. Tilck runs
+in RV64 supervisor mode (Smode), uses SV39 three-level page table virtual memory, and supports
+user space floating point.
+
+##### riscv64 hardware peripheral support
+
+The riscv64 architecture adopts a device tree-based driver model and in Tilck and all
+hardware information is obtained from the device tree transmitted by the bootloader. Therefore,
+Tilck's riscv kernel code does not have any board-level description code. The system timer
+(for ticks) invokes the SBI monitor program (openSBI) through RISCV SBI interface instead of
+implementing a driver in the kernel. The system RTC clock is implemented using a very simple
+goldfish virtual RTC driver, which works only on the QEMU virtual platform.
+
+Tilck on RISCV does *not* implement typical PC peripherals such as keyboards: for both input
+and output serial ports have to be used (which is enough for most embedded applications).
+The most common `ns16550` UART driver has been implemented. To better manage the multi-level
+nested interrupt architecture common in embedded chips, Tilck on RISCV implements a simplified
+framework similar to the idea of Linux IRQ domains. The most common INTC and PLIC interrupt
+controller drivers are supported.
+
+##### board support
+
+Tilck on RISCV64 implements a very simple BSP framework, which can be managed by setting environment
+variable `BOARD` to build a image of the corresponding board. Currently, Tilck supports only the
+[Sipeed licheerv-nano] board and the qemu-virt virtual board (set by default). QEMU-virt has the
+framebuffer mode enabled by default, while having FB support on `licheerv-nano` requires patching
+the original bootloader provided by Sipeed.
+
+[Sipeed licheerv-nano]: https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
 
 #### File systems
 Tilck has a simple but full-featured (both soft and hard links, file holes, memory
@@ -418,8 +450,6 @@ For the *full list* of questions on Tilck, check the [Q & A page] in the [Discus
 - [Why Tilck does not have the feature/abstraction XYZ like other kernels do?](https://github.com/vvaltchev/tilck/discussions/83)
 
 - [Can Tilck be used to build other projects on the top of it?](https://github.com/vvaltchev/tilck/discussions/185)
-
-- [Why Tilck runs only on x86 (ia-32)?](https://github.com/vvaltchev/tilck/discussions/84)
 
 - [Why having support for FAT32?](https://github.com/vvaltchev/tilck/discussions/85)
 
