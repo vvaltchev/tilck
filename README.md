@@ -131,12 +131,11 @@ tries to be almost *enterprise-level* (see [Testing](#testing-tilck)).
 Features
 ----------------------------------------
 
-Tilck is a preemptable monolithic (but with compile-time modules) *NIX kernel,
-implementing about ~100 Linux syscalls (both via `int 0x80` and `sysenter`) on
-x86. At its core, the kernel is not x86-centric even if it runs only on x86 at
-the moment. Everything arch-specific is isolated. Because of that, most of
-kernel's code can be already compiled for any architecture and can be used in
-kernel's unit tests.
+Tilck is a preemptable monolithic *NIX kernel, implementing about ~100 Linux
+syscalls. At its core, the kernel is not x86-centric even if that was its first
+target architecture. Almost everything arch-specific is isolated. Because of that,
+most of kernel's code is not arch-specific and can be already compiled for any
+architecture to run as part of the unit tests.
 
 #### i686 support
 While the kernel uses a fair amount of **legacy hardware** like the 8259 PICs for
@@ -245,17 +244,17 @@ Tilck.
 [syscalls]: docs/syscalls.md
 [wiki page]: https://github.com/vvaltchev/tilck/wiki
 
-Booting Tilck
+Booting Tilck on x86
 ----------------------------------------
 
 ### Tilck's bootloader
-`Tilck` comes with an interactive bootloader working both on legacy BIOS and on
-UEFI systems as well. The bootloader allows the user to choose the desired video
+`Tilck` comes with an interactive bootloader working both on legacy BIOS and on UEFI
+systems as well. The bootloader allows the user to choose the desired video
 mode, the kernel file itself and to edit kernel's cmdline.
 
 ![Tilck's bootloader](http://vvaltchev.github.io/tilck_imgs/v2/bootloader.png)
 
-### 3rd-party bootloaders
+### 3rd-party bootloaders (x86)
 `Tilck` can be loaded by any bootloader supporting `multiboot 1.0`. For example,
 qemu's built-in bootloader works perfectly with `Tilck`:
 
