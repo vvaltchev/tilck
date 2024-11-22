@@ -3,6 +3,7 @@
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_fb.h>
+#include <tilck_gen_headers/mod_ramfb.h>
 #include <tilck_gen_headers/mod_acpi.h>
 
 #include <tilck/common/basic_defs.h>
@@ -124,6 +125,15 @@ void
 init_console(void)
 {
    printk("*** Init the kernel console\n");
+
+#if defined(__riscv64) && MOD_ramfb
+
+   if (!use_framebuffer()) {
+      printk("Warning: no framebuffer: forcing serial console!\n");
+      kopt_sercon = true;
+   }
+
+#endif
 
    if (kopt_sercon) {
 

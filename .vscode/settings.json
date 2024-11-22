@@ -233,6 +233,7 @@
       "generated_config.h": "c",
       "build_info.h": "c",
       "config_userlim.h": "c",
-      "config_boot.h": "c"
+      "config_boot.h": "c",
+      "paging.h": "c"
    },
 }
