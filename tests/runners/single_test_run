@@ -245,10 +245,10 @@ def run_the_vm():
 
    arch_opts_str = "@QEMU_ARCH_OPTS@"
    if ARCH in ['riscv64']:
-      arch_opts_str = arch_opts_str.replace("-serial stdio ", "")
-      arch_opts_str = arch_opts_str.replace("-device ramfb ", "")
+      arch_opts_str = arch_opts_str.replace("-serial stdio", "")
+      arch_opts_str = arch_opts_str.replace("-device ramfb", "")
 
-   arch_opts = arch_opts_str.split(' ')
+   arch_opts = list(filter(None, arch_opts_str.split(' ')))
    args = [
       'qemu-system-@ARCH@',
       '-m', str(VM_MEMORY_SIZE_IN_MB),
