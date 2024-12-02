@@ -129,6 +129,7 @@ function install_fedora {
    pkg_list+=(unzip)
    pkg_list+=(parted)
    pkg_list+=(glibc-gconv-extra)
+   pkg_list+=(libxcrypt-compat)
 
    if [[ "$ARCH" == "riscv64" ]]; then
       pkg_list+=(bison)
