@@ -48,8 +48,6 @@ steps:
     displayName: "[toolchain] Build libmusl"
   - script: sudo -E ./scripts/build_toolchain -s build_ncurses
     displayName: "[toolchain] Build ncurses"
-  - script: sudo -E ./scripts/build_toolchain -s build_tcc
-    displayName: "[toolchain] Build tcc"
   - script: sudo -E ./scripts/build_toolchain -s build_micropython
     displayName: "[toolchain] Build micropython"
   - script: sudo -E ./scripts/build_toolchain -s build_vim
