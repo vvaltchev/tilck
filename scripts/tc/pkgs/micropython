@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-MICROPYTHON_VER="1.13-tilck"
+MICROPYTHON_VER="1.24.1"
 
 function download_micropython {
 
    local ver="$MICROPYTHON_VER"
    local tarname="micropython-$ver.tgz"
-   local url="https://github.com/vvaltchev/micropython.git"
+   local url="https://github.com/micropython/micropython.git"
 
    download_git_repo_in_cache "$url" v$ver $tarname micropython
    extract_cachefile_tar_gz $tarname --
@@ -67,7 +67,8 @@ function build_micropython {
       run_command2 "make $opts -j$BUILD_PAR" build_2.log
       dump_cross_compiler_env "build_2.log"
 
-      if ! [ -f $TC/$ARCH/micropython/ports/unix/micropython ]; then
+      local mp=$TC/$ARCH/micropython
+      if ! [ -f $mp/ports/unix/build-standard/micropython ]; then
          echo "ERROR: build failed !!!" >> build_2.log
          exit 1
       fi

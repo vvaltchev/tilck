@@ -200,7 +200,8 @@ function add_micropython {
       return
    fi
 
-   link_or_copy $tc/$arch/micropython/ports/unix/micropython usr/bin
+   local mp=$tc/$arch/micropython
+   link_or_copy $mp/ports/unix/build-standard/micropython usr/bin
 }
 
 function add_fbdoom {
