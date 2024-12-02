@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-TCC_VER="15e9b7384e709120"
+# Old version, worked with up to GCC 9.3.0
+# TCC_VER="15e9b7384e709120"
+
+# Latest version, Nov 2024 (doesn't work completely on Tilck now)
+TCC_VER="729918ef35dede267926b"
 
 function download_tcc {
 
@@ -13,11 +17,30 @@ function download_tcc {
    extract_cachefile_tar_gz $tarname --
 }
 
-if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   if [[ "$ARCH" == "i386" ]]; then
-      all_funcs_list+=(build_tcc)
-   fi
-fi
+# XXX: disable TCC for now as it doesn't completely work with newer musl
+# toolchains (>= GCC 10.3.0). With GCC >= 10.3, TinyCC on Tilck generates
+# binaries that just crash, even on Linux.
+#
+# Fixing this might require quite some extra work, while TCC on Tilck it's
+# not actually used by anyone or anything.
+#
+# The core of the problem is that we need to cross-build TinyCC for a cross
+# target. In other words we need:
+#
+#     Build host: x86-64-linux
+#     TinyCC will run on: i386-linux (Tilck)
+#     TinyCC binaries target: i386-linux (Tilck)
+#
+# And TinyCC's build system does not support that. It worked until now with
+# a series of hacks that are harder and harder to maintain. The code below
+# clearly shows that supporting TinyCC is by far harder than any other package
+# we have.
+
+# if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
+#    if [[ "$ARCH" == "i386" ]]; then
+#       all_funcs_list+=(build_tcc)
+#    fi
+# fi
 
 function build_tcc {
 
@@ -101,6 +124,11 @@ function build_tcc {
       # use it always just the system "gcc" to build that tool.
 
       sed -i -e 's/$S$(CC) -DC2STR/gcc -DC2STR/g' Makefile
+
+      # Hack: make __udivmoddi4() non static, since on Tilck we fail to link
+      # binaries due to this symbol not being found. However, while with that
+      # the link succeeds, the binary crashes.
+      sed -i -e 's/static UDWtype __udivmoddi4/UDWtype __udivmoddi4/g' lib/libtcc1.c
 
       local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
       local flags="$flags --enable-static --cpu=$ARCH"
