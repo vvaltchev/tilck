@@ -88,10 +88,10 @@ function build_micropython {
 function build_micropython_installed_status {
 
    local arch_list=""
-
+   local relBinaryPath="ports/unix/build-standard/micropython"
    for x in $ALL_ARCH_LIST; do
       if [ -d $TC/$x/micropython ]; then
-         if [ -f $TC/$x/micropython/ports/unix/micropython ]; then
+         if [ -f $TC/$x/micropython/$relBinaryPath ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
