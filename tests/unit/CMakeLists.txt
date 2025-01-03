@@ -1,13 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-if (ARCH_GTESTS)
-   set_cross_compiler_gtests()
-   include_directories(${TCROOT}/${ARCH}/gnu-efi/inc)
-else()
-   set(TOOL_GCOV "${GCOV}")
-   include_directories(${TCROOT}/${HOST_ARCH}/gnu-efi/inc)
-endif()
+set(TOOL_GCOV "${GCOV}")
+include_directories(${TCROOT}/${HOST_ARCH}/gnu-efi/inc)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
