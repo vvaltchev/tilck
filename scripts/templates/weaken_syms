@@ -4,18 +4,13 @@ AR="@CMAKE_AR@"
 RANLIB="@CMAKE_RANLIB@"
 OBJCOPY="@CMAKE_OBJCOPY@"
 ELFHACK_PREFIX="@CMAKE_BINARY_DIR@/scripts/build_apps/elfhack"
-ARCH_GTESTS="@ARCH_GTESTS@"
 ARCH_BITS="@ARCH_BITS@"
 HOST_ARCH_BITS="@HOST_ARCH_BITS@"
 ROOT="@CMAKE_SOURCE_DIR@"
 QUIET=1
 source $ROOT/scripts/bash_includes/script_utils
 
-if [[ $ARCH_GTESTS == OFF || $ARCH_GTESTS == false || $ARCH_GTEST == 0 ]]; then
-   ELFHACK=${ELFHACK_PREFIX}${HOST_ARCH_BITS}
-else
-   ELFHACK=${ELFHACK_PREFIX}${ARCH_BITS}
-fi
+ELFHACK=${ELFHACK_PREFIX}${HOST_ARCH_BITS}
 
 if printf "" &> /dev/null; then
    has_printf=1

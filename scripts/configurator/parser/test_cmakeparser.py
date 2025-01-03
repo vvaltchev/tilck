@@ -14,9 +14,6 @@ test_file1 = """
 # EXTERNAL cache entries
 ########################
 
-//Build unit tests for the target arch
-ARCH_GTESTS:BOOL=OFF
-
 //Build the EFI bootloader
 BOOTLOADER_EFI:BOOL=ON
 
@@ -44,7 +41,6 @@ CMAKE_ADDR2LINE:FILEPATH=/usr/bin/addr2line
 test_file1_lines = test_file1.splitlines()
 
 expected_comments_file1 = [
-   "Build unit tests for the target arch",
    "Build the EFI bootloader",
    "Build the legacy bootloader",
    "Make the bootloader to poison all the available memory",

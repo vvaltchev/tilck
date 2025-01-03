@@ -69,8 +69,6 @@ jobs:
           GEN: 'gcc_rel'
         fast_release:
           GEN: 'gcc_fast_rel'
-        arch_gtests:
-          GEN: 'gcc_arch_gtests'
         nocow:
           GEN: 'gcc_nocow'
         no_nested_irq_tracking:

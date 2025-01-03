@@ -187,7 +187,6 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
 
 # Compile options
-set(ARCH_GTESTS         OFF CACHE BOOL   "Build unit tests for the target arch")
 
 # Non-boolean kernel options
 set(TIMER_HZ            250 CACHE STRING "System timer HZ")
@@ -488,7 +487,6 @@ list(
    ARCH
    BOARD
    USE_SYSCC
-   ARCH_GTESTS
 
    # Non-boolean options
    TIMER_HZ
@@ -1072,25 +1070,9 @@ add_custom_target(
 set(GTEST_VER "1.12.1")
 set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googletest)
 set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googlemock)
-
-if (ARCH_GTESTS)
-
-   if (NOT ${HOST_ARCH_FAMILY} STREQUAL ${ARCH_FAMILY})
-      show_arch_gtests_arch_error()
-   endif()
-
-   if (NOT ${ARCH} STREQUAL "i386")
-      show_arch_gtests_arch_error()
-   endif()
-
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gtest-${GTEST_VER})
-   set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${ARCH}/gmock-${GTEST_VER})
-   set(GTEST_BTC_COMMAND "build_gtest_arch build_gmock_arch")
-else()
-   set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-${GTEST_VER})
-   set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gmock-${GTEST_VER})
-   set(GTEST_BTC_COMMAND "build_gtest build_gmock")
-endif()
+set(GTEST_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gtest-${GTEST_VER})
+set(GMOCK_TC_BUILD_DIR ${TCROOT}/host_${HOST_ARCH}/gmock-${GTEST_VER})
+set(GTEST_BTC_COMMAND "build_gtest build_gmock")
 
 add_custom_command(
 

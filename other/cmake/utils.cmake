@@ -157,37 +157,6 @@ macro(set_cross_compiler_userapps)
 
 endmacro()
 
-macro(set_cross_compiler_gtests)
-
-   # This macro is used in case ARCH_GTESTS is ON.
-
-   if (USE_SYSCC)
-
-      # Special case: the user wants to use system's compiler to compile code
-      # for the target architecture. Just use our basic set_cross_compiler()
-      # macro.
-
-      set_cross_compiler()
-
-   else()
-
-      # DEFAULT CASE: use our pre-built toolchain
-
-      # We want to use a cross-compiler BUT it has to use glibc instead of
-      # libmusl as libc.
-
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-g++)
-      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_OBJCOPY ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-objcopy)
-      set(CMAKE_STRIP ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-strip)
-      set(CMAKE_AR ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ar)
-      set(CMAKE_RANLIB ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ranlib)
-      set(TOOL_GCOV ${GCC_TOOLCHAIN_GLIBC}/${ARCH_GCC_TC}-linux-gcov)
-
-   endif()
-
-endmacro()
 
 #message("CMAKE_ASM_COMPILE_OBJECT: ${CMAKE_ASM_COMPILE_OBJECT}")
 #message("CMAKE_C_LINK_EXECUTABLE: ${CMAKE_C_LINK_EXECUTABLE}")
