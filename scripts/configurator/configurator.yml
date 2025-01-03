@@ -6,19 +6,17 @@ trigger:
 jobs:
   - job: configurator
     pool:
-      vmImage: 'ubuntu-20.04'
+      vmImage: 'ubuntu-24.04'
     strategy:
       matrix:
-        Python36:
-          python.version: '3.6'
-        Python37:
-          python.version: '3.7'
-        Python38:
-          python.version: '3.8'
-        Python39:
-          python.version: '3.9'
         Python310:
           python.version: '3.10'
+        Python311:
+          python.version: '3.11'
+        Python312:
+          python.version: '3.12'
+        Python313:
+          python.version: '3.13'
 
     steps:
     - task: UsePythonVersion@0
