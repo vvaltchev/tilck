@@ -14,9 +14,9 @@ trigger:
 
 jobs:
   - job: interactive
-    container: 'vvaltchev/tilck-i386:v2'
+    container: 'vvaltchev/tilck-i386:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
@@ -48,9 +48,9 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_11_3
-    container: 'vvaltchev/tilck-i386:v2'
+    container: 'vvaltchev/tilck-i386:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
@@ -92,9 +92,9 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck-i386:v2'
+    container: 'vvaltchev/tilck-i386:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
@@ -129,9 +129,9 @@ jobs:
         displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-i386:v2'
+    container: 'vvaltchev/tilck-i386:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113

@@ -14,9 +14,9 @@ trigger:
 
 jobs:
   - job: gcc_11_3_x86_64
-    container: 'vvaltchev/tilck-x86_64:v2'
+    container: 'vvaltchev/tilck-x86_64:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       TCROOT: /tc/toolchain2-gcc113
