@@ -16,19 +16,13 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-strategy:
-  matrix:
-    opensuse-i386:
-      ARCH: i386
-      img: 'vvaltchev/opensuse:v4'
-
-
-container: $[ variables['img'] ]
+container: 'vvaltchev/opensuse:v4'
 
 variables:
   CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
+  ARCH: i386
 
 steps:
   - script: printenv
