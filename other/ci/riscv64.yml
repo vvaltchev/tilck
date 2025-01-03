@@ -14,9 +14,9 @@ trigger:
 
 jobs:
   - job: gcc_12_3
-    container: 'vvaltchev/tilck-riscv64:v2'
+    container: 'vvaltchev/tilck-riscv64:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       ARCH: riscv64
@@ -55,9 +55,9 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_13_3
-    container: 'vvaltchev/tilck-riscv64:v2'
+    container: 'vvaltchev/tilck-riscv64:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       ARCH: riscv64
@@ -96,9 +96,9 @@ jobs:
         displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-riscv64:v2'
+    container: 'vvaltchev/tilck-riscv64:v3'
     pool:
-      vmImage: 'ubuntu-22.04'
+      vmImage: 'ubuntu-24.04'
     variables:
       CI: 1
       ARCH: riscv64
