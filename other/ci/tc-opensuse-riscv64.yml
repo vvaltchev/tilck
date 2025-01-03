@@ -28,17 +28,17 @@ steps:
   - script: printenv
     displayName: Dump env
   - script: sudo -E ./scripts/build_toolchain
-    displayName: "[toolchain] Default run"
+    displayName: "Install pkgs"
   - script: sudo -E ./scripts/build_toolchain -s build_gtest
-    displayName: "[toolchain] Build gtest"
+    displayName: "Build gtest"
   - script: sudo -E ./scripts/build_toolchain -s build_gmock
-    displayName: "[toolchain] Build gmock"
+    displayName: "Build gmock"
   - script: sudo -E ./scripts/build_toolchain -s build_lcov
-    displayName: "[toolchain] Build lcov"
+    displayName: "Build lcov"
   - script: sudo -E ./scripts/build_toolchain -s build_ncurses
-    displayName: "[toolchain] Build ncurses"
+    displayName: "Build ncurses"
   - script: sudo -E ./scripts/build_toolchain -s tree_cmd
-    displayName: "[toolchain] Build tree_cmd"
+    displayName: "Build tree_cmd"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests
