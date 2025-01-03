@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck_gen_headers/config_global.h>
 
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/hal.h>
@@ -36,7 +37,7 @@ int get_syscall_num(void *func);
  * current task. With following macros allows instead, any kind of such problems
  * will be caught much earlier.
  */
-#if !defined(NDEBUG) && !defined(RELEASE)
+#if DEBUG_CHECKS && !IS_RELEASE_BUILD
 
    #define DEBUG_SAVE_ESP()                     \
       ulong curr_esp;                           \
