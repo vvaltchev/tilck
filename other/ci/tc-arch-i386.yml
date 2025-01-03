@@ -16,19 +16,14 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-strategy:
-  matrix:
-    arch-i386:
-      ARCH: i386
-      img: 'vvaltchev/archlinux:v6'
 
-container: $[ variables['img'] ]
+container: 'vvaltchev/archlinux:v6'
 
 variables:
   CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
-  GCC_TC_VER: 11.3.0
+  ARCH: i386
 
 steps:
   - script: printenv

@@ -16,19 +16,14 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-strategy:
-  matrix:
-    debian-riscv64:
-      ARCH: riscv64
-      img: 'vvaltchev/debian:v4'
 
-
-container: $[ variables['img'] ]
+container: 'vvaltchev/debian:v4'
 
 variables:
   CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
+  ARCH: riscv64
 
 steps:
   - script: printenv
