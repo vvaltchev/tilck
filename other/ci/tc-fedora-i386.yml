@@ -16,18 +16,13 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-strategy:
-  matrix:
-    fedora-i386:
-      ARCH: i386
-      img: 'vvaltchev/fedora:v3'
-
-container: $[ variables['img'] ]
+container: 'vvaltchev/fedora:v3'
 
 variables:
   CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
+  ARCH: i386
 
 steps:
   - script: printenv
