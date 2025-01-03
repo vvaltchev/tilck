@@ -1,7 +1,5 @@
-# version: v2
-FROM ubuntu:22.04
-
-# We don't want any of the interactive features of apt, so we just disable them.
+# version: v3
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the required system packages
