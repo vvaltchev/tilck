@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-LIBMUSL_VER="1.1.24"
+LIBMUSL_VER="1.2.5"
 
 function download_libmusl {
 
