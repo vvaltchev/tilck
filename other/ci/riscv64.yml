@@ -7,14 +7,35 @@ trigger:
       - exp-*
 
   paths:
+    include:
+      - 'other/ci/riscv64.yml'
+      - 'other/busybox.config'
+      - 'kernel/**'
+      - 'modules/**'
+      - 'include/**'
+      - 'common/**'
+      - 'boot/**'
+      - 'tests/**'
+      - 'userapps/**'
+      - 'scripts/**'
+      - 'config/**'
     exclude:
-      - README.md
-      - docs/**
-      - scripts/configurator/**
+      - 'README.md'
+      - 'docs/**'
+      - 'scripts/configurator/**'
+      - 'kernel/arch/generic_x86/**'
+      - 'kernel/arch/i386/**'
+      - 'kernel/arch/x86_64/**'
+      - 'include/tilck/kernel/arch/generic_x86/**'
+      - 'include/tilck/kernel/arch/i386/**'
+      - 'include/tilck/kernel/arch/x86_64/**'
+      - 'include/tilck/common/arch/generic_x86/**'
+      - 'include/tilck/common/arch/i386/**'
+      - 'include/tilck/common/arch/x86_64/**'
 
 jobs:
   - job: gcc_12_3
-    container: 'vvaltchev/tilck-riscv64:v3'
+    container: 'vvaltchev/tilck-riscv64:v4'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -55,7 +76,7 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_13_3
-    container: 'vvaltchev/tilck-riscv64:v3'
+    container: 'vvaltchev/tilck-riscv64:v4'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -96,7 +117,7 @@ jobs:
         displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-riscv64:v3'
+    container: 'vvaltchev/tilck-riscv64:v4'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:

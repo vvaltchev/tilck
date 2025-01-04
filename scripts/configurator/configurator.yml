@@ -26,3 +26,5 @@ jobs:
 
     - script: python -m unittest discover scripts/configurator/parser
       displayName: 'Run unit tests'
+
+

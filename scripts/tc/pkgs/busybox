@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-BUSYBOX_VER="1.33.1"
+BUSYBOX_VER="1.36.1"
 
 function internal_build_busybox {
 
