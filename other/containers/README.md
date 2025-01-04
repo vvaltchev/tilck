@@ -3,16 +3,21 @@ by a Dockerfile that sits in a directory is named after the container's name.
 The reasoning behind this structure is allowing syntax highlighting for all
 IDEs. See: https://stackoverflow.com/questions/27409761
 
-To build and tag an image from the root folder of the project, just use
+To build and tag an image, enter project's root folder an run:
 
 ```bash
-docker build -t <username>/<container_name>:<version> \
-other/containers/<container_name>
+docker build -t <user>/<name>:<ver> -f other/containers/<name>/Dockerfile .
 ```
 
-Then, to actually run the image in a container in interactive mode use
+To actually run the image in a container in interactive mode use:
 
 ```bash
-docker run -it <username>/<container_name> bash
+docker run -it <user>/name>:<ver> bash
+```
+
+With Docker's cloud build, we can do:
+
+```bash
+docker buildx build --builder <builder-name> --push -t <user>/<name>:<ver> -f ./other/containers/<name>/Dockerfile .
 ```
 

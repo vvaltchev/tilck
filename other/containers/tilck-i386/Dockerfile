@@ -1,20 +1,19 @@
-# version: v3
+# version: v4
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the required system packages
 RUN apt update && apt upgrade -y && \
 apt install -y git-core gcc g++ gcc-multilib g++-multilib clang cmake \
-python3-minimal python3-serial python3-pip gawk unzip parted wget \
-curl qemu-system-x86 imagemagick
+python3-minimal python3-serial python3-pip python3-coverage gawk unzip \
+parted wget curl qemu-system-x86 imagemagick
 
-# Checkout the Tilck project to /tilck-tmp
-RUN git clone https://github.com/vvaltchev/tilck.git /tilck-tmp
+# Copy Tilck's source to our container
+COPY . /tilck-tmp
 
 # Setup the list of packages to download & build for all the compilers
 ARG TILCK_PACKAGES="gnuefi mtools zlib busybox \
-gmock gmock_arch gtest gtest_arch lcov libmusl \
-lua micropython ncurses vim gcc_glibc_toolchain"
+gmock gtest lcov libmusl lua micropython ncurses vim gcc_glibc"
 
 # -------------------------------------------------------------------------
 

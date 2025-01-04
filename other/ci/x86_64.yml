@@ -7,14 +7,30 @@ trigger:
       - exp-*
 
   paths:
+    include:
+      - 'other/ci/x86_64.yml'
+      - 'other/busybox.config'
+      - 'kernel/**'
+      - 'modules/**'
+      - 'include/**'
+      - 'common/**'
+      - 'boot/**'
+      - 'tests/**'
+      - 'userapps/**'
+      - 'scripts/**'
+      - 'config/**'
     exclude:
-      - README.md
-      - docs/**
-      - scripts/configurator/**
+      - 'README.md'
+      - 'docs/**'
+      - 'scripts/configurator/**'
+      - 'kernel/arch/riscv/**'
+      - 'kernel/arch/riscv64/**'
+      - 'include/tilck/kernel/arch/riscv/**'
+      - 'include/tilck/common/arch/riscv/**'
 
 jobs:
   - job: gcc_12_3_x86_64
-    container: 'vvaltchev/tilck-x86_64:v3'
+    container: 'vvaltchev/tilck-x86_64:v4'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
