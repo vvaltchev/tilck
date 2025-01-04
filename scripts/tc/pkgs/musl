@@ -40,7 +40,7 @@ function build_libmusl {
          # (the pre-compiled toolchain uses an optimized non-debug version of
          # libmusl).
 
-         download_gcc_glibc_toolchain
+         download_gcc_glibc
          export PATH="$GCC_TOOLCHAIN_GLIBC:$PATH"
 
          # Force use the our cross-compiler when when $ARCH == $HOST_ARCH

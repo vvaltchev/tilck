@@ -57,7 +57,7 @@ function build_tcc {
          install_32bit_libs
       fi
 
-      download_gcc_toolchain
+      download_gcc_musl
    fi
 
 
