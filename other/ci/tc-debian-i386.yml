@@ -13,48 +13,100 @@ trigger:
       - 'README.md'
       - '*.md'
 
-pool:
-  vmImage: 'ubuntu-22.04'
 
+jobs:
+  - job: default_tc
+    container: 'vvaltchev/debian:v4'
+    pool:
+      vmImage: 'ubuntu-22.04'
+    variables:
+      CI: 1
+      RUNNING_IN_CI: 1
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      ARCH: i386
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: sudo -E ./scripts/build_toolchain
+        displayName: "Install pkgs"
+      - script: sudo -E ./scripts/build_toolchain -s build_gtest
+        displayName: "Build gtest"
+      - script: sudo -E ./scripts/build_toolchain -s build_gmock
+        displayName: "Build gmock"
+      - script: sudo -E ./scripts/build_toolchain -s build_lcov
+        displayName: "Build lcov"
+      - script: sudo -E ./scripts/build_toolchain -s build_libmusl
+        displayName: "Build libmusl"
+      - script: sudo -E ./scripts/build_toolchain -s build_ncurses
+        displayName: "Build ncurses"
+      - script: sudo -E ./scripts/build_toolchain -s build_micropython
+        displayName: "Build micropython"
+      - script: sudo -E ./scripts/build_toolchain -s build_vim
+        displayName: "Build vim"
+      - script: sudo -E ./scripts/build_toolchain -s build_tfblib
+        displayName: "Build tfblib"
+      - script: sudo -E ./scripts/build_toolchain -s build_lua
+        displayName: "Build Lua"
+      - script: sudo -E ./scripts/build_toolchain -s tree_cmd
+        displayName: "Build tree_cmd"
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./tests/runners/ci_run_all_tests_wrapper -c
+        displayName: Run the system tests
 
-container: 'vvaltchev/debian:v4'
-
-variables:
-  CI: 1
-  RUNNING_IN_CI: 1
-  GTEST_SHUFFLE: 0
-  ARCH: i386
-
-steps:
-  - script: printenv
-    displayName: Dump env
-  - script: sudo -E ./scripts/build_toolchain
-    displayName: "Install pkgs"
-  - script: sudo -E ./scripts/build_toolchain -s build_gtest
-    displayName: "Build gtest"
-  - script: sudo -E ./scripts/build_toolchain -s build_gmock
-    displayName: "Build gmock"
-  - script: sudo -E ./scripts/build_toolchain -s build_lcov
-    displayName: "Build lcov"
-  - script: sudo -E ./scripts/build_toolchain -s build_libmusl
-    displayName: "Build libmusl"
-  - script: sudo -E ./scripts/build_toolchain -s build_ncurses
-    displayName: "Build ncurses"
-  - script: sudo -E ./scripts/build_toolchain -s build_micropython
-    displayName: "Build micropython"
-  - script: sudo -E ./scripts/build_toolchain -s build_vim
-    displayName: "Build vim"
-  - script: sudo -E ./scripts/build_toolchain -s build_tfblib
-    displayName: "Build tfblib"
-  - script: sudo -E ./scripts/build_toolchain -s build_lua
-    displayName: "Build Lua"
-  - script: sudo -E ./scripts/build_toolchain -s tree_cmd
-    displayName: "Build tree_cmd"
-  - script: make -j
-    displayName: Build the kernel
-  - script: make -j gtests
-    displayName: Build the unit tests
-  - script: ./build/gtests
-    displayName: Run the unit tests
-  - script: ./tests/runners/ci_run_all_tests_wrapper -c
-    displayName: Run the system tests
+  - job: syscc
+    container: 'vvaltchev/debian:v4'
+    pool:
+      vmImage: 'ubuntu-24.04'
+    variables:
+      DEBIAN_FRONTEND: noninteractive
+      CI: 1
+      RUNNING_IN_CI: 1
+      GTEST_SHUFFLE: 0
+      TILCK_NO_LOGO: 1
+      USE_SYSCC: 1
+      CC: gcc
+      CXX: g++
+      ARCH: i386
+    steps:
+      - script: printenv
+        displayName: Dump env
+      - script: sudo -E apt update
+        displayName: "Apt update"
+      - script: sudo -E apt upgrade -y
+        displayName: "Apt upgrade"
+      - script: sudo -E apt install -y gcc g++
+        displayName: "Install gcc and g++"
+      - script: sudo -E ./scripts/build_toolchain
+        displayName: "Install pkgs"
+      - script: sudo -E ./scripts/build_toolchain -s build_gtest
+        displayName: "Build gtest"
+      - script: sudo -E ./scripts/build_toolchain -s build_gmock
+        displayName: "Build gmock"
+      - script: sudo -E ./scripts/build_toolchain -s build_lcov
+        displayName: "Build lcov"
+      - script: sudo -E ./scripts/build_toolchain -s build_libmusl
+        displayName: "Build libmusl"
+      - script: sudo -E ./scripts/build_toolchain -s build_ncurses
+        displayName: "Build ncurses"
+      - script: sudo -E ./scripts/build_toolchain -s build_vim
+        displayName: "Build vim"
+      - script: sudo -E ./scripts/build_toolchain -s build_tfblib
+        displayName: "Build tfblib"
+      - script: sudo -E ./scripts/build_toolchain -s build_lua
+        displayName: "Build Lua"
+      - script: sudo -E ./scripts/build_toolchain -s tree_cmd
+        displayName: "Build tree_cmd"
+      - script: make -j
+        displayName: Build the kernel
+      - script: make -j gtests
+        displayName: Build the unit tests
+      - script: ./build/gtests
+        displayName: Run the unit tests
+      - script: ./tests/runners/ci_run_all_tests_wrapper -c
+        displayName: Run the system tests
