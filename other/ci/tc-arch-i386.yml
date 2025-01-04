@@ -20,7 +20,6 @@ pool:
 container: 'vvaltchev/archlinux:v6'
 
 variables:
-  CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
   ARCH: i386

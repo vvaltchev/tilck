@@ -18,7 +18,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       ARCH: riscv64
       TCROOT: /tc/toolchain2-gcc123
       GTEST_SHUFFLE: 0
@@ -59,7 +59,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       ARCH: riscv64
       TCROOT: /tc/toolchain2-gcc133
       GTEST_SHUFFLE: 0
@@ -100,7 +100,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       ARCH: riscv64
       TCROOT: /tc/toolchain2-gcc123
       GTEST_SHUFFLE: 0
