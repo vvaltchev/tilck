@@ -19,7 +19,6 @@ pool:
 container: 'vvaltchev/opensuse:v4'
 
 variables:
-  CI: 1
   RUNNING_IN_CI: 1
   GTEST_SHUFFLE: 0
   ARCH: i386

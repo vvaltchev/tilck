@@ -18,7 +18,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       TCROOT: /tc/toolchain2-gcc123
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
@@ -52,7 +52,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       TCROOT: /tc/toolchain2-gcc113
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
@@ -92,7 +92,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       TCROOT: /tc/toolchain2-gcc123
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
@@ -136,7 +136,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       TCROOT: /tc/toolchain2-gcc113
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
@@ -173,7 +173,7 @@ jobs:
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
-      CI: 1
+      RUNNING_IN_CI: 1
       TCROOT: /tc/toolchain2-gcc123
       GTEST_SHUFFLE: 0
       DUMP_COV: 1

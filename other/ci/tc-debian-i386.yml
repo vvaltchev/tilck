@@ -20,7 +20,6 @@ jobs:
     pool:
       vmImage: 'ubuntu-22.04'
     variables:
-      CI: 1
       RUNNING_IN_CI: 1
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
@@ -65,7 +64,6 @@ jobs:
       vmImage: 'ubuntu-24.04'
     variables:
       DEBIAN_FRONTEND: noninteractive
-      CI: 1
       RUNNING_IN_CI: 1
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
