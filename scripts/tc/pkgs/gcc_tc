@@ -109,14 +109,14 @@ function download_gcc_tc_internal {
 ############################################################
 
 if [[ "$HOST_ARCH" == "x86_64" ]]; then
-   all_funcs_list+=(download_gcc_toolchain)
+   all_funcs_list+=(download_gcc_musl)
 fi
 
-function download_gcc_toolchain {
+function download_gcc_musl {
    download_gcc_tc_internal musl
 }
 
-function download_gcc_toolchain_installed_status {
+function download_gcc_musl_installed_status {
    if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_musl ]; then
      echo "installed"
    fi
@@ -124,17 +124,17 @@ function download_gcc_toolchain_installed_status {
 
 
 if [[ "$HOST_ARCH" == "x86_64" ]]; then
-   all_funcs_list+=(download_gcc_glibc_toolchain)
+   all_funcs_list+=(download_gcc_glibc)
 fi
 
-function download_gcc_glibc_toolchain {
+function download_gcc_glibc {
 
    pushd $TC
    download_gcc_tc_internal glibc
    popd
 }
 
-function download_gcc_glibc_toolchain_installed_status {
+function download_gcc_glibc_installed_status {
    if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_glibc ]; then
      echo "installed"
    fi

@@ -640,7 +640,7 @@ function main {
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 
       # Default case: we're building on a x86-64 machine
-      default_funcs+=(download_gcc_toolchain)
+      default_funcs+=(download_gcc_musl)
 
       if [[ "$USE_SYSCC" == 1 ]]; then
          # Even we're building on a x86-64 machine, if the system compiler
