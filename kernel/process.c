@@ -724,14 +724,24 @@ int sys_prctl(int option, ulong a2, ulong a3, ulong a4, ulong a5)
 {
    // TODO: actually implement sys_prctl()
 
-   if (option == PR_SET_NAME) {
-      // printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_task()->tid, a2);
-      // TODO: save the task name in struct task.
-      return 0;
-   }
+   switch (option) {
 
-   printk("[TID: %d] Unknown option: %d\n", get_curr_tid(), option);
-   return -EINVAL;
+      case PR_SET_NAME:
+         // printk("[TID: %d] PR_SET_NAME '%s'\n", get_curr_tid(), (void *)a2);
+         // TODO: support PR_SET_NAME in prctl().
+         return -EINVAL;
+
+      case PR_GET_NAME:
+         // TODO: support PR_GET_NAME in prctl().
+         return -EINVAL;
+
+      default:
+         printk(
+            "[TID: %d] Unknown prctl() option: %d\n",
+            get_curr_tid(), option
+         );
+         return -EINVAL;
+   }
 }
 
 
