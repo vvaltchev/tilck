@@ -30,7 +30,7 @@ trigger:
 
 jobs:
   - job: gcc_12_3_x86_64
-    container: 'vvaltchev/tilck-x86_64:v4'
+    container: 'vvaltchev/tilck-x86_64:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:

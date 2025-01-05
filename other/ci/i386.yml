@@ -30,7 +30,7 @@ trigger:
 
 jobs:
   - job: interactive
-    container: 'vvaltchev/tilck-i386:v4'
+    container: 'vvaltchev/tilck-i386:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -64,7 +64,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_11_3_build
-    container: 'vvaltchev/tilck-i386:v4'
+    container: 'vvaltchev/tilck-i386:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -92,7 +92,7 @@ jobs:
         displayName: Run the unit tests
 
   - job: gcc_12_3
-    container: 'vvaltchev/tilck-i386:v4'
+    container: 'vvaltchev/tilck-i386:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -136,7 +136,7 @@ jobs:
         displayName: Run the system tests
 
   - job: syscc
-    container: 'vvaltchev/tilck-i386:v4'
+    container: 'vvaltchev/tilck-i386:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -173,7 +173,7 @@ jobs:
         displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-i386:v4'
+    container: 'vvaltchev/tilck-i386:v5'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:

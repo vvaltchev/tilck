@@ -1,4 +1,4 @@
-# version: v4
+# version: v5
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -12,7 +12,7 @@ parted wget curl qemu-system-riscv64 bison flex libssl-dev device-tree-compiler
 COPY . /tilck-tmp
 
 # Setup the list of packages to download & build for all the compilers
-ARG TILCK_PACKAGES="mtools zlib busybox bootloader libfdt lcov"
+ARG TILCK_PACKAGES="mtools zlib busybox bootloader libfdt lcov acpica"
 
 # -------------------------------------------------------------------------
 
