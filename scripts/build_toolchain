@@ -651,11 +651,14 @@ function main {
       fi
 
    elif [[ "$HOST_ARCH" == "$ARCH" ]]; then
+
       # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
       # we *must* build also libmusl, in order to link with musl programs
       # compiled with the system compiler.
       default_funcs+=(build_libmusl)
+
    elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
       default_funcs+=(custom_gcc_cross_tc)
    fi
 
@@ -667,6 +670,7 @@ function main {
       default_funcs+=(build_gnuefi)
    fi
 
+   default_funcs+=(download_acpica)
    default_funcs+=(build_mtools)
    default_funcs+=(build_zlib)
 

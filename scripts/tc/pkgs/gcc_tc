@@ -11,10 +11,6 @@
 
 BOOTLIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains"
 
-###############################
-# x86-i686 GNU toolchain
-###############################
-
 # $1 dir name
 # $2 arch name
 # $3 tc file name

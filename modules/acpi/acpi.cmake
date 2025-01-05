@@ -9,19 +9,24 @@ CHECK_C_COMPILER_FLAG(
 unset(acpica_sources_glob)
 unset(osl_sources_glob)
 
+set(ACPICA_ROOT ${TCROOT}/noarch/acpica)
+set(ACPICA_SOURCE_ROOT ${ACPICA_ROOT}/source)
+set(ACPICA_COMPS ${ACPICA_SOURCE_ROOT}/components)
+set(ACPICA_INCLUDE ${ACPICA_SOURCE_ROOT}/include)
+
 list(
    APPEND acpica_sources_glob
 
    # ACPICA source files
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/dispatcher/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/events/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/executer/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/hardware/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/namespace/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/parser/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/resources/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/tables/*.c"
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/utilities/*.c"
+   "${ACPICA_COMPS}/dispatcher/*.c"
+   "${ACPICA_COMPS}/events/*.c"
+   "${ACPICA_COMPS}/executer/*.c"
+   "${ACPICA_COMPS}/hardware/*.c"
+   "${ACPICA_COMPS}/namespace/*.c"
+   "${ACPICA_COMPS}/parser/*.c"
+   "${ACPICA_COMPS}/resources/*.c"
+   "${ACPICA_COMPS}/tables/*.c"
+   "${ACPICA_COMPS}/utilities/*.c"
 )
 
 # Note: for the moment there's no support in Tilck for ACPI's debugger because
@@ -30,7 +35,7 @@ list(
 if (ACPI_DEBUGGER_ENABLED)
    list(
       APPEND acpica_sources_glob
-      "${CMAKE_SOURCE_DIR}/modules/${mod}/acpica/debugger/*.c"
+      "${ACPICA_COMPS}/debugger/*.c"
    )
 endif()
 
@@ -56,7 +61,13 @@ add_library(
 
 target_include_directories(
    acpica PUBLIC
-   "${CMAKE_SOURCE_DIR}/include/3rd_party/acpi"
+   "${ACPICA_INCLUDE}"
+)
+
+target_include_directories(
+   acpi_osl PUBLIC
+   "${ACPICA_ROOT}"      # Used to include headers like <acpi/xyz.h>
+   "${ACPICA_INCLUDE}"
 )
 
 set(
