@@ -19,7 +19,14 @@
 #include <tilck/kernel/signal.h>
 #include <tilck/mods/tracing.h>
 
-typedef long (*syscall_type)();
+typedef long (*syscall_type)(
+   ulong, ulong, ulong, ulong, ulong, ulong // args
+);
+
+typedef long (*syscall_raw_regs)(
+   void *, // regs *
+   ulong, ulong, ulong, ulong, ulong, ulong
+);
 
 #define SYSFL_NO_TRACE                      0b00000001
 #define SYSFL_NO_SIG                        0b00000010
@@ -406,10 +413,12 @@ int get_syscall_num(void *func)
 static NO_INLINE void
 do_syscall_int(syscall_type fptr, regs_t *r, bool raw_regs)
 {
-   if (LIKELY(!raw_regs))
+   if (LIKELY(!raw_regs)) {
       r->a0 = fptr(r->a0,r->a1,r->a2,r->a3,r->a4,r->a5);
-   else
-      r->a0 = fptr(r, r->a0,r->a1,r->a2,r->a3,r->a4,r->a5);
+   } else {
+      syscall_raw_regs fptr2 = (void *)fptr;
+      r->a0 = fptr2(r, r->a0,r->a1,r->a2,r->a3,r->a4,r->a5);
+   }
 }
 
 static void do_special_syscall(regs_t *r)
