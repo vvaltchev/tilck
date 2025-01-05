@@ -47,7 +47,8 @@ function build_bootloader {
 
       show_work_on_component_msg "bootloader"
 
-      local url="https://github.com/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
+      local gh="https://github.com"
+      local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
       local ver="20240726"
       local tarname=$ver.tar.gz
 
