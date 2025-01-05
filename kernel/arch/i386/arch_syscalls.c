@@ -22,7 +22,14 @@
 void syscall_int80_entry(void);
 void sysenter_entry(void);
 
-typedef long (*syscall_type)();
+typedef long (*syscall_type)(
+   ulong, ulong, ulong, ulong, ulong, ulong // args
+);
+
+typedef long (*syscall_raw_regs)(
+   void *, // regs *
+   ulong, ulong, ulong, ulong, ulong, ulong
+);
 
 #define SYSFL_NO_TRACE                      0b00000001
 #define SYSFL_NO_SIG                        0b00000010
@@ -540,10 +547,12 @@ int get_syscall_num(void *func)
 static NO_INLINE void
 do_syscall_int(syscall_type fptr, regs_t *r, bool raw_regs)
 {
-   if (!raw_regs)
+   if (LIKELY(!raw_regs)) {
       r->eax = (u32) fptr(r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
-   else
-      r->eax = (u32) fptr(r, r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   } else {
+      syscall_raw_regs fptr2 = (void *)fptr;
+      r->eax = (u32) fptr2(r, r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);
+   }
 }
 
 static void do_special_syscall(regs_t *r)
