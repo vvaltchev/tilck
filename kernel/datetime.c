@@ -253,7 +253,6 @@ retry:
                ];
             }
 
-            /*printk("clock drift: sleep for %u ticks. Ts: %lld\n", ticks, ts);*/
             kernel_sleep(ticks);
             micro_attempts_periods++;
          }

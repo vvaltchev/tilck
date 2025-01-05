@@ -128,7 +128,8 @@ function build_tcc {
       # Hack: make __udivmoddi4() non static, since on Tilck we fail to link
       # binaries due to this symbol not being found. However, while with that
       # the link succeeds, the binary crashes.
-      sed -i -e 's/static UDWtype __udivmoddi4/UDWtype __udivmoddi4/g' lib/libtcc1.c
+      local decl="UDWtype __udivmoddi4"
+      sed -i -e "s/static $decl/$decl/g" lib/libtcc1.c
 
       local flags="--enable-cross --cross-prefix=$ARCH_GCC_TC-linux-"
       local flags="$flags --enable-static --cpu=$ARCH"
