@@ -130,7 +130,8 @@ define_env_cache_str_var(GCC_TC_VER "${SAVED_GCC_TC_VAR}")
 # GCC_TC_VER check
 #
 
-file(READ ${CMAKE_SOURCE_DIR}/other/min_gcc_tc_ver/${ARCH} MIN_GCC_TC_VER)
+set(GCC_TC_CONF ${CMAKE_SOURCE_DIR}/other/gcc_tc_conf)
+file(READ ${GCC_TC_CONF}/${ARCH}/min_ver MIN_GCC_TC_VER)
 
 if ("${GCC_TC_VER}" VERSION_LESS "${MIN_GCC_TC_VER}")
 

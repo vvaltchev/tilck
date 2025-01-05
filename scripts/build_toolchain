@@ -12,6 +12,7 @@ export CFFLAGS=""
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
+GCC_TC_CONF="$MAIN_DIR/other/gcc_tc_conf"
 
 if [[ "$MAIN_DIR" = *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
@@ -57,12 +58,13 @@ esac
 # architecture, because the list of available pre-built toolchains on
 # https://toolchains.bootlin.com depends on the architecture.
 
-if ! [ -f $MAIN_DIR/other/min_gcc_tc_ver/$ARCH ]; then
-   echo "ERROR: file $MAIN_DIR/other/min_gcc_tc_ver/$ARCH not found!"
+if ! [ -f $GCC_TC_CONF/$ARCH/default_ver ]; then
+   echo "ERROR: file $GCC_TC_CONF/$ARCH/default_ver not found"
    exit 1
 fi
 
-DEFAULT_GCC_TC_VERSION=$(cat $MAIN_DIR/other/min_gcc_tc_ver/$ARCH)
+DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
+MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
 
 
 # Global toolchain directory
@@ -401,21 +403,20 @@ function compiler_checks {
 
    #
    # GCC_TC_VER check: we need check that the current GCC_TC_VER is supported.
-   # Since DEFAULT_GCC_TC_VERSION is the oldest one we support, we should check
-   # against that.
+   # Over time, the MIN supported version moves forward.
    #
 
    major=$(get_version_comp "$GCC_TC_VER" 1)
    minor=$(get_version_comp "$GCC_TC_VER" 2)
 
-   min_major=$(get_version_comp "$DEFAULT_GCC_TC_VERSION" 1)
-   min_minor=$(get_version_comp "$DEFAULT_GCC_TC_VERSION" 2)
+   min_major=$(get_version_comp "$MIN_GCC_TC_VERSION" 1)
+   min_minor=$(get_version_comp "$MIN_GCC_TC_VERSION" 2)
 
    if [[ $major -lt $min_major ||
          ( $major -eq $min_major && $minor -lt $min_minor ) ]]
    then
       echo -n "ERROR: GCC_TC_VER ($GCC_TC_VER) < "
-      echo    "minimum supported ($DEFAULT_GCC_TC_VERSION)"
+      echo    "minimum supported ($MIN_GCC_TC_VERSION)"
       echo
 
       if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
