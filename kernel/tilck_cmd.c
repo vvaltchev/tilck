@@ -11,7 +11,7 @@
 #include <tilck/kernel/gcov.h>
 #include <tilck/kernel/debug_utils.h>
 
-typedef int (*tilck_cmd_func)();
+typedef int (*tilck_cmd_func)(ulong, ulong, ulong, ulong);
 static int tilck_sys_run_selftest(const char *user_selftest);
 static int tilck_call_fn_0(const char *fn_name);
 static int tilck_get_var_long(const char *var_name, long *buf);
