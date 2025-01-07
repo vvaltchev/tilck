@@ -107,10 +107,27 @@ fi
 # ARCH and ARCH_* variables are all about the TARGET architecture
 
 if [ -z "$GCC_TC_VER" ]; then
+
    if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+
       GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
+
    else
-      GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
+
+      # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file
+      # We have to pick either the default GCC_TC_VER for $ARCH when the
+      # host arch is x86_64, or support special cases like aarch64.
+
+      if [[ "$HOST_ARCH" == "x86_64" ]]; then
+
+         # Main case, fully supported
+         GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
+
+      elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
+         # Support for AARCH64 as build machine (limited)
+         GCC_TC_VER="11.4.0"
+      fi
    fi
 fi
 
@@ -123,7 +140,11 @@ fi
 # Support for AARCH64 as build machine (limited)
 #
 if [[ "$HOST_ARCH" == "aarch64" ]]; then
-   GCC_TC_VER="9.4.0"
+
+   if [ -z "$MUSL_VER" ]; then
+      MUSL_VER="1.2.5"
+   fi
+
    ARCH_GCC_TC_VER="custom"
 fi
 
