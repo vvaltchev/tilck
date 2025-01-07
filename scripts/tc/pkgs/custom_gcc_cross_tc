@@ -13,22 +13,22 @@ function custom_gcc_cross_tc_internal {
 
    local arch="$1"
    local arch_gcc="$2"
-   local url="https://vvaltchev.github.io/cache"
+   local gh="https://github.com"
+   local url="$gh/vvaltchev/musl-cross-make/releases/download/fd6be58297e"
 
    if [[ $arch == i386 ]]; then
-      local arch_prefix="x86-i386"
+      local prefix="x86-i386"
    elif [[ $arch == x86_64 ]]; then
-      local arch_prefix="x86-64"
+      local prefix="x86-64"
    fi
 
-   local tarname="${arch_prefix}-musl-1.1.24-gcc-$GCC_TC_VER-aarch64.tar.bz2"
+   local tarname="${prefix}-musl-${MUSL_VER}-gcc-$GCC_TC_VER-aarch64.tar.bz2"
 
    download_file_in_cache "$url" "$tarname"
    extract_cachefile_tar_bz $tarname --
 
    # Adapt toolchains built with: https://github.com/richfelker/musl-cross-make
-   # but support also toolchains that contains the necessary renamings, by
-   # checking if the file exists first.
+   # but support also toolchains that contain the necessary renamings already.
 
    pushd gcc_${GCC_TC_VER_}_${arch}_musl/bin
    for x in ${arch_gcc}-linux-musl-*; do
