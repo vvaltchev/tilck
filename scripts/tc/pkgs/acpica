@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-ACPICA_VER="R06_28_23"
+ACPICA_VER="R2024_12_12"
 
 function patch_acpica {
 
