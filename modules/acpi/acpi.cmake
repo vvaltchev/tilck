@@ -6,6 +6,11 @@ CHECK_C_COMPILER_FLAG(
    FLAG_WNO_UNUSED_BUT_SET_VAR
 )
 
+CHECK_C_COMPILER_FLAG(
+   -Wno-null-pointer-subtraction
+   FLAG_NO_NULL_POINTER_SUBTRACTION
+)
+
 unset(acpica_sources_glob)
 unset(osl_sources_glob)
 
@@ -97,6 +102,10 @@ set(
 
 if (FLAG_WNO_UNUSED_BUT_SET_VAR)
    list(APPEND ACPICA_FLAGS_LIST -Wno-unused-but-set-variable)
+endif()
+
+if (FLAG_NO_NULL_POINTER_SUBTRACTION)
+   list(APPEND ACPICA_FLAGS_LIST -Wno-null-pointer-subtraction)
 endif()
 
 JOIN("${COMMON_ACPI_FLAGS_LIST}" ${SPACE} COMMON_ACPI_FLAGS)
