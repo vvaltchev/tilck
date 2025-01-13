@@ -13,6 +13,7 @@ source $MAIN_DIR/scripts/bash_includes/script_utils
 
 if [[ "$1" == "--contrib" ]]; then
 
+   shift
    export CC='clang'
    export CXX='clang++'
    CMAKE_ARGS="-DKERNEL_SYSCC=1 -DWCONV=1 -DKMALLOC_HEAVY_STATS=1"
@@ -33,6 +34,7 @@ if [[ "$1" == "--contrib" ]]; then
 
 elif [[ "$1" == "--intr" ]]; then
 
+   shift
    export CC="gcc"
    export CXX="g++"
    CMAKE_ARGS="-DFB_CONSOLE_BANNER=0 -DFB_CONSOLE_CURSOR_BLINK=0"
