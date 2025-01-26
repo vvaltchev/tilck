@@ -476,4 +476,3 @@ function do_common_cross_compiler_setup {
    fi
 }
 
-

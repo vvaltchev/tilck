@@ -20,29 +20,22 @@ if [[ "$MAIN_DIR" = *" "* ]]; then
    exit 1
 fi
 
+all_funcs_list=()
+install_funcs_list=()
+config_funcs_list=()
 
-#
-# Given an architecture name using Linux's convention, return the EFI name
-# for the same architecture. The result is the same for almost all architectures
-# except for "i386" which becomes "ia32".
-#
-function get_efi_arch {
+# Source files to include
+source $MAIN_DIR/scripts/bash_includes/script_utils
+source $MAIN_DIR/scripts/bash_includes/arch_utils
+source $MAIN_DIR/scripts/bash_includes/cc_vars
+source $MAIN_DIR/scripts/bash_includes/arch_checks
+source $MAIN_DIR/scripts/bash_includes/compiler_checks
 
-   local ret="$1"
-
-   if [[ "$ret" == "i386" ]]; then
-      ret="ia32"
-   fi
-
-   echo "$ret"
-}
 
 ALL_ARCH_LIST="i386 x86_64 riscv64"
 DEFAULT_ARCH="i386"
-
-if [[ "$ARCH" == "" ]]; then
-   export ARCH=$DEFAULT_ARCH
-fi
+export MUSL_VER=${MUSL_VER:-1.2.5}
+export ARCH=${ARCH:-$DEFAULT_ARCH}
 
 #
 # Setup the ARCH name according to convention used by pre-built toolchains
@@ -72,57 +65,19 @@ CUSTOM_GCC_TC_VERSION="11.4.0"
 
 # Global toolchain directory
 
-if [ -z "$TCROOT_PARENT" ]; then
-   TCROOT_PARENT="$MAIN_DIR"
-fi
-
-if [ -z "$TCROOT" ]; then
-   TCROOT="$TCROOT_PARENT/toolchain2"
-fi
-
+: ${TCROOT_PARENT:=$MAIN_DIR}
+: ${TCROOT:=$TCROOT_PARENT/toolchain2}
 TC="$TCROOT"
 
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
 
-# Arch-variables
+set_host_arch_variable
 
-HOST_ARCH="`uname -m`"
-
-if [[ "$HOST_ARCH" == "x86_64" ]]; then
-
-   : # Great, that's what we expect: do nothing
-
-elif [[ "$HOST_ARCH" == "amd64" ]]; then
-
-   # An alias for x86_64: fix our variable
-   HOST_ARCH="x86_64"
-
-elif [[ "$HOST_ARCH" == "i686" ]]; then
-
-   # Special case, not "officially" supported.
-   # We need to set HOST_ARCH to "i386", to match the convention
-   # used by ARCH and ld.
-
-   HOST_ARCH="i386"
-
-elif [[ "$HOST_ARCH" == "aarch64" ]]; then
-
-
-   if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
-      echo "ERROR: you need to set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
-      exit 1
-   fi
-
-else
-
-   echo "ERROR: build host architecture $HOST_ARCH not supported"
-   exit 1
-fi
 
 # ARCH and ARCH_* variables are all about the TARGET architecture
 
-if [ -z "$GCC_TC_VER" ]; then
+if [[ "$GCC_TC_VER" == "" ]]; then
 
    if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
 
@@ -150,51 +105,10 @@ fi
 # otherwise.
 #
 if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-
-   if [[ "$MUSL_VER" == "" ]]; then
-      MUSL_VER="1.2.5"
-   fi
-
    ARCH_GCC_TC_VER="custom"
 fi
 
-
-if [[ "$ARCH" == "i386" ]]; then
-
-   ARCH_SHORT="x86"
-   ARCH_FAMILY="generic_x86"
-   ARCH_ELF_NAME="elf32-i386"
-   ARCH_LD_OUTPUT="elf_i386"
-   ARCH_EFI=$(get_efi_arch $ARCH)
-   ARCH_GCC_TC="i686"
-   ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
-   ARCH_GCC_TC_CODENAME="x86-i686"
-
-elif [[ "$ARCH" == "x86_64" ]]; then
-
-   ARCH_SHORT="x86_64"
-   ARCH_FAMILY="generic_x86"
-   ARCH_ELF_NAME="elf64-x86-64"
-   ARCH_LD_OUTPUT="elf_x86_64"
-   ARCH_EFI=$(get_efi_arch $ARCH)
-   ARCH_GCC_TC="x86_64"
-   ARCH_GCC_FLAGS="-m64"
-   ARCH_GCC_TC_CODENAME="x86-64-core-i7"
-
-elif [[ "$ARCH" == "riscv64" ]]; then
-
-   ARCH_SHORT="riscv64"
-   ARCH_FAMILY="riscv"
-   ARCH_ELF_NAME="elf64-littleriscv"
-   ARCH_LD_OUTPUT="elf64lriscv"
-   ARCH_GCC_TC="riscv64"
-   ARCH_GCC_FLAGS=""
-   ARCH_GCC_TC_CODENAME="riscv64-lp64d"
-
-else
-   echo "Architecture '$ARCH' not supported."
-   exit 1
-fi
+set_arch_variables $ARCH
 
 #
 # If $ARCH_GCC_TC_VER has not been set externally or by the check above,
@@ -204,17 +118,7 @@ fi
 # toolchain name.
 #
 if [[ "$ARCH_GCC_TC_VER" == "" ]]; then
-   case $GCC_TC_VER in
-      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
-      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
-   esac
+   set_arch_gcc_tc_ver $GCC_TC_VER
 fi
 
 if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
@@ -243,226 +147,7 @@ GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
 GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
 MUSL_INSTALL=$TC/$ARCH/musl/install
 
-echo
-echo "ARCH=$ARCH"
-echo "HOST_ARCH=$HOST_ARCH"
-echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
-echo "GCC_TC_VER=$GCC_TC_VER"
-echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
-echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
-echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
-echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
-echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
-echo "USE_SYSCC=$USE_SYSCC"
-echo "CC=$CC"
-echo "CXX=$CXX"
-echo
-
-function save_cc_vars {
-
-   if [[ "$HOST_ARCH" == "$ARCH" ]]; then
-
-      if [ -z "$AR" ]; then
-         export AR="ar"
-      fi
-
-      if [ -z "$NM" ]; then
-         export NM="nm"
-      fi
-
-      if [ -z "$RANLIB" ]; then
-         export RANLIB="ranlib"
-      fi
-   fi
-
-   saved_CC=$CC
-   saved_CXX=$CXX
-   saved_AR=$AR
-   saved_NM=$NM
-   saved_RANLIB=$RANLIB
-}
-
-function set_cc_vars_to_tc {
-
-   export CC="${ARCH_GCC_TC}-linux-gcc"
-   export CXX="${ARCH_GCC_TC}-linux-g++"
-   export AR="${ARCH_GCC_TC}-linux-ar"
-   export NM="${ARCH_GCC_TC}-linux-nm"
-   export RANLIB="${ARCH_GCC_TC}-linux-ranlib"
-}
-
-function reset_cc_vars_to_null {
-
-   export CC=""
-   export CXX=""
-   export AR=""
-   export NM=""
-   export RANLIB=""
-}
-
-
-function reset_cc_vars {
-
-   export CC=$saved_CC
-   export CXX=$saved_CXX
-   export AR=$saved_AR
-   export NM=$saved_NM
-   export RANLIB=$saved_RANLIB
-}
-
-all_funcs_list=()
-install_funcs_list=()
-config_funcs_list=()
-
-# Source files to include
-source $MAIN_DIR/scripts/bash_includes/script_utils
-
-function arch_checks {
-
-   if [[ "$HOST_ARCH" != *"$BUILD_ARCH"* ]]; then
-
-      echo "WARNING: Tilck's build system officially supports only "
-      echo "HOST_ARCH=$BUILD_ARCH host, no matter the value of ARCH."
-      echo
-      echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
-      echo
-      echo "However, there is *unofficial* support for the following"
-      echo "alternative scenarios: "
-      echo
-      echo "   1. HOST_ARCH == ARCH"
-      echo "   2. HOST_ARCH == aarch64"
-      echo
-      echo "Scenario 1. requires the environment variables USE_SYSCC, CC and "
-      echo "CXX to be set correctly. Scenario 2 will download a custom-gcc"
-      echo "toolchain for the selected target ARCH".
-      echo
-
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
-
-         if [[ "$USE_SYSCC" == 1 ]]; then
-
-            echo "In this case, HOST_ARCH == ARCH and USE_SYSCC is set."
-            echo "The script can continue, but WARNING: this scenario is not "
-            echo "tested as often as the main one (building on $BUILD_ARCH)."
-            echo ""
-            echo -n "Proceed [Y/n] ? "
-
-            read ans
-
-            if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-               echo "OK."
-            else
-               echo "Aborted."
-               exit 1
-            fi
-
-         else
-
-            echo "In this case USE_SYSCC, CC and CXX are NOT set."
-            echo "Unable to continue."
-            exit 1
-         fi
-
-      else
-
-         echo "This scenario is EXPERIMENTAL and will require the download a"
-         echo "GCC toolchain from: https://github.com/vvaltchev/musl-cross-make"
-         echo ""
-         echo -n "Proceed [Y/n] ? "
-
-         read ans
-
-         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-            echo "OK."
-         else
-            echo "Aborted."
-            exit 1
-         fi
-      fi
-   fi
-}
-
-function compiler_checks {
-
-   if [[ "$USE_SYSCC" == 1 ]]; then
-
-      if [[ "$CC" == "" || "$CXX" == "" ]]; then
-
-         echo "WARNING: CC and CXX should both be set when USE_SYSCC=1."
-         echo -n "Do you want just to use gcc and g++? [Y/n] "
-         read ans
-
-         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-
-            echo "----------------------------------------------------------"
-            echo "Setting:"
-            echo "   CC=gcc"
-            echo "   CXX=g++"
-            echo ""
-            export CC="gcc"
-            export CXX="g++"
-
-         else
-
-            echo "Aborted."
-            exit 1
-         fi
-      fi
-
-      local cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
-      local cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
-
-      if [ -z "$cc_compiler" ]; then
-         echo "ERROR: $CC compiler NOT FOUND"
-         exit 1
-      fi
-
-      if [ -z "$cxx_compiler" ]; then
-         echo "ERROR: $CXX compiler NOT FOUND"
-         exit 1
-      fi
-
-      if [ "$cc_compiler" != "gcc" ]; then
-         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers != GCC."
-         exit 1
-      fi
-
-   fi
-
-   #
-   # GCC_TC_VER check: we need check that the current GCC_TC_VER is supported.
-   # Over time, the MIN supported version moves forward.
-   #
-
-   major=$(get_version_comp "$GCC_TC_VER" 1)
-   minor=$(get_version_comp "$GCC_TC_VER" 2)
-
-   min_major=$(get_version_comp "$MIN_GCC_TC_VERSION" 1)
-   min_minor=$(get_version_comp "$MIN_GCC_TC_VERSION" 2)
-
-   if [[ $major -lt $min_major ||
-         ( $major -eq $min_major && $minor -lt $min_minor ) ]]
-   then
-      echo -n "ERROR: GCC_TC_VER ($GCC_TC_VER) < "
-      echo    "minimum supported ($MIN_GCC_TC_VERSION)"
-      echo
-
-      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
-         echo -n "This looks like caused by a new change in the source "
-         echo    "tree updating the minimum GCC version."
-         echo
-      fi
-
-      echo "Steps to fix:"
-      echo
-      echo "   1. unset \$GCC_TC_VER"
-      echo "   2. ./scripts/build_toolchain --clean"
-      echo "   3. rm -rf ./build # or any other build directory"
-      echo "   4. ./scripts/build_toolchain"
-      echo
-      exit 1
-   fi
-}
+dump_build_toolchain_env
 
 function print_func {
 
@@ -696,10 +381,8 @@ function main {
    fi
 
    if [[ "$ARCH" == "riscv64" ]]; then
-      if [[ "$BOARD" == "" || "$BOARD" == "qemu-virt" ]]; then
-         export BOARD=qemu-virt
-      fi
 
+      export BOARD=${BOARD:-qemu-virt}
       export BOARD_BSP="$MAIN_DIR/other/bsp/$ARCH/$BOARD"
       source $BOARD_BSP/bootloader
 

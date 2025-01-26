@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+function compiler_checks {
+
+   if [[ "$USE_SYSCC" == 1 ]]; then
+
+      if [[ "$CC" == "" || "$CXX" == "" ]]; then
+
+         echo "WARNING: CC and CXX should both be set when USE_SYSCC=1."
+         echo -n "Do you want just to use gcc and g++? [Y/n] "
+         read ans
+
+         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
+
+            echo "----------------------------------------------------------"
+            echo "Setting:"
+            echo "   CC=gcc"
+            echo "   CXX=g++"
+            echo ""
+            export CC="gcc"
+            export CXX="g++"
+
+         else
+
+            echo "Aborted."
+            exit 1
+         fi
+      fi
+
+      local cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
+      local cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
+
+      if [ -z "$cc_compiler" ]; then
+         echo "ERROR: $CC compiler NOT FOUND"
+         exit 1
+      fi
+
+      if [ -z "$cxx_compiler" ]; then
+         echo "ERROR: $CXX compiler NOT FOUND"
+         exit 1
+      fi
+
+      if [ "$cc_compiler" != "gcc" ]; then
+         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers != GCC."
+         exit 1
+      fi
+
+   fi
+
+   #
+   # GCC_TC_VER check: we need check that the current GCC_TC_VER is supported.
+   # Over time, the MIN supported version moves forward.
+   #
+
+   major=$(get_version_comp "$GCC_TC_VER" 1)
+   minor=$(get_version_comp "$GCC_TC_VER" 2)
+
+   min_major=$(get_version_comp "$MIN_GCC_TC_VERSION" 1)
+   min_minor=$(get_version_comp "$MIN_GCC_TC_VERSION" 2)
+
+   if [[ $major -lt $min_major ||
+         ( $major -eq $min_major && $minor -lt $min_minor ) ]]
+   then
+      echo -n "ERROR: GCC_TC_VER ($GCC_TC_VER) < "
+      echo    "minimum supported ($MIN_GCC_TC_VERSION)"
+      echo
+
+      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+         echo -n "This looks like caused by a new change in the source "
+         echo    "tree updating the minimum GCC version."
+         echo
+      fi
+
+      echo "Steps to fix:"
+      echo
+      echo "   1. unset \$GCC_TC_VER"
+      echo "   2. ./scripts/build_toolchain --clean"
+      echo "   3. rm -rf ./build # or any other build directory"
+      echo "   4. ./scripts/build_toolchain"
+      echo
+      exit 1
+   fi
+}
+
+
