@@ -32,7 +32,7 @@ function download_acpica {
       local url="https://github.com/acpica/acpica.git"
       local tarname="acpica-$ACPICA_VER.tgz"
 
-      show_work_on_component_msg "acpica"
+      show_work_on_component_msg "ACPICA"
       download_git_repo_in_cache "$url" $ACPICA_VER $tarname acpica
       extract_cachefile_tar_gz $tarname --
 
@@ -42,7 +42,7 @@ function download_acpica {
 
    else
 
-      show_skip_component_msg "acpica"
+      show_skip_component_msg "ACPICA"
    fi
 
    popd
