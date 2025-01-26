@@ -37,31 +37,14 @@ DEFAULT_ARCH="i386"
 export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}
 
-#
-# Setup the ARCH name according to convention used by pre-built toolchains
-#
-case $ARCH in
-   i386) ARCH_GCC_TC="i686";;
-   x86_64) ARCH_GCC_TC="x86_64";;
-   riscv64) ARCH_GCC_TC="riscv64";;
-   *) echo "Architecture '$ARCH' not supported."; exit 1;;
-esac
+# Set ARCH_GCC_TC based on ARCH
+set_arch_gcc_tc_arch $ARCH
 
-# Default GCC toolchain version to use. Unfortunately, it depends on the target
-# architecture, because the list of available pre-built toolchains on
-# https://toolchains.bootlin.com depends on the architecture.
+# Set HOST_ARCH based on `uname -m`
+set_host_arch_variable
 
-if ! [ -f $GCC_TC_CONF/$ARCH/default_ver ]; then
-   echo "ERROR: file $GCC_TC_CONF/$ARCH/default_ver not found"
-   exit 1
-fi
-
-DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
-MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
-
-# Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
-# TODO: add a per-arch configuration file for this toolchain as well.
-CUSTOM_GCC_TC_VERSION="11.4.0"
+# Set {DEFAULT,MIN}_GCC_TC_VERSION
+set_gcc_tc_defaults
 
 # Global toolchain directory
 
@@ -72,75 +55,21 @@ TC="$TCROOT"
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
 
-set_host_arch_variable
-
-
-# ARCH and ARCH_* variables are all about the TARGET architecture
-
-if [[ "$GCC_TC_VER" == "" ]]; then
-
-   if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
-
-      GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
-
-   else
-
-      # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
-
-      if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-         GCC_TC_VER=$CUSTOM_GCC_TC_VERSION    # Custom GCC toolchain
-      elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-         GCC_TC_VER="$DEFAULT_GCC_TC_VERSION" # Main case, fully supported
-      fi
-   fi
-fi
-
-if [[ "$GCC_TC_VER" == "" ]]; then
-   echo "ERROR: GCC_TC_VER is not set"
-   exit 1
-fi
-
-#
-# Support for our custom TC. Mandatory when HOST_ARCH != BUILD_ARCH, optional
-# otherwise.
-#
 if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
    ARCH_GCC_TC_VER="custom"
 fi
 
+# Set GCC_TC_VER based on the .gcc_tc_ver_$ARCH file or defaults
+set_gcc_ver
+
+# Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
 set_arch_variables $ARCH
 
-#
-# If $ARCH_GCC_TC_VER has not been set externally or by the check above,
-# we'll use the pre-built bootlin toolchains, which do not use the GCC
-# version in their name, but a year/month combination with additional
-# fields. Therefore, let's map our desired GCC version to the bootlin
-# toolchain name.
-#
-if [[ "$ARCH_GCC_TC_VER" == "" ]]; then
-   set_arch_gcc_tc_ver $GCC_TC_VER
-fi
+# Set ARCH_TCC_TC_VER and ARCH_GCC_TC_EXT
+set_arch_gcc_tc_ver $GCC_TC_VER
 
-if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
-
-   mkdir -p $TC
-   echo -n $GCC_TC_VER > $TC/.gcc_tc_ver_$ARCH
-
-else
-
-   saved=$(cat $TC/.gcc_tc_ver_$ARCH)
-   v=$GCC_TC_VER
-
-   if ! [ "$GCC_TC_VER" = "$saved" ]; then
-      echo "WARNING: GCC_TC_VER ($v) does not match with saved one ($saved)"
-      echo "WARNING: This is NOT a supported scenario. Please delete:"
-      echo "   $TC/$ARCH"
-      echo "   $TC/.gcc_tc_ver_$ARCH"
-      echo "And run this script again to use the new toolchain."
-      exit 1
-   fi
-fi
-
+# Save GCC_TC_VER in $TC/.gcc_tc_ver_$ARCH and check its former value
+save_and_check_gcc_tc_ver
 
 # Compute $GCC_TC_VER_ from the base $GCC_TC_VER (e.g. "1.2.3" -> "1_2_3")
 GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
@@ -352,7 +281,7 @@ function main {
 
    default_funcs=()
 
-   if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
+   if [[ "$USE_CUSTOM_GCC_TC" != 1 ]]; then
       # Default case
       default_funcs+=(download_gcc_musl)
    else
@@ -376,7 +305,7 @@ function main {
    default_funcs+=(build_mtools)
    default_funcs+=(build_zlib)
 
-   if [[ "$NO_BUSYBOX" != "1" ]]; then
+   if [[ "$NO_BUSYBOX" != 1 ]]; then
       default_funcs+=(build_busybox)
    fi
 
@@ -451,13 +380,9 @@ function main {
    mkdir -p $TC/i386
    mkdir -p $TC/x86_64
    mkdir -p $TC/riscv64
-
-   if [[ "$HOST_ARCH" == "aarch64" ]]; then
-      mkdir -p $TC/host_aarch64
-   else
-      mkdir -p $TC/host_i386
-      mkdir -p $TC/host_x86_64
-   fi
+   mkdir -p $TC/host_aarch64
+   mkdir -p $TC/host_i386
+   mkdir -p $TC/host_x86_64
 
    cd $TC
 
@@ -473,9 +398,9 @@ function main {
    fi
 
 
-   if [ "$1" == "-s" ]; then
+   if [[ "$1" == "-s" ]]; then
 
-      if [ $# -lt 2 ]; then
+      if [[ $# < 2 ]]; then
          echo "Expected the name of the function to call after the $1 option"
       fi
 
