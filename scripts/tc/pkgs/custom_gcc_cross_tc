@@ -15,14 +15,25 @@ function custom_gcc_cross_tc_internal {
    local arch_gcc="$2"
    local gh="https://github.com"
    local url="$gh/vvaltchev/musl-cross-make/releases/download/fd6be58297e"
+   local tarname=""
+   local url_target=""
+   local url_host=""
 
-   if [[ $arch == i386 ]]; then
-      local prefix="x86-i386"
-   elif [[ $arch == x86_64 ]]; then
-      local prefix="x86-64"
-   fi
+   case $arch in
+      i386) url_target="x86-i386";;
+      x86_64) url_target="x86-64";;
+      *) echo "TARGET $arch not supported by the CUSTOM GCC TC"; exit 1;;
+   esac
 
-   local tarname="${prefix}-musl-${MUSL_VER}-gcc-$GCC_TC_VER-aarch64.tar.bz2"
+   case $HOST_ARCH in
+      i386) url_host="x86-i386";;
+      x86_64) url_host="x86-64";;
+      *) echo "HOST $HOST_ARCH not supported by the CUSTOM GCC TC"; exit 1;;
+   esac
+
+   tarname="${url_target}-musl-${MUSL_VER}"
+   tarname="${tarname}-gcc-${GCC_TC_VER}"
+   tarname="${tarname}-${url_host}.tar.bz2"
 
    download_file_in_cache "$url" "$tarname"
    extract_cachefile_tar_bz $tarname --
@@ -43,14 +54,9 @@ function custom_gcc_cross_tc_internal {
 
 function custom_gcc_cross_tc {
 
-   if [[ "$HOST_ARCH" != "aarch64" ]]; then
-      echo "ERROR: this function is supported only on HOST_ARCH=aarch64"
-      exit 1
-   fi
-
    pushd $TC/host
 
-   if [[ $ARCH == i386 ]] || [[ $ARCH == x86_64 ]]; then
+   if [[ $ARCH == i386 || $ARCH == x86_64 ]]; then
 
       # Always download the i386 toolchain to build the legacy bootloader
 
@@ -82,7 +88,7 @@ function custom_gcc_cross_tc_installed_status {
       arch_list="${arch_list:: -1}"
    fi
 
-   if [ -n "$arch_list" ]; then
+   if [[ "$arch_list" != "" ]]; then
       echo "installed $arch_list"
    fi
 }

@@ -13,8 +13,8 @@ function download_libmusl {
    extract_cachefile_tar_gz $tarname --
 }
 
-if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   if [[ "$ARCH" == "i386" ]]; then
+if [[ $HOST_ARCH == i386 || $HOST_ARCH == x86_64 ]]; then
+   if [[ $ARCH == i386 ]]; then
       all_funcs_list+=(build_libmusl)
    fi
 fi
@@ -79,6 +79,7 @@ function build_libmusl {
       cp musl-gcc musl-g++
       sed -i 's/-${ARCH}-gcc/-${ARCH}-g++/' musl-g++
 
+      # TODO: download properly the linux kernel headers and use them
       cd $MUSL_INSTALL/include
       ln -s /usr/include/linux .
       ln -s /usr/include/asm-generic .
