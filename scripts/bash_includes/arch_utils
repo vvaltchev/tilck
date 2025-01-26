@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# Given an architecture name using Linux's convention, return the EFI name
+# for the same architecture. The result is the same for almost all architectures
+# except for "i386" which becomes "ia32".
+#
+function get_efi_arch {
+
+   local ret="$1"
+
+   if [[ "$ret" == "i386" ]]; then
+      ret="ia32"
+   fi
+
+   echo "$ret"
+}
+
+function set_host_arch_variable {
+   HOST_ARCH="`uname -m`"
+
+   if [[ "$HOST_ARCH" == "x86_64" ]]; then
+
+      : # Great, that's what we expect: do nothing
+
+   elif [[ "$HOST_ARCH" == "amd64" ]]; then
+
+      # An alias for x86_64: fix our variable
+      HOST_ARCH="x86_64"
+
+   elif [[ "$HOST_ARCH" == "i686" ]]; then
+
+      # Special case, not "officially" supported.
+      # We need to set HOST_ARCH to "i386", to match the convention
+      # used by ARCH and ld.
+
+      HOST_ARCH="i386"
+
+   elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
+
+      if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
+         echo "ERROR: you need to set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
+         exit 1
+      fi
+
+   else
+
+      echo "ERROR: build host architecture $HOST_ARCH not supported"
+      exit 1
+   fi
+}
+
+function set_arch_variables {
+
+   if [[ "$1" == "i386" ]]; then
+
+      ARCH_SHORT="x86"
+      ARCH_FAMILY="generic_x86"
+      ARCH_ELF_NAME="elf32-i386"
+      ARCH_LD_OUTPUT="elf_i386"
+      ARCH_EFI=$(get_efi_arch $ARCH)
+      ARCH_GCC_TC="i686"
+      ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
+      ARCH_GCC_TC_CODENAME="x86-i686"
+
+   elif [[ "$1" == "x86_64" ]]; then
+
+      ARCH_SHORT="x86_64"
+      ARCH_FAMILY="generic_x86"
+      ARCH_ELF_NAME="elf64-x86-64"
+      ARCH_LD_OUTPUT="elf_x86_64"
+      ARCH_EFI=$(get_efi_arch $ARCH)
+      ARCH_GCC_TC="x86_64"
+      ARCH_GCC_FLAGS="-m64"
+      ARCH_GCC_TC_CODENAME="x86-64-core-i7"
+
+   elif [[ "$1" == "riscv64" ]]; then
+
+      ARCH_SHORT="riscv64"
+      ARCH_FAMILY="riscv"
+      ARCH_ELF_NAME="elf64-littleriscv"
+      ARCH_LD_OUTPUT="elf64lriscv"
+      ARCH_GCC_TC="riscv64"
+      ARCH_GCC_FLAGS=""
+      ARCH_GCC_TC_CODENAME="riscv64-lp64d"
+
+   else
+      echo "Architecture '$1' not supported."
+      exit 1
+   fi
+}
+
+function set_arch_gcc_tc_ver {
+
+   case $1 in
+      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
+      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
+   esac
+}
+
+function dump_build_toolchain_env {
+
+   echo
+   echo "ARCH=$ARCH"
+   echo "HOST_ARCH=$HOST_ARCH"
+   echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
+   echo "GCC_TC_VER=$GCC_TC_VER"
+   echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
+   echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
+   echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
+   echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
+   echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
+   echo "USE_SYSCC=$USE_SYSCC"
+   echo "CC=$CC"
+   echo "CXX=$CXX"
+   echo
+}
