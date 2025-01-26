@@ -66,6 +66,9 @@ fi
 DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
 MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
 
+# Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
+# TODO: add a per-arch configuration file for this toolchain as well.
+CUSTOM_GCC_TC_VERSION="11.4.0"
 
 # Global toolchain directory
 
@@ -80,7 +83,7 @@ fi
 TC="$TCROOT"
 
 # Constants
-BUILD_ARCH="x86_64" # the only arch accepted for the build machine
+BUILD_ARCH="x86_64" # offically supported build host architecture
 
 # Arch-variables
 
@@ -102,6 +105,19 @@ elif [[ "$HOST_ARCH" == "i686" ]]; then
    # used by ARCH and ld.
 
    HOST_ARCH="i386"
+
+elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
+
+   if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
+      echo "ERROR: you need to set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
+      exit 1
+   fi
+
+else
+
+   echo "ERROR: build host architecture $HOST_ARCH not supported"
+   exit 1
 fi
 
 # ARCH and ARCH_* variables are all about the TARGET architecture
@@ -114,34 +130,28 @@ if [ -z "$GCC_TC_VER" ]; then
 
    else
 
-      # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file
-      # We have to pick either the default GCC_TC_VER for $ARCH when the
-      # host arch is x86_64, or support special cases like aarch64.
+      # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
 
-      if [[ "$HOST_ARCH" == "x86_64" ]]; then
-
-         # Main case, fully supported
-         GCC_TC_VER="$DEFAULT_GCC_TC_VERSION"
-
-      elif [[ "$HOST_ARCH" == "aarch64" ]]; then
-
-         # Support for AARCH64 as build machine (limited)
-         GCC_TC_VER="11.4.0"
+      if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
+         GCC_TC_VER=$CUSTOM_GCC_TC_VERSION    # Custom GCC toolchain
+      elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+         GCC_TC_VER="$DEFAULT_GCC_TC_VERSION" # Main case, fully supported
       fi
    fi
 fi
 
-if [ -z "$GCC_TC_VER" ]; then
+if [[ "$GCC_TC_VER" == "" ]]; then
    echo "ERROR: GCC_TC_VER is not set"
    exit 1
 fi
 
 #
-# Support for AARCH64 as build machine (limited)
+# Support for our custom TC. Mandatory when HOST_ARCH != BUILD_ARCH, optional
+# otherwise.
 #
-if [[ "$HOST_ARCH" == "aarch64" ]]; then
+if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
 
-   if [ -z "$MUSL_VER" ]; then
+   if [[ "$MUSL_VER" == "" ]]; then
       MUSL_VER="1.2.5"
    fi
 
@@ -236,9 +246,11 @@ MUSL_INSTALL=$TC/$ARCH/musl/install
 echo
 echo "ARCH=$ARCH"
 echo "HOST_ARCH=$HOST_ARCH"
+echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
 echo "GCC_TC_VER=$GCC_TC_VER"
 echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
 echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
+echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
 echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
 echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
 echo "USE_SYSCC=$USE_SYSCC"
@@ -299,6 +311,8 @@ function reset_cc_vars {
 }
 
 all_funcs_list=()
+install_funcs_list=()
+config_funcs_list=()
 
 # Source files to include
 source $MAIN_DIR/scripts/bash_includes/script_utils
@@ -307,10 +321,8 @@ function arch_checks {
 
    if [[ "$HOST_ARCH" != *"$BUILD_ARCH"* ]]; then
 
-      echo "WARNING: Tilck is designed to be built only on $BUILD_ARCH host "
-      echo "machines no matter which target architecture has been chosen. "
-      echo "Reason: the build system uses a toolchain pre-compiled for "
-      echo "$BUILD_ARCH hosts."
+      echo "WARNING: Tilck's build system officially supports only "
+      echo "HOST_ARCH=$BUILD_ARCH host, no matter the value of ARCH."
       echo
       echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
       echo
@@ -321,8 +333,8 @@ function arch_checks {
       echo "   2. HOST_ARCH == aarch64"
       echo
       echo "Scenario 1. requires the environment variables USE_SYSCC, CC and "
-      echo "CXX to be set correctly. Scenario 2 is will download and build"
-      echo "a whole cross-gcc toolchain for the selected ARCH".
+      echo "CXX to be set correctly. Scenario 2 will download a custom-gcc"
+      echo "toolchain for the selected target ARCH".
       echo
 
       if [[ "$HOST_ARCH" == "$ARCH" ]]; then
@@ -351,10 +363,10 @@ function arch_checks {
             exit 1
          fi
 
-      elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+      else
 
-         echo "This scenario is absolutely EXPERIMENTAL and will require"
-         echo "the download and the build of a custom cross GCC toolchain"
+         echo "This scenario is EXPERIMENTAL and will require the download a"
+         echo "GCC toolchain from: https://github.com/vvaltchev/musl-cross-make"
          echo ""
          echo -n "Proceed [Y/n] ? "
 
@@ -366,12 +378,6 @@ function arch_checks {
             echo "Aborted."
             exit 1
          fi
-
-      else
-
-         echo "In this case, HOST_ARCH ($HOST_ARCH) != ARCH ($ARCH)"
-         echo "Unable to continue."
-         exit 1
       fi
    fi
 }
@@ -656,34 +662,24 @@ function main {
 
    if [[ "$1" == "--clean" ]]; then
       perform_full_clean
+      exit 0
    fi
 
    default_funcs=()
 
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-      # Default case: we're building on a x86-64 machine
+   if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
+      # Default case
       default_funcs+=(download_gcc_musl)
-
-      if [[ "$USE_SYSCC" == 1 ]]; then
-         # Even we're building on a x86-64 machine, if the system compiler
-         # was requested, we need to also build libmusl.
-         default_funcs+=(build_libmusl)
-      fi
-
-   elif [[ "$HOST_ARCH" == "$ARCH" ]]; then
-
-      # We don't have our pre-build gcc-musl toolchains for HOST_ARCH, therefore
-      # we *must* build also libmusl, in order to link with musl programs
-      # compiled with the system compiler.
-      default_funcs+=(build_libmusl)
-
-   elif [[ "$HOST_ARCH" == "aarch64" ]]; then
-
+   else
+      # Special case, use the custom GCC toolchain
       default_funcs+=(custom_gcc_cross_tc)
    fi
 
-   if [[ "$HOST_ARCH" == "x86_64" ]]; then
+   if [[ "$USE_SYSCC" == 1 ]]; then
+      default_funcs+=(build_libmusl)
+   fi
+
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
       default_funcs+=(download_cmake)
    fi
 
@@ -695,7 +691,7 @@ function main {
    default_funcs+=(build_mtools)
    default_funcs+=(build_zlib)
 
-   if [ -z "$NO_BUSYBOX" ]; then
+   if [[ "$NO_BUSYBOX" != "1" ]]; then
       default_funcs+=(build_busybox)
    fi
 
@@ -729,7 +725,7 @@ function main {
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
    local ha=$TC/host_${HOST_ARCH}
 
-   if [[ "$USE_SYSCC" != 1 ]] || [[ "$HOST_ARCH" != "$ARCH " ]]; then
+   if [[ "$USE_SYSCC" != 1 || "$HOST_ARCH" != "$ARCH" ]]; then
       GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
       GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # glibc cross-compiler
    fi
@@ -741,16 +737,12 @@ function main {
       # its version and NOT the wrapper script in build_scripts which simulates
       # its behavior using -m32 and -specs.
       export PATH="$GCC_TOOLCHAIN:$PATH"
-      local gcc_x86_64_bin="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin"
 
-      if [ -d $gcc_x86_64_bin ] || [[ "$HOST_ARCH" == "aarch64" ]]; then
-         # Also export the x86_64 cross-toolchain if it exists or if the host
-         # is aarch64 since on that architecture, we need both the i386 and the
-         # x86_64 toolchain in any case.
-         export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
-      fi
+      # Also export the x86_64 cross-toolchain if it exists or if the host
+      # is aarch64 since on that architecture, we need both the i386 and the
+      # x86_64 toolchain in any case.
+      export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
 
-      unset gcc_x86_64_bin
       unset ha
    fi
 
@@ -828,13 +820,13 @@ function main {
 
    # Single-option parsing
 
-   if [ "$1" == "-n" ] || [ "$1" == "--skip-install-pkgs" ]; then
+   if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
       local skip_install=1
    fi
 
    # Do the actual job
 
-   if [ -z "$skip_install" ]; then
+   if [[ "$skip_install" == "" ]]; then
       install_packages
    else
       echo "*** SKIPPING installation of packages"
