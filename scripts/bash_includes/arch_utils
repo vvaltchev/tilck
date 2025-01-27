@@ -88,23 +88,51 @@ function set_host_arch_variable {
    fi
 }
 
-function set_gcc_tc_defaults {
+# $1 = arch
+function set_gcc_tc_defaults_internal {
 
    # Default GCC toolchain version to use. Unfortunately, it depends on the
-   # target # architecture, because the list of available pre-built toolchains
+   # target architecture, because the list of available pre-built toolchains
    # on https://toolchains.bootlin.com depends on the architecture.
 
-   if ! [ -f $GCC_TC_CONF/$ARCH/default_ver ]; then
-      echo "ERROR: file $GCC_TC_CONF/$ARCH/default_ver not found"
-      exit 1
-   fi
+   for f in default_ver min_ver; do
+      if ! [ -f $GCC_TC_CONF/$1/$f ]; then
+         echo "ERROR: file $GCC_TC_CONF/$1/$f not found"
+         exit 1
+      fi
+   done
 
-   DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
-   MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
+   local name=${1}_DEFAULT_GCC_TC_VERSION
+   local value=$(cat $GCC_TC_CONF/$1/default_ver)
+   eval "$name=$value"
+
+   local name=${1}_MIN_GCC_TC_VERSION
+   local value=$(cat $GCC_TC_CONF/$1/min_ver)
+   eval "$name=$value"
 
    # Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
    # TODO: add a per-arch configuration file for this toolchain as well.
-   CUSTOM_GCC_TC_VERSION="11.4.0"
+   local name=${1}_CUSTOM_GCC_TC_VERSION
+   local value="11.4.0"
+   eval "$name=$value"
+}
+
+function set_gcc_tc_defaults {
+
+   for arch in ${ALL_ARCH_LIST[@]}; do
+      set_gcc_tc_defaults_internal $arch
+   done
+
+   local list=()
+   list+=(DEFAULT_GCC_TC_VERSION)
+   list+=(MIN_GCC_TC_VERSION)
+   list+=(CUSTOM_GCC_TC_VERSION)
+
+   for v in ${list[@]}; do
+      local name=${ARCH}_$v
+      local value=${!name}
+      eval "$v=$value"
+   done
 }
 
 function set_gcc_ver {
