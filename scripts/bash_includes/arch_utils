@@ -88,6 +88,51 @@ function set_host_arch_variable {
    fi
 }
 
+function set_gcc_tc_defaults {
+
+   # Default GCC toolchain version to use. Unfortunately, it depends on the
+   # target # architecture, because the list of available pre-built toolchains
+   # on https://toolchains.bootlin.com depends on the architecture.
+
+   if ! [ -f $GCC_TC_CONF/$ARCH/default_ver ]; then
+      echo "ERROR: file $GCC_TC_CONF/$ARCH/default_ver not found"
+      exit 1
+   fi
+
+   DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
+   MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
+
+   # Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
+   # TODO: add a per-arch configuration file for this toolchain as well.
+   CUSTOM_GCC_TC_VERSION="11.4.0"
+}
+
+function set_gcc_ver {
+
+   if [[ "$GCC_TC_VER" == "" ]]; then
+
+      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+
+         GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
+
+      else
+
+         # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
+
+         if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
+            GCC_TC_VER=$CUSTOM_GCC_TC_VERSION    # Custom GCC toolchain
+         elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+            GCC_TC_VER="$DEFAULT_GCC_TC_VERSION" # Main case, fully supported
+         fi
+      fi
+   fi
+
+   if [[ "$GCC_TC_VER" == "" ]]; then
+      echo "ERROR: GCC_TC_VER is not set"
+      exit 1
+   fi
+}
+
 function set_arch_variables {
 
    for v in ${ARCH_VARS_LIST[@]}; do
@@ -125,69 +170,6 @@ function set_arch_gcc_tc_ver {
    esac
 }
 
-function dump_build_toolchain_env {
-
-   echo
-   echo "ARCH=$ARCH"
-   echo "HOST_ARCH=$HOST_ARCH"
-   echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
-   echo "GCC_TC_VER=$GCC_TC_VER"
-   echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
-   echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
-   echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
-   echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
-   echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
-   echo "USE_SYSCC=$USE_SYSCC"
-   echo "CC=$CC"
-   echo "CXX=$CXX"
-   echo
-}
-
-function set_gcc_ver {
-
-   if [[ "$GCC_TC_VER" == "" ]]; then
-
-      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
-
-         GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
-
-      else
-
-         # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
-
-         if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-            GCC_TC_VER=$CUSTOM_GCC_TC_VERSION    # Custom GCC toolchain
-         elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-            GCC_TC_VER="$DEFAULT_GCC_TC_VERSION" # Main case, fully supported
-         fi
-      fi
-   fi
-
-   if [[ "$GCC_TC_VER" == "" ]]; then
-      echo "ERROR: GCC_TC_VER is not set"
-      exit 1
-   fi
-}
-
-function set_gcc_tc_defaults {
-
-   # Default GCC toolchain version to use. Unfortunately, it depends on the
-   # target # architecture, because the list of available pre-built toolchains
-   # on https://toolchains.bootlin.com depends on the architecture.
-
-   if ! [ -f $GCC_TC_CONF/$ARCH/default_ver ]; then
-      echo "ERROR: file $GCC_TC_CONF/$ARCH/default_ver not found"
-      exit 1
-   fi
-
-   DEFAULT_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/default_ver)
-   MIN_GCC_TC_VERSION=$(cat $GCC_TC_CONF/$ARCH/min_ver)
-
-   # Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
-   # TODO: add a per-arch configuration file for this toolchain as well.
-   CUSTOM_GCC_TC_VERSION="11.4.0"
-}
-
 function save_and_check_gcc_tc_ver {
 
    if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then
@@ -210,3 +192,22 @@ function save_and_check_gcc_tc_ver {
       fi
    fi
 }
+
+function dump_build_toolchain_env {
+
+   echo
+   echo "ARCH=$ARCH"
+   echo "HOST_ARCH=$HOST_ARCH"
+   echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
+   echo "GCC_TC_VER=$GCC_TC_VER"
+   echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
+   echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
+   echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
+   echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
+   echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
+   echo "USE_SYSCC=$USE_SYSCC"
+   echo "CC=$CC"
+   echo "CXX=$CXX"
+   echo
+}
+
