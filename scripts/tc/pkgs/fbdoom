@@ -131,7 +131,7 @@ function build_fbdoom_installed_status {
 
    local arch_list=""
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
       if [ -d $TC/$x/fbDOOM/ ]; then
          if [ -f $TC/$x/fbDOOM/fbdoom/fbdoom.gz ]; then
             arch_list="${arch_list}$x "

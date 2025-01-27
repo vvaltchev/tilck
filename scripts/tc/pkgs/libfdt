@@ -66,7 +66,7 @@ function build_libfdt_installed_status {
 
    local arch_list=""
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
       if [ -d $TC/$x/dtc ]; then
          if [ -f $TC/$x/dtc/libfdt/libfdt.a ]; then
             arch_list="${arch_list}$x "

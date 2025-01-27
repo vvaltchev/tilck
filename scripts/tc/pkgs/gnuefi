@@ -131,7 +131,7 @@ function build_gnuefi_installed_status {
    local arch_list=""
    local y
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
 
       if [ -d $TC/$x/gnu-efi ]; then
 
