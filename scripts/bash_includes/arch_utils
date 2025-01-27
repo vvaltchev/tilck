@@ -95,6 +95,8 @@ function set_gcc_tc_defaults_internal {
    # target architecture, because the list of available pre-built toolchains
    # on https://toolchains.bootlin.com depends on the architecture.
 
+   local f
+
    for f in default_ver min_ver; do
       if ! [ -f $GCC_TC_CONF/$1/$f ]; then
          echo "ERROR: file $GCC_TC_CONF/$1/$f not found"
@@ -119,6 +121,9 @@ function set_gcc_tc_defaults_internal {
 
 function set_gcc_tc_defaults {
 
+   local arch
+   local var_name
+
    for arch in ${ALL_ARCH_LIST[@]}; do
       set_gcc_tc_defaults_internal $arch
    done
@@ -128,41 +133,83 @@ function set_gcc_tc_defaults {
    list+=(MIN_GCC_TC_VERSION)
    list+=(CUSTOM_GCC_TC_VERSION)
 
-   for v in ${list[@]}; do
-      local name=${ARCH}_$v
-      local value=${!name}
-      eval "$v=$value"
+   for var_name in ${list[@]}; do
+      local arch_name=${ARCH}_${var_name}
+      local value=${!arch_name}
+      eval "${var_name}=$value"
    done
 }
 
-function set_gcc_ver {
+# $1 = arch
+function set_gcc_ver_internal {
 
-   if [[ "$GCC_TC_VER" == "" ]]; then
+   local name="${1}_GCC_TC_VER"
 
-      if [ -f $TC/.gcc_tc_ver_$ARCH ]; then
+   if [[ "${!name}" == "" ]]; then
 
-         GCC_TC_VER=$(cat $TC/.gcc_tc_ver_$ARCH)
+      if [ -f $TC/.gcc_tc_ver_$1 ]; then
+
+         local value=$(cat $TC/.gcc_tc_ver_$1)
+         eval "$name=$value"
 
       else
 
          # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
 
          if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-            GCC_TC_VER=$CUSTOM_GCC_TC_VERSION    # Custom GCC toolchain
+
+            # Custom GCC toolchain
+            local name2="${1}_CUSTOM_GCC_TC_VERSION"
+            local value2="${!name2}"
+            eval "$name=$value2"
+
          elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-            GCC_TC_VER="$DEFAULT_GCC_TC_VERSION" # Main case, fully supported
+
+            # Main case, fully supported
+            local name2="${1}_DEFAULT_GCC_TC_VERSION"
+            local value2="${!name2}"
+            eval "$name=$value2"
+
+         else
+            # We're running on some other arch and we're not using the custom
+            # gcc tc. That won't work unless HOST_ARCH=ARCH and we have
+            # USE_SYSCC=1 set.
+            :
          fi
       fi
    fi
 
-   if [[ "$GCC_TC_VER" == "" ]]; then
-      echo "ERROR: GCC_TC_VER is not set"
+   if [[ "${!name}" == "" ]]; then
+      echo "ERROR: ${name}_GCC_TC_VER is not set"
       exit 1
    fi
 }
 
+function set_gcc_ver {
+
+   # If the GCC_TC_VER env variable is set, it refers to $ARCH, so set
+   # that instance of GCC_TC_VER, so that the internal function won't
+   # override it.
+
+   local name="${ARCH}_GCC_TC_VER"
+   local arch
+
+   if [[ "$GCC_TC_VER" != "" ]]; then
+      eval "$name=$GCC_TC_VER"
+   fi
+
+   for arch in ${ALL_ARCH_LIST[@]}; do
+      set_gcc_ver_internal $arch
+   done
+
+   # Set the base GCC_TC_VER to current's target arch value (if any)
+   local value=${!name}
+   eval "GCC_TC_VER=$value"
+}
+
 function set_arch_variables {
 
+   local v
    for v in ${ARCH_VARS_LIST[@]}; do
       local name=${ARCH}_ARCH_${v}
       local value=${!name}
