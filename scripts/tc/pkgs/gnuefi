@@ -129,12 +129,15 @@ function build_gnuefi {
 function build_gnuefi_installed_status {
 
    local arch_list=""
+   local y
 
    for x in $ALL_ARCH_LIST; do
 
       if [ -d $TC/$x/gnu-efi ]; then
-         y=$(get_efi_arch $x)
-         if ! [ -f $TC/$x/gnu-efi/$y/gnuefi/libgnuefi.a ]; then
+
+         y="${x}_ARCH_EFI"
+
+         if ! [ -f $TC/$x/gnu-efi/${!y}/gnuefi/libgnuefi.a ]; then
             echo "error"
             return
          fi

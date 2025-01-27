@@ -1,31 +1,59 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# Given an architecture name using Linux's convention, return the EFI name
-# for the same architecture. The result is the same for almost all architectures
-# except for "i386" which becomes "ia32".
-#
-function get_efi_arch {
+ARCH_VARS_LIST=()
+ARCH_VARS_LIST+=(SHORT)
+ARCH_VARS_LIST+=(FAMILY)
+ARCH_VARS_LIST+=(ELF_NAME)
+ARCH_VARS_LIST+=(LD_OUTPUT)
+ARCH_VARS_LIST+=(EFI)
+ARCH_VARS_LIST+=(GCC_TC)
+ARCH_VARS_LIST+=(GCC_FLAGS)
+ARCH_VARS_LIST+=(GCC_TC_CODENAME)
 
-   local ret="$1"
 
-   if [[ "$ret" == "i386" ]]; then
-      ret="ia32"
-   fi
+i386_ARCH_SHORT="x86"
+i386_ARCH_FAMILY="generic_x86"
+i386_ARCH_ELF_NAME="elf32-i386"
+i386_ARCH_LD_OUTPUT="elf_i386"
+i386_ARCH_EFI="ia32"
+i386_ARCH_GCC_TC="i686"
+i386_ARCH_GCC_FLAGS="-m32 -march=i686"
+i386_ARCH_GCC_TC_CODENAME="x86-i686"
 
-   echo "$ret"
-}
+x86_64_ARCH_SHORT="x86_64"
+x86_64_ARCH_FAMILY="generic_x86"
+x86_64_ARCH_ELF_NAME="elf64-x86-64"
+x86_64_ARCH_LD_OUTPUT="elf_x86_64"
+x86_64_ARCH_EFI="x86_64"
+x86_64_ARCH_GCC_TC="x86_64"
+x86_64_ARCH_GCC_FLAGS="-m64"
+x86_64_ARCH_GCC_TC_CODENAME="x86-64-core-i7"
+
+riscv64_ARCH_SHORT="riscv64"
+riscv64_ARCH_FAMILY="riscv"
+riscv64_ARCH_ELF_NAME="elf64-littleriscv"
+riscv64_ARCH_LD_OUTPUT="elf64lriscv"
+riscv64_ARCH_GCC_TC="riscv64"
+riscv64_ARCH_GCC_FLAGS=""
+riscv64_ARCH_GCC_TC_CODENAME="riscv64-lp64d"
+
 
 function set_arch_gcc_tc_arch {
-   case $1 in
-      i386) ARCH_GCC_TC="i686";;
-      x86_64) ARCH_GCC_TC="x86_64";;
-      riscv64) ARCH_GCC_TC="riscv64";;
-      *) echo "Architecture '$1' not supported."; exit 1;;
-   esac
+
+   local name="${1}_ARCH_GCC_TC"
+   local value=${!name}
+
+   if [[ "$value" == "" ]]; then
+      echo "ERROR: TARGET arch '$1' is NOT supported."
+      exit 1
+   fi
+
+   ARCH_GCC_TC=$value
 }
 
 function set_host_arch_variable {
+
    HOST_ARCH="`uname -m`"
 
    if [[ "$HOST_ARCH" == "x86_64" ]]; then
@@ -48,8 +76,8 @@ function set_host_arch_variable {
    elif [[ "$HOST_ARCH" == "aarch64" ]]; then
 
 
-      if [[ "$USE_CUSTOM_GCC_TC" != "1" ]]; then
-         echo "ERROR: you need to set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
+      if [[ "$USE_CUSTOM_GCC_TC" != 1 ]]; then
+         echo "ERROR: set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
          exit 1
       fi
 
@@ -62,44 +90,11 @@ function set_host_arch_variable {
 
 function set_arch_variables {
 
-   case $1 in
-      i386)
-         ARCH_SHORT="x86"
-         ARCH_FAMILY="generic_x86"
-         ARCH_ELF_NAME="elf32-i386"
-         ARCH_LD_OUTPUT="elf_i386"
-         ARCH_EFI=$(get_efi_arch $ARCH)
-         ARCH_GCC_TC="i686"
-         ARCH_GCC_FLAGS="-m32 -march=$ARCH_GCC_TC"
-         ARCH_GCC_TC_CODENAME="x86-i686"
-      ;;
-
-      x86_64)
-         ARCH_SHORT="x86_64"
-         ARCH_FAMILY="generic_x86"
-         ARCH_ELF_NAME="elf64-x86-64"
-         ARCH_LD_OUTPUT="elf_x86_64"
-         ARCH_EFI=$(get_efi_arch $ARCH)
-         ARCH_GCC_TC="x86_64"
-         ARCH_GCC_FLAGS="-m64"
-         ARCH_GCC_TC_CODENAME="x86-64-core-i7"
-      ;;
-
-      riscv64)
-         ARCH_SHORT="riscv64"
-         ARCH_FAMILY="riscv"
-         ARCH_ELF_NAME="elf64-littleriscv"
-         ARCH_LD_OUTPUT="elf64lriscv"
-         ARCH_GCC_TC="riscv64"
-         ARCH_GCC_FLAGS=""
-         ARCH_GCC_TC_CODENAME="riscv64-lp64d"
-      ;;
-
-      *)
-         echo "Architecture '$1' not supported."
-         exit 1
-      ;;
-   esac
+   for v in ${ARCH_VARS_LIST[@]}; do
+      local name=${ARCH}_ARCH_${v}
+      local value=${!name}
+      eval "ARCH_${v}='$value'"
+   done
 }
 
 #
