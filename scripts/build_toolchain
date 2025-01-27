@@ -51,6 +51,7 @@ set_gcc_tc_defaults
 : ${TCROOT_PARENT:=$MAIN_DIR}
 : ${TCROOT:=$TCROOT_PARENT/toolchain2}
 TC="$TCROOT"
+MUSL_INSTALL=$TC/$ARCH/musl/install
 
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
@@ -74,7 +75,6 @@ save_and_check_gcc_tc_ver
 # Compute $GCC_TC_VER_ from the base $GCC_TC_VER (e.g. "1.2.3" -> "1_2_3")
 GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
 GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
-MUSL_INSTALL=$TC/$ARCH/musl/install
 
 dump_build_toolchain_env
 
