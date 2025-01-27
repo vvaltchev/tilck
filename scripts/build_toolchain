@@ -32,7 +32,7 @@ source $MAIN_DIR/scripts/bash_includes/arch_checks
 source $MAIN_DIR/scripts/bash_includes/compiler_checks
 
 
-ALL_ARCH_LIST="i386 x86_64 riscv64"
+ALL_ARCH_LIST=(i386 x86_64 riscv64)
 DEFAULT_ARCH="i386"
 export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}

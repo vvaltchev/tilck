@@ -173,7 +173,7 @@ function build_tcc_installed_status {
 
    local arch_list=""
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
       if [ -d $TC/$x/tcc ]; then
          if [ -f $TC/$x/tcc/${x}-tcc ]; then
             arch_list="${arch_list}$x "
