@@ -135,8 +135,7 @@ function set_gcc_tc_defaults {
 
    for var_name in ${list[@]}; do
       local arch_name=${ARCH}_${var_name}
-      local value=${!arch_name}
-      eval "${var_name}=$value"
+      eval "${var_name}=${!arch_name}"
    done
 }
 
@@ -160,15 +159,13 @@ function set_gcc_ver_internal {
 
             # Custom GCC toolchain
             local name2="${1}_CUSTOM_GCC_TC_VERSION"
-            local value2="${!name2}"
-            eval "$name=$value2"
+            eval "$name=${!name2}"
 
          elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 
             # Main case, fully supported
             local name2="${1}_DEFAULT_GCC_TC_VERSION"
-            local value2="${!name2}"
-            eval "$name=$value2"
+            eval "$name=${!name2}"
 
          else
             # We're running on some other arch and we're not using the custom
@@ -203,8 +200,7 @@ function set_gcc_ver {
    done
 
    # Set the base GCC_TC_VER to current's target arch value (if any)
-   local value=${!name}
-   eval "GCC_TC_VER=$value"
+   eval "GCC_TC_VER=${!name}"
 }
 
 function set_arch_variables {
