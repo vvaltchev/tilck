@@ -64,7 +64,7 @@ fi
 set_gcc_ver
 
 # Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
-set_arch_variables $ARCH
+set_arch_variables
 
 # Set ARCH_TCC_TC_VER and ARCH_GCC_TC_EXT
 set_arch_gcc_tc_ver $GCC_TC_VER
