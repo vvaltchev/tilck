@@ -189,18 +189,35 @@ function set_gcc_ver {
    # override it.
 
    local name="${ARCH}_GCC_TC_VER"
+   local name_="${ARCH}_GCC_TC_VER_"
+   local pfx="${ARCH}_GCC_NAME_PFX"
    local arch
+   local ver   # e.g. 1.2.3
+   local ver_  # e.g. 1_2_3
+   local pfx_arch_name
+   local val
+
 
    if [[ "$GCC_TC_VER" != "" ]]; then
       eval "$name=$GCC_TC_VER"
    fi
 
    for arch in ${ALL_ARCH_LIST[@]}; do
+
       set_gcc_ver_internal $arch
+      ver=${!name}
+      ver_=$(echo $ver | sed -E 's/[.]/_/g')
+
+      pfx_arch_name="${arch}_GCC_NAME_PFX"
+      val="gcc_${ver_}_${arch}"
+      eval "$pfx_arch_name=$val"
+
    done
 
-   # Set the base GCC_TC_VER to current's target arch value (if any)
+   # Set the base variables use the variant where $arch == $ARCH
    eval "GCC_TC_VER=${!name}"
+   eval "GCC_TC_VER_=${!name_}"
+   eval "GCC_NAME_PFX=${!pfx}"
 }
 
 function set_arch_variables {
@@ -263,8 +280,6 @@ function dump_build_toolchain_env {
    echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
    echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
    echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
-   echo "ARCH_GCC_TC_VER=$ARCH_GCC_TC_VER"
-   echo "ARCH_GCC_TC_EXT=$ARCH_GCC_TC_EXT"
    echo "USE_SYSCC=$USE_SYSCC"
    echo "CC=$CC"
    echo "CXX=$CXX"

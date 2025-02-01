@@ -65,10 +65,7 @@ set_arch_variables
 # Save GCC_TC_VER in $TC/.gcc_tc_ver_$ARCH and check its former value
 save_and_check_gcc_tc_ver
 
-# Compute $GCC_TC_VER_ from the base $GCC_TC_VER (e.g. "1.2.3" -> "1_2_3")
-GCC_TC_VER_=$(echo $GCC_TC_VER | sed -E 's/[.]/_/g')
-GCC_NAME_PFX="gcc_${GCC_TC_VER_}_${ARCH}"
-
+# Dump the most important variables like ARCH, GCC_TC_VER etc.
 dump_build_toolchain_env
 
 function print_func {
