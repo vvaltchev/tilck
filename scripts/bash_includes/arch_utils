@@ -213,34 +213,6 @@ function set_arch_variables {
    done
 }
 
-#
-# If $ARCH_GCC_TC_VER has not been set externally or by the check above,
-# we'll use the pre-built bootlin toolchains, which do not use the GCC
-# version in their name, but a year/month combination with additional
-# fields. Therefore, let's map our desired GCC version to the bootlin
-# toolchain name.
-#
-function set_arch_gcc_tc_ver {
-
-   if [[ "$ARCH_GCC_TC_VER" != "" ]]; then
-      # ARCH_GCC_TC_VER has been set either externally or to "custom"
-      # in case USE_CUSTOM_GCC_TC was set.
-      return
-   fi
-
-   case $1 in
-      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
-      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
-   esac
-}
-
 function save_and_check_gcc_tc_ver {
 
    if ! [ -f $TC/.gcc_tc_ver_$ARCH ]; then

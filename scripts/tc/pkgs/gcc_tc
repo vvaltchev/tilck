@@ -57,6 +57,23 @@ function gcc_x86_glibc_patch {
    popd
 }
 
+# $1 = GCC_TC_VER
+function set_arch_gcc_tc_ver_and_ext {
+
+   case $1 in
+      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
+      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
+      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
+      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
+   esac
+}
+
+
 # $1: libc name
 function download_gcc_tc_internal {
 
@@ -67,11 +84,16 @@ function download_gcc_tc_internal {
 
       show_work_on_component_msg "GCC TOOLCHAIN ($ARCH - $libc)"
 
+      set_arch_gcc_tc_ver_and_ext $GCC_TC_VER
+
       raw_gcc_tc_download                    \
          "${GCC_NAME_PFX}_${libc}"           \
          "$ARCH_GCC_TC_CODENAME"             \
          "$libc--$ARCH_GCC_TC_VER"           \
          "$ARCH_GCC_TC_EXT"
+
+      unset ARCH_GCC_TC_VER
+      unset ARCH_GCC_TC_EXT
 
       if [[ "$libc" == "glibc" && "$ARCH" == "i386" ]]; then
          gcc_x86_glibc_patch

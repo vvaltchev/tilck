@@ -56,18 +56,11 @@ MUSL_INSTALL=$TC/$ARCH/musl/install
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
 
-if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-   ARCH_GCC_TC_VER="custom"
-fi
-
 # Set GCC_TC_VER based on the .gcc_tc_ver_$ARCH file or defaults
 set_gcc_ver
 
 # Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
 set_arch_variables
-
-# Set ARCH_TCC_TC_VER and ARCH_GCC_TC_EXT
-set_arch_gcc_tc_ver $GCC_TC_VER
 
 # Save GCC_TC_VER in $TC/.gcc_tc_ver_$ARCH and check its former value
 save_and_check_gcc_tc_ver
