@@ -84,7 +84,7 @@ function download_gcc_tc_internal {
    local codename
    local tc_arch
    local gcc
-   pushd host_${BUILD_ARCH}
+   pushd $TC/host_${BUILD_ARCH}
 
    pfx="${arch}_GCC_NAME_PFX"
    pfx=${!pfx}
@@ -141,6 +141,33 @@ function download_gcc_tc_internal {
    popd
 }
 
+# $1 = libc
+function get_gcc_tc_installed_status_int {
+
+   local arch_list=""
+   local ha=$TC/host_${BUILD_ARCH}
+   local pfx
+
+   for x in ${ALL_ARCH_LIST[@]}; do
+
+      pfx="${x}_GCC_NAME_PFX"
+      pfx=${!pfx}
+
+      if [ -d $ha/${pfx}_$1 ]; then
+         arch_list="${arch_list}$x "
+      fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
+   fi
+}
+
 ############################################################
 
 if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
@@ -152,25 +179,17 @@ function download_gcc_musl {
 }
 
 function download_gcc_musl_installed_status {
-   if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_musl ]; then
-     echo "installed"
-   fi
+   get_gcc_tc_installed_status_int musl
 }
-
 
 if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
    all_funcs_list+=(download_gcc_glibc)
 fi
 
 function download_gcc_glibc {
-
-   pushd $TC
    download_gcc_tc_internal $ARCH glibc
-   popd
 }
 
 function download_gcc_glibc_installed_status {
-   if [ -d $TC/host_${BUILD_ARCH}/${GCC_NAME_PFX}_glibc ]; then
-     echo "installed"
-   fi
+   get_gcc_tc_installed_status_int glibc
 }
