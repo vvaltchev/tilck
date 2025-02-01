@@ -73,33 +73,50 @@ function set_arch_gcc_tc_ver_and_ext {
    esac
 }
 
-
-# $1: libc name
+# $1: arch
+# $2: libc name
 function download_gcc_tc_internal {
 
-   local libc="$1"
+   local arch="$1"
+   local libc="$2"
+   local pfx
+   local ver
+   local codename
+   local tc_arch
+   local gcc
    pushd host_${BUILD_ARCH}
 
-   if ! [ -d ${GCC_NAME_PFX}_${libc} ]; then
+   pfx="${arch}_GCC_NAME_PFX"
+   pfx=${!pfx}
 
-      show_work_on_component_msg "GCC TOOLCHAIN ($ARCH - $libc)"
+   ver="${arch}_GCC_TC_VER"
+   ver=${!ver}
 
-      set_arch_gcc_tc_ver_and_ext $GCC_TC_VER
+   codename="${ARCH}_ARCH_GCC_TC_CODENAME"
+   codename=${!codename}
+
+   tc_arch="${ARCH}_ARCH_GCC_TC"
+   tc_arch=${!tc_arch}
+
+   if ! [ -d ${pfx}_${libc} ]; then
+
+      show_work_on_component_msg "GCC TOOLCHAIN ($arch - $libc)"
+      set_arch_gcc_tc_ver_and_ext $ver
 
       raw_gcc_tc_download                    \
-         "${GCC_NAME_PFX}_${libc}"           \
-         "$ARCH_GCC_TC_CODENAME"             \
+         "${pfx}_${libc}"                    \
+         "${codename}"                       \
          "$libc--$ARCH_GCC_TC_VER"           \
          "$ARCH_GCC_TC_EXT"
 
       unset ARCH_GCC_TC_VER
       unset ARCH_GCC_TC_EXT
 
-      if [[ "$libc" == "glibc" && "$ARCH" == "i386" ]]; then
+      if [[ "$libc" == "glibc" && "$arch" == "i386" ]]; then
          gcc_x86_glibc_patch
       fi
 
-      local gcc=${GCC_NAME_PFX}_${libc}/bin/$ARCH_GCC_TC-linux-gcc
+      gcc=${pfx}_${libc}/bin/${tc_arch}-linux-gcc
 
       if ! [ -f $gcc ]; then
          echo "ERROR (download_gcc_tc_internal): file $gcc NOT found."
@@ -108,17 +125,17 @@ function download_gcc_tc_internal {
 
       if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 
-         local ver=$(generic_get_version_str $gcc)
-         echo "Detected GCC toolchain version: '$ver'"
+         local actual_ver=$(generic_get_version_str $gcc)
+         echo "Detected GCC toolchain version: '${actual_ver}'"
 
-         if [[ "$ver" != "$GCC_TC_VER" ]]; then
-            echo "ERROR: gcc version doesn't match expected ($GCC_TC_VER)"
+         if [[ "$actual_ver" != "$ver" ]]; then
+            echo "ERROR: gcc version doesn't match expected ($ver)"
             exit 1
          fi
       fi
 
    else
-      show_skip_component_msg "GCC TOOLCHAIN ($ARCH - $libc)"
+      show_skip_component_msg "GCC TOOLCHAIN ($arch - $libc)"
    fi
 
    popd
@@ -131,7 +148,7 @@ if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
 fi
 
 function download_gcc_musl {
-   download_gcc_tc_internal musl
+   download_gcc_tc_internal $ARCH musl
 }
 
 function download_gcc_musl_installed_status {
@@ -148,7 +165,7 @@ fi
 function download_gcc_glibc {
 
    pushd $TC
-   download_gcc_tc_internal glibc
+   download_gcc_tc_internal $ARCH glibc
    popd
 }
 
