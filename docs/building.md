@@ -49,9 +49,7 @@ is to perform the first setup as quickly as possible. To see all the packages
 available, just run the script with `-h`. Single packages can be installed using
 the `-s` option. To be more precise, the script calls them *functions* because
 in some cases (e.g. config_busybx) they are meant to just (re)configure a
-package. **Shortcut**: while the script lists its functions with their full
-name, it accepts also short names like `gtest` instead of `build_gtest` and
-`ovmf` instead of `download_ovmf`.
+package.
 
 ## Building Tilck
 
@@ -176,7 +174,7 @@ it's very convenient (and quicker) to test it on a VM, before running it on real
 hardware. To do that, it's necessary to first to ask the `build_toolchain` script
 to download the Open Virtual Machine Firmware ([OVMF]) with:
 
-    ./scripts/build_toolchain -s download_ovmf
+    ./scripts/build_toolchain -s ovmf
 
 After that, it will be possible to boot Tilck by running:
 
@@ -238,7 +236,7 @@ all the debug symbols etc. To do that, first check that:
 
 Then, install [libmusl] in the toolchain with:
 
-    ./scripts/build_toolchain -s build_libmusl
+    ./scripts/build_toolchain -s libmusl
 
 After that, remove the `build` directory and run `cmake_run` this way:
 
