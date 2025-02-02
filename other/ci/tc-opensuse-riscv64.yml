@@ -28,13 +28,13 @@ steps:
     displayName: Dump env
   - script: sudo -E ./scripts/build_toolchain
     displayName: "Install pkgs"
-  - script: sudo -E ./scripts/build_toolchain -s build_gtest
+  - script: sudo -E ./scripts/build_toolchain -s gtest
     displayName: "Build gtest"
-  - script: sudo -E ./scripts/build_toolchain -s build_gmock
+  - script: sudo -E ./scripts/build_toolchain -s gmock
     displayName: "Build gmock"
-  - script: sudo -E ./scripts/build_toolchain -s build_lcov
+  - script: sudo -E ./scripts/build_toolchain -s lcov
     displayName: "Build lcov"
-  - script: sudo -E ./scripts/build_toolchain -s build_ncurses
+  - script: sudo -E ./scripts/build_toolchain -s ncurses
     displayName: "Build ncurses"
   - script: sudo -E ./scripts/build_toolchain -s tree_cmd
     displayName: "Build tree_cmd"

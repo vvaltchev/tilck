@@ -63,7 +63,7 @@ build and in **under 2 seconds** in the case of release builds.
 In order to build the unit tests, it is necessary to download and build the
 [googletest] library in Tilck's toolchain. To do that, just run:
 
-    ./scripts/build_toolchain -s build_gtest build_gmock
+    ./scripts/build_toolchain -s gtest gmock
 
 #### Build and run
 Building the unit tests is as simple as running:
@@ -78,30 +78,6 @@ It's worth noticing that the [googletest] framework offers nice command-line
 options such as `--gtest_filter`. To list them all, just run the executable
 with the `--help` option. For out-of-tree builds and other build-related topics,
 check the dedicated [building] document.
-
-#### Special configurations
-Despite unit tests' the code built is supposed to be portable, sometimes
-subtle portability bugs issues come out. For example, because the host machine
-is always x86_64 and Tilck's only target architecture for the moment is i686,
-that means that unit tests are never built on 32-bit machines, while the kernel
-noarch code is built both for 32-bit and for 64-bit machines. To make the unit
-tests robust against any kind of 32/64 bit portability issues, a special option
-has been introduced in Tilck's build system: `ARCH_GTESTS`. When it's enabled,
-the unit tests are built for the *target* architecture instead. Of course, in
-the general case we cannot run those tests on the *host* machine, but in the
-lucky x86 case we actually *can* do that. Such build configuration is part of
-the CI testing and helped discover and fix a fair amount of portability issues.
-
-To build the unit tests for the *target* architecture, first build the
-[googletest] framework for that architecture with:
-
-    ./scripts/build_toolchain -s build_gtest_arch
-
-And then enable the `ARCH_GTESTS` CMake option (see [building] document to
-learn how to that).
-
-[building]: building.md
-[googletest]: https://github.com/google/googletest
 
 
 System tests
