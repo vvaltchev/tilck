@@ -141,16 +141,15 @@ function show_help {
 
    echo ""
    echo "Syntax:"
-   echo "      $0 [-n]                           install only default packages"
-   echo "      $0 -s, install <pkg1> [pkg2...]   download/build/install pkgs"
-   echo "      $0 -c, config <pkg>               (re)configure a specific pkg"
+   echo "   ./scripts/build_toolchain  [Install only default packages]"
    echo
-   echo "   -n        Do not check nor install system packages (advanced)"
-   echo "                Do not check for nor attempt to install any of the"
-   echo "                mandatory system packages like: wget, git, make, "
-   echo "                binutils, bzip2, rpmextract, etc."
+   echo "   -s, install <pkgs...> Download/build/install pkgs"
+   echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
    echo
-   echo "   --clean   Remove everything from the toolchain, except the cache"
+   echo "   -n                    Do not check for nor install system packages"
+   echo "   -j, --just-context    Just dump the context (vars) and exit"
+   echo "   --clean               Remove everything from the toolchain, "
+   echo "                         except the cache."
    echo ""
    echo "--- Packages for the current arch/host_arch configuration ---"
    echo ""
@@ -255,6 +254,10 @@ function main {
 
    if [[ "$1" == "--clean" ]]; then
       perform_full_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
       exit 0
    fi
 
