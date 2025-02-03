@@ -137,22 +137,7 @@ function print_func {
    fi
 }
 
-function show_help {
-
-   echo ""
-   echo "Syntax:"
-   echo "   ./scripts/build_toolchain  [Install only default packages]"
-   echo
-   echo "   -s, install <pkgs...> Download/build/install pkgs"
-   echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
-   echo
-   echo "   -n                    Do not check for nor install system packages"
-   echo "   -j, --just-context    Just dump the context (vars) and exit"
-   echo "   --clean               Remove everything from the toolchain, "
-   echo "                         except the cache."
-   echo ""
-   echo "--- GCC toolchains (pre-compiled for your host architecture) ---"
-   echo ""
+function show_funcs_list {
 
    local has_printf=0
    local all_def_funcs=" ${default_funcs[*]} "
@@ -160,6 +145,10 @@ function show_help {
    if printf "" &> /dev/null; then
       has_printf=1
    fi
+
+   echo ""
+   echo "--- GCC toolchains (pre-compiled for your host architecture) ---"
+   echo ""
 
    for x in ${all_funcs_list[@]}; do
 
@@ -227,6 +216,23 @@ function show_help {
       fi
    done
    echo ""
+}
+
+function show_help {
+
+   echo
+   echo "Syntax:"
+   echo "   ./scripts/build_toolchain  [Install only default packages]"
+   echo
+   echo "   -s, install <pkgs...> Download/build/install pkgs"
+   echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
+   echo
+   echo "   -n                    Do not check for nor install system packages"
+   echo "   -j, --just-context    Just dump the context (vars) and exit"
+   echo "   -l, --list-all        List all packages, toolchains, funcs"
+   echo "   --clean               Remove everything from the toolchain, "
+   echo "                         except the cache."
+   echo
 }
 
 function execute_func {
@@ -325,6 +331,11 @@ function main {
 
    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
       show_help
+      exit 0
+   fi
+
+   if [[ "$1" == "-l" || "$1" == "--list-all" ]]; then
+      show_funcs_list
       exit 0
    fi
 
