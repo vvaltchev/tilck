@@ -151,7 +151,7 @@ function show_help {
    echo "   --clean               Remove everything from the toolchain, "
    echo "                         except the cache."
    echo ""
-   echo "--- Packages for the current arch/host_arch configuration ---"
+   echo "--- GCC toolchains (pre-compiled for your host architecture) ---"
    echo ""
 
    local has_printf=0
@@ -161,12 +161,34 @@ function show_help {
       has_printf=1
    fi
 
+   for x in ${all_funcs_list[@]}; do
+
+      if [[ $x =~ download_gcc_(.+) ]]; then
+
+         local n=${BASH_REMATCH[1]}
+         if [[ "$all_def_funcs" =~ " ${x} " ]]; then
+            print_func download gcc_$n $has_printf 1
+         else
+            print_func download gcc_$n $has_printf 0
+         fi
+      fi
+
+   done
+
+   echo ""
+   echo "--- Packages for the current arch/host_arch configuration ---"
+   echo ""
+
    for x in ${default_funcs[@]}; do
 
       if [[ $x =~ (download|build|config)_(.+) ]]; then
 
          local t=${BASH_REMATCH[1]}
          local n=${BASH_REMATCH[2]}
+
+         if [[ $n =~ gcc_* ]]; then
+            continue # we already printed the toolchains
+         fi
 
          print_func $t $n $has_printf 1
       fi
@@ -184,7 +206,7 @@ function show_help {
          local t=${BASH_REMATCH[1]}
          local n=${BASH_REMATCH[2]}
 
-         if [[ t == "config" ]]; then
+         if [[ $t == "config" || $n =~ gcc_* ]]; then
             # Skip the config_* functions. We'll print them separately.
             continue
          fi
