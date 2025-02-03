@@ -141,55 +141,40 @@ function download_gcc_tc_internal {
    popd
 }
 
-# $1 = libc
+# $1 = arch
+# $2 = libc
 function get_gcc_tc_installed_status_int {
 
    local arch_list=""
    local ha=$TC/host_${BUILD_ARCH}
    local pfx
 
-   for x in ${ALL_ARCH_LIST[@]}; do
+   pfx="${1}_GCC_NAME_PFX"
+   pfx=${!pfx}
 
-      pfx="${x}_GCC_NAME_PFX"
-      pfx=${!pfx}
-
-      if [ -d $ha/${pfx}_$1 ]; then
-         arch_list="${arch_list}$x "
-      fi
-   done
-
-   # Drop the trailing " "
-   if [[ "${arch_list: -1}" == " " ]]; then
-      arch_list="${arch_list:: -1}"
-   fi
-
-   if [ -n "$arch_list" ]; then
-      echo "installed $arch_list"
+   if [ -d $ha/${pfx}_$2 ]; then
+      echo "installed host_$HOST_ARCH"
    fi
 }
 
 ############################################################
 
+function define_all_gcc_tc_funcs {
+
+   for libc in musl glibc; do
+      for arch in ${ALL_ARCH_LIST[@]}; do
+
+         local name="download_gcc_${libc}_${arch}"
+         local body="get_gcc_tc_installed_status_int $arch $libc;"
+
+         all_funcs_list+=($name)
+         eval "function $name { download_gcc_tc_internal $arch $libc; }"
+         eval "function ${name}_installed_status { $body }"
+      done
+   done
+}
+
 if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   all_funcs_list+=(download_gcc_musl)
+   define_all_gcc_tc_funcs
 fi
 
-function download_gcc_musl {
-   download_gcc_tc_internal $ARCH musl
-}
-
-function download_gcc_musl_installed_status {
-   get_gcc_tc_installed_status_int musl
-}
-
-if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   all_funcs_list+=(download_gcc_glibc)
-fi
-
-function download_gcc_glibc {
-   download_gcc_tc_internal $ARCH glibc
-}
-
-function download_gcc_glibc_installed_status {
-   get_gcc_tc_installed_status_int glibc
-}

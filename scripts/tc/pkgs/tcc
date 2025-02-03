@@ -57,7 +57,7 @@ function build_tcc {
          install_32bit_libs
       fi
 
-      download_gcc_musl
+      download_gcc_tc_internal $ARCH musl
    fi
 
 
