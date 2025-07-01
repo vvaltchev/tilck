@@ -1,0 +1,372 @@
+#!/bin/bash
+
+# Setup an error handler that reacts when a subprocess exits with 77, so that
+# the main shell process can propagate the error and terminate.
+
+set -E
+trap '[ "$?" -ne 77 ] || exit 77' ERR
+
+function dump_gcc_info {
+   echo "-----------------------------------------------------------------"
+   $gcc -v 2>&1
+   echo "-----------------------------------------------------------------"
+}
+
+function dump_dir_contents {
+   echo "-----------------------------------------------------------------"
+   ls -lh "$1"
+   echo "-----------------------------------------------------------------"
+}
+
+function log_debug {
+   if [[ "$DEBUG" == 1 ]]; then
+      echo "DEBUG: $1"
+   fi
+}
+
+function translate_arch {
+
+   # Translate the arch to ld's arch convention (e.g. i686 -> i386).
+   # The arch string can either come from `gcc -v` or from `readelf -h`.
+   case "$1" in
+
+      "x86_64")                           echo x86_64  ;;
+      "amd64")                            echo x86_64  ;;
+      "Advanced Micro Devices X86-64")    echo x86_64  ;;
+      "i386")                             echo i386    ;;
+      "i486")                             echo i386    ;;
+      "i586")                             echo i386    ;;
+      "i686")                             echo i386    ;;
+      "Intel 80386")                      echo i386    ;;
+      "aarch64")                          echo aarch64 ;;
+      "AArch64")                          echo aarch64 ;;
+      "riscv64")                          echo riscv64 ;;
+      "RISC-V")                           echo riscv64 ;;
+
+      *)
+         echo "ERROR: unknown host arch: $1" >&2
+         exit 77
+      ;;
+   esac
+}
+
+function translate_libc {
+
+   case "$1" in
+      gnu)       echo glibc  ;;
+      glibc)     echo glibc  ;;
+      musl)      echo musl   ;;
+      uclibc)    echo uclibc ;;
+
+      *)
+         echo "ERROR: unknown libc: $1" >&2
+         exit 77
+      ;;
+
+   esac
+}
+
+function find_libmusl_so_file {
+   set -e
+   so=$(find "$1" -name "libc.so")
+   set +e
+   if [ -z "$so" ]; then
+      echo "ERROR: cannot find libc.so (musl) in $1" >&2
+      exit 77
+   fi
+   echo "$so"
+}
+
+function find_glibc_so_file {
+   set -e
+   so=$(find "$1" -name "libc.so.6")
+   if [[ "$so" == "" ]] || ! [[ -f "$so" ]]; then
+      echo "ERROR: cannot find libc.so.6 (musl) in $1" >&2
+      exit 77
+   fi
+
+   so_real="$(realpath "$so")"
+   set +e
+   if ! [ -f "$so_real" ]; then
+      echo "ERROR: so_real: $so_real is not a file"
+      exit 77
+   fi
+
+   echo "$so_real"
+}
+
+function get_libc_version {
+
+   local f="$1"       # so file (e.g. libc.so or libc.so.6)
+   local info
+   local addr
+   local sec_idx
+   local sec_file_off
+   local sec_addr
+   local file_off
+   local rel_off
+   local sec_str
+
+   info=$(readelf -sW "$f" | awk '$8 == "__libc_version" {print $2, $3, $7}')
+
+   read addr size sec_idx <<< "$info"
+
+   if [[ "$info" == "" || $sec_idx == 0 || $size == 0 ]]; then
+      echo "ERROR: Failed to find sym __libc_version. Readelf -s | grep:" >&2
+      echo "-----------------------------------------------------------------"
+      readelf -sW "$f" | head -3 | tail -1    # dump the header
+      readelf -sW "$f" | grep __libc_version  # dump the symbol entry
+      echo "-----------------------------------------------------------------"
+      exit 77
+   fi
+
+   sec_str="$(printf "[%2s]" $sec_idx)"
+   if [[ "$DEBUG" == 1 ]]; then
+      echo "DEBUG: Section index str: '$sec_str'" >&2
+      printf "DEBUG: sym addr: %#08x size: %d, sec: %d\n" 0x$addr $size $sec_idx >&2
+   fi
+
+   if [ $sec_idx -lt 10 ]; then
+      # When the section index is within 0..9, readelf adds a padding space
+      # that causes awk to see one more field ("[") when splitting the line.
+      # Therefore, we need to adjust our indexes :-(
+      info=$(readelf -SW "$f" | grep -F "$sec_str" | awk '{ print $5, $6 }')
+   else
+      info=$(readelf -SW "$f" | grep -F "$sec_str" | awk '{ print $4, $5 }')
+   fi
+
+   read sec_file_off sec_addr <<< "$info"
+
+   if [[ "$info" == "" || $sec_file_off == 0 || $sec_addr == 0 ]]; then
+      echo "ERROR: Failed to find section at index $sec_idx. Readelf -S:" >&2
+      echo "-----------------------------------------------------------------"
+      readelf -SW "$f"
+      echo "-----------------------------------------------------------------"
+      exit 77
+   fi
+
+   rel_off=$(( 0x$addr - 0x$sec_addr ))
+   file_off=$(( 0x$sec_file_off + $rel_off ))
+
+   if [[ "$DEBUG" == 1 ]]; then
+      printf "DEBUG: sec_off: %#08x sec addr: %#08x\n" 0x$sec_file_off 0x$sec_addr >&2
+      printf "DEBUG: rel_off: %#08x file_off: %#08x\n" $rel_off $file_off >&2
+   fi
+
+   size=$(($size - 1)) # drop the trailing \0
+   dd if="$f" bs=1 skip=$file_off count=$size 2>/dev/null
+}
+
+function find_libc_so_and_set_version_fields {
+
+   local dir="$1"
+   local libc="$2"
+
+   if [[ "$libc" == "musl" ]]; then
+
+      local sofile="$(find_libmusl_so_file "$dir")"
+      log_debug "Found libmusl so file: $sofile"
+      libc_ver="$(get_libc_version $sofile)"
+
+      if ! [[ "$libc_ver" =~ ([0-9]+)[.]([0-9]+)[.]([0-9]+) ]]; then
+         echo "ERROR: cannot parse libc_ver: '$libc_ver'"
+         exit 1
+      fi
+
+      libc_major="${BASH_REMATCH[1]}"
+      libc_minor="${BASH_REMATCH[2]}"
+      libc_patch="${BASH_REMATCH[3]}"
+
+   elif [[ "$libc" == "glibc" ]]; then
+
+      local sofile="$(find_glibc_so_file "$dir")"
+      log_debug "Found glibc so file: $sofile"
+      libc_ver="$(get_libc_version $sofile)"
+
+      if ! [[ "$libc_ver" =~ ([0-9]+)[.]([0-9]+) ]]; then
+         echo "ERROR: cannot parse libc_ver: '$libc_ver'"
+         exit 1
+      fi
+
+      libc_major="${BASH_REMATCH[1]}"
+      libc_minor="${BASH_REMATCH[2]}"
+      libc_patch="0"
+
+   else
+
+      echo "ERROR: version detection not implemented for libc: $libc"
+      exit 1
+   fi
+}
+
+# Input: $dir
+# Output: $gcc, $raw_arch, $raw_libc, $gcc_{major,minor,patch}
+function find_gcc_executable {
+
+   for path in "$dir"/bin/*gcc*; do
+
+      f="$(basename "$path")"
+      if [[ "$f" =~ ([A-Za-z0-9_]+).*linux-(musl|gnu|uclibc)-gcc-([0-9]+)[.]([0-9]+)[.]([0-9]+) ]]; then
+         gcc="$path"
+         raw_arch="${BASH_REMATCH[1]}"
+         raw_libc="${BASH_REMATCH[2]}"
+         gcc_major="${BASH_REMATCH[3]}"
+         gcc_minor="${BASH_REMATCH[4]}"
+         gcc_patch="${BASH_REMATCH[5]}"
+         break
+      fi
+   done
+
+   if [ -z "$gcc" ]; then
+      echo "ERROR: couldn't find a GCC compiler. Contents of $dir/bin:"
+      dump_dir_contents "$dir/bin"
+      exit 1
+   fi
+}
+
+# Input: $old_dir_name, $new_dir_name
+# Output: None.
+function print_old_new_dir_logs {
+
+   if [[ "$new_dir_name" == "$old_dir_name" ]]; then
+      echo "INFO: Directory name UNCHANGED: $old_dir_name"
+   elif [[ "$old_dir_name" == *gcc* ]]; then
+      echo "WARNING: The old dir name ($old_dir_name) contains 'gcc'."
+      echo "WARNING: Maybe something is wrong."
+   else
+      echo "INFO: Directory name $old_dir_name -> $new_dir_name"
+   fi
+}
+
+# ---------------------------- MAIN LOGIC -----------------------------------
+
+function process_directory {
+
+   echo "INFO: Processing toolchain dir: $dir               # `realpath $dir` "
+
+   if ! [ -d "$dir" ]; then
+      echo "ERROR: $dir is not a directory"
+      exit 1
+   fi
+
+   if ! [ -d "$dir/bin" ]; then
+      echo "ERROR: $dir/bin is not a directory. Contents of $dir:"
+      dump_dir_contents "$dir"
+      exit 1
+   fi
+
+   find_gcc_executable
+   log_debug "Chosen GCC binary file: $gcc"
+   log_debug "Parsed arch: $raw_arch, libc: $raw_libc"
+
+   echo "INFO: Compiler version: $gcc_major.$gcc_minor.$gcc_patch"
+
+   arch=$(translate_arch $raw_arch)
+   libc=$(translate_libc $raw_libc)
+
+   echo "INFO: Compiler target arch: $arch"
+
+   raw_host_arch="$(uname -m)"
+   log_debug "Raw current host arch from uname -m: $raw_host_arch"
+
+   host_arch=$(translate_arch $raw_host_arch)
+   log_debug "Translated current host arch: $host_arch"
+
+   raw_gcc_host_arch=$(readelf -h $gcc | grep "Machine:")
+   if [ -z "$raw_gcc_host_arch" ]; then
+      echo "ERROR: failed to get GCC's host arch. readelf -h:"
+      readelf -h $gcc
+      exit 1
+   fi
+
+   gcc_host_arch=$(echo $raw_gcc_host_arch | sed -E 's/\s*Machine:\s+//')
+   log_debug "Readelf compiler host arch: '$gcc_host_arch'"
+
+   gcc_host_arch=$(translate_arch "$gcc_host_arch")
+   echo "INFO: Compiler host arch: $gcc_host_arch"
+
+   if [[ "$gcc_host_arch" != "$host_arch" ]]; then
+      echo "INFO: This compiler *cannot* run on the current host"
+   fi
+
+   echo "INFO: libc: $libc"
+
+   # Now we need to determine libc's version.
+   find_libc_so_and_set_version_fields "$dir" "$libc"
+   echo "INFO: libc version: ${libc_major}.${libc_minor}.${libc_patch}"
+
+   # Now that we have everything, let's compose the name of the directory.
+   new_dir_name="gcc_${gcc_major}_${gcc_minor}_${gcc_patch}_${arch}_$libc"
+   old_dir_name="$(basename "$dir")"
+
+   print_old_new_dir_logs
+
+   # Now that we have everything, we can move the toolchain directory into
+   # the bundles directory, package it with tar and delete the original.
+   # But first, we need to make sure that there isn't already a directory
+   # there with the same name.
+
+   if [ -e "$dest/$new_dir_name" ]; then
+      echo "ERROR: the destination dir already contains $new_dir_name"
+      echo "ERROR: cannot proceed further."
+      exit 1
+   fi
+
+   bundle="$arch-$libc-${libc_major}.${libc_minor}.${libc_patch}-gcc"
+   bundle="$bundle-${gcc_major}.${gcc_minor}.${gcc_patch}"
+   bundle="$bundle-$gcc_host_arch.tar.bz2"
+   echo "INFO: Bundle file name: $bundle"
+
+   # Now move the directory
+
+   if [[ "$INFO_ONLY" != 1 ]]; then
+      set -e
+      echo "INFO: Move $dir -> $dest/$new_dir_name"
+      mv "$dir" "$dest/$new_dir_name"
+      pushd "$dest" &> /dev/null
+      echo "INFO: tar cfj $bundle $new_dir_name"
+      tar cfj "$bundle" $new_dir_name
+      popd &> /dev/null
+      set +e
+   fi
+
+   echo "-----------------------------------------------------------------"
+   echo
+   echo
+}
+
+# ---------------------------- ENTRY POINT -----------------------------------
+
+echo
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+   echo "SYNTAX: "
+   echo "   $0 <bundles-dest-dir> <toolchain1> [toolchain2...]"
+   echo "   $0 -i <toolchain1> [toolchain2...]"  # just show info
+   exit 1
+fi
+
+if [[ "$1" == "-i" ]]; then
+   echo "INFO: Enable info mode only (no side-effects)"
+   INFO_ONLY=1
+   shift
+fi
+
+if [[ "$INFO_ONLY" != 1 ]]; then
+   dest="$1"
+   shift
+   echo "INFO: Bundles destination dir: $(realpath $dest)"
+
+   if [ -d "$dest/bin" ] || [ -d "$dest/libexec" ] || [ -d "$dest/include" ]; then
+      echo "ERROR: The destination dir appears to be a toolchain dir,"
+      echo "ERROR: while an output directory for the bundles is expected."
+      echo "ERROR: Use -h or --help for more info."
+      exit 1
+   fi
+fi
+
+for dir in "$@"; do
+   process_directory "$dir"
+done
+
+
