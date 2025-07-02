@@ -317,16 +317,33 @@ function process_directory {
    bundle="$bundle-$gcc_host_arch.tar.bz2"
    echo "INFO: Bundle file name: $bundle"
 
-   # Now move the directory
+   prev_dir_path="$(realpath "$dir")"
 
    if [[ "$INFO_ONLY" != 1 ]]; then
       set -e
+      if [ -f "$dest/$bundle" ]; then
+         if [[ "$DO_FORCE" == 1 ]]; then
+            echo "INFO: overwrite pre-existing file $dest/$bundle (force)"
+            rm -f "$dest/$bundle"
+         else
+            echo "ERROR: destination file $dest/$bundle already exists"
+            exit 1
+         fi
+      fi
       echo "INFO: Move $dir -> $dest/$new_dir_name"
       mv "$dir" "$dest/$new_dir_name"
+
       pushd "$dest" &> /dev/null
       echo "INFO: tar cfj $bundle $new_dir_name"
       tar cfj "$bundle" $new_dir_name
       popd &> /dev/null
+      if [[ "$DO_DELETE" == 1 ]]; then
+         echo "INFO: Delete directory $dest/$new_dir_name"
+         rm -rf "$dest/$new_dir_name"
+      else
+         echo "INFO: Move back $dest/$new_dir_name -> $prev_dir_path"
+         mv "$dest/$new_dir_name" "$prev_dir_path"
+      fi
       set +e
    fi
 
@@ -340,9 +357,15 @@ function process_directory {
 echo
 
 if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+   n=$(basename $0)
    echo "SYNTAX: "
-   echo "   $0 <bundles-dest-dir> <toolchain1> [toolchain2...]"
-   echo "   $0 -i <toolchain1> [toolchain2...]"  # just show info
+   echo "   $n [-d][-f] <bundles-dest-dir> <toolchain1> [toolchain2...]"
+   echo "   $n -i <toolchain1> [toolchain2...]"  # just show info
+   echo
+   echo "OPTIONS:"
+   echo "   -i    just show info (dry run)"
+   echo "   -d    delete original directory"
+   echo "   -f    force overwrite already existing bundle"
    exit 1
 fi
 
@@ -351,6 +374,32 @@ if [[ "$1" == "-i" ]]; then
    INFO_ONLY=1
    shift
 fi
+
+while true; do
+
+   case "$1" in
+      "-d")
+         echo "INFO: Will delete original directories"
+         DO_DELETE=1
+         shift
+         continue
+      ;;
+
+      "-f")
+         echo "INFO: Force overwrite enabled"
+         DO_FORCE=1
+         shift
+         continue
+      ;;
+
+      "-"*)
+         echo "ERROR: invalid option '$1' in this context"
+         exit 1
+      ;;
+   esac
+   break
+
+done
 
 if [[ "$INFO_ONLY" != 1 ]]; then
    dest="$1"
