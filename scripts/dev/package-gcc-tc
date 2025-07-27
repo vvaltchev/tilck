@@ -356,7 +356,7 @@ function process_directory {
 
 echo
 
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+if [[ "$1" == "" || "$1" == "-h" || "$1" == "--help" ]]; then
    n=$(basename $0)
    echo "SYNTAX: "
    echo "   $n [-d][-f] <bundles-dest-dir> <toolchain1> [toolchain2...]"
