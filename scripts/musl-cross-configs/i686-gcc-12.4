@@ -1,0 +1,7 @@
+TARGET = i686-linux-musl
+
+BINUTILS_VER = 2.44
+GCC_VER = 12.4.0
+MUSL_VER = git-v1.2.5
+
+COMMON_CONFIG += CFLAGS="-g0 -Os" CXXFLAGS="-g0 -Os" LDFLAGS="-s"
