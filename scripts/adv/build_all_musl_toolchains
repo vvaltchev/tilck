@@ -1,0 +1,93 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd "$SOURCE_DIR/../.." && pwd)"
+
+if [[ "$1" == "" || "$1" == "-h" || "$1" == "--help" ]]; then
+   echo "Syntax: $0 <par> <bundles dir> <configs dir> <musl-cross-make dir>"
+   echo
+   echo "   <par>                  Level of parallelism. E.g. make -j $par"
+   echo "   <bundles dir>          Bundles destination directory"
+   echo "   <configs dir>          Directory with all the config.mak files"
+   echo "   <musl-cross-make dir>  Clone of the musl-cross-make repo"
+   exit 1
+fi
+
+par="$1"
+bundles="$(realpath "$2")"
+configs="$(realpath "$3")"
+musl="$(realpath "$4")"
+package="$MAIN_DIR/scripts/dev/package-gcc-tc"
+
+if ! [[ "$par" =~ ^-?[0-9]+$ ]]; then
+   echo "'$par' is not a valid integer"
+   exit 1
+fi
+if [[ "$par" -le 0 ]]; then
+   echo "<par> must be a positive integer. Got $par"
+   exit 1
+fi
+if ! [ -d "$bundles" ]; then
+   echo "The bundles directory does not exist"
+   exit 1
+fi
+if ! [ -d "$configs" ]; then
+   echo "The configs directory does not exist"
+   exit 1
+fi
+if ! [ -d "$musl" ]; then
+   echo "The musl-cross-make directory does not exist"
+   exit 1
+fi
+if ! [ -f "$musl/config.mak.dist" ]; then
+   echo "File $musl/config.mak.dist NOT found. Wrong musl-cross-make dir?"
+   exit 1
+fi
+if ! [ -f "$package" ]; then
+   echo "ERROR: package-gcc-tc script not found"
+   exit 1
+fi
+
+set -e
+pushd "$configs" &> /dev/null
+
+for x in *; do
+
+   echo "Config: $x"
+   echo "--------------------------------------------------------------------"
+   cat "$x";
+   echo "--------------------------------------------------------------------"
+
+   echo "Copy config file into $musl"
+   cp "$x" "$musl/config.mak"
+
+   pushd "$musl" &> /dev/null
+
+   echo "Clean"
+   make clean &> /dev/null
+
+   if [ -d "output" ]; then
+      echo "ERROR: Directory 'output' still exists after clean"
+      exit 1
+   fi
+
+   echo "Build with make -j $par"
+   make -j $par &> build.log
+
+   echo "Install"
+   make install &> install.log
+
+   echo "Package the toolchain bundle"
+   $package -d "$bundles" "$(realpath ./output)"
+
+   echo "Done."
+   echo "--------------------------------------------------------------------"
+   popd &> /dev/null
+   echo
+   echo
+   echo
+
+done
+popd &> /dev/null
+
