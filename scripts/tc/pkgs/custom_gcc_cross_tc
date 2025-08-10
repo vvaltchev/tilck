@@ -11,41 +11,66 @@
 
 function custom_gcc_cross_tc_internal {
 
+
    local arch="$1"
-   local arch_gcc="$2"
    local gh="https://github.com"
-   local url="$gh/vvaltchev/musl-cross-make/releases/download/fd6be58297e"
+   local url="$gh/vvaltchev/musl-cross-make/releases/download/3635262e452"
    local tarname=""
    local url_target=""
    local url_host=""
+   local varName
+   local ver
+   local ver_
+   local n
 
    case $arch in
-      i386) url_target="x86-i386";;
-      x86_64) url_target="x86-64";;
+      i386) url_target="i386";;
+      x86_64) url_target="x86_64";;
+      aarch64) url_target="aarch64";;
+      riscv64) url_target="riscv64";;
       *) echo "TARGET $arch not supported by the CUSTOM GCC TC"; exit 1;;
    esac
 
    case $HOST_ARCH in
-      i386) url_host="x86-i386";;
-      x86_64) url_host="x86-64";;
+      i386) url_host="i386";;
+      x86_64) url_host="x86_64";;
+      aarch64) url_host="aarch64";;
       *) echo "HOST $HOST_ARCH not supported by the CUSTOM GCC TC"; exit 1;;
    esac
 
+   varName="${arch}_GCC_TC_VER"
+   ver="${!varName}"
+   varName="${arch}_GCC_TC_VER_"
+   ver_="${!varName}"
+   varName="${arch}_ARCH_GCC_TC"
+   arch_gcc="${!varName}"
+   dir="gcc_${ver_}_${arch}_musl"
+
+   if [ -d "$dir" ]; then
+      return
+   fi
+
    tarname="${url_target}-musl-${MUSL_VER}"
-   tarname="${tarname}-gcc-${GCC_TC_VER}"
+   tarname="${tarname}-gcc-${ver}"
    tarname="${tarname}-${url_host}.tar.bz2"
 
    download_file_in_cache "$url" "$tarname"
    extract_cachefile_tar_bz $tarname --
 
-   # Adapt toolchains built with: https://github.com/richfelker/musl-cross-make
-   # but support also toolchains that contain the necessary renamings already.
-
-   pushd gcc_${GCC_TC_VER_}_${arch}_musl/bin
+   pushd gcc_${ver_}_${arch}_musl/bin
    for x in ${arch_gcc}-linux-musl-*; do
-      if [ -f "$x" ]; then
-         n=$(echo $x | sed s/musl-//)
-         mv $x $n;
+      if [[ -f "$x" ]]; then
+         n="$(sed s/musl-// <<<"$x")"
+         if [[ -L "$x" ]]; then
+            # Symlink. Must fix the destination as well.
+            dest="$(readlink "$x")"
+            dest="$(sed s/musl-// <<<"$dest")"
+            rm "$x"
+            ln -s "$dest" "$n"
+         else
+            # Regular file: just rename it.
+            mv "$x" "$n"
+         fi
       fi
    done
    popd
@@ -56,18 +81,22 @@ function custom_gcc_cross_tc {
 
    pushd $TC/host
 
+   # Download the TC for the current *host* architecture: that's necessary
+   # so that we don't depend on the GCC version available on the system.
+   custom_gcc_cross_tc_internal "$HOST_ARCH"
+
    if [[ $ARCH == i386 || $ARCH == x86_64 ]]; then
 
       # Always download the i386 toolchain to build the legacy bootloader
-
-      if ! [ -d "gcc_${GCC_TC_VER_}_i386_musl" ]; then
-         custom_gcc_cross_tc_internal "i386" "i686"
-      fi
+      custom_gcc_cross_tc_internal "i386"
 
       # Always download the x86_64 toolchain to build the 64-bit UEFI bootloader
-      if ! [ -d "gcc_${GCC_TC_VER_}_x86_64_musl" ]; then
-         custom_gcc_cross_tc_internal "x86_64" "x86_64"
-      fi
+      custom_gcc_cross_tc_internal "x86_64"
+
+   else
+
+      # General case: just download the arch-specific toolchain
+      custom_gcc_cross_tc_internal "$ARCH"
    fi
 
    popd
