@@ -68,27 +68,28 @@ function translate_libc {
 }
 
 function find_libmusl_so_file {
-   set -e
    so=$(find "$1" -name "libc.so")
-   set +e
-   if [ -z "$so" ]; then
-      echo "ERROR: cannot find libc.so (musl) in $1" >&2
+   echo "$so" # we can "return" an empty value, that's OK.
+}
+
+function find_libmusl_a_file {
+   so=$(find "$1" -name "libc.a")
+   if ! [[ -f "$so" ]]; then
+      echo "ERROR: cannot find libc.a (musl) in $1" >&2
       exit 77
    fi
    echo "$so"
 }
 
 function find_glibc_so_file {
-   set -e
    so=$(find "$1" -name "libc.so.6")
-   if [[ "$so" == "" ]] || ! [[ -f "$so" ]]; then
+   if ! [[ -f "$so" ]]; then
       echo "ERROR: cannot find libc.so.6 (musl) in $1" >&2
       exit 77
    fi
 
    so_real="$(realpath "$so")"
-   set +e
-   if ! [ -f "$so_real" ]; then
+   if ! [[ -f "$so_real" ]]; then
       echo "ERROR: so_real: $so_real is not a file"
       exit 77
    fi
@@ -162,12 +163,44 @@ function find_libc_so_and_set_version_fields {
 
    local dir="$1"
    local libc="$2"
+   local sofile
+   local afile
 
    if [[ "$libc" == "musl" ]]; then
 
-      local sofile="$(find_libmusl_so_file "$dir")"
-      log_debug "Found libmusl so file: $sofile"
-      libc_ver="$(get_libc_version $sofile)"
+      sofile="$(find_libmusl_so_file "$dir")"
+      if [[ -f "$sofile" ]]; then
+
+         log_debug "Found libmusl so file: $sofile"
+         libc_ver="$(get_libc_version $sofile)"
+
+      else
+
+         log_debug "libmusl libc.so not found, searching for libc.a now"
+         afile="$(find_libmusl_a_file "$dir")"
+         if ! [[ -f "$afile" ]]; then
+            echo "ERROR: libmusl archive file (libc.a) not found"
+            exit 1
+         fi
+
+         afile="$(realpath "$afile")"
+         log_debug "Found libmusl archive file: $afile"
+
+         mkdir -p /tmp/package-gcc-tc
+         pushd /tmp/package-gcc-tc &> /dev/null
+         rm -f *
+
+         ar x "$afile" version.o
+         if ! [[ -f version.o ]]; then
+            echo "ERROR: failed to extract version.o from $afile"
+            exit 1
+         fi
+
+         objcopy -j .rodata.__libc_version -O binary version.o ver
+         libc_ver="$(cat ver | tr -d '\000')"
+         popd &> /dev/null
+         rm -rf /tmp/package-gcc-tc
+      fi
 
       if ! [[ "$libc_ver" =~ ([0-9]+)[.]([0-9]+)[.]([0-9]+) ]]; then
          echo "ERROR: cannot parse libc_ver: '$libc_ver'"
@@ -181,6 +214,10 @@ function find_libc_so_and_set_version_fields {
    elif [[ "$libc" == "glibc" ]]; then
 
       local sofile="$(find_glibc_so_file "$dir")"
+      if ! [[ -f "$sofile" ]]; then
+         exit 1
+      fi
+
       log_debug "Found glibc so file: $sofile"
       libc_ver="$(get_libc_version $sofile)"
 
