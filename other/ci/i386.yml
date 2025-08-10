@@ -63,34 +63,6 @@ jobs:
       - script: ./build/st/run_interactive_test -a
         displayName: Run the interactive tests
 
-  - job: gcc_11_3_build
-    container: 'vvaltchev/tilck-i386:v5'
-    pool:
-      vmImage: 'ubuntu-24.04'
-    variables:
-      RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc113
-      GTEST_SHUFFLE: 0
-      TILCK_NO_LOGO: 1
-      GCC_TC_VER: 11.3.0
-    strategy:
-      matrix:
-        debug:
-          GEN: 'gcc'
-        release:
-          GEN: 'gcc_rel'
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: ./scripts/build_generators/$(GEN)
-        displayName: Run CMake
-      - script: make -j
-        displayName: Build the kernel
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-
   - job: gcc_12_3
     container: 'vvaltchev/tilck-i386:v5'
     pool:
