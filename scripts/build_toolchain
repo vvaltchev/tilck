@@ -31,8 +31,13 @@ source $MAIN_DIR/scripts/bash_includes/cc_vars
 source $MAIN_DIR/scripts/bash_includes/arch_checks
 source $MAIN_DIR/scripts/bash_includes/compiler_checks
 
+# Target architectures
+ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
 
-ALL_ARCH_LIST=(i386 x86_64 riscv64)
+# Build host architectures
+ALL_HOST_ARCH_LIST=(x86_64 aarch64)
+
+# Default target architecture
 DEFAULT_ARCH="i386"
 export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}
@@ -261,7 +266,7 @@ function perform_full_clean {
 
    cd "$TC"
    for x in *; do
-      if [[ "$x" != "cache" ]]; then
+      if [[ "$x" != "cache" && "$x" != "*" ]]; then
          echo "Deleting '$x'..."
          rm -rf "$x"
       fi
@@ -290,14 +295,7 @@ function main {
    fi
 
    default_funcs=()
-
-   if [[ "$USE_CUSTOM_GCC_TC" != 1 ]]; then
-      # Default case
-      default_funcs+=(download_gcc_musl_$ARCH)
-   else
-      # Special case, use the custom GCC toolchain
-      default_funcs+=(custom_gcc_cross_tc)
-   fi
+   default_funcs+=(custom_gcc_cross_tc)
 
    if [[ "$USE_SYSCC" == 1 ]]; then
       default_funcs+=(build_libmusl)
@@ -478,7 +476,7 @@ function main {
    fi
 
    echo
-   echo "*** Building the custom toolchain ***"
+   echo "*** Building custom packages and tools ***"
    echo
 
    for x in ${default_funcs[@]}; do
@@ -486,7 +484,7 @@ function main {
    done
 
    echo
-   echo "*** Building custom toolchain COMPLETED ***"
+   echo "*** Building custom packages and tools COMPLETED ***"
    echo
 }
 
