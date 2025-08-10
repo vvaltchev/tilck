@@ -39,6 +39,13 @@ riscv64_ARCH_GCC_FLAGS=""
 riscv64_ARCH_GCC_TC_CODENAME="riscv64-lp64d"
 
 
+aarch64_ARCH_SHORT="aarch64"
+aarch64_ARCH_FAMILY="arm"
+aarch64_ARCH_ELF_NAME="elf64-littleaarch64"
+aarch64_ARCH_LD_OUTPUT="aarch64elf"
+aarch64_ARCH_GCC_TC="aarch64"
+aarch64_ARCH_GCC_FLAGS=""
+
 function set_arch_gcc_tc_arch {
 
    local name="${1}_ARCH_GCC_TC"
@@ -58,7 +65,7 @@ function set_host_arch_variable {
 
    if [[ "$HOST_ARCH" == "x86_64" ]]; then
 
-      : # Great, that's what we expect: do nothing
+      : # Great, that's our DEFAULT host architecture: do nothing
 
    elif [[ "$HOST_ARCH" == "amd64" ]]; then
 
@@ -75,11 +82,7 @@ function set_host_arch_variable {
 
    elif [[ "$HOST_ARCH" == "aarch64" ]]; then
 
-
-      if [[ "$USE_CUSTOM_GCC_TC" != 1 ]]; then
-         echo "ERROR: set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
-         exit 1
-      fi
+      : # That's OK: no translation necessary.
 
    else
 
@@ -111,12 +114,6 @@ function set_gcc_tc_defaults_internal {
    local name=${1}_MIN_GCC_TC_VERSION
    local value=$(cat $GCC_TC_CONF/$1/min_ver)
    eval "$name=$value"
-
-   # Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
-   # TODO: add a per-arch configuration file for this toolchain as well.
-   local name=${1}_CUSTOM_GCC_TC_VERSION
-   local value="11.4.0"
-   eval "$name=$value"
 }
 
 function set_gcc_tc_defaults {
@@ -131,7 +128,6 @@ function set_gcc_tc_defaults {
    local list=()
    list+=(DEFAULT_GCC_TC_VERSION)
    list+=(MIN_GCC_TC_VERSION)
-   list+=(CUSTOM_GCC_TC_VERSION)
 
    for var_name in ${list[@]}; do
       local arch_name=${ARCH}_${var_name}
@@ -153,26 +149,8 @@ function set_gcc_ver_internal {
 
       else
 
-         # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
-
-         if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-
-            # Custom GCC toolchain
-            local name2="${1}_CUSTOM_GCC_TC_VERSION"
-            eval "$name=${!name2}"
-
-         elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-            # Main case, fully supported
-            local name2="${1}_DEFAULT_GCC_TC_VERSION"
-            eval "$name=${!name2}"
-
-         else
-            # We're running on some other arch and we're not using the custom
-            # gcc tc. That won't work unless HOST_ARCH=ARCH and we have
-            # USE_SYSCC=1 set.
-            :
-         fi
+         local name2="${1}_DEFAULT_GCC_TC_VERSION"
+         eval "$name=${!name2}"
       fi
    fi
 
@@ -188,15 +166,13 @@ function set_gcc_ver {
    # that instance of GCC_TC_VER, so that the internal function won't
    # override it.
 
-   local name="${ARCH}_GCC_TC_VER"
-   local name_="${ARCH}_GCC_TC_VER_"
-   local pfx="${ARCH}_GCC_NAME_PFX"
+   local name
+   local name_
+   local pfx
    local arch
    local ver   # e.g. 1.2.3
    local ver_  # e.g. 1_2_3
-   local pfx_arch_name
    local val
-
 
    if [[ "$GCC_TC_VER" != "" ]]; then
       eval "$name=$GCC_TC_VER"
@@ -205,16 +181,25 @@ function set_gcc_ver {
    for arch in ${ALL_ARCH_LIST[@]}; do
 
       set_gcc_ver_internal $arch
+
+      name="${arch}_GCC_TC_VER"
+      name_="${arch}_GCC_TC_VER_"
+
       ver=${!name}
       ver_=$(echo $ver | sed -E 's/[.]/_/g')
+      eval "${name_}=$ver_"
 
-      pfx_arch_name="${arch}_GCC_NAME_PFX"
+      pfx="${arch}_GCC_NAME_PFX"
       val="gcc_${ver_}_${arch}"
-      eval "$pfx_arch_name=$val"
+      eval "$pfx=$val"
 
    done
 
    # Set the base variables use the variant where $arch == $ARCH
+   name="${ARCH}_GCC_TC_VER"
+   name_="${ARCH}_GCC_TC_VER_"
+   pfx="${ARCH}_GCC_NAME_PFX"
+
    eval "GCC_TC_VER=${!name}"
    eval "GCC_TC_VER_=${!name_}"
    eval "GCC_NAME_PFX=${!pfx}"
@@ -275,11 +260,9 @@ function dump_build_toolchain_env {
    echo
    echo "ARCH=$ARCH"
    echo "HOST_ARCH=$HOST_ARCH"
-   echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
    echo "GCC_TC_VER=$GCC_TC_VER"
    echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
    echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
-   echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
    echo "USE_SYSCC=$USE_SYSCC"
    echo "CC=$CC"
    echo "CXX=$CXX"

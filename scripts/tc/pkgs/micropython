@@ -13,12 +13,7 @@ function download_micropython {
    extract_cachefile_tar_gz $tarname --
 }
 
-if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
-   if [[ "$ARCH" == "i386" ]] || [[ "$ARCH" == "riscv64" ]]; then
-      all_funcs_list+=(build_micropython)
-   fi
-fi
-
+all_funcs_list+=(build_micropython)
 function build_micropython {
 
    if [[ $HOST_ARCH != "i386" ]] && [[ $HOST_ARCH != "x86_64" ]]; then
@@ -41,28 +36,21 @@ function build_micropython {
          exit 1
       fi
 
-      if [[ $ARCH == "i386" ]]; then
-         # TODO: this is a hack, fix this.
-         set_cc_vars_to_tc
-         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
-      fi
-
       export LDFLAGS_EXTRA="-static"
-      local opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0"
+      local opts="V=1"
 
+      # mpy-cross MUST be compiled to run on the *host* system.
       set +e
       pushd mpy-cross
       run_command2 "make $opts -j$BUILD_PAR" build_1.log
       dump_cross_compiler_env "build_1.log"
       popd
 
-      if [[ $ARCH == "riscv64" ]]; then
-         # TODO: this is a hack, fix this.
-         set_cc_vars_to_tc
-         export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
-      fi
-
+      # The unix port must be compiled for the *target* architecture.
       pushd ports/unix
+      set_cc_vars_to_tc
+      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
+      opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 MICROPY_PY_BTREE=0"
       run_command2 "make submodules" make_submodules.log
       run_command2 "make $opts -j$BUILD_PAR" build_2.log
       dump_cross_compiler_env "build_2.log"
