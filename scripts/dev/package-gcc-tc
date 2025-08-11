@@ -196,7 +196,27 @@ function find_libc_so_and_set_version_fields {
             exit 1
          fi
 
-         objcopy -j .rodata.__libc_version -O binary version.o ver
+         line=$(readelf -SW version.o | grep ".rodata.__libc_version")
+
+         if [[ "$line" == "" ]]; then
+            echo "ERROR: failed to find the .rodata.__libc_version section"
+            exit 1
+         fi
+
+         re="^\s*\[\s*\d+\]\s+\S+\s+\S+\s+\S+\s+\K[0-9A-Fa-f]+\s+[0-9A-Fa-f]+"
+         values=$(grep -Po "$re" <<<"$line")
+         read -r offHex sizeHex <<<"$values"
+
+         off=$(( 0x$offHex ))
+         size=$(( 0x$sizeHex ))
+
+         if [[ "$DEBUG" == 1 ]]; then
+            echo "DEBUG: offHex: 0x$offHex, sizeHex: 0x$sizeHex"
+            echo "DEBUG: off: $off, size: $size"
+         fi
+         size=$(( size - 1 )) # drop tailing \0
+         dd if=version.o of=ver bs=1 skip=$off count=$size 2>/dev/null
+
          libc_ver="$(cat ver | tr -d '\000')"
          popd &> /dev/null
          rm -rf /tmp/package-gcc-tc
