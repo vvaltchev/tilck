@@ -12,6 +12,13 @@ include_directories(${TCROOT}/noarch/acpica)
 include_directories(${GTEST_SOURCE_DIR}/include)
 include_directories(${GMOCK_SOURCE_DIR}/include)
 
+if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS ${MIN_GCC_TC_VER})
+   message(STATUS "System CXX too old, using custom TC for unit tests")
+   set(NAME_PFX_ha       gcc_${GCC_TC_VER_}_${HOST_ARCH})
+   set(TC_ROOT_ha        ${TCROOT_BA}/${NAME_PFX_ha}_musl)
+   set(TOOLCHAIN_ha      ${TC_ROOT_ha}/bin)
+   set_cross_compiler_internal(${TOOLCHAIN_ha} ${HOST_ARCH})
+endif()
 
 # Create a static library target for kernel's arch-independent code.
 add_library(
