@@ -9,138 +9,6 @@
 #
 # ---------------------------------------------------------------
 
-BOOTLIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains"
-
-# $1 dir name
-# $2 arch name
-# $3 tc file name
-
-function raw_gcc_tc_download {
-
-   local dest="$1"
-   local arch="$2"
-   local tcname_suffix="$3"
-   local tcfile_ext="$4"
-
-   local tcname="${arch}--${tcname_suffix}"
-   local tarname=""
-
-   if [[ "$tcfile_ext" == "" ]]; then
-      tarname="$tcname.tar.bz2"
-   else
-      tarname="$tcname.$tcfile_ext"
-   fi
-
-   download_file_in_cache "$BOOTLIN_URL/$arch/tarballs" "$tarname"
-   extract_cachefile_tar_generic "$tarname" $tcname $dest
-}
-
-function gcc_x86_glibc_patch {
-
-   # To make musl-gcc happy
-   pushd ${GCC_NAME_PFX}_glibc/bin
-
-   for x in *; do
-      if [[ $x == i686* ]]; then
-         new_name=$(echo $x | sed 's/i686/i386/g')
-         ln -s $x $new_name
-      fi
-   done
-
-   for x in *; do
-      if [[ $x == i386-linux-* ]]; then
-         new_name=$(echo $x | sed 's/i386-linux-/i386-/g')
-         ln -s $x $new_name
-      fi
-   done
-
-   popd
-}
-
-# $1 = GCC_TC_VER
-function set_arch_gcc_tc_ver_and_ext {
-
-   case $1 in
-      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
-      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
-   esac
-}
-
-# $1: arch
-# $2: libc name
-function download_gcc_tc_internal {
-
-   local arch="$1"
-   local libc="$2"
-   local pfx
-   local ver
-   local codename
-   local tc_arch
-   local gcc
-   pushd $TC/host_${BUILD_ARCH}
-
-   pfx="${arch}_GCC_NAME_PFX"
-   pfx=${!pfx}
-
-   ver="${arch}_GCC_TC_VER"
-   ver=${!ver}
-
-   codename="${ARCH}_ARCH_GCC_TC_CODENAME"
-   codename=${!codename}
-
-   tc_arch="${ARCH}_ARCH_GCC_TC"
-   tc_arch=${!tc_arch}
-
-   if ! [ -d ${pfx}_${libc} ]; then
-
-      show_work_on_component_msg "GCC TOOLCHAIN ($arch - $libc)"
-      set_arch_gcc_tc_ver_and_ext $ver
-
-      raw_gcc_tc_download                    \
-         "${pfx}_${libc}"                    \
-         "${codename}"                       \
-         "$libc--$ARCH_GCC_TC_VER"           \
-         "$ARCH_GCC_TC_EXT"
-
-      unset ARCH_GCC_TC_VER
-      unset ARCH_GCC_TC_EXT
-
-      if [[ "$libc" == "glibc" && "$arch" == "i386" ]]; then
-         gcc_x86_glibc_patch
-      fi
-
-      gcc=${pfx}_${libc}/bin/${tc_arch}-linux-gcc
-
-      if ! [ -f $gcc ]; then
-         echo "ERROR (download_gcc_tc_internal): file $gcc NOT found."
-         exit 1
-      fi
-
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-         local actual_ver=$(generic_get_version_str $gcc)
-         echo "Detected GCC toolchain version: '${actual_ver}'"
-
-         if [[ "$actual_ver" != "$ver" ]]; then
-            echo "ERROR: gcc version doesn't match expected ($ver)"
-            exit 1
-         fi
-      fi
-
-   else
-      show_skip_component_msg "GCC TOOLCHAIN ($arch - $libc)"
-   fi
-
-   popd
-}
-
 # $1 = arch
 # $2 = libc
 function get_gcc_tc_installed_status_int {
@@ -157,11 +25,9 @@ function get_gcc_tc_installed_status_int {
    fi
 }
 
-############################################################
-
 function define_all_gcc_tc_funcs {
 
-   for libc in musl glibc; do
+   for libc in musl; do
       for arch in ${ALL_ARCH_LIST[@]}; do
 
          local name="download_gcc_${libc}_${arch}"
@@ -174,7 +40,5 @@ function define_all_gcc_tc_funcs {
    done
 }
 
-if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   define_all_gcc_tc_funcs
-fi
+define_all_gcc_tc_funcs
 

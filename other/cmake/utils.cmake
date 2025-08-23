@@ -100,60 +100,24 @@ endmacro()
 
 macro(set_cross_compiler)
 
-   if (USE_SYSCC)
+   set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+   set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
+   set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
 
-      if (${ARCH} STREQUAL "i386")
-         set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
-         set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
-         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
-      else()
-         # Assume that the system's compiler is already able to build for
-         # the given target architecture without additional flags.
-      endif()
-
-      set(TOOL_GCOV "${GCOV}")
-
-   else()
-
-      if (${ARCH} STREQUAL "riscv64")
-         set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
-         set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
-         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
-      else()
-         # Assume that the system's compiler is already able to build for
-         # the given target architecture without additional flags.
-      endif()
-
-      # DEFAULT CASE: use our pre-built toolchain
-      set_cross_compiler_internal(${GCC_TOOLCHAIN} ${ARCH_GCC_TC})
-
-   endif()
+   set_cross_compiler_internal(${GCC_TOOLCHAIN} ${ARCH_GCC_TC})
 
 endmacro()
 
 macro(set_cross_compiler_userapps)
 
-   if (USE_SYSCC)
-
-      set(CMAKE_C_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
-      set(CMAKE_CXX_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-g++")
-      set(CMAKE_ASM_COMPILER "${CMAKE_BINARY_DIR}/scripts/musl-gcc")
-      set(TOOL_GCOV "${GCOV}")
-
-   else()
-
-      # DEFAULT CASE: use our pre-built toolchain
-
-      set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
-      set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      set(CMAKE_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
-      set(CMAKE_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
-      set(CMAKE_AR ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ar)
-      set(CMAKE_RANLIB ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ranlib)
-      set(TOOL_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
-
-   endif()
+   set(CMAKE_C_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+   set(CMAKE_CXX_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-g++)
+   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
+   set(CMAKE_OBJCOPY ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-objcopy)
+   set(CMAKE_STRIP ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-strip)
+   set(CMAKE_AR ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ar)
+   set(CMAKE_RANLIB ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-ranlib)
+   set(TOOL_GCOV ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcov)
 
 endmacro()
 
