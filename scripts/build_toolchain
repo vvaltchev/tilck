@@ -346,26 +346,16 @@ function main {
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
    local ha=$TC/host_${HOST_ARCH}
 
-   if [[ "$USE_SYSCC" != 1 || "$HOST_ARCH" != "$ARCH" ]]; then
-      GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
-      GCC_TOOLCHAIN_GLIBC=$ha/${GCC_NAME_PFX}_glibc/bin # glibc cross-compiler
-   fi
+   GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
 
-   if [[ "$USE_SYSCC" != 1 ]]; then
+   export PATH="$GCC_TOOLCHAIN:$PATH"
 
-      # NOTE: GCC's musl pre-built toolchain overrides build_scripts/* in PATH.
-      # This means that, when HOST_ARCH == BUILD_ARCH, i686-linux-gcc will use
-      # its version and NOT the wrapper script in build_scripts which simulates
-      # its behavior using -m32 and -specs.
-      export PATH="$GCC_TOOLCHAIN:$PATH"
+   # Also export the x86_64 cross-toolchain if it exists or if the host
+   # is aarch64 since on that architecture, we need both the i386 and the
+   # x86_64 toolchain in any case.
+   export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
 
-      # Also export the x86_64 cross-toolchain if it exists or if the host
-      # is aarch64 since on that architecture, we need both the i386 and the
-      # x86_64 toolchain in any case.
-      export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
-
-      unset ha
-   fi
+   unset ha
 
    if ! [ -d $TC/$ARCH ]; then
       local no_arch_directory=1

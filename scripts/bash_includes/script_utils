@@ -463,16 +463,6 @@ function dump_cross_compiler_env {
 }
 
 function do_common_cross_compiler_setup {
-
-   if [[ "$USE_SYSCC" == 1 ]]; then
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-      else
-         export SYS_CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
-         export SYS_CXX="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-g++"
-      fi
-      export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-   fi
+   : # do nothing
 }
 

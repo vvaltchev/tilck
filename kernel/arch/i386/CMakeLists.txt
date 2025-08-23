@@ -71,7 +71,7 @@ set(
 # Simply, the GCC toolchain doesn't know that and prints a warning. It's
 # totally safe to disable this warning, in this case.
 
-if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+if (${KERNEL_SYSCC})
 
    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
       if (${CMAKE_C_COMPILER_VERSION} VERSION_GREATER_EQUAL "12.0.0")
@@ -85,6 +85,7 @@ else()
    if (${GCC_TC_VER} VERSION_GREATER_EQUAL "12.0.0")
       list(APPEND KERNEL_LINK_FLAGS_LIST "-Wl,--no-warn-rwx")
    endif()
+
 endif()
 
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)

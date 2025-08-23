@@ -31,11 +31,6 @@ function build_micropython {
       download_micropython
       cd micropython
 
-      if [[ "$USE_SYSCC" == 1 ]]; then
-         echo "ERROR: micropython doesn't support USE_SYSCC=1 at the moment"
-         exit 1
-      fi
-
       export LDFLAGS_EXTRA="-static"
       local opts="V=1"
 
