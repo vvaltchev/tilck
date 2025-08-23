@@ -8,12 +8,18 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_tfblib {
 
+   local dest
+
    if [ ! -d noarch/tfblib ]; then
 
       pushd noarch
       show_work_on_component_msg "TFBLIB"
       git clone https://github.com/vvaltchev/tfblib
-      ln -s $TC/noarch/tfblib "$MAIN_DIR/userapps/extra"
+      dest="$MAIN_DIR/userapps/extra/tfblib"
+      if [ -L "$dest" ]; then
+         rm -f "$dest"
+      fi
+      ln -s $TC/noarch/tfblib "$dest"
       popd
 
    else

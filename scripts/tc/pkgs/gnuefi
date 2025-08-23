@@ -62,11 +62,6 @@ function build_gnuefi_arch {
 
          show_work_on_component_msg "GNU-EFI (arch: $arch)"
 
-         if [[ "$USE_SYSCC" == 1 ]]; then
-            export SYS_CC="$CC"
-            export SYS_CXX="$CXX"
-         fi
-
          reset_cc_vars
          download_gnu_efi
          pushd gnu-efi

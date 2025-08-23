@@ -3,49 +3,24 @@
 
 function compiler_checks {
 
-   if [[ "$USE_SYSCC" == 1 ]]; then
+   if [[ "$USE_SYSCC" != "" ]]; then
 
-      if [[ "$CC" == "" || "$CXX" == "" ]]; then
+      echo
+      echo "ERROR: The USE_SYSCC=1 setting is *NOT* supported anymore"
+      echo
+      echo "Now we use custom pre-compiled toolchains from:"
+      echo
+      echo "   https://github.com/vvaltchev/musl-cross-make"
+      echo
+      echo "Those toolchains are statically linked, include debug info"
+      echo "for libmusl and are available for all the {host arch, "
+      echo "target arch, gcc version} combinations supported."
+      echo
+      echo "Not supporting the system compiler anymore is a massive "
+      echo "simplification for this project."
+      echo
 
-         echo "WARNING: CC and CXX should both be set when USE_SYSCC=1."
-         echo -n "Do you want just to use gcc and g++? [Y/n] "
-         read ans
-
-         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-
-            echo "----------------------------------------------------------"
-            echo "Setting:"
-            echo "   CC=gcc"
-            echo "   CXX=g++"
-            echo ""
-            export CC="gcc"
-            export CXX="g++"
-
-         else
-
-            echo "Aborted."
-            exit 1
-         fi
-      fi
-
-      local cc_compiler="`$CC --version | cut -d ' ' -f 1 | head -1`"
-      local cxx_compiler="`$CXX --version | cut -d ' ' -f 1 | head -1`"
-
-      if [ -z "$cc_compiler" ]; then
-         echo "ERROR: $CC compiler NOT FOUND"
-         exit 1
-      fi
-
-      if [ -z "$cxx_compiler" ]; then
-         echo "ERROR: $CXX compiler NOT FOUND"
-         exit 1
-      fi
-
-      if [ "$cc_compiler" != "gcc" ]; then
-         echo "ERROR: USE_SYSCC=1 is NOT supported with compilers != GCC."
-         exit 1
-      fi
-
+      exit 1
    fi
 
    #

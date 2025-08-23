@@ -213,55 +213,16 @@ To run them, execute:
 For all of that, see the [testing] document.
 
 ## Building Tilck with system's compiler (advanced)
-While for most of the projects it makes sense to build by default with system's
-compiler and require some special setup in order to work with a cross-compiler,
-for Tilck is exactly the opposite. Tilck's build system has been designed around
-the idea of using by default a pre-built toolchain from [bootlin.com] for building
-the kernel, the boot loaders, and Tilck's user apps (the system compiler is used for
-anything else that has to run on the host machine instead). That is extremely convenient
-because it saves a lot of time and disk space to anyone who wants to build Tilck
-(those pre-built toolchains take just ~60 MB of space) and it's also versatile
-because porting Tilck to a new architecture would be trivial, from the point of
-view of the build system. Still, in some rare cases using the system's compiler
-is helpful. For example, when we want to debug an application to understand what
-happens at libc level (Tilck uses [libmusl] as libc), we have to build [libmusl]
-and use the system compiler instead of the one from [bootlin.com] because we need
-all the debug symbols etc. To do that, first check that:
+This use case is not supported anymore and setting USE_SYSCC=1 now triggers
+an error. Thanks to the custom pre-built toolchains from [musl-cross-make],
+which are statically linked, include libmusl debug info and support all the
+combinations of {host arch, target arch, gcc version} we need, we could
+finally remove the support for building the whole project with a system GCC
+compiler and force it to use our libmusl instead of glibc. That is a massive
+simplification for this project.
 
-   - You have a GCC installed on your system
+[musl-cross-make]: https://github.com/vvaltchev/musl-cross-make
 
-   - Your GCC version can build i686 binaries. On all the systems in the Debian
-     family (like Ubuntu, Mint etc.), install the `gcc-multilib` and `g++-multilib`
-     packages for that.
-
-Then, install [libmusl] in the toolchain with:
-
-    ./scripts/build_toolchain -s libmusl
-
-After that, remove the `build` directory and run `cmake_run` this way:
-
-    USE_SYSCC=1 ./scripts/cmake_run
-
-In case there are multiple versions of GCC installed on the system (e.g. gcc-7 and
-gcc-9), also the `CC` and `CXX` variables can be set. **Warning**: being this an
-advanced use case, the user should have some confidence with build systems, cross
-compilers (etc.) in order to deal with any eventual issues on his/her particular
-system, in particular if it's not a *mainstream* Linux distribution. While the
-default build of Tilck is widely supported and it has very few external dependencies
-(it uses the same pre-built toolchain), in this case system's configuration matters.
-Still, Tilck's `build_toolchain` script and the build system are regularly tested
-on the following Linux distributions:
-
-   * Ubuntu (primary)
-   * Debian
-   * Mint
-   * Fedora
-   * Arch
-   * Manjaro
-   * openSUSE
-
-[bootlin.com]: https://toolchains.bootlin.com
-[libmusl]: https://www.musl-libc.org/
 
 ## Building Tilck with Clang (advanced)
 The Tilck project **cannot** be entirely built with a Clang toolchain, at the

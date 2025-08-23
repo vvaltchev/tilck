@@ -1,39 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-function (show_missing_use_syscc_error)
-
-   set(msg "")
-   string(CONCAT msg "In order to build Tilck on this host architecture "
-                     "the env variables USE_SYSCC, CC and CXX *must be* set. "
-                     "WARNING: this scenario is *not* supported in an official"
-                     " way, even if it should work.")
-
-   message(FATAL_ERROR "\n${msg}")
-
-endfunction()
-
-function (show_same_arch_build_warning)
-
-   set(msg "")
-   string(CONCAT msg "Building with HOST_ARCH == ARCH and USE_SYSCC=1 is not"
-                     " supported in an official way")
-
-   message(WARNING "\n${msg}")
-
-endfunction()
-
-function (show_no_musl_syscc_error)
-
-   set(msg "")
-   string(CONCAT msg "In order to build with USE_SYSCC=1 libmusl *must be* "
-                     "in the toolchain. "
-                     "Run: ${BTC_SCRIPT_REL} -s build_libmusl first.")
-
-   message(FATAL_ERROR "\n${msg}")
-
-endfunction()
-
 function (show_wconv_warning)
 
    set(msg "")
@@ -42,24 +9,6 @@ function (show_wconv_warning)
                      "(CC=clang and CMAKE_ARGS='-DKERNEL_SYSCC=1')")
 
    message(WARNING "${msg}")
-
-endfunction()
-
-function (show_clang_and_syscc_error)
-
-   set(msg "")
-   string(CONCAT msg "USE_SYSCC=1 is not supported with Clang. "
-                     "Please use GCC. Note[1]: it is possible to build just "
-                     "the kernel with Clang by setting CC=clang the CMake "
-                     "variable KERNEL_SYSCC=1. However, the i686 gcc "
-                     "toolchain will still be used for assembly files and "
-                     "other targets. Note[2]: if you're using "
-                     "./scripts/cmake_run, you can set CMake variables by "
-                     "setting the CMAKE_ARGS environment variable this way: "
-                     "\nCMAKE_ARGS='-DCMAKE_VAR1=0 -DVAR2=blabla' "
-                     "./scripts/cmake_run")
-
-   message(FATAL_ERROR "${msg}")
 
 endfunction()
 

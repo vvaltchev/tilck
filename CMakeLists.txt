@@ -71,9 +71,8 @@ else()
 endif()
 define_env_cache_str_var(BOARD "${ARCH_DEFAULT_BOARD}")
 
-# USE_SYSCC-related variables
+# Keep USE_SYSCC as a sticky env variable so that we can fail, if used.
 define_env_cache_bool_var(USE_SYSCC)
-define_env_cache_str_var(GCOV "gcov")
 
 # Debug cache variables
 
@@ -158,19 +157,9 @@ endif()
 # END [Setup of toolchain-related variables]
 
 if (USE_SYSCC)
-   set(SYS_CC "${CMAKE_C_COMPILER}")
-   set(SYS_CXX "${CMAKE_CXX_COMPILER}")
+   message(FATAL_ERROR "USE_SYSCC is not supported anymore")
 endif()
 
-if ("${ARCH}" STREQUAL "i386")
-   if ("${HOST_ARCH}" STREQUAL "${ARCH}")
-      if (USE_SYSCC)
-         show_same_arch_build_warning()
-      else()
-         show_missing_use_syscc_error()
-      endif()
-   endif()
-endif()
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
@@ -487,7 +476,6 @@ list(
    # Various options
    ARCH
    BOARD
-   USE_SYSCC
 
    # Non-boolean options
    TIMER_HZ
@@ -563,7 +551,7 @@ if (${ARCH} STREQUAL "i386")
    set(ARCH_LD_OUTPUT   "elf_i386")
    set(ARCH_BFD         "i386")
    set(ARCH_GCC_TC      "i686")
-   set(ARCH_GCC_FLAGS   "-m32 -march=${ARCH_GCC_TC}")
+   set(ARCH_GCC_FLAGS   "-march=${ARCH_GCC_TC}")
    set(ARCH_BITS        32)
 
    # Fundamental kernel MM constants
@@ -652,14 +640,6 @@ set(GCC_NAME_PFX              gcc_${GCC_TC_VER_}_${ARCH})
    set(GCC_TOOLCHAIN_GLIBC    ${GCC_TC_GLIBC_ROOT}/bin)
 
 # END [ARCH-dependent paths]
-
-if (USE_SYSCC)
-
-   if (NOT EXISTS ${TCROOT}/${ARCH}/musl/install/bin/musl-gcc)
-      show_no_musl_syscc_error()
-   endif()
-
-endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)

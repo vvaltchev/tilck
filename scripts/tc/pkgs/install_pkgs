@@ -34,11 +34,6 @@ function install_debian_family {
    pkg_list+=(unzip)
    pkg_list+=(parted)
 
-   if [[ "$USE_SYSCC" == 1 ]]; then
-      pkg_list+=(gcc-multilib)
-      pkg_list+=(g++-multilib)
-   fi
-
    if [[ "$ARCH" == "riscv64" ]]; then
       pkg_list+=(bison)
       pkg_list+=(flex)
