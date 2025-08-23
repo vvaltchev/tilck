@@ -36,7 +36,7 @@ jobs:
       - script: sudo -E ./scripts/build_toolchain -s lcov
         displayName: "Build lcov"
       - script: sudo -E ./scripts/build_toolchain -s libmusl
-        displayName: "Build libmusl"
+        displayName: "Download libmusl"
       - script: sudo -E ./scripts/build_toolchain -s ncurses
         displayName: "Build ncurses"
       - script: sudo -E ./scripts/build_toolchain -s micropython
@@ -46,7 +46,7 @@ jobs:
       - script: sudo -E ./scripts/build_toolchain -s tfblib
         displayName: "Build tfblib"
       - script: sudo -E ./scripts/build_toolchain -s lua
-        displayName: "Build Lua"
+        displayName: "Build lua"
       - script: sudo -E ./scripts/build_toolchain -s tree_cmd
         displayName: "Build tree_cmd"
       - script: make -j
@@ -89,7 +89,7 @@ jobs:
       - script: sudo -E ./scripts/build_toolchain -s lcov
         displayName: "Build lcov"
       - script: sudo -E ./scripts/build_toolchain -s libmusl
-        displayName: "Build libmusl"
+        displayName: "Download libmusl"
       - script: sudo -E ./scripts/build_toolchain -s ncurses
         displayName: "Build ncurses"
       - script: sudo -E ./scripts/build_toolchain -s vim
@@ -97,7 +97,7 @@ jobs:
       - script: sudo -E ./scripts/build_toolchain -s tfblib
         displayName: "Build tfblib"
       - script: sudo -E ./scripts/build_toolchain -s lua
-        displayName: "Build Lua"
+        displayName: "Build lua"
       - script: sudo -E ./scripts/build_toolchain -s tree_cmd
         displayName: "Build tree_cmd"
       - script: make -j

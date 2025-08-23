@@ -297,10 +297,6 @@ function main {
    default_funcs=()
    default_funcs+=(custom_gcc_cross_tc)
 
-   if [[ "$USE_SYSCC" == 1 ]]; then
-      default_funcs+=(build_libmusl)
-   fi
-
    if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
       default_funcs+=(download_cmake)
    fi
