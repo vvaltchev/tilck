@@ -20,3 +20,7 @@ is_stack_aligned_16:
 execute_illegal_instruction:
    .zero 4
    ret # We should never get here
+
+# Tell GNU ld to not worry about us having an executable stack
+.section .note.GNU-stack,"",@progbits
+
