@@ -17,6 +17,10 @@ function install_debian_family {
       $MAIN_DIR/scripts/tc/debian/update -ci
    fi
 
+   if which lsb_release &> /dev/null; then
+      major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
+   fi
+
    pkg_list=()
    pkg_list+=(debianutils)
    pkg_list+=(tar)
@@ -46,7 +50,21 @@ function install_debian_family {
       if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
          pkg_list+=(qemu-system-x86)
       elif [[ "$ARCH" == "riscv64" ]]; then
-         pkg_list+=(qemu-system-riscv64)
+         if ! qemu-system-riscv64 --version &> /dev/null; then
+            if [[ "$DETECTED_UBUNTU_OR_MINT" == 1 ]]; then
+               if [ "$major_ver" -ge 22 ]; then
+                  pkg_list+=(qemu-system-misc)
+               else
+                  pkg_list+=(qemu-system-riscv64)
+               fi
+            else
+               if [ "$major_ver" -ge 12 ]; then
+                  pkg_list+=(qemu-system-misc)
+               else
+                  pkg_list+=(qemu-system-riscv64)
+               fi
+            fi
+         fi
       fi
 
       pkg_list+=(python3)
@@ -57,11 +75,8 @@ function install_debian_family {
          # for that package. In some very corner cases, e.g. the arm64v8/ubuntu
          # Docker container, lsb_release is not installed. Therefore, check
          # for that as well.
-         if which lsb_release &> /dev/null; then
-            major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
-            if [ $major_ver -ge 20 ]; then
-               pkg_list+=(qemu-system-gui)
-            fi
+         if [ "$major_ver" -ge 20 ]; then
+            pkg_list+=(qemu-system-gui)
          fi
       fi
    fi

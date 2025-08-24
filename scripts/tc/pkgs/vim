@@ -32,13 +32,13 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_vim {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d vim ]; then
 
       show_work_on_component_msg "VIM"
       reset_cc_vars
-      local ncurses="$TC/$ARCH/ncurses/install"
+      local ncurses="$TC/$GCC_TC_VER_/$ARCH/ncurses/install"
 
       if ! [ -d "$ncurses" ]; then
          echo "ERROR: ncurses is needed to build vim"
@@ -99,7 +99,7 @@ function build_vim {
          chmod 644 vim.gz
       popd
 
-      if ! [ -f $TC/$ARCH/vim/install/vim.gz ]; then
+      if ! [ -f $TC/$GCC_TC_VER_/$ARCH/vim/install/vim.gz ]; then
          echo "ERROR: the install failed !!!" >> install.log
          exit 1
       fi
@@ -120,9 +120,11 @@ function build_vim_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/vim ]; then
-         if [ -f $TC/$x/vim/install/vim.gz ]; then
+      if [ -d $x/vim ]; then
+         if [ -f $x/vim/install/vim.gz ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -130,6 +132,8 @@ function build_vim_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

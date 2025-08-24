@@ -16,7 +16,7 @@ function download_zlib {
 all_funcs_list+=(build_zlib)
 function build_zlib {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d zlib ]; then
 
@@ -26,7 +26,7 @@ function build_zlib {
       download_zlib
       cd zlib
 
-      local p="$TC/$ARCH/zlib/install"
+      local p="$ARCH_DIR/zlib/install"
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
@@ -55,9 +55,11 @@ function build_zlib_installed_status {
 
    local arch_list=""
 
+   pushd $TC/$GCC_TC_VER_
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/zlib ]; then
-         if [ -f $TC/$x/zlib/install/lib/libz.a ]; then
+      if [ -d $x/zlib ]; then
+         if [ -f $x/zlib/install/lib/libz.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -65,6 +67,8 @@ function build_zlib_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

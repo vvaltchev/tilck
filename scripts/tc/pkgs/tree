@@ -16,7 +16,7 @@ function download_tree_cmd {
 all_funcs_list+=(build_tree_cmd)
 function build_tree_cmd {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d tree_cmd ]; then
 
@@ -42,9 +42,11 @@ function build_tree_cmd_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/tree_cmd ]; then
-         if [ -f $TC/$x/tree_cmd/tree ]; then
+      if [ -d $x/tree_cmd ]; then
+         if [ -f $x/tree_cmd/tree ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"

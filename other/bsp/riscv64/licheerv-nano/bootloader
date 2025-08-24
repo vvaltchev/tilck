@@ -41,7 +41,7 @@ function bootloader_patch {
 all_funcs_list+=(build_bootloader)
 function build_bootloader {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d bootloader ]; then
 
@@ -68,7 +68,7 @@ function build_bootloader {
       (internal_build_bootloader)
 
       local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
-      if ! [ -f $TC/$ARCH/bootloader/$fip_bin ]; then
+      if ! [ -f $ARCH_DIR/bootloader/$fip_bin ]; then
          echo "ERROR: build failed !!!" >> build.log
          exit 1
       fi
@@ -92,9 +92,12 @@ function build_bootloader_installed_status {
 
    local arch_list=""
    local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
+
+   pushd $ARCH_DIR/..
+
    for x in $ALL_ARCH_LIST; do
-      if [ -d $TC/$x/bootloader ]; then
-         if [ -f $TC/$x/bootloader/$fip_bin ]; then
+      if [ -d $x/bootloader ]; then
+         if [ -f $x/bootloader/$fip_bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -102,6 +105,8 @@ function build_bootloader_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

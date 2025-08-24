@@ -1,34 +1,24 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-function download_libmusl_internal {
+all_funcs_list+=(download_libmusl)
+
+function download_libmusl {
 
    local ver="$MUSL_VER"
    local tarname="libmusl-$ver.tgz"
    local url="git://git.musl-libc.org/musl"
 
-   download_git_repo_in_cache "$url" v$ver $tarname musl
-   extract_cachefile_tar_gz $tarname --
-}
-
-all_funcs_list+=(download_libmusl)
-
-function download_libmusl {
-
    pushd noarch
-   local saved_path="$PATH"
-   export SYS_CC="$CC"
-   export SYS_CXX="$CXX"
 
    if ! [ -d musl ]; then
       show_work_on_component_msg "LIBMUSL"
-      download_libmusl_internal
+      download_git_repo_in_cache "$url" v$ver $tarname musl
+      extract_cachefile_tar_gz $tarname --
    else
       show_skip_component_msg "LIBMUSL"
    fi
 
-   reset_cc_vars
-   export PATH="$saved_path"
    popd
 }
 

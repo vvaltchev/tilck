@@ -6,7 +6,7 @@ NCURSES_VER="6.1"
 all_funcs_list+=(build_ncurses)
 function build_ncurses {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d ncurses ]; then
 
@@ -15,7 +15,7 @@ function build_ncurses {
 
       local ver="$NCURSES_VER"
       local tarname=ncurses-$ver.tar.gz
-      local install_dir=$TC/$ARCH/ncurses/install
+      local install_dir=$ARCH_DIR/ncurses/install
       download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
       extract_cachefile_tar_gz $tarname ncurses-$ver ncurses
 
@@ -36,7 +36,7 @@ function build_ncurses {
       run_command2 "make install" install.log
       dump_cross_compiler_env "build.log"
 
-      if ! [ -f $TC/$ARCH/ncurses/install/lib/libncurses.a ]; then
+      if ! [ -f $ARCH_DIR/ncurses/install/lib/libncurses.a ]; then
          echo "ERROR: build failed !!!" >> build.log
          exit 1
       fi
@@ -54,10 +54,11 @@ function build_ncurses {
 function build_ncurses_installed_status {
 
    local arch_list=""
+   pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/ncurses ]; then
-         if [ -f $TC/$x/ncurses/install/lib/libncurses.a ]; then
+      if [ -d $x/ncurses ]; then
+         if [ -f $x/ncurses/install/lib/libncurses.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -65,6 +66,8 @@ function build_ncurses_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

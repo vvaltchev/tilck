@@ -209,46 +209,6 @@ function set_arch_variables {
    done
 }
 
-# $1 = arch
-# $2 = ver
-# #3 = saved ver
-function gcc_ver_mismatch_error {
-   echo "ERROR: for ARCH=$1, GCC_TC_VER ($2) != saved ($3)"
-   echo "ERROR: This is NOT a supported scenario. Please delete:"
-   echo "   $TC/$1"
-   echo "   $TC/.gcc_tc_ver_$1"
-   echo "And run this script again to use the new toolchain."
-}
-
-function save_and_check_gcc_tc_ver {
-
-   local a
-   local ver
-
-   mkdir -p $TC
-
-   for a in ${ALL_ARCH_LIST[@]}; do
-
-      ver="${a}_GCC_TC_VER"
-      ver=${!ver}
-
-      if ! [ -f $TC/.gcc_tc_ver_$a ]; then
-
-         echo -n $ver > $TC/.gcc_tc_ver_$a
-
-      else
-
-         saved=$(cat $TC/.gcc_tc_ver_$a)
-
-         if [[ "$ver" != "$saved" ]]; then
-            gcc_ver_mismatch_error $a $ver $saved
-            exit 1
-         fi
-      fi
-
-   done
-}
-
 function dump_build_toolchain_env {
 
    echo

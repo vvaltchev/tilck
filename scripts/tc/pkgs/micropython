@@ -21,7 +21,7 @@ function build_micropython {
       return
    fi
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d micropython ]; then
 
@@ -50,7 +50,7 @@ function build_micropython {
       run_command2 "make $opts -j$BUILD_PAR" build_2.log
       dump_cross_compiler_env "build_2.log"
 
-      local mp=$TC/$ARCH/micropython
+      local mp=$ARCH_DIR/micropython
       if ! [ -f $mp/ports/unix/build-standard/micropython ]; then
          echo "ERROR: build failed !!!" >> build_2.log
          exit 1
@@ -72,9 +72,12 @@ function build_micropython_installed_status {
 
    local arch_list=""
    local relBinaryPath="ports/unix/build-standard/micropython"
+
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/micropython ]; then
-         if [ -f $TC/$x/micropython/$relBinaryPath ]; then
+      if [ -d $x/micropython ]; then
+         if [ -f $x/micropython/$relBinaryPath ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -82,6 +85,8 @@ function build_micropython_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

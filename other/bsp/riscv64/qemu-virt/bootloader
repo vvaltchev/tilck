@@ -18,7 +18,7 @@ function internal_build_bootloader {
    run_command2 "make V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $TC/$ARCH/u-boot/u-boot ]; then
+   if ! [ -f $ARCH_DIR/u-boot/u-boot ]; then
       echo "ERROR: build failed !!!" >> build.log
       exit 1
    fi
@@ -53,7 +53,7 @@ function bootloader_patch {
 all_funcs_list+=(build_bootloader)
 function build_bootloader {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if [ -d u-boot ]; then
       s1=`sha1sum ./u-boot/.config | cut -d " " -f 1`
@@ -112,9 +112,11 @@ function build_bootloader_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in $ALL_ARCH_LIST; do
-      if [ -d $TC/$x/u-boot ]; then
-         if [ -f $TC/$x/u-boot/u-boot.bin ]; then
+      if [ -d $x/u-boot ]; then
+         if [ -f $x/u-boot/u-boot.bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -122,6 +124,8 @@ function build_bootloader_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
