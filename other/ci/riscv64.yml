@@ -41,7 +41,7 @@ jobs:
     variables:
       RUNNING_IN_CI: 1
       ARCH: riscv64
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc/toolchain3-gcc123
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 12.3.0
@@ -82,7 +82,7 @@ jobs:
     variables:
       RUNNING_IN_CI: 1
       ARCH: riscv64
-      TCROOT: /tc/toolchain2-gcc133
+      TCROOT: /tc/toolchain3-gcc133
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 13.3.0
@@ -123,7 +123,7 @@ jobs:
     variables:
       RUNNING_IN_CI: 1
       ARCH: riscv64
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc/toolchain3-gcc123
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
       REPORT_COV: 1

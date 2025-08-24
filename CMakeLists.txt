@@ -57,7 +57,7 @@ endif()
 
 # Main variables
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
-define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain2)
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain3)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 
 define_env_cache_bool_var(TEST_GCOV)

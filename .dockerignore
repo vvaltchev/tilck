@@ -1,5 +1,4 @@
 build
-toolchain
-toolchain2
+toolchain*
 other_builds
 
