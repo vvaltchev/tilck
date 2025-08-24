@@ -525,10 +525,6 @@ list(
 
 ###########################################################
 
-if (BOARD)
-   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
-   include(${BOARD_BSP}/board_bsp.cmake)
-endif()
 
 if (${ARCH} STREQUAL "i386")
 
@@ -629,6 +625,11 @@ set(GCC_NAME_PFX              gcc_${GCC_TC_VER_}_${ARCH})
    set(GCC_TOOLCHAIN          ${GCC_TC_ROOT}/bin)
 
 # END [ARCH-dependent paths]
+
+if (BOARD)
+   set(BOARD_BSP        ${CMAKE_SOURCE_DIR}/other/bsp/${ARCH}/${BOARD})
+   include(${BOARD_BSP}/board_bsp.cmake)
+endif()
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
