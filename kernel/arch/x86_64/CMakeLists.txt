@@ -61,6 +61,7 @@ set(
    -nostdlib
    -static
 
+   -Wl,--no-warn-rwx
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
    -Wl,-z,max-page-size=0x1000
