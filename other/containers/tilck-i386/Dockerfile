@@ -22,25 +22,25 @@ vim gcc_glibc acpica"
 RUN mkdir -p /tc/cache && \
 mkdir -p /tc/host_x86_64 && \
 mkdir -p /tc/noarch && \
-mkdir -p /tc/toolchain2-gcc113 && \
-mkdir -p /tc/toolchain2-gcc123 && \
-ln -s /tc/cache /tc/toolchain2-gcc113/cache && \
-ln -s /tc/cache /tc/toolchain2-gcc123/cache && \
-ln -s /tc/noarch /tc/toolchain2-gcc113/noarch && \
-ln -s /tc/noarch /tc/toolchain2-gcc123/noarch && \
-ln -s /tc/host_x86_64 /tc/toolchain2-gcc113/host_x86_64 && \
-ln -s /tc/host_x86_64 /tc/toolchain2-gcc123/host_x86_64
+mkdir -p /tc/toolchain3-gcc113 && \
+mkdir -p /tc/toolchain3-gcc123 && \
+ln -s /tc/cache /tc/toolchain3-gcc113/cache && \
+ln -s /tc/cache /tc/toolchain3-gcc123/cache && \
+ln -s /tc/noarch /tc/toolchain3-gcc113/noarch && \
+ln -s /tc/noarch /tc/toolchain3-gcc123/noarch && \
+ln -s /tc/host_x86_64 /tc/toolchain3-gcc113/host_x86_64 && \
+ln -s /tc/host_x86_64 /tc/toolchain3-gcc123/host_x86_64
 
 
 # -------------------------------------------------------------------------
-ARG TCROOT=/tc/toolchain2-gcc113
+ARG TCROOT=/tc/toolchain3-gcc113
 ARG GCC_TC_VER=11.3.0
 ARG ARCH=i386
 RUN /tilck-tmp/scripts/build_toolchain && \
 /tilck-tmp/scripts/build_toolchain -s $TILCK_PACKAGES
 
 # -------------------------------------------------------------------------
-ARG TCROOT=/tc/toolchain2-gcc123
+ARG TCROOT=/tc/toolchain3-gcc123
 ARG GCC_TC_VER=12.3.0
 ARG ARCH=i386
 RUN /tilck-tmp/scripts/build_toolchain && \

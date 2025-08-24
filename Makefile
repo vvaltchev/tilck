@@ -5,7 +5,7 @@
 MAKEFLAGS += --no-print-directory
 
 TCROOT_PARENT ?= ./
-TCROOT ?= $(TCROOT_PARENT)/toolchain2
+TCROOT ?= $(TCROOT_PARENT)/toolchain3
 
 PREREQUISITES := $(TCROOT) build/CMakeCache.txt
 

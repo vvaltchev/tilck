@@ -54,7 +54,7 @@ set_gcc_tc_defaults
 # Global toolchain directory
 
 : ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain2}
+: ${TCROOT:=$TCROOT_PARENT/toolchain3}
 TC="$TCROOT"
 MUSL_INSTALL=$TC/$ARCH/musl/install
 
