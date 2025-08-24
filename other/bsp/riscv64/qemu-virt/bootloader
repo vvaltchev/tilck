@@ -3,6 +3,19 @@
 
 U_BOOT_VER="2024.04"
 
+function bootloader_fix_config_file {
+
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   LC_ALL=C sort -sr .config > .config_sorted
+   mv .config_sorted .config
+}
+
 function internal_build_bootloader {
 
    echo "Building u-boot... "
@@ -114,7 +127,7 @@ function build_bootloader_installed_status {
 
    pushd $ARCH_DIR/..
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
       if [ -d $x/u-boot ]; then
          if [ -f $x/u-boot/u-boot.bin ]; then
             arch_list="${arch_list}$x "
@@ -135,19 +148,6 @@ function build_bootloader_installed_status {
    if [ -n "$arch_list" ]; then
       echo "installed $arch_list"
    fi
-}
-
-function bootloader_fix_config_file {
-
-   # Remove the date-time row (in order to allow config diff to work)
-   sed -i -e '4d' .config
-
-   # Remove all empty lines
-   sed -i '/CONFIG_/!d' .config
-
-   # Sort all the lines
-   LC_ALL=C sort -sr .config > .config_sorted
-   mv .config_sorted .config
 }
 
 all_funcs_list+=(config_bootloader)
