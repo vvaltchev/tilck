@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-set(BOARD_BSP_BOOTLOADER          ${TCROOT}/${ARCH}/u-boot/u-boot.bin)
-set(BOARD_BSP_MKIMAGE          ${TCROOT}/${ARCH}/u-boot/tools/mkimage)
+set(BOARD_BSP_BOOTLOADER          ${TCROOT_ARCH_DIR}/u-boot/u-boot.bin)
+set(BOARD_BSP_MKIMAGE             ${TCROOT_ARCH_DIR}/u-boot/tools/mkimage)
 
 set(KERNEL_PADDR                  0x80200000)  # Default
 

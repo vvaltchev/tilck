@@ -95,7 +95,7 @@ function build_bootloader_installed_status {
 
    pushd $ARCH_DIR/..
 
-   for x in $ALL_ARCH_LIST; do
+   for x in ${ALL_ARCH_LIST[@]}; do
       if [ -d $x/bootloader ]; then
          if [ -f $x/bootloader/$fip_bin ]; then
             arch_list="${arch_list}$x "
