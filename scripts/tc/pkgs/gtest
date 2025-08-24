@@ -46,7 +46,7 @@ all_funcs_list+=(build_gtest)
 function build_gtest {
 
    download_googletest
-   pushd host_$HOST_ARCH
+   pushd $HOST_ARCH_DIR_SYS
 
    if ! [ -d $GTEST_DIRNAME ]; then
 
@@ -71,8 +71,8 @@ function build_gtest {
 }
 
 function build_gtest_installed_status {
-   if [ -d $TC/host_$HOST_ARCH/$GTEST_DIRNAME ]; then
-      if [ -f $TC/host_$HOST_ARCH/$GTEST_DIRNAME/lib/libgtest.a ]; then
+   if [ -d $HOST_ARCH_DIR_SYS/$GTEST_DIRNAME ]; then
+      if [ -f $HOST_ARCH_DIR_SYS/$GTEST_DIRNAME/lib/libgtest.a ]; then
          echo "installed host_$HOST_ARCH"
       else
          echo "error"
@@ -84,7 +84,7 @@ all_funcs_list+=(build_gmock)
 function build_gmock {
 
    download_googletest
-   pushd host_$HOST_ARCH
+   pushd $HOST_ARCH_DIR_SYS
 
    if ! [ -d $GMOCK_DIRNAME ]; then
 
@@ -109,8 +109,8 @@ function build_gmock {
 }
 
 function build_gmock_installed_status {
-   if [ -d $TC/host_$HOST_ARCH/$GMOCK_DIRNAME ]; then
-      if [ -f $TC/host_$HOST_ARCH/$GMOCK_DIRNAME/lib/libgmock.a ]; then
+   if [ -d $HOST_ARCH_DIR_SYS/$GMOCK_DIRNAME ]; then
+      if [ -f $HOST_ARCH_DIR_SYS/$GMOCK_DIRNAME/lib/libgmock.a ]; then
          echo "installed host_$HOST_ARCH"
       else
          echo "error"

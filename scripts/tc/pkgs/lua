@@ -18,7 +18,7 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_lua {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
    reset_cc_vars
    show_work_on_component_msg "LUA"
 
@@ -55,9 +55,11 @@ function build_lua_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/lua ]; then
-         if [ -f $TC/$x/lua/src/lua ]; then
+      if [ -d $x/lua ]; then
+         if [ -f $x/lua/src/lua ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -65,6 +67,8 @@ function build_lua_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

@@ -80,7 +80,7 @@ function custom_gcc_cross_tc_internal {
 
 function custom_gcc_cross_tc {
 
-   pushd $TC/host
+   pushd $HOST_ARCH_DIR_SYS
 
    # Download the TC for the current *host* architecture: that's necessary
    # so that we don't depend on the GCC version available on the system.
@@ -111,13 +111,12 @@ function custom_gcc_cross_tc {
 function get_gcc_tc_installed_status_int {
 
    local arch_list=""
-   local ha=$TC/host_${BUILD_ARCH}
    local pfx
 
    pfx="${1}_GCC_NAME_PFX"
    pfx=${!pfx}
 
-   if [ -d $ha/${pfx}_$2 ]; then
+   if [ -d $HOST_ARCH_DIR_SYS/${pfx}_$2 ]; then
       echo "installed host_$HOST_ARCH"
    fi
 }

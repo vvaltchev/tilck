@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 # Remove -rdynamic
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-include_directories(${TCROOT}/i386/gnu-efi/inc)
+include_directories(${GNUEFI_DIR}/inc)
 
 # Options that will be used only when building the actual kernel, not when
 # building kernel's code for unit testing.

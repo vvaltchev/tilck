@@ -10,7 +10,7 @@ MTOOLS_VER="4.0.23"
 all_funcs_list+=(build_mtools)
 function build_mtools {
 
-   pushd host_${HOST_ARCH}
+   pushd $HOST_ARCH_DIR_SYS
 
    if ! [ -d mtools ]; then
 
@@ -34,8 +34,8 @@ function build_mtools {
 }
 
 function build_mtools_installed_status {
-   if [ -d $TC/host_${HOST_ARCH}/mtools ]; then
-      if [ -f $TC/host_${HOST_ARCH}/mtools/mtools ]; then
+   if [ -d $HOST_ARCH_DIR_SYS/mtools ]; then
+      if [ -f $HOST_ARCH_DIR_SYS/mtools/mtools ]; then
          echo "installed host_${HOST_ARCH}"
       else
          echo "error"

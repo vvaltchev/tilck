@@ -13,7 +13,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USERAPPS_CFLAGS}")
 
 add_custom_target(userapps)
 include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${TCROOT}/${ARCH}/zlib/install/include)
+include_directories(${ZLIB_DIR}/install/include)
 
 # [build utils]
 
@@ -111,13 +111,15 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
       add_executable(devshell ${DEVSHELL_SOURCES})
       set(DEVSHELL_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/devshell)
       target_include_directories(devshell PUBLIC ${DEVSHELL_SRC_DIR})
-      target_link_libraries(devshell ${TCROOT}/${ARCH}/zlib/install/lib/libz.a)
+      target_link_libraries(
+         devshell ${ZLIB_DIR}/install/lib/libz.a
+      )
       register_usermode_app(devshell)
    endif()
 # [/devshell]
 
 # [ncurses test app]
-   if (EXISTS ${NCURSES_INST}/lib/libncurses_g.a)
+   if (EXISTS ${NCURSES_DIR}/install/lib/libncurses_g.a)
 
       if (TYPICAL_DEVEL_USERAPPS)
          set(USERAPPS_ncapp OFF CACHE BOOL "Include `ncapp` in fatpart")
@@ -127,8 +129,8 @@ include_directories(${TCROOT}/${ARCH}/zlib/install/include)
 
       if (USERAPPS_ncapp)
          add_usermode_app(ncapp)
-         target_include_directories(ncapp PUBLIC ${NCURSES_INST}/include)
-         target_link_libraries(ncapp ${NCURSES_INST}/lib/libncurses_g.a)
+         target_include_directories(ncapp PUBLIC ${NCURSES_DIR/install}/include)
+         target_link_libraries(ncapp ${NCURSES_DIR}/install/lib/libncurses_g.a)
       endif()
    endif()
 # [/ncurses test app]

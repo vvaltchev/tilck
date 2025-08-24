@@ -56,7 +56,7 @@ function build_gnuefi_arch {
    local arch_efi="$2"
    local arch_tc="$3"
 
-   pushd $arch
+   pushd $GCC_TC_VER_/$arch
 
       if ! [ -d gnu-efi ]; then
 
@@ -83,42 +83,14 @@ function build_gnuefi_arch {
    popd
 }
 
-function build_gnuefi_system_compiler {
-
-   pushd $BUILD_ARCH
-
-      if ! [ -d gnu-efi ]; then
-
-         show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
-         reset_cc_vars
-         download_gnu_efi
-         pushd gnu-efi
-         gnuefi_patch
-
-         run_command2 \
-            "make ARCH=${BUILD_ARCH} -j$BUILD_PAR" build_${BUILD_ARCH}.log
-
-         popd
-      else
-
-         show_skip_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
-      fi
-
-   popd
-}
-
 if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_gnuefi)
 fi
+
 function build_gnuefi {
 
    build_gnuefi_arch $ARCH $ARCH_EFI $ARCH_GCC_TC
-
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-      build_gnuefi_system_compiler
-   elif [[ "$HOST_ARCH" != i386 ]]; then
-      build_gnuefi_arch x86_64 x86_64 x86_64
-   fi
+   build_gnuefi_arch x86_64 x86_64 x86_64
 }
 
 function build_gnuefi_installed_status {
@@ -126,13 +98,15 @@ function build_gnuefi_installed_status {
    local arch_list=""
    local y
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
 
-      if [ -d $TC/$x/gnu-efi ]; then
+      if [ -d $x/gnu-efi ]; then
 
          y="${x}_ARCH_EFI"
 
-         if ! [ -f $TC/$x/gnu-efi/${!y}/gnuefi/libgnuefi.a ]; then
+         if ! [ -f $x/gnu-efi/${!y}/gnuefi/libgnuefi.a ]; then
             echo "error"
             return
          fi
@@ -140,6 +114,8 @@ function build_gnuefi_installed_status {
       fi
 
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

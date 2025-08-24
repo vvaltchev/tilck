@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 set(EFI_ARCH x86_64)
-set(GNUEFI_DIR ${TCROOT}/x86_64/gnu-efi)
+set(GNUEFI_DIR ${TCROOT_ARCH_DIR_PARENT}/x86_64/gnu-efi)
 file(GLOB SOURCES ${GLOB_CONF_DEP} "../*.c" "*.S")
 
 

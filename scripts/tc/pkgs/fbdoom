@@ -87,7 +87,7 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_fbdoom {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d fbDOOM ]; then
 
@@ -130,10 +130,11 @@ function build_fbdoom {
 function build_fbdoom_installed_status {
 
    local arch_list=""
+   pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/fbDOOM/ ]; then
-         if [ -f $TC/$x/fbDOOM/fbdoom/fbdoom.gz ]; then
+      if [ -d $x/fbDOOM/ ]; then
+         if [ -f $x/fbDOOM/fbdoom/fbdoom.gz ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -141,6 +142,8 @@ function build_fbdoom_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
