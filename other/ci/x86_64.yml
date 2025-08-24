@@ -35,7 +35,7 @@ jobs:
       vmImage: 'ubuntu-24.04'
     variables:
       RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc/toolchain3-gcc123
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 12.3.0
