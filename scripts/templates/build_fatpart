@@ -14,6 +14,8 @@ gcctc="@GCC_TOOLCHAIN@"
 host_arch="@HOST_ARCH@"
 arch="@ARCH@"
 spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
+arch_dir="@TCROOT_ARCH_DIR@"
+host_arch_dir_sys="@TCROOT_BA@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -25,7 +27,7 @@ else
    fi
 fi
 
-mtoolsdir=$tc/host_${host_arch}/mtools
+mtoolsdir=$host_arch_dir_sys/mtools
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
@@ -148,8 +150,10 @@ function add_busybox {
       return
    fi
 
-   if [ -d $tc/$arch/busybox ]; then
-      link_or_copy $tc/$arch/busybox/busybox bin/
+   if [ -d $arch_dir/busybox ]; then
+      link_or_copy $arch_dir/busybox/busybox bin/
+   else
+      echo "BUSYBOX NOT FOUND at $arch_dir/busybox!!!"
    fi
 }
 
@@ -182,14 +186,14 @@ function add_tcc {
       return
    fi
 
-   local musl=@GCC_TC_SYSROOT@/lib/
+   local musl=@GCC_TC_SYSROOT@/lib
 
    mkdir -p lib/tcc
-   cp -r $tc/$arch/tcc/include lib/tcc
-   link_or_copy $tc/$arch/tcc/tcclib.h lib/tcc/include
-   link_or_copy $tc/$arch/tcc/@ARCH@-libtcc1.a lib/tcc
-   link_or_copy $tc/$arch/tcc/@ARCH@-tcc bin/tcc
-   cp -r $tc/$arch/tcc/examples lib/tcc-examples
+   cp -r $arch_dir/tcc/include lib/tcc
+   link_or_copy $arch_dir/tcc/tcclib.h lib/tcc/include
+   link_or_copy $arch_dir/tcc/@ARCH@-libtcc1.a lib/tcc
+   link_or_copy $arch_dir/tcc/@ARCH@-tcc bin/tcc
+   cp -r $arch_dir/tcc/examples lib/tcc-examples
 
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
 }
@@ -200,7 +204,7 @@ function add_micropython {
       return
    fi
 
-   local mp=$tc/$arch/micropython
+   local mp=$arch_dir/micropython
    link_or_copy $mp/ports/unix/build-standard/micropython usr/bin
 }
 
@@ -211,12 +215,12 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $tc/$arch/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $arch_dir/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
 
-   if [ -f $tc/$arch/fbDOOM/Doom1.WAD ]; then
-      local wadfile="$tc/$arch/fbDOOM/Doom1.WAD"
+   if [ -f $arch_dir/fbDOOM/Doom1.WAD ]; then
+      local wadfile="$arch_dir/fbDOOM/Doom1.WAD"
    else
-      local wadfile="$tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz"
+      local wadfile="$arch_dir/fbDOOM/freedoom/freedoom1.wad.gz"
    fi
 
    link_or_copy "$wadfile" usr/lib/fbDOOM
@@ -283,8 +287,8 @@ function add_vim {
    fi
 
    mkdir -p usr/lib/vim
-   link_or_copy $tc/$arch/vim/install/vim.gz usr/lib/vim
-   link_or_copy $tc/$arch/vim/install/vr.tgz usr/lib/vim
+   link_or_copy $arch_dir/vim/install/vim.gz usr/lib/vim
+   link_or_copy $arch_dir/vim/install/vr.tgz usr/lib/vim
 
    mkdir -p usr/lib/vim/samples
    cp $maindir/tests/interactive/vim_text_files/* usr/lib/vim/samples/
@@ -296,7 +300,7 @@ function add_tree_cmd {
       return
    fi
 
-   link_or_copy $tc/$arch/tree_cmd/tree usr/bin
+   link_or_copy $arch_dir/tree_cmd/tree usr/bin
 }
 
 function add_lua {
@@ -305,12 +309,12 @@ function add_lua {
       return
    fi
 
-   if [ -f $tc/$arch/lua/src/lua ]; then
-      link_or_copy $tc/$arch/lua/src/lua bin/
+   if [ -f $arch_dir/lua/src/lua ]; then
+      link_or_copy $arch_dir/lua/src/lua bin/
    fi
 
-   if [ -f $tc/$arch/lua/src/luac ]; then
-      link_or_copy $tc/$arch/lua/src/luac bin/
+   if [ -f $arch_dir/lua/src/luac ]; then
+      link_or_copy $arch_dir/lua/src/luac bin/
    fi
 }
 

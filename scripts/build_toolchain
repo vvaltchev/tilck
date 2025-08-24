@@ -37,7 +37,6 @@ ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
 # Build host architectures
 ALL_HOST_ARCH_LIST=(x86_64 aarch64)
 
-# Default target architecture
 DEFAULT_ARCH="i386"
 export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}
@@ -56,7 +55,6 @@ set_gcc_tc_defaults
 : ${TCROOT_PARENT:=$MAIN_DIR}
 : ${TCROOT:=$TCROOT_PARENT/toolchain3}
 TC="$TCROOT"
-MUSL_INSTALL=$TC/$ARCH/musl/install
 
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
@@ -67,11 +65,12 @@ set_gcc_ver
 # Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
 set_arch_variables
 
-# Save GCC_TC_VER in $TC/.gcc_tc_ver_$ARCH and check its former value
-save_and_check_gcc_tc_ver
-
 # Dump the most important variables like ARCH, GCC_TC_VER etc.
 dump_build_toolchain_env
+
+ARCH_DIR="$TC/$GCC_TC_VER_/$ARCH"
+HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
+HOST_ARCH_DIR_TC="$TC/$GCC_TC_VER_/host_$HOST_ARCH"
 
 function print_func {
 
@@ -152,7 +151,7 @@ function show_funcs_list {
    fi
 
    echo ""
-   echo "--- GCC toolchains (pre-compiled for your host architecture) ---"
+   echo "--- GCC toolchains (pre-compiled) ---"
    echo ""
 
    for x in ${all_funcs_list[@]}; do
@@ -170,7 +169,7 @@ function show_funcs_list {
    done
 
    echo ""
-   echo "--- Packages for the current arch/host_arch configuration ---"
+   echo "--- Packages for GCC: $GCC_TC_VER ---"
    echo ""
 
    for x in ${default_funcs[@]}; do
@@ -320,7 +319,7 @@ function main {
       source $BOARD_BSP/bootloader
 
       default_funcs+=(build_bootloader)
-      default_funcs+=(build_libfdt)
+      default_funcs+=(build_dtc)
    fi
 
    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
@@ -344,38 +343,36 @@ function main {
    set -e
 
    export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
-   local ha=$TC/host_${HOST_ARCH}
 
-   GCC_TOOLCHAIN=$ha/${GCC_NAME_PFX}_musl/bin # Default cross-compiler
+   GCC_TOOLCHAIN=$HOST_ARCH_DIR_SYS/${GCC_NAME_PFX}_musl/bin
 
    export PATH="$GCC_TOOLCHAIN:$PATH"
 
    # Also export the x86_64 cross-toolchain if it exists or if the host
    # is aarch64 since on that architecture, we need both the i386 and the
    # x86_64 toolchain in any case.
-   export PATH="$ha/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
+   export PATH="$HOST_ARCH_DIR_SYS/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
 
-   unset ha
 
-   if ! [ -d $TC/$ARCH ]; then
+   if ! [ -d $ARCH_DIR ]; then
       local no_arch_directory=1
    fi
 
    mkdir -p $TC
    mkdir -p $TC/cache
    mkdir -p $TC/noarch
-   mkdir -p $TC/i386
-   mkdir -p $TC/x86_64
-   mkdir -p $TC/riscv64
-   mkdir -p $TC/host_aarch64
-   mkdir -p $TC/host_i386
-   mkdir -p $TC/host_x86_64
+
+   for a in ${ALL_ARCH_LIST[@]}; do
+      mkdir -p $TC/$GCC_TC_VER_/$a
+   done
+
+   for a in ${ALL_HOST_ARCH_LIST[@]}; do
+      for compiler in $GCC_TC_VER_ syscc; do
+         mkdir -p $TC/$compiler/host_$a
+      done
+   done
 
    cd $TC
-
-   if ! [ -L host ]; then
-      ln -s host_${HOST_ARCH} host
-   fi
 
    # Set the CMAKE variable in order to single functions to be able to use it
    if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
@@ -404,7 +401,7 @@ function main {
 
       if [[ "$no_arch_directory" == 1 ]]; then
          echo
-         echo "ERROR: directory $TC/$ARCH not found."
+         echo "ERROR: directory $ARCH_DIR not found."
          echo
          echo "It is necessary to run this script *without* options first to "
          echo "download and build a minimum toolchain. Then, it will be possible"

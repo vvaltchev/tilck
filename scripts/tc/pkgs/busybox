@@ -18,7 +18,7 @@ function internal_build_busybox {
    run_command2 "make V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $TC/$ARCH/busybox/busybox ]; then
+   if ! [ -f $ARCH_DIR/busybox/busybox ]; then
       echo "ERROR: build failed !!!" >> build.log
       exit 1
    fi
@@ -35,7 +35,7 @@ function internal_build_busybox {
 all_funcs_list+=(build_busybox)
 function build_busybox {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if [ -d busybox ]; then
       s1=`sha1sum ./busybox/.config | cut -d " " -f 1`
@@ -93,9 +93,11 @@ function build_busybox_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/busybox ]; then
-         if [ -f $TC/$x/busybox/busybox ]; then
+      if [ -d $x/busybox ]; then
+         if [ -f $x/busybox/busybox ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -103,6 +105,8 @@ function build_busybox_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
@@ -130,7 +134,7 @@ function busybox_fix_config_file {
 all_funcs_list+=(config_busybox)
 function config_busybox {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d busybox ]; then
       echo "ERROR: busybox not found in toolchain"

@@ -18,7 +18,7 @@ function download_cmake_internal {
    download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
    extract_cachefile_tar_gz $tarname $filename cmake
 
-   CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
+   CMAKE=$HOST_ARCH_DIR_SYS/cmake/bin/cmake
 }
 
 if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
@@ -27,7 +27,7 @@ fi
 
 function download_cmake {
 
-   pushd host_$HOST_ARCH
+   pushd $HOST_ARCH_DIR_SYS
 
    if ! [ -d cmake ]; then
 
@@ -85,7 +85,7 @@ function download_cmake {
 }
 
 function download_cmake_installed_status {
-   if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
+   if [ -f $HOST_ARCH_DIR_SYS/cmake/bin/cmake ]; then
       echo "installed"
    elif cmake --version &> /dev/null; then
       echo "skipped"
