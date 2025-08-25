@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-function internal_build_bootloader {
+function build_bootloader_internal {
 
    echo "Building bootloader... "
    reset_cc_vars_to_null
    local saved_path="$PATH"
-   export PATH=${PATH//$GCC_TOOLCHAIN:/}
 
    set +e
    run_command2 "source build/cvisetup.sh" build.log
    run_command2 "defconfig sg2002_licheervnano_sd" build.log
    run_command2 "build_uboot" build.log
    set -e
-
-   export PATH="$saved_path"
 }
 
 #
@@ -65,7 +62,7 @@ function build_bootloader {
       extract_cachefile_tar_gz $tarname host-tools-$ver host-tools
 
       bootloader_patch
-      (internal_build_bootloader)
+      build_bootloader_internal
 
       local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
       if ! [ -f $ARCH_DIR/bootloader/$fip_bin ]; then
@@ -78,7 +75,7 @@ function build_bootloader {
    elif [ "$REBUILD" == "1" ]; then
 
       pushd bootloader
-      (internal_build_bootloader)
+      build_bootloader_internal
       popd
 
    else
