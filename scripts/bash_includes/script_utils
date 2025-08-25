@@ -154,12 +154,36 @@ function fail_if_too_old {
 function download_file_in_cache {
 
    local url="$1"
-   local filename="$2"
+   local remote_filename="$2"
+   local local_filename="$3"
 
-   if ! [ -f $TC/cache/$filename ]; then
-      (cd $TC/cache && wget $url/$filename)
+   if [[ "$local_filename" == "" ]]; then
+      local_filename="$remote_filename"
+   fi
+
+   if ! [ -f $TC/cache/$local_filename ]; then
+
+      pushd $TC/cache
+      mkdir -p tmp
+      pushd tmp
+
+      rm -rf *
+      wget "$url/$remote_filename"
+
+      if ! [ -f "$remote_filename" ]; then
+         echo "ERROR: download of $local_filename ($remote_filename) failed"
+         exit 1
+      fi
+
+      mv "$remote_filename" "../$local_filename"
+      popd
+
+      rmdir tmp
+      popd
+
    else
-      echo "NOTE: Skipping the download of $filename"
+
+      echo "NOTE: Skipping the download of $local_filename ($remote_filename)"
    fi
 }
 
