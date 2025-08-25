@@ -9,7 +9,7 @@ function download_lua {
    local tarname="lua-$version.tar.gz"
    local url="https://www.lua.org/ftp/"
 
-   download_file_in_cache "$url" "$tarname" lua
+   download_file_in_cache "$url" "$tarname"
    extract_cachefile_tar_gz "$tarname" "lua-$version" "lua"
 }
 
