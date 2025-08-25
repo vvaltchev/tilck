@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-BUSYBOX_VER="1.36.1"
-
 function internal_build_busybox {
 
    echo "Building busybox... "
@@ -66,7 +64,7 @@ function build_busybox {
 
       show_work_on_component_msg "BUSYBOX"
 
-      local ver="$BUSYBOX_VER"
+      local ver="$VER_BUSYBOX"
       local tarname=busybox-$ver.tar.bz2
 
       download_file_in_cache "https://busybox.net/downloads" "$tarname"

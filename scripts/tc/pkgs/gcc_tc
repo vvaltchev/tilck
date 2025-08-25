@@ -51,7 +51,7 @@ function custom_gcc_cross_tc_internal {
       return
    fi
 
-   tarname="${url_target}-musl-${MUSL_VER}"
+   tarname="${url_target}-musl-${VER_MUSL}"
    tarname="${tarname}-gcc-${ver}"
    tarname="${tarname}-${url_host}.tar.bz2"
 

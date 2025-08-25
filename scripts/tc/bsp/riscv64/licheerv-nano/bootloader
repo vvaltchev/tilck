@@ -53,7 +53,7 @@ function build_licheerv_nano_boot {
 
       local gh="https://github.com"
       local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
-      local ver="20240726"
+      local ver=$VER_LICHEERV_NANO_BOOT
       local remotefile="$ver.tar.gz"
       local localfile="$name-$remotefile"
 
@@ -63,7 +63,7 @@ function build_licheerv_nano_boot {
       pushd $name
 
       url="https://github.com/sophgo/host-tools/archive/refs/tags"
-      ver="1.6"
+      ver=$VER_SOPHGO_HOST_TOOLS
       remotefile="$ver.tar.gz"
       localfile="sophgo-host-tools-$remotefile"
 

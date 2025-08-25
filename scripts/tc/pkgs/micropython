@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-MICROPYTHON_VER="1.24.1"
-
 function download_micropython {
 
-   local ver="$MICROPYTHON_VER"
+   local ver="$VER_MICROPYTHON"
    local tarname="micropython-$ver.tgz"
    local url="https://github.com/micropython/micropython.git"
 

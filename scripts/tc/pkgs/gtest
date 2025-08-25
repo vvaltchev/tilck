@@ -5,10 +5,9 @@
 # Build gtest
 ##############################
 
-GTEST_VER="1.12.1"
-GTEST_DIRNAME="gtest-$GTEST_VER"
+GTEST_DIRNAME="gtest-$VER_GTEST"
 GTEST_SRC_DIR="$TC/noarch/$GTEST_DIRNAME"
-GMOCK_DIRNAME="gmock-$GTEST_VER"
+GMOCK_DIRNAME="gmock-$VER_GTEST"
 
 
 function download_googletest {
@@ -18,7 +17,7 @@ function download_googletest {
 
    if ! [ -d $GTEST_SRC_DIR ]; then
 
-      download_git_repo_in_cache "$url" release-$GTEST_VER $tarname googletest
+      download_git_repo_in_cache "$url" release-$VER_GTEST $tarname googletest
 
       pushd $TC/noarch
       extract_cachefile_tar_gz $tarname "googletest" $GTEST_DIRNAME
@@ -42,7 +41,7 @@ function build_gtest {
 
       $CMAKE                              \
          -DCMAKE_BUILD_TYPE=Debug         \
-         -DGOOGLETEST_VERSION=$GTEST_VER  \
+         -DGOOGLETEST_VERSION=$VER_GTEST  \
          $GTEST_SRC_DIR/googletest
 
       run_command2 "make -j$BUILD_PAR" build.log
@@ -80,7 +79,7 @@ function build_gmock {
 
       $CMAKE                              \
          -DCMAKE_BUILD_TYPE=Debug         \
-         -DGOOGLETEST_VERSION=$GTEST_VER  \
+         -DGOOGLETEST_VERSION=$VER_GTEST  \
          $GTEST_SRC_DIR/googlemock
 
       run_command2 "make -j$BUILD_PAR" build.log
