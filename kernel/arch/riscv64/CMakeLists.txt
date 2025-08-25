@@ -64,6 +64,7 @@ set(
 
    -Wl,--no-relax
 
+   -Wl,--no-warn-rwx
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
    -Wl,-Map=${CMAKE_BINARY_DIR}/tilck.map
