@@ -66,14 +66,6 @@ function set_host_arch_variable {
       # An alias for x86_64: fix our variable
       HOST_ARCH="x86_64"
 
-   elif [[ "$HOST_ARCH" == "i686" ]]; then
-
-      # Special case, not "officially" supported.
-      # We need to set HOST_ARCH to "i386", to match the convention
-      # used by ARCH and ld.
-
-      HOST_ARCH="i386"
-
    elif [[ "$HOST_ARCH" == "aarch64" ]]; then
 
       : # That's OK: no translation necessary.
