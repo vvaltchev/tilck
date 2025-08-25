@@ -2,15 +2,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 # Old version, worked with up to GCC 9.3.0
-# TCC_VER="15e9b7384e709120"
-
-# Latest version, Nov 2024 (doesn't work completely on Tilck now)
-TCC_VER="729918ef35dede267926b"
+# VER_TCC="15e9b7384e709120"
 
 function download_tcc {
 
    local url="git://repo.or.cz/tinycc.git"
-   local ver="$TCC_VER"
+   local ver="$VER_TCC"
    local tarname="tcc-$ver.tgz"
 
    download_git_repo_in_cache "$url" $ver $tarname tcc

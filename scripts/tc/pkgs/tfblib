@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-TFBLIB_VER="latest"
-
 if [[ "$ARCH" == "i386" ]]; then
    all_funcs_list+=(build_tfblib)
 fi

@@ -5,14 +5,12 @@
 # LCOV (front end for GCOV)
 ###############################
 
-LCOV_VER="1.15"
-
 function download_lcov {
 
-   local tarname="lcov-${LCOV_VER}.tgz"
+   local tarname="lcov-${VER_LCOV}.tgz"
    local url="https://github.com/linux-test-project/lcov.git"
 
-   download_git_repo_in_cache "$url" v${LCOV_VER} $tarname lcov-${LCOV_VER}
+   download_git_repo_in_cache "$url" v${VER_LCOV} $tarname lcov-${VER_LCOV}
    extract_cachefile_tar_gz $tarname --
 }
 
@@ -21,7 +19,7 @@ function build_lcov {
 
    pushd noarch
 
-   if ! [ -d lcov-${LCOV_VER} ]; then
+   if ! [ -d lcov-${VER_LCOV} ]; then
 
       show_work_on_component_msg "LCOV"
 
@@ -35,7 +33,7 @@ function build_lcov {
       fi
 
       download_lcov
-      cd lcov-${LCOV_VER}
+      cd lcov-${VER_LCOV}
 
    else
       show_skip_component_msg "LCOV"
@@ -45,7 +43,7 @@ function build_lcov {
 }
 
 function build_lcov_installed_status {
-   if [ -d $TC/noarch/lcov-${LCOV_VER} ]; then
+   if [ -d $TC/noarch/lcov-${VER_LCOV} ]; then
       echo "installed noarch"
    fi
 }

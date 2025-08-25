@@ -5,7 +5,7 @@ all_funcs_list+=(download_libmusl)
 
 function download_libmusl {
 
-   local ver="$MUSL_VER"
+   local ver="$VER_MUSL"
    local tarname="libmusl-$ver.tgz"
    local url="git://git.musl-libc.org/musl"
 

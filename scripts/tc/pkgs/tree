@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-TREE_CMD_VER="1.8.0"
-
 function download_tree_cmd {
 
-   local ver="$TREE_CMD_VER"
+   local ver="$VER_TREECMD"
    local tarname="tree_cmd-$ver.tgz"
    local url="https://github.com/vvaltchev/tree-command.git"
 
