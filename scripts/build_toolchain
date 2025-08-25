@@ -70,6 +70,9 @@ set_arch_variables
 # Dump the most important variables like ARCH, GCC_TC_VER etc.
 dump_build_toolchain_env
 
+# Check BOARD and set its default value when applicable
+set_board_value_and_defaults
+
 ARCH_DIR="$TC/$GCC_TC_VER_/$ARCH"
 HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
 HOST_ARCH_DIR_TC="$TC/$GCC_TC_VER_/host_$HOST_ARCH"
@@ -315,11 +318,7 @@ function main {
    fi
 
    if [[ "$ARCH" == "riscv64" ]]; then
-
-      export BOARD=${BOARD:-qemu-virt}
-      export BOARD_BSP="$MAIN_DIR/other/bsp/$ARCH/$BOARD"
-      source $BOARD_BSP/bootloader
-
+      source $MAIN_DIR/scripts/tc/bsp/$ARCH/$BOARD/bootloader
       default_funcs+=(build_bootloader)
       default_funcs+=(build_dtc)
    fi
@@ -377,8 +376,8 @@ function main {
    cd $TC
 
    # Set the CMAKE variable in order to single functions to be able to use it
-   if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
-      CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
+   if [ -f $HOST_ARCH_DIR_SYS/cmake/bin/cmake ]; then
+      CMAKE=$HOST_ARCH_DIR_SYS/cmake/bin/cmake
    else
       CMAKE=cmake
    fi
