@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-FBDOOM_VER="0.12.1"
-
 function download_fbdoom {
 
    if ! [ -f $TC/cache/fbdoom.tgz ]; then
 
       local fbdoom="https://github.com/maximevince/fbDOOM.git"
       local fd_url="https://github.com/freedoom/freedoom/releases/download"
-      local ver="$FBDOOM_VER"
+      local ver="$VER_FBDOOM"
       local freedoom="freedoom-$ver"
       local freedoom_zip="$freedoom.zip"
 

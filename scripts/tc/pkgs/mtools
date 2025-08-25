@@ -5,8 +5,6 @@
 # Mtools
 ###############################
 
-MTOOLS_VER="4.0.23"
-
 all_funcs_list+=(build_mtools)
 function build_mtools {
 
@@ -15,7 +13,7 @@ function build_mtools {
    if ! [ -d mtools ]; then
 
       show_work_on_component_msg "MTOOLS"
-      local pkgname="mtools-$MTOOLS_VER"
+      local pkgname="mtools-$VER_MTOOLS"
       local tarname=$pkgname.tar.gz
 
       download_file_in_cache "ftp://ftp.gnu.org/gnu/mtools" "$tarname"

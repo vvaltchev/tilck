@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-U_BOOT_VER="2024.04"
-
 function bootloader_fix_config_file {
 
    # Remove the date-time row (in order to allow config diff to work)
@@ -101,7 +99,7 @@ function build_uboot {
 
       show_work_on_component_msg "U-BOOT"
 
-      local ver="$U_BOOT_VER"
+      local ver="$VER_U_BOOT"
       local tarname=u-boot-$ver.tar.bz2
 
       download_file_in_cache "https://ftp.denx.de/pub/u-boot" "$tarname"

@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-ZLIB_VER="1.2.11"
-
 function download_zlib {
 
-   local ver="$ZLIB_VER"
+   local ver="$VER_ZLIB"
    local tarname="zlib-$ver.tgz"
    local url="https://github.com/madler/zlib"
 

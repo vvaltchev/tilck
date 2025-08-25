@@ -30,6 +30,7 @@ source $MAIN_DIR/scripts/bash_includes/arch_utils
 source $MAIN_DIR/scripts/bash_includes/cc_vars
 source $MAIN_DIR/scripts/bash_includes/arch_checks
 source $MAIN_DIR/scripts/bash_includes/compiler_checks
+source $MAIN_DIR/other/pkg_versions
 
 # Target architectures
 ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
@@ -40,7 +41,6 @@ ALL_HOST_ARCH_LIST=(x86_64 aarch64)
 # Default target architecture
 DEFAULT_ARCH="i386"
 
-export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}
 
 # Set ARCH_GCC_TC based on ARCH

@@ -96,7 +96,6 @@ set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 set(TCROOT_BA           ${TCROOT}/syscc/host_${HOST_ARCH})
-set(LCOV_VER            "1.15")
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
 
@@ -147,6 +146,37 @@ if (USE_SYSCC)
    message(FATAL_ERROR "USE_SYSCC is not supported anymore")
 endif()
 
+
+#
+# Read all the VER_<PACKAGE>=<VALUE> pairs from pkg_versions
+#
+
+file(STRINGS ${CMAKE_SOURCE_DIR}/other/pkg_versions PKG_VERSIONS)
+
+foreach(LINE ${PKG_VERSIONS})
+   if(NOT "${LINE}" STREQUAL "" AND NOT "${LINE}" MATCHES "^#")
+
+      string(FIND "${LINE}" "=" EQUAL_POS)
+
+      if (EQUAL_POS EQUAL -1)
+         message(FATAL_ERROR "Broken key/value syntax in pkg_versions")
+      endif()
+
+      string(SUBSTRING "${LINE}" 0 ${EQUAL_POS} KEY)
+      math(EXPR VALUE_START_POS "${EQUAL_POS} + 1")
+      string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
+
+      set(${KEY} "${VALUE}")
+      message(STATUS "${KEY} = '${VALUE}'")
+
+   endif()
+endforeach()
+
+unset(EQUAL_POS)
+unset(KEY)
+unset(LINE)
+unset(VALUE)
+unset(VALUE_START_POS)
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
@@ -1038,11 +1068,10 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-set(GTEST_VER "1.12.1")
-set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googletest)
-set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${GTEST_VER}/googlemock)
-set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest-${GTEST_VER})
-set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock-${GTEST_VER})
+set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${VER_GTEST}/googletest)
+set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${VER_GTEST}/googlemock)
+set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest-${VER_GTEST})
+set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock-${VER_GTEST})
 set(GTEST_BTC_COMMAND "build_gtest build_gmock")
 
 add_custom_command(

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-DTC_VER="1.7.0"
-
 function internal_build_dtc {
 
    echo "Building libfdt from the DTC project... "
@@ -37,7 +35,7 @@ function build_dtc {
 
       show_work_on_component_msg "DTC"
 
-      local ver="$DTC_VER"
+      local ver="$VER_DTC"
       local tarname=dtc-$ver.tar.gz
       local url1="https://mirrors.edge.kernel.org/"
       local url2="pub/software/utils/dtc/"

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-ACPICA_VER="R2024_12_12"
-
 function patch_acpica {
 
    local def_before='#if defined(_LINUX) || defined(__linux__)'
@@ -30,10 +28,10 @@ function download_acpica {
    if ! [ -d acpica ]; then
 
       local url="https://github.com/acpica/acpica.git"
-      local tarname="acpica-$ACPICA_VER.tgz"
+      local tarname="acpica-$VER_ACPICA.tgz"
 
       show_work_on_component_msg "ACPICA"
-      download_git_repo_in_cache "$url" $ACPICA_VER $tarname acpica
+      download_git_repo_in_cache "$url" $VER_ACPICA $tarname acpica
       extract_cachefile_tar_gz $tarname --
 
       pushd acpica
