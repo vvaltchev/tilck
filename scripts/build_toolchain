@@ -319,7 +319,6 @@ function main {
 
    if [[ "$ARCH" == "riscv64" ]]; then
       source $MAIN_DIR/scripts/tc/bsp/$ARCH/$BOARD/bootloader
-      default_funcs+=(build_bootloader)
       default_funcs+=(build_dtc)
    fi
 
