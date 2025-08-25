@@ -54,19 +54,21 @@ function build_licheerv_nano_boot {
       local gh="https://github.com"
       local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
       local ver="20240726"
-      local tarname=$ver.tar.gz
+      local remotefile="$ver.tar.gz"
+      local localfile="$name-$remotefile"
 
-      download_file_in_cache "$url" "$tarname"
-      extract_cachefile_tar_gz $tarname LicheeRV-Nano-Build-$ver $name
+      download_file_in_cache "$url" "$remotefile" "$localfile"
+      extract_cachefile_tar_gz "$localfile" LicheeRV-Nano-Build-$ver $name
 
       pushd $name
 
       url="https://github.com/sophgo/host-tools/archive/refs/tags"
       ver="1.6"
-      tarname=$ver.tar.gz
+      remotefile="$ver.tar.gz"
+      localfile="sophgo-host-tools-$remotefile"
 
-      download_file_in_cache "$url" "$tarname"
-      extract_cachefile_tar_gz $tarname host-tools-$ver host-tools
+      download_file_in_cache "$url" "$remotefile" "$localfile"
+      extract_cachefile_tar_gz "$localfile" host-tools-$ver host-tools
 
       bootloader_patch
       build_bootloader_internal
