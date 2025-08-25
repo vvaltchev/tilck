@@ -37,7 +37,9 @@ ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
 # Build host architectures
 ALL_HOST_ARCH_LIST=(x86_64 aarch64)
 
+# Default target architecture
 DEFAULT_ARCH="i386"
+
 export MUSL_VER=${MUSL_VER:-1.2.5}
 export ARCH=${ARCH:-$DEFAULT_ARCH}
 
