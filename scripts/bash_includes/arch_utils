@@ -201,6 +201,46 @@ function set_arch_variables {
    done
 }
 
+function set_board_value_and_defaults {
+
+   local found=false
+
+   if [[ "$ARCH" == "riscv64" ]]; then
+      ALL_BOARDS_LIST=(qemu-virt licheerv-nano)
+      DEFAULT_BOARD="qemu-virt"
+   else
+      ALL_BOARDS_LIST=()
+      DEFAULT_BOARD=""
+   fi
+
+   if [[ "$BOARD" == "" ]]; then
+
+      BOARD=$DEFAULT_BOARD
+
+   else
+
+      for b in ${ALL_BOARDS_LIST[@]}; do
+         if [[ "$BOARD" == "$b" ]]; then
+            found=true
+            break
+         fi
+      done
+
+      if ! $found; then
+         echo "ERROR: Board '$BOARD' not available for ARCH: $ARCH"
+         exit 1
+      fi
+   fi
+
+   if [[ "$BOARD" != "" ]]; then
+      BOARD_BSP="$MAIN_DIR/other/bsp/$ARCH/$BOARD"
+      if ! [ -d $BOARD_BSP ]; then
+         echo "ERROR: BOARD_BSP: $BOARD_BSP not found!"
+         exit 1
+      fi
+   fi
+}
+
 function dump_build_toolchain_env {
 
    echo
@@ -209,6 +249,7 @@ function dump_build_toolchain_env {
    echo "GCC_TC_VER=$GCC_TC_VER"
    echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
    echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
+   echo "DEFAULT_BOARD=$DEFAULT_BOARD"
    echo "BOARD=$BOARD"
    echo "CC=$CC"
    echo "CXX=$CXX"
