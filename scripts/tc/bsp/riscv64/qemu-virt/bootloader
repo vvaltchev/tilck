@@ -16,7 +16,7 @@ function bootloader_fix_config_file {
    mv .config_sorted .config
 }
 
-function internal_build_bootloader {
+function build_uboot_internal {
 
    echo "Building u-boot... "
    reset_cc_vars
@@ -63,8 +63,12 @@ function bootloader_patch {
    run_command "sed -i 's/${old}/${new}/' $file"
 }
 
-all_funcs_list+=(build_bootloader)
-function build_bootloader {
+if [[ "$BOARD" == "qemu-virt" ]]; then
+   all_funcs_list+=(build_uboot)
+   default_funcs+=(build_uboot)
+fi
+
+function build_uboot {
 
    pushd $ARCH_DIR
 
@@ -84,7 +88,7 @@ function build_bootloader {
             read answer
             if [[ "$answer" == "" || "$answer" == "y" ]]; then
                pushd u-boot
-               internal_build_bootloader
+               build_uboot_internal
                popd
             else
                rm -rf u-boot
@@ -105,13 +109,13 @@ function build_bootloader {
 
       pushd u-boot
       bootloader_patch
-      internal_build_bootloader
+      build_uboot_internal
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
       pushd u-boot
-      internal_build_bootloader
+      build_uboot_internal
       popd
 
    else
@@ -121,7 +125,7 @@ function build_bootloader {
    popd
 }
 
-function build_bootloader_installed_status {
+function build_uboot_installed_status {
 
    local arch_list=""
 
@@ -150,10 +154,10 @@ function build_bootloader_installed_status {
    fi
 }
 
-all_funcs_list+=(config_bootloader)
-function config_bootloader {
+all_funcs_list+=(config_uboot)
+function config_uboot {
 
-   pushd $ARCH
+   pushd $ARCH_DIR
 
    if ! [ -d u-boot ]; then
       echo "ERROR: u-boot not found in toolchain"
@@ -177,5 +181,5 @@ function config_bootloader {
    popd
    popd
 
-   build_bootloader
+   build_uboot
 }

@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+CODENAME="sg2002_licheervnano_sd"
+
 function build_bootloader_internal {
 
-   echo "Building bootloader... "
+   echo "Build LicheeRV-Nano-Build... "
    reset_cc_vars_to_null
    local saved_path="$PATH"
 
    set +e
    run_command2 "source build/cvisetup.sh" build.log
-   run_command2 "defconfig sg2002_licheervnano_sd" build.log
+   run_command2 "defconfig $CODENAME" build.log
    run_command2 "build_uboot" build.log
    set -e
 }
@@ -35,14 +37,19 @@ function bootloader_patch {
    run_command "sed -i 's/${old2}/${new2}/' $file"
 }
 
-all_funcs_list+=(build_bootloader)
-function build_bootloader {
+if [[ "$BOARD" == "licheerv-nano" ]]; then
+   all_funcs_list+=(build_licheerv_nano_boot)
+   default_funcs+=(build_licheerv_nano_boot)
+fi
 
+function build_licheerv_nano_boot {
+
+   local name="licheerv_nano_boot"
    pushd $ARCH_DIR
 
-   if ! [ -d bootloader ]; then
+   if ! [ -d $name ]; then
 
-      show_work_on_component_msg "bootloader"
+      show_work_on_component_msg "LicheeRV Nano Boot"
 
       local gh="https://github.com"
       local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
@@ -50,9 +57,9 @@ function build_bootloader {
       local tarname=$ver.tar.gz
 
       download_file_in_cache "$url" "$tarname"
-      extract_cachefile_tar_gz $tarname LicheeRV-Nano-Build-$ver bootloader
+      extract_cachefile_tar_gz $tarname LicheeRV-Nano-Build-$ver $name
 
-      pushd bootloader
+      pushd $name
 
       url="https://github.com/sophgo/host-tools/archive/refs/tags"
       ver="1.6"
@@ -64,8 +71,8 @@ function build_bootloader {
       bootloader_patch
       build_bootloader_internal
 
-      local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
-      if ! [ -f $ARCH_DIR/bootloader/$fip_bin ]; then
+      local fip_bin="install/soc_$CODENAME/fip.bin"
+      if ! [ -f $ARCH_DIR/$name/$fip_bin ]; then
          echo "ERROR: build failed !!!" >> build.log
          exit 1
       fi
@@ -79,22 +86,22 @@ function build_bootloader {
       popd
 
    else
-      show_skip_component_msg "bootloader"
+      show_skip_component_msg "LicheeRV Nano Boot"
    fi
 
    popd
 }
 
-function build_bootloader_installed_status {
+function build_licheerv_nano_boot_installed_status {
 
    local arch_list=""
-   local fip_bin="install/soc_sg2002_licheervnano_sd/fip.bin"
+   local fip_bin="install/soc_$CODENAME/fip.bin"
 
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/bootloader ]; then
-         if [ -f $x/bootloader/$fip_bin ]; then
+      if [ -d $x/licheerv_nano_boot ]; then
+         if [ -f $x/licheerv_nano_boot/$fip_bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -114,3 +121,4 @@ function build_bootloader_installed_status {
       echo "installed $arch_list"
    fi
 }
+

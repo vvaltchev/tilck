@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.22)
 
 # Full SoC codename for this board.
 set(CODENAME "sg2002_licheervnano_sd")
-set(UBOOT_BUILD ${TCROOT_ARCH_DIR}/bootloader/u-boot-2021.10/build)
+set(BOOTLOADER "licheerv_nano_boot")
+set(BOOTLOADER_DIR ${TCROOT_ARCH_DIR}/${BOOTLOADER})
+
+set(UBOOT_BUILD ${BOOTLOADER_DIR}/u-boot-2021.10/build)
 
 macro(get_cvi_board_memmap)
 
@@ -29,7 +32,7 @@ endmacro()
 
 set(
    BOARD_MEMMAP_FILE
-   ${TCROOT_ARCH_DIR}/bootloader/build/output/${CODENAME}/cvi_board_memmap.conf
+   ${BOOTLOADER_DIR}/build/output/${CODENAME}/cvi_board_memmap.conf
 )
 
 # Get the uimage address, which will be used for boot scripts
@@ -37,7 +40,7 @@ get_cvi_board_memmap(UIMAG_ADDR)
 
 set(
    BOARD_BSP_BOOTLOADER
-   ${TCROOT_ARCH_DIR}/bootloader/install/soc_${CODENAME}/fip.bin
+   ${BOOTLOADER_DIR}/install/soc_${CODENAME}/fip.bin
 )
 
 set(BOARD_BSP_MKIMAGE
@@ -58,4 +61,7 @@ math(EXPR KERNEL_LOAD "${UIMAG_ADDR} - 0x800000" OUTPUT_FORMAT HEXADECIMAL)
 # licheerv-nano do not have a rtc
 set(KRN_CLOCK_DRIFT_COMP OFF CACHE BOOL
     "Compensate periodically for the clock drift in the system time" FORCE)
+
+unset(BOOTLOADER)
+unset(BOOTLOADER_DIR)
 
