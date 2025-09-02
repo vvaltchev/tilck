@@ -16,6 +16,7 @@ arch="@ARCH@"
 spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
 arch_dir="@TCROOT_ARCH_DIR@"
 host_arch_dir_sys="@TCROOT_BA@"
+mtools_ver="@VER_MTOOLS@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -27,7 +28,7 @@ else
    fi
 fi
 
-mtoolsdir=$host_arch_dir_sys/mtools
+mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd

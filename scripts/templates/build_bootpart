@@ -9,8 +9,9 @@ bdir="@CMAKE_BINARY_DIR@"
 dest="@CMAKE_BINARY_DIR@/bootpart"
 tc="@TCROOT@"
 host_arch="@HOST_ARCH@"
+mtools_ver="@VER_MTOOLS@"
 
-mtoolsdir=$tc/syscc/host_${host_arch}/mtools
+mtoolsdir=$tc/syscc/host_${host_arch}/mtools/$mtools_ver
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
