@@ -8,7 +8,7 @@ include_directories(${TCROOT}/noarch/gnu-efi/${VER_GNUEFI}/inc)
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
-include_directories(${TCROOT}/noarch/acpica)
+include_directories(${TCROOT}/noarch/acpica/${VER_ACPICA})
 
 include_directories(${GTEST_SOURCE_DIR}/include)
 include_directories(${GMOCK_SOURCE_DIR}/include)
