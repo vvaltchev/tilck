@@ -13,10 +13,10 @@ function build_tfblib {
 
    if ! [ -d $compdir ]; then
 
-      mkdir -p $compdir
+      show_work_on_component_msg "TFBLIB"
+      mkdir -p $compdir/..
       pushd $compdir/..
 
-      show_work_on_component_msg "TFBLIB"
       download_git_repo_in_cache "$url" $VER_TFBLIB $tarname $VER_TFBLIB
       extract_cachefile_tar_gz $tarname $VER_TFBLIB $VER_TFBLIB
 

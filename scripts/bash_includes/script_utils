@@ -223,8 +223,12 @@ function extract_cachefile_tar_generic {
          fi
 
          if [ -d "$newDirName" ]; then
-            echo "ERROR: new dir: '$newDirName' exists"
-            exit 1
+            if [[ "$( ls -A $newDirName )" != "" ]]; then
+               echo "ERROR: new dir: '$newDirName' exists and it's non-empty"
+               exit 1
+            else
+               rmdir "$newDirName"  # new dir is empty, it's OK to remove
+            fi
          fi
 
          mv "$internalDirName" "$newDirName"
