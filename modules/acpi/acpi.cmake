@@ -14,7 +14,7 @@ CHECK_C_COMPILER_FLAG(
 unset(acpica_sources_glob)
 unset(osl_sources_glob)
 
-set(ACPICA_ROOT ${TCROOT}/noarch/acpica)
+set(ACPICA_ROOT ${TCROOT}/noarch/acpica/${VER_ACPICA})
 set(ACPICA_SOURCE_ROOT ${ACPICA_ROOT}/source)
 set(ACPICA_COMPS ${ACPICA_SOURCE_ROOT}/components)
 set(ACPICA_INCLUDE ${ACPICA_SOURCE_ROOT}/include)
