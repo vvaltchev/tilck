@@ -3,11 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 
 set(TOOL_GCOV "${GCOV}")
 
-# Add the include directory of gnu-efi for the HOST architecture manually
-# constructing the path, as we don't have a gnu-efi instance in
-# host_${HOST_ARCH} just for the headers.
-
-include_directories(${TCROOT}/${HOST_ARCH}/${GCC_TC_VER_}/gnu-efi/inc)
+include_directories(${TCROOT}/noarch/gnu-efi/${VER_GNUEFI}/inc)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 set(EFI_ARCH x86_64)
-set(GNUEFI_DIR ${TCROOT_ARCH_DIR_PARENT}/x86_64/gnu-efi)
+set(GNUEFI_DIR ${TCROOT_ARCH_DIR_PARENT}/x86_64/gnu-efi/${VER_GNUEFI})
 file(GLOB SOURCES ${GLOB_CONF_DEP} "../*.c" "*.S")
 
 set(NAME_PFX_x86_64       gcc_${GCC_TC_VER_}_x86_64)
