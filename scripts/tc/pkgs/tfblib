@@ -6,18 +6,25 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_tfblib {
 
-   local dest
+   local dest="$MAIN_DIR/userapps/extra/tfblib"
+   local url="https://github.com/vvaltchev/tfblib"
+   local tarname="tfblib-$VER_TFBLIB.tgz"
+   local compdir="$TC/noarch/tfblib/$VER_TFBLIB"
 
-   if [ ! -d noarch/tfblib ]; then
+   if ! [ -d $compdir ]; then
 
-      pushd noarch
+      mkdir -p $compdir
+      pushd $compdir/..
+
       show_work_on_component_msg "TFBLIB"
-      git clone https://github.com/vvaltchev/tfblib
-      dest="$MAIN_DIR/userapps/extra/tfblib"
-      if [ -L "$dest" ]; then
-         rm -f "$dest"
+      download_git_repo_in_cache "$url" $VER_TFBLIB $tarname $VER_TFBLIB
+      extract_cachefile_tar_gz $tarname $VER_TFBLIB $VER_TFBLIB
+
+      if [ -L $dest ]; then
+         rm -f $dest
       fi
-      ln -s $TC/noarch/tfblib "$dest"
+
+      ln -s $compdir $dest
       popd
 
    else
@@ -26,6 +33,9 @@ function build_tfblib {
 }
 
 function build_tfblib_installed_status {
+
+   local compdir="$TC/noarch/tfblib/$VER_TFBLIB"
+
    if [ -d $TC/noarch/tfblib ]; then
       echo "installed noarch"
    fi
