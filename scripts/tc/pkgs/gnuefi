@@ -64,7 +64,7 @@ function build_gnuefi_arch {
    if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "GNU-EFI (arch: $arch)"
-      mkdir -p $compdir
+      mkdir -p $compdir/..
       pushd $compdir/..
 
       download_gnu_efi

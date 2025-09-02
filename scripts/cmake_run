@@ -12,9 +12,10 @@ TCROOT=$MAIN_DIR/toolchain3
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/scripts/bash_includes/arch_utils
+source $MAIN_DIR/other/pkg_versions
 
 set_host_arch_variable   # set $HOST_ARCH
-HOST_ARCH_DIR_SYS=$TCROOT/host_$HOST_ARCH/syscc
+HOST_ARCH_DIR_SYS=$TCROOT/syscc/host_$HOST_ARCH
 
 if [[ "$1" == "--contrib" ]]; then
 
@@ -122,9 +123,8 @@ fi
 export CC
 export CXX
 
-
-if [ -f $HOST_ARCH_DIR_SYS/cmake/bin/cmake ]; then
-   export CMAKE="$HOST_ARCH_DIR_SYS/cmake/bin/cmake"
+if [ -f $HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake ]; then
+   export CMAKE="$HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake"
 else
    export CMAKE="cmake"
 fi
