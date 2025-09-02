@@ -1068,10 +1068,10 @@ add_custom_target(
         ${IMG_FILE}
 )
 
-set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest-${VER_GTEST}/googletest)
-set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest-${VER_GTEST}/googlemock)
-set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest-${VER_GTEST})
-set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock-${VER_GTEST})
+set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googletest)
+set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googlemock)
+set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest/${VER_GTEST})
+set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock/${VER_GTEST})
 set(GTEST_BTC_COMMAND "build_gtest build_gmock")
 
 add_custom_command(
