@@ -17,6 +17,7 @@ spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
 arch_dir="@TCROOT_ARCH_DIR@"
 host_arch_dir_sys="@TCROOT_BA@"
 mtools_ver="@VER_MTOOLS@"
+busybox_ver="@VER_BUSYBOX@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -29,6 +30,8 @@ else
 fi
 
 mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
+busybox_dir=$arch_dir/busybox/$busybox_ver
+
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
@@ -151,10 +154,10 @@ function add_busybox {
       return
    fi
 
-   if [ -d $arch_dir/busybox ]; then
-      link_or_copy $arch_dir/busybox/busybox bin/
+   if [ -d $busybox_dir ]; then
+      link_or_copy $busybox_dir/busybox bin/
    else
-      echo "BUSYBOX NOT FOUND at $arch_dir/busybox!!!"
+      echo "BUSYBOX NOT FOUND at $busybox_dir/busybox!!!"
    fi
 }
 
