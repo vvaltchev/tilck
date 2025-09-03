@@ -7,57 +7,56 @@ function download_zlib {
    local tarname="zlib-$ver.tgz"
    local url="https://github.com/madler/zlib"
 
-   download_git_repo_in_cache "$url" v$ver $tarname zlib
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" v$ver $tarname $ver
+   extract_cachefile_tar_gz $tarname $ver $ver
 }
 
 all_funcs_list+=(build_zlib)
 function build_zlib {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/zlib/$VER_ZLIB
+   local installdir=$compdir/install
 
-   if ! [ -d zlib ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "ZLIB"
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
       reset_cc_vars
-
       download_zlib
-      cd zlib
-
-      local p="$ARCH_DIR/zlib/install"
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
+
+      cd $compdir
       export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
-
-      run_command2 "./configure --prefix='$p' --static" configure.log
-
-      set +e
+      run_command2 "./configure --prefix='$installdir' --static" configure.log
       dump_cross_compiler_env "configure.log"
 
       run_command2 "make -j$BUILD_PAR" build.log
       dump_cross_compiler_env "build.log"
 
-      set -e
       run_command2 "make install" install.log
       export CROSS_PREFIX=""
+      popd
 
    else
+
       show_skip_component_msg "ZLIB"
    fi
-
-   popd
 }
 
 function build_zlib_installed_status {
 
+   local compdir=$ARCH_DIR/zlib/$VER_ZLIB
    local arch_list=""
 
-   pushd $TC/$GCC_TC_VER_
+   pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/zlib ]; then
-         if [ -f $x/zlib/install/lib/libz.a ]; then
+      if [ -d $x/zlib/$VER_ZLIB ]; then
+         if [ -f $x/zlib/$VER_ZLIB/install/lib/libz.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
