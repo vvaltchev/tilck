@@ -23,6 +23,8 @@ function set_cc_vars_to_tc {
    export AR="${ARCH_GCC_TC}-linux-ar"
    export NM="${ARCH_GCC_TC}-linux-nm"
    export RANLIB="${ARCH_GCC_TC}-linux-ranlib"
+   export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
+   export CROSS_COMPILE=$CROSS_PREFIX
 }
 
 function reset_cc_vars_to_null {
@@ -32,8 +34,9 @@ function reset_cc_vars_to_null {
    export AR=""
    export NM=""
    export RANLIB=""
+   export CROSS_PREFIX=""
+   export CROSS_COMPILE=""
 }
-
 
 function reset_cc_vars {
 
@@ -42,6 +45,7 @@ function reset_cc_vars {
    export AR=$saved_AR
    export NM=$saved_NM
    export RANLIB=$saved_RANLIB
+   export CROSS_PREFIX=""
+   export CROSS_COMPILE=""
 }
-
 

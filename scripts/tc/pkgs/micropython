@@ -42,7 +42,6 @@ function build_micropython {
       # The unix port must be compiled for the *target* architecture.
       pushd ports/unix
       set_cc_vars_to_tc
-      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 MICROPY_PY_BTREE=0"
       run_command2 "make submodules" make_submodules.log
       run_command2 "make $opts -j$BUILD_PAR" build_2.log
@@ -57,7 +56,6 @@ function build_micropython {
       set -e
 
       export LDFLAGS_EXTRA=""
-      export CROSS_COMPILE=""
 
    else
       show_skip_component_msg "MICROPYTHON"

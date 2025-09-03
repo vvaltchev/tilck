@@ -97,7 +97,6 @@ function build_fbdoom {
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
-      export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
       export LDFLAGS="-static"
 
       pushd fbdoom
@@ -116,7 +115,6 @@ function build_fbdoom {
       popd
 
       export LDFLAGS=""
-      export CROSS_COMPILE=""
 
    else
       show_skip_component_msg "FBDOOM"

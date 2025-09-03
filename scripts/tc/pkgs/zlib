@@ -30,7 +30,6 @@ function build_zlib {
       set_cc_vars_to_tc
 
       cd $compdir
-      export CROSS_PREFIX="${ARCH_GCC_TC}-linux-"
       run_command2 "./configure --prefix='$installdir' --static" configure.log
       dump_cross_compiler_env "configure.log"
 
@@ -38,7 +37,6 @@ function build_zlib {
       dump_cross_compiler_env "build.log"
 
       run_command2 "make install" install.log
-      export CROSS_PREFIX=""
       popd
 
    else
