@@ -12,7 +12,6 @@ function internal_build_busybox {
 
    do_common_cross_compiler_setup
    set_cc_vars_to_tc
-   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
    set +e
    run_command2 "make V=1 -j$BUILD_PAR" build.log
@@ -23,8 +22,6 @@ function internal_build_busybox {
       exit 1
    fi
    set -e
-   export CROSS_COMPILE=""
-   export CC_POST_FLAGS=""
 
    busybox_fix_config_file
 
