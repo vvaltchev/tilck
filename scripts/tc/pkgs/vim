@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# This is the latest version of vim that works correctly. Version > v8.2.5057
+# This is the latest version of vim that works correctly. Version > v8.2.5056
 # uses unsupported kernel features related to timers.
 #
 # See https://github.com/vim/vim/issues/10647
@@ -11,17 +11,11 @@
 # general. Hint: it looks like implementing sys_getitimer() and sys_setitimer()
 # might be enough.
 
-VIM_VER="v8.2.5056"
-
 function download_vim {
 
-   local tarname="vim-$VIM_VER.tgz"
+   local tarname="vim-$VER_VIM.tgz"
    local url="https://github.com/vim/vim.git"
-   local tag=""
-
-   if [[ "$VIM_VER" != "latest" ]]; then
-      tag="$VIM_VER"
-   fi
+   local tag="$VER_VIM"
 
    download_git_repo_in_cache "$url" "$tag" $tarname vim
    extract_cachefile_tar_gz $tarname --
