@@ -17,8 +17,8 @@ function download_vim {
    local url="https://github.com/vim/vim.git"
    local tag="$VER_VIM"
 
-   download_git_repo_in_cache "$url" "$tag" $tarname vim
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" "$tag" $tarname $VER_VIM
+   extract_cachefile_tar_gz $tarname $VER_VIM $VER_VIM
 }
 
 if [[ "$ARCH" == "i386" ]]; then
@@ -26,13 +26,13 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_vim {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/vim/$VER_VIM
+   local ncurses="$TC/$GCC_TC_VER_/$ARCH/ncurses/install"
 
-   if ! [ -d vim ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "VIM"
       reset_cc_vars
-      local ncurses="$TC/$GCC_TC_VER_/$ARCH/ncurses/install"
 
       if ! [ -d "$ncurses" ]; then
          echo "ERROR: ncurses is needed to build vim"
@@ -40,10 +40,11 @@ function build_vim {
          exit 1
       fi
 
+      mkdir -p $compdir/..
+      pushd $compdir/..
       download_vim
-      cd vim
 
-      local curr="$PWD"
+      cd $compdir
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
@@ -52,7 +53,7 @@ function build_vim {
       export CPPFLAGS="-I$ncurses/include -I$ncurses/include/ncurses"
 
       local opts=""
-      opts="$opts --prefix=$curr/install"
+      opts="$opts --prefix=$compdir/install"
       opts="$opts --build=${HOST_ARCH}-linux-gnu"
       opts="$opts --host=${ARCH_GCC_TC}-linux-musl"
       opts="$opts --target=${ARCH_GCC_TC}-linux-musl"
@@ -79,7 +80,6 @@ function build_vim {
       fi
 
       pushd install
-
          cp -r ../runtime .
 
          pushd runtime
@@ -93,7 +93,7 @@ function build_vim {
          chmod 644 vim.gz
       popd
 
-      if ! [ -f $TC/$GCC_TC_VER_/$ARCH/vim/install/vim.gz ]; then
+      if ! [ -f $compdir/install/vim.gz ]; then
          echo "ERROR: the install failed !!!" >> install.log
          exit 1
       fi
@@ -102,12 +102,13 @@ function build_vim {
       export LDFLAGS=""
       export CPPFLAGS=""
 
+      popd
+
    else
       show_skip_component_msg "VIM"
    fi
 
    reset_cc_vars
-   popd
 }
 
 function build_vim_installed_status {
@@ -117,8 +118,8 @@ function build_vim_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/vim ]; then
-         if [ -f $x/vim/install/vim.gz ]; then
+      if [ -d $x/vim/$VER_VIM ]; then
+         if [ -f $x/vim/$VER_VIM/install/vim.gz ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"

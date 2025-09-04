@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-if (EXISTS ${TCROOT_ARCH_DIR}/vim)
+if (EXISTS ${TCROOT_ARCH_DIR}/vim/${VER_VIM})
    set(EXTRA_VIM OFF CACHE BOOL "Load the real VIM in Tilck")
    message(STATUS "EXTRA_VIM: ${EXTRA_VIM}")
 endif()

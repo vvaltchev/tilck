@@ -286,13 +286,15 @@ EOF
 
 function add_vim {
 
+   local vimdir="$arch_dir/vim/@VER_VIM@"
+
    if [ -z "@EXTRA_VIM_ENABLED@" ]; then
       return
    fi
 
    mkdir -p usr/lib/vim
-   link_or_copy $arch_dir/vim/install/vim.gz usr/lib/vim
-   link_or_copy $arch_dir/vim/install/vr.tgz usr/lib/vim
+   link_or_copy $vimdir/install/vim.gz usr/lib/vim
+   link_or_copy $vimdir/install/vr.tgz usr/lib/vim
 
    mkdir -p usr/lib/vim/samples
    cp $maindir/tests/interactive/vim_text_files/* usr/lib/vim/samples/
