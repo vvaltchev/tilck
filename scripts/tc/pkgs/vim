@@ -21,7 +21,7 @@ function download_vim {
    extract_cachefile_tar_gz $tarname $VER_VIM $VER_VIM
 }
 
-if [[ "$ARCH" == "i386" ]]; then
+if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_vim)
 fi
 function build_vim {
@@ -52,7 +52,6 @@ function build_vim {
       export CFLAGS="-ggdb -Os"
       export LDFLAGS="-static -L$ncurses/lib -lncurses"
       export CPPFLAGS="-I$ncurses/include -I$ncurses/include/ncurses"
-
 
       params+=(--prefix=$compdir/install)
       params+=(--build=${HOST_ARCH}-linux-gnu)
