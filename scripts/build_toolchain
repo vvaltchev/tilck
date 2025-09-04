@@ -234,13 +234,18 @@ function show_help {
    echo "   ./scripts/build_toolchain  [Install only default packages]"
    echo
    echo "   -s, install <pkgs...> Download/build/install pkgs"
+   echo
    echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
    echo
    echo "   -n                    Do not check for nor install system packages"
+   echo
    echo "   -j, --just-context    Just dump the context (vars) and exit"
+   echo
    echo "   -l, --list-all        List all packages, toolchains, funcs"
+   echo
    echo "   --clean               Remove everything from the toolchain, "
    echo "                         except the cache and the compilers."
+   echo
    echo "   --clean-all           Remove also the compilers, but keep the "
    echo "                         cache."
    echo
@@ -353,6 +358,11 @@ function main {
 
    if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
       exit 0
+   fi
+
+   if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
+      local skip_install=1
+      shift
    fi
 
    default_funcs=()
@@ -486,12 +496,6 @@ function main {
 
       done
       exit 0
-   fi
-
-   # Single-option parsing
-
-   if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
-      local skip_install=1
    fi
 
    # Do the actual job
