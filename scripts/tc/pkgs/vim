@@ -27,14 +27,14 @@ fi
 function build_vim {
 
    local compdir=$ARCH_DIR/vim/$VER_VIM
-   local ncurses="$TC/$GCC_TC_VER_/$ARCH/ncurses/install"
+   local ncurses=$ARCH_DIR/ncurses/$VER_NCURSES/install
 
    if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "VIM"
       reset_cc_vars
 
-      if ! [ -d "$ncurses" ]; then
+      if ! [ -d $ncurses ]; then
          echo "ERROR: ncurses is needed to build vim"
          echo "How to fix: run this script with -s build_ncurses first"
          exit 1
