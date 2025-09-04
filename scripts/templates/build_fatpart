@@ -18,6 +18,7 @@ arch_dir="@TCROOT_ARCH_DIR@"
 host_arch_dir_sys="@TCROOT_BA@"
 mtools_ver="@VER_MTOOLS@"
 busybox_ver="@VER_BUSYBOX@"
+fbdoom_ver="@VER_FBDOOM@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -31,6 +32,7 @@ fi
 
 mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 busybox_dir=$arch_dir/busybox/$busybox_ver
+fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -219,12 +221,12 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $arch_dir/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $fbdoom_dir/fbdoom/fbdoom.gz usr/lib/fbDOOM
 
-   if [ -f $arch_dir/fbDOOM/Doom1.WAD ]; then
-      local wadfile="$arch_dir/fbDOOM/Doom1.WAD"
+   if [ -f $fbdoom_dir/Doom1.WAD ]; then
+      local wadfile="$fbdoom_dir/Doom1.WAD"
    else
-      local wadfile="$arch_dir/fbDOOM/freedoom/freedoom1.wad.gz"
+      local wadfile="$fbdoom_dir/freedoom/freedoom1.wad.gz"
    fi
 
    link_or_copy "$wadfile" usr/lib/fbDOOM

@@ -11,7 +11,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/tcc)
    message(STATUS "EXTRA_TCC: ${EXTRA_TCC}")
 endif()
 
-if (EXISTS ${TCROOT_ARCH_DIR}/fbDOOM)
+if (EXISTS ${TCROOT_ARCH_DIR}/fbdoom/${VER_FBDOOM})
    set(EXTRA_FBDOOM OFF CACHE BOOL "Load fbDOOM in Tilck")
    message(STATUS "EXTRA_FBDOOM: ${EXTRA_FBDOOM}")
 endif()

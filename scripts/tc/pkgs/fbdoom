@@ -3,21 +3,22 @@
 
 function download_fbdoom {
 
-   if ! [ -f $TC/cache/fbdoom.tgz ]; then
+   local fbdoom="https://github.com/maximevince/fbDOOM.git"
+   local fd_url="https://github.com/freedoom/freedoom/releases/download"
+   local ver="$VER_FBDOOM"
+   local freedoom="freedoom-$ver"
+   local freedoom_zip="$freedoom.zip"
+   local tarfile="fbdoom-$ver.tgz"
 
-      local fbdoom="https://github.com/maximevince/fbDOOM.git"
-      local fd_url="https://github.com/freedoom/freedoom/releases/download"
-      local ver="$VER_FBDOOM"
-      local freedoom="freedoom-$ver"
-      local freedoom_zip="$freedoom.zip"
+   if ! [ -f $TC/cache/$tarfile ]; then
 
-      if ! git clone --depth 1 "$fbdoom"; then
+      if ! git clone --depth 1 "$fbdoom" $ver; then
          echo "ERROR: unable to clone $fbdoom"
          rm -rf fbDOOM
          exit 1
       fi
 
-      pushd fbDOOM || exit 1
+      pushd $ver || exit 1
 
       if ! [ -d fbdoom ]; then
          echo "ERROR: the directory `pwd`/fbdoom does not exist!"
@@ -73,11 +74,11 @@ function download_fbdoom {
       popd
       popd
 
-      tar cfz fbdoom.tgz fbDOOM || exit 1
-      mv fbdoom.tgz $TC/cache
+      tar cfz $tarfile $ver || exit 1
+      mv $tarfile $TC/cache
    fi
 
-   extract_cachefile_tar_gz fbdoom.tgz --
+   extract_cachefile_tar_gz $tarfile $ver $ver
 }
 
 if [[ "$ARCH" == "i386" ]]; then
@@ -85,15 +86,17 @@ if [[ "$ARCH" == "i386" ]]; then
 fi
 function build_fbdoom {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/fbdoom/$VER_FBDOOM
 
-   if ! [ -d fbDOOM ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "FBDOOM"
       reset_cc_vars
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_fbdoom
-      cd fbDOOM
+      cd $compdir
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
@@ -115,12 +118,11 @@ function build_fbdoom {
       popd
 
       export LDFLAGS=""
+      popd
 
    else
       show_skip_component_msg "FBDOOM"
    fi
-
-   popd
 }
 
 function build_fbdoom_installed_status {
@@ -129,8 +131,8 @@ function build_fbdoom_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/fbDOOM/ ]; then
-         if [ -f $x/fbDOOM/fbdoom/fbdoom.gz ]; then
+      if [ -d $x/fbdoom/$VER_FBDOOM ]; then
+         if [ -f $x/fbdoom/$VER_FBDOOM/fbdoom/fbdoom.gz ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
