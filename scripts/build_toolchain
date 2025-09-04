@@ -240,7 +240,9 @@ function show_help {
    echo "   -j, --just-context    Just dump the context (vars) and exit"
    echo "   -l, --list-all        List all packages, toolchains, funcs"
    echo "   --clean               Remove everything from the toolchain, "
-   echo "                         except the cache."
+   echo "                         except the cache and the compilers."
+   echo "   --clean-all           Remove also the compilers, but keep the "
+   echo "                         cache."
    echo
 }
 
@@ -260,8 +262,44 @@ function execute_func {
    fi
 }
 
+function create_base_dirs {
+
+   mkdir -p $TC
+   mkdir -p $TC/cache
+   mkdir -p $TC/noarch
+
+   for a in ${ALL_ARCH_LIST[@]}; do
+      mkdir -p $TC/$GCC_TC_VER_/$a
+   done
+
+   for a in ${ALL_HOST_ARCH_LIST[@]}; do
+      for compiler in $GCC_TC_VER_ syscc; do
+         mkdir -p $TC/$compiler/host_$a
+      done
+   done
+}
 
 function perform_full_clean {
+
+   echo "*** TOOLCHAIN FULL CLEAN ***"
+   if ! [ -d "$TC" ]; then
+      exit 0
+   fi
+
+   cd "$TC"
+   for x in `ls`; do
+      if [[ "$x" != "cache" ]]; then
+         echo "Deleting '$x'..."
+         rm -rf "$x"
+      fi
+   done
+
+   create_base_dirs
+   echo "DONE"
+   exit 0
+}
+
+function perform_clean {
 
    echo "*** TOOLCHAIN CLEAN ***"
    if ! [ -d "$TC" ]; then
@@ -269,13 +307,27 @@ function perform_full_clean {
    fi
 
    cd "$TC"
-   for x in *; do
-      if [[ "$x" != "cache" && "$x" != "*" ]]; then
+   for x in `ls`; do
+      if [[ "$x" != "cache" && "$x" != "syscc" ]]; then
          echo "Deleting '$x'..."
          rm -rf "$x"
       fi
    done
-   rm -f .gcc_tc_ver_*
+
+   pushd syscc
+   for arch in `ls`; do
+      pushd $arch
+      for x in `ls`; do
+         if [[ "$x" != gcc* ]]; then
+            echo "Deleting syscc/$arch/$x..."
+            rm -rf "$x"
+         fi
+      done
+      popd
+   done
+   popd
+
+   create_base_dirs
    echo "DONE"
    exit 0
 }
@@ -289,8 +341,13 @@ function perform_full_clean {
 
 function main {
 
-   if [[ "$1" == "--clean" ]]; then
+   if [[ "$1" == "--clean-all" ]]; then
       perform_full_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "--clean" ]]; then
+      perform_clean
       exit 0
    fi
 
@@ -358,20 +415,7 @@ function main {
       local no_arch_directory=1
    fi
 
-   mkdir -p $TC
-   mkdir -p $TC/cache
-   mkdir -p $TC/noarch
-
-   for a in ${ALL_ARCH_LIST[@]}; do
-      mkdir -p $TC/$GCC_TC_VER_/$a
-   done
-
-   for a in ${ALL_HOST_ARCH_LIST[@]}; do
-      for compiler in $GCC_TC_VER_ syscc; do
-         mkdir -p $TC/$compiler/host_$a
-      done
-   done
-
+   create_base_dirs
    cd $TC
 
    # Set the CMAKE variable in order to single functions to be able to use it
