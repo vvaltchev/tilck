@@ -28,6 +28,7 @@ function build_vim {
 
    local compdir=$ARCH_DIR/vim/$VER_VIM
    local ncurses=$ARCH_DIR/ncurses/$VER_NCURSES/install
+   local params=()
 
    if ! [ -d $compdir ]; then
 
@@ -52,22 +53,22 @@ function build_vim {
       export LDFLAGS="-static -L$ncurses/lib -lncurses"
       export CPPFLAGS="-I$ncurses/include -I$ncurses/include/ncurses"
 
-      local opts=""
-      opts="$opts --prefix=$compdir/install"
-      opts="$opts --build=${HOST_ARCH}-linux-gnu"
-      opts="$opts --host=${ARCH_GCC_TC}-linux-musl"
-      opts="$opts --target=${ARCH_GCC_TC}-linux-musl"
-      opts="$opts --with-features=normal"
-      opts="$opts --with-tlib=ncurses"
-      opts="$opts vim_cv_toupper_broken=no"
-      opts="$opts vim_cv_terminfo=yes"
-      opts="$opts vim_cv_tgetent=zero"
-      opts="$opts vim_cv_getcwd_broken=no"
-      opts="$opts vim_cv_stat_ignores_slash=no"
-      opts="$opts vim_cv_memmove_handles_overlap=yes"
+
+      params+=(--prefix=$compdir/install)
+      params+=(--build=${HOST_ARCH}-linux-gnu)
+      params+=(--host=${ARCH_GCC_TC}-linux-musl)
+      params+=(--target=${ARCH_GCC_TC}-linux-musl)
+      params+=(--with-features=normal)
+      params+=(--with-tlib=ncurses)
+      params+=(vim_cv_toupper_broken=no)
+      params+=(vim_cv_terminfo=yes)
+      params+=(vim_cv_tgetent=zero)
+      params+=(vim_cv_getcwd_broken=no)
+      params+=(vim_cv_stat_ignores_slash=no)
+      params+=(vim_cv_memmove_handles_overlap=yes)
 
       set +e
-      run_command2 "./configure $opts" configure.log
+      run_command2 "./configure ${params[*]}" configure.log
       run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
       set -e
