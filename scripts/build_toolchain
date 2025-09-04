@@ -243,11 +243,14 @@ function show_help {
    echo
    echo "   -l, --list-all        List all packages, toolchains, funcs"
    echo
-   echo "   --clean               Remove everything from the toolchain, "
+   echo "   -a, --all-archs       Make clean/delete options affect all the"
+   echo "                         architectures, not just the current one."
+   echo
+   echo "   --clean               Remove all packages for the current ARCH, "
    echo "                         except the cache and the compilers."
    echo
-   echo "   --clean-all           Remove also the compilers, but keep the "
-   echo "                         cache."
+   echo "   --clean-all           Remove everything except the cache for all "
+   echo "                         architectures."
    echo
 }
 
@@ -314,21 +317,50 @@ function perform_clean {
    cd "$TC"
    for x in `ls`; do
       if [[ "$x" != "cache" && "$x" != "syscc" ]]; then
-         echo "Deleting '$x'..."
-         rm -rf "$x"
+
+         if [[ "$x" == "noarch" ]]; then
+
+            echo "Deleting '$x'..."
+            rm -rf "$x"
+
+         else
+
+            pushd $x
+            for arch in `ls`; do
+
+               if [[
+                  "$OPT_ALL_ARCHS" == 1 ||
+                  $arch == $ARCH ||
+                  $arch == "host_$HOST_ARCH"
+               ]]
+               then
+
+                  echo "Deleting $x/$arch..."
+                  rm -rf $arch
+               fi
+
+            done
+            popd
+         fi
       fi
    done
 
    pushd syscc
    for arch in `ls`; do
-      pushd $arch
-      for x in `ls`; do
-         if [[ "$x" != gcc* ]]; then
-            echo "Deleting syscc/$arch/$x..."
-            rm -rf "$x"
-         fi
-      done
-      popd
+
+      if [[ "$OPT_ALL_ARCHS" == 1 || $arch == "host_$HOST_ARCH" ]]; then
+
+         pushd $arch
+
+         for x in `ls`; do
+            if [[ "$x" != gcc* ]]; then
+               echo "Deleting syscc/$arch/$x..."
+               rm -rf "$x"
+            fi
+         done
+         popd
+      fi
+
    done
    popd
 
@@ -346,6 +378,26 @@ function perform_clean {
 
 function main {
 
+   local found_opt=1
+
+   while [[ $found_opt == 1 ]]; do
+
+      found_opt=0
+
+      if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
+         OPT_SKIP_INSTALL=1
+         found_opt=1
+         shift
+      fi
+
+      if [[ "$1" == "-a" || "$1" == "--all-archs" ]]; then
+         OPT_ALL_ARCHS=1
+         found_opt=1
+         shift
+      fi
+
+   done
+
    if [[ "$1" == "--clean-all" ]]; then
       perform_full_clean
       exit 0
@@ -358,11 +410,6 @@ function main {
 
    if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
       exit 0
-   fi
-
-   if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
-      local skip_install=1
-      shift
    fi
 
    default_funcs=()
@@ -500,7 +547,7 @@ function main {
 
    # Do the actual job
 
-   if [[ "$skip_install" == "" ]]; then
+   if [[ "$OPT_SKIP_INSTALL" == "" ]]; then
       install_packages
    else
       echo "*** SKIPPING installation of packages"
