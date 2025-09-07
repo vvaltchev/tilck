@@ -23,19 +23,16 @@ function build_uboot_internal {
 
    do_common_cross_compiler_setup
    set_cc_vars_to_tc
-   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
    set +e
    run_command2 "make V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $ARCH_DIR/u-boot/u-boot ]; then
+   if ! [ -f $ARCH_DIR/uboot/$VER_UBOOT/u-boot ]; then
       echo "ERROR: build failed !!!" >> build.log
       exit 1
    fi
    set -e
-   export CROSS_COMPILE=""
-   export CC_POST_FLAGS=""
 
    bootloader_fix_config_file
 
@@ -68,11 +65,15 @@ fi
 
 function build_uboot {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/uboot/$VER_UBOOT
+   local ver="$VER_UBOOT"
+   local tarname=u-boot-$ver.tar.bz2
 
-   if [ -d u-boot ]; then
-      s1=`sha1sum ./u-boot/.config | cut -d " " -f 1`
-      s2=`sha1sum ./u-boot/.last_build_config | cut -d " " -f 1`
+   if [ -d $compdir ]; then
+
+      pushd $compdir
+      s1=`sha1sum ./.config | cut -d " " -f 1`
+      s2=`sha1sum ./.last_build_config | cut -d " " -f 1`
 
       if [ "$s1" != "$s2" ]; then
 
@@ -85,42 +86,39 @@ function build_uboot {
             echo -n "Do you want an incremental build? [Y/n]: "
             read answer
             if [[ "$answer" == "" || "$answer" == "y" ]]; then
-               pushd u-boot
                build_uboot_internal
-               popd
             else
-               rm -rf u-boot
+               rm -rf $compdir
             fi
          fi
       fi
+
+      popd
    fi
 
-   if ! [ -d u-boot ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "U-BOOT"
-
-      local ver="$VER_U_BOOT"
-      local tarname=u-boot-$ver.tar.bz2
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_file_in_cache "https://ftp.denx.de/pub/u-boot" "$tarname"
-      extract_cachefile_tar_bz $tarname u-boot-$ver u-boot
+      extract_cachefile_tar_bz $tarname u-boot-$ver $ver
 
-      pushd u-boot
+      cd $compdir
       bootloader_patch
       build_uboot_internal
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
-      pushd u-boot
+      pushd $compdir
       build_uboot_internal
       popd
 
    else
       show_skip_component_msg "U-BOOT"
    fi
-
-   popd
 }
 
 function build_uboot_installed_status {
@@ -130,8 +128,8 @@ function build_uboot_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/u-boot ]; then
-         if [ -f $x/u-boot/u-boot.bin ]; then
+      if [ -d $x/uboot/$VER_UBOOT ]; then
+         if [ -f $x/uboot/$VER_UBOOT/u-boot.bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -155,14 +153,14 @@ function build_uboot_installed_status {
 all_funcs_list+=(config_uboot)
 function config_uboot {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/uboot/$VER_UBOOT
 
-   if ! [ -d u-boot ]; then
-      echo "ERROR: u-boot not found in toolchain"
+   if ! [ -d $compdir ]; then
+      echo "ERROR: uboot not found in toolchain"
       exit 1
    fi
 
-   pushd u-boot
+   pushd $compdir
 
    make menuconfig
 
@@ -176,7 +174,6 @@ function config_uboot {
       echo "Source file $BOARD_BSP/u-boot.config UPDATED"
    fi
 
-   popd
    popd
 
    build_uboot
