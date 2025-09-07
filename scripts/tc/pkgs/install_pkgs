@@ -122,6 +122,7 @@ function install_debian_family {
 function install_fedora {
 
    echo fedora > $TC/.distro
+   local fedoraVer="$(rpm -E %fedora)"
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
       $MAIN_DIR/scripts/tc/fedora/update -ci
@@ -151,6 +152,9 @@ function install_fedora {
       pkg_list+=(flex)
       pkg_list+=(openssl-devel)
       pkg_list+=(dtc)
+      if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
+         pkg_list+=(openssl-devel-engine)  # For u-boot (riscv64)
+      fi
    fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
