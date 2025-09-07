@@ -7,48 +7,50 @@ function download_micropython {
    local tarname="micropython-$ver.tgz"
    local url="https://github.com/micropython/micropython.git"
 
-   download_git_repo_in_cache "$url" v$ver $tarname micropython
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" v$ver $tarname $ver
+   extract_cachefile_tar_gz $tarname $ver $ver
 }
 
 all_funcs_list+=(build_micropython)
 function build_micropython {
 
-   if [[ $HOST_ARCH != "i386" ]] && [[ $HOST_ARCH != "x86_64" ]]; then
-      echo "ERROR: HOST_ARCH=$HOST_ARCH not supported"
-      return
-   fi
+   local compdir=$ARCH_DIR/micropython/$VER_MICROPYTHON
+   local params=()
 
-   pushd $ARCH_DIR
-
-   if ! [ -d micropython ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "MICROPYTHON"
       reset_cc_vars
 
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
       download_micropython
-      cd micropython
+      cd $compdir
 
       export LDFLAGS_EXTRA="-static"
-      local opts="V=1"
 
       # mpy-cross MUST be compiled to run on the *host* system.
       set +e
       pushd mpy-cross
-      run_command2 "make $opts -j$BUILD_PAR" build_1.log
+      run_command2 "make V=1 -j$BUILD_PAR" build_1.log
       dump_cross_compiler_env "build_1.log"
       popd
 
       # The unix port must be compiled for the *target* architecture.
       pushd ports/unix
       set_cc_vars_to_tc
-      opts="V=1 MICROPY_PY_FFI=0 MICROPY_PY_THREAD=0 MICROPY_PY_BTREE=0"
+
+      params+=(V=1)
+      params+=(MICROPY_PY_FFI=0)
+      params+=(MICROPY_PY_THREAD=0)
+      params+=(MICROPY_PY_BTREE=0)
+
       run_command2 "make submodules" make_submodules.log
-      run_command2 "make $opts -j$BUILD_PAR" build_2.log
+      run_command2 "make ${params[*]} -j$BUILD_PAR" build_2.log
       dump_cross_compiler_env "build_2.log"
 
-      local mp=$ARCH_DIR/micropython
-      if ! [ -f $mp/ports/unix/build-standard/micropython ]; then
+      if ! [ -f $compdir/ports/unix/build-standard/micropython ]; then
          echo "ERROR: build failed !!!" >> build_2.log
          exit 1
       fi
@@ -56,12 +58,11 @@ function build_micropython {
       set -e
 
       export LDFLAGS_EXTRA=""
+      popd
 
    else
       show_skip_component_msg "MICROPYTHON"
    fi
-
-   popd
 }
 
 function build_micropython_installed_status {
@@ -72,8 +73,8 @@ function build_micropython_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/micropython ]; then
-         if [ -f $x/micropython/$relBinaryPath ]; then
+      if [ -d $x/micropython/$VER_MICROPYTHON ]; then
+         if [ -f $x/micropython/$VER_MICROPYTHON/$relBinaryPath ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
