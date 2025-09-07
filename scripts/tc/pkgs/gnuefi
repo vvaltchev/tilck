@@ -5,9 +5,9 @@
 # Build GNU EFI
 ##################################
 
-# Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
+# Note: using a gnuefi's fork on GitHub instead of the official SF repo:
 #
-#     git://git.code.sf.net/p/gnu-efi/code
+#     git://git.code.sf.net/p/gnuefi/code
 #
 # exclusively for performance reasons: SF sometimes is too slow for
 # CI builds.
@@ -16,7 +16,7 @@ function download_gnu_efi {
 
    local url="https://github.com/vvaltchev/gnu-efi-fork.git"
    local ver="$VER_GNUEFI"
-   local tarname="gnu-efi-$ver.tgz"
+   local tarname="gnuefi-$ver.tgz"
 
    download_git_repo_in_cache "$url" $ver $tarname $ver
    extract_cachefile_tar_gz $tarname $ver $ver
@@ -56,9 +56,9 @@ function build_gnuefi_arch {
    local compdir
 
    if [[ "$arch" != "noarch" ]]; then
-      compdir="$TC/$GCC_TC_VER_/$arch/gnu-efi/$VER_GNUEFI"
+      compdir="$TC/$GCC_TC_VER_/$arch/gnuefi/$VER_GNUEFI"
    else
-      compdir="$TC/noarch/gnu-efi/$VER_GNUEFI"
+      compdir="$TC/noarch/gnuefi/$VER_GNUEFI"
    fi
 
    if ! [ -d $compdir ]; then
@@ -106,11 +106,11 @@ function build_gnuefi_installed_status {
 
    for x in ${ALL_ARCH_LIST[@]}; do
 
-      if [ -d $x/gnu-efi/$VER_GNUEFI ]; then
+      if [ -d $x/gnuefi/$VER_GNUEFI ]; then
 
          y="${x}_ARCH_EFI"
 
-         if ! [ -f $x/gnu-efi/$VER_GNUEFI/${!y}/gnuefi/libgnuefi.a ]; then
+         if ! [ -f $x/gnuefi/$VER_GNUEFI/${!y}/gnuefi/libgnuefi.a ]; then
             echo "error"
             return
          fi
