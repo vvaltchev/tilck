@@ -1,4 +1,4 @@
-# version: v5
+# version: v6
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -16,32 +16,20 @@ ARG TILCK_PACKAGES="mtools zlib busybox bootloader libfdt lcov acpica"
 
 # -------------------------------------------------------------------------
 
-# Create the shared directories we'll need for all the toolchains
-RUN mkdir -p /tc/cache && \
-mkdir -p /tc/host_x86_64 && \
-mkdir -p /tc/noarch && \
-mkdir -p /tc/toolchain3-gcc123 && \
-mkdir -p /tc/toolchain3-gcc133 && \
-ln -s /tc/cache /tc/toolchain3-gcc123/cache && \
-ln -s /tc/cache /tc/toolchain3-gcc133/cache && \
-ln -s /tc/noarch /tc/toolchain3-gcc123/noarch && \
-ln -s /tc/noarch /tc/toolchain3-gcc133/noarch && \
-ln -s /tc/host_x86_64 /tc/toolchain3-gcc123/host_x86_64 && \
-ln -s /tc/host_x86_64 /tc/toolchain3-gcc133/host_x86_64
+RUN mkdir -p /tc
+ARG TCROOT=/tc
+ARG ARCH=riscv64
 
 # -------------------------------------------------------------------------
-ARG TCROOT=/tc/toolchain3-gcc123
-ARG GCC_TC_VER=12.3.0
-ARG ARCH=riscv64
+ARG GCC_TC_VER=12.4.0
 RUN /tilck-tmp/scripts/build_toolchain && \
 /tilck-tmp/scripts/build_toolchain -s $TILCK_PACKAGES
 
 # -------------------------------------------------------------------------
-ARG TCROOT=/tc/toolchain3-gcc133
 ARG GCC_TC_VER=13.3.0
-ARG ARCH=riscv64
 RUN /tilck-tmp/scripts/build_toolchain && \
 /tilck-tmp/scripts/build_toolchain -s $TILCK_PACKAGES
+
 
 # Remove Tilck's source and the toolchain cache to save space
 RUN rm -rf /tilck-tmp && rm -rf /tc/cache
