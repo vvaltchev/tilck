@@ -16,7 +16,7 @@ trigger:
 
 jobs:
   - job: default_tc
-    container: 'vvaltchev/debian:v4'
+    container: 'vvaltchev/debian:v5'
     pool:
       vmImage: 'ubuntu-22.04'
     variables:

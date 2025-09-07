@@ -16,7 +16,7 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-container: 'vvaltchev/opensuse:v4'
+container: 'vvaltchev/opensuse:v5'
 
 variables:
   RUNNING_IN_CI: 1

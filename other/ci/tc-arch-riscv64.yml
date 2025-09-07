@@ -17,7 +17,7 @@ pool:
   vmImage: 'ubuntu-22.04'
 
 
-container: 'vvaltchev/archlinux:v6'
+container: 'vvaltchev/archlinux:v7'
 
 variables:
   RUNNING_IN_CI: 1
