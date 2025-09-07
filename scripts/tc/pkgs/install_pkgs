@@ -169,7 +169,7 @@ function install_fedora {
    for x in ${pkg_list[@]}; do
       echo -ne "Checking $x... "
 
-      if dnf list installed $x &> /dev/null; then
+      if rpm -q $x &> /dev/null; then
          echo OK
       else
          echo NOT found
