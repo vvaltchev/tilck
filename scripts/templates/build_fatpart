@@ -19,6 +19,7 @@ host_arch_dir_sys="@TCROOT_BA@"
 mtools_ver="@VER_MTOOLS@"
 busybox_ver="@VER_BUSYBOX@"
 fbdoom_ver="@VER_FBDOOM@"
+lua_ver="@VER_LUA@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -33,6 +34,7 @@ fi
 mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 busybox_dir=$arch_dir/busybox/$busybox_ver
 fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
+lua_dir=$arch_dir/lua/$lua_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -317,12 +319,12 @@ function add_lua {
       return
    fi
 
-   if [ -f $arch_dir/lua/src/lua ]; then
-      link_or_copy $arch_dir/lua/src/lua bin/
+   if [ -f $lua_dir/src/lua ]; then
+      link_or_copy $lua_dir/src/lua bin/
    fi
 
-   if [ -f $arch_dir/lua/src/luac ]; then
-      link_or_copy $arch_dir/lua/src/luac bin/
+   if [ -f $lua_dir/src/luac ]; then
+      link_or_copy $lua_dir/src/luac bin/
    fi
 }
 

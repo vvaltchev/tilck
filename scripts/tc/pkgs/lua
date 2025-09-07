@@ -1,31 +1,35 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-LUA_VER="5.4.1"
-
 function download_lua {
-   local version="$LUA_VER"
+   local version="$VER_LUA"
    local filename="lua"
    local tarname="lua-$version.tar.gz"
    local url="https://www.lua.org/ftp/"
 
    download_file_in_cache "$url" "$tarname"
-   extract_cachefile_tar_gz "$tarname" "lua-$version" "lua"
+   extract_cachefile_tar_gz $tarname lua-$version $version
 }
 
-if [[ "$ARCH" == "i386" ]]; then
+if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+   # TODO: check what's the problem with LUA on RISCV64
    all_funcs_list+=(build_lua)
 fi
 function build_lua {
 
-   pushd $ARCH_DIR
-   reset_cc_vars
-   show_work_on_component_msg "LUA"
+   local compdir="$ARCH_DIR/lua/$VER_LUA"
+   local params=()
 
-   if ! [ -d "lua" ]; then
+   if ! [ -d $compdir ]; then
+
+      show_work_on_component_msg "LUA"
+      reset_cc_vars
+
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_lua
-      cd lua
+      cd $compdir
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
@@ -33,22 +37,20 @@ function build_lua {
       # Patch Lua's Makefile to remove "-Wl,-E"
       sed -i 's/-Wl,-E//g' src/Makefile
 
-      # Build the lua and luac static binaries
-      echo "Building lua..."
-      local flags=""
-      flags="CC=\"$CC\" MYCFLAGS=\"-std=gnu99\""
-      flags="$flags AR=\"$AR rcu\" RANLIB=\"$RANLIB\""
-      flags="$flags MYLDFLAGS=\"-static\""
-      run_command2 "make $flags" build.log
+      params+=(CC="$CC")
+      params+=(MYCFLAGS="-std=gnu99")
+      params+=(AR=\"$AR rcu\")
+      params+=(RANLIB="$RANLIB")
 
-      echo "Lua built successfully"
+      run_command2 "make ${params[*]}" build.log
+
+      popd
 
    else
       show_skip_component_msg "LUA"
    fi
 
    reset_cc_vars
-   popd
 }
 
 function build_lua_installed_status {
@@ -58,8 +60,8 @@ function build_lua_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/lua ]; then
-         if [ -f $x/lua/src/lua ]; then
+      if [ -d $x/lua/$VER_LUA ]; then
+         if [ -f $x/lua/$VER_LUA/src/lua ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
