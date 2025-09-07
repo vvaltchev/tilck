@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-function download_tree_cmd {
+function download_treecmd {
 
    local ver="$VER_TREECMD"
-   local tarname="tree_cmd-$ver.tgz"
+   local tarname="treecmd-$ver.tgz"
    local url="https://github.com/vvaltchev/tree-command.git"
 
    download_git_repo_in_cache "$url" tilck $tarname $ver
    extract_cachefile_tar_gz $tarname $ver $ver
 }
 
-all_funcs_list+=(build_tree_cmd)
-function build_tree_cmd {
+all_funcs_list+=(build_treecmd)
+function build_treecmd {
 
    local compdir=$ARCH_DIR/treecmd/$VER_TREECMD
 
    if ! [ -d $compdir ]; then
 
-      show_work_on_component_msg "TREE (command)"
+      show_work_on_component_msg "TREECMD"
       reset_cc_vars
       mkdir -p $compdir/..
       pushd $compdir/..
 
-      download_tree_cmd
+      download_treecmd
       cd $compdir
 
       do_common_cross_compiler_setup
@@ -32,11 +32,11 @@ function build_tree_cmd {
       popd
 
    else
-      show_skip_component_msg "TREE (command)"
+      show_skip_component_msg "TREECMD"
    fi
 }
 
-function build_tree_cmd_installed_status {
+function build_treecmd_installed_status {
 
    local arch_list=""
 
