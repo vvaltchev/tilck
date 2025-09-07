@@ -18,7 +18,7 @@ function build_mtools {
       mkdir -p $compdir/..
       pushd $compdir/..
 
-      download_file_in_cache "ftp://ftp.gnu.org/gnu/mtools" "$tarname"
+      download_file_in_cache "https://ftp.gnu.org/gnu/mtools" "$tarname"
       extract_cachefile_tar_gz $tarname $pkgname $VER_MTOOLS
 
       cd $VER_MTOOLS
