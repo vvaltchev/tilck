@@ -127,17 +127,8 @@ function set_gcc_ver_internal {
    local name="${1}_GCC_TC_VER"
 
    if [[ "${!name}" == "" ]]; then
-
-      if [ -f $TC/.gcc_tc_ver_$1 ]; then
-
-         local value=$(cat $TC/.gcc_tc_ver_$1)
-         eval "$name=$value"
-
-      else
-
-         local name2="${1}_DEFAULT_GCC_TC_VERSION"
-         eval "$name=${!name2}"
-      fi
+      local name2="${1}_DEFAULT_GCC_TC_VERSION"
+      eval "$name=${!name2}"
    fi
 
    if [[ "${!name}" == "" ]]; then
@@ -161,6 +152,7 @@ function set_gcc_ver {
    local val
 
    if [[ "$GCC_TC_VER" != "" ]]; then
+      name="${ARCH}_GCC_TC_VER"
       eval "$name=$GCC_TC_VER"
    fi
 

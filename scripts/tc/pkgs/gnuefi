@@ -77,6 +77,7 @@ function build_gnuefi_arch {
 
          local arch_flags="ARCH=${arch_efi} prefix=${arch_tc}-linux-"
          run_command2 "make $arch_flags -j$BUILD_PAR" build_${arch_efi}.log
+         dump_cross_compiler_env build_${arch_efi}.log
       fi
 
       popd

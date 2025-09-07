@@ -513,17 +513,20 @@ function main {
    # Exit on the first failure
    set -e
 
-   export PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
-
    GCC_TOOLCHAIN=$HOST_ARCH_DIR_SYS/${GCC_NAME_PFX}_musl/bin
 
-   export PATH="$GCC_TOOLCHAIN:$PATH"
+   # Add to $PATH all the GCC toolchains for their selected version
+   for arch in ${ALL_ARCH_LIST[@]}; do
+      local name="${arch}_GCC_TC_VER_"
+      local ver="${!name}"
+      local p="$HOST_ARCH_DIR_SYS/gcc_${ver}_${arch}_musl/bin"
+      PATH="$p:$PATH"
+   done
 
-   # Also export the x86_64 cross-toolchain if it exists or if the host
-   # is aarch64 since on that architecture, we need both the i386 and the
-   # x86_64 toolchain in any case.
-   export PATH="$HOST_ARCH_DIR_SYS/gcc_${GCC_TC_VER_}_x86_64_musl/bin:$PATH"
+   PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+   export PATH
 
+   echo "PATH=$PATH"
 
    if ! [ -d $ARCH_DIR ]; then
       local no_arch_directory=1
