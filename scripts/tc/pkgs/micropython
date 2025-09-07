@@ -28,12 +28,13 @@ function build_micropython {
       download_micropython
       cd $compdir
 
-      export LDFLAGS_EXTRA="-static"
 
       # mpy-cross MUST be compiled to run on the *host* system.
       set +e
       pushd mpy-cross
-      run_command2 "make V=1 -j$BUILD_PAR" build_1.log
+
+      params+=(V=1)
+      run_command2 "make ${params[*]} -j$BUILD_PAR" build_1.log
       dump_cross_compiler_env "build_1.log"
       popd
 
@@ -41,12 +42,13 @@ function build_micropython {
       pushd ports/unix
       set_cc_vars_to_tc
 
-      params+=(V=1)
       params+=(MICROPY_PY_FFI=0)
       params+=(MICROPY_PY_THREAD=0)
       params+=(MICROPY_PY_BTREE=0)
 
       run_command2 "make submodules" make_submodules.log
+
+      export LDFLAGS_EXTRA="-static"
       run_command2 "make ${params[*]} -j$BUILD_PAR" build_2.log
       dump_cross_compiler_env "build_2.log"
 
