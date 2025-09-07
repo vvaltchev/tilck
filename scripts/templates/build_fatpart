@@ -20,6 +20,7 @@ mtools_ver="@VER_MTOOLS@"
 busybox_ver="@VER_BUSYBOX@"
 fbdoom_ver="@VER_FBDOOM@"
 lua_ver="@VER_LUA@"
+micropython_ver="@VER_MICROPYTHON@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -35,6 +36,7 @@ mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 busybox_dir=$arch_dir/busybox/$busybox_ver
 fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
 lua_dir=$arch_dir/lua/$lua_ver
+micropython_dir=$arch_dir/micropython/$micropython_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -212,8 +214,7 @@ function add_micropython {
       return
    fi
 
-   local mp=$arch_dir/micropython
-   link_or_copy $mp/ports/unix/build-standard/micropython usr/bin
+   link_or_copy $micropython_dir/ports/unix/build-standard/micropython usr/bin
 }
 
 function add_fbdoom {
