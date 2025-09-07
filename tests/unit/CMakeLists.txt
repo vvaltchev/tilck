@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-set(TOOL_GCOV "${GCOV}")
+if ("${GCOV}" STREQUAL "")
+   set(TOOL_GCOV "gcov")
+else()
+   set(TOOL_GCOV "${GCOV}")
+endif()
 
 include_directories(${TCROOT}/noarch/gnu-efi/${VER_GNUEFI}/inc)
 
