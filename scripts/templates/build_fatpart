@@ -21,6 +21,7 @@ busybox_ver="@VER_BUSYBOX@"
 fbdoom_ver="@VER_FBDOOM@"
 lua_ver="@VER_LUA@"
 micropython_ver="@VER_MICROPYTHON@"
+treecmd_ver="@VER_TREECMD@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -37,6 +38,7 @@ busybox_dir=$arch_dir/busybox/$busybox_ver
 fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
 lua_dir=$arch_dir/lua/$lua_ver
 micropython_dir=$arch_dir/micropython/$micropython_ver
+treecmd_dir=$arch_dir/treecmd/$treecmd_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -311,7 +313,7 @@ function add_tree_cmd {
       return
    fi
 
-   link_or_copy $arch_dir/tree_cmd/tree usr/bin
+   link_or_copy $treecmd_dir/tree usr/bin
 }
 
 function add_lua {

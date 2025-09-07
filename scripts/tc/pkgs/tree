@@ -7,33 +7,33 @@ function download_tree_cmd {
    local tarname="tree_cmd-$ver.tgz"
    local url="https://github.com/vvaltchev/tree-command.git"
 
-   download_git_repo_in_cache "$url" tilck $tarname tree_cmd
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" tilck $tarname $ver
+   extract_cachefile_tar_gz $tarname $ver $ver
 }
 
 all_funcs_list+=(build_tree_cmd)
 function build_tree_cmd {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/treecmd/$VER_TREECMD
 
-   if ! [ -d tree_cmd ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "TREE (command)"
       reset_cc_vars
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_tree_cmd
-      cd tree_cmd
+      cd $compdir
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
       run_command2 "make" build.log
+      popd
 
    else
       show_skip_component_msg "TREE (command)"
    fi
-
-   reset_cc_vars
-   popd
 }
 
 function build_tree_cmd_installed_status {
@@ -43,8 +43,8 @@ function build_tree_cmd_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/tree_cmd ]; then
-         if [ -f $x/tree_cmd/tree ]; then
+      if [ -d $x/treecmd/$VER_TREECMD ]; then
+         if [ -f $x/treecmd/$VER_TREECMD/tree ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
