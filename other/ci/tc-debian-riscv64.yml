@@ -17,7 +17,7 @@ pool:
   vmImage: 'ubuntu-22.04'
 
 
-container: 'vvaltchev/debian:v4'
+container: 'vvaltchev/debian:v5'
 
 variables:
   RUNNING_IN_CI: 1

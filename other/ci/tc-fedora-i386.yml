@@ -16,7 +16,7 @@ trigger:
 pool:
   vmImage: 'ubuntu-22.04'
 
-container: 'vvaltchev/fedora:v3'
+container: 'vvaltchev/fedora:v4'
 
 variables:
   RUNNING_IN_CI: 1
