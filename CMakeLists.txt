@@ -640,7 +640,7 @@ set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/${GCC_TC_VER_})
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
-set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnu-efi/${VER_GNUEFI})
+set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
 set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/libfdt)
 set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
 

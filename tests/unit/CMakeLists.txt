@@ -7,7 +7,7 @@ else()
    set(TOOL_GCOV "${GCOV}")
 endif()
 
-include_directories(${TCROOT}/noarch/gnu-efi/${VER_GNUEFI}/inc)
+include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
