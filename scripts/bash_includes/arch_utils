@@ -152,8 +152,20 @@ function set_gcc_ver {
    local val
 
    if [[ "$GCC_TC_VER" != "" ]]; then
+
       name="${ARCH}_GCC_TC_VER"
       eval "$name=$GCC_TC_VER"
+
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         # Special case for x86: since we're downloading both toolchains
+         # also to be used for Tilck (bootloader), not just for the host
+         # apps, it makes sense to force GCC_TC_VER to also apply for the
+         # other architecture. In general case (e.g. riscv64, aarch64) that
+         # won't happen, as we need only *one* GCC toolchain for Tilck and
+         # one for the host apps.
+         i386_GCC_TC_VER=$GCC_TC_VER
+         x86_64_GCC_TC_VER=$GCC_TC_VER
+      fi
    fi
 
    for arch in ${ALL_ARCH_LIST[@]}; do
