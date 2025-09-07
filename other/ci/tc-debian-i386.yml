@@ -47,8 +47,8 @@ jobs:
         displayName: "Build tfblib"
       - script: sudo -E ./scripts/build_toolchain -s lua
         displayName: "Build lua"
-      - script: sudo -E ./scripts/build_toolchain -s tree_cmd
-        displayName: "Build tree_cmd"
+      - script: sudo -E ./scripts/build_toolchain -s treecmd
+        displayName: "Build treecmd"
       - script: make -j
         displayName: Build the kernel
       - script: make -j gtests
