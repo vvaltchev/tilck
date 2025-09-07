@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-if [[ "$ARCH" == "i386" ]]; then
+if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_tfblib)
 fi
 function build_tfblib {
@@ -36,7 +36,7 @@ function build_tfblib_installed_status {
 
    local compdir="$TC/noarch/tfblib/$VER_TFBLIB"
 
-   if [ -d $TC/noarch/tfblib ]; then
+   if [ -d $compdir ]; then
       echo "installed noarch"
    fi
 }
