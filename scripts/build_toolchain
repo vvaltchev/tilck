@@ -246,8 +246,12 @@ function show_help {
    echo "   -a, --all-archs       Make clean/delete options affect all the"
    echo "                         architectures, not just the current one."
    echo
+   echo "   -d, --delete          Delete the given package from the toolchain"
+   echo "                         for the current arch or for all archs (-a)"
+   echo
    echo "   --clean               Remove all packages for the current ARCH, "
-   echo "                         except the cache and the compilers."
+   echo "                         except the cache and the compilers. Affected"
+   echo "                         by -a, --all-archs."
    echo
    echo "   --clean-all           Remove everything except the cache for all "
    echo "                         architectures."
@@ -309,7 +313,10 @@ function perform_full_clean {
 
 function perform_clean {
 
-   echo "*** TOOLCHAIN CLEAN ***"
+   if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+      echo "*** TOOLCHAIN CLEAN ***"
+   fi
+
    if ! [ -d "$TC" ]; then
       exit 0
    fi
@@ -320,8 +327,21 @@ function perform_clean {
 
          if [[ "$x" == "noarch" ]]; then
 
-            echo "Deleting '$x'..."
-            rm -rf "$x"
+            if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+               echo "Deleting $x..."
+               rm -rf $x
+            else
+               pushd $x
+               for y in `ls`; do
+
+                  if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
+                     echo "Deleting '$x/$y'..."
+                     rm -rf "$y"
+                  fi
+
+               done
+               popd
+            fi
 
          else
 
@@ -335,8 +355,24 @@ function perform_clean {
                ]]
                then
 
-                  echo "Deleting $x/$arch..."
-                  rm -rf $arch
+                  if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+
+                     echo "Deleting $x/$arch..."
+                     rm -rf $arch
+
+                  else
+
+                     pushd $arch
+                     for y in `ls`; do
+
+                        if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
+                           echo "Deleting $x/$arch/$y..."
+                           rm -rf $y
+                        fi
+
+                     done
+                     popd
+                  fi
                fi
 
             done
@@ -353,10 +389,20 @@ function perform_clean {
          pushd $arch
 
          for x in `ls`; do
-            if [[ "$x" != gcc* ]]; then
+
+            if [[ "$x" == gcc* ]]; then
+               continue # skip the compilers
+            fi
+
+            if [[
+               "$PACKAGE_TO_DELETE" == "" ||
+               "$x" == "$PACKAGE_TO_DELETE"
+            ]]
+            then
                echo "Deleting syscc/$arch/$x..."
                rm -rf "$x"
             fi
+
          done
          popd
       fi
@@ -404,6 +450,17 @@ function main {
    fi
 
    if [[ "$1" == "--clean" ]]; then
+      perform_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "-d" || "$1" == "--delete" ]]; then
+      shift
+      if [[ "$1" == "" ]]; then
+         echo "ERROR: package name is required"
+         exit 1
+      fi
+      PACKAGE_TO_DELETE="$1"
       perform_clean
       exit 0
    fi
