@@ -21,7 +21,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/micropython/${VER_MICROPYTHON})
    message(STATUS "EXTRA_MICROPYTHON: ${EXTRA_MICROPYTHON}")
 endif()
 
-if (EXISTS ${TCROOT_ARCH_DIR}/tree_cmd)
+if (EXISTS ${TCROOT_ARCH_DIR}/treecmd/${VER_TREECMD})
    set(EXTRA_TREE_CMD OFF CACHE BOOL "Load the tree command Tilck")
    message(STATUS "EXTRA_TREE_CMD: ${EXTRA_TREE_CMD}")
 endif()
