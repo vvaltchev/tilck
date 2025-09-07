@@ -526,8 +526,6 @@ function main {
    PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
    export PATH
 
-   echo "PATH=$PATH"
-
    if ! [ -d $ARCH_DIR ]; then
       local no_arch_directory=1
    fi
