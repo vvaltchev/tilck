@@ -16,7 +16,7 @@ function internal_build_dtc {
    run_command2 "make libfdt V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $ARCH_DIR/dtc/libfdt/libfdt.a ]; then
+   if ! [ -f $ARCH_DIR/dtc/$VER_DTC/libfdt/libfdt.a ]; then
       echo "ERROR: build failed: libfdt.a not found !!!" >> build.log
       exit 1
    fi
@@ -29,35 +29,35 @@ function internal_build_dtc {
 all_funcs_list+=(build_dtc)
 function build_dtc {
 
-   pushd $ARCH_DIR
+   local compdir=$ARCH_DIR/dtc/$VER_DTC
+   local ver="$VER_DTC"
+   local tarname=dtc-$ver.tar.gz
+   local url1="https://mirrors.edge.kernel.org/"
+   local url2="pub/software/utils/dtc/"
 
-   if ! [ -d dtc ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "DTC"
-
-      local ver="$VER_DTC"
-      local tarname=dtc-$ver.tar.gz
-      local url1="https://mirrors.edge.kernel.org/"
-      local url2="pub/software/utils/dtc/"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_file_in_cache $url1$url2 "$tarname"
-      extract_cachefile_tar_gz $tarname dtc-$ver dtc
+      extract_cachefile_tar_gz $tarname dtc-$ver $ver
 
-      pushd dtc
+      cd $compdir
       internal_build_dtc
+
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
-      pushd dtc
+      pushd $compdir
       internal_build_dtc
       popd
 
    else
       show_skip_component_msg "DTC"
    fi
-
-   popd
 }
 
 function build_dtc_installed_status {
@@ -67,8 +67,8 @@ function build_dtc_installed_status {
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/dtc ]; then
-         if [ -f $x/dtc/libfdt/libfdt.a ]; then
+      if [ -d $x/dtc/$VER_DTC ]; then
+         if [ -f $x/dtc/$VER_DTC/libfdt/libfdt.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"

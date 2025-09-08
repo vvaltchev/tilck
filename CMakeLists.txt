@@ -641,7 +641,7 @@ set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
 set(ZLIB_DIR                  ${TCROOT_ARCH_DIR}/zlib/${VER_ZLIB})
 set(GNUEFI_DIR                ${TCROOT_ARCH_DIR}/gnuefi/${VER_GNUEFI})
-set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/libfdt)
+set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
 set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
