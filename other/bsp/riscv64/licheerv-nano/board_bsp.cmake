@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 # Full SoC codename for this board.
 set(CODENAME "sg2002_licheervnano_sd")
 set(BOOTLOADER "licheerv_nano_boot")
-set(BOOTLOADER_DIR ${TCROOT_ARCH_DIR}/${BOOTLOADER})
+set(BOOTLOADER_DIR ${TCROOT_ARCH_DIR}/${BOOTLOADER}/${VER_LICHEERV_NANO_BOOT})
 
 set(UBOOT_BUILD ${BOOTLOADER_DIR}/u-boot-2021.10/build)
 
