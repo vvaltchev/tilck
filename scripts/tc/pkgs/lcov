@@ -5,47 +5,33 @@
 # LCOV (front end for GCOV)
 ###############################
 
-LCOV_VER="1.15"
-
-function download_lcov {
-
-   local tarname="lcov-${LCOV_VER}.tgz"
-   local url="https://github.com/linux-test-project/lcov.git"
-
-   download_git_repo_in_cache "$url" v${LCOV_VER} $tarname lcov-${LCOV_VER}
-   extract_cachefile_tar_gz $tarname --
-}
-
 all_funcs_list+=(build_lcov)
 function build_lcov {
 
-   pushd noarch
+   local url="https://github.com/linux-test-project/lcov.git"
+   local compdir=$TC/noarch/lcov/$VER_LCOV
+   local tarname="lcov-${VER_LCOV}.tgz"
+   local tag="v${VER_LCOV}"
 
-   if ! [ -d lcov-${LCOV_VER} ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "LCOV"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
-      if [ -d lcov ]; then
+      download_git_repo_in_cache "$url" $tag $tarname $VER_LCOV
+      extract_cachefile_tar_gz $tarname $VER_LCOV $VER_LCOV
 
-         # Older versions of this script called this package just `lcov`.
-         # Rename `lcov` to `lcov-1.13`.
-
-         mv lcov lcov-1.13
-         ln -s lcov-1.13 lcov
-      fi
-
-      download_lcov
-      cd lcov-${LCOV_VER}
+      popd
 
    else
+
       show_skip_component_msg "LCOV"
    fi
-
-   popd
 }
 
 function build_lcov_installed_status {
-   if [ -d $TC/noarch/lcov-${LCOV_VER} ]; then
+   if [ -d $TC/noarch/lcov/${VER_LCOV} ]; then
       echo "installed noarch"
    fi
 }

@@ -1,8 +1,7 @@
 build/
 bochsrc-disk.bxrc
 bochsrc.bxrc
-toolchain/
-toolchain2/
+toolchain*
 .gdb_history
 GPATH
 GRTAGS

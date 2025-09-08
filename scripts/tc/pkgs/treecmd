@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+function download_treecmd {
+
+   local ver="$VER_TREECMD"
+   local tarname="treecmd-$ver.tgz"
+   local url="https://github.com/vvaltchev/tree-command.git"
+
+   download_git_repo_in_cache "$url" tilck $tarname $ver
+   extract_cachefile_tar_gz $tarname $ver $ver
+}
+
+all_funcs_list+=(build_treecmd)
+function build_treecmd {
+
+   local compdir=$ARCH_DIR/treecmd/$VER_TREECMD
+
+   if ! [ -d $compdir ]; then
+
+      show_work_on_component_msg "TREECMD"
+      reset_cc_vars
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
+      download_treecmd
+      cd $compdir
+
+      do_common_cross_compiler_setup
+      set_cc_vars_to_tc
+      run_command2 "make" build.log
+      popd
+
+   else
+      show_skip_component_msg "TREECMD"
+   fi
+}
+
+function build_treecmd_installed_status {
+
+   local arch_list=""
+
+   pushd $ARCH_DIR/..
+
+   for x in ${ALL_ARCH_LIST[@]}; do
+      if [ -d $x/treecmd/$VER_TREECMD ]; then
+         if [ -f $x/treecmd/$VER_TREECMD/tree ]; then
+            arch_list="${arch_list}$x "
+         else
+            echo "error"
+            return
+         fi
+      fi
+   done
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
+   fi
+}

@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-LIBFDT_VER="1.7.0"
+function internal_build_dtc {
 
-function internal_build_libfdt {
-
-   echo "Building libfdt... "
+   echo "Building libfdt from the DTC project... "
    reset_cc_vars
 
    do_common_cross_compiler_setup
@@ -18,8 +16,8 @@ function internal_build_libfdt {
    run_command2 "make libfdt V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $TC/$ARCH/dtc/libfdt/libfdt.a ]; then
-      echo "ERROR: build failed !!!" >> build.log
+   if ! [ -f $ARCH_DIR/dtc/$VER_DTC/libfdt/libfdt.a ]; then
+      echo "ERROR: build failed: libfdt.a not found !!!" >> build.log
       exit 1
    fi
    set -e
@@ -28,47 +26,49 @@ function internal_build_libfdt {
    export EXTRA_CFLAGS=""
 }
 
-all_funcs_list+=(build_libfdt)
-function build_libfdt {
+all_funcs_list+=(build_dtc)
+function build_dtc {
 
-   pushd $ARCH
+   local compdir=$ARCH_DIR/dtc/$VER_DTC
+   local ver="$VER_DTC"
+   local tarname=dtc-$ver.tar.gz
+   local url1="https://mirrors.edge.kernel.org/"
+   local url2="pub/software/utils/dtc/"
 
-   if ! [ -d dtc ]; then
+   if ! [ -d $compdir ]; then
 
-      show_work_on_component_msg "libfdt"
-
-      local ver="$LIBFDT_VER"
-      local tarname=dtc-$ver.tar.gz
-      local url1="https://mirrors.edge.kernel.org/"
-      local url2="pub/software/utils/dtc/"
+      show_work_on_component_msg "DTC"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_file_in_cache $url1$url2 "$tarname"
-      extract_cachefile_tar_gz $tarname dtc-$ver dtc
+      extract_cachefile_tar_gz $tarname dtc-$ver $ver
 
-      pushd dtc
-      internal_build_libfdt
+      cd $compdir
+      internal_build_dtc
+
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
-      pushd dtc
-      internal_build_libfdt
+      pushd $compdir
+      internal_build_dtc
       popd
 
    else
-      show_skip_component_msg "libfdt"
+      show_skip_component_msg "DTC"
    fi
-
-   popd
 }
 
-function build_libfdt_installed_status {
+function build_dtc_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/dtc ]; then
-         if [ -f $TC/$x/dtc/libfdt/libfdt.a ]; then
+      if [ -d $x/dtc/$VER_DTC ]; then
+         if [ -f $x/dtc/$VER_DTC/libfdt/libfdt.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -76,6 +76,8 @@ function build_libfdt_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

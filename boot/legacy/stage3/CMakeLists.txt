@@ -42,6 +42,7 @@ set(
    -nostdlib
    -static
    -Wl,--build-id=none
+   -Wl,--no-warn-rwx
    -Wl,--script=${STAGE3_SCRIPT}
 )
 JOIN("${STAGE3_LINK_FLAGS_LIST}" ${SPACE} STAGE3_LINK_FLAGS)

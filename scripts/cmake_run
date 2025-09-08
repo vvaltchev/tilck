@@ -8,8 +8,15 @@ GXX_MIN_VERSION="11.3.0"
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
+: ${TCROOT_PARENT:=$MAIN_DIR}
+: ${TCROOT:=$TCROOT_PARENT/toolchain3}
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
+source $MAIN_DIR/scripts/bash_includes/arch_utils
+source $MAIN_DIR/other/pkg_versions
+
+set_host_arch_variable   # set $HOST_ARCH
+HOST_ARCH_DIR_SYS=$TCROOT/syscc/host_$HOST_ARCH
 
 if [[ "$1" == "--contrib" ]]; then
 
@@ -117,9 +124,8 @@ fi
 export CC
 export CXX
 
-
-if [ -f $MAIN_DIR/toolchain2/host/cmake/bin/cmake ]; then
-   export CMAKE="$MAIN_DIR/toolchain2/host/cmake/bin/cmake"
+if [ -f $HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake ]; then
+   export CMAKE="$HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake"
 else
    export CMAKE="cmake"
 fi

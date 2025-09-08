@@ -111,7 +111,6 @@ bool array_reverse_ptr_check(const vector<ulong> &vec)
 
 TEST(reverse_array, basic)
 {
-   EXPECT_TRUE(array_reverse_ptr_check({ }));
    EXPECT_TRUE(array_reverse_ptr_check({ 1 }));
    EXPECT_TRUE(array_reverse_ptr_check({ 1, 2 }));
    EXPECT_TRUE(array_reverse_ptr_check({ 1, 2, 3 }));

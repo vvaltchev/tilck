@@ -1,63 +1,72 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-NCURSES_VER="6.1"
-
 all_funcs_list+=(build_ncurses)
 function build_ncurses {
 
-   pushd $ARCH
+   local ver="$VER_NCURSES"
+   local tarname=ncurses-$ver.tar.gz
+   local compdir=$ARCH_DIR/ncurses/$ver
+   local install_dir=$compdir/install
+   local params=()
 
-   if ! [ -d ncurses ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "NCURSES"
       reset_cc_vars
 
-      local ver="$NCURSES_VER"
-      local tarname=ncurses-$ver.tar.gz
-      local install_dir=$TC/$ARCH/ncurses/install
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
       download_file_in_cache "https://ftp.gnu.org/pub/gnu/ncurses" "$tarname"
-      extract_cachefile_tar_gz $tarname ncurses-$ver ncurses
+      extract_cachefile_tar_gz $tarname ncurses-$ver $ver
 
       mkdir -p $install_dir
-      cd ncurses
+      cd $compdir
 
-      local o1="--host=${ARCH_SHORT}-pc-linux-gnu --prefix=$install_dir"
-      local o2="--datarootdir=/usr/share --disable-db-install"
-      local o4="--without-progs --without-cxx --without-cxx-binding"
-      local o5="--without-ada --without-manpages --without-dlsym"
+      params+=(--host=${ARCH_SHORT}-pc-linux-gnu)
+      params+=(--prefix=$install_dir)
+      params+=(--datarootdir=/usr/share)
+      params+=(--disable-db-install)
+      params+=(--without-progs)
+      params+=(--without-cxx)
+      params+=(--without-cxx-binding)
+      params+=(--without-ada)
+      params+=(--without-manpages)
+      params+=(--without-dlsym)
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
-      run_command2 "./configure $o1 $o2 $o3 $o4 $o5" configure.log
+      run_command2 "./configure ${params[*]}" configure.log
 
       set +e
       run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
       dump_cross_compiler_env "build.log"
 
-      if ! [ -f $TC/$ARCH/ncurses/install/lib/libncurses.a ]; then
+      if ! [ -f $install_dir/lib/libncurses.a ]; then
          echo "ERROR: build failed !!!" >> build.log
          exit 1
       fi
 
       set -e
       export CC_POST_FLAGS=""
+      popd
 
    else
       show_skip_component_msg "NCURSES"
    fi
-
-   popd
 }
 
 function build_ncurses_installed_status {
 
+   local ver="$VER_NCURSES"
    local arch_list=""
+   pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/ncurses ]; then
-         if [ -f $TC/$x/ncurses/install/lib/libncurses.a ]; then
+      if [ -d $x/ncurses/$ver ]; then
+         if [ -f $x/ncurses/$ver/install/lib/libncurses.a ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -65,6 +74,8 @@ function build_ncurses_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

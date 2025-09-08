@@ -9,159 +9,121 @@
 #
 # ---------------------------------------------------------------
 
-BOOTLIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains"
 
-# $1 dir name
-# $2 arch name
-# $3 tc file name
+function custom_gcc_cross_tc_internal {
 
-function raw_gcc_tc_download {
-
-   local dest="$1"
-   local arch="$2"
-   local tcname_suffix="$3"
-   local tcfile_ext="$4"
-
-   local tcname="${arch}--${tcname_suffix}"
-   local tarname=""
-
-   if [[ "$tcfile_ext" == "" ]]; then
-      tarname="$tcname.tar.bz2"
-   else
-      tarname="$tcname.$tcfile_ext"
-   fi
-
-   download_file_in_cache "$BOOTLIN_URL/$arch/tarballs" "$tarname"
-   extract_cachefile_tar_generic "$tarname" $tcname $dest
-}
-
-function gcc_x86_glibc_patch {
-
-   # To make musl-gcc happy
-   pushd ${GCC_NAME_PFX}_glibc/bin
-
-   for x in *; do
-      if [[ $x == i686* ]]; then
-         new_name=$(echo $x | sed 's/i686/i386/g')
-         ln -s $x $new_name
-      fi
-   done
-
-   for x in *; do
-      if [[ $x == i386-linux-* ]]; then
-         new_name=$(echo $x | sed 's/i386-linux-/i386-/g')
-         ln -s $x $new_name
-      fi
-   done
-
-   popd
-}
-
-# $1 = GCC_TC_VER
-function set_arch_gcc_tc_ver_and_ext {
-
-   case $1 in
-      6.4.0) ARCH_GCC_TC_VER="stable-2018.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      7.3.0) ARCH_GCC_TC_VER="stable-2018.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      8.4.0) ARCH_GCC_TC_VER="stable-2020.02-2"; ARCH_GCC_TC_EXT="tar.bz2";;
-      9.3.0) ARCH_GCC_TC_VER="stable-2020.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      10.3.0) ARCH_GCC_TC_VER="stable-2021.11-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      11.3.0) ARCH_GCC_TC_VER="stable-2022.08-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      12.3.0) ARCH_GCC_TC_VER="stable-2024.02-1"; ARCH_GCC_TC_EXT="tar.bz2";;
-      13.3.0) ARCH_GCC_TC_VER="stable-2024.05-1"; ARCH_GCC_TC_EXT="tar.xz";;
-      *) echo "ERROR: unknown ARCH_GCC_TC_VER for GCC $GCC_TC_VER"; exit 1;;
-   esac
-}
-
-# $1: arch
-# $2: libc name
-function download_gcc_tc_internal {
 
    local arch="$1"
-   local libc="$2"
-   local pfx
+   local gh="https://github.com"
+   local url="$gh/vvaltchev/musl-cross-make/releases/download/3635262e452"
+   local tarname=""
+   local url_target=""
+   local url_host=""
+   local varName
    local ver
-   local codename
-   local tc_arch
-   local gcc
-   pushd $TC/host_${BUILD_ARCH}
+   local ver_
+   local n
 
-   pfx="${arch}_GCC_NAME_PFX"
-   pfx=${!pfx}
+   case $arch in
+      i386) url_target="i386";;
+      x86_64) url_target="x86_64";;
+      aarch64) url_target="aarch64";;
+      riscv64) url_target="riscv64";;
+      *) echo "TARGET $arch not supported by the CUSTOM GCC TC"; exit 1;;
+   esac
 
-   ver="${arch}_GCC_TC_VER"
-   ver=${!ver}
+   case $HOST_ARCH in
+      i386) url_host="i386";;
+      x86_64) url_host="x86_64";;
+      aarch64) url_host="aarch64";;
+      *) echo "HOST $HOST_ARCH not supported by the CUSTOM GCC TC"; exit 1;;
+   esac
 
-   codename="${ARCH}_ARCH_GCC_TC_CODENAME"
-   codename=${!codename}
+   varName="${arch}_GCC_TC_VER"
+   ver="${!varName}"
+   varName="${arch}_GCC_TC_VER_"
+   ver_="${!varName}"
+   varName="${arch}_ARCH_GCC_TC"
+   arch_gcc="${!varName}"
+   dir="gcc_${ver_}_${arch}_musl"
 
-   tc_arch="${ARCH}_ARCH_GCC_TC"
-   tc_arch=${!tc_arch}
+   if [ -d "$dir" ]; then
+      return
+   fi
 
-   if ! [ -d ${pfx}_${libc} ]; then
+   tarname="${url_target}-musl-${VER_MUSL}"
+   tarname="${tarname}-gcc-${ver}"
+   tarname="${tarname}-${url_host}.tar.bz2"
 
-      show_work_on_component_msg "GCC TOOLCHAIN ($arch - $libc)"
-      set_arch_gcc_tc_ver_and_ext $ver
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_bz $tarname --
 
-      raw_gcc_tc_download                    \
-         "${pfx}_${libc}"                    \
-         "${codename}"                       \
-         "$libc--$ARCH_GCC_TC_VER"           \
-         "$ARCH_GCC_TC_EXT"
-
-      unset ARCH_GCC_TC_VER
-      unset ARCH_GCC_TC_EXT
-
-      if [[ "$libc" == "glibc" && "$arch" == "i386" ]]; then
-         gcc_x86_glibc_patch
-      fi
-
-      gcc=${pfx}_${libc}/bin/${tc_arch}-linux-gcc
-
-      if ! [ -f $gcc ]; then
-         echo "ERROR (download_gcc_tc_internal): file $gcc NOT found."
-         exit 1
-      fi
-
-      if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-         local actual_ver=$(generic_get_version_str $gcc)
-         echo "Detected GCC toolchain version: '${actual_ver}'"
-
-         if [[ "$actual_ver" != "$ver" ]]; then
-            echo "ERROR: gcc version doesn't match expected ($ver)"
-            exit 1
+   pushd gcc_${ver_}_${arch}_musl/bin
+   for x in ${arch_gcc}-linux-musl-*; do
+      if [[ -f "$x" ]]; then
+         n="$(sed s/musl-// <<<"$x")"
+         if [[ -L "$x" ]]; then
+            # Symlink. Must fix the destination as well.
+            dest="$(readlink "$x")"
+            dest="$(sed s/musl-// <<<"$dest")"
+            rm "$x"
+            ln -s "$dest" "$n"
+         else
+            # Regular file: just rename it.
+            mv "$x" "$n"
          fi
       fi
+   done
+   popd
+   rm -f ${arch_gcc}-linux-cc
+}
+
+function custom_gcc_cross_tc {
+
+   pushd $HOST_ARCH_DIR_SYS
+
+   # Download the TC for the current *host* architecture: that's necessary
+   # so that we don't depend on the GCC version available on the system.
+   custom_gcc_cross_tc_internal "$HOST_ARCH"
+
+   if [[ $ARCH == i386 || $ARCH == x86_64 ]]; then
+
+      # Always download the i386 toolchain to build the legacy bootloader
+      custom_gcc_cross_tc_internal "i386"
+
+      # Always download the x86_64 toolchain to build the 64-bit UEFI bootloader
+      custom_gcc_cross_tc_internal "x86_64"
 
    else
-      show_skip_component_msg "GCC TOOLCHAIN ($arch - $libc)"
+
+      # General case: just download the arch-specific toolchain
+      custom_gcc_cross_tc_internal "$ARCH"
    fi
 
    popd
 }
+
+
+# ---------------------------------------------------------------------------
 
 # $1 = arch
 # $2 = libc
 function get_gcc_tc_installed_status_int {
 
    local arch_list=""
-   local ha=$TC/host_${BUILD_ARCH}
    local pfx
 
    pfx="${1}_GCC_NAME_PFX"
    pfx=${!pfx}
 
-   if [ -d $ha/${pfx}_$2 ]; then
+   if [ -d $HOST_ARCH_DIR_SYS/${pfx}_$2 ]; then
       echo "installed host_$HOST_ARCH"
    fi
 }
 
-############################################################
-
 function define_all_gcc_tc_funcs {
 
-   for libc in musl glibc; do
+   for libc in musl; do
       for arch in ${ALL_ARCH_LIST[@]}; do
 
          local name="download_gcc_${libc}_${arch}"
@@ -174,7 +136,5 @@ function define_all_gcc_tc_funcs {
    done
 }
 
-if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-   define_all_gcc_tc_funcs
-fi
+define_all_gcc_tc_funcs
 

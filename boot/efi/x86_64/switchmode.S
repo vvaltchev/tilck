@@ -84,7 +84,8 @@ gdtr:
    .word 0x23
    .quad 0
 
-.end
 
 # Tell GNU ld to not worry about us having an executable stack
 .section .note.GNU-stack,"",@progbits
+
+

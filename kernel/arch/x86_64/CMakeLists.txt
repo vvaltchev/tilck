@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.22)
 # Remove -rdynamic
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
-include_directories(${TCROOT}/x86_64/gnu-efi/inc)
+include_directories(${GNUEFI_DIR}/inc)
 
 # Options that will be used only when building the actual kernel, not when
 # building kernel's code for unit testing.
@@ -61,6 +61,7 @@ set(
    -nostdlib
    -static
 
+   -Wl,--no-warn-rwx
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
    -Wl,-z,max-page-size=0x1000

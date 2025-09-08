@@ -1,2 +1,0 @@
-#!/bin/sh
-exec $SYS_CC "$@" $CC_POST_FLAGS 

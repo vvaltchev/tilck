@@ -2,68 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 function arch_checks {
-
-   if [[ "$HOST_ARCH" != *"$BUILD_ARCH"* ]]; then
-
-      echo "WARNING: Tilck's build system officially supports only "
-      echo "HOST_ARCH=$BUILD_ARCH host, no matter the value of ARCH."
-      echo
-      echo "Detected HOST_ARCH (uname -m): $HOST_ARCH"
-      echo
-      echo "However, there is *unofficial* support for the following"
-      echo "alternative scenarios: "
-      echo
-      echo "   1. HOST_ARCH == ARCH"
-      echo "   2. HOST_ARCH == aarch64"
-      echo
-      echo "Scenario 1. requires the environment variables USE_SYSCC, CC and "
-      echo "CXX to be set correctly. Scenario 2 will download a custom-gcc"
-      echo "toolchain for the selected target ARCH".
-      echo
-
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
-
-         if [[ "$USE_SYSCC" == 1 ]]; then
-
-            echo "In this case, HOST_ARCH == ARCH and USE_SYSCC is set."
-            echo "The script can continue, but WARNING: this scenario is not "
-            echo "tested as often as the main one (building on $BUILD_ARCH)."
-            echo ""
-            echo -n "Proceed [Y/n] ? "
-
-            read ans
-
-            if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-               echo "OK."
-            else
-               echo "Aborted."
-               exit 1
-            fi
-
-         else
-
-            echo "In this case USE_SYSCC, CC and CXX are NOT set."
-            echo "Unable to continue."
-            exit 1
-         fi
-
-      else
-
-         echo "This scenario is EXPERIMENTAL and will require the download a"
-         echo "GCC toolchain from: https://github.com/vvaltchev/musl-cross-make"
-         echo ""
-         echo -n "Proceed [Y/n] ? "
-
-         read ans
-
-         if [[ "$ans" == "" || "$ans" == "y" || "$ans" == "Y" ]]; then
-            echo "OK."
-         else
-            echo "Aborted."
-            exit 1
-         fi
-      fi
-   fi
+   : # do nothing
 }
 
 

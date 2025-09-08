@@ -14,6 +14,14 @@ gcctc="@GCC_TOOLCHAIN@"
 host_arch="@HOST_ARCH@"
 arch="@ARCH@"
 spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
+arch_dir="@TCROOT_ARCH_DIR@"
+host_arch_dir_sys="@TCROOT_BA@"
+mtools_ver="@VER_MTOOLS@"
+busybox_ver="@VER_BUSYBOX@"
+fbdoom_ver="@VER_FBDOOM@"
+lua_ver="@VER_LUA@"
+micropython_ver="@VER_MICROPYTHON@"
+treecmd_ver="@VER_TREECMD@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -25,7 +33,13 @@ else
    fi
 fi
 
-mtoolsdir=$tc/host_${host_arch}/mtools
+mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
+busybox_dir=$arch_dir/busybox/$busybox_ver
+fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
+lua_dir=$arch_dir/lua/$lua_ver
+micropython_dir=$arch_dir/micropython/$micropython_ver
+treecmd_dir=$arch_dir/treecmd/$treecmd_ver
+
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd
@@ -148,8 +162,10 @@ function add_busybox {
       return
    fi
 
-   if [ -d $tc/$arch/busybox ]; then
-      link_or_copy $tc/$arch/busybox/busybox bin/
+   if [ -d $busybox_dir ]; then
+      link_or_copy $busybox_dir/busybox bin/
+   else
+      echo "BUSYBOX NOT FOUND at $busybox_dir/busybox!!!"
    fi
 }
 
@@ -182,14 +198,14 @@ function add_tcc {
       return
    fi
 
-   local musl=@GCC_TC_SYSROOT@/lib/
+   local musl=@GCC_TC_SYSROOT@/lib
 
    mkdir -p lib/tcc
-   cp -r $tc/$arch/tcc/include lib/tcc
-   link_or_copy $tc/$arch/tcc/tcclib.h lib/tcc/include
-   link_or_copy $tc/$arch/tcc/@ARCH@-libtcc1.a lib/tcc
-   link_or_copy $tc/$arch/tcc/@ARCH@-tcc bin/tcc
-   cp -r $tc/$arch/tcc/examples lib/tcc-examples
+   cp -r $arch_dir/tcc/include lib/tcc
+   link_or_copy $arch_dir/tcc/tcclib.h lib/tcc/include
+   link_or_copy $arch_dir/tcc/@ARCH@-libtcc1.a lib/tcc
+   link_or_copy $arch_dir/tcc/@ARCH@-tcc bin/tcc
+   cp -r $arch_dir/tcc/examples lib/tcc-examples
 
    cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
 }
@@ -200,8 +216,7 @@ function add_micropython {
       return
    fi
 
-   local mp=$tc/$arch/micropython
-   link_or_copy $mp/ports/unix/build-standard/micropython usr/bin
+   link_or_copy $micropython_dir/ports/unix/build-standard/micropython usr/bin
 }
 
 function add_fbdoom {
@@ -211,12 +226,12 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $tc/$arch/fbDOOM/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $fbdoom_dir/fbdoom/fbdoom.gz usr/lib/fbDOOM
 
-   if [ -f $tc/$arch/fbDOOM/Doom1.WAD ]; then
-      local wadfile="$tc/$arch/fbDOOM/Doom1.WAD"
+   if [ -f $fbdoom_dir/Doom1.WAD ]; then
+      local wadfile="$fbdoom_dir/Doom1.WAD"
    else
-      local wadfile="$tc/$arch/fbDOOM/freedoom/freedoom1.wad.gz"
+      local wadfile="$fbdoom_dir/freedoom/freedoom1.wad.gz"
    fi
 
    link_or_copy "$wadfile" usr/lib/fbDOOM
@@ -278,13 +293,15 @@ EOF
 
 function add_vim {
 
+   local vimdir="$arch_dir/vim/@VER_VIM@"
+
    if [ -z "@EXTRA_VIM_ENABLED@" ]; then
       return
    fi
 
    mkdir -p usr/lib/vim
-   link_or_copy $tc/$arch/vim/install/vim.gz usr/lib/vim
-   link_or_copy $tc/$arch/vim/install/vr.tgz usr/lib/vim
+   link_or_copy $vimdir/install/vim.gz usr/lib/vim
+   link_or_copy $vimdir/install/vr.tgz usr/lib/vim
 
    mkdir -p usr/lib/vim/samples
    cp $maindir/tests/interactive/vim_text_files/* usr/lib/vim/samples/
@@ -296,7 +313,7 @@ function add_tree_cmd {
       return
    fi
 
-   link_or_copy $tc/$arch/tree_cmd/tree usr/bin
+   link_or_copy $treecmd_dir/tree usr/bin
 }
 
 function add_lua {
@@ -305,12 +322,12 @@ function add_lua {
       return
    fi
 
-   if [ -f $tc/$arch/lua/src/lua ]; then
-      link_or_copy $tc/$arch/lua/src/lua bin/
+   if [ -f $lua_dir/src/lua ]; then
+      link_or_copy $lua_dir/src/lua bin/
    fi
 
-   if [ -f $tc/$arch/lua/src/luac ]; then
-      link_or_copy $tc/$arch/lua/src/luac bin/
+   if [ -f $lua_dir/src/luac ]; then
+      link_or_copy $lua_dir/src/luac bin/
    fi
 }
 

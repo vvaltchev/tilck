@@ -28,7 +28,7 @@ else()
 endif()
 
 if (TEST_GCOV OR KERNEL_GCOV)
-   if (NOT EXISTS ${TCROOT}/noarch/lcov-${LCOV_VER})
+   if (NOT EXISTS ${LCOV_DIR})
       show_missing_lcov_error()
    endif()
 endif()
@@ -68,10 +68,6 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 elseif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
    list(APPEND WARN_FLAGS_LIST "-Wno-missing-braces")
-
-   if (USE_SYSCC)
-      show_clang_and_syscc_error()
-   endif()
 
    if (NOT KERNEL_SYSCC)
       if (WCONV)
@@ -117,7 +113,7 @@ list(
    ${SAFER_BEHAVIOR_FLAGS_LIST}
 )
 
-if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+if (KERNEL_SYSCC)
    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
       #
@@ -232,9 +228,9 @@ JOIN("${LOWLEVEL_BINARIES_FLAGS_LIST}" ${SPACE} LOWLEVEL_BINARIES_FLAGS)
 #
 set(MGENERAL_REGS_ONLY_SUPPORTED OFF)
 
-if (${KERNEL_SYSCC} OR ${USE_SYSCC})
+if (KERNEL_SYSCC)
 
-   # Special case: we're using the system compiler
+   # Special case: we're using not using our custom toolchain compiler
    if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
       set(MGENERAL_REGS_ONLY_SUPPORTED ON)
    endif()
@@ -243,6 +239,7 @@ else()
 
    # DEFAULT CASE: we're using a GCC compiler from our toolchain
    set(MGENERAL_REGS_ONLY_SUPPORTED ON)
+
 endif()
 
 # Disable the generation of any kind of FPU instructions

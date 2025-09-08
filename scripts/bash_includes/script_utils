@@ -154,12 +154,40 @@ function fail_if_too_old {
 function download_file_in_cache {
 
    local url="$1"
-   local filename="$2"
+   local remote_file="$2"
+   local local_file="$3"
 
-   if ! [ -f $TC/cache/$filename ]; then
-      (cd $TC/cache && wget $url/$filename)
+   if [[ "$local_file" == "" ]]; then
+      local_file="$remote_file"
+   fi
+
+   if ! [ -f $TC/cache/$local_file ]; then
+
+      pushd $TC/cache
+      mkdir -p tmp
+      pushd tmp
+
+      rm -rf *
+      wget "$url/$remote_file"
+
+      if ! [ -f "$remote_file" ]; then
+         echo "ERROR: download of $local_file ($remote_file) failed"
+         exit 1
+      fi
+
+      mv "$remote_file" "../$local_file"
+      popd
+
+      rmdir tmp
+      popd
+
    else
-      echo "NOTE: Skipping the download of $filename"
+
+      if [[ "$remote_file" == "$local_file" ]]; then
+         echo "NOTE: Skipping the download of $local_file"
+      else
+         echo "NOTE: Skipping the download of $local_file ($remote_file)"
+      fi
    fi
 }
 
@@ -195,8 +223,12 @@ function extract_cachefile_tar_generic {
          fi
 
          if [ -d "$newDirName" ]; then
-            echo "ERROR: new dir: '$newDirName' exists"
-            exit 1
+            if [[ "$( ls -A $newDirName )" != "" ]]; then
+               echo "ERROR: new dir: '$newDirName' exists and it's non-empty"
+               exit 1
+            else
+               rmdir "$newDirName"  # new dir is empty, it's OK to remove
+            fi
          fi
 
          mv "$internalDirName" "$newDirName"
@@ -463,16 +495,6 @@ function dump_cross_compiler_env {
 }
 
 function do_common_cross_compiler_setup {
-
-   if [[ "$USE_SYSCC" == 1 ]]; then
-      if [[ "$HOST_ARCH" == "$ARCH" ]]; then
-         export SYS_CC="$CC"
-         export SYS_CXX="$CXX"
-      else
-         export SYS_CC="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-gcc"
-         export SYS_CXX="$GCC_TOOLCHAIN/${ARCH_GCC_TC}-linux-g++"
-      fi
-      export CC_POST_FLAGS="-specs $MUSL_INSTALL/lib/musl-gcc.specs"
-   fi
+   : # do nothing
 }
 

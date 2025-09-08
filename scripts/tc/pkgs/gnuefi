@@ -5,23 +5,21 @@
 # Build GNU EFI
 ##################################
 
-# Note: using a gnu-efi's fork on GitHub instead of the official SF repo:
+# Note: using a gnuefi's fork on GitHub instead of the official SF repo:
 #
-#     git://git.code.sf.net/p/gnu-efi/code
+#     git://git.code.sf.net/p/gnuefi/code
 #
 # exclusively for performance reasons: SF sometimes is too slow for
 # CI builds.
 
-GNU_EFI_VER="3.0.17"
-
 function download_gnu_efi {
 
-   local ver="$GNU_EFI_VER"
-   local tarname="gnu-efi-$ver.tgz"
    local url="https://github.com/vvaltchev/gnu-efi-fork.git"
+   local ver="$VER_GNUEFI"
+   local tarname="gnuefi-$ver.tgz"
 
-   download_git_repo_in_cache "$url" $ver $tarname gnu-efi
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" $ver $tarname $ver
+   extract_cachefile_tar_gz $tarname $ver $ver
 }
 
 #
@@ -55,75 +53,49 @@ function build_gnuefi_arch {
    local arch="$1"
    local arch_efi="$2"
    local arch_tc="$3"
+   local compdir
 
-   pushd $arch
+   if [[ "$arch" != "noarch" ]]; then
+      compdir="$TC/$GCC_TC_VER_/$arch/gnuefi/$VER_GNUEFI"
+   else
+      compdir="$TC/noarch/gnuefi/$VER_GNUEFI"
+   fi
 
-      if ! [ -d gnu-efi ]; then
+   if ! [ -d $compdir ]; then
 
-         show_work_on_component_msg "GNU-EFI (arch: $arch)"
+      show_work_on_component_msg "GNU-EFI (arch: $arch)"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
-         if [[ "$USE_SYSCC" == 1 ]]; then
-            export SYS_CC="$CC"
-            export SYS_CXX="$CXX"
-         fi
+      download_gnu_efi
 
+      if [[ "$arch" != "noarch" ]]; then
+
+         cd $compdir
          reset_cc_vars
-         download_gnu_efi
-         pushd gnu-efi
          gnuefi_patch
 
-         if [[ "$HOST_ARCH" != "$arch" ]]; then
-            local arch_flags="ARCH=${arch_efi} prefix=${arch_tc}-linux-"
-         else
-            local arch_flags="ARCH=${arch_efi}"
-         fi
-
+         local arch_flags="ARCH=${arch_efi} prefix=${arch_tc}-linux-"
          run_command2 "make $arch_flags -j$BUILD_PAR" build_${arch_efi}.log
-         popd
-
-      else
-         show_skip_component_msg "GNU-EFI (arch: $arch)"
+         dump_cross_compiler_env build_${arch_efi}.log
       fi
 
-   popd
-}
+      popd
 
-function build_gnuefi_system_compiler {
-
-   pushd $BUILD_ARCH
-
-      if ! [ -d gnu-efi ]; then
-
-         show_work_on_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
-         reset_cc_vars
-         download_gnu_efi
-         pushd gnu-efi
-         gnuefi_patch
-
-         run_command2 \
-            "make ARCH=${BUILD_ARCH} -j$BUILD_PAR" build_${BUILD_ARCH}.log
-
-         popd
-      else
-
-         show_skip_component_msg "GNU-EFI (arch: $BUILD_ARCH)"
-      fi
-
-   popd
+   else
+      show_skip_component_msg "GNU-EFI (arch: $arch)"
+   fi
 }
 
 if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_gnuefi)
 fi
+
 function build_gnuefi {
 
    build_gnuefi_arch $ARCH $ARCH_EFI $ARCH_GCC_TC
-
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-      build_gnuefi_system_compiler
-   elif [[ "$HOST_ARCH" != i386 ]]; then
-      build_gnuefi_arch x86_64 x86_64 x86_64
-   fi
+   build_gnuefi_arch x86_64 x86_64 x86_64
+   build_gnuefi_arch noarch noarch noarch
 }
 
 function build_gnuefi_installed_status {
@@ -131,13 +103,15 @@ function build_gnuefi_installed_status {
    local arch_list=""
    local y
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
 
-      if [ -d $TC/$x/gnu-efi ]; then
+      if [ -d $x/gnuefi/$VER_GNUEFI ]; then
 
          y="${x}_ARCH_EFI"
 
-         if ! [ -f $TC/$x/gnu-efi/${!y}/gnuefi/libgnuefi.a ]; then
+         if ! [ -f $x/gnuefi/$VER_GNUEFI/${!y}/gnuefi/libgnuefi.a ]; then
             echo "error"
             return
          fi
@@ -145,6 +119,8 @@ function build_gnuefi_installed_status {
       fi
 
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
@@ -155,3 +131,4 @@ function build_gnuefi_installed_status {
       echo "installed $arch_list"
    fi
 }
+

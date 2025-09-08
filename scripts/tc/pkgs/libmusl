@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+all_funcs_list+=(download_libmusl)
+
+function download_libmusl {
+
+   local ver="$VER_MUSL"
+   local tarname="libmusl-$ver.tgz"
+   local url="git://git.musl-libc.org/musl"
+   local compdir=$TC/noarch/libmusl/$ver
+
+   if ! [ -d $compdir ]; then
+
+      show_work_on_component_msg "LIBMUSL"
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
+      download_git_repo_in_cache "$url" v$ver $tarname $ver
+      extract_cachefile_tar_gz $tarname $ver $ver
+
+      popd
+
+   else
+
+      show_skip_component_msg "LIBMUSL"
+   fi
+}
+
+function download_libmusl_installed_status {
+
+   if [ -d $TC/noarch/libmusl/$VER_MUSL ]; then
+      echo "installed noarch"
+   fi
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-CMAKE_VERSION_TO_DOWNLOAD="3.22.6"
+CMAKE_VERSION_TO_DOWNLOAD="$VER_CMAKE"
 CMAKE_MIN_VERSION="3.22.0"
 
 function download_cmake_internal {
@@ -12,24 +12,30 @@ function download_cmake_internal {
    local ver2=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 2)
    local ver3=$(get_version_comp $CMAKE_VERSION_TO_DOWNLOAD 3)
 
-   local filename=cmake-${ver1}.${ver2}.${ver3}-linux-x86_64
-   local tarname=$filename.tar.gz
+   local dirname=cmake-${ver1}.${ver2}.${ver3}-linux-x86_64
+   local tarname=$dirname.tar.gz
+   local url="https://cmake.org/files/v${ver1}.${ver2}"
+   local compdir=$HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE
 
-   download_file_in_cache "https://cmake.org/files/v${ver1}.${ver2}" "$tarname"
-   extract_cachefile_tar_gz $tarname $filename cmake
+   mkdir -p $compdir/..
+   pushd $compdir/..
 
-   CMAKE=$TC/host_$HOST_ARCH/cmake/bin/cmake
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_gz $tarname $dirname $VER_CMAKE
+
+   popd
+   CMAKE=$compdir/bin/cmake
 }
 
-if [[ $HOST_ARCH == "i386" ]] || [[ $HOST_ARCH == "x86_64" ]]; then
+if [[ $HOST_ARCH == "x86_64" ]]; then
    all_funcs_list+=(download_cmake)
 fi
 
 function download_cmake {
 
-   pushd host_$HOST_ARCH
+   local compdir=$HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE
 
-   if ! [ -d cmake ]; then
+   if ! [ -d $compdir ]; then
 
       if ! cmake --version &> /dev/null || [[ "$NO_SYS_CMAKE" == 1 ]]; then
 
@@ -37,15 +43,7 @@ function download_cmake {
             echo "Note: NO_SYS_CMAKE=1"
          fi
 
-         if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-            # Default case: we have to download CMake.
-            download_cmake_internal
-         else
-            echo "ERROR: cmake >= ${CMAKE_MIN_VERSION} NOT FOUND on the system"
-            echo "In this *unofficially* supported scenario where HOST_ARCH !="
-            echo "$BUILD_ARCH you have to manually install cmake on the system"
-            exit 1
-         fi
+         download_cmake_internal
 
       else
 
@@ -70,7 +68,7 @@ function download_cmake {
          else
 
             # The installed version is >= $CMAKE_MIN_VERSION. Using it.
-            CMAKE=cmake
+            CMAKE="cmake"
             echo "NOTE: Using system's CMake (version $major.$minor)"
 
          fi
@@ -80,12 +78,10 @@ function download_cmake {
    else
       show_skip_component_msg "CMAKE"
    fi
-
-   popd
 }
 
 function download_cmake_installed_status {
-   if [ -f $TC/host_$HOST_ARCH/cmake/bin/cmake ]; then
+   if [ -f $HOST_ARCH_DIR_SYS/cmake/$VER_CMAKE/bin/cmake ]; then
       echo "installed"
    elif cmake --version &> /dev/null; then
       echo "skipped"

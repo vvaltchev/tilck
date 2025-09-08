@@ -29,16 +29,16 @@ trigger:
       - 'include/tilck/common/arch/riscv/**'
 
 jobs:
-  - job: gcc_12_3_x86_64
-    container: 'vvaltchev/tilck-x86_64:v5'
+  - job: gcc_13_3_x86_64
+    container: 'vvaltchev/tilck-x86_64:v6'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
       RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
+      GCC_TC_VER: 13.3.0
       ARCH: x86_64
     steps:
       - script: printenv

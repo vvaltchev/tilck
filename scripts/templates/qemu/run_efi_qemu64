@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
-HOST_ARCH="@HOST_ARCH"
+HOST_ARCH="@HOST_ARCH@"
 f="@IMG_FILE@"
 tc="@TCROOT@"
 tc_bios="$tc/x86_64/ovmf/OVMF-pure-efi.fd"
@@ -10,20 +10,20 @@ if [[ $HOST_ARCH != x86_64 ]]; then
    QEMU_BIOS="tc"
 fi
 
-if [ -z "$QEMU_BIOS" ]; then
+if [[ "$QEMU_BIOS" == "" ]]; then
 
    QEMU_BIOS="/usr/share/qemu/OVMF.fd"
 
-   if ! [ -f "$QEMU_BIOS" ]; then
+   if ! [ -e "$QEMU_BIOS" ]; then
       QEMU_BIOS="$tc_bios"
    fi
 
-elif [ "$QEMU_BIOS" = "tc" ]; then
+elif [[ "$QEMU_BIOS" == "tc" ]]; then
 
    QEMU_BIOS="$tc_bios"
 fi
 
-if ! [ -f "$QEMU_BIOS" ]; then
+if ! [ -e "$QEMU_BIOS" ]; then
    echo "In order to boot with EFI, you need to download OVMF first."
    echo "To do that, just run in project's main directory:"
    echo "   ./scripts/build_toolchain -s download_ovmf"
