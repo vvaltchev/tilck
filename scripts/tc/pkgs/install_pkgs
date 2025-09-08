@@ -75,7 +75,7 @@ function install_debian_family {
          # for that package. In some very corner cases, e.g. the arm64v8/ubuntu
          # Docker container, lsb_release is not installed. Therefore, check
          # for that as well.
-         if [ "$major_ver" -ge 20 ]; then
+         if [[ "$major_ver" == "" || "$major_ver" -ge 20 ]]; then
             pkg_list+=(qemu-system-gui)
          fi
       fi
