@@ -12,7 +12,7 @@ parted wget curl qemu-system-riscv64 bison flex libssl-dev device-tree-compiler
 COPY . /tilck-tmp
 
 # Setup the list of packages to download & build for all the compilers
-ARG TILCK_PACKAGES="mtools zlib busybox libfdt lcov acpica"
+ARG TILCK_PACKAGES="mtools zlib busybox dtc lcov acpica"
 
 # -------------------------------------------------------------------------
 
