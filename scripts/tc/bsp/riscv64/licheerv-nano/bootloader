@@ -38,6 +38,69 @@ function bootloader_patch {
 }
 
 if [[ "$BOARD" == "licheerv-nano" ]]; then
+   all_funcs_list+=(build_sophgo_host_tools)
+fi
+
+function build_sophgo_host_tools {
+
+   local gh="https://github.com"
+   local name="sophgo_host_tools"
+   local url="$gh/sophgo/host-tools/archive/refs/tags"
+   local ver=$VER_SOPHGO_HOST_TOOLS
+   local remotefile="$ver.tar.gz"
+   local localfile="$name-$remotefile"
+   local compdir=$ARCH_DIR/$name/$ver
+
+   if ! [ -d $compdir ]; then
+
+      show_work_on_component_msg "SOPHGO host tools"
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
+      download_file_in_cache "$url" "$remotefile" "$localfile"
+      extract_cachefile_tar_gz "$localfile" host-tools-$ver $ver
+
+      popd
+
+   else
+
+      show_skip_component_msg "SOPHGO host tools"
+   fi
+}
+
+function build_sophgo_host_tools_installed_status {
+
+   local arch_list=""
+   local name="sophgo_host_tools"
+   local ver=$VER_SOPHGO_HOST_TOOLS
+
+   pushd $ARCH_DIR/..
+
+   for x in ${ALL_ARCH_LIST[@]}; do
+      if [ -d $x/$name/$ver ]; then
+         if [ -d $x/$name/$ver/gcc ]; then
+            arch_list="${arch_list}$x "
+         else
+            echo "error"
+            return
+         fi
+      fi
+   done
+
+   popd
+
+   # Drop the trailing " "
+   if [[ "${arch_list: -1}" == " " ]]; then
+      arch_list="${arch_list:: -1}"
+   fi
+
+   if [ -n "$arch_list" ]; then
+      echo "installed $arch_list"
+   fi
+}
+
+
+if [[ "$BOARD" == "licheerv-nano" ]]; then
    all_funcs_list+=(build_licheerv_nano_boot)
    default_funcs+=(build_licheerv_nano_boot)
 fi
@@ -45,36 +108,33 @@ fi
 function build_licheerv_nano_boot {
 
    local name="licheerv_nano_boot"
-   pushd $ARCH_DIR
+   local tools="sophgo_host_tools"
+   local gh="https://github.com"
+   local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
+   local ver=$VER_LICHEERV_NANO_BOOT
+   local remotefile="$ver.tar.gz"
+   local localfile="$name-$remotefile"
+   local compdir=$ARCH_DIR/$name/$ver
 
-   if ! [ -d $name ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "LicheeRV Nano Boot"
-
-      local gh="https://github.com"
-      local url="$gh/sipeed/LicheeRV-Nano-Build/archive/refs/tags"
-      local ver=$VER_LICHEERV_NANO_BOOT
-      local remotefile="$ver.tar.gz"
-      local localfile="$name-$remotefile"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_file_in_cache "$url" "$remotefile" "$localfile"
-      extract_cachefile_tar_gz "$localfile" LicheeRV-Nano-Build-$ver $name
+      extract_cachefile_tar_gz "$localfile" LicheeRV-Nano-Build-$ver $ver
 
-      pushd $name
+      cd $compdir
 
-      url="https://github.com/sophgo/host-tools/archive/refs/tags"
-      ver=$VER_SOPHGO_HOST_TOOLS
-      remotefile="$ver.tar.gz"
-      localfile="sophgo-host-tools-$remotefile"
-
-      download_file_in_cache "$url" "$remotefile" "$localfile"
-      extract_cachefile_tar_gz "$localfile" host-tools-$ver host-tools
+      build_sophgo_host_tools
+      ln -s $ARCH_DIR/$tools/$VER_SOPHGO_HOST_TOOLS host-tools
 
       bootloader_patch
       build_bootloader_internal
 
       local fip_bin="install/soc_$CODENAME/fip.bin"
-      if ! [ -f $ARCH_DIR/$name/$fip_bin ]; then
+      if ! [ -f $ARCH_DIR/$name/$ver/$fip_bin ]; then
          echo "ERROR: build failed !!!" >> build.log
          exit 1
       fi
@@ -90,20 +150,20 @@ function build_licheerv_nano_boot {
    else
       show_skip_component_msg "LicheeRV Nano Boot"
    fi
-
-   popd
 }
 
 function build_licheerv_nano_boot_installed_status {
 
    local arch_list=""
+   local name="licheerv_nano_boot"
+   local ver=$VER_LICHEERV_NANO_BOOT
    local fip_bin="install/soc_$CODENAME/fip.bin"
 
    pushd $ARCH_DIR/..
 
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $x/licheerv_nano_boot ]; then
-         if [ -f $x/licheerv_nano_boot/$fip_bin ]; then
+      if [ -d $x/$name/$ver ]; then
+         if [ -f $x/$name/$ver/$fip_bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
