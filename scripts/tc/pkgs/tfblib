@@ -1,19 +1,30 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-TFBLIB_VER="latest"
-
-if [[ "$ARCH" == "i386" ]]; then
+if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_tfblib)
 fi
 function build_tfblib {
 
-   if [ ! -d noarch/tfblib ]; then
+   local dest="$MAIN_DIR/userapps/extra/tfblib"
+   local url="https://github.com/vvaltchev/tfblib"
+   local tarname="tfblib-$VER_TFBLIB.tgz"
+   local compdir="$TC/noarch/tfblib/$VER_TFBLIB"
 
-      pushd noarch
+   if ! [ -d $compdir ]; then
+
       show_work_on_component_msg "TFBLIB"
-      git clone https://github.com/vvaltchev/tfblib
-      ln -s $TC/noarch/tfblib "$MAIN_DIR/userapps/extra"
+      mkdir -p $compdir/..
+      pushd $compdir/..
+
+      download_git_repo_in_cache "$url" $VER_TFBLIB $tarname $VER_TFBLIB
+      extract_cachefile_tar_gz $tarname $VER_TFBLIB $VER_TFBLIB
+
+      if [ -L $dest ]; then
+         rm -f $dest
+      fi
+
+      ln -s $compdir $dest
       popd
 
    else
@@ -22,7 +33,10 @@ function build_tfblib {
 }
 
 function build_tfblib_installed_status {
-   if [ -d $TC/noarch/tfblib ]; then
+
+   local compdir="$TC/noarch/tfblib/$VER_TFBLIB"
+
+   if [ -d $compdir ]; then
       echo "installed noarch"
    fi
 }

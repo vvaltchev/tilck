@@ -5,40 +5,44 @@
 # Mtools
 ###############################
 
-MTOOLS_VER="4.0.23"
-
 all_funcs_list+=(build_mtools)
 function build_mtools {
 
-   pushd host_${HOST_ARCH}
+   local compdir=$HOST_ARCH_DIR_SYS/mtools/$VER_MTOOLS
+   local pkgname="mtools-$VER_MTOOLS"
+   local tarname=$pkgname.tar.gz
 
-   if ! [ -d mtools ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "MTOOLS"
-      local pkgname="mtools-$MTOOLS_VER"
-      local tarname=$pkgname.tar.gz
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
-      download_file_in_cache "ftp://ftp.gnu.org/gnu/mtools" "$tarname"
-      extract_cachefile_tar_gz $tarname $pkgname mtools
+      download_file_in_cache "https://ftp.gnu.org/gnu/mtools" "$tarname"
+      extract_cachefile_tar_gz $tarname $pkgname $VER_MTOOLS
 
-      cd mtools
+      cd $VER_MTOOLS
       reset_cc_vars
 
       run_command2 ./configure configure.log
       run_command2 "make -j$BUILD_PAR" build.log
+      popd
+
    else
       show_skip_component_msg "MTOOLS"
    fi
-
-   popd
 }
 
 function build_mtools_installed_status {
-   if [ -d $TC/host_${HOST_ARCH}/mtools ]; then
-      if [ -f $TC/host_${HOST_ARCH}/mtools/mtools ]; then
+
+   local compdir=$HOST_ARCH_DIR_SYS/mtools/$VER_MTOOLS
+
+   if [ -d $compdir ]; then
+      if [ -f $compdir/mtools ]; then
          echo "installed host_${HOST_ARCH}"
       else
          echo "error"
       fi
    fi
 }
+

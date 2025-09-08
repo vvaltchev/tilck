@@ -9,8 +9,6 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
 set(ACTUAL_KERNEL_ONLY_FLAGS_LIST "")
 
-set(LIBFDT_DIR ${TCROOT}/riscv64/dtc/libfdt)
-
 list(
    APPEND ACTUAL_KERNEL_ONLY_FLAGS_LIST
 
@@ -66,6 +64,7 @@ set(
 
    -Wl,--no-relax
 
+   -Wl,--no-warn-rwx
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
    -Wl,-Map=${CMAKE_BINARY_DIR}/tilck.map
@@ -75,7 +74,7 @@ JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
 
 target_include_directories(
    tilck_unstripped PUBLIC
-   "${TCROOT}/${ARCH}/gnu-efi/inc"
+   "${GNUEFI_DIR}/inc"
 )
 
 include_directories(

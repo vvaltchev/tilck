@@ -5,74 +5,58 @@
 # Build gtest
 ##############################
 
-GTEST_VER="1.12.1"
-GTEST_DIRNAME="gtest-$GTEST_VER"
-GTEST_SRC_DIR="$TC/noarch/$GTEST_DIRNAME"
-GMOCK_DIRNAME="gmock-$GTEST_VER"
-
-
 function download_googletest {
 
-   local tarname="$GTEST_DIRNAME.tgz"
    local url="https://github.com/google/googletest.git"
+   local tarname="gtest-$VER_GTEST.tgz"
+   local compdir="$TC/noarch/gtest/$VER_GTEST"
 
-   if ! [ -d $GTEST_SRC_DIR ]; then
+   if ! [ -d $compdir ]; then
 
-      download_git_repo_in_cache "$url" release-$GTEST_VER $tarname googletest
-
-      pushd $TC/noarch
-      extract_cachefile_tar_gz $tarname "googletest" $GTEST_DIRNAME
+      mkdir -p $compdir
+      pushd $compdir/..
+      download_git_repo_in_cache "$url" release-$VER_GTEST $tarname $VER_GTEST
+      extract_cachefile_tar_gz $tarname $VER_GTEST $VER_GTEST
       popd
-
-      if [ -d $TC/cache/googletest ]; then
-         # Delete the old locations of googletest
-         # TODO: drop this once we upgrade to toolchain3
-         rm -rf $TC/cache/googletest
-         rm -rf $TC/host_i386/gtest
-         rm -rf $TC/host_x86_64/gtest
-      fi
-
-      if ! [ -L $TC/cache/googletest ]; then
-         # Create a symlink to allow older commits being able to build
-         # TODO: drop this once we upgrade to toolchain3
-         pushd $TC/cache
-         ln -s $GTEST_SRC_DIR googletest
-         popd
-      fi
    fi
 }
 
 all_funcs_list+=(build_gtest)
 function build_gtest {
 
-   download_googletest
-   pushd host_$HOST_ARCH
+   local compdir="$TC/noarch/gtest/$VER_GTEST"
+   local builddir=$HOST_ARCH_DIR_SYS/gtest/$VER_GTEST
 
-   if ! [ -d $GTEST_DIRNAME ]; then
+   download_googletest
+
+   if ! [ -d $builddir ]; then
 
       show_work_on_component_msg "GOOGLE TEST ($HOST_ARCH)"
-      mkdir $GTEST_DIRNAME
-      cd $GTEST_DIRNAME
+      mkdir -p $builddir
+      pushd $builddir
 
       reset_cc_vars
 
       $CMAKE                              \
          -DCMAKE_BUILD_TYPE=Debug         \
-         -DGOOGLETEST_VERSION=$GTEST_VER  \
-         $GTEST_SRC_DIR/googletest
+         -DGOOGLETEST_VERSION=$VER_GTEST  \
+         $compdir/googletest
 
       run_command2 "make -j$BUILD_PAR" build.log
+
+      popd
 
    else
       show_skip_component_msg "GOOGLE TEST ($HOST_ARCH)"
    fi
-
-   popd
 }
 
 function build_gtest_installed_status {
-   if [ -d $TC/host_$HOST_ARCH/$GTEST_DIRNAME ]; then
-      if [ -f $TC/host_$HOST_ARCH/$GTEST_DIRNAME/lib/libgtest.a ]; then
+
+   local builddir=$HOST_ARCH_DIR_SYS/gtest/$VER_GTEST
+
+   if [ -d $builddir ]; then
+      if [ -f $builddir/lib/libgtest.a ]; then
          echo "installed host_$HOST_ARCH"
       else
          echo "error"
@@ -83,34 +67,39 @@ function build_gtest_installed_status {
 all_funcs_list+=(build_gmock)
 function build_gmock {
 
-   download_googletest
-   pushd host_$HOST_ARCH
+   local compdir="$TC/noarch/gtest/$VER_GTEST"
+   local builddir=$HOST_ARCH_DIR_SYS/gmock/$VER_GTEST
 
-   if ! [ -d $GMOCK_DIRNAME ]; then
+   download_googletest
+
+   if ! [ -d $builddir ]; then
 
       show_work_on_component_msg "GOOGLE MOCK ($HOST_ARCH)"
-      mkdir $GMOCK_DIRNAME
-      cd $GMOCK_DIRNAME
+      mkdir -p $builddir
+      pushd $builddir
 
       reset_cc_vars
 
       $CMAKE                              \
          -DCMAKE_BUILD_TYPE=Debug         \
-         -DGOOGLETEST_VERSION=$GTEST_VER  \
-         $GTEST_SRC_DIR/googlemock
+         -DGOOGLETEST_VERSION=$VER_GTEST  \
+         $compdir/googlemock
 
       run_command2 "make -j$BUILD_PAR" build.log
+
+      popd
 
    else
       show_skip_component_msg "GOOGLE MOCK ($HOST_ARCH)"
    fi
-
-   popd
 }
 
 function build_gmock_installed_status {
-   if [ -d $TC/host_$HOST_ARCH/$GMOCK_DIRNAME ]; then
-      if [ -f $TC/host_$HOST_ARCH/$GMOCK_DIRNAME/lib/libgmock.a ]; then
+
+   local builddir=$HOST_ARCH_DIR_SYS/gmock/$VER_GTEST
+
+   if [ -d $builddir ]; then
+      if [ -f $builddir/lib/libgmock.a ]; then
          echo "installed host_$HOST_ARCH"
       else
          echo "error"

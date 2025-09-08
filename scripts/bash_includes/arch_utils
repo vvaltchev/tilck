@@ -9,8 +9,6 @@ ARCH_VARS_LIST+=(LD_OUTPUT)
 ARCH_VARS_LIST+=(EFI)
 ARCH_VARS_LIST+=(GCC_TC)
 ARCH_VARS_LIST+=(GCC_FLAGS)
-ARCH_VARS_LIST+=(GCC_TC_CODENAME)
-
 
 i386_ARCH_SHORT="x86"
 i386_ARCH_FAMILY="generic_x86"
@@ -18,8 +16,7 @@ i386_ARCH_ELF_NAME="elf32-i386"
 i386_ARCH_LD_OUTPUT="elf_i386"
 i386_ARCH_EFI="ia32"
 i386_ARCH_GCC_TC="i686"
-i386_ARCH_GCC_FLAGS="-m32 -march=i686"
-i386_ARCH_GCC_TC_CODENAME="x86-i686"
+i386_ARCH_GCC_FLAGS="-march=i686"
 
 x86_64_ARCH_SHORT="x86_64"
 x86_64_ARCH_FAMILY="generic_x86"
@@ -27,8 +24,7 @@ x86_64_ARCH_ELF_NAME="elf64-x86-64"
 x86_64_ARCH_LD_OUTPUT="elf_x86_64"
 x86_64_ARCH_EFI="x86_64"
 x86_64_ARCH_GCC_TC="x86_64"
-x86_64_ARCH_GCC_FLAGS="-m64"
-x86_64_ARCH_GCC_TC_CODENAME="x86-64-core-i7"
+x86_64_ARCH_GCC_FLAGS=""
 
 riscv64_ARCH_SHORT="riscv64"
 riscv64_ARCH_FAMILY="riscv"
@@ -36,8 +32,13 @@ riscv64_ARCH_ELF_NAME="elf64-littleriscv"
 riscv64_ARCH_LD_OUTPUT="elf64lriscv"
 riscv64_ARCH_GCC_TC="riscv64"
 riscv64_ARCH_GCC_FLAGS=""
-riscv64_ARCH_GCC_TC_CODENAME="riscv64-lp64d"
 
+aarch64_ARCH_SHORT="aarch64"
+aarch64_ARCH_FAMILY="arm"
+aarch64_ARCH_ELF_NAME="elf64-littleaarch64"
+aarch64_ARCH_LD_OUTPUT="aarch64elf"
+aarch64_ARCH_GCC_TC="aarch64"
+aarch64_ARCH_GCC_FLAGS=""
 
 function set_arch_gcc_tc_arch {
 
@@ -58,28 +59,16 @@ function set_host_arch_variable {
 
    if [[ "$HOST_ARCH" == "x86_64" ]]; then
 
-      : # Great, that's what we expect: do nothing
+      : # Great, that's our DEFAULT host architecture: do nothing
 
    elif [[ "$HOST_ARCH" == "amd64" ]]; then
 
       # An alias for x86_64: fix our variable
       HOST_ARCH="x86_64"
 
-   elif [[ "$HOST_ARCH" == "i686" ]]; then
-
-      # Special case, not "officially" supported.
-      # We need to set HOST_ARCH to "i386", to match the convention
-      # used by ARCH and ld.
-
-      HOST_ARCH="i386"
-
    elif [[ "$HOST_ARCH" == "aarch64" ]]; then
 
-
-      if [[ "$USE_CUSTOM_GCC_TC" != 1 ]]; then
-         echo "ERROR: set USE_CUSTOM_GCC_TC=1 to build on $HOST_ARCH"
-         exit 1
-      fi
+      : # That's OK: no translation necessary.
 
    else
 
@@ -111,12 +100,6 @@ function set_gcc_tc_defaults_internal {
    local name=${1}_MIN_GCC_TC_VERSION
    local value=$(cat $GCC_TC_CONF/$1/min_ver)
    eval "$name=$value"
-
-   # Custom GCC toolchain from https://github.com/vvaltchev/musl-cross-make
-   # TODO: add a per-arch configuration file for this toolchain as well.
-   local name=${1}_CUSTOM_GCC_TC_VERSION
-   local value="11.4.0"
-   eval "$name=$value"
 }
 
 function set_gcc_tc_defaults {
@@ -131,7 +114,6 @@ function set_gcc_tc_defaults {
    local list=()
    list+=(DEFAULT_GCC_TC_VERSION)
    list+=(MIN_GCC_TC_VERSION)
-   list+=(CUSTOM_GCC_TC_VERSION)
 
    for var_name in ${list[@]}; do
       local arch_name=${ARCH}_${var_name}
@@ -145,35 +127,8 @@ function set_gcc_ver_internal {
    local name="${1}_GCC_TC_VER"
 
    if [[ "${!name}" == "" ]]; then
-
-      if [ -f $TC/.gcc_tc_ver_$1 ]; then
-
-         local value=$(cat $TC/.gcc_tc_ver_$1)
-         eval "$name=$value"
-
-      else
-
-         # GCC_TC_VER is not defined and there is no .gcc_tc_ver_$ARCH file.
-
-         if [[ "$USE_CUSTOM_GCC_TC" == 1 ]]; then
-
-            # Custom GCC toolchain
-            local name2="${1}_CUSTOM_GCC_TC_VERSION"
-            eval "$name=${!name2}"
-
-         elif [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-
-            # Main case, fully supported
-            local name2="${1}_DEFAULT_GCC_TC_VERSION"
-            eval "$name=${!name2}"
-
-         else
-            # We're running on some other arch and we're not using the custom
-            # gcc tc. That won't work unless HOST_ARCH=ARCH and we have
-            # USE_SYSCC=1 set.
-            :
-         fi
-      fi
+      local name2="${1}_DEFAULT_GCC_TC_VERSION"
+      eval "$name=${!name2}"
    fi
 
    if [[ "${!name}" == "" ]]; then
@@ -188,33 +143,53 @@ function set_gcc_ver {
    # that instance of GCC_TC_VER, so that the internal function won't
    # override it.
 
-   local name="${ARCH}_GCC_TC_VER"
-   local name_="${ARCH}_GCC_TC_VER_"
-   local pfx="${ARCH}_GCC_NAME_PFX"
+   local name
+   local name_
+   local pfx
    local arch
    local ver   # e.g. 1.2.3
    local ver_  # e.g. 1_2_3
-   local pfx_arch_name
    local val
 
-
    if [[ "$GCC_TC_VER" != "" ]]; then
+
+      name="${ARCH}_GCC_TC_VER"
       eval "$name=$GCC_TC_VER"
+
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         # Special case for x86: since we're downloading both toolchains
+         # also to be used for Tilck (bootloader), not just for the host
+         # apps, it makes sense to force GCC_TC_VER to also apply for the
+         # other architecture. In general case (e.g. riscv64, aarch64) that
+         # won't happen, as we need only *one* GCC toolchain for Tilck and
+         # one for the host apps.
+         i386_GCC_TC_VER=$GCC_TC_VER
+         x86_64_GCC_TC_VER=$GCC_TC_VER
+      fi
    fi
 
    for arch in ${ALL_ARCH_LIST[@]}; do
 
       set_gcc_ver_internal $arch
+
+      name="${arch}_GCC_TC_VER"
+      name_="${arch}_GCC_TC_VER_"
+
       ver=${!name}
       ver_=$(echo $ver | sed -E 's/[.]/_/g')
+      eval "${name_}=$ver_"
 
-      pfx_arch_name="${arch}_GCC_NAME_PFX"
+      pfx="${arch}_GCC_NAME_PFX"
       val="gcc_${ver_}_${arch}"
-      eval "$pfx_arch_name=$val"
+      eval "$pfx=$val"
 
    done
 
    # Set the base variables use the variant where $arch == $ARCH
+   name="${ARCH}_GCC_TC_VER"
+   name_="${ARCH}_GCC_TC_VER_"
+   pfx="${ARCH}_GCC_NAME_PFX"
+
    eval "GCC_TC_VER=${!name}"
    eval "GCC_TC_VER_=${!name_}"
    eval "GCC_NAME_PFX=${!pfx}"
@@ -230,44 +205,44 @@ function set_arch_variables {
    done
 }
 
-# $1 = arch
-# $2 = ver
-# #3 = saved ver
-function gcc_ver_mismatch_error {
-   echo "ERROR: for ARCH=$1, GCC_TC_VER ($2) != saved ($3)"
-   echo "ERROR: This is NOT a supported scenario. Please delete:"
-   echo "   $TC/$1"
-   echo "   $TC/.gcc_tc_ver_$1"
-   echo "And run this script again to use the new toolchain."
-}
+function set_board_value_and_defaults {
 
-function save_and_check_gcc_tc_ver {
+   local found=false
 
-   local a
-   local ver
+   if [[ "$ARCH" == "riscv64" ]]; then
+      ALL_BOARDS_LIST=(qemu-virt licheerv-nano)
+      DEFAULT_BOARD="qemu-virt"
+   else
+      ALL_BOARDS_LIST=()
+      DEFAULT_BOARD=""
+   fi
 
-   mkdir -p $TC
+   if [[ "$BOARD" == "" ]]; then
 
-   for a in ${ALL_ARCH_LIST[@]}; do
+      BOARD=$DEFAULT_BOARD
 
-      ver="${a}_GCC_TC_VER"
-      ver=${!ver}
+   else
 
-      if ! [ -f $TC/.gcc_tc_ver_$a ]; then
-
-         echo -n $ver > $TC/.gcc_tc_ver_$a
-
-      else
-
-         saved=$(cat $TC/.gcc_tc_ver_$a)
-
-         if [[ "$ver" != "$saved" ]]; then
-            gcc_ver_mismatch_error $a $ver $saved
-            exit 1
+      for b in ${ALL_BOARDS_LIST[@]}; do
+         if [[ "$BOARD" == "$b" ]]; then
+            found=true
+            break
          fi
-      fi
+      done
 
-   done
+      if ! $found; then
+         echo "ERROR: Board '$BOARD' not available for ARCH: $ARCH"
+         exit 1
+      fi
+   fi
+
+   if [[ "$BOARD" != "" ]]; then
+      BOARD_BSP="$MAIN_DIR/other/bsp/$ARCH/$BOARD"
+      if ! [ -d $BOARD_BSP ]; then
+         echo "ERROR: BOARD_BSP: $BOARD_BSP not found!"
+         exit 1
+      fi
+   fi
 }
 
 function dump_build_toolchain_env {
@@ -275,12 +250,11 @@ function dump_build_toolchain_env {
    echo
    echo "ARCH=$ARCH"
    echo "HOST_ARCH=$HOST_ARCH"
-   echo "USE_CUSTOM_GCC_TC=$USE_CUSTOM_GCC_TC"
    echo "GCC_TC_VER=$GCC_TC_VER"
    echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
    echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
-   echo "CUSTOM_GCC_TC_VERSION=$CUSTOM_GCC_TC_VERSION"
-   echo "USE_SYSCC=$USE_SYSCC"
+   echo "DEFAULT_BOARD=$DEFAULT_BOARD"
+   echo "BOARD=$BOARD"
    echo "CC=$CC"
    echo "CXX=$CXX"
    echo

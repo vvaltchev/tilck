@@ -1,30 +1,27 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-BUSYBOX_VER="1.36.1"
+BUSYBOX_CONFIG=$MAIN_DIR/other/busybox.config
 
 function internal_build_busybox {
 
    echo "Building busybox... "
    reset_cc_vars
 
-   cp $MAIN_DIR/other/busybox.config .config
+   cp $BUSYBOX_CONFIG .config
 
    do_common_cross_compiler_setup
    set_cc_vars_to_tc
-   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
    set +e
    run_command2 "make V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $TC/$ARCH/busybox/busybox ]; then
+   if ! [ -f $ARCH_DIR/busybox/$VER_BUSYBOX/busybox ]; then
       echo "ERROR: build failed !!!" >> build.log
       exit 1
    fi
    set -e
-   export CROSS_COMPILE=""
-   export CC_POST_FLAGS=""
 
    busybox_fix_config_file
 
@@ -35,13 +32,19 @@ function internal_build_busybox {
 all_funcs_list+=(build_busybox)
 function build_busybox {
 
-   pushd $ARCH
+   local compdir=$ARCH_DIR/busybox/$VER_BUSYBOX
+   local url="https://busybox.net/downloads"
+   local ver="$VER_BUSYBOX"
+   local tarname=busybox-$ver.tar.bz2
 
-   if [ -d busybox ]; then
-      s1=`sha1sum ./busybox/.config | cut -d " " -f 1`
-      s2=`sha1sum ./busybox/.last_build_config | cut -d " " -f 1`
 
-      if [ "$s1" != "$s2" ]; then
+   if [ -d $compdir ]; then
+
+      pushd $compdir
+      s1=`sha1sum .config | cut -d " " -f 1`
+      s2=`sha1sum .last_build_config | cut -d " " -f 1`
+
+      if [[ "$s1" != "$s2" ]]; then
 
          echo "Busybox: .config != .last_build_config"
          echo -n "Do you want to rebuild with the new config? [Y/n]: "
@@ -52,50 +55,50 @@ function build_busybox {
             echo -n "Do you want an incremental build? [Y/n]: "
             read answer
             if [[ "$answer" == "" || "$answer" == "y" ]]; then
-               pushd busybox
                internal_build_busybox
-               popd
             else
-               rm -rf busybox
+               rm -rf $compdir
             fi
          fi
       fi
+
+      popd
    fi
 
-   if ! [ -d busybox ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "BUSYBOX"
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
-      local ver="$BUSYBOX_VER"
-      local tarname=busybox-$ver.tar.bz2
+      download_file_in_cache "$url" "$tarname"
+      extract_cachefile_tar_bz $tarname busybox-$ver $ver
 
-      download_file_in_cache "https://busybox.net/downloads" "$tarname"
-      extract_cachefile_tar_bz $tarname busybox-$ver busybox
-
-      pushd busybox
+      pushd $compdir
       internal_build_busybox
       popd
+      popd
 
-   elif [ "$REBUILD" == "1" ]; then
+   elif [[ "$REBUILD" == "1" ]]; then
 
-      pushd busybox
+      pushd $compdir
       internal_build_busybox
       popd
 
    else
       show_skip_component_msg "BUSYBOX"
    fi
-
-   popd
 }
 
 function build_busybox_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/busybox ]; then
-         if [ -f $TC/$x/busybox/busybox ]; then
+      if [ -d $x/busybox/$VER_BUSYBOX ]; then
+         if [ -f $x/busybox/$VER_BUSYBOX/busybox ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -103,6 +106,8 @@ function build_busybox_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
@@ -130,14 +135,14 @@ function busybox_fix_config_file {
 all_funcs_list+=(config_busybox)
 function config_busybox {
 
-   pushd $ARCH
+   local compdir=$ARCH_DIR/busybox/$VER_BUSYBOX
 
-   if ! [ -d busybox ]; then
+   if ! [ -d $compdir ]; then
       echo "ERROR: busybox not found in toolchain"
       exit 1
    fi
 
-   pushd busybox
+   pushd $compdir
 
    make menuconfig
 
@@ -147,11 +152,10 @@ function config_busybox {
    busybox_fix_config_file
 
    if [[ "$answer" == "" || "$answer" == "y" ]]; then
-      cp .config $MAIN_DIR/other/busybox.config
-      echo "Source file $MAIN_DIR/other/busybox.config UPDATED"
+      cp .config $BUSYBOX_CONFIG
+      echo "Source file $BUSYBOX_CONFIG UPDATED"
    fi
 
-   popd
    popd
 
    build_busybox

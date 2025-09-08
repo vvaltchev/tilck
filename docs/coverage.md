@@ -14,7 +14,6 @@ How to measure the code coverage
       - lcov
       - gtest
       - vim (advanced case only)
-      - tcc (advanced case only)
 
 ## Typical case
 

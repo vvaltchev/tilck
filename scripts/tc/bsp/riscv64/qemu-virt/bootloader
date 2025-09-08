@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-U_BOOT_VER="2024.04"
+function bootloader_fix_config_file {
 
-function internal_build_bootloader {
+   # Remove the date-time row (in order to allow config diff to work)
+   sed -i -e '4d' .config
+
+   # Remove all empty lines
+   sed -i '/CONFIG_/!d' .config
+
+   # Sort all the lines
+   LC_ALL=C sort -sr .config > .config_sorted
+   mv .config_sorted .config
+}
+
+function build_uboot_internal {
 
    echo "Building u-boot... "
    reset_cc_vars
@@ -12,19 +23,16 @@ function internal_build_bootloader {
 
    do_common_cross_compiler_setup
    set_cc_vars_to_tc
-   export CROSS_COMPILE="${ARCH_GCC_TC}-linux-"
 
    set +e
    run_command2 "make V=1 -j$BUILD_PAR" build.log
    dump_cross_compiler_env "build.log"
 
-   if ! [ -f $TC/$ARCH/u-boot/u-boot ]; then
+   if ! [ -f $ARCH_DIR/uboot/$VER_UBOOT/u-boot ]; then
       echo "ERROR: build failed !!!" >> build.log
       exit 1
    fi
    set -e
-   export CROSS_COMPILE=""
-   export CC_POST_FLAGS=""
 
    bootloader_fix_config_file
 
@@ -50,14 +58,22 @@ function bootloader_patch {
    run_command "sed -i 's/${old}/${new}/' $file"
 }
 
-all_funcs_list+=(build_bootloader)
-function build_bootloader {
+if [[ "$BOARD" == "qemu-virt" ]]; then
+   all_funcs_list+=(build_uboot)
+   default_funcs+=(build_uboot)
+fi
 
-   pushd $ARCH
+function build_uboot {
 
-   if [ -d u-boot ]; then
-      s1=`sha1sum ./u-boot/.config | cut -d " " -f 1`
-      s2=`sha1sum ./u-boot/.last_build_config | cut -d " " -f 1`
+   local compdir=$ARCH_DIR/uboot/$VER_UBOOT
+   local ver="$VER_UBOOT"
+   local tarname=u-boot-$ver.tar.bz2
+
+   if [ -d $compdir ]; then
+
+      pushd $compdir
+      s1=`sha1sum ./.config | cut -d " " -f 1`
+      s2=`sha1sum ./.last_build_config | cut -d " " -f 1`
 
       if [ "$s1" != "$s2" ]; then
 
@@ -70,51 +86,50 @@ function build_bootloader {
             echo -n "Do you want an incremental build? [Y/n]: "
             read answer
             if [[ "$answer" == "" || "$answer" == "y" ]]; then
-               pushd u-boot
-               internal_build_bootloader
-               popd
+               build_uboot_internal
             else
-               rm -rf u-boot
+               rm -rf $compdir
             fi
          fi
       fi
+
+      popd
    fi
 
-   if ! [ -d u-boot ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "U-BOOT"
-
-      local ver="$U_BOOT_VER"
-      local tarname=u-boot-$ver.tar.bz2
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
       download_file_in_cache "https://ftp.denx.de/pub/u-boot" "$tarname"
-      extract_cachefile_tar_bz $tarname u-boot-$ver u-boot
+      extract_cachefile_tar_bz $tarname u-boot-$ver $ver
 
-      pushd u-boot
+      cd $compdir
       bootloader_patch
-      internal_build_bootloader
+      build_uboot_internal
       popd
 
    elif [ "$REBUILD" == "1" ]; then
 
-      pushd u-boot
-      internal_build_bootloader
+      pushd $compdir
+      build_uboot_internal
       popd
 
    else
       show_skip_component_msg "U-BOOT"
    fi
-
-   popd
 }
 
-function build_bootloader_installed_status {
+function build_uboot_installed_status {
 
    local arch_list=""
 
-   for x in $ALL_ARCH_LIST; do
-      if [ -d $TC/$x/u-boot ]; then
-         if [ -f $TC/$x/u-boot/u-boot.bin ]; then
+   pushd $ARCH_DIR/..
+
+   for x in ${ALL_ARCH_LIST[@]}; do
+      if [ -d $x/uboot/$VER_UBOOT ]; then
+         if [ -f $x/uboot/$VER_UBOOT/u-boot.bin ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -122,6 +137,8 @@ function build_bootloader_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then
@@ -133,30 +150,17 @@ function build_bootloader_installed_status {
    fi
 }
 
-function bootloader_fix_config_file {
+all_funcs_list+=(config_uboot)
+function config_uboot {
 
-   # Remove the date-time row (in order to allow config diff to work)
-   sed -i -e '4d' .config
+   local compdir=$ARCH_DIR/uboot/$VER_UBOOT
 
-   # Remove all empty lines
-   sed -i '/CONFIG_/!d' .config
-
-   # Sort all the lines
-   LC_ALL=C sort -sr .config > .config_sorted
-   mv .config_sorted .config
-}
-
-all_funcs_list+=(config_bootloader)
-function config_bootloader {
-
-   pushd $ARCH
-
-   if ! [ -d u-boot ]; then
-      echo "ERROR: u-boot not found in toolchain"
+   if ! [ -d $compdir ]; then
+      echo "ERROR: uboot not found in toolchain"
       exit 1
    fi
 
-   pushd u-boot
+   pushd $compdir
 
    make menuconfig
 
@@ -171,7 +175,6 @@ function config_bootloader {
    fi
 
    popd
-   popd
 
-   build_bootloader
+   build_uboot
 }

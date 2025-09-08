@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# This is the latest version of vim that works correctly. Version > v8.2.5057
+# This is the latest version of vim that works correctly. Version > v8.2.5056
 # uses unsupported kernel features related to timers.
 #
 # See https://github.com/vim/vim/issues/10647
@@ -11,45 +11,41 @@
 # general. Hint: it looks like implementing sys_getitimer() and sys_setitimer()
 # might be enough.
 
-VIM_VER="v8.2.5056"
-
 function download_vim {
 
-   local tarname="vim-$VIM_VER.tgz"
+   local tarname="vim-$VER_VIM.tgz"
    local url="https://github.com/vim/vim.git"
-   local tag=""
+   local tag="$VER_VIM"
 
-   if [[ "$VIM_VER" != "latest" ]]; then
-      tag="$VIM_VER"
-   fi
-
-   download_git_repo_in_cache "$url" "$tag" $tarname vim
-   extract_cachefile_tar_gz $tarname --
+   download_git_repo_in_cache "$url" "$tag" $tarname $VER_VIM
+   extract_cachefile_tar_gz $tarname $VER_VIM $VER_VIM
 }
 
-if [[ "$ARCH" == "i386" ]]; then
+if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
    all_funcs_list+=(build_vim)
 fi
 function build_vim {
 
-   pushd $ARCH
+   local compdir=$ARCH_DIR/vim/$VER_VIM
+   local ncurses=$ARCH_DIR/ncurses/$VER_NCURSES/install
+   local params=()
 
-   if ! [ -d vim ]; then
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "VIM"
       reset_cc_vars
-      local ncurses="$TC/$ARCH/ncurses/install"
 
-      if ! [ -d "$ncurses" ]; then
+      if ! [ -d $ncurses ]; then
          echo "ERROR: ncurses is needed to build vim"
          echo "How to fix: run this script with -s build_ncurses first"
          exit 1
       fi
 
+      mkdir -p $compdir/..
+      pushd $compdir/..
       download_vim
-      cd vim
 
-      local curr="$PWD"
+      cd $compdir
 
       do_common_cross_compiler_setup
       set_cc_vars_to_tc
@@ -57,22 +53,21 @@ function build_vim {
       export LDFLAGS="-static -L$ncurses/lib -lncurses"
       export CPPFLAGS="-I$ncurses/include -I$ncurses/include/ncurses"
 
-      local opts=""
-      opts="$opts --prefix=$curr/install"
-      opts="$opts --build=${HOST_ARCH}-linux-gnu"
-      opts="$opts --host=${ARCH_GCC_TC}-linux-musl"
-      opts="$opts --target=${ARCH_GCC_TC}-linux-musl"
-      opts="$opts --with-features=normal"
-      opts="$opts --with-tlib=ncurses"
-      opts="$opts vim_cv_toupper_broken=no"
-      opts="$opts vim_cv_terminfo=yes"
-      opts="$opts vim_cv_tgetent=zero"
-      opts="$opts vim_cv_getcwd_broken=no"
-      opts="$opts vim_cv_stat_ignores_slash=no"
-      opts="$opts vim_cv_memmove_handles_overlap=yes"
+      params+=(--prefix=$compdir/install)
+      params+=(--build=${HOST_ARCH}-linux-gnu)
+      params+=(--host=${ARCH_GCC_TC}-linux-musl)
+      params+=(--target=${ARCH_GCC_TC}-linux-musl)
+      params+=(--with-features=normal)
+      params+=(--with-tlib=ncurses)
+      params+=(vim_cv_toupper_broken=no)
+      params+=(vim_cv_terminfo=yes)
+      params+=(vim_cv_tgetent=zero)
+      params+=(vim_cv_getcwd_broken=no)
+      params+=(vim_cv_stat_ignores_slash=no)
+      params+=(vim_cv_memmove_handles_overlap=yes)
 
       set +e
-      run_command2 "./configure $opts" configure.log
+      run_command2 "./configure ${params[*]}" configure.log
       run_command2 "make -j$BUILD_PAR" build.log
       run_command2 "make install" install.log
       set -e
@@ -85,7 +80,6 @@ function build_vim {
       fi
 
       pushd install
-
          cp -r ../runtime .
 
          pushd runtime
@@ -99,7 +93,7 @@ function build_vim {
          chmod 644 vim.gz
       popd
 
-      if ! [ -f $TC/$ARCH/vim/install/vim.gz ]; then
+      if ! [ -f $compdir/install/vim.gz ]; then
          echo "ERROR: the install failed !!!" >> install.log
          exit 1
       fi
@@ -108,21 +102,24 @@ function build_vim {
       export LDFLAGS=""
       export CPPFLAGS=""
 
+      popd
+
    else
       show_skip_component_msg "VIM"
    fi
 
    reset_cc_vars
-   popd
 }
 
 function build_vim_installed_status {
 
    local arch_list=""
 
+   pushd $ARCH_DIR/..
+
    for x in ${ALL_ARCH_LIST[@]}; do
-      if [ -d $TC/$x/vim ]; then
-         if [ -f $TC/$x/vim/install/vim.gz ]; then
+      if [ -d $x/vim/$VER_VIM ]; then
+         if [ -f $x/vim/$VER_VIM/install/vim.gz ]; then
             arch_list="${arch_list}$x "
          else
             echo "error"
@@ -130,6 +127,8 @@ function build_vim_installed_status {
          fi
       fi
    done
+
+   popd
 
    # Drop the trailing " "
    if [[ "${arch_list: -1}" == " " ]]; then

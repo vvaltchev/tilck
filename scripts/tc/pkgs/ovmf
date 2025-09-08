@@ -40,7 +40,16 @@ function check_and_download_ovmf {
    popd
 }
 
-all_funcs_list+=(download_ovmf)
+#
+# This function has been disabled because the jenkins autobuilder has been
+# shut down: https://www.kraxel.org/blog/2022/07/edk2-firmware-packaging/
+#
+# TODO: figure out a different way to build, package and distribute EDK2
+# for all the target platforms we support.
+#
+
+# all_funcs_list+=(download_ovmf)
+
 function download_ovmf {
    check_and_download_ovmf ia32 i386
    check_and_download_ovmf x64 x86_64

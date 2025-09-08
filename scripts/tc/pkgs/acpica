@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-ACPICA_VER="R2024_12_12"
-
 function patch_acpica {
 
    local def_before='#if defined(_LINUX) || defined(__linux__)'
@@ -25,31 +23,32 @@ function patch_acpica {
 all_funcs_list+=(download_acpica)
 function download_acpica {
 
-   pushd noarch
+   local compdir="$TC/noarch/acpica/$VER_ACPICA"
+   local url="https://github.com/acpica/acpica.git"
+   local tarname="acpica-$VER_ACPICA.tgz"
 
-   if ! [ -d acpica ]; then
-
-      local url="https://github.com/acpica/acpica.git"
-      local tarname="acpica-$ACPICA_VER.tgz"
+   if ! [ -d $compdir ]; then
 
       show_work_on_component_msg "ACPICA"
-      download_git_repo_in_cache "$url" $ACPICA_VER $tarname acpica
-      extract_cachefile_tar_gz $tarname --
+      mkdir -p $compdir/..
+      pushd $compdir/..
 
-      pushd acpica
+      download_git_repo_in_cache "$url" $VER_ACPICA $tarname $VER_ACPICA
+      extract_cachefile_tar_gz $tarname $VER_ACPICA $VER_ACPICA
+
+      pushd $VER_ACPICA
       patch_acpica
+      popd
       popd
 
    else
 
       show_skip_component_msg "ACPICA"
    fi
-
-   popd
 }
 
 function download_acpica_installed_status {
-   if [ -d $TC/noarch/acpica ]; then
+   if [ -d $TC/noarch/acpica/$VER_ACPICA ]; then
       echo "installed noarch"
    fi
 }

@@ -30,15 +30,15 @@ trigger:
 
 jobs:
   - job: interactive
-    container: 'vvaltchev/tilck-i386:v5'
+    container: 'vvaltchev/tilck-i386:v6'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
       RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
+      GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
         -DEXTRA_VIM=1
         -DFB_CONSOLE_BANNER=0
@@ -63,44 +63,16 @@ jobs:
       - script: ./build/st/run_interactive_test -a
         displayName: Run the interactive tests
 
-  - job: gcc_11_3_build
-    container: 'vvaltchev/tilck-i386:v5'
+  - job: gcc_13_3
+    container: 'vvaltchev/tilck-i386:v6'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
       RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc113
+      TCROOT: /tc
       GTEST_SHUFFLE: 0
       TILCK_NO_LOGO: 1
-      GCC_TC_VER: 11.3.0
-    strategy:
-      matrix:
-        debug:
-          GEN: 'gcc'
-        release:
-          GEN: 'gcc_rel'
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: ./scripts/build_generators/$(GEN)
-        displayName: Run CMake
-      - script: make -j
-        displayName: Build the kernel
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-
-  - job: gcc_12_3
-    container: 'vvaltchev/tilck-i386:v5'
-    pool:
-      vmImage: 'ubuntu-24.04'
-    variables:
-      RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
-      GTEST_SHUFFLE: 0
-      TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
+      GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
         -DKMALLOC_FREE_MEM_POISONING=1
@@ -135,55 +107,19 @@ jobs:
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
 
-  - job: syscc
-    container: 'vvaltchev/tilck-i386:v5'
-    pool:
-      vmImage: 'ubuntu-24.04'
-    variables:
-      RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
-      GTEST_SHUFFLE: 0
-      TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
-      CMAKE_ARGS: >
-        -DKMALLOC_FREE_MEM_POISONING=1
-        -DKERNEL_SAT=1
-    strategy:
-      matrix:
-        gcc:
-          GEN: 'gcc_syscc'
-        clang:
-          GEN: 'clang_wconv'
-        clang_tc_isystem:
-          GEN: 'clang_tc_isystem'
-        clang_small_offt:
-          GEN: 'clang_small_offt'
-    steps:
-      - script: printenv
-        displayName: Dump env
-      - script: ./scripts/build_generators/$(GEN)
-        displayName: Run CMake
-      - script: make -j
-        displayName: Build the kernel
-      - script: make -j gtests
-        displayName: Build the unit tests
-      - script: ./build/gtests
-        displayName: Run the unit tests
-      - script: ./build/st/run_all_tests -c
-        displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-i386:v5'
+    container: 'vvaltchev/tilck-i386:v6'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
       RUNNING_IN_CI: 1
-      TCROOT: /tc/toolchain2-gcc123
+      TCROOT: /tc
       GTEST_SHUFFLE: 0
       DUMP_COV: 1
       REPORT_COV: 1
       TILCK_NO_LOGO: 1
-      GCC_TC_VER: 12.3.0
+      GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
         -DMOD_acpi=0
         -DEXTRA_VIM=1

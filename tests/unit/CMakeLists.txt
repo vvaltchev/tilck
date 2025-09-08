@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-set(TOOL_GCOV "${GCOV}")
-include_directories(${TCROOT}/${HOST_ARCH}/gnu-efi/inc)
+if ("${GCOV}" STREQUAL "")
+   set(TOOL_GCOV "gcov")
+else()
+   set(TOOL_GCOV "${GCOV}")
+endif()
+
+include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
-include_directories(${TCROOT}/noarch/acpica)
+include_directories(${TCROOT}/noarch/acpica/${VER_ACPICA})
 
 include_directories(${GTEST_SOURCE_DIR}/include)
 include_directories(${GMOCK_SOURCE_DIR}/include)

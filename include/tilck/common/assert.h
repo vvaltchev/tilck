@@ -6,11 +6,11 @@
  *
  * Q: Why having a separate header for ASSERT instead of just using panic.h ?
  *
- * A: Because an ASSERT macro is defined in gnu-efi as well. Because of that,
+ * A: Because an ASSERT macro is defined in gnuefi as well. Because of that,
  *    the EFI bootloader cannot build. Currently, panic.h includes automatically
  *    assert.h in all the cases except where NO_TILCK_ASSERT is defined. Because
- *    ASSERTs are used in headers as well, in order to include gnu-efi headers
- *    is necessary to #undef ASSERT and re-define it after including the gnu-efi
+ *    ASSERTs are used in headers as well, in order to include gnuefi headers
+ *    is necessary to #undef ASSERT and re-define it after including the gnuefi
  *    headers by including this header again.
  */
 
