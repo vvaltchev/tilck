@@ -403,6 +403,7 @@ list(
    console
    tracing
    sysfs
+   null
 )
 
 list(

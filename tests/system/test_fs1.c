@@ -431,7 +431,7 @@ int cmd_fs6(int argc, char **argv)
    d = opendir("/dev");
    DEVSHELL_CMD_ASSERT(d != NULL);
 
-   generic_fs_dir_seek_test(d, 6, 5, 2, false);
+   generic_fs_dir_seek_test(d, 13, 5, 2, false);
 
    rc = closedir(d);
    DEVSHELL_CMD_ASSERT(rc == 0);
