@@ -6,6 +6,8 @@
  * access the `cmds_table` array. Example: see userapps/devshell/commands.c.
  */
 
+#include <tilck_gen_headers/mod_null.h>
+
 /*        name,         timeout,  enabled      */
 
 CMD_ENTRY(help,         TT_SHORT, false)
@@ -98,3 +100,6 @@ CMD_ENTRY(sigsegv5,     TT_SHORT,  true)
 CMD_ENTRY(getuids,      TT_SHORT,  true)
 CMD_ENTRY(getrusage,    TT_SHORT,  true)
 CMD_ENTRY(exit_cb,      TT_SHORT,  true)
+CMD_ENTRY(dev_null,     TT_SHORT,  MOD_null)
+CMD_ENTRY(dev_zero,     TT_SHORT,  MOD_null)
+CMD_ENTRY(dev_full,     TT_SHORT,  MOD_null)
