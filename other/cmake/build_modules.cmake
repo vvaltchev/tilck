@@ -16,6 +16,11 @@ set(
    ${CMAKE_SOURCE_DIR}/modules/sysfs/ro_config_vars.h
 )
 
+set(
+   ALL_MODULES_LIST_HEADER
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/all_modules_list.h
+)
+
 add_custom_command(
 
    OUTPUT
@@ -26,6 +31,7 @@ add_custom_command(
 
    DEPENDS
       ${RO_CONFIG_VARS_HEADER}
+      ${ALL_MODULES_LIST_HEADER}
       gen_config
 )
 
@@ -34,6 +40,8 @@ add_custom_target(
    generated_configuration
 
    DEPENDS
+      ${RO_CONFIG_VARS_HEADER}
+      ${ALL_MODULES_LIST_HEADER}
       ${GENERATED_CONFIG_FILE}
 )
 
