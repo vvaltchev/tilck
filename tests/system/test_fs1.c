@@ -292,13 +292,17 @@ generic_fs_dir_seek_test(DIR *d,
                          const int seek_n2,
                          bool cdots)
 {
+   const size_t max_entries = n_files + 3; /* n + "." + ".." + end (!de) */
    char saved_entry_name[256];
-   long dposs[n_files + 3];
+   long dposs[max_entries];
    struct dirent *de;
+
+   DEVSHELL_CMD_ASSERT(seek_n < n_files);
+   DEVSHELL_CMD_ASSERT(seek_n2 < n_files);
 
    printf("Reading dir entries...\n");
 
-   for (int i = 0; ; i++) {
+   for (u32 i = 0; i < max_entries; i++) {
 
       dposs[i] = telldir(d);
       de = readdir(d);
@@ -308,8 +312,6 @@ generic_fs_dir_seek_test(DIR *d,
 
          if (cdots)
             DEVSHELL_CMD_ASSERT(i >= n_files+2);
-         else
-            DEVSHELL_CMD_ASSERT(i >= n_files);
 
          break;
       }
