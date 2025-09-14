@@ -441,6 +441,12 @@ foreach(modpath ${modules})
       set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
    endif()
 
+   set(MOD_HEADER_FILE ${CMAKE_SOURCE_DIR}/config/mod_${modname}.h)
+   if (NOT EXISTS ${MOD_HEADER_FILE})
+      message(FATAL_ERROR "Mod header ${MOD_HEADER_FILE} does not exist")
+   endif()
+   unset(MOD_HEADER_FILE)
+
 endforeach()
 
 if (TINY_KERNEL)
@@ -734,6 +740,7 @@ foreach (mod ${modules_list})
 endforeach()
 
 JOIN("${enabled_modules_list}" ${SPACE} ENABLED_MODULES_LIST)
+JOIN("${modules_list}" ${SPACE} ALL_MODULES_LIST)
 unset(enabled_modules_list)
 
 ################################################################################
