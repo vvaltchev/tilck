@@ -2,6 +2,7 @@
 
 #pragma once
 #define __TILCK_PANIC_H__
+#include <tilck/common/basic_defs.h> /* For LSP to find the definitions */
 
 NORETURN void panic(const char *fmt, ...);
 NORETURN void not_reached(const char *file, int line);
