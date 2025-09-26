@@ -1,0 +1,9 @@
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    - -Ibuild/tilck_gen_headers
+    - -DCLANGD
+
+  Remove:
+    - -maccumulate-outgoing-args
+    - -Werror

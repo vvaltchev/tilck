@@ -29,7 +29,7 @@
 
 #endif
 
-#if !(defined(__aarch64__) && defined(KERNEL_TEST))
+#if !(defined(CLANGD) || (defined(__aarch64__) && defined(KERNEL_TEST)))
 
 /*
  * Don't define this function in this special case, because we're going to
@@ -78,15 +78,15 @@ EXTERN inline int isprint(int c) {
    return IN_RANGE_INC(c, ' ', '~');
 }
 
-#if defined(__i386__) || defined(__x86_64__)
+#if !defined(CLANGD) && (defined(__i386__) || defined(__x86_64__))
 
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 
-#elif defined(__riscv)
+#elif !defined(CLANGD) && defined(__riscv)
 
    #include <tilck/common/arch/riscv/asm_riscv_strings.h>
 
-#elif (defined(__aarch64__) && defined(KERNEL_TEST))
+#elif defined(CLANGD) || (defined(__aarch64__) && defined(KERNEL_TEST))
 
    /*
     * The Tilck kernel has no support for AARCH64 per se, but its noarch
