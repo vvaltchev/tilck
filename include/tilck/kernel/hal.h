@@ -51,116 +51,124 @@
       /* STUB function: do nothing */
    }
 
-#elif defined(__aarch64__) && defined(KERNEL_TEST)
+#elif defined(__aarch64__)
 
-   /*
-    * Fake stub funcs and defines, just to allow the build of the kernel for
-    * the unit tests
-    */
+   #if defined(KERNEL_TEST)
 
-   #define ALL_FAULTS_MASK (0xFFFFFFFF)
-   #define PAGE_FAULT_MASK (1 << 14)
-   #define SYSCALL_SOFT_INTERRUPT 0x80
-   #define COM1 0
-   #define COM2 1
-   #define COM3 2
-   #define COM4 3
-   #define X86_PC_TIMER_IRQ 0
+      /*
+       * Fake stub funcs and defines, just to allow the build of the kernel for
+       * the unit tests
+       */
 
-   static ALWAYS_INLINE bool are_interrupts_enabled(void)
-   {
-      return true;
-   }
+      #define ALL_FAULTS_MASK (0xFFFFFFFF)
+      #define PAGE_FAULT_MASK (1 << 14)
+      #define SYSCALL_SOFT_INTERRUPT 0x80
+      #define COM1 0
+      #define COM2 1
+      #define COM3 2
+      #define COM4 3
+      #define X86_PC_TIMER_IRQ 0
 
-   static ALWAYS_INLINE void disable_interrupts(ulong *var)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE bool are_interrupts_enabled(void)
+      {
+         return true;
+      }
 
-   static ALWAYS_INLINE void enable_interrupts(ulong *var)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE void disable_interrupts(ulong *var)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE void disable_interrupts_forced(void)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE void enable_interrupts(ulong *var)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE void enable_interrupts_forced(void)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE void disable_interrupts_forced(void)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE void __set_curr_pdir(ulong paddr)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE void enable_interrupts_forced(void)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE ulong __get_curr_pdir()
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE void __set_curr_pdir(ulong paddr)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE ulong __get_curr_pdir()
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE int int_to_irq(int int_num)
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE bool is_irq(int int_num)
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE int int_to_irq(int int_num)
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE bool is_timer_irq(int int_num)
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE bool is_irq(int int_num)
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE bool is_fault(int int_num)
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE bool is_timer_irq(int int_num)
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE int regs_intnum(regs_t *r)
-   {
-      NOT_IMPLEMENTED();
-   }
+      static ALWAYS_INLINE bool is_fault(int int_num)
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE void halt(void)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE int regs_intnum(regs_t *r)
+      {
+         NOT_IMPLEMENTED();
+      }
 
-   static ALWAYS_INLINE void init_fpu_memcpy(void)
-   {
-      /* STUB function: do nothing */
-   }
+      static ALWAYS_INLINE void halt(void)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE bool in_hypervisor(void)
-   {
-      return false;
-   }
+      static ALWAYS_INLINE void init_fpu_memcpy(void)
+      {
+         /* STUB function: do nothing */
+      }
 
-   static ALWAYS_INLINE ulong get_rem_stack(void)
-   {
-      return KERNEL_STACK_SIZE;
-   }
+      static ALWAYS_INLINE bool in_hypervisor(void)
+      {
+         return false;
+      }
 
-   static ALWAYS_INLINE ulong get_stack_ptr(void)
-   {
-      return 0;
-   }
+      static ALWAYS_INLINE ulong get_rem_stack(void)
+      {
+         return KERNEL_STACK_SIZE;
+      }
 
-   static ALWAYS_INLINE u64 RDTSC(void)
-   {
-      return 0;
-   }
+      static ALWAYS_INLINE ulong get_stack_ptr(void)
+      {
+         return 0;
+      }
+
+      static ALWAYS_INLINE u64 RDTSC(void)
+      {
+         return 0;
+      }
+
+   #else // defined(KERNEL_TEST)
+
+      #error Non-test aarch64 is not supported
+
+   #endif
 
 #else
 
