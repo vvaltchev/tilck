@@ -1,4 +1,5 @@
 CompileFlags:
+  BuiltinHeaders: QueryDriver
   CompilationDatabase: build
   Add:
     - -Ibuild/tilck_gen_headers

@@ -9,7 +9,7 @@
 
 #define USERMODE_STACK_ALIGN              16ul
 
-#if !defined(CLANGD) && defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__)
 
    #define arch_x86_family
 
@@ -32,7 +32,7 @@
 
    #endif
 
-#elif !defined(CLANGD) && defined(__riscv)
+#elif defined(__riscv)
 
    #include <tilck/common/arch/riscv/riscv_utils.h>
    #include <tilck/common/arch/riscv/utils.h>
@@ -51,7 +51,7 @@
       /* STUB function: do nothing */
    }
 
-#elif defined(CLANGD) || (defined(__aarch64__) && defined(KERNEL_TEST))
+#elif defined(__aarch64__) && defined(KERNEL_TEST)
 
    /*
     * Fake stub funcs and defines, just to allow the build of the kernel for
@@ -168,13 +168,11 @@
 
 #endif
 
-#if !defined(CLANGD)
 STATIC_ASSERT(ARCH_TASK_MEMBERS_SIZE == sizeof(arch_task_members_t));
 STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
 
 STATIC_ASSERT(ARCH_PROC_MEMBERS_SIZE == sizeof(arch_proc_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_ALIGN == alignof(arch_proc_members_t));
-#endif
 
 NORETURN void reboot(void);
 NORETURN void poweroff(void);
