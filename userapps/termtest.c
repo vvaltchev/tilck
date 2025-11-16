@@ -21,7 +21,9 @@
 #include <poll.h>
 
 #if defined(__i386__) || defined(__x86_64)
-   #include <x86intrin.h>    /* for __rdtsc() */
+   #ifndef CLANGD
+      #include <x86intrin.h>    /* for __rdtsc() */
+   #endif
 #elif defined(__riscv)
    #include <tilck/common/arch/riscv/riscv_utils.h>
    #undef RDTSC
