@@ -14,7 +14,7 @@
 
 #include <dirent.h> // system header
 
-#include "../fs_int.h"
+#include "../fs/fs_int.h"
 
 /* internal funcs */
 struct mountpoint *mp_get_retained_mp_of(struct mnt_fs *target_fs);
