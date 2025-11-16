@@ -1,11 +1,19 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
 #include <tilck_gen_headers/mod_sysfs.h>
 
 #if MOD_sysfs
 
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/list.h>
 #include <tilck/mods/sysfs.h>
 #include <tilck/mods/sysfs_utils.h>
+
+#include "pci_classes.c.h"
+#include "pci_int.h"
 
 static struct sysobj *dir_sysfs_pci;                /* /sysfs/pci           */
 
