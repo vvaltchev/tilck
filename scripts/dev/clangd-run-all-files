@@ -20,7 +20,7 @@ files_list=()
 
 while IFS= read -r file; do
    files_list+=("$file")
-done < <(find . -name '*.c.h')
+done < <(fd '\.c\.h')
 
 while IFS= read -r file; do
    files_list+=("$file")
