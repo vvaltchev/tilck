@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "vfs_int.h"
+
 void vfs_fs_exlock(struct mnt_fs *fs)
 {
    NO_TEST_ASSERT(is_preemption_enabled());
