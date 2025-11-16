@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "vfs_int.h"
+
 struct vfs_getdents_ctx {
 
    struct fs_handle_base *h;

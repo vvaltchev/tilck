@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "vfs_int.h"
+
 int vfs_read_ready(fs_handle h)
 {
    struct fs_handle_base *hb = (struct fs_handle_base *) h;

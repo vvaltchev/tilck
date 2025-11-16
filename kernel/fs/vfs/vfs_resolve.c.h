@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "vfs_int.h"
+
 static inline void vfs_smart_fs_lock(struct mnt_fs *fs, bool exlock)
 {
    /* See the comment in vfs.h about the "fs-lock" funcs */

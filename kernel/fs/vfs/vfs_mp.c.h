@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "vfs_int.h"
+
 static struct kmutex mp_mutex = STATIC_KMUTEX_INIT(mp_mutex, 0);
 static struct mountpoint mps2[MAX_MOUNTPOINTS];
 static struct mnt_fs *mp_root;
