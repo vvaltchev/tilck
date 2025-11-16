@@ -2,7 +2,7 @@
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-MAIN_DIR="$(cd "$SOURCE_DIR/../.." && pwd)"
+MAIN_DIR="$(realpath "$(cd "$SOURCE_DIR/../.." && pwd)")"
 CMDS=$MAIN_DIR/build/compile_commands.json
 
 if ! [ -f $CMDS ]; then
@@ -20,7 +20,7 @@ files_list=()
 
 while IFS= read -r file; do
    files_list+=("$file")
-done < <(fd '\.c\.h')
+done < <(fd '\.h$')
 
 while IFS= read -r file; do
    files_list+=("$file")
@@ -32,11 +32,26 @@ failed=0
 count=${#files_list[@]}
 
 for file in "${files_list[@]}"; do
+
+   rp="$(realpath "$file")"
+
+   if [[ "$rp" == $MAIN_DIR/config/*.h ]]; then
+      # Config files are templates processed by CMake. They contain invalid
+      # directives like #cmakedefine01. Skip.
+      continue
+   fi
+
+   if [[ "$rp" == $MAIN_DIR/tests/* ]]; then
+      # Unit test files are not supported, yet.
+      continue
+   fi
+
    if [[ $file == */tfblib/fonts/*.c ]]; then
       # Font files encoded in C files take a long time to be processed by
       # clangd, let's skip them.
       continue
    fi
+
    echo "[$((i*100/count))%] FILE: $file"
    if ! out=$($SOURCE_DIR/clangd-check-single-file $file); then
       echo "------------------------------------------------------------------"
