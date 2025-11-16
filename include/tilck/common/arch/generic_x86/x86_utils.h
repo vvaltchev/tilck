@@ -20,6 +20,7 @@
    #define __X86INTRIN_H            /* for clang */
    #include <ia32intrin.h>
 #else
+   /* Including ia32intrin.h causes errors in clangd. */
    #define __rdtsc()               0
 #endif
 
