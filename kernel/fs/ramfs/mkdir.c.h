@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static int ramfs_mkdir(struct vfs_path *p, mode_t mode)
 {
    struct ramfs_path *rp = (struct ramfs_path *) &p->fs_path;

@@ -1,9 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <stdbool.h>
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
+#include <tilck/common/utils.h>
 
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/flock.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/errno.h>
@@ -15,8 +20,12 @@
 #include <tilck/kernel/bintree.h>
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/process_mm.h>
+#include <tilck/kernel/process.h>
 
-#include <dirent.h> // system header
+#include <tilck/kernel/test/vfs.h>
+
+#include <sys/mman.h>      // system header
+#include <dirent.h>        // system header
 
 struct ramfs_inode;
 
@@ -124,3 +133,64 @@ struct ramfs_data {
 };
 
 CREATE_FS_PATH_STRUCT(ramfs_path, struct ramfs_inode *, struct ramfs_entry *);
+/* ------------------------------------------------------------------------- */
+
+/* ramfs ops */
+static ssize_t ramfs_read(fs_handle h, char *buf, size_t len, offt *pos);
+static ssize_t ramfs_write(fs_handle h, char *buf, size_t len, offt *pos);
+static ssize_t ramfs_readv(fs_handle h, const struct iovec *iov, int iovcnt);
+static ssize_t ramfs_writev(fs_handle h, const struct iovec *iov, int iovcnt);
+static offt ramfs_seek(fs_handle h, offt off, int whence);
+static int ramfs_ioctl(fs_handle h, ulong cmd, void *argp);
+static int ramfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags);
+static int ramfs_munmap(struct user_mapping *um, void *vaddrp, size_t len);
+static bool
+ramfs_handle_fault(struct user_mapping *um, void *vaddrp, bool p, bool rw);
+
+/* internal funcs */
+static void ramfs_file_exlock(fs_handle h);
+static void ramfs_file_exunlock(fs_handle h);
+static void ramfs_file_shlock(fs_handle h);
+static void ramfs_file_shunlock(fs_handle h);
+static void ramfs_exlock(struct mnt_fs *fs);
+static void ramfs_exunlock(struct mnt_fs *fs);
+static void ramfs_shlock(struct mnt_fs *fs);
+static void ramfs_shunlock(struct mnt_fs *fs);
+
+static int
+ramfs_inode_extend(struct ramfs_inode *i, offt new_len);
+
+static int
+ramfs_inode_truncate_safe(struct ramfs_inode *i, offt len, bool no_perm_check);
+
+static struct ramfs_inode *
+ramfs_create_inode_file(struct ramfs_data *d,
+                        mode_t mode,
+                        struct ramfs_inode *parent);
+
+static int
+ramfs_destroy_inode(struct ramfs_data *d, struct ramfs_inode *i);
+
+static int
+ramfs_dir_add_entry(struct ramfs_inode *idir,
+                    const char *iname,
+                    struct ramfs_inode *ie);
+
+static void
+ramfs_dir_remove_entry(struct ramfs_inode *idir, struct ramfs_entry *e);
+
+static struct ramfs_inode *
+ramfs_create_inode_dir(struct ramfs_data *d,
+                       mode_t mode,
+                       struct ramfs_inode *parent);
+
+static struct ramfs_block *
+ramfs_new_block(offt page);
+
+static void
+ramfs_destroy_block(struct ramfs_block *b);
+
+static void
+ramfs_append_new_block(struct ramfs_inode *inode, struct ramfs_block *block);
+
+

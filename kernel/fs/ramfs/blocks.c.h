@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static struct ramfs_block *ramfs_new_block(offt page)
 {
    struct ramfs_block *b;

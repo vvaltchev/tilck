@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static long ramfs_insert_remove_entry_cmp(const void *a, const void *b)
 {
    const struct ramfs_entry *e1 = a;

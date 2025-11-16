@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static int ramfs_getdents(fs_handle h, get_dents_func_cb cb, void *arg)
 {
    struct ramfs_handle *rh = h;

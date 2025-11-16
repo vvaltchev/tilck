@@ -4,6 +4,7 @@ CompileFlags:
   Add:
     - -Ibuild/tilck_gen_headers
     - -DCLANGD
+    - -Wno-undefined-internal
 
   Remove:
     - -maccumulate-outgoing-args

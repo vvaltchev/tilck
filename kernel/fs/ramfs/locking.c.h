@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static void ramfs_file_exlock(fs_handle h)
 {
    struct ramfs_handle *rh = h;

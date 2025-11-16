@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static int ramfs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 {
    return generic_fs_munmap(um, vaddrp, len);
