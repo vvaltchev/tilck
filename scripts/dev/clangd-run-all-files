@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd "$SOURCE_DIR/../.." && pwd)"
+CMDS=$MAIN_DIR/build/compile_commands.json
+
+if ! [ -f $CMDS ]; then
+   echo "ERROR: compile_commands.json not found"
+   exit 1
+fi
+
+if ! [ -f $SOURCE_DIR/clangd-check-single-file ]; then
+   echo "ERROR: clangd-check-single-file not found"
+   exit 1
+fi
+
+count=$(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$' | wc -l)
+
+i=0
+while IFS= read -r file; do
+   if [[ $file == */tfblib/fonts/*.c ]]; then
+      continue
+   fi
+   echo "[$((i*100/count))%] FILE: $file"
+   $SOURCE_DIR/clangd-check-single-file $file
+   i=$((i+1))
+done < <(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$')
+echo "[100%] DONE"
