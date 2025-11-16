@@ -1,5 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/printk.h>
+#include <tilck/mods/sysfs.h>
+#include <tilck/mods/sysfs_utils.h>
+
 /*                literal string             */
 
 static offt

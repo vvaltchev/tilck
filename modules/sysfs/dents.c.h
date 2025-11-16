@@ -1,5 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
+#include "sysfs_int.h"
+
 static long sysfs_insert_remove_entry_cmp(const void *a, const void *b)
 {
    const struct sysfs_entry *e1 = a;
