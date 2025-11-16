@@ -2,44 +2,24 @@
 
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
 
 #endif
 
-/*
- * NOTE: the trick to make the small heap to work well without the number of
- * small heaps to explode is to allow it to allocate just a small fraction of
- * its actual size, like 1/16th.
- */
-#define SMALL_HEAP_MAX_ALLOC (SMALL_HEAP_SIZE / 16 - 1)
+#include <tilck/common/basic_defs.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/kmalloc_debug.h>
+#include <tilck/kernel/list.h>
+#include <tilck/kernel/sched.h>
+#include <tilck/kernel/errno.h>
 
-#define SMALL_HEAP_NODE_ALLOC_SZ \
-   MAX(sizeof(struct small_heap_node), SMALL_HEAP_MAX_ALLOC + 1)
+#include <tilck_gen_headers/config_kmalloc.h>
 
-/*
- * Be careful with this: incrementing its value to 2 does not reduce with any of
- * the current tests the value of shs.lifetime_created_heaps_count: this means
- * just wasting memory. While, setting it to 0, increases that by +1. It's a
- * good parameter to have and evaluate it's effects in the long term, with more
- * and more complex uses cases.
- */
+#include "kmalloc_int.h"
+#include "kmalloc_heap_struct.h"
 
-#if !KERNEL_TEST_INT
-   #define MAX_EMPTY_SMALL_HEAPS    1
-#else
-   #define MAX_EMPTY_SMALL_HEAPS    0
-#endif
-
-struct small_heap_node {
-
-   struct list_node node;          /* all nodes */
-   struct list_node avail_node;    /* non-full nodes, including empty ones */
-   struct kmalloc_heap heap;
-};
-
-static struct kmalloc_small_heaps_stats shs;
-static struct list small_heaps_list;
-static struct list avail_small_heaps_list;
 
 static inline struct small_heap_node *alloc_small_heap_node(void)
 {
@@ -177,7 +157,7 @@ alloc_new_small_heap_unsafe(void)
 static struct small_heap_node *
 alloc_new_small_heap(void)
 {
-   static ATOMIC(bool) in_use;
+   static bool in_use;
    struct small_heap_node *res;
    bool exp = false;
 

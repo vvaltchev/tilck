@@ -2,7 +2,9 @@
 
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
 
    /*
     * The only purpose of this file is to keep kmalloc.c shorter.
@@ -13,14 +15,24 @@
 
 #endif
 
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
+
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/list.h>
 #include <tilck/kernel/test/kmalloc.h>
+#include <tilck/kernel/paging.h>
+#include <tilck/kernel/sort.h>
 
-STATIC struct kmalloc_heap first_heap_struct;
-STATIC struct kmalloc_heap *heaps[KMALLOC_HEAPS_COUNT];
-STATIC int used_heaps;
-STATIC size_t max_tot_heap_mem_free;
+#include <tilck_gen_headers/config_kmalloc.h>
+
+#include "kmalloc_int.h"
+#include "kmalloc_heap_struct.h"
+#include "kmalloc_block_node.h"
+
 
 void *kmalloc_get_first_heap(size_t *size)
 {

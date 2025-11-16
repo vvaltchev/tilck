@@ -8,6 +8,8 @@
 #include <tilck/common/norec.h>
 #include <tilck/common/atomics.h>
 
+#include <tilck/kernel/kmalloc.h>
+
 struct kmalloc_heap {
 
    ulong vaddr;

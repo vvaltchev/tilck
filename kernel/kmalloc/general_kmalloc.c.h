@@ -2,7 +2,9 @@
 
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
 
    /*
     * The only purpose of this file is to keep kmalloc.c shorter.
@@ -12,6 +14,15 @@
     */
 
 #endif
+
+#include <tilck/common/string_util.h>
+#include <tilck/common/utils.h>
+
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/sched.h>
+
+#include "kmalloc_int.h"
+#include "kmalloc_leak_detector.c.h"
 
 static void *
 main_heaps_kmalloc(size_t *size, u32 flags)
