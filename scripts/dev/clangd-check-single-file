@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [[ "$LOGLEVEL" == "" ]]; then
+   LOGLEVEL="error"
+fi
+
+clangd \
+   --tweaks=-DefineInline,-SwapBinaryOperands \
+   --query-driver=**/*-linux-gcc,**/*-linux-g++ \
+   --enable-config \
+   --log=$LOGLEVEL \
+   --check="$1"
