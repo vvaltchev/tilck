@@ -16,6 +16,7 @@
 #ifndef USERMODE_APP
 
    #include <tilck/common/string_util.h>
+   #include <tilck/common/printk.h>
    #define TERMIOS_DEBUG_PRINT(...) printk(NO_PREFIX __VA_ARGS__)
 
 #else

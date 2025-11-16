@@ -15,11 +15,31 @@ if ! [ -f $SOURCE_DIR/clangd-check-single-file ]; then
    exit 1
 fi
 
+echo
+echo "--- Special .c.h files ---"
+echo
+cd $MAIN_DIR
+count=$(find . -name '*.c.h' | wc -l)
+
+i=0
+while IFS= read -r file; do
+   echo "[$((i*100/count))%] SPECIAL FILE: $file"
+   $SOURCE_DIR/clangd-check-single-file $file
+   i=$((i+1))
+done < <(find . -name '*.c.h')
+echo "[100%] DONE"
+
+
+echo
+echo "--- Regular source files ---"
+echo
 count=$(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$' | wc -l)
 
 i=0
 while IFS= read -r file; do
    if [[ $file == */tfblib/fonts/*.c ]]; then
+      # Font files encoded in C files take a long time to be processed by
+      # clangd, let's skip them.
       continue
    fi
    echo "[$((i*100/count))%] FILE: $file"
@@ -27,3 +47,5 @@ while IFS= read -r file; do
    i=$((i+1))
 done < <(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$')
 echo "[100%] DONE"
+
+

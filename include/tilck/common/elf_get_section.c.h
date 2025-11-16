@@ -4,6 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/utils.h>
+#include <tilck/common/string_util.h>
 #include <elf.h>
 
 /*
