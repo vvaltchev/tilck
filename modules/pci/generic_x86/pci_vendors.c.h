@@ -29,7 +29,7 @@
  *
  */
 
-#include <tilck/kernel/pci.h>
+#include <tilck/mods/pci.h>
 
 const struct pci_vendor pci_vendors_list[] =
 {

@@ -29,6 +29,7 @@
  *
  */
 
+#pragma once
 #include <tilck/mods/pci.h>
 
 const struct pci_device_class pci_device_classes_list[] =
