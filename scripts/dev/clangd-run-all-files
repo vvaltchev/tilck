@@ -15,37 +15,39 @@ if ! [ -f $SOURCE_DIR/clangd-check-single-file ]; then
    exit 1
 fi
 
-echo
-echo "--- Special .c.h files ---"
-echo
 cd $MAIN_DIR
-count=$(find . -name '*.c.h' | wc -l)
+files_list=()
 
-i=0
 while IFS= read -r file; do
-   echo "[$((i*100/count))%] SPECIAL FILE: $file"
-   $SOURCE_DIR/clangd-check-single-file $file
-   i=$((i+1))
+   files_list+=("$file")
 done < <(find . -name '*.c.h')
-echo "[100%] DONE"
 
+while IFS= read -r file; do
+   files_list+=("$file")
+done < <(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$')
 
-echo
-echo "--- Regular source files ---"
-echo
-count=$(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$' | wc -l)
 
 i=0
-while IFS= read -r file; do
+failed=0
+count=${#files_list[@]}
+
+for file in "${files_list[@]}"; do
    if [[ $file == */tfblib/fonts/*.c ]]; then
       # Font files encoded in C files take a long time to be processed by
       # clangd, let's skip them.
       continue
    fi
    echo "[$((i*100/count))%] FILE: $file"
-   $SOURCE_DIR/clangd-check-single-file $file
+   if ! out=$($SOURCE_DIR/clangd-check-single-file $file); then
+      echo "------------------------------------------------------------------"
+      echo "$out"
+      echo "------------------------------------------------------------------"
+      failed=$((failed+1))
+   fi
    i=$((i+1))
-done < <(jq -r '.[].file' $CMDS | grep -E '\.(c|cc|cxx|cpp)$')
+done
 echo "[100%] DONE"
 
-
+if [[ $failed -gt 0 ]]; then
+   exit 1
+fi
