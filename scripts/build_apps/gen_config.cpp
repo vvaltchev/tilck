@@ -29,6 +29,8 @@ gen_includes(ostream &out, const gen_data &data)
    }
 
    out << "\n";
+   out << "static void sysfs_fail_to_register_obj(const char *name);\n";
+   out << "\n";
 }
 
 static void

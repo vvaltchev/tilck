@@ -1,5 +1,12 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/kmalloc.h>
+#include "sysfs_int.h"
+
 static struct sysfs_inode *
 sysfs_new_inode(struct sysfs_data *d)
 {

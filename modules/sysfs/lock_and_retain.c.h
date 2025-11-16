@@ -1,5 +1,8 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+#include "sysfs_int.h"
+
 static int
 sysfs_retain_inode(struct mnt_fs *fs, vfs_inode_ptr_t inode)
 {

@@ -1,5 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/string_util.h>
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/errno.h>
+#include <tilck/kernel/process_mm.h>
+#include "sysfs_int.h"
+
 static offt
 sysfs_call_load(struct sysobj *obj,
                 struct sysobj_prop *prop,

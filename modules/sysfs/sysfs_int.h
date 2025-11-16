@@ -1,6 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/bintree.h>
+#include <tilck/kernel/rwlock.h>
+
 #include <tilck/mods/sysfs.h>
 #include <tilck/mods/sysfs_utils.h>
 
@@ -99,3 +104,11 @@ struct sysfs_handle {
 
 CREATE_FS_PATH_STRUCT(sysfs_path, struct sysfs_inode *, struct sysfs_entry *);
 
+static int
+sysfs_dir_add_entry(struct sysfs_inode *idir,
+                    const char *iname,
+                    struct sysfs_inode *ie,
+                    struct sysfs_entry **entry_ref);
+
+static void
+sysfs_dir_remove_entry(struct sysfs_inode *idir, struct sysfs_entry *e);

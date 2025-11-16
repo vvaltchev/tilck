@@ -1,5 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/kernel/errno.h>
+#include "sysfs_int.h"
+
 static ssize_t
 sysfs_dir_read(fs_handle h, char *buf, size_t len, offt *pos)
 {
