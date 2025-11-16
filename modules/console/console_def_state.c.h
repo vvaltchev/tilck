@@ -1,5 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+
+#include <tilck/kernel/term.h>
+#include <tilck/kernel/tty.h>
+#include <tilck/kernel/tty_struct.h>
+
+#include "video_term_int.h"
+#include "console_int.h"
+
 static enum term_fret
 tty_def_state_esc(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
 {

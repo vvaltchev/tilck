@@ -17,127 +17,13 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/cmdline.h>
 
+#include "term_action_wrappers.c.h"
 #include "video_term_int.h"
-
-struct vterm {
-
-   bool initialized;
-   bool cursor_enabled;
-   bool using_alt_buffer;
-
-   struct term_rb_data rb_data;
-
-   u16 tabsize;               /* term's current tab size */
-   u16 rows;                  /* term's rows count */
-   u16 cols;                  /* term's columns count */
-
-   u16 col_offset;
-   u16 r;                     /* current row */
-   u16 c;                     /* current col */
-
-   const struct video_interface *vi;
-   const struct video_interface *saved_vi;
-
-   u16 *buffer;               /* the whole screen buffer */
-   u16 *screen_buf_copy;      /* when != NULL, contains one screenshot */
-   u32 scroll;                /* != max_scroll only while scrolling */
-   u32 max_scroll;            /* buffer rows used - rows. Its value is 0 until
-                                 the screen scrolls for the first time */
-   u32 total_buffer_rows;     /* >= term rows */
-   u32 extra_buffer_rows;     /* => total_buffer_rows - rows. Always >= 0 */
-
-   u16 saved_cur_row;         /* keeps primary buffer's cursor's row */
-   u16 saved_cur_col;         /* keeps primary buffer's cursor's col */
-
-   u16 main_scroll_region_start;
-   u16 main_scroll_region_end;
-
-   u16 alt_scroll_region_start;
-   u16 alt_scroll_region_end;
-
-   u16 *start_scroll_region;
-   u16 *end_scroll_region;
-
-   bool *tabs_buf;
-   bool *main_tabs_buf;
-   bool *alt_tabs_buf;
-
-   struct term_action actions_buf[32];
-
-   term_filter filter;
-   void *filter_ctx;
-};
+#include "vterm_struct.h"
 
 static struct vterm first_instance;
 static u16 failsafe_buffer[FAILSAFE_COLS * FAILSAFE_ROWS];
 
-/* ------------ No-output video-interface ------------------ */
-
-static void no_vi_set_char_at(u16 row, u16 col, u16 entry) { }
-static void no_vi_set_row(u16 row, u16 *data, bool fpu_allowed) { }
-static void no_vi_clear_row(u16 row_num, u8 color) { }
-static void no_vi_move_cursor(u16 row, u16 col, int color) { }
-static void no_vi_enable_cursor(void) { }
-static void no_vi_disable_cursor(void) { }
-static void no_vi_scroll_one_line_up(void) { }
-static void no_vi_redraw_static_elements(void) { }
-static void no_vi_disable_static_elems_refresh(void) { }
-static void no_vi_enable_static_elems_refresh(void) { }
-
-static const struct video_interface no_output_vi =
-{
-   no_vi_set_char_at,
-   no_vi_set_row,
-   no_vi_clear_row,
-   no_vi_move_cursor,
-   no_vi_enable_cursor,
-   no_vi_disable_cursor,
-   no_vi_scroll_one_line_up,
-   no_vi_redraw_static_elements,
-   no_vi_disable_static_elems_refresh,
-   no_vi_enable_static_elems_refresh
-};
-
-/* --------------------------------------------------------- */
-
-/*
- * Performance note: using macros instead of ALWAYS_INLINE funcs because,
- * despite the forced inlining, even with -O3, the compiler optimizes better
- * this code when macros are used instead of inline funcs. Better means
- * a smaller binary.
- *
- * Measurements
- * --------------
- *
- * full debug build, -O0 -fno-inline-funcs EXCEPT the ALWAYS_INLINE ones
- * -----------------------------------------------------------------------
- *
- * Before (inline funcs):
- *    text     data      bss      dec    hex   filename
- *  466397    34104   316082   816583  c75c7   ./build/tilck
- *
- * After (with macros):
- *    text     data     bss      dec     hex   filename
- *  465421    34104  316082   815607   c71f7   ./build/tilck
-
- * full optimization, -O3, no debug checks:
- * -------------------------------------------
- *
- * Before (inline funcs):
- *
- *    text     data     bss      dec     hex   filename
- *  301608    29388  250610   581606   8dfe6   tilck
- *
- * After (with macros):
- *    text     data     bss      dec     hex   filename
- *  301288    29388  250610   581286   8dea6   tilck
- */
-
-#define calc_buf_row(t, r) (((r) + (t)->scroll) % (t)->total_buffer_rows)
-#define get_buf_row(t, r) (&(t)->buffer[calc_buf_row((t), (r)) * (t)->cols])
-#define buf_set_entry(t, r, c, e) (get_buf_row((t), (r))[(c)] = (e))
-#define buf_get_entry(t, r, c) (get_buf_row((t), (r))[(c)])
-#define buf_get_char_at(t, r, c) (vgaentry_get_char(buf_get_entry((t),(r),(c))))
 
 static void
 buf_copy_row(struct vterm *t, u32 dest, u32 src)
@@ -519,10 +405,6 @@ term_allocate_alt_buffers(struct vterm *t)
    return 0;
 }
 
-static void term_execute_action(struct vterm *t, struct term_action *a);
-
-#include "term_actions.c.h"
-#include "term_action_wrappers.c.h"
 
 #if DEBUG_CHECKS
 
