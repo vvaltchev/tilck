@@ -2,8 +2,9 @@
 
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
-
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
    /*
     * The only purpose of this file is to keep kmalloc.c shorter.
     * Yes, this file could be turned into a regular C source file, but at the
@@ -13,6 +14,14 @@
 
 #endif
 
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/printk.h>
+
+#include <tilck/kernel/kmalloc.h>
+#include <tilck/kernel/kmalloc_debug.h>
+#include <tilck/kernel/sched.h>
+
+#include "kmalloc_int.h"
 #include <tilck/kernel/bintree.h>
 
 struct kmalloc_acc_alloc {

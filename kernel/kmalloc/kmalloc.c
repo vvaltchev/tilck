@@ -21,6 +21,7 @@
 #include "kmalloc_debug.h"
 #include "kmalloc_heap_struct.h"
 #include "kmalloc_block_node.h"
+#include "kmalloc_int.h"
 
 size_t kmalloc_get_heap_struct_size(void)
 {
@@ -29,7 +30,6 @@ size_t kmalloc_get_heap_struct_size(void)
 
 STATIC_ASSERT(sizeof(struct block_node) == KMALLOC_METADATA_BLOCK_NODE_SIZE);
 
-STATIC bool kmalloc_initialized;
 static const struct block_node s_new_node; // Just zeros.
 
 #define HALF(x) ((x) >> 1)

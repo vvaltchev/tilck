@@ -1,8 +1,11 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
 
    /*
     * The only purpose of this file is to keep kmalloc.c shorter.
@@ -12,6 +15,10 @@
     */
 
 #endif
+
+#include <tilck/common/basic_defs.h>
+
+#include <tilck_gen_headers/config_kmalloc.h>
 
 struct alloc_entry {
 

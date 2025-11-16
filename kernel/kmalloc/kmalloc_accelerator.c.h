@@ -2,7 +2,9 @@
 
 #ifndef _KMALLOC_C_
 
-   #error This is NOT a header file and it is not meant to be included
+   #ifndef CLANGD
+      #error This is NOT a header file and it is not meant to be included
+   #endif
 
    /*
     * The only purpose of this file is to keep kmalloc.c shorter.
@@ -12,6 +14,9 @@
     */
 
 #endif
+
+#include <tilck/common/utils.h>
+#include "kmalloc_int.h"
 
 void
 kmalloc_create_accelerator(struct kmalloc_acc *a, u32 elem_size, u32 elem_c)

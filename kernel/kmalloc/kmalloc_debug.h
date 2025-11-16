@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/mods/tracing.h>
+#include <tilck_gen_headers/config_kmalloc.h>
 
 static bool kmalloc_debug_log;
 
