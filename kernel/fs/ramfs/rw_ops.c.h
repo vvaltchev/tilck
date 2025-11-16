@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static int ramfs_ioctl(fs_handle h, ulong cmd, void *argp)
 {
    return -EINVAL;

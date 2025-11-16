@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 #define DEBUG_RAMFS_CREATE_INODE_PRINTK      0
 
 static struct ramfs_inode *ramfs_new_inode(struct ramfs_data *d)

@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static int
 ramfs_stat_nolock(struct mnt_fs *fs,
                   struct ramfs_inode *inode,

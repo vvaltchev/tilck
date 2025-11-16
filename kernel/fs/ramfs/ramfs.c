@@ -1,16 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#include <tilck/common/basic_defs.h>
-#include <tilck/common/string_util.h>
-#include <tilck/common/printk.h>
-#include <tilck/common/utils.h>
-
-#include <tilck/kernel/process.h>
-#include <tilck/kernel/fs/flock.h>
-#include <tilck/kernel/test/vfs.h>
-
-#include <sys/mman.h>      // system header
-
 #include "ramfs_int.h"
 #include "getdents.c.h"
 #include "locking.c.h"

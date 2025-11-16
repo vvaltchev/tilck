@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include "ramfs_int.h"
+
 static const struct file_ops static_ops_ramfs =
 {
    .read = ramfs_read,
