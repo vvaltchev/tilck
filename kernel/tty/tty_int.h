@@ -64,3 +64,9 @@ extern const struct termios default_termios;
 extern struct tty *ttys[128]; /* tty0 is not a real tty */
 extern int tty_worker_thread;
 extern struct tty *__curr_tty;
+
+
+/* Internal functions */
+static void tty_keypress_echo(struct tty *t, char c);
+static void tty_inbuf_write_elem(struct tty *t, u8 c, bool block);
+

@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck/common/printk.h>
+
 #include <tilck/kernel/signal.h>
 #include <tilck/kernel/process.h>
+#include "tty_int.h"
 
 static bool tty_ctrl_stop(struct tty *t, bool block)
 {
