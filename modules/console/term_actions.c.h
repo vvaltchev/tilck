@@ -1,5 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#pragma once
+
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/color_defs.h>
+#include <tilck/common/utils.h>
+#include <tilck/common/string_util.h>
+
+
+#include <tilck/kernel/term.h>
+#include "video_term_int.h"
+#include "vterm_struct.h"
+
 #define DEFINE_TERM_ACTION_0(name)                                          \
    static void                                                              \
    __term_action_##name(term *_t, ulong __u1, ulong __u2, ulong __u3) {     \

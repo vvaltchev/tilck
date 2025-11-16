@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/term.h>
 #include "video_term_int.h"
 
 #include <termios.h>              // system header
