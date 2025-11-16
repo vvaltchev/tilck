@@ -1,12 +1,14 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#if BINTREE_PTR_FUNCS
+#include "avl_int.h"
+
+#ifdef BINTREE_PTR_FUNCS
    #define CMP(a, b) bintree_find_ptr_cmp(a, b, field_off)
 #else
    #define CMP(a, b) objval_cmpfun(a, b)
 #endif
 
-#if BINTREE_PTR_FUNCS
+#ifdef BINTREE_PTR_FUNCS
 void *
 bintree_find_ptr_internal(void *root_obj,
                           const void *value_ptr,
