@@ -13,9 +13,9 @@ if ! pacman -Q $pkg &> /dev/null; then
    echo "We need to install the package $pkg"
 
    if [ "$ci" == 1 ]; then
-      cmd="pacman -S --noconfirm $pkg"
+      cmd="pacman -S --needed --noconfirm $pkg"
    else
-      cmd="sudo pacman -S $pkg"
+      cmd="sudo pacman -S --needed $pkg"
    fi
 
    echo "Running the command: $cmd"

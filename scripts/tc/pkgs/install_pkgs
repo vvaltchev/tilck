@@ -11,6 +11,7 @@
 
 function install_debian_family {
 
+   local os_rel="/etc/os-release"
    echo debian > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
@@ -19,10 +20,14 @@ function install_debian_family {
 
    if which lsb_release &> /dev/null; then
       major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
+   elif [ -f "$os_rel" ]; then
+      major_ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
    fi
 
    pkg_list=()
    pkg_list+=(debianutils)
+   pkg_list+=(build-essential)
+   pkg_list+=(binutils)
    pkg_list+=(tar)
    pkg_list+=(grep)
    pkg_list+=(gzip)
@@ -33,17 +38,18 @@ function install_debian_family {
    pkg_list+=(g++)
    pkg_list+=(make)
    pkg_list+=(cmake)
-   pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
-
-   if [[ "$ARCH" == "riscv64" ]]; then
-      pkg_list+=(bison)
-      pkg_list+=(flex)
-      pkg_list+=(libssl-dev)
-      pkg_list+=(device-tree-compiler)
-   fi
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(libssl-dev)
+   pkg_list+=(zlib1g-dev)
+   pkg_list+=(libyaml-dev)
+   pkg_list+=(libffi-dev)
+   pkg_list+=(pkg-config)
+   pkg_list+=(autoconf)
+   pkg_list+=(device-tree-compiler)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
 
@@ -129,6 +135,7 @@ function install_fedora {
    fi
 
    pkg_list=()
+   pkg_list+=(binutils)
    pkg_list+=(which)
    pkg_list+=(tar)
    pkg_list+=(grep)
@@ -140,21 +147,28 @@ function install_fedora {
    pkg_list+=(gcc-c++)
    pkg_list+=(make)
    pkg_list+=(cmake)
-   pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
    pkg_list+=(glibc-gconv-extra)
    pkg_list+=(libxcrypt-compat)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(openssl-devel)
+   pkg_list+=(libyaml-devel)
+   pkg_list+=(libffi-devel)
+   pkg_list+=(pkgconf-pkg-config)
+   pkg_list+=(autoconf)
+   pkg_list+=(dtc)
 
-   if [[ "$ARCH" == "riscv64" ]]; then
-      pkg_list+=(bison)
-      pkg_list+=(flex)
-      pkg_list+=(openssl-devel)
-      pkg_list+=(dtc)
-      if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
-         pkg_list+=(openssl-devel-engine)  # For u-boot (riscv64)
-      fi
+   if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
+      pkg_list+=(openssl-devel-engine)  # For u-boot (riscv64)
+   fi
+
+   if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 40 ]]; then
+      pkg_list+=(zlib-ng-compat-devel)
+   else
+      pkg_list+=(zlib-devel)
    fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -206,6 +220,8 @@ function install_arch {
    fi
 
    pkg_list=()
+   pkg_list+=(base-devel)
+   pkg_list+=(binutils)
    pkg_list+=(which)
    pkg_list+=(tar)
    pkg_list+=(grep)
@@ -216,16 +232,17 @@ function install_arch {
    pkg_list+=(gcc)
    pkg_list+=(make)
    pkg_list+=(cmake)
-   pkg_list+=(binutils)
    pkg_list+=(bzip2)
    pkg_list+=(unzip)
    pkg_list+=(parted)
-
-   if [[ "$ARCH" == "riscv64" ]]; then
-      pkg_list+=(bison)
-      pkg_list+=(flex)
-      pkg_list+=(dtc)
-   fi
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(zlib)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+   pkg_list+=(pkgconf)
+   pkg_list+=(autoconf)
+   pkg_list+=(dtc)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
       pkg_list+=(qemu)
@@ -270,9 +287,9 @@ function install_arch {
 
 function install_packages {
 
-   rel_files=`echo /etc/*release`
-   lsb="/etc/lsb-release"
-   os_rel="/etc/os-release"
+   local rel_files=`echo /etc/*release`
+   local lsb="/etc/lsb-release"
+   local os_rel="/etc/os-release"
 
    if ! [ -f /bin/grep ] && ! [ -f /usr/bin/grep ]; then
       if ! echo 'aaa bbb' | grep aaa &> /dev/null; then
@@ -318,6 +335,7 @@ function install_packages {
    else
 
       full_list=()
+      full_list+=(binutils)
       full_list+=(wget)
       full_list+=(tar)
       full_list+=(grep)
@@ -326,56 +344,47 @@ function install_packages {
       full_list+=(git)
       full_list+=(gcc)
       full_list+=(g++)
+      full_list+=(objdump)
+      full_list+=(objcopy)
+      full_list+=(ar)
+      full_list+=(ranlib)
+      full_list+=(ld)
       full_list+=(make)
       full_list+=(cmake)
-      full_list+=(objdump)
       full_list+=(rpm2cpio)
       full_list+=(cpio)
       full_list+=(bzip2)
       full_list+=(unzip)
       full_list+=(parted)
+      full_list+=(bison)
+      full_list+=(flex)
+      full_list+=(zlib)
+      full_list+=(libyaml)
+      full_list+=(libffi)
+      full_list+=(pkgconf)
+      full_list+=(autoconf)
+      full_list+=(dtc)
+      full_list+=(python3)
       full_list+=(qemu-system-i386)
+      full_list+=(qemu-system-riscv)
 
-      to_install_list=()
-      which_installed=0
-
-      if which bash &> /dev/null; then
-         which_installed=1
-      else
-         to_install_list+=(which)
-      fi
+      echo "Your distribution is not fully supported by this script."
+      echo "The supported distros are:"
+      echo "  * Ubuntu"
+      echo "  * Mint"
+      echo "  * Debian"
+      echo "  * Fedora"
+      echo "  * Arch"
+      echo "  * Manjaro"
+      echo "  * Artix"
+      echo "In order to build Tilck on this distro, please make sure the "
+      echo "following programs/packages/libraries are installed:"
 
       for x in ${full_list[@]}; do
-         if [ "$which_installed" == 1 ]; then
-            if ! which $x &> /dev/null; then
-               to_install_list+=($x)
-            fi
-         else
-            to_install_list+=($x)
-         fi
+         echo "  * $x"
       done
 
-      if [ ${#to_install_list[@]} -ne 0 ]; then
-
-         echo "Your distribution is not fully supported by this script."
-         echo "The supported distros are:"
-         echo "  * Ubuntu"
-         echo "  * Mint"
-         echo "  * Debian"
-         echo "  * Fedora"
-         echo "  * Arch"
-         echo "  * Manjaro"
-         echo "  * Artix"
-         echo "In order to build Tilck on this distro, please make sure the "
-         echo "following programs/packages are installed:"
-
-         for x in ${to_install_list[@]}; do
-            echo "  * $x"
-         done
-
-         echo "After that, re-run this script with --skip-install-pkgs"
-         exit 1
-      fi
+      echo "After that, re-run this script with --skip-install-pkgs"
+      exit 1
    fi
-
 }
