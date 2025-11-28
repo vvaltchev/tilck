@@ -268,82 +268,6 @@ function install_arch {
    fi
 }
 
-function install_openSUSE {
-
-   echo opensuse > $TC/.distro
-
-   if [ "$RUNNING_IN_CI" == 1 ]; then
-      $MAIN_DIR/scripts/tc/opensuse/update -ci
-   fi
-
-   pkg_list=()
-   pkg_list+=(which)
-   pkg_list+=(tar)
-   pkg_list+=(grep)
-   pkg_list+=(gzip)
-   pkg_list+=(gawk)
-   pkg_list+=(wget)
-   pkg_list+=(git-core)
-   pkg_list+=(gcc)
-   pkg_list+=(gcc-c++)
-   pkg_list+=(make)
-   pkg_list+=(cmake)
-   pkg_list+=(binutils)
-   pkg_list+=(bzip2)
-   pkg_list+=(unzip)
-   pkg_list+=(parted)
-   pkg_list+=(glibc-locale-base)
-   pkg_list+=(glibc-gconv-modules-extra)
-
-   if [[ "$ARCH" == "riscv64" ]]; then
-      pkg_list+=(bison)
-      pkg_list+=(flex)
-      pkg_list+=(libopenssl-devel)
-      pkg_list+=(dtc)
-   fi
-
-   if [[ "$TC_MINIMAL" != "1" ]]; then
-      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
-         pkg_list+=(qemu-x86)
-      elif [[ "$ARCH" == "riscv64" ]]; then
-         pkg_list+=(qemu-extra)
-      fi
-      pkg_list+=(qemu-ui-gtk)
-      pkg_list+=(python3)
-   fi
-
-   to_install=()
-   echo Checking the packages that need to be installed
-
-   for x in ${pkg_list[@]}; do
-      echo -ne "Checking $x... "
-
-      if rpm -q $x &> /dev/null; then
-         echo OK
-      elif rpm -q busybox-$x &> /dev/null; then
-         echo OK
-      else
-         echo NOT found
-         to_install+=($x)
-      fi
-   done
-
-   if [ ${#to_install[@]} -ne 0 ]; then
-
-      echo ${#to_install[@]} packages need to be installed
-      tmp="${to_install[@]}"
-
-      if [ "$RUNNING_IN_CI" == 1 ]; then
-         run_command "zypper install -y $tmp"
-      else
-         run_command "sudo zypper install $tmp"
-      fi
-
-   else
-      echo "You are all set, no packages need to be installed."
-   fi
-}
-
 function install_packages {
 
    rel_files=`echo /etc/*release`
@@ -390,12 +314,6 @@ function install_packages {
       echo "Distribution detected: Arch or Manjaro or Artix"
       echo ""
       install_arch
-
-   elif [ -f $os_rel ] && [ "$(grep -Ei 'openSUSE' $os_rel)" ]; then
-
-      echo "Distribution detected: openSUSE"
-      echo ""
-      install_openSUSE
 
    else
 
@@ -448,9 +366,8 @@ function install_packages {
          echo "  * Arch"
          echo "  * Manjaro"
          echo "  * Artix"
-         echo "  * openSUSE"
          echo "In order to build Tilck on this distro, please make sure the "
-         echo "following programs are installed:"
+         echo "following programs/packages are installed:"
 
          for x in ${to_install_list[@]}; do
             echo "  * $x"
@@ -458,7 +375,6 @@ function install_packages {
 
          echo "After that, re-run this script with --skip-install-pkgs"
          exit 1
-
       fi
    fi
 
