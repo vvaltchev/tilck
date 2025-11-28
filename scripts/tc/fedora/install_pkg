@@ -12,10 +12,21 @@ if ! dnf list installed $pkg &> /dev/null; then
 
    echo "We need to install the package $pkg"
 
-   if [ "$ci" == 1 ]; then
+   if [[ "$ci" == 1 ]]; then
       cmd="dnf install -y $pkg"
    else
-      cmd="sudo dnf install $pkg"
+      # Iteractive mode
+      if ! [[ "$EUID" -eq 0 ]]; then
+         # Not root, must use sudo or su -c.
+         if which sudo &> /dev/null; then
+            cmd="sudo dnf install $pkg"
+         else
+            cmd="su -c \"dnf install $pkg\""
+         fi
+      else
+         # Root.
+         cmd="dnf install $pkg"
+      fi
    fi
 
    echo "Running the command: $cmd"

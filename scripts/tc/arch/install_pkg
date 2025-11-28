@@ -12,10 +12,21 @@ if ! pacman -Q $pkg &> /dev/null; then
 
    echo "We need to install the package $pkg"
 
-   if [ "$ci" == 1 ]; then
+   if [[ "$ci" == 1 ]]; then
       cmd="pacman -S --needed --noconfirm $pkg"
    else
-      cmd="sudo pacman -S --needed $pkg"
+      # Iteractive mode
+      if ! [[ "$EUID" -eq 0 ]]; then
+         # Not root, must use sudo or su -c.
+         if which sudo &> /dev/null; then
+            cmd="sudo pacman -S --needed $pkg"
+         else
+            cmd="su -c \"pacman -S --needed $pkg\""
+         fi
+      else
+         # Root.
+         cmd="pacman -S --needed $pkg"
+      fi
    fi
 
    echo "Running the command: $cmd"

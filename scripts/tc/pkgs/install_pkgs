@@ -113,10 +113,14 @@ function install_debian_family {
       if [ "$RUNNING_IN_CI" == 1 ]; then
          run_command "apt install -y $tmp"
       else
-         if ! which sudo &> /dev/null; then
-            run_command "su -c \"apt install $tmp\""
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if ! which sudo &> /dev/null; then
+               run_command "su -c \"apt install $tmp\""
+            else
+               run_command "sudo apt install $tmp"
+            fi
          else
-            run_command "sudo apt install $tmp"
+            run_command "apt install $tmp"
          fi
       fi
 
@@ -203,7 +207,15 @@ function install_fedora {
       if [ "$RUNNING_IN_CI" == 1 ]; then
          run_command "dnf install -y $tmp"
       else
-         run_command "sudo dnf install $tmp"
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if which sudo &> /dev/null; then
+               run_command "sudo dnf install $tmp"
+            else
+               run_command "su -c \"dnf install $tmp\""
+            fi
+         else
+            run_command "dnf install $tmp"
+         fi
       fi
 
    else
@@ -277,7 +289,15 @@ function install_arch {
       if [ "$RUNNING_IN_CI" == 1 ]; then
          run_command "pacman -S --noconfirm $tmp"
       else
-         run_command "sudo pacman -S $tmp"
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if which sudo &> /dev/null; then
+               run_command "sudo pacman -S --needed $tmp"
+            else
+               run_command "su -c \"pacman -S --needed $tmp\""
+            fi
+         else
+            run_command "pacman -S --needed $tmp"
+         fi
       fi
 
    else
