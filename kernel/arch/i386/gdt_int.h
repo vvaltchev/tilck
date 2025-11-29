@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/arch/i386/tss.h>
 
 /* Limit is 20 bit */
 #define GDT_LIMIT_MAX (0x000FFFFF)

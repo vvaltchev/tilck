@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/paging.h>
 
 extern u32 font_w;
 extern u32 font_h;

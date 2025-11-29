@@ -8,6 +8,9 @@
  * using the format "-<name> [param]" or "-<alias> [param]".
  */
 
+#if !defined(DEFINE_KOPT) && defined(CLANGD)
+   #define DEFINE_KOPT(name, alias, type, def)
+#endif
 
 /*          name              ,alias, type,    default            */
 DEFINE_KOPT(ttys              ,     , long,    TTY_COUNT)
