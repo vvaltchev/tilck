@@ -71,6 +71,11 @@
 
 #endif // #ifndef __cplusplus
 
+#ifdef CLANGD
+   #undef ATOMIC
+   #define ATOMIC(x) x
+#endif
+
 /* ---- Convenience macros ---- */
 
 #define atomic_cas_weak(p, ep, nv, m1, m2) \
