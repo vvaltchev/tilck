@@ -3,10 +3,18 @@
 #pragma once
 
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
-   #error Never include this header directly. Do #include <tilck/kernel/hal.h>.
+   #ifndef CLANGD
+      #error Never include this header directly. #include <tilck/kernel/hal.h>.
+   #endif
+#endif
+
+#ifdef CLANGD
+   #define get_stack_ptr()  ((ulong)0) // CLANGD-ONLY!
 #endif
 
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck/common/basic_defs.h>
+#include <tilck/common/page_size.h>
 #include <tilck/kernel/arch/x86_64/asm_defs.h>
 
 struct x86_64_regs {
@@ -18,6 +26,8 @@ struct x86_64_regs {
    u64 userrsp;
    u32 custom_flags;
 };
+
+typedef struct x86_64_regs regs_t;
 
 struct x86_64_arch_proc_members {
    /* STUB struct */
