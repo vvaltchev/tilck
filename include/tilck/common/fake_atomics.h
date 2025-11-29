@@ -3,7 +3,9 @@
 #pragma once
 
 #ifndef __TILCK_ATOMICS__
-   #error Never include fake_atomics.h directly. Include atomics.h.
+   #ifndef CLANGD
+      #error Never include fake_atomics.h directly. Include atomics.h.
+   #endif
 #endif
 
 /*

@@ -2,12 +2,21 @@
 
 #pragma once
 
+struct x86_regs;
+typedef struct x86_regs regs_t;
+
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
-   #error Never include this header directly. Do #include <tilck/kernel/hal.h>.
+   #ifndef CLANGD
+      #error Never include this header directly. #include <tilck/kernel/hal.h>.
+   #else
+      #define get_stack_ptr()  ((ulong)0) // CLANGD-ONLY!
+   #endif
 #endif
 
 #include <tilck_gen_headers/config_kernel.h>
+#include <tilck/common/basic_defs.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
+#include <tilck/common/page_size.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 
 struct x86_regs {
