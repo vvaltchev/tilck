@@ -488,9 +488,14 @@ function dump_cross_compiler_env {
    echo "[DEBUG] CFLAGS=$CFLAGS" >> $1
    echo "[DEBUG] LDFLAGS=$LDFLAGS" >> $1
    echo "[DEBUG] CPPFLAGS=$CPPFLAGS" >> $1
-   echo "[DEBUG] i386-linux-gcc: $(which i386-linux-gcc)" >> $1
-   echo "[DEBUG] i686-linux-gcc: $(which i686-linux-gcc)" >> $1
-   echo "[DEBUG] x86_64-linux-gcc: $(which x86_64-linux-gcc)" >> $1
+
+   for a in i386 i686 x86_64 riscv64 aarch64; do
+      if which ${a}-linux-gcc &> null; then
+         echo "[DEBUG] ${a}-linux-gcc: $(which ${a}-linux-gcc)" >> $1
+      else
+         echo "[DEBUG] ${a}-linux-gcc: " >> $1
+      fi
+   done
    echo "[DEBUG] PATH: $PATH" >> $1
 }
 
