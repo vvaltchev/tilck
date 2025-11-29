@@ -32,7 +32,7 @@
 
 #ifdef __cplusplus
 
-   #if !KERNEL_FORCE_TC_ISYSTEM
+   #if !KERNEL_FORCE_TC_ISYSTEM && !defined(CLANGD)
 
       /* Default case: real kernel build */
       #include <cstdint>     // system header
