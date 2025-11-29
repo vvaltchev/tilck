@@ -12,7 +12,7 @@ extern "C" {
    extern const s8 digit_to_val[128];
 }
 
-#include <tilck/common/cpputils.h>
+#include <tilck/common/cpputils.hpp>
 
 #define DIGITS "0123456789abcdef"
 
