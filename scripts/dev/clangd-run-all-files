@@ -73,6 +73,19 @@ for file in "${files_list[@]}"; do
       fi
    fi
 
+   if [[ "$ARCH_LIST" == *riscv* ]]; then
+
+      if [[ "$rp" == *boot/* ||
+            "$rp" == */common/boot.h ||
+            "$rp" == */common/elf_*
+         ]]
+      then
+         echo "[$((i*100/count))%] SKIP: $file [Arch: generic_x86]"
+         i=$((i+1))
+         continue
+      fi
+   fi
+
    echo "[$((i*100/count))%] FILE: $file"
    if ! out=$($SOURCE_DIR/clangd-check-single-file $file); then
       echo "------------------------------------------------------------------"
