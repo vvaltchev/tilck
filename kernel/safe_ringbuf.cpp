@@ -14,7 +14,7 @@ extern "C" {
 #include <tilck/kernel/hal.h>
 }
 
-#include <tilck/common/cpputils.h>
+#include <tilck/common/cpputils.hpp>
 
 static ALWAYS_INLINE bool
 rb_stat_is_empty(struct generic_safe_ringbuf_stat *s)

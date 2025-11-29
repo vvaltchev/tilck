@@ -1,12 +1,13 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#ifndef __cplusplus
+   #error This is a C++-only header. Use it from a C++ source file.
+#endif
+
 extern "C" {
    #include <tilck/common/basic_defs.h>
 }
 
-#ifndef __cplusplus
-   #error This is a C++-only header. Use it from a C++ source file.
-#endif
 
 /*
  * Unfortunately, in C++11 there's no such thing as Dlang's "static if".
