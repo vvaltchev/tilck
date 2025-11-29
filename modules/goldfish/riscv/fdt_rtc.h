@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
-
 #include <tilck/common/basic_defs.h>
+#include <tilck/kernel/list.h>
+#include <tilck/kernel/datetime.h>
 
 struct fdt_rtc {
    struct list_node node;

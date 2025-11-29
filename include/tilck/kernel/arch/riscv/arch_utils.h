@@ -3,7 +3,11 @@
 #pragma once
 
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
-   #error Never include this header directly. Do #include <tilck/kernel/hal.h>.
+   #ifndef CLANGD
+      #error Never include this header directly. #include <tilck/kernel/hal.h>.
+   #else
+      #define get_stack_ptr() ((ulong)0)
+   #endif
 #endif
 
 #include <tilck_gen_headers/config_kernel.h>
@@ -54,6 +58,7 @@ struct riscv_regs {
    ulong padding[1];
 };
 
+typedef struct riscv_regs regs_t;
 STATIC_ASSERT(SIZEOF_REGS == sizeof(regs_t));
 
 struct riscv_arch_proc_members {
