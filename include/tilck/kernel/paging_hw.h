@@ -3,6 +3,7 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/hal.h>
+#include <tilck/kernel/paging.h>
 
 static ALWAYS_INLINE void set_curr_pdir(pdir_t *pdir)
 {

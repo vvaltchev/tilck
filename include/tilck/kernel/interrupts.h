@@ -32,5 +32,5 @@ static ALWAYS_INLINE bool in_irq(void)
    static inline void nested_interrupts_drop_top_syscall(void) { }
    static inline void panic_dump_nested_interrupts(void) { }
    static inline void check_in_no_other_irq_than_timer(void) { }
-   static inline bool in_nested_irq_num(int irq_num) { NOT_REACHED(); }
+   static inline bool in_nested_irq_num(int irq_num) { return false; }
 #endif

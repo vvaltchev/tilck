@@ -24,7 +24,11 @@
    STATIC_ASSERT(ATOMIC_LONG_LOCK_FREE == 2);
    STATIC_ASSERT(ATOMIC_POINTER_LOCK_FREE == 2);
 
-   #define ATOMIC(x) _Atomic(x)
+   #ifndef CLANGD
+      #define ATOMIC(x) _Atomic(x)
+   #else
+      #define ATOMIC(x) x
+   #endif
 
    /* Convenience macros */
    #define mo_relaxed memory_order_relaxed
@@ -70,11 +74,6 @@
    #endif // #if KERNEL_FORCE_TC_ISYSTEM
 
 #endif // #ifndef __cplusplus
-
-#ifdef CLANGD
-   #undef ATOMIC
-   #define ATOMIC(x) x
-#endif
 
 /* ---- Convenience macros ---- */
 
