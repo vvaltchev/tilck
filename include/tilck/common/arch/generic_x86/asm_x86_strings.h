@@ -4,6 +4,10 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/arch/generic_x86/x86_utils.h>
 
+#ifndef EXTERN
+   #define EXTERN
+#endif
+
 #define BUILTIN_SIZE_THRESHOLD      16
 
 #pragma GCC diagnostic push
