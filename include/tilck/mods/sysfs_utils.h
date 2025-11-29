@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #pragma once
+#include <tilck/common/basic_defs.h>
 #include <tilck/mods/sysfs_utils.h>
 
 #define DEF_STATIC_SYSOBJ_TYPE(_name, ...)                                \

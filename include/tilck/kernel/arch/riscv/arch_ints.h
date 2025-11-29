@@ -3,6 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/interrupts.h>
+#include <tilck/common/arch/riscv/asm_consts.h>
 
 #define MAX_IRQ_NUM 256
 

@@ -3,6 +3,8 @@
 #pragma once
 #include <tilck/common/basic_defs.h>
 #include <tilck/kernel/list.h>
+#include <tilck/kernel/interrupts.h>
+#include <tilck/common/arch/generic_x86/x86_utils.h>
 
 extern const char *x86_exception_names[32];
 extern struct list irq_handlers_lists[16];

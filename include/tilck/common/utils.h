@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/assert.h>
 #include <3rd_party/bithacks.h>
 
 /*
