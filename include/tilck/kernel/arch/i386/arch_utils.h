@@ -2,9 +2,6 @@
 
 #pragma once
 
-struct x86_regs;
-typedef struct x86_regs regs_t;
-
 #if defined(__TILCK_KERNEL__) && !defined(__TILCK_HAL__)
    #ifndef CLANGD
       #error Never include this header directly. #include <tilck/kernel/hal.h>.
@@ -19,6 +16,7 @@ typedef struct x86_regs regs_t;
 #include <tilck/common/page_size.h>
 #include <tilck/kernel/arch/i386/asm_defs.h>
 
+
 struct x86_regs {
    u32 kernel_resume_eip;
    u32 custom_flags;        /* custom Tilck flags */
@@ -28,6 +26,8 @@ struct x86_regs {
    u32 err_code;     /* pushed by CPU in some cases, by us in others */
    u32 eip, cs, eflags, useresp, ss;   /* pushed by the CPU automatically */
 };
+
+typedef struct x86_regs regs_t;
 
 STATIC_ASSERT(SIZEOF_REGS == sizeof(regs_t));
 STATIC_ASSERT(REGS_EIP_OFF == OFFSET_OF(regs_t, eip));
