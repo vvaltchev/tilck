@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <tilck/common/basic_defs.h>
 
