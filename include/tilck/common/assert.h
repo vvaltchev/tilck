@@ -14,6 +14,7 @@
  *    headers by including this header again.
  */
 
+#pragma once
 #include <tilck/common/basic_defs.h>
 
 NORETURN void assert_failed(const char *expr, const char *file, int line);
