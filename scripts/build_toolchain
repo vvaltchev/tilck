@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
+# RUBY CONF
+RUBY_MIN_VER='3.2'
+
 # GLOBAL VARIABLES
 
 # Reset any forced env-based CFLAGS
@@ -422,6 +425,202 @@ function perform_clean {
    exit 0
 }
 
+function check_ruby_ver {
+
+   local req_major=$(cut -d '.' -f 1 <<< $RUBY_MIN_VER)
+   local req_minor=$(cut -d '.' -f 2 <<< $RUBY_MIN_VER)
+
+   if [[ "$req_major" == "" || "$req_minor" == "" ]]; then
+      echo "ERROR: failed to parse RUBY_MIN_VER: $RUBY_MIN_VER"
+      exit 1
+   fi
+
+   if [[ "$RUBY" == "" ]]; then
+      return 1 # Variable not set
+   fi
+
+   if ! [[ -f "$RUBY" ]]; then
+      return 2 # File not found
+   fi
+
+   local ver="$($RUBY --version)"
+
+   if [[ "$ver" == "" ]]; then
+      return 3 # Cannot run the binary
+   fi
+
+   if [[ "$ver" =~ ruby\ ([0-9]+)[.]([0-9]+)[.].+ ]]; then
+
+      local major=${BASH_REMATCH[1]}
+      local minor=${BASH_REMATCH[2]}
+
+      if [[ "$major" == "" || "$minor" == "" ]]; then
+         echo "ERROR: failed to parse ruby version from: $ver"
+         return 4 # Version parsing failed.
+      fi
+
+      if [[ $major -ge $((req_major+1)) ]]; then
+         return 0 # Success
+      fi
+
+      if [[ $major -eq $req_major && $minor -ge $req_minor ]]; then
+         return 0 # Success
+      fi
+   fi
+
+   return 5 # Version check failed.
+}
+
+function check_new_ruby_binary {
+
+   check_ruby_ver
+   status=$?
+
+   case $status in
+      0) return;;
+      1) echo "ERROR: \$RUBY is not set"; exit 1;;
+      2) echo "ERROR: File not found: $RUBY"; exit 1;;
+      3) echo "ERROR: Cannot run $RUBY"; exit 1;;
+      4) echo "ERROR: Cannot parse version of $RUBY"; exit 1;;
+      5) echo "ERROR: Version check failed for $RUBY"; exit 1;;
+      *) echo "ERROR: Unknown error $status. RUBY=$RUBY"; exit 1;;
+   esac
+}
+
+# $1 -> distro
+# $2 -> ver
+function download_ruby {
+
+   local distro="$1"
+   local ver="$2"
+   local compdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local gh="https://github.com/vvaltchev/ruby/releases/download"
+   local ruby_ver_=$(tr '.' '_' <<< $VER_RUBY)
+   local url="$gh/v${ruby_ver_}"
+   local tarname="ruby-${VER_RUBY}-${distro}${ver}-${HOST_ARCH}.tar.bz2"
+
+   if [[ "$FORCE_RUBY_BUILD" == 1 ]]; then
+      echo "INFO: FORCE_RUBY_BUILD=1, skip download attempt"
+      return
+   fi
+
+   if ! wget --spider "$url/$tarname" &>/dev/null; then
+      echo "INFO: No pre-compiled $tarname package available"
+      return
+   fi
+
+   mkdir -p $compdir/..
+   pushd $compdir/..
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_bz $tarname ruby-$VER_RUBY $VER_RUBY
+   popd
+
+   RUBY=$compdir/bin/ruby
+   check_new_ruby_binary
+   echo "INFO: Download Ruby: DONE"
+}
+
+function build_ruby {
+
+   local installdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local compdir=$installdir/source
+   local major=$(cut -d '.' -f 1 <<< $VER_RUBY)
+   local minor=$(cut -d '.' -f 2 <<< $VER_RUBY)
+   local url="https://cache.ruby-lang.org/pub/ruby/${major}.${minor}"
+   local tarname="ruby-${VER_RUBY}.tar.gz"
+   local params=()
+
+   echo "INFO: Build Ruby $VER_RUBY from source"
+
+   if [[ "$OPT_SKIP_INSTALL" == "1" ]]; then
+      echo "ERROR: cannot build Ruby from source with --skip-install-pkgs"
+      exit 1
+   fi
+
+   # Do check/install all the system dependencies.
+   install_packages
+   INSTALL_PACKAGES_DONE=1
+
+   # Now finally create/enter in the ruby directory and download the source.
+   mkdir -p $compdir/..
+   pushd $compdir/..
+
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_gz $tarname ruby-$VER_RUBY source
+
+   # Enter in ruby/$VER_RUBY and build.
+   cd $compdir
+   params+=(--prefix='$installdir')
+   params+=(--disable-install-doc)
+   params+=(--enable-load-relative)
+   params+=(--with-out-ext='-test-*,win32*')
+   run_command2 "./configure ${params[*]}" configure.log
+   run_command2 "make -j$BUILD_PAR" build.log
+   run_command2 "make install" install.log
+   popd
+
+   RUBY="$installdir/bin/ruby"
+   check_new_ruby_binary
+   echo "INFO: Build Ruby: DONE"
+}
+
+function setup_ruby {
+
+   local compdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local os_rel="/etc/os-release"
+   local major
+   local minor
+   local ver
+
+   # Check Ruby's version. It should be installed on the system at this point.
+   if [[ "$RUBY" != "" && -f "$RUBY" ]]; then
+      echo "INFO: Using ruby from the env var (unconditionally)."
+      return
+   fi
+
+   if [ -f "$compdir/bin/ruby" ]; then
+      RUBY="$compdir/bin/ruby"
+      echo "INFO: Using local Ruby: $RUBY"
+      return
+   fi
+
+   RUBY="$(which ruby)"
+
+   if check_ruby_ver; then
+      echo "INFO: using system Ruby: $RUBY"
+      return
+   fi
+
+   if [[ -f "$RUBY" ]]; then
+      echo "System Ruby is too old. Required >= $RUBY_MIN_VER"
+      unset RUBY
+   fi
+
+   # Now let's determine if we're running on one of the Ubuntu or Debian
+   # versions for which we already have Ruby 3.4.7 pre-compiled.
+
+   if [ -f $os_rel ]; then
+
+      ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+      distro="$(grep -E '^ID=' $os_rel | cut -d '=' -f 2 | tr -d '"')"
+
+      if [[ "$distro" == *buntu ]]; then
+         distro="ubuntu"
+      fi
+
+      if [[ "$distro" != "" && "$ver" != "" ]]; then
+         echo "INFO: Detected distro $distro $ver on $HOST_ARCH"
+         download_ruby "$distro" "$ver"
+      fi
+   fi
+
+   if [ -f "$RUBY" ]; then
+      echo "Using local Ruby: $RUBY"
+      return
+   fi
+
+   build_ruby
+}
 
 ##########################################################
 #
@@ -475,6 +674,9 @@ function main {
    if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
       exit 0
    fi
+
+   # Check system's Ruby version and download/build one if necessary.
+   setup_ruby
 
    default_funcs=()
    default_funcs+=(custom_gcc_cross_tc)
@@ -612,8 +814,10 @@ function main {
 
    # Do the actual job
 
-   if [[ "$OPT_SKIP_INSTALL" == "" ]]; then
-      install_packages
+   if [[ "$OPT_SKIP_INSTALL" != 1 ]]; then
+      if [[ "$INSTALL_PACKAGES_DONE" != 1 ]]; then
+         install_packages
+      fi
    else
       echo "*** SKIPPING installation of packages"
    fi

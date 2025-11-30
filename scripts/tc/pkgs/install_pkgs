@@ -53,6 +53,7 @@ function install_debian_family {
    pkg_list+=(libffi-dev)
    pkg_list+=(pkg-config)
    pkg_list+=(autoconf)
+   pkg_list+=(ruby)
    pkg_list+=(device-tree-compiler)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -167,6 +168,7 @@ function install_fedora {
    pkg_list+=(libffi-devel)
    pkg_list+=(pkgconf-pkg-config)
    pkg_list+=(autoconf)
+   pkg_list+=(ruby)
    pkg_list+=(dtc)
 
    if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
@@ -258,6 +260,7 @@ function install_arch {
    pkg_list+=(libffi)
    pkg_list+=(pkgconf)
    pkg_list+=(autoconf)
+   pkg_list+=(ruby)
    pkg_list+=(dtc)
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -385,6 +388,7 @@ function install_packages {
       full_list+=(libffi)
       full_list+=(pkgconf)
       full_list+=(autoconf)
+      full_list+=(ruby)
       full_list+=(dtc)
       full_list+=(python3)
       full_list+=(qemu-system-i386)
