@@ -416,6 +416,94 @@ function perform_clean {
 }
 
 
+function setup_ruby {
+
+   local compdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local gh="https://github.com/vvaltchev/ruby/releases/download"
+   local os_rel="/etc/os-release"
+   local major
+   local minor
+   local ver
+   local url
+   local tarname
+   local ruby_ver_="3_4_7"
+
+   url="$gh/v${ruby_ver_}"
+
+   # Check Ruby's version. It should be installed on the system at this point.
+   if [[ "$RUBY" != "" && -f "$RUBY" ]]; then
+      echo "INFO: Using ruby from the env var (unconditionally)."
+      return
+   fi
+
+   if [ -f "$compdir/bin/ruby" ]; then
+      RUBY="$compdir/bin/ruby"
+      echo "Using local Ruby: $RUBY"
+      return
+   fi
+
+   RUBY="$(which ruby)"
+
+   if [[ "$RUBY" != "" &&
+         "$($RUBY --version)" =~ ruby\ ([0-9]+)[.]([0-9]+)[.].+
+      ]]
+   then
+
+      major=${BASH_REMATCH[1]}
+      minor=${BASH_REMATCH[2]}
+
+      if [[ "$major" != "" && "$minor" != "" ]]; then
+         if [[ $major -gt 4 || ( $major -ge 3 && $minor -ge 2 ) ]]; then
+            echo "INFO: system's Ruby is recent enough. Using it."
+            return
+         else
+            echo "INFO: system's Ruby ($major.$minor) is too old."
+            echo "INFO: required Ruby version >= 3.2"
+         fi
+      else
+         echo "INFO: unable to determine system Ruby's version"
+      fi
+   fi
+
+   # Now let's determine if we're running on one of the Ubuntu or Debian
+   # versions for which we already have Ruby 3.4.7 pre-compiled.
+
+   if [ -f $os_rel ]; then
+      if grep -E '^ID=' $os_rel | grep "buntu" &> /dev/null; then
+         ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+         echo "DEBUG: Detected Ubuntu, version: $ver"
+         if [[ "$ver" == "20.04" || "$ver" == "22.04" || "$ver" == "24.04" ]]
+         then
+            tarname="ruby-${VER_RUBY}-ubuntu${ver}-${HOST_ARCH}.tar.bz2"
+
+            mkdir -p $compdir/..
+            pushd $compdir/..
+            download_file_in_cache "$url" "$tarname"
+            extract_cachefile_tar_bz $tarname ruby-$VER_RUBY $VER_RUBY
+            popd
+
+            if ! [ -f "$compdir/bin/ruby" ]; then
+               echo "ERROR: cannot find Ruby at $compdir/bin/ruby"
+               exit 1
+            fi
+
+            RUBY=$compdir/bin/ruby
+            return
+         else
+            echo "INFO: don't have pre-built ruby for this OS"
+         fi
+      fi
+
+      if grep -E '^ID=' $os_rel | grep "debian" &> /dev/null; then
+         ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+         echo "DEBUG: Detected Debian, version: $ver"
+         if [[ "$ver" == 11 || "$ver" == 12 || "$ver" == 13 ]]; then
+
+         fi
+      fi
+   fi
+}
+
 ##########################################################
 #
 # MAIN
@@ -610,6 +698,9 @@ function main {
    else
       echo "*** SKIPPING installation of packages"
    fi
+
+   # Check system's Ruby version and download/build one if necessary.
+   setup_ruby
 
    echo
    echo "*** Building custom packages and tools ***"

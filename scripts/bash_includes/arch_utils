@@ -257,6 +257,7 @@ function dump_build_toolchain_env {
    echo "BOARD=$BOARD"
    echo "CC=$CC"
    echo "CXX=$CXX"
+   echo "RUBY=$RUBY"
    echo
 }
 
