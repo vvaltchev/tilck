@@ -12,6 +12,9 @@
 function install_debian_family {
 
    local os_rel="/etc/os-release"
+   local major_ver
+   local ver
+
    echo debian > $TC/.distro
 
    if [ "$RUNNING_IN_CI" == 1 ]; then
@@ -21,7 +24,8 @@ function install_debian_family {
    if which lsb_release &> /dev/null; then
       major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
    elif [ -f "$os_rel" ]; then
-      major_ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+      ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+      major_ver=$(cut -d '.' -f 1 <<< $ver)
    fi
 
    pkg_list=()
