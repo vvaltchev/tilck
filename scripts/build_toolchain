@@ -68,6 +68,8 @@ set_gcc_tc_defaults
 : ${TCROOT:=$TCROOT_PARENT/toolchain3}
 TC="$TCROOT"
 
+export TCROOT
+
 # Constants
 BUILD_ARCH="x86_64" # offically supported build host architecture
 
@@ -650,6 +652,12 @@ function main {
 
    done
 
+   # Check system's Ruby version and download/build one if necessary.
+   setup_ruby
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+   echo
+   exec $RUBY $MAIN_DIR/scripts/pkgmgr/pkgmgr.rb "$@"
+
    if [[ "$1" == "--clean-all" ]]; then
       perform_full_clean
       exit 0
@@ -674,9 +682,6 @@ function main {
    if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
       exit 0
    fi
-
-   # Check system's Ruby version and download/build one if necessary.
-   setup_ruby
 
    default_funcs=()
    default_funcs+=(custom_gcc_cross_tc)
