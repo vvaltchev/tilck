@@ -3,7 +3,10 @@
 require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
+
 require 'pathname'
+require 'fileutils'
+require 'singleton'
 
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
@@ -106,12 +109,59 @@ def early_checks
   end
 end
 
+def create_toolchain_dirs
+  for name, arch in ALL_ARCHS do
+    FileUtils.mkdir_p(TC / arch.gcc_ver._ / name)
+  end
+  for compiler in [ HOST_ARCH.gcc_ver._, "syscc" ] do
+    FileUtils.mkdir_p(TC / compiler / "host_#{HOST_ARCH.name}")
+  end
+end
+
+class PackageManager
+
+  include Singleton
+
+  def initialize
+    @packages = {}
+    @deps = {}
+  end
+
+  def add_dep(name, ver, dep_name, dep_ver)
+
+  end
+
+  def register(package)
+    if !package.is_a?(Package)
+      raise ArgumentError
+    end
+
+    if @packages.include? name
+    end
+
+    @packages[name] = package
+  end
+
+end
+
+class Package
+
+  def initialize(name, compiler)
+    @name = name
+    @compiler = compiler
+  end
+
+
+
+end
+
 def main(argv)
 
   early_checks
   read_gcc_ver_defaults
   set_gcc_tc_ver
   check_gcc_tc_ver
+  create_toolchain_dirs
 
   dump_context
   puts "args: ", argv
