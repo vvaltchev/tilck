@@ -9,6 +9,10 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
 OS="$(uname -s)"
 
+echo
+echo "Bash bootstrap"
+echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+
 if [[ "$MAIN_DIR" == *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
    echo "Current path: '$MAIN_DIR'"
@@ -175,10 +179,9 @@ function setup_ruby {
 
    if [ -f "$compdir/bin/ruby" ]; then
       RUBY="$compdir/bin/ruby"
-      echo "INFO: Using local Ruby: $RUBY"
+      echo "INFO: Using local Ruby:"
+      echo "$RUBY"
       return
-   else
-      echo "Local ruby NOT found at $compdir"
    fi
 
    RUBY="$(which ruby)"
@@ -250,31 +253,24 @@ function create_base_dirs {
    mkdir -p $TC/noarch
    mkdir -p $HOST_ARCH_DIR_SYS
 
-
-   #for a in ${ALL_ARCH_LIST[@]}; do
-      #mkdir -p $TC/$GCC_TC_VER_/$a
-   #done
-
-   #for a in ${ALL_HOST_ARCH_LIST[@]}; do
-      #for compiler in $GCC_TC_VER_ syscc; do
-         #mkdir -p $TC/$compiler/host_$a
-      #done
-   #done
+   # The rest of the directories are created by the Ruby package manager
 }
 
 function dump_build_toolchain_env {
 
    echo
+   echo "Input ENV vars"
+   echo "---------------"
    echo "ARCH=$ARCH"
-   echo "HOST_ARCH=$HOST_ARCH"
    echo "GCC_TC_VER=$GCC_TC_VER"
-   echo "MIN_GCC_TC_VERSION=$MIN_GCC_TC_VERSION"
-   echo "DEFAULT_GCC_TC_VERSION=$DEFAULT_GCC_TC_VERSION"
-   echo "DEFAULT_BOARD=$DEFAULT_BOARD"
    echo "BOARD=$BOARD"
    echo "CC=$CC"
    echo "CXX=$CXX"
    echo "RUBY=$RUBY"
+
+   echo
+   echo "Other context"
+   echo "---------------"
    echo "uname -m: $(uname -m)"
    echo
 }
@@ -298,6 +294,9 @@ export HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
 
 create_base_dirs
 setup_ruby
+echo
+echo
+echo "Ruby package manager"
 echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 echo
 exec $RUBY $MAIN_DIR/scripts/pkgmgr/pkgmgr.rb "$@"

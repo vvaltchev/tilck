@@ -25,6 +25,11 @@ class Version
     end
 
     @comps = ver_str.split(".").map(&:to_i)
+
+    if to_s() != ver_str
+      raise ArgumentError, "version string not normalized: #{ver_str}"
+    end
+
     freeze
   end
 
