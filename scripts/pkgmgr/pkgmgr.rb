@@ -41,6 +41,33 @@ def set_gcc_tc_ver
   end
 end
 
+def check_gcc_tc_ver
+
+  failures = 0
+  for name, arch in ALL_ARCHS do
+
+    v = arch.gcc_ver
+    min = arch.min_gcc_ver
+
+    if v && v < min
+      puts "ERROR: [arch #{name}] gcc ver #{v} < required #{min}"
+      failures += 1
+    end
+  end
+
+  if failures > 0
+    puts
+    puts "Steps to fix:"
+    puts
+    puts "   1. unset \$GCC_TC_VER"
+    puts "   2. ./scripts/build_toolchain --clean"
+    puts "   3. rm -rf build # or any other build directory"
+    puts "   4. ./scripts/build_toolchain"
+    puts
+    exit 1
+  end
+end
+
 def dump_context
 
   def de(x)
@@ -67,21 +94,24 @@ def dump_context
   end
 end
 
-def main(argv)
-
+def early_checks
   if !(MAIN_DIR.to_s.index ' ').nil?
     puts "ERROR: Tilck must be checked out in a path *WITHOUT* spaces"
     puts "Project's root dir: '#{MAIN_DIR}'"
-    return 1
+    exit 1
   end
-
-  read_gcc_ver_defaults
-  set_gcc_tc_ver
-
   if BOARD && !BOARD_BSP.exist?
     puts "ERROR: BOARD_BSP: #{BOARD_BSP} not found!"
-    return 1
+    exit 1
   end
+end
+
+def main(argv)
+
+  early_checks
+  read_gcc_ver_defaults
+  set_gcc_tc_ver
+  check_gcc_tc_ver
 
   dump_context
   puts "args: ", argv
