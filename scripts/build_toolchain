@@ -268,7 +268,7 @@ function dump_build_toolchain_env {
    echo "CXX=$CXX"
    echo "RUBY=$RUBY"
 
-   echo
+      echo
    echo "Other context"
    echo "---------------"
    echo "uname -m: $(uname -m)"

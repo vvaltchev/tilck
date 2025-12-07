@@ -20,16 +20,24 @@ class Version
       raise ArgumentError, "not a string: #{ver_str}"
     end
 
-    if !ver_str.match?(/\A\d+(?:\.\d+)+\z/)
+    if ver_str.match?(/\A\d+(?:\.\d+)+\z/)
+
+      @comps = ver_str.split(".").map(&:to_i)
+      expected = self.to_s
+
+    elsif ver_str.match?(/\A\d+(?:_\d+)+\z/)
+
+      @comps = ver_str.split("_").map(&:to_i)
+      expected = self._
+
+    else
+
       raise ArgumentError, "not a version string: #{ver_str}"
     end
 
-    @comps = ver_str.split(".").map(&:to_i)
-
-    if to_s() != ver_str
+    if expected != ver_str
       raise ArgumentError, "version string not normalized: #{ver_str}"
     end
-
     freeze
   end
 

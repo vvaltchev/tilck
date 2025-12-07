@@ -3,14 +3,15 @@
 require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
+require_relative 'package'
 
 require 'pathname'
 require 'fileutils'
-require 'singleton'
 
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
 TC = InitOnly.get_tc_root()
+HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"
 
 def read_gcc_ver_defaults
   conf = MAIN_DIR / "other/gcc_tc_conf"
@@ -118,41 +119,62 @@ def create_toolchain_dirs
   end
 end
 
-class PackageManager
+class GccCompiler < Package
 
-  include Singleton
+  attr_reader :target_arch, :libc
 
-  def initialize
-    @packages = {}
-    @deps = {}
+  def initialize(target_arch, libc)
+    @target_arch = target_arch
+    @libc = libc
+    super(
+      name: "gcc_#{target_arch.name}_#{libc}",
+      on_host: true,
+      is_compiler: true,
+      arch_list: ALL_HOST_ARCHS,
+      dep_list: []
+    )
   end
 
-  def add_dep(name, ver, dep_name, dep_ver)
+  def get_install_list
 
-  end
+    def l(s) = s.length
+    def drop_prefix(s, prefix) = s[l(prefix)..]
+    def drop_suffix(s, suffix) = s[.. -(l(suffix) + 1)]
 
-  def register(package)
-    if !package.is_a?(Package)
-      raise ArgumentError
+    list = []
+    prefix = "gcc_"
+    suffix = "_#{@libc}"
+    target_suffix = "_#{@target_arch.name}"
+
+    # The GCC entries look like this:
+    #
+    #   gcc_13_3_0_riscv64_musl
+    #
+    for e in HOST_ARCH_DIR_SYS.each_entry do
+
+      e = e.to_s
+      next if !e.start_with? prefix
+      e = drop_prefix(e, prefix)                  # drop the "gcc_" prefix
+
+      next if !e.end_with? suffix
+      e = drop_suffix(e, suffix)                  # drop the "_musl" suffix
+
+      next if !e.end_with? target_suffix
+      e = drop_suffix(e, target_suffix)           # drop the _$ARCH suffix
+
+      list.append(InstallInfo.new(nil, true, HOST_ARCH, Ver(e)))
     end
 
-    if @packages.include? name
-    end
-
-    @packages[name] = package
+    return list
   end
 
 end
 
-class Package
-
-  def initialize(name, compiler)
-    @name = name
-    @compiler = compiler
+def register_compilers
+  for name, arch in ALL_ARCHS do
+    c = GccCompiler.new(arch, "musl")
+    PackageManager.instance.register(c)
   end
-
-
-
 end
 
 def main(argv)
@@ -164,7 +186,13 @@ def main(argv)
   create_toolchain_dirs
 
   dump_context
-  puts "args: ", argv
+
+  register_compilers
+
+  puts
+  PackageManager.instance.show_status_all
+
+  #puts "args: ", argv
   return 0
 end
 
