@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
-require_relative 'early_logic'
+require_relative 'version_check'
 require 'etc'
 
 DEFAULT_ARCH = "i386"
@@ -88,9 +88,4 @@ ALL_HOST_ARCHS = [
   "aarch64",
 ].to_h { |a| [ a, ALL_ARCHS[a] ] }
 
-ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
-HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 
-DEFAULT_BOARD = ARCH.default_board
-BOARD = ENV["BOARD"] || DEFAULT_BOARD
-BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / $ARCH.name / BOARD : nil
