@@ -52,8 +52,8 @@ class InstallInfo
   attr_reader :compiler, :on_host, :arch, :ver
 
   def initialize(compiler, on_host, arch, ver)
-    @compiler = compiler       # nil meaining "syscc" or compiler version
-    @on_host = on_host         # runs on host_$arch or on $arch ?
+    @compiler = compiler       # nil (= syscc) or compiler version
+    @on_host = on_host         # runs on host_$arch or on $arch (=Tilck) ?
     @arch = arch               # arch object
     @ver = ver                 # package version
     assert { !arch.nil? }
