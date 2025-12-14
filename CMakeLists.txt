@@ -820,13 +820,8 @@ elseif (${ARCH} STREQUAL "riscv64")
    set(QEMU_ARCH_OPTS      "-device virtio-blk-device,drive=img1")
    set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -M virt")
    set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -kernel ${U_BOOT_BIN}")
+   set(QEMU_ARCH_OPTS      "${QEMU_ARCH_OPTS} -monitor none")
 
-   if (${MOD_fb} AND ${MOD_ramfb})
-      set(QEMU_ARCH_OPTS   "${QEMU_ARCH_OPTS} -vga none -device ramfb")
-      set(QEMU_ARCH_OPTS   "${QEMU_ARCH_OPTS} -serial stdio")
-   else()
-      set(QEMU_ARCH_OPTS   "${QEMU_ARCH_OPTS} -nographic")
-   endif()
 endif()
 
 # Set kernel's stack size in number of pages.
