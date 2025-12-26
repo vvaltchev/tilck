@@ -2,6 +2,7 @@
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
 MY_OVMF_VARS="$BUILD_DIR/ovmf-vars.fd"
+OS="$(uname -s)"
 f="@IMG_FILE@"
 tc="@TCROOT@"
 
@@ -10,8 +11,18 @@ if [ -z "$GDB_PORT" ]; then
 fi
 
 if [[ "$OVMF_CODE" == "" ]]; then
-   echo "ERROR: OVMF_CODE not set"
-   exit 1
+   if [[ "$OS" == "FreeBSD" ]]; then
+      OVMF_CODE="/usr/local/share/qemu/edk2-i386-code.fd"
+   else
+      echo "ERROR: OVMF_CODE not set"
+      exit 1
+   fi
+fi
+
+if [[ "$OVMF_VARS" == "" ]]; then
+   if [[ "$OS" == "FreeBSD" ]]; then
+      OVMF_VARS="/usr/local/share/qemu/edk2-i386-vars.fd"
+   fi
 fi
 
 if ! [ -f "$OVMF_CODE" ]; then
