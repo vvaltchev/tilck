@@ -68,6 +68,15 @@
 #include <stdarg.h>
 #include <sys/types.h>    // system header (just for ulong)
 
+#ifdef __FreeBSD__
+
+   /*
+    * FreeBSD doesn't have the `ulong` type, that's a Linux thing.
+    */
+
+   typedef unsigned long ulong;
+#endif
+
 #ifdef __i386__
 
    STATIC_ASSERT(sizeof(void *) == 4);
