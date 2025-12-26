@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
-HOST_ARCH="@HOST_ARCH@"
 MY_OVMF_VARS="$BUILD_DIR/ovmf-vars.fd"
+OS="$(uname -s)"
 
 f="@IMG_FILE@"
 tc="@TCROOT@"
 
-: ${OVMF_CODE:="/usr/share/OVMF/OVMF_CODE.fd"}
-: ${OVMF_VARS:="/usr/share/OVMF/OVMF_VARS.fd"}
+if [[ "$OS" == "FreeBSD" ]]; then
+   : ${OVMF_CODE:="/usr/local/share/qemu/edk2-x86_64-code.fd"}
+else
+   : ${OVMF_CODE:="/usr/share/OVMF/OVMF_CODE.fd"}
+   : ${OVMF_VARS:="/usr/share/OVMF/OVMF_VARS.fd"}
+fi
 
 if ! [ -f "$OVMF_CODE" ]; then
    echo "ERROR: OVMF code not found at $OVMF_CODE"
    exit 1
 fi
 
-if [ -f "$OVMF_VARS" ]; then
+if [[ "$OVMF_VARS" != "" ]]; then
+   if ! [ -f "$OVMF_VARS" ]; then
+      echo "ERROR: OVMF vars not found at $OVMF_VARS"
+      exit 1
+   fi
    if ! [ -f "$MY_OVMF_VARS" ]; then
       cp "$OVMF_VARS" "$MY_OVMF_VARS"
    fi
