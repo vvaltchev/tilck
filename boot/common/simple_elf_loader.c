@@ -24,8 +24,8 @@
 
 void *simple_elf_loader(void *elf)
 {
-   Elf_Ehdr *header = elf;
-   Elf_Phdr *phdr = (Elf_Phdr *)((char*)header + header->e_phoff);
+   My_Elf_Ehdr *header = elf;
+   My_Elf_Phdr *phdr = (My_Elf_Phdr *)((char*)header + header->e_phoff);
    void *entry;
 
    /* Just set the entry in case the search with IN_RANGE() below fails */

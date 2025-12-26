@@ -11,22 +11,22 @@
  * compiled and linked in binaries that don't need it, with the whole package
  * of C files in common/.
  *
- * NOTE[2]: this file uses Tilck's generic ELF types (Elf_Ehdr instead of
- * Elf_Ehdr32 etc.). In your code, you might need to define USE_ELF32 or
+ * NOTE[2]: this file uses Tilck's generic ELF types (My_Elf_Ehdr instead of
+ * My_Elf_Ehdr32 etc.). In your code, you might need to define USE_ELF32 or
  * USE_ELF64 to work with ELF files having bitness different than your NBITS.
  */
 
 static size_t
-elf_calc_mem_size(Elf_Ehdr *h)
+elf_calc_mem_size(My_Elf_Ehdr *h)
 {
-   Elf_Phdr *phdrs = (Elf_Phdr *)((char*)h + h->e_phoff);
-   Elf_Addr min_pbegin = 0;
-   Elf_Addr max_pend = 0;
+   My_Elf_Phdr *phdrs = (My_Elf_Phdr *)((char*)h + h->e_phoff);
+   My_Elf_Addr min_pbegin = 0;
+   My_Elf_Addr max_pend = 0;
 
    for (uint32_t i = 0; i < h->e_phnum; i++) {
 
-      Elf_Phdr *p = phdrs + i;
-      Elf_Addr pend = pow2_round_up_at(p->p_paddr + p->p_memsz, p->p_align);
+      My_Elf_Phdr *p = phdrs + i;
+      My_Elf_Addr pend = pow2_round_up_at(p->p_paddr + p->p_memsz, p->p_align);
 
       if (i == 0 || p->p_paddr < min_pbegin)
          min_pbegin = p->p_paddr;
