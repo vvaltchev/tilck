@@ -14,7 +14,7 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
 GCC_TC_CONF="$MAIN_DIR/other/gcc_tc_conf"
 
-if [[ "$MAIN_DIR" = *" "* ]]; then
+if [[ "$MAIN_DIR" == *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
    echo "Current path: '$MAIN_DIR'"
    exit 1
