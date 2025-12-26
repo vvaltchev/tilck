@@ -82,8 +82,8 @@ write_fail_msg(void)
 static bool
 check_elf_kernel(void)
 {
-   Elf_Ehdr *header = kernel_elf_file_paddr;
-   Elf_Phdr *phdr = (Elf_Phdr *)(header + 1);
+   My_Elf_Ehdr *header = kernel_elf_file_paddr;
+   My_Elf_Phdr *phdr = (My_Elf_Phdr *)(header + 1);
 
    if (header->e_ident[EI_MAG0] != ELFMAG0 ||
        header->e_ident[EI_MAG1] != ELFMAG1 ||
@@ -166,8 +166,8 @@ parse_kernel_mods_list(void)
 static bool
 load_kernel_file(void)
 {
-   Elf_Shdr *section;
-   Elf_Ehdr *header;
+   My_Elf_Shdr *section;
+   My_Elf_Ehdr *header;
 
    printk("Loading the ELF kernel... ");
 

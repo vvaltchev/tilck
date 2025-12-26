@@ -420,12 +420,12 @@ STATIC void fix_mem_regions(void)
 
 STATIC void add_kernel_phdrs_to_mmap(void)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
-   Elf_Phdr *phdrs = (void *)h + h->e_phoff;
+   My_Elf_Ehdr *h = (My_Elf_Ehdr*)KERNEL_VADDR;
+   My_Elf_Phdr *phdrs = (void *)h + h->e_phoff;
 
    for (int i = 0; i < h->e_phnum; i++) {
 
-      Elf_Phdr *phdr = phdrs + i;
+      My_Elf_Phdr *phdr = phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
          continue;

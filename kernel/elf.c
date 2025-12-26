@@ -38,12 +38,12 @@
    #error Architecture not supported.
 #endif
 
-typedef int (*load_segment_func)(fs_handle *, pdir_t *, Elf_Phdr *, ulong *);
+typedef int (*load_segment_func)(fs_handle *, pdir_t *, My_Elf_Phdr *, ulong *);
 
 static int
 load_segment_by_copy(fs_handle *elf_h,
                      pdir_t *pdir,
-                     Elf_Phdr *phdr,
+                     My_Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
 {
    offt rc;
@@ -120,7 +120,7 @@ load_segment_by_copy(fs_handle *elf_h,
    return 0;
 }
 
-static inline int check_segment_alignment(Elf_Phdr *phdr)
+static inline int check_segment_alignment(My_Elf_Phdr *phdr)
 {
    const ulong file_page_off = phdr->p_offset & OFFSET_IN_PAGE_MASK;
    const ulong mem_page_off = phdr->p_vaddr & OFFSET_IN_PAGE_MASK;
@@ -169,7 +169,7 @@ static inline int check_segment_alignment(Elf_Phdr *phdr)
 static int
 load_segment_by_mmap(fs_handle *elf_h,
                      pdir_t *pdir,
-                     Elf_Phdr *phdr,
+                     My_Elf_Phdr *phdr,
                      ulong *end_vaddr_ref)
 {
    if (phdr->p_flags & PF_W)
@@ -221,8 +221,8 @@ load_segment_by_mmap(fs_handle *elf_h,
 struct elf_headers {
 
    char *header_buf;
-   Elf_Ehdr *header;
-   Elf_Phdr *phdrs;
+   My_Elf_Ehdr *header;
+   My_Elf_Phdr *phdrs;
    size_t total_phdrs_size;
 };
 
@@ -269,7 +269,7 @@ load_elf_headers(fs_handle elf_h,
    if (eh->header->e_ehsize < sizeof(eh->header))
       return -ENOEXEC;
 
-   eh->total_phdrs_size = eh->header->e_phnum * sizeof(Elf_Phdr);
+   eh->total_phdrs_size = eh->header->e_phnum * sizeof(My_Elf_Phdr);
    eh->phdrs = kmalloc(eh->total_phdrs_size);
 
    if (!eh->phdrs)
@@ -350,11 +350,11 @@ open_elf_file(const char *filepath, fs_handle *elf_file_ref)
 static bool
 is_dyn_exec(struct elf_headers *eh)
 {
-   Elf_Ehdr *hdr = eh->header;
+   My_Elf_Ehdr *hdr = eh->header;
 
    for (int i = 0; i < hdr->e_phnum; i++) {
 
-      Elf_Phdr *phdr = eh->phdrs + i;
+      My_Elf_Phdr *phdr = eh->phdrs + i;
 
       if (phdr->p_type == PT_INTERP)
          return true;
@@ -411,7 +411,7 @@ load_elf_program(const char *filepath,
    for (int i = 0; i < eh.header->e_phnum; i++) {
 
       ulong end_vaddr = 0;
-      Elf_Phdr *phdr = eh.phdrs + i;
+      My_Elf_Phdr *phdr = eh.phdrs + i;
 
       if (phdr->p_type != PT_LOAD)
          continue;
@@ -486,20 +486,20 @@ out:
    return rc;
 }
 
-void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
+void get_symtab_and_strtab(My_Elf_Shdr **symtab, My_Elf_Shdr **strtab)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
+   My_Elf_Ehdr *h = (My_Elf_Ehdr*)KERNEL_VADDR;
    *symtab = NULL;
    *strtab = NULL;
 
    if (!KERNEL_SYMBOLS)
       return;
 
-   VERIFY(h->e_shentsize == sizeof(Elf_Shdr));
-   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
+   VERIFY(h->e_shentsize == sizeof(My_Elf_Shdr));
+   My_Elf_Shdr *sections = (My_Elf_Shdr *)((void *)h + h->e_shoff);
 
    for (u32 i = 0; i < h->e_shnum; i++) {
-      Elf_Shdr *s = sections + i;
+      My_Elf_Shdr *s = sections + i;
 
       if (s->sh_type == SHT_SYMTAB) {
          ASSERT(!*symtab);
@@ -516,19 +516,19 @@ void get_symtab_and_strtab(Elf_Shdr **symtab, Elf_Shdr **strtab)
 
 const char *find_sym_at_addr(ulong vaddr, long *offset, u32 *sym_size)
 {
-   Elf_Shdr *symtab;
-   Elf_Shdr *strtab;
+   My_Elf_Shdr *symtab;
+   My_Elf_Shdr *strtab;
 
    if (!KERNEL_SYMBOLS)
       return NULL;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
-   const ulong sym_count = symtab->sh_size / sizeof(Elf_Sym);
+   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {
-      Elf_Sym *s = syms + i;
+      My_Elf_Sym *s = syms + i;
 
       if (IN_RANGE(vaddr, s->st_value, s->st_value + s->st_size)) {
 
@@ -547,16 +547,16 @@ const char *find_sym_at_addr(ulong vaddr, long *offset, u32 *sym_size)
 
 ulong find_addr_of_symbol(const char *searched_sym)
 {
-   Elf_Shdr *symtab;
-   Elf_Shdr *strtab;
+   My_Elf_Shdr *symtab;
+   My_Elf_Shdr *strtab;
 
    if (!KERNEL_SYMBOLS)
       return 0;
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
-   const ulong sym_count = symtab->sh_size / sizeof(Elf_Sym);
+   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {
       if (!strcmp((char *)strtab->sh_addr + syms[i].st_name, searched_sym))
@@ -568,8 +568,8 @@ ulong find_addr_of_symbol(const char *searched_sym)
 
 int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
 {
-   Elf_Shdr *symtab;
-   Elf_Shdr *strtab;
+   My_Elf_Shdr *symtab;
+   My_Elf_Shdr *strtab;
    int ret = 0;
 
    if (!KERNEL_SYMBOLS)
@@ -577,12 +577,12 @@ int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
 
    get_symtab_and_strtab(&symtab, &strtab);
 
-   Elf_Sym *syms = (Elf_Sym *) symtab->sh_addr;
-   const ulong sym_count = symtab->sh_size / sizeof(Elf_Sym);
+   My_Elf_Sym *syms = (My_Elf_Sym *) symtab->sh_addr;
+   const ulong sym_count = symtab->sh_size / sizeof(My_Elf_Sym);
 
    for (ulong i = 0; i < sym_count; i++) {
 
-      Elf_Sym *s = syms + i;
+      My_Elf_Sym *s = syms + i;
 
       struct elf_symbol_info info = {
          .vaddr = TO_PTR(s->st_value),
@@ -616,15 +616,15 @@ find_sym_at_addr_safe(ulong vaddr, long *offset, u32 *sym_size)
    return sym_name;
 }
 
-static Elf_Shdr *kernel_elf_get_section(const char *section_name)
+static My_Elf_Shdr *kernel_elf_get_section(const char *section_name)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
-   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
-   Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
+   My_Elf_Ehdr *h = (My_Elf_Ehdr*)KERNEL_VADDR;
+   My_Elf_Shdr *sections = (My_Elf_Shdr *)((void *)h + h->e_shoff);
+   My_Elf_Shdr *section_header_strtab = sections + h->e_shstrndx;
 
    for (u32 i = 0; i < h->e_shnum; i++) {
 
-      Elf_Shdr *s = sections + i;
+      My_Elf_Shdr *s = sections + i;
       char *name = (char *)h + section_header_strtab->sh_offset + s->sh_name;
 
       if (!strcmp(name, section_name))
@@ -652,10 +652,10 @@ static void run_ctors(void **begin, void **end)
 
 void call_kernel_global_ctors(void)
 {
-   Elf_Ehdr *h = (Elf_Ehdr*)KERNEL_VADDR;
-   Elf_Shdr *sections = (Elf_Shdr *)((void *)h + h->e_shoff);
+   My_Elf_Ehdr *h = (My_Elf_Ehdr*)KERNEL_VADDR;
+   My_Elf_Shdr *sections = (My_Elf_Shdr *)((void *)h + h->e_shoff);
    u32 init_sections_count = 0;
-   Elf_Shdr *sec;
+   My_Elf_Shdr *sec;
    void **begin;
    void **end;
 
