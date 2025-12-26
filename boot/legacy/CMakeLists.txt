@@ -62,7 +62,7 @@ add_custom_command(
    COMMAND
       cp early_boot ${BOOTLOADER_BIN_FILE}
    COMMAND
-      dd ${dd_opts1} if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
+      ${DD} ${dd_opts1} if=elf_stage3 of=${BOOTLOADER_BIN_FILE}
    DEPENDS
       early_boot elf_stage3
    COMMENT

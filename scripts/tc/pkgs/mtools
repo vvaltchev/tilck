@@ -24,7 +24,11 @@ function build_mtools {
       cd $VER_MTOOLS
       reset_cc_vars
 
-      run_command2 ./configure configure.log
+      if [[ "$OS" == "FreeBSD" ]]; then
+         local MTOOLS_LIBS="LIBS=-liconv"
+      fi
+
+      run_command2 "./configure $MTOOLS_LIBS" configure.log
       run_command2 "make -j$BUILD_PAR" build.log
       popd
 

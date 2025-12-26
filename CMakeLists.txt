@@ -53,6 +53,26 @@ elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
 
 endif()
 
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
+   set(GNU_WRAP_DIR ${CMAKE_SOURCE_DIR}/scripts/gnu-wrap)
+   #set(NEW_PATH "${GNU_WRAP_DIR}${CMAKE_ENV_PATH_SEP}${ENV_PATH}")
+   #set(ENV{PATH} "${NEW_PATH}")
+   #list(PREPEND CMAKE_PROGRAM_PATH "${GNU_WRAP_DIR}")
+
+   #set(ENV_WITH_GNU_WRAP "${CMAKE_COMMAND}" -E env "PATH=${NEW_PATH}")
+
+   ## Apply to everything under this directory (and subdirs unless overridden)
+   #set_property(DIRECTORY PROPERTY RULE_LAUNCH_COMPILE "${ENV_WITH_GNU_WRAP}")
+   #set_property(DIRECTORY PROPERTY RULE_LAUNCH_LINK    "${ENV_WITH_GNU_WRAP}")
+
+   set(DD ${GNU_WRAP_DIR}/dd)
+
+else()
+
+   set(DD "dd")
+
+endif()
+
 # BEGIN [Environment-controlled "sticky" cache variables]
 
 # Main variables
@@ -966,7 +986,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-         dd ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
+        ${DD} ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
       COMMAND
          ${MBRHACK} bpb ${MBRHACK_BPB}
       COMMAND
@@ -982,9 +1002,9 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -1012,9 +1032,9 @@ elseif (BOOTLOADER_EFI)
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -1046,9 +1066,9 @@ elseif (BOOTLOADER_U_BOOT)
       COMMAND
          ${BUILD_BOOTPART}
       COMMAND
-         dd ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-         dd ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
