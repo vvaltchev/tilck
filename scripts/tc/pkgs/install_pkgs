@@ -375,8 +375,6 @@ function install_packages {
       full_list+=(ld)
       full_list+=(make)
       full_list+=(cmake)
-      full_list+=(rpm2cpio)
-      full_list+=(cpio)
       full_list+=(bzip2)
       full_list+=(unzip)
       full_list+=(parted)
@@ -392,6 +390,7 @@ function install_packages {
       full_list+=(qemu-system-i386)
       full_list+=(qemu-system-riscv)
 
+      echo
       echo "Your distribution is not fully supported by this script."
       echo "The supported distros are:"
       echo "  * Ubuntu"
@@ -401,6 +400,7 @@ function install_packages {
       echo "  * Arch"
       echo "  * Manjaro"
       echo "  * Artix"
+      echo
       echo "In order to build Tilck on this distro, please make sure the "
       echo "following programs/packages/libraries are installed:"
 
@@ -408,7 +408,7 @@ function install_packages {
          echo "  * $x"
       done
 
-      echo "After that, re-run this script with --skip-install-pkgs"
+      echo "After that, re-run this script with -n (--skip-install-pkgs)"
       exit 1
    fi
 }
