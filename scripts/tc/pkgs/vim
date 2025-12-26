@@ -22,7 +22,9 @@ function download_vim {
 }
 
 if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
-   all_funcs_list+=(build_vim)
+   if [[ "$(uname -s)" != "FreeBSD" ]]; then
+      all_funcs_list+=(build_vim)
+   fi
 fi
 function build_vim {
 
