@@ -37,6 +37,10 @@ function build_lua {
       # Patch Lua's Makefile to remove "-Wl,-E"
       sed -i 's/-Wl,-E//g' src/Makefile
 
+      # Force "linux" as platform in case we're building Tilck on some
+      # other OS, like FreeBSD.
+      sed -i 's/PLAT= guess/PLAT= linux/g' Makefile
+
       params+=(CC="$CC")
       params+=(MYCFLAGS="-std=gnu99")
       params+=(AR=\"$AR rcu\")
