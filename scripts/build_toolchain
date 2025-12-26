@@ -615,8 +615,11 @@ function main {
    echo "*** Building custom packages and tools ***"
    echo
 
-   for x in ${default_funcs[@]}; do
-      $x
+   for func in ${default_funcs[@]}; do
+      if ! $func; then
+         echo "Execution of $func FAILED!"
+         exit 1
+      fi
    done
 
    echo
