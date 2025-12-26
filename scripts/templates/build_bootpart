@@ -23,7 +23,7 @@ if [ ! -f $dest ]; then
    dd status=none if=/dev/zero of=$dest count=@BOOTPART_SZ_SEC@
 fi
 
-$mformat -i $dest -d 1 -T @BOOTPART_SZ_SEC@ ::
+$mformat -i $dest -d 1 -c 1 -T @BOOTPART_SZ_SEC@ ::
 $mlabel -i $dest ::BOOT
 
 $mmd -i $dest EFI
