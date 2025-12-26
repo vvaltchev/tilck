@@ -167,23 +167,26 @@ matter the build type. To compile them out, it's necessary to turn off the
 
 ## Running the UEFI bootloader on QEMU
 
-While Tilck's image is bootable on a UEFI machine, QEMU doesn't by default get
-installed with a UEFI firmware. Therefore, typically we boot Tilck using only
-its legacy bootloader. But, when some work has to be done on the UEFI bootloader,
-it's very convenient (and quicker) to test it on a VM, before running it on real
-hardware. To do that, it's necessary to first to ask the `build_toolchain` script
-to download the Open Virtual Machine Firmware ([OVMF]) with:
+Tilck's image is bootable on a pure UEFI machine. That can be tested using:
 
-    ./scripts/build_toolchain -s ovmf
+    ./build/run_efi_qemu64
 
-After that, it will be possible to boot Tilck by running:
+Notes:
 
-    ./build/run_efi_qemu32
+1. This script runs a x86_64 machine with a 64-bit UEFI bootloader, that is
+close to what we can try on real hardware today. The UEFI bootloader switches
+from `long mode` to `protected mode 32` before jumping to the 32-bit Tilck
+kernel.
 
-Note: there's a `run_efi_qemu64` script as well. Its purpose is to test the
-very realistic case where modern x86_64 machines run Tilck and the UEFI
-bootloader has to switch from `long mode` to `protected mode 32` before jumping
-to the kernel.
+2. Using UEFI on QEMU requires an EDKII firmware, that might or might not be
+installed as part of QEMU. On Linux, when installed, OVMF can be found at:
+/usr/share/OVMF/. On FreeBSD, when installed, EDKII builds can found at:
+/usr/local/share/qemu/edk2-*. Those need to be installed separately from
+QEMU itself.
+
+3. There's a `run_efi_qemu32` script as well and can be used if the user
+provides a OVMF build for 32-bit x86.
+
 
 ## Building Tilck's unit tests
 

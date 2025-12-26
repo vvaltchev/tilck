@@ -1,29 +1,49 @@
 #!/usr/bin/env bash
 
 BUILD_DIR="@CMAKE_BINARY_DIR@"
+MY_OVMF_VARS="$BUILD_DIR/ovmf-vars.fd"
 f="@IMG_FILE@"
 tc="@TCROOT@"
-
-if [ -z "$QEMU_BIOS" ]; then
-   QEMU_BIOS="$tc/i386/ovmf/OVMF-pure-efi.fd"
-fi
-
-if ! [ -f "$QEMU_BIOS" ]; then
-   echo "In order to boot with EFI, you need to download OVMF first."
-   echo "To do that, just run in project's main directory:"
-   echo "   ./scripts/build_toolchain -s download_ovmf"
-   exit 1
-fi
 
 if [ -z "$GDB_PORT" ]; then
    GDB_PORT=1234
 fi
 
-echo "Run QEMU with -bios $QEMU_BIOS -gdb tcp::$GDB_PORT"
+if [[ "$OVMF_CODE" == "" ]]; then
+   echo "ERROR: OVMF_CODE not set"
+   exit 1
+fi
 
-qemu-system-i386                                       \
-   @QEMU_COMMON_OPTS@                                  \
-   @QEMU_RAM_OPT@                                      \
-   -gdb tcp::$GDB_PORT                                 \
-   -bios "$QEMU_BIOS"                                  \
-   -drive index=0,media=disk,format=raw,file=$f "$@"
+if ! [ -f "$OVMF_CODE" ]; then
+   echo "ERROR: OVMF code not found at $OVMF_CODE"
+   exit 1
+fi
+
+if [[ "$OVMF_VARS" != "" ]]; then
+   if ! [ -f "$OVMF_VARS" ]; then
+      echo "ERROR: OVMF vars not found at $OVMF_VARS"
+      exit 1
+   fi
+   if ! [ -f "$MY_OVMF_VARS" ]; then
+      cp "$OVMF_VARS" "$MY_OVMF_VARS"
+   fi
+   OVMF_VARS_PARAM="-drive if=pflash,format=raw,unit=1,file=$MY_OVMF_VARS"
+fi
+
+echo qemu-system-i386                                               \
+   @QEMU_COMMON_OPTS@                                               \
+   @QEMU_RAM_OPT@                                                   \
+   -gdb tcp::$GDB_PORT                                              \
+   -drive if=pflash,format=raw,unit=0,readonly=on,file=$OVMF_CODE   \
+   $OVMF_VARS_PARAM                                                 \
+   -drive if=none,id=hd0,format=raw,file=$f                         \
+   -device ide-hd,drive=hd0,bootindex=1 "$@"
+
+qemu-system-i386                                                    \
+   @QEMU_COMMON_OPTS@                                               \
+   @QEMU_RAM_OPT@                                                   \
+   -gdb tcp::$GDB_PORT                                              \
+   -drive if=pflash,format=raw,unit=0,readonly=on,file=$OVMF_CODE   \
+   $OVMF_VARS_PARAM                                                 \
+   -drive if=none,id=hd0,format=raw,file=$f                         \
+   -device ide-hd,drive=hd0,bootindex=1 "$@"
