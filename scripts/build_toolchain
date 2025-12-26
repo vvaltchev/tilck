@@ -13,11 +13,18 @@ export CFFLAGS=""
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
 GCC_TC_CONF="$MAIN_DIR/other/gcc_tc_conf"
+OS="$(uname -s)"
 
 if [[ "$MAIN_DIR" == *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
    echo "Current path: '$MAIN_DIR'"
    exit 1
+fi
+
+if [[ "$OS" == "FreeBSD" ]]; then
+   # Prepend our gnu-wrap directory to the path, so that on FreeBSD we'll
+   # use the GNU tools instead of the BSD ones.
+   export PATH="$MAIN_DIR/scripts/gnu-wrap:$PATH"
 fi
 
 all_funcs_list=()
