@@ -7,7 +7,7 @@ NAME="$(basename "$0")"
 
 if [[ "$1" == "" || "$1" == "-h" || "$1" == "--help" ]]; then
    echo "Syntax: "
-   echo "   $NAME [-t <tc>] <par> <bundles> <configs> <musl-cross-make>"
+   echo "   $NAME [-t <tc>] [-f] <par> <bundles> <configs> <musl-cross-make>"
    echo "   $NAME --build-tc <dest dir> <par> <musl-cross-make source>"
    echo
    echo "   <par>                  Level of parallelism. E.g. make -j $par"
@@ -132,6 +132,11 @@ if [[ "$1" == "-t" ]]; then
    export PATH="$tc:$PATH"
 fi
 
+if [[ "$1" == "-f" ]]; then
+   shift
+   SKIP_BUILD_CHECK=1
+fi
+
 par="$1"
 bundles="$(realpath "$2")"
 configs="$(realpath "$3")"
@@ -186,49 +191,51 @@ else
 
 fi
 
-echo
-echo "Check if the given CC and CXX compilers produce by default statically"
-echo "linked binaries. If they don't, the compiled toolchains won't be "
-echo "portable."
-echo
+if ! [[ "$SKIP_BUILD_CHECK" == 1 ]]; then
+   echo
+   echo "Check if the given CC and CXX compilers produce by default statically"
+   echo "linked binaries. If they don't, the compiled toolchains won't be "
+   echo "portable."
+   echo
 
-mkdir -p /tmp/build-toolchains-tests
-pushd /tmp/build-toolchains-tests &> /dev/null
-rm -rf *
+   mkdir -p /tmp/build-toolchains-tests
+   pushd /tmp/build-toolchains-tests &> /dev/null
+   rm -rf *
 
-cat <<EOF > hello1.c
-#include <stdio.h>
-int main() { printf("hello\n"); }
-EOF
+   cat <<EOF > hello1.c
+   #include <stdio.h>
+   int main() { printf("hello\n"); }
+   EOF
 
-cat <<EOF > hello2.cpp
-#include <iostream>
-int main() { std::cout << "hello\n"; }
-EOF
+   cat <<EOF > hello2.cpp
+   #include <iostream>
+   int main() { std::cout << "hello\n"; }
+   EOF
 
-echo -n "Check CC: "
-$CC hello1.c -o hello1
-if ldd ./hello1 2>&1 | grep "not a dynamic executable" &> /dev/null; then
-   echo "[ OK ]"
-else
-   echo "[FAIL]"
-   exit 1
+   echo -n "Check CC: "
+   $CC hello1.c -o hello1
+   if ldd ./hello1 2>&1 | grep "not a dynamic executable" &> /dev/null; then
+      echo "[ OK ]"
+   else
+      echo "[FAIL]"
+      exit 1
+   fi
+
+   echo -n "Check CXX: "
+   $CXX hello2.cpp -o hello2
+   if ldd ./hello2 2>&1 | grep "not a dynamic executable" &> /dev/null; then
+      echo "[ OK ]"
+   else
+      echo "[FAIL]"
+      exit 1
+   fi
+
+   echo
+   echo
+
+   popd &> /dev/null
+   rm -rf /tmp/build-toolchains-tests
 fi
-
-echo -n "Check CXX: "
-$CXX hello2.cpp -o hello2
-if ldd ./hello2 2>&1 | grep "not a dynamic executable" &> /dev/null; then
-   echo "[ OK ]"
-else
-   echo "[FAIL]"
-   exit 1
-fi
-
-echo
-echo
-
-popd &> /dev/null
-rm -rf /tmp/build-toolchains-tests
 
 set -e
 pushd "$configs" &> /dev/null
