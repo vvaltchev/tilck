@@ -1,0 +1,651 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# GLOBAL VARIABLES
+
+# Reset any forced env-based CFLAGS
+export CFLAGS=""
+export FFLAGS=""
+export CXXFLAGS=""
+export CFFLAGS=""
+
+# Project's root directory
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
+GCC_TC_CONF="$MAIN_DIR/other/gcc_tc_conf"
+OS="$(uname -s)"
+
+if [[ "$MAIN_DIR" == *" "* ]]; then
+   echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
+   echo "Current path: '$MAIN_DIR'"
+   exit 1
+fi
+
+if [[ "$OS" == "FreeBSD" ]]; then
+   # Prepend our gnu-wrap directory to the path, so that on FreeBSD we'll
+   # use the GNU tools instead of the BSD ones.
+   export PATH="$MAIN_DIR/scripts/gnu-wrap:$PATH"
+fi
+
+all_funcs_list=()
+install_funcs_list=()
+config_funcs_list=()
+
+# Source files to include
+source $MAIN_DIR/scripts/bash_includes/script_utils
+source $MAIN_DIR/scripts/bash_includes/arch_utils
+source $MAIN_DIR/scripts/bash_includes/cc_vars
+source $MAIN_DIR/scripts/bash_includes/arch_checks
+source $MAIN_DIR/scripts/bash_includes/compiler_checks
+source $MAIN_DIR/other/pkg_versions
+
+# Target architectures
+ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
+
+# Build host architectures
+ALL_HOST_ARCH_LIST=(x86_64 aarch64)
+
+# Default target architecture
+DEFAULT_ARCH="i386"
+
+export ARCH=${ARCH:-$DEFAULT_ARCH}
+
+# Set ARCH_GCC_TC based on ARCH
+set_arch_gcc_tc_arch $ARCH
+
+# Set HOST_ARCH based on `uname -m`
+set_host_arch_variable
+
+# Set {DEFAULT,MIN}_GCC_TC_VERSION
+set_gcc_tc_defaults
+
+# Global toolchain directory
+
+: ${TCROOT_PARENT:=$MAIN_DIR}
+: ${TCROOT:=$TCROOT_PARENT/toolchain3}
+TC="$TCROOT"
+
+# Constants
+BUILD_ARCH="x86_64" # offically supported build host architecture
+
+# Set GCC_TC_VER based on the .gcc_tc_ver_$ARCH file or defaults
+set_gcc_ver
+
+# Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
+set_arch_variables
+
+# Dump the most important variables like ARCH, GCC_TC_VER etc.
+dump_build_toolchain_env
+
+# Check BOARD and set its default value when applicable
+set_board_value_and_defaults
+
+ARCH_DIR="$TC/$GCC_TC_VER_/$ARCH"
+HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
+HOST_ARCH_DIR_TC="$TC/$GCC_TC_VER_/host_$HOST_ARCH"
+
+function print_func {
+
+   local ftype="$1"
+   local fname="$2"
+   local has_printf="$3"
+   local is_default="$4"
+   local def=""
+
+   if [[ $is_default = 1 ]]; then
+      def=" (*)"
+   fi
+
+   if [[ $has_printf = 1 ]]; then
+
+      local attrs=""
+      local extra_info=""
+      local installed_func="${ftype}_${fname}_installed_status"
+
+      if [[ "$(type -t $installed_func)" == 'function' ]]; then
+
+         local status="$(eval $installed_func)"
+
+         if [[ -n "$status" ]]; then
+
+            if [[ "$status" =~ installed* ]]; then
+
+               if ! [[ "$status" = "installed" ]]; then
+
+                  extra_info=$(echo "$status" | cut -d ' ' -f 2-)
+                  status="installed"
+               fi
+            fi
+
+            status=$(printf "%-9s" "$status")
+         fi
+
+         case "$status" in
+
+            installed*)
+               status="$GREEN${status}$RATTRS"
+            ;;
+
+            error*)
+               status="$RED${status}$RATTRS"
+            ;;
+
+            skipped*)
+               status="$YELLOW${status}$RATTRS"
+            ;;
+
+         esac
+
+         if [[ -n "$status" ]]; then
+            attrs="$attrs[ $status ]"
+         fi
+
+         if [[ -n "$extra_info" ]]; then
+            attrs="$attrs[ $extra_info ]"
+         fi
+      fi
+
+      printf "%-35s $attrs\n" "$fname$def"
+
+   else
+
+      echo "   - $1 $def"
+   fi
+}
+
+function show_funcs_list {
+
+   local has_printf=0
+   local all_def_funcs=" ${default_funcs[*]} "
+
+   if printf "" &> /dev/null; then
+      has_printf=1
+   fi
+
+   echo ""
+   echo "--- GCC toolchains (pre-compiled) ---"
+   echo ""
+
+   for x in ${all_funcs_list[@]}; do
+
+      if [[ $x =~ download_gcc_(.+) ]]; then
+
+         local n=${BASH_REMATCH[1]}
+         if [[ "$all_def_funcs" =~ " ${x} " ]]; then
+            print_func download gcc_$n $has_printf 1
+         else
+            print_func download gcc_$n $has_printf 0
+         fi
+      fi
+
+   done
+
+   echo ""
+   echo "--- Packages for GCC: $GCC_TC_VER ---"
+   echo ""
+
+   for x in ${default_funcs[@]}; do
+
+      if [[ $x =~ (download|build|config)_(.+) ]]; then
+
+         local t=${BASH_REMATCH[1]}
+         local n=${BASH_REMATCH[2]}
+
+         if [[ $n =~ gcc_* ]]; then
+            continue # we already printed the toolchains
+         fi
+
+         print_func $t $n $has_printf 1
+      fi
+   done
+
+   for x in ${all_funcs_list[@]}; do
+
+      if [[ "$all_def_funcs" =~ " ${x} " ]]; then
+         # already included by the default funcs, skip
+         continue
+      fi
+
+      if [[ $x =~ (download|build|config)_(.+) ]]; then
+
+         local t=${BASH_REMATCH[1]}
+         local n=${BASH_REMATCH[2]}
+
+         if [[ $t == "config" || $n =~ gcc_* ]]; then
+            # Skip the config_* functions. We'll print them separately.
+            continue
+         fi
+
+         print_func $t $n $has_printf 0
+      fi
+   done
+
+   echo ""
+   echo -e "(*) Default packages for ARCH=$ARCH\n"
+   echo ""
+   echo "--- Config functions ---"
+
+   # Now print all the config_* funcs
+   for x in ${all_funcs_list[@]}; do
+      if [[ "$x" =~ config_(.+) ]]; then
+         print_func config "${BASH_REMATCH[1]}" $has_printf 0
+      fi
+   done
+   echo ""
+}
+
+function show_help {
+
+   echo
+   echo "Syntax:"
+   echo "   ./scripts/build_toolchain  [Install only default packages]"
+   echo
+   echo "   -s, install <pkgs...> Download/build/install pkgs"
+   echo
+   echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
+   echo
+   echo "   -n                    Do not check for nor install system packages"
+   echo
+   echo "   -j, --just-context    Just dump the context (vars) and exit"
+   echo
+   echo "   -l, --list-all        List all packages, toolchains, funcs"
+   echo
+   echo "   -a, --all-archs       Make clean/delete options affect all the"
+   echo "                         architectures, not just the current one."
+   echo
+   echo "   -d, --delete          Delete the given package from the toolchain"
+   echo "                         for the current arch or for all archs (-a)"
+   echo
+   echo "   --clean               Remove all packages for the current ARCH, "
+   echo "                         except the cache and the compilers. Affected"
+   echo "                         by -a, --all-archs."
+   echo
+   echo "   --clean-all           Remove everything except the cache for all "
+   echo "                         architectures."
+   echo
+}
+
+function execute_func {
+
+   if [ -n "$(type -t $1)" ] && [ "$(type -t $1)" = function ]; then
+
+      echo "[build_toolchain] Executing single function '$1'"
+      $1
+      echo "[build_toolchain] Executing single function: DONE"
+
+      return 0
+
+   else
+
+      return 1  # No such function
+   fi
+}
+
+function create_base_dirs {
+
+   mkdir -p $TC
+   mkdir -p $TC/cache
+   mkdir -p $TC/noarch
+
+   for a in ${ALL_ARCH_LIST[@]}; do
+      mkdir -p $TC/$GCC_TC_VER_/$a
+   done
+
+   for a in ${ALL_HOST_ARCH_LIST[@]}; do
+      for compiler in $GCC_TC_VER_ syscc; do
+         mkdir -p $TC/$compiler/host_$a
+      done
+   done
+}
+
+function perform_full_clean {
+
+   echo "*** TOOLCHAIN FULL CLEAN ***"
+   if ! [ -d "$TC" ]; then
+      exit 0
+   fi
+
+   cd "$TC"
+   for x in `ls`; do
+      if [[ "$x" != "cache" ]]; then
+         echo "Deleting '$x'..."
+         rm -rf "$x"
+      fi
+   done
+
+   create_base_dirs
+   echo "DONE"
+   exit 0
+}
+
+function perform_clean {
+
+   if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+      echo "*** TOOLCHAIN CLEAN ***"
+   fi
+
+   if ! [ -d "$TC" ]; then
+      exit 0
+   fi
+
+   cd "$TC"
+   for x in `ls`; do
+      if [[ "$x" != "cache" && "$x" != "syscc" ]]; then
+
+         if [[ "$x" == "noarch" ]]; then
+
+            if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+               echo "Deleting $x..."
+               rm -rf $x
+            else
+               pushd $x
+               for y in `ls`; do
+
+                  if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
+                     echo "Deleting '$x/$y'..."
+                     rm -rf "$y"
+                  fi
+
+               done
+               popd
+            fi
+
+         else
+
+            pushd $x
+            for arch in `ls`; do
+
+               if [[
+                  "$OPT_ALL_ARCHS" == 1 ||
+                  $arch == $ARCH ||
+                  $arch == "host_$HOST_ARCH"
+               ]]
+               then
+
+                  if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
+
+                     echo "Deleting $x/$arch..."
+                     rm -rf $arch
+
+                  else
+
+                     pushd $arch
+                     for y in `ls`; do
+
+                        if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
+                           echo "Deleting $x/$arch/$y..."
+                           rm -rf $y
+                        fi
+
+                     done
+                     popd
+                  fi
+               fi
+
+            done
+            popd
+         fi
+      fi
+   done
+
+   pushd syscc
+   for arch in `ls`; do
+
+      if [[ "$OPT_ALL_ARCHS" == 1 || $arch == "host_$HOST_ARCH" ]]; then
+
+         pushd $arch
+
+         for x in `ls`; do
+
+            if [[ "$x" == gcc* ]]; then
+               continue # skip the compilers
+            fi
+
+            if [[
+               "$PACKAGE_TO_DELETE" == "" ||
+               "$x" == "$PACKAGE_TO_DELETE"
+            ]]
+            then
+               echo "Deleting syscc/$arch/$x..."
+               rm -rf "$x"
+            fi
+
+         done
+         popd
+      fi
+
+   done
+   popd
+
+   create_base_dirs
+   echo "DONE"
+   exit 0
+}
+
+
+##########################################################
+#
+# MAIN
+#
+##########################################################
+
+function main {
+
+   local found_opt=1
+
+   while [[ $found_opt == 1 ]]; do
+
+      found_opt=0
+
+      if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
+         OPT_SKIP_INSTALL=1
+         found_opt=1
+         shift
+      fi
+
+      if [[ "$1" == "-a" || "$1" == "--all-archs" ]]; then
+         OPT_ALL_ARCHS=1
+         found_opt=1
+         shift
+      fi
+
+   done
+
+   if [[ "$1" == "--clean-all" ]]; then
+      perform_full_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "--clean" ]]; then
+      perform_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "-d" || "$1" == "--delete" ]]; then
+      shift
+      if [[ "$1" == "" ]]; then
+         echo "ERROR: package name is required"
+         exit 1
+      fi
+      PACKAGE_TO_DELETE="$1"
+      perform_clean
+      exit 0
+   fi
+
+   if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
+      exit 0
+   fi
+
+   default_funcs=()
+   default_funcs+=(custom_gcc_cross_tc)
+
+   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
+      default_funcs+=(download_cmake)
+   fi
+
+   if [[ $ARCH_FAMILY == "generic_x86" ]]; then
+      default_funcs+=(build_gnuefi)
+   fi
+
+   default_funcs+=(download_acpica)
+   default_funcs+=(build_mtools)
+   default_funcs+=(build_zlib)
+
+   if [[ "$NO_BUSYBOX" != 1 ]]; then
+      default_funcs+=(build_busybox)
+   fi
+
+   if [[ "$ARCH" == "riscv64" ]]; then
+      source $MAIN_DIR/scripts/tc/bsp/$ARCH/$BOARD/bootloader
+      default_funcs+=(build_dtc)
+   fi
+
+   if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+      show_help
+      exit 0
+   fi
+
+   if [[ "$1" == "-l" || "$1" == "--list-all" ]]; then
+      show_funcs_list
+      exit 0
+   fi
+
+   # Compiler-related checks
+   compiler_checks
+   # Arch-related checks
+   arch_checks
+   # Save the current values of CC, CXX and related
+   save_cc_vars
+
+   # Exit on the first failure
+   set -e
+
+   GCC_TOOLCHAIN=$HOST_ARCH_DIR_SYS/${GCC_NAME_PFX}_musl/bin
+
+   # Add to $PATH all the GCC toolchains for their selected version
+   for arch in ${ALL_ARCH_LIST[@]}; do
+      local name="${arch}_GCC_TC_VER_"
+      local ver="${!name}"
+      local p="$HOST_ARCH_DIR_SYS/gcc_${ver}_${arch}_musl/bin"
+      PATH="$p:$PATH"
+   done
+
+   PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
+   export PATH
+
+   if ! [ -d $ARCH_DIR ]; then
+      local no_arch_directory=1
+   fi
+
+   create_base_dirs
+   cd $TC
+
+   # Set the CMAKE variable in order to single functions to be able to use it
+   if [ -f $HOST_ARCH_DIR_SYS/cmake/bin/cmake ]; then
+      CMAKE=$HOST_ARCH_DIR_SYS/cmake/bin/cmake
+   else
+      CMAKE=cmake
+   fi
+
+
+   if [[ "$1" == "-s" || "$1" == "install" ||
+         "$1" == "-c" || "$1" == "config"
+      ]]
+   then
+
+      local cmd="$1"
+      if [[ "$1" == "-s" ]]; then
+         cmd="install"
+      elif [[ "$1" == "-c" ]]; then
+         cmd="config"
+      fi
+
+      if [[ $# -lt 2 ]]; then
+         echo "ERROR: expected argument after '$1'"
+         exit 1
+      fi
+
+      if [[ "$no_arch_directory" == 1 ]]; then
+         echo
+         echo "ERROR: directory $ARCH_DIR not found."
+         echo
+         echo "It is necessary to run this script *without* options first to "
+         echo "download and build a minimum toolchain. Then, it will be possible"
+         echo "to download and build the extra packages."
+         echo
+         echo "For more info, see: docs/building.md"
+         echo
+         rm -rf $TC/$ARCH
+         exit 1
+      fi
+
+      shift  # Drop the first argument, $1
+
+      for func in "$@"; do
+
+         if [[ $cmd == install ]]; then
+
+            # Try build_ and download_
+            if ! execute_func "build_$func"; then
+               if ! execute_func "download_$func"; then
+                  echo "ERROR: unknown package '$func'"
+                  exit 1
+               fi
+            fi
+
+         elif [[ $cmd == config ]]; then
+
+            # Try only config_
+            if ! execute_func "config_$func"; then
+               echo "ERROR: unknown config func '$func'"
+               exit 1
+            fi
+
+            # In case of success, break from the loop. Don't allow to
+            # reconfigure multiple packages at the same time.
+            break
+         fi
+
+      done
+      exit 0
+   fi
+
+   # Do the actual job
+
+   if [[ "$OPT_SKIP_INSTALL" == "" ]]; then
+      install_packages
+   else
+      echo "*** SKIPPING installation of packages"
+   fi
+
+   echo
+   echo "*** Building custom packages and tools ***"
+   echo
+
+   for func in ${default_funcs[@]}; do
+      if ! $func; then
+         echo "Execution of $func FAILED!"
+         exit 1
+      fi
+   done
+
+   echo
+   echo "*** Building custom packages and tools COMPLETED ***"
+   echo
+}
+
+##########################################################
+# Entry point: load package funcs and run main()
+##########################################################
+
+for x in $MAIN_DIR/scripts/tc/pkgs/*; do
+   source $x
+done
+
+if command -v sort &> /dev/null 2>&1; then
+   IFS=$'\n'
+   all_funcs_list=($(sort <<<"${all_funcs_list[*]}"))
+   unset IFS
+fi
+
+main "$@"
