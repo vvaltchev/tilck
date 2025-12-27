@@ -14,6 +14,7 @@ function custom_gcc_cross_tc_internal {
 
 
    local arch="$1"
+   local os_suffix=""
    local gh="https://github.com"
    local url="$gh/vvaltchev/musl-cross-make/releases/download/3635262e452"
    local tarname=""
@@ -39,6 +40,10 @@ function custom_gcc_cross_tc_internal {
       *) echo "HOST $HOST_ARCH not supported by the CUSTOM GCC TC"; exit 1;;
    esac
 
+   if [[ "$OS" == "FreeBSD" ]]; then
+      os_suffix="-freebsd"
+   fi
+
    varName="${arch}_GCC_TC_VER"
    ver="${!varName}"
    varName="${arch}_GCC_TC_VER_"
@@ -53,7 +58,7 @@ function custom_gcc_cross_tc_internal {
 
    tarname="${url_target}-musl-${VER_MUSL}"
    tarname="${tarname}-gcc-${ver}"
-   tarname="${tarname}-${url_host}.tar.bz2"
+   tarname="${tarname}-${url_host}${os_suffix}.tar.bz2"
 
    download_file_in_cache "$url" "$tarname"
    extract_cachefile_tar_bz $tarname --
