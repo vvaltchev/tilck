@@ -1,7 +1,8 @@
 #!/bin/sh
 
 echo
-echo "--- Early bootstrap script ---"
+echo "Early /bin/sh bootstrap"
+echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 OS="`uname -s`"
 BASH="bash"
 SED="sed"
@@ -57,6 +58,4 @@ if ! [ -f "$BASH_SCRIPT" ]; then
    exit 1
 fi
 
-echo
-echo "--- Bash script ---"
 exec /usr/bin/env bash $BASH_SCRIPT "$@"
