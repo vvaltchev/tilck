@@ -300,6 +300,7 @@ function print_old_new_dir_logs {
 
 function process_directory {
 
+   local os="$(uname -s)"
    echo "INFO: Processing toolchain dir: $dir               # `realpath $dir` "
 
    if ! [ -d "$dir" ]; then
@@ -370,9 +371,15 @@ function process_directory {
       exit 1
    fi
 
+   case $os in
+      Linux) os_suffix="";;
+      FreeBSD) os_suffix="-freebsd";;
+      *) echo "ERROR: Unsupported host OS $os."; exit 1;;
+   esac
+
    bundle="$arch-$libc-${libc_major}.${libc_minor}.${libc_patch}-gcc"
    bundle="$bundle-${gcc_major}.${gcc_minor}.${gcc_patch}"
-   bundle="$bundle-$gcc_host_arch.tar.bz2"
+   bundle="$bundle-$gcc_host_arch${os_suffix}.tar.bz2"
    echo "INFO: Bundle file name: $bundle"
 
    prev_dir_path="$(realpath "$dir")"
