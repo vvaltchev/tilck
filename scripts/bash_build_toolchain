@@ -188,6 +188,9 @@ function setup_ruby {
 
    if check_ruby_ver; then
       echo "INFO: using system Ruby: $RUBY"
+      if [[ "$OS" == "FreeBSD" ]]; then
+         install_packages
+      fi
       return
    fi
 
