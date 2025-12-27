@@ -309,6 +309,61 @@ function install_arch {
    fi
 }
 
+function install_freebsd {
+
+   echo freebsd > $TC/.distro
+
+   pkg_list=()
+   pkg_list+=(gmake)
+   pkg_list+=(gsed)
+   pkg_list+=(coreutils)
+   pkg_list+=(findutils)
+   pkg_list+=(gnugrep)
+   pkg_list+=(gtar)
+   pkg_list+=(patch)
+   pkg_list+=(diffutils)
+   pkg_list+=(gawk)
+   pkg_list+=(pkgconf)
+   pkg_list+=(git)
+   pkg_list+=(cmake)
+   pkg_list+=(gcc)
+   pkg_list+=(unzip)
+   pkg_list+=(wget)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+   pkg_list+=(autotools)
+   pkg_list+=(dtc)
+   pkg_list+=(qemu)
+   pkg_list+=(edk2-qemu-i386)
+   pkg_list+=(edk2-qemu-x64)
+   pkg_list+=(python)
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if pkg info -e $x; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   # Install the packages
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "su - root -c \"pkg install $tmp\""
+   fi
+}
+
 function install_packages {
 
    local rel_files=`echo /etc/*release`
@@ -332,7 +387,7 @@ function install_packages {
    if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
 
       echo "Distribution detected: Ubuntu (any) or Mint"
-      echo ""
+      echo
       DETECTED_UBUNTU_OR_MINT=1
       install_debian_family
 
@@ -340,21 +395,27 @@ function install_packages {
    elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
 
       echo "Distribution detected: Debian"
-      echo ""
+      echo
       install_debian_family
 
    # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
    elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
 
       echo "Distribution detected: Fedora"
-      echo ""
+      echo
       install_fedora
 
    elif echo $rel_files | grep -Ei 'arch|manjaro|artix' - &> /dev/null; then
 
       echo "Distribution detected: Arch or Manjaro or Artix"
-      echo ""
+      echo
       install_arch
+
+   elif [[ "$OS" == "FreeBSD" ]]; then
+
+      echo "Detected: FreeBSD"
+      echo
+      install_freebsd
 
    else
 
