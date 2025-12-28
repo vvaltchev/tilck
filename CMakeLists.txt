@@ -996,7 +996,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-        ${DD} ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
+         ${DD} ${dd_opts} if=${BOOTLOADER_BIN_FILE} of=${IMG_FILE}
       COMMAND
          ${MBRHACK} bpb ${MBRHACK_BPB}
       COMMAND
@@ -1012,9 +1012,9 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+         ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+         ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -1042,9 +1042,9 @@ elseif (BOOTLOADER_EFI)
       COMMAND
          ${FATHACK} --align_first_data_sector fatpart
       COMMAND
-        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+         ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+         ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
@@ -1076,9 +1076,9 @@ elseif (BOOTLOADER_U_BOOT)
       COMMAND
          ${BUILD_BOOTPART}
       COMMAND
-        ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+         ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
       COMMAND
-        ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+         ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
       DEPENDS
          ${mbr_img_deps}
       COMMENT
