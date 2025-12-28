@@ -1000,7 +1000,7 @@ if (BOOTLOADER_LEGACY)
       COMMAND
          ${MBRHACK} bpb ${MBRHACK_BPB}
       COMMAND
-         ${MBRHACK} add 0x0e ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
+         ${MBRHACK} add 0xef ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
       COMMAND
          ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
       COMMAND

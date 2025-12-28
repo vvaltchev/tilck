@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #define BPB_OFFSET                  0x00b
 #define PART_TABLE_OFFSET           0x1be
@@ -126,15 +127,17 @@ struct PACKED mbr_part_table {
 };
 
 struct mbr_info {
-
-   unsigned char jmp[3];
-   struct bpb *b;
-   struct mbr_part_table *t;
-   u32 disk_uuid;
+   unsigned char jmp[3];     /* [0x0000, 0x0003)                              */
+   struct bpb *b;            /* [0x000B: variable length]                     */
+   u32 disk_uuid;            /* [0x01B8, 0x01BC)                              */
+   struct mbr_part_table *t; /* [0x01BE, 0x01FE)                              */
+   bool bpb_checked;
+   bool bpb_broken;
 };
 
 static void dump_bpb(struct bpb *b)
 {
+   printf("\n");
    printf("Bios Parameter Block (DOS 3.31):\n");
    printf("    Media type:       %#9x\n", b->media_type);
    printf("    Sector size:       %8u\n", b->sector_size);
@@ -161,38 +164,78 @@ static int bpb_check(struct mbr_info *nfo)
 
    if (ext->boot_sig != 0x28 && ext->boot_sig != 0x29) {
 
-      WARNING("Unsupported BPB signature: %#x\n", ext->boot_sig);
+      if (!nfo->bpb_checked) {
+         WARNING("Unsupported BPB signature: %#x\n", ext->boot_sig);
 
-      if (nfo->jmp[0] != 0xEB)
-         WARNING("Very likely this MBR does NOT contain a BPB at all.\n");
-      else
-         WARNING("The BPB is likely a DOS 7.1 EBPB\n");
+         if (nfo->jmp[0] != 0xEB)
+            WARNING("Very likely this MBR does NOT contain a BPB at all.\n");
+         else
+            WARNING("The BPB is likely a DOS 7.1 EBPB\n");
 
+         nfo->bpb_checked = true;
+      }
+
+      /* Not a valid or supported BPB */
       return 1;
    }
 
+   if (nfo->bpb_checked) {
+      return nfo->bpb_broken ? -1 : 0;
+   }
+   nfo->bpb_checked = true;
+
    if (!b->sector_size) {
       ERROR("Invalid BIOS Parameter Block: missing sector size\n");
+      nfo->bpb_broken = true;
       return -1;
+   }
+
+   if (b->sector_size > 4096) {
+      ERROR("Invalid BIOS Parameter Block: invalid sector size: %u\n",
+            b->sector_size);
+      nfo->bpb_broken = true;
+      return -1;
+   }
+
+   if (b->sector_size != 512) {
+      WARNING("Sector size != 512: %u\n", b->sector_size);
    }
 
    if (!b->heads_per_cyl) {
       ERROR("Invalid BIOS Parameter Block: missing heads per cylinder\n");
+      nfo->bpb_broken = true;
+      return -1;
+   }
+
+   if (b->heads_per_cyl > 255) {
+      ERROR("Invalid BIOS Parameter Block: invalid heads/cyl: %u\n",
+            b->heads_per_cyl);
+      nfo->bpb_broken = true;
       return -1;
    }
 
    if (!b->sectors_per_track) {
       ERROR("Invalid BIOS Parameter Block: missing sectors per track\n");
+      nfo->bpb_broken = true;
+      return -1;
+   }
+
+   if (b->sectors_per_track > 63) {
+      ERROR("Invalid BIOS Parameter Block: invalid sectors/track: %u\n",
+            b->sectors_per_track);
+      nfo->bpb_broken = true;
       return -1;
    }
 
    if (!b->res_sectors) {
       ERROR("Invalid BIOS Parameter Block: resSectors == 0. Must be >= 1.\n");
+      nfo->bpb_broken = true;
       return -1;
    }
 
    if (!b->small_sector_count && !b->large_sector_count) {
       ERROR("Invalid BIOS Parameter Block: missing sector count\n");
+      nfo->bpb_broken = true;
       return -1;
    }
 
@@ -489,9 +532,15 @@ static int cmd_boot(struct mbr_info *nfo, char **argv)
    return 0;
 }
 
-static int do_check_partitions(struct bpb *b, struct mbr_part_table *t)
+static int do_check_partitions(struct mbr_info *nfo, struct mbr_part_table *t)
 {
+   struct bpb *b = nfo->b;
    int fail = 0;
+
+   if (bpb_check(nfo) != 0) {
+      WARNING("Skip CHS <-> LBA check as the disk geometry is unknown!\n");
+      return 0;
+   }
 
    for (int i = 0; i < 4; i++) {
 
@@ -540,11 +589,9 @@ static int cmd_info(struct mbr_info *nfo, char **argv)
    struct bpb *b = nfo->b;
    struct mbr_part_table *t = nfo->t;
 
-   if (bpb_check(nfo) < 0)
-      return 1;
-
-   printf("\n");
-   dump_bpb(b);
+   if (bpb_check(nfo) == 0) {
+      dump_bpb(b);
+   }
 
    printf("\n");
    printf("Disk UUID (if valid):\n");
@@ -582,7 +629,7 @@ static int cmd_info(struct mbr_info *nfo, char **argv)
    }
 
    printf("\n");
-   do_check_partitions(b, t);
+   do_check_partitions(nfo, t);
    return 0;
 }
 
@@ -606,7 +653,7 @@ static int cmd_check(struct mbr_info *nfo, char **argv)
    if (bpb_check(nfo) < 0)
       return 1;
 
-   return do_check_partitions(b, t);
+   return do_check_partitions(nfo, t);
 }
 
 static int cmd_bpb(struct mbr_info *nfo, char **argv)
@@ -827,6 +874,7 @@ int main(int argc, char **argv)
       .b = (void *)bpb_buf,
       .t = (void *)&t,
       .disk_uuid = 0,
+      .bpb_checked = false,
    };
 
    STATIC_ASSERT(sizeof(t.partitions[0]) == 16);
