@@ -979,6 +979,16 @@ endif()
    # [end]
 # [end]
 
+message(
+   STATUS
+   "BOOTPART: [${BOOTPART_SEC}, ${BOOTPART_LAST_SEC}]: +${BOOTPART_SZ_SEC} sec"
+)
+
+message(
+   STATUS
+   "INITRD:   [${INITRD_SECTOR}, ${INITRD_LAST_SEC}]: +${INITRD_SZ_MB} MB"
+)
+
 if (BOOTLOADER_LEGACY)
    add_custom_command(
       OUTPUT
