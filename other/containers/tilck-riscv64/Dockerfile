@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y && \
 apt install -y git-core gcc g++ gcc-multilib g++-multilib clang cmake \
 python3-minimal python3-serial python3-pip python3-coverage gawk unzip \
-parted wget curl qemu-system-riscv64 bison flex libssl-dev device-tree-compiler
+wget curl qemu-system-riscv64 bison flex libssl-dev device-tree-compiler
 
 # Copy Tilck's source to our container
 COPY . /tilck-tmp

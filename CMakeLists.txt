@@ -969,7 +969,7 @@ endif()
 
 # [begin] Set some convenience variables
    set(MBRHACK ${BUILD_APPS}/mbrhack -q ${IMG_FILE})
-   set(PARTED parted ${IMG_FILE} -s -a minimal)
+   set(MBRHACK_F ${BUILD_APPS}/mbrhack -q -f ${IMG_FILE})
    set(CREATE_EMPTY_IMG ${BUILD_SCRIPTS}/create_empty_img_if_necessary)
 
    # [begin] Setting one long variable, MBRHACK_BPB
@@ -988,6 +988,16 @@ message(
    STATUS
    "INITRD:   [${INITRD_SECTOR}, ${INITRD_LAST_SEC}]: +${INITRD_SZ_MB} MB"
 )
+
+if (BOOTLOADER_LEGACY AND BOOTLOADER_EFI)
+   set(MSG "Creating a dual-bootable (legacy+efi) image file (MBR)")
+elseif(BOOTLOADER_LEGACY)
+   set(MSG "Creating a legacy bootable image file (MBR)")
+elseif(BOOTLOADER_EFI)
+   set(MSG "Creating a UEFI-only bootable image file (MBR)")
+elseif(BOOTLOADER_U_BOOT)
+   set(MSG "Create a U-BOOT image")
+endif()
 
 if (BOOTLOADER_LEGACY)
    add_custom_command(
@@ -1018,7 +1028,7 @@ if (BOOTLOADER_LEGACY)
       DEPENDS
          ${mbr_img_deps}
       COMMENT
-         "Creating a dual-bootable (legacy+efi) image file (MBR)"
+         "${MSG}"
       VERBATIM
    )
 elseif (BOOTLOADER_EFI)
@@ -1028,11 +1038,13 @@ elseif (BOOTLOADER_EFI)
       COMMAND
          ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-         ${PARTED} mklabel msdos
+         ${MBRHACK} mbr
       COMMAND
-         ${PARTED} mkpart primary FAT16 ${BOOTPART_SEC}s ${BOOTPART_LAST_SEC}s
+         ${MBRHACK_F} bpb ${MBRHACK_BPB}
       COMMAND
-         ${PARTED} mkpart primary FAT16 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
+         ${MBRHACK} add 0xef ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
+      COMMAND
+         ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
       COMMAND
          ${BUILD_BOOTPART}
       COMMAND
@@ -1048,7 +1060,7 @@ elseif (BOOTLOADER_EFI)
       DEPENDS
          ${mbr_img_deps}
       COMMENT
-         "Creating a EFI-only bootable image file (MBR)"
+         "${MSG}"
       VERBATIM
    )
 elseif (BOOTLOADER_U_BOOT)
@@ -1058,11 +1070,13 @@ elseif (BOOTLOADER_U_BOOT)
       COMMAND
          ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
       COMMAND
-         ${PARTED} mklabel msdos
+         ${MBRHACK} mbr
       COMMAND
-         ${PARTED} mkpart primary FAT16 ${BOOTPART_SEC}s ${BOOTPART_LAST_SEC}s
+         ${MBRHACK_F} bpb ${MBRHACK_BPB}
       COMMAND
-         ${PARTED} mkpart primary FAT16 ${INITRD_SECTOR}s ${INITRD_LAST_SEC}s
+         ${MBRHACK} add 0xef ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
+      COMMAND
+         ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
       COMMAND
          ${BUILD_FATPART}
       COMMAND
@@ -1082,7 +1096,7 @@ elseif (BOOTLOADER_U_BOOT)
       DEPENDS
          ${mbr_img_deps}
       COMMENT
-         "Creating a U-boot fit image"
+         "${MSG}"
       VERBATIM
    )
    unset(MKIMAGE)
@@ -1091,7 +1105,6 @@ endif()
 # [begin] Unset the convenience variables
    unset(MBRHACK_BPB)
    unset(CREATE_EMPTY_IMG)
-   unset(PARTED)
    unset(MBRHACK)
 # [end]
 
