@@ -4,10 +4,16 @@ require 'power_assert'
 require 'pathname'
 require_relative 'arch'
 
+# Global, generic constants.
+KB = 1024
+MB = 1024 * KB
+
+# Basic constants specific to this project.
 DEFAULT_TC_NAME = "toolchain3"
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
 
+# Generic utils
 def getenv(name, default)
   val = ENV[name].to_s
   return !val.empty? ? val : default
@@ -64,6 +70,7 @@ module InitOnly
 end
 
 TC = InitOnly.get_tc_root()
+TC_CACHE = TC / "cache"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"

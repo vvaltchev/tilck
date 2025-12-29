@@ -5,6 +5,7 @@ require_relative 'arch'
 require_relative 'version'
 require_relative 'package'
 require_relative 'gcc'
+require_relative 'cache'
 
 require 'pathname'
 require 'fileutils'
@@ -127,6 +128,18 @@ def main(argv)
 
   puts
   PackageManager.instance.show_status_all
+
+  # -----------------------
+  # TEMP
+
+  gh="https://github.com"
+  url="#{gh}/vvaltchev/musl-cross-make/releases/download/3635262e452"
+  remote_file="aarch64-musl-1.2.5-gcc-12.4.0-aarch64.tar.bz2"
+
+  Cache.download_file_in_cache(url, remote_file)
+
+
+  # -----------------------
 
   return 0
 end
