@@ -31,7 +31,6 @@ function build_lua {
       download_lua
       cd $compdir
 
-      do_common_cross_compiler_setup
       set_cc_vars_to_tc
 
       # Patch Lua's Makefile to remove "-Wl,-E"

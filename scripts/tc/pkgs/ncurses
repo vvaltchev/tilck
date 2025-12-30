@@ -35,7 +35,6 @@ function build_ncurses {
       params+=(--without-manpages)
       params+=(--without-dlsym)
 
-      do_common_cross_compiler_setup
       set_cc_vars_to_tc
       run_command2 "./configure ${params[*]}" configure.log
 

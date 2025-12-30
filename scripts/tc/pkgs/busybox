@@ -9,8 +9,6 @@ function internal_build_busybox {
    reset_cc_vars
 
    cp $BUSYBOX_CONFIG .config
-
-   do_common_cross_compiler_setup
    set_cc_vars_to_tc
 
    set +e

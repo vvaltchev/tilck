@@ -98,7 +98,6 @@ function build_fbdoom {
       download_fbdoom
       cd $compdir
 
-      do_common_cross_compiler_setup
       set_cc_vars_to_tc
       export LDFLAGS="-static"
 

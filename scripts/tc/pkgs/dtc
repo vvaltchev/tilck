@@ -6,7 +6,6 @@ function internal_build_dtc {
    echo "Building libfdt from the DTC project... "
    reset_cc_vars
 
-   do_common_cross_compiler_setup
    set_cc_vars_to_tc
    export STATIC_BUILD=1
    export EXTRA_CFLAGS="-fno-stack-protector"

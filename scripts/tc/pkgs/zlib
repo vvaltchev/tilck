@@ -26,7 +26,6 @@ function build_zlib {
       reset_cc_vars
       download_zlib
 
-      do_common_cross_compiler_setup
       set_cc_vars_to_tc
 
       cd $compdir

@@ -352,7 +352,3 @@ function dump_cross_compiler_env {
    echo "[DEBUG] PATH: $PATH" >> $1
 }
 
-function do_common_cross_compiler_setup {
-   : # do nothing
-}
-

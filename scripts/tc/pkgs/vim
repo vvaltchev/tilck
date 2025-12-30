@@ -49,7 +49,6 @@ function build_vim {
 
       cd $compdir
 
-      do_common_cross_compiler_setup
       set_cc_vars_to_tc
       export CFLAGS="-ggdb -Os"
       export LDFLAGS="-static -L$ncurses/lib -lncurses"
