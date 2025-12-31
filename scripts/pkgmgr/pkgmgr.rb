@@ -116,6 +116,7 @@ def create_toolchain_dirs
   end
 end
 
+
 def main(argv)
 
   early_checks
@@ -127,20 +128,21 @@ def main(argv)
   dump_context
 
   puts
-  PackageManager.instance.show_status_all
+  #PackageManager.instance.show_status_all
 
   # -----------------------
   # TEMP
+  puts
+  puts
 
   gh="https://github.com"
   url="#{gh}/vvaltchev/musl-cross-make/releases/download/3635262e452"
   remote_file="aarch64-musl-1.2.5-gcc-12.4.0-aarch64.tar.bz2"
 
-  Cache.download_file_in_cache(url, remote_file)
-
-
+  # Cache.download_file_in_cache(url, remote_file)
   # -----------------------
 
+  Cache::Impl::test_progress_reporter
   return 0
 end
 
