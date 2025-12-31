@@ -6,6 +6,7 @@ require_relative 'version'
 require_relative 'package'
 require_relative 'gcc'
 require_relative 'cache'
+require_relative 'progress'
 
 require 'pathname'
 require 'fileutils'
@@ -142,7 +143,7 @@ def main(argv)
   # Cache.download_file_in_cache(url, remote_file)
   # -----------------------
 
-  Cache::Impl::test_progress_reporter
+  test_progress_reporter
   return 0
 end
 
