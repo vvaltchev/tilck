@@ -32,6 +32,35 @@ class ProgressReporter
   end
 
   private
+  def gen_progress_bar(cols, ll, ratio)
+
+    rem = [cols - ll, 50].min
+    net = rem - (
+      1 + # ' ' space after '[===> ]'
+      2  # [ and ]
+    )
+
+    if net < 10
+      # Not enough space for a reasonable progress bar. Skip it.
+      return nil
+    end
+
+    if ratio < 1.0
+      arrow = 1
+      dashes = [(ratio * net).to_i - arrow, 0].max
+    else
+      arrow = 0
+      dashes = net
+    end
+    spaces = net - dashes - arrow
+
+    assert { (dashes + spaces + arrow) == net }
+    pStr = "[" + "=" * dashes + ">" * arrow + " " * spaces + "] "
+
+    assert { pStr.length + ll == [cols, ll + 50].min }
+    return pStr
+  end
+
   def known_length
 
     assert { ! @expected_len.nil? }
@@ -58,28 +87,9 @@ class ProgressReporter
       ll = line.length
 
       if @tty
-        rem = [cols - ll, 50].min
-        if rem >= 20
-          net = rem - (
-            1 + # ' ' space after '[===> ]'
-            2  # [ and ]
-          )
-
-          if ratio < 1.0
-            arrow = 1
-            dashes = [(ratio * net).to_i - arrow, 0].max
-          else
-            arrow = 0
-            dashes = net
-          end
-          spaces = net - dashes - arrow
-
-          assert { (dashes + spaces + arrow) == net }
-          pStr = "[" + "=" * dashes + ">" * arrow + " " * spaces + "] "
-
-          line = gen_line.call(pStr)
-
-          assert { pStr.length + ll == [cols, ll + 50].min }
+        progStr = gen_progress_bar(cols, ll, ratio)
+        if progStr
+          line = gen_line.call(progStr)
           assert { line.length <= cols }
         end
       end
