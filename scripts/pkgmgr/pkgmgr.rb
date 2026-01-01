@@ -143,7 +143,8 @@ def main(argv)
   # Cache.download_file_in_cache(url, remote_file)
   # -----------------------
 
-  test_progress_reporter
+  test_progress_reporter_with_length
+
   return 0
 end
 

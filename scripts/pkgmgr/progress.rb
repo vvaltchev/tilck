@@ -3,6 +3,10 @@
 require_relative 'early_logic'
 
 class ProgressReporter
+
+  PERC_EPS = 0.5       # Min percentage delta for a new update
+  ABS_EPS = MB / 2.0   # Min absolute delta for a new update (expected is nil)
+
   def initialize(expected_len)
 
     @expected_len = expected_len
@@ -19,12 +23,16 @@ class ProgressReporter
   end
 
   def update(total)
+    assert { !@expected || total <= @expected }
     @total = total.to_f
+
     if @expected_len
-      known_length()
+      updated = known_length()
     else
-      no_length()
+      updated = no_length()
     end
+
+    @last_update = total if updated
   end
 
   def finish
@@ -61,12 +69,27 @@ class ProgressReporter
     return pStr
   end
 
+  def should_show_update
+    diff = @total - @last_update
+    return true if diff > 0 && @total == @expected_len
+
+    if @expected
+      last_p = @last_update / @expected_len * 100
+      p = @total / @expected_len * 100
+      return true if p - last_p >= PERC_EPS
+    else
+
+      return true if diff > ABS_EPS
+    end
+
+    return false
+  end
+
   def known_length
 
     assert { ! @expected_len.nil? }
     ratio = @total / @expected_len
-    p = ratio * 1000
-    last_p = @last_update / @expected_len * 1000
+    p = ratio * 100
 
     if @tty
       rows, cols = IO.console.winsize
@@ -76,40 +99,39 @@ class ProgressReporter
       total_MB = ('%.1f' % (1.0 * @total / MB)).rjust(6)
       exp_MB = ('%.1f' % (1.0 * @expected_len / MB)).rjust(6)
       numProgStr = "#{total_MB} / #{exp_MB} MB"
-      percStr = '%.1f' % (p/10)
-      return "#{numProgStr} #{pStr}[#{percStr.rjust(5)}%]"
+      percStr = ('%.1f' % p).rjust(5)
+      return "#{numProgStr} #{pStr}[#{percStr}%]"
     }
 
-    if p - last_p >= 5 || @total == @expected_len
+    return false unless should_show_update()
 
-      # Generate the progress line without a progress bar.
-      line = gen_line.call("")
-      ll = line.length
+    # Generate the progress line without a progress bar.
+    line = gen_line.call("")
 
-      if @tty
-        progStr = gen_progress_bar(cols, ll, ratio)
-        if progStr
-          line = gen_line.call(progStr)
-          assert { line.length <= cols }
-        end
+    if @tty
+      progStr = gen_progress_bar(cols, line.length, ratio)
+      if progStr
+        line = gen_line.call(progStr)
+        assert { line.length <= cols }
       end
-
-      @w.call line
-      @last_update = @total
     end
+
+    @w.call line
+    return true
   end
 
   def no_length
     assert { @expected_len.nil? }
+    return false unless should_show_update()
+
     total_MB = '%.1f' % (1.0 * @total / MB)
-    if @total - @last_update >= MB
-      @w.call "#{total_MB} MB"
-      @last_update = @total
-    end
+    @w.call "#{total_MB} MB"
+    return true
   end
+
 end  # class ProgressReporter
 
-def test_progress_reporter
+def test_progress_reporter_with_length
   exp = 1151 * MB
   tot = 0
   r = ProgressReporter.new(exp)
