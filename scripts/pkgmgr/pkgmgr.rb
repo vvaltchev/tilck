@@ -140,11 +140,13 @@ def main(argv)
   url="#{gh}/vvaltchev/musl-cross-make/releases/download/3635262e452"
   remote_file="aarch64-musl-1.2.5-gcc-12.4.0-aarch64.tar.bz2"
 
-  # Cache.download_file_in_cache(url, remote_file)
+  Cache.download_file_in_cache(url, remote_file)
   # -----------------------
 
   #test_progress_reporter_with_length
-  test_progress_reporter_no_length
+  #test_progress_reporter_no_length
+
+  Cache.extract_file(remote_file)
 
   return 0
 end

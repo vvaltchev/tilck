@@ -4,6 +4,7 @@ require_relative 'early_logic'
 require_relative 'progress'
 
 require 'fileutils'
+require 'tmpdir'
 require 'net/http'
 require 'uri'
 require 'io/console'
@@ -106,11 +107,11 @@ module Cache
       return do_download_uri(URI.parse(url), local_path, 0)
 
       rescue SignalException, Interrupt
-
         puts "" if STDOUT.tty?
         puts "*** Got signal or user interrupt. Stop. ***"
+        FileUtils.rm_f(local_path)
 
-      ensure
+      rescue
         FileUtils.rm_f(local_path)
     end
 
@@ -142,6 +143,59 @@ module Cache
     if !success
       puts "ERROR: Download failed"
     end
+  end
+
+  def extract_file(tarfile, newDirName = nil)
+
+    extToOpt = {
+      ".gz" => "xfz",
+      ".tgz" => "xfz",
+      ".bz2" => "xfj",
+      ".xz" => "xfJ",
+    }
+
+    filepath = (TC_CACHE / tarfile).to_s()
+    assert { File.exist? filepath }
+
+    opt = extToOpt[File.extname(tarfile)]
+    assert { !opt.nil? }
+    tmp = TC_CACHE / "tmp"
+
+    if File.exist? tmp
+      puts "WARNING: cache tmp directory exists: #{tmp}"
+      puts "WARNING: deleting directory #{tmp}"
+      puts
+      FileUtils.rm_rf(tmp)
+    end
+
+    Dir.mkdir(tmp)
+    current_dir = Pathname.new(Dir.getwd()).realpath()
+    puts "INFO: extract #{tarfile} in #{current_dir}/"
+    tc_real = TC.realpath()
+
+    if ! current_dir.ascend.any? { |p| p == tc_real }
+      raise "Current dir is not in the toolchain"
+    end
+
+    Dir.chdir(tmp) do
+      ok = system("tar", opt, filepath)
+      raise "Tar extract failed" if !ok
+
+      contents = Dir.children(".")
+      raise "The archive #{tarfile} is empty" if contents.length == 0
+
+      if contents.length > 1
+        puts "ERROR: the archive #{tarfile} has multiple subdirs:"
+        puts contents.join "\n"
+        puts
+        raise "Multiple subdirs not supported"
+      end
+
+      dirname = contents[0]
+      newDirName ||= dirname
+      FileUtils.mv(tmp / dirname, current_dir / newDirName)
+    end
+    FileUtils.rm_rf(tmp)
   end
 
 end # module Cache
