@@ -12,6 +12,7 @@ class ProgressReporter
     @expected_len = expected_len
     @total = 0.0        # total progress now
     @last_update = 0.0  # last value of `total` updated on screen
+    @update_count = 0
 
     if STDOUT.tty?
       @tty = true       # are we writing updates to a TTY ?
@@ -32,7 +33,10 @@ class ProgressReporter
       updated = no_length()
     end
 
-    @last_update = total if updated
+    if updated
+      @last_update = total
+      @update_count += 1
+    end
   end
 
   def finish
@@ -70,19 +74,50 @@ class ProgressReporter
   end
 
   def should_show_update
-    diff = @total - @last_update
-    return true if diff > 0 && @total == @expected_len
+    delta = @total - @last_update
+    return true if delta > 0 && @total == @expected_len
 
     if @expected
       last_p = @last_update / @expected_len * 100
       p = @total / @expected_len * 100
       return true if p - last_p >= PERC_EPS
     else
-
-      return true if diff > ABS_EPS
+      return true if delta > ABS_EPS
     end
 
     return false
+  end
+
+  def gen_moving_line(cols, ll)
+    rem = [cols - ll, 50].min
+    slider = "<=>"
+    sl = slider.length
+    net = rem - (
+      1 + # space before '[<=>   ]'
+      2   # [ and ]
+    )
+
+    if net < 10
+      # Not enough space for a reasonable progress bar. Skip it.
+      return nil
+    end
+
+    m = net - sl
+    pos = @update_count % (2 * m + 1)
+    if pos > m
+      pos = (2 * m - pos)
+    end
+
+    space1 = pos
+    space2 = net - sl - space1
+
+    assert { space1 >= 0 }
+    assert { space2 >= 0 }
+    assert { net - sl - space1 >= 0 }
+    assert { pos.between?(0, net-sl) }
+    assert { (space1 + sl + space2) == net }
+
+    return " [" + " " * space1 + slider + " " * space2 + "]"
   end
 
   def known_length
@@ -90,10 +125,6 @@ class ProgressReporter
     assert { ! @expected_len.nil? }
     ratio = @total / @expected_len
     p = ratio * 100
-
-    if @tty
-      rows, cols = IO.console.winsize
-    end
 
     gen_line = ->(pStr) {
       total_MB = ('%.1f' % (1.0 * @total / MB)).rjust(6)
@@ -109,6 +140,7 @@ class ProgressReporter
     line = gen_line.call("")
 
     if @tty
+      rows, cols = IO.console.winsize
       progStr = gen_progress_bar(cols, line.length, ratio)
       if progStr
         line = gen_line.call(progStr)
@@ -124,8 +156,23 @@ class ProgressReporter
     assert { @expected_len.nil? }
     return false unless should_show_update()
 
-    total_MB = '%.1f' % (1.0 * @total / MB)
-    @w.call "#{total_MB} MB"
+    gen_line = ->(pStr) {
+      total_MB = ('%.1f' % (1.0 * @total / MB)).rjust(6)
+      return "#{total_MB} MB / ???#{pStr}"
+    }
+
+    # Generate the progress report line without a moving bar
+    line = gen_line.call("")
+    if @tty
+      rows, cols = IO.console.winsize
+      progStr = gen_moving_line(cols, line.length)
+      if progStr
+        line = gen_line.call(progStr)
+        assert { line.length <= cols }
+      end
+    end
+
+    @w.call line
     return true
   end
 
@@ -138,6 +185,19 @@ def test_progress_reporter_with_length
 
   while tot < exp
     tot = [tot + (10.0 * rand(0..1) * MB).to_i, exp].min
+    r.update(tot)
+    sleep 0.01
+  end
+  r.finish()
+end
+
+def test_progress_reporter_no_length
+  exp = 1151 * MB
+  tot = 0
+  r = ProgressReporter.new(nil)
+
+  while tot < exp
+    tot = [tot + (1 * rand(0..1) * MB).to_i, exp].min
     r.update(tot)
     sleep 0.01
   end
