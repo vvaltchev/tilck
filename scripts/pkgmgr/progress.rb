@@ -6,6 +6,7 @@ class ProgressReporter
 
   PERC_EPS = 0.5       # Min percentage delta for a new update
   ABS_EPS = MB / 2.0   # Min absolute delta for a new update (expected is nil)
+  TIME_EPS = 1.0       # Max seconds before an update when total changed.
 
   def initialize(expected_len)
 
@@ -13,6 +14,7 @@ class ProgressReporter
     @total = 0.0        # total progress now
     @last_update = 0.0  # last value of `total` updated on screen
     @update_count = 0
+    @last_update_time = nil
 
     if STDOUT.tty?
       @tty = true       # are we writing updates to a TTY ?
@@ -35,6 +37,7 @@ class ProgressReporter
 
     if updated
       @last_update = total
+      @last_update_time = Time.now()
       @update_count += 1
     end
   end
@@ -75,7 +78,10 @@ class ProgressReporter
 
   def should_show_update
     delta = @total - @last_update
-    return true if delta > 0 && @total == @expected_len
+    return false if delta == 0
+    return true if @total == @expected_len
+    return true if !@last_update_time
+    return true if (Time.now() - @last_update_time) > TIME_EPS
 
     if @expected
       last_p = @last_update / @expected_len * 100
@@ -131,7 +137,7 @@ class ProgressReporter
       exp_MB = ('%.1f' % (1.0 * @expected_len / MB)).rjust(6)
       numProgStr = "#{total_MB} / #{exp_MB} MB"
       percStr = ('%.1f' % p).rjust(5)
-      return "#{numProgStr} #{pStr}[#{percStr}%]"
+      return "Download: #{numProgStr} #{pStr}[#{percStr}%]"
     }
 
     return false unless should_show_update()
@@ -158,7 +164,7 @@ class ProgressReporter
 
     gen_line = ->(pStr) {
       total_MB = ('%.1f' % (1.0 * @total / MB)).rjust(6)
-      return "#{total_MB} MB / ???#{pStr}"
+      return "Download: #{total_MB} MB / ???#{pStr}"
     }
 
     # Generate the progress report line without a moving bar
@@ -197,7 +203,7 @@ def test_progress_reporter_no_length
   r = ProgressReporter.new(nil)
 
   while tot < exp
-    tot = [tot + (1 * rand(0..1) * MB).to_i, exp].min
+    tot = [tot + (1 * rand(0..1) * KB).to_i, exp].min
     r.update(tot)
     sleep 0.01
   end
