@@ -46,6 +46,13 @@ class ProgressReporter
     puts "" if @tty
   end
 
+  def cancel
+    if @tty
+      puts
+    end
+    puts "Operation canceled."
+  end
+
   private
   def gen_progress_bar(cols, ll, ratio)
 
@@ -195,6 +202,9 @@ def test_progress_reporter_with_length
     sleep 0.01
   end
   r.finish()
+
+  rescue SignalException, Interrupt
+    r.cancel()
 end
 
 def test_progress_reporter_no_length
@@ -208,6 +218,9 @@ def test_progress_reporter_no_length
     sleep 0.01
   end
   r.finish()
+
+  rescue SignalException, Interrupt
+    r.cancel()
 end
 
 
