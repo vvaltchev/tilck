@@ -8,6 +8,9 @@ require_relative 'cache'
 
 class GccCompiler < Package
 
+  include FileUtils
+  include FileShortcuts
+
   PROJ_NAME = "musl-cross-make"
   CURR_TAG = "3635262e452"
   RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
@@ -71,30 +74,15 @@ class GccCompiler < Package
     raise "Couldn't download file" if !success
 
     Dir.chdir(HOST_ARCH_DIR_SYS) do
-      Cache::extract_file tarname
+      Cache::extract_file(tarname)
       gcc_dir = mkpath(get_gcc_dir(ver))
       gcc_bin_dir = gcc_dir / "bin"
 
-      raise "GCC dir #{gcc_dir} not found!" if !File.exist? gcc_dir
-      raise "GCC dir #{gcc_bin_dir} not found!" if !File.exist? gcc_bin_dir
+      raise "GCC dir #{gcc_dir} not found!" if !exist? gcc_dir
+      raise "GCC dir #{gcc_bin_dir} not found!" if !exist? gcc_bin_dir
 
       Dir.chdir(gcc_bin_dir) do
-        contents = Dir.children(".")
-        for name in contents do
-          new_name = name.sub("musl-", "")
-
-          if File.file? name
-            FileUtils.mv(name, new_name) unless new_name == name
-          elsif File.symlink? name
-            target = File.readlink(name)
-            new_target = target.sub("musl-", "")
-            if new_target != target || new_name != name
-              FileUtils.rm_f(name)
-              FileUtils.symlink(new_target, new_name)
-            end
-          end
-
-        end
+        Dir.children(".").each(&method(:fix_single_file_name))
       end
     end
   end
@@ -110,7 +98,29 @@ class GccCompiler < Package
   end
 
   def get_gcc_dir(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
-end
+
+  def fix_single_file_name(name)
+
+    new_name = name.sub("musl-", "")
+
+    if file? name
+
+      mv(name, new_name) unless new_name == name
+
+    elsif symlink? name
+
+      target = readlink(name)
+      new_target = target.sub("musl-", "")
+      if new_target != target || new_name != name
+        rm_f(name)
+        symlink(new_target, new_name)
+      end
+
+    end
+  end
+
+
+end # class GccCompiler
 
 for name, arch in ALL_ARCHS do
   PackageManager.instance.register(

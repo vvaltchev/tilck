@@ -3,6 +3,7 @@
 require 'power_assert'
 require 'pathname'
 require 'etc'
+require 'file'
 
 require_relative 'arch'
 
@@ -35,6 +36,24 @@ def mkpath(path_str) = Pathname.new(path_str)
 
 def make_gh_rel_download(user, proj, tag)
   return "#{GITHUB}/#{user}/#{proj}/releases/download/#{tag}"
+end
+
+module FileShortcuts
+  def exist?(p)      = File.exist?(p)
+  def file?(p)       = File.file?(p)
+  def symlink?(p)    = File.symlink?(p)
+  def directory?(p)  = File.directory?(p)
+  def readable?(p)   = File.readable?(p)
+  def writable?(p)   = File.writable?(p)
+  def executable?(p) = File.executable?(p)
+  def basename(p)    = File.basename(p)
+  def dirname(p)     = File.dirname(p)
+  def extname(p)     = File.extname(p)
+  def stat(p)        = File.stat(p)
+  def lstat(p)       = File.lstat(p)
+  def readlink(p)    = File.readlink(p)
+  def expand_path(p) = File.expand_path(p)
+  def realpath(p)    = File.realpath(p)
 end
 
 module InitOnly
