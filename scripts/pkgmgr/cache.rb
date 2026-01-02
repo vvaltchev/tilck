@@ -23,9 +23,15 @@ end
 
 module Cache
 
+  extend FileShortcuts
+  extend FileUtilsShortcuts
+
   module_function
 
   module Impl
+    extend FileShortcuts
+    extend FileUtilsShortcuts
+
     module_function
 
     MAX_HTTP_REDIRECT_COUNT = 10
@@ -109,10 +115,10 @@ module Cache
       rescue SignalException, Interrupt
         puts "" if STDOUT.tty?
         puts "*** Got signal or user interrupt. Stop. ***"
-        FileUtils.rm_f(local_path)
+        rm_f(local_path)
 
       rescue
-        FileUtils.rm_f(local_path)
+        rm_f(local_path)
     end
 
   end # module Impl
@@ -126,7 +132,7 @@ module Cache
     assert { !remote_file.include? "/" }
     assert { !local_file.include? "/" }
 
-    if File.file? local_path
+    if file? local_path
       if local_file == remote_file
         puts "NOTE: Skipping the download of #{local_file}"
       else
@@ -155,21 +161,21 @@ module Cache
     }
 
     filepath = (TC_CACHE / tarfile).to_s()
-    assert { File.exist? filepath }
+    assert { exist? filepath }
 
-    opt = extToOpt[File.extname(tarfile)]
+    opt = extToOpt[extname(tarfile)]
     assert { !opt.nil? }
     tmp = TC_CACHE / "tmp"
 
-    if File.exist? tmp
+    if exist? tmp
       puts "WARNING: cache tmp directory exists: #{tmp}"
       puts "WARNING: deleting directory #{tmp}"
       puts
-      FileUtils.rm_rf(tmp)
+      rm_rf(tmp)
     end
 
-    Dir.mkdir(tmp)
-    current_dir = Pathname.new(Dir.getwd()).realpath()
+    mkdir(tmp)
+    current_dir = mkpathname(getwd()).realpath()
     puts "INFO: extract #{tarfile} in #{current_dir}/"
     tc_real = TC.realpath()
 
@@ -177,7 +183,7 @@ module Cache
       raise "Current dir is not in the toolchain"
     end
 
-    Dir.chdir(tmp) do
+    chdir(tmp) do
       ok = system("tar", opt, filepath)
       raise "Tar extract failed" if !ok
 
@@ -193,9 +199,9 @@ module Cache
 
       dirname = contents[0]
       newDirName ||= dirname
-      FileUtils.mv(tmp / dirname, current_dir / newDirName)
+      mv(tmp / dirname, current_dir / newDirName)
     end
-    FileUtils.rm_rf(tmp)
+    rm_rf(tmp)
   end
 
 end # module Cache

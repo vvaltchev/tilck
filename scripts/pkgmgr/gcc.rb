@@ -8,8 +8,8 @@ require_relative 'cache'
 
 class GccCompiler < Package
 
-  include FileUtils
   include FileShortcuts
+  include FileUtilsShortcuts
 
   PROJ_NAME = "musl-cross-make"
   CURR_TAG = "3635262e452"
@@ -66,22 +66,28 @@ class GccCompiler < Package
   def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
 
   def install_impl(ver = nil)
+
     ver ||= @target_arch.gcc_ver
-    return true if installed? ver
+    puts "INFO: install #{name} version: #{ver}"
+
+    if installed? ver
+      puts "INFO: already installed, skip"
+      return
+    end
 
     tarname = get_tarname(ver)
     success = Cache::download_file(RELEASE_URL, tarname)
     raise "Couldn't download file" if !success
 
-    Dir.chdir(HOST_ARCH_DIR_SYS) do
+    chdir(HOST_ARCH_DIR_SYS) do
       Cache::extract_file(tarname)
-      gcc_dir = mkpath(get_gcc_dir(ver))
+      gcc_dir = mkpathname(get_gcc_dir(ver))
       gcc_bin_dir = gcc_dir / "bin"
 
       raise "GCC dir #{gcc_dir} not found!" if !exist? gcc_dir
       raise "GCC dir #{gcc_bin_dir} not found!" if !exist? gcc_bin_dir
 
-      Dir.chdir(gcc_bin_dir) do
+      chdir(gcc_bin_dir) do
         Dir.children(".").each(&method(:fix_single_file_name))
       end
     end

@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
+require_relative 'arch'
+
 require 'power_assert'
 require 'pathname'
 require 'etc'
-require 'file'
-
-require_relative 'arch'
 
 # Global, generic constants.
 KB = 1024
@@ -32,28 +31,48 @@ def assert(&expr)
   end
 end
 
-def mkpath(path_str) = Pathname.new(path_str)
+def mkpathname(path_str) = Pathname.new(path_str)
 
 def make_gh_rel_download(user, proj, tag)
   return "#{GITHUB}/#{user}/#{proj}/releases/download/#{tag}"
 end
 
 module FileShortcuts
-  def exist?(p)      = File.exist?(p)
-  def file?(p)       = File.file?(p)
-  def symlink?(p)    = File.symlink?(p)
-  def directory?(p)  = File.directory?(p)
-  def readable?(p)   = File.readable?(p)
-  def writable?(p)   = File.writable?(p)
-  def executable?(p) = File.executable?(p)
-  def basename(p)    = File.basename(p)
-  def dirname(p)     = File.dirname(p)
-  def extname(p)     = File.extname(p)
-  def stat(p)        = File.stat(p)
-  def lstat(p)       = File.lstat(p)
-  def readlink(p)    = File.readlink(p)
-  def expand_path(p) = File.expand_path(p)
-  def realpath(p)    = File.realpath(p)
+  module_function
+  def exist?(...)      = File.exist?(...)
+  def file?(...)       = File.file?(...)
+  def symlink?(...)    = File.symlink?(...)
+  def directory?(...)  = File.directory?(...)
+  def readable?(...)   = File.readable?(...)
+  def writable?(...)   = File.writable?(...)
+  def executable?(...) = File.executable?(...)
+  def basename(...)    = File.basename(...)
+  def dirname(...)     = File.dirname(...)
+  def extname(...)     = File.extname(...)
+  def stat(...)        = File.stat(...)
+  def lstat(...)       = File.lstat(...)
+  def readlink(...)    = File.readlink(...)
+  def expand_path(...) = File.expand_path(...)
+  def realpath(...)    = File.realpath(...)
+end
+
+module FileUtilsShortcuts
+  module_function
+  def chdir(...)       = FileUtils.chdir(...)
+  def getwd()          = FileUtils.getwd()
+  def mkdir(...)       = FileUtils.mkdir(...)
+  def mkdir_p(...)     = FileUtils.mkdir_p(...)
+  def rm(...)          = FileUtils.rm(...)
+  def rm_f(...)        = FileUtils.rm_f(...)
+  def rm_r(...)        = FileUtils.rm_r(...)
+  def rm_rf(...)       = FileUtils.rm_rf(...)
+  def mv(...)          = FileUtils.mv(...)
+  def symlink(...)     = FileUtils.symlink(...)
+  def ln_s(...)        = FileUtils.ln_s(...)
+  def ln_sf(...)       = FileUtils.ln_sf(...)
+  def cp(...)          = FileUtils.cp(...)
+  def cp_r(...)        = FileUtils.cp_r(...)
+  def rmdir(...)       = FileUtils.rmdir(...)
 end
 
 module InitOnly

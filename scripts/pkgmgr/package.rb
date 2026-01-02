@@ -151,7 +151,10 @@ class Package
     @install_list = get_install_list()
   end
 
+
   # Methods not implemented in the base class
+  protected
+
   def install_impl(ver = nil) = raise NotImplementedError
   def get_install_list = raise NotImplementedError
   def get_default_ver = raise NotImplementedError
