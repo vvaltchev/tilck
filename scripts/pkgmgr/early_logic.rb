@@ -2,6 +2,8 @@
 
 require 'power_assert'
 require 'pathname'
+require 'etc'
+
 require_relative 'arch'
 
 # Global, generic constants.
@@ -10,8 +12,10 @@ MB = 1024 * KB
 
 # Basic constants specific to this project.
 DEFAULT_TC_NAME = "toolchain3"
+OS = Etc.uname.fetch(:sysname)
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
+GITHUB = "https://github.com"
 
 # Generic utils
 def getenv(name, default)
@@ -25,6 +29,12 @@ def assert(&expr)
     raise "Assertion failed:\n#{ctx.message}" unless ok
     true
   end
+end
+
+def mkpath(path_str) = Pathname.new(path_str)
+
+def make_gh_rel_download(user, proj, tag)
+  return "#{GITHUB}/#{user}/#{proj}/releases/download/#{tag}"
 end
 
 module InitOnly

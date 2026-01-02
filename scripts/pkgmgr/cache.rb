@@ -117,7 +117,7 @@ module Cache
 
   end # module Impl
 
-  def download_file_in_cache(url, remote_file, local_file = nil)
+  def download_file(url, remote_file, local_file = nil)
 
     local_file ||= remote_file
     local_path = TC_CACHE / local_file
@@ -132,7 +132,7 @@ module Cache
       else
         puts "NOTE: Skipping the download of #{local_file} (#{remote_file})"
       end
-      return
+      return true
     end
 
     puts "The file does not exist, download!"

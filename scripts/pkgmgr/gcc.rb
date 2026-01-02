@@ -4,9 +4,14 @@ require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
 require_relative 'package'
-
+require_relative 'cache'
 
 class GccCompiler < Package
+
+  PROJ_NAME = "musl-cross-make"
+  CURR_TAG = "3635262e452"
+  RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
+  VER_MUSL = "1.2.5"
 
   attr_reader :target_arch, :libc
 
@@ -55,6 +60,56 @@ class GccCompiler < Package
     return list
   end
 
+  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
+
+  def install_impl(ver = nil)
+    ver ||= @target_arch.gcc_ver
+    return true if installed? ver
+
+    tarname = get_tarname(ver)
+    success = Cache::download_file(RELEASE_URL, tarname)
+    raise "Couldn't download file" if !success
+
+    Dir.chdir(HOST_ARCH_DIR_SYS) do
+      Cache::extract_file tarname
+      gcc_dir = mkpath(get_gcc_dir(ver))
+      gcc_bin_dir = gcc_dir / "bin"
+
+      raise "GCC dir #{gcc_dir} not found!" if !File.exist? gcc_dir
+      raise "GCC dir #{gcc_bin_dir} not found!" if !File.exist? gcc_bin_dir
+
+      Dir.chdir(gcc_bin_dir) do
+        contents = Dir.children(".")
+        for name in contents do
+          new_name = name.sub("musl-", "")
+
+          if File.file? name
+            FileUtils.mv(name, new_name) unless new_name == name
+          elsif File.symlink? name
+            target = File.readlink(name)
+            new_target = target.sub("musl-", "")
+            if new_target != target || new_name != name
+              FileUtils.rm_f(name)
+              FileUtils.symlink(new_target, new_name)
+            end
+          end
+
+        end
+      end
+    end
+  end
+
+  private
+  def get_tarname(ver)
+    archname = @target_arch.name
+    host_an = HOST_ARCH.name
+    os_suffix = (OS == "FreeBSD" ? "-freebsd" : "")
+    verStr = ver.to_s()
+    ext = ".tar.bz2"
+    "#{archname}-musl-#{VER_MUSL}-gcc-#{verStr}-#{host_an}#{os_suffix}#{ext}"
+  end
+
+  def get_gcc_dir(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
 end
 
 for name, arch in ALL_ARCHS do

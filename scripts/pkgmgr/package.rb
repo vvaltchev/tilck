@@ -27,6 +27,14 @@ class PackageManager
     @packages[package.id] = package
   end
 
+  def get(name, on_host = false, ver = nil)
+    return @packages[[name, on_host]]
+  end
+
+  def get_tc(arch, ver = nil)
+    return get("gcc_#{arch}_musl", true, ver)
+  end
+
   def show_status_all
     for id, p in @packages do
       p.show_status
@@ -82,10 +90,10 @@ class Package
     @is_compiler = is_compiler
     @arch_list = arch_list
     @dep_list = dep_list
-    @install_list = get_install_list
+    @install_list = get_install_list()
   end
 
-  def id = [@name, @is_host]
+  def id = [@name, @on_host]
 
   def ==(other)
     other.is_a?(Package) ? id == other.id : super
@@ -138,10 +146,15 @@ class Package
     puts "#{@name.ljust(35)} [ #{INSTALLED_STR} ] [ #{s} ]"
   end
 
-  # Not implemented methods
-  def install(ver = nil) = raise NotImplementedError
-  def get_install_list = raise NotImplementedError
+  def install(ver = nil)
+    install_impl(ver)
+    @install_list = get_install_list()
+  end
 
+  # Methods not implemented in the base class
+  def install_impl(ver = nil) = raise NotImplementedError
+  def get_install_list = raise NotImplementedError
+  def get_default_ver = raise NotImplementedError
 end
 
 
