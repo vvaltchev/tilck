@@ -189,6 +189,13 @@ function setup_ruby {
    if check_ruby_ver; then
       echo "INFO: using system Ruby: $RUBY"
       if [[ "$OS" == "FreeBSD" ]]; then
+         # On FreeBSD, we meed to run `install_packages` even if we found
+         # a recent-enough version of Ruby installed, simply because on that
+         # OS, Ruby doesn't ship with many of the standard gems included on
+         # Linux. Those are available as separate packages, so we need to
+         # check for their presence and install them as necessary. The good
+         # news is that FreeBSD's package manager is super-fast, so that takes
+         # a few hundred milliseconds (e.g. ~300ms) on a modern machine.
          install_packages
       fi
       return

@@ -84,6 +84,23 @@ class NilClass
   def blank? = true
 end
 
+# Do the same for other built-in types, for convenience.
+class TrueClass
+  def blank? = false
+end
+
+class FalseClass
+  def blank? = true
+end
+
+class Array
+  def blank? = empty?
+end
+
+class Hash
+  def blank? = empty?
+end
+
 
 module InitOnly
 

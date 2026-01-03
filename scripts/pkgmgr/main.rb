@@ -11,11 +11,12 @@ require_relative 'package_manager'
 
 require 'pathname'
 require 'fileutils'
+require 'optparse'
 
 module Main
 
-  extend FileUtils
-
+  extend FileShortcuts
+  extend FileUtilsShortcuts
   module_function
 
   def read_gcc_ver_defaults
@@ -124,6 +125,82 @@ module Main
     end
   end
 
+  def parse_options
+
+    is_option = ->(line) { line.lstrip.start_with?("-") }
+    add_vertical_space = ->(summary) {
+      blocks = []
+      curr = []
+      summary.each { |line|
+        if is_option.(line) && !curr.empty?
+          blocks << curr; curr = []
+        end
+        curr << line
+      }
+      blocks << curr unless curr.empty?
+      blocks.map { |b| b.join }.join("\n") + "\n"
+    }
+
+    opts = {
+      help: false,
+      skip_install_pkgs: false,
+      just_context: false,
+      list: false,
+      install: [],
+    }
+
+    mode_opts = [ :help, :just_context, :list, :install ]
+
+    argv = ARGV.dup()
+
+    p = OptionParser.new('./scripts/build_toolchain [OPTIONS]')
+
+    p.on('-h', '--help', 'Show this help message [MODE]') {
+      opts[:help] = true
+      puts p.banner
+      puts
+      puts add_vertical_space.call(p.summarize())
+    }
+
+    p.on('-l', '--list', 'List all packages status [MODE]') {
+      opts[:list] = true
+    }
+
+    p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
+      opts[:just_context] = true
+    }
+
+    p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
+      list = [first]
+      while argv.first && argv.first !~ /\A-/
+        list << argv.shift
+      end
+      opts[:install] += list
+    end
+
+    p.on(
+      '-n', '--skip-install-pkgs',
+      'Do not check/install system dependencies. This flag is useful when the',
+      'user run at least *one* time this script without this flag so that the',
+      'necessary packages have been installed and the system configuration nor',
+      'the dependencies in the source have changed since then. Using this flag',
+      'improves the speed, but it is generally discouraged, unless this script',
+      'is run on a *unsupported* Linux distribution or the user is experienced',
+      'with Tilck\'s package manager and prepared to handle a failure.'
+    ) { opts[:skip_install_pkgs] = true }
+
+    p.parse!(argv)
+    mods = opts.slice(*mode_opts)
+    mods = mods.select { |k,v| !v.blank? }
+
+    if mods.length > 1
+      raise OptionParser::InvalidArgument,
+            "Cannot use more than one mode options"
+    end
+
+    return opts
+  end
+
   def main(argv)
 
     early_checks
@@ -132,14 +209,41 @@ module Main
     check_gcc_tc_ver
     create_toolchain_dirs
 
+    puts "Context"
+    puts "------------------"
     dump_context
 
     puts
-    PackageManager.instance.show_status_all
-
     puts
-    pkg = PackageManager.instance.get_tc("i386")
-    pkg.install(Ver "12.4.0")
+    options = parse_options()
+
+    if options[:help]
+      return 0
+    end
+
+    if options[:just_context]
+      return 0
+    end
+
+    if options[:list]
+      PackageManager.instance.show_status_all
+      return 0
+    end
+
+    if !options[:install].blank?
+      for name in options[:install] do
+        pkg = PackageManager.instance.get(name, true)
+        if pkg.nil?
+          puts "ERROR: package #{pkg} not found!"
+          return 1
+        end
+        pkg.install()
+      end
+    end
+
+    #puts
+    #pkg = PackageManager.instance.get_tc("i386")
+    #pkg.install(Ver "12.4.0")
 
     return 0
   end

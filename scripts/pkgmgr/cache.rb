@@ -141,14 +141,14 @@ module Cache
       return true
     end
 
-    puts "The file does not exist, download!"
-
     # Download here the file.
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
 
     if !success
       puts "ERROR: Download failed"
     end
+
+    return success
   end
 
   def extract_file(tarfile, newDirName = nil)
