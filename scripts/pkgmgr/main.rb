@@ -7,6 +7,7 @@ require_relative 'package'
 require_relative 'gcc'
 require_relative 'cache'
 require_relative 'progress'
+require_relative 'package_manager'
 
 require 'pathname'
 require 'fileutils'

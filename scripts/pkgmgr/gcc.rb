@@ -5,6 +5,7 @@ require_relative 'arch'
 require_relative 'version'
 require_relative 'package'
 require_relative 'cache'
+require_relative 'package_manager'
 
 class GccCompiler < Package
 
