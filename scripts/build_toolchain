@@ -8,7 +8,9 @@ BASH="bash"
 SED="sed"
 GREP="grep"
 
+echo "Full args list: $0 $@"
 echo "Detected host OS: $OS"
+echo
 
 if [ "$OS" = "FreeBSD" ]; then
    SED="gsed"
@@ -17,7 +19,7 @@ fi
 
 missing=0
 for c in $BASH $SED $GREP; do
-   echo -n "Check for tool: $c "
+   echo -n "Check for tool: GNU $c "
    if command -v "$c" >/dev/null; then
       echo "[ OK ]"
    else
@@ -34,14 +36,12 @@ if [ $missing -eq 1 ]; then
    exit 1
 fi
 
-if ! command -v bash; then
+if ! command -v bash > /dev/null; then
    echo "ERROR: Bash not found. Please install Bash and re-run this script."
    exit 1
 fi
 
 set -e
-echo "\$0: $0"
-echo "Args: $@"
 echo
 echo "Determine this script's parent directory using realpath and dirname..."
 THIS_SCRIPT="`realpath $0`"

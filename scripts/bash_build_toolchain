@@ -301,6 +301,6 @@ echo
 echo "Ruby package manager"
 echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 echo
-exec $RUBY $MAIN_DIR/scripts/pkgmgr/pkgmgr.rb "$@"
+exec $RUBY $MAIN_DIR/scripts/pkgmgr/main.rb "$@"
 
 main "$@"
