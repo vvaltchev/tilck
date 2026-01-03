@@ -36,6 +36,10 @@ class PackageManager
     return get("gcc_#{arch}_musl", true, ver)
   end
 
+  def get_config_ver(name)
+    return @config_versions[name]
+  end
+
   def show_status_all
     for id, p in @packages do
       p.show_status
