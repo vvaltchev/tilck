@@ -11,7 +11,7 @@ PackageDep = Struct.new(
 
   :name,        # package name (string)
   :host,        # bool: runs on host or on the target?
-  :ver          # Version: can be nil, meaning "latest"
+  :ver          # Version: can be nil, meaning "default"
 )
 
 def Dep(name, host, ver = nil)

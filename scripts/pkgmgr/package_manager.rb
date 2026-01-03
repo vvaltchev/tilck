@@ -13,6 +13,9 @@ class PackageManager
 
   def initialize
     @packages = {}
+    @config_versions = read_config_versions()
+
+    puts @config_versions
   end
 
   def register(package)
@@ -40,6 +43,34 @@ class PackageManager
       p.show_status
     end
   end
+
+  private
+  def read_config_versions
+    result = {}
+    data = File.read(MAIN_DIR / "other" / "pkg_versions")
+
+    for line in data.split("\n")
+      if !line.start_with? "VER_"
+        raise "Invalid line in pkg_versions: #{line}"
+      end
+
+      line = line.sub("VER_", "")
+      key, value = line.split("=")
+
+      if key.blank? || value.blank?
+        raise "Invalid line in pkg_versions: #{line}"
+      end
+
+      if result[key]
+        raise "Duplicate key in pkg_versions: #{key}"
+      end
+
+      result[key] = value
+    end
+
+    return result
+  end
+
 end
 
 

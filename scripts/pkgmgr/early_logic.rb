@@ -75,6 +75,16 @@ module FileUtilsShortcuts
   def rmdir(...)       = FileUtils.rmdir(...)
 end
 
+# Monkey-patch String and NilClass to support blank? like in Rails.
+class String
+  def blank? = strip.empty?
+end
+
+class NilClass
+  def blank? = true
+end
+
+
 module InitOnly
 
   module_function
