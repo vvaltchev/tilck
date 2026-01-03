@@ -56,8 +56,7 @@ class Package
     @install_list = get_install_list()
   end
 
-  def id = [@name, @on_host]
-
+  def id = @name
   def ==(other)
     other.is_a?(Package) ? id == other.id : super
   end

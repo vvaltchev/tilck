@@ -147,9 +147,12 @@ module Main
       just_context: false,
       list: false,
       install: [],
+      install_toolchain: [],
     }
 
-    mode_opts = [ :help, :just_context, :list, :install ]
+    mode_opts = [
+      :help, :just_context, :list, :install, :install_toolchain
+    ]
 
     argv = ARGV.dup()
 
@@ -179,6 +182,13 @@ module Main
     end
 
     p.on(
+      '-S', '--install-toolchain ARCH',
+      'Install a GCC + libmusl cross-compiler for the given ARCH [MODE]'
+    ) do |arch|
+      opts[:install_toolchain] += [arch]
+    end
+
+    p.on(
       '-n', '--skip-install-pkgs',
       'Do not check/install system dependencies. This flag is useful when the',
       'user run at least *one* time this script without this flag so that the',
@@ -198,6 +208,7 @@ module Main
             "Cannot use more than one mode options"
     end
 
+    opts[:install] += opts[:install_toolchain].map { |x| "gcc_#{x}_musl" }
     return opts
   end
 
@@ -232,7 +243,7 @@ module Main
 
     if !options[:install].blank?
       for name in options[:install] do
-        pkg = PackageManager.instance.get(name, true)
+        pkg = PackageManager.instance.get(name)
         if pkg.nil?
           puts "ERROR: package #{pkg} not found!"
           return 1

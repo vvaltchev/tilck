@@ -28,12 +28,12 @@ class PackageManager
     @packages[package.id] = package
   end
 
-  def get(name, on_host = false, ver = nil)
-    return @packages[[name, on_host]]
+  def get(name, ver = nil)
+    return @packages[name]
   end
 
   def get_tc(arch, ver = nil)
-    return get("gcc_#{arch}_musl", true, ver)
+    return get("gcc_#{arch}_musl", ver)
   end
 
   def get_config_ver(name)
