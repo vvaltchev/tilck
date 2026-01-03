@@ -19,7 +19,7 @@ module Main
   module_function
 
   def read_gcc_ver_defaults
-    conf = MAIN_DIR / "other/gcc_tc_conf"
+    conf = MAIN_DIR / "other" / "gcc_tc_conf"
     for name, arch in ALL_ARCHS do
       arch.min_gcc_ver = Ver(File.read(conf / name / "min_ver"))
       arch.default_gcc_ver = Ver(File.read(conf / name / "default_ver"))
@@ -145,6 +145,6 @@ module Main
   end
 end
 
-if $PROGRAM_NAME == __FILE__
+if __FILE__ == $0
   exit Main::main(ARGV)
 end

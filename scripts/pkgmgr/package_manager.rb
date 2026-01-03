@@ -14,8 +14,6 @@ class PackageManager
   def initialize
     @packages = {}
     @config_versions = read_config_versions()
-
-    puts @config_versions
   end
 
   def register(package)
@@ -65,7 +63,7 @@ class PackageManager
         raise "Duplicate key in pkg_versions: #{key}"
       end
 
-      result[key] = value
+      result[key] = Ver(value)
     end
 
     return result
