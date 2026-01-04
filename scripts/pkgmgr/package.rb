@@ -22,20 +22,24 @@ class InstallInfo
 
   attr_reader :compiler, :on_host, :arch, :ver, :path
 
-  def initialize(compiler, on_host, arch, ver, path)
+  def initialize(pkgname, compiler, on_host, arch, ver, path)
+    @pkgname = pkgname         # package name
     @compiler = compiler       # "syscc" or compiler version
     @on_host = on_host         # runs on host_$arch or on $arch (=Tilck) ?
     @arch = arch               # arch object
     @ver = ver                 # package version
     @path = path               # install path
     assert { !arch.nil? }
-    assert { on_host || !compiler }
+    assert { !on_host || compiler == "syscc" }
     freeze
   end
 
-  def to_s
-    "I{ comp=#{@compiler}, arch=#{@arch}, ver=#{@ver}, path=#{@path} }"
-  end
+  def to_s = ("I{ " +
+      "pkg:#{@pkgname.ljust(20)}, comp:#{@compiler}, " +
+      "arch:#{@arch}, ver:#{@ver}, " +
+      "path:#{@path.sub(TC.to_s, 'TCROOT')}" +
+  " }")
+
 end
 
 class Package

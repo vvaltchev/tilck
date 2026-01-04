@@ -60,7 +60,7 @@ class GccCompiler < Package
       e = drop_suffix(e, target_suffix)           # drop the _$ARCH suffix
 
       p = HOST_ARCH_DIR_SYS / orig_entry
-      list.append(InstallInfo.new("syscc", true, HOST_ARCH, Ver(e), p))
+      list.append(InstallInfo.new(name, "syscc", true, HOST_ARCH, Ver(e), p))
     end
 
     return list
