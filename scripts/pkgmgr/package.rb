@@ -20,18 +20,22 @@ end
 
 class InstallInfo
 
-  attr_reader :compiler, :on_host, :arch, :ver
+  attr_reader :compiler, :on_host, :arch, :ver, :path
 
-  def initialize(compiler, on_host, arch, ver)
-    @compiler = compiler       # nil (= syscc) or compiler version
+  def initialize(compiler, on_host, arch, ver, path)
+    @compiler = compiler       # "syscc" or compiler version
     @on_host = on_host         # runs on host_$arch or on $arch (=Tilck) ?
     @arch = arch               # arch object
     @ver = ver                 # package version
+    @path = path               # install path
     assert { !arch.nil? }
     assert { on_host || !compiler }
     freeze
   end
 
+  def to_s
+    "I{ comp=#{@compiler}, arch=#{@arch}, ver=#{@ver}, path=#{@path} }"
+  end
 end
 
 class Package
@@ -108,18 +112,96 @@ class Package
     puts "#{@name.ljust(35)} [ #{INSTALLED_STR} ] [ #{s} ]"
   end
 
+  # Install the package
+  #
+  # param `ver`:           version of the package to install
+  # nil                 => default/auto/configured from ENV
+  # other               => might or might not be supported, depending on the
+  #                        package. Changes over time. It might not be possible
+  #                        to install older versions of the package that were
+  #                        supported before
   def install(ver = nil)
+    ver = nil if ver.blank?
     install_impl(ver)
     @install_list = get_install_list()
   end
 
+  # Delete the package
+  #
+  # param `ver`:           version of the package to delete
+  # nil                 => default/auto/configured from ENV (like install())
+  # '*'                 => delete all versions found (for the given compiler)
+  # other               => delete a specific version, if exists.
+  #
+  # param `compiler`:      version of compiler used to build the package:
+  #                        a specific version of the compiler, might have
+  #                        multiple versions of the same package. The same
+  #                        package version, might exist for multiple compilers.
+  #
+  # nil                 => default/auto/configured from ENV
+  # '*'                 => all compiler versions
+  # other               => "syscc" or compiler version (e.g. Ver("12.4.0"))
+  #
+  # param `arch`:          target architecture of the package to delete:
+  #                        each package might have been built using multiple
+  #                        compiler versions, for multiple target architectures
+  #                        in multiple different versions.
+  # nil                 => default/auto/configured from ENV (like install())
+  # '*'                 => all architectures
+  # other               => specific architecture (e.g. i386)
+  def delete(ver = nil, compiler = nil, arch = nil)
+
+    # Check if the default compiler for this package is "syscc", meaning this
+    # is very likely a host tool, like a cross-compiler.
+    syscc     = (default_cc.eql? "syscc")
+
+    all_arch  = (arch.eql? "ALL")
+    all_ver   = (ver.eql? "ALL")
+    all_cc    = (compiler.eql? "ALL")
+
+    # Downgrade an empty string to nil (= default/auto)
+    arch      = nil if arch.blank?
+    ver       = nil if ver.blank?
+    compiler  = nil if compiler.blank?
+
+    # If compiler is unset, check if the default is syscc. If that's the case,
+    # check if arch is nil or ALL, and if that's the case, use the default cc,
+    # ignoring the gcc_ver for the given ARCH. That's important as we could have
+    # arch=nil => ARCH=i386 by default and then pick up the default gcc_ver for
+    # that default arch and that would make no sense. If arch is not explicitly
+    # set to a specific value and the default cc is "syscc", we set it.
+    compiler  ||= (syscc && (!arch || all_arch)) && default_cc
+
+    # Set arch and ver to their defaults for this package, if they're unset.
+    arch      ||= default_arch
+    ver       ||= default_ver
+
+    # If the compiler is still unset, now pick up the gcc_ver for the given
+    # arch, even if that is the result of a default value, not manually set.
+    compiler  ||= ALL_ARCHS[arch].gcc_ver
+
+    # Finally, compute the list of installed packages to remove.
+    to_remove = @install_list.select { |e|
+      (all_arch || e.arch == arch)         &&
+      (all_ver  || e.ver == ver)           &&
+      (all_cc   || e.compiler == compiler)
+    }
+
+    for pkg in to_remove do
+      puts "Remove pkg #{@name} at #{pkg.path}"
+      FileUtils.rm_rf(pkg.path)
+      @install_list -= [pkg]
+    end
+  end
 
   # Methods not implemented in the base class
   protected
 
   def install_impl(ver = nil) = raise NotImplementedError
   def get_install_list = raise NotImplementedError
-  def get_default_ver = raise NotImplementedError
+  def default_ver = raise NotImplementedError
+  def default_arch = ARCH
+  def default_cc = ARCH.gcc_ver
 end
 
 

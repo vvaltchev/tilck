@@ -10,6 +10,7 @@ require 'singleton'
 class PackageManager
 
   include Singleton
+  attr_reader :packages
 
   def initialize
     @packages = {}

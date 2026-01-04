@@ -119,7 +119,7 @@ class Version
     end
 
     if other.is_a?(String)
-      return self <=> Version.new(other)
+      return other == 'ALL' ? 0 : self <=> Version.new(other)
     end
 
     return nil
@@ -135,6 +135,7 @@ class Version
   def >=(other) = (check_ordered; (self <=> other) >= 0)
   def ==(other) = ((self <=> other) == 0)
   def hash = @type != VersionType::HASH ? @comps.hash : @orig_str
+  def blank? = false
 
   def serialize
     case @type
@@ -259,7 +260,7 @@ class Version
 end
 
 def Ver(s)
-  return Version.new(s)
+  return !s.nil? ? Version.new(s) : nil
 end
 
 if __FILE__ == $0

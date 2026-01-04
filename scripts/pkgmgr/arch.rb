@@ -35,7 +35,7 @@ Architecture = Struct.new(
   # Comparison operator
   def ==(other)
     case other
-      when String then name == other
+      when String then ((other == 'ALL') ? true : name == other)
     else
       super # Struct's default: same class + member-wise equality
     end

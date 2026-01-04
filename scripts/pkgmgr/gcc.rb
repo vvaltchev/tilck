@@ -48,7 +48,8 @@ class GccCompiler < Package
     #
     for e in HOST_ARCH_DIR_SYS.each_entry do
 
-      e = e.to_s
+      orig_entry = e.to_s
+      e = orig_entry
       next if !e.start_with? prefix
       e = drop_prefix(e, prefix)                  # drop the "gcc_" prefix
 
@@ -58,17 +59,21 @@ class GccCompiler < Package
       next if !e.end_with? target_suffix
       e = drop_suffix(e, target_suffix)           # drop the _$ARCH suffix
 
-      list.append(InstallInfo.new(nil, true, HOST_ARCH, Ver(e)))
+      p = HOST_ARCH_DIR_SYS / orig_entry
+      list.append(InstallInfo.new("syscc", true, HOST_ARCH, Ver(e), p))
     end
 
     return list
   end
 
   def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
+  def default_ver = @target_arch.gcc_ver
+  def default_arch = HOST_ARCH
+  def default_cc = "syscc"
 
   def install_impl(ver = nil)
 
-    ver ||= @target_arch.gcc_ver
+    ver ||= get_default_ver()
     puts "INFO: install #{name} version: #{ver}"
 
     if installed? ver

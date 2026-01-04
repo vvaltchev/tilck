@@ -147,14 +147,32 @@ module Main
       just_context: false,
       list: false,
       install: [],
-      install_toolchain: [],
+      install_compiler: [],
+      delete: [],
+      delete_compiler: [],
+      arch: nil,
+      compiler: nil,
     }
 
     mode_opts = [
-      :help, :just_context, :list, :install, :install_toolchain
+      :help,
+      :just_context,
+      :list,
+      :install,
+      :install_compiler,
+      :delete,
+      :delete_compiler,
     ]
 
     argv = ARGV.dup()
+
+    get_multiple_args = ->(first, sym) {
+      list = [first]
+      while argv.first && argv.first !~ /\A-/
+        list << argv.shift
+      end
+      opts[sym] += list
+    }
 
     p = OptionParser.new('./scripts/build_toolchain [OPTIONS]')
 
@@ -174,18 +192,59 @@ module Main
     }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
-      list = [first]
-      while argv.first && argv.first !~ /\A-/
-        list << argv.shift
-      end
-      opts[:install] += list
+      get_multiple_args.call(first, :install)
     end
 
     p.on(
-      '-S', '--install-toolchain ARCH',
+      '-S', '--install-compiler ARCH',
       'Install a GCC + libmusl cross-compiler for the given ARCH [MODE]'
-    ) do |arch|
-      opts[:install_toolchain] += [arch]
+    ) do |first|
+      get_multiple_args.call(first, :install_compiler)
+    end
+
+    p.on(
+      '-d', '--delete PKG[:VER]',
+      'Delete the given version (optional) of a package [MODE]'
+    ) do |first|
+      get_multiple_args.call(first, :delete)
+    end
+
+    p.on(
+      '-D', '--delete-compiler ARCH',
+      'Delete the GCC + libmusl cross-compiler for the given ARCH [MODE]'
+    ) do |first|
+      get_multiple_args.call(first, :delete_compiler)
+    end
+
+    p.on(
+      '-c', '--compiler-ver VER',
+      'Make the delete operation affect only packages built by the given',
+      'compiler version. The special value ALL, means all compilers. The',
+      'special value "syscc" means the system compiler. Using that makes',
+      'sense only for host packages like the GCC toolchains themselves and',
+      'other build host tools'
+    ) do |value|
+
+      if value != "ALL" and value != "syscc"
+        Ver(value) # check that the version can be parsed
+      end
+
+      opts[:compiler] = value
+    end
+
+    p.on(
+      '-a', '--arch ARCH',
+      'Make the delete operation affect only packages built for the given',
+      'architecture. The special value ALL, means all architectures.'
+    ) do |value|
+
+      if value != "ALL"
+        if !ALL_ARCHS.include? value
+          raise OptionParser::InvalidArgument, "Unknown architecture: #{value}"
+        end
+      end
+
+      opts[:arch] = value
     end
 
     p.on(
@@ -196,7 +255,7 @@ module Main
       'the dependencies in the source have changed since then. Using this flag',
       'improves the speed, but it is generally discouraged, unless this script',
       'is run on a *unsupported* Linux distribution or the user is experienced',
-      'with Tilck\'s package manager and prepared to handle a failure.'
+      'with Tilck\'s package manager and prepared to handle a failure. [FLAG]'
     ) { opts[:skip_install_pkgs] = true }
 
     p.parse!(argv)
@@ -208,7 +267,12 @@ module Main
             "Cannot use more than one mode options"
     end
 
-    opts[:install] += opts[:install_toolchain].map { |x| "gcc_#{x}_musl" }
+    opts[:install] += opts[:install_compiler].map {
+      |x| name, ver = x.split(":"); "gcc_#{name}_musl:#{ver}"
+    }
+    opts[:delete] += opts[:delete_compiler].map {
+      |x| name, ver = x.split(":"); "gcc_#{name}_musl:#{ver}"
+    }
     return opts
   end
 
@@ -237,24 +301,54 @@ module Main
     end
 
     if options[:list]
-      PackageManager.instance.show_status_all
+      pkgmgr.show_status_all
       return 0
     end
 
     if !options[:install].blank?
+      # First, check that all packages exist so that we don't install some
+      # package and fail because of others, leaving in an undesired mid-state.
       for name in options[:install] do
-        pkg = PackageManager.instance.get(name)
-        if pkg.nil?
-          puts "ERROR: package #{pkg} not found!"
+        name, ver = name.split(":")
+        if !pkgmgr.get(name)
+          puts "ERROR: package not found: #{name}"
           return 1
         end
-        pkg.install()
+       end
+
+      # Now install the packages. We could still fail, but at least we know
+      # about all the packages mentioned by the user.
+      for name in options[:install] do
+        name, v = name.split(":")
+        pkg = pkgmgr.get(name)
+        pkg.install(Ver(v))
       end
+      return 0
     end
 
-    #puts
-    #pkg = PackageManager.instance.get_tc("i386")
-    #pkg.install(Ver "12.4.0")
+    if !options[:delete].blank?
+      # First, check that all packages exist so that we don't delete some
+      # package and fail because of others, leaving in an undesired mid-state.
+      for name in options[:delete] do
+        name, v = name.split(":")
+        if !pkgmgr.get(name)
+          puts "ERROR: package not registered: #{name}"
+          return 1
+        end
+      end
+
+      # Now delete the packages. We cannot fail at this point.
+      for name in options[:delete] do
+        name, v = name.split(":")
+        pkg = pkgmgr.get(name)
+        pkg.delete(
+          v == 'ALL' ? v : Ver(v),
+          options[:compiler],
+          options[:arch],
+        )
+      end
+      return 0
+    end
 
     return 0
   end
