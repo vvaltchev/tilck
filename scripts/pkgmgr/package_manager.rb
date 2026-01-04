@@ -4,6 +4,7 @@ require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
 require_relative 'term'
+require_relative 'package'
 
 require 'singleton'
 
@@ -15,9 +16,15 @@ class PackageManager
   def initialize
     @packages = {}
     @config_versions = read_config_versions()
+    @full_install_list = nil
+  end
+
+  def refresh
+    @full_install_list = scan_toolchain()
   end
 
   def register(package)
+
     if !package.is_a?(Package)
       raise ArgumentError
     end
@@ -29,33 +36,304 @@ class PackageManager
     @packages[package.id] = package
   end
 
-  def get(name, ver = nil)
+  def get(name)
     return @packages[name]
   end
 
-  def get_tc(arch, ver = nil)
-    return get("gcc_#{arch}_musl", ver)
+  def get_tc(arch)
+    return get("gcc_#{arch}_musl")
   end
 
   def get_config_ver(name)
-    return @config_versions[name]
+    return @config_versions[name._.upcase.sub("HOST_", "")]
+  end
+
+  def get_smart(pkg_or_name)
+    assert { pkg_or_name.is_a? Package or pkg_or_name.is_a? String }
+    (pkg_or_name.is_a? Package) ? pkg_or_name : get(pkg_or_name)
+  end
+
+  def build_gcc_package_name(target_arch, libc)
+    return "gcc_#{target_arch.name}_#{libc}"
+  end
+
+  def parse_gcc_dir(s)
+    if s =~ /\Agcc_(\d+)_(\d+)_(\d+)_(\w+)_musl\z/
+      arch = ALL_ARCHS[$4]
+      if arch
+        return [ Ver($1 + "." + $2 + "." + $3), arch, "musl" ]
+      end
+    end
+    return nil
   end
 
   def show_status_all
 
-    puts "--- GCC toolchains (pre-compiled) ---"
-    @packages.values.select { |p| p.is_compiler }.each do |p|
-      show_status(p)
+    banner = ->(s) { puts; puts "--- #{s.center(30)} ---" }
+
+    list = @full_install_list
+    groups = [
+      [
+        "GCC toolchains",
+        list.select { |x| !x.target_arch.nil? }
+      ],
+
+      [
+        "Packages built by system CC",
+        list.select { |x| !x.target_arch and x.compiler.eql? "syscc" }
+      ],
+
+      [
+        "Source-only packages (noarch)",
+        list.select { |x| !x.compiler && !x.arch }
+      ],
+
+      *list.select { |x| Version === x.compiler }.
+        map { |x| x.compiler }.uniq.
+          map { |compiler|
+            [
+              "Packages built by GCC #{compiler}",
+              list.select { |x| x.compiler == compiler }
+            ]
+          }
+    ]
+
+    #list.each { |x| puts x }  # DEBUG
+
+    for msg, l in groups do
+      banner.call msg
+      l.map { |x| x.pkgname }.uniq.each { |pkg|
+        show_status(pkg, l.select { |x| x.pkgname == pkg })
+      }
     end
 
-    puts
-    puts "--- Packages for GCC: #{ARCH.gcc_ver} ---"
-    @packages.values.select { |p| !p.is_compiler }.each do |p|
-      show_status(p)
+  end
+
+  def show_status(name, list)
+
+    add_braces = ->(s) { "{#{s}}" }
+
+    if list.empty?
+      puts "#{name.ljust(35)} [ #{Package::EMPTY_STR} ]"
+      return
+    end
+
+    # Get an unique list of archs from all the installations
+    archs = list.map{ |e| e.get_human_arch_name }.uniq
+
+    s = archs.map {
+      |a|
+      [
+        a,
+        add_braces.call(
+          list.filter {
+            |e| e.get_human_arch_name == a
+          }.map(&:ver).map(&:to_s).join(", ")
+        )
+      ].join(": ")
+    }.join(", ")
+    puts "#{name.ljust(35)} [ #{Package::INSTALLED_STR} ] [ #{s} ]"
+  end
+
+  # Install the package
+  #
+  # param `pkg`:           Package object or name (String).
+  #
+  # param `ver`:           version of the package to install
+  # nil                 => default/auto/configured from ENV
+  # other               => might or might not be supported, depending on the
+  #                        package. Changes over time. It might not be possible
+  #                        to install older versions of the package that were
+  #                        supported before
+  def install(pkg, ver = nil)
+
+    pkg = get_smart(pkg)
+    if !pkg
+      puts "ERROR: package not found: #{pkg_or_name}"
+      return false
+    end
+
+    ver = nil if ver.blank?
+    pkg.install_impl(ver)
+    pkg.refresh()
+    return true
+  end
+
+  # Delete the package
+  #
+  # param `ver`:           version of the package to delete
+  # nil                 => default/auto/configured from ENV (like install())
+  # '*'                 => delete all versions found (for the given compiler)
+  # other               => delete a specific version, if exists.
+  #
+  # param `compiler`:      version of compiler used to build the package:
+  #                        a specific version of the compiler, might have
+  #                        multiple versions of the same package. The same
+  #                        package version, might exist for multiple compilers.
+  #
+  # nil                 => default/auto/configured from ENV
+  # '*'                 => all compiler versions
+  # other               => "syscc" or compiler version (e.g. Ver("12.4.0"))
+  #
+  # param `arch`:          target architecture of the package to delete:
+  #                        each package might have been built using multiple
+  #                        compiler versions, for multiple target architectures
+  #                        in multiple different versions.
+  # nil                 => default/auto/configured from ENV (like install())
+  # '*'                 => all architectures
+  # other               => specific architecture (e.g. i386)
+  def delete(pkg_or_name, ver = nil, compiler = nil, arch = nil)
+
+    if pkg_or_name.blank?
+      raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
+    end
+
+    all_pkgs  = (pkg_or_name.eql? "ALL")
+    all_ver   = (ver.eql?         "ALL")
+    all_cc    = (compiler.eql?    "ALL")
+    all_arch  = (arch.eql?        "ALL")
+
+    # Downgrade an empty string to nil (= default/auto)
+    ver       = nil if ver.blank?
+    compiler  = nil if compiler.blank?
+    arch      = nil if arch.blank?
+
+    pkg = !all_pkgs ? get_smart(pkg_or_name) : nil
+    if pkg
+      name          = pkg.name
+      default_cc    = pkg.default_cc
+      default_ver   = pkg.default_ver
+      default_arch  = pkg.default_arch
+      install_list  = pkg.install_list
+
+      assert { !default_cc.nil? }
+      assert { !default_ver.nil? }
+      assert { !default_arch.nil? }
+    else
+      name          = pkg_or_name
+      default_arch  = ARCH
+      default_cc    = ARCH.gcc_ver
+      default_ver   = nil           # see below
+      install_list  = @full_install_list
+      puts "WARNING: not recognized package name: #{name}" unless all_pkgs
+    end
+
+    # Check if the default compiler for this package is "syscc", meaning this
+    # is very likely a host tool, like a cross-compiler.
+    syscc     = (default_cc.eql? "syscc")
+
+    # If compiler is unset, check if the default is syscc. If that's the case,
+    # check if arch is nil or ALL, and if that's the case, use the default cc,
+    # ignoring the gcc_ver for the given ARCH. That's important as we could
+    # have arch=nil ===> ARCH=i386 by default and then pick up the *default*
+    # gcc_ver for that (default) arch and that would make *no* sense: if
+    # `arch` is not explicitly set to a specific value and the default cc is
+    # "syscc", we set it.
+    compiler  ||= (syscc && (!arch || all_arch)) && default_cc
+
+    # Set arch and ver to their defaults for this package, if they're unset.
+    arch      ||= default_arch
+    ver       ||= default_ver
+
+    # If the compiler is still unset, now pick up the gcc_ver for the given
+    # arch, even if that is the result of a default value, not manually set.
+    compiler  ||= ALL_ARCHS[ all_arch ? ARCH : arch ].gcc_ver
+
+    if ver.nil?
+      # The version can still be `nil` here if a package name was provided,
+      # and we didn't recognize the package. In this case, the default_ver
+      # is `nil` and if `ver` is nil as well, we end up here.
+      assert { pkg.nil? }
+
+      # The only reasonable thing to do here is to set all_ver = true.
+      all_ver = true
+    end
+
+    to_remove = install_list.select { |e|
+      (all_pkgs   || e.pkgname == name     ) &&
+      (all_ver    || e.ver == ver          ) &&
+      (all_arch   || e.arch == arch        ) &&
+      (all_cc     || e.compiler == compiler)
+    }
+
+    for info in to_remove do
+      puts "Remove pkg '#{info.pkgname}' install at #{info.path}"
+      #FileUtils.rm_rf(info.path)
+      install_list -= [info]
     end
   end
 
   private
+  def scan_toolchain
+
+    list = []
+    handle_package = ->(cc, arch, name) {
+      path = TC / (cc || "") / (arch || "noarch") / name
+      on_host = (arch&.start_with? "host_") || false
+      parsed_gcc_info = parse_gcc_dir(name)
+      cc = ((cc.eql? "syscc") ? "syscc" : Ver(cc)&.to_dot)
+      arch_obj = (arch && ALL_ARCHS[arch.sub("host_", "")]) || nil
+
+      if !parsed_gcc_info
+        for ver_str in Dir.children(path)
+          full_path = path / ver_str
+          ver = SafeVer(ver_str)
+          if !ver
+            puts "WARNING: invalid package version: #{path / ver_str}"
+            next
+          end
+          list << InstallInfo.new(name, cc, on_host, arch_obj, ver, full_path)
+        end
+      else
+        # GCC toolchains embed their version into the directory name e.g.:
+        #
+        #   gcc_13_3_0_i386_musl
+        #
+        # While to be consistent, toolchains should have had the same package
+        # name as here (e.g. gcc_i386_musl) and a subdirectory with their
+        # version.
+        ver, target_arch, libc = parsed_gcc_info
+        name = build_gcc_package_name(target_arch, libc)
+        list << InstallInfo.new(
+          name, "syscc", true, arch_obj, ver, path, target_arch, libc
+        )
+      end
+    }
+
+    for cc in Dir.children(TC)
+      next if cc.start_with?(".")
+      next if ["cache", "noarch"].include? cc
+
+      if cc != "syscc"
+        cc_ver = SafeVer(cc)
+        if cc_ver.nil? or cc_ver.type != VersionType::UNDERSCORE
+          puts "WARNING: invalid directory: #{TC / cc}"
+          next
+        end
+      end
+
+      for arch in Dir.children(TC / cc)
+        arch_obj = ALL_ARCHS[arch.sub("host_", "")]
+        on_host = arch.start_with? "host_"
+
+        if !arch_obj
+          puts "WARNING: unknown architecture '#{arch}' in #{TC / cc}"
+          next
+        end
+
+        for name in Dir.children(TC / cc / arch)
+          assert { !cc.nil? and !arch.nil? and !name.nil? }
+          handle_package.call(cc, arch, name)
+        end
+      end
+    end
+
+    for name in Dir.children(TC / "noarch")
+      handle_package.call(nil, nil, name)
+    end
+    return list
+  end
+
   def read_config_versions
     result = {}
     data = File.read(MAIN_DIR / "other" / "pkg_versions")
@@ -82,40 +360,6 @@ class PackageManager
     return result
   end
 
-  def show_status(pkg)
-
-    def install_arch_str(info) =
-      info.on_host ? "host" : info.arch.name
-
-    def add_braces(s) = "{#{s}}"
-
-    list = pkg.install_list
-    name = pkg.name
-
-    if list.empty?
-      puts "#{name.ljust(35)} [ #{Package::EMPTY_STR} ]"
-      return
-    end
-
-    # Exclude installations for other host archs
-    list.filter! { |x| x.arch == HOST_ARCH }
-
-    # Get an unique list of archs from all the installations
-    archs = list.map{|e| install_arch_str(e)}.uniq
-
-    s = archs.map {
-      |a|
-      [
-        a,
-        add_braces(
-          list.filter {
-            |e| install_arch_str(e) == a
-          }.map(&:ver).map(&:to_s).join(", ")
-        )
-      ].join(": ")
-    }.join(", ")
-    puts "#{name.ljust(35)} [ #{Package::INSTALLED_STR} ] [ #{s} ]"
-  end
-end
+end # Class PackageManager
 
 def pkgmgr = PackageManager.instance

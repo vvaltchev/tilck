@@ -267,12 +267,19 @@ module Main
             "Cannot use more than one mode options"
     end
 
-    opts[:install] += opts[:install_compiler].map {
-      |x| name, ver = x.split(":"); "gcc_#{name}_musl:#{ver}"
-    }
-    opts[:delete] += opts[:delete_compiler].map {
-      |x| name, ver = x.split(":"); "gcc_#{name}_musl:#{ver}"
-    }
+    for dest, source in [
+      [:install,:install_compiler],
+      [:delete,:delete_compiler]
+    ] do
+      opts[dest] += opts[source].map { |x|
+        arch, ver = x.split(":")
+        arch_obj = ALL_ARCHS[arch]
+        if !arch_obj
+          raise OptionParser::InvalidArgument, "Unknown architecture: #{arch}"
+        end
+        pkgmgr.build_gcc_package_name(arch_obj, "musl") + ":#{ver}"
+      }
+    end
     return opts
   end
 
@@ -300,6 +307,8 @@ module Main
       return 0
     end
 
+    pkgmgr.refresh()
+
     if options[:list]
       pkgmgr.show_status_all
       return 0
@@ -320,28 +329,19 @@ module Main
       # about all the packages mentioned by the user.
       for name in options[:install] do
         name, v = name.split(":")
-        pkg = pkgmgr.get(name)
-        pkg.install(Ver(v))
+        if !pkgmgr.install(name, Ver(v))
+          puts "ERROR: couldn't install: #{name}"
+          return 1
+        end
       end
       return 0
     end
 
     if !options[:delete].blank?
-      # First, check that all packages exist so that we don't delete some
-      # package and fail because of others, leaving in an undesired mid-state.
       for name in options[:delete] do
         name, v = name.split(":")
-        if !pkgmgr.get(name)
-          puts "ERROR: package not registered: #{name}"
-          return 1
-        end
-      end
-
-      # Now delete the packages. We cannot fail at this point.
-      for name in options[:delete] do
-        name, v = name.split(":")
-        pkg = pkgmgr.get(name)
-        pkg.delete(
+        pkgmgr.delete(
+          name,
           v == 'ALL' ? v : Ver(v),
           options[:compiler],
           options[:arch],

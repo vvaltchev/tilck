@@ -168,6 +168,10 @@ class Version
     assert { [VersionType::DOT, VersionType::UNDERSCORE].include? @type }
     @comps.join("_")
   end
+  def to_dot
+    assert { get_base_version_type(@type) == VersionBaseType::REG }
+    return Ver(@comps.join("."))
+  end
 
   def ordered = @type != VersionType::HASH
 
@@ -261,6 +265,12 @@ end
 
 def Ver(s)
   return !s.nil? ? Version.new(s) : nil
+end
+
+def SafeVer(s)
+  return Ver(s)
+rescue StandardError => e
+  return nil
 end
 
 if __FILE__ == $0

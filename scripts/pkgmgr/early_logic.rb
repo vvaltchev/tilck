@@ -102,6 +102,9 @@ class Hash
   def blank? = empty?
 end
 
+class Object
+  def blank? = false
+end
 
 module InitOnly
 

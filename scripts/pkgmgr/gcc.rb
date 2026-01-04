@@ -13,9 +13,9 @@ class GccCompiler < Package
   include FileUtilsShortcuts
 
   PROJ_NAME = "musl-cross-make"
-  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME._.upcase).to_s
+  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME).to_s
   RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
-  VER_MUSL = pkgmgr.get_config_ver("MUSL")
+  VER_MUSL = pkgmgr.get_config_ver("musl")
 
   attr_reader :target_arch, :libc
 
@@ -23,7 +23,7 @@ class GccCompiler < Package
     @target_arch = target_arch
     @libc = libc
     super(
-      name: "gcc_#{target_arch.name}_#{libc}",
+      name: pkgmgr.build_gcc_package_name(target_arch, libc),
       on_host: true,
       is_compiler: true,
       arch_list: ALL_HOST_ARCHS,
@@ -32,41 +32,19 @@ class GccCompiler < Package
   end
 
   def get_install_list
-
-    def l(s) = s.length
-    def drop_prefix(s, prefix) = s[l(prefix)..]
-    def drop_suffix(s, suffix) = s[.. -(l(suffix) + 1)]
-
     list = []
-    prefix = "gcc_"
-    suffix = "_#{@libc}"
-    target_suffix = "_#{@target_arch.name}"
-
-    # The GCC entries look like this:
-    #
-    #   gcc_13_3_0_riscv64_musl
-    #
     for e in HOST_ARCH_DIR_SYS.each_entry do
-
-      orig_entry = e.to_s
-      e = orig_entry
-      next if !e.start_with? prefix
-      e = drop_prefix(e, prefix)                  # drop the "gcc_" prefix
-
-      next if !e.end_with? suffix
-      e = drop_suffix(e, suffix)                  # drop the "_musl" suffix
-
-      next if !e.end_with? target_suffix
-      e = drop_suffix(e, target_suffix)           # drop the _$ARCH suffix
-
-      p = HOST_ARCH_DIR_SYS / orig_entry
-      list.append(InstallInfo.new(name, "syscc", true, HOST_ARCH, Ver(e), p))
+      parsed_gcc_info = pkgmgr.parse_gcc_dir(e.to_s())
+      if parsed_gcc_info
+        ver, target_arch, libc = parsed_gcc_info
+        name = pkgmgr.build_gcc_package_name(target_arch, libc)
+        p = HOST_ARCH_DIR_SYS / e
+        list << InstallInfo.new(name, "syscc", true, HOST_ARCH, ver, p)
+      end
     end
-
     return list
   end
 
-  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
@@ -78,7 +56,7 @@ class GccCompiler < Package
 
     if installed? ver
       puts "INFO: already installed, skip"
-      return
+      return true
     end
 
     tarname = get_tarname(ver)
@@ -97,9 +75,13 @@ class GccCompiler < Package
         Dir.children(".").each(&method(:fix_single_file_name))
       end
     end
+
+    return true
   end
 
   private
+  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
+
   def get_tarname(ver)
     archname = @target_arch.name
     host_an = HOST_ARCH.name
@@ -135,9 +117,6 @@ class GccCompiler < Package
 end # class GccCompiler
 
 for name, arch in ALL_ARCHS do
-  PackageManager.instance.register(
-    GccCompiler.new(arch, "musl")
-  )
+  pkgmgr.register(GccCompiler.new(arch, "musl"))
 end
-
 
