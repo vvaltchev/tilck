@@ -75,4 +75,4 @@ class PackageManager
 
 end
 
-
+def pkgmgr = PackageManager.instance

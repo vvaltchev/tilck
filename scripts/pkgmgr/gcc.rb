@@ -13,9 +13,9 @@ class GccCompiler < Package
   include FileUtilsShortcuts
 
   PROJ_NAME = "musl-cross-make"
-  CURR_TAG = "3635262e452"
+  CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME._.upcase).to_s
   RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
-  VER_MUSL = PackageManager.instance.get_config_ver("MUSL")
+  VER_MUSL = pkgmgr.get_config_ver("MUSL")
 
   attr_reader :target_arch, :libc
 

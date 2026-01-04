@@ -78,6 +78,7 @@ end
 # Monkey-patch String and NilClass to support blank? like in Rails.
 class String
   def blank? = strip.empty?
+  def _ = gsub("-", "_")  # Custom to this package manager
 end
 
 class NilClass
