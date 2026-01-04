@@ -45,10 +45,13 @@ end
 class Package
 
   attr_reader :name, :on_host, :is_compiler, :arch_list, :dep_list
+  attr_reader :install_list
 
-  INSTALLED_STR = Term.makeGreen("installed".center(11))
-  SKIPPED_STR   = Term.makeYellow("skipped".center(11))
-  BROKEN_STR    = Term.makeRed("broken".center(11))
+  STATUS_LEN    = 9
+  INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
+  SKIPPED_STR   = Term.makeYellow("skipped".center(STATUS_LEN))
+  BROKEN_STR    = Term.makeRed("broken".center(STATUS_LEN))
+  EMPTY_STR     = "".center(STATUS_LEN)
 
   public
   def initialize(name:,
@@ -71,7 +74,7 @@ class Package
   def eql?(other) = (self == other)
   def hash = (id.hash)
 
-  def is_installed?(arch, compilerVer = nil, ver = nil)
+  def installed?(arch, compilerVer = nil, ver = nil)
     for info in @install_list do
       assert { info.on_host == @on_host }
       next if info.arch != arch
@@ -82,39 +85,7 @@ class Package
     return false
   end
 
-  def show_status
 
-    def install_arch_str(info) =
-      info.on_host ? "host" : info.arch.name
-
-    def add_braces(s) = "{#{s}}"
-
-    list = @install_list
-
-    if list.empty?
-      puts @name
-      return
-    end
-
-    # Exclude installations for other host archs
-    list.filter! { |x| x.arch == HOST_ARCH }
-
-    # Get an unique list of archs from all the installations
-    archs = list.map{|e| install_arch_str(e)}.uniq
-
-    s = archs.map {
-      |a|
-      [
-        a,
-        add_braces(
-          list.filter {
-            |e| install_arch_str(e) == a
-          }.map(&:ver).map(&:to_s).join(", ")
-        )
-      ].join(": ")
-    }.join(", ")
-    puts "#{@name.ljust(35)} [ #{INSTALLED_STR} ] [ #{s} ]"
-  end
 
   # Install the package
   #

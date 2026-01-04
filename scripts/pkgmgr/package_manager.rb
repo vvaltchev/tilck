@@ -42,8 +42,16 @@ class PackageManager
   end
 
   def show_status_all
-    for id, p in @packages do
-      p.show_status
+
+    puts "--- GCC toolchains (pre-compiled) ---"
+    @packages.values.select { |p| p.is_compiler }.each do |p|
+      show_status(p)
+    end
+
+    puts
+    puts "--- Packages for GCC: #{ARCH.gcc_ver} ---"
+    @packages.values.select { |p| !p.is_compiler }.each do |p|
+      show_status(p)
     end
   end
 
@@ -74,6 +82,40 @@ class PackageManager
     return result
   end
 
+  def show_status(pkg)
+
+    def install_arch_str(info) =
+      info.on_host ? "host" : info.arch.name
+
+    def add_braces(s) = "{#{s}}"
+
+    list = pkg.install_list
+    name = pkg.name
+
+    if list.empty?
+      puts "#{name.ljust(35)} [ #{Package::EMPTY_STR} ]"
+      return
+    end
+
+    # Exclude installations for other host archs
+    list.filter! { |x| x.arch == HOST_ARCH }
+
+    # Get an unique list of archs from all the installations
+    archs = list.map{|e| install_arch_str(e)}.uniq
+
+    s = archs.map {
+      |a|
+      [
+        a,
+        add_braces(
+          list.filter {
+            |e| install_arch_str(e) == a
+          }.map(&:ver).map(&:to_s).join(", ")
+        )
+      ].join(": ")
+    }.join(", ")
+    puts "#{name.ljust(35)} [ #{Package::INSTALLED_STR} ] [ #{s} ]"
+  end
 end
 
 def pkgmgr = PackageManager.instance
