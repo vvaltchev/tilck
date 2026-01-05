@@ -69,7 +69,11 @@ class PackageManager
 
   def show_status_all
 
-    banner = ->(s) { puts; puts "--- #{s.center(30)} ---" }
+    curr_cc = ARCH.gcc_ver
+    banner = ->(s) { puts; puts "--- #{s.center(40)} ---" }
+    show_curr_compiler = ->(cc) {
+      cc == curr_cc ? " [ CURRENT ]" : ""
+    }
 
     list = @full_install_list
     groups = [
@@ -90,10 +94,10 @@ class PackageManager
 
       *list.select { |x| Version === x.compiler }.
         map { |x| x.compiler }.uniq.
-          map { |compiler|
+          map { |cc|
             [
-              "Packages built by GCC #{compiler}",
-              list.select { |x| x.compiler == compiler }
+              "Packages built by GCC #{cc}#{show_curr_compiler.(cc)}",
+              list.select { |x| x.compiler == cc }
             ]
           }
     ]
