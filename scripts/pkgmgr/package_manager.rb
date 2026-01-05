@@ -159,12 +159,12 @@ class PackageManager
     return true
   end
 
-  # Delete the package
+  # Uninstall the package
   #
-  # param `ver`:           version of the package to delete
+  # param `ver`:           version of the package to uninstall
   # nil                 => default/auto/configured from ENV (like install())
-  # '*'                 => delete all versions found (for the given compiler)
-  # other               => delete a specific version, if exists.
+  # '*'                 => uninstall all versions found (for the given compiler)
+  # other               => uninstall a specific version, if exists.
   #
   # param `compiler`:      version of compiler used to build the package:
   #                        a specific version of the compiler, might have
@@ -175,14 +175,14 @@ class PackageManager
   # '*'                 => all compiler versions
   # other               => "syscc" or compiler version (e.g. Ver("12.4.0"))
   #
-  # param `arch`:          target architecture of the package to delete:
+  # param `arch`:          target architecture of the package to uninstall:
   #                        each package might have been built using multiple
   #                        compiler versions, for multiple target architectures
   #                        in multiple different versions.
   # nil                 => default/auto/configured from ENV (like install())
   # '*'                 => all architectures
   # other               => specific architecture (e.g. i386)
-  def delete(pkg_or_name, ver = nil, compiler = nil, arch = nil)
+  def uninstall(pkg_or_name, ver = nil, compiler = nil, arch = nil)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"

@@ -148,8 +148,8 @@ module Main
       list: false,
       install: [],
       install_compiler: [],
-      delete: [],
-      delete_compiler: [],
+      uninstall: [],
+      uninstall_compiler: [],
       arch: nil,
       compiler: nil,
     }
@@ -160,8 +160,8 @@ module Main
       :list,
       :install,
       :install_compiler,
-      :delete,
-      :delete_compiler,
+      :uninstall,
+      :uninstall_compiler,
     ]
 
     argv = ARGV.dup()
@@ -203,22 +203,22 @@ module Main
     end
 
     p.on(
-      '-d', '--delete PKG[:VER]',
-      'Delete the given version (optional) of a package [MODE]'
+      '-u', '--uninstall PKG[:VER]',
+      'Uninstall the given version (optional) of a package [MODE]'
     ) do |first|
-      get_multiple_args.call(first, :delete)
+      get_multiple_args.call(first, :uninstall)
     end
 
     p.on(
-      '-D', '--delete-compiler ARCH',
-      'Delete the GCC + libmusl cross-compiler for the given ARCH [MODE]'
+      '-U', '--uninstall-compiler ARCH',
+      'Uninstall the GCC + libmusl cross-compiler for the given ARCH [MODE]'
     ) do |first|
-      get_multiple_args.call(first, :delete_compiler)
+      get_multiple_args.call(first, :uninstall_compiler)
     end
 
     p.on(
       '-c', '--compiler-ver VER',
-      'Make the delete operation affect only packages built by the given',
+      'Make the uninstall operation affect only packages built by the given',
       'compiler version. The special value ALL, means all compilers. The',
       'special value "syscc" means the system compiler. Using that makes',
       'sense only for host packages like the GCC toolchains themselves and',
@@ -234,7 +234,7 @@ module Main
 
     p.on(
       '-a', '--arch ARCH',
-      'Make the delete operation affect only packages built for the given',
+      'Make the uninstall operation affect only packages built for the given',
       'architecture. The special value ALL, means all architectures.'
     ) do |value|
 
@@ -269,7 +269,7 @@ module Main
 
     for dest, source in [
       [:install,:install_compiler],
-      [:delete,:delete_compiler]
+      [:uninstall,:uninstall_compiler]
     ] do
       opts[dest] += opts[source].map { |x|
         arch, ver = x.split(":")
@@ -337,10 +337,10 @@ module Main
       return 0
     end
 
-    if !options[:delete].blank?
-      for name in options[:delete] do
+    if !options[:uninstall].blank?
+      for name in options[:uninstall] do
         name, v = name.split(":")
-        pkgmgr.delete(
+        pkgmgr.uninstall(
           name,
           v == 'ALL' ? v : Ver(v),
           options[:compiler],
