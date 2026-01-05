@@ -145,6 +145,7 @@ module Main
       help: false,
       skip_install_pkgs: false,
       just_context: false,
+      dry_run: false,
       list: false,
       install: [],
       install_compiler: [],
@@ -191,6 +192,10 @@ module Main
       opts[:just_context] = true
     }
 
+    p.on('-d', '--dry-run', 'Dry run for the uninstall mode') {
+      opts[:dry_run] = true
+    }
+
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
       get_multiple_args.call(first, :install)
     end
@@ -222,7 +227,7 @@ module Main
       'compiler version. The special value ALL, means all compilers. The',
       'special value "syscc" means the system compiler. Using that makes',
       'sense only for host packages like the GCC toolchains themselves and',
-      'other build host tools'
+      'other build host tools [OPTION]'
     ) do |value|
 
       if value != "ALL" and value != "syscc"
@@ -235,7 +240,7 @@ module Main
     p.on(
       '-a', '--arch ARCH',
       'Make the uninstall operation affect only packages built for the given',
-      'architecture. The special value ALL, means all architectures.'
+      'architecture. The special value ALL, means all architectures. [OPTION]'
     ) do |value|
 
       if value != "ALL"
@@ -342,6 +347,7 @@ module Main
         name, v = name.split(":")
         pkgmgr.uninstall(
           name,
+          options[:dry_run],
           v == 'ALL' ? v : Ver(v),
           options[:compiler],
           options[:arch],

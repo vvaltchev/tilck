@@ -161,9 +161,12 @@ class PackageManager
 
   # Uninstall the package
   #
+  # param `pkg_or_name`:   package object or package name to uninstall.
+  #
   # param `ver`:           version of the package to uninstall
   # nil                 => default/auto/configured from ENV (like install())
-  # '*'                 => uninstall all versions found (for the given compiler)
+  # '*'                 => uninstall all versions found (for the given
+  #                        compiler)
   # other               => uninstall a specific version, if exists.
   #
   # param `compiler`:      version of compiler used to build the package:
@@ -182,7 +185,7 @@ class PackageManager
   # nil                 => default/auto/configured from ENV (like install())
   # '*'                 => all architectures
   # other               => specific architecture (e.g. i386)
-  def uninstall(pkg_or_name, ver = nil, compiler = nil, arch = nil)
+  def uninstall(pkg_or_name, dry, ver = nil, compiler = nil, arch = nil)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -256,10 +259,12 @@ class PackageManager
       (all_cc     || e.compiler == compiler)
     }
 
+    p = "[DRY RUN] " if dry
     for info in to_remove do
-      puts "Remove pkg '#{info.pkgname}' install at #{info.path}"
-      #FileUtils.rm_rf(info.path)
-      install_list -= [info]
+      puts "#{p}Remove pkg '#{info.pkgname}' install at #{info.path}"
+      if !dry
+        FileUtils.rm_rf(info.path)
+      end
     end
   end
 
