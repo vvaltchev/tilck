@@ -175,7 +175,7 @@ module Main
       opts[sym] += list
     }
 
-    p = OptionParser.new('./scripts/build_toolchain [OPTIONS]')
+    p = OptionParser.new('./scripts/build_toolchain [-n] [OPTIONS]')
 
     p.on('-h', '--help', 'Show this help message [MODE]') {
       opts[:help] = true

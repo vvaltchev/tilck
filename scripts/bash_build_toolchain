@@ -137,7 +137,7 @@ function build_ruby {
 
    echo "INFO: Build Ruby $VER_RUBY from source"
 
-   if [[ "$SKIP_INSTALL_PACKAGES" == "" ]]; then
+   if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
       # Do check/install all the system dependencies.
       install_packages
    fi
@@ -198,8 +198,10 @@ function setup_ruby {
          # check for their presence and install them as necessary. The good
          # news is that FreeBSD's package manager is super-fast, so that takes
          # a few hundred milliseconds (e.g. ~300ms) on a modern machine.
-         install_packages
-         export SKIP_INSTALL_PACKAGES=1
+         if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
+            install_packages
+            export SKIP_INSTALL_PACKAGES=1
+         fi
       fi
       return
    fi
@@ -302,6 +304,7 @@ function dump_build_toolchain_env {
    echo "CC=$CC"
    echo "CXX=$CXX"
    echo "RUBY=$RUBY"
+   echo "SKIP_INSTALL_PACKAGES=$SKIP_INSTALL_PACKAGES"
    echo
    echo "Other context"
    echo "---------------"
@@ -319,12 +322,15 @@ function dump_build_toolchain_env {
 : ${TCROOT_PARENT:=$MAIN_DIR}
 : ${TCROOT:=$TCROOT_PARENT/toolchain3}
 TC="$TCROOT"
-
 export TCROOT
 
 dump_build_toolchain_env
 set_host_arch_variable
 export HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
+
+if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
+   export SKIP_INSTALL_PACKAGES=1
+fi
 
 create_base_dirs
 setup_ruby
