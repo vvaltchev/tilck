@@ -137,8 +137,10 @@ function build_ruby {
 
    echo "INFO: Build Ruby $VER_RUBY from source"
 
-   # Do check/install all the system dependencies.
-   install_packages
+   if [[ "$SKIP_INSTALL_PACKAGES" == "" ]]; then
+      # Do check/install all the system dependencies.
+      install_packages
+   fi
 
    # Now finally create/enter in the ruby directory and download the source.
    mkdir -p $compdir/..
@@ -171,7 +173,7 @@ function setup_ruby {
    local minor
    local ver
 
-   # Check Ruby's version. It should be installed on the system at this point.
+   # Check Ruby's version.
    if [[ "$RUBY" != "" && -f "$RUBY" ]]; then
       echo "INFO: Using ruby from the env var (unconditionally)."
       return
@@ -197,12 +199,14 @@ function setup_ruby {
          # news is that FreeBSD's package manager is super-fast, so that takes
          # a few hundred milliseconds (e.g. ~300ms) on a modern machine.
          install_packages
+         export SKIP_INSTALL_PACKAGES=1
       fi
       return
    fi
 
    if [[ -f "$RUBY" ]]; then
       echo "System Ruby is too old. Required >= $RUBY_MIN_VER"
+      export HAVE_OLD_RUBY=1
       unset RUBY
    fi
 
@@ -227,6 +231,27 @@ function setup_ruby {
    if [ -f "$RUBY" ]; then
       echo "Using local Ruby: $RUBY"
       return
+   fi
+
+   if [[ "$HAVE_OLD_RUBY" == "" ]]; then
+      # It makes sense installing the packages and Ruby only if Ruby wasn't
+      # already in the system. Otherwise, we would waste time, when it was
+      # clear that Ruby is installed but it's too old and we need to build
+      # it from source.
+      echo "INFO: run install_packages() which will also install Ruby"
+      install_packages
+      export SKIP_INSTALL_PACKAGES=1
+
+      RUBY="$(which ruby)"
+      if check_ruby_ver; then
+         echo "INFO: using system Ruby: $RUBY"
+         return
+      fi
+
+      if [[ -f "$RUBY" ]]; then
+         echo "System Ruby is too old. Required >= $RUBY_MIN_VER"
+         unset RUBY
+      fi
    fi
 
    build_ruby
