@@ -153,6 +153,7 @@ module Main
       uninstall_compiler: [],
       arch: nil,
       compiler: nil,
+      group_by: nil,
     }
 
     mode_opts = [
@@ -220,6 +221,11 @@ module Main
     ) do |first|
       get_multiple_args.call(first, :uninstall_compiler)
     end
+
+    p.on('-g', '--group-by WHAT', ['ver', 'arch'],
+         'Group packages by "ver" or "arch" [OPTION]') { |what|
+      opts[:group_by] = what
+    }
 
     p.on(
       '-c', '--compiler-ver VER',
@@ -315,7 +321,7 @@ module Main
     pkgmgr.refresh()
 
     if options[:list]
-      pkgmgr.show_status_all
+      pkgmgr.show_status_all options[:group_by]
       return 0
     end
 

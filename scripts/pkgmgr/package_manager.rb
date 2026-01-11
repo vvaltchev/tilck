@@ -67,7 +67,7 @@ class PackageManager
     return nil
   end
 
-  def show_status_all
+  def show_status_all(group_by = nil)
 
     curr_cc = ARCH.gcc_ver
     banner = ->(s) { puts; puts "--- #{s.center(40)} ---" }
@@ -107,13 +107,13 @@ class PackageManager
     for msg, l in groups do
       banner.call msg
       l.map { |x| x.pkgname }.uniq.each { |pkg|
-        show_status(pkg, l.select { |x| x.pkgname == pkg })
+        show_status(pkg, group_by, l.select { |x| x.pkgname == pkg })
       }
     end
 
   end
 
-  def show_status(name, list)
+  def show_status(name, group_by, list)
 
     add_braces = ->(s) { "{#{s}}" }
 
@@ -124,18 +124,42 @@ class PackageManager
 
     # Get an unique list of archs from all the installations
     archs = list.map{ |e| e.get_human_arch_name }.uniq
+    vers = list.map { |e| e.ver }.uniq
 
-    s = archs.map {
-      |a|
-      [
-        a,
-        add_braces.call(
-          list.filter {
-            |e| e.get_human_arch_name == a
-          }.map(&:ver).map(&:to_s).join(", ")
-        )
-      ].join(": ")
-    }.join(", ")
+    if group_by.nil?
+
+      s = archs.join(", ")
+
+    elsif group_by == 'arch'
+
+      s = archs.map {
+        |a|
+        [
+          a,
+          add_braces.call(
+            list.filter {
+              |e| e.get_human_arch_name == a
+            }.map(&:ver).map(&:to_s).join(", ")
+          )
+        ].join(": ")
+      }.join(", ")
+
+    elsif group_by == 'ver'
+
+      s = vers.map {
+        |v|
+        [
+          v,
+          add_braces.call(
+            list.filter {
+              |e| e.ver == v
+            }.map(&:arch).map(&:to_s).join(", ")
+          )
+        ].join(": ")
+      }.join(", ")
+
+    end
+
     puts "#{name.ljust(35)} [ #{Package::INSTALLED_STR} ] [ #{s} ]"
   end
 
