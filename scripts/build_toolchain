@@ -7,6 +7,7 @@ OS="`uname -s`"
 BASH="bash"
 SED="sed"
 GREP="grep"
+CUT="cut"
 
 echo "Full args list: $0 $@"
 echo "Detected host OS: $OS"
@@ -15,11 +16,12 @@ echo
 if [ "$OS" = "FreeBSD" ]; then
    SED="gsed"
    GREP="ggrep"
+   CUT="gcut"
 fi
 
 missing=0
-for c in $BASH $SED $GREP; do
-   echo -n "Check for tool: GNU $c "
+for c in $BASH $SED $GREP $CUT; do
+   echo -n "Check for tool: $c\t"
    if command -v "$c" >/dev/null; then
       echo "[ OK ]"
    else
