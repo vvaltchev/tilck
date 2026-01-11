@@ -46,6 +46,8 @@ class InstallInfo
     freeze
   end
 
+  def compiler? = !@target_arch.nil?
+
   def get_human_arch_name
     return "noarch" if arch.nil?
     return "host" if arch == HOST_ARCH

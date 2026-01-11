@@ -190,6 +190,8 @@ class PackageManager
   # Uninstall the package
   #
   # param `pkg_or_name`:   package object or package name to uninstall.
+  # param `dry`:           dry-run when it's true
+  # param `force`:         include compilers in "ALL"
   #
   # param `ver`:           version of the package to uninstall
   # nil                 => default/auto/configured from ENV (like install())
@@ -213,7 +215,7 @@ class PackageManager
   # nil                 => default/auto/configured from ENV (like install())
   # '*'                 => all architectures
   # other               => specific architecture (e.g. i386)
-  def uninstall(pkg_or_name, dry, ver = nil, compiler = nil, arch = nil)
+  def uninstall(pkg_or_name, dry, force, ver = nil, compiler = nil, arch = nil)
 
     if pkg_or_name.blank?
       raise ArgumentError, "Invalid package name: '#{pkg_or_name}'"
@@ -286,6 +288,12 @@ class PackageManager
       (all_arch   || e.arch == arch        ) &&
       (all_cc     || e.compiler == compiler)
     }
+
+    if all_pkgs && !force
+      # When the package name is ALL, we need to exclude all the cross compilers
+      # from the list, unless `force` is also true.
+      to_remove = to_remove.select { |e| !e.compiler? }
+    end
 
     p = "[DRY RUN] " if dry
     for info in to_remove do

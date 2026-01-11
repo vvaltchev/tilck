@@ -147,6 +147,7 @@ module Main
       just_context: false,
       dry_run: false,
       list: false,
+      force: false,
       install: [],
       install_compiler: [],
       uninstall: [],
@@ -259,6 +260,12 @@ module Main
     end
 
     p.on(
+      '-f', '--force',
+      'Force. Meaning depending on the MODE. In uninstall mode, this includes',
+      'the cross-compilers, when the package name is ALL.'
+    ) { opts[:force] = true }
+
+    p.on(
       '-n', '--skip-install-pkgs',
       'Do not check/install system dependencies. This flag is useful when the',
       'user run at least *one* time this script without this flag so that the',
@@ -354,6 +361,7 @@ module Main
         pkgmgr.uninstall(
           name,
           options[:dry_run],
+          options[:force],
           v == 'ALL' ? v : Ver(v),
           options[:compiler],
           options[:arch],
