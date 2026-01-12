@@ -17,11 +17,22 @@ class PackageManager
   def initialize
     @packages = {}
     @config_versions = read_config_versions()
-    @full_install_list = nil
+    @known_pkgs_paths = nil
+    @known_installed = nil
+    @found_installed = nil
   end
 
   def refresh
-    @full_install_list = scan_toolchain()
+    @known_pkgs_paths = Set.new()
+    @known_installed = []
+
+    for pkg in @packages.values do
+      sublist = pkg.get_install_list()
+      @known_pkgs_paths += sublist.map { |x| x.path }
+      @known_installed += sublist
+    end
+
+    @found_installed = scan_toolchain()
   end
 
   def register(package)
@@ -76,7 +87,7 @@ class PackageManager
       cc == curr_cc ? " [ CURRENT ]" : ""
     }
 
-    list = @full_install_list
+    list = @known_installed + @found_installed
     groups = [
       [
         "GCC toolchains",
@@ -128,7 +139,7 @@ class PackageManager
 
     add_braces = ->(s) { "{#{s}}" }
 
-    if list.empty?
+    if list.nil? or list.empty?
       puts "#{name.ljust(35)} [ #{Package::EMPTY_STR} ]"
       return
     end
@@ -262,7 +273,7 @@ class PackageManager
       default_arch  = ARCH
       default_cc    = ARCH.gcc_ver
       default_ver   = nil           # see below
-      install_list  = @full_install_list
+      install_list  = @found_installed
       puts "WARNING: not recognized package name: #{name}" unless all_pkgs
     end
 
@@ -323,17 +334,10 @@ class PackageManager
   def scan_toolchain
 
     list = []
-    knows_pkgs_paths = Set.new()
-
-    for pkg in @packages.values do
-      sublist = pkg.get_install_list()
-      knows_pkgs_paths += sublist.map { |x| x.path }
-      list += sublist
-    end
 
     handle_package = ->(cc, arch, name) {
       path = TC / (cc || "") / (arch || "noarch") / name
-      return if knows_pkgs_paths.include? path
+      return if @known_pkgs_paths.include? path
 
       on_host = (arch&.start_with? "host_") || false
       parsed_gcc_info = parse_gcc_dir(name)
