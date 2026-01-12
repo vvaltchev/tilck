@@ -147,8 +147,14 @@ class PackageManager
       return
     end
 
+    if list.all? { |e| e.compiler.eql? "syscc" }
+      atos = ->(a) { get_human_arch_name(a) }
+    else
+      atos = ->(a) { a.nil?? "noarch" : a.name }
+    end
+
     # Get an unique list of archs from all the installations
-    archs = list.map{ |e| get_human_arch_name(e.arch) }.uniq
+    archs = list.map{ |e| atos.call(e.arch) }.uniq
     vers = list.map { |e| e.ver }.uniq
     list = list.filter { |e| !e.path.nil? }
 
@@ -164,7 +170,7 @@ class PackageManager
           a,
           add_braces.call(
             list.filter {
-              |e| get_human_arch_name(e.arch) == a
+              |e| atos.call(e.arch) == a
             }.map(&:ver).uniq.map(&:to_s).join(", ")
           )
         ].join(": ")
@@ -179,9 +185,7 @@ class PackageManager
           add_braces.call(
             list.filter {
               |e| e.ver == v
-            }.map(&:arch).uniq.map(
-              &method(:get_human_arch_name)
-            ).join(", ")
+            }.map(&:arch).uniq.map(&atos).join(", ")
           )
         ].join(": ")
       }.join(", ")
