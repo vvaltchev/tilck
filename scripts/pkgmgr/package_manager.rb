@@ -20,16 +20,19 @@ class PackageManager
     @known_pkgs_paths = nil
     @known_installed = nil
     @found_installed = nil
+    @installable = nil
   end
 
   def refresh
     @known_pkgs_paths = Set.new()
     @known_installed = []
+    @installable = []
 
     for pkg in @packages.values do
       sublist = pkg.get_install_list()
       @known_pkgs_paths += sublist.map { |x| x.path }
       @known_installed += sublist
+      @installable += pkg.get_installable_list()
     end
 
     @found_installed = scan_toolchain()
@@ -87,7 +90,7 @@ class PackageManager
       cc == curr_cc ? " [ CURRENT ]" : ""
     }
 
-    list = @known_installed + @found_installed
+    list = @known_installed + @found_installed + @installable
     groups = [
       [
         "GCC toolchains",
@@ -145,8 +148,9 @@ class PackageManager
     end
 
     # Get an unique list of archs from all the installations
-    archs = list.map{ |e| e.get_human_arch_name }.uniq
+    archs = list.map{ |e| get_human_arch_name(e.arch) }.uniq
     vers = list.map { |e| e.ver }.uniq
+    list = list.filter { |e| !e.path.nil? }
 
     if group_by.nil?
 
@@ -154,26 +158,30 @@ class PackageManager
 
     elsif group_by == 'arch'
 
-      list = list.filter { |e| e.get_human_arch_name == a }
       s = archs.map {
         |a|
         [
           a,
           add_braces.call(
-            list.map(&:ver).map(&:to_s).join(", ")
+            list.filter {
+              |e| get_human_arch_name(e.arch) == a
+            }.map(&:ver).uniq.map(&:to_s).join(", ")
           )
         ].join(": ")
       }.join(", ")
 
     elsif group_by == 'ver'
 
-      list = filter { |e| e.ver == v }
       s = vers.map {
         |v|
         [
           v,
           add_braces.call(
-            list.map(&:arch).map(&:to_s).join(", ")
+            list.filter {
+              |e| e.ver == v
+            }.map(&:arch).uniq.map(
+              &method(:get_human_arch_name)
+            ).join(", ")
           )
         ].join(": ")
       }.join(", ")
@@ -181,7 +189,11 @@ class PackageManager
     end
 
     if list.all? { |x| !x.pkg.nil? }
-      status = Package::INSTALLED_STR
+      if list.any? { |x| !x.path.nil? }
+        status = Package::INSTALLED_STR
+      else
+        status = Package::EMPTY_STR
+      end
     else
       status = Package::FOUND_STR
     end

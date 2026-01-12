@@ -50,12 +50,6 @@ class InstallInfo
 
   def compiler? = !@target_arch.nil?
 
-  def get_human_arch_name
-    return "noarch" if arch.nil?
-    return "host" if arch == HOST_ARCH
-    return arch.name
-  end
-
   def to_s = ("I{ " +
       "pkg: #{@pkgname.ljust(20)}, comp: #{@compiler.to_s.ljust(6)}, " +
       "arch: #{((@on_host?'host_':'')+@arch.to_s).ljust(11)}, " +

@@ -157,3 +157,10 @@ HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / $ARCH.name / BOARD : nil
+
+def get_human_arch_name(arch)
+  return "noarch" if arch.nil?
+  return "host" if arch == HOST_ARCH
+  return arch.name
+end
+

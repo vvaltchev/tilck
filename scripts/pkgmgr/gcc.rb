@@ -16,6 +16,7 @@ class GccCompiler < Package
   CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME).to_s
   RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
   VER_MUSL = pkgmgr.get_config_ver("musl")
+  ALL_VERSIONS = [Ver("12.4.0"), Ver("13.3.0")]
 
   attr_reader :target_arch, :libc
 
@@ -45,6 +46,17 @@ class GccCompiler < Package
         )
 
       end
+    end
+    return list
+  end
+
+  def get_installable_list
+    list = []
+    for ver in ALL_VERSIONS do
+      list << InstallInfo.new(
+        name, "syscc", true, HOST_ARCH, ver, nil, self,
+        target_arch, libc
+      )
     end
     return list
   end
