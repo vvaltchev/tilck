@@ -285,6 +285,10 @@ module Main
             "Cannot use more than one mode options"
     end
 
+    if opts[:list] and (!opts[:compiler].nil? and !opts[:compiler].eql?("ALL"))
+      raise OptionParser::InvalidArgument, "with -l only -c ALL can be used"
+    end
+
     for dest, source in [
       [:install,:install_compiler],
       [:uninstall,:uninstall_compiler]
@@ -328,7 +332,10 @@ module Main
     pkgmgr.refresh()
 
     if options[:list]
-      pkgmgr.show_status_all options[:group_by]
+      pkgmgr.show_status_all(
+        options[:group_by],
+        options[:compiler].eql?("ALL")
+      )
       return 0
     end
 

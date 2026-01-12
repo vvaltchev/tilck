@@ -67,7 +67,7 @@ class PackageManager
     return nil
   end
 
-  def show_status_all(group_by = nil)
+  def show_status_all(group_by = nil, all_compilers = false)
 
     curr_cc = ARCH.gcc_ver
     banner = ->(s) { puts; puts "--- #{s.center(40)} ---" }
@@ -93,10 +93,19 @@ class PackageManager
       ],
 
       *list.select { |x| Version === x.compiler }.
-        map { |x| x.compiler }.uniq.
+        map { |x| x.compiler }.uniq.select { |cc| cc == curr_cc }.
           map { |cc|
             [
-              "Packages built by GCC #{cc}#{show_curr_compiler.(cc)}",
+              "Packages built by GCC #{cc} [ CURRENT ]",
+              list.select { |x| x.compiler == cc }
+            ]
+          },
+
+      *list.select { |x| Version === x.compiler and all_compilers }.
+        map { |x| x.compiler }.uniq.select { |cc| cc != curr_cc }.
+          map { |cc|
+            [
+              "Packages built by GCC #{cc}",
               list.select { |x| x.compiler == cc }
             ]
           }
@@ -111,6 +120,7 @@ class PackageManager
       }
     end
 
+    puts
   end
 
   def show_status(name, group_by, list)
