@@ -22,7 +22,7 @@ end
 class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
-  attr_reader :target_arch, :libc
+  attr_reader :pkg, :target_arch, :libc
 
   def initialize(
     pkgname,  # package name (string)
@@ -31,6 +31,7 @@ class InstallInfo
     arch,     # arch. of the installation (e.g. HOST_ARCH for compilers)
     ver,      # package version (Version object)
     path,     # installation path (directory)
+    pkg = nil,# Package object or nil.
     target_arch = nil, # target architecture [only for compilers]
     libc        = nil  # libc (e.g. "musl") [only for compilers]
   )
@@ -40,6 +41,7 @@ class InstallInfo
     @arch = arch               # arch object or nil (= noarch)
     @ver = ver                 # package version
     @path = path               # install path
+    @pkg = pkg                 # package object
     @target_arch = target_arch
     @libc = libc
     assert { arch.nil? or arch.is_a? Architecture }
@@ -71,6 +73,7 @@ class Package
 
   STATUS_LEN    = 9
   INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
+  FOUND_STR     = Term.makeBlue("found".center(STATUS_LEN))
   SKIPPED_STR   = Term.makeYellow("skipped".center(STATUS_LEN))
   BROKEN_STR    = Term.makeRed("broken".center(STATUS_LEN))
   EMPTY_STR     = "".center(STATUS_LEN)

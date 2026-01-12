@@ -39,7 +39,11 @@ class GccCompiler < Package
         ver, target_arch, libc = parsed_gcc_info
         name = pkgmgr.build_gcc_package_name(target_arch, libc)
         p = HOST_ARCH_DIR_SYS / e
-        list << InstallInfo.new(name, "syscc", true, HOST_ARCH, ver, p)
+        list << InstallInfo.new(
+          name, "syscc", true, HOST_ARCH, ver, p, self,
+          target_arch, libc
+        )
+
       end
     end
     return list

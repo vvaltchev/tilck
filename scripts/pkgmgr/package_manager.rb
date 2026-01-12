@@ -7,6 +7,7 @@ require_relative 'term'
 require_relative 'package'
 
 require 'singleton'
+require 'set'
 
 class PackageManager
 
@@ -142,35 +143,39 @@ class PackageManager
 
     elsif group_by == 'arch'
 
+      list = list.filter { |e| e.get_human_arch_name == a }
       s = archs.map {
         |a|
         [
           a,
           add_braces.call(
-            list.filter {
-              |e| e.get_human_arch_name == a
-            }.map(&:ver).map(&:to_s).join(", ")
+            list.map(&:ver).map(&:to_s).join(", ")
           )
         ].join(": ")
       }.join(", ")
 
     elsif group_by == 'ver'
 
+      list = filter { |e| e.ver == v }
       s = vers.map {
         |v|
         [
           v,
           add_braces.call(
-            list.filter {
-              |e| e.ver == v
-            }.map(&:arch).map(&:to_s).join(", ")
+            list.map(&:arch).map(&:to_s).join(", ")
           )
         ].join(": ")
       }.join(", ")
 
     end
 
-    puts "#{name.ljust(35)} [ #{Package::INSTALLED_STR} ] [ #{s} ]"
+    if list.all? { |x| !x.pkg.nil? }
+      status = Package::INSTALLED_STR
+    else
+      status = Package::FOUND_STR
+    end
+
+    puts "#{name.ljust(35)} [ #{status} ] [ #{s} ]"
   end
 
   # Install the package
@@ -318,8 +323,18 @@ class PackageManager
   def scan_toolchain
 
     list = []
+    knows_pkgs_paths = Set.new()
+
+    for pkg in @packages.values do
+      sublist = pkg.get_install_list()
+      knows_pkgs_paths += sublist.map { |x| x.path }
+      list += sublist
+    end
+
     handle_package = ->(cc, arch, name) {
       path = TC / (cc || "") / (arch || "noarch") / name
+      return if knows_pkgs_paths.include? path
+
       on_host = (arch&.start_with? "host_") || false
       parsed_gcc_info = parse_gcc_dir(name)
       cc = ((cc.eql? "syscc") ? "syscc" : Ver(cc)&.to_dot)
@@ -346,7 +361,7 @@ class PackageManager
         ver, target_arch, libc = parsed_gcc_info
         name = build_gcc_package_name(target_arch, libc)
         list << InstallInfo.new(
-          name, "syscc", true, arch_obj, ver, path, target_arch, libc
+          name, "syscc", true, arch_obj, ver, path, nil, target_arch, libc
         )
       end
     }
