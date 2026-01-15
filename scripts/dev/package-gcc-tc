@@ -40,6 +40,7 @@ function translate_arch {
       "i686")                             echo i386    ;;
       "Intel 80386")                      echo i386    ;;
       "aarch64")                          echo aarch64 ;;
+      "arm64")                            echo aarch64 ;;
       "AArch64")                          echo aarch64 ;;
       "riscv64")                          echo riscv64 ;;
       "RISC-V")                           echo riscv64 ;;
