@@ -1,0 +1,18 @@
+TARGET = aarch64-linux-musl
+
+BINUTILS_VER = 2.44
+GCC_VER = 13.3.0
+MUSL_VER = git-v1.2.5
+LINUX_VER = 4.19.90
+
+COMMON_CONFIG += CFLAGS="-g0 -Os" CXXFLAGS="-g0 -Os"
+BINUTILS_CONFIG += --with-system-zlib
+
+GCC_CONFIG += --disable-shared
+GCC_CONFIG += --enable-static
+GCC_CONFIG += --with-static-standard-libraries
+GCC_CONFIG += --with-system-zlib
+
+MUSL_CONFIG += --disable-shared
+MUSL_CONFIG += --enable-debug
+
