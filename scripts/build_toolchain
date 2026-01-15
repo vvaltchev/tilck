@@ -13,7 +13,7 @@ echo "Full args list: $0 $@"
 echo "Detected host OS: $OS"
 echo
 
-if [ "$OS" = "FreeBSD" ]; then
+if [ "$OS" = "FreeBSD" ] || [ "$OS" = "Darwin" ]; then
    SED="gsed"
    GREP="ggrep"
    CUT="gcut"
@@ -21,11 +21,10 @@ fi
 
 missing=0
 for c in $BASH $SED $GREP $CUT; do
-   echo -n "Check for tool: $c\t"
    if command -v "$c" >/dev/null; then
-      echo "[ OK ]"
+      echo "Check for tool: $c\t[ OK ]"
    else
-      echo "[ MISSING ]"
+      echo "Check for tool: $c\t[ MISSING ]"
       missing=1
    fi
 done

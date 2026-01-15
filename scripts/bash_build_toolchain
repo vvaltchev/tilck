@@ -276,6 +276,10 @@ function set_host_arch_variable {
 
       : # That's OK: no translation necessary.
 
+   elif [[ "$HOST_ARCH" == "arm64" ]]; then
+
+      HOST_ARCH="aarch64"
+
    else
 
       echo "ERROR: build host architecture $HOST_ARCH not supported"

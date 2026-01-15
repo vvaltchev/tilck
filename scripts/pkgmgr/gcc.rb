@@ -38,13 +38,14 @@ class GccCompiler < Package
       parsed_gcc_info = pkgmgr.parse_gcc_dir(e.to_s())
       if parsed_gcc_info
         ver, target_arch, libc = parsed_gcc_info
-        name = pkgmgr.build_gcc_package_name(target_arch, libc)
+        pkgname = pkgmgr.build_gcc_package_name(target_arch, libc)
         p = HOST_ARCH_DIR_SYS / e
-        list << InstallInfo.new(
-          name, "syscc", true, HOST_ARCH, ver, p, self,
-          target_arch, libc
-        )
-
+        if pkgname == name
+          list << InstallInfo.new(
+            name, "syscc", true, HOST_ARCH, ver, p, self,
+            target_arch, libc
+          )
+        end
       end
     end
     return list
@@ -67,8 +68,12 @@ class GccCompiler < Package
 
   def install_impl(ver = nil)
 
-    ver ||= get_default_ver()
+    ver ||= default_ver()
     puts "INFO: install #{name} version: #{ver}"
+
+    for e in get_install_list()
+      puts e
+    end
 
     if installed? ver
       puts "INFO: already installed, skip"
@@ -101,7 +106,16 @@ class GccCompiler < Package
   def get_tarname(ver)
     archname = @target_arch.name
     host_an = HOST_ARCH.name
-    os_suffix = (OS == "FreeBSD" ? "-freebsd" : "")
+
+    case OS
+      when "FreeBSD"
+        os_suffix = "-freebsd"
+      when "Darwin"
+        os_suffix = "-darwin25"
+      else
+        os_suffix = ""
+    end
+
     verStr = ver.to_s()
     ext = ".tar.bz2"
     "#{archname}-musl-#{VER_MUSL}-gcc-#{verStr}-#{host_an}#{os_suffix}#{ext}"

@@ -123,7 +123,8 @@ module InitOnly
     # Translation table, necessary to handle the case where uname -m
     # returned "amd64" instead of "x86_64".
     table = {
-      "amd64" => "x86_64"
+      "amd64" => "x86_64",
+      "arm64" => "aarch64"
     }
 
     tilck_name = table[arch]
