@@ -8,6 +8,7 @@ require_relative 'gcc'
 require_relative 'cache'
 require_relative 'progress'
 require_relative 'package_manager'
+require_relative 'term'
 
 require 'pathname'
 require 'fileutils'
@@ -128,14 +129,22 @@ module Main
   def parse_options
 
     is_option = ->(line) { line.lstrip.start_with?("-") }
-    add_vertical_space = ->(summary) {
+    highlight = ->(line) {
+      return line if not STDOUT.tty?
+      line.sub!("[MODE]", "[#{Term.makeGreen("MODE")}]")
+      line.sub!("[FLAG]", "[#{Term.makeYellow("FLAG")}]")
+      line.sub!("[OPTION]", "[#{Term.makeYellow("OPTION")}]")
+      line.sub!("ALL", Term.makeRed("ALL"))
+      line
+    }
+    reformat_summary = ->(summary) {
       blocks = []
       curr = []
       summary.each { |line|
         if is_option.(line) && !curr.empty?
           blocks << curr; curr = []
         end
-        curr << line
+        curr << highlight.call(line)
       }
       blocks << curr unless curr.empty?
       blocks.map { |b| b.join }.join("\n") + "\n"
@@ -183,7 +192,7 @@ module Main
       opts[:help] = true
       puts p.banner
       puts
-      puts add_vertical_space.call(p.summarize())
+      puts reformat_summary.call(p.summarize())
     }
 
     p.on('-l', '--list', 'List all packages status [MODE]') {
@@ -192,10 +201,6 @@ module Main
 
     p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
       opts[:just_context] = true
-    }
-
-    p.on('-d', '--dry-run', 'Dry run for the uninstall mode') {
-      opts[:dry_run] = true
     }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
@@ -222,6 +227,10 @@ module Main
     ) do |first|
       get_multiple_args.call(first, :uninstall_compiler)
     end
+
+    p.on('-d', '--dry-run', 'Dry run for the uninstall mode [FLAG]') {
+      opts[:dry_run] = true
+    }
 
     p.on('-g', '--group-by WHAT', ['ver', 'arch'],
          'Group packages by "ver" or "arch" [OPTION]') { |what|
@@ -262,7 +271,7 @@ module Main
     p.on(
       '-f', '--force',
       'Force. Meaning depending on the MODE. In uninstall mode, this includes',
-      'the cross-compilers, when the package name is ALL.'
+      'the cross-compilers, when the package name is ALL. [FLAG]'
     ) { opts[:force] = true }
 
     p.on(
