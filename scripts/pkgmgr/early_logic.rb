@@ -32,6 +32,21 @@ def assert(&expr)
   end
 end
 
+def info(msg)
+  infoStr = STDOUT.tty?? Term.makeBlue("INFO") : "INFO"
+  puts "#{infoStr}: #{msg}"
+end
+
+def warning(msg)
+  warnStr = STDOUT.tty?? Term.makeYellow("WARNING") : "WARNING"
+  puts "#{warnStr}: #{msg}"
+end
+
+def error(msg)
+  errStr = STDOUT.tty?? Term.makeRed("ERROR") : "ERROR"
+  puts "#{errStr}: #{msg}"
+end
+
 def mkpathname(path_str) = Pathname.new(path_str)
 
 def make_gh_rel_download(user, proj, tag)
@@ -132,7 +147,7 @@ module InitOnly
     obj = ALL_HOST_ARCHS[arch] || ALL_HOST_ARCHS[tilck_name]
 
     if !obj
-      puts "ERROR: host architecture #{arch} not supported"
+      error "Host architecture not supported: #{arch}"
       exit 1
     end
 
@@ -142,7 +157,7 @@ module InitOnly
   def get_arch(arch)
     obj = ALL_ARCHS[arch]
     if !obj
-      puts "ERROR: architecture #{arch} not supported"
+      error "Architecture not supported: #{arch}"
       exit 1
     end
     return obj
@@ -166,17 +181,3 @@ def get_human_arch_name(arch)
   return arch.name
 end
 
-def info(msg)
-  infoStr = STDOUT.tty?? Term.makeBlue("INFO") : "INFO"
-  puts "#{infoStr}: #{msg}"
-end
-
-def warning(msg)
-  warnStr = STDOUT.tty?? Term.makeYellow("WARNING") : "WARNING"
-  puts "#{warnStr}: #{msg}"
-end
-
-def error(msg)
-  errStr = STDOUT.tty?? Term.makeRed("ERROR") : "ERROR"
-  puts "#{errStr}: #{msg}"
-end

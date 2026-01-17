@@ -61,7 +61,7 @@ module Main
       min = arch.min_gcc_ver
 
       if v && v < min
-        puts "ERROR: [arch #{name}] gcc ver #{v} < required #{min}"
+        error "[arch #{name}] gcc ver #{v} < required #{min}"
         failures += 1
       end
     end
@@ -107,12 +107,12 @@ module Main
 
   def early_checks
     if !(MAIN_DIR.to_s.index ' ').nil?
-      puts "ERROR: Tilck must be checked out in a path *WITHOUT* spaces"
+      error "Tilck must be checked out in a path *WITHOUT* spaces"
       puts "Project's root dir: '#{MAIN_DIR}'"
       exit 1
     end
     if BOARD && !BOARD_BSP.exist?
-      puts "ERROR: BOARD_BSP: #{BOARD_BSP} not found!"
+      error "BOARD_BSP: #{BOARD_BSP} not found!"
       exit 1
     end
   end
@@ -361,7 +361,7 @@ module Main
       for name in options[:install] do
         name, ver = name.split(":")
         if !pkgmgr.get(name)
-          puts "ERROR: package not found: #{name}"
+          error "Package not found: #{name}"
           return 1
         end
        end
@@ -371,7 +371,7 @@ module Main
       for name in options[:install] do
         name, v = name.split(":")
         if !pkgmgr.install(name, Ver(v))
-          puts "ERROR: couldn't install: #{name}"
+          error "Could not install: #{name}"
           return 1
         end
       end

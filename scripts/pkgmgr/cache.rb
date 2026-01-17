@@ -199,9 +199,9 @@ module Cache
 
     if file? local_path
       if local_file == remote_file
-        puts "NOTE: Skipping the download of #{local_file}"
+        info "Skipping the download of #{local_file}"
       else
-        puts "NOTE: Skipping the download of #{local_file} (#{remote_file})"
+        info "Skipping the download of #{local_file} (#{remote_file})"
       end
       return true
     end

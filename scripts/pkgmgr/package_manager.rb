@@ -219,7 +219,7 @@ class PackageManager
 
     pkg = get_smart(pkg)
     if !pkg
-      puts "ERROR: package not found: #{pkg_or_name}"
+      error "Package not found: #{pkg_or_name}"
       return false
     end
 

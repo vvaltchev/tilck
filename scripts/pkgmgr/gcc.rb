@@ -69,14 +69,14 @@ class GccCompiler < Package
   def install_impl(ver = nil)
 
     ver ||= default_ver()
-    puts "INFO: install #{name} version: #{ver}"
+    info "Install #{name} version: #{ver}"
 
     for e in get_install_list()
       puts e
     end
 
     if installed? ver
-      puts "INFO: already installed, skip"
+      info "Package already installed, skip"
       return true
     end
 
