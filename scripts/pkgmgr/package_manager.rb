@@ -290,7 +290,7 @@ class PackageManager
       default_cc    = ARCH.gcc_ver
       default_ver   = nil           # see below
       install_list  = @found_installed
-      puts "WARNING: not recognized package name: #{name}" unless all_pkgs
+      warning "Not recognized package name: #{name}" unless all_pkgs
     end
 
     # Check if the default compiler for this package is "syscc", meaning this
@@ -365,7 +365,7 @@ class PackageManager
           full_path = path / ver_str
           ver = SafeVer(ver_str)
           if !ver
-            puts "WARNING: invalid package version: #{path / ver_str}"
+            warning "Invalid package version: #{path / ver_str}"
             next
           end
           list << InstallInfo.new(name, cc, on_host, arch_obj, ver, full_path)
@@ -393,7 +393,7 @@ class PackageManager
       if cc != "syscc"
         cc_ver = SafeVer(cc)
         if cc_ver.nil? or cc_ver.type != VersionType::UNDERSCORE
-          puts "WARNING: invalid directory: #{TC / cc}"
+          warning "Invalid directory: #{TC / cc}"
           next
         end
       end
@@ -403,7 +403,7 @@ class PackageManager
         on_host = arch.start_with? "host_"
 
         if !arch_obj
-          puts "WARNING: unknown architecture '#{arch}' in #{TC / cc}"
+          warning "Unknown architecture '#{arch}' in #{TC / cc}"
           next
         end
 

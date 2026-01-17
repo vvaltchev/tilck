@@ -394,8 +394,8 @@ module Main
     end
 
     return 0
-  end
-end
+  end # method main()
+end # module Main
 
 if __FILE__ == $0
   exit Main::main(ARGV)

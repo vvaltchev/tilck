@@ -8,7 +8,7 @@ require 'tmpdir'
 require 'net/http'
 require 'uri'
 require 'io/console'
-
+require 'open3'
 
 # Extend instances of the URI::Generic (base class for URI::HTTP, URI:HTTPS
 # etc.) with an operator + such that we do URI.join() with the given string
@@ -20,6 +20,11 @@ module URI
     def +(loc) = URI.join(to_s, loc.to_s)
   end
 end
+
+# Export global environment variables to make the `git` tool behave in a way
+# that make sense in this context.
+ENV["GIT_TERMINAL_PROMPT"] = "0"
+ENV["GIT_ADVICE"] = "0"
 
 module Cache
 
@@ -60,7 +65,7 @@ module Cache
       p.finish()
 
       if expected && total != expected
-        puts "ERROR: downloaded #{total} B < expected #{expected}"
+        error "Downloaded #{total} B < expected #{expected}"
         return false
       end
 
@@ -70,11 +75,11 @@ module Cache
     def do_download_uri(uri, local_path, redirects)
 
       if redirects == 0
-        puts "Download: #{uri}"
+        info "Download: #{uri}"
       end
 
       if redirects > MAX_HTTP_REDIRECT_COUNT
-        puts "ERROR: redirect_count exceeded limit"
+        error "Redirect_count exceeded limit"
         return false
       end
 
@@ -96,10 +101,10 @@ module Cache
                 return do_download_uri(uri + loc, local_path, redirects+1)
               end
 
-              puts "ERROR: redirect with empty/nil location"
+              error "Redirect with empty/nil location"
 
             else
-              puts "ERROR: got #{resp.code}: #{resp.message}"
+              error "Got #{resp.code}: #{resp.message}"
 
           end  # case resp
         end # do |resp|
@@ -121,6 +126,66 @@ module Cache
         rm_f(local_path)
     end
 
+    def git_clone(url, destdir, tag, tag_is_sha)
+
+      is_github = !url.index("/github.com/").nil?
+
+      if tag.nil?
+        puts 1
+        ok = system("git", "clone", "--depth", "1", url, destdir)
+        raise "Failed to clone git repo: #{url}" if !ok
+        return true
+      end
+
+      ok = system("git", "clone", "--branch", tag, "--depth", "1", url, destdir)
+      return true if ok
+
+       # Git clone failed. There could be several reasons for that:
+       #
+       #     - The remote git server is down
+       #
+       #     - The pointed branch/tag/commit does not exist anymore because
+       #       the ref has been deleted or the history has been rewritten.
+       #
+       #     - In some corner cases, like BitBucket, fetching individual
+       #       untagged commits is not allowed. This is the only case for
+       #       which an actual workaround is possible.
+       #       See: https://stackoverflow.com/a/51002078/2077198
+       #
+      raise "Failed to clone git repo: #{url}" if (!tag_is_sha || is_github)
+
+      # We failed to clone the repo, but the tag is a git SHA (corner case 3),
+      # so it's worth trying a workaround.
+      ok = system("git", "clone", url, destdir)
+      raise "Failed to clone git repo: #{url}" if !ok
+
+      # OK, a regular full-clone succeeded. Now let's checkout the specific
+      # commit, if it exists.
+      chdir(destdir) do
+        ok = system("git", "checkout", tag)
+        raise "Failed to checkout tag: #{tag}" if !ok
+
+        # OK, we succeeded. Now, let's save the commit info before we delete
+        # the .git directory to save space.
+        out, status = Open3.capture2("git", "rev-parse", "--abbrev-ref", "HEAD")
+        raise "Git rev-parse failed" if !status.success?
+        File.Write(".ref_name", out)
+
+        out, status = Open3.capture2("git", "rev-parse", "--short", "HEAD")
+        raise "Git rev-parse failed" if !status.success?
+        File.Write(".ref_short", out)
+
+        out, status = Open3.capture2("git", "rev-parse", "HEAD")
+        raise "Git rev-parse failed" if !status.success?
+        File.Write(".ref", out)
+      end
+
+      return true # success
+
+    rescue StandardError => e
+      error e
+      return false
+    end # git_clone()
   end # module Impl
 
   def download_file(url, remote_file, local_file = nil)
@@ -145,7 +210,7 @@ module Cache
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
 
     if !success
-      puts "ERROR: Download failed"
+      error "Download failed"
     end
 
     return success
@@ -168,15 +233,15 @@ module Cache
     tmp = TC_CACHE / "tmp"
 
     if exist? tmp
-      puts "WARNING: cache tmp directory exists: #{tmp}"
-      puts "WARNING: deleting directory #{tmp}"
+      warning "cache tmp directory exists: #{tmp}"
+      warning "deleting directory #{tmp}"
       puts
       rm_rf(tmp)
     end
 
     mkdir(tmp)
     current_dir = mkpathname(getwd()).realpath()
-    puts "INFO: extract #{tarfile} in #{current_dir}/"
+    info "extract #{tarfile} in #{current_dir}/"
     tc_real = TC.realpath()
 
     if ! current_dir.ascend.any? { |p| p == tc_real }
@@ -191,8 +256,8 @@ module Cache
       raise "The archive #{tarfile} is empty" if contents.length == 0
 
       if contents.length > 1
-        puts "ERROR: the archive #{tarfile} has multiple subdirs:"
-        puts contents.join "\n"
+        error "the archive #{tarfile} has multiple subdirs:"
+        error contents.join "\n"
         puts
         raise "Multiple subdirs not supported"
       end
@@ -201,7 +266,75 @@ module Cache
       newDirName ||= dirname
       mv(tmp / dirname, current_dir / newDirName)
     end
+
+    return true
+
+  rescue StandardError => e
+    error e
+    return false
+
+  ensure
     rm_rf(tmp)
-  end
+  end # extract_file()
+
+  def download_git_repo(
+    url,                 # git repo URL
+    tarname,             # tarname in the cache
+    dir_name = nil,      # dir name to use inside the archive
+    tag = nil,           # git tag or branch to use
+    tag_is_sha = false   # is the tag a commit SHA1?
+  )
+
+    assert { tarname.end_with? ".tgz" }
+    filepath_in_cache = TC_CACHE / tarname
+    tmp = TC_CACHE / "tmp"
+    dir_name ||= tag
+
+    # The dir name cannot contain a path separator char.
+    assert { dir_name.nil? or dir_name.index("/").nil? }
+
+    if filepath_in_cache.file?
+      tagstr = tag.nil?? "" : ", tag: #{tag}"
+      info "Skipping git clone of: #{url}#{tagstr}"
+      return true
+    end
+
+    if exist? tmp
+      warning "cache tmp directory exists: #{tmp}"
+      warning "deleting directory #{tmp}"
+      puts
+      rm_rf(tmp)
+    end
+
+    mkdir(tmp)
+    chdir(tmp) do
+
+      ok = Impl.git_clone(url, dir_name, tag, tag_is_sha)
+      return false if !ok
+
+      contents = Dir.children(".")
+
+      # After the git clone, we expect to see exactly one directory here.
+      assert { contents.length == 1 }
+
+      # Either we don't know the dir_name or it's exactly what we expect.
+      assert { dir_name.nil? or contents[0] == dir_name }
+
+      info "Packaging #{tarname} in the cache"
+      ok = system("tar", "cfz", tarname, contents[0])
+      raise "Failed to pack cloned git repo" if !ok
+
+      assert { mkpathname(tarname).file? }
+      mv(tarname, filepath_in_cache)
+    end
+
+    return true
+
+  rescue StandardError => e
+    error e
+    return false
+  ensure
+    rm_rf(tmp)
+  end # download_git_repo()
 
 end # module Cache

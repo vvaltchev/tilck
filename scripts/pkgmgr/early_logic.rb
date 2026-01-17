@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 require_relative 'arch'
+require_relative 'term'
 
 require 'power_assert'
 require 'pathname'
@@ -165,3 +166,17 @@ def get_human_arch_name(arch)
   return arch.name
 end
 
+def info(msg)
+  infoStr = STDOUT.tty?? Term.makeBlue("INFO") : "INFO"
+  puts "#{infoStr}: #{msg}"
+end
+
+def warning(msg)
+  warnStr = STDOUT.tty?? Term.makeYellow("WARNING") : "WARNING"
+  puts "#{warnStr}: #{msg}"
+end
+
+def error(msg)
+  errStr = STDOUT.tty?? Term.makeRed("ERROR") : "ERROR"
+  puts "#{errStr}: #{msg}"
+end
