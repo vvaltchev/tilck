@@ -164,6 +164,7 @@ module Main
       arch: nil,
       compiler: nil,
       group_by: nil,
+      quiet: 0,
     }
 
     mode_opts = [
@@ -269,6 +270,10 @@ module Main
     end
 
     p.on(
+      '-q', 'Be quiet: skip the bootstrap logging [FLAG]'
+    ) { opts[:quiet] = 1 }
+
+    p.on(
       '-f', '--force',
       'Force. Meaning depending on the MODE. In uninstall mode, this includes',
       'the cross-compilers, when the package name is ALL. [FLAG]'
@@ -322,12 +327,14 @@ module Main
     check_gcc_tc_ver
     create_toolchain_dirs
 
-    puts "Context"
-    puts "------------------"
-    dump_context
+    if ENV['QUIET'].blank? or ENV['QUIET'] == '0'
+      puts "Context"
+      puts "------------------"
+      dump_context
+      puts
+      puts
+    end
 
-    puts
-    puts
     options = parse_options()
 
     if options[:help]

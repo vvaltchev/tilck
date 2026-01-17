@@ -9,9 +9,11 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
 OS="$(uname -s)"
 
-echo
-echo "Bash bootstrap"
-echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo "Bash bootstrap"
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+fi
 
 if [[ "$MAIN_DIR" == *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
@@ -181,15 +183,20 @@ function setup_ruby {
 
    if [ -f "$compdir/bin/ruby" ]; then
       RUBY="$compdir/bin/ruby"
-      echo "INFO: Using local Ruby:"
-      echo "$RUBY"
+      if ! [ "$QUIET" = 1 ]; then
+         echo "INFO: Using local Ruby:"
+         echo "$RUBY"
+      fi
       return
    fi
 
    RUBY="$(which ruby)"
 
    if check_ruby_ver; then
-      echo "INFO: using system Ruby: $RUBY"
+      if ! [ "$QUIET" = 1 ]; then
+         echo "INFO: using system Ruby: $RUBY"
+      fi
+
       if [[ "$OS" == "FreeBSD" ]]; then
          # On FreeBSD, we meed to run `install_packages` even if we found
          # a recent-enough version of Ruby installed, simply because on that
@@ -328,7 +335,10 @@ function dump_build_toolchain_env {
 TC="$TCROOT"
 export TCROOT
 
-dump_build_toolchain_env
+if ! [ "$QUIET" = 1 ]; then
+   dump_build_toolchain_env
+fi
+
 set_host_arch_variable
 export HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
 
@@ -338,11 +348,13 @@ fi
 
 create_base_dirs
 setup_ruby
-echo
-echo
-echo "Ruby package manager"
-echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
-echo
-exec $RUBY $MAIN_DIR/scripts/pkgmgr/main.rb "$@"
 
-main "$@"
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo
+   echo "Ruby package manager"
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+   echo
+fi
+
+exec $RUBY $MAIN_DIR/scripts/pkgmgr/main.rb "$@"
