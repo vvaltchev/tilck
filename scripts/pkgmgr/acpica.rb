@@ -65,6 +65,9 @@ class Acpica < Package
     return false
   end
 
+  def default_arch = nil
+  def default_cc = nil
+
   private
   def apply_patches
     for filepath, patches in PATCHES

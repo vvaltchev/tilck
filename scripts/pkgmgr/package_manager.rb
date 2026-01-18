@@ -284,9 +284,8 @@ class PackageManager
       default_arch  = pkg.default_arch
       install_list  = pkg.get_install_list
 
-      assert { !default_cc.nil? }
+      assert { default_cc.nil? == default_arch.nil? }
       assert { !default_ver.nil? }
-      assert { !default_arch.nil? }
     else
       name          = pkg_or_name
       default_arch  = ARCH
@@ -307,15 +306,19 @@ class PackageManager
     # gcc_ver for that (default) arch and that would make *no* sense: if
     # `arch` is not explicitly set to a specific value and the default cc is
     # "syscc", we set it.
-    compiler  ||= (syscc && (!arch || all_arch)) && default_cc
+    if syscc && (!arch || all_arch)
+      compiler  ||= default_cc
+    end
 
     # Set arch and ver to their defaults for this package, if they're unset.
     arch      ||= default_arch
     ver       ||= default_ver
 
-    # If the compiler is still unset, now pick up the gcc_ver for the given
-    # arch, even if that is the result of a default value, not manually set.
-    compiler  ||= ALL_ARCHS[ all_arch ? ARCH : arch ].gcc_ver
+    if default_arch
+      # If the compiler is still unset, now pick up the gcc_ver for the given
+      # arch, even if that is the result of a default value, not manually set.
+      compiler  ||= ALL_ARCHS[ all_arch ? ARCH : arch ].gcc_ver
+    end
 
     if ver.nil?
       # The version can still be `nil` here if a package name was provided,
