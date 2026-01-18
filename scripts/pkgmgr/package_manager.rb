@@ -199,7 +199,11 @@ class PackageManager
         status = Package::EMPTY_STR
       end
     else
-      status = Package::FOUND_STR
+      if list.any? { |x| !x.path.nil? }
+        status = Package::FOUND_STR
+      else
+        status = Package::EMPTY_STR
+      end
     end
 
     puts "#{name.ljust(35)} [ #{status} ] [ #{s} ]"
@@ -278,7 +282,7 @@ class PackageManager
       default_cc    = pkg.default_cc
       default_ver   = pkg.default_ver
       default_arch  = pkg.default_arch
-      install_list  = pkg.install_list
+      install_list  = pkg.get_install_list
 
       assert { !default_cc.nil? }
       assert { !default_ver.nil? }

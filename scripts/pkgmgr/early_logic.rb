@@ -53,6 +53,9 @@ def make_gh_rel_download(user, proj, tag)
   return "#{GITHUB}/#{user}/#{proj}/releases/download/#{tag}"
 end
 
+class LocalError < StandardError
+end
+
 module FileShortcuts
   module_function
   def exist?(...)      = File.exist?(...)
@@ -167,6 +170,7 @@ end
 
 TC = InitOnly.get_tc_root()
 TC_CACHE = TC / "cache"
+TC_NOARCH = TC / "noarch"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
 HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"

@@ -280,8 +280,8 @@ module Cache
   def download_git_repo(
     url,                 # git repo URL
     tarname,             # tarname in the cache
-    dir_name = nil,      # dir name to use inside the archive
     tag = nil,           # git tag or branch to use
+    dir_name = nil,      # dir name to use inside the archive
     tag_is_sha = false   # is the tag a commit SHA1?
   )
 

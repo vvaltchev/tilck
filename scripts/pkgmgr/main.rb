@@ -10,6 +10,7 @@ require_relative 'cache'
 require_relative 'progress'
 require_relative 'package_manager'
 require_relative 'zlib'
+require_relative 'acpica'
 
 require 'pathname'
 require 'fileutils'

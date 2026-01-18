@@ -94,6 +94,10 @@ class GccCompiler < Package
     end
 
     return true
+
+  rescue StandardError => e
+    error e
+    return false
   end
 
   private

@@ -63,7 +63,6 @@ end
 class Package
 
   attr_reader :name, :on_host, :is_compiler, :arch_list, :dep_list
-  attr_reader :install_list
 
   STATUS_LEN    = 9
   INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
@@ -95,6 +94,43 @@ class Package
   def hash = (id.hash)
 
   def get_install_list
+    assert { !is_compiler }
+
+    if on_host
+      raise NotImplementedError
+    else
+      if !arch_list.nil?
+        return regular_target_package_get_install_list()
+      else
+        return noarch_package_get_install_list()
+      end
+    end
+  end
+
+  def get_installable_list
+    assert { !is_compiler }
+
+    if on_host
+      raise NotImplementedError
+    else
+      if !arch_list.nil?
+        return regular_target_package_get_installable_list()
+      else
+        return noarch_package_get_installable_list()
+      end
+    end
+  end
+
+  def default_arch = ARCH
+  def default_cc = ARCH.gcc_ver
+  def default_ver = pkgmgr.get_config_ver(@name)
+
+  # Methods not implemented in the base class
+  def install_impl(ver = nil) = raise NotImplementedError
+
+  private
+  # Generic methods used depending on the package type.
+  def regular_target_package_get_install_list
 
     list = []
 
@@ -126,26 +162,50 @@ class Package
     return list
   end
 
-  def get_installable_list
-    [
-      InstallInfo.new(
-        name,
-        default_cc,
-        on_host,
-        default_arch,
-        default_ver,
-        nil,               # install path
-        self
-      )
-    ]
+  def noarch_package_get_install_list
+
+    list = []
+    dir = TC_NOARCH / name
+
+    if dir.directory?
+      for d in dir.children() do
+        list << InstallInfo.new(
+          name,
+          nil,                   # compiler ver
+          false,                 # on host
+          nil,                   # arch
+          Ver(d.basename.to_s),  # version
+          d,                     # install path
+          self                   # package object
+        )
+      end
+    end
+    return list
   end
 
-  def default_arch = ARCH
-  def default_cc = ARCH.gcc_ver
-  def default_ver = pkgmgr.get_config_ver(@name)
+  def noarch_package_get_installable_list = [
+    InstallInfo.new(
+      name,
+      nil,                     # compiler ver
+      false,                   # on_host
+      nil,                     # arch
+      default_ver,
+      nil,                     # install path
+      self                     # package object
+    )
+  ]
 
-  # Methods not implemented in the base class
-  def install_impl(ver = nil) = raise NotImplementedError
+  def regular_target_package_get_installable_list = [
+    InstallInfo.new(
+      name,
+      default_cc,
+      on_host,
+      default_arch,
+      default_ver,
+      nil,                     # install path
+      self                     # package object
+    )
+  ]
 end
 
 
