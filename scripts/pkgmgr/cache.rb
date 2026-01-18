@@ -133,7 +133,7 @@ module Cache
       if tag.nil?
         puts 1
         ok = system("git", "clone", "--depth", "1", url, destdir)
-        raise "Failed to clone git repo: #{url}" if !ok
+        raise LocalError, "Failed to clone git repo: #{url}" if !ok
         return true
       end
 
@@ -152,37 +152,38 @@ module Cache
        #       which an actual workaround is possible.
        #       See: https://stackoverflow.com/a/51002078/2077198
        #
-      raise "Failed to clone git repo: #{url}" if (!tag_is_sha || is_github)
+      raise LocalError, "Failed to clone git repo: #{url}" if
+        (!tag_is_sha || is_github)
 
       # We failed to clone the repo, but the tag is a git SHA (corner case 3),
       # so it's worth trying a workaround.
       ok = system("git", "clone", url, destdir)
-      raise "Failed to clone git repo: #{url}" if !ok
+      raise LocalError, "Failed to clone git repo: #{url}" if !ok
 
       # OK, a regular full-clone succeeded. Now let's checkout the specific
       # commit, if it exists.
       chdir(destdir) do
         ok = system("git", "checkout", tag)
-        raise "Failed to checkout tag: #{tag}" if !ok
+        raise LocalError, "Failed to checkout tag: #{tag}" if !ok
 
         # OK, we succeeded. Now, let's save the commit info before we delete
         # the .git directory to save space.
         out, status = Open3.capture2("git", "rev-parse", "--abbrev-ref", "HEAD")
-        raise "Git rev-parse failed" if !status.success?
+        raise LocalError, "Git rev-parse failed" if !status.success?
         File.Write(".ref_name", out)
 
         out, status = Open3.capture2("git", "rev-parse", "--short", "HEAD")
-        raise "Git rev-parse failed" if !status.success?
+        raise LocalError, "Git rev-parse failed" if !status.success?
         File.Write(".ref_short", out)
 
         out, status = Open3.capture2("git", "rev-parse", "HEAD")
-        raise "Git rev-parse failed" if !status.success?
+        raise LocalError, "Git rev-parse failed" if !status.success?
         File.Write(".ref", out)
       end
 
       return true # success
 
-    rescue StandardError => e
+    rescue LocalError => e
       error e
       return false
     end # git_clone()
@@ -245,21 +246,22 @@ module Cache
     tc_real = TC.realpath()
 
     if ! current_dir.ascend.any? { |p| p == tc_real }
-      raise "Current dir is not in the toolchain"
+      raise LocalError, "Current dir is not in the toolchain"
     end
 
     chdir(tmp) do
       ok = system("tar", opt, filepath)
-      raise "Tar extract failed" if !ok
+      raise LocalError, "Tar extract failed" if !ok
 
       contents = Dir.children(".")
-      raise "The archive #{tarfile} is empty" if contents.length == 0
+      raise LocalError, "The archive #{tarfile} is empty" if
+        contents.length == 0
 
       if contents.length > 1
         error "the archive #{tarfile} has multiple subdirs:"
         error contents.join "\n"
         puts
-        raise "Multiple subdirs not supported"
+        raise LocalError, "Multiple subdirs not supported"
       end
 
       dirname = contents[0]
@@ -269,7 +271,7 @@ module Cache
 
     return true
 
-  rescue StandardError => e
+  rescue LocalError => e
     error e
     return false
 
@@ -322,7 +324,7 @@ module Cache
 
       info "Packaging #{tarname} in the cache"
       ok = system("tar", "cfz", tarname, contents[0])
-      raise "Failed to pack cloned git repo" if !ok
+      raise LocalError, "Failed to pack cloned git repo" if !ok
 
       assert { mkpathname(tarname).file? }
       mv(tarname, filepath_in_cache)
@@ -330,7 +332,7 @@ module Cache
 
     return true
 
-  rescue StandardError => e
+  rescue LocalError => e
     error e
     return false
   ensure

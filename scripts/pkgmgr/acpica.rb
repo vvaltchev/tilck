@@ -29,7 +29,7 @@ class Acpica < Package
 
   def install_impl(ver = nil)
     ok = Cache::download_git_repo(URL, TARNAME, CURR_VER, CURR_VER)
-    raise "Couldn't download file" if !ok
+    raise LocalError, "Couldn't download file" if !ok
 
     mkdir_p(TC_NOARCH / name)
     chdir(TC_NOARCH / name) do

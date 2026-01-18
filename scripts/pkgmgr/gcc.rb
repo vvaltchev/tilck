@@ -78,15 +78,18 @@ class GccCompiler < Package
 
     tarname = get_tarname(ver)
     success = Cache::download_file(RELEASE_URL, tarname)
-    raise "Couldn't download file" if !success
+    raise LocalError, "Couldn't download file" if !success
 
     chdir(HOST_ARCH_DIR_SYS) do
       Cache::extract_file(tarname)
       gcc_dir = mkpathname(get_gcc_dir(ver))
       gcc_bin_dir = gcc_dir / "bin"
 
-      raise "GCC dir #{gcc_dir} not found!" if !exist? gcc_dir
-      raise "GCC dir #{gcc_bin_dir} not found!" if !exist? gcc_bin_dir
+      raise LocalError, "GCC dir #{gcc_dir} not found!" if
+        !exist? gcc_dir
+
+      raise LocalError, "GCC dir #{gcc_bin_dir} not found!" if
+        !exist? gcc_bin_dir
 
       chdir(gcc_bin_dir) do
         Dir.children(".").each(&method(:fix_single_file_name))
@@ -95,7 +98,7 @@ class GccCompiler < Package
 
     return true
 
-  rescue StandardError => e
+  rescue LocalError => e
     error e
     return false
   end
