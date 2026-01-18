@@ -38,6 +38,13 @@ class PackageManager
     @found_installed = scan_toolchain()
   end
 
+  def get_installed_compilers
+    @known_installed.select { |x|
+      !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&
+      x.ver == x.target_arch.gcc_ver
+    }
+  end
+
   def register(package)
 
     if !package.is_a?(Package)
@@ -66,6 +73,29 @@ class PackageManager
   def get_smart(pkg_or_name)
     assert { pkg_or_name.is_a? Package or pkg_or_name.is_a? String }
     (pkg_or_name.is_a? Package) ? pkg_or_name : get(pkg_or_name)
+  end
+
+  def with_cc(arch_name, &block)
+    arch = ALL_ARCHS[arch_name]
+    arch_gcc = arch.gcc_tc
+    assert { !arch_gcc.blank? }
+
+    compilers = get_installed_compilers.select { |x| x.target_arch == arch }
+    assert { compilers.length == 1 }
+
+    with_saved_env(%w[PATH CC CXX AR NM RANLIB CROSS_PREFIX CROSS_COMPILE]) do
+
+      prepend_to_global_path(compilers[0].path / "bin")
+      ENV["CC"]            = "#{arch_gcc}-linux-gcc"
+      ENV["CXX"]           = "#{arch_gcc}-linux-g++"
+      ENV["AR"]            = "#{arch_gcc}-linux-ar"
+      ENV["NM"]            = "#{arch_gcc}-linux-nm"
+      ENV["RANLIB"]        = "#{arch_gcc}-linux-ranlib"
+      ENV["CROSS_PREFIX"]  = "#{arch_gcc}-linux-"
+      ENV["CROSS_COMPILE"] = "#{arch_gcc}-linux-"
+
+      block.call()
+    end
   end
 
   def build_gcc_package_name(target_arch, libc)

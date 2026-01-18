@@ -190,3 +190,16 @@ def get_human_arch_name(arch)
   return arch.name
 end
 
+def prepend_to_global_path(path)
+  assert { path.directory? }
+  path = path.to_s()
+  parts = (ENV["PATH"] || "").split(File::PATH_SEPARATOR)
+  parts.unshift(path) unless parts.include?(path)
+  ENV["PATH"] = parts.join(File::PATH_SEPARATOR)
+end
+
+def with_saved_env(vars, &block)
+  saved = vars.map { |v| v => ENV[v] }
+  block.call()
+  saved.each { |k,v| ENV[k] = v }
+end
