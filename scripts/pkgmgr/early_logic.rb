@@ -125,6 +125,11 @@ class Object
   def blank? = false
 end
 
+def chdir!(path, &block)
+  FileUtils.mkdir_p(path)
+  block ? FileUtils.chdir(path, &block) : FileUtils.chdir(path)
+end
+
 module InitOnly
 
   module_function
