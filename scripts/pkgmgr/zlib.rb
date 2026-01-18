@@ -14,7 +14,6 @@ class ZlibPackage < Package
 
   PROJ_NAME = 'zlib'
   URL = GITHUB + '/madler/' + PROJ_NAME
-  CURR_VER = pkgmgr.get_config_ver(PROJ_NAME).to_s
 
   def initialize
     super(
@@ -26,9 +25,27 @@ class ZlibPackage < Package
     )
   end
 
-  def install_impl(ver = nil)
-    raise "not implemented"
-  end
+  def install_impl(ver)
+    ver = ver.to_s()
+    ok = Cache::download_git_repo(URL, tarname, ver)
+    return false if !ok
+
+    pkgmgr.with_cc() do |arch_dir|
+      chdir_package_base_dir(arch_dir) do
+
+        ok = Cache::extract_file(TC_CACHE / tarname)
+        return false if !ok
+
+        ok = chdir_install_dir(arch_dir, ver) do
+          system("echo aaa > bbb")
+        end
+
+        return false if !ok
+      end
+    end
+
+    return true
+ end
 
 end
 

@@ -65,10 +65,10 @@ class GccCompiler < Package
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
+  def tarname = get_tarname(default_ver())
 
-  def install_impl(ver = nil)
+  def install_impl(ver)
 
-    ver ||= default_ver()
     info "Install #{name} version: #{ver}"
 
     if installed? ver
@@ -76,12 +76,13 @@ class GccCompiler < Package
       return true
     end
 
-    tarname = get_tarname(ver)
-    success = Cache::download_file(RELEASE_URL, tarname)
-    raise LocalError, "Couldn't download file" if !success
+    ok = Cache::download_file(RELEASE_URL, tarname)
+    return false if !ok
 
     chdir(HOST_ARCH_DIR_SYS) do
-      Cache::extract_file(tarname)
+      ok = Cache::extract_file(tarname)
+      return false if !ok
+
       gcc_dir = mkpathname(get_gcc_dir(ver))
       gcc_bin_dir = gcc_dir / "bin"
 
@@ -95,7 +96,6 @@ class GccCompiler < Package
         Dir.children(".").each(&method(:fix_single_file_name))
       end
     end
-
     return true
 
   rescue LocalError => e

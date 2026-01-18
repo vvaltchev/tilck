@@ -75,9 +75,10 @@ class PackageManager
     (pkg_or_name.is_a? Package) ? pkg_or_name : get(pkg_or_name)
   end
 
-  def with_cc(arch_name, &block)
-    arch = ALL_ARCHS[arch_name]
+  def with_cc(arch_name = nil, &block)
+    arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
     arch_gcc = arch.gcc_tc
+    arch_dir = TC / arch.gcc_ver._ / arch.name
     assert { !arch_gcc.blank? }
 
     compilers = get_installed_compilers.select { |x| x.target_arch == arch }
@@ -94,7 +95,7 @@ class PackageManager
       ENV["CROSS_PREFIX"]  = "#{arch_gcc}-linux-"
       ENV["CROSS_COMPILE"] = "#{arch_gcc}-linux-"
 
-      block.call()
+      block.call(arch_dir)
     end
   end
 
@@ -258,6 +259,7 @@ class PackageManager
     end
 
     ver = nil if ver.blank?
+    ver ||= pkg.default_ver()
     pkg.install_impl(ver)
     return true
   end

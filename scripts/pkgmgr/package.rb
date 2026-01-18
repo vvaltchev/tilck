@@ -93,6 +93,40 @@ class Package
   def eql?(other) = (self == other)
   def hash = (id.hash)
 
+  def chdir_package_base_dir(arch_dir, &block)
+    arch_dir ||= TC_NOARCH
+    FileUtils.mkdir_p(arch_dir / name)
+    FileUtils.chdir(arch_dir / name, &block)
+  end
+
+  def chdir_install_dir(arch_dir, ver_str, &block)
+
+    arch_dir ||= TC_NOARCH
+    d = arch_dir / name
+    contents = Dir.children(arch_dir / name)
+    count = contents.length
+
+    if count != 1
+      error "Extracted archive has #{count} elements, expected: 1"
+      return false
+    end
+
+    if contents[0] != ver_str
+      error "Extracted archive does not contain: #{ver_str} directory"
+      return false
+    end
+
+    d = d / ver_str
+    if !d.directory?
+      error "Not a directory: #{d}"
+      return false
+    end
+
+    FileUtils.chdir(d, &block)
+    return true
+  end
+
+  # Default implementations
   def get_install_list
     assert { !is_compiler }
 
@@ -124,6 +158,7 @@ class Package
   def default_arch = ARCH
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
+  def tarname = "#{name}-#{default_ver}.tgz"
 
   # Methods not implemented in the base class
   def install_impl(ver = nil) = raise NotImplementedError

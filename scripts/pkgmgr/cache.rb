@@ -209,11 +209,7 @@ module Cache
 
     # Download here the file.
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
-
-    if !success
-      error "Download failed"
-    end
-
+    error "Download failed" if !success
     return success
   end
 

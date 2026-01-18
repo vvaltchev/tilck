@@ -199,7 +199,7 @@ def prepend_to_global_path(path)
 end
 
 def with_saved_env(vars, &block)
-  saved = vars.map { |v| v => ENV[v] }
+  saved = vars.to_h { |v| [v, ENV[v]] }
   block.call()
   saved.each { |k,v| ENV[k] = v }
 end
