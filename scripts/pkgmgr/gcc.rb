@@ -71,10 +71,6 @@ class GccCompiler < Package
     ver ||= default_ver()
     info "Install #{name} version: #{ver}"
 
-    for e in get_install_list()
-      puts e
-    end
-
     if installed? ver
       info "Package already installed, skip"
       return true

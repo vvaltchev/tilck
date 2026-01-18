@@ -2,13 +2,14 @@
 
 require_relative 'early_logic'
 require_relative 'arch'
+require_relative 'term'
 require_relative 'version'
 require_relative 'package'
 require_relative 'gcc'
 require_relative 'cache'
 require_relative 'progress'
 require_relative 'package_manager'
-require_relative 'term'
+require_relative 'zlib'
 
 require 'pathname'
 require 'fileutils'

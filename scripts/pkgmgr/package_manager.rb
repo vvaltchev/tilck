@@ -192,7 +192,7 @@ class PackageManager
 
     end
 
-    if list.all? { |x| !x.pkg.nil? }
+    if list.any? { |x| !x.pkg.nil? }
       if list.any? { |x| !x.path.nil? }
         status = Package::INSTALLED_STR
       else
@@ -225,7 +225,6 @@ class PackageManager
 
     ver = nil if ver.blank?
     pkg.install_impl(ver)
-    pkg.refresh()
     return true
   end
 
@@ -387,7 +386,7 @@ class PackageManager
     }
 
     for cc in Dir.children(TC)
-      next if cc.start_with?(".")
+      next if cc == ".distro"
       next if ["cache", "noarch"].include? cc
 
       if cc != "syscc"

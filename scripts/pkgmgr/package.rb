@@ -83,7 +83,6 @@ class Package
     @is_compiler = is_compiler
     @arch_list = arch_list
     @dep_list = dep_list
-    @install_list = get_install_list()
 
     assert {
       !!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
@@ -95,16 +94,58 @@ class Package
   def eql?(other) = (self == other)
   def hash = (id.hash)
 
-  def refresh
-    @install_list = get_install_list()
+  def get_install_list
+
+    list = []
+
+    for cc in Dir.children(TC)
+      cc_ver = SafeVer(cc)&.to_dot
+      next if ["cache", "noarch", "syscc"].include? cc
+      next if !cc_ver
+
+      for arch in Dir.children(TC / cc)
+        arch_obj = ALL_ARCHS[arch.sub("host_", "")]
+        dir = TC / cc / arch / name
+        next if arch.start_with? "host_"
+        next if !arch_obj
+        next if !dir.directory?
+
+        for d in dir.children() do
+          list << InstallInfo.new(
+            name,
+            cc_ver,
+            on_host,
+            arch_obj,
+            Ver(d.basename.to_s),
+            d,
+            self
+          )
+        end # for ver_dir
+      end # for arch
+    end # for cc
+    return list
   end
 
-  # Methods not implemented in the base class
-  def install_impl(ver = nil) = raise NotImplementedError
-  def get_install_list = raise NotImplementedError
+  def get_installable_list
+    [
+      InstallInfo.new(
+        name,
+        default_cc,
+        on_host,
+        default_arch,
+        default_ver,
+        nil,               # install path
+        self
+      )
+    ]
+  end
+
   def default_arch = ARCH
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
+
+  # Methods not implemented in the base class
+  def install_impl(ver = nil) = raise NotImplementedError
 end
 
 
