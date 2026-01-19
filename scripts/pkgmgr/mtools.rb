@@ -14,7 +14,7 @@ class MtoolsPackage < Package
 
   def initialize
     super(
-      name: 'mtools',
+      name: 'host_mtools',
       url: 'https://ftp.gnu.org/gnu/mtools',
       on_host: true,
       is_compiler: false,

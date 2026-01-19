@@ -121,7 +121,18 @@ class PackageManager
       cc == curr_cc ? " [ CURRENT ]" : ""
     }
 
-    list = @known_installed + @found_installed + @installable
+    list_with_paths = @known_installed + @found_installed
+    by_path = {}
+
+    for info in list_with_paths
+      p = info.path
+      if (!by_path.include? p) or by_path[p].pkg.nil?
+        by_path[p] = info
+      end
+    end
+
+    list = by_path.values() + @installable
+
     groups = [
       [
         "GCC toolchains",
@@ -413,7 +424,10 @@ class PackageManager
             warning "Invalid package version: #{path / ver_str}"
             next
           end
-          list << InstallInfo.new(name, cc, on_host, arch_obj, ver, full_path)
+          list << InstallInfo.new(
+            name,
+            cc, on_host, arch_obj, ver, full_path
+          )
         end
       else
         # GCC toolchains embed their version into the directory name e.g.:

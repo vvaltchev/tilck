@@ -87,9 +87,9 @@ class Package
     @arch_list = arch_list
     @dep_list = dep_list
 
-    #assert {
-      #!!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
-    #}
+    assert {
+      !!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
+    }
   end
 
   def id = @name
@@ -98,13 +98,13 @@ class Package
   def hash = (id.hash)
 
   def chdir_package_base_dir(arch_dir, &block)
-    FileUtils.mkdir_p(arch_dir / name)
-    FileUtils.chdir(arch_dir / name, &block)
+    FileUtils.mkdir_p(arch_dir / pkg_dirname)
+    FileUtils.chdir(arch_dir / pkg_dirname, &block)
   end
 
   def chdir_install_dir(arch_dir, ver, &block)
 
-    d = arch_dir / name
+    d = arch_dir / pkg_dirname
     contents = Dir.children(d)
     count = contents.length
 
@@ -161,6 +161,7 @@ class Package
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
   def tarname(ver) = "#{name}-#{ver}.tgz"
+  def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
 
   def install_impl(ver)
@@ -268,7 +269,7 @@ class Package
   def syscc_package_get_install_list
 
     list = []
-    dir = HOST_ARCH_DIR_SYS / name
+    dir = HOST_ARCH_DIR_SYS / pkg_dirname
 
     if dir.directory?
       for d in Dir.children(dir)
@@ -299,7 +300,7 @@ class Package
 
       for arch in Dir.children(TC / cc)
         arch_obj = ALL_ARCHS[arch.sub("host_", "")]
-        dir = TC / cc / arch / name
+        dir = TC / cc / arch / pkg_dirname
         next if arch.start_with? "host_"
         next if !arch_obj
         next if !dir.directory?
@@ -324,7 +325,7 @@ class Package
   def noarch_package_get_install_list
 
     list = []
-    dir = TC_NOARCH / name
+    dir = TC_NOARCH / pkg_dirname
 
     if dir.directory?
       for d in Dir.children(dir) do
