@@ -30,6 +30,8 @@ class ZlibPackage < Package
   ]
 
   def install_impl_internal(install_dir)
+
+    arch = default_arch().gcc_tc
     ok = run_command("configure.log", [
       "./configure",
       "--prefix=#{install_dir}/install",
@@ -37,7 +39,13 @@ class ZlibPackage < Package
     ])
     return false if !ok
 
-    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
+    ok = run_command("build.log", [
+      "make",
+      "-j#{BUILD_PAR}",
+      "AR=#{arch}-linux-ar",
+      "ARFLAGS=rcs",
+      "RANLIB=#{arch}-linux-ranlib",
+    ])
     return false if !ok
 
     ok = run_command("install.log", [ "make", "install" ])
