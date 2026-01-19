@@ -182,7 +182,7 @@ class Package
 
       # noarch package
       chdir_package_base_dir(nil) do
-        ok = Cache::extract_file(TC_CACHE / tarname)
+        ok = Cache::extract_file(tarname)
         return false if !ok
 
         ok = chdir_install_dir(nil, ver) do
@@ -198,7 +198,7 @@ class Package
       pkgmgr.with_cc() do |arch_dir|
         chdir_package_base_dir(arch_dir) do
 
-          ok = Cache::extract_file(TC_CACHE / tarname)
+          ok = Cache::extract_file(tarname)
           return false if !ok
 
           ok = chdir_install_dir(arch_dir, ver) do

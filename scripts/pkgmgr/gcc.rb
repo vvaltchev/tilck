@@ -32,6 +32,20 @@ class GccCompiler < Package
     )
   end
 
+  def expected_files = [
+    "bin/#{target_arch.gcc_tc}-linux-gcc",
+    "bin/#{target_arch.gcc_tc}-linux-g++",
+    "bin/#{target_arch.gcc_tc}-linux-ar",
+    "bin/#{target_arch.gcc_tc}-linux-as",
+    "bin/#{target_arch.gcc_tc}-linux-ld",
+    "bin/#{target_arch.gcc_tc}-linux-nm",
+    "bin/#{target_arch.gcc_tc}-linux-objcopy",
+    "bin/#{target_arch.gcc_tc}-linux-objdump",
+    "bin/#{target_arch.gcc_tc}-linux-readelf",
+    "bin/#{target_arch.gcc_tc}-linux-ranlib",
+    "bin/#{target_arch.gcc_tc}-linux-strip",
+  ]
+
   def get_install_list
     list = []
     for e in HOST_ARCH_DIR_SYS.each_entry do
@@ -43,15 +57,15 @@ class GccCompiler < Package
         if pkgname == name
           list << InstallInfo.new(
             name,
-            "syscc",         # compiler version
-            true,            # on_host
-            HOST_ARCH,       # arch
-            ver,
-            p,               # install path
-            self,            # package object
-            false,           # broken
-            target_arch,
-            libc
+            "syscc",                   # compiler used to build it
+            true,                      # on_host
+            HOST_ARCH,                 # arch
+            ver,                       # gcc version
+            p,                         # install path
+            self,                      # package object
+            !check_install_dir(p),     # broken
+            target_arch,               # target architecture (obj)
+            libc                       # libc (string)
           )
         end
       end
@@ -64,13 +78,13 @@ class GccCompiler < Package
     for ver in ALL_VERSIONS do
       list << InstallInfo.new(
         name,
-        "syscc",             # compiler version
-        true,                # on_host
-        HOST_ARCH,           # arch
-        ver,
-        nil,                 # install path
-        self,                # package object
-        false,               # broken
+        "syscc",                       # compiler used to build it
+        true,                          # on_host
+        HOST_ARCH,                     # arch
+        ver,                           # gcc version
+        nil,                           # install path
+        self,                          # package object
+        nil,                           # broken
         target_arch,
         libc
       )
