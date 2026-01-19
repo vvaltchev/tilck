@@ -12,6 +12,8 @@ class BusyBoxPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
+  CONFIG_FILE = MAIN_DIR / "other" / "busybox.config"
+
   def initialize
     super(
       name: 'busybox',
@@ -31,11 +33,12 @@ class BusyBoxPackage < Package
 
   def install_impl_internal(install_dir)
 
-    cp(MAIN_DIR / "other" / "busybox.config", ".config")
+    cp CONFIG_FILE, ".config"
     ok = run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
     return false if !ok
 
     fix_config_file
+    cp ".config", ".last_build_config"
     return ok
   end
 
