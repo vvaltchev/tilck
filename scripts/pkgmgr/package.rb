@@ -162,6 +162,7 @@ class Package
   def tarname(ver) = "#{name}-#{ver}.tgz"
   def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
+  def git_tag(ver) = ver.to_s()
 
   def install_impl(ver)
 
@@ -177,7 +178,7 @@ class Package
     end
 
     if url.include? GITHUB
-      ok = Cache::download_git_repo(url, tarname(ver), ver.to_s())
+      ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
     else
       ok = Cache::download_file(url, tarname(ver))
     end

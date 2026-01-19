@@ -23,6 +23,8 @@ class ZlibPackage < Package
     )
   end
 
+  def git_tag(ver) = "v" + ver.to_s()
+
   def expected_files = [
     ["install/lib/libz.a", false]
   ]
@@ -30,7 +32,7 @@ class ZlibPackage < Package
   def install_impl_internal(install_dir)
     ok = run_command("configure.log", [
       "./configure",
-      "--prefix=#{install_subdir}/install",
+      "--prefix=#{install_dir}/install",
       "--static"
     ])
     return false if !ok
