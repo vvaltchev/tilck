@@ -264,8 +264,11 @@ class PackageManager
 
     ver = nil if ver.blank?
     ver ||= pkg.default_ver()
-    pkg.install_impl(ver)
-    return true
+    ok = pkg.install_impl(ver)
+    if ok
+      info "Installed package #{pkg.name} at version #{ver}"
+    end
+    return ok.nil?? true : ok
   end
 
   # Uninstall the package

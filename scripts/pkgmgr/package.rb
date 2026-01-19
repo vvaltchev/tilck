@@ -166,6 +166,13 @@ class Package
 
   def install_impl(ver)
 
+    info "Install #{name} version: #{ver}"
+
+    if installed? ver
+      info "Package already installed, skip"
+      return nil
+    end
+
     if !url or !url.include? GITHUB
       raise NotImplementedError
     end
@@ -230,6 +237,8 @@ class Package
     end
     return true
   end
+
+  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
 
   # Methods not implemented in the base class
   def install_impl_internal(install_subdir = nil) = raise NotImplementedError

@@ -14,7 +14,6 @@ class GccCompiler < Package
 
   PROJ_NAME = "musl-cross-make"
   CURR_TAG = pkgmgr.get_config_ver(PROJ_NAME).to_s
-  RELEASE_URL = make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG)
   VER_MUSL = pkgmgr.get_config_ver("musl")
   ALL_VERSIONS = [Ver("12.4.0"), Ver("13.3.0")]
 
@@ -25,6 +24,7 @@ class GccCompiler < Package
     @libc = libc
     super(
       name: pkgmgr.build_gcc_package_name(target_arch, libc),
+      url: make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
       on_host: true,
       is_compiler: true,
       arch_list: ALL_HOST_ARCHS,
@@ -99,14 +99,7 @@ class GccCompiler < Package
 
   def install_impl(ver)
 
-    info "Install #{name} version: #{ver}"
-
-    if installed? ver
-      info "Package already installed, skip"
-      return true
-    end
-
-    ok = Cache::download_file(RELEASE_URL, tarname)
+    ok = Cache::download_file(url, tarname)
     return false if !ok
 
     chdir(HOST_ARCH_DIR_SYS) do
@@ -134,7 +127,6 @@ class GccCompiler < Package
   end
 
   private
-  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
 
   def get_tarname(ver)
     archname = @target_arch.name
