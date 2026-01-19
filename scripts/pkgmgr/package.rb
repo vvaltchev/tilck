@@ -113,12 +113,12 @@ class Package
       return false
     end
 
-    if contents[0] != pkgdirname(ver)
+    if contents[0] != ver_dirname(ver)
       error "Extracted archive does not contain: #{ver_str} directory"
       return false
     end
 
-    d = d / pkgdirname(ver)
+    d = d / ver_dirname(ver)
     if !d.directory?
       error "Not a directory: #{d}"
       return false
@@ -161,7 +161,7 @@ class Package
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
   def tarname(ver) = "#{name}-#{ver}.tgz"
-  def pkgdirname(ver) = ver.to_s()
+  def ver_dirname(ver) = ver.to_s()
 
   def install_impl(ver)
 
@@ -189,7 +189,7 @@ class Package
       assert { default_cc.eql? "syscc" }
 
       chdir_package_base_dir(HOST_ARCH_DIR_SYS) do
-        ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
+        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
         return false if !ok
         ok = chdir_install_dir(HOST_ARCH_DIR_SYS, ver) do
           d = mkpathname(getwd)
@@ -205,7 +205,7 @@ class Package
       assert { !on_host }
 
       chdir_package_base_dir(TC_NOARCH) do
-        ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
+        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
         return false if !ok
 
         ok = chdir_install_dir(TC_NOARCH, ver) do
@@ -223,7 +223,7 @@ class Package
       pkgmgr.with_cc() do |arch_dir|
         chdir_package_base_dir(arch_dir) do
 
-          ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
+          ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
           return false if !ok
 
           ok = chdir_install_dir(arch_dir, ver) do

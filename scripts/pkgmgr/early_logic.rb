@@ -217,7 +217,7 @@ def run_command(out, argv)
     ok = system(*argv)
   else
     File.open(out, "wb") do |fh|
-      ok = system(*argv, out: fh)
+      ok = system(*argv, out: fh, err: fh)
     end
   end
 
