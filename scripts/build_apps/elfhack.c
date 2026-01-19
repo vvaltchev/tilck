@@ -7,12 +7,12 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <elf.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <3rd_party/elf.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
