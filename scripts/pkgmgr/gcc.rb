@@ -95,40 +95,9 @@ class GccCompiler < Package
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def tarname = get_tarname(default_ver())
+  def dirname(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
 
-  def install_impl(ver)
-
-    ok = Cache::download_file(url, tarname)
-    return false if !ok
-
-    chdir(HOST_ARCH_DIR_SYS) do
-      ok = Cache::extract_file(tarname)
-      return false if !ok
-
-      gcc_dir = mkpathname(get_gcc_dir(ver))
-      gcc_bin_dir = gcc_dir / "bin"
-
-      raise LocalError, "GCC dir #{gcc_dir} not found!" if
-        !exist? gcc_dir
-
-      raise LocalError, "GCC dir #{gcc_bin_dir} not found!" if
-        !exist? gcc_bin_dir
-
-      chdir(gcc_bin_dir) do
-        Dir.children(".").each(&method(:fix_single_file_name))
-      end
-    end
-    return true
-
-  rescue LocalError => e
-    error e
-    return false
-  end
-
-  private
-
-  def get_tarname(ver)
+  def tarname(ver)
     archname = @target_arch.name
     host_an = HOST_ARCH.name
 
@@ -146,8 +115,37 @@ class GccCompiler < Package
     "#{archname}-musl-#{VER_MUSL}-gcc-#{verStr}-#{host_an}#{os_suffix}#{ext}"
   end
 
-  def get_gcc_dir(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
+  def install_impl(ver)
 
+    ok = Cache::download_file(url, tarname(ver))
+    return false if !ok
+
+    chdir(HOST_ARCH_DIR_SYS) do
+      ok = Cache::extract_file(tarname(ver))
+      return false if !ok
+
+      gcc_dir = mkpathname(dirname(ver))
+      gcc_bin_dir = gcc_dir / "bin"
+
+      raise LocalError, "GCC dir #{gcc_dir} not found!" if
+        !exist? gcc_dir
+
+      raise LocalError, "GCC dir #{gcc_bin_dir} not found!" if
+        !exist? gcc_bin_dir
+
+      chdir(gcc_bin_dir) do
+        Dir.children(".").each(&method(:fix_single_file_name))
+      end
+
+      return check_install_dir(gcc_dir, true)
+    end
+
+  rescue LocalError => e
+    error e
+    return false
+  end
+
+  private
   def fix_single_file_name(name)
 
     new_name = name.sub("musl-", "")

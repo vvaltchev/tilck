@@ -103,7 +103,7 @@ class Package
     FileUtils.chdir(arch_dir / name, &block)
   end
 
-  def chdir_install_dir(arch_dir, ver_str, &block)
+  def chdir_install_dir(arch_dir, ver, &block)
 
     arch_dir ||= TC_NOARCH
     d = arch_dir / name
@@ -115,12 +115,12 @@ class Package
       return false
     end
 
-    if contents[0] != ver_str
+    if contents[0] != dirname(ver)
       error "Extracted archive does not contain: #{ver_str} directory"
       return false
     end
 
-    d = d / ver_str
+    d = d / dirname(ver)
     if !d.directory?
       error "Not a directory: #{d}"
       return false
@@ -162,7 +162,8 @@ class Package
   def default_arch = ARCH
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
-  def tarname = "#{name}-#{default_ver}.tgz"
+  def tarname(ver) = "#{name}-#{ver}.tgz"
+  def dirname(ver) = ver.to_s()
 
   def install_impl(ver)
 
@@ -177,17 +178,21 @@ class Package
       raise NotImplementedError
     end
 
-    if on_host
-      raise NotImplementedError
-    end
-
-    ver = ver.to_s()
-    ok = Cache::download_git_repo(url, tarname, ver)
+    ok = Cache::download_git_repo(url, tarname(ver), ver.to_s())
     return false if !ok
 
-    if default_arch.nil?
+    if default_cc.eql? "syscc"
 
-      # noarch package
+      # syscc package, running on the host
+      assert { on_host }
+      raise NotImplementedError
+
+    elsif default_arch.nil?
+
+      # noarch/source package: does not require compilation at all (lcov)
+      # or does not require compilation by the toolchain (e.g. acpica).
+      assert { !on_host }
+
       chdir_package_base_dir(nil) do
         ok = Cache::extract_file(tarname)
         return false if !ok
@@ -202,6 +207,8 @@ class Package
     else
 
       # regular package (target = tilck architecture)
+      assert { !on_host }
+
       pkgmgr.with_cc() do |arch_dir|
         chdir_package_base_dir(arch_dir) do
 
