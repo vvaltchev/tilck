@@ -23,6 +23,10 @@ class ZlibPackage < Package
     )
   end
 
+  def expected_files = [
+    ["install/lib/libz.a", false]
+  ]
+
   def install_impl_internal(install_subdir)
     ok = run_command("configure.log", [
       "./configure",

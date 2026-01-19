@@ -184,7 +184,9 @@ class Package
         return false if !ok
 
         ok = chdir_install_dir(nil, ver) do
+          d = mkpathname(getwd)
           ok = install_impl_internal()
+          ok = check_install_dir(d, true) if ok
         end
       end
 
@@ -198,7 +200,9 @@ class Package
           return false if !ok
 
           ok = chdir_install_dir(arch_dir, ver) do
-            ok = install_impl_internal(mkpathname(getwd) / "install")
+            d = mkpathname(getwd)
+            ok = install_impl_internal(d / "install")
+            ok = check_install_dir(d, true) if ok
           end
         end
       end
@@ -207,8 +211,27 @@ class Package
     return ok
   end
 
+  def check_install_dir(d, report_error = false)
+    for entry, isdir in expected_files
+      path = d / entry
+      if isdir
+        if !path.directory?
+          error "Directory not found: #{path}" if report_error
+          return false
+        end
+      else
+        if !path.file?
+          error "File not found: #{path}" if report_error
+          return false
+        end
+      end
+    end
+    return true
+  end
+
   # Methods not implemented in the base class
   def install_impl_internal(install_subdir = nil) = raise NotImplementedError
+  def expected_files = raise NotImplementedError
 
   private
   # Generic methods used depending on the package type.

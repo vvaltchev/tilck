@@ -33,6 +33,13 @@ class Acpica < Package
     )
   end
 
+  def expected_files = [
+    ["3rd_party", true],
+    ["Makefile", false],
+    ["source", true],
+    ["source/components/namespace", true],
+  ]
+
   def install_impl_internal(ignored = nil)
     apply_patches()
     chdir!("3rd_party") {
