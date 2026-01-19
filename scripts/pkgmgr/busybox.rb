@@ -7,21 +7,6 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
-def stable_sort(array, &cmp)
-
-  cmp ||= ->(a, b) { a <=> b }
-
-  array.each_with_index
-       .sort do |(a, ia), (b, ib)|
-         c = cmp.call(a, b)
-         c = 0 if c.nil? # be tolerant; Ruby expects -1/0/1,
-                         # but some comparators return nil
-         c == 0 ? (ia <=> ib) : c
-       end
-       .map(&:first)
-end
-
-
 class BusyBoxPackage < Package
 
   include FileShortcuts
