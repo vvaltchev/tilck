@@ -12,12 +12,10 @@ class ZlibPackage < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  PROJ_NAME = 'zlib'
-  URL = GITHUB + '/madler/' + PROJ_NAME
-
   def initialize
     super(
-      name: PROJ_NAME,
+      name: 'zlib',
+      url: GITHUB + '/madler/zlib',
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
@@ -25,40 +23,22 @@ class ZlibPackage < Package
     )
   end
 
-  def install_impl(ver)
-    ver = ver.to_s()
-    ok = Cache::download_git_repo(URL, tarname, ver)
+  def install_impl_internal(install_subdir)
+    ok = run_command("configure.log", [
+      "./configure",
+      "--prefix=#{install_subdir}",
+      "--static"
+    ])
     return false if !ok
 
-    pkgmgr.with_cc() do |arch_dir|
-      chdir_package_base_dir(arch_dir) do
+    ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
+    return false if !ok
 
-        ok = Cache::extract_file(TC_CACHE / tarname)
-        return false if !ok
-
-        ok = chdir_install_dir(arch_dir, ver) do
-          install = (mkpathname(getwd()) / "install").to_s()
-          ok = run_command("configure.log", [
-            "./configure",
-            "--prefix=#{install}",
-            "--static"
-          ])
-          return false if !ok
-
-          ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
-          return false if !ok
-
-          ok = run_command("install.log", [ "make", "install" ])
-          return false if !ok
-        end
-
-        return false if !ok
-      end
-    end
+    ok = run_command("install.log", [ "make", "install" ])
+    return false if !ok
 
     return true
- end
-
+  end
 end
 
 pkgmgr.register(ZlibPackage.new())

@@ -12,8 +12,6 @@ class Acpica < Package
   include FileShortcuts
   include FileUtilsShortcuts
 
-  PROJ_NAME = 'acpica'
-  URL = GITHUB + '/acpica/' + PROJ_NAME
   PATCHES = {
     'source/include/platform/acenv.h' => {
       '#if defined(_LINUX) || defined(__linux__)' =>
@@ -26,7 +24,8 @@ class Acpica < Package
 
   def initialize
     super(
-      name: PROJ_NAME,
+      name: 'acpica',
+      url: GITHUB + '/acpica/acpica',
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # nil => noarch package
@@ -34,24 +33,12 @@ class Acpica < Package
     )
   end
 
-  def install_impl(ver)
-    ver = ver.to_s()
-    ok = Cache::download_git_repo(URL, tarname, ver, ver)
-    return false if !ok
-
-    chdir_package_base_dir(nil) do
-      ok = Cache::extract_file(TC_CACHE / tarname)
-      return false if !ok
-
-      ok = chdir_install_dir(nil, ver) do
-        apply_patches()
-        chdir!("3rd_party") {
-          File.write("README", "Directory created by Tilck")
-          ln_s("../source/include", "acpi")
-        }
-      end
-    end
-
+  def install_impl_internal(ignored = nil)
+    apply_patches()
+    chdir!("3rd_party") {
+      File.write("README", "Directory created by Tilck")
+      ln_s("../source/include", "acpi")
+    }
     return true
   end
 

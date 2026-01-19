@@ -62,7 +62,7 @@ end
 
 class Package
 
-  attr_reader :name, :on_host, :is_compiler, :arch_list, :dep_list
+  attr_reader :name, :url, :on_host, :is_compiler, :arch_list, :dep_list
 
   STATUS_LEN    = 9
   INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
@@ -73,11 +73,13 @@ class Package
 
   public
   def initialize(name:,
+                 url: nil,
                  on_host: false,
                  is_compiler: false,
                  arch_list: ALL_ARCHS,
                  dep_list: [])
     @name = name
+    @url = url
     @on_host = on_host
     @is_compiler = is_compiler
     @arch_list = arch_list
@@ -160,8 +162,53 @@ class Package
   def default_ver = pkgmgr.get_config_ver(@name)
   def tarname = "#{name}-#{default_ver}.tgz"
 
+  def install_impl(ver)
+
+    if !url or !url.include? GITHUB
+      raise NotImplementedError
+    end
+
+    if on_host
+      raise NotImplementedError
+    end
+
+    ver = ver.to_s()
+    ok = Cache::download_git_repo(url, tarname, ver)
+    return false if !ok
+
+    if default_arch.nil?
+
+      # noarch package
+      chdir_package_base_dir(nil) do
+        ok = Cache::extract_file(TC_CACHE / tarname)
+        return false if !ok
+
+        ok = chdir_install_dir(nil, ver) do
+          ok = install_impl_internal()
+        end
+      end
+
+    else
+
+      # regular package (target = tilck architecture)
+      pkgmgr.with_cc() do |arch_dir|
+        chdir_package_base_dir(arch_dir) do
+
+          ok = Cache::extract_file(TC_CACHE / tarname)
+          return false if !ok
+
+          ok = chdir_install_dir(arch_dir, ver) do
+            ok = install_impl_internal(mkpathname(getwd) / "install")
+          end
+        end
+      end
+    end
+
+    return ok
+  end
+
   # Methods not implemented in the base class
-  def install_impl(ver = nil) = raise NotImplementedError
+  def install_impl_internal(install_subdir = nil) = raise NotImplementedError
 
   private
   # Generic methods used depending on the package type.
