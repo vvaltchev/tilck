@@ -68,7 +68,7 @@
 #include <stdarg.h>
 #include <sys/types.h>    // system header (just for ulong)
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__APPLE__)
 
    /*
     * FreeBSD doesn't have the `ulong` type, that's a Linux thing.
