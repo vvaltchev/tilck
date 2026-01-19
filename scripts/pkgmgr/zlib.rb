@@ -37,7 +37,19 @@ class ZlibPackage < Package
         return false if !ok
 
         ok = chdir_install_dir(arch_dir, ver) do
-          system("echo aaa > bbb")
+          install = (mkpathname(getwd()) / "install").to_s()
+          ok = run_command("configure.log", [
+            "./configure",
+            "--prefix=#{install}",
+            "--static"
+          ])
+          return false if !ok
+
+          ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
+          return false if !ok
+
+          ok = run_command("install.log", [ "make", "install" ])
+          return false if !ok
         end
 
         return false if !ok

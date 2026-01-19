@@ -103,7 +103,7 @@ class Package
 
     arch_dir ||= TC_NOARCH
     d = arch_dir / name
-    contents = Dir.children(arch_dir / name)
+    contents = Dir.children(d)
     count = contents.length
 
     if count != 1

@@ -6,6 +6,7 @@ require_relative 'term'
 require 'power_assert'
 require 'pathname'
 require 'etc'
+require 'shellwords'
 
 # Global, generic constants.
 KB = 1024
@@ -183,6 +184,7 @@ HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD
 BOARD_BSP = BOARD ? MAIN_DIR / "other" / "bsp" / $ARCH.name / BOARD : nil
+BUILD_PAR = ENV["BUILD_PAR"] or ""
 
 def get_human_arch_name(arch)
   return "noarch" if arch.nil?
@@ -203,3 +205,23 @@ def with_saved_env(vars, &block)
   block.call()
   saved.each { |k,v| ENV[k] = v }
 end
+
+def run_command(out, argv)
+  assert { argv.is_a? Array }
+  assert { argv.length > 0 }
+
+  cmd_str = argv.map { |a| Shellwords.escape(a.to_s) }.join(" ")
+  info "Run: #{cmd_str}"
+
+  if !out
+    ok = system(*argv)
+  else
+    File.open(out, "wb") do |fh|
+      ok = system(*argv, out: fh)
+    end
+  end
+
+  error "Command failed" if !ok
+  return ok
+end
+
