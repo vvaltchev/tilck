@@ -32,16 +32,26 @@ class MtoolsPackage < Package
   ]
 
   def install_impl_internal(install_dir)
-    conf_params = []
 
-    if OS == "FreeBSD"
+    env = {}
+    conf_params = [
+      "--without-x",
+    ]
+
+    if OS == "FreeBSD" or OS == "Darwin"
       conf_params << "LIBS=-liconv"
+      env["ac_cv_func_stat64"] = "no"
+      env["ac_cv_func_lstat64"] = "no"
+      env["ac_cv_func_fstat64"] = "no"
+      env["ac_cv_type_struct_stat64"] = "no"
     end
 
-    ok = run_command("configure.log", [
-      "./configure",
-      *conf_params
-    ])
+    ok = with_saved_env(env.keys()) do
+      run_command("configure.log", [
+        "./configure", *conf_params
+      ])
+    end
+
     return false if !ok
 
     ok = run_command("build.log", [ "make", "-j#{BUILD_PAR}" ])
