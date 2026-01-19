@@ -7,6 +7,21 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+def stable_sort(array, &cmp)
+
+  cmp ||= ->(a, b) { a <=> b }
+
+  array.each_with_index
+       .sort do |(a, ia), (b, ib)|
+         c = cmp.call(a, b)
+         c = 0 if c.nil? # be tolerant; Ruby expects -1/0/1,
+                         # but some comparators return nil
+         c == 0 ? (ia <=> ib) : c
+       end
+       .map(&:first)
+end
+
+
 class BusyBoxPackage < Package
 
   include FileShortcuts
@@ -30,9 +45,33 @@ class BusyBoxPackage < Package
   ]
 
   def install_impl_internal(install_dir)
+
     cp(MAIN_DIR / "other" / "busybox.config", ".config")
-    return run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
+    ok = run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
+    return false if !ok
+
+    fix_config_file
+    return ok
   end
+
+  private
+  def fix_config_file
+    data = File.read(".config")
+    lines = data.lines()
+    lines = lines[4...] # drop the first 4 lines
+    lines.select! { |x| !x.strip().blank? } # drop the empty lines
+    lines.select! { |x| !x.index("CONFIG_").nil? } # drop comment lines
+    lines.map! { |x| x.rstrip() }
+
+    # Do a reverse stable sort on the lines array, comparing the binary version
+    # of the strings, which is what we did in the past with:
+    #
+    #     LC_ALL=C sort -sr .config > .config_sorted
+    #
+    lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
+    File.write(".config", lines.join("\n") + "\n")
+  end
+
 end
 
 pkgmgr.register(BusyBoxPackage.new())
