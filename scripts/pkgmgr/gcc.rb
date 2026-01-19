@@ -95,7 +95,7 @@ class GccCompiler < Package
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def dirname(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
+  def pkgdirname(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
 
   def tarname(ver)
     archname = @target_arch.name
@@ -124,7 +124,7 @@ class GccCompiler < Package
       ok = Cache::extract_file(tarname(ver))
       return false if !ok
 
-      gcc_dir = mkpathname(dirname(ver))
+      gcc_dir = mkpathname(pkgdirname(ver))
       gcc_bin_dir = gcc_dir / "bin"
 
       raise LocalError, "GCC dir #{gcc_dir} not found!" if

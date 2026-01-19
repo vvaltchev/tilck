@@ -87,9 +87,9 @@ class Package
     @arch_list = arch_list
     @dep_list = dep_list
 
-    assert {
-      !!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
-    }
+    #assert {
+      #!!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
+    #}
   end
 
   def id = @name
@@ -98,14 +98,12 @@ class Package
   def hash = (id.hash)
 
   def chdir_package_base_dir(arch_dir, &block)
-    arch_dir ||= TC_NOARCH
     FileUtils.mkdir_p(arch_dir / name)
     FileUtils.chdir(arch_dir / name, &block)
   end
 
   def chdir_install_dir(arch_dir, ver, &block)
 
-    arch_dir ||= TC_NOARCH
     d = arch_dir / name
     contents = Dir.children(d)
     count = contents.length
@@ -115,12 +113,12 @@ class Package
       return false
     end
 
-    if contents[0] != dirname(ver)
+    if contents[0] != pkgdirname(ver)
       error "Extracted archive does not contain: #{ver_str} directory"
       return false
     end
 
-    d = d / dirname(ver)
+    d = d / pkgdirname(ver)
     if !d.directory?
       error "Not a directory: #{d}"
       return false
@@ -135,7 +133,7 @@ class Package
     assert { !is_compiler }
 
     if on_host
-      raise NotImplementedError
+      syscc_package_get_install_list()
     else
       if !arch_list.nil?
         return regular_target_package_get_install_list()
@@ -149,7 +147,7 @@ class Package
     assert { !is_compiler }
 
     if on_host
-      raise NotImplementedError
+      syscc_package_get_installable_list()
     else
       if !arch_list.nil?
         return regular_target_package_get_installable_list()
@@ -163,7 +161,7 @@ class Package
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name)
   def tarname(ver) = "#{name}-#{ver}.tgz"
-  def dirname(ver) = ver.to_s()
+  def pkgdirname(ver) = ver.to_s()
 
   def install_impl(ver)
 
@@ -174,18 +172,31 @@ class Package
       return nil
     end
 
-    if !url or !url.include? GITHUB
+    if !url
       raise NotImplementedError
     end
 
-    ok = Cache::download_git_repo(url, tarname(ver), ver.to_s())
+    if url.include? GITHUB
+      ok = Cache::download_git_repo(url, tarname(ver), ver.to_s())
+    else
+      ok = Cache::download_file(url, tarname(ver))
+    end
     return false if !ok
 
-    if default_cc.eql? "syscc"
+    if on_host
 
       # syscc package, running on the host
-      assert { on_host }
-      raise NotImplementedError
+      assert { default_cc.eql? "syscc" }
+
+      chdir_package_base_dir(HOST_ARCH_DIR_SYS) do
+        ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
+        return false if !ok
+        ok = chdir_install_dir(HOST_ARCH_DIR_SYS, ver) do
+          d = mkpathname(getwd)
+          ok = install_impl_internal(d)
+          ok = check_install_dir(d, true) if ok
+        end
+      end
 
     elsif default_arch.nil?
 
@@ -193,13 +204,13 @@ class Package
       # or does not require compilation by the toolchain (e.g. acpica).
       assert { !on_host }
 
-      chdir_package_base_dir(nil) do
-        ok = Cache::extract_file(tarname)
+      chdir_package_base_dir(TC_NOARCH) do
+        ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
         return false if !ok
 
-        ok = chdir_install_dir(nil, ver) do
+        ok = chdir_install_dir(TC_NOARCH, ver) do
           d = mkpathname(getwd)
-          ok = install_impl_internal()
+          ok = install_impl_internal(d)
           ok = check_install_dir(d, true) if ok
         end
       end
@@ -212,7 +223,7 @@ class Package
       pkgmgr.with_cc() do |arch_dir|
         chdir_package_base_dir(arch_dir) do
 
-          ok = Cache::extract_file(tarname)
+          ok = Cache::extract_file(tarname(ver), pkgdirname(ver))
           return false if !ok
 
           ok = chdir_install_dir(arch_dir, ver) do
@@ -253,6 +264,30 @@ class Package
 
   private
   # Generic methods used depending on the package type.
+
+  def syscc_package_get_install_list
+
+    list = []
+    dir = HOST_ARCH_DIR_SYS / name
+
+    if dir.directory?
+      for d in Dir.children(dir)
+        list << InstallInfo.new(
+          name,                          # package name
+          "syscc",                       # compiler used
+          true,                          # runnning on host?
+          HOST_ARCH,                     # arch
+          Ver(d.to_s),                   # package version
+          dir / d,                       # install path
+          self,                          # package object
+          !check_install_dir(dir / d)    # broken?
+        )
+      end
+    end
+
+    return list
+  end
+
   def regular_target_package_get_install_list
 
     list = []
@@ -269,16 +304,16 @@ class Package
         next if !arch_obj
         next if !dir.directory?
 
-        for d in dir.children() do
+        for d in Dir.children(dir) do
           list << InstallInfo.new(
-            name,                    # package name
-            cc_ver,                  # compiler used
-            on_host,                 # runnning on host?
-            arch_obj,                # arch
-            Ver(d.basename.to_s),    # package version
-            d,                       # install path
-            self,                    # package object
-            !check_install_dir(d)    # broken?
+            name,                        # package name
+            cc_ver,                      # compiler used
+            on_host,                     # runnning on host?
+            arch_obj,                    # arch
+            Ver(d.to_s),                 # package version
+            dir / d,                     # install path
+            self,                        # package object
+            !check_install_dir(dir / d)  # broken?
           )
         end # for ver_dir
       end # for arch
@@ -292,28 +327,28 @@ class Package
     dir = TC_NOARCH / name
 
     if dir.directory?
-      for d in dir.children() do
+      for d in Dir.children(dir) do
         list << InstallInfo.new(
           name,
-          nil,                   # compiler ver
-          false,                 # on host
-          nil,                   # arch
-          Ver(d.basename.to_s),  # version
-          d,                     # install path
-          self,                  # package object
-          !check_install_dir(d)  # broken?
+          nil,                           # compiler ver
+          false,                         # on host
+          nil,                           # arch
+          Ver(d.to_s),                   # version
+          dir / d,                       # install path
+          self,                          # package object
+          !check_install_dir(dir / d)    # broken?
         )
       end
     end
     return list
   end
 
-  def noarch_package_get_installable_list = [
+  def syscc_package_get_installable_list = [
     InstallInfo.new(
       name,
-      nil,                     # compiler ver
-      false,                   # on_host
-      nil,                     # arch
+      default_cc,
+      on_host,
+      default_arch,
       default_ver,
       nil,                     # install path
       self                     # package object
@@ -326,6 +361,18 @@ class Package
       default_cc,
       on_host,
       default_arch,
+      default_ver,
+      nil,                     # install path
+      self                     # package object
+    )
+  ]
+
+  def noarch_package_get_installable_list = [
+    InstallInfo.new(
+      name,
+      nil,                     # compiler ver
+      false,                   # on_host
+      nil,                     # arch
       default_ver,
       nil,                     # install path
       self                     # package object
