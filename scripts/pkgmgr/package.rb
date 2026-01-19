@@ -229,7 +229,7 @@ class Package
 
           ok = chdir_install_dir(arch_dir, ver) do
             d = mkpathname(getwd)
-            ok = install_impl_internal(d / "install")
+            ok = install_impl_internal(d)
             ok = check_install_dir(d, true) if ok
           end
         end
@@ -240,7 +240,7 @@ class Package
   end
 
   def check_install_dir(d, report_error = false)
-    for entry, isdir in expected_files
+    for entry, isdir in expected_files()
       path = d / entry
       if isdir
         if !path.directory?
@@ -257,10 +257,12 @@ class Package
     return true
   end
 
-  def installed?(ver) = get_install_list().any? { |x| x.ver == ver }
+  def installed?(ver) = get_install_list().any? {
+    |x| x.ver == ver and x.compiler == default_cc
+  }
 
   # Methods not implemented in the base class
-  def install_impl_internal(install_subdir = nil) = raise NotImplementedError
+  def install_impl_internal(install_dir) = raise NotImplementedError
   def expected_files = raise NotImplementedError
 
   private

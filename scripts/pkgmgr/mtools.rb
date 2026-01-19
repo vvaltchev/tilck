@@ -31,7 +31,7 @@ class MtoolsPackage < Package
     "mtools"
   ]
 
-  def install_impl_internal(install_subdir)
+  def install_impl_internal(install_dir)
     conf_params = []
 
     if OS == "FreeBSD"

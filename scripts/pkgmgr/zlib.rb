@@ -27,10 +27,10 @@ class ZlibPackage < Package
     ["install/lib/libz.a", false]
   ]
 
-  def install_impl_internal(install_subdir)
+  def install_impl_internal(install_dir)
     ok = run_command("configure.log", [
       "./configure",
-      "--prefix=#{install_subdir}",
+      "--prefix=#{install_subdir}/install",
       "--static"
     ])
     return false if !ok
