@@ -266,34 +266,6 @@ function setup_ruby {
    build_ruby
 }
 
-function set_host_arch_variable {
-
-   HOST_ARCH="`uname -m`"
-
-   if [[ "$HOST_ARCH" == "x86_64" ]]; then
-
-      : # Great, that's our DEFAULT host architecture: do nothing
-
-   elif [[ "$HOST_ARCH" == "amd64" ]]; then
-
-      # An alias for x86_64: fix our variable
-      HOST_ARCH="x86_64"
-
-   elif [[ "$HOST_ARCH" == "aarch64" ]]; then
-
-      : # That's OK: no translation necessary.
-
-   elif [[ "$HOST_ARCH" == "arm64" ]]; then
-
-      HOST_ARCH="aarch64"
-
-   else
-
-      echo "ERROR: build host architecture $HOST_ARCH not supported"
-      exit 1
-   fi
-}
-
 function create_base_dirs {
 
    mkdir -p $TC

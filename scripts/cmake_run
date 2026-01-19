@@ -12,8 +12,8 @@ MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 : ${TCROOT:=$TCROOT_PARENT/toolchain3}
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
-source $MAIN_DIR/scripts/bash_includes/arch_utils
 source $MAIN_DIR/other/pkg_versions
+
 
 set_host_arch_variable   # set $HOST_ARCH
 HOST_ARCH_DIR_SYS=$TCROOT/syscc/host_$HOST_ARCH
