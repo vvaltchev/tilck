@@ -51,26 +51,22 @@ elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
    set(HOST_ARCH_BITS 64)
    set(HOST_ARCH_FAMILY "arm")
 
+elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+
+   set(HOST_ARCH "aarch64")
+   set(HOST_ARCH_BITS 64)
+   set(HOST_ARCH_FAMILY "arm")
+
 endif()
 
 if (CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
    set(GNU_WRAP_DIR ${CMAKE_SOURCE_DIR}/scripts/gnu-wrap)
-   #set(NEW_PATH "${GNU_WRAP_DIR}${CMAKE_ENV_PATH_SEP}${ENV_PATH}")
-   #set(ENV{PATH} "${NEW_PATH}")
-   #list(PREPEND CMAKE_PROGRAM_PATH "${GNU_WRAP_DIR}")
-
-   #set(ENV_WITH_GNU_WRAP "${CMAKE_COMMAND}" -E env "PATH=${NEW_PATH}")
-
-   ## Apply to everything under this directory (and subdirs unless overridden)
-   #set_property(DIRECTORY PROPERTY RULE_LAUNCH_COMPILE "${ENV_WITH_GNU_WRAP}")
-   #set_property(DIRECTORY PROPERTY RULE_LAUNCH_LINK    "${ENV_WITH_GNU_WRAP}")
-
    set(DD ${GNU_WRAP_DIR}/dd)
-
+elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+   set(GNU_WRAP_DIR ${CMAKE_SOURCE_DIR}/scripts/gnu-wrap)
+   set(DD ${GNU_WRAP_DIR}/dd)
 else()
-
    set(DD "dd")
-
 endif()
 
 # BEGIN [Environment-controlled "sticky" cache variables]
