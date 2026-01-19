@@ -42,8 +42,16 @@ class GccCompiler < Package
         p = HOST_ARCH_DIR_SYS / e
         if pkgname == name
           list << InstallInfo.new(
-            name, "syscc", true, HOST_ARCH, ver, p, self,
-            target_arch, libc
+            name,
+            "syscc",         # compiler version
+            true,            # on_host
+            HOST_ARCH,       # arch
+            ver,
+            p,               # install path
+            self,            # package object
+            false,           # broken
+            target_arch,
+            libc
           )
         end
       end
@@ -55,8 +63,16 @@ class GccCompiler < Package
     list = []
     for ver in ALL_VERSIONS do
       list << InstallInfo.new(
-        name, "syscc", true, HOST_ARCH, ver, nil, self,
-        target_arch, libc
+        name,
+        "syscc",             # compiler version
+        true,                # on_host
+        HOST_ARCH,           # arch
+        ver,
+        nil,                 # install path
+        self,                # package object
+        false,               # broken
+        target_arch,
+        libc
       )
     end
     return list

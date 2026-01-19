@@ -225,7 +225,11 @@ class PackageManager
 
     if list.any? { |x| !x.pkg.nil? }
       if list.any? { |x| !x.path.nil? }
-        status = Package::INSTALLED_STR
+        if list.any? { |x| x.broken }
+          status = Package::BROKEN_STR
+        else
+          status = Package::INSTALLED_STR
+        end
       else
         status = Package::EMPTY_STR
       end
@@ -419,7 +423,16 @@ class PackageManager
         ver, target_arch, libc = parsed_gcc_info
         name = build_gcc_package_name(target_arch, libc)
         list << InstallInfo.new(
-          name, "syscc", true, arch_obj, ver, path, nil, target_arch, libc
+          name,
+          "syscc",
+          true,
+          arch_obj,
+          ver,
+          path,
+          nil,
+          false,
+          target_arch,
+          libc
         )
       end
     }

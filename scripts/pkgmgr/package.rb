@@ -22,16 +22,17 @@ end
 class InstallInfo
 
   attr_reader :pkgname, :compiler, :on_host, :arch, :ver, :path
-  attr_reader :pkg, :target_arch, :libc
+  attr_reader :pkg, :broken, :target_arch, :libc
 
   def initialize(
     pkgname,  # package name (string)
-    compiler, # compiler version used to build it, or "syscc" or nil for noarch
+    compiler, # compiler ver used to build it, or "syscc" or nil for noarch
     on_host,  # runs on the host?
     arch,     # arch. of the installation (e.g. HOST_ARCH for compilers)
     ver,      # package version (Version object)
     path,     # installation path (directory)
     pkg = nil,# Package object or nil.
+    broken      = nil, # is the package broken?
     target_arch = nil, # target architecture [only for compilers]
     libc        = nil  # libc (e.g. "musl") [only for compilers]
   )
@@ -42,6 +43,7 @@ class InstallInfo
     @ver = ver                 # package version
     @path = path               # install path
     @pkg = pkg                 # package object
+    @broken = broken           # broken attribute
     @target_arch = target_arch
     @libc = libc
     assert { arch.nil? or arch.is_a? Architecture }
@@ -253,13 +255,14 @@ class Package
 
         for d in dir.children() do
           list << InstallInfo.new(
-            name,
-            cc_ver,
-            on_host,
-            arch_obj,
-            Ver(d.basename.to_s),
-            d,
-            self
+            name,                    # package name
+            cc_ver,                  # compiler used
+            on_host,                 # runnning on host?
+            arch_obj,                # arch
+            Ver(d.basename.to_s),    # package version
+            d,                       # install path
+            self,                    # package object
+            !check_install_dir(d)    # broken?
           )
         end # for ver_dir
       end # for arch
@@ -281,7 +284,8 @@ class Package
           nil,                   # arch
           Ver(d.basename.to_s),  # version
           d,                     # install path
-          self                   # package object
+          self,                  # package object
+          !check_install_dir(d)  # broken?
         )
       end
     end
