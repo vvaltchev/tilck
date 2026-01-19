@@ -12,6 +12,7 @@ require_relative 'package_manager'
 require_relative 'zlib'
 require_relative 'acpica'
 require_relative 'mtools'
+require_relative 'busybox'
 
 require 'pathname'
 require 'fileutils'

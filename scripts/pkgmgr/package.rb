@@ -158,7 +158,7 @@ class Package
 
   def default_arch = ARCH
   def default_cc = ARCH.gcc_ver
-  def default_ver = pkgmgr.get_config_ver(@name)
+  def default_ver = pkgmgr.get_config_ver(@name.sub("host_", ""))
   def tarname(ver) = "#{name}-#{ver}.tgz"
   def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
