@@ -99,7 +99,7 @@ class Package
 
   def chdir_package_base_dir(arch_dir, &block)
     FileUtils.mkdir_p(arch_dir / pkg_dirname)
-    FileUtils.chdir(arch_dir / pkg_dirname, &block)
+    return FileUtils.chdir(arch_dir / pkg_dirname, &block)
   end
 
   def chdir_install_dir(arch_dir, ver, &block)
@@ -124,8 +124,7 @@ class Package
       return false
     end
 
-    FileUtils.chdir(d, &block)
-    return true
+    return FileUtils.chdir(d, &block)
   end
 
   # Default implementations
@@ -133,7 +132,7 @@ class Package
     assert { !is_compiler }
 
     if on_host
-      syscc_package_get_install_list()
+      return syscc_package_get_install_list()
     else
       if !arch_list.nil?
         return regular_target_package_get_install_list()
