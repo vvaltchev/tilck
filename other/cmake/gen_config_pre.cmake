@@ -16,6 +16,10 @@ file(GLOB config_glob ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/config/*.h")
 foreach(config_path ${config_glob})
 
    get_filename_component(config_name ${config_path} NAME_WE)
+   string(FIND ${config_name} "mod_" _pos)
+   if (_pos EQUAL 0)
+      continue() # skip module-specific config files.
+   endif()
 
    smart_config_file(
       ${config_path}
@@ -23,11 +27,6 @@ foreach(config_path ${config_glob})
    )
 
 endforeach()
-
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/modules_list.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_list.h
-)
 
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h

@@ -1,24 +1,24 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-set(TOOL_WS ${CMAKE_BINARY_DIR}/scripts/weaken_syms)
+set(TOOL_WS ${BUILD_DIR}/scripts/weaken_syms)
 
 # --------------------------------------------------------------------
 # Sysfs-only special code for the generated config objects
 
 set(
    GENERATED_CONFIG_FILE
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/generated_config.h
+   ${BUILD_DIR}/tilck_gen_headers/generated_config.h
 )
 
 set(
    RO_CONFIG_VARS_HEADER
-   ${CMAKE_SOURCE_DIR}/modules/sysfs/ro_config_vars.h
+   ${PROJ_ROOT}/modules/sysfs/ro_config_vars.h
 )
 
 set(
    ALL_MODULES_LIST_HEADER
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/all_modules_list.h
+   ${BUILD_DIR}/tilck_gen_headers/all_modules_list.h
 )
 
 add_custom_command(
@@ -27,12 +27,12 @@ add_custom_command(
       ${GENERATED_CONFIG_FILE}
 
    COMMAND
-      ${BUILD_APPS}/gen_config ${CMAKE_SOURCE_DIR} ${GENERATED_CONFIG_FILE}
+      ${BUILD_APPS}/gen_config ${PROJ_ROOT} ${GENERATED_CONFIG_FILE}
 
    DEPENDS
       ${RO_CONFIG_VARS_HEADER}
       ${ALL_MODULES_LIST_HEADER}
-      gen_config
+      ${BUILD_APPS}/gen_config
 )
 
 add_custom_target(
@@ -100,8 +100,8 @@ function(build_and_link_module target modname)
 
    list(
       APPEND MOD_${modname}_SOURCES_GLOB
-      "${CMAKE_SOURCE_DIR}/modules/${modname}/*.c"
-      "${CMAKE_SOURCE_DIR}/modules/${modname}/*.cpp"
+      "${PROJ_ROOT}/modules/${modname}/*.c"
+      "${PROJ_ROOT}/modules/${modname}/*.cpp"
    )
 
    if (NOT "${variant}" STREQUAL "_noarch")
@@ -112,8 +112,8 @@ function(build_and_link_module target modname)
 
       list(
          APPEND MOD_${modname}_SOURCES_GLOB
-         "${CMAKE_SOURCE_DIR}/modules/${modname}/${ARCH}/*.c"
-         "${CMAKE_SOURCE_DIR}/modules/${modname}/${ARCH_FAMILY}/*.c"
+         "${PROJ_ROOT}/modules/${modname}/${ARCH}/*.c"
+         "${PROJ_ROOT}/modules/${modname}/${ARCH_FAMILY}/*.c"
       )
    endif()
 
@@ -207,10 +207,10 @@ function(build_all_modules TARGET_NAME)
          endif()
       endif()
 
-      if (EXISTS ${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+      if (EXISTS ${PROJ_ROOT}/modules/${mod}/${mod}.cmake)
 
          # Use the custom per-module CMake file
-         include(${CMAKE_SOURCE_DIR}/modules/${mod}/${mod}.cmake)
+         include(${PROJ_ROOT}/modules/${mod}/${mod}.cmake)
 
       else()
 

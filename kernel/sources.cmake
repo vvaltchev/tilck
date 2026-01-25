@@ -4,23 +4,23 @@ cmake_minimum_required(VERSION 3.22)
 set(
    KERNEL_NOARCH_SOURCES_GLOB
 
-   "${CMAKE_SOURCE_DIR}/kernel/*.c"
-   "${CMAKE_SOURCE_DIR}/kernel/*.cpp"
-   "${CMAKE_SOURCE_DIR}/kernel/*/*.c"
-   "${CMAKE_SOURCE_DIR}/kernel/*/*.cpp"
-   "${CMAKE_SOURCE_DIR}/kernel/fs/*/*.c"
-   "${CMAKE_SOURCE_DIR}/kernel/fs/*/*.cpp"
-   "${CMAKE_SOURCE_DIR}/common/*.c"
-   "${CMAKE_SOURCE_DIR}/common/*.cpp"
-   "${CMAKE_SOURCE_DIR}/common/3rd_party/datetime.c"
-   "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
+   "${PROJ_ROOT}/kernel/*.c"
+   "${PROJ_ROOT}/kernel/*.cpp"
+   "${PROJ_ROOT}/kernel/*/*.c"
+   "${PROJ_ROOT}/kernel/*/*.cpp"
+   "${PROJ_ROOT}/kernel/fs/*/*.c"
+   "${PROJ_ROOT}/kernel/fs/*/*.cpp"
+   "${PROJ_ROOT}/common/*.c"
+   "${PROJ_ROOT}/common/*.cpp"
+   "${PROJ_ROOT}/common/3rd_party/datetime.c"
+   "${PROJ_ROOT}/common/3rd_party/crc32.c"
 )
 
 if (KERNEL_SELFTESTS)
    list(
       APPEND
       KERNEL_NOARCH_SOURCES_GLOB
-      "${CMAKE_SOURCE_DIR}/tests/self/*.c"
+      "${PROJ_ROOT}/tests/self/*.c"
    )
 endif()
 
