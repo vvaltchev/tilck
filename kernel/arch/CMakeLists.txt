@@ -24,12 +24,12 @@ if (${KERNEL_SYSCC})
    endif()
 
 else()
-   set_cross_compiler()
+   # Do nothing
 endif()
 
 smart_config_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
-   ${CMAKE_BINARY_DIR}/scripts/generate_kernel_coverage_report
+   ${PROJ_ROOT}/scripts/templates/generate_coverage_report
+   ${BUILD_DIR}/scripts/generate_kernel_coverage_report
 )
 
 add_subdirectory(${ARCH})

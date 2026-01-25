@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.22)
 
 set(HAVE_ALT_FONTS 0)
 
-if (EXISTS ${CMAKE_SOURCE_DIR}/other/alt_fonts/font16x32.psf)
-   if (EXISTS ${CMAKE_SOURCE_DIR}/other/alt_fonts/font8x16.psf)
+if (EXISTS ${PROJ_DIR}/other/alt_fonts/font16x32.psf)
+   if (EXISTS ${PROJ_DIR}/other/alt_fonts/font8x16.psf)
       set(HAVE_ALT_FONTS 1)
    endif()
 endif()
@@ -15,7 +15,7 @@ if (${HAVE_ALT_FONTS} AND ${FB_CONSOLE_USE_ALT_FONTS})
       GLOB
       font_files
       ${GLOB_CONF_DEP}
-      "${CMAKE_SOURCE_DIR}/other/alt_fonts/*.psf"
+      "${PROJ_ROOT}/other/alt_fonts/*.psf"
    )
 
 else()
@@ -24,7 +24,7 @@ else()
       GLOB
       font_files
       ${GLOB_CONF_DEP}
-      "${CMAKE_SOURCE_DIR}/modules/fb/*.psf"
+      "${PROJ_ROOT}/modules/fb/*.psf"
    )
 
 endif()
@@ -39,6 +39,8 @@ list(APPEND B2O -O ${ARCH_ELF_NAME} -B ${ARCH_BFD} -I binary)
 # that.
 list(APPEND B2O --add-section .note.GNU-stack=/dev/null)
 list(APPEND B2O --set-section-flags .note.GNU-stack=contents,readonly)
+
+message(STATUS "font_files: ${font_files}")
 
 foreach(font_file ${font_files})
 

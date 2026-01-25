@@ -48,7 +48,7 @@ list(
    APPEND osl_sources_glob
 
    # Our source files (OS Services Layer)
-   "${CMAKE_SOURCE_DIR}/modules/${mod}/*.c"
+   "${PROJ_ROOT}/modules/${mod}/*.c"
 )
 
 file(GLOB acpica_sources ${GLOB_CONF_DEP} ${acpica_sources_glob})

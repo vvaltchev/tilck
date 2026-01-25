@@ -1,9 +1,15 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
+project(userapps LANGUAGES C CXX ASM)
+set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
+
 ######################## COMMON CODE & DEFINITIONS #############################
 
-set_cross_compiler_userapps()
+include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
+include(${PROJ_ROOT}/other/cmake/utils.cmake)
+include(${PROJ_ROOT}/other/cmake/errors.cmake)
+
 add_definitions(-DUSERMODE_APP)
 
 # Force static building for all the user applications
@@ -12,50 +18,23 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USERAPPS_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USERAPPS_CFLAGS}")
 
 add_custom_target(userapps)
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${BUILD_DIR})                 # For tilck_gen_headers/
+include_directories(${PROJ_ROOT}/include)
 include_directories(${ZLIB_DIR}/install/include)
 
 # [build utils]
 
    macro(register_usermode_app)
-      list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/userapps/${ARGV0}")
+      list(APPEND APPS_BIN_FILES "${CMAKE_BINARY_DIR}/${ARGV0}")
       add_dependencies(userapps ${ARGV0})
    endmacro()
 
    macro(add_usermode_app)
-
-      if (TYPICAL_DEVEL_USERAPPS)
-         set(do_include_this ON)
-      else()
-         set(do_include_this OFF)
-      endif()
-
-      if ("${ARGV0}" STREQUAL "init")
-         set(do_include_this ON)
-      endif()
-
-      if ("${ARGV0}" STREQUAL "dp")
-         set(do_include_this ON)
-      endif()
-
-      if (do_include_this)
-         set(USERAPPS_${ARGV0} ON CACHE BOOL "Include `${ARGV0}` in initrd")
-      endif()
-
-      unset(do_include_this)
-
       if (USERAPPS_${ARGV0})
-
-         file(
-            GLOB
-            SOURCES
-            "${ARGV1}${ARGV0}*.c"
-         )
-
+         file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
          add_executable(${ARGV0} ${SOURCES})
          register_usermode_app(${ARGV0})
       endif()
-
    endmacro()
 
 # [/build utils]
@@ -67,10 +46,7 @@ include_directories(${ZLIB_DIR}/install/include)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
    add_usermode_app(play)
-
-   if (MOD_debugpanel)
-      add_usermode_app(dp)
-   endif()
+   add_usermode_app(dp)
 # [/simple apps]
 
 # [filedump]
@@ -81,12 +57,6 @@ include_directories(${ZLIB_DIR}/install/include)
       "filedump.c"
       "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
    )
-
-   if (TYPICAL_DEVEL_USERAPPS)
-      set(USERAPPS_filedump OFF CACHE BOOL "Include `filedump` in fatpart")
-   else()
-      set(USERAPPS_filedump OFF)
-   endif()
 
    if (USERAPPS_filedump)
       add_executable(filedump ${FILEDUMP_SOURCES})
@@ -101,11 +71,9 @@ include_directories(${ZLIB_DIR}/install/include)
 
       "devshell/*.c"
       "devshell/${ARCH}.S"
-      "${CMAKE_SOURCE_DIR}/tests/system/*.c"
-      "${CMAKE_SOURCE_DIR}/common/3rd_party/base64.c"
+      "${PROJ_ROOT}/tests/system/*.c"
+      "${PROJ_ROOT}/common/3rd_party/base64.c"
    )
-
-   set(USERAPPS_devshell ON CACHE BOOL "Include `devshell` in fatpart")
 
    if (USERAPPS_devshell)
       add_executable(devshell ${DEVSHELL_SOURCES})
@@ -120,13 +88,6 @@ include_directories(${ZLIB_DIR}/install/include)
 
 # [ncurses test app]
    if (EXISTS ${NCURSES_DIR}/install/lib/libncurses_g.a)
-
-      if (TYPICAL_DEVEL_USERAPPS)
-         set(USERAPPS_ncapp OFF CACHE BOOL "Include `ncapp` in fatpart")
-      else()
-         set(USERAPPS_ncapp OFF)
-      endif()
-
       if (USERAPPS_ncapp)
          add_usermode_app(ncapp)
          target_include_directories(ncapp PUBLIC ${NCURSES_DIR/install}/include)
@@ -143,13 +104,11 @@ include_directories(${ZLIB_DIR}/install/include)
 # in /usr/bin (in Tilck's fatpart).
 # Example: https://github.com/vvaltchev/tfblib
 
-   set(USERAPPS_extra ON CACHE BOOL "Build all apps in userapps/extra")
 
    macro(tilck_add_extra_app)
       set(EXTRA_APPS_LIST_copy ${EXTRA_APPS_LIST})
       list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
       set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy})
-      set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy} PARENT_SCOPE)
       file(RELATIVE_PATH relPath "${CMAKE_BINARY_DIR}" "${ARGV0}")
       message(STATUS "Adding EXTRA APP: ${relPath}")
    endmacro()
@@ -158,8 +117,11 @@ include_directories(${ZLIB_DIR}/install/include)
       add_subdirectory(extra)
    endif()
 
-   set(USERAPPS_FILES_LIST ${APPS_BIN_FILES} PARENT_SCOPE)
-   set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST} PARENT_SCOPE)
+   file(
+      WRITE
+      "${CMAKE_BINARY_DIR}/list.txt"
+      "${APPS_BIN_FILES};${EXTRA_APPS_LIST}"
+   )
 
 # [/extra]
 
@@ -185,9 +147,7 @@ include_directories(${ZLIB_DIR}/install/include)
                               "This might have undesired effects. "
                               "Please update your busybox build.")
 
-            if ("$ENV{CIRCLECI}" STREQUAL "" AND
-               "$ENV{TRAVIS}" STREQUAL "" AND
-               "$ENV{CI}" STREQUAL "")
+            if ("$ENV{CI}" STREQUAL "")
 
                set(msg2 "")
                string(CONCAT msg2 "How to do that: \n"
