@@ -343,8 +343,12 @@ drop_last_section(struct elf_file_info *nfo, ...)
    /* Physically remove the last section from the file, by truncating it */
    if (ftruncate(nfo->fd, last_offset) < 0) {
 
-      fprintf(stderr, "ftruncate(%i, %li) failed with '%s'\n",
-              nfo->fd, last_offset, strerror(errno));
+      fprintf(
+         stderr, "ftruncate(%i, %li) failed with '%s'\n",
+         nfo->fd,
+         (long)last_offset,
+         strerror(errno)
+      );
 
       return 1;
    }
