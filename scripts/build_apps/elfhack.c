@@ -32,7 +32,7 @@ struct elfhack_cmd {
    const char *opt;
    const char *help;
    int nargs;
-   int (*func)(struct elf_file_info *, ...);
+   int (*func)(struct elf_file_info *, const void *, const void *, const void *);
 };
 
 int show_help(struct elf_file_info *nfo, ...);
@@ -90,7 +90,9 @@ get_symbol(My_Elf_Ehdr *h, const char *sym_name)
 /* --- Actual commands --- */
 
 int
-section_dump(struct elf_file_info *nfo, const char *section_name, ...)
+section_dump(struct elf_file_info *nfo,
+             const char *section_name,
+             void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *s = elf_get_section(nfo->vaddr, section_name);
@@ -105,7 +107,10 @@ section_dump(struct elf_file_info *nfo, const char *section_name, ...)
 }
 
 int
-copy_section(struct elf_file_info *nfo, const char *src, const char *dst, ...)
+copy_section(struct elf_file_info *nfo,
+             const char *src,
+             const char *dst,
+             void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *s_src, *s_dst;
@@ -158,7 +163,7 @@ int
 rename_section(struct elf_file_info *nfo,
                const char *section_name,
                const char *new_name,
-               ...)
+               void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -190,7 +195,7 @@ int
 link_sections(struct elf_file_info *nfo,
               const char *section_name,
               const char *linked,
-              ...)
+              void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -220,7 +225,10 @@ link_sections(struct elf_file_info *nfo,
 }
 
 int
-move_metadata(struct elf_file_info *nfo, ...)
+move_metadata(struct elf_file_info *nfo,
+              void *unused1,
+              void *unused2,
+              void *unused3)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -257,7 +265,10 @@ move_metadata(struct elf_file_info *nfo, ...)
 }
 
 int
-drop_last_section(struct elf_file_info *nfo, ...)
+drop_last_section(struct elf_file_info *nfo,
+                  void *unused1,
+                  void *unused2,
+                  void *unused3)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    char *hc = (char *)h;
@@ -360,7 +371,7 @@ int
 set_phdr_rwx_flags(struct elf_file_info *nfo,
                    const char *phdr_index,
                    const char *flags,
-                   ...)
+                   void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    errno = 0;
@@ -417,7 +428,10 @@ set_phdr_rwx_flags(struct elf_file_info *nfo,
 }
 
 int
-verify_flat_elf_file(struct elf_file_info *nfo, ...)
+verify_flat_elf_file(struct elf_file_info *nfo,
+                     void *unused1,
+                     void *unused2,
+                     void *unused3)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *sections = (My_Elf_Shdr *)((char*)h + h->e_shoff);
@@ -482,7 +496,10 @@ verify_flat_elf_file(struct elf_file_info *nfo, ...)
 }
 
 int
-check_entry_point(struct elf_file_info *nfo, const char *exp, ...)
+check_entry_point(struct elf_file_info *nfo,
+                  const char *exp,
+                  void *unused1,
+                  void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    uintptr_t exp_val;
@@ -515,7 +532,10 @@ check_entry_point(struct elf_file_info *nfo, const char *exp, ...)
 }
 
 int
-check_mem_size(struct elf_file_info *nfo, const char *exp, const char *kb, ...)
+check_mem_size(struct elf_file_info *nfo,
+               const char *exp,
+               const char *kb,
+               void *unused1)
 {
    size_t sz = elf_calc_mem_size(nfo->vaddr);
    size_t exp_val;
@@ -557,8 +577,7 @@ int
 set_sym_strval(struct elf_file_info *nfo,
                const char *section_name,
                const char *sym_name,
-               const char *val,
-               ...)
+               const char *val)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *section;
@@ -608,7 +627,10 @@ set_sym_strval(struct elf_file_info *nfo,
 }
 
 int
-dump_sym(struct elf_file_info *nfo, const char *sym_name, ...)
+dump_sym(struct elf_file_info *nfo,
+         const char *sym_name,
+         void *unused1,
+         void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *sections = (My_Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -631,7 +653,10 @@ dump_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 }
 
 int
-get_sym(struct elf_file_info *nfo, const char *sym_name, ...)
+get_sym(struct elf_file_info *nfo,
+        const char *sym_name,
+        void *unused1,
+        void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
@@ -646,7 +671,10 @@ get_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 }
 
 int
-get_text_sym(struct elf_file_info *nfo, const char *sym_name, ...)
+get_text_sym(struct elf_file_info *nfo,
+             const char *sym_name,
+             void *unused1,
+             void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *sections = (My_Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -676,7 +704,10 @@ get_text_sym(struct elf_file_info *nfo, const char *sym_name, ...)
 }
 
 int
-list_text_syms(struct elf_file_info *nfo, ...)
+list_text_syms(struct elf_file_info *nfo,
+               void *unused1,
+               void *unused2,
+               void *unused3)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Shdr *sections = (My_Elf_Shdr *) ((char *)h + h->e_shoff);
@@ -812,7 +843,10 @@ sym_get_visibility_str(unsigned visibility)
 }
 
 int
-get_sym_info(struct elf_file_info *nfo, const char *sym_name, ...)
+get_sym_info(struct elf_file_info *nfo,
+             const char *sym_name,
+             void *unused1,
+             void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
@@ -854,7 +888,7 @@ int
 set_sym_bind(struct elf_file_info *nfo,
              const char *sym_name,
              const char *bind_str,
-             ...)
+             void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
@@ -888,7 +922,7 @@ int
 set_sym_type(struct elf_file_info *nfo,
              const char *sym_name,
              const char *type_str,
-             ...)
+             void *unused1)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
@@ -919,7 +953,10 @@ set_sym_type(struct elf_file_info *nfo,
 }
 
 int
-undef_sym(struct elf_file_info *nfo, const char *sym_name, ...)
+undef_sym(struct elf_file_info *nfo,
+          const char *sym_name,
+          void *unused1,
+          void *unused2)
 {
    My_Elf_Ehdr *h = (My_Elf_Ehdr*)nfo->vaddr;
    My_Elf_Sym *sym = get_symbol(h, sym_name);
