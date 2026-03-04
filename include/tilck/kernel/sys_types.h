@@ -25,6 +25,7 @@
 #include <sys/utsname.h>  // system header
 #include <sys/stat.h>     // system header
 #include <fcntl.h>        // system header
+#include <arpa/inet.h>    // system header
 
 /*
  * RUSAGE_THREAD is linux-specific, so it

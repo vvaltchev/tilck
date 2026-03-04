@@ -88,7 +88,7 @@ retry:
    kthread_join(w_tid, true);
 
    for (int i = 0; i < ARRAY_SIZE(conds); i++)
-      kcond_destory(&conds[i]);
+      kcond_destroy(&conds[i]);
 
    if (mobj_se_test_assumption_failed)
       goto retry;

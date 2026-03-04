@@ -344,7 +344,8 @@ list(
 list(
    APPEND disabled_modules_list
 
-   # No modules in this list, at the moment
+   # e1000 driver still in development
+   e1000
 )
 
 if (${ARCH} STREQUAL "riscv64")

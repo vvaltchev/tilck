@@ -178,7 +178,7 @@ void kcond_signal_all(struct kcond *c)
    enable_preemption();
 }
 
-void kcond_destory(struct kcond *c)
+void kcond_destroy(struct kcond *c)
 {
    bzero(c, sizeof(struct kcond));
 }

@@ -164,7 +164,7 @@ void selftest_wth(void)
       kcond_wait(&ctx.c, &ctx.m, KCOND_WAIT_FOREVER);
    }
    kmutex_unlock(&ctx.m);
-   kcond_destory(&ctx.c);
+   kcond_destroy(&ctx.c);
    kmutex_destroy(&ctx.m);
    printk("[se_wth] END\n");
    se_regular_end();

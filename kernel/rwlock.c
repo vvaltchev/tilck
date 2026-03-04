@@ -72,7 +72,7 @@ void rwlock_wp_destroy(struct rwlock_wp *rw)
    rw->ex_owner = NULL;
    rw->w = false;
    rw->r = 0;
-   kcond_destory(&rw->c);
+   kcond_destroy(&rw->c);
    kmutex_destroy(&rw->m);
 }
 
