@@ -11,4 +11,6 @@ qemu-system-@ARCH@                                     \
    -gdb tcp::$GDB_PORT                                 \
    @QEMU_RAM_OPT@                                      \
    -drive id=img1,format=raw,if=none,file=@IMG_FILE@   \
+   -netdev user,id=net0,hostfwd=udp::2222-:22          \
+   -device e1000,netdev=net0                           \
    @QEMU_ARCH_OPTS@ $EXTRA_OPTS "$@"

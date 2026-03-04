@@ -86,7 +86,7 @@ void selftest_kcond()
    VERIFY(tids[2] > 0);
 
    kthread_join_all(tids, ARRAY_SIZE(tids), true);
-   kcond_destory(&cond);
+   kcond_destroy(&cond);
    se_regular_end();
 }
 

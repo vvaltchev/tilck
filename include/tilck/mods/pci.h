@@ -142,3 +142,6 @@ pci_config_write(struct pci_device_loc loc, u32 off, u32 width, u32 val)
 
 struct pci_device *
 pci_get_object(struct pci_device_loc loc);
+
+struct pci_device *
+pci_get_object_by_id(u16 vendor_id, u16 device_id);

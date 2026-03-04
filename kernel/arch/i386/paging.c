@@ -434,6 +434,7 @@ map_page_int(pdir_t *pdir, void *vaddrp, ulong paddr, ulong hw_flags)
          PG_PRESENT_BIT |
          PG_RW_BIT |
          (hw_flags & PG_US_BIT) |
+         (hw_flags & PG_CD_BIT) |
          LIN_VA_TO_PA(pt);
    }
 
@@ -512,6 +513,7 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
 {
    const bool rw = !!(pg_flags & PAGING_FL_RW);
    const bool us = !!(pg_flags & PAGING_FL_US);
+   const bool cd = !!(pg_flags & PAGING_FL_CD);
    u32 avail_bits = 0;
    int rc;
 
@@ -544,6 +546,7 @@ map_page(pdir_t *pdir, void *vaddrp, ulong paddr, u32 pg_flags)
                    (u32)(avail_bits << PG_CUSTOM_B0_POS) |
                    (u32)(us << PG_US_BIT_POS)            |
                    (u32)(rw << PG_RW_BIT_POS)            |
+                   (u32)(cd << PG_CD_BIT_POS)            |
                    (u32)((!us) << PG_GLOBAL_BIT_POS));
                    /* Kernel pages are global */
 

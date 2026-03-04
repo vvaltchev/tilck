@@ -239,6 +239,20 @@ pci_get_object(struct pci_device_loc loc)
    return NULL;
 }
 
+struct pci_device *
+pci_get_object_by_id(u16 vendor_id, u16 device_id)
+{
+    struct pci_device *pos;
+
+    list_for_each_ro(pos, &pci_device_list, node) {
+       if (pos->nfo.vendor_id == vendor_id &&
+           pos->nfo.device_id == device_id)
+          return pos;
+    }
+
+    return NULL;
+}
+
 static ulong
 discovery_pcie_get_conf_vaddr(struct pci_device_loc loc)
 {
@@ -792,6 +806,8 @@ init_pci(void)
 
    if (pcie_segments_cnt) {
 
+       printk("PCI: INFO: PCI Express detected\n");
+
       /* PCI Express is supported */
       __pci_config_read_func = &pci_mmio_config_read;
       __pci_config_write_func = &pci_mmio_config_write;
@@ -804,6 +820,8 @@ init_pci(void)
       pcie_get_conf_vaddr = &regular_pcie_get_conf_vaddr;
 
    } else {
+
+       printk("PCI: INFO: No PCI Express detected\n");
 
       /* No PCI Express support */
       __pci_config_read_func = &pci_ioport_config_read;
