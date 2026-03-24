@@ -16,6 +16,10 @@ set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 include(other/cmake/utils.cmake)
 include(other/cmake/errors.cmake)
 
+set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
+set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
+set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
+
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(PROJ_ROOT ${CMAKE_SOURCE_DIR})
 set(BUILD_DIR ${CMAKE_BINARY_DIR})
@@ -185,6 +189,7 @@ foreach(LINE ${PKG_VERSIONS})
       string(SUBSTRING "${LINE}" ${VALUE_START_POS} -1 VALUE)
 
       set(${KEY} "${VALUE}")
+      list(APPEND PKG_VERSION_VARS ${KEY})
       message(STATUS "${KEY} = '${VALUE}'")
 
    endif()
@@ -279,7 +284,7 @@ else()
    set(BOOTLOADER_LEGACY ON CACHE BOOL
        "Build the legacy bootloader")
 
-   set(BOOTLOADER_EFI OFF CACHE BOOL  # TODO: RESTORE DEFAULT ON
+   set(BOOTLOADER_EFI ON CACHE BOOL
        "Build the EFI bootloader")
 endif()
 
@@ -414,6 +419,128 @@ set(KERNEL_SERCON OFF CACHE BOOL
 
 set(KERNEL_SAT OFF CACHE BOOL
     "Enable the sched alive thread on boot (used for CI/CD runs)")
+
+list(
+   APPEND no_arch_modules_whitelist
+
+   console
+   tracing
+   sysfs
+   null
+)
+
+list(
+   APPEND disabled_modules_list
+
+   # No modules in this list, at the moment
+)
+
+if (${ARCH} STREQUAL "riscv64")
+
+   list(
+      APPEND disabled_modules_list
+
+      # The riscv compiler does not support the acpi module
+      acpi
+)
+
+endif()
+
+file(GLOB modules ${GLOB_CONF_DEP} "${PROJ_ROOT}/modules/*")
+
+foreach(modpath ${modules})
+
+   get_filename_component(modname ${modpath} NAME_WE)
+
+   if (NOT IS_DIRECTORY ${modpath})
+      continue()
+   endif()
+
+   list(APPEND modules_list ${modname})
+   list(FIND disabled_modules_list ${modname} _index)
+
+   if (${_index} GREATER -1)
+      set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
+   else()
+      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+   endif()
+
+   set(MOD_HEADER_FILE ${PROJ_ROOT}/config/mod_${modname}.h)
+   if (NOT EXISTS ${MOD_HEADER_FILE})
+      message(FATAL_ERROR "Mod header ${MOD_HEADER_FILE} does not exist")
+   endif()
+   unset(MOD_HEADER_FILE)
+
+endforeach()
+
+# Create a list with all the kernel opts, in order to dump it later
+# -------------------------------------------------------------------
+
+list(
+   APPEND kernel_opts_list
+
+   # Various options
+   ARCH
+   BOARD
+
+   # Non-boolean options
+   TIMER_HZ
+   USER_STACK_PAGES
+   FATPART_CLUSTER_SIZE
+   PREFERRED_GFX_MODE_W
+   PREFERRED_GFX_MODE_H
+   KMALLOC_FIRST_HEAP_SIZE_KB
+   KMALLOC_FIRST_HEAP_SIZE_KB_VAL
+
+   # Boolean options ENABLED by default
+   KRN_TRACK_NESTED_INTERR
+   PANIC_SHOW_STACKTRACE
+   DEBUG_CHECKS
+   KERNEL_SELFTESTS
+   KERNEL_STACK_ISOLATION
+   FB_CONSOLE_BANNER
+   KRN_PRINTK_ON_CURR_TTY
+   KERNEL_SHOW_LOGO
+   KERNEL_SYMBOLS
+   BOOTLOADER_LEGACY
+   BOOTLOADER_EFI
+   BOOTLOADER_U_BOOT
+   BOOT_INTERACTIVE
+   KRN_NO_SYS_WARN
+   KERNEL_64BIT_OFFT
+   KRN_CLOCK_DRIFT_COMP
+   KRN32_LIN_VADDR
+   USERAPPS_busybox
+   TRACE_PRINTK_ENABLED_ON_BOOT
+
+   # Boolean options DISABLED by default
+   KERNEL_UBSAN
+   KERNEL_BIG_IO_BUF
+   KRN_RESCHED_ENABLE_PREEMPT
+   TERM_BIG_SCROLL_BUF
+   TEST_GCOV
+   KERNEL_GCOV
+   KERNEL_SYSCC
+   KERNEL_FORCE_TC_ISYSTEM
+   FORK_NO_COW
+   MMAP_NO_COW
+   PANIC_SHOW_REGS
+   KMALLOC_HEAVY_STATS
+   KMALLOC_FREE_MEM_POISONING
+   KMALLOC_SUPPORT_DEBUG_LOG
+   KMALLOC_SUPPORT_LEAK_DETECTOR
+   BOOTLOADER_POISON_MEMORY
+   WCONV
+   FAT_TEST_DIR
+   PS2_DO_SELFTEST
+   PS2_VERBOSE_DEBUG_LOG
+   FB_CONSOLE_USE_ALT_FONTS
+   TINY_KERNEL
+   INIT_REPORT_PROC_EXIT
+   PCI_VENDORS_LIST
+   EFI_BOOTLOADER_DEBUG
+   FB_CONSOLE_FAILSAFE_OPT
+)
 
 
 if (TINY_KERNEL)
@@ -591,7 +718,59 @@ message(STATUS "${msg}")
 # Include the main lists of compiler flags used in the project
 include(other/cmake/compiler_flags.cmake)
 
+include(other/cmake/wrapped_syms.cmake)
+include(other/cmake/build_modules.cmake)
 
+foreach (opt ${kernel_opts_list})
+   message(STATUS "${opt} = ${${opt}}")
+endforeach()
+
+message(STATUS "****************** KERNEL MODULES *******************")
+
+foreach (mod ${modules_list})
+   message(STATUS "Module ${mod} = ${MOD_${mod}}")
+endforeach()
+
+message(STATUS "**************** END KERNEL MODULES *****************")
+
+# Config validation checks
+# -----------------------------------
+
+if (NOT ${MOD_console} AND NOT ${MOD_serial})
+   message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
+endif()
+
+foreach (mod ${modules_list})
+
+   set(deps_file "${PROJ_ROOT}/modules/${mod}/module_deps")
+
+   if (NOT ${MOD_${mod}})
+      continue() # Module not compiled-in: skip it.
+   endif()
+
+   list(APPEND enabled_modules_list ${mod})
+
+   if (NOT EXISTS ${deps_file})
+      continue() # No dependencies. Great!
+   endif()
+
+   # Read the dependencies in the `deps` list
+   file(STRINGS ${deps_file} deps)
+
+   foreach (d ${deps})
+      if (NOT ${MOD_${d}})
+         message(FATAL_ERROR "The module '${mod}' requires the module '${d}'")
+      endif()
+   endforeach()
+
+   unset(deps)
+   unset(deps_file)
+
+endforeach()
+
+JOIN("${enabled_modules_list}" ${SPACE} ENABLED_MODULES_LIST)
+JOIN("${modules_list}" ${SPACE} ALL_MODULES_LIST)
+unset(enabled_modules_list)
 
 ################################################################################
 
@@ -676,6 +855,12 @@ endif()
 # Set kernel's stack size in number of pages.
 set(KERNEL_STACK_PAGES          4)
 
+if (${ARCH_BITS} EQUAL 32)
+   set(ELFHACK ${BUILD_APPS}/elfhack32)
+else()
+   set(ELFHACK ${BUILD_APPS}/elfhack64)
+endif()
+
 set(FATHACK ${BUILD_APPS}/fathack)
 
 if (USERAPPS_busybox)
@@ -697,10 +882,6 @@ include(kernel/sources.cmake)
 
 ################################################################################
 # Include sub-directories
-
-#if (BOOTLOADER_EFI)
-   #add_subdirectory(boot/efi)
-#endif()
 
 add_subdirectory(scripts/build_apps)
 
@@ -733,138 +914,196 @@ endif()
 set(USERAPPS_play OFF CACHE BOOL "Include `play` in fatpart")
 set(USERAPPS_devshell ON CACHE BOOL "Include `devshell` in fatpart")
 set(USERAPPS_init ON CACHE BOOL "Include `init` in fatpart")
-set(USERAPPS_extra ON CACHE BOOL "Build all apps in userapps/extra")
 
 if (MOD_debugpanel)
    set(USERAPPS_dp ON CACHE BOOL "Include `dp` in fatpart")
 endif()
+
+set(USERAPPS_FILES_LIST "")
+foreach(_app init devshell dp termtest fbtest filedump ncapp play)
+   if (USERAPPS_${_app})
+      list(APPEND USERAPPS_FILES_LIST ${CMAKE_BINARY_DIR}/userapps/${_app})
+   endif()
+endforeach()
+unset(_app)
+
+################################################################################
+# Generate tilck_config.cmake for ExternalProject subprojects
+
+set(TILCK_EXPORTED_VARS
+   # Project's version
+   tilck_VERSION_MAJOR tilck_VERSION_MINOR tilck_VERSION_PATCH
+
+   # Project paths
+   PROJ_ROOT BUILD_DIR BUILD_APPS BUILD_SCRIPTS CMAKE_DIR
+
+   # Architecture
+   ARCH ARCH_BITS ARCH_SHORT ARCH_FAMILY
+   ARCH_ELF_NAME ARCH_LD_OUTPUT ARCH_BFD ARCH_GCC_TC ARCH_GCC_FLAGS
+
+   # Board
+   BOARD BOARD_BSP
+
+   # Toolchain paths, labels and versions
+   TCROOT TCROOT_BA TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
+   GCC_TC_VER GCC_TC_VER_
+   GCC_NAME_PFX GCC_NAME_PFX_i386 GCC_NAME_PFX_x86_64
+   GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
+   GCC_TOOLCHAIN GCC_TOOLCHAIN_i386 GCC_TOOLCHAIN_x86_64
+   GCC_TC_LIBC_DIRNAME GCC_TC_SYSROOT GCC_TC_ISYSTEM
+
+   # Package directories
+   BUSYBOX_DIR NCURSES_DIR ZLIB_DIR GNUEFI_DIR LIBFDT_DIR LCOV_DIR
+   BUSYBOX_CONFIG
+
+   # Host info
+   HOST_ARCH HOST_ARCH_BITS HOST_ARCH_FAMILY
+
+   # Kernel/boot memory layout
+   BASE_VA KERNEL_PADDR LINEAR_MAPPING_MB KERNEL_BASE_VA KERNEL_VADDR
+   KERNEL_STACK_PAGES
+
+   # Output files
+   KERNEL_FILE KERNEL_UNSTRIPPED KERNEL_SCRIPT KERNEL_BOOTPART_PATH
+   BOOTLOADER_BIN_FILE EFI_x86_64_FILE EFI_ia32_FILE
+
+   # Boot layout constants
+   SECTOR_SIZE CHS_HPC CHS_SPT
+   BL_ST2_DATA_SEG EARLY_BOOT_SZ STAGE3_ENTRY_OFF
+   DISK_UUID MAX_BOOTLOADER_BIN_SZ_KB IMG_SZ_MB
+   INITRD_SZ_MB BOOTPART_SZ_SEC
+   IMG_SZ_SEC BOOT_SECTORS BOOTPART_SEC BOOTPART_LAST_SEC
+   INITRD_SECTOR INITRD_SZ_SEC INITRD_LAST_SEC
+   CHS_CYLS
+
+   # Run QEMU scripts
+   QEMU_CHS_GEOM QEMU_RAM_OPT QEMU_COMMON_OPTS QEMU_ARCH_OPTS
+
+   # Derived boot values
+   BL_BASE_ADDR EARLY_BOOT_SCRIPT STAGE3_SCRIPT
+
+   # Shell / init
+   DEFAULT_SHELL START_SCRIPT TILCK_DEVSHELL_PATH USERAPPS_CFLAGS
+
+   # Non-boolean kernel options
+   TIMER_HZ USER_STACK_PAGES TTY_COUNT MAX_HANDLES
+   FBCON_BIGFONT_THR FATPART_CLUSTER_SIZE TERM_SCROLL_LINES
+   PREFERRED_GFX_MODE_W PREFERRED_GFX_MODE_H
+   KMALLOC_FIRST_HEAP_SIZE_KB KMALLOC_FIRST_HEAP_SIZE_KB_VAL
+
+   # Boolean kernel options (enabled by default)
+   KRN_TRACK_NESTED_INTERR PANIC_SHOW_STACKTRACE DEBUG_CHECKS
+   KERNEL_SELFTESTS KERNEL_STACK_ISOLATION FB_CONSOLE_BANNER
+   FB_CONSOLE_CURSOR_BLINK KRN_PRINTK_ON_CURR_TTY KERNEL_SHOW_LOGO
+   KERNEL_SYMBOLS BOOTLOADER_LEGACY BOOTLOADER_EFI BOOTLOADER_U_BOOT
+   SERIAL_CON_IN_VIDEO_MODE BOOT_INTERACTIVE TYPICAL_DEVEL_USERAPPS
+   KERNEL_64BIT_OFFT KRN_CLOCK_DRIFT_COMP KRN32_LIN_VADDR
+   TRACE_PRINTK_ENABLED_ON_BOOT
+
+   # Boolean kernel options (disabled by default)
+   KRN_PAGE_FAULT_PRINTK KRN_NO_SYS_WARN KERNEL_UBSAN KERNEL_BIG_IO_BUF
+   TERM_BIG_SCROLL_BUF KERNEL_SYSCC KERNEL_FORCE_TC_ISYSTEM
+   FORK_NO_COW MMAP_NO_COW PANIC_SHOW_REGS
+   KMALLOC_HEAVY_STATS KMALLOC_FREE_MEM_POISONING
+   KMALLOC_SUPPORT_DEBUG_LOG KMALLOC_SUPPORT_LEAK_DETECTOR
+   BOOTLOADER_POISON_MEMORY WCONV FAT_TEST_DIR
+   PS2_DO_SELFTEST PS2_VERBOSE_DEBUG_LOG
+   FB_CONSOLE_USE_ALT_FONTS KRN_RESCHED_ENABLE_PREEMPT
+   KRN_MINIMAL_TIME_SLICE TINY_KERNEL
+   INIT_REPORT_PROC_EXIT PCI_VENDORS_LIST
+   EFI_BOOTLOADER_DEBUG FB_CONSOLE_FAILSAFE_OPT
+   KERNEL_SERCON KERNEL_SAT
+   TEST_GCOV KERNEL_GCOV
+
+   # USERAPPS toggles
+   USERAPPS_init USERAPPS_busybox USERAPPS_devshell USERAPPS_dp
+   USERAPPS_filedump USERAPPS_ncapp USERAPPS_termtest
+   USERAPPS_fbtest USERAPPS_play
+
+   # Extra apps toggles
+   EXTRA_VIM EXTRA_TCC EXTRA_FBDOOM EXTRA_MICROPYTHON
+   EXTRA_TREE_CMD EXTRA_LUA EXTRA_TFBLIB
+   EXTRA_VIM_ENABLED EXTRA_TCC_ENABLED EXTRA_FBDOOM_ENABLED
+   EXTRA_MICROPYTHON_ENABLED EXTRA_TREE_CMD_ENABLED EXTRA_LUA_ENABLED
+   EXTRA_TFBLIB_ENABLED
+
+   # Module variables
+   modules_list no_arch_modules_whitelist
+   ALL_MODULES_LIST ENABLED_MODULES_LIST
+
+   # Tools
+   DD FATHACK ELFHACK
+
+   # Misc
+   COVERAGE_HTML_DIR TCROOT_REL BTC_SCRIPT_REL
+)
+
+# Also export all VER_* and MOD_* variables
+list(APPEND TILCK_EXPORTED_VARS ${PKG_VERSION_VARS})
+foreach(_mod ${modules_list})
+   list(APPEND TILCK_EXPORTED_VARS MOD_${_mod})
+endforeach()
+
+set(_config_content "# Auto-generated by the root CMake. Do not edit.\n")
+foreach(_var ${TILCK_EXPORTED_VARS})
+   if(DEFINED ${_var})
+      string(APPEND _config_content "set(${_var} [==[${${_var}}]==])\n")
+   endif()
+endforeach()
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_config.cmake" "${_config_content}")
+unset(_config_content)
+unset(_var)
+
+################################################################################
+# ExternalProject subprojects
 
 ExternalProject_Add(userapps
    SOURCE_DIR ${CMAKE_SOURCE_DIR}/userapps
    BINARY_DIR ${CMAKE_BINARY_DIR}/userapps
    INSTALL_COMMAND ""
    BUILD_ALWAYS 1
+   BUILD_BYPRODUCTS ${USERAPPS_FILES_LIST}
    CMAKE_ARGS
-      --warn-uninitialized
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DTCROOT=${TCROOT}
-      -DPROJ_ROOT=${PROJ_ROOT}
-      -DBUILD_DIR=${BUILD_DIR}
-      -DBUILD_APPS=${BUILD_APPS}
-      -DARCH=${ARCH}
-      -DARCH_BITS=${ARCH_BITS}
-      -DARCH_FAMILY=${ARCH_FAMILY}
-      -DUSERAPPS_CFLAGS=${USERAPPS_CFLAGS}
-      -DBUSYBOX_CONFIG=${BUSYBOX_CONFIG}
-      -DNCURSES_DIR=${NCURSES_DIR}
-      -DZLIB_DIR=${ZLIB_DIR}
-      -DUSERAPPS_init=${USERAPPS_init}
-      -DUSERAPPS_devshell=${USERAPPS_devshell}
-      -DUSERAPPS_dp=${USERAPPS_dp}
-      -DUSERAPPS_extra=${USERAPPS_extra}
-      -DUSERAPPS_filedump=${USERAPPS_filedump}
-      -DUSERAPPS_ncapp=${USERAPPS_ncapp}
-      -DUSERAPPS_termtest=${USERAPPS_termtest}
-      -DUSERAPPS_fbtest=${USERAPPS_fbtest}
-      -DUSERAPPS_play=${USERAPPS_play}
+      -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+)
+
+ExternalProject_Add_Step(userapps config_dep
+   DEPENDEES download DEPENDERS configure
+   DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+   COMMAND ${CMAKE_COMMAND} -E true
 )
 
 ExternalProject_Add(kernel
-  SOURCE_DIR ${CMAKE_SOURCE_DIR}/kernel
-  BINARY_DIR ${CMAKE_BINARY_DIR}/kernel
-  DEPENDS elfhack${ARCH_BITS} gen_config
-  INSTALL_COMMAND ""
-  BUILD_ALWAYS 1
-  CMAKE_ARGS
-      --warn-uninitialized
+   SOURCE_DIR ${CMAKE_SOURCE_DIR}/kernel
+   BINARY_DIR ${CMAKE_BINARY_DIR}/kernel
+   DEPENDS elfhack${ARCH_BITS} gen_config
+   INSTALL_COMMAND ""
+   BUILD_ALWAYS 1
+   BUILD_BYPRODUCTS ${KERNEL_FILE} ${KERNEL_UNSTRIPPED}
+   CMAKE_ARGS
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DTCROOT=${TCROOT}
-      -DPROJ_ROOT=${PROJ_ROOT}
-      -DBUILD_DIR=${BUILD_DIR}
-      -DBUILD_APPS=${BUILD_APPS}
-      -DARCH=${ARCH}
-      -DARCH_BITS=${ARCH_BITS}
-      -DARCH_FAMILY=${ARCH_FAMILY}
-      -DARCH_ELF_NAME=${ARCH_ELF_NAME}
-      -DARCH_BFD=${ARCH_BFD}
-      -DKERNEL_FILE=${KERNEL_FILE}
-      -DKERNEL_UNSTRIPPED=${KERNEL_UNSTRIPPED}
-      -DBUILD_SCRIPTS=${BUILD_SCRIPTS}
-      -DVER_ACPICA=${VER_ACPICA}
-      -DKERNEL_SYSCC=${KERNEL_SYSCC}
-      -DGNUEFI_DIR=${GNUEFI_DIR}
-      -DKERNEL_SCRIPT=${KERNEL_SCRIPT}
-      -DGCC_TC_VER=${GCC_TC_VER}
-      -DBOARD=${BOARD}
-      -DTIMER_HZ=${TIMER_HZ}
-      -DUSER_STACK_PAGES=${USER_STACK_PAGES}
-      -DFATPART_CLUSTER_SIZE=${FATPART_CLUSTER_SIZE}
-      -DPREFERRED_GFX_MODE_W=${PREFERRED_GFX_MODE_W}
-      -DPREFERRED_GFX_MODE_H=${PREFERRED_GFX_MODE_H}
-      -DKMALLOC_FIRST_HEAP_SIZE_KB=${KMALLOC_FIRST_HEAP_SIZE_KB}
-      -DKMALLOC_FIRST_HEAP_SIZE_KB_VAL=${KMALLOC_FIRST_HEAP_SIZE_KB_VAL}
-      -DKRN_TRACK_NESTED_INTERR=${KRN_TRACK_NESTED_INTERR}
-      -DPANIC_SHOW_STACKTRACE=${PANIC_SHOW_STACKTRACE}
-      -DDEBUG_CHECKS=${DEBUG_CHECKS}
-      -DKERNEL_SELFTESTS=${KERNEL_SELFTESTS}
-      -DKERNEL_STACK_ISOLATION=${KERNEL_STACK_ISOLATION}
-      -DFB_CONSOLE_BANNER=${FB_CONSOLE_BANNER}
-      -DKRN_PRINTK_ON_CURR_TTY=${KRN_PRINTK_ON_CURR_TTY}
-      -DKERNEL_SHOW_LOGO=${KERNEL_SHOW_LOGO}
-      -DKERNEL_SYMBOLS=${KERNEL_SYMBOLS}
-      -DBOOTLOADER_LEGACY=${BOOTLOADER_LEGACY}
-      -DBOOTLOADER_EFI=${BOOTLOADER_EFI}
-      -DBOOTLOADER_U_BOOT=${BOOTLOADER_U_BOOT}
-      -DBOOT_INTERACTIVE=${BOOT_INTERACTIVE}
-      -DKRN_NO_SYS_WARN=${KRN_NO_SYS_WARN}
-      -DKERNEL_64BIT_OFFT=${KERNEL_64BIT_OFFT}
-      -DKRN_CLOCK_DRIFT_COMP=${KRN_CLOCK_DRIFT_COMP}
-      -DKRN32_LIN_VADDR=${KRN32_LIN_VADDR}
-      -DUSERAPPS_busybox=${USERAPPS_busybox}
-      -DTRACE_PRINTK_ENABLED_ON_BOOT=${TRACE_PRINTK_ENABLED_ON_BOOT}
-      -DKERNEL_UBSAN=${KERNEL_UBSAN}
-      -DKERNEL_BIG_IO_BUF=${KERNEL_BIG_IO_BUF}
-      -DKRN_RESCHED_ENABLE_PREEMPT=${KRN_RESCHED_ENABLE_PREEMPT}
-      -DTERM_BIG_SCROLL_BUF=${TERM_BIG_SCROLL_BUF}
-      -DTEST_GCOV=${TEST_GCOV}
-      -DKERNEL_GCOV=${KERNEL_GCOV}
-      -DKERNEL_SYSCC=${KERNEL_SYSCC}
-      -DKERNEL_FORCE_TC_ISYSTEM=${KERNEL_FORCE_TC_ISYSTEM}
-      -DFORK_NO_COW=${FORK_NO_COW}
-      -DMMAP_NO_COW=${MMAP_NO_COW}
-      -DPANIC_SHOW_REGS=${PANIC_SHOW_REGS}
-      -DKMALLOC_HEAVY_STATS=${KMALLOC_HEAVY_STATS}
-      -DKMALLOC_FREE_MEM_POISONING=${KMALLOC_FREE_MEM_POISONING}
-      -DKMALLOC_SUPPORT_DEBUG_LOG=${KMALLOC_SUPPORT_DEBUG_LOG}
-      -DKMALLOC_SUPPORT_LEAK_DETECTOR=${KMALLOC_SUPPORT_LEAK_DETECTOR}
-      -DBOOTLOADER_POISON_MEMORY=${BOOTLOADER_POISON_MEMORY}
-      -DWCONV=${WCONV}
-      -DFAT_TEST_DIR=${FAT_TEST_DIR}
-      -DPS2_DO_SELFTEST=${PS2_DO_SELFTEST}
-      -DPS2_VERBOSE_DEBUG_LOG=${PS2_VERBOSE_DEBUG_LOG}
-      -DFB_CONSOLE_USE_ALT_FONTS=${FB_CONSOLE_USE_ALT_FONTS}
-      -DTINY_KERNEL=${TINY_KERNEL}
-      -DINIT_REPORT_PROC_EXIT=${INIT_REPORT_PROC_EXIT}
-      -DPCI_VENDORS_LIST=${PCI_VENDORS_LIST}
-      -DEFI_BOOTLOADER_DEBUG=${EFI_BOOTLOADER_DEBUG}
-      -DFB_CONSOLE_FAILSAFE_OPT=${FB_CONSOLE_FAILSAFE_OPT}
-      -DFBCON_BIGFONT_THR=${FBCON_BIGFONT_THR}
-      -DTTY_COUNT=${TTY_COUNT}
-      -DTERM_SCROLL_LINES=${TERM_SCROLL_LINES}
+      -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+)
+
+ExternalProject_Add_Step(kernel config_dep
+   DEPENDEES download DEPENDERS configure
+   DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+   COMMAND ${CMAKE_COMMAND} -E true
 )
 
 ExternalProject_Add_Step(kernel tools_dep
-  DEPENDEES configure
-  DEPENDERS build
-  DEPENDS
+   DEPENDEES configure
+   DEPENDERS build
+   DEPENDS
       $<TARGET_FILE:elfhack${ARCH_BITS}>
       $<TARGET_FILE:gen_config>
-  COMMAND ${CMAKE_COMMAND} -E true
-  ALWAYS 1
+   COMMAND ${CMAKE_COMMAND} -E true
+   ALWAYS 1
 )
 
 add_dependencies(userapps kernel)
@@ -872,12 +1111,12 @@ add_dependencies(userapps kernel)
 set(
    mbr_img_deps
 
-   # Non-local targets.
    kernel
-   userapps
+   ${KERNEL_FILE}
 
-   # We MUST depend on BOTH each wrapper-target AND its OUTPUT in order to
-   # our image file to be re-built when the *.bin files are re-built.
+   userapps
+   ${USERAPPS_FILES_LIST}
+
    fathack
    mbrhack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
@@ -887,24 +1126,15 @@ set(
    ${BUILD_SCRIPTS_FILES_LIST}
 )
 
+if (BOOTLOADER_LEGACY)
+   list(APPEND mbr_img_deps boot_legacy ${BOOTLOADER_BIN_FILE})
+endif()
+
 if (BOOTLOADER_EFI)
+   list(APPEND mbr_img_deps efi_bootloader ${EFI_x86_64_FILE})
 
-   if (${HOST_ARCH} STREQUAL "i386")
-
-      if (NOT ${ARCH} STREQUAL "i386")
-         message(FATAL_ERROR "On i386, we can only build i386 Tilck")
-      endif()
-
-      list(APPEND mbr_img_deps efi_bootloader ${EFI_ia32_FILE})
-
-   else()
-
-      list(APPEND mbr_img_deps efi_bootloader ${EFI_x86_64_FILE})
-
-      if (${ARCH} STREQUAL "i386")
-         list(APPEND mbr_img_deps ${EFI_ia32_FILE})
-      endif()
-
+   if (${ARCH} STREQUAL "i386")
+      list(APPEND mbr_img_deps ${EFI_ia32_FILE})
    endif()
 endif()
 
@@ -957,34 +1187,90 @@ endif()
 if (BOOTLOADER_LEGACY)
 
    ExternalProject_Add(boot_legacy
+      SOURCE_DIR ${CMAKE_SOURCE_DIR}/boot/legacy
+      BINARY_DIR ${CMAKE_BINARY_DIR}/boot/legacy
+      DEPENDS elfhack32
+      BUILD_ALWAYS 1
+      BUILD_BYPRODUCTS ${BOOTLOADER_BIN_FILE}
+      INSTALL_COMMAND ""
+      CMAKE_ARGS
+         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
+         -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+   )
 
-     SOURCE_DIR ${CMAKE_SOURCE_DIR}/boot/legacy
-     BINARY_DIR ${CMAKE_BINARY_DIR}/boot/legacy
-     CMAKE_ARGS
-       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
-       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
-       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-       -DPROJ_ROOT=${PROJ_ROOT}
-       -DBUILD_DIR=${BUILD_DIR}
-       -DBOOTLOADER_BIN_FILE=${BOOTLOADER_BIN_FILE}
-       -DBL_BASE_ADDR=${BL_BASE_ADDR}
-       -DEARLY_BOOT_SCRIPT=${EARLY_BOOT_SCRIPT}
-       -DDD=${DD}
-       -DSTAGE3_SCRIPT=${STAGE3_SCRIPT}
-       -DELFHACK32=$<TARGET_FILE:elfhack32>
-
-     DEPENDS elfhack32
-     BUILD_ALWAYS 1
-     INSTALL_COMMAND ""
+   ExternalProject_Add_Step(boot_legacy config_dep
+      DEPENDEES download DEPENDERS configure
+      DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+      COMMAND ${CMAKE_COMMAND} -E true
    )
 
    ExternalProject_Add_Step(boot_legacy elfhack_dep
-     DEPENDEES configure
-     DEPENDERS build
-     DEPENDS $<TARGET_FILE:elfhack32>
-     COMMAND ${CMAKE_COMMAND} -E true
-     ALWAYS 1
+      DEPENDEES configure
+      DEPENDERS build
+      DEPENDS $<TARGET_FILE:elfhack32>
+      COMMAND ${CMAKE_COMMAND} -E true
+      ALWAYS 1
    )
+
+endif()
+
+if (BOOTLOADER_EFI)
+
+   ExternalProject_Add(efi_x86_64
+      SOURCE_DIR ${CMAKE_SOURCE_DIR}/boot/efi/x86_64
+      BINARY_DIR ${CMAKE_BINARY_DIR}/boot/efi/x86_64
+      INSTALL_COMMAND ""
+      BUILD_ALWAYS 1
+      BUILD_BYPRODUCTS ${EFI_x86_64_FILE}
+      CMAKE_ARGS
+         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/x86_64-linux-gcc.cmake
+         -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_x86_64}
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+   )
+
+   ExternalProject_Add_Step(efi_x86_64 config_dep
+      DEPENDEES download DEPENDERS configure
+      DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+      COMMAND ${CMAKE_COMMAND} -E true
+   )
+
+   set(efi_bootloader_deps efi_x86_64)
+
+   if (${ARCH} STREQUAL "i386")
+
+      ExternalProject_Add(efi_ia32
+         SOURCE_DIR ${CMAKE_SOURCE_DIR}/boot/efi/ia32
+         BINARY_DIR ${CMAKE_BINARY_DIR}/boot/efi/ia32
+         INSTALL_COMMAND ""
+         BUILD_ALWAYS 1
+         BUILD_BYPRODUCTS ${EFI_ia32_FILE}
+         CMAKE_ARGS
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
+            -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+      )
+
+      ExternalProject_Add_Step(efi_ia32 config_dep
+         DEPENDEES download DEPENDERS configure
+         DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+         COMMAND ${CMAKE_COMMAND} -E true
+      )
+
+      list(APPEND efi_bootloader_deps efi_ia32)
+   endif()
+
+   add_custom_target(
+      efi_bootloader
+      DEPENDS ${efi_bootloader_deps}
+   )
+
+endif()
+
+if (BOOTLOADER_LEGACY)
 
    add_custom_command(
       OUTPUT
@@ -1018,37 +1304,37 @@ if (BOOTLOADER_LEGACY)
       VERBATIM
    )
 elseif (BOOTLOADER_EFI)
-   #add_custom_command(
-      #OUTPUT
-         #${IMG_FILE}
-      #COMMAND
-         #${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
-      #COMMAND
-         #${MBRHACK} mbr
-      #COMMAND
-         #${MBRHACK_F} bpb ${MBRHACK_BPB}
-      #COMMAND
-         #${MBRHACK} add 0xef ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
-      #COMMAND
-         #${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
-      #COMMAND
-         #${BUILD_BOOTPART}
-      #COMMAND
-         #${BUILD_FATPART}
-      #COMMAND
-         #${FATHACK} --truncate fatpart
-      #COMMAND
-         #${FATHACK} --align_first_data_sector fatpart
-      #COMMAND
-         #${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
-      #COMMAND
-         #${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
-      #DEPENDS
-         #${mbr_img_deps}
-      #COMMENT
-         #"${MSG}"
-      #VERBATIM
-   #)
+   add_custom_command(
+      OUTPUT
+         ${IMG_FILE}
+      COMMAND
+         ${CREATE_EMPTY_IMG} ${IMG_FILE} ${IMG_SZ_MB}
+      COMMAND
+         ${MBRHACK} mbr
+      COMMAND
+         ${MBRHACK_F} bpb ${MBRHACK_BPB}
+      COMMAND
+         ${MBRHACK} add 0xef ${BOOTPART_SEC} +${BOOTPART_SZ_SEC}
+      COMMAND
+         ${MBRHACK} add 0x0e ${INITRD_SECTOR} +${INITRD_SZ_MB}M
+      COMMAND
+         ${BUILD_BOOTPART}
+      COMMAND
+         ${BUILD_FATPART}
+      COMMAND
+         ${FATHACK} --truncate fatpart
+      COMMAND
+         ${FATHACK} --align_first_data_sector fatpart
+      COMMAND
+         ${DD} ${dd_opts} if=bootpart of=${IMG_FILE} seek=${BOOTPART_SEC}
+      COMMAND
+         ${DD} ${dd_opts} if=fatpart of=${IMG_FILE} seek=${INITRD_SECTOR}
+      DEPENDS
+         ${mbr_img_deps}
+      COMMENT
+         "${MSG}"
+      VERBATIM
+   )
 elseif (BOOTLOADER_U_BOOT)
    add_custom_command(
       OUTPUT

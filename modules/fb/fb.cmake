@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.22)
 
 set(HAVE_ALT_FONTS 0)
 
-if (EXISTS ${PROJ_DIR}/other/alt_fonts/font16x32.psf)
-   if (EXISTS ${PROJ_DIR}/other/alt_fonts/font8x16.psf)
+if (EXISTS ${PROJ_ROOT}/other/alt_fonts/font16x32.psf)
+   if (EXISTS ${PROJ_ROOT}/other/alt_fonts/font8x16.psf)
       set(HAVE_ALT_FONTS 1)
    endif()
 endif()

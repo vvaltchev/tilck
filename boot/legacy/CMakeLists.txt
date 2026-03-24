@@ -2,7 +2,13 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(boot_legacy LANGUAGES C CXX ASM)
+
+include(${TILCK_CONFIG_FILE})
+set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
+include(${PROJ_ROOT}/other/cmake/utils.cmake)
 include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
+
+set(ELFHACK32 ${BUILD_APPS}/elfhack32)
 
 # Common directories, both for early_boot and for elf_stage3_unstripped
 include_directories(
