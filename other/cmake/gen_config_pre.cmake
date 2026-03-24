@@ -4,8 +4,6 @@ cmake_minimum_required(VERSION 3.22)
 set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/early_boot_script.ld)
 set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/stage3/linker_script.ld)
 set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
-set(MUSL_GCC ${CMAKE_BINARY_DIR}/scripts/musl-gcc)
-set(MUSL_GXX ${CMAKE_BINARY_DIR}/scripts/musl-g++)
 
 math(EXPR BL_BASE_ADDR
      "${BL_ST2_DATA_SEG} * 16 + ${EARLY_BOOT_SZ} + ${STAGE3_ENTRY_OFF}"
@@ -16,10 +14,6 @@ file(GLOB config_glob ${GLOB_CONF_DEP} "${CMAKE_SOURCE_DIR}/config/*.h")
 foreach(config_path ${config_glob})
 
    get_filename_component(config_name ${config_path} NAME_WE)
-   string(FIND ${config_name} "mod_" _pos)
-   if (_pos EQUAL 0)
-      continue() # skip module-specific config files.
-   endif()
 
    smart_config_file(
       ${config_path}
@@ -27,6 +21,11 @@ foreach(config_path ${config_glob})
    )
 
 endforeach()
+
+smart_config_file(
+   ${CMAKE_SOURCE_DIR}/config/modules_list.h
+   ${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_list.h
+)
 
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h

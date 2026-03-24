@@ -2,6 +2,8 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(userapps LANGUAGES C CXX ASM)
+
+include(${TILCK_CONFIG_FILE})
 set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 
 ######################## COMMON CODE & DEFINITIONS #############################
@@ -55,7 +57,7 @@ include_directories(${ZLIB_DIR}/install/include)
       FILEDUMP_SOURCES
 
       "filedump.c"
-      "${CMAKE_SOURCE_DIR}/common/3rd_party/crc32.c"
+      "${PROJ_ROOT}/common/3rd_party/crc32.c"
    )
 
    if (USERAPPS_filedump)
@@ -96,35 +98,12 @@ include_directories(${ZLIB_DIR}/install/include)
    endif()
 # [/ncurses test app]
 
-# [extra]
-# This macro makes the integration with extra apps much easier.
-# It's enough for the external app to just add a call to tilck_add_extra_app()
-# with the full-path of a binary in order to that deliverable to become a file
-# dependency of Tilck's main target (the image) and get that deliverable copied
-# in /usr/bin (in Tilck's fatpart).
-# Example: https://github.com/vvaltchev/tfblib
-
-
-   macro(tilck_add_extra_app)
-      set(EXTRA_APPS_LIST_copy ${EXTRA_APPS_LIST})
-      list(APPEND EXTRA_APPS_LIST_copy ${ARGV0})
-      set(EXTRA_APPS_LIST ${EXTRA_APPS_LIST_copy})
-      file(RELATIVE_PATH relPath "${CMAKE_BINARY_DIR}" "${ARGV0}")
-      message(STATUS "Adding EXTRA APP: ${relPath}")
-   endmacro()
-
-   if (USERAPPS_extra)
-      add_subdirectory(extra)
-   endif()
-
-   file(
-      WRITE
-      "${CMAKE_BINARY_DIR}/list.txt"
-      "${APPS_BIN_FILES};${EXTRA_APPS_LIST}"
-   )
-
-# [/extra]
-
+# Write the apps list for build_fatpart
+file(
+   WRITE
+   "${CMAKE_BINARY_DIR}/list.txt"
+   "${APPS_BIN_FILES}"
+)
 
 # [busybox]
 
@@ -135,7 +114,7 @@ include_directories(${ZLIB_DIR}/install/include)
             COMMAND ${CMAKE_COMMAND}
             -E compare_files
                ${BUSYBOX_CONFIG}
-               ${CMAKE_SOURCE_DIR}/other/busybox.config
+               ${PROJ_ROOT}/other/busybox.config
             RESULT_VARIABLE result
          )
 
