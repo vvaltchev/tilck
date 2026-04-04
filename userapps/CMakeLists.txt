@@ -8,9 +8,9 @@ set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 
 ######################## COMMON CODE & DEFINITIONS #############################
 
-include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 include(${PROJ_ROOT}/other/cmake/utils.cmake)
 include(${PROJ_ROOT}/other/cmake/errors.cmake)
+include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 
 add_definitions(-DUSERMODE_APP)
 

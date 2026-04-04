@@ -5,15 +5,16 @@ if (${KERNEL_SYSCC})
 
    if (${ARCH} STREQUAL "i386")
 
-      set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
-      set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
-
       if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+         set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+         set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
          set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
       else()
-         # If system's compiler (CC) is Clang, we cannot use it for compiling
-         # our assembly code, because LLVM's assembler (llvm-as) is not 100%
-         # compatible with GAS's intel-syntax dialect.
+         # Clang does not accept -march=i686; use --target instead.
+         set(CMAKE_C_FLAGS "--target=i686-linux-gnu")
+         set(CMAKE_CXX_FLAGS "--target=i686-linux-gnu ${KERNEL_CXX_FLAGS}")
+         # Clang's integrated assembler (llvm-as) is not 100% compatible
+         # with GAS's intel-syntax dialect, so use the GCC toolchain's as.
          set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
       endif()
 

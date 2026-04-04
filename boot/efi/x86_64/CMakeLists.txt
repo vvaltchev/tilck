@@ -5,8 +5,9 @@ project(efi_x86_64 LANGUAGES C CXX ASM)
 
 include(${TILCK_CONFIG_FILE})
 set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
-include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 include(${PROJ_ROOT}/other/cmake/utils.cmake)
+include(${PROJ_ROOT}/other/cmake/errors.cmake)
+include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 
 set(EFI_ARCH x86_64)
 set(GNUEFI_DIR ${TCROOT_ARCH_DIR_PARENT}/x86_64/gnuefi/${VER_GNUEFI})
