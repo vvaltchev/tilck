@@ -3,17 +3,41 @@
 # Remove -rdynamic
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 
+set(EFI_BUILD_BASE_FLAGS_LIST "")
+
+list(
+   APPEND EFI_BUILD_BASE_FLAGS_LIST
+
+   -D__TILCK_EFI_BOOTLOADER__
+
+   -fno-stack-protector
+   -fshort-wchar
+   -mno-red-zone
+
+   -DEFI_DEBUG=0                # Because of -Wundef
+   -DEFI_DEBUG_CLEAR_MEMORY=0   # Because of -Wundef
+
+   ${GENERAL_DEFS_LIST}
+   ${DBG_FLAGS_LIST}
+   ${OPT_FLAGS_LIST}
+   ${WARN_FLAGS_LIST}
+   ${FREESTANDING_FLAGS_LIST}
+   ${SAFER_BEHAVIOR_FLAGS_LIST}
+)
+
+JOIN("${EFI_BUILD_BASE_FLAGS_LIST}" ${SPACE} EFI_BUILD_BASE_FLAGS)
+
 file(GLOB COMMON_SOURCES ${GLOB_CONF_DEP}
 
-   "${CMAKE_SOURCE_DIR}/boot/common/*.c"
-   "${CMAKE_SOURCE_DIR}/common/*.c"
-   "${CMAKE_SOURCE_DIR}/common/*.cpp"
+   "${PROJ_ROOT}/boot/common/*.c"
+   "${PROJ_ROOT}/common/*.c"
+   "${PROJ_ROOT}/common/*.cpp"
 )
 
 add_library(
 
    efi_app_${EFI_ARCH}
-   SHARED EXCLUDE_FROM_ALL
+   SHARED
 
    ${SOURCES}
    ${COMMON_SOURCES}
@@ -53,8 +77,8 @@ target_include_directories(
 
    PRIVATE
 
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/include/system_headers
+   ${PROJ_ROOT}/include
+   ${PROJ_ROOT}/include/system_headers
    ${GNUEFI_DIR}/inc
    ${GNUEFI_DIR}/inc/${EFI_ARCH}
 )
@@ -81,7 +105,7 @@ target_link_libraries(
    ${GNUEFI_DIR}/${EFI_ARCH}/gnuefi/libgnuefi.a
 )
 
-add_dependencies(efi_app_${EFI_ARCH} kernel)
+include_directories(${BUILD_DIR})
 
 set(
    OC_OPTS # objcopy options
@@ -110,7 +134,7 @@ unset(EFI_APP_SO)
 
 add_custom_target(
 
-   efi_${EFI_ARCH}_bootloader
+   efi_${EFI_ARCH}_bootloader ALL
 
    DEPENDS
       ${EFI_${EFI_ARCH}_FILE}

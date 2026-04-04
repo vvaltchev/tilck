@@ -129,7 +129,7 @@ function add_script_tests {
 function add_apps {
 
    IFS=";"
-   local all_apps="@USERAPPS_FILES_LIST@;@EXTRA_APPS_LIST@"
+   local all_apps="$(cat $bdir/userapps/list.txt)"
 
    for x in ${all_apps[@]}; do
 

@@ -351,12 +351,12 @@ tty_keypress_handler(struct kb_dev *kb, struct key_event ke)
       return kb_handler_nak;
 
    if (key == KEY_PAGE_UP && kb_is_shift_pressed(kb)) {
-      t->tintf->scroll_up(t->tstate, TERM_SCROLL_LINES);
+      t->tintf->scroll_up(t->tstate, KRN_TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 
    if (key == KEY_PAGE_DOWN && kb_is_shift_pressed(kb)) {
-      t->tintf->scroll_down(t->tstate, TERM_SCROLL_LINES);
+      t->tintf->scroll_down(t->tstate, KRN_TERM_SCROLL_LINES);
       return kb_handler_ok_and_stop;
    }
 

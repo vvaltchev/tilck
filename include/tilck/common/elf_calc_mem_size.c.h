@@ -4,7 +4,7 @@
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/elf_types.h>
 #include <tilck/common/utils.h>
-#include <elf.h>
+#include <3rd_party/elf.h>
 
 /*
  * NOTE[1]: the code is in a source-header (.c.h) in order to avoid it to be

@@ -141,7 +141,7 @@ void remove_all_file_mappings(struct process *pi)
 {
    fs_handle *h;
 
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
+   for (u32 i = 0; i < KRN_MAX_HANDLES; i++) {
 
       if (!(h = pi->handles[i]))
          continue;

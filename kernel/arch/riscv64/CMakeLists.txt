@@ -27,7 +27,7 @@ endif()
 
 JOIN("${ACTUAL_KERNEL_ONLY_FLAGS_LIST}" ${SPACE} ACTUAL_KERNEL_ONLY_FLAGS)
 
-set(ARCH_START_FILE "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/start.S")
+set(ARCH_START_FILE "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/start.S")
 set(ARCH_SOURCES_GLOB "*.S" "*.c")
 
 file(GLOB ARCH_SOURCES ${GLOB_CONF_DEP} ${ARCH_SOURCES_GLOB})
@@ -36,15 +36,15 @@ file(
    GLOB
    ARCH_FAMILY_SOURCES
 
-   "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*.c"
-   "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*.S"
-   "${CMAKE_SOURCE_DIR}/kernel/arch/${ARCH_FAMILY}/*/*.c"
-   "${CMAKE_SOURCE_DIR}/common/arch/${ARCH_FAMILY}/*.c"
-   "${CMAKE_SOURCE_DIR}/common/3rd_party/fdt_helper.c"
+   "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*.c"
+   "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*.S"
+   "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*/*.c"
+   "${PROJ_ROOT}/common/arch/${ARCH_FAMILY}/*.c"
+   "${PROJ_ROOT}/common/3rd_party/fdt_helper.c"
 )
 
 # Override CMake's default executable output directory
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(EXECUTABLE_OUTPUT_PATH ${BUILD_DIR})
 
 add_executable(
 
@@ -67,7 +67,7 @@ set(
    -Wl,--no-warn-rwx
    -Wl,--build-id=none
    -Wl,--script=${KERNEL_SCRIPT}
-   -Wl,-Map=${CMAKE_BINARY_DIR}/tilck.map
+   -Wl,-Map=${BUILD_DIR}/tilck.map
 )
 
 JOIN("${KERNEL_LINK_FLAGS_LIST}" ${SPACE} KERNEL_LINK_FLAGS)
@@ -103,7 +103,7 @@ target_link_libraries(
    ${LIBFDT_DIR}/libfdt.a
 )
 
-if (KERNEL_SYMBOLS)
+if (KRN_SYMBOLS)
 
    add_custom_command(
       OUTPUT
@@ -113,31 +113,31 @@ if (KERNEL_SYMBOLS)
       COMMAND
          ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
-         elfhack64 ${KERNEL_FILE} --copy .symtab .Symtab
+         ${ELFHACK} ${KERNEL_FILE} --copy .symtab .Symtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --copy .strtab .Strtab
+         ${ELFHACK} ${KERNEL_FILE} --copy .strtab .Strtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --link .Symtab .Strtab
+         ${ELFHACK} ${KERNEL_FILE} --link .Symtab .Strtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --rename .symtab osymtab
+         ${ELFHACK} ${KERNEL_FILE} --rename .symtab osymtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --rename .strtab ostrtab
+         ${ELFHACK} ${KERNEL_FILE} --rename .strtab ostrtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --rename .Symtab .symtab
+         ${ELFHACK} ${KERNEL_FILE} --rename .Symtab .symtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --rename .Strtab .strtab
+         ${ELFHACK} ${KERNEL_FILE} --rename .Strtab .strtab
       COMMAND
-         elfhack64 ${KERNEL_FILE} --move-metadata
+         ${ELFHACK} ${KERNEL_FILE} --move-metadata
       COMMAND
-         elfhack64 ${KERNEL_FILE} --drop-last-section
+         ${ELFHACK} ${KERNEL_FILE} --drop-last-section
       COMMAND
-         elfhack64 ${KERNEL_FILE} --drop-last-section
+         ${ELFHACK} ${KERNEL_FILE} --drop-last-section
       COMMAND
-         elfhack64 ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
+         ${ELFHACK} ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
       DEPENDS
          tilck_unstripped
-         elfhack64
-         ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack64
+      WORKING_DIRECTORY
+         ${PROJ_ROOT}
       COMMENT
          "Preparing kernel's stripped binary"
    )
@@ -152,9 +152,11 @@ else()
       COMMAND
          ${CMAKE_STRIP} --strip-debug ${KERNEL_UNSTRIPPED} -o ${KERNEL_FILE}
       COMMAND
-         elfhack64 ${KERNEL_FILE} --move-metadata
+         ${ELFHACK} ${KERNEL_FILE} --move-metadata
       DEPENDS
-         elfhack64 tilck_unstripped
+         ${ELFHACK} tilck_unstripped
+      WORKING_DIRECTORY
+         ${PROJ_ROOT}
       COMMENT
          "Preparing kernel's stripped binary"
    )

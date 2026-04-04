@@ -43,7 +43,7 @@ read_single_byte(fs_handle h, char *buf, u32 len)
             esc_timeout = true;
          }
 
-         kernel_sleep(TIMER_HZ / 25);
+         kernel_sleep(KRN_TIMER_HZ / 25);
          continue;
       }
 

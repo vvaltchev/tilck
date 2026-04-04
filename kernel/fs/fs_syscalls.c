@@ -14,14 +14,14 @@
 
 static inline bool is_fd_in_valid_range(int fd)
 {
-   return IN_RANGE(fd, 0, MAX_HANDLES);
+   return IN_RANGE(fd, 0, KRN_MAX_HANDLES);
 }
 
 static int get_free_handle_num_ge(struct process *pi, int ge)
 {
    ASSERT(kmutex_is_curr_task_holding_lock(&pi->fslock));
 
-   for (int free_fd = ge; free_fd < MAX_HANDLES; free_fd++)
+   for (int free_fd = ge; free_fd < KRN_MAX_HANDLES; free_fd++)
       if (!pi->handles[free_fd])
          return free_fd;
 
@@ -809,7 +809,7 @@ void close_cloexec_handles(struct process *pi)
 {
    kmutex_lock(&pi->fslock);
 
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
+   for (u32 i = 0; i < KRN_MAX_HANDLES; i++) {
 
       struct fs_handle_base *h = pi->handles[i];
 

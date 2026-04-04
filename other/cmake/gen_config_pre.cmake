@@ -4,8 +4,6 @@ cmake_minimum_required(VERSION 3.22)
 set(EARLY_BOOT_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/early_boot_script.ld)
 set(STAGE3_SCRIPT ${CMAKE_BINARY_DIR}/boot/legacy/stage3/linker_script.ld)
 set(KERNEL_SCRIPT ${CMAKE_BINARY_DIR}/kernel/arch/${ARCH}/linker_script.ld)
-set(MUSL_GCC ${CMAKE_BINARY_DIR}/scripts/musl-gcc)
-set(MUSL_GXX ${CMAKE_BINARY_DIR}/scripts/musl-g++)
 
 math(EXPR BL_BASE_ADDR
      "${BL_ST2_DATA_SEG} * 16 + ${EARLY_BOOT_SZ} + ${STAGE3_ENTRY_OFF}"
@@ -25,14 +23,26 @@ foreach(config_path ${config_glob})
 endforeach()
 
 smart_config_file(
-   ${CMAKE_SOURCE_DIR}/config/modules_list.h
-   ${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_list.h
-)
-
-smart_config_file(
    ${CMAKE_SOURCE_DIR}/config/config_init.h
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_init.h
 )
+
+# Generate kernel-private config headers into the kernel's build directory.
+# These shadow the shared headers via include path ordering. The kernel
+# ExternalProject generates its own copy too, but the root must also generate
+# them so that unit tests (built by the root) can find them without depending
+# on the kernel ExternalProject's configure step.
+
+file(GLOB _kernel_config_glob ${GLOB_CONF_DEP}
+     "${CMAKE_SOURCE_DIR}/config/kernel/*.h")
+
+foreach(_config_path ${_kernel_config_glob})
+   get_filename_component(_config_name ${_config_path} NAME_WE)
+   smart_config_file(
+      ${_config_path}
+      ${CMAKE_BINARY_DIR}/kernel/tilck_gen_headers/${_config_name}.h
+   )
+endforeach()
 
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/boot/legacy/early_boot_script.ld

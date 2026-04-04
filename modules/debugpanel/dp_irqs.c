@@ -29,10 +29,10 @@ static void debug_dump_spur_irq_count(void)
    extern u32 spur_irq_count;
    const u64 ticks = get_ticks();
 
-   if (ticks > TIMER_HZ)
+   if (ticks > KRN_TIMER_HZ)
       dp_writeln("   Spurious IRQ count: %u (%u/sec)",
                  spur_irq_count,
-                 spur_irq_count / (ticks / TIMER_HZ));
+                 spur_irq_count / (ticks / KRN_TIMER_HZ));
    else
       dp_writeln("   Spurious IRQ count: %u", spur_irq_count);
 }

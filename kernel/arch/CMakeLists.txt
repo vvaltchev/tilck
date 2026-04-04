@@ -1,35 +1,34 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-if (${KERNEL_SYSCC})
+if (${KERNEL_SYSCC} AND ${ARCH} STREQUAL "i386"
+                    AND NOT CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
-   if (${ARCH} STREQUAL "i386")
-
-      set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
-      set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
-
-      if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
-         set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
-      else()
-         # If system's compiler (CC) is Clang, we cannot use it for compiling
-         # our assembly code, because LLVM's assembler (llvm-as) is not 100%
-         # compatible with GAS's intel-syntax dialect.
-         set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
-      endif()
-
-   endif()
-
-   if (KERNEL_FORCE_TC_ISYSTEM)
-      include_directories(SYSTEM ${GCC_TC_ISYSTEM})
-   endif()
+   # Clang does not accept -march=i686; use --target instead.
+   set(CMAKE_C_FLAGS "--target=i686-linux-gnu")
+   set(CMAKE_CXX_FLAGS "--target=i686-linux-gnu ${KERNEL_CXX_FLAGS}")
+   # Clang's integrated assembler (llvm-as) is not 100% compatible
+   # with GAS's intel-syntax dialect, so use the GCC toolchain's as.
+   set(CMAKE_ASM_COMPILER ${GCC_TOOLCHAIN}/${ARCH_GCC_TC}-linux-gcc)
 
 else()
-   set_cross_compiler()
+
+   # For both SYSCC (GCC) and non-SYSCC (toolchain) builds, apply ARCH_GCC_FLAGS.
+   # The old set_cross_compiler() macro did this; now that toolchain files only
+   # set compiler paths, we must set the flags here.
+   set(CMAKE_C_FLAGS "${ARCH_GCC_FLAGS}")
+   set(CMAKE_CXX_FLAGS "${ARCH_GCC_FLAGS} ${KERNEL_CXX_FLAGS}")
+   set(CMAKE_ASM_FLAGS "${ARCH_GCC_FLAGS}")
+
+endif()
+
+if (${KERNEL_SYSCC} AND KERNEL_FORCE_TC_ISYSTEM)
+   include_directories(SYSTEM ${GCC_TC_ISYSTEM})
 endif()
 
 smart_config_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/generate_coverage_report
-   ${CMAKE_BINARY_DIR}/scripts/generate_kernel_coverage_report
+   ${PROJ_ROOT}/scripts/templates/generate_coverage_report
+   ${BUILD_DIR}/scripts/generate_kernel_coverage_report
 )
 
 add_subdirectory(${ARCH})

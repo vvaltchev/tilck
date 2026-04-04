@@ -35,7 +35,7 @@ static void sched_alive_thread()
          }
       }
 
-      kernel_sleep(TIMER_HZ);
+      kernel_sleep(KRN_TIMER_HZ);
    }
 }
 

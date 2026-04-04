@@ -51,7 +51,7 @@ static void __del_sig(ulong *set, int signum)
    if (slot >= K_SIGACTION_MASK_WORDS)
       return; /* just silently ignore signals that we don't support */
 
-   set[slot] &= ~(1 << index);
+   set[slot] &= ~(1u << index);
 }
 
 static void del_pending_sig(struct task *ti, int signum)

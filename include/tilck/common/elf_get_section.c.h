@@ -5,7 +5,7 @@
 #include <tilck/common/elf_types.h>
 #include <tilck/common/utils.h>
 #include <tilck/common/string_util.h>
-#include <elf.h>
+#include <3rd_party/elf.h>
 
 /*
  * NOTE[1]: the code is in a source-header (.c.h) in order to avoid it to be

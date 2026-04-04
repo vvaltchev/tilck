@@ -146,7 +146,7 @@ alloc_new_small_heap_unsafe(void)
       per_heap_kmalloc(&new_node->heap, &actual_metadata_size, 0);
    ASSERT(actual_metadata == metadata);
 
-   if (KMALLOC_HEAVY_STATS)
+   if (KRN_KMALLOC_HEAVY_STATS)
       kmalloc_account_alloc(actual_metadata_size);
 
    shs.lifetime_created_heaps_count++;
@@ -157,7 +157,7 @@ alloc_new_small_heap_unsafe(void)
 static struct small_heap_node *
 alloc_new_small_heap(void)
 {
-   static bool in_use;
+   static ATOMIC(bool) in_use;
    struct small_heap_node *res;
    bool exp = false;
 

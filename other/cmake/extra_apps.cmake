@@ -31,6 +31,11 @@ if (EXISTS ${TCROOT_ARCH_DIR}/lua/${VER_LUA})
    message(STATUS "EXTRA_LUA: ${EXTRA_LUA}")
 endif()
 
+if (EXISTS ${TCROOT_ARCH_DIR}/tfblib/${VER_TFBLIB})
+   set(EXTRA_TFBLIB OFF CACHE BOOL "Load tfblib apps in Tilck")
+   message(STATUS "EXTRA_TFBLIB: ${EXTRA_TFBLIB}")
+endif()
+
 if (EXTRA_VIM)
    set(EXTRA_VIM_ENABLED "1")
 endif()
@@ -58,4 +63,8 @@ endif()
 
 if (EXTRA_LUA)
    set(EXTRA_LUA_ENABLED "1")
+endif()
+
+if (EXTRA_TFBLIB)
+   set(EXTRA_TFBLIB_ENABLED "1")
 endif()
