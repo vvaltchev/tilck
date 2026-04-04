@@ -138,6 +138,8 @@ if (KRN_SYMBOLS)
          ${ELFHACK} ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
       DEPENDS
          tilck_unstripped
+      WORKING_DIRECTORY
+         ${PROJ_ROOT}
       COMMENT
          "Preparing kernel's stripped binary"
    )
@@ -155,6 +157,8 @@ else()
          ${ELFHACK} ${KERNEL_FILE} --move-metadata
       DEPENDS
          ${ELFHACK} tilck_unstripped
+      WORKING_DIRECTORY
+         ${PROJ_ROOT}
       COMMENT
          "Preparing kernel's stripped binary"
    )
