@@ -98,7 +98,7 @@ template <>
 struct unsigned_type<s64> {
    typedef u64 type;
 };
-#if NBITS == 32 || defined(__clang__)
+#if NBITS == 32 || defined(__APPLE__)
 template <>
 struct unsigned_type<long> {
    typedef unsigned long type;
@@ -122,7 +122,7 @@ template <>
 struct unsigned_type<u64> {
    typedef u64 type;
 };
-#if NBITS == 32 || defined(__clang__)
+#if NBITS == 32 || defined(__APPLE__)
 template <>
 struct unsigned_type<unsigned long> {
    typedef unsigned long type;
@@ -156,7 +156,7 @@ struct is_unsigned<u64> {
    enum { val = 1 };
 };
 
-#if NBITS == 32
+#if NBITS == 32 || defined(__APPLE__)
 template <>
 struct is_unsigned<ulong> {
    enum { val = 1 };

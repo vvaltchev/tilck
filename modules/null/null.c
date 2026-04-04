@@ -21,7 +21,7 @@ static ssize_t null_read(fs_handle h, char *buf, size_t size, offt *pos)
 static ssize_t null_write(fs_handle h, char *buf, size_t size, offt *pos)
 {
    ASSERT(*pos == 0);
-   return size;
+   return (ssize_t) size;
 }
 
 static offt null_seek(fs_handle h, offt off, int whence)
@@ -41,7 +41,7 @@ static ssize_t zero_read(fs_handle h, char *buf, size_t size, offt *pos)
 {
    ASSERT(*pos == 0);
    bzero(buf, size);
-   return size;
+   return (ssize_t) size;
 }
 
 static const struct file_ops static_ops_zero = {

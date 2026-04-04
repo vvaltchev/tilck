@@ -11,9 +11,9 @@ set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
 
-include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 include(${PROJ_ROOT}/other/cmake/utils.cmake)
 include(${PROJ_ROOT}/other/cmake/errors.cmake)
+include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 include(${PROJ_ROOT}/kernel/sources.cmake)
 
 include_directories(${PROJ_ROOT}/include)

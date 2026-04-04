@@ -954,6 +954,18 @@ foreach(_v ${_all_cache_vars})
    endif()
 endforeach()
 
+if (NOT KERNEL_SYSCC)
+   set(_kernel_tc_args
+      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
+      -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
+   )
+else()
+   set(_kernel_tc_args
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+   )
+endif()
+
 ExternalProject_Add(kernel
    SOURCE_DIR ${CMAKE_SOURCE_DIR}/kernel
    BINARY_DIR ${CMAKE_BINARY_DIR}/kernel
@@ -962,8 +974,7 @@ ExternalProject_Add(kernel
    BUILD_ALWAYS 1
    BUILD_BYPRODUCTS ${KERNEL_FILE} ${KERNEL_UNSTRIPPED}
    CMAKE_ARGS
-      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
-      -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
+      ${_kernel_tc_args}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
       ${_krn_forward_args}
