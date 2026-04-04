@@ -13,12 +13,12 @@ if [[ "$TRAVIS" != "" || "$CIRCLECI" != "" ]]; then
 fi
 
 set -e # exit if any command fails
-SRC="@CMAKE_SOURCE_DIR@"
+SRC="@PROJ_ROOT@"
 
 source $SRC/scripts/bash_includes/script_utils
 
 TC="@TCROOT@"
-BUILD="@CMAKE_BINARY_DIR@"
+BUILD="@BUILD_DIR@"
 
 HTML_DIR="@COVERAGE_HTML_DIR@"
 GCOV="@TOOL_GCOV@"
