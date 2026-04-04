@@ -19,7 +19,7 @@ function no_ccmake_error {
    echo "Tilck. It is just a nicer curses GUI alternative to re-running the"
    echo "cmake_run script with the new options on the command line, like this: "
    echo
-   echo "   ./script/cmake_run -DTERM_BIG_SCROLL_BUF=1 -DKERNEL_SHOW_LOGO=0"
+   echo "   ./script/cmake_run -DTERM_BIG_SCROLL_BUF=1 -DKRN_SHOW_LOGO=0"
    echo
 }
 

@@ -20,7 +20,7 @@
 
 char zero_page[PAGE_SIZE] ALIGNED_AT(PAGE_SIZE);
 
-#if KERNEL_SYMBOLS
+#if KRN_SYMBOLS
 char symtab_buf[SYMTAB_MAX_SIZE] ATTR_SECTION(".Symtab") = {0};
 char strtab_buf[STRTAB_MAX_SIZE] ATTR_SECTION(".Strtab") = {0};
 #else
@@ -35,7 +35,7 @@ const ulong init_st_begin = (ulong)&kernel_initial_stack;
 const ulong init_st_end   = (ulong)&kernel_initial_stack + KERNEL_STACK_SIZE;
 #endif
 
-#ifdef KERNEL_SHOW_LOGO
+#ifdef KRN_SHOW_LOGO
 static void print_banner_line(const char *s)
 {
    term_write("\033(0", 3, 0);
@@ -81,13 +81,13 @@ show_tilck_logo(void)
 static void
 show_system_info(void)
 {
-   const int time_slice = 1000 / (TIMER_HZ / TIME_SLICE_TICKS);
+   const int time_slice = 1000 / (KRN_TIMER_HZ / TIME_SLICE_TICKS);
    const char *in_hyp_str = in_hypervisor() ? "yes" : "no";
 
    printk("\e[32mtimer_hz: \e[m\e[1m%i\e[m\e[32m"
           "; time_slice: \e[m\e[1m%i\e[m\e[32m"
           " ms; in_hypervisor: \e[m\e[1m%s\e[m\n",
-          TIMER_HZ, time_slice, in_hyp_str);
+          KRN_TIMER_HZ, time_slice, in_hyp_str);
 }
 
 #ifdef __riscv64
@@ -159,7 +159,7 @@ show_hello_message(void)
 
    show_system_info();
 
-   if (KERNEL_SHOW_LOGO)
+   if (KRN_SHOW_LOGO)
       show_tilck_logo();
 
 #ifdef __riscv64

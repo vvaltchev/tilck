@@ -97,7 +97,7 @@ STATIC_ASSERT(
 
 static void alloc_kernel_stack(struct task *ti)
 {
-   if (KERNEL_STACK_ISOLATION) {
+   if (KRN_STACK_ISOLATION) {
       ti->kernel_stack = alloc_kernel_isolated_stack(ti->pi);
    } else {
       ti->kernel_stack = kzmalloc(KERNEL_STACK_SIZE);
@@ -106,7 +106,7 @@ static void alloc_kernel_stack(struct task *ti)
 
 static void free_kernel_stack(struct task *ti)
 {
-   if (KERNEL_STACK_ISOLATION) {
+   if (KRN_STACK_ISOLATION) {
       free_kernel_isolated_stack(ti->pi, ti->kernel_stack);
    } else {
       kfree2(ti->kernel_stack, KERNEL_STACK_SIZE);

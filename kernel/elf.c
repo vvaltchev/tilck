@@ -440,10 +440,10 @@ load_elf_program(const char *filepath,
     */
 
    const size_t pre_allocated_pages =
-      MMAP_NO_COW ? USER_STACK_PAGES : USER_ARGS_PAGE_COUNT;
+      MMAP_NO_COW ? KRN_USER_STACK_PAGES : USER_ARGS_PAGE_COUNT;
 
-   const size_t zero_mapped_pages = USER_STACK_PAGES - pre_allocated_pages;
-   const ulong stack_top = (USERMODE_VADDR_END - USER_STACK_PAGES * PAGE_SIZE);
+   const size_t zero_mapped_pages = KRN_USER_STACK_PAGES - pre_allocated_pages;
+   const ulong stack_top = (USERMODE_VADDR_END - KRN_USER_STACK_PAGES * PAGE_SIZE);
 
    count = map_zero_pages(pinfo->pdir,
                           (void *)stack_top,
@@ -456,7 +456,7 @@ load_elf_program(const char *filepath,
       goto out;
    }
 
-   for (u32 i = zero_mapped_pages; i < USER_STACK_PAGES; i++) {
+   for (u32 i = zero_mapped_pages; i < KRN_USER_STACK_PAGES; i++) {
       if ((rc = alloc_and_map_stack_page(pinfo->pdir, (void *)stack_top, i)))
          goto out;
    }
@@ -492,7 +492,7 @@ void get_symtab_and_strtab(My_Elf_Shdr **symtab, My_Elf_Shdr **strtab)
    *symtab = NULL;
    *strtab = NULL;
 
-   if (!KERNEL_SYMBOLS)
+   if (!KRN_SYMBOLS)
       return;
 
    VERIFY(h->e_shentsize == sizeof(My_Elf_Shdr));
@@ -519,7 +519,7 @@ const char *find_sym_at_addr(ulong vaddr, long *offset, u32 *sym_size)
    My_Elf_Shdr *symtab;
    My_Elf_Shdr *strtab;
 
-   if (!KERNEL_SYMBOLS)
+   if (!KRN_SYMBOLS)
       return NULL;
 
    get_symtab_and_strtab(&symtab, &strtab);
@@ -550,7 +550,7 @@ ulong find_addr_of_symbol(const char *searched_sym)
    My_Elf_Shdr *symtab;
    My_Elf_Shdr *strtab;
 
-   if (!KERNEL_SYMBOLS)
+   if (!KRN_SYMBOLS)
       return 0;
 
    get_symtab_and_strtab(&symtab, &strtab);
@@ -572,7 +572,7 @@ int foreach_symbol(int (*cb)(struct elf_symbol_info *, void *), void *arg)
    My_Elf_Shdr *strtab;
    int ret = 0;
 
-   if (!KERNEL_SYMBOLS)
+   if (!KRN_SYMBOLS)
       return 0;
 
    get_symtab_and_strtab(&symtab, &strtab);

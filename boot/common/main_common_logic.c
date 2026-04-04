@@ -2,8 +2,7 @@
 
 #include <tilck_gen_headers/config_boot.h>
 #include <tilck_gen_headers/config_kernel.h>
-#include <tilck_gen_headers/mod_console.h>
-#include <tilck_gen_headers/mod_kb8042.h>
+#include <tilck_gen_headers/modules_config.h>
 #include <tilck_gen_headers/config_debug.h>
 
 #if ARCH_BITS == 32

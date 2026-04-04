@@ -398,7 +398,7 @@ void fb_draw_char_failsafe(u32 x, u32 y, u16 e)
       vga_rgb_colors[vgaentry_get_bg(e)],
    };
 
-   if (FB_CONSOLE_FAILSAFE_OPT) {
+   if (KRN_FB_CONSOLE_FAILSAFE_OPT) {
 
       if (LIKELY(font_width_bytes == 1))
 

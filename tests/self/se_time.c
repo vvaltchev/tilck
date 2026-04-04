@@ -28,11 +28,11 @@ void selftest_time(void)
       goto out;
    }
 
-   if (clock_drift_adj_loop_delay > 60 * TIMER_HZ) {
+   if (clock_drift_adj_loop_delay > 60 * KRN_TIMER_HZ) {
 
       printk("Test designed to run with clock_drift_adj_loop_delay <= 60s\n");
       printk("clock_drift_adj_loop_delay: %ds\n",
-             clock_drift_adj_loop_delay / TIMER_HZ);
+             clock_drift_adj_loop_delay / KRN_TIMER_HZ);
 
       printk("=> Skipping the artificial drift in the test\n");
       art_drift_p = 0;
@@ -41,9 +41,9 @@ void selftest_time(void)
     /*
      * Increase tick's actual duration by 5% in order to produce quickly a
      * huge clock drift. Note: consider that __tick_duration is added to the
-     * current time, TIMER_HZ times per second.
+     * current time, KRN_TIMER_HZ times per second.
      *
-     * For example, with TIMER_HZ=100:
+     * For example, with KRN_TIMER_HZ=100:
      *
      *   td == 0.01 [ideal tick duration]
      *
@@ -118,7 +118,7 @@ void selftest_time(void)
       }
 
       printk(NO_PREFIX "[%06d seconds] Drift: %d\n", t, drift);
-      kernel_sleep(TIMER_HZ);
+      kernel_sleep(KRN_TIMER_HZ);
    }
 
    if (art_drift_p) {
@@ -152,7 +152,7 @@ void selftest_delay(void)
    enable_preemption();
    elapsed = after - before;
 
-   printk("Expected in ticks: %u\n", us / (1000000 / TIMER_HZ));
+   printk("Expected in ticks: %u\n", us / (1000000 / KRN_TIMER_HZ));
    printk("Actual ticks:      %" PRIu64 "\n", elapsed);
 }
 

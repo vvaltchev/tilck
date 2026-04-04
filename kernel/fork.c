@@ -15,7 +15,7 @@ STATIC int fork_dup_all_handles(struct process *pi)
 {
    ASSERT(!is_preemption_enabled());
 
-   for (u32 i = 0; i < MAX_HANDLES; i++) {
+   for (u32 i = 0; i < KRN_MAX_HANDLES; i++) {
 
       int rc;
       fs_handle dup_h = NULL;

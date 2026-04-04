@@ -292,7 +292,7 @@ static int kmalloc_internal_add_heap(void *vaddr, size_t heap_size)
    void *md_allocated =
       per_heap_kmalloc(heaps[used_heaps], &actual_metadata_size, 0);
 
-   if (KMALLOC_HEAVY_STATS)
+   if (KRN_KMALLOC_HEAVY_STATS)
       kmalloc_account_alloc(metadata_size);
 
    /*
@@ -376,7 +376,7 @@ void early_init_kmalloc(void)
 
    kmalloc_initialized = true; /* we have at least 1 heap */
 
-   if (KMALLOC_HEAVY_STATS) {
+   if (KRN_KMALLOC_HEAVY_STATS) {
       kmalloc_init_heavy_stats();
       kmalloc_account_alloc(heaps[0]->metadata_size);
    }
@@ -464,6 +464,6 @@ debug_kmalloc_get_stats(struct debug_kmalloc_stats *stats)
    *stats = (struct debug_kmalloc_stats) {
       .small_heaps = shs,
       .chunk_sizes_count =
-         KMALLOC_HEAVY_STATS ? alloc_arr_used : 0,
+         KRN_KMALLOC_HEAVY_STATS ? alloc_arr_used : 0,
    };
 }

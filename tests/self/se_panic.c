@@ -33,7 +33,7 @@ void selftest_panic3(void)
 REGISTER_SELF_TEST(panic3, se_manual, &selftest_panic3)
 
 
-/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+/* This works as expected when the KRN_STACK_ISOLATION is enabled */
 void selftest_so1(void)
 {
    char buf[16];
@@ -49,7 +49,7 @@ void selftest_so1(void)
 }
 REGISTER_SELF_TEST(so1, se_manual, &selftest_so1)
 
-/* This works as expected when the KERNEL_STACK_ISOLATION is enabled */
+/* This works as expected when the KRN_STACK_ISOLATION is enabled */
 void selftest_so2(void)
 {
    char buf[16];

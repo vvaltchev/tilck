@@ -199,7 +199,7 @@ static void *get_fpu_cpy_single_256_nt_read_func(void)
 static void
 simple_hot_patch(void *dest, void *func, size_t max_size)
 {
-   if (KERNEL_SYMBOLS) {
+   if (KRN_SYMBOLS) {
 
       const char *func_name;
       long offset;

@@ -11,7 +11,7 @@ void delay_us(u32 us);         /* busy-wait for `us` microseconds */
 static ALWAYS_INLINE u64
 ms_to_ticks(u64 ms)
 {
-   return ms / (1000 / TIMER_HZ);
+   return ms / (1000 / KRN_TIMER_HZ);
 }
 
 u64 get_ticks(void);

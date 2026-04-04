@@ -182,8 +182,8 @@ select_read_user_tv(struct k_timeval *user_tv,
          return -EFAULT;
 
       u64 tmp = 0;
-      tmp += (u64)tv->tv_sec * TIMER_HZ;
-      tmp += (u64)tv->tv_usec / (1000000 / TIMER_HZ);
+      tmp += (u64)tv->tv_sec * KRN_TIMER_HZ;
+      tmp += (u64)tv->tv_usec / (1000000 / KRN_TIMER_HZ);
 
       /* NOTE: select() can't sleep for more than UINT32_MAX ticks */
       *timeout = (u32) CLAMP(tmp, 1u, UINT32_MAX);
@@ -294,8 +294,8 @@ select_wait_on_cond(struct select_ctx *c)
                continue; /* No ready streams, we have to wait again. */
 
             u32 rem = task_cancel_wakeup_timer(curr);
-            c->tv->tv_sec = rem / TIMER_HZ;
-            c->tv->tv_usec = (rem % TIMER_HZ) * (1000000 / TIMER_HZ);
+            c->tv->tv_sec = rem / KRN_TIMER_HZ;
+            c->tv->tv_usec = (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
          }
 
       } else {
@@ -338,7 +338,7 @@ int sys_select(int user_nfds,
 
    int rc;
 
-   if (user_nfds < 0 || user_nfds > MAX_HANDLES)
+   if (user_nfds < 0 || user_nfds > KRN_MAX_HANDLES)
       return -EINVAL;
 
    if ((rc = select_read_user_sets(ctx.sets, ctx.u_sets)))

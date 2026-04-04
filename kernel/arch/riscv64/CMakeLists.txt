@@ -103,7 +103,7 @@ target_link_libraries(
    ${LIBFDT_DIR}/libfdt.a
 )
 
-if (KERNEL_SYMBOLS)
+if (KRN_SYMBOLS)
 
    add_custom_command(
       OUTPUT
