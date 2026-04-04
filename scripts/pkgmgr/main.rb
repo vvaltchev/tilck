@@ -13,6 +13,7 @@ require_relative 'zlib'
 require_relative 'acpica'
 require_relative 'mtools'
 require_relative 'busybox'
+require_relative 'gnuefi'
 
 require 'pathname'
 require 'fileutils'
