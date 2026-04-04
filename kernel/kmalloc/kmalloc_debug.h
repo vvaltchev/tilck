@@ -6,7 +6,7 @@
 
 static bool kmalloc_debug_log;
 
-#if KMALLOC_SUPPORT_DEBUG_LOG
+#if KRN_KMALLOC_SUPPORT_DEBUG_LOG
    #define DEBUG_COND (kmalloc_debug_log)
    #define DEBUG_printk(...) if (DEBUG_COND) trace_printk(80, __VA_ARGS__)
 #else
@@ -16,7 +16,7 @@ static bool kmalloc_debug_log;
 
 void debug_kmalloc_start_log(void)
 {
-   if (!KMALLOC_SUPPORT_DEBUG_LOG)
+   if (!KRN_KMALLOC_SUPPORT_DEBUG_LOG)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = true;
@@ -24,7 +24,7 @@ void debug_kmalloc_start_log(void)
 
 void debug_kmalloc_stop_log(void)
 {
-   if (!KMALLOC_SUPPORT_DEBUG_LOG)
+   if (!KRN_KMALLOC_SUPPORT_DEBUG_LOG)
       panic("kmalloc debug logs funcs are NOT compiled in");
 
    kmalloc_debug_log = false;

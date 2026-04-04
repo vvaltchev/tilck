@@ -9,7 +9,7 @@ if (EXISTS ${PROJ_ROOT}/other/alt_fonts/font16x32.psf)
    endif()
 endif()
 
-if (${HAVE_ALT_FONTS} AND ${FB_CONSOLE_USE_ALT_FONTS})
+if (${HAVE_ALT_FONTS} AND ${KRN_FB_CONSOLE_USE_ALT_FONTS})
 
    file(
       GLOB

@@ -395,7 +395,7 @@ dp_tracing_screen_main_loop(void)
          }
       }
 
-      if (read_trace_event(&e, TIMER_HZ / 10))
+      if (read_trace_event(&e, KRN_TIMER_HZ / 10))
          dp_dump_tracing_event(&e, &ctx);
    }
 

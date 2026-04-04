@@ -45,7 +45,7 @@ static int adj_cnt;              /* adjustments count (temporary, gets reset) */
 /* lifetime statistics about re-syncs */
 static struct clock_resync_stats clock_rstats;
 
-u32 clock_drift_adj_loop_delay = 60 * TIMER_HZ;
+u32 clock_drift_adj_loop_delay = 60 * KRN_TIMER_HZ;
 
 extern u64 __time_ns;
 extern u32 __tick_duration;
@@ -113,7 +113,7 @@ static int clock_get_second_drift2(bool enable_preempt_on_exit)
 
       /* We weren't in the middle of the second. Sleep 0.1s and try again */
       enable_preemption_nosched();
-      kernel_sleep(TIMER_HZ / 10);
+      kernel_sleep(KRN_TIMER_HZ / 10);
    }
 
    /* NOTE: here we always have the preemption disabled */
@@ -297,7 +297,7 @@ retry:
 
          /* NOTE: abs_drift cannot be > TS_SCALE [typically, 1 BILLION] */
          abs_drift = (int)(hw_time_ns - __time_ns);
-         __tick_adj_val = (TS_SCALE / TIMER_HZ) / 10;
+         __tick_adj_val = (TS_SCALE / KRN_TIMER_HZ) / 10;
          __tick_adj_ticks_rem = abs_drift / __tick_adj_val;
 
       } else {
@@ -317,7 +317,7 @@ retry:
     * and then check we have absolutely no drift measurable in seconds.
     */
    enable_preemption_nosched();
-   kernel_sleep(15 * TIMER_HZ);
+   kernel_sleep(15 * KRN_TIMER_HZ);
    drift = clock_get_second_drift2(true);
    abs_drift = (drift > 0 ? drift : -drift);
 
@@ -364,8 +364,8 @@ static void clock_multi_second_resync(int drift)
    static int last_drift_value;
 
    const int abs_drift = (drift > 0 ? drift : -drift);
-   const int adj_val = (TS_SCALE / TIMER_HZ) / (drift > 0 ? -10 : 10);
-   const int adj_ticks = abs_drift * TIMER_HZ * 10;
+   const int adj_val = (TS_SCALE / KRN_TIMER_HZ) / (drift > 0 ? -10 : 10);
+   const int adj_ticks = abs_drift * KRN_TIMER_HZ * 10;
 
    u64 now;
    u64 time_gap_ns;
@@ -399,7 +399,7 @@ static void clock_multi_second_resync(int drift)
              */
             now = __time_ns;
             time_gap_ns = now - last_resync_time_ns;
-            ticks_gap = time_gap_ns / (TS_SCALE / TIMER_HZ);
+            ticks_gap = time_gap_ns / (TS_SCALE / KRN_TIMER_HZ);
             drift_time_ns = (u64)drift * BILLION;
             drift_per_tick = drift_time_ns / ticks_gap;
 
@@ -446,7 +446,7 @@ static void check_drift_and_sync(void)
 retry:
    if (clock_in_resync()) {
       trace_printk(5, "multi-sec resync: resync in progress, wait");
-      kernel_sleep(5 * TIMER_HZ);
+      kernel_sleep(5 * KRN_TIMER_HZ);
       goto retry;
    }
 
@@ -517,7 +517,7 @@ retry:
 static void clock_drift_adj()
 {
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
-   kernel_sleep(TIMER_HZ);
+   kernel_sleep(KRN_TIMER_HZ);
 
    /*
     * When Tilck starts, in init_system_time() we register system clock's time.
@@ -778,7 +778,7 @@ do_clock_getres(clockid_t clk_id, struct k_timespec64 *res)
 
          *res = (struct k_timespec64) {
             .tv_sec = 0,
-            .tv_nsec = BILLION/TIMER_HZ,
+            .tv_nsec = BILLION/KRN_TIMER_HZ,
          };
 
          break;

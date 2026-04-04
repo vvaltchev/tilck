@@ -5,20 +5,14 @@
  * in <BUILD_DIR>/tilck_gen_headers/.
  */
 
-
 #pragma once
 
 /* ------ Value-based config variables -------- */
-
-#define FBCON_BIGFONT_THR      @FBCON_BIGFONT_THR@
+#define KRN_TIMER_HZ               @KRN_TIMER_HZ@
 
 /* --------- Boolean config variables --------- */
-
-#cmakedefine01    MOD_fb
-#cmakedefine01    FB_CONSOLE_BANNER
-#cmakedefine01    FB_CONSOLE_CURSOR_BLINK
-#cmakedefine01    FB_CONSOLE_USE_ALT_FONTS
-#cmakedefine01    FB_CONSOLE_FAILSAFE_OPT
+#cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
+#cmakedefine01 KRN_MINIMAL_TIME_SLICE
 
 /*
  * --------------------------------------------------------------------------
@@ -32,7 +26,21 @@
  * here. See the comments and think about the potential implications before
  * promoting a hard-coded constant to a configurable CMake variable.
  */
+#define MEASURE_BOGOMIPS_TICKS        (KRN_TIMER_HZ / 10)
+#define BOGOMIPS_CONST                          10000
 
 
-#define FBCON_OPT_FUNCS_MIN_FREE_HEAP                        (16 * MB)
-#define FAILSAFE_FB_VADDR                 (BASE_VA + (1024 - 64) * MB)
+#if !KRN_MINIMAL_TIME_SLICE
+
+   /* Default case */
+   #define TIME_SLICE_TICKS (KRN_TIMER_HZ / 25)
+
+#else
+
+   /*
+    * DEBUG configuration used trigger as many context switches as possible
+    * and reproduce race conditions in the kernel.
+    */
+   #define TIME_SLICE_TICKS 1
+
+#endif

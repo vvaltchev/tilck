@@ -102,7 +102,7 @@ close_all_handles(void)
    struct process *pi = get_curr_proc();
    ASSERT(is_preemption_enabled());
 
-   for (int i = 0; i < MAX_HANDLES; i++) {
+   for (int i = 0; i < KRN_MAX_HANDLES; i++) {
       if (pi->handles[i]) {
          vfs_close(pi->handles[i]);
          pi->handles[i] = NULL;

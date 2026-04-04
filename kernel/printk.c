@@ -50,7 +50,7 @@ struct ringbuf_stat {
    };
 };
 
-#if TINY_KERNEL
+#if KRN_TINY_KERNEL
    static char printk_rbuf[2 * KB];
 #else
    static char printk_rbuf[8 * KB];

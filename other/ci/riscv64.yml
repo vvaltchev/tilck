@@ -46,7 +46,7 @@ jobs:
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 12.4.0
       CMAKE_ARGS: >
-        -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_UBSAN=1
         -DKERNEL_SAT=1
     strategy:
@@ -87,7 +87,7 @@ jobs:
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
-        -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_UBSAN=1
         -DKERNEL_SAT=1
     strategy:
@@ -130,7 +130,7 @@ jobs:
       TILCK_NO_LOGO: 1
       GCC_TC_VER: 12.4.0
       CMAKE_ARGS: >
-        -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_UBSAN=1
         -DKERNEL_SAT=1
     steps:

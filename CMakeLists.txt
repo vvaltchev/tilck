@@ -218,22 +218,16 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 
 # Compile options
 
-# Non-boolean kernel options
-set(TIMER_HZ            250 CACHE STRING "System timer HZ")
-set(USER_STACK_PAGES     16 CACHE STRING "User apps stack size in pages")
+# Shared non-boolean options
 set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
-set(MAX_HANDLES          16 CACHE STRING "Max handles/process (keep small)")
-
-set(FBCON_BIGFONT_THR   160 CACHE STRING
-    "Max term cols with 8x16 font. After that, a 16x32 font will be used")
-
-# Other non-boolean options
-
 set(FATPART_CLUSTER_SIZE  8 CACHE STRING
     "Cluster size (in sectors) of the FAT ramdisk")
 
-set(TERM_SCROLL_LINES 5 CACHE STRING
-    "Number of lines to scroll on Shift+PgUp/PgDown")
+set(PREFERRED_GFX_MODE_W "800" CACHE STRING
+    "Preferred video mode (width)")
+
+set(PREFERRED_GFX_MODE_H "600" CACHE STRING
+    "Preferred video mode (height)")
 
 set(
 
@@ -243,10 +237,7 @@ set(
    CACHE STRING "Build flags for C/C++ user programs"
 )
 
-# Kernel options (enabled by default)
-
-set(KRN_TRACK_NESTED_INTERR ON CACHE BOOL
-    "Track the nested interrupts")
+# Shared boolean options (enabled by default)
 
 set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
     "Show the stacktrace in case of a kernel panic")
@@ -254,28 +245,17 @@ set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
 set(DEBUG_CHECKS ON CACHE BOOL
     "Keep checking ASSERTs and other debug checks even in release builds")
 
+set(KERNEL_64BIT_OFFT ON CACHE BOOL
+    "Make offt be 64-bit even on 32-bit systems")
+
+set(FORK_NO_COW OFF CACHE BOOL
+    "Make fork() to perform a full-copy instead of using copy-on-write")
+
+set(MMAP_NO_COW OFF CACHE BOOL
+    "Make mmap() to allocate real memory instead mapping the zero-page + COW")
+
 set(KERNEL_SELFTESTS ON CACHE BOOL
     "Compile-in self-tests in the kernel")
-
-set(KERNEL_STACK_ISOLATION ON CACHE BOOL
-    "Put the kernel stack in hi the vmem in isolated pages")
-
-set(FB_CONSOLE_BANNER ON CACHE BOOL
-    "Show a top banner when using fb_console")
-
-set(FB_CONSOLE_CURSOR_BLINK ON CACHE BOOL
-    "Support cursor blinking in the fb_console")
-
-if ($ENV{TILCK_NO_LOGO})
-   set(KERNEL_SHOW_LOGO OFF CACHE BOOL
-      "Show Tilck's logo after boot")
-else()
-   set(KERNEL_SHOW_LOGO ON CACHE BOOL
-      "Show Tilck's logo after boot")
-endif()
-
-set(KERNEL_SYMBOLS ON CACHE BOOL
-    "Keep symbol tables loaded in the kernel for backtraces and self tests")
 
 if (${ARCH} STREQUAL "riscv64")
    set(BOOTLOADER_U_BOOT ON CACHE BOOL
@@ -291,40 +271,20 @@ endif()
 set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
     "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
 
-set(KRN_PRINTK_ON_CURR_TTY ON CACHE BOOL
-    "Make printk() always flush on the current TTY")
-
 set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
     "Include in Tilck's ramdisk some apps for testing the kernel")
 
 set(BOOT_INTERACTIVE ON CACHE BOOL
     "Have user-interactive commands in the bootloaders")
 
-set(KERNEL_64BIT_OFFT ON CACHE BOOL
-    "Make offt be 64-bit even on 32-bit systems")
-
-set(KRN_CLOCK_DRIFT_COMP ON CACHE BOOL
-    "Compensate periodically for the clock drift in the system time")
-
 set(KRN32_LIN_VADDR ON CACHE BOOL
     "Place the 32-bit kernel in the default linear mapping")
 
 set(USERAPPS_busybox ON CACHE BOOL "Include BUSYBOX (recommended)")
 
-set(TRACE_PRINTK_ENABLED_ON_BOOT ON CACHE BOOL
-    "Make trace_printk() to be always enabled since boot time")
-
-# Kernel options (disabled by default)
-
-set(KRN_PAGE_FAULT_PRINTK OFF CACHE BOOL
-    "Use printk() to display info when a process is killed due to page fault")
-
-set(KRN_NO_SYS_WARN OFF CACHE BOOL
-    "Show a warning when a not-implemented syscall is called")
+# Shared boolean options (disabled by default)
 
 set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
-
-set(KERNEL_BIG_IO_BUF OFF CACHE BOOL "Use a much-bigger buffer for I/O")
 
 set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
     "Use a 4x bigger scrollback buffer for the terminal")
@@ -338,26 +298,8 @@ BRUTALLY forces the build system to use tc's sysroot \
 for system headers even when a system compiler is used.\
 ")
 
-set(FORK_NO_COW OFF CACHE BOOL
-    "Make fork() to perform a full-copy instead of using copy-on-write")
-
-set(MMAP_NO_COW OFF CACHE BOOL
-    "Make mmap() to allocate real memory instead mapping the zero-page + COW")
-
 set(PANIC_SHOW_REGS OFF CACHE BOOL
     "Show the content of the main registers in case of kernel panic")
-
-set(KMALLOC_HEAVY_STATS OFF CACHE BOOL
-    "Count the number of allocations for each distinct size")
-
-set(KMALLOC_FREE_MEM_POISONING OFF CACHE BOOL
-    "Make kfree() to poison the memory")
-
-set(KMALLOC_SUPPORT_DEBUG_LOG OFF CACHE BOOL
-    "Compile-in kmalloc debug messages")
-
-set(KMALLOC_SUPPORT_LEAK_DETECTOR OFF CACHE BOOL
-    "Compile-in kmalloc's leak detector")
 
 set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
     "Make the bootloader to poison all the available memory")
@@ -374,41 +316,11 @@ set(PS2_DO_SELFTEST OFF CACHE BOOL
 set(PS2_VERBOSE_DEBUG_LOG OFF CACHE BOOL
     "Enable developer-only verbose logging")
 
-set(FB_CONSOLE_USE_ALT_FONTS OFF CACHE BOOL
-    "Use the fonts in other/alt_fonts instead of the default ones")
-
-set(KRN_RESCHED_ENABLE_PREEMPT OFF CACHE BOOL
-    "Check for need_resched and yield in enable_preemption()")
-
-set(KRN_MINIMAL_TIME_SLICE OFF CACHE BOOL
-    "Make the time slice to be 1 tick in order to trigger more race conditions")
-
-set(TINY_KERNEL OFF CACHE BOOL "\
-Advanced option, use carefully. Forces the Tilck kernel \
-to be as small as possible. Incompatibile with many modules \
-like console, fb, tracing and several kernel options like \
-KERNEL_SELFTESTS")
-
 set(INIT_REPORT_PROC_EXIT OFF CACHE BOOL
     "Make init to report on TTY when children (often acquired) exit")
 
-set(PREFERRED_GFX_MODE_W "800" CACHE STRING
-    "Preferred video mode (width)")
-
-set(PREFERRED_GFX_MODE_H "600" CACHE STRING
-    "Preferred video mode (height)")
-
-set(KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
-    "Size in KB of kmalloc's first heap. Must be multiple of 64.")
-
-set(PCI_VENDORS_LIST OFF CACHE BOOL
-    "Compile-in the list of all known PCI vendors")
-
 set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
     "Enable an early DEBUG dialog (see docs/debugging.md)")
-
-set(FB_CONSOLE_FAILSAFE_OPT OFF CACHE BOOL
-    "Optimize fb_console's failsafe mode for older machines")
 
 # KERNEL_SERCON is different than SERIAL_CON_IN_VIDEO_MODE because it makes
 # the serial console and primary and only console. SERIAL_CON_IN_VIDEO_MODE
@@ -465,7 +377,7 @@ foreach(modpath ${modules})
       set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
    endif()
 
-   set(MOD_HEADER_FILE ${PROJ_ROOT}/config/mod_${modname}.h)
+   set(MOD_HEADER_FILE ${PROJ_ROOT}/config/kernel/mod_${modname}.h)
    if (NOT EXISTS ${MOD_HEADER_FILE})
       message(FATAL_ERROR "Mod header ${MOD_HEADER_FILE} does not exist")
    endif()
@@ -473,7 +385,8 @@ foreach(modpath ${modules})
 
 endforeach()
 
-# Create a list with all the kernel opts, in order to dump it later
+# Create a list with the shared kernel opts, in order to dump it later.
+# Kernel-private options are printed by the kernel CMake project.
 # -------------------------------------------------------------------
 
 list(
@@ -483,105 +396,42 @@ list(
    ARCH
    BOARD
 
-   # Non-boolean options
-   TIMER_HZ
-   USER_STACK_PAGES
+   # Shared non-boolean options
+   TTY_COUNT
    FATPART_CLUSTER_SIZE
    PREFERRED_GFX_MODE_W
    PREFERRED_GFX_MODE_H
-   KMALLOC_FIRST_HEAP_SIZE_KB
-   KMALLOC_FIRST_HEAP_SIZE_KB_VAL
 
-   # Boolean options ENABLED by default
-   KRN_TRACK_NESTED_INTERR
+   # Shared boolean options ENABLED by default
    PANIC_SHOW_STACKTRACE
    DEBUG_CHECKS
-   KERNEL_SELFTESTS
-   KERNEL_STACK_ISOLATION
-   FB_CONSOLE_BANNER
-   KRN_PRINTK_ON_CURR_TTY
-   KERNEL_SHOW_LOGO
-   KERNEL_SYMBOLS
    BOOTLOADER_LEGACY
    BOOTLOADER_EFI
    BOOTLOADER_U_BOOT
    BOOT_INTERACTIVE
-   KRN_NO_SYS_WARN
-   KERNEL_64BIT_OFFT
-   KRN_CLOCK_DRIFT_COMP
+   SERIAL_CON_IN_VIDEO_MODE
    KRN32_LIN_VADDR
    USERAPPS_busybox
-   TRACE_PRINTK_ENABLED_ON_BOOT
+   TYPICAL_DEVEL_USERAPPS
 
-   # Boolean options DISABLED by default
+   # Shared boolean options DISABLED by default
    KERNEL_UBSAN
-   KERNEL_BIG_IO_BUF
-   KRN_RESCHED_ENABLE_PREEMPT
    TERM_BIG_SCROLL_BUF
    TEST_GCOV
    KERNEL_GCOV
    KERNEL_SYSCC
    KERNEL_FORCE_TC_ISYSTEM
-   FORK_NO_COW
-   MMAP_NO_COW
    PANIC_SHOW_REGS
-   KMALLOC_HEAVY_STATS
-   KMALLOC_FREE_MEM_POISONING
-   KMALLOC_SUPPORT_DEBUG_LOG
-   KMALLOC_SUPPORT_LEAK_DETECTOR
    BOOTLOADER_POISON_MEMORY
    WCONV
    FAT_TEST_DIR
    PS2_DO_SELFTEST
    PS2_VERBOSE_DEBUG_LOG
-   FB_CONSOLE_USE_ALT_FONTS
-   TINY_KERNEL
    INIT_REPORT_PROC_EXIT
-   PCI_VENDORS_LIST
    EFI_BOOTLOADER_DEBUG
-   FB_CONSOLE_FAILSAFE_OPT
+   KERNEL_SERCON
+   KERNEL_SAT
 )
-
-
-if (TINY_KERNEL)
-
-   if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "MinSizeRel")
-      message(FATAL_ERROR "TINY_KERNEL=1 requires CMAKE_BUILD_TYPE=MinSizeRel")
-   endif()
-
-   if (KERNEL_GCOV)
-      message(FATAL_ERROR "TINY_KERNEL=1 requires KERNEL_GCOV=0")
-   endif()
-
-   if (KERNEL_SELFTESTS)
-      message(WARNING "TINY_KERNEL=1, expected KERNEL_SELFTESTS=0")
-   endif()
-
-   if (KERNEL_SYMBOLS)
-      message(WARNING "TINY_KERNEL=1, expected KERNEL_SYMBOLS=0")
-   endif()
-
-   if (KERNEL_SHOW_LOGO)
-      message(WARNING "TINY_KERNEL=1, expected KERNEL_SHOW_LOGO=0")
-   endif()
-
-   if (PCI_VENDORS_LIST)
-      message(WARNING "TINY_KERNEL=1, expected PCI_VENDORS_LIST=0")
-   endif()
-
-endif()
-
-if (KMALLOC_FIRST_HEAP_SIZE_KB STREQUAL "auto")
-
-   if (TINY_KERNEL)
-      set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL 64)
-   else()
-      set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL 128)
-   endif()
-
-else()
-   set(KMALLOC_FIRST_HEAP_SIZE_KB_VAL ${KMALLOC_FIRST_HEAP_SIZE_KB})
-endif()
 
 
 ###########################################################
@@ -877,6 +727,33 @@ include(other/cmake/extra_apps.cmake)
 # Generate config files & build scripts (before including sub-dirs)
 include(other/cmake/gen_config_pre.cmake)
 
+# Generate modules_config.h (shared module flags + variables for boot/userapps)
+set(_mc "/* Auto-generated by root CMake. Do not edit. */\n\n#pragma once\n\n")
+string(APPEND _mc "/* Module enable/disable flags */\n")
+foreach(_mod ${modules_list})
+   if(MOD_${_mod})
+      string(APPEND _mc "#define MOD_${_mod} 1\n")
+   else()
+      string(APPEND _mc "#define MOD_${_mod} 0\n")
+   endif()
+endforeach()
+string(APPEND _mc "\n/* Shared module config variables */\n")
+string(APPEND _mc "#define TTY_COUNT              ${TTY_COUNT}\n")
+macro(write_bool_define _var)
+   if(${_var})
+      string(APPEND _mc "#define ${_var} 1\n")
+   else()
+      string(APPEND _mc "#define ${_var} 0\n")
+   endif()
+endmacro()
+write_bool_define(SERIAL_CON_IN_VIDEO_MODE)
+write_bool_define(KERNEL_SERCON)
+write_bool_define(TERM_BIG_SCROLL_BUF)
+write_bool_define(PS2_DO_SELFTEST)
+write_bool_define(PS2_VERBOSE_DEBUG_LOG)
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h" "${_mc}")
+unset(_mc)
+
 # Include kernel's noarch sources
 include(kernel/sources.cmake)
 
@@ -985,33 +862,23 @@ set(TILCK_EXPORTED_VARS
    # Shell / init
    DEFAULT_SHELL START_SCRIPT TILCK_DEVSHELL_PATH USERAPPS_CFLAGS
 
-   # Non-boolean kernel options
-   TIMER_HZ USER_STACK_PAGES TTY_COUNT MAX_HANDLES
-   FBCON_BIGFONT_THR FATPART_CLUSTER_SIZE TERM_SCROLL_LINES
+   # Shared non-boolean kernel options
+   TTY_COUNT FATPART_CLUSTER_SIZE
    PREFERRED_GFX_MODE_W PREFERRED_GFX_MODE_H
-   KMALLOC_FIRST_HEAP_SIZE_KB KMALLOC_FIRST_HEAP_SIZE_KB_VAL
 
-   # Boolean kernel options (enabled by default)
-   KRN_TRACK_NESTED_INTERR PANIC_SHOW_STACKTRACE DEBUG_CHECKS
-   KERNEL_SELFTESTS KERNEL_STACK_ISOLATION FB_CONSOLE_BANNER
-   FB_CONSOLE_CURSOR_BLINK KRN_PRINTK_ON_CURR_TTY KERNEL_SHOW_LOGO
-   KERNEL_SYMBOLS BOOTLOADER_LEGACY BOOTLOADER_EFI BOOTLOADER_U_BOOT
+   # Shared boolean kernel options
+   PANIC_SHOW_STACKTRACE DEBUG_CHECKS KERNEL_64BIT_OFFT FORK_NO_COW MMAP_NO_COW
+   KERNEL_SELFTESTS
+   BOOTLOADER_LEGACY BOOTLOADER_EFI BOOTLOADER_U_BOOT
    SERIAL_CON_IN_VIDEO_MODE BOOT_INTERACTIVE TYPICAL_DEVEL_USERAPPS
-   KERNEL_64BIT_OFFT KRN_CLOCK_DRIFT_COMP KRN32_LIN_VADDR
-   TRACE_PRINTK_ENABLED_ON_BOOT
-
-   # Boolean kernel options (disabled by default)
-   KRN_PAGE_FAULT_PRINTK KRN_NO_SYS_WARN KERNEL_UBSAN KERNEL_BIG_IO_BUF
-   TERM_BIG_SCROLL_BUF KERNEL_SYSCC KERNEL_FORCE_TC_ISYSTEM
-   FORK_NO_COW MMAP_NO_COW PANIC_SHOW_REGS
-   KMALLOC_HEAVY_STATS KMALLOC_FREE_MEM_POISONING
-   KMALLOC_SUPPORT_DEBUG_LOG KMALLOC_SUPPORT_LEAK_DETECTOR
+   KRN32_LIN_VADDR
+   KERNEL_UBSAN TERM_BIG_SCROLL_BUF
+   KERNEL_SYSCC KERNEL_FORCE_TC_ISYSTEM
+   PANIC_SHOW_REGS
    BOOTLOADER_POISON_MEMORY WCONV FAT_TEST_DIR
    PS2_DO_SELFTEST PS2_VERBOSE_DEBUG_LOG
-   FB_CONSOLE_USE_ALT_FONTS KRN_RESCHED_ENABLE_PREEMPT
-   KRN_MINIMAL_TIME_SLICE TINY_KERNEL
-   INIT_REPORT_PROC_EXIT PCI_VENDORS_LIST
-   EFI_BOOTLOADER_DEBUG FB_CONSOLE_FAILSAFE_OPT
+   INIT_REPORT_PROC_EXIT
+   EFI_BOOTLOADER_DEBUG
    KERNEL_SERCON KERNEL_SAT
    TEST_GCOV KERNEL_GCOV
 
@@ -1076,6 +943,17 @@ ExternalProject_Add_Step(userapps config_dep
    COMMAND ${CMAKE_COMMAND} -E true
 )
 
+# Forward all KRN_* variables from the command line to the kernel subproject.
+# Kernel-private options all use the KRN_ prefix so they can be set via
+# cmake -DKRN_<option>=<value> at the root level and automatically forwarded.
+get_cmake_property(_all_cache_vars CACHE_VARIABLES)
+set(_krn_forward_args "")
+foreach(_v ${_all_cache_vars})
+   if("${_v}" MATCHES "^KRN_")
+      list(APPEND _krn_forward_args "-D${_v}=${${_v}}")
+   endif()
+endforeach()
+
 ExternalProject_Add(kernel
    SOURCE_DIR ${CMAKE_SOURCE_DIR}/kernel
    BINARY_DIR ${CMAKE_BINARY_DIR}/kernel
@@ -1088,6 +966,7 @@ ExternalProject_Add(kernel
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+      ${_krn_forward_args}
 )
 
 ExternalProject_Add_Step(kernel config_dep
@@ -1420,7 +1299,7 @@ add_custom_target(
 
 if (EXISTS ${GTEST_TC_BUILD_DIR} AND EXISTS ${GMOCK_TC_BUILD_DIR})
    add_subdirectory(tests/unit)
-   add_dependencies(gtests test_fatpart_target)
+   add_dependencies(gtests test_fatpart_target kernel)
 else()
    no_googletest_lib_fake_error_target()
 endif()

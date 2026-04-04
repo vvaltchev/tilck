@@ -51,7 +51,7 @@ main_heaps_kmalloc(size_t *size, u32 flags)
 
       if ((vaddr = per_heap_kmalloc(heaps[i], size, flags))) {
 
-         if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
+         if (KRN_KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
             debug_kmalloc_register_alloc(vaddr, *size);
          }
 
@@ -91,11 +91,11 @@ main_heaps_kfree(void *ptr, size_t *size, u32 flags)
 
    per_heap_kfree(h, ptr, size, flags);
 
-   if (KMALLOC_FREE_MEM_POISONING) {
+   if (KRN_KMALLOC_FREE_MEM_POISONING) {
       memset32(ptr, FREE_MEM_POISON_VAL, *size / 4);
    }
 
-   if (KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
+   if (KRN_KMALLOC_SUPPORT_LEAK_DETECTOR && leak_detector_enabled) {
       debug_kmalloc_register_free((void *)vaddr, *size);
    }
 
@@ -129,7 +129,7 @@ void *general_kmalloc(size_t *size, u32 flags)
             res = main_heaps_kmalloc(size, flags | KMALLOC_FL_DMA);
       }
 
-      if (KMALLOC_HEAVY_STATS && res != NULL)
+      if (KRN_KMALLOC_HEAVY_STATS && res != NULL)
          if (~flags & KMALLOC_FL_DONT_ACCOUNT)
             kmalloc_account_alloc(orig_size);
    }

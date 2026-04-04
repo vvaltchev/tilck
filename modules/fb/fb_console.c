@@ -37,7 +37,7 @@ static u16 cursor_col;
 static u32 *under_cursor_buf;
 static volatile bool cursor_visible = true;
 static struct task *blink_thread_ti;
-static const u32 blink_half_period = (TIMER_HZ * 45)/100;
+static const u32 blink_half_period = (KRN_TIMER_HZ * 45)/100;
 static u32 cursor_color;
 
 /*
@@ -429,7 +429,7 @@ static void fb_update_banner()
          fb_draw_banner();
       }
 
-      kernel_sleep(30 * TIMER_HZ);
+      kernel_sleep(30 * KRN_TIMER_HZ);
    }
 }
 
@@ -570,14 +570,14 @@ void init_fb_console(void)
 
    cursor_color = vga_rgb_colors[COLOR_BRIGHT_WHITE];
 
-   void *font = fb_get_width() / 8 <= FBCON_BIGFONT_THR
+   void *font = fb_get_width() / 8 <= KRN_FBCON_BIGFONT_THR
                   ? (void *)&_binary_font8x16_psf_start
                   : (void *)&_binary_font16x32_psf_start;
 
    fb_set_font(font);
    fb_map_in_kernel_space();
 
-   if (FB_CONSOLE_BANNER)
+   if (KRN_FB_CONSOLE_BANNER)
       fb_setup_banner();
 
    fb_term_rows = (fb_get_height() - fb_offset_y) / font_h;
@@ -613,7 +613,7 @@ void init_fb_console(void)
    if (in_panic())
       return;
 
-   if (FB_CONSOLE_CURSOR_BLINK)
+   if (KRN_FB_CONSOLE_CURSOR_BLINK)
       fb_create_cursor_blinking_thread();
 
    if (fb_offset_y) {

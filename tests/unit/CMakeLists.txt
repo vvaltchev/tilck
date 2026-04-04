@@ -9,6 +9,10 @@ endif()
 
 include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
 
+# Kernel-private generated headers shadow shared ones via include path order.
+# Use BEFORE so this comes before CMAKE_BINARY_DIR (added automatically by CMake).
+include_directories(BEFORE ${CMAKE_BINARY_DIR}/kernel)
+
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)

@@ -65,7 +65,7 @@ struct process {
    char *debug_cmdline;                   /* debug field used by debugpanel */
 
    struct locked_file *elf;
-   fs_handle handles[MAX_HANDLES];        /* just a small fixed-size array */
+   fs_handle handles[KRN_MAX_HANDLES];        /* just a small fixed-size array */
 
    /*
     * The purpose of having this opaque `arch_fields` member here is to avoid

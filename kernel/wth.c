@@ -258,7 +258,7 @@ void
 wth_wait_for_completion(struct worker_thread *wth)
 {
    while (!wth->waiting_for_jobs)
-      kcond_wait(&wth->completion, NULL, TIMER_HZ / 10);
+      kcond_wait(&wth->completion, NULL, KRN_TIMER_HZ / 10);
 }
 
 static void

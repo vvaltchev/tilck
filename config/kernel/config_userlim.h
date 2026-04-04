@@ -8,11 +8,10 @@
 #pragma once
 
 /* ------ Value-based config variables -------- */
-#define TIMER_HZ               @TIMER_HZ@
+#define KRN_MAX_HANDLES            @KRN_MAX_HANDLES@
 
 /* --------- Boolean config variables --------- */
-#cmakedefine01 KRN_RESCHED_ENABLE_PREEMPT
-#cmakedefine01 KRN_MINIMAL_TIME_SLICE
+#cmakedefine01 KRN_BIG_IO_BUF
 
 /*
  * --------------------------------------------------------------------------
@@ -26,21 +25,30 @@
  * here. See the comments and think about the potential implications before
  * promoting a hard-coded constant to a configurable CMake variable.
  */
-#define MEASURE_BOGOMIPS_TICKS        (TIMER_HZ / 10)
-#define BOGOMIPS_CONST                          10000
+
+#define USERAPP_MAX_ARGS_COUNT                                 32
 
 
-#if !KRN_MINIMAL_TIME_SLICE
+/*
+ * execve recursion limit with #!/path/to/executable scripts
+ * WARNING: cannot be increase without increasing KERNEL_STACK_PAGES.
+ */
+#define MAX_SCRIPT_REC                                          2
 
-   /* Default case */
-   #define TIME_SLICE_TICKS (TIMER_HZ / 25)
+/*
+ * Per-task I/O buffer size (pages).
+ * Note it is linked with USER_ARGS_PAGE_COUNT.
+ *
+ * Requirement: IO_COPYBUF_PAGE_COUNT + USER_ARGS_PAGE_COUNT must be
+ * a power of 2 smaller than 64.
+ */
 
+#if KRN_BIG_IO_BUF
+   #define IO_COPYBUF_PAGE_COUNT                               63
 #else
-
-   /*
-    * DEBUG configuration used trigger as many context switches as possible
-    * and reproduce race conditions in the kernel.
-    */
-   #define TIME_SLICE_TICKS 1
-
+   #define IO_COPYBUF_PAGE_COUNT                                3
 #endif
+
+#define IO_COPYBUF_SIZE       (IO_COPYBUF_PAGE_COUNT * PAGE_SIZE)
+#define ARGS_COPYBUF_SIZE      (USER_ARGS_PAGE_COUNT * PAGE_SIZE)
+

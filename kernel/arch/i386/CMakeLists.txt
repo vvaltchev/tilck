@@ -105,7 +105,7 @@ build_all_modules(tilck_unstripped)
 # -lgcc is necessary for things like 64 bit integers in 32 bit mode.
 target_link_libraries(tilck_unstripped gcc)
 
-if (KERNEL_SYMBOLS)
+if (KRN_SYMBOLS)
 
    add_custom_command(
       OUTPUT

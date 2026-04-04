@@ -8,14 +8,14 @@
 #pragma once
 #include <tilck_gen_headers/config_global.h>
 
-#define KMALLOC_FIRST_HEAP_SIZE (@KMALLOC_FIRST_HEAP_SIZE_KB_VAL@ * KB)
+#define KMALLOC_FIRST_HEAP_SIZE (@KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL@ * KB)
 
 /* --------- Boolean config variables --------- */
 
-#cmakedefine01 KMALLOC_FREE_MEM_POISONING
-#cmakedefine01 KMALLOC_HEAVY_STATS
-#cmakedefine01 KMALLOC_SUPPORT_DEBUG_LOG
-#cmakedefine01 KMALLOC_SUPPORT_LEAK_DETECTOR
+#cmakedefine01 KRN_KMALLOC_FREE_MEM_POISONING
+#cmakedefine01 KRN_KMALLOC_HEAVY_STATS
+#cmakedefine01 KRN_KMALLOC_SUPPORT_DEBUG_LOG
+#cmakedefine01 KRN_KMALLOC_SUPPORT_LEAK_DETECTOR
 
 
 /*
