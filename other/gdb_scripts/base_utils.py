@@ -7,7 +7,7 @@ from . import tilck_types as tt
 BuildConfig = namedtuple(
    "BuildConfig", [
       "CMAKE_SOURCE_DIR",
-      "MAX_HANDLES",
+      "KRN_MAX_HANDLES",
       "BASE_VA"
    ]
 )

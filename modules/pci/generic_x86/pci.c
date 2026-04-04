@@ -21,7 +21,7 @@
 #include "pci_int.h"
 #include "pci_sysfs.c.h"
 
-#if PCI_VENDORS_LIST
+#if KRN_PCI_VENDORS_LIST
 
    #include "pci_vendors.c.h"
 

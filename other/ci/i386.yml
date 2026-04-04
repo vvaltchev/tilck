@@ -41,12 +41,12 @@ jobs:
       GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
         -DEXTRA_VIM=1
-        -DFB_CONSOLE_BANNER=0
-        -DFB_CONSOLE_CURSOR_BLINK=0
+        -DKRN_FB_CONSOLE_BANNER=0
+        -DKRN_FB_CONSOLE_CURSOR_BLINK=0
         -DBOOT_INTERACTIVE=0
         -DPREFERRED_GFX_MODE_W=640
         -DPREFERRED_GFX_MODE_H=480
-        -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
     steps:
       - script: printenv
         displayName: Dump env
@@ -75,7 +75,7 @@ jobs:
       GCC_TC_VER: 13.3.0
       CMAKE_ARGS: >
         -DKERNEL_UBSAN=1
-        -DKMALLOC_FREE_MEM_POISONING=1
+        -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_SAT=1
     strategy:
       matrix:
@@ -123,8 +123,8 @@ jobs:
       CMAKE_ARGS: >
         -DMOD_acpi=0
         -DEXTRA_VIM=1
-        -DFB_CONSOLE_BANNER=0
-        -DFB_CONSOLE_CURSOR_BLINK=0
+        -DKRN_FB_CONSOLE_BANNER=0
+        -DKRN_FB_CONSOLE_CURSOR_BLINK=0
         -DBOOT_INTERACTIVE=0
         -DPREFERRED_GFX_MODE_W=640
         -DPREFERRED_GFX_MODE_H=480

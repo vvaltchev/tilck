@@ -107,7 +107,7 @@ static void kmalloc_init_heavy_stats(void)
 
 void debug_kmalloc_chunks_stats_start_read(struct debug_kmalloc_chunks_ctx *ctx)
 {
-   if (!KMALLOC_HEAVY_STATS)
+   if (!KRN_KMALLOC_HEAVY_STATS)
       return;
 
    ASSERT(!is_preemption_enabled());
@@ -122,7 +122,7 @@ bool
 debug_kmalloc_chunks_stats_next(struct debug_kmalloc_chunks_ctx *ctx,
                                 size_t *size, size_t *count)
 {
-   if (!KMALLOC_HEAVY_STATS)
+   if (!KRN_KMALLOC_HEAVY_STATS)
       return false;
 
    ASSERT(!is_preemption_enabled());

@@ -171,7 +171,7 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
    }
 
    if (timeout > 0) {
-      u32 ticks = MAX((u32)timeout / (1000 / TIMER_HZ), 1u);
+      u32 ticks = MAX((u32)timeout / (1000 / KRN_TIMER_HZ), 1u);
       task_set_wakeup_timer(curr, ticks);
    }
 
@@ -276,7 +276,7 @@ int sys_poll(struct pollfd *user_fds, nfds_t nfds, int timeout)
    } else {
 
       if (timeout > 0) {
-         kernel_sleep((u64)timeout / (1000 / TIMER_HZ));
+         kernel_sleep((u64)timeout / (1000 / KRN_TIMER_HZ));
 
          if (pending_signals())
             return -EINTR;

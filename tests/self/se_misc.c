@@ -51,7 +51,7 @@ REGISTER_SELF_TEST(kthread, se_med, &selftest_kthread)
 
 void selftest_sleep()
 {
-   const u64 wait_ticks = TIMER_HZ;
+   const u64 wait_ticks = KRN_TIMER_HZ;
    u64 before = get_ticks();
 
    kernel_sleep(wait_ticks);
@@ -62,7 +62,7 @@ void selftest_sleep()
    printk("[sleeping_kthread] elapsed ticks: %" PRIu64
           " (expected: %" PRIu64 ")\n", elapsed, wait_ticks);
 
-   VERIFY((elapsed - wait_ticks) <= TIMER_HZ/10);
+   VERIFY((elapsed - wait_ticks) <= KRN_TIMER_HZ/10);
    se_regular_end();
 }
 

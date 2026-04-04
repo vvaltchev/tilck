@@ -21,7 +21,7 @@ static u64 __ticks;        /* ticks since the timer started */
 
 /* System time */
 u64 __time_ns;             /* nanoseconds since the timer started */
-u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/TIMER_HZ */
+u32 __tick_duration;       /* the real duration of a tick, ~TS_SCALE/KRN_TIMER_HZ */
 int __tick_adj_val;
 int __tick_adj_ticks_rem;
 
@@ -365,7 +365,7 @@ static enum irq_action measure_bogomips_irq_handler(void *arg)
       disable_interrupts_forced();
       {
          loops_per_tick = __bogo_loops * BOGOMIPS_CONST/MEASURE_BOGOMIPS_TICKS;
-         loops_per_ms = loops_per_tick / (1000 / TIMER_HZ);
+         loops_per_ms = loops_per_tick / (1000 / KRN_TIMER_HZ);
          loops_per_us = loops_per_ms / 1000;
          __bogo_loops = -1;
       }
@@ -409,7 +409,7 @@ void init_timer(void)
    static struct bogo_measure_ctx ctx;
    measure_bogomips.context = &ctx;
 
-   __tick_duration = hw_timer_setup(TS_SCALE / TIMER_HZ);
+   __tick_duration = hw_timer_setup(TS_SCALE / KRN_TIMER_HZ);
 
    printk("*** Init the kernel timer\n");
 

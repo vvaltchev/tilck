@@ -302,8 +302,8 @@ In case of an incompatible configuration, it will fail by reporting one or
 multiple INVALID CONFIG errors like:
 
     [interactive tests runner] INVALID CONFIG: expected EXTRA_VIM to be `True`
-    [interactive tests runner] INVALID CONFIG: expected FB_CONSOLE_BANNER to be `False`
-    [interactive tests runner] INVALID CONFIG: expected FB_CONSOLE_CURSOR_BLINK to be `False`
+    [interactive tests runner] INVALID CONFIG: expected KRN_FB_CONSOLE_BANNER to be `False`
+    [interactive tests runner] INVALID CONFIG: expected KRN_FB_CONSOLE_CURSOR_BLINK to be `False`
 
 ![Tilck screenshots](http://vvaltchev.github.io/tilck_imgs/v2/interactive03.png)
 

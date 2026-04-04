@@ -30,7 +30,7 @@ struct alloc_entry {
 
 static bool leak_detector_enabled;
 
-#if KMALLOC_SUPPORT_LEAK_DETECTOR
+#if KRN_KMALLOC_SUPPORT_LEAK_DETECTOR
 
 static u32 alloc_entries_count;
 static struct alloc_entry alloc_entries[1024];

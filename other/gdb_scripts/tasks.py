@@ -65,7 +65,7 @@ def get_handles(proc):
    handles_list = []
    handles = proc['handles']
 
-   for i in range(bu.config.MAX_HANDLES):
+   for i in range(bu.config.KRN_MAX_HANDLES):
       if handles[i]:
          handles_list.append(i)
 
@@ -73,7 +73,7 @@ def get_handles(proc):
 
 def get_handle(proc, n):
 
-   if n not in range(0, bu.config.MAX_HANDLES):
+   if n not in range(0, bu.config.KRN_MAX_HANDLES):
       return None
 
    return proc['handles'][n].cast(tt.fs_handle_base_p)
@@ -82,7 +82,7 @@ def get_handle_num(proc, handle_obj_ptr):
 
    handles = proc['handles']
 
-   for i in range(bu.config.MAX_HANDLES):
+   for i in range(bu.config.KRN_MAX_HANDLES):
 
       if handles[i] == handle_obj_ptr:
          return i

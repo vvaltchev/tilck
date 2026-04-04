@@ -9,7 +9,9 @@ DEF_1(wrap, kmutex_unlock, void, struct kmutex *)
 DEF_2(wrap, fat_ramdisk_prepare_for_mmap, int, void *, size_t)
 DEF_1(wrap, wth_create_thread_for, int, void *)
 DEF_1(wrap, wth_wakeup, void, void *)
+#if KRN_TRACK_NESTED_INTERR
 DEF_0(wrap, check_in_irq_handler, void)
+#endif
 DEF_2(wrap, general_kmalloc, void *, size_t *, u32)
 DEF_3(wrap, general_kfree, void, void *, size_t *, u32)
 DEF_1(wrap, kmalloc_get_first_heap, void *, size_t *)

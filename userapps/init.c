@@ -19,7 +19,7 @@
 #include <sys/reboot.h>
 #include <linux/reboot.h>
 
-#include <tilck_gen_headers/mod_console.h>
+#include <tilck_gen_headers/modules_config.h>
 #include <tilck_gen_headers/config_init.h>
 
 #include <tilck/common/basic_defs.h> /* for MIN() and ARRAY_SIZE() */

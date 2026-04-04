@@ -20,8 +20,8 @@ $CM                                   \
       -DCMAKE_BUILD_TYPE=MinSizeRel   \
       -DBOOTLOADER_EFI=0              \
       -DKERNEL_GCOV=0                 \
-      -DKERNEL_SHOW_LOGO=0            \
-      -DKERNEL_SYMBOLS=0              \
+      -DKRN_SHOW_LOGO=0               \
+      -DKRN_SYMBOLS=0                 \
       -DKERNEL_SELFTESTS=0            \
       -DMOD_console=0                 \
       -DMOD_fb=0                      \
@@ -30,8 +30,8 @@ $CM                                   \
       -DMOD_acpi=0                    \
       -DMOD_sb16=0                    \
       -DMOD_serial=1                  \
-      -DPCI_VENDORS_LIST=0            \
-      -DTINY_KERNEL=1                 \
+      -DKRN_PCI_VENDORS_LIST=0        \
+      -DKRN_TINY_KERNEL=1             \
       -DUSERAPPS_extra=0              \
       -DTYPICAL_DEVEL_USERAPPS=0      \
       "$@"

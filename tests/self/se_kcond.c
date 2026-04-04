@@ -35,7 +35,7 @@ static void kcond_thread_wait_ticks()
    kmutex_lock(&cond_mutex);
    printk("[kcond wait ticks]: holding the lock, run wait()\n");
 
-   bool success = kcond_wait(&cond, &cond_mutex, TIMER_HZ/2);
+   bool success = kcond_wait(&cond, &cond_mutex, KRN_TIMER_HZ/2);
 
    if (!success)
       printk("[kcond wait ticks]: woke up due to timeout, as expected!\n");
@@ -53,7 +53,7 @@ static void kcond_thread_signal_generator()
    kmutex_lock(&cond_mutex);
 
    printk("[thread signal]: under lock, waiting some time..\n");
-   kernel_sleep(TIMER_HZ / 2);
+   kernel_sleep(KRN_TIMER_HZ / 2);
 
    printk("[thread signal]: under lock, signal_all!\n");
 

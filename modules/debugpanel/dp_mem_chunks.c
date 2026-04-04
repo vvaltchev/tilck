@@ -65,7 +65,7 @@ static void dp_chunks_enter(void)
    struct debug_kmalloc_chunks_ctx ctx;
    size_t s, c;
 
-   if (!KMALLOC_HEAVY_STATS)
+   if (!KRN_KMALLOC_HEAVY_STATS)
       return;
 
    if (!chunks_arr) {
@@ -120,7 +120,7 @@ static void dp_chunks_enter(void)
 
 static void dp_chunks_exit(void)
 {
-   if (!KMALLOC_HEAVY_STATS)
+   if (!KRN_KMALLOC_HEAVY_STATS)
       return;
 }
 
@@ -177,8 +177,8 @@ static void dp_show_chunks(void)
    int row = dp_screen_start_row;
    const u64 lf_tot = lf_allocs + lf_waste;
 
-   if (!KMALLOC_HEAVY_STATS) {
-      dp_writeln("Not available: recompile with KMALLOC_HEAVY_STATS=1");
+   if (!KRN_KMALLOC_HEAVY_STATS) {
+      dp_writeln("Not available: recompile with KRN_KMALLOC_HEAVY_STATS=1");
       return;
    }
 

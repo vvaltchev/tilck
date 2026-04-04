@@ -7,10 +7,10 @@ file(
    GLOB STAGE3_C_SOURCES ${GLOB_CONF_DEP}
 
    "*.c"
-   "${CMAKE_SOURCE_DIR}/boot/common/*.c"
-   "${CMAKE_SOURCE_DIR}/common/*.c"
-   "${CMAKE_SOURCE_DIR}/common/*.cpp"
-   "${CMAKE_SOURCE_DIR}/common/arch/generic_x86/*.c"
+   "${PROJ_ROOT}/boot/common/*.c"
+   "${PROJ_ROOT}/common/*.c"
+   "${PROJ_ROOT}/common/*.cpp"
+   "${PROJ_ROOT}/common/arch/generic_x86/*.c"
 )
 
 set(STAGE3_ASM_SOURCES "entry.S" "rm_calls.S")
@@ -54,8 +54,6 @@ add_executable(
    ${STAGE3_ASM_SOURCES}
    ${STAGE3_C_SOURCES}
 )
-
-add_dependencies(elf_stage3_unstripped kernel)
 
 set_target_properties(
 

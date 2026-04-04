@@ -1,23 +1,26 @@
 # SPDX-License-Identifier: BSD-2-Clause
 cmake_minimum_required(VERSION 3.22)
 
-# Remove -rdynamic
-set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
+project(boot_legacy LANGUAGES C CXX ASM)
 
-set(NAME_PFX_i386       gcc_${GCC_TC_VER_}_i386)
-set(TC_ROOT_i386        ${TCROOT_BA}/${NAME_PFX_i386}_musl)
-set(TOOLCHAIN_i386      ${TC_ROOT_i386}/bin)
+include(${TILCK_CONFIG_FILE})
+set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
+include(${PROJ_ROOT}/other/cmake/utils.cmake)
+include(${PROJ_ROOT}/other/cmake/errors.cmake)
+include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 
-set_cross_compiler_internal(${TOOLCHAIN_i386} i686)
+
+set(ELFHACK32 ${BUILD_APPS}/elfhack32)
 
 # Common directories, both for early_boot and for elf_stage3_unstripped
 include_directories(
-   ${CMAKE_SOURCE_DIR}/include
-   ${CMAKE_SOURCE_DIR}/include/system_headers
+   ${BUILD_DIR}
+   ${PROJ_ROOT}/include
+   ${PROJ_ROOT}/include/system_headers
 )
 
 link_directories(
-   ${CMAKE_SOURCE_DIR}/boot/legacy
+   ${PROJ_ROOT}/boot/legacy
 )
 
 set(EARLY_STAGES_SOURCES "boot.S" "boot_enable_a20.S")
@@ -47,13 +50,11 @@ add_custom_command(
    COMMAND
       ${CMAKE_STRIP} --strip-debug stage3/elf_stage3_unstripped -o elf_stage3
    COMMAND
-      elfhack32 elf_stage3 --verify-flat-elf
+      ${ELFHACK32} elf_stage3 --verify-flat-elf
    COMMAND
-      elfhack32 elf_stage3 --check-entry-point ${BL_BASE_ADDR}
+      ${ELFHACK32} elf_stage3 --check-entry-point ${BL_BASE_ADDR}
    DEPENDS
       elf_stage3_unstripped
-      elfhack32
-      ${CMAKE_BINARY_DIR}/scripts/build_apps/elfhack32
 )
 
 add_custom_command(
@@ -71,7 +72,7 @@ add_custom_command(
 
 add_custom_target(
 
-   bootloader
+   bootloader ALL
 
    DEPENDS
       ${BOOTLOADER_BIN_FILE}

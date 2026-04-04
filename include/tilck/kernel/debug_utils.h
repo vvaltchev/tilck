@@ -32,7 +32,7 @@ int get_syscall_num(void *func);
  * wth_run()'s code: it is the perfect place for such checks, because
  * it really often yields and gets the control back.
  *
- * The KERNEL_STACK_ISOLATION sure works as well, but it catches bugs only
+ * The KRN_STACK_ISOLATION sure works as well, but it catches bugs only
  * when the stack pointer is completely out of the allocated stack area for the
  * current task. With following macros allows instead, any kind of such problems
  * will be caught much earlier.
