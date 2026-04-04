@@ -13,7 +13,6 @@ set(
    fat_ramdisk_prepare_for_mmap
    wth_create_thread_for
    wth_wakeup
-   check_in_irq_handler
    general_kmalloc
    general_kfree
    kmalloc_get_first_heap
@@ -26,4 +25,5 @@ set(
 
    experiment_bar
    experiment_foo
+   check_in_irq_handler
 )
