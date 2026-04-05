@@ -29,12 +29,13 @@
 
 #endif
 
-#if !(defined(__aarch64__) && defined(KERNEL_TEST))
-
 /*
- * Don't define this function in this special case, because we're going to
- * include <string.h>.
+ * Declare standard string functions when we're NOT including system
+ * <string.h>. In KERNEL_TEST mode on non-x86 architectures, <string.h>
+ * is included below and provides these (along with macros that would
+ * conflict with our declarations).
  */
+#if !defined(KERNEL_TEST) || defined(__i386__) || defined(__x86_64__)
 
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
@@ -82,19 +83,21 @@ EXTERN inline int isprint(int c) {
 
    #include <tilck/common/arch/generic_x86/asm_x86_strings.h>
 
+#elif defined(KERNEL_TEST)
+
+   /*
+    * Non-x86 KERNEL_TEST: use system string functions since no
+    * arch-optimized inline implementations are available.
+    */
+   #include <string.h>
+   void *memset16(u16 *s, u16 val, size_t n);
+   void *memset32(u32 *s, u32 val, size_t n);
+   void *memcpy16(void *dest, const void *src, size_t n);
+   void *memcpy32(void *dest, const void *src, size_t n);
+
 #elif defined(__riscv)
 
    #include <tilck/common/arch/riscv/asm_riscv_strings.h>
-
-#elif defined(__aarch64__)
-
-   #if defined(KERNEL_TEST)
-      #include <string.h>
-      void *memset16(u16 *s, u16 val, size_t n);
-      void *memset32(u32 *s, u32 val, size_t n);
-      void *memcpy16(void *dest, const void *src, size_t n);
-      void *memcpy32(void *dest, const void *src, size_t n);
-   #endif
 
 #endif
 

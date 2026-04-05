@@ -725,6 +725,10 @@ endif()
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)
 
+# Kernel-private option defaults: needed here so config header generation
+# (which runs at configure time) can substitute @KRN_*@ variables.
+include(other/cmake/kernel_options.cmake)
+
 # Generate config files & build scripts (before including sub-dirs)
 include(other/cmake/gen_config_pre.cmake)
 

@@ -42,6 +42,12 @@ set_target_properties(
 
 set(LIB_KERNEL "libkernel_test_patched.a")
 
+if (APPLE)
+   set(_ws_extra_deps machohack)
+else()
+   set(_ws_extra_deps elfhack32 elfhack64)
+endif()
+
 add_custom_command(
 
    OUTPUT
@@ -53,8 +59,7 @@ add_custom_command(
    DEPENDS
       kernel_for_test
       ${TOOL_WS}
-      elfhack32
-      elfhack64
+      ${_ws_extra_deps}
    COMMENT
       "Patching the kernel archive to allow wrapping of symbols in the same TU"
    VERBATIM
@@ -117,6 +122,7 @@ list(
    ${GCOV_COMPILE_FLAGS}
 
    -Wno-format-security
+   -Wno-deprecated-declarations
 )
 
 JOIN("${GTESTS_FLAGS_LIST}" ${SPACE} GTESTS_FLAGS)

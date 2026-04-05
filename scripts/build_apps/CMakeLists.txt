@@ -17,6 +17,10 @@ add_executable(pnm2text "pnm2text.c")
 add_executable(mbrhack "mbrhack.c")
 add_executable(gen_config "gen_config.cpp")
 
+if (APPLE)
+   add_executable(machohack "machohack.c")
+endif()
+
 add_executable(elfhack32 "elfhack.c")
 set_target_properties(
 

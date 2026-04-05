@@ -1,28 +1,28 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
-#define DEF_FINST_0(name, ret)                 \
-   ret name() {                                \
-      return KernelSingleton::get()->name();   \
+#define DEF_FINST_0(name, ret)                        \
+   ret name() {                                       \
+      return KernelSingleton::get()->name();          \
    }
 
-#define DEF_FINST_1(name, ret, t1)             \
-   ret name(t1 a1) {                           \
-      return KernelSingleton::get()->name(a1); \
+#define DEF_FINST_1(name, ret, t1)                    \
+   ret name(t1 a1) {                                  \
+      return KernelSingleton::get()->name(a1);        \
    }
 
-#define DEF_FINST_2(name, ret, t1, t2)             \
-   ret name(t1 a1, t2 a2) {                        \
-      return KernelSingleton::get()->name(a1, a2); \
+#define DEF_FINST_2(name, ret, t1, t2)                \
+   ret name(t1 a1, t2 a2) {                           \
+      return KernelSingleton::get()->name(a1, a2);    \
    }
 
 #define DEF_FINST_3(name, ret, t1, t2, t3)              \
-   ret name(t1 a1, t2 a2, t3 a3) {                      \
-      return KernelSingleton::get()->name(a1, a2, a3);  \
+   ret name(t1 a1, t2 a2, t3 a3) {                     \
+      return KernelSingleton::get()->name(a1, a2, a3); \
    }
 
-#define DEF_FINST_4(name, ret, t1, t2, t3, t4)              \
-   ret name(t1 a1, t2 a2, t3 a3, t4 a4) {                   \
-      return KernelSingleton::get()->name(a1, a2, a3, a4);  \
+#define DEF_FINST_4(name, ret, t1, t2, t3, t4)               \
+   ret name(t1 a1, t2 a2, t3 a3, t4 a4) {                    \
+      return KernelSingleton::get()->name(a1, a2, a3, a4);   \
    }
 
 

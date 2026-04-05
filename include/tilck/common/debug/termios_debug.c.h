@@ -12,6 +12,7 @@
 
 #include <termios.h>      // system header
 #include <sys/ioctl.h>    // system header
+#include <linux/termbits_compat.h>
 
 #ifndef USERMODE_APP
 

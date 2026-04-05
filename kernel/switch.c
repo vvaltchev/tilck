@@ -234,6 +234,15 @@ sys_set_tid_address(int *tidptr)
    return get_curr_task()->tid;
 }
 
+/*
+ * arch_specific_new_task_setup() and arch_specific_free_task() access
+ * arch_task_members_t fields (fpu_regs, fpu_regs_size) that only exist on
+ * architectures where arch_task_members_t is a real struct (x86, riscv).
+ * On other architectures (e.g. aarch64 stubs for KERNEL_TEST) it is just
+ * a scalar, so provide trivial implementations.
+ */
+#if defined(arch_x86_family) || defined(__riscv)
+
 bool
 arch_specific_new_task_setup(struct task *ti, struct task *parent)
 {
@@ -296,6 +305,22 @@ arch_specific_free_task(struct task *ti)
    arch->fpu_regs = NULL;
    arch->fpu_regs_size = 0;
 }
+
+#else /* stub for archs without structured arch_task_members_t */
+
+bool
+arch_specific_new_task_setup(struct task *ti, struct task *parent)
+{
+   return true;
+}
+
+void
+arch_specific_free_task(struct task *ti)
+{
+   /* nothing to do */
+}
+
+#endif
 
 NORETURN void
 switch_to_task(struct task *ti)

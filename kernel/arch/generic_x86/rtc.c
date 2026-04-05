@@ -43,7 +43,7 @@ static void cmod_read_datetime_raw(struct datetime *d)
    d->sec = (u8) cmos_read_reg(REG_SECONDS);
    d->min = (u8) cmos_read_reg(REG_MINUTES);
    d->hour = (u8) cmos_read_reg(REG_HOURS);
-   d->__unused = 0;
+   d->__pad = 0;
 
    d->day = (u8) cmos_read_reg(REG_DAY);
    d->month = (u8) cmos_read_reg(REG_MONTH);

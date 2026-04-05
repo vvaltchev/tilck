@@ -55,6 +55,12 @@ macro(__build_and_link_module_patch_logic)
 
    set(PATCHED_MOD_FILE "libmod_${modname}_patched.a")
 
+   if (APPLE)
+      set(_ws_extra_deps machohack)
+   else()
+      set(_ws_extra_deps elfhack32 elfhack64)
+   endif()
+
    add_custom_command(
 
       OUTPUT
@@ -66,8 +72,7 @@ macro(__build_and_link_module_patch_logic)
       DEPENDS
          mod_${modname}${variant}
          ${TOOL_WS}
-         elfhack32
-         elfhack64
+         ${_ws_extra_deps}
       COMMENT
          "Patching the module ${modname} to allow wrapping of symbols"
       VERBATIM
@@ -189,7 +194,11 @@ function(build_all_modules TARGET_NAME)
 
    set(TARGET_VARIANT "${ARGV1}")
    set(DO_PATCH "${ARGV2}")
-   target_link_libraries(${TARGET_NAME} -Wl,--whole-archive)
+   if (APPLE)
+      # macOS ld uses -force_load per archive; handled at link time
+   else()
+      target_link_libraries(${TARGET_NAME} -Wl,--whole-archive)
+   endif()
 
    foreach (mod ${modules_list})
 
@@ -223,5 +232,7 @@ function(build_all_modules TARGET_NAME)
 
    endforeach()
 
-   target_link_libraries(${TARGET_NAME} -Wl,--no-whole-archive)
+   if (NOT APPLE)
+      target_link_libraries(${TARGET_NAME} -Wl,--no-whole-archive)
+   endif()
 endfunction()

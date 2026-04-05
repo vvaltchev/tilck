@@ -5,7 +5,17 @@
  * kernel. It is not expected Tilck to use all of them all even in 10 years from
  * now but, it still makes sense to have them all from now. Very likely we'll
  * never need to change this file again.
+ *
+ * On non-Linux hosts (e.g. macOS), some of these constants are already
+ * defined by the system <errno.h> with different numeric values.  We
+ * intentionally redefine them to their Linux values so that kernel code
+ * behaves consistently.  The redefinition warning is harmless here.
  */
+
+#ifdef __clang__
+   #pragma clang diagnostic push
+   #pragma clang diagnostic ignored "-Wmacro-redefined"
+#endif
 
 #define EPERM            1 /* Operation not permitted */
 #define ENOENT           2 /* No such file or directory */
@@ -148,3 +158,7 @@
 #define ENOTRECOVERABLE 131 /* State not recoverable */
 #define ERFKILL         132 /* Operation not possible due to RF-kill */
 #define EHWPOISON       133 /* Memory page has hardware error */
+
+#ifdef __clang__
+   #pragma clang diagnostic pop
+#endif

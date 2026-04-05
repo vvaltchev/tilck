@@ -160,7 +160,16 @@
 #define ALIGNED_AT(x) __attribute__ ((aligned(x)))
 #define ALIGNAS(x) _Alignas(x)
 #define ATTR_PRINTF_LIKE(c) __attribute__ ((__format__ (__printf__, c, c+1)))
-#define ATTR_SECTION(s) __attribute__ ((section (s)))
+/*
+ * ELF section placement is meaningless in host-compiled test binaries and
+ * the ELF section name syntax is incompatible with Mach-O, so make
+ * ATTR_SECTION a no-op when building for unit tests.
+ */
+#ifdef KERNEL_TEST
+   #define ATTR_SECTION(s) /* nothing */
+#else
+   #define ATTR_SECTION(s) __attribute__ ((section (s)))
+#endif
 
 #ifdef BITS32
    #define FASTCALL __attribute__((fastcall))

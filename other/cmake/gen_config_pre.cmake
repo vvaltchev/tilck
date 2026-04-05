@@ -79,10 +79,17 @@ smart_config_file(
    ${CMAKE_BINARY_DIR}/tilck_unstripped-gdb.py
 )
 
-smart_config_file(
-   ${CMAKE_SOURCE_DIR}/scripts/templates/weaken_syms
-   ${CMAKE_BINARY_DIR}/scripts/weaken_syms
-)
+if (APPLE)
+   smart_config_file(
+      ${CMAKE_SOURCE_DIR}/scripts/templates/weaken_syms_macos
+      ${CMAKE_BINARY_DIR}/scripts/weaken_syms
+   )
+else()
+   smart_config_file(
+      ${CMAKE_SOURCE_DIR}/scripts/templates/weaken_syms
+      ${CMAKE_BINARY_DIR}/scripts/weaken_syms
+   )
+endif()
 
 if (${BOOTLOADER_U_BOOT})
    smart_config_file(

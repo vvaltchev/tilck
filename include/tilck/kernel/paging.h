@@ -44,6 +44,12 @@
    #define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + linear_va_pa_offset))
    #define LIN_VA_TO_PA(va) ((ulong)(va) - linear_va_pa_offset)
 
+#elif defined(KERNEL_TEST)
+
+   /* Use the same BASE_VA-offset mapping as x86 for test builds */
+   #define PA_TO_LIN_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
+   #define LIN_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
+
 #endif
 /*
  * These MACROs convert addresses to/from the kernel base virtual mapping to
@@ -65,6 +71,11 @@
    extern ulong kernel_va_pa_offset;
    #define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + kernel_va_pa_offset))
    #define KERNEL_VA_TO_PA(va) ((ulong)(va) - kernel_va_pa_offset)
+
+#elif defined(KERNEL_TEST)
+
+   #define PA_TO_KERNEL_VA(pa) ((void *) ((ulong)(pa) + BASE_VA))
+   #define KERNEL_VA_TO_PA(va) ((ulong)(va) - BASE_VA)
 
 #endif
 
