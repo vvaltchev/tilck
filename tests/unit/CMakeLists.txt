@@ -181,22 +181,13 @@ list(
 
 JOIN("${GTESTS_FLAGS_LIST}" ${SPACE} GTESTS_FLAGS)
 
-if (APPLE)
-   # Suppress linker warnings for the test binary:
-   # - BSS alignment reduction (64KB ALIGNED_AT on arm64's 16KB max)
-   #   from a static buffer in the mocked kmalloc_get_first_heap()
-   set(GTESTS_LINK_FLAGS "${GCOV_LINK_FLAGS} -Wl,-w")
-else()
-   set(GTESTS_LINK_FLAGS "${GCOV_LINK_FLAGS}")
-endif()
-
 set_target_properties(
 
    gtests
 
    PROPERTIES
       COMPILE_FLAGS "${GTESTS_FLAGS}"
-      LINK_FLAGS "${GTESTS_LINK_FLAGS}"
+      LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
 target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgtest.a)
