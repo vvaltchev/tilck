@@ -46,6 +46,7 @@ Contents
     * [Tilck's debug panel](#tilcks-debug-panel)
 * [A comment about user experience](#a-comment-about-user-experience)
 * [FAQ](#faq)
+  - [Is Tilck written using AI?](#is-tilck-written-using-ai)
 
 Overview
 ----------------------------------------
@@ -460,3 +461,5 @@ For the *full list* of questions on Tilck, check the [Q & A page] in the [Discus
 - [Can a lightweight X server run on Tilck today?](https://github.com/vvaltchev/tilck/discussions/81)
 
 - [Compiling Tilck with TCC & self-hosting?](https://github.com/vvaltchev/tilck/discussions/93)
+
+- [Is Tilck written using AI?](https://github.com/vvaltchev/tilck/discussions/242)
