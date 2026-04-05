@@ -18,8 +18,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/include/system_headers)
 include_directories(${TCROOT}/noarch/acpica/${VER_ACPICA})
 
-include_directories(${GTEST_SOURCE_DIR}/include)
-include_directories(${GMOCK_SOURCE_DIR}/include)
+include_directories(${GTEST_INSTALL_DIR}/include)
 
 
 # Create a static library target for kernel's arch-independent code.
@@ -131,10 +130,10 @@ set_target_properties(
       LINK_FLAGS "${GCOV_LINK_FLAGS}"
 )
 
-target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest.a)
-target_link_libraries(gtests ${GTEST_TC_BUILD_DIR}/lib/libgtest_main.a)
-target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock.a)
-target_link_libraries(gtests ${GMOCK_TC_BUILD_DIR}/lib/libgmock_main.a)
+target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgtest.a)
+target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgtest_main.a)
+target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgmock.a)
+target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
 build_all_modules(gtests "_noarch" TRUE)

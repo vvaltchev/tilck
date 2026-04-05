@@ -1279,11 +1279,8 @@ add_custom_target(
       ${IMG_FILE}
 )
 
-set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googletest)
-set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googlemock)
-set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest/${VER_GTEST})
-set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock/${VER_GTEST})
-set(GTEST_BTC_COMMAND "build_gtest build_gmock")
+set(GTEST_INSTALL_DIR ${TCROOT_BA}/gtest/${VER_GTEST}/install)
+set(GTEST_BTC_COMMAND "host_gtest")
 
 add_custom_command(
 
@@ -1309,7 +1306,7 @@ add_custom_target(
       test_fatpart
 )
 
-if (EXISTS ${GTEST_TC_BUILD_DIR} AND EXISTS ${GMOCK_TC_BUILD_DIR})
+if (EXISTS ${GTEST_INSTALL_DIR})
    add_subdirectory(tests/unit)
    add_dependencies(gtests test_fatpart_target kernel)
 else()

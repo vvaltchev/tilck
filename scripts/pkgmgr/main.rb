@@ -14,6 +14,7 @@ require_relative 'acpica'
 require_relative 'mtools'
 require_relative 'busybox'
 require_relative 'gnuefi'
+require_relative 'gtest'
 
 require 'pathname'
 require 'fileutils'
