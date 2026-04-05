@@ -17,7 +17,7 @@ Licensed BSD 2-Clause.
 ```bash
 export ARCH=i386                         # Target arch. One of: i386, riscv64, x86_64
 ./scripts/build_toolchain                # Build cross-compiler toolchain (one-time)
-./scripts/build_toolchain -s gtest gmock # Also install unit test deps
+./scripts/build_toolchain -s gtest_src host_gtest  # Also install unit test deps
 ./scripts/build_toolchain -l             # List available packages
 ./scripts/build_toolchain -h             # Show the help.
 ```
@@ -164,9 +164,9 @@ Ruby (>= 3.2, auto-downloaded if needed) and then `exec`s into
 If not, you are on master with the Bash package manager.
 
 **Migration status on `exp-ruby`:** Packages ported to Ruby (in
-`scripts/pkgmgr/*.rb`): gcc, acpica, zlib, mtools, busybox. Packages still
-in Bash only (in `scripts/tc/pkgs/`): gnuefi, gtest, gmock, lcov, cmake,
-dtc, fbdoom, lua, micropython, ncurses, vim, treecmd, tfblib, libmusl, tcc.
+`scripts/pkgmgr/*.rb`): gcc, acpica, zlib, mtools, busybox, gnuefi, gtest.
+Packages still in Bash only (in `scripts/tc/pkgs/`): lcov, cmake, dtc,
+fbdoom, lua, micropython, ncurses, vim, treecmd, tfblib, libmusl, tcc.
 When adding a new package or modifying an existing one, check which system
 it lives in. The Bash package scripts on master (`scripts/tc/pkgs/`) are
 the **reference implementation** — use them to understand the build logic
@@ -187,9 +187,9 @@ toolchain3/
   noarch/                  # Arch-independent packages (acpica, gtest src, lcov)
   <GCC_VER>/               # Per-GCC-version packages
     <arch>/                # Per-target-arch (i386, x86_64, riscv64)
-    host_<host_arch>/      # Host-arch packages (mtools, gtest built, gmock)
+    host_<host_arch>/      # Host-arch packages (mtools)
   syscc/                   # System-compiler packages
-    host_<host_arch>/      # (cmake, gtest, gmock when built with system cc)
+    host_<host_arch>/      # (cmake, gtest when built with system cc)
 ```
 
 Packages are downloaded to `cache/` and extracted/built into the appropriate

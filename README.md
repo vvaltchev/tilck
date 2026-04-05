@@ -337,7 +337,7 @@ installed on the machine. For the **self-tests** and the classic
 To run the **unit tests** instead:
 
    * Install the [googletest] library (once) with:
-     `./scripts/build_toolchain -s build_gtest build_gmock`
+     `./scripts/build_toolchain -s host_gtest`
 
    * Build the unit tests with: `make gtests`
 

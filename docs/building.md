@@ -194,7 +194,7 @@ Tilck uses the [googletest] framework for unit tests and that's not downloaded
 by `build_toolchain` when it's run without arguments. In order to install that
 framework in the toolchain, just run:
 
-    ./scripts/build_toolchain -s gtest gmock
+    ./scripts/build_toolchain -s host_gtest
 
 After that, you'll need to run the `cmake_run` script again:
 
