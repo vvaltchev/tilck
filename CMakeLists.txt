@@ -725,10 +725,6 @@ endif()
 # Options for extra apps
 include(other/cmake/extra_apps.cmake)
 
-# Kernel-private option defaults: needed here so config header generation
-# (which runs at configure time) can substitute @KRN_*@ variables.
-include(other/cmake/kernel_options.cmake)
-
 # Generate config files & build scripts (before including sub-dirs)
 include(other/cmake/gen_config_pre.cmake)
 
@@ -948,9 +944,9 @@ ExternalProject_Add_Step(userapps config_dep
    COMMAND ${CMAKE_COMMAND} -E true
 )
 
-# Forward all KRN_* variables from the command line to the kernel subproject.
-# Kernel-private options all use the KRN_ prefix so they can be set via
-# cmake -DKRN_<option>=<value> at the root level and automatically forwarded.
+# Forward all KRN_* variables from the command line to the kernel and gtests
+# subprojects. Kernel-private options all use the KRN_ prefix so they can be
+# set via cmake -DKRN_<option>=<value> at the root level and forwarded to both.
 get_cmake_property(_all_cache_vars CACHE_VARIABLES)
 set(_krn_forward_args "")
 foreach(_v ${_all_cache_vars})
@@ -1311,8 +1307,46 @@ add_custom_target(
 )
 
 if (EXISTS ${GTEST_INSTALL_DIR})
-   add_subdirectory(tests/unit)
-   add_dependencies(gtests test_fatpart_target kernel)
+
+   if (APPLE)
+      set(_gtests_tool_deps machohack)
+   else()
+      set(_gtests_tool_deps elfhack32 elfhack64)
+   endif()
+
+   ExternalProject_Add(gtests
+      SOURCE_DIR ${CMAKE_SOURCE_DIR}/tests/unit
+      BINARY_DIR ${CMAKE_BINARY_DIR}/tests/unit
+      DEPENDS
+         test_fatpart_target kernel
+         gen_config ${_gtests_tool_deps}
+      EXCLUDE_FROM_ALL TRUE
+      INSTALL_COMMAND ""
+      BUILD_ALWAYS 1
+      BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/gtests
+      CMAKE_ARGS
+         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+         ${_krn_forward_args}
+   )
+
+   ExternalProject_Add_Step(gtests config_dep
+      DEPENDEES download DEPENDERS configure
+      DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+      COMMAND ${CMAKE_COMMAND} -E true
+   )
+
+   ExternalProject_Add_Step(gtests tools_dep
+      DEPENDEES configure
+      DEPENDERS build
+      DEPENDS
+         $<TARGET_FILE:gen_config>
+      COMMAND ${CMAKE_COMMAND} -E true
+      ALWAYS 1
+   )
+
 else()
    no_googletest_lib_fake_error_target()
 endif()

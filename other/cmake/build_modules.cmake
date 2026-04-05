@@ -56,9 +56,9 @@ macro(__build_and_link_module_patch_logic)
    set(PATCHED_MOD_FILE "libmod_${modname}_patched.a")
 
    if (APPLE)
-      set(_ws_extra_deps machohack)
+      set(_ws_extra_deps ${BUILD_APPS}/machohack)
    else()
-      set(_ws_extra_deps elfhack32 elfhack64)
+      set(_ws_extra_deps ${BUILD_APPS}/elfhack32 ${BUILD_APPS}/elfhack64)
    endif()
 
    add_custom_command(

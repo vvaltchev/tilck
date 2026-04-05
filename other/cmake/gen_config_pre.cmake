@@ -27,23 +27,6 @@ smart_config_file(
    ${CMAKE_BINARY_DIR}/tilck_gen_headers/config_init.h
 )
 
-# Generate kernel-private config headers into the kernel's build directory.
-# These shadow the shared headers via include path ordering. The kernel
-# ExternalProject generates its own copy too, but the root must also generate
-# them so that unit tests (built by the root) can find them without depending
-# on the kernel ExternalProject's configure step.
-
-file(GLOB _kernel_config_glob ${GLOB_CONF_DEP}
-     "${CMAKE_SOURCE_DIR}/config/kernel/*.h")
-
-foreach(_config_path ${_kernel_config_glob})
-   get_filename_component(_config_name ${_config_path} NAME_WE)
-   smart_config_file(
-      ${_config_path}
-      ${CMAKE_BINARY_DIR}/kernel/tilck_gen_headers/${_config_name}.h
-   )
-endforeach()
-
 smart_config_file(
    ${CMAKE_SOURCE_DIR}/boot/legacy/early_boot_script.ld
    ${EARLY_BOOT_SCRIPT}
