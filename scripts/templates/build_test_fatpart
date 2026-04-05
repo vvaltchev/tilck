@@ -19,10 +19,9 @@ mmd=$mtoolsdir/mmd
 mcopy=$mtoolsdir/mcopy
 
 
-if [ ! -f $dest ]; then
-   # If the 'fatpart' file does not already exist
-   dd status=none if=/dev/zero of=$dest bs=1M count=35
-fi
+# Always (re)create the file because fathack --truncate shrinks it, and
+# mformat would then format the small file with the wrong geometry.
+dd status=none if=/dev/zero of=$dest bs=1M count=35
 
 # mformat options
 # -d <N> ; num of FAT copies

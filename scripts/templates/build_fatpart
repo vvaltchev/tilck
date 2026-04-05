@@ -66,11 +66,10 @@ function link_or_copy {
    fi
 }
 
-function create_fatpart_if_necessary {
-   if [ ! -f $dest ]; then
-      # If the 'fatpart' file does not already exist
-      dd status=none if=/dev/zero of=$dest bs=1M count=@INITRD_SZ_MB@
-   fi
+function create_fatpart {
+   # Always (re)create the file because fathack --truncate shrinks it, and
+   # mformat would then format the small file with the wrong geometry.
+   dd status=none if=/dev/zero of=$dest bs=1M count=@INITRD_SZ_MB@
 }
 
 function format_fatpart {
@@ -333,7 +332,7 @@ function add_lua {
 
 function make_fatpart {
 
-   create_fatpart_if_necessary
+   create_fatpart
    format_fatpart
 
    # first, create the directories
