@@ -46,7 +46,6 @@ Contents
     * [Tilck's debug panel](#tilcks-debug-panel)
 * [A comment about user experience](#a-comment-about-user-experience)
 * [FAQ](#faq)
-  - [Is Tilck written using AI?](#is-tilck-written-using-ai)
 
 Overview
 ----------------------------------------
