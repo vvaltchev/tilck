@@ -10,6 +10,21 @@ set(BUILD_SHARED_LIBRARIES off)
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
 
+if (APPLE)
+   # macOS ar/ranlib warn about .o files with no symbols (e.g. ubsan.c.o,
+   # se_fault_resumable.c.o which compile to nothing in test builds).
+   # Use 'S' flag on ar to skip the automatic ranlib, then run ranlib
+   # explicitly with -no_warning_for_no_symbols.
+   set(CMAKE_C_ARCHIVE_CREATE
+      "<CMAKE_AR> qcS <TARGET> <LINK_FLAGS> <OBJECTS>")
+   set(CMAKE_CXX_ARCHIVE_CREATE
+      "<CMAKE_AR> qcS <TARGET> <LINK_FLAGS> <OBJECTS>")
+   set(CMAKE_C_ARCHIVE_FINISH
+      "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
+   set(CMAKE_CXX_ARCHIVE_FINISH
+      "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
+endif()
+
 # Load kernel-private option defaults (KRN_*). The root project forwards any
 # user overrides via -DKRN_<option>=<value> on the cmake command line, which
 # take precedence over these CACHE defaults.
@@ -166,13 +181,22 @@ list(
 
 JOIN("${GTESTS_FLAGS_LIST}" ${SPACE} GTESTS_FLAGS)
 
+if (APPLE)
+   # Suppress linker warnings for the test binary:
+   # - BSS alignment reduction (64KB ALIGNED_AT on arm64's 16KB max)
+   #   from a static buffer in the mocked kmalloc_get_first_heap()
+   set(GTESTS_LINK_FLAGS "${GCOV_LINK_FLAGS} -Wl,-w")
+else()
+   set(GTESTS_LINK_FLAGS "${GCOV_LINK_FLAGS}")
+endif()
+
 set_target_properties(
 
    gtests
 
    PROPERTIES
       COMPILE_FLAGS "${GTESTS_FLAGS}"
-      LINK_FLAGS "${GCOV_LINK_FLAGS}"
+      LINK_FLAGS "${GTESTS_LINK_FLAGS}"
 )
 
 target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgtest.a)
@@ -182,4 +206,9 @@ target_link_libraries(gtests ${GTEST_INSTALL_DIR}/lib/libgmock_main.a)
 target_link_libraries(gtests pthread)
 target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
 build_all_modules(gtests "_noarch" TRUE)
-target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
+
+if (NOT APPLE)
+   # ELF linkers resolve left-to-right; repeat the kernel lib after modules
+   # so that module references to kernel symbols are satisfied.
+   target_link_libraries(gtests ${CMAKE_CURRENT_BINARY_DIR}/${LIB_KERNEL})
+endif()
