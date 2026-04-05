@@ -46,11 +46,10 @@ set(GTEST_INSTALL_DIR ${TCROOT_BA}/gtest/${VER_GTEST}/install)
 
 include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
 
-# Generated kernel-private config headers must come first in the search path.
-# Then the kernel build dir for generated_config.h (produced by gen_config),
-# then the root build dir for shared config headers (config_global.h, etc.).
+# Generated config headers (kernel-private + generated_config.h) live in
+# ${CMAKE_BINARY_DIR}/tilck_gen_headers/. Shared config headers from the
+# root (config_global.h, etc.) live in ${BUILD_DIR}/tilck_gen_headers/.
 include_directories(BEFORE ${CMAKE_BINARY_DIR})
-include_directories(${BUILD_DIR}/kernel)
 include_directories(${BUILD_DIR})
 
 include_directories(${PROJ_ROOT})

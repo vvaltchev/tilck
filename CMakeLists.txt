@@ -1318,7 +1318,7 @@ if (EXISTS ${GTEST_INSTALL_DIR})
       SOURCE_DIR ${CMAKE_SOURCE_DIR}/tests/unit
       BINARY_DIR ${CMAKE_BINARY_DIR}/tests/unit
       DEPENDS
-         test_fatpart_target kernel
+         test_fatpart_target
          gen_config ${_gtests_tool_deps}
       EXCLUDE_FROM_ALL TRUE
       INSTALL_COMMAND ""
