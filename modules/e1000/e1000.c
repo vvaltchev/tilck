@@ -270,11 +270,11 @@ static int e1000_send(char *src, u32 len)
    trace_printk(10, "e1000: Sending frame len=%d\n", len);
 
    /* Number of descriptors that would be required to send this message. */
-   u32 num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
+   const u32 num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
 
-   u32 head = read_reg(REG_TDH);
-   u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
-   u32 free = TX_RING_CAP - used - 1;
+   const u32 head = read_reg(REG_TDH);
+   const u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
+   const u32 free = TX_RING_CAP - used - 1;
 
    if (num_desc > free)
       return -ENOMEM;
@@ -347,7 +347,7 @@ irq_handler_func(void *ctx)
     * device and, if so, the reason why it was
     * generated.
     */
-   u32 icr = read_reg(REG_ICR);
+   const u32 icr = read_reg(REG_ICR);
 
    trace_printk(9, "e1000: Interrupt!\n");
 
@@ -396,23 +396,24 @@ static void reset_nic(void)
 
 static int setup_tx_ring(void)
 {
-   size_t ring_bytes = TX_DESC_SIZE * TX_RING_CAP;
-   size_t data_bytes = TX_BUF_SIZE * TX_RING_CAP;
-
-   size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
-   size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
+   const size_t ring_bytes = TX_DESC_SIZE * TX_RING_CAP;
+   const size_t data_bytes = TX_BUF_SIZE * TX_RING_CAP;
+   const size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
+   const size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
+   ulong ring_paddr;
+   ulong data_paddr;
 
    tx_ring = kzmalloc(ring_pages * PAGE_SIZE);
    if (tx_ring == NULL)
       return -ENOMEM;
-   ulong ring_paddr = KERNEL_VA_TO_PA(tx_ring);
+   ring_paddr = KERNEL_VA_TO_PA(tx_ring);
 
    tx_data = kzmalloc(data_pages * PAGE_SIZE);
    if (tx_data == NULL) {
       kfree(tx_ring);
       return -ENOMEM;
    }
-   ulong data_paddr = KERNEL_VA_TO_PA(tx_data);
+   data_paddr = KERNEL_VA_TO_PA(tx_data);
 
    for (int i = 0; i < TX_RING_CAP; i++) {
       tx_ring[i].addr = data_paddr + TX_BUF_SIZE * i;
@@ -430,23 +431,26 @@ static int setup_tx_ring(void)
 
 static int setup_rx_ring(void)
 {
-   size_t ring_bytes = RX_DESC_SIZE * RX_RING_CAP;
-   size_t data_bytes = RX_BUF_SIZE * RX_RING_CAP;
-
-   size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
-   size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
+   const size_t ring_bytes = RX_DESC_SIZE * RX_RING_CAP;
+   const size_t data_bytes = RX_BUF_SIZE * RX_RING_CAP;
+   const size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
+   const size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
+   ulong ring_paddr;
+   ulong data_paddr;
+   u32 bsize;
+   bool bsex;
 
    rx_ring = kzmalloc(ring_pages * PAGE_SIZE);
    if (rx_ring == NULL)
       return -ENOMEM;
-   ulong ring_paddr = KERNEL_VA_TO_PA(rx_ring);
+   ring_paddr = KERNEL_VA_TO_PA(rx_ring);
 
    rx_data = kzmalloc(data_pages * PAGE_SIZE);
    if (rx_data == NULL) {
       kfree(rx_ring);
       return -ENOMEM;
    }
-   ulong data_paddr = KERNEL_VA_TO_PA(rx_data);
+   data_paddr = KERNEL_VA_TO_PA(rx_data);
 
    for (int i = 0; i < RX_RING_CAP; i++) {
       rx_ring[i].addr = data_paddr + RX_BUF_SIZE * i;
@@ -458,8 +462,6 @@ static int setup_rx_ring(void)
    write_reg(REG_RDH, 0);                               /* head */
    write_reg(REG_RDT, RX_RING_CAP-1);                   /* tail */
 
-   u32 bsize;
-   bool bsex;
    switch (RX_BUF_SIZE) {
    case 256  : bsize = 3; bsex = 0; break;
    case 512  : bsize = 2; bsex = 0; break;
@@ -486,7 +488,6 @@ static int setup_rx_ring(void)
 static void enable_nic_interrupts(void)
 {
    read_reg(REG_ICR);
-   //write_reg(REG_IMS, BIT_IMS_RXT0 | BIT_IMS_RXO | BIT_IMS_LSC);
    write_reg(REG_IMS, BIT_IMS_RXT0 | BIT_IMS_RXO | BIT_IMS_LSC | BIT_IMS_TXDW);
 }
 
@@ -612,8 +613,7 @@ determine_bar0_addr_space(struct pci_device_loc loc)
 
    /* Translate the value read to a number of pages */
    bar0 &= ~0xF;
-   u32 num_bytes = 1 + ~bar0;
-   u32 num_pages = DIV_ROUND_UP(num_bytes, PAGE_SIZE);
+   const u32 num_pages = DIV_ROUND_UP(1 + ~bar0, PAGE_SIZE);
 
    /* Restore the previous value */
    rc = pci_config_write(loc, PCI_REG_BAR0, 8*sizeof(old_bar0), old_bar0);
