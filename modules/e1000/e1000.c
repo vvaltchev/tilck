@@ -437,8 +437,8 @@ static int setup_rx_ring(void)
    const size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
    ulong ring_paddr;
    ulong data_paddr;
-   u32 bsize;
-   bool bsex;
+   u32   buf_size;
+   bool  buf_size_ext;
 
    rx_ring = kzmalloc(ring_pages * PAGE_SIZE);
    if (rx_ring == NULL)
@@ -463,22 +463,22 @@ static int setup_rx_ring(void)
    write_reg(REG_RDT, RX_RING_CAP-1);                   /* tail */
 
    switch (RX_BUF_SIZE) {
-   case 256  : bsize = 3; bsex = 0; break;
-   case 512  : bsize = 2; bsex = 0; break;
-   case 1024 : bsize = 1; bsex = 0; break;
-   case 2048 : bsize = 0; bsex = 0; break;
-   case 4096 : bsize = 3; bsex = 1; break;
-   case 8192 : bsize = 2; bsex = 1; break;
-   case 16384: bsize = 1; bsex = 1; break;
-   default: NOT_REACHED();
+      case 256  : buf_size = 3; buf_size_ext = 0; break;
+      case 512  : buf_size = 2; buf_size_ext = 0; break;
+      case 1024 : buf_size = 1; buf_size_ext = 0; break;
+      case 2048 : buf_size = 0; buf_size_ext = 0; break;
+      case 4096 : buf_size = 3; buf_size_ext = 1; break;
+      case 8192 : buf_size = 2; buf_size_ext = 1; break;
+      case 16384: buf_size = 1; buf_size_ext = 1; break;
+      default: NOT_REACHED();
    }
 
    u32 rctl = BIT_RCTL_EN | BIT_RCTL_BAM;
 
-   if (bsex)
+   if (buf_size_ext)
       rctl |= BIT_RCTL_BSEX;
-   rctl |= bsize << 16;
 
+   rctl |= buf_size << 16;
    rctl |= BIT_RCTL_UPE | BIT_RCTL_MPE; /* promiscuous mode */
 
    write_reg(REG_RCTL, rctl); /* receive mode */
@@ -519,6 +519,7 @@ static void
 eeprom_read_nolock(u8 off, u16 *dst)
 {
    u32 eerd;
+
    if (device_version == VER_82547EI_A0 ||
        device_version == VER_82547EI_A1 ||
        device_version == VER_82547EI_B0 ||
@@ -546,8 +547,10 @@ eeprom_read_nolock(u8 off, u16 *dst)
 // TODO: is the u8 off right?
 static int eeprom_read(u8 off, u16 *dst)
 {
+
    int rc = eeprom_lock();
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    eeprom_read_nolock(off, dst);
 
@@ -555,19 +558,23 @@ static int eeprom_read(u8 off, u16 *dst)
    return 0;
 }
 
-static int load_mac_addr(void)
+static int
+load_mac_addr(void)
 {
    int rc;
    u16 b0, b1, b2;
 
    rc = eeprom_read(0, &b0);
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    rc = eeprom_read(1, &b1);
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    rc = eeprom_read(2, &b2);
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    mac.data[0] = b0 & 0xFF;
    mac.data[1] = b0 >> 8;
@@ -599,17 +606,21 @@ static size_t
 determine_bar0_addr_space(struct pci_device_loc loc)
 {
    u32 old_bar0;
+
    int rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(old_bar0), &old_bar0);
-   if (rc) return 0;
+   if (rc)
+      return 0;
 
    /* Write all 1s */
    u32 bar0 = 0xFFFFFFFF;
    rc = pci_config_write(loc, PCI_REG_BAR0, 8*sizeof(bar0), bar0);
-   if (rc) return 0;
+   if (rc)
+      return 0;
 
    /* Read it back to see how many we managed to set */
    rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(bar0), &bar0);
-   if (rc) return 0;
+   if (rc)
+      return 0;
 
    /* Translate the value read to a number of pages */
    bar0 &= ~0xF;
@@ -617,7 +628,8 @@ determine_bar0_addr_space(struct pci_device_loc loc)
 
    /* Restore the previous value */
    rc = pci_config_write(loc, PCI_REG_BAR0, 8*sizeof(old_bar0), old_bar0);
-   if (rc) return 0;
+   if (rc)
+      return 0;
 
    return num_pages;
 }
@@ -629,6 +641,7 @@ determine_bar0_addr_space(struct pci_device_loc loc)
 static int read_io_addr(struct pci_device_loc loc)
 {
    u32 bar0;
+
    int rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(bar0), &bar0);
    if (rc) {
       printk("e1000: ERROR: Unable to read BAR0\n");
@@ -646,7 +659,7 @@ static int read_io_addr(struct pci_device_loc loc)
       if (rc) {
          printk("e1000: ERROR: Unable to read BAR1\n");
          return rc;
-       }
+      }
 
       paddr |= ((u64) bar1 << 32);
 
@@ -694,8 +707,10 @@ static int
 read_pci_interrupt_line(struct pci_device_loc loc)
 {
    u32 interrupt_line;
+
    int rc = pci_config_read(loc, PCI_REG_INTR_LINE, 8, &interrupt_line);
-   if (rc < 0) return rc;
+   if (rc < 0)
+      return rc;
 
    ASSERT(interrupt_line < INT_MAX);
    return (int) interrupt_line;
@@ -705,14 +720,17 @@ static int
 configure_pci_command_reg(struct pci_device_loc loc)
 {
    u32 cmd;
+
    int rc = pci_config_read(loc, PCI_REG_CMD, 16, &cmd);
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    cmd |= BIT_PCI_REG_CMD_BME;
    cmd &= ~BIT_PCI_REG_CMD_CID;
 
    rc = pci_config_write(loc, PCI_REG_CMD, 16, cmd);
-   if (rc) return rc;
+   if (rc)
+      return rc;
 
    return 0;
 }
@@ -722,7 +740,8 @@ static struct mac_addr e1000_get_mac_addr(void)
    return mac;
 }
 
-static void init_e1000(void)
+static void
+init_e1000(void)
 {
    struct pci_device *dev = NULL;
 
