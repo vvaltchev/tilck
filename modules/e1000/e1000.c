@@ -191,20 +191,14 @@ STATIC_ASSERT(sizeof(struct tx_desc) == TX_DESC_SIZE);
 STATIC_ASSERT(sizeof(struct rx_desc) == RX_DESC_SIZE);
 
 static struct worker_thread *wth;
-
 static int device_version;
-
 static struct mac_addr mac;
-
 static struct tx_desc *tx_ring;
 static struct rx_desc *rx_ring;
-
 static char *tx_data;
 static char *rx_data;
-
 static u32   tx_tail;
 static u32   rx_tail;
-
 static ulong io_addr;
 static bool  is_mmio;
 
