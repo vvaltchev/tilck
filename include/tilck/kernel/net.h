@@ -5,12 +5,12 @@
 #include <tilck/common/basic_defs.h>
 
 struct mac_addr {
-    u8 data[6];
+   u8 data[6];
 };
 
 struct net_driver_funcs {
-    struct mac_addr (*get_mac_addr)(void);
-    int (*send_frame)(char *src, u32 len);
+   struct mac_addr (*get_mac_addr)(void);
+   int (*send_frame)(char *src, u32 len);
 };
 
 /*
