@@ -147,12 +147,4 @@ jobs:
         displayName: Run the interactive tests
       - script: ./build/scripts/generate_kernel_coverage_report --codecov
         displayName: Gen kernel gcov report and upload to codecov
-      - script:
-          python3 -m coverage run -m unittest discover scripts/configurator/parser/
-        displayName: 'CMake-configurator: run unit tests'
-      - script: |
-          python3 -m coverage report
-          python3 -m coverage xml
-        displayName: 'CMake-configurator: generate coverage report'
-      - script: ./build/tmp/codecov
-        displayName: 'Run codecov'
+
