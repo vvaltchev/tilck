@@ -251,7 +251,7 @@ struct {
 static u32 read_reg(u32 off)
 {
     if (is_mmio) {
-        return mmio_read32(io_addr + off/4); // TODO: division by 4 should go upstream
+        return mmio_read32(io_addr + (off >> 2));
     } else {
         outl(io_addr + 0x00, off);
         return inl(io_addr + 0x4);
@@ -261,7 +261,7 @@ static u32 read_reg(u32 off)
 static void write_reg(u32 off, u32 val)
 {
     if (is_mmio) {
-        mmio_write32(val, io_addr + off/4); // TODO: division by 4 should be in the parent
+        mmio_write32(val, io_addr + (off >> 2));
     } else {
         outl(io_addr + 0x0, off);
         outl(io_addr + 0x4, val);
