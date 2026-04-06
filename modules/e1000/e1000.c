@@ -336,7 +336,8 @@ static void process_link_status_change(void *ctx)
     // TODO
 }
 
-static enum irq_action irq_handler_func(void *ctx)
+static enum irq_action
+irq_handler_func(void *ctx)
 {
    enum irq_action ret = IRQ_NOT_HANDLED;
 
@@ -370,7 +371,6 @@ static enum irq_action irq_handler_func(void *ctx)
    }
 
    // TODO: What if IMS_RXO is received?
-
    return ret;
 }
 
@@ -383,7 +383,7 @@ static void reset_nic(void)
    write_reg(REG_CTRL, ctrl);
 
    while ((ctrl = read_reg(REG_CTRL)) & BIT_CTRL_RST) {
-      __asm__ ("hlt");
+      halt();
    }
 
    ctrl |= BIT_CTRL_ASDE;
@@ -508,7 +508,7 @@ static int eeprom_lock(void)
    write_reg(REG_EECD, eecd);
 
    while (!(read_reg(REG_EECD) & BIT_EECD_EE_GNT)) {
-       __asm__ ("hlt");
+      halt();
    }
 
    return 0;
@@ -536,7 +536,7 @@ eeprom_read_nolock(u8 off, u16 *dst)
    write_reg(REG_EERD, eerd);
 
    while (!((eerd = read_reg(REG_EERD)) & BIT_EERD_DONE)) {
-      __asm__ ("hlt");
+      halt();
    }
 
    *dst = eerd >> 16;
