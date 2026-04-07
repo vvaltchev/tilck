@@ -19,6 +19,7 @@ require_relative 'ncurses'
 require_relative 'dtc'
 require_relative 'uboot'
 require_relative 'lua'
+require_relative 'fbdoom'
 
 require 'pathname'
 require 'fileutils'
