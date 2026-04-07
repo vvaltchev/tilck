@@ -21,9 +21,11 @@ if [[ "$MAIN_DIR" == *" "* ]]; then
    exit 1
 fi
 
-if [[ "$OS" == "FreeBSD" ]]; then
-   # Prepend our gnu-wrap directory to the path, so that on FreeBSD we'll
-   # use the GNU tools instead of the BSD ones.
+if [[ "$OS" == "FreeBSD" || "$OS" == "Darwin" ]]; then
+   # Prepend our gnu-wrap directory to the path, so that on systems with a
+   # BSD userland (FreeBSD, macOS) we'll use the GNU tools instead of the
+   # BSD ones. Required for at least u-boot, which uses GNU make 3.82+
+   # features (`undefine`) and the system /usr/bin/make on macOS is 3.81.
    export PATH="$MAIN_DIR/scripts/gnu-wrap:$PATH"
 fi
 

@@ -16,6 +16,8 @@ require_relative 'busybox'
 require_relative 'gnuefi'
 require_relative 'gtest'
 require_relative 'ncurses'
+require_relative 'dtc'
+require_relative 'uboot'
 
 require 'pathname'
 require 'fileutils'
