@@ -258,7 +258,7 @@ class Package
   end
 
   def installed?(ver) = get_install_list().any? {
-    |x| x.ver == ver and x.compiler == default_cc
+    |x| x.ver == ver and x.compiler == default_cc and x.arch == default_arch
   }
 
   # Methods not implemented in the base class
