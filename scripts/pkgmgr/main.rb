@@ -18,6 +18,7 @@ require_relative 'gtest'
 require_relative 'ncurses'
 require_relative 'dtc'
 require_relative 'uboot'
+require_relative 'lua'
 
 require 'pathname'
 require 'fileutils'
