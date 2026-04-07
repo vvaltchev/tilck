@@ -358,17 +358,21 @@ class Package
     )
   ]
 
-  def regular_target_package_get_installable_list = [
-    InstallInfo.new(
-      name,
-      default_cc,
-      on_host,
-      default_arch,
-      default_ver,
-      nil,                     # install path
-      self                     # package object
-    )
-  ]
+  def regular_target_package_get_installable_list
+    a = default_arch
+    return [] if a.nil? || !arch_list.include?(a.name)
+    [
+      InstallInfo.new(
+        name,
+        default_cc,
+        on_host,
+        a,
+        default_ver,
+        nil,                     # install path
+        self                     # package object
+      )
+    ]
+  end
 
   def noarch_package_get_installable_list = [
     InstallInfo.new(

@@ -273,6 +273,21 @@ class PackageManager
       return false
     end
 
+    # Enforce arch_list for regular target packages. Host packages and noarch
+    # packages (arch_list == nil) are exempt. We check pkg.default_arch (not
+    # ARCH directly) so the filter stays consistent with the InstallInfo
+    # produced by regular_target_package_get_installable_list — both use
+    # default_arch as the source of truth for "the arch this package builds
+    # for in the current invocation context".
+    if !pkg.on_host && !pkg.arch_list.nil?
+      a = pkg.default_arch
+      if a.nil? || !pkg.arch_list.include?(a.name)
+        a_name = a.nil? ? "<nil>" : a.name
+        error "Package #{pkg.name} is not supported for arch #{a_name}"
+        return false
+      end
+    end
+
     ver = nil if ver.blank?
     ver ||= pkg.default_ver()
     ok = pkg.install_impl(ver)
