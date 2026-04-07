@@ -33,6 +33,15 @@ class NcursesPackage < Package
 
     arch = default_arch().gcc_tc
 
+    # The ncurses tarball ships an `INSTALL` documentation file that, on
+    # case-insensitive filesystems (e.g. APFS on macOS), collides with the
+    # `install/` prefix directory `make install` wants to create. The file
+    # is documentation only — no Makefile target depends on it — so just
+    # remove it to make `mkdir install` work.
+    File.delete("INSTALL") if File.exist?("INSTALL")
+
+    patch_configure_locale
+
     ok = run_command("configure.log", [
       "./configure",
       "--host=#{arch}-pc-linux-gnu",
@@ -54,6 +63,31 @@ class NcursesPackage < Package
 
     ok = run_command("install.log", [ "make", "install" ])
     return ok
+  end
+
+  private
+
+  # ncurses 6.5's configure uses an old autoconf idiom that *unsets* the
+  # locale variables instead of forcing them to C:
+  #
+  #   $as_unset LANG || test "${LANG+set}" != set || { LANG=C; export LANG; }
+  #
+  # The `||` chain means: try `unset LANG`; if it works, stop. So on any
+  # normal shell every locale var ends up unset for the rest of configure.
+  # On macOS, Homebrew's gawk 5.4.0 has a bug where, with *no* locale at all
+  # (not even C), `gsub("[+]", " ", s)` silently fails to replace anything.
+  # That breaks mk-1st.awk's in_subset() helper, so the per-model rules
+  # never get appended to ncurses/Makefile, and `make` then dies with
+  # "No rule to make target ../lib/libncurses.a".
+  #
+  # Patch the buggy idiom to unconditionally export the locale vars to C.
+  def patch_configure_locale
+    data = File.read("configure")
+    data.gsub!(
+      /^\$as_unset (\w+) \|\| test "\$\{\1\+set\}" != set \|\| \{ \1=C; export \1; \}$/,
+      'export \1=C'
+    )
+    File.write("configure", data)
   end
 end
 
