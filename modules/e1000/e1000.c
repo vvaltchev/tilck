@@ -419,9 +419,9 @@ static int setup_tx_ring(void)
       tx_ring[i].addr = data_paddr + TX_BUF_SIZE * i;
    }
 
-   write_reg(REG_TDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address (low) */
-   write_reg(REG_TDBAH, (u64) ring_paddr >> 32);        /* queue address (high) */
-   write_reg(REG_TDLEN, TX_DESC_SIZE * TX_RING_CAP);    /* queue size in bytes */
+   write_reg(REG_TDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
+   write_reg(REG_TDBAH, (u64) ring_paddr >> 32);        /* ... */
+   write_reg(REG_TDLEN, TX_DESC_SIZE * TX_RING_CAP);    /* queue size */
    write_reg(REG_TDH, 0);                               /* head */
    write_reg(REG_TDT, 0);                               /* tail */
 
@@ -456,9 +456,9 @@ static int setup_rx_ring(void)
       rx_ring[i].addr = data_paddr + RX_BUF_SIZE * i;
    }
 
-   write_reg(REG_RDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address (low) */
-   write_reg(REG_RDBAH, (u64) ring_paddr >> 32);        /* queue address (high) */
-   write_reg(REG_RDLEN, RX_DESC_SIZE * RX_RING_CAP);    /* queue size in bytes */
+   write_reg(REG_RDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
+   write_reg(REG_RDBAH, (u64) ring_paddr >> 32);        /* ... */
+   write_reg(REG_RDLEN, RX_DESC_SIZE * RX_RING_CAP);    /* queue size */
    write_reg(REG_RDH, 0);                               /* head */
    write_reg(REG_RDT, RX_RING_CAP-1);                   /* tail */
 
@@ -677,7 +677,8 @@ static int read_io_addr(struct pci_device_loc loc)
          printk("e1000: ERROR: Unable to determine NIC address space size\n");
          return -EINVAL;
       }
-      printk("e1000: INFO: %d pages mapped to device memory\n", (int) num_pages);
+      printk("e1000: INFO: %d pages mapped to device memory\n",
+             (int) num_pages);
 
       void *vaddr = hi_vmem_reserve(num_pages * PAGE_SIZE);
       if (vaddr == NULL) {
@@ -769,7 +770,8 @@ init_e1000(void)
 
    int rc = read_pci_interrupt_line(dev->loc);
    if (rc < 0) {
-      printk("e1000: INFO: Couldn't read interrupt line from PCI config register\n");
+      printk("e1000: INFO: Couldn't read interrupt line from "
+             "PCI config register\n");
       return;
    }
    u8 interrupt_line = (u8) rc;
