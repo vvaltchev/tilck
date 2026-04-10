@@ -21,6 +21,25 @@
 #include <tilck/mods/pci.h>
 #include <tilck/mods/tracing.h>
 
+#include "e1000_config.h"
+
+/*
+ * Inferred from the configuration in e1000_config.
+ * Don't change these directly.
+ */
+
+#define TX_RING_BYTES   (sizeof(struct tx_desc) * TX_RING_CAP)
+#define TX_RING_PAGES   DIV_ROUND_UP(TX_RING_BYTES, PAGE_SIZE)
+
+#define TX_DATA_BYTES   (TX_BUF_SIZE * TX_RING_CAP)
+#define TX_DATA_PAGES   DIV_ROUND_UP(TX_DATA_BYTES, PAGE_SIZE);
+
+#define RX_RING_BYTES   (sizeof(struct rx_desc) * RX_RING_CAP)
+#define RX_RING_PAGES   DIV_ROUND_UP(RX_RING_BYTES, PAGE_SIZE)
+
+#define RX_DATA_BYTES   (RX_BUF_SIZE * RX_RING_CAP)
+#define RX_DATA_PAGES   DIV_ROUND_UP(RX_DATA_BYTES, PAGE_SIZE);
+
 /*
  * Device versions
  */
@@ -44,13 +63,17 @@
 #define VER_82540EM_A   17
 
 /*
- * Registers & Flags
+ * PCI Configuration Registers
  */
 
 #define PCI_REG_INTR_LINE 0x3C
 #define PCI_REG_CMD       0x04
 #define PCI_REG_BAR0      0x10
 #define PCI_REG_BAR1      0x14
+
+/*
+ * Memory-Mapped Device Registers
+ */
 
 #define REG_CTRL  0x0000
 #define REG_EECD  0x0010
@@ -74,8 +97,16 @@
 #define REG_ICS   0x00C8
 #define REG_IMC   0x00D8
 
+/*
+ * PCI Configuration Register Bits
+ */
+
 #define BIT_PCI_REG_CMD_BME (1 << 2) /* Bus Master Enable */
 #define BIT_PCI_REG_CMD_CID (1 << 10) /* Clear Interrupt Disable */
+
+/*
+ * Memory-Mapped Device Register Bits
+ */
 
 #define BIT_CTRL_FD      (1 << 0)
 #define BIT_CTRL_LRST    (1 << 3)
@@ -132,7 +163,7 @@
 #define BIT_RX_STATUS_EOP (1 << 1)
 
 /*
- * Transmission descriptor command flags
+ * Transmission Descriptor Command Flags
  */
 
 #define TX_DESC_CMD_EOP  (1 << 0)
@@ -145,27 +176,7 @@
 #define TX_DESC_CMD_IDE  (1 << 7)
 
 /*
- * Configuration
- */
-
-#define TX_DESC_SIZE 16
-#define TX_RING_CAP 32
-#define TX_BUF_SIZE 512 // Not sure?
-
-#define RX_DESC_SIZE 16
-#define RX_RING_CAP 32
-
-/*
- * Receive buffer size. Must be a power of two
- * between 256 and 16384 (inclusive).
- *
- * We go with 2K as ethernet frames are around
- * 1.5K bytes.
- */
-#define RX_BUF_SIZE 2048
-
-/*
- * Module state
+ * Types
  */
 
 struct tx_desc {
@@ -187,8 +198,12 @@ struct rx_desc {
    u16 special;
 };
 
-STATIC_ASSERT(sizeof(struct tx_desc) == TX_DESC_SIZE);
-STATIC_ASSERT(sizeof(struct rx_desc) == RX_DESC_SIZE);
+STATIC_ASSERT(sizeof(struct tx_desc) == 16); /* Ensure tightly packed */
+STATIC_ASSERT(sizeof(struct rx_desc) == 16); /* ... */
+
+/*
+ * Globals
+ */
 
 static struct worker_thread *wth;
 static int device_version;
@@ -205,6 +220,7 @@ static bool  is_mmio;
 /*
  * Table of supported devices
  */
+
 struct {
    int version;
    u16 vendor_id;
@@ -262,28 +278,35 @@ static void write_reg(u32 off, u32 val)
    }
 }
 
+static void
+unused_tx_queue_slots(void)
+{
+   const u32 head = read_reg(REG_TDH);
+   const u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
+   const u32 free = TX_RING_CAP - used - 1;
+   return free;
+}
+
 /*
  * Send packet
  */
 static int e1000_send(char *src, u32 len)
 {
+   const u32 num_desc;
+
    trace_printk(10, "e1000: Sending frame len=%d\n", len);
 
-   /* Number of descriptors that would be required to send this message. */
-   const u32 num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
-
-   const u32 head = read_reg(REG_TDH);
-   const u32 used = (tx_tail - head + TX_RING_CAP) % TX_RING_CAP;
-   const u32 free = TX_RING_CAP - used - 1;
-
-   if (num_desc > free)
+   num_desc = DIV_ROUND_UP(len, TX_BUF_SIZE);
+   if (num_desc > unused_tx_queue_slots())
       return -ENOMEM;
 
    for (u32 i = 0, off = 0; i < num_desc; i++) {
+      u32 num;
 
-      u32 num = MIN((u32) TX_BUF_SIZE, (u32) len - off);
+      num = MIN((u32) TX_BUF_SIZE, (u32) len - off);
 
       memcpy(PA_TO_KERNEL_VA(tx_ring[tx_tail].addr), src + off, num);
+
       tx_ring[tx_tail].length = num;
       tx_ring[tx_tail].command = TX_DESC_CMD_RS;
       if (i == num_desc-1)
@@ -313,14 +336,14 @@ static void process_incoming_desc(void *ctx)
           * Packet received in a single entry
           */
 
-         void  *src = PA_TO_KERNEL_VA(rx_ring[rx_tail].addr);
-         u32    len = rx_ring[rx_tail].length;
-
-         net_process_packet(src, len);
+         net_process_packet(PA_TO_KERNEL_VA(rx_ring[rx_tail].addr),
+                            rx_ring[rx_tail].length);
       } else {
+
          /*
-          * Slow path. Packet spans multiple entries. Not implemented yet.
+          * Slow path. Packet spans multiple entries.
           */
+
          NOT_IMPLEMENTED();
       }
 
@@ -331,7 +354,8 @@ static void process_incoming_desc(void *ctx)
    write_reg(REG_RDT, (rx_tail + RX_RING_CAP - 1) % RX_RING_CAP);
 }
 
-static void process_link_status_change(void *ctx)
+static void
+process_link_status_change(void *ctx)
 {
     // TODO
 }
@@ -339,6 +363,7 @@ static void process_link_status_change(void *ctx)
 static enum irq_action
 irq_handler_func(void *ctx)
 {
+   const u32 icr;
    enum irq_action ret = IRQ_NOT_HANDLED;
 
    /*
@@ -347,7 +372,7 @@ irq_handler_func(void *ctx)
     * device and, if so, the reason why it was
     * generated.
     */
-   const u32 icr = read_reg(REG_ICR);
+   icr = read_reg(REG_ICR);
 
    trace_printk(9, "e1000: Interrupt!\n");
 
@@ -370,7 +395,6 @@ irq_handler_func(void *ctx)
       ret = IRQ_HANDLED;
    }
 
-   // TODO: What if IMS_RXO is received?
    return ret;
 }
 
@@ -378,7 +402,9 @@ DEFINE_IRQ_HANDLER_NODE(irq_handler_node, irq_handler_func, NULL);
 
 static void reset_nic(void)
 {
-   u32 ctrl = read_reg(REG_CTRL);
+   u32 ctrl;
+
+   ctrl = read_reg(REG_CTRL);
    ctrl |= BIT_CTRL_RST;
    write_reg(REG_CTRL, ctrl);
 
@@ -395,23 +421,18 @@ static void reset_nic(void)
 
 static int setup_tx_ring(void)
 {
-   const size_t ring_bytes = TX_DESC_SIZE * TX_RING_CAP;
-   const size_t data_bytes = TX_BUF_SIZE * TX_RING_CAP;
-   const size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
-   const size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
    ulong ring_paddr;
    ulong data_paddr;
 
-   tx_ring = kzmalloc(ring_pages * PAGE_SIZE);
-   if (tx_ring == NULL)
+   if (!(tx_ring = kzmalloc(TX_RING_PAGES * PAGE_SIZE)))
       return -ENOMEM;
-   ring_paddr = KERNEL_VA_TO_PA(tx_ring);
 
-   tx_data = kzmalloc(data_pages * PAGE_SIZE);
-   if (tx_data == NULL) {
+   if (!(tx_data = kzmalloc(TX_DATA_PAGES * PAGE_SIZE))) {
       kfree(tx_ring);
       return -ENOMEM;
    }
+
+   ring_paddr = KERNEL_VA_TO_PA(tx_ring);
    data_paddr = KERNEL_VA_TO_PA(tx_data);
 
    for (int i = 0; i < TX_RING_CAP; i++)
@@ -419,9 +440,11 @@ static int setup_tx_ring(void)
 
    write_reg(REG_TDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
    write_reg(REG_TDBAH, (u64) ring_paddr >> 32);        /* ... */
-   write_reg(REG_TDLEN, TX_DESC_SIZE * TX_RING_CAP);    /* queue size */
-   write_reg(REG_TDH, 0);                               /* head */
-   write_reg(REG_TDT, 0);                               /* tail */
+
+   write_reg(REG_TDLEN, sizeof(struct tx_desc) * TX_RING_CAP); /* queue size */
+
+   write_reg(REG_TDH, 0); /* head */
+   write_reg(REG_TDT, 0); /* tail */
 
    write_reg(REG_TCTL, BIT_TCTL_EN | BIT_TCTL_PSP);     /* transmit mode */
    return 0;
@@ -429,25 +452,21 @@ static int setup_tx_ring(void)
 
 static int setup_rx_ring(void)
 {
-   const size_t ring_bytes = RX_DESC_SIZE * RX_RING_CAP;
-   const size_t data_bytes = RX_BUF_SIZE * RX_RING_CAP;
-   const size_t ring_pages = DIV_ROUND_UP(ring_bytes, PAGE_SIZE);
-   const size_t data_pages = DIV_ROUND_UP(data_bytes, PAGE_SIZE);
    ulong ring_paddr;
    ulong data_paddr;
    u32   buf_size;
    bool  buf_size_ext;
+   u32   rctl;
 
-   rx_ring = kzmalloc(ring_pages * PAGE_SIZE);
-   if (rx_ring == NULL)
+   if (!(rx_ring = kzmalloc(RX_RING_PAGES * PAGE_SIZE)))
       return -ENOMEM;
-   ring_paddr = KERNEL_VA_TO_PA(rx_ring);
 
-   rx_data = kzmalloc(data_pages * PAGE_SIZE);
-   if (rx_data == NULL) {
+   if (!(rx_data = kzmalloc(RX_DATA_PAGES * PAGE_SIZE))) {
       kfree(rx_ring);
       return -ENOMEM;
    }
+
+   ring_paddr = KERNEL_VA_TO_PA(rx_ring);
    data_paddr = KERNEL_VA_TO_PA(rx_data);
 
    for (int i = 0; i < RX_RING_CAP; i++)
@@ -455,9 +474,11 @@ static int setup_rx_ring(void)
 
    write_reg(REG_RDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
    write_reg(REG_RDBAH, (u64) ring_paddr >> 32);        /* ... */
-   write_reg(REG_RDLEN, RX_DESC_SIZE * RX_RING_CAP);    /* queue size */
-   write_reg(REG_RDH, 0);                               /* head */
-   write_reg(REG_RDT, RX_RING_CAP-1);                   /* tail */
+
+   write_reg(REG_RDLEN, sizeof(struct rx_desc) * RX_RING_CAP); /* queue size */
+
+   write_reg(REG_RDH, 0);             /* head */
+   write_reg(REG_RDT, RX_RING_CAP-1); /* tail */
 
    switch (RX_BUF_SIZE) {
       case 256  : buf_size = 3; buf_size_ext = 0; break;
@@ -470,14 +491,11 @@ static int setup_rx_ring(void)
       default: NOT_REACHED();
    }
 
-   u32 rctl = BIT_RCTL_EN | BIT_RCTL_BAM;
-
+   rctl = BIT_RCTL_EN | BIT_RCTL_BAM;
    if (buf_size_ext)
       rctl |= BIT_RCTL_BSEX;
-
    rctl |= buf_size << 16;
    rctl |= BIT_RCTL_UPE | BIT_RCTL_MPE; /* promiscuous mode */
-
    write_reg(REG_RCTL, rctl); /* receive mode */
    return 0;
 }
@@ -490,14 +508,18 @@ static void enable_nic_interrupts(void)
 
 static void eeprom_unlock(void)
 {
-   u32 eecd = read_reg(REG_EECD);
+   u32 eecd;
+
+   eecd = read_reg(REG_EECD);
    eecd &= ~BIT_EECD_EE_REQ;
    write_reg(REG_EECD, eecd);
 }
 
 static int eeprom_lock(void)
 {
-   u32 eecd = read_reg(REG_EECD);
+   u32 eecd;
+
+   eecd = read_reg(REG_EECD);
 
    if (!(eecd & BIT_EECD_EE_PRES))
       return -ENODEV; /* No EEPROM found */
@@ -538,11 +560,11 @@ eeprom_read_nolock(u8 off, u16 *dst)
    *dst = eerd >> 16;
 }
 
-// TODO: is the u8 off right?
 static int eeprom_read(u8 off, u16 *dst)
 {
+   int rc;
 
-   int rc = eeprom_lock();
+   rc = eeprom_lock();
    if (rc)
       return rc;
 
@@ -557,6 +579,7 @@ load_mac_addr(void)
 {
    int rc;
    u16 b0, b1, b2;
+   u32 lo, hi;
 
    rc = eeprom_read(0, &b0);
    if (rc)
@@ -580,8 +603,8 @@ load_mac_addr(void)
        mac.data[0], mac.data[1], mac.data[2],
        mac.data[3], mac.data[4], mac.data[5]);
 
-   u32 lo = ((u32) b1 << 16) | b0;
-   u32 hi = b2;
+   lo = ((u32) b1 << 16) | b0;
+   hi = b2;
 
    write_reg(REG_RAL, lo);
    write_reg(REG_RAH, hi | (1U << 31));
@@ -599,14 +622,16 @@ load_mac_addr(void)
 static size_t
 determine_bar0_addr_space(struct pci_device_loc loc)
 {
+   int rc;
+   u32 bar0;
    u32 old_bar0;
 
-   int rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(old_bar0), &old_bar0);
+   rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(old_bar0), &old_bar0);
    if (rc)
       return 0;
 
    /* Write all 1s */
-   u32 bar0 = 0xFFFFFFFF;
+   bar0 = 0xFFFFFFFF;
    rc = pci_config_write(loc, PCI_REG_BAR0, 8*sizeof(bar0), bar0);
    if (rc)
       return 0;
@@ -634,21 +659,24 @@ determine_bar0_addr_space(struct pci_device_loc loc)
  */
 static int read_io_addr(struct pci_device_loc loc)
 {
+   int rc;
    u32 bar0;
+   u64 paddr;
+   u32 type;
 
-   int rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(bar0), &bar0);
+   rc = pci_config_read(loc, PCI_REG_BAR0, 8*sizeof(bar0), &bar0);
    if (rc) {
       printk("e1000: ERROR: Unable to read BAR0\n");
       return rc;
    }
 
    is_mmio = !(bar0 & 1);
-   u64 paddr = bar0 & ~0xF;
+   paddr = bar0 & ~0xF;
 
-   u32 type = (bar0 >> 1) & 3;
+   type = (bar0 >> 1) & 3;
    if (type == 2) {
-
       u32 bar1;
+
       rc = pci_config_read(loc, PCI_REG_BAR1, 8*sizeof(bar1), &bar1);
       if (rc) {
          printk("e1000: ERROR: Unable to read BAR1\n");
@@ -656,33 +684,27 @@ static int read_io_addr(struct pci_device_loc loc)
       }
 
       paddr |= ((u64) bar1 << 32);
-
-   } else {
-      // TODO: The type bits must either be 0 or 2. If we don't
-      //       get 0 here, the hardware is bad.
    }
 
    if (is_mmio) {
+      size_t num_pages;
+      void *vaddr;
 
-      printk("e1000: INFO: Using MMIO\n");
-
-      size_t num_pages = determine_bar0_addr_space(loc);
+      num_pages = determine_bar0_addr_space(loc);
       if (num_pages == 0) {
          printk("e1000: ERROR: Unable to determine NIC address space size\n");
          return -EINVAL;
       }
-      printk("e1000: INFO: %d pages mapped to device memory\n",
-             (int) num_pages);
 
-      void *vaddr = hi_vmem_reserve(num_pages * PAGE_SIZE);
-      if (vaddr == NULL) {
+      vaddr = hi_vmem_reserve(num_pages * PAGE_SIZE);
+      if (!vaddr) {
          printk("e1000: ERROR: Unable to reserve virtual memory\n");
          return -ENOMEM;
       }
 
-      u32 page_flags = PAGING_FL_RW | PAGING_FL_CD;
-      size_t num = map_kernel_pages(vaddr, paddr, num_pages, page_flags);
-      if (num != num_pages) {
+      if (map_kernel_pages(vaddr, paddr, num_pages,
+          PAGING_FL_RW | PAGING_FL_CD) != num_pages) {
+
          printk("e1000: ERROR: Unable to map physical memory\n");
          hi_vmem_release(vaddr, num_pages * PAGE_SIZE);
          return -ENOMEM;
@@ -691,8 +713,6 @@ static int read_io_addr(struct pci_device_loc loc)
       io_addr = (ulong) vaddr;
 
    } else {
-
-      printk("e1000: INFO: Using regular I/O\n");
       io_addr = paddr;
    }
    return 0;
@@ -701,9 +721,10 @@ static int read_io_addr(struct pci_device_loc loc)
 static int
 read_pci_interrupt_line(struct pci_device_loc loc)
 {
+   int rc;
    u32 interrupt_line;
 
-   int rc = pci_config_read(loc, PCI_REG_INTR_LINE, 8, &interrupt_line);
+   rc = pci_config_read(loc, PCI_REG_INTR_LINE, 8, &interrupt_line);
    if (rc < 0)
       return rc;
 
@@ -714,9 +735,10 @@ read_pci_interrupt_line(struct pci_device_loc loc)
 static int
 configure_pci_command_reg(struct pci_device_loc loc)
 {
+   int rc;
    u32 cmd;
 
-   int rc = pci_config_read(loc, PCI_REG_CMD, 16, &cmd);
+   rc = pci_config_read(loc, PCI_REG_CMD, 16, &cmd);
    if (rc)
       return rc;
 
@@ -735,78 +757,78 @@ static struct mac_addr e1000_get_mac_addr(void)
    return mac;
 }
 
+static struct pci_device*
+find_compatible_pci_device(int *version)
+{
+   for (int i = 0; device_table[i].version > -1; i++) {
+      struct pci_device *dev;
+
+      dev = pci_get_object_by_id(device_table[i].vendor_id,
+                                 device_table[i].device_id);
+      if (dev) {
+         *version = device_table[i].version;
+         return dev;
+      }
+   }
+
+   return NULL;
+}
+
 static void
 init_e1000(void)
 {
-   struct pci_device *dev = NULL;
+   int rc;
+   struct pci_device *dev;
+   u8 interrupt_line;
 
-   /* TODO: Should the deriver handle multiple devices? */
-   int device_idx = 0;
-   while (device_table[device_idx].version > -1) {
-
-      u16 vendor_id = device_table[device_idx].vendor_id;
-      u16 device_id = device_table[device_idx].device_id;
-
-      dev = pci_get_object_by_id(vendor_id, device_id);
-
-      if (dev) break;
-      device_idx++;
-   }
-   if (dev == NULL) {
+   dev = find_compatible_device(&device_version);
+   if (!dev) {
       printk("e1000: INFO: No compatible device found\n");
       return; /* No matching device found */
    }
-   device_version = device_table[device_idx].version;
 
    printk("e1000: INFO: Found device (vendor_id=%x, device_id=%x)\n",
-      device_table[device_idx].vendor_id,
-      device_table[device_idx].device_id);
+          dev->vendor_id, dev->device_id);
 
-   int rc = read_pci_interrupt_line(dev->loc);
+   rc = read_pci_interrupt_line(dev->loc);
    if (rc < 0) {
       printk("e1000: INFO: Couldn't read interrupt line from "
              "PCI config register\n");
       return;
    }
-   u8 interrupt_line = (u8) rc;
+   interrupt_line = (u8) rc;
 
    rc = configure_pci_command_reg(dev->loc);
    if (rc) {
       printk("e1000: INFO: Couldn't configure PCI command register\n");
       return;
    }
-   printk("e1000: INFO: PCI command register configured\n");
 
    rc = read_io_addr(dev->loc);
    if (rc) {
       printk("e1000: ERROR: unable to map NIC memory\n");
       return;
    }
-   printk("e1000: INFO: Device memory mapped\n");
 
    reset_nic();
-   printk("e1000: INFO: NIC was reset\n");
 
    rc = load_mac_addr();
    if (rc) {
       printk("e1000: ERROR: unable to load MAC address\n");
       return;
    }
-   printk("e1000: INFO: MAC address loaded\n");
 
    rc = setup_tx_ring();
    if (rc) {
       printk("e1000: ERROR: unable to setup TX ring\n");
       return;
    }
-   printk("e1000: INFO: TX ring set up\n");
 
    rc = setup_rx_ring();
    if (rc) {
       printk("e1000: ERROR: unable to setup RX ring\n");
       return;
    }
-   printk("e1000: INFO: RX ring set up\n");
 
    disable_preemption();
    {
@@ -821,7 +843,6 @@ init_e1000(void)
       return;
    }
 
-   /* Plug the driver into the network stack */
    net_driver_funcs.get_mac_addr = e1000_get_mac_addr;
    net_driver_funcs.send_frame = e1000_send;
 
