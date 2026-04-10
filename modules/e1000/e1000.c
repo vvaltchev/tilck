@@ -244,9 +244,9 @@ struct {
 
 static u32 read_reg(u32 off)
 {
-   if (is_mmio) {
+   if (is_mmio)
       return mmio_read32(io_addr + (off >> 2));
-   } else {
+   else {
       outl(io_addr + 0x00, off);
       return inl(io_addr + 0x4);
    }
@@ -254,9 +254,9 @@ static u32 read_reg(u32 off)
 
 static void write_reg(u32 off, u32 val)
 {
-   if (is_mmio) {
+   if (is_mmio)
       mmio_write32(val, io_addr + (off >> 2));
-   } else {
+   else {
       outl(io_addr + 0x0, off);
       outl(io_addr + 0x4, val);
    }
@@ -382,9 +382,8 @@ static void reset_nic(void)
    ctrl |= BIT_CTRL_RST;
    write_reg(REG_CTRL, ctrl);
 
-   while ((ctrl = read_reg(REG_CTRL)) & BIT_CTRL_RST) {
+   while ((ctrl = read_reg(REG_CTRL)) & BIT_CTRL_RST)
       halt();
-   }
 
    ctrl |= BIT_CTRL_ASDE;
    ctrl |= BIT_CTRL_SLU;
@@ -415,9 +414,8 @@ static int setup_tx_ring(void)
    }
    data_paddr = KERNEL_VA_TO_PA(tx_data);
 
-   for (int i = 0; i < TX_RING_CAP; i++) {
+   for (int i = 0; i < TX_RING_CAP; i++)
       tx_ring[i].addr = data_paddr + TX_BUF_SIZE * i;
-   }
 
    write_reg(REG_TDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
    write_reg(REG_TDBAH, (u64) ring_paddr >> 32);        /* ... */
@@ -452,9 +450,8 @@ static int setup_rx_ring(void)
    }
    data_paddr = KERNEL_VA_TO_PA(rx_data);
 
-   for (int i = 0; i < RX_RING_CAP; i++) {
+   for (int i = 0; i < RX_RING_CAP; i++)
       rx_ring[i].addr = data_paddr + RX_BUF_SIZE * i;
-   }
 
    write_reg(REG_RDBAL, (u64) ring_paddr & 0xFFFFFFFF); /* queue address */
    write_reg(REG_RDBAH, (u64) ring_paddr >> 32);        /* ... */
@@ -508,9 +505,8 @@ static int eeprom_lock(void)
    eecd |= BIT_EECD_EE_REQ;
    write_reg(REG_EECD, eecd);
 
-   while (!(read_reg(REG_EECD) & BIT_EECD_EE_GNT)) {
+   while (!(read_reg(REG_EECD) & BIT_EECD_EE_GNT))
       halt();
-   }
 
    return 0;
 }
@@ -528,18 +524,16 @@ eeprom_read_nolock(u8 off, u16 *dst)
        device_version == VER_82541EI_B0 ||
        device_version == VER_82541ER_C0 ||
        device_version == VER_82541GI_B1 ||
-       device_version == VER_82541PI_C0) {
+       device_version == VER_82541PI_C0)
       eerd = (off & 0xFFF) << 2;
-   } else {
+   else
       eerd = (off & 0xFF) << 8;
-   }
 
    eerd |= BIT_EERD_START;
    write_reg(REG_EERD, eerd);
 
-   while (!((eerd = read_reg(REG_EERD)) & BIT_EERD_DONE)) {
+   while (!((eerd = read_reg(REG_EERD)) & BIT_EERD_DONE))
       halt();
-   }
 
    *dst = eerd >> 16;
 }
