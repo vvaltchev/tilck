@@ -45,7 +45,10 @@ class TccPackage < Package
       url: TCC_URL,
       on_host: false,
       is_compiler: false,
-      arch_list: { "i386" => ALL_ARCHS["i386"] },
+      arch_list: {
+        "i386" => ALL_ARCHS["i386"],
+        "riscv64" => ALL_ARCHS["riscv64"],
+      },
       dep_list: []
     )
   end
