@@ -20,6 +20,7 @@ require_relative 'dtc'
 require_relative 'uboot'
 require_relative 'lua'
 require_relative 'fbdoom'
+require_relative 'treecmd'
 
 require 'pathname'
 require 'fileutils'
