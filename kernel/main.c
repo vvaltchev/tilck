@@ -17,6 +17,7 @@
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/hal.h>
 #include <tilck/kernel/irq.h>
+#include <tilck/kernel/net.h>
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/sched.h>

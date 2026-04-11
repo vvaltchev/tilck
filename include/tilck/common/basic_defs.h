@@ -334,6 +334,7 @@ STATIC_ASSERT(sizeof(ulong) == sizeof(void *));
  *      machines.
  */
 #define TO_PTR(n) ((void *)(ulong)(n))
+#define COMPILER_BARRIER() asmVolatile("" ::: "memory")
 
 #ifndef __clang__
 

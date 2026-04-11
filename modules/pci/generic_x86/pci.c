@@ -239,6 +239,20 @@ pci_get_object(struct pci_device_loc loc)
    return NULL;
 }
 
+struct pci_device *
+pci_get_object_by_id(u16 vendor_id, u16 device_id)
+{
+   struct pci_device *pos;
+
+   list_for_each_ro(pos, &pci_device_list, node) {
+      if (pos->nfo.vendor_id == vendor_id &&
+          pos->nfo.device_id == device_id)
+         return pos;
+   }
+
+   return NULL;
+}
+
 static ulong
 discovery_pcie_get_conf_vaddr(struct pci_device_loc loc)
 {

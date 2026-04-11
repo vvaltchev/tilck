@@ -200,7 +200,7 @@ struct kcond {
 #define KCOND_WAIT_FOREVER 0
 
 void kcond_init(struct kcond *c);
-void kcond_destory(struct kcond *c);
+void kcond_destroy(struct kcond *c);
 void kcond_signal_one(struct kcond *c);
 void kcond_signal_all(struct kcond *c);
 bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks);

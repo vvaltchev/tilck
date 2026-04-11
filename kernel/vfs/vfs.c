@@ -41,6 +41,8 @@ void vfs_close(fs_handle h)
    if (fsops->on_close)
       fsops->on_close(h);
 
+   ASSERT(fsops->release_inode);
+   ASSERT(fsops->get_inode);
    if (fsops->release_inode(fs, fsops->get_inode(h)) == 0) {
       if (fsops->on_close_last_handle)
          fsops->on_close_last_handle(h);

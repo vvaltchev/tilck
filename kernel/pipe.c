@@ -239,9 +239,9 @@ static const struct file_ops static_ops_pipe_write_end =
 
 void destroy_pipe(struct pipe *p)
 {
-   kcond_destory(&p->err_cond);
-   kcond_destory(&p->not_empty_cond);
-   kcond_destory(&p->not_full_cond);
+   kcond_destroy(&p->err_cond);
+   kcond_destroy(&p->not_empty_cond);
+   kcond_destroy(&p->not_full_cond);
    kmutex_destroy(&p->mutex);
    ringbuf_destory(&p->rb);
    kfree2(p->buf, PIPE_BUF_SIZE);
