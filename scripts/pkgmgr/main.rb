@@ -21,6 +21,7 @@ require_relative 'uboot'
 require_relative 'lua'
 require_relative 'fbdoom'
 require_relative 'treecmd'
+require_relative 'lcov'
 
 require 'pathname'
 require 'fileutils'
