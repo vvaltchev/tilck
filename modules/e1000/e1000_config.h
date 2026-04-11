@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: BSD-2-Clause
- *
- * e1000 Deriver Configurations
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * e1000 Driver Configurations
  */
 #pragma once
 
