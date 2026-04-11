@@ -1,0 +1,11 @@
+--- a/lib/libtcc1.c
++++ b/lib/libtcc1.c
+@@ -145,7 +145,7 @@
+ 
+ /* most of this code is taken from libgcc2.c from gcc */
+ 
+-static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
++UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
+ {
+   DWunion ww;
+   DWunion nn, dd;

@@ -81,6 +81,8 @@ class TccPackage < Package
         return false if !ok
         ok = chdir_install_dir(arch_dir, ver) do
           d = mkpathname(getwd)
+          ok = apply_patches(ver)
+          return false if ok == false
           ok = install_impl_internal(d)
           ok = check_install_dir(d, true) if ok
         end
@@ -96,83 +98,6 @@ class TccPackage < Package
 
     # Tilck runtime paths: where TCC looks for crt*.o and libraries at runtime
     tilck_lib = "/lib/#{arch}-tilck-musl"
-
-    # Patch 1: make c2str.exe use the system gcc, not the cross-compiler.
-    # TCC's Makefile builds c2str (a host tool) with $(CC), which is the
-    # cross-compiler during cross builds. Patch it to use the native gcc.
-    makefile = File.read("Makefile")
-    makefile.gsub!('$S$(CC) -DC2STR', '$Sgcc -DC2STR')
-    File.write("Makefile", makefile)
-
-    # Patch 2 (i386 only): export __udivmoddi4 from libtcc1.a. The function
-    # is declared static in libtcc1.c, which is fine when TCC compiles it
-    # (TCC exports all symbols), but when cross-GCC compiles it (usegcc=yes),
-    # the symbol becomes local and TCC-compiled programs can't link against
-    # it. Only needed on 32-bit arches where 64-bit division is emulated.
-    if cpu == "i386"
-      libtcc1_c = File.read("lib/libtcc1.c")
-      libtcc1_c.sub!(
-        'static UDWtype __udivmoddi4',
-        'UDWtype __udivmoddi4'
-      )
-      File.write("lib/libtcc1.c", libtcc1_c)
-    end
-
-    # Patch 3 (riscv64 only): add R_RISCV_HI20/LO12_I/LO12_S support to
-    # TCC's linker. GCC-compiled musl libc.a uses absolute HI20/LO12
-    # relocations extensively, but TCC's riscv64-link.c only handles
-    # PC-relative variants. Without this, linking any program against
-    # libc.a fails with "Unknown relocation type for got: 26/27/28".
-    if cpu == "riscv64"
-      linkc = File.read("riscv64-link.c")
-
-      # Add to code_reloc(): these are data relocations (return 0).
-      # sub! matches the first occurrence, which is in code_reloc().
-      linkc.sub!(
-        "    case R_RISCV_32_PCREL:\n",
-        "    case R_RISCV_HI20:\n" \
-        "    case R_RISCV_LO12_I:\n" \
-        "    case R_RISCV_LO12_S:\n" \
-        "    case R_RISCV_32_PCREL:\n"
-      )
-
-      # Add to gotplt_entry_type(): AUTO_GOTPLT_ENTRY
-      linkc.sub!(
-        "    case R_RISCV_32_PCREL:\n" \
-        "    case R_RISCV_ADD32:",
-        "    case R_RISCV_HI20:\n" \
-        "    case R_RISCV_LO12_I:\n" \
-        "    case R_RISCV_LO12_S:\n" \
-        "    case R_RISCV_32_PCREL:\n" \
-        "    case R_RISCV_ADD32:"
-      )
-
-      # Add relocate() handlers after PCREL_HI20's return
-      linkc.sub!(
-        "        riscv64_record_pcrel_hi(s1, addr, val);\n" \
-        "        return;\n" \
-        "    case R_RISCV_GOT_HI20:",
-        "        riscv64_record_pcrel_hi(s1, addr, val);\n" \
-        "        return;\n" \
-        "    case R_RISCV_HI20:\n" \
-        "        write32le(ptr, (read32le(ptr) & 0xfff)\n" \
-        "                       | (((val + 0x800) >> 12) << 12));\n" \
-        "        return;\n" \
-        "    case R_RISCV_LO12_I:\n" \
-        "        write32le(ptr, (read32le(ptr) & 0xfffff)\n" \
-        "                       | ((val & 0xfff) << 20));\n" \
-        "        return;\n" \
-        "    case R_RISCV_LO12_S:\n" \
-        "        off32 = val;\n" \
-        "        write32le(ptr, (read32le(ptr) & ~0xfe000f80)\n" \
-        "                       | ((off32 & 0xfe0) << 20)\n" \
-        "                       | ((off32 & 0x01f) << 7));\n" \
-        "        return;\n" \
-        "    case R_RISCV_GOT_HI20:"
-      )
-
-      File.write("riscv64-link.c", linkc)
-    end
 
     # Compute DEF_GITHASH from saved git metadata (the .git dir was deleted
     # during cache packaging).

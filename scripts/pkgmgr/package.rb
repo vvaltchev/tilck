@@ -151,6 +151,45 @@ class Package
   def ver_dirname(ver) = ver.to_s()
   def git_tag(ver) = ver.to_s()
 
+  # Apply patch files from scripts/patches/<pkg>/<ver>/.
+  # Applies common patches (*.diff in the version directory) first, then
+  # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
+  # Called from install_impl after extraction, with cwd = source directory.
+  def apply_patches(ver)
+
+    patch_base = MAIN_DIR / "scripts" / "patches" / pkg_dirname / ver.to_s
+
+    return if !patch_base.directory?
+
+    arch_name = default_arch&.name
+
+    # Collect common patches (files directly in the version directory)
+    common = Pathname.glob(patch_base / "*.diff").sort
+
+    # Collect arch-specific patches
+    arch_specific = []
+    if arch_name
+      arch_dir = patch_base / arch_name
+      if arch_dir.directory?
+        arch_specific = Pathname.glob(arch_dir / "*.diff").sort
+      end
+    end
+
+    patches = common + arch_specific
+    return if patches.empty?
+
+    for p in patches
+      rel = p.relative_path_from(patch_base)
+      info "Applying patch: #{rel}"
+      ok = system("patch", "-p1", "-s", in: p.to_s)
+      if !ok
+        error "Failed to apply patch: #{rel}"
+        return false
+      end
+    end
+    return true
+  end
+
   def install_impl(ver)
 
     info "Install #{name} version: #{ver}"
@@ -181,6 +220,8 @@ class Package
         return false if !ok
         ok = chdir_install_dir(HOST_ARCH_DIR_SYS, ver) do
           d = mkpathname(getwd)
+          ok = apply_patches(ver)
+          return false if ok == false
           ok = install_impl_internal(d)
           ok = check_install_dir(d, true) if ok
         end
@@ -198,6 +239,8 @@ class Package
 
         ok = chdir_install_dir(TC_NOARCH, ver) do
           d = mkpathname(getwd)
+          ok = apply_patches(ver)
+          return false if ok == false
           ok = install_impl_internal(d)
           ok = check_install_dir(d, true) if ok
         end
@@ -216,6 +259,8 @@ class Package
 
           ok = chdir_install_dir(arch_dir, ver) do
             d = mkpathname(getwd)
+            ok = apply_patches(ver)
+            return false if ok == false
             ok = install_impl_internal(d)
             ok = check_install_dir(d, true) if ok
           end

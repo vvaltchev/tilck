@@ -1,0 +1,11 @@
+--- a/Makefile
++++ b/Makefile
+@@ -256,7 +256,7 @@
+ 	$S./c2str.exe $< $@
+ 
+ c2str.exe : conftest.c
+-	$S$(CC) -DC2STR $< -o $@
++	$Sgcc -DC2STR $< -o $@
+ 
+ # target specific object rule
+ $(X)%.o : %.c $(LIBTCC_INC)
