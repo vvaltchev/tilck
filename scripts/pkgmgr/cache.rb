@@ -126,9 +126,7 @@ module Cache
         rm_f(local_path)
     end
 
-    def git_clone(url, destdir, tag, tag_is_sha)
-
-      is_github = !url.index("/github.com/").nil?
+    def git_clone(url, destdir, tag)
 
       if tag.nil?
         ok = system("git", "clone", "--depth", "1", url, destdir)
@@ -146,13 +144,13 @@ module Cache
        #     - The pointed branch/tag/commit does not exist anymore because
        #       the ref has been deleted or the history has been rewritten.
        #
-       #     - In some corner cases, like BitBucket, fetching individual
-       #       untagged commits is not allowed. This is the only case for
-       #       which an actual workaround is possible.
+       #     - In some corner cases, fetching individual untagged commits
+       #       is not allowed. It's worth retrying with a full clone only
+       #       if the tag looks like a hex commit SHA.
        #       See: https://stackoverflow.com/a/51002078/2077198
        #
       raise LocalError, "Failed to clone git repo: #{url}" if
-        (!tag_is_sha || is_github)
+        !tag.match?(/\A[0-9a-f]+\z/)
 
       # We failed to clone the repo, but the tag is a git SHA (corner case 3),
       # so it's worth trying a workaround.
@@ -278,8 +276,7 @@ module Cache
     url,                 # git repo URL
     tarname,             # tarname in the cache
     tag = nil,           # git tag or branch to use
-    dir_name = nil,      # dir name to use inside the archive
-    tag_is_sha = false   # is the tag a commit SHA1?
+    dir_name = nil       # dir name to use inside the archive
   )
 
     assert { tarname.end_with? ".tgz" }
@@ -306,7 +303,7 @@ module Cache
     mkdir(tmp)
     chdir(tmp) do
 
-      ok = Impl.git_clone(url, dir_name, tag, tag_is_sha)
+      ok = Impl.git_clone(url, dir_name, tag)
       return false if !ok
 
       contents = Dir.children(".")

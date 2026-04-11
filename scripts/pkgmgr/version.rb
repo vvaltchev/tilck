@@ -134,7 +134,7 @@ class Version
   def >(other)  = (check_ordered; (self <=> other)  > 0)
   def >=(other) = (check_ordered; (self <=> other) >= 0)
   def ==(other) = ((self <=> other) == 0)
-  def hash = @type != VersionType::HASH ? @comps.hash : @orig_str
+  def hash = @type != VersionType::HASH ? @comps.hash : @orig_str.hash
   def blank? = false
 
   def serialize
