@@ -213,9 +213,15 @@ function add_tcc {
    local tcc_musl=lib/@ARCH_GCC_TC@-tilck-musl
    mkdir -p $tcc_musl
    link_or_copy $tcc_dir/libtcc1.a $tcc_musl
-   for f in crt1.o crti.o crtn.o libc.a; do
+   for f in crt1.o crti.o crtn.o; do
       link_or_copy $musl/$f $tcc_musl
    done
+
+   # Copy libc.a and strip its debug info. The musl archive ships with full
+   # DWARF debug sections (~18 MB on riscv64, ~4 MB on i386). Stripping them
+   # brings it down to a reasonable size for the initrd.
+   cp $musl/libc.a $tcc_musl
+   $strip --strip-debug $tcc_musl/libc.a
 }
 
 function add_micropython {

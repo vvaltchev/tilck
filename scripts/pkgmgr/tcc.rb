@@ -88,7 +88,8 @@ class TccPackage < Package
 
   def install_impl_internal(install_dir)
 
-    arch = default_arch.gcc_tc  # "i686"
+    arch = default_arch.gcc_tc    # "i686" or "riscv64"
+    cpu = default_arch.name       # "i386" or "riscv64"
 
     # Tilck runtime paths: where TCC looks for crt*.o and libraries at runtime
     tilck_lib = "/lib/#{arch}-tilck-musl"
@@ -100,16 +101,19 @@ class TccPackage < Package
     makefile.gsub!('$S$(CC) -DC2STR', '$Sgcc -DC2STR')
     File.write("Makefile", makefile)
 
-    # Patch 2: export __udivmoddi4 from libtcc1.a. The function is declared
-    # static in libtcc1.c, which is fine when TCC compiles it (TCC exports
-    # all symbols), but when cross-GCC compiles it (usegcc=yes), the symbol
-    # becomes local and TCC-compiled programs can't link against it.
-    libtcc1_c = File.read("lib/libtcc1.c")
-    libtcc1_c.sub!(
-      'static UDWtype __udivmoddi4',
-      'UDWtype __udivmoddi4'
-    )
-    File.write("lib/libtcc1.c", libtcc1_c)
+    # Patch 2 (i386 only): export __udivmoddi4 from libtcc1.a. The function
+    # is declared static in libtcc1.c, which is fine when TCC compiles it
+    # (TCC exports all symbols), but when cross-GCC compiles it (usegcc=yes),
+    # the symbol becomes local and TCC-compiled programs can't link against
+    # it. Only needed on 32-bit arches where 64-bit division is emulated.
+    if cpu == "i386"
+      libtcc1_c = File.read("lib/libtcc1.c")
+      libtcc1_c.sub!(
+        'static UDWtype __udivmoddi4',
+        'UDWtype __udivmoddi4'
+      )
+      File.write("lib/libtcc1.c", libtcc1_c)
+    end
 
     # Compute DEF_GITHASH from saved git metadata (the .git dir was deleted
     # during cache packaging).
@@ -135,7 +139,7 @@ class TccPackage < Package
       ok = run_command("configure.log", [
         "./configure",
         "--cross-prefix=#{arch}-linux-",
-        "--cpu=i386",
+        "--cpu=#{cpu}",
         "--enable-static",
         "--config-bcheck=no",
         "--config-backtrace=no",
@@ -147,12 +151,12 @@ class TccPackage < Package
       return false if !ok
     end
 
-    # Build TCC. The key flag is i386-libtcc1-usegcc=yes which makes the
+    # Build TCC. The key flag is <cpu>-libtcc1-usegcc=yes which makes the
     # lib/Makefile use $(CC) (the cross-GCC) to compile libtcc1.a instead
-    # of trying to run the just-built i386-tcc binary on the host.
+    # of trying to run the just-built tcc binary on the host.
     ok = run_command("build.log", [
       "make",
-      "i386-libtcc1-usegcc=yes",
+      "#{cpu}-libtcc1-usegcc=yes",
       *make_vars,
     ])
     return false if !ok
