@@ -31,7 +31,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/lua/${VER_LUA})
    message(STATUS "EXTRA_LUA: ${EXTRA_LUA}")
 endif()
 
-if (EXISTS ${TCROOT_ARCH_DIR}/tfblib/${VER_TFBLIB})
+if (EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
    set(EXTRA_TFBLIB OFF CACHE BOOL "Load tfblib apps in Tilck")
    message(STATUS "EXTRA_TFBLIB: ${EXTRA_TFBLIB}")
 endif()

@@ -330,6 +330,24 @@ function add_lua {
    fi
 }
 
+function add_extra_apps {
+   for manifest in $bdir/userapps/extra/*/manifest.txt; do
+      if [ ! -f "$manifest" ]; then
+         continue
+      fi
+      while IFS= read -r line; do
+         if [ -z "$line" ]; then
+            continue
+         fi
+         local name=$(basename -- "$line")
+         if [ -f "$line" ]; then
+            cp "$line" usr/bin
+            strip_binary "usr/bin/$name"
+         fi
+      done < "$manifest"
+   done
+}
+
 function make_fatpart {
 
    create_fatpart
@@ -386,5 +404,6 @@ add_fbdoom
 add_vim
 add_tree_cmd
 add_lua
+add_extra_apps
 
 make_fatpart

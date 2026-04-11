@@ -159,3 +159,8 @@ file(
    endif(USERAPPS_busybox)
 
 # [/busybox]
+
+# Extra user apps (e.g. tfblib) -- each writes a manifest of deliverables
+if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extra)
+   add_subdirectory(extra)
+endif()

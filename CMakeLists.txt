@@ -805,6 +805,23 @@ foreach(_app init devshell dp termtest fbtest filedump ncapp play)
 endforeach()
 unset(_app)
 
+# Read extra app manifests (populated by userapps/extra after first build).
+# file(GLOB CONFIGURE_DEPENDS ...) triggers a reconfigure when manifests appear
+# or change, enabling incremental builds after the initial full build.
+file(GLOB _extra_manifests
+   CONFIGURE_DEPENDS
+   "${CMAKE_BINARY_DIR}/userapps/extra/*/manifest.txt"
+)
+set(EXTRA_APPS_FILES_LIST "")
+foreach(_manifest ${_extra_manifests})
+   file(STRINGS "${_manifest}" _entries)
+   list(APPEND EXTRA_APPS_FILES_LIST ${_entries})
+endforeach()
+list(FILTER EXTRA_APPS_FILES_LIST EXCLUDE REGEX "^$")
+unset(_extra_manifests)
+unset(_entries)
+unset(_manifest)
+
 ################################################################################
 # Generate tilck_config.cmake for ExternalProject subprojects
 
@@ -930,7 +947,7 @@ ExternalProject_Add(userapps
    BINARY_DIR ${CMAKE_BINARY_DIR}/userapps
    INSTALL_COMMAND ""
    BUILD_ALWAYS 1
-   BUILD_BYPRODUCTS ${USERAPPS_FILES_LIST}
+   BUILD_BYPRODUCTS ${USERAPPS_FILES_LIST} ${EXTRA_APPS_FILES_LIST}
    CMAKE_ARGS
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
@@ -1007,6 +1024,7 @@ set(
 
    userapps
    ${USERAPPS_FILES_LIST}
+   ${EXTRA_APPS_FILES_LIST}
 
    fathack
    mbrhack
