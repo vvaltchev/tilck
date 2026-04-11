@@ -23,6 +23,7 @@ require_relative 'fbdoom'
 require_relative 'treecmd'
 require_relative 'lcov'
 require_relative 'micropython'
+require_relative 'tcc'
 require_relative 'vim'
 require_relative 'tfblib'
 

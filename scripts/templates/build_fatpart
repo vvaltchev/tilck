@@ -22,6 +22,7 @@ fbdoom_ver="@VER_FBDOOM@"
 lua_ver="@VER_LUA@"
 micropython_ver="@VER_MICROPYTHON@"
 treecmd_ver="@VER_TREECMD@"
+tcc_ver="@VER_TCC@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -39,6 +40,7 @@ fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
 lua_dir=$arch_dir/lua/$lua_ver
 micropython_dir=$arch_dir/micropython/$micropython_ver
 treecmd_dir=$arch_dir/treecmd/$treecmd_ver
+tcc_dir=$arch_dir/tcc/$tcc_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -200,13 +202,20 @@ function add_tcc {
    local musl=@GCC_TC_SYSROOT@/lib
 
    mkdir -p lib/tcc
-   cp -r $arch_dir/tcc/include lib/tcc
-   link_or_copy $arch_dir/tcc/tcclib.h lib/tcc/include
-   link_or_copy $arch_dir/tcc/@ARCH@-libtcc1.a lib/tcc
-   link_or_copy $arch_dir/tcc/@ARCH@-tcc bin/tcc
-   cp -r $arch_dir/tcc/examples lib/tcc-examples
+   cp -r $tcc_dir/include lib/tcc
+   link_or_copy $tcc_dir/tcclib.h lib/tcc/include
+   link_or_copy $tcc_dir/tcc bin/tcc
+   cp -r $tcc_dir/examples lib/tcc-examples
 
-   cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
+   # TCC's --libpaths and --crtprefix were set to /lib/<arch>-tilck-musl at
+   # configure time. Copy the minimum musl sysroot files TCC needs for static
+   # linking, plus libtcc1.a, into that directory.
+   local tcc_musl=lib/@ARCH_GCC_TC@-tilck-musl
+   mkdir -p $tcc_musl
+   link_or_copy $tcc_dir/libtcc1.a $tcc_musl
+   for f in crt1.o crti.o crtn.o libc.a; do
+      link_or_copy $musl/$f $tcc_musl
+   done
 }
 
 function add_micropython {
