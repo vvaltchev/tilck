@@ -752,7 +752,12 @@ write_bool_define(KERNEL_SERCON)
 write_bool_define(TERM_BIG_SCROLL_BUF)
 write_bool_define(PS2_DO_SELFTEST)
 write_bool_define(PS2_VERBOSE_DEBUG_LOG)
-file(WRITE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h" "${_mc}")
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp" "${_mc}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+   "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp"
+   "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h"
+)
+file(REMOVE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp")
 unset(_mc)
 
 # Include kernel's noarch sources
@@ -935,7 +940,12 @@ foreach(_var ${TILCK_EXPORTED_VARS})
       string(APPEND _config_content "set(${_var} [==[${${_var}}]==])\n")
    endif()
 endforeach()
-file(WRITE "${CMAKE_BINARY_DIR}/tilck_config.cmake" "${_config_content}")
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp" "${_config_content}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+   "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp"
+   "${CMAKE_BINARY_DIR}/tilck_config.cmake"
+)
+file(REMOVE "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp")
 unset(_config_content)
 unset(_var)
 
