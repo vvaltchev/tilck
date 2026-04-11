@@ -104,23 +104,10 @@ class Package
 
   def chdir_install_dir(arch_dir, ver, &block)
 
-    d = arch_dir / pkg_dirname
-    contents = Dir.children(d)
-    count = contents.length
+    d = arch_dir / pkg_dirname / ver_dirname(ver)
 
-    if count != 1
-      error "Extracted archive has #{count} elements, expected: 1"
-      return false
-    end
-
-    if contents[0] != ver_dirname(ver)
-      error "Extracted archive does not contain: #{ver_str} directory"
-      return false
-    end
-
-    d = d / ver_dirname(ver)
     if !d.directory?
-      error "Not a directory: #{d}"
+      error "Expected directory not found: #{d}"
       return false
     end
 

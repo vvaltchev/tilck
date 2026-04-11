@@ -131,7 +131,6 @@ module Cache
       is_github = !url.index("/github.com/").nil?
 
       if tag.nil?
-        puts 1
         ok = system("git", "clone", "--depth", "1", url, destdir)
         raise LocalError, "Failed to clone git repo: #{url}" if !ok
         return true

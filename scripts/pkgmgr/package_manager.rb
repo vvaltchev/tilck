@@ -390,8 +390,10 @@ class PackageManager
       # and we didn't recognize the package. In this case, the default_ver
       # is `nil` and if `ver` is nil as well, we end up here.
       assert { pkg.nil? }
-
-      # The only reasonable thing to do here is to set all_ver = true.
+      all_ver = true
+    elsif !install_list.any? { |e| e.ver == ver }
+      # The configured default version is not installed; fall back to
+      # uninstalling whatever version IS installed.
       all_ver = true
     end
 

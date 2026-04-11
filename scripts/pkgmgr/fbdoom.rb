@@ -136,6 +136,10 @@ class FbDoomPackage < Package
 
     extracted = "freedoom-#{ver}"
     raise LocalError, "fbdoom: missing #{extracted}/" if !File.directory?(extracted)
+
+    # Remove any pre-existing freedoom/ dir (e.g. from a stale cached tarball
+    # that bundled everything) so that mv replaces it cleanly.
+    rm_rf("freedoom") if File.directory?("freedoom")
     mv(extracted, "freedoom")
 
     chdir("freedoom") do
