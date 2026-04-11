@@ -7,11 +7,9 @@ static ALWAYS_INLINE u32
 mmio_read32(const volatile void *io_addr)
 {
    u32 val;
-
    COMPILER_BARRIER();
    val = *(volatile u32*) io_addr;
    COMPILER_BARRIER();
-
    return val;
 }
 
