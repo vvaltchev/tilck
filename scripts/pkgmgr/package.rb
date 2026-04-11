@@ -65,6 +65,7 @@ end
 class Package
 
   attr_reader :name, :url, :on_host, :is_compiler, :arch_list, :dep_list
+  attr_reader :portable
 
   STATUS_LEN    = 9
   INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
@@ -78,18 +79,31 @@ class Package
                  url: nil,
                  on_host: false,
                  is_compiler: false,
+                 portable: false,
                  arch_list: ALL_ARCHS,
                  dep_list: [])
     @name = name
     @url = url
     @on_host = on_host
     @is_compiler = is_compiler
+    @portable = portable
     @arch_list = arch_list
     @dep_list = dep_list
 
     assert {
-      !!on_host == !!(name.start_with? "host_" or name.start_with? "gcc_")
+      !!on_host == !!(name.start_with?("host_") || is_compiler)
     }
+  end
+
+  # The host install root for syscc packages.
+  #
+  # Portable host tools (statically-linked, e.g. the cross-compilers) live
+  # under host/<os>-<arch>/portable/, shared across distros and host
+  # compilers. Non-portable host tools live under
+  # host/<os>-<arch>/<distro>/<host-cc>/ because they depend on the system
+  # libraries and on the specific host compiler used to build them.
+  def host_install_root
+    @portable ? HOST_DIR_PORTABLE : HOST_DIR
   end
 
   def id = @name
@@ -116,8 +130,6 @@ class Package
 
   # Default implementations
   def get_install_list
-    assert { !is_compiler }
-
     if on_host
       return syscc_package_get_install_list()
     else
@@ -130,8 +142,6 @@ class Package
   end
 
   def get_installable_list
-    assert { !is_compiler }
-
     if on_host
       syscc_package_get_installable_list()
     else
@@ -203,7 +213,10 @@ class Package
       raise NotImplementedError
     end
 
-    if url.include? GITHUB
+    # Pre-built release tarballs hosted on GitHub Releases are fetched via
+    # plain HTTP download, not git clone, even though their URL includes
+    # the github.com host.
+    if url.include?(GITHUB) && !url.include?("/releases/download/")
       ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
     else
       ok = Cache::download_file(url, tarname(ver))
@@ -215,10 +228,11 @@ class Package
       # syscc package, running on the host
       assert { default_cc.eql? "syscc" }
 
-      chdir_package_base_dir(HOST_ARCH_DIR_SYS) do
+      root = host_install_root
+      chdir_package_base_dir(root) do
         ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
         return false if !ok
-        ok = chdir_install_dir(HOST_ARCH_DIR_SYS, ver) do
+        ok = chdir_install_dir(root, ver) do
           d = mkpathname(getwd)
           ok = apply_patches(ver)
           return false if ok == false
@@ -289,8 +303,13 @@ class Package
     return true
   end
 
-  def installed?(ver) = get_install_list().any? {
-    |x| x.ver == ver and x.compiler == default_cc and x.arch == default_arch
+  # A package is only "installed" if the install tree is complete (not
+  # broken). Otherwise a failed earlier install (e.g. a crash after the
+  # ver dir was created but before all expected files were produced)
+  # would prevent `install_impl` from ever retrying on its own.
+  def installed?(ver) = get_install_list().any? { |x|
+    x.ver == ver and x.compiler == default_cc and
+    x.arch == default_arch and !x.broken
   }
 
   # Methods not implemented in the base class
@@ -303,7 +322,7 @@ class Package
   def syscc_package_get_install_list
 
     list = []
-    dir = HOST_ARCH_DIR_SYS / pkg_dirname
+    dir = host_install_root / pkg_dirname
 
     if dir.directory?
       for d in Dir.children(dir)
@@ -327,16 +346,17 @@ class Package
 
     list = []
 
-    for cc in Dir.children(TC)
-      cc_ver = SafeVer(cc)&.to_dot
-      next if ["cache", "noarch", "syscc"].include? cc
+    for cc_dir in Dir.children(TC)
+      next if !cc_dir.start_with?("gcc-")
+
+      cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
       next if !cc_ver
 
-      for arch in Dir.children(TC / cc)
-        arch_obj = ALL_ARCHS[arch.sub("host_", "")]
-        dir = TC / cc / arch / pkg_dirname
-        next if arch.start_with? "host_"
+      for arch_name in Dir.children(TC / cc_dir)
+        arch_obj = ALL_ARCHS[arch_name]
         next if !arch_obj
+
+        dir = TC / cc_dir / arch_name / pkg_dirname
         next if !dir.directory?
 
         for d in Dir.children(dir) do

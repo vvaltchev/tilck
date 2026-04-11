@@ -23,10 +23,11 @@ class GccCompiler < Package
     @target_arch = target_arch
     @libc = libc
     super(
-      name: pkgmgr.build_gcc_package_name(target_arch, libc),
+      name: "gcc-#{target_arch.name}-#{libc}",
       url: make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
       on_host: true,
       is_compiler: true,
+      portable: true,
       arch_list: ALL_HOST_ARCHS,
       dep_list: []
     )
@@ -46,56 +47,31 @@ class GccCompiler < Package
     "bin/#{target_arch.gcc_tc}-linux-strip",
   ]
 
+  # Wrap the base class install list with target_arch/libc metadata, so
+  # PackageManager#get_installed_compilers can select installed cross-
+  # compilers for a specific target architecture.
   def get_install_list
-    list = []
-    for e in HOST_ARCH_DIR_SYS.each_entry do
-      parsed_gcc_info = pkgmgr.parse_gcc_dir(e.to_s())
-      if parsed_gcc_info
-        ver, target_arch, libc = parsed_gcc_info
-        pkgname = pkgmgr.build_gcc_package_name(target_arch, libc)
-        p = HOST_ARCH_DIR_SYS / e
-        if pkgname == name
-          list << InstallInfo.new(
-            name,
-            "syscc",                   # compiler used to build it
-            true,                      # on_host
-            HOST_ARCH,                 # arch
-            ver,                       # gcc version
-            p,                         # install path
-            self,                      # package object
-            !check_install_dir(p),     # broken
-            target_arch,               # target architecture (obj)
-            libc                       # libc (string)
-          )
-        end
-      end
-    end
-    return list
+    super.map { |info|
+      InstallInfo.new(
+        info.pkgname, info.compiler, info.on_host, info.arch,
+        info.ver, info.path, info.pkg, info.broken,
+        @target_arch, @libc
+      )
+    }
   end
 
   def get_installable_list
-    list = []
-    for ver in ALL_VERSIONS do
-      list << InstallInfo.new(
-        name,
-        "syscc",                       # compiler used to build it
-        true,                          # on_host
-        HOST_ARCH,                     # arch
-        ver,                           # gcc version
-        nil,                           # install path
-        self,                          # package object
-        nil,                           # broken
-        target_arch,
-        libc
+    ALL_VERSIONS.map { |ver|
+      InstallInfo.new(
+        name, "syscc", true, HOST_ARCH, ver, nil,
+        self, nil, @target_arch, @libc
       )
-    end
-    return list
+    }
   end
 
   def default_ver = @target_arch.gcc_ver
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def ver_dirname(ver) = "gcc_#{ver._}_#{@target_arch.name}_musl"
 
   def tarname(ver)
     archname = @target_arch.name
@@ -115,34 +91,15 @@ class GccCompiler < Package
     "#{archname}-musl-#{VER_MUSL}-gcc-#{verStr}-#{host_an}#{os_suffix}#{ext}"
   end
 
-  def install_impl(ver)
-
-    ok = Cache::download_file(url, tarname(ver))
-    return false if !ok
-
-    chdir(HOST_ARCH_DIR_SYS) do
-      ok = Cache::extract_file(tarname(ver))
-      return false if !ok
-
-      gcc_dir = mkpathname(ver_dirname(ver))
-      gcc_bin_dir = gcc_dir / "bin"
-
-      raise LocalError, "GCC dir #{gcc_dir} not found!" if
-        !exist? gcc_dir
-
-      raise LocalError, "GCC dir #{gcc_bin_dir} not found!" if
-        !exist? gcc_bin_dir
-
-      chdir(gcc_bin_dir) do
-        Dir.children(".").each(&method(:fix_single_file_name))
-      end
-
-      return check_install_dir(gcc_dir, true)
+  # Called by Package#install_impl from within the extracted installation
+  # directory. Rename binaries like i686-linux-musl-gcc to i686-linux-gcc
+  # (and fix any symlinks that point to them) to produce a canonical,
+  # libc-agnostic tool name that package_manager#with_cc can use.
+  def install_impl_internal(install_dir)
+    chdir("bin") do
+      Dir.children(".").each(&method(:fix_single_file_name))
     end
-
-  rescue LocalError => e
-    error e
-    return false
+    return true
   end
 
   private
@@ -165,11 +122,8 @@ class GccCompiler < Package
 
     end
   end
-
-
 end # class GccCompiler
 
 for name, arch in ALL_ARCHS do
   pkgmgr.register(GccCompiler.new(arch, "musl"))
 end
-

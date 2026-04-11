@@ -25,8 +25,6 @@ Architecture = Struct.new(
   :default_gcc_ver,
   :gcc_ver,
   :target_dir,
-  :host_dir,
-  :host_syscc_dir,
 ) do
 
   # To string conversion

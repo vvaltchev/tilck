@@ -23,8 +23,6 @@ class ZlibPackage < Package
     )
   end
 
-  def git_tag(ver) = "v" + ver.to_s()
-
   def expected_files = [
     ["install/lib/libz.a", false]
   ]

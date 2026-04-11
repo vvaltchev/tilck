@@ -63,7 +63,7 @@ class PackageManager
   end
 
   def get_tc(arch)
-    return get("gcc_#{arch}_musl")
+    return get("gcc-#{arch}-musl")
   end
 
   def get_config_ver(name)
@@ -78,7 +78,7 @@ class PackageManager
   def with_cc(arch_name = nil, &block)
     arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
     arch_gcc = arch.gcc_tc
-    arch_dir = TC / arch.gcc_ver._ / arch.name
+    arch_dir = TC / "gcc-#{arch.gcc_ver}" / arch.name
     assert { !arch_gcc.blank? }
 
     compilers = get_installed_compilers.select { |x| x.target_arch == arch }
@@ -97,20 +97,6 @@ class PackageManager
 
       block.call(arch_dir)
     end
-  end
-
-  def build_gcc_package_name(target_arch, libc)
-    return "gcc_#{target_arch.name}_#{libc}"
-  end
-
-  def parse_gcc_dir(s)
-    if s =~ /\Agcc_(\d+)_(\d+)_(\d+)_(\w+)_musl\z/
-      arch = ALL_ARCHS[$4]
-      if arch
-        return [ Ver($1 + "." + $2 + "." + $3), arch, "musl" ]
-      end
-    end
-    return nil
   end
 
   def show_status_all(group_by = nil, all_compilers = false)
@@ -420,88 +406,89 @@ class PackageManager
   end
 
   private
+
+  # Walk <root>/<pkg>/<ver>/ and emit an InstallInfo per (pkg, ver) whose
+  # path is NOT already claimed by a registered package. Used by
+  # scan_toolchain() to discover orphan installations.
+  def scan_pkg_dir_tree(root, compiler, on_host, arch_obj, list)
+    return if !root.directory?
+    for pkg_name in Dir.children(root)
+      pkg_path = root / pkg_name
+      next if !pkg_path.directory?
+      for ver_str in Dir.children(pkg_path)
+        full_path = pkg_path / ver_str
+        next if @known_pkgs_paths.include? full_path
+        ver = SafeVer(ver_str)
+        if ver.nil?
+          warning "Invalid package version: #{full_path}"
+          next
+        end
+        list << InstallInfo.new(
+          pkg_name, compiler, on_host, arch_obj, ver, full_path
+        )
+      end
+    end
+  end
+
   def scan_toolchain
 
     list = []
 
-    handle_package = ->(cc, arch, name) {
-      path = TC / (cc || "") / (arch || "noarch") / name
-      return if @known_pkgs_paths.include? path
+    # Target-side: TC/gcc-<ver>/<arch>/<pkg>/<ver>/
+    for cc_dir in Dir.children(TC)
+      next if !cc_dir.start_with?("gcc-")
 
-      on_host = (arch&.start_with? "host_") || false
-      parsed_gcc_info = parse_gcc_dir(name)
-      cc = ((cc.eql? "syscc") ? "syscc" : Ver(cc)&.to_dot)
-      arch_obj = (arch && ALL_ARCHS[arch.sub("host_", "")]) || nil
-
-      if !parsed_gcc_info
-        for ver_str in Dir.children(path)
-          full_path = path / ver_str
-          ver = SafeVer(ver_str)
-          if !ver
-            warning "Invalid package version: #{path / ver_str}"
-            next
-          end
-          list << InstallInfo.new(
-            name,
-            cc, on_host, arch_obj, ver, full_path
-          )
-        end
-      else
-        # GCC toolchains embed their version into the directory name e.g.:
-        #
-        #   gcc_13_3_0_i386_musl
-        #
-        # While to be consistent, toolchains should have had the same package
-        # name as here (e.g. gcc_i386_musl) and a subdirectory with their
-        # version.
-        ver, target_arch, libc = parsed_gcc_info
-        name = build_gcc_package_name(target_arch, libc)
-        list << InstallInfo.new(
-          name,
-          "syscc",
-          true,
-          arch_obj,
-          ver,
-          path,
-          nil,
-          false,
-          target_arch,
-          libc
-        )
-      end
-    }
-
-    for cc in Dir.children(TC)
-      next if cc == ".distro"
-      next if ["cache", "noarch"].include? cc
-
-      if cc != "syscc"
-        cc_ver = SafeVer(cc)
-        if cc_ver.nil? or cc_ver.type != VersionType::UNDERSCORE
-          warning "Invalid directory: #{TC / cc}"
-          next
-        end
+      cc_ver = SafeVer(cc_dir.sub("gcc-", ""))
+      if cc_ver.nil?
+        warning "Invalid compiler directory: #{TC / cc_dir}"
+        next
       end
 
-      for arch in Dir.children(TC / cc)
-        arch_obj = ALL_ARCHS[arch.sub("host_", "")]
-        on_host = arch.start_with? "host_"
-
+      for arch_name in Dir.children(TC / cc_dir)
+        arch_obj = ALL_ARCHS[arch_name]
         if !arch_obj
-          warning "Unknown architecture '#{arch}' in #{TC / cc}"
+          warning "Unknown architecture '#{arch_name}' in #{TC / cc_dir}"
           next
         end
+        scan_pkg_dir_tree(TC / cc_dir / arch_name, cc_ver, false, arch_obj, list)
+      end
+    end
 
-        for name in Dir.children(TC / cc / arch)
-          assert { !cc.nil? and !arch.nil? and !name.nil? }
-          handle_package.call(cc, arch, name)
+    # Noarch: TC/noarch/<pkg>/<ver>/
+    scan_pkg_dir_tree(TC / "noarch", nil, false, nil, list)
+
+    # Host-side: TC/host/<os>-<arch>/{portable,<distro>/<host-cc>}/<pkg>/<ver>/
+    host_root = TC / "host"
+    if host_root.directory?
+      for os_arch in Dir.children(host_root)
+        os_dir = host_root / os_arch
+        next if !os_dir.directory?
+
+        # Portable half (shared across distros and host compilers).
+        scan_pkg_dir_tree(os_dir / "portable", "syscc", true, HOST_ARCH, list)
+
+        # Distro-bound half: <distro>/<host-cc>/<pkg>/<ver>/
+        #
+        # A dir under <distro>/ counts as a host-cc dir only if it looks like
+        # "<family>-<version>" (e.g. gcc-11.4.0, clang-14.0.0). Anything else
+        # is a bootstrap tool living in the distro slot (e.g. the Ruby used
+        # to run the package manager itself, at <distro>/ruby/<ver>/) — skip
+        # it silently since it's not a registered package.
+        for sub in Dir.children(os_dir)
+          next if sub == "portable"
+          distro_dir = os_dir / sub
+          next if !distro_dir.directory?
+          for host_cc in Dir.children(distro_dir)
+            next if !(host_cc.start_with?("gcc-") ||
+                      host_cc.start_with?("clang-"))
+            scan_pkg_dir_tree(
+              distro_dir / host_cc, "syscc", true, HOST_ARCH, list
+            )
+          end
         end
       end
     end
 
-    for name in Dir.children(TC / "noarch")
-      handle_package.call(nil, nil, name)
-    end
     return list
   end
 

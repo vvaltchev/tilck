@@ -11,7 +11,7 @@ GTEST_URL = GITHUB + '/google/googletest'
 
 #
 # Source-only (noarch) googletest: the shared source tree used by
-# host_gtest. Lives in toolchain3/noarch/gtest/<ver>/.
+# host_gtest. Lives in <toolchain>/noarch/gtest/<ver>/.
 #
 class GtestSrcPackage < Package
 
@@ -50,8 +50,9 @@ end
 # Built gtest+gmock libraries: cmake build of the full googletest tree
 # (which includes both gtest and gmock) from the noarch source. Uses
 # `cmake --install` to produce a clean install/ tree containing only
-# headers and libraries. Built with the system compiler, installed
-# under toolchain3/syscc/host_<arch>/gtest/<ver>/install/.
+# headers and libraries. Built with the host compiler; non-portable
+# (dynamically linked against libstdc++), so installed under
+# host/<os>-<arch>/<distro>/<host-cc>/gtest/<ver>/install/.
 #
 class GtestPackage < Package
 
@@ -90,7 +91,7 @@ class GtestPackage < Package
       return nil
     end
 
-    ver_dir = HOST_ARCH_DIR_SYS / pkg_dirname / ver_dirname(ver)
+    ver_dir = host_install_root / pkg_dirname / ver_dirname(ver)
     build_dir = ver_dir / "build"
     install_dir = ver_dir / "install"
     src_dir = TC_NOARCH / "gtest" / ver_dirname(ver)

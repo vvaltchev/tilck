@@ -41,7 +41,7 @@ class Acpica < Package
   ]
 
   def install_impl_internal(ignored = nil)
-    apply_patches()
+    apply_code_patches()
     chdir!("3rd_party") {
       File.write("README", "Directory created by Tilck")
       ln_s("../source/include", "acpi")
@@ -53,7 +53,10 @@ class Acpica < Package
   def default_cc = nil
 
   private
-  def apply_patches
+  # In-code patch applier: string substitutions in source files. Separate
+  # from the base class `apply_patches(ver)` which consumes diff files
+  # under scripts/patches/<pkg>/<ver>/.
+  def apply_code_patches
     for filepath, patches in PATCHES
       s = File.read(filepath)
       patches.each { |before, after| s = s.gsub(before, after) }

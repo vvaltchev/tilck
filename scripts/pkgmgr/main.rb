@@ -63,9 +63,7 @@ module Main
     end
 
     for name, arch in ALL_ARCHS do
-      arch.target_dir = TC / ver._ / name
-      arch.host_dir = TC / ver._ / "host_#{name}"
-      arch.host_syscc_dir = TC / "syscc" / "host_#{name}"
+      arch.target_dir = TC / "gcc-#{arch.gcc_ver}" / name
     end
   end
 
@@ -111,6 +109,9 @@ module Main
       MAIN_DIR
       TC
       HOST_ARCH
+      HOST_OS
+      HOST_DISTRO
+      HOST_CC
       ARCH
       BOARD
       DEFAULT_BOARD
@@ -136,11 +137,11 @@ module Main
 
   def create_toolchain_dirs
     for name, arch in ALL_ARCHS do
-      mkdir_p(TC / arch.gcc_ver._ / name)
+      mkdir_p(TC / "gcc-#{arch.gcc_ver}" / name)
     end
-    for compiler in [ HOST_ARCH.gcc_ver._, "syscc" ] do
-      mkdir_p(TC / compiler / "host_#{HOST_ARCH.name}")
-    end
+    mkdir_p(HOST_DIR)
+    mkdir_p(HOST_DIR_PORTABLE)
+    mkdir_p(TC_NOARCH)
   end
 
   def parse_options
@@ -330,7 +331,7 @@ module Main
         if !arch_obj
           raise OptionParser::InvalidArgument, "Unknown architecture: #{arch}"
         end
-        pkgmgr.build_gcc_package_name(arch_obj, "musl") + ":#{ver}"
+        "gcc-#{arch_obj.name}-musl:#{ver}"
       }
     end
     return opts

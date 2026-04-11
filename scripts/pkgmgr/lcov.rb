@@ -23,8 +23,6 @@ class LcovPackage < Package
     )
   end
 
-  def git_tag(ver) = "v#{ver}"
-
   def expected_files = [
     ["bin", true],
   ]

@@ -13,7 +13,7 @@ KB = 1024
 MB = 1024 * KB
 
 # Basic constants specific to this project.
-DEFAULT_TC_NAME = "toolchain3"
+DEFAULT_TC_NAME = "toolchain4"
 OS = Etc.uname.fetch(:sysname)
 RUBY_SOURCE_DIR = Pathname.new(File.realpath(__dir__))
 MAIN_DIR = Pathname.new(RUBY_SOURCE_DIR.parent.parent)
@@ -172,6 +172,121 @@ module InitOnly
     return obj
   end
 
+  # Map uname's sysname to a short, lowercase OS token used in paths.
+  def get_host_os
+    case OS
+      when "Linux"   then "linux"
+      when "Darwin"  then "macos"
+      when "FreeBSD" then "freebsd"
+    else
+      error "Unsupported host OS: #{OS}"
+      exit 1
+    end
+  end
+
+  # Parse /etc/os-release into a { KEY => value } hash, stripping quotes.
+  def parse_os_release
+    path = "/etc/os-release"
+    if !File.file?(path)
+      error "#{path} not found: cannot detect the Linux distro"
+      exit 1
+    end
+    data = {}
+    File.read(path).each_line do |line|
+      line = line.strip
+      next if line.empty? || line.start_with?("#")
+      k, v = line.split("=", 2)
+      next if k.nil? || v.nil?
+      v = v.sub(/\A"(.*)"\z/, '\1')
+      data[k] = v
+    end
+    return data
+  end
+
+  # Return a distro slug like "ubuntu-22.04", "macos-14.3", "freebsd-14.0".
+  # Different OS releases are considered incompatible: we do NOT try to share
+  # dynamically-linked host packages across them.
+  def get_host_distro(host_os)
+    case host_os
+      when "linux"
+        data = parse_os_release()
+        id = data["ID"]
+        ver = data["VERSION_ID"]
+        if id.nil? || ver.nil?
+          error "/etc/os-release is missing ID or VERSION_ID"
+          exit 1
+        end
+        return "#{id}-#{ver}"
+      when "macos"
+        ver = `sw_vers -productVersion 2>/dev/null`.strip
+        if ver.empty?
+          error "Could not run `sw_vers -productVersion`"
+          exit 1
+        end
+        return "macos-#{ver}"
+      when "freebsd"
+        ver = `uname -r 2>/dev/null`.strip.split("-").first
+        if ver.nil? || ver.empty?
+          error "Could not run `uname -r`"
+          exit 1
+        end
+        return "freebsd-#{ver}"
+    else
+      error "Unsupported host OS: #{host_os}"
+      exit 1
+    end
+  end
+
+  # Run `cc -v` and extract [family, version] from the output.
+  # Both GCC and Clang emit "<family> version X.Y.Z" on stderr.
+  def detect_cc_info(cc)
+    out = `#{Shellwords.escape(cc)} -v 2>&1`
+    if out.empty?
+      error "Could not run compiler: #{cc}"
+      exit 1
+    end
+    if (m = out.match(/clang version\s+(\d+(?:\.\d+)+)/i))
+      return ["clang", m[1]]
+    end
+    if (m = out.match(/gcc version\s+(\d+(?:\.\d+)+)/i))
+      return ["gcc", m[1]]
+    end
+    error "Cannot identify compiler: #{cc}"
+    puts out
+    exit 1
+  end
+
+  # Determine the host compiler family+version from $CC (defaults to "gcc").
+  # If $CXX is also set, require that it points to the same family+version.
+  # If only $CXX is set, fail with a clear message.
+  def get_host_cc
+    cc  = ENV["CC"].to_s
+    cxx = ENV["CXX"].to_s
+
+    if cc.empty? && !cxx.empty?
+      error "CXX is set but CC is not."
+      error "Please set CC so the package manager knows which host compiler"
+      error "to use (it must match CXX)."
+      exit 1
+    end
+
+    cc = "gcc" if cc.empty?
+    cc_family, cc_ver = detect_cc_info(cc)
+
+    if !cxx.empty?
+      cxx_family, cxx_ver = detect_cc_info(cxx)
+      if cxx_family != cc_family || cxx_ver != cc_ver
+        error "CC and CXX refer to different compilers:"
+        error "  CC  = #{cc} -> #{cc_family} #{cc_ver}"
+        error "  CXX = #{cxx} -> #{cxx_family} #{cxx_ver}"
+        error "They must point to the same family and version."
+        exit 1
+      end
+    end
+
+    return "#{cc_family}-#{cc_ver}"
+  end
+
 end
 
 TC = InitOnly.get_tc_root()
@@ -179,7 +294,33 @@ TC_CACHE = TC / "cache"
 TC_NOARCH = TC / "noarch"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
-HOST_ARCH_DIR_SYS = TC / "syscc" / "host_#{HOST_ARCH.name}"
+
+# Host environment detection.
+#
+# HOST_OS      = "linux" | "macos" | "freebsd"
+# HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
+# HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
+#
+# The host toolchain layout is split into two halves:
+#
+#   HOST_DIR_PORTABLE   For 100% statically-linked host tools (e.g. the
+#                       cross-compilers) that do not depend on the host
+#                       distro or system libraries. Shared across distros
+#                       and host compilers.
+#
+#   HOST_DIR            For dynamically-linked host tools (e.g. host_mtools,
+#                       host_gtest) whose binaries or libraries depend on
+#                       glibc/libstdc++ from a specific distro and were
+#                       built by a specific host compiler. Because C++ has
+#                       no stable ABI, the host-compiler version matters
+#                       even for C tools that may depend on C++ host libs.
+HOST_OS      = InitOnly.get_host_os()
+HOST_DISTRO  = InitOnly.get_host_distro(HOST_OS)
+HOST_CC      = InitOnly.get_host_cc()
+HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
+
+HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
+HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
 
 DEFAULT_BOARD = ARCH.default_board
 BOARD = ENV["BOARD"] || DEFAULT_BOARD

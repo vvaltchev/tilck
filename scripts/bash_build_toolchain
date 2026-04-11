@@ -102,7 +102,7 @@ function download_ruby {
 
    local distro="$1"
    local ver="$2"
-   local compdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local compdir=$RUBY_INSTALL_DIR
    local gh="https://github.com/vvaltchev/ruby/releases/download"
    local ruby_ver_=$(tr '.' '_' <<< $VER_RUBY)
    local url="$gh/v${ruby_ver_}"
@@ -131,7 +131,7 @@ function download_ruby {
 
 function build_ruby {
 
-   local installdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local installdir=$RUBY_INSTALL_DIR
    local compdir=$installdir/source
    local major=$(cut -d '.' -f 1 <<< $VER_RUBY)
    local minor=$(cut -d '.' -f 2 <<< $VER_RUBY)
@@ -171,7 +171,7 @@ function build_ruby {
 
 function setup_ruby {
 
-   local compdir=$HOST_ARCH_DIR_SYS/ruby/$VER_RUBY
+   local compdir=$RUBY_INSTALL_DIR
    local os_rel="/etc/os-release"
    local major
    local minor
@@ -273,9 +273,47 @@ function create_base_dirs {
    mkdir -p $TC
    mkdir -p $TC/cache
    mkdir -p $TC/noarch
-   mkdir -p $HOST_ARCH_DIR_SYS
+   mkdir -p $(dirname $RUBY_INSTALL_DIR)
 
    # The rest of the directories are created by the Ruby package manager
+}
+
+# Set HOST_OS (linux|macos|freebsd) and HOST_DISTRO (e.g. ubuntu-22.04).
+# Keep this in sync with InitOnly.get_host_os / get_host_distro in
+# scripts/pkgmgr/early_logic.rb — the bash bootstrap needs to compute
+# RUBY_INSTALL_DIR *before* Ruby is available, so the logic has to live
+# in both languages.
+function detect_host_env {
+
+   case "$OS" in
+      Linux)   HOST_OS="linux" ;;
+      Darwin)  HOST_OS="macos" ;;
+      FreeBSD) HOST_OS="freebsd" ;;
+      *)
+         echo "ERROR: unsupported host OS: $OS"
+         exit 1
+         ;;
+   esac
+
+   case "$HOST_OS" in
+      linux)
+         if ! [ -f /etc/os-release ]; then
+            echo "ERROR: /etc/os-release not found"
+            exit 1
+         fi
+         local distro_id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 \
+            | tr -d '"')
+         local distro_ver=$(grep -E '^VERSION_ID=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         HOST_DISTRO="${distro_id}-${distro_ver}"
+         ;;
+      macos)
+         HOST_DISTRO="macos-$(sw_vers -productVersion)"
+         ;;
+      freebsd)
+         HOST_DISTRO="freebsd-$(uname -r | cut -d- -f1)"
+         ;;
+   esac
 }
 
 function dump_build_toolchain_env {
@@ -305,7 +343,7 @@ function dump_build_toolchain_env {
 
 
 : ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain3}
+: ${TCROOT:=$TCROOT_PARENT/toolchain4}
 TC="$TCROOT"
 export TCROOT
 
@@ -314,7 +352,14 @@ if ! [ "$QUIET" = 1 ]; then
 fi
 
 set_host_arch_variable
-export HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
+detect_host_env
+
+# The bootstrap Ruby lives under the distro slot (no host-compiler level):
+# Ruby dynamically links against libc/libssl/etc. from the current distro,
+# but the host C/C++ compiler used to build it is irrelevant for running
+# Ruby itself. The full Ruby package manager layout (with a host-cc level)
+# applies only to *registered* non-portable packages.
+RUBY_INSTALL_DIR="$TC/host/$HOST_OS-$HOST_ARCH/$HOST_DISTRO/ruby/$VER_RUBY"
 
 if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
    export SKIP_INSTALL_PACKAGES=1
