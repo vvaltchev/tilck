@@ -167,15 +167,15 @@ module Cache
         # the .git directory to save space.
         out, status = Open3.capture2("git", "rev-parse", "--abbrev-ref", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
-        File.Write(".ref_name", out)
+        File.write(".ref_name", out)
 
         out, status = Open3.capture2("git", "rev-parse", "--short", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
-        File.Write(".ref_short", out)
+        File.write(".ref_short", out)
 
         out, status = Open3.capture2("git", "rev-parse", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
-        File.Write(".ref", out)
+        File.write(".ref", out)
       end
 
       return true # success
