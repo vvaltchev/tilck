@@ -88,3 +88,5 @@ ALL_HOST_ARCHS = [
   "aarch64",
 ].to_h { |a| [ a, ALL_ARCHS[a] ] }
 
+X86_ARCHS = ALL_ARCHS.select { |_, a| a.family == "generic_x86" }
+

@@ -7,8 +7,6 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
-X86_ARCHS = ALL_ARCHS.select { |_, a| a.family == "generic_x86" }
-
 GNUEFI_URL = GITHUB + '/vvaltchev/gnu-efi-fork'
 
 GNUEFI_PATCHES = {

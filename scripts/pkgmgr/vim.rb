@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: BSD-2-Clause
+
+# This is the latest version of vim that works correctly. Version > v8.2.5056
+# uses unsupported kernel features related to timers.
+#
+# See https://github.com/vim/vim/issues/10647
+
+require_relative 'early_logic'
+require_relative 'arch'
+require_relative 'version'
+require_relative 'package'
+require_relative 'cache'
+require_relative 'package_manager'
+
+class VimPackage < Package
+
+  include FileShortcuts
+  include FileUtilsShortcuts
+
+  def initialize
+    super(
+      name: 'vim',
+      url: GITHUB + '/vim/vim',
+      on_host: false,
+      is_compiler: false,
+      arch_list: X86_ARCHS,
+      dep_list: [Dep('ncurses', false)]
+    )
+  end
+
+  def expected_files = [
+    ["install/vim.gz", false],
+    ["install/vr.tgz", false],
+  ]
+
+  def install_impl_internal(install_dir)
+
+    arch = default_arch.gcc_tc
+    ncurses_ver = pkgmgr.get_config_ver("ncurses")
+    ncurses = ARCH.target_dir / "ncurses" / ncurses_ver.to_s / "install"
+
+    if !ncurses.directory?
+      error "ncurses is needed to build vim"
+      error "How to fix: run this script with -s ncurses first"
+      return false
+    end
+
+    with_saved_env(%w[CFLAGS LDFLAGS CPPFLAGS]) do
+
+      ENV["CFLAGS"]   = "-ggdb -Os"
+      ENV["LDFLAGS"]  = "-static -L#{ncurses}/lib -lncurses"
+      ENV["CPPFLAGS"] = "-I#{ncurses}/include -I#{ncurses}/include/ncurses"
+
+      ok = run_command("configure.log", [
+        "./configure",
+        "--prefix=#{install_dir}/install",
+        "--build=#{HOST_ARCH.gcc_tc}-linux-gnu",
+        "--host=#{arch}-linux-musl",
+        "--target=#{arch}-linux-musl",
+        "--with-features=normal",
+        "--with-tlib=ncurses",
+        "vim_cv_toupper_broken=no",
+        "vim_cv_terminfo=yes",
+        "vim_cv_tgetent=zero",
+        "vim_cv_getcwd_broken=no",
+        "vim_cv_stat_ignores_slash=no",
+        "vim_cv_memmove_handles_overlap=yes",
+      ])
+      return false if !ok
+
+      ok = run_command("build.log", ["make", "-j#{BUILD_PAR}"])
+      return false if !ok
+
+      ok = run_command("install.log", ["make", "install"])
+      return false if !ok
+    end
+
+    # Post-install: package runtime files and compress the binary
+    chdir("install") do
+      cp_r("../runtime", ".")
+
+      chdir("runtime") do
+        rm_rf(["doc", "lang", "tutor", "spell"])
+      end
+
+      ok = system("tar", "cfz", "vr.tgz", "runtime")
+      return false if !ok
+      rm_rf("runtime")
+
+      cp("bin/vim", "vim")
+      ok = system("gzip", "--best", "vim")
+      return false if !ok
+      File.chmod(0644, "vim.gz")
+    end
+
+    return true
+  end
+end
+
+pkgmgr.register(VimPackage.new())
