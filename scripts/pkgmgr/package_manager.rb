@@ -409,7 +409,11 @@ class PackageManager
       default_arch  = ARCH
       default_cc    = ARCH.gcc_ver
       default_ver   = nil           # see below
-      install_list  = @found_installed
+
+      # For ALL: include both registered and orphan installations.
+      # For an unrecognized single name: only orphans (best effort).
+      install_list  = all_pkgs ? @known_installed + @found_installed
+                               : @found_installed
       warning "Not recognized package name: #{name}" unless all_pkgs
     end
 
