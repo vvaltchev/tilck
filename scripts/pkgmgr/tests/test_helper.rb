@@ -4,6 +4,7 @@ require 'minitest/autorun'
 require 'tmpdir'
 require 'fileutils'
 require 'pathname'
+require 'set'
 
 # Load the pkgmgr modules (this sets up all global constants).
 # Tests that need different constant values use `with_context`.
@@ -22,7 +23,7 @@ module TestHelper
   def with_context(**overrides)
     saved = {}
     old_verbose = $VERBOSE
-    $VERBOSE = nil  # suppress "already initialized constant" warnings
+    $VERBOSE = nil
 
     overrides.each do |name, value|
       saved[name] = Object.const_get(name)
@@ -41,49 +42,139 @@ module TestHelper
     $VERBOSE = old_verbose
   end
 
-  # Create a temporary toolchain directory tree. Returns a Pathname.
-  # Cleans up automatically when the block returns.
+  # Reset the PackageManager singleton, clearing all registered packages
+  # and cached state. Also reads config versions fresh.
+  def reset_pkgmgr!
+    pm = PackageManager.instance
+    pm.instance_variable_set(:@packages, {})
+    pm.instance_variable_set(:@known_pkgs_paths, nil)
+    pm.instance_variable_set(:@known_installed, [])
+    pm.instance_variable_set(:@found_installed, [])
+    pm.instance_variable_set(:@installable, [])
+  end
+
+  # Create a temp toolchain directory tree and run the block with TC
+  # and related constants pointing at it. Cleans up on exit.
+  # GCC version used for test toolchain trees. Must match the directory
+  # name created in with_fake_tc.
+  FAKE_GCC_VER = Ver("13.3.0")
+
   def with_fake_tc
     Dir.mktmpdir("pkgmgr-test-") do |dir|
       tc = Pathname.new(dir)
       FileUtils.mkdir_p(tc / "cache")
       FileUtils.mkdir_p(tc / "noarch")
-      yield tc
+      FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / ARCH.name)
+
+      # Ensure ARCH.gcc_ver is set (normally done by main.rb's
+      # read_gcc_ver_defaults, which tests don't call).
+      saved_gcc_ver = ARCH.gcc_ver
+      ARCH.gcc_ver = FAKE_GCC_VER
+
+      host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
+      host_dir   = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" /
+                   HOST_DISTRO / HOST_CC
+      FileUtils.mkdir_p(host_dir_p)
+      FileUtils.mkdir_p(host_dir)
+
+      with_context(
+        TC: tc,
+        TC_CACHE: tc / "cache",
+        TC_NOARCH: tc / "noarch",
+        HOST_DIR_PORTABLE: host_dir_p,
+        HOST_DIR: host_dir,
+      ) do
+        yield tc
+      end
+    ensure
+      ARCH.gcc_ver = saved_gcc_ver
     end
   end
 
-  # Reset the PackageManager singleton, clearing all registered packages
-  # and cached state.
-  def reset_pkgmgr!
+  # Stub the external I/O boundaries (Cache, run_command, system) so
+  # tests can exercise real Package/PackageManager logic without
+  # network access or real builds.
+  #
+  # Cache::download_file / download_git_repo → return true (skip download)
+  # Cache::extract_file → create the target directory, return true
+  # run_command → return true (or false if in fail_commands set)
+  def with_stubbed_externals(fail_commands: Set.new)
+    originals = {}
+
+    # Save originals
+    originals[:download_file] = Cache.method(:download_file)
+    originals[:download_git_repo] = Cache.method(:download_git_repo)
+    originals[:extract_file] = Cache.method(:extract_file)
+    originals[:run_command] = method(:run_command)
+
+    # Stub Cache::download_file — pretend the file exists in cache
+    Cache.define_singleton_method(:download_file) { |url, remote, local = nil|
+      local ||= remote
+      FileUtils.touch(TC_CACHE / local)
+      true
+    }
+
+    # Stub Cache::download_git_repo — same
+    Cache.define_singleton_method(:download_git_repo) {
+      |url, tarname, tag = nil, dir_name = nil|
+      FileUtils.touch(TC_CACHE / tarname)
+      true
+    }
+
+    # Stub Cache::extract_file — create the version directory
+    Cache.define_singleton_method(:extract_file) { |tarfile, newDirName = nil|
+      newDirName ||= "extracted"
+      FileUtils.mkdir_p(newDirName)
+      true
+    }
+
+    # Stub run_command (top-level method = private method on Object)
+    Object.send(:define_method, :run_command) { |out, argv|
+      cmd = argv.first.to_s
+      !fail_commands.include?(cmd)
+    }
+
+    # Stub PackageManager#with_cc — yield the arch dir without
+    # requiring a real compiler to be installed.
     pm = PackageManager.instance
-    pm.instance_variable_set(:@packages, {})
-    pm.instance_variable_set(:@known_pkgs_paths, nil)
-    pm.instance_variable_set(:@known_installed, nil)
-    pm.instance_variable_set(:@found_installed, nil)
-    pm.instance_variable_set(:@installable, nil)
+    originals[:with_cc] = pm.method(:with_cc)
+    pm.define_singleton_method(:with_cc) { |arch_name = nil, &block|
+      arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
+      arch_dir = TC / "gcc-#{FAKE_GCC_VER}" / arch.name
+      FileUtils.mkdir_p(arch_dir)
+      block.call(arch_dir)
+    }
+
+    yield
+
+  ensure
+    # Restore originals
+    Cache.define_singleton_method(:download_file, originals[:download_file])
+    Cache.define_singleton_method(:download_git_repo,
+                                  originals[:download_git_repo])
+    Cache.define_singleton_method(:extract_file, originals[:extract_file])
+    Object.send(:define_method, :run_command, originals[:run_command])
+    pm = PackageManager.instance
+    pm.define_singleton_method(:with_cc, originals[:with_cc]) if
+      originals[:with_cc]
   end
 
-  # A minimal Package subclass for testing. Downloads, builds, and
-  # filesystem operations are replaced with in-memory tracking.
+  # A minimal Package subclass for testing. The only overrides are:
+  #   - install_impl_internal: creates expected_files (no real build)
+  #   - expected_files: configurable list
+  #   - default_ver: stable fake version (not in pkg_versions)
   #
-  # Usage:
-  #   pkg = FakePackage.new("foo", dep_list: [Dep("bar", false)])
-  #   pkgmgr.register(pkg)
-  #
+  # Everything else (install_impl, get_install_list, installed?,
+  # default?, needs_upgrade?) runs the real base class code.
   class FakePackage < Package
 
-    # Class-level install log shared across all FakePackage instances.
-    # Tests can read this to verify install order.
+    include FileShortcuts
+    include FileUtilsShortcuts
+
+    # Class-level install log — records the order of successful installs.
     @@install_log = []
     def self.install_log = @@install_log
     def self.clear_log! = @@install_log.clear
-
-    # Set of package names that should fail on install (for negative tests).
-    @@fail_set = Set.new
-    def self.fail_set = @@fail_set
-    def self.clear_fail_set! = @@fail_set.clear
-
-    attr_reader :fake_installed_versions
 
     def initialize(name, dep_list: [], arch_list: ALL_ARCHS,
                    on_host: false, is_compiler: false,
@@ -103,48 +194,15 @@ module TestHelper
         default: default,
         board_list: board_list,
       )
-      @fake_installed_versions = Set.new
     end
 
     def expected_files = []
     def tarname(ver) = "#{name}-#{ver}.tgz"
     def default_ver = Ver("1.0.0")
 
-    # Override install_impl to skip all filesystem/network operations.
-    def install_impl(ver)
-      if !host_supported?
-        return false
-      end
-      if !board_supported?
-        return false
-      end
-
-      ver ||= default_ver
-      if @fake_installed_versions.include?(ver)
-        return nil  # already installed
-      end
-
-      if @@fail_set.include?(name)
-        return false
-      end
-
+    def install_impl_internal(install_dir)
       @@install_log << name
-      @fake_installed_versions.add(ver)
-      return true
-    end
-
-    # Override get_install_list to return from our in-memory state.
-    def get_install_list
-      @fake_installed_versions.map { |ver|
-        InstallInfo.new(
-          name, default_cc, on_host, default_arch, ver,
-          Pathname.new("/fake/#{name}/#{ver}"), self, false
-        )
-      }
-    end
-
-    def installed?(ver)
-      @fake_installed_versions.include?(ver)
+      true
     end
   end
 end
