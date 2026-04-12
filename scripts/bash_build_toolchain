@@ -31,7 +31,7 @@ fi
 
 # Source files to include
 source $MAIN_DIR/scripts/bash_includes/script_utils
-source $MAIN_DIR/scripts/tc/pkgs/install_pkgs
+source $MAIN_DIR/scripts/bash_includes/install_pkgs
 source $MAIN_DIR/other/pkg_versions
 
 function check_ruby_ver {
