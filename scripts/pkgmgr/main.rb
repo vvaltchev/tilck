@@ -179,6 +179,7 @@ module Main
       list: false,
       force: false,
       self_test: false,
+      check_for_updates: false,
       upgrade: false,
       config: nil,
       install: [],
@@ -196,6 +197,7 @@ module Main
       :just_context,
       :list,
       :self_test,
+      :check_for_updates,
       :upgrade,
       :config,
       :install,
@@ -245,6 +247,14 @@ module Main
       'Upgrade installed packages whose version was bumped in',
       'pkg_versions. Does not install new packages. [MODE]'
     ) { opts[:upgrade] = true }
+
+    p.on(
+      '--check-for-updates',
+      'Check if any installed packages need upgrading. Prints nothing',
+      'and exits 0 if up to date, or prints the list and exits 2 if',
+      'upgrades are needed. Lightweight: meant to be called directly',
+      'by CMake without the bash wrapper. [MODE]'
+    ) { opts[:check_for_updates] = true }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
       get_multiple_args.call(first, :install)
@@ -392,6 +402,17 @@ module Main
       require_relative 'dep_resolver_test'
       # minitest/autorun handles running the tests and exit code
       return 0
+    end
+
+    if options[:check_for_updates]
+      pkgmgr.refresh()
+      upgrades = pkgmgr.get_upgradable_packages
+      if upgrades.empty?
+        return 0
+      end
+      names = upgrades.map(&:name).sort
+      puts "NEEDS_UPGRADE #{names.join(' ')}"
+      return 2
     end
 
     pkgmgr.refresh()

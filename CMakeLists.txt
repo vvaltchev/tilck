@@ -277,6 +277,11 @@ endif()
 # Read all the VER_<PACKAGE>=<VALUE> pairs from pkg_versions
 #
 
+# Re-run CMake automatically when pkg_versions changes (e.g. version bump)
+# so that the upgrade check below fires and VER_* variables are refreshed.
+set_property(DIRECTORY APPEND PROPERTY
+   CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/other/pkg_versions)
+
 file(STRINGS ${CMAKE_SOURCE_DIR}/other/pkg_versions PKG_VERSIONS)
 
 foreach(LINE ${PKG_VERSIONS})
@@ -304,6 +309,32 @@ unset(KEY)
 unset(LINE)
 unset(VALUE)
 unset(VALUE_START_POS)
+
+#
+# Lightweight check for package upgrades. Calls the Ruby pkgmgr directly
+# (no bash wrapper, no system-package checks) so it adds <100ms to cmake.
+# Exit code 0 = up to date, 2 = upgrades needed.
+#
+set(PKGMGR_RUBY
+   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${VER_RUBY}/bin/ruby)
+set(PKGMGR_MAIN ${CMAKE_SOURCE_DIR}/scripts/pkgmgr/main.rb)
+
+if (EXISTS ${PKGMGR_RUBY} AND EXISTS ${PKGMGR_MAIN})
+   execute_process(
+      COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
+      RESULT_VARIABLE _upgrade_rc
+      OUTPUT_VARIABLE _upgrade_out
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   if (_upgrade_rc EQUAL 2)
+      message(FATAL_ERROR
+         "\nSome installed toolchain packages need upgrading:\n"
+         "   ${_upgrade_out}\n\n"
+         "Run: ${BTC_SCRIPT_REL} --upgrade\n")
+   endif()
+   unset(_upgrade_rc)
+   unset(_upgrade_out)
+endif()
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
