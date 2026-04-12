@@ -131,8 +131,8 @@ file(
 
                set(msg2 "")
                string(CONCAT msg2 "How to do that: \n"
-                                 "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
-                                 "   2) ${BTC_SCRIPT_REL} -s build_busybox")
+                                 "   1) ${BTC_SCRIPT_REL} -u busybox\n"
+                                 "   2) ${BTC_SCRIPT_REL} -s busybox")
 
                message(FATAL_ERROR "\n${msg1}\n${msg2}")
 
