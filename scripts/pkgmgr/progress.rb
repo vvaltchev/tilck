@@ -190,37 +190,3 @@ class ProgressReporter
   end
 
 end  # class ProgressReporter
-
-def test_progress_reporter_with_length
-  exp = 1151 * MB
-  tot = 0
-  r = ProgressReporter.new(exp)
-
-  while tot < exp
-    tot = [tot + (10.0 * rand(0..1) * MB).to_i, exp].min
-    r.update(tot)
-    sleep 0.01
-  end
-  r.finish()
-
-  rescue SignalException, Interrupt
-    r.cancel()
-end
-
-def test_progress_reporter_no_length
-  exp = 1151 * MB
-  tot = 0
-  r = ProgressReporter.new(nil)
-
-  while tot < exp
-    tot = [tot + (1 * rand(0..1) * KB).to_i, exp].min
-    r.update(tot)
-    sleep 0.01
-  end
-  r.finish()
-
-  rescue SignalException, Interrupt
-    r.cancel()
-end
-
-
