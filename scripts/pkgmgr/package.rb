@@ -167,6 +167,18 @@ class Package
   # which are served as `<tag>.tar.gz` regardless of the repo name).
   def remote_tarname(ver) = tarname(ver)
 
+  # Whether to fetch the source via `git clone` (true) rather than a plain
+  # HTTP download (false). Default heuristic: github.com URLs pointing at a
+  # repo root — i.e. NOT at a release asset (/releases/download/) and NOT
+  # at a tag/branch zip (/archive/). Packages hosted on non-github git
+  # servers (e.g. git.musl-libc.org, repo.or.cz) must override this to
+  # return true.
+  def fetch_via_git?
+    github_tarball = url.include?("/releases/download/") ||
+                     url.include?("/archive/")
+    return url.include?(GITHUB) && !github_tarball
+  end
+
   # Apply patch files from scripts/patches/<pkg>/<ver>/.
   # Applies common patches (*.diff in the version directory) first, then
   # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
@@ -219,16 +231,17 @@ class Package
       raise NotImplementedError
     end
 
-    # GitHub serves two flavors of pre-built tarballs that we want to fetch
-    # over plain HTTP rather than via `git clone`:
-    #   - release assets:   /<owner>/<repo>/releases/download/<tag>/<file>
-    #   - tag/branch zips:  /<owner>/<repo>/archive/refs/tags/<tag>.tar.gz
-    # Anything else under github.com is assumed to be a clonable repo.
-    github_tarball = url.include?("/releases/download/") ||
-                     url.include?("/archive/")
-
-    if url.include?(GITHUB) && !github_tarball
-      ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
+    # Delegate the git-vs-HTTP decision to `fetch_via_git?`, which has a
+    # GitHub-aware default and can be overridden by packages hosted on
+    # other git servers. Passing `ver_dirname(ver)` as the clone dir
+    # name keeps cached tarballs laid out the same way regardless of
+    # whether `git_tag(ver)` happens to differ from the version string
+    # (e.g. musl tags its releases as `v1.2.5`, but we want `1.2.5/` as
+    # the top-level dir inside the cached .tgz).
+    if fetch_via_git?
+      ok = Cache::download_git_repo(
+             url, tarname(ver), git_tag(ver), ver_dirname(ver)
+           )
     else
       ok = Cache::download_file(url, remote_tarname(ver), tarname(ver))
     end

@@ -61,35 +61,10 @@ class TccPackage < Package
     ["examples",          true],
   ]
 
-  # Override install_impl because the default one uses download_file for
-  # non-GitHub URLs, but TCC uses git:// protocol and needs git clone.
-  def install_impl(ver)
-
-    info "Install #{name} version: #{ver}"
-
-    if installed? ver
-      info "Package already installed, skip"
-      return nil
-    end
-
-    ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
-    return false if !ok
-
-    pkgmgr.with_cc() do |arch_dir|
-      chdir_package_base_dir(arch_dir) do
-        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
-        return false if !ok
-        ok = chdir_install_dir(arch_dir, ver) do
-          d = mkpathname(getwd)
-          ok = apply_patches(ver)
-          return false if ok == false
-          ok = install_impl_internal(d)
-          ok = check_install_dir(d, true) if ok
-        end
-      end
-    end
-    return ok
-  end
+  # TCC lives on repo.or.cz, not github — the base class heuristic
+  # defaults to HTTP download for non-github URLs, so we explicitly
+  # opt into git clone.
+  def fetch_via_git? = true
 
   def install_impl_internal(install_dir)
 
