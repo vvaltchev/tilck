@@ -33,7 +33,9 @@ class SophgoToolsPackage < Package
       is_compiler: false,
       portable: true,
       arch_list: { "x86_64" => ALL_ARCHS["x86_64"] },
-      dep_list: []
+      dep_list: [],
+      host_os_list: ["linux"],
+      host_arch_list: ["x86_64"],
     )
   end
 
@@ -53,22 +55,9 @@ class SophgoToolsPackage < Package
     ["gcc", true],
   ]
 
-  def install_impl_internal(install_dir)
-
-    if HOST_OS != "linux"
-      error "#{name}: only Linux hosts are supported (got #{HOST_OS})"
-      return false
-    end
-
-    if HOST_ARCH.name != "x86_64"
-      error "#{name}: only x86_64 hosts are supported (got #{HOST_ARCH.name})"
-      return false
-    end
-
-    # Nothing to build: the tarball already contains x86_64 Linux ELF
-    # binaries. The base install_impl flow will check expected_files.
-    return true
-  end
+  # Nothing to build: the tarball already contains x86_64 Linux ELF
+  # binaries. The base install_impl flow will check expected_files.
+  def install_impl_internal(install_dir) = true
 end
 
 pkgmgr.register(SophgoToolsPackage.new())

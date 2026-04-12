@@ -39,7 +39,9 @@ class LicheervNanoBootPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
-      dep_list: [Dep('host_sophgo_tools', true)]
+      dep_list: [Dep('host_sophgo_tools', true)],
+      host_os_list: ["linux"],
+      host_arch_list: ["x86_64"],
     )
   end
 
@@ -58,10 +60,6 @@ class LicheervNanoBootPackage < Package
   # to symlink it as `host-tools` from the source tree.
   #
   def install_impl(ver)
-    if HOST_OS != "linux"
-      error "#{name} only supports Linux hosts (got #{HOST_OS})"
-      return false
-    end
     if !pkgmgr.install("host_sophgo_tools")
       error "Failed to install host_sophgo_tools (required by #{name})"
       return false

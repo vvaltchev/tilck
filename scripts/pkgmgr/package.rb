@@ -81,7 +81,9 @@ class Package
                  is_compiler: false,
                  portable: false,
                  arch_list: ALL_ARCHS,
-                 dep_list: [])
+                 dep_list: [],
+                 host_os_list: nil,
+                 host_arch_list: nil)
     @name = name
     @url = url
     @on_host = on_host
@@ -89,10 +91,20 @@ class Package
     @portable = portable
     @arch_list = arch_list
     @dep_list = dep_list
+    @host_os_list = host_os_list
+    @host_arch_list = host_arch_list
 
     assert {
       !!on_host == !!(name.start_with?("host_") || is_compiler)
     }
+  end
+
+  # Can this package run / be built on the current host?
+  # nil lists mean "any"; non-nil lists are allowlists.
+  def host_supported?
+    return false if @host_os_list && !@host_os_list.include?(HOST_OS)
+    return false if @host_arch_list && !@host_arch_list.include?(HOST_ARCH.name)
+    return true
   end
 
   # The host install root for syscc packages.
@@ -142,6 +154,7 @@ class Package
   end
 
   def get_installable_list
+    return [] if !host_supported?
     if on_host
       syscc_package_get_installable_list()
     else
@@ -219,6 +232,14 @@ class Package
   end
 
   def install_impl(ver)
+
+    if !host_supported?
+      req = [@host_os_list, @host_arch_list].compact.map { |l|
+        l.join("/")
+      }.join(" ")
+      error "#{name} requires a #{req} host"
+      return false
+    end
 
     info "Install #{name} version: #{ver}"
 
