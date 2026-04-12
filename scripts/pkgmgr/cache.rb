@@ -243,10 +243,28 @@ module Cache
     end
 
     chdir(tmp) do
-      ok = system("tar", opt, filepath)
+      tar_argv = ["tar", opt, filepath]
+
+      # macOS: archives built by libarchive (macOS /usr/bin/tar) embed
+      # pax extended headers for Apple-specific xattrs such as
+      # com.apple.provenance. GNU tar doesn't recognise them and
+      # prints a warning per entry. Silence those.
+      if OS == "Darwin"
+        tar_argv << "--warning=no-unknown-keyword"
+      end
+
+      ok = system(*tar_argv)
       raise LocalError, "Tar extract failed" if !ok
 
       contents = Dir.children(".")
+
+      # macOS: gtar may emit AppleDouble resource-fork entries (._*)
+      # alongside the real directory. Remove them so only the real
+      # content remains.
+      dot_us = contents.select { |e| e.start_with?("._") }
+      dot_us.each { |e| rm_rf(e) }
+      contents -= dot_us
+
       raise LocalError, "The archive #{tarfile} is empty" if
         contents.length == 0
 

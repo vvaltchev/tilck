@@ -41,9 +41,15 @@ class MicropythonPackage < Package
     with_saved_env(cc_vars) do
       cc_vars.each { |v| ENV.delete(v) }
       chdir("mpy-cross") do
-        return run_command("build.log", [
-          "make", "V=1", "-j#{BUILD_PAR}",
-        ])
+        make_argv = ["make", "V=1", "-j#{BUILD_PAR}"]
+
+        # macOS: Clang treats the VLA-folded-to-constant-array idiom
+        # used by MP_STATIC_ASSERT as -Werror,-Wgnu-folding-constant.
+        if OS == "Darwin"
+          make_argv << "CFLAGS_EXTRA=-Wno-error=gnu-folding-constant"
+        end
+
+        return run_command("build.log", make_argv)
       end
     end
   end
@@ -55,13 +61,24 @@ class MicropythonPackage < Package
 
       with_saved_env(["LDFLAGS_EXTRA"]) do
         ENV["LDFLAGS_EXTRA"] = "-static"
-        return run_command("build.log", [
+        make_argv = [
           "make", "V=1",
           "MICROPY_PY_FFI=0",
           "MICROPY_PY_THREAD=0",
           "MICROPY_PY_BTREE=0",
           "-j#{BUILD_PAR}",
-        ])
+        ]
+
+        # macOS: the unix port Makefile detects Darwin and forces
+        # CC=clang plus macOS-specific linker flags (-Wl,-dead_strip).
+        # Since we're cross-compiling for Linux/Tilck with the GNU
+        # toolchain, tell the Makefile we're on Linux so it takes the
+        # right code path entirely.
+        if OS == "Darwin"
+          make_argv << "UNAME_S=Linux"
+        end
+
+        return run_command("build.log", make_argv)
       end
     end
   end

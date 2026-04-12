@@ -343,8 +343,9 @@ end
 
 def with_saved_env(vars, &block)
   saved = vars.to_h { |v| [v, ENV[v]] }
-  block.call()
-  saved.each { |k,v| ENV[k] = v }
+  return block.call()
+ensure
+  saved&.each { |k,v| ENV[k] = v }
 end
 
 def run_command(out, argv)

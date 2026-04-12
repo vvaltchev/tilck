@@ -120,7 +120,7 @@ class TccPackage < Package
       ENV.delete("CC")
       ENV.delete("AR")
 
-      ok = run_command("configure.log", [
+      configure_argv = [
         "./configure",
         "--cross-prefix=#{arch}-linux-",
         "--cpu=#{cpu}",
@@ -131,7 +131,17 @@ class TccPackage < Package
         "--extra-ldflags=-static",
         "--crtprefix=#{tilck_lib}",
         "--libpaths=#{tilck_lib}",
-      ])
+      ]
+
+      # macOS: TCC's configure auto-detects Darwin and sets CONFIG_OSX,
+      # which adds macOS-only linker flags (-flat_namespace) that the
+      # GNU cross-linker rejects. Force the target OS to Linux since
+      # we're cross-compiling for Tilck.
+      if OS == "Darwin"
+        configure_argv << "--targetos=Linux"
+      end
+
+      ok = run_command("configure.log", configure_argv)
       return false if !ok
     end
 
