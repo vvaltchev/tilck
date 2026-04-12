@@ -315,11 +315,24 @@ unset(VALUE_START_POS)
 # (no bash wrapper, no system-package checks) so it adds <100ms to cmake.
 # Exit code 0 = up to date, 2 = upgrades needed.
 #
-set(PKGMGR_RUBY
+# The Ruby binary may live in the toolchain (downloaded/built by the bash
+# bootstrap) or be the system Ruby (used when the system version >= 3.2).
+# Try the toolchain path first, fall back to system `ruby`.
+#
+set(PKGMGR_RUBY "")
+set(_tc_ruby
    ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${VER_RUBY}/bin/ruby)
+
+if (EXISTS ${_tc_ruby})
+   set(PKGMGR_RUBY ${_tc_ruby})
+else()
+   find_program(PKGMGR_RUBY ruby)
+endif()
+unset(_tc_ruby)
+
 set(PKGMGR_MAIN ${CMAKE_SOURCE_DIR}/scripts/pkgmgr/main.rb)
 
-if (EXISTS ${PKGMGR_RUBY} AND EXISTS ${PKGMGR_MAIN})
+if (PKGMGR_RUBY AND EXISTS ${PKGMGR_MAIN})
    execute_process(
       COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
       RESULT_VARIABLE _upgrade_rc
