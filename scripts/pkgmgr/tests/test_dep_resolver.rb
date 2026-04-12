@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
-require 'minitest/autorun'
-require_relative 'dep_resolver'
+require_relative 'test_helper'
 
 class TestDepResolverValidation < Minitest::Test
 
@@ -82,7 +81,6 @@ class TestDepResolverValidation < Minitest::Test
   end
 
   def test_validate_runs_both_checks
-    # Missing dep should be caught even if there's also a cycle
     graph = { "a" => ["missing"] }
     assert_raises(DepResolver::MissingDepError) {
       DepResolver.validate(graph)
@@ -98,13 +96,11 @@ class TestDepResolverResolve < Minitest::Test
   end
 
   def test_linear_chain
-    # a depends on b, b depends on c
     graph = { "a" => ["b"], "b" => ["c"], "c" => [] }
     assert_equal ["c", "b", "a"], DepResolver.resolve(["a"], graph)
   end
 
   def test_diamond
-    # a -> b, a -> c, b -> d, c -> d
     graph = {
       "a" => ["b", "c"],
       "b" => ["d"],
@@ -113,12 +109,8 @@ class TestDepResolverResolve < Minitest::Test
     }
     result = DepResolver.resolve(["a"], graph)
     assert_equal 4, result.length
-
-    # d must come first (leaf dep)
     assert_equal "d", result[0]
-    # a must come last (root)
     assert_equal "a", result[-1]
-    # b and c in between, alphabetical tie-breaking
     assert_equal "b", result[1]
     assert_equal "c", result[2]
   end
@@ -130,8 +122,6 @@ class TestDepResolverResolve < Minitest::Test
   end
 
   def test_already_installed_middle_skipped
-    # a -> b -> c, b is installed. BFS stops at b, so c is not
-    # collected. Only a needs installing.
     graph = { "a" => ["b"], "b" => ["c"], "c" => [] }
     result = DepResolver.resolve(["a"], graph, ["b"])
     assert_equal ["a"], result
@@ -144,8 +134,6 @@ class TestDepResolverResolve < Minitest::Test
   end
 
   def test_requested_already_installed_but_dep_not
-    # a is already installed — BFS skips it entirely. b is not
-    # pulled in because traversal stops at installed nodes.
     graph = { "a" => ["b"], "b" => [] }
     result = DepResolver.resolve(["a"], graph, ["a"])
     assert_empty result
@@ -154,7 +142,6 @@ class TestDepResolverResolve < Minitest::Test
   def test_multiple_roots
     graph = { "a" => ["c"], "b" => ["c"], "c" => [] }
     result = DepResolver.resolve(["a", "b"], graph)
-    # c must come before both a and b
     assert_operator result.index("c"), :<, result.index("a")
     assert_operator result.index("c"), :<, result.index("b")
     assert_equal 3, result.length
@@ -163,12 +150,10 @@ class TestDepResolverResolve < Minitest::Test
   def test_multiple_roots_alphabetical
     graph = { "x" => [], "a" => [], "m" => [] }
     result = DepResolver.resolve(["x", "a", "m"], graph)
-    # No deps, so alphabetical order
     assert_equal ["a", "m", "x"], result
   end
 
   def test_shared_transitive_dep_not_duplicated
-    # a -> c, b -> c (c is shared)
     graph = { "a" => ["c"], "b" => ["c"], "c" => [] }
     result = DepResolver.resolve(["a", "b"], graph)
     assert_equal 1, result.count("c")
@@ -182,7 +167,6 @@ class TestDepResolverResolve < Minitest::Test
   end
 
   def test_deep_chain
-    # a -> b -> c -> d -> e
     graph = {
       "a" => ["b"], "b" => ["c"], "c" => ["d"],
       "d" => ["e"], "e" => []

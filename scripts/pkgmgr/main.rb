@@ -33,6 +33,7 @@ require_relative 'tfblib'
 require 'pathname'
 require 'fileutils'
 require 'optparse'
+require 'rbconfig'
 
 module Main
 
@@ -179,6 +180,7 @@ module Main
       list: false,
       force: false,
       self_test: false,
+      coverage: false,
       check_for_updates: false,
       upgrade: false,
       config: nil,
@@ -197,6 +199,7 @@ module Main
       :just_context,
       :list,
       :self_test,
+      :coverage,
       :check_for_updates,
       :upgrade,
       :config,
@@ -235,6 +238,10 @@ module Main
 
     p.on('-t', '--self-test', 'Run internal unit tests [MODE]') {
       opts[:self_test] = true
+    }
+
+    p.on('--coverage', 'Run tests with code coverage + HTML report [MODE]') {
+      opts[:coverage] = true
     }
 
     p.on(
@@ -397,11 +404,14 @@ module Main
       return 0
     end
 
-    if options[:self_test]
-      ARGV.clear
-      require_relative 'dep_resolver_test'
-      # minitest/autorun handles running the tests and exit code
-      return 0
+    if options[:self_test] || options[:coverage]
+      runner = File.join(__dir__, "tests", "run_all.rb")
+      args = [runner]
+      args << "--coverage" if options[:coverage]
+      # exec into a fresh Ruby process so Coverage.start runs before
+      # any pkgmgr modules are loaded (coverage only tracks files
+      # loaded after start).
+      exec(RbConfig.ruby, *args)
     end
 
     if options[:check_for_updates]
