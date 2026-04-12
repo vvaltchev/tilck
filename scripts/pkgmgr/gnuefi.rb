@@ -50,7 +50,8 @@ class GnuefiSrcPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch
-      dep_list: []
+      dep_list: [],
+      default: true,
     )
   end
 
@@ -82,7 +83,8 @@ class GnuefiPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: X86_ARCHS,
-      dep_list: [Dep('gnuefi_src', false)]
+      dep_list: [Dep('gnuefi_src', false)],
+      default: true,
     )
   end
 

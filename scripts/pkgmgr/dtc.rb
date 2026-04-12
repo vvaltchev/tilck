@@ -24,7 +24,8 @@ class DtcPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
-      dep_list: []
+      dep_list: [],
+      default: true,
     )
   end
 

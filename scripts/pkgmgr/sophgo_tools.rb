@@ -36,6 +36,7 @@ class SophgoToolsPackage < Package
       dep_list: [],
       host_os_list: ["linux"],
       host_arch_list: ["x86_64"],
+      board_list: ["licheerv-nano"],
     )
   end
 

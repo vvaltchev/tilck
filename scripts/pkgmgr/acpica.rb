@@ -29,7 +29,8 @@ class Acpica < Package
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # nil => noarch package
-      dep_list: []
+      dep_list: [],
+      default: true,
     )
   end
 

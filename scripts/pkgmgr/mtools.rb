@@ -19,7 +19,8 @@ class MtoolsPackage < Package
       on_host: true,
       is_compiler: false,
       arch_list: ALL_HOST_ARCHS,
-      dep_list: []
+      dep_list: [],
+      default: true,
     )
   end
 

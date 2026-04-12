@@ -24,7 +24,9 @@ class UbootPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
-      dep_list: []
+      dep_list: [],
+      default: true,
+      board_list: ["qemu-virt"],
     )
   end
 
@@ -37,12 +39,6 @@ class UbootPackage < Package
   ]
 
   def install_impl_internal(install_dir)
-
-    if BOARD != "qemu-virt"
-      error "uboot Ruby package only supports BOARD=qemu-virt (got #{BOARD})"
-      return false
-    end
-
     patch_qemu_riscv_scriptaddr
     cp BOARD_BSP / "u-boot.config", ".config"
 

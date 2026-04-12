@@ -42,6 +42,8 @@ class LicheervNanoBootPackage < Package
       dep_list: [Dep('host_sophgo_tools', true)],
       host_os_list: ["linux"],
       host_arch_list: ["x86_64"],
+      default: true,
+      board_list: ["licheerv-nano"],
     )
   end
 

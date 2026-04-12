@@ -19,7 +19,8 @@ class ZlibPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
-      dep_list: []
+      dep_list: [],
+      default: true,
     )
   end
 
