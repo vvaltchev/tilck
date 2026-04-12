@@ -284,14 +284,30 @@ class PackageManager
     ok = pkg.install_impl(ver)
     if ok
       info "Installed package #{pkg.name} at version #{ver}"
+      # Refresh cached install lists so with_cc() can find a
+      # just-installed compiler when subsequent packages need it.
+      refresh() if pkg.is_compiler
     end
     return ok.nil?? true : ok
   end
 
   # Build the dependency graph from all registered packages.
   # Returns { "name" => ["dep_name", ...], ... }
+  #
+  # Target packages (not on_host, has arch_list) implicitly depend on
+  # the cross-compiler for the current ARCH, since Package#install_impl
+  # calls with_cc() which requires the compiler to be installed.
   def build_dep_graph
-    @packages.transform_values { |pkg| pkg.dep_list.map { |d| d.name } }
+    cc_name = "gcc-#{ARCH.name}-musl"
+    has_cc = @packages.key?(cc_name)
+
+    @packages.transform_values { |pkg|
+      deps = pkg.dep_list.map { |d| d.name }
+      if has_cc && !pkg.on_host && !pkg.arch_list.nil?
+        deps << cc_name if !deps.include?(cc_name)
+      end
+      deps
+    }
   end
 
   # Validate the full dependency graph: missing deps + cycle detection.
