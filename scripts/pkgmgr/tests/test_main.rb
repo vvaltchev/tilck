@@ -2,6 +2,7 @@
 
 require_relative 'test_helper'
 require_relative '../main'
+require 'stringio'
 
 # ---------------------------------------------------------------
 # Tests for CLI option parsing (Main.parse_options).
@@ -196,6 +197,93 @@ end
 # ---------------------------------------------------------------
 # Integration tests for Main.main() with fake TC and stubs.
 # ---------------------------------------------------------------
+
+class TestMainListMode < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  def test_list_mode
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+
+        output = capture_stdout { Main.main(["-l"]) }
+        assert_match(/foo/, output)
+        assert_match(/installed/, output)
+      end
+    end
+  end
+
+  def test_list_with_group_by_arch
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+
+        output = capture_stdout { Main.main(["-l", "-g", "arch"]) }
+        assert_match(/foo/, output)
+        assert_match(/i386/, output)
+      end
+    end
+  end
+
+  def test_list_with_compiler_all
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+
+        output = capture_stdout { Main.main(["-l", "-c", "ALL"]) }
+        assert_match(/foo/, output)
+      end
+    end
+  end
+end
+
+class TestMainDumpContext < Minitest::Test
+  include TestHelper
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  def test_dump_context
+    output = capture_stdout { Main.dump_context }
+    assert_match(/MAIN_DIR/, output)
+    assert_match(/TC/, output)
+    assert_match(/HOST_ARCH/, output)
+    assert_match(/HOST_OS/, output)
+    assert_match(/ARCH/, output)
+  end
+
+  def test_just_context_mode
+    with_fake_tc do
+      with_stubbed_externals do
+        result = Main.main(["-j"])
+        assert_equal 0, result
+      end
+    end
+  end
+end
 
 class TestMainIntegration < Minitest::Test
   include TestHelper
