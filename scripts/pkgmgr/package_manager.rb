@@ -5,6 +5,7 @@ require_relative 'arch'
 require_relative 'version'
 require_relative 'term'
 require_relative 'package'
+require_relative 'dep_resolver'
 
 require 'singleton'
 require 'set'
@@ -281,6 +282,45 @@ class PackageManager
       info "Installed package #{pkg.name} at version #{ver}"
     end
     return ok.nil?? true : ok
+  end
+
+  # Build the dependency graph from all registered packages.
+  # Returns { "name" => ["dep_name", ...], ... }
+  def build_dep_graph
+    @packages.transform_values { |pkg| pkg.dep_list.map { |d| d.name } }
+  end
+
+  # Validate the full dependency graph: missing deps + cycle detection.
+  # Called once after all packages are registered and before any install.
+  def validate_deps
+    DepResolver.validate(build_dep_graph)
+  end
+
+  # Given an array of [name, ver] pairs requested by the user, compute
+  # the full install plan: transitive deps resolved, already-installed
+  # packages filtered out, topological order (deps first).
+  #
+  # Returns: Array of [name, ver] pairs in install order. The `ver`
+  # for auto-resolved deps is nil (meaning default_ver during install).
+  def resolve_install_plan(requested_pairs)
+    graph = build_dep_graph
+
+    # Build the set of already-installed package names.
+    installed = Set.new
+    @packages.each_value do |pkg|
+      user_ver = requested_pairs.find { |n, _| n == pkg.name }&.last
+      ver = user_ver || pkg.default_ver
+      installed.add(pkg.name) if ver && pkg.installed?(ver)
+    end
+
+    requested_names = requested_pairs.map(&:first)
+    ordered_names = DepResolver.resolve(requested_names, graph, installed)
+
+    # Map back to [name, ver] pairs. User-specified versions are
+    # preserved; auto-resolved deps get nil (install() will use
+    # default_ver).
+    user_vers = requested_pairs.to_h
+    ordered_names.map { |name| [name, user_vers[name]] }
   end
 
   # Uninstall the package

@@ -381,6 +381,13 @@ module Main
 
     pkgmgr.refresh()
 
+    begin
+      pkgmgr.validate_deps
+    rescue DepResolver::CycleError, DepResolver::MissingDepError => e
+      error "Dependency graph error: #{e.message}"
+      return 1
+    end
+
     if options[:list]
       pkgmgr.show_status_all(
         options[:group_by],
@@ -390,21 +397,35 @@ module Main
     end
 
     if !options[:install].blank?
-      # First, check that all packages exist so that we don't install some
-      # package and fail because of others, leaving in an undesired mid-state.
-      for name in options[:install] do
-        name, ver = name.split(":")
+
+      # Parse "name:ver" pairs, validating that each package exists.
+      requested = options[:install].map { |s|
+        name, ver = s.split(":")
         if !pkgmgr.get(name)
           error "Package not found: #{name}"
           return 1
         end
-       end
+        [name, Ver(ver)]
+      }
 
-      # Now install the packages. We could still fail, but at least we know
-      # about all the packages mentioned by the user.
-      for name in options[:install] do
-        name, v = name.split(":")
-        if !pkgmgr.install(name, Ver(v))
+      # Resolve the full install plan: transitive deps, minus
+      # already-installed, in topological order.
+      plan = pkgmgr.resolve_install_plan(requested)
+
+      if plan.empty?
+        info "All requested packages are already installed"
+        return 0
+      end
+
+      # Show the plan (like APT), then proceed without confirmation.
+      dep_names = plan.map(&:first) - requested.map(&:first)
+      if !dep_names.empty?
+        info "Dependencies to install: #{dep_names.join(', ')}"
+      end
+      info "Install order: #{plan.map(&:first).join(' -> ')}"
+
+      for name, ver in plan do
+        if !pkgmgr.install(name, ver)
           error "Could not install: #{name}"
           return 1
         end
