@@ -66,10 +66,10 @@ module TestHelper
       FileUtils.mkdir_p(tc / "noarch")
       FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / ARCH.name)
 
-      # Ensure ARCH.gcc_ver is set (normally done by main.rb's
+      # Set gcc_ver for all architectures (normally done by main.rb's
       # read_gcc_ver_defaults, which tests don't call).
-      saved_gcc_ver = ARCH.gcc_ver
-      ARCH.gcc_ver = FAKE_GCC_VER
+      saved_gcc_vers = ALL_ARCHS.map { |name, arch| [name, arch.gcc_ver] }
+      ALL_ARCHS.each_value { |arch| arch.gcc_ver = FAKE_GCC_VER }
 
       host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
       host_dir   = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" /
@@ -87,7 +87,7 @@ module TestHelper
         yield tc
       end
     ensure
-      ARCH.gcc_ver = saved_gcc_ver
+      saved_gcc_vers.each { |name, ver| ALL_ARCHS[name].gcc_ver = ver }
     end
   end
 
@@ -199,6 +199,20 @@ module TestHelper
     def expected_files = []
     def tarname(ver) = "#{name}-#{ver}.tgz"
     def default_ver = Ver("1.0.0")
+
+    # Match the pattern of real packages: host → syscc/HOST_ARCH,
+    # noarch → nil/nil, target → gcc_ver/ARCH.
+    def default_cc
+      return "syscc" if on_host
+      return nil if arch_list.nil?
+      return ARCH.gcc_ver
+    end
+
+    def default_arch
+      return HOST_ARCH if on_host
+      return nil if arch_list.nil?
+      return ARCH
+    end
 
     def install_impl_internal(install_dir)
       @@install_log << name
