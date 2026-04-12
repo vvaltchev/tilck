@@ -178,6 +178,7 @@ module Main
       dry_run: false,
       list: false,
       force: false,
+      self_test: false,
       install: [],
       install_compiler: [],
       uninstall: [],
@@ -192,6 +193,7 @@ module Main
       :help,
       :just_context,
       :list,
+      :self_test,
       :install,
       :install_compiler,
       :uninstall,
@@ -223,6 +225,10 @@ module Main
 
     p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
       opts[:just_context] = true
+    }
+
+    p.on('-t', '--self-test', 'Run internal unit tests [MODE]') {
+      opts[:self_test] = true
     }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
@@ -363,6 +369,13 @@ module Main
     end
 
     if options[:just_context]
+      return 0
+    end
+
+    if options[:self_test]
+      ARGV.clear
+      require_relative 'dep_resolver_test'
+      # minitest/autorun handles running the tests and exit code
       return 0
     end
 
