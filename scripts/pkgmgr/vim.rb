@@ -39,12 +39,6 @@ class VimPackage < Package
     ncurses_ver = pkgmgr.get_config_ver("ncurses")
     ncurses = ARCH.target_dir / "ncurses" / ncurses_ver.to_s / "install"
 
-    if !ncurses.directory?
-      error "ncurses is needed to build vim"
-      error "How to fix: run this script with -s ncurses first"
-      return false
-    end
-
     with_saved_env(%w[CFLAGS LDFLAGS CPPFLAGS]) do
 
       ENV["CFLAGS"]   = "-ggdb -Os"

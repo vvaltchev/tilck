@@ -53,20 +53,6 @@ class LicheervNanoBootPackage < Package
     ["install/soc_#{CODENAME}/fip.bin", false],
   ]
 
-  #
-  # The package_manager doesn't auto-resolve dep_list yet, so make sure
-  # host_sophgo_tools is installed *before* the base install_impl runs
-  # the regular extract → patch → build flow. We need its install dir
-  # to symlink it as `host-tools` from the source tree.
-  #
-  def install_impl(ver)
-    if !pkgmgr.install("host_sophgo_tools")
-      error "Failed to install host_sophgo_tools (required by #{name})"
-      return false
-    end
-    super(ver)
-  end
-
   def install_impl_internal(install_dir)
 
     # Symlink sophgo's prebuilt host tools as `host-tools/` inside the
