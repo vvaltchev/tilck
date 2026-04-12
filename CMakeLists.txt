@@ -74,11 +74,94 @@ else()
    set(DD "dd")
 endif()
 
+# Host environment detection.
+#
+#   HOST_OS      = "linux" | "macos" | "freebsd"
+#   HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
+#   HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
+#
+# These values are used to construct the toolchain4 host tool paths
+# (HOST_DIR_PORTABLE / HOST_DIR below). They MUST stay in sync with the
+# Ruby pkgmgr implementation in scripts/pkgmgr/early_logic.rb (InitOnly
+# module: get_host_os, get_host_distro, get_host_cc), otherwise CMake
+# will look for host tools in a different subtree than where the
+# package manager installed them.
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+
+   set(HOST_OS "linux")
+
+   if (NOT EXISTS "/etc/os-release")
+      message(FATAL_ERROR "/etc/os-release not found: cannot detect distro")
+   endif()
+
+   file(STRINGS "/etc/os-release" _id_line  REGEX "^ID=")
+   file(STRINGS "/etc/os-release" _ver_line REGEX "^VERSION_ID=")
+   string(REPLACE "ID="         "" _id  "${_id_line}")
+   string(REPLACE "VERSION_ID=" "" _ver "${_ver_line}")
+   string(REPLACE "\""          "" _id  "${_id}")
+   string(REPLACE "\""          "" _ver "${_ver}")
+
+   if ("${_id}" STREQUAL "" OR "${_ver}" STREQUAL "")
+      message(FATAL_ERROR "/etc/os-release is missing ID or VERSION_ID")
+   endif()
+
+   set(HOST_DISTRO "${_id}-${_ver}")
+   unset(_id_line)
+   unset(_ver_line)
+   unset(_id)
+   unset(_ver)
+
+elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+
+   set(HOST_OS "macos")
+   execute_process(
+      COMMAND sw_vers -productVersion
+      OUTPUT_VARIABLE _mac_ver
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   if ("${_mac_ver}" STREQUAL "")
+      message(FATAL_ERROR "sw_vers -productVersion returned nothing")
+   endif()
+   set(HOST_DISTRO "macos-${_mac_ver}")
+   unset(_mac_ver)
+
+elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
+
+   set(HOST_OS "freebsd")
+   execute_process(
+      COMMAND uname -r
+      OUTPUT_VARIABLE _fbsd_ver
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   string(REGEX REPLACE "^([^-]+).*$" "\\1" _fbsd_ver "${_fbsd_ver}")
+   if ("${_fbsd_ver}" STREQUAL "")
+      message(FATAL_ERROR "uname -r returned nothing")
+   endif()
+   set(HOST_DISTRO "freebsd-${_fbsd_ver}")
+   unset(_fbsd_ver)
+
+else()
+   message(FATAL_ERROR "Unsupported host OS: ${CMAKE_HOST_SYSTEM_NAME}")
+endif()
+
+# HOST_CC: family+version of the host C compiler detected by project().
+# Must match the Ruby pkgmgr's get_host_cc, which reads `$CC -v` output.
+if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+   set(HOST_CC "clang-${CMAKE_C_COMPILER_VERSION}")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+   set(HOST_CC "gcc-${CMAKE_C_COMPILER_VERSION}")
+else()
+   message(
+      FATAL_ERROR
+      "Unsupported host C compiler: ${CMAKE_C_COMPILER_ID}"
+   )
+endif()
+
 # BEGIN [Environment-controlled "sticky" cache variables]
 
 # Main variables
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
-define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain3)
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain4)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 
 define_env_cache_bool_var(TEST_GCOV)
@@ -116,7 +199,20 @@ set(BUILD_SCRIPTS       ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
-set(TCROOT_BA           ${TCROOT}/syscc/host_${HOST_ARCH})
+
+# Host-side install roots in the toolchain4 layout.
+#
+# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools (cross
+#    compilers). Shared across distros and host compilers; a GCC_TC_VER
+#    bump does not invalidate extracted tarballs here.
+#
+# HOST_DIR         — non-portable host tools (host_mtools, host_gtest) whose
+#    binaries or libraries depend on glibc/libstdc++ from a specific distro,
+#    built with a specific host compiler. Because C++ has no stable ABI, the
+#    host-compiler version is part of the path even for C-only tools that
+#    may pull in C++ host libs.
+set(HOST_DIR_PORTABLE   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/portable)
+set(HOST_DIR            ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/${HOST_CC})
 set(CMAKE_DIR           ${CMAKE_SOURCE_DIR}/other/cmake)
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -515,9 +611,15 @@ endif()
 message(STATUS "TCROOT: ${TCROOT}")
 message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 
-string(REPLACE                "." "_" GCC_TC_VER_ "${GCC_TC_VER}")
-set(TCROOT_ARCH_DIR           ${TCROOT}/${GCC_TC_VER_}/${ARCH})
-set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/${GCC_TC_VER_})
+# Target-side per-arch package root. toolchain4 layout:
+#
+#     ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH}/<pkg>/<ver>/
+#
+# The "gcc-" prefix leaves room for other compiler families in the future
+# (clang/llvm slots) and the dotted version matches the rest of the
+# ecosystem (vs. the underscore-mangled path used in toolchain3).
+set(TCROOT_ARCH_DIR           ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH})
+set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/gcc-${GCC_TC_VER})
 
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
@@ -527,16 +629,20 @@ set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
 set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
-set(GCC_NAME_PFX              gcc_${GCC_TC_VER_}_${ARCH})
-set(GCC_NAME_PFX_i386         gcc_${GCC_TC_VER_}_i386)
-set(GCC_NAME_PFX_x86_64       gcc_${GCC_TC_VER_}_x86_64)
 
 # BEGIN [ARCH-dependent paths]
 
-   # Musl toolchain
-   set(GCC_TC_ROOT            ${TCROOT_BA}/${GCC_NAME_PFX}_musl)
-   set(GCC_TC_ROOT_i386       ${TCROOT_BA}/${GCC_NAME_PFX_i386}_musl)
-   set(GCC_TC_ROOT_x86_64     ${TCROOT_BA}/${GCC_NAME_PFX_x86_64}_musl)
+   # Musl toolchains live under HOST_DIR_PORTABLE because they are 100%
+   # statically-linked and libc-independent. toolchain4 layout:
+   #
+   #     ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER}/
+   #
+   # The GCC version is INSIDE the package dir (not embedded in the name),
+   # so a single gcc-<arch>-musl package can carry multiple versions side
+   # by side.
+   set(GCC_TC_ROOT            ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER})
+   set(GCC_TC_ROOT_i386       ${HOST_DIR_PORTABLE}/gcc-i386-musl/${GCC_TC_VER})
+   set(GCC_TC_ROOT_x86_64     ${HOST_DIR_PORTABLE}/gcc-x86_64-musl/${GCC_TC_VER})
    set(GCC_TOOLCHAIN          ${GCC_TC_ROOT}/bin)
    set(GCC_TOOLCHAIN_i386     ${GCC_TC_ROOT_i386}/bin)
    set(GCC_TOOLCHAIN_x86_64   ${GCC_TC_ROOT_x86_64}/bin)
@@ -845,9 +951,9 @@ set(TILCK_EXPORTED_VARS
    BOARD BOARD_BSP
 
    # Toolchain paths, labels and versions
-   TCROOT TCROOT_BA TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
-   GCC_TC_VER GCC_TC_VER_
-   GCC_NAME_PFX GCC_NAME_PFX_i386 GCC_NAME_PFX_x86_64
+   TCROOT TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
+   HOST_DIR_PORTABLE HOST_DIR
+   GCC_TC_VER
    GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
    GCC_TOOLCHAIN GCC_TOOLCHAIN_i386 GCC_TOOLCHAIN_x86_64
    GCC_TC_LIBC_DIRNAME GCC_TC_SYSROOT GCC_TC_ISYSTEM
@@ -858,6 +964,7 @@ set(TILCK_EXPORTED_VARS
 
    # Host info
    HOST_ARCH HOST_ARCH_BITS HOST_ARCH_FAMILY
+   HOST_OS HOST_DISTRO HOST_CC
 
    # Kernel/boot memory layout
    BASE_VA KERNEL_PADDR LINEAR_MAPPING_MB KERNEL_BASE_VA KERNEL_VADDR
@@ -1307,7 +1414,7 @@ add_custom_target(
       ${IMG_FILE}
 )
 
-set(GTEST_INSTALL_DIR ${TCROOT_BA}/gtest/${VER_GTEST}/install)
+set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${VER_GTEST}/install)
 set(GTEST_BTC_COMMAND "host_gtest")
 
 add_custom_command(

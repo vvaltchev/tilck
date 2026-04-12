@@ -57,7 +57,7 @@ else()
    set(TOOL_GCOV "${GCOV}")
 endif()
 
-set(GTEST_INSTALL_DIR ${TCROOT_BA}/gtest/${VER_GTEST}/install)
+set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${VER_GTEST}/install)
 
 include_directories(${TCROOT}/noarch/gnuefi/${VER_GNUEFI}/inc)
 

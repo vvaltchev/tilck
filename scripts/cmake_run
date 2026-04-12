@@ -9,13 +9,19 @@ GXX_MIN_VERSION="11.3.0"
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd $SOURCE_DIR/.. && pwd)"
 : ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain3}
+: ${TCROOT:=$TCROOT_PARENT/toolchain4}
 
 source $MAIN_DIR/scripts/bash_includes/script_utils
 source $MAIN_DIR/other/pkg_versions
 
 
 set_host_arch_variable   # set $HOST_ARCH
+
+# Legacy toolchain3 path used only to probe for a bundled cmake binary
+# below. The cmake package has not been ported to the Ruby pkgmgr yet,
+# so on toolchain4 this will not exist and we'll fall back to system
+# cmake. Once cmake moves into the Ruby pkgmgr, this should point at
+# the new host-tool install root.
 HOST_ARCH_DIR_SYS=$TCROOT/syscc/host_$HOST_ARCH
 
 if [[ "$1" == "--contrib" ]]; then
