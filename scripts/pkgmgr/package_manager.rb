@@ -193,10 +193,13 @@ class PackageManager
       atos = ->(a) { a.nil?? "noarch" : a.name }
     end
 
-    # Get an unique list of archs from all the installations
-    archs = list.map{ |e| atos.call(e.arch) }.uniq
-    vers = list.map { |e| e.ver }.uniq
-    list = list.filter { |e| !e.path.nil? }
+    # Split into working installs and broken ones. Only working
+    # installs count for the arch/ver display and "installed" status.
+    installed = list.filter { |e| !e.path.nil? && !e.broken }
+    broken = list.filter { |e| !e.path.nil? && e.broken }
+
+    archs = installed.map{ |e| atos.call(e.arch) }.uniq
+    vers = installed.map { |e| e.ver }.uniq
 
     if group_by.nil?
 
@@ -209,7 +212,7 @@ class PackageManager
         [
           a,
           add_braces.call(
-            list.filter {
+            installed.filter {
               |e| atos.call(e.arch) == a
             }.map(&:ver).uniq.map(&:to_s).join(", ")
           )
@@ -223,7 +226,7 @@ class PackageManager
         [
           v,
           add_braces.call(
-            list.filter {
+            installed.filter {
               |e| e.ver == v
             }.map(&:arch).uniq.map(&atos).join(", ")
           )
@@ -233,12 +236,10 @@ class PackageManager
     end
 
     if list.any? { |x| !x.pkg.nil? }
-      if list.any? { |x| !x.path.nil? }
-        if list.any? { |x| x.broken }
-          status = Package::BROKEN_STR
-        else
-          status = Package::INSTALLED_STR
-        end
+      if !installed.empty?
+        status = Package::INSTALLED_STR
+      elsif !broken.empty?
+        status = Package::BROKEN_STR
       else
         status = Package::EMPTY_STR
       end
@@ -472,6 +473,15 @@ class PackageManager
       puts "#{p}Remove pkg '#{info.pkgname}' install at #{info.path}"
       if !dry
         FileUtils.rm_rf(info.path)
+
+        # Clean up empty parent directories left behind (pkg dir,
+        # arch dir) so stale empty trees don't confuse the listing.
+        parent = info.path.parent
+        while parent != TC && parent.directory? &&
+              Dir.empty?(parent)
+          FileUtils.rmdir(parent)
+          parent = parent.parent
+        end
       end
     end
   end
