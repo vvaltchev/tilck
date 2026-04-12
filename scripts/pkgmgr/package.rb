@@ -83,7 +83,9 @@ class Package
                  arch_list: ALL_ARCHS,
                  dep_list: [],
                  host_os_list: nil,
-                 host_arch_list: nil)
+                 host_arch_list: nil,
+                 default: false,
+                 board_list: nil)
     @name = name
     @url = url
     @on_host = on_host
@@ -93,6 +95,8 @@ class Package
     @dep_list = dep_list
     @host_os_list = host_os_list
     @host_arch_list = host_arch_list
+    @default = default
+    @board_list = board_list
 
     assert {
       !!on_host == !!(name.start_with?("host_") || is_compiler)
@@ -105,6 +109,18 @@ class Package
     return false if @host_os_list && !@host_os_list.include?(HOST_OS)
     return false if @host_arch_list && !@host_arch_list.include?(HOST_ARCH.name)
     return true
+  end
+
+  # Is the current board supported? nil = any board.
+  def board_supported?
+    return true if @board_list.nil?
+    return @board_list.include?(BOARD)
+  end
+
+  # Should this package be auto-installed for the current config?
+  # Subclasses (e.g. GccCompiler) can override for richer logic.
+  def default?
+    @default && host_supported? && board_supported?
   end
 
   # The host install root for syscc packages.
@@ -154,7 +170,7 @@ class Package
   end
 
   def get_installable_list
-    return [] if !host_supported?
+    return [] if !host_supported? || !board_supported?
     if on_host
       syscc_package_get_installable_list()
     else
@@ -238,6 +254,11 @@ class Package
         l.join("/")
       }.join(" ")
       error "#{name} requires a #{req} host"
+      return false
+    end
+
+    if !board_supported?
+      error "#{name} requires board #{@board_list.join('/')}"
       return false
     end
 

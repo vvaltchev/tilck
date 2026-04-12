@@ -39,6 +39,10 @@ class PackageManager
     @found_installed = scan_toolchain()
   end
 
+  def get_default_packages
+    @packages.values.select(&:default?)
+  end
+
   def get_installed_compilers
     @known_installed.select { |x|
       !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&
