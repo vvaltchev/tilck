@@ -153,10 +153,64 @@ class TestVersionClass < Minitest::Test
     assert_raises(ArgumentError) { Ver("zazz") }
   end
 
+  def test_ver_nil_returns_nil
+    assert_nil Ver(nil)
+  end
+
+  def test_constructor_nil_raises
+    assert_raises(ArgumentError) { Version.new(nil) }
+  end
+
+  def test_constructor_non_string_raises
+    assert_raises(ArgumentError) { Version.new(123) }
+  end
+
   def test_invalid_comparison
     assert_raises(TypeError) { Ver("a12") < Ver("a13") }
     assert_raises(TypeError) { Ver("a12") <= Ver("a13") }
     assert_raises(TypeError) { Ver("a12") > Ver("a13") }
     assert_raises(TypeError) { Ver("a12") >= Ver("a13") }
+  end
+
+  def test_compare_incompatible_types_raises
+    # DOT vs HASH — different base types
+    assert_raises(RuntimeError) { Ver("1.2") <=> Ver("abcdef") }
+  end
+
+  def test_compare_with_string
+    v = Ver("1.2.3")
+    assert_equal 0, (v <=> "1.2.3")
+    assert_operator v, :==, "ALL"
+  end
+
+  def test_compare_with_unknown_type
+    v = Ver("1.2.3")
+    assert_nil(v <=> :symbol)
+  end
+
+  def test_short_date_comparison
+    assert_operator Ver("2012.04"), :<, Ver("2024.01")
+    assert_operator Ver("2012_04"), :<, Ver("2024_01")
+  end
+
+  def test_underscore_method
+    v = Ver("1.2.3")
+    assert_equal "1_2_3", v._
+
+    v = Ver("3_4_5")
+    assert_equal "3_4_5", v._
+  end
+
+  def test_to_dot_method
+    v = Ver("1_2_3")
+    dot = v.to_dot
+    assert_equal VersionType::DOT, dot.type
+    assert_equal "1.2.3", dot.serialize
+  end
+
+  def test_long_numeric_hash
+    # 8-digit number that's NOT a valid date → HASH
+    v = Ver("99999999")
+    assert_equal VersionType::HASH, v.type
   end
 end

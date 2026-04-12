@@ -115,9 +115,6 @@ class PackageManager
 
     curr_cc = ARCH.gcc_ver
     banner = ->(s) { puts; puts "--- #{s.center(40)} ---" }
-    show_curr_compiler = ->(cc) {
-      cc == curr_cc ? " [ CURRENT ]" : ""
-    }
 
     list_with_paths = @known_installed + @found_installed
     by_path = {}

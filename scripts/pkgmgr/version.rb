@@ -191,13 +191,10 @@ class Version
       @comps = [y, m, d]
       @type = VersionType::FLAT_DATE
     else
+      # 8 digits that don't form a valid date (e.g. 99999999)
+      # are treated as a hash — always >= HASH_MIN_DIGITS (6).
       @comps = [s.to_i]
-
-      if s.length < HASH_MIN_DIGITS
-        @type = VersionType::DOT  # FLAT NUMBER like 123 defaults to DOT
-      else
-        @type = VersionType::HASH
-      end
+      @type = VersionType::HASH
     end
   end
 

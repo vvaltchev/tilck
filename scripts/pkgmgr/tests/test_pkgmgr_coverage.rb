@@ -249,6 +249,164 @@ class TestScanToolchain < Minitest::Test
   end
 end
 
+class TestWithCc < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_with_cc_sets_env_and_yields_arch_dir
+    with_fake_tc do |tc|
+      # Create a fake compiler install that get_installed_compilers
+      # will find: need target_arch in InstallInfo, and a bin/ dir.
+      cc = FakePackage.new("gcc-#{ARCH.name}-musl",
+                           on_host: true, is_compiler: true,
+                           portable: true, arch_list: ALL_HOST_ARCHS)
+      cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
+      target = ARCH
+      cc.define_singleton_method(:get_install_list) {
+        super().map { |info|
+          InstallInfo.new(
+            info.pkgname, info.compiler, info.on_host, info.arch,
+            info.ver, info.path, info.pkg, info.broken,
+            target, "musl"
+          )
+        }
+      }
+      pkgmgr.register(cc)
+
+      # Install the compiler (creates the dir structure)
+      with_stubbed_externals do
+        pkgmgr.install("gcc-#{ARCH.name}-musl")
+      end
+
+      # Create a fake bin/ dir so prepend_to_global_path doesn't
+      # break PATH with a nonexistent directory.
+      install_list = cc.get_install_list
+      assert !install_list.empty?
+      FileUtils.mkdir_p(install_list.first.path / "bin")
+
+      pkgmgr.refresh()
+
+      # Now call the REAL with_cc (not stubbed)
+      yielded_dir = nil
+      saved_cc = ENV["CC"]
+      pkgmgr.with_cc do |arch_dir|
+        yielded_dir = arch_dir
+        # Verify env vars are set
+        assert_match(/linux-gcc$/, ENV["CC"])
+        assert_match(/linux-g\+\+$/, ENV["CXX"])
+        assert_match(/linux-ar$/, ENV["AR"])
+        assert_match(/linux-nm$/, ENV["NM"])
+        assert_match(/linux-ranlib$/, ENV["RANLIB"])
+        assert_match(/linux-$/, ENV["CROSS_PREFIX"])
+      end
+
+      assert_instance_of Pathname, yielded_dir
+      # Env should be restored after the block
+      assert_equal saved_cc, ENV["CC"]
+    end
+  end
+end
+
+class TestShowStatusAllCompilers < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  def test_show_all_non_current_compiler_group
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+
+        # Create an install under a DIFFERENT gcc version (12.4.0)
+        # to trigger the "non-current compiler" group.
+        other_gcc = "12.4.0"
+        other_dir = tc / "gcc-#{other_gcc}" / ARCH.name / "foo" / "1.0.0"
+        FileUtils.mkdir_p(other_dir)
+
+        pkgmgr.refresh()
+
+        output = capture_stdout {
+          pkgmgr.show_status_all(nil, true)  # all_compilers = true
+        }
+        assert_match(/Packages built by GCC 12\.4\.0/, output)
+        assert_match(/Packages built by GCC #{FAKE_GCC_VER}.*CURRENT/, output)
+      end
+    end
+  end
+end
+
+class TestReadConfigVersionsErrors < Minitest::Test
+  include TestHelper
+
+  def test_invalid_line_raises
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "pkg_versions"),
+                   "BADLINE\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          assert_raises(RuntimeError) {
+            pm.send(:read_config_versions)
+          }
+        end
+      end
+    end
+  end
+
+  def test_missing_value_raises
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "pkg_versions"),
+                   "VER_FOO=\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          assert_raises(RuntimeError) {
+            pm.send(:read_config_versions)
+          }
+        end
+      end
+    end
+  end
+
+  def test_duplicate_key_raises
+    with_fake_tc do |tc|
+      Dir.mktmpdir do |fake_main|
+        FileUtils.mkdir_p(File.join(fake_main, "other"))
+        File.write(File.join(fake_main, "other", "pkg_versions"),
+                   "VER_FOO=1.0\nVER_FOO=2.0\n")
+
+        with_context(MAIN_DIR: Pathname.new(fake_main)) do
+          pm = PackageManager.instance
+          assert_raises(RuntimeError) {
+            pm.send(:read_config_versions)
+          }
+        end
+      end
+    end
+  end
+end
+
 class TestShowStatusEdgeCases < Minitest::Test
   include TestHelper
 
