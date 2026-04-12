@@ -389,6 +389,40 @@ class Package
   def install_impl_internal(install_dir) = raise NotImplementedError
   def expected_files = raise NotImplementedError
 
+  # Normalize a kernel-style .config file: strip metadata header,
+  # empty lines, non-CONFIG lines, and reverse-sort by binary value.
+  # Used by busybox and u-boot for reproducible diffs.
+  def fix_config_file(path = ".config")
+    data = File.read(path)
+    lines = data.lines()
+    lines = lines[4...] # drop first 4 lines (metadata header)
+    lines.select! { |x| !x.strip.blank? }
+    lines.select! { |x| !x.index("CONFIG_").nil? }
+    lines.map! { |x| x.rstrip }
+    lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
+    File.write(path, lines.join("\n") + "\n")
+  end
+
+  # Interactive reconfiguration (e.g. `make menuconfig`). Only packages
+  # that override config_impl are configurable. The base class runs the
+  # override inside the installed version's directory with the cross-
+  # compiler in PATH.
+  def configurable? = false
+
+  def configure(ver = nil)
+    ver ||= default_ver
+    if !installed?(ver)
+      error "#{name} is not installed (version #{ver})"
+      return false
+    end
+
+    pkgmgr.with_cc() do |arch_dir|
+      chdir_install_dir(arch_dir, ver) do
+        return config_impl
+      end
+    end
+  end
+
   private
   # Generic methods used depending on the package type.
 

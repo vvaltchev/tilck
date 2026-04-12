@@ -43,22 +43,30 @@ class BusyBoxPackage < Package
     return ok
   end
 
-  private
-  def fix_config_file
-    data = File.read(".config")
-    lines = data.lines()
-    lines = lines[4...] # drop the first 4 lines
-    lines.select! { |x| !x.strip().blank? } # drop the empty lines
-    lines.select! { |x| !x.index("CONFIG_").nil? } # drop comment lines
-    lines.map! { |x| x.rstrip() }
+  def configurable? = true
 
-    # Do a reverse stable sort on the lines array, comparing the binary version
-    # of the strings, which is what we did in the past with:
-    #
-    #     LC_ALL=C sort -sr .config > .config_sorted
-    #
-    lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
-    File.write(".config", lines.join("\n") + "\n")
+  def config_impl
+    ok = system("make", "menuconfig")
+    return false if !ok
+
+    fix_config_file
+
+    print "Update #{CONFIG_FILE.basename} with the new config? [Y/n]: "
+    answer = STDIN.gets&.strip&.downcase
+
+    if answer.nil? || answer.empty? || answer == "y"
+      cp ".config", CONFIG_FILE.to_s
+      info "Source file #{CONFIG_FILE} UPDATED"
+    end
+
+    # Rebuild with the new configuration
+    info "Rebuilding #{name}..."
+    ok = run_command("build.log", [ "make", "V=1", "-j#{BUILD_PAR}" ])
+    return false if !ok
+
+    fix_config_file
+    cp ".config", ".last_build_config"
+    return true
   end
 
 end

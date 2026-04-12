@@ -179,6 +179,7 @@ module Main
       list: false,
       force: false,
       self_test: false,
+      config: nil,
       install: [],
       install_compiler: [],
       uninstall: [],
@@ -194,6 +195,7 @@ module Main
       :just_context,
       :list,
       :self_test,
+      :config,
       :install,
       :install_compiler,
       :uninstall,
@@ -230,6 +232,11 @@ module Main
     p.on('-t', '--self-test', 'Run internal unit tests [MODE]') {
       opts[:self_test] = true
     }
+
+    p.on(
+      '-C', '--config PKG',
+      'Reconfigure a package interactively (e.g. make menuconfig) [MODE]'
+    ) { |pkg| opts[:config] = pkg }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
       get_multiple_args.call(first, :install)
@@ -394,6 +401,19 @@ module Main
         options[:compiler].eql?("ALL")
       )
       return 0
+    end
+
+    if options[:config]
+      pkg = pkgmgr.get(options[:config])
+      if !pkg
+        error "Package not found: #{options[:config]}"
+        return 1
+      end
+      if !pkg.configurable?
+        error "Package #{pkg.name} does not support reconfiguration"
+        return 1
+      end
+      return pkg.configure() ? 0 : 1
     end
 
     if !options[:install].blank?

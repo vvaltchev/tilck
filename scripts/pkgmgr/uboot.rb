@@ -38,29 +38,57 @@ class UbootPackage < Package
     ["tools/mkimage", false],
   ]
 
+  def uboot_config = BOARD_BSP / "u-boot.config"
+
   def install_impl_internal(install_dir)
     patch_qemu_riscv_scriptaddr
-    cp BOARD_BSP / "u-boot.config", ".config"
+    cp uboot_config, ".config"
 
-    make_argv = [ "make", "V=1", "-j#{BUILD_PAR}" ]
+    ok = run_command("build.log", make_argv)
+    return ok
+  end
+
+  def configurable? = true
+
+  def config_impl
+    ok = system("make", "menuconfig")
+    return false if !ok
+
+    fix_config_file
+
+    print "Update #{uboot_config.basename} with the new config? [Y/n]: "
+    answer = STDIN.gets&.strip&.downcase
+
+    if answer.nil? || answer.empty? || answer == "y"
+      cp ".config", uboot_config.to_s
+      info "Source file #{uboot_config} UPDATED"
+    end
+
+    # Rebuild with the new configuration
+    info "Rebuilding #{name}..."
+    ok = run_command("build.log", make_argv)
+    return false if !ok
+
+    return true
+  end
+
+  private
+
+  def make_argv
+    argv = [ "make", "V=1", "-j#{BUILD_PAR}" ]
 
     if OS == "Darwin"
-      # u-boot's host tools (mkimage etc.) link against libssl, which on
-      # macOS lives under Homebrew rather than in the system include path.
       ssl = `brew --prefix openssl@3`.strip
       if !ssl.empty? && File.directory?(ssl)
-        make_argv += [
+        argv += [
           "HOSTCFLAGS=-I#{ssl}/include",
           "HOSTLDFLAGS=-L#{ssl}/lib",
         ]
       end
     end
 
-    ok = run_command("build.log", make_argv)
-    return ok
+    return argv
   end
-
-  private
 
   #
   # The default scriptaddr in qemu-riscv.h (0x8c100000) sits above the top
