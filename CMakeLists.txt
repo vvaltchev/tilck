@@ -146,8 +146,16 @@ endif()
 
 # HOST_CC: family+version of the host C compiler detected by project().
 # Must match the Ruby pkgmgr's get_host_cc, which reads `$CC -v` output.
+#
+# Apple Clang reports a 4-component version to CMake (e.g. 21.0.0.21000099)
+# while `clang -v` says "Apple clang version 21.0.0 ...". The Ruby pkgmgr
+# parses the latter, so truncate to major.minor.patch here to stay in sync.
 if (CMAKE_C_COMPILER_ID MATCHES "Clang")
-   set(HOST_CC "clang-${CMAKE_C_COMPILER_VERSION}")
+   string(REGEX REPLACE
+      "^([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1"
+      _clang_ver "${CMAKE_C_COMPILER_VERSION}"
+   )
+   set(HOST_CC "clang-${_clang_ver}")
 elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
    set(HOST_CC "gcc-${CMAKE_C_COMPILER_VERSION}")
 else()
