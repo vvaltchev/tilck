@@ -91,6 +91,13 @@ class TestHTTPServer
   end
 
   def send_response(client, resp)
+    # If the handler set :raw_handler, it takes over the socket directly.
+    # Used for testing connection drops, slow transfers, etc.
+    if resp[:raw_handler]
+      resp[:raw_handler].call(client)
+      return
+    end
+
     status = resp[:status] || 200
     body = resp[:body] || ""
     content_type = resp[:content_type] || "text/plain"
@@ -106,7 +113,11 @@ class TestHTTPServer
 
     lines = ["HTTP/1.1 #{status} #{status_text}"]
     lines << "Content-Type: #{content_type}"
-    lines << "Content-Length: #{body.bytesize}" if !body.empty?
+
+    # Allow overriding Content-Length via headers (for mismatch tests).
+    if !extra_headers.key?("Content-Length") && !body.empty?
+      lines << "Content-Length: #{body.bytesize}"
+    end
 
     extra_headers.each { |k, v| lines << "#{k}: #{v}" }
 

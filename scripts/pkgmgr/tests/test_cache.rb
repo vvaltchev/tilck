@@ -132,6 +132,174 @@ class TestCacheDownloadFile < Minitest::Test
   end
 end
 
+class TestCacheDownloadEdgeCases < Minitest::Test
+  include TestHelper
+
+  def setup
+    @server = TestHTTPServer.new
+  end
+
+  def teardown
+    @server.stop
+  end
+
+  def test_content_length_mismatch_fails
+    body = "short"
+    @server.route("/mismatch.tar.gz") { |req|
+      # Advertise 10000 bytes but only send 5
+      {
+        status: 200,
+        body: body,
+        content_type: "application/gzip",
+        headers: { "Content-Length" => "10000" }
+      }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "mismatch.tar.gz")
+      refute ok
+    end
+  end
+
+  def test_no_content_length_succeeds
+    body = "data without content-length header"
+    @server.route("/nolen.tar.gz") { |req|
+      # Send data with Content-Length: 0 so Net::HTTP treats it as
+      # unknown length. Actually, to get no Content-Length at all,
+      # we use raw_handler.
+      {
+        raw_handler: ->(client) {
+          client.print "HTTP/1.1 200 OK\r\n"
+          client.print "Content-Type: application/gzip\r\n"
+          client.print "Connection: close\r\n"
+          client.print "\r\n"
+          client.print body
+        }
+      }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "nolen.tar.gz")
+      assert ok
+      assert_equal body, File.read(tc / "cache" / "nolen.tar.gz")
+    end
+  end
+
+  def test_redirect_loop_fails
+    # Create a redirect that points to itself
+    @server.route("/loop.tar.gz") { |req|
+      { status: 302, headers: { "Location" => "/loop.tar.gz" } }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "loop.tar.gz")
+      refute ok
+    end
+  end
+
+  def test_redirect_chain_exceeds_limit
+    # Create a chain of 12 redirects (limit is 10)
+    (1..12).each do |i|
+      next_path = i < 12 ? "/hop#{i+1}.tar.gz" : "/final.tar.gz"
+      @server.route("/hop#{i}.tar.gz") { |req|
+        { status: 302, headers: { "Location" => next_path } }
+      }
+    end
+    @server.route("/final.tar.gz") { |req|
+      { status: 200, body: "arrived", content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "hop1.tar.gz")
+      refute ok
+    end
+  end
+
+  def test_connection_drop_mid_transfer
+    @server.route("/drop.tar.gz") { |req|
+      {
+        raw_handler: ->(client) {
+          # Send headers claiming 10000 bytes, then only send 100
+          # and close the connection.
+          client.print "HTTP/1.1 200 OK\r\n"
+          client.print "Content-Length: 10000\r\n"
+          client.print "Content-Type: application/gzip\r\n"
+          client.print "Connection: close\r\n"
+          client.print "\r\n"
+          client.print("x" * 100)
+          # Socket closes here — client sees truncated transfer
+        }
+      }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "drop.tar.gz")
+      refute ok
+      # Partial file should NOT be left in cache
+      refute (tc / "cache" / "drop.tar.gz").exist?
+    end
+  end
+
+  def test_empty_200_response
+    @server.route("/empty.tar.gz") { |req|
+      { status: 200, body: "" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "empty.tar.gz")
+      # Empty body with 200 — download_url returns true (no
+      # content-length mismatch since both are 0), but the file
+      # won't be useful. The download itself should succeed.
+      assert ok
+    end
+  end
+
+  def test_large_file_chunked_download
+    # Create a ~500KB body to exercise the ProgressReporter
+    body = "A" * (500 * 1024)
+    @server.route("/large.tar.gz") { |req|
+      { status: 200, body: body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "large.tar.gz")
+      assert ok
+      assert_equal body.bytesize,
+                   File.size(tc / "cache" / "large.tar.gz")
+    end
+  end
+
+  def test_redirect_to_absolute_url
+    body = "redirected content"
+    @server.route("/abs-redir.tar.gz") { |req|
+      # Redirect to an absolute URL on the same server
+      {
+        status: 302,
+        headers: {
+          "Location" => "http://127.0.0.1:#{@server.port}/target.tar.gz"
+        }
+      }
+    }
+    @server.route("/target.tar.gz") { |req|
+      { status: 200, body: body, content_type: "application/gzip" }
+    }
+    @server.start
+
+    with_fake_tc do |tc|
+      ok = Cache.download_file(@server.url, "abs-redir.tar.gz")
+      assert ok
+      assert_equal body, File.read(tc / "cache" / "abs-redir.tar.gz")
+    end
+  end
+end
+
 class TestCacheExtractFile < Minitest::Test
   include TestHelper
 

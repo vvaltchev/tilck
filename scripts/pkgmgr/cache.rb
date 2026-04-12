@@ -206,7 +206,12 @@ module Cache
 
     # Download here the file.
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
-    error "Download failed" if !success
+
+    if !success
+      error "Download failed"
+      rm_f(local_path)  # don't leave partial files in cache
+    end
+
     return success
   end
 
