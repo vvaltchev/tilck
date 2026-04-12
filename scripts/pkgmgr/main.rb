@@ -148,7 +148,7 @@ module Main
     mkdir_p(TC_NOARCH)
   end
 
-  def parse_options
+  def parse_options(argv = ARGV.dup)
 
     is_option = ->(line) { line.lstrip.start_with?("-") }
     highlight = ->(line) {
@@ -208,8 +208,6 @@ module Main
       :uninstall,
       :uninstall_compiler,
     ]
-
-    argv = ARGV.dup()
 
     get_multiple_args = ->(first, sym) {
       list = [first]
@@ -394,7 +392,7 @@ module Main
       puts
     end
 
-    options = parse_options()
+    options = parse_options(argv)
 
     if options[:help]
       return 0
