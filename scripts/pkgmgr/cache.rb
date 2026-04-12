@@ -126,15 +126,20 @@ module Cache
         rm_f(local_path)
     end
 
+    # Thin wrappers around the git command. Tests replace these to
+    # simulate git behavior without a real repo.
+    def run_git(*args) = system("git", *args)
+    def capture_git(*args) = Open3.capture2("git", *args)
+
     def git_clone(url, destdir, tag)
 
       if tag.nil?
-        ok = system("git", "clone", "--depth", "1", url, destdir)
+        ok = run_git("clone", "--depth", "1", url, destdir)
         raise LocalError, "Failed to clone git repo: #{url}" if !ok
         return true
       end
 
-      ok = system("git", "clone", "--branch", tag, "--depth", "1", url, destdir)
+      ok = run_git("clone", "--branch", tag, "--depth", "1", url, destdir)
       return true if ok
 
        # Git clone failed. There could be several reasons for that:
@@ -154,26 +159,26 @@ module Cache
 
       # We failed to clone the repo, but the tag is a git SHA (corner case 3),
       # so it's worth trying a workaround.
-      ok = system("git", "clone", url, destdir)
+      ok = run_git("clone", url, destdir)
       raise LocalError, "Failed to clone git repo: #{url}" if !ok
 
       # OK, a regular full-clone succeeded. Now let's checkout the specific
       # commit, if it exists.
       chdir(destdir) do
-        ok = system("git", "checkout", tag)
+        ok = run_git("checkout", tag)
         raise LocalError, "Failed to checkout tag: #{tag}" if !ok
 
         # OK, we succeeded. Now, let's save the commit info before we delete
         # the .git directory to save space.
-        out, status = Open3.capture2("git", "rev-parse", "--abbrev-ref", "HEAD")
+        out, status = capture_git("rev-parse", "--abbrev-ref", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
         File.write(".ref_name", out)
 
-        out, status = Open3.capture2("git", "rev-parse", "--short", "HEAD")
+        out, status = capture_git("rev-parse", "--short", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
         File.write(".ref_short", out)
 
-        out, status = Open3.capture2("git", "rev-parse", "HEAD")
+        out, status = capture_git("rev-parse", "HEAD")
         raise LocalError, "Git rev-parse failed" if !status.success?
         File.write(".ref", out)
       end
