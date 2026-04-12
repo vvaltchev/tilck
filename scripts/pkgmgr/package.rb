@@ -161,6 +161,12 @@ class Package
   def ver_dirname(ver) = ver.to_s()
   def git_tag(ver) = ver.to_s()
 
+  # Filename to fetch from the remote `url`. Defaults to the same name we
+  # store in the local cache (`tarname(ver)`). Override when the upstream
+  # serves the archive under a different name (e.g. github tag archives,
+  # which are served as `<tag>.tar.gz` regardless of the repo name).
+  def remote_tarname(ver) = tarname(ver)
+
   # Apply patch files from scripts/patches/<pkg>/<ver>/.
   # Applies common patches (*.diff in the version directory) first, then
   # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
@@ -213,13 +219,18 @@ class Package
       raise NotImplementedError
     end
 
-    # Pre-built release tarballs hosted on GitHub Releases are fetched via
-    # plain HTTP download, not git clone, even though their URL includes
-    # the github.com host.
-    if url.include?(GITHUB) && !url.include?("/releases/download/")
+    # GitHub serves two flavors of pre-built tarballs that we want to fetch
+    # over plain HTTP rather than via `git clone`:
+    #   - release assets:   /<owner>/<repo>/releases/download/<tag>/<file>
+    #   - tag/branch zips:  /<owner>/<repo>/archive/refs/tags/<tag>.tar.gz
+    # Anything else under github.com is assumed to be a clonable repo.
+    github_tarball = url.include?("/releases/download/") ||
+                     url.include?("/archive/")
+
+    if url.include?(GITHUB) && !github_tarball
       ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
     else
-      ok = Cache::download_file(url, tarname(ver))
+      ok = Cache::download_file(url, remote_tarname(ver), tarname(ver))
     end
     return false if !ok
 
