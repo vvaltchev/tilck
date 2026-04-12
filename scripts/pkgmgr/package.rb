@@ -117,10 +117,17 @@ class Package
     return @board_list.include?(BOARD)
   end
 
+  # Is the current target arch supported by this package?
+  # Noarch (arch_list nil) and host packages are always true.
+  def arch_supported?
+    return true if @arch_list.nil? || @on_host
+    return @arch_list.include?(ARCH.name)
+  end
+
   # Should this package be auto-installed for the current config?
   # Subclasses (e.g. GccCompiler) can override for richer logic.
   def default?
-    @default && host_supported? && board_supported?
+    @default && host_supported? && board_supported? && arch_supported?
   end
 
   # The host install root for syscc packages.

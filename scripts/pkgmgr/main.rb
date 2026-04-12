@@ -448,6 +448,31 @@ module Main
       return 0
     end
 
+    # No mode flag specified: install the default package set for the
+    # current ARCH / BOARD / HOST configuration.
+    defaults = pkgmgr.get_default_packages
+    plan = pkgmgr.resolve_install_plan(
+      defaults.map { |p| [p.name, nil] }
+    )
+
+    if plan.empty?
+      info "All default packages are already installed"
+      return 0
+    end
+
+    dep_names = plan.map(&:first) - defaults.map(&:name)
+    if !dep_names.empty?
+      info "Dependencies to install: #{dep_names.join(', ')}"
+    end
+    info "Install order: #{plan.map(&:first).join(' -> ')}"
+
+    for name, ver in plan do
+      if !pkgmgr.install(name, ver)
+        error "Could not install: #{name}"
+        return 1
+      end
+    end
+
     return 0
   end # method main()
 end # module Main
