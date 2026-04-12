@@ -55,8 +55,9 @@ module TestHelper
 
   # Create a temp toolchain directory tree and run the block with TC
   # and related constants pointing at it. Cleans up on exit.
-  # GCC version used for test toolchain trees. Must match the directory
-  # name created in with_fake_tc.
+  # Fixed architecture and GCC version for all tests, so results are
+  # deterministic regardless of the user's ARCH= environment variable.
+  FAKE_ARCH = ALL_ARCHS["i386"]
   FAKE_GCC_VER = Ver("13.3.0")
 
   def with_fake_tc
@@ -64,7 +65,7 @@ module TestHelper
       tc = Pathname.new(dir)
       FileUtils.mkdir_p(tc / "cache")
       FileUtils.mkdir_p(tc / "noarch")
-      FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / ARCH.name)
+      FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / FAKE_ARCH.name)
 
       # Set gcc_ver for all architectures (normally done by main.rb's
       # read_gcc_ver_defaults, which tests don't call).
@@ -78,6 +79,9 @@ module TestHelper
       FileUtils.mkdir_p(host_dir)
 
       with_context(
+        ARCH: FAKE_ARCH,
+        BOARD: nil,
+        DEFAULT_BOARD: nil,
         TC: tc,
         TC_CACHE: tc / "cache",
         TC_NOARCH: tc / "noarch",

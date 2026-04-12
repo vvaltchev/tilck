@@ -242,6 +242,16 @@ module Main
       opts[:coverage] = true
     }
 
+    p.on('-F', '--filter REGEX',
+         'Run only tests matching REGEX (use with -t) [OPTION]') {
+      |pat| (opts[:test_args] ||= []) << "--filter" << pat
+    }
+
+    p.on('-V', '--verbose-tests',
+         'Show stdout/stderr even for passing tests (use with -t) [FLAG]') {
+      (opts[:test_args] ||= []) << "--verbose-tests"
+    }
+
     p.on(
       '-C', '--config PKG',
       'Reconfigure a package interactively (e.g. make menuconfig) [MODE]'
@@ -406,6 +416,7 @@ module Main
       runner = File.join(__dir__, "tests", "run_all.rb")
       args = [runner]
       args << "--coverage" if options[:coverage]
+      args += options[:test_args] if options[:test_args]
       # exec into a fresh Ruby process so Coverage.start runs before
       # any pkgmgr modules are loaded (coverage only tracks files
       # loaded after start).
