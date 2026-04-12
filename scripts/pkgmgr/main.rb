@@ -179,6 +179,7 @@ module Main
       list: false,
       force: false,
       self_test: false,
+      upgrade: false,
       config: nil,
       install: [],
       install_compiler: [],
@@ -195,6 +196,7 @@ module Main
       :just_context,
       :list,
       :self_test,
+      :upgrade,
       :config,
       :install,
       :install_compiler,
@@ -237,6 +239,12 @@ module Main
       '-C', '--config PKG',
       'Reconfigure a package interactively (e.g. make menuconfig) [MODE]'
     ) { |pkg| opts[:config] = pkg }
+
+    p.on(
+      '--upgrade',
+      'Upgrade installed packages whose version was bumped in',
+      'pkg_versions. Does not install new packages. [MODE]'
+    ) { opts[:upgrade] = true }
 
     p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
       get_multiple_args.call(first, :install)
@@ -403,6 +411,27 @@ module Main
       return 0
     end
 
+    if options[:upgrade]
+      upgrades = pkgmgr.get_upgradable_packages
+      if upgrades.empty?
+        info "All installed packages are up to date"
+        return 0
+      end
+
+      plan = pkgmgr.resolve_install_plan(
+        upgrades.map { |p| [p.name, nil] }
+      )
+
+      info "Packages to upgrade: #{plan.map(&:first).join(', ')}"
+      for name, ver in plan do
+        if !pkgmgr.install(name, ver)
+          error "Could not install: #{name}"
+          return 1
+        end
+      end
+      return 0
+    end
+
     if options[:config]
       pkg = pkgmgr.get(options[:config])
       if !pkg
@@ -468,19 +497,27 @@ module Main
       return 0
     end
 
-    # No mode flag specified: install the default package set for the
-    # current ARCH / BOARD / HOST configuration.
+    # No mode flag specified: install default packages AND upgrade any
+    # installed packages whose version was bumped in pkg_versions.
     defaults = pkgmgr.get_default_packages
+    upgrades = pkgmgr.get_upgradable_packages
+    all = (defaults + upgrades).uniq(&:name)
+
     plan = pkgmgr.resolve_install_plan(
-      defaults.map { |p| [p.name, nil] }
+      all.map { |p| [p.name, nil] }
     )
 
     if plan.empty?
-      info "All default packages are already installed"
+      info "All default packages are installed and up to date"
       return 0
     end
 
-    dep_names = plan.map(&:first) - defaults.map(&:name)
+    upgrade_names = upgrades.map(&:name) & plan.map(&:first)
+    if !upgrade_names.empty?
+      info "Packages to upgrade: #{upgrade_names.join(', ')}"
+    end
+
+    dep_names = plan.map(&:first) - all.map(&:name)
     if !dep_names.empty?
       info "Dependencies to install: #{dep_names.join(', ')}"
     end

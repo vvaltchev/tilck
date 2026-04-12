@@ -385,6 +385,15 @@ class Package
     x.arch == default_arch and !x.broken
   }
 
+  # Does this package have an older version installed but not the
+  # current one (from pkg_versions)? If so, it needs upgrading.
+  def needs_upgrade?
+    list = get_install_list.select { |x|
+      x.compiler == default_cc && x.arch == default_arch && !x.broken
+    }
+    !list.empty? && !list.any? { |x| x.ver == default_ver }
+  end
+
   # Methods not implemented in the base class
   def install_impl_internal(install_dir) = raise NotImplementedError
   def expected_files = raise NotImplementedError

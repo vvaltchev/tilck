@@ -43,6 +43,13 @@ class PackageManager
     @packages.values.select(&:default?)
   end
 
+  def get_upgradable_packages
+    @packages.values.select { |p|
+      p.host_supported? && p.board_supported? && p.arch_supported? &&
+      p.needs_upgrade?
+    }
+  end
+
   def get_installed_compilers
     @known_installed.select { |x|
       !x.pkg.nil? && x.pkg.is_compiler && !x.path.nil? &&
