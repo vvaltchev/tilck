@@ -266,9 +266,10 @@ class PackageManager
   #                        supported before
   def install(pkg, ver = nil)
 
+    name = pkg.is_a?(String) ? pkg : pkg.name
     pkg = get_smart(pkg)
     if !pkg
-      error "Package not found: #{pkg_or_name}"
+      error "Package not found: #{name}"
       return false
     end
 

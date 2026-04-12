@@ -108,6 +108,7 @@ module TestHelper
 
     def expected_files = []
     def tarname(ver) = "#{name}-#{ver}.tgz"
+    def default_ver = Ver("1.0.0")
 
     # Override install_impl to skip all filesystem/network operations.
     def install_impl(ver)
