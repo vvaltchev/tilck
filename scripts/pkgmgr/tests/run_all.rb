@@ -6,16 +6,22 @@
 #   ruby scripts/pkgmgr/tests/run_all.rb [OPTIONS]
 #
 # Options:
-#   --coverage       Enable code coverage + HTML report
-#   --filter REGEX   Run only tests whose full name matches REGEX
-#   --verbose-tests  Show stdout/stderr even for passing tests
+#   --coverage            Collect code coverage + HTML report
+#   --filter REGEX        Run only tests whose name matches REGEX
+#   --verbose-tests       Show stdout/stderr even for passing tests
+#   --system-tests        After unit tests: install all pkgs, build all archs
+#   --all-build-types     With --system-tests: run all build generator configs
+#   --run-also-tilck-tests  With --system-tests: run gtests + system tests
 #
 
 # --- Parse runner options before minitest loads ---
 
-$coverage_enabled  = ARGV.delete("--coverage")
-$verbose_tests     = ARGV.delete("--verbose-tests")
-$test_filter       = nil
+$coverage_enabled    = ARGV.delete("--coverage")
+$verbose_tests       = ARGV.delete("--verbose-tests")
+$system_tests        = ARGV.delete("--system-tests")
+$all_build_types     = ARGV.delete("--all-build-types")
+$run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
+$test_filter         = nil
 
 if (idx = ARGV.index("--filter"))
   ARGV.delete_at(idx)
@@ -31,6 +37,9 @@ end
 
 require 'minitest'
 require 'stringio'
+
+# Global flag set by PrettyReporter after tests complete.
+$unit_tests_passed = false
 
 class PrettyReporter < Minitest::AbstractReporter
 
@@ -58,6 +67,7 @@ class PrettyReporter < Minitest::AbstractReporter
     @total_time = 0.0
     @total_assertions = 0
     @current_class = nil
+    @abort = false
   end
 
   def start
@@ -69,6 +79,7 @@ class PrettyReporter < Minitest::AbstractReporter
   end
 
   def prerecord(klass, name)
+    return if @abort
     if klass.name != @current_class
       @current_class = klass.name
       puts "  #{DIM}#{klass.name}#{RESET}"
@@ -78,7 +89,6 @@ class PrettyReporter < Minitest::AbstractReporter
   def record(result)
     @total_time += result.time
     @total_assertions += result.assertions
-    full_name = "#{result.class}##{result.name}"
 
     if result.passed?
       @passes += 1
@@ -102,6 +112,10 @@ class PrettyReporter < Minitest::AbstractReporter
       end
       show_captured(result)
       show_failure(result)
+
+      # Stop on first failure
+      @abort = true
+      Minitest::Runnable.runnables.clear
     end
   end
 
@@ -137,7 +151,9 @@ class PrettyReporter < Minitest::AbstractReporter
   end
 
   def passed?
-    @fails.empty? && @errors.empty?
+    ok = @fails.empty? && @errors.empty?
+    $unit_tests_passed = ok
+    ok
   end
 
   private
@@ -175,14 +191,9 @@ class PrettyReporter < Minitest::AbstractReporter
 end
 
 # --- Capture stdout/stderr per test ---
-#
-# We store captured output in a class-level hash keyed by the test's
-# full name (Class#method). The reporter reads from here after each
-# test finishes.
 
 module CaptureOutput
 
-  # { "TestFoo#test_bar" => { stdout: "...", stderr: "..." } }
   CAPTURED = {}
 
   def run
@@ -206,8 +217,6 @@ Minitest::Test.prepend(CaptureOutput)
 
 # --- Configure minitest ---
 
-# Register our reporter as a minitest plugin. Minitest auto-discovers
-# methods matching plugin_*_init and calls them during startup.
 module Minitest
   def self.plugin_pretty_init(options)
     self.reporter.reporters.clear
@@ -225,11 +234,30 @@ end
 
 Dir.glob(File.join(__dir__, "test_*.rb")).sort.each { |f| require f }
 
-# --- Coverage report (after tests finish) ---
+# --- After minitest finishes: system tests + coverage ---
 
-if $coverage_enabled
-  require_relative '../coverage_reporter'
-  Minitest.after_run {
+Minitest.after_run {
+
+  if $unit_tests_passed && $system_tests
+    require_relative 'system_tests'
+
+    SystemTests.run_system_tests(
+      run_tilck: $run_tilck_tests
+    )
+
+    if $all_build_types
+      SystemTests.run_all_build_types(
+        run_tilck: $run_tilck_tests
+      )
+    end
+  end
+
+  if $coverage_enabled
+    require_relative '../coverage_reporter'
     CoverageReporter.report(Coverage.result)
-  }
-end
+  end
+
+  if !$unit_tests_passed
+    exit 1
+  end
+}

@@ -181,6 +181,9 @@ module Main
       force: false,
       self_test: false,
       coverage: false,
+      system_tests: false,
+      all_build_types: false,
+      run_tilck_tests: false,
       check_for_updates: false,
       upgrade: false,
       config: nil,
@@ -199,7 +202,6 @@ module Main
       :just_context,
       :list,
       :self_test,
-      :coverage,
       :check_for_updates,
       :upgrade,
       :config,
@@ -238,8 +240,24 @@ module Main
       opts[:self_test] = true
     }
 
-    p.on('--coverage', 'Run tests with code coverage + HTML report [MODE]') {
+    p.on('--coverage',
+         'Collect code coverage data + HTML report (use with -t) [FLAG]') {
       opts[:coverage] = true
+    }
+
+    p.on('--system-tests',
+         'After unit tests: install all pkgs, build for all archs [FLAG]') {
+      opts[:system_tests] = true
+    }
+
+    p.on('--all-build-types',
+         'With --system-tests: build all generator configs too [FLAG]') {
+      opts[:all_build_types] = true
+    }
+
+    p.on('--run-also-tilck-tests',
+         'With --system-tests: run gtests + system tests (i386/riscv64) [FLAG]') {
+      opts[:run_tilck_tests] = true
     }
 
     p.on('-F', '--filter REGEX',
@@ -412,10 +430,13 @@ module Main
       return 0
     end
 
-    if options[:self_test] || options[:coverage]
+    if options[:self_test]
       runner = File.join(__dir__, "tests", "run_all.rb")
       args = [runner]
       args << "--coverage" if options[:coverage]
+      args << "--system-tests" if options[:system_tests]
+      args << "--all-build-types" if options[:all_build_types]
+      args << "--run-also-tilck-tests" if options[:run_tilck_tests]
       args += options[:test_args] if options[:test_args]
       # exec into a fresh Ruby process so Coverage.start runs before
       # any pkgmgr modules are loaded (coverage only tracks files
