@@ -154,6 +154,7 @@ class GnuefiPackage < Package
       "ARCH=#{efi}",
       "prefix=#{tc}-linux-",
       "CROSS_COMPILE=",
+      "OS=Linux",
       "-j#{BUILD_PAR}",
     ])
     return false if !ok

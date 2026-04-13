@@ -287,7 +287,9 @@ module Cache
 
       dirname = contents[0]
       newDirName ||= dirname
-      mv(tmp / dirname, current_dir / newDirName)
+      dest = current_dir / newDirName
+      rm_rf(dest) if exist?(dest)
+      mv(tmp / dirname, dest)
     end
 
     return true
