@@ -127,11 +127,12 @@ module SystemTests
     # packages don't support all archs or may lack cache files)
     for pkg in OPTIONAL_PACKAGES
       step("Install optional: #{pkg}")
+      success = false
       elapsed = timed {
-        ok2 = system(env, BTC, "-q", "-n", "-s", pkg,
-                     out: "/dev/null", err: "/dev/null")
+        success = system(env, BTC, "-q", "-n", "-s", pkg,
+                         out: "/dev/null", err: "/dev/null")
       }
-      if ok2
+      if success
         ok(elapsed)
       else
         puts "#{DIM}skipped#{RESET}"
@@ -253,11 +254,12 @@ module SystemTests
 
           cmake_log = File.join(build_dir, "cmake.log")
           step("generator #{gen_name}")
+          success = false
           elapsed = timed {
-            ok2 = system(gen_script, out: cmake_log, err: cmake_log)
+            success = system(gen_script, out: cmake_log, err: cmake_log)
           }
 
-          if !ok2 || File.exist?("skipped")
+          if !success || File.exist?("skipped")
             puts "#{DIM}skipped#{RESET}"
             next
           end
