@@ -270,6 +270,11 @@ module Main
       (opts[:test_args] ||= []) << "--verbose-tests"
     }
 
+    p.on('--test-packages-filter REGEX',
+         'With --system-tests: install only optional packages matching REGEX') {
+      |pat| (opts[:test_args] ||= []) << "--test-packages-filter" << pat
+    }
+
     p.on(
       '-C', '--config PKG',
       'Reconfigure a package interactively (e.g. make menuconfig) [MODE]'
@@ -437,6 +442,7 @@ module Main
       args << "--system-tests" if options[:system_tests]
       args << "--all-build-types" if options[:all_build_types]
       args << "--run-also-tilck-tests" if options[:run_tilck_tests]
+      args << "--test-arch" << options[:arch] if options[:arch]
       args += options[:test_args] if options[:test_args]
       # exec into a fresh Ruby process so Coverage.start runs before
       # any pkgmgr modules are loaded (coverage only tracks files

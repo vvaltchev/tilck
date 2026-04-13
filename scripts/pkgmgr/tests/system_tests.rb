@@ -32,7 +32,10 @@ module SystemTests
   CMAKE_RUN = (MAIN_DIR / "scripts" / "cmake_run").to_s
 
   # Architectures to test. aarch64 excluded (no kernel support yet).
-  TEST_ARCHS = ["i386", "x86_64", "riscv64"]
+  ALL_TEST_ARCHS = ["i386", "x86_64", "riscv64"]
+
+  # Default arch when none is specified (matches ARCH env or i386).
+  DEFAULT_ARCH = ENV["ARCH"].to_s.empty? ? "i386" : ENV["ARCH"]
 
   # Architectures where Tilck tests can run (kernel is complete).
   TILCK_TEST_ARCHS = ["i386", "riscv64"]
@@ -55,6 +58,16 @@ module SystemTests
     "EXTRA_TREE_CMD"     => ->(arch) { TC / "gcc-13.3.0" / arch / "treecmd" },
     "EXTRA_TFBLIB"       => ->(arch) { TC / "noarch" / "tfblib" },
   }
+
+  # Resolve --test-arch into a list of architectures.
+  #   nil     → [DEFAULT_ARCH]
+  #   "ALL"   → ALL_TEST_ARCHS
+  #   "i386"  → ["i386"]
+  def resolve_archs(arch)
+    return ALL_TEST_ARCHS if arch == "ALL"
+    return [arch] if arch
+    [DEFAULT_ARCH]
+  end
 
   def banner(msg)
     puts
@@ -119,7 +132,7 @@ module SystemTests
     ok(elapsed)
   end
 
-  def install_packages(arch_name)
+  def install_packages(arch_name, packages_filter: nil)
     step("Install default packages for #{arch_name}")
     env = { "ARCH" => arch_name, "BOARD" => nil }
     elapsed = timed {
@@ -131,7 +144,13 @@ module SystemTests
 
     # Install optional packages (skip failures silently — some
     # packages don't support all archs or may lack cache files)
-    for pkg in OPTIONAL_PACKAGES
+    pkgs = OPTIONAL_PACKAGES
+    if packages_filter
+      re = Regexp.new(packages_filter)
+      pkgs = pkgs.select { |p| p.match?(re) }
+    end
+
+    for pkg in pkgs
       step("Install optional: #{pkg}")
       success = false
       elapsed = timed {
@@ -207,17 +226,17 @@ module SystemTests
 
   # --- Main entry points ---
 
-  def run_system_tests(run_tilck: false)
+  def run_system_tests(run_tilck: false, arch: nil, packages_filter: nil)
     banner("System tests: install + build")
 
     builds_dir = MAIN_DIR / "other_builds"
     FileUtils.mkdir_p(builds_dir)
 
-    for arch_name in TEST_ARCHS
+    for arch_name in resolve_archs(arch)
       banner("Architecture: #{arch_name}")
 
       wipe_toolchain
-      install_packages(arch_name)
+      install_packages(arch_name, packages_filter: packages_filter)
 
       build_dir = (builds_dir / "systest_#{arch_name}").to_s
       FileUtils.rm_rf(build_dir)
@@ -233,14 +252,14 @@ module SystemTests
     end
   end
 
-  def run_all_build_types(run_tilck: false)
+  def run_all_build_types(run_tilck: false, arch: nil)
     banner("All build types x all architectures")
 
     builds_dir = MAIN_DIR / "other_builds"
     generators_dir = MAIN_DIR / "scripts" / "build_generators"
     generators = Dir.children(generators_dir).sort
 
-    for arch_name in TEST_ARCHS
+    for arch_name in resolve_archs(arch)
 
       # Each arch needs its own toolchain — wipe and reinstall.
       banner("Install packages for #{arch_name}")

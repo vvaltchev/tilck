@@ -22,10 +22,22 @@ $system_tests        = ARGV.delete("--system-tests")
 $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
 $test_filter         = nil
+$test_arch           = nil
+$test_packages_filter = nil
 
 if (idx = ARGV.index("--filter"))
   ARGV.delete_at(idx)
   $test_filter = ARGV.delete_at(idx)
+end
+
+if (idx = ARGV.index("--test-arch"))
+  ARGV.delete_at(idx)
+  $test_arch = ARGV.delete_at(idx)
+end
+
+if (idx = ARGV.index("--test-packages-filter"))
+  ARGV.delete_at(idx)
+  $test_packages_filter = ARGV.delete_at(idx)
 end
 
 if $coverage_enabled
@@ -242,12 +254,15 @@ Minitest.after_run {
     require_relative 'system_tests'
 
     SystemTests.run_system_tests(
-      run_tilck: $run_tilck_tests
+      run_tilck: $run_tilck_tests,
+      arch: $test_arch,
+      packages_filter: $test_packages_filter
     )
 
     if $all_build_types
       SystemTests.run_all_build_types(
-        run_tilck: $run_tilck_tests
+        run_tilck: $run_tilck_tests,
+        arch: $test_arch
       )
     end
   end
