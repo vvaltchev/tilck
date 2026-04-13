@@ -365,6 +365,7 @@ function install_freebsd {
    pkg_list+=(rubygem-io-console)
    pkg_list+=(rubygem-prettyprint)
    pkg_list+=(rubygem-pp)
+   pkg_list+=(rubygem-minitest)
 
    to_install=()
    echo Checking the packages that need to be installed
