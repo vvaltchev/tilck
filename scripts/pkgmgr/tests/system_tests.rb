@@ -184,10 +184,9 @@ module SystemTests
     env = { "ARCH" => arch_name }
 
     extras = extra_cmake_flags(arch_name)
-    extras_desc = extras.empty? ? "" : " " + extras.join(" ")
 
     run_cmd(
-      "cmake#{extras_desc}",
+      "Running CMake",
       [CMAKE_RUN] + extras,
       log: cmake_log,
       env: env
