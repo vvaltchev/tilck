@@ -150,7 +150,7 @@ class TestUninstallALL < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             portable: true,
+                             host_tier: :portable,
                              arch_list: ALL_HOST_ARCHS)
         pkgmgr.register(cc)
         pkgmgr.register(FakePackage.new("foo"))

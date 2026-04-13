@@ -543,20 +543,38 @@ class PackageManager
         os_dir = host_root / os_arch
         next if !os_dir.directory?
 
-        # Portable half (shared across distros and host compilers).
+        # Tier 1: portable (shared across distros and host compilers).
         scan_pkg_dir_tree(os_dir / "portable", "syscc", true, HOST_ARCH, list)
 
-        # Distro-bound half: <distro>/<host-cc>/<pkg>/<ver>/
-        #
-        # A dir under <distro>/ counts as a host-cc dir only if it looks like
-        # "<family>-<version>" (e.g. gcc-11.4.0, clang-14.0.0). Anything else
-        # is a bootstrap tool living in the distro slot (e.g. the Ruby used
-        # to run the package manager itself, at <distro>/ruby/<ver>/) — skip
-        # it silently since it's not a registered package.
         for sub in Dir.children(os_dir)
           next if sub == "portable"
           distro_dir = os_dir / sub
           next if !distro_dir.directory?
+
+          # Tier 2: distro-bound, compiler-independent packages live
+          # directly under <distro>/<pkg>/<ver>/. Scan each child that
+          # isn't a host-cc slot or the ruby bootstrap.
+          for pkg_name in Dir.children(distro_dir)
+            next if pkg_name.start_with?("gcc-") ||
+                    pkg_name.start_with?("clang-")
+            next if pkg_name == "ruby"
+            pkg_path = distro_dir / pkg_name
+            next if !pkg_path.directory?
+            for ver_str in Dir.children(pkg_path)
+              full_path = pkg_path / ver_str
+              next if @known_pkgs_paths.include? full_path
+              ver = SafeVer(ver_str)
+              if ver.nil?
+                warning "Invalid package version: #{full_path}"
+                next
+              end
+              list << InstallInfo.new(
+                pkg_name, "syscc", true, HOST_ARCH, ver, full_path
+              )
+            end
+          end
+
+          # Tier 3: compiler-bound packages under <distro>/<host-cc>/.
           for host_cc in Dir.children(distro_dir)
             next if !(host_cc.start_with?("gcc-") ||
                       host_cc.start_with?("clang-"))

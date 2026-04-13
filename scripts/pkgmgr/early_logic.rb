@@ -320,6 +320,7 @@ HOST_CC      = InitOnly.get_host_cc()
 HOST_OS_ARCH = "#{HOST_OS}-#{HOST_ARCH.name}"
 
 HOST_DIR_PORTABLE = TC / "host" / HOST_OS_ARCH / "portable"
+HOST_DIR_DISTRO   = TC / "host" / HOST_OS_ARCH / HOST_DISTRO
 HOST_DIR          = TC / "host" / HOST_OS_ARCH / HOST_DISTRO / HOST_CC
 
 DEFAULT_BOARD = ARCH.default_board

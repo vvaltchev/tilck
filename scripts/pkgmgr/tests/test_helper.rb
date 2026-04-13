@@ -73,8 +73,8 @@ module TestHelper
       ALL_ARCHS.each_value { |arch| arch.gcc_ver = FAKE_GCC_VER }
 
       host_dir_p = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / "portable"
-      host_dir   = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" /
-                   HOST_DISTRO / HOST_CC
+      host_dir_d = tc / "host" / "#{HOST_OS}-#{HOST_ARCH.name}" / HOST_DISTRO
+      host_dir   = host_dir_d / HOST_CC
       FileUtils.mkdir_p(host_dir_p)
       FileUtils.mkdir_p(host_dir)
 
@@ -86,6 +86,7 @@ module TestHelper
         TC_CACHE: tc / "cache",
         TC_NOARCH: tc / "noarch",
         HOST_DIR_PORTABLE: host_dir_p,
+        HOST_DIR_DISTRO: host_dir_d,
         HOST_DIR: host_dir,
       ) do
         yield tc
@@ -184,13 +185,13 @@ module TestHelper
                    on_host: false, is_compiler: false,
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,
-                   portable: false)
+                   host_tier: :compiler)
       super(
         name: name,
         url: "https://fake/#{name}",
         on_host: on_host,
         is_compiler: is_compiler,
-        portable: portable,
+        host_tier: host_tier,
         arch_list: arch_list,
         dep_list: dep_list,
         host_os_list: host_os_list,

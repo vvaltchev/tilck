@@ -18,6 +18,7 @@ class MtoolsPackage < Package
       url: 'https://ftp.gnu.org/gnu/mtools',
       on_host: true,
       is_compiler: false,
+      host_tier: :distro,
       arch_list: ALL_HOST_ARCHS,
       dep_list: [],
       default: true,

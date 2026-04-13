@@ -220,7 +220,8 @@ set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
 #    host-compiler version is part of the path even for C-only tools that
 #    may pull in C++ host libs.
 set(HOST_DIR_PORTABLE   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/portable)
-set(HOST_DIR            ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/${HOST_CC})
+set(HOST_DIR_DISTRO     ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO})
+set(HOST_DIR            ${HOST_DIR_DISTRO}/${HOST_CC})
 set(CMAKE_DIR           ${CMAKE_SOURCE_DIR}/other/cmake)
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -1004,7 +1005,7 @@ set(TILCK_EXPORTED_VARS
 
    # Toolchain paths, labels and versions
    TCROOT TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
-   HOST_DIR_PORTABLE HOST_DIR
+   HOST_DIR_PORTABLE HOST_DIR_DISTRO HOST_DIR
    GCC_TC_VER
    GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
    GCC_TOOLCHAIN GCC_TOOLCHAIN_i386 GCC_TOOLCHAIN_x86_64

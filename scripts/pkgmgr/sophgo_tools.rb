@@ -31,7 +31,7 @@ class SophgoToolsPackage < Package
       url: GITHUB + '/sophgo/host-tools/archive/refs/tags',
       on_host: true,
       is_compiler: false,
-      portable: true,
+      host_tier: :portable,
       arch_list: { "x86_64" => ALL_ARCHS["x86_64"] },
       dep_list: [],
       host_os_list: ["linux"],

@@ -45,7 +45,7 @@ class TestGetInstalledCompilers < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             portable: true, arch_list: ALL_HOST_ARCHS)
+                             host_tier: :portable, arch_list: ALL_HOST_ARCHS)
         # Match real GccCompiler: default_ver returns gcc_ver, and
         # get_install_list includes target_arch/libc.
         cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
@@ -263,7 +263,7 @@ class TestWithCc < Minitest::Test
       # will find: need target_arch in InstallInfo, and a bin/ dir.
       cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                            on_host: true, is_compiler: true,
-                           portable: true, arch_list: ALL_HOST_ARCHS)
+                           host_tier: :portable, arch_list: ALL_HOST_ARCHS)
       cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
       target = ARCH
       cc.define_singleton_method(:get_install_list) {

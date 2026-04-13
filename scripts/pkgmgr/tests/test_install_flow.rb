@@ -83,7 +83,7 @@ class TestInstallHostPackage < Minitest::Test
   def test_portable_host_pkg_uses_portable_dir
     with_fake_tc do |tc|
       with_stubbed_externals do
-        pkg = FakePackage.new("host_foo", on_host: true, portable: true,
+        pkg = FakePackage.new("host_foo", on_host: true, host_tier: :portable,
                               arch_list: ALL_HOST_ARCHS)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")

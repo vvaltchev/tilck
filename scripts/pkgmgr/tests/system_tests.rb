@@ -241,6 +241,12 @@ module SystemTests
     generators = Dir.children(generators_dir).sort
 
     for arch_name in TEST_ARCHS
+
+      # Each arch needs its own toolchain — wipe and reinstall.
+      banner("Install packages for #{arch_name}")
+      wipe_toolchain
+      install_packages(arch_name)
+
       for gen_name in generators
         gen_script = (generators_dir / gen_name).to_s
         build_dir = (builds_dir / "#{gen_name}_#{arch_name}").to_s

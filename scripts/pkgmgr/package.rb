@@ -65,7 +65,7 @@ end
 class Package
 
   attr_reader :name, :url, :on_host, :is_compiler, :arch_list, :dep_list
-  attr_reader :portable
+  attr_reader :host_tier
 
   STATUS_LEN    = 9
   INSTALLED_STR = Term.makeGreen("installed".center(STATUS_LEN))
@@ -75,11 +75,15 @@ class Package
   EMPTY_STR     = "".center(STATUS_LEN)
 
   public
+  # host_tier controls where host packages are installed:
+  #   :portable  — statically linked, any distro   (HOST_DIR_PORTABLE)
+  #   :distro    — links distro libc, any host CC   (HOST_DIR_DISTRO)
+  #   :compiler  — depends on host CC C++ ABI       (HOST_DIR)
   def initialize(name:,
                  url: nil,
                  on_host: false,
                  is_compiler: false,
-                 portable: false,
+                 host_tier: :compiler,
                  arch_list: ALL_ARCHS,
                  dep_list: [],
                  host_os_list: nil,
@@ -90,7 +94,7 @@ class Package
     @url = url
     @on_host = on_host
     @is_compiler = is_compiler
-    @portable = portable
+    @host_tier = host_tier
     @arch_list = arch_list
     @dep_list = dep_list
     @host_os_list = host_os_list
@@ -130,15 +134,12 @@ class Package
     @default && host_supported? && board_supported? && arch_supported?
   end
 
-  # The host install root for syscc packages.
-  #
-  # Portable host tools (statically-linked, e.g. the cross-compilers) live
-  # under host/<os>-<arch>/portable/, shared across distros and host
-  # compilers. Non-portable host tools live under
-  # host/<os>-<arch>/<distro>/<host-cc>/ because they depend on the system
-  # libraries and on the specific host compiler used to build them.
   def host_install_root
-    @portable ? HOST_DIR_PORTABLE : HOST_DIR
+    case @host_tier
+      when :portable then HOST_DIR_PORTABLE
+      when :distro   then HOST_DIR_DISTRO
+      when :compiler then HOST_DIR
+    end
   end
 
   def id = @name

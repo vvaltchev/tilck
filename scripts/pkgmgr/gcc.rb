@@ -27,7 +27,7 @@ class GccCompiler < Package
       url: make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
       on_host: true,
       is_compiler: true,
-      portable: true,
+      host_tier: :portable,
       arch_list: ALL_HOST_ARCHS,
       dep_list: []
     )
