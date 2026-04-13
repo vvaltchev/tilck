@@ -55,6 +55,12 @@ function install_debian_family {
    pkg_list+=(ruby)
    pkg_list+=(device-tree-compiler)
 
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(gcc-multilib)
+      pkg_list+=(g++-multilib)
+   fi
+
    if [[ "$TC_MINIMAL" != "1" ]]; then
 
       if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
@@ -179,6 +185,13 @@ function install_fedora {
       pkg_list+=(zlib-devel)
    fi
 
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(glibc-devel.i686)
+      pkg_list+=(libgcc.i686)
+      pkg_list+=(libstdc++-devel.i686)
+   fi
+
    if [[ "$TC_MINIMAL" != "1" ]]; then
       if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
          pkg_list+=(qemu-system-x86)
@@ -259,6 +272,12 @@ function install_arch {
    pkg_list+=(autoconf)
    pkg_list+=(ruby)
    pkg_list+=(dtc)
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(lib32-gcc-libs)
+      pkg_list+=(lib32-glibc)
+   fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
       pkg_list+=(qemu)
