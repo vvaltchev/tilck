@@ -85,13 +85,13 @@ module SystemTests
     "%.1fs" % (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0)
   end
 
-  def run_cmd(desc, cmd, log: nil)
+  def run_cmd(desc, cmd, log: nil, env: {})
     step(desc)
     elapsed = timed {
       if log
-        ok2 = system(*cmd, out: log, err: log)
+        ok2 = system(env, *cmd, out: log, err: log)
       else
-        ok2 = system(*cmd, out: "/dev/null", err: "/dev/null")
+        ok2 = system(env, *cmd, out: "/dev/null", err: "/dev/null")
       end
 
       if !ok2
@@ -101,12 +101,18 @@ module SystemTests
     ok(elapsed)
   end
 
-  # Wipe everything in the toolchain except the cache directory.
+  # Wipe installed packages from the toolchain, preserving:
+  #   - cache/     (downloaded archives)
+  #   - host/      (Ruby install + host tools rebuilt per arch anyway)
+  #
+  # We keep host/ because it contains the Ruby binary that
+  # build_toolchain needs to exec into. Host tools (mtools, gtest)
+  # will be reinstalled as part of the default package set.
   def wipe_toolchain
-    step("Wipe toolchain (keep cache)")
+    step("Wipe toolchain (keep cache + Ruby)")
     elapsed = timed {
       Dir.children(TC).each { |child|
-        next if child == "cache"
+        next if child == "cache" || child == "host"
         FileUtils.rm_rf(TC / child)
       }
     }
@@ -156,27 +162,22 @@ module SystemTests
     cmake_log = File.join(build_dir, "cmake.log")
     build_log = File.join(build_dir, "build.log")
     gtests_log = File.join(build_dir, "gtests_build.log")
+    env = { "ARCH" => arch_name }
 
     extras = extra_cmake_flags(arch_name)
     extras_desc = extras.empty? ? "" : " " + extras.join(" ")
 
     run_cmd(
       "cmake#{extras_desc}",
-      [CMAKE_RUN, "-DARCH=#{arch_name}"] + extras,
-      log: cmake_log
+      [CMAKE_RUN] + extras,
+      log: cmake_log,
+      env: env
     )
 
-    run_cmd(
-      "make -j",
-      ["make", "-j"],
-      log: build_log
-    )
+    run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
 
-    run_cmd(
-      "make -j gtests",
-      ["make", "-j", "gtests"],
-      log: gtests_log
-    )
+    run_cmd("make -j gtests", ["make", "-j", "gtests"],
+            log: gtests_log, env: env)
   end
 
   def run_tilck_tests(arch_name, build_dir)
@@ -250,13 +251,14 @@ module SystemTests
         FileUtils.mkdir_p(build_dir)
 
         Dir.chdir(build_dir) do
-          ENV["ARCH"] = arch_name
+          env = { "ARCH" => arch_name }
 
           cmake_log = File.join(build_dir, "cmake.log")
           step("generator #{gen_name}")
           success = false
           elapsed = timed {
-            success = system(gen_script, out: cmake_log, err: cmake_log)
+            success = system(env, gen_script,
+                             out: cmake_log, err: cmake_log)
           }
 
           if !success || File.exist?("skipped")
@@ -266,11 +268,7 @@ module SystemTests
           ok(elapsed)
 
           build_log = File.join(build_dir, "build.log")
-          run_cmd(
-            "make -j",
-            ["make", "-j"],
-            log: build_log
-          )
+          run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
 
           if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
             run_tilck_tests(arch_name, build_dir)
