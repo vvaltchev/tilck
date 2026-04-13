@@ -111,8 +111,17 @@ class GtestPackage < Package
 
   def install_impl_internal(src_dir, install_dir)
 
+    # Explicitly pass the host compiler to cmake. On FreeBSD the
+    # default `cc`/`c++` are clang, but the rest of the build uses
+    # GCC (from ports). A mismatch produces libc++/libstdc++ link
+    # errors when the gtests binary is linked.
+    cc  = ENV["CC"]  || "gcc"
+    cxx = ENV["CXX"] || "g++"
+
     ok = run_command("cmake.log", [
       "cmake",
+      "-DCMAKE_C_COMPILER=#{cc}",
+      "-DCMAKE_CXX_COMPILER=#{cxx}",
       "-DCMAKE_BUILD_TYPE=Debug",
       "-DCMAKE_INSTALL_PREFIX=#{install_dir}",
       "-DGOOGLETEST_VERSION=#{default_ver}",
