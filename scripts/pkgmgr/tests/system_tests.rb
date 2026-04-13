@@ -104,11 +104,13 @@ module SystemTests
   # Wipe everything in the toolchain except the cache directory.
   def wipe_toolchain
     step("Wipe toolchain (keep cache)")
-    Dir.children(TC).each { |child|
-      next if child == "cache"
-      FileUtils.rm_rf(TC / child)
+    elapsed = timed {
+      Dir.children(TC).each { |child|
+        next if child == "cache"
+        FileUtils.rm_rf(TC / child)
+      }
     }
-    ok
+    ok(elapsed)
   end
 
   def install_packages(arch_name)
@@ -124,12 +126,13 @@ module SystemTests
     # Install optional packages (skip failures silently — some
     # packages don't support all archs or may lack cache files)
     for pkg in OPTIONAL_PACKAGES
-      print "  #{DIM}Install optional: #{pkg}#{RESET}... "
-      $stdout.flush
-      ok2 = system(env, BTC, "-q", "-n", "-s", pkg,
-                   out: "/dev/null", err: "/dev/null")
+      step("Install optional: #{pkg}")
+      elapsed = timed {
+        ok2 = system(env, BTC, "-q", "-n", "-s", pkg,
+                     out: "/dev/null", err: "/dev/null")
+      }
       if ok2
-        puts "#{GREEN}ok#{RESET}"
+        ok(elapsed)
       else
         puts "#{DIM}skipped#{RESET}"
       end
@@ -151,36 +154,47 @@ module SystemTests
   def cmake_and_build(arch_name, build_dir)
     cmake_log = File.join(build_dir, "cmake.log")
     build_log = File.join(build_dir, "build.log")
+    gtests_log = File.join(build_dir, "gtests_build.log")
 
     extras = extra_cmake_flags(arch_name)
+    extras_desc = extras.empty? ? "" : " " + extras.join(" ")
 
     run_cmd(
-      "cmake (#{arch_name}) #{extras.join(' ')}",
+      "cmake#{extras_desc}",
       [CMAKE_RUN, "-DARCH=#{arch_name}"] + extras,
       log: cmake_log
     )
 
     run_cmd(
-      "make -j (#{arch_name})",
+      "make -j",
       ["make", "-j"],
       log: build_log
+    )
+
+    run_cmd(
+      "make -j gtests",
+      ["make", "-j", "gtests"],
+      log: gtests_log
     )
   end
 
   def run_tilck_tests(arch_name, build_dir)
-    gtests_log = File.join(build_dir, "gtests.log")
+    gtests_log = File.join(build_dir, "gtests_run.log")
     systests_log = File.join(build_dir, "systests.log")
 
-    run_cmd(
-      "make gtests (#{arch_name})",
-      ["make", "-j", "gtests"],
-      log: gtests_log
-    )
+    gtests_bin = File.join(build_dir, "gtests")
+    if File.exist?(gtests_bin)
+      run_cmd(
+        "run gtests",
+        [gtests_bin],
+        log: gtests_log
+      )
+    end
 
     test_runner = File.join(build_dir, "st", "run_all_tests")
     if File.exist?(test_runner)
       run_cmd(
-        "system tests -c (#{arch_name})",
+        "system tests -c",
         [test_runner, "-c"],
         log: systests_log
       )
@@ -238,18 +252,20 @@ module SystemTests
           ENV["ARCH"] = arch_name
 
           cmake_log = File.join(build_dir, "cmake.log")
-          step("generator #{gen_name} (#{arch_name})")
-          ok2 = system(gen_script, out: cmake_log, err: cmake_log)
+          step("generator #{gen_name}")
+          elapsed = timed {
+            ok2 = system(gen_script, out: cmake_log, err: cmake_log)
+          }
 
           if !ok2 || File.exist?("skipped")
             puts "#{DIM}skipped#{RESET}"
             next
           end
-          ok
+          ok(elapsed)
 
           build_log = File.join(build_dir, "build.log")
           run_cmd(
-            "make -j (#{gen_name}/#{arch_name})",
+            "make -j",
             ["make", "-j"],
             log: build_log
           )
