@@ -306,7 +306,11 @@ class TestWithCc < Minitest::Test
 
       assert_instance_of Pathname, yielded_dir
       # Env should be restored after the block
-      assert_equal saved_cc, ENV["CC"]
+      if saved_cc.nil?
+        assert_nil ENV["CC"]
+      else
+        assert_equal saved_cc, ENV["CC"]
+      end
     end
   end
 end
