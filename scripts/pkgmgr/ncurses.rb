@@ -42,9 +42,22 @@ class NcursesPackage < Package
 
     patch_configure_locale
 
+    # Pass --build so configure sets cross_compiling=yes immediately
+    # (when both --host and --build are set and differ).  Without it,
+    # configure sets cross_compiling=maybe and tries to run a cross-
+    # compiled test binary, which on FreeBSD triggers a kernel
+    # uprintf "ELF binary type '0' not known." to the terminal.
+    #
+    # BUILD_CC tells ncurses which compiler to use for host-side
+    # build tools; without it BUILD_CC defaults to $CC (the cross-
+    # compiler) causing the same exec-of-Linux-binary problem.
+    host_cc = "cc"
+    build_triple = "#{HOST_ARCH.name}-unknown-#{HOST_OS}"
+
     ok = run_command("configure.log", [
       "./configure",
       "--host=#{arch}-pc-linux-gnu",
+      "--build=#{build_triple}",
       "--prefix=#{install_dir}/install",
       "--datarootdir=/usr/share",
       "--disable-db-install",
@@ -55,6 +68,7 @@ class NcursesPackage < Package
       "--without-ada",
       "--without-manpages",
       "--without-dlsym",
+      "BUILD_CC=#{host_cc}",
     ])
     return false if !ok
 
