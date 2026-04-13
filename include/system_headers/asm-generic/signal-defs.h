@@ -15,11 +15,30 @@
 #include <signal.h>
 
 typedef void __signalfn_t(int);
-typedef __signalfn_t *__sighandler_t;
+
+#ifdef __FreeBSD__
+   /*
+    * FreeBSD typedefs __sighandler_t as void(int) (a function type)
+    * and defines SIG_DFL etc. as ((__sighandler_t *)...).  Tilck
+    * follows the Linux convention where __sighandler_t is already a
+    * pointer: void (*)(int).  Shadow the typedef with a macro and
+    * redefine the constants so the types stay consistent.
+    */
+   #define __sighandler_t __signalfn_t *
+   #undef SIG_DFL
+   #undef SIG_IGN
+   #undef SIG_ERR
+   #define SIG_DFL ((__sighandler_t)0)
+   #define SIG_IGN ((__sighandler_t)1)
+   #define SIG_ERR ((__sighandler_t)-1)
+#else
+   typedef __signalfn_t *__sighandler_t;
+#endif
 
 /*
  * SIG_DFL, SIG_IGN, SIG_ERR, SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK are
- * provided by <signal.h> on all POSIX platforms.
+ * provided by <signal.h> on all POSIX platforms (redefined above for
+ * FreeBSD to match the Linux __sighandler_t convention).
  */
 
 /* Linux value: 64 signals (needed for kernel signal mask sizing) */

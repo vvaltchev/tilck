@@ -15,6 +15,10 @@
 #ifdef __clang__
    #pragma clang diagnostic push
    #pragma clang diagnostic ignored "-Wmacro-redefined"
+#elif defined(__GNUC__)
+   /* GCC lacks -Wmacro-redefined; treat this file as a system header
+    * so that redefinition warnings are silently suppressed. */
+   #pragma GCC system_header
 #endif
 
 #define EPERM            1 /* Operation not permitted */

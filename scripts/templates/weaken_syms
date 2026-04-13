@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 AR="@CMAKE_AR@"
 RANLIB="@CMAKE_RANLIB@"

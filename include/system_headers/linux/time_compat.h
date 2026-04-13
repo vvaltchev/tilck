@@ -24,3 +24,16 @@
 #if !defined(CLOCK_MONOTONIC_COARSE) && !defined(CLOCK_MONOTONIC)
    #define CLOCK_MONOTONIC_COARSE   6
 #endif
+
+/*
+ * CLOCK_MONOTONIC_RAW is 4 on Linux but some platforms (e.g. FreeBSD)
+ * already use that value for CLOCK_MONOTONIC.  Pick a non-colliding
+ * value so the kernel source compiles in the unit-test environment.
+ */
+#ifndef CLOCK_MONOTONIC_RAW
+   #ifdef __FreeBSD__
+      #define CLOCK_MONOTONIC_RAW   3
+   #else
+      #define CLOCK_MONOTONIC_RAW   4
+   #endif
+#endif

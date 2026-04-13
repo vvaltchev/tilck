@@ -220,12 +220,11 @@ STATIC_ASSERT(ARCH_PROC_MEMBERS_SIZE == sizeof(arch_proc_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_ALIGN == alignof(arch_proc_members_t));
 
 /*
- * On some non-Linux hosts (e.g., macOS), <unistd.h> declares a different
- * reboot() which conflicts with Tilck's. In KERNEL_TEST on such hosts,
- * the kernel's reboot/poweroff are never actually called, so skip them.
+ * On non-Linux hosts (e.g., macOS, FreeBSD), <unistd.h> declares a
+ * different reboot() which conflicts with Tilck's. In KERNEL_TEST on
+ * such hosts, the kernel's reboot/poweroff are never called, so skip.
  */
-#if !defined(UNIT_TEST_ENVIRONMENT) || defined(__i386__) || \
-    defined(__x86_64__) || defined(__riscv)
+#if !defined(UNIT_TEST_ENVIRONMENT) || defined(__linux__)
 NORETURN void reboot(void);
 NORETURN void poweroff(void);
 #endif

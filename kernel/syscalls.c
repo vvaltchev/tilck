@@ -321,7 +321,7 @@ int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
       case LINUX_REBOOT_CMD_RESTART:
       case LINUX_REBOOT_CMD_RESTART2:
          kernel_shutdown();
-#if !defined(UNIT_TEST_ENVIRONMENT) || defined(arch_x86_family) || defined(__riscv)
+#if !defined(UNIT_TEST_ENVIRONMENT) || defined(__linux__)
          reboot();
 #endif
          break;
@@ -334,7 +334,7 @@ int sys_reboot(u32 magic, u32 magic2, u32 cmd, void *arg)
 
       case LINUX_REBOOT_CMD_POWER_OFF:
          kernel_shutdown();
-#if !defined(UNIT_TEST_ENVIRONMENT) || defined(arch_x86_family) || defined(__riscv)
+#if !defined(UNIT_TEST_ENVIRONMENT) || defined(__linux__)
          poweroff();
 #endif
          break;

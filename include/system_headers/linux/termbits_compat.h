@@ -35,6 +35,14 @@
 #define OLCUC    0000002
 #endif
 
+#ifndef OFILL
+#define OFILL    0000100
+#endif
+
+#ifndef OFDEL
+#define OFDEL    0000200
+#endif
+
 #ifndef NLDLY
 #define NLDLY    0000400
 #endif
