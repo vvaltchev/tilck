@@ -391,6 +391,79 @@ function install_freebsd {
    fi
 }
 
+function install_darwin {
+
+   echo darwin > $TC/.distro
+
+   if ! which brew &> /dev/null; then
+      echo
+      echo "ERROR: Homebrew is required to install packages on macOS."
+      echo "Please install it from: https://brew.sh"
+      echo
+      exit 1
+   fi
+
+   # GNU tools required by the gnu-wrap shims (macOS ships BSD variants)
+   pkg_list=()
+   pkg_list+=(coreutils)    # gdd
+   pkg_list+=(diffutils)    # gdiff
+   pkg_list+=(findutils)    # gfind, gxargs
+   pkg_list+=(gawk)         # gawk
+   pkg_list+=(gnu-sed)      # gsed
+   pkg_list+=(gnu-tar)      # gtar
+   pkg_list+=(grep)         # ggrep
+   pkg_list+=(make)         # gmake (>= 3.82, macOS ships 3.81)
+
+   # Build tools
+   pkg_list+=(cmake)
+   pkg_list+=(gcc)
+   pkg_list+=(git)
+   pkg_list+=(unzip)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(autoconf)
+   pkg_list+=(pkg-config)
+
+   # Libraries needed by some packages (e.g. u-boot needs openssl)
+   pkg_list+=(openssl@3)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+
+   # Other tools
+   pkg_list+=(ruby)
+   pkg_list+=(dtc)
+   pkg_list+=(python3)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu)
+   fi
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if brew list --formula "$x" &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   # Install the packages
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "brew install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
 function install_packages {
 
    local rel_files=`echo /etc/*release`
@@ -437,6 +510,12 @@ function install_packages {
       echo "Distribution detected: Arch or Manjaro or Artix"
       echo
       install_arch
+
+   elif [[ "$OS" == "Darwin" ]]; then
+
+      echo "Detected: macOS (Darwin)"
+      echo
+      install_darwin
 
    elif [[ "$OS" == "FreeBSD" ]]; then
 
