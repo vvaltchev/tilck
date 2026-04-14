@@ -50,26 +50,17 @@ end
 
 require 'minitest'
 require 'stringio'
+require_relative '../term'
 
 # Global flag set by PrettyReporter after tests complete.
 $unit_tests_passed = false
 
 class PrettyReporter < Minitest::AbstractReporter
 
-  # xterm-256 colors
-  ESC       = "\e["
-  GREEN     = "#{ESC}38;5;40m"
-  RED       = "#{ESC}38;5;196m"
-  YELLOW    = "#{ESC}38;5;220m"
-  CYAN      = "#{ESC}38;5;75m"
-  GRAY      = "#{ESC}38;5;245m"
-  BOLD      = "#{ESC}1m"
-  RESET     = "#{ESC}0m"
-  DIM       = "#{ESC}2m"
+  include Term
 
-  STDOUT_PFX = "#{CYAN}stdout#{RESET}#{DIM}│#{RESET} "
-  STDERR_PFX = "#{YELLOW}stderr#{RESET}#{DIM}│#{RESET} "
-  HLINE      = "#{DIM}#{"─" * 72}#{RESET}"
+  STDOUT_PFX = "#{CYAN256}stdout#{RESET}#{DIM}│#{RESET} "
+  STDERR_PFX = "#{YELLOW256}stderr#{RESET}#{DIM}│#{RESET} "
 
   def initialize
     super
@@ -107,21 +98,21 @@ class PrettyReporter < Minitest::AbstractReporter
       @passes += 1
       ms = "%.0f" % (result.time * 1000)
       print "    #{result.name.ljust(55)} "
-      puts "#{GREEN}[ OK ]#{RESET}  #{DIM}#{ms}ms#{RESET}"
+      puts "#{GREEN256}[ OK ]#{RESET}  #{DIM}#{ms}ms#{RESET}"
       show_captured(result) if $verbose_tests
     elsif result.skipped?
       @skips += 1
       print "    #{result.name.ljust(55)} "
-      puts "#{YELLOW}[ SKIP ]#{RESET}"
+      puts "#{YELLOW256}[ SKIP ]#{RESET}"
     else
       if result.failure.is_a?(Minitest::UnexpectedError)
         @errors << result
         print "    #{result.name.ljust(55)} "
-        puts "#{RED}[ ERROR ]#{RESET}"
+        puts "#{RED256}[ ERROR ]#{RESET}"
       else
         @fails << result
         print "    #{result.name.ljust(55)} "
-        puts "#{RED}[ FAIL ]#{RESET}"
+        puts "#{RED256}[ FAIL ]#{RESET}"
       end
       show_captured(result)
       show_failure(result)
@@ -140,22 +131,22 @@ class PrettyReporter < Minitest::AbstractReporter
     puts HLINE
 
     if @fails.empty? && @errors.empty?
-      status = "#{GREEN}#{BOLD}ALL PASSED#{RESET}"
+      status = "#{GREEN256}#{BOLD}ALL PASSED#{RESET}"
     else
-      status = "#{RED}#{BOLD}FAILED#{RESET}"
+      status = "#{RED256}#{BOLD}FAILED#{RESET}"
     end
 
     printf "  %s  %d tests, %d assertions, ", status, total, @total_assertions
-    printf "#{GREEN}%d passed#{RESET}", @passes
+    printf "#{GREEN256}%d passed#{RESET}", @passes
 
     if !@fails.empty?
-      printf ", #{RED}%d failed#{RESET}", @fails.length
+      printf ", #{RED256}%d failed#{RESET}", @fails.length
     end
     if !@errors.empty?
-      printf ", #{RED}%d errors#{RESET}", @errors.length
+      printf ", #{RED256}%d errors#{RESET}", @errors.length
     end
     if @skips > 0
-      printf ", #{YELLOW}%d skipped#{RESET}", @skips
+      printf ", #{YELLOW256}%d skipped#{RESET}", @skips
     end
 
     printf "  #{DIM}(%.2fs)#{RESET}\n", wall
@@ -197,7 +188,7 @@ class PrettyReporter < Minitest::AbstractReporter
     msg = result.failure.message
     loc = result.failure.location
     puts "    #{DIM}┌── failure ──#{RESET}"
-    puts "    #{DIM}│#{RESET} #{RED}#{msg.gsub("\n", "\n    #{DIM}│#{RESET} ")}#{RESET}"
+    puts "    #{DIM}│#{RESET} #{RED256}#{msg.gsub("\n", "\n    #{DIM}│#{RESET} ")}#{RESET}"
     puts "    #{DIM}│#{RESET} at: #{loc}" if loc
     puts "    #{DIM}└─────────────#{RESET}"
   end
@@ -250,18 +241,18 @@ Dir.glob(File.join(__dir__, "test_*.rb")).sort.each { |f| require f }
 # --- Dry-run: list tests without running, then continue to system tests ---
 
 if $dry_run
-  DRY_TAG = "#{PrettyReporter::CYAN}[ DRY ]#{PrettyReporter::RESET}"
+  DRY_TAG = "#{Term::CYAN256}[ DRY ]#{Term::RESET}"
 
-  puts PrettyReporter::HLINE
-  puts "#{PrettyReporter::BOLD}  Ruby pkgmgr test suite#{PrettyReporter::RESET}"
-  puts PrettyReporter::HLINE
+  puts Term::HLINE
+  puts "#{Term::BOLD}  Ruby pkgmgr test suite#{Term::RESET}"
+  puts Term::HLINE
   puts
 
   count = 0
   Minitest::Runnable.runnables.sort_by(&:name).each { |klass|
     methods = klass.instance_methods(false).grep(/\Atest_/).sort
     next if methods.empty?
-    puts "  #{PrettyReporter::DIM}#{klass.name}#{PrettyReporter::RESET}"
+    puts "  #{Term::DIM}#{klass.name}#{Term::RESET}"
     methods.each { |m|
       print "    #{m.to_s.ljust(55)} "
       puts DRY_TAG
@@ -270,9 +261,9 @@ if $dry_run
   }
 
   puts
-  puts PrettyReporter::HLINE
+  puts Term::HLINE
   puts "  #{count} unit tests  #{DRY_TAG}"
-  puts PrettyReporter::HLINE
+  puts Term::HLINE
   puts
 
   # Don't run minitest — clear runnables and mark as passed.

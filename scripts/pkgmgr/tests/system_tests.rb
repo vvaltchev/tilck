@@ -9,22 +9,14 @@
 
 require 'pathname'
 require 'fileutils'
+require_relative '../term'
 
 module SystemTests
 
+  include Term
   module_function
 
-  # xterm-256 colors (match PrettyReporter)
-  ESC   = "\e["
-  GREEN = "#{ESC}38;5;40m"
-  RED   = "#{ESC}38;5;196m"
-  CYAN  = "#{ESC}38;5;75m"
-  BOLD  = "#{ESC}1m"
-  DIM   = "#{ESC}2m"
-  RESET = "#{ESC}0m"
-  HLINE = "#{DIM}#{"─" * 72}#{RESET}"
-
-  DRY_TAG = "#{CYAN}[ DRY ]#{RESET}"
+  DRY_TAG = "#{CYAN256}[ DRY ]#{RESET}"
 
   # Project root (derive from this file's location)
   MAIN_DIR = Pathname.new(File.expand_path("../../..", __dir__))
@@ -102,7 +94,7 @@ module SystemTests
 
   def ok(elapsed = nil)
     t = elapsed ? "  #{DIM}(#{fmt_elapsed(elapsed)})#{RESET}" : ""
-    puts "#{GREEN}OK#{RESET}#{t}"
+    puts "#{GREEN256}OK#{RESET}#{t}"
   end
 
   def dry
@@ -110,8 +102,8 @@ module SystemTests
   end
 
   def fail!(msg)
-    puts "#{RED}FAILED#{RESET}"
-    $stderr.puts "#{RED}ERROR: #{msg}#{RESET}"
+    puts "#{RED256}FAILED#{RESET}"
+    $stderr.puts "#{RED256}ERROR: #{msg}#{RESET}"
     exit 1
   end
 
