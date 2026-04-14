@@ -345,9 +345,7 @@ class Package
     # the staging dir (preserving extracted source for next run),
     # then exit. The final install dir is never in a partial state.
 
-    interrupted = false
     cleanup = -> {
-      interrupted = true
       $stderr.puts "\n*** Interrupted — cleaning build artifacts ***"
       clean_build(staging)
       exit 1
