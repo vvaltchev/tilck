@@ -46,15 +46,22 @@ module Cache
       "Accept-Encoding" => "identity", # Ask for true Content-Length
     }
 
-    def do_actual_download(resp, local_path)
+    # Download body into local_path, appending if resuming.
+    # offset: bytes already downloaded (0 for fresh start).
+    def do_actual_download(resp, local_path, offset = 0)
 
-      total = 0.0
-      last_update = 0.0
-      expected = resp.content_length
+      total = offset.to_f
+      expected_total = nil
 
-      p = ProgressReporter.new(expected)
+      if resp.content_length
+        expected_total = offset + resp.content_length
+      end
 
-      File.open(local_path, "wb") do |f|
+      p = ProgressReporter.new(expected_total)
+      p.update(total) if offset > 0
+
+      mode = offset > 0 ? "ab" : "wb"
+      File.open(local_path, mode) do |f|
         resp.read_body do |chunk|
           f.write(chunk)
           total += chunk.length
@@ -64,18 +71,25 @@ module Cache
 
       p.finish()
 
-      if expected && total != expected
-        error "Downloaded #{total} B < expected #{expected}"
+      if expected_total && total != expected_total
+        error "Downloaded #{total.to_i} B < expected #{expected_total.to_i}"
         return false
       end
 
       return true
     end
 
-    def do_download_uri(uri, local_path, redirects)
+    # Follow redirects and download. Supports resume via Range header.
+    # partial_path: path to the partial file (nil = no resume).
+    def do_download_uri(uri, local_path, redirects,
+                        partial_path: nil, partial_size: 0)
 
       if redirects == 0
-        info "Download: #{uri}"
+        if partial_size > 0
+          info "Resuming download: #{uri} (#{partial_size} bytes already)"
+        else
+          info "Download: #{uri}"
+        end
       end
 
       if redirects > MAX_HTTP_REDIRECT_COUNT
@@ -86,22 +100,47 @@ module Cache
       use_ssl = (uri.scheme == "https")
       Net::HTTP.start(uri.host, uri.port, use_ssl: use_ssl) do |http|
 
-        req = Net::HTTP::Get.new(uri.request_uri, COMMON_HEADERS)
+        headers = COMMON_HEADERS.dup
+        if partial_size > 0
+          headers["Range"] = "bytes=#{partial_size}-"
+        end
+
+        req = Net::HTTP::Get.new(uri.request_uri, headers)
         http.request(req) do |resp|
 
           loc = resp["location"]
           case resp
 
-            when Net::HTTPSuccess
-              return do_actual_download(resp, local_path)
+            when Net::HTTPPartialContent  # 206 — resume accepted
+              return do_actual_download(resp, local_path, partial_size)
+
+            when Net::HTTPSuccess  # 200 — full response
+              if partial_size > 0
+                # Server doesn't support resume — start fresh
+                warning "Server does not support resume, restarting"
+                rm_f(local_path)
+              end
+              return do_actual_download(resp, local_path, 0)
 
             when Net::HTTPRedirection
-
               if !loc.nil? && !loc.empty?
-                return do_download_uri(uri + loc, local_path, redirects+1)
+                return do_download_uri(
+                  uri + loc, local_path, redirects + 1,
+                  partial_path: partial_path,
+                  partial_size: partial_size
+                )
               end
-
               error "Redirect with empty/nil location"
+
+            when Net::HTTPRequestedRangeNotSatisfiable  # 416
+              # Range not satisfiable — partial file is corrupt or
+              # larger than the remote. Delete and start fresh.
+              warning "Range not satisfiable, restarting download"
+              rm_f(local_path)
+              return do_download_uri(
+                uri, local_path, redirects,
+                partial_path: nil, partial_size: 0
+              )
 
             else
               error "Got #{resp.code}: #{resp.message}"
@@ -113,17 +152,40 @@ module Cache
       return false
     end
 
-    def download_url(url, local_path)
+    # Top-level download entry. Manages partial file lifecycle.
+    #
+    # On interrupt or error the partial file is preserved for resume.
+    # On success the partial file is moved to the final location.
+    def download_url(url, final_path)
 
-      return do_download_uri(URI.parse(url), local_path, 0)
+      partial_dir = File.join(File.dirname(final_path), "partial")
+      FileUtils.mkdir_p(partial_dir)
 
-      rescue SignalException, Interrupt
-        puts "" if STDOUT.tty?
-        puts "*** Got signal or user interrupt. Stop. ***"
-        rm_f(local_path)
+      partial_path = File.join(partial_dir, File.basename(final_path))
+      partial_size = File.exist?(partial_path) ? File.size(partial_path) : 0
 
-      rescue
-        rm_f(local_path)
+      success = do_download_uri(
+        URI.parse(url), partial_path, 0,
+        partial_path: partial_path,
+        partial_size: partial_size
+      )
+
+      if success
+        mv(partial_path, final_path)
+      end
+
+      return success
+
+    rescue SignalException, Interrupt
+      puts "" if STDOUT.tty?
+      puts "*** Got signal or user interrupt. Stop. ***"
+      # Partial file is preserved for resume on next run.
+      return nil
+
+    rescue => e
+      error "Download error: #{e.message}"
+      # Partial file is preserved for resume on next run.
+      return nil
     end
 
     # Thin wrappers around the git command. Tests replace these to
@@ -212,12 +274,13 @@ module Cache
     # Download here the file.
     success = Impl.download_url("#{url}/#{remote_file}", local_path)
 
-    if !success
+    if success == false
       error "Download failed"
-      rm_f(local_path)  # don't leave partial files in cache
+      # Partial file stays in cache/partial/ for resume.
+      # Don't delete it — that's the whole point.
     end
 
-    return success
+    return !!success
   end
 
   def extract_file(tarfile, newDirName = nil)
@@ -287,9 +350,7 @@ module Cache
 
       dirname = contents[0]
       newDirName ||= dirname
-      dest = current_dir / newDirName
-      rm_rf(dest) if exist?(dest)
-      mv(tmp / dirname, dest)
+      mv(tmp / dirname, current_dir / newDirName)
     end
 
     return true
