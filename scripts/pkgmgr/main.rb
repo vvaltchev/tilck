@@ -439,6 +439,7 @@ module Main
       runner = File.join(__dir__, "tests", "run_all.rb")
       args = [runner]
       args << "--coverage" if options[:coverage]
+      args << "--dry-run" if options[:dry_run]
       args << "--system-tests" if options[:system_tests]
       args << "--all-build-types" if options[:all_build_types]
       args << "--run-also-tilck-tests" if options[:run_tilck_tests]

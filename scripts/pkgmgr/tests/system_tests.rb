@@ -223,6 +223,55 @@ module SystemTests
     end
   end
 
+  # --- Dry-run plan ---
+
+  def print_plan(run_tilck:, arch:, packages_filter:, all_build_types:)
+    archs = resolve_archs(arch)
+
+    banner("Dry-run plan")
+
+    puts "  Architectures: #{archs.join(', ')}"
+    puts
+
+    for arch_name in archs
+      puts "  #{BOLD}#{arch_name}#{RESET}:"
+      puts "    Default packages: install via build_toolchain"
+
+      pkgs = OPTIONAL_PACKAGES
+      if packages_filter
+        re = Regexp.new(packages_filter)
+        pkgs = pkgs.select { |p| p.match?(re) }
+      end
+      puts "    Optional packages: #{pkgs.join(', ')}"
+
+      extras = EXTRA_FLAG_MAP.keys.select { |flag|
+        # Can't check filesystem in dry-run — show all that COULD apply
+        true
+      }.map { |f| "-D#{f}=1" }
+      puts "    cmake flags: #{extras.join(' ')}"
+      puts "    Build: cmake + make -j + make -j gtests"
+
+      if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
+        puts "    Tilck tests: gtests + run_all_tests -c"
+      elsif run_tilck
+        puts "    Tilck tests: #{DIM}skipped (#{arch_name} not supported)#{RESET}"
+      end
+
+      puts
+    end
+
+    if all_build_types
+      generators_dir = MAIN_DIR / "scripts" / "build_generators"
+      generators = Dir.children(generators_dir).sort
+
+      puts "  #{BOLD}All build types:#{RESET}"
+      for arch_name in archs
+        puts "    #{arch_name}: #{generators.join(', ')}"
+      end
+      puts
+    end
+  end
+
   # --- Main entry points ---
 
   def run_system_tests(run_tilck: false, arch: nil, packages_filter: nil)

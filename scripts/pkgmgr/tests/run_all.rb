@@ -18,6 +18,7 @@
 
 $coverage_enabled    = ARGV.delete("--coverage")
 $verbose_tests       = ARGV.delete("--verbose-tests")
+$dry_run             = ARGV.delete("--dry-run")
 $system_tests        = ARGV.delete("--system-tests")
 $all_build_types     = ARGV.delete("--all-build-types")
 $run_tilck_tests     = ARGV.delete("--run-also-tilck-tests")
@@ -253,17 +254,28 @@ Minitest.after_run {
   if $unit_tests_passed && $system_tests
     require_relative 'system_tests'
 
-    SystemTests.run_system_tests(
-      run_tilck: $run_tilck_tests,
-      arch: $test_arch,
-      packages_filter: $test_packages_filter
-    )
-
-    if $all_build_types
-      SystemTests.run_all_build_types(
+    if $dry_run
+      # Print the plan once, covering both system tests and
+      # all-build-types if requested.
+      SystemTests.print_plan(
         run_tilck: $run_tilck_tests,
-        arch: $test_arch
+        arch: $test_arch,
+        packages_filter: $test_packages_filter,
+        all_build_types: !!$all_build_types
       )
+    else
+      SystemTests.run_system_tests(
+        run_tilck: $run_tilck_tests,
+        arch: $test_arch,
+        packages_filter: $test_packages_filter
+      )
+
+      if $all_build_types
+        SystemTests.run_all_build_types(
+          run_tilck: $run_tilck_tests,
+          arch: $test_arch
+        )
+      end
     end
   end
 
