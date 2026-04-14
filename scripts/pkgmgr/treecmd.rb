@@ -29,6 +29,11 @@ class TreecmdPackage < Package
     ["tree", false],
   ]
 
+  def clean_build(dir)
+    system("make", "clean", chdir: dir.to_s,
+           out: "/dev/null", err: "/dev/null")
+  end
+
   def install_impl_internal(install_dir)
     return run_command("build.log", ["make", "-j#{BUILD_PAR}"])
   end

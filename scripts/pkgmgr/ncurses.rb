@@ -29,6 +29,11 @@ class NcursesPackage < Package
     ["install/lib/libncurses.a", false]
   ]
 
+  def clean_build(dir)
+    FileUtils.rm_rf(dir / "install")
+    super(dir)
+  end
+
   def install_impl_internal(install_dir)
 
     arch = default_arch().gcc_tc

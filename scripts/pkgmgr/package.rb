@@ -142,6 +142,30 @@ class Package
     end
   end
 
+  # The root directory for the final install (where mv moves to).
+  def final_install_root
+    if on_host
+      host_install_root
+    elsif default_arch.nil?
+      TC_NOARCH
+    else
+      TC / "gcc-#{ARCH.gcc_ver}" / ARCH.name
+    end
+  end
+
+  # Staging path for this package version.
+  def staging_dir(ver)
+    TC_STAGING / pkg_dirname / ver_dirname(ver)
+  end
+
+  # Clean build artifacts from a staging directory, keeping the
+  # extracted source for a rebuild. Returns true if clean succeeded.
+  # Override in subclass for custom logic. Fallback: delete + re-extract.
+  def clean_build(dir)
+    system("make", "distclean", chdir: dir.to_s,
+           out: "/dev/null", err: "/dev/null")
+  end
+
   def id = @name
   def ==(other) = (other.is_a?(Package) ? id == other.id : super)
   def eql?(other) = (self == other)
@@ -281,13 +305,8 @@ class Package
       raise NotImplementedError
     end
 
-    # Delegate the git-vs-HTTP decision to `fetch_via_git?`, which has a
-    # GitHub-aware default and can be overridden by packages hosted on
-    # other git servers. Passing `ver_dirname(ver)` as the clone dir
-    # name keeps cached tarballs laid out the same way regardless of
-    # whether `git_tag(ver)` happens to differ from the version string
-    # (e.g. musl tags its releases as `v1.2.5`, but we want `1.2.5/` as
-    # the top-level dir inside the cached .tgz).
+    # --- Download (into cache/) ---
+
     if fetch_via_git?
       ok = Cache::download_git_repo(
              url, tarname(ver), git_tag(ver), ver_dirname(ver)
@@ -297,66 +316,91 @@ class Package
     end
     return false if !ok
 
-    if on_host
+    # --- Ensure extracted source in staging ---
 
-      # syscc package, running on the host
-      assert { default_cc.eql? "syscc" }
+    staging = staging_dir(ver)
 
-      root = host_install_root
-      chdir_package_base_dir(root) do
-        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
-        return false if !ok
-        ok = chdir_install_dir(root, ver) do
-          d = mkpathname(getwd)
-          ok = apply_patches(ver)
-          return false if ok == false
-          ok = install_impl_internal(d)
-          ok = check_install_dir(d, true) if ok
-        end
-      end
-
-    elsif default_arch.nil?
-
-      # noarch/source package: does not require compilation at all (lcov)
-      # or does not require compilation by the toolchain (e.g. acpica).
-      assert { !on_host }
-
-      chdir_package_base_dir(TC_NOARCH) do
-        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
-        return false if !ok
-
-        ok = chdir_install_dir(TC_NOARCH, ver) do
-          d = mkpathname(getwd)
-          ok = apply_patches(ver)
-          return false if ok == false
-          ok = install_impl_internal(d)
-          ok = check_install_dir(d, true) if ok
-        end
-      end
-
-    else
-
-      # regular package (target = tilck architecture)
-      assert { !on_host }
-
-      pkgmgr.with_cc() do |arch_dir|
-        chdir_package_base_dir(arch_dir) do
-
-          ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
-          return false if !ok
-
-          ok = chdir_install_dir(arch_dir, ver) do
-            d = mkpathname(getwd)
-            ok = apply_patches(ver)
-            return false if ok == false
-            ok = install_impl_internal(d)
-            ok = check_install_dir(d, true) if ok
-          end
-        end
+    if staging.directory?
+      # Recovery: staging exists from a previous interrupted build.
+      # Clean build artifacts, keep extracted source for rebuild.
+      info "Resuming from staging (cleaning build artifacts)"
+      if !clean_build(staging)
+        # clean_build failed — delete and re-extract
+        warning "clean_build failed, re-extracting"
+        FileUtils.rm_rf(staging)
       end
     end
 
-    return ok
+    if !staging.directory?
+      # Fresh extraction into staging
+      chdir_package_base_dir(TC_STAGING) do
+        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
+        return false if !ok
+      end
+    end
+
+    # --- Build in staging (signal-safe) ---
+    #
+    # On SIGINT/SIGTERM/SIGHUP/SIGQUIT: clean build artifacts from
+    # the staging dir (preserving extracted source for next run),
+    # then exit. The final install dir is never in a partial state.
+
+    interrupted = false
+    cleanup = -> {
+      interrupted = true
+      $stderr.puts "\n*** Interrupted — cleaning build artifacts ***"
+      clean_build(staging)
+      exit 1
+    }
+
+    signals = %w[INT TERM HUP QUIT]
+    old_handlers = signals.map { |sig|
+      [sig, Signal.trap(sig) { cleanup.call }]
+    }
+
+    begin
+      ok = chdir_install_dir(TC_STAGING, ver) do
+        d = mkpathname(getwd)
+
+        ok = apply_patches(ver)
+        return false if ok == false
+
+        if !on_host && !default_arch.nil?
+          # Target package: need cross-compiler in PATH
+          pkgmgr.with_cc() do |_arch_dir|
+            ok = install_impl_internal(d)
+          end
+        else
+          ok = install_impl_internal(d)
+        end
+
+        ok = check_install_dir(d, true) if ok
+        ok
+      end
+
+      return false if !ok
+    ensure
+      # Restore original signal handlers
+      old_handlers.each { |sig, handler|
+        Signal.trap(sig, handler || "DEFAULT")
+      }
+    end
+
+    # --- Atomic move to final location ---
+
+    final_root = final_install_root
+    final_pkg_dir = final_root / pkg_dirname
+    final_ver_dir = final_pkg_dir / ver_dirname(ver)
+
+    FileUtils.mkdir_p(final_pkg_dir)
+    FileUtils.mv(staging.to_s, final_ver_dir.to_s)
+
+    # Clean up the empty staging/pkg_dirname/ directory
+    staging_pkg = TC_STAGING / pkg_dirname
+    FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
+                                    Dir.empty?(staging_pkg)
+
+    return true
   end
 
   def check_install_dir(d, report_error = false)

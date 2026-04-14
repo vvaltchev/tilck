@@ -64,6 +64,7 @@ module TestHelper
     Dir.mktmpdir("pkgmgr-test-") do |dir|
       tc = Pathname.new(dir)
       FileUtils.mkdir_p(tc / "cache")
+      FileUtils.mkdir_p(tc / "staging")
       FileUtils.mkdir_p(tc / "noarch")
       FileUtils.mkdir_p(tc / "gcc-#{FAKE_GCC_VER}" / FAKE_ARCH.name)
 
@@ -84,6 +85,7 @@ module TestHelper
         DEFAULT_BOARD: nil,
         TC: tc,
         TC_CACHE: tc / "cache",
+        TC_STAGING: tc / "staging",
         TC_NOARCH: tc / "noarch",
         HOST_DIR_PORTABLE: host_dir_p,
         HOST_DIR_DISTRO: host_dir_d,

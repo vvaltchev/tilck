@@ -30,6 +30,11 @@ class LuaPackage < Package
     ["src/luac", false],
   ]
 
+  def clean_build(dir)
+    system("make", "clean", chdir: dir.to_s,
+           out: "/dev/null", err: "/dev/null")
+  end
+
   def install_impl_internal(install_dir)
 
     # Drop the linker's `-Wl,-E` (export-dynamic) from src/Makefile —

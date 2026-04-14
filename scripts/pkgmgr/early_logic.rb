@@ -291,6 +291,7 @@ end
 
 TC = InitOnly.get_tc_root()
 TC_CACHE = TC / "cache"
+TC_STAGING = TC / "staging"
 TC_NOARCH = TC / "noarch"
 ARCH = InitOnly.get_arch(getenv("ARCH", DEFAULT_ARCH))
 HOST_ARCH = InitOnly.get_host_arch(Etc.uname[:machine])
