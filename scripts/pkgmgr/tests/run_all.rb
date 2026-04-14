@@ -254,28 +254,17 @@ Minitest.after_run {
   if $unit_tests_passed && $system_tests
     require_relative 'system_tests'
 
-    if $dry_run
-      # Print the plan once, covering both system tests and
-      # all-build-types if requested.
-      SystemTests.print_plan(
-        run_tilck: $run_tilck_tests,
-        arch: $test_arch,
-        packages_filter: $test_packages_filter,
-        all_build_types: !!$all_build_types
-      )
-    else
-      SystemTests.run_system_tests(
-        run_tilck: $run_tilck_tests,
-        arch: $test_arch,
-        packages_filter: $test_packages_filter
-      )
+    SystemTests.run_system_tests(
+      run_tilck: $run_tilck_tests,
+      arch: $test_arch,
+      packages_filter: $test_packages_filter
+    )
 
-      if $all_build_types
-        SystemTests.run_all_build_types(
-          run_tilck: $run_tilck_tests,
-          arch: $test_arch
-        )
-      end
+    if $all_build_types
+      SystemTests.run_all_build_types(
+        run_tilck: $run_tilck_tests,
+        arch: $test_arch
+      )
     end
   end
 

@@ -7,6 +7,9 @@
 # All package operations go through build_toolchain as a subprocess
 # (clean PackageManager, no test pollution).
 #
+# When $dry_run is set, the exact same code path executes but every
+# action prints [ DRY ] instead of running.
+#
 
 require 'pathname'
 require 'fileutils'
@@ -25,6 +28,8 @@ module SystemTests
   RESET = "#{ESC}0m"
   HLINE = "#{DIM}#{"─" * 72}#{RESET}"
 
+  DRY_TAG = "#{CYAN}[ DRY ]#{RESET}"
+
   # Project root (derive from this file's location)
   MAIN_DIR = Pathname.new(File.expand_path("../../..", __dir__))
   TC = MAIN_DIR / "toolchain4"
@@ -41,14 +46,12 @@ module SystemTests
   TILCK_TEST_ARCHS = ["i386", "riscv64"]
 
   # All optional (non-default) packages that can be installed per arch.
-  # The pkgmgr will skip packages that don't support the arch.
   OPTIONAL_PACKAGES = %w[
     ncurses vim tcc fbdoom micropython lua treecmd tfblib
     gtest_src host_gtest lcov libmusl
   ]
 
   # Map of EXTRA_* cmake flags → the package dir to check.
-  # Only enable a flag if the package is actually installed.
   EXTRA_FLAG_MAP = {
     "EXTRA_VIM"          => ->(arch) { TC / "gcc-13.3.0" / arch / "vim" },
     "EXTRA_TCC"          => ->(arch) { TC / "gcc-13.3.0" / arch / "tcc" },
@@ -60,9 +63,6 @@ module SystemTests
   }
 
   # Resolve --test-arch into a list of architectures.
-  #   nil     → [DEFAULT_ARCH]
-  #   "ALL"   → ALL_TEST_ARCHS
-  #   "i386"  → ["i386"]
   def resolve_archs(arch)
     return ALL_TEST_ARCHS if arch == "ALL"
     return [arch] if arch
@@ -86,6 +86,10 @@ module SystemTests
     puts "#{GREEN}OK#{RESET}#{t}"
   end
 
+  def dry
+    puts DRY_TAG
+  end
+
   def fail!(msg)
     puts "#{RED}FAILED#{RESET}"
     $stderr.puts "#{RED}ERROR: #{msg}#{RESET}"
@@ -100,6 +104,12 @@ module SystemTests
 
   def run_cmd(desc, cmd, log: nil, env: {})
     step(desc)
+
+    if $dry_run
+      dry
+      return
+    end
+
     elapsed = timed {
       if log
         ok2 = system(env, *cmd, out: log, err: log)
@@ -114,15 +124,14 @@ module SystemTests
     ok(elapsed)
   end
 
-  # Wipe installed packages from the toolchain, preserving:
-  #   - cache/     (downloaded archives)
-  #   - host/      (Ruby install + host tools rebuilt per arch anyway)
-  #
-  # We keep host/ because it contains the Ruby binary that
-  # build_toolchain needs to exec into. Host tools (mtools, gtest)
-  # will be reinstalled as part of the default package set.
   def wipe_toolchain
     step("Wipe toolchain (keep cache + Ruby)")
+
+    if $dry_run
+      dry
+      return
+    end
+
     elapsed = timed {
       Dir.children(TC).each { |child|
         next if child == "cache" || child == "host"
@@ -133,17 +142,21 @@ module SystemTests
   end
 
   def install_packages(arch_name, packages_filter: nil)
-    step("Install default packages for #{arch_name}")
     env = { "ARCH" => arch_name, "BOARD" => nil }
-    elapsed = timed {
-      ok2 = system(env, BTC, "-q", "-n",
-                   out: "/dev/null", err: "/dev/null")
-      fail!("Default install failed for #{arch_name}") if !ok2
-    }
-    ok(elapsed)
 
-    # Install optional packages (skip failures silently — some
-    # packages don't support all archs or may lack cache files)
+    step("Install default packages for #{arch_name}")
+    if $dry_run
+      dry
+    else
+      elapsed = timed {
+        ok2 = system(env, BTC, "-q", "-n",
+                     out: "/dev/null", err: "/dev/null")
+        fail!("Default install failed for #{arch_name}") if !ok2
+      }
+      ok(elapsed)
+    end
+
+    # Optional packages
     pkgs = OPTIONAL_PACKAGES
     if packages_filter
       re = Regexp.new(packages_filter)
@@ -152,6 +165,12 @@ module SystemTests
 
     for pkg in pkgs
       step("Install optional: #{pkg}")
+
+      if $dry_run
+        dry
+        next
+      end
+
       success = false
       elapsed = timed {
         success = system(env, BTC, "-q", "-n", "-s", pkg,
@@ -166,12 +185,17 @@ module SystemTests
   end
 
   # Compute EXTRA_* cmake flags based on what's actually installed.
+  # In dry-run mode, show all possible flags (can't check filesystem).
   def extra_cmake_flags(arch_name)
     flags = []
     EXTRA_FLAG_MAP.each do |flag, path_proc|
-      dir = path_proc.call(arch_name)
-      if dir.directory? && !Dir.empty?(dir)
+      if $dry_run
         flags << "-D#{flag}=1"
+      else
+        dir = path_proc.call(arch_name)
+        if dir.directory? && !Dir.empty?(dir)
+          flags << "-D#{flag}=1"
+        end
       end
     end
     flags
@@ -184,9 +208,10 @@ module SystemTests
     env = { "ARCH" => arch_name }
 
     extras = extra_cmake_flags(arch_name)
+    extras_desc = extras.empty? ? "" : " " + extras.join(" ")
 
     run_cmd(
-      "Running CMake",
+      "cmake#{extras_desc}",
       [CMAKE_RUN] + extras,
       log: cmake_log,
       env: env
@@ -202,73 +227,17 @@ module SystemTests
     gtests_log = File.join(build_dir, "gtests_run.log")
     systests_log = File.join(build_dir, "systests.log")
 
+    # In dry-run, the binary won't exist — always show the step.
     gtests_bin = File.join(build_dir, "gtests")
-    if File.exist?(gtests_bin)
-      run_cmd(
-        "run gtests",
-        [gtests_bin],
-        log: gtests_log
-      )
+    if $dry_run || File.exist?(gtests_bin)
+      run_cmd("run gtests", [gtests_bin], log: gtests_log)
     end
 
     test_runner = File.join(build_dir, "st", "run_all_tests")
-    if File.exist?(test_runner)
-      run_cmd(
-        "system tests -c",
-        [test_runner, "-c"],
-        log: systests_log
-      )
+    if $dry_run || File.exist?(test_runner)
+      run_cmd("system tests -c", [test_runner, "-c"], log: systests_log)
     else
       $stderr.puts "  #{DIM}WARNING: test runner not found, skipping#{RESET}"
-    end
-  end
-
-  # --- Dry-run plan ---
-
-  def print_plan(run_tilck:, arch:, packages_filter:, all_build_types:)
-    archs = resolve_archs(arch)
-
-    banner("Dry-run plan")
-
-    puts "  Architectures: #{archs.join(', ')}"
-    puts
-
-    for arch_name in archs
-      puts "  #{BOLD}#{arch_name}#{RESET}:"
-      puts "    Default packages: install via build_toolchain"
-
-      pkgs = OPTIONAL_PACKAGES
-      if packages_filter
-        re = Regexp.new(packages_filter)
-        pkgs = pkgs.select { |p| p.match?(re) }
-      end
-      puts "    Optional packages: #{pkgs.join(', ')}"
-
-      extras = EXTRA_FLAG_MAP.keys.select { |flag|
-        # Can't check filesystem in dry-run — show all that COULD apply
-        true
-      }.map { |f| "-D#{f}=1" }
-      puts "    cmake flags: #{extras.join(' ')}"
-      puts "    Build: cmake + make -j + make -j gtests"
-
-      if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
-        puts "    Tilck tests: gtests + run_all_tests -c"
-      elsif run_tilck
-        puts "    Tilck tests: #{DIM}skipped (#{arch_name} not supported)#{RESET}"
-      end
-
-      puts
-    end
-
-    if all_build_types
-      generators_dir = MAIN_DIR / "scripts" / "build_generators"
-      generators = Dir.children(generators_dir).sort
-
-      puts "  #{BOLD}All build types:#{RESET}"
-      for arch_name in archs
-        puts "    #{arch_name}: #{generators.join(', ')}"
-      end
-      puts
     end
   end
 
@@ -278,7 +247,7 @@ module SystemTests
     banner("System tests: install + build")
 
     builds_dir = MAIN_DIR / "other_builds"
-    FileUtils.mkdir_p(builds_dir)
+    FileUtils.mkdir_p(builds_dir) if !$dry_run
 
     for arch_name in resolve_archs(arch)
       banner("Architecture: #{arch_name}")
@@ -287,10 +256,13 @@ module SystemTests
       install_packages(arch_name, packages_filter: packages_filter)
 
       build_dir = (builds_dir / "systest_#{arch_name}").to_s
-      FileUtils.rm_rf(build_dir)
-      FileUtils.mkdir_p(build_dir)
 
-      Dir.chdir(build_dir) do
+      if !$dry_run
+        FileUtils.rm_rf(build_dir)
+        FileUtils.mkdir_p(build_dir)
+      end
+
+      Dir.chdir($dry_run ? "." : build_dir) do
         cmake_and_build(arch_name, build_dir)
 
         if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
@@ -309,7 +281,6 @@ module SystemTests
 
     for arch_name in resolve_archs(arch)
 
-      # Each arch needs its own toolchain — wipe and reinstall.
       banner("Install packages for #{arch_name}")
       wipe_toolchain
       install_packages(arch_name)
@@ -320,25 +291,32 @@ module SystemTests
 
         banner("#{gen_name} x #{arch_name}")
 
-        FileUtils.rm_rf(build_dir)
-        FileUtils.mkdir_p(build_dir)
+        if !$dry_run
+          FileUtils.rm_rf(build_dir)
+          FileUtils.mkdir_p(build_dir)
+        end
 
-        Dir.chdir(build_dir) do
+        Dir.chdir($dry_run ? "." : build_dir) do
           env = { "ARCH" => arch_name }
 
           cmake_log = File.join(build_dir, "cmake.log")
           step("generator #{gen_name}")
-          success = false
-          elapsed = timed {
-            success = system(env, gen_script,
-                             out: cmake_log, err: cmake_log)
-          }
 
-          if !success || File.exist?("skipped")
-            puts "#{DIM}skipped#{RESET}"
-            next
+          if $dry_run
+            dry
+          else
+            success = false
+            elapsed = timed {
+              success = system(env, gen_script,
+                               out: cmake_log, err: cmake_log)
+            }
+
+            if !success || File.exist?("skipped")
+              puts "#{DIM}skipped#{RESET}"
+              next
+            end
+            ok(elapsed)
           end
-          ok(elapsed)
 
           build_log = File.join(build_dir, "build.log")
           run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
