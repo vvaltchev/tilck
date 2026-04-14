@@ -47,14 +47,24 @@ module SystemTests
     gtest_src host_gtest lcov libmusl
   ]
 
+  # Read the default GCC version for a given target arch from the config.
+  def gcc_ver_for(arch_name)
+    File.read(MAIN_DIR / "other" / "gcc_tc_conf" / arch_name / "default_ver").strip
+  end
+
+  # Per-arch target package root: toolchain4/gcc-<ver>/<arch>/
+  def arch_pkg_dir(arch_name)
+    TC / "gcc-#{gcc_ver_for(arch_name)}" / arch_name
+  end
+
   # Map of EXTRA_* cmake flags → the package dir to check.
   EXTRA_FLAG_MAP = {
-    "EXTRA_VIM"          => ->(arch) { TC / "gcc-13.3.0" / arch / "vim" },
-    "EXTRA_TCC"          => ->(arch) { TC / "gcc-13.3.0" / arch / "tcc" },
-    "EXTRA_FBDOOM"       => ->(arch) { TC / "gcc-13.3.0" / arch / "fbdoom" },
-    "EXTRA_MICROPYTHON"  => ->(arch) { TC / "gcc-13.3.0" / arch / "micropython" },
-    "EXTRA_LUA"          => ->(arch) { TC / "gcc-13.3.0" / arch / "lua" },
-    "EXTRA_TREE_CMD"     => ->(arch) { TC / "gcc-13.3.0" / arch / "treecmd" },
+    "EXTRA_VIM"          => ->(arch) { arch_pkg_dir(arch) / "vim" },
+    "EXTRA_TCC"          => ->(arch) { arch_pkg_dir(arch) / "tcc" },
+    "EXTRA_FBDOOM"       => ->(arch) { arch_pkg_dir(arch) / "fbdoom" },
+    "EXTRA_MICROPYTHON"  => ->(arch) { arch_pkg_dir(arch) / "micropython" },
+    "EXTRA_LUA"          => ->(arch) { arch_pkg_dir(arch) / "lua" },
+    "EXTRA_TREE_CMD"     => ->(arch) { arch_pkg_dir(arch) / "treecmd" },
     "EXTRA_TFBLIB"       => ->(arch) { TC / "noarch" / "tfblib" },
   }
 
