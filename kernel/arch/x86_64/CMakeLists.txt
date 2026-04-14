@@ -36,6 +36,7 @@ file(GLOB ARCH_SOURCES ${GLOB_CONF_DEP} ${ARCH_SOURCES_GLOB})
 file(
    GLOB
    ARCH_FAMILY_SOURCES
+   ${GLOB_CONF_DEP}
 
    "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*.c"
    "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*/*.c"
