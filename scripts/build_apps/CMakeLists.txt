@@ -7,6 +7,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -ggdb")
 
 file(
    GLOB FATHACK_SRC
+   ${GLOB_CONF_DEP}
    "fathack.c"
    "${CMAKE_SOURCE_DIR}/common/*.c"
    "${CMAKE_SOURCE_DIR}/common/*.cpp"

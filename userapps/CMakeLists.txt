@@ -34,7 +34,7 @@ include_directories(${ZLIB_DIR}/install/include)
 
    macro(add_usermode_app)
       if (USERAPPS_${ARGV0})
-         file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
+         file(GLOB SOURCES ${GLOB_CONF_DEP} "${ARGV1}${ARGV0}*.c")
          add_executable(${ARGV0} ${SOURCES})
          register_usermode_app(${ARGV0})
       endif()
@@ -71,6 +71,7 @@ include_directories(${ZLIB_DIR}/install/include)
    file(
       GLOB
       DEVSHELL_SOURCES
+      ${GLOB_CONF_DEP}
 
       "devshell/*.c"
       "devshell/${ARCH}.S"

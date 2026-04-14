@@ -139,6 +139,7 @@ if (${HOST_ARCH_FAMILY} STREQUAL "generic_x86")
 
    file(
       GLOB SOURCES
+      ${GLOB_CONF_DEP}
 
       "${PROJ_ROOT}/tests/unit/*.c"
       "${PROJ_ROOT}/tests/unit/*.cpp"
@@ -150,6 +151,7 @@ else()
 
    file(
       GLOB SOURCES
+      ${GLOB_CONF_DEP}
 
       "${PROJ_ROOT}/tests/unit/*.c"
       "${PROJ_ROOT}/tests/unit/*.cpp"
