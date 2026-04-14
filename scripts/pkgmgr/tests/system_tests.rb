@@ -68,6 +68,20 @@ module SystemTests
     [DEFAULT_ARCH]
   end
 
+  # --- Coverage plumbing ---
+
+  # Directory for subprocess coverage JSON files. Set by run_all.rb.
+  COVERAGE_DIR = ENV["COVERAGE_DIR"]
+
+  # Base env hash for subprocesses. Includes COVERAGE_DIR when the
+  # test runner has coverage enabled, so subprocess installs also
+  # collect coverage data.
+  def base_env(arch_name)
+    env = { "ARCH" => arch_name, "BOARD" => nil }
+    env["COVERAGE_DIR"] = COVERAGE_DIR if COVERAGE_DIR
+    env
+  end
+
   # --- Timing ---
 
   def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -150,7 +164,7 @@ module SystemTests
   end
 
   def install_packages(arch_name, packages_filter: nil)
-    env = { "ARCH" => arch_name, "BOARD" => nil }
+    env = base_env(arch_name)
 
     run_cmd("Install default packages for #{arch_name}",
             [BTC, "-q", "-n"], env: env)

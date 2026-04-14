@@ -43,7 +43,14 @@ end
 
 if $coverage_enabled
   require 'coverage'
+  require 'json'
   Coverage.start(lines: true)
+
+  # Tell subprocesses (build_toolchain invocations) to also collect
+  # coverage. Each subprocess writes a JSON file; we merge them all
+  # at the end.
+  $coverage_dir = File.join(__dir__, "..", "..", "..", "coverage_html")
+  ENV["COVERAGE_DIR"] = $coverage_dir
 end
 
 # --- Custom reporter with pretty output ---
@@ -288,7 +295,48 @@ Minitest.after_run {
 
   if $coverage_enabled
     require_relative '../coverage_reporter'
-    CoverageReporter.report(Coverage.result)
+
+    # Merge this process's coverage with any subprocess coverage
+    # files (written by build_toolchain invocations during system
+    # tests). Each subprocess writes coverage_<pid>.json.
+    raw = Coverage.result
+
+    # Coverage.result returns frozen arrays — dup everything so we
+    # can merge subprocess data into it.
+    merged = {}
+    raw.each { |path, data|
+      merged[path] = { lines: data[:lines].dup }
+    }
+
+    Dir.glob(File.join($coverage_dir, "coverage_*.json")).each { |f|
+      begin
+        sub = JSON.parse(File.read(f))
+        sub.each { |path, data|
+          lines = data["lines"]
+          next if !lines
+
+          if merged[path]
+            # Merge: for each line, take the max of both counts.
+            mine = merged[path][:lines]
+            lines.each_with_index { |count, i|
+              next if count.nil?
+              if mine[i].nil?
+                mine[i] = count
+              else
+                mine[i] = [mine[i], count].max
+              end
+            }
+          else
+            merged[path] = { lines: lines }
+          end
+        }
+        File.delete(f)
+      rescue => e
+        $stderr.puts "WARNING: failed to merge #{f}: #{e}"
+      end
+    }
+
+    CoverageReporter.report(merged)
   end
 
   if !$unit_tests_passed

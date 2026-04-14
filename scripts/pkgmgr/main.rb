@@ -1,5 +1,22 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
+# When COVERAGE_DIR is set (by the test runner), collect line coverage
+# for this process and write it to a JSON file on exit. This allows
+# merging coverage from subprocess installs with the main test run.
+# Skip if Coverage is already running (e.g. when loaded by the test
+# runner process itself).
+if ENV["COVERAGE_DIR"] && !(defined?(Coverage) && Coverage.running?)
+  require 'coverage'
+  require 'json'
+  Coverage.start(lines: true)
+  at_exit {
+    dir = ENV["COVERAGE_DIR"]
+    FileUtils.mkdir_p(dir) rescue nil
+    path = File.join(dir, "coverage_#{Process.pid}.json")
+    File.write(path, JSON.generate(Coverage.result))
+  }
+end
+
 require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'term'
