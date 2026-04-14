@@ -45,11 +45,22 @@ before the script could continue further.
 After the first run of `build_toolchain` finishes, it's possible to build Tilck
 but, that doesn't mean the script becomes useless. Actually, most of the
 packages that it can install are not installed by default. The idea behind that
-is to perform the first setup as quickly as possible. To see all the packages
-available, just run the script with `-h`. Single packages can be installed using
-the `-s` option. To be more precise, the script calls them *functions* because
-in some cases (e.g. config_busybx) they are meant to just (re)configure a
-package.
+is to perform the first setup as quickly as possible. To see all the available
+packages and their install status, run:
+
+    ./scripts/build_toolchain -l
+
+Single packages can be installed using the `-s` option. For example:
+
+    ./scripts/build_toolchain -s vim tcc lua
+
+Packages that support interactive reconfiguration (e.g. busybox, u-boot) can
+be reconfigured with `-C`:
+
+    ./scripts/build_toolchain -C busybox
+
+For the full list of options, run `./scripts/build_toolchain -h`. For detailed
+documentation about the package manager, see [package_manager].
 
 ## Building Tilck
 
@@ -196,6 +207,8 @@ framework in the toolchain, just run:
 
     ./scripts/build_toolchain -s host_gtest
 
+(The `gtest_src` dependency is installed automatically.)
+
 After that, you'll need to run the `cmake_run` script again:
 
     ./scripts/cmake_run                # For in-tree builds
@@ -251,7 +264,7 @@ moment. But, it still has partial support for Clang because:
 
 The `KERNEL_SYSCC` option makes the build system to use `CC` and `CXX` to build
 kernel's C and C++ files, while still building the assembly files with the
-pre-built GCC toolchain from [bootlin.com]. **Note**: no matter the
+pre-built GCC cross-compiler from [musl-cross-make]. **Note**: no matter the
 `KERNEL_SYSCC` option, kernel's unit tests (see [testing]) are always built
 using system's compiler. Therefore, setting `CC=clang CXX=clang++` will cause
 the unit tests to be completely built with Clang: this scenario is fully
@@ -278,21 +291,32 @@ and pass all the tests. Most of them are built & run each time a branch is pushe
 by the [Azure Pipelines] CI but some of them are left out because of the limited
 resources available there. Anyway, independently of the amount of resources available
 in CI builds, we need a simple way to test everything on our local machines.
-That's why the directory `scripts/build_generators` has been created. Each file
-there is shell script which creates a different configuration by calling
-`cmake_run` with a specific set of options. On top of that, there's the
-`./scripts/adv/gen_other_builds` script which actually *builds* the kernel and
-its unit tests for each configuration, and finally, there's (in the same directory)
-the `test_all_other_builds` script which *runs* all the tests (except the interactive
-ones) for each configuration. **Note**: these scripts expect a variety of additional
-packages to be installed both on the host machine and in Tilck's toolchain. Before
-running them for the first time, check (following the sections above) that the
-whole project can build with the system's compiler (GCC) and that the kernel and
-the unit tests can build with Clang as well because both of those build
-configurations are used.
+
+The directory `scripts/build_generators` contains shell scripts, each creating a
+different build configuration by calling `cmake_run` with a specific set of
+options. The recommended way to run all of them is through the package manager's
+test infrastructure:
+
+    # Install all packages + build all archs + all build generator configs
+    ./scripts/build_toolchain -t --system-tests --all-build-types
+
+    # Preview what will run (no actual execution)
+    ./scripts/build_toolchain -t -d --system-tests --all-build-types -a ALL
+
+    # Also run Tilck's unit tests and system tests after each build
+    ./scripts/build_toolchain -t --system-tests --all-build-types --run-also-tilck-tests
+
+For more details, see [package_manager].
+
+There is also a standalone `./scripts/adv/gen_other_builds` script which builds
+the kernel and its unit tests for each configuration without going through the
+package manager's test runner. **Note**: these scripts expect additional packages
+to be installed (clang, gtest, lcov). Before running them for the first time,
+check that the project builds with both GCC and Clang.
 
 
 [testing]: testing.md
+[package_manager]: package_manager.md
 [googletest]: https://github.com/google/googletest
 [Azure Pipelines]: https://azure.microsoft.com/en-us/services/devops/pipelines
 [Static Analyzer]: https://clang-analyzer.llvm.org/
