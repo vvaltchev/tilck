@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.22)
 
 project(tilck_gtests LANGUAGES C CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 include(${TILCK_CONFIG_FILE})
 
 set(GLOB_CONF_DEP CONFIGURE_DEPENDS)

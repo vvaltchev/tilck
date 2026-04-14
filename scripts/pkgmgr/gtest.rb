@@ -31,7 +31,7 @@ class GtestSrcPackage < Package
 
   def pkg_dirname = "gtest"
   def tarname(ver) = "gtest-#{ver}.tgz"
-  def git_tag(ver) = "release-#{ver}"
+  def git_tag(ver) = "v#{ver}"
   def default_ver = pkgmgr.get_config_ver("gtest")
   def expected_files = [
     ["googletest", true],
