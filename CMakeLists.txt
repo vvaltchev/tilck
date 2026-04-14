@@ -1186,6 +1186,15 @@ ExternalProject_Add_Step(kernel tools_dep
 
 add_dependencies(userapps kernel)
 
+file(GLOB_RECURSE SYSROOT_FILES ${GLOB_CONF_DEP}
+   "${CMAKE_SOURCE_DIR}/sysroot/*"
+)
+list(FILTER SYSROOT_FILES EXCLUDE REGEX "(README|\\.gitignore)$")
+
+file(GLOB TEST_SCRIPT_FILES ${GLOB_CONF_DEP}
+   "${CMAKE_SOURCE_DIR}/tests/system/scripts/*"
+)
+
 set(
    mbr_img_deps
 
@@ -1200,7 +1209,8 @@ set(
    mbrhack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/mbrhack
-   ${CMAKE_SOURCE_DIR}/sysroot/etc/start
+   ${SYSROOT_FILES}
+   ${TEST_SCRIPT_FILES}
    ${CMAKE_BINARY_DIR}/config_fatpart
    ${BUILD_SCRIPTS_FILES_LIST}
 )
