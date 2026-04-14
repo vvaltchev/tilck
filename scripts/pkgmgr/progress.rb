@@ -26,7 +26,7 @@ class ProgressReporter
   end
 
   def update(total)
-    assert { !@expected || total <= @expected }
+    assert { !@expected_len || total <= @expected_len }
     @total = total.to_f
 
     if @expected_len
@@ -90,7 +90,7 @@ class ProgressReporter
     return true if !@last_update_time
     return true if (Time.now() - @last_update_time) > TIME_EPS
 
-    if @expected
+    if @expected_len
       last_p = @last_update / @expected_len * 100
       p = @total / @expected_len * 100
       return true if p - last_p >= PERC_EPS

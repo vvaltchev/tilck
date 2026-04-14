@@ -176,6 +176,49 @@ class TestProgressReporterShouldShowUpdate < Minitest::Test
     assert p.send(:should_show_update)
   end
 
+  # Regression test: with a known-length download, a small delta that
+  # crosses PERC_EPS (0.5%) but is below ABS_EPS (512KB) should still
+  # trigger an update via the percentage branch. A bug where
+  # @expected was used instead of @expected_len caused this branch to
+  # be dead code, making all known-length downloads use the absolute
+  # delta threshold instead.
+  def test_percentage_threshold_known_length
+    total_size = 100 * MB
+    p = ProgressReporter.new(total_size)
+
+    # Simulate: we're at 50%, advance by ~0.6% (600KB on 100MB).
+    # 600KB > PERC_EPS (0.5%) but 600KB < ABS_EPS (512KB)... wait,
+    # 600KB > 512KB. Use a bigger file so 0.6% is < 512KB.
+    #
+    # With 200MB total: 0.5% = 1MB > ABS_EPS. Still too big.
+    # With 200MB total: 0.3% = 600KB > ABS_EPS. Hmm.
+    #
+    # Actually ABS_EPS = MB/2 = 524288 bytes. PERC_EPS = 0.5%.
+    # For PERC_EPS to trigger but not ABS_EPS, we need:
+    #   delta >= total * 0.005  (percentage threshold)
+    #   delta < 524288          (absolute threshold)
+    # So: total * 0.005 < 524288 → total < 104857600 = 100MB
+    # And delta >= total * 0.005
+    #
+    # Use total = 50MB. Then 0.5% = 256KB. A delta of 300KB is:
+    #   300KB > 256KB (PERC_EPS passes)
+    #   300KB < 512KB (ABS_EPS fails)
+    # With the bug: falls to else branch, ABS_EPS check fails → false
+    # Without bug: percentage check passes → true
+
+    total_size = 50 * MB
+    p = ProgressReporter.new(total_size)
+    base = 25 * MB  # 50% downloaded
+    delta = 300 * KB
+
+    p.instance_variable_set(:@total, (base + delta).to_f)
+    p.instance_variable_set(:@last_update, base.to_f)
+    p.instance_variable_set(:@last_update_time, Time.now)
+
+    assert p.send(:should_show_update),
+           "Should trigger update via percentage threshold (0.6% > 0.5%)"
+  end
+
   def test_at_completion
     p = ProgressReporter.new(100)
     p.instance_variable_set(:@total, 100.0)
