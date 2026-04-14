@@ -244,11 +244,17 @@ class Package
   # Applies common patches (*.diff in the version directory) first, then
   # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
   # Called from install_impl after extraction, with cwd = source directory.
+  # Apply patch files from scripts/patches/<pkg>/<ver>/.
+  # Applies common patches (*.diff in the version directory) first, then
+  # arch-specific patches from a <arch>/ subdirectory, all in sorted order.
+  # Called from install_impl after extraction, with cwd = source directory.
+  #
+  # Returns true on success (including "no patches to apply"), false on
+  # failure. Never returns nil.
   def apply_patches(ver)
 
     patch_base = MAIN_DIR / "scripts" / "patches" / pkg_dirname / ver.to_s
-
-    return if !patch_base.directory?
+    return true if !patch_base.directory?
 
     arch_name = default_arch&.name
 
@@ -265,7 +271,7 @@ class Package
     end
 
     patches = common + arch_specific
-    return if patches.empty?
+    return true if patches.empty?
 
     for p in patches
       rel = p.relative_path_from(patch_base)
@@ -360,8 +366,7 @@ class Package
       ok = chdir_install_dir(TC_STAGING, ver) do
         d = mkpathname(getwd)
 
-        ok = apply_patches(ver)
-        return false if ok == false
+        return false if !apply_patches(ver)
 
         if !on_host && !default_arch.nil?
           # Target package: need cross-compiler in PATH

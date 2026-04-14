@@ -93,19 +93,19 @@ end
 class TestApplyPatches < Minitest::Test
   include TestHelper
 
-  def test_no_patch_dir_returns_nil
+  def test_no_patch_dir_returns_true
     with_fake_tc do
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
-        # No patches directory exists → returns nil (no patches to apply)
+        # No patches directory exists → returns true (nothing to do = success)
         Dir.mktmpdir do |dir|
-          FileUtils.cd(dir) { assert_nil pkg.apply_patches(Ver("1.0.0")) }
+          FileUtils.cd(dir) { assert pkg.apply_patches(Ver("1.0.0")) }
         end
       end
     end
   end
 
-  def test_empty_patch_dir_returns_nil
+  def test_empty_patch_dir_returns_true
     with_fake_tc do
       with_stubbed_externals do
         pkg = FakePackage.new("foo")
@@ -114,7 +114,7 @@ class TestApplyPatches < Minitest::Test
         FileUtils.mkdir_p(patch_dir)
         begin
           Dir.mktmpdir do |dir|
-            FileUtils.cd(dir) { assert_nil pkg.apply_patches(Ver("1.0.0")) }
+            FileUtils.cd(dir) { assert pkg.apply_patches(Ver("1.0.0")) }
           end
         ensure
           FileUtils.rm_rf(patch_dir)
