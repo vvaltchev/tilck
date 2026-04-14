@@ -127,7 +127,6 @@ add_custom_command(
    COMMAND
       ${CMAKE_OBJCOPY} ${OC_OPTS} ${EFI_APP_SO} ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
-      ${SWITCHMODE_BIN}
       efi_app_${EFI_ARCH}
    COMMENT
       "Creating the final EFI file for ${EFI_ARCH}"
