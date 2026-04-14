@@ -247,6 +247,39 @@ end
 
 Dir.glob(File.join(__dir__, "test_*.rb")).sort.each { |f| require f }
 
+# --- Dry-run: list tests without running, then continue to system tests ---
+
+if $dry_run
+  DRY_TAG = "#{PrettyReporter::CYAN}[ DRY ]#{PrettyReporter::RESET}"
+
+  puts PrettyReporter::HLINE
+  puts "#{PrettyReporter::BOLD}  Ruby pkgmgr test suite#{PrettyReporter::RESET}"
+  puts PrettyReporter::HLINE
+  puts
+
+  count = 0
+  Minitest::Runnable.runnables.sort_by(&:name).each { |klass|
+    methods = klass.instance_methods(false).grep(/\Atest_/).sort
+    next if methods.empty?
+    puts "  #{PrettyReporter::DIM}#{klass.name}#{PrettyReporter::RESET}"
+    methods.each { |m|
+      print "    #{m.to_s.ljust(55)} "
+      puts DRY_TAG
+      count += 1
+    }
+  }
+
+  puts
+  puts PrettyReporter::HLINE
+  puts "  #{count} unit tests  #{DRY_TAG}"
+  puts PrettyReporter::HLINE
+  puts
+
+  # Don't run minitest — clear runnables and mark as passed.
+  Minitest::Runnable.runnables.clear
+  $unit_tests_passed = true
+end
+
 # --- After minitest finishes: system tests + coverage ---
 
 Minitest.after_run {
