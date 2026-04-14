@@ -241,60 +241,53 @@ module SystemTests
     end
   end
 
-  # --- Main entry points ---
+  # --- Main entry point ---
+  #
+  # Single loop per architecture:
+  #   1. Wipe toolchain + install packages (once per arch)
+  #   2. Default build (cmake + make + gtests)
+  #   3. If --run-also-tilck-tests: run Tilck tests on the default build
+  #   4. If --all-build-types: for each generator, build + optionally
+  #      run Tilck tests — reusing the same installed packages
+  #
+  def run(run_tilck: false, all_build_types: false,
+          arch: nil, packages_filter: nil)
 
-  def run_system_tests(run_tilck: false, arch: nil, packages_filter: nil)
-    banner("System tests: install + build")
+    banner("System tests")
 
     builds_dir = MAIN_DIR / "other_builds"
     FileUtils.mkdir_p(builds_dir) if !$dry_run
 
+    generators_dir = MAIN_DIR / "scripts" / "build_generators"
+    generators = all_build_types ? Dir.children(generators_dir).sort : []
+
     for arch_name in resolve_archs(arch)
       banner("Architecture: #{arch_name}")
 
+      # --- 1. Install packages (once per arch) ---
       wipe_toolchain
       install_packages(arch_name, packages_filter: packages_filter)
 
+      # --- 2. Default build ---
       build_dir = (builds_dir / "systest_#{arch_name}").to_s
-
-      if !$dry_run
-        FileUtils.rm_rf(build_dir)
-        FileUtils.mkdir_p(build_dir)
-      end
+      prepare_build_dir(build_dir)
 
       Dir.chdir($dry_run ? "." : build_dir) do
         cmake_and_build(arch_name, build_dir)
 
+        # --- 3. Tilck tests on the default build ---
         if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
           run_tilck_tests(arch_name, build_dir)
         end
       end
-    end
-  end
 
-  def run_all_build_types(run_tilck: false, arch: nil)
-    banner("All build types x all architectures")
-
-    builds_dir = MAIN_DIR / "other_builds"
-    generators_dir = MAIN_DIR / "scripts" / "build_generators"
-    generators = Dir.children(generators_dir).sort
-
-    for arch_name in resolve_archs(arch)
-
-      banner("Install packages for #{arch_name}")
-      wipe_toolchain
-      install_packages(arch_name)
-
+      # --- 4. All build generators (same installed packages) ---
       for gen_name in generators
         gen_script = (generators_dir / gen_name).to_s
         build_dir = (builds_dir / "#{gen_name}_#{arch_name}").to_s
 
         banner("#{gen_name} x #{arch_name}")
-
-        if !$dry_run
-          FileUtils.rm_rf(build_dir)
-          FileUtils.mkdir_p(build_dir)
-        end
+        prepare_build_dir(build_dir)
 
         Dir.chdir($dry_run ? "." : build_dir) do
           env = { "ARCH" => arch_name }
@@ -327,5 +320,11 @@ module SystemTests
         end
       end
     end
+  end
+
+  def prepare_build_dir(build_dir)
+    return if $dry_run
+    FileUtils.rm_rf(build_dir)
+    FileUtils.mkdir_p(build_dir)
   end
 end

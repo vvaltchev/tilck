@@ -287,18 +287,12 @@ Minitest.after_run {
   if $unit_tests_passed && $system_tests
     require_relative 'system_tests'
 
-    SystemTests.run_system_tests(
+    SystemTests.run(
       run_tilck: $run_tilck_tests,
+      all_build_types: !!$all_build_types,
       arch: $test_arch,
       packages_filter: $test_packages_filter
     )
-
-    if $all_build_types
-      SystemTests.run_all_build_types(
-        run_tilck: $run_tilck_tests,
-        arch: $test_arch
-      )
-    end
   end
 
   if $coverage_enabled
