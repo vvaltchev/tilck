@@ -1,5 +1,10 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
+# Version check must happen before anything else to prevent confusing
+# errors on old Ruby. The check is in version_check.rb, loaded by
+# arch.rb, loaded by early_logic.rb.
+require_relative 'version_check'
+
 # When COVERAGE_DIR is set (by the test runner), collect line coverage
 # for this process and write it to a JSON file on exit. This allows
 # merging coverage from subprocess installs with the main test run.
