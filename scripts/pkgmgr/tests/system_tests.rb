@@ -157,10 +157,45 @@ module SystemTests
 
     t0 = now
     Dir.children(TC).each { |child|
-      next if child == "cache" || child == "host"
-      FileUtils.rm_rf(TC / child)
+      next if child == "cache"
+
+      if child == "host"
+        # Preserve only the Ruby bootstrap installation inside host/.
+        # Delete all other host tools (mtools, gtest, compilers) so
+        # they get cleanly reinstalled.
+        wipe_host_except_ruby(TC / child)
+      else
+        FileUtils.rm_rf(TC / child)
+      end
     }
     ok(now - t0)
+  end
+
+  # Walk the host/ tree and delete everything except ruby/<ver>/.
+  # Structure: host/<os-arch>/{portable/..., <distro>/ruby/..., <distro>/<host-cc>/...}
+  def wipe_host_except_ruby(host_dir)
+    return if !host_dir.directory?
+
+    Dir.children(host_dir).each { |os_arch|
+      os_arch_dir = host_dir / os_arch
+      next if !os_arch_dir.directory?
+
+      # portable/ — all cross-compilers, delete entirely
+      portable = os_arch_dir / "portable"
+      FileUtils.rm_rf(portable) if portable.directory?
+
+      # <distro>/ dirs — delete everything except ruby/
+      Dir.children(os_arch_dir).each { |sub|
+        next if sub == "portable"
+        distro_dir = os_arch_dir / sub
+        next if !distro_dir.directory?
+
+        Dir.children(distro_dir).each { |entry|
+          next if entry == "ruby"
+          FileUtils.rm_rf(distro_dir / entry)
+        }
+      }
+    }
   end
 
   def install_packages(arch_name, packages_filter: nil)
