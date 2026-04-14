@@ -3,12 +3,8 @@
 # System tests: install all packages, build Tilck for all architectures,
 # optionally run all build-generator configurations and Tilck's own tests.
 #
-# This module is called from run_all.rb AFTER unit tests pass.
-# All package operations go through build_toolchain as a subprocess
-# (clean PackageManager, no test pollution).
-#
 # When $dry_run is set, the exact same code path executes but every
-# action prints [ DRY ] instead of running.
+# action prints [ DRY ] instead of running. Timing works in both modes.
 #
 
 require 'pathname'
@@ -62,19 +58,32 @@ module SystemTests
     "EXTRA_TFBLIB"       => ->(arch) { TC / "noarch" / "tfblib" },
   }
 
-  # Resolve --test-arch into a list of architectures.
   def resolve_archs(arch)
     return ALL_TEST_ARCHS if arch == "ALL"
     return [arch] if arch
     [DEFAULT_ARCH]
   end
 
-  def banner(msg)
+  # --- Timing helpers ---
+
+  def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def fmt_elapsed(t) = "%.1fs" % t
+
+  # Print a section header with the section name, execute the block,
+  # then print a summary line with elapsed time.
+  def section(name)
     puts
     puts HLINE
-    puts "  #{BOLD}#{msg}#{RESET}"
+    puts "  #{BOLD}#{name}#{RESET}"
     puts HLINE
+    t0 = now
+    yield
+    elapsed = now - t0
+    puts
+    puts "  #{DIM}#{name}: #{fmt_elapsed(elapsed)}#{RESET}"
   end
+
+  # --- Output helpers ---
 
   def step(msg)
     print "  #{msg}... "
@@ -82,7 +91,7 @@ module SystemTests
   end
 
   def ok(elapsed = nil)
-    t = elapsed ? "  #{DIM}(#{elapsed})#{RESET}" : ""
+    t = elapsed ? "  #{DIM}(#{fmt_elapsed(elapsed)})#{RESET}" : ""
     puts "#{GREEN}OK#{RESET}#{t}"
   end
 
@@ -96,11 +105,7 @@ module SystemTests
     exit 1
   end
 
-  def timed
-    t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    yield
-    "%.1fs" % (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0)
-  end
+  # --- Action helpers ---
 
   def run_cmd(desc, cmd, log: nil, env: {})
     step(desc)
@@ -110,18 +115,18 @@ module SystemTests
       return
     end
 
-    elapsed = timed {
-      if log
-        ok2 = system(env, *cmd, out: log, err: log)
-      else
-        ok2 = system(env, *cmd, out: "/dev/null", err: "/dev/null")
-      end
+    t0 = now
+    if log
+      ok2 = system(env, *cmd, out: log, err: log)
+    else
+      ok2 = system(env, *cmd, out: "/dev/null", err: "/dev/null")
+    end
 
-      if !ok2
-        fail!("#{desc} failed" + (log ? " (see #{log})" : ""))
-      end
-    }
-    ok(elapsed)
+    if !ok2
+      fail!("#{desc} failed" + (log ? " (see #{log})" : ""))
+    end
+
+    ok(now - t0)
   end
 
   def wipe_toolchain
@@ -132,13 +137,12 @@ module SystemTests
       return
     end
 
-    elapsed = timed {
-      Dir.children(TC).each { |child|
-        next if child == "cache" || child == "host"
-        FileUtils.rm_rf(TC / child)
-      }
+    t0 = now
+    Dir.children(TC).each { |child|
+      next if child == "cache" || child == "host"
+      FileUtils.rm_rf(TC / child)
     }
-    ok(elapsed)
+    ok(now - t0)
   end
 
   def install_packages(arch_name, packages_filter: nil)
@@ -148,15 +152,13 @@ module SystemTests
     if $dry_run
       dry
     else
-      elapsed = timed {
-        ok2 = system(env, BTC, "-q", "-n",
-                     out: "/dev/null", err: "/dev/null")
-        fail!("Default install failed for #{arch_name}") if !ok2
-      }
-      ok(elapsed)
+      t0 = now
+      ok2 = system(env, BTC, "-q", "-n",
+                   out: "/dev/null", err: "/dev/null")
+      fail!("Default install failed for #{arch_name}") if !ok2
+      ok(now - t0)
     end
 
-    # Optional packages
     pkgs = OPTIONAL_PACKAGES
     if packages_filter
       re = Regexp.new(packages_filter)
@@ -171,21 +173,17 @@ module SystemTests
         next
       end
 
-      success = false
-      elapsed = timed {
-        success = system(env, BTC, "-q", "-n", "-s", pkg,
-                         out: "/dev/null", err: "/dev/null")
-      }
+      t0 = now
+      success = system(env, BTC, "-q", "-n", "-s", pkg,
+                       out: "/dev/null", err: "/dev/null")
       if success
-        ok(elapsed)
+        ok(now - t0)
       else
         puts "#{DIM}skipped#{RESET}"
       end
     end
   end
 
-  # Compute EXTRA_* cmake flags based on what's actually installed.
-  # In dry-run mode, show all possible flags (can't check filesystem).
   def extra_cmake_flags(arch_name)
     flags = []
     EXTRA_FLAG_MAP.each do |flag, path_proc|
@@ -210,15 +208,9 @@ module SystemTests
     extras = extra_cmake_flags(arch_name)
     extras_desc = extras.empty? ? "" : " " + extras.join(" ")
 
-    run_cmd(
-      "cmake#{extras_desc}",
-      [CMAKE_RUN] + extras,
-      log: cmake_log,
-      env: env
-    )
-
+    run_cmd("cmake#{extras_desc}", [CMAKE_RUN] + extras,
+            log: cmake_log, env: env)
     run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
-
     run_cmd("make -j gtests", ["make", "-j", "gtests"],
             log: gtests_log, env: env)
   end
@@ -227,7 +219,6 @@ module SystemTests
     gtests_log = File.join(build_dir, "gtests_run.log")
     systests_log = File.join(build_dir, "systests.log")
 
-    # In dry-run, the binary won't exist — always show the step.
     gtests_bin = File.join(build_dir, "gtests")
     if $dry_run || File.exist?(gtests_bin)
       run_cmd("run gtests", [gtests_bin], log: gtests_log)
@@ -241,19 +232,18 @@ module SystemTests
     end
   end
 
+  def prepare_build_dir(build_dir)
+    return if $dry_run
+    FileUtils.rm_rf(build_dir)
+    FileUtils.mkdir_p(build_dir)
+  end
+
   # --- Main entry point ---
-  #
-  # Single loop per architecture:
-  #   1. Wipe toolchain + install packages (once per arch)
-  #   2. Default build (cmake + make + gtests)
-  #   3. If --run-also-tilck-tests: run Tilck tests on the default build
-  #   4. If --all-build-types: for each generator, build + optionally
-  #      run Tilck tests — reusing the same installed packages
-  #
+
   def run(run_tilck: false, all_build_types: false,
           arch: nil, packages_filter: nil)
 
-    banner("System tests")
+    grand_t0 = now
 
     builds_dir = MAIN_DIR / "other_builds"
     FileUtils.mkdir_p(builds_dir) if !$dry_run
@@ -262,69 +252,74 @@ module SystemTests
     generators = all_build_types ? Dir.children(generators_dir).sort : []
 
     for arch_name in resolve_archs(arch)
-      banner("Architecture: #{arch_name}")
 
-      # --- 1. Install packages (once per arch) ---
-      wipe_toolchain
-      install_packages(arch_name, packages_filter: packages_filter)
+      section("Architecture: #{arch_name}") do
 
-      # --- 2. Default build ---
-      build_dir = (builds_dir / "systest_#{arch_name}").to_s
-      prepare_build_dir(build_dir)
-
-      Dir.chdir($dry_run ? "." : build_dir) do
-        cmake_and_build(arch_name, build_dir)
-
-        # --- 3. Tilck tests on the default build ---
-        if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
-          run_tilck_tests(arch_name, build_dir)
+        # --- 1. Install packages (once per arch) ---
+        section("Install packages") do
+          wipe_toolchain
+          install_packages(arch_name, packages_filter: packages_filter)
         end
-      end
 
-      # --- 4. All build generators (same installed packages) ---
-      for gen_name in generators
-        gen_script = (generators_dir / gen_name).to_s
-        build_dir = (builds_dir / "#{gen_name}_#{arch_name}").to_s
-
-        banner("#{gen_name} x #{arch_name}")
+        # --- 2. Default build ---
+        build_dir = (builds_dir / "systest_#{arch_name}").to_s
         prepare_build_dir(build_dir)
 
-        Dir.chdir($dry_run ? "." : build_dir) do
-          env = { "ARCH" => arch_name }
+        section("Default build") do
+          Dir.chdir($dry_run ? "." : build_dir) do
+            cmake_and_build(arch_name, build_dir)
 
-          cmake_log = File.join(build_dir, "cmake.log")
-          step("generator #{gen_name}")
-
-          if $dry_run
-            dry
-          else
-            success = false
-            elapsed = timed {
-              success = system(env, gen_script,
-                               out: cmake_log, err: cmake_log)
-            }
-
-            if !success || File.exist?("skipped")
-              puts "#{DIM}skipped#{RESET}"
-              next
+            # --- 3. Tilck tests on the default build ---
+            if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
+              run_tilck_tests(arch_name, build_dir)
             end
-            ok(elapsed)
           end
+        end
 
-          build_log = File.join(build_dir, "build.log")
-          run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
+        # --- 4. All build generators (same installed packages) ---
+        for gen_name in generators
+          gen_script = (generators_dir / gen_name).to_s
+          build_dir = (builds_dir / "#{gen_name}_#{arch_name}").to_s
 
-          if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
-            run_tilck_tests(arch_name, build_dir)
+          section("#{gen_name}") do
+            prepare_build_dir(build_dir)
+
+            Dir.chdir($dry_run ? "." : build_dir) do
+              env = { "ARCH" => arch_name }
+
+              cmake_log = File.join(build_dir, "cmake.log")
+              step("generator #{gen_name}")
+
+              if $dry_run
+                dry
+              else
+                t0 = now
+                success = system(env, gen_script,
+                                 out: cmake_log, err: cmake_log)
+
+                if !success || File.exist?("skipped")
+                  puts "#{DIM}skipped#{RESET}"
+                  next
+                end
+                ok(now - t0)
+              end
+
+              build_log = File.join(build_dir, "build.log")
+              run_cmd("make -j", ["make", "-j"], log: build_log, env: env)
+
+              if run_tilck && TILCK_TEST_ARCHS.include?(arch_name)
+                run_tilck_tests(arch_name, build_dir)
+              end
+            end
           end
         end
       end
     end
-  end
 
-  def prepare_build_dir(build_dir)
-    return if $dry_run
-    FileUtils.rm_rf(build_dir)
-    FileUtils.mkdir_p(build_dir)
+    grand_elapsed = now - grand_t0
+    puts
+    puts HLINE
+    puts "  #{BOLD}Total system test time: #{fmt_elapsed(grand_elapsed)}#{RESET}"
+    puts HLINE
   end
 end
