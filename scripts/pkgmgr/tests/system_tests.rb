@@ -241,9 +241,11 @@ module SystemTests
   def cmake_and_build(arch_name, build_dir)
     env    = { "ARCH" => arch_name }
     extras = extra_cmake_flags(arch_name)
-    desc   = extras.empty? ? "" : " " + extras.join(" ")
 
-    run_cmd("cmake#{desc}", [CMAKE_RUN] + extras,
+    # The full list of -DEXTRA_*=1 flags is kept out of the step
+    # label (it can reach 7+ flags, too long to scan at a glance)
+    # and preserved in cmake.log for debugging.
+    run_cmd("cmake", [CMAKE_RUN] + extras,
             log: "#{build_dir}/cmake.log", env: env)
 
     run_cmd("make -j", ["make", "-j"],
