@@ -122,6 +122,9 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
    if ("${_mac_ver}" STREQUAL "")
       message(FATAL_ERROR "sw_vers -productVersion returned nothing")
    endif()
+   # Use only major.minor (e.g. "26.4") so a minor-patch bump like
+   # 26.4 -> 26.4.1 doesn't orphan the distro subtree.
+   string(REGEX REPLACE "^([0-9]+\\.[0-9]+).*" "\\1" _mac_ver "${_mac_ver}")
    set(HOST_DISTRO "macos-${_mac_ver}")
    unset(_mac_ver)
 

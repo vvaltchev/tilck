@@ -223,6 +223,9 @@ module InitOnly
           error "Could not run `sw_vers -productVersion`"
           exit 1
         end
+        # Use only major.minor (e.g. "26.4") so a minor-patch bump like
+        # 26.4 -> 26.4.1 doesn't orphan the distro subtree.
+        ver = ver.split(".").first(2).join(".")
         return "macos-#{ver}"
       when "freebsd"
         ver = `uname -r 2>/dev/null`.strip.split("-").first

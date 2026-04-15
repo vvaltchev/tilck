@@ -308,7 +308,9 @@ function detect_host_env {
          HOST_DISTRO="${distro_id}-${distro_ver}"
          ;;
       macos)
-         HOST_DISTRO="macos-$(sw_vers -productVersion)"
+         # Use only major.minor (e.g. "26.4") so a minor-patch bump like
+         # 26.4 -> 26.4.1 doesn't orphan the distro subtree.
+         HOST_DISTRO="macos-$(sw_vers -productVersion | cut -d. -f1,2)"
          ;;
       freebsd)
          HOST_DISTRO="freebsd-$(uname -r | cut -d- -f1)"
