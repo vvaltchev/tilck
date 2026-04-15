@@ -387,8 +387,10 @@ module Main
 
     p.on(
       '-f', '--force',
-      'Force. Meaning depending on the MODE. In uninstall mode, this includes',
-      'the cross-compilers, when the package name is ALL. [FLAG]'
+      'Force. Meaning depends on the MODE. In uninstall mode, this includes',
+      'the cross-compilers, when the package name is ALL. In install mode',
+      '(-s), this forces an uninstall+install cycle for each requested',
+      'package even if already installed. [FLAG]'
     ) { opts[:force] = true }
 
     p.on(
@@ -546,6 +548,18 @@ module Main
         end
         [name, Ver(ver)]
       }
+
+      # -f in install mode: force a fresh install by uninstalling each
+      # requested package first. Transitive deps are NOT touched — only
+      # the explicitly requested packages are wiped and reinstalled.
+      if options[:force]
+        info "Force mode (-f): removing requested packages before install"
+        for name, _ver in requested do
+          info "  Force-removing: #{name}"
+          pkgmgr.uninstall(name, false, false, "ALL")
+        end
+        pkgmgr.refresh()
+      end
 
       # Resolve the full install plan: transitive deps, minus
       # already-installed, in topological order.
