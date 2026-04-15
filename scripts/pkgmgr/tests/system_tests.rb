@@ -225,7 +225,7 @@ module SystemTests
     out = IO.popen(env, [BTC, "-q", "--list-installable"],
                    err: "/dev/null", &:read)
     out.split("\n").reject(&:empty?).map { |line|
-      name, tag = line.split("\t", 2)
+      name, tag = line.split(" ", 2)
       [name, tag]
     }
   end

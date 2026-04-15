@@ -539,7 +539,7 @@ module Main
     end
 
     if options[:list_installable]
-      # Emit one line per installable package, TSV: "<name>\t<tag>".
+      # Emit one line per installable package: "<name> <tag>".
       # tag = "default" when the package is itself a default, OR
       # transitively required by a default (both get auto-installed
       # by `build_toolchain` with no arguments). tag = "optional"
@@ -565,7 +565,7 @@ module Main
 
       full_order.each do |name|
         tag = default_set.include?(name) ? "default" : "optional"
-        puts "#{name}\t#{tag}"
+        puts "#{name} #{tag}"
       end
       return 0
     end
