@@ -38,7 +38,7 @@ class GtestPackage < Package
       source: GTEST_SOURCE,
       on_host: true,
       is_compiler: false,
-      arch_list: ALL_HOST_ARCHS,
+      arch_list: ALL_HOST_ARCHS.values,
       dep_list: []
     )
   end

@@ -44,7 +44,7 @@ class SophgoToolsPackage < Package
       on_host: true,
       is_compiler: false,
       host_tier: :portable,
-      arch_list: { "x86_64" => ALL_ARCHS["x86_64"] },
+      arch_list: Archs("x86_64"),
       dep_list: [],
       host_os_list: ["linux"],
       host_arch_list: ["x86_64"],

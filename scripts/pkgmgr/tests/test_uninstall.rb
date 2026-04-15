@@ -88,7 +88,7 @@ class TestUninstallSingle < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true,
-                              arch_list: ALL_HOST_ARCHS)
+                              arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
         pkgmgr.refresh()
@@ -129,7 +129,7 @@ class TestUninstallALL < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             arch_list: ALL_HOST_ARCHS)
+                             arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(cc)
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("gcc-#{ARCH.name}-musl")
@@ -151,7 +151,7 @@ class TestUninstallALL < Minitest::Test
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
                              host_tier: :portable,
-                             arch_list: ALL_HOST_ARCHS)
+                             arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(cc)
         pkgmgr.register(FakePackage.new("foo"))
         pkgmgr.install("gcc-#{ARCH.name}-musl")

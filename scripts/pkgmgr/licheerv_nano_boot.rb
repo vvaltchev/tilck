@@ -50,7 +50,7 @@ class LicheervNanoBootPackage < Package
       source: LICHEERV_NANO_BOOT_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
+      arch_list: Archs("riscv64"),
       dep_list: [Dep('host_sophgo_tools', true)],
       host_os_list: ["linux"],
       host_arch_list: ["x86_64"],

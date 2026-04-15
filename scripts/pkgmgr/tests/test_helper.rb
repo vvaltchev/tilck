@@ -183,7 +183,7 @@ module TestHelper
     def self.install_log = @@install_log
     def self.clear_log! = @@install_log.clear
 
-    def initialize(name, dep_list: [], arch_list: ALL_ARCHS,
+    def initialize(name, dep_list: [], arch_list: ALL_ARCHS.values,
                    on_host: false, is_compiler: false,
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,

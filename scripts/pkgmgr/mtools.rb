@@ -25,7 +25,7 @@ class MtoolsPackage < Package
       on_host: true,
       is_compiler: false,
       host_tier: :distro,
-      arch_list: ALL_HOST_ARCHS,
+      arch_list: ALL_HOST_ARCHS.values,
       dep_list: [],
       default: true,
     )

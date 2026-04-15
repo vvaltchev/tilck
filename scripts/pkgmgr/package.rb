@@ -90,7 +90,7 @@ class Package
                  on_host: false,
                  is_compiler: false,
                  host_tier: :compiler,
-                 arch_list: ALL_ARCHS,
+                 arch_list: ALL_ARCHS.values,
                  dep_list: [],
                  host_os_list: nil,
                  host_arch_list: nil,
@@ -132,7 +132,7 @@ class Package
   # Noarch (arch_list nil) and host packages are always true.
   def arch_supported?
     return true if @arch_list.nil? || @on_host
-    return @arch_list.include?(ARCH.name)
+    return @arch_list.include?(ARCH)
   end
 
   # Should this package be auto-installed for the current config?
@@ -558,7 +558,7 @@ class Package
 
   def regular_target_package_get_installable_list
     a = default_arch
-    return [] if a.nil? || !arch_list.include?(a.name)
+    return [] if a.nil? || !arch_list.include?(a)
     [
       InstallInfo.new(
         name,

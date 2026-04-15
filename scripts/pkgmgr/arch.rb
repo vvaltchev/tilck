@@ -88,3 +88,18 @@ ALL_HOST_ARCHS = [
 
 X86_ARCHS = ALL_ARCHS.select { |_, a| a.family == "generic_x86" }
 
+# Convenience helper for Package arch_list declarations: given one or
+# more arch names, return the corresponding Array of Architecture
+# objects. Unknown names raise ArgumentError so typos show up at load
+# time rather than silently.
+#
+#   arch_list: Archs("i386", "x86_64")
+#
+def Archs(*names)
+  names.map { |n|
+    obj = ALL_ARCHS[n]
+    raise ArgumentError, "Unknown arch: #{n}" if obj.nil?
+    obj
+  }
+end
+

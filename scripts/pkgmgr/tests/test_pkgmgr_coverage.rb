@@ -23,7 +23,7 @@ class TestRegisterEdgeCases < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         cc = FakePackage.new("gcc-i386-musl", on_host: true,
-                             is_compiler: true, arch_list: ALL_HOST_ARCHS)
+                             is_compiler: true, arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(cc)
         assert_equal cc, pkgmgr.get_tc("i386")
         assert_nil pkgmgr.get_tc("aarch64")
@@ -45,7 +45,7 @@ class TestGetInstalledCompilers < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             host_tier: :portable, arch_list: ALL_HOST_ARCHS)
+                             host_tier: :portable, arch_list: ALL_HOST_ARCHS.values)
         # Match real GccCompiler: default_ver returns gcc_ver, and
         # get_install_list includes target_arch/libc.
         cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
@@ -263,7 +263,7 @@ class TestWithCc < Minitest::Test
       # will find: need target_arch in InstallInfo, and a bin/ dir.
       cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                            on_host: true, is_compiler: true,
-                           host_tier: :portable, arch_list: ALL_HOST_ARCHS)
+                           host_tier: :portable, arch_list: ALL_HOST_ARCHS.values)
       cc.define_singleton_method(:default_ver) { FAKE_GCC_VER }
       target = ARCH
       cc.define_singleton_method(:get_install_list) {

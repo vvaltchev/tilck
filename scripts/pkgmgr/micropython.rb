@@ -23,7 +23,7 @@ class MicropythonPackage < Package
       source: MICROPYTHON_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: ALL_ARCHS,
+      arch_list: ALL_ARCHS.values,
       dep_list: []
     )
   end

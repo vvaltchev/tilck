@@ -29,7 +29,7 @@ class DtcPackage < Package
       source: DTC_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
+      arch_list: Archs("riscv64"),
       dep_list: [],
       default: true,
     )

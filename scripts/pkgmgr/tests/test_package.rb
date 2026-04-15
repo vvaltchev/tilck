@@ -81,7 +81,7 @@ class TestPackageArchSupported < Minitest::Test
   include TestHelper
 
   def test_all_archs
-    pkg = FakePackage.new("foo", arch_list: ALL_ARCHS)
+    pkg = FakePackage.new("foo", arch_list: ALL_ARCHS.values)
     assert pkg.arch_supported?
   end
 
@@ -92,14 +92,14 @@ class TestPackageArchSupported < Minitest::Test
 
   def test_host_package_always_true
     pkg = FakePackage.new("host_foo", on_host: true,
-                          arch_list: ALL_HOST_ARCHS)
+                          arch_list: ALL_HOST_ARCHS.values)
     assert pkg.arch_supported?
   end
 
   def test_wrong_arch
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo",
-                            arch_list: { "riscv64" => ALL_ARCHS["riscv64"] })
+                            arch_list: Archs("riscv64"))
       refute pkg.arch_supported?
     end
   end
@@ -107,7 +107,7 @@ class TestPackageArchSupported < Minitest::Test
   def test_matching_arch
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo",
-                            arch_list: { "i386" => ALL_ARCHS["i386"] })
+                            arch_list: Archs("i386"))
       assert pkg.arch_supported?
     end
   end
@@ -127,7 +127,7 @@ class TestPackageDefault < Minitest::Test
   def test_gated_by_arch
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkg = FakePackage.new("foo", default: true,
-                            arch_list: { "riscv64" => ALL_ARCHS["riscv64"] })
+                            arch_list: Archs("riscv64"))
       refute pkg.default?
     end
   end
@@ -148,7 +148,7 @@ class TestPackageDefault < Minitest::Test
 
   def test_passes_all_gates
     pkg = FakePackage.new("foo", default: true,
-                          arch_list: { ARCH.name => ARCH })
+                          arch_list: [ARCH])
     assert pkg.default?
   end
 end
@@ -234,7 +234,7 @@ class TestPackageInstallReal < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         pkg = FakePackage.new("foo",
-                              arch_list: { "riscv64" => ALL_ARCHS["riscv64"] })
+                              arch_list: Archs("riscv64"))
         pkgmgr.register(pkg)
         with_context(ARCH: ALL_ARCHS["i386"]) do
           result = pkgmgr.install("foo")

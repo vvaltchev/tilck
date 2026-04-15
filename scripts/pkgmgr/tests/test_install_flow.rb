@@ -68,7 +68,7 @@ class TestInstallHostPackage < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true,
-                              arch_list: ALL_HOST_ARCHS)
+                              arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
 
@@ -84,7 +84,7 @@ class TestInstallHostPackage < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true, host_tier: :portable,
-                              arch_list: ALL_HOST_ARCHS)
+                              arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
 
@@ -98,7 +98,7 @@ class TestInstallHostPackage < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true,
-                              arch_list: ALL_HOST_ARCHS)
+                              arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
 
@@ -214,7 +214,7 @@ class TestInstallDependencyOrder < Minitest::Test
         cc_name = "gcc-#{ARCH.name}-musl"
         pkgmgr.register(FakePackage.new(cc_name, on_host: true,
                                         is_compiler: true,
-                                        arch_list: ALL_HOST_ARCHS))
+                                        arch_list: ALL_HOST_ARCHS.values))
         pkgmgr.register(FakePackage.new("foo"))
 
         plan = pkgmgr.resolve_install_plan([
@@ -256,7 +256,7 @@ class TestInstallConstraints < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("rv_only",
-          arch_list: { "riscv64" => ALL_ARCHS["riscv64"] }))
+          arch_list: Archs("riscv64")))
         with_context(ARCH: ALL_ARCHS["i386"]) do
           result = pkgmgr.install("rv_only")
           assert_equal false, result

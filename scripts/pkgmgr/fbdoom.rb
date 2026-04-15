@@ -42,7 +42,7 @@ class FbDoomPackage < Package
       source: FBDOOM_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: X86_ARCHS,
+      arch_list: X86_ARCHS.values,
       dep_list: [Dep('freedoom', false)]
     )
   end

@@ -311,7 +311,7 @@ class PackageManager
     # for in the current invocation context".
     if !pkg.on_host && !pkg.arch_list.nil?
       a = pkg.default_arch
-      if a.nil? || !pkg.arch_list.include?(a.name)
+      if a.nil? || !pkg.arch_list.include?(a)
         a_name = a.nil? ? "<nil>" : a.name
         error "Package #{pkg.name} is not supported for arch #{a_name}"
         return false

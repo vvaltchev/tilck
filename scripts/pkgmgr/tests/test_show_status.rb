@@ -149,7 +149,7 @@ class TestShowStatus < Minitest::Test
     with_fake_tc do |tc|
       with_stubbed_externals do
         pkg = FakePackage.new("host_foo", on_host: true,
-                              arch_list: ALL_HOST_ARCHS)
+                              arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(pkg)
         pkgmgr.install("host_foo")
         pkgmgr.refresh()
@@ -251,7 +251,7 @@ class TestShowStatusAll < Minitest::Test
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("target_pkg"))
         pkgmgr.register(FakePackage.new("host_tool", on_host: true,
-                                        arch_list: ALL_HOST_ARCHS))
+                                        arch_list: ALL_HOST_ARCHS.values))
         pkgmgr.register(FakePackage.new("noarch_pkg", arch_list: nil))
         pkgmgr.install("target_pkg")
         pkgmgr.install("host_tool")
@@ -270,7 +270,7 @@ class TestShowStatusAll < Minitest::Test
       with_stubbed_externals do
         cc = FakePackage.new("gcc-#{ARCH.name}-musl",
                              on_host: true, is_compiler: true,
-                             arch_list: ALL_HOST_ARCHS)
+                             arch_list: ALL_HOST_ARCHS.values)
         pkgmgr.register(cc)
         pkgmgr.install("gcc-#{ARCH.name}-musl")
         pkgmgr.refresh()

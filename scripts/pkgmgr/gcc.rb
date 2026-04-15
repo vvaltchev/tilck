@@ -36,7 +36,7 @@ class GccCompiler < Package
       on_host: true,
       is_compiler: true,
       host_tier: :portable,
-      arch_list: ALL_HOST_ARCHS,
+      arch_list: ALL_HOST_ARCHS.values,
       dep_list: []
     )
   end

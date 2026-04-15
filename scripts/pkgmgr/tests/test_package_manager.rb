@@ -51,7 +51,7 @@ class TestPackageManagerDepGraph < Minitest::Test
     cc_name = "gcc-#{ARCH.name}-musl"
     pkgmgr.register(FakePackage.new(cc_name, on_host: true,
                                     is_compiler: true,
-                                    arch_list: ALL_HOST_ARCHS))
+                                    arch_list: ALL_HOST_ARCHS.values))
     pkgmgr.register(FakePackage.new("foo"))
     graph = pkgmgr.build_dep_graph
     assert_includes graph["foo"], cc_name
@@ -59,7 +59,7 @@ class TestPackageManagerDepGraph < Minitest::Test
 
   def test_no_implicit_compiler_for_host_pkg
     pkgmgr.register(FakePackage.new("host_foo", on_host: true,
-                                    arch_list: ALL_HOST_ARCHS))
+                                    arch_list: ALL_HOST_ARCHS.values))
     graph = pkgmgr.build_dep_graph
     assert_equal [], graph["host_foo"]
   end
@@ -109,7 +109,7 @@ class TestPackageManagerInstall < Minitest::Test
     with_fake_tc do
       with_stubbed_externals do
         pkgmgr.register(FakePackage.new("foo",
-          arch_list: { "riscv64" => ALL_ARCHS["riscv64"] }))
+          arch_list: Archs("riscv64")))
         with_context(ARCH: ALL_ARCHS["i386"]) do
           assert_equal false, pkgmgr.install("foo")
         end
@@ -168,7 +168,7 @@ class TestPackageManagerResolve < Minitest::Test
         cc_name = "gcc-#{ARCH.name}-musl"
         pkgmgr.register(FakePackage.new(cc_name, on_host: true,
                                         is_compiler: true,
-                                        arch_list: ALL_HOST_ARCHS))
+                                        arch_list: ALL_HOST_ARCHS.values))
         pkgmgr.register(FakePackage.new("foo"))
         plan = pkgmgr.resolve_install_plan([
           [cc_name, nil], ["foo", nil]
@@ -198,7 +198,7 @@ class TestPackageManagerDefaults < Minitest::Test
   def test_filtered_by_arch
     with_context(ARCH: ALL_ARCHS["i386"]) do
       pkgmgr.register(FakePackage.new("rv_only", default: true,
-        arch_list: { "riscv64" => ALL_ARCHS["riscv64"] }))
+        arch_list: Archs("riscv64")))
       assert_empty pkgmgr.get_default_packages
     end
   end
@@ -258,7 +258,7 @@ class TestPackageManagerUpgrade < Minitest::Test
       FileUtils.mkdir_p(tc / "gcc-#{gcc_ver}" / "riscv64" / "foo" / "0.9.0")
 
       pkg = FakePackage.new("foo",
-        arch_list: { "riscv64" => ALL_ARCHS["riscv64"] })
+        arch_list: Archs("riscv64"))
       pkgmgr.register(pkg)
 
       with_context(ARCH: ALL_ARCHS["i386"]) do
