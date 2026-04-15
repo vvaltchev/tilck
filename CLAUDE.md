@@ -17,7 +17,7 @@ Licensed BSD 2-Clause.
 ```bash
 export ARCH=i386                         # Target arch. One of: i386, riscv64, x86_64
 ./scripts/build_toolchain                # Build cross-compiler toolchain (one-time)
-./scripts/build_toolchain -s gtest_src host_gtest  # Also install unit test deps
+./scripts/build_toolchain -s host_gtest  # Also install unit test deps
 ./scripts/build_toolchain -l             # List available packages
 ./scripts/build_toolchain -h             # Show the help.
 ```

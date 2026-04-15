@@ -207,8 +207,6 @@ framework in the toolchain, just run:
 
     ./scripts/build_toolchain -s host_gtest
 
-(The `gtest_src` dependency is installed automatically.)
-
 After that, you'll need to run the `cmake_run` script again:
 
     ./scripts/cmake_run                # For in-tree builds

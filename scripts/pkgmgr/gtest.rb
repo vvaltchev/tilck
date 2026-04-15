@@ -9,11 +9,6 @@ require_relative 'package_manager'
 
 GTEST_URL = GITHUB + '/google/googletest'
 
-#
-# Shared SourceRef between `gtest_src` and `host_gtest`.
-# Scheduled for removal alongside `gtest_src` in a follow-up commit —
-# host_gtest will retain its own SourceRef then.
-#
 GTEST_SOURCE = SourceRef.new(
   name: 'gtest',
   url:  GTEST_URL,
@@ -21,47 +16,16 @@ GTEST_SOURCE = SourceRef.new(
 )
 
 #
-# Source-only (noarch) googletest: the shared source tree used by
-# host_gtest. Lives in <toolchain>/noarch/gtest/<ver>/.
-#
-class GtestSourcePackage < Package
-
-  include FileShortcuts
-  include FileUtilsShortcuts
-
-  def initialize
-    super(
-      name: 'gtest_src',
-      source: GTEST_SOURCE,
-      on_host: false,
-      is_compiler: false,
-      arch_list: nil,      # noarch
-      dep_list: []
-    )
-  end
-
-  def pkg_dirname = "gtest"
-  def default_ver = pkgmgr.get_config_ver("gtest")
-  def expected_files = [
-    ["googletest", true],
-    ["googlemock", true],
-    ["CMakeLists.txt", false],
-  ]
-  def default_arch = nil
-  def default_cc = nil
-
-  def install_impl_internal(ignored = nil)
-    return true
-  end
-end
-
-#
 # Built gtest+gmock libraries: cmake build of the full googletest tree
-# (which includes both gtest and gmock) from the noarch source. Uses
-# `cmake --install` to produce a clean install/ tree containing only
-# headers and libraries. Built with the host compiler; non-portable
-# (dynamically linked against libstdc++), so installed under
+# (which includes both gtest and gmock). Uses `cmake --install` to
+# produce a clean install/ tree containing only headers and libraries.
+# Built with the host compiler; non-portable (dynamically linked against
+# libstdc++), so installed under
 # host/<os>-<arch>/<distro>/<host-cc>/gtest/<ver>/install/.
+#
+# The source is extracted into staging for the duration of the build
+# and discarded on success — host_gtest is the only consumer, so there
+# is no value in keeping a persistent source tree around.
 #
 class GtestPackage < Package
 
@@ -71,11 +35,11 @@ class GtestPackage < Package
   def initialize
     super(
       name: 'host_gtest',
-      source: nil, # host_gtest reuses gtest_src's extracted tree
+      source: GTEST_SOURCE,
       on_host: true,
       is_compiler: false,
       arch_list: ALL_HOST_ARCHS,
-      dep_list: [Dep('gtest_src', false)]
+      dep_list: []
     )
   end
 
@@ -100,18 +64,33 @@ class GtestPackage < Package
       return nil
     end
 
+    ok = @source.download(ver)
+    return false if !ok
+
+    # Extract source into staging. Staging is a scratch area — the final
+    # installed package keeps only the `install/` tree produced by cmake.
+    staging = staging_dir(ver)
+    FileUtils.rm_rf(staging)
+    chdir_package_base_dir(TC_STAGING) do
+      ok = @source.extract(ver, ver_dirname(ver))
+      return false if !ok
+    end
+
     ver_dir = host_install_root / pkg_dirname / ver_dirname(ver)
     build_dir = ver_dir / "build"
     install_dir = ver_dir / "install"
-    src_dir = TC_NOARCH / "gtest" / ver_dirname(ver)
     FileUtils.mkdir_p(build_dir)
 
     ok = FileUtils.chdir(build_dir) do
-      install_impl_internal(src_dir, install_dir)
+      install_impl_internal(staging, install_dir)
     end
 
     if ok
       FileUtils.rm_rf(build_dir)
+      FileUtils.rm_rf(staging)
+      staging_pkg = TC_STAGING / pkg_dirname
+      FileUtils.rmdir(staging_pkg) if staging_pkg.directory? &&
+                                      Dir.empty?(staging_pkg)
       ok = check_install_dir(ver_dir, true)
     end
 
@@ -152,5 +131,4 @@ class GtestPackage < Package
   end
 end
 
-pkgmgr.register(GtestSourcePackage.new())
 pkgmgr.register(GtestPackage.new())

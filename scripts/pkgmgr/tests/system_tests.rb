@@ -37,7 +37,7 @@ module SystemTests
 
   OPTIONAL_PACKAGES = %w[
     ncurses vim tcc fbdoom micropython lua treecmd tfblib
-    gtest_src host_gtest lcov libmusl
+    host_gtest lcov libmusl
   ]
 
   EXTRA_FLAG_MAP = {
