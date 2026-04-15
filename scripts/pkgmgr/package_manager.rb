@@ -74,10 +74,9 @@ class PackageManager
     return @packages[name]
   end
 
-  # All registered packages, in registration order. Intended for
-  # introspection callers (test harnesses, CLI listings) that need
-  # to walk the full registry without going through the per-section
-  # filters in show_status_all.
+  # All registered packages, in registration order. Used by `main.rb`
+  # for modes that iterate the full registry (e.g. --list-installable)
+  # without going through the per-section filters in show_status_all.
   def all_packages
     return @packages.values
   end

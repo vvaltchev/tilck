@@ -225,6 +225,7 @@ module Main
       just_context: false,
       dry_run: false,
       list: false,
+      list_installable: false,
       force: false,
       self_test: false,
       coverage: false,
@@ -248,6 +249,7 @@ module Main
       :help,
       :just_context,
       :list,
+      :list_installable,
       :self_test,
       :check_for_updates,
       :upgrade,
@@ -277,6 +279,14 @@ module Main
 
     p.on('-l', '--list', 'List all packages status [MODE]') {
       opts[:list] = true
+    }
+
+    p.on('--list-installable',
+         'Print package names installable via -s for the current ARCH,',
+         'one per line, no decoration. Machine-readable output for',
+         'tooling (e.g. system tests that need to filter per-arch',
+         'supported packages) [MODE]') {
+      opts[:list_installable] = true
     }
 
     p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
@@ -525,6 +535,15 @@ module Main
         options[:group_by],
         options[:compiler].eql?("ALL")
       )
+      return 0
+    end
+
+    if options[:list_installable]
+      pkgmgr.all_packages.each do |pkg|
+        next if pkg.is_compiler              # -S, not -s
+        next if pkg.get_installable_list.empty?
+        puts pkg.name
+      end
       return 0
     end
 
