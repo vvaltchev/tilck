@@ -87,6 +87,32 @@ class PackageManager
     (pkg_or_name.is_a? Package) ? pkg_or_name : get(pkg_or_name)
   end
 
+  # Resolve a user-supplied package name string, possibly a substring,
+  # to a full registered package name. Returns [name, matches] where:
+  #
+  #   [full_name, nil]  — exact or unique substring match
+  #   [nil, []]         — no match at all
+  #   [nil, [...]]      — ambiguous; matches ordered by precedence
+  #                       (starts_with, then ends_with, then contains)
+  #
+  # The caller is expected to distinguish exact vs unique substring
+  # match itself by comparing the returned name to the input.
+  def resolve_name(input)
+    # Exact match wins immediately — don't treat it as a substring.
+    return [input, nil] if @packages.key?(input)
+
+    all = @packages.keys.select { |n| n.include?(input) }
+    return [nil, []] if all.empty?
+    return [all[0], nil] if all.length == 1
+
+    # Multiple matches: order by starts_with, then ends_with, then the
+    # rest (substring in the middle).
+    starts   = all.select { |n| n.start_with?(input) }
+    ends     = (all - starts).select { |n| n.end_with?(input) }
+    middle   = all - starts - ends
+    [nil, starts + ends + middle]
+  end
+
   def with_cc(arch_name = nil, &block)
     arch = arch_name ? ALL_ARCHS[arch_name] : ARCH
     arch_gcc = arch.gcc_tc

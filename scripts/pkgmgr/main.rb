@@ -72,6 +72,30 @@ module Main
     end
   end
 
+  # Resolve user-supplied package name (possibly a substring) to a full
+  # registered package name. On success returns the full name, logging
+  # a short->full translation if one happened. On failure prints an
+  # error message and returns nil — the caller should exit non-zero.
+  def resolve_pkg_name(input)
+    full, matches = pkgmgr.resolve_name(input)
+    return full if full && full == input
+
+    if full
+      info "Matched '#{input}' -> '#{full}'"
+      return full
+    end
+
+    if matches.empty?
+      error "Package not found: #{input}"
+      return nil
+    end
+
+    shown = matches.first(3).join(", ")
+    suffix = matches.length > 3 ? ", ..." : ""
+    error "Ambiguous package name '#{input}' matches: #{shown}#{suffix}"
+    return nil
+  end
+
   def set_gcc_tc_ver
 
     ver = Ver(getenv("GCC_TC_VER", ARCH.default_gcc_ver))
@@ -525,11 +549,9 @@ module Main
     end
 
     if options[:config]
-      pkg = pkgmgr.get(options[:config])
-      if !pkg
-        error "Package not found: #{options[:config]}"
-        return 1
-      end
+      name = resolve_pkg_name(options[:config])
+      return 1 if !name
+      pkg = pkgmgr.get(name)
       if !pkg.configurable?
         error "Package #{pkg.name} does not support reconfiguration"
         return 1
@@ -539,13 +561,12 @@ module Main
 
     if !options[:install].blank?
 
-      # Parse "name:ver" pairs, validating that each package exists.
+      # Parse "name:ver" pairs, resolving short names and validating
+      # that each package exists.
       requested = options[:install].map { |s|
-        name, ver = s.split(":")
-        if !pkgmgr.get(name)
-          error "Package not found: #{name}"
-          return 1
-        end
+        raw, ver = s.split(":")
+        name = resolve_pkg_name(raw)
+        return 1 if !name
         [name, Ver(ver)]
       }
 
@@ -587,8 +608,15 @@ module Main
     end
 
     if !options[:uninstall].blank?
-      for name in options[:uninstall] do
-        name, v = name.split(":")
+      for entry in options[:uninstall] do
+        raw, v = entry.split(":")
+        # "ALL" is a literal keyword for uninstall mode; don't resolve it.
+        if raw == "ALL"
+          name = raw
+        else
+          name = resolve_pkg_name(raw)
+          return 1 if !name
+        end
         pkgmgr.uninstall(
           name,
           options[:dry_run],
