@@ -539,10 +539,33 @@ module Main
     end
 
     if options[:list_installable]
-      pkgmgr.all_packages.each do |pkg|
-        next if pkg.is_compiler              # -S, not -s
-        next if pkg.get_installable_list.empty?
-        puts pkg.name
+      # Emit one line per installable package, TSV: "<name>\t<tag>".
+      # tag = "default" when the package is itself a default, OR
+      # transitively required by a default (both get auto-installed
+      # by `build_toolchain` with no arguments). tag = "optional"
+      # otherwise. Compilers are included — `-s <full-name>` works
+      # on them too, `-S <arch>` is just a shortcut.
+      #
+      # Order is topological (deps-first) so a consumer installing
+      # in listed order keeps each `-s` step small (no hidden dep
+      # installs blowing up the per-step timing).
+      installable = pkgmgr.all_packages.reject { |p|
+        p.get_installable_list.empty?
+      }
+      graph = pkgmgr.build_dep_graph
+      empty = Set.new
+      default_names = pkgmgr.get_default_packages.map(&:name)
+
+      default_order = DepResolver.resolve(default_names, graph, empty)
+      default_set = Set.new(default_order)
+
+      full_order = DepResolver.resolve(
+        installable.map(&:name), graph, empty
+      )
+
+      full_order.each do |name|
+        tag = default_set.include?(name) ? "default" : "optional"
+        puts "#{name}\t#{tag}"
       end
       return 0
     end

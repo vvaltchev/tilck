@@ -9,7 +9,6 @@
 
 require 'pathname'
 require 'fileutils'
-require 'set'
 require_relative '../term'
 
 module SystemTests
@@ -36,10 +35,9 @@ module SystemTests
 
   # --- Package constants ---
 
-  OPTIONAL_PACKAGES = %w[
-    ncurses vim tcc fbdoom micropython lua treecmd tfblib
-    host_gtest lcov libmusl
-  ]
+  # Per-arch package sets come from `build_toolchain --list-installable`
+  # at runtime (see installable_pkg_tags below). Keeping a hardcoded
+  # OPTIONAL_PACKAGES here would drift as packages are added/removed.
 
   EXTRA_FLAG_MAP = {
     "EXTRA_VIM"          => ->(arch) { arch_pkg_dir(arch) / "vim" },
@@ -201,44 +199,35 @@ module SystemTests
 
   def install_packages(arch_name, packages_filter: nil)
     env = base_env(arch_name)
+    installable = installable_pkg_tags(arch_name)
 
-    run_cmd("Install default packages for #{arch_name}",
-            [BTC, "-q", "-n"], env: env)
-
-    pkgs = OPTIONAL_PACKAGES
     if packages_filter
       re = Regexp.new(packages_filter)
-      pkgs = pkgs.select { |p| p.match?(re) }
+      installable = installable.select { |name, _| name.match?(re) }
     end
 
-    # Skip packages whose arch_list excludes the current target arch.
-    # `build_toolchain -l` only lists packages whose installable_list
-    # is non-empty, which is exactly the set we can `-s` without the
-    # pkgmgr refusing on arch_list grounds.
-    supported = installable_pkg_names(arch_name)
-    pkgs, skipped = pkgs.partition { |p| supported.include?(p) }
-
-    skipped.each { |p|
-      step("Install optional: #{p}")
-      puts "#{DIM}skipped (unsupported on #{arch_name})#{RESET}"
-    }
-
-    pkgs.each { |pkg|
-      run_cmd("Install optional: #{pkg}",
-              [BTC, "-q", "-n", "-s", pkg], env: env)
+    installable.each { |name, tag|
+      suffix = (tag == "default") ? " (default)" : ""
+      run_cmd("Install #{name}#{suffix}",
+              [BTC, "-q", "-n", "-s", name], env: env)
     }
   end
 
-  # Return the set of package names that `-s` can install on
-  # `arch_name` without hitting the pkgmgr's arch_list refusal.
-  # Asks the pkgmgr via its --list-installable flag in a fresh
-  # subprocess — the subprocess has a clean Ruby VM and registry
-  # state that's independent of whatever minitest left behind.
-  def installable_pkg_names(arch_name)
+  # Ask the pkgmgr (in a fresh subprocess) for the ordered list of
+  # packages installable on `arch_name`, with each entry tagged as
+  # "default" (auto-installed by `build_toolchain` with no args,
+  # either as an explicit default or a transitive dep of one) or
+  # "optional" (opt-in only). Returns an array of [name, tag] pairs
+  # in topological install order (deps before dependents), so a
+  # consumer iterating `-s` per package keeps each step narrow.
+  def installable_pkg_tags(arch_name)
     env = base_env(arch_name).merge("QUIET" => "1")
     out = IO.popen(env, [BTC, "-q", "--list-installable"],
                    err: "/dev/null", &:read)
-    Set.new(out.split("\n").reject(&:empty?))
+    out.split("\n").reject(&:empty?).map { |line|
+      name, tag = line.split("\t", 2)
+      [name, tag]
+    }
   end
 
   def extra_cmake_flags(arch_name)
