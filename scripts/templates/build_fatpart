@@ -19,6 +19,7 @@ host_arch_dir_sys="@HOST_DIR_DISTRO@"
 mtools_ver="@VER_MTOOLS@"
 busybox_ver="@VER_BUSYBOX@"
 fbdoom_ver="@VER_FBDOOM@"
+freedoom_ver="@VER_FREEDOOM@"
 lua_ver="@VER_LUA@"
 micropython_ver="@VER_MICROPYTHON@"
 treecmd_ver="@VER_TREECMD@"
@@ -37,6 +38,7 @@ fi
 mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 busybox_dir=$arch_dir/busybox/$busybox_ver
 fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
+freedoom_dir=$arch_dir/freedoom/$freedoom_ver
 lua_dir=$arch_dir/lua/$lua_ver
 micropython_dir=$arch_dir/micropython/$micropython_ver
 treecmd_dir=$arch_dir/treecmd/$treecmd_ver
@@ -240,12 +242,15 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $fbdoom_dir/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $fbdoom_dir/fbdoom.gz usr/lib/fbDOOM
 
+   # freedoom is a separate package now; fbdoom's dep_list pulls it
+   # in via the pkgmgr. An out-of-tree Doom1.WAD dropped next to the
+   # fbdoom install still wins if it happens to be there.
    if [ -f $fbdoom_dir/Doom1.WAD ]; then
       local wadfile="$fbdoom_dir/Doom1.WAD"
    else
-      local wadfile="$fbdoom_dir/freedoom/freedoom1.wad.gz"
+      local wadfile="$freedoom_dir/freedoom1.wad.gz"
    fi
 
    link_or_copy "$wadfile" usr/lib/fbDOOM

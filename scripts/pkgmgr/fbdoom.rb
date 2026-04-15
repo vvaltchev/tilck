@@ -8,31 +8,24 @@ require_relative 'cache'
 require_relative 'package_manager'
 
 #
-# fbDOOM — framebuffer port of DOOM, plus the freedoom WAD file. The Ruby
-# port mirrors the bash script's two-tarball approach: the fbDOOM source
-# (cloned from upstream) and the freedoom-VER.zip release are cached
-# separately, then laid out side-by-side under the install directory so
-# the FAT image build (build_fatpart) can pick up both:
+# fbDOOM — framebuffer port of DOOM. Upstream has no release tags — the
+# ver string is used only as a cache key / staging dir name. Runtime
+# data (the freedoom WAD) comes from the `freedoom` package, declared
+# here as a dep so the install plan pulls both.
 #
-#     <install>/fbdoom/fbdoom.gz
-#     <install>/freedoom/freedoom1.wad.gz
+# Produces `<install>/fbdoom.gz` — a single stripped+compressed
+# executable. build_fatpart loads it alongside freedoom's WAD at image
+# build time.
 #
-# Restricted to i386: the build itself cross-compiles cleanly for any
-# musl target, but Tilck only runs fbdoom on i386 today, so there's no
-# point in producing artifacts for other archs.
+# Restricted to i386: the build cross-compiles cleanly for any musl
+# target, but Tilck only runs fbdoom on i386 today.
 #
-FBDOOM_URL        = GITHUB + '/maximevince/fbDOOM'
-FREEDOOM_URL_BASE = GITHUB + '/freedoom/freedoom/releases/download'
+FBDOOM_URL = GITHUB + '/maximevince/fbDOOM'
 
-#
-# fbDOOM game engine. Upstream has no release tags — the bash port
-# always cloned HEAD and used VER_FBDOOM purely as a cache key / dir
-# name / freedoom release tag. Mirror that here by ignoring `ver` in
-# the git_tag hook.
-#
 FBDOOM_SOURCE = SourceRef.new(
   name: 'fbdoom',
   url:  FBDOOM_URL,
+  # Upstream has no release tags; always clone HEAD.
   git_tag: ->(_ver) { nil },
 )
 
@@ -48,56 +41,45 @@ class FbDoomPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: { "i386" => ALL_ARCHS["i386"] },
-      dep_list: []
+      dep_list: [Dep('freedoom', false)]
     )
   end
 
   def expected_files = [
-    ["fbdoom/fbdoom.gz",          false],
-    ["freedoom/freedoom1.wad.gz", false],
+    ["fbdoom.gz", false],
   ]
 
-  def freedoom_zip(ver) = "freedoom-#{ver}.zip"
+  def install_impl_internal(install_dir)
 
-  def install_impl(ver)
-
-    info "Install #{name} version: #{ver}"
-
-    if installed? ver
-      info "Package already installed, skip"
-      return nil
-    end
-
-    ok = @source.download(ver)
-    return false if !ok
-
-    ok = Cache::download_file(
-      "#{FREEDOOM_URL_BASE}/v#{ver}", freedoom_zip(ver)
-    )
-    return false if !ok
-
-    pkgmgr.with_cc() do |arch_dir|
-      chdir_package_base_dir(arch_dir) do
-        ok = @source.extract(ver, ver_dirname(ver))
-        return false if !ok
-        ok = chdir_install_dir(arch_dir, ver) do
-          d = mkpathname(getwd)
-          ok = install_impl_internal(d, ver)
-          ok = check_install_dir(d, true) if ok
-        end
-      end
-    end
-    return ok
-  end
-
-  def install_impl_internal(install_dir, ver = nil)
-
-    ver ||= default_ver
     arch_tc = default_arch().gcc_tc
 
-    patch_fbdoom_sources
-    extract_freedoom(ver)
-    return build_fbdoom(arch_tc)
+    patch_sources
+
+    ok = false
+    with_saved_env(["LDFLAGS"]) do
+      ENV["LDFLAGS"] = "-static"
+      chdir("fbdoom") do
+        ok = run_command("build.log", [
+          "make", "NOSDL=1", "-j#{BUILD_PAR}",
+        ])
+        next if !ok
+
+        ok = system("#{arch_tc}-linux-strip", "--strip-all", "fbdoom")
+        next if !ok
+        ok = system("gzip", "-f", "fbdoom")
+      end
+    end
+    return false if !ok
+
+    # The package's deliverable is a single fbdoom.gz binary. Move it
+    # out of the fbdoom/ source subdir, then discard everything else
+    # so the install tree stays small and matches expected_files.
+    mv("fbdoom/fbdoom.gz", "fbdoom.gz")
+    Dir.children(".").each { |e|
+      next if e == "fbdoom.gz"
+      rm_rf(e)
+    }
+    return true
   end
 
   private
@@ -106,7 +88,7 @@ class FbDoomPackage < Package
   # Tilck doesn't have a writable /mnt at runtime, so redirect fbdoom's
   # config home and WAD search path to /tmp.
   #
-  def patch_fbdoom_sources
+  def patch_sources
     chdir("fbdoom") do
       mc = "m_config.c"
       if File.exist?(mc)
@@ -134,44 +116,6 @@ class FbDoomPackage < Package
         raise LocalError, "fbdoom: missing #{ch}"
       end
     end
-  end
-
-  def extract_freedoom(ver)
-    zip = (TC_CACHE / freedoom_zip(ver)).to_s
-    ok = system("unzip", "-q", zip)
-    raise LocalError, "fbdoom: unzip failed for #{zip}" if !ok
-
-    extracted = "freedoom-#{ver}"
-    raise LocalError, "fbdoom: missing #{extracted}/" if !File.directory?(extracted)
-
-    # Remove any pre-existing freedoom/ dir (e.g. from a stale cached tarball
-    # that bundled everything) so that mv replaces it cleanly.
-    rm_rf("freedoom") if File.directory?("freedoom")
-    mv(extracted, "freedoom")
-
-    chdir("freedoom") do
-      raise LocalError, "fbdoom: freedoom1.wad missing" if !File.file?("freedoom1.wad")
-      ok = system("gzip", "-f", "freedoom1.wad")
-      raise LocalError, "fbdoom: gzip freedoom1.wad failed" if !ok
-    end
-  end
-
-  def build_fbdoom(arch_tc)
-    ok = false
-    with_saved_env(["LDFLAGS"]) do
-      ENV["LDFLAGS"] = "-static"
-      chdir("fbdoom") do
-        ok = run_command("build.log", [
-          "make", "NOSDL=1", "-j#{BUILD_PAR}",
-        ])
-        next if !ok
-
-        ok = system("#{arch_tc}-linux-strip", "--strip-all", "fbdoom")
-        next if !ok
-        ok = system("gzip", "-f", "fbdoom")
-      end
-    end
-    return ok
   end
 end
 
