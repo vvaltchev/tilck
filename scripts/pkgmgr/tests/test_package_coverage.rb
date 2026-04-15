@@ -188,17 +188,19 @@ class TestInstallImplGitPath < Minitest::Test
   end
 end
 
-class TestInstallImplNoUrl < Minitest::Test
+class TestInstallImplNoSource < Minitest::Test
   include TestHelper
 
   def setup
     reset_pkgmgr!
   end
 
-  def test_raises_when_url_nil
+  def test_raises_when_source_nil
+    # A package with source: nil and no custom install_impl falls
+    # through to the base flow, which has no way to fetch anything
+    # and must raise NotImplementedError.
     with_fake_tc do |tc|
-      pkg = FakePackage.new("foo")
-      pkg.define_singleton_method(:url) { nil }
+      pkg = FakePackage.new("foo", source: nil)
       pkgmgr.register(pkg)
       assert_raises(NotImplementedError) {
         pkg.install_impl(Ver("1.0.0"))

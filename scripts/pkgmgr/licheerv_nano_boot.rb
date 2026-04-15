@@ -25,6 +25,18 @@ require_relative 'package_manager'
 # inherited from with_cc would override the vendor's choices and break
 # the build.
 #
+#
+# Upstream (sipeed) serves the tarball as `<tag>.tar.gz`; store it in
+# the cache under a qualified name so it doesn't collide with other
+# GitHub tag archives that share the same bare version number.
+#
+LICHEERV_NANO_BOOT_SOURCE = SourceRef.new(
+  name: 'licheerv_nano_boot',
+  url:  GITHUB + '/sipeed/LicheeRV-Nano-Build/archive/refs/tags',
+  tarname:        ->(ver) { "licheerv_nano_boot-#{ver}.tar.gz" },
+  remote_tarname: ->(ver) { "#{ver}.tar.gz" },
+)
+
 class LicheervNanoBootPackage < Package
 
   include FileShortcuts
@@ -35,7 +47,7 @@ class LicheervNanoBootPackage < Package
   def initialize
     super(
       name: 'licheerv_nano_boot',
-      url: GITHUB + '/sipeed/LicheeRV-Nano-Build/archive/refs/tags',
+      source: LICHEERV_NANO_BOOT_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
@@ -46,9 +58,6 @@ class LicheervNanoBootPackage < Package
       board_list: ["licheerv-nano"],
     )
   end
-
-  def remote_tarname(ver) = "#{ver}.tar.gz"
-  def tarname(ver) = "licheerv_nano_boot-#{ver}.tar.gz"
 
   def expected_files = [
     ["build/cvisetup.sh", false],

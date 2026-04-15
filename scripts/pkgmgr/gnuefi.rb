@@ -9,6 +9,17 @@ require_relative 'package_manager'
 
 GNUEFI_URL = GITHUB + '/vvaltchev/gnu-efi-fork'
 
+#
+# Shared SourceRef: `gnuefi_src` (headers consumed by kernel build)
+# and `gnuefi` (arch-specific built libraries) both fetch from the
+# same upstream and so share a single SourceRef — the tarball is
+# downloaded once and cached.
+#
+GNUEFI_SOURCE = SourceRef.new(
+  name: 'gnuefi',
+  url:  GNUEFI_URL,
+)
+
 GNUEFI_PATCHES = {
   'typedef wchar_t CHAR16' =>
     'typedef unsigned short CHAR16',
@@ -36,9 +47,11 @@ end
 
 #
 # Source-only (noarch) gnuefi: just the extracted source tree.
-# Used by kernel C files to include GNU-EFI headers.
+# Used by kernel C files to include GNU-EFI headers — a legitimate
+# deliverable, not an implementation detail. Needed on every arch
+# including those where the built libraries aren't produced.
 #
-class GnuefiSrcPackage < Package
+class GnuefiSourcePackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
@@ -46,7 +59,7 @@ class GnuefiSrcPackage < Package
   def initialize
     super(
       name: 'gnuefi_src',
-      url: GNUEFI_URL,
+      source: GNUEFI_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch
@@ -56,7 +69,6 @@ class GnuefiSrcPackage < Package
   end
 
   def pkg_dirname = "gnuefi"
-  def tarname(ver) = "gnuefi-#{ver}.tgz"
   def default_ver = pkgmgr.get_config_ver("gnuefi")
   def expected_files = GNUEFI_COMMON_EXPECTED_FILES
   def default_arch = nil
@@ -79,7 +91,7 @@ class GnuefiPackage < Package
   def initialize
     super(
       name: 'gnuefi',
-      url: GNUEFI_URL,
+      source: GNUEFI_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: X86_ARCHS,
@@ -120,13 +132,13 @@ class GnuefiPackage < Package
       return nil
     end
 
-    ok = Cache::download_git_repo(url, tarname(ver), git_tag(ver))
+    ok = @source.download(ver)
     return false if !ok
 
     for arch in archs_needed
       pkgmgr.with_cc(arch.name) do |arch_dir|
         chdir_package_base_dir(arch_dir) do
-          ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
+          ok = @source.extract(ver, ver_dirname(ver))
           return false if !ok
           ok = chdir_install_dir(arch_dir, ver) do
             d = mkpathname(getwd)
@@ -162,5 +174,5 @@ class GnuefiPackage < Package
   end
 end
 
-pkgmgr.register(GnuefiSrcPackage.new())
+pkgmgr.register(GnuefiSourcePackage.new())
 pkgmgr.register(GnuefiPackage.new())

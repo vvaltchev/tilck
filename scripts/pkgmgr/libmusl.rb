@@ -18,6 +18,13 @@ require_relative 'package_manager'
 # host, so this package overrides `fetch_via_git?` to use the
 # git-clone path in the base install_impl flow.
 #
+LIBMUSL_SOURCE = SourceRef.new(
+  name: 'libmusl',
+  url:  'https://git.musl-libc.org/git/musl',
+  git_tag: ->(ver) { "v#{ver}" },
+  fetch_via_git: true,
+)
+
 class LibmuslPackage < Package
 
   include FileShortcuts
@@ -26,7 +33,7 @@ class LibmuslPackage < Package
   def initialize
     super(
       name: 'libmusl',
-      url: 'https://git.musl-libc.org/git/musl',
+      source: LIBMUSL_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch package
@@ -40,11 +47,6 @@ class LibmuslPackage < Package
   # pkg_versions uses VER_MUSL (not VER_LIBMUSL) so that gcc.rb and
   # this package agree on a single source of truth for the version.
   def default_ver = pkgmgr.get_config_ver("musl")
-
-  # Upstream musl tags are prefixed with `v` (e.g. v1.2.5).
-  def tarname(ver) = "libmusl-#{ver}.tgz"
-  def git_tag(ver) = "v#{ver}"
-  def fetch_via_git? = true
 
   def expected_files = [
     ["Makefile", false],

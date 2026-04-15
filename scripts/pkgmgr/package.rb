@@ -4,6 +4,7 @@ require_relative 'early_logic'
 require_relative 'arch'
 require_relative 'version'
 require_relative 'term'
+require_relative 'source_ref'
 require_relative 'package_manager'
 
 PackageDep = Struct.new(
@@ -64,7 +65,7 @@ end
 
 class Package
 
-  attr_reader :name, :url, :on_host, :is_compiler, :arch_list, :dep_list
+  attr_reader :name, :source, :on_host, :is_compiler, :arch_list, :dep_list
   attr_reader :host_tier
 
   STATUS_LEN    = 9
@@ -79,8 +80,13 @@ class Package
   #   :portable  — statically linked, any distro   (HOST_DIR_PORTABLE)
   #   :distro    — links distro libc, any host CC   (HOST_DIR_DISTRO)
   #   :compiler  — depends on host CC C++ ABI       (HOST_DIR)
+  #
+  # @param source [SourceRef, nil] where the package's source comes
+  #   from. Required for packages that use the base class install
+  #   flow. May be nil for packages with a custom install_impl that
+  #   fetches artefacts another way (e.g. a vendor-prebuilt blob).
   def initialize(name:,
-                 url: nil,
+                 source: nil,
                  on_host: false,
                  is_compiler: false,
                  host_tier: :compiler,
@@ -91,7 +97,7 @@ class Package
                  default: false,
                  board_list: nil)
     @name = name
-    @url = url
+    @source = source
     @on_host = on_host
     @is_compiler = is_compiler
     @host_tier = host_tier
@@ -105,6 +111,7 @@ class Package
     assert {
       !!on_host == !!(name.start_with?("host_") || is_compiler)
     }
+    assert { source.nil? or source.is_a?(SourceRef) }
   end
 
   # Can this package run / be built on the current host?
@@ -217,28 +224,8 @@ class Package
   def default_arch = ARCH
   def default_cc = ARCH.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name.sub("host_", ""))
-  def tarname(ver) = "#{name}-#{ver}.tgz"
   def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
-  def git_tag(ver) = ver.to_s()
-
-  # Filename to fetch from the remote `url`. Defaults to the same name we
-  # store in the local cache (`tarname(ver)`). Override when the upstream
-  # serves the archive under a different name (e.g. github tag archives,
-  # which are served as `<tag>.tar.gz` regardless of the repo name).
-  def remote_tarname(ver) = tarname(ver)
-
-  # Whether to fetch the source via `git clone` (true) rather than a plain
-  # HTTP download (false). Default heuristic: github.com URLs pointing at a
-  # repo root — i.e. NOT at a release asset (/releases/download/) and NOT
-  # at a tag/branch zip (/archive/). Packages hosted on non-github git
-  # servers (e.g. git.musl-libc.org, repo.or.cz) must override this to
-  # return true.
-  def fetch_via_git?
-    github_tarball = url.include?("/releases/download/") ||
-                     url.include?("/archive/")
-    return url.include?(GITHUB) && !github_tarball
-  end
 
   # Apply patch files from scripts/patches/<pkg>/<ver>/.
   # Applies common patches (*.diff in the version directory) first, then
@@ -307,19 +294,14 @@ class Package
       return nil
     end
 
-    if !url
-      raise NotImplementedError
+    if !@source
+      raise NotImplementedError,
+            "#{name}: no source declared and no custom install_impl"
     end
 
     # --- Download (into cache/) ---
 
-    if fetch_via_git?
-      ok = Cache::download_git_repo(
-             url, tarname(ver), git_tag(ver), ver_dirname(ver)
-           )
-    else
-      ok = Cache::download_file(url, remote_tarname(ver), tarname(ver))
-    end
+    ok = @source.download(ver)
     return false if !ok
 
     # --- Ensure extracted source in staging ---
@@ -340,7 +322,7 @@ class Package
     if !staging.directory?
       # Fresh extraction into staging
       chdir_package_base_dir(TC_STAGING) do
-        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
+        ok = @source.extract(ver, ver_dirname(ver))
         return false if !ok
       end
     end

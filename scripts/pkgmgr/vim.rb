@@ -12,6 +12,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+VIM_SOURCE = SourceRef.new(
+  name: 'vim',
+  url:  GITHUB + '/vim/vim',
+)
+
 class VimPackage < Package
 
   include FileShortcuts
@@ -20,7 +25,7 @@ class VimPackage < Package
   def initialize
     super(
       name: 'vim',
-      url: GITHUB + '/vim/vim',
+      source: VIM_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: X86_ARCHS,

@@ -21,18 +21,30 @@ require_relative 'package_manager'
 # musl target, but Tilck only runs fbdoom on i386 today, so there's no
 # point in producing artifacts for other archs.
 #
+FBDOOM_URL        = GITHUB + '/maximevince/fbDOOM'
+FREEDOOM_URL_BASE = GITHUB + '/freedoom/freedoom/releases/download'
+
+#
+# fbDOOM game engine. Upstream has no release tags — the bash port
+# always cloned HEAD and used VER_FBDOOM purely as a cache key / dir
+# name / freedoom release tag. Mirror that here by ignoring `ver` in
+# the git_tag hook.
+#
+FBDOOM_SOURCE = SourceRef.new(
+  name: 'fbdoom',
+  url:  FBDOOM_URL,
+  git_tag: ->(_ver) { nil },
+)
+
 class FbDoomPackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
 
-  FBDOOM_URL        = GITHUB + '/maximevince/fbDOOM'
-  FREEDOOM_URL_BASE = GITHUB + '/freedoom/freedoom/releases/download'
-
   def initialize
     super(
       name: 'fbdoom',
-      url: FBDOOM_URL,
+      source: FBDOOM_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: { "i386" => ALL_ARCHS["i386"] },
@@ -56,12 +68,7 @@ class FbDoomPackage < Package
       return nil
     end
 
-    # The bash script doesn't pin a fbDOOM commit — it always clones HEAD
-    # and uses VER_FBDOOM purely as a directory name and as the freedoom
-    # release tag. Mirror that here.
-    ok = Cache::download_git_repo(
-      FBDOOM_URL, tarname(ver), nil, ver_dirname(ver)
-    )
+    ok = @source.download(ver)
     return false if !ok
 
     ok = Cache::download_file(
@@ -71,7 +78,7 @@ class FbDoomPackage < Package
 
     pkgmgr.with_cc() do |arch_dir|
       chdir_package_base_dir(arch_dir) do
-        ok = Cache::extract_file(tarname(ver), ver_dirname(ver))
+        ok = @source.extract(ver, ver_dirname(ver))
         return false if !ok
         ok = chdir_install_dir(arch_dir, ver) do
           d = mkpathname(getwd)

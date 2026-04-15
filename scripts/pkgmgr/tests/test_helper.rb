@@ -187,10 +187,18 @@ module TestHelper
                    on_host: false, is_compiler: false,
                    default: false, board_list: nil,
                    host_os_list: nil, host_arch_list: nil,
-                   host_tier: :compiler)
+                   host_tier: :compiler, source: :default)
+      # source: :default -> auto-build a fake SourceRef from the name.
+      # source: nil      -> explicit no source (for testing vendor/blob-
+      #                     style packages with a custom install_impl).
+      # source: <ref>    -> caller-provided SourceRef (e.g. to test
+      #                     shared sources across packages).
+      if source == :default
+        source = SourceRef.new(name: name, url: "https://fake/#{name}")
+      end
       super(
         name: name,
-        url: "https://fake/#{name}",
+        source: source,
         on_host: on_host,
         is_compiler: is_compiler,
         host_tier: host_tier,
@@ -204,7 +212,6 @@ module TestHelper
     end
 
     def expected_files = []
-    def tarname(ver) = "#{name}-#{ver}.tgz"
     def default_ver = Ver("1.0.0")
 
     # Match the pattern of real packages: host → syscc/HOST_ARCH,

@@ -7,6 +7,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+LCOV_SOURCE = SourceRef.new(
+  name: 'lcov',
+  url:  GITHUB + '/linux-test-project/lcov',
+)
+
 class LcovPackage < Package
 
   include FileShortcuts
@@ -15,7 +20,7 @@ class LcovPackage < Package
   def initialize
     super(
       name: 'lcov',
-      url: GITHUB + '/linux-test-project/lcov',
+      source: LCOV_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch package

@@ -22,9 +22,17 @@ class GccCompiler < Package
   def initialize(target_arch, libc)
     @target_arch = target_arch
     @libc = libc
+    # Each (target_arch, libc) pair has its own pre-built tarball on
+    # the musl-cross-make release page; the compiler binaries inside
+    # differ by target arch, so no SourceRef sharing is possible.
+    src = SourceRef.new(
+      name: "gcc-#{target_arch.name}-#{libc}",
+      url:  make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
+      tarname: ->(ver) { self.class.build_tarname(target_arch, libc, ver) },
+    )
     super(
       name: "gcc-#{target_arch.name}-#{libc}",
-      url: make_gh_rel_download("vvaltchev", PROJ_NAME, CURR_TAG),
+      source: src,
       on_host: true,
       is_compiler: true,
       host_tier: :portable,
@@ -85,8 +93,12 @@ class GccCompiler < Package
     return @target_arch == ARCH
   end
 
-  def tarname(ver)
-    archname = @target_arch.name
+  # Called by the SourceRef's tarname Proc: the cache filename
+  # encodes target arch, libc version, gcc version, and host
+  # arch/OS because the upstream release page ships a distinct
+  # tarball for each combination.
+  def self.build_tarname(target_arch, libc, ver)
+    archname = target_arch.name
     host_an = HOST_ARCH.name
 
     case OS

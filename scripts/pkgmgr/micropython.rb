@@ -7,6 +7,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+MICROPYTHON_SOURCE = SourceRef.new(
+  name: 'micropython',
+  url:  GITHUB + '/micropython/micropython',
+)
+
 class MicropythonPackage < Package
 
   include FileShortcuts
@@ -15,7 +20,7 @@ class MicropythonPackage < Package
   def initialize
     super(
       name: 'micropython',
-      url: GITHUB + '/micropython/micropython',
+      source: MICROPYTHON_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,

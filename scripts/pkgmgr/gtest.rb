@@ -10,10 +10,21 @@ require_relative 'package_manager'
 GTEST_URL = GITHUB + '/google/googletest'
 
 #
+# Shared SourceRef between `gtest_src` and `host_gtest`.
+# Scheduled for removal alongside `gtest_src` in a follow-up commit —
+# host_gtest will retain its own SourceRef then.
+#
+GTEST_SOURCE = SourceRef.new(
+  name: 'gtest',
+  url:  GTEST_URL,
+  git_tag: ->(ver) { "v#{ver}" },
+)
+
+#
 # Source-only (noarch) googletest: the shared source tree used by
 # host_gtest. Lives in <toolchain>/noarch/gtest/<ver>/.
 #
-class GtestSrcPackage < Package
+class GtestSourcePackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
@@ -21,7 +32,7 @@ class GtestSrcPackage < Package
   def initialize
     super(
       name: 'gtest_src',
-      url: GTEST_URL,
+      source: GTEST_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch
@@ -30,8 +41,6 @@ class GtestSrcPackage < Package
   end
 
   def pkg_dirname = "gtest"
-  def tarname(ver) = "gtest-#{ver}.tgz"
-  def git_tag(ver) = "v#{ver}"
   def default_ver = pkgmgr.get_config_ver("gtest")
   def expected_files = [
     ["googletest", true],
@@ -62,7 +71,7 @@ class GtestPackage < Package
   def initialize
     super(
       name: 'host_gtest',
-      url: nil,
+      source: nil, # host_gtest reuses gtest_src's extracted tree
       on_host: true,
       is_compiler: false,
       arch_list: ALL_HOST_ARCHS,
@@ -143,5 +152,5 @@ class GtestPackage < Package
   end
 end
 
-pkgmgr.register(GtestSrcPackage.new())
+pkgmgr.register(GtestSourcePackage.new())
 pkgmgr.register(GtestPackage.new())

@@ -7,6 +7,12 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+TREECMD_SOURCE = SourceRef.new(
+  name: 'treecmd',
+  url:  GITHUB + '/vvaltchev/tree-command',
+  git_tag: ->(_ver) { "tilck" },
+)
+
 class TreecmdPackage < Package
 
   include FileShortcuts
@@ -15,15 +21,13 @@ class TreecmdPackage < Package
   def initialize
     super(
       name: 'treecmd',
-      url: GITHUB + '/vvaltchev/tree-command',
+      source: TREECMD_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
       dep_list: []
     )
   end
-
-  def git_tag(ver) = "tilck"
 
   def expected_files = [
     ["tree", false],

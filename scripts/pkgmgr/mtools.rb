@@ -7,6 +7,12 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+MTOOLS_SOURCE = SourceRef.new(
+  name: 'mtools',
+  url:  'https://ftp.gnu.org/gnu/mtools',
+  tarname: ->(ver) { "mtools-#{ver}.tar.gz" },
+)
+
 class MtoolsPackage < Package
 
   include FileShortcuts
@@ -15,7 +21,7 @@ class MtoolsPackage < Package
   def initialize
     super(
       name: 'host_mtools',
-      url: 'https://ftp.gnu.org/gnu/mtools',
+      source: MTOOLS_SOURCE,
       on_host: true,
       is_compiler: false,
       host_tier: :distro,
@@ -27,7 +33,6 @@ class MtoolsPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-  def tarname(ver) = "mtools-#{ver}.tar.gz"
 
   def expected_files = [
     "mtools"

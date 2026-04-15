@@ -12,6 +12,12 @@ require_relative 'package_manager'
 # linked into the kernel for archs that boot via a flattened device tree
 # (currently riscv64).
 #
+DTC_SOURCE = SourceRef.new(
+  name: 'dtc',
+  url:  'https://mirrors.edge.kernel.org/pub/software/utils/dtc',
+  tarname: ->(ver) { "dtc-#{ver}.tar.gz" },
+)
+
 class DtcPackage < Package
 
   include FileShortcuts
@@ -20,7 +26,7 @@ class DtcPackage < Package
   def initialize
     super(
       name: 'dtc',
-      url: 'https://mirrors.edge.kernel.org/pub/software/utils/dtc',
+      source: DTC_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
@@ -28,8 +34,6 @@ class DtcPackage < Package
       default: true,
     )
   end
-
-  def tarname(ver) = "dtc-#{ver}.tar.gz"
 
   def expected_files = [
     ["libfdt/libfdt.a", false],

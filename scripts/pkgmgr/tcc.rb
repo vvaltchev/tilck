@@ -32,17 +32,26 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+#
+# TCC lives on repo.or.cz, not github — the SourceRef heuristic
+# defaults to HTTP download for non-github URLs, so we explicitly
+# opt into git clone via fetch_via_git: true.
+#
+TCC_SOURCE = SourceRef.new(
+  name: 'tcc',
+  url:  "git://repo.or.cz/tinycc.git",
+  fetch_via_git: true,
+)
+
 class TccPackage < Package
 
   include FileShortcuts
   include FileUtilsShortcuts
 
-  TCC_URL = "git://repo.or.cz/tinycc.git"
-
   def initialize
     super(
       name: 'tcc',
-      url: TCC_URL,
+      source: TCC_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: {
@@ -60,11 +69,6 @@ class TccPackage < Package
     ["tcclib.h",          false],
     ["examples",          true],
   ]
-
-  # TCC lives on repo.or.cz, not github — the base class heuristic
-  # defaults to HTTP download for non-github URLs, so we explicitly
-  # opt into git clone.
-  def fetch_via_git? = true
 
   def install_impl_internal(install_dir)
 

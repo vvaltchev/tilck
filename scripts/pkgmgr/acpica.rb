@@ -7,6 +7,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+ACPICA_SOURCE = SourceRef.new(
+  name: 'acpica',
+  url:  GITHUB + '/acpica/acpica',
+)
+
 class Acpica < Package
 
   include FileShortcuts
@@ -25,7 +30,7 @@ class Acpica < Package
   def initialize
     super(
       name: 'acpica',
-      url: GITHUB + '/acpica/acpica',
+      source: ACPICA_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # nil => noarch package

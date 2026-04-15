@@ -7,6 +7,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+ZLIB_SOURCE = SourceRef.new(
+  name: 'zlib',
+  url:  GITHUB + '/madler/zlib',
+)
+
 class ZlibPackage < Package
 
   include FileShortcuts
@@ -15,7 +20,7 @@ class ZlibPackage < Package
   def initialize
     super(
       name: 'zlib',
-      url: GITHUB + '/madler/zlib',
+      source: ZLIB_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,

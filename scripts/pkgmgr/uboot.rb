@@ -12,6 +12,12 @@ require_relative 'package_manager'
 # This Ruby port covers only the qemu-virt board (the default for riscv64);
 # the licheerv-nano board uses a vendor build system that's still bash-only.
 #
+UBOOT_SOURCE = SourceRef.new(
+  name: 'uboot',
+  url:  'https://ftp.denx.de/pub/u-boot',
+  tarname: ->(ver) { "u-boot-#{ver}.tar.bz2" },
+)
+
 class UbootPackage < Package
 
   include FileShortcuts
@@ -20,7 +26,7 @@ class UbootPackage < Package
   def initialize
     super(
       name: 'uboot',
-      url: 'https://ftp.denx.de/pub/u-boot',
+      source: UBOOT_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
@@ -29,9 +35,6 @@ class UbootPackage < Package
       board_list: ["qemu-virt"],
     )
   end
-
-  def tarname(ver) = "u-boot-#{ver}.tar.bz2"
-  def ver_dirname(ver) = ver.to_s
 
   def expected_files = [
     ["u-boot.bin", false],

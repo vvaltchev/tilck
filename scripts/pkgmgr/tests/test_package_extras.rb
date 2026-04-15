@@ -1,43 +1,12 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 # Tests for Package methods not covered by test_package.rb:
-# apply_patches, fix_config_file, fetch_via_git?, configure, InstallInfo
+# apply_patches, fix_config_file, configure, InstallInfo.
+# SourceRef's fetch_via_git? heuristic lives in test_source_ref.rb.
 #
 
 require_relative 'test_helper'
 require 'tmpdir'
-
-class TestFetchViaGit < Minitest::Test
-  include TestHelper
-
-  def test_github_repo_url_is_git
-    pkg = FakePackage.new("foo")
-    pkg.define_singleton_method(:url) { "https://github.com/user/repo" }
-    assert pkg.fetch_via_git?
-  end
-
-  def test_github_releases_url_is_not_git
-    pkg = FakePackage.new("foo")
-    pkg.define_singleton_method(:url) {
-      "https://github.com/user/repo/releases/download/v1/file.tar.gz"
-    }
-    refute pkg.fetch_via_git?
-  end
-
-  def test_github_archive_url_is_not_git
-    pkg = FakePackage.new("foo")
-    pkg.define_singleton_method(:url) {
-      "https://github.com/user/repo/archive/refs/tags"
-    }
-    refute pkg.fetch_via_git?
-  end
-
-  def test_non_github_url_is_not_git
-    pkg = FakePackage.new("foo")
-    pkg.define_singleton_method(:url) { "https://example.com/pkg.tar.gz" }
-    refute pkg.fetch_via_git?
-  end
-end
 
 class TestFixConfigFile < Minitest::Test
   include TestHelper

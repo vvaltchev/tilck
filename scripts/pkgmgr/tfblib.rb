@@ -7,6 +7,11 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+TFBLIB_SOURCE = SourceRef.new(
+  name: 'tfblib',
+  url:  GITHUB + '/vvaltchev/tfblib',
+)
+
 class TfblibPackage < Package
 
   include FileShortcuts
@@ -17,7 +22,7 @@ class TfblibPackage < Package
   def initialize
     super(
       name: 'tfblib',
-      url: GITHUB + '/vvaltchev/tfblib',
+      source: TFBLIB_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: nil,      # noarch (source-only library)

@@ -7,6 +7,12 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+LUA_SOURCE = SourceRef.new(
+  name: 'lua',
+  url:  'https://www.lua.org/ftp',
+  tarname: ->(ver) { "lua-#{ver}.tar.gz" },
+)
+
 class LuaPackage < Package
 
   include FileShortcuts
@@ -15,15 +21,13 @@ class LuaPackage < Package
   def initialize
     super(
       name: 'lua',
-      url: 'https://www.lua.org/ftp',
+      source: LUA_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
       dep_list: []
     )
   end
-
-  def tarname(ver) = "lua-#{ver}.tar.gz"
 
   def expected_files = [
     ["src/lua", false],

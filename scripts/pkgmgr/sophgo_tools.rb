@@ -20,6 +20,18 @@ require_relative 'package_manager'
 # Because the binaries are x86_64 Linux ELFs, installation is refused
 # on any other host OS / host arch combination.
 #
+#
+# Upstream serves the tarball as `<tag>.tar.gz`; we store it in the
+# local cache under a qualified name so it doesn't collide with other
+# GitHub tag archives that share the same bare version number.
+#
+SOPHGO_TOOLS_SOURCE = SourceRef.new(
+  name: 'sophgo_host_tools',
+  url:  GITHUB + '/sophgo/host-tools/archive/refs/tags',
+  tarname:        ->(ver) { "sophgo_host_tools-#{ver}.tar.gz" },
+  remote_tarname: ->(ver) { "#{ver}.tar.gz" },
+)
+
 class SophgoToolsPackage < Package
 
   include FileShortcuts
@@ -28,7 +40,7 @@ class SophgoToolsPackage < Package
   def initialize
     super(
       name: 'host_sophgo_tools',
-      url: GITHUB + '/sophgo/host-tools/archive/refs/tags',
+      source: SOPHGO_TOOLS_SOURCE,
       on_host: true,
       is_compiler: false,
       host_tier: :portable,
@@ -42,12 +54,6 @@ class SophgoToolsPackage < Package
 
   def default_arch = HOST_ARCH
   def default_cc = "syscc"
-
-  # Upstream serves the tarball as `<tag>.tar.gz`; store it in the cache
-  # under a qualified name so it doesn't collide with other GitHub tag
-  # archives that share the same bare version number.
-  def remote_tarname(ver) = "#{ver}.tar.gz"
-  def tarname(ver) = "sophgo_host_tools-#{ver}.tar.gz"
 
   # The only thing we actually consume from the upstream tarball is the
   # prebuilt cross gcc tree; check for it as a sanity guard that the

@@ -7,6 +7,12 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+BUSYBOX_SOURCE = SourceRef.new(
+  name: 'busybox',
+  url:  "https://busybox.net/downloads",
+  tarname: ->(ver) { "busybox-#{ver}.tar.bz2" },
+)
+
 class BusyBoxPackage < Package
 
   include FileShortcuts
@@ -17,7 +23,7 @@ class BusyBoxPackage < Package
   def initialize
     super(
       name: 'busybox',
-      url: "https://busybox.net/downloads",
+      source: BUSYBOX_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
@@ -25,8 +31,6 @@ class BusyBoxPackage < Package
       default: true,
     )
   end
-
-  def tarname(ver) = "#{name}-#{ver}.tar.bz2"
 
   def expected_files = [
     ["busybox", false],

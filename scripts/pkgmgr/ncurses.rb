@@ -7,6 +7,12 @@ require_relative 'package'
 require_relative 'cache'
 require_relative 'package_manager'
 
+NCURSES_SOURCE = SourceRef.new(
+  name: 'ncurses',
+  url:  'https://ftp.gnu.org/pub/gnu/ncurses',
+  tarname: ->(ver) { "ncurses-#{ver}.tar.gz" },
+)
+
 class NcursesPackage < Package
 
   include FileShortcuts
@@ -15,15 +21,13 @@ class NcursesPackage < Package
   def initialize
     super(
       name: 'ncurses',
-      url: 'https://ftp.gnu.org/pub/gnu/ncurses',
+      source: NCURSES_SOURCE,
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS,
       dep_list: []
     )
   end
-
-  def tarname(ver) = "ncurses-#{ver}.tar.gz"
 
   def expected_files = [
     ["install/lib/libncurses.a", false]
