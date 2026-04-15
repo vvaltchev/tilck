@@ -9,7 +9,17 @@
 
 require 'pathname'
 require 'fileutils'
+require 'set'
 require_relative '../term'
+# Load the pkgmgr core: PackageManager.instance + introspection.
+# Individual Package subclasses are loaded lazily by load_all_packages!
+# when installable_pkg_names is first called.
+require_relative '../early_logic'
+require_relative '../arch'
+require_relative '../version'
+require_relative '../source_ref'
+require_relative '../package'
+require_relative '../package_manager'
 
 module SystemTests
 
@@ -210,10 +220,63 @@ module SystemTests
       pkgs = pkgs.select { |p| p.match?(re) }
     end
 
+    # Skip packages whose arch_list excludes the current target arch.
+    # `build_toolchain -l` only lists packages whose installable_list
+    # is non-empty, which is exactly the set we can `-s` without the
+    # pkgmgr refusing on arch_list grounds.
+    supported = installable_pkg_names(arch_name)
+    pkgs, skipped = pkgs.partition { |p| supported.include?(p) }
+
+    skipped.each { |p|
+      step("Install optional: #{p}")
+      puts "#{DIM}skipped (unsupported on #{arch_name})#{RESET}"
+    }
+
     pkgs.each { |pkg|
       run_cmd("Install optional: #{pkg}",
               [BTC, "-q", "-n", "-s", pkg], env: env)
     }
+  end
+
+  # Return the set of package names that `-s` can install on
+  # `arch_name` without hitting the pkgmgr's arch_list refusal.
+  # Introspects the loaded Package registry directly.
+  def installable_pkg_names(arch_name)
+    load_all_packages!
+    names = Set.new
+    PackageManager.instance.all_packages.each do |pkg|
+      next if pkg.is_compiler            # `-s` doesn't install compilers
+      # host/noarch packages apply to every arch; target packages
+      # apply iff arch_name is in their arch_list.
+      if pkg.on_host || pkg.arch_list.nil? ||
+         pkg.arch_list.include?(arch_name)
+        names << pkg.name
+      end
+    end
+    names
+  end
+
+  # Populate the Package registry (idempotent). Minitest tests call
+  # reset_pkgmgr! between suites, so by the time SystemTests runs the
+  # registry is typically empty. require_relative-loading the package
+  # files is a no-op if they've been required already (Ruby caches
+  # $LOADED_FEATURES), so we reset the registry and use Kernel#load,
+  # which re-runs the `pkgmgr.register(...)` call at the bottom of
+  # each file.
+  #
+  # Only files that actually register packages are loaded — loading
+  # package_manager.rb in the middle of the loop would reinitialise
+  # the singleton and wipe everything registered so far.
+  def load_all_packages!
+    @packages_loaded ||= false
+    return if @packages_loaded
+    PackageManager.instance.instance_variable_set(:@packages, {})
+    Dir.glob(File.expand_path("../*.rb", __dir__)).sort.each do |f|
+      # Fast filter: only load files containing a pkgmgr.register call.
+      next if !File.read(f).include?("pkgmgr.register")
+      load f
+    end
+    @packages_loaded = true
   end
 
   def extra_cmake_flags(arch_name)
