@@ -17,8 +17,10 @@ require_relative 'package_manager'
 # executable. build_fatpart loads it alongside freedoom's WAD at image
 # build time.
 #
-# Restricted to i386: the build cross-compiles cleanly for any musl
-# target, but Tilck only runs fbdoom on i386 today.
+# Restricted to the x86 family. Tilck only *runs* fbDOOM on i386 today,
+# but x86_64 is kept installable so the cross-compile path stays
+# exercised (we can't run any userland on x86_64 yet either, so
+# "supports run" isn't the gating criterion).
 #
 FBDOOM_URL = GITHUB + '/maximevince/fbDOOM'
 
@@ -40,7 +42,7 @@ class FbDoomPackage < Package
       source: FBDOOM_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: { "i386" => ALL_ARCHS["i386"] },
+      arch_list: X86_ARCHS,
       dep_list: [Dep('freedoom', false)]
     )
   end

@@ -69,14 +69,16 @@ class TestFbDoomPackage < Minitest::Test
     refute_includes dep_names, "fbdoom"
   end
 
-  def test_fbdoom_is_i386_only
+  def test_fbdoom_is_x86_family
+    # x86 only: Tilck runs fbDOOM on i386, and x86_64 is kept
+    # installable so the cross-compile path is exercised.
     pkg = pkgmgr.get("fbdoom")
-    assert_equal ["i386"], pkg.arch_list.keys
+    assert_equal ["i386", "x86_64"].sort, pkg.arch_list.keys.sort
   end
 
-  def test_freedoom_is_i386_only
+  def test_freedoom_is_x86_family
     pkg = pkgmgr.get("freedoom")
-    assert_equal ["i386"], pkg.arch_list.keys
+    assert_equal ["i386", "x86_64"].sort, pkg.arch_list.keys.sort
   end
 
   def test_fbdoom_expected_files

@@ -17,7 +17,10 @@ require_relative 'package_manager'
 # happen to be shipped side-by-side in Tilck's FAT image. `fbdoom`
 # depends on `freedoom` in the pkgmgr dep graph.
 #
-# Restricted to i386: Tilck only runs fbDOOM on i386 today.
+# Restricted to the x86 family. Tilck only *runs* fbDOOM on i386 today,
+# but x86_64 stays installable so fbdoom's cross-compile path is
+# exercised there (freedoom is fbdoom's runtime dep, so it must be
+# available for every arch where fbdoom is installable).
 #
 # The SourceRef captures the cache filename but not the download URL —
 # the upstream release layout interpolates a `v<ver>/` segment between
@@ -45,7 +48,7 @@ class FreedoomPackage < Package
       source: FREEDOOM_SOURCE,
       on_host: false,
       is_compiler: false,
-      arch_list: { "i386" => ALL_ARCHS["i386"] },
+      arch_list: X86_ARCHS,
       dep_list: []
     )
   end
