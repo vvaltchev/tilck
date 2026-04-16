@@ -532,11 +532,12 @@ class TestMainDryRunInstall < Minitest::Test
 
         result = nil
         out = capture_stdout {
-          result = Main.main(["-s", "foo", "-d"])
+          result = Main.main(["-s", "foo", "-d", "--ascii"])
         }
         assert_equal 0, result
         assert_empty FakePackage.install_log
-        assert_match(/Install order: foo/, out)
+        assert_match(/Install plan:/, out)
+        assert_match(/^foo$/, out)
         assert_match(/Dry run/, out)
       end
     end
@@ -551,12 +552,14 @@ class TestMainDryRunInstall < Minitest::Test
 
         result = nil
         out = capture_stdout {
-          result = Main.main(["-s", "a", "-d"])
+          result = Main.main(["-s", "a", "-d", "--ascii"])
         }
         assert_equal 0, result
         assert_empty FakePackage.install_log
-        # Deps-first topological order.
-        assert_match(/Install order: b -> a/, out)
+        # ASCII tree: root "a" with child "b" indented.
+        assert_match(/Install plan:/, out)
+        assert_match(/^a$/, out)
+        assert_match(/^  b$/, out)
       end
     end
   end
@@ -754,12 +757,12 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d"])
+          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
           assert_equal 0, result
         }
         # Plan should include the riscv64 compiler as a dep.
         assert_match(/gcc-riscv64-musl/, out)
-        assert_match(/Install order:.*foo/, out)
+        assert_match(/^foo$/, out)
       end
     end
   end
@@ -795,7 +798,7 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("universal"))
 
         out = capture_stdout {
-          result = Main.main(["-s", "ALL", "-a", "riscv64", "-d"])
+          result = Main.main(["-s", "ALL", "-a", "riscv64", "-d", "--ascii"])
           assert_equal 0, result
         }
         # rv_pkg and universal in the plan; i3_pkg excluded.
@@ -819,10 +822,9 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "ALL", "-d"])
+          result = Main.main(["-s", "foo", "-a", "ALL", "-d", "--ascii"])
           assert_equal 0, result
         }
-        # Should see an "Architecture:" banner for each arch.
         ALL_ARCHS.values.each do |a|
           assert_match(/Architecture: #{a.name}/, out)
         end
@@ -831,7 +833,6 @@ class TestInstallWithTargetArch < Minitest::Test
   end
 
   def test_install_with_dash_a_ALL_skips_unsupported_archs
-    # -s rv_only -a ALL: install on riscv64, skip others gracefully.
     with_fake_tc do
       with_stubbed_externals do
         rv = ALL_ARCHS["riscv64"]
@@ -844,12 +845,11 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
 
         out = capture_stdout {
-          result = Main.main(["-s", "rv_only", "-a", "ALL", "-d"])
+          result = Main.main(["-s", "rv_only", "-a", "ALL", "-d", "--ascii"])
           assert_equal 0, result
         }
-        # riscv64 shows the plan; others show "Skipping".
         assert_match(/Architecture: riscv64/, out)
-        assert_match(/Install order:.*rv_only/, out)
+        assert_match(/^rv_only$/, out)
         assert_match(/Skipping rv_only: not supported on i386/, out)
       end
     end
@@ -867,10 +867,12 @@ class TestInstallWithTargetArch < Minitest::Test
         pkgmgr.register(FakePackage.new("foo"))
 
         out = capture_stdout {
-          result = Main.main(["-s", "foo", "-a", "riscv64", "-d"])
+          result = Main.main(["-s", "foo", "-a", "riscv64", "-d", "--ascii"])
           assert_equal 0, result
         }
-        assert_match(/Dependencies to install:.*gcc-riscv64-musl/, out)
+        # In ASCII tree: foo has gcc-riscv64-musl as child.
+        assert_match(/^foo$/, out)
+        assert_match(/^  gcc-riscv64-musl$/, out)
       end
     end
   end

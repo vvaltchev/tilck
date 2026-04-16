@@ -97,6 +97,115 @@ module Main
     return nil
   end
 
+  # -----------------------------------------------------------
+  # Dependency tree renderer — used by the install plan display
+  # and by the --deps introspection mode.
+  # -----------------------------------------------------------
+
+  # Render a dependency visualization for `roots`.
+  #
+  #   roots          — Array of package name strings (top-level).
+  #   graph          — { name => [dep_name, ...] } from build_dep_graph.
+  #   installed      — Set of package names that are already installed.
+  #   show_installed — false: omit installed deps (install-plan mode).
+  #                    true:  show them in dim/gray (--deps mode).
+  #   ascii          — false: tree(1)-style box-drawing characters
+  #                           with extra vertical spacing.
+  #                    true:  plain-text 2-space indentation, one
+  #                           line per node, no decoration. Machine-
+  #                           friendly for parsing and tests.
+  #
+  # Returns an Array of ready-to-puts strings.
+  def render_dep_trees(roots, graph, installed: Set.new,
+                       show_installed: false, ascii: false)
+    lines = []
+    roots.each_with_index do |name, ri|
+      lines << "" if ri > 0 && !ascii
+      if ascii
+        dep_tree_ascii(name, graph, installed, show_installed,
+                       lines, "", Set.new)
+      else
+        dep_tree_root(name, graph, installed, show_installed, lines)
+      end
+    end
+    lines
+  end
+
+  # --- ASCII (machine-friendly) mode ---
+
+  def dep_tree_ascii(name, graph, installed, show_installed,
+                     lines, indent, visited)
+    lines << "#{indent}#{name}"
+    return if visited.include?(name)
+    deps = dep_tree_deps(name, graph, installed, show_installed)
+    new_visited = visited | [name]
+    deps.each do |dep|
+      dep_tree_ascii(dep, graph, installed, show_installed,
+                     lines, indent + "  ", new_visited)
+    end
+  end
+
+  # --- Fancy (human-friendly) mode ---
+
+  def dep_tree_root(name, graph, installed, show_installed, lines)
+    lines << "  ┌─ #{dep_tree_fmt(name, installed, show_installed)}"
+    deps = dep_tree_deps(name, graph, installed, show_installed)
+
+    if deps.empty?
+      if show_installed
+        lines << "  (no dependencies)"
+      end
+      return
+    end
+
+    lines << "  │"
+    deps.each_with_index do |dep, i|
+      last = (i == deps.length - 1)
+      dep_tree_child(dep, graph, "  ", last, lines, installed,
+                     show_installed, Set.new([name]))
+      lines << "  │" if !last
+    end
+  end
+
+  def dep_tree_child(name, graph, prefix, is_last, lines, installed,
+                     show_installed, visited)
+    conn = is_last ? "└── " : "├── "
+    lines << "#{prefix}#{conn}#{dep_tree_fmt(name, installed, show_installed)}"
+
+    return if visited.include?(name)
+    deps = dep_tree_deps(name, graph, installed, show_installed)
+    return if deps.empty?
+
+    child_prefix = prefix + (is_last ? "    " : "│   ")
+    spacer = child_prefix.rstrip
+    lines << spacer
+
+    new_visited = visited | [name]
+    deps.each_with_index do |dep, i|
+      last = (i == deps.length - 1)
+      dep_tree_child(dep, graph, child_prefix, last, lines, installed,
+                     show_installed, new_visited)
+      lines << spacer if !last
+    end
+  end
+
+  # --- Shared helpers ---
+
+  def dep_tree_deps(name, graph, installed, show_installed)
+    deps = graph[name] || []
+    show_installed ? deps : deps.reject { |d| installed.include?(d) }
+  end
+
+  def dep_tree_fmt(name, installed, show_installed)
+    if show_installed && installed.include?(name)
+      "#{Term::DIM}#{name}#{Term::RESET}"
+    else
+      name
+    end
+  end
+
+  # -----------------------------------------------------------
+
   def set_gcc_tc_ver
 
     ver = Ver(getenv("GCC_TC_VER", ARCH.default_gcc_ver))
@@ -226,6 +335,8 @@ module Main
       dry_run: false,
       list: false,
       list_installable: false,
+      deps: [],
+      ascii: false,
       force: false,
       self_test: false,
       coverage: false,
@@ -250,6 +361,7 @@ module Main
       :just_context,
       :list,
       :list_installable,
+      :deps,
       :self_test,
       :check_for_updates,
       :upgrade,
@@ -287,6 +399,20 @@ module Main
          'tooling (e.g. system tests that need to filter per-arch',
          'supported packages) [MODE]') {
       opts[:list_installable] = true
+    }
+
+    p.on('-D', '--deps PKG',
+         'Show the dependency tree for the given package(s).',
+         'Already-installed deps are shown in gray. Respects',
+         '-a <arch> for cross-arch queries. [MODE]') do |first|
+      get_multiple_args.call(first, :deps)
+    end
+
+    p.on('--ascii',
+         'Use plain-text indented output for dependency trees.',
+         'Machine-friendly alternative to the fancy box-drawing',
+         'format. Applies to --deps and -s install plans. [FLAG]') {
+      opts[:ascii] = true
     }
 
     p.on('-j', '--just-context', 'Just show the context and quit [MODE]') {
@@ -611,6 +737,32 @@ module Main
       return 0
     end
 
+    if !options[:deps].blank?
+      target = options[:arch] ? ALL_ARCHS[options[:arch]] : ARCH
+      pkgmgr.with_target_arch(target) do
+        graph = pkgmgr.build_dep_graph
+        installed = Set.new
+        pkgmgr.all_packages.each { |p|
+          installed.add(p.name) if p.installed?(p.default_ver)
+        }
+
+        roots = options[:deps].map { |raw|
+          name = resolve_pkg_name(raw)
+          return 1 if !name
+          name
+        }
+
+        lines = render_dep_trees(roots, graph,
+                                 installed: installed,
+                                 show_installed: true,
+                                 ascii: options[:ascii])
+        puts if !options[:ascii]
+        lines.each { |l| puts l }
+        puts if !options[:ascii]
+      end
+      return 0
+    end
+
     if options[:upgrade]
       upgrades = pkgmgr.get_upgradable_packages
       if upgrades.empty?
@@ -731,11 +883,20 @@ module Main
             next
           end
 
-          dep_names = plan.map(&:first) - requested.map(&:first)
-          if !dep_names.empty?
-            info "Dependencies to install: #{dep_names.join(', ')}"
-          end
-          info "Install order: #{plan.map(&:first).join(' -> ')}"
+          # Show the install plan as a dependency tree.
+          graph = pkgmgr.build_dep_graph
+          installed = Set.new
+          pkgmgr.all_packages.each { |p|
+            installed.add(p.name) if p.installed?(p.default_ver)
+          }
+          req_names = requested.map(&:first)
+          info "Install plan:"
+          lines = render_dep_trees(req_names, graph,
+                                   installed: installed,
+                                   show_installed: false,
+                                   ascii: options[:ascii])
+          lines.each { |l| puts l }
+          puts if !options[:ascii]
 
           if options[:dry_run]
             info "Dry run (-d): nothing installed"
