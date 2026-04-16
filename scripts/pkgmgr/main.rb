@@ -381,7 +381,9 @@ module Main
       get_multiple_args.call(first, :uninstall_compiler)
     end
 
-    p.on('-d', '--dry-run', 'Dry run for the uninstall mode [FLAG]') {
+    p.on('-d', '--dry-run',
+         'Dry run: show what would be done and exit without touching',
+         'the filesystem. Applies to -s, -S, -u, -U. [FLAG]') {
       opts[:dry_run] = true
     }
 
@@ -606,6 +608,12 @@ module Main
       )
 
       info "Packages to upgrade: #{plan.map(&:first).join(', ')}"
+
+      if options[:dry_run]
+        info "Dry run (-d): nothing upgraded"
+        return 0
+      end
+
       for name, ver in plan do
         if !pkgmgr.install(name, ver)
           error "Could not install: #{name}"
@@ -641,12 +649,19 @@ module Main
       # requested package first. Transitive deps are NOT touched — only
       # the explicitly requested packages are wiped and reinstalled.
       if options[:force]
-        info "Force mode (-f): removing requested packages before install"
-        for name, _ver in requested do
-          info "  Force-removing: #{name}"
-          pkgmgr.uninstall(name, false, false, "ALL")
+        if options[:dry_run]
+          info "Force mode (-f): would remove requested packages"
+          for name, _ver in requested do
+            info "  Would force-remove: #{name}"
+          end
+        else
+          info "Force mode (-f): removing requested packages before install"
+          for name, _ver in requested do
+            info "  Force-removing: #{name}"
+            pkgmgr.uninstall(name, false, false, "ALL")
+          end
+          pkgmgr.refresh()
         end
-        pkgmgr.refresh()
       end
 
       # Resolve the full install plan: transitive deps, minus
@@ -664,6 +679,11 @@ module Main
         info "Dependencies to install: #{dep_names.join(', ')}"
       end
       info "Install order: #{plan.map(&:first).join(' -> ')}"
+
+      if options[:dry_run]
+        info "Dry run (-d): nothing installed"
+        return 0
+      end
 
       for name, ver in plan do
         if !pkgmgr.install(name, ver)
