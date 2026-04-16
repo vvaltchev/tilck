@@ -351,13 +351,17 @@ module Main
       'by CMake without the bash wrapper. [MODE]'
     ) { opts[:check_for_updates] = true }
 
-    p.on('-s', '--install PKG', 'Install the given package [MODE]') do |first|
+    p.on('-s', '--install PKG',
+         'Install the given package. Use ALL to install every',
+         'installable non-compiler package for the current ARCH',
+         '(compilers are auto-pulled in as deps). [MODE]') do |first|
       get_multiple_args.call(first, :install)
     end
 
     p.on(
       '-S', '--install-compiler ARCH',
-      'Install a GCC + libmusl cross-compiler for the given ARCH [MODE]'
+      'Install a GCC + libmusl cross-compiler for the given ARCH.',
+      'Use ALL to install every registered cross-compiler. [MODE]'
     ) do |first|
       get_multiple_args.call(first, :install_compiler)
     end
@@ -371,7 +375,8 @@ module Main
 
     p.on(
       '-U', '--uninstall-compiler ARCH',
-      'Uninstall the GCC + libmusl cross-compiler for the given ARCH [MODE]'
+      'Uninstall the GCC + libmusl cross-compiler for the given ARCH.',
+      'Use ALL to uninstall every registered cross-compiler. [MODE]'
     ) do |first|
       get_multiple_args.call(first, :uninstall_compiler)
     end
@@ -456,15 +461,34 @@ module Main
       [:install,:install_compiler],
       [:uninstall,:uninstall_compiler]
     ] do
-      opts[dest] += opts[source].map { |x|
+      opts[dest] += opts[source].flat_map { |x|
         arch, ver = x.split(":")
+        # ALL: every registered cross-compiler.
+        if arch == "ALL"
+          next ALL_ARCHS.values.map { |a|
+            "gcc-#{a.name}-musl:#{ver}"
+          }
+        end
         arch_obj = ALL_ARCHS[arch]
         if !arch_obj
           raise OptionParser::InvalidArgument, "Unknown architecture: #{arch}"
         end
-        "gcc-#{arch_obj.name}-musl:#{ver}"
+        ["gcc-#{arch_obj.name}-musl:#{ver}"]
       }
     end
+
+    # -s ALL: expand into every installable non-compiler package for
+    # the current ARCH. Compilers are reached either via `-S ALL` or
+    # pulled in implicitly as deps of target packages.
+    opts[:install] = opts[:install].flat_map { |x|
+      raw, ver = x.split(":")
+      next [x] unless raw == "ALL"
+      pkgmgr.all_packages
+            .reject(&:is_compiler)
+            .reject { |p| p.get_installable_list.empty? }
+            .map { |p| "#{p.name}:#{ver}" }
+    }
+
     return opts
   end
 
