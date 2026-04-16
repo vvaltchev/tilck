@@ -367,35 +367,36 @@ if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
    export SKIP_INSTALL_PACKAGES=1
 fi
 
-# --contrib is consumed here and not forwarded to the Ruby pkgmgr.
-# It can appear as the only argument or combined with -n.
-for arg in "$@"; do
-   if [[ "$arg" == "--contrib" ]]; then
-      export CONTRIB_PACKAGES=1
-      break
-   fi
-done
-
-# Rebuild the argument list without --contrib
+# --contrib and --only-system-deps are consumed here and not forwarded
+# to the Ruby pkgmgr. They can appear alongside other flags.
+ONLY_SYSTEM_DEPS=0
 new_args=()
 for arg in "$@"; do
-   if [[ "$arg" != "--contrib" ]]; then
-      new_args+=("$arg")
-   fi
+   case "$arg" in
+      --contrib)          export CONTRIB_PACKAGES=1 ;;
+      --only-system-deps) ONLY_SYSTEM_DEPS=1 ;;
+      *)                  new_args+=("$arg") ;;
+   esac
 done
 set -- "${new_args[@]}"
 
 create_base_dirs
 
-# Check/install system packages only when invoked with no arguments or
-# with --contrib. Any other explicit flag (-l, -h, -s, etc.) skips the
-# check. With --contrib, the extra contributor packages (clang, multilib)
-# are added to the list.
+# Check/install system packages only when invoked with no arguments,
+# with --contrib, or with --only-system-deps. Any other explicit flag
+# (-l, -h, -s, etc.) skips the check.
 if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
-   if [[ $# -eq 0 || "$CONTRIB_PACKAGES" == "1" ]]; then
+   if [[ $# -eq 0 || "$CONTRIB_PACKAGES" == "1" || "$ONLY_SYSTEM_DEPS" == "1" ]]; then
       install_packages
       export SKIP_INSTALL_PACKAGES=1
    fi
+fi
+
+# --only-system-deps: exit now, skip the Ruby package manager entirely.
+# Useful for Docker layer caching: system deps in one layer, toolchain
+# packages in subsequent layers.
+if [[ "$ONLY_SYSTEM_DEPS" == "1" ]]; then
+   exit 0
 fi
 
 setup_ruby
