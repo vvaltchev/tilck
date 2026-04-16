@@ -215,17 +215,18 @@ module TestHelper
     def default_ver = Ver("1.0.0")
 
     # Match the pattern of real packages: host → syscc/HOST_ARCH,
-    # noarch → nil/nil, target → gcc_ver/ARCH.
+    # noarch → nil/nil, target → pkgmgr.target_arch (respects
+    # with_target_arch scope, defaults to ARCH).
     def default_cc
       return "syscc" if on_host
       return nil if arch_list.nil?
-      return ARCH.gcc_ver
+      return pkgmgr.target_arch.gcc_ver
     end
 
     def default_arch
       return HOST_ARCH if on_host
       return nil if arch_list.nil?
-      return ARCH
+      return pkgmgr.target_arch
     end
 
     def install_impl_internal(install_dir)

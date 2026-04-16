@@ -22,6 +22,37 @@ class PackageManager
     @known_installed = nil
     @found_installed = nil
     @installable = nil
+    @target_arch = nil    # nil = fall back to the global ARCH
+  end
+
+  # Current target architecture: the arch the install/uninstall flow
+  # is currently operating on. Defaults to the global ARCH constant;
+  # temporarily overridden by with_target_arch { ... } to honor the
+  # `-a <arch>` CLI flag in `-s` mode (i.e. "install this package for
+  # a different arch than ARCH"). Every arch-sensitive computation
+  # in the install/introspection path reads this instead of ARCH
+  # directly, so the override flows transparently through:
+  #   - Package#default_arch / default_cc / arch_supported?
+  #   - Package#final_install_root (→ the install dir)
+  #   - PackageManager#build_dep_graph (→ the implicit compiler dep)
+  #   - ALL-expansion for -s ALL (→ per-arch installable set)
+  def target_arch
+    @target_arch || ARCH
+  end
+
+  # Run `block` with the target arch temporarily set to `arch`. Nests
+  # correctly — the previous @target_arch (possibly another override,
+  # possibly nil) is saved on entry and restored on exit even if the
+  # block raises. The block's return value is propagated.
+  def with_target_arch(arch, &block)
+    assert { arch.is_a?(Architecture) }
+    prev = @target_arch
+    @target_arch = arch
+    begin
+      return block.call
+    ensure
+      @target_arch = prev
+    end
   end
 
   def refresh
@@ -334,10 +365,13 @@ class PackageManager
   # Returns { "name" => ["dep_name", ...], ... }
   #
   # Target packages (not on_host, has arch_list) implicitly depend on
-  # the cross-compiler for the current ARCH, since Package#install_impl
-  # calls with_cc() which requires the compiler to be installed.
+  # the cross-compiler for the current target_arch, since
+  # Package#install_impl calls with_cc() which requires the compiler
+  # to be installed. Using target_arch (not ARCH) lets this respect
+  # the `-s <pkg> -a <arch>` scope: when installing for a different
+  # arch, the dep points at that arch's compiler automatically.
   def build_dep_graph
-    cc_name = "gcc-#{ARCH.name}-musl"
+    cc_name = "gcc-#{target_arch.name}-musl"
     has_cc = @packages.key?(cc_name)
 
     @packages.transform_values { |pkg|

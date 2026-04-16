@@ -110,9 +110,11 @@ class GnuefiPackage < Package
   # the current arch + x86_64.
   #
   def archs_needed
-    archs = [ARCH]
+    # Use default_arch (not the bare ARCH) so that -s gnuefi -a <x86>
+    # still computes the pair correctly: target arch + x86_64.
+    archs = [default_arch]
     x64 = ALL_ARCHS["x86_64"]
-    archs << x64 if ARCH != x64
+    archs << x64 if default_arch != x64
     archs
   end
 

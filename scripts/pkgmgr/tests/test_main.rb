@@ -117,11 +117,11 @@ class TestParseOptionsInstall < Minitest::Test
   end
 end
 
-class TestParseOptionsInstallAll < Minitest::Test
+class TestExpandInstallAll < Minitest::Test
   include TestHelper
 
-  # -s ALL expansion needs the pkgmgr registry populated to discover
-  # installable packages, so each test sets up its own fake registry.
+  # expand_install_all runs inside a with_target_arch scope in main().
+  # Tests set up their own fake registry and call the helper directly.
 
   def setup
     reset_pkgmgr!
@@ -134,35 +134,49 @@ class TestParseOptionsInstallAll < Minitest::Test
       FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
     )
 
-    opts = Main.parse_options(["-s", "ALL"])
-    names = opts[:install].map { |s| s.split(":").first }.sort
-    # Non-compilers included, compilers excluded.
+    result = Main.expand_install_all(["ALL"])
+    names = result.map { |s| s.split(":").first }.sort
     assert_equal ["bar", "foo"], names
   end
 
   def test_install_ALL_skips_packages_not_supported_on_current_arch
-    # A package whose arch_list excludes the current ARCH is filtered
-    # out — get_installable_list returns [] for it.
     other_arch = (ALL_ARCHS.values - [ARCH]).first
     pkgmgr.register(FakePackage.new("universal"))
     pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
 
-    opts = Main.parse_options(["-s", "ALL"])
-    names = opts[:install].map { |s| s.split(":").first }
+    result = Main.expand_install_all(["ALL"])
+    names = result.map { |s| s.split(":").first }
     assert_includes names, "universal"
     refute_includes names, "other_only"
   end
 
   def test_install_ALL_coexists_with_named_packages
-    # Mixing ALL with explicit names concatenates both sets.
     pkgmgr.register(FakePackage.new("foo"))
     pkgmgr.register(FakePackage.new("bar"))
 
-    opts = Main.parse_options(["-s", "custom", "ALL"])
-    names = opts[:install].map { |s| s.split(":").first }
+    result = Main.expand_install_all(["custom", "ALL"])
+    names = result.map { |s| s.split(":").first }
     assert_includes names, "custom"
     assert_includes names, "foo"
     assert_includes names, "bar"
+  end
+
+  def test_install_ALL_respects_target_arch_scope
+    # When with_target_arch scopes to riscv64, a package that only
+    # supports riscv64 is included; an i386-only package is excluded.
+    rv = ALL_ARCHS["riscv64"]
+    i3 = ALL_ARCHS["i386"]
+    pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
+    pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
+    pkgmgr.register(FakePackage.new("universal"))
+
+    pkgmgr.with_target_arch(rv) do
+      result = Main.expand_install_all(["ALL"])
+      names = result.map { |s| s.split(":").first }
+      assert_includes names, "rv_pkg"
+      assert_includes names, "universal"
+      refute_includes names, "i3_pkg"
+    end
   end
 end
 
@@ -586,6 +600,277 @@ class TestMainDryRunInstall < Minitest::Test
         assert_empty FakePackage.install_log
         assert_match(/Packages to upgrade.*foo/, out)
         assert_match(/Dry run/, out)
+      end
+    end
+  end
+end
+
+# ---------------------------------------------------------------
+# Tests for -a <arch> / with_target_arch in install mode.
+# ---------------------------------------------------------------
+
+class TestTargetArchScope < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_target_arch_defaults_to_ARCH
+    assert_equal ARCH, pkgmgr.target_arch
+  end
+
+  def test_with_target_arch_overrides_and_restores
+    x64 = ALL_ARCHS["x86_64"]
+    assert_equal ARCH, pkgmgr.target_arch
+
+    pkgmgr.with_target_arch(x64) do
+      assert_equal x64, pkgmgr.target_arch
+    end
+
+    assert_equal ARCH, pkgmgr.target_arch
+  end
+
+  def test_with_target_arch_nests_correctly
+    x64 = ALL_ARCHS["x86_64"]
+    rv  = ALL_ARCHS["riscv64"]
+
+    pkgmgr.with_target_arch(x64) do
+      assert_equal x64, pkgmgr.target_arch
+
+      pkgmgr.with_target_arch(rv) do
+        assert_equal rv, pkgmgr.target_arch
+      end
+
+      assert_equal x64, pkgmgr.target_arch
+    end
+
+    assert_equal ARCH, pkgmgr.target_arch
+  end
+
+  def test_with_target_arch_restores_on_exception
+    x64 = ALL_ARCHS["x86_64"]
+    begin
+      pkgmgr.with_target_arch(x64) do
+        raise "boom"
+      end
+    rescue RuntimeError
+    end
+    assert_equal ARCH, pkgmgr.target_arch
+  end
+
+  def test_default_arch_reads_target_arch
+    x64 = ALL_ARCHS["x86_64"]
+    pkg = FakePackage.new("foo")
+    assert_equal ARCH, pkg.default_arch
+
+    pkgmgr.with_target_arch(x64) do
+      assert_equal x64, pkg.default_arch
+    end
+
+    assert_equal ARCH, pkg.default_arch
+  end
+
+  def test_default_cc_reads_target_arch
+    # Ensure gcc_ver is set for the test arch (read_gcc_ver_defaults
+    # only runs in main(), not in tests).
+    x64 = ALL_ARCHS["x86_64"]
+    saved = x64.gcc_ver
+    x64.gcc_ver ||= FAKE_GCC_VER
+    pkg = FakePackage.new("foo")
+
+    pkgmgr.with_target_arch(x64) do
+      assert_equal x64.gcc_ver, pkg.default_cc
+    end
+  ensure
+    x64.gcc_ver = saved
+  end
+
+  def test_arch_supported_reads_target_arch
+    rv = ALL_ARCHS["riscv64"]
+    x64 = ALL_ARCHS["x86_64"]
+    pkg = FakePackage.new("rv_only", arch_list: [rv])
+
+    pkgmgr.with_target_arch(rv) do
+      assert pkg.arch_supported?
+    end
+
+    pkgmgr.with_target_arch(x64) do
+      refute pkg.arch_supported?
+    end
+  end
+
+  def test_build_dep_graph_uses_target_arch
+    rv = ALL_ARCHS["riscv64"]
+    pkgmgr.register(
+      FakePackage.new("gcc-riscv64-musl", on_host: true, is_compiler: true)
+    )
+    pkgmgr.register(FakePackage.new("foo"))
+
+    pkgmgr.with_target_arch(rv) do
+      graph = pkgmgr.build_dep_graph
+      assert_includes graph["foo"], "gcc-riscv64-musl"
+    end
+  end
+
+  def test_build_dep_graph_default_uses_ARCH
+    pkgmgr.register(
+      FakePackage.new("gcc-#{ARCH.name}-musl",
+                       on_host: true, is_compiler: true)
+    )
+    pkgmgr.register(FakePackage.new("foo"))
+
+    graph = pkgmgr.build_dep_graph
+    assert_includes graph["foo"], "gcc-#{ARCH.name}-musl"
+  end
+end
+
+class TestInstallWithTargetArch < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  def test_install_with_dash_a_for_different_arch
+    # -s foo -a riscv64: installs foo for riscv64 (pkg is
+    # arch-universal). The compiler dep should be riscv64's.
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(
+          FakePackage.new("gcc-riscv64-musl",
+                           on_host: true, is_compiler: true)
+        )
+        pkgmgr.register(FakePackage.new("foo"))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "foo", "-a", "riscv64", "-d"])
+          assert_equal 0, result
+        }
+        # Plan should include the riscv64 compiler as a dep.
+        assert_match(/gcc-riscv64-musl/, out)
+        assert_match(/Install order:.*foo/, out)
+      end
+    end
+  end
+
+  def test_install_with_dash_a_refuses_unsupported_arch
+    # -s rv_only -a x86_64: rv_only supports only riscv64.
+    # Should error.
+    with_fake_tc do
+      with_stubbed_externals do
+        rv = ALL_ARCHS["riscv64"]
+        pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "rv_only", "-a", "x86_64"])
+          assert_equal 1, result
+        }
+      end
+    end
+  end
+
+  def test_install_ALL_with_dash_a
+    # -s ALL -a riscv64: expand against riscv64's installable set.
+    with_fake_tc do
+      with_stubbed_externals do
+        rv = ALL_ARCHS["riscv64"]
+        i3 = ALL_ARCHS["i386"]
+        pkgmgr.register(
+          FakePackage.new("gcc-riscv64-musl",
+                           on_host: true, is_compiler: true)
+        )
+        pkgmgr.register(FakePackage.new("rv_pkg", arch_list: [rv]))
+        pkgmgr.register(FakePackage.new("i3_pkg", arch_list: [i3]))
+        pkgmgr.register(FakePackage.new("universal"))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "ALL", "-a", "riscv64", "-d"])
+          assert_equal 0, result
+        }
+        # rv_pkg and universal in the plan; i3_pkg excluded.
+        assert_match(/rv_pkg/, out)
+        assert_match(/universal/, out)
+        refute_match(/i3_pkg/, out)
+      end
+    end
+  end
+
+  def test_install_with_dash_a_ALL_iterates_archs
+    # -s foo -a ALL: install foo for each supported arch.
+    with_fake_tc do
+      with_stubbed_externals do
+        ALL_ARCHS.values.each do |a|
+          pkgmgr.register(
+            FakePackage.new("gcc-#{a.name}-musl",
+                             on_host: true, is_compiler: true)
+          )
+        end
+        pkgmgr.register(FakePackage.new("foo"))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "foo", "-a", "ALL", "-d"])
+          assert_equal 0, result
+        }
+        # Should see an "Architecture:" banner for each arch.
+        ALL_ARCHS.values.each do |a|
+          assert_match(/Architecture: #{a.name}/, out)
+        end
+      end
+    end
+  end
+
+  def test_install_with_dash_a_ALL_skips_unsupported_archs
+    # -s rv_only -a ALL: install on riscv64, skip others gracefully.
+    with_fake_tc do
+      with_stubbed_externals do
+        rv = ALL_ARCHS["riscv64"]
+        ALL_ARCHS.values.each do |a|
+          pkgmgr.register(
+            FakePackage.new("gcc-#{a.name}-musl",
+                             on_host: true, is_compiler: true)
+          )
+        end
+        pkgmgr.register(FakePackage.new("rv_only", arch_list: [rv]))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "rv_only", "-a", "ALL", "-d"])
+          assert_equal 0, result
+        }
+        # riscv64 shows the plan; others show "Skipping".
+        assert_match(/Architecture: riscv64/, out)
+        assert_match(/Install order:.*rv_only/, out)
+        assert_match(/Skipping rv_only: not supported on i386/, out)
+      end
+    end
+  end
+
+  def test_compiler_dep_matches_target_arch
+    # When installing for riscv64, the implicit dep must be
+    # gcc-riscv64-musl, not gcc-<default_ARCH>-musl.
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(
+          FakePackage.new("gcc-riscv64-musl",
+                           on_host: true, is_compiler: true)
+        )
+        pkgmgr.register(FakePackage.new("foo"))
+
+        out = capture_stdout {
+          result = Main.main(["-s", "foo", "-a", "riscv64", "-d"])
+          assert_equal 0, result
+        }
+        assert_match(/Dependencies to install:.*gcc-riscv64-musl/, out)
       end
     end
   end

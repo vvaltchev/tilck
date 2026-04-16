@@ -130,9 +130,11 @@ class Package
 
   # Is the current target arch supported by this package?
   # Noarch (arch_list nil) and host packages are always true.
+  # Reads pkgmgr.target_arch so the answer reflects the `-a <arch>`
+  # install-mode override when one is active.
   def arch_supported?
     return true if @arch_list.nil? || @on_host
-    return @arch_list.include?(ARCH)
+    return @arch_list.include?(pkgmgr.target_arch)
   end
 
   # Should this package be auto-installed for the current config?
@@ -150,13 +152,16 @@ class Package
   end
 
   # The root directory for the final install (where mv moves to).
+  # For target packages, uses default_arch (which for the base class
+  # is pkgmgr.target_arch) so the install lands under the right
+  # gcc-<ver>/<arch>/ tree when `-a <arch>` is active.
   def final_install_root
     if on_host
       host_install_root
-    elsif default_arch.nil?
+    elsif (a = default_arch).nil?
       TC_NOARCH
     else
-      TC / "gcc-#{ARCH.gcc_ver}" / ARCH.name
+      TC / "gcc-#{a.gcc_ver}" / a.name
     end
   end
 
@@ -221,8 +226,11 @@ class Package
     end
   end
 
-  def default_arch = ARCH
-  def default_cc = ARCH.gcc_ver
+  # Default arch / compiler for a regular target package: the pkgmgr's
+  # current target_arch (ARCH unless a with_target_arch(...) override
+  # is active). Host and noarch packages override both.
+  def default_arch = pkgmgr.target_arch
+  def default_cc = pkgmgr.target_arch.gcc_ver
   def default_ver = pkgmgr.get_config_ver(@name.sub("host_", ""))
   def pkg_dirname = name.sub("host_", "")
   def ver_dirname(ver) = ver.to_s()
@@ -350,9 +358,12 @@ class Package
 
         return false if !apply_patches(ver)
 
-        if !on_host && !default_arch.nil?
-          # Target package: need cross-compiler in PATH
-          pkgmgr.with_cc() do |_arch_dir|
+        if !on_host && (a = default_arch) && !a.nil?
+          # Target package: need cross-compiler in PATH. Pass the
+          # arch name explicitly so with_target_arch scoping is
+          # respected — with_cc() with no arg defaults to ARCH
+          # which might differ from target_arch.
+          pkgmgr.with_cc(a.name) do |_arch_dir|
             ok = install_impl_internal(d)
           end
         else

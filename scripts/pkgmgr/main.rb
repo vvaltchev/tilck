@@ -410,8 +410,11 @@ module Main
 
     p.on(
       '-a', '--arch ARCH',
-      'Make the uninstall operation affect only packages built for the given',
-      'architecture. The special value ALL, means all architectures. [OPTION]'
+      'Target architecture for the current operation. In install mode',
+      '(-s), sets the architecture to build packages for (overrides',
+      'ARCH=). In uninstall mode (-u), filters to installations of',
+      'that architecture. The special value ALL means all architectures.',
+      '[OPTION]'
     ) do |value|
 
       if value != "ALL"
@@ -479,10 +482,18 @@ module Main
       }
     end
 
-    # -s ALL: expand into every installable non-compiler package for
-    # the current ARCH. Compilers are reached either via `-S ALL` or
-    # pulled in implicitly as deps of target packages.
-    opts[:install] = opts[:install].flat_map { |x|
+    # NOTE: -s ALL expansion moved to main(), inside the
+    # with_target_arch scope, so it respects -a <arch>.
+
+    return opts
+  end
+
+  # Expand "ALL" entries in `install_list` into every installable
+  # non-compiler package for the pkgmgr's current target_arch. Called
+  # inside the with_target_arch scope so arch_supported? sees the
+  # right arch. Compilers are reached via -S ALL or as implicit deps.
+  def expand_install_all(install_list)
+    install_list.flat_map { |x|
       raw, ver = x.split(":")
       next [x] unless raw == "ALL"
       pkgmgr.all_packages
@@ -490,8 +501,6 @@ module Main
             .reject { |p| p.get_installable_list.empty? }
             .map { |p| "#{p.name}:#{ver}" }
     }
-
-    return opts
   end
 
   def main(argv)
@@ -575,23 +584,29 @@ module Main
       # Order is topological (deps-first) so a consumer installing
       # in listed order keeps each `-s` step small (no hidden dep
       # installs blowing up the per-step timing).
-      installable = pkgmgr.all_packages.reject { |p|
-        p.get_installable_list.empty?
-      }
-      graph = pkgmgr.build_dep_graph
-      empty = Set.new
-      default_names = pkgmgr.get_default_packages.map(&:name)
+      #
+      # Respects -a <arch> if given, so
+      # `--list-installable -a riscv64` shows riscv64's set.
+      target = options[:arch] ? ALL_ARCHS[options[:arch]] : ARCH
+      pkgmgr.with_target_arch(target) do
+        installable = pkgmgr.all_packages.reject { |p|
+          p.get_installable_list.empty?
+        }
+        graph = pkgmgr.build_dep_graph
+        empty = Set.new
+        default_names = pkgmgr.get_default_packages.map(&:name)
 
-      default_order = DepResolver.resolve(default_names, graph, empty)
-      default_set = Set.new(default_order)
+        default_order = DepResolver.resolve(default_names, graph, empty)
+        default_set = Set.new(default_order)
 
-      full_order = DepResolver.resolve(
-        installable.map(&:name), graph, empty
-      )
+        full_order = DepResolver.resolve(
+          installable.map(&:name), graph, empty
+        )
 
-      full_order.each do |name|
-        tag = default_set.include?(name) ? "default" : "optional"
-        puts "#{name} #{tag}"
+        full_order.each do |name|
+          tag = default_set.include?(name) ? "default" : "optional"
+          puts "#{name} #{tag}"
+        end
       end
       return 0
     end
@@ -636,59 +651,103 @@ module Main
 
     if !options[:install].blank?
 
-      # Parse "name:ver" pairs, resolving short names and validating
-      # that each package exists.
-      requested = options[:install].map { |s|
-        raw, ver = s.split(":")
-        name = resolve_pkg_name(raw)
-        return 1 if !name
-        [name, Ver(ver)]
-      }
+      # Determine which arch(es) to install for.
+      arch_opt = options[:arch]
+      if arch_opt == "ALL"
+        targets = ALL_ARCHS.values
+      elsif arch_opt
+        targets = [ALL_ARCHS[arch_opt]]
+      else
+        targets = [ARCH]
+      end
 
-      # -f in install mode: force a fresh install by uninstalling each
-      # requested package first. Transitive deps are NOT touched — only
-      # the explicitly requested packages are wiped and reinstalled.
-      if options[:force]
-        if options[:dry_run]
-          info "Force mode (-f): would remove requested packages"
-          for name, _ver in requested do
-            info "  Would force-remove: #{name}"
+      for target in targets do
+        pkgmgr.with_target_arch(target) do
+
+          # When iterating ALL archs, show which one we're on.
+          if targets.length > 1
+            info "Architecture: #{target.name}"
           end
-        else
-          info "Force mode (-f): removing requested packages before install"
+
+          # Expand "ALL" entries now, inside the arch scope, so
+          # get_installable_list uses the correct arch.
+          expanded = expand_install_all(options[:install])
+
+          # Parse "name:ver" pairs, resolving short names.
+          requested = expanded.map { |s|
+            raw, ver = s.split(":")
+            name = resolve_pkg_name(raw)
+            return 1 if !name
+            [name, Ver(ver)]
+          }
+
+          # Validate arch support for each explicitly-requested
+          # package (deps are checked later by pkgmgr.install).
+          arch_ok = true
           for name, _ver in requested do
-            info "  Force-removing: #{name}"
-            pkgmgr.uninstall(name, false, false, "ALL")
+            pkg = pkgmgr.get(name)
+            next if !pkg || pkg.on_host || pkg.arch_list.nil?
+            if !pkg.arch_supported?
+              if targets.length > 1
+                # -a ALL: skip this arch gracefully.
+                info "Skipping #{name}: not supported on " +
+                     "#{pkgmgr.target_arch.name}"
+                arch_ok = false
+                break
+              else
+                error "Package #{name} is not supported " +
+                      "for arch #{pkgmgr.target_arch.name}"
+                return 1
+              end
+            end
           end
-          pkgmgr.refresh()
-        end
-      end
+          next if !arch_ok
 
-      # Resolve the full install plan: transitive deps, minus
-      # already-installed, in topological order.
-      plan = pkgmgr.resolve_install_plan(requested)
+          # -f in install mode: force a fresh install by uninstalling
+          # each requested package first. Transitive deps are NOT
+          # touched — only the explicitly requested packages.
+          if options[:force]
+            if options[:dry_run]
+              info "Force mode (-f): would remove requested packages"
+              for name, _ver in requested do
+                info "  Would force-remove: #{name}"
+              end
+            else
+              info "Force mode (-f): removing requested packages"
+              for name, _ver in requested do
+                info "  Force-removing: #{name}"
+                pkgmgr.uninstall(name, false, false, "ALL")
+              end
+              pkgmgr.refresh()
+            end
+          end
 
-      if plan.empty?
-        info "All requested packages are already installed"
-        return 0
-      end
+          # Resolve the full install plan: transitive deps, minus
+          # already-installed, in topological order.
+          plan = pkgmgr.resolve_install_plan(requested)
 
-      # Show the plan (like APT), then proceed without confirmation.
-      dep_names = plan.map(&:first) - requested.map(&:first)
-      if !dep_names.empty?
-        info "Dependencies to install: #{dep_names.join(', ')}"
-      end
-      info "Install order: #{plan.map(&:first).join(' -> ')}"
+          if plan.empty?
+            info "All requested packages are already installed"
+            next
+          end
 
-      if options[:dry_run]
-        info "Dry run (-d): nothing installed"
-        return 0
-      end
+          dep_names = plan.map(&:first) - requested.map(&:first)
+          if !dep_names.empty?
+            info "Dependencies to install: #{dep_names.join(', ')}"
+          end
+          info "Install order: #{plan.map(&:first).join(' -> ')}"
 
-      for name, ver in plan do
-        if !pkgmgr.install(name, ver)
-          error "Could not install: #{name}"
-          return 1
+          if options[:dry_run]
+            info "Dry run (-d): nothing installed"
+            next
+          end
+
+          for name, ver in plan do
+            if !pkgmgr.install(name, ver)
+              error "Could not install: #{name}"
+              return 1
+            end
+          end
         end
       end
       return 0

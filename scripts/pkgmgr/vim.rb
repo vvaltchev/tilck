@@ -47,7 +47,11 @@ class VimPackage < Package
 
     arch = default_arch.gcc_tc
     ncurses_ver = pkgmgr.get_config_ver("ncurses")
-    ncurses = ARCH.target_dir / "ncurses" / ncurses_ver.to_s / "install"
+    # Pin ncurses to default_arch.target_dir (not ARCH.target_dir) so
+    # `-s vim -a <arch>` reads ncurses from the matching per-arch
+    # install tree.
+    ncurses = default_arch.target_dir /
+              "ncurses" / ncurses_ver.to_s / "install"
 
     with_saved_env(%w[CFLAGS LDFLAGS CPPFLAGS]) do
 
