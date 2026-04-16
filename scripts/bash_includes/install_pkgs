@@ -37,6 +37,7 @@ function install_debian_family {
    pkg_list+=(gzip)
    pkg_list+=(gawk)
    pkg_list+=(wget)
+   pkg_list+=(curl)
    pkg_list+=(git)
    pkg_list+=(gcc)
    pkg_list+=(g++)
@@ -59,6 +60,10 @@ function install_debian_family {
       pkg_list+=(clang)
       pkg_list+=(gcc-multilib)
       pkg_list+=(g++-multilib)
+      pkg_list+=(python3-serial)
+      pkg_list+=(python3-pip)
+      pkg_list+=(python3-coverage)
+      pkg_list+=(imagemagick)
    fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -156,6 +161,7 @@ function install_fedora {
    pkg_list+=(gzip)
    pkg_list+=(gawk)
    pkg_list+=(wget)
+   pkg_list+=(curl)
    pkg_list+=(git)
    pkg_list+=(gcc)
    pkg_list+=(gcc-c++)
@@ -190,6 +196,10 @@ function install_fedora {
       pkg_list+=(glibc-devel.i686)
       pkg_list+=(libgcc.i686)
       pkg_list+=(libstdc++-devel.i686)
+      pkg_list+=(python3-pyserial)
+      pkg_list+=(python3-pip)
+      pkg_list+=(python3-coverage)
+      pkg_list+=(ImageMagick)
    fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -257,6 +267,7 @@ function install_arch {
    pkg_list+=(gzip)
    pkg_list+=(gawk)
    pkg_list+=(wget)
+   pkg_list+=(curl)
    pkg_list+=(git)
    pkg_list+=(gcc)
    pkg_list+=(make)
@@ -277,6 +288,10 @@ function install_arch {
       pkg_list+=(clang)
       pkg_list+=(lib32-gcc-libs)
       pkg_list+=(lib32-glibc)
+      pkg_list+=(python-pyserial)
+      pkg_list+=(python-pip)
+      pkg_list+=(python-coverage)
+      pkg_list+=(imagemagick)
    fi
 
    if [[ "$TC_MINIMAL" != "1" ]]; then
@@ -360,6 +375,10 @@ function install_freebsd {
    pkg_list+=(python)
    pkg_list+=(ruby)
 
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(ImageMagick7-nox11)
+   fi
+
    # Ruby GEMs (included with Ruby on Ubuntu/Debian, but not on FreeBSD)
    pkg_list+=(rubygem-bundler)
    pkg_list+=(rubygem-rake)
@@ -407,6 +426,13 @@ function install_freebsd {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
       run_command "su - root -c \"pkg install $tmp\""
+   fi
+
+   # Contrib: install Python testing packages via pip (FreeBSD doesn't
+   # ship python3-serial / python3-coverage as system packages).
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      echo "Installing Python testing packages via pip..."
+      python3 -m pip install pyserial coverage
    fi
 }
 
@@ -457,6 +483,10 @@ function install_darwin {
       pkg_list+=(qemu)
    fi
 
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(imagemagick)
+   fi
+
    to_install=()
    echo Checking the packages that need to be installed
 
@@ -480,6 +510,14 @@ function install_darwin {
       run_command "brew install $tmp"
    else
       echo "You are all set, no packages need to be installed."
+   fi
+
+   # Contrib: install Python testing packages via pip (Homebrew's
+   # python3 includes pip; macOS curl is built-in so no need to add it).
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      echo "Installing Python testing packages via pip..."
+      python3 -m pip install pyserial coverage --break-system-packages 2>/dev/null \
+         || python3 -m pip install pyserial coverage
    fi
 }
 
