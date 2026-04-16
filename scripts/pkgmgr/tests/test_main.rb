@@ -99,6 +99,71 @@ class TestParseOptionsInstall < Minitest::Test
       Main.parse_options(["-S", "mips"])
     }
   end
+
+  def test_install_compiler_ALL_expands_to_every_arch
+    # -S ALL expands to one gcc-<arch>-musl entry per registered
+    # architecture in ALL_ARCHS.
+    opts = Main.parse_options(["-S", "ALL"])
+    names = opts[:install].map { |s| s.split(":").first }.sort
+    expected = ALL_ARCHS.values.map { |a| "gcc-#{a.name}-musl" }.sort
+    assert_equal expected, names
+  end
+
+  def test_install_compiler_ALL_with_version
+    # Version passed to -S ALL:<ver> is propagated to every compiler.
+    opts = Main.parse_options(["-S", "ALL:13.3.0"])
+    vers = opts[:install].map { |s| s.split(":", 2).last }.uniq
+    assert_equal ["13.3.0"], vers
+  end
+end
+
+class TestParseOptionsInstallAll < Minitest::Test
+  include TestHelper
+
+  # -s ALL expansion needs the pkgmgr registry populated to discover
+  # installable packages, so each test sets up its own fake registry.
+
+  def setup
+    reset_pkgmgr!
+  end
+
+  def test_install_ALL_expands_to_installable_non_compilers
+    pkgmgr.register(FakePackage.new("foo"))
+    pkgmgr.register(FakePackage.new("bar"))
+    pkgmgr.register(
+      FakePackage.new("gcc-fake-musl", on_host: true, is_compiler: true)
+    )
+
+    opts = Main.parse_options(["-s", "ALL"])
+    names = opts[:install].map { |s| s.split(":").first }.sort
+    # Non-compilers included, compilers excluded.
+    assert_equal ["bar", "foo"], names
+  end
+
+  def test_install_ALL_skips_packages_not_supported_on_current_arch
+    # A package whose arch_list excludes the current ARCH is filtered
+    # out — get_installable_list returns [] for it.
+    other_arch = (ALL_ARCHS.values - [ARCH]).first
+    pkgmgr.register(FakePackage.new("universal"))
+    pkgmgr.register(FakePackage.new("other_only", arch_list: [other_arch]))
+
+    opts = Main.parse_options(["-s", "ALL"])
+    names = opts[:install].map { |s| s.split(":").first }
+    assert_includes names, "universal"
+    refute_includes names, "other_only"
+  end
+
+  def test_install_ALL_coexists_with_named_packages
+    # Mixing ALL with explicit names concatenates both sets.
+    pkgmgr.register(FakePackage.new("foo"))
+    pkgmgr.register(FakePackage.new("bar"))
+
+    opts = Main.parse_options(["-s", "custom", "ALL"])
+    names = opts[:install].map { |s| s.split(":").first }
+    assert_includes names, "custom"
+    assert_includes names, "foo"
+    assert_includes names, "bar"
+  end
 end
 
 class TestParseOptionsUninstall < Minitest::Test
@@ -111,6 +176,15 @@ class TestParseOptionsUninstall < Minitest::Test
   def test_uninstall_compiler
     opts = Main.parse_options(["-U", "riscv64"])
     assert opts[:uninstall].any? { |s| s.start_with?("gcc-riscv64-musl") }
+  end
+
+  def test_uninstall_compiler_ALL_expands_to_every_arch
+    # -U ALL expands to one gcc-<arch>-musl entry per registered
+    # architecture — symmetric with -S ALL.
+    opts = Main.parse_options(["-U", "ALL"])
+    names = opts[:uninstall].map { |s| s.split(":").first }.sort
+    expected = ALL_ARCHS.values.map { |a| "gcc-#{a.name}-musl" }.sort
+    assert_equal expected, names
   end
 
   def test_compiler_ver_filter
@@ -415,6 +489,103 @@ class TestMainIntegration < Minitest::Test
       with_stubbed_externals do
         result = Main.main(["-C", "nonexistent"])
         assert_equal 1, result
+      end
+    end
+  end
+end
+
+class TestMainDryRunInstall < Minitest::Test
+  include TestHelper
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def capture_stdout(&block)
+    old = $stdout
+    $stdout = StringIO.new
+    block.call
+    $stdout.string
+  ensure
+    $stdout = old
+  end
+
+  def test_install_dry_run_does_not_install
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+
+        result = nil
+        out = capture_stdout {
+          result = Main.main(["-s", "foo", "-d"])
+        }
+        assert_equal 0, result
+        assert_empty FakePackage.install_log
+        assert_match(/Install order: foo/, out)
+        assert_match(/Dry run/, out)
+      end
+    end
+  end
+
+  def test_install_dry_run_with_deps_shows_topological_plan
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("a",
+          dep_list: [Dep("b", false)]))
+        pkgmgr.register(FakePackage.new("b"))
+
+        result = nil
+        out = capture_stdout {
+          result = Main.main(["-s", "a", "-d"])
+        }
+        assert_equal 0, result
+        assert_empty FakePackage.install_log
+        # Deps-first topological order.
+        assert_match(/Install order: b -> a/, out)
+      end
+    end
+  end
+
+  def test_install_dry_run_with_force_does_not_remove
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("foo"))
+        pkgmgr.install("foo")
+        FakePackage.clear_log!
+
+        result = nil
+        out = capture_stdout {
+          result = Main.main(["-s", "foo", "-f", "-d"])
+        }
+        assert_equal 0, result
+        # Dry-run force message, no actual uninstall.
+        assert_match(/Would force-remove: foo/, out)
+        # Package still installed (nothing was removed).
+        assert pkgmgr.get("foo").installed?(Ver("1.0.0"))
+      end
+    end
+  end
+
+  def test_upgrade_dry_run_does_not_install
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        # Seed an older install on disk to make the package
+        # upgradable.
+        gcc_ver = FAKE_GCC_VER.to_s
+        FileUtils.mkdir_p(
+          tc / "gcc-#{gcc_ver}" / ARCH.name / "foo" / "0.9.0"
+        )
+        pkgmgr.register(FakePackage.new("foo"))
+
+        result = nil
+        out = capture_stdout {
+          result = Main.main(["--upgrade", "-d"])
+        }
+        assert_equal 0, result
+        assert_empty FakePackage.install_log
+        assert_match(/Packages to upgrade.*foo/, out)
+        assert_match(/Dry run/, out)
       end
     end
   end
