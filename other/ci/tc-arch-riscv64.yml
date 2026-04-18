@@ -8,7 +8,7 @@ trigger:
   paths:
     include:
       - 'scripts/build_toolchain'
-      - 'scripts/tc/pkgs/**'
+      - 'scripts/pkgmgr/**'
     exclude:
       - 'README.md'
       - '*.md'
@@ -31,8 +31,6 @@ steps:
     displayName: "Install pkgs"
   - script: sudo -E ./scripts/build_toolchain -s gtest
     displayName: "Build gtest"
-  - script: sudo -E ./scripts/build_toolchain -s gmock
-    displayName: "Build gmock"
   - script: sudo -E ./scripts/build_toolchain -s lcov
     displayName: "Build lcov"
   - script: sudo -E ./scripts/build_toolchain -s ncurses
