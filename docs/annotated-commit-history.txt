@@ -8572,3 +8572,2376 @@ What changed:
   - scripts/generate_coverage_report (1 l.) -- small path tweak.
 
 --------------------------------------------------------------------------------
+
+## e4489adc -- [FS] Forcing FAT32 for fatpart
+
+Commit: e4489adcc0...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 21:23:59 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_scripts/build_fatpart.sh (1 l.) -- passes -F
+    (force FAT32) to mformat so the memdisk is always FAT32
+    regardless of size (previously mtools could auto-pick FAT16
+    for small sizes, confusing the kernel).
+
+  - kernel/fs/fat32.c (+15 / -3) -- mount path now asserts the
+    detected type is FAT32; logs an error for FAT12/16 (still
+    readable but the kernel's ramdisk is committed to FAT32).
+
+--------------------------------------------------------------------------------
+
+## 3cb916af -- [build scripts] Remove .sh suffix from 3 scripts
+
+Commit: 3cb916af3d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 14:31:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Renames: scripts/build_scripts/bss_checker.sh -> bss_checker,
+  build_fatpart.sh -> build_fatpart,
+  create_empty_img_if_necessary.sh -> create_empty_img_if_necessary
+  (matches the convention of build_toolchain / cmake_run already
+  being extension-less). build_fatpart gains a shebang line and
+  +x was presumably already there. CMakeLists.txt +
+  kernel/arch/CMakeLists.txt updated (+/-3) for the new names.
+
+--------------------------------------------------------------------------------
+
+## 28ebf35a -- Improving 'init' and the system test
+
+Commit: 28ebf35a05...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 15:53:01 2018 +0200
+
+Message:
+
+  Now, init checks for invalid kernel input and exits with 1 in
+  that case. In addition, the python system test now checks for
+  the exit code of init and fails if it is != 0.
+
+AI notes:
+
+What changed:
+
+  - usermode_init/init.c (+62 / -40) -- init's test cases
+    validate the kernel-passed argc/argv/envp and assorted
+    syscall returns; any mismatch calls exit(1) with a diagnostic
+    message. Before this commit, init would print a warning but
+    always exit 0 -- making the system test blind to regressions.
+
+  - system_tests/run_system_test (+33 / -4) -- after waiting for
+    the qemu-exit-on-init-exit port write, checks init's exit
+    code; fails the test if != 0.
+
+  - kernel/arch/i386/process32.c (1 l.) -- tiny fix (init exit
+    code propagation).
+
+Context (body):
+
+  First system test that actually validates kernel behavior, not
+  just "boots without panicking".
+
+--------------------------------------------------------------------------------
+
+## 279304f0 -- [FS] Make the elf_loader to read the file using exvfs
+
+Commit: 279304f04a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 16:13:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+14 / -10) -- run_usermode_init no longer
+    points at a raw (RAM_DISK_VADDR + OFFSET) pointer. Instead
+    it exvfs_open("/sbin/init") and passes the handle to the
+    ELF loader.
+
+  - kernel/elf_loader.c (+14 / -1) -- takes a fs_handle_base*
+    instead of a raw void* pointer to the ELF bytes.
+
+Context (subject):
+
+  End of the "init at a known physical offset" era. Tilck can now
+  load any ELF from the FAT filesystem by path. A significant
+  abstraction win: removing init involved changing one string.
+
+--------------------------------------------------------------------------------
+
+## a40e851a -- [FS] Make the elf loader to use exvfs_read()
+
+Commit: a40e851a63...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 18:16:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/elf_loader.c (+33 / -24) -- rewritten to
+    exvfs_lseek + exvfs_read chunk-by-chunk rather than
+    memcpy'ing from a mapped byte pointer. Previously the
+    loader assumed the ELF was already contiguously mapped in
+    memory. Now it reads headers, then per-segment, using
+    file-ops, so the source doesn't need to be mmap-backed.
+
+  - kernel/fs/exvfs.c (+2 / -2), kernel/include/fs/exvfs.h
+    (+2 / -2) -- signature refinement (ssize_t count returns).
+
+Context (guess -- subject):
+
+  Paves the way for loading ELFs from non-memdisk filesystems
+  later (real block devices won't have the "mapped contiguously"
+  property).
+
+--------------------------------------------------------------------------------
+
+## 4f527277 -- Fix a bug in the panic logic preventing it to work when
+   current == NULL
+
+Commit: 4f52727722...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 18:38:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/sched.c (+12) -- the scheduler's helper that fetches
+    current->kernel_stack used to dereference current even if it
+    was NULL (which happens during early boot, before the first
+    task is set up). panic() hit before the scheduler was ready
+    would double-fault. Now guards with current != NULL.
+
+  - kernel/elf_loader.c (-8), kernel/debug_utils.c (-1) -- dead
+    code removed.
+
+--------------------------------------------------------------------------------
+
+## 9c4042ac -- [build err] Fix a build error introduced by the last commit
+
+Commit: 9c4042ac5d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 5 21:02:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/common_defs.h (+23) -- adds ARRAY_SIZE and
+    CONTAINER_OF macros that sched.c started using but weren't
+    declared in headers included by the panic path.
+
+  - kernel/sched.c (1 l.) -- trivial include adjust.
+
+--------------------------------------------------------------------------------
+
+## 7cb4ccd4 -- [build toolchain] Using my GitHub fork of gnu-efi
+
+Commit: 7cb4ccd4d4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 14:23:00 2018 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (1 l.) -- git clone URL for gnu-efi
+  changed from the upstream SourceForge mirror to a GitHub fork
+  (vvaltchev/gnu-efi). Pins a known-working revision against
+  potential upstream breakage.
+
+--------------------------------------------------------------------------------
+
+## c975b4ee -- Remove process_int.h
+
+Commit: c975b4ee34...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 13:35:54 2018 +0200
+
+Message:
+
+  This change aims to provide a more convenient arch-abstraction
+  mechanism in the kernel by extending hal.h and by moving the
+  content of process_int.h, in particular the struct task_info
+  into process.h: actually only a few of its members (like regs)
+  are arch-dependent and #ifdefs in headers like hal.h could
+  solve the problem. Now, when the noarch code can use task_info
+  members expect regs members, which are arch-specific and that's
+  exactly what we wanted. In special cases like interrupts.c that
+  need just to get the interrupt number from regs, a convenient
+  wrapper called regs_intnum() has been added in hal.h. For
+  non-supported architectures, the wrapper has a stub
+  implementation.
+
+AI notes:
+
+What changed:
+
+  HAL-layer refactor. Moves the arch-specific parts out of
+  headers that shouldn't need them.
+
+  - kernel/include/arch/i386/process_int.h deleted (-46) --
+    struct task_info and its friends no longer live under
+    arch/. kernel/include/process.h (+52) picks up the full
+    task_info definition; the only arch-dependent part (regs
+    state_regs) uses #ifdef __i386__ to include the right
+    arch_utils.h.
+
+  - kernel/include/hal.h (+27 / -8) -- adds regs_intnum(regs*)
+    accessor wrapper so arch-independent code (interrupts.c
+    etc.) doesn't need to know the regs struct layout. Arch
+    stubs provided for uncompiled archs.
+
+  - kernel/include/arch/i386/arch_utils.h (-10),
+    kernel/include/irq.h (+2 / -6), kernel/include/sync.h
+    (+2 / -3), kernel/interrupts.c (+5 / -10),
+    kernel/debug_utils.c (+2 / -2), kernel/elf_loader.c (-2),
+    kernel/misc.c (+1), kernel/process.c (1 l.),
+    kernel/sched.c (+2 / -147), kernel/tasklet.c (+1) -- remove
+    redundant #include of the deleted header.
+
+  - kernel/arch/i386/process32.c (+154 / -6) -- the i386-specific
+    task_info fields (regs) live here in arch-specific
+    constructors / accessors.
+
+  - unittests/generic_mocks.c (+2) -- mock for regs_intnum.
+
+Context (PR body):
+
+  process_int.h had become a leaking abstraction: many of its
+  fields weren't actually i386-specific. Promoting task_info to
+  the generic header layer lets arch-independent code write
+  current->pid without conditional compilation; only accesses
+  to state_regs still need arch-awareness (and those go through
+  regs_intnum).
+
+--------------------------------------------------------------------------------
+
+## 6224e28f -- [build toolchain] Using my GitHub fork of dietlibc
+
+Commit: 6224e28f56...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 15:51:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+2 / -3) -- git clone URL for dietlibc
+  changed from the upstream http fefe.de tarball to a GitHub
+  fork (vvaltchev/dietlibc). Same reasoning as 7cb4ccd4 for
+  gnu-efi: pin against upstream drift.
+
+--------------------------------------------------------------------------------
+
+## dbdbbe55 -- Improving the elf loader
+
+Commit: dbdbbe55d0...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 20:27:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/include/elf_loader.h (25 l.) -- first public
+    header for the ELF loader. Declares load_elf() and its
+    argument struct (pdir out, entry out, stack addr out, path
+    in).
+
+  - kernel/elf_loader.c (+22 / -8) -- signature change, includes
+    its public header.
+
+  - kernel/main.c (+5 / -24) -- run_usermode_init becomes a
+    5-liner: open the handle, call load_elf, jump to usermode.
+
+  - kernel/test_stuff/testrunners.c (-32) -- removes old ELF-
+    loader-specific test scaffolding subsumed by the new API.
+
+--------------------------------------------------------------------------------
+
+## 0733cb61 -- Refactoring main.c
+
+Commit: 0733cb6185...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 21:02:17 2018 +0200
+
+Message:
+
+  This apparently big change just move the things around allowing
+  main.c to be cleaner. The keybord and the timer "drivers" now
+  have their own headers, as well as the self tests.
+
+AI notes:
+
+What changed:
+
+  Cleanup / header-reorg.
+
+  - New kernel/include/kb.h (6 l.), kernel/include/timer.h
+    (7 l.), kernel/include/self_tests/self_tests.h (8 l.) --
+    tiny public headers that expose kb_init(), timer_init(),
+    test entry points. main.c no longer needs to declare these
+    inline as extern forward-decls.
+
+  - Rename: kernel/test_stuff/ -> kernel/self_tests/. The
+    three files (perftests.c, perftests_data.c,
+    testrunners.c) move unchanged.
+
+  - kernel/main.c (+5 / -31) -- much leaner: 5 #includes
+    replace the extern decl bonanza.
+
+  - kernel/include/hal.h (+12), kernel/include/term.h (1 l.),
+    kernel/kb.c (+3), kernel/arch/i386/gdt.c (1 l.),
+    kernel/CMakeLists.txt (+1 / -1), .travis.yml (+2 / -2),
+    .vscode/settings.json (+2 / -1) -- plumbing.
+
+--------------------------------------------------------------------------------
+
+## 6ed8a5b2 -- [build] Introducing arch/generic_86 and moving there 2 files
+
+Commit: 6ed8a5b29b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 21:36:37 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New directory kernel/arch/generic_x86/. kernel/kb.c (-2 small
+    adjust) and kernel/term.c move there: both are PC-specific
+    but work for both i386 and x86_64, so "generic_x86" is the
+    right home.
+
+  - CMakeLists.txt (+3 / -1), kernel/arch/CMakeLists.txt
+    (+2 / -2) -- adds the new subdirectory; the generic_x86
+    files are built via an add_subdirectory rule.
+
+  - unittests/generic_mocks.c (+10) -- mocks the functions now
+    located in generic_x86/ that tests pull in.
+
+Context (subject):
+
+  Mirror image of kernel/include/arch/generic_x86/ which
+  already existed. Matches the layout that becomes canonical.
+
+--------------------------------------------------------------------------------
+
+## 2e19610f -- Rename timer.c to timer_handler.c
+
+Commit: 2e19610f58...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 21:41:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Pure rename: kernel/timer.c -> kernel/timer_handler.c. Makes
+  room for the next commit which puts the arch-independent timer
+  code in the generic_x86 tree under the name kernel/arch/
+  generic_x86/timer.c. Avoids a filename collision.
+
+--------------------------------------------------------------------------------
+
+## a8ad912d -- Move set_timer_freq() in generic_x86/timer.c
+
+Commit: a8ad912dc5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 6 21:45:11 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/generic_x86/timer.c (19 l.) -- hosts
+    set_timer_freq(hz) which programs the 8253/8254 PIT
+    (ports 0x40/0x43). PIT is an x86 peripheral, so "generic
+    x86" (both i386 and x86_64).
+
+  - kernel/arch/i386/utils32.c (-16) -- set_timer_freq moves
+    out of i386-specific utils.
+
+--------------------------------------------------------------------------------
+
+## 972b3f75 -- [bootloader] Make room for a bigger 3-stage bootloader
+
+Commit: 972b3f751c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 7 20:51:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/CMakeLists.txt (+37 / -6) -- new build rules
+    carving room for a third-stage bootloader (a C program
+    loaded by stage2). stage1+stage2 still fit in the standard
+    MBR+2 slots; stage3 is reserved on disk but not yet present.
+
+  - bootloader/boot.asm (+2 / -5) -- stage2 padding trimmed so
+    more space is available after it for stage3.
+
+  - CMakeLists.txt (1 l.) -- wires up the new target.
+
+Context (subject):
+
+  Prep for a proper C-based 3rd-stage bootloader. Real-mode asm
+  stages remain just long enough to enable protected mode and
+  chain to stage3.c.
+
+--------------------------------------------------------------------------------
+
+## 5801605e -- [bootloader] Making the 3rd stage bootloader to work
+
+Commit: 5801605e17...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 7 21:28:56 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New bootloader/stage3.c (9 l.) -- minimal C program that
+    stage2 jumps into in 32-bit protected mode. Currently just
+    a hello-world via VGA text mode write.
+
+  - New bootloader/stage3_entry.asm (14 l.) -- entry stub that
+    sets up the stack and calls main(). Plays the same role
+    kernelAsm.asm plays for the kernel.
+
+  - bootloader/CMakeLists.txt (+46 / -17) -- wires up compile
+    and link of stage3 (using the i686 cross-toolchain) and
+    arranges it contiguously after stage2 in the final image.
+
+  - bootloader/boot.asm (+4 / -4) -- stage2 jumps to stage3's
+    entry point at a known fixed address after loading it from
+    disk.
+
+--------------------------------------------------------------------------------
+
+## ba6c6c91 -- [bootloader] Minor improvements
+
+Commit: ba6c6c9153...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Jan 8 20:48:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm (+34 / -21) -- tightens stage1/stage2
+  cooperation: cleaner segment setup, simplified error handling
+  if the CHS read fails, a couple of now-unused labels removed.
+  Net grows slightly because some new comments and a wider
+  retry loop for flaky BIOSes.
+
+--------------------------------------------------------------------------------
+
+## e43346f1 -- [bootloader] Adding basic term support in the 3rd stage
+
+Commit: e43346f139...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Jan 8 22:06:19 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (+131) -- standalone tiny VGA text-mode
+    library (can't share the kernel's term.c -- different load
+    address, different memory model, can't call printk which
+    assumes kernel state). Reimplements term_write_char +
+    scrolling. Stage3 can now produce progress output during
+    boot, useful for diagnosing early-boot failures before the
+    kernel takes over.
+
+  - bootloader/CMakeLists.txt (+21 / -1) -- links the tiny term
+    object into stage3.
+
+  - .vscode/settings.json (+2 / -1) -- small.
+
+--------------------------------------------------------------------------------
+
+## c2569a6d -- [bootloader] Move fat32.c in common
+
+Commit: c2569a6d18...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 20:34:20 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c renamed to common/fat32.c. Both the kernel
+    and stage3 now consume the same fat32 implementation.
+
+  - New common/README (2 l.) -- explains the purpose of common/
+    (shared between kernel and bootloader).
+
+  - bootloader/stage3.c (+2 / -9) -- stage3 picks up common/
+    fat32.c via its CMakeLists and can now walk the FAT image
+    directly to find files.
+
+  - kernel/CMakeLists.txt (+11 / -1), kernel/arch/CMakeLists.txt
+    (1 l.) -- add common/fat32.c to the kernel's build target.
+
+Context (guess -- subject):
+
+  Foundational: now the bootloader (stage3) can read files from
+  the FAT image the same way the kernel does, which means stage3
+  can load the kernel (and potentially other files) by name
+  from the filesystem instead of hardcoded sector offsets.
+
+--------------------------------------------------------------------------------
+
+## 96a7198c -- [bootloader] Make the bootloader to support printk
+
+Commit: 96a7198c3b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 21:00:48 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Bootloader gains a mini libc.
+
+  - New bootloader/basic_term.c (105 l.) -- extracted from stage3.c
+    (-118). Standalone VGA text-mode terminal: scrolling, colors,
+    term_write_char. No dependency on kernel.
+
+  - New bootloader/naive_malloc.c (21 l.) -- bump-pointer
+    allocator over a fixed static buffer; stage3 needs some
+    dynamic allocation for fat32 helpers.
+
+  - New bootloader/utils.c (36 l.) -- tiny helpers (itoa-like
+    conversion, strlen, memcpy etc. -- stage3 can't link against
+    libmusl).
+
+  - kernel/string_util.c renamed to common/string_util.c.
+    printk + vprintk now live in a single file shared by
+    bootloader and kernel.
+
+  - New common/asserts.c (16 l.) -- panic / assert_failed
+    implementations factored out of debug_utils.
+
+  - bootloader/CMakeLists.txt (+6 / -2), kernel/debug_utils.c
+    (-11) -- plumbing.
+
+Context (subject):
+
+  Closes the "stage3 needs its own print infrastructure" side-
+  quest: stage3 can now call printk directly, sharing the same
+  implementation the kernel uses. Diagnostic output becomes
+  uniform across the boot path.
+
+--------------------------------------------------------------------------------
+
+## 68b7826e -- [bootloader] Make the bootloader to load the kernel from the
+   FATPART
+
+Commit: 68b7826e58...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 21:18:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (+9 / -6) -- walks the FAT image mounted
+    in memory to find kernel.bin, reads it into the kernel's
+    load address (0x100000), then jumps there. Stage2 had been
+    loading the kernel from a hardcoded sector; now it only
+    loads stage3, and stage3 finds the kernel by name.
+
+  - bootloader/boot.asm (+5 / -13) -- stage2 no longer needs
+    its own kernel-loading logic. Shrinks.
+
+  - CMakeLists.txt (-4), kernel/include/arch/i386/arch_utils.h
+    (+2 / -1), kernel/include/hal.h (1 l.) -- plumbing.
+
+Context (guess -- subject):
+
+  Milestone: a filesystem-aware bootloader. From this point, you
+  can put a different kernel in the FAT image and stage3 will
+  load whichever one you named kernel.bin -- no more rebuilding
+  the disk image from scratch for every kernel change.
+
+--------------------------------------------------------------------------------
+
+## e6ec5b48 -- [bootloader] Make the bootloader lighter
+
+Commit: e6ec5b48e4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 21:25:42 2018 +0200
+
+Message:
+
+  This change splits the fat32.c file by renaming it to
+  fat32_base.c and by moving its unnecessary (for the bootloader)
+  functions back to the kernel.
+
+AI notes:
+
+What changed:
+
+  - common/fat32.c renamed to common/fat32_base.c (-399 lines
+    out of the original; keeps the mount / directory walk / read
+    core).
+
+  - kernel/fs/fat32.c reappears (+404) -- gets the kernel-only
+    helpers back (fat_handle file-ops wrappers, open-by-path
+    with exvfs dispatch, seek semantics).
+
+  - bootloader/naive_malloc.c deleted (-21) -- was only needed
+    by the handle/seek code that's now kernel-only. Stage3
+    doesn't need a malloc.
+
+  - bootloader/CMakeLists.txt (+6 / -2) -- compiles only
+    common/fat32_base.c, shrinking stage3's binary.
+
+Context (body):
+
+  Stage3 lives in a tight memory budget (fits in a few sectors
+  before the kernel). Splitting fat32 into "core" (stage3 + kernel
+  share) vs "kernel-only" (fat_handle + exvfs wrappers) brings
+  stage3 back under that budget.
+
+--------------------------------------------------------------------------------
+
+## 16661740 -- [bootloader] Make the stage3's code even simpler
+
+Commit: 16661740fa...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 21:37:13 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (-10) -- drops a few verbose diagnostic
+    printks that predated the fat-scan loop consolidation.
+
+  - bootloader/stage3_entry.asm (-6) -- trims the entry stub to
+    just "set esp; call main"; assorted segment-register setup
+    moved into stage2 where it really belongs.
+
+  - bootloader/CMakeLists.txt (1 l.) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 4abe0661 -- [bootloader] Cosmetic changes
+
+Commit: 4abe066120...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 9 22:04:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm (+4 / -4) and bootloader/stage3.c
+  (+7 / -1) -- comment / formatting adjustments. No functional
+  change.
+
+--------------------------------------------------------------------------------
+
+## 331acc7f -- [bootloader] Loading elf kernel works!
+
+Commit: 331acc7f45...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 13 13:13:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Milestone: the BIOS bootloader (stage3) now loads kernel.bin
+  as a real ELF32 file, not a raw binary.
+
+  - bootloader/stage3.c (+86 / -5) -- implements an ELF loader:
+    reads Elf32_Ehdr + Elf32_Phdrs from the FAT file, loops over
+    PT_LOAD segments, copies p_filesz bytes to p_vaddr, zero-
+    fills up to p_memsz, jumps to e_entry. Scaled-down copy of
+    the kernel-side loader; no paging (kernel runs at identity-
+    mapped physical address right after boot).
+
+  - common/fat32_base.c (+254) -- gains helpers (fat_entry_ptr,
+    fat_cluster_to_lba etc.) that stage3 needs for ELF
+    extraction.
+
+  - kernel/fs/fat32.c (-247) -- the helpers moved above leave
+    the kernel-side file.
+
+  - .vscode/settings.json (+2 / -1), kernel/arch/CMakeLists.txt
+    (+4 / -1) -- the kernel build now produces a real ELF
+    (kernel.elf) stripped to kernel.bin earlier -- no longer
+    just a flat binary.
+
+Context (subject):
+
+  First time the kernel is loaded as an ELF rather than a raw
+  blob. Precondition for symbol-based debugging and for
+  eventually having a .bss section larger than 0 (uninitialized
+  globals no longer waste disk space).
+
+--------------------------------------------------------------------------------
+
+## 6b8f923b -- [bootloader] Strip debug info from the elf kernel
+
+Commit: 6b8f923b9c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 13 13:20:16 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/CMakeLists.txt (+4 / -2) -- after the elf_kernel
+    target links, a strip step produces kernel.bin (the file
+    stage3 loads) and keeps the unstripped kernel.elf around as
+    the debug artifact. Saves ~300 KB in the FAT image.
+
+  - CMakeLists.txt (1 l.), scripts/build_scripts/build_fatpart
+    (1 l.), bootloader/stage3.c (1 l.) -- point at the right
+    artifact names.
+
+--------------------------------------------------------------------------------
+
+## c3592598 -- [kernel] Removing unnecessary ={0} initializations of global
+   variables
+
+Commit: c359259815...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 13 13:32:32 2018 +0200
+
+Message:
+
+  Now that the kernel is an ELF binary and the bootloader
+  supports that, uninitialized global variables just go into
+  BSS without wasting space in kernel's binary.
+
+AI notes:
+
+What changed:
+
+  Reversal of the BSS workaround from the pre-ELF era.
+
+  - kernel/include/common_defs.h (-23) -- deletes the "every
+    global must have ={0} so it goes to .data" convention.
+
+  - kernel/arch/i386/gdt.c (-3), kernel/arch/i386/idt.c
+    (-2), kernel/kmalloc.c (-2), kernel/tasklet.c (-5),
+    kernel/fs/exvfs.c (1 l.), kernel/arch/generic_x86/term.c
+    (-5), kernel/pageframe_allocator.c (1 l.),
+    kernel/arch/i386/process32.c (1 l.),
+    unittests/exvfs_test.cpp (-2) -- drop the ={0} initializers
+    on zero-valued globals. Compiler puts them back in .bss,
+    the ELF kernel loader zero-fills at load time.
+
+  - CMakeLists.txt (+2 / -2), kernel/arch/CMakeLists.txt
+    (+3 / -5) -- removes -fno-zero-initialized-in-bss flag
+    that enforced the workaround; removes the
+    build_scripts/bss_checker invocation (scalar .bss is
+    now expected and fine).
+
+Context (body explains):
+
+  ELF loaders handle .bss natively, so the workaround that
+  forced everything into .data is obsolete. Kernel image
+  shrinks by a few KB.
+
+--------------------------------------------------------------------------------
+
+## a54b802c -- [EFI] Make the EFI bootloader able to load the ELF kernel
+
+Commit: a54b802caa...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 13 20:12:05 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/efi/efimain.c (+108 / -14) -- the EFI path now
+    also parses the ELF header + program headers and places
+    each PT_LOAD segment at its p_vaddr via EFI's AllocatePages
+    with AllocateAddress. Mirrors the BIOS stage3 path.
+
+  - bootloader/stage3.c (+12 / -2) -- small helper refactor to
+    share ELF-loading code with efimain.c (both include the
+    same parse routine; common/ wasn't quite used here yet).
+
+Context (guess -- subject):
+
+  EFI bootloader catches up with stage3. Both boot paths now
+  run the same ELF.
+
+--------------------------------------------------------------------------------
+
+## 9b9e3cbd -- [kernel] Remove INTERP sections from the kernel binary
+
+Commit: 9b9e3cbddb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 13 20:51:48 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/CMakeLists.txt (+4) -- after linking, passes
+    --remove-section=.interp (and related dynamic-loader
+    hints) to objcopy. The kernel isn't dynamically linked;
+    the sections were wasted space that the ELF loader had
+    to skip.
+
+  - bootloader/efi/efimain.c (-10), bootloader/stage3.c
+    (-10) -- drops the code that was skipping INTERP / NOTE /
+    GNU_STACK segments at load time. Now those segments
+    aren't emitted in the first place.
+
+  - bootloader/CMakeLists.txt (+3) -- similar strip for the
+    bootloader's own ELF.
+
+--------------------------------------------------------------------------------
+
+## f155c286 -- Update README
+
+Commit: f155c286e4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 14 12:27:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+15 / -3) -- updates the feature list to mention
+  FAT32 read, ELF kernel loading from a filesystem, the EFI
+  bootloader. Web-UI edit.
+
+--------------------------------------------------------------------------------
+
+## 6ff9241c -- [paging] Removing a dirty hack for the allocation of the kernel
+   page dir
+
+Commit: 6ff9241ca3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 25 20:45:59 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+9 / -16) -- the kernel_page_dir
+    had been allocated via a special "early" path (pre-
+    pageframe_allocator) because the page allocator itself
+    needed paging to be up. With the ELF loader handling .bss
+    properly, kernel_page_dir can now just be a static
+    variable; its physical address is derived from
+    KERNEL_VADDR_TO_PADDR at runtime.
+
+  - kernel/pageframe_allocator.c (+2) -- small init-order
+    adjustment for the new layout.
+
+--------------------------------------------------------------------------------
+
+## 27c870ab -- [paging] Add an anonymous union for using PG_* bit flags
+
+Commit: 27c870ab9e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 26 18:50:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/arch/i386/paging_int.h (+66 / -20) -- page_t
+    and page_dir_entry_t gain an anonymous union: the old
+    bitfield-per-field form stays, but a parallel flat
+    uint32_t raw; field makes it ergonomic to set multiple
+    flags at once via PG_PRESENT | PG_RW | PG_US etc. New
+    PG_* defines enumerate the bit positions.
+
+  - kernel/arch/i386/paging.c (+32 / -27) -- call sites switch
+    from .present = 1; .rw = 1; ... to .raw = PG_PRESENT |
+    PG_RW | .... Shorter, more readable.
+
+  - kernel/main.c (+2), usermode_init/init.c (+2),
+    kernel/include/self_tests/self_tests.h (+1) -- tiny.
+
+--------------------------------------------------------------------------------
+
+## b914b397 -- [paging] Making the code simpler
+
+Commit: b914b39762...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 26 21:34:07 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+47 / -39) -- general cleanup
+    made possible by the PG_* union: helper functions like
+    set_page_flags_for_new_table() become one-liners; dead
+    branches (for page sizes > 4 KiB that Tilck never used) are
+    removed.
+
+  - kernel/arch/i386/kernelAsm.asm (+7) -- adds a small helper
+    invlpg_all / cpuid passthrough (needed by the cleaned-up
+    paging.c).
+
+  - kernel/include/paging.h (-2) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 73d23e81 -- [tests] Make the system test to use -enable-kvm when not in
+   TRAVIS
+
+Commit: 73d23e81c6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Jan 26 21:42:16 2018 +0200
+
+AI notes:
+
+What changed:
+
+  system_tests/run_system_test (+14 / -8) -- auto-detects
+  whether KVM is available (checks /dev/kvm + whether TRAVIS
+  env var is set). Travis CI doesn't have KVM, so skips it
+  there; locally, dev runs are ~10x faster with -enable-kvm.
+
+--------------------------------------------------------------------------------
+
+## 559925c0 -- [build_toolchain] Minor improvements
+
+Commit: 559925c062...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 27 12:59:46 2018 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+55 / -9) -- several usability
+  tweaks: better error output when a fetch fails (shows the
+  URL), tightens cache-dir usage, adds a --force flag to
+  redo a specific build_* step even when the output already
+  exists.
+
+--------------------------------------------------------------------------------
+
+## e68cba55 -- Using the CMake way for setting -std=
+
+Commit: e68cba5505...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 28 15:20:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  CMakeLists.txt (+6 / -7) -- replaces manual
+  "-std=c11" / "-std=c++17" in CMAKE_C_FLAGS with the proper
+  set(CMAKE_C_STANDARD 11) + set(CMAKE_C_STANDARD_REQUIRED ON)
+  + set(CMAKE_CXX_STANDARD 17). Nothing functional changes;
+  cleaner CMake idiom.
+
+--------------------------------------------------------------------------------
+
+## 2f119469 -- [build] Add support for GNU ASM
+
+Commit: 2f11946999...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 28 15:59:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - CMakeLists.txt (+2 / -1) -- enables GNU AS (ASM) as a CMake
+    language alongside NASM. AS rules use the cross-toolchain's
+    i686-buildroot-linux-gnu-as.
+
+  - kernel/arch/CMakeLists.txt (+17 / -3) -- adds a separate
+    target for .S (preprocessed GAS source) files, distinct
+    from .asm (nasm source).
+
+  - bootloader/CMakeLists.txt (+11), bootloader/efi/CMakeLists.txt
+    (+1 / -1) -- match.
+
+Context (subject):
+
+  Foundation for moving the kernel's assembler files from
+  nasm/Intel syntax to GAS/Intel syntax. GAS can be driven by
+  the cross-toolchain's gcc + `-x assembler-with-cpp` which
+  lets #include and #define work in asm files -- not supported
+  by nasm.
+
+--------------------------------------------------------------------------------
+
+## b9c25b5c -- Re-write kernelAsm.asm to work with GAS but with Intel syntax
+
+Commit: b9c25b5c45...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 28 18:05:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Major: kernel's assembly split from nasm to GAS.
+
+  - New kernel/arch/i386/entry.S (280 l.) -- replaces the main
+    body of kernelAsm.asm (context_switch, IRQ / ISR stubs,
+    pusha/iret plumbing). Uses GAS's .intel_syntax noprefix so
+    the code reads identical to the nasm version but can be
+    preprocessed with cpp.
+
+  - New kernel/arch/i386/irq_handlers.S (29 l.) + isr_handlers.S
+    (63 l.) -- the repetitive 16 irq / 32 isr entry points,
+    generated via .irp / .endr macros (GAS loops) instead of
+    copy-paste.
+
+  - kernel/arch/i386/kernelAsm.asm (-657) -- near-complete
+    gutting; only a tiny stub remains for symbols that still
+    need nasm (removed in the next commit).
+
+  - kernel/arch/CMakeLists.txt (+10 / -2) -- compiles the .S
+    files via the ASM rules from the previous commit.
+
+Context (subject):
+
+  .S + GAS macros collapse ~460 lines of copy-paste IRQ/ISR
+  stubs into ~90 lines of .irp iteration. Also allows using
+  C-style #defines for constants (segment selectors, error
+  codes) that were previously duplicated.
+
+--------------------------------------------------------------------------------
+
+## 8353e520 -- removing kernelAsm.asm
+
+Commit: 8353e520c2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 28 19:32:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/kernelAsm.asm deleted (-23). The last few
+  nasm-specific symbols it retained were moved into a .S file
+  in the previous commit; the stub is now empty. Completes the
+  nasm -> GAS migration for the kernel.
+
+--------------------------------------------------------------------------------
+
+## 443ffae2 -- [bootloader] Using inline ASM to jump to the kernel
+
+Commit: 443ffae244...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Jan 28 19:39:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (1 l.) -- jump to the kernel now done
+    via a single-instruction inline asm block rather than a
+    function call, to avoid any compiler-inserted prologue/
+    epilogue that could touch memory the kernel doesn't
+    expect to be valid.
+
+  - bootloader/efi/CMakeLists.txt (1 l.) -- tiny flag tweak.
+
+--------------------------------------------------------------------------------
+
+## 0fa1e9f4 -- [bootloader] Make stage3_entry.S to use GAS
+
+Commit: 0fa1e9f415...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 13:05:27 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3_entry.asm (-8) deleted.
+  - bootloader/stage3_entry.S (+9) -- GAS (.intel_syntax) version
+    of the stage3 entry stub. Same content, different assembler.
+
+--------------------------------------------------------------------------------
+
+## eda6b613 -- [scripts] Adding useful script for dumping flat-binaries
+
+Commit: eda6b61391...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 13:13:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New scripts/flat_objdump_8086 (2 l.) -- objdump -D -b binary
+    -m i8086 -M intel wrapper.
+  - New scripts/flat_objdump_386 (2 l.) -- same for i386.
+  - New scripts/flat_objdump_x64 (2 l.) -- same for x86-64.
+
+  Handy for disassembling the raw stage1/stage2/stage3 blobs
+  (they have no ELF metadata; plain objdump wouldn't know what
+  architecture to decode).
+
+--------------------------------------------------------------------------------
+
+## 36ce3eb3 -- [bootloader] Removing the entry in CMake for the older
+   stage3_entry.asm
+
+Commit: 36ce3eb392...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 13:17:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/CMakeLists.txt (-1) -- cleans up the orphaned
+  .asm reference; the .S replacement has been in since 0fa1e9f4.
+
+--------------------------------------------------------------------------------
+
+## 2a2e791a -- [bootloader] Re-write boot.asm for GAS as gas_boot.S
+
+Commit: 2a2e791a90...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 19:28:47 2018 +0200
+
+Message:
+
+  The code generated in both cases is IDENTICAL (checked with
+  objdump + diff) except for two MOVs for which GAS used an
+  equivalent encoding.
+  See: https://www.strchr.com/machine_code_redundancy
+
+AI notes:
+
+What changed:
+
+  Bootloader stage1+stage2 fully migrate from nasm to GAS.
+
+  - New bootloader/gas_boot.S (940 l.) -- hand-ported line-by-
+    line from bootloader/boot.asm. .intel_syntax throughout; BPB
+    (BIOS Parameter Block) embedded via .byte directives at the
+    right offset; stage2 inlined via .incbin or direct code.
+
+  - bootloader/CMakeLists.txt (+17 / -4) -- switches the build
+    rule to GAS. boot.asm stays in the tree for reference but
+    is no longer linked.
+
+  - kernel/arch/CMakeLists.txt (1 l.) -- minor.
+
+Context (body):
+
+  The author explicitly verified that the produced binary is
+  byte-for-byte identical (modulo two equivalent MOV encodings)
+  by running objdump + diff. No subtle bugs from the port. This
+  finishes the nasm -> GAS migration across the whole project:
+  kernel, bootloader stage1+2, and stage3 all now use GAS.
+
+--------------------------------------------------------------------------------
+
+## 08ab68bc -- [bootloader] Remove boot.asm
+
+Commit: 08ab68bcdd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 20:47:40 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm deleted (-908). The nasm version of
+  stage1+stage2 is gone; gas_boot.S is the only source now.
+  bootloader/CMakeLists.txt (+4 / -4) -- removes the old build
+  rule.
+
+--------------------------------------------------------------------------------
+
+## d11c1aed -- [bootloader] Minor changes making the GAS code to diverge from
+   the NASM one
+
+Commit: d11c1aed54...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 20:50:00 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/gas_boot.S (+1 / -6) -- now that the nasm reference
+  is gone, strips the few NASM-compat workarounds (explicit
+  "byte" sizing, commented-out "times XX db 0" that GAS handled
+  differently). First cleanup taking advantage of being
+  GAS-only.
+
+--------------------------------------------------------------------------------
+
+## 3e60cff6 -- [bootloader] Rename gas_boot.S -> boot.S
+
+Commit: 3e60cff6d1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 20:54:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Pure rename: bootloader/gas_boot.S -> bootloader/boot.S. The
+  "gas_" prefix was only meaningful while the nasm boot.asm
+  still existed for comparison. bootloader/CMakeLists.txt
+  (1 l.) adjusts.
+
+--------------------------------------------------------------------------------
+
+## d34c5534 -- [bootloader] Cosmetic changes
+
+Commit: d34c5534c8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 1 21:58:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.S (+22 / -12) -- formatting pass on the
+  newly-renamed file: consistent indentation, clearer section
+  comments separating "stage1 real-mode bootstrap", "BPB area",
+  "stage2 protected-mode setup", "stage3 load + jump". No
+  functional change.
+
+--------------------------------------------------------------------------------
+
+## 0a31ce75 -- [build] Preparing for share of headers b/w bootloaders and the
+   kernel
+
+Commit: 0a31ce75f6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 2 19:07:16 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Moving toward a shared header layout so bootloader / kernel /
+  common-code all include the same types.
+
+  - kernel/include/common_defs.h -> common/include/common_defs.h
+    (move). kernel/include/config.h -> common/include/config.h.
+    kernel/include/elf.h -> common/include/elf.h.
+
+  - common/include/common_defs.h (+24 / -13) -- conditionalized
+    so it's safe to include from boot-time code (no kernel-only
+    dependencies).
+
+  - bootloader/CMakeLists.txt (+10 / -1), bootloader/efi/
+    CMakeLists.txt (+4), bootloader/boot.S (+3 / -3),
+    kernel/CMakeLists.txt (+3 / -1), CMakeLists.txt (1 l.) --
+    include-path updates so kernel and bootloader find
+    common/include/.
+
+Context (subject):
+
+  Prep for bigger shared-header work (EFI bootloader needs to
+  see the same struct definitions as the kernel).
+
+--------------------------------------------------------------------------------
+
+## 2b261129 -- [bootloader] Make bootloaders and the kernel to share config.h
+
+Commit: 2b2611299e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 2 19:46:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+56) -- grows from a trivial
+    debug-toggle header into the project's central constants
+    file: KERNEL_LOAD_VADDR, RAM_DISK_VADDR, memory-map
+    boundaries, kernel/init load addresses. Everything the
+    bootloader needs to agree with the kernel about.
+
+  - bootloader/boot.S (-35) -- drops its local duplicates of
+    those constants; includes common/include/config.h via cpp.
+
+  - bootloader/efi/efimain.c (-5), bootloader/stage3.c (1 l.),
+    kernel/main.c (+5 / -5) -- use shared macros.
+
+  - kernel/include/arch/i386/arch_utils.h (-2),
+    kernel/include/hal.h (-3), kernel/include/paging.h (-1) --
+    drop the kernel-local copies.
+
+  - bootloader/CMakeLists.txt (+11 / -1), common/include/
+    common_defs.h (-3) -- plumbing.
+
+Context (subject):
+
+  One source of truth for addresses-both-halves-must-agree-on.
+  Future changes to the memory map are now a single-line edit
+  in config.h.
+
+--------------------------------------------------------------------------------
+
+## 1582436c -- [bootloader] Cosmetic changes
+
+Commit: 1582436c96...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 2 19:58:56 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.S (+54 / -54) -- whitespace / indentation
+  normalization: tabs -> spaces, column alignment of operands,
+  consistent comment placement. No functional change.
+
+--------------------------------------------------------------------------------
+
+## 533aa476 -- Adding common/include/stdint.h to the project
+
+Commit: 533aa476f8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 2 20:31:23 2018 +0200
+
+AI notes:
+
+What changed:
+
+  New common/include/stdint.h (7 l.) -- tiny compat shim so
+  userland headers that pull in <stdint.h> (dietlibc / musl)
+  can map through to exOS's existing u8/u16/u32/u64/uptr/sptr
+  typedefs. Just #includes common_defs.h and #defines uint8_t
+  = u8 etc.
+
+--------------------------------------------------------------------------------
+
+## f17233a6 -- Moving stdint.h in common/system_headers
+
+Commit: f17233a636...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 2 20:40:07 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Rename: common/include/stdint.h ->
+  common/system_headers/stdint.h. The system_headers/ directory
+  is for shim headers whose name matches a standard libc
+  header -- they need to be found before the real ones on the
+  include path. bootloader/efi/CMakeLists.txt (+1),
+  unittests/CMakeLists.txt (+4 / -2) -- include-path tweaks.
+
+Context (guess -- subject):
+
+  system_headers/ becomes a long-term convention: any time
+  exOS needs to shadow a system header (stdint.h, stddef.h,
+  etc.), it goes under common/system_headers/.
+
+--------------------------------------------------------------------------------
+
+## 7ad59b84 -- [EFI] switchmode_gas.S now produces the same instructions as
+   switchmode.asm
+
+Commit: 7ad59b845e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 10:40:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New bootloader/efi/switchmode_gas.S (243 l.) -- GAS-format
+    rewrite of switchmode.asm (the 64-bit-to-real-mode
+    transition helper used by the EFI bootloader). Verified
+    byte-identical output (same methodology as the boot.asm
+    rewrite in 2a2e791a).
+
+  - bootloader/CMakeLists.txt (1 l.), bootloader/efi/CMakeLists.txt
+    (+17 / -4) -- switch the build rule to GAS; switchmode.asm
+    stays in-tree for reference briefly (removed in a
+    follow-up).
+
+Context (subject):
+
+  Completes the nasm -> GAS migration for EFI bootloader as
+  well. Project is now 100% nasm-free.
+
+--------------------------------------------------------------------------------
+
+## 07be2325 -- [EFI] Remove the NASM-written switchmode
+
+Commit: 07be23253f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 10:44:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/efi/switchmode.asm deleted (-231). Rename:
+  switchmode_gas.S -> switchmode.S. bootloader/efi/CMakeLists.txt
+  (+2 / -5) -- drops the nasm build path.
+
+--------------------------------------------------------------------------------
+
+## 881c8157 -- [BUILD] Removing NASM from the toolchain
+
+Commit: 881c815757...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 10:52:31 2018 +0200
+
+Message:
+
+  NASM is an amazing assembler but, unfortunately, always will
+  be that "additional tool" that is needed, which does not
+  perfectly integrate with the classic gcc-toolchain. For that
+  reason, the NASM files have been re-written to work with the
+  GNU assembler, but they continue to use the INTEL syntax.
+
+AI notes:
+
+What changed:
+
+  - CMakeLists.txt (-7) -- drops the project(exos C CXX ASM_NASM)
+    ASM_NASM dependency; CMake no longer needs nasm as a
+    recognized language.
+
+  - scripts/build_toolchain (1 l.) -- removes the build_nasm
+    function call from the default pipeline (the function
+    itself stays in the file as a no-op for a while).
+
+Context (body):
+
+  Wraps up the nasm retirement. With GAS everywhere, the build
+  is entirely driven by gcc + binutils; one fewer tool in the
+  toolchain graph.
+
+--------------------------------------------------------------------------------
+
+## fb3427bc -- Fixing build error
+
+Commit: fb3427bc5e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 11:11:48 2018 +0200
+
+AI notes:
+
+What changed:
+
+  common/include/config.h (+3 / -3) -- fixes a couple of macros
+  whose values were expressed in NASM's 0x__ hex but needed
+  0x prefix for gas/cpp. Bricked the build right after the
+  nasm removal.
+
+--------------------------------------------------------------------------------
+
+## ba31f6d7 -- [bootloader] Making the build of stage3 simpler
+
+Commit: ba31f6d710...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 11:19:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/CMakeLists.txt (-14 / +6) -- net shrink. The
+  stage3 target was carrying around various nasm-compat
+  workarounds (different flag sets, separate ASM_FLAGS, etc.);
+  with GAS-only, everything flows through the normal CMake
+  C/ASM rules and the build file drops 20 lines.
+
+--------------------------------------------------------------------------------
+
+## c75961f0 -- [bootloader] Making stage3 to use a linker script
+
+Commit: c75961f033...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 12:03:59 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New bootloader/linker_script.ld (57 l.) -- explicit linker
+    script for stage3 specifying .text / .rodata / .data / .bss
+    layout and the start address. Replaces implicit layout via
+    ld -Ttext=<addr>.
+
+  - bootloader/CMakeLists.txt (+8 / -8) -- LINK_FLAGS points at
+    linker_script.ld instead of -Ttext.
+
+  - common/include/config.h (+2 / -2), bootloader/boot.S
+    (-1), bootloader/stage3.c (-1), bootloader/stage3_entry.S
+    (1 l.) -- constant adjustments.
+
+Context (subject):
+
+  A real linker script gives precise control over where each
+  section lives, which is important now that stage3 embeds
+  C, assembly, and rodata strings that need to sit in
+  specific memory regions.
+
+--------------------------------------------------------------------------------
+
+## 123e77b4 -- [bootloader] Zero-out the BSS in stage3_entry.S
+
+Commit: 123e77b4ad...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 16:57:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3_entry.S (+15) -- adds a rep stosd loop
+    between .bss_start and .bss_end (symbols exposed by the
+    linker script) before calling main. Stage3 used to rely on
+    the boot loader's .data layout containing zeros; with the
+    linker script giving stage3 a real .bss, that .bss needs
+    explicit clearing.
+
+  - bootloader/linker_script.ld (+2 / -1) -- emits the
+    .bss_start / .bss_end symbols.
+
+  - bootloader/stage3.c (+5 / -2) -- small cleanup.
+
+--------------------------------------------------------------------------------
+
+## 01dba951 -- [build] Cosmetic changes
+
+Commit: 01dba951eb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 17:02:42 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/CMakeLists.txt (+12 / -5) -- restructures the
+  stage3 build section: named variables instead of inlined
+  paths, consistent add_custom_command ordering. No
+  functional change.
+
+--------------------------------------------------------------------------------
+
+## 183f993f -- [bootloader] Minor changes
+
+Commit: 183f993fa5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 17:14:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Small adjustments: bootloader/boot.S (+2 / -2),
+  bootloader/stage3.c (+4 / -5), bootloader/CMakeLists.txt
+  (+5 / -5), common/include/config.h (+2 / -2). Constant
+  renames (STAGE3_ADDR -> BL_ST3_LOAD_ADDR etc.) for clarity.
+
+--------------------------------------------------------------------------------
+
+## bc2fe31e -- [bootloader] Minor improvements
+
+Commit: bc2fe31e17...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 17:54:44 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/boot.S (+7) -- adds an A20-line check as a
+    guard: reads 0x0 and 0x100000 and verifies they are
+    distinct (proving A20 is actually enabled), panics with
+    "A20 failure" otherwise. Some real BIOSes silently
+    don't enable A20 even when asked.
+
+  - kernel/arch/i386/entry.S (+3 / -1) -- parallel check at
+    kernel entry.
+
+--------------------------------------------------------------------------------
+
+## 9ed01a79 -- working on making load a ramdisk bigger than 31 MB to work
+
+Commit: 9ed01a79e9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 3 18:44:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/boot.S (+32 / -24) -- the CHS-based disk read
+    loop in stage2 had an implicit upper bound from the BIOS
+    int 13h interface (cylinder field is 10 bits, so past a
+    certain disk size the read address wraps). Rewritten to
+    use LBA (int 13h AH=0x42 -- extended disk services) for
+    reads past the BIOS CHS limit. Falls back to CHS when the
+    target is in range (for maximum BIOS compat).
+
+  - common/include/config.h (+3 / -3) -- RAMDISK_SIZE raised
+    from 31 MB toward 35 MB target; the constant in the commit
+    is actually an intermediate value during the debugging of
+    the LBA path.
+
+Context (subject):
+
+  Ramdisk size limit was a hard one: BIOS's classic CHS
+  interface couldn't describe locations past ~8 GB on the disk,
+  and for a memdisk even 32 MB was already hitting edge cases
+  on some BIOSes. LBA extension fixes it.
+
+--------------------------------------------------------------------------------
+
+## 795313f4 -- saving progress: problems with checksum
+
+Commit: 795313f4c1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 12:17:26 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+20 / -1) -- adds CRC32 of the loaded
+    ramdisk at kernel entry and compares against a hardcoded
+    expected value; prints "CRC MISMATCH" if they differ. Mid-
+    debug instrumentation.
+
+  - bootloader/boot.S (+1 / -3), common/include/config.h
+    (+4 / -11) -- cleanup.
+
+Context (subject):
+
+  Explicitly a WIP checkpoint; the LBA-based read was
+  corrupting bytes near the end of the ramdisk on some QEMU
+  configurations. The next commit fixes several root causes.
+
+--------------------------------------------------------------------------------
+
+## 435bfa22 -- [bootloader] Fixing several bugs
+
+Commit: 435bfa2215...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 19:20:51 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/boot.S (+113 / -97) -- large delta closing the
+    bugs the previous checkpoint surfaced:
+
+      * LBA-packet was being set with an off-by-one sector
+        count at the final iteration (loading 1 extra sector
+        of garbage that then CRC-mismatched).
+      * ES:BX buffer address overflowed segment when the read
+        size crossed a 64K boundary; now advances ES every 64K
+        of cumulative read.
+      * Fallback path from LBA to CHS activated incorrectly on
+        some BIOS that returned AH=0 but had actually
+        ignored the LBA request; added a stricter check.
+
+  - common/include/config.h (-22) -- removes now-unused
+    constants that were duplicating disk-geometry values
+    (LBA makes them irrelevant).
+
+  - kernel/main.c (+18 / -8) -- updates the CRC baseline now
+    that loading is correct.
+
+  - run_qemu (+3 / -2) -- passes explicit qemu flags useful
+    for testing the LBA path.
+
+--------------------------------------------------------------------------------
+
+## d6b4fd64 -- [bootloader] Moving the calculation of RAMDISK's CRC to the
+   bootloader
+
+Commit: d6b4fd6402...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 19:38:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/crc32.c renamed to common/crc32.c.
+    kernel/include/utils.h renamed to common/include/utils.h.
+    Both are now shared between bootloader and kernel.
+
+  - bootloader/stage3.c (+30 / -3) -- computes CRC32 of the
+    loaded ramdisk immediately after loading; aborts with
+    diagnostic if it doesn't match what stage2 reports having
+    loaded. Earlier detection of disk-read corruption.
+
+  - kernel/main.c (-25) -- kernel-side CRC check removed
+    (redundant now that stage3 does it before the kernel even
+    boots).
+
+  - bootloader/boot.S (+17 / -2) -- stage2 records the size of
+    the loaded ramdisk in a known location for stage3 to
+    consume.
+
+--------------------------------------------------------------------------------
+
+## 56599771 -- [bootloader] minor changes
+
+Commit: 5659977131...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 19:52:39 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.S (+10 / -12) -- trims a couple of obsolete
+  debug print calls; reorders an LBA packet fill for
+  clarity. No functional change.
+
+--------------------------------------------------------------------------------
+
+## 3f1fbb9e -- Forcing the CHS parameters for QEMU
+
+Commit: 3f1fbb9e59...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 20:45:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - run_qemu (+3 / -2) -- passes explicit cyls=?,heads=?,secs=?
+    to qemu's -drive option to force specific CHS geometry, so
+    the bootloader's CHS-fallback path gets exercised on a
+    known-good geometry in testing.
+
+  - bootloader/stage3.c (+24 / -18) -- when the int 13h AH=0x8
+    CHS-geometry query returns zeroes (some BIOSes do this for
+    USB sticks), stage3 now synthesizes reasonable defaults
+    based on the image size rather than panicking.
+
+  - bootloader/boot.S (+2 / -2),
+    scripts/build_scripts/create_empty_img_if_necessary (1 l.),
+    CMakeLists.txt (1 l.) -- matching.
+
+--------------------------------------------------------------------------------
+
+## 63e17553 -- [bootloader] Using 2 MB as RAMDISK_SIZE for debug (faster load)
+
+Commit: 63e175536a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 4 21:23:48 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.S (+5 / -3) -- temporarily sets RAMDISK_SIZE
+  to 2 MiB so the CI boot cycle is seconds instead of tens of
+  seconds (2 MiB loads fast even without LBA). The real size
+  gets restored before release.
+
+--------------------------------------------------------------------------------
+
+## d028f17b -- [bootloader] Removing VALUE_* defines
+
+Commit: d028f17bd7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 10 20:00:26 2018 +0200
+
+AI notes:
+
+What changed:
+
+  common/include/config.h (-4), bootloader/boot.S (1 l.) --
+  removes a handful of VALUE_* wrapper defines that were a
+  carryover from the nasm era (where VALUE_X was used because
+  bare numeric literals sometimes needed a prefix for the
+  assembler to parse). GAS doesn't need them; the raw constants
+  read cleaner.
+
+--------------------------------------------------------------------------------
+
+## b7de5d66 -- Update README
+
+Commit: b7de5d66ac...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 14:25:21 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+22) -- adds a "Build & run" section with concrete
+  steps: clone, cd, ./scripts/build_toolchain, make, make
+  gtests, ./build/run_qemu. First real "get started" guide in
+  the README. Edited via GitHub web UI.
+
+--------------------------------------------------------------------------------
+
+## 959f66b1 -- Update README
+
+Commit: 959f66b1ce...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 14:30:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (1 l.) -- tiny typo fix. Web UI.
+
+--------------------------------------------------------------------------------
+
+## ba9e0af1 -- Update README
+
+Commit: ba9e0af146...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 14:31:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (1 l.) -- another web-UI typo tweak, one line after
+  the previous. Three consecutive README edits is unusual --
+  author was polishing the page.
+
+--------------------------------------------------------------------------------
+
+## c1a731d9 -- Update README
+
+Commit: c1a731d9d5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 14:36:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+4 / -5) -- minor wording polish on the build
+  steps added in b7de5d66. Web UI.
+
+--------------------------------------------------------------------------------
+
+## 67c277c4 -- Update README
+
+Commit: 67c277c431...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 17:47:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+28 / -10) -- expanded "features" section and
+  adds a "what's implemented so far" table of kernel
+  subsystems with checkmarks. First comprehensive project
+  overview.
+
+--------------------------------------------------------------------------------
+
+## 2a847ab4 -- Update README
+
+Commit: 2a847ab41b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 16 19:37:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+11 / -11) -- prose polish on the features-table
+  wording; no content added/removed. Web UI.
+
+--------------------------------------------------------------------------------
+
+## 176b107b -- Update README
+
+Commit: 176b107b89...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 17 20:33:51 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+4 / -4) -- one more polish round on the features
+  table rows. Web UI.
+
+--------------------------------------------------------------------------------
+
+## 9569b680 -- Update c_cpp_properties.json for a VS Code's intellisense to
+   work better
+
+Commit: 9569b680ca...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 18 14:46:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  .vscode/c_cpp_properties.json (+6 / -2) -- adds missing
+  include paths (common/include, common/system_headers,
+  bootloader paths) that moved around in the Jan-Feb
+  directory reshuffles. Intellisense was showing missing-
+  header squiggles for many files.
+
+--------------------------------------------------------------------------------
+
+## 53f9b8c2 -- [paging] Add tests for the paging_pageframe_allocator
+
+Commit: 53f9b8c2e8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 12:28:52 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New unittests/paging_pageframe_allocator_test.cpp (65 l.)
+    -- first gtest coverage for the page-table-pool allocator
+    (the "paging-reserved" pool from commit 4cc69082). Tests
+    alloc, free, exhaustion, leak detection.
+
+  - kernel/pageframe_allocator.c (+4 / -4),
+    kernel/include/paging.h (+6) -- exposes the internal state
+    a bit so tests can verify.
+
+--------------------------------------------------------------------------------
+
+## b31bfb46 -- [paging] Make the paging_pageframe_allocator to use a separate
+   bitfield
+
+Commit: b31bfb46ed...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 12:47:48 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/paging_pageframe_allocator.c (68 l.) -- splits
+    the paging-reserved allocator out of the main
+    pageframe_allocator.c into its own file with its own
+    independent bitmap. Removes the "two bitmaps inside one
+    function" entanglement that was fragile.
+
+  - kernel/pageframe_allocator.c (-67) -- loses the paging
+    branch entirely; becomes a pure general-purpose pageframe
+    allocator.
+
+  - common/include/utils.h (+13) -- bitset_set / bitset_clear
+    / bitset_is_set helpers shared by both allocators.
+
+  - kernel/include/paging.h (+4 / -4) -- signature tweaks.
+
+Context (subject):
+
+  The split makes both allocators simpler to reason about and
+  individually unit-testable (no shared mutable state).
+
+--------------------------------------------------------------------------------
+
+## bb3b8e22 -- [pageframe_allocator] Make the allocator a little bit simpler
+
+Commit: bb3b8e223e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 12:55:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+8 / -13) -- streamlines the
+  alloc_pageframe loop: drops a now-obsolete early-exit branch
+  (was there because of the paging pool overlap that's gone
+  now), simplifies the bitset iteration.
+
+--------------------------------------------------------------------------------
+
+## 386d1490 -- [pageframe_allocator] Remove useless volatile attrs
+
+Commit: 386d1490ca...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 13:04:26 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+10 / -10),
+  kernel/paging_pageframe_allocator.c (+4 / -1) -- drops
+  volatile qualifiers on the bitset buffers. Originally added
+  as defensive programming; not needed because accesses are
+  always through well-defined critical sections with
+  disable_preemption / enable_preemption bracketing them.
+
+--------------------------------------------------------------------------------
+
+## 440e9865 -- [pageframe_allocator] Add some comments
+
+Commit: 440e986525...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 13:54:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+14),
+  kernel/paging_pageframe_allocator.c (+5) -- explanatory
+  comments on bitset layout (1 bit per 4 KiB page, 32 pages =
+  128 KiB per u32), invariants (last_index is a hint, not a
+  requirement), and the skipped-initial-2-MB region. Pure
+  documentation; helps future readers.
+
+--------------------------------------------------------------------------------
+
+## 392ab82f -- [pageframe_allocator] Minor changes
+
+Commit: 392ab82fc4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 14:02:38 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+14 / -6) -- small refactor:
+  get_first_zero_bit_index() re-expressed via __builtin_ffs /
+  __builtin_ctz for faster scanning (hardware instruction on
+  modern CPUs); fallback path left as a generic loop for
+  portability.
+
+--------------------------------------------------------------------------------
+
+## 26084c37 -- [pageframe_allocator] Add basic tests for the generic allocator
+
+Commit: 26084c378a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 15:36:00 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New unittests/general_pageframe_allocator_test.cpp (88 l.)
+    -- gtest coverage for the generic pageframe allocator
+    (counterpart of the paging-specific test added in
+    53f9b8c2). Tests alloc, free, alloc-after-free locality,
+    fragmentation behavior.
+
+  - kernel/pageframe_allocator.c (+5 / -2) -- minor state
+    exposure for the tests.
+
+--------------------------------------------------------------------------------
+
+## 49bbe040 -- [pageframe_allocator] Start to writing perf tests
+
+Commit: 49bbe04043...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 16:19:37 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/self_tests/perftests.c (+32) -- adds a pageframe
+    allocator perf test (1 million alloc/free cycles, RDTSC
+    reporting of cycles/op).
+
+  - kernel/main.c (+3 / -1), kernel/include/self_tests/
+    self_tests.h (+1) -- wire the new test into the in-kernel
+    runner.
+
+  - unittests/general_pageframe_allocator_test.cpp
+    (+12 / -4), unittests/kmalloc_test.cpp (1 l.) -- small
+    adjustments.
+
+--------------------------------------------------------------------------------
+
+## 841eaa83 -- [pageframe_allocator] Other perf tests
+
+Commit: 841eaa834f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 16:44:20 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/self_tests/perftests.c (+27 / -1) -- adds two more
+  workload patterns: sequential-alloc-then-sequential-free
+  (worst case for locality) and interleaved-alloc-free (cache
+  friendly). Reports cycles/op separately so the allocator's
+  pathological case is visible.
+
+--------------------------------------------------------------------------------
+
+## 44232940 -- [pageframe_allocator] Add advanced perf tests with random data
+
+Commit: 442329402e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 19:23:23 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/self_tests/perftests.c (+133 / -13) -- advanced
+    harness: pseudo-random (seeded) sequences that simulate
+    mixed realistic workloads, with configurable duration.
+    Reports throughput + per-percentile latency (p50, p99,
+    max).
+
+  - kernel/pageframe_allocator.c (+4 / -2) -- small
+    instrumentation hook that the test consumes.
+
+  - kernel/include/paging.h (+1) -- declaration for the
+    instrumentation accessor.
+
+--------------------------------------------------------------------------------
+
+## e2a12e35 -- [pageframe_allocator] Remove an useless optimization
+
+Commit: e2a12e3508...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Feb 19 19:30:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+7 / -22) -- strips an
+  optimization that tracked a "last known free region" across
+  calls. Perf tests showed it gave no measurable win because
+  the trivial last_index hint already handles 95% of the
+  locality benefit. Simpler code, same speed.
+
+--------------------------------------------------------------------------------
+
+## 45fb92ee -- [pageframe_allocator] Make MAX_MEM_SIZE_MB = 1024
+
+Commit: 45fb92ee7a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 13:05:48 2018 +0200
+
+Message:
+
+  After measuring allocator's performance with several tests,
+  it came out that its performance does not really depend so
+  much on MAX_MEM_SIZE_MB.
+
+AI notes:
+
+What changed:
+
+  - kernel/pageframe_allocator.c (+29 / -6) -- MAX_MEM_SIZE_MB
+    grows from 128 MiB to 1024 MiB (1 GiB). Bitmap size grows
+    proportionally (1 GiB / 4 KiB / 8 = 32 KiB bitmap). The
+    perf tests established that scan-to-find-free-bit stays
+    dominated by locality, not raw bitmap length.
+
+  - kernel/include/paging.h (+5 / -5) -- PAGES_BIT_FIELD_ELEMS
+    recomputed.
+
+  - kernel/self_tests/perftests.c (+80 / -46) -- reworked for
+    the larger address space.
+
+  - unittests/general_pageframe_allocator_test.cpp (+3 / -3)
+    -- tests updated.
+
+Context (body):
+
+  Before this, Tilck couldn't handle more than 128 MiB of RAM
+  without the allocator's bitmap overflow-wrapping. Now it
+  accepts up to 1 GiB.
+
+--------------------------------------------------------------------------------
+
+## 0a7b6f47 -- [pageframe_allocator] Minor changes
+
+Commit: 0a7b6f4785...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 13:30:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/paging.h (+7 / -8) -- renames a few macros
+    (MEM_SIZE_IN_MB -> MAX_MEM_SIZE_MB etc.) for clarity; no
+    behavior change.
+
+  - kernel/pageframe_allocator.c (+8 / -1),
+    kernel/self_tests/perftests.c (+8 / -3) -- use the new
+    names.
+
+--------------------------------------------------------------------------------
+
+## c6467e06 -- [pageframe_allocator] Implemented unaligned 128 KB block alloc
+
+Commit: c6467e0636...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 14:01:47 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+38 / -15) -- adds
+  alloc_pageframes_aligned() supporting runs of 32 contiguous
+  pages (= 128 KiB) at arbitrary offsets. Previously a multi-
+  page alloc assumed 128 KiB-aligned start; the aligned
+  version finds a 32-bit-zero u32 in the bitmap. Now an
+  unaligned variant searches for any N contiguous free bits
+  across u32 boundaries.
+
+Context (subject):
+
+  Large physical allocations (e.g. DMA buffers, contiguous
+  framebuffer memory) sometimes need arbitrary offset not
+  aligned to the bitmap-word size.
+
+--------------------------------------------------------------------------------
+
+## c65501c2 -- [pageframe_allocator] Saving work
+
+Commit: c65501c2f9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 16:18:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Checkpoint commit. kernel/pageframe_allocator.c (+17 / -15)
+  and kernel/self_tests/perftests.c (+31 / -11) -- iteration
+  on the unaligned alloc path; not yet stable. kernel/arch/
+  i386/paging.c (+3 / -6), kernel/include/paging.h (1 l.) --
+  small.
+
+--------------------------------------------------------------------------------
+
+## 1aa926a3 -- [pageframe_allocator] Fix in the tests
+
+Commit: 1aa926a342...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 16:30:44 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/self_tests/perftests.c (1 l.) -- one-line off-by-one
+  fix in the perftest's expected-address assertion following
+  the previous checkpoint.
+
+--------------------------------------------------------------------------------
+
+## 4e2405fe -- [pageframe_allocator] Minor fixes in the unaligned alloc_32
+
+Commit: 4e2405fe9f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 18:14:15 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+19 / -12) -- tightens the
+  unaligned alloc_32: boundary-crossing search now handles
+  the edge where a 32-bit-wide free region straddles two
+  bitmap u32 words (previously the search skipped over it).
+
+--------------------------------------------------------------------------------
+
+## 37b4ff70 -- [pageframe_allocator] Re-write alloc_32_pageframes
+
+Commit: 37b4ff70b2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 18:55:52 2018 +0200
+
+Message:
+
+  Now the unaligned fall-back is much faster.
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+23 / -42) -- net shrink.
+  alloc_32_pageframes rewritten: instead of separate aligned /
+  unaligned code paths, a single loop that OR-combines two
+  adjacent u32 words and shifts to find a 32-bit-wide zero
+  window. Shorter, and the perftest reports ~2x speedup on
+  the mixed-workload case.
+
+Context (body + subject):
+
+  End of the unaligned-alloc arc from commits 394-397.
+  Production-quality version.
+
+--------------------------------------------------------------------------------
+
+## 598e5dab -- [pageframe_allocator] Further minor optimizations
+
+Commit: 598e5dab40...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 19:09:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/pageframe_allocator.c (1 l.) -- tiny tweak: replaces
+    a shift+mask pair with a single instruction the compiler
+    generates better code from.
+
+  - kernel/self_tests/perftests.c (+14 / -11) -- perftest
+    harness adjusted to also time the new fast path explicitly.
+
+--------------------------------------------------------------------------------
+
+## f32ff4a1 -- [pageframe_allocator] Restoring some perf tests
+
+Commit: f32ff4a156...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 19:20:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/self_tests/perftests.c (+11 / -11) -- reinstates
+  some smaller-workload perf tests that were temporarily
+  removed during the alloc_32 rewrite. Ensures the historical
+  comparisons across commits stay visible.
+
+--------------------------------------------------------------------------------
