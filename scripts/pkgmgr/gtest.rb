@@ -106,12 +106,17 @@ class GtestPackage < Package
     cc  = ENV["CC"]  || "gcc"
     cxx = ENV["CXX"] || "g++"
 
+    # Force CMAKE_INSTALL_LIBDIR=lib so libgtest.a lands at
+    # install/lib/ on every distro. Without this, Fedora's cmake
+    # defaults to `lib64` (per GNU coding standards), which
+    # breaks the expected_files check.
     ok = run_command("cmake.log", [
       "cmake",
       "-DCMAKE_C_COMPILER=#{cc}",
       "-DCMAKE_CXX_COMPILER=#{cxx}",
       "-DCMAKE_BUILD_TYPE=Debug",
       "-DCMAKE_INSTALL_PREFIX=#{install_dir}",
+      "-DCMAKE_INSTALL_LIBDIR=lib",
       "-DGOOGLETEST_VERSION=#{default_ver}",
       src_dir.to_s,
     ])
