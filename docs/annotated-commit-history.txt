@@ -13409,3 +13409,2701 @@ Context (guess -- subject "Saving work"):
   etc.) to the same tool over time.
 
 --------------------------------------------------------------------------------
+
+## 1369ea64 -- Reading symbols using KERNEL_PADDR directly as ELF works
+
+Commit: 1369ea64d7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 5 02:49:09 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Kernel-side symbol lookup works end-to-end.
+
+  - scripts/build_apps/elfhack.c (+85 / -8) -- expanded: adds
+    operations to rewrite phdrs so the loader lays out .symtab
+    and .strtab contiguously with the rest of the kernel
+    image, at known vaddrs the kernel code can find at
+    runtime.
+
+  - kernel/elf_loader.c (+33 / -33) -- reads the loaded ELF
+    back out of its own kernel image (the kernel keeps a
+    byte-copy of its own ELF at a known paddr) and parses
+    .symtab / .strtab for symbol lookup.
+
+  - kernel/arch/i386/linker_script.ld (+12 / -3) -- ensures
+    section order / alignment matches what elfhack expects.
+
+  - kernel/arch/CMakeLists.txt (+3 / -3) -- post-link
+    elfhack invocation.
+
+  - kernel/main.c (+2) -- boot-time printk of a few kernel
+    symbol addresses, verifying the lookup works.
+
+Context (subject):
+
+  Last puzzle piece for named backtraces: the kernel can now
+  say "frame 3: foo_handler+0x24" instead of "frame 3:
+  0xC010A8F4".
+
+--------------------------------------------------------------------------------
+
+## 4c580338 -- [entry.S] Use page_size_buf for the temp page_dir instead of
+   0x1000
+
+Commit: 4c58033887...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 6 12:11:01 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/entry.S (+6 / -5) -- the temporary page
+    directory used during early boot (before kmalloc is up)
+    is placed in a kernel .bss reserved buffer
+    (page_size_buf) instead of at the hardcoded physical
+    address 0x1000. Avoids accidental collisions with low-
+    memory BIOS data on real hardware.
+
+  - kernel/mm.c (1 l.) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 228af48d -- fix build error
+
+Commit: 228af48d40...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 6 12:15:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/CMakeLists.txt (1 l.) -- fixes a dependency
+  ordering issue introduced by the previous commit (elfhack
+  needed to be built before the kernel post-link used it).
+
+--------------------------------------------------------------------------------
+
+## d9788313 -- Improving elfhack
+
+Commit: d97883130a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 6 14:53:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_apps/elfhack.c (+45 / -35) -- net change,
+    mostly argument parsing cleanup. Subcommands
+    (--mark-symtabs-as-loadable, --rewrite-phdrs, etc.)
+    become distinct top-level args instead of being selected
+    by heuristics. Usage / --help output added.
+
+  - kernel/arch/CMakeLists.txt (+10 / -4),
+    kernel/arch/i386/linker_script.ld (+6 / -6),
+    kernel/main.c (+2 / -2) -- use the cleaner elfhack
+    interface.
+
+--------------------------------------------------------------------------------
+
+## daaa87c3 -- [elfhack] Add --drop-last-section
+
+Commit: daaa87c3e6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 6 20:28:23 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_apps/elfhack.c (+51) -- new
+    --drop-last-section option. Used post-link to remove
+    trailing sections that were emitted by the linker but
+    aren't needed at runtime (e.g. .shstrtab after
+    .symtab/.strtab -- sections table string table,
+    unreachable once section walking is complete).
+
+  - kernel/arch/CMakeLists.txt (+5 / -1) -- invokes the new
+    op after the symtab-loadable one.
+
+--------------------------------------------------------------------------------
+
+## 31e8bf15 -- [elfhack] Fix a bug drop_last_section causing the ELF to loose
+   .shstrtab
+
+Commit: 31e8bf15c6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 6 21:47:15 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_apps/elfhack.c (+110 / -2) -- adds logic to
+    preserve .shstrtab even when dropping the last section.
+    The section-header-string-table is referenced by every
+    section's sh_name index; dropping it broke most ELF
+    tools. The new code rewrites the section header order so
+    the dropped sections aren't actually the last one in the
+    SHT (the previous assumption didn't hold when .shstrtab
+    was last by linker convention).
+
+  - kernel/arch/CMakeLists.txt (+2) -- adds an --assert-
+    section-found=.shstrtab step to catch the bug class.
+
+--------------------------------------------------------------------------------
+
+## 693682a4 -- [build] Introduce a dedicated CMakeLists.txt file for
+   script/build_apps
+
+Commit: 693682a415...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 9 15:04:35 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New scripts/build_apps/CMakeLists.txt (10 l.) -- local
+    build file for the elfhack tool (and any future host
+    build utilities). Uses host gcc (not the i686 cross-
+    toolchain); lives outside the kernel tree's build rules.
+
+  - CMakeLists.txt (+14 / -4) -- adds the new subdirectory.
+
+  - kernel/arch/CMakeLists.txt (-2) -- drops a now-redundant
+    rule.
+
+--------------------------------------------------------------------------------
+
+## fd6a0e43 -- Move symtab/strtab buffers in misc.c
+
+Commit: fd6a0e4365...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 9 16:31:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (-3) / kernel/misc.c (+3) -- moves the
+  symtab_buf / strtab_buf globals (the kernel's own copies
+  of its symbol tables used by addr2name lookup) from main.c
+  to misc.c. main.c's job is boot-up orchestration; these
+  are long-lived kernel state.
+
+--------------------------------------------------------------------------------
+
+## 9a422228 -- Introducing find_addr_of_symbol()
+
+Commit: 9a4222284d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 18:27:08 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/elf_loader.c (-121 / +0) -- strips out all the
+    in-elf_loader.c symbol-walking code (moved to
+    debug_utils.c where it actually gets used).
+
+  - kernel/debug_utils.c (+35 / -9) -- gains
+    find_addr_of_symbol(name) + find_symbol_by_addr(addr).
+    The former walks .symtab looking for a matching
+    Elf32_Sym.st_name; the latter finds the nearest symbol
+    with st_value <= addr < st_value + st_size.
+
+  - kernel/include/debug_utils.h (+2 / -1) -- declarations.
+
+  - kernel/main.c (+3 / -4) -- uses the new API at boot.
+
+Context (subject + the refactor):
+
+  Symbol lookup is a debug-utilities concern, not an ELF-
+  loading concern. Now that the tables are loaded by
+  elf_loader and stashed in misc.c, debug_utils owns the
+  lookup primitive. Dump_stacktrace in debug_utils.c can
+  directly call find_symbol_by_addr to print names.
+
+--------------------------------------------------------------------------------
+
+## ec3aecf2 -- [main] Add cmdline parsing logic for self tests
+
+Commit: ec3aecf2dd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 19:00:52 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+80 / -43) -- parses the Multiboot cmdline
+    string ("-kernel foo.elf -append 'selftest=kmalloc'"
+    etc.). Recognizes "selftest=<name>" which looks up the
+    matching self_test function via find_addr_of_symbol and
+    invokes it. Can now run a specific kernel self-test from
+    the qemu command line, no rebuild needed.
+
+  - kernel/debug_utils.c (+45 / -4) -- helpers for extracting
+    tokens from the cmdline.
+
+  - .vscode/settings.json (+2 / -1) -- minor.
+
+Context (subject):
+
+  Major workflow win: authors can run any selftest by name
+  from the command line instead of editing main.c and
+  rebuilding. Foundation for the eventual test-runner driver
+  that boots a fresh kernel per selftest.
+
+--------------------------------------------------------------------------------
+
+## 3d02dbef -- Rename kernel selftests to have always the selftest_ prefix
+
+Commit: 3d02dbef86...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 19:11:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/self_tests/perftests.c (+13 / -13), testrunners.c
+    (+7 / -6) -- every test function is renamed to start
+    with selftest_* (e.g. kmalloc_chaos_test ->
+    selftest_kmalloc_chaos).
+
+  - kernel/main.c (-14 / +5), kernel/include/self_tests/
+    self_tests.h (+5 / -5), unittests/kmalloc_test.cpp
+    (+3 / -3), unittests/pageframe_allocator_test.cpp
+    (+1 / -1) -- matching calls.
+
+Context (subject):
+
+  Naming convention that matches the selftest= cmdline
+  parser from commit ec3aecf2. Symbol lookup by prefix is
+  now the contract.
+
+--------------------------------------------------------------------------------
+
+## df9ee1d0 -- minor changes in debug_utils
+
+Commit: df9ee1d09f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 20:07:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/debug_utils.c (+5 / -2) -- small adjustments to the
+  cmdline-argument helpers: trims trailing whitespace /
+  handles empty tokens.
+
+--------------------------------------------------------------------------------
+
+## da90c4da -- Fix bug in scripts/debug_run_qemu
+
+Commit: da90c4dae5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 20:13:39 2018 +0200
+
+Message:
+
+  It is necessary to run the nokvm version of the main script
+  in order remote debugging with gdb to work.
+
+AI notes:
+
+What changed:
+
+  scripts/debug_run_qemu (1 l.) -- sources / invokes
+  run_nokvm_qemu instead of run_qemu. KVM doesn't expose
+  enough state for gdb's instruction-level single-stepping;
+  plain tcg mode is the right backend for debug sessions.
+
+--------------------------------------------------------------------------------
+
+## 0b04bbc6 -- [debug] Make dump_stacktrace() show symbolic frames
+
+Commit: 0b04bbc6d5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 12 21:28:56 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Major UX win: panic stacktraces now read like Linux's.
+
+  - kernel/debug_utils.c (+68 / -24) -- dump_stacktrace()
+    walks frames as before, but for each frame calls
+    find_symbol_by_addr and prints "frame N: 0xADDR
+    symbol+offset". Unrecognized addresses still print as
+    raw hex.
+
+  - common/asserts.c (+4 / -1) -- panic() calls the new
+    symbol-aware dump_stacktrace.
+
+  - kernel/self_tests/testrunners.c (+14) -- new selftest
+    that intentionally dies to exercise the stacktrace path
+    (selftest_panic_and_stacktrace).
+
+  - kernel/include/debug_utils.h (+1 / -1) -- tweaks a
+    helper signature.
+
+Context (guess -- subject):
+
+  Completes the arc from "load symbols" (501) to
+  "use them in panic". A panic now says "page fault in
+  kmalloc_chaos_test+0x40 called by kmain+0xFF" instead of
+  "page fault at 0xC010F8E4 called by 0xC0108123".
+
+--------------------------------------------------------------------------------
+
+## 5a0620d8 -- [asm] Introduce macros making asm functions marked as function
+   symbols
+
+Commit: 5a0620d86e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 13:29:17 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+8) -- FUNC(name) and
+    END_FUNC(name) macros that expand to GAS directives:
+    .type name, @function; name:; ... .size name, . - name.
+    Ensures .symtab has proper STT_FUNC entries for asm
+    symbols, with accurate sizes.
+
+  - kernel/arch/i386/entry.S (+23 / -16), irq_handlers.S
+    (+7 / -5), isr_handlers.S (+14 / -10) -- asm entry
+    points wrapped in FUNC/END_FUNC. Required so
+    find_symbol_by_addr can size-bound them correctly.
+
+  - scripts/build_apps/elfhack.c (+1) -- tiny.
+
+Context (subject):
+
+  Before this, asm symbols were STT_NOTYPE with st_size = 0,
+  which confused find_symbol_by_addr (any address would
+  match the nearest asm label, no matter how far). Now the
+  size check works.
+
+--------------------------------------------------------------------------------
+
+## 821ca77d -- [paging] Fix is_mapped() to support 4-MB pages
+
+Commit: 821ca77dce...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 13:55:23 2018 +0200
+
+Message:
+
+  This allows the stackwalk32() debug function to work.
+  Now pretty symbolic backtraces seem to work everywhere in
+  exOS.
+
+  BONUS:
+   - make debug_run_qemu to use multiboot_nokvm in order to
+     allow the self tests to be run with just -append
+     -s=<selftest name>
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+6) -- is_mapped now handles
+    page_dir_entry.psize == 1 (4 MiB huge-page entries) by
+    short-circuiting: if the PDE is present and PSIZE,
+    every vaddr in that 4 MiB range is mapped. Previously
+    it walked to the (non-existent) page table and returned
+    false for linearly-mapped addresses.
+
+  - kernel/debug_utils.c (+7 / -6) -- the stack walker can
+    now validate frame pointers even inside the linear
+    mapping, where is_mapped used to lie.
+
+  - scripts/debug_run_qemu (1 l.) -- switches to multiboot_
+    nokvm so the -append cmdline reaches the kernel.
+
+Context (subject):
+
+  Panic backtraces were silently truncating at the first
+  frame inside the linear-mapped region (= every kernel-
+  code frame). With this fix stackwalk walks all the way up.
+
+--------------------------------------------------------------------------------
+
+## afa8b95a -- Move i386-specific code into arch/i386/debug.c
+
+Commit: afa8b95a97...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 14:02:33 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/i386/debug.c (181 l.) -- holds
+    stackwalk32, is_valid_frame_ptr, and the other pieces
+    of the backtrace machinery that depend on i386
+    specifics (EBP chain, stack frame layout, is_mapped
+    calls on the right pdir).
+
+  - kernel/debug_utils.c (-178) -- i386 code moves out;
+    what's left is arch-independent formatting and
+    dispatch to arch/<arch>/debug.c.
+
+  - kernel/include/debug_utils.h (+2 / -2) -- signature
+    unifying.
+
+--------------------------------------------------------------------------------
+
+## 7c0157e3 -- Introduce DEBUG_CHECKED_SUCCESS(always_run_code)
+
+Commit: 7c0157e3b8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 14:30:04 2018 +0200
+
+Message:
+
+  This useful macro is used to always run something, but to
+  check its success only in debug builds. It stands for:
+
+    DEBUG_ONLY(bool success =) always_run_code;
+    ASSERT(success);
+
+AI notes:
+
+What changed:
+
+  - common/include/common_defs.h (+6) -- DEBUG_CHECKED_SUCCESS
+    macro expands as above. Release builds don't allocate the
+    bool (code still runs, but no assert).
+
+  - kernel/main.c (+1 / -2) -- first use site.
+
+--------------------------------------------------------------------------------
+
+## 4412823c -- Rename add_tasklet* to enqueue_tasklet*
+
+Commit: 4412823cc8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 14:35:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Rename: add_tasklet / add_tasklet0..3 -> enqueue_tasklet,
+  enqueue_tasklet0..3 across kernel/tasklet.c,
+  kernel/include/tasklet.h, kernel/arch/generic_x86/kb.c,
+  kernel/arch/i386/process32.c, kernel/main.c,
+  kernel/self_tests/testrunners.c, unittests/tasklet_test.cpp
+  (+26 / -26 symmetric). "enqueue" matches the
+  "producer/consumer ring" semantics better than "add".
+
+--------------------------------------------------------------------------------
+
+## e2bc1430 -- Cosmetic changes
+
+Commit: e2bc143084...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 15:51:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/debug.c (+24 / -1),
+  kernel/include/arch/i386/arch_utils.h (+19), kernel/debug_
+  utils.c (+2 / -2), kernel/main.c (+2 / -2),
+  kernel/arch/generic_x86/kb.c (1 l.) -- miscellaneous
+  formatting polish: reorder ASSERTs to match call order,
+  align multi-line function signatures.
+
+--------------------------------------------------------------------------------
+
+## 135852b9 -- Remove scripts/resolve_bt and add the .S ext to
+   count_lines_of_code
+
+Commit: 135852b9b0...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 15:55:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/resolve_bt (-25) deleted -- was used to resolve
+    numeric frame addresses in printk backtraces to symbols
+    via addr2line. With the kernel doing symbol lookup itself
+    now (commit 0b04bbc6), this script is obsolete.
+
+  - scripts/count_lines_of_code (1 l.) -- adds .S (GAS
+    assembly) to the list of counted file extensions.
+
+--------------------------------------------------------------------------------
+
+## 9283aaa7 -- [build] Move elf.h and multiboot.h in common/system_headers
+
+Commit: 9283aaa763...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 16:06:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/elf.h -> common/system_headers/elf.h.
+    common/include/multiboot.h -> common/system_headers/
+    multiboot.h.
+
+  - bootloader/CMakeLists.txt (+2), kernel/CMakeLists.txt
+    (+2 / -2) -- add common/system_headers/ to the include
+    path.
+
+Context (subject):
+
+  These are third-party-spec headers (ELF is SysV spec;
+  Multiboot is GRUB spec), so they belong with other
+  "shim / spec" headers under system_headers/, not with
+  Tilck's own headers in include/.
+
+--------------------------------------------------------------------------------
+
+## 9e98f825 -- [fat32] Remove a wrong ASSERT from the FAT32 code
+
+Commit: 9e98f8255a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 13 20:10:29 2018 +0200
+
+Message:
+
+  The ASSERT(to_read == d->cluster_size) made sense only in
+  the original fat_read_whole_file() function, which source
+  has been used to write fat_read(). After the introduction
+  of fseek(), clearly that ASSERT could not be kept in
+  fat_read().
+
+  BONUS: this change fixes another issue as well: the failure
+  of the fseek unit test with a "buffers differ" error, in
+  the case of read 0: in this case, the issue is simply the
+  fact that the buffers (on stack) contain garbage since
+  fseek returned 0. The fix is simply to zero the buffers
+  before reading.
+
+AI notes:
+
+What changed:
+
+  - common/fat32_base.c (-16 / +1) -- drops the
+    cluster-alignment ASSERT inherited from read_whole_file.
+    With fseek, partial-cluster reads are legitimate.
+
+  - unittests/exvfs_test.cpp (+6 / -2) -- bzero the
+    buffers before calling exvfs_read so the "bytes
+    compared to nothing" case no longer sees random
+    stack garbage.
+
+--------------------------------------------------------------------------------
+
+## 0094d1be -- [paging] Remove the page_tables field from page_directory_t
+
+Commit: 0094d1be19...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 14:20:27 2018 +0200
+
+Message:
+
+  Now that linear mapping is used, not only page_directory_t
+  doesn't need a 'paddr' field, but also does not need to keep
+  a separate array with the vaddrs of the page tables: they're
+  addresses can be calculated from their physical address, by
+  just adding an offset.
+
+AI notes:
+
+What changed:
+
+  - kernel/include/arch/i386/paging_int.h (+1 / -2) -- removes
+    page_tables[1024] from page_directory_t. The struct
+    shrinks from ~12 KiB to 4 KiB.
+
+  - kernel/arch/i386/paging.c (+25 / -34) -- call sites that
+    used pdir->page_tables[i] now compute the vaddr via
+    PADDR_TO_VADDR(pdir->entries[i].ptaddr << 12). No extra
+    bookkeeping.
+
+  - kernel/include/paging.h (1 l.) -- trivial.
+
+Context (PR body):
+
+  Another benefit of linear mapping: the "C-side pointer to
+  page table" cache becomes redundant. Saves 4 KiB per
+  process (= per pdir), plus eliminates a class of bugs where
+  the two views could get out of sync.
+
+--------------------------------------------------------------------------------
+
+## 864cb5e4 -- [paging] Rename 'pageTableAddr' to 'ptaddr'
+
+Commit: 864cb5e41e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 14:57:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/paging.c (+11 / -13),
+  kernel/include/arch/i386/paging_int.h (+1 / -1) -- field
+  rename pageTableAddr -> ptaddr inside page_dir_entry_t.
+  Kills the last camelCase field in the paging structs.
+
+Context (this commit is later referenced as tag z-ancient-09):
+
+  Matches the final naming convention. As docs/
+  ancient_commits.md notes, this commit is tagged z-ancient-09
+  -- the first commit in the Ubuntu 18.04 era.
+
+================================================================================
+  ERA 6 -- Interactive user mode  (Mar 2018 - ...)
+================================================================================
+
+  With the kernel's filesystem, ELF loader, symbols, backtraces, and
+  preemption now all working reliably, this era is about making Tilck
+  actually useable from a user-mode program. In about one intense week
+  it lands: real open/close/read/write/ioctl syscalls backed by a VFS
+  dispatch; devfs with /dev/tty0; a char-device driver framework
+  (kernel/char/) and the first driver (tty); cooked-mode keyboard input
+  so userland read(0, ...) blocks until Enter and returns a line; a
+  proper kcond-based waitpid replacing the demo implementation; a
+  working sys_execve that destroys the caller's pdir and loads a new
+  ELF in place; the usermode_apps/ directory replacing usermode_init/
+  as a place for multiple user programs; /bin/shell as the first
+  real interactive program (cd / exit / help builtins, fork+exec for
+  external commands). term splits into a generic "terminal" on top of
+  a video_interface abstraction so a framebuffer driver can slot in
+  later. kmalloc gains a proper mutex and a calculate_block_size
+  function enabling size-less kfree(). By the end of this era, booting
+  Tilck drops into a shell prompt; you can type "cd /bin", "help",
+  "shell" (nested shells), read files, etc.
+
+--------------------------------------------------------------------------------
+
+## 693b796c -- [FS] Starting to add real support for open and close syscalls
+
+Commit: 693b796ca3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 14 14:56:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/fs/fs_syscalls.c (60 l.) -- sys_open(path,
+    flags, mode) and sys_close(fd) stubs. sys_open calls
+    exvfs_open, stashes the handle in current->handles[fd],
+    returns fd. sys_close releases the handle.
+
+  - kernel/include/process.h (+4) -- adds
+    fs_handle_base *handles[MAX_FDS] to task_info.
+
+  - kernel/syscalls.c (+2 / -20) -- drops the old stub
+    sys_open implementations; dispatches to
+    fs_syscalls.c's real functions.
+
+  - kernel/arch/i386/paging.c (+13 / -8) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## ce3234b8 -- [FS] Make userland to write() to console through devfs
+
+Commit: ce3234b814...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 14 16:29:29 2018 +0200
+
+AI notes:
+
+What changed:
+
+  First real devfs. Userland write(fd=1, ...) now reaches
+  the kernel console through the file-ops dispatch
+  infrastructure, not a hardcoded path in sys_write.
+
+  - New kernel/fs/devfs.c (79 l.) -- devfs_mount_at(path)
+    registers a filesystem that exposes pseudo-files.
+    Creates /dev/tty0 whose file_ops.write calls term_
+    write_char().
+
+  - New kernel/include/fs/devfs.h (6 l.) -- public API.
+
+  - kernel/main.c (+8) -- mounts devfs at /dev at boot.
+
+  - kernel/process.c (+10) -- on task-create, opens
+    /dev/tty0 into fd 0, 1, 2 so stdin / stdout / stderr
+    point at the console by default.
+
+  - kernel/fs/fs_syscalls.c (+21) -- sys_write dispatches
+    through fops.
+
+  - usermode_init/init.c (+9) -- no longer needs special
+    syscall wrappers for writing to the screen; regular
+    write(1, ...) works.
+
+  - kernel/arch/i386/process32.c (1 l.),
+    kernel/syscalls.c (-16) -- plumbing.
+
+Context (subject):
+
+  Linux's "everything is a file" abstraction starts working
+  for real in Tilck. A userland program writing to stdout
+  goes: write(1, ...) -> int 0x80 -> sys_write ->
+  fds[1].fops.write -> devfs_tty0_write -> term_write_char.
+
+--------------------------------------------------------------------------------
+
+## 406e3691 -- [FS] Implement sys_read()
+
+Commit: 406e3691d3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 14 17:36:33 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fs_syscalls.c (+38 / -18) -- sys_read(fd, buf,
+    count) dispatches to fds[fd].fops.read. exvfs read path
+    works for FAT files out of the box; /dev/tty0 gets a
+    read stub (no keyboard integration yet).
+
+  - usermode_init/init.c (+28 / -1) -- init gains a test
+    sequence that reads a file from the FAT ramdisk via
+    open/read/close.
+
+--------------------------------------------------------------------------------
+
+## a1dfbc2e -- [FS] Fix problems caused by use of stdio funcs in init
+
+Commit: a1dfbc2e57...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 14 19:30:10 2018 +0200
+
+Message:
+
+  When stdio funcs are used, dietlibc's printf() doesn't just
+  do a write(), but it checks with ioctl() if the current
+  output is a tty. Since exOS didn't have ioctl() yet, the
+  check failed and printf() assumed that there is no need to
+  write line-by-line the output. Manually forcing the flush
+  with fflush(stdout) works, but it should work also without
+  it, as it does on Linux. Therefore, a specially crafted
+  impl of ioctl() has been added in order to trick dietlibc.
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fs_syscalls.c (+68) -- first sys_ioctl stub.
+    Returns success for the specific TIOCGWINSZ-like probe
+    dietlibc uses to detect a tty, so printf decides to
+    line-buffer. Generic ioctl(2) dispatch to fd.fops.ioctl
+    added.
+
+  - New kernel/include/fs/devfs.h functions (+12) for tty-
+    specific ioctls.
+
+  - usermode_init/init.c (+26 / -27), usermode_init/
+    CMakeLists.txt (+3) -- init switches from manual
+    write()s to real printf() and friends; verifies line
+    buffering works.
+
+  - kernel/fs/devfs.c (-12), kernel/main.c (+3 / -1),
+    kernel/syscalls.c (+5 / -1) -- plumbing.
+
+Context (body is explicit):
+
+  Userland libc quirks becoming visible. Real libraries
+  make assumptions about the kernel supporting things like
+  ioctl; stubbing just the right calls enough to satisfy
+  those assumptions is the work here.
+
+--------------------------------------------------------------------------------
+
+## e1a356e0 -- [FS] Add ioctl() in fops and move the tty ioctl hack in devfs.c
+
+Commit: e1a356e0ab...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 17:05:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/fs/exvfs.h (+4) -- adds an ioctl field to
+    file_ops. file_ops is now a 5-tuple: read, write, lseek,
+    ioctl, close.
+
+  - kernel/fs/exvfs.c (+17) -- exvfs_ioctl dispatcher.
+
+  - kernel/fs/devfs.c (+57 / -5) -- the tty ioctl probe
+    handled from commit a1dfbc2e moves into devfs's per-file
+    ioctl handler instead of being special-cased in
+    fs_syscalls.c.
+
+  - kernel/fs/fs_syscalls.c (-50 / +63 net change) -- the
+    syscall body becomes a thin wrapper around exvfs_ioctl.
+
+  - common/fat32_base.c (1 l.), kernel/arch/i386/paging.c
+    (+3 / -2) -- matching.
+
+Context (guess -- subject):
+
+  Layering cleanup: fs_syscalls.c should be dispatching, not
+  special-casing device semantics. devfs owns /dev/tty0's
+  quirks.
+
+--------------------------------------------------------------------------------
+
+## f8ec6e4e -- [FS] Cosmetic changes in fs_syscalls.c
+
+Commit: f8ec6e4ef5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 17:17:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/fs/fs_syscalls.c (+28 / -28) -- formatting /
+  restructuring: groups sys_open / sys_close / sys_read /
+  sys_write / sys_lseek / sys_ioctl in the same order as
+  the file_ops struct. Pure style.
+
+--------------------------------------------------------------------------------
+
+## 4eba72f4 -- [FS] Cosmetic changes 2
+
+Commit: 4eba72f456...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 17:25:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/fs/fs_syscalls.c (+13 / -8) -- follow-up polish:
+  extracts a small get_handle_or_error(fd) helper shared by
+  all the fd-taking syscalls. Replaces duplicated
+  "if (fd < 0 || fd >= MAX_FDS || !handles[fd]) return
+  -EBADF" blocks.
+
+--------------------------------------------------------------------------------
+
+## 8acc67ea -- [FS] Introducing a simple interface for char device drivers
+
+Commit: 8acc67eab7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 15 21:28:37 2018 +0200
+
+AI notes:
+
+What changed:
+
+  First real char-device abstraction.
+
+  - New kernel/char/tty.c (88 l.) -- the first char driver.
+    Wraps term_write_char() for output; sets up to host
+    keyboard input eventually. Registers itself with devfs
+    as "tty0" via the new API below.
+
+  - kernel/fs/devfs.c (+90 / -85) -- net re-shape. Now
+    accepts per-device registration: each char driver
+    provides its own read/write/ioctl callbacks, devfs
+    routes by filename.
+
+  - kernel/include/fs/devfs.h (+14 / -3) -- declares the
+    new driver-registration API (register_char_device(
+    name, ops)).
+
+  - kernel/main.c (+9 / -2) -- wires up tty0.
+
+  - kernel/CMakeLists.txt (+1) -- new kernel/char/
+    subdirectory.
+
+  - usermode_init/init.c (+4 / -2) -- trivial.
+
+Context (subject):
+
+  Kernel stops treating /dev/tty0 as a one-off. Any future
+  char device (/dev/kb, /dev/null, /dev/zero, /dev/random)
+  can now register itself the same way.
+
+--------------------------------------------------------------------------------
+
+## 961a233d -- [FS] Milestone: user processes can now read from the keyboard
+
+Commit: 961a233d5f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 00:20:41 2018 +0200
+
+Message:
+
+  Thanks to all the infrastructure built for exOS, it was easy
+  now to implement support for reading from the tty device in
+  "cooked mode".
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/kb.c (+56 / -47) -- keyboard
+    driver now translates scancodes into line-buffered ASCII
+    (cooked mode): backspace edits, Enter flushes the line
+    to tty. Shift/Caps/Num handling remains.
+
+  - kernel/char/tty.c (+30 / -1) -- tty_read blocks until
+    the keyboard line buffer has data, then copies it out
+    via fd.fops.read.
+
+  - kernel/fs/fs_syscalls.c (1 l.),
+    kernel/include/process.h (+2 / -2),
+    kernel/include/sync.h (+2 / -2),
+    kernel/process.c (1 l.), kernel/sched.c (1 l.) --
+    matching.
+
+  - usermode_init/init.c (+23 / -1) -- demo: init reads a
+    line from stdin and echoes it back, proving round-trip.
+
+Context (subject says "Milestone"):
+
+  Tilck's first interactive user session. printf works,
+  scanf-like reads work, Ctrl-D / Enter behave as expected.
+  Foundation for a real shell.
+
+--------------------------------------------------------------------------------
+
+## d3b9a6e2 -- [KB] Make the keyboard cooked buffer a ring buffer
+
+Commit: d3b9a6e2ee...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 11:22:33 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/kb.c (+39 / -6) -- replaces the
+    linear cooked buffer with a fixed-size ring buffer
+    (power-of-two size via modulo-by-mask). Keyboard input
+    arriving while a userland task holds the read lock no
+    longer drops chars once the buffer fills -- it wraps,
+    with old chars displaced.
+
+  - kernel/char/tty.c (+5 / -16) -- reader side simpler now
+    that the buffer is a ring.
+
+  - kernel/include/kb.h (+8) -- exposes ring-buffer sanity
+    checks.
+
+  - kernel/tasklet.c (+3 / -3) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 75e23911 -- [term] Move the term_buffer in BSS
+
+Commit: 75e239111d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 11:40:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/term.c (+16 / -12) -- the scrollback
+  buffer (1024 rows * 80 chars * 2 bytes = ~160 KiB) moves
+  from a kmalloc'd allocation to a static file-scope array
+  in .bss. Guarantees it's available before kmalloc is up,
+  and the linear-mapping-aware kernel loader zero-fills it
+  at load time regardless.
+
+--------------------------------------------------------------------------------
+
+## 81cc825c -- [term] Move serial port code away from term.c
+
+Commit: 81cc825c9f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 12:05:21 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/generic_x86/serial.c (33 l.) -- serial-
+    port output split out: init_serial_port, write_serial.
+    Tiny module.
+
+  - kernel/arch/generic_x86/term.c (+11 / -41) -- loses the
+    serial code (term_write_char now calls
+    serial_write(c) instead of inlining).
+
+  - New kernel/include/serial.h (10 l.) -- serial API
+    declaration.
+
+Context (subject):
+
+  Terminal code is growing; serial-port is a peripheral not a
+  term concern. Both will end up becoming independent
+  drivers eventually.
+
+--------------------------------------------------------------------------------
+
+## 4a96d8b1 -- [term] Separating some code internally in term.c
+
+Commit: 4a96d8b1eb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 12:34:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/term.c (+54 / -60) -- internal
+  refactor: separates "VGA text-mode video driver" concerns
+  (cursor positioning, memory-mapped write to 0xB8000) from
+  "terminal emulator" concerns (scrollback, line wrap, ANSI
+  interpretation). Prep for the extraction in commit 539.
+
+--------------------------------------------------------------------------------
+
+## 0f78975c -- [term] Move video code in textmode_video and temp. comment
+   scroll code
+
+Commit: 0f78975ce1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 12:48:59 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/generic_x86/textmode_video.c (49 l.) --
+    owns the bare VGA text-mode surface: init, plot_char,
+    move_cursor, clear_screen. No scrollback or line
+    wrapping.
+
+  - kernel/arch/generic_x86/term.c (-135 + 80) -- net
+    shrinks by ~55 lines. Keeps line-wrap / color / tty-
+    semantics; video calls out to textmode_video.c.
+
+  - The scroll logic is temporarily commented out; it's
+    being rewritten in textmode_video.c (the next commit).
+
+Context (subject):
+
+  Clean split: textmode_video = dumb framebuffer driver,
+  term.c = smart terminal. When framebuffer support lands
+  later, textmode_video becomes a swappable layer.
+
+--------------------------------------------------------------------------------
+
+## db67be2d -- [term] Working on the new scroll logic in textmode_video.c
+
+Commit: db67be2d84...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 13:58:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/textmode_video.c (+66 / -8) --
+    scroll handling moves into the video driver: maintains a
+    ring buffer of visible rows, cheap incremental updates
+    to 0xB8000 on scroll. Page-up / page-down accessors.
+
+  - kernel/arch/generic_x86/term.c (+34 / -19) -- term.c
+    becomes a thin client of textmode_video's scroll API.
+
+  - kernel/arch/generic_x86/kb.c (+2 / -2) -- tiny.
+
+Context (subject):
+
+  Rebuilds the scroll logic on top of the cleaner split,
+  fixing the "temporarily commented out" state from the
+  previous commit.
+
+--------------------------------------------------------------------------------
+
+## 08db5dd1 -- [term] Completing work on the new scroll logic in
+   textmode_video.c
+
+Commit: 08db5dd184...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 15:17:56 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/term.c (+16 / -132) -- huge
+    shrink. Most of term.c's scroll state and logic is gone
+    (textmode_video.c owns it). term.c keeps only line-wrap,
+    \n/\r handling, color state.
+
+  - kernel/arch/generic_x86/textmode_video.c (+50 / -21) --
+    final form of scroll API; scroll_up / scroll_down /
+    scroll_top / scroll_bottom.
+
+  - kernel/arch/generic_x86/kb.c (+2 / -2) -- tiny.
+
+  - kernel/include/term.h (+2 / -2) -- signature tweaks.
+
+--------------------------------------------------------------------------------
+
+## 392bd76a -- [term] Introduce a dedicated textmode_video.h header
+
+Commit: 392bd76a8b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 19:11:51 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/include/arch/generic_x86/textmode_video.h
+    (52 l.) -- declares vga_color enum, make_color /
+    make_vgaentry macros, and the textmode_video functions
+    (init, plot, move_cursor, scroll_*). Moved from term.h
+    which had grown too generic.
+
+  - bootloader/basic_term.c (+6 / -6), kernel/arch/
+    generic_x86/term.c (+2 / -16), kernel/arch/generic_x86/
+    textmode_video.c (+8 / -8) -- use the new header.
+
+  - kernel/include/term.h (-34) -- stripped to just the
+    term_ functions (arch-independent).
+
+--------------------------------------------------------------------------------
+
+## 2134bb59 -- [term] Fix issue with invisible cursor
+
+Commit: 2134bb595a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 19:46:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/textmode_video.c (+12 / -8) --
+  textmode_video was writing the cursor position to VGA
+  ports (0x3D4/0x3D5) but forgot to re-enable the hardware
+  cursor via the same ports (cursor start/end register
+  0x0A/0x0B). After boot, no blinking cursor was visible.
+  Fix explicitly resets start/end so the cursor shows.
+
+--------------------------------------------------------------------------------
+
+## 146cb5e1 -- [term] Use volatile only where necessary
+
+Commit: 146cb5e151...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 20:05:59 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/textmode_video.c (+5 / -5) --
+  drops volatile from variables that the compiler was
+  correctly handling anyway; keeps it only on the VGA
+  framebuffer pointer (which IS genuinely volatile memory-
+  mapped I/O).
+
+--------------------------------------------------------------------------------
+
+## 75e51d14 -- [kb] Fix logic appending chars to the ring buffer
+
+Commit: 75e51d14e9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 20:18:43 2018 +0200
+
+Message:
+
+  Briefly, doing everything in a tasklet causes a small but
+  noticeable delay at least in qemu when not run with -curses.
+  This fix makes the writer (kb driver) to write in the ring
+  buffer while the interrupts are disabled.
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/kb.c (+18 / -13) -- the cooked-
+  mode ring-buffer append moves from a tasklet (ran in
+  process context after the IRQ) back into the IRQ handler
+  itself, bracketed by disable_interrupts / enable_
+  interrupts. Trades some IRQ-handler runtime for input
+  responsiveness.
+
+Context (body):
+
+  Deferring to tasklet was the "right" layering; but the
+  delay was user-perceptible. Pragmatic fix: keep the ring-
+  buffer append fast-path in the IRQ. Complex processing
+  (echo, line editing) still goes to the tasklet.
+
+--------------------------------------------------------------------------------
+
+## 3c306d99 -- [kb/tty] Remove the unused kb_mutex
+
+Commit: 3c306d992f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 20:26:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/kb.c (-9) -- the kmutex that was
+    supposed to guard the kb ring buffer turned out to be
+    unused (the IRQ-level disable_interrupts from 75e51d14
+    already serializes writers, and single-reader guarantees
+    single-consumer). Removed.
+
+  - kernel/char/tty.c (-3), kernel/include/kb.h (-1) --
+    drop the mutex declarations.
+
+--------------------------------------------------------------------------------
+
+## 0748d330 -- [init] Fix bug in reading from stdin
+
+Commit: 0748d330bf...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 17 20:35:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  usermode_init/init.c (+20 / -12) -- the previous demo code
+  called read(0, buf, 1) in a loop until '\n', but the kernel's
+  cooked-mode tty was already line-buffering; the loop was
+  exiting on the first NUL instead. Fixed to read up to N
+  bytes at a time and check for the trailing newline.
+
+--------------------------------------------------------------------------------
+
+## 049d208f -- [term] Minor changes
+
+Commit: 049d208f69...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 11:49:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/term.c (+6 / -5),
+  kernel/arch/generic_x86/textmode_video.c (1 l.),
+  kernel/include/arch/generic_x86/textmode_video.h (+2 / -9)
+  -- small API trimming; several helper declarations move
+  to be static-internal.
+
+--------------------------------------------------------------------------------
+
+## 4a7fa9a4 -- [term] Making some term_* functions interrupt-safe
+
+Commit: 4a7fa9a4af...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 11:59:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/term.c (+30 / -15) -- term_write /
+  term_write_char / term_move_cursor gain disable_preemption
+  / enable_preemption brackets so an IRQ that printk()s (or
+  a reentrant print from a nested handler) doesn't tear
+  mid-character-write. Matches the safety guarantee expected
+  by printk callers in IRQ context.
+
+--------------------------------------------------------------------------------
+
+## ba2cb84e -- [term] Make term to use video_interface instead of hard-coded
+   func calls
+
+Commit: ba2cb84e6a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 12:38:22 2018 +0200
+
+Message:
+
+  With this change, the term code becomes generic and does not
+  depend on how actually the characters are displayed on-screen.
+  For the moment, still the only supported mode is the standard
+  PC text mode (80x25), but this generalization will allows
+  easily term to work with any other mode implementing the
+  video_interface. For example, exOS may support a running its
+  console in a graphical mode, with a framebuffer info passed
+  by the bootloader. In that case, after implementing the
+  video_interface functions to work with framebuffer, term
+  will use them seamlessly.
+
+AI notes:
+
+What changed:
+
+  - kernel/include/term.h (+23 / -0) -- declares
+    struct video_interface containing function pointers:
+    set_char_at(row, col, val), move_cursor(row, col),
+    scroll_up(rows), etc.
+
+  - kernel/arch/generic_x86/textmode_video.c (+20 / -22) --
+    exposes a static textmode_video_if object populating
+    video_interface with its functions.
+
+  - kernel/arch/generic_x86/term.c (+33 / -27) -- term now
+    takes a video_interface *vi at init time and calls
+    vi->set_char_at etc. instead of textmode_video_plot
+    directly.
+
+  - kernel/main.c (+20 / -7) -- passes the text-mode video
+    interface to term_init on boot; in the future, a fb
+    video interface could be substituted.
+
+  - kernel/include/arch/generic_x86/textmode_video.h
+    (+11 / -9), bootloader/stage3.c (+6 / -3) -- plumbing.
+
+Context (PR body is explicit):
+
+  Generalization for framebuffer support. Once a
+  framebuffer video driver lands, swap the video_interface
+  and term doesn't know or care.
+
+--------------------------------------------------------------------------------
+
+## a41a54e5 -- Move term.c in the noarch directory kernel/char/term.c
+
+Commit: a41a54e590...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 12:47:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Pure rename: kernel/arch/generic_x86/term.c ->
+  kernel/char/term.c. Now that term.c depends only on the
+  abstract video_interface (not textmode_video directly),
+  it belongs with the other arch-independent char drivers.
+
+--------------------------------------------------------------------------------
+
+## 06b9231b -- [textmode] Fix a HW problem with the cursor
+
+Commit: 06b9231b3e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 14:35:44 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/generic_x86/textmode_video.c (+26 / -5) --
+    another VGA cursor fix: on some real hardware, writing
+    to CRTC index/data ports must happen in a specific
+    order with specific delays or the cursor disappears
+    after a few keystrokes. Adds explicit outb sequence
+    matching the spec.
+
+  - kernel/char/term.c (+1) -- trivial include adjustment
+    following the rename in 551.
+
+--------------------------------------------------------------------------------
+
+## e613a200 -- [kcond] Add support for timeout_ticks in kcond_wait()
+
+Commit: e613a200bf...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 16:53:52 2018 +0200
+
+Message:
+
+  This super-useful feature allows kcond_wait() to timeout
+  after some time, if its caller wants that. This feature is
+  particularly useful for an use-case like the tasklet runner
+  kthread: since it's signalled without any lock, it can
+  happen that it may loose a signal, while running a tasklet.
+  Thanks to the timeout_ticks, loosing a signal won't be a
+  big deal.
+
+AI notes:
+
+What changed:
+
+  - kernel/kcond.c (+21 / -9) -- kcond_wait gains a
+    timeout_ticks parameter; if non-zero, registers a
+    timer alongside the kcond wait so the task wakes up
+    after the timeout even without a signal. Returns
+    whether it was a signal or a timeout.
+
+  - kernel/include/sync.h (+3 / -2) -- API change.
+
+  - kernel/timer_handler.c (+25 / -20) -- the per-task
+    timer list gains entries for kcond timeouts.
+
+  - kernel/tasklet.c (1 l.) -- tasklet runner uses a non-
+    zero timeout so missed signals don't stall it.
+
+  - kernel/self_tests/testrunners.c (+29 / -5) -- new
+    selftest for kcond_wait with timeout.
+
+  - kernel/char/tty.c (1 l.), kernel/include/process.h
+    (+5 / -2) -- matching.
+
+Context (PR body):
+
+  Lost-wakeup protection without needing the full "associated
+  mutex" Linux discipline. Pragmatic: a missed signal is
+  recovered at most one timeout later.
+
+--------------------------------------------------------------------------------
+
+## e88613b0 -- [tasklet] Make the runner thread to run as many tasklets as
+   possible
+
+Commit: e88613b06d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 16:59:47 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/tasklet.c (+7 / -1) -- tasklet-runner kthread, after
+  waking from kcond_wait, drains the queue in a loop until
+  empty instead of running just one tasklet then waiting
+  again. Reduces wake-up overhead when a burst of tasklets
+  arrives.
+
+--------------------------------------------------------------------------------
+
+## e9427294 -- [process] Implement (partially) waitpid() properly
+
+Commit: e942729430...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 20:26:37 2018 +0200
+
+Message:
+
+  The previous impl. of waitpid() was just a mini-demo to
+  test that a user task can be preempted while running in
+  kernel and that the resume after that will work correctly.
+  Now that we're sure that works, it didn't make any more
+  sense to keep that impl. Therefore, a proper notification
+  mechanism has been used to achieve that.
+
+AI notes:
+
+What changed:
+
+  - kernel/process.c (+52 / -24) -- sys_waitpid(pid) now uses
+    a per-parent kcond: parent calls kcond_wait on its own
+    wait_chld condition; child's exit path
+    (task_change_state TASK_STATE_ZOMBIE + kfree parent
+    notification) signals it. Handles pid == -1 (any child),
+    specific pid, and ECHILD when no children.
+
+  - kernel/include/process.h (+1 / -1),
+    kernel/include/sync.h (+2 / -1) -- declarations.
+
+  - kernel/arch/i386/paging.c (+5 / -5) -- small adjustments.
+
+  - common/include/common_defs.h (1 l.) -- tiny.
+
+  - usermode_init/init.c (+8 / -5) -- now forks a child,
+    waits for it, asserts the child's exit status.
+
+Context (PR body):
+
+  waitpid was a debug demo from the kernel-preemption era.
+  Real kcond-based implementation now works end-to-end.
+
+--------------------------------------------------------------------------------
+
+## 6779b15b -- [process] Add parent_pid to task_info
+
+Commit: 6779b15b88...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 20:33:20 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/process.h (+4 / -3) -- adds int parent_pid
+    to task_info. Set at fork() to current->pid.
+
+  - kernel/process.c (+2 / -1), kernel/sched.c (1 l.) --
+    propagate it; sys_waitpid filters children by
+    parent_pid == current->pid.
+
+Context (subject):
+
+  waitpid needs to know its children; the list_node was
+  there but no back-pointer. Simpler to keep a parent_pid
+  field than walk the whole task list.
+
+--------------------------------------------------------------------------------
+
+## aadf9fd4 -- [syscalls] Make unimplemented syscalls to return -1
+
+Commit: aadf9fd4df...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 18 20:44:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/syscalls.c (+23 / -23) -- unimplemented syscall stubs
+  switch from "return 0" (silent success) to "return -1"
+  (-EPERM). Saves debugging time: libc code that depends on
+  an unimplemented syscall now gets an explicit error
+  instead of proceeding with garbage results.
+
+--------------------------------------------------------------------------------
+
+## 20045f4e -- [syscalls] Minor changes
+
+Commit: 20045f4e88...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 00:29:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/syscalls.c (+22 / -10) -- additions to the syscall
+  table for a few syscalls libc now needs (fstat, uname,
+  getppid). Stubs for now; return reasonable defaults to
+  keep libc happy.
+
+  kernel/process.c (1 l.), usermode_init/init.c (+2 / -2) --
+  trivial.
+
+--------------------------------------------------------------------------------
+
+## 68e46d66 -- [build] Turn usermode_{init -> apps} into a directory for all
+   apps
+
+Commit: 68e46d6691...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 01:20:52 2018 +0200
+
+Message:
+
+  With this change the directory usermode_init has been renamed
+  to usermode_apps and has been turned into a place for putting
+  all the usermode apps that will be built as part of exOS.
+
+AI notes:
+
+What changed:
+
+  - Rename: usermode_init/ -> usermode_apps/.
+
+  - usermode_apps/CMakeLists.txt (+10 / -17) -- generalized
+    to build multiple apps (init, shell, ...). Each app
+    listed in APPS variable gets its own elf_<name> target.
+
+  - New usermode_apps/shell.c (5 l.) -- placeholder shell
+    (just prints "Hello from the shell"). Skeleton for the
+    devshell that will grow into Tilck's interactive test
+    driver.
+
+  - scripts/build_scripts/build_fatpart (+3 / -3) -- copies
+    every app into the ramdisk /sbin/.
+
+  - CMakeLists.txt (+5 / -10), bootloader/efi/CMakeLists.txt
+    (1 l.) -- plumbing.
+
+--------------------------------------------------------------------------------
+
+## 980ba310 -- [build] Make scripts/cmake_run to work with any build directory
+
+Commit: 980ba310ef...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 12:01:11 2018 +0200
+
+Message:
+
+  Until now, scripts/cmake_run was usable only in the project's
+  main dir and it prepared the build to be in MAIN_DIR/build.
+  Now, it's possible to create a build directory anywhere and
+  just run MAIN_DIR/scripts/cmake_run there. The script will
+  use that directory as a build directory and will also copy
+  there all of the handy scripts for running qemu.
+
+AI notes:
+
+What changed:
+
+  scripts/cmake_run (+14 / -6) -- if the script is invoked
+  with $PWD != project root, use $PWD as the build directory
+  instead of $PROJ_ROOT/build. Enables parallel build trees
+  (debug/, release/, coverage/, etc.) without cd-ing back to
+  the project root for each. The launchers (run_qemu etc.)
+  are copied into whatever build dir gets used.
+
+Context (body is explicit):
+
+  Brings Tilck's build ergonomics closer to standard CMake
+  workflows where people keep several build dirs per repo.
+  Starts to feel like a normal open-source project to work on.
+
+--------------------------------------------------------------------------------
+
+## ea0fe081 -- [process] Make create_[first]_usermode_task() generic
+
+Commit: ea0fe0812f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 12:27:38 2018 +0200
+
+Message:
+
+  This small change transforms create_first_usermode_task()
+  into a generic function for creating usermode tasks
+  (processes/threads) after renaming it to
+  create_usermode_task() and by adding to it some additional
+  parameters like argv, env and use_current_pid. Likely, this
+  function will continue to change soon.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/process32.c (+22 / -15) -- rename; new
+    params:
+      * argv, env passed through to the user stack.
+      * use_current_pid flag (true for exec, false for fork).
+
+  - kernel/include/process.h (+7 / -4),
+    kernel/include/arch/i386/arch_utils.h (-19),
+    kernel/include/arch/generic_x86/x86_utils.h (+17 / -10),
+    kernel/main.c (+9 / -4), unittests/generic_mocks.c
+    (1 l.) -- matching.
+
+Context (subject + body):
+
+  Foundation for sys_execve: exec needs to spawn a usermode
+  task reusing the current pid (so the caller's identity is
+  preserved). The generalization prepares for that.
+
+--------------------------------------------------------------------------------
+
+## 1b350276 -- [process] Starting to work on sys_execve()
+
+Commit: 1b35027671...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 13:21:44 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/process.c (+11) -- stub sys_execve(path, argv, env)
+    that loads the named ELF and uses create_usermode_task
+    with use_current_pid=true.
+
+  - scripts/build_scripts/build_fatpart (+5) -- places
+    apps under sysroot/sbin/ (init) and sysroot/bin/
+    (shell and future user apps). Matches Unix convention.
+
+  - New sysroot/bin/.gitignore (0 l.) -- preserve the empty
+    dir.
+
+  - kernel/syscalls.c (-5) / usermode_apps/init.c (+12 / -1)
+    -- init now tries to exec /bin/shell at startup.
+
+--------------------------------------------------------------------------------
+
+## 1f1866ba -- [tests] Fix path of init: build/sysroot/sbin/init instead of
+   build/init
+
+Commit: 1f1866baa6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 16:38:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/fat32_test.cpp (+2 / -2) -- the sysroot move
+  from commit 1b350276 changed where init ends up on disk;
+  the fat32 tests open init explicitly to exercise ELF
+  reading, so the path needs updating.
+
+--------------------------------------------------------------------------------
+
+## 5d6d7f8f -- [process] First working implementation of sys_execve()
+
+Commit: 5d6d7f8f3c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 18:14:52 2018 +0200
+
+AI notes:
+
+What changed:
+
+  End of the exec arc. init can now exec /bin/shell.
+
+  - kernel/process.c (+41 / -6) -- sys_execve body: destroy
+    current pdir, load new ELF via elf_loader, call
+    create_usermode_task with use_current_pid=true. The
+    old task_info is reused; pid, parent_pid preserved.
+
+  - kernel/elf_loader.c (+7 / -5),
+    kernel/include/elf_loader.h (+4 / -4) -- elf_loader
+    accepts a pre-existing pdir to load into (needed by
+    exec).
+
+  - kernel/arch/i386/process32.c (+25 / -15) -- create_
+    usermode_task teardown/rebuild of pdir in use_current_
+    pid case.
+
+  - kernel/include/process.h (+4 / -6), kernel/main.c
+    (+9 / -7), kernel/sched.c (1 l.), kernel/syscalls.c
+    (+4 / -2) -- plumbing.
+
+  - usermode_apps/shell.c (+4 / -1) -- shell now prints
+    "Hello from /bin/shell" so the successful exec is
+    visible.
+
+Context (subject):
+
+  fork + exec + waitpid now form a functioning triple. An
+  init program can spawn children of different programs
+  and wait for them -- the minimum viable shell primitive.
+
+--------------------------------------------------------------------------------
+
+## 8b9497a0 -- [process] Fix a simple bug in execve()
+
+Commit: 8b9497a02b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 18:43:01 2018 +0200
+
+Message:
+
+  See the added comment.
+
+AI notes:
+
+What changed:
+
+  - kernel/process.c (+9 / -1) -- the bug and its fix come
+    with the added comment: after pdir_destroy on the old
+    pdir, the task briefly has no valid address space
+    while the loader maps the new one in. If an interrupt
+    fires during that window, context_switch walks a dead
+    pdir. Fix: disable_preemption bracket around the
+    destroy/load sequence.
+
+  - usermode_apps/shell.c (+12 / -1) -- shell expanded
+    (prints its PID; reads a line from stdin) to verify
+    end-to-end from init's perspective.
+
+  - usermode_apps/init.c (1 l.) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## d19af8e2 -- [build_toolchain] Suppress dietlibc linker warnings
+
+Commit: d19af8e273...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 22:22:52 2018 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+1) -- adds 2>/dev/null to the
+  dietlibc link step. Dietlibc's ld pass on cross-i386
+  prints harmless relocation-type-R_386_32 warnings that
+  were cluttering the toolchain-build log.
+
+--------------------------------------------------------------------------------
+
+## b860f172 -- [process] Implement getcwd()
+
+Commit: b860f172bf...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 23:18:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/process.c (+19) -- sys_getcwd(buf, size): returns
+    current->cwd (now a per-task char[MAX_PATH] field).
+    Initialized to "/".
+
+  - kernel/include/process.h (+2), kernel/arch/i386/
+    process32.c (+1) -- task_info gains cwd.
+
+  - kernel/syscalls.c (+2 / -4) -- real dispatch.
+
+  - usermode_apps/shell.c (+16 / -6) -- shell uses getcwd
+    in its prompt.
+
+--------------------------------------------------------------------------------
+
+## 713d4945 -- [process] Implement chdir()
+
+Commit: 713d4945a7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Mar 19 23:29:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/process.c (+21) -- sys_chdir(path): validates the
+    path exists and is a directory (uses exvfs_open), then
+    updates current->cwd. Returns -ENOENT/-ENOTDIR as
+    appropriate.
+
+  - kernel/syscalls.c (+1 / -4) -- real dispatch.
+
+  - usermode_apps/shell.c (+16 / -2) -- shell implements the
+    "cd" builtin by calling chdir.
+
+  - kernel/arch/i386/process32.c (1 l.),
+    kernel/include/process.h (+1 / -1) -- plumbing.
+
+--------------------------------------------------------------------------------
+
+## b594f10b -- [process] Working on the simple shell and on execve() bugs
+
+Commit: b594f10b0e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 14:59:37 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - usermode_apps/shell.c (+72 / -22) -- shell gains tokenize
+    + dispatch loop: reads a line, splits on whitespace,
+    dispatches "cd" / "exit" / "help" as builtins; otherwise
+    fork+execve. Echoes child exit status.
+
+  - kernel/process.c (+22 / -22) -- fixes the pdir leak in
+    execve (old pdir memory was freed but the task_info
+    still pointed at it during the switchover window).
+
+  - common/string_util.c (+52) -- new tokenize helpers
+    shared with the shell.
+
+  - common/string_util.h (+3), kernel/include/string_util.h
+    (+3) -- declarations.
+
+  - kernel/fs/exvfs.c (+5), kernel/arch/i386/process32.c
+    (+4 / -4), kernel/main.c (+2 / -2), kernel/include/
+    process.h (+2 / -2), usermode_apps/init.c (1 l.) --
+    matching.
+
+--------------------------------------------------------------------------------
+
+## a81a21c4 -- [kmalloc] Add memory poisoning to catch use-after-free bugs
+
+Commit: a81a21c49a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 15:21:18 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+8) -- in debug builds, kfree() fills
+    the freed block with 0xABABABAB before returning it to
+    the free list. Subsequent reads from a dangling pointer
+    see the obvious marker, subsequent writes corrupt the
+    marker instead of a just-reallocated block (makes the
+    bug visible).
+
+  - kernel/process.c (+6 / -4) -- fixes a use-after-free
+    that the poisoning immediately surfaced (likely in the
+    fork + exec + exit interaction).
+
+Context (guess -- subject):
+
+  Debug aid. exOS's allocator is still shaking out sharp-
+  pointer bugs as the process subsystem matures.
+
+--------------------------------------------------------------------------------
+
+## 80d07d51 -- [fs] Add dup to filesystem and use it sys_fork()
+
+Commit: 80d07d5198...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 17:06:01 2018 +0200
+
+Message:
+
+  The addition of a dup(fs_handle) function was essential in
+  order to allow a parent to keep its file handles after a
+  child dies (the kernel closes its file handles).
+
+  NOTE: the memory poisoning by kfree() has been commented
+  because it was making the kmalloc unit-tests to fail. The
+  failure will be investigated.
+
+AI notes:
+
+What changed:
+
+  - kernel/include/fs/exvfs.h (+3 / -1) -- file_ops gains
+    a dup() callback.
+
+  - kernel/fs/exvfs.c (+10) -- exvfs_dup calls fops->dup
+    on a handle, returns a new handle referring to the same
+    underlying file.
+
+  - common/fat32_base.c (+11 / -1), kernel/fs/devfs.c
+    (+12 / -2) -- dup implementations for FAT and devfs.
+
+  - kernel/process.c (+9 / -3) -- sys_fork now duplicates
+    the parent's open handles into the child; child kfree
+    / exit no longer invalidates the parent's.
+
+  - usermode_apps/shell.c (+7 / -5) -- matching.
+
+  - kernel/kmalloc.c -- poisoning commented out per the
+    note (the unit tests hadn't accounted for the marker).
+
+Context (PR body is explicit about both intent and the
+regression).
+
+--------------------------------------------------------------------------------
+
+## e22ff07b -- [kb] Don't write \b to term (and never to buffer) when kb_cbuf
+   is empty
+
+Commit: e22ff07b5b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 17:46:46 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/generic_x86/kb.c (+26 / -23) -- Backspace at
+  the start of an empty cooked-mode buffer used to still
+  echo to the term (visual backspace over the prompt) and
+  to insert \x7F into the buffer. Fix: if the buffer is
+  empty, Backspace is a no-op both for term output and
+  for buffer state.
+
+--------------------------------------------------------------------------------
+
+## c3e9569e -- [main] Replace load_usermode_init() with sys_execve() in
+   kmain()
+
+Commit: c3e9569e46...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 19:07:11 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (-33 / +8) -- kmain() no longer has its
+    own dedicated "load init ELF" path. It now calls
+    sys_execve("/sbin/init", NULL, NULL) directly (well, its
+    kernel-internal equivalent). One code path for "load
+    and run a user program".
+
+  - kernel/process.c (+12 / -6) -- small adaptations to
+    support being called from kmain (before the first task
+    exists).
+
+  - kernel/sched.c (+4 / -5), common/fat32_base.c
+    (+4 / -1), kernel/timer_handler.c (1 l.) -- plumbing.
+
+Context (guess -- subject):
+
+  Significant simplification. The old two-path scheme
+  (one for init, one for exec'd children) becomes one
+  path.
+
+--------------------------------------------------------------------------------
+
+## 2adca445 -- [kmalloc] cosmetic changes
+
+Commit: 2adca4451f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 20:21:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+27 / -20), common/include/config.h
+  (+10 / -2) -- naming / comment polish. The HEAP_BASE_ADDR
+  and HEAP_SIZE macros move to config.h where the other
+  memory-layout constants live.
+
+--------------------------------------------------------------------------------
+
+## df48f6c0 -- [shell] Implement the cd command
+
+Commit: df48f6c00d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 21:02:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  usermode_apps/shell.c (+32 / -6) -- cd: resolves relative
+  paths against cwd, calls chdir, validates via getcwd.
+  Handles "cd" (goes to /), "cd .." (parent), "cd ." (no-op),
+  absolute and relative paths. First interactive shell
+  builtin that feels complete.
+
+This commit is tagged **z-ancient-10** per docs/
+ancient_commits.md -- "Implement the cd command" milestone.
+
+--------------------------------------------------------------------------------
+
+## b6e173e2 -- [kmalloc] Introduce kmalloc_mutex
+
+Commit: b6e173e2c5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 21:15:47 2018 +0200
+
+Message:
+
+  This allows kmalloc() and kfree() to be used without
+  disabling the preemption and it is, clearly, the proper
+  solution.
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+17 / -5) -- introduces kmalloc_mutex
+    (a kmutex); kmalloc / kfree lock it for the duration of
+    their heap mutation. Callers no longer need to wrap in
+    disable_preemption.
+
+Context (body):
+
+  Proper concurrency primitive. disable_preemption was the
+  old blunt-hammer approach; a mutex is the right granular
+  approach, especially once kernel threads start using
+  kmalloc concurrently.
+
+--------------------------------------------------------------------------------
+
+## cb8997c1 -- [process] Reduce the size of the non-preemptable code in
+   execve()
+
+Commit: cb8997c1bc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 21:28:02 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/process.c (+29 / -19) -- narrows the
+  disable_preemption window inside sys_execve to exactly the
+  "swap the pdir + update task_info.pdir" step. Everything
+  else (pdir_destroy, elf_loader) happens with preemption
+  on. Better responsiveness: execve of a large binary no
+  longer stalls the system.
+
+  kernel/main.c (-1) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## a74f49a8 -- [kmalloc] Work-in-progress on a function to calculate block's
+   size
+
+Commit: a74f49a8ea...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Mar 20 22:24:02 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+37) -- stub calculate_block_size(ptr)
+  that walks the buddy metadata to compute the size of the
+  block containing a given pointer. Prep for kfree to not
+  require the caller to remember the original size.
+
+--------------------------------------------------------------------------------
+
+## c6e07f25 -- Make enable/disable preemption functions inline
+
+Commit: c6e07f25f4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 00:42:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/process.h (+18) -- disable_preemption /
+    enable_preemption / is_preemption_enabled moved inline
+    in the header (they decrement/increment a counter and
+    check it; trivial).
+
+  - kernel/include/hal.h (-4) -- loses the out-of-line
+    declarations.
+
+  - kernel/timer_handler.c (-13) -- loses the definitions.
+
+  - Many callers get a #include <process.h> added where
+    needed (bootloader/stage3.c, common/string_util.c,
+    kernel/arch/i386/entry.S, kernel/arch/i386/irq.c,
+    kernel/arch/i386/paging.c, kernel/char/tty.c).
+
+Context (subject):
+
+  Preemption toggles are on the hot path; inlining
+  eliminates the function-call overhead.
+
+--------------------------------------------------------------------------------
+
+## 04e9e55d -- [kmalloc] Implement a working function to calculate block's
+   size
+
+Commit: 04e9e55d0e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 00:58:57 2018 +0200
+
+Message:
+
+  The function calculate_block_size() is able to correctly
+  calculate the size of any allocated block with kmalloc().
+  It can be used by kfree() to remove the inconvenience of
+  having a 2nd "size" paramater. The only drawback is that
+  it has an overhead of about 25% in the worst case.
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+12 / -20) -- finishes calculate_block_
+  size: starts at the smallest block containing the
+  pointer, walks upward looking for the "this node is the
+  allocated boundary" marker in the buddy tree. Returns the
+  size class of the original allocation.
+
+Context (body is explicit):
+
+  Prep for a nice-to-have API: kfree(ptr) without the size
+  argument, matching standard libc. The 25% overhead stays
+  as a known trade-off (most callers still pass size).
+
+--------------------------------------------------------------------------------
+
+## bfc4e5e0 -- [kmalloc] Re-writing kfree() to not depend on 'size'
+
+Commit: bfc4e5e0b5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 01:25:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+40 / -18) -- kfree(ptr) branches: if the
+  caller passed size == 0, it calls calculate_block_size
+  first. Otherwise the size-aware fast path runs. Previously
+  size was mandatory.
+
+--------------------------------------------------------------------------------
+
+## 019dcb15 -- [elf_loader] Fix a nasty bug: kfree() called with the WRONG
+   size
+
+Commit: 019dcb15b4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 04:05:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/elf_loader.c (+7 / -5) -- the loader was calling
+  kfree(buf, size) where size was the ELF segment's memsz
+  (bytes) but the allocation had actually used pages_count
+  (pages) * PAGE_SIZE -- slightly different rounding.
+  Previously the allocator silently accepted the wrong
+  size because it walked up to the right block anyway;
+  calculate_block_size from the previous commit caught the
+  discrepancy by disagreeing with the argument.
+
+Context (subject):
+
+  The size-less kfree infrastructure caught a real pre-
+  existing bug in its first use. "Nasty" because the symptom
+  was eventually a corrupted buddy tree.
+
+--------------------------------------------------------------------------------
+
+## 510c88a2 -- [kmalloc] Make the size param in kfree() optional
+
+Commit: 510c88a2fa...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 04:28:02 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+18 / -29) -- consolidates the two
+  kfree code paths (size given vs not) into one. Always
+  calls calculate_block_size; if size was given, ASSERTs
+  it matches (debug) or ignores it (release).
+
+--------------------------------------------------------------------------------
+
+## f2d78845 -- [kmalloc] Rename kfree() to kfree2()
+
+Commit: f2d78845f8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 04:35:52 2018 +0200
+
+Message:
+
+  Now kfree can work both with and without a size argument.
+  The paramater can be completely removed, but it also makes
+  some sense to have two versions of kfree: with and without
+  the parameter size. The call-sites that know at compile-
+  time the size of block that want to free can easily use
+  kfree2 and a slightly faster kfree. The other sites, will
+  just call the 1-parameter kfree() wrapper. In the next
+  changes, this wrapper will be introduced.
+
+AI notes:
+
+What changed:
+
+  Bulk rename across ~16 files: every existing kfree(ptr,
+  size) call site is renamed to kfree2(ptr, size). Frees
+  up the name kfree for the upcoming 1-arg wrapper.
+  Touches bootloader/stage3.c, common/fat32_base.c,
+  common/string_util.c, kernel/arch/i386/paging.c,
+  kernel/elf_loader.c, kernel/fs/devfs.c, kernel/fs/exvfs.c,
+  kernel/include/kmalloc.h, kernel/kmalloc.c, kernel/pq.c,
+  kernel/process.c, kernel/sched.c,
+  kernel/self_tests/perftests.c, unittests/CMakeLists.txt,
+  unittests/kmalloc_mocks.cpp, unittests/kmalloc_test.cpp.
+
+--------------------------------------------------------------------------------
+
+## 0b21fff9 -- [kmalloc] Introduce the kfree(void *ptr) wrapper of
+   kfree2(ptr, size)
+
+Commit: 0b21fff9da...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 04:47:26 2018 +0200
+
+Message:
+
+  This change also converts some call-sites of kfree2() to
+  kfree().
+
+AI notes:
+
+What changed:
+
+  - kernel/include/kmalloc.h (+5) -- inline kfree(ptr)
+    wrapper that calls kfree2(ptr, 0), triggering the
+    size-deducing code path.
+
+  - common/string_util.c (+2 / -2),
+    kernel/fs/exvfs.c (1 l.), kernel/process.c (1 l.) --
+    sample call-site conversions. Call sites where the size
+    wasn't conveniently at hand now use the cleaner
+    kfree(ptr).
+
+--------------------------------------------------------------------------------
+
+## 9ee836ce -- Introduce check_not_in_irq_handler()
+
+Commit: 9ee836ce18...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 14:57:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/interrupts.c (+13) -- check_not_in_irq_handler()
+    that ASSERTs the caller isn't inside an ISR/IRQ. Used to
+    guard functions that can block (take a mutex, call
+    kernel_yield, etc.) -- all illegal from IRQ context.
+
+  - kernel/kmutex.c (+3) -- lock() asserts via the new check;
+    kernel/kcond.c (+1 / -3) -- same on kcond_wait.
+
+  - kernel/arch/i386/entry.S (+5 / -1) -- small support
+    tweak.
+
+  - kernel/include/irq.h (+1 / -8) -- exports the helper;
+    inlines/macros shrink.
+
+--------------------------------------------------------------------------------
+
+## 99463c34 -- [FAT] Minor fix in fat_search_entry()
+
+Commit: 99463c3492...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 15:07:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  common/fat32_base.c (+5) -- fat_search_entry was returning
+  a pointer into a stale cluster buffer when the entry
+  happened to be the first LFN of a new directory-
+  continuation cluster. Fix: re-read the cluster before
+  returning.
+
+--------------------------------------------------------------------------------
+
+## 0ab7bd0d -- [kmalloc] Add a better debug-only fail-check for
+   calculate_block_size
+
+Commit: 0ab7bd0dea...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 15:13:42 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+7 / -1) -- in debug builds, after
+  calculate_block_size returns, double-checks the result
+  by walking the buddy tree in the opposite direction
+  (node-up from the claimed size). If the two disagree,
+  panics with a descriptive message. Catches allocator-
+  metadata corruption the poisoning alone can't detect.
+
+--------------------------------------------------------------------------------
+
+## 50eb79e3 -- [elf] elf_loader.c -> elf.c && move back sym-related code in
+   elf.c
+
+Commit: 50eb79e38f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 15:20:36 2018 +0200
+
+Message:
+
+  BONUS: fix a build error in the gtests target
+
+AI notes:
+
+What changed:
+
+  - Rename: kernel/elf_loader.c -> kernel/elf.c. Now that
+    the file holds both loading AND symbol-lookup code, the
+    simpler name fits.
+
+  - kernel/arch/i386/debug.c (-98 / +2) -- symbol-lookup
+    code that was in debug.c moves back into elf.c. debug.c
+    stays focused on stack walking / crash dumps.
+
+  - kernel/debug_utils.c (+2 / -1) -- includes elf.h for
+    the moved helpers.
+
+  - kernel/elf.c (+67) -- gains back find_addr_of_symbol /
+    find_symbol_by_addr.
+
+Context (subject + BONUS):
+
+  Housekeeping move. Fixes a gtests link error: debug.c
+  pulled in kmalloc but shouldn't have from tests.
+
+--------------------------------------------------------------------------------
+
+## daa11cab -- [kmalloc] Fix minor bug detected by the kfree-mem-poisoning
+
+Commit: daa11cab21...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 15:33:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+8 / -3) -- the poisoning from commit
+    a81a21c4 was re-enabled after 80d07d5198 commented it
+    out. This commit fixes the actual bug it was tripping
+    on: a one-node-off computation when merging two freed
+    siblings with size == MIN_BLOCK_SIZE. With the fix,
+    chaos test passes with poisoning on.
+
+  - common/include/config.h (+1 / -1) -- trivial constant
+    tweak.
+
+--------------------------------------------------------------------------------
+
+## 3bb507c9 -- [entry] Move kernel's initial stack in BSS
+
+Commit: 3bb507c9e4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 17:25:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/entry.S (+7 / -1) -- the early boot
+    stack (used before the scheduler switches to per-task
+    stacks) moves from a hardcoded physical address to a
+    BSS-reserved buffer via .space directive. Same reason as
+    page_size_buf in commit 4c580338 -- stops colliding
+    with low-memory BIOS data on real hardware.
+
+  - common/include/config.h (-1) -- drops the hardcoded
+    stack constant.
+
+--------------------------------------------------------------------------------
+
+## c969fbd2 -- Make DEBUG_check_preemption_enabled_for_usermode() work when
+   !current
+
+Commit: c969fbd279...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 18:00:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/entry.S (1 l.), kernel/interrupts.c
+  (1 l.) -- the assertion was dereferencing current->
+  something unconditionally; before the first task is
+  scheduled, current is NULL and the check crashed. Adds
+  the explicit current != NULL guard.
+
+--------------------------------------------------------------------------------
+
+## c8dd215c -- Move some defines in x86_utils.h
+
+Commit: c8dd215c2e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 19:01:21 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/arch/generic_x86/x86_utils.h (+26) -- gains
+    the X86_*_IRQ and related PIC/IDT constants.
+
+  - kernel/include/irq.h (-27) -- arch-generic drop of those
+    x86-specific constants. irq.h becomes cleaner for
+    non-x86 ports (when they eventually come).
+
+  - .vscode/settings.json (+2 / -1) -- minor.
+
+--------------------------------------------------------------------------------
+
+## de6a621d -- [fat32] Fix a triple fault in RELEASE builds with a NO_INLINE
+
+Commit: de6a621df1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 19:20:08 2018 +0200
+
+Message:
+
+  In RELEASE builds, reverse_long_name() [FAT32] gets inlined
+  in fat_walk_directory in an apparently buggy way and that
+  triggers a triple-fault. By just adding NO_INLINE everything
+  works. It seems very likely a compiler bug.
+
+AI notes:
+
+What changed:
+
+  - common/fat32_base.c (+6 / -1) -- reverse_long_name gets
+    NO_INLINE attribute.
+
+  - common/include/common_defs.h (+2 / -1) -- defines
+    NO_INLINE as __attribute__((noinline)).
+
+Context (body):
+
+  Rare but real: toolchain bug forcing a workaround.
+  Likely a miscompile around the stack array that
+  reverse_long_name manipulates. Comment in code captures
+  the context.
+
+--------------------------------------------------------------------------------
+
+## 21d51b6c -- [toolchain] Upgrade gcc toolchain to use gcc 6.4.0
+
+Commit: 21d51b6c63...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Mar 21 19:52:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+2 / -2) -- flips the bootlin
+    x86-i686 toolchain from stable (~4.9 era) to the 6.4
+    version tarball. Same download mechanism, newer compiler.
+
+  - CMakeLists.txt (+8 / -6) -- path component renamed from
+    x86-i686--glibc--stable to x86-i686--glibc--stable-
+    2017.11-toolchains-1-1 (the actual extracted dir name
+    for gcc 6.4 version).
+
+  - bootloader/CMakeLists.txt (-1), kernel/arch/CMakeLists.txt
+    (-1), usermode_apps/CMakeLists.txt (+1 / -2) -- minor.
+
+Context (subject):
+
+  GCC 6.4 handles more modern intrinsics / optimizations and
+  matches the Travis CI environment more closely.
+
+--------------------------------------------------------------------------------
+
+## d5aaa770 -- [build_toolchain] Make the x86 gcc toolchain to have always the
+   same path
+
+Commit: d5aaa77084...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 12:48:17 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+15 / -9) -- after extracting the
+    bootlin tarball, renames the versioned extracted dir to a
+    stable name (e.g. toolchain/gcc_i386 or similar).
+    CMakeLists.txt can now refer to a path that doesn't
+    change when the gcc version bumps.
+
+  - CMakeLists.txt (+1 / -1), kernel/main.c (+2 / -1) --
+    update the path.
+
+--------------------------------------------------------------------------------
+
+## d46c0099 -- [string_util] Introduce str_reverse()
+
+Commit: d46c00997a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 13:50:13 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/string_util.c (+25) -- str_reverse(s, len) in-
+    place reversal helper.
+
+  - kernel/include/string_util.h (+1) -- declaration.
+
+Context (guess -- subject):
+
+  Utility introduced but not used yet in this commit. The
+  next commit applies it to fat32's reverse_long_name.
+
+--------------------------------------------------------------------------------
+
+## d5b77feb -- [FAT32] Investigating issues in reverse_long_name()
+
+Commit: d5b77feb75...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 14:25:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  common/fat32_base.c (+8 / -2) -- instruments
+  reverse_long_name with extra assertions about the source
+  buffer state. Debug iteration related to the triple-fault
+  from commit de6a621d.
+
+--------------------------------------------------------------------------------
+
+## 81f8ff00 -- Remove the usermode_init_task global variable
+
+Commit: 81f8ff0087...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 18:13:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/misc.c (-1), kernel/main.c (-1), kernel/process.c
+    (+1 / -6) -- the usermode_init_task pointer from commit
+    5168e6f5 (May 2017) is no longer needed: init is now
+    identified by parent_pid == 0 or by being the task at
+    the head of the list. Trimming this state simplifies
+    several kmain / exit paths.
+
+  - usermode_apps/init.c (+1 / -3), system_tests/
+    run_system_test (1 l.) -- matching.
+
+--------------------------------------------------------------------------------
+
+## 27dd3a6f -- [build] Reset default CFLAGS in the root CMake file
+
+Commit: 27dd3a6fb5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 20:31:00 2018 +0200
+
+Message:
+
+  In Release builds, CMake used -O3 by default, while we
+  want to have full control on the flags used. Therefore,
+  clearing them is essencial.
+
+AI notes:
+
+What changed:
+
+  CMakeLists.txt (+7) -- explicit
+  set(CMAKE_C_FLAGS_RELEASE "") and similar for _DEBUG /
+  _RELWITHDEBINFO / _MINSIZEREL, so CMake doesn't append its
+  default flag set. Tilck's build flags now fully under the
+  project's control.
+
+Context (body):
+
+  -O3 was previously inserted silently by CMake; the project
+  wanted -O2 (safer). Explicit clearing is the clean fix.
+
+--------------------------------------------------------------------------------
