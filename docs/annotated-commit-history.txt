@@ -36366,3 +36366,3590 @@ Context (guess -- from subject):
   just check.
 
 --------------------------------------------------------------------------------
+
+## 88e5ee4b -- [bootloader] Read memory map with int 15h
+   (eax=0xE820) works
+
+Commit: 88e5ee4b78...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 17 18:53:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +103 / -10 across 4 bootloader files. Real-mode call stub +
+  stage3 loop calling int 15h / eax=0xE820 to gather the BIOS
+  memory map into a local buffer, plus basic_printk hex helper.
+
+Context (guess -- from subject):
+
+  Prep step for passing the map up to the kernel via multiboot
+  (next commits).
+
+--------------------------------------------------------------------------------
+
+## 6a6f4c56 -- [bootloader] Pass via multiboot the memory map to
+   the kernel
+
+Commit: 6a6f4c5669...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 17 19:54:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +50 / -16 in stage3.c. The e820 buffer is converted into a
+  multiboot mmap (address/length/type triples) and the pointer +
+  length are put in the multiboot_info struct before jumping to
+  the kernel.
+
+--------------------------------------------------------------------------------
+
+## 9025b63d -- [bootloader][multiboot] Reading the multiboot
+   memory map from the kernel
+
+Commit: 9025b63d46...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 17 20:46:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New kernel/mm/system_mmap.c (+50) walks the multiboot mmap and
+  stores it in a kernel-side array; main.c reads the pointer out
+  of the multiboot info and calls the parser; printk gains a
+  small tweak.
+
+--------------------------------------------------------------------------------
+
+## 01011be6 -- [bootloader] Introduce BOOTLOADER_POISON_MEMORY
+
+Commit: 01011be681...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 17 23:31:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New CMake option wired through generated_config.h; when set,
+  the bootloader fills all usable RAM with a poison pattern
+  before jumping to the kernel.
+
+Context (guess -- from subject):
+
+  Debug aid to flush out code that reads uninitialised memory.
+
+--------------------------------------------------------------------------------
+
+## 34f32751 -- [efi] Fix the EFI boot (by setting always
+   memsize_in_mb in main())
+
+Commit: 34f327511b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 17 23:42:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  3-line fix: main.c always sets memsize_in_mb; the corresponding
+  branch in system_mmap.c is removed. EFI path didn't populate
+  it, so the kernel had the wrong size.
+
+--------------------------------------------------------------------------------
+
+## e3481469 -- [efi_bootloader] Working on memory map multiboot
+   interface
+
+Commit: e3481469e4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 01:49:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +110 / -5 in efimain.c. First pass at calling GetMemoryMap()
+  and translating UEFI mem descriptors into multiboot mmap
+  entries before ExitBootServices.
+
+--------------------------------------------------------------------------------
+
+## e0421365 -- [efi_bootloader] Passing the mmap via multiboot
+   works
+
+Commit: e0421365b6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 15:04:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  efimain.c +29 / -3, system_mmap.c +1 / -1. The EFI->multiboot
+  mmap path is finished: pointer + length are written into the
+  multiboot_info and picked up by the kernel.
+
+--------------------------------------------------------------------------------
+
+## dd80192f -- [efi_bootloader] Refactoring
+
+Commit: dd80192f91...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 15:20:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  efimain.c reorganisation: +96 / -110 (net -14). Extracting
+  named helpers from a long linear efi_main().
+
+--------------------------------------------------------------------------------
+
+## d2e3a5fb -- [bootloader] Introduce bios_to_multiboot_mem_region()
+
+Commit: d2e3a5fbcf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 15:35:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  stage3.c +18 / -13. Factors the BIOS-e820->multiboot conversion
+  out of the loop into a reusable helper so the EFI path can
+  share similar structure.
+
+--------------------------------------------------------------------------------
+
+## 763f120f -- [efi_bootloader] Refactoring [2]
+
+Commit: 763f120f75...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 16:04:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  efimain.c +51 / -25, system_mmap.c 1-liner. Further splitting
+  of efi_main into helpers (still one file).
+
+--------------------------------------------------------------------------------
+
+## 9ad9a1aa -- [efi_bootloader] Refactoring [3]
+
+Commit: 9ad9a1aa28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 16:22:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  First real file split: new bootloader/efi/ramdisk.c (127 lines)
+  carved out of efimain.c (-170); utils.c/utils.h gain +49 / +20.
+  The ramdisk-load logic now lives in its own TU.
+
+--------------------------------------------------------------------------------
+
+## c4dd0353 -- [efi_bootloader] Refactoring [4]
+
+Commit: c4dd0353fc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 19:30:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Another split: new multiboot.c (198) + multiboot_funcs.h (17)
+  extract the multiboot-mmap / info-struct plumbing out of
+  efimain.c (-186). setup_graphics.c loses some code (+42 / -0,
+  -36 effectively via reshuffling).
+
+--------------------------------------------------------------------------------
+
+## 2f60d9ad -- [efi_bootloader] Refactoring [5]
+
+Commit: 2f60d9ad05...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 18 20:26:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Third split: new defs.h (34) + elf_loader.c (89) carved out of
+  efimain.c. multiboot_funcs.h dies (folded elsewhere).
+  setup_graphics, utils tightened.
+
+Context (guess):
+
+  Refactor arc [3]-[5] turned the monolithic efimain.c into a
+  handful of single-responsibility TUs (ramdisk, multiboot,
+  elf_loader, graphics, utils).
+
+--------------------------------------------------------------------------------
+
+## dfd1494c -- [mm] Working on system's memory map
+
+Commit: dfd1494c0c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 01:22:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +102 / -30 -- proper parsing, bounds-checking,
+  and normalisation of multiboot mmap entries on the kernel side.
+  utils.h gains helpers; pageframe_allocator loses a few lines.
+
+--------------------------------------------------------------------------------
+
+## ed7048b7 -- [mm] Add kernel's phdrs in the memory map and
+   impl merge of adj regions
+
+Commit: ed7048b74d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 02:08:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +57. Kernel's own program-headers get registered
+  as "reserved" regions in the mmap; adjacent entries with the
+  same type are coalesced.
+
+Context (guess):
+
+  Prevents the pageframe allocator from handing out pages
+  belonging to the kernel image.
+
+--------------------------------------------------------------------------------
+
+## b977c24f -- [kmalloc_perf] Make the 'allocations' buffer
+   heap-allocated
+
+Commit: b977c24f9d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 02:23:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  se_kmalloc_perf now kmalloc()s the per-test allocation tracker
+  instead of reserving a static BSS buffer (+7 / -6). Frees BSS
+  for early-boot paths.
+
+--------------------------------------------------------------------------------
+
+## 941b8ff1 -- [pageframe_allocator] Use kmalloc() to allocate
+   pageframes_bitfield
+
+Commit: 941b8ff107...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 02:43:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  pageframe_allocator.c +15 / -9: the bitfield that tracks free
+  pageframes moves from a static array sized for a fixed RAM
+  ceiling into a kmalloc'd buffer sized at runtime from the
+  actual mmap.
+
+Context:
+
+  Matches the new variable-size memory map.
+
+--------------------------------------------------------------------------------
+
+## a3c723a7 -- [system_mmap] Minor refactoring
+
+Commit: a3c723a723...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 15:23:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -12 internal cleanup in system_mmap.c. No interface
+  change.
+
+--------------------------------------------------------------------------------
+
+## 7c8fc1ad -- [elf] Introduce common/elf_types.h
+
+Commit: 7c8fc1adaf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 15:50:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New elf_types.h (+28). kernel/elf.c, system_mmap.c, elfhack.c,
+  and the build_apps/CMakeLists.txt switch to the shared types.
+  -84 / +94 net.
+
+Context (guess):
+
+  elf.h was coming from multiple places (system + custom); unify.
+
+--------------------------------------------------------------------------------
+
+## feb85bc4 -- [system_mmap] s/mem_area/mem_region/g
+
+Commit: feb85bc48c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 16:28:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename: 22 sub / 22 add in system_mmap.c.
+
+--------------------------------------------------------------------------------
+
+## e62f4ab4 -- [gtests] Fix a failure in pageframe_allocator_test.cpp
+
+Commit: e62f4ab4c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 17:17:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 in pageframe_allocator_test.cpp. Drive-by test fixup.
+
+--------------------------------------------------------------------------------
+
+## fdc923c1 -- [system_mmap] Saving work on
+   handle_overlapping_regions()
+
+Commit: fdc923c1f1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 19 19:04:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +230 / -21. WIP implementation for reconciling
+  overlapping BIOS mmap entries (common on real HW).
+
+--------------------------------------------------------------------------------
+
+## 54461393 -- [system_mmap] handle_overlapping_regions() works
+
+Commit: 54461393fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 15:40:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +174 / -60. Overlap resolution completed:
+  reserved regions clip usable ones; remaining free ranges are
+  emitted sorted + merged.
+
+--------------------------------------------------------------------------------
+
+## 2dd1b444 -- [system_mmap] Simplify handle_overlapping_regions()
+
+Commit: 2dd1b44483...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 16:26:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c -67 net (+72 / -139). Follow-up simplification of
+  the overlap logic.
+
+--------------------------------------------------------------------------------
+
+## 30080437 -- [system_mmap] Improve fix_mem_regions()
+
+Commit: 300804375c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 19:02:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +73 / -49 tweaks to the normalisation pass.
+
+--------------------------------------------------------------------------------
+
+## 12544de3 -- [system_mmap] Introduce kernel/system_mmap.h
+
+Commit: 12544de359...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 20:24:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New public header system_mmap.h (+21) so other kernel subsys
+  can see the mmap types; system_mmap.c trimmed accordingly.
+
+--------------------------------------------------------------------------------
+
+## 588c7a5b -- [debug][kb][main] Minor cosmetic fixes in debug
+   Fn funcs
+
+Commit: 588c7a5bbe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 20:50:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Cosmetic tweaks across 4 files (+8 / -4).
+
+--------------------------------------------------------------------------------
+
+## 521d27cf -- [kmalloc] Use system's memory regions
+
+Commit: 521d27cf43...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 21:44:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +41 / -59 -- heap bootstrap now consumes the
+  parsed mmap regions instead of the old hardcoded ranges. -10
+  net across the kernel.
+
+Context:
+
+  Makes kmalloc's heap layout data-driven from the real BIOS/UEFI
+  map.
+
+--------------------------------------------------------------------------------
+
+## 6adf4fea -- [debug][kmalloc] Make heap dumps look better
+
+Commit: 6adf4fea1c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 20 22:08:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +8 / -4. Pretty-printing only.
+
+--------------------------------------------------------------------------------
+
+## 5eb12939 -- [kmalloc] Fix a bug in find_biggest_heap_size()
+   and other stuff
+
+Commit: 5eb1293936...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 21 02:37:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +34 / -14 bug fix + assorted fixes across
+  main.c, system_mmap.c, kmalloc_heap_struct.h.
+
+--------------------------------------------------------------------------------
+
+## c105ef01 -- [system_mmap] Add work-around in the system mmap
+   for a pre-existing bug
+
+Commit: c105ef01c9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 21 19:24:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +22, system_mmap.c +10, kmalloc_heaps.c.h -24 net.
+  Targeted work-around in the mmap path to paper over a
+  higher-level bug elsewhere.
+
+--------------------------------------------------------------------------------
+
+## 974a58d7 -- [pageframe_allocator] REMOVE the allocator from
+   exOS
+
+Commit: 974a58d767...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 21 21:37:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Big deletion: -801 lines across 14 files. The custom
+  pageframe_allocator.c (240), pg_alloc.c (104),
+  se_alloc_pageframe_perf.c (260), and the associated unit test
+  (131) are gone. paging.h, pageframe_allocator.h, etc. slim
+  down.
+
+Context (guess):
+
+  With kmalloc now data-driven from the mmap, the separate
+  pageframe allocator becomes redundant -- kmalloc handles
+  physical memory directly.
+
+--------------------------------------------------------------------------------
+
+## e84030e8 -- [system_mmap] Fix issues with system's memory
+   map and clean-up
+
+Commit: e84030e82d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 17:54:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Follow-up: system_mmap.c +78 / -29, main.c +23 / -23, plus
+  small touches in bootloader/efi, paging, kmalloc_mocks.
+
+--------------------------------------------------------------------------------
+
+## a5cb4acf -- [printk] Add support for left padding
+
+Commit: a5cb4acf5b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 21:02:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  printk.c +36 -- adds "%Nd" / "%Nx" left-padding format support.
+
+--------------------------------------------------------------------------------
+
+## 83c820a2 -- [kmalloc][system_mmap] Make the debug dumps look
+   better
+
+Commit: 83c820a2fb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 21:02:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -14 across the two dump functions. Uses the new printk
+  left-padding.
+
+--------------------------------------------------------------------------------
+
+## 78b11621 -- [kmalloc] Make KMALLOC_MAX_ALIGN to be 64 KB
+
+Commit: 78b116212f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 21:16:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc.h -2 net. Tuning knob.
+
+--------------------------------------------------------------------------------
+
+## 9c63605f -- [kmalloc] Make kmalloc_initialized to be STATIC
+
+Commit: 9c63605f80...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 21:21:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 net across 3 files. Flag hidden from the public API.
+
+--------------------------------------------------------------------------------
+
+## fe853264 -- [printk] Introduce snprintk_ctx and a "write_str"
+   internal func
+
+Commit: fe85326424...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 22 21:55:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  printk.c +68 / -38. Internal restructuring: context struct
+  captures output buffer + write_str() hides the bounds check so
+  all conversions share it.
+
+--------------------------------------------------------------------------------
+
+## e5c93e8b -- [paging][kmalloc] Make init_kmalloc() map the
+   regions in the virt space
+
+Commit: e5c93e8b37...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 23 01:31:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +38, textmode_video +10, paging.c -19 net.
+  Heap init now creates virt->phys mappings for the regions it
+  owns (instead of assuming the bootloader did it).
+
+--------------------------------------------------------------------------------
+
+## 7896ad42 -- [paging] Make the map functions to report an
+   error in case of OOM
+
+Commit: 7896ad423a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 23 13:51:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.h, paging.c, elf.c, fb_raw.c, kmalloc_heaps, process_mm
+  all updated to propagate an OOM return from the new mapping
+  API. +116 / -77 across 8 files.
+
+Context (guess):
+
+  Before this, map_page silently dropped allocations; now callers
+  can react.
+
+--------------------------------------------------------------------------------
+
+## bff5185f -- [fb_console] Map the framebuffer with the flags:
+   RW | WT | CD | G
+
+Commit: bff5185f4b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 23 14:34:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  fb_raw.c +14 / -4: linear framebuffer is mapped write-through +
+  cache-disabled + global.
+
+--------------------------------------------------------------------------------
+
+## 05a9877b -- [paging] Make map_pages() to support a
+   big_pages_allowed parameter
+
+Commit: 05a9877b53...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 23 19:47:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +80, paging.h -15 net, callers updated. When a range
+  is aligned to 4 MiB and the caller opts in, map_pages uses
+  4 MiB PDE entries instead of 1024x 4 KiB PTEs.
+
+Context (guess):
+
+  Big-page mapping for the kernel's identity region reduces TLB
+  pressure.
+
+--------------------------------------------------------------------------------
+
+## 0c30a198 -- [system_mmap] Introduce linear_map_mem_region()
+
+Commit: 0c30a1985f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 00:17:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New helper in system_mmap.c (+33) that linear-maps a region;
+  kmalloc_heaps.c.h loses the duplicated loop (-35 net).
+
+--------------------------------------------------------------------------------
+
+## b7a38484 -- [fb_console] Cosmetic changes; BONUS: remove
+   print_datetime()
+
+Commit: b7a3848424...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 00:31:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Deletes unused print_datetime() (-16) and shuffles fb_console
+  calls (-9 net).
+
+--------------------------------------------------------------------------------
+
+## 73c2a51b -- Introduce DEBUG_CHECKS_IN_RELEASE_BUILD
+
+Commit: 73c2a51bf4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 01:32:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New CMake option, threaded through generated_config.h. When on,
+  even -O2 release builds keep ASSERT/DEBUG_CHECKS in process.c
+  and timer_handler.c.
+
+--------------------------------------------------------------------------------
+
+## 768e118b -- [elf] Move find_sym_at_addr_safe() in elf.c;
+   NOTE: make panic() to use it
+
+Commit: 768e118bb7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 17:46:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Symbol-lookup helper moves paging.c (-21) -> elf.c (+21); panic
+  now resolves addresses to names in its stack dump.
+
+--------------------------------------------------------------------------------
+
+## 41e2819d -- [debug] Introduce debug_show_build_opts()
+
+Commit: 41e2819d0a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 18:06:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Prints the CMake build options the kernel was compiled with.
+  debug_utils.c -32 net (replaces older ad hoc code). Called from
+  kmain().
+
+--------------------------------------------------------------------------------
+
+## c1f9ff09 -- [timer_handler] Relax an incorrect assumption
+   about current task's state
+
+Commit: c1f9ff097c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 18:18:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -15 net. The assumption that the ticking task was always
+  RUNNABLE was wrong in some edge cases.
+
+--------------------------------------------------------------------------------
+
+## 13a3f3da -- [sys_exit] Replace an ASSERT with better debug
+   code in case of a fail
+
+Commit: 13a3f3dad3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 19:11:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +8 / -2. ASSERT turned into a diagnostic + graceful
+  continue.
+
+--------------------------------------------------------------------------------
+
+## 1b0bf46f -- [build][debug] Add build opts: PANIC_SHOW_REGS
+   and PANIC_SHOW_STACKTRACE
+
+Commit: 1b0bf46f8a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 19:17:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Two new CMake toggles, wired into debug_utils.c (+7) so panic
+  output can be trimmed for small debug sessions.
+
+--------------------------------------------------------------------------------
+
+## d1d8d99e -- [x86] debug: minor changes
+
+Commit: d1d8d99eb0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 19:44:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  arch/i386/debug.c +5 / -3. Cosmetic.
+
+--------------------------------------------------------------------------------
+
+## dd454199 -- [paging] Rename get_*_page_dir() to get_*_pdir()
+
+Commit: dd454199f9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 19:50:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename across 10 files (+17 / -17).
+
+--------------------------------------------------------------------------------
+
+## 6a7f9430 -- [devshell] Fix a bug visible when UP/DOWN is pressed
+
+Commit: 6a7f94305d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 19:51:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  devshell_readcmd.c +5: handle arrow-key escape sequences.
+
+--------------------------------------------------------------------------------
+
+## 3ec1dfd0 -- [system_tests] Remove 'alloc_pageframe_perf' from
+   the list of tests
+
+Commit: 3ec1dfd0fa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 24 20:09:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Follow-up to the pageframe_allocator removal (1532): -1 from
+  run_all_tests list, -3 in main.c.
+
+--------------------------------------------------------------------------------
+
+## 8a372c3c -- [timer] Rename *jiffies* to *ticks* and add
+   debug_check_tasks_lists()
+
+Commit: 8a372c3c0e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 16:02:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  s/jiffies/ticks/ + new debug helper in timer_handler.c (+26
+  net) that validates runnable/sleeping task lists.
+
+--------------------------------------------------------------------------------
+
+## 6a8e854d -- [kernel][build] Make TIMER_HZ a compile option
+
+Commit: 6a8e854d26...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 16:12:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Moves TIMER_HZ from a hardcoded #define to a CMake option (+8
+  net across 4 files).
+
+--------------------------------------------------------------------------------
+
+## f33303a8 -- [cmake] Fix file-deps of the custom command
+   ${IMG_FILE}
+
+Commit: f33303a832...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 18:13:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 net across CMakeLists.txt + usermode_apps: makes the img
+  build step depend on file outputs (not just target names) so
+  incremental rebuilds work.
+
+--------------------------------------------------------------------------------
+
+## 131ba76b -- [cmake] Remove "CMAKE_" from two variable names
+
+Commit: 131ba76b22...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 18:19:46 2018 +0300
+
+Body: "the CMAKE_ prefix is used for proper CMake variables, not for custom
+ones. It's better to avoid any confusion."
+
+AI notes:
+
+What changed:
+
+  Rename in 4 files (+1 net).
+
+--------------------------------------------------------------------------------
+
+## 8fa8b822 -- [kernel] Make LINEAR_MAPPING_MB = 768
+
+Commit: 8fa8b82245...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 18:25:27 2018 +0300
+
+Body: "BONUS: move the option in generated_config.h."
+
+AI notes:
+
+What changed:
+
+  +1 net. Raises the linear-mapping ceiling and exposes the
+  setting via the generated config.
+
+--------------------------------------------------------------------------------
+
+## 354c10a3 -- [kernel] Rename LINEAR_MAPPING_OVER_END to
+   LINEAR_MAPPING_END
+
+Commit: 354c10a38b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 18:28:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename across 4 files (0 net).
+
+--------------------------------------------------------------------------------
+
+## 4af3585f -- [kmalloc][debug] Improve
+   debug_kmalloc_dump_mem_usage()
+
+Commit: 4af3585f6c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 19:13:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +9. Cosmetic / info-richer.
+
+--------------------------------------------------------------------------------
+
+## d9b5434a -- [kernel][cmake] Introduce the USER_STACK_PAGES
+   CMake build option
+
+Commit: d9b5434a75...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 19:24:03 2018 +0300
+
+Body: "BONUS: Rename OFFLIMIT_USERMODE_ADDR to USERMODE_VADDR_END."
+
+AI notes:
+
+What changed:
+
+  +1 net across 4 files. User-stack size now configurable.
+
+--------------------------------------------------------------------------------
+
+## 452b03d4 -- [basic_defs.h] Introduce ALIGNED_AT(x)
+
+Commit: 452b03d46f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 19:33:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New alignment macro in basic_defs.h; 4 call sites converted.
+
+--------------------------------------------------------------------------------
+
+## fc040cb5 -- [kmalloc][config] Move some kmalloc config
+   defines in config.h
+
+Commit: fc040cb532...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 19:38:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Moves a handful of #defines from kmalloc.h to config.h so they
+  live alongside the other knobs (+2 net).
+
+--------------------------------------------------------------------------------
+
+## 16ad505e -- Change project's name from ExOS (experimentOS) to
+   Tilck [part 1]
+
+Commit: 16ad505e2e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 20:37:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  The rename commit. This is *the* point at which ExOS/experimentOS
+  becomes Tilck. Bulk of the diff is path moves:
+  include/exos/... -> include/tilck/... (dozens of headers), plus
+  identifier renames in source files (EXOS_* -> TILCK_*, exos_*
+  -> tilck_*). README.md rewritten, CMakeLists, Makefile, linker
+  scripts, and the basic_term / boot glue all updated.
+
+Context (from subject):
+
+  "[part 1]" -- further cleanup commits follow. The name change
+  is cosmetic (not architectural); it's the moment the project
+  gets its current identity.
+
+--------------------------------------------------------------------------------
+
+## 77abda7d -- Change project's name from ExOS (experimentOS) to
+   Tilck [part 2]
+
+Commit: 77abda7d91...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 21:41:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  CI config + README tweaks: .circleci/config.yml updated,
+  .travis.yml removed (-22), README.md -0 net. Project drops
+  Travis, keeps CircleCI under the new name.
+
+--------------------------------------------------------------------------------
+
+## 568edb90 -- Change project's name from ExOS (experimentOS) to
+   Tilck [part 3]
+
+Commit: 568edb9082...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 26 23:43:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Rename exvfs -> vfs: include/tilck/kernel/fs/exvfs.h,
+  kernel/fs/exvfs.c, exvfs_util.c all renamed; identifiers
+  exvfs_* -> vfs_* throughout callers and unit tests (+129 /
+  -129 -- pure rename).
+
+--------------------------------------------------------------------------------
+
+## c45cafee -- [main] Add a simple ascii banner and reduce the
+   initial msgs
+
+Commit: c45cafee6a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 27 01:07:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  main.c +37, term.c -5 net, init.c -5. Boot screen gets a
+  plain-ASCII "Tilck" banner; the old noisy boot-msg block is
+  trimmed.
+
+--------------------------------------------------------------------------------
+
+## db37a926 -- [fb_console] Introduce debug_dump_glyph()
+
+Commit: db37a9267d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 13:33:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  fb_raw.c +33: prints a single font glyph's bitmap to kernel
+  log.
+
+Context (guess):
+
+  Debug aid for the graphical console font code.
+
+--------------------------------------------------------------------------------
+
+## 2a34138a -- [term][debug] Introduce debug_term_dump_font_table()
+
+Commit: 2a34138ab0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 14:26:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.c +51 / -1, fb_raw.c +5. Dumps the whole font table on
+  demand -- companion to the per-glyph dump.
+
+--------------------------------------------------------------------------------
+
+## 8116cc7f -- [main] Working on the banner
+
+Commit: 8116cc7fc8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 15:16:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.h +15, main.c +25 / -16. Banner code factored; term.h
+  gains colour/escape helpers it needs.
+
+--------------------------------------------------------------------------------
+
+## 637c1fdb -- [main][banner] Improve the banner
+
+Commit: 637c1fdbe4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 16:13:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Cosmetic polish (+3 net).
+
+--------------------------------------------------------------------------------
+
+## cb95e998 -- [irq] Account the number of unhandled IRQs per
+   line
+
+Commit: cb95e9985a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 18:45:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  irq.c +18 net: per-IRQ-line counter, printed in diagnostics
+  when a spurious / unclaimed interrupt arrives.
+
+--------------------------------------------------------------------------------
+
+## 83d84fac -- [main] Refactoring the banner-related code (move
+   it in misc.c)
+
+Commit: 83d84fac11...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 18:55:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  main.c -45, misc.c +49. Banner and build-info prints leave
+  kmain().
+
+--------------------------------------------------------------------------------
+
+## d58f871c -- [devshell] Improve the help message
+
+Commit: d58f871cd2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 20:01:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  devshell_commands.c +14 net. Help text rewrite.
+
+--------------------------------------------------------------------------------
+
+## 8891801d -- [other] Update project's screenshot
+
+Commit: 8891801dba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 20:07:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Binary png update (-1 KB).
+
+--------------------------------------------------------------------------------
+
+## 398f4961 -- [other] Update project's screenshot [2]
+
+Commit: 398f4961de...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 28 20:18:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Screenshot tweak (-81 bytes).
+
+--------------------------------------------------------------------------------
+
+## 965fc8f3 -- [devshell] Add the 'fpu' cmd in the system tests
+
+Commit: 965fc8f3fd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 29 15:35:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 in run_all_tests list + adjustments in devshell_commands.c
+  (+3 net).
+
+--------------------------------------------------------------------------------
+
+## e99f908c -- [system_tests] Make the ST to retrieve the list
+   of cmds from the devshell
+
+Commit: e99f908c78...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 29 17:42:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  run_all_tests +22 net, devshell.c / devshell_commands.c both
+  restructured so the shell can enumerate its commands. The
+  Python test runner queries the devshell for its list instead
+  of hardcoding one.
+
+--------------------------------------------------------------------------------
+
+## cbdccc5c -- [system_tests] Make the list of SE to be
+   dynamically read from the kernel
+
+Commit: cbdccc5c8b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 29 18:19:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Same idea applied to self-tests: run_all_tests +26 net,
+  per-self-test tables in kernel/self_tests/se_*.c touched.
+
+Context (guess):
+
+  System-test runner and devshell/self-tests converge on
+  introspection instead of duplicated static lists.
+
+--------------------------------------------------------------------------------
+
+## 36719dcf -- [gtests] Fix build error (due to a selftest rename)
+
+Commit: 36719dcf39...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 29 18:27:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 net across self_tests.h and kmalloc_test.cpp.
+
+--------------------------------------------------------------------------------
+
+## 66d6d981 -- [fb_console] Make the cursor's color be the same
+   as cell's fg color
+
+Commit: 66d6d98163...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 29 23:15:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.c +29 net, fb_console.c +4, textmode_video unchanged.
+  Cursor now inherits fg colour of its cell.
+
+--------------------------------------------------------------------------------
+
+## eb959ed4 -- [tty] Refactor tty_filter_handle_csi_m_param() and
+   impl 'reverse video'
+
+Commit: eb959ed42e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 00:54:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_output.c +19 net. Handler gains SGR 7/27 (reverse video
+  on/off), refactored as a table-driven switch.
+
+--------------------------------------------------------------------------------
+
+## 0b51fb77 -- [tty] Implement the CSI commands: E, F, G, H, f
+
+Commit: 0b51fb77ed...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 01:57:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_output.c +51 / -1 -- CNL, CPL, CHA, CUP, HVP ANSI commands.
+
+--------------------------------------------------------------------------------
+
+## ecf08950 -- [tty][term] Implement ESC-c (RIS: reset to initial
+   state)
+
+Commit: ecf089505c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 14:18:18 2018 +0300
+
+Body: "BONUS: correctly ignore unknown non-CSI escape sequences."
+
+AI notes:
+
+What changed:
+
+  term.c +12, tty_output.c +26 / -5. RIS wires term_reset() to
+  ESC-c; unknown ESC sequences no longer spill garbage.
+
+--------------------------------------------------------------------------------
+
+## 6426f835 -- [tty][term] Support ED (Erase in Display) and
+   make reset an action
+
+Commit: 6426f835ff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 17:46:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.c +84 net, tty_output.c +16 net. Erase-in-Display handler
+  and reset-as-action: same dispatch path as every other terminal
+  action.
+
+--------------------------------------------------------------------------------
+
+## 5b027f64 -- [tty][term] Make term_execute_action() static
+
+Commit: 5b027f6423...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 18:01:09 2018 +0300
+
+Body: "This change makes term_execute_action() static but allows the filter
+func to execute at most 1 action but using a term_action out-parameter."
+
+AI notes:
+
+What changed:
+
+  +8 net across 5 files. Filter func returns one action via
+  out-param; term internals become private.
+
+--------------------------------------------------------------------------------
+
+## d7cae670 -- [tty][term] Add support for EL (Erase in Line)
+
+Commit: d7cae67092...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 19:08:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.c +37 net, tty_output.c ~equal. EL (n=0,1,2) clears line
+  segments.
+
+--------------------------------------------------------------------------------
+
+## d24dd39a -- [tty][term] Add support for CSI 'S' and 'T'
+   (non-buf scroll up/down)
+
+Commit: d24dd39a28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 30 20:30:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  term.c +61 net, tty_output.c +14, term_int.h +6. CSI S/T:
+  scroll-up / scroll-down the visible area without touching the
+  scrollback buffer.
+
+--------------------------------------------------------------------------------
+
+## e8eb1ea1 -- [tty] Add support for CSI 6n (DSR: Device Status
+   Report)
+
+Commit: e8eb1ea1c0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 31 01:57:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_output.c +16, tty_input.c +3 net, tty_int.h +2. DSR 6n
+  replies "ESC [ row ; col R".
+
+--------------------------------------------------------------------------------
+
+## 698177bf -- [tty] Add support for save/restore cursor
+   position
+
+Commit: 698177bf28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 31 02:07:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_output.c +18 -- ESC-7/ESC-8 save/restore.
+
+--------------------------------------------------------------------------------
+
+## 2ec7fefe -- [cmake][scripts] Make CMake to embedd in
+   build_fatpart the list of apps
+
+Commit: 2ec7fefe9c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 1 00:55:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  CMakeLists.txt +10, build_fatpart +6 / -5. CMake injects the
+  app list; old gen_config.cmake dies.
+
+--------------------------------------------------------------------------------
+
+## 11bcee54 -- [elf] Handle two out-of-memory cases
+
+Commit: 11bcee5416...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 31 14:47:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  elf.c +4 net -- propagate two previously-unchecked OOM returns.
+
+--------------------------------------------------------------------------------
+
+## 2480e320 -- [build] Make debug checks enabled by default in
+   Release builds
+
+Commit: 2480e320b6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 1 02:27:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  CMakeLists.txt -8 net (mostly removing the "release disables
+  checks" branch). Release builds now keep ASSERT by default.
+
+--------------------------------------------------------------------------------
+
+## 08bbe5a2 -- [tasklet] Add an ASSERT to prevent potential
+   deadlocks
+
+Commit: 08bbe5a233...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 1 02:27:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tasklet.c +14 -- guards against enqueueing a tasklet while
+  holding a lock the tasklet itself would take.
+
+--------------------------------------------------------------------------------
+
+## bb4bc66a -- [panic] Make NOT_IMPLEMENTED() to show file and
+   line
+
+Commit: bb4bc66aa9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 1 02:35:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 net across asserts.c + panic.h.
+
+--------------------------------------------------------------------------------
+
+## eae796db -- [build][debug] Fix issue with ESP validation in
+   optimized builds
+
+Commit: eae796db76...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 1 03:11:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  debug_utils.c +4, se_common.c +5, plus small CMake toggle.
+  Stack-pointer sanity check was triggering false positives with
+  -O2 frame-pointer omission.
+
+--------------------------------------------------------------------------------
+
+## c799a33b -- [process_mm] Handle two OOM cases
+
+Commit: c799a33bbd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 2 18:10:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process_mm.c +12 net -- propagate paging OOM (follow-up to the
+  paging-OOM API).
+
+--------------------------------------------------------------------------------
+
+## 5f41094f -- [tasklet][interrupts] Allow t->task == __current
+   in IRQ
+
+Commit: 5f41094fd0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 2 19:21:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  interrupts.c +19, tasklet.c +13 net. Tasklet running in IRQ
+  context was tripping an assert; the check is relaxed when the
+  caller is the interrupt path.
+
+--------------------------------------------------------------------------------
+
+## b69ac415 -- [kmalloc] Handle the last corner case:
+   actual_allocate_node() failed
+
+Commit: b69ac415b9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 2 19:43:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc.c +43 net, kmalloc_debug.h +7, process_mm.c +13,
+  devshell_commands.c +41 (OOM test). The allocator's last
+  silent-failure path is now surfaced and tested.
+
+--------------------------------------------------------------------------------
+
+## 1601-1625 kmalloc API refactor arc
+   (fce33e4c..210d5af7, Aug 3-7 2018)
+
+Rather than listing 25 small commits separately, this range is one
+coherent refactoring of the kmalloc allocator. Highlights:
+
+  - fce33e4c / 4d06df92 / 0cb51c98: extract internal_kmalloc_aux(),
+    introduce calculate_node_size(), make `size` an in/out param so
+    the bottom-most allocator reports exact usage back up.
+
+  - 8c40157c / d7117d3e: implement and test
+    internal_kmalloc_split_block() -- split a bigger block into the
+    requested size + a residue block.
+
+  - 61b470a5: implement internal_kmalloc_coalesce_block() (merge
+    adjacent free blocks).
+
+  - 35f3d9a1: add do_actual_alloc param -- lets higher layers ask
+    "what would happen?" without committing.
+
+  - bcc449b5 / 3ce0ed30: rename internal_kmalloc -> per_heap_kmalloc,
+    interal_kfree2 -> per_heap_kfree.
+
+  - 665e67bc: add multi_step_alloc param -- one allocation may span
+    multiple sub-blocks (needed by mmap).
+
+  - f606bca5 / 0bcf58b9: tests added / rewritten.
+
+  - 90ac5580 / 944aee48: add sub_blocks_min_size param and
+    corresponding multi_step_free; 2bad6c56 switches mmap/munmap to
+    use them.
+
+  - f0e60889 / b12c91ca / c1e34272: measure oom_test performance,
+    polish, raise test severity.
+
+  - dd3598b5 / 65d456a8 / 5bfee32f / 4cf1177e / 00b39843: final
+    shape -- kmalloc/kfree2 become thin wrappers over
+    general_kmalloc/general_kfree (new general_kmalloc.c.h), which
+    dispatch to the correct heap's per_heap_* primitives. In/out
+    size param propagates all the way down.
+
+  - 705797ea: mmap() calls bzero() on new allocations.
+
+  - 210d5af7: user_valloc_and_map() is optimised -- fewer page
+    walks for contiguous allocations.
+
+Total diff: rough order of ~+1.2k / -0.8k across kmalloc.c,
+kmalloc_heaps.c.h, kmalloc_block_node.h, general_kmalloc.c.h,
+process_mm.c, devshell_commands.c, unittests/kmalloc_test.cpp, and
+kmalloc.h. Net result: a cleaner three-layer API
+(general -> per-heap -> block primitives), with proper unit test
+coverage for split/coalesce/multi-step paths.
+
+Context (guess):
+
+  Motivation is preparing kmalloc to back a real mmap/munmap --
+  variable-sized user allocations that must be tracked precisely
+  for munmap to undo them.
+
+--------------------------------------------------------------------------------
+
+## 1a06d629 -- [kmalloc] Optimize user_valloc_and_map() [2]
+
+Commit: 1a06d62939...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 7 01:53:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process_mm.c -5 net, paging.c +2. Further tightening of the
+  valloc-then-map path.
+
+--------------------------------------------------------------------------------
+
+## 587a094a -- [paging] Handle an OOM case in pdir_clone()
+
+Commit: 587a094aae...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 7 13:16:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +34 / -17 -- pdir_clone now unwinds on an OOM partway
+  through instead of returning an inconsistent directory.
+
+--------------------------------------------------------------------------------
+
+## 59f0d834 -- [process32] Handle OOM in kthread_create()
+
+Commit: 59f0d83408...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 7 13:23:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kthread_create return type becomes nullable; callers updated
+  (fb_console, se_common, se_kcond).
+
+--------------------------------------------------------------------------------
+
+## f2dee6cb -- [process32] Handle OOM case in
+   create_usermode_task()
+
+Commit: f2dee6cb67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 7 13:27:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process32.c +10 / -2.
+
+--------------------------------------------------------------------------------
+
+## 32690709 -- [paging] Add the user_pages_count OUT param to
+   pdir_clone()
+
+Commit: 326907099c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 7 13:43:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +6, callers updated. Lets fork() know how many pages
+  the child inherited without a second walk.
+
+--------------------------------------------------------------------------------
+
+## e50ebe6e -- [kmalloc] Fix h->mem_allocated accounting logic
+
+Commit: e50ebe6e8b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 00:57:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc.c +36 / -14 + kmalloc_test.cpp +112 -- accounting bug
+  where multi-step frees double-counted or missed a residue.
+
+--------------------------------------------------------------------------------
+
+## ec22c698 -- [tty] Handle an improbable OOM case; BONUS:
+   cosmetic changes in paging.c
+
+Commit: ec22c698e0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 01:24:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty.c +4, paging.c -2 net.
+
+--------------------------------------------------------------------------------
+
+## 1edde971 -- [devshell] Extract sysenter funcs in a local
+   header
+
+Commit: 1edde97138...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 13:38:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New sysenter.h (+68), devshell_commands.c -63 (moved out).
+
+--------------------------------------------------------------------------------
+
+## 986cade0 -- [paging] Handling COW page fault in kernel
+
+Commit: 986cade04b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 14:36:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Major feature: copy-on-write. idt.c +14 wires the
+  page-fault->handle_cow path; paging_int.h gains PTE_COW; and
+  paging.c+24 implements the actual copy + PTE rewrite. Devshell
+  +16 test.
+
+Context:
+
+  First COW implementation -- needed for efficient fork() and for
+  lazy mmap.
+
+--------------------------------------------------------------------------------
+
+## 699e9810 -- [devshell] Rename some commands to be shorter
+
+Commit: 699e981087...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 15:13:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  devshell rename only (+0 net).
+
+--------------------------------------------------------------------------------
+
+## 54a95469 -- [syscalls] Implement additional variants of
+   {get,set}[e]{uid,git}[16]
+
+Commit: 54a95469ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 15:42:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New auth.c (+79). Implements 16-bit legacy variants plus
+  setuid/setgid/seteuid/setegid and their get counterparts.
+  etc/passwd and etc/group adjusted; old inline stubs removed
+  from syscalls.c (-15).
+
+Context:
+
+  Linux-compat: many userland programs call the 16-bit legacy
+  variants; Tilck now answers.
+
+--------------------------------------------------------------------------------
+
+## 0d10f613 -- [paging] Implement pdir_deep_clone()
+
+Commit: 0d10f613be...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 18:44:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +70 / -3. pdir_clone() (shallow/COW) + new
+  pdir_deep_clone() that physically copies pages -- used where
+  COW is undesirable.
+
+--------------------------------------------------------------------------------
+
+## d30432b2 -- [paging][fork] Optimize pdir_deep_clone() and
+   introduce the FORK_NO_COW opt
+
+Commit: d30432b29c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 19:48:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 net. CMake option FORK_NO_COW lets fork() skip COW and
+  always deep-clone (debugging/worst-case perf test).
+
+--------------------------------------------------------------------------------
+
+## 1d46ecee -- [kmalloc] Introduce kmalloc_accelerator and use
+   it in pdir_deep_clone()
+
+Commit: 1d46ecee66...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Aug 8 20:54:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  New helper (kmalloc_accelerator) in kmalloc.h + general_kmalloc
+  (+57). Pre-allocates a pool of fixed-size blocks so a caller
+  that makes many same-size allocations doesn't touch the slow
+  heap path each time. pdir_deep_clone adopts it, shedding 14
+  lines.
+
+--------------------------------------------------------------------------------
+
+## ee062138 -- [paging] Introduce map_zero_page[s]
+
+Commit: ee06213854...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 00:34:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  paging.c +40, paging.h +10. New helpers to lazy-map a single
+  shared zero page read-only.
+
+--------------------------------------------------------------------------------
+
+## 4096abc1 -- [paging][process_mm] Add the free_pageframe param
+   to unmap_page[s]
+
+Commit: 4096abc1c8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 00:52:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  unmap_page[s] grows a flag so the caller can choose "also free
+  the underlying pageframe" or just drop the mapping. -3 net.
+
+--------------------------------------------------------------------------------
+
+## 86e05c07 -- [process_mm][paging] Make mmap() to support CoW
+   map to zero-page
+
+Commit: 86e05c07d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 02:12:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process_mm.c +30, paging.c +13, CMake/devshell tweaks.
+  Anonymous mmap now maps a shared zero page read-only; first
+  write triggers COW -> real pageframe.
+
+Context:
+
+  Lazy allocation -- user mmap no longer eats RAM until written.
+
+--------------------------------------------------------------------------------
+
+## c5143d5d -- [se_kmalloc_perf] Generate a prettier output
+
+Commit: c5143d5d5b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 17:20:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Cosmetic (+12 net).
+
+--------------------------------------------------------------------------------
+
+## d79d714a -- [kmalloc] Extract debug funcs in
+   kmalloc_heaps_debug.c.h
+
+Commit: d79d714a74...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 20:47:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  86 debug lines move kmalloc_heaps.c.h -> kmalloc_heaps_debug.c.h
+  (+88).
+
+--------------------------------------------------------------------------------
+
+## a6fa9638 -- [kmalloc] Intr kmalloc_get_first_heap to solve
+   align issue w/ first_heap
+
+Commit: a6fa9638c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 9 21:22:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc_heaps.c.h +22 net, kmalloc_mocks.cpp +16. In unit
+  tests, the first heap wasn't aligned above page size; the new
+  helper provides an aligned_alloc()-backed buffer.
+
+--------------------------------------------------------------------------------
+
+## 0a6f296e -- [kmalloc] Cosmetic changes
+
+Commit: 0a6f296e5e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 10 00:07:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -1 net.
+
+--------------------------------------------------------------------------------
+
+## 4b3731a0 -- [kmalloc] Use OR-ed flags for {per_heap,
+   general}_kmalloc()
+
+Commit: 4b3731a0e4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 10 01:08:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmalloc API now takes a flag bitmask (KMALLOC_FL_* ORed) instead
+  of a list of bools. Call sites updated. -2 net.
+
+--------------------------------------------------------------------------------
+
+## a2ff1b83 -- [kmalloc] Use OR-ed flags for {per_heap,
+   general}_kfree()
+
+Commit: a2ff1b8375...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 10 01:24:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Same treatment for kfree. -12 net.
+
+--------------------------------------------------------------------------------
+
+## 81dd3bc2 -- [self_tests] Minor fix
+
+Commit: 81dd3bc290...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 10 01:41:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  se_common.c -4.
+
+--------------------------------------------------------------------------------
+
+## b4a1a5f2 -- [self_tests] Minor fix [2]
+
+Commit: b4a1a5f257...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 10 01:49:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  se_common.c +2 net.
+
+--------------------------------------------------------------------------------
+
+## 1651-1670 kmalloc: mdalloc + small-heap arc
+   (e198718d..f011ddf5, Aug 15-19 2018)
+
+Second wave of kmalloc refactoring. Individually small commits,
+collectively introduce:
+
+  - e198718d: micro-opt inside internal_kmalloc (10-15 cycles).
+
+  - 9f4a717a: NEW mdalloc() / mdfree() public API that stores the
+    allocation size in a hidden metadata header, so the caller can
+    free without remembering the size (malloc-style convenience
+    over the in/out-size primitives).
+
+  - 57b52397 / 7ce1e0b4 / ed4d0264 / f569da76: migrate gdt,
+    elf_loader, fs/mp.c, and FPU-state alloc from kfree() to
+    kfree2() / mdalloc.
+
+  - 67b2e157: mdalloc header gains a magic field (debug builds).
+
+  - 1bbdae56: ext_string_util adopts mdalloc.
+
+  - f39e1f8e: REMOVE old kfree(void *ptr) -- all callers have
+    migrated.
+
+  - de5029cc: per_heap_kfree(NULL) is a no-op (Linux-style).
+
+  - 55eca3b5: general_kfree may assume size != 0.
+
+  - 33624120 / 9c18ce48: small-heap kmalloc -- a separate
+    sub-allocator for tiny allocations backed by a pool of 16-byte
+    aligned buddy slots (fixes the 'fpu' test's alignment
+    requirement).
+
+  - 9cd29496 / 259fbc6c: refactor + add aligned-alloc support to
+    small heaps.
+
+  - 1ab2a064: aligned_kmalloc() API + align type baked into flags.
+
+  - 916af1df: split off kmalloc_small_heap.c.h (+199 new,
+    general_kmalloc.c.h -179).
+
+  - 9a7dabcc: small-heaps stats hook.
+
+  - de9af241 / f011ddf5: typo + README.md update (20 line doc add).
+
+Net effect: kmalloc now has a two-tier architecture (normal heap +
+small heap), a malloc-style mdalloc wrapper, and uniform flag-based
+API. Shape is much closer to what Tilck ships today.
+
+--------------------------------------------------------------------------------
+
+## 0d31fbea -- [syscalls] Implement sys_newuname() [the lastest
+   (3rd) version of uname]
+
+Commit: 0d31fbea0a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 13:17:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  syscalls.c +26, fault_resumable.h +7, syscalls.h +4. Fills in
+  the third (modern) uname struct: sysname/nodename/release/
+  version/machine/domainname. Uses fault_resumable for safe copy
+  to user.
+
+--------------------------------------------------------------------------------
+
+## 7c564935 -- [syscalls] Implement (trivial) sys_getppid()
+
+Commit: 7c564935a6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 13:23:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +9, syscalls.h +2.
+
+--------------------------------------------------------------------------------
+
+## b246df76 -- [syscalls] Implement sys_nanosleep()
+
+Commit: b246df76b4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 15:06:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  syscalls.c +9, timer_handler.c +4. First working nanosleep
+  with a struct timespec from user space.
+
+--------------------------------------------------------------------------------
+
+## f56fceac -- [syscalls][nanosleep][uname] Minor fixes related
+   with copy-to/from user
+
+Commit: f56fceacab...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 16:29:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  syscalls.c -0 net, devshell_commands.c +3. Tighten copy_to_user
+  / copy_from_user usage around the new syscalls.
+
+--------------------------------------------------------------------------------
+
+## 3c306612 -- [devshell] Add the waitpid1 test cmd
+
+Commit: 3c306612b6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 16:42:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  devshell_commands.c +46. Test: fork -> child exits -> parent
+  waitpid -> verify exit status.
+
+--------------------------------------------------------------------------------
+
+## 4d8dafe8 -- [process] Rename task_info->owning_process_pid to
+   just task_info->pid
+
+Commit: 4d8dafe8f0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 21:19:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 net across 4 files -- rename only.
+
+--------------------------------------------------------------------------------
+
+## 57580d10 -- [waitpid] Working on wait on any child
+
+Commit: 57580d109e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 17:02:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +22, devshell_commands.c +35. WIP on waitpid(-1).
+
+--------------------------------------------------------------------------------
+
+## 3550baa1 -- [process][sched] Add support for waitpid(-1)
+
+Commit: 3550baa1a1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 19 21:15:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +38, sched.c +2, devshell +45. wait for any child
+  completed: the parent parks until *any* child transitions to
+  ZOMBIE, then reaps.
+
+--------------------------------------------------------------------------------
+
+## 103b9b04 -- [process] Work-around a bug related with the size
+   of task_info
+
+Commit: 103b9b043b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 02:18:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.h +17 net, asm_defs.h alignment tweak. Papers over a
+  struct-layout assumption until a proper fix lands.
+
+--------------------------------------------------------------------------------
+
+## cfe62c0a -- [process] Minor refactoring in join_kernel_thread()
+
+Commit: cfe62c0a23...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 14:23:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c -4 net.
+
+--------------------------------------------------------------------------------
+
+## 0d7853f2 -- [process][sched] Fix a nasty bug related with the
+   size of task_info
+
+Commit: 0d7853f261...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 14:58:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  sched.c +34 / -26 net. Bug: the formula
+  `ti = ((task_info *)pi) - 1` failed in release builds when the
+  compiler inserted padding between two separately declared
+  `static` structs. Fix: allocate one byte buffer sized as the
+  concatenation of both structs and compute offsets explicitly.
+
+Context (from body):
+
+  Worth reading -- canonical example of "don't rely on the linker
+  placing two independent static vars adjacently".
+
+--------------------------------------------------------------------------------
+
+## dd96f9aa -- [process] Move exit_status back in task_info
+
+Commit: dd96f9aa13...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 15:05:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 net across 4 files. Revert of an earlier move: exit_status
+  belongs on the *thread* that exited, not on the whole process.
+
+--------------------------------------------------------------------------------
+
+## b4167069 -- [process] Introduce thread_ti_to_tid() and
+   thread_tid_to_ti()
+
+Commit: b4167069ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 15:17:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.h +12, process.c +3. Helpers to map task_info <-> tid
+  without callers poking at fields.
+
+--------------------------------------------------------------------------------
+
+## 38888112 -- [process] Refactor waitpid() and add support for
+   WNOHANG
+
+Commit: 38888112e3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 19:18:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +10 net. WNOHANG (poll instead of block) lands; the
+  wait loop is factored into a cleaner shape.
+
+--------------------------------------------------------------------------------
+
+## 49f371c4 -- [process] Introduce children_list and
+   siblings_list
+
+Commit: 49f371c4c7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Aug 20 20:15:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.h +7, process.c +11, devshell_commands.c +53.
+  Per-process children + per-process siblings linked lists (so
+  waitpid iterates in O(children) instead of scanning all tasks).
+
+--------------------------------------------------------------------------------
+
+## b48e1c7c -- [sched] Make the scheduler to avoid the current
+   task when possible
+
+Commit: b48e1c7c50...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 21 00:08:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  sched.c +2 net. Picking any other runnable task first improves
+  scheduler fairness.
+
+--------------------------------------------------------------------------------
+
+## f48a03fe -- [pq] Cosmetic refactoring
+
+Commit: f48a03fef0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 21 00:19:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  pq.c +7 net.
+
+--------------------------------------------------------------------------------
+
+## 18367d90 -- [system_tests] Rename runtest to single_test_run
+
+Commit: 18367d9027...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 21 00:27:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename of the test runner script.
+
+--------------------------------------------------------------------------------
+
+## 386a1eeb -- [cmdline] Report when self test is not found
+   without panic()
+
+Commit: 386a1eeb64...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 21 00:46:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  parse_cmdline.c +2 net. Graceful error instead of kernel panic.
+
+--------------------------------------------------------------------------------
+
+## 1690-1706 build/gtest/mmap bug-hunt arc
+   (4319169d..3e646035, Aug 23-26 2018)
+
+Block of CI/test plumbing + one "scary" 32/64-bit bug:
+
+  - 4319169d / 14e64982 / dae53744 / 762baf70: googletest built
+    out-of-tree in the toolchain; new build_gtest_arch helper
+    and ARCH_GTESTS CMake option lets gtest be cross-built for
+    the target arch and run in the kernel via a dedicated
+    self-test entrypoint.
+
+  - 1ed9327d / 0093babf / 3032a180: new unittests/mem_regions.cpp
+    unit test that exercises system_mmap edge cases; reduced to
+    a minimal reproducer.
+
+  - 4230f1c1: *fix for the reproduced bug*. In
+    align_mem_regions_to_page_boundary() a u64 addr was AND'ed
+    with a 32-bit PAGE_MASK constant, truncating when
+    addr >= 4 GiB. Fix: 64-bit mask.
+
+  - 3f0eacb1 / 9db0ea0f / 54bfa322 / 5ad4d608 / 28d43df2 /
+    7226c8f1 / 3e646035: CircleCI config tweaks, test renames,
+    new fixture style, add debug_arch_gtests_build job.
+
+Net: ~+300 / -160 across the build system and tests; plus one
+latent 32/64-bit bug squashed.
+
+--------------------------------------------------------------------------------
+
+## 3e646035 -- [cpu] Read phys/virt addr bits using CPUID
+
+Commit: 3e6460351d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Aug 26 18:59:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  cpu_features.c +9, cpu_features.h +3, cpu.c +3. CPUID leaf
+  0x80000008 -> phys/linear address bits.
+
+--------------------------------------------------------------------------------
+
+## 1707-1715 MTRR, PAT and framebuffer WC mapping arc
+   (a11b2503..d22e5982, Aug 23-28 2018)
+
+Proper memory-type management for the linear framebuffer:
+
+  - a11b2503: fb_raw maps the framebuffer with an MTRR set to
+    write-combining (was just WT+CD before). Major perf
+    improvement for large-area writes.
+
+  - b06d4c6b / a07ad87a: extract the fb-in-kernel-space mapping
+    into paging.c; move MTRR code into its own mtrr.c (-95 lines
+    out of fb_raw.c / paging.c).
+
+  - 8ee04a2f / 27a611e6 / 9a0a3d58: new dump_var_mtrrs() debug
+    helper + PAT (Page Attribute Table) definitions + begin PAT
+    support in paging.c (+68 / -15 net).
+
+  - 359bd794: drop pitch_size_buf (dead helper).
+
+  - e133c830: *first Tilck-specific syscall*: sys_tilck_cmd --
+    umbrella syscall used by devshell / selftests to issue
+    privileged kernel-test operations.
+
+  - d22e5982: devshell commands gain argc/argv.
+
+--------------------------------------------------------------------------------
+
+## 0991e780 -- [devshell] Introduce the 'selftest' shell cmd
+
+Commit: 0991e7808f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 28 13:16:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  devshell_commands.c +19 / -2. `devshell selftest <name>`
+  invokes a named in-kernel self-test via sys_tilck_cmd.
+
+--------------------------------------------------------------------------------
+
+## 8855baa4 -- [fb_console] Introduce selftest_fb_perf_manual()
+
+Commit: 8855baa43b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 28 13:36:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  fb_console.c +21 -- manual perf measurement for fb flush.
+
+--------------------------------------------------------------------------------
+
+## 14b3a8c0 -- [fb_console][selftests] Fix
+   selftest_fb_perf_manual()
+
+Commit: 14b3a8c071...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 28 16:07:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  fb_console.c +13 net.
+
+--------------------------------------------------------------------------------
+
+## eda4bd2b -- [fb_console] Minor improvements in fb_flush()
+
+Commit: eda4bd2b9b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 28 18:12:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  fb_flush +21 net.
+
+--------------------------------------------------------------------------------
+
+## 06e1499c -- [bootloader] Hard-code the order of .S files
+   during build
+
+Commit: 06e1499cc4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Aug 28 19:30:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  bootloader/CMakeLists.txt +1 net. Order matters for link: boot
+  sector first.
+
+--------------------------------------------------------------------------------
+
+## 29fd2352 -- [system_mmap] Add the FB to the mem map, dump
+   MTRRs after mem regions
+
+Commit: 29fd2352ac...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 30 18:24:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  system_mmap.c +13 net, fb_raw.c +10, mtrr.c +19 net. The linear
+  framebuffer is registered as a reserved region so it's not
+  handed out by kmalloc; MTRR dump runs after region
+  normalisation.
+
+--------------------------------------------------------------------------------
+
+## 96d60193 -- [scripts] Make the QEMU kvm scripts to check for
+   KVM on the machine
+
+Commit: 96d601935d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Aug 30 20:43:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +89 across 4 qemu scripts. Auto-fallback to emulated CPU if
+  /dev/kvm missing / not accessible.
+
+--------------------------------------------------------------------------------
+
+## 7159f164 -- [cpu][mtrr] Minor changes
+
+Commit: 7159f16442...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 31 14:35:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  mtrr.c +6.
+
+--------------------------------------------------------------------------------
+
+## 2f8b1db8 -- [mtrr] Introduce pre/post_mttr_change()
+
+Commit: 2f8b1db8a9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Aug 31 19:30:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  mtrr.c +100 / -2, x86_utils.h +49. Proper SDM-style MTRR-change
+  sequence: disable caches, flush, invalidate TLBs, update, then
+  re-enable.
+
+Context:
+
+  Required before runtime MTRR changes (e.g. setting WC on the
+  framebuffer region) are safe on all CPUs.
+
+--------------------------------------------------------------------------------
+
+## b739bea8 -- [sched] Make task_change_state() to run with IF = 0
+
+Commit: b739bea8bd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Sep 1 14:59:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c -21 net, sched.c +10 net, timer_handler.c +3.
+  task_change_state now requires interrupts-off at entry;
+  callers handle the save/restore.
+
+Context:
+
+  Prevents an IRQ arriving in the middle of state transition and
+  observing an inconsistent tasklist.
+
+--------------------------------------------------------------------------------
+
+## 844f2c90 -- [list] Make list_for_each safe against removal of
+   an element
+
+Commit: 844f2c90dc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Sep 1 15:14:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 net across 10 files. list_for_each now stores the next
+  pointer before running the body, so the body can unlink the
+  current node without UB. Replaces hand-rolled "tmp = n->next"
+  patterns in callers.
+
+--------------------------------------------------------------------------------
+
+## 40d07d73 -- Update README.md (add syscall support status table)
+
+Commit: 40d07d7347...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Sep 1 22:24:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  README.md +82. First syscall-coverage table in the README.
+
+--------------------------------------------------------------------------------
+
+## 1728-1742 fb_console + PAT + fpu_memset256 arc
+   (27e2fc65..bbcec725, Sep 1-10 2018)
+
+Graphics-console polish and a performance breakthrough:
+
+  - 27e2fc65 / 2e4128777d / a11b6d64 / b11d5a6a / f23bfd01: MTRR
+    refactor, fb_perf self-tests, and *fpu_memset256* -- a
+    256-bit SIMD memset used to clear the framebuffer.
+
+  - 8b3b05ac: use PAT to mark the framebuffer as WC.
+
+  - 545afb39: **remove the shadow buffer**. After marking the
+    framebuffer WC via PAT, raw writes got ~200x faster, so the
+    double-buffer is now a pessimisation. fb_console.c -107 net.
+
+  - bfe7f5fb: kcond disables IRQs around state transitions
+    (companion to the earlier sched.c work).
+
+  - adf9f109: mtrr cosmetic.
+
+  - ed9a52a9 / 36511381: termtest app with console_perf_test()
+    + standalone-buildable.
+
+  - 9c07af25: fix bootloader RAMDISK_PADDR constant.
+
+  - f289ebf1 / bbcec725: multi-colour-mode support propagated
+    from the bootloader to fb_console (RGB8, RGBX8, indexed
+    BIOS modes).
+
+  - 05054469: new usermode_apps/fbtest.c demo app.
+
+--------------------------------------------------------------------------------
+
+## 1743-1754 /dev/fb0 + mmap-of-device-files arc
+   (cca83281..2247920, Sep 10-14 2018)
+
+Real framebuffer access from user space lands:
+
+  - cca83281: fix sys_close() bug.
+
+  - ece73e63: new kernel/char/fbdev.c (+48); registers /dev/fb0.
+
+  - e70c649b / 9c982f64 / 4ce3e69c / c4c4fee4: sys_mmap_pgoff()
+    learns to mmap *device* files (not just anon pages).
+    KMALLOC_FL_NO_ACTUAL_ALLOC lets mmap reserve a VA range
+    without backing RAM.
+
+  - 64c37236: fbtest app exercises /dev/fb0.
+
+  - adafab4b: FBIOGET_FSCREENINFO / FBIOGET_VSCREENINFO ioctls.
+
+  - 4b01ac35: actual mmap of fb0 to user (the previous pieces
+    were plumbing; this commits the end-to-end path).
+
+  - 4df0d47f / 52e433a7: per-process user-mapping tracker (so
+    munmap / process exit can tear them down);
+    redraw_static_elements + partial KDSETMODE(KD_TEXT).
+
+  - 2247920: complete KDSETMODE(KD_GRAPHICS) -- term.c +63 adds
+    pause/restart video output.
+
+Net: user-space apps can now mmap /dev/fb0 and switch the tty
+into graphics mode (like Linux VT_SETMODE + /dev/fbN).
+
+--------------------------------------------------------------------------------
+
+## 1755-1759 SPDX-identifier sweep
+   (38e0341b..c72646a8, Sep 14 2018)
+
+Five mechanical commits adding SPDX-License-Identifier lines to
+every source, header, CMake, linker-script, and asm file (~200
+files total). Identical 1-line addition per file; nothing else
+changes.
+
+--------------------------------------------------------------------------------
+
+## 1760-1776 Build / usermode_apps / misc polish
+   (cb6bb90b..f8b72265, Sep 14-25 2018)
+
+  - cb6bb90b / 28885be3: CMake file dedup via a macro.
+
+  - 693e8cd1 / 67e658d5 / 1580dbfb / 45a31a96: usermode_apps/
+    extra/ directory for "extra apps", glued via the new
+    tilck_add_extra_app() CMake macro.
+
+  - 4ab352e7 / 73b8e887: fix user fb-access glitches (banner
+    repaint races KD_GRAPHICS mode; cursor blink respects
+    cursor_enabled).
+
+  - ea987be7: cmake cosmetic.
+
+  - f239b7e2 / 424d366c: fb_draw_char_failsafe polish; disable
+    keypress ECHO in KD_GRAPHICS.
+
+  - 8695edbd: LICENSE year bump.
+
+  - a0266866 / d358ee86 / 13ce6bef: devshell escape-sequence
+    portability; Fn-key debug shortcuts now require Ctrl;
+    F1..F5 encoding switched from VT100 to linux-console.
+
+  - 76937853: timer tick runs with IRQ off.
+
+  - f8b72265: efi_bootloader error macros gain \r\n.
+
+--------------------------------------------------------------------------------
+
+## 19271f42 -- [termtest] Introduce read_nonblock()
+
+Commit: 19271f42c6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Sep 25 20:40:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  termtest.c +40. Non-blocking read using O_NONBLOCK (once it
+  lands in the kernel).
+
+--------------------------------------------------------------------------------
+
+## a7c91280 -- [vfs] Add 'flags' to fs_handle_base and introduce
+   vfs_fcntl()
+
+Commit: a7c912806f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Sep 25 21:37:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  vfs.h +4, vfs.c +17, fs_syscalls.c +8 net. Every file handle
+  now carries its open flags; fcntl(F_GETFL/F_SETFL) works.
+
+--------------------------------------------------------------------------------
+
+## 256487bc -- [tty] Add support for O_NONBLOCK
+
+Commit: 256487bc87...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Sep 26 01:52:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_input.c +44 net, tty_ioctl.c +16, termtest.c +4. Read from
+  tty returns -EAGAIN instead of blocking when O_NONBLOCK is set.
+
+--------------------------------------------------------------------------------
+
+## 8d765984 -- [tty][termtest] Make non-blocking mode to work in
+   RAW mode as well
+
+Commit: 8d7659849f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Sep 26 16:15:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_input.c +13, termtest.c +28 net.
+
+--------------------------------------------------------------------------------
+
+## d11fe727 -- [tty] Add support for ioctl KDGKBMODE and
+   KDSKBMODE limited to K_XLATE
+
+Commit: d11fe72772...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Sep 27 20:12:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_ioctl.c +26. Only K_XLATE is supported (others return
+  -EINVAL) -- enough for programs that just want to query the
+  mode.
+
+--------------------------------------------------------------------------------
+
+## 34350891 -- [panic][tty] Introduce (and use)
+   tty_setup_for_panic()
+
+Commit: 34350891f4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Sep 27 20:30:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  tty_ioctl.c +12, debug_utils.c +8. panic() forces tty into a
+  known sane state (blocking, echo off, cooked mode) before
+  writing the diagnostic.
+
+--------------------------------------------------------------------------------
+
+## 217a8bd3 -- [kmutex] Fix a race condition
+
+Commit: 217a8bd3cd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Sep 28 19:55:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  kmutex.c +17 net. Classic check-then-act race between
+  try_lock and the wake path.
+
+--------------------------------------------------------------------------------
+
+## c2b643aa -- [vfs] Fix a nasty bug in compute_abs_path()
+
+Commit: c2b643aa1d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Sep 29 16:53:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  vfs_util.c +5, vfs_test.cpp +2. Bug in "." / ".." segment
+  handling; now covered by a unit test.
+
+--------------------------------------------------------------------------------
+
+## 97e29690 -- Update README.md
+
+Commit: 97e2969023...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Oct 4 00:28:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  README.md +0 net.
+
+--------------------------------------------------------------------------------
+
+## 792cb074 -- Fix the last race caused by wait_obj_reset() +
+   task_change_state()
+
+Commit: 792cb07478...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Oct 7 21:26:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  process.c +11, process32.c +13 net, process.h +6. The final
+  race identified after the IRQ-off work: wait_obj_reset had to
+  happen atomically with task_change_state.
+
+--------------------------------------------------------------------------------
+
+## 1787-1800 USE_SYSCC + musl wrapper + build cross-arch arc
+   (ae6849b6..2163e751, Oct 13-20 2018)
+
+Major build-system rework:
+
+  - ae6849b6: **USE_SYSCC=1** mode -- build the kernel with the
+    host ($CC) compiler instead of the cross-compiler. Touches
+    CMake scaffolding (+143/-33 across 16 files), basic_defs.h,
+    sync.h (restricts GCC-specific builtins behind feature
+    probes), and the fb_raw / fpu_memcpy / timer_handler tweaks
+    needed to compile with stricter host CCs.
+
+  - 3c1c3de4: extract utils into other/utils.cmake.
+
+  - 2be54d91 / 8f58e0fa: new set_cross_compiler() and
+    set_cross_compiler_glibc() helpers (replace copy-paste in
+    per-subdir CMakeLists).
+
+  - Merge commits 1791 (38816fe6) + 1792 (5d95f1eb): "readme"
+    branch merged. Introduces 339-line README rewrite + tetris.png
+    screenshot (7 branch commits 20d49b53..7b79966a were
+    README.md revisions only).
+
+  - 7b0dc015: build_fatpart wasn't copying the EFI boot file --
+    fix.
+
+  - bf5634da / ee9f22b9 / 5b5dde09: host arch must be x86_64 (hard
+    fail otherwise); OBJCOPY / STRIP env vars; new ARCH_GCC_TC
+    var that packs arch + GCC version + toolchain prefix into one
+    thing.
+
+  - c87a190d / 87d5b830 / e2a2bb96: small polish; **musl-g++
+    wrapper** introduced (other/musl-g++) alongside musl-gcc --
+    enables building C++ usermode apps against musl. utils.cmake
+    +89.
+
+  - 2163e751: new `TARGET_ARCH` env var caches as CMake `${ARCH}`.
+
+Net: the build system now supports both a cross-compiled kernel
+(classic) and a host-compiled kernel (USE_SYSCC); user apps can
+be C or C++ via musl; the kernel no longer hardcodes any single
+toolchain.
+
+--------------------------------------------------------------------------------
+
+## 1801-1813 USE_SYSCC polish + boot tree reorg
+   (ab351f36..e7d31981, Oct 30-Dec 13 2018)
+
+  - ab351f36 / 6324c7d4 / f07c4ee4: i386-gcc/g++/ar/ranlib
+    wrapper scripts, USE_SYSCC=1 completed, struct stat/glibc
+    header conflict fix.
+
+  - 1384eeb9: clean up static-analysis warnings across 7 files.
+
+  - 249fe497: KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC cmake knob.
+
+  - bbd596d9 / b82f3dc8 / 51ef1f96: boot stage3 linkage: force
+    stage3_entry.S first, use .comm rather than .align+.lcomm
+    (fix bad alignment), force start.S first for multiboot
+    header. Commit bodies document CMake 3.12 GLOB order change
+    that exposed the issue.
+
+  - 9c5e2360 / 7338295b / 73a97218 / d11afa99: elfhack gains
+    --verify-flat-elf and --check-entry-point validators (used
+    for the legacy stage3); bootloader now enforces them.
+
+  - e7d31981: **bootloader source tree reorg** -- bootloader/efi/
+    becomes boot/efi/ and bootloader/ becomes boot/legacy/.
+    Pure path moves across 32 files.
+
+--------------------------------------------------------------------------------
+
+## 1814-1827 timer / IRQ / task-wake refactor arc
+   (634f90dc..c9f86ff1, Dec 17-18 2018)
+
+Large, focused correctness pass on the scheduler/timer/IRQ code:
+
+  - 634f90dc: tty_setup_for_panic() restarts video only outside
+    KD_TEXT.
+
+  - 3fe5f3d5 / c90e1a22: per-task list init helper; debug tasklist
+    walker resolves task-wait targets by name.
+
+  - b6993113: off-by-one in set_task_to_wake_after().
+
+  - b732f604: preemption race in IRQ path when an IRQ handler
+    re-enabled interrupts *before* EOI.
+
+  - bdea3251: fix stale check in debug_check_tasks_lists() --
+    another task could legitimately have moved the sleeping task
+    between tick IRQs.
+
+  - 012279e9: set_task_to_wake_after() no longer changes task
+    state (caller's responsibility).
+
+  - d362ec66 / 4abf8ba2 / f17b48f3 / 94927643: IRQ cleanups; also
+    send EOI to master PIC on spurious slave-PIC IRQ, and always
+    EOI before sti.
+
+  - 30412d7e: *reimplement* sleep/wakeup logic with a dedicated
+    wake list. -33 net, much simpler.
+
+  - 0f60d7ac: explicit timer_wakeup_list field on task_info.
+
+  - c9f86ff1: extend list unit test (remove coverage +87 lines).
+
+--------------------------------------------------------------------------------
+
+## 1828-1841 C11 atomics adoption + sched.h split
+   (e22706d8..4be1e8d0, Dec 18-20 2018)
+
+  - e22706d8: **require a C11 compiler** + use <stdatomic.h>.
+
+  - d1f54d10: atomics moved into a dedicated common header.
+
+  - c7c050c5 / bba35661: list helper fix + wake-up logic now
+    uses atomic updates.
+
+  - e376f4c9: kernel built with no-FPU-insn codegen (GCC was
+    emitting x87 opcodes for atomic_store on long long to avoid
+    lock cmpxchg8b; kernel can't afford that).
+
+  - b5439768: stub atomics for GCC <= 4.8 (old Travis box).
+
+  - 2670b45c / abf65a4c / 533d59cd: drop old __sync GCC
+    extensions in favour of C11; C++ TUs use std::atomic.
+
+  - f337d75a: fb cursor-blink cosmetic fix.
+
+  - 75a493bc: drop trailing `_enum` typedef style.
+
+  - d02ffd89 / 55d8607e / 4be1e8d0: **split sched.h out of
+    process.h** in 3 steps. process.h shrinks by ~130 lines;
+    everything scheduler-related is behind sched.h.
+
+--------------------------------------------------------------------------------
+
+## 1842-1848 atomic __current / __ticks / __curr_pdir + build
+   (6c0aafed..696a84f5, Dec 20-21 2018)
+
+  - 6c0aafed: extract process_int.h.
+
+  - b33797f2 / 2c2d8407 / 936cefd6 / 3348d51b: globals renamed
+    with `__` prefix and made C11-atomic (__current, __ticks,
+    __curr_pdir).
+
+  - cca8fbe4: drop -fwrapv from kernel flags -- signed-overflow
+    UB behaviour matches other KASAN-like checks now.
+
+  - 696a84f5: ticks_before_wake_up compresses to 32 bits without
+    breaking kernel_sleep (wraparound math in timer handler).
+
+--------------------------------------------------------------------------------
+
+## 2f741878 -- Merge pull request #56 from vvaltchev/codecov
+
+Commit: 2f7418789a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Dec 22 17:28:20 2018 +0200
+
+Body: "Add integration with codecov and license badge"
+
+AI notes:
+
+What changed (merged branch, 5 commits):
+
+  488077b9 [codecov] Enable codecov
+  c47e12b9 [codecov] Add the codecov badge to the README file
+  9efe75f7 [codecov] Add .codecov.yml
+  2a1e6711 [codecov] Fix .codecov.yml and add a license badge
+  101a2102 [build][cmake] Make CMake to use the USE_GCOV env
+           variable
+
+Aggregate diff: +36 / -5 across 5 files. New .codecov.yml,
+tweaks to .travis.yml + CMakeLists.txt for gcov output, new
+scripts/generate_coverage_report step, and README badges.
+
+Context:
+
+  CI now publishes coverage to codecov.io.
+
+--------------------------------------------------------------------------------
+
+## c04dce8e -- [kcond] Fix in kcond_wait(): call wait_obj_reset()
+   when wobj.ptr != NULL
+
+Commit: c04dce8e2a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Dec 21 19:13:16 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kcond.c +7 net. Forgotten wait_obj_reset when wobj.ptr was
+  non-NULL could leave dangling wait-list membership.
+
+--------------------------------------------------------------------------------
+
+## c0b49259 -- [sync][kcond] Use atomics for wait_obj->__ptr
+
+Commit: c0b4925916...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Dec 21 21:28:15 2018 +0200
+
+AI notes:
+
+What changed:
+
+  sync.h +27/-10, kcond.c -6 net. wait_obj_set/reset/get become
+  atomic_{store,load}_explicit. Removes several cli/sti pairs.
+
+--------------------------------------------------------------------------------
+
+## 1852-1896 kgcov (in-kernel gcov coverage) arc
+   (c2cc4de0..5644ad38, Dec 23-27 2018)
+
+New feature: collect gcov coverage data from the *running kernel*
+and export it through userspace. Large body of work:
+
+  - c2cc4de0: build the kernel with -fprofile-arcs
+    -ftest-coverage when KERNEL_GCOV is on; new kernel/gcov.c
+    stub.
+
+  - 9843fe57: call_kernel_global_ctors() -- walk kernel's .ctors
+    section (elf.c +41, main.c +3). Needed because gcov emits a
+    global ctor per-TU that registers __gcov_info.
+
+  - c2b4d8a0: gcov.c gains GCC's private structs (gcov_fn_info /
+    gcov_info / gcov_unit) + __gcov_init() records every TU's
+    info so the kernel can later iterate them.
+
+  - 6f46107f / 1df5a97a / 87a0ceac: kernel cmdline parser
+    rewrite + factored out; new cmdline.h.
+
+  - e96816a6: unified regular_self_test_end() hook so selftests
+    call into se_common on completion.
+
+  - 18bd270b / 043af821: dump-coverage plumbing in single_test_run
+    + fix.
+
+  - 3d3cce72 / f7f68e15: scripts/ reorganised into bash_includes/,
+    dev/, templates/; generate_coverage_report becomes a template.
+
+  - c12a1777 / 6805fc93 / 66be6440 / 18e012d6 / 3c8b0b87 /
+    338539f8 / 1e121b89 / d2c9b9cd / 90b97b06: cmake polish for
+    coverage: rename USE_GCOV -> TEST_GCOV, add TOOL_OBJCOPY /
+    TOOL_STRIP, add define_env_cache_{bool,str}_var helpers,
+    link-script tweaks.
+
+  - b2725516: *Serious* fix: __ticks was a 64-bit atomic that
+    happened to work on GCC 6 via cmpxchg8 loop; GCC 7+ moved
+    this to libatomic (see Torvald Riegel's "Fix __atomic to
+    not implement atomic loads with CAS" patch). __ticks reverts
+    to plain u64 + cli/sti around the read.
+
+  - a429186e / 80c686cf / 11e37315 / 4c5be336: CircleCI gets
+    debug_syscc_build + debug_clang_build jobs; drops clang
+    from Travis; ARCH/CC/CXX become sticky CMake cache vars.
+
+  - 45c04c90 / 39e6d9a2: *complete* the coverage pipeline -- it
+    actually works end-to-end from kernel build -> qemu run ->
+    devshell dump -> codecov upload on CircleCI.
+
+  - e6cd69af / 9a5a37ce / 9bce2b78 / 8df32705: usermode_apps/
+    reorg -- devshell lives under devshellsrc/; `-dcov` flag.
+
+  - 0ea1ff75 / 158dbe50 / 4c8d3e90 / cef582ef: coverage also
+    runs for shellcmds; script polish; sys_tilck_run_selftest
+    prints function name.
+
+  - 6c3b5cb8: new top-level kernel/syscalls.c (arch-independent);
+    renames kernel/arch/i386/syscalls.c -> arch_syscalls.c.
+
+  - 95d1ceeb / 75b39337 / 52f43797 / b432f8f1 / ef328a18 /
+    3b7b9550 / 5aca1163 / 13c98cd0 / 5644ad38: gcov transport
+    syscalls: TILCK_TESTCMD_GET_NUM_GCOV_FILES,
+    sys_gcov_get_file_info, sys_gcov_get_file. Devshell reads
+    .gcda sizes + contents from kernel and writes them to disk
+    at QEMU-exit time so the outer script can stitch a
+    coverage.info.
+
+Net: an ~660-line Tilck-specific mechanism for exporting
+libgcov data from ring-0 to userspace, integrated into CI.
+
+--------------------------------------------------------------------------------
+
+## 9e9fdafc -- [kgcov][selftests] Fixing synchronization of the
+   self tests
+
+Commit: 9e9fdafc24...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Dec 27 20:47:06 2018 +0200
+
+Body (excerpted):
+
+  Self-tests must no longer poweroff the VM directly. They must
+  return control to the caller when all async tasks they spawned
+  are complete, so the devshell can fetch coverage data.
+
+AI notes:
+
+What changed:
+
+  se_common.c, se_kcond.c, se_tasklet.c all gain barrier/
+  synchronisation at the end; sys_tilck_run_selftest only
+  returns once the test actually wound down (+16 net).
+
+--------------------------------------------------------------------------------
+
+## e85509d7 -- [kmutex] Fix displaced ASSERT in kmutex_unlock()
+
+Commit: e85509d720...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Dec 27 21:24:06 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kmutex.c +4 net. ASSERT was checking the wrong precondition.
+
+--------------------------------------------------------------------------------
+
+## 1bff287f -- [devshell] Poweroff the QEMU VM only when a
+   selftest was run
+
+Commit: 1bff287f3a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Dec 27 21:24:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  -1 net across 2 files. Avoids dropping into a dead console
+  when the user just ran a shellcmd.
+
+--------------------------------------------------------------------------------
+
+## c9054296 -- [process] Remove an ASSERT(state == SLEEPING) in
+   sys_exit()
+
+Commit: c9054296a7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Dec 27 23:21:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  process.c +4, sched.c +1. Task may have just been woken from
+  a signal; state won't necessarily be SLEEPING.
+
+--------------------------------------------------------------------------------
+
+## 1901-1918 build_toolchain + kgcov polish arc
+   (31dc94cc..15a6c801, Dec 28 2018-Dec 30 2018)
+
+  - 31dc94cc / 13759718 / 1ce32563 / 4bc46ec6: remove dietlibc
+    support, PATH-restore fix, make build_toolchain not
+    x86-centric (new scripts/bash_includes/tc/gcc_tc).
+
+  - 35c1262b / 95f9da4e / d5e25ef7 / f29fdc38: add zlib build,
+    normalise install prefixes ($TC/<pkg>/install).
+
+  - bcf026cd: loop on QEMU poweroff outb.
+
+  - 7b10b836: devshell links libz; extract
+    devshell_coverage.c.
+
+  - c43a143b: gzip-compress the gcda blob before shipping it up
+    -- kernel-space was emitting the binary on stdout previously;
+    compressed base64 makes it tractable.
+
+  - 59d094e3: bundle a 3rd-party base64 implementation
+    (common/3rd_party/base64.c, new NOTICE file).
+
+  - b86e85d5 / eceeea77 / 70987704 / 05a94536: codecov reporting
+    once-per-run; remove printk-based coverage dump (replaced by
+    the devshell syscall path).
+
+  - ac5228f8 / 15a6c801: gcov_reset_counters(); fix nasty
+    indexing bug (counter->val[j] should have been [k]) that
+    mis-reported coverage.
+
+--------------------------------------------------------------------------------
+
+## 1919-1944 sync/tasklet "special tasks" rework + list typing
+   (93ab63da..19492fc6, Jan 4-7 2019)
+
+Major correctness rework of synchronization primitives:
+
+  - 93ab63da / 70ef483e / 70dba6c8: cosmetic renames.
+
+  - **da66d356** (tasklets without kcond): tasklet runners stop
+    using kcond. Root cause in the commit body: threaded IRQ
+    handlers could change task state while main-code loops were
+    iterating state lists, with no safe locking. New axiom:
+    "state lists shall never change in interrupt handlers."
+    Tasklet runners are declared "special tasks" that do not
+    participate in any state list; the runner is woken by an
+    atomic state change from enqueue_tasklet_int.
+
+  - **ae8b299c**: after the special-task rule, all the
+    cli/sti-while-iterating hacks in sched/kmutex/kcond/process
+    can be deleted (-28 net across 8 files).
+
+  - ebafdae3 / c39cecd4 / 77f671a4: small follow-ups
+    (is_tasklet_runner helper); remove debug_check_tasks_lists
+    (no longer needed).
+
+  - 62854423 / 5ef093b7: new wait_obj.wait_list_node -- every
+    wait_obj is now linked into its target's waiter list, so
+    wakeups are O(waiters) instead of O(all-sleeping-tasks).
+
+  - c048afb8 / f6848c47: kmutex and kcond rewritten on top of
+    wait_list_node.
+
+  - 06f6e59c / b7bb575a / e82a650b / 6f9d3a1e: wait_obj_set/reset
+    outlined; preemption disabled inside them; new atomic
+    task_set_wait_obj / task_reset_wait_obj combinators.
+
+  - 4a99dc34 / bdc8567b: comment marker + WOBJ_TASK_PTR_ANY_CHILD
+    constant.
+
+  - 5a9d528d / 5d2cef47 / 3dce467b / a709ab88: VS Code tasks.json;
+    **strong-typed list head**: struct list now a distinct type
+    from struct list_node, disambiguating code where one struct
+    is both a head and a node. list's members renamed first/last.
+
+  - 0b25e842: build the whole project with
+    -fno-strict-aliasing (caught a miscompile in the new list.h
+    aliasing). Commit body explains.
+
+  - 24bc4cbb: list-test polish.
+
+  - 87b71380: new task_info->tasks_waiting_list used by kthread
+    join path.
+
+  - 19492fc6: system_tests fix (tests weren't detecting non-zero
+    exit code under the new 'always-through-devshell' flow).
+
+--------------------------------------------------------------------------------
+
+## 83477977 -- [x86_strings] Fix a bug in strlen()
+
+Commit: 45bc497c2e... (actually 83477977) -- small diff but with
+a useful cautionary body: plain asm() was unsafe for strlen even
+though, in theory, the compiler had all the info to generate
+correct code. Switched to asmVolatile() (alt fix with a 2nd
+unused variable was worse perf-wise).
+
+--------------------------------------------------------------------------------
+
+## 37e9f032 -- [kernel] Use sizeof() instead of strlen() for
+   literal strings
+
+Commit: 37e9f0325b...
+Date:   Mon Jan 7 21:43:30 2019 +0200
+
+AI notes: 0 net change, two 1-liners. Compile-time known length.
+
+--------------------------------------------------------------------------------
+
+## b04ef741 -- [system_tests] Make single_test_run to handle end
+   of gcda dump
+
+Commit: b04ef741d1...
+Date:   Mon Jan 7 23:37:07 2019 +0200
+
+AI notes:
+
+  single_test_run +22 net. Detect the end-of-stream sentinel so
+  the script doesn't hang waiting for more data.
+
+--------------------------------------------------------------------------------
+
+## 6f6a1acc -- [process] Make waitpid() to work w/o iterating
+   over all the sleeping tasks
+
+Commit: 6f6a1acc54...
+Date:   Tue Jan 8 00:04:33 2019 +0200
+
+AI notes:
+
+  process.c +26 net. Uses the new wait_list_node so waitpid
+  wakes only when the specific wobj-target fires.
+
+--------------------------------------------------------------------------------
+
+## 1949-1956 devshell source reorg + waitpid tests
+   (6cfa07b2..60420f90, Jan 8 2019)
+
+  - 6cfa07b2: devshellsrc/ -> devshell/; file renames
+    commands/cov/readcmd.
+  - 38a7cafc: split test_fork.c, test_mm.c, test_waitpid.c out
+    of commands.c.
+  - 985423a4 / 3d5e7eef / dd26f1f8: codecov.yml tweak; README
+    docs for usermode_apps + extra.
+  - c2dc359e: waitpid corner case (no children); reset wobj on
+    fork.
+  - e9ca44b3: devshell prompt shows real username@host.
+  - 60420f90: new `waitpid4` test command.
+
+--------------------------------------------------------------------------------
+
+## 1957-1973 Debug-all-tasks, GDT refcount, init wait arc
+   (c46413bd..3e923ec5, Jan 8-10 2019)
+
+  - c46413bd / c44b2e1c / e457e1ae / 36b63b39 / 96dc47fb:
+    Ctrl+F6 dumps all tasks with their state (+names),
+    idle_task_kthread renamed to idle.
+
+  - 10f98ff4 / 2121c7a4: reparent children of exiting process to
+    init (pid 1), skipping pid==1 itself.
+
+  - c108f7b4: /dev/tty bypasses per-file locking (held across a
+    read would prevent signals).
+
+  - d52c91db / a86e54b0: init waits for all tasks now.
+    Temporary hack removed once the real fix (next block) lands.
+
+  - 15a3ac84 / c4d3a0f7 / 9f24316d / 264353c0: **GDT entry
+    refcount**. Bug: when a parent exited its GDT TLS entries
+    were released even though forked children still used them.
+    Fix: ref-count per GDT entry; children inc on fork, dec on
+    exit. Commit 1971 (a86e54b0) then removes the init hack.
+
+  - e42b94b1: bound the QEMU-poweroff outb loop.
+
+  - a30e9ceb / 3e923ec5: init gets -q and -h; coverage flow no
+    longer interfered by orphan-exit messages.
+
+--------------------------------------------------------------------------------
+
+## 1974-1991 cmdline unit test, SIGSEGV-on-GPF, FPU pre-alloc
+   (45bc497c..54549f42, Jan 10-11 2019)
+
+  - 45bc497c / 12358528: cmake_run / devshell arg-parsing polish.
+
+  - 40af6de9 / 2ca7aa85: split kmutex self-test (basic vs
+    recursive); single_test_run fixes.
+
+  - 38e315fb: STATIC macros become WEAK in kernel-tests builds
+    so mocks can override.
+
+  - 666387c6 / 55ec3de2 / 83477977 / f21f4046 / 93c61677 / ae39688e /
+    e2741755 / 1da2a274 / 634f5ffb: cmdline unit test, "ignore
+    spaces between args" feature + unit-test-driven fix; system
+    tests script refactor; *iteration-past-end bug* in
+    parse_kernel_cmdline found by the clang CircleCI build.
+
+  - 480c204f / c055ef87 / 8f8734e6: new terminate_process()
+    shared between sys_exit and the fault paths; **GPF delivers
+    SIGSEGV to the user process** instead of panic; new
+    end_fault_handler_state() shared primitive.
+
+  - 54549f42 / 6112ab3d: refactor handle_no_coproc_fault() +
+    pre-allocate the FPU context so FORK_NO_COW=1 doesn't hit a
+    non-deterministic kmalloc in a fault handler.
+
+--------------------------------------------------------------------------------
+
+## 1993-2000 misc + UART 8250 driver
+   (95c3daaa..e25701d1, Jan 12-16 2019)
+
+  - 95c3daaa: remove the poweroff busyloop (theory was wrong;
+    body notes the real cause to be investigated separately).
+
+  - d9ae9504 / b90c221b / a64f6c3f: devshell help formatting;
+    shorter test names; run_all_tests -l splits selftests from
+    shellcmds.
+
+  - 4cc174b0: serial baud -> 115200.
+
+  - **312236ed**: new `kernel/arch/generic_x86/uart.c` (151
+    lines) -- proper UART 8250 driver replacing the old
+    serial.c stub (-40). Header gets a full register layout;
+    x86_utils gains port helpers.
+
+  - 2a234666: `serial_echo` kernel-cmdline option routes
+    kernel log to the serial console (needed for CI without a
+    display); term/debug_utils/fb_console threaded accordingly.
+
+  - e25701d1: rename a macro constant in x86_utils.h.
+
+--------------------------------------------------------------------------------
