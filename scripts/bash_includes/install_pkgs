@@ -125,17 +125,17 @@ function install_debian_family {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
 
-      if [ "$RUNNING_IN_CI" == 1 ]; then
-         run_command "apt install -y $tmp"
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "apt install -y $tmp" || exit 1
       else
          if ! [[ "$EUID" -eq 0 ]]; then
             if ! which sudo &> /dev/null; then
-               run_command "su -c \"apt install $tmp\""
+               run_command "su -c \"apt install $tmp\"" || exit 1
             else
-               run_command "sudo apt install $tmp"
+               run_command "sudo apt install $tmp" || exit 1
             fi
          else
-            run_command "apt install $tmp"
+            run_command "apt install $tmp" || exit 1
          fi
       fi
 
@@ -231,17 +231,17 @@ function install_fedora {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
 
-      if [ "$RUNNING_IN_CI" == 1 ]; then
-         run_command "dnf install -y $tmp"
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "dnf install -y $tmp" || exit 1
       else
          if ! [[ "$EUID" -eq 0 ]]; then
             if which sudo &> /dev/null; then
-               run_command "sudo dnf install $tmp"
+               run_command "sudo dnf install $tmp" || exit 1
             else
-               run_command "su -c \"dnf install $tmp\""
+               run_command "su -c \"dnf install $tmp\"" || exit 1
             fi
          else
-            run_command "dnf install $tmp"
+            run_command "dnf install $tmp" || exit 1
          fi
       fi
 
@@ -324,17 +324,17 @@ function install_arch {
       echo ${#to_install[@]} packages need to be installed
       tmp="${to_install[@]}"
 
-      if [ "$RUNNING_IN_CI" == 1 ]; then
-         run_command "pacman -S --noconfirm $tmp"
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "pacman -S --noconfirm $tmp" || exit 1
       else
          if ! [[ "$EUID" -eq 0 ]]; then
             if which sudo &> /dev/null; then
-               run_command "sudo pacman -S --needed $tmp"
+               run_command "sudo pacman -S --needed $tmp" || exit 1
             else
-               run_command "su -c \"pacman -S --needed $tmp\""
+               run_command "su -c \"pacman -S --needed $tmp\"" || exit 1
             fi
          else
-            run_command "pacman -S --needed $tmp"
+            run_command "pacman -S --needed $tmp" || exit 1
          fi
       fi
 
