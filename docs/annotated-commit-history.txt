@@ -27616,3 +27616,2267 @@ Context (guess -- from subject):
   sizing. Hardcoded RAMDISK_SIZE is fully gone.
 
 --------------------------------------------------------------------------------
+
+## 275a658e -- [bootloader] Working on go_to_real_mode_and_back
+
+Commit: 275a658e4d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 20 20:47:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +181 / -4 across 3 files. stage3_entry.S +170
+  builds out the asm transition from 32-bit PM
+  down to 16-bit real mode and back. stage3.c +11
+  new caller. boot.S 1-line.
+
+Context (guess -- from subject):
+
+  Needed to call BIOS services (int 10h, 13h) from
+  the stage-3 C code. Standard trick for OSes that
+  want to use BIOS video/disk services after having
+  already entered PM.
+
+--------------------------------------------------------------------------------
+
+## 76e70af6 -- [bootloader][go_to_real_mode_and_back] Minor
+   improvements
+
+Commit: 76e70af643...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 10:43:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -23 in stage3_entry.S. Net -9.
+
+Context (guess -- from subject):
+
+  Early polish on the newly-written PM-to-RM
+  transition.
+
+--------------------------------------------------------------------------------
+
+## 6b9b3216 -- [bootloader] [go_to_real_mode_and_back] realmode func
+   calls works
+
+Commit: 6b9b321641...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 11:08:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +39 / -24 across stage3.c (+2 / -2) and
+  stage3_entry.S (+37 / -22). Milestone: can now
+  invoke a realmode function and return.
+
+Context (guess -- from subject):
+
+  Proof of concept works. Next steps: pass args,
+  return regs.
+
+--------------------------------------------------------------------------------
+
+## 2d34620c -- [bootloader] call_realmode_func() works from C code
+
+Commit: 2d34620c06...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 11:48:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -15 across stage3.c (+8 / -3) and
+  stage3_entry.S (+17 / -12). C wrapper
+  call_realmode_func(rm_func_ptr) shipping.
+
+Context (guess -- from subject):
+
+  First C-level API. Args and returns still limited.
+
+--------------------------------------------------------------------------------
+
+## c4600503 -- [bootloader] Minor improvements
+
+Commit: c46005030f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 11:55:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -10 in stage3_entry.S. Reg-save tweaks.
+
+Context (guess -- from subject):
+
+  Asm polish.
+
+--------------------------------------------------------------------------------
+
+## 5ec7228b -- [bootloader] Use unreal mode in call_realmode_func()
+
+Commit: 5ec7228b60...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 12:29:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -15 across stage3.c (+1 / -1) and
+  stage3_entry.S (+25 / -14). The code enters
+  "unreal mode" (16-bit CS but 32-bit data segment
+  limits) to avoid the 64KB data-segment cap.
+
+Context (guess -- from subject):
+
+  Classic trick: BIOS calls need real-mode CS, but
+  the C code around them wants full 4GB addressing.
+  Unreal mode gives both.
+
+--------------------------------------------------------------------------------
+
+## 00b2020c -- [bootloader] Call to realmode code from C with params
+   works
+
+Commit: 00b2020c67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 12:55:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -31 across stage3.c (+10 / -5) and
+  stage3_entry.S (+23 / -26). API now takes a
+  struct regs*.
+
+Context (guess -- from subject):
+
+  Progress: can pass BIOS call inputs (AX, BX, etc.)
+  through a regs struct.
+
+--------------------------------------------------------------------------------
+
+## eaf2f5d8 -- [bootloader] Improving call_realmode_func_asm
+
+Commit: eaf2f5d8b8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 15:08:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +65 / -20 across stage3.c (+22 / -3) and
+  stage3_entry.S (+43 / -17). More arg/result
+  plumbing.
+
+Context (guess -- from subject):
+
+  Building out the call interface to a usable
+  level.
+
+--------------------------------------------------------------------------------
+
+## 75dc6015 -- [bootloader] Return regs from realmode works
+
+Commit: 75dc601540...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 16:24:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +164 / -29 across stage3.c (+60 / -9) and
+  stage3_entry.S (+104 / -20). Now the realmode
+  function's return regs are captured and surfaced
+  back to C.
+
+Context (guess -- from subject):
+
+  Milestone. Full BIOS-call API can be built on
+  top.
+
+--------------------------------------------------------------------------------
+
+## 896251d7 -- [bootloader] Use CS = BASE_SEG
+
+Commit: 896251d78f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 17:28:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -14 in stage3_entry.S.
+
+Context (guess -- from subject):
+
+  Setting CS to the base segment where stage3 lives
+  simplifies addressing (relative references become
+  absolute).
+
+--------------------------------------------------------------------------------
+
+## 5bac5e63 -- [bootloader] Set SS to BASE_SEG and make gdt16 entry
+   0x08 to use BASE_SEG
+
+Commit: 5bac5e633d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 21 17:46:43 2018 +0300
+
+> This saves us from copying the 16-bit code to low
+> addresses (< 64 KB).
+
+AI notes:
+
+What changed:
+
+  +26 / -40 across stage3.c (-8) and
+  stage3_entry.S (+26 / -32). Net -14 lines.
+
+Context (from body):
+
+  Previously the 16-bit real-mode code had to live
+  at paddr < 64KB so far segments could address it.
+  With SS/CS based at BASE_SEG where stage3 already
+  lives, no copy is needed.
+
+--------------------------------------------------------------------------------
+
+## c09e5377 -- [bootloader] Introduce realmode_call.c/h
+
+Commit: c09e537753...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 12:05:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +86 / -72 across 4 files. New realmode_call.c
+  (47) + realmode_call.h (24). stage3.c -51 net as
+  the logic relocates. stage3_entry.S +5 / -2.
+
+Context (guess -- from subject):
+
+  Pulls out the C-side realmode-call API into its
+  own module.
+
+--------------------------------------------------------------------------------
+
+## 81bde215 -- [bootloader] Move realmode callable funcs in
+   stage3_rm_calls.S
+
+Commit: 81bde21574...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 12:10:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -37 across stage3_entry.S (-37) and
+  stage3_rm_calls.S (+33 new). Actual realmode
+  callees live in a separate file.
+
+Context (guess -- from subject):
+
+  stage3_entry.S becomes the PM<->RM infrastructure;
+  stage3_rm_calls.S holds per-BIOS-service stubs.
+
+--------------------------------------------------------------------------------
+
+## 7a53b756 -- [bootloader] Improvements (simplifications) in the
+   realmode_call code
+
+Commit: 7a53b7563f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 12:25:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -18 in stage3_entry.S.
+
+Context (guess -- from subject):
+
+  Simplify transition code.
+
+--------------------------------------------------------------------------------
+
+## 83dbd210 -- [bootloader] Additional improvements in realmode_call
+
+Commit: 83dbd21056...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 13:35:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -43 across 5 files. Net -21 lines.
+
+Context (guess -- from subject):
+
+  Ongoing simplification sweep.
+
+--------------------------------------------------------------------------------
+
+## 68cb2553 -- [bootloader] Starting to play with VBE info
+
+Commit: 68cb2553fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 14:01:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +57 / -7 across 4 files. stage3.c +19 tests a
+  VBE (VESA) INT 10h call. realmode_call.c/h +31
+  net decl+impl for the call. stage3_rm_calls.S +6
+  adds the rm stub.
+
+Context (guess -- from subject):
+
+  Goal: query video modes from BIOS VBE so the BIOS
+  bootloader can match the EFI one's resolution
+  choice.
+
+--------------------------------------------------------------------------------
+
+## 34f43382 -- [bootloader] Implement query_video_modes()
+
+Commit: 34f433820a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 19:44:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -36 across 8 files. stage3.c +42 / -6 VBE
+  iteration. realmode_call.c/h expand. stage3_entry.S
+  +16 / -17 tweaks. Minor textmode_video / basic_term
+  adjustments.
+
+Context (guess -- from subject):
+
+  Walks the VBE mode list, records each mode's
+  info. Precursor to presenting a resolution menu
+  in the BIOS bootloader.
+
+--------------------------------------------------------------------------------
+
+## e6434484 -- [bootloader] Move VBE stuff to separate files
+
+Commit: e643448402...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 22 21:33:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +89 / -74 across 5 files. New vbe.c (+32) and
+  vbe.h (+43). stage3.c -4 net, realmode_call.c/h
+  lose VBE-specific pieces.
+
+Context (guess -- from subject):
+
+  Modularise; VBE is a discrete concern.
+
+--------------------------------------------------------------------------------
+
+## e548c027 -- [bootloader] Cosmetic changes
+
+Commit: e548c0275f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 11:43:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +79 / -38 across 4 files. vbe.h +53 (likely full
+  struct defs for VBE info blocks now in a proper
+  header). Other files small adjustments.
+
+Context (guess -- from subject):
+
+  Formalise the VBE info block/mode info block
+  structs with named fields.
+
+--------------------------------------------------------------------------------
+
+## 7f633d48 -- [bootloader] Implement vga_set_video_mode()
+
+Commit: 7f633d48d1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 12:09:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -21 across 6 files. vbe.c +14 new
+  set_video_mode. stage3.c +13 / -11.
+
+Context (guess -- from subject):
+
+  Actually switching to a selected VBE mode. Next
+  step will be getting its framebuffer working.
+
+--------------------------------------------------------------------------------
+
+## 7b7acada -- [bootloader] Making possible the user to select the
+   video mode
+
+Commit: 7b7acada38...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 13:18:34 2018 +0300
+
+> NOTE: graphics modes don't work so far.
+
+AI notes:
+
+What changed:
+
+  +163 / -39 across 6 files. stage3.c +104 / -27
+  adds a resolution-selection menu (like the EFI
+  bootloader). realmode_call / vbe / stage3_rm_calls
+  gain the plumbing.
+
+Context (from body):
+
+  BIOS bootloader gets feature parity with EFI on
+  mode selection. Graphics mode not working yet --
+  next commits chase the bug.
+
+--------------------------------------------------------------------------------
+
+## 71faf547 -- [bootloader] Handle the case when set_video_mode()
+   fails
+
+Commit: 71faf5477b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 14:06:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -19 in stage3.c. Fall back to text mode if
+  the selected VBE mode fails to set.
+
+Context (guess -- from subject):
+
+  Robustness: weird BIOSes may reject some VBE
+  modes.
+
+--------------------------------------------------------------------------------
+
+## 02fa69ef -- [bootloader][fb_console] Saving work on VBE graphics
+   mode
+
+Commit: 02fa69ef97...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 17:32:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +225 / -112 across 6 files. fb_raw.c major
+  rewrite (+114 / -71) for pixel-format flexibility.
+  stage3.c +39 / -1 probing work. vbe.c/h small
+  growth. fb_console.c +33 / -22.
+
+Context (guess -- from subject):
+
+  Work-in-progress commit while debugging why
+  graphics modes don't render. Sets up more flexible
+  FB raw ops for bpp != 32.
+
+--------------------------------------------------------------------------------
+
+## 73c77f11 -- [bootloader] Add more debug messages
+
+Commit: 73c77f11ef...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 19:23:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +53 / -26 across stage3.c (+40 / -14) and vbe.h
+  (+8 / -4).
+
+Context (guess -- from subject):
+
+  Diagnostic noise added while chasing the
+  graphics-mode bug.
+
+--------------------------------------------------------------------------------
+
+## 360e2368 -- [bootloader] Impl. vbe_get_current_mode() and add
+   more comments
+
+Commit: 360e23682a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 19:43:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +59 / -11 across 5 files. vbe.c +15 vbe_get_
+  current_mode. stage3.c +29 / -4 uses it.
+  basic_term, kb.c small.
+
+Context (guess -- from subject):
+
+  More debugging: read back what VBE thinks the
+  current mode is. Helps pinpoint the set-mode bug.
+
+--------------------------------------------------------------------------------
+
+## 7c1a7567 -- [bootloader][debug] Draw additional pixels in the
+   debug code
+
+Commit: 7c1a7567fb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 23 21:13:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -3 in stage3.c. Pixel patterns on the raw
+  framebuffer as a visual probe.
+
+Context (guess -- from subject):
+
+  If the pattern appears, bootloader's FB writes
+  are landing correctly; helps isolate whether the
+  issue is bootloader or kernel side.
+
+--------------------------------------------------------------------------------
+
+## cdd3b4e2 -- [bootloader] Fix the issue with VBE graphics mode and
+   remove debug code
+
+Commit: cdd3b4e2c4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 10:06:11 2018 +0300
+
+> The problem was the truncation of the video mode
+> in:
+>
+>     vbe_set_video_mode(u8 mode)
+>
+> Therefore, to completely fix the problem it was
+> enough to just use u16. Now, the graphics console
+> works when bpp = 32 (the support for bpp = 24 has
+> not been implemented yet).
+
+AI notes:
+
+What changed:
+
+  +15 / -89 across 3 files. Net -74 (debug code
+  removed). vbe.c/h 1-line each: u8 -> u16 for the
+  mode number.
+
+Context (from body):
+
+  Days-of-debugging bug. VBE mode numbers are 16
+  bits but the signature used u8; modes >= 0x100
+  truncated to 0. Fix is one keyword. Tiny cause,
+  big symptom.
+
+--------------------------------------------------------------------------------
+
+## ffcec4c9 -- [bootloader] Minor changes
+
+Commit: ffcec4c95a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 10:19:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -17 across 3 files.
+
+Context (guess -- from subject):
+
+  Polish after the fix.
+
+--------------------------------------------------------------------------------
+
+## 08c95be5 -- [fb_console] Adding support for resolutions with bpp=24
+
+Commit: 08c95be587...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 10:50:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +57 / -49 across fb_console.c (+2 / -1) and
+  fb_raw.c (+55 / -48). Adds a bpp=24 code path
+  alongside bpp=32.
+
+Context (guess -- from subject):
+
+  24-bit modes are common on older hardware; BIOS
+  bootloader is more likely to encounter them than
+  UEFI.
+
+--------------------------------------------------------------------------------
+
+## 5005128d -- [bootloader] Improving ask_user_video_mode()
+
+Commit: 5005128d0e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 11:07:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +34 / -11 across stage3.c (+29 / -8) and vbe.c/h
+  (+5 / -3). UX improvements in the mode-select
+  menu.
+
+Context (guess -- from subject):
+
+  Matches the EFI-side menu quality.
+
+--------------------------------------------------------------------------------
+
+## 5e308776 -- [bootloader] Moving ask_user_video_mode() into a
+   separate C file
+
+Commit: 5e308776ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 11:13:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +179 / -155 across 2 files. New
+  bootloader/setup_graphics.c (170 lines) --
+  mirror of the EFI bootloader's file of the same
+  name. stage3.c -155 net.
+
+Context (guess -- from subject):
+
+  Filenames symmetric across bootloaders make
+  cross-referencing obvious.
+
+--------------------------------------------------------------------------------
+
+## 503a55f0 -- [fb_console] Fix a release-only build error
+
+Commit: 503a55f001...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 11:56:21 2018 +0300
+
+> Error: "dereferencing type-punned pointer will
+> break strict-aliasing rules"
+> Caused by the fb_bpp == 24 case in
+> fb_draw_pixel().
+
+AI notes:
+
+What changed:
+
+  +7 / -4 across setup_graphics.c (+6) and fb_raw.c
+  (+1 / -4).
+
+Context (from body):
+
+  Type-punning via cast + deref is UB under strict
+  aliasing; fix uses memcpy for the 3-byte pixel
+  store.
+
+--------------------------------------------------------------------------------
+
+## 6aa05474 -- [bootloader] Some refactoring
+
+Commit: 6aa0547495...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 12:17:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -36 in setup_graphics.c.
+
+Context (guess -- from subject):
+
+  Ongoing improvements.
+
+--------------------------------------------------------------------------------
+
+## cd6ffdf4 -- [bootloader] Show also the resolution with max width
+
+Commit: cd6ffdf429...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 12:35:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -6 in setup_graphics.c. Menu now highlights
+  the widest mode in addition to the "default".
+
+Context (guess -- from subject):
+
+  Common want: pick the highest resolution the
+  system supports.
+
+--------------------------------------------------------------------------------
+
+## 37435c6a -- [bootloader] Bugfix: BSS was not zero-ed after recent
+   changes in _start
+
+Commit: 37435c6afd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 12:58:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -4 across stage3.c (+7 / -1) and
+  stage3_entry.S (+3 / -3). Explicit BSS clear.
+
+Context (guess -- from subject):
+
+  After the recent _start rewrites (CS/SS
+  changes), the automatic BSS zero was lost.
+  Restoring it.
+
+--------------------------------------------------------------------------------
+
+## ae5ede8e -- [bootloader] Implement read_drive_params() in C +
+   BUGFIX in boot.S
+
+Commit: ae5ede8ece...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 15:37:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +67 / -6 across 6 files. realmode_call.c/h +32
+  net: BIOS int 13h / 0x48 wrapper. stage3.c +16
+  net calls it. boot.S +4 / -1, stage3_entry.S
+  +7 / -3, stage3_rm_calls.S +8.
+
+Context (guess -- from subject):
+
+  Querying drive geometry from C. Needed to
+  calculate the correct LBA range for reading the
+  ramdisk in stage3 (f83bc820).
+
+--------------------------------------------------------------------------------
+
+## 30827fed -- [bootloader] Cosmetic: move some defines in
+   common/config.h
+
+Commit: 30827fedf9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 15:41:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -20 across 3 files. Magic constants move
+  to config.h.
+
+Context (guess -- from subject):
+
+  Shared source of truth for both .c and .S.
+
+--------------------------------------------------------------------------------
+
+## 712e4f3c -- [bootloader] make realmode_call to ret FLAGS &
+   read_drive_params to use it
+
+Commit: 712e4f3cef...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 15:57:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +60 / -41 across 5 files. realmode_call API now
+  returns the flags register; BIOS CF indicates
+  error, so callers need it. read_drive_params
+  switches to the new form. vbe.c +20 / -20 does
+  the same.
+
+Context (guess -- from subject):
+
+  Proper error reporting from BIOS calls: CF is
+  set on error, which isn't part of regs. Exposing
+  FLAGS gives callers what they need.
+
+--------------------------------------------------------------------------------
+
+## f83bc820 -- [bootloader] Move the loading of the RAMDISK in stage3
+
+Commit: f83bc820ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 24 18:51:28 2018 +0300
+
+> NOTE: the correctness of the new load ramdisk
+> code has been checked with a CRC32 calculated on
+> the first 33 MB of the fatpart.
+
+AI notes:
+
+What changed:
+
+  +193 / -186 across 5 files. boot.S -186 net:
+  sheds the ramdisk load (which was done in stage1
+  via int 13h). stage3.c +10 net invokes the new
+  path. stage3_rm_calls.S +158 impl. realmode_call.c
+  +13.
+
+Context (from body):
+
+  Big architectural move: stage1 (boot.S) only
+  needs to load stage3 now, not the whole
+  ramdisk. stage3 (C code) reads the ramdisk via
+  its own BIOS-call mechanism. More flexible -- can
+  do dynamic sizing, error handling. CRC32 check
+  confirms correctness.
+
+--------------------------------------------------------------------------------
+
+## adda4634 -- [bootloader] Make read_sectors() parametric
+
+Commit: adda463474...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 14:22:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -17 across realmode_call.c/h (+8 / -2),
+  stage3.c (+2 / -3), stage3_rm_calls.S (+21 / -14).
+  read_sectors now takes LBA, count, dest as
+  parameters.
+
+Context (guess -- from subject):
+
+  Generalised disk-read primitive; no longer
+  hardcoded to ramdisk layout.
+
+--------------------------------------------------------------------------------
+
+## e16f5a35 -- [bootloader] Improving loading logic
+
+Commit: e16f5a352f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 15:15:02 2018 +0300
+
+> Now read_sectors will read exactly sector_count
+> (no sectors_per_track rounding anymore).
+
+AI notes:
+
+What changed:
+
+  +28 / -12 across stage3.c (+2 / -2) and
+  stage3_rm_calls.S (+26 / -10). The asm loop
+  handles partial-track reads properly.
+
+Context (from body):
+
+  Earlier implementation rounded up to full-track
+  granularity -- convenient for CHS but wasteful
+  and incorrect at end of disk.
+
+--------------------------------------------------------------------------------
+
+## a0e365f9 -- [bootloader] Load only the actually used data from the
+   FAT ramdisk
+
+Commit: a0e365f919...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 21:05:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +54 / -22 across 4 files. stage3.c +38 / -19
+  reads just FAT header first, computes
+  used-bytes, then reads only that much. fat32_base.c
+  +8 net, fat32_base.h +7 expose needed helper.
+  efimain.c 1-line.
+
+Context (guess -- from subject):
+
+  Mirror of ade76970 for the BIOS bootloader.
+  Faster boot.
+
+--------------------------------------------------------------------------------
+
+## 96a43154 -- [bootloaders] Pass 'used bytes' to kernel instead of
+   the real RAMDISK size
+
+Commit: 96a431540d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 21:12:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -2 across efimain.c (+9 / -1) and stage3.c
+  (+6 / -1). Both bootloaders now report the used
+  bytes via multiboot.
+
+Context (guess -- from subject):
+
+  Kernel can size kmalloc / reserved ranges based
+  on actual data, not allocator's worst case.
+
+--------------------------------------------------------------------------------
+
+## 0270a70d -- [bootloader] Use ramdisk_used_bytes instead of
+   max_size in load_elf_kernel
+
+Commit: 0270a70d41...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 21:15:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -3 in stage3.c.
+
+Context (guess -- from subject):
+
+  Bound-checking fix for kernel-ELF loading.
+
+--------------------------------------------------------------------------------
+
+## 84ec4b9f -- [bootloader] Add the optional elf_stage3 target for
+   debugging
+
+Commit: 84ec4b9f84...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 22:25:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 / -16 across 5 files.
+  CMakeLists.txt +26 / -12 splits into two targets
+  (flat binary for boot, ELF with symbols for gdb).
+  linker_script.ld renamed to common_linker_script.ld;
+  two new scripts for the two targets.
+
+Context (guess -- from subject):
+
+  Stage3 runs from an offset that makes debugging
+  painful without symbols. The ELF variant gives
+  gdb what it needs.
+
+--------------------------------------------------------------------------------
+
+## 23b9854a -- [bootloader] Move error-case debug msgs to stage3
+
+Commit: 23b9854a90...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 25 22:54:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -180 across 3 files. boot.S -174 net (all
+  the BIOS-call error-path messages gone).
+  realmode_call.c +25 (caller-side checks),
+  stage3_rm_calls.S +5 / -2.
+
+Context (guess -- from subject):
+
+  stage1 (512 bytes) shouldn't host debug strings
+  it can afford to omit; stage3 (C) has room and
+  better diagnostics.
+
+--------------------------------------------------------------------------------
+
+## 286d561a -- [bootloader][boot.S] Avoid copying complete_flush to
+   a low addr
+
+Commit: 286d561aa9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 13:55:51 2018 +0300
+
+> How: by using a GDT with code and data at offset
+> (DEST_DATA_SEGMENT*16), instead of using a "flat
+> GDT".
+
+AI notes:
+
+What changed:
+
+  +47 / -69 across boot.S (-22 net) and stage3.c
+  (-1).
+
+Context (from body):
+
+  Non-flat GDT lets far jump resolve to an address
+  in the already-loaded stage1 page, without copying
+  the flush routine to low memory first. 22 fewer
+  lines in the cramped MBR.
+
+--------------------------------------------------------------------------------
+
+## f99e03cd -- [bootloader] Move stack setting in stage3_entry.S
+
+Commit: f99e03cdc9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 16:05:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -37 across boot.S (-30 net) and
+  stage3_entry.S (+7).
+
+Context (guess -- from subject):
+
+  Stack setup belongs with stage3 init, not in the
+  generic boot sector.
+
+--------------------------------------------------------------------------------
+
+## 6b36a55a -- [bootloader] Implement minimal realmode fault
+   handling
+
+Commit: 6b36a55a8c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 20:18:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +106 / -0 across 3 files. stage3_entry.S +102
+  adds trivial real-mode IDT + handlers that dump
+  a message and halt. realmode_call.c / rm_calls.S
+  small hook.
+
+Context (guess -- from subject):
+
+  A crash in real mode previously triple-faulted
+  the CPU without hint. Now at least prints a
+  diagnostic.
+
+--------------------------------------------------------------------------------
+
+## efacf63e -- [bootloader] Make realmode_call() to return back the
+   full 32-bit regs
+
+Commit: efacf63e71...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 20:46:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +44 / -40 across 3 files. realmode_call now
+  returns 32-bit regs (EAX, EBX, ...) not just
+  16-bit.
+
+Context (guess -- from subject):
+
+  Some BIOS extended calls (VBE, E820) return data
+  in the high halves of EAX/EBX; truncating to 16
+  bits loses info.
+
+--------------------------------------------------------------------------------
+
+## 2adc816c -- [bootloader] Improving realmode fault handling
+
+Commit: 2adc816c1e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 21:01:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -17 across realmode_call.c (+7 / -5) and
+  stage3_entry.S (+14 / -12).
+
+Context (guess -- from subject):
+
+  Iterating on 6b36a55a.
+
+--------------------------------------------------------------------------------
+
+## 9caada8c -- [bootloader] Fix a nasty bug preventing some BIOS
+   calls to work
+
+Commit: 9caada8c7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 21:16:01 2018 +0300
+
+> All the segment registers (except CS) were left
+> untouched (unreal mode). That was causing some
+> BIOS code to execute an invalid instruction (on 2
+> different machines). The solution was to leave
+> just 'fs' for unreal mode and properly set the
+> others.
+
+AI notes:
+
+What changed:
+
+  +10 / -4 in stage3_entry.S. DS/ES/SS reset to
+  16-bit values before BIOS call; only FS remains
+  in unreal mode for C-side data access.
+
+Context (from body):
+
+  Running on real hardware exposed this: some
+  BIOSes assume 16-bit DS/ES and crash if they
+  find 32-bit limits. Fix works on 2 real
+  machines.
+
+--------------------------------------------------------------------------------
+
+## 3d86b217 -- [bootloader] Remove the flat binary stage3 and use
+   only elf_stage3
+
+Commit: 3d86b217e6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 22:19:43 2018 +0300
+
+> By just skipping the first 4 KB, it is possible
+> for the asm bootloader to jump into an ELF
+> binary, as if it was a flat binary, IF and ONLY
+> IF, for each section, the file offset and the
+> vaddr differ always by the same, constant,
+> offset. That's the case for elf_stage3. Using an
+> ELF binary allows correct debugging in any case.
+> The only price to pay here for using an ELF
+> binary is that we'll never be able to embed the
+> early boot code into the binary. That could
+> happen only if a flat binary is used. But that
+> is too bad for debugging. Creating a parallel
+> ELF binary of a flat binary just for debugging
+> does not completely work because addresses in
+> .data and in .bss differ.
+
+AI notes:
+
+What changed:
+
+  +58 / -78 across 8 files. Net -20.
+  common_linker_script.ld removed. elf_stage3_script.
+  ld expanded. bootloader/CMakeLists.txt -22 net.
+  Flat-binary target gone.
+
+Context (from body):
+
+  Slick trick: a carefully-laid-out ELF binary
+  satisfies the bootloader's expectations (jump to
+  offset 0x1000 == entry point) while also being
+  a proper debuggable ELF. One artifact for both.
+
+--------------------------------------------------------------------------------
+
+## ee7c331e -- [efi_bootloader] Change hello message
+
+Commit: ee7c331e20...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 26 22:34:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line in efimain.c.
+
+Context (guess -- from subject):
+
+  Branding.
+
+--------------------------------------------------------------------------------
+
+## a706ce62 -- [bootloader] Cosmetic improvements in realmode
+   exception handling
+
+Commit: a706ce627f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 10:29:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +46 / -84 in stage3_entry.S. Net -38.
+  Substantial asm dedup in the fault handlers.
+
+Context (guess -- from subject):
+
+  Handlers were verbose; a loop/macro collapses
+  them.
+
+--------------------------------------------------------------------------------
+
+## 9e46fc75 -- [bootloader] realmode_call(): set also gs and fs to 0
+
+Commit: 9e46fc754b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 19:41:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -3 in stage3_entry.S.
+
+Context (guess -- from subject):
+
+  Continuation of the 9caada8c fix; more segment
+  regs need clean real-mode values.
+
+--------------------------------------------------------------------------------
+
+## ef2243e6 -- [bootloader] Build the early boot using a linker
+   script
+
+Commit: ef2243e659...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 21:00:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +53 / -30 across 3 files.
+  early_boot_script.ld (+23 new) replaces the ad
+  hoc objcopy / size gymnastics in CMakeLists.
+
+Context (guess -- from subject):
+
+  Cleaner build: linker places .text at the right
+  address, sizes sections correctly, and the
+  resulting binary is drop-in-ready.
+
+--------------------------------------------------------------------------------
+
+## a9ed46c1 -- [bootloader] Move enable A20 code in a separate
+   compilation unit
+
+Commit: a9ed46c1cd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 21:15:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +163 / -168 across 4 files. New
+  boot_enable_a20.S (+160). boot.S -164 (A20 code
+  leaves). Net -5 lines.
+
+Context (guess -- from subject):
+
+  MBR (512 bytes) can't hold the A20 code; moving
+  it to a separate .S that's linked into stage3
+  frees space.
+
+--------------------------------------------------------------------------------
+
+## 68461300 -- [bootloader] Improving the build
+
+Commit: 6846130025...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 21:33:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -25 across bootloader/CMakeLists.txt and
+  linker script. Simplification.
+
+Context (guess -- from subject):
+
+  Continued CMake trim.
+
+--------------------------------------------------------------------------------
+
+## 9ae06081 -- [bootloader] Fixing some comments
+
+Commit: 9ae0608117...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 21:52:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -3 in boot.S.
+
+Context (guess -- from subject):
+
+  Stale comments updated.
+
+--------------------------------------------------------------------------------
+
+## 68722eff -- [bootloader] Set GDT ptr at compile-time in gdtr_{flat,
+   base_0x20000}
+
+Commit: 68722eff04...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 27 21:57:54 2018 +0300
+
+> This makes the code more elegant and simpler at
+> the same time.
+
+AI notes:
+
+What changed:
+
+  +8 / -7 in boot.S. The 6-byte GDTR (limit + base)
+  is pre-populated in .data; no runtime patch.
+
+Context (from body):
+
+  When a value is known at assembly time, baking it
+  in is always cleaner than computing it at boot.
+
+--------------------------------------------------------------------------------
+
+## 040e74e0 -- [debug_utils] Move some debug utils in the right
+   header
+
+Commit: 040e74e0d1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 13:48:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -12 across 12 files. Debug helpers move
+  from x86_utils.h (-12) to exos/debug_utils.h
+  (+12). Every consumer updates include.
+
+Context (guess -- from subject):
+
+  Better layering: x86_utils.h for CPU plumbing;
+  debug_utils.h for diagnostics.
+
+--------------------------------------------------------------------------------
+
+## 3ad6ece6 -- Introduce x86_cpu_features and use it in the
+   bootloader [require SSE]
+
+Commit: 3ad6ece6fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 15:11:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +173 / -9 across 5 files. New common/cpu_features.c
+  (+96) and include/.../cpu_features.h (+55): CPUID
+  wrapper exposing feature bits. stage3.c +6 checks
+  SSE presence before loading kernel. main.c +6.
+
+Context (guess -- from subject):
+
+  Kernel will soon use SSE for fast memcpy; BIOS
+  bootloader checks SSE at load time and refuses
+  boot on systems without it (early failure, clear
+  message).
+
+--------------------------------------------------------------------------------
+
+## c8c6a416 -- [cpu_features] Read also ECX features (EAX=1) and use
+   -msse in kernel
+
+Commit: c8c6a416af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 16:56:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +139 / -41 across 4 files. cpu_features.c +57
+  reads the ECX feature word (SSE3, SSE4.1, AVX
+  etc.). cpu_features.h +82 / -21 adds matching
+  enum bits. kernel CMakeLists +6 adds -msse.
+  stage3.c +3.
+
+Context (guess -- from subject):
+
+  More feature bits; SSE becomes part of the build
+  config.
+
+--------------------------------------------------------------------------------
+
+## c7820c59 -- [cpu][fb_console] Use SSE2 or SSE when available
+
+Commit: c7820c5993...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 18:08:45 2018 +0300
+
+> This makes on real hardware the flush about 4x
+> faster.
+
+AI notes:
+
+What changed:
+
+  +76 / -10 across 9 files. New kernel/arch/generic_x86/
+  cpu.c (+14). entry.S +14 enables SSE in CR0/CR4.
+  fb_raw.c +37 uses movaps/movdqa when available.
+  stage3.c -6 (already checked). hal.h +2, main.c
+  +3 / -3.
+
+Context (from body):
+
+  Big FB speedup: 128-bit moves instead of 32-bit.
+  Explains why the shadow-buffer + batched flush
+  design paid off.
+
+--------------------------------------------------------------------------------
+
+## 0f433f14 -- [fb_console] Add optimization using SSE 4.1 (movntdqa)
+
+Commit: 0f433f141b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 21:27:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -7 across basic_defs.h (+10), CMakeLists
+  (+1), fb_raw.c (+19 / -7).
+
+Context (guess -- from subject):
+
+  movntdqa (non-temporal load) skips polluting the
+  cache with FB data -- appropriate for write-once
+  framebuffer data.
+
+--------------------------------------------------------------------------------
+
+## b9b7d40f -- [cpu] Working on AVX support
+
+Commit: b9b7d40ff5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 22:32:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -1 across 5 files. cpu_features.c +8,
+  entry.S +11 (XCR0 setup), cpu.c +7, headers
+  small. AVX enable path: OSXSAVE + XCR0.
+
+Context (guess -- from subject):
+
+  AVX needs OS-side opt-in via XCR0; infrastructure
+  in place.
+
+--------------------------------------------------------------------------------
+
+## 2a147b9a -- [build] Fix build error
+
+Commit: 2a147b9aa4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 28 23:42:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -3 across CMakeLists.txt (+7) and
+  kernel/CMakeLists.txt (+14 / -3).
+
+Context (guess -- from subject):
+
+  Compile-option adjustments after AVX additions.
+
+--------------------------------------------------------------------------------
+
+## f1b77bc6 -- [build] Fix build error 2
+
+Commit: f1b77bc61d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 00:08:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -1 across basic_defs.h (+2) and fb_raw.c
+  (+1 / -1). Follow-up.
+
+Context (guess -- from subject):
+
+  Finishing the build fix.
+
+--------------------------------------------------------------------------------
+
+## fdd3789c -- [cpu][fb_console] Enable and use AVX2
+
+Commit: fdd3789c77...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 13:33:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +54 / -18 across 5 files. cpu.c +9 net enables
+  AVX2. entry.S +11 XCR0 bits. fb_raw.c +28 / -15
+  uses ymm (256-bit) moves.
+
+Context (guess -- from subject):
+
+  Another 2x throughput boost for FB ops when AVX2
+  is present.
+
+--------------------------------------------------------------------------------
+
+## 8fe3c88f -- [asm_x86_strings] Introduce and use [fb_console]
+   x86_memcpy256_nt_smart()
+
+Commit: 8fe3c88f78...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 13:53:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +74 / -58 across 3 files. asm_x86_strings.h +67
+  adds a dispatched 256-bit non-temporal memcpy.
+  cpu_features.h +1. fb_raw.c -58 net delegates.
+
+Context (guess -- from subject):
+
+  Encapsulate the SSE2/SSE4.1/AVX dispatch choice
+  in one primitive that callers just use.
+
+--------------------------------------------------------------------------------
+
+## 5ff28bfc -- [memcpy256_nt_*] Some optimizations
+
+Commit: 5ff28bfc42...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 14:30:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +39 / -6 across asm_x86_strings.h (+34 / -6) and
+  fb_raw.c (+5).
+
+Context (guess -- from subject):
+
+  Polish on the new primitive.
+
+--------------------------------------------------------------------------------
+
+## 9fe5cea6 -- [cpu] SSE-related fixes
+
+Commit: 9fe5cea6c9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 15:28:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -34 across 11 files. cpu.c +30 net
+  reorganises feature detection. entry.S +22 / -14.
+  cpu_features.h +7, utils.h +12. Small touches
+  everywhere else.
+
+Context (guess -- from subject):
+
+  Catch-all commit tightening the SSE feature
+  detection / enable flow.
+
+--------------------------------------------------------------------------------
+
+## 711bff29 -- [cpu] Make enabling of features to be fault-resumable
+
+Commit: 711bff2992...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 19:56:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +74 / -35 across asm_x86_strings.h (+1 / -1) and
+  cpu.c (+73 / -34). CR0/CR4/XCR0 writes wrapped
+  in fault_resumable_call. If a feature trap on a
+  bogus CPU, we skip it instead of crashing.
+
+Context (guess -- from subject):
+
+  Robustness: running on a VM that lies about AVX
+  is a thing. Graceful degrade.
+
+--------------------------------------------------------------------------------
+
+## 049a7c54 -- [cpu] Fix a nasty bug in get_x86_cpu_features()
+   ('d' instead of 'c')
+
+Commit: 049a7c54d5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 21:16:01 2018 +0300
+
+> It caused exOS to see a misleading set of CPU
+> features and take wrong decisions, especially in
+> enable_cpu_features().
+
+AI notes:
+
+What changed:
+
+  +30 / -16 across 4 files. cpu_features.c +2 / -2
+  (typo fix). cpu_features.h +2 / -2. cpu.c +23 /
+  -6 solidifies the corrected path. entry.S +4 /
+  -5.
+
+Context (from body):
+
+  Inline-asm constraint typo: used EDX output where
+  ECX was intended. Swapped register bits produced
+  wrong feature set. Textbook "one-letter bug".
+
+--------------------------------------------------------------------------------
+
+## 972e52c2 -- [Cosmetic] Rename exception_messages =>
+   x86_exception_names
+
+Commit: 972e52c2ea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 21:22:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -6 across cpu.c and idt.c. Rename.
+
+Context (guess -- from subject):
+
+  More descriptive name; follows the x86_ naming
+  pattern.
+
+--------------------------------------------------------------------------------
+
+## a7a26ff5 -- [main] Re-order initialization
+
+Commit: a7a26ff550...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 29 21:38:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -10 across 3 files. Init call sequence
+  adjusted to match new dependencies.
+
+Context (guess -- from subject):
+
+  Routine reordering for correctness.
+
+--------------------------------------------------------------------------------
+
+## 503254ea -- [main][process][sched][panic] Make __current != NULL
+   at the begin of kmain
+
+Commit: 503254ea1c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 12:51:44 2018 +0300
+
+> This allows many parts of the kernel to work
+> during the initialization. For example, panic()
+> still had problems to run early, as well as
+> fault_resumable_call(): now they work smoothly.
+> Also, panic() will initialize term in case it
+> has not been initialized yet.
+
+AI notes:
+
+What changed:
+
+  +47 / -27 across 7 files. sched.c +26 net:
+  __current set very early. process32.c -11 (old
+  delayed init removed). process.h +1. entry.S,
+  debug_utils.c, term.c, main.c small.
+
+Context (from body):
+
+  Completes the "current always set" invariant
+  (see ee506509). Now the invariant holds from
+  kmain's first line, enabling panic / copy /
+  fault_resumable very early.
+
+--------------------------------------------------------------------------------
+
+## 090b25f9 -- [fb_console] Use the FPU memcpy in fb_lines_shift_up()
+
+Commit: 090b25f9c3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 13:55:25 2018 +0300
+
+> + Rename the FPU memcpy function to
+> fpu_memcpy256_nt().
+
+AI notes:
+
+What changed:
+
+  +25 / -43 across 4 files. fb_raw.c -21 net as
+  logic moves into shared primitive. fb_console.c
+  +0 net, int.h 1 line, asm_x86_strings.h rename.
+
+Context (from body):
+
+  Another caller benefits from the centralised
+  FPU/SSE memcpy.
+
+--------------------------------------------------------------------------------
+
+## 9f37cbf0 -- [common] Create common/arch/generic_x86/ and move
+   cpu_features.c there
+
+Commit: 9f37cbf02f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 14:02:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -1. File moved; build-system path updated
+  in CMakeLists files.
+
+Context (guess -- from subject):
+
+  cpu_features is x86-specific even though it lives
+  in "common" (shared kernel/bootloader). New dir
+  makes that explicit.
+
+--------------------------------------------------------------------------------
+
+## 72c27ebe -- [cpu] Introduce fpu_memcpy.c
+
+Commit: 72c27ebe4a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 15:18:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +134 / -79 across 4 files. New kernel/arch/
+  generic_x86/fpu_memcpy.c (+48) -- dispatched
+  FPU/SSE/AVX memcpy. asm_x86_strings.h big reshuffle
+  (+83 / -79).
+
+Context (guess -- from subject):
+
+  Dedicated .c for the memcpy dispatcher; it was
+  getting too big to stay inline.
+
+--------------------------------------------------------------------------------
+
+## f228a64b -- [fb_console] Further optimize fb_console with
+   fpu_memcpy
+
+Commit: f228a64be3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 16:01:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +138 / -20 across 3 files. fb_raw.c +43 net
+  uses the new primitive. asm_x86_strings.h +87
+  net (new variants). fpu_memcpy.c +6 / -4.
+
+Context (guess -- from subject):
+
+  More FB paths migrated to the dispatched
+  primitive.
+
+--------------------------------------------------------------------------------
+
+## e61030e2 -- [fpu_memcpy] Replace switch case with IFs, as it is
+   faster in debug builds
+
+Commit: e61030e2db...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 16:36:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -53 across 2 files.
+
+Context (guess -- from subject):
+
+  Debug builds lower switch statements to a
+  jump-table + indirect branch -- slow. Chained
+  ifs with early-outs on the common case are
+  faster.
+
+--------------------------------------------------------------------------------
+
+## f2f6518e -- [fpu_memcpy] Introduce fpu_memcpy.h and fix a build
+   error (gtests)
+
+Commit: f2f6518e62...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 16:54:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +159 / -152 across 6 files. New exos/arch/
+  generic_x86/fpu_memcpy.h (+149). asm_x86_strings.h
+  -150. Modest touches elsewhere for the include
+  move + gtest mocks.
+
+Context (guess -- from subject):
+
+  Proper header for the new subsystem. Host gtests
+  need matching mocks.
+
+--------------------------------------------------------------------------------
+
+## 49870b5f -- [entry.S] Extract some funcs from it and move in two
+   .S files
+
+Commit: 49870b5fe4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 19:11:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +250 / -228 across 3 files. New
+  fault_resumable.S (+74) and syscall_entry.S
+  (+176). entry.S -228.
+
+Context (guess -- from subject):
+
+  entry.S has grown too big. Split by concern.
+  Same files referenced in CLAUDE.md-era layout
+  hints.
+
+--------------------------------------------------------------------------------
+
+## 1d7205cf -- [fpu_memcpy] Optimize fpu_memcpy_single_256_nt() by
+   using hot-patching
+
+Commit: 1d7205cf3f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 19:59:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +70 / -35 across 6 files. fpu_memcpy.c +42 net
+  implements runtime code patching: the dispatch
+  site is overwritten with a jmp to the chosen
+  implementation once at feature-detect time.
+  entry.S +11 helpers. elf.c +7 / -2 handles the
+  mapped text for patching.
+
+Context (guess -- from subject):
+
+  "Alternatives" technique from Linux: after
+  choosing the best impl, burn it into the call
+  site so the dispatch becomes free.
+
+--------------------------------------------------------------------------------
+
+## 2c3cb269 -- [fb_console] Use double buffering only when running on
+   bare-metal
+
+Commit: 2c3cb269bc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 21:13:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -3 across 4 files. hal.h +4 bare-metal
+  detection. fb_console.c +7 / -1 disables shadow
+  buffer under qemu. cpu_features.h +5. main.c
+  +5 / -2.
+
+Context (guess -- from subject):
+
+  Shadow buffer helps on real hardware (slow FB
+  writes) but adds memcpy overhead in qemu where
+  FB is just RAM. Detect hypervisor via CPUID and
+  skip shadow when detected.
+
+--------------------------------------------------------------------------------
+
+## c6942eca -- [fb_console] Make it work even if all of its kmalloc
+   calls fail
+
+Commit: c6942eca2a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 21:27:00 2018 +0300
+
+> The problem of an early framebuffer console now
+> is only fb_map_in_kernel_space() which require
+> both paging and kmalloc to be initialized.
+
+AI notes:
+
+What changed:
+
+  +19 / -10 in fb_console.c. Graceful fallback on
+  all kmallocs.
+
+Context (from body):
+
+  Goal: FB console works even at panic time. All
+  heap allocations now have fallback paths.
+
+--------------------------------------------------------------------------------
+
+## 7ef72bd6 -- [fb_console][panic] Support panic at the earliest
+   possible
+
+Commit: 7ef72bd65f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 30 22:19:34 2018 +0300
+
+> Now it's possible, even with the framebuffer
+> console, to see a panic message very early:
+> immediately after read_multiboot_info(), where
+> we get the address of the framebuffer. In text
+> mode it's possible instead to see a panic even
+> before the first call in kmain() because the
+> address of the character framebuffer is fixed.
+
+AI notes:
+
+What changed:
+
+  +44 / -9 across 6 files. fb_raw.c +28 net:
+  bootstrap path that can write to FB using only
+  identity-mapped physical address (no paging
+  needed). paging_int.h +7 / 0 decls. Other small
+  tweaks.
+
+Context (from body):
+
+  Panics during early boot are now visible. Huge
+  usability win when chasing boot-time bugs.
+
+--------------------------------------------------------------------------------
+
+## eafee9c1 -- [debug] Fix a bug in dump_stacktrace() [see the
+   comments in the code]
+
+Commit: eafee9c100...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 12:02:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -12 across 6 files. debug.c +26 / -1
+  revised stack-walk logic. elf.c +3 / -2,
+  debug_utils.h -5 net, small touches elsewhere.
+
+Context (guess -- from subject):
+
+  Stack-walker bug; detailed explanation in code
+  comments. Matters for panic backtraces.
+
+--------------------------------------------------------------------------------
+
+## 0c78cc51 -- [shell] Add the 'help' and '?' commands
+
+Commit: 0c78cc5133...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 12:09:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 lines in shell_commands.c. Built-in help
+  prints the command list.
+
+Context (guess -- from subject):
+
+  UX: shell now has enough commands (~10-15) that
+  a help is useful.
+
+--------------------------------------------------------------------------------
+
+## ae3add57 -- [fb_console] Micro-optimizations
+
+Commit: ae3add57c4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 12:53:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -29 in fb_raw.c. Net -12.
+
+Context (guess -- from subject):
+
+  More shaving on FB hot paths.
+
+--------------------------------------------------------------------------------
+
+## 8dd31474 -- [fpu_memcpy] Renamings and use EXTERN
+
+Commit: 8dd31474a7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 13:07:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +39 / -31 across 4 files.
+
+Context (guess -- from subject):
+
+  Normalise symbol names; EXTERN macro (from
+  basic_defs?) for consistent linkage.
+
+--------------------------------------------------------------------------------
+
+## c11522ec -- [fpu_memcpy] Add fpu_cpy_single_* funcs without the
+   NT hint
+
+Commit: c11522ecde...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 13:22:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +89 / -3 across fpu_memcpy.h (+88) and entry.S
+  (-2). Non-temporal and temporal variants for
+  callers that do want the cache warm.
+
+Context (guess -- from subject):
+
+  NT is great for write-once (FB); bad for read-
+  modify-write. Both variants needed.
+
+--------------------------------------------------------------------------------
+
+## 3f2f117e -- [fpu_memcpy] Introduce fpu_memcpy256_* funcs without
+   the NT hint
+
+Commit: 3f2f117eb0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 13:30:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 lines across fpu_memcpy.h (+17) and
+  fpu_memcpy.c (+31). 256-bit temporal variants.
+
+Context (guess -- from subject):
+
+  Completes the symmetric NT / non-NT family.
+
+--------------------------------------------------------------------------------
+
+## eda53247 -- [fb_console] Use a temp buffer in fb_flush_lines() to
+   speed-up the copy
+
+Commit: eda532474e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 14:02:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -4 across 3 files. fb_raw.c +21 / -3:
+  copies a chunk to a stack buffer first, then
+  non-temporally to FB.
+
+Context (guess -- from subject):
+
+  Two-step: cache-friendly read, NT write. Common
+  pattern for staging to non-cached memory.
+
+--------------------------------------------------------------------------------
+
+## 8bb8c895 -- [fpu_memcpy][fb_console] Introduce (and use)
+   fpu_memcpy256_nt_read()
+
+Commit: 8bb8c8957c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 15:28:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -7 across 5 files. Non-temporal *read*
+  variant (movntdqa) for reading from write-combine
+  memory. cpu_features.h +1, fpu_memcpy.h +80 new
+  decls+inline, cpu.c +3 / -1, fpu_memcpy.c +24,
+  fb_raw.c +4 / -2.
+
+Context (guess -- from subject):
+
+  Symmetric to nt_write: when reading the shadow
+  buffer for flush, NT reads avoid polluting the
+  L1 cache.
+
+--------------------------------------------------------------------------------
+
+## 83bd46f7 -- [fb_console] Disable fb_flush and fb_scroll_one_line_up
+   by default
+
+Commit: 83bd46f7df...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 17:34:11 2018 +0300
+
+> See the comment above fb_flush().
+
+AI notes:
+
+What changed:
+
+  +105 / -44 across 3 files. fb_raw.c +87 / -44 --
+  substantial reorg. fb_console.c +15 / -2 adds the
+  disable gate. fb_int.h +1.
+
+Context (from body):
+
+  After extensive measurement, the shadow-buffer
+  approach isn't uniformly a win. A long comment
+  (referenced by the subject) documents the
+  trade-offs. Default OFF; can be enabled where
+  proven beneficial.
+
+--------------------------------------------------------------------------------
+
+## 70fe9171 -- [fpu_memcpy] Introduce the fpu_cpy_single_256_nt_read()
+   "wrapper"
+
+Commit: 70fe917132...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 18:10:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +95 / -44 across 5 files. basic_defs.h +8
+  helpers. fpu_memcpy.h +36 net, fpu_memcpy.c +24
+  net, entry.S +7 net. fb_raw.c swaps to the
+  wrapper.
+
+Context (guess -- from subject):
+
+  Wrapper picks best impl at call time; callers
+  don't switch themselves.
+
+--------------------------------------------------------------------------------
+
+## ca24205b -- [fpu_memcpy][fb_console] Force -O3 in fpu_memcpy.c
+   and fb_raw.c
+
+Commit: ca24205b2b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 18:45:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 lines across 3 fb/fpu files. #pragma GCC
+  optimize("O3") applied to these TUs so they get
+  full optimisation even in debug builds.
+
+Context (guess -- from subject):
+
+  Hot paths that depend on autovectorisation /
+  inlining can't afford -O0. Forcing O3 at file
+  level keeps them fast regardless of top-level
+  build flags.
+
+--------------------------------------------------------------------------------
