@@ -139,7 +139,7 @@ jobs:
         displayName: Build the unit tests
       - script: ./build/gtests
         displayName: Run the unit tests
-      - script: ./build/scripts/generate_test_coverage_report
+      - script: ./build/tests/unit/scripts/generate_test_coverage_report
         displayName: Gen unit tests coverage report
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests
