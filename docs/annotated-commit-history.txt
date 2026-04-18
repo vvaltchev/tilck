@@ -16107,3 +16107,2503 @@ Context (body):
   wanted -O2 (safer). Explicit clearing is the clean fix.
 
 --------------------------------------------------------------------------------
+
+## 850adf67 -- [utils32] Run CLD at the end of memmove() [reverse_long_name()
+   final FIX]
+
+Commit: 850adf67c3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 22 20:58:00 2018 +0200
+
+Message:
+
+  The compiler has the right to assume that the DF flag is
+  cleared. Unfortunately, exOS's memmove() did not clear it
+  after using STD and that, caused the triple fault in
+  reverse_long_name().
+
+  For safety, a CLD has been added in boot.S and in entry.S.
+
+AI notes:
+
+What changed:
+
+  The real root cause of the FAT triple-fault (commits
+  de6a621d / d5b77feb investigated this).
+
+  - kernel/arch/i386/utils32.c (+1) -- memmove, after using
+    std + rep movsb for the backward-copy case, now ends
+    with cld to restore the "string ops go forward" default.
+
+  - bootloader/boot.S (+4), kernel/arch/i386/entry.S (+3)
+    -- add explicit cld at early-boot entry as a belt-and-
+    suspenders measure.
+
+  - common/fat32_base.c (-13) -- removes the NO_INLINE
+    workaround from commit de6a621d (no longer needed once
+    the real bug is fixed).
+
+Context (body is explicit):
+
+  x86 ABI detail: DF must be 0 on function entry (compiler-
+  generated memcpy/memmove rely on this). Tilck's memmove
+  was leaving DF=1 in the STD path. Reverse_long_name
+  happened to manifest it via struct-copy codegen that
+  memcpy'd into a stack buffer; wrong direction = stack
+  corruption.
+
+--------------------------------------------------------------------------------
+
+## 01bfe5b0 -- Move string_util.h in common/include
+
+Commit: 01bfe5b0e2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 13:18:08 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Pure rename: kernel/include/string_util.h ->
+  common/include/string_util.h. The header is already
+  shared between kernel and bootloader; the path now
+  reflects that.
+
+--------------------------------------------------------------------------------
+
+## e8928f91 -- [bootloader] Minor changes
+
+Commit: e8928f91a2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 13:31:20 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (+8 / -39) -- drops inline utilities
+    (itoa / strcmp copies) that are now available from
+    common/string_util.c.
+
+  - bootloader/utils.c (+23 / -5) -- the remaining stage3-
+    only helpers grow to cover the new uses.
+
+  - common/include/config.h (+1) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 609b654d -- [bootloader] Switch back to an implementation using less FAT32
+   code
+
+Commit: 609b654df5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 14:26:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (+57 / -72) -- stage3's FAT walker
+    is rewritten to use fewer fat32_base functions and
+    duplicate less state. Smaller stage3 binary; less
+    common/ ABI it needs to agree with.
+
+  - kernel/fs/fat32.c (-2) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## b2be691c -- [FS] Move back in fat32.c the functions implementing the exvfs
+   interface
+
+Commit: b2be691c70...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 14:29:06 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/fat32_base.c (-247 / +0) -- file shrinks
+    dramatically; strips the exvfs-specific implementations
+    (fat32_open / fat32_read / etc.) that shouldn't have
+    been shared with the bootloader.
+
+  - kernel/fs/fat32.c (+245) -- kernel-side FAT driver
+    gains them back. Now common/ has only the layout
+    parsing; kernel/ has the VFS glue.
+
+Context (subject):
+
+  Final shape: common/fat32_base.c = "on-disk FAT data
+  structures" (shared), kernel/fs/fat32.c = "VFS driver"
+  (kernel-only). Bootloader only needs the base.
+
+--------------------------------------------------------------------------------
+
+## a24b99b3 -- [FS] Split the fat32.h in two, moving the "base" part in
+   common/include
+
+Commit: a24b99b3a2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 14:33:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New common/include/fat32_base.h (208 l.) -- on-disk
+    struct declarations (fat_header, fat16_header2,
+    fat32_header2, fat_entry, fat_long_entry) plus the
+    public API of common/fat32_base.c.
+
+  - kernel/include/fs/fat32.h (-206 / +0) -- loses all
+    that; keeps only the VFS adapter prototypes
+    (fat32_mount_ramdisk, fat32_open, etc.).
+
+  Mirrors the .c split from the previous two commits.
+
+--------------------------------------------------------------------------------
+
+## b4f2baad -- [FS] Move FAT32 debug/dump funcs in a separate file
+
+Commit: b4f2baad0c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 14:38:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/fs/fat32_debug.c (146 l.) -- receives
+    dump_entry_attrs, dump_dir_entry, fat_dump_info and
+    friends. Not compiled in release builds.
+
+  - kernel/fs/fat32.c (-149) -- drops the debug functions.
+
+--------------------------------------------------------------------------------
+
+## b97720ff -- [bootloader] Make kmalloc() and kfree2() NOT IMPLEMENTED
+
+Commit: b97720ff06...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 14:41:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/utils.c (+2 / -12) -- the placeholder kmalloc /
+  kfree2 for stage3 used to be no-op shims (return NULL);
+  now they NOT_REACHED() on entry. Stage3 shouldn't call
+  kmalloc; this guarantees a loud failure if something
+  slips in.
+
+--------------------------------------------------------------------------------
+
+## 4f0d1f5f -- [bootloader] Remove unnecessary #include lines
+
+Commit: 4f0d1f5f7d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 15:16:11 2018 +0200
+
+AI notes:
+
+What changed:
+
+  bootloader/stage3.c (1 l.), common/fat32_base.c (+1 / -4),
+  kernel/include/arch/generic_x86/textmode_video.h (-3) --
+  prunes includes now made redundant by the header split
+  across commits 602-606.
+
+--------------------------------------------------------------------------------
+
+## 78e2157b -- Re-organize headers in the project [step 1]
+
+Commit: 78e2157bbe...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 23 15:26:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Major directory reshuffle: pulls all headers up to a
+  top-level include/ tree.
+
+  - common/include/* -> include/common/* (4 headers).
+  - common/system_headers/* -> include/system_headers/*
+    (elf.h, multiboot.h, stdint.h).
+  - kernel/include/* -> include/exos/* (~25 headers
+    including arch subtree).
+
+  - bootloader/CMakeLists.txt (+5 / -5), bootloader/efi/
+    CMakeLists.txt (+3 / -3), kernel/CMakeLists.txt
+    (+4 / -3) -- include paths point at the new top-level
+    tree.
+
+Context (guess -- subject says "step 1"):
+
+  Flattening the include tree. All project headers under
+  one include/ root makes -I simpler and the search path
+  shorter. Next commits likely continue this
+  reorganization.
+
+--------------------------------------------------------------------------------
+
+## bdd845d7 -- Re-organize headers in the project [step 2]
+
+Commit: bdd845d767...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 15:39:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  28 files, +45 / -44. Mostly #include path adjustments across
+  bootloader/, common/, and include/exos/. No logic changes -- this is
+  a pure header-rename / include-normalisation pass.
+
+Context (guess -- no body):
+
+  Follow-up to step 1. After unifying the include tree under include/,
+  every .c/.S file gets its #include lines updated to the new canonical
+  paths (common/..., exos/...). Touches many subsystems since headers
+  are pulled in everywhere.
+
+--------------------------------------------------------------------------------
+
+## 19f34ab1 -- Re-organize headers in the project [step 3]
+
+Commit: 19f34ab109...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 15:51:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +47 / -28 across 8 files. New header
+  include/arch/generic_x86/vga_textmode_defs.h (25 lines) holds the
+  VGA text-mode constants that used to live in
+  exos/arch/.../textmode_video.h. The x86_utils.h header moves out of
+  include/exos/arch/ to include/arch/ (arch-independent-of-exos
+  location). common/string_util.c gains +17 lines -- likely pulling in
+  helpers that were in the now-split textmode_video.h. CMake files
+  adjust include paths.
+
+Context (guess -- from subject):
+
+  Splitting the kernel-specific textmode driver header from the pure
+  VGA register/layout constants. The constants can then be shared with
+  the bootloader's basic_term without dragging in kernel types.
+
+--------------------------------------------------------------------------------
+
+## 8d27dc05 -- Re-organize headers in the project [step 4]
+
+Commit: 8d27dc052e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 15:55:25 2018 +0200
+
+> Create kernel/ext_string_util.c and move there the functions using
+> kmalloc in order to allow common/string_util.c to not depend on it.
+
+AI notes:
+
+What changed:
+
+  52 lines removed from common/string_util.c, moved verbatim (+53) to
+  the new kernel/ext_string_util.c. The extracted functions are the
+  ones that call kmalloc() -- string duplicators / builders that
+  allocate their result.
+
+Context (from body):
+
+  common/string_util.c is shared between kernel and bootloader; the
+  bootloader has no kmalloc. Splitting out the allocating helpers into
+  a kernel-only .c file lets common/ stay allocation-free and
+  link-safely into the bootloader. Part of the recurring theme of
+  making common/ truly "common".
+
+--------------------------------------------------------------------------------
+
+## b3f91033 -- Re-organize headers in the project [step 5]
+
+Commit: b3f910335e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 16:01:50 2018 +0200
+
+> Introduce common/basic_term.h in order to avoid common/string_util.c
+> to include exos/term.h.
+
+AI notes:
+
+What changed:
+
+  +9 / -3 across 3 files. New header include/common/basic_term.h (7
+  lines) declares the minimal terminal interface (probably a
+  term_write prototype) that common/string_util.c needs.
+  string_util.c swaps #include <exos/term.h> for the new common
+  header; bootloader/stage3.c adjusts accordingly.
+
+Context (from body):
+
+  Same "keep common/ free of kernel deps" theme. By extracting the
+  one-function interface into a common header, the kernel's
+  exos/term.h can keep its richer definitions without forcing common/
+  to pull them in.
+
+--------------------------------------------------------------------------------
+
+## 133dcb0b -- Re-organize headers in the project [step 6]
+
+Commit: 133dcb0b09...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 16:13:13 2018 +0200
+
+> Make common/string_util.c to NOT include any kernel code, not even
+> under ifdef, by creating a printk() with WEAK linkage. In the
+> kernel, the function has been re-implemented in kernel/printk.c.
+
+AI notes:
+
+What changed:
+
+  +19 / -32 across 4 files. common/string_util.c loses ~20 lines of
+  #ifdef-guarded kernel paths. bootloader/utils.c loses 13 lines (the
+  bootloader's own printk stub, no longer needed now that a weak
+  default exists). New kernel/printk.c (16 lines) provides the strong
+  definition the kernel links against.
+  include/common/common_defs.h gains the WEAK attribute declaration
+  for printk().
+
+Context (from body):
+
+  The final step of the "common/ has no kernel deps" refactor.
+  Previously common/string_util.c used #ifdef KERNEL to route
+  diagnostics through the kernel printk -- clean in spirit but still
+  pulled in kernel headers. Switching to a weak symbol inverts the
+  dependency: the common code unconditionally calls printk(); whoever
+  links (bootloader or kernel) provides the strong definition, or
+  falls back to the no-op weak stub.
+
+--------------------------------------------------------------------------------
+
+## 7f4f9224 -- Re-organize headers in the project [step 7]
+
+Commit: 7f4f9224fc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 16:23:11 2018 +0200
+
+> Rename common_defs.h to basic_defs.h.
+
+AI notes:
+
+What changed:
+
+  53 files, +53 / -53 -- pure rename. common_defs.h -> basic_defs.h
+  (git detects the rename), and every file that included it updates
+  its #include line.
+
+Context (from body):
+
+  "common" was ambiguous (could mean "shared between binaries" or
+  "generic kernel defs"). "basic_defs.h" better reflects its role as
+  the floor-level typedefs/macros header included by almost every
+  translation unit.
+
+--------------------------------------------------------------------------------
+
+## 7daed1fb -- Re-organize headers in the project [step 8]
+
+Commit: 7daed1fb58...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 16:57:30 2018 +0200
+
+> Make kernel files to always use the common/ prefix in order to
+> include common headers.
+
+AI notes:
+
+What changed:
+
+  46 files, +243 / -222. Every #include of a common/ header in kernel
+  source files now uses the explicit common/foo.h form instead of
+  relying on -I include/common. Touches nearly every .c in kernel/,
+  plus several exos/ headers pulled in by kernel code.
+
+Context (from body):
+
+  Removing implicit include-path magic. By forcing the common/ prefix,
+  readers of kernel code can tell at a glance which headers are
+  "shared-with-bootloader" code vs. kernel-private headers. Also
+  decouples the kernel build from a specific -I layout.
+
+--------------------------------------------------------------------------------
+
+## bc98578f -- Re-organize headers in the project [step 10]
+
+Commit: bc98578f15...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 17:03:55 2018 +0200
+
+> Fix tests
+
+AI notes:
+
+What changed:
+
+  9 files in unittests/, +27 / -25. Test CMakeLists and mocks get
+  include-path and prototype fixes so the host-side gtest suite
+  rebuilds after the header reshuffle. No step 9 in the repo -- either
+  squashed into step 8 or skipped numbering.
+
+Context (from subject):
+
+  Catches unittests/ up to whatever changed in steps 7-8. Kernel-side
+  renames don't automatically update the host-compiled test harness,
+  which mocks or re-includes kernel headers and therefore needs its
+  own adjustments.
+
+--------------------------------------------------------------------------------
+
+## d9b34ab4 -- Re-organize headers in the project [step 11]
+
+Commit: d9b34ab401...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 17:10:16 2018 +0200
+
+> Force kernel code to include headers using the prefix exos/.
+
+AI notes:
+
+What changed:
+
+  +14 / -20 across 10 files. Kernel .c files switch bare "#include
+  <foo.h>" to "#include <exos/foo.h>" for exos-private headers (hal,
+  irq, kb, timer, debug_utils). One -I directive dropped from
+  kernel/CMakeLists.txt, confirming the include-path shortcut is
+  gone.
+
+Context (from body):
+
+  Mirror of step 8, but for the exos/ (kernel) headers. Now every
+  kernel include is either common/<x> or exos/<x>, making the origin
+  of a header explicit everywhere.
+
+--------------------------------------------------------------------------------
+
+## 0ff1bc49 -- Re-organize headers in the project [step 12]
+
+Commit: 0ff1bc49c3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 17:12:12 2018 +0200
+
+> Force tests to include exos headers using the exos/ prefix.
+
+AI notes:
+
+What changed:
+
+  +3 / -4 across 3 unittests/ files. CMakeLists drops one -I line;
+  avl_bintree.cpp and exvfs_test.cpp switch to the exos/ prefix.
+
+Context (from body):
+
+  Final sweep of the header-reorg series: apply the same exos/ prefix
+  rule to the tests directory. Small diff because only two test files
+  actually include exos headers.
+
+--------------------------------------------------------------------------------
+
+## 8218e353 -- Re-organize headers in the project [step 13]
+
+Commit: 8218e35386...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 17:19:01 2018 +0200
+
+> Move include/arch in include/common/arch.
+
+AI notes:
+
+What changed:
+
+  +7 / -8 across 7 files. Two headers (vga_textmode_defs.h,
+  x86_utils.h) relocate from include/arch/ to include/common/arch/.
+  Includers update: exos/arch/.../textmode_video.h, exos/hal.h,
+  kernel/self_tests/perftests.c, bootloader/basic_term.c.
+
+Context (from body):
+
+  Part 13 (and likely last) of the header reorg. include/arch/ was
+  parallel to include/common/ and include/exos/ -- collapsing it
+  inside include/common/arch/ keeps the top-level include/ namespace
+  clean: only "common" (shared) and "exos" (kernel-private) buckets.
+
+--------------------------------------------------------------------------------
+
+## ec82d6ab -- [tasklet] Intr. kcond_signal_single() and make the runner
+   use it
+
+Commit: ec82d6ab15...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 18:10:38 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +26 / -14 across 3 files. New kernel/kcond.c function
+  kcond_signal_single(c, ti) that wakes exactly one named sleeping
+  task waiting on condvar c (cancels timer, resets wait_obj, flips
+  state to RUNNABLE). kcond_signal_int() is refactored to iterate and
+  call kcond_signal_single() per matching task. kernel/tasklet.c now
+  caches the tasklet runner task pointer at initialize_tasklets() and
+  calls kcond_signal_single(&tasklet_cond, tasklet_runner_task)
+  instead of the broadcast kcond_signal_all() on enqueue.
+
+Context (guess -- no body):
+
+  Optimisation: only one thread ever waits on tasklet_cond (the
+  runner), so broadcasting is wasteful. Adding a targeted
+  signal_single primitive lets the tasklet path avoid the O(n) walk
+  of all sleeping tasks. Also a general-purpose addition -- other
+  kernel code that knows *which* task it wants to wake can now do so
+  directly.
+
+--------------------------------------------------------------------------------
+
+## 84fdc5f3 -- [tasklet] Quick fix for the broken unit tests
+
+Commit: 84fdc5f34c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 18:23:02 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +4 lines in kernel/tasklet.c. Likely defining tasklet_runner_task
+  = NULL in the mock/test path or guarding the signal_single call so
+  unit tests that don't spawn a real runner thread don't NULL-deref.
+
+Context (guess -- from subject):
+
+  The previous commit cached a task pointer produced by
+  kthread_create() inside initialize_tasklets(). In the gtest build
+  kthread_create may not run / returns NULL, breaking the new
+  signal_single path. This is a tactical patch to unbreak CI, not a
+  principled mock redesign.
+
+--------------------------------------------------------------------------------
+
+## 13e1b4a9 -- [string_util] Implement strlen() in x86 asm
+
+Commit: 13e1b4a928...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 23 22:24:39 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +46 / -9 across 3 files. common/string_util.c loses its generic C
+  strlen() (-2). include/common/arch/generic_x86/x86_utils.h gains
+  39 lines: an inline asm strlen using repne scasb (classic x86
+  string instruction). include/common/string_util.h is tweaked (+14
+  / -8) to declare the new inline variant and probably #ifdef-select
+  between arches.
+
+Context (guess -- no body):
+
+  Performance: strlen is a hot path in printk / string formatting,
+  and repne scasb is ~1 cycle/byte on x86. The refactor also keeps
+  the signature/headers tidy so non-x86 builds (someday) can fall
+  back to the C version.
+
+--------------------------------------------------------------------------------
+
+## ecb5b5bd -- [string_util] Move strlen() to common/arch/generic_x86/
+   asm_x86_strings.h
+
+Commit: ecb5b5bdcf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 14:00:35 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +43 / -42 across 3 files. Moves the 39-line inline-asm strlen out
+  of x86_utils.h into a new dedicated header
+  asm_x86_strings.h. string_util.h updates its include accordingly.
+  No code change, just relocation.
+
+Context (guess -- no body):
+
+  x86_utils.h is general CPU plumbing (outb, inb, cpuid, etc.);
+  mixing string-function inlines in there conflates domains. A
+  dedicated asm_x86_strings.h is the natural home, and leaves room
+  for upcoming memset/memcpy asm variants.
+
+--------------------------------------------------------------------------------
+
+## 8a4937be -- Add inline memcpy/memmove asm impls to asm_x86_strings.h
+
+Commit: 8a4937beef...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 15:20:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +46 / -37 across 3 files. 40 new lines in asm_x86_strings.h:
+  inline-asm memcpy / memmove using rep movsb + rep movsd (byte
+  fallback for the n%4 tail, then 4-byte bursts for the rest).
+  kernel/arch/i386/utils32.c drops its old hand-written memcpy/
+  memmove (-35). string_util.h adjusts declarations (+8 / -2).
+
+Context (guess -- no body):
+
+  Following the strlen pattern: replace generic C with inline x86
+  string ops, deduplicate the kernel-only copy by putting them in a
+  header usable by any x86 target. utils32.c becomes leaner.
+
+--------------------------------------------------------------------------------
+
+## 25dbf2e3 -- [bootloader] Make the new memcpy/memmove available to
+   the bootloader too
+
+Commit: 25dbf2e33d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 16:10:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  +8 / -26 across 3 files. bootloader/utils.c loses its 12-line
+  hand-rolled memcpy (deduplicated). asm_x86_strings.h gets trimmed
+  (-5 net) -- likely dropping kernel-only guards or the ASSERT that
+  referenced kernel headers. string_util.h loses 1 line (a
+  kernel-only declaration).
+
+Context (guess -- from subject):
+
+  After extracting the asm memcpy/memmove into a common header in
+  commit 8a4937be, make it actually safe to include from the
+  bootloader. Means stripping any kmalloc/ASSERT/logging that the
+  bootloader can't satisfy.
+
+--------------------------------------------------------------------------------
+
+## 8058afcf -- [string_util] Fix a bug in asm memcpy
+
+Commit: 8058afcf7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 18:41:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  3 lines replaced in asm_x86_strings.h. The inline-asm memcpy held
+  (n >> 2) in an input constraint tied to the "q" class and later
+  reloaded it with `mov %0, %%ecx`, but the output constraint
+  `"=q"(unused)` meant GCC was free to pick any byte-addressable
+  register for the placeholder -- including one clobbered by the
+  preceding `rep movsb`. Fix: pin the value to %ebx via `"b"(n>>2)`
+  and reload explicitly with `mov %%ebx, %%ecx`.
+
+Context (guess -- from subject):
+
+  Classic inline-asm constraint bug. Probably surfaced as intermittent
+  data corruption in whatever test exercised non-4-byte-aligned
+  copies. Writing correct x86 inline asm is notoriously finicky --
+  this is the first of several micro-fixes to the new helpers.
+
+--------------------------------------------------------------------------------
+
+## 831f9879 -- [string_util] Minor improvements in memcpy/memmove
+
+Commit: 831f987900...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 18:50:07 2018 +0200
+
+AI notes:
+
+What changed:
+
+  3 lines in asm_x86_strings.h. Likely tightening the constraint
+  list or reordering the two rep movs* pairs for a cleaner register
+  plan after the previous fix.
+
+Context (guess -- no body):
+
+  Polishing pass on the memcpy/memmove asm after the correctness
+  fix in 8058afcf. Small diff, probably no behavioural change --
+  just nicer code.
+
+--------------------------------------------------------------------------------
+
+## 05ed790d -- [entry] Reduce kernel initial stack size after fixing
+   kmalloc_perf
+
+Commit: 05ed790dea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 24 19:56:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  2 lines in kernel/arch/i386/entry.S (initial stack reservation
+  shrunk) and 3 lines in kernel/self_tests/perftests.c (the
+  kmalloc_perf test). The perftest previously over-consumed stack;
+  after fixing it, the kernel boot stack can be trimmed.
+
+Context (guess -- from subject):
+
+  Kernel boot stack was inflated to accommodate a stack-hungry
+  kmalloc_perf self-test run early at boot. Once the test is
+  reworked to not blow the stack, the permanent reservation can
+  drop -- saving a small amount of memory and catching future
+  overruns sooner.
+
+--------------------------------------------------------------------------------
+
+## 493a40f5 -- [asm_x86_strings] Cosmetic changes
+
+Commit: 493a40f536...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 11:15:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -12 in asm_x86_strings.h. Net +30 lines, so more than pure
+  cosmetic -- likely consistent formatting, better constraint-list
+  layout, and maybe per-function block comments explaining the
+  register usage.
+
+Context (guess -- from subject):
+
+  After the back-to-back fix + polish commits, a dedicated cleanup
+  pass to make the still-new header look presentable. Subject says
+  "cosmetic" so no behaviour change expected.
+
+--------------------------------------------------------------------------------
+
+## 8c219bdc -- [asm_x86_strings] Emit non-inlined copies just once
+
+Commit: 8c219bdc60...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 11:53:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -11 across 3 files. asm_x86_strings.h gets +31/-4: the
+  inline-asm functions are likely split into a "static inline"
+  declaration plus a "extern inline" / weak out-of-line definition,
+  or switched to always-inline with a single real symbol emitted in
+  one TU. common/string_util.c gains 2 lines -- the chosen TU that
+  emits the out-of-line bodies. string_util.h loses 7 lines
+  (redundant prototypes/macros).
+
+Context (guess -- from subject):
+
+  Problem: "inline" functions in headers, when not actually inlined
+  by GCC (e.g. when taking their address, or in debug builds), get
+  emitted in every translation unit -> linker multiple-definition
+  errors, or one copy per TU and bloat. Standard C idiom: keep
+  `static inline` + one non-inline definition in a single .c. Here
+  common/string_util.c is designated as that "home" TU.
+
+--------------------------------------------------------------------------------
+
+## dcb013fc -- [asm_x86_string] Implement memset and bzero
+
+Commit: dcb013fc3e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 12:09:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -21 across 2 files. asm_x86_strings.h gets +34 / -7: inline
+  asm memset (rep stosb / stosd) and bzero (memset with value 0).
+  string_util.h loses 14 lines -- the generic C declarations/impls
+  those replace.
+
+Context (guess -- no body):
+
+  Completes the core string.h family in x86 asm: after strlen,
+  memcpy, memmove, now memset/bzero. Same motivation (rep stos* on
+  x86 is fast and short). bzero is a dedicated wrapper because the
+  zero-constant path can be a touch smaller than memset(..., 0, ...)
+  (the register holding the value can stay at zero).
+
+--------------------------------------------------------------------------------
+
+## 93251960 -- [asm_x86_strings] Optimize bzero()
+
+Commit: 9325196004...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 12:18:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -6 in asm_x86_strings.h. A small rewrite of bzero -- likely
+  using `rep stosd` with eax=0 for 4-byte bursts plus a byte tail,
+  or xor eax,eax before the stosb loop to get the zero cheaper.
+
+Context (guess -- no body):
+
+  Second pass specifically on bzero, suggesting the initial version
+  was correct but slower than it could be (e.g. doing stosb byte-by-
+  byte instead of stosd-then-tail).
+
+--------------------------------------------------------------------------------
+
+## 45cd69ff -- Use memcpy() instead of memmove() when possible
+
+Commit: 45cd69ff13...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 12:34:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -22 across 10 files, mostly call sites. Every kernel caller
+  where the src/dest ranges are known non-overlapping switches from
+  memmove() to memcpy(): textmode_video.c (scroll buffer),
+  arch/i386/paging.c, process32.c, char/tty.c, ext_string_util.c,
+  fs/devfs.c, fs/fat32.c, process.c, tasklet.c. One line in
+  asm_x86_strings.h -- probably changing memmove's internal
+  helper call.
+
+Context (guess -- from subject):
+
+  memmove is correct always but has an overlap check + direction
+  choice; memcpy is a straight forward rep movsd. Auditing call
+  sites and using the cheaper primitive where legal is free
+  performance. Would also reduce code size slightly since the
+  inline memcpy is smaller than inline memmove.
+
+--------------------------------------------------------------------------------
+
+## 051a4650 -- [asm_x86_strings] Introduce memset16 and use it in
+   textmode_clear_row()
+
+Commit: 051a465068...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 12:46:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -6 across 2 files. 19 new lines in asm_x86_strings.h: a
+  memset16(u16 *dest, u16 val, size_t count) using `rep stosw`.
+  kernel/arch/generic_x86/textmode_video.c's textmode_clear_row()
+  drops its open-coded loop (-6 / +3) in favour of the new helper.
+
+Context (guess -- from subject):
+
+  VGA text-mode uses 16-bit cells (attribute byte + char byte). A
+  byte-wise bzero can't set the colour attribute; generic 32-bit
+  memset would need a splatted u32. memset16 is the natural fit
+  and lets the scroll/clear paths drop their hand-rolled loops.
+
+--------------------------------------------------------------------------------
+
+## 7f57db00 -- [sched] Remove a buggy optimization in schedule()
+
+Commit: 7f57db009b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 19:27:02 2018 +0300
+
+> The idea of just returning if selected == current worked great as
+> well as schedule() was called by the timer interrupt handler, but
+> it lead to weird issues in case schedule has been called
+> indirectly by kernel_yield().
+
+AI notes:
+
+What changed:
+
+  -10 lines total across entry.S, process32.c, and sched.c. The
+  "if (selected == current) return;" fast-path is ripped out of
+  schedule() and the associated fast-exit in entry.S is dropped.
+
+Context (from body):
+
+  The fast-path was safe only in the timer-interrupt context, where
+  the caller has a well-defined iret frame ready. kernel_yield()
+  drives schedule() from a synthetic context; returning early there
+  left the yield state half-reverted, causing symptoms described
+  vaguely as "weird issues". Correctness now first, will restore
+  the optimisation in the next commit.
+
+--------------------------------------------------------------------------------
+
+## 9f11cdc3 -- [sched] Restore the "if (selected == current)"
+   optimization
+
+Commit: 9f11cdc326...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 21:13:08 2018 +0300
+
+> After fixing both kernel_yield() and
+> schedule_outside_interrupt_context() it was now possible to
+> restore this cool optimization.
+
+AI notes:
+
+What changed:
+
+  +22 / -4 across 4 files. entry.S regains +5 lines (the early-out
+  hop back to iret). sched.c +17 / -2: schedule() gets the
+  selected==current check re-enabled, and
+  schedule_outside_interrupt_context() is hardened (likely by
+  ensuring the TCB save-area is consistent even on the fast path).
+  tasklet.c and process32.c get 1-line touchups.
+
+Context (from body):
+
+  Complement to 7f57db00: with kernel_yield() no longer assuming
+  the slow path and the outside-IRQ schedule path cleaned up, the
+  fast-path short-circuit is safe everywhere again. Restores
+  performance without the original bug.
+
+--------------------------------------------------------------------------------
+
+## 05c45088 -- [process][sched] Cosmetic changes
+
+Commit: 05c450882a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Mar 25 21:28:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -33 across 3 files. include/exos/process.h reorganised
+  (+31 / -29), sched.c loses 21->lines  net -4 (probably
+  deduplicating a helper). process32.c gets 4-line touch.
+
+Context (guess -- from subject):
+
+  Formatting / structure pass over process.h and sched.c after the
+  two-step fix-and-restore. Likely reordering fields/function
+  prototypes and trimming repetition exposed by the fix.
+
+--------------------------------------------------------------------------------
+
+## 0ecce883 -- [entry] Polishing the code
+
+Commit: 0ecce883c0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 11:09:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -13 in kernel/arch/i386/entry.S. Net -1 line.
+  Asm-level cleanup: probably label renames, comment alignment,
+  consistent indentation, maybe a simpler register-save pattern.
+
+Context (guess -- from subject):
+
+  Cosmetic follow-up to the sched fast-path series that kept
+  touching entry.S. Closing chapter of this refactor burst.
+
+--------------------------------------------------------------------------------
+
+## 60052cf9 -- [asm_kernel_context_switch_x86] Make it work with regs
+   without changes
+
+Commit: 60052cf9d4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 11:38:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -10 across 2 files (arch_utils.h header + entry.S). The
+  asm kernel_context_switch routine is adapted so a caller can
+  pass a struct regs* and have the switch honour the register
+  values as-is, without the helper post-processing / massaging
+  them.
+
+Context (guess -- from subject):
+
+  Preparatory refactor: unify how the two switch paths
+  (kernel->kernel vs user->kernel) consume struct regs, so the
+  follow-up commits can drop the C-side helper that used to
+  prepare the frame.
+
+--------------------------------------------------------------------------------
+
+## 60fe177b -- [kernel_context_switch] Just call the asm code passing
+   the regs by value
+
+Commit: 60fe177ba4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 11:47:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -31 across 2 files. arch_utils.h shrinks by 30 lines: the
+  C wrapper that used to copy / tweak struct regs before calling
+  asm is gone, replaced by a straight pass-by-value call into the
+  asm routine. entry.S gains a small adjustment (+2 / -1) for the
+  new calling convention.
+
+Context (guess -- from subject):
+
+  After 60052cf9 made the asm code robust to un-tweaked regs,
+  the wrapper has no purpose. Deleting it slims down the
+  kernel_context_switch path significantly.
+
+--------------------------------------------------------------------------------
+
+## 8c15dfc6 -- [entry] Some optimizations
+
+Commit: 8c15dfc6e9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 11:58:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -41 in entry.S (net -6). Asm-level reshuffles in the
+  interrupt / context-switch prologue/epilogue. Without diff
+  detail: probably fewer pushes, tighter branching, maybe
+  eliminating a redundant save of a caller-saved register.
+
+Context (guess -- from subject):
+
+  Opportunistic micro-optimisation after the two refactors. Hot
+  path, so small wins compound.
+
+--------------------------------------------------------------------------------
+
+## 2b78b713 -- [context_switch] Make it work like
+   kernel_context_switch()
+
+Commit: 2b78b713b2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 12:05:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -32 across 2 files. The user-space context_switch (as
+  opposed to kernel_context_switch) in arch_utils.h sheds 26
+  lines of C scaffolding; entry.S tweaks the asm (+12 / -6).
+
+Context (guess -- from subject):
+
+  Apply the same "just pass struct regs to asm" simplification
+  that worked for kernel_context_switch (commit 60fe177b) to the
+  user-context switch. Both paths now share the same minimal
+  shape.
+
+--------------------------------------------------------------------------------
+
+## c0056b54 -- [entry] Additional (minor) optimizations
+
+Commit: c0056b54e2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 12:14:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -26 in entry.S (net -16). Further asm trimming after
+  unification: with both switch paths aligned, duplicated
+  prologues/epilogues can be merged or factored, and a few
+  pushes/pops become unnecessary.
+
+Context (guess -- from subject):
+
+  Continuation of 8c15dfc6: once the switch shapes matched, more
+  compression was possible. 16 lines is a meaningful shave for
+  entry.S, which is read frequently while debugging.
+
+--------------------------------------------------------------------------------
+
+## 211a2064 -- [FAT32] Update fat_entry by adding the missing fields
+
+Commit: 211a206446...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 12:50:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -17 across 2 files. include/common/fat32_base.h: the
+  fat_entry (directory entry) struct gets its previously-missing
+  FAT fields filled in. basic_defs.h gains 2 lines of
+  complementary typedef/alignment plumbing.
+
+Context (guess -- from subject):
+
+  FAT directory entries are a fixed-layout 32-byte record; earlier
+  code only declared the fields it actively used. Upcoming features
+  (long filenames, access/create time, extended attrs) need the
+  full definition.
+
+--------------------------------------------------------------------------------
+
+## 291bd85d -- Update .gitignore
+
+Commit: 291bd85dd2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 13:15:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 lines across root .gitignore (+6) and scripts/build_apps/
+  .gitignore (+1). Patterns for freshly-added build artifacts.
+
+Context (guess -- no body):
+
+  Housekeeping. Stops `git status` noise after recent build/tool
+  additions.
+
+--------------------------------------------------------------------------------
+
+## 5defb3f7 -- [FS] Optimize fat32_is_valid_filename_character() with
+   a lookup array
+
+Commit: 5defb3f7b4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 13:28:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +103 / -4 in common/fat32_base.c. The function that decides
+  whether a byte is legal in a FAT short filename is replaced by
+  a 256-entry bool/bit lookup table. The bulk of the new lines is
+  the initialiser array itself, one flag per byte value.
+
+Context (guess -- from subject):
+
+  Previous implementation was a chain of `c == X || c == Y || ...`
+  comparisons, O(k) per char. Table lookup is O(1) and
+  branch-free, meaningful for path-walking performance.
+
+--------------------------------------------------------------------------------
+
+## 86912a24 -- [process] Fix a race in sys_execve()
+
+Commit: 86912a248b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 18:24:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -22 in kernel/process.c. Flattens the nested
+  disable_preemption / enable_preemption block around
+  load_elf_program + task switch. Preemption is now disabled for
+  the whole critical section; only on the "current == NULL"
+  bootstrap path does it re-enable. The post-switch branch is
+  simplified: if current was non-NULL the code never "re-disables"
+  preemption -- switch_to_task inherits the already-disabled
+  state.
+
+Context (guess -- from subject):
+
+  Previously the code enabled preemption between the page-dir
+  teardown and the switch_to_task call, opening a window where
+  the task could be scheduled out mid-execve with a half-built
+  address space. The fix keeps preemption disabled across the
+  whole swap.
+
+--------------------------------------------------------------------------------
+
+## 54bd5501 -- [shell] Minor fixes
+
+Commit: 54bd5501e9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 18:25:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 lines in usermode_apps/shell.c. Tiny userspace shell tweak
+  -- probably a missing \0, a null-check, or a return-code
+  propagation.
+
+Context (guess -- from subject):
+
+  Small rough edges in the companion shell, surfaced while
+  testing the sys_execve fix above.
+
+--------------------------------------------------------------------------------
+
+## 3cf11151 -- [kmalloc] Replace the kmalloc_mutex with disable/enable
+   preemption
+
+Commit: 3cf1115126...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 18:30:53 2018 +0300
+
+> If even, theoretically, it is better for the allocator to have
+> its own lock, that complicates the things since it does not allow
+> (safely) non-preemptable code to call kmalloc/kfree. What could
+> happen in that case is that the non-preemptable code might not be
+> able to grab the kmalloc lock because other preemptable code
+> holds it. This will end up in an ASSERT since the kmutex code
+> won't be able to put succeed in calling kernel_yield. For a
+> simple project like exOS, it is acceptable such a commonly used
+> thing like the allocator to be called inside non-preemptable
+> code. Also, considering that a kmalloc/kfree pair costs about
+> 500-600 cycles that sounds not a big deal.
+
+AI notes:
+
+What changed:
+
+  +5 / -7 in kernel/kmalloc.c. The kmalloc_mutex acquire/release
+  bracketing the allocator's critical section is replaced by
+  disable_preemption() / enable_preemption().
+
+Context (from body):
+
+  kmutex's wait path calls kernel_yield(), which is illegal in
+  non-preemptable context -- so any kmalloc from an interrupt /
+  tasklet / preemption-disabled path would ASSERT. Disabling
+  preemption around the allocator's short critical section
+  sidesteps that entirely at the (small, 500-600 cycle) cost of a
+  full-kernel-wide non-preemptable window. Accepted tradeoff for a
+  uniprocessor hobby kernel.
+
+--------------------------------------------------------------------------------
+
+## fc053ea9 -- [elf_loader] Fix a bug in the calculation of page_count
+
+Commit: fc053ea99d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 19:14:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -11 in kernel/elf.c. The page_count computation for an ELF
+  loadable segment is corrected. Likely problem: ceiling division
+  didn't account for segments whose vaddr is mid-page (start
+  offset not page-aligned), undercounting pages by one when the
+  memsz crossed a page boundary.
+
+Context (guess -- no body):
+
+  Symptoms of this bug would be page faults near the end of the
+  last page of an ELF segment. Critical for running binaries whose
+  segments happen to straddle pages, which is almost always.
+
+--------------------------------------------------------------------------------
+
+## 21a2adc8 -- [build_toolchain] Fix support for libmusl
+
+Commit: 21a2adc877...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Mar 26 19:43:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -16 across 7 build wrapper scripts. i386-ar / i386-gcc /
+  i386-ranlib / run_g++ / run_gcc lose 2-3 lines each (some
+  musl-specific hacks being removed or unified). musl-gcc gains
+  3 lines; build_toolchain itself gets +15 / -2 of new install
+  logic.
+
+Context (guess -- from subject):
+
+  musl was partially broken by earlier toolchain reshuffles. Fix
+  is to centralise the musl handling in build_toolchain +
+  musl-gcc wrapper, remove scattered per-tool workarounds.
+
+--------------------------------------------------------------------------------
+
+## 241b1e67 -- [string_util] Introduce strncmp()
+
+Commit: 241b1e6739...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 11:16:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -3 across 2 files. common/string_util.c gains a
+  straightforward strncmp(s1, s2, n); the header declares it.
+
+Context (guess -- no body):
+
+  Missing standard-library primitive the kernel now needs. Usual
+  pattern: feature commits pull in such primitives as they become
+  required.
+
+--------------------------------------------------------------------------------
+
+## 1860530c -- [elf_loader] Partial error handling in
+   load_elf_program()
+
+Commit: 1860530c0b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 11:41:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -21 across 2 files. kernel/elf.c's load_elf_program now
+  returns proper error codes and unwinds partial allocations on
+  failure (freeing pages / page dirs built up to the failing
+  point) instead of assuming success. kernel/main.c adjusts two
+  call sites to handle the new failure returns.
+
+Context (guess -- from subject):
+
+  Prereq for robust execve: if ELF loading fails halfway (bad
+  header, OOM, I/O error) the caller needs to know and the kernel
+  must not leak mappings. "Partial" in the subject signals there
+  are still untreated failure cases -- more to come.
+
+--------------------------------------------------------------------------------
+
+## 895dcfcd -- [elf_loader] Extract load_phdr() from
+   load_elf_program()
+
+Commit: 895dcfcd87...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 11:52:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +51 / -46 in kernel/elf.c. Net +5 lines. The body of the
+  per-program-header loop inside load_elf_program() is hoisted
+  into a new static helper load_phdr(). The inner logic is
+  unchanged; only the wrapping boilerplate (return codes, unwind
+  labels) differs.
+
+Context (guess -- from subject):
+
+  Refactor prompted by the error-handling work in 1860530c:
+  managing per-segment failure and unwind cleanly is much easier
+  with one segment's handling in a dedicated function.
+
+--------------------------------------------------------------------------------
+
+## 9930fd96 -- [elf_loader] Complete the error handling in
+   load_elf_program()
+
+Commit: 9930fd964f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 13:07:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -17 across 3 files. kernel/elf.c +40 / -17: the remaining
+  failure paths now fully roll back (free allocated pdir, unmap
+  what was mapped). kernel/arch/i386/paging.c +4 lines: probably
+  a helper that helps with mass-unmap on teardown.
+  kernel/process.c +3 / -1 at the execve caller.
+
+Context (from subject):
+
+  Completes the work started in 1860530c. Together with 895dcfcd's
+  helper split, load_elf_program is now fully
+  all-or-nothing: on error no side effects leak.
+
+--------------------------------------------------------------------------------
+
+## 4f013458 -- [ext_string_util, process] Fix bugs and allow argv,
+   envp to work
+
+Commit: 4f0134582d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 13:52:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -16 across 3 files. kernel/ext_string_util.c (dcopy_strarray
+  / dfree_strarray helpers) gets bug fixes (+4 / -7 -- net -3).
+  kernel/process.c touches +5 / -5 at the execve argv/envp handling.
+  usermode_apps/shell.c +8 / -4 -- now actually passing argv/envp.
+
+Context (guess -- from subject):
+
+  argv/envp plumbing through execve was incomplete; shell/kernel
+  each had a bug keeping programs from seeing command-line args.
+  Joint fix across the three files that touched the array.
+
+--------------------------------------------------------------------------------
+
+## f8be627e -- [sys_execve] Add full out-of-memory error handling
+
+Commit: f8be627e1d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 14:02:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +36 / -7 across 2 files. ext_string_util.c +10 / -2 so
+  dcopy_strarray returns NULL on OOM / doesn't leak what it's
+  already built. kernel/process.c +26 / -5: sys_execve checks
+  every allocation (filename_copy, argv_copy, env_copy,
+  page-dir, etc.) and unwinds cleanly, returning -ENOMEM.
+
+Context (guess -- from subject):
+
+  Final robustness pass on execve. Kernels that lie about OOM are
+  hard to debug; after this commit a failing execve leaves the
+  caller's address space intact so it can report the failure and
+  continue.
+
+--------------------------------------------------------------------------------
+
+## e7c1b5b3 -- Fix build error
+
+Commit: e7c1b5b3ff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 15:07:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  3 lines in kernel/process.c. Quick syntax / prototype
+  correction triggered by the previous commit -- likely a missed
+  include, a typo, or an unused-variable warning with -Werror.
+
+Context (guess -- from subject):
+
+  A fix-up commit, typical after a big refactor burst. No
+  behavioural change.
+
+--------------------------------------------------------------------------------
+
+## ab8d9acc -- [ext_string_util] Fix a nasty bug in dcopy_strarray()
+
+Commit: ab8d9accfa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 22:45:16 2018 +0300
+
+> In addition, re-add the free calls in sys_execve() in the
+> positive case.
+
+AI notes:
+
+What changed:
+
+  +8 / -1 across 2 files. 1-line fix in kernel/ext_string_util.c
+  (the "nasty" bug), and kernel/process.c gains 7 lines to
+  re-introduce kfree/dfree_strarray calls on the success path that
+  had been accidentally removed during the prior reshuffle.
+
+Context (from body):
+
+  Pair of corrections. The dcopy_strarray bug was likely an
+  off-by-one (copying n entries instead of n+1 for the NULL
+  terminator) or a swapped pointer. The missing frees on success
+  were a regression introduced while reworking the error
+  unwind -- if the new exec succeeded, the duplicated buffers
+  were leaking.
+
+--------------------------------------------------------------------------------
+
+## cc832444 -- [kernel_yield] Introduce
+   save_current_kernel_task_state() in process32.c
+
+Commit: cc832444b8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Mar 27 18:58:37 2018 +0300
+
+> The current change updates the macro used by kernel_yield() and
+> panic_save_current_state() to save all the registers and make it
+> call a dedicated (new) function called
+> save_current_kernel_task_state() instead of the common one,
+> save_current_task_state() used by the timer handler before
+> calling the scheduler. This allows the new save state C function
+> to just use memcpy() to save the state, avoiding any tricky
+> calculations caused by the difference in the data saved on stack
+> by the CPU when there been a privilege level change and when
+> there hasn't.
+
+AI notes:
+
+What changed:
+
+  +55 / -39 across entry.S (+51 / -19) and process32.c (+43 / -24).
+  New C function save_current_kernel_task_state() specifically for
+  kernel-mode yield / panic paths. entry.S asm macro feeding
+  kernel_yield is updated to push a fully populated iret frame so
+  the C side can memcpy it wholesale.
+
+Context (from body):
+
+  Without CPL transition, the CPU pushes only EIP+CS+EFLAGS (no
+  SS/ESP) onto the stack at interrupt time. Mixing
+  user-interrupted and kernel-interrupted paths into a single
+  save routine required branchy pointer arithmetic based on the
+  saved CS. Splitting the kernel-task path into its own helper
+  lets it assume a fixed layout and just memcpy the saved regs.
+
+--------------------------------------------------------------------------------
+
+## d3bffd06 -- [tasklet] Use always kernel_yield() instead of
+   kcond_wait in DEBUG builds
+
+Commit: d3bffd0636...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 12:37:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -4 in kernel/tasklet.c. Under #ifdef DEBUG, the tasklet
+  runner loop skips kcond_wait and instead calls kernel_yield()
+  unconditionally when idle.
+
+Context (guess -- from subject):
+
+  In DEBUG builds we want the scheduler + kernel_yield path to
+  get maximum exercise; skipping the efficient kcond_wait forces
+  the runner to cycle through yield every iteration, stressing
+  preemption and context-switch correctness. Release builds keep
+  the efficient wait.
+
+--------------------------------------------------------------------------------
+
+## 96f68e24 -- [entry] Minor, mostly cosmetic, changes
+
+Commit: 96f68e242e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 16:19:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -5 across entry.S, process32.c, and self_tests/
+  testrunners.c. Asm tweaks (6 lines), process32.c (4 lines),
+  one test runner gets +5 lines (maybe an additional
+  sanity-check self-test).
+
+Context (guess -- from subject):
+
+  Pass over the low-level code after the preceding save-state
+  split; plus an incidental testrunners update to exercise it.
+
+--------------------------------------------------------------------------------
+
+## f55024d4 -- [entry] Make kernel context switch funcs use the
+   pushed-on-stack EIP
+
+Commit: f55024d4e9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 17:08:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -13 across entry.S and process32.c. The kernel-mode
+  context-switch asm now reads the resume EIP from the saved
+  struct regs (which already holds the return EIP pushed by the
+  CPU at int/yield time) instead of getting it by a separate
+  mechanism (caller-passed argument or wrapped C call).
+
+Context (guess -- from subject):
+
+  Continuation of the state-save refactor: the struct regs is
+  the single source of truth for a yielded kernel task's
+  continuation point, so the switch code should use it directly.
+  Eliminates a redundant path and matches the user-task switch
+  convention.
+
+--------------------------------------------------------------------------------
+
+## 6af3ff98 -- [process32] Adding comments and a ESP validation check
+   in a test kthread
+
+Commit: 6af3ff9801...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 19:54:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -2 across 4 files. 11 lines of comments in arch_utils.h
+  explaining the register-save / context-switch conventions.
+  process32.c +18 / -1 -- more inline documentation. testrunners.c
+  gets an ESP sanity check (+18 / -1): a kernel test thread
+  verifies its stack pointer stays within its own stack range.
+  shell.c +8 lines (probably a complementary user-side probe).
+
+Context (guess -- from subject):
+
+  After the recent context-switch redesign the invariants are
+  subtle; adding a runtime ESP check in a test kthread is a cheap
+  guard against stack-clobber regressions. Comments preserve the
+  hard-won understanding.
+
+--------------------------------------------------------------------------------
+
+## d6a6a930 -- [entry] Add 'cld' in asm_int_handler before calling the
+   C code
+
+Commit: d6a6a93000...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 20:45:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -2 lines in entry.S. `cld` (clear direction flag) inserted
+  in asm_int_handler before the call into C.
+
+Context (guess -- from subject):
+
+  x86 ABI / SysV convention assumes DF=0 at function entry so
+  `rep movs` / `rep stos` default to forward. An interrupted user
+  could have left DF=1; without `cld` the inline-asm memcpy/memset
+  introduced a few commits ago would run backwards and corrupt
+  memory. Same reason the Linux kernel has the exact same `cld`
+  in its interrupt prologue.
+
+--------------------------------------------------------------------------------
+
+## 92bd5070 -- Fix build error and the stub header
+   exos/arch/x86_64/arch_utils.h
+
+Commit: 92bd5070b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 21:12:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +46 / -37 across 3 files. include/exos/hal.h loses 15 net lines
+  -- per-arch plumbing extracted. include/exos/arch/i386/arch_utils.h
+  gains 5 lines. New 26-line stub
+  include/exos/arch/x86_64/arch_utils.h so x86_64 compilation
+  reaches the linker even if a real impl isn't provided.
+
+Context (guess -- from subject):
+
+  Preliminary x86_64 support -- at least getting the include tree
+  to resolve. Also unbreaks a stale build caused by a mismatched
+  hal.h declaration vs i386 impl.
+
+--------------------------------------------------------------------------------
+
+## 6ade22ed -- [arch_utils] Add protection checks forcing code to
+   include only hal.h
+
+Commit: 6ade22ed4d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Mar 28 21:20:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -7 across 3 files. arch-specific arch_utils.h headers gain
+  #ifndef _EXOS_HAL_H_INCLUDED_ / #error guards so they're only
+  includable indirectly through exos/hal.h. hal.h defines the
+  sentinel before including them.
+
+Context (guess -- from subject):
+
+  Enforces a layered include discipline: callers should not reach
+  into arch/* directly. Prevents drive-by future includes that
+  would make replacing i386 with another arch harder.
+
+--------------------------------------------------------------------------------
+
+## fa6d7194 -- [process32, entry] Re-design the context switch for
+   kernel threads
+
+Commit: fa6d719429...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 12:45:28 2018 +0300
+
+> Currently, kernel threads and the kernel part of the user
+> threads (tasks) had a dedicated copy of the 'regs' struct in
+> task_info. The save of kernel context and the switch logic was
+> similar to one used for user tasks, except for some trickery
+> necessary to handle the fact that in case of no privilege
+> change, x86 CPUs don't push esp and ss on the stack. The
+> dedicated copy of 'regs' for the kernel state was first pushed
+> on stack by asm_int_handler or by kernel_yield and then stored
+> in current->kernel_state_regs by either save_current_task_state()
+> [preemption] or save_current_kernel_task_state() [yield]. The
+> stack used by the int handler/yield to save the registers was
+> discarded. Now instead, current->kernel_state_regs has become a
+> pointer to a 'regs' struct pointing exactly to that part of the
+> stack. This way, the context switch among kernel threads is
+> faster and we save some memory too.
+
+AI notes:
+
+What changed:
+
+  +40 / -111 across 6 files -- large net simplification (-71
+  lines). entry.S shrinks dramatically (+17 / -40). process32.c
+  loses 35 net lines (saving helpers gone). process.h:
+  kernel_state_regs becomes a pointer rather than an embedded
+  struct. hal.h, debug_utils.c, misc.c adjust dereferences.
+
+Context (from body):
+
+  Elegant fix: instead of copying the saved regs off the stack
+  into a per-task storage area (and then switching back), just
+  remember where on the stack the saved frame lives. The stack
+  itself owns the memory; no copy, no duplicated "which variant
+  of the layout do we have" logic. This sheds both CPU time (no
+  memcpy on yield) and memory (no embedded regs in task_info).
+
+--------------------------------------------------------------------------------
+
+## 4a870b0c -- [process32, entry] Polishing the code
+
+Commit: 4a870b0c3e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 14:26:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -27 across entry.S and process32.c. Net -6 lines.
+  Asm/C cleanup on the newly-redesigned kernel-thread context
+  switch path from fa6d7194.
+
+Context (guess -- from subject):
+
+  Standard "polish pass" after a substantial refactor -- trim
+  leftover scaffolding, align style, remove now-redundant
+  comments/decls.
+
+--------------------------------------------------------------------------------
+
+## 6bec50c5 -- [process32, entry] Remove
+   save_current_kernel_task_state()
+
+Commit: 6bec50c576...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 14:48:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -16 across entry.S (1 line) and process32.c (+9 / -15).
+  The dedicated save_current_kernel_task_state() helper
+  introduced in cc832444 is deleted; its single remaining caller
+  inlines the minimal work still needed.
+
+Context (guess -- from subject):
+
+  Natural follow-up to fa6d7194: once kernel_state_regs became a
+  pointer into the stack, there's nothing left to "save" -- the
+  state is already on the stack. The helper has degenerated into
+  a thin shim and can be removed.
+
+--------------------------------------------------------------------------------
+
+## d91c6cd6 -- [process32, entry] Make again the panic being able to
+   show the right regs
+
+Commit: d91c6cd61a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 20:11:03 2018 +0300
+
+> After the recent changes in the kernel tasks context switch
+> code, the panic_save_current_state() got broken, because saving
+> just the esp does not work, if the panic save function has to
+> return and store the esp. Therefore, user's state_regs has been
+> used as a store in this unfortunate corner case.
+
+AI notes:
+
+What changed:
+
+  +60 / -20 across entry.S and process32.c. Panic-path saving is
+  restored to full-regs semantics: the old user-space state_regs
+  struct is repurposed as the storage for the panic snapshot, so
+  panic_save_current_state() can return to its caller without
+  losing the registers to print.
+
+Context (from body):
+
+  Regression caused by the recent "stack-pointer only" save
+  design. It assumed the caller never returns -- true for yield
+  and preemption, but panic_save_current_state() does need to
+  return so the panic handler can continue. Reusing state_regs
+  is an acceptable hack because during panic the user state is
+  moot anyway.
+
+--------------------------------------------------------------------------------
+
+## 3fa7e739 -- [interrupts] Make push/pop nested interrupts inline
+
+Commit: 3fa7e73907...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 17:23:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -27 across 3 files. push_nested_interrupt() /
+  pop_nested_interrupt() move from kernel/interrupts.c (-29) into
+  static inlines in include/exos/irq.h (+12 / -4). process32.c
+  adjusts one call site.
+
+Context (guess -- from subject):
+
+  These helpers are tiny and called on every IRQ entry/exit;
+  inlining eliminates call overhead on a very hot path.
+  kernel/interrupts.c gets a corresponding shrink.
+
+--------------------------------------------------------------------------------
+
+## 8b1097aa -- [interrupts] Introduce interrupts.h by moving
+   definitions from irq.h
+
+Commit: 8b1097aaeb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Mar 29 17:52:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +87 / -96 across 5 files. New header exos/interrupts.h (+32).
+  exos/irq.h shrinks drastically (-93): only the
+  architecture-specific IRQ-controller pieces remain there.
+  kernel/arch/i386/irq.c, kernel/interrupts.c, unittests/
+  generic_mocks.c adjust #include paths.
+
+Context (guess -- from subject):
+
+  Separating two concerns that had been tangled in irq.h:
+  generic interrupt bookkeeping (push/pop nested, enable/disable,
+  counters) vs hardware IRQ controller (PIC/APIC) driver. Now
+  each header has a single purpose.
+
+--------------------------------------------------------------------------------
+
+## 2a87fe1e -- [interrupts] Move other funcs in interrupts.h
+
+Commit: 2a87fe1efd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 11:57:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +97 / -97 across 5 files -- perfect balance (pure relocation).
+  73 lines leave common/arch/generic_x86/x86_utils.h and land in
+  exos/interrupts.h (+96). idt.c, char/term.c, interrupts.c
+  update includes.
+
+Context (guess -- from subject):
+
+  Continuation of 8b1097aa: the x86-specific sti/cli/pushf/popf
+  helpers were in x86_utils.h; moving the generic
+  enable/disable_interrupts API to interrupts.h means callers
+  stop pulling in x86_utils just to toggle IRQs.
+
+--------------------------------------------------------------------------------
+
+## 0001e5bd -- [interrupts] Make enable/disable interrupts to take
+   a uptr* parameter
+
+Commit: 0001e5bd96...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 12:13:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -61 across 7 files. interrupts.h loses 33 net lines
+  (the previous "save state in TLS counter" machinery). Every
+  caller (kb.c, irq.c, term.c, tasklet.c, timer_handler.c,
+  interrupts.c) now passes a local `uptr var` by pointer to
+  save/restore the flags register.
+
+Context (guess -- from subject):
+
+  Mirrors Linux's local_irq_save(flags)/local_irq_restore(flags)
+  pattern. The previous global counter approach is error-prone
+  (re-entry, ordering); the explicit local-save is race-free and
+  self-documenting.
+
+--------------------------------------------------------------------------------
+
+## 49a3ae88 -- [interrupts] Remove disable_interrupts_count from the
+   kernel
+
+Commit: 49a3ae8801...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 12:52:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -109 across 6 files. interrupts.h drops 47 lines of
+  counter-based API. kernel/interrupts.c loses 41 lines (the
+  counter itself and its helpers). irq.c, process32.c, misc.c
+  remove obsolete consumers. x86_utils.h gains +46 lines of
+  lower-level replacement (likely inline cli/sti with
+  save/restore).
+
+Context (guess -- from subject):
+
+  After 0001e5bd switched every caller to local-save semantics,
+  the global disable_interrupts_count is dead weight. -67 net
+  lines is a healthy simplification.
+
+--------------------------------------------------------------------------------
+
+## e2133673 -- [interrupts] Remove HW_enable/disable_interrupts
+   macros
+
+Commit: e2133673d0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 12:59:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -33 across x86_utils.h (+22 / -32), kb.c (1 line),
+  arch/i386/irq.c (1 line). The HW_enable_interrupts /
+  HW_disable_interrupts macro wrappers are deleted; the two
+  remaining call sites call the underlying inline asm directly.
+
+Context (guess -- from subject):
+
+  Yet another layer removed now that the interrupt API is
+  stable: the HW_* thin wrappers were redundant with the
+  native cli/sti primitives. Name indirection gone.
+
+--------------------------------------------------------------------------------
+
+## d17988bf -- [interrupts] Minor improvements
+
+Commit: d17988bf19...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 13:24:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -19 across interrupts.h and kernel/interrupts.c. Net
+  +12 lines. Doc comments, a couple of inline helpers, and
+  probably tightened ASSERTs on the new API shape.
+
+Context (guess -- from subject):
+
+  Wrap-up of the interrupts-API refactor series -- codify
+  invariants and add sanity checks now that the surface is
+  settled.
+
+--------------------------------------------------------------------------------
+
+## 3037670a -- [interrupts] Fix broken tests
+
+Commit: 3037670a96...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 15:55:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  4 lines in include/common/arch/generic_x86/x86_utils.h.
+  Likely test-compatible guards for the newly-inlined interrupt
+  primitives (test build doesn't compile the asm).
+
+Context (guess -- from subject):
+
+  Host-side gtests broke on the interrupts refactor; small
+  compat patch to keep mocks happy.
+
+--------------------------------------------------------------------------------
+
+## bdf80213 -- [interrupts] Make nested_interrupts_* static
+
+Commit: bdf802136e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 16:35:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +83 / -60 across 5 files. exos/interrupts.h loses 29 net lines
+  (the direct push/pop exports). kernel/interrupts.c gains 64
+  net -- its internals expand but are now private (file-local).
+  process32.c, debug_utils.c, timer_handler.c switch to
+  accessors.
+
+Context (guess -- from subject):
+
+  Hiding implementation. nested_interrupts[] and its index were
+  exposed globally; making them static behind a few accessor
+  functions prevents accidental external manipulation.
+
+--------------------------------------------------------------------------------
+
+## 53c6a677 -- [interrupts] Polishing the code
+
+Commit: 53c6a677b7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 16:52:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -13 across process32.c (1 line) and interrupts.c (+8 /
+  -12). Small simplifications after the hidden-state commit.
+
+Context (guess -- from subject):
+
+  Cleanup continuation; subject says "polishing".
+
+--------------------------------------------------------------------------------
+
+## 6ed8d950 -- [process32] Polishing
+
+Commit: 6ed8d9500a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 17:09:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -12 across process32.c (-9) and interrupts.c (-1).
+  Modest shrinkage.
+
+Context (guess -- from subject):
+
+  More trim-down on process32.c after the earlier switch-path
+  redesign.
+
+--------------------------------------------------------------------------------
+
+## f919328b -- [test mocks] Remove unnecessary mocks
+
+Commit: f919328b1b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Mar 30 17:09:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -10 in unittests/generic_mocks.c. Stubs / mocks that
+  are no longer referenced by the host test build are deleted.
+
+Context (guess -- from subject):
+
+  After the interrupts refactor, some kernel symbols no longer
+  need host-side stubs (either the code path isn't reached by
+  tests, or the real code is now build-compatible).
+
+--------------------------------------------------------------------------------
+
+## 7284d1ea -- [context_switch] Use a single function for both user
+   and kernel tasks
+
+Commit: 7284d1ea49...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Mar 31 18:45:31 2018 +0300
+
+> After the recent changes, it was now possible to unify the
+> context switch functions for the user tasks and for the kernel
+> ones to just one simple assembly function. This allowed also
+> switch_to_task() to be simplified.
+
+AI notes:
+
+What changed:
+
+  +16 / -52 across 3 files. Net -36 lines. entry.S loses 33 net
+  lines (two separate asm routines merged into one). arch_utils.h
+  loses 13 lines of declarations. process32.c adjusts the
+  switch_to_task() C wrapper (+16 / -6).
+
+Context (from body):
+
+  Final prize of the context-switch refactor series. With
+  kernel_state_regs being just a pointer into the stack (fa6d7194),
+  kernel and user tasks look identical from the switch routine's
+  point of view -- both have a struct regs somewhere in memory and
+  we reload from it. One asm function replaces two.
+
+--------------------------------------------------------------------------------
+
+## dcc33a28 -- Rename exos_errno.h to errno.h
+
+Commit: dcc33a286a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 10:16:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -8 across 9 files. Pure rename: include/exos/exos_errno.h
+  -> include/exos/errno.h. Every kernel .c that #include'd it
+  updates its path.
+
+Context (guess -- no body):
+
+  Trimming the redundant "exos_" prefix now that the path itself
+  (exos/...) implies origin. Cleaner, matches standard header
+  name.
+
+--------------------------------------------------------------------------------
+
+## 7a81d4ce -- [shell] Make the fork_test runnable from the shell
+
+Commit: 7a81d4ce98...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 10:28:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +79 / -91 across 2 files. ~80 lines of fork_test code move
+  from usermode_apps/init.c into usermode_apps/shell.c, where
+  the shell can dispatch it as a built-in command.
+
+Context (guess -- from subject):
+
+  The test used to run once at init; putting it behind a shell
+  command lets the developer invoke it on demand during
+  interactive sessions, reproducing fork/COW bugs at will
+  rather than chasing them through the boot path.
+
+--------------------------------------------------------------------------------
+
+## 77ae4b62 -- Move private header paging_int.h to the arch/i386
+   source directory
+
+Commit: 77ae4b628c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 10:40:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename: include/exos/arch/i386/paging_int.h ->
+  kernel/arch/i386/paging_int.h. paging.c updates its -I / include
+  path accordingly (+3 / -1 lines in paging.c).
+
+Context (guess -- from subject):
+
+  "Private" header (internal-to-the-translation-unit types) has
+  no business in the public include/ tree. Moving it next to its
+  sole consumer makes the scope explicit and shrinks the include
+  search surface.
+
+--------------------------------------------------------------------------------
+
+## 5f24066d -- [paging] Make all the user mapped pages to be
+   ref-counted
+
+Commit: 5f24066d35...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 11:23:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -22 in kernel/arch/i386/paging.c. map_page() path for
+  user pages now unconditionally bumps the frame refcount;
+  unmap_page() decrements. Previously only COW/shared pages
+  were refcounted; private user pages were not.
+
+Context (guess -- from subject):
+
+  Prereq for correct teardown across fork/exec and for future
+  mmap semantics. With uniform refcounting, free-on-last-ref
+  works whether the page is originally private or shared --
+  pdir_destroy can just drop all refs without per-case logic.
+
+--------------------------------------------------------------------------------
+
+## d42bf010 -- [paging] Use just 1 bit flag for COW pages
+
+Commit: d42bf010c1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 15:06:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -7 in kernel/arch/i386/paging.c. The COW marker is
+  consolidated into a single bit in a per-frame metadata word
+  (instead of a multi-bit field or separate storage).
+
+Context (guess -- from subject):
+
+  After 5f24066d introduced uniform refcounting, the COW flag
+  no longer needs to coexist with other per-page attributes in a
+  full byte/word -- one bit is enough, freeing bits for other
+  metadata.
+
+--------------------------------------------------------------------------------
+
+## 50978ed9 -- [paging] Polishing the code
+
+Commit: 50978ed980...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 15:20:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -28 in kernel/arch/i386/paging.c. Net -25 lines --
+  substantial dead code / duplication removal after the refcount
+  and COW-bit changes.
+
+Context (guess -- from subject):
+
+  Consolidation pass: with uniform refcounting and a 1-bit COW
+  flag, the special-case branches can collapse.
+
+--------------------------------------------------------------------------------
+
+## 6c969f04 -- [paging] Polishing the code (2)
+
+Commit: 6c969f044d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 15:30:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -16 in kernel/arch/i386/paging.c. Small reorg or renames
+  after the previous trim.
+
+Context (guess -- from subject):
+
+  Second cleanup round; expected churn when tidying a module.
+
+--------------------------------------------------------------------------------
+
+## 37afba54 -- [process] Minor changes in sys_fork()
+
+Commit: 37afba54de...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 18:39:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -7 in kernel/process.c. Small simplification in
+  sys_fork() -- probably dropping a guard or pre-check made
+  redundant by the recent paging refactors.
+
+Context (guess -- from subject):
+
+  Light touch on fork after the refcount/COW work stabilised
+  its primitives.
+
+--------------------------------------------------------------------------------
+
+## 63539df8 -- [threads][step 1] Rename task_info->pid to tid
+
+Commit: 63539df8ad...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 18:58:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -27 across 7 files. Pure rename of the task_info.pid
+  field to task_info.tid everywhere it's read/written.
+
+Context (guess -- from subject):
+
+  First step toward real POSIX threads. A task_info is per
+  thread, not per process; the field was mis-named. Future
+  steps (which are clearly coming in this series) will
+  introduce a separate process-level pid that multiple tasks
+  can share.
+
+--------------------------------------------------------------------------------
+
+## 38c8b104 -- [threads][step 2] Rename parent_pid to parent_tid
+
+Commit: 38c8b10436...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 19:00:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 across 2 files. Companion rename:
+  task_info.parent_pid -> task_info.parent_tid.
+
+Context (guess -- from subject):
+
+  Same rationale as step 1. The parent pointer at task-level
+  identifies the parent *task*, not process.
+
+--------------------------------------------------------------------------------
+
+## 9b157e2c -- [threads][step 3] Introduce create_new_pid()
+
+Commit: 9b157e2c2b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 19:06:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -6 across 4 files. New function create_new_pid()
+  (likely in sched.c) centralises pid allocation; process32.c,
+  process.c, process.h adjusted to call it instead of
+  open-coding a counter bump.
+
+Context (guess -- from subject):
+
+  Separating pid allocation from task creation. Steps 4-5 will
+  need the allocator to have pid reuse / wrap behaviour, which
+  is easier to change when it's in one place.
+
+--------------------------------------------------------------------------------
+
+## a97f9f32 -- [threads][step 4] Make tid assigned after
+   owning_process_pid in sys_fork
+
+Commit: a97f9f32bf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 19:31:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -7 across 4 files. Reorder: sys_fork first assigns the
+  child's owning_process_pid (the process-level id), then
+  derives the initial tid from it. Previously tid came first.
+
+Context (guess -- from subject):
+
+  Establishes the correct semantic ordering for pid/tid.
+  Foundation for mapping thread-within-process relationships.
+
+--------------------------------------------------------------------------------
+
+## 28081619 -- [threads][step 5] Make create_new_pid() to return at
+   most MAX_PID
+
+Commit: 28081619de...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 19:52:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -6 across 4 files. sched.c +16 net: create_new_pid()
+  now tracks allocated pids (likely a bitmap or cycling
+  counter) and wraps at MAX_PID instead of growing unbounded.
+
+Context (guess -- from subject):
+
+  POSIX requires pids to fit in a pid_t (typically <= 32768).
+  Capping at MAX_PID and reusing freed slots mirrors Linux's
+  behaviour.
+
+--------------------------------------------------------------------------------
+
+## 776fca27 -- [threads][step 6] Polishing sched.c's code
+
+Commit: 776fca2772...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 3 20:54:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -43 across 3 files. kernel/sched.c loses 34 net lines
+  -- the now-simpler pid allocator lets the scheduler drop
+  scaffolding. process.c -1 line. process.h +1 (one new decl
+  exposing create_new_pid?).
+
+Context (guess -- from subject):
+
+  Clean-up at the end of the 6-step threads pid refactor. Good
+  bisect point: everything up to here compiles and tests pass.
+
+--------------------------------------------------------------------------------
