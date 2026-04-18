@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-2-Clause
 
-# GLOBAL VARIABLES
-
-# Reset any forced env-based CFLAGS
-export CFLAGS=""
-export FFLAGS=""
-export CXXFLAGS=""
-export CFFLAGS=""
+# RUBY CONF
+RUBY_MIN_VER='3.2'
 
 # Project's root directory
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 MAIN_DIR="$(cd "$SOURCE_DIR/.." && pwd)"
-GCC_TC_CONF="$MAIN_DIR/other/gcc_tc_conf"
 OS="$(uname -s)"
+
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo "Bash bootstrap"
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+fi
 
 if [[ "$MAIN_DIR" == *" "* ]]; then
    echo "The Tilck source must be checked out in a path *WITHOUT* spaces"
@@ -21,264 +21,261 @@ if [[ "$MAIN_DIR" == *" "* ]]; then
    exit 1
 fi
 
-if [[ "$OS" == "FreeBSD" ]]; then
-   # Prepend our gnu-wrap directory to the path, so that on FreeBSD we'll
-   # use the GNU tools instead of the BSD ones.
+# Force a UTF-8 locale. Minimal Docker images (e.g. ubuntu:24.04) ship with
+# LANG unset, which makes Ruby default to US-ASCII and File.read/gsub fail
+# on any byte > 0x7F in files like ncurses' `configure`.
+if [[ "$LANG" == "" || "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
+   export LANG=C.UTF-8
+fi
+if [[ "$LC_ALL" == "C" || "$LC_ALL" == "POSIX" ]]; then
+   export LC_ALL=C.UTF-8
+fi
+
+if [[ "$OS" == "FreeBSD" || "$OS" == "Darwin" ]]; then
+   # Prepend our gnu-wrap directory to the path, so that on systems with a
+   # BSD userland (FreeBSD, macOS) we'll use the GNU tools instead of the
+   # BSD ones. Required for at least u-boot, which uses GNU make 3.82+
+   # features (`undefine`) and the system /usr/bin/make on macOS is 3.81.
    export PATH="$MAIN_DIR/scripts/gnu-wrap:$PATH"
 fi
 
-all_funcs_list=()
-install_funcs_list=()
-config_funcs_list=()
-
 # Source files to include
 source $MAIN_DIR/scripts/bash_includes/script_utils
-source $MAIN_DIR/scripts/bash_includes/arch_utils
-source $MAIN_DIR/scripts/bash_includes/cc_vars
-source $MAIN_DIR/scripts/bash_includes/arch_checks
-source $MAIN_DIR/scripts/bash_includes/compiler_checks
+source $MAIN_DIR/scripts/bash_includes/install_pkgs
 source $MAIN_DIR/other/pkg_versions
 
-# Target architectures
-ALL_ARCH_LIST=(i386 x86_64 riscv64 aarch64)
+function check_ruby_ver {
 
-# Build host architectures
-ALL_HOST_ARCH_LIST=(x86_64 aarch64)
+   local req_major=$(cut -d '.' -f 1 <<< $RUBY_MIN_VER)
+   local req_minor=$(cut -d '.' -f 2 <<< $RUBY_MIN_VER)
 
-# Default target architecture
-DEFAULT_ARCH="i386"
-
-export ARCH=${ARCH:-$DEFAULT_ARCH}
-
-# Set ARCH_GCC_TC based on ARCH
-set_arch_gcc_tc_arch $ARCH
-
-# Set HOST_ARCH based on `uname -m`
-set_host_arch_variable
-
-# Set {DEFAULT,MIN}_GCC_TC_VERSION
-set_gcc_tc_defaults
-
-# Global toolchain directory
-
-: ${TCROOT_PARENT:=$MAIN_DIR}
-: ${TCROOT:=$TCROOT_PARENT/toolchain3}
-TC="$TCROOT"
-
-# Constants
-BUILD_ARCH="x86_64" # offically supported build host architecture
-
-# Set GCC_TC_VER based on the .gcc_tc_ver_$ARCH file or defaults
-set_gcc_ver
-
-# Set ARCH_{SHORT,FAMILY,EFI,GCC_TC,...}
-set_arch_variables
-
-# Dump the most important variables like ARCH, GCC_TC_VER etc.
-dump_build_toolchain_env
-
-# Check BOARD and set its default value when applicable
-set_board_value_and_defaults
-
-ARCH_DIR="$TC/$GCC_TC_VER_/$ARCH"
-HOST_ARCH_DIR_SYS="$TC/syscc/host_$HOST_ARCH"
-HOST_ARCH_DIR_TC="$TC/$GCC_TC_VER_/host_$HOST_ARCH"
-
-function print_func {
-
-   local ftype="$1"
-   local fname="$2"
-   local has_printf="$3"
-   local is_default="$4"
-   local def=""
-
-   if [[ $is_default = 1 ]]; then
-      def=" (*)"
+   if [[ "$req_major" == "" || "$req_minor" == "" ]]; then
+      echo "ERROR: failed to parse RUBY_MIN_VER: $RUBY_MIN_VER"
+      exit 1
    fi
 
-   if [[ $has_printf = 1 ]]; then
+   if [[ "$RUBY" == "" ]]; then
+      return 1 # Variable not set
+   fi
 
-      local attrs=""
-      local extra_info=""
-      local installed_func="${ftype}_${fname}_installed_status"
+   if ! [[ -f "$RUBY" ]]; then
+      return 2 # File not found
+   fi
 
-      if [[ "$(type -t $installed_func)" == 'function' ]]; then
+   local ver="$($RUBY --version)"
 
-         local status="$(eval $installed_func)"
+   if [[ "$ver" == "" ]]; then
+      return 3 # Cannot run the binary
+   fi
 
-         if [[ -n "$status" ]]; then
+   if [[ "$ver" =~ ruby\ ([0-9]+)[.]([0-9]+)[.].+ ]]; then
 
-            if [[ "$status" =~ installed* ]]; then
+      local major=${BASH_REMATCH[1]}
+      local minor=${BASH_REMATCH[2]}
 
-               if ! [[ "$status" = "installed" ]]; then
-
-                  extra_info=$(echo "$status" | cut -d ' ' -f 2-)
-                  status="installed"
-               fi
-            fi
-
-            status=$(printf "%-9s" "$status")
-         fi
-
-         case "$status" in
-
-            installed*)
-               status="$GREEN${status}$RATTRS"
-            ;;
-
-            error*)
-               status="$RED${status}$RATTRS"
-            ;;
-
-            skipped*)
-               status="$YELLOW${status}$RATTRS"
-            ;;
-
-         esac
-
-         if [[ -n "$status" ]]; then
-            attrs="$attrs[ $status ]"
-         fi
-
-         if [[ -n "$extra_info" ]]; then
-            attrs="$attrs[ $extra_info ]"
-         fi
+      if [[ "$major" == "" || "$minor" == "" ]]; then
+         echo "ERROR: failed to parse ruby version from: $ver"
+         return 4 # Version parsing failed.
       fi
 
-      printf "%-35s $attrs\n" "$fname$def"
+      if [[ $major -ge $((req_major+1)) ]]; then
+         return 0 # Success
+      fi
 
-   else
-
-      echo "   - $1 $def"
+      if [[ $major -eq $req_major && $minor -ge $req_minor ]]; then
+         return 0 # Success
+      fi
    fi
+
+   return 5 # Version check failed.
 }
 
-function show_funcs_list {
+function check_new_ruby_binary {
 
-   local has_printf=0
-   local all_def_funcs=" ${default_funcs[*]} "
+   check_ruby_ver
+   status=$?
 
-   if printf "" &> /dev/null; then
-      has_printf=1
-   fi
-
-   echo ""
-   echo "--- GCC toolchains (pre-compiled) ---"
-   echo ""
-
-   for x in ${all_funcs_list[@]}; do
-
-      if [[ $x =~ download_gcc_(.+) ]]; then
-
-         local n=${BASH_REMATCH[1]}
-         if [[ "$all_def_funcs" =~ " ${x} " ]]; then
-            print_func download gcc_$n $has_printf 1
-         else
-            print_func download gcc_$n $has_printf 0
-         fi
-      fi
-
-   done
-
-   echo ""
-   echo "--- Packages for GCC: $GCC_TC_VER ---"
-   echo ""
-
-   for x in ${default_funcs[@]}; do
-
-      if [[ $x =~ (download|build|config)_(.+) ]]; then
-
-         local t=${BASH_REMATCH[1]}
-         local n=${BASH_REMATCH[2]}
-
-         if [[ $n =~ gcc_* ]]; then
-            continue # we already printed the toolchains
-         fi
-
-         print_func $t $n $has_printf 1
-      fi
-   done
-
-   for x in ${all_funcs_list[@]}; do
-
-      if [[ "$all_def_funcs" =~ " ${x} " ]]; then
-         # already included by the default funcs, skip
-         continue
-      fi
-
-      if [[ $x =~ (download|build|config)_(.+) ]]; then
-
-         local t=${BASH_REMATCH[1]}
-         local n=${BASH_REMATCH[2]}
-
-         if [[ $t == "config" || $n =~ gcc_* ]]; then
-            # Skip the config_* functions. We'll print them separately.
-            continue
-         fi
-
-         print_func $t $n $has_printf 0
-      fi
-   done
-
-   echo ""
-   echo -e "(*) Default packages for ARCH=$ARCH\n"
-   echo ""
-   echo "--- Config functions ---"
-
-   # Now print all the config_* funcs
-   for x in ${all_funcs_list[@]}; do
-      if [[ "$x" =~ config_(.+) ]]; then
-         print_func config "${BASH_REMATCH[1]}" $has_printf 0
-      fi
-   done
-   echo ""
+   case $status in
+      0) return;;
+      1) echo "ERROR: \$RUBY is not set"; exit 1;;
+      2) echo "ERROR: File not found: $RUBY"; exit 1;;
+      3) echo "ERROR: Cannot run $RUBY"; exit 1;;
+      4) echo "ERROR: Cannot parse version of $RUBY"; exit 1;;
+      5) echo "ERROR: Version check failed for $RUBY"; exit 1;;
+      *) echo "ERROR: Unknown error $status. RUBY=$RUBY"; exit 1;;
+   esac
 }
 
-function show_help {
+# $1 -> distro
+# $2 -> ver
+function download_ruby {
 
-   echo
-   echo "Syntax:"
-   echo "   ./scripts/build_toolchain  [Install only default packages]"
-   echo
-   echo "   -s, install <pkgs...> Download/build/install pkgs"
-   echo
-   echo "   -c, config <pkg>      Reconfigure a specific pkg (when applicable)"
-   echo
-   echo "   -n                    Do not check for nor install system packages"
-   echo
-   echo "   -j, --just-context    Just dump the context (vars) and exit"
-   echo
-   echo "   -l, --list-all        List all packages, toolchains, funcs"
-   echo
-   echo "   -a, --all-archs       Make clean/delete options affect all the"
-   echo "                         architectures, not just the current one."
-   echo
-   echo "   -d, --delete          Delete the given package from the toolchain"
-   echo "                         for the current arch or for all archs (-a)"
-   echo
-   echo "   --clean               Remove all packages for the current ARCH, "
-   echo "                         except the cache and the compilers. Affected"
-   echo "                         by -a, --all-archs."
-   echo
-   echo "   --clean-all           Remove everything except the cache for all "
-   echo "                         architectures."
-   echo
+   local distro="$1"
+   local ver="$2"
+   local compdir=$RUBY_INSTALL_DIR
+   local gh="https://github.com/vvaltchev/ruby/releases/download"
+   local ruby_ver_=$(tr '.' '_' <<< $VER_RUBY)
+   local url="$gh/v${ruby_ver_}"
+   local tarname="ruby-${VER_RUBY}-${distro}${ver}-${HOST_ARCH}.tar.bz2"
+
+   if [[ "$FORCE_RUBY_BUILD" == 1 ]]; then
+      echo "INFO: FORCE_RUBY_BUILD=1, skip download attempt"
+      return
+   fi
+
+   if ! wget --spider "$url/$tarname" &>/dev/null; then
+      echo "INFO: No pre-compiled $tarname package available"
+      return
+   fi
+
+   mkdir -p $compdir/..
+   pushd $compdir/..
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_bz $tarname ruby-$VER_RUBY $VER_RUBY
+   popd
+
+   RUBY=$compdir/bin/ruby
+   check_new_ruby_binary
+   echo "INFO: Download Ruby: DONE"
 }
 
-function execute_func {
+function build_ruby {
 
-   if [ -n "$(type -t $1)" ] && [ "$(type -t $1)" = function ]; then
+   local installdir=$RUBY_INSTALL_DIR
+   local compdir=$installdir/source
+   local major=$(cut -d '.' -f 1 <<< $VER_RUBY)
+   local minor=$(cut -d '.' -f 2 <<< $VER_RUBY)
+   local url="https://cache.ruby-lang.org/pub/ruby/${major}.${minor}"
+   local tarname="ruby-${VER_RUBY}.tar.gz"
+   local params=()
 
-      echo "[build_toolchain] Executing single function '$1'"
-      $1
-      echo "[build_toolchain] Executing single function: DONE"
+   echo "INFO: Build Ruby $VER_RUBY from source"
 
-      return 0
-
-   else
-
-      return 1  # No such function
+   if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
+      # Do check/install all the system dependencies.
+      install_packages
    fi
+
+   # Now finally create/enter in the ruby directory and download the source.
+   mkdir -p $compdir/..
+   pushd $compdir/..
+
+   download_file_in_cache "$url" "$tarname"
+   extract_cachefile_tar_gz $tarname ruby-$VER_RUBY source
+
+   # Enter in ruby/$VER_RUBY and build.
+   cd $compdir
+   params+=(--prefix='$installdir')
+   params+=(--disable-install-doc)
+   params+=(--enable-load-relative)
+   params+=(--with-out-ext='-test-*,win32*')
+   run_command2 "./configure ${params[*]}" configure.log
+   run_command2 "make -j$BUILD_PAR" build.log
+   run_command2 "make install" install.log
+   popd
+
+   RUBY="$installdir/bin/ruby"
+   check_new_ruby_binary
+   echo "INFO: Build Ruby: DONE"
+}
+
+function setup_ruby {
+
+   local compdir=$RUBY_INSTALL_DIR
+   local os_rel="/etc/os-release"
+   local major
+   local minor
+   local ver
+
+   # Check Ruby's version.
+   if [[ "$RUBY" != "" && -f "$RUBY" ]]; then
+      echo "INFO: Using ruby from the env var (unconditionally)."
+      return
+   fi
+
+   if [ -f "$compdir/bin/ruby" ]; then
+      RUBY="$compdir/bin/ruby"
+      if ! [ "$QUIET" = 1 ]; then
+         echo "INFO: Using local Ruby:"
+         echo "$RUBY"
+      fi
+      return
+   fi
+
+   RUBY="$(which ruby)"
+
+   if check_ruby_ver; then
+      if ! [ "$QUIET" = 1 ]; then
+         echo "INFO: using system Ruby: $RUBY"
+      fi
+
+      if [[ "$OS" == "FreeBSD" ]]; then
+         # On FreeBSD, we need to run `install_packages` even if we found
+         # a recent-enough version of Ruby installed, simply because on that
+         # OS, Ruby doesn't ship with many of the standard gems included on
+         # Linux. Those are available as separate packages, so we need to
+         # check for their presence and install them as necessary. The good
+         # news is that FreeBSD's package manager is super-fast, so that takes
+         # a few hundred milliseconds (e.g. ~300ms) on a modern machine.
+         if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
+            install_packages
+            export SKIP_INSTALL_PACKAGES=1
+         fi
+      fi
+      return
+   fi
+
+   if [[ -f "$RUBY" ]]; then
+      echo "System Ruby is too old. Required >= $RUBY_MIN_VER"
+      export HAVE_OLD_RUBY=1
+      unset RUBY
+   fi
+
+   # Now let's determine if we're running on one of the Ubuntu or Debian
+   # versions for which we already have Ruby 3.4.7 pre-compiled.
+
+   if [ -f $os_rel ]; then
+
+      ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+      distro="$(grep -E '^ID=' $os_rel | cut -d '=' -f 2 | tr -d '"')"
+
+      if [[ "$distro" == *buntu ]]; then
+         distro="ubuntu"
+      fi
+
+      if [[ "$distro" != "" && "$ver" != "" ]]; then
+         echo "INFO: Detected distro $distro $ver on $HOST_ARCH"
+         download_ruby "$distro" "$ver"
+      fi
+   fi
+
+   if [ -f "$RUBY" ]; then
+      echo "Using local Ruby: $RUBY"
+      return
+   fi
+
+   if [[ "$HAVE_OLD_RUBY" == "" ]]; then
+      # It makes sense installing the packages and Ruby only if Ruby wasn't
+      # already in the system. Otherwise, we would waste time, when it was
+      # clear that Ruby is installed but it's too old and we need to build
+      # it from source.
+      echo "INFO: run install_packages() which will also install Ruby"
+      install_packages
+      export SKIP_INSTALL_PACKAGES=1
+
+      RUBY="$(which ruby)"
+      if check_ruby_ver; then
+         echo "INFO: using system Ruby: $RUBY"
+         return
+      fi
+
+      if [[ -f "$RUBY" ]]; then
+         echo "System Ruby is too old. Required >= $RUBY_MIN_VER"
+         unset RUBY
+      fi
+   fi
+
+   build_ruby
 }
 
 function create_base_dirs {
@@ -286,142 +283,69 @@ function create_base_dirs {
    mkdir -p $TC
    mkdir -p $TC/cache
    mkdir -p $TC/noarch
+   mkdir -p $(dirname $RUBY_INSTALL_DIR)
 
-   for a in ${ALL_ARCH_LIST[@]}; do
-      mkdir -p $TC/$GCC_TC_VER_/$a
-   done
-
-   for a in ${ALL_HOST_ARCH_LIST[@]}; do
-      for compiler in $GCC_TC_VER_ syscc; do
-         mkdir -p $TC/$compiler/host_$a
-      done
-   done
+   # The rest of the directories are created by the Ruby package manager
 }
 
-function perform_full_clean {
+# Set HOST_OS (linux|macos|freebsd) and HOST_DISTRO (e.g. ubuntu-22.04).
+# Keep this in sync with InitOnly.get_host_os / get_host_distro in
+# scripts/pkgmgr/early_logic.rb — the bash bootstrap needs to compute
+# RUBY_INSTALL_DIR *before* Ruby is available, so the logic has to live
+# in both languages.
+function detect_host_env {
 
-   echo "*** TOOLCHAIN FULL CLEAN ***"
-   if ! [ -d "$TC" ]; then
-      exit 0
-   fi
+   case "$OS" in
+      Linux)   HOST_OS="linux" ;;
+      Darwin)  HOST_OS="macos" ;;
+      FreeBSD) HOST_OS="freebsd" ;;
+      *)
+         echo "ERROR: unsupported host OS: $OS"
+         exit 1
+         ;;
+   esac
 
-   cd "$TC"
-   for x in `ls`; do
-      if [[ "$x" != "cache" ]]; then
-         echo "Deleting '$x'..."
-         rm -rf "$x"
-      fi
-   done
-
-   create_base_dirs
-   echo "DONE"
-   exit 0
-}
-
-function perform_clean {
-
-   if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
-      echo "*** TOOLCHAIN CLEAN ***"
-   fi
-
-   if ! [ -d "$TC" ]; then
-      exit 0
-   fi
-
-   cd "$TC"
-   for x in `ls`; do
-      if [[ "$x" != "cache" && "$x" != "syscc" ]]; then
-
-         if [[ "$x" == "noarch" ]]; then
-
-            if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
-               echo "Deleting $x..."
-               rm -rf $x
-            else
-               pushd $x
-               for y in `ls`; do
-
-                  if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
-                     echo "Deleting '$x/$y'..."
-                     rm -rf "$y"
-                  fi
-
-               done
-               popd
-            fi
-
-         else
-
-            pushd $x
-            for arch in `ls`; do
-
-               if [[
-                  "$OPT_ALL_ARCHS" == 1 ||
-                  $arch == $ARCH ||
-                  $arch == "host_$HOST_ARCH"
-               ]]
-               then
-
-                  if [[ "$PACKAGE_TO_DELETE" == "" ]]; then
-
-                     echo "Deleting $x/$arch..."
-                     rm -rf $arch
-
-                  else
-
-                     pushd $arch
-                     for y in `ls`; do
-
-                        if [[ "$y" == "$PACKAGE_TO_DELETE" ]]; then
-                           echo "Deleting $x/$arch/$y..."
-                           rm -rf $y
-                        fi
-
-                     done
-                     popd
-                  fi
-               fi
-
-            done
-            popd
+   case "$HOST_OS" in
+      linux)
+         if ! [ -f /etc/os-release ]; then
+            echo "ERROR: /etc/os-release not found"
+            exit 1
          fi
-      fi
-   done
-
-   pushd syscc
-   for arch in `ls`; do
-
-      if [[ "$OPT_ALL_ARCHS" == 1 || $arch == "host_$HOST_ARCH" ]]; then
-
-         pushd $arch
-
-         for x in `ls`; do
-
-            if [[ "$x" == gcc* ]]; then
-               continue # skip the compilers
-            fi
-
-            if [[
-               "$PACKAGE_TO_DELETE" == "" ||
-               "$x" == "$PACKAGE_TO_DELETE"
-            ]]
-            then
-               echo "Deleting syscc/$arch/$x..."
-               rm -rf "$x"
-            fi
-
-         done
-         popd
-      fi
-
-   done
-   popd
-
-   create_base_dirs
-   echo "DONE"
-   exit 0
+         local distro_id=$(grep -E '^ID=' /etc/os-release | cut -d= -f2 \
+            | tr -d '"')
+         local distro_ver=$(grep -E '^VERSION_ID=' /etc/os-release \
+            | cut -d= -f2 | tr -d '"')
+         HOST_DISTRO="${distro_id}-${distro_ver}"
+         ;;
+      macos)
+         # Use only major.minor (e.g. "26.4") so a minor-patch bump like
+         # 26.4 -> 26.4.1 doesn't orphan the distro subtree.
+         HOST_DISTRO="macos-$(sw_vers -productVersion | cut -d. -f1,2)"
+         ;;
+      freebsd)
+         HOST_DISTRO="freebsd-$(uname -r | cut -d- -f1)"
+         ;;
+   esac
 }
 
+function dump_build_toolchain_env {
+
+   echo
+   echo "Input ENV vars"
+   echo "---------------"
+   echo "ARCH=$ARCH"
+   echo "GCC_TC_VER=$GCC_TC_VER"
+   echo "BOARD=$BOARD"
+   echo "CC=$CC"
+   echo "CXX=$CXX"
+   echo "RUBY=$RUBY"
+   echo "SKIP_INSTALL_PACKAGES=$SKIP_INSTALL_PACKAGES"
+   echo
+   echo "Other context"
+   echo "---------------"
+   echo "uname -m: $(uname -m)"
+   echo
+}
 
 ##########################################################
 #
@@ -429,223 +353,70 @@ function perform_clean {
 #
 ##########################################################
 
-function main {
 
-   local found_opt=1
+: ${TCROOT_PARENT:=$MAIN_DIR}
+: ${TCROOT:=$TCROOT_PARENT/toolchain4}
+TC="$TCROOT"
+export TCROOT
 
-   while [[ $found_opt == 1 ]]; do
-
-      found_opt=0
-
-      if [[ "$1" == "-n" || "$1" == "--skip-install-pkgs" ]]; then
-         OPT_SKIP_INSTALL=1
-         found_opt=1
-         shift
-      fi
-
-      if [[ "$1" == "-a" || "$1" == "--all-archs" ]]; then
-         OPT_ALL_ARCHS=1
-         found_opt=1
-         shift
-      fi
-
-   done
-
-   if [[ "$1" == "--clean-all" ]]; then
-      perform_full_clean
-      exit 0
-   fi
-
-   if [[ "$1" == "--clean" ]]; then
-      perform_clean
-      exit 0
-   fi
-
-   if [[ "$1" == "-d" || "$1" == "--delete" ]]; then
-      shift
-      if [[ "$1" == "" ]]; then
-         echo "ERROR: package name is required"
-         exit 1
-      fi
-      PACKAGE_TO_DELETE="$1"
-      perform_clean
-      exit 0
-   fi
-
-   if [[ "$1" == "-j" || "$1" == "--just-context" ]]; then
-      exit 0
-   fi
-
-   default_funcs=()
-   default_funcs+=(custom_gcc_cross_tc)
-
-   if [[ "$HOST_ARCH" == "$BUILD_ARCH" ]]; then
-      default_funcs+=(download_cmake)
-   fi
-
-   if [[ $ARCH_FAMILY == "generic_x86" ]]; then
-      default_funcs+=(build_gnuefi)
-   fi
-
-   default_funcs+=(download_acpica)
-   default_funcs+=(build_mtools)
-   default_funcs+=(build_zlib)
-
-   if [[ "$NO_BUSYBOX" != 1 ]]; then
-      default_funcs+=(build_busybox)
-   fi
-
-   if [[ "$ARCH" == "riscv64" ]]; then
-      source $MAIN_DIR/scripts/tc/bsp/$ARCH/$BOARD/bootloader
-      default_funcs+=(build_dtc)
-   fi
-
-   if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-      show_help
-      exit 0
-   fi
-
-   if [[ "$1" == "-l" || "$1" == "--list-all" ]]; then
-      show_funcs_list
-      exit 0
-   fi
-
-   # Compiler-related checks
-   compiler_checks
-   # Arch-related checks
-   arch_checks
-   # Save the current values of CC, CXX and related
-   save_cc_vars
-
-   # Exit on the first failure
-   set -e
-
-   GCC_TOOLCHAIN=$HOST_ARCH_DIR_SYS/${GCC_NAME_PFX}_musl/bin
-
-   # Add to $PATH all the GCC toolchains for their selected version
-   for arch in ${ALL_ARCH_LIST[@]}; do
-      local name="${arch}_GCC_TC_VER_"
-      local ver="${!name}"
-      local p="$HOST_ARCH_DIR_SYS/gcc_${ver}_${arch}_musl/bin"
-      PATH="$p:$PATH"
-   done
-
-   PATH="$MAIN_DIR/scripts/build_scripts:$PATH"
-   export PATH
-
-   if ! [ -d $ARCH_DIR ]; then
-      local no_arch_directory=1
-   fi
-
-   create_base_dirs
-   cd $TC
-
-   # Set the CMAKE variable in order to single functions to be able to use it
-   if [ -f $HOST_ARCH_DIR_SYS/cmake/bin/cmake ]; then
-      CMAKE=$HOST_ARCH_DIR_SYS/cmake/bin/cmake
-   else
-      CMAKE=cmake
-   fi
-
-
-   if [[ "$1" == "-s" || "$1" == "install" ||
-         "$1" == "-c" || "$1" == "config"
-      ]]
-   then
-
-      local cmd="$1"
-      if [[ "$1" == "-s" ]]; then
-         cmd="install"
-      elif [[ "$1" == "-c" ]]; then
-         cmd="config"
-      fi
-
-      if [[ $# -lt 2 ]]; then
-         echo "ERROR: expected argument after '$1'"
-         exit 1
-      fi
-
-      if [[ "$no_arch_directory" == 1 ]]; then
-         echo
-         echo "ERROR: directory $ARCH_DIR not found."
-         echo
-         echo "It is necessary to run this script *without* options first to "
-         echo "download and build a minimum toolchain. Then, it will be possible"
-         echo "to download and build the extra packages."
-         echo
-         echo "For more info, see: docs/building.md"
-         echo
-         rm -rf $TC/$ARCH
-         exit 1
-      fi
-
-      shift  # Drop the first argument, $1
-
-      for func in "$@"; do
-
-         if [[ $cmd == install ]]; then
-
-            # Try build_ and download_
-            if ! execute_func "build_$func"; then
-               if ! execute_func "download_$func"; then
-                  echo "ERROR: unknown package '$func'"
-                  exit 1
-               fi
-            fi
-
-         elif [[ $cmd == config ]]; then
-
-            # Try only config_
-            if ! execute_func "config_$func"; then
-               echo "ERROR: unknown config func '$func'"
-               exit 1
-            fi
-
-            # In case of success, break from the loop. Don't allow to
-            # reconfigure multiple packages at the same time.
-            break
-         fi
-
-      done
-      exit 0
-   fi
-
-   # Do the actual job
-
-   if [[ "$OPT_SKIP_INSTALL" == "" ]]; then
-      install_packages
-   else
-      echo "*** SKIPPING installation of packages"
-   fi
-
-   echo
-   echo "*** Building custom packages and tools ***"
-   echo
-
-   for func in ${default_funcs[@]}; do
-      if ! $func; then
-         echo "Execution of $func FAILED!"
-         exit 1
-      fi
-   done
-
-   echo
-   echo "*** Building custom packages and tools COMPLETED ***"
-   echo
-}
-
-##########################################################
-# Entry point: load package funcs and run main()
-##########################################################
-
-for x in $MAIN_DIR/scripts/tc/pkgs/*; do
-   source $x
-done
-
-if command -v sort &> /dev/null 2>&1; then
-   IFS=$'\n'
-   all_funcs_list=($(sort <<<"${all_funcs_list[*]}"))
-   unset IFS
+if ! [ "$QUIET" = 1 ]; then
+   dump_build_toolchain_env
 fi
 
-main "$@"
+set_host_arch_variable
+detect_host_env
+
+# The bootstrap Ruby lives under the distro slot (no host-compiler level):
+# Ruby dynamically links against libc/libssl/etc. from the current distro,
+# but the host C/C++ compiler used to build it is irrelevant for running
+# Ruby itself. The full Ruby package manager layout (with a host-cc level)
+# applies only to *registered* non-portable packages.
+RUBY_INSTALL_DIR="$TC/host/$HOST_OS-$HOST_ARCH/$HOST_DISTRO/ruby/$VER_RUBY"
+
+if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
+   export SKIP_INSTALL_PACKAGES=1
+fi
+
+# --contrib and --only-system-deps are consumed here and not forwarded
+# to the Ruby pkgmgr. They can appear alongside other flags.
+ONLY_SYSTEM_DEPS=0
+new_args=()
+for arg in "$@"; do
+   case "$arg" in
+      --contrib)          export CONTRIB_PACKAGES=1 ;;
+      --only-system-deps) ONLY_SYSTEM_DEPS=1 ;;
+      *)                  new_args+=("$arg") ;;
+   esac
+done
+set -- "${new_args[@]}"
+
+create_base_dirs
+
+# Check/install system packages only when invoked with no arguments,
+# with --contrib, or with --only-system-deps. Any other explicit flag
+# (-l, -h, -s, etc.) skips the check.
+if [[ "$SKIP_INSTALL_PACKAGES" != "1" ]]; then
+   if [[ $# -eq 0 || "$CONTRIB_PACKAGES" == "1" || "$ONLY_SYSTEM_DEPS" == "1" ]]; then
+      install_packages
+      export SKIP_INSTALL_PACKAGES=1
+   fi
+fi
+
+# --only-system-deps: exit now, skip the Ruby package manager entirely.
+# Useful for Docker layer caching: system deps in one layer, toolchain
+# packages in subsequent layers.
+if [[ "$ONLY_SYSTEM_DEPS" == "1" ]]; then
+   exit 0
+fi
+
+setup_ruby
+
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo
+   echo "Ruby package manager"
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+   echo
+fi
+
+exec $RUBY $MAIN_DIR/scripts/pkgmgr/main.rb "$@"

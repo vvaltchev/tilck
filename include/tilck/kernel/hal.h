@@ -54,7 +54,7 @@
 
 #elif defined(__aarch64__)
 
-   #if defined(KERNEL_TEST)
+   #if defined(UNIT_TEST_ENVIRONMENT)
 
       /*
        * Fake stub funcs and defines, just to allow the build of the kernel for
@@ -103,6 +103,7 @@
       static ALWAYS_INLINE ulong __get_curr_pdir()
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE void set_return_register(regs_t *r, ulong value)
@@ -113,26 +114,31 @@
       static ALWAYS_INLINE int int_to_irq(int int_num)
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE bool is_irq(int int_num)
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE bool is_timer_irq(int int_num)
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE bool is_fault(int int_num)
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE int regs_intnum(regs_t *r)
       {
          NOT_IMPLEMENTED();
+         __builtin_unreachable();
       }
 
       static ALWAYS_INLINE void halt(void)
@@ -165,7 +171,37 @@
          return 0;
       }
 
-   #else // defined(KERNEL_TEST)
+      static ALWAYS_INLINE ulong regs_get_usersp(regs_t *r)
+      {
+         return 0;
+      }
+
+      static ALWAYS_INLINE void regs_set_usersp(regs_t *r, ulong val)
+      {
+         /* STUB function: do nothing */
+      }
+
+      static ALWAYS_INLINE void init_segmentation(void)
+      {
+         /* STUB function: do nothing */
+      }
+
+      static ALWAYS_INLINE ulong get_return_register(regs_t *r)
+      {
+         return 0;
+      }
+
+      static ALWAYS_INLINE void *regs_get_frame_ptr(regs_t *r)
+      {
+         return NULL;
+      }
+
+      NORETURN static ALWAYS_INLINE void context_switch(regs_t *r)
+      {
+         NOT_REACHED();
+      }
+
+   #else // defined(UNIT_TEST_ENVIRONMENT)
 
       #error Non-test aarch64 is not supported
 
@@ -183,8 +219,15 @@ STATIC_ASSERT(ARCH_TASK_MEMBERS_ALIGN == alignof(arch_task_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_SIZE == sizeof(arch_proc_members_t));
 STATIC_ASSERT(ARCH_PROC_MEMBERS_ALIGN == alignof(arch_proc_members_t));
 
+/*
+ * On non-Linux hosts (e.g., macOS, FreeBSD), <unistd.h> declares a
+ * different reboot() which conflicts with Tilck's. In KERNEL_TEST on
+ * such hosts, the kernel's reboot/poweroff are never called, so skip.
+ */
+#if !defined(UNIT_TEST_ENVIRONMENT) || defined(__linux__)
 NORETURN void reboot(void);
 NORETURN void poweroff(void);
+#endif
 void init_segmentation(void);
 void init_cpu_exception_handling(void);
 void init_syscall_interfaces(void);

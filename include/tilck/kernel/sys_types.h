@@ -208,10 +208,10 @@ struct k_stat64 {
    struct k_timespec64 st_atim;
    struct k_timespec64 st_mtim;
    struct k_timespec64 st_ctim;
-   long __unused[3];
+   long __pad3[3];
 };
 
-#elif defined(__riscv) && __riscv_xlen == 64
+#elif (defined(__riscv) && __riscv_xlen == 64) || defined(__aarch64__)
 
 struct k_stat64 {
    ulong st_dev;
@@ -235,6 +235,36 @@ struct k_stat64 {
 
 #endif
 
+
+/*
+ * Linux-internal __O_* constants (from <asm-generic/fcntl.h>).
+ * Platforms that define their own O_DIRECTORY etc. (via <fcntl.h>) will
+ * skip the O_xxx fallbacks below, but the __O_xxx forms are still needed
+ * because Tilck kernel code references them directly.
+ */
+#ifndef __O_DIRECTORY
+   #define __O_DIRECTORY  0200000
+#endif
+
+#ifndef __O_TMPFILE
+   #define __O_TMPFILE  020000000
+#endif
+
+#ifndef __O_DIRECT
+   #define __O_DIRECT     040000
+#endif
+
+#ifndef __O_NOATIME
+   #define __O_NOATIME  01000000
+#endif
+
+#ifndef __O_PATH
+   #define __O_PATH    010000000
+#endif
+
+#ifndef O_LARGEFILE
+   #define O_LARGEFILE    0100000
+#endif
 
 #ifndef O_DIRECTORY
    #define O_DIRECTORY __O_DIRECTORY

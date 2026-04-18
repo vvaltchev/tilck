@@ -83,6 +83,35 @@ fi
 ############################################
 # FUNCTIONS
 
+function set_host_arch_variable {
+
+   HOST_ARCH="`uname -m`"
+
+   if [[ "$HOST_ARCH" == "x86_64" ]]; then
+
+      : # Great, that's our DEFAULT host architecture: do nothing
+
+   elif [[ "$HOST_ARCH" == "amd64" ]]; then
+
+      # An alias for x86_64: fix our variable
+      HOST_ARCH="x86_64"
+
+   elif [[ "$HOST_ARCH" == "aarch64" ]]; then
+
+      : # That's OK: no translation necessary.
+
+   elif [[ "$HOST_ARCH" == "arm64" ]]; then
+
+      HOST_ARCH="aarch64"
+
+   else
+
+      echo "ERROR: build host architecture $HOST_ARCH not supported"
+      exit 1
+   fi
+}
+
+
 # $1 version in the format "major.minor.patchlevel"
 # $2 component number to get (1 => major, 2 => minor, 3 => patchlevel)
 function get_version_comp {
@@ -250,149 +279,6 @@ function extract_cachefile_tar_xz {
    extract_cachefile_tar_generic "$1" "$2" "$3"
 }
 
-function download_git_repo_in_cache {
-
-   local url="$1"
-   local tag="$2"
-   local tarname="$3"
-   local dirname="$4"
-
-   if [ -f $TC/cache/$tarname ]; then
-      return
-   fi
-
-   if [ -z "$tag" ]; then
-
-      git clone --depth 1 "$url" $dirname
-
-   else
-
-      if ! git clone --branch "$tag" --depth 1 "$url" $dirname; then
-
-         # Git clone failed. There could be several reasons for that:
-         #
-         #     - The remote git server is down
-         #
-         #     - The pointed branch/tag/commit does not exist anymore because
-         #       the ref has been deleted or the history has been rewritten.
-         #
-         #     - In some corner cases, like BitBucket, fetching individual
-         #       untagged commits is not allowed. This is the only case for
-         #       which an actual workaround is possible.
-         #       See: https://stackoverflow.com/a/51002078/2077198
-         #
-
-         if echo "$tag" | grep -E "^[0-9a-z]+$"; then
-
-            # It's worth trying this approach only if the tag looks like a
-            # commit SHA.
-
-            if git clone "$url" $dirname; then
-
-               cd $dirname
-
-               if ! git checkout "$tag"; then
-                  echo "ERROR: the git ref $tag does not exist anymore!"
-                  exit 1
-               fi
-
-               # Save the git commit info before deleting the .git directory
-               git rev-parse --abbrev-ref HEAD > .ref_name
-               git rev-parse --short HEAD > .ref_short
-               git rev-parse HEAD > .ref
-               echo "$tag" > .our_tag
-
-               # Delete the .git directory which is not needed anymore and takes
-               # quite some space. We just need one commit, not the whole
-               # git history.
-               rm -rf .git
-
-               # Go back to the parent directory
-               cd ..
-            fi
-         fi
-      fi
-   fi
-
-   if ! [ -d "$dirname" ]; then
-      echo "ERROR: git clone failed for: $url"
-      exit 1
-   fi
-
-   tar cfz $tarname $dirname
-
-   if ! [ -f $tarname ]; then
-      echo "ERROR: tar failed"
-      exit 1
-   fi
-
-   mv $tarname $TC/cache || exit 1
-   rm -rf $dirname
-}
-
-function get_32bit_libs_pkg {
-
-   if ! [ -f $TC/.distro ]; then
-      echo "Linux distribution not fully supported by this script."
-      exit 1
-   fi
-
-   local distro=`cat $TC/.distro`
-
-   case $distro in
-
-      debian)
-         echo gcc-multilib
-      ;;
-
-      fedora)
-         echo glibc-devel.i686
-      ;;
-
-      arch)
-         echo lib32-glibc
-      ;;
-
-      opensuse)
-         echo glibc-devel-32bit
-      ;;
-
-      *)
-         echo "Unknown Linux distribution"
-         exit 1
-      ;;
-
-   esac
-}
-
-function install_pkg_on_demand {
-
-   local pkg="$1"
-   local distro=`cat $TC/.distro`
-   local install_pkg="$MAIN_DIR/scripts/tc/$distro/install_pkg"
-
-   if [[ "$pkg" != "" ]]; then
-
-      if [ "$RUNNING_IN_CI" == 1 ]; then
-         $install_pkg -ci $pkg
-      else
-         $install_pkg $pkg
-      fi
-   fi
-}
-
-function install_32bit_libs {
-
-   if ! [ -f $TC/.distro ]; then
-      echo "Unable to check the presence of 32-bit glibc on this system: "
-      echo "Linux distribution not fully supported by this script."
-      echo "WARNING: the current operation might fail."
-      return
-   fi
-
-   install_pkg_on_demand $(get_32bit_libs_pkg)
-}
-
 function dump_cross_compiler_env {
 
    echo "[DEBUG] CC=$CC" >> $1
@@ -413,9 +299,5 @@ function dump_cross_compiler_env {
       fi
    done
    echo "[DEBUG] PATH: $PATH" >> $1
-}
-
-function do_common_cross_compiler_setup {
-   : # do nothing
 }
 

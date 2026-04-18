@@ -11,7 +11,8 @@ if (EXISTS ${TCROOT_ARCH_DIR}/tcc/${VER_TCC})
    message(STATUS "EXTRA_TCC: ${EXTRA_TCC}")
 endif()
 
-if (EXISTS ${TCROOT_ARCH_DIR}/fbdoom/${VER_FBDOOM})
+if (EXISTS ${TCROOT_ARCH_DIR}/fbdoom/${VER_FBDOOM} AND
+    EXISTS ${TCROOT_ARCH_DIR}/freedoom/${VER_FREEDOOM})
    set(EXTRA_FBDOOM OFF CACHE BOOL "Load fbDOOM in Tilck")
    message(STATUS "EXTRA_FBDOOM: ${EXTRA_FBDOOM}")
 endif()
@@ -31,7 +32,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/lua/${VER_LUA})
    message(STATUS "EXTRA_LUA: ${EXTRA_LUA}")
 endif()
 
-if (EXISTS ${TCROOT_ARCH_DIR}/tfblib/${VER_TFBLIB})
+if (EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
    set(EXTRA_TFBLIB OFF CACHE BOOL "Load tfblib apps in Tilck")
    message(STATUS "EXTRA_TFBLIB: ${EXTRA_TFBLIB}")
 endif()

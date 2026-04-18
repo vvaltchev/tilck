@@ -13,6 +13,7 @@
 #include <tilck/kernel/sched.h>
 
 #include <tilck/mods/tracing.h>
+#include <linux/time_compat.h>
 
 #define FULL_RESYNC_MAX_ATTEMPTS          10
 #define MICRO_ATTEMPTS_BEFORE_SLEEP      400
@@ -514,7 +515,7 @@ retry:
    enable_preemption();
 }
 
-static void clock_drift_adj()
+static void clock_drift_adj(void *unused)
 {
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(KRN_TIMER_HZ);
@@ -740,12 +741,16 @@ do_clock_gettime(clockid_t clk_id, struct k_timespec64 *tp)
    switch (clk_id) {
 
       case CLOCK_REALTIME:
+#ifdef CLOCK_REALTIME_COARSE
       case CLOCK_REALTIME_COARSE:
+#endif
          real_time_get_timespec(tp);
          break;
 
       case CLOCK_MONOTONIC:
+#ifdef CLOCK_MONOTONIC_COARSE
       case CLOCK_MONOTONIC_COARSE:
+#endif
       case CLOCK_MONOTONIC_RAW:
          monotonic_time_get_timespec(tp);
          break;
@@ -769,9 +774,13 @@ do_clock_getres(clockid_t clk_id, struct k_timespec64 *res)
    switch (clk_id) {
 
       case CLOCK_REALTIME:
+#ifdef CLOCK_REALTIME_COARSE
       case CLOCK_REALTIME_COARSE:
+#endif
       case CLOCK_MONOTONIC:
+#ifdef CLOCK_MONOTONIC_COARSE
       case CLOCK_MONOTONIC_COARSE:
+#endif
       case CLOCK_MONOTONIC_RAW:
       case CLOCK_PROCESS_CPUTIME_ID:
       case CLOCK_THREAD_CPUTIME_ID:

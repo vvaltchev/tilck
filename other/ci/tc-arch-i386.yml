@@ -8,7 +8,7 @@ trigger:
   paths:
     include:
       - 'scripts/build_toolchain'
-      - 'scripts/tc/pkgs/**'
+      - 'scripts/pkgmgr/**'
     exclude:
       - 'README.md'
       - '*.md'
@@ -27,12 +27,12 @@ variables:
 steps:
   - script: printenv
     displayName: Dump env
+  - script: sudo -E ./scripts/build_toolchain -t
+    displayName: "Run pkgmgr unit tests"
   - script: sudo -E ./scripts/build_toolchain
     displayName: "Install pkgs"
   - script: sudo -E ./scripts/build_toolchain -s gtest
     displayName: "Build gtest"
-  - script: sudo -E ./scripts/build_toolchain -s gmock
-    displayName: "Build gmock"
   - script: sudo -E ./scripts/build_toolchain -s lcov
     displayName: "Build lcov"
   - script: sudo -E ./scripts/build_toolchain -s libmusl
@@ -47,6 +47,12 @@ steps:
     displayName: "Build lua"
   - script: sudo -E ./scripts/build_toolchain -s treecmd
     displayName: "Build treecmd"
+  - script: sudo -E ./scripts/build_toolchain -s tcc
+    displayName: "Build tcc"
+  - script: sudo -E ./scripts/build_toolchain -s freedoom
+    displayName: "Build freedoom"
+  - script: sudo -E ./scripts/build_toolchain -s fbdoom
+    displayName: "Build fbdoom"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests

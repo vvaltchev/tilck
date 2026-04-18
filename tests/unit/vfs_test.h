@@ -5,6 +5,7 @@
 
 extern "C" {
 
+   #include <tilck/kernel/errno.h>
    #include <tilck/kernel/fs/vfs.h>
    #include <tilck/kernel/sched.h>
    #include <tilck/kernel/process.h>

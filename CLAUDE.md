@@ -17,7 +17,7 @@ Licensed BSD 2-Clause.
 ```bash
 export ARCH=i386                         # Target arch. One of: i386, riscv64, x86_64
 ./scripts/build_toolchain                # Build cross-compiler toolchain (one-time)
-./scripts/build_toolchain -s gtest gmock # Also install unit test deps
+./scripts/build_toolchain -s host_gtest  # Also install unit test deps
 ./scripts/build_toolchain -l             # List available packages
 ./scripts/build_toolchain -h             # Show the help.
 ```
@@ -121,8 +121,10 @@ tests/
   self/           Kernel self-tests
   runners/        Python test infrastructure
 scripts/          Build automation (build_toolchain, cmake_run, etc.)
+  pkgmgr/         Ruby package manager (exp-ruby branch)
+  pkgmgr/tests/   Package manager test suite (293 unit + system tests)
 other/cmake/      CMake build modules
-toolchain3/       Generated cross-compiler toolchain (not in repo)
+toolchain4/       Generated cross-compiler toolchain (not in repo; toolchain3/ on master)
 ```
 
 Key build artifacts in `build/`: `tilck` (kernel), `tilck_unstripped`,
@@ -163,14 +165,11 @@ Ruby (>= 3.2, auto-downloaded if needed) and then `exec`s into
 `scripts/pkgmgr/`. If it exists, you are on the Ruby package manager branch.
 If not, you are on master with the Bash package manager.
 
-**Migration status on `exp-ruby`:** Packages ported to Ruby (in
-`scripts/pkgmgr/*.rb`): gcc, acpica, zlib, mtools, busybox. Packages still
-in Bash only (in `scripts/tc/pkgs/`): gnuefi, gtest, gmock, lcov, cmake,
-dtc, fbdoom, lua, micropython, ncurses, vim, treecmd, tfblib, libmusl, tcc.
-When adding a new package or modifying an existing one, check which system
-it lives in. The Bash package scripts on master (`scripts/tc/pkgs/`) are
-the **reference implementation** — use them to understand the build logic
-when porting or debugging Ruby package definitions.
+**Migration status on `exp-ruby`:** All packages have been ported to Ruby
+(in `scripts/pkgmgr/*.rb`). The old Bash package scripts (`scripts/tc/pkgs/`)
+no longer exist on this branch. The Bash package scripts on master are still
+the **reference implementation** — use them to understand the original build
+logic when debugging Ruby package definitions.
 
 **Ruby package structure:** Each Ruby package is a class inheriting from
 `Package` (defined in `scripts/pkgmgr/package.rb`). It registers itself
@@ -180,20 +179,78 @@ implement: `initialize` (name, url, arch_list, deps), `install_impl_internal`
 (`scripts/pkgmgr/package_manager.rb`) handles discovery, install/uninstall
 orchestration, and status reporting.
 
-Toolchain directory layout (same on both branches):
+Toolchain directory layout:
+
+On `master` the toolchain root is `toolchain3/`; on `exp-ruby` it is
+`toolchain4/` (the Ruby pkgmgr uses a different directory to avoid
+conflicts when switching branches).
+
 ```
-toolchain3/
-  cache/                   # Downloaded tarballs (preserved across cleans)
-  noarch/                  # Arch-independent packages (acpica, gtest src, lcov)
-  <GCC_VER>/               # Per-GCC-version packages
-    <arch>/                # Per-target-arch (i386, x86_64, riscv64)
-    host_<host_arch>/      # Host-arch packages (mtools, gtest built, gmock)
-  syscc/                   # System-compiler packages
-    host_<host_arch>/      # (cmake, gtest, gmock when built with system cc)
+toolchain4/                         # (toolchain3/ on master)
+  cache/                            # Downloaded tarballs (preserved across cleans)
+  noarch/                           # Arch-independent packages (acpica, gtest src)
+  gcc-<VER>/                        # Per-GCC-version cross-compiled packages
+    <arch>/                         # Per-target-arch (i386, x86_64, riscv64)
+  host/
+    <os>-<host_arch>/               # e.g. freebsd-x86_64, linux-x86_64
+      portable/                     # Tier 1: static, any distro (cross-compilers)
+      <distro>/                     # e.g. freebsd-15.0, ubuntu-22.04
+        <pkg>/<ver>/                # Tier 2: links distro libc, any CC (mtools)
+        ruby/<ver>/                 # Bootstrap Ruby (not a registered package)
+        <host-cc>/                  # e.g. gcc-14.2.0
+          <pkg>/<ver>/              # Tier 3: depends on host CC C++ ABI (gtest)
 ```
 
 Packages are downloaded to `cache/` and extracted/built into the appropriate
-arch directory. Downloaded tarballs survive `--clean` but not `--clean-all`.
+directory. Downloaded tarballs survive `--clean` but not `--clean-all`.
+
+**Ruby pkgmgr test suite (exp-ruby only):**
+```bash
+./scripts/build_toolchain -t                       # Run 293 unit tests
+./scripts/build_toolchain -t --system-tests        # + install all pkgs, build all archs
+./scripts/build_toolchain -t --system-tests -a i386  # Single arch (default: current)
+./scripts/build_toolchain -t --system-tests -a ALL   # All archs (i386, x86_64, riscv64)
+./scripts/build_toolchain -t --system-tests --test-packages-filter ncurses  # Filter optional pkgs
+./scripts/build_toolchain -t --system-tests --all-build-types   # Also test all cmake configs
+./scripts/build_toolchain -t --system-tests --run-also-tilck-tests  # Also run gtests + system tests
+./scripts/build_toolchain -t -F <regex>            # Filter unit tests by name
+./scripts/build_toolchain -t --coverage            # Unit tests with code coverage report
+```
+
+## FreeBSD Build Host
+
+FreeBSD is a supported build host alongside Linux. Key differences:
+
+- **System compiler**: `cc`/`c++` are clang on FreeBSD, but the project
+  uses GCC from ports. When invoking cmake for host tools (e.g. gtest),
+  pass `-DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++` explicitly.
+
+- **GNU tools**: FreeBSD ships BSD userland, not GNU. The build system
+  prepends `scripts/gnu-wrap/` to PATH, which contains wrappers that
+  redirect `tar`, `make`, `sed`, etc. to their GNU equivalents (`gtar`,
+  `gmake`, `gsed`). FreeBSD system packages for these are listed in
+  `scripts/bash_includes/install_pkgs` (`install_freebsd` function),
+  including many `rubygem-*` packages that are bundled with Ruby on
+  Linux but separate on FreeBSD.
+
+- **Unit tests (gtests)**: Compiled with the HOST compiler, not the
+  cross-compiler. The `include/system_headers/` directory contains shim
+  headers that bridge differences between Linux and FreeBSD/macOS system
+  headers (signal types, errno values, clock IDs, syscall numbers,
+  dirent, termios flags). When a gtest build fails on FreeBSD with a
+  type conflict or missing constant, the fix usually goes in a shim.
+
+- **Cross-compilation configure scripts**: On FreeBSD, passing only
+  `--host` to autoconf makes it set `cross_compiling=maybe` and try to
+  exec a cross-compiled binary, which triggers the kernel's uprintf
+  "ELF binary type '0' not known." to the terminal. Always pass both
+  `--host` AND `--build` so configure sets `cross_compiling=yes`
+  directly. Also set `BUILD_CC=cc` for packages that compile host-side
+  helper tools (ncurses, etc.), otherwise `BUILD_CC` defaults to `$CC`
+  (the cross-compiler).
+
+- **Bash shebang**: Use `#!/usr/bin/env bash`, not `#!/bin/bash`
+  (bash is at `/usr/local/bin/bash` on FreeBSD).
 
 ## Coding Style
 

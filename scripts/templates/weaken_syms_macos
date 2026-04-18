@@ -1,0 +1,116 @@
+#!/bin/bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# macOS (Mach-O) variant of weaken_syms.
+# Uses machohack to weaken symbols (N_WEAK_DEF) and add independent
+# __real_* symbols pointing to the original code, which is the Mach-O
+# equivalent of:  objcopy --weaken-symbol=sym --add-symbol=__real_sym
+
+AR="@CMAKE_AR@"
+RANLIB="@CMAKE_RANLIB@"
+MACHOHACK="@CMAKE_BINARY_DIR@/scripts/build_apps/machohack"
+ROOT="@CMAKE_SOURCE_DIR@"
+QUIET=1
+source $ROOT/scripts/bash_includes/script_utils
+
+PREFIX="${GREEN}[ WS ]${RATTRS} "
+
+if [ -z "$1" ]; then
+   >&2 echo -e "${PREFIX}Expected archive file"
+   exit 1
+fi
+
+if ! [ -f "$1" ]; then
+   >&2 echo -e "${PREFIX}The file '$1' does not exist"
+   exit 1
+fi
+
+file=$(realpath $1)
+shift
+
+# Collect the symbols to weaken into an array
+syms=("$@")
+
+if [ ${#syms[@]} -eq 0 ]; then
+   echo -e "${PREFIX}No symbols to weaken, nothing to do"
+   exit 0
+fi
+
+TEMPDIR=$(mktemp -d)
+
+if ! [ -d "$TEMPDIR" ]; then
+   >&2 echo -e "${PREFIX}Failed to create temp directory"
+   exit 1
+fi
+
+pushd "$TEMPDIR" > /dev/null
+
+echo -e "${PREFIX}Extract all object files from archive $(basename $file)..."
+
+# macOS ar doesn't support -N (positional extraction for duplicates).
+# Work around this by making a working copy, then for each member:
+# extract the first occurrence, rename it, and delete it from the copy.
+
+cp "$file" _work.a
+idx=0
+
+for obj in $(ar t "$file" | grep '\.o$'); do
+   ar x _work.a "$obj"
+   mv "$obj" "${idx}.o"
+   ar dS _work.a "$obj"
+   idx=$((idx + 1))
+done
+
+rm -f _work.a
+
+echo -e "${PREFIX}Patch all the object files..."
+
+for obj in *.o; do
+   [ -f "$obj" ] || continue
+
+   # Get the list of global text symbols in this .o (Mach-O uses _ prefix)
+   obj_text_syms=$($MACHOHACK "$obj" --list-text-syms 2>/dev/null)
+
+   # Check which of the target symbols exist in this .o
+   matching_syms=()
+
+   for sym in "${syms[@]}"; do
+
+      if ! echo "$obj_text_syms" | grep -q "^_${sym}$"; then
+         continue
+      fi
+
+      matching_syms+=("$sym")
+      echo -e "${PREFIX}Weaken sym ${GREEN}${sym}${RATTRS} in $obj"
+   done
+
+   if [ ${#matching_syms[@]} -eq 0 ]; then
+      continue
+   fi
+
+   # Rename matching symbols to __real_*, add undefined originals,
+   # and patch relocations so intra-TU calls go to the test's version.
+   if ! $MACHOHACK "$obj" --patch-syms "${matching_syms[@]}"; then
+      >&2 echo -e "${PREFIX}Warning: machohack failed for $obj, skipping"
+      continue
+   fi
+done
+
+echo -e "${PREFIX}Re-create the archive file $(basename $file)..."
+rm -f "$file"
+
+# Collect all .o files in numeric order
+all_objs=($(ls *.o 2>/dev/null | sort -n))
+
+if [ ${#all_objs[@]} -gt 0 ]; then
+   $AR qcS "$file" "${all_objs[@]}"
+   $RANLIB -no_warning_for_no_symbols "$file"
+else
+   # Create empty archive
+   $AR qcS "$file"
+fi
+
+popd > /dev/null
+rm -rf "$TEMPDIR"
+
+echo -e "${PREFIX}Done"

@@ -30,7 +30,7 @@ trigger:
 
 jobs:
   - job: interactive
-    container: 'vvaltchev/tilck-i386:v6'
+    container: 'vvaltchev/tilck-i386:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -64,7 +64,7 @@ jobs:
         displayName: Run the interactive tests
 
   - job: gcc_13_3
-    container: 'vvaltchev/tilck-i386:v6'
+    container: 'vvaltchev/tilck-i386:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -109,7 +109,7 @@ jobs:
 
 
   - job: coverage
-    container: 'vvaltchev/tilck-i386:v6'
+    container: 'vvaltchev/tilck-i386:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -139,7 +139,7 @@ jobs:
         displayName: Build the unit tests
       - script: ./build/gtests
         displayName: Run the unit tests
-      - script: ./build/scripts/generate_test_coverage_report
+      - script: ./build/tests/unit/scripts/generate_test_coverage_report
         displayName: Gen unit tests coverage report
       - script: ./build/st/run_all_tests -c
         displayName: Run the system tests

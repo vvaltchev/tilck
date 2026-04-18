@@ -128,8 +128,8 @@ static int action_do_align(struct action_ctx *ctx)
 {
    if (used_bytes > ctx->statbuf.st_size) {
       fprintf(stderr,
-              "FATAL ERROR: used bytes (%u) > st_size (%ld)\n",
-              used_bytes, ctx->statbuf.st_size);
+              "FATAL ERROR: used bytes (%u) > st_size (%lld)\n",
+              used_bytes, (long long)ctx->statbuf.st_size);
       return 1;
    }
 
@@ -140,8 +140,8 @@ static int action_do_align(struct action_ctx *ctx)
 
    if (used_bytes < ctx->statbuf.st_size) {
       fprintf(stderr, "INFO: fat file NOT truncated.\n");
-      fprintf(stderr, "INFO: used bytes (%u) < st_size (%ld)\n",
-              used_bytes, ctx->statbuf.st_size);
+      fprintf(stderr, "INFO: used bytes (%u) < st_size (%lld)\n",
+              used_bytes, (long long)ctx->statbuf.st_size);
    }
 
    /*

@@ -407,7 +407,7 @@ void task_set_wakeup_timer(struct task *task, u32 ticks);
 void task_update_wakeup_timer_if_any(struct task *ti, u32 new_ticks);
 u32 task_cancel_wakeup_timer(struct task *ti);
 
-typedef void (*kthread_func_ptr)();
+typedef void (*kthread_func_ptr)(void *arg);
 
 NODISCARD int kthread_create2(kthread_func_ptr func,
                               const char *name,

@@ -85,8 +85,9 @@ int se_runall(void)
    return rc;
 }
 
-static void se_internal_run(struct self_test *se)
+static void se_internal_run(void *arg)
 {
+   struct self_test *se = arg;
    ASSERT(se_user_task != NULL);
 
    /* Common self test setup code */

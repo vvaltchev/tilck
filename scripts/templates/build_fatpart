@@ -15,13 +15,15 @@ host_arch="@HOST_ARCH@"
 arch="@ARCH@"
 spc="@FATPART_CLUSTER_SIZE@" # sectors per cluster
 arch_dir="@TCROOT_ARCH_DIR@"
-host_arch_dir_sys="@TCROOT_BA@"
+host_arch_dir_sys="@HOST_DIR_DISTRO@"
 mtools_ver="@VER_MTOOLS@"
 busybox_ver="@VER_BUSYBOX@"
 fbdoom_ver="@VER_FBDOOM@"
+freedoom_ver="@VER_FREEDOOM@"
 lua_ver="@VER_LUA@"
 micropython_ver="@VER_MICROPYTHON@"
 treecmd_ver="@VER_TREECMD@"
+tcc_ver="@VER_TCC@"
 
 if [[ "@HOST_ARCH@" != "i386" ]]; then
    if [ -f "$gcctc/$archgcc-linux-strip" ]; then
@@ -36,9 +38,11 @@ fi
 mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 busybox_dir=$arch_dir/busybox/$busybox_ver
 fbdoom_dir=$arch_dir/fbdoom/$fbdoom_ver
+freedoom_dir=$arch_dir/freedoom/$freedoom_ver
 lua_dir=$arch_dir/lua/$lua_ver
 micropython_dir=$arch_dir/micropython/$micropython_ver
 treecmd_dir=$arch_dir/treecmd/$treecmd_ver
+tcc_dir=$arch_dir/tcc/$tcc_ver
 
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
@@ -200,13 +204,26 @@ function add_tcc {
    local musl=@GCC_TC_SYSROOT@/lib
 
    mkdir -p lib/tcc
-   cp -r $arch_dir/tcc/include lib/tcc
-   link_or_copy $arch_dir/tcc/tcclib.h lib/tcc/include
-   link_or_copy $arch_dir/tcc/@ARCH@-libtcc1.a lib/tcc
-   link_or_copy $arch_dir/tcc/@ARCH@-tcc bin/tcc
-   cp -r $arch_dir/tcc/examples lib/tcc-examples
+   cp -r $tcc_dir/include lib/tcc
+   link_or_copy $tcc_dir/tcclib.h lib/tcc/include
+   link_or_copy $tcc_dir/tcc bin/tcc
+   cp -r $tcc_dir/examples lib/tcc-examples
 
-   cp -r $musl lib/@ARCH_GCC_TC@-tilck-musl
+   # TCC's --libpaths and --crtprefix were set to /lib/<arch>-tilck-musl at
+   # configure time. Copy the minimum musl sysroot files TCC needs for static
+   # linking, plus libtcc1.a, into that directory.
+   local tcc_musl=lib/@ARCH_GCC_TC@-tilck-musl
+   mkdir -p $tcc_musl
+   link_or_copy $tcc_dir/libtcc1.a $tcc_musl
+   for f in crt1.o crti.o crtn.o; do
+      link_or_copy $musl/$f $tcc_musl
+   done
+
+   # Copy libc.a and strip its debug info. The musl archive ships with full
+   # DWARF debug sections (~18 MB on riscv64, ~4 MB on i386). Stripping them
+   # brings it down to a reasonable size for the initrd.
+   cp $musl/libc.a $tcc_musl
+   $strip --strip-debug $tcc_musl/libc.a
 }
 
 function add_micropython {
@@ -225,12 +242,15 @@ function add_fbdoom {
    fi
 
    mkdir -p usr/lib/fbDOOM
-   link_or_copy $fbdoom_dir/fbdoom/fbdoom.gz usr/lib/fbDOOM
+   link_or_copy $fbdoom_dir/fbdoom.gz usr/lib/fbDOOM
 
+   # freedoom is a separate package now; fbdoom's dep_list pulls it
+   # in via the pkgmgr. An out-of-tree Doom1.WAD dropped next to the
+   # fbdoom install still wins if it happens to be there.
    if [ -f $fbdoom_dir/Doom1.WAD ]; then
       local wadfile="$fbdoom_dir/Doom1.WAD"
    else
-      local wadfile="$fbdoom_dir/freedoom/freedoom1.wad.gz"
+      local wadfile="$freedoom_dir/freedoom1.wad.gz"
    fi
 
    link_or_copy "$wadfile" usr/lib/fbDOOM
@@ -330,6 +350,24 @@ function add_lua {
    fi
 }
 
+function add_extra_apps {
+   for manifest in $bdir/userapps/extra/*/manifest.txt; do
+      if [ ! -f "$manifest" ]; then
+         continue
+      fi
+      while IFS= read -r line; do
+         if [ -z "$line" ]; then
+            continue
+         fi
+         local name=$(basename -- "$line")
+         if [ -f "$line" ]; then
+            cp "$line" usr/bin
+            strip_binary "usr/bin/$name"
+         fi
+      done < "$manifest"
+   done
+}
+
 function make_fatpart {
 
    create_fatpart
@@ -386,5 +424,6 @@ add_fbdoom
 add_vim
 add_tree_cmd
 add_lua
+add_extra_apps
 
 make_fatpart

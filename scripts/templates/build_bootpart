@@ -7,11 +7,10 @@ set -e
 maindir="@CMAKE_SOURCE_DIR@"
 bdir="@CMAKE_BINARY_DIR@"
 dest="@CMAKE_BINARY_DIR@/bootpart"
-tc="@TCROOT@"
-host_arch="@HOST_ARCH@"
+host_arch_dir_sys="@HOST_DIR_DISTRO@"
 mtools_ver="@VER_MTOOLS@"
 
-mtoolsdir=$tc/syscc/host_${host_arch}/mtools/$mtools_ver
+mtoolsdir=$host_arch_dir_sys/mtools/$mtools_ver
 mformat=$mtoolsdir/mformat
 mlabel=$mtoolsdir/mlabel
 mmd=$mtoolsdir/mmd

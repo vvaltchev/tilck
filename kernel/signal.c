@@ -452,14 +452,12 @@ bool pending_signals(void)
       return false;
    }
 
-   if (K_SIGACTION_MASK_WORDS == 1)
-
+#if K_SIGACTION_MASK_WORDS == 1
       return (curr->sa_pending[0] & ~curr->sa_mask[0]) != 0;
-
-   else
-
+#else
       return (curr->sa_pending[0] & ~curr->sa_mask[0]) != 0 ||
              (curr->sa_pending[1] & ~curr->sa_mask[1]) != 0;
+#endif
 }
 
 /*

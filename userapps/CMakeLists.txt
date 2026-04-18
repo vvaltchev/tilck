@@ -22,6 +22,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USERAPPS_CFLAGS}")
 add_custom_target(userapps)
 include_directories(${BUILD_DIR})                 # For tilck_gen_headers/
 include_directories(${PROJ_ROOT}/include)
+include_directories(${PROJ_ROOT}/include/system_headers)
 include_directories(${ZLIB_DIR}/install/include)
 
 # [build utils]
@@ -33,7 +34,7 @@ include_directories(${ZLIB_DIR}/install/include)
 
    macro(add_usermode_app)
       if (USERAPPS_${ARGV0})
-         file(GLOB SOURCES "${ARGV1}${ARGV0}*.c")
+         file(GLOB SOURCES ${GLOB_CONF_DEP} "${ARGV1}${ARGV0}*.c")
          add_executable(${ARGV0} ${SOURCES})
          register_usermode_app(${ARGV0})
       endif()
@@ -70,6 +71,7 @@ include_directories(${ZLIB_DIR}/install/include)
    file(
       GLOB
       DEVSHELL_SOURCES
+      ${GLOB_CONF_DEP}
 
       "devshell/*.c"
       "devshell/${ARCH}.S"
@@ -130,8 +132,8 @@ file(
 
                set(msg2 "")
                string(CONCAT msg2 "How to do that: \n"
-                                 "   1) rm -rf ${TCROOT_REL}/${ARCH}/busybox\n"
-                                 "   2) ${BTC_SCRIPT_REL} -s build_busybox")
+                                 "   1) ${BTC_SCRIPT_REL} -u busybox\n"
+                                 "   2) ${BTC_SCRIPT_REL} -s busybox")
 
                message(FATAL_ERROR "\n${msg1}\n${msg2}")
 
@@ -158,3 +160,8 @@ file(
    endif(USERAPPS_busybox)
 
 # [/busybox]
+
+# Extra user apps (e.g. tfblib) -- each writes a manifest of deliverables
+if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/extra)
+   add_subdirectory(extra)
+endif()

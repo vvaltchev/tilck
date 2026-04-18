@@ -101,13 +101,13 @@ char *tilck_strstr(const char *haystack, const char *needle)
    return NULL;
 }
 
-#if !defined(TESTING) && !defined(USERMODE_APP)
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
    char *strstr(const char *haystack, const char *needle) \
    __attribute__((alias("tilck_strstr")));
 #endif
 
 
-char *strcpy(char *dest, const char *src)
+char *tilck_strcpy(char *dest, const char *src)
 {
    char *p = dest;
 
@@ -117,6 +117,11 @@ char *strcpy(char *dest, const char *src)
    *p = 0;
    return dest;
 }
+
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
+   char *strcpy(char *dest, const char *src) \
+   __attribute__((alias("tilck_strcpy")));
+#endif
 
 char *tilck_strncpy(char *dest, const char *src, size_t n)
 {
@@ -134,15 +139,20 @@ char *tilck_strncpy(char *dest, const char *src, size_t n)
    return dest;
 }
 
-#if !defined(TESTING) && !defined(USERMODE_APP)
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
    char *strncpy(char *dest, const char *src, size_t n) \
    __attribute__((alias("tilck_strncpy")));
 #endif
 
-char *strcat(char *dest, const char *src)
+char *tilck_strcat(char *dest, const char *src)
 {
-   return strcpy(dest + strlen(dest), src);
+   return tilck_strcpy(dest + strlen(dest), src);
 }
+
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
+   char *strcat(char *dest, const char *src) \
+   __attribute__((alias("tilck_strcat")));
+#endif
 
 char *tilck_strncat(char *dest, const char *src, size_t n)
 {
@@ -158,7 +168,7 @@ char *tilck_strncat(char *dest, const char *src, size_t n)
    return dest;
 }
 
-#if !defined(TESTING) && !defined(USERMODE_APP)
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
    char *strncat(char *dest, const char *src, size_t n) \
    __attribute__((alias("tilck_strncat")));
 #endif
@@ -168,7 +178,7 @@ int tilck_isxdigit(int c)
    return c < 128 && digit_to_val[c] >= 0;
 }
 
-#if !defined(TESTING) && !defined(USERMODE_APP)
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
    int isxdigit(int c) __attribute__((alias("tilck_isxdigit")));
 #endif
 
@@ -178,7 +188,7 @@ int tilck_isspace(int c)
           c == '\n' || c == '\v' || c == '\f';
 }
 
-#if !defined(TESTING) && !defined(USERMODE_APP)
+#if !defined(TESTING) && !defined(USERMODE_APP) && !defined(KERNEL_TEST)
    int isspace(int c) __attribute__((alias("tilck_isspace")));
 #endif
 
@@ -217,7 +227,14 @@ inline void str_reverse(char *str, size_t len)
    }
 }
 
-#if (defined(__aarch64__) && defined(KERNEL_TEST)) || defined(__riscv)
+/*
+ * Generic C implementations for non-x86 architectures.
+ * Tilck-specific helpers (memset16 etc.) are always needed.
+ * Standard libc functions are only needed for kernel builds (non-test),
+ * since KERNEL_TEST links against the host libc.
+ */
+#if !defined(__i386__) && !defined(__x86_64__) && \
+    !defined(TESTING) && !defined(USERMODE_APP)
 
 void *memset16(u16 *s, u16 val, size_t n)
 {
@@ -245,6 +262,7 @@ void *memcpy32(void *dest, const void *src, size_t n)
    return memcpy(dest, src, n * 4);
 }
 
+#if !defined(KERNEL_TEST)
 
 size_t strlen(const char *s)
 {
@@ -353,4 +371,6 @@ char *strchr(const char *s, int c)
    return (char *)s;
 }
 
-#endif
+#endif /* !KERNEL_TEST */
+
+#endif /* !x86 && !TESTING && !USERMODE_APP */

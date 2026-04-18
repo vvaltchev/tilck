@@ -1,26 +1,41 @@
 #!/bin/sh
 
-echo
-echo "--- Early bootstrap script ---"
+if [ "$1" = "-q" ]; then
+   export QUIET=1
+fi
+
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo "Early /bin/sh bootstrap"
+   echo "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+fi
+
 OS="`uname -s`"
 BASH="bash"
 SED="sed"
 GREP="grep"
+CUT="cut"
 
-echo "Detected host OS: $OS"
+if ! [ "$QUIET" = 1 ]; then
+   echo "Full args list: $0 $@"
+   echo "Detected host OS: $OS"
+   echo
+fi
 
-if [ "$OS" = "FreeBSD" ]; then
+if [ "$OS" = "FreeBSD" ] || [ "$OS" = "Darwin" ]; then
    SED="gsed"
    GREP="ggrep"
+   CUT="gcut"
 fi
 
 missing=0
-for c in $BASH $SED $GREP; do
-   echo -n "Check for tool: $c "
+for c in $BASH $SED $GREP $CUT; do
    if command -v "$c" >/dev/null; then
-      echo "[ OK ]"
+      if ! [ "$QUIET" = 1 ]; then
+         echo "Check for tool: $c\t[ OK ]"
+      fi
    else
-      echo "[ MISSING ]"
+      echo "Check for tool: $c\t[ MISSING ]"
       missing=1
    fi
 done
@@ -33,23 +48,26 @@ if [ $missing -eq 1 ]; then
    exit 1
 fi
 
-if ! command -v bash; then
+if ! command -v bash > /dev/null; then
    echo "ERROR: Bash not found. Please install Bash and re-run this script."
    exit 1
 fi
 
 set -e
-echo "\$0: $0"
-echo "Args: $@"
-echo
-echo "Determine this script's parent directory using realpath and dirname..."
+if ! [ "$QUIET" = 1 ]; then
+   echo
+   echo "Determine this script's parent directory using realpath and dirname..."
+fi
+
 THIS_SCRIPT="`realpath $0`"
 THIS_DIR="`dirname $THIS_SCRIPT`"
 BASH_SCRIPT="$THIS_DIR/bash_build_toolchain"
 
-echo "THIS_SCRIPT: $THIS_SCRIPT"
-echo "THIS_DIR:    $THIS_DIR"
-echo "BASH_SCRIPT: $BASH_SCRIPT"
+if ! [ "$QUIET" = 1 ]; then
+   echo "THIS_SCRIPT: $THIS_SCRIPT"
+   echo "THIS_DIR:    $THIS_DIR"
+   echo "BASH_SCRIPT: $BASH_SCRIPT"
+fi
 set +e
 
 if ! [ -f "$BASH_SCRIPT" ]; then
@@ -57,6 +75,4 @@ if ! [ -f "$BASH_SCRIPT" ]; then
    exit 1
 fi
 
-echo
-echo "--- Bash script ---"
 exec /usr/bin/env bash $BASH_SCRIPT "$@"

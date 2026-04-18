@@ -74,11 +74,105 @@ else()
    set(DD "dd")
 endif()
 
+# Host environment detection.
+#
+#   HOST_OS      = "linux" | "macos" | "freebsd"
+#   HOST_DISTRO  = "ubuntu-22.04" | "macos-14.3" | "freebsd-14.0" | ...
+#   HOST_CC      = "gcc-13.3.0" | "clang-14.0.0" | ...
+#
+# These values are used to construct the toolchain4 host tool paths
+# (HOST_DIR_PORTABLE / HOST_DIR below). They MUST stay in sync with the
+# Ruby pkgmgr implementation in scripts/pkgmgr/early_logic.rb (InitOnly
+# module: get_host_os, get_host_distro, get_host_cc), otherwise CMake
+# will look for host tools in a different subtree than where the
+# package manager installed them.
+if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+
+   set(HOST_OS "linux")
+
+   if (NOT EXISTS "/etc/os-release")
+      message(FATAL_ERROR "/etc/os-release not found: cannot detect distro")
+   endif()
+
+   file(STRINGS "/etc/os-release" _id_line  REGEX "^ID=")
+   file(STRINGS "/etc/os-release" _ver_line REGEX "^VERSION_ID=")
+   string(REPLACE "ID="         "" _id  "${_id_line}")
+   string(REPLACE "VERSION_ID=" "" _ver "${_ver_line}")
+   string(REPLACE "\""          "" _id  "${_id}")
+   string(REPLACE "\""          "" _ver "${_ver}")
+
+   if ("${_id}" STREQUAL "" OR "${_ver}" STREQUAL "")
+      message(FATAL_ERROR "/etc/os-release is missing ID or VERSION_ID")
+   endif()
+
+   set(HOST_DISTRO "${_id}-${_ver}")
+   unset(_id_line)
+   unset(_ver_line)
+   unset(_id)
+   unset(_ver)
+
+elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+
+   set(HOST_OS "macos")
+   execute_process(
+      COMMAND sw_vers -productVersion
+      OUTPUT_VARIABLE _mac_ver
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   if ("${_mac_ver}" STREQUAL "")
+      message(FATAL_ERROR "sw_vers -productVersion returned nothing")
+   endif()
+   # Use only major.minor (e.g. "26.4") so a minor-patch bump like
+   # 26.4 -> 26.4.1 doesn't orphan the distro subtree.
+   string(REGEX REPLACE "^([0-9]+\\.[0-9]+).*" "\\1" _mac_ver "${_mac_ver}")
+   set(HOST_DISTRO "macos-${_mac_ver}")
+   unset(_mac_ver)
+
+elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
+
+   set(HOST_OS "freebsd")
+   execute_process(
+      COMMAND uname -r
+      OUTPUT_VARIABLE _fbsd_ver
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   string(REGEX REPLACE "^([^-]+).*$" "\\1" _fbsd_ver "${_fbsd_ver}")
+   if ("${_fbsd_ver}" STREQUAL "")
+      message(FATAL_ERROR "uname -r returned nothing")
+   endif()
+   set(HOST_DISTRO "freebsd-${_fbsd_ver}")
+   unset(_fbsd_ver)
+
+else()
+   message(FATAL_ERROR "Unsupported host OS: ${CMAKE_HOST_SYSTEM_NAME}")
+endif()
+
+# HOST_CC: family+version of the host C compiler detected by project().
+# Must match the Ruby pkgmgr's get_host_cc, which reads `$CC -v` output.
+#
+# Apple Clang reports a 4-component version to CMake (e.g. 21.0.0.21000099)
+# while `clang -v` says "Apple clang version 21.0.0 ...". The Ruby pkgmgr
+# parses the latter, so truncate to major.minor.patch here to stay in sync.
+if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+   string(REGEX REPLACE
+      "^([0-9]+\\.[0-9]+\\.[0-9]+).*" "\\1"
+      _clang_ver "${CMAKE_C_COMPILER_VERSION}"
+   )
+   set(HOST_CC "clang-${_clang_ver}")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
+   set(HOST_CC "gcc-${CMAKE_C_COMPILER_VERSION}")
+else()
+   message(
+      FATAL_ERROR
+      "Unsupported host C compiler: ${CMAKE_C_COMPILER_ID}"
+   )
+endif()
+
 # BEGIN [Environment-controlled "sticky" cache variables]
 
 # Main variables
 define_env_cache_str_var(TCROOT_PARENT ${CMAKE_SOURCE_DIR})
-define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain3)
+define_env_cache_str_var(TCROOT ${TCROOT_PARENT}/toolchain4)
 define_env_cache_str_var(ARCH ${DEFAULT_TARGET_ARCH})
 
 define_env_cache_bool_var(TEST_GCOV)
@@ -116,7 +210,21 @@ set(BUILD_SCRIPTS       ${CMAKE_SOURCE_DIR}/scripts/build_scripts)
 set(BUILD_APPS          ${CMAKE_BINARY_DIR}/scripts/build_apps)
 set(BTC_SCRIPT          ${CMAKE_SOURCE_DIR}/scripts/build_toolchain)
 set(COVERAGE_HTML_DIR   ${CMAKE_BINARY_DIR}/coverage_html)
-set(TCROOT_BA           ${TCROOT}/syscc/host_${HOST_ARCH})
+
+# Host-side install roots in the toolchain4 layout.
+#
+# HOST_DIR_PORTABLE — statically-linked, distro-agnostic host tools (cross
+#    compilers). Shared across distros and host compilers; a GCC_TC_VER
+#    bump does not invalidate extracted tarballs here.
+#
+# HOST_DIR         — non-portable host tools (host_mtools, host_gtest) whose
+#    binaries or libraries depend on glibc/libstdc++ from a specific distro,
+#    built with a specific host compiler. Because C++ has no stable ABI, the
+#    host-compiler version is part of the path even for C-only tools that
+#    may pull in C++ host libs.
+set(HOST_DIR_PORTABLE   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/portable)
+set(HOST_DIR_DISTRO     ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO})
+set(HOST_DIR            ${HOST_DIR_DISTRO}/${HOST_CC})
 set(CMAKE_DIR           ${CMAKE_SOURCE_DIR}/other/cmake)
 file(RELATIVE_PATH      BTC_SCRIPT_REL ${CMAKE_SOURCE_DIR} ${BTC_SCRIPT})
 file(RELATIVE_PATH      TCROOT_REL     ${CMAKE_SOURCE_DIR}     ${TCROOT})
@@ -173,6 +281,11 @@ endif()
 # Read all the VER_<PACKAGE>=<VALUE> pairs from pkg_versions
 #
 
+# Re-run CMake automatically when pkg_versions changes (e.g. version bump)
+# so that the upgrade check below fires and VER_* variables are refreshed.
+set_property(DIRECTORY APPEND PROPERTY
+   CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/other/pkg_versions)
+
 file(STRINGS ${CMAKE_SOURCE_DIR}/other/pkg_versions PKG_VERSIONS)
 
 foreach(LINE ${PKG_VERSIONS})
@@ -200,6 +313,45 @@ unset(KEY)
 unset(LINE)
 unset(VALUE)
 unset(VALUE_START_POS)
+
+#
+# Lightweight check for package upgrades. Calls the Ruby pkgmgr directly
+# (no bash wrapper, no system-package checks) so it adds <100ms to cmake.
+# Exit code 0 = up to date, 2 = upgrades needed.
+#
+# The Ruby binary may live in the toolchain (downloaded/built by the bash
+# bootstrap) or be the system Ruby (used when the system version >= 3.2).
+# Try the toolchain path first, fall back to system `ruby`.
+#
+set(PKGMGR_RUBY "")
+set(_tc_ruby
+   ${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/ruby/${VER_RUBY}/bin/ruby)
+
+if (EXISTS ${_tc_ruby})
+   set(PKGMGR_RUBY ${_tc_ruby})
+else()
+   find_program(PKGMGR_RUBY ruby)
+endif()
+unset(_tc_ruby)
+
+set(PKGMGR_MAIN ${CMAKE_SOURCE_DIR}/scripts/pkgmgr/main.rb)
+
+if (PKGMGR_RUBY AND EXISTS ${PKGMGR_MAIN})
+   execute_process(
+      COMMAND ${PKGMGR_RUBY} ${PKGMGR_MAIN} -q --check-for-updates
+      RESULT_VARIABLE _upgrade_rc
+      OUTPUT_VARIABLE _upgrade_out
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+   )
+   if (_upgrade_rc EQUAL 2)
+      message(FATAL_ERROR
+         "\nSome installed toolchain packages need upgrading:\n"
+         "   ${_upgrade_out}\n\n"
+         "Run: ${BTC_SCRIPT_REL} --upgrade\n")
+   endif()
+   unset(_upgrade_rc)
+   unset(_upgrade_out)
+endif()
 
 # Reset the default flags
 set(CMAKE_C_FLAGS "")
@@ -515,9 +667,15 @@ endif()
 message(STATUS "TCROOT: ${TCROOT}")
 message(STATUS "GCC_TC_VER: ${GCC_TC_VER}")
 
-string(REPLACE                "." "_" GCC_TC_VER_ "${GCC_TC_VER}")
-set(TCROOT_ARCH_DIR           ${TCROOT}/${GCC_TC_VER_}/${ARCH})
-set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/${GCC_TC_VER_})
+# Target-side per-arch package root. toolchain4 layout:
+#
+#     ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH}/<pkg>/<ver>/
+#
+# The "gcc-" prefix leaves room for other compiler families in the future
+# (clang/llvm slots) and the dotted version matches the rest of the
+# ecosystem (vs. the underscore-mangled path used in toolchain3).
+set(TCROOT_ARCH_DIR           ${TCROOT}/gcc-${GCC_TC_VER}/${ARCH})
+set(TCROOT_ARCH_DIR_PARENT    ${TCROOT}/gcc-${GCC_TC_VER})
 
 set(BUSYBOX_DIR               ${TCROOT_ARCH_DIR}/busybox/${VER_BUSYBOX})
 set(NCURSES_DIR               ${TCROOT_ARCH_DIR}/ncurses)
@@ -527,16 +685,20 @@ set(LIBFDT_DIR                ${TCROOT_ARCH_DIR}/dtc/${VER_DTC}/libfdt)
 set(LCOV_DIR                  ${TCROOT}/noarch/lcov/${VER_LCOV})
 
 set(BUSYBOX_CONFIG            ${BUSYBOX_DIR}/.config)
-set(GCC_NAME_PFX              gcc_${GCC_TC_VER_}_${ARCH})
-set(GCC_NAME_PFX_i386         gcc_${GCC_TC_VER_}_i386)
-set(GCC_NAME_PFX_x86_64       gcc_${GCC_TC_VER_}_x86_64)
 
 # BEGIN [ARCH-dependent paths]
 
-   # Musl toolchain
-   set(GCC_TC_ROOT            ${TCROOT_BA}/${GCC_NAME_PFX}_musl)
-   set(GCC_TC_ROOT_i386       ${TCROOT_BA}/${GCC_NAME_PFX_i386}_musl)
-   set(GCC_TC_ROOT_x86_64     ${TCROOT_BA}/${GCC_NAME_PFX_x86_64}_musl)
+   # Musl toolchains live under HOST_DIR_PORTABLE because they are 100%
+   # statically-linked and libc-independent. toolchain4 layout:
+   #
+   #     ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER}/
+   #
+   # The GCC version is INSIDE the package dir (not embedded in the name),
+   # so a single gcc-<arch>-musl package can carry multiple versions side
+   # by side.
+   set(GCC_TC_ROOT            ${HOST_DIR_PORTABLE}/gcc-${ARCH}-musl/${GCC_TC_VER})
+   set(GCC_TC_ROOT_i386       ${HOST_DIR_PORTABLE}/gcc-i386-musl/${GCC_TC_VER})
+   set(GCC_TC_ROOT_x86_64     ${HOST_DIR_PORTABLE}/gcc-x86_64-musl/${GCC_TC_VER})
    set(GCC_TOOLCHAIN          ${GCC_TC_ROOT}/bin)
    set(GCC_TOOLCHAIN_i386     ${GCC_TC_ROOT_i386}/bin)
    set(GCC_TOOLCHAIN_x86_64   ${GCC_TC_ROOT_x86_64}/bin)
@@ -752,7 +914,12 @@ write_bool_define(KERNEL_SERCON)
 write_bool_define(TERM_BIG_SCROLL_BUF)
 write_bool_define(PS2_DO_SELFTEST)
 write_bool_define(PS2_VERBOSE_DEBUG_LOG)
-file(WRITE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h" "${_mc}")
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp" "${_mc}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+   "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp"
+   "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h"
+)
+file(REMOVE "${CMAKE_BINARY_DIR}/tilck_gen_headers/modules_config.h.tmp")
 unset(_mc)
 
 # Include kernel's noarch sources
@@ -805,6 +972,23 @@ foreach(_app init devshell dp termtest fbtest filedump ncapp play)
 endforeach()
 unset(_app)
 
+# Read extra app manifests (populated by userapps/extra after first build).
+# file(GLOB CONFIGURE_DEPENDS ...) triggers a reconfigure when manifests appear
+# or change, enabling incremental builds after the initial full build.
+file(GLOB _extra_manifests
+   CONFIGURE_DEPENDS
+   "${CMAKE_BINARY_DIR}/userapps/extra/*/manifest.txt"
+)
+set(EXTRA_APPS_FILES_LIST "")
+foreach(_manifest ${_extra_manifests})
+   file(STRINGS "${_manifest}" _entries)
+   list(APPEND EXTRA_APPS_FILES_LIST ${_entries})
+endforeach()
+list(FILTER EXTRA_APPS_FILES_LIST EXCLUDE REGEX "^$")
+unset(_extra_manifests)
+unset(_entries)
+unset(_manifest)
+
 ################################################################################
 # Generate tilck_config.cmake for ExternalProject subprojects
 
@@ -823,9 +1007,9 @@ set(TILCK_EXPORTED_VARS
    BOARD BOARD_BSP
 
    # Toolchain paths, labels and versions
-   TCROOT TCROOT_BA TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
-   GCC_TC_VER GCC_TC_VER_
-   GCC_NAME_PFX GCC_NAME_PFX_i386 GCC_NAME_PFX_x86_64
+   TCROOT TCROOT_ARCH_DIR TCROOT_ARCH_DIR_PARENT
+   HOST_DIR_PORTABLE HOST_DIR_DISTRO HOST_DIR
+   GCC_TC_VER
    GCC_TC_ROOT GCC_TC_ROOT_i386 GCC_TC_ROOT_x86_64
    GCC_TOOLCHAIN GCC_TOOLCHAIN_i386 GCC_TOOLCHAIN_x86_64
    GCC_TC_LIBC_DIRNAME GCC_TC_SYSROOT GCC_TC_ISYSTEM
@@ -836,6 +1020,7 @@ set(TILCK_EXPORTED_VARS
 
    # Host info
    HOST_ARCH HOST_ARCH_BITS HOST_ARCH_FAMILY
+   HOST_OS HOST_DISTRO HOST_CC
 
    # Kernel/boot memory layout
    BASE_VA KERNEL_PADDR LINEAR_MAPPING_MB KERNEL_BASE_VA KERNEL_VADDR
@@ -918,7 +1103,12 @@ foreach(_var ${TILCK_EXPORTED_VARS})
       string(APPEND _config_content "set(${_var} [==[${${_var}}]==])\n")
    endif()
 endforeach()
-file(WRITE "${CMAKE_BINARY_DIR}/tilck_config.cmake" "${_config_content}")
+file(WRITE "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp" "${_config_content}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+   "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp"
+   "${CMAKE_BINARY_DIR}/tilck_config.cmake"
+)
+file(REMOVE "${CMAKE_BINARY_DIR}/tilck_config.cmake.tmp")
 unset(_config_content)
 unset(_var)
 
@@ -930,7 +1120,7 @@ ExternalProject_Add(userapps
    BINARY_DIR ${CMAKE_BINARY_DIR}/userapps
    INSTALL_COMMAND ""
    BUILD_ALWAYS 1
-   BUILD_BYPRODUCTS ${USERAPPS_FILES_LIST}
+   BUILD_BYPRODUCTS ${USERAPPS_FILES_LIST} ${EXTRA_APPS_FILES_LIST}
    CMAKE_ARGS
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
@@ -944,9 +1134,9 @@ ExternalProject_Add_Step(userapps config_dep
    COMMAND ${CMAKE_COMMAND} -E true
 )
 
-# Forward all KRN_* variables from the command line to the kernel subproject.
-# Kernel-private options all use the KRN_ prefix so they can be set via
-# cmake -DKRN_<option>=<value> at the root level and automatically forwarded.
+# Forward all KRN_* variables from the command line to the kernel and gtests
+# subprojects. Kernel-private options all use the KRN_ prefix so they can be
+# set via cmake -DKRN_<option>=<value> at the root level and forwarded to both.
 get_cmake_property(_all_cache_vars CACHE_VARIABLES)
 set(_krn_forward_args "")
 foreach(_v ${_all_cache_vars})
@@ -999,6 +1189,15 @@ ExternalProject_Add_Step(kernel tools_dep
 
 add_dependencies(userapps kernel)
 
+file(GLOB_RECURSE SYSROOT_FILES ${GLOB_CONF_DEP}
+   "${CMAKE_SOURCE_DIR}/sysroot/*"
+)
+list(FILTER SYSROOT_FILES EXCLUDE REGEX "(README|\\.gitignore)$")
+
+file(GLOB TEST_SCRIPT_FILES ${GLOB_CONF_DEP}
+   "${CMAKE_SOURCE_DIR}/tests/system/scripts/*"
+)
+
 set(
    mbr_img_deps
 
@@ -1007,12 +1206,14 @@ set(
 
    userapps
    ${USERAPPS_FILES_LIST}
+   ${EXTRA_APPS_FILES_LIST}
 
    fathack
    mbrhack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/fathack
    ${CMAKE_BINARY_DIR}/scripts/build_apps/mbrhack
-   ${CMAKE_SOURCE_DIR}/sysroot/etc/start
+   ${SYSROOT_FILES}
+   ${TEST_SCRIPT_FILES}
    ${CMAKE_BINARY_DIR}/config_fatpart
    ${BUILD_SCRIPTS_FILES_LIST}
 )
@@ -1279,11 +1480,8 @@ add_custom_target(
       ${IMG_FILE}
 )
 
-set(GTEST_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googletest)
-set(GMOCK_SOURCE_DIR ${TCROOT}/noarch/gtest/${VER_GTEST}/googlemock)
-set(GTEST_TC_BUILD_DIR ${TCROOT_BA}/gtest/${VER_GTEST})
-set(GMOCK_TC_BUILD_DIR ${TCROOT_BA}/gmock/${VER_GTEST})
-set(GTEST_BTC_COMMAND "build_gtest build_gmock")
+set(GTEST_INSTALL_DIR ${HOST_DIR}/gtest/${VER_GTEST}/install)
+set(GTEST_BTC_COMMAND "host_gtest")
 
 add_custom_command(
 
@@ -1309,9 +1507,47 @@ add_custom_target(
       test_fatpart
 )
 
-if (EXISTS ${GTEST_TC_BUILD_DIR} AND EXISTS ${GMOCK_TC_BUILD_DIR})
-   add_subdirectory(tests/unit)
-   add_dependencies(gtests test_fatpart_target kernel)
+if (EXISTS ${GTEST_INSTALL_DIR})
+
+   if (APPLE)
+      set(_gtests_tool_deps machohack)
+   else()
+      set(_gtests_tool_deps elfhack32 elfhack64)
+   endif()
+
+   ExternalProject_Add(gtests
+      SOURCE_DIR ${CMAKE_SOURCE_DIR}/tests/unit
+      BINARY_DIR ${CMAKE_BINARY_DIR}/tests/unit
+      DEPENDS
+         test_fatpart_target
+         gen_config ${_gtests_tool_deps}
+      EXCLUDE_FROM_ALL TRUE
+      INSTALL_COMMAND ""
+      BUILD_ALWAYS 1
+      BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/gtests
+      CMAKE_ARGS
+         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
+         ${_krn_forward_args}
+   )
+
+   ExternalProject_Add_Step(gtests config_dep
+      DEPENDEES download DEPENDERS configure
+      DEPENDS ${CMAKE_BINARY_DIR}/tilck_config.cmake
+      COMMAND ${CMAKE_COMMAND} -E true
+   )
+
+   ExternalProject_Add_Step(gtests tools_dep
+      DEPENDEES configure
+      DEPENDERS build
+      DEPENDS
+         $<TARGET_FILE:gen_config>
+      COMMAND ${CMAKE_COMMAND} -E true
+      ALWAYS 1
+   )
+
 else()
    no_googletest_lib_fake_error_target()
 endif()

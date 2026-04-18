@@ -35,7 +35,7 @@ trigger:
 
 jobs:
   - job: gcc_12_4
-    container: 'vvaltchev/tilck-riscv64:v6'
+    container: 'vvaltchev/tilck-riscv64:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -76,7 +76,7 @@ jobs:
         displayName: Run the system tests
 
   - job: gcc_13_3
-    container: 'vvaltchev/tilck-riscv64:v6'
+    container: 'vvaltchev/tilck-riscv64:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:
@@ -117,7 +117,7 @@ jobs:
         displayName: Run the system tests
 
   - job: coverage
-    container: 'vvaltchev/tilck-riscv64:v6'
+    container: 'vvaltchev/tilck-riscv64:v7'
     pool:
       vmImage: 'ubuntu-24.04'
     variables:

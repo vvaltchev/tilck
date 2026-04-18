@@ -20,8 +20,6 @@ function build_uboot_internal {
    reset_cc_vars
 
    cp $BOARD_BSP/u-boot.config .config
-
-   do_common_cross_compiler_setup
    set_cc_vars_to_tc
 
    set +e

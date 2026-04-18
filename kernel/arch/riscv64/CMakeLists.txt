@@ -35,6 +35,7 @@ file(GLOB ARCH_SOURCES ${GLOB_CONF_DEP} ${ARCH_SOURCES_GLOB})
 file(
    GLOB
    ARCH_FAMILY_SOURCES
+   ${GLOB_CONF_DEP}
 
    "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*.c"
    "${PROJ_ROOT}/kernel/arch/${ARCH_FAMILY}/*.S"
@@ -135,7 +136,7 @@ if (KRN_SYMBOLS)
       COMMAND
          ${ELFHACK} ${KERNEL_FILE} --set-phdr-rwx-flags 2 r
       DEPENDS
-         tilck_unstripped
+         ${ELFHACK} tilck_unstripped
       WORKING_DIRECTORY
          ${PROJ_ROOT}
       COMMENT

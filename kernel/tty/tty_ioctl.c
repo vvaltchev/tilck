@@ -21,7 +21,9 @@ const struct termios default_termios =
    .c_oflag = OPOST | ONLCR,
    .c_cflag = CREAD | B38400 | CS8,
    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+#ifdef __linux__
    .c_line = 0,
+#endif
 
    .c_cc =
    {

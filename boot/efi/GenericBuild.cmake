@@ -50,11 +50,13 @@ set(
    -fPIC
 )
 
+set(EFI_LINKER_SCRIPT ${GNUEFI_DIR}/gnuefi/elf_${EFI_ARCH}_efi.lds)
+
 set(
    LINK_FLAGS_LIST
 
    -nostdlib
-   -Wl,--script=${GNUEFI_DIR}/gnuefi/elf_${EFI_ARCH}_efi.lds
+   -Wl,--script=${EFI_LINKER_SCRIPT}
    -Wl,-znocombreloc
    -Wl,-Bsymbolic
 )
@@ -69,6 +71,7 @@ set_target_properties(
    PROPERTIES
       COMPILE_FLAGS "${EFI_BUILD_BASE_FLAGS} ${COMPILE_FLAGS}"
       LINK_FLAGS ${LINK_FLAGS}
+      LINK_DEPENDS ${EFI_LINKER_SCRIPT}
 )
 
 target_include_directories(
@@ -124,7 +127,6 @@ add_custom_command(
    COMMAND
       ${CMAKE_OBJCOPY} ${OC_OPTS} ${EFI_APP_SO} ${EFI_${EFI_ARCH}_FILE}
    DEPENDS
-      ${SWITCHMODE_BIN}
       efi_app_${EFI_ARCH}
    COMMENT
       "Creating the final EFI file for ${EFI_ARCH}"

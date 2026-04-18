@@ -33,7 +33,7 @@ require a special build configuration as well (see below).
 
 3. Clean coverage data from previous runs:
 
-        <BUILD_DIR>/scripts/generate_test_coverage_report --clean
+        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --clean
 
 4. Run the unit tests:
 
@@ -44,7 +44,7 @@ require a special build configuration as well (see below).
 
 5. Generate the first coverage report with:
 
-        <BUILD_DIR>/scripts/generate_test_coverage_report --acc
+        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --acc
 
    At this point, there should be a `coverage.info` file in the build directory,
    but we're not done yet. We have only coverage for the **unit tests**.
@@ -59,7 +59,7 @@ require a special build configuration as well (see below).
    was involved as well). Therefore, we can finally generate our HTML report
    this way:
 
-        <BUILD_DIR>/scripts/generate_test_coverage_report --gen
+        <BUILD_DIR>/tests/unit/scripts/generate_test_coverage_report --gen
 
    Open `<BUILD_DIR>/coverage_html/index.html` in your browser.
 

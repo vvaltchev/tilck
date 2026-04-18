@@ -371,7 +371,7 @@ int iterate_over_tasks(bintree_visit_cb func, void *arg)
                                  tree_by_tid_node);
 }
 
-static void idle(void)
+static void idle(void *unused)
 {
    while (true) {
 

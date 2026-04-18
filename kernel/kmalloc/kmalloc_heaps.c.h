@@ -34,6 +34,8 @@
 #include "kmalloc_block_node.h"
 
 
+#ifndef KERNEL_TEST
+
 void *kmalloc_get_first_heap(size_t *size)
 {
    static char buf[KMALLOC_FIRST_HEAP_SIZE] ALIGNED_AT(KMALLOC_MAX_ALIGN);
@@ -52,6 +54,8 @@ void *kmalloc_get_first_heap(size_t *size)
     */
    return PA_TO_LIN_VA(KERNEL_VA_TO_PA(buf));
 }
+
+#endif
 
 #include "kmalloc_leak_detector.c.h"
 

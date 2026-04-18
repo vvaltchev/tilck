@@ -1,0 +1,660 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+
+# ---------------------------------------------------------------
+# NOTE
+#
+# This "script" is NOT meant to be executed directly.
+# It is included as a source file by scripts/build_toolchain.
+#
+# ---------------------------------------------------------------
+
+function install_debian_family {
+
+   local os_rel="/etc/os-release"
+   local major_ver
+   local ver
+
+   echo debian > $TC/.distro
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/debian/update -ci
+   fi
+
+   if which lsb_release &> /dev/null; then
+      major_ver=`lsb_release -r | grep -Eo '[0-9]+' | head -1`
+   elif [ -f "$os_rel" ]; then
+      ver="$(grep VERSION_ID $os_rel | cut -d '=' -f 2 | tr -d '"')"
+      major_ver=$(cut -d '.' -f 1 <<< $ver)
+   fi
+
+   pkg_list=()
+   pkg_list+=(debianutils)
+   pkg_list+=(build-essential)
+   pkg_list+=(binutils)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
+   pkg_list+=(wget)
+   pkg_list+=(curl)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(g++)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(bzip2)
+   pkg_list+=(unzip)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(libssl-dev)
+   pkg_list+=(zlib1g-dev)
+   pkg_list+=(libyaml-dev)
+   pkg_list+=(libffi-dev)
+   pkg_list+=(pkg-config)
+   pkg_list+=(autoconf)
+   pkg_list+=(ruby)
+   pkg_list+=(device-tree-compiler)
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(gcc-multilib)
+      pkg_list+=(g++-multilib)
+      pkg_list+=(python3-serial)
+      pkg_list+=(python3-pip)
+      pkg_list+=(python3-coverage)
+      pkg_list+=(imagemagick)
+   fi
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         if ! qemu-system-riscv64 --version &> /dev/null; then
+            if [[ "$DETECTED_UBUNTU_OR_MINT" == 1 ]]; then
+               if [ "$major_ver" -ge 22 ]; then
+                  pkg_list+=(qemu-system-misc)
+               else
+                  pkg_list+=(qemu-system-riscv64)
+               fi
+            else
+               if [ "$major_ver" -ge 12 ]; then
+                  pkg_list+=(qemu-system-misc)
+               else
+                  pkg_list+=(qemu-system-riscv64)
+               fi
+            fi
+         fi
+      fi
+
+      pkg_list+=(python3)
+
+      if [[ "$DETECTED_UBUNTU_OR_MINT" == 1 ]]; then
+         # On Ubuntu, qemu-system-gui exists only in 20.04 and newer,
+         # so we need to check the distro's major version before checking
+         # for that package. In some very corner cases, e.g. the arm64v8/ubuntu
+         # Docker container, lsb_release is not installed. Therefore, check
+         # for that as well.
+         if [[ "$major_ver" == "" || "$major_ver" -ge 20 ]]; then
+            pkg_list+=(qemu-system-gui)
+         fi
+      fi
+   fi
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if [ "`dpkg -s $x 2>&1 | grep Status`" ]; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   # Install the packages
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "apt install -y $tmp" || exit 1
+      else
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if ! which sudo &> /dev/null; then
+               run_command "su -c \"apt install $tmp\"" || exit 1
+            else
+               run_command "sudo apt install $tmp" || exit 1
+            fi
+         else
+            run_command "apt install $tmp" || exit 1
+         fi
+      fi
+
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_fedora {
+
+   echo fedora > $TC/.distro
+   local fedoraVer="$(rpm -E %fedora)"
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/fedora/update -ci
+   fi
+
+   pkg_list=()
+   pkg_list+=(binutils)
+   pkg_list+=(which)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
+   pkg_list+=(wget)
+   pkg_list+=(curl)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(gcc-c++)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(bzip2)
+   pkg_list+=(unzip)
+   pkg_list+=(glibc-gconv-extra)
+   pkg_list+=(libxcrypt-compat)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(openssl-devel)
+   pkg_list+=(libyaml-devel)
+   pkg_list+=(libffi-devel)
+   pkg_list+=(pkgconf-pkg-config)
+   pkg_list+=(autoconf)
+   pkg_list+=(patch)
+   pkg_list+=(ruby)
+   pkg_list+=(rubygem-power_assert)
+   pkg_list+=(rubygem-minitest)
+   pkg_list+=(dtc)
+
+   if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
+      pkg_list+=(openssl-devel-engine)  # For u-boot (riscv64)
+   fi
+
+   if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 40 ]]; then
+      pkg_list+=(zlib-ng-compat-devel)
+   else
+      pkg_list+=(zlib-devel)
+   fi
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(glibc-devel.i686)
+      pkg_list+=(libgcc.i686)
+      pkg_list+=(libstdc++-devel.i686)
+      pkg_list+=(python3-pyserial)
+      pkg_list+=(python3-pip)
+      pkg_list+=(python3-coverage)
+      pkg_list+=(ImageMagick)
+   fi
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-system-riscv)
+      fi
+      pkg_list+=(qemu-ui-gtk)
+      pkg_list+=(python3)
+   fi
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if rpm -q $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "dnf install -y $tmp" || exit 1
+      else
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if which sudo &> /dev/null; then
+               run_command "sudo dnf install $tmp" || exit 1
+            else
+               run_command "su -c \"dnf install $tmp\"" || exit 1
+            fi
+         else
+            run_command "dnf install $tmp" || exit 1
+         fi
+      fi
+
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+}
+
+function install_arch {
+
+   echo arch > $TC/.distro
+
+   if [ "$RUNNING_IN_CI" == 1 ]; then
+      $MAIN_DIR/scripts/tc/arch/update -ci
+   fi
+
+   pkg_list=()
+   pkg_list+=(base-devel)
+   pkg_list+=(binutils)
+   pkg_list+=(which)
+   pkg_list+=(tar)
+   pkg_list+=(grep)
+   pkg_list+=(gzip)
+   pkg_list+=(gawk)
+   pkg_list+=(wget)
+   pkg_list+=(curl)
+   pkg_list+=(git)
+   pkg_list+=(gcc)
+   pkg_list+=(make)
+   pkg_list+=(cmake)
+   pkg_list+=(bzip2)
+   pkg_list+=(unzip)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(zlib)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+   pkg_list+=(pkgconf)
+   pkg_list+=(autoconf)
+   pkg_list+=(ruby)
+   pkg_list+=(dtc)
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(clang)
+      pkg_list+=(lib32-gcc-libs)
+      pkg_list+=(lib32-glibc)
+      pkg_list+=(python-pyserial)
+      pkg_list+=(python-pip)
+      pkg_list+=(python-coverage)
+      pkg_list+=(imagemagick)
+   fi
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu)
+      if [[ "$ARCH" == "i386" || "$ARCH" == "x86_64" ]]; then
+         pkg_list+=(qemu-system-x86)
+      elif [[ "$ARCH" == "riscv64" ]]; then
+         pkg_list+=(qemu-system-riscv)
+      fi
+      pkg_list+=(qemu-ui-gtk)
+      pkg_list+=(python3)
+   fi
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if pacman -Q $x &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   if [ ${#to_install[@]} -ne 0 ]; then
+
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+
+      if [ "$RUNNING_IN_CI" == 1 ] || ! [ -t 0 ]; then
+         run_command "pacman -S --noconfirm $tmp" || exit 1
+      else
+         if ! [[ "$EUID" -eq 0 ]]; then
+            if which sudo &> /dev/null; then
+               run_command "sudo pacman -S --needed $tmp" || exit 1
+            else
+               run_command "su -c \"pacman -S --needed $tmp\"" || exit 1
+            fi
+         else
+            run_command "pacman -S --needed $tmp" || exit 1
+         fi
+      fi
+
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+
+   # power_assert and minitest are not packaged in Arch's main repos
+   # but are required by scripts/pkgmgr/ (early_logic.rb and the unit
+   # test suite). Install them via gem once Ruby is present.
+   local missing_gems=()
+   for g in power_assert minitest; do
+      gem list -i "$g" &> /dev/null || missing_gems+=("$g")
+   done
+
+   if [ ${#missing_gems[@]} -ne 0 ]; then
+      local gems="${missing_gems[*]}"
+      if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
+         run_command "gem install --no-document $gems" || exit 1
+      elif which sudo &> /dev/null; then
+         run_command "sudo gem install --no-document $gems" || exit 1
+      else
+         run_command "su -c \"gem install --no-document $gems\"" || exit 1
+      fi
+   fi
+}
+
+function install_freebsd {
+
+   echo freebsd > $TC/.distro
+
+   pkg_list=()
+   pkg_list+=(gmake)
+   pkg_list+=(gsed)
+   pkg_list+=(coreutils)
+   pkg_list+=(findutils)
+   pkg_list+=(gnugrep)
+   pkg_list+=(gtar)
+   pkg_list+=(patch)
+   pkg_list+=(diffutils)
+   pkg_list+=(gawk)
+   pkg_list+=(pkgconf)
+   pkg_list+=(git)
+   pkg_list+=(cmake)
+   pkg_list+=(gcc)
+   pkg_list+=(unzip)
+   pkg_list+=(wget)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+   pkg_list+=(autotools)
+   pkg_list+=(dtc)
+   pkg_list+=(qemu)
+   pkg_list+=(edk2-qemu-i386)
+   pkg_list+=(edk2-qemu-x64)
+   pkg_list+=(python)
+   pkg_list+=(ruby)
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(ImageMagick7-nox11)
+   fi
+
+   # Ruby GEMs (included with Ruby on Ubuntu/Debian, but not on FreeBSD)
+   pkg_list+=(rubygem-bundler)
+   pkg_list+=(rubygem-rake)
+   pkg_list+=(rubygem-rbs)
+   pkg_list+=(rubygem-csv)
+   pkg_list+=(rubygem-json)
+   pkg_list+=(rubygem-strscan)
+   pkg_list+=(rubygem-timeout)
+   pkg_list+=(rubygem-error_highlight)
+   pkg_list+=(rubygem-net-http)
+   pkg_list+=(rubygem-net-protocol)
+   pkg_list+=(rubygem-net-ftp)
+   pkg_list+=(rubygem-rexml)
+   pkg_list+=(rubygem-test-unit)
+   pkg_list+=(rubygem-power_assert)
+   pkg_list+=(rubygem-rdoc)
+   pkg_list+=(rubygem-debug)
+   pkg_list+=(rubygem-psych)
+   pkg_list+=(rubygem-openssl)
+   pkg_list+=(rubygem-date)
+   pkg_list+=(rubygem-stringio)
+   pkg_list+=(rubygem-io-console)
+   pkg_list+=(rubygem-prettyprint)
+   pkg_list+=(rubygem-pp)
+   pkg_list+=(rubygem-minitest)
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if pkg info -e $x; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   # Install the packages
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "su - root -c \"pkg install $tmp\""
+   fi
+
+   # Contrib: install Python testing packages via pip (FreeBSD doesn't
+   # ship python3-serial / python3-coverage as system packages).
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      echo "Installing Python testing packages via pip..."
+      python3 -m pip install pyserial coverage
+   fi
+}
+
+function install_darwin {
+
+   echo darwin > $TC/.distro
+
+   if ! which brew &> /dev/null; then
+      echo
+      echo "ERROR: Homebrew is required to install packages on macOS."
+      echo "Please install it from: https://brew.sh"
+      echo
+      exit 1
+   fi
+
+   # GNU tools required by the gnu-wrap shims (macOS ships BSD variants)
+   pkg_list=()
+   pkg_list+=(coreutils)    # gdd
+   pkg_list+=(diffutils)    # gdiff
+   pkg_list+=(findutils)    # gfind, gxargs
+   pkg_list+=(gawk)         # gawk
+   pkg_list+=(gnu-sed)      # gsed
+   pkg_list+=(gnu-tar)      # gtar
+   pkg_list+=(grep)         # ggrep
+   pkg_list+=(make)         # gmake (>= 3.82, macOS ships 3.81)
+
+   # Build tools
+   pkg_list+=(cmake)
+   pkg_list+=(gcc)
+   pkg_list+=(git)
+   pkg_list+=(unzip)
+   pkg_list+=(bison)
+   pkg_list+=(flex)
+   pkg_list+=(autoconf)
+   pkg_list+=(pkg-config)
+
+   # Libraries needed by some packages (e.g. u-boot needs openssl)
+   pkg_list+=(openssl@3)
+   pkg_list+=(libyaml)
+   pkg_list+=(libffi)
+
+   # Other tools
+   pkg_list+=(ruby)
+   pkg_list+=(dtc)
+   pkg_list+=(python3)
+
+   if [[ "$TC_MINIMAL" != "1" ]]; then
+      pkg_list+=(qemu)
+   fi
+
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      pkg_list+=(imagemagick)
+   fi
+
+   to_install=()
+   echo Checking the packages that need to be installed
+
+   for x in ${pkg_list[@]}; do
+      echo -ne "Checking $x... "
+
+      if brew list --formula "$x" &> /dev/null; then
+         echo OK
+      else
+         echo NOT found
+         to_install+=($x)
+      fi
+   done
+
+   echo
+
+   # Install the packages
+   if [ ${#to_install[@]} -ne 0 ]; then
+      echo ${#to_install[@]} packages need to be installed
+      tmp="${to_install[@]}"
+      run_command "brew install $tmp"
+   else
+      echo "You are all set, no packages need to be installed."
+   fi
+
+   # Contrib: install Python testing packages via pip (Homebrew's
+   # python3 includes pip; macOS curl is built-in so no need to add it).
+   if [[ "$CONTRIB_PACKAGES" == "1" ]]; then
+      echo "Installing Python testing packages via pip..."
+      python3 -m pip install pyserial coverage --break-system-packages 2>/dev/null \
+         || python3 -m pip install pyserial coverage
+   fi
+}
+
+function install_packages {
+
+   local rel_files=`echo /etc/*release`
+   local lsb="/etc/lsb-release"
+   local os_rel="/etc/os-release"
+
+   if ! [ -f /bin/grep ] && ! [ -f /usr/bin/grep ]; then
+      if ! echo 'aaa bbb' | grep aaa &> /dev/null; then
+
+         echo "The command 'grep' has not been found on the system."
+         echo "We cannot even detect the current linux distribution."
+         echo "Please, install at least grep."
+         exit 1
+      fi
+   fi
+
+   # Where lsb-release exists, use only it.
+   # On Mint doing grep /etc/*release reports an error because there is an
+   # upstream-release directory matching that wildcard. Using grep -r is not
+   # a solution since in /etc/upstream-release/* on Mint, Ubuntu is mentioned.
+   if [ -f $lsb ] && [ "$(grep -Ei 'buntu|mint' $lsb)" ]; then
+
+      echo "Distribution detected: Ubuntu (any) or Mint"
+      echo
+      DETECTED_UBUNTU_OR_MINT=1
+      install_debian_family
+
+   # Debian does not contain the lsb-release file.
+   elif [ -f $os_rel ] && [ "$(grep -Ei 'debian' $os_rel)" ]; then
+
+      echo "Distribution detected: Debian"
+      echo
+      install_debian_family
+
+   # On Fedora, we need to check if exactly a [Ff]edora-release file exists.
+   elif echo $rel_files | grep -Ei 'fedora' - &> /dev/null; then
+
+      echo "Distribution detected: Fedora"
+      echo
+      install_fedora
+
+   elif echo $rel_files | grep -Ei 'arch|manjaro|artix' - &> /dev/null; then
+
+      echo "Distribution detected: Arch or Manjaro or Artix"
+      echo
+      install_arch
+
+   elif [[ "$OS" == "Darwin" ]]; then
+
+      echo "Detected: macOS (Darwin)"
+      echo
+      install_darwin
+
+   elif [[ "$OS" == "FreeBSD" ]]; then
+
+      echo "Detected: FreeBSD"
+      echo
+      install_freebsd
+
+   else
+
+      full_list=()
+      full_list+=(binutils)
+      full_list+=(wget)
+      full_list+=(tar)
+      full_list+=(grep)
+      full_list+=(gzip)
+      full_list+=(gawk)
+      full_list+=(git)
+      full_list+=(gcc)
+      full_list+=(g++)
+      full_list+=(objdump)
+      full_list+=(objcopy)
+      full_list+=(ar)
+      full_list+=(ranlib)
+      full_list+=(ld)
+      full_list+=(make)
+      full_list+=(cmake)
+      full_list+=(bzip2)
+      full_list+=(unzip)
+      full_list+=(bison)
+      full_list+=(flex)
+      full_list+=(zlib)
+      full_list+=(libyaml)
+      full_list+=(libffi)
+      full_list+=(pkgconf)
+      full_list+=(autoconf)
+      full_list+=(ruby)
+      full_list+=(dtc)
+      full_list+=(python3)
+      full_list+=(qemu-system-i386)
+      full_list+=(qemu-system-riscv)
+
+      echo
+      echo "Your distribution is not fully supported by this script."
+      echo "The supported distros are:"
+      echo "  * Ubuntu"
+      echo "  * Mint"
+      echo "  * Debian"
+      echo "  * Fedora"
+      echo "  * Arch"
+      echo "  * Manjaro"
+      echo "  * Artix"
+      echo
+      echo "In order to build Tilck on this distro, please make sure the "
+      echo "following programs/packages/libraries are installed:"
+
+      for x in ${full_list[@]}; do
+         echo "  * $x"
+      done
+
+      echo "After that, re-run this script with -n (--skip-install-pkgs)"
+      exit 1
+   fi
+}
