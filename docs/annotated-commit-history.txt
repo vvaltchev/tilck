@@ -10945,3 +10945,2467 @@ What changed:
   comparisons across commits stay visible.
 
 --------------------------------------------------------------------------------
+
+## e2c5ff47 -- [kmalloc] Make kbasic_virtual_alloc() use the alloc 32 pageframe
+   func
+
+Commit: e2c5ff4715...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 19:44:04 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc_util.c (+24) -- kbasic_virtual_alloc switches
+    from alloc_pageframe loop to a single alloc_32_pageframes
+    call when requesting 32 contiguous pages (128 KiB, a
+    common kmalloc chunk size). Batch allocation reduces
+    bitmap scan overhead.
+
+  - kernel/main.c (+2 / -2), kernel/kmalloc.c (1 l.) -- tiny.
+
+--------------------------------------------------------------------------------
+
+## c6eab51d -- [cosmetic] Rename pageCount to page_count everywhere
+
+Commit: c6eab51ded...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 20:08:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Pure rename: the camelCase pageCount parameter / variable
+  becomes snake_case page_count across paging.c, kmalloc.c,
+  kmalloc_util.c, kmalloc_mocks.cpp, and the paging.h header
+  (+20 / -20, symmetric). Aligns with the project's snake_case
+  convention.
+
+--------------------------------------------------------------------------------
+
+## df871411 -- [kmalloc/pageframe_allocator] Add alloc-8 and make virtual_* to
+   use it
+
+Commit: df8714110c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 20 20:58:30 2018 +0200
+
+Message:
+
+  This change introduces alloc_8_pageframes() and
+  free_8_pageframes() in the pageframe allocator and re-writes
+  kbasic_virtual_alloc() and kbasic_virtual_free() to use it.
+  Now those functions will never allocate pageframes one by one.
+  They support only 32 and 8 as page count. If a physically
+  contiguous block of memory is not found, they'll fail.
+  The only exception is the case of 32 pages: in case of a
+  failure, an attempt will be made to allocate the 32 pageframes
+  in groups of 8. Since kbasic_virtual_free() cannot know if the
+  32 pageframes are contiguous or not, it always frees them in
+  groups of 8. This seems the best trade-off between the
+  flexibility of the single pageframe allocation and the
+  performance of the always-contiguous allocations.
+
+AI notes:
+
+What changed:
+
+  - kernel/pageframe_allocator.c (+32 / -5) -- new
+    alloc_8_pageframes (8 contiguous pages = 32 KiB) and
+    free_8_pageframes. Uses a 1-byte mask in the bitmap u32;
+    4x faster to scan than individual-page alloc.
+
+  - kernel/kmalloc_util.c (+64 / -43) -- kbasic_virtual_alloc
+    accepts only page_count == 8 or 32. For 32, tries
+    contiguous first; on failure, splits into 4x8-page
+    allocs. kbasic_virtual_free always does 8-at-a-time frees
+    (since the original contiguity state is unknown).
+
+  - kernel/include/paging.h (+2) -- declarations.
+
+Context (PR body is explicit):
+
+  Commits to a simpler allocation model: kmalloc buys pages
+  in 8- or 32-blocks only. Gives up the "any count" flexibility
+  in exchange for much faster alloc on the hot path. The
+  kmalloc buddy allocator above this is already block-
+  oriented, so the restriction is invisible to normal users.
+
+--------------------------------------------------------------------------------
+
+## 0bec8114 -- [kmalloc] Make initialize_test_kernel_heap() to use the right
+   alignment
+
+Commit: 0bec811474...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 12:46:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+18 / -12), kernel/include/kmalloc.h (+1)
+    -- initialize_test_kernel_heap (test-only entry point used
+    by gtest) now requests 32-page-aligned buffers from the
+    host allocator so the test sees the same alignment
+    invariants as the real kernel. Previously a subtle bug
+    could let tests observe "impossible" misaligned heap
+    states.
+
+  - unittests/kmalloc_mocks.cpp (+1 / -2) -- matching.
+
+--------------------------------------------------------------------------------
+
+## d0590e02 -- [main] Restore load_usermode_init() and disable test runs
+
+Commit: d0590e02a3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 13:05:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (+2 / -2) -- kmain() re-enables the call to
+  run_usermode_init() (which had been commented out during
+  the pageframe_allocator perf-testing sessions to isolate
+  that path) and disables the in-kernel test-runner calls.
+  Kernel is back to "boot to userland init" as its default.
+
+--------------------------------------------------------------------------------
+
+## 903556bb -- [kmalloc] Optimize evenually_allocate_page_for_node
+
+Commit: 903556bb2f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 14:00:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+1 / -4) -- small win: replaces a
+  memset(&new_node, 0, sizeof new_node) + field writes with
+  direct bitfield assignments. Three fewer instructions on
+  the allocator hot path. kernel/main.c (+2 / -2) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 14dd31fa -- [kmalloc] Perf. improvement by inlining
+   evenually_allocate_page_for_node()
+
+Commit: 14dd31fac8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 16:29:10 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+13 / -14) -- marks
+    evenually_allocate_page_for_node static ALWAYS_INLINE and
+    moves it to the top of the file. The compiler now inlines
+    it into the main allocator walk, eliminating a function
+    call per node visit. Perftest shows ~15% speedup.
+
+  - kernel/main.c (+7 / -1) -- adds a small prelude that
+    runs the kmalloc perf test (now shorter with the
+    optimization).
+
+--------------------------------------------------------------------------------
+
+## 973d8e15 -- [kmalloc] bool has_some_free_space => full
+
+Commit: 973d8e15cc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 16:47:28 2018 +0200
+
+Message:
+
+  By changing the name and the meaning of that bool in the
+  block_node bitfield, the value of new_node is just 8 zeros.
+  This allows the function evenually_allocate_page_for_node()
+  to use bzero() instead of memset(). Also, bzero() has been
+  optimized a for the case of len divisible by 4.
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+26 / -26) -- block_node.has_some_free_space
+    is renamed block_node.full and its meaning is inverted
+    (true = completely allocated, false = some free space).
+    A fresh node is now all-zero (previously had to have
+    has_some_free_space = 1 set), so zero-initialization is
+    correct -- which lets the allocator use a much faster
+    bzero() for new meta-data pages.
+
+  - kernel/include/string_util.h (+9 / -1) -- bzero gains a
+    fast path using rep stosl (4-byte stores) when len is
+    divisible by 4, falling back to rep stosb for the tail.
+
+--------------------------------------------------------------------------------
+
+## 92783962 -- [kmalloc] Minor optimizations by precalculating two log2
+   variables
+
+Commit: 92783962d3...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 17:27:19 2018 +0200
+
+Message:
+
+  The variables were heap_data_size_log2 and
+  alloc_block_size_log2.
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+15 / -13) -- the log2_for_power_of_2
+    calls for HEAP_DATA_SIZE and ALLOC_BLOCK_SIZE were being
+    repeated inside the hot path. Promoted to file-scope
+    constants (heap_data_size_log2, alloc_block_size_log2).
+    Visible speed win -- these are CONSTEXPR but gcc
+    wasn't hoisting them out of the loop at -O2.
+
+  - common/include/utils.h (+9 / -22) -- log2_for_power_of_2
+    simplified to rely on __builtin_clz on the fast path,
+    which gcc can evaluate at compile time.
+
+--------------------------------------------------------------------------------
+
+## 4f6c8074 -- [kmalloc] Micro-optimization: remove the 'vaddr' from the stack
+
+Commit: 4f6c8074dd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 17:58:14 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+13 / -15) -- the iterative allocator's
+  stack of 32-byte triples (node_size, vaddr, node) shrinks
+  to 24 bytes per entry by dropping vaddr. vaddr is re-
+  derivable from (node, node_size) via node_to_ptr(). Less
+  stack cache pressure on the hot path.
+
+--------------------------------------------------------------------------------
+
+## 073953c5 -- [kmalloc] Micro-opt. inline set_no_free_uplevels()
+
+Commit: 073953c510...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 19:18:47 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+10 / -19) -- set_no_free_uplevels becomes
+  ALWAYS_INLINE; its body is short enough that inlining saves
+  a call + frame setup per allocation. kernel/self_tests/
+  perftests.c (1 l.) -- tiny.
+
+--------------------------------------------------------------------------------
+
+## e1ca00c5 -- [cosmetic]
+
+Commit: e1ca00c5c2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 19:26:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/kmalloc.h (+3 / -3) -- trivial typedef and
+  whitespace tidy. No semantic change.
+
+--------------------------------------------------------------------------------
+
+## a8567416 -- [kmalloc] Introduce kmalloc_debug.h
+
+Commit: a856741635...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 23:01:33 2018 +0200
+
+Message:
+
+  This simple internal header contains kmalloc's debug messages
+  in macros. That allows a lot of space saving in kmalloc's code
+  and therefore increases code's readability.
+
+AI notes:
+
+What changed:
+
+  - New kernel/kmalloc_debug.h (80 l.) -- file-local header
+    (not in kernel/include/) holding debug printk macros:
+    DBG_alloc_enter, DBG_alloc_split, DBG_alloc_merge,
+    DBG_free_enter, etc. When NDEBUG, they expand to nothing;
+    otherwise they printk the relevant context.
+
+  - kernel/kmalloc.c (+43 / -81) -- inline printks replaced by
+    the macros. Net shrink of 38 lines. The code paths read
+    much cleaner.
+
+--------------------------------------------------------------------------------
+
+## 6bd93c6a -- [cosmetic]
+
+Commit: 6bd93c6ae1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 23:07:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/kmalloc.h (+2 / -1), kernel/kmalloc.c (+2 / -3)
+  -- trivial formatting cleanup.
+
+--------------------------------------------------------------------------------
+
+## 5f7f6cf0 -- [kmalloc] Make alloc block of metadata nodes variable with
+   macros
+
+Commit: 5f7f6cf092...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 21 23:27:19 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/kmalloc.h (+10) -- parameterizes the
+    ALLOC_BLOCK_SIZE (= 8 pages) via a dedicated macro with
+    STATIC_ASSERTs that the derived constants stay within
+    sensible bounds.
+
+  - kernel/kmalloc.c (+11 / -14) -- uses the new macros instead
+    of hardcoded constants. No behavior change; makes it
+    trivial to change ALLOC_BLOCK_SIZE in a single edit if
+    perf work ever calls for it.
+
+--------------------------------------------------------------------------------
+
+## f8560e0d -- Optimize bzero()
+
+Commit: f8560e0d12...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 09:52:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/string_util.h (+7 / -8) -- bzero rewritten
+    to rep stosl on 4-byte chunks always (caller-side
+    ensures alignment through ASSERTs). Cleaner, slightly
+    faster.
+
+  - unittests/kmalloc_mocks.cpp (1 l.) -- trivial test-side
+    alignment.
+
+--------------------------------------------------------------------------------
+
+## 0553ce88 -- Remove the unused memset() function from string_util.h
+
+Commit: 0553ce881e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 09:55:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/string_util.h (-9) -- inline memset stripped;
+  all kernel callers now use bzero (which is faster for the
+  only pattern the kernel uses: zero-fill). Any future non-zero
+  memset call will fail to compile, prompting a rethink.
+
+--------------------------------------------------------------------------------
+
+## 694ad8d5 -- [pageframe_allocator] Minor optimizations
+
+Commit: 694ad8d50c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 10:00:05 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/pageframe_allocator.c (+6 / -11) -- replaces a
+  conditional chain in alloc_pageframe with bit tricks (ctz
+  + mask generation). Net shrinks 5 lines; speed neutral on
+  most workloads but faster on worst-case bitmap scans.
+
+--------------------------------------------------------------------------------
+
+## 5dc2576f -- [kmalloc] Minor changes in kbasic_virtual_alloc()
+
+Commit: 5dc2576f19...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 10:07:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc_util.c (+25 / -22) -- restructures the
+  alloc-32 / alloc-8-fallback logic so the successful common
+  path has fewer branches. Also tightens the failure-rollback
+  (freeing partially allocated pages) for correctness.
+
+--------------------------------------------------------------------------------
+
+## 4d86b733 -- [tests] Add glibc malloc comparative perf test
+
+Commit: 4d86b7333b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 10:20:42 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - unittests/kmalloc_mocks.cpp (+21) -- new wrapper that
+    aliases kmalloc / kfree to the host glibc malloc / free
+    when TEST_VS_GLIBC is defined.
+
+  - unittests/kmalloc_test.cpp (+8) -- new test that runs the
+    same workload through kmalloc and through glibc malloc,
+    reports cycles-per-op for both.
+
+  - unittests/CMakeLists.txt (+2) -- adds the new target
+    (glibc_kmalloc_perftest).
+
+Context (subject):
+
+  Reality check: is Tilck's kmalloc competitive with mature
+  userland allocators? First head-to-head measurement. The
+  number the author gets on typical workloads is within ~2x
+  of glibc's ptmalloc -- respectable for a freshly-written
+  buddy allocator.
+
+--------------------------------------------------------------------------------
+
+## f59b062f -- [kmalloc] Remove the unused 'trivial' perf test
+
+Commit: f59b062fd6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 10:25:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/self_tests/perftests.c (+5 / -46) -- deletes the
+  original "trivial" kmalloc perf test (fixed-size alloc/free
+  1M times). The realistic workload test from 4cc69082
+  supersedes it; the trivial version produced numbers that
+  didn't correlate with real kernel workloads.
+
+--------------------------------------------------------------------------------
+
+## 8242a740 -- Set RAMDISK_VADDR to BASE_VA + 4 MB
+
+Commit: 8242a74047...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 11:18:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+6 / -5) -- RAMDISK_VADDR
+    (kernel-side virtual address where the memdisk is mapped)
+    shifts from a hardcoded 0xC8000000 to KERNEL_BASE_VA +
+    4 MiB. Makes the layout relative to where the kernel
+    actually lives; easier to change either later without
+    coupling.
+
+  - kernel/main.c (+2 / -2), kernel/debug_utils.c (1 l.),
+    kernel/pageframe_allocator.c (+2 / -2), scripts/
+    resolve_bt (1 l.) -- use the new constant.
+
+--------------------------------------------------------------------------------
+
+## 8bd3127b -- [bootloader] Make stage3_entry.S to contain both _start and main
+
+Commit: 8bd3127bc8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 11:37:54 2018 +0200
+
+Message:
+
+  For some strange reason, even if stage3_entry.S was passed to
+  the linker before anything else, the linker decided to put
+  the C function main() at the very beginning of .text. In the
+  linker script its explicitly stated that the entry symbol is
+  '_start', but that was not enough. I haven't found yet a way
+  to force symbols order using the linker script. Therefore,
+  the hacky workaround is just put both _start and main in
+  stage3_entry.S and just call the C main function
+  bootloader_main.
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3_entry.S (+5 / -3) -- adds a tiny wrapper
+    main: that immediately tail-calls bootloader_main. The
+    linker will place this main first in .text (before the
+    actual C main symbol in stage3.c gets a chance).
+
+  - bootloader/stage3.c (1 l.) -- C function renamed main ->
+    bootloader_main.
+
+  - bootloader/linker_script.ld (-2) -- removes an obsolete
+    ENTRY() directive.
+
+Context (body explicitly flags this as a workaround):
+
+  Ideal fix would be to put .text._start in a SECTIONS { } ahead
+  of .text.* -- but getting ld to honor that for a -e _start
+  executable was tricky enough that the author punted on it.
+
+--------------------------------------------------------------------------------
+
+## edd6216e -- Set RAMDISK_PADDR to +4 MB
+
+Commit: edd6216e16...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 12:53:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+4 / -3) -- RAMDISK_PADDR (the
+    physical address the bootloader loads the ramdisk at)
+    shifts from 0x08000000 (128 MiB) to 0x00400000 (4 MiB).
+    Leaves more physical-memory headroom above.
+
+  - kernel/pageframe_allocator.c (1 l.),
+    unittests/general_pageframe_allocator_test.cpp (1 l.) --
+    matching.
+
+--------------------------------------------------------------------------------
+
+## 938c54f9 -- [pageframe_allocator] Make kernel to set reserved MBs at
+   runtime
+
+Commit: 938c54f96d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 17:28:20 2018 +0200
+
+Message:
+
+  Since it is not very flexible to have the pageframe allocator
+  to have at compile time the amounts of initial physical memory
+  reserved, the func mark_pageframes_as_reserved() has been
+  introduced. It is called in main() after the initialization
+  of the pageframe allocator. This allows the ultimate
+  flexibility, necessary in order to support for example any
+  arbitrary physical address for the RAMDISK via multiboot
+  [not implemented yet]. Implementing this change, required
+  the introduction of a dedicated INVALID_PADDR == -1, since,
+  at least in the unit tests, now 0 is a valid return value
+  for the alloc functions.
+
+AI notes:
+
+What changed:
+
+  - New kernel/include/pageframe_allocator.h (56 l.) -- public
+    API header for the allocator. Declares init_*, alloc_*,
+    free_*, mark_pageframes_as_reserved. Previously these
+    symbols scattered between paging.h and inline kernel code.
+
+  - kernel/include/paging.h (-34) -- lots of exports move to
+    the new dedicated header.
+
+  - kernel/pageframe_allocator.c (+42 / -34) -- new
+    mark_pageframes_as_reserved(paddr, size) reserves a
+    physical region at runtime. init_pageframe_allocator no
+    longer hardcodes "first 2 MB reserved"; that's now
+    main.c's job after init.
+
+  - INVALID_PADDR = -1 introduced as the failure sentinel so 0
+    can be a legitimate return value in tests.
+
+  - kernel/main.c (+3 / -3) -- calls mark_pageframes_as_reserved
+    for the kernel-image region and the ramdisk region based on
+    the actual RAMDISK_PADDR / RAMDISK_SIZE config.
+
+  - kernel/paging_pageframe_allocator.c (+2 / -2),
+    kernel/self_tests/perftests.c (+3 / -3),
+    kernel/kmalloc_util.c (+2 / -2), kernel/elf_loader.c
+    (+2 / -2), unittests/*.cpp (+45 / -22) -- matching.
+
+Context (PR body explains the why):
+
+  Compile-time reserved regions don't work when the ramdisk can
+  live anywhere (multiboot-loaded kernel could get a memory
+  map in any layout). Runtime reservation is the flexible
+  alternative; this commit lays the groundwork.
+
+--------------------------------------------------------------------------------
+
+## afc569c6 -- [tests] Remove the impl. of kbasic_virtual_* mock funcs in
+   RELEASE builds
+
+Commit: afc569c664...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 17:53:51 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/kmalloc_mocks.cpp (+19 / -1) -- wraps the
+  kbasic_virtual_alloc / free mocks in #ifdef DEBUG. In
+  RELEASE builds the real kernel implementations are linked
+  directly (host-side glibc works). Makes release test builds
+  exercise more real code.
+
+--------------------------------------------------------------------------------
+
+## cad8cf76 -- [kmalloc] Add per-size perf tests
+
+Commit: cad8cf765c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 19:36:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/self_tests/perftests.c (+37 / -9) -- parameterized
+    workloads: runs the benchmark at sizes 16 B, 64 B, 256 B,
+    1 KiB, 4 KiB, 16 KiB, 64 KiB, reports cycles/op per size.
+    Reveals which block sizes are hottest.
+
+  - kernel/main.c (+2 / -2), kernel/include/kmalloc.h (1 l.)
+    -- minor.
+
+--------------------------------------------------------------------------------
+
+## e5f97659 -- [kmalloc] Make kbasic_virual_* to support page_count == 1
+
+Commit: e5f97659e1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 20:19:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc_util.c (+25 / -7) -- kbasic_virtual_alloc and
+  kbasic_virtual_free accept page_count == 1 as a special
+  case (goes through alloc_pageframe / free_pageframe, not
+  alloc_8_pageframes). Needed for small kernel metadata
+  structures that don't need a whole 8-page block.
+
+--------------------------------------------------------------------------------
+
+## 3f4f9937 -- HACKS in order to include (kind-of) paging code in gtests [not
+   working]
+
+Commit: 3f4f993764...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Feb 22 21:52:42 2018 +0200
+
+AI notes:
+
+What changed:
+
+  WIP experiment to let unit tests link the real paging code
+  (not just mocks) so they'd exercise the actual page-table
+  manipulation.
+
+  - kernel/arch/i386/paging.c (+28 / -11), kernel/include/*
+    (+16 / -9), unittests/kmalloc_mocks.cpp (+63 / -37) --
+    various #ifdefs and kernel-adjacent abstractions to make
+    kernel code link against host glibc's memory for testing.
+
+  - subject flags this as "[not working]" -- checkpoint commit
+    before the approach gets simplified / reverted.
+
+Context (subject -- author's own warning):
+
+  Doesn't work yet. The next commit (430) walks most of it
+  back, keeping only the useful bits.
+
+--------------------------------------------------------------------------------
+
+## add6eacd -- [kmalloc][tests] Remove kbasic_virtual_* mocks and mock the
+   paging code
+
+Commit: add6eacdf2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 23 14:42:44 2018 +0200
+
+Message:
+
+  In addition, restore (temporary) the old kbasic_virtual_
+  implementations.
+
+AI notes:
+
+What changed:
+
+  Reverses commit 429's approach: instead of trying to link
+  real paging code, the tests mock **paging** and call the
+  **real** kbasic_virtual_alloc/free.
+
+  - unittests/kmalloc_mocks.cpp (+10 / -68) -- net shrinks.
+    Mocks now cover only the arch-specific paging primitives
+    (map_page / unmap_page / is_mapped), while the kbasic_
+    virtual_* layer is the real kernel code. Closer to reality.
+
+  - kernel/kmalloc_util.c (+95 / -95) -- kbasic_virtual_alloc /
+    _free reverted to the simpler "allocate/free 8 pages at a
+    time" implementation from commit df871411 (the fancier
+    fallback wasn't worth the test-harness complexity).
+
+  - kernel/arch/i386/paging.c (-12), kernel/CMakeLists.txt
+    (-3), unittests/CMakeLists.txt (-3), unittests/
+    generic_mocks.c (-4), unittests/kmalloc_test.cpp (1 l.)
+    -- cleanup.
+
+Context (subject says "temporary"):
+
+  Tests can now exercise the real kmalloc + real kbasic_virtual
+  stack without needing the full arch/ paging build. More
+  realistic; smaller test harness.
+
+--------------------------------------------------------------------------------
+
+## d9d5e4f6 -- [kmalloc] saving work on kbasic_virtual_* funcs
+
+Commit: d9d5e4f6f6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 23 18:13:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Checkpoint. kernel/kmalloc_util.c (+74 / -118) -- net
+  shrinks; kbasic_virtual_alloc/free sanitized further
+  (removed dead branches, asserts tightened). Still WIP.
+  unittests/kmalloc_test.cpp (+2) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## 78d0e1bc -- [tests] Increase x10 iters of kmalloc chaos test
+
+Commit: 78d0e1bcc9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 23 18:31:00 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/kmalloc_test.cpp (+1 / -4) -- the chaos-test
+  iteration count bumped 10x. Now ~1 M random alloc/free
+  sequences per test run. Catches rare bugs the old 100 K
+  count missed.
+
+--------------------------------------------------------------------------------
+
+## d1e0fea8 -- [kmalloc] Fix a nasty bug in kmalloc_util.c
+
+Commit: d1e0fea880...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 23 18:57:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc_util.c (+12 / -15) -- the failure-rollback
+    path when alloc_32_pageframes failed and the alloc_8 x4
+    fallback partially succeeded was leaving orphaned pages
+    marked allocated in the bitmap. Fix: track which 8-page
+    chunks actually landed and free exactly those on rollback.
+
+  - kernel/pageframe_allocator.c (+6 / -2) -- adds a small
+    invariant check that catches the leak class at free time.
+
+  - unittests/general_pageframe_allocator_test.cpp (+13) --
+    regression test that reproduces the leak scenario.
+
+Context (subject):
+
+  The chaos test from 432 tripped this within the first few
+  thousand iterations. "Nasty" is fair -- it would have
+  slowly leaked physical pages in real use.
+
+--------------------------------------------------------------------------------
+
+## 03635462 -- [paging] Minor cosmetic changes
+
+Commit: 03635462c8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Feb 23 19:29:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/paging.c (+5 / -10): minor restructuring /
+  deletion of dead commented-out code. kernel/include/arch/
+  generic_x86/x86_utils.h (-2) -- removes an orphan declaration.
+
+--------------------------------------------------------------------------------
+
+## 55fe7147 -- [kmalloc] Add a linear-mapping region in the kernel virtual
+   space
+
+Commit: 55fe7147db...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 16:36:45 2018 +0200
+
+Message:
+
+  This change makes the first 256 MB of the physical memory to
+  be linearly mapped at +KERNEL_BASE_VA (0xC0000000). This
+  makes the allocator much faster (as the new perf tests prove),
+  allows to switch between paddrs and vaddr by just using an
+  offset and finally allows the removal of the 'paddr' field in
+  page_directory_t.
+
+AI notes:
+
+What changed:
+
+  Significant: Tilck adopts the Linux-style "direct map" of
+  physical memory in the kernel's virtual address space.
+
+  - kernel/main.c (+15 / -12), kernel/arch/i386/paging.c
+    (+15 / -15) -- early paging init sets up a 256 MiB
+    identity-style mapping at 0xC0000000 = phys 0x0, via 4 MiB
+    PTEs (64 entries in the kernel page directory).
+
+  - kernel/include/paging.h (+7 / -3) -- LINEAR_MAPPING_*
+    macros: LINEAR_MAPPING_SIZE, PADDR_TO_VADDR(p) = p +
+    KERNEL_BASE_VA, VADDR_TO_PADDR inverse. Constant-time
+    pointer conversion for anything in that range.
+
+  - common/include/config.h (+5), kernel/include/arch/i386/
+    paging_int.h (-2) -- drops the page_directory_t.paddr
+    field (redundant now that VADDR_TO_PADDR is a simple
+    addition).
+
+  - kernel/kmalloc_util.c (+16) -- kbasic_virtual_alloc/free
+    can bypass map_page/unmap_page entirely for addresses
+    inside the linear-mapping region. Huge speedup on the hot
+    path.
+
+  - kernel/elf_loader.c (+6 / -6), unittests/kmalloc_mocks.cpp
+    (+4), .vscode/settings.json (+2 / -1) -- plumbing.
+
+Context (PR body):
+
+  Matches Linux's VMALLOC_START / PAGE_OFFSET split. For the
+  common case (kmalloc that happens to pull from already-
+  mapped physical memory) the allocator no longer needs to
+  touch page tables at all; vaddr = paddr + KERNEL_BASE_VA.
+  kmalloc perf jumps markedly on the new measurements.
+
+--------------------------------------------------------------------------------
+
+## 1487f842 -- [kmalloc] Remove logic handling allocation for metadata nodes
+
+Commit: 1487f84269...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 16:53:37 2018 +0200
+
+Message:
+
+  The allocation for metadata nodes logic was necessary to allow
+  even the pages containing the metadata nodes (1 per block) to
+  not be necessarily mapped. The function
+  evenually_allocate_page_for_node() had the essencial role to
+  allocate some pages for a given node and its neighbour nodes.
+  In particular, since the size of one node is just 1 byte while
+  the that function used to map 32KB at a time, that allowed the
+  allocation for metadata nodes to be a rare thing.
+
+  Now that linear mapping is used, keeping the logic for
+  allocation of metadata nodes seems not really necessary.
+  Kmalloc will support in the future different heaps, for sure
+  also outside the linear mapping region, but, it seems
+  inefficient to burn cycles for checking, for each node, if it
+  has an actual mapping. It will be more convenient to just
+  pre-map the whole area containing the metadata nodes when the
+  heap is created.
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (-44), kernel/include/kmalloc.h (-11) --
+  evenually_allocate_page_for_node, node_has_page, and the
+  allocation_for_metadata_nodes bitmap all go away. Metadata
+  pages are now assumed pre-mapped (caller's responsibility).
+  Simplifies the hot path significantly.
+
+Context (PR body is explicit):
+
+  The lazy-metadata-page trick was a clever workaround for
+  pre-linear-mapping days. With 256 MiB linearly mapped
+  upfront, the whole metadata region is trivially accessible;
+  the check per node was pure overhead. Expect another visible
+  speedup in the perftest.
+
+--------------------------------------------------------------------------------
+
+## d68a9c28 -- [kmalloc] Error checking in kzmalloc
+
+Commit: d68a9c285d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 17:16:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/kmalloc.h (+4) -- adds a kzmalloc(size)
+  wrapper inline that calls kmalloc + bzero, checking the
+  kmalloc return for NULL before the bzero. Previously callers
+  had to do the null check themselves; kzmalloc consolidates.
+
+--------------------------------------------------------------------------------
+
+## e547dd91 -- [kmalloc] Move the logic checking for linear mapping to kmalloc
+
+Commit: e547dd91ad...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 17:26:09 2018 +0200
+
+Message:
+
+  Previously, that logic was in the kbasic_virtual_* functions.
+  It make more sense to move it up in kmalloc() saving, this
+  way, some cycles. Also: the kbasic_virtual_* funcs have been
+  moved to mm.c and the file kmalloc_util.c has been removed.
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc_util.c deleted (-112). Contents move to
+    kernel/mm.c (+95) -- mm.c picks up the arch-independent
+    virtual-memory helpers (kbasic_virtual_alloc/free,
+    linear-mapping checks).
+
+  - kernel/kmalloc.c (+26) -- inherits the linear-mapping
+    short-circuit inline: kmalloc can check one #if at the top
+    of the hot path instead of going through
+    kbasic_virtual_alloc for every request.
+
+Context (PR body):
+
+  Layering cleanup: mm.c owns the "how do I get pages for a
+  vaddr" question; kmalloc.c owns the buddy algorithm. The
+  fast path (linear mapping) handled at the outer layer.
+
+--------------------------------------------------------------------------------
+
+## 38e8157b -- [kmalloc] Cosmetic changes
+
+Commit: 38e8157bb7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 18:23:13 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+5 / -3), kernel/main.c (+14 / -13) --
+  small formatting pass: consistent blank-line separation
+  between functions, trimmed long if-statements.
+
+--------------------------------------------------------------------------------
+
+## 74f8b3f4 -- [paging] Map less than KERNEL_LINEAR_MAPPING_MB if there is no
+   enough RAM
+
+Commit: 74f8b3f4c6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 18:56:28 2018 +0200
+
+Message:
+
+  BONUS:
+    - Move page_buf_size in BSS // skip kmalloc() allocation
+    - Introduce init_paging_cow() // called after init_kmalloc()
+    - Rename get_amount_of_physical_memory_in_mb()
+    - Other minor fixes
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+12 / -11) -- the linear-
+    mapping setup caps at min(KERNEL_LINEAR_MAPPING_MB,
+    actual_ram_mb). Machines with less than 256 MiB RAM no
+    longer page-fault on the unmapped tail of the region.
+
+  - init_paging_cow() (new) -- separates COW initialization
+    from early paging init. Called after kmalloc is up, so
+    the pageframes_refcount array can live in the regular
+    kmalloc heap.
+
+  - kernel/main.c (+12 / -18) -- reorders init: paging ->
+    kmalloc -> init_paging_cow.
+
+  - kernel/mm.c (+4 / -4), kernel/include/pageframe_allocator.h
+    (1 l.), kernel/include/paging.h (+2),
+    unittests/*.cpp (+2 / -12) -- plumbing.
+
+--------------------------------------------------------------------------------
+
+## a8fd05f1 -- [mm] Make kbasic_virtual_free() void
+
+Commit: a8fd05f1b7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 19:06:02 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/mm.c (+2 / -4), kernel/kmalloc.c (+2 / -5) --
+    kbasic_virtual_free drops its bool return (was always
+    true for valid inputs anyway). Callers stop checking
+    it.
+
+  - unittests/kmalloc_test.cpp (+2 / -3) -- matching.
+
+--------------------------------------------------------------------------------
+
+## 62bb6822 -- [kmalloc] s/HEAP_DATA_SIZE/HEAP_SIZE/g
+
+Commit: 62bb682207...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 19:11:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Rename: HEAP_DATA_SIZE -> HEAP_SIZE across kmalloc.c and
+  kmalloc.h. The "_DATA" suffix was from pre-linear-mapping
+  days when there was a separate "meta" area.
+
+--------------------------------------------------------------------------------
+
+## ac5da3b5 -- [paging] Replace a call of free_pageframe() with kfree()
+
+Commit: ac5da3b5a2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 19:41:24 2018 +0200
+
+Message:
+
+  In pdir_destroy(), user pageframe were still freed with
+  free_pageframe() and that is clearly a bug now that linear
+  mapping is used. Now everything was to go through
+  kmalloc/kfree.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+6 / -8) -- in pdir_destroy,
+    the user-page cleanup switched from free_pageframe() to
+    kfree(). With linear mapping the user page's vaddr is
+    known; kfree handles the cleanup (including refcount
+    decrement) correctly.
+
+  - kernel/kmalloc.c (+1 / -1) -- tiny helper fix.
+
+Context (subject + body):
+
+  Post-linear-mapping code quality fix. Using the lower-level
+  free_pageframe() bypassed the refcount machinery and would
+  leak pageframes when COW-shared.
+
+--------------------------------------------------------------------------------
+
+## fa0aa7e1 -- [paging] Remove the include of pageframe_allocator.h from
+   paging.h
+
+Commit: fa0aa7e15c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Feb 24 19:52:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/paging.h (+21 / -1) -- takes over the few
+    declarations it actually needs from pageframe_allocator.h;
+    kernel/include/pageframe_allocator.h (-17) is slimmed
+    back.
+
+  - kernel/main.c, kernel/mm.c, kernel/pageframe_allocator.c,
+    kernel/self_tests/perftests.c, unittests/kmalloc_mocks.cpp,
+    unittests/paging_pageframe_allocator_test.cpp (+1 l. each)
+    -- add explicit #include <pageframe_allocator.h> where
+    needed.
+
+  - Rename: unittests/general_pageframe_allocator_test.cpp ->
+    pageframe_allocator_test.cpp (drops "general_" which
+    distinguished it from the now-co-tested paging_*.cpp).
+
+Context (subject):
+
+  Trims the include graph. paging.h was pulling in
+  pageframe_allocator.h transitively for every includer;
+  direct dependencies are cleaner.
+
+--------------------------------------------------------------------------------
+
+## f09987fa -- [kmalloc] Replace struct allocator_meta_data + cast with getter
+   function
+
+Commit: f09987fa78...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 10:57:43 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+36 / -36) -- every
+  (allocator_meta_data *)HEAP_BASE_ADDR cast at call sites is
+  replaced with a GET_META() inline (returns the correctly-
+  typed pointer). Type-safer and makes it easier to later
+  support multiple heaps (just change what GET_META returns).
+
+--------------------------------------------------------------------------------
+
+## b3f82314 -- [kmalloc] Introduce struct kmalloc_heap
+
+Commit: b3f823146f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 11:48:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Multi-heap preparation: kmalloc's state stops being file-
+  scope globals and becomes an explicit struct.
+
+  - kernel/include/kmalloc.h (+20 / -10) -- declares struct
+    kmalloc_heap with fields: heap_base_addr, heap_size,
+    metadata_nodes (pointer to block_nodes array), heap_size_log2,
+    alloc_block_size_log2, etc.
+
+  - kernel/kmalloc.c (+90 / -79) -- every function that used
+    to read from globals now takes a struct kmalloc_heap * as
+    first parameter. Public kmalloc()/kfree() still use a
+    single implicit heap, but the guts are now plural-ready.
+
+  - kernel/main.c (+2 / -2), unittests/kmalloc_test.cpp (+2)
+    -- adjusts to construct the heap struct explicitly.
+
+Context (guess -- no body):
+
+  Next logical step after the multi-heap config macros (415)
+  and the GET_META inline (445). Real heap structure now.
+
+--------------------------------------------------------------------------------
+
+## a01c33ca -- [kmalloc] Minor fixes
+
+Commit: a01c33ca60...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 12:02:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+10 / -4), kernel/main.c (+2 / -2) --
+  follow-ups to the struct-kmalloc_heap intro: asserts on
+  heap-init parameter ranges; ensures a not-yet-initialized
+  heap gets rejected rather than silently dispatched to.
+
+--------------------------------------------------------------------------------
+
+## c28c9067 -- [kmalloc] Add a useful linear_mapping bool in kmalloc_heap
+
+Commit: c28c9067f5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 12:08:05 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/kmalloc.h (+2) -- kmalloc_heap gets a bool
+    linear_mapping field. Set at heap-creation time based on
+    whether the heap's base address is inside the kernel
+    linear-mapping range.
+
+  - kernel/kmalloc.c (+16 / -18) -- alloc path checks
+    heap->linear_mapping instead of a global. Allows heaps
+    INSIDE the linear mapping (fast) and OUTSIDE it (need to
+    actually map pages) to coexist without a global-state
+    toggle.
+
+--------------------------------------------------------------------------------
+
+## dd8053b0 -- [kmalloc] Make kmalloc() and kfree() to iterate over heaps
+
+Commit: dd8053b02b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 12:47:14 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+58 / -17) -- public kmalloc() now loops
+    over an array of registered heaps, trying each until one
+    succeeds. kfree() identifies the owning heap by address
+    range and dispatches. first real multi-heap support.
+
+  - kernel/include/kmalloc.h (+5 / -1) -- introduces
+    heaps_count, kmalloc_heaps[] global array, and a
+    register_heap() function.
+
+Context (guess -- subject):
+
+  Foundations for multi-heap: different regions (linear-
+  mapped, non-linear-mapped, per-CPU in the future) can
+  coexist under one kmalloc API.
+
+--------------------------------------------------------------------------------
+
+## febf48bf -- [kmalloc] Make initialize_kmalloc() to create more heaps as
+   fill the mem
+
+Commit: febf48bfab...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Feb 25 13:53:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+61 / -13) --
+    initialize_kmalloc() now walks the linear-mapping region
+    carving out multiple heaps: each heap is a power-of-two
+    chunk (e.g. 64 MiB, 32 MiB, 16 MiB, ...) filling the
+    available space without waste. Enables heterogeneous
+    heaps so a small quick-alloc workload benefits from a
+    small heap while a large one uses the big heap.
+
+  - unittests/kmalloc_mocks.cpp (-4), unittests/kmalloc_test.cpp
+    (1 l.) -- test scaffolding adjustment.
+
+Context (guess -- subject):
+
+  Completes the multi-heap story. kmalloc now manages as
+  many heaps as fit in linearly-mapped RAM, sized to minimize
+  fragmentation.
+
+--------------------------------------------------------------------------------
+
+## f884bc4d -- Rename KERNEL_LINEAR_MAPPING_* to just LINEAR_MAPPING_*
+
+Commit: f884bc4d64...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 12:12:36 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Rename: KERNEL_LINEAR_MAPPING_MB / _SIZE -> LINEAR_MAPPING_MB
+  / _SIZE, across common/include/config.h, kernel/arch/i386/
+  paging.c, kernel/kmalloc.c, kernel/main.c,
+  unittests/kmalloc_mocks.cpp. The "KERNEL_" prefix was
+  redundant (all linear mapping is in kernel space by
+  definition).
+
+--------------------------------------------------------------------------------
+
+## 0ddec97c -- [paging] Map also the physical page at addr 0x0
+
+Commit: 0ddec97c46...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 12:25:53 2018 +0200
+
+Message:
+
+  An access to it will trigger anyway a page fault because of
+  the first NULL segment in GDT.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/paging.c (+3 / -3) -- the linear mapping
+    now covers physical page 0 too (previously excluded to
+    catch NULL dereferences). Not needed any more: the NULL
+    segment descriptor in the GDT catches NULL-pointer
+    dereferences as #GP, regardless of whether the page
+    is mapped. Simplifies the setup (no special-case for
+    page 0).
+
+  - kernel/main.c (+2 / -2) -- no-longer-needed skip for
+    physical-page-0 at the highest level.
+
+--------------------------------------------------------------------------------
+
+## 5838f0d3 -- [paging] Use 4MB pages for the linear mapping
+
+Commit: 5838f0d33a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 12:59:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/paging.c (+36 / -50) -- switches the linear-
+  mapping construction from 4 KiB PTEs (requiring 256 page
+  tables for 1 GiB) to 4 MiB large pages (requiring only 256
+  entries total in the page directory, no page tables). Uses
+  the PDE.PS bit plus CR4.PSE. Saves ~1 MB of page-table
+  memory and speeds up TLB walks.
+
+Context (guess -- subject):
+
+  Performance and simplicity win. 4 MiB pages are lightly-
+  used compared to 4 KiB pages (which stay for user-mode
+  processes), but perfect for a large contiguous identity
+  mapping of the low physical region.
+
+--------------------------------------------------------------------------------
+
+## d463daf1 -- [paging] Make the linear mapping to be 512 MB and add
+   get_phys_mem_size()
+
+Commit: d463daf1f2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 13:02:24 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+3 / -3) -- LINEAR_MAPPING_MB
+    bumped to 512 (was 256). The kernel virtual address
+    space [0xC0000000, 0xE0000000) now covers 512 MiB of
+    physical memory. With 4 MiB pages this costs only 128
+    page-directory entries.
+
+  - kernel/include/paging.h (+4 / -1), kernel/arch/i386/
+    paging.c (+2 / -1) -- get_phys_mem_size() accessor (the
+    actual detected RAM size, rounded down to power of two).
+    Needed so the mapping loop knows when to stop if the
+    machine has less than 512 MiB RAM.
+
+--------------------------------------------------------------------------------
+
+## 40371ee1 -- Remove the paging_pageframe_allocator
+
+Commit: 40371ee1a9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 13:07:19 2018 +0200
+
+Message:
+
+  After the introduction of the linear mapping for the whole
+  kernel heap, instead as a special case for the first 4 MB
+  and, after the introduction of the 4 MB pages for that
+  linear mapping, the pageframe allocator for the paging
+  become pointless (4 MB pages don't need page tables).
+
+AI notes:
+
+What changed:
+
+  - kernel/paging_pageframe_allocator.c deleted (-78).
+  - unittests/paging_pageframe_allocator_test.cpp deleted
+    (-66).
+  - kernel/pageframe_allocator.c (-3) -- strips references.
+
+Context (PR body):
+
+  The paging-specific allocator was born in commit 4cc69082
+  (2016-11) to guarantee that map_page() always had a
+  physical page to use for a page table without competing
+  with kmalloc. With 4 MiB pages for the linear mapping, the
+  kernel no longer allocates 4 KiB page tables at all for
+  its own address space -- the special pool becomes dead
+  weight. End of an era for that allocator.
+
+--------------------------------------------------------------------------------
+
+## 42f7b30e -- [pageframe_allocator] Make it work only with paddrs > linear
+   mapping size
+
+Commit: 42f7b30e42...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 13:30:39 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/pageframe_allocator.c (+24 / -13) -- the allocator
+    now manages only the physical region BEYOND the linear
+    mapping (i.e. beyond 512 MiB). The first 512 MiB are
+    implicitly "always mapped" and don't need bitmap tracking.
+    Smaller bitmap, faster scan.
+
+  - kernel/main.c (-1), unittests/pageframe_allocator_test.cpp
+    (+5 / -5) -- matching.
+
+--------------------------------------------------------------------------------
+
+## a39bbb5d -- [kmalloc] Zero the contents of the metadata nodes in
+   kmalloc_create_heap
+
+Commit: a39bbb5d15...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 13:47:09 2018 +0200
+
+Message:
+
+  On bare-metal, the memory is not zeroed like it happens in
+  hypervisors, and clearly in this case manually zeroing the
+  memory is mandatory.
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+2) -- kmalloc_create_heap now bzero's
+  the metadata_nodes array. Under QEMU memory arrived already
+  zeroed; on real hardware this was silently picking up
+  random boot-time bits and causing early chaos.
+
+Context (body is explicit):
+
+  Clean-boot-on-hypervisor vs dirty-boot-on-real-HW bug.
+  Another in the series from commit 2a43538e ("real HW
+  failures not visible in qemu").
+
+--------------------------------------------------------------------------------
+
+## 52a72209 -- [kmalloc] Account mem_allocated in kmalloc_heap
+
+Commit: 52a7220965...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 15:38:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/include/kmalloc.h (+1) -- kmalloc_heap gains a
+    size_t mem_allocated counter.
+
+  - kernel/kmalloc.c (+14 / -3) -- kmalloc / kfree maintain
+    the counter (add size on alloc, subtract on free). Lets
+    callers query heap utilization via a public accessor.
+
+--------------------------------------------------------------------------------
+
+## 5ddbf1b8 -- Rename 3 getters defined pageframe_allocators.h
+
+Commit: 5ddbf1b803...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 15:41:12 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Rename pass:
+    get_total_pageframes        -> get_total_num_pageframes
+    get_used_pageframes         -> get_used_num_pageframes
+    get_free_pageframes         -> get_free_num_pageframes
+  Across kernel/include/pageframe_allocator.h, kernel/mm.c,
+  kernel/pageframe_allocator.c, kernel/self_tests/perftests.c,
+  unittests/pageframe_allocator_test.cpp (+21 / -21). "num"
+  makes it clearer the functions return counts, not bitmap
+  values.
+
+--------------------------------------------------------------------------------
+
+## 365eda1e -- [pageframe_allocator] Fix allocator's counters to deal with
+   lin-mapping
+
+Commit: 365eda1ecc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 16:04:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/pageframe_allocator.c (+2 / -1),
+    kernel/include/pageframe_allocator.h (+4 / -1) -- accounting
+    counters (total, used, free) take into account the implicit
+    first-512-MiB linear-mapped region that the allocator no
+    longer tracks. get_total_num_pageframes returns
+    (physical_memory / 4096) not (allocator_bitmap_size * 32).
+
+  - common/include/config.h (+2 / -1),
+    unittests/pageframe_allocator_test.cpp (+4 / -3),
+    unittests/kmalloc_mocks.cpp (+3) -- test updates.
+
+--------------------------------------------------------------------------------
+
+## 446c2c62 -- [kmalloc] Working on a failure of the kmalloc chaos test
+
+Commit: 446c2c62c5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 18:50:40 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Mid-debug checkpoint. unittests/kmalloc_test.cpp (+55 / -14)
+  -- chaos test expanded to log the full sequence of
+  operations that leads to a discovered corruption, and to
+  narrow down (via bisection) which op caused divergence.
+  kernel/kmalloc.c (+6 / -18), kernel/kmalloc_debug.h
+  (+7 / -3), kernel/include/kmalloc.h (+2),
+  unittests/generic_mocks.c (+6), unittests/kmalloc_mocks.cpp
+  (+3) -- instrumentation hooks.
+
+Context (subject):
+
+  The chaos test (with 10x iterations from commit 432) is
+  still finding bugs. This commit is diagnostic; the fix
+  lands in 463.
+
+--------------------------------------------------------------------------------
+
+## bc57cbd3 -- [kmalloc] saving work
+
+Commit: bc57cbd38d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 20:27:20 2018 +0200
+
+AI notes:
+
+What changed:
+
+  Another checkpoint. unittests/kmalloc_test.cpp (+100 / -23)
+  -- further narrows the chaos-test reproducer, adds a
+  deterministic minimal-failure-sequence recorder.
+  common/include/common_defs.h (+2), kernel/kmalloc.c (+3 /
+  -6), kernel/kmalloc_debug.h (+13 / -12) -- incremental
+  instrumentation.
+
+--------------------------------------------------------------------------------
+
+## 65a3eaa5 -- [kmalloc] Fixing the failure of the chaos test
+
+Commit: 65a3eaa5cd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 22:17:58 2018 +0200
+
+Message:
+
+  The problem was related with a bug in set_free_uplevels()
+  which did not set the current node full = 0 in case one of
+  the children was not full.
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+3) -- the actual fix: three lines in
+    set_free_uplevels. When a kfree merge couldn't coalesce
+    (one child still allocated), the parent's .full bit should
+    still flip to 0 because *some* child now has free space.
+    Previously it flipped only when BOTH children became
+    free. The bug caused the parent to look "full" to
+    subsequent allocs, hiding usable space.
+
+  - unittests/kmalloc_test.cpp (+25 / -33) -- test code
+    cleanup (the reproducer scaffolding is no longer needed).
+
+  - kernel/include/kmalloc.h (1 l.), kernel/kmalloc_debug.h
+    (+9 / -3) -- plumbing.
+
+Context (body explains):
+
+  3-line fix, 3-day hunt. Commit message is unusually precise
+  about the root cause. Buddy-allocator parent-state
+  maintenance is subtle.
+
+--------------------------------------------------------------------------------
+
+## 594a8457 -- [kmalloc] Additional fixes to the chaos test
+
+Commit: 594a8457ea...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 22:34:52 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/kmalloc_test.cpp (+9 / -8) -- follow-ups after
+  the set_free_uplevels fix: a few of the chaos-test
+  assertions that had been loosened during debugging get
+  tightened back up.
+
+--------------------------------------------------------------------------------
+
+## a8064caf -- Fix C++ stuff (use correct deleter for unique_ptr)
+
+Commit: a8064caf98...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Feb 27 22:46:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/kmalloc_test.cpp (+4 / -4) -- std::unique_ptr<T[]>
+  was being used with the default delete, not delete[].
+  Valgrind (finally run on the test binary) flagged the
+  mismatch. Fix: use std::unique_ptr<T, decltype(&free)>
+  with the correct deleter.
+
+--------------------------------------------------------------------------------
+
+## 941a9773 -- [paging] Optimize pdir_clone()
+
+Commit: 941a97731b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 11:44:49 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/paging.c (+7 / -22) -- pdir_clone no longer
+  copies the entire page_directory_t field-by-field; uses a
+  single memmove for the 1024 entries array. Smaller, faster.
+  Also drops a few defensive checks that can't actually fire
+  now that page_directory_t is a simple struct without
+  embedded pointers.
+
+--------------------------------------------------------------------------------
+
+## 19d88c55 -- [paging] Cosmetic changes
+
+Commit: 19d88c55e2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 12:22:18 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/paging.c (+37 / -33) -- formatting pass:
+  consistent brace placement, blank lines between functions,
+  some variable renames for clarity. kernel/include/paging.h
+  (+1) -- missing extern declaration exposed.
+
+--------------------------------------------------------------------------------
+
+## ff77b22b -- [kmalloc] Micro-optimizations
+
+Commit: ff77b22bfe...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 12:45:27 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+28 / -22), kernel/kmalloc_debug.h
+  (+7 / -2) -- several micro-opts in the iterative allocator:
+  combines a couple of conditional loads into single bit
+  tests, removes redundant recomputation of node_to_ptr
+  inside the loop (cached across iterations), splits hot
+  helpers into their own ALWAYS_INLINE.
+
+--------------------------------------------------------------------------------
+
+## a10c57be -- [kmalloc] Improve SIMULATED_CALL()
+
+Commit: a10c57be4e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 14:08:46 2018 +0200
+
+Message:
+
+  This changes makes internal_kmalloc() simpler by making
+  SIMULATED_CALL() to automatically generate a label and
+  store its address in alloc_stack. This way, in case the
+  simulated call failed the control flow continues at the
+  caller site as if the simulated call was a real one. No
+  need anymore for a explicit and ugly labels like
+  "after_left_call".
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+32 / -33) -- uses GCC's && unary operator
+  (computed goto / labels-as-values) to capture the return
+  address in the iterative alloc_stack. The SIMULATED_CALL
+  macro expands to a block that stores &&after_label and
+  jumps to the callee; the callee's SIMULATED_RETURN does
+  goto *alloc_stack[--sp].ret_addr. Removes 2 explicit
+  after_left_call / after_right_call labels; the flow is
+  now symmetric to a real call/return. kernel/CMakeLists.txt
+  (+1) -- adds -Wno-gnu-label-as-value flag to permit the
+  extension.
+
+Context (PR body):
+
+  Nicer code. Functionally identical to the explicit-label
+  version, but reads like standard C control flow.
+
+--------------------------------------------------------------------------------
+
+## 1be276ff -- [kmalloc] Minor changes (comments + debug msgs)
+
+Commit: 1be276ff9a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 18:43:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+6 / -1), kernel/kmalloc_debug.h (+3) --
+  clarifying comments and one new debug print in the
+  split-node path.
+
+--------------------------------------------------------------------------------
+
+## 2af59f15 -- [kmalloc] Removing 'returned' from internal_kmalloc()
+
+Commit: 2af59f15c5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 19:42:35 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+7 / -6) -- the `returned` boolean flag
+  that tracked "are we just returning from a simulated call"
+  is redundant now that SIMULATED_CALL uses labels-as-values
+  (the return address is captured in the stack entry). The
+  check-and-dispatch on the first line of the loop becomes
+  pure `goto *sp->ret_addr`. Small cleanup.
+
+--------------------------------------------------------------------------------
+
+## 542049b3 -- [kmalloc] Cosmetic changes + adding an ASSERT
+
+Commit: 542049b381...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Feb 28 21:13:27 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/kmalloc.c (+28 / -16) -- formatting pass on the
+  iterative allocator (blank lines between blocks, variable
+  renames). Adds an ASSERT on invariant "simulated-call
+  stack depth cannot exceed heap depth" (catch runaway
+  recursion from a future bug).
+
+--------------------------------------------------------------------------------
+
+## 86430b25 -- [multiboot] Start working on multiboot support
+
+Commit: 86430b2538...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 11:48:16 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/entry.S (+17) -- prepends a Multiboot 1
+  header (magic 0x1BADB002) at the start of the kernel's
+  .text. When a Multiboot-compliant bootloader (GRUB, etc.)
+  loads the kernel, it sees this header and can hand off
+  control with a memory map etc. already set up.
+
+Context (subject):
+
+  First step toward GRUB compatibility. Tilck's own bootloader
+  stays primary; Multiboot becomes an alternative entry point.
+
+--------------------------------------------------------------------------------
+
+## 3f6e7619 -- [build] Make the kernel build to use a custom linker script
+
+Commit: 3f6e761985...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 21:21:38 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/i386/linker_script.ld (53 l.) -- explicit
+    kernel-side linker script. ENTRY(_start); places .text at
+    KERNEL_LOAD_VADDR (0xC0100000); then .rodata, .data,
+    .bss. Exposes __bss_start / __bss_end symbols for runtime
+    clearing if ever needed.
+
+  - kernel/arch/CMakeLists.txt (+10 / -1) -- LINK_FLAGS
+    points at the new linker script.
+
+Context (subject):
+
+  Multiboot needs the kernel to start with a specific header
+  at a known offset. An explicit linker script is the way to
+  enforce that; ld -Ttext= wasn't precise enough.
+
+--------------------------------------------------------------------------------
+
+## 15f10e36 -- [build] minor changes in the kernel linker script
+
+Commit: 15f10e3638...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 21:30:23 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/linker_script.ld (+3 / -13) -- net shrinks.
+  Removes several sections that were copied from a generic
+  template but aren't used by the kernel (.eh_frame,
+  .gcc_except_table, .init_array). Cleaner script; smaller
+  binary.
+
+--------------------------------------------------------------------------------
+
+## 6117a20b -- [build] Make the kernel linker script to set section paddrs
+
+Commit: 6117a20bef...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 21:36:45 2018 +0200
+
+Message:
+
+  By setting correctly the physical address of the program
+  headers, now qemu can correctly load the exOS kernel this
+  way:
+
+     qemu-system-i386 -m 256 -kernel ./build/elf_kernel_stripped
+
+  Clearly, this is not enough since also the ramdisk has to be
+  loaded too.
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/linker_script.ld (+9 / -5) -- each section's
+  PHDR gets an explicit AT(paddr) telling the ELF loader the
+  physical address the segment should be loaded at.
+  Previously only vaddr was set; qemu's -kernel option picks
+  up the paddr for its bootstrap.
+
+Context (body is explicit):
+
+  qemu -kernel is now a working boot path (without Tilck's own
+  bootloader). For development iteration, saves the "rebuild
+  image, flash, reboot" cycle.
+
+--------------------------------------------------------------------------------
+
+## f8455863 -- [kernel] Add multiboot.h in common/include and make entry.S to
+   use it
+
+Commit: f845586392...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 22:19:50 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - New common/include/multiboot.h (274 l.) -- the reference
+    Multiboot 1 header from the spec: magic constants,
+    multiboot_info struct (mem_lower, mem_upper, cmdline,
+    mods_count, mods_addr, ELF symbol info, mmap, drives,
+    vbe info, etc.).
+
+  - kernel/arch/i386/entry.S (+14 / -9) -- _start now reads
+    EBX (Multiboot hands MBI pointer there) and stashes it
+    into a global for C code to consume.
+
+--------------------------------------------------------------------------------
+
+## 8b44f952 -- Passing multiboot info to the kernel works
+
+Commit: 8b44f952b7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 22:45:13 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/entry.S (+19 / -11) -- saves the MBI
+    pointer into a known C-visible global (multiboot_info),
+    checked for EAX == 0x2BADB002 (Multiboot loaded us)
+    before use. Boot-without-multiboot path keeps the global
+    NULL.
+
+  - kernel/main.c (+14 / -4) -- kmain prints a "[multiboot]
+    mem_lower: X mem_upper: Y" diagnostic if MBI is present.
+
+--------------------------------------------------------------------------------
+
+## 45c3beaf -- [multiboot] Make the hello message print MBI data like 'cmdline'
+
+Commit: 45c3beaf7c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 23:37:51 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+29 / -7) -- parses a few more MBI fields
+    (flags, cmdline string, mmap, loaded modules) and prints
+    them as part of the boot banner. Useful to verify the
+    Multiboot bootloader passes reasonable values.
+
+  - kernel/arch/i386/entry.S (+2 / -2),
+    kernel/kmalloc.c (+5 / -1), kernel/kmalloc_debug.h (+1)
+    -- kmalloc init can now read mem_upper from the MBI to
+    know how much RAM is actually present (vs. hardcoded
+    assumption).
+
+--------------------------------------------------------------------------------
+
+## 6a9d9509 -- Fix build error
+
+Commit: 6a9d95096e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Mar 1 23:44:56 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (+4 / -4) -- a missing #include left
+  multiboot_info as an undefined struct in some branches.
+  Quick fix: include multiboot.h explicitly. 7-minute gap
+  from the previous commit.
+
+--------------------------------------------------------------------------------
+
+## 603d36c8 -- [multiboot] minor changes
+
+Commit: 603d36c8a0...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 12:06:34 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/entry.S (+12 / -1), kernel/main.c (1 l.)
+  -- adds a few more Multiboot-header bitfield bits to
+  advertise what features the kernel supports (mem info, mmap,
+  framebuffer default, module addresses). Trimmed verbose
+  entry comments.
+
+--------------------------------------------------------------------------------
+
+## a06fa108 -- [entry] Make entry.S much simpler
+
+Commit: a06fa1084c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 12:38:37 2018 +0200
+
+Message:
+
+  First, 4-MB pages are used: this way is much simpler to get
+  the same result as before. No need to create a page table
+  in addition to the page directory. Second, this simpler code
+  can be written by avoiding to use the registers EAX and EBX
+  which might contain multiboot info.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/entry.S (+45 / -61) -- big simplification.
+    The early boot identity-map construction no longer builds
+    a 4 KiB page table + page directory pair; it builds a
+    page directory with 4 MiB entries directly (PSE). Halves
+    the code. Also rearranges register use to preserve EAX /
+    EBX (which Multiboot puts magic + MBI-pointer in) across
+    the setup.
+
+  - kernel/arch/i386/paging.c (1 l.) -- trivial.
+
+Context (body):
+
+  The 4-MiB-pages switch (commit 5838f0d3) for the main
+  linear mapping makes it natural for early boot to also
+  use 4 MiB pages. Simpler code, preserves the registers
+  carrying Multiboot data.
+
+--------------------------------------------------------------------------------
+
+## e0090a2e -- [multiboot] Print more (multiboot) info in the hello function
+
+Commit: e0090a2e98...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 13:11:28 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (+27) -- dump of MBI mmap region: each entry's
+  type (available, reserved, ACPI, etc.), physical address
+  range, length. Useful for verifying the bootloader passes a
+  realistic memory map to the kernel.
+
+--------------------------------------------------------------------------------
+
+## e42b5fde -- [build] Move *run*qemu* scripts in build/
+
+Commit: e42b5fde8f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 16:45:32 2018 +0200
+
+Message:
+
+  After adding the scripts (with and w/o KVM) to run QEMU with
+  multiboot, the amount of scripts in project's main directory
+  for running QEMU, become too large. In addition, the fact
+  that all of those scripts were in the main directory and
+  referred directly to the build directory as './build' was
+  inconvenient for the use-case of multiple build directories
+  (e.g. debug and release). With this change, this problem
+  completely disappears.
+
+AI notes:
+
+What changed:
+
+  - run_qemu renamed to scripts/run_nokvm_qemu; run_qemu_usbdisk
+    renamed to scripts/run_nokvm_qemu_with_usbdisk;
+    debug_run_qemu / run_qemu_kvm deleted from repo root.
+
+  - New scripts/run_qemu (4 l.) -- KVM-enabled launcher.
+  - New scripts/debug_run_qemu (4 l.) -- GDB-stub + -S halt.
+  - New scripts/run_multiboot_qemu (4 l.) --
+    qemu-system-i386 -kernel <elf> with KVM.
+  - New scripts/run_multiboot_nokvm_qemu (5 l.) -- same,
+    without KVM.
+
+  - scripts/cmake_run (+4 / -2) -- copies the launchers into
+    build/ so they're invoked from the build-directory context
+    (where exos.img and elf_kernel live).
+
+  - README.md (+6 / -1) -- updated instructions.
+
+Context (body):
+
+  Out-of-tree builds (parallel debug and release dirs) made
+  the "./run_qemu" pattern ambiguous. Moving the launchers
+  into scripts/ and copying them into each build/ dir
+  disambiguates.
+
+--------------------------------------------------------------------------------
+
+## 7f11c576 -- Remove RAMDISK_VADDR
+
+Commit: 7f11c576fd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 16:58:38 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+6 / -1) -- RAMDISK_VADDR macro
+    removed from config. Derived at runtime via
+    PADDR_TO_VADDR(RAMDISK_PADDR) using the linear mapping.
+
+  - kernel/main.c (-13 / +5), kernel/arch/i386/entry.S (1 l.)
+    -- callers compute the vaddr on the fly.
+
+Context (guess -- subject):
+
+  With the universal linear mapping, fixed vaddr constants
+  for linear-region things are redundant. One less config
+  to keep in sync.
+
+--------------------------------------------------------------------------------
+
+## e87d069c -- [multiboot] Make exOS able to accept a ramdisk as a multiboot
+   module
+
+Commit: e87d069c59...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 17:48:06 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+91 / -58) -- when MBI indicates modules
+    are loaded (mods_count > 0), parses the first module as
+    the ramdisk (address + size). Skips Tilck's own
+    bootloader in this case: kernel already has the ramdisk
+    at an MBI-specified address, no need to load it.
+
+  - common/include/config.h (+2 / -2), kernel/kmalloc.c
+    (+3 / -2) -- accommodates a dynamic (not compile-time)
+    ramdisk paddr.
+
+Context (subject):
+
+  Tilck can now boot via GRUB (or anything Multiboot-spec):
+    grub> multiboot /exos.elf
+    grub> module /fatpart.img
+    grub> boot
+
+--------------------------------------------------------------------------------
+
+## 45016f78 -- [kmalloc] Support ramdisk paddr and size provided by multiboot
+
+Commit: 45016f7847...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 18:15:57 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/kmalloc.c (+5 / -2), kernel/pageframe_allocator.c
+    (+6) -- initialization paths accept the ramdisk paddr +
+    size as runtime parameters (from MBI), not compile-time
+    constants.
+
+  - common/include/utils.h (+5) -- new
+    ROUND_UP_TO_ALIGN(x, align) helper used by the ramdisk
+    registration path.
+
+  - kernel/include/paging.h (-6) -- removes a few old
+    ramdisk-paddr constants no longer needed.
+
+--------------------------------------------------------------------------------
+
+## 24dd6f03 -- Move RAMDISK_PADDR to just +2MB
+
+Commit: 24dd6f0321...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 18:19:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - common/include/config.h (+3 / -4) -- default (non-
+    Multiboot-boot) RAMDISK_PADDR moves from 0x400000 (4 MiB)
+    to 0x200000 (2 MiB). 2 MiB is the first free region after
+    the kernel image; everything between 1 MiB and 2 MiB
+    is used by kernel code/data after the linker-script
+    placement.
+
+  - kernel/main.c (+3 / -2) -- tiny arithmetic fix.
+
+--------------------------------------------------------------------------------
+
+## 2d2a40a5 -- Fix build error
+
+Commit: 2d2a40a549...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 18:54:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/main.c (+5 / -5) -- uses helpers that the previous
+    commit introduced but broke the linkage on one #ifdef
+    path.
+
+  - kernel/misc.c (+4) -- moves the helper functions out of
+    header to break a circular include.
+
+--------------------------------------------------------------------------------
+
+## d41000bf -- update README
+
+Commit: d41000bffc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Mar 2 19:44:30 2018 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (+3 / -3) -- adds a note about GRUB / Multiboot
+  boot path now being supported. Web UI.
+
+--------------------------------------------------------------------------------
+
+## 93e31f91 -- [build] Make .rodata a separate section from .text (elf kernel)
+
+Commit: 93e31f91e1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 3 17:00:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/linker_script.ld (+11 / -5) -- splits the
+  kernel ELF's single .text+.rodata segment into two distinct
+  PT_LOAD entries. Allows different flags per segment
+  (eventually: .rodata can be mapped read-only once the
+  kernel has per-section mapping). For now just cosmetic
+  / ELF-structure-correctness.
+
+--------------------------------------------------------------------------------
+
+## 9095e8d7 -- [build] Make the linker script of the bootloader simpler
+
+Commit: 9095e8d74b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 3 17:10:31 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/linker_script.ld (+9 / -16) -- net shrink.
+    Removes duplicated sections (the script had both
+    .bss and .common declarations; one was redundant);
+    drops unused PROVIDE() statements.
+
+  - kernel/arch/i386/linker_script.ld (1 l.) -- trivial.
+
+--------------------------------------------------------------------------------
+
+## d39aafb5 -- [build] Add PHDRS to kernel linker script
+
+Commit: d39aafb561...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 3 17:19:42 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/linker_script.ld (+20 / -12) -- explicit
+  PHDRS { text PT_LOAD; rodata PT_LOAD; data PT_LOAD; }
+  declaration at the top. Each section is then assigned to
+  a specific PHDR with :text / :rodata / :data. Gives the
+  linker precise control over how many program headers end
+  up in the ELF; matches what a normal-executable linker
+  script looks like.
+
+--------------------------------------------------------------------------------
+
+## 77be9691 -- [cosmetic] Fix indentation of linker script
+
+Commit: 77be96912d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 3 17:57:09 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/linker_script.ld (+37 / -37) -- pure
+  indentation / whitespace normalization (tabs to spaces,
+  consistent width). No content change.
+
+--------------------------------------------------------------------------------
+
+## adf2f3f3 -- [build] Minor fixes (like removing the unused ARCH_FLAGS)
+
+Commit: adf2f3f3b6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Mar 3 19:38:32 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/CMakeLists.txt (+1 / -2) -- ARCH_FLAGS
+    variable is no longer needed (the cross-toolchain handles
+    all -m32 / -march targeting). Removed.
+
+  - kernel/arch/i386/linker_script.ld (+8 / -8) -- small
+    cleanup.
+
+  - kernel/elf_loader.c (+6 / -6) -- trims dead code from
+    the ELF loader (skipped-header case was handled twice).
+
+--------------------------------------------------------------------------------
+
+## e274b22b -- [bootloader] Use directly ELF's paddrs instead of vaddrs
+
+Commit: e274b22bdf...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 4 11:54:40 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - bootloader/stage3.c (+21 / -9) -- stage3 now reads
+    phdr.p_paddr (physical address) instead of p_vaddr
+    (virtual). Previously it was using p_vaddr and subtracting
+    KERNEL_BASE_VA to get the paddr; more direct and
+    unambiguous to use the explicit paddr field.
+
+  - kernel/arch/i386/linker_script.ld (+1), kernel/arch/
+    CMakeLists.txt (-3) -- matching.
+
+--------------------------------------------------------------------------------
+
+## 29fca386 -- Saving work: now we can list the sections by name
+
+Commit: 29fca3861d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 4 12:57:05 2018 +0200
+
+Message:
+
+  BONUS: fixing a bug in the elf loader (both in the bootloader
+  and in the kernel elf loader): the bug was the assumption
+  about the file offset of the phdrs, instead of using
+  elf_header->e_phoff.
+
+AI notes:
+
+What changed:
+
+  - kernel/elf_loader.c (+41) -- extends the loader to read the
+    section header table (Elf32_Shdr) alongside the program
+    headers, and looks up sections by name (e.g. ".symtab",
+    ".strtab"). Lays groundwork for kernel-side symbol
+    resolution.
+
+  - kernel/main.c (+14 / -2) -- prints discovered section
+    names at boot for verification.
+
+  - bootloader/stage3.c (+3) -- parallel bug fix: use
+    header->e_phoff instead of a hardcoded offset. Caught
+    because non-trivial ELFs can put phdrs anywhere.
+
+--------------------------------------------------------------------------------
+
+## 1d4495f4 -- Reading of symbols works
+
+Commit: 1d4495f4c7...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 4 16:12:25 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/elf_loader.c (+20 / -16) -- the loader now
+    successfully walks Elf32_Sym entries in .symtab, cross-
+    referencing names in .strtab. Can print every kernel
+    symbol with name + value.
+
+  - kernel/main.c (-4) -- small cleanup.
+
+Context (subject):
+
+  Enables in-kernel addr-to-symbol resolution -- the
+  prerequisite for a panic backtrace that prints function
+  names instead of raw addresses.
+
+--------------------------------------------------------------------------------
+
+## fda93195 -- Starting to work on make_symtabs_loadable.c
+
+Commit: fda931950d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 4 19:44:54 2018 +0200
+
+AI notes:
+
+What changed:
+
+  New scripts/build_apps/make_symtabs_loadable.c (112 l.) --
+  host-side C tool. Post-link, edits the kernel ELF to mark
+  its .symtab / .strtab sections as SHF_ALLOC (loadable) so
+  they get actually loaded into memory at boot (instead of
+  being kept purely as debug info that objcopy strips). Then
+  the in-kernel symbol lookup code has access to the real
+  tables. First C utility program living under scripts/.
+
+--------------------------------------------------------------------------------
+
+## f0d0f375 -- Saving work
+
+Commit: f0d0f37563...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Mar 4 21:09:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_apps/make_symtabs_loadable.c renamed /
+    absorbed into scripts/build_apps/elfhack.c (+102, -112).
+    "elfhack" becomes the name the tool keeps long-term: a
+    grab-bag of ELF post-processing operations the kernel
+    build needs.
+
+  - kernel/elf_loader.c (+33 / -11) -- picks up the sections
+    that elfhack newly-marked as loadable and uses them.
+
+  - kernel/arch/CMakeLists.txt (+17 / -7) -- adds a post-link
+    rule invoking elfhack on the kernel binary.
+
+  - CMakeLists.txt (+1) -- wires up the scripts/build_apps/
+    subdirectory.
+
+Context (guess -- subject "Saving work"):
+
+  Checkpoint in the symbol-loading work. The rename from
+  make_symtabs_loadable to elfhack signals the author's
+  intent to add more operations (mark-as-bss, add-section,
+  etc.) to the same tool over time.
+
+--------------------------------------------------------------------------------
