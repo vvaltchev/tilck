@@ -20894,3 +20894,2320 @@ Context (guess -- from subject):
   loop from the commands scales better.
 
 --------------------------------------------------------------------------------
+
+## c8887506 -- [shell] Introducing cmd_fork_perf
+
+Commit: c888750680...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 11:49:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -1 in usermode_apps/shell_commands.c. New fork_perf
+  shell command that loops fork()+exit() many times and
+  prints cycles/fork.
+
+Context (guess -- from subject):
+
+  Micro-benchmark: the recent fork/execve work needs a
+  regression guard against future slowdowns. Fork is the
+  hottest path in Unix-style workloads.
+
+--------------------------------------------------------------------------------
+
+## 78cb4017 -- [process] Fix bug in allocate_new_process()
+
+Commit: 78cb4017b0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 12:25:30 2018 +0300
+
+> pi->ref_count was set to 1 before the bzero() [!parent
+> case]. Therefore, it dropped to 0 from the beginning and
+> free_task() never hit the condition ref_count == 0.
+
+AI notes:
+
+What changed:
+
+  +26 / -4 across 4 files. process.c +8 / -1: reorder
+  the bzero() and ref_count=1. kmalloc.c +14: probably a
+  new kzalloc() helper now that the "zero then init"
+  ordering bug was spotted. kmalloc.h +1 decl.
+  shell_commands.c 3-line tweak.
+
+Context (from body):
+
+  Textbook ordering bug: `pi = kmalloc(...); pi->ref = 1;
+  bzero(pi, ...);` zeroes the just-set ref. Fix is to
+  bzero first (or use kzalloc).
+
+--------------------------------------------------------------------------------
+
+## 47f797c8 -- [process] Introduce and use free_mem_for_zombie_task()
+
+Commit: 47f797c827...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 12:50:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -12 across 4 files. process.c +18 net: a dedicated
+  free_mem_for_zombie_task() frees the page dir + kernel
+  stack of an already-dead task (zombie), run from a
+  different context than the dying task itself. Used from
+  sched.c (+2) after parent reaps the zombie, and from
+  process32.c (+1).
+
+Context (guess -- from subject):
+
+  A task can't free its own kernel stack (it's running on
+  it). Splitting the teardown into "task exits" (keep
+  minimal resources as zombie) and "zombie is reaped"
+  (drop the rest) follows the standard Unix model.
+
+--------------------------------------------------------------------------------
+
+## f46681df -- [process] Make sys_exit() and kthread_exit() to free
+   the kernel stack
+
+Commit: f46681dfe4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 14:20:38 2018 +0300
+
+> This has been made possible thanks to the
+> switch_to_initial_kernel_stack() assembly function, which
+> just switches the stack pointer to the end of the initial
+> stack area. The free of the kernel_stack is done by the
+> call to free_mem_for_zombie_task().
+
+AI notes:
+
+What changed:
+
+  +61 / -46 across 6 files. entry.S +12 net new asm
+  switch_to_initial_kernel_stack. process32.c -6 net uses
+  it. process.c +13 net: sys_exit / kthread_exit now call
+  free_mem_for_zombie_task on themselves after jumping
+  onto the bootstrap kernel stack. process.h +7, misc.c
+  +8, config.h +1.
+
+Context (from body):
+
+  Continuation of 47f797c8. The final piece: a dying task
+  can free its own kernel stack if it first moves off it
+  onto the shared initial stack. Same idea as Linux's
+  `die_task` path.
+
+--------------------------------------------------------------------------------
+
+## 3606349c -- [process, panic] Add task_info->what to store kthread's
+   entry-point
+
+Commit: 3606349c24...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 14:41:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -5 across 4 files. process.h +8: task_info.what
+  (function pointer). process32.c +1 records entry point
+  on kthread_create. debug_utils.c +10 / -4 prints
+  `task.what` (resolved via kernel symbol table) in
+  panic/backtrace output. shell_commands.c 1-line.
+
+Context (guess -- from subject):
+
+  Diagnostics: when panicking, the kthread's function
+  name is much more useful than its tid alone. Used
+  during the recent sched debugging sessions.
+
+--------------------------------------------------------------------------------
+
+## fd0f406f -- [gtests] Fix build error (missing mocks)
+
+Commit: fd0f406fea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 15:36:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -3 in unittests/asm_mocks.c. Host stubs for newly
+  referenced asm functions.
+
+Context (guess -- from subject):
+
+  Follow-up to f46681df which added new asm routines; host
+  gtest build needs stubs.
+
+--------------------------------------------------------------------------------
+
+## 33bde43b -- [kernel_yield] Fix a bug and add a checker in
+   tasklet_runner_kthread()
+
+Commit: 33bde43b94...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 16:40:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +54 / -6 across 4 files. tasklet.c +34 net: the runner
+  kthread gets asserts verifying its invariants
+  (preemption state, current task). entry.S +8 net: the
+  kernel_yield asm gets a fix (probably saving /
+  restoring a flag it was corrupting). x86_utils.h +11
+  adds helper (e.g., get_eflags inline).
+  shell_commands.c 1-line.
+
+Context (guess -- from subject):
+
+  Pattern match: preemption counter / EFLAGS corruption
+  in yield. Adding assertions in a constantly-running
+  kthread catches regressions fast.
+
+--------------------------------------------------------------------------------
+
+## 0eeb37c6 -- [sys_waitpid] Make it safe against invalid user
+   wstatus pointer
+
+Commit: 0eeb37c6d5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 19:40:15 2018 +0300
+
+> BONUS: other minor changes in user.c/user.h
+
+AI notes:
+
+What changed:
+
+  +127 / -32 across 5 files. user.c +68 net: new
+  copy_*_to_user variants with fault fixup; user.h
+  refreshed (+3 / -14). process.c +3 net switches
+  sys_waitpid to copy_to_user(wstatus). shell_commands.c
+  +14 / -1 new invalid-pointer test. generic_mocks.c
+  +29 mocks.
+
+Context (from body):
+
+  Continues the copy_from/to_user rollout. waitpid
+  writes *wstatus in the parent's address space -- bad
+  pointer must not crash the kernel.
+
+--------------------------------------------------------------------------------
+
+## 17f1449a -- Add some ATOMIC_* macros in common/basic_defs.h and
+   use them
+
+Commit: 17f1449a6d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 20:35:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -23 across 7 files. basic_defs.h +12: ATOMIC_SET /
+  ATOMIC_ADD / ATOMIC_LOAD macros wrapping __atomic_* GCC
+  builtins. kcond.c -4 net, kmutex.c -3 net, process.h +5
+  net use the new macros instead of open-coded
+  __sync_*. entry.S/printk.c tiny touches.
+
+Context (guess -- from subject):
+
+  Consistency: every atomic access goes through one
+  vocabulary. Prepares for SMP down the road (even if
+  uniprocessor now, the code is already correct).
+
+--------------------------------------------------------------------------------
+
+## 303a4a7a -- Introduce the KERNEL_TRACK_NESTED_INTERRUPTS config
+   option
+
+Commit: 303a4a7a28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 21:14:52 2018 +0300
+
+> This allows all the functions related with push/pop
+> nested interrupts to just do nothing. All of its purpose
+> is anyway only debug-related. Still, by default the
+> option will be 1, but it can be disabled. Also, the
+> function are_interrupts_enabled() has been made
+> debug-only: there should be no non-debug logic relying
+> on it.
+>
+> BONUS: fixing a bug in find_sym_at_addr().
+
+AI notes:
+
+What changed:
+
+  +43 / -17 across 8 files. config.h +2 (option macro).
+  interrupts.h +10 (stubs for disabled case). interrupts.c
+  +24 / -14 gates push/pop nested interrupts behind the
+  macro. elf.c 1-line fix (the "BONUS"). debug_utils.c,
+  timer_handler.c, entry.S, x86_utils.h adjust.
+
+Context (from body):
+
+  Nested-interrupt bookkeeping has cost at every IRQ/
+  syscall boundary; for debug it catches "this ran with
+  interrupts disabled" bugs, but in release it's dead
+  weight. Making it compile-time optional is free
+  performance.
+
+--------------------------------------------------------------------------------
+
+## d2fc3306 -- [process] Make current accessed only through its
+   getter
+
+Commit: d2fc33066f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 23:44:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +163 / -122 across 15 files. Every direct `current`
+  deref in the kernel becomes a call to get_current_task()
+  (and its process counterpart). process.h +6 net
+  declares the getters. ~140 small per-file edits.
+
+Context (guess -- from subject):
+
+  Indirection through an accessor lets the getter evolve
+  (add sanity checks, inline differently, become per-CPU
+  when SMP arrives) without touching callers. Similar
+  pattern to Linux's `current` macro.
+
+--------------------------------------------------------------------------------
+
+## a3bc6f74 -- [process] Rename get_current_task to get_curr_task
+
+Commit: a3bc6f748e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 23:48:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +68 / -68 across 14 files. Pure rename.
+
+Context (guess -- from subject):
+
+  Shorter name for a function used everywhere reduces
+  visual noise. Done minutes after introducing the
+  getter -- easier to rename once used than after it's
+  load-bearing.
+
+--------------------------------------------------------------------------------
+
+## f1c9a3c5 -- [sched] Turn a couple of 'if (!curr)' into
+   ASSERT(curr != NULL)
+
+Commit: f1c9a3c57a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 23:56:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -12 across sched.c (-10) and process.c (-2).
+  Places that defensively checked for NULL current are
+  now asserted -- with kernel_process as the always-set
+  fallback (commit ee506509), current can never be NULL.
+
+Context (guess -- from subject):
+
+  Payoff of the kernel_process global: dead-code
+  elimination of NULL branches that are now unreachable.
+
+--------------------------------------------------------------------------------
+
+## d2378db2 -- [process] Make sys_chdir() to use copy_str_from_user()
+
+Commit: d2378db296...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 14:10:07 2018 +0300
+
+> BONUS: a few fixes in copy_str_from_user(): add max_size
+> and make sure to copy the final \0 of the string.
+
+AI notes:
+
+What changed:
+
+  +33 / -10 across 4 files. user.c +15 net: bug fixes in
+  copy_str_from_user (max_size cap, NUL inclusion).
+  process.c +10 net: sys_chdir now copy_str_from_user's
+  the path argument. fs_syscalls.c +7 / -2 uses updated
+  signature. user.h adjusts decl.
+
+Context (from body):
+
+  Two things at once: migrate another syscall to the safe
+  primitive, and fix issues with that primitive discovered
+  while doing so. Classic "use it to fix it".
+
+--------------------------------------------------------------------------------
+
+## 8b95642b -- [sys_getcwd] Make it use copy_to_user()
+
+Commit: 8b95642b15...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 14:26:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -6 in process.c. sys_getcwd constructs the path
+  in a kernel buffer then copy_to_user's to the caller's
+  buffer.
+
+Context (guess -- from subject):
+
+  Continuation of the user-pointer hardening sweep.
+
+--------------------------------------------------------------------------------
+
+## 2cb81881 -- [interrupts] Minor (almost cosmetic) changes
+
+Commit: 2cb81881f3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 14:34:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -10 in kernel/interrupts.c. Small trim after the
+  get_curr_task rename and the KERNEL_TRACK_NESTED_*
+  option.
+
+Context (guess -- from subject):
+
+  Polish follow-up.
+
+--------------------------------------------------------------------------------
+
+## d1142dda -- [syscalls] Add some TODO comments
+
+Commit: d1142ddaee...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 16:46:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 lines in arch/i386/syscalls.c. Markers for syscalls
+  still using raw user pointers / returning wrong errno.
+
+Context (guess -- from subject):
+
+  Inventory of known work items; useful during the
+  copy_from/to_user sweep to track what's left.
+
+--------------------------------------------------------------------------------
+
+## e92d803a -- [syscalls] Replace the incorrect -1 with -ENOSYS when
+   not implemented
+
+Commit: e92d803a60...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 18:42:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -17 in arch/i386/syscalls.c. All "not implemented"
+  stubs now return -ENOSYS rather than -1.
+
+Context (guess -- from subject):
+
+  -1 gives errno=EPERM (syscall 1 == exit, weirdness).
+  -ENOSYS is the standard "this syscall isn't wired up"
+  value and musl/glibc fallback paths recognize it.
+
+--------------------------------------------------------------------------------
+
+## 21740936 -- [sys_ioctl] Use copy_to_user() in tty_ioctl()
+
+Commit: 21740936c0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 18:47:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -2 across syscalls.c (-1) and char/tty.c (+8 / -1).
+  tty_ioctl now copy_to_user's its response struct.
+
+Context (guess -- from subject):
+
+  Same sweep. ioctl in particular writes small structs
+  back to userspace (termios, window size).
+
+--------------------------------------------------------------------------------
+
+## e6c54710 -- [set_thread_area] Use copy_from_user/copy_to_user
+
+Commit: e6c5471090...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 19:00:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -22 across gdt.c (+42 / -21) and syscalls.c (-1).
+  set_thread_area's user_desc struct is now pulled via
+  copy_from_user, filled in by the kernel, then pushed
+  back with copy_to_user (the kernel rewrites the
+  entry_number field when -1 on input).
+
+Context (guess -- from subject):
+
+  Harden the TLS-install syscall. Before this, a
+  malicious user could fault mid-read and corrupt the
+  GDT expansion.
+
+--------------------------------------------------------------------------------
+
+## c1df65b4 -- [sys_set_tid_address] Cosmetic changes/comments/
+   renamings
+
+Commit: c1df65b4b2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 16 19:09:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -4 across process.h (+8 / -1), process32.c (+7 /
+  -2), syscalls.c (1 line). Renames / comments on the
+  clear_child_tid pointer field and its usage.
+
+Context (guess -- from subject):
+
+  Post-copy_to_user pass on set_tid_address for
+  readability.
+
+--------------------------------------------------------------------------------
+
+## 722f0d60 -- [sys_execve] Use copy_str_array_from_user() after
+   implementing it
+
+Commit: 722f0d6039...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 13:52:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +173 / -46 across 5 files. user.c +77: new
+  copy_str_array_from_user copies a NULL-terminated
+  char* array plus each referenced string, validating
+  every pointer. process.c +87 net: sys_execve now goes
+  through the new helper for argv and envp. user.h +5
+  decls. process.h +2 / -1. syscalls.c -1.
+
+Context (guess -- from subject):
+
+  argv/envp are NULL-terminated arrays of user strings
+  -- the gnarliest user-pointer input the kernel
+  accepts. This primitive finally makes sys_execve
+  fully safe against bad argv/envp.
+
+--------------------------------------------------------------------------------
+
+## 0140278b -- [user] Introduce internal_copy_user_str() and use it
+
+Commit: 0140278b39...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 14:13:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +60 / -57 in user.c. Net +3. The shared string-copying
+  body extracted into internal_copy_user_str; both
+  copy_str_from_user and copy_str_array_from_user use it.
+
+Context (guess -- from subject):
+
+  Deduplication: two callers had near-identical char-by-
+  char loops with fault fixups.
+
+--------------------------------------------------------------------------------
+
+## 148be417 -- [gtests] Fix build error
+
+Commit: 148be4172e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 14:16:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -1 in unittests/generic_mocks.c. Stub for newly
+  added internal copy helper.
+
+Context (guess -- from subject):
+
+  Usual host-build unbreak.
+
+--------------------------------------------------------------------------------
+
+## 3d104ba4 -- [sys_execve] Code polishing
+
+Commit: 3d104ba4a4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 15:43:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +70 / -63 across user.c (+4 / -3) and process.c (+66 /
+  -60). Net +7 but significant reshuffle -- error paths,
+  variable names, ordering.
+
+Context (guess -- from subject):
+
+  Re-reading the just-refactored sys_execve for clarity.
+
+--------------------------------------------------------------------------------
+
+## 1bf45b55 -- Move duplicate_user_* funcs in 'user.h'
+
+Commit: 1bf45b5593...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 15:56:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +83 / -67 across 5 files. user.c +60 net: duplicate_
+  user_string / duplicate_user_array implementations
+  (copy + kmalloc). user.h +12. process.c -42 net (its
+  custom dup helpers removed). fs_syscalls.c -5 net.
+  paging.c 1-line.
+
+Context (guess -- from subject):
+
+  Consolidation: the "copy user string into fresh
+  kmalloc" pattern was scattered; one canonical home in
+  user.h.
+
+--------------------------------------------------------------------------------
+
+## 54d0d1c7 -- [user] Introduce user_out_of_range(ptr, n)
+
+Commit: 54d0d1c7e6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:10:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -12 across user.h (+5) and user.c (+6 / -8).
+  New predicate user_out_of_range() replacing open-coded
+  `ptr >= KERNEL_BASE_VA` or similar checks.
+
+Context (guess -- from subject):
+
+  Centralise the "is this pointer in user space" test.
+  Matches Linux's access_ok().
+
+--------------------------------------------------------------------------------
+
+## b51dcec6 -- [user] Code polishing
+
+Commit: b51dcec6aa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:29:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -14 in user.c. Net +8 lines. Internal cleanup.
+
+Context (guess -- from subject):
+
+  Standard follow-up.
+
+--------------------------------------------------------------------------------
+
+## cf0797e4 -- [user] Move in a non-arch location
+
+Commit: cf0797e438...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:29:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename: kernel/arch/i386/user.c -> kernel/user.c.
+
+Context (guess -- from subject):
+
+  user.c's logic is mostly generic (copy with fault
+  fixup); the only x86-specific part is the fixup table
+  and it can be abstracted behind a macro. Moving now
+  makes adding x86_64 user.c later a smaller diff.
+
+--------------------------------------------------------------------------------
+
+## 6a9bef68 -- [sys_execve] Code polishing and save a '!curr' check
+
+Commit: 6a9bef68cf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:47:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -33 across main.c (+4 / -2) and process.c (+19 /
+  -31). Net -10. sys_execve loses another NULL-current
+  branch now that main.c bootstraps the kernel_process
+  earlier.
+
+Context (guess -- from subject):
+
+  Continuation of f1c9a3c5: find more unreachable
+  NULL-curr branches.
+
+--------------------------------------------------------------------------------
+
+## 2458f478 -- [gtests] Fix build err
+
+Commit: 2458f47818...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:49:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -35 in unittests/generic_mocks.c. 35 obsolete
+  mock stubs deleted now that user.c moved out of arch/.
+
+Context (guess -- from subject):
+
+  Clean-up of mocks that the host build no longer needs
+  after the cf0797e4 file move.
+
+--------------------------------------------------------------------------------
+
+## e47a38e6 -- [internal_copy_user_str] Always write to *written_ptr
+
+Commit: e47a38e6ac...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 16:51:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 line in kernel/user.c. The out-parameter
+  written_ptr is now written even on the early-exit/
+  error paths.
+
+Context (guess -- from subject):
+
+  Bug fix: callers assumed *written_ptr is always
+  meaningful, but error branches left it uninitialised.
+
+--------------------------------------------------------------------------------
+
+## ff36548a -- [ext_string_util] Rename dcopy_strarray to
+   dup_strarray
+
+Commit: ff36548a88...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 17:49:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 across string_util.h and ext_string_util.c.
+  Pure rename.
+
+Context (guess -- from subject):
+
+  "dcopy" was an idiosyncratic prefix; "dup" matches
+  standard Unix naming (strdup, etc.).
+
+--------------------------------------------------------------------------------
+
+## 05af7eca -- [process] Move arch-specific members in a dedicated
+   'arch' member
+
+Commit: 05af7eca77...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 17:58:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -26 across 5 files. process.h -9 net: the
+  sparse i386-specific fields in task_info are bundled
+  into `struct arch_task_info arch;`. arch/i386/
+  arch_utils.h +9 defines that struct for i386. x86_64
+  stub +6. gdt.c / process32.c switch to `task->arch.*`.
+
+Context (guess -- from subject):
+
+  Textbook portability seam: per-arch fields confined to
+  per-arch struct. Adding x86_64 becomes a localised
+  change rather than a global task_info reshuffle.
+
+--------------------------------------------------------------------------------
+
+## c3be8c4e -- [sysenter] Add a sysenter test in the shell + make it
+   restore ebp
+
+Commit: c3be8c4e49...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 19:18:57 2018 +0300
+
+> Still, sysenter does not behave EXACTLY like the one in
+> the linux kernel because, sysexit needs to jump to some
+> user space code and execute:
+>
+>     pop ebp
+>     pop edx
+>     pop ecx
+>     ret
+>
+> Linux has vdso, exOS at most could map a single page in
+> user space in a hacky way and execute those
+> instructions there.
+
+AI notes:
+
+What changed:
+
+  +45 / -5 across entry.S (+7 / -3) and
+  shell_commands.c (+38 / -2). entry.S: sysenter now
+  saves/restores ebp across the syscall.
+  shell_commands.c: do_sysenter_call helper + a shell
+  command to invoke it.
+
+Context (from body):
+
+  Partial sysenter fix. Documents the vDSO-shaped hole
+  that the next commit plugs.
+
+--------------------------------------------------------------------------------
+
+## df9ec9a8 -- [sysenter] Make it work EXACTLY like the linux kernel
+
+Commit: df9ec9a8b1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 17 19:54:59 2018 +0300
+
+> Thanks to a special user-mapped page (like vsdo), now
+> sysexit jumps there and, in usermode, restores ebp, edx,
+> ecx and eip (with ret).
+
+AI notes:
+
+What changed:
+
+  +57 / -6 across 4 files. entry.S +40 / -6: sysenter
+  entry now arranges for sysexit to land in the vDSO
+  trampoline. syscalls.c +3. elf.c +12: maps the
+  trampoline page into every new process's address
+  space. config.h +2 for the fixed user VA.
+
+Context (from body):
+
+  Minimal Linux-compatible sysenter path. Tilck gets a
+  tiny one-page pseudo-vDSO that only holds the
+  `pop/pop/pop/ret` epilogue Linux's vDSO exposes --
+  enough for musl's sysenter stub to work unchanged.
+
+--------------------------------------------------------------------------------
+
+## 55e5f09f -- [timer_handler] Fix a bug in set_task_to_wake_after()
+
+Commit: 55e5f09f38...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 12:19:10 2018 +0300
+
+> The function was not re-enabling the interrupts before
+> return.
+
+AI notes:
+
+What changed:
+
+  +1 line in kernel/timer_handler.c. A missing sti() /
+  enable_interrupts() before the return path.
+
+Context (from body):
+
+  Nasty latent bug: disable_interrupts() with no matching
+  re-enable leaves IRQs masked forever. Classic on-exit
+  forgotten restore.
+
+--------------------------------------------------------------------------------
+
+## 2a80d491 -- [entry] Minor changes in sysenter_entry
+
+Commit: 2a80d49106...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 12:21:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -8 in entry.S. Tighter sysenter prologue /
+  epilogue -- likely merging two pushes into one
+  pusha-style insn, or simpler save-order.
+
+Context (guess -- from subject):
+
+  Normal polish after making sysenter work end-to-end.
+
+--------------------------------------------------------------------------------
+
+## 2c3751c4 -- [syscalls] Add a stub sys_nanosleep() implementation
+
+Commit: 2c3751c45f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 12:21:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 lines in arch/i386/syscalls.c. nanosleep stub that
+  converts timespec to ticks and calls the existing
+  sleep primitive, or returns 0.
+
+Context (guess -- from subject):
+
+  Userspace (musl, benchmark loops) calls nanosleep;
+  returning -ENOSYS breaks things. Stub is enough for
+  now.
+
+--------------------------------------------------------------------------------
+
+## 6ff4a359 -- [shell] Fix compile err in do_sysenter_call and add
+   a syscall perf test
+
+Commit: 6ff4a35950...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 12:22:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +63 / -12 in shell_commands.c. Inline-asm fix in
+  do_sysenter_call (wrong constraint on ebx?), plus a
+  new benchmark that measures int 0x80 vs sysenter
+  syscall latency.
+
+Context (guess -- from subject):
+
+  With sysenter finally working, benchmarking lets Vlad
+  confirm it's actually faster than int 0x80.
+
+--------------------------------------------------------------------------------
+
+## 51856e4f -- [process] Make panic_save_current_task_state() to use
+   a static regs var
+
+Commit: 51856e4f77...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 13:16:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -4 in process32.c. panic_save_current_task_state()
+  uses a file-scope static struct regs for its save
+  instead of reusing user_regs.
+
+Context (guess -- from subject):
+
+  d91c6cd6's hack of storing panic regs in user_regs
+  was short-term; a dedicated static is cleaner. Only
+  one panic can happen at a time so no reentrancy
+  concern.
+
+--------------------------------------------------------------------------------
+
+## 93d9b606 -- [process] Rename kernel_state_regs to kernel_regs
+
+Commit: 93d9b60611...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 13:20:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -13 across process.h, process32.c, debug_utils.c.
+  Pure rename.
+
+Context (guess -- from subject):
+
+  Shorter name; the "state" qualifier was redundant.
+
+--------------------------------------------------------------------------------
+
+## f67ebf61 -- [process] Rename state_regs to user_regs
+
+Commit: f67ebf61e9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 13:22:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -7 across 4 files. Pure rename.
+
+Context (guess -- from subject):
+
+  Pairs with the previous commit: kernel_regs /
+  user_regs as matched names make the two halves obvious.
+
+--------------------------------------------------------------------------------
+
+## d10a118a -- Set USER_VSDO_LIKE_PAGE_VADDR to 0xB8000000 (128 MB
+   away from KERNEL_BASE)
+
+Commit: d10a118a7f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 14:02:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line change in config.h. The vDSO-like trampoline
+  page address moves to 0xB8000000.
+
+Context (guess -- from subject):
+
+  Safer address: far from both the kernel base (0xC0000000
+  -- 128 MB away as noted) and typical ELF image
+  placements, minimising the chance of collision.
+
+--------------------------------------------------------------------------------
+
+## 7c72f082 -- [sysenter] Minor changes in sysenter_entry
+
+Commit: 7c72f082b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 14:31:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -7 across entry.S and shell_commands.c. Small
+  asm tweaks and a matching shell-command test update.
+
+Context (guess -- from subject):
+
+  Polish after the vDSO page change.
+
+--------------------------------------------------------------------------------
+
+## c83c8acb -- [entry] Introduce kernel_resume_eip in regs
+
+Commit: c83c8acb2b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 18:38:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -8 across 3 files. arch_utils.h +1: struct regs
+  gains kernel_resume_eip field. entry.S +22 net stores
+  it on entry. irq_handlers.S +6 stores it too.
+
+Context (guess -- from subject):
+
+  Explicit "where to resume" field replaces reliance on
+  stack-layout reverse-engineering. Setting up a clean
+  primitive the next commits will use.
+
+--------------------------------------------------------------------------------
+
+## 80767f45 -- [entry] Use the new field kernel_resume_eip
+
+Commit: 80767f4528...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 18:57:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -23 across entry.S (-10 net) and irq_handlers.S
+  (+1 net). Asm switch code reads resume EIP from the
+  struct regs field instead of computing it from the
+  pushed iret frame.
+
+Context (guess -- from subject):
+
+  Payoff of c83c8acb: simpler switch code.
+
+--------------------------------------------------------------------------------
+
+## 23800706 -- [entry] Minor changes
+
+Commit: 23800706d4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 19:10:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -11 across entry.S and irq_handlers.S. Asm
+  compression.
+
+Context (guess -- from subject):
+
+  Follow-up polish.
+
+--------------------------------------------------------------------------------
+
+## 6361abaf -- [entry] Improving kernel_yield resume
+
+Commit: 6361abafb2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 19:21:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -17 across entry.S and irq_handlers.S. Resume
+  path from kernel_yield reshaped -- fewer instructions,
+  clearer flow.
+
+Context (guess -- from subject):
+
+  Continued micro-refinement of the hottest switch
+  path.
+
+--------------------------------------------------------------------------------
+
+## 0a31b65f -- [process, context switch] Remove user_regs from
+   task_info
+
+Commit: 0a31b65f62...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 20:39:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -23 across 4 files. process.h -1: user_regs
+  field deleted. process32.c -9 net: switch uses
+  kernel_regs pointer (which is where user regs are
+  saved when the task came from userland -- the stack
+  is the source of truth). process.c +5 net, user.c
+  +12 / -1.
+
+Context (guess -- from subject):
+
+  Completion of the "single-source-of-truth regs"
+  redesign that started with fa6d7194. Both user_regs
+  and kernel_regs had been shadows of a stack frame;
+  now the struct regs lives only on the stack.
+
+--------------------------------------------------------------------------------
+
+## 8b6ec889 -- [process] Rename kernel_regs to state_regs
+
+Commit: 8b6ec88992...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 18 20:40:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -25 across 5 files. Pure rename.
+
+Context (guess -- from subject):
+
+  Now that there's only one regs pointer, the kernel_/
+  user_ distinction is misleading. Single generic name.
+
+--------------------------------------------------------------------------------
+
+## eb2a8450 -- [shell] Add the 'sysenter_fork_test' command
+
+Commit: eb2a845056...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 14:37:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +50 / -4 across syscalls.c (+8) and shell_commands.c
+  (+42 / -4). Shell command that forks and has the child
+  use sysenter for its syscalls.
+
+Context (guess -- from subject):
+
+  Stress test combining two recently-added features.
+  Fork+sysenter interaction is the most delicate path
+  (sysenter clobbers ecx/edx/ebp; fork duplicates the
+  register state -- child must come back correctly).
+
+--------------------------------------------------------------------------------
+
+## d70dbe95 -- Rename in_panic to __in_panic and make call-sites used
+   in_panic()
+
+Commit: d70dbe958b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 16:26:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -12 across 6 files. basic_defs.h +7: public
+  in_panic() inline accessor; __in_panic is the
+  underlying global. All call sites switch.
+
+Context (guess -- from subject):
+
+  Common convention: double-underscore for "private, do
+  not touch directly", plain name for the accessor.
+  Lets the accessor grow assertions or per-CPU handling
+  later.
+
+--------------------------------------------------------------------------------
+
+## 4a6da78f -- [fault_resumable] Introduce fault_resumable(mask,
+   func, nargs, ...)
+
+Commit: 4a6da78f48...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 19:43:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +222 / -9 across 7 files. New header
+  exos/fault_resumable.h (+22) and impl (108 lines in
+  arch/generic_x86/fault_resumable.c): a primitive to
+  call a function while being prepared to recover from a
+  selected set of CPU exceptions (mask). entry.S +34
+  asm trampoline; idt.c +6 hooks; interrupts.c +13 / -2
+  for recovery dispatch. testrunners.c +42 / -2 covers
+  it.
+
+Context (guess -- from subject):
+
+  General-purpose fault-fixup primitive. Bigger brother
+  of the copy_from_user fault-fixup: any kernel code can
+  call fault_resumable(MASK_PAGE_FAULT, fn, ...) and
+  get a clean error return if fn page-faults. Reusable
+  for probing MMIO, kernel self-tests, etc.
+
+--------------------------------------------------------------------------------
+
+## 88c21734 -- [fault_resumable] Add a perf test
+
+Commit: 88c217342e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 19:50:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 lines in kernel/self_tests/testrunners.c. Perf
+  test loop over fault_resumable()-wrapped calls.
+
+Context (guess -- from subject):
+
+  Measuring the overhead of the new primitive vs. a
+  plain function call. Informs whether it's OK to put
+  on hot paths.
+
+--------------------------------------------------------------------------------
+
+## 00c45576 -- [fault_resumable] Add the _call to the
+   fault_resumable() func
+
+Commit: 00c4557657...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 19:52:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -7 across 3 files. Function renamed
+  fault_resumable -> fault_resumable_call in the header,
+  impl, and the one existing test caller.
+
+Context (guess -- from subject):
+
+  "_call" suffix makes it greppable as a call-site
+  pattern and distinguishes from future variants.
+
+--------------------------------------------------------------------------------
+
+## 002fbe18 -- Move fault_resumable.c in kernel/
+
+Commit: 002fbe18b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 19:55:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure file move: kernel/arch/generic_x86/fault_resumable.c
+  -> kernel/fault_resumable.c.
+
+Context (guess -- from subject):
+
+  Most of the logic is arch-neutral; only the trampoline
+  in entry.S is i386-specific. Promoting to
+  non-arch-specific matches that split.
+
+--------------------------------------------------------------------------------
+
+## 592896ce -- [gtests] Fix broken build (because of
+   handle_resumable_fault())
+
+Commit: 592896ce08...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 20:04:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -1 across 2 files. x86_64 arch_utils.h +5 stub
+  for handle_resumable_fault. fault_resumable.c 1-line
+  guard.
+
+Context (guess -- from subject):
+
+  Keep x86_64 stub + gtest build green after the move.
+
+--------------------------------------------------------------------------------
+
+## 2c71ec16 -- [fault_resumable] Update the perf test
+
+Commit: 2c71ec16e8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 20:13:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -6 across fault_resumable.c and testrunners.c.
+  Test iterates more, reports better.
+
+Context (guess -- from subject):
+
+  Tighter measurement after initial impl.
+
+--------------------------------------------------------------------------------
+
+## d5bffe26 -- [fault_resumable] Optimizing fault_resumable_call
+   [draft]
+
+Commit: d5bffe26eb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 20:54:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -75 across entry.S (+30 / -3) and
+  fault_resumable.c (+1 / -72). The C wrapper's
+  register-save scaffolding (72 lines) is deleted; the
+  asm trampoline does everything directly.
+
+Context (guess -- from subject):
+
+  Big payoff: the C wrapper was copying args into a
+  struct, calling a helper, then unpacking. A direct
+  asm version bypasses all of that. "[draft]" flags
+  it as WIP.
+
+--------------------------------------------------------------------------------
+
+## 5169eeff -- [fault_resumable] Micro-optimizations in
+   asm_do_fault_resumable_call()
+
+Commit: 5169eeff00...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 19 23:46:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -24 in entry.S. Net -11 lines. Tighter asm
+  calling sequence for the trampoline.
+
+Context (guess -- from subject):
+
+  Polish after d5bffe26 converted it to draft form.
+
+--------------------------------------------------------------------------------
+
+## 58a7c784 -- [asm_do_fault_resumable_call] Other improvements
+
+Commit: 58a7c78444...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 12:29:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -18 in entry.S. Another round of asm tweaks.
+
+Context (guess -- from subject):
+
+  Ongoing squeeze on the primitive.
+
+--------------------------------------------------------------------------------
+
+## 1796f182 -- [asm_do_fault_resumable_call] Save fault res. regs
+   and dis preempt. count
+
+Commit: 1796f182f4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 12:53:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -9 across entry.S (+6 / -6) and
+  fault_resumable.c (-3). Trampoline now saves the
+  outer preemption-disable counter and the prior
+  fault-resumable state -- a prerequisite for nesting.
+
+Context (guess -- from subject):
+
+  Next step toward re-entrancy (completed in 320c10fb):
+  persist the pre-call state so nested calls can
+  unwind correctly.
+
+--------------------------------------------------------------------------------
+
+## 29f7b2d8 -- [sched] set_current_task(kernel_process) in
+   init_sched()
+
+Commit: 29f7b2d880...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 13:59:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -1 across process.c (1 line) and sched.c (+2).
+  init_sched explicitly initialises current to
+  kernel_process.
+
+Context (guess -- from subject):
+
+  Makes the "current always non-NULL" invariant true
+  from the very first sched init, not just after the
+  first task switch.
+
+--------------------------------------------------------------------------------
+
+## 320c10fb -- [asm_do_fault_resumable_call] Make it fully
+   re-entrant
+
+Commit: 320c10fbc3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 14:28:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -31 across 9 files. New header
+  exos/arch/i386/asm_defs.h (+11) -- symbolic offsets
+  usable from both .S and .c. entry.S +18 / -6 saves
+  a proper per-task fault-resumable context chain.
+  process.h +7: field to hold the outer context in
+  task_info. hal.h +1. config.h -9 (dead constants).
+  irq_handlers.S / isr_handlers.S +1 each.
+  fault_resumable.c -6 net.
+
+Context (guess -- from subject):
+
+  fault_resumable_call can now be called from within a
+  fault-resumable call (nested). Needed for copy_
+  from_user-in-fault_resumable scenarios.
+
+--------------------------------------------------------------------------------
+
+## f20c6196 -- [fault_resumable_call] Remove the C wrapper
+
+Commit: f20c61966f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 14:43:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -38 across 4 files. fault_resumable.c loses 31
+  lines (the C wrapper fully dies). idt.c +10 takes
+  over fault dispatch. entry.S +6 / -8 (rename and
+  direct callers). testrunners.c +9.
+
+Context (guess -- from subject):
+
+  Completion of d5bffe26: the C wrapper was still in
+  draft; it's now fully gone. fault_resumable is all
+  asm + idt fixup table.
+
+--------------------------------------------------------------------------------
+
+## e3d585e0 -- [fault_resumable_call] Add the nested_faulting_code()
+   test
+
+Commit: e3d585e094...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 17:25:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -6 in testrunners.c. Nested-call self-test that
+  faults inside a fault_resumable wrapped call inside
+  another.
+
+Context (guess -- from subject):
+
+  Coverage for the re-entrancy work in 320c10fb.
+  Non-trivial test -- if nesting is subtly broken,
+  this catches it.
+
+--------------------------------------------------------------------------------
+
+## f58b59fc -- [entry] Cosmetic changes
+
+Commit: f58b59fc28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 17:45:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -12 across arch_utils.h (+5), asm_defs.h (+10),
+  entry.S (+12 / -12). More offset macros exposed to
+  asm code.
+
+Context (guess -- from subject):
+
+  Follow-up, making symbolic names usable in more .S
+  places.
+
+--------------------------------------------------------------------------------
+
+## a31c10c2 -- [entry] Optimize kernel_yield and remove the macro
+   for saving the regs
+
+Commit: a31c10c214...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 17:54:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -23 in entry.S. Net +5 lines but the regs-save
+  macro is gone, replaced by explicit per-call-site
+  asm. kernel_yield's epilogue streamlined.
+
+Context (guess -- from subject):
+
+  Macros made the save paths look identical but the
+  actual needs differed slightly per site; open-coding
+  lets each path do only what it needs.
+
+--------------------------------------------------------------------------------
+
+## e0785bac -- Move *_SEL defines to asm_defs.h and use them in
+   *.S files
+
+Commit: e0785bac57...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 18:11:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -11 across 4 files. x86_utils.h -6 (the
+  KERNEL_CODE_SEL etc. defines leave). asm_defs.h +6
+  (defines arrive, now shared with .c). entry.S /
+  irq_handlers.S use symbolic names.
+
+Context (guess -- from subject):
+
+  Completes the single-source-of-truth for segment
+  selectors, usable from both C and asm.
+
+--------------------------------------------------------------------------------
+
+## 31e16b4f -- [entry] Use 'ecx' (caller-save) in
+   panic_save_current_state instead of ebx
+
+Commit: 31e16b4f04...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 18:16:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 in entry.S. ebx (callee-save) swapped for ecx
+  (caller-save) in the panic save-state helper.
+
+Context (guess -- from subject):
+
+  Using a caller-save register avoids the push/pop to
+  preserve the caller's ebx. Small but correct.
+
+--------------------------------------------------------------------------------
+
+## ef86dc02 -- [paging] Re-enable the page fault handler to run with
+   IF = 1
+
+Commit: ef86dc0216...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 20:08:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -9 across paging.c (+17 / -9) and interrupts.c
+  (+12). Page-fault handler now runs with interrupts
+  enabled -- the IRQ-critical sections inside are
+  explicitly bracketed instead.
+
+Context (guess -- from subject):
+
+  Previously the PF handler ran with IF=0 (cli). That's
+  safe but means no IRQs are serviced during faults,
+  which hurts timer accuracy and responsiveness under
+  heavy COW workloads.
+
+--------------------------------------------------------------------------------
+
+## 906b0bb9 -- [user] Remove check_user_ptr_size_{readable|writable}
+
+Commit: 906b0bb9f6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 20:18:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -49 across 3 files. user.c -40 net (the two
+  "probe every page" helpers removed). process.c +2
+  net. user.h -1 decl.
+
+Context (guess -- from subject):
+
+  Those probes pre-faulted the target range page by
+  page -- a costly workaround before proper fault
+  fixups existed. With fault_resumable_call now ready,
+  the probes are redundant.
+
+--------------------------------------------------------------------------------
+
+## f84e5143 -- [user] Drop the old mechanism and use
+   fault_resumable_call()
+
+Commit: f84e51436d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 20:49:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +80 / -95 across 6 files. user.c rewritten (+82 / -78)
+  -- copy_from/to_user now wrap their inner memcpy in
+  fault_resumable_call with PAGE_FAULT mask. paging.c
+  -6. x86_utils.h +4. user.h -3 (old decls).
+  fault_resumable.h +1 (new use).
+
+Context (guess -- from subject):
+
+  Unifies user access on the general-purpose fault-
+  recovery primitive. Drops user-specific fault
+  machinery that mirrored fault_resumable.
+
+--------------------------------------------------------------------------------
+
+## 106508fd -- [user] Remove the ASSERT(!is_preemption_enabled())
+   limitation
+
+Commit: 106508fd28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 21:00:22 2018 +0300
+
+> Note: fixing the call-sites to call the *user*
+> functions without disabling first the preemption.
+
+AI notes:
+
+What changed:
+
+  +23 / -41 across 4 files. user.c -7 (ASSERT lifted).
+  fs_syscalls.c -3 net, process.c -4 net, gdt.c -3 net
+  remove their surrounding disable_preemption /
+  enable_preemption pairs.
+
+Context (from body):
+
+  Old copy_from_user required preemption disabled
+  because the fixup mechanism wasn't re-entrant. With
+  fault_resumable being fully re-entrant (320c10fb),
+  the limitation is gone -- callers can page-fault +
+  yield during a user copy without kernel
+  corruption.
+
+--------------------------------------------------------------------------------
+
+## a295d24b -- [sysenter] Move USER_VSDO_LIKE_PAGE_VADDR to
+   LINEAR_MAPPING_OVER_END
+
+Commit: a295d24b3c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 21 13:51:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -4 across config.h (+3 / -2) and elf.c (-2). The
+  vDSO trampoline page address moves to just past the
+  linear kernel mapping, reserving the slot
+  systematically.
+
+Context (guess -- from subject):
+
+  Better memory-map hygiene. The 0xB8000000 value was
+  an arbitrary safe choice; tying it to the end of
+  linear map is principled.
+
+--------------------------------------------------------------------------------
+
+## ed52408b -- [gtests] Fix build error (missing mock for
+   fault_resumable_call)
+
+Commit: ed52408b07...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 20 21:13:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -2 across asm_mocks.c and generic_mocks.c. Mock
+  stubs for the asm primitive.
+
+Context (guess -- from subject):
+
+  Usual host-test unbreak.
+
+--------------------------------------------------------------------------------
+
+## 9be24552 -- [elfhack] Support also bash-for-windows
+
+Commit: 9be24552e2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 3 14:14:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -9 in scripts/build_apps/elfhack.c. Adjustments
+  so it compiles on WSL1 (Windows Subsystem for Linux).
+  Likely #ifdef for missing syscalls, or fallbacks to
+  POSIX-portable APIs.
+
+Context (guess -- from subject):
+
+  Vlad's dev-on-Windows era (before the full Linux VM
+  setup). Ugly but broadens who can contribute.
+
+--------------------------------------------------------------------------------
+
+## c297f885 -- update .vscode/settings.json
+
+Commit: c297f885cf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 5 13:37:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -35 in .vscode/settings.json. IDE config
+  refresh.
+
+Context (guess -- from subject):
+
+  Personal env file; no functional impact.
+
+--------------------------------------------------------------------------------
+
+## 419a7f97 -- [paging] Make the VSDO_LIKE_PAGE to be mapped just
+   once, in init_paging_cow
+
+Commit: 419a7f97ec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 5 17:45:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -19 across paging.c (+9 net) and elf.c (-10).
+  The per-process mapping of the vDSO trampoline in
+  elf.c moves out; init_paging_cow does it globally
+  once.
+
+Context (guess -- from subject):
+
+  The trampoline page is shared read-only across all
+  processes -- there's no reason for each execve to
+  remap it. A single global mapping saves work and
+  simplifies reasoning about its lifetime.
+
+--------------------------------------------------------------------------------
+
+## 7f0eae45 -- [init] Make it able to forward to /bin/shell its
+   arguments
+
+Commit: 7f0eae456c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 5 21:47:24 2018 +0300
+
+> If 'init' is executed like: /sbin/init -- a1 a2 a3,
+> it will execute /sbin/shell with the arguments a1,
+> a2, a3.
+
+AI notes:
+
+What changed:
+
+  +21 / -3 in usermode_apps/init.c. init scans its
+  argv for `--` and forwards anything after it to
+  execve("/sbin/shell", ...).
+
+Context (from body):
+
+  Plumbing for system-test automation: tests need to
+  run a specific shell command at boot, so init must
+  accept and relay arguments from the kernel cmdline.
+
+--------------------------------------------------------------------------------
+
+## 653aa93b -- [main] Move cmdline parsing logic in a separate file
+
+Commit: 653aa93bf0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 5 21:53:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +69 / -59 across main.c (-53) and new
+  parse_cmdline.c (+65). Pure extraction.
+
+Context (guess -- from subject):
+
+  main.c was accumulating too many responsibilities;
+  isolating parsing keeps main.c focused on boot
+  sequencing.
+
+--------------------------------------------------------------------------------
+
+## 5d116c94 -- [main] Make the kernel to support a custom command
+   following the -cmd opt
+
+Commit: 5d116c946f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 5 23:50:59 2018 +0300
+
+> When the kernel is booted with multiboot, it is
+> possible to pass options through the 'cmdline'
+> multiboot parameter. In case in the cmdline we have
+> the option '-cmd', the arguments following will be
+> treated as: <full path of an executable>
+> [arg1 [arg2 [arg3 ...]]] This allows the kernel to
+> execve() something else instead of /sbin/init, or to
+> execve() init, but with some additional parameters.
+> Now that init supports the '--' option allowing to
+> forward the following arguments to the shell, with
+> this patch it is possible to from the command line to
+> forward arguments to our simple shell. This will be
+> used by the system tests.
+
+AI notes:
+
+What changed:
+
+  +33 / -4 across 4 files. parse_cmdline.c +27: -cmd
+  option parsing. main.c +3 / -2 uses the parsed
+  result to select init target + argv. kmalloc.c +2
+  init touch. init.c 1-line.
+
+Context (from body):
+
+  Final piece: pass a full shell command through qemu
+  -append -> multiboot cmdline -> kernel -> init --
+  -> shell -c. System tests can drive tilck
+  non-interactively.
+
+--------------------------------------------------------------------------------
+
+## f985deaa -- [shell] Add the option -c making the shell to execute
+   a built-in command
+
+Commit: f985deaa6b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 00:01:53 2018 +0300
+
+> This will be used by the system tests. Now that it is
+> possible through the qemu command line, through
+> multiboot to pass arguments to the kernel and in
+> particular execute init with custom arguments, it is
+> possible use its '--' option to forward options to
+> the shell and therefore ask it, with '-c <built-in
+> command>' to execute a built-in command and exit.
+
+AI notes:
+
+What changed:
+
+  +8 lines in shell.c. Parses -c, dispatches the
+  requested built-in, exits.
+
+Context (from body):
+
+  Completes the test harness chain. Now
+  `runtest fork_test` can boot Tilck, run the test,
+  and exit with a pass/fail status.
+
+--------------------------------------------------------------------------------
+
+## 9f6d8865 -- [system_test] Support <shell cmd> as argument
+
+Commit: 9f6d8865aa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 00:24:21 2018 +0300
+
+> This allows any shell command to be run
+> programmatically by just executing
+> ./system_tests/run_system_test <cmd>.
+
+AI notes:
+
+What changed:
+
+  +22 / -33 in system_tests/run_system_test script.
+  Net -11. Script now takes the command as an
+  argument and builds the qemu cmdline accordingly.
+
+Context (from body):
+
+  Exercises the multiboot -> init -> shell forwarding
+  chain from the outside.
+
+--------------------------------------------------------------------------------
+
+## 7750625e -- [system_test] Support kernel selftests as well
+
+Commit: 7750625e1f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 00:40:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -6 across main.c (+3 / -1) and
+  system_tests/run_system_test (+20 / -5). Test script
+  grows a mode for launching a specific kernel
+  self-test rather than a shell command.
+
+Context (guess -- from subject):
+
+  Kernel self-tests (kmalloc_perf, fault_resumable
+  probes, etc.) are valuable CI fodder; this lets
+  them run from the outside too.
+
+--------------------------------------------------------------------------------
+
+## e571aedf -- [system_test] Minor (cosmetic) changes
+
+Commit: e571aedf82...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 14:01:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -8 in system_tests/run_system_test. Output
+  formatting, variable renames.
+
+Context (guess -- from subject):
+
+  Polish.
+
+--------------------------------------------------------------------------------
+
+## b3e8bcec -- [paging] Minor changes
+
+Commit: b3e8bcec0b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 14:01:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -8 across 3 files. basic_defs.h (2 lines),
+  paging.h (1 line), paging.c (5 lines). Likely macro
+  renames.
+
+Context (guess -- from subject):
+
+  Drive-by cleanup.
+
+--------------------------------------------------------------------------------
+
+## ed57f835 -- [system_test] Rename run_system_test to runtest
+
+Commit: ed57f8354e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 14:02:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure file rename.
+
+Context (guess -- from subject):
+
+  Shorter command name for interactive use.
+
+--------------------------------------------------------------------------------
+
+## 0798b3c0 -- [build_apps] Creating fat_get_used_bytes
+
+Commit: 0798b3c06a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 14:53:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +101 / -24 across 10 files. New
+  scripts/build_apps/fat_get_used_bytes.c (8 lines)
+  builds a host tool that inspects a FAT image. New
+  common/panic.c (42 lines) -- panic/assert helpers
+  split out of asserts.c (-4). string_util.h +12 / -9
+  (prototypes refactor), string_util.c +3 / -1.
+  elfhack.c +6, kb.c 1, basic_defs.h +2, CMakeLists
+  +30 net to build the new tool.
+
+Context (guess -- from subject):
+
+  fat_get_used_bytes reports how full a FAT32 image is
+  -- useful for sizing and CI checks. Along with it,
+  Vlad does some common/ cleanup (splitting panic
+  helpers).
+
+--------------------------------------------------------------------------------
+
+## fdd42280 -- [fat_get_used_bytes] Make it to work and even to
+   truncate the file (opt)
+
+Commit: fdd42280d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 16:43:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +91 / -1 across CMakeLists.txt (+2) and
+  fat_get_used_bytes.c (+89). Proper impl that parses
+  FAT, reports used bytes, and with a flag truncates
+  the file to just-what's-needed.
+
+Context (guess -- from subject):
+
+  Fills out the stub. Image truncation shrinks disk
+  images to the minimum viable size -- boots faster in
+  qemu.
+
+--------------------------------------------------------------------------------
+
+## 6e7225fc -- [system_test] Introducing run_all_tests
+
+Commit: 6e7225fc86...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 18:18:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +103 / -25 across 4 files. New
+  system_tests/run_all_tests (+77 lines): driver that
+  runs every registered test via runtest and reports.
+  runtest refactored (+14 / -27 net). main.c -1,
+  testrunners.c +6 / -3 adds a "list available tests"
+  hook.
+
+Context (guess -- from subject):
+
+  CI entry point: run_all_tests is the script CI invokes.
+  Ancestor of `./build/st/run_all_tests` documented in
+  CLAUDE.md.
+
+--------------------------------------------------------------------------------
+
+## 32034990 -- [tasklet] Fix the tasklet selftest
+
+Commit: 3203499077...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 18:34:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -9 across testrunners.c (+12 / -4), tasklet.c
+  (+2 / -4), run_all_tests (+2 / -1). Test and
+  supporting tasklet.c tweak to make the test
+  reproducible.
+
+Context (guess -- from subject):
+
+  Self-test was flaky or outright failing; run_all_tests
+  exposed it. Usual first-time-CI cleanup.
+
+--------------------------------------------------------------------------------
+
+## 49c3dfed -- [selftests] Fix kmutex test and make the kernel_sleep
+   test runnable
+
+Commit: 49c3dfed21...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:38:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -9 across testrunners.c (+11 / -8) and
+  run_all_tests (+3 / -1). Fixes in the kmutex test
+  logic; kernel_sleep test wired into the runner.
+
+Context (guess -- from subject):
+
+  Shaking out more test-harness rust now that
+  run_all_tests is driving everything.
+
+--------------------------------------------------------------------------------
+
+## 59a213fe -- [selftests] Extract the tasklet test in a separate
+   file
+
+Commit: 59a213fe4f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:40:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -40 across 2 files. New selftest_tasklet.c
+  (47 lines) hosts the test body. testrunners.c -40.
+
+Context (guess -- from subject):
+
+  Start of the one-test-per-file refactor. Easier to
+  find, maintain, selectively build.
+
+--------------------------------------------------------------------------------
+
+## 7400e0ef -- [selftests] Extract the kmutex test in a separate
+   file
+
+Commit: 7400e0ef16...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:44:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +53 / -44 across 3 files. New se_kmutex.c (53).
+  selftest_tasklet.c renamed to se_tasklet.c.
+  testrunners.c -44.
+
+Context (guess -- from subject):
+
+  Same treatment for kmutex; and the "se_" prefix is
+  settled as the naming convention.
+
+--------------------------------------------------------------------------------
+
+## 9239703e -- [selftests] Rename testrunner.c to se_common.c
+
+Commit: 9239703e5b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:45:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure rename.
+
+Context (guess -- from subject):
+
+  testrunners.c now holds only shared self-test
+  infrastructure; "se_common" matches the se_* prefix
+  convention.
+
+--------------------------------------------------------------------------------
+
+## d31aa08b -- [selftests] Move kcond selftest in a separate file
+
+Commit: d31aa08b82...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:48:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +80 / -73 across 4 files. New se_kcond.c (76).
+  se_common.c -69. se_kmutex.c / se_tasklet.c +2 each
+  for include adjustments.
+
+Context (guess -- from subject):
+
+  Three self-tests extracted so far: tasklet, kmutex,
+  kcond. se_common.c is slimming down as expected.
+
+--------------------------------------------------------------------------------
+
+## 2ed1c4e2 -- [perftests] Minor changes
+
+Commit: 2ed1c4e291...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 20:59:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -14 in perftests.c. Balanced edit -- probably
+  renames or signature adjustments ahead of the split
+  in the next commit.
+
+Context (guess -- from subject):
+
+  Prep for ba5e58a3.
+
+--------------------------------------------------------------------------------
+
+## ba5e58a3 -- [selftests] Move kmalloc_perf in a separate file
+
+Commit: ba5e58a3fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 21:02:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +171 / -155 across 3 files. New se_kmalloc_perf.c
+  (69). perftests.c -57 net. perftests_data.c
+  rewritten (+100 / -100, balanced -- probably a
+  header sort or format change).
+
+Context (guess -- from subject):
+
+  Continues the one-file-per-test split. perftests.c
+  eventually vanishes.
+
+--------------------------------------------------------------------------------
