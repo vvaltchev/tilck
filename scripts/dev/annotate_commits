@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+#
+# scripts/dev/annotate_commits -- helper for docs/annotated-commit-history.md.
+#
+# Bundles the mechanical git / shell operations used to research commits
+# and append annotation entries to docs/annotated-commit-history.md, so
+# the operator only has to approve one permission pattern
+# (Bash(./scripts/dev/annotate_commits:*)) instead of each underlying
+# git log / show / sed / awk / loop.
+#
+# Dev-only: never called from the build system.
+
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+LIST=.git/annotate-first-parent.list
+DOC=docs/annotated-commit-history.md
+DEFAULT_BRANCH=master
+
+usage() {
+   cat <<'USAGE'
+Usage: scripts/dev/annotate_commits <subcommand> [args]
+
+Subcommands:
+
+  regen-list [N]          Regenerate the first-parent commit list from
+                          master (oldest first), optionally truncated
+                          to N commits.
+  list [N]                Print the cached list. Optional N truncates.
+  count                   Print how many commits are in the cached list.
+
+  meta <N>                Dump header + stat for commit at 1-based
+                          index N.
+  meta-range <FROM> <TO>  Same, for an inclusive 1-based range.
+
+  diff <N>                Full diff of commit N.
+  diff-file <N> <PSPEC>.. Diff of commit N restricted to pathspec(s).
+  diff-head <N> <K>       First K lines of commit N's full diff.
+
+  show-head               Print the last `## ` header in the annotation
+                          doc, i.e. the commit we most recently wrote up.
+  append                  Read markdown from stdin and append it to the
+                          annotation doc. Refuses empty stdin or if the
+                          doc doesn't exist.
+
+  help                    This message.
+
+The first-parent commit list is cached at
+.git/annotate-first-parent.list for deterministic indexing across runs.
+USAGE
+}
+
+require_list() {
+   if [ ! -s "$LIST" ]; then
+      echo "error: $LIST missing; run 'regen-list' first" >&2
+      exit 1
+   fi
+}
+
+sha_for_index() {
+   require_list
+   local n=$1
+   local sha
+   sha=$(sed -n "${n}p" "$LIST")
+   if [ -z "$sha" ]; then
+      echo "error: no commit at index $n (list has $(wc -l < "$LIST") entries)" >&2
+      exit 1
+   fi
+   printf '%s' "$sha"
+}
+
+cmd=${1:-help}
+shift || true
+
+case "$cmd" in
+
+   regen-list)
+      limit=${1:-0}
+      if [ "$limit" -gt 0 ] 2>/dev/null; then
+         git log --first-parent "$DEFAULT_BRANCH" --reverse --format='%H' \
+            | head -n "$limit" > "$LIST"
+      else
+         git log --first-parent "$DEFAULT_BRANCH" --reverse --format='%H' \
+            > "$LIST"
+      fi
+      echo "wrote $(wc -l < "$LIST") commits to $LIST"
+      ;;
+
+   list)
+      require_list
+      limit=${1:-0}
+      if [ "$limit" -gt 0 ] 2>/dev/null; then
+         head -n "$limit" "$LIST"
+      else
+         cat "$LIST"
+      fi
+      ;;
+
+   count)
+      require_list
+      wc -l < "$LIST"
+      ;;
+
+   meta)
+      sha=$(sha_for_index "$1")
+      git log -1 --format='%H%n%an <%ae>%n%ad%n---%n%s%n%n%b%n---' \
+         --date='format:%a %b %-d %H:%M:%S %Y %z' "$sha"
+      git show --stat --format='' "$sha"
+      ;;
+
+   meta-range)
+      from=$1
+      to=$2
+      i=$from
+      while [ "$i" -le "$to" ]; do
+         sha=$(sha_for_index "$i")
+         echo "=====COMMIT-$i-${sha:0:10}====="
+         git log -1 --format='%s%n%b%n-%ad' \
+            --date='format:%a %b %-d %H:%M:%S %Y %z' "$sha"
+         git show --stat --format='' "$sha"
+         echo
+         i=$((i+1))
+      done
+      ;;
+
+   diff)
+      sha=$(sha_for_index "$1")
+      git show --format='' "$sha"
+      ;;
+
+   diff-file)
+      sha=$(sha_for_index "$1")
+      shift
+      git show --format='' "$sha" -- "$@"
+      ;;
+
+   diff-head)
+      sha=$(sha_for_index "$1")
+      k=$2
+      git show --format='' "$sha" | head -n "$k"
+      ;;
+
+   show-head)
+      if [ -f "$DOC" ]; then
+         grep '^## ' "$DOC" | tail -1 || echo "(no ## headers in $DOC)"
+      else
+         echo "no $DOC yet"
+      fi
+      ;;
+
+   append)
+      if [ ! -f "$DOC" ]; then
+         echo "error: $DOC does not exist" >&2
+         exit 1
+      fi
+      tmp=$(mktemp)
+      trap 'rm -f "$tmp"' EXIT
+      cat > "$tmp"
+      if [ ! -s "$tmp" ]; then
+         echo "error: empty stdin, refusing to append" >&2
+         exit 1
+      fi
+      cat "$tmp" >> "$DOC"
+      echo "appended $(wc -l < "$tmp") lines; doc now $(wc -l < "$DOC") lines"
+      ;;
+
+   help|-h|--help)
+      usage
+      ;;
+
+   *)
+      echo "unknown subcommand: $cmd" >&2
+      usage
+      exit 1
+      ;;
+
+esac
