@@ -41439,3 +41439,2729 @@ guarantees non-tearing.
     process_info->umask field copied across fork/execve.
 
 --------------------------------------------------------------------------------
+
+## Commits 2501-2533 -- vfs_path refactor: unified fs-op interface
+
+AI notes:
+
+What changed: over a week of work (Apr 24-29, 2019), the VFS is converted
+to a single uniform "take a resolved vfs_path *" interface for all path-
+based fs-ops. Per-fs ad-hoc path resolvers (ramfs_resolve_path, the old
+FAT open) are deleted.
+
+  - **481acf2e [vfs][ramfs] Add rmdir in fsops and implement it in
+    ramfs** (+123/-9, 10 files): new rmdir fs-op, ramfs impl, sys_rmdir.
+
+  - **df12f02b [ramfs][cwd] Fix nasty bugs related with paths with a
+    trailing slash** (+21/-6): both cwd normalization and ramfs open()
+    are corrected to handle "foo/" consistently.
+
+  - **2edcf489 [common] Make ASSERT-like macros to turn into no-op
+    blocks when disabled**. Commit body (worth preserving): defining
+    `#define ASSERT(x)` to empty is error-prone because
+
+        if (something())
+            ASSERT(x > 3);
+        do_action();
+
+    in release builds becomes `if (something()) do_action();` -- the
+    guard silently swallows the next statement. Fixed by making the
+    disabled form `do { /* nothing */ } while (0)`.
+
+  - **1a5a543e [common][basic_defs] Drop the ugly rshift() inline
+    function**. Body: originally added to work around a GCC bug with
+    -Wconversion (see stackoverflow.com/questions/54421737); since GCC's
+    -Wconversion was decided to be unusable (requires casts even for
+    `c = a + b` with u8's), only clang's -Wconversion is supported
+    (WCONV=1 warns if CC != clang), so the hack is dropped.
+
+  - 6804ab9e: ramfs mkdir()/rmdir() moved to ramfs/mkdir.c.h.
+
+  - **3c32a18e [vfs][ramfs] Introduce vfs_path, the get_entry fs op
+    and vfs_resolve()** (+214/-67). The new vfs_path struct carries a
+    resolved (mountpoint, per-fs path, parent dir entry) triple. The
+    mkdir fs-op is converted to take vfs_path * instead of a raw C
+    string.
+
+  - 09d3a988, cacd99e4: rmdir and unlink fs-ops likewise take
+    vfs_path *.
+
+  - **104c7cb6 [vfs][ramfs] Introduce a new interface for open and use
+    it in ramfs** (+103/-177) -- drops ramfs_resolve_path() and its
+    struct; open() goes through vfs_resolve() too.
+
+  - a1e92331: vfs_entry renamed to fs_path_struct.
+
+  - f5ab49c0, bb898e22: devfs aligned: drops custom types, uses
+    vfs_entry_type; open() ported to the new vfs_path interface.
+
+  - **414a1142, 41f8df5e, 204dcfe9, 07a0d670, f7983472,
+    7129ae34, 4de1080e [fat]** -- FAT32 catches up:
+    fat_get_entry() implemented (squashed commit also drops the
+    gtests/fat32.fread test -- VFS covers it). Includes
+    single_comp optimization to skip name copy, fat_get_first_cluster_
+    generic(), and incremental cleanups.
+
+  - 995fac7c: old open() fs-op interface deleted; 220a96cd renames
+    open2 back to open.
+
+  - **11a2e9d8 [vfs][ramfs] Introduce getdents_new fs-op**: more
+    generic dir iteration callback, replaces per-fs getdents64 impls.
+
+  - 040a7d6a: vfs_type_to_linux_dirent_type() helper extracted.
+
+  - 4edc850e, 423afff8, 8b4df299: vfs, devfs, fat32 all port to
+    getdents_new; fat32 drops 132 lines.
+
+  - 1f1c8a55, 8473731d: old getdents64 fs-op deleted; *_new suffix
+    dropped.
+
+  - **e1151269 [vfs] Move vfs.c in fs/vfs/ and split in several .c.h
+    files** (+736/-743): 742-line vfs.c explodes into vfs.c (328 lines)
+    + vfs_locking.c.h, vfs_op_ready.c.h, vfs_resolve.c.h, vfs_stat.c.h.
+    Matches the ramfs/ layout. vfs_getdents.c.h added a couple commits
+    later by 2537.
+
+  - 1ea5b2ce: better getdents() support across vfs/ramfs/fat/devfs --
+    devfs grows a proper inode list pattern.
+
+  - fe61e8fd: ramfs handles corner case of unlink() of an entry
+    currently stored in a dir handle's dpos.
+
+Context (guess from diff): these 33 commits finish what 2474's ramfs
+overhaul started -- every fs now speaks one normalized interface (take
+an already-resolved vfs_path *), so VFS can centralize permission/lock
+handling and the per-fs code becomes shorter and more consistent.
+
+--------------------------------------------------------------------------------
+
+## Commits 2534-2545 -- devshell fs tests; seekdir/telldir
+
+AI notes:
+
+What changed: VFS-level seek in directories + the tests driving them.
+
+  - **d195012d [devshell] Implement fs3 for testing unlink() while
+    iterating over dents** (+123, test_fs1.c). New fs3 command
+    exercises the unlink-during-readdir corner case added in fe61e8fd.
+
+  - 112ee97e, e97227af: scripts fixes; cosmetic long-line trim.
+
+  - **b2c10a90 [ramfs] Add support for seekdir() and telldir()**
+    (+317/-134). New vfs op, ramfs handle gains position state, new
+    vfs_getdents.c.h carved out of vfs_stat.c.h. test_fs1.c gets +118
+    lines exercising it.
+
+  - 4ba1003a, 17901dee: fat32 minor fixes + build_fatpart starts
+    generating a many-files FAT testdir.
+
+  - 35054746: build_fatpart refactored into functions (+108/-63).
+
+  - d09107167, 0333427c: VFS_FS_RQ_DE_SKIP request added so FAT32 can
+    skip name-copy on entries the caller doesn't want (e.g. seek); new
+    CMake FAT_TEST_DIR option.
+
+  - 41646808: generic_fs_dir_seek_test() extracted from cmd_fs4().
+
+  - **3a93cbfb [fat32][devshell] Implement fat_seek_dir() and test
+    it** (+113/-28). fat32.fs5 test confirms FAT can seek dirs too.
+
+  - b818a7ea: devfs seek_dir + test. After this commit, all three
+    filesystems support dir seek.
+
+--------------------------------------------------------------------------------
+
+## Commits 2546-2568 -- legacy bootloader refactor: mm.c, stage3/ subdir, dynamic ramdisk placement
+
+AI notes:
+
+What changed: the legacy BIOS stage3 bootloader gets reorganized,
+renamed, and made less hard-coded.
+
+  - 00943c30, b99b7ee3: functions made static where possible; MM code
+    moved to boot/legacy/mm.c (+93, -131 from stage3.c).
+
+  - 8e094c17: common.h header introduced (shared MM + graphics defs).
+
+  - **819f96f2 [legacy bootloader] Move stage3 files in a separate
+    directory**: 15 files renamed from boot/legacy/* to
+    boot/legacy/stage3/* (zero content changes). 260286b7 follows up
+    with stage3_entry.S -> entry.S, stage3.c -> main.c,
+    stage3_rm_calls.S -> rm_calls.S.
+
+  - 4678f837: separate CMakeLists.txt for stage3 (+85/-97 by moving
+    build rules out of the top-level legacy CMakeLists.txt). 4308c849
+    tweaks flags; 6de4e6c2 renames targets:
+    elf_stage3          -> elf_stage3_unstripped
+    elf_stage3_stripped -> elf_stage3
+
+  - **e1e28935 [kernel][build] Rename the kernel targets**:
+    elf_kernel          -> tilck_unstripped
+    elf_kernel_stripped -> tilck
+    (aligns build-output naming with the project name).
+
+  - c0389057, 0ad00bae: CMake cosmetics; stage3 linker script rename.
+
+  - 9e9f9501: IN_RANGE() macro promoted to basic_defs.h (shared boot +
+    kernel).
+
+  - **b150737b [efi bootloader] Do the actual kernel load after exit
+    boot services** (+150/-53). Important fix: the kernel ELF is now
+    loaded AFTER ExitBootServices(), avoiding firmware memory map
+    surprises.
+
+  - f28e64bf: both bootloaders now share simple_elf_loader.c.h
+    (+55/-73), shrinking duplication.
+
+  - 82066e9f: TO_PTR(n) macro introduced in basic_defs.h -- clean way
+    to cast an integer address to a pointer (used throughout boot).
+
+  - c9a029ba: KernelLoadMemoryChecks() improved (+34/-22).
+
+  - c3c917b5: RAMDISK_SECTOR = 2048 defined in config.h (was hard-
+    coded).
+
+  - **d41c5f2d [legacy bootloader] Introduce and use get_usable_mem()**.
+    Body: lets the bootloader stop hard-coding the FAT ramdisk's load
+    address and cope with scenarios where there isn't enough contiguous
+    space right after the kernel.
+
+  - 22d1f1b, d0a91582, f3b27df9, 2d04b8ee: mem_info struct introduced
+    and refactored; bios_mem_area gets dedicated space;
+    "almost all the hard-coded addresses" removed.
+
+  - 4e92d33f: basic_term implementation cleaned up (+45/-46).
+
+--------------------------------------------------------------------------------
+
+## Commits 2569-2575 -- bintree reshape: reverse iter, int-keyed ops, .c.h split
+
+AI notes:
+
+What changed: AVL bintree gains reverse in-order iteration, integer-
+keyed optimized variants, and splits into multiple .c.h files via an
+include-tricks pattern.
+
+  - a06c2801: reverse in-order visit (+49/-5 in avl_bintree.c, tests
+    +34).
+
+  - 1e40fd1f: bintree_get_first_obj() / get_last_obj() helpers.
+
+  - a7c47211: bintree_remove_internal_aux() extracted from remove()
+    (+36/-30 refactor).
+
+  - **63353113 [bintree] Introduce find_int() and remove_int()
+    optimized for integers** (+88). When the key is an int, avoid the
+    cmp-function indirection.
+
+  - **9ca3af86 [bintree] Merge avl find and remove reg/int funcs using
+    include tricks** (+94/-113): the reg- and int-keyed flavours share
+    implementation via a .c.h included twice with different macros
+    (avl_find.c.h, avl_remove.c.h). Moves avl_bintree.c under a new
+    kernel/bintree/ subdir.
+
+  - 8bd9c511: same .c.h pattern for insert (avl_insert.c.h); adds
+    avl insert int variant.
+
+--------------------------------------------------------------------------------
+
+## Commits 2576-2594 -- bintree ptr-keyed, step iteration, norec; ramfs truncate
+
+AI notes:
+
+What changed: AVL tree gains real specialization for pointer-sized keys
+and a step-by-step in-order visitor; three subsystems migrate to use
+them; norec (no-recursion macros) grows safety; ramfs gets truncate().
+
+  - ee5d804a: fix bintree_*_int() macros.
+
+  - 114918a5: force obj_to_bintree_node / bintree_node_to_obj inline.
+
+  - **80d4c8cb [bintree] Rename bintree_*_int funcs to bintree_*_ptr**.
+    Body: the specializations work only on pointer-sized integers, so
+    the name should be explicit.
+
+  - 60f3ff77: reverse in-order visit implemented by adding a flag
+    (instead of the earlier include-tricks duplication); body notes the
+    tradeoff -- tiny runtime cost in exchange for less code + no
+    macro/include gymnastics.
+
+  - **a886336a [bintree] Implement step by step in-order visit**
+    (+183/-68): cursor-style iteration so callers can walk the tree
+    without recursion. Tests extended.
+
+  - **60b70678 [norec] Introduce NOREC_LOOP_BEGIN and alter
+    NOREC_LOOP_END**. Body: calling code MUST now be:
+
+        NOREC_LOOP_BEGIN
+        { /* norec code */ }
+        NOREC_LOOP_END
+
+    avl_bintree and kmalloc call-sites fixed.
+
+  - 398b3e92: NOREC adds SIMULATE_YIELD().
+
+  - 0404d931: ramfs cosmetic struct layout changes.
+
+  - **5b20769b [vfs][ramfs] Add support for truncate() and implement it
+    in ramfs** (+163/-28, 11 files). New fs-op + sys_truncate. Test
+    test_fs2.c gets +41 lines. Files kept small via func_truncate
+    indirection.
+
+  - de38fdc3, e33030c9, 14b0afed: sched, ramfs rw_ops, per-task temp
+    allocs all switch to bintree_*_ptr -- each drops 10-35 lines.
+
+  - **81a68b9d [bintree] Make bintree_find_ptr() to treat `value` not
+    as a pointer**. Body: saves an unnecessary indirection; callers pass
+    the integer directly, not &value.
+
+  - 3d381ad0, 2639bd93: bintree comments + cosmetic pass.
+
+  - **534d6928 / 4c4aafb8 / c8345587 / 0684820f [bintree] Simplify and
+    unify insert + remove**. Removes two unnecessary BALANCE() calls in
+    insert (534d6928), restructures insert to mirror remove, and intros
+    AVL_BUILD_PATH_TO_OBJ helper shared by both (0684820f, +61/-39).
+
+  - **81e36344 [norec] Zero the stack in INIT_SHADOW_STACK() and
+    explain why**. Body: a recent commit dropped the stack-clear by
+    mistake; bzero() restored with a comment spelling out why it's
+    mandatory (shadow stack must not leak data from previous NOREC_LOOP
+    invocations across the non-recursive iteration).
+
+--------------------------------------------------------------------------------
+
+## bef6535c -- Merge pull request #58 from ZombineDev/scripts-usr-bin-env
+
+Commit: bef6535c7e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Jun 17 16:58:18 2019 +0300
+
+AI notes:
+
+What changed: 21 shell scripts switch their shebang from `#!/bin/bash` to
+`#!/usr/bin/env bash`. One-line touch each. Portability improvement
+(useful on FreeBSD/macOS where bash isn't at /bin/bash). First community
+PR from external contributor ZombineDev.
+
+--------------------------------------------------------------------------------
+
+## d3e28509 -- Merge branch 'ramfs4' (highlight: full support for symlinks)
+
+Commit: d3e28509c4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Aug 4 13:29:42 2019 +0300
+
+AI notes:
+
+What changed: huge merge -- 82 files, +3202 / -1094. The ramfs4 branch
+delivers symlinks end-to-end and, in doing so, rewrites the mount point
+infrastructure and the whole VFS path-resolution logic. Commit body
+notes: pi->cwd becomes a vfs_path (not just a string); all three
+filesystems (ramfs, fat32, devfs) adjust.
+
+Selected highlights from the branch (~82 commits, merge-log):
+
+  - **018d30bf / 753e88ec**: sys_ftruncate64 in ramfs; truncate fs-op
+    gains `filesystem *` param.
+
+  - Naming cleanup (fd97d27b/d78a4959/23877290/f89351d5/23ec4356):
+    fat_fs_handle -> fat_handle, devfs_file_handle -> devfs_handle,
+    fat_stat64 -> fat_fstat, devfs_stat64 -> devfs_fstat.
+
+  - **dd91c9a0 .. 7efcd8fc [vfs] Unify stat and fstat in the fs layer
+    [steps 1-6]**: single stat fs-op takes vfs_inode_ptr_t instead of
+    two flavours.
+
+  - **Symlinks, steps 1-7** (d268e87d, 11355d8d, 1061d35d, c4aeaef0,
+    f1a7ac34, a0a26347, c6115c48): sys_symlink + vfs_symlink +
+    ramfs_symlink; sys_readlink + vfs_readlink + ramfs_readlink;
+    unlink() now handles symlinks (does not resolve them).
+
+  - **e398f169, d395317e ... d129fe2d**: the big vfs_resolve rewrite.
+    vfs_resolve_new() introduced, every VFS op converted, old
+    vfs_resolve() removed, _new suffix stripped. Supports multiple
+    slashes, "//", "." and ".." components, non-absolute paths, and an
+    explicit "resolve-last-slash" flag (so readlink does not follow the
+    symlink at the last component).
+
+  - **df501498 [vfs] Introduce common header and footer macros for
+    many VFS funcs** (+ 82265916 debug-only "no `return` allowed in
+    body" check): boilerplate wrapper for lock + resolve + unlock.
+
+  - **c533ece8 + add1554b + 3b0d0d5d**: vfs_resolve() support for
+    multiple slashes, single '.', double '..'.
+
+  - **de354e35 .. 1341e48e**: vfs_resolve() absorbs the
+    compute_abs_path() call, 8 syscalls drop their own explicit
+    compute_abs_path() calls.
+
+  - **034823e5 + 8c3b0371 + bf8540fa + 98db69cb**: whole new
+    gtests/vfs_resolve.cpp (+721 lines) + vfs_test_fs.cpp (+155)
+    harness for testing path resolution in isolation.
+
+  - **44df62e5 [cmdline] Introduce the -sat option [sched alive
+    thread]**: diagnostic for deadlock detection in tests; 8cc5caa8
+    passes -sat under CircleCI.
+
+  - **7528762b [cwd] Grab the `fslock` in sys_getcwd() instead of
+    disabling the preemption**: finer-grained locking.
+
+  - The branch also picks up the bintree_*_ptr work (done in parallel)
+    and the rwlock improvements listed under "Sync" in the diff (+45
+    lines in rwlock.c).
+
+Context (commit body + diff): this is the single biggest VFS refactor
+so far and the point at which Tilck's filesystem layer becomes a real
+multi-fs with mountpoints, symlinks, and consistent resolve semantics.
+
+--------------------------------------------------------------------------------
+
+## Commits 2597-2604 -- execve shebang; devfs dots; vfs_resolve last-return fix
+
+AI notes:
+
+What changed: script execution and vfs_resolve polish.
+
+  - 3b0edc0b: elf returns -ENOEXEC for unsupported ELF files.
+
+  - **faff0058 [execve][elf] Support running scripts with #!
+    (shebang)** (+115/-42). New interpreter-load path in execve.c.
+
+  - fa57dde4: support whitespace after "#!" and non-absolute
+    interpreter paths.
+
+  - 30dfc37c: pre-allocate MAX_SCRIPT_REC frames' buffers on the stack
+    -- no kmalloc in the shebang recursion.
+
+  - 50754c90: cosmetic execve struct reorder.
+
+  - **d3be9832 [devfs] Support '.' and '..' in devfs_get_entry()**.
+    Body: after the vfs_resolve refactoring, every fs must always
+    provide '.' and '..'; devfs didn't, so `cd /dev/; ls` returned
+    -ENOENT.
+
+  - 442e2275: is_dot_or_dotdot() helper in string_util, reused in
+    devfs/fat32 (fat32 -6 lines net).
+
+  - **50ceb836 [vfs][resolve] Always replace the stack top before
+    return**. Body (worth preserving for the hazard it describes): in
+    __vfs_resolve(), even on rc != 0 the stack-top MUST be replaced
+    with `np`, because otherwise an intermediate failure mid-symlink-
+    chain leaves the stack pointing at a filesystem that was already
+    unlocked, and vfs_resolve() would try to unlock it again -- whereas
+    the fs actually still holding the lock is a different one (the fs
+    of the resolved symlink target).
+
+--------------------------------------------------------------------------------
+
+## 863c6946 -- Merge pull request #59 from vvaltchev/ramfs5
+
+Commit: 863c69469f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Aug 21 14:09:48 2019 +0300
+
+AI notes:
+
+What changed: 39 files, +838 / -424. Branch body: "Make ramfs to be the
+root file system."
+
+Turning point: ramfs becomes the root FS (mounted at /); the FAT32
+partition is mounted at /initrd instead. With shebang-script support
+from the ramfs4 branch, the directory + symlink layout is now built
+at boot by an /etc/start shell script rather than by C code in the
+kernel. ASH shell sees the full symlink semantics for the first time.
+
+Highlights from the merge-log:
+
+  - 0de23d91 [init][main] Mount ramfs in / and fat32 in /initrd.
+
+  - eeb77722 [start script] Symlinks all busybox applets in /bin
+    (later, 4d05ad6f: replaced by `busybox --install`).
+
+  - 7ae3425d [build][fatpart] Move all apps except init to /usr/bin/.
+
+  - **ac9379d0 [syscalls] Implement sys_chown()**, **8b67e144
+    sys_chmod()**, **c0885717 sys_reboot()**, **c8fa6b65 sys_fchmod()**,
+    **e12660f5 sys_fchown()** (limited), **a41f1a82 sync() as no-op**
+    -- a burst of minor Linux syscalls added to unblock busybox-init
+    related code paths.
+
+  - **26907a82 [execve] Don't execute files when the `x` attr is
+    unset** -- permission check finally enforced.
+
+  - 5e4c6051: execve_ctx moved into ti->io_copybuf (stops stack bloat).
+
+  - 74f69df0: MAX_SCRIPT_REC = 2 (shebang nesting kept shallow).
+
+  - Devshell overhaul: 00a3b156 intros PFX macro, 232d1e45 cmdline
+    parsing cleanup, 247d813f stops fall-through to /bin/busybox.
+
+  - f5bc1fd6: CMake check that TC busybox's .config matches the
+    repo's copy.
+
+Note: body explicitly calls out what ramfs STILL lacks -- sys_rename(),
+hard-links, mmap() -- "just [ramfs] was mature enough to become the
+root filesystem." These get filled in by the ramfs5 merge (c763f372,
+two months later).
+
+--------------------------------------------------------------------------------
+
+## b7d2e7a7 -- Merge branch 'debugpanel'
+
+Commit: b7d2e7a7de...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Aug 26 00:59:11 2019 +0300
+
+AI notes:
+
+What changed: 53 files, +1477 / -668. Births the in-kernel "debug
+panel" -- a dedicated TTY showing live heaps, tasks, IRQs, system
+memory map, and options, driven by Ctrl+F keys.
+
+Merge-log highlights:
+
+  - 078f82e1: split debug panel out of debug_utils into its own
+    component under kernel/extra/debugpanel/.
+
+  - 3e31ebd4: debug panel lives in a dedicated TTY.
+
+  - b747523d, 44b4cabf: the panel framework -- dp_context, multiple
+    switchable screens.
+
+  - 94d18dad, 00e8cf06, 3bd0be65, 11ae8181, 195fdc50: per-screen C
+    files -- heaps screen, options screen, tasks screen, sys_mmap
+    dump, kmalloc stats.
+
+  - 165d400e: screens register implicitly (static constructor
+    pattern).
+
+  - a6b64923, 2ac68d48, 32c0dd80: termutil.c helpers -- dp_printk ->
+    dp_write, signed-value color-escape helper.
+
+  - cd126567: KERNEL_TRACK_NESTED_INTERRUPTS renamed ->
+    KRN_TRACK_NESTED_INTERR.
+
+  - 34eaa6ea: DEBUG_CHECKS_IN_RELEASE_BUILD -> DEBUG_CHECKS_IN_RELEASE.
+
+  - 466929a0: drop KMALLOC_HEAPS_CREATION_DEBUG.
+
+  - 80f83af2: keypress handlers can register at any time.
+
+  - 5b468157: BOUND() renamed to CLAMP().
+
+  - de2133d8: fix call_kernel_global_ctors to use .ctors or
+    .init_array (prep for the dp screen static-ctor registration).
+
+Context (guess from diff): previously, debug info was dumped via
+Ctrl+keys into the regular kernel output -- crowding the log and
+disruptive. The debug panel moves it into its own virtual terminal
+accessible via hotkey, without disturbing user sessions.
+
+--------------------------------------------------------------------------------
+
+## Commits 2607-2610 -- init warning; userapp toggles; imgs; stackprot merge
+
+AI notes:
+
+What changed: small build/init follow-ups, then two merge PRs.
+
+  - 4b67b415 [init] Show a warning in case busybox has not been found
+    (init.c +11 lines).
+
+  - 4c7e1916 [build] Allow disabling of individual userapps and all
+    extra (+46/-16 in userapps/CMakeLists.txt).
+
+  - **4a4cb1d4 Merge pull request #61 from vvaltchev/imgs**: README
+    screenshot refresh -- 1c6048e0 uses GitHub-pages hosted screenshot
+    instead of in-repo PNGs, 6c7f425d/2bb7c449/51ded431 delete
+    other/screenshot.png and other/tetris.png.
+
+  - **3d2f0cd6 Merge pull request #62 from vvaltchev/stackprot
+    (Intr. a stack protector and handle double fault)**: 35 files,
+    +622/-134. Merge-log highlights:
+
+      - **12903023 [process] Introduce the KERNEL_STACK_ISOLATION
+        feature**: dedicated kernel stacks per task with guard pages,
+        so stack overflow faults instead of corrupting adjacent state.
+
+      - 447a1221: gen_other_builds disables stack isolation in the
+        gcc_fast_rel config (too slow).
+
+      - b4159f33: selftests for stack overflow.
+
+      - **775d0409 / ec7f18c0 / e48a01d0 / 491c0072 / d2231be9 /
+        098a0235 [double fault]**: real double-fault handling via an
+        i386 task gate; panic dumps main TSS regs; asm entry point;
+        all TSS entries packed in one array (8 commits total).
+
+      - **0ae17820 [paging] Introduce the "hi vmem heap"** +
+        dcab1530: framebuffer mapping now uses hi_vmem_reserve()
+        instead of a fixed vaddr; 3702ecc5 adds gtests mock.
+
+      - a1acae28: kernel_process_pi->pdir set in init_paging().
+
+      - e8d7b3cb: switch_to_task skips FPU ctx save for ZOMBIE tasks.
+
+      - eea10f61: KERNEL_DO_PS2_SELFTEST=0 by default.
+
+      - da93d514: default linear-mapping size = 896 MB.
+
+--------------------------------------------------------------------------------
+
+## Commits 2611-2631 -- kmalloc heavy stats + MemChunks dp screen; term rows_buf
+
+AI notes:
+
+What changed: kmalloc grows a per-chunk-size statistics system driven
+by a new KMALLOC_HEAVY_STATS build option; debugpanel gains a MemChunks
+screen that visualizes it.
+
+  - **fb39f829 [kmalloc] Switch from heap_over_end to heap_last_byte**.
+    Body: heap_over_end (= vaddr + size) wraps to 0 for the highest
+    heap in the 32-bit address space; using last_byte (vaddr + size -
+    1) avoids the wraparound + needs no `-1` in comparisons.
+
+  - 23c90201: general_kmalloc/kfree simplified via wrappers.
+
+  - **464127c6 [kmalloc] Intr. KMALLOC_HEAVY_STATS** (+131/-6). CMake
+    option; new kmalloc_stats.c.h tracks allocations by block size.
+
+  - f93e6703, 9380d1ce, 08749fde, 65df72f9, 08e311ff, 1213717d:
+    debugpanel MemChunks screen added, refined, waste% fixed, heap
+    metadata accounted for, sorting added.
+
+  - 91aceeba, 50bcaed2: init_term() gains rows_buf parameter (scroll-
+    back rows); `-1` means "use an optimal value" picked based on
+    resolution.
+
+  - cbb29a5f: pi->filepath debug field shrunk.
+
+  - daa37654, 16524601: small heap allocations no longer counted;
+    kmalloc_get_total_heap_allocation() dropped.
+
+  - 436e6e63: kmalloc debug/stats decls moved to kmalloc_debug.h.
+
+  - 8cdac1d0, 51169fc9: dp highlights enabled options in green;
+    contrib builds enable KMALLOC_HEAVY_STATS.
+
+  - 69b793ef, 158c15e6, cd687fa7: tasklet queue sizes tuned per-caller;
+    fs_perf1 reports cycles (not K-cycles); busybox gains tar.
+
+--------------------------------------------------------------------------------
+
+## 758b3530 -- Merge branch 'mm2'
+
+Commit: 758b3530b0...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Sep 6 21:13:07 2019 +0300
+
+AI notes:
+
+What changed: 22 files, +561/-402. kmalloc_small_heap.c.h (-252)
+replaced with kmalloc_small_heaps.c.h (+277) plural -- the small-heap
+infrastructure is generalized to allow MULTIPLE small heaps. New
+kmalloc_accelerator.c.h (+85) adds a per-size allocation accelerator.
+Also: sync.h and kmutex tweaks; se_kmutex selftest refresh.
+
+Context (guess from diff): kmalloc now maintains multiple per-size
+small-heaps driven by a lightweight accelerator so common-size
+allocations skip the main-heap search. The "mm2" branch name suggests
+a follow-up to an earlier MM tidy-up.
+
+--------------------------------------------------------------------------------
+
+## c763f372 -- Merge branch 'ramfs5'
+
+Commit: c763f37294...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Oct 9 23:49:28 2019 +0300
+
+AI notes:
+
+What changed: 83 files, +2598/-1045. Implements link, rename, mmap,
+munmap, truncate-growing-the-file on ramfs, along with substantial
+paging and term/tty work. Body: "Busybox's hexedit now works just
+fine."
+
+Merge-log-style highlights from the diff:
+
+  - **New: kernel/fs/ramfs/mmap.c.h** (+148): ramfs-backed mmap with
+    anonymous pages + write-back; hooks into process_mm.c (+473/-160
+    refactor) and process_mm_base.c (new +186).
+
+  - **kernel/fs/ramfs/blocks.c.h** (+42): block-based storage beneath
+    a ramfs file (enables truncate() to extend, mmap writeback, etc.).
+
+  - ramfs/rw_ops.c.h: +176/-6 for block-aware read/write and
+    truncate-extend logic.
+
+  - **kernel/{mm -> kmalloc}/**: all kmalloc_*.c.h files moved out of
+    kernel/mm/ to their own kernel/kmalloc/ subdir (cleaner layering).
+
+  - kernel/arch/i386/paging.c: +212/-42 -- new pdir walkers, more
+    granular unmap operations (support for munmap of arbitrary ranges).
+
+  - fs_syscalls.c: +114/-28 wiring for link/rename/mmap/munmap.
+
+  - Renames: debug_utils.c -> debug.c.
+
+  - test_fs2.c: +507 lines exercising the new ops.
+
+  - term.c: +122/-11 more term work (likely related to hexedit's
+    redraw-intensive usage).
+
+--------------------------------------------------------------------------------
+
+## Commits 2637-2656 -- test runner Python 3 port; busybox config stability
+
+AI notes:
+
+What changed: tests/system/runners/ Python 2 -> Python 3 migration
+(pylint/mypy clean) and a couple of final busybox-config fixups.
+
+  - 0937..0937: single_test_run + run_all_tests converted to py3;
+    msg_print() helper; decode() output; modern {} format strings;
+    utils.py carved out for constants; FAIL_* codes become an Enum;
+    snake_case everywhere; 260-line refactor (f52bcd70) cleans up
+    single_test_run's control flow; mypy clean (245da2ac).
+
+  - **8f4c1385 [build_toolchain] Make the busybox.config simpler**.
+    Body: the .config comparison between toolchain/busybox/.config and
+    the repo's saved other/busybox.config can fail if busybox
+    re-orders its config lines; 3f53e28e later also forces LC_ALL=C
+    while sorting because locale was affecting sort order. +910/-1031
+    byte-level churn in the .config file.
+
+--------------------------------------------------------------------------------
+
+## 21c8d3c9 -- Merge branch 'typedef'
+
+Commit: 21c8d3c998...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Oct 24 01:47:26 2019 +0300
+
+AI notes:
+
+What changed: 169 files, +2559/-2511 (a nearly balanced style sweep).
+Body (long, worth keeping the thrust of): Tilck abandons the
+`typedef struct { ... } T;` style. All struct types are now referred
+to as `struct T`, not just `T`. Body argues: C is low-level, no
+operator overloading, no constructors, no templates; hiding "it's a
+struct" buys little and is a net loss most of the time. typedef is
+still reserved for cases where an opaque type is genuinely desired.
+Same rationale as Linux kernel style.
+
+Touches every subsystem: boot/legacy, arch/i386, fs/, tty/, kmalloc/,
+sched, process, vfs, etc. Selected renames in the merge-log:
+
+  - struct process_info -> struct process (d5b2cca5).
+  - struct task_info -> struct task (0ee86273).
+  - mem_area_t -> struct mem_area (74044880 + 74b923e2).
+  - x86_cpu_features_t -> struct x86_cpu_features.
+  - struct fat_header -> struct fat_hdr.
+  - struct filesystem -> struct fs (d9703515).
+  - struct tss_entry_t -> struct tss_entry.
+  - Many more typedefs dropped for kernel_alloc, user_mapping,
+    display_resolution, regs, fat variations, etc.
+
+Note: after this merge, `struct task` and `struct process` (the names
+still used today) are stable.
+
+--------------------------------------------------------------------------------
+
+## Commits 2658-2668 -- hal.h decomposition; process.h lightening
+
+AI notes:
+
+What changed: the master hal.h is too heavy -- pulling it in through
+widely-included headers triggers massive rebuilds. Several headers
+split into a thin "types" version.
+
+  - **4a7a833e [paging] Introduce paging_hw.h**. Body: removes the
+    #include <hal.h> from paging.h (widely used); the inline funcs
+    that needed hal.h go to a new paging_hw.h instead; paging.h now
+    only needs hal_types.h (forward decls).
+
+  - 4a76085d: hal.h and interrupts.h refactor; new
+    arch/generic_x86/arch_ints.h.
+
+  - 1cced9a6: many more callers switch to hal_types.h.
+
+  - **0f958697 [process][hal] Make process.h do *not* include hal.h**
+    (+80/-50). Major compile-time reduction -- process.h is included
+    almost everywhere.
+
+  - c8362415: process.h also drops #include <irq.h>.
+
+  - 4e8c9257, 8b533464: process.h internal tidy -- task struct
+    comment added; tid padding done via union.
+
+  - 6a7fd142, 1cf0ffd1: dp honors CONSOLE_DEFAULT_BRIGHT_WHITE setting.
+
+  - 4a7fab1f: gnu-efi upgraded to 3.0.10.
+
+  - aef3d23f: EFI build error-check improvements.
+
+--------------------------------------------------------------------------------
+
+## 86c21eef -- Merge branch 'pipe'
+
+Commit: 86c21eefcd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Oct 28 22:27:43 2019 +0200
+
+AI notes:
+
+What changed: 35 files, +1551/-393. New: kernelfs (an in-memory
+pseudo-FS, 163 lines) + pipe.c (+271) + test_pipe.c (+312) + readv/
+writev moved down to the VFS layer.
+
+Merge-log highlights:
+
+  - **d059cd87, 274bc921 [kernelfs]**: introduces kernelfs -- a minimal
+    filesystem whose "inodes" are kernel objects, used to back pipes
+    (and later, other unnamed kernel handles). struct kfs_handle
+    carries the per-handle state.
+
+  - **c951960b, c6659428, f4721fa4 [pipe]**: sys_pipe() implementation
+    using kernelfs; struct pipe holds two ringbufs + wait queues.
+
+  - 3b16b0bb, f8eed2e0: atomic {read,write}_handles counters on pipes
+    (for broken-pipe detection).
+
+  - 5db92393, cecbd7fc: broken-pipe handling + test.
+
+  - 461bb9a7: on_handle_dup() kernelfs hook (so pipes notice dup()).
+
+  - 0304868b: children_list -> children rename.
+
+  - **fc4dd600 [ramfs] Move the file-locking down to the ramfs
+    implementation** + **c0355ec4 [vfs] Remove any per-file locking
+    infrastructure**: VFS stops trying to impose a per-file lock
+    policy; each fs is free to lock as it prefers. ramfs keeps the
+    per-file rwlock.
+
+  - afd0f501: tilck_inode_t -> tilck_ino_t.
+
+  - **510f62bb [vfs][fs_syscalls] Move readv/writev down to the VFS
+    layer**: previously these were implemented at the syscall level by
+    repeatedly calling read/write; now each fs can provide a native
+    vectored op. 01fe3efa implements it in ramfs.
+
+  - 670a3f03, 6a9eec61, 97e28f13: ringbuf_write_bytes() /
+    ringbuf_read_bytes() + test; needed by pipes.
+
+--------------------------------------------------------------------------------
+
+## 635dbac9 -- Merge branch 'pipe2'
+
+Commit: 635dbac9b8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Nov 1 12:12:42 2019 +0200
+
+AI notes:
+
+What changed: 14 files, +277/-35. Finishes pipe behaviour: pipe2(),
+POLLERR/POLLHUP via pipes, and polish on the [rwe]_ready VFS funcs.
+
+Merge-log highlights:
+
+  - 733f306e: pipe signals conds on handle-close only when a counter
+    drops to 0 (avoid thundering herd).
+
+  - 1d46bf23: sys_sched_yield() (simple impl).
+
+  - **c490a1de [pipe] Intr. errcond to struct pipe and impl. except-
+    ready funcs** + 721edbe4 + b452a93b: pipe participates fully in
+    poll() -- POLLERR on broken-write-side-closed; POLLHUP on
+    close-with-pending-read.
+
+  - **788fed41 [vfs] Make the [rwe]_ready funcs to return int instead
+    of bool**: lets them return the exact poll-event bitmask.
+
+  - 38548c6c: O_DIRECTORY supported; some open-time checks moved up.
+
+  - 1fbcaf7d: only a subset of fcntl fl_flags is mutable.
+
+  - test_poll.c: +162 lines.
+
+--------------------------------------------------------------------------------
+
+## Commits 2671-2702 -- sched API polish; signal/Ctrl+C hack; KDGKBTYPE, K_MEDIUMRAW; distro support
+
+AI notes:
+
+What changed: ~32 commits covering a broad set of small improvements.
+
+  - sched API: 6a75f3c1 get_process(); 1c2a2f9d get_curr_task_tid ->
+    get_curr_tid; 49b6b44a get_curr_proc() macro.
+
+  - **0ddf7c07 / c3ea7cfd [process][config] Support KERNEL_STACK_SIZE
+    > 4 KB and bump it to 8 KB**. Body of 2676: 4 KB is not enough
+    given vfs_resolve()'s stack footprint + script-execution recursion
+    in execve; short-term fix is 8 KB, longer-term goal is to shrink
+    both. Double-fault on stack overflow was the symptom.
+
+  - 5bfe83af, 9231e54b: busybox trims (disable ASH job control; drop
+    `more`).
+
+  - **cbd4c0ab [signal] Treat all custom signal handlers as SIG_IGN**.
+    Body: Tilck can't execute user-mode signal handlers yet. Previously
+    SIGINT with a user handler was treated as SIG_DFL (kill); that
+    kills ASH when Ctrl+C is hit on a child like `cat`. Change is: any
+    user-installed handler is treated as SIG_IGN, so Ctrl+C stops the
+    foreground child without killing the shell. Explicitly called out
+    as an interim hack.
+
+  - 91d40d36: remove all zero-mem user mappings on process exit.
+
+  - 281abe54: /etc/start also creates /lib symlink; 45bda8fb copies
+    TCC examples to initrd.
+
+  - **d4fd61b1 [fbdev] Support read, write and seek**; 117ae783 +
+    9eca5f93 add KERNEL_BIG_IO_BUF (big-buffer I/O path, CMake opt).
+
+  - e0af022c: tty supports KDGKBTYPE ioctl; 34c21ea4 renames
+    tty->kd_mode -> tty->kd_gfx_mode.
+
+  - f185b6a9: termtest gains medium_raw_read().
+
+  - **5a335da2 [kb][tty] Change the signature of keypress_func**:
+    handlers now take struct key_event instead of raw scancodes.
+    5cda238f: tty uses struct key_event internally. **e3c48321
+    [tty][kb] Add support for the K_MEDIUMRAW mode** (the kernel's
+    intermediate keypress format expected by some user programs, e.g.
+    X server).
+
+  - **d0cc3d4c [vfs] Introduce the per-handle special flags** --
+    first flag VFS_SPFL_NO_USER_COPY: sys_read/write can hand the
+    user-space buffer directly to the fs layer (skip the copy step),
+    used by fbdev.
+
+  - c7cb39f8: struct key_event optimized to 32 bits.
+
+  - 60694aa4: dp panic on Ctrl+F12 when tty in GFX mode fixed.
+
+  - 4695a33c: contrib mode sets TIMER_HZ=250.
+
+  - **3f53e28e [busybox] Fix (again) the busybox config file**:
+    LC_ALL=C during sort (locale was affecting sort order, breaking
+    the CMake "config matches" check).
+
+  - 48bf5aae: debian-on-WSL install_pkgs fix (use sudo if present, su
+    -c otherwise); c5bfdc9a: cmake added to install_pkgs lists (pre-
+    built CMake fails on Manjaro missing shared lib); 2f6a6fd0:
+    openSUSE support; b2aef339: install 32-bit libs before building
+    TCC.
+
+  - 4cc86c5b: run_all_tests detects qemu-kvm.
+
+--------------------------------------------------------------------------------
+
+## 88c773de -- Merge branch 'time3'
+
+Commit: 88c773de88...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Nov 12 14:29:09 2019 +0200
+
+AI notes:
+
+What changed: timekeeping overhaul. Body: "initial clock sync and
+system time drift correction has been implemented with a mechanism
+similar (but much simpler) to Linux's adjtimex."
+
+Commits leading to the merge and within the branch (2703-2711):
+
+  - **2ce2bef2 [datetime] Import timestamp conv. to/from datetime from
+    libmusl** (+241 new common/3rd_party/datetime.c, +74 unit test).
+    NOTICE updated with musl license. Avoids writing Y2K/leap-year-
+    aware code from scratch.
+
+  - f1851175: drop read_system_clock_datetime() from the interface.
+
+  - **9d5f0cfa [datetime][timer] Re-design how the time runs on
+    Tilck** (+46/-139 net). Commit sits at the core of time3: PIT's
+    jiffy-based accumulator is scaled via TS_SCALE; monotonic time
+    is derived from (boot_timestamp_seconds + PIT-scaled-ticks).
+
+  - 510aa71b: kb_translate_to_mediumraw() subtle bugfix.
+
+  - 189eab94 / ea70a5a1: datetime API renames
+    (read_system_clock_timestamp -> get_timestamp, init_system_clock
+    -> init_system_time).
+
+  - 9ecc2e95: avoid multiplying boot_timestamp by TS_SCALE (keeps
+    intermediate values smaller).
+
+  - e769dc56: biconv_ext test for 64-bit timestamps.
+
+  - a432a7ac: cmos_read_datetime() -> hw_read_clock().
+
+  - Inside the branch: the cpu_features change to detect TSC + PIT
+    calibration + the new drift-correction loop in pit.c.
+
+--------------------------------------------------------------------------------
+
+## Commits 2713-2742 -- virtual_read/write; shrink vfs_resolve stack; KERNEL_STACK back to 4KB; fork clones pdir first; hi_vmem prealloc
+
+AI notes:
+
+What changed: a dense 30-commit arc centered on reducing kernel-stack
+usage and generalizing "read/write memory through a foreign pdir".
+
+  - dec3f0fe, 380c947b, 606edbdd: se_tasklet kmutex race fix,
+    clock_drift_adj()'s full-resync every 6 corrections, PIT mode 2
+    for slightly better accuracy.
+
+  - **50d4b23f [process] Make vfs_resolve() and execve() to _not_ use
+    the stack** (+40/-14). The deep recursive path resolver now uses
+    a ti->resolved_path scratch buffer instead of growing on the stack.
+
+  - **afbc8113 [config] Reduce KERNEL_STACK_SIZE back to 4 KB**. Body
+    names the previous bump-to-8KB (commit c3ea7cfd) and the new
+    stack-saver (commit 2b8c91f2 in the unpushed log -> actually
+    50d4b23f) as the reason this is now safe.
+
+  - f2fd2f5e: elf ENOMEM error-handling fix.
+
+  - **b5624a11 [process32] Change PDIR in switch_to_task() for
+    kthreads**. Body: under KERNEL_STACK_ISOLATION, kthreads also need
+    a CR3 switch so that the per-task kernel stack is visible.
+
+  - 14bf93e2: CI disables KERNEL_STACK_ISOLATION in the release build
+    (coverage).
+
+  - 90e55ad2: use memcpy32 inside handle_potential_cow.
+
+  - **c2288079 [paging] Introduce virtual_read()** (+84). Reads N
+    bytes from an arbitrary virtual address in an arbitrary pdir,
+    switching CR3 temporarily and undoing on failure. 6c1191ad then
+    enables stacktrace dumps during a double-fault (when the current
+    pdir is unreliable).
+
+  - 585dbcb9: panic always dumps saved ESP on double-fault.
+
+  - **0b4e5793 [fork] Clone the pdir before calling allocate_new_
+    process()** (+17/-9). Reason: setup phase doesn't know the final
+    pdir; 36ad7dd2 follows up by passing `new_pdir` in as a parameter.
+
+  - 6e2d83ab: make virtual_read() generic (not x86-specific).
+
+  - **1d0f0bfb [paging] Introduce virtual_write()** (+38) mirror; c3e4ba6b
+    mocks both for gtests; 5647ce8d uses them in switch_to_task/fork.
+
+  - 15bd1816: kernel_page_dir -> __kernel_pdir.
+
+  - 51466847: debug_checked_virtual_{read,write} (asserts the pdir is
+    reasonable before touching it).
+
+  - 2a6cef3c: setup_usermode_task restores old pdir on error.
+
+  - 790c5234 + 3f03d539 + ac2a4be1 + 54204998: kthread_create() uses
+    virtual_write() (-42 lines net), cosmetic; elf extract
+    alloc_and_map_stack_page(); pre-allocated stack pages in the
+    MMAP_COW case.
+
+  - fb14297b, 9cd4bd02: round_down_at[64]() helper; reused in
+    push_string_on_user_stack.
+
+  - **0e771c9b [paging] Introduce get_mapping2()** -- richer query
+    (returns flags along with mapping).
+
+  - **da3b99bb [paging] Pre-alloc hi_vmem page tables in init_hi_vmem_
+    heap()**. Follow-up 7ae1a4eb removes "all `if (KERNEL_STACK_
+    ISOLATION)` checks" because now hi-vmem page tables are shared
+    across all pdirs automatically -- the whole "share this mapping
+    into every pdir" bespoke path goes away.
+
+--------------------------------------------------------------------------------
+
+## Commits 2743-2771 -- ASH default shell; Azure Pipelines; build_generators; distro infra
+
+AI notes:
+
+What changed: CI platform moves from CircleCI to Azure Pipelines;
+distro-agnostic package-install infrastructure matures; build-
+variants externalized.
+
+  - a9f3f8cf, 403f7ef1: README updates.
+
+  - 1ce36e80: tasklet selftest expanded.
+
+  - 860332b1: test_bigargv/test_misc switch to execvpe() (so
+    `devshell -c cloexec` from ASH works).
+
+  - **e6db4642 [devshell] Run different commands depending on
+    argv[0]**. Together with 53815e41 (DEVSHELL_PATH CMake define)
+    and a04a3936 (**ASH becomes the default shell in init**), this
+    ends the era of devshell-as-login-shell.
+
+  - 1d0affd8: common/arch/{i386,x86_64}/utils.h introduced.
+
+  - ddf3e050: build_fatpart uses `cp` instead of `ln` on AZURE.
+
+  - fc303e61: in_any_ci variable in utils.py.
+
+  - 7299a77b: CMake string CONCAT vs APPEND in errors.cmake.
+
+  - **b6013827 [azure] Create the .azure-pipelines.yml file** (+130
+    lines). First Azure DevOps Pipelines config. 3224a530 follows up
+    with all build types.
+
+  - **98b88feb [scripts] Create one script for each build type**.
+    Body-absent but diff clear: each named config (gcc, gcc_rel,
+    gcc_gcov, gcc_syscc, gcc_nocow, clang_wconv, clang_tc_isystem,
+    gcc_fast_rel, gcc_arch_gtests, gcc_no_nested_irq_tracking) gets
+    its own file under scripts/build_generators/. gen_other_builds
+    shrinks -47 lines.
+
+  - 6e21b639 ... 3455db15 ... 7277ea0c: install_pkgs detects CI
+    (apt -y), generic (which, tar, grep, gzip, gawk) package lists,
+    corner-case polish.
+
+  - **8b0c1f43 [azure] Create toolchain_builds.yml** (+46): toolchain
+    build verification pipeline.
+
+  - b1bc158b: scripts/tc/{arch,debian,fedora,opensuse}/install_pkg
+    gain -ci option.
+
+  - **410cfc91 [ci] Introduce ci_run_all_tests_wrapper** (+32).
+    Central entry point for CI test invocations (referenced by
+    recent master commit b36efba4 in the header of this file).
+
+  - 7e9d714f: toolchain_builds installs python3 and runs the system
+    tests.
+
+  - ca0421c4, cb76b710: signal subsystem -- silence SA_SIGINFO warn;
+    init resets signal mask before every execve().
+
+  - d961461a: build_micropython() in build_toolchain.
+
+  - **d06015ae [build_toolchain] Introduce the function
+    build_fbdoom**. Framebuffer DOOM port -- one of the first "real
+    programs" shipped on the initrd.
+
+  - a9787ed4 + 7abdd1e5: scripts/tc/{distro}/update scripts;
+    install_pkgs runs them first.
+
+--------------------------------------------------------------------------------
+
+## Commits 2772-2782 -- pipe/poll/select tests using pipes; poll() fix
+
+AI notes:
+
+What changed: tests for poll()/select() moved off tty and onto pipes
+(more deterministic); two real bugs fixed.
+
+  - **3efab5d0 [pipe] Fix a bug in pipe_read/pipe_write's condition
+    signalling** (+23/-2) -- rare case where conds weren't signalled.
+
+  - 2a363470 + a74c2286: poll1 uses pipes + POLLOUT testcase.
+
+  - **6e58ab5a [poll] Fix a bug in poll() and make tests poll{2,3}
+    runnable** (+66/-21).
+
+  - 20b7217d: sleep selftest tolerance increased (CI flakiness).
+
+  - c74ede57: in_nested_irq_num() fix.
+
+  - **06714537 [timer] Fix a nasty bug in the wake-up timer logic**
+    (+70/-34). Long body worth preserving the key hazard: the old
+    clever code kept ticks_before_wake_up atomic so tick_all_timers()
+    could walk the list without disabling interrupts; but canceling a
+    timer (setting ticks_before_wake_up=0) meant tick_all_timers()
+    later removed &ti->wakeup_timer_node from the list -- and if the
+    task had been destroyed + recreated and the node reinitialized in
+    between, the removal would infinite-loop because the new node's
+    next-pointer pointed to itself. Fix: revert to a simpler
+    implementation that disables interrupts during the walk; Tilck's
+    scale (tens of tasks) makes this fine. Comments in the code sketch
+    a future O(1) redesign.
+
+  - 47452f3d + a14668627 + d2e5e07f: select tests use pipes; debug
+    helpers dropped from poll/select; more select testcases.
+
+--------------------------------------------------------------------------------
+
+## Commits 2783-2800 -- kernel/char -> modules/; fb/tty/serial/dp become "mods"
+
+AI notes:
+
+What changed: the "extra" kernel subsystems are re-homed into a new
+modules/ tree and given a registration API. First use of this
+infrastructure is the debugpanel.
+
+  - 1dac1aad: map_framebuffer() stops using big pages.
+
+  - 5b2783cb, cdb06c18, 61539ccc, 63bd72d0: KERNEL_FB_BANNER +
+    KERNEL_SHOW_LOGO CMake options; show_banner() -> show_tilck_logo;
+    debug panel opts screen shows latest opts.
+
+  - a7b7926f: PSF font file discovery via CMake glob.
+
+  - **b2c12171 [cmake] Support alternative fonts in other/alt_fonts**
+    -- drops a PSF in there and the kernel picks it up.
+
+  - a26e59bd, cc702365: fb_make_color() + __use_framebuffer symbol
+    moved.
+
+  - **cb4b7a57 [build] Move kernel/char -> modules/** -- tty/ +
+    serial.c + fbdev.c leave kernel/char for a new top-level modules/
+    directory.
+
+  - **e59725ff [build] Move kernel/fb -> modules/fb** -- fb_console.c,
+    fb_raw.c, PSF fonts, and fbdev.c live in modules/fb.
+
+  - 3726a833, 329d22bd, 02f93b9d: fb_console.h, serial.h, tty.h
+    move from include/tilck/kernel/ to include/tilck/mods/.
+
+  - **409b127f [dp] Move kernel/extra/debugpanel in modules/debug
+    panel**.
+
+  - 0643da61: fb_console.h shrinks; private decls go to fb_int.h.
+
+  - **0d899b63 [mods] Introduce kernel modules and make dp to be the
+    first mod** (+61). New include/tilck/kernel/modules.h, kernel/
+    modules.c (+19). Each mod registers via `REGISTER_MODULE(name,
+    init_fn)`; main.c calls a single module_init_all() at boot.
+
+  - bfc204c7: KERNEL_DEBUG_PANEL CMake option renamed to
+    MOD_DEBUG_PANEL.
+
+Context (guess from diff): this is the infrastructure that lets
+subsequent code put each driver / optional feature (fb, tty, serial,
+kb, dp, etc.) behind its own MOD_* toggle and register-at-init
+pattern.
+
+--------------------------------------------------------------------------------
+
+## Commits 2801-2825 -- module system maturity; per-module static libs
+
+AI notes:
+
+What changed: the module system built in the previous batch fills out
+-- auto-discovery, init priorities, module-specific subdirs, per-
+module static libs, architecture subdir under each module.
+
+  - d6817535: modules/serial.c -> modules/serial/serial.c (own dir).
+
+  - **bd2eb448 [cmake] Detect modules automatically** (+32/-35): the
+    CMakeLists enumerates modules/ subdirectories.
+
+  - e59f4c48: module init priorities (so e.g. kb runs before tty).
+
+  - **ba3c36af [modules] Make fb, tty and serial to be modules as
+    well**: they all register via REGISTER_MODULE.
+
+  - ee3042de: drop the CONSOLE_DEFAULT_BRIGHT_WHITE option.
+
+  - 2fc61f8d: module registry becomes an array of pointers (not a
+    linked list).
+
+  - 22aae461: mandatory_modules list in CMake.
+
+  - b1dcf52b: fb_console_get_info() replaces several getter funcs.
+
+  - 4e76aa8a: generated header config_modules.h -- per-module CMake
+    options surface as macros.
+
+  - **dbe6e2a9 [mods][fb_console] Support building without fb_
+    console** (+47/-25): kernel can boot without the FB console (text-
+    mode only path).
+
+  - e7dbd76b: serial.c stops including tty_int.h.
+
+  - 145e1b6f: COMPILER_* defs (COMPILER_NAME_STR etc.) move to
+    config.h.
+
+  - 252fd3a5: clock_drift_adj() tuning.
+
+  - 7d4f7f23: dp + config option reorg.
+
+  - **11ec4134 [cmake] Build modules/<MOD>/<ARCH>/*.c and move
+    uart.c in serial**: each module may now have an `<arch>/` subdir,
+    and uart.c moves to modules/serial/generic_x86/uart_8250.c.
+
+  - 89fea941: serial made non-mandatory module.
+
+  - 717d6fbc: modules/fb/fb.cmake -- per-module CMake fragment.
+
+  - 36217dbf: dp shows FB_CONSOLE_USE_ALT_FONTS.
+
+  - **b66cb137 [kb] Set keypress_func's ret type to enum kb_handler_
+    action** -- handlers return an explicit action instead of a bool.
+
+  - **200f1461 [kb] Introduce an interface for keyboard drivers**
+    (+180/-131): struct kb_dev with register(), translate_*() hooks.
+    New kernel/kb_input.c. 0f28a3cb then moves the 8042 driver into
+    modules/kb8042/ (first driver under modules/, out of arch/).
+
+  - **7045bacd [cmake] Build modules in separate static libs before
+    linking** (+175/-79). New modules/build_modules.cmake (+105):
+    every module is built as its own static archive, then linked into
+    the kernel.
+
+  - 4d1ecdb1: drop 'static_' prefix from target name.
+
+  - b70a9f18: CMake compiler_flags.cmake carved out of root
+    CMakeLists.txt (+118, -129 at top).
+
+  - 85e63d10: cmake fragments moved to other/cmake/.
+
+--------------------------------------------------------------------------------
+
+## Commits 2826-2845 -- tty_struct.h; console/ module; term/tty split begins
+
+AI notes:
+
+What changed: the historically-intertwined tty + term + console code
+is untangled. tty core stays in kernel/tty/; the VT100/ANSI rendering
+logic moves into its own "console" module; a new tty_struct.h carries
+the shared data between them.
+
+  - e339512b: count_lines_of_code -> python 3.
+
+  - 45d030e2, 1858652d: tty_keypress_handler_int param reorder;
+    tty.h exports tty_send_keyevent instead of the internal func.
+
+  - **e2c34722 [term] Introduce term_read_info()**: generic getter
+    replacing per-term getters.
+
+  - f01d3675, 27df5faf: term.h trim, get_mapping2 accepts lin-
+    mapped vaddrs.
+
+  - 23965590: drop serial_tty_write_filter().
+
+  - **3423add5 [tty] Detach for the first time tty_output from the
+    rest of tty** (+48/-26). tty/ moves back from modules/ to
+    kernel/tty/, and tty_output.c goes to modules/console/.
+
+  - 27182ec4, 90d2fd9e: struct tty's input_buf and
+    special_ctrl_handlers become separately-allocated.
+
+  - **d414a1bd [tty] Intr. tty_struct.h to stop console including
+    tty_int.h** (+74 new + 72/-72 moved). The data the console module
+    needs is now in include/tilck/kernel/tty_struct.h; tty_int.h
+    becomes tty-private again.
+
+  - 21e897a1: console/console_int.h created.
+
+  - **24981c03 [tty][console] Intr. the private struct console_data**
+    (+46 + 99 new tables.c + 46/-153 refactor in tty_output.c):
+    ANSI-state stored per-console inside a private struct, not on the
+    tty.
+
+  - 1df62f78: kb_buf_* -> tty_inbuf_* rename.
+
+  - **8f35b6af [mods][console] Rename tty_output* to console***:
+    tty_output.c -> console.c; tty_output_default_state.c.h ->
+    console_def_state.c.h.
+
+  - bad5fb97: special_ctrl_handlers -> ctrl_handlers.
+
+  - bb7f2d0d, 7aee9f66: default_state_funcs separate alloc + rename
+    to def_state_funcs.
+
+  - 6d24bc15: tty_int.h stops including term_int.h.
+
+  - 501ba307: GFX chars (CHAR_HLINE etc.) moved to console/gfx_chars.h.
+
+--------------------------------------------------------------------------------
+
+## Commits 2846-2865 -- term_interface; video_term vs serial_term; minimal build
+
+AI notes:
+
+What changed: the "term" abstraction is genuinely pluggable now.
+There's a video_term (text-mode or fb-backed with full ANSI) and a
+serial_term (UART-backed with much of the interface stubbed); both
+implement a new struct term_interface.
+
+  - **8097895d [term][tty] Introduce term_interface** (+484/-134).
+    Key commit. The vtable-like struct term_interface is what the
+    tty/console layer talks to. Commit also introduces a new
+    term_mgmt.c (+39) and serial_term.c (+124).
+
+  - 877b954f: tilck_term_info -> term_params.
+
+  - 2fb1de2a, b1efb98e: tty's term_inst -> tstate; term_intf ->
+    tintf.
+
+  - **eb8fc143 [tty][console] Move term_* files in the console
+    module**: term.c + term_int.h + term_action_wrappers.c.h leave
+    kernel/tty/ and land under modules/console/.
+
+  - 7cccc633: se_internal_run() guarded by KERNEL_SELFTESTS=0.
+
+  - **9f9c8621 [config] Introduce the KERNEL_SYMBOLS option** (+101/
+    -44). Option to embed a kernel symbol table for stack traces.
+
+  - **986880b7 [console] Move textmode_video.c in modules/console/
+    generic_x86**: last big piece of "console" leaves arch/.
+
+  - 4c656752: MAX_EMPTY_SMALL_HEAPS=0 in gtests.
+
+  - 32fe3189, 35757087: serial_port_fwd forwarding removed from video
+    term (serial term handles its own output); term.c renamed to
+    video_term.c. Matching b05a2c0f: term_int.h -> video_term_int.h.
+
+  - **a5b606b5 [main][term] Improve the console initialization logic**
+    (+90/-50): main.c picks the right term at boot (video if available
+    or serial fallback).
+
+  - a4753e69: CMake config-validation checks.
+
+  - **8d5c81e4 [cmake][fatpart] Add BOOTLOADER_{LEGACY,EFI} options**
+    (+130/-51): either or both bootloaders can be disabled at build
+    time.
+
+  - 61990bb9: install_pkgs adds parted.
+
+  - **c242861e [serial_term] Serialize writes as the video term does**
+    (+54/-24): UART output now goes through the same per-term lock.
+
+  - **98f05ba8 [build] Introduce the `minimal` build config**: a
+    stripped build (no dp, no selftests, minimal mods) for size
+    budgeting / regression tracking.
+
+  - 24e0d87c: CMake excludes boot/* dirs according to the
+    BOOTLOADER_* opts.
+
+  - cdaa85b3, 8847f1fd: dp uses ANSI cursor-hide escape sequences;
+    set_cursor_enabled() drops out of struct term_interface (less
+    surface area for other terms to implement).
+
+--------------------------------------------------------------------------------
+
+## Commits 2867-2881 -- tilck_cmd; debug panel on serial console
+
+AI notes:
+
+What changed: the Tilck-specific devshell escape commands get their
+own file; the debug panel gains support for serial-console usage.
+
+  - **e138cedb [tilck_cmd] Create a separate file for the tilck cmd
+    syscall** (+71 new kernel/tilck_cmd.c, -72 from syscalls.c).
+
+  - 914bed35: datetime clock-drift warning only printed after the
+    second failure.
+
+  - **371b4729 [dp][tty] Make the debug panel to work on serial
+    console as well** (+379/-59): large dp rework that makes dp
+    navigate via typed escape sequences instead of keys, so it's
+    usable over UART. New userapps/dp.c (+12) is the user-mode
+    wrapper.
+
+  - ad563f0a: build_fatpart -- don't include the kernel in the initrd
+    if neither bootloader uses it. Body explains the bug it fixes.
+
+  - f36ca1cf: dp_tasks handles find_sym_at_addr() failure gracefully.
+
+  - **2d00723d [cmake] Introduce gen_config_post.cmake**: two-phase
+    config generation (pre-config -> module CMake fragments -> post).
+
+  - **6c018009 [execve] Fix a bug in script handling logic**. Body:
+    when running a shebang script via $PATH lookup from outside the
+    script's directory, the kernel was passing the original argv[0]
+    (just the basename) to the interpreter instead of the resolved
+    script path; the interpreter couldn't then locate it (it doesn't
+    re-search $PATH). Kernel now passes the resolved path.
+
+  - 9de83e71: CMake extra_apps -- allow enable/disable extra
+    toolchain apps; minimal.config drops them.
+
+  - **262aea0e [sched] Disable interrupts in task_change_state()**.
+    Body (kept, the rationale is valuable): task_change_state() is
+    called from non-IRQ contexts (kernel_yield etc.) but also from
+    tick_all_timers() in the IRQ0 handler; avoiding CLI/STI was
+    tried via various tricky ringbuf schemes, but those have
+    significant overhead. CLI/STI is very cheap and task_change_state
+    is very fast. Disabling interrupts is just the right choice.
+
+  - **d27c0044 [init] Prepare init for running serial the shell on
+    TTYs** + **6a8c4a36 [init] Always start a serial console if
+    /dev/ttyS0 exists**: init.c logic for multi-console world.
+
+  - fed1c5cb: serial_term converts \n to \r\n (UART terminal
+    convention).
+
+  - e6ff8b02: get_curr_process_tty() exposed in tty.h.
+
+  - 14d2981a: serial_term ignores unimplemented funcs instead of
+    using NULL (cleaner dispatch).
+
+  - 41342c51: term type put in term params.
+
+--------------------------------------------------------------------------------
+
+## Commits 2882-2910 -- dp on serial; process groups + sessions; progressive kernel tids
+
+AI notes:
+
+What changed: finishes the dp-on-serial story, then a multi-week arc
+on Linux session/pgrp semantics.
+
+  - ea8309cb, 2b221b69: tty_keypress_handler uses local `t`;
+    get_curr_proc_tty_term_type().
+
+  - **49d79a82 [dp] Make the debug panel to work on an external
+    serial console** (+67/-58).
+
+  - ae91bbc0: SERIAL_CON_IN_VIDEO_MODE CMake option (default on).
+
+  - f88e89b9: init defers starting secondary-tty shells until needed.
+
+  - f50fd99f: run_all_tests raw_print() usage.
+
+  - 92382b61: TILCK_NO_LOGO env var.
+
+  - **89d35fbb [dp] Simplify the debug panel by supporting only
+    syscall mode** (-123 lines net). The dp user program is now the
+    sole driver.
+
+  - defb662c: better TTY input read loop in dp (+97/-30).
+
+  - **10d33919 [debug][selftests] Introduce a simple deadlock
+    detection tool** (+89 in debug.c, +53 in se_kmutex). 71577e41
+    adds a progress-tracker for self-tests (+113). 8f6c61e6 refactors
+    it; fd6b28da extracts to tests/self/deadlock_detection.c (+190).
+
+  - **d32e4173 [process][sched] Working on support for proc groups
+    and sessions** (+184/-24). First cut: pgid, sid fields on process;
+    sys_setsid(), sys_setpgid(), sys_getpgrp().
+
+  - ab142a27: dp_tasks shows pgid and sid columns.
+
+  - **7c5c57b3 [tty][signal] Working on support for process groups
+    and sessions** (+225/-33). tty gains fg process group; Ctrl+C
+    etc. dispatched via send_signal_to_group(); controlling-terminal
+    ioctls TIOCGPGRP/TIOCSPGRP/TIOCGSID wired up.
+
+  - d2fa9679: drops the old tty_tasklet_runner -- signals now
+    handle Ctrl+* delivery directly.
+
+  - a9462d1b: drop kthread_get_ptr().
+
+  - **d0bd5c76 [process][sched] Make kernel tids to be progressive**
+    (+93/-31). Daemon-style kthreads get sequential TIDs starting at
+    KERNEL_TID_START.
+
+  - 6854425e: MAX_PID=8191, KERNEL_TID_START=10000.
+
+  - cbfce956: dp tasks table reformatted.
+
+  - **f53dea8c [sched] Handle the case of dead session/group
+    leaders** (+101/-10). Subtleties of orphaned pgroups.
+
+  - fe03c6c5: process_term_read_info() (per-process term info).
+
+  - 39ea9af2: dp scrolls with PG_UP/PG_DOWN.
+
+  - **94551ea4 [process] Support pid < -1, pid == -1, pid == 0 in
+    waitpid** (+50/-14). Real Linux waitpid pid-arg semantics.
+
+  - **f6df4c0a [cmake] Introduce a special file to trigger rebuild
+    of fatpart** -- other/cmake/config_fatpart tracks ramdisk-
+    relevant config.
+
+  - 7ee57ff4, bd409e9d: datetime clock-drift funcs reorg.
+
+--------------------------------------------------------------------------------
+
+## Commits 2911-2926 -- dp task select+kill; FS handles carry pi; stop/cont; respawn shell
+
+AI notes:
+
+What changed: the debug panel becomes genuinely interactive; FS
+handles learn which process owns them; init respawns its shells.
+
+  - **7bce23f6 [dp] Make tasks selectable and killable** (+185/-1 in
+    dp_tasks.c). Body absent; diff clear.
+
+  - e4d31f52: extract free_process() from free_task().
+
+  - **1c68310b [process][dp] Intr. pi->debug_cmdline and use it in
+    dp_tasks**: execve copies argv into a fixed buffer so the dp
+    can show real command lines.
+
+  - 621b8a05: on process kill, reset input mode to K_XLATE (stops
+    K_MEDIUMRAW mode from outliving its owner).
+
+  - f7f035ea, 6753d89c: fix ESC c (full console reset); rename
+    init_console_data -> reset_console_data.
+
+  - **9a45d405 [vfs] Introduce vfs_init_fs_handle_base_fields()**
+    (+10/-16). 8329bd54 adds `struct process *pi` to FS_HANDLE_BASE_
+    FIELDS so every handle carries its owning process.
+
+  - **41256aef [fbdev] Use hb->pi->pdir instead of the curr pdir in
+    munmap** (+22/-4). Fixes fbdev munmap when called from a different
+    context.
+
+  - **816b6eea [process] Support stopping tasks with signals** --
+    SIGSTOP/SIGCONT actually move the task to TASK_STATE_STOPPED.
+    c613392d adds SIGSTOP/SIGCONT sending from the dp tasks screen.
+
+  - **5860fa66 [process] Corner case: handle zombie children of dying
+    process** (+23).
+
+  - 99a1d171: refactor terminate_process() (+36/-30).
+
+  - d366c7ba: signals cannot be sent to kernel threads.
+
+  - b86ca4de: fork_and_run_shell_on_tty() refactored.
+
+  - **e3d34c1b [init] Respawn the shell in case of exit** (+94/-34).
+    init.c loops: if the shell dies, it's re-forked.
+
+--------------------------------------------------------------------------------
+
+## Commits 2927-2943 -- waitpid carved out + refactored; wobj extra slot; thread-ready children list
+
+AI notes:
+
+What changed: waitpid and its dependencies mature into Linux-like
+behavior, including wait-on-stop/cont; the implementation moves to
+its own file; pi->children is pre-adjusted for future thread support.
+
+  - ccc7117b: system_tests wpid5 exercises stop/cont.
+
+  - 045575ae: wake_up_tasks_waiting_on() handles parent-waits-on-pid==
+    -1.
+
+  - **2b6450db [waitpid] Store in wobj's ptr the special pid, not the
+    task ptr** (+46/-79 net). Cleaner invariant -- the wobj's payload
+    is the pid the parent is waiting for, not the child task pointer.
+
+  - **9c9df96c [process][waitpid] Move waitpid's code in a dedicated
+    file**: new kernel/waitpid.c (+211, -199 from process.c).
+
+  - 752d24c7, 4d2da26b, a14803df: three-step waitpid refactor.
+
+  - **75254085 [process] Make pi->children to be a list of tasks,
+    not processes**. Body: when threads arrive, they'll be child
+    TASKS of the parent process; waitpid must see threads too.
+
+  - **37a9ceee [waitpid] Support wake-up on SIGSTOP and SIGCONT**
+    (+73/-25): wait flags now let callers ask for stop/cont events.
+
+  - 16036c32: exit_wstatus -> wstatus.
+
+  - 5d44f812: task_is_parent() moved to process.h.
+
+  - 77c73568: wake_up_tasks_waiting_on() gets a wakeup_reason param.
+
+  - **dd05b777 [sync] Intr. __data in union w/ wobj's __ptr field
+    and a getter**: the wobj payload becomes either a pointer or a
+    scalar (the pid in waitpid's case).
+
+  - **3b4f1cc1 [wobj] Add a 16-bit extra field in struct wait_obj**:
+    pairs with 63e25d39 to tag "I woke for reason X" on wobj wakeups.
+
+  - d9965a4f: cancel wake-up timers in terminate_process().
+
+  - 6a548204: test_waitpid.c +114 lines covering waitpid(-pgid,...)
+    and kill(-pgid, SIGKILL).
+
+--------------------------------------------------------------------------------
+
+## dec12108 -- Merge branch 'tracer'
+
+Commit: dec12108a8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Jan 11 20:58:30 2020 +0200
+
+AI notes:
+
+What changed: gigantic branch merge (~100 commits, hundreds of lines
+touched across the kernel). Births Tilck's in-kernel syscall-tracing
+framework and, along the way, extracts fork/exit out of process.c,
+renames things, and pushes many kernel globals behind inline-func
+interfaces.
+
+Highlights from the merge-log (longish because this branch is load-
+bearing):
+
+Tracing framework (new):
+  - **include/tilck/mods/tracing.h** (+273). Public interface.
+  - **modules/debugpanel/dp_tracing.c** (+573). The dp tracing UI.
+  - **modules/debugpanel/dp_input.c** (+429). Input-reading logic
+    carved from dp.c (which shrinks by 266 lines).
+  - Syscall metadata via SIMPLE_PARAM / BUF_PARAM / SYSCALL_RW
+    macros; ptype_buffer, ptype_voidp, ptype_open_flags etc.
+  - save-slot-based param capture at enter, so param values can be
+    dumped on exit with the original context.
+  - Supports include/exclude filters with wildcards (simple_wildcard_
+    match()), global tracing_on flag, and "don't clutter output with
+    enter/exit for blocking syscalls" (exp_block).
+  - Tracing is a noarch module (b5bd852f).
+
+Kernel refactors pulled along:
+  - **kernel/fork.c (+154) and kernel/exit.c (+216)** split out of
+    process.c (which loses ~356 lines).
+  - **16e700ac [process] Make vfork() stop the parent task until
+    exit or execve** -- true vfork semantics.
+  - be77b969: fix pipe_read() bug + test expectations.
+  - 7542306b: printk uses system time as prefix instead of
+    "[kernel] ".
+  - 2315a9b5: fix hello msg to show the right compiler version.
+  - cce66167: MAX_SYSCALLS define; bf9f0512: elf foreach_symbol();
+    f8ca4b75: resolve syscall names via symbol table.
+  - 41322562: printk supports %o (octal).
+  - **a0c956e4/e76b3e0e/e0540995/8a3cce47/4f84bdae [common][types]**:
+    remove `ull_t` typedef; redefine sptr/uptr via intptr_t; convert
+    sptr -> long; uptr -> ulong. Devshell and tests adjusted.
+  - Multiple "hide globals behind inline funcs" commits (81c0ae45,
+    3aef81be, 5e4dc961, 25fefa02, a4575f21, 1934d65f, 138261a7):
+    __current, __curr_tty, __curr_term, __in_panic, __kernel_pdir,
+    system_mmap globals all become opaque.
+  - ccc2a836: internal syscall_types.h header.
+  - 71f4a030: syscalls numbers moved to common/syscalls.h.
+  - **f97e9bf1 [waitpid] Fix a bug: WNOHANG ret before child_count
+    check**.
+  - 5d5dd39b: signal handles unknown signal numbers.
+  - 898178dc: fat_stat() returns mode 0777 (FAT has no permissions).
+  - aad92732: fbDOOM binary + WAD compressed in the fatpart.
+  - cb5ffd41: common/printk.h introduced.
+  - 1d81db5b: ramfs_munmap() uses hb->pi as process.
+  - 241967a8: replace `get_curr_task()->pi` with `get_curr_proc()`
+    everywhere.
+
+Context (guess from diff size): the tracer merge is where the kernel
+starts behaving like a real multi-user system -- you can watch what
+processes are doing, param-by-param, without external debugging. Also
+where vfork() becomes real (stopping the parent), pipe_read's subtle
+bug is fixed, and many refactors that make the code easier to reason
+about are bundled together.
+
+--------------------------------------------------------------------------------
+
+## Commits 2945-2972 -- vfork real; futimens/utime/utimes; 64-bit timespecs; LANG=C
+
+AI notes:
+
+What changed: post-tracer polish plus a few new syscalls and the
+year-2038 prep.
+
+  - 100f0dcf, f6283cef: CMakeLists resets default C flags; EFI build
+    warning fixes.
+
+  - **355ff398 [build_toolchain] Improve the way $CC and friends are
+    used** (+115/-20).
+
+  - 936c4031, dff7694b, 0231bdea, 2b5bb294, 13bc26d0: build_libmusl
+    + CI detection fixes; sudo -E in toolchain_builds.yml;
+    gtest_arch/micropython added.
+
+  - 4ebf7900: STR_CHILD / STR_PARENT devshell macros.
+
+  - **b6ce360f [process] Pack mappings, mmap_heap in struct
+    mappings_info (mi)** (+188/-70): per-process VM state grouped;
+    simplifies fork/exec reset.
+
+  - 9b259b30: fork1 test.
+
+  - **d3bddb08 [vfork] Intr. a real implementation for vfork()**
+    (+172/-55). Builds on the tracer merge's vfork stopping-the-
+    parent change; now vfork actually shares the parent's pdir.
+
+  - f213f414: /etc/start handles empty sub-sub-dirs.
+
+  - f6bf51a2: test scripts for extra components (tcc tests shipped
+    under sysroot/usr/local/tests/).
+
+  - 088064b1: TERM_BIG_SCROLL_BUF option.
+
+  - **57dd2e17 / a5e10353 / 7df4aa47 [vfs][syscalls][ramfs]
+    futimens + utime + utimes**: timestamp-updating syscalls
+    implemented end-to-end.
+
+  - 1582b4db: ramfs ctime/mtime switched to timespec (preparing for
+    sub-second resolution).
+
+  - 48aaaed7: tar test in sysroot/usr/local/tests/tar.
+
+  - d285b954: LONG_TEST_TIMEOUT increased to 72 sec.
+
+  - 10a0a1c9: fsync/fdatasync stubs.
+
+  - **cb01d4d7 [syscalls] Update the list of syscalls from Linux
+    5.5-rc6** (+221/-37): every Linux i386 syscall gets at least a
+    declared number, even if ENOSYS.
+
+  - **673dc391 [datetime] Always use natively 64-bit timespecs
+    (k_timespec64)**. Body: Linux introduced 64-bit timespec
+    variants on 32-bit architectures to fix Y2038; old names become
+    *_time32. Tilck follows. Links to lwn.net/Articles/776435/.
+
+  - b46beb4a: `rem` Make target as alias of rebuild_img.
+
+  - **c144f1ec [execve] Set LANG=C and LC_ALL=C in default_env**.
+    Prevents locale-driven surprises in user apps.
+
+  - 80889860: kb translates HOME/END into ^[[1~ / ^[[4~ (TERM=linux
+    behavior); dp_input and devshell readcmd updated.
+
+  - d2983211: fix support for ^[[5n (DSR) and ^[[6n (CPR) ANSI
+    sequences.
+
+--------------------------------------------------------------------------------
+
+## Commits 2973-3000 -- video_term refactor: generic action funcs; DECSTBM scroll region
+
+AI notes:
+
+What changed: 28-commit chain refactoring video_term internals and
+adding ANSI features (IL/DL, DECSTBM scroll region).
+
+  - 50ca7785, d541001c, 3f706b79, 7af0223e, b5b5ee06: cosmetic +
+    rename term_tabs_buf -> tabs_buf; DEFAULT_COLOR16 in color_defs.h
+    replaces make_color(...) calls; alternate buffer gets its own
+    tabs_buf.
+
+  - 936d47c6: struct actions_table_item moved out of headers.
+
+  - **e984515f .. 6808a910 [video_term] Intr. gen funcs for
+    a_{write,dwrite_no_filter,del_generic,scroll,set_col_offset,move_
+    ch_and_cur,move_ch_and_cur_rel,reset,pause_video_output,restart_
+    video_output,enable_cursor,use_alt_buffer,non_buf_scroll}**
+    (series e984515f -> c3bc1bf1). Each action becomes a named
+    function instead of being inlined inside term_action_wrappers /
+    console_def_state; console.c shrinks by several hundred lines
+    net across these.
+
+  - 28b97361: twfilter_ctx_t -> twfilter_ctx (typedef drop).
+
+  - 719d836f: CSI funcs reordered; not-yet-implemented ones
+    registered explicitly.
+
+  - 64ec0b21, d762e821: MAX_TERM_WRITE_LEN define; reduced to 64 KB
+    to make room for a bigger `type` field in struct term_action.
+
+  - **c7554089 [console] Intr. a stub impl for the IL and DL CSI
+    sequences** -- Insert Line / Delete Line.
+
+  - **68908868 [video_term] Working on support for DECSTBM (set
+    scroll region)** (+62). ESC[N;M r. 7911124d adds calc_buf_row();
+    8ea31775 + b65f4cae + a883576e extend non-buf-scroll to respect
+    a custom scroll region; term_redraw_scroll_region() introduced.
+
+  - 4ea69cd7: explicitly ignore ESC[?<n>c (some apps send it).
+
+--------------------------------------------------------------------------------
+
+## Commits 3001-3013 -- more video_term gen funcs; toolchain2 reorg; commit hash in kernel
+
+AI notes:
+
+What changed:
+
+  - 6d6f8dab, 1284d2e4, e8c5b893, 239ff7f1, 0f3206c0, 927c065e: more
+    video_term cleanup -- term_action_ins_blank_lines; get_buf_row;
+    buf_copy_row; buffer_get_char_at; buffer_* -> buf_*; some
+    ALWAYS_INLINE funcs turned into macros.
+
+  - **ace152ae [toolchain] Re-organize the toolchain**. Body maps old
+    flat layout to a new tiered tree:
+
+        toolchain   -> toolchain2
+        $TC/mtools  -> $TC/host/mtools
+        $TC/gtest   -> $TC/host/gtest
+        $TC/gtest_arch -> $TC/$ARCH/gtest
+        $TC/musl    -> $TC/$ARCH/musl
+        $TC/busybox -> $TC/$ARCH/busybox
+        $TC/gnu-efi -> $TC/{i386,x86_64}/gnu-efi
+        $TC/cmake   -> $TC/host/cmake
+        $TC/ovmf    -> $TC/{i386,x86_64}/ovmf
+        $TC/x86_gcc_toolchain_$LIBC -> $TC/host/gcc_$VER_$ARCH_$LIBC
+
+    First real attempt at a per-ARCH / per-host layout -- sits
+    directly under today's toolchain3/ scheme.
+
+  - b97d722b: run_efi_*_qemu{32,64} script fixes.
+
+  - **77c72935 [elfhack] Intr. the --set-sym-strval option** (+91/
+    -10). Enables patching string data in an ELF post-link (used to
+    embed commit hash).
+
+  - f0802d7d: scripts/build_scripts/get_commit_hash (+15 lines).
+
+  - **d1a92875 [cmake][config] Expose project's version and commit
+    hash** + 8ac70330 (hello message prints sha1).
+
+  - aa23390f: del_lines action.
+
+  - ccfc75ce: ESC [ c (query terminal type) support.
+
+  - dbc658f0: tracing ptype_big_buf (for read/write).
+
+--------------------------------------------------------------------------------
+
+## Commits 3014-3030 -- opaque term_t; struct vterm/sterm; serial tasklet reduction
+
+AI notes:
+
+What changed: the "term" struct becomes fully opaque at the public
+interface; two concrete impls (vterm for video, sterm for serial)
+stay private. Plus misc polish.
+
+  - **a21e81e5 [term] Replace undefined struct term with opaque
+    term_t** (+184/-101).
+
+  - 01f279db, 67db8573: struct term -> struct vterm (video),
+    struct sterm (serial).
+
+  - **89556c3a [term] Redefine (to void) and rename `term_t` to
+    `term`** -- typedef chases its own tail, ends at `typedef void
+    term;` so callers just see an opaque `term *`.
+
+  - 31be899a, 8ac70330, 212448950: compiler warning fixes;
+    hello msg shows commit sha1; initial system info prettier.
+
+  - **733b642f [cmake] Move the build of kernel_noarch_for_test in
+    unit tests**. Body: couldn't build kernel with clang and
+    ARCH_GTESTS=1 because the cross-compiler was set at kernel's
+    CMake top. New sources.cmake exports KERNEL_NOARCH_SOURCES so
+    tests can compile it with a different CC.
+
+  - **505c5b6e [serial] Don't enqueue tasklets for every single
+    IRQ**: batches per-IRQ bytes, enqueues one tasklet.
+
+  - **33a4e3d3 [tty] Allow to read() to work for on TTY if they're
+    serial**. Body: video-TTYs still require foreground-pgid match
+    (returns -EIO otherwise); serial reads work unconditionally.
+
+  - 5d3d1114: tty_set_raw_mode() better impl; 94938e36: busybox
+    gets stty.
+
+  - 03829a84: kcond_is_anyone_waiting().
+
+  - **86ca1671 [tty] Intr. and use tty_send_keyevent_safe()** +
+    17c51d08 [tty] adds a `block` param: controls whether the caller
+    blocks when the input ring is full.
+
+  - 6afa11b5: CI=1 in azure pipelines.
+
+--------------------------------------------------------------------------------
+
+## Commits 3031-3053 -- crc32 to 3rd_party; fat32_base refactor; EFI paging+PAE fix
+
+AI notes:
+
+What changed: FAT32 common code gets a generic overhaul; the EFI boot
+path picks up several correctness fixes; userapps build flags
+tightened.
+
+  - f421ba23: crc32.c moved to common/3rd_party/.
+
+  - dc1812fc: filedump userapp.
+
+  - **8a8bb5ed [fat32_base] Intr. fat_write_fat_entry()** -- FAT
+    finally becomes writable from common code (initrd-prep tools).
+
+  - 921fbe16: fat_read_fat_entry() param reorder.
+
+  - **965628f5 [common][fat32_base] Fix a bug in fat_compact_walk_
+    cb()** (+196/-29 in fat32_base.c + bootloader adjustments).
+    Critical fix for directory-walking in the FAT compaction tool
+    used by build_fatpart.
+
+  - 39f4d77f, 3750fd8d, 96861ad7: fat_{read,write}_fat_entry refactor
+    to require `ft`; fat16_type=2, fat32_type=4.
+
+  - **96157415 [efi] Ask user to choose resolution after loading the
+    ramdisk**: reverses previous order (load first, pick video mode
+    second) so the text "please pick resolution" is already on screen.
+
+  - 0b3cf8d7: stat() in fat_get_used_bytes.c.
+
+  - d9bd1eb0: fat_get_count_of_clusters -> fat_get_cluster_count.
+
+  - 32118b93, 38e8ed6a, a291a5c8, 0691bb91: struct fat_walk_static_
+    params; fat_walk accepts only `cluster`; finalize_long_name
+    extracted; comments.
+
+  - b53e9dc1: docs/efi_debug.md + docs/comments about debugging EFI
+    code.
+
+  - f9c296a2: KernelLoadMemoryChecks moved right before
+    ExitBootServices.
+
+  - **de020ab9 [start] Always disable paging and PAE before setting
+    CR3**. Body (worth keeping): in qemu+kvm 32-bit EFI boot with
+    recent OVMF, _start may run with paging+PAE already enabled; the
+    old start.S assumed they were off, so writing CR3 caused #GPF
+    because PGE wasn't set. Fix: disable paging and PAE
+    unconditionally before touching CR3.
+
+  - 7b1221aa: new common/arch/generic_x86/asm_consts.h.
+
+  - 8f4b5c10: hide VER_PATCH when 0.
+
+  - bdaad80f: run_all_tests timeout = 4x med_test.
+
+  - **2804dbe8 [cmake][devshell] Build userapps with -Os** +
+    16601bc5 [cmake][devshell] Append -Wall to userapp's CFLAGS
+    (fixes surfaced warnings).
+
+--------------------------------------------------------------------------------
+
+## Commits 3054-3066 -- vterm/sterm locks; ICH/DCH/HPR/VPR/ECH; term_aux shared helpers
+
+AI notes:
+
+What changed: each concrete term gets a kmutex; duplicated
+enqueue/execute logic moves to a shared term_aux.c. Console grows
+several more CSI escape sequences.
+
+  - **39e6f8c4 [vterm] Intr. the vterm->lock kmutex**; **c393faf5
+    [sterm] Intr. the sterm->lock kmutex**.
+
+  - **3462dae2 [term] Share term_unable_to_enqueue_action() in
+    term_aux.c** (+73 new + -142/-124 net removed from vterm/sterm).
+
+  - 196765de: term_execute_or_enqueue_action_template() -- a macro
+    that generates per-term execute funcs from common logic.
+
+  - d4663033: ESC[<n>@ (ICH - Insert Character) support.
+
+  - 9c15b051: ESC[<n>P (DCH - Delete Character) support.
+
+  - 57496d41, 29c28ecb: ESC[<n>a (HPR) and ESC[<n>e (VPR).
+
+  - b559ebed, bd40143e: tty_filter_handle_csi_* -> tty_csi_*_handler
+    renames.
+
+  - 105c93bc: ESC[<n>X (ECH - Erase Character).
+
+  - 5dd22bed: treat missing param[0] as 1 for several seqs.
+
+  - d3eb7a80: ins_blank_lines fix.
+
+--------------------------------------------------------------------------------
+
+## Commits 3067-3095 -- printk->printf in usermode; build_vim; boot progress%; toolchain func split; interactive test infra
+
+AI notes:
+
+What changed: build_toolchain is finally modularized into per-package
+scripts; two big framework features land (boot progress bars;
+interactive test runner); init gets /bin/sh symlink handling; vim
+ships.
+
+  - 35fcdeed: common/printk.h defines printk -> printf when
+    USERMODE_APP is set (so the same code works in both contexts).
+
+  - 974bafa2: init creates /bin and symlinks busybox to /bin/sh.
+
+  - **5787ccb1 [build_toolchain] Introduce the build_vim function**
+    + sysroot/usr/bin/vim launcher script (+54). 3070: azure adds
+    build_vim.
+
+  - 19619f57: drop CircleCI/Travis badges in README.
+
+  - 325d41d5: Fail.shell_unknown_exit_code.
+
+  - accd54c2: README update.
+
+  - **8d2f9a00 + 34b905bb [bootloader] Show progress% while loading
+    the ramdisk**. Both legacy and EFI loaders print a real-time
+    "ramdisk loading... N%" line during the sector-by-sector load
+    (the part that takes measurable time on large initrd).
+
+  - **2667ff46 [efi bootloader] Set a low-res video mode early**
+    (+120): text prompts don't get lost on a tiny-font 4K screen
+    before the kernel takes over.
+
+  - 33435dfc: AllocateAnyPages for the ramdisk memory.
+
+  - 80ea62c2: bbp -> bpp typo fix (visible in dp_opts).
+
+  - 9435a1da, **05d3ad1e [build_toolchain] Move funcs in separate
+    files**: scripts/build_toolchain goes from ~1000-line monolith
+    to a tiny driver plus bash_includes/tc/{busybox,cmake,fbdoom,
+    gnuefi,gtest,lcov,micropython,mtools,musl,ncurses,ovmf,tcc,vim,
+    zlib} (+875 new, -871 from main script).
+
+  - fdd0a938: build_tfblib.
+
+  - **85042575 [elf] Refactor load_elf_program() with struct
+    elf_program_info** (+43/-50): cleaner ELF-load API.
+
+  - 85042575, ea235590, 26f39658: cosmetic + VSCode ruler at 80.
+
+  - **ef7caf79 [gtests] Writing unit tests for the "mem regions"
+    code** (+604/-29 in mem_regions.cpp). First big gtest suite for
+    the system_mmap region arithmetic.
+
+  - e974ff89: parametric compute_abs_path gtest.
+
+  - dde5bb40: KERNEL_FB_BANNER -> FB_CONSOLE_BANNER.
+
+  - 3825c505: FB_CONSOLE_CURSOR_BLINK option.
+
+  - **225434ff [interactive] Start working on the interactive tests**
+    (+161 run_interactive_test, +4 utils.py). Drives a QEMU VM and
+    interacts with it (send keys, take screenshots).
+
+  - 2baa9a71: support sending whole key sequences.
+
+  - 95e9971b, eb0633e2: refactor + vm_take_stable_screenshot().
+
+  - **092d1053 [system_tests] Re-org the python runners and their
+    utils** (+222/-195). tests/system/runners/ -> tests/runners/ +
+    new lib/ package (detect_kvm, env, qemu, stdio, utils).
+
+  - ba1dec52: count_lines_of_code counts build_apps/ too.
+
+--------------------------------------------------------------------------------
+
+## Commits 3096-3125 -- pbm2text/pnm2text screenshot-OCR; interactive framework (ls, vim1)
+
+AI notes:
+
+What changed: interactive tests need to turn framebuffer screenshots
+into strings. Tilck grows its own tool for that, then uses it to
+write ls/vim1 interactive tests.
+
+  - **c07e1e52 [build_apps] Intr. pbm2text.c** (+255 new). Reads a
+    portable bitmap (BPM screenshot of Tilck's console), recognizes
+    each 8x16 / 16x32 character against the kernel's embedded font,
+    outputs text.
+
+  - b6f5fc56: char-recognition optimization.
+
+  - 3a7ef6fc: build_apps built with -O3.
+
+  - cb1fe70b: pbm2text -q/-n options.
+
+  - 684dd1e8, 3ec26341, 8733c811: interactive checks CMake config,
+    ImageMagick, img_convert() for PBM -> PPM etc.
+
+  - aae7715b, 1ea3b049: pbm2text --help on stdout; option-parsing
+    fix.
+
+  - 38f1d59c: interactive check_pbm2text().
+
+  - **b8e2392f [interactive] Check for Tilck's hello message on
+    boot**: waits for the "Hello, world" kernel line over the serial
+    console.
+
+  - **14f70f47 [interactive] Detect kernel panic in run_handle_boot()**
+    -- pattern-matches "KERNEL PANIC" on serial and fails fast.
+
+  - 96355c68: pbm2text recognizes foreground/background inverted
+    chars + special syms.
+
+  - b744801a: fbtest.c shows 3 RGB squares (better diagnostic).
+
+  - **20c2521c [interactive] Start to implement the required
+    infrastructure** + tests/interactive/README + ls_works.py.
+
+  - **55ba6808 + 9b0cefbe + 5517a391 + e77a895c + 9776763c [pbm2text
+    -> pnm2text]**: the tool is extended + renamed to handle 24-bit
+    PPM files natively; recognize_char_at_w{8,16} optimized.
+
+  - 62ee6cb5: stop converting screenshots to PPM -- pnm2text reads
+    PPM directly.
+
+  - a0b20596: --filter, --help, --list-tests on the runner.
+
+  - c4cce665: delete all screenshots on each run.
+
+  - **c336f73b [interactive] Impl. the vim1 test and rename
+    ls_works -> ls**: new tests/interactive/vim1.py + 9 expected
+    screenshot blobs (.gz) + vim_text_files/ sample files. The gold
+    master for "editing in vim works."
+
+  - 0c5785c4: CI runs interactive tests on the coverage build.
+
+  - d1c57b53, 02db4910, a787fd74, ac943311: misc interactive-runner
+    hardening (tracebacks on Exception, recv_from_qemu_monitor,
+    skip QEMU-emitted ANSI seqs, panic detection in do_interactive_
+    actions).
+
+  - **9617fcbd [system_tests] Make KeyboardInterrupt to always
+    work** (+101/-40 in run_all_tests, +40 in single_test_run).
+    Ctrl+C now reliably tears down all processes in the test
+    harness.
+
+--------------------------------------------------------------------------------
+
+## Commits 3126-3156 -- interactive test polish; vim2/dp/fbtest; C++ in modules
+
+AI notes:
+
+What changed: interactive framework matures (fbtest, vim2, dp tests);
+utilities modularized (env.py, lang_aux.py, exceptions.py); C++ files
+allowed inside modules.
+
+  - 5c2b827d: hello msg resets tty attrs before printing.
+
+  - 2a867e6c .. fb1d92bc: python test infra cleanup -- None vs -1,
+    TEST_TYPES, env.py centralized, lang_aux.py with ConstModule
+    helper, __pycache__ gitignored.
+
+  - **7745f5fe [interactive] Make coverage dump and report to work**
+    (+155/-39): gcov data collection across interactive runs.
+
+  - 135149ad, 619f39df, 06587812, ed95e696, c8bebaee, cbe3c6e1:
+    fail-handling utilities (write_gcda_file, exceptions.py, etc.).
+
+  - 799b096e, **9f3d7e37 [interactive] Intr. the vim2 interactive
+    test**.
+
+  - c1f7e1e6: FB_CONSOLE_CURSOR_BLINK=0 fix.
+
+  - **07d3263e [interactive] Intr. send_to_vm_and_find_text() and
+    the dp test**. ae34072a: second screenshot before failing.
+    772813d6: vim-test fixes.
+
+  - 1b849663: timeout scales with #tests.
+
+  - **79461760 [interactive] Intr. the fbtest** (+expected fbtest.png
+    blob) -- RGB-square framebuffer test.
+
+  - 9e9f6722: --intr mode in cmake_run.
+
+  - 93352076: str[n]cmp no longer compiled in when libc is used.
+
+  - 85314f27, 9f48a22a: direct_print, VERBOSE=1 dumps more info.
+
+  - baee4e0d, ce2e36f2: replace ptrdiff_t with long in bintree and
+    elf/fpu_memcpy.
+
+  - 4ea59e10: get_curr_proc_tty_term_type returns int.
+
+  - **ccb397e6 Make it possible to build C++ files in modules**
+    (+265/-98). Introduces include/tilck/common/fake_atomics.h
+    (+69) -- lets modules use atomics from C++ without pulling in
+    <atomic>. build_modules.cmake opts in.
+
+--------------------------------------------------------------------------------
+
+## Commits 3157-3200 -- fat32 mmap; build_fatpart cluster alignment; kmalloc region fix
+
+AI notes:
+
+What changed: enable mmap() on FAT32, extensive FAT32 refactor, first
+data sector alignment, and paging preparation for shared pages.
+
+  - 3c7e4e1a: googletest upgraded to v1.8.1.
+
+  - b230370d: README update.
+
+  - 5c691d67: process_mm gets generic_fs_munmap() (shared helper for
+    ramfs/fat).
+
+  - fd779246: CMake option for cluster size.
+
+  - faecae50: FAT compact-walk no longer visits '.' and '..'.
+
+  - a4b9da4e, 67039ea8, 45864f83: ramfs_mmap uses um->pi (mapping's
+    owning process) instead of current proc.
+
+  - 3e135ddd: -cpu host in run_multiboot_qemu.
+
+  - **9974ea6c [build_apps] Rename fat_get_used_bytes.c -> fathack.c**
+    -- becomes a general FAT manipulation tool (5564225: refactor
+    to 134 lines clearer).
+
+  - af200ea5: fat_get_RootDirSectors -> fat_get_root_dir_sectors.
+
+  - 560c1531: pre_mmap_actions in fathack.
+
+  - **757eafff [fat32] Introduce fat_align_first_data_sector()**
+    (+47) + 5fbfc3eb fathack --align_first_data_sector. Purpose: get
+    FAT cluster 0 aligned to a page boundary, required for mmap of
+    the ramdisk.
+
+  - b1cb936d: refactor system_mmap_get_ramdisk_vaddr().
+
+  - 5df54b80: fat_mount_ramdisk() takes rd_size param.
+
+  - **7398145f [boot] Make bootloaders to always extend fatpart by
+    +4k**: deliberate slack so the ramdisk can be mmap-ed.
+
+  - **34951edf [kmalloc] Use only regions both available and with
+    extra == 0**: filter out reserved regions (e.g. the ramdisk
+    extra-space).
+
+  - 783dd731: __pf_ref_count_{inc,dec} unchecked funcs.
+
+  - 941ec508: BIG_PAGE_SHIFT, KERNEL_BASE_PD_IDX defines.
+
+  - e080389e, 056c5c44: paging UNLIKELY() annotations; pt/pd_index
+    renames.
+
+  - 91e72820, **d7bc9476 [fork] Fix fork_dup_all_handles()**. Body:
+    the function didn't update handle->pi or the handle ptr in the
+    new mappings list; after fork the child's mappings pointed to the
+    parent's handle objects.
+
+  - 34b36833, c1b0cf20, a816f9df, a9391850, a2c0fae3: process_mm
+    comments, sys_mmap_pgoff err handling, ramfs mapping comments,
+    devshell do_mm_read + improved reporting.
+
+  - 75c08f10, f2b19072, da5c0a4b: system_tests -- test_sig() param,
+    fork-with-mmaps test, SIGBUS on read past EOF.
+
+  - 44a885d0, e2204ae9, 7f9620cf: fat_fs_device_data gains
+    mmap_support; fat32_mm.c skeleton mmap/munmap; fat_ramdisk_mm_
+    fixes() called from mount.
+
+  - **13d3dbd5 [system_mmap] Add 4k extra region (overridable) after
+    ramdisk**: +49 in system_mmap.c; pairs with the bootloader +4k
+    slack.
+
+  - 3e6b3684, ba21cf86, 2ed49773, d723deb6, f62e0cfb: fat_ramdisk_mm_
+    fixes refinements + rename to fat_ramdisk_prepare_for_mmap.
+
+  - 7b306849: build-time fatpart first-data-sector alignment.
+
+  - b8bfbd23: default cluster size = 4k.
+
+  - **7e1f7561 [fat32] Add support for file mmap/munmap** (+94/-10,
+    +73 test_fat32.c): first real FAT32 file mmap implementation.
+
+--------------------------------------------------------------------------------
+
+## Commits 3202-3225 -- datetime clock_drift fixes; GDB Python pretty-printers
+
+AI notes:
+
+What changed: two long-brewing bugs in clock_drift_adj() fixed +
+refactored; rich GDB pretty-printer setup for the kernel.
+
+  - **ae3e5c9c [datetime] Fix two bugs in clock_drift_adj()**. Body
+    captures them: (1) missing `goto full_resync` after a drift-
+    correction post-sync; (2) missing enable_preemption() before
+    full_resync in the adj_cnt>6 branch. Bonus: new clock_full_resync_
+    count counter.
+
+  - eaae027f, f50c6749, 28a905c2, 85f07054, 263a915a, 8725d4c7,
+    bc931406, 4a2c535c: refactor clock_drift_adj; clock_get_resync_
+    stats; more counters; check_drift_and_sync extracted; clock_in_
+    resync; dp shows clock stats.
+
+  - **227745a6 [scripts] Take gdb port to use from env. $GDB_PORT
+    (=1234)**. Body: allows multiple run_qemu instances on the same
+    host by parameterizing the QEMU GDB server's port.
+
+  - 23759576: kernel_yield() ALWAYS_INLINE.
+
+  - 3e47e31a: MAX_HANDLES becomes a CMake config option.
+
+  - **5bd50aa1 [gdb] Intr. the other/tilck_unstripped-gdb.py script**
+    (+263 + README). Kernel-specific GDB extensions auto-loaded when
+    debugging tilck_unstripped.
+
+  - 71683f0a, e7deb760, d963d357, 0766470a, 6a1fbd05, faa73a15,
+    481ddef6, 3e93ce44, a14e4357, e22dfdfe, 416e0f96, fa619b0b,
+    9688124f, e99ac328, 6ddc164f, 5fc281f6, 7d074083, 7aaa9e0c,
+    5a437017, ddab4d18, 7efc7fd4, f03a08f6, e3089499, 3f60ac39,
+    1fbb7bc8, ed49bfec, 491a62e1, 845dbbcc, bec8d9b5, 9170e845:
+    this ~30-commit stretch builds the full GDB toolbox:
+      - process/task/regs/wait_obj/mobj/fs_handle/mi pretty-printers;
+      - `list-tilck-cmds`, `get-handle`, `get-curr[p]`, `list-tasks`
+        custom cmds;
+      - tilck_types.py (Value for struct X, struct X*, etc.);
+      - base_utils.py with offset_of, container_of, get_list_elems,
+        fmt_type (+ ConstModule);
+      - per-task children() method enabling tree-view in GDB.
+
+--------------------------------------------------------------------------------
+
+## Commits 3247-3310 -- FAT mmap polish; paging pg_flags; SHARED pages; vfs_base.h split; ELF segments; flock subsystem
+
+AI notes:
+
+What changed: broad layering cleanup around paging + VFS + ELF +
+exit/execve.
+
+  - 8ffa8e30: EFI AllocateMaxAddress for RAMDISK.
+
+  - 0f64da91: devfs get_inode() handles VFS_DIR.
+
+  - 49027889: use /usr/share/qemu/OVMF.fd as QEMU bios.
+
+  - 89d5dc9d: VFS_SPFL_MMAP_SUPPORTED spec flag.
+
+  - ec807acb: is_mmap_supported() inline helper.
+
+  - 20ac8983, 6939885f, 6d4ff3dd: map_framebuffer + vfs_mmap accept
+    a `pdir` param; {retain,release}_pageframes_mapped_at().
+
+  - **b054adc8 [vfs] Change vfs_mmap()'s signature (bool reg_only ->
+    int flags)**. Caller passes a flag bitmask; the helper is more
+    future-proof.
+
+  - bdd89212: idt supports int3 from userspace (handled as nop;
+    enables int3 breakpoints in user code via gdb).
+
+  - **57ebaea4 [paging] Fix a brutal typo-bug in get_mapping2()**.
+    Body: `IN_RANGE(vaddr, KERNEL_BASE_VA, LINEAR_MAPPING_END)` was
+    written `LINEAR_MAPPING_MB`. Nasty bug.
+
+  - 4c1f65cf, **af9dad8b / 7e3baf4c / a6afa3c2 [paging] Intr. pg_flags
+    for map_page[s]() / map_zero_page[s]()**. Separates hardware-
+    level flags from kernel-level attributes.
+
+  - **b3d8e5ef [paging] Intr. the PAGING_FL_SHARED flag**. 3428f53c:
+    pdir_clone doesn't mark SHARED pages CoW. 8d670bdd: fb pages
+    mapped SHARED.
+
+  - 50bbf6c9: hi_vmem_end_pdir_idx wrap-around fix.
+
+  - a102c54a: ramfs/fat mmaps use SHARED pages.
+
+  - 9773774e: ramfs_destroy_block().
+
+  - **ee3fde58 [fat] Retain the pageframes of the RAMDISK**. Body:
+    pageframes backing the ramdisk must be ref-count >= 1, otherwise
+    pdir_destroy() would try to kfree2 them on process exit (never
+    kmalloc-ed) -> panic. Same rationale for ramfs (bc4f066e).
+
+  - 6bdda7b2, 79b6f7d9, c7f3ea5a, 78eea7c4, 3a8d2e2c: elf loader --
+    embed phdr_adjust_page_access; load_phdr renamed ->
+    load_segment_by_copy; segment alignment check; **support loading
+    segments with mmap** (+59 in elf.c); error-handling improvements.
+
+  - **132239e2 [vfs] Intr. vfs_base.h in order to reduce includes of
+    vfs.h** (+77 new + -71 from vfs.h). Followed by ~10 commits
+    (487b20d1 .. 5e59b624) switching process.h, dp, devfs, fat32,
+    kernelfs, fat32_mm, tty to include vfs_base.h instead of vfs.h.
+
+  - cff949c5: drop VFS_FS_RO (just check for RW).
+
+  - fc79e8f7, bc4f9b61: vfs #ifdef cleanup; devfs get_entry() dentry
+    type fix.
+
+  - ab204bda, f3e0e83e, 790785ca, 1a67043b: safe_ringbuf write_elem
+    fix; term_unable_to_enqueue_action bugs; rename to *_handle_
+    full_ringbuf; interface change for execute_or_enqueue.
+
+  - **476c7048 [vfs] Intr. per-file support for non-blocking exlock**
+    (+56): vfs_exlock_nb().
+
+  - dc36516d: create_fs_obj() / destroy_fs_obj().
+
+  - **3799722b [vfs] Intr. a mechanism for subsystem-based per-file
+    locking** (+167 new kernel/fs/flock.c + include/tilck/kernel/
+    fs/flock.h + subsystems.h). Multiple subsystems (elf loader,
+    future tracer/gdb) can all acquire a file exlock without
+    stepping on each other.
+
+  - b454e36a, e564f06a, 228c6f7a, c0bf909c: ramfs + elf start using
+    subsys_flock; rename *subsystem_file_exlock* -> *subsys_flock*.
+
+  - **6c70d2be [signal][process] Deliver kill signals in a deferred
+    way** (+49/-8). Signals set a pending flag; delivery (including
+    terminate_process) happens on the target task, not the sender.
+
+  - e4629784: remove `ti` param from terminate_process().
+
+  - **7a524b03 [exit] Make terminate_process() to require preemption
+    ON** + 4bc473f5 vfs_close() too. Enforces preemption-enabled
+    invariant for user-visible teardown (mirrors the VFS-preemption-
+    required invariant established long ago).
+
+  - c3b678ed, 012db222, 2fafec93: process32 setup_usermode_task()
+    split in two; execve_prepare_process -> execve_final_steps;
+    do_execve_int refactor.
+
+  - **4145eb56 [process] Split arch_fields between struct task and
+    process** (+150/-76). Arch state that's truly per-task vs per-
+    process finally separated.
+
+  - 603a3c5b, 5dd189dd, 199648b0: struct task moves to sched.h;
+    func decls to sched.h; process.h stops being pulled in
+    everywhere.
+
+  - 950e3539, 6219ef0b: setup_usermode_task -> setup_process;
+    setup_usermode_task_first_process -> setup_first_process.
+
+--------------------------------------------------------------------------------
+
+## Commits 3313-3334 -- signals go deferred; tasklet/worker cleanup; scheduler off timer
+
+AI notes:
+
+What changed: signal delivery model switches to "pending + checked at
+safe points"; the timer IRQ stops running the scheduler directly; a
+host of sched cleanups.
+
+  - d8bc520a: kb8042 sets numLock=1 only inside a hypervisor.
+
+  - 094bd3f6, ba499923: fathack mmap/munmap as action funcs; unmap
+    before ftruncate (WSL workaround).
+
+  - ae7f2629, c894f977: fatpart uses Doom1.WAD if present in
+    usr/lib/fbDOOM (later: in $tc/$arch/fbDOOM/).
+
+  - 5a3855e0: README.
+
+  - 5504a798, 12b874ed, 7a401615, 17adf979: handle_term_signal ->
+    process_signals; task::term_sig -> pending_signal;
+    kernel_yield stops calling process_signals(); pending_signals()
+    helper.
+
+  - **ab9058d5 [signal] Explicitly check for pending signal(s) in
+    key points** (+56). Body (worth noting the invariant): Tilck
+    supports only ignore/terminate signal actions, so returning
+    -EINTR on pending signals is always correct + safe -- on syscall
+    exit, any pending signal will kill the process. The check is
+    sprinkled through pipe, poll, select, process, syscalls, timer,
+    tty_input, waitpid.
+
+  - **1ad25432 [tasklet] Wake-up runner only if waiting for jobs**.
+    Body captures a flow bug: if the runner is asleep inside a job
+    (e.g. holding a kmutex and waiting on a cond), enqueue_tasklet()
+    would wake it anyway, breaking the kmutex invariant. New
+    `waiting_for_jobs` flag distinguishes the two kinds of sleep.
+
+  - **52c8aa68 [signal] Don't wake up tasks waiting on kmutex or
+    ksem**. Body-absent but consistent with the deferred-delivery
+    model.
+
+  - 710a6169, 9f95d492, d56ff4e9, a7fac164: sched cosmetic +
+    need_reschedule more efficient; `timer_ready` and
+    `tasklet_thread` fields in struct task.
+
+  - **a9df8fb9 [timer] Don't run the scheduler from the timer
+    handler anymore** (-51 lines in timer_handler.c). Scheduling now
+    happens in IRQ epilogue, not inside the IRQ handler itself.
+
+  - f6f9254e, e465a97f: drop the `curr_int` param from schedule()
+    and switch_to_task().
+
+  - b3421dde: get_curr_task_state() inline helper.
+
+  - **ab9f1f3e [docs] Intr. atomics.md to explain the use of atomics
+    in Tilck** (+58). Fixes the argumentation around which globals
+    must be atomic vs plain.
+
+--------------------------------------------------------------------------------
+
+## Commits 3335-3351 -- fault handlers with IF=1; irq_handler_t with context; worker-thread prep
+
+AI notes:
+
+What changed: IRQ handlers and fault handlers rationalized. worker
+thread concept is prepared (commits 3352+ rename tasklet -> worker).
+
+  - **2581b84b [interrupts] Always run fault handlers with IF=1**.
+    Body: soft_interrupt_entry() used to run fault handlers with
+    interrupts disabled "just in case", but all handlers re-enabled
+    them anyway; fault handlers aren't IRQs.
+
+  - 4e9591cc, 29e17042: end_fault_handler_state -> exit_*;
+    enter_fault_handler_state added.
+
+  - **736d5b20 [irq] Drop the regs_t * param from irq_handler_t**.
+    Body: now that timer_handler() doesn't need regs_t*, the param is
+    gone from all IRQ handlers.
+
+  - **9e9878b4 [irq] Add the `context` param to IRQ handlers**:
+    instead, callers get a small typed context -- better than raw
+    pt_regs.
+
+  - 44a4669d: DEFINE_IRQ_HANDLER_NODE() macro.
+
+  - 121bfa2f: serial module refactored (+55/-24).
+
+  - c7f498ee: struct irq_handler_node moves to irq.h.
+
+  - a38078be: vim wrapper script update.
+
+  - 4ba7be04: sched doesn't check time_slot_ticks for tasklet
+    runners.
+
+  - e4b9c42e: struct sched_ticks.
+
+  - **6ca7fb3b [sched] Replace 'time slot' with 'time slice'
+    globally**. Body: correct CS term is "time slice".
+
+  - d568c087: LoC counter excludes 3rd_party.
+
+  - 08a5eea7, 329fcab3: destroy_last_tasklet_thread moved to unit
+    tests; tasklet code tidied into tasklet_aux.c.
+
+  - 0162efba: DEBUG_SAVE_ESP / DEBUG_CHECK_ESP moved to debug_utils.h.
+
+  - 9878e90a: tasklet interface drops enqueue#n variadic macros.
+
+--------------------------------------------------------------------------------
+
+## Commits 3352-3369 -- [tasklet] Runners -> worker threads [series 1-10]
+
+AI notes:
+
+What changed: a 10-patch series renames the whole "tasklet"
+subsystem. Body of patch 1 (3355) explains: "tasklet" is taken by the
+Linux kernel with a different meaning, so Tilck's tasklet is renamed
+to "worker thread" / "job" to avoid confusing people.
+
+Key renames across the series:
+
+  - init_tasklets -> init_worker_threads
+  - get_tasklet_runner -> get_worker_thread
+  - create_tasklet_thread -> create_worker_thread
+  - tasklet_runner -> run_worker_thread
+  - get_hi_prio_ready_tasklet_runner -> get_runnable_worker_thread
+  - enqueue_tasklet -> enqueue_job
+  - struct tasklet -> struct wjob
+  - struct tasklet_thread -> struct worker_thread
+  - run_one_tasklet -> wth_process_single_job
+  - tasklet_create_thread_for -> wth_create_thread_for
+  - tasklet_wakeup_runner -> wth_wakeup
+  - tasklets (field) -> jobs
+  - tn (variable) -> wth
+  - se_tasklet_ctx -> se_wth_ctx
+  - MAX_PRIO_TASKLET_QUEUE_SIZE -> MAX_PRIO_WTH_QUEUE_SIZE
+  - KB_TASKLETS_QUEUE_SIZE -> KB_WTH_QUEUE_SIZE
+  - TTY_TASKLETS_QUEUE_SIZE -> deleted (unused)
+
+File renames:
+  - kernel/tasklet.c -> kernel/wth.c
+  - kernel/tasklet_aux.c -> kernel/wth_aux.c
+  - kernel/tasklet_int.h -> kernel/wth_int.h
+  - tests/self/se_tasklet.c -> tests/self/se_wth.c
+  - tests/unit/tasklet_test.cpp -> tests/unit/wth_test.cpp
+  - include/tilck/kernel/tasklet.h -> include/tilck/kernel/
+    worker_thread.h
+
+Follow-ups (3365-3369):
+  - 8923cde2: timer_handler.c -> timer.c.
+  - 1e2749b0: public wth funcs all get `wth_` prefix.
+  - 708db817: queue_size field removed from struct worker_thread.
+  - 53989959: MAX_WORKER_THREADS moved to config.h.
+  - 34c16e05: renames for worker-thread CMake options.
+
+Note: after this series, the worker-thread subsystem is stable --
+names survive into the current codebase.
+
+--------------------------------------------------------------------------------
+
+## Commits 3370-3402 -- timer globals from IRQs; C++ in kernel; safe_ringbuf polish; preemption flag renames
+
+AI notes:
+
+What changed: timer code allows __ticks / __time_ns access from
+IRQs; kernel can now compile C++ files; safe_ringbuf gets docs +
+debug asserts + size-specific read/write; preemption counter and
+need-resched renamed.
+
+  - **28ca88de [timer] Allow __ticks and __time_ns to be accessed
+    from IRQs**. Body: previously timer_irq_handler() wrote them
+    without CLI/STI assuming no other IRQ cared; now any IRQ handler
+    can read them safely.
+
+  - 82ef3852: account_ticks() -> sched_account_ticks().
+
+  - a3f78e55: printk_rbuf_stat __raw field.
+
+  - e1939804: NORETURN first in declarations.
+
+  - **0b387150 [cmake] Allow C++ files also in the kernel/
+    directory** (+3 in sources.cmake).
+
+  - **88c1adcd [common] Intr. common/cpputils.h** (+77): C++ helpers
+    -- move/unique_ptr lite etc.
+
+  - 25972085, a72f3203, e392a7c7, 2816e817, 20a9367a, 7df0c717,
+    942e6b41, 3de0b7e4, 811e2ccb, 264cb4bf: safe_ringbuf evolution:
+    drop unused write_elem; drop `_ex` suffix; optimize; add debug
+    checks; **port to C++** (safe_ringbuf.c -> .cpp); size-specific
+    read/write funcs; use cpputils.h; is_empty/full safer; usage
+    docs.
+
+  - **f24dc668 [interrupts] Use disable_interrupts_forced() when
+    possible**. Body: when we're sure the code won't run with
+    interrupts already disabled, *_forced variants skip eflags
+    save/restore -- just CLI/STI.
+
+  - 2199b53d: kb processes IRQs more efficiently (batched).
+
+  - 0e034656, f62c4ddb: DEBUG_CHECKS_IN_RELEASE -> DEBUG_CHECKS
+    rename (gcc_fast_rel build was broken by a missed callsite).
+
+  - 43c6e8d9, 29ea0ba0: print offset in decimal in symbol+off;
+    dp_tilck_cmd cosmetic.
+
+  - 3983faef: need_resched -> __need_resched.
+
+  - **3114642a [sched] Move enable_preemption() to sched.c as a
+    non-inline func**. Body: saves ~10 KB in .text (contrib debug).
+    Unblocks 43e16d9d.
+
+  - **43e16d9d [sched] Intr. the KRN_RESCHED_ENABLE_PREEMPT option**
+    (+56): optional re-entry point; when enabled, enable_preemption()
+    re-schedules immediately if need_resched was set (fairer).
+    397897: contrib builds enable it.
+
+  - fd4c8b2f, a3df0f1b: printk_direct_flush_no_tty();
+    KRN_PRINTK_ON_CURR_TTY option.
+
+  - 5d900178, 6c5d4cdd: noarch irq_entry() owns the resched logic;
+    handle_irq -> arch_irq_handling.
+
+  - f4078b94, 6b029414, 8f51e814: disable_preemption_count ->
+    int, get_preempt_disable_count(), __disable_preempt.
+
+--------------------------------------------------------------------------------
+
+## Commits 3403-3415 -- schedule() w/ timer_ready=1; poll/select POSIX; mbrhack; drop hard-coded MBR
+
+AI notes:
+
+What changed: timer & scheduler semantics tightened; poll/select sub-
+tick behavior corrected; the hard-coded MBR partition table in
+boot.S is replaced by a build-time mbrhack tool.
+
+  - 28f350e1: tty->output_cond (tighter inbuf-write signaling).
+
+  - **0dbd1bd2 [sched] Handle call to schedule() w/ timer_ready=1**
+    (+35/-3). Explicit handling when the scheduler is called while
+    the task has a pending wake-up timer tick.
+
+  - cc9e0310: list-tasks gdb improvements.
+
+  - 622f2c19: always set timer_ready=0 in switch_to_task().
+
+  - **1d89c71a [poll][select] Fix behavior for timeout < 1 timer
+    tick**. Body: was rounding to zero (return immediately); POSIX
+    says sleep for the smallest positive interval (1 tick). Fixed.
+
+  - 8b7a28c4: UNSAFE_BOUND -> UNSAFE_CLAMP.
+
+  - **4be0d049 [boot] Fix wrong LBA size of fatpart**. Long-standing
+    inconsistency between LBA and CHS values in the partition table.
+
+  - **d62bf3ad [efi] Drop the gpt_image target**. Body: now that the
+    MBR LBA is correct, EFI boot works with the regular MBR image --
+    the special gpt_image variant is gone.
+
+  - **0b10666a [mbrhack] Intr. the mbrhack tool** (+631 lines).
+    Body (long, worth keeping the rationale): cleans up the mess of
+    hard-coded calculations for the MBR partition table in boot.S.
+    Considered but rejected alternatives:
+      - parted doesn't give full BPB control.
+      - Can't write parted's MBR then ours (overwritten), or ours
+        then parted (it refuses).
+      - Using a standard MBR + our boot code inside the FAT partition
+        brings its own problems (mformat path complications).
+    Conclusion: a dedicated tool with 100% control is the right
+    answer.
+
+  - e97817bf: boot.S stops hard-coding the partition table (-44
+    lines); mbrhack fills it in at build time.
+
+  - e436d3d2: RAMDISK_SECTOR becomes a CMake variable (previously a
+    hard-coded constant).
+
+  - aa876eaa: unset non-necessary BPB params.
+
+  - 2739cafc: kernel + stage3 compiled with -Wundef.
+
+--------------------------------------------------------------------------------
