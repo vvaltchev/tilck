@@ -39,6 +39,19 @@ Subcommands:
   diff-file <N> <PSPEC>.. Diff of commit N restricted to pathspec(s).
   diff-head <N> <K>       First K lines of commit N's full diff.
 
+  merges <FROM> <TO>      Print first-parent merge commits in the
+                          inclusive 1-based range, one per line as
+                          "<N> <sha> <subject>". Prints nothing if no
+                          merges in range.
+  merge-log <N>           For a merge commit at index N, list every
+                          commit introduced by the merged branch (the
+                          commits between the merge's two parents,
+                          oldest first) with their short subject.
+  sha-meta <SHA>..        Dump subject/body + diffstat for one or more
+                          commits identified by SHA (not by index).
+                          Useful for merge-branch commits which aren't
+                          in the first-parent list.
+
   show-head               Print the last `## ` header in the annotation
                           doc, i.e. the commit we most recently wrote up.
   append                  Read markdown from stdin and append it to the
@@ -140,6 +153,47 @@ case "$cmd" in
       sha=$(sha_for_index "$1")
       k=$2
       git show --format='' "$sha" | head -n "$k"
+      ;;
+
+   merges)
+      from=$1
+      to=$2
+      i=$from
+      while [ "$i" -le "$to" ]; do
+         sha=$(sha_for_index "$i")
+         # parent count = total words from "sha p1 [p2 ...]" minus 1
+         n_parents=$(git rev-list -1 --parents "$sha" | wc -w)
+         if [ "$n_parents" -gt 2 ]; then
+            subj=$(git log -1 --format='%s' "$sha")
+            printf '%s %s %s\n' "$i" "${sha:0:10}" "$subj"
+         fi
+         i=$((i+1))
+      done
+      ;;
+
+   merge-log)
+      sha=$(sha_for_index "$1")
+      n_parents=$(git rev-list -1 --parents "$sha" | wc -w)
+      if [ "$n_parents" -le 2 ]; then
+         echo "error: commit $1 ($sha) is not a merge" >&2
+         exit 1
+      fi
+      # p1 = mainline parent (first-parent), p2 = merged-branch tip.
+      p1=$(git rev-list -1 --parents "$sha" | cut -d' ' -f2)
+      p2=$(git rev-list -1 --parents "$sha" | cut -d' ' -f3)
+      # Commits introduced by the branch: reachable from p2 but not p1.
+      # --reverse = oldest first.
+      git log --reverse --format='%h %s' "$p1..$p2"
+      ;;
+
+   sha-meta)
+      for sha in "$@"; do
+         echo "=====SHA-${sha:0:10}====="
+         git log -1 --format='%s%n%b%n-%ad' \
+            --date='format:%a %b %-d %H:%M:%S %Y %z' "$sha"
+         git show --stat --format='' "$sha"
+         echo
+      done
       ;;
 
    show-head)

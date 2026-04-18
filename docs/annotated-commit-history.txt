@@ -29880,3 +29880,6489 @@ Context (guess -- from subject):
   build flags.
 
 --------------------------------------------------------------------------------
+
+## 7c63713c -- [scripts] Improving count_lines_of_code
+
+Commit: 7c63713c54...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 19:08:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -6 in scripts/count_lines_of_code. Likely
+  adds sub-tree breakdown or handles new dirs
+  (fb/, common/arch/).
+
+Context (guess -- from subject):
+
+  The recent FB/asm additions shifted LOC; script
+  updated to reflect the new layout.
+
+--------------------------------------------------------------------------------
+
+## b19c4221 -- [main][fb_console] Remove
+   post_sched_init_framebuffer_console()
+
+Commit: b19c422154...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 31 21:30:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -20 across 3 files. The
+  post_sched_init_framebuffer_console() hook
+  deleted; FB console init collapsed into init_
+  fb_console() now that current != NULL invariant
+  holds.
+
+Context (guess -- from subject):
+
+  Payoff of 503254ea: two-phase init is no longer
+  needed.
+
+--------------------------------------------------------------------------------
+
+## 76ec6571 -- [fb_console] REMOVE font-specific optimized funcs
+   (8x16, 16x32)
+
+Commit: 76ec6571b9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 13:02:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +67 / -181 across 4 files. Net -114. fb_raw.c
+  -96 net drops the char8x16 / char16x32
+  specialised routines. fb_console.c -67 net.
+  fb_int.h small.
+
+Context (guess -- from subject):
+
+  After the fpu_memcpy family and SSE/AVX kicked
+  in, the bespoke per-font optimised paths
+  weren't winning. Generic fpu_memcpy is
+  competitive AND covers all font sizes. Less
+  code.
+
+--------------------------------------------------------------------------------
+
+## 209f46a7 -- [fb_console] Performance improvements
+
+Commit: 209f46a7c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 14:02:24 2018 +0300
+
+> Restore the double buffering but add a 'flush'
+> parameter to vi->set_row(): it allows term to
+> use it when scrolling. In fb_console, the text
+> in first drawn on the shadow buffer and
+> immediately (if flush is true) flushed. This
+> approach is ultimately much faster on real
+> hardware, compared to the draw line-by-line and
+> a big final flush, because of the time-locality.
+> The scroll_one_line_up() is about 13% faster.
+
+AI notes:
+
+What changed:
+
+  +27 / -79 across 5 files. Net -52. fb_console.c
+  +13 / -28, fb_raw.c -53 net. video_interface
+  `set_row(..., flush)` gains the parameter;
+  textmode passes false, fb uses it.
+
+Context (from body):
+
+  Double buffering is re-enabled with a smarter
+  policy: flush per row (while the row is still
+  in cache), not at the end. 13% scroll speedup
+  on real HW.
+
+--------------------------------------------------------------------------------
+
+## f26622e1 -- [build][gtests] Use CMake's config files to generate
+   generated_config.h
+
+Commit: f26622e1f9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 19:26:26 2018 +0300
+
+> This completely solves all problems like "gtests
+> don't know where the build directory is".
+
+AI notes:
+
+What changed:
+
+  +27 / -10 across 5 files. New
+  generated_config_template.h (+2). CMakeLists.txt
+  +8 adds configure_file step. Tests use the
+  generated header.
+
+Context (from body):
+
+  Build-dir paths baked in at cmake time via a
+  template + substitution. Tests find assets
+  without hardcoded paths.
+
+--------------------------------------------------------------------------------
+
+## 55d3df0e -- [config] Using more config.h and generated_config.h
+
+Commit: 55d3df0eae...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 19:48:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -25 across 4 files. boot.S, efimain.c, and
+  config.h migrate hardcoded addresses/flags to
+  generated_config.h.
+
+Context (guess -- from subject):
+
+  Continues the f26622e1 theme: build-time
+  consts in one place.
+
+--------------------------------------------------------------------------------
+
+## 5a487935 -- [build][bootloader] Make CMake to generate
+   bootloader's linker scripts
+
+Commit: 5a487935dc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 20:13:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 / -17 across 7 files. New gen_config.cmake
+  (+28) -- helpers to emit template-substituted
+  files. Bootloader linker scripts become
+  generated from templates with BL_ constants.
+
+Context (guess -- from subject):
+
+  Lets you change e.g. the base load address in one
+  CMake variable and have boot.S, stage3.c AND the
+  linker script all see it.
+
+--------------------------------------------------------------------------------
+
+## aa8cd844 -- [build][cmake] Introduce the CMake function hex2dec()
+
+Commit: aa8cd844a9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 1 22:14:38 2018 +0300
+
+> Unfortunately, CMake's MATH function does not
+> understand hex numbers, while they are often
+> pretty useful, especially in linker scripts.
+> Therefore, adding a pure-CMake implementation of
+> hex2dec().
+
+AI notes:
+
+What changed:
+
+  +66 / -10 across CMakeLists.txt (+62 / -6) and
+  gen_config.cmake (+4 / -3). Pure-CMake parser
+  for hex strings.
+
+Context (from body):
+
+  Addresses are naturally hex (0x20000). Prior to
+  this, CMake couldn't do arithmetic on them, so
+  constants had to be dec in CMake and hex in C.
+  hex2dec removes that split.
+
+--------------------------------------------------------------------------------
+
+## 96765eca -- [build][CMake] Introduce and use dec2hex()
+
+Commit: 96765ecaeb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 12:31:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +101 / -60 across CMakeLists.txt (-37 net) and
+  gen_config.cmake (+94 net). Complement to
+  hex2dec: emit results as 0x-prefixed.
+
+Context (guess -- from subject):
+
+  Round-trip: CMake can now read hex, compute,
+  and emit hex back to C/ld-script templates.
+
+--------------------------------------------------------------------------------
+
+## 64c136b7 -- [bootloader] Make BL_ST2_DATA_SEG configurable from
+   CMake
+
+Commit: 64c136b7f9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 12:58:26 2018 +0300
+
+> Now the base segment for the 2nd stage of the
+> bootloader (and the derived from it
+> BL_BASE_ADDR) can be changed. gdt_base_0x20000
+> has been renamed to gdt_base_X and has the base
+> address calculated from the generated config
+> instead of being hard-coded.
+
+AI notes:
+
+What changed:
+
+  +28 / -9 across boot.S (+22 / -8) and
+  stage3_entry.S (+6 / -1). Hardcoded 0x20000
+  swapped for BL_BASE_ADDR macro everywhere.
+
+Context (from body):
+
+  End of the "addresses as cmake vars" arc. Now
+  the bootloader's load address is one variable
+  to change.
+
+--------------------------------------------------------------------------------
+
+## 36515365 -- [bootloader][CMake] Cosmetic: rename a constant
+
+Commit: 36515365ab...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 13:07:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -3 across 3 files.
+
+Context (guess -- from subject):
+
+  Rename pass.
+
+--------------------------------------------------------------------------------
+
+## 5743eb4c -- [build][scripts] Make the run*qemu* scripts to be
+   "generated" by CMake
+
+Commit: 5743eb4cd1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 13:55:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +90 / -42 across 13 files. gen_config.cmake +51
+  emits the run scripts from templates. Scripts
+  in scripts/ lose their hardcoded paths / flags.
+
+Context (guess -- from subject):
+
+  Single-source-of-truth: qemu flags, disk image
+  paths come from CMake vars now.
+
+--------------------------------------------------------------------------------
+
+## c8f369d9 -- [scripts] Fix scripts/run_nokvm_qemu
+
+Commit: c8f369d9d4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 13:57:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line fix.
+
+Context (guess -- from subject):
+
+  Regression from 5743eb4c.
+
+--------------------------------------------------------------------------------
+
+## 2ac468a6 -- [build][kernel] Add the linker script in LINK_DEPENDS
+
+Commit: 2ac468a690...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 14:08:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -10 across gen_config.cmake (+6) and
+  kernel/arch/CMakeLists.txt (-10). LINK_DEPENDS
+  property tells CMake to relink when the linker
+  script changes.
+
+Context (guess -- from subject):
+
+  Previously editing the linker script required
+  a clean + rebuild; now incremental works.
+
+--------------------------------------------------------------------------------
+
+## b209e0f9 -- [build][kernel] Make linker_script.ld to be
+   "generated" by CMake
+
+Commit: b209e0f99d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 14:16:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -6 across 5 files. Kernel linker script
+  becomes a template; CMake substitutes KERNEL_
+  BASE_VA etc.
+
+Context (guess -- from subject):
+
+  Completes the generated-linker-script story for
+  the kernel (bootloader did this in 5a487935).
+
+--------------------------------------------------------------------------------
+
+## 7b8110af -- [build] Move gen_config.cmake in scripts/
+
+Commit: 7b8110af7b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 19:43:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure move: gen_config.cmake -> scripts/gen_config.
+  cmake. Top-level CMakeLists 1-line path.
+
+Context (guess -- from subject):
+
+  The repo root should have just CMakeLists.txt;
+  support files belong in scripts/.
+
+--------------------------------------------------------------------------------
+
+## dc7b89e1 -- [build][scripts] Split arch-i386 kernel CMake file
+   and other minor changes
+
+Commit: dc7b89e138...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 20:20:24 2018 +0300
+
+> Other:
+>    - Move scripts/run*qemu* in scripts/qemu/
+>    - Use CMAKE_{SOURCE/BINARY}_DIR instead of
+>      PROJECT_*_DIR
+
+AI notes:
+
+What changed:
+
+  +155 / -146 across 14 files. New kernel/arch/
+  i386/CMakeLists.txt (+102). kernel/arch/
+  CMakeLists.txt -121 (generic pieces kept, i386
+  specifics moved). scripts/run_* all move into
+  scripts/qemu/. gen_config.cmake small refactor.
+
+Context (from body):
+
+  Per-arch CMake files make adding x86_64 a
+  localised change. scripts/qemu/ subdir
+  separates dev-loop scripts from build tooling.
+
+--------------------------------------------------------------------------------
+
+## 16513710 -- [CMake] Use foreach for the "run qemu" scripts
+
+Commit: 165137103c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 2 20:28:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -47 in gen_config.cmake. Net -28.
+  Repetitive per-script generation collapsed into
+  a foreach loop.
+
+Context (guess -- from subject):
+
+  CMake dedup.
+
+--------------------------------------------------------------------------------
+
+## ec6ce6a1 -- [build][build_fatpart] Make CMake to generate
+   build_fatpart
+
+Commit: ec6ce6a196...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 3 17:47:21 2018 +0300
+
+> BONUS:
+>    - Rename generated_config_template.h to
+>      generated_config.h
+>    - Add @ONLY in gen_config.cmake
+>    - Move KERNEL_FILE_PATH[_EFI] in
+>      generated_config.h
+
+AI notes:
+
+What changed:
+
+  +54 / -36 across 7 files. generated_config.h +19
+  (real header, checked-in for IDEs).
+  build_fatpart script now generated from template.
+  Template-specific header removed.
+
+Context (from body):
+
+  Another build-config unification. @ONLY prevents
+  @-free text from being mangled.
+
+--------------------------------------------------------------------------------
+
+## 5e5a624c -- [bootloader] Panic if the CPU doesn't have PSE
+   (required by exOS)
+
+Commit: 5e5a624c6b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 3 18:13:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 lines in stage3.c. Checks CPUID for PSE
+  (Page Size Extension, enables 4MB pages).
+
+Context (guess -- from subject):
+
+  Tilck uses 4MB pages for the linear kernel
+  mapping. Without PSE it can't boot; fail early
+  and clearly.
+
+--------------------------------------------------------------------------------
+
+## b6beb567 -- [shell] Introduce the 'fpu' test command
+
+Commit: b6beb567bc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 3 18:23:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -2 in shell_commands.c. Shell command that
+  exercises FPU/SSE from userspace.
+
+Context (guess -- from subject):
+
+  Userspace-side FPU smoke test; companion to the
+  kernel FPU state work landing soon.
+
+--------------------------------------------------------------------------------
+
+## 59840a2c -- [x86_utils] Add read/write CR0 funcs and related
+   defines
+
+Commit: 59840a2c83...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 3 18:54:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 lines in x86_utils.h. CR0 read/write
+  inline-asm and bit defines (TS, EM, MP, etc.).
+
+Context (guess -- from subject):
+
+  Prereq for lazy FPU save/restore (uses CR0.TS).
+
+--------------------------------------------------------------------------------
+
+## fc793573 -- [cpu] Introduce and use fpu_context_{begin,end}
+   [partially implemented]
+
+Commit: fc793573d2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 3 19:41:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -11 across 3 files. cpu.c +43 / -3:
+  fpu_context_begin() saves kernel FPU state,
+  fpu_context_end() restores. fb_raw.c wraps
+  SSE/AVX memcpy in the pair. hal.h +4 decls.
+
+Context (guess -- from subject):
+
+  Kernel code using SSE must save/restore the
+  caller's FPU state to not clobber userspace
+  regs. This is the foundational primitive.
+  "Partially implemented" — full impl in later
+  commits.
+
+--------------------------------------------------------------------------------
+
+## 31a2e895 -- Adding a screenshot (#55)
+
+Commit: 31a2e8951b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 5 14:33:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -1 in README + new 20KB PNG.
+
+Context (guess -- PR #55):
+
+  First visible screenshot of Tilck booted.
+
+--------------------------------------------------------------------------------
+
+## 1d9b98af -- [syscalls] Move syscall defs in a dedicated header
+
+Commit: 1d9b98af65...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 18:24:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +62 / -42 across 3 files. New include/exos/
+  syscalls.h (+60). syscalls.c -38, main.c -6.
+
+Context (guess -- from subject):
+
+  Syscall numbers + function signatures in a
+  shared header so multiple callers (dispatch
+  table, sysenter stub, etc.) use the same
+  source of truth.
+
+--------------------------------------------------------------------------------
+
+## 2165ad39 -- [syscalls] Use a macro for not implemented syscalls
+
+Commit: 2165ad39be...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 18:46:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -85 in syscalls.c. Net -52. Repetitive
+  "not implemented" stubs collapsed into a macro.
+
+Context (guess -- from subject):
+
+  With Linux's 300+ syscalls, most unimplemented,
+  the stubs were noise. Macro gets the job done
+  in one line each.
+
+--------------------------------------------------------------------------------
+
+## 9ddd5719 -- [syscalls] Use a macro for non-implemented syscalls
+   in syscalls.h
+
+Commit: 9ddd571958...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 18:56:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -20 in syscalls.h. Similar macro treatment
+  on the header side.
+
+Context (guess -- from subject):
+
+  Header-side declarations cleaned the same way.
+
+--------------------------------------------------------------------------------
+
+## 08d19bff -- [paging] Access pageframes_refcount[] through inline
+   funcs
+
+Commit: 08d19bff49...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 20:44:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +39 / -20 across paging.c (+38 / -20) and mm.c
+  (-1). Direct array access replaced with
+  pf_ref_count_inc/dec/get inline helpers.
+
+Context (guess -- from subject):
+
+  Encapsulation: future changes to the refcount
+  storage (e.g., bitfields, sparse maps) won't
+  need every caller updated.
+
+--------------------------------------------------------------------------------
+
+## b1ef28c1 -- [paging] Don't keep refcount for pageframes outside
+   physical memory
+
+Commit: b1ef28c1ac...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 20:53:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 lines in paging.c. Bounds check: refcount
+  ops on MMIO / framebuffer pages early-return.
+
+Context (guess -- from subject):
+
+  Those pages aren't managed by the pageframe
+  allocator; incrementing their refcount was a
+  silent bug waiting to happen.
+
+--------------------------------------------------------------------------------
+
+## 2f0caa66 -- Remove the hard-coded value for memsize_in_mb: the
+   bootloader provides it
+
+Commit: 2f0caa661f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 6 22:10:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -5 in pageframe_allocator.c.
+
+Context (guess -- from subject):
+
+  memsize_in_mb is in the multiboot info (E820);
+  kernel no longer assumes a fixed RAM size.
+
+--------------------------------------------------------------------------------
+
+## e6a71445 -- [term] Make the use of serial port to be parametric
+
+Commit: e6a714453a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 11:12:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +43 / -21 across 10 files. term.c +12 / -3,
+  serial.c +6 / -4, video backends +3/+3 net:
+  term can forward writes to serial port in
+  addition to (or instead of) screen.
+
+Context (guess -- from subject):
+
+  Two outputs: serial (headless / CI logs) + FB/
+  VGA (interactive). Same printk stream hits both.
+
+--------------------------------------------------------------------------------
+
+## fe032daf -- [serial] Cosmetic changes
+
+Commit: fe032dafd6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 11:22:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -16 across 4 files.
+
+Context (guess -- from subject):
+
+  Rename / reorg after the previous commit.
+
+--------------------------------------------------------------------------------
+
+## b88db6ec -- [kb] Remove DEBUG key-F2 debug stuff and some minor
+   cosmetic refactoring
+
+Commit: b88db6ecf3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 11:41:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -42 in kb.c. F2-key debug helpers deleted.
+
+Context (guess -- from subject):
+
+  Debug scaffolding; term actions etc. no longer
+  need keyboard triggers.
+
+--------------------------------------------------------------------------------
+
+## ce9ed19d -- [syscalls] Implement (with shortcuts) sys_{wait4,
+   gettid, exit_group}
+
+Commit: ce9ed19db9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 18:14:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -6 across 3 files. process.c +26 / -1
+  minimal impls of wait4 (== waitpid for now),
+  gettid (== tid), exit_group (== exit).
+
+Context (guess -- from subject):
+
+  Needed by musl startup. Rough-and-ready
+  single-task-per-process semantics.
+
+--------------------------------------------------------------------------------
+
+## b9e41de5 -- [musl migration] Add some debug messages in shell.c
+
+Commit: b9e41de516...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 19:31:54 2018 +0300
+
+> HACK: in build_fatpart, make always a shell to be
+> build with libmusl and copied in the fatpart as
+> '/ms' (for debug purposes).
+
+AI notes:
+
+What changed:
+
+  +21 / -1 across 3 files. syscalls.c +2 / -1,
+  build_fatpart +12 builds a musl-linked shell as
+  /ms, shell.c +7 extra diagnostics.
+
+Context (from body):
+
+  Side-by-side dietlibc vs musl shell lets Vlad
+  compare their startup sequences and find what's
+  missing.
+
+--------------------------------------------------------------------------------
+
+## b417f3c0 -- [tty] Fix an issue with libmusl by implementing ioctl
+   TIOCGWINSZ
+
+Commit: b417f3c041...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 22:14:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +51 / -12 across 6 files. tty.c +29 / -2 adds
+  TIOCGWINSZ support (return struct winsize).
+  term.h +2 exposes rows/cols; term.c +10.
+  syscalls.c +6 / -1. shell_commands.c +4 / -1,
+  shell.c -8.
+
+Context (guess -- from subject):
+
+  musl calls ioctl(TIOCGWINSZ) at startup. Stub
+  was -ENOSYS; now returns actual dimensions so
+  musl proceeds past init.
+
+--------------------------------------------------------------------------------
+
+## 298e2bef -- [shell] Use asm to do the "int 0x80" syscall in
+   cmd_syscall_perf
+
+Commit: 298e2befa9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 7 22:24:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -2 in shell_commands.c. Open-coded int
+  0x80 so the benchmark measures kernel
+  round-trip only, not libc overhead.
+
+Context (guess -- from subject):
+
+  Fair apples-to-apples perf test.
+
+--------------------------------------------------------------------------------
+
+## 3676ffef -- [build][build_toolchain] SWITCH to a LIBMUSL gcc
+   toolchain
+
+Commit: 3676ffeff0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 12:21:35 2018 +0300
+
+> This major-impact change makes the whole project
+> to use a musl-based i686 toolchain instead of a
+> "generic" glibc one + many compiler & linker
+> options necessary to build & link with dietlibc.
+> Libmusl is by far more supported as a lightweight
+> "libc" than dietlibc: major projects like
+> "busybox" can be built with it. Therefore, the
+> #1 reason for switching to this library is being
+> able to compile busybox and other open source
+> projects. The #2 reason is using a pre-built gcc
+> toolchain configured to work with libmusl by
+> default: this makes the build of exOS's userapps
+> simpler but also allows any project potentially
+> to be built with that toolchain. With dietlibc
+> that is by far harder and, given the fact that
+> the library is not supported anymore, does not
+> make much sense to invest any effort in it.
+>
+> However, it worth to mention that dietlibc
+> helped A LOT in the development of exOS, because
+> of its very limited requirements towards the
+> kernel. Supporting libmusl it's possible only
+> today after implementing (partially or
+> completely) many "newer" syscalls, that were
+> necessary even for a program to reach main().
+
+AI notes:
+
+What changed:
+
+  +17 / -106 across 9 files. Net -89. scripts/
+  build_toolchain -53 (dietlibc build logic gone).
+  build_fatpart -12 (the dual-build hack from
+  b9e41de5). musl-gcc wrapper removed. Per-file
+  dietlibc flags deleted from every CMakeLists.
+  usermode_apps/CMakeLists.txt -28.
+
+Context (from body):
+
+  Milestone commit. dietlibc served well in the
+  early kernel days but musl is actively
+  maintained and compatible with real-world
+  software. After this commit, everything builds
+  against musl by default.
+
+--------------------------------------------------------------------------------
+
+## 9bac6474 -- [build_toolchain] Introduce the [non-default]
+   build_busybox command
+
+Commit: 9bac647445...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 15:22:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1179 lines. New other/busybox.config (+1143)
+  -- BusyBox build configuration. build_toolchain
+  +32 adds a build_busybox command.
+  build_fatpart +4 optionally copies the result.
+
+Context (guess -- from subject):
+
+  First Linux binary Tilck aims to run: BusyBox
+  (stated goal in CLAUDE.md). The 1143-line
+  .config is BusyBox's own menuconfig output.
+
+--------------------------------------------------------------------------------
+
+## 7ada06ad -- [syscalls] Move the stub syscalls implementations in
+   the header
+
+Commit: 7ada06adf0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 18:20:49 2018 +0300
+
+> This allows them to be defined just once.
+
+AI notes:
+
+What changed:
+
+  +37 / -53 across syscalls.h (+37 / -25) and
+  syscalls.c (+0 / -28).
+
+Context (from body):
+
+  Stubs become static inlines in the header;
+  dispatched via macro rather than individual .c
+  functions. Fewer symbols, smaller kernel.
+
+--------------------------------------------------------------------------------
+
+## 8f9603d0 -- [syscalls] Add some stub syscall implementations
+
+Commit: 8f9603d0cb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 18:52:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +76 / -4 across syscalls.h (+35 / -1) and
+  syscalls.c (+41 / -3). More "return 0 / -ENOSYS"
+  stubs enabling musl/BusyBox startup.
+
+Context (guess -- from subject):
+
+  Piecemeal expansion of the syscall surface.
+
+--------------------------------------------------------------------------------
+
+## d9f9c51d -- [syscalls] Add some stub syscall implementations [2]
+
+Commit: d9f9c51d8c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 19:56:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +96 / -10 across 3 files. Another round; shell
+  starts calling the new syscalls.
+
+Context (guess -- from subject):
+
+  Iterative: run musl program, see which syscall
+  fails, add a stub, repeat.
+
+--------------------------------------------------------------------------------
+
+## 8ec26ac9 -- [cpu] Make fpu_context_{begin, end} to be reentrant
+
+Commit: 8ec26ac934...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 20:31:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -3 across 3 files. cpu.c +14 / -2: adds a
+  counter so nested fpu_context_begin/end pairs
+  save only on first enter.
+
+Context (guess -- from subject):
+
+  Needed when one FPU-using routine calls
+  another. Same counter pattern as nested
+  interrupts.
+
+--------------------------------------------------------------------------------
+
+## 4806667f -- [shell] Move busybox in /bin/ and add the shell alias
+   bb=/bin/busybox
+
+Commit: 4806667fed...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 20:49:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -27 across build_fatpart (1 line) and
+  shell.c (+36 / -26 -- alias system added).
+
+Context (guess -- from subject):
+
+  FHS-ish layout (/bin/). Shell alias 'bb' makes
+  busybox quick to invoke.
+
+--------------------------------------------------------------------------------
+
+## 33d153be -- Update busybox.config
+
+Commit: 33d153bec5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 21:13:22 2018 +0300
+
+> The update removes several applets that won't be
+> supported anytime soon by the exOS kernel.
+
+AI notes:
+
+What changed:
+
+  +118 / -122 in busybox.config. Net -4 (features
+  disabled).
+
+Context (from body):
+
+  Trim BusyBox to only what Tilck's syscall set
+  can actually support. Smaller binary, fewer
+  confusing failures.
+
+--------------------------------------------------------------------------------
+
+## b6454bfd -- [syscalls] Add some stub syscall implementations [3]
+
+Commit: b6454bfd8b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 8 21:23:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -0 across 2 files. More stubs.
+
+Context (guess -- from subject):
+
+  Continued musl/BusyBox unblocking.
+
+--------------------------------------------------------------------------------
+
+## cce78853 -- [shell] Cosmetic changes
+
+Commit: cce7885318...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 12:58:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -4 across shell.c and shell_commands.c.
+
+Context (guess -- from subject):
+
+  Polish.
+
+--------------------------------------------------------------------------------
+
+## 8179152b -- [term] Print \t as 8 spaces
+
+Commit: 8179152b7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 13:20:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -11 across term.h (+3) and term.c (+34 /
+  -11). Tab expansion to spaces.
+
+Context (guess -- from subject):
+
+  Standard tty behaviour. Required for BusyBox
+  output to render correctly (ls, top, etc.).
+
+--------------------------------------------------------------------------------
+
+## 62c42f7a -- [ringbuf][kb] Make ringbuf_unwrite_elem() to "return"
+   the elem
+
+Commit: 62c42f7ac2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 13:27:45 2018 +0300
+
+> NOTE: use that in kb.c in order to check for the
+> \t character and write 'term_tab_size' times \b
+> instead of just one.
+
+AI notes:
+
+What changed:
+
+  +18 / -6 across ringbuf.h (+1 / -1), kb.c (+15 /
+  -4), ringbuf.c (+2 / -1).
+
+Context (from body):
+
+  Line editing: when user backspaces over a tab,
+  erase the 8 columns the tab occupied, not 1.
+  Requires knowing what was unwritten.
+
+--------------------------------------------------------------------------------
+
+## c7b85241 -- [term] Introduce term_set_col_offset()
+
+Commit: c7b852419d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 15:43:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -5 across term.h (+4 / -1), term.c (+36 /
+  -4), tty.c (+2). New action to jump the cursor
+  to a column.
+
+Context (guess -- from subject):
+
+  Primitive needed for tab alignment and
+  carriage-return handling.
+
+--------------------------------------------------------------------------------
+
+## e7b0ad76 -- [fb_console] Fix another bug related with the
+   under_cursor_buf
+
+Commit: e7b0ad765e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 16:09:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -1 in fb_console.c. Cursor save-buffer
+  corner case (new column span or unusual cursor
+  position).
+
+Context (guess -- from subject):
+
+  One of the recurring cursor-save bugs exposed by
+  the tab handling.
+
+--------------------------------------------------------------------------------
+
+## c6f7e5a5 -- [textmode_video] Make textmode_set_row() to run in a
+   FPU context
+
+Commit: c6f7e5a5e2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 16:53:46 2018 +0300
+
+> BONUS: remove fpu_context_{begin, end} in
+> fb_draw_char_optimized_row() as the context is
+> guaranteed to be FPU-enabled. Also, make
+> fb_flush_lines run assuming a FPU context too.
+
+AI notes:
+
+What changed:
+
+  +30 / -12 across 7 files. term.c +5 wraps
+  set_row in fpu_context. Video backends drop
+  their own FPU bracketing (redundant now).
+
+Context (from body):
+
+  Discipline shift: FPU bracketing happens once at
+  term level, not per call site. Fewer redundant
+  saves/restores.
+
+--------------------------------------------------------------------------------
+
+## 3e0cc517 -- [syscalls] Add some stub syscall implementations [4]
+
+Commit: 3e0cc517ea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 17:38:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -1 across syscalls.h (+55) and syscalls.c
+  (+53 / -1).
+
+Context (guess -- from subject):
+
+  More stubs.
+
+--------------------------------------------------------------------------------
+
+## 96ed6fa6 -- [syscalls] Add some stub syscall implementations [5]
+
+Commit: 96ed6fa6d6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 17:56:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +79 / -1 across syscalls.h (+38) and syscalls.c
+  (+41 / -1).
+
+Context (guess -- from subject):
+
+  Continuing.
+
+--------------------------------------------------------------------------------
+
+## 4195f3ed -- [syscalls] Add stub syscall implementations for ALL
+   the remaining syscalls
+
+Commit: 4195f3edc4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 18:20:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +226 / -4 across 3 files. syscalls.h +113,
+  syscalls.c +112 / -1, misc.c +1 / -3. Every
+  Linux i386 syscall number now has at least a
+  -ENOSYS stub.
+
+Context (guess -- from subject):
+
+  Complete the syscall table. Any binary that
+  makes any i386 syscall now gets a defined
+  return rather than wild behaviour.
+
+--------------------------------------------------------------------------------
+
+## fa281872 -- [elf] Introduce elf_utils.h and move two declarations
+   there
+
+Commit: fa281872fc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 19:07:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -5 across 7 files. New elf_utils.h (+6
+  decls). Two symbol-table-search functions move
+  from debug_utils.h. All consumers update
+  include.
+
+Context (guess -- from subject):
+
+  Better layering: ELF symbol helpers belong with
+  ELF handling, not debug_utils.
+
+--------------------------------------------------------------------------------
+
+## c7bcab78 -- [syscalls] Make sys_prctl() to recognize PR_SET_NAME
+
+Commit: c7bcab787e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 19:44:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -1 across syscalls.h (+3 / -1) and
+  process.c (+15). prctl recognises the option,
+  stores a short name in task_info, returns 0.
+
+Context (guess -- from subject):
+
+  glibc/musl call prctl(PR_SET_NAME, ...). Ignoring
+  it was benign but accepting it makes /proc-like
+  listings useful later.
+
+--------------------------------------------------------------------------------
+
+## 61086766 -- [syscalls] Implement sys_gettimeofday()
+
+Commit: 6108676644...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 20:27:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +111 / -10 across 3 files. datetime.h +18 new
+  types. datetime.c +86 / -11 adds epoch
+  conversion + gettimeofday impl. syscalls.h +5.
+
+Context (guess -- from subject):
+
+  Needed by BusyBox's `date`, `uptime` etc.
+  Reads RTC via existing datetime helpers, adds
+  seconds-since-epoch math.
+
+--------------------------------------------------------------------------------
+
+## 1288166f -- [process][elf_loader] Add support for brk
+
+Commit: 1288166f7e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 22:17:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +43 / -25 across 4 files. elf_loader.h -3 net.
+  elf.c +22 / -13 tracks highest loadable vaddr
+  to seed brk. process.h +1, process.c +7 / -4.
+
+Context (guess -- from subject):
+
+  brk = "program break" = top of heap. Required
+  for userspace malloc. Preparation for 47f04b84.
+
+--------------------------------------------------------------------------------
+
+## 47f04b84 -- [brk] First steps in the implementation
+
+Commit: 47f04b8444...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jun 9 23:19:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +82 / -1 across 3 files. process.c +77 adds
+  sys_brk(new_brk): validates the request,
+  allocates pages between current and new_brk,
+  updates pi->brk.
+
+Context (guess -- from subject):
+
+  First version. Real-world brk has corner cases
+  (shrinking, mmap interaction) that come later.
+
+--------------------------------------------------------------------------------
+
+## c0838dce -- [build_toolchain] Restore the custom libmusl build in
+   the toolchain
+
+Commit: c0838dce0f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 10 00:00:07 2018 +0300
+
+> It is useful for debugging libmusl with custom
+> (non-busybox) apps.
+
+AI notes:
+
+What changed:
+
+  +124 / -14 across build_toolchain (+115 / -14)
+  and new scripts/musl-gcc (+9). Reinstates the
+  from-source musl build (deleted in 3676ffeff0)
+  alongside the default pre-built toolchain.
+
+Context (from body):
+
+  Two modes now: default (fast, pre-built) and
+  from-source (for debugging musl itself).
+
+--------------------------------------------------------------------------------
+
+## 92deb2fc -- [build][musl] Make musl-gcc to be generated by CMake
+
+Commit: 92deb2fc56...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 10 10:26:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -9 across 3 files. New other/musl-gcc
+  template (+7). scripts/gen_config.cmake +7
+  substitutes paths. scripts/musl-gcc deleted.
+
+Context (guess -- from subject):
+
+  Generate-from-template pattern extended to the
+  musl wrapper.
+
+--------------------------------------------------------------------------------
+
+## 6e40d919 -- [build] Move gen_config.cmake in other/
+
+Commit: 6e40d919e2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 10 10:27:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure move.
+
+Context (guess -- from subject):
+
+  More appropriate directory (other/ is for
+  non-script dev utilities).
+
+--------------------------------------------------------------------------------
+
+## 594705b0 -- [brk] Continue the work on sys_brk()
+
+Commit: 594705b067...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 10 20:42:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +75 / -14 across process.c (+40 / -14) and
+  shell_commands.c (+33 / -2). More robust brk
+  handling; a brk-test shell command exercises
+  edge cases.
+
+Context (guess -- from subject):
+
+  Hardening from 47f04b84: page alignment,
+  user-space boundary checks.
+
+--------------------------------------------------------------------------------
+
+## 95870fe1 -- [brk] sys_brk works
+
+Commit: 95870fe16c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 10 21:34:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -43 across 4 files. process.c -9 net
+  simplification. paging.c +3 / -3, shell_commands
+  +4 / -2, run_all_tests +1.
+
+Context (guess -- from subject):
+
+  Milestone: brk is usable by real userspace.
+  Added to CI. Simplification suggests over-
+  engineered bits from earlier drafts got removed.
+
+--------------------------------------------------------------------------------
+
+## 3c263f8b -- [fs_syscalls] Implement sys_readv()
+
+Commit: 3c263f8b9a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 11:49:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -5 across syscalls.h (+1 / -1) and
+  fs_syscalls.c (+46 / -4). readv mirror of
+  writev: read into multiple buffers from iovec.
+
+Context (guess -- from subject):
+
+  BusyBox / musl use readv for scattered
+  buffering. Completes the iov pair.
+
+--------------------------------------------------------------------------------
+
+## 835c9082 -- [kmutex] Add support for recursive mutexes
+
+Commit: 835c908222...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 12:45:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +116 / -30 across 4 files. kmutex.c +61 net:
+  nested-acquire counter + owner-tracking. sync.h
+  +4 net. Self-tests exercise both flavours.
+
+Context (guess -- from subject):
+
+  FS code paths sometimes re-enter mutexes (e.g.,
+  vfs calling back into itself). Recursive
+  mutexes avoid deadlock without restructuring
+  callers.
+
+--------------------------------------------------------------------------------
+
+## 45b9a691 -- [exvfs][devfs][fat32] Introduce fs->exlock() and
+   fs->exunlock()
+
+Commit: 45b9a691dc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 13:06:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +60 / -2 across 4 files. exvfs.h +9 adds per-FS
+  lock hooks. devfs/fat32/exvfs each get +15-20.
+
+Context (guess -- from subject):
+
+  Instead of the global preemption-disable for FS
+  ops, each FS can define its own (possibly finer)
+  lock. Scaffolding.
+
+--------------------------------------------------------------------------------
+
+## fe71a8c0 -- [fs_syscalls] Use exvfs_ex[un]lock
+
+Commit: fe71a8c028...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 14:36:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +123 / -81 across exvfs.c (+12 / -6) and
+  fs_syscalls.c (+111 / -75). Every fs syscall
+  now brackets its work with exlock/exunlock
+  instead of disable/enable preemption.
+
+Context (guess -- from subject):
+
+  Pays off 45b9a691: no more blanket
+  non-preemptable FS.
+
+--------------------------------------------------------------------------------
+
+## ba13dd90 -- [fat32] Use an actual kmutex in exlock/exunlock
+
+Commit: ba13dd9062...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 15:04:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -10 across 6 files. fat32.c +17 / -6 uses
+  a real kmutex (recursive). fat32.h +5 adds the
+  lock field. devfs.c +14 / -2 gets its own lock.
+  elf.c / kmutex.c / main.c small touches.
+
+Context (guess -- from subject):
+
+  With recursive kmutex available (835c9082),
+  each FS can protect itself with proper mutex
+  semantics rather than ad-hoc preemption
+  toggling.
+
+--------------------------------------------------------------------------------
+
+## 9f0d0fe3 -- [devfs] Use an actual kmutex for exlock/exunlock
+
+Commit: 9f0d0fe380...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 15:12:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -5 across tty.c (-1 net) and devfs.c (+8 /
+  -2). Sister of ba13dd90 for devfs.
+
+Context (guess -- from subject):
+
+  Same treatment; completes the per-FS-mutex
+  migration.
+
+--------------------------------------------------------------------------------
+
+## 86d0a2f8 -- [gtests] Fix the fat32 test failure by mocking
+   kmalloc_{lock, unlock}
+
+Commit: 86d0a2f845...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 17:51:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -2 across 3 files. fat32.c -2 removes two
+  stray calls. unittests/generic_mocks.c +3 adds
+  stubs.
+
+Context (guess -- from subject):
+
+  Host test build failed after the FS-mutex
+  migration because mocks didn't know about
+  kmalloc lock helpers.
+
+--------------------------------------------------------------------------------
+
+## e79f3110 -- [process][mmap] Introduce a skeleton for
+   sys_mmap_pgoff()
+
+Commit: e79f311055...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 19:22:13 2018 +0300
+
+> NOTE: move sys_brk, sys_mmap_pgoff and
+> sys_munmap in a dedicated file.
+
+AI notes:
+
+What changed:
+
+  +141 / -89 across 4 files. New kernel/process_mm.c
+  (+128) holds mm-related syscalls. process.c
+  -86 (brk moves out).
+
+Context (from body):
+
+  sys_mmap stub + organisational split: mm
+  syscalls in their own TU.
+
+--------------------------------------------------------------------------------
+
+## 9903e09b -- [kmalloc] Make valloc_and_map and vfree_and_unmap
+   per-heap configurable
+
+Commit: 9903e09b2f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 19:53:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -21 across 4 files. kmalloc.h +15 adds
+  per-heap function pointers. kmalloc.c +19 / -13
+  plumbs. mm.c/test small.
+
+Context (guess -- from subject):
+
+  Each heap (kernel, user, isolated) can have its
+  own mapping function. Prereq for a per-process
+  user heap backing mmap.
+
+--------------------------------------------------------------------------------
+
+## 6c37c0da -- [process_mm] Introduce user_valloc_and_map() and
+   user_vfree_and_unmap()
+
+Commit: 6c37c0da4e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 20:09:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -6 in process_mm.c. User-space variants
+  of the allocate+map helpers.
+
+Context (guess -- from subject):
+
+  Used by mmap to get pages mapped into the user
+  pdir.
+
+--------------------------------------------------------------------------------
+
+## 6eb82f42 -- [kmalloc] Expose internal_{kmalloc, kfree2}
+
+Commit: 6eb82f422d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 20:13:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -2 across kmalloc.h (+4 decls) and
+  kmalloc.c (+2 / -2).
+
+Context (guess -- from subject):
+
+  process_mm needs to call the heap's allocator
+  directly (to allocate into a per-process heap).
+
+--------------------------------------------------------------------------------
+
+## 0c2569b9 -- [process_mm] Working on sys_mmap_pgoff() using
+   kmalloc_create_heap()
+
+Commit: 0c2569b934...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 20:24:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +53 / -17 across 4 files. kmalloc.c +26 / -16:
+  kmalloc_create_heap() makes a fresh heap.
+  process_mm.c +24 wires mmap to create + alloc
+  from a per-process heap.
+
+Context (guess -- from subject):
+
+  Per-process user-space kmalloc heap; mmap
+  allocates from it. Simpler than a real mmap
+  manager but enough to make musl-based programs
+  that call malloc work.
+
+--------------------------------------------------------------------------------
+
+## 13aa1b75 -- [process_mm] sys_mmap_pgoff() works
+
+Commit: 13aa1b75b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 11 22:15:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -14 across 5 files. kmalloc.c +31 / -6
+  refines create_heap. process_mm.c +12 / -7.
+  process.c/h +8 / -1.
+
+Context (guess -- from subject):
+
+  mmap allocates anonymous pages from the
+  per-process heap and returns the base. Used by
+  musl's malloc.
+
+--------------------------------------------------------------------------------
+
+## c69bc520 -- [process_mm] sys_mmap_pgoff: handle some corner cases
+
+Commit: c69bc5201a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 11:47:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -7 in process_mm.c. Validation for bad
+  flags / zero-size / overflow.
+
+Context (guess -- from subject):
+
+  Hardening.
+
+--------------------------------------------------------------------------------
+
+## 11c305d9 -- [build] Move several mm-related files in a dedicated
+   directory
+
+Commit: 11c305d980...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 12:51:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -4 in kernel/CMakeLists.txt plus 5 file
+  renames. kernel/mm/{kmalloc,
+  kmalloc_debug.h, pageframe_allocator, pg_alloc
+  (was mm.c), process_mm}.
+
+Context (guess -- from subject):
+
+  kernel/mm/ is now the canonical mm subsystem
+  dir (matches CLAUDE.md layout).
+
+--------------------------------------------------------------------------------
+
+## a0531d49 -- [kmalloc] Split kmalloc.c in two files, in order to
+   make the file shorter
+
+Commit: a0531d4963...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 13:00:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +328 / -309 across 2 files. kmalloc.c -309 net,
+  new kmalloc_heaps.c.h (+324) holds per-heap
+  management. .c.h extension = a .c file included
+  by kmalloc.c (not compiled standalone).
+
+Context (guess -- from subject):
+
+  kmalloc.c was getting unwieldy. Split by concern
+  (per-heap management vs per-node allocator).
+
+--------------------------------------------------------------------------------
+
+## 1c1d5022 -- [kmalloc] Use 512 KB in the low mem for the metadata
+   of the first heap
+
+Commit: 1c1d502211...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 13:22:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -10 across kmalloc_heaps.c.h (+8 / -8)
+  and process_mm.c (+2 / -2).
+
+Context (guess -- from subject):
+
+  Metadata placement: allocator bookkeeping goes
+  to low physical memory, leaving high memory for
+  user allocations.
+
+--------------------------------------------------------------------------------
+
+## a6f2b73f -- [utils] Make round_up_mb() generic (=> round_up_at())
+
+Commit: a6f2b73fed...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 13:25:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -3 across utils.h and kmalloc_heaps.c.h.
+  round_up_mb hardcoded MB; round_up_at takes
+  the boundary as an arg.
+
+Context (guess -- from subject):
+
+  Dedup: same rounding needed at page and block
+  granularities.
+
+--------------------------------------------------------------------------------
+
+## 94bc59c1 -- [kmalloc] Support heaps smaller than 1 MB
+
+Commit: 94bc59c18c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 13:49:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -30 across kmalloc.c (+9 / -6) and
+  kmalloc_heaps.c.h (+32 / -24). Drops the
+  "heap must be at least 1 MB" assumption.
+
+Context (guess -- from subject):
+
+  Needed for tiny per-process heaps (some
+  processes use only a few pages of mmap).
+
+--------------------------------------------------------------------------------
+
+## 579e7b54 -- [usermode_apps] Compile always with CFLAGS="-O0 -g"
+
+Commit: 579e7b54e0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 14:27:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -1 in usermode_apps/CMakeLists.txt.
+
+Context (guess -- from subject):
+
+  User apps are small test harnesses; -O0 -g
+  makes debugging them easier. No release-speed
+  concerns.
+
+--------------------------------------------------------------------------------
+
+## 79ac9b4a -- [process][sys_fork] Handle several OOM cases
+
+Commit: 79ac9b4a0f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 16:09:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +50 / -13 across paging.c (+2 / -1) and
+  process.c (+48 / -12). sys_fork path now
+  returns -ENOMEM on various allocation failures
+  with proper unwind.
+
+Context (guess -- from subject):
+
+  Matching the execve hardening done earlier for
+  fork. Fork-bomb-resistant now.
+
+--------------------------------------------------------------------------------
+
+## df0ac7df -- [kmalloc] Add support for extra low-mem systems
+
+Commit: df0ac7df96...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 17:19:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +66 / -22 across kmalloc.h (+9 / -2) and
+  kmalloc_heaps.c.h (+57 / -20). Special-case
+  handling when total RAM is very small (< 16 MB).
+
+Context (guess -- from subject):
+
+  Making Tilck boot on tiny VMs / older machines.
+
+--------------------------------------------------------------------------------
+
+## 59fe3020 -- [kmalloc] Introduce debug_kmalloc_dump_mem_usage()
+   triggered by F2
+
+Commit: 59fe302074...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 18:00:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -7 across 5 files. kmalloc_heaps.c.h +31
+  / -3 prints per-heap used/free stats. F2
+  re-hooked as the trigger key. kb.c +1, stage3.c
+  +2, kmalloc.h +1, kmalloc.c -3.
+
+Context (guess -- from subject):
+
+  Memory-usage snapshot on demand -- useful when
+  chasing leaks or tuning heap sizes.
+
+--------------------------------------------------------------------------------
+
+## 6b8d3587 -- [sys_brk] Making the free pages case simpler to read
+
+Commit: 6b8d358760...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 18:54:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -6 in process_mm.c.
+
+Context (guess -- from subject):
+
+  Cosmetic refactor of the brk-shrink code path.
+
+--------------------------------------------------------------------------------
+
+## 1843c26c -- [kmalloc] Implement a simple leak detector
+
+Commit: 1843c26caa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 20:21:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +106 / 0 across kmalloc.h (+2) and
+  kmalloc_heaps.c.h (+104). Tracks caller addr
+  per allocation; on dump reports orphans.
+
+Context (guess -- from subject):
+
+  Leak detection for kernel-side allocations.
+  Invaluable as features land fast.
+
+--------------------------------------------------------------------------------
+
+## 1f3eed7b -- [kmalloc] Make the leak detector to support metadata
+   comparison
+
+Commit: 1f3eed7b58...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 22:25:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +159 / -100 across 3 files. New
+  kmalloc_leak_detector.c.h (+149). kmalloc_heaps.c.h
+  -95 net (leak code moves out). kmalloc.h 1-line.
+
+Context (guess -- from subject):
+
+  Detector now keeps a snapshot; later dumps
+  report only deltas, not cumulative state. Less
+  noisy.
+
+--------------------------------------------------------------------------------
+
+## 0a06ddb6 -- [kmalloc] Fix a bug in the memory leak detector
+
+Commit: 0a06ddb6ad...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 22:58:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -1 in kmalloc_leak_detector.c.h.
+
+Context (guess -- from subject):
+
+  Usual next-iteration fix.
+
+--------------------------------------------------------------------------------
+
+## af52c278 -- [printk][term] Handle better a corner case [no term
+   and printk_rbuf full]
+
+Commit: af52c278e8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 13 20:06:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -9 across term.h (+2 / -2), term.c (+5 /
+  -3), printk.c (+16 / -4). Overflow behaviour
+  for the early-boot ringbuf.
+
+Context (guess -- from subject):
+
+  When term isn't up and printk_rbuf fills,
+  previously dropped messages silently. Now at
+  least tracks loss count / preserves most-recent.
+
+--------------------------------------------------------------------------------
+
+## f09531c3 -- [kmalloc] Add functions for enabling at runtime
+   kmalloc debug logs
+
+Commit: f09531c3cc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 13 21:02:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -5 across kmalloc.h (+9 / -4) and
+  kmalloc_debug.h (+20 / -1). Toggle debug
+  logging on/off at runtime.
+
+Context (guess -- from subject):
+
+  Excessive logging drowns output; toggle lets
+  dev enable during the phase of interest.
+
+--------------------------------------------------------------------------------
+
+## 34d8f013 -- [system_tests] Introduce the EXOS_VM_MEM env variable
+
+Commit: 34d8f013a0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 13 21:44:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line in system_tests/runtest.
+
+Context (guess -- from subject):
+
+  Test runner can be asked to give the VM a
+  specific amount of RAM (e.g. to exercise the
+  low-mem code path).
+
+--------------------------------------------------------------------------------
+
+## 6da21533 -- [elf_loader] Add an missing exvfs_close() in an
+   error-path
+
+Commit: 6da2153311...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 11:18:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -1 in elf.c.
+
+Context (guess -- from subject):
+
+  FD leak on ELF-load failure; missing close on
+  an error branch.
+
+--------------------------------------------------------------------------------
+
+## a947e2e0 -- [kmalloc] Fix a NASTY bug in set_free_uplevels()
+
+Commit: a947e2e0c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 12 22:28:14 2018 +0300
+
+> The function was indeed doing correctly its job
+> in coalescing as much as possible nodes above
+> the just-freed one BUT, after doing that it did
+> NOT mark as NOT FULL the nodes above the last
+> coalesced one. Even if they cannot be coalesced,
+> because they are split and half of them is not
+> empty, still they are clearly NOT FULL. This is
+> a particularly corner case that was not handled
+> before.
+
+AI notes:
+
+What changed:
+
+  +17 / -9 across kmalloc.c (+12), kmalloc_debug.h
+  (+8 / -4), unit test (-3 net).
+
+Context (from body):
+
+  Buddy allocator bug: FULL flag stuck on after
+  partial free. Allocations for that size would
+  skip the now-available slot. A "silent slow
+  leak" bug.
+
+--------------------------------------------------------------------------------
+
+## b631d783 -- [kmalloc] Make the leak detector to be compiled-out
+   by default
+
+Commit: b631d783ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 13:57:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -13 across 3 kmalloc files.
+
+Context (guess -- from subject):
+
+  Leak tracking has per-alloc cost; off in
+  release, toggleable in debug.
+
+--------------------------------------------------------------------------------
+
+## a6fe6850 -- [kmalloc] Make memory poisoning, when enabled, to use
+   memset32()
+
+Commit: a6fe685011...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 14:52:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -10 across config.h (-6) and
+  kmalloc_heaps.c.h (+3 / -4).
+
+Context (guess -- from subject):
+
+  memset32 writes the poison pattern faster than
+  a byte loop; cleanup of config options made
+  redundant.
+
+--------------------------------------------------------------------------------
+
+## e2675163 -- [cmake_run] Introduce the env var $CMAKE_ARGS and use
+   it for USE_GCOV
+
+Commit: e267516399...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 15:26:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -11 across .travis.yml (1 line),
+  CMakeLists.txt (1 line), scripts/cmake_run (-9
+  net).
+
+Context (guess -- from subject):
+
+  Generic env-var passthrough replaces a special
+  case for coverage. Cleaner.
+
+--------------------------------------------------------------------------------
+
+## a79862f7 -- [build_toolchain] Remove build_nasm from the toolchain
+
+Commit: a79862f7ff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 15:29:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -29 lines in build_toolchain.
+
+Context (guess -- from subject):
+
+  nasm was needed by the old early bootloader;
+  now GNU as suffices. Dependency removed.
+
+--------------------------------------------------------------------------------
+
+## 90837b0f -- [config][cmake] Make two config options settable as
+   CMake cache opts
+
+Commit: 90837b0f62...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 15:49:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -12 across 4 files. Two #define-based
+  options move into CMake -D options.
+
+Context (guess -- from subject):
+
+  No-edit-source-to-rebuild for those knobs.
+
+--------------------------------------------------------------------------------
+
+## 90e47cbf -- [switch_to_task] Clear timer IRQ mask if
+   !KERNEL_TRACK_NESTED_INTERRUPTS
+
+Commit: 90e47cbf32...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 16:34:17 2018 +0300
+
+> In commit 9a37d46 that statement has been removed
+> from the function, but at that time
+> KERNEL_TRACK_NESTED_INTERRUPTS was enabled by
+> default and in that case, it was correct to
+> remove that because the timer IRQ was never
+> masked (allowing nested IRQ). After that,
+> KERNEL_TRACK_NESTED_INTERRUPTS has been made a
+> configurable define and that introduced the bug
+> currently being fixed, since both the scenarios
+> are supported.
+
+AI notes:
+
+What changed:
+
+  +5 lines in process32.c.
+
+Context (from body):
+
+  Latent bug from making track-nested optional:
+  when off, the timer IRQ stayed masked after a
+  task switch. Explicit re-enable fixes it.
+
+--------------------------------------------------------------------------------
+
+## 938f497c -- [interrupts] Remove: bool in_irq(void)
+
+Commit: 938f497cf6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 16:46:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -22 across interrupts.h (+6 / -3),
+  interrupts.c (-14), timer_handler.c (+2 / -4).
+
+Context (guess -- from subject):
+
+  in_irq() only worked with
+  KERNEL_TRACK_NESTED_INTERRUPTS. Dropping it
+  removes a stealth dependency.
+
+--------------------------------------------------------------------------------
+
+## 232eabd5 -- [scripts] Don't pass -m <RAM> to qemu by default
+
+Commit: 232eabd5c1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 16:48:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  2-line changes in CMakeLists / runtest.
+
+Context (guess -- from subject):
+
+  Let qemu pick its default (128 MB); tests can
+  override via EXOS_VM_MEM.
+
+--------------------------------------------------------------------------------
+
+## 30d53a76 -- [cmake][system_tests] Make the test to be generated
+   by CMake
+
+Commit: 30d53a76a1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 17:15:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -10 across 4 files. Test scripts move
+  system_tests/ -> other/system_tests/ and
+  become CMake-generated.
+
+Context (guess -- from subject):
+
+  Generated scripts embed build-dir paths; tests
+  no longer need env var gymnastics.
+
+--------------------------------------------------------------------------------
+
+## 76aabac7 -- [self_tests] Cosmetic improvements
+
+Commit: 76aabac771...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 17:28:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -3 in se_common.c.
+
+Context (guess -- from subject):
+
+  Polish.
+
+--------------------------------------------------------------------------------
+
+## 8420dd34 -- [self_tests] Make simple_test_kthread() to check ESP
+   only in DEBUG builds
+
+Commit: 8420dd3467...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 18:01:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -6 in se_common.c.
+
+Context (guess -- from subject):
+
+  ESP check from 6af3ff98 gated by DEBUG so
+  release test runs are faster.
+
+--------------------------------------------------------------------------------
+
+## cfe55cb0 -- [kmalloc][process_mm] Re-arrange some defs and add
+   comments
+
+Commit: cfe55cb031...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 14 19:17:18 2018 +0300
+
+> In process_mm.c: use KMALLOC_MAX_ALIGN as alloc
+> block size, since heaps must be aligned at
+> alloc_block_size. Therefore, we cannot have
+> alloc_block_size > KMALLOC_MAX_ALIGN.
+
+AI notes:
+
+What changed:
+
+  +39 / -7 across 3 files. Documentation +
+  alignment-invariant enforcement.
+
+Context (from body):
+
+  Silent bug potential: user heaps with larger
+  alloc_block_size would misalign.
+
+--------------------------------------------------------------------------------
+
+## dfb8b854 -- [kmalloc] Make the first heap to be BSS-based + other
+   heaps re-org
+
+Commit: dfb8b85439...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 11:18:16 2018 +0300
+
+> Now the low-mem heap is optional and it is
+> added at the end of init_kmalloc if the
+> architecture is x86.
+
+AI notes:
+
+What changed:
+
+  +85 / -92 across 4 files. Net -7.
+  kmalloc_heaps.c.h +58 / -80. First heap's
+  metadata now lives in BSS (statically reserved)
+  so kmalloc works before pageframe allocator
+  comes up.
+
+Context (from body):
+
+  Big usability win: kmalloc needed before paging
+  was a chicken-and-egg problem. BSS first heap
+  breaks it.
+
+--------------------------------------------------------------------------------
+
+## f5dfe02d -- [sort] Introduce an insertion sort implementation
+
+Commit: f5dfe02d45...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 12:47:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +111 / -1. New include/exos/sort.h (+9), kernel/
+  sort.c (+47), unittests/sort_test.cpp (+54).
+
+Context (guess -- from subject):
+
+  Generic sort. Insertion sort over qsort --
+  stable, good on small/nearly-sorted data, no
+  recursion (stack-safe).
+
+--------------------------------------------------------------------------------
+
+## b96763d9 -- [kmalloc] Use insertion_sort_generic() to sort the
+   heaps
+
+Commit: b96763d908...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 13:32:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -1 across kmalloc.c (+1) and
+  kmalloc_heaps.c.h (+47).
+
+Context (guess -- from subject):
+
+  First consumer of sort.h: heaps must be sorted
+  by address / size for allocation search.
+
+--------------------------------------------------------------------------------
+
+## 8f7b4cb3 -- [gtests] Fix a bug in sort_test.cpp [use 'int', which
+   is not ptr-sized]
+
+Commit: 8f7b4cb3b3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 14:39:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -5 in sort_test.cpp.
+
+Context (guess -- from subject):
+
+  Test assumed int == uintptr_t; fails on
+  platforms where they differ.
+
+--------------------------------------------------------------------------------
+
+## fd4a4421 -- [kmalloc][build] Make several kmalloc options to be
+   managed by CMake
+
+Commit: fd4a4421fa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 16:22:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +49 / -19 across 3 files. More #define ->
+  CMake option migrations for the kmalloc
+  subsystem.
+
+Context (guess -- from subject):
+
+  Continued CMake-ification.
+
+--------------------------------------------------------------------------------
+
+## b65b8070 -- [term][build] Introduce the TERM_PERF_METRICS CMake
+   config option
+
+Commit: b65b8070a1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 15 16:41:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -15 across 3 files.
+
+Context (guess -- from subject):
+
+  Scroll-cycle counters from 7c07a365 gated.
+  Cost-free in release when disabled.
+
+--------------------------------------------------------------------------------
+
+## 38e19932 -- Merge branch 'master' of github.com/vvaltchev/
+   experimentOs [6 commits: build_toolchain modularisation]
+
+Commit: 38e199321e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 10:29:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Merge commit. Aggregate diff: +585 / -509
+  across 9 files, net +76. Files touched:
+  scripts/build_toolchain (-467), scripts/cmake_run
+  (-30), scripts/script_utils (+71 new),
+  scripts/tc/install_pkgs (+257 new),
+  scripts/tc/cmake_download (+78 new),
+  scripts/tc/gcc_tc (+91 new), plus three
+  qemu launch scripts gaining a few lines each.
+
+Context (from merge shape -- generic "Merge
+branch 'master' of ..." subject):
+
+  This is a GitHub-flow pull: locally-developed
+  commits merged with remotely-pushed master.
+  The 6 branch commits are all build-toolchain
+  refactor work done Sat Jun 16 2018.
+
+  The work is a modularisation of the monolithic
+  scripts/build_toolchain into a scripts/tc/
+  subdir with dedicated files per concern:
+
+  - 431fa738 "Minor improvements" -- 3 qemu
+    scripts gain +7-8 lines each; build_toolchain
+    +19 net misc tweaks.
+
+  - 60621ec1 "Refactoring" -- the BIG one.
+    scripts/build_toolchain shrinks by 295 net
+    lines. New scripts/tc/install_pkgs (+253)
+    holds the distro-specific apt/yum/pacman
+    logic previously inline. scripts/script_utils
+    (+26) holds shared bash helpers.
+    scripts/cmake_run (-21 net) also trimmed.
+
+  - 2489fc14 "Extract gcc_tc and cmake_downloads"
+    -- next modularisation step. Two more files
+    peel out: scripts/tc/cmake_download (+76)
+    handles the CMake tarball fetch, scripts/tc/
+    gcc_tc (+95) handles the GCC toolchain
+    install. build_toolchain loses another 169
+    net lines.
+
+  - dac659b6 "Introduce show_work_on_component_
+    msg" -- adds a consistent status-line helper
+    to script_utils; each extracted sub-script
+    uses it, saving -7 net lines overall.
+
+  - 58cd10e5 "Fix a bug in cmake_download" --
+    +25 / -12. Bug in the just-extracted
+    cmake_download helper (likely a path or
+    retry issue).
+
+  - 137a4dc6 "Improve cmake_run (refactoring)" --
+    cmake_run -7 net, script_utils +26 (shared
+    CMake invocation helpers).
+
+  Net outcome: the old ~500-line
+  build_toolchain shell script becomes a small
+  dispatcher that sources helpers from
+  scripts/tc/ and scripts/script_utils.
+  scripts/tc/ is the germ of what later becomes
+  scripts/pkgmgr/ (mentioned in CLAUDE.md as the
+  Ruby pkgmgr's predecessor on master).
+
+--------------------------------------------------------------------------------
+
+## 6f9de5e8 -- [term] Fix the tab support
+
+Commit: 6f9de5e8c9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 10:25:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +59 / -24 across kb.c (-4 net) and term.c (+51
+  / -13). Refined tab expansion: handles tabs
+  crossing column boundaries, tabs in line-edit
+  buffer.
+
+Context (guess -- from subject):
+
+  First tab impl (8179152b) had edge cases at
+  boundaries. This lands proper handling.
+
+--------------------------------------------------------------------------------
+
+## 278b6a58 -- [syscalls] Implement sys_clock_gettime() supporting
+   only CLOCK_REALTIME
+
+Commit: 278b6a58db...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 16:27:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +72 / -7 across datetime.h (+7), syscalls.h (+3
+  / -1), datetime.c (+62 / -6). clock_gettime
+  with CLOCK_REALTIME only (uses gettimeofday
+  internally).
+
+Context (guess -- from subject):
+
+  Needed by modern musl; other clock IDs (MONO,
+  PROCESS_CPUTIME) return -EINVAL for now.
+
+--------------------------------------------------------------------------------
+
+## 36e5d1fd -- [build][kernel] Make the non-stripped kernel to be
+   placed in build/
+
+Commit: 36e5d1fdff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 22:30:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -2 in kernel/arch/i386/CMakeLists.txt.
+
+Context (guess -- from subject):
+
+  CLAUDE.md mentions "tilck_unstripped" as an
+  artifact. This commit sets that up.
+
+--------------------------------------------------------------------------------
+
+## 8d79fb4d -- [syscalls] Introduce the struct stat64 and a skeleton
+   for sys_stat64()
+
+Commit: 8d79fb4d99...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 19:50:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +85 / -29 across 6 files. New
+  include/exos/sys_types.h (+74) with struct
+  stat64 + related. datetime.h -20 as common
+  types move out. fs_syscalls.c +6 wires stub.
+  main.c -6.
+
+Context (guess -- from subject):
+
+  stat64 is one of the gnarlier POSIX structs
+  (~100 bytes, multiple layout dialects).
+  Skeleton now; real impl follows.
+
+--------------------------------------------------------------------------------
+
+## 20815d95 -- [exos] Don't use -nostdinc anymore
+
+Commit: 20815d9567...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 19 13:42:01 2018 +0300
+
+> After implementing "many" syscalls, it turned
+> out that it gets harder and harder to keep the
+> project completely isolated from the system
+> headers. In particular, the following problem
+> turned out to be critical: the noarch part of
+> the kernel needs to build for x86_64 (for the
+> unit tests) and, at the same time, it needs to
+> put data structures like "struct stat" in
+> common headers. Those common exos headers get
+> included indirectly by the unit tests and
+> clearly the exos definitions conflict with the
+> system ones, visible by the unit tests. In
+> particular, the definitions, even if isolated
+> (unit tests to never include exos headers)
+> they would be based on the assumptions that
+> the system is 32-bit (because of the length of
+> some fields). That may cause nasty and
+> hard-to-debug issues. Therefore, at this point
+> using linux's system headers seems more
+> convenient because:
+>
+>     - Saves exOS from copying (carefully!) a
+>       lot of stuff from the system headers
+>       (less code, less errors).
+>
+>     - Makes automatically exOS to use the
+>       right data structures, when the arch
+>       changes.
+>
+> Clearly, there are still issues with this
+> approach as well. For example, linux supports
+> the same data structure in different sizes,
+> depending on the syscall (sys_stat64 vs
+> sys_oldstat). In that case, in order to
+> implement sys_oldstat(), exOS will still need
+> to have a dedicated "struct oldstat" which
+> differs from what usermode apps compiled with
+> the exOS toolchain (modern gcc + libmusl)
+> see as "struct stat". But that still seems
+> acceptable, considering that, for a pretty
+> long time exOS will run only programs
+> compiled with its toolchain. And, even when
+> exOS will have to support "struct oldstat",
+> it still would mean to have just 1 copied
+> struct instead of 2 (the modern one is given
+> by the system headers).
+
+AI notes:
+
+What changed:
+
+  +21 / -127 across 10 files. Net -106.
+  -nostdinc dropped from all CMakeLists.
+  system_headers/stdint.h -7 (no longer shim).
+  sys_types.h -69 (defs replaced by system
+  headers). basic_defs.h -32 net. Multiple .c
+  files +/- adjust types.
+
+Context (from body):
+
+  Philosophical shift after Tilck matures past
+  kernel-only. Use Linux's uapi headers as
+  type source of truth; copy only the few
+  structs that actually differ. Excellent
+  commit message — classic Vlad style, written
+  as a design decision log.
+
+--------------------------------------------------------------------------------
+
+## c50ffce1 -- [datetime] Use system's defines
+
+Commit: c50ffce15e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 22:37:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -27 across sys_types.h (+1) and
+  datetime.c (-27).
+
+Context (guess -- from subject):
+
+  Timeval / timespec come from system headers.
+  Dedup.
+
+--------------------------------------------------------------------------------
+
+## f04abb97 -- [fs_syscalls] Use system's iovec definition
+
+Commit: f04abb9705...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 22:44:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -15 across 3 files.
+
+Context (guess -- from subject):
+
+  Closes the iovec redefinition saga from
+  a57a21a7. System iovec is now used.
+
+--------------------------------------------------------------------------------
+
+## 139be6dc -- [syscalls] Use system headers instead of custom defines
+   in tty.c
+
+Commit: 139be6dc67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 18 22:54:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -37 across 4 files. tty.c -22 net drops
+  custom winsize/termios shims. sys_types.h
+  -1 net (types already there).
+
+Context (guess -- from subject):
+
+  Continued dedup on the same theme.
+
+--------------------------------------------------------------------------------
+
+## d7014ede -- [basic_defs] Refactoring, using system headers and
+   extracting panic stuff
+
+Commit: d7014ede11...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 19 13:10:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +125 / -145 across basic_defs.h (-94 net) and
+  new panic.h (+56). basic_defs.h sheds panic
+  definitions (now in their own header) and
+  type shims (now from system headers).
+
+Context (guess -- from subject):
+
+  basic_defs.h was becoming a catch-all; split
+  by concern.
+
+--------------------------------------------------------------------------------
+
+## 9d60e123 -- [exos] Remove system_headers/elf.h and use the
+   system's one instead
+
+Commit: 9d60e12345...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 19 13:52:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -2143 lines. system_headers/elf.h entirely
+  deleted; every ELF consumer now picks up
+  <elf.h> from musl's includes.
+
+Context (guess -- from subject):
+
+  -2143 in one commit: the -nostdinc removal
+  was a massive dedup. ELF header alone was 2K
+  lines of hand-copied material.
+
+--------------------------------------------------------------------------------
+
+## 339097da -- [exvfs] Introduce compute_abs_path() and use it in
+   sys_open()
+
+Commit: 339097da52...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 19 20:28:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +175 / -4 across 5 files. exvfs.c +101
+  implements path canonicalisation (resolve ., ..,
+  //, relative-to-cwd). Test file +59. fs_syscalls.c
+  +11 / -3 uses it in sys_open.
+
+Context (guess -- from subject):
+
+  First step toward proper VFS path handling. musl
+  programs often pass relative paths.
+
+--------------------------------------------------------------------------------
+
+## 63f797e5 -- [process] Use compute_abs_path() in sys_chdir()
+
+Commit: 63f797e58d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 20 13:21:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -3 in process.c. sys_chdir canonicalises
+  its path.
+
+Context (guess -- from subject):
+
+  `cd ../foo` now resolves correctly.
+
+--------------------------------------------------------------------------------
+
+## a0337f4e -- [fs] Improving sys_chdir() and sys_getcwd()
+
+Commit: a0337f4e78...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 20 18:44:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -19 in process.c.
+
+Context (guess -- from subject):
+
+  Both chdir and getcwd cleaned up together.
+
+--------------------------------------------------------------------------------
+
+## bc0d3a44 -- [fs] Introduce exvfs_stat()
+
+Commit: bc0d3a4419...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 20 19:26:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +69 / -24 across 10 files. exvfs.h +7 / -6 adds
+  stat interface. exvfs.c / fat32.c / devfs.c
+  small additions. fs_syscalls.c +26 / -3 wires
+  sys_stat64. New sysroot/dev/.gitignore.
+  busybox.config 3 lines.
+
+Context (guess -- from subject):
+
+  Completes the stat syscall chain: syscall ->
+  exvfs_stat -> fs-specific stat hook.
+
+--------------------------------------------------------------------------------
+
+## 47ad48d5 -- [stat][fat] Make fat_stat to actually return something
+
+Commit: 47ad48d5d1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 14:12:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +44 / -2 across 5 files. fat32.c +19 populates
+  struct stat64 from FAT directory entry.
+  fs_syscalls.c +14 / -2.
+
+Context (guess -- from subject):
+
+  Previously stubbed with zeros; now size / mtime
+  /mode reflect reality.
+
+--------------------------------------------------------------------------------
+
+## 2bd544ce -- [exvfs] Minor improvements: error handling in
+   mountpoint_add()
+
+Commit: 2bd544ce34...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 14:24:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -12 across 3 files.
+
+Context (guess -- from subject):
+
+  mountpoint_add returns proper error codes.
+
+--------------------------------------------------------------------------------
+
+## fea40ceb -- [fs] Introduce lstat64() by wrapping stat64 and add
+   /etc to sysroot
+
+Commit: fea40ceb4f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 14:42:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -3 across 6 files. lstat64 dispatches to
+  stat64 (no symlinks yet). New sysroot/etc/group
+  + passwd (2-line each).
+
+Context (guess -- from subject):
+
+  musl expects /etc/passwd to exist for UID->name.
+  Empty stubs satisfy the lookup.
+
+--------------------------------------------------------------------------------
+
+## 24282b81 -- [fat] Introduce and use
+   fat_datetime_to_regular_datetime() in fat_stat()
+
+Commit: 24282b8168...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 17:55:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +40 / -4 across fat32.h (+2), fat32.c (+37 / -4),
+  generic_mocks (+1). FAT's packed date/time
+  fields converted to Unix epoch.
+
+Context (guess -- from subject):
+
+  FAT stores dates in its own bit-packed format
+  (1980 epoch, 2-second resolution).
+
+--------------------------------------------------------------------------------
+
+## 518707ca -- [fs] Add a skeleton for fcntl64()
+
+Commit: 518707cab0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 18:57:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +76 / -9 across 3 files. fs_syscalls.c +70 / -7
+  skeleton recognises F_GETFD / F_SETFD /
+  F_DUPFD and returns reasonable defaults.
+
+Context (guess -- from subject):
+
+  Musl uses fcntl for FD flags. Minimal impl
+  unblocks.
+
+--------------------------------------------------------------------------------
+
+## 8b5e06cb -- [exvfs] Change the interface of several exvfs_* funcs
+
+Commit: 8b5e06cbd0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 21:25:43 2018 +0300
+
+> This change makes exvfs funcs to never return
+> directly a handle, but to use an out-parameter
+> instead. This allows the use of return codes
+> for handling several errors, typically -ENOMEM.
+> A particularly good example is open(): it could
+> fail because of the file does not exist or
+> because there is no enough memory to allocate
+> the file handle.
+
+AI notes:
+
+What changed:
+
+  +88 / -72 across 10 files. Net +16.
+  exvfs_open/create/... all switch from `handle
+  f()` to `int f(..., handle *out)`. All callers
+  updated.
+
+Context (from body):
+
+  Standard Unix idiom: return -errno as int, pass
+  result via out-param. Lets the FS layer
+  distinguish "no such file" (-ENOENT) from "out
+  of memory" (-ENOMEM).
+
+--------------------------------------------------------------------------------
+
+## c48f6d9b -- [sys_execve] Use compute_abs_path()
+
+Commit: c48f6d9be4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 22:06:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -5 across exvfs.c (+3 / -1) and process.c
+  (+14 / -4).
+
+Context (guess -- from subject):
+
+  execve now accepts relative paths (e.g., `./a.
+  out`) correctly.
+
+--------------------------------------------------------------------------------
+
+## 4194cca0 -- [sys_execve] Extract execve_get_path_and_args()
+
+Commit: 4194cca073...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 22:20:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +70 / -38 in process.c. Net +32 (helper wraps
+  previously inline logic).
+
+Context (guess -- from subject):
+
+  sys_execve was too long; pulling out the
+  path/argv/envp gathering into a helper makes
+  both read better.
+
+--------------------------------------------------------------------------------
+
+## 5ea684f0 -- [sys_execve] Refactoring
+
+Commit: 5ea684f000...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 22:23:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -4 in process.c.
+
+Context (guess -- from subject):
+
+  Small follow-up.
+
+--------------------------------------------------------------------------------
+
+## fa7a2277 -- [sys_execve] Refactoring [2]
+
+Commit: fa7a2277af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 21 22:28:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -27 in process.c. Net -5.
+
+Context (guess -- from subject):
+
+  Continued polish on sys_execve.
+
+--------------------------------------------------------------------------------
+
+## 2bcf1007 -- [process][execve] Extract sys_execve() in a separate
+   file
+
+Commit: 2bcf100768...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 14:07:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +147 / -142 across 2 files. New kernel/execve.c
+  (+147). process.c -142.
+
+Context (guess -- from subject):
+
+  execve is a self-contained 140-line story.
+  Giving it its own file follows the one-major-
+  syscall-per-TU pattern.
+
+--------------------------------------------------------------------------------
+
+## 1d008f98 -- [process] Extract sys_chdir() and sys_getcwd() in a
+   separate file
+
+Commit: 1d008f9879...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 14:10:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +98 / -95 across new kernel/cwd.c (+98) and
+  process.c (-95).
+
+Context (guess -- from subject):
+
+  Same pattern. process.c slims.
+
+--------------------------------------------------------------------------------
+
+## 9ec55784 -- [exvfs] Introduce filesystem->flags
+
+Commit: 9ec557840c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:06:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -6 across 7 files. exvfs.h +4 adds flags
+  field (read-only, supports-stat, etc.). devfs,
+  fat32, tests set their flags.
+
+Context (guess -- from subject):
+
+  Flags let VFS-level code make decisions
+  (e.g., skip write on RO FS) without per-FS
+  checks.
+
+--------------------------------------------------------------------------------
+
+## cc43a0c0 -- [exvfs] Tollerate !fops.fread || !fops.fwrite
+
+Commit: cc43a0c026...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:13:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 lines in exvfs.c. NULL-check fread/fwrite
+  hooks, return -EINVAL if missing.
+
+Context (guess -- from subject):
+
+  Not every FS / device implements both (e.g.,
+  write-only char devices).
+
+--------------------------------------------------------------------------------
+
+## de147a82 -- [evfs] Change the signature of func_dup (use out-arg
+   instead of return)
+
+Commit: de147a8252...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:18:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -12 across 4 files. Same out-param
+  treatment 8b5e06cb did for the other exvfs_*
+  fns, now for func_dup.
+
+Context (guess -- from subject):
+
+  Consistency.
+
+--------------------------------------------------------------------------------
+
+## 063b8118 -- [exvfs] Make exlock/exunlock optional
+
+Commit: 063b811863...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:23:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -7 in exvfs.c.
+
+Context (guess -- from subject):
+
+  NULL-check: if FS doesn't need locks, skip.
+
+--------------------------------------------------------------------------------
+
+## 6a99f85e -- [exvfs] Add exvfs_sh[un]lock() as optional funcs
+
+Commit: 6a99f85e68...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:28:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / 0 across exvfs.h (+9) and exvfs.c (+19).
+  Shared-lock variants added.
+
+Context (guess -- from subject):
+
+  Reader/writer lock: many readers concurrently,
+  exclusive writer. First class primitive for
+  FSs.
+
+--------------------------------------------------------------------------------
+
+## 28845a92 -- [exvfs] Introduce (as an interface) fs-based shared
+   locks
+
+Commit: 28845a92ea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 22 16:46:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +77 / -27 across 5 files. FS types gain
+  shlock/shunlock hooks. devfs, fat32, fs_syscalls
+  plug them in.
+
+Context (guess -- from subject):
+
+  Per-FS shared locking. read() paths can hold
+  shlock, write() paths need exlock.
+
+--------------------------------------------------------------------------------
+
+## 30c0c9c5 -- [exvfs] Introduce per-file lock interface in fops
+
+Commit: 30c0c9c5f0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 24 21:34:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +138 / -59 across 5 files. fops gains per-file
+  lock hooks. fat32.c +60 net implements proper
+  per-fh locking.
+
+Context (guess -- from subject):
+
+  Finer grained than per-FS locks: concurrent
+  ops on different files don't contend.
+
+--------------------------------------------------------------------------------
+
+## 9521e8d3 -- [exvfs][fs_syscalls] Move lock calls inside exvfs
+   wrappers
+
+Commit: 9521e8d318...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 24 22:01:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -36 across exvfs.c (+31 / -5) and
+  fs_syscalls.c (+11 / -31). Lock management
+  encapsulated inside exvfs_read/write etc.;
+  syscall callers no longer open-code it.
+
+Context (guess -- from subject):
+
+  Responsibility shift: callers shouldn't have
+  to know about locks. Enforces consistency.
+
+--------------------------------------------------------------------------------
+
+## 0816e8e3 -- [exvfs] Rename fopen => open, fclose => close in
+   struct filesystem
+
+Commit: 0816e8e38a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 24 22:09:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -10 across 5 files.
+
+Context (guess -- from subject):
+
+  Match POSIX names.
+
+--------------------------------------------------------------------------------
+
+## e742f1b1 -- [exvfs] Other (cosmetic) renamings
+
+Commit: e742f1b13a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 24 22:12:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -23 across 5 files.
+
+Context (guess -- from subject):
+
+  Balance pair rename.
+
+--------------------------------------------------------------------------------
+
+## ac2ce564 -- [fs_syscalls] Implement sys_llseek()
+
+Commit: ac2ce56463...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jun 24 22:30:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -1 across 3 files. fs_syscalls.c +27
+  new llseek (64-bit lseek for i386).
+
+Context (guess -- from subject):
+
+  Needed for files > 2 GB.
+
+--------------------------------------------------------------------------------
+
+## d1be86fb -- [exvfs] Extract mountpoint logic in a separate file
+
+Commit: d1be86fb9e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 12:43:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +152 / -71 across 7 files. New mp.c (+113) and
+  fs_int.h (+17). exvfs.c -69 net.
+
+Context (guess -- from subject):
+
+  Mountpoint table is a concern of its own.
+
+--------------------------------------------------------------------------------
+
+## ea208c5a -- [exvfs] Extract some code in exvfs_util.c
+
+Commit: ea208c5a88...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 12:46:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -105 across 2 files. exvfs.c -105,
+  new exvfs_util.c +108.
+
+Context (guess -- from subject):
+
+  More splitting to keep exvfs.c as a thin
+  dispatcher.
+
+--------------------------------------------------------------------------------
+
+## 194775df -- [fs_syscalls] Start working on sys_getdents64()
+
+Commit: 194775df90...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 17:07:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +68 / -5 across 6 files. sys_types.h +13 adds
+  struct linux_dirent64. exvfs.c +15 +
+  fat32.c/fs_syscalls.c +skeleton.
+
+Context (guess -- from subject):
+
+  getdents64 is the modern dir-read syscall.
+  Needed by BusyBox `ls`.
+
+--------------------------------------------------------------------------------
+
+## fc8dbde7 -- [fat] Slow progress forward with fat_getdents64()
+
+Commit: fc8dbde770...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 17:44:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +58 / -5 across 3 files. fat32.c +53 net.
+
+Context (guess -- from subject):
+
+  Iterating on the dir-read implementation.
+
+--------------------------------------------------------------------------------
+
+## 93896ea8 -- [fat] fat_getdents64() starts to work
+
+Commit: 93896ea822...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 19:31:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +79 / -19 across 3 files. fat32.c +73 net
+  walks the FAT directory, packs into linux_
+  dirent64. fat32.h +4.
+
+Context (guess -- from subject):
+
+  ls works (at least for short names).
+
+--------------------------------------------------------------------------------
+
+## df4cf267 -- [fat] Support base and ext low case flag in
+   fat_entry->DIR_NTRes
+
+Commit: df4cf267f3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 20:27:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -2 across 3 files. fat32_base.c +9 / -2
+  honours the NTRes byte (Windows NT extension:
+  lowercase base / ext bits). Empty sysroot
+  test files for verification.
+
+Context (guess -- from subject):
+
+  Case-preserved short filenames (MixedCase)
+  appear properly instead of being uppercased.
+
+--------------------------------------------------------------------------------
+
+## 7b5bbabd -- [fat_getdents64] Use copy_to_user()
+
+Commit: 7b5bbabd98...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 20:35:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -14 in fat32.c. User-buffer writes
+  routed through copy_to_user (safe against
+  bad pointers).
+
+Context (guess -- from subject):
+
+  Security hardening consistent with the wider
+  user-copy work.
+
+--------------------------------------------------------------------------------
+
+## 943d1036 -- [build_fatpart] Remove README from the non-skeleton
+   sysroot in build/
+
+Commit: 943d103663...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 20:55:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 lines in build_fatpart.
+
+Context (guess -- from subject):
+
+  Don't ship stray dev-only README into the
+  image.
+
+--------------------------------------------------------------------------------
+
+## f0dca719 -- [fat32_base] Support files beginning with "."
+
+Commit: f0dca719fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jun 25 21:36:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -25 across 4 files. Dotfile-name handling
+  in fat32 name parser.
+
+Context (guess -- from subject):
+
+  FAT has its own ideas about filenames (no
+  leading dot). Translation layer allows /etc/
+  style paths.
+
+--------------------------------------------------------------------------------
+
+## 674adc50 -- [fat_getdents64] Return -EINVAL only when ctx.offset
+   == 0
+
+Commit: 674adc500c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 26 10:53:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -1 in fat32.c.
+
+Context (guess -- from subject):
+
+  Linux semantics: getdents returns 0 at EOF on
+  subsequent calls, not -EINVAL.
+
+--------------------------------------------------------------------------------
+
+## 650cc1f1 -- [build_toolchain] Make build_busybox to run by default
+
+Commit: 650cc1f123...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 26 10:56:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -3 across .travis.yml (3 lines) and
+  build_toolchain (+3).
+
+Context (guess -- from subject):
+
+  BusyBox is now a first-class dependency; CI
+  always includes it.
+
+--------------------------------------------------------------------------------
+
+## 7e7e8883 -- [exvfs] Fix a bug in check_mountpoint_match() and
+   exvfs_open()
+
+Commit: 7e7e88836a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 26 14:42:05 2018 +0300
+
+> The code was matching a path like "/dev" to "/",
+> even when a mountpoint "/dev/" existed. That's
+> because mountpoints always end with "/", while
+> paths never do. Handling for this special case
+> has been added. Now, if a mountpoint "/xxx/"
+> exists, the path directory "/xxx" refers to the
+> root ("/") of filesystem mounted at "xxx"
+> instead of the directory "xxx" rooted at "/".
+>
+> BONUS: find has been added in busybox.
+
+AI notes:
+
+What changed:
+
+  +55 / -42 across 6 files. exvfs.c +15 / -10 new
+  prefix-match logic. Tests +12 / -6.
+  busybox.config 24 lines flipped (find
+  enabled).
+
+Context (from body):
+
+  Mountpoint boundary bug. After fix, `ls /dev`
+  shows the devfs contents not /dev as a
+  filesystem entry.
+
+--------------------------------------------------------------------------------
+
+## 41eed251 -- [build_toolchain] Make build_busybox to use
+   toolchain/cache
+
+Commit: 41eed251d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jun 26 14:56:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -4 in build_toolchain.
+
+Context (guess -- from subject):
+
+  Don't re-download BusyBox each clean build.
+
+--------------------------------------------------------------------------------
+
+## 0b46434d -- [textmode_video] Never use FPU in textmode_set_row()
+   [TODO added]
+
+Commit: 0b46434d4c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 27 13:56:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -7 across 3 files. cpu_features.h/.c
+  small touches. textmode_video.c +22 / -4 uses
+  plain memcpy, not FPU.
+
+Context (guess -- from subject):
+
+  Textmode scroll doesn't need FPU -- just 80*25
+  u16 moves. Saving/restoring FPU state per scroll
+  wasn't worth it. TODO comment flags this for
+  future review.
+
+--------------------------------------------------------------------------------
+
+## b28123b7 -- [kb] Refactoring the code and working on KB-reset
+   support
+
+Commit: b28123b7d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 27 20:25:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +227 / -64 across 3 files. New kb_int.h (+171)
+  and kb_int_cbuf.h (+38). kb.c -61 net (logic
+  migrates into the new headers).
+
+Context (guess -- from subject):
+
+  PS/2 keyboard init is intricate (reset + self-
+  test sequence). Splitting into a dedicated
+  header with proper state defs.
+
+--------------------------------------------------------------------------------
+
+## 95ccd810 -- [kb] Cosmetic: remove BIT(n) and CHECK_FLAG(n, f)
+
+Commit: 95ccd81018...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jun 27 23:54:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -16 across kb.c and kb_int.h.
+
+Context (guess -- from subject):
+
+  Use straight bit ops; macros added noise.
+
+--------------------------------------------------------------------------------
+
+## a426d155 -- [kb] Disable PS/2 ports during initialization
+
+Commit: a426d155d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 00:06:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -7 across kb.c (+14) and kb_int.h (+10 /
+  -7).
+
+Context (guess -- from subject):
+
+  Standard PS/2 init: disable both ports before
+  reset, re-enable after. Prevents spurious
+  input during init.
+
+--------------------------------------------------------------------------------
+
+## 7b36f544 -- [kb] Remove unnecessary interrupt disabling during
+   init
+
+Commit: 7b36f54409...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 00:08:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -20 in kb_int.h. Net -8.
+
+Context (guess -- from subject):
+
+  Init runs before IRQs are unmasked; disable was
+  redundant.
+
+--------------------------------------------------------------------------------
+
+## 1e32615a -- [kb] Additional cosmetic changes
+
+Commit: 1e32615a7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 00:27:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +58 / -48 across 2 files.
+
+Context (guess -- from subject):
+
+  Ongoing kb polish.
+
+--------------------------------------------------------------------------------
+
+## 75988608 -- [kb] Other improvements
+
+Commit: 759886089f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 12:40:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +121 / -63 across kb.c (-43) and kb_int.h (+98
+  / -20). More init state machine.
+
+Context (guess -- from subject):
+
+  Robust PS/2 init requires handshake sequence
+  with timeouts.
+
+--------------------------------------------------------------------------------
+
+## fc52db41 -- [kb] Extract key defs and us layout from the main
+   kb.c file
+
+Commit: fc52db41c1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 13:23:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +154 / -147 across kb.c (-147) and new
+  kb_layouts.h (+99) + kb_scancode_set1_keys.h
+  (+28). Layout tables separated from driver.
+
+Context (guess -- from subject):
+
+  Adding more layouts (de, fr, ...) becomes a
+  single-file change.
+
+--------------------------------------------------------------------------------
+
+## 813882a0 -- [kb] Moving kb (8042 controller) files in a dedicated
+   directory
+
+Commit: 813882a02e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 13:27:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  5 files moved to generic_x86/8042/. CMakeLists
+  +1 line.
+
+Context (guess -- from subject):
+
+  Prepares for alternative keyboard controllers
+  (e.g., USB HID).
+
+--------------------------------------------------------------------------------
+
+## e00f6e9e -- [circleci] Adding circleCI
+
+Commit: e00f6e9e1a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 16:31:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / 0 across new .circleci/config.yml (+28)
+  and README (+2).
+
+Context (guess -- from subject):
+
+  Moving CI from Travis to CircleCI; docker-based
+  runners are cleaner.
+
+--------------------------------------------------------------------------------
+
+## 88c693e4 -- [circleci] Make the CI to run the system tests
+
+Commit: 88c693e453...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:03:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -2 in .circleci/config.yml.
+
+Context (guess -- from subject):
+
+  CI now runs run_all_tests, not just builds.
+
+--------------------------------------------------------------------------------
+
+## b6f2101c -- [runtest] Do not use KVM if CIRCLECI is defined
+
+Commit: b6f2101c43...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:09:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -1 in runtest.
+
+Context (guess -- from subject):
+
+  Nested KVM unavailable in CircleCI containers;
+  fall back to qemu TCG.
+
+--------------------------------------------------------------------------------
+
+## 792442b0 -- [circleci] Using workflows
+
+Commit: 792442b0e8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:16:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -2 in .circleci/config.yml.
+
+Context (guess -- from subject):
+
+  Multi-stage pipelines: build -> test,
+  parallelism opportunities.
+
+--------------------------------------------------------------------------------
+
+## 876dcd1c -- [run_all_tests] Raising the timeouts
+
+Commit: 876dcd1c7c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:21:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -10 across run_all_tests and README.
+
+Context (guess -- from subject):
+
+  Without KVM, qemu TCG is 2-5x slower; default
+  timeouts tripped false positives.
+
+--------------------------------------------------------------------------------
+
+## feb11d77 -- [kernel tests] Reduce #iters
+
+Commit: feb11d77b7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:30:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 across 2 files. Iteration counts
+  trimmed.
+
+Context (guess -- from subject):
+
+  Shorten runtime on non-KVM CI.
+
+--------------------------------------------------------------------------------
+
+## ed7116f5 -- [run_all_tests] Raise the timeout of kmalloc_perf to
+   14 sec
+
+Commit: ed7116f590...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 17:33:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1 line in run_all_tests.
+
+Context (guess -- from subject):
+
+  Perf test still tight under TCG.
+
+--------------------------------------------------------------------------------
+
+## ea119512 -- [README] Update README and some commented "code" in
+   .travis.yml
+
+Commit: ea11951226...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 20:32:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +34 / -12 across README.md and .travis.yml.
+
+Context (guess -- from subject):
+
+  Doc mentions CircleCI, keeps commented Travis
+  for reference.
+
+--------------------------------------------------------------------------------
+
+## 325698e0 -- [system_tests][circleci] Make 8 sec the minimum
+   timeout for every ST
+
+Commit: 325698e0d0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jun 28 20:40:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -11 in run_all_tests.
+
+Context (guess -- from subject):
+
+  Uniform floor for timeouts.
+
+--------------------------------------------------------------------------------
+
+## 1785e058 -- [devfs] Working on stat() and getdents() support
+
+Commit: 1785e0589c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 16:47:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +130 / -22 across 6 files. devfs.c +98 / -4
+  gains stat + scaffolding for getdents64.
+  exvfs.h +26 / -6.
+
+Context (guess -- from subject):
+
+  devfs now behaves like a real FS re: stat
+  (listing / identifying devices).
+
+--------------------------------------------------------------------------------
+
+## dbc81006 -- [scripts][build] Introduce QEMU_COMMON_OPTS
+
+Commit: dbc81006a1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 18:05:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -7 across 6 qemu scripts + CMakeLists.
+
+Context (guess -- from subject):
+
+  Common qemu flags in one place.
+
+--------------------------------------------------------------------------------
+
+## c608ff42 -- [fb_console][banner] Use short month names instead of
+   month numbers
+
+Commit: c608ff422e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 18:15:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -3 across 3 files. datetime.c +16 adds
+  month_name[]. fb_console.c +2 / -3 uses it.
+
+Context (guess -- from subject):
+
+  "Jun 29" reads better than "06/29".
+
+--------------------------------------------------------------------------------
+
+## 5d1459e3 -- [devfs] Working on devfs_getdents64 [incomplete]
+
+Commit: 5d1459e3c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 18:54:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -7 across 4 files. devfs.h +11 / -1,
+  devfs.c +18 / -1, exvfs.c +4 / -2.
+
+Context (guess -- from subject):
+
+  Devfs' getdents needs to enumerate all
+  registered devices. WIP.
+
+--------------------------------------------------------------------------------
+
+## fd68d98c -- [bootloader][efi_bootloader] Share exOS known
+   resolutions list
+
+Commit: fd68d98cf7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 19:41:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +36 / -35 across 4 files. New common/misc.c
+  (+31) holds the list. Both bootloaders trim
+  their duplicate.
+
+Context (guess -- from subject):
+
+  Dedup: resolution list was in two places.
+
+--------------------------------------------------------------------------------
+
+## 5b105eef -- [devfs] getdents64() and stat() finally work on devfs
+
+Commit: 5b105eef7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jun 29 21:00:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +115 / -19 across 6 files. devfs.c +89 / -17
+  fills out the real implementation. fat32.c /
+  fs_syscalls.c / process.c small touches.
+
+Context (guess -- from subject):
+
+  `ls /dev` works end-to-end. Another milestone
+  toward BusyBox running properly.
+
+--------------------------------------------------------------------------------
+
+## df282aca -- [kmalloc] Move the kmalloc_heap struct in a private
+   header
+
+Commit: df282aca8b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 1 00:23:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -25 across 7 files. New
+  kmalloc_heap_struct.h (+24). kmalloc.h -21 net.
+  Other files fix includes.
+
+Context (guess -- from subject):
+
+  Hide internal layout behind a private header.
+
+--------------------------------------------------------------------------------
+
+## e21cb3a0 -- [kmalloc] Move alloc_stack inside struct kmalloc_heap
+
+Commit: e21cb3a0d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 1 00:34:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -15 across kmalloc.c (-15) and
+  kmalloc_heap_struct.h (+8).
+
+Context (guess -- from subject):
+
+  Per-heap state; no more globals.
+
+--------------------------------------------------------------------------------
+
+## ccef3143 -- [kmalloc] Make 'heaps' to be an array of pointers of
+   kmalloc_heap
+
+Commit: ccef31436c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 1 01:13:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +80 / -56 across 5 files. kmalloc_heaps.c.h
+  +42 / -47. Tests adapt.
+
+Context (guess -- from subject):
+
+  kmalloc_heap* makes heaps dynamically sortable
+  / swappable without moving structs.
+
+--------------------------------------------------------------------------------
+
+## 5798f087 -- [kb] Drain the data port before the self test
+
+Commit: 5798f087fb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 1 14:39:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -27 across 4 files. Drain any leftover
+  bytes before kb self-test.
+
+Context (guess -- from subject):
+
+  Self-test can fail on noisy PS/2 lines (BIOS
+  left stuff in the buffer).
+
+--------------------------------------------------------------------------------
+
+## 0c0c07c4 -- [irq] Make possible to switch to the tasklet runner
+   after an IRQ
+
+Commit: 0c0c07c4bc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 1 17:57:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +194 / -131 across 23 files. Large reorg.
+  irq.c +70 / -23 key change: IRQ return path
+  can request a tasklet-runner switch. x86_utils.h
+  +15. process.h +25 / -5 task flags. kb.c
+  +28 / -14 uses new flow. Tests and mocks
+  updated.
+
+Context (guess -- from subject):
+
+  Latency optimisation: IRQ handler can enqueue
+  work for tasklet runner AND flag "please
+  schedule me next". Removes a round-trip.
+
+--------------------------------------------------------------------------------
+
+## 1581b74e -- [main] Partial re-order of the init sequence
+
+Commit: 1581b74e95...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 2 17:05:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -18 across 7 files.
+
+Context (guess -- from subject):
+
+  Init-order adjustments after tasklet
+  restructure.
+
+--------------------------------------------------------------------------------
+
+## bbf4c007 -- [switch_to_task] Don't call irq_clear_mask() when is
+   not necessary
+
+Commit: bbf4c007de...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 2 17:57:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -1 in process32.c.
+
+Context (guess -- from subject):
+
+  Skip redundant unmask in common path.
+
+--------------------------------------------------------------------------------
+
+## 2a4564dc -- [tasklets] Support multiple (prioritized) tasklet
+   runner threads
+
+Commit: 2a4564dc3c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 2 20:25:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +231 / -94 across 8 files. tasklet.c +106 / -40,
+  new tasklet_int.h (+26). Multiple runners at
+  different priority levels. sched.c +46 / -8.
+  kb.c +4 / -7.
+
+Context (guess -- from subject):
+
+  Single tasklet runner is a bottleneck; multiple
+  runners let critical work (keyboard) pre-empt
+  lower-priority bulk (file IO).
+
+--------------------------------------------------------------------------------
+
+## 35dcb862 -- Update kb.c
+
+Commit: 35dcb86241...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 01:21:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -1 in kb.c.
+
+Context (guess -- from subject):
+
+  Small tweak.
+
+--------------------------------------------------------------------------------
+
+## 89af54b2 -- [sched] Minor improvements
+
+Commit: 89af54b23c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 01:40:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -14 in sched.c.
+
+Context (guess -- from subject):
+
+  Ongoing sched polish post-tasklet-priority.
+
+--------------------------------------------------------------------------------
+
+## 79a0b825 -- [tasklets] Add "priority" to tasklet runners
+
+Commit: 79a0b8256e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 14:55:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +127 / -121 across 5 files. tasklet.c +59 net
+  implements priority dispatch. sched.c -45 net.
+
+Context (guess -- from subject):
+
+  Polish and real implementation of the priority
+  runners from 2a4564dc.
+
+--------------------------------------------------------------------------------
+
+## c99aecf5 -- [tasklets] Remove the global MAX_TASKLETS define
+
+Commit: c99aecf53b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 15:58:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -37 across 5 files.
+
+Context (guess -- from subject):
+
+  Per-priority pool sizing instead of a single
+  global limit.
+
+--------------------------------------------------------------------------------
+
+## a6246212 -- [kb] Use an explicit FSM + other refactoring
+
+Commit: a624621238...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 17:34:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +92 / -56 across 5 files. kb.c +60 net gains
+  an explicit state machine for scancode parsing.
+
+Context (guess -- from subject):
+
+  PS/2 sequences are stateful (E0, E1, break
+  codes). FSM makes it tractable.
+
+--------------------------------------------------------------------------------
+
+## edd7f57b -- [kb] Prepare for unified handling of E0 and regular
+   scancodes
+
+Commit: edd7f57b59...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 18:00:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -27 in kb files.
+
+Context (guess -- from subject):
+
+  Groundwork.
+
+--------------------------------------------------------------------------------
+
+## b0dde066 -- [kb] Unify handling of 0xE0 and regular scancodes
+   sequences
+
+Commit: b0dde0662c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 18:19:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +66 / -77 across 3 kb files.
+
+Context (guess -- from subject):
+
+  Special keys (arrows, home, del) previously
+  had their own path; now share the normal flow
+  via a unified scancode table.
+
+--------------------------------------------------------------------------------
+
+## 9998f57b -- [kb][tty] Introduce keypress handlers and move the
+   cooked buf in tty
+
+Commit: 9998f57b99...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 20:48:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +153 / -112 across 5 files. kb.c +59 / -63
+  exposes a handler registration. tty.c +72 / -1
+  owns the cooked line buffer (previously in
+  kb). kb_int_cbuf.h removed (-38).
+
+Context (guess -- from subject):
+
+  Layer split: kb generates raw key events; tty
+  handles cooked/canonical line editing.
+
+--------------------------------------------------------------------------------
+
+## c5659dd0 -- [kb] Move the rest of key press handlers outside
+   kb.c
+
+Commit: c5659dd041...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 3 21:09:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -56 across 6 files. kb_scancode_set1_keys.h
+  moves to include/exos/. kb.c -67 net, tty.c
+  +11, main.c +24 registers handlers.
+
+Context (guess -- from subject):
+
+  Completes the separation: kb has only the
+  driver; all key-meaning interpretation lives
+  elsewhere.
+
+--------------------------------------------------------------------------------
+
+## 9ff93759 -- [tty] Cosmetic changes
+
+Commit: 9ff93759db...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 01:01:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -11 in tty.c.
+
+Context (guess -- from subject):
+
+  Polish.
+
+--------------------------------------------------------------------------------
+
+## 007bde7b -- [tasklets] Cosmetic renaming
+
+Commit: 007bde7b42...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 01:05:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -17 across tasklet files.
+
+Context (guess -- from subject):
+
+  Rename pass.
+
+--------------------------------------------------------------------------------
+
+## 28ee6697 -- [usermode_apps] Introduce termtest
+
+Commit: 28ee669799...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 13:43:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +57 / -11 across 4 files. New usermode_apps/
+  termtest.c (+47). build_fatpart adds it.
+
+Context (guess -- from subject):
+
+  A dedicated terminal test user program (ANSI
+  sequences, tabs, colours).
+
+--------------------------------------------------------------------------------
+
+## d94430d3 -- [tty] Move tty_ioctl() in a separate file
+
+Commit: d94430d36b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 13:57:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +77 / -57 across 3 files. New tty_ioctl.c
+  (+70). tty.c -55 net.
+
+Context (guess -- from subject):
+
+  ioctl handling is its own concern.
+
+--------------------------------------------------------------------------------
+
+## b81261db -- [printk] Add support for control sequences and
+   introduce NO_PREFIX
+
+Commit: b81261db0e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 14:17:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -4 across 3 files. printk gains NO_PREFIX
+  flag (skip "[kernel] "), escape-sequence
+  passthrough.
+
+Context (guess -- from subject):
+
+  Allows printk to write ANSI escape codes for
+  cursor control.
+
+--------------------------------------------------------------------------------
+
+## b91840bf -- [tty] Use symbolic defs to define curr_termios
+
+Commit: b91840bf1f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 15:14:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +105 / -19 across 5 files. New
+  tty_termios_debug.h (+93) with symbolic
+  defines for termios flags.
+
+Context (guess -- from subject):
+
+  Termios flags are cryptic bitmasks; symbolic
+  names make debugging possible.
+
+--------------------------------------------------------------------------------
+
+## a843e4ec -- [tty] Introduce include/common/debug/termios_debug.c.h
+
+Commit: a843e4ec76...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 17:17:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +103 / -27 across 3 files. Debug helpers move
+  to a common header.
+
+Context (guess -- from subject):
+
+  Usable from user-space too (termtest etc.).
+
+--------------------------------------------------------------------------------
+
+## 560b42f0 -- [kb] Rename {kb_int.h, kb_layouts.h} =>
+   {kb_int.c.h, kb_layouts.c.h}
+
+Commit: 560b42f0a0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 17:22:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  2 file renames.
+
+Context (guess -- from subject):
+
+  Convention: .c.h = .c fragment included by
+  another .c.
+
+--------------------------------------------------------------------------------
+
+## 2d8ae3e5 -- [tty] Define c_cc in curr_termios properly and fix
+   dump_c_cc()
+
+Commit: 2d8ae3e529...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 18:32:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +76 / -41 across 4 files. Symbolic c_cc[]
+  indices instead of numeric.
+
+Context (guess -- from subject):
+
+  c_cc[VEOF], c_cc[VKILL] etc. -- readable
+  accesses to control chars.
+
+--------------------------------------------------------------------------------
+
+## 23face3d -- [string_util] Implement atoi()
+
+Commit: 23face3d2c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 20:03:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / 0 across 3 files. Standard atoi +
+  tests.
+
+Context (guess -- from subject):
+
+  Kernel finally needs string->int.
+
+--------------------------------------------------------------------------------
+
+## 406f6725 -- [printk] Add support for right-padding with %-<pad
+   value>
+
+Commit: 406f67255b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 20:07:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -5 in printk.c. Width specifier support.
+
+Context (guess -- from subject):
+
+  Column alignment in kernel dumps.
+
+--------------------------------------------------------------------------------
+
+## ddaa5e6c -- [termios_debug] Use printk's right padding
+
+Commit: ddaa5e6ce7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 20:09:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -2 in termios_debug.c.h.
+
+Context (guess -- from subject):
+
+  Cleaner table output.
+
+--------------------------------------------------------------------------------
+
+## 8ebc28f6 -- [string_util] Rename atoi() => exos_atoi() to avoid
+   any confusion
+
+Commit: 8ebc28f627...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 20:38:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -13 across 4 files.
+
+Context (guess -- from subject):
+
+  Musl headers also declare atoi; namespace.
+
+--------------------------------------------------------------------------------
+
+## 34b42750 -- [exos] Re-org the include/ directory
+
+Commit: 34b4275024...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 20:55:59 2018 +0300
+
+>    - Move include/common/ => include/exos/common
+>    - Move include/exos/ => include/exos/kernel
+>
+> This way, everything related to exOS is under
+> include/exos/. The change is huge because of
+> the fixes in all the source files and headers.
+
+AI notes:
+
+What changed:
+
+  +595 / -595 across 163 files -- perfectly
+  balanced (pure move pattern). Every .c/.h/.S
+  updates its #includes from <common/...> /
+  <exos/...> to <exos/common/...> /
+  <exos/kernel/...>.
+
+Context (from body):
+
+  Second major header reorganisation (first was
+  the 13-step pass around commit ~610). Result:
+  a single include root (include/exos/) that
+  the -I path points at. Every internal header
+  lives under it, namespaced by kernel/common.
+  This is the include layout referenced in
+  CLAUDE.md today (with "exos" -> "tilck"
+  rename yet to come).
+
+--------------------------------------------------------------------------------
+
+## c0e8a6b1 -- [string_util] Rename exos_atoi => exos_strtol and add
+   error and endptr
+
+Commit: c0e8a6b12c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 23:35:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -25 across 4 files.
+
+Context (guess -- from subject):
+
+  Full strtol-compatible interface.
+
+--------------------------------------------------------------------------------
+
+## d252214d -- [system_tests] Make invalid_write work w/o user input
+   and add it
+
+Commit: d252214d5f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 4 23:54:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -16 across 2 files.
+
+Context (guess -- from subject):
+
+  Automatable invalid-write smoke test.
+
+--------------------------------------------------------------------------------
+
+## ea409028 -- [tty] Introduce basic support for TCSETS and support
+   ECHO on/off
+
+Commit: ea409028b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 00:25:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +34 / -4 across 2 files.
+
+Context (guess -- from subject):
+
+  TCSETS lets apps toggle ECHO (password prompts
+  etc.).
+
+--------------------------------------------------------------------------------
+
+## e8424113 -- [tty] Basic (printable chars only) raw mode tty works
+
+Commit: e8424113d4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 01:02:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +63 / -19 across tty.c (+22 / -14) and
+  termtest.c (+41 / -5). ICANON off path:
+  chars delivered immediately, no line
+  buffering.
+
+Context (guess -- from subject):
+
+  Prereq for interactive programs (vim, less).
+
+--------------------------------------------------------------------------------
+
+## 0224c27f -- [tty] Refactoring and isolate canon mode key press
+   handler
+
+Commit: 0224c27f06...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 14:41:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +39 / -43 in tty.c.
+
+Context (guess -- from subject):
+
+  Canon (line-buffered) handling extracted so
+  raw-mode code is cleaner.
+
+--------------------------------------------------------------------------------
+
+## b0d24395 -- Add TERM=linux to the default env after a fix in
+   push_args_on_user_stack
+
+Commit: b0d24395b4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 15:14:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -3 across 2 files. process32.c +13 / -2
+  fixes user-stack env/argv layout. execve.c
+  1-line.
+
+Context (guess -- from subject):
+
+  Programs that query $TERM (vim, ncurses) now
+  get "linux" -- tells them the terminal is
+  Linux console capable.
+
+--------------------------------------------------------------------------------
+
+## 448417b7 -- [term] Refactoring: extract defs in term_int.h
+
+Commit: 448417b7de...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 15:36:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +65 / -58 across term.c (-14 net) and new
+  term_int.h (+51).
+
+Context (guess -- from subject):
+
+  Private header.
+
+--------------------------------------------------------------------------------
+
+## e17656e2 -- [term] Introduce an interface for a filter function
+
+Commit: e17656e2a6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 5 19:27:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -25 across term.h (+10) and term.c (+46
+  / -25).
+
+Context (guess -- from subject):
+
+  Callers can install a filter that inspects /
+  transforms chars before they hit term. Used
+  next for ANSI sequence handling.
+
+--------------------------------------------------------------------------------
+
+## 211b70ed -- [tty] Start to translate some scancodes to ANSI
+   sequences
+
+Commit: 211b70ed47...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 6 14:11:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +93 / -27 across 5 files. tty.c +76 / -15
+  translates arrow/function keys to ESC-prefixed
+  sequences per VT100.
+
+Context (guess -- from subject):
+
+  Arrow keys etc. now emit the right bytes so
+  readline-style line editors (bash, vim) work.
+
+--------------------------------------------------------------------------------
+
+## 7b7b4340 -- [tty][term] Scroll on {L|R}SHIFT + PAGE_{UP|DOWN}
+
+Commit: 7b7b43407b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 6 14:13:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -4 in tty.c.
+
+Context (guess -- from subject):
+
+  Console-style scrollback navigation.
+
+--------------------------------------------------------------------------------
+
+## aa90fdf3 -- [tty][term][kb] Working on the "raw" (ansi sequences)
+   input mode
+
+Commit: aa90fdf39d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 6 15:38:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +184 / -53 across 6 files. tty.c +128 / -36
+  major expansion of raw-mode input.
+  kb_scancode_set1_keys.h +19 / -11. termtest.c
+  +11 / -4.
+
+Context (guess -- from subject):
+
+  Comprehensive raw-mode: ESC sequences for
+  every special key.
+
+--------------------------------------------------------------------------------
+
+## fa383ea7 -- [tty][term] Support more termios flags
+
+Commit: fa383ea7dd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 6 19:09:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +197 / -73 across 7 files. tty.c +111 / -48.
+  termios_debug.c.h +44 / -14. printk.c +15 /
+  -5.
+
+Context (guess -- from subject):
+
+  Real termios flag enforcement (INLCR, ICRNL,
+  etc.). Important for any real program that
+  configures the tty.
+
+--------------------------------------------------------------------------------
+
+## 52bfc03d -- [tty][kb] Support Fn keys and modifiers in the conv
+   keycode -> ESC seq
+
+Commit: 52bfc03d92...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 01:43:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +423 / -302 across 6 files. kb.c +145 adds
+  modifier-aware ESC gen. tty.c -290 (290 lines
+  move). New tty_input.c.h (+259).
+
+Context (guess -- from subject):
+
+  Modern terminals use sequences like
+  "ESC[1;5A" for Ctrl+Up. Making these match.
+
+--------------------------------------------------------------------------------
+
+## aa64402e -- [tty] Embed tty_keypress_echo() in kb_buf_write_elem()
+
+Commit: aa64402ed7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 13:28:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +53 / -66 in tty_input.c.h. Net -13.
+
+Context (guess -- from subject):
+
+  Merge the echo step into the buffer write
+  step -- simpler flow.
+
+--------------------------------------------------------------------------------
+
+## fcab837d -- [tty][kb] Improve and simplify key press handling
+
+Commit: fcab837d90...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 14:51:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +213 / -177 across 6 files. New
+  kb_ansi_seq.c.h (+125). kb.c -128 net. tty_input
+  -41 net.
+
+Context (guess -- from subject):
+
+  Extract ANSI-sequence generation into a
+  dedicated fragment. Readable.
+
+--------------------------------------------------------------------------------
+
+## 6ff44bc9 -- [tty] Introduce tty_ctrl_handlers
+
+Commit: 6ff44bc9ec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 15:55:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +98 / -45 across 4 files. New
+  tty_ctrl_handlers.c.h (+85). tty_input
+  -35 net.
+
+Context (guess -- from subject):
+
+  Ctrl-C/Z/D dispatch isolated.
+
+--------------------------------------------------------------------------------
+
+## b6fc1746 -- [tty] Make EOF (Ctrl+D) to work
+
+Commit: b6fc17463c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 16:07:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -5 across 2 files.
+
+Context (guess -- from subject):
+
+  Ctrl-D terminates the current read with 0
+  bytes (EOF).
+
+--------------------------------------------------------------------------------
+
+## 8ad54826 -- [tty] Support EOL, EOL2 and working on tty_read()
+
+Commit: 8ad5482678...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 20:20:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +171 / -40 across 4 files.
+
+Context (guess -- from subject):
+
+  Line-terminator-aware read logic.
+
+--------------------------------------------------------------------------------
+
+## 35945cf8 -- [tty] Working on tty_read()
+
+Commit: 35945cf819...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 22:48:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -27 across 3 files.
+
+Context (guess -- from subject):
+
+  Iterative tty_read refinement.
+
+--------------------------------------------------------------------------------
+
+## 0dd3a215 -- [tty] Solving the "line delim outside the buffer"
+   problem
+
+Commit: 0dd3a2150b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 7 23:06:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -3 in tty_input.c.h.
+
+Context (guess -- from subject):
+
+  Edge case when the line delim falls at the
+  ringbuf boundary.
+
+--------------------------------------------------------------------------------
+
+## 39089203 -- [tty][devfs] Fix a bug in devfs_open()
+
+Commit: 39089203dd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 8 00:15:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -2 in devfs.c.
+
+Context (guess -- from subject):
+
+  Small bug.
+
+--------------------------------------------------------------------------------
+
+## 27808a04 -- [tty] Make tty_read() to use handle's read_buf
+
+Commit: 27808a0489...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 8 01:48:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +59 / -61 across 4 files. Per-handle (not
+  per-tty) read buffer.
+
+Context (guess -- from subject):
+
+  Multiple readers (rare but valid) don't
+  share state.
+
+--------------------------------------------------------------------------------
+
+## 6d896f6e -- [system_tests] Define 3 timeout values for short, mid
+   and long tests
+
+Commit: 6d896f6e41...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 8 23:22:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -21 in run_all_tests.
+
+Context (guess -- from subject):
+
+  Tests bucketed by expected duration class.
+
+--------------------------------------------------------------------------------
+
+## b7469b6e -- [tty] Refactoring tty_read()
+
+Commit: b7469b6e3e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 00:12:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +66 / -49 across tty_input.c.h (+65 / -48)
+  and shell.c (1 line).
+
+Context (guess -- from subject):
+
+  Cleanup pass.
+
+--------------------------------------------------------------------------------
+
+## 8ac9b356 -- [tty] Refactoring tty_internal_should_read_return()
+
+Commit: 8ac9b35632...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 00:23:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -28 across 4 files.
+
+Context (guess -- from subject):
+
+  Predicate simplification.
+
+--------------------------------------------------------------------------------
+
+## 9aed8cae -- [tty] Refactor tty_keypress_echo() and add several
+   stub funcs
+
+Commit: 9aed8cae01...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 01:40:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +133 / -39 across 6 files.
+
+Context (guess -- from subject):
+
+  Layers for escape-seq handling. Termtest
+  exercises the new paths.
+
+--------------------------------------------------------------------------------
+
+## 291c7d62 -- [tty] Working on termtest
+
+Commit: 291c7d62e3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 14:37:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +51 / -13 across execve.c (+5 / -1) and
+  termtest.c (+46 / -12).
+
+Context (guess -- from subject):
+
+  Termtest grows into a proper tty exerciser.
+
+--------------------------------------------------------------------------------
+
+## 8b8992e4 -- [tty] Working on the recognition of escape sequences
+
+Commit: 8b8992e46d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 20:07:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +217 / -31 across 6 files. term.c +47 / -13
+  parses incoming ESC sequences from apps.
+  tty.c +159 / -5.
+
+Context (guess -- from subject):
+
+  Term now understands ANSI escape sequences
+  from the application side (colours, cursor
+  move) in addition to generating them for
+  keypresses.
+
+--------------------------------------------------------------------------------
+
+## 2854afe7 -- [tty] Refactoring/simplifications
+
+Commit: 2854afe7b6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Jul 9 22:00:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +54 / -61 across 4 files.
+
+Context (guess -- from subject):
+
+  Simplification after the big expansion.
+
+--------------------------------------------------------------------------------
+
+## dd35d462 -- [tty] Introduce tty_int.h and tty_output.c
+
+Commit: dd35d4624f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 13:36:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +198 / -178 across 3 files. New tty_int.h
+  (+30) and tty_output.c (+166). tty.c -178.
+
+Context (guess -- from subject):
+
+  Output path separated from input and ioctl.
+
+--------------------------------------------------------------------------------
+
+## 9c61cb7d -- [tty] Make tty_input.c.h to be a C file (-> tty_input
+   .c)
+
+Commit: 9c61cb7d75...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 13:46:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -18 across 4 files. Rename + make it a
+  proper compiled unit.
+
+Context (guess -- from subject):
+
+  .c.h pattern reverted now that it's standalone.
+
+--------------------------------------------------------------------------------
+
+## e58016e9 -- [tty] Refactor tty_term_write_filter()
+
+Commit: e58016e9bb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 13:55:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -65 in tty_output.c.
+
+Context (guess -- from subject):
+
+  Write-filter rework (apply termios flags on
+  output).
+
+--------------------------------------------------------------------------------
+
+## 21616f0a -- [tty] Make tty_write() to simply write MAX(size, MB -
+   1) bytes
+
+Commit: 21616f0af8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 14:25:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -3 in tty.c.
+
+Context (guess -- from subject):
+
+  Cap enormous writes.
+
+--------------------------------------------------------------------------------
+
+## e36cf9f7 -- [busybox] Enable ls colors and compile-in 'vi'
+
+Commit: e36cf9f75c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 14:39:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -23 across busybox.config + 6 lines
+  color-enable in tty_output.
+
+Context (guess -- from subject):
+
+  vi being supported is a genuine milestone --
+  the shell can edit files.
+
+--------------------------------------------------------------------------------
+
+## 780ba535 -- [build_toolchain] Support busybox incremental build
+   and config funcs
+
+Commit: 780ba53532...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 15:23:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +58 / -7 in build_toolchain.
+
+Context (guess -- from subject):
+
+  `build_busybox --reconfig` etc. Faster dev
+  loop.
+
+--------------------------------------------------------------------------------
+
+## fe752ef2 -- [tty][term] Add support to color setting via CSI
+   sequences
+
+Commit: fe752ef24d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 18:33:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +141 / -17 across 6 files. tty_output.c +90
+  / -14 parses CSI m (SGR) sequences: fg/bg
+  color. term.c +32 / -6.
+
+Context (guess -- from subject):
+
+  `ls --color` now renders. Major UX win.
+
+--------------------------------------------------------------------------------
+
+## c62d110b -- [tty] Refactoring tty_filter_handle_csi_seq()
+
+Commit: c62d110bac...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 19:12:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +130 / -113 in tty_output.c.
+
+Context (guess -- from subject):
+
+  Polish on the CSI parser.
+
+--------------------------------------------------------------------------------
+
+## 5aa1c719 -- [term] Remove term_write(char, u8)
+
+Commit: 5aa1c7191a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 20:47:10 2018 +0300
+
+> Now only the color version of term_write
+> remains: term_write2().
+
+AI notes:
+
+What changed:
+
+  +12 / -16 across 5 files.
+
+Context (from body):
+
+  Consolidate on the 2-arg form; callers that
+  want default color pass it explicitly.
+
+--------------------------------------------------------------------------------
+
+## 9c07f709 -- [term][tty] Remove completely the "current color"
+   state from term
+
+Commit: 9c07f7098e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 20:56:10 2018 +0300
+
+> Now the console (aka tty) knows about the
+> current color. Term is simpler and accepts
+> only write commands with the color to use as
+> argument.
+
+AI notes:
+
+What changed:
+
+  +11 / -88 across 6 files. term.c -54 net.
+  tty_output.c -20 net.
+
+Context (from body):
+
+  Stateless term: caller provides color on
+  every write. Tty owns the SGR state; term
+  renders. Clean layering.
+
+--------------------------------------------------------------------------------
+
+## 6136c332 -- [term] Rename term_write2() to just term_write()
+
+Commit: 6136c332fe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 21:00:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -18 across 6 files.
+
+Context (guess -- from subject):
+
+  Rename cleanup after 5aa1c719.
+
+--------------------------------------------------------------------------------
+
+## 9a8442ce -- [fb_console] Make the BLUE color brighter
+
+Commit: 9a8442ce87...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Jul 10 21:08:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -14 in fb_console.c. Palette tweak.
+
+Context (guess -- from subject):
+
+  Dark blue was unreadable on black.
+
+--------------------------------------------------------------------------------
+
+## 47e38687 -- [common] Rename vga_textmode_defs.h to color_defs.h
+
+Commit: 47e3868788...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 15:08:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -20 across 9 files. Rename reflecting
+  that the file is about colors, not just VGA
+  textmode.
+
+Context (guess -- from subject):
+
+  Name now describes purpose.
+
+--------------------------------------------------------------------------------
+
+## 0bba7fa5 -- [color_defs] Several renamings
+
+Commit: 0bba7fa552...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 15:28:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +58 / -52 across 7 files.
+
+Context (guess -- from subject):
+
+  Consistent color naming.
+
+--------------------------------------------------------------------------------
+
+## b84c70eb -- [build_toolchain] Improving the script (adding --help)
+
+Commit: b84c70eb38...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 16:19:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +71 / -13 across 3 files.
+
+Context (guess -- from subject):
+
+  CLI polish: -h help, -s install specific pkg.
+  Matches the interface described in CLAUDE.md
+  (`-l`/`-s`/`-d`/`-h`).
+
+--------------------------------------------------------------------------------
+
+## 04f27bc5 -- [build_toolchain] Introduce the build_ncurses function
+
+Commit: 04f27bc556...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 19:05:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 lines in build_toolchain.
+
+Context (guess -- from subject):
+
+  ncurses build for user apps (vim, less).
+
+--------------------------------------------------------------------------------
+
+## 1af66527 -- [usermode_apps] Introduce ncapp (experiments/test with
+   ncurses)
+
+Commit: 1af66527ec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 20:09:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +40 / -18 across 4 files. New ncapp.c (+16).
+  CMake plumbing.
+
+Context (guess -- from subject):
+
+  Smoke-test ncurses on Tilck.
+
+--------------------------------------------------------------------------------
+
+## 67451b94 -- [usermode_apps] Rename shell to devshell
+
+Commit: 67451b9450...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 20:19:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  File rename + references updated.
+
+Context (guess -- from subject):
+
+  Distinguish Tilck's dev-helper shell from
+  BusyBox's real shell.
+
+--------------------------------------------------------------------------------
+
+## ee83df46 -- [devshell] Make the shell to forward any unknown
+   command to busybox
+
+Commit: ee83df46f5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 20:29:11 2018 +0300
+
+> While waiting to have a working ramfs with
+> symlink support, it is super convenient to
+> add a hack in the devshell to just forward
+> any unknown cmd (nor built-in neither a valid
+> path) to /bin/busybox. Using the alias "bb"
+> turned out to be not very handy.
+
+AI notes:
+
+What changed:
+
+  +18 / -8 across 2 files.
+
+Context (from body):
+
+  `ls`, `cat` etc. just work without typing
+  `/bin/busybox ls`.
+
+--------------------------------------------------------------------------------
+
+## 71e552da -- [build_toolchain] Exclude lcov and gtest from the
+   list of default funcs
+
+Commit: 71e552dae7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Jul 11 21:55:21 2018 +0300
+
+> Now, users that want to build the unit tests
+> will have to run:
+>    ./scripts/build_toolchain -s build_gtest
+
+AI notes:
+
+What changed:
+
+  +31 / -6 across 4 files.
+
+Context (from body):
+
+  Default toolchain build shrinks; test/coverage
+  tools are opt-in.
+
+--------------------------------------------------------------------------------
+
+## da95ba6e -- [devshell] Use raw mode and support history navigation
+
+Commit: da95ba6ee2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 01:41:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +196 / -11 across fb_console.c (1 line) and
+  devshell.c (+195). Devshell now does its own
+  raw-mode editing, up/down history.
+
+Context (guess -- from subject):
+
+  Bash-like editing in the dev helper.
+
+--------------------------------------------------------------------------------
+
+## 6f6f85ea -- [elf_loader] Fix a bug in the ELF loader
+
+Commit: 6f6f85ea37...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 02:29:15 2018 +0300
+
+> In case two LOAD phdr overlap on the same page
+> and that page is RO, we'll get a PAGE FAULT
+> with the previous implementation because
+> load_phdr() was setting pages to RO (when
+> necessary) at its end (so the next load_phdr(),
+> if a page overlaps, generates a fault). The
+> simple fix is to do the access setting only
+> after loading all the phdrs.
+
+AI notes:
+
+What changed:
+
+  +30 / -3 in elf.c. Defer RO marking to after
+  all LOADs.
+
+Context (from body):
+
+  Real-world ELFs (especially statically-linked
+  BusyBox) have LOAD segments that share a page.
+  Marking RO eagerly broke the next LOAD.
+
+--------------------------------------------------------------------------------
+
+## 4536759c -- [devshell] Improving the messages
+
+Commit: 4536759c1d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 02:31:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -2 across 2 files.
+
+Context (guess -- from subject):
+
+  UX polish.
+
+--------------------------------------------------------------------------------
+
+## 84ba907d -- [elf_loader] Refactoring
+
+Commit: 84ba907da6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 02:44:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -23 in elf.c. Net -13.
+
+Context (guess -- from subject):
+
+  Cleanup after the overlap fix.
+
+--------------------------------------------------------------------------------
+
+## dabeb898 -- [devshell] Move read_command() in a separate file
+
+Commit: dabeb89893...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 13:37:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +186 / -173 across 2 files. New
+  devshell_readcmd.c (+185). devshell.c -173.
+
+Context (guess -- from subject):
+
+  Line-editor is a big chunk; own file.
+
+--------------------------------------------------------------------------------
+
+## b5952a89 -- [devshell] Refactoring read_command()
+
+Commit: b5952a89e5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 14:08:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +91 / -74 in devshell_readcmd.c.
+
+Context (guess -- from subject):
+
+  Cleaning up the recently extracted code.
+
+--------------------------------------------------------------------------------
+
+## 12ceaeeb -- [devshell] Implement command line editing
+
+Commit: 12ceaeebec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 15:38:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +131 / -20 in devshell_readcmd.c.
+
+Context (guess -- from subject):
+
+  Left/right cursor, insert/delete within line.
+
+--------------------------------------------------------------------------------
+
+## dd36fcc2 -- [fb_console] Reset blink timer when the cursor is
+   moved
+
+Commit: dd36fcc2d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 15:43:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 in fb_console.c.
+
+Context (guess -- from subject):
+
+  Reset ensures cursor is visible right after
+  move (not mid-blink-off).
+
+--------------------------------------------------------------------------------
+
+## 68c64aeb -- [devshell] Ignore TABs
+
+Commit: 68c64aebb6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 15:44:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 in devshell_readcmd.c.
+
+Context (guess -- from subject):
+
+  No completion; ignore rather than emit tab.
+
+--------------------------------------------------------------------------------
+
+## 24efcf8e -- [fb_console] Another fix related with the cursor
+   blinking
+
+Commit: 24efcf8e04...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Jul 12 15:53:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -2 in fb_console.c.
+
+Context (guess -- from subject):
+
+  Another edge case.
+
+--------------------------------------------------------------------------------
+
+## e7f0bc53 -- [build] Improve error handling in case of no toolchain
+
+Commit: e7f0bc5320...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 13:51:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -2 across 3 files.
+
+Context (guess -- from subject):
+
+  Clear error msg if toolchain not built.
+
+--------------------------------------------------------------------------------
+
+## e098e91d -- Update README.md
+
+Commit: e098e91d95...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 14:20:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -12 in README.
+
+Context (guess -- from subject):
+
+  Ongoing doc.
+
+--------------------------------------------------------------------------------
+
+## 9e049243 -- [tty] Add the linux terminfo in sysroot and make our
+   ncurses to use it
+
+Commit: 9e049243a5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 17:21:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -3 across 3 files + new terminfo binary
+  (1.8 KB).
+
+Context (guess -- from subject):
+
+  ncurses looks up capabilities from the
+  terminfo db; providing "linux" entry makes
+  things work.
+
+--------------------------------------------------------------------------------
+
+## 1c6df178 -- [fs_syscalls] Add a stub implementation for sys_access()
+
+Commit: 1c6df1786c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 17:25:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -1 across 2 files.
+
+Context (guess -- from subject):
+
+  access() returns 0 if file exists. Needed
+  by musl.
+
+--------------------------------------------------------------------------------
+
+## 1522eaf3 -- [cpu] Introduce code for save/restore of the FPU regs
+   (kernel only)
+
+Commit: 1522eaf383...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 20:09:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +139 / -6 across 5 files. cpu.c +118 net
+  fxsave/fxrstor wrappers; supports x87/SSE.
+
+Context (guess -- from subject):
+
+  Prerequisite for per-task FPU state in user
+  mode (next commit).
+
+--------------------------------------------------------------------------------
+
+## 4c730b65 -- [interrupts] Making a panic buffer a little bigger
+
+Commit: 4c730b651c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 22:14:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1 line.
+
+Context (guess -- from subject):
+
+  Bigger panic stack.
+
+--------------------------------------------------------------------------------
+
+## 04ef3a50 -- [fpu] Introduce support for FPU in user mode
+
+Commit: 04ef3a5098...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Jul 13 22:39:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +78 / -33 across 10 files. process32.c +15 /
+  -2 saves/restores FPU regs on task switch.
+  cpu.c +18 / -27 consolidates. irq.c +6.
+  devshell_commands +16 / -1 test.
+
+Context (guess -- from subject):
+
+  Big feature: user-mode programs can use FPU
+  now. Per-task FPU state (saved lazily on
+  context switch).
+
+--------------------------------------------------------------------------------
+
+## 04707362 -- [x86] Introduce 'custom_flags' in struct regs.
+
+Commit: 04707362bc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 14:49:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -7 across 5 files. struct regs gains
+  custom_flags field for kernel-internal use
+  (e.g., "fpu was in use").
+
+Context (guess -- from subject):
+
+  Passes context info between entry and exit
+  paths efficiently.
+
+--------------------------------------------------------------------------------
+
+## 1382010d -- [fpu] Make the asm entry routines to set/restore
+   CR0_TS
+
+Commit: 1382010d36...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 15:19:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +59 / -25 across 7 files. asm entry: set
+  CR0.TS on kernel entry so kernel FPU use
+  triggers a trap that saves user FPU state
+  lazily. Classic optimisation.
+
+Context (guess -- from subject):
+
+  Lazy FPU save: don't save/restore FPU on
+  every switch, only when the new task
+  actually touches FPU.
+
+--------------------------------------------------------------------------------
+
+## aaa66a1a -- Rename entry.S to start.S
+
+Commit: aaa66a1a03...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 16:36:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  File rename.
+
+Context (guess -- from subject):
+
+  entry.S was too generic a name given
+  fault_resumable.S, syscall_entry.S, etc.
+  already exist. "start.S" = multiboot entry.
+
+--------------------------------------------------------------------------------
+
+## 4bd8f92b -- [x86] Refactoring the .S files in arch/i386
+
+Commit: 4bd8f92b9f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 16:43:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +186 / -164 across 3 files. New kernel_yield.S
+  (+116) and misc.S (+70). start.S -164.
+
+Context (guess -- from subject):
+
+  Further .S file decomposition by concern.
+
+--------------------------------------------------------------------------------
+
+## c2acdff8 -- [x86] Using macros in order to make the ASM files
+   simpler
+
+Commit: c2acdff88d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 17:27:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +52 / -71 across 4 files. asm_defs.h +38
+  adds shared macros.
+
+Context (guess -- from subject):
+
+  Dedup common push/pop sequences.
+
+--------------------------------------------------------------------------------
+
+## ae1ecb5c -- [x86] Using macros in order to make the ASM files
+   simpler [2]
+
+Commit: ae1ecb5c34...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 18:42:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -70 across 4 files.
+
+Context (guess -- from subject):
+
+  Continued.
+
+--------------------------------------------------------------------------------
+
+## b2321e1c -- [x86] Rename isr_handlers.S to fault_handlers.S
+
+Commit: b2321e1cbe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 18:44:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  File rename, -2 lines.
+
+Context (guess -- from subject):
+
+  Exceptions are "faults" in x86 parlance;
+  better name.
+
+--------------------------------------------------------------------------------
+
+## 2adfb3a6 -- [x86] Replace s/isr/fault/g in fault_handlers.S
+
+Commit: 2adfb3a606...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 18:48:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +45 / -47 across 2 files.
+
+Context (guess -- from subject):
+
+  Consistent naming after the rename.
+
+--------------------------------------------------------------------------------
+
+## b35ccd2d -- [interrupts] DEBUG_check_preemption_enabled_for_
+   usermode only for syscalls
+
+Commit: b35ccd2dec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 19:22:15 2018 +0300
+
+> After making possible IRQ handlers to ask for
+> a thread to be immediately scheduled, we
+> created a new state: no preemption + 0 nested
+> interrupts. When an IRQ comes in this state,
+> the check_preemption_enabled_for_usermode
+> called by irq_entry() fails causing a kernel
+> panic. A good enough solution is just to run
+> the check for syscalls. Afterall, it is only
+> a debug check useful to prevent buggy kernel
+> changes that allow returning to usermode with
+> preemption disabled: it does not need to run
+> all the time. Check that at each syscall is
+> good enough.
+
+AI notes:
+
+What changed:
+
+  +6 / -5 in interrupts.c.
+
+Context (from body):
+
+  Regression from 0c0c07c4. Gate the assertion
+  appropriately.
+
+--------------------------------------------------------------------------------
+
+## 6787d468 -- [timer] Improving cancel_timer()
+
+Commit: 6787d4686b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Jul 14 19:39:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -19 across 3 files. Net -6.
+
+Context (guess -- from subject):
+
+  Race-free cancel.
+
+--------------------------------------------------------------------------------
+
+## cbcd7576 -- [printk] Handle corner case where the buffer gets
+   completely full
+
+Commit: cbcd7576d6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 15 20:18:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 in printk.c.
+
+Context (guess -- from subject):
+
+  Wrap-around / drop policy when ringbuf is
+  full.
+
+--------------------------------------------------------------------------------
+
+## c00a6b9e -- [gdt] Make DEBUG_set_thread_area() split the msg
+   across 3 printk calls
+
+Commit: c00a6b9e54...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 15 20:23:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -18 in gdt.c.
+
+Context (guess -- from subject):
+
+  Long message exceeded printk's per-call
+  buffer; split it.
+
+--------------------------------------------------------------------------------
+
+## 02df13c1 -- [kb] Make kb_ctrl_full_wait() drain all the data
+
+Commit: 02df13c1ab...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Jul 15 23:15:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1 line.
+
+Context (guess -- from subject):
+
+  PS/2 wait-for-idle must actually drain, not
+  just check.
+
+--------------------------------------------------------------------------------
