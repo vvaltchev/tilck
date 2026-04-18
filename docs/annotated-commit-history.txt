@@ -44165,3 +44165,1100 @@ boot.S is replaced by a build-time mbrhack tool.
   - 2739cafc: kernel + stage3 compiled with -Wundef.
 
 --------------------------------------------------------------------------------
+
+## Commits 3416-3429 -- split config/ into per-subsystem header files
+
+AI notes:
+
+What changed: the monolithic include/tilck/common/config.h (and the
+generated generated_config.h) is split into a family of topical
+config_*.h files under a new top-level config/ directory. Each one
+groups related CMake-driven defines together.
+
+  - 1fbe9ead: EFI bootloader compiled with -Wundef.
+
+  - 03fa3bef: generated_config.h moves from include/tilck/common/
+    to config/config_global.h.
+
+  - 91eb059c: config_modules.h moves to config/.
+
+  - e8973330: new config/config_boot.h -- boot-time constants shared
+    by boot.S, stage3, EFI loader.
+
+  - **d0e48582 [config] Remove common/config.h**. Body (worth keeping
+    -- explains the whole arc's rationale): "With time some hard-coded
+    constants become CMake config variables, it makes more sense to
+    merge the two files and put everything in the template file
+    config_global.h. Also, the idea is to make that file as small as
+    possible, by creating more specialized config files like
+    config_boot.h."
+
+  - 25620fa8: new include/tilck/common/page_size.h (PAGE_SIZE /
+    PAGE_SHIFT -- needed early by hal_types.h).
+
+  - 1f323bbe: new config_kernel.h.
+  - 4ee034a3: new include/tilck/common/compiler.h (moves STATIC_ASSERT
+    etc. out of config_global.h).
+  - 9b938e22: new config_sched.h (TICK_TIMER_FREQ,
+    TIME_SLOT_TICKS, ...).
+  - 17aa3d51: new config_kmalloc.h.
+  - 08e1fe00: new config_console.h.
+  - dd278dbc: new config_mm.h.
+  - 37a20d19: new config_debug.h (DEBUG_CHECKS + friends).
+  - 2448e92d: new config_userlim.h (MAX_PIDS, MAX_FD_PER_PROC, ...).
+
+Context (derived): this is housekeeping for scalability -- the single
+config header had grown large enough that touching any knob caused
+massive rebuilds. Splitting by subsystem shrinks rebuild fan-out (see
+also 3524 below, which adds smart_config_file() to fix the remaining
+"regenerated-but-identical" churn).
+
+--------------------------------------------------------------------------------
+
+## Commits 3430-3454 -- separate bootpart from initrd; mbrhack BPB; LoadRamdisk extracted
+
+AI notes:
+
+What changed: the FAT image layout changes. Previously the initrd
+carried the kernel binary + EFI files; now a small dedicated
+"bootpart" holds those, freeing ~800 KB of RAM (initrd stays
+resident; bootpart doesn't). mbrhack grows a proper `bpb` subcommand.
+LoadRamdisk() in the EFI loader is broken into a series of
+extracted helpers around a new struct load_ramdisk_ctx.
+
+  - c275375c: start/length of initrd become CMake-parametric.
+  - 5588bc54: INITIAL_SECTORS_TO_READ renamed + computed in CMake.
+
+  - **ccaa36cc [mbrhack] Improv. err. messages and intr. bpb_check()**
+    (+119/-47).
+  - **e0565090 [mbrhack] Intr. the command `bpb` for writing the BPB**
+    (+287/-90). Pairs with the `mbrhack` arc wrapped up in 3403-3415.
+  - 0d91caac: boot.S stops hard-coding BPB; mbrhack fills it in.
+
+  - e80ac551: comment fix in config_debug.h.
+
+  - **7190449d [cmake][boot] Intr. a bootpart before our initrd**
+    (+19/-13). The image layout now reserves a FAT region for
+    boot-time files that doesn't have to live in RAM.
+  - 220207b9: new QEMU_CHS_GEOM CMake variable.
+  - c09b78be: build_fatpart stops setting CHS geometry explicitly.
+
+  - 24acfeb6: switch from disc I/O protocol to block I/O protocol in
+    EFI ramdisk loader.
+  - **eefe2b34 [boot][efi] Populate bootpart and use it for EFI boot**
+    (+150/-7). New scripts/templates/build_bootpart.
+
+  - 2e461d02: move generic EFI helpers out of ramdisk.c into utils.c.
+  - 1a39748b, 0d595916, a1d98fc3, d5ff826b: extract
+    LoadRamdisk_GetTotFatSize, LoadRamdisk_GetTotUsedBytes, intr.
+    struct load_ramdisk_ctx, improve rounding.
+  - 138881a6, 14012fb7, d810e508: extract
+    LoadRamdisk_CompactClusters, LoadRamdisk_AllocMem,
+    GetPhysBlockIODeviceHandle.
+
+  - f6b5ad9c: config_boot.h gains bootpart-related constants.
+  - f6b5ad9c (legacy stage3 side): do_ramdisk_compact_clusters()
+    extracted; load_fat_ramdisk() extracted and generalized.
+  - 12e7a7c1: load kernel from bootpart, not initrd (legacy BIOS).
+  - **5b4958a8 [build_fatpart] Drop EFI files and the kernel from
+    initrd**. Body: "Now that the EFI boot files and the Tilck kernel
+    can be loaded (by both the bootloaders) from the bootpart, we can
+    finally remove them from the initrd. That's great because the
+    bootpart won't be kept in memory the whole time like initrd does.
+    This way, we saved about ~800 KB of (wasted) memory."
+
+--------------------------------------------------------------------------------
+
+## Commits 3455-3469 -- TINY_KERNEL option; DECLARE_AND_REGISTER_SELF_TEST; task->what -> kthread_name
+
+AI notes:
+
+What changed: a pile of modest-to-large improvements after the
+bootpart arc settles.
+
+  - 45f9ba35: debug panel MemMap now shows global memory usage stats.
+  - 3d8ad86b: KMALLOC_FIRST_HEAP_SIZE depends on KERNEL_MAX_SIZE.
+  - 77532f23: KERNEL_MAX_END_PADDR moves to config_boot.h.
+
+  - **77532f23 [config][cmake] Intr. the TINY_KERNEL option** (commit
+    3458). Body (kept -- it is a milestone): "This option makes the
+    kernel as small as possible by force-disabling some modules like
+    'console', 'fb', 'tracing' and by force-setting to OFF features
+    like KERNEL_SELFTESTS and KERNEL_SYMBOLS. In addition to that,
+    the option enforces constraints like CMAKE_BUILD_TYPE=Release
+    and KERNEL_GCOV=0. In case constraints are not met, the build
+    simply fails in CMake with a fatal error. Finally, the value of
+    constants KERNEL_MAX_SIZE and KMALLOC_FIRST_HEAP_SIZE is reduced
+    when TINY_KERNEL=1. This option is great because, when turned
+    on, it allows Tilck to boot and run perfectly fine on a VM with
+    just 4 MB of RAM, without renouncing on a single busybox applet."
+
+  - ca0f76cf: new TYPICAL_DEVEL_USERAPPS cmake option.
+  - 8782baed: boot aborts cleanly if MOD_console=0 and MOD_fb=0.
+
+  - a8999968: wth_get_id().
+  - **7923cd04 [sched] Replace `what` with `kthread_name` in struct
+    task** -- string naming for kernel threads.
+
+  - **47c9d4cf [selftests] Intr. DECLARE_AND_REGISTER_SELF_TEST()**
+    (+350/-165). Self-tests register themselves via a macro with a
+    static constructor instead of being listed by hand in a central
+    table.
+
+  - a5eabb0d: bootloader only poisons memory when hypervisor=1 (the
+    poison sweep is too slow on real hardware).
+  - 4edabc4e: cmake_run --contrib enables BOOTLOADER_POISON_MEMORY=1.
+
+  - f51305ae: new config_init.h + INIT_REPORT_PROC_EXIT.
+
+  - **5fdf1681 [devshell] Restore default sig handlers when running
+    single cmd**. Body: bug -- in `-c` mode (single cmd, no fork),
+    SIGINT/SIGQUIT stayed ignored, so `runall` couldn't be
+    interrupted with Ctrl-C. Fix: move the signal-handler reset loop
+    from shell_run_child() to run_if_known_command().
+
+  - 1ea805a3: gdb scripts stop referencing the removed task->what.
+  - 49d3fa8f: drop unused in_syscall(void).
+
+--------------------------------------------------------------------------------
+
+## Commits 3470-3483 -- PIC refactored into pic.c; pic_mask_and_send_eoi; timer_nested_irq
+
+AI notes:
+
+What changed: pic.c.h (header-only PIC driver included into irq.c)
+is turned into a real .c file with its own pic.h, and its API grows.
+
+  - 98e0367a: pic.c.h -> pic.c + pic.h. +49 total lines.
+  - bbe41fe6: is_spur_irq() moved from irq.c into pic.c as
+    pic_is_spur_irq().
+  - a3e93435: arch_irq_handling() refactored (+11/-20).
+  - ca3bd69f: new pic_io_wait() helper.
+  - 20f3a835: pic_remap() refactored.
+  - 9389e384: pic_remap() renamed init_pic_8259().
+  - 74550e70: pic_is_spur_irq() refactored; pic_get_{isr,irr} dropped.
+  - 367232f1: PICn_DATA -> PICn_IMR (interrupt mask register).
+  - a9fcc4cd: mask/clear/send_eoi funcs disable IRQs while running.
+  - 20b39282: **new pic_mask_and_send_eoi()** -- atomic mask-then-EOI
+    used from the IRQ handler path.
+  - b58601ca: cosmetic PIC cleanup.
+  - 939f2846: new irq_is_masked().
+
+  - 0d708529: drop unused get_nested_interrupts_count().
+  - **999044e9 [timer] Refactor timer_nested_irq()** (+20/-17). The
+    recursive timer-irq handling is tightened so reentry from an
+    outer timer fire is resolved at a single point.
+
+--------------------------------------------------------------------------------
+
+## Commits 3484-3513 -- keyboard/i8042 overhaul (kb_int.c.h -> i8042.c/h; 1/10..10/10 renames)
+
+AI notes:
+
+What changed: the PS/2 keyboard module is restructured. kb_int.c.h
+(header-as-source) becomes a pair (i8042.c + i8042.h) representing a
+proper i8042 controller driver; kb.c becomes a thin keyboard device
+driver sitting on top of it. All kb_ctrl_* funcs are renamed to
+i8042_* in a 10-patch series. Keyboard-init handles IRQ#1 with OBF=0
+safely and leaves the mouse/AUX port disabled by default.
+
+  - 5ee7e546 (3484): STATUS/COMMAND port naming for 0x64 (same
+    register, different name on read vs write).
+  - **ed3198c5 [fb][selftests] Move the fbperf selftest in a
+    separate file** -- modules/fb/se_fb_perf.c introduced.
+  - e0df79e5: drop flush_buffers from video_interface.
+  - ffb67ba5: vi->set_row() gains fpu_allowed param.
+  - **05a71262 [interrupts] Intr. the always-available in_irq()
+    function** (+45/-28). Replaces a mix of ad-hoc checks.
+  - c5c95d6a: console uses fpu_context only when !in_irq in
+    term_redraw2.
+
+  - 2568f4d4: fix kb_set_typematic_byte().
+  - 6f48d01d: new kb_ctrl_read_ctr().
+  - be13d5fc, f9e4d800: init_kb() refactored; IRQ#1 with OBF=0 handled
+    (spurious-data races fixed).
+
+  - **167ad59e [x86/kb] Rename kb_int.c.h -> i8042.c and intr.
+    i8042.h**.
+  - 1f802792: KERNEL_DO_PS2_SELFTEST -> PS2_DO_SELFTEST.
+  - f3efffff: new PS2_VERBOSE_DEBUG_LOG option.
+  - b02a9192: new config_8042.h.
+  - 574a51ad: use kb_ctrl_read_data() instead of inb(KB_DATA_PORT).
+  - 35dda8d9: verbose debug checks under PS2_VERBOSE_DEBUG_LOG.
+  - **bb457517 [x86/kb] Keep disabled i8042's second port (mouse) on
+    boot** (+114/-47). Previously both ports were enabled by default.
+
+  - **6ff948 ... 202158d7** (3501-3510): **[x86/kb] Rename kb_ctrl_*
+    funcs to i8042_* [1/10]..[10/10]**. Pure rename series, split
+    into 10 small patches to keep each diff minimal.
+
+  - 8dfd5394, 3cab1e30: refactor kb_led_set() and
+    kb_set_typematic_byte() (now they go through the new i8042 API).
+  - 823a6ebd: handle special keys only when pressed=1.
+
+--------------------------------------------------------------------------------
+
+## Commits 3514-3523 -- small fixes: tty ICANON; EFI video-mode errors; interactive-test dumps
+
+AI notes:
+
+What changed: a pause-break between bigger refactors.
+
+  - f01e7684: tty -- reset end_line_delim_count when switching
+    to/from ICANON.
+  - ab01c3ed (3515): EFI -- better error handling if video mode set
+    fails.
+  - 674bffe9: EFI -- close opened protocols with BS->CloseProtocol().
+  - 031c13b8: fork/execve -- always set ti->timer_ready=0.
+  - a8730fca: fork -- reset sched ticks in the child.
+  - 741fdaab: azure -- coverage builds get their own YML file
+    (other/coverage_build.yml).
+
+  - cbc61bda, d7422af6, 1937285e, 9fee0b6f (3520-3523):
+    run_interactive_test improvements -- better error messages from
+    send_to_qemu_monitor(), QEMU debug-log dump on BrokenPipe, higher
+    read timeout in dump_coverage_data(), more log dumping on
+    BrokenPipe.
+
+--------------------------------------------------------------------------------
+
+## 1937285e -- [cmake] Intr. smart_config_file()
+
+Commit: 1937285ee6... (commit 3524)
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Aug 27 13:56:49 2020 +0300
+
+AI notes:
+
+What changed: +74/-56. New other/cmake/utils.cmake with a
+smart_config_file() function; all five callers of the old
+configure_file() switch to it.
+
+Body (worth keeping in full -- explains the problem and the fix):
+
+  "The purpose of this change is to drastically improve the
+  incremental builds. Until now, changing even minor configuration
+  options could trigger the rebuild of most of the Tilck project,
+  just because the config header files are re-generated. Note:
+  re-generated files IDENTICAL to their previous version still
+  trigger re-build of the C files using them because only the
+  timestamp matters. That's not what we want, actually. If a
+  configuration file didn't change, the C files using it must NOT
+  be re-built. To solve this problem, we've introduced the
+  smart_config_file() CMAKE function. It generates first a temporary
+  config file, compares it to the current one and, only if they
+  differ, the current config file is replaced by the new (temporary)
+  one. This *greatly* reduces the number of files that are re-built
+  after changing config options."
+
+Context (derived): direct follow-up to the config-split arc (3416-
+3429). The split alone doesn't help incremental builds if every
+CMake re-run still rewrites timestamps on unchanged files.
+
+--------------------------------------------------------------------------------
+
+## Commits 3525-3572 -- itoa/snprintk modernization: C++ templates, strtol family, big-switch refactor
+
+AI notes:
+
+What changed: the integer-formatting code, previously a C soup of
+base-specific uitoa_fixed_N variants and inline strtol, is
+rewritten in C++ under common/itoa.cpp using templates; snprintk
+is moved to its own file and its central switch over format chars
+is refactored in a 10-patch series; support for %X, %h, %hh,
+precision (%.), dynamic-param '*', %# (0x prefix), and ptrdiff_t %t
+is added; printk format warnings are finally fixed across the tree
+and -Wformat is turned on.
+
+  - 5e0f1335: force _start at the beginning of .text (linker_script).
+
+  - **76b3decb [string_util] Provide non-inline versions of tolower,
+    toupper etc.**
+  - **0068dc3b [string_util] Move itoa funcs in common/itoa.cpp** --
+    the switch to C++ for this translation unit.
+  - 2cb4a9be: uitoa_fixed() re-implemented using a C++ template.
+  - 679ff68d: the other itoa funcs also become C++ templates.
+  - fdc552dc: new limits<T> in cpputils.h.
+  - 4e84a133: strtol moved to itoa.cpp; unit tests improved.
+  - 100450d0: new strtoul/strtoull.
+  - 8b7acd8e: strtol/strtoul explicitly instantiated for ACPICA (see
+    the ACPI-import arc below).
+  - b470f92e: strto[u]l return long/ulong rather than a fixed-size
+    type.
+  - 50ef6c0e: unify signed/unsigned impl. of strtol.
+  - 3f301495: unify signed/unsigned impl. of itoa.
+
+  - 20eab971: new memcmp, strcpy, strncpy, strstr.
+  - eac30a36: new isxdigit, isspace.
+  - 39d1c4f5: new strcat, strncat.
+  - e6081f9e: new [u]itoaN* funcs (size-parametrized variants).
+  - a597392b: fix strto[u]l declaration.
+
+  - **281be779 [printk] Add support for %z{u,d,x} and use [u]itoaN
+    funcs**.
+  - **6b3340c5 [itoa] Make `base` a regular (non-compile-time)
+    param**. Body: "no need to generate so much code bloat (one
+    instance per base)."
+  - 9993b598: rename itoa.cpp test to itoa_test.cpp.
+
+  - 3a8cf479, 592ee9da, c1a0bcfe, ce11e315, ef4511957,
+    9e1bfa84 (3545-3550): printk vsnprintk optimizations (UOX_ITOA
+    macro, diuox_base[] array, skip non-ascii chars, unit tests, %#
+    support); **snprintk() moved to its own file kernel/snprintk.c**
+    (+326/-321 -- pure move).
+
+  - 2a6ab598: extract write_0x_prefix() from write_str().
+  - c37b4d6f: refactor length-modifier handling.
+  - 56eb947d: refactor %l/%ll handling; fix padding + %p.
+  - b68b43b8: add %h and %hh.
+
+  - f6bba0db: bithacks moved into include/3rd_party/bithacks.h
+    (formally 3rd-party attribution to the "Bit Twiddling Hacks"
+    page; NOTICE updated).
+  - e16be233: new sign_extend().
+  - fb442462: new make_bitmask().
+
+  - 51a576e8: snprintk numeric path optimized.
+  - b11a744b: snprintk corner-case fixes.
+  - acfd8467: basic_defs always includes <stdarg.h>.
+
+  - **3b2ffda5 ... 93367c07 ba1e6b55 8673841b** (3561-3570):
+    **[snprintk] Refactoring the big switch [part 1..10]**. Ten-patch
+    rewrite of the central format-char switch into tidy per-class
+    helpers. Running diff across the series nets to ~neutral line
+    count but dramatically clearer structure.
+  - 8673841b-alt (3571): add %X.
+
+  - **72341edac [printk] Fix printf format warnings** (+70/-67 across
+    25 files). Systematic cleanup of every format-string warning in
+    the tree, in preparation for turning -Wformat on.
+  - ed1bf7da: legacy bootloader's basic_printk rewrite (+53/-28).
+
+--------------------------------------------------------------------------------
+
+## Commits 3573-3591 -- bogoMips, delay_us, kernel_sleep_ms, ksem N-unit, kernel_yield refactor
+
+AI notes:
+
+What changed: busy-wait delays get proper microsecond resolution
+(bogoMips-calibrated), the scheduler's yield path is refactored
+around a unified __kernel_yield(), and ksem grows counted semantics.
+
+  - c7089351: kernel_sleep() declaration moves to timer.h.
+  - 3a57e45a: new kernel_sleep_ms().
+  - **73b59dac [timer] Intr. bogoMips calculation for small-
+    resolution delays** (+127/-4). Calibrates a CPU-speed counter at
+    boot.
+  - f2a20d1e: new delay_us() (uses bogoMips).
+  - c28027f1: pic + i8042 io_wait use delay_us() (no more
+    hard-coded outb to unused port 0x80 as a poor-man's delay).
+  - 2f451185: new ms_to_ticks() helper.
+  - abf0d696: new se_bintree -- bintree performance selftest (+182).
+
+  - 2e32fe63: kcond -- fix wrong ret value in kcond_wait with m != NULL.
+  - fec7f145: ksem_init gains a `val` param.
+  - **328cf37c [ksem] Support wait/signal with units > 1**
+    (+96/-30). Counted-semaphore semantics.
+  - 559cce67: ksem_wait gains `timeout_ticks`.
+  - 01c75fbc: extract ksem_do_wait().
+  - f8a4f829: better error handling in ksem_signal.
+
+  - **e152fdbf [kernel_yield] Move enable/disable preempt in the C
+    wrapper** -- moves the preempt enable/disable pair from the asm
+    stub into its C wrapper.
+  - **d536e454 [sched] Intr. kernel_yield_preempt_disabled()**.
+  - 27de3aa1: use kernel_yield_preempt_disabled() wherever possible.
+  - **392eb476 [kernel_yield] Merge the two yield wrappers with
+    __kernel_yield()**.
+  - 2ef6fb70: move __kernel_yield() into sched.c to avoid code bloat
+    from being in a header.
+
+--------------------------------------------------------------------------------
+
+## Commits 3592-3617 -- x86 debug cleanup; main() panic hardening; snprintk precision/'*'; printk ringbuf
+
+AI notes:
+
+What changed: panic() becomes robust enough to run before
+read_multiboot_info(); fbconsole is allowed to init earlier in panic
+mode; printk's internal ringbuf gets a 1-bit full flag; snprintk
+grows precision and '*' support.
+
+  - 81d3652b: drop unused mapped_in_pdir().
+  - **9ff24777 [sched][main] Make create_kernel_process() be a CTOR**.
+  - db7245fd: snprintk -- add precision (%.).
+  - cf976c99: snprintk -- add `t` length (ptrdiff_t).
+  - 7cba79ba: snprintk -- support dynamic params with `*`.
+  - 45fff437: printk/tilck_vprintk gain a flags param.
+  - 778a828e: mark the first 1 MB as MEM_REG_EXTRA_LOWMEM.
+
+  - ba53a08c, 5a774148, 0a04cdd1 (3599-3601): x86 inb/outb
+    improved; introduce inw/outw and inl/outl.
+
+  - **c2a00afc [kmalloc] Drop requirement for size param in the
+    common case** (+58/-21). The size param becomes optional for free
+    when the block header carries it.
+  - **d291b6c2 [kmalloc] Completely drop mdalloc (malloc w/ metadata)
+    as unused** (-62).
+  - 571468e3: new debug_kmalloc_get_heap_info_by_ptr().
+
+  - 936b153f, 902faad4, b1cfbcf5, 4f5dd98f (3605-3608):
+    extract try_set_first_printk_on_stack(); new tmpbuf param; new
+    1-bit `full` flag (increases MAX ringbuf size); refactor
+    printk_direct_flush.
+  - **146f78a3 [printk] Print time prefix only after new lines**
+    (+100/-36). Output formatting matches kernel-log convention.
+
+  - f30b62bd: 800x600 becomes default resolution for legacy boot.
+  - e7259264: x86 debug -- use __builtin_frame_address() when ebp is
+    NULL.
+  - a003747d: new FBCON_BIGFONT_THR option.
+
+  - **58fc27a1 4ff13892 68aa24a6 0481a931 bb7918e5 (3613-3617)**:
+    init_paging renamed and moved up in main(); init_paging_cow
+    renamed back to init_paging; **init_kmalloc split into two to
+    allow early init**; fbconsole allowed to init earlier in panic
+    mode; **main: panic() works even before read_multiboot_info()
+    (+87/-27)** -- the main() flow is rewritten so that fatal errors
+    before MBI parsing still produce a readable panic screen.
+
+--------------------------------------------------------------------------------
+
+## Commits 3618-3642 -- misc: closed-end memory dumps; wth pointers; ARRAY_SIZE int; "tag:" style
+
+AI notes:
+
+What changed: many small cleanups that together reduce friction in
+reading and maintaining the code.
+
+  - 32c31ddb: system_mmap -- don't merge the extra RD region, just
+    check for it.
+  - c213dfc0: dp -- dump memory regions in closed-end [begin, end].
+  - 762929fb: printk -- skip NO_PREFIX where it's no longer needed.
+  - **a2b21ef7 [printk] Replace '0x%x' with '%#x'** -- now that %# is
+    supported (see 3549).
+  - 03364446: drop unused IRQ_REQUIRES_BH enum value.
+  - f0777ef7: wth -- create more generic worker threads at boot.
+  - **27d16973 [wth] Switch from IDs to pointers** (+159/-86). Worker
+    threads are referenced by pointer, not by integer ID, everywhere.
+
+  - 25cf3c75: make ARRAY_SIZE() return `int`.
+  - 914df1c9: convert u32/size_t to `int` in many places (consistency
+    follow-up to the ARRAY_SIZE change).
+  - 4a24f3c5: turn ON printf format warnings (-Wformat=2 etc.).
+  - 539ff288, d1e35622 (3628-3629): wth_enqueue_job -> wth_enqueue_on;
+    wth_enqueue_job2 -> wth_enqueue_anywhere.
+  - 6ec44241: drop generic prio-1..3 workers.
+  - 5e59fa31: workers gain a `name` property.
+  - 34f49aff: workers with name != NULL are treated as dedicated.
+  - 5cc82efe: new wth_wait_for_completion().
+
+  - a2a36bf0: drop `color` param from term_internal_incr_row.
+  - f9d2f374, 4a620386 (3635-3636): devfs coding-style fix; gain
+    optional `devfile` out-param to create_dev_file().
+  - 001f57fe, 8918b9fe (3637-3638): dp -- create ad-hoc handle to
+    the current process's TTY; simplify main loop.
+  - 2a1493a5: new is_rw_mapped() paging helper.
+  - 02750eca: rename make_list() to STATIC_LIST_INIT().
+  - **fac89496 [printk][cosmetic] Convert "[tag]" to "tag:" in
+    several places** -- printk tag style standardization.
+  - 0330d555: new {kalloc,kfree}_obj() macros.
+
+--------------------------------------------------------------------------------
+
+## Commits 3643-3665 -- kmalloc polish: kalloc_obj/kalloc_array_obj; vmalloc; IRQ-safe heaps; dup_expanded
+
+AI notes:
+
+What changed: the kmalloc macro surface is expanded (typed
+allocation / array allocation with fewer boilerplate casts);
+per-heap alloc/free paths are made safe from IRQ context; a new
+vmalloc() is introduced and used for metadata nodes; heaps can be
+duplicated with expanded capacity.
+
+  - 3d3ff0e9: use kalloc_obj() wherever possible.
+  - 9e4e5b79: use kzalloc_obj() wherever possible.
+  - 365ff4b0: use kfree_obj() wherever possible.
+  - f6990716: new {kalloc,kfree}_array_obj() macros.
+  - a6609c99: use kalloc_array_obj() wherever possible.
+  - f8920144: use kzalloc_array_obj() wherever possible.
+  - b1aab709: use kfree_array_obj() wherever possible.
+  - 7cc7a269: new kfree(ptr) wrapper for kfree2(ptr, 0).
+  - 95d0f5b2: used_heaps made `int`.
+
+  - **69b96713 [kmalloc] Make per-heap alloc/free ops safe in IRQ
+    context** (+153/-10). Protects internal state with saves/restores
+    suitable for nested invocation from an IRQ handler.
+  - 6f0108282: alloc_new_small_heap() made IRQ-safe.
+  - b8bee2d0: new kmalloc_create_regular_heap().
+  - 871a861b: coding-style pass on kmalloc.h.
+
+  - 9b62b605: simplify heap creation in init_hi_vmem_heap().
+  - 44c8e961: new hi_vmem_avail().
+  - a39e9d8e: new PAGING_FL_DO_ALLOC flag.
+  - 86ee1c50: new PAGING_FL_ZERO_PG flag.
+  - ffd64657: new [un]map_kernel_page[s] wrappers.
+  - b8ba60dd: minor kmalloc_create_heap improvements.
+
+  - **f0de6122 [kmalloc] Intr. vmalloc() and vfree2()**. Virtual-
+    memory-backed allocations (as opposed to physically-backed
+    kmalloc).
+  - 546fa662: use vmalloc() for kmalloc's metadata nodes.
+  - **09b9f757 [kmalloc] Intr. kmalloc_heap_dup_expanded()** (+81/-22).
+    Lets a heap be "grown" to a larger virtual extent.
+  - 9b222f9e: drop useless statements from internal_kmalloc.
+
+--------------------------------------------------------------------------------
+
+## Commits 3666-3679 -- process_mm expand; waitpid race; wobj renamed prepare_to_wait_on/wake_up
+
+AI notes:
+
+What changed: the wait-object API is renamed for clarity and tightened
+around preemption expectations; the mmap heap can expand dynamically;
+a long-standing WUNTRACED/WCONTINUED bug in waitpid is fixed.
+
+  - b7381109: fix OOM handling in duplicate_mappings_info.
+  - **efffa728 [process_mm] Dynamically expand mmap heap size as
+    needed** -- uses kmalloc_heap_dup_expanded().
+
+  - f2e90b7d: **waitpid race fix** -- wake_up_tasks_waiting_on() race
+    with sys_waitpid entry fixed.
+  - **ce810185 [waitpid] Fix bug ignoring WUNTRACED and WCONTINUED**.
+    Body: the extra waitpid flags were ignored but tests passed
+    because wake_up_tasks_waiting_on() didn't check WEXTRA_* when the
+    parent waited on pid=-1. Patch sets wobj's extra flags on the
+    waiter and has the wake function check them.
+
+  - **28506b26 [exit] Call wait_obj_reset() in terminate_process()**.
+    Body: calling the low-level wait_obj_reset() is better than
+    task_reset_wait_obj() here, because the latter is supposed to
+    wake up the chosen task and expects SLEEPING state.
+
+  - d8369ef3: kmutex -- simplify kmutex_lock_enable_preemption_wrapper.
+  - a1a6b259: wait_obj_set() gains `extra` param.
+  - 163e7fea: drop `ti` param from task_set_wait_obj().
+  - **f19bd585 [wobj] Rename task_set_wait_obj -> prepare_to_wait_on**.
+  - **71038d75 [wobj] Rename task_reset_wait_obj -> wake_up**.
+  - 90dd53cc: prepare_to_wait_on() requires preempt disabled.
+  - **43dff983 [wobj] kernel_sleep_on_waiter ->
+    prepare_to_wait_on_multi_obj**.
+  - **36192bf8 [sched] Intr. enter_sleep_wait_state()** -- single
+    named entry for "I've prepared my wait; now actually sleep".
+
+  - ee0d2f04: system_mmap -- dump memory map on boot (moved out of
+    debug panel into kernel/mm/system_mmap.c).
+
+--------------------------------------------------------------------------------
+
+## Commits 3680-3704 -- compiler-flags cleanup; tristate; -Wshadow EFI; TILCK_DEBUG -> DEBUG_CHECKS
+
+AI notes:
+
+What changed: the CMake compiler-flag management is refactored into
+named flag-list variables (WARN, FREESTANDING, LOWLEVEL_BINARIES,
+DISABLE_FPU, SAFER_BEHAVIOR, DBG), and the EFI bootloader is
+rebuilt with -Wshadow; the TILCK_DEBUG define is split off from
+the unrelated DEBUG_CHECKS semantic.
+
+  - a7abc5e8: fix broken code path under init_first_term_null().
+  - 98404fb0: serial -- no-op early_init_serial_ports() when
+    MOD_serial=0.
+  - 0c53eb1b: new BOOT_ASK_VIDEO_MODE option (legacy + EFI).
+  - 26cdcf0a: new enum tristate in basic_defs.h.
+  - c833a806: include <limits.h> in basic_defs.h.
+  - 98a8e2b3: get_mapping2() handles big pages.
+  - 78a6c881: EFI -- new `any_warnings` global flag.
+  - 45a7f397: EFI -- MBI's boot_loader_name is set to 'TILCK_EFI'.
+  - 61930ea4: new EFI_BUILD_BASE_FLAGS.
+  - **c94356dc [efi] Append WARN_FLAGS_LIST to
+    EFI_BUILD_BASE_FLAGS_LIST** -- including building with -Wshadow.
+    Body: fixing all warnings required removing a few redundant
+    params (BS, ST, mbi) from internal EFI helpers since gnu-efi
+    already exposes them as globals via InitializeLib().
+
+  - b48ec500: move two -W kernel flags into WARN_FLAGS_LIST.
+  - 21d7f58e: move -fno-strict-aliasing into GENERAL_KERNEL_FLAGS_LIST.
+  - bd381c64: rename OTHER_CFLAGS* -> DBG_FLAGS*.
+  - 07a52741: new FREESTANDING_FLAGS_LIST.
+  - b34e6265: gtest flags management improved.
+  - 84e67927: most flag lists appended to EFI_BUILD_BASE_FLAGS_LIST.
+  - 4ff3cfa5: new LOWLEVEL_BINARIES_FLAGS_LIST.
+  - 77ad5299: new DISABLE_FPU_FLAGS_LIST.
+  - 8919a673: move -fno-omit-frame-pointer to DBG_FLAGS_LIST.
+  - be09ad0c: new SAFER_BEHAVIOR_FLAGS_LIST.
+
+  - 97546569: add TILCK_ prefix to DEBUG/RELEASE defines.
+  - 60066a45: add GENERAL_DEFS_LIST to EFI_BUILD_BASE_FLAGS.
+  - **be10b712 [config] Replace #ifdef TILCK_DEBUG w/ #ifdef
+    DEBUG_CHECKS**. Body: "separate build types from debug checking
+    options. Debug builds have debug checks of course, but release
+    builds have debug checks turned on by default as well. In
+    general, we must separate the build type from the debug
+    checking level."
+  - 8251dd49: add _BUILD suffix to TILCK_DEBUG/RELEASE. Body:
+    "remark that TILCK_DEBUG and TILCK_RELEASE have nothing to do
+    with debug checking and all to do with the build type."
+  - 5dcf04df: dp -- add DEBUG_CHECKS and KERNEL_STACK_PAGES to opts.
+
+--------------------------------------------------------------------------------
+
+## Commits 3705-3743 -- x86_64 EFI w/ system GCC; multi-GCC support; toolchain git-repo caching
+
+AI notes:
+
+What changed: the EFI boot target stops relying on a gnu-efi build
+specific to one gcc version, toolchain can manage multiple GCC
+versions side-by-side, and many toolchain packages shift to caching
+upstream git repos rather than re-cloning per install. Micropython
+is pinned to a tilck-patched fork.
+
+  - **c46b9f9c [cmake] Build BOOTX64.EFI with system's GCC compiler**
+    (+37/-35). Uses the host compiler for the EFI binary instead of
+    the cross-GCC.
+  - 4014280b: CMake handles HOST_ARCH={amd64,i386}.
+  - e5198899: build_toolchain handles HOST_ARCH=amd64.
+  - 59798ff0: don't pass `-` to sed when reading from stdin.
+  - 042a1cd7, 011242e2 (3709-3710): azure toolchain_builds YML
+    fixes; upgrade containers to v2.
+
+  - 0b575aec: add is_unsigned<ulong> specialization (fixes a subtle
+    bug in __tilck_strtol() that accepted "-1" for T = ulong).
+  - 172bee14: fix strncpy() / strncat() (still unused, but correct).
+  - 7117a1d0: snprintk -- support precision = 0.
+  - c4e4d2f2: snprintk -- handle some wrong fmt strings like snprintf.
+
+  - **674b9b51 [i8042] Disable preemption in i8042_reboot()**. Body:
+    reboot calls i8042_send_cmd -> delay_us() which ASSERTs preempt
+    disabled; during reboot preempt was kept enabled. Panic due to
+    failed ASSERT. Fix: disable preempt at reboot entry.
+  - 412e45a6: new ABS() / UNSAFE_ABS().
+  - c69adb49: new PREFERRED_GFX_MODE_{W,H}.
+
+  - 6feceaa5: ramfs -- fix permission checking across open/mkdir/rw/
+    getdents/stat.
+  - 50855c3f: fat_mm -- fix OOM handling in fat_mmap().
+  - d3061236: devshell -- fix the cmd_bad_write() test.
+  - a4eb38a2: EFI -- init an out-param variable to keep compiler happy.
+
+  - 04982989: upgrade libmusl to v1.1.24.
+  - **6e519237 [toolchain][cmake] Support multiple GCC toolchains**
+    (+104/-19). Multiple gcc-<ver> directories can coexist under
+    toolchain2/.
+  - f0984bc9: fix a bug in script_utils.
+  - 5af5caf4: new download_git_repo_in_cache in script_utils.
+  - ad695dd8: improve extract_cachefile_* funcs.
+
+  - 52e68c8b, f982bac1, e652ac2c, fff85935, f7794d36, b103c9a3,
+    de068bcd, 75dcf63e, dfa553a2 (3727-3735): cache fbdoom, gnu-efi,
+    lcov, micropython, gtest, libmusl, TinyCC, Vim, zlib git repos.
+    (gtest layout also restructured: $TC/cache/googletest ->
+    $TC/noarch/gtest-1.8.1 etc., with symlinks to old paths. CI
+    container bumped v5 -> v6.)
+
+  - a0f8d911: build_toolchain UX -- accept short names ("vim") and
+    multiple args.
+  - 58b24468: CMake -- use CONFIGURE_DEPENDS with GLOB on CMake >=
+    3.12.0.
+  - ad191373: fix TINY_KERNEL warning message.
+  - 3c50f727: fix dependencies on elfhack tool.
+  - **2848d0dd [scripts] Intr. the scripts/dev/run_config script**
+    (+100/-2). Wrapper around ccmake; `make menuconfig` target added
+    to the root Makefile.
+  - 46f1c75c: new tree-command extra package.
+  - cf252281: set GOOGLETEST_VERSION while building googletest.
+  - **afe5328f [toolchain] Switch to a custom tilck-patched
+    micropython** (v1.13-tilck from vvaltchev/micropython). Body:
+    libmusl's realpath() needs /proc/self/fd/<n>; Tilck has no /proc;
+    rather than patch libmusl or add /proc, micropython is forked
+    and patched to not depend on /proc for realpath().
+
+--------------------------------------------------------------------------------
+
+## Commits 3744-3773 -- elfhack refactor 1/7..7/7; KERNEL_MAX_SIZE auto-gen; panic hardening
+
+AI notes:
+
+What changed: elfhack (the in-tree ELF post-processor) is cleaned up
+in a 7-patch series and gains --check-mem-size; KERNEL_MAX_SIZE is
+computed automatically at build time; the panic path handles stack
+overflow triggered inside panic() itself; vterm bypasses its
+action-queue during panic.
+
+  - **edd17ee7 ... 26e5fced [elfhack] Refactoring [1/7]..[7/7]**
+    (3744-3750). Cosmetic/structural cleanup of
+    scripts/build_apps/elfhack.c.
+  - 766eac07: new --check-mem-size subcommand for elfhack.
+  - f597bff7: `kb` optional flag for --check-mem-size.
+  - **aea8a6c6 [common][elfhack] Move elf_calc_mem_size() to a
+    dedicated file** include/tilck/common/elf_calc_mem_size.c.h.
+  - 11d60a82: use p_paddr instead of p_vaddr in elf_calc_mem_size.
+
+  - 6e6f3e15, bdcc479d (3755-3756): fat_read_whole_file() allows
+    dest_buf_size < fsize; returns tot_read.
+  - 311b810c: bootloader -- allocate only e->DIR_FileSize bytes for
+    the kernel file (no more blind max-size allocation).
+
+  - 447a5d87: stop using KERNEL_MAX_SIZE for KMALLOC_FIRST_HEAP_SIZE.
+  - 25e79238: move KERNEL_MAX_SIZE to config_boot.h.
+  - **2061a5c4 [cmake] Make KERNEL_MAX_SIZE be automatically
+    generated**. New scripts/build_scripts/gen_krn_max_sz.
+  - 98d20efe: drop custom target for krn_max_sz.h.
+  - 7bbf6f74: move TINY_KERNEL and KERNEL_GCOV to config_kernel.h.
+  - f28b1926: new KRN_NO_SYS_WARN knob.
+
+  - **ee0ef25e [interactive] Impl. retry logic on qemu unexpected
+    death** (+168/-42). Qemu crashes in interactive tests no longer
+    abort the whole run -- they retry once.
+  - dfaa7482: init -- ignore SIGUSR1 and SIGUSR2.
+  - 9fcfa3a3: signal -- print warning on ignored signals sent to pid 1.
+
+  - **04918b4b [pic] Mask by default all IRQs except IRQ #2 (cascade
+    for 2nd PIC)** -- previously the PIC came out of init with most
+    IRQs unmasked.
+  - 33c5f3e0: dp -- show list of unmasked IRQs.
+
+  - 71d54aa5: new get_rem_stack() helper.
+  - **90523129 [panic] Handle the case of stack overflow triggered
+    in panic()** (+50/-5). A panic that itself overflows the stack
+    now reports the fact instead of re-faulting.
+  - **b8a4f2fc [printk] Check remaining stack space before calling
+    vprintk()** (+57/-8). printk no longer blows up printk if the
+    caller is on a near-empty stack.
+  - dcd1f759: vterm -- bypass the action queue during panic.
+  - 42631d8b: vterm restart_video_output -- don't redraw static
+    elems in panic.
+
+--------------------------------------------------------------------------------
+
+## Commits 3774-3809 -- VFS refactor: default dup/close, on_close, sysfs filesystem
+
+AI notes:
+
+What changed: VFS grows default implementations for dup() and
+close(), so individual filesystems stop reimplementing trivial
+operations. The `close` op is replaced by optional on_close() and
+on_close_last_handle() callbacks. A MAX_FS_HANDLE_SIZE is declared
+so VFS can manage handle allocation uniformly. A new sysfs module
+is added (the Tilck equivalent of procfs/sysfs).
+
+  - 390ebdce: vfs -- fd_flags and spec_flags reduced to u16.
+  - **c0edb9d4 [vfs] Intr. MAX_FS_HANDLE_SIZE**. Each FS declares
+    its handle's max size; VFS uses it to allocate uniformly.
+  - **1155c28e [vfs] Intr. vfs_{alloc,free}_handle()**.
+  - 437614fd: use vfs_{alloc,free}_handle() everywhere.
+  - **c74780d5 [vfs] Provide default impl. for dup()** (+32/-3).
+  - 3db36950, f5e49aa8, 83cb14f2, cc714b29 (3779-3782): kernelfs,
+    ramfs, fat, devfs all switch to the default dup().
+  - **f66968db [vfs] Remove the func_dup interface from fs_ops**.
+
+  - **8677c5f0 [vfs] Drop vfs_close2() as it's unnecessary**. Body:
+    terminate_process() can no longer be called cross-process, so
+    the `struct process *` param added to vfs_close2 has no users.
+  - 087827d1: vfs -- default impl. for close() (trivial).
+  - **32886ea8 [vfs] Intr. on_close() and on_close_last_handle()**.
+  - dcfea963, a730d9e5, 9d7473e2 (3787-3789): devfs, kernelfs, ramfs
+    stop implementing close() directly; use on_close().
+  - **850aaac1 [vfs] Drop `close` from fs_ops** (+7/-19). Body: the
+    `close` op has been fully replaced by the two on_close()
+    callbacks.
+  - ca7c83c4: ramfs -- fix coding style (find-&-replace artifact).
+  - fe3773e3: new vfs_create_new_handle().
+  - 54963ab5: use vfs_create_new_handle() everywhere.
+  - 2f6ba52b: drop vfs_init_fs_handle_base_fields().
+
+  - 31e2cbd9: new struct devfs_file_info.
+  - 496748964: devfs -- change signature of func_create_device_file.
+  - bbeaf0b3: devfs -- drop unused write_buf* from devfs_handle.
+  - 69e56d2f: devfs+tty -- create an `extra` field; drop tty-specific
+    fields from devfs handle.
+
+  - 5d0fc7ea: improve create_fs_obj() to avoid boilerplate.
+  - f505e024: VFS wrappers for fsync and fdatasync.
+  - 81d57204: VFS stub impl. for sync() and syncfs().
+  - eb118ec0: impl. vfs_syncfs() and vfs_sync().
+  - f80b49bc: new VFS_SPFL_NO_LF spec flag.
+  - a79cc295: main+devfs -- move /dev creation to init_devfs().
+
+  - **411fa4de [modules] Intr. a static initialization order in
+    modules.h** -- modules now declare a pri so init order is
+    deterministic.
+
+  - 6f386cc5: console -- don't re-enable cursor on term switch if
+    scrolling.
+  - 34badbfd: ramfs -- do not allow empty dentry names.
+  - e780b694: new array_reverse_ptr() in sort.h (+38).
+
+  - **b7811b2f [sysfs] Intr. the sysfs filesystem** (+2569 lines
+    across 15 new files in modules/sysfs/). A Tilck-native
+    hierarchical-key-value filesystem accessed at /syst (see
+    3909-3910 for the ACPI view under /syst/acpi). Includes
+    sysfs_utils.h, sysfs.c (top level), and .c.h sub-files for
+    dents, dirops, fileops, inodes, lock_and_retain, types.
+
+--------------------------------------------------------------------------------
+
+## Commits 3810-3817 -- mod_*.h per-module config; ASSERT_TASK_STATE; timer_ready race fix
+
+AI notes:
+
+What changed: the monolithic config_modules.h is replaced by one
+mod_<name>.h per kernel module; sched grows an ASSERT_TASK_STATE()
+pair; a second timer_ready-vs-state race (after the 3403-3415 one)
+is handled by relaxing ASSERTs in schedule() and
+enter_sleep_wait_state().
+
+  - **bb19b36e [config] Replace config_modules.h with a mod_*.h file
+    per module** (+109/-79). New config/mod_console.h, mod_debugpanel.h,
+    mod_fb.h, mod_kb8042.h, mod_serial.h, mod_sysfs.h,
+    mod_tracing.h.
+  - ec1b21c3: drop config_8042.h; contents move to mod_kb8042.h.
+  - 243b6e9c: FB defs move from config_console.h to mod_fb.h.
+  - 16be5327: drop config_console.h; contents move to mod_console.h.
+
+  - 65c3b948: new ASSERT_CURR_TASK_STATE().
+  - fa09cc69: new ASSERT_TASK_STATE().
+
+  - **d5b2772e [sched][timer] Don't ASSERT state == sleeping in the
+    timer_ready case**. Body (kept -- subtle race):
+      "In case a task in kernel_sleep() is preempted before
+      kernel_yield() is called, it is possible the timer to fire
+      much before the task is resumed. When that happens, if the
+      task in kernel_sleep() didn't get a chance to change its state
+      to SLEEPING yet, the timer won't wake-up the task. [...] This
+      race condition has ALREADY been handled in schedule() with the
+      help of the per-task flag timer_ready BUT the fix had a
+      subtle bug: it ASSERTed that current task's state is SLEEPING
+      if it's not RUNNING. That implied that the race would occur
+      only between task_set_wakeup_timer() and task_change_state().
+      [...] The reality is that the case is indeed harmless, but
+      schedule's ASSERT did not consider that when the timer fires
+      before kernel_yield(), it also sets the task in the RUNNABLE
+      state."
+    Fix: drop the wrong ASSERT in the timer_ready case.
+
+  - **665d4aa1 [sched] Handle enter_sleep_wait_state() racing with a
+    wake-up timer**. Same class of race, different call path
+    (poll/select): enter_sleep_wait_state() had its own ASSERT that
+    state is SLEEPING; relax it to allow RUNNABLE when timer_ready
+    is set.
+
+--------------------------------------------------------------------------------
+
+## Commits 3818-3848 -- ACPICA imported; ACPI module infrastructure (OSL layer)
+
+AI notes:
+
+What changed: Intel's ACPICA reference implementation is vendored
+into the tree under include/3rd_party/acpi/ and
+modules/acpi/acpica/, and a new modules/acpi/ module is created
+around it with a Tilck-specific OS Services Layer (OSL) that
+implements the ~30 callbacks ACPICA needs from the host OS.
+
+  - **15ee02ac [acpi] Intr. ACPICA files (ver. 20200717) in the
+    source tree**. One-shot import: **154 132 lines added across
+    242 files**. 64 platform/ACPICA headers under
+    include/3rd_party/acpi/ + subdirs debugger, dispatcher, events,
+    executer, hardware, namespace, parser, resources, tables,
+    utilities under modules/acpi/acpica/. A custom
+    platform/actilck.h binds ACPICA to Tilck.
+
+  - **e662b4dc [acpi] Intr. the ACPI module** -- config/mod_acpi.h,
+    modules/acpi/osl.h, modules/acpi/osl_stub.c (placeholders),
+    modules/acpi/acpi.cmake, NOTICE updated for the ACPICA license.
+    DEBUG_CHECKS path tightened to cope with ACPICA's size.
+  - a84db542: KERNEL_STACK_PAGES=2 when MOD_acpi=1 (ACPICA is
+    stack-hungry).
+
+  - e9a1ee70, cf37b6a1, 105e2b6a, e47c9c03, e8026572, 479a6d2d,
+    efbce16d, c7f6d62a, baca00f5 (3821-3829): OSL implementations --
+    AcpiOsExecute, stub AcpiOsEnterSleep, AcpiOsMapMemory /
+    UnmapMemory, GetPhysicalAddress, Readable/Writable,
+    Read/WriteMemory (partial), Read/WritePort, Allocate/Free.
+
+  - 647c92c5: dedicated kmalloc heap for small ACPICA allocations
+    (+65/-2).
+  - 8e4cd48a: osl_tasks.c with dedicated worker threads for
+    AcpiOsExecute callbacks.
+  - 91142976: AcpiOsWaitEventsComplete().
+  - e130ae7e: trivial (non-SMP) spinlock impl. for OSL.
+  - 9b614cfa: full semaphore OSL funcs (+108).
+  - c8f057cd: install/remove IRQ handler OSL funcs.
+  - 97b4eddc: r/w PCI config stubs for the OSL.
+
+  - cf37b6a1 (3837): new acpi_module.c + include/tilck/mods/acpi.h.
+  - 1f507c2e: AcpiInitializeTables on boot.
+  - 2c08286e: AcpiInitializeTables uses dynamic allocation.
+  - e9a1ee70 alt (3840): allow full ACPICA debugging / tracing.
+  - 9f8dd291: separate the OSL build from the ACPICA build
+    (different compiler flags).
+  - 5ebaf774, a46380ac (3842-3843): better error handling in
+    acpi_module.c + mmap/munmap OSL funcs.
+
+  - **0576fc90 [efi] Pass the ACPI root pointer via MBI's apm_table
+    field** -- EFI bootloader finds the RSDP (via the EFI system
+    table's ConfigurationTable array) and smuggles it to the
+    kernel through an otherwise unused Multiboot field.
+  - 0b587621: kernel side uses the MBI-supplied RSDP.
+  - 18d7bd01: new acpi_init_status enum + state tracker.
+  - 0a782a3f: use #if MOD_acpi in acpi.h to simplify call sites.
+  - f4a8abc2: rename early_init_acpi_module ->
+    acpi_mod_init_tables.
+
+--------------------------------------------------------------------------------
+
+## Commits 3849-3875 -- PCI discovery (pci.c + classes/vendors tables, MCFG, acpi_mod_load_tables)
+
+AI notes:
+
+What changed: a PCI-ecam-aware PCI enumerator is implemented in
+kernel/arch/generic_x86/pci.c (later moved to modules/pci/ in 3914).
+Vendor/class-ID tables are auto-generated from the PCI-ID database.
+ACPI grows acpi_mod_load_tables() and the OSL gains proper PCI
+config r/w.
+
+  - **5114874c [pci] Intr. the generate_pci_ids script** (+233).
+    A Python script that ingests pci.ids and emits the big
+    pci_classes.c.h / pci_vendors.c.h tables.
+  - **d8d5f71b [pci] Intr. pci.c, pci.h, pci_classes.c.h,
+    pci_vendors.c.h** (+2568 lines -- pci_vendors.c.h alone is
+    2254).
+  - 7354cf66, 41175fe4 (3853-3854): PCI config read/write funcs;
+    init_pci() checks for ACPI MCFG.
+  - 318b8238: LoC counter excludes pci classes/vendors.
+  - d8d5f71b alt: shorten IDE interface progif strings.
+  - 286caf28: new pci_device_get_info().
+  - 46946a36, 06b4f27c (3856-3857): new pci_make_loc(); implement
+    segment-0 device discovery.
+  - 61e73c9b: save MCFG table (if any).
+  - 01c2e88f: define constants via macros.
+  - 61511889: nfo.header_type is a bitfield.
+  - 22b78f8f: new struct pci_segment.
+  - 0ce58fd2: prepare for multi-segment discovery.
+  - 776b949e: dummy pci_mmio_config read/write.
+  - abc28ed5: pci_{before,after}_discover_bus() hooks.
+  - c098420f: full pci_mmio_config_{read,write} impl.
+  - d3a60585: improve pci_dump_device_info.
+  - ced53a5b: refactor io-port config r/w.
+  - 3b04c36a: new pcie_calc_config_paddr().
+  - 226b94f5: expose `raw` value in struct pci_device_loc.
+  - **27ad778b [pci] Move pci.h out of arch/generic_x86**. Body:
+    "PCI is used in other architectures as well, like ARM."
+  - 6562fe99: create a list of all PCI devices.
+  - 9be8932f: make mmio config r/w work after discovery completes.
+  - 1c54d60d: fix multi-func host handling in
+    pci_discover_segment().
+  - **3b7d759c [acpi] Impl. the OSL wrappers for r/w PCI config**
+    (+67/-4).
+  - **7720c92e [acpi] Intr. acpi_mod_load_tables()** -- second init
+    stage after acpi_mod_init_tables.
+
+--------------------------------------------------------------------------------
+
+## Commits 3876-3897 -- ACPI subsystem enable; FADT; powerbtn / lid / reboot / poweroff
+
+AI notes:
+
+What changed: the ACPI module fully enables the ACPI subsystem at
+runtime (AcpiEnableSubsystem, AcpiInitializeObjects, NS walk) and
+starts wiring event handlers for fixed events (power button) and
+notify handlers (lid switch, control-method power button). reboot
+and poweroff get ACPI-backed implementations.
+
+  - dd34cae5: use ACPI_FAILURE() instead of != AE_OK.
+  - **8bfa2b39 [acpi][main] Do enable ACPI subsystem on HW** -- the
+    big moment. +59 to acpi_module.c.
+  - **483ca693 [acpi] Read FADT as early as possible** (+64).
+  - bd176a07: init_kb() -- make it acpi-aware (don't init if ACPI
+    says no 8042).
+  - 67918b98: kb -- don't rely on acpi_is_8042_present() (more
+    lenient fallback).
+  - a17dc8b8: allow i8042_reboot() to return on failure.
+
+  - 7aac3075: `farg` param for print_acpi_failure.
+  - d686c2cc: acpi_mod_init_tables() moved before init_console().
+  - e27f4ca3: main -- check with ACPI if text mode is available.
+  - 532338c3: log every ACPI init step.
+  - **4e971bfc [acpi] Iterate over all objs in the NS after enabling
+    the subsys** (+78/-1). NS walk groundwork.
+  - 711d39ee: improve error handling in
+    acpi_mod_enable_subsystem().
+
+  - **be6eb194 [acpi] Intr. mechanism for callbacks after enabling
+    ACPI subsystem**. Body: "Its purpose is to allow drivers to
+    register event handlers before AcpiInitializeObjects() is
+    called and the ACPI subsytem starts to receive all kinds of
+    events/notifications."
+  - **29578558 [acpi] Intr. callback per ACPI object in first NS
+    walk** (+86/-16). Drivers register a per-obj callback.
+
+  - 5b5ad144: fix init seq in acpi_mod_enable_subsystem.
+  - 4ab572b7: add a global event handler (+34/-1).
+  - **4a04dc55 [acpi] Intr. fixed event handler for powerbtn**. New
+    modules/acpi/powerbtn.c (+42/+11).
+  - 537817972: notify handler for control-method PWBTN.
+  - ea7556fe: notify handler for the lid switch (+46/-13).
+  - 51238de2: improve powerbtn_reg_notify_cb.
+  - **4dce9a0f [acpi] Intr. acpi_reboot()** (+67).
+  - **af2dcf0c [acpi][misc] Intr. poweroff() and acpi_poweroff()**
+    (+99/-6). Real power-off via ACPI S5 transition.
+
+--------------------------------------------------------------------------------
+
+## Commits 3898-3915 -- ACPI NS walk refactored; battery; /syst/acpi; fb battery banner; pci as module
+
+AI notes:
+
+What changed: the ACPI namespace walk is reimplemented on top of
+AcpiGetNextObject() (instead of the callback-driven
+AcpiWalkNamespace) for clearer control flow; a battery driver is
+added; a sysfs view of the ACPI namespace is exposed at
+/syst/acpi; the fb console shows battery charge in its banner; PCI
+is migrated from built-in code to a proper module with module
+dependencies.
+
+  - c8688dd3: extract call_per_matching_device_cbs() from
+    walk_single_dev().
+  - 032bf5fd, 115072b8, 9b75a189 (3899-3901): refactor
+    acpi_walk_single_obj() and **reimplement acpi_walk_ns() using
+    AcpiGetNextObject()**.
+  - 621d2e52: new acpi_has_method().
+  - 39bddf74: refactor acpi_walk_single_obj() part 2.
+  - 3f0204dd: introduce filter in per-obj callbacks.
+  - 0cba3ced: silence the ACPICA obj-repair logger.
+
+  - **8cdee07a [acpi] Def. get_acpi_init_status() as macro when
+    MOD_acpi=0**. Body (kept -- useful pattern): "only by defining
+    get_acpi_init_status() as a function macro returning
+    ais_not_started, we can always benefit from dead-code-
+    elimination like if (0). That allows expressions like `if
+    (get_acpi_init_status() >= XXX)` to act like `if (MOD_acpi)` in
+    all the cases (even with -O0 -fno-inline-functions). That is
+    super useful to avoid link errors with ACPI functions when the
+    module is not compiled it."
+  - d4ec77b6: new acpi_reg_on_full_init_cb().
+
+  - **9f6b4a0b [acpi] Intr. battery management funcs** -- new
+    modules/acpi/battery.c (+298 lines). Reads _BST/_BIF, exposes
+    battery state.
+  - **b6061c3b [acpi] Intr. sysfs view of acpi's namespace** -- new
+    modules/acpi/acpi_sysfs.c (+612). Mounts ACPI objects as a tree
+    under /syst/acpi.
+  - 025f1393: display EISAID HIDs in human-readable form in
+    /syst/acpi.
+
+  - **4621f70b [fb_console] Show battery charge in the top banner**
+    (+65/-10).
+  - 4a449c66: refactor fb_draw_banner (+99/-60).
+  - 8570d3fa: update battery charge per mille only in
+    fb_update_banner().
+
+  - **6f2a60fe [config][pci] Move the PCI code to a dedicated
+    module**. PCI migrates kernel/arch/generic_x86/pci.{c,...} ->
+    modules/pci/generic_x86/pci.{c,...}; new config/mod_pci.h.
+  - **74326be0 [cmake] Add support for module dependencies** -- each
+    module can declare dependencies in a module_deps file
+    (modules/acpi/module_deps declares its dep on PCI). CMakeLists
+    honors this during build.
+
+--------------------------------------------------------------------------------
