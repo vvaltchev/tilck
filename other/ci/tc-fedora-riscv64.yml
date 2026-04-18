@@ -26,6 +26,8 @@ variables:
 steps:
   - script: printenv
     displayName: Dump env
+  - script: sudo -E ./scripts/build_toolchain -t
+    displayName: "Run pkgmgr unit tests"
   - script: sudo -E ./scripts/build_toolchain
     displayName: "Install pkgs"
   - script: sudo -E ./scripts/build_toolchain -s gtest
@@ -36,6 +38,8 @@ steps:
     displayName: "Build ncurses"
   - script: sudo -E ./scripts/build_toolchain -s treecmd
     displayName: "Build treecmd"
+  - script: sudo -E ./scripts/build_toolchain -s tcc
+    displayName: "Build tcc"
   - script: make -j
     displayName: Build the kernel
   - script: make -j gtests
