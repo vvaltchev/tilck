@@ -5951,3 +5951,2624 @@ Context (PR body + log):
   from the Linux kernel's style.
 
 --------------------------------------------------------------------------------
+
+## 8ec2e77d -- Introducing system testing (#34)
+
+Commit: 8ec2e77da6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 17 19:56:01 2017 +0300
+
+Message:
+
+  This change makes exOS to write on the serial port COM1 everything
+  that it shown on the screen and introduces an actual basic system
+  test written in python that checks (for now) that no kernel panic
+  or reboot occurred. In addition, the new system test has been
+  integrated to run in Travis as well.
+
+  [plus 7-bullet single-commit log: serial output, qemu-exit for
+  testing, renaming tests target to gtests, native python system
+  test, timeout, runner improvements, wiring in Travis.]
+
+AI notes:
+
+What changed:
+
+  First system test infrastructure.
+
+  - kernel/term.c (+52 / -14) -- adds init_serial_port() that
+    programs COM1 (divisor 3, 38400 baud, 8N1, FIFO, IRQs enabled).
+    term_write_char() now mirrors every byte to the serial port via
+    write_serial(). Gives Travis a way to capture kernel output
+    without a VGA framebuffer.
+
+  - New kernel/include/config.h (12 l.) -- first config.h file with
+    two DEBUG_QEMU_EXIT_ON_* macros. When defined, init's exit() and
+    panic() trigger outw(0xf4, 0) which, combined with qemu's
+    -device isa-debug-exit,iobase=0xf4, exits the VM with a
+    well-defined status code.
+
+  - kernel/process.c (+11), kernel/main.c (+5 / -3) -- hook the
+    qemu-exit into the init-exit path.
+
+  - New system_tests/run_system_test (89 l.) -- python script that
+    boots the kernel under qemu with serial redirected to stdout,
+    captures the output, checks for absence of "KERNEL_PANIC" and
+    absence of machine resets within a configurable timeout,
+    propagates qemu's exit code.
+
+  - .travis.yml (+10 / -6) -- adds qemu-system-i386 to apt packages;
+    runs run_system_test in the script: phase.
+
+  - build_toolchain (+5 / -2), unittests/CMakeLists.txt (+6 / -6),
+    kernel/debug_utils.c (+8 / -1), kernel/include/common_defs.h
+    (+1), kernel/include/arch/generic_x86/x86_utils.h (+4) --
+    plumbing.
+
+Context (PR body + commit log):
+
+  Unit tests covered kernel-subsystem logic; system tests now cover
+  kernel-as-a-VM behavior. Boot-to-panic in CI goes from "maybe it
+  works on someone's laptop" to a machine-verifiable pass/fail.
+
+--------------------------------------------------------------------------------
+
+## e8b501e0 -- Update README.md
+
+Commit: e8b501e078...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri May 19 11:10:51 2017 +0300
+
+AI notes:
+
+What changed:
+
+  README.md (+12 / -13) -- prose rewrite of the project description.
+  Net size stays roughly the same; polishes wording of the goals
+  paragraph and the build-status section. No functional change.
+
+--------------------------------------------------------------------------------
+
+## 009dd3ca -- Improving the build_toolchain script (#35)
+
+Commit: 009dd3ca3f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun May 21 12:44:56 2017 +0300
+
+Message:
+
+  This change improves the build_toolchain script and the cmake_run
+  script by adding more flexibility and more early-stage human
+  errors.
+
+AI notes:
+
+What changed:
+
+  - build_toolchain (+153 / -61) -- complete rewrite. Factors out
+    run_command / run_command2 shell helpers; splits the monolithic
+    script into install_packages() / cmake_build() / musl_build() /
+    dietlibc_build() / gtest_build() / lcov_build() functions. Adds
+    "skip-install-pkgs" flag, warns if the host isn't Ubuntu, and
+    detects already-installed toolchain components so re-running
+    doesn't redo work. Checks exit codes, prints informative
+    progress messages. Becomes the template for Tilck's eventual
+    package-manager-style toolchain script.
+
+  - cmake_run (+44 / -9) -- similar upgrade: argument parsing,
+    RELEASE/USE_GCOV env-var passthrough, cleaner help text.
+
+  - README.md (+4 / -4) / .travis.yml (+3 / -3) -- docs / CI
+    adjustments.
+
+Context (PR body):
+
+  Rough edges on the dev onboarding: the toolchain script had
+  bitrotted into a no-error-check shell blob. This is the first
+  pass at making it robust enough to hand to a new contributor.
+
+--------------------------------------------------------------------------------
+
+## 5269ed04 -- adding .vscode/c_cpp_properties.json for intellisense to work
+
+Commit: 5269ed044f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon May 22 11:22:07 2017 +0300
+
+AI notes:
+
+What changed:
+
+  New .vscode/c_cpp_properties.json (17 l.) -- VS Code C/C++
+  extension config: include paths pointing at kernel/include/,
+  kernel/include/arch/i386/, kernel/include/arch/generic_x86/; C
+  standard c11; defines __i386__. Gets code navigation working in
+  VS Code without user-side setup.
+
+--------------------------------------------------------------------------------
+
+## 83f95ad5 -- Bug fixing (#36)
+
+Commit: 83f95ad52a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue May 23 21:28:40 2017 +0300
+
+Message:
+
+  This change fixes a ton of nasty bugs, in particular one bug in
+  kernel_yield: see the comments in its body for details. In
+  addition, several constraints have been added, allowing more
+  robust code to be written in the future.
+
+  [plus 15-bullet single-commit log.]
+
+AI notes:
+
+What changed:
+
+  Big bug-fix PR (29 files, +362 / -164). Notable pieces:
+
+  - kernel/sched.c (+51 / -29) -- kernel_yield bug: the idle task's
+    halt() was running BEFORE the idle_ticks++ inside the loop, so
+    after wake-up from HLT the counter update could race with timer
+    tick code running on the same task. Reordered to increment
+    first, then halt. Also: kernel_yield now explicitly disables
+    both preemption AND interrupts before calling schedule, and
+    kernel_yield_post is removed (its job folded into kernel_yield).
+
+  - New kernel/misc.c (+23) -- validate_stack_pointer_int(file,
+    line): sanity-checks that the current stack frame's address is
+    within the current task's kernel_stack page. Catches kernel
+    code accidentally running on the wrong task's stack (the
+    reproducer was 100% hit by the commit log's "making the wrong
+    stack pointer problem 100% reproducible" bullet).
+
+  - kernel/include/process.h (+6 / -6) -- task_state promoted from
+    int constants to an enum (type-safe, easier to ASSERT on).
+
+  - kernel/kb.c (+48 / -10) -- programs PS/2 typematic rate to the
+    fastest setting; expands the E0 / E1 scancode handling, adds
+    smoke tests, fixes a sync bug where a fast key-press sequence
+    could lose scancodes.
+
+  - kernel/tasklet.c (+30 / -30) -- fixes a synchronization bug in
+    the producer-consumer loop where the tasklet-runner thread and
+    add_tasklet_int() could race on the counter.
+
+  - kernel/arch/i386/kernelAsm.asm (+14 / -7) -- assembly-level
+    kernel_yield routine tightened (preserves the right callee-
+    saved regs).
+
+  - kernel/arch/i386/paging.c (+14 / -21), kernel/include/arch/
+    generic_x86/x86_utils.h (+30 / -15), kernel/include/common_defs.h
+    (+8 / -2), kernel/interrupts.c (+8 / -9), kernel/timer.c (+14 /
+    -11), kernel/term.c (+17 / -1), kernel/debug_utils.c (+10 / -7),
+    kernel/main.c (+10 / -5), kernel/process.c (+9), kernel/kmalloc.c
+    (+5 / -2), kernel/pageframe_allocator.c (1 l.), kernel/arch/i386/
+    gdt.c (1 l.), kernel/arch/i386/utils32.c (-8),
+    kernel/include/arch/i386/arch_utils.h (+1),
+    kernel/include/arch/i386/process_int.h (1 l.),
+    kernel/include/paging.h (1 l.), usermode_init/init.c (+11 / -11)
+    -- interrupt-handling invariants tightened: various ASSERT
+    calls catch nested-interrupt / preemption-disable violations
+    earlier.
+
+  - New other_scripts/resolve_bt (28 l.) -- a script to turn a
+    backtrace dump (frame addresses) into source:line via addr2line,
+    rename from build_scripts/generate_coverage_report.
+
+  - generate_coverage_report moves to other_scripts/ (file rename).
+
+  - .travis.yml (1 l.), debug_run_qemu (1 l.), run_qemu (1 l.) --
+    tiny.
+
+Context (PR body + 15-bullet log):
+
+  Most impactful is the kernel_yield fix (commented in the code) and
+  the stack-pointer validator. Together they caught a class of
+  subtle concurrency bugs that the May 2017 preemption work had
+  exposed but never cleanly solved.
+
+--------------------------------------------------------------------------------
+
+## 5168e6f5 -- Making load_usermode_init() to set usermode_init_task
+
+Commit: 5168e6f54a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue May 23 23:22:10 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (+3 / -2) -- after load_usermode_init() finishes
+  creating the init task, its task_info* is stashed in a new global
+  usermode_init_task. Subsequent kernel code that needs to check
+  "is this the init task?" (e.g. special-case panic behavior when
+  init exits) can now do so by pointer-compare.
+
+--------------------------------------------------------------------------------
+
+## b4c1184d -- adding a tasklet stress test to reproduce a bug
+
+Commit: b4c1184d31...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 10:21:08 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/test_stuff/testrunners.c (+32) -- new tasklet stress
+    test: kthread that repeatedly add_tasklet0()s another kthread
+    until the queue is saturated, verifying the producer blocks
+    correctly instead of corrupting the ring.
+
+  - kernel/include/arch/generic_x86/x86_utils.h (+7 / -3) -- small
+    helpers used by the stress test.
+
+  - kernel/main.c (+4 / -1) -- wires the stress test into
+    testrunners.
+
+Context (subject):
+
+  Explicitly written to REPRODUCE a bug -- not to verify its
+  absence. The next three commits hunt down and fix what it
+  surfaces.
+
+--------------------------------------------------------------------------------
+
+## e2f2fc4d -- minor changes
+
+Commit: e2f2fc4d8b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 11:42:15 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/interrupts.c (+12 / -3) -- extra ASSERTs around
+    interrupt-depth counting (the bug hunt narrowing).
+
+  - kernel/kb.c (+6 / -2) -- keyboard-handler re-entrancy guard.
+
+  - kernel/debug_utils.c (1 l.), kernel/include/arch/generic_x86/
+    x86_utils.h (+2) -- small helpers.
+
+Context (subject + series):
+
+  Instrumentation / extra invariants, not the fix itself. The bug
+  from the stress test is traced through here, fixed in dc55d2c8.
+
+--------------------------------------------------------------------------------
+
+## dc55d2c8 -- fixing the nastly bug in disable_interrupts()
+
+Commit: dc55d2c8d2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 12:38:02 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/include/arch/generic_x86/x86_utils.h (+130 / -93) --
+    complete rewrite of enable_interrupts / disable_interrupts /
+    are_interrupts_enabled. New X86_EFLAGS_CF / ZF / SF / IF / DF /
+    OF bit macros. The old are_interrupts_enabled_int() queried
+    EFLAGS with a pushf-pop-movl sequence split across three
+    asmVolatiles -- the compiler was free to reorder them.
+    Consolidated into one asm block that atomically pushf-pops
+    into a single operand. The old disable_interrupts() also
+    incremented the counter AFTER the cli, which could race with
+    a just-arriving interrupt -- now counter bump is first.
+
+  - kernel/include/common_defs.h (+18 / -5) -- adds the EFLAGS bit
+    defs to the kernel header proper.
+
+Context (subject):
+
+  This is the bug the stress test reproduced. The "nasty" qualifier
+  is earned: multi-asmVolatile sequences against EFLAGS are
+  notoriously broken -- GCC can hoist loads between them. The fix
+  is standard Linux-kernel-style: one asm block, one operand, done.
+
+--------------------------------------------------------------------------------
+
+## 042884f4 -- fixing a nasty bug in get_eflags()
+
+Commit: 042884f422...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 13:27:43 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/include/arch/generic_x86/x86_utils.h (+5 / -11) --
+    get_eflags() had the same bug as are_interrupts_enabled: three
+    separate asmVolatiles (pushf / pop %eax / movl %eax, %out).
+    Replaced with one asm block. are_interrupts_enabled_int() now
+    uses get_eflags() so there's one source of truth.
+
+  - kernel/CMakeLists.txt (+1) -- adds -fno-pic to the kernel's
+    compile flags. Prevents gcc from generating position-independent
+    code sequences that break the pushf/pop pattern above (the
+    author had hit this when the release build behaved differently
+    than debug).
+
+Context (subject):
+
+  Same category of bug as the previous commit but in a distinct
+  function. Both bugs had been lurking since early 2017; the
+  stress test from b4c1184d surfaced them.
+
+--------------------------------------------------------------------------------
+
+## d22e2073 -- minor changes
+
+Commit: d22e2073dd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 13:50:05 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/interrupts.c (+7 / -5), kernel/sched.c (-1),
+  kernel/test_stuff/testrunners.c (+2 / -2), kernel/main.c (1 l.),
+  kernel/include/tasklet.h (1 l.), usermode_init/init.c (1 l.) --
+  cleanup following the EFLAGS fix. Removes a now-redundant ASSERT
+  that the EFLAGS fix made redundant; renames a parameter; trivial.
+
+--------------------------------------------------------------------------------
+
+## 33b5027a -- Re-adding cli at the beginning of the each handler [debug
+   purposes]
+
+Commit: 33b5027a4d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 14:41:47 2017 +0300
+
+Message:
+
+  Goal: see if that will solve the invalid stack pointer problem,
+  reproduced again on real HW.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/kernelAsm.asm (+116 / -95) -- every single ISR
+    stub (isr0..isr31, isr128) and IRQ stub (irq0..irq15) gains an
+    explicit cli as its first instruction. x86 auto-disables
+    interrupts when entering through an interrupt gate, but the
+    author is double-checking: some real-HW BIOS interactions were
+    leaving IF set, producing nested-interrupt chaos. Also reformats
+    push byte N -> push N (avoids a gas/nasm quirk where "byte 0"
+    was assembled differently in some cases).
+
+  - kernel/interrupts.c (+14 / -8), kernel/debug_utils.c (+6 / -5)
+    -- more ASSERT-your-invariants-at-every-edge instrumentation.
+
+Context (subject + body):
+
+  Real-HW-only bug (the invalid stack pointer problem). This commit
+  is explicitly a debugging artifact, not a fix. The fix arrives
+  shortly after.
+
+--------------------------------------------------------------------------------
+
+## be0f6cde -- disabling for the moment a check that fails on real HW
+
+Commit: be0f6cde32...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 15:23:54 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/interrupts.c (+25 / -18), kernel/sched.c (+6 / -6) --
+  temporarily comments out one of the assertions in the nested-
+  interrupt accounting path. On real hardware the BIOS was
+  apparently delivering an IRQ with interrupts still enabled, which
+  tripped the assert; the assertion stays in the code but under a
+  commented-out #define pending a real fix.
+
+Context (subject):
+
+  A workaround-to-make-progress, not a real fix. The next commit
+  (214) starts the real work: rewriting handle_irq.
+
+--------------------------------------------------------------------------------
+
+## 9ebb61f3 -- saving working state with IRQ handling
+
+Commit: 9ebb61f31a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 15:45:36 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/irq.c (+23 / -5) -- handle_irq() rewired:
+
+      * Logs any nested-interrupt chain that isn't the well-known
+        (IRQ-0 inside int 0x80) combination (for diagnostic output).
+      * Explicitly re-enables interrupts and sends EOI in a fixed
+        order: push_nested_interrupt, enable_interrupts_forced,
+        ASSERT interrupts enabled, PIC_sendEOI(irq), then
+        irq_routines[irq](r).
+      * end_current_interrupt_handling() is inlined as
+        pop_nested_interrupt().
+
+  - kernel/interrupts.c (+15 / -18), kernel/sched.c (+6 / -6),
+    kernel/kb.c (+10), kernel/main.c (+2 / -1), kernel/process.c
+    (+1), kernel/test_stuff/testrunners.c (1 l.),
+    kernel/include/irq.h (1 l.) -- plumbing.
+
+Context (subject):
+
+  Checkpoint commit ("saving working state") while the author
+  reorganizes the IRQ path. The fully fixed handler lands in 215.
+
+--------------------------------------------------------------------------------
+
+## b388cbd6 -- mf
+
+Commit: b388cbd69c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 22:01:33 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/irq.c (+29 / -15), kernel/include/irq.h (+1 / -1)
+  -- further iteration on the handle_irq rewrite from 214: tighter
+  ordering of EOI vs the C-level handler callback, renames a
+  couple of internal helpers. Terse "mf" commit message = author
+  shorthand for "more fixes" / "minor fixes". No external
+  observable behavior change from 214.
+
+--------------------------------------------------------------------------------
+
+## 0fb1a7b1 -- Fixing several things around the handling of IRQs
+
+Commit: 0fb1a7b1f9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 24 22:41:41 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/irq.c (+9 / -7) -- tightens the order: after
+    interrupts are re-enabled inside the handler, EOI is sent to
+    the PIC BEFORE the irq_routines callback runs (previously
+    after). The comment explains the reason: otherwise, the PIC
+    refuses nested interrupts.
+
+  - kernel/interrupts.c (+13 / -16) -- reintroduces the panic check
+    that was temporarily disabled in be0f6cde: generic_interrupt_
+    handler now verifies disable_interrupts_count == 0 on entry
+    and panics with diagnostics if not. With the EFLAGS bugs
+    actually fixed and the IRQ path reordered, the assertion
+    actually holds on real HW.
+
+  - kernel/tasklet.c (+2 / -2), kernel/timer.c (+2 / -4),
+    kernel/main.c (+4 / -3) -- matching adjustments.
+
+Context (subject):
+
+  Closes the IRQ bug hunt from commits 207-215. The chain of
+  "disable check", "reproduce on HW", "disable check", "work on
+  handler", "fix EFLAGS bug", "reorder EOI" lands a clean IRQ path
+  that holds on both qemu and real DELL hardware.
+
+--------------------------------------------------------------------------------
+
+## d7218d54 -- improving interrupt handling
+
+Commit: d7218d5422...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu May 25 20:08:50 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/interrupts.c (+12 / -58) -- generic_interrupt_handler
+    shrinks considerably (-46 lines). Nested-interrupt bookkeeping
+    moves out to inline helpers in the arch-generic header; the C
+    function is now just: push_nested_interrupt; enable interrupts;
+    dispatch; pop_nested_interrupt.
+
+  - kernel/include/arch/generic_x86/x86_utils.h (+25) -- the
+    bookkeeping helpers (push_nested_interrupt,
+    pop_nested_interrupt, are_in_interrupt_context, etc.) become
+    ALWAYS_INLINE so the compiler eliminates the call overhead on
+    the hot path.
+
+  - kernel/arch/i386/irq.c (+3 / -3), kernel/main.c (1 l.) -- tiny.
+
+--------------------------------------------------------------------------------
+
+## 88d3f051 -- adding more checks
+
+Commit: 88d3f05172...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu May 25 21:00:52 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/include/irq.h (+69 / -1) -- adds a good chunk of debug
+    infrastructure: helpers like assert_in_interrupt_context /
+    assert_not_in_interrupt_context, IRQ state accessors that can
+    be invoked from C assertions. Most are inlines + macros.
+
+  - kernel/timer.c (+23 / -2) -- extra validation in the timer IRQ:
+    checks that the current->running_in_kernel flag matches the
+    interrupted context's CPL.
+
+  - kernel/sched.c (+2 / -1) / kernel/arch/i386/irq.c (+1 / -1)
+    / kernel/include/arch/generic_x86/x86_utils.h (-24) -- the
+    bookkeeping helpers move from x86_utils.h to irq.h (where they
+    logically belong); corresponding deletes.
+
+--------------------------------------------------------------------------------
+
+## 7dabe9b1 -- improving checks
+
+Commit: 7dabe9b1ab...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu May 25 21:27:26 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/irq.c (-33) -- strips dead / now-redundant
+    diagnostic code (logging of uncommon nested-interrupt chains
+    from commit 214), replaced by the generic checks in irq.h /
+    interrupts.c.
+
+  - kernel/interrupts.c (+20 / -7) -- tightens more invariants as
+    proper ASSERTs now that false alarms are gone.
+
+  - kernel/main.c (+6 / -6), kernel/timer.c (+6 / -2),
+    kernel/include/irq.h (-1) -- matching cleanup.
+
+--------------------------------------------------------------------------------
+
+## e536fdc2 -- minor changes in the build
+
+Commit: e536fdc2fb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu May 25 21:30:55 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/CMakeLists.txt (+12 / -4) -- splits the kernel compile
+  flags into two variables: GENERAL_KERNEL_FLAGS (used for both
+  real-kernel and unit-test builds of kernel code) and
+  ACTUAL_KERNEL_ONLY_FLAGS (only for the real kernel: -fno-pic,
+  -fno-asynchronous-unwind-tables, -fno-zero-initialized-in-bss,
+  -fno-exceptions, -mpush-args, etc.). The unit tests linking
+  kernel code into a glibc binary don't need / shouldn't use
+  the second group.
+
+--------------------------------------------------------------------------------
+
+## ff37509b -- minor refactoring
+
+Commit: ff37509b30...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri May 26 20:25:53 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/main.c (+15 / -16), kernel/misc.c (+11 / -6),
+  kernel/sched.c (+2 / -2), kernel/include/process.h (1 l.) --
+  parameter / variable renames in main + misc; no behavior change.
+  main.c loses a few fixed 'void' parameters now typed with the
+  real argument lists.
+
+--------------------------------------------------------------------------------
+
+## 8df049aa -- improving data in panic
+
+Commit: 8df049aa96...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri May 26 21:36:27 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/kernelAsm.asm (+23 / -3) -- new
+    panic_save_current_state helper: synthesizes a fake interrupt
+    frame (pushes CS, EIP, err_code=0, int_num=-1, pusha, segs) and
+    calls save_current_task_state with that frame. Lets panic() see
+    a proper regs snapshot for diagnostics even though no real
+    interrupt was the trigger.
+
+  - kernel/debug_utils.c (+50 / -14) -- dump_stacktrace()
+    simplified: drops the commented-out cross-task stack walker and
+    prints a compact one-line "frame frame frame" form. New
+    dump_regs() prints every GPR / segs / eflags in a formatted
+    block. panic() now calls panic_save_current_state, then
+    dump_regs on the freshly-saved frame.
+
+  - kernel/kb.c (+14) -- adds a debug panic hotkey (Ctrl+Alt+F1
+    area) for testing the panic path.
+
+  - other_scripts/resolve_bt (+11 / -10) -- adapts to the compact
+    single-line stacktrace format produced by dump_stacktrace.
+
+  - kernel/CMakeLists.txt (+1) -- compile flag: likely -fno-omit-
+    frame-pointer gets moved to a different scope.
+
+Context (subject):
+
+  Panic dumps go from "a list of unnamed frame addresses" to "full
+  register state + stack frames + resolveable by addr2line".
+
+--------------------------------------------------------------------------------
+
+## daa48462 -- fixing build problems
+
+Commit: daa48462b9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat May 27 18:59:19 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - unittests/generic_mocks.c (+12 / -1) -- adds a mock for
+    dump_regs (the real one pulls in arch/ code the tests don't
+    link).
+
+  - kernel/debug_utils.c (+9 / -3) -- guards the arch-specific
+    panic_save_current_state call behind #ifndef TEST so host-side
+    tests don't require the asm symbol.
+
+  - kernel/main.c (-2), unittests/tests_main.cpp (-2) -- dead-code
+    cleanup exposed by the changes above.
+
+--------------------------------------------------------------------------------
+
+## 39b583e7 -- minor changes
+
+Commit: 39b583e7d8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat May 27 19:25:39 2017 +0300
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm (2 l.) -- a stray 'byte' keyword adjustment
+  in a push instruction (nasm was generating the wrong-size opcode
+  for a 16-bit push in rare cases). kernel/debug_utils.c (2 l.) --
+  aligns a printk format with the regs-dump layout from 8df049aa.
+
+--------------------------------------------------------------------------------
+
+## f197d99c -- Changing the way the kernel removes dead kernel threads.
+
+Commit: f197d99c70...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun May 28 11:53:51 2017 +0300
+
+Message:
+
+  Now, it does not use anymore the BASE_KERNEL_STACK and that solves
+  at least one of the cases where the stack validation fails.
+  Currently, the issue is not reproducible anymore.
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/i386/process32.c (+23 / -2) -- kthread_exit used to
+    switch esp to a fixed BASE_KERNEL_STACK_ADDR and then jmp to
+    the scheduler, relying on that "safe" stack area. Problem: the
+    base kernel stack is also touched by the ISR path, so a
+    concurrent interrupt could step on the zombie's fake stack
+    frame. New approach: the exiting kthread schedules a tasklet
+    (remove_dead_kthread_tasklet) on ANOTHER kernel thread, then
+    calls schedule_outside_interrupt_context -- it goes to sleep
+    as a ZOMBIE, and the tasklet (running on the tasklet-runner
+    thread's own stack) does the actual kfree() of its task_info
+    and kernel_stack pages.
+
+  - kernel/sched.c (-8 / +2) -- the old "zombie kthread cleanup
+    inside schedule()" code is gone (the tasklet handles it now).
+
+  - kernel/include/arch/i386/arch_utils.h (1 l.),
+    kernel/arch/i386/kernelAsm.asm (+2 / -1), kernel/main.c
+    (+4 / -4) -- plumbing.
+
+Context (subject + body):
+
+  The stack-pointer-validation failures reappearing on real HW are
+  narrowed to this specific cause: the ZOMBIE-stack trick was
+  racing with interrupts. Moving cleanup to a dedicated kthread via
+  tasklet avoids the whole ordering problem.
+
+--------------------------------------------------------------------------------
+
+## 1c2d91df -- Make interrupt code to restore the disable_interrupt_count to 0
+   before returning
+
+Commit: 1c2d91dfdb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun May 28 13:20:01 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - kernel/interrupts.c (+7 / -1) -- on handler exit, explicitly
+    resets disable_interrupts_count = 0 before returning. The
+    normal invariant is "count returns to what it was on entry",
+    but if a handler path did unmatched disable/enable (bug or
+    intentional workaround), the counter could leak across
+    handlers. Forcing it to 0 on exit matches the hardware state
+    (iret restores IF from the saved EFLAGS).
+
+  - kernel/kb.c (+6 / -1), kernel/include/irq.h (1 l.) -- matching
+    uses.
+
+--------------------------------------------------------------------------------
+
+## 2efcc4da -- improving debugging
+
+Commit: 2efcc4da74...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun May 28 13:37:13 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/debug_utils.c (+3 / -5), kernel/misc.c (+5 / -5) --
+  dump_regs() formatting tweaks (column alignment) and
+  validate_stack_pointer diagnostic expanded to include the
+  offending file:line in a single printk line instead of two.
+
+--------------------------------------------------------------------------------
+
+## 8b7f71f4 -- Update README
+
+Commit: 8b7f71f44c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed May 31 21:26:28 2017 +0300
+
+AI notes:
+
+What changed:
+
+  README.md (+21 / -10) -- expanded project description. Adds a
+  features list (paging, fork/exec, kmalloc buddy allocator,
+  tasklets, kmutex/kcond, kernel_sleep) and a section clarifying
+  what exOS is NOT (not a production kernel, not POSIX-compliant).
+  Edited via GitHub web UI.
+
+================================================================================
+  ERA 5 -- Filesystems, EFI, and a self-hosted toolchain  (Sep 2017 - Jan 2018)
+================================================================================
+
+  After another ~3-month gap (the longest in project history to this
+  point), exOS comes back with a very different focus: it's no longer
+  mostly about kernel-internal scaffolding, but about becoming something
+  you can run real programs on. In no particular order, this era lands:
+  (1) generic data structures (AVL bintree + priority queue with
+  thorough gtest coverage); (2) the list.h library diverges stylistically
+  from its Linux-kernel original; (3) FAT16/32 read-only support
+  including long-file-name decoding; (4) an EFI bootloader (gnu-efi
+  based) so the kernel boots on UEFI-only machines; (5) massive build-
+  system maturation -- scripts/ consolidation, self-downloaded
+  CMake/nasm/mtools/gnu-efi, a bootlin x86-i686-buildroot cross-
+  toolchain so kernel builds stop depending on host gcc-multilib,
+  support for gcc 4.8 through 7, a Clang + Address Sanitizer CI job;
+  (6) the first version of exvfs, the kernel's VFS layer, with an
+  fs_handle_base + file_ops polymorphism inspired by Linux's
+  struct file + file_operations. By the end of this era Tilck can
+  mount a FAT filesystem from a memdisk, open files by path, read
+  them through a unified VFS interface, and do all of this from a
+  kernel built with its own pinned cross-toolchain.
+
+--------------------------------------------------------------------------------
+
+## d6a2db53 -- Introducing an implementation of an AVL tree and a priority
+   queue (#39)
+
+Commit: d6a2db5350...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Sep 3 23:17:36 2017 +0300
+
+AI notes:
+
+What changed:
+
+  3-month gap since the previous commit. When activity resumes,
+  generic data structures land first.
+
+  - New kernel/avl_bintree.c (291 l.) + kernel/include/bintree.h
+    (71 l.) -- AVL-balanced binary tree. API:
+    bintree_insert_internal / find_internal / remove_internal take
+    an object pointer, a compare function, and a
+    bintree_offset (offset of the bintree_node field within the
+    containing struct). Macros (bintree_insert / bintree_find /
+    bintree_remove) compute the offset via OFFSET_OF so callers
+    look like container-generic APIs. Find takes a separate
+    objval_cmpfun because the search key is often not an object of
+    the same type.
+
+  - New kernel/pq.c (106 l.) + kernel/include/pq.h (28 l.) --
+    min-heap priority queue of (void *data, int priority) pairs;
+    push / pop O(log n). Internal array-backed heap with
+    pqueue_init(capacity) preallocating.
+
+  - New unittests/avl_bintree.cpp (494 l.) -- thorough gtest suite
+    of the AVL tree: insert / find / remove / rotation invariants /
+    stress-test against std::set.
+
+  - New run_qemu_kvm (2 l.) -- qemu-system-i386 with -enable-kvm
+    launcher; KVM was evidently too slow for some debug workflow
+    before, now preferred for normal dev.
+
+  - kernel/include/common_defs.h (+4), .vscode/settings.json
+    (+6 / -4), .vscode/c_cpp_properties.json (+8 / -5) -- plumbing.
+
+Context (guess -- no body, subject gives the what):
+
+  Groundwork: the next months' work on timers, filesystems and
+  more sophisticated scheduling will want efficient ordered
+  containers. Landing AVL + priority queue with tests up-front
+  lets future code just use them.
+
+--------------------------------------------------------------------------------
+
+## a7f5ef8e -- Adding a nice (generic) script for counting the number of lines
+   in a given set of directories (#40)
+
+Commit: a7f5ef8ecb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Mon Sep 4 21:28:24 2017 +0300
+
+AI notes:
+
+What changed:
+
+  New other_scripts/count_lines_of_code (92 l.) -- Python 2
+  script. Recurses through one or more directories; counts lines
+  per file extension (.c, .cpp, .cc, .cxx, .h, .py, .asm, .txt);
+  prints a per-extension table plus grand total. Used to report
+  project size in the README over time.
+
+--------------------------------------------------------------------------------
+
+## 597ef13e -- Updating the implementation of list.h (#41)
+
+Commit: 597ef13e1f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Sep 9 13:25:18 2017 +0300
+
+Message:
+
+  This change makes list.h more aligned with the coding style of
+  exOS and removes any similarities with the list.h in the linux
+  kernel. Only the general idea of an intrusive doubly-linked list
+  remained.
+
+AI notes:
+
+What changed:
+
+  - kernel/include/list.h (+42 / -53) -- fundamental rename
+    pass: struct list_head -> struct list_node; list_head typedef
+    -> list_node; LIST_HEAD_INIT -> make_list_node; INIT_LIST_HEAD
+    -> list_node_init; list_add -> list_add_after; list_entry ->
+    list_to_obj. Adds list_add_before. Drops the "similar to
+    Linux's list.h" comment. Internal structure unchanged; pure
+    rename for style consistency with rest of exOS.
+
+  - kernel/arch/i386/idt.c (+23 / -23), kernel/sched.c (+5 / -5),
+    kernel/arch/i386/process32.c (+2 / -2), kernel/include/arch/
+    i386/process_int.h (+6 / -6), kernel/kcond.c (1 l.),
+    kernel/kmutex.c (1 l.), kernel/process.c (1 l.) -- mechanical
+    rename at call sites.
+
+  - unittests/list_test.cpp (+20 / -19) -- test suite updated.
+
+Context (PR body is explicit):
+
+  Style PR. The Linux-kernel list.h was adopted verbatim in
+  commit 7046cca3 (PR #19); with the project having its own
+  conventions by now, the structure is kept but names are
+  brought in line with exOS's naming.
+
+--------------------------------------------------------------------------------
+
+## 9341e7ab -- Fixing a misspelled word
+
+Commit: 9341e7abec...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Sep 9 13:29:00 2017 +0300
+
+AI notes:
+
+What changed:
+
+  kernel/include/list.h (1 l.) -- typo fix in a comment. Nothing
+  else.
+
+--------------------------------------------------------------------------------
+
+## cada89fe -- Introducing partial support for FAT16 and FAT32 (#42)
+
+Commit: cada89fe14...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Sep 22 00:35:02 2017 +0300
+
+Message:
+
+  This change introduces in the kernel a partial read-only support
+  for FAT16 and FAT32. The kernel now it is able to walk through
+  the directory-tree of a FAT file-system and read a whole file.
+  The walk-through across cluster chains is fully supported, both
+  for directory entries and files. Only the "Long Directory
+  Entries" feature has not been implemented yet, but it certainly
+  will. Since this will be the FS used by the system, the 11 chars
+  length-limit is not acceptable.
+
+  Intentionally not implemented: handling of bad clusters and fall-
+  back to other FATs different than the first one. That's clearly
+  because this code has been designed to work only with FAT volumes
+  in ramdisks, where bad clusters simply do not exist.
+
+AI notes:
+
+What changed:
+
+  First real file-system support.
+
+  - New kernel/fs/fat32.c (530 l.) + kernel/include/fs/fat32.h
+    (165 l.) -- reads FAT12/16/32 volumes from a memory-mapped
+    image. The header declares the full on-disk struct layout
+    (BPB / fat16_header2 / fat32_header2 / fat_entry with
+    bitfields for readonly/hidden/system/volume_id/directory/
+    archive). The .c walks the directory tree, follows cluster
+    chains (next-cluster lookup via the FAT table), reads full
+    files into a caller-provided buffer. 8.3-only filenames for
+    now (long-name / LFN is explicitly TODO in the subject).
+
+  - New sysroot/ (test fixture tree): README, sbin/.gitignore,
+    testdir/ with 3 subdirs of empty files, a file with a long
+    name (which fat.c will refuse for now), and file.a /
+    file.ab / file.abc for 8.3 edge cases.
+
+  - build_scripts/build_fatpart.sh (+22 / -4) -- now mcopies
+    sysroot/* into the FAT image instead of just copying init.
+
+  - New unittests/fat32_test.cpp (61 l.) -- gtest harness loads a
+    sample image and walks its contents, asserting expected
+    filenames and contents.
+
+  - kernel/main.c (+18 / -2) -- calls fat_dump_info() on the
+    memdisk at boot as a demo.
+
+  - kernel/include/string_util.c / .h (+23 / -6) -- helpers
+    (strncmp, strcmp likely) that fat32.c needs.
+
+  - CMakeLists.txt (+3 / -1), kernel/CMakeLists.txt (+1 / -1),
+    README.md (1 l.) -- plumbing.
+
+Context (PR body is explicit):
+
+  Foundational: the kernel can now read its own ramdisk as a FAT
+  filesystem. Next step would be exec (load a program by name
+  from the FS) and a VFS abstraction.
+
+--------------------------------------------------------------------------------
+
+## e58e1f84 -- REMOVING commented code from the bootloader
+
+Commit: e58e1f84b4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Sep 22 00:40:36 2017 +0300
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm (-90) -- strips large blocks of commented-
+  out exploratory code (old CHS load paths, disassembly debug
+  notes, unreal-mode experiment leftovers). Pure cleanup; no
+  functional change.
+
+--------------------------------------------------------------------------------
+
+## 93a8808f -- adding other test files in sysroot for FAT code
+
+Commit: 93a8808f98...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Sep 24 21:34:01 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - sysroot/testdir/12345678.xyz -- 8.3-max-length test file.
+  - sysroot/testdir/manyfiles/f1 ... f20 (20 empty files) --
+    exercise fat32 directory-entry paging (a single FAT32 cluster
+    can hold up to 16 short-name entries; having 20 forces the
+    code to follow a cluster chain in a directory).
+  - .vscode/c_cpp_properties.json (1 l.) -- minor.
+
+--------------------------------------------------------------------------------
+
+## a9d022f4 -- minor improvements in the bootloader
+
+Commit: a9d022f4aa...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Sep 28 22:17:27 2017 +0300
+
+AI notes:
+
+What changed:
+
+  bootloader/boot.asm (+4 / -14) -- small cleanup: removes some
+  dead push/pop sequences, tightens a comparison. Net shrink.
+
+--------------------------------------------------------------------------------
+
+## a8b66b19 -- Introducing an EFI bootloader (#43)
+
+Commit: a8b66b19ac...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Sep 30 23:03:37 2017 +0300
+
+Message:
+
+  This change introduces a EFI bootloader in the project. The
+  generated image now has both the custom BIOS bootloader embedded
+  in the MBR and an EFI loader in /EFI/BOOT/ (only for 64-bit
+  machines). Limitations: unfortunately, I did not find a way to
+  set the video card in text mode using the EFI APIs so I had to
+  go back to real mode in switchmode.bin and execute int 0x10 for
+  that, before booting the kernel. The problem is that this
+  approach works only if the firmware is set to support also
+  legacy bootloaders. In a pure-EFI environment, my code will go
+  back to real mode, but int 0x10 just won't work.
+
+  Therefore, the above limitation will remain for a long time
+  unless:
+    - I find a way to set the video card in text mode without int 0x10
+    - I implement a graphical framebuffer in the kernel
+
+AI notes:
+
+What changed:
+
+  First EFI boot path.
+
+  - New bootloader/efi/efimain.c (263 l.) -- gnu-efi based EFI
+    application. Wraps EFI BootServices calls with
+    uefi_call_wrapper (the x86_64 ABI shim). Allocates specific
+    physical pages via AllocatePages AllocateAddress, loads
+    kernel.bin to 0x100000 and the FAT ramdisk to 0x08000000
+    from the ESP filesystem, CRC32s both, calls
+    ExitBootServices, then chain-loads switchmode.bin at
+    0xC000.
+
+  - New bootloader/efi/switchmode.asm (231 l.) -- 64-bit -> real-
+    mode transition helper. Because exOS kernel is 32-bit, EFI
+    drops us in long mode; this code constructs a fake GDT, drops
+    to compatibility mode, then to real mode, runs int 0x10 to
+    set 80x25 text video mode, and finally protected-mode jumps
+    to the kernel at 0x100000.
+
+  - New bootloader/efi/CMakeLists.txt (89 l.) -- gnu-efi compile
+    options, -fpic -fshort-wchar -mno-red-zone -DEFI_FUNCTION_WRAPPER,
+    objcopy to efi-app-x86_64 format. Produces BOOTX64.EFI placed
+    under sysroot/EFI/BOOT/.
+
+  - New sysroot/EFI/BOOT/.gitignore -- placeholder (BOOTX64.EFI
+    drops here at build time).
+
+  - bootloader/boot.asm (+50 / -51), bootloader/CMakeLists.txt
+    (+5 / -1), CMakeLists.txt (+8 / -2) -- BIOS bootloader stays,
+    builds both paths, final image has BIOS MBR + EFI ESP.
+
+  - build_toolchain (+12 / -7) -- clones gnu-efi into toolchain/.
+
+  - build_scripts/build_fatpart.sh (+12 / -3),
+    build_scripts/create_empty_img_if_necessary.sh (1 l.),
+    kernel/main.c (+6 / -2), README.md (1 l.) -- plumbing.
+
+  - New run_qemu_usbdisk (2 l.), debug_run_qemu (1 l.), run_qemu
+    (1 l.), run_qemu_kvm (1 l.),
+    system_tests/run_system_test (+3 / -2) -- launcher scripts
+    adjust to accept -bios OVMF.fd for EFI testing.
+
+Context (PR body is explicit):
+
+  Huge step toward modern hardware support: exOS can now be booted
+  on UEFI-only machines, not just legacy BIOS. The video-mode
+  limitation is honest about the approach's fragility; the
+  long-term fix (framebuffer driver) comes a few years later.
+
+--------------------------------------------------------------------------------
+
+## 1bdb57c2 -- Making the unit tests build to use -Wno-register for C++ files
+
+Commit: 1bdb57c2e2...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 22 19:18:54 2017 +0200
+
+Message:
+
+  New C++1z compilers show a warning in case the 'register' keyword
+  is used. Unit tests' C++ files include C headers files which use
+  register since it is not deprecated in C. That causes the build
+  of the 'gtests' target to fail, since -Werror is used.
+
+AI notes:
+
+What changed:
+
+  unittests/CMakeLists.txt (+3 / -1) -- adds -Wno-register to the
+  C++ flags for the gtests target. Kernel headers use register in
+  C code; tests include those headers from C++17 which removed
+  register.
+
+Context (body explains):
+
+  Compiler-upgrade compat fix. 3-month gap since the previous
+  commit suggests the author upgraded gcc/g++ in the meantime.
+
+--------------------------------------------------------------------------------
+
+## 7806dc57 -- Rename other_scripts/ to scripts/
+
+Commit: 7806dc5747...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 22 20:43:21 2017 +0200
+
+AI notes:
+
+What changed:
+
+  other_scripts/count_lines_of_code / generate_coverage_report /
+  resolve_bt -- directory rename to scripts/. .travis.yml (1 l.)
+  -- updates the coverage-report path to match.
+
+Context (subject):
+
+  Incremental step toward the canonical scripts/ tree. Next
+  commit moves build_scripts/ underneath too.
+
+--------------------------------------------------------------------------------
+
+## ad1ef13b -- Move build_scripts/ under scripts/
+
+Commit: ad1ef13bf5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 22 20:47:15 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_scripts/ moved to scripts/build_scripts/ (every file
+  within: bss_checker.sh, build_fatpart.sh,
+  create_empty_img_if_necessary.sh, i386-ar, i386-gcc,
+  i386-ranlib, musl-gcc, qemu_img_create_vmdk, run_g++, run_gcc,
+  virtualbox_create_vmdk_loop0). build_toolchain /
+  CMakeLists.txt / usermode_init/CMakeLists.txt (1 l. each)
+  updated to reference the new paths.
+
+Context (subject):
+
+  Finishes the scripts/ consolidation. From this commit on,
+  scripts/* is the canonical place for all project-level scripts.
+
+--------------------------------------------------------------------------------
+
+## 4a5b69e0 -- Improving the build_toolchain script
+
+Commit: 4a5b69e0ec...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 22 20:52:47 2017 +0200
+
+Message:
+
+  Using `pwd` as a value for $MAIN_DIR was just a temporary hack,
+  that worked only if the user was in the project's directory.
+  With this patch instead, $MAIN_DIR will have the correct value,
+  no matter which the current working directory is.
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+2 / -2) -- MAIN_DIR computed from BASH_SOURCE
+  via dirname + realpath, so the script works from any cwd.
+  Precursor to the modern cmake_run pattern where the script
+  self-locates regardless of how it's invoked.
+
+--------------------------------------------------------------------------------
+
+## 638c7314 -- [build scripts] Make install_packages more powerful
+
+Commit: 638c731419...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 18:36:05 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+50 / -8) -- install_packages() rewritten:
+
+    * packages list becomes a bash array instead of a space-
+      separated string (easier to loop / query).
+    * Detects the host distro from /etc/*release (accepts
+      debian / ubuntu / mint); rejects others up-front with a
+      list of required packages the user needs to install by
+      hand.
+    * Per-package dpkg -s check so already-installed packages
+      aren't sudo-apt-installed redundantly. Also recomputed
+      -- only the missing list is handed to apt.
+    * Subject prefix "[build scripts]" introduces a convention
+      that sticks for years.
+
+Context (subject + commit-message style):
+
+  This is also the first commit that uses the bracketed
+  subject-prefix style which becomes Tilck's standard (see the
+  intro block at the top of this file).
+
+--------------------------------------------------------------------------------
+
+## 0b110304 -- [build scripts] Adding partial support for Fedora
+
+Commit: 0b110304af...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 19:54:07 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+84 / -31) -- splits install_packages() into
+  install_debian_family() and a new install_fedora() that uses
+  dnf / rpm -q and a fedora-specific package name list (qemu-
+  system-x86 becomes qemu-kvm, binutils-multiarch becomes
+  glibc-devel.i686, etc.). The distro-detection branch at the top
+  dispatches to the right installer based on /etc/*release
+  contents. qemu package name flips from qemu to qemu-system-x86
+  on Debian too (matches what the newer Ubuntu versions ship).
+
+--------------------------------------------------------------------------------
+
+## 0bb5d28d -- [build scripts] Make cmake_run to support gcc-7 if installed
+
+Commit: 0bb5d28d5f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 20:56:13 2017 +0200
+
+AI notes:
+
+What changed:
+
+  cmake_run (+12 / -4) -- detects whether gcc-7 / g++-7 is in PATH;
+  if so, uses those; otherwise falls back to gcc-6 / g++-6. Lets
+  the project build cleanly on hosts with newer or older
+  toolchains without manual flag juggling.
+
+--------------------------------------------------------------------------------
+
+## 4e1fbf0c -- [build scripts] Chaning distro detection logic
+
+Commit: 4e1fbf0ceb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 22:04:05 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+11 / -5) -- the previous grep-based
+  /etc/*release detection was fragile (matched on "red" inside
+  "redhat" or "gentoo-redhaty-fork"). Now reads ID= / ID_LIKE=
+  from /etc/os-release directly -- the freedesktop-standard way.
+  Cleaner matching; fixes cases where Ubuntu derivatives weren't
+  detected.
+
+--------------------------------------------------------------------------------
+
+## 95a00f71 -- [build scripts] Improving the build_toolchain script
+
+Commit: 95a00f710e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 23:17:54 2017 +0200
+
+Message:
+
+  - Faster git clone with --branch BRANCH/TAG --depth 1
+  - Making cmake_run to tollerate gcc/g++ >= 5.
+
+AI notes:
+
+What changed:
+
+  - build_toolchain (+4 / -8) -- every git clone upgraded to
+    --branch <tag> --depth 1 (shallow clone of a specific tag).
+    Cuts the toolchain-bootstrap wall-clock time noticeably.
+
+  - cmake_run (+4 / -4) -- compiler-version gate lowered from
+    "require gcc-6+" to "require gcc-5+". Some LTS distros still
+    shipped gcc-5 as their default at the time.
+
+--------------------------------------------------------------------------------
+
+## 49af1b97 -- [build scripts] Adding -n as an alias of --skip-install-pkgs
+
+Commit: 49af1b9766...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 23:33:03 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+4 / -3) -- -n short flag added as an alias for
+  the existing --skip-install-pkgs (useful for CI scripts and
+  frequent re-runs where package install isn't needed).
+
+--------------------------------------------------------------------------------
+
+## 8e48b9ea -- [build scripts] Export CMAKE in build_toolchain to allow -s
+   build_gtest to work
+
+Commit: 8e48b9eaeb...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 23 23:41:34 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain (+9 / -3) -- $CMAKE is exported (path to the
+  toolchain's pinned cmake) so sub-build commands like -s
+  build_gtest can invoke it without re-setting the path. Earlier
+  install steps were relying on a side-effect that broke when
+  called individually.
+
+--------------------------------------------------------------------------------
+
+## c395969f -- [build scripts] Move cmake_run in scripts/
+
+Commit: c395969f5d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 10:48:25 2017 +0200
+
+AI notes:
+
+What changed:
+
+  cmake_run moved from repo root to scripts/cmake_run (+5 / -1
+  cleaning up path references inside). README / .travis.yml /
+  build_toolchain (1 l. each) updated to call it via the new
+  path.
+
+--------------------------------------------------------------------------------
+
+## a76b7593 -- [build scripts] Move build_toolchain in scripts/
+
+Commit: a76b75938d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 10:56:46 2017 +0200
+
+AI notes:
+
+What changed:
+
+  build_toolchain moved from repo root to scripts/build_toolchain.
+  README / .travis.yml (1 l. each) updated. Together with the
+  previous commit, the repo root no longer has standalone scripts
+  -- everything lives under scripts/.
+
+--------------------------------------------------------------------------------
+
+## de2ee591 -- [build scripts] Replace make_run with a fake Makefile
+
+Commit: de2ee59184...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 11:34:14 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - Deleted make_run (5 l.) -- the trivial "cd build && make $@"
+    wrapper.
+
+  - New Makefile at repo root (25 l.) -- a "fake" Makefile whose
+    targets (all, gtests, clean) forward to $(MAKE) -C build. If
+    build/CMakeCache.txt doesn't exist, it first runs
+    scripts/cmake_run. If toolchain/ doesn't exist, it $(error)s
+    with instructions to run build_toolchain. Makes `make` just
+    Do The Right Thing from the repo root even for new users.
+
+  - scripts/build_toolchain (+2), .travis.yml (+3 / -3) --
+    adjustments.
+
+Context (subject):
+
+  Same intent as before (run build from root), but now leveraging
+  the fact that people default to typing `make` in a repo root.
+  The stub Makefile discovers state and dispatches.
+
+--------------------------------------------------------------------------------
+
+## 7955fd28 -- [build scripts] Fixing build_toolchain issues on Debian
+
+Commit: 7955fd28cc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 12:36:53 2017 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+64 / -18) -- Debian-specific fixes:
+
+    * gcc-6 isn't always available on plain Debian; the script
+      now tries gcc-6 first, falls back to gcc-5 or the unversioned
+      gcc. Sets CC / CXX accordingly.
+    * Pinned lcov version down to v1.13 (was HEAD, which was
+      breaking on Debian stable).
+    * Restructures install_debian_family's dependency list to
+      drop Ubuntu-only names.
+    * Adds error checking around the toolchain clone / build
+      sequences -- stops on first failure rather than silently
+      producing a broken toolchain.
+
+--------------------------------------------------------------------------------
+
+## 3e07ae3b -- [build scripts] Make build_toolchain to skip already built
+   libraries
+
+Commit: 3e07ae3b1e...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 14:33:30 2017 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+85 / -40) -- every build_* helper
+  (build_cmake, build_lcov, build_dietlibc, build_musl,
+  build_gtest, build_gnuefi) gains an "already exists?" guard.
+  Re-running the script no longer rebuilds already-built
+  dependencies; it prints "NOTE: Skipping <lib>" and moves on.
+  Also wraps pushd/popd in silent versions so the script's
+  output stays clean.
+
+Context (subject):
+
+  CI turnaround + iteration speedup. Previously re-running
+  build_toolchain after tweaking one line took ~15+ minutes.
+  Now re-running is near-instant unless the actual package
+  changed. Foundation for the later "targeted install" -s flag.
+
+--------------------------------------------------------------------------------
+
+## 626ded0a -- Update README.md
+
+Commit: 626ded0a22...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 14:41:30 2017 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (-17 / +3) -- net shrink of 14 lines. Trims the
+  "what this is not" section and consolidates the build-status /
+  license badges. Edited via GitHub web UI.
+
+--------------------------------------------------------------------------------
+
+## 98eb82db -- Update .gitignore
+
+Commit: 98eb82dbff...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 15:06:52 2017 +0200
+
+AI notes:
+
+What changed:
+
+  .gitignore (-13) -- removes stale ignores that were specific to
+  the old pre-CMake Makefile tree: src/.d, init_src/.d, src/i386/.d,
+  a handful of VS2015 / Bochs / .vs/ patterns. CMake's build/
+  remains ignored; that's the only path needed now.
+
+--------------------------------------------------------------------------------
+
+## a08e2b56 -- [FAT32] Add support for long directory entries
+
+Commit: a08e2b5694...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 24 20:52:59 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c (+140 / -25), kernel/include/fs/fat32.h
+    (+34 / -6) -- implements the FAT LFN (Long File Name) scheme.
+    fat_long_entry struct added (the union form that shares the
+    same directory-entry slot when attributes == 0x0F). New
+    fat_walk_dir_ctx keeps long_name_buf / long_name_size /
+    long_name_chksum state across walk callbacks.
+    fat_handle_long_dir_entry() decodes the UTF-16 characters
+    (stored in three 2-byte segments LDIR_Name1/2/3) and
+    reverse-orders them, since LFN entries are laid out backwards
+    before the corresponding 8.3 entry. shortname_checksum()
+    validates that the LFN set actually belongs to the
+    following short entry; mismatches reset the buffer.
+
+  - sysroot/testdir/This_is_a_file_with_a_veeeery_long_name.txt
+    (+1 l.) -- test fixture now has content.
+
+  - scripts/build_scripts/build_fatpart.sh (1 l.) -- mformat
+    tweak.
+
+  - unittests/fat32_test.cpp (+74 / -16) -- gtest coverage for the
+    new long-name reader.
+
+Context (subject + fat32 PR's earlier TODO):
+
+  Closes the "long directory entries not implemented yet"
+  explicit TODO from commit cada89fe. The kernel can now
+  enumerate files with modern names like
+  This_is_a_file_with_a_veeeery_long_name.txt instead of the
+  8.3-mangled form.
+
+--------------------------------------------------------------------------------
+
+## 913e442f -- [build] Going back: support older compilers up to gcc 4.8
+
+Commit: 913e442fcd...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 11:59:27 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/cmake_run (+18 / -5) -- minimum compiler version
+    lowered from gcc-5 to gcc-4.8. Version parser now extracts
+    major.minor, not just major; rejects <4.8 but accepts 4.8.x.
+
+  - .travis.yml (+8 / -13) -- Travis matrix includes older
+    compilers again.
+
+  - CMakeLists.txt (+2 / -2), kernel/string_util.c (+6 / -6),
+    kernel/include/string_util.h (-9) -- a few uses of C11-only
+    constructs (e.g. static_assert inside struct, anonymous
+    structs) replaced with pre-C11-friendly equivalents.
+
+Context (subject):
+
+  Compat widening -- distros with gcc-4.8 (RHEL7, Ubuntu 14.04,
+  etc.) can now build exOS.
+
+--------------------------------------------------------------------------------
+
+## b8f78ed5 -- Minor fix in README
+
+Commit: b8f78ed584...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 12:04:36 2017 +0200
+
+AI notes:
+
+What changed:
+
+  README.md (1 l.) -- tiny typo fix. Web-UI edit.
+
+--------------------------------------------------------------------------------
+
+## 069b38b0 -- Add -Wno-missing-braces to CFLAGS due to a GCC bug in 4.8
+
+Commit: 069b38b09c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 12:46:08 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - CMakeLists.txt (+1) -- adds -Wno-missing-braces to the kernel
+    CFLAGS. GCC 4.8 had a known false positive for the pattern
+    struct foo bar = {0}; which is standard C. Silencing the
+    warning avoids breaking the -Werror build on old GCC.
+
+  - .travis.yml (-2) -- drops a workaround the CI had in place
+    for the same warning.
+
+--------------------------------------------------------------------------------
+
+## 4ba6e4b7 -- fixing cmake_run and other stuff
+
+Commit: 4ba6e4b70f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 13:55:58 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/cmake_run (+23 / -29) -- compile-version check
+    refactored for readability; tightens the "which gcc version
+    is in use" detection for distros with multiple compilers
+    installed.
+
+  - CMakeLists.txt (+2) -- small flag adjustment.
+
+  - unittests/avl_bintree.cpp (+1) -- missing include added for
+    the old-compiler build.
+
+--------------------------------------------------------------------------------
+
+## d0b39040 -- Fix generate_coverage_report to support any gcov version
+
+Commit: d0b39040a4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 14:30:44 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/generate_coverage_report (+18 / -6) -- no longer
+    hardcodes gcov-6. Detects the host's gcov from the already-
+    configured CC, so a build with gcc-5 / 7 / 8 still gets a
+    compatible gcov for coverage processing.
+
+  - .travis.yml (+2 / -2) -- drops the hardcoded gcov-6
+    --gcov-tool override.
+
+--------------------------------------------------------------------------------
+
+## 2a43538e -- [build] Use a locally downloaded x86-i686 toolchain
+
+Commit: 2a43538eab...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Dec 26 21:28:24 2017 +0200
+
+AI notes:
+
+What changed:
+
+  First cross-toolchain for kernel builds. Foundational for
+  reproducibility across distros.
+
+  - scripts/build_toolchain (+22) -- new download_i686_toolchain
+    function: downloads and extracts a bootlin
+    x86-i686--glibc--stable toolchain (i686-buildroot-linux-gnu-gcc
+    etc.) into toolchain/. Pinned version 2017.05-1-1.
+
+  - kernel/CMakeLists.txt (+7) -- when ARCH == i386, sets
+    CMAKE_C_COMPILER = $TCROOT/x86-i686--glibc--stable/bin/
+    i686-buildroot-linux-gnu-gcc for the kernel. Kernel code is
+    now compiled with a dedicated i686 cross-compiler instead of
+    "host gcc + -m32 -march=i686".
+
+  - CMakeLists.txt (+2 / -2) -- drops global ARCH_FLAGS = -m32
+    -march=i686 (obsolete; the cross-compiler defaults to
+    i686). Adds TCROOT variable.
+
+  - usermode_init/CMakeLists.txt (+9 / -1) -- init compile /
+    link paths tweaked (still uses musl + dietlibc against
+    host gcc -m32 here; the arch split that moves userland to
+    cross-compiler too comes later).
+
+Context (subject):
+
+  Instead of relying on gcc-multilib being available and
+  producing -m32 output, the project now owns an actual
+  cross-toolchain in toolchain/. First step toward the
+  toolchain3/ layout that dominates from 2019 onward.
+
+--------------------------------------------------------------------------------
+
+## 41b4e156 -- Fixing travis.yml for custom downloaded i686 toolchain
+
+Commit: 41b4e15672...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 11:12:46 2017 +0200
+
+AI notes:
+
+What changed:
+
+  .travis.yml (+6 / -4) -- adjusts the CI: gcc-multilib / g++-
+  multilib removed from apt list (the cross-toolchain replaces
+  them); download_i686_toolchain gets time budget in CI cache
+  warming; a couple of ENV vars propagated to the build step.
+
+--------------------------------------------------------------------------------
+
+## 4cebfa34 -- [build] Move elf_kernel build in arch/CMakeList.txt
+
+Commit: 4cebfa3448...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 13:00:23 2017 +0200
+
+Message:
+
+  Reason: it's not possible in the same CMakeList.txt file to use
+  two different C compilers. Previously the trick was done with
+  the -m32 flag. Now, with a separated toolchain for x86 (i686)
+  having two CMake files was mandatory.
+
+AI notes:
+
+What changed:
+
+  - New kernel/arch/CMakeLists.txt (69 l.) -- owns the elf_kernel
+    target (links the final kernel binary with the i686 cross-
+    toolchain's ld / objcopy).
+
+  - kernel/CMakeLists.txt (-61) -- strips the elf_kernel target
+    definition; keeps only the per-module kernel libraries compiled
+    with the cross-compiler.
+
+Context (subject + body):
+
+  CMake can only have one CMAKE_C_COMPILER per directory scope.
+  Since the kernel + kernel unit tests need DIFFERENT compilers
+  (cross vs host), they must live in different CMakeLists files
+  now. This is the split that enables the tests to continue
+  building against host gcc.
+
+--------------------------------------------------------------------------------
+
+## 4d937c04 -- [build] Minor changes in the .travis.yml file
+
+Commit: 4d937c0432...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 13:19:34 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - .travis.yml (-4) -- removes a few now-unused env-var setups
+    (DC=... for the cross-toolchain fallback that worked but is
+    obsolete).
+
+  - scripts/build_toolchain (+2 / -5) -- tightens an error
+    message.
+
+--------------------------------------------------------------------------------
+
+## 5adf25d3 -- [build toolchain] Add build_mtools
+
+Commit: 5adf25d3a9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 13:55:59 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+25) -- new build_mtools function:
+    downloads mtools-4.0.18 source, ./configure --prefix=$TC/
+    mtools, make install. Pins the mtools version the project
+    ships with, so build_fatpart.sh behaves identically across
+    distros.
+
+  - scripts/build_scripts/build_fatpart.sh (+14 / -8) -- uses the
+    toolchain-local mtools binaries (mformat / mcopy from
+    toolchain/mtools/bin) instead of system paths.
+
+  - CMakeLists.txt (+1 / -1), unittests/CMakeLists.txt (+1 / -1)
+    -- path fixes.
+
+--------------------------------------------------------------------------------
+
+## 8aa97a15 -- [build toolchain] Rename cmake-3.7.0-Linux-x86_64 in toolchain
+   to 'cmake'
+
+Commit: 8aa97a15b1...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:01:27 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+4 / -3) -- after downloading the
+    cmake tarball, renames cmake-3.7.0-Linux-x86_64/ to cmake/ so
+    the path is stable across version bumps.
+
+  - scripts/cmake_run (1 l.), .travis.yml (-6) -- use
+    toolchain/cmake/bin/cmake instead of the versioned directory.
+
+--------------------------------------------------------------------------------
+
+## eeb38a95 -- [build toolchain] Adding nasm to the custom toolchain
+
+Commit: eeb38a95df...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:17:08 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+29 / -4) -- new build_nasm function
+    downloads nasm 2.13.03 source, builds it, installs to
+    toolchain/nasm. Ownership of the assembler version matches
+    the cmake and mtools pattern.
+
+  - CMakeLists.txt (+2 / -1), bootloader/CMakeLists.txt (1 l.),
+    bootloader/efi/CMakeLists.txt (1 l.), scripts/cmake_run
+    (+4 / -1) -- wire up the local nasm.
+
+  - .travis.yml (-2) -- drops the apt-installed nasm.
+
+--------------------------------------------------------------------------------
+
+## 2b7550fe -- [build toolchain] Minor changes
+
+Commit: 2b7550feee...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:23:52 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+4 / -4) -- small output-message
+    consistency + one error-checking hook around build_nasm.
+
+  - .travis.yml (+2 / -2) -- small adjust.
+
+--------------------------------------------------------------------------------
+
+## 82c473ae -- [TEMP] commenting sudo: required in the travis file
+
+Commit: 82c473aed8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:25:24 2017 +0200
+
+AI notes:
+
+What changed:
+
+  .travis.yml (+11 / -11) -- toggles sudo: required -> sudo:
+  false (Travis "container" mode instead of "classic" VM mode).
+  Faster CI but sudo isn't available; any install steps must work
+  via apt addons instead. Subject marks this as [TEMP], so the
+  author may revert; in practice Travis accepted this form from
+  here on.
+
+--------------------------------------------------------------------------------
+
+## 1436705e -- sudo: false in travis
+
+Commit: 1436705eb9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:33:09 2017 +0200
+
+AI notes:
+
+What changed:
+
+  .travis.yml (+2 / -2) -- makes the [TEMP] toggle from the
+  previous commit permanent (drops the [TEMP] marker from
+  comments). sudo: false is now the settled CI mode.
+
+--------------------------------------------------------------------------------
+
+## fa2dc1df -- [build toolchain] Skip the download of CMake when it is
+   installed on the system
+
+Commit: fa2dc1df5a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 14:54:09 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - scripts/build_toolchain (+45 / -11) -- build_cmake gains a
+    host-cmake probe: if /usr/bin/cmake or similar reports version
+    >= 3.2, uses that instead of downloading. Saves ~10 MB and
+    ~30 seconds on most dev machines. The downloaded version is
+    still used when the host is missing cmake or has an older
+    version.
+
+  - scripts/cmake_run (+7 / -1) -- looks for the toolchain-local
+    cmake first, falls back to host cmake.
+
+--------------------------------------------------------------------------------
+
+## d57b40c1 -- [build toolchain] Succeed in case a not supported distro have
+   all the pkgs
+
+Commit: d57b40c1f6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 15:13:35 2017 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+47 / -13) -- handles "unknown distro
+  but the right packages are already there" gracefully. If
+  /etc/os-release doesn't match debian/ubuntu/mint/fedora, the
+  script now probes for the required binaries (gcc, g++, nasm,
+  make, wget, etc.) in PATH and, if all are present, proceeds
+  with a warning instead of exiting. Helps on Arch / Gentoo /
+  NixOS / etc.
+
+--------------------------------------------------------------------------------
+
+## c0debebf -- [build toolchain] Minor fix
+
+Commit: c0debebfa9...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 15:33:41 2017 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (1 l.) -- fixes a variable name typo
+  introduced in the previous commit (was referencing an
+  undeclared PKG_LIST vs the actual pkg_list).
+
+--------------------------------------------------------------------------------
+
+## a9b2a619 -- Add a prototype to context switch funcs to avoid a warning
+
+Commit: a9b2a61923...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 15:38:51 2017 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/arch/i386/arch_utils.h (+2 / -2) -- declares
+  prototypes for asm_context_switch_x86 and
+  asm_kernel_context_switch_x86 in the arch header. Without the
+  prototypes, the cross-compiler emitted -Wimplicit-function-
+  declaration warnings when those asm symbols were called from
+  C. Pure warning fix.
+
+--------------------------------------------------------------------------------
+
+## 8c6950c9 -- [build toolchain] Improving the script's output
+
+Commit: 8c6950c98f...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 15:50:40 2017 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+9 / -8) -- prettier progress output:
+  per-section banners (echo "-- Building nasm --"), uniform
+  "Skipping X" messages, suppresses noisy pushd/popd output.
+  .travis.yml (-2) -- drops an unused ENV var.
+
+--------------------------------------------------------------------------------
+
+## af2e2409 -- [build] Force use of toolchain's objcopy
+
+Commit: af2e240909...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 17:12:32 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/arch/CMakeLists.txt (+9 / -3) -- the post-link step
+    now uses $TCROOT/x86-i686--glibc--stable/bin/i686-buildroot-
+    linux-gnu-objcopy instead of plain objcopy. Host objcopy may
+    handle ELF but might not know about i686 subtleties; using
+    the toolchain's objcopy eliminates variance.
+
+  - kernel/CMakeLists.txt (-4 / +2) -- drops the "use host
+    objcopy" branch.
+
+--------------------------------------------------------------------------------
+
+## db5bd443 -- Fixing *run_qemu_* scripts
+
+Commit: db5bd443fc...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Dec 28 18:21:59 2017 +0200
+
+AI notes:
+
+What changed:
+
+  run_qemu / debug_run_qemu / run_qemu_kvm / run_qemu_usbdisk
+  (1 l. each) -- adjust the path to the qemu-provided ovmf
+  firmware image (the one that EFI boot chains through). Paths
+  moved in Ubuntu 17.04+ / Debian stretch.
+
+--------------------------------------------------------------------------------
+
+## 61b4b524 -- [kernel boot] Removing an useless waste of 1K in kernelAsm
+
+Commit: 61b4b524d4...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Dec 28 19:46:29 2017 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/arch/i386/kernelAsm.asm (+9 / -5) -- the boot stub that
+  identity-mapped the low 4 MiB for the temporary early paging
+  had a "times 1024-($-$$) db 0" padding directive that predated
+  the linker-script change. Now unused; removed. Saves 1 KiB in
+  the kernel image.
+
+--------------------------------------------------------------------------------
+
+## 9caec140 -- [build] Using CMake's release/debug variable
+
+Commit: 9caec140af...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 30 17:29:22 2017 +0300
+
+AI notes:
+
+What changed:
+
+  - scripts/cmake_run (+8 / -7) -- adds CMAKE_BUILD_TYPE=
+    Release/Debug to the cmake invocation when RELEASE=on / off.
+
+  - CMakeLists.txt (+1 / -2) -- removes ad-hoc RELEASE_BUILD
+    handling; relies on CMake's built-in BUILD_TYPE flag logic.
+
+  - kernel/arch/CMakeLists.txt (+1) -- CMAKE_BUILD_TYPE
+    overrides for the i686 cross-compile path.
+
+  - scripts/build_toolchain (1 l.), .travis.yml (1 l.) --
+    matching.
+
+--------------------------------------------------------------------------------
+
+## bc6557bb -- [build] Adding support for the Clang address sanitizer
+
+Commit: bc6557bb30...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 30 18:33:02 2017 +0300
+
+Message:
+
+  BONUS: adding a clang target in the travis build matrix
+
+AI notes:
+
+What changed:
+
+  - unittests/CMakeLists.txt (+12 / -1) -- optional
+    -fsanitize=address / -fno-omit-frame-pointer flags for unit
+    tests when USE_ASAN=on is passed to cmake. Requires clang
+    (clang's ASan is more robust than gcc's on the version the
+    project supports).
+
+  - .travis.yml (+8 / -2) -- new matrix entry that builds with
+    CC=clang CXX=clang++ and USE_ASAN=on; catches memory errors
+    in the gtest suite.
+
+  - unittests/kmalloc_mocks.cpp (+1) -- tiny adjustment for a
+    warning clang emits about a typedef.
+
+--------------------------------------------------------------------------------
+
+## 72e211c7 -- [build] Fix a problem with the new clang target
+
+Commit: 72e211c782...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 30 18:42:01 2017 +0300
+
+AI notes:
+
+What changed:
+
+  .travis.yml (+10 / -11) -- the clang job needed explicit package
+  adds (clang-5.0 from apt.llvm.org) and a cc: wrapper exporting
+  CC=clang-5.0 CXX=clang++-5.0. Also fixes an env-var leak between
+  matrix entries.
+
+--------------------------------------------------------------------------------
+
+## 6d662398 -- Add a basic implementation of sys_pause()
+
+Commit: 6d6623982a...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 17:31:54 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/syscalls.c (+57 / -1) -- sys_pause() stub that sets
+    the calling task to TASK_STATE_SLEEPING and yields; no signal
+    infrastructure yet, so it returns only when another task
+    changes its state externally. Also adds stubs for sys_mount,
+    sys_umount, sys_setuid, sys_getuid (returns 0 -- only root
+    user exists), sys_stime, sys_ptrace, sys_alarm, sys_oldfstat,
+    sys_utime -- all simply return 0 for now.
+
+  - kernel/process.c (+7) -- helper supporting sys_pause's state
+    transition.
+
+--------------------------------------------------------------------------------
+
+## 3c4eab82 -- Add errno.h in the kernel
+
+Commit: 3c4eab821b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 17:45:42 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - New kernel/include/errno.h (149 l.) -- kernel-side errno
+    definitions (EPERM, ENOENT, ESRCH, EINTR, ... through the full
+    POSIX set up to ENOKEY). Values mirror Linux's asm-generic
+    errno numbering so userspace code linked against glibc /
+    musl sees the same numbers.
+
+  - kernel/syscalls.c (+2 / -1) -- includes errno.h.
+
+--------------------------------------------------------------------------------
+
+## 5b7e20e7 -- Starting to work on exvfs
+
+Commit: 5b7e20e7e5...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Dec 27 18:36:43 2017 +0200
+
+Message:
+
+  BONUS[1]: fixed build problem with errno.h
+  BONUS[2]: adding long file name validation in FAT32 code
+
+AI notes:
+
+What changed:
+
+  - New kernel/fs/exvfs.c (1 l.) -- empty placeholder.
+
+  - New kernel/include/fs/exvfs.h (29 l.) -- first sketch of
+    exOS's VFS layer. Header comment explicitly flags it as a
+    "toy VFS", not attempting parity with Linux's. Declares
+    typedef void *fs_file_handle and function-pointer types
+    func_open(const char *) / func_close(fs_file_handle), plus
+    a partial struct {char name[16]; ...} for registering a FS.
+
+  - kernel/include/errno.h renamed to kernel/include/exos_errno.h
+    -- avoids collision with musl's errno.h when both are on
+    include path.
+
+  - kernel/fs/fat32.c (+53 / -3) + kernel/include/fs/fat32.h
+    (+5) -- LFN reading now validates the checksum of the
+    preceding short-name entry against the accumulated long-name
+    buffer (the FAT LFN spec requires it). Malformed chains are
+    discarded.
+
+  - kernel/syscalls.c (+1 / -1) -- uses the renamed exos_errno.h.
+
+--------------------------------------------------------------------------------
+
+## ee15d82e -- [FS] Working on mounting a filesystem
+
+Commit: ee15d82e48...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 29 16:46:04 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/exvfs.c (+36) -- first real content. mountpoint
+    struct ({filesystem *fs; char path[];}), a static array of
+    16 mountpoint pointers mps[], and mountpoint_add(fs, path) /
+    mountpoint_remove(fs) to register and unregister mounts.
+
+  - kernel/include/fs/exvfs.h (+30 / -12) -- declares filesystem
+    struct (name + function pointers for open/close/read/etc.)
+    and the mountpoint API.
+
+  - kernel/fs/fat32.c (+53) -- exports a fat32_mount_ramdisk()
+    function that constructs a filesystem descriptor wrapping a
+    memory-resident FAT image and registers it via
+    mountpoint_add.
+
+  - kernel/include/fs/fat32.h (+7) -- prototypes.
+
+--------------------------------------------------------------------------------
+
+## 873c8afd -- [FS] continuing the work
+
+Commit: 873c8afdca...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Fri Dec 29 20:58:59 2017 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/fs/fat32.c (+32 / -2), unittests/fat32_test.cpp (+1) --
+  extends fat32 with a per-file "handle" struct capable of
+  tracking seek position across chained cluster reads, groundwork
+  for the upcoming fat_read implementation.
+
+--------------------------------------------------------------------------------
+
+## 3954fe7f -- [FS] Implementing fat_read()
+
+Commit: 3954fe7fc8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sat Dec 30 12:17:32 2017 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c (+68 / -20) -- fat_read(handle, buf,
+    count) reads up to count bytes starting at the handle's
+    current seek offset. Correctly walks the cluster chain,
+    handles reads that span cluster boundaries, clamps at
+    end-of-file, updates the seek offset. Works for both FAT16
+    and FAT32 layouts.
+
+  - kernel/include/fs/fat32.h (+19), kernel/include/fs/exvfs.h
+    (+2 / -2) -- fat_handle struct and read function prototype.
+
+  - unittests/fat32_test.cpp (+87 / -29) -- gtest cases for
+    sequential reads, seek-and-read, boundary-crossing reads.
+
+--------------------------------------------------------------------------------
+
+## 93283a75 -- [FS] Implemented fseek() and ftell() for FAT32
+
+Commit: 93283a7508...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Sun Dec 31 19:23:35 2017 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/fs/fat32.c (+92 / -1) -- fat_fseek(handle, off, whence)
+  and fat_ftell(handle). fseek walks forward through the cluster
+  chain from the handle's current position until the cumulative
+  byte count reaches the target; for backwards seeks it restarts
+  from the file's first cluster. SEEK_SET / SEEK_CUR / SEEK_END
+  supported. kernel/include/fs/exvfs.h (+8 / -1) -- API addition.
+
+--------------------------------------------------------------------------------
+
+## 03a2c73d -- [FS] Implement exvfs wrappers
+
+Commit: 03a2c73d43...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Tue Jan 2 19:51:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  First generic VFS dispatch layer.
+
+  - kernel/fs/exvfs.c (+106 / -6) -- exvfs_open(path) /
+    exvfs_close(handle) / exvfs_read / exvfs_fseek (plus
+    friends) dispatch to the appropriate filesystem via its
+    registered mountpoint. Resolution uses a new
+    check_mountpoint_match(mp, path) helper that mandates
+    mountpoints end in '/' and verifies the match stops at a
+    path-component boundary. mountpoint_add now ASSERTs
+    path[strlen-1] == '/' (invariant).
+
+  - kernel/include/fs/exvfs.h (+21) -- public API.
+
+  - kernel/fs/fat32.c (+6 / -10) -- adjusts to the new exvfs
+    entry points (fat_open etc. get called via
+    filesystem.fops).
+
+  - kernel/include/common_defs.h (+7) -- adds STATIC macro
+    (expands to static in release, empty in test so the
+    function is exported for gtest access).
+
+  - New unittests/exvfs_test.cpp (60 l.) -- tests
+    check_mountpoint_match and basic mount/open/read round-trip.
+
+Context (guess -- subject says "wrappers"):
+
+  Before this commit, callers had to know which FS to dispatch
+  to (they called fat32_open directly). After this, opening by
+  path "dispatches" based on the registered mount. Foundation
+  for later mounts of multiple filesystems.
+
+--------------------------------------------------------------------------------
+
+## 37c65f56 -- [FS] Improve the fat32/exvfs tests by adding load_once_file()
+
+Commit: 37c65f568c...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Jan 3 19:22:03 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/fat32_test.cpp (+58 / -58), unittests/exvfs_test.cpp
+  (+10 / -17) -- extracts a load_once_file() test helper that
+  mmaps the test FAT image exactly once instead of re-reading on
+  every test case. Net test LOC slightly shrinks, runtime
+  noticeably faster.
+
+--------------------------------------------------------------------------------
+
+## 0835f70b -- [FS] Implement a test for exvfs_seek()
+
+Commit: 0835f70bce...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Jan 3 21:35:53 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - unittests/exvfs_test.cpp (+81) -- exvfs_seek test: opens a
+    known test file, seeks to various offsets (including past
+    EOF, backwards across cluster boundaries), verifies that
+    subsequent reads return the expected bytes.
+
+  - kernel/fs/fat32.c (+23 / -1) -- seek bug surfaced by the new
+    test: when whence == SEEK_SET to an offset of 0,
+    current_cluster wasn't being re-set to first_cluster. Fix
+    included.
+
+--------------------------------------------------------------------------------
+
+## 71ee9987 -- [FS] Allow fseek() to go past the end of the file
+
+Commit: 71ee9987e8...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Wed Jan 3 22:06:08 2018 +0200
+
+Message:
+
+  BONUS: fixing 2 bugs in mountpoint_remove().
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c (+18 / -2) -- fat_fseek no longer clamps
+    the target offset at file size; POSIX lseek allows seeking
+    past EOF (subsequent writes create sparse files; reads
+    return 0 bytes). Tilck won't write to FAT soon, but the
+    read-past-eof semantics match lseek now.
+
+  - kernel/fs/exvfs.c (+16 / -4) -- fixes mountpoint_remove: (1)
+    the kfree call was using the wrong argument (mps instead of
+    mps[i]); (2) the NOT_REACHED at the end was incorrectly
+    unconditional -- it should only fire if no matching mount
+    was found, not after a successful removal.
+
+  - kernel/include/fs/exvfs.h (1 l.), unittests/exvfs_test.cpp
+    (+12 / -14) -- signature adjustment and tests.
+
+--------------------------------------------------------------------------------
+
+## 76d39d46 -- [FS] Using lseek() instead of fseek() in the seek test
+
+Commit: 76d39d4608...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 15:06:58 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - Public API rename: exvfs_fseek/ftell -> exvfs_lseek
+    (POSIX-style off_t offset with whence).
+
+  - kernel/fs/fat32.c (+26 / -25), kernel/include/fs/exvfs.h
+    (+5 / -4), kernel/fs/exvfs.c (-5 / +2),
+    unittests/exvfs_test.cpp (+40 / -26) -- plumbing and
+    matching test updates.
+
+Context (subject):
+
+  Aligns with userland libc: lseek is what a glibc/musl-linked
+  program calls; matching the name here makes the syscall wrappers
+  trivial.
+
+--------------------------------------------------------------------------------
+
+## 86b5350d -- [FS] Fixing some bugs in seek()
+
+Commit: 86b5350d21...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 15:41:45 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c (+7 / -14) -- lseek simplification: instead
+    of manually walking clusters for forward seeks and reseting
+    for backward seeks, it always resets to first_cluster and
+    walks to the target offset. Slower for random access but
+    eliminates the class of "off-by-one in cluster boundary"
+    bugs the previous version had.
+
+  - kernel/fs/exvfs.c (+5) -- param validation (negative offset
+    in SEEK_SET gets -EINVAL).
+
+  - kernel/include/fs/exvfs.h (1 l.) -- sig cleanup.
+
+--------------------------------------------------------------------------------
+
+## 40889ae8 -- [FS] Some renaming
+
+Commit: 40889ae8b6...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 15:48:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  kernel/include/fs/exvfs.h (+8 / -8), kernel/fs/fat32.c
+  (+12 / -7), kernel/fs/exvfs.c (+5 / -5), unittests/fat32_test.cpp
+  (1 l.) -- rename pass in the VFS surface: exvfs_* and fat_*
+  functions standardize on consistent prefixes, func_* typedefs
+  get a _t suffix, etc. No functional change.
+
+--------------------------------------------------------------------------------
+
+## 04b1e765 -- [FS] Refactoring the exvfs interface
+
+Commit: 04b1e76575...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 18:27:44 2018 +0200
+
+Message:
+
+  - Removed fhandle
+  - Moved read, write, seek in file_ops
+  - Make all the file handles to include the members of
+    fs_handle_base
+
+AI notes:
+
+What changed:
+
+  Big structural cleanup of the nascent VFS.
+
+  - kernel/include/fs/exvfs.h (+32 / -19) -- retires fhandle
+    typedef (opaque void*). Introduces fs_handle_base, an
+    embedded-head struct with fs_handle_base *next, filesystem
+    *fs, and file_ops *fops, so every FS-specific handle must
+    embed an fs_handle_base as its first member (classic Linux-
+    style "open class" polymorphism via first-field trick).
+
+  - New file_ops struct (read / write / seek / close function
+    pointers) -- replaces the scattered per-call func_*
+    pointers on filesystem. exvfs_read/write/seek now do one
+    dispatch through h->fops->read(h, ...).
+
+  - kernel/fs/fat32.c (+39 / -38) -- fat_handle's first member
+    is fs_handle_base; fat32 registers a static file_ops table
+    and assigns it into h->fops at open time.
+
+  - kernel/include/fs/fat32.h (+5), kernel/fs/exvfs.c (+13 / -15),
+    unittests/exvfs_test.cpp (+3 / -5), unittests/fat32_test.cpp
+    (+6 / -4) -- matching updates.
+
+Context (PR body):
+
+  This is the shape that becomes Tilck's kernel VFS long-term:
+  a handle is always "pointer to a struct whose first field is
+  fs_handle_base", and operations dispatch via h->fops. Same
+  pattern the Linux kernel uses for file * / struct file_operations.
+
+--------------------------------------------------------------------------------
+
+## 2f16785e -- [build toolchain] Make the build of dietlibc to fully succeed
+
+Commit: 2f16785e7d...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 20:16:55 2018 +0200
+
+AI notes:
+
+What changed:
+
+  scripts/build_toolchain (+16 / -9) -- the dietlibc build had
+  been using set +e (ignore failures) since mid-2017 because
+  one cross-compile step reliably errored even when it
+  produced usable output. Root cause: dietlibc's Makefile
+  invokes strip on a host binary that's actually a 32-bit ELF
+  (cross-built), and strip fails when strip-flags don't match.
+  Fix: pre-install the toolchain's strip onto PATH before
+  invoking dietlibc's make; dietlibc's build now completes
+  without the set +e workaround.
+
+--------------------------------------------------------------------------------
+
+## 095ca164 -- [FS] Adding more diagnostic data in the exvfs seek() test
+
+Commit: 095ca1647b...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 20:47:22 2018 +0200
+
+AI notes:
+
+What changed:
+
+  unittests/exvfs_test.cpp (+28 / -8) -- adds ASSERT_EQ diagnostic
+  messages to the seek tests so a failing case prints the
+  filename, offset tried, byte read, expected byte. No logic
+  change; just makes debugging easier.
+
+--------------------------------------------------------------------------------
+
+## be216dae -- [FS] Fix minor bugs
+
+Commit: be216dae15...
+Author: Vladislav Valtchev <vladi32@gmail.com>
+Date:   Thu Jan 4 21:01:00 2018 +0200
+
+AI notes:
+
+What changed:
+
+  - kernel/fs/fat32.c (+3 / -3) -- SEEK_CUR + negative offset
+    now correctly updates the cluster chain (previously only
+    the byte offset was adjusted). SEEK_END off-by-one fixed
+    (was placing cursor one byte before EOF).
+
+  - scripts/generate_coverage_report (1 l.) -- small path tweak.
+
+--------------------------------------------------------------------------------
