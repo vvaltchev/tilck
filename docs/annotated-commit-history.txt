@@ -25444,3 +25444,2175 @@ Context (guess -- from subject):
   Co-locates the font with its only consumer.
 
 --------------------------------------------------------------------------------
+
+## 30926564 -- [fb_console] Introduce and use fb_copy_[to/from]_screen()
+
+Commit: 3092656411...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 12:44:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -14 in fb_console.c. Paired helpers for copying
+  pixel rows to/from an off-screen buffer (needed for
+  cursor save/restore and scrolling).
+
+Context (guess -- from subject):
+
+  Abstraction for low-level FB access so
+  higher-level routines don't write raw loops.
+
+--------------------------------------------------------------------------------
+
+## 2b3aa7ac -- [fb_console] Extract some code in fb_raw.c
+
+Commit: 2b3aa7ac9f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 13:03:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +157 / -116 across 4 files. New fb_raw.c (122
+  lines) holds pixel-level primitives. New fb_int.h
+  (26 lines, private) declares them. fb_console.c
+  -93 net delegates. fb_console.h -5 net.
+
+Context (guess -- from subject):
+
+  Separating "draw pixels" from "draw characters".
+  Each layer becomes easier to test and modify.
+
+--------------------------------------------------------------------------------
+
+## af2ebf36 -- [fb_console] Minor changes [fb_raw_color_lines]
+
+Commit: af2ebf363e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 13:08:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -4 across 3 files. Minor API rename /
+  signature tweak.
+
+Context (guess -- from subject):
+
+  Post-split polish.
+
+--------------------------------------------------------------------------------
+
+## 04a42ace -- [fb_console] Make vga colors to work
+
+Commit: 04a42ace3f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 13:33:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -3 in fb_console.c. Adds a VGA-palette
+  lookup table (16 colors -> RGB24) so attribute
+  bytes from textmode code render correctly in FB
+  mode.
+
+Context (guess -- from subject):
+
+  Rendering text written by code that still thinks
+  in VGA attribute bytes -- essential for printk
+  (red color) to look right in FB mode.
+
+--------------------------------------------------------------------------------
+
+## af1418d7 -- [video_interface] Adding color to clear_row and to
+   add_row_and_scroll
+
+Commit: af1418d79f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 14:06:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -22 across 5 files. video interface fns
+  clear_row / add_row_and_scroll now take a color
+  arg. All implementers (textmode, fb) updated.
+
+Context (guess -- from subject):
+
+  Previously clear_row always used the default color;
+  callers that want coloured scroll (e.g., printk
+  red backdrop) now can.
+
+--------------------------------------------------------------------------------
+
+## 21f742e3 -- [textmode_video] Move the declaration of
+   init_textmode_console()
+
+Commit: 21f742e3ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 14:08:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -2 across 2 headers. The public decl moves to
+  the kernel-side header (exos/arch/.../textmode_video.h),
+  out of the common header shared with the
+  bootloader.
+
+Context (guess -- from subject):
+
+  init_textmode_console is kernel-only; shouldn't
+  pollute common/.
+
+--------------------------------------------------------------------------------
+
+## d914a47f -- [term] Rename *move_ch* to *move_ch_and_cur*
+
+Commit: d914a47f39...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 14:13:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -11 across term.h and term.c. Rename.
+
+Context (guess -- from subject):
+
+  Clearer name: move_ch_and_cur() both writes the
+  char and advances the cursor.
+
+--------------------------------------------------------------------------------
+
+## 7f6b471b -- [term][textmode_video] Move the scroll logic to term.c
+
+Commit: 7f6b471b16...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 14:51:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +137 / -176 across 6 files. Net -39 lines.
+  textmode_video.c -110 net and fb_console.c -37
+  (both drop their own scroll logic). term.c +105
+  net gains the shared scroll implementation,
+  delegating per-video-backend only to raw pixel /
+  cell ops. Headers trim corresponding decls.
+
+Context (guess -- from subject):
+
+  Big dedup: scroll was copied in two backends; now
+  the logic is in term.c and only primitives
+  (clear_row, copy_row, etc.) are arch-specific. -39
+  lines net confirms the win.
+
+--------------------------------------------------------------------------------
+
+## f5a6347c -- [term] Some renamings
+
+Commit: f5a6347c21...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 14:55:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -20 in term.c. Pure renames.
+
+Context (guess -- from subject):
+
+  Post-refactor polish on the newly-centralised
+  scroll code.
+
+--------------------------------------------------------------------------------
+
+## 38e5d1b1 -- [term] Term scroll works
+
+Commit: 38e5d1b19b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 15:22:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -38 across term.c (+26 / -31) and main.c
+  (+5 / -7). Fixes that make the new centralised
+  scroll actually display correctly.
+
+Context (guess -- from subject):
+
+  Integration bug fixes; scroll now works end-to-end
+  in both text and FB modes.
+
+--------------------------------------------------------------------------------
+
+## c160669e -- [term] Some renaming
+
+Commit: c160669ea4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 15:23:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -27 in term.c. Rename pass.
+
+Context (guess -- from subject):
+
+  Another post-refactor rename.
+
+--------------------------------------------------------------------------------
+
+## ae703ba4 -- [term] Refactoring
+
+Commit: ae703ba49d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 15:30:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -20 in term.c. Net -5 lines.
+
+Context (guess -- from subject):
+
+  Small trim.
+
+--------------------------------------------------------------------------------
+
+## a3b4994a -- [term] Refactoring 2
+
+Commit: a3b4994a83...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 15:38:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -11 in term.c. Net +5.
+
+Context (guess -- from subject):
+
+  Iterative polish.
+
+--------------------------------------------------------------------------------
+
+## 7c07a365 -- [term] Add debug perf measure of avg. cycles / scroll
+
+Commit: 7c07a365c2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 16:59:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +75 / -33 across kb.c (+35 / -34) and term.c
+  (+40 / -0). Counters for scroll cycles exposed to
+  kb (which prints them on a keypress).
+
+Context (guess -- from subject):
+
+  Instrumentation ahead of the scroll-optimization
+  commits (1018, 1020). Baseline measurements
+  before changes.
+
+--------------------------------------------------------------------------------
+
+## 1f75241e -- [term][fb_console][textmode_video] Change the
+   signature of set_char_at()
+
+Commit: 1f75241e11...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 17:15:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +47 / -51 across 4 files. set_char_at now takes a
+  packed u16 (char + color) instead of separate
+  fields.
+
+Context (guess -- from subject):
+
+  VGA text-mode cells are already u16; using a u16
+  everywhere avoids repacking per-call.
+
+--------------------------------------------------------------------------------
+
+## 86f63c66 -- [video_interface] Introduce set_row() with simple
+   implementations
+
+Commit: 86f63c665e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 17:21:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 lines across 3 files. New optional set_row()
+  hook in the video interface; trivial impls in
+  textmode and fb (loops over set_char_at).
+
+Context (guess -- from subject):
+
+  Set-row is a scroll building block. Having it as
+  a backend method allows backends that can optimise
+  (textmode can memcpy a row) to do so.
+
+--------------------------------------------------------------------------------
+
+## 3e24d2dd -- [term][textmode_video] Impl. textmode_set_row()
+   properly and use it in term
+
+Commit: 3e24d2dd67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 17:27:26 2018 +0300
+
+> Result: the scroll consumes about 3 times less
+> cycles
+
+AI notes:
+
+What changed:
+
+  +2 / -8 across textmode_video.c and term.c.
+  textmode_set_row uses memcpy for a whole row at
+  once; term scroll takes advantage of it.
+
+Context (from body):
+
+  3x speedup. Per-char write was O(W*H) u16 stores;
+  per-row is O(H) memcpy'd rows.
+
+--------------------------------------------------------------------------------
+
+## 18d8e9be -- [fb_console] Optimize for the case of fonts with width
+   = 8
+
+Commit: 18d8e9bed6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 19:30:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +113 / -20 across 4 files. fb_raw.c +74 gains a
+  dedicated fast path for 8-pixel-wide glyphs (one
+  byte per glyph row -> unroll / SIMD-ish moves).
+  fb_console.c / fb_int.h plumb the selection.
+  vga_textmode_defs.h +3.
+
+Context (guess -- from subject):
+
+  Most PSF fonts are 8x16 -- specialising the common
+  case pays off.
+
+--------------------------------------------------------------------------------
+
+## 973820b2 -- Fix the broken release build
+
+Commit: 973820b2e7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 19:36:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -8 across kb.c (+2), term.c (+8 / -8),
+  fb_raw.c (+3). Unused-variable / unused-label
+  warnings under -O2 -Werror.
+
+Context (guess -- from subject):
+
+  Release build has stricter warnings; debug-only
+  symbols tripped them.
+
+--------------------------------------------------------------------------------
+
+## 215d8725 -- [asm_x86_strings] Introduce memcpy32 and use it in
+   fb_draw_w8_char_raw()
+
+Commit: 215d872517...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 19:44:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 new lines in asm_x86_strings.h (inline-asm
+  memcpy32 using rep movsd). fb_raw.c +3 / -3 uses
+  it.
+
+Context (guess -- from subject):
+
+  Completes the byte/word/dword inline-memcpy
+  family. Glyph draw path benefits from aligned
+  dword stores on the FB.
+
+--------------------------------------------------------------------------------
+
+## 7f78efaf -- [fb_console] Support
+   fb_precompute_fb_w8_char_scanlines() to fail
+
+Commit: 7f78efaf71...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 19:48:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -5 across 3 files. The precompute step
+  (likely kmalloc'd glyph-cache) now can fail;
+  callers fall back to the slow per-draw path.
+
+Context (guess -- from subject):
+
+  Glyph cache is an optimisation, not required. If
+  allocation fails, keep booting.
+
+--------------------------------------------------------------------------------
+
+## 26690ab7 -- [main] Make use_framebuffer accessible through a
+   getter
+
+Commit: 26690ab7b0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 20:23:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -5 across 4 files. The global use_framebuffer
+  becomes a getter.
+
+Context (guess -- from subject):
+
+  Standard encapsulation step; follows the
+  get_curr_task pattern.
+
+--------------------------------------------------------------------------------
+
+## 53b6b79d -- [fb_console] Call mark_pageframes_as_reserved() in
+   fb_map_in_kernel_space
+
+Commit: 53b6b79d8e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 20:30:31 2018 +0300
+
+> At the moment the pageframe allocator is NOT used
+> at all, but still it makes sense to notify it
+> about the physical locations that it cannot use.
+
+AI notes:
+
+What changed:
+
+  +8 lines across fb_raw.c (+3), main.c (+2),
+  pageframe_allocator.c (+3). FB physical range is
+  reserved even though allocator isn't active yet.
+
+Context (from body):
+
+  Forward-looking hygiene: when the allocator does
+  go live, it will already know not to hand out FB
+  frames.
+
+--------------------------------------------------------------------------------
+
+## b334b6a8 -- [main] Re-order init sequence
+
+Commit: b334b6a860...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 20:37:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -7 in main.c. Net -5. Init calls reordered
+  for correctness with the new getters.
+
+Context (guess -- from subject):
+
+  Dependencies between init steps shifted as
+  getters/setters landed.
+
+--------------------------------------------------------------------------------
+
+## 859858b2 -- [printk] Append data in ringbuf if term is not
+   initialized
+
+Commit: 859858b2f1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 21:05:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -23 across 4 files. printk.c -10 net: the
+  "term not ready" branch now uses the already-
+  existing ringbuf instead of a separate early
+  buffer. term.c +1 flushes ringbuf once up.
+  string_util.h +1. main.c +1.
+
+Context (guess -- from subject):
+
+  Refinement of 79979473: early printk messages
+  aren't dropped -- they wait in the ringbuf and
+  print as soon as term is up.
+
+--------------------------------------------------------------------------------
+
+## 58d63a48 -- [fb_console] Make the cursor to blink
+
+Commit: 58d63a48e6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 21:49:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -9 across 4 files. fb_console.c +32 net
+  implements timer-driven blink via a tasklet/timer
+  hook. fb_console.h +2 decls. main.c +2 wires it.
+  irq.c 1-line.
+
+Context (guess -- from subject):
+
+  Cursor blink is the final "feels like a real
+  console" touch. Now the FB console is ready for
+  prime time.
+
+--------------------------------------------------------------------------------
+
+## 2fbd6e41 -- [efi bootloader] Use (properly) EfiLoaderData for
+   allocations
+
+Commit: 2fbd6e41e3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 22:31:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -6 in efimain.c. Allocations pass
+  EfiLoaderData instead of a different pool type.
+
+Context (guess -- from subject):
+
+  UEFI memory types matter: EfiLoaderData is what
+  the spec says the loader should use. Wrong types
+  can get reclaimed by the firmware.
+
+--------------------------------------------------------------------------------
+
+## 20642f94 -- [efi bootloader] Pass ramdisk's paddr to kernel using
+   multiboot's mods
+
+Commit: 20642f94bb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 23:05:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +71 / -46 in efimain.c. Bootloader allocates a
+  frame for the ramdisk, copies it in, and exposes
+  it to the kernel via the multiboot "modules" tag.
+
+Context (guess -- from subject):
+
+  Match the BIOS bootloader's semantic: the kernel
+  treats its initrd uniformly regardless of boot
+  path.
+
+--------------------------------------------------------------------------------
+
+## 1cdec281 -- [process][timer] Move the decl of jiffies and
+   get_ticks() in timer.h
+
+Commit: 1cdec281ab...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 23:14:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -10 across 4 files. process.h -6 (the time-
+  related decls leave). timer.h +7 (they arrive).
+  Callers adjust include.
+
+Context (guess -- from subject):
+
+  Natural home: jiffies/ticks belong with the
+  timer, not the process abstraction.
+
+--------------------------------------------------------------------------------
+
+## 0141ec43 -- [term] Extract term_internal_write_char2() from
+   term_write_char2()
+
+Commit: 0141ec4392...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 14:42:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +34 / -30 in term.c. Internal helper isolates the
+  "render a char" logic from the enqueue-or-execute
+  dispatch.
+
+Context (guess -- from subject):
+
+  Setting up cleaner layers: internal fn does the
+  raw work; public fn wraps with queue management.
+
+--------------------------------------------------------------------------------
+
+## 3052d754 -- [term] Introduce term_write[2] and use it in printk
+   flush
+
+Commit: 3052d7545b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 15:26:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +58 / -16 across term.h (+3 decls), term.c (+51
+  net), printk.c (+1 / -3). Batched
+  term_write(buf, len) and term_write2(buf, len,
+  color) -- single atomic term op for many chars.
+  printk's flush routine uses it.
+
+Context (guess -- from subject):
+
+  Previously printk iterated calling
+  term_write_char, each potentially going through
+  the enqueue-or-execute dispatch. One big call is
+  cheaper.
+
+--------------------------------------------------------------------------------
+
+## a8dd792f -- [printk] Rename printk_raw_flush to
+   printk_direct_flush
+
+Commit: a8dd792f1c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 15:28:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -5 rename in printk.c.
+
+Context (guess -- from subject):
+
+  "direct" better describes what it does.
+
+--------------------------------------------------------------------------------
+
+## b0a6a6ae -- [fb_console] Some renaming
+
+Commit: b0a6a6ae83...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 15:42:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -13 across fb files.
+
+Context (guess -- from subject):
+
+  Routine rename pass.
+
+--------------------------------------------------------------------------------
+
+## 9af74282 -- [fb_console] Micro opts in fb_draw_char8x16_raw()
+
+Commit: 9af7428233...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 17:03:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -3 in fb_raw.c. Small asm-like tightening in
+  the glyph-draw inner loop.
+
+Context (guess -- from subject):
+
+  Shaving cycles in the hottest FB code.
+
+--------------------------------------------------------------------------------
+
+## fb18f572 -- [fb_console] Create custom set_row() func for 8x16
+   fonts
+
+Commit: fb18f57291...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 17:15:47 2018 +0300
+
+> Note: fb_draw_char8x16_row() has just a stub
+> implementation
+
+AI notes:
+
+What changed:
+
+  +26 / -7 across 3 files. fb_console.c +18 /-7 (set_
+  row hook registered for 8x16). fb_int.h +1 decl.
+  fb_raw.c +7 stub impl.
+
+Context (from body):
+
+  Prep for real row-level optimisation. Stub first,
+  real in 57834f8a.
+
+--------------------------------------------------------------------------------
+
+## 57834f8a -- [fb_console] Optimize fb_draw_char8x16_row
+
+Commit: 57834f8ad2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 17:47:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +43 / -8 across 4 files. fb_raw.c +37 / -3 fills
+  in the row-draw with precomputed scanlines for
+  every char+color combo. vga_textmode_defs.h +3,
+  fb_int.h / fb_console.c small touches.
+
+Context (guess -- from subject):
+
+  Completes fb18f572. Row drawing now uses the
+  precomputed glyph cache directly.
+
+--------------------------------------------------------------------------------
+
+## ab7baaac -- [fb_console] Cosmetic changes
+
+Commit: ab7baaac98...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 18:23:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -9 in fb_raw.c.
+
+Context (guess -- from subject):
+
+  Polish.
+
+--------------------------------------------------------------------------------
+
+## 70b0a297 -- [fb_console] Re-organize data in fb_w8_char_scanlines
+
+Commit: 70b0a2974f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 18:59:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -18 in fb_raw.c. Layout of the scanline
+  cache changed (likely array-of-struct to struct-
+  of-array or similar).
+
+Context (guess -- from subject):
+
+  Data layout optimisation -- cache-friendliness for
+  the hot draw loop.
+
+--------------------------------------------------------------------------------
+
+## f461b257 -- [term] Set task_info->wobj in set_task_to_wake_after()
+
+Commit: f461b2575e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 20:00:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -29 across 3 files. timer_handler.c -13 net:
+  timer sleep now sets wobj (wait object) uniformly
+  through the sync.h API. sync.h +9 / -4 gains new
+  helpers. timer.h +8 decls.
+
+Context (guess -- from subject):
+
+  Unifies timer waits with condvar/mutex waits so
+  debug tools (who-is-waiting-on-what) work for
+  all.
+
+--------------------------------------------------------------------------------
+
+## 21e9307c -- [fb_console] Make the cursor to stop blinking while
+   writing
+
+Commit: 21e9307c6c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 20:15:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -3 in fb_console.c. Cursor blink timer is
+  paused while write ops are active and a short
+  timeout later resumes blink.
+
+Context (guess -- from subject):
+
+  Visual improvement: cursor doesn't flicker during
+  continuous output. Matches xterm behaviour.
+
+--------------------------------------------------------------------------------
+
+## 76b1bc6e -- [fb_console] Change the font to Lat2-VGA16
+
+Commit: 76b1bc6e89...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 20:24:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  font.psf replaced (binary file, small size
+  change).
+
+Context (guess -- from subject):
+
+  Lat2-VGA16 is a Latin-2 VGA 8x16 console font
+  shipped by kbd/setfont -- better glyph coverage
+  than the previous font.
+
+--------------------------------------------------------------------------------
+
+## bc9a0997 -- [fb_console] Add top banner
+
+Commit: bc9a0997d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 21:16:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +62 / -11 across 4 files. fb_console.c +59 / -8
+  reserves the top row and paints a banner (project
+  name, date/time). datetime.h +2 exposes needed
+  fns. datetime.c 1-line, printk.c 1-line.
+
+Context (guess -- from subject):
+
+  Cosmetic "it's a real system" polish.
+
+--------------------------------------------------------------------------------
+
+## 73210055 -- [fb_console] Make fb_draw_banner to adapt on
+   fb_term_cols
+
+Commit: 732100554a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 22:23:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -18 in fb_console.c. Banner width adapts to
+  terminal column count.
+
+Context (guess -- from subject):
+
+  Hardcoded 80 was wrong at other resolutions.
+
+--------------------------------------------------------------------------------
+
+## 7fbaa3b1 -- [fb_console] Make the banner to refresh every minute
+
+Commit: 7fbaa3b1d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 16 22:51:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +36 / -13 in fb_console.c. Timer-driven redraw
+  every 60s so clock in banner updates.
+
+Context (guess -- from subject):
+
+  Banner has a clock; without refresh, it's
+  frozen at boot time.
+
+--------------------------------------------------------------------------------
+
+## f72b2cdb -- [fb_console] Optimizing fb_copy_[to/from]_screen()
+
+Commit: f72b2cdb1e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 11:37:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -6 in fb_raw.c. Replaces generic memcpy with
+  32-bit pixel memcpy.
+
+Context (guess -- from subject):
+
+  Use the right primitive for 4-byte-aligned data.
+
+--------------------------------------------------------------------------------
+
+## e9578cea -- [common] Move vga_textmode_defs.h in include/common/
+
+Commit: e9578ceafd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 11:42:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -7 across 7 files. Header moves from
+  common/arch/generic_x86/ to common/ (no longer
+  arch-specific). Every includer updates.
+
+Context (guess -- from subject):
+
+  The VGA color constants and cell layout are
+  consumed by arch-neutral term code too. Promote
+  the header.
+
+--------------------------------------------------------------------------------
+
+## 428fafed -- [term][video_interface] Introduce the optional
+   scroll_one_line_up()
+
+Commit: 428fafedc7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 11:52:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -13 across 4 files. New optional hook in
+  the video interface. textmode and fb get stubs.
+
+Context (guess -- from subject):
+
+  Dedicated primitive for single-row scroll; the
+  backend can optimise it.
+
+--------------------------------------------------------------------------------
+
+## 9e2985ec -- [fb_console] Implement scroll_one_line_up()
+
+Commit: 9e2985ec81...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 12:15:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -3 across 4 files. Real FB scroll_one_line_up
+  impl that memcpy32s each row up.
+
+Context (guess -- from subject):
+
+  Fills the stub.
+
+--------------------------------------------------------------------------------
+
+## 830d1835 -- [fb_console] Don't use (for the moment)
+   fb_scroll_one_line_up()
+
+Commit: 830d1835be...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 12:53:24 2018 +0300
+
+> Reason: it appears to be 3x slower on bare-metal
+> even if with QEMU it makes the 1-line scroll 2x
+> faster.
+
+AI notes:
+
+What changed:
+
+  +22 / -1 across term.c (+12) and fb_console.c
+  (+10 / -1). The optimised path is kept but not
+  used.
+
+Context (from body):
+
+  FB reads are expensive on real hardware (no cache
+  on FB memory); QEMU's emulated FB is RAM-backed
+  so it's fast. Trust the slower-but-faster-in-
+  practice path until the write-combine issue can
+  be addressed.
+
+--------------------------------------------------------------------------------
+
+## 40655b37 -- [efi bootloader] Support user to select wanted
+   resolution
+
+Commit: 40655b376f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 13:23:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +71 / -31 across 5 files. setup_graphics.c +62 /
+  -23: enumerates all GOP modes, prints a menu, lets
+  user choose. efimain.c +6 / -4, utils.c/h minor,
+  fb_console.c +1.
+
+Context (guess -- from subject):
+
+  At first boot the user picks a resolution. Simple
+  UEFI equivalent of a Grub menu.
+
+--------------------------------------------------------------------------------
+
+## 6d85094e -- [efi bootloader] Add the highest resolution in the
+   list and other fixes
+
+Commit: 6d85094efe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 15:07:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +76 / -42 in setup_graphics.c. Net +34.
+  Enumeration filters / sorts by pixel count;
+  highest-resolution mode appears in the list;
+  various display fixes.
+
+Context (guess -- from subject):
+
+  Builds on 40655b37 with UX improvements.
+
+--------------------------------------------------------------------------------
+
+## 778ec6d0 -- [term] Fix a nasty bug: term cols and rows have to be
+   at least 16 bit
+
+Commit: 778ec6d003...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 15:28:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -5 across term.c (+4 / -4) and fb_console.c
+  (+1 / -1). u8 cols/rows promoted to u16.
+
+Context (guess -- from subject):
+
+  At 1920x1080 / 8x16 font the dimensions exceed
+  255. u8 overflowed silently.
+
+--------------------------------------------------------------------------------
+
+## 26092069 -- [sched] Fix a bug in schedule and make the tasklet
+   thread use always kcond
+
+Commit: 260920697f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 15:42:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -11 across sched.c (+4 / -2) and tasklet.c
+  (-9). Net -7. Unconditional kcond_wait path for
+  the tasklet runner; scheduler fix for the case
+  when only tasklet runner is runnable.
+
+Context (guess -- from subject):
+
+  d3bffd06 had a DEBUG-only code path calling
+  kernel_yield directly. Always using kcond_wait is
+  cleaner now that scheduler handles the runner
+  correctly.
+
+--------------------------------------------------------------------------------
+
+## be9dcab6 -- [fb_console] Rename font.psf to font8x16.psf
+
+Commit: be9dcab610...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 17:55:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -25 across 4 files plus rename. Every
+  reference to font.psf updates.
+
+Context (guess -- from subject):
+
+  Preparing for a second font (16x32) to live
+  alongside.
+
+--------------------------------------------------------------------------------
+
+## 6f6bcf03 -- [fb_console] Add font16x32.psf to kernel/fb
+
+Commit: 6f6bcf03d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 18:01:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 lines in arch/CMakeLists.txt plus the font
+  file (17k). Links both fonts into the kernel.
+
+Context (guess -- from subject):
+
+  Second font for high-res displays.
+
+--------------------------------------------------------------------------------
+
+## 568a5c3e -- [fb_console] Introduce fb_font_header and use it
+
+Commit: 568a5c3ebb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 18:10:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -18 across fb_console.c (+16 / -13),
+  fb_int.h (+1), fb_raw.c (+6 / -4). Struct for PSF
+  font header (width, height, glyph count, stride).
+
+Context (guess -- from subject):
+
+  With two fonts, the layout info must be read per
+  font, not hardcoded.
+
+--------------------------------------------------------------------------------
+
+## ac5c82fb -- [fb_console] Make font16x32 to work as well
+
+Commit: ac5c82fb30...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 18:27:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -4 in fb_raw.c. Generalise the glyph draw
+  path to 16-pixel-wide glyphs (2 bytes per row).
+
+Context (guess -- from subject):
+
+  16x32 fonts' first scanline is 2 bytes, not 1.
+  Fast path needs to handle both.
+
+--------------------------------------------------------------------------------
+
+## 6aebc770 -- [fb_console] Choose font size depending on resolution
+
+Commit: 6aebc7701c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 20:13:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -6 in fb_console.c. If the screen is >=
+  ~1920x1080, pick font16x32; else font8x16.
+
+Context (guess -- from subject):
+
+  Readable output at high DPI; tiny characters on a
+  4K screen would be unreadable.
+
+--------------------------------------------------------------------------------
+
+## 0059f145 -- [fb_console] Mostly cosmetic stuff
+
+Commit: 0059f14596...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 21:15:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -37 across 3 fb files. Net -10 lines.
+  Cleanups after the two-font refactor.
+
+Context (guess -- from subject):
+
+  Standard consolidation.
+
+--------------------------------------------------------------------------------
+
+## 7900cdcd -- [fb_console] Introduce fb_set_[char/row]_optimized
+
+Commit: 7900cdcd67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 21:27:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -1 across 3 fb files. Specialised set_char /
+  set_row paths for the common (8x16, font stride
+  == 1) case.
+
+Context (guess -- from subject):
+
+  Dispatch between generic and optimized at init
+  time; the function pointer becomes fixed per
+  boot.
+
+--------------------------------------------------------------------------------
+
+## 5cb1e078 -- [fb_console] Use optimized funcs in
+   fb_draw_string_at_raw when possible
+
+Commit: 5cb1e0786e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 21:38:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -6 in fb_console.c. String-draw path calls
+  the _optimized set_char variant when font is
+  supported.
+
+Context (guess -- from subject):
+
+  Propagate the win of 7900cdcd into
+  multi-char draws.
+
+--------------------------------------------------------------------------------
+
+## ff35ff9a -- [fb_console] Implementing fb_draw_char16x32()
+
+Commit: ff35ff9a6e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 21:48:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +45 / -3 across 3 fb files. Dedicated optimised
+  draw for the 16x32 font.
+
+Context (guess -- from subject):
+
+  Match the 8x16 optimisation for the new font.
+
+--------------------------------------------------------------------------------
+
+## dd81f721 -- [fb_console] Introduce and use fb_set_row_char16x32()
+
+Commit: dd81f7213f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 17 22:06:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -1 across 3 fb files. Row-level 16x32
+  primitive.
+
+Context (guess -- from subject):
+
+  Complements the char-level fn for scroll paths.
+
+--------------------------------------------------------------------------------
+
+## 05a5c62d -- [fb_console] Revert loop-unrolling in
+   fb_draw_char8x16_row()
+
+Commit: 05a5c62d9e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 11:32:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -11 in fb_raw.c. Unrolled loop replaced by a
+  shorter rolled one.
+
+Context (guess -- from subject):
+
+  Measurement showed the unrolled form wasn't
+  actually faster (or hurt i-cache); revert.
+
+--------------------------------------------------------------------------------
+
+## 67e0f5e3 -- [fb_console] Some renaming
+
+Commit: 67e0f5e36c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 11:35:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 across 3 fb files.
+
+Context (guess -- from subject):
+
+  Rename pass.
+
+--------------------------------------------------------------------------------
+
+## 18e38fa5 -- [fb_console] Introduce fb_flush() and
+   fb_switch_to_shadow_buffer()
+
+Commit: 18e38fa59e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 12:21:23 2018 +0300
+
+> Note: the functionality is currently disabled.
+
+AI notes:
+
+What changed:
+
+  +64 / -19 across 7 files. fb_raw.c +29 net,
+  fb_console.c -4 net, term.c +15 (flush plumbing).
+  fb_flush copies from a shadow RAM buffer to the
+  real FB; shadow buffer lives in normal cached
+  memory so writes are fast.
+
+Context (from body):
+
+  Addresses the "FB writes are slow on real
+  hardware" problem noted in 830d1835. Shadow buffer
+  + batched flush can massively speed things up.
+  Marked "disabled" because not yet correct in all
+  paths.
+
+--------------------------------------------------------------------------------
+
+## 6a9a09ef -- [printk] Fix bug in vsnprintk()
+
+Commit: 6a9a09ef89...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 12:24:11 2018 +0300
+
+> In the case of '%c' the function was writing
+> directly to the term using term_write_char()
+> instead of writing it to 'buf'.
+
+AI notes:
+
+What changed:
+
+  1-line fix in printk.c. %c case now writes to
+  the formatting buffer.
+
+Context (from body):
+
+  Textbook mistake: "print char" path bypassed the
+  buffer. Easy fix, but would have caused garbled
+  output or double-prints.
+
+--------------------------------------------------------------------------------
+
+## 6f9f88ab -- [term] Removing term_write_char*()
+
+Commit: 6f9f88ab8b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 12:31:49 2018 +0300
+
+> Now that we have term_write(), we can just get rid
+> off redundant interfaces like term_write_char().
+> Ultimately, only kb.c really needs to write just
+> 1 char.
+
+AI notes:
+
+What changed:
+
+  +3 / -32 across term.h (-2), kb.c (+3 / -2),
+  term.c (-28).
+
+Context (from body):
+
+  API consolidation. Only one write path; kb.c
+  calls term_write(buf, 1) when it needs to emit
+  one char.
+
+--------------------------------------------------------------------------------
+
+## c87f3d7e -- [term][fb_console] Introduce (disabled)
+   textmode_scroll_one_line_up()
+
+Commit: c87f3d7e6a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 13:13:05 2018 +0300
+
+> BONUS: other minor stuff (comments, micro-opts)
+
+AI notes:
+
+What changed:
+
+  +25 / -5 across 3 files. textmode gets its own
+  scroll_one_line_up that memcpys rows in VGA
+  memory; not yet enabled.
+
+Context (from body):
+
+  Completes symmetry with fb_scroll_one_line_up.
+  Disabled until the "which is faster" question is
+  settled.
+
+--------------------------------------------------------------------------------
+
+## 9cf64d3d -- [fb_console] Fix several bugs related with the cursor
+
+Commit: 9cf64d3d5f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 14:02:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -3 across kb.c (+5) and fb_console.c (+21
+  / -3). Fixes to cursor show/hide around keyboard
+  input and scrolling.
+
+Context (guess -- from subject):
+
+  Edge cases from the blink + pause-on-write logic.
+
+--------------------------------------------------------------------------------
+
+## babe0fc6 -- [fb_console] Minor fix: call fb_flush_lines() in
+   fb_update_banner_kthread
+
+Commit: babe0fc603...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 14:31:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 line in fb_console.c.
+
+Context (guess -- from subject):
+
+  Missing flush call -- banner updates weren't
+  committed from shadow to real FB.
+
+--------------------------------------------------------------------------------
+
+## 39507782 -- [fb_console] Drop debug func dump_psf2_header()
+
+Commit: 39507782cc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 14:39:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -21 in fb_console.c.
+
+Context (guess -- from subject):
+
+  Debug scaffolding no longer needed.
+
+--------------------------------------------------------------------------------
+
+## 5a9e5aeb -- [fb_console] Introducing rows_to_flush and partial
+   flush-to-screen
+
+Commit: 5a9e5aebff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 15:02:03 2018 +0300
+
+> This optimization significantly improved the
+> performance of the fb console.
+
+AI notes:
+
+What changed:
+
+  +45 / -15 in fb_console.c. Tracks which rows
+  have changed; flush copies only dirty rows from
+  shadow to FB.
+
+Context (from body):
+
+  Enables the shadow buffer path at real value.
+  Instead of blasting the whole screen, copy only
+  what changed. Big win on slow FB writes.
+
+--------------------------------------------------------------------------------
+
+## d3cb4d9e -- [term] Separate scroll cycles from fast 1-line scroll
+   cycles
+
+Commit: d3cb4d9e35...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 15:17:02 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -20 across kb.c (-2), term.c (+15 / -7),
+  fb_console.c (-11). Separate counters /
+  instrumentation for the two scroll paths.
+
+Context (guess -- from subject):
+
+  Want to tell which path was taken when reading
+  perf stats.
+
+--------------------------------------------------------------------------------
+
+## 9c5ed769 -- [term][debug] Fix accounting logic for the fast
+   1-line scroll
+
+Commit: 9c5ed769fd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 15:31:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -13 in term.c.
+
+Context (guess -- from subject):
+
+  Follow-up instrumentation bug fix.
+
+--------------------------------------------------------------------------------
+
+## 10fa0569 -- [string_util] Use standard signatures
+
+Commit: 10fa05698c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:13:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 in string_util.h. Signatures aligned to
+  the stdlib (e.g., size_t instead of int, const
+  char* instead of char*).
+
+Context (guess -- from subject):
+
+  Allows the code to link against standard headers
+  without conflict -- useful in test builds.
+
+--------------------------------------------------------------------------------
+
+## f0e93c1b -- [common] Introduce common/failsafe_assert.h
+
+Commit: f0e93c1b24...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:20:44 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 lines across 5 files. New header
+  failsafe_assert.h (21 lines): a minimal ASSERT
+  that works without kernel infrastructure.
+  fat32_base.c, panic.c, string_util.c +2 each use
+  it; basic_defs.h +2 hooks the macro.
+
+Context (guess -- from subject):
+
+  Common code that runs in bootloader where
+  panic()/printk aren't available needs an assert
+  that just halts.
+
+--------------------------------------------------------------------------------
+
+## 677c0fb3 -- [asm_x86_strings] Introduce the STATIC_EXOS_ASM_STRING
+   flag
+
+Commit: 677c0fb362...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:23:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -1 in asm_x86_strings.h. Flag to force the
+  string fns to compile as plain static (no weak /
+  extern inline).
+
+Context (guess -- from subject):
+
+  Bootloader needs the static form (no weak symbol
+  magic); kernel uses the more flexible form.
+
+--------------------------------------------------------------------------------
+
+## 5d188e5a -- [efi bootloader] Link common/*.c in the EFI bootloader
+
+Commit: 5d188e5aa9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:26:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 lines in GenericBuild.cmake.
+
+Context (guess -- from subject):
+
+  EFI bootloader can now use common/ helpers
+  (fat32_base, string_util, panic, etc.) directly.
+
+--------------------------------------------------------------------------------
+
+## 5fee2de0 -- [fat32_base] Intr. fat_get_used_bytes() and make the
+   build app to use it
+
+Commit: 5fee2de0d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:32:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -11 across 3 files. common/fat32_base.c +15
+  impl; fat32_base.h +2 decl. fat_get_used_bytes.c
+  -11 (host tool now just calls the library fn).
+
+Context (guess -- from subject):
+
+  Deduplication: FS analysis logic was duplicated
+  in the host tool; shared impl eliminates drift.
+
+--------------------------------------------------------------------------------
+
+## 4cfb9787 -- [string_util] Use gcc's __builtin_va_list instead of
+   a custom impl.
+
+Commit: 4cfb978718...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 18:43:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -4 in string_util.h. va_list typedef falls
+  back to GCC's builtin.
+
+Context (guess -- from subject):
+
+  Safer (compiler-guaranteed ABI match) and more
+  portable than a hand-rolled pointer trick.
+
+--------------------------------------------------------------------------------
+
+## ade76970 -- [efi bootloader] Load only the used part of the FAT32
+   ramdisk
+
+Commit: ade769702b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 19:03:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 / -9 across efimain.c (+33 / -9) and
+  fat32_base.h (+5). Bootloader reads the FAT
+  header to learn used-byte count, then loads only
+  that many bytes rather than the whole image.
+
+Context (guess -- from subject):
+
+  Boot-time speedup: loading a 10 MB ramdisk when
+  only 3 MB are used is waste.
+
+--------------------------------------------------------------------------------
+
+## ba1af2a5 -- [build][efi bootloader] Cosmetic CMake improvements
+
+Commit: ba1af2a51d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 19:12:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +52 / -32 in GenericBuild.cmake. Net +20. Helper
+  functions / variables to reduce duplication in
+  the per-arch builds.
+
+Context (guess -- from subject):
+
+  CMake files getting too long -- refactor.
+
+--------------------------------------------------------------------------------
+
+## e20ceb81 -- [efi bootloader] Allow user to select default mode
+   with ENTER
+
+Commit: e20ceb811c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 19:18:23 2018 +0300
+
+> Previously, with ENTER the user kept the current
+> mode.
+
+AI notes:
+
+What changed:
+
+  +18 / -4 in setup_graphics.c. ENTER in the mode
+  menu now picks the "default" (highest-resolution)
+  mode.
+
+Context (from body):
+
+  Better UX. Previously pressing Enter kept
+  whatever UEFI started in, often low-res.
+
+--------------------------------------------------------------------------------
+
+## d53016c9 -- [main] Just print the initial hello using the
+   in-buffer printk feature
+
+Commit: d53016c9d5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 19:25:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +5 / -4 in main.c. The boot greeting uses
+  printk (which now buffers until term is up)
+  instead of a dedicated early write.
+
+Context (guess -- from subject):
+
+  Simplification: 859858b2 made this possible.
+
+--------------------------------------------------------------------------------
+
+## dd2aa7f6 -- [efi bootloader] Do not use anymore RAMDISK_SIZE
+
+Commit: dd2aa7f6fc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 20:43:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +71 / -24 in efimain.c. Dynamic sizing: read
+  image's FAT header to get actual used bytes,
+  allocate that much.
+
+Context (guess -- from subject):
+
+  Drop the compile-time constant. Continuation of
+  ade76970.
+
+--------------------------------------------------------------------------------
+
+## c6a69535 -- [efi bootloader] Make the bootloader to not depend on
+   RAMDISK_PADDR
+
+Commit: c6a6953551...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 18 20:55:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -4 across efimain.c and config.h.
+  Bootloader asks UEFI for a page and publishes
+  that paddr via multiboot, instead of assuming a
+  fixed location.
+
+Context (guess -- from subject):
+
+  UEFI memory maps vary; hardcoded paddrs fail on
+  systems where that range is occupied.
+
+--------------------------------------------------------------------------------
+
+## 1cdb89f2 -- Update README
+
+Commit: 1cdb89f20f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 11:53:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -12 in README.md.
+
+Context (guess -- from subject):
+
+  Public-facing description updated after the big
+  UEFI / FB console milestones.
+
+--------------------------------------------------------------------------------
+
+## b868e178 -- [build_toolchain] Add rpm2cpio, cpio, bzip2 to the
+   packages list
+
+Commit: b868e1788f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 13:42:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -1 in build_toolchain. Dependencies
+  installed via package manager.
+
+Context (guess -- from subject):
+
+  New build step (probably extracting an RPM
+  package) needs these. Kept in sync with distro
+  packages.
+
+--------------------------------------------------------------------------------
+
+## 1940e153 -- Update README
+
+Commit: 1940e1535b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 13:50:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -10 in README.md.
+
+Context (guess -- from subject):
+
+  Minor fixes to the previous README update.
+
+--------------------------------------------------------------------------------
+
+## a9643f5e -- [build_toolchain] Add support for arch linux and
+   manjaro linux distros
+
+Commit: a9643f5eda...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 15:38:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 lines in build_toolchain. pacman-based
+  package install paths.
+
+Context (guess -- from subject):
+
+  Broadens the supported dev distros.
+
+--------------------------------------------------------------------------------
+
+## 58cb8a46 -- [build_toolchain][scripts] Check if OVMF is part of
+   the toolchain
+
+Commit: 58cb8a4651...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 15:53:23 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -0 across build_toolchain (+3) and
+  run_efi_nokvm_qemu{32,64} (+15/+14). Run scripts
+  fall back to system-installed OVMF if toolchain
+  copy absent.
+
+Context (guess -- from subject):
+
+  Lets users who already have OVMF installed
+  system-wide skip the download.
+
+--------------------------------------------------------------------------------
+
+## 045fde7c -- Update README
+
+Commit: 045fde7c5a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 17:32:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -14 in README.md.
+
+Context (guess -- from subject):
+
+  Continued documentation polish.
+
+--------------------------------------------------------------------------------
+
+## 89a7458d -- Update README
+
+Commit: 89a7458d7f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 17:34:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +9 / -1 in README.md.
+
+Context (guess -- from subject):
+
+  Small amendment.
+
+--------------------------------------------------------------------------------
+
+## 4f72a9a4 -- Update README
+
+Commit: 4f72a9a4af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 17:41:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -4 in README.md.
+
+Context (guess -- from subject):
+
+  Another small amendment.
+
+--------------------------------------------------------------------------------
+
+## bbfe4e54 -- Update README
+
+Commit: bbfe4e548d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 17:42:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -2 in README.md. Typo fixes.
+
+Context (guess -- from subject):
+
+  Final README polish.
+
+--------------------------------------------------------------------------------
+
+## 37fc1816 -- [self_tests] Fix fault_resumable_perf
+
+Commit: 37fc18161a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 17:53:35 2018 +0300
+
+> The bug was the call to enable_preemption() hitting
+> the oldval > 0 assert. This happened because now
+> self tests are run always in a dedicated kernel
+> thread and preemption is enabled by default.
+> Therefore, as expected, enable_preemption()
+> complained about that. The test has just not been
+> updated since the change. The fix simply removes
+> the now useless calls to enable/disable
+> preemption.
+
+AI notes:
+
+What changed:
+
+  +4 / -8 in se_fault_resumable.c.
+
+Context (from body):
+
+  Test was written before 0316e0f2 (selftests run
+  in dedicated kthread). With preemption already
+  enabled in the test's environment, toggling it
+  trips the counter ASSERT.
+
+--------------------------------------------------------------------------------
+
+## 3ba227e7 -- [efi bootloader] Remove custom bzero, my_memcpy,
+   my_memmove
+
+Commit: 3ba227e735...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 19:11:16 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -72 across efimain.c (-10 net) and utils.c
+  (-45). Net -53 lines. Bootloader now uses the
+  shared common/ string helpers (linked in per
+  5d188e5a).
+
+Context (guess -- from subject):
+
+  Dedup: my_memcpy/my_memmove were temporary names
+  used when the EFI bootloader was isolated. With
+  common/ linked in, the standard names work.
+
+--------------------------------------------------------------------------------
+
+## 49b36690 -- [bootloader][main] Use multiboot and make the kernel
+   to depend on that
+
+Commit: 49b36690b4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 20:00:18 2018 +0300
+
+> This change makes the legacy bootloader to use
+> the multiboot v1 protocol to boot the kernel and,
+> at the same time, at the kernel side any support
+> for non-multiboot is removed.
+>
+> BONUS: term can be initialized also in panic
+> scenarios and even if kmalloc does not work,
+> thanks to a BSS failsafe buffer.
+
+AI notes:
+
+What changed:
+
+  +77 / -23 across 8 files. stage3.c +46 / -1
+  emits multiboot v1 header + info. main.c -12 net
+  drops the legacy path. term.c +18 / -4 gains a
+  BSS failsafe buffer for panic-time init.
+  kmalloc.h +2, misc.c +2 / -2, config.h -5,
+  boot.S +3, efimain.c +2.
+
+Context (from body):
+
+  Both bootloaders now speak the same multiboot
+  dialect to the kernel. One less code path to
+  maintain. Bonus hardens the panic output.
+
+--------------------------------------------------------------------------------
+
+## 669e07fb -- [bootloader] Make ramdisk_size to be calculated
+   instead of a constant
+
+Commit: 669e07fbf3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 19 20:14:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -31 across boot.S (+1 / -3) and stage3.c
+  (+12 / -28). Net -18. BIOS bootloader queries the
+  actual used size via the shared fat helper
+  (mirrors what the EFI one does).
+
+Context (guess -- from subject):
+
+  Final piece: both bootloaders now use dynamic
+  sizing. Hardcoded RAMDISK_SIZE is fully gone.
+
+--------------------------------------------------------------------------------
