@@ -23211,3 +23211,2236 @@ Context (guess -- from subject):
   eventually vanishes.
 
 --------------------------------------------------------------------------------
+
+## 39fd2a56 -- [selftests][perf] Minor changes and files re-org
+
+Commit: 39fd2a56e5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 21:08:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -12 across 4 files. perftests.c renamed to
+  se_alloc_pageframe_perf.c (-3 net). perftests_data.c
+  renamed to se_data.c. New se_data.h (+6) exposes
+  shared arrays. se_kmalloc_perf.c -3 net.
+
+Context (guess -- from subject):
+
+  Continues the split/rename pass started in ba5e58a3
+  -- the last pieces of the old "perftests" files land
+  in their own se_* files with shared data in a header.
+
+--------------------------------------------------------------------------------
+
+## 6ad991c3 -- [selftests] Add kmalloc_perf to run_all_tests
+
+Commit: 6ad991c3f8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 21:12:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -1 across se_kmalloc_perf.c (+2) and
+  run_all_tests (+2 / -1). Test registered in the
+  runner list.
+
+Context (guess -- from subject):
+
+  Plug-in work -- extracting was the hard part, wiring
+  it in is a one-liner.
+
+--------------------------------------------------------------------------------
+
+## 7b0e9813 -- [selftests] Move the fault_resumable test in a
+   separate file
+
+Commit: 7b0e981381...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 21:15:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +141 / -135 across 2 files. New se_fault_resumable.c
+  (141). se_common.c -135.
+
+Context (guess -- from subject):
+
+  Same pattern. fault_resumable tests are heavy (the
+  nested test alone is ~50 lines) so they belong in
+  their own file.
+
+--------------------------------------------------------------------------------
+
+## 4b014f17 -- [system_test] Add support for a per-test timeout
+
+Commit: 4b014f17b2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 6 21:31:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -22 across run_all_tests and runtest scripts.
+  runtest now accepts a timeout arg; run_all_tests
+  passes per-test values from a table.
+
+Context (guess -- from subject):
+
+  Hung-test detection. Without timeouts, one
+  infinite-loop kernel bug stalls the whole CI job.
+
+--------------------------------------------------------------------------------
+
+## 691e5810 -- [system_test] Minor fixes
+
+Commit: 691e581086...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 15:24:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +42 / -23 across the two test scripts. Net +19
+  lines. Bug fixes and error-handling improvements in
+  the timeout path introduced the day before.
+
+Context (guess -- from subject):
+
+  Typical next-day "production" hardening of a script.
+
+--------------------------------------------------------------------------------
+
+## eb5654ac -- [system_test] Adding features to run_all_tests
+
+Commit: eb5654ac4b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 16:43:19 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +104 / -18 in run_all_tests. Substantial: likely
+  colored output, single-test filtering, verbose
+  mode, summary stats.
+
+Context (guess -- from subject):
+
+  Promoting the ad-hoc runner into a proper CLI.
+
+--------------------------------------------------------------------------------
+
+## eb3aba16 -- [FAT32] Fix a bug with long names
+
+Commit: eb3aba1673...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 17:18:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -13 in common/fat32_base.c. Code removed rather
+  than added -- the bug was in an overeager guard or
+  a duplicated check.
+
+Context (guess -- from subject):
+
+  Long-filename (LFN) handling is notoriously
+  off-by-one prone in FAT32. Deletion-based fix
+  suggests the old code was actively wrong, not
+  merely incomplete.
+
+--------------------------------------------------------------------------------
+
+## 528312a6 -- [pageframe_allocator] Fixing its selftest and add it
+   to run_all_tests
+
+Commit: 528312a6f6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 18:31:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -5 across 3 files. pageframe_allocator.c +4 /
+  -1 (minor fix). se_alloc_pageframe_perf.c +13 / -4
+  (test fix). run_all_tests +1.
+
+Context (guess -- from subject):
+
+  Another flaky-test -> fix -> register cycle as
+  run_all_tests brings hidden bugs to light.
+
+--------------------------------------------------------------------------------
+
+## c7cfe38f -- [process] Rename WOBJ_PID to WOBJ_TASK
+
+Commit: c7cfe38fad...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 20:13:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -3 across sync.h (1 line) and process.c (4
+  lines). Pure rename.
+
+Context (guess -- from subject):
+
+  Aligns with the pid-vs-tid distinction from the
+  threads refactor: waiting on a task_info is "WOBJ_
+  TASK", not a pid.
+
+--------------------------------------------------------------------------------
+
+## 2ffe4cf6 -- [process] Introduce join_kernel_thread(int tid)
+
+Commit: 2ffe4cf60e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 20:38:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 / -1 across 3 files. process.c +16: new
+  join_kernel_thread blocks the caller on a
+  kthread's completion. process32.c +8 signals the
+  join waiters on kthread exit. process.h +1 decl.
+
+Context (guess -- from subject):
+
+  The self-tests need to wait for helper kthreads to
+  finish before checking results; prior to this they
+  were using timer/yield loops.
+
+--------------------------------------------------------------------------------
+
+## 61bc1c76 -- [selftests] Improve the tests by using
+   join_kernel_thread()
+
+Commit: 61bc1c76af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 20:38:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +60 / -12 across 4 files. se_common.c +26 / -2,
+  se_kcond.c +15 / -5, se_kmutex.c +18 / -5 switch
+  their wait-for-worker logic to join_kernel_thread.
+  run_all_tests +1.
+
+Context (guess -- from subject):
+
+  Payoff of 2ffe4cf6. Tests become shorter and more
+  reliable.
+
+--------------------------------------------------------------------------------
+
+## 0316e0f2 -- [selftests] Make selftests to always run in a
+   dedicated kernel thread
+
+Commit: 0316e0f2d6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 20:50:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -51 across 7 files. Each se_*.c loses -5 net
+  of scaffolding; se_common.c -17; main.c +3 net gains
+  a generic "spawn selftest kthread" dispatcher.
+  parse_cmdline.c -6. run_all_tests +1.
+
+Context (guess -- from subject):
+
+  Uniform test harness: every selftest body runs in a
+  fresh kthread, joined by the caller. Removes
+  copy/paste "kthread_create + join" blocks from each
+  test file.
+
+--------------------------------------------------------------------------------
+
+## a1afd0ff -- [gtests] Fix build error
+
+Commit: a1afd0ff28...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 21:18:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line fix in se_common.c for host-test build.
+
+Context (guess -- from subject):
+
+  Host stub mismatch after the kthread-wrapping
+  refactor.
+
+--------------------------------------------------------------------------------
+
+## ee569e26 -- [main][cosmetic] Fix a panic message
+
+Commit: ee569e2696...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 7 23:54:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line typo fix in a panic string.
+
+Context (guess -- from subject):
+
+  Cosmetic.
+
+--------------------------------------------------------------------------------
+
+## b4e12bbf -- [scripts] Forward args with "$@" instead of with $@
+   in run*qemu scripts
+
+Commit: b4e12bbfe8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 12:21:17 2018 +0300
+
+> This allows arguments containing spaces to be
+> forwarded correctly
+
+AI notes:
+
+What changed:
+
+  1-line fix in 6 run_*qemu scripts plus parse_cmdline.c:
+  $@ -> "$@".
+
+Context (from body):
+
+  Classic shell bug: bare $@ word-splits on spaces.
+  Now shell commands with spaces (e.g. -cmd "/bin/shell
+  -c some_test") work.
+
+--------------------------------------------------------------------------------
+
+## f9805db4 -- [tasklet] Improve the selftest
+
+Commit: f9805db42d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 12:32:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -9 in se_tasklet.c. Stronger assertions,
+  probably counters to catch missed tasklet runs.
+
+Context (guess -- from subject):
+
+  Iterative test hardening.
+
+--------------------------------------------------------------------------------
+
+## fee5d160 -- [tasklet] Reduce the args to 2
+
+Commit: fee5d16094...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 12:36:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -32 across 3 files. tasklet.h loses arg3 from
+  the tasklet callback signature; tasklet.c adjusts
+  (-6 net). tasklet_test.cpp -12 net removes references
+  to arg3.
+
+Context (guess -- from subject):
+
+  YAGNI: nobody used three args. Dropping one
+  simplifies the struct and the call site.
+
+--------------------------------------------------------------------------------
+
+## 3faef84c -- [tasklet] Make tasklets enqueue/run to run without
+   disabling interrupts
+
+Commit: 3faef84c66...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 13:33:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +113 / -53 across 5 files. tasklet.c +52 net:
+  lock-free enqueue/dequeue via atomic indices into
+  the tasklet slot array. tasklet.h +5. se_tasklet.c
+  +41 / -9 stress test. printk.c 1-line. run_all_tests
+  +1.
+
+Context (guess -- from subject):
+
+  Tasklets are often enqueued from IRQ context; running
+  the enqueue with interrupts disabled stretched
+  IRQ-off windows. Lock-free ops mean IRQ handlers
+  don't need to cli the tasklet queue.
+
+--------------------------------------------------------------------------------
+
+## ad3a3e89 -- [tasklet] Make a check to exist only when
+   !defined(UNIT_TEST_ENVIRONMENT)
+
+Commit: ad3a3e8964...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 14:48:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 lines in tasklet.c. Guards an assertion that
+  relies on kernel runtime state so unit tests skip
+  it.
+
+Context (guess -- from subject):
+
+  Host gtests build shares kernel source but runs in
+  a mock env; the ASSERT would always trip.
+
+--------------------------------------------------------------------------------
+
+## 1bbd95e8 -- [tasklet][sched] Make tasklets to have absolute
+   priority in the scheduler
+
+Commit: 1bbd95e8d0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 15:01:50 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -5 across 3 files. tasklet.h +14 decls
+  exposing a tasklet_runner_task pointer check.
+  sched.c +9 net: if the tasklet runner is RUNNABLE,
+  the scheduler picks it before any other task. tasklet.c
+  +10 / -4 wakes the runner on enqueue.
+
+Context (guess -- from subject):
+
+  Tasklets are latency-critical (keyboard, timer-based
+  wakeups); they should run as soon as possible,
+  preempting user tasks.
+
+--------------------------------------------------------------------------------
+
+## b8ec730d -- [timer] Make set_task_to_wake_after() work W/O
+   disabling interrupts
+
+Commit: b8ec730d98...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 8 15:24:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -31 in timer_handler.c. Net -17. set_task_to_
+  wake_after() loses its disable/enable_interrupts
+  pairs and uses atomic ops on the timer list.
+
+Context (guess -- from subject):
+
+  Same motivation as 3faef84c for tasklets: shorter
+  IRQ-off windows. Timer list is accessed both from
+  the IRQ handler and from tasks; atomic ops let both
+  co-exist.
+
+--------------------------------------------------------------------------------
+
+## 2812e48a -- [ringbuf] Introduce a generic ringbuf implementation
+   in exOS
+
+Commit: 2812e48ac2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 12:44:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +98 lines. New header include/exos/ringbuf.h (33)
+  and kernel/ringbuf.c (65) -- a generic ring buffer
+  (read/write bytes, head/tail indices, fill count).
+
+Context (guess -- from subject):
+
+  Tasklets, kb input, and printk each had their own
+  ring buffer. Generic one deduplicates all three.
+
+--------------------------------------------------------------------------------
+
+## 49a4bace -- [tasklet] Use the generic ringbuf implementation
+
+Commit: 49a4bace78...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 13:53:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -72 across 4 files. tasklet.c -58 net: its
+  custom ring logic replaced by ringbuf calls.
+  tasklet.h -6 (slot struct stays but indices move).
+  ringbuf.c +4 net, ringbuf.h +12 net add variants
+  needed here.
+
+Context (guess -- from subject):
+
+  First consumer of the generic ringbuf -- the sharp
+  edges get filed off as real use-cases surface.
+
+--------------------------------------------------------------------------------
+
+## 750e0772 -- [ringbuf] Introduce ringbuf_unwrite()
+
+Commit: 750e0772b9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 15:48:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -8 across ringbuf.h (+2) and ringbuf.c (+24
+  / -6). New ringbuf_unwrite(n) rolls the write
+  cursor back by n (useful for "speculatively wrote,
+  abort").
+
+Context (guess -- from subject):
+
+  Tasklet enqueue needs this: it claims a slot, fills
+  it, but must be able to rollback if a racing
+  consumer drained in between.
+
+--------------------------------------------------------------------------------
+
+## 181422de -- [ringbuf] Add ringbuf_read/write_elem1() funcs
+
+Commit: 181422de30...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 17:05:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +74 / -21 across ringbuf.h (+63 / -8) and ringbuf.c
+  (-13 net). Specialised 1-element read/write
+  primitives inlined in the header; byte-paths in
+  ringbuf.c trimmed.
+
+Context (guess -- from subject):
+
+  Hot path: reading/writing single keypresses or
+  single tasklets. Inlining avoids the function-call
+  cost.
+
+--------------------------------------------------------------------------------
+
+## c31ae57e -- [ringbuf] Making some funcs non-inline by moving them
+   into ringbuf.c
+
+Commit: c31ae57e38...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 17:12:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +71 / -73 across ringbuf.h (-67 net) and ringbuf.c
+  (+65 net). Header shrinks as function bodies move
+  to the .c.
+
+Context (guess -- from subject):
+
+  Reversing over-inlining from 181422de: some funcs
+  inlined speculatively turned out to be too large to
+  benefit. Standard "measure, then decide" cycle.
+
+--------------------------------------------------------------------------------
+
+## 591c2267 -- [kb] Make the keyboard driver to use the generic
+   ringbuf implementation
+
+Commit: 591c226712...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 17:17:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +73 / -78 across kb.h (-1) and kb.c (+74 / -77).
+  Net -5. kb.c's custom input ring replaced by ringbuf
+  usage.
+
+Context (guess -- from subject):
+
+  Second ringbuf consumer. Consolidation on the
+  generic impl.
+
+--------------------------------------------------------------------------------
+
+## 326033bb -- [timer] Fix a bug in set_task_to_wake_after()
+
+Commit: 326033bb7c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 17:52:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -2 in timer_handler.c. Additional guard lines
+  (probably a re-check or an atomic CAS retry) in the
+  now-IRQ-enabled path.
+
+Context (guess -- from subject):
+
+  Regression from b8ec730d: removing interrupt-disable
+  exposed a race. Small fix, not a rollback.
+
+--------------------------------------------------------------------------------
+
+## 365bbdcd -- [irq] Add debug logic to show amount of spurious IRQs
+
+Commit: 365bbdcdfc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed May 9 18:41:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -4 across kb.c (+8) and irq.c (+6 / -4). IRQ
+  handler tracks the count of spurious (ghost) IRQs
+  per line; kb prints it when invoked by a command.
+
+Context (guess -- from subject):
+
+  Diagnostics for the 8259 PIC. Spurious IRQs happen
+  when an interrupt clears before being acknowledged;
+  a normal-but-low rate is expected, abnormally high
+  suggests hardware/config trouble.
+
+--------------------------------------------------------------------------------
+
+## 12be1587 -- [uefi] Add a trivial script making exos.img to use
+   GPT (instead of MBR)
+
+Commit: 12be158786...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 10 22:41:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 lines: new scripts/convert_to_gpt. Thin wrapper
+  around parted / sgdisk converting the disk image
+  to a GPT partition scheme.
+
+Context (guess -- from subject):
+
+  First step toward UEFI boot support. UEFI firmware
+  prefers GPT over MBR.
+
+--------------------------------------------------------------------------------
+
+## dc54d9e8 -- Merge commit for work on spurious interrupts &
+   related
+
+Commit: dc54d9e897...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu May 10 22:45:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +252 / -42 across 21 files. kernel/arch/generic_x86/
+  timer.c renamed to pit.c (PIT driver). New
+  kernel/arch/generic_x86/rtc.c (130 lines) -- RTC /
+  CMOS clock. interrupts.c +21 net detects spurious
+  IRQs properly. irq.c +19 / -14 handles them
+  gracefully. timer_handler.c +26 net. kb.c +19 net.
+  Many 1-3 line ripples.
+
+Context (guess -- from subject):
+
+  Large consolidation commit: rename PIT (timer.c ->
+  pit.c), add RTC driver, and finally harden spurious-
+  IRQ handling across the stack. The merge/squash
+  structure suggests a branch was merged in
+  wholesale.
+
+--------------------------------------------------------------------------------
+
+## 7e3db5c6 -- [handle_irq] Allow nested IRQ0 only when
+   KERNEL_TRACK_NESTED_INTERRUPTS=1
+
+Commit: 7e3db5c6ff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 12:50:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 lines in irq.c. Gate on the debug option.
+
+Context (guess -- from subject):
+
+  IRQ0 (timer) is the only one the kernel re-enables
+  interrupts inside of. Nesting is allowed in debug
+  builds to exercise the path, suppressed in release.
+
+--------------------------------------------------------------------------------
+
+## 6a2e4740 -- [timer] Make TIME_SLOT_JIFFIES = TIMER_HZ/20
+
+Commit: 6a2e4740e0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 14:47:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -3 across timer.h and main.c. The scheduler's
+  quantum becomes HZ/20 (50 ms at 1000 Hz).
+
+Context (guess -- from subject):
+
+  50 ms is a common Linux-style timeslice. Previously
+  was likely smaller (10 ms) or fixed to a constant
+  -- parametrising on HZ keeps it correct across tick
+  rates.
+
+--------------------------------------------------------------------------------
+
+## 8507f8fa -- Introduce datetime.h/.c
+
+Commit: 8507f8fa24...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 15:15:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +92 / -26 across 4 files. New include/exos/datetime.h
+  (+25) with datetime struct + helpers, and new
+  kernel/datetime.c (+44) holding the arch-neutral
+  logic. rtc.c -5 net as the arch-neutral pieces move
+  out. main.c +4 / -2.
+
+Context (guess -- from subject):
+
+  Split arch-neutral time/date logic from the x86 RTC
+  driver. time_t, struct datetime, conversion
+  helpers -- all arch-neutral.
+
+--------------------------------------------------------------------------------
+
+## fa4e4510 -- [rtc] Cosmetic refactoring
+
+Commit: fa4e451002...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 15:46:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -29 in rtc.c. Net -11. Polishing pass after
+  the split.
+
+Context (guess -- from subject):
+
+  Standard cleanup follow-up.
+
+--------------------------------------------------------------------------------
+
+## c03319c5 -- [datetime] Cosmetic fixes (typos)
+
+Commit: c03319c583...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 17:07:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -2 in datetime.c. Typo fixes.
+
+Context (guess -- from subject):
+
+  Cosmetic.
+
+--------------------------------------------------------------------------------
+
+## eb974086 -- [efi bootloader] Minor improvements
+
+Commit: eb97408614...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 18:30:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +112 / -73 across efimain.c (-73 net) and new
+  utils.h (103 lines). efimain.c shrinks as helpers
+  move to utils.h.
+
+Context (guess -- from subject):
+
+  Extract boilerplate -- UEFI bootloader is wordy (GUID
+  compares, status decoding). Header reuses make
+  follow-up commits cleaner.
+
+--------------------------------------------------------------------------------
+
+## 8a01c362 -- [efi bootloader] Using the graphics output protocol
+
+Commit: 8a01c36215...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 20:19:43 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +124 / -1 in efimain.c. Locates the UEFI Graphics
+  Output Protocol, picks a mode, sets it, prepares
+  the framebuffer info to hand to the kernel.
+
+Context (guess -- from subject):
+
+  Replaces VGA text mode with a linear framebuffer.
+  Prerequisite for modern UEFI systems that lack VGA
+  compatibility.
+
+--------------------------------------------------------------------------------
+
+## 406fa5d1 -- [build] Introduce the gpt_image target
+
+Commit: 406fa5d1eb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 21:30:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -6 across CMakeLists.txt (+32 / -2), Makefile
+  (+3), and scripts/convert_to_gpt (-4 -- the ad-hoc
+  script is deleted, its logic absorbed into cmake).
+
+Context (guess -- from subject):
+
+  Integrates GPT image building into the normal
+  build. `make gpt_image` creates a bootable GPT disk
+  with the EFI partition.
+
+--------------------------------------------------------------------------------
+
+## d2836612 -- [efi bootloader] Error-checking improvements
+
+Commit: d2836612d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 21:40:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +43 / -24 in efimain.c. Most UEFI calls now check
+  EFI_STATUS and bail with a diagnostic message.
+
+Context (guess -- from subject):
+
+  UEFI firmware varies wildly; unchecked boot-time
+  errors leave Vlad guessing at which step failed.
+
+--------------------------------------------------------------------------------
+
+## ac2436a5 -- [efi bootloader] Make print_mode_info() to save the
+   info in global vars
+
+Commit: ac2436a5d2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 21:46:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 lines in efimain.c. The mode info (resolution,
+  pixel format, framebuffer base) is cached in
+  globals.
+
+Context (guess -- from subject):
+
+  Needed so later boot steps can reference the same
+  info without re-querying UEFI.
+
+--------------------------------------------------------------------------------
+
+## fc8260e9 -- [efi bootloader][test] Draw a line on the screen using
+   the FB
+
+Commit: fc8260e998...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 21:53:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 lines in efimain.c. Writes a sequence of pixels
+  to the framebuffer to verify the info from
+  ac2436a5 is correct.
+
+Context (guess -- from subject):
+
+  Smoke test -- if the line appears, the FB layout is
+  right.
+
+--------------------------------------------------------------------------------
+
+## 34c281c6 -- [scripts] Introduce run_efi_[nokvm]_qemu
+
+Commit: 34c281c64d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri May 11 23:21:35 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 lines across two new scripts.
+  scripts/run_efi_qemu (4 lines, with KVM) and
+  scripts/run_efi_nokvm_qemu (8 lines, no KVM). Both
+  launch qemu with OVMF (UEFI firmware) pointed at
+  the GPT image.
+
+Context (guess -- from subject):
+
+  Dev-loop: `./scripts/run_efi_qemu` boots the UEFI
+  path end-to-end.
+
+--------------------------------------------------------------------------------
+
+## b52dd812 -- [efi bootloader] Add a debug on-screen drawing to test
+   the framebuffer
+
+Commit: b52dd812d9...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 00:34:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +60 / -22 in efimain.c. More elaborate on-screen
+  pattern (grid / colors) to verify width, stride,
+  and pixel format across UEFI hosts.
+
+Context (guess -- from subject):
+
+  FB format assumptions (BGRA vs RGBA, stride == width
+  vs > width) vary per vendor; the extended pattern
+  makes mistakes visible.
+
+--------------------------------------------------------------------------------
+
+## 60919400 -- [main] Don't use printk() before read_multiboot_info()
+
+Commit: 609194008c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 11:33:53 2018 +0300
+
+> BONUS: entry: don't request VBE mode in the multiboot
+> header
+
+AI notes:
+
+What changed:
+
+  +16 / -16 across main.c (+12 / -10) and entry.S
+  (+4 / -6). kmain() reorders startup so
+  read_multiboot_info() runs before any printk(); the
+  multiboot VBE mode flag is cleared.
+
+Context (from body):
+
+  printk needs to know the framebuffer/term config,
+  which is set up from multiboot info. Calling it
+  earlier either crashed or printed garbage.
+  Dropping VBE lets the bootloader decide the mode.
+
+--------------------------------------------------------------------------------
+
+## 27c52f8c -- [efi bootloader] Improve the build system
+
+Commit: 27c52f8c6c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 17:15:49 2018 +0300
+
+> Now, it should be possible to use multiple C files
+> for the EFI bootloader.
+
+AI notes:
+
+What changed:
+
+  +62 / -55 in bootloader/efi/CMakeLists.txt. Net +7.
+  Source-glob / target patterns so multiple .c files
+  link into the EFI image.
+
+Context (from body):
+
+  Enabler for the file split coming next.
+
+--------------------------------------------------------------------------------
+
+## f4b3a669 -- [efi bootloader] Extract util functions in a separate
+   C file
+
+Commit: f4b3a669a7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 17:19:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +83 / -81 across 2 files. New utils.c (78 lines)
+  holds the implementations that used to be in
+  utils.h. utils.h shrinks to decls (+5 / -81).
+
+Context (guess -- from subject):
+
+  Follow-up to eb974086: the utils were still header-
+  defined inlines; now they're properly compiled once.
+
+--------------------------------------------------------------------------------
+
+## 33c4aa0b -- [efi bootloader] Introduce the EFI_ARCH variable
+
+Commit: 33c4aa0b80...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 17:26:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -6 in CMakeLists.txt. EFI_ARCH variable
+  parametrises the target (ia32, x86_64, ...) in the
+  gnu-efi link path.
+
+Context (guess -- from subject):
+
+  Future-proofing: when a second EFI target is added
+  (ia32), only one variable changes.
+
+--------------------------------------------------------------------------------
+
+## 268ecac2 -- [efi bootloader] Making the CMake build "generic"
+
+Commit: 268ecac228...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 17:46:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +124 / -103 across 5 files. The monolithic
+  CMakeLists.txt -102 splits into GenericBuild.cmake
+  (68 lines, arch-neutral) + x86_64/CMakeLists.txt
+  (53, arch-specific). switchmode.S moves into
+  x86_64/. build_fatpart 1-line tweak.
+
+Context (guess -- from subject):
+
+  Lays out the per-arch subdirectories so adding a new
+  EFI target is a new subdir, not a global diff.
+
+--------------------------------------------------------------------------------
+
+## 89cda1fb -- [efi bootloader] Moving more stuff in
+   GenericBuild.cmake
+
+Commit: 89cda1fbb4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 17:51:59 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -22 across 3 files. x86_64/CMakeLists.txt -20
+  net as more logic promotes to GenericBuild.cmake
+  (+19). Top-level CMakeLists.txt 2-line touch.
+
+Context (guess -- from subject):
+
+  Iterating on the split to push as much as possible
+  to the shared file.
+
+--------------------------------------------------------------------------------
+
+## 6d60076c -- [efi bootloader] Make the ia32 EFI loader to build
+
+Commit: 6d60076ccb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 19:13:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -34 across 10 files. New ia32/CMakeLists.txt
+  (7 lines) with the 32-bit EFI target. efimain.c
+  +20 / -16 uses arch-agnostic APIs. utils.c / utils.h
+  small adjust. build_toolchain +1 installs gnu-efi
+  32.
+
+Context (guess -- from subject):
+
+  Second EFI target working. The generic split paid
+  off.
+
+--------------------------------------------------------------------------------
+
+## 9eeb9b10 -- [build_toolchain] Bump gnu-efi 3.0.6 => 3.0.8
+
+Commit: 9eeb9b1034...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 19:18:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line version bump.
+
+Context (guess -- from subject):
+
+  Upstream libraries bump; nothing Tilck-specific.
+
+--------------------------------------------------------------------------------
+
+## 851a9074 -- [build_toolchain] Introduce the function
+   download_ovmf()
+
+Commit: 851a907434...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 19:35:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +34 lines in build_toolchain. Downloads the OVMF
+  UEFI firmware blob into the toolchain cache.
+  run_efi_nokvm_qemu 1-line update to use it.
+
+Context (guess -- from subject):
+
+  Removes a manual setup step -- `build_toolchain`
+  now fully prepares the UEFI dev loop.
+
+--------------------------------------------------------------------------------
+
+## f9d6adf7 -- [efi] Introduce run_efi_[nokvm]_qemu32 and rename the
+   others to *64
+
+Commit: f9d6adf7d3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 19:48:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -1 across 4 scripts. run_efi_qemu ->
+  run_efi_qemu64 (rename), new run_efi_qemu32 + no-kvm
+  variant.
+
+Context (guess -- from subject):
+
+  Both EFI targets get dedicated launch scripts.
+
+--------------------------------------------------------------------------------
+
+## 72327298 -- [efi bootloader] Minor changes in efimain.c
+
+Commit: 7232729858...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 20:40:32 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -5 in efimain.c.
+
+Context (guess -- from subject):
+
+  Routine tweak.
+
+--------------------------------------------------------------------------------
+
+## 047f9eb9 -- [efi bootloader] Extract graphics-related code to a
+   separate file
+
+Commit: 047f9eb9af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 20:44:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +211 / -195 across 2 files. New setup_graphics.c
+  (209). efimain.c -195 net.
+
+Context (guess -- from subject):
+
+  ~200 lines of GOP-and-framebuffer code deserved its
+  own TU.
+
+--------------------------------------------------------------------------------
+
+## 0a7cfc2b -- [efi bootloader] Fix: make switchmode jump to the
+   right kernel entry addr
+
+Commit: 0a7cfc2ba3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 20:53:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +27 / -5 across 3 files. efimain.c +21 / -4: reads
+  the kernel ELF's entry point from its header.
+  utils.h +5 (ELF parse helpers). switchmode.S
+  1-line.
+
+Context (guess -- from subject):
+
+  Before this, switchmode jumped to a hardcoded/
+  assumed address and failed on some builds.
+
+--------------------------------------------------------------------------------
+
+## f3863a92 -- [efi bootloader] Use multiboot to pass to the kernel
+   the framebuffer info
+
+Commit: f3863a92cb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 22:14:08 2018 +0300
+
+> Now the kernel is able to read the MBI from the UEFI
+> bootloader and to draw a line on the screen using the
+> framebuffer.
+
+AI notes:
+
+What changed:
+
+  +113 / -7 across 3 files. main.c +80 / -2: MBI
+  parsing (flags, framebuffer tag) with a draw-line
+  smoke test. setup_graphics.c +16 fills the MBI.
+  efimain.c +17 / -5 gathers MBI before jump.
+
+Context (from body):
+
+  Big milestone: UEFI bootloader -> kernel via
+  multiboot just like the BIOS bootloader does. Both
+  boot paths now converge on the same
+  read_multiboot_info() entry.
+
+--------------------------------------------------------------------------------
+
+## b060a2bd -- [efi bootloader] Making switchmode to just switch to
+   pm 32
+
+Commit: b060a2bd81...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 23:23:13 2018 +0300
+
+> Using qemu it's possible to check that the kernel
+> actually booted, read the MBI and used the
+> framebuffer to display a line.
+
+AI notes:
+
+What changed:
+
+  +13 / -123 across 3 files. switchmode.S -125 net:
+  no longer sets up long mode, just jumps from UEFI's
+  long mode back to 32-bit PM for the i386 kernel.
+  efimain.c 2-line adjust. build_toolchain 1 line.
+
+Context (from body):
+
+  Simpler mode switch: the kernel is 32-bit, so the
+  long-mode detour was pointless. Strips 125 lines of
+  asm.
+
+--------------------------------------------------------------------------------
+
+## 01cdef3a -- [efi bootloader] Simplify switchmode and other minor
+   fixes
+
+Commit: 01cdef3ab3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 23:33:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -37 across 3 files. switchmode.S -37 net.
+  setup_graphics.c +4 net. x86_64 CMakeLists 1 line.
+
+Context (guess -- from subject):
+
+  More asm streamlining on top of b060a2bd. The
+  switch path is now minimal.
+
+--------------------------------------------------------------------------------
+
+## df8e2601 -- [efi bootloader] Make switchmode to NOT alter eax and
+   ebx
+
+Commit: df8e2601db...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 23:38:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -13 across efimain.c (+3 / -1) and
+  switchmode.S (+16 / -12). Switchmode no longer
+  clobbers eax/ebx (multiboot ABI registers).
+
+Context (guess -- from subject):
+
+  Multiboot kernels expect eax=MULTIBOOT_BOOTLOADER_
+  MAGIC and ebx=MBI pointer on entry. The switch asm
+  must preserve them.
+
+--------------------------------------------------------------------------------
+
+## e8fee3db -- [efi bootloader] Make switchmode use only
+   rip-addressing
+
+Commit: e8fee3db24...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 23:52:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -12 in switchmode.S. Absolute addressing
+  replaced by RIP-relative throughout.
+
+Context (guess -- from subject):
+
+  Necessary for position-independent UEFI
+  executables.
+
+--------------------------------------------------------------------------------
+
+## 305ca8d7 -- [efi bootloader] Make ${SOURCES} to be in the arch
+   CMake file
+
+Commit: 305ca8d76d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat May 12 23:55:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 / -4 across 3 CMake files. Each arch
+  (ia32/x86_64) now defines its own SOURCES list
+  (adding its asm files).
+
+Context (guess -- from subject):
+
+  Continues the arch/generic split -- arch-specific
+  .S files belong with the arch target.
+
+--------------------------------------------------------------------------------
+
+## 03c2284d -- [efi bootloader] Embedding switchmode in the EFI app
+
+Commit: 03c2284dcd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 00:25:58 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +23 / -50 across 5 files. switchmode becomes a
+  regular asm file linked into the EFI image (+28 /
+  -13 in switchmode.S, +27 / -26 in CMakeLists).
+  efimain.c -6 net. build_fatpart -1 (no longer
+  copies a separate switchmode blob).
+
+Context (guess -- from subject):
+
+  Previously switchmode was a separate binary glued
+  in at build time. Linking directly into the EFI
+  app is simpler and more portable.
+
+--------------------------------------------------------------------------------
+
+## 648cb4eb -- [efi bootloader] Improving switchmode.S
+
+Commit: 648cb4eb8f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 19:35:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -26 across efimain.c (-4 net) and
+  switchmode.S (-6 net). Tighter asm; smaller caller
+  site.
+
+Context (guess -- from subject):
+
+  Continued polish.
+
+--------------------------------------------------------------------------------
+
+## 3b2e30bf -- [efi bootloader] Improving switchmode.S [2]
+
+Commit: 3b2e30bf3f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 19:54:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -10 in switchmode.S.
+
+Context (guess -- from subject):
+
+  Second polish pass in quick succession.
+
+--------------------------------------------------------------------------------
+
+## 541005fc -- [efi bootloader] Cosmetic improvements
+
+Commit: 541005fce2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 20:05:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -23 across 3 files. efimain.c -22 net:
+  helpers extracted to utils.c (+25). utils.h +2 net
+  decls.
+
+Context (guess -- from subject):
+
+  Trim efimain.c; push reusable code into utils.
+
+--------------------------------------------------------------------------------
+
+## 980a4a84 -- [efi bootloader] Remove debug on-screen drawings and
+   other cosmetic changes
+
+Commit: 980a4a8426...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 20:11:41 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -72 across 3 files. setup_graphics.c -50 net:
+  the test pattern code from b52dd812 is gone now
+  that the FB is known to work. efimain.c -19 net,
+  utils.c -2.
+
+Context (guess -- from subject):
+
+  Cleanup: debug drawings were scaffolding.
+
+--------------------------------------------------------------------------------
+
+## 24339cf5 -- [efi bootloader] Use MS ABI and call UEFI funcs W/O
+   the wrapper
+
+Commit: 24339cf5e8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun May 13 23:03:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +82 / -124 across 4 files. Net -42.
+  GenericBuild.cmake +2 adds -mabi=ms. efimain.c -68
+  net drops the GNU-EFI uefi_call_wrapper indirection;
+  direct function pointer calls with MS ABI.
+  setup_graphics.c -24 net. utils.c small adjust.
+
+Context (guess -- from subject):
+
+  UEFI functions are MS ABI; GNU-EFI's
+  uefi_call_wrapper shuffles args between ABIs.
+  Compiling the bootloader with -mabi=ms removes
+  that dance. Cleaner code + smaller binary.
+
+--------------------------------------------------------------------------------
+
+## a3d24fd7 -- [efi bootloader] Fix a nasty bug: most of mbi may
+   contained garbage
+
+Commit: a3d24fd773...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 00:00:38 2018 +0300
+
+> The trivial fix was just to bzero() it in
+> efi_main().
+
+AI notes:
+
+What changed:
+
+  +1 line in efimain.c: bzero(&mbi).
+
+Context (from body):
+
+  mbi was a local struct on the stack; unset fields
+  held whatever was there before. Only the flags
+  field was set; the kernel then interpreted
+  uninitialised bytes as other tags. 1-line fix for
+  a hours-of-debugging bug.
+
+--------------------------------------------------------------------------------
+
+## 79979473 -- [printk] Handle the case of term not initialized
+
+Commit: 79979473b0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 00:13:15 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 lines across term.h (+1), term.c (+5), printk.c
+  (+11). printk no-ops / buffers if term isn't up yet.
+
+Context (guess -- from subject):
+
+  Early boot (before init_term) can now printk without
+  crashing. Messages just get dropped (or deferred).
+
+--------------------------------------------------------------------------------
+
+## 85a2dde7 -- [term] Remove term_get_color()
+
+Commit: 85a2dde75d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 00:17:52 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -6 lines across term.h and term.c. Accessor deleted.
+
+Context (guess -- from subject):
+
+  Introduced in 89bbcb28 for printk's save-restore
+  color trick. With the action-queue design arriving
+  next, color is tracked differently and the accessor
+  is no longer needed.
+
+--------------------------------------------------------------------------------
+
+## 635972e6 -- [term] Introduce and use term actions
+
+Commit: 635972e68a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 01:06:46 2018 +0300
+
+> This change makes term interface functions to use
+> action elems describing which action has to be
+> performed and a term_execute_action() function,
+> instead of directly performing any given action.
+> This is clearly a preparation change. What will
+> follow is a series of changes making the term
+> interface functions to decide if any given action
+> can be performed directly or has to be enqueued in
+> a ring buffer, exactly as it happens in printk. The
+> whole point is to make term run without disabling
+> the interrupts and remain safely consistent. In
+> case an interrupt handler calls a term function,
+> interrupting a term function already running, its
+> action will be enqueued and executed at the end of
+> the original term function. Again, exactly like in
+> the printk case.
+
+AI notes:
+
+What changed:
+
+  +142 / -22 in term.c. A tagged-union "term action"
+  struct (write char, scroll, set color, clear row,
+  etc.) plus term_execute_action() dispatcher.
+  term.h -1 (one public fn removed).
+
+Context (from body):
+
+  Apply the printk pattern to term: serialise all ops
+  through one queue so re-entry is safe and no
+  interrupts need masking.
+
+--------------------------------------------------------------------------------
+
+## 5f617e16 -- [term] Working on term_enqueue_or_execute_action()
+
+Commit: 5f617e16dc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 01:26:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -16 across 4 files. term.c +20 / -10 shapes
+  the enqueue/execute dispatcher. ringbuf.c/.h 1-line
+  API widening. kb.c +2 / -2 uses new API.
+
+Context (guess -- from subject):
+
+  Work-in-progress title: the dispatch function isn't
+  final yet.
+
+--------------------------------------------------------------------------------
+
+## 7e47a923 -- [term] Fully implement
+   term_enqueue_or_execute_action()
+
+Commit: 7e47a92366...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 01:53:01 2018 +0300
+
+> NOTE: some debug code has been added to reproduce
+> the enqueue case.
+
+AI notes:
+
+What changed:
+
+  +50 / -44 across term.c (+42 / -43) and
+  shell_commands.c (+8 / -1). Complete check-busy-
+  then-enqueue-or-execute logic. Shell command
+  exercises the enqueue path.
+
+Context (from body):
+
+  Final piece of the action-queue redesign. Term is
+  now re-entrant-safe.
+
+--------------------------------------------------------------------------------
+
+## 8f504de9 -- [build] Fix build error [-Werror] when using gcc 4.8
+
+Commit: 8f504de914...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 13:09:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -2 in top-level CMakeLists.txt. Version check:
+  suppresses warnings on old gcc that 5+ doesn't
+  emit.
+
+Context (guess -- from subject):
+
+  Ubuntu 14.04 / CentOS 7 still shipped gcc 4.8.
+  Keeping them buildable widens adoption.
+
+--------------------------------------------------------------------------------
+
+## 98d0aa7f -- [tty] Fix bug in tty_read()
+
+Commit: 98d0aa7f22...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 13:27:03 2018 +0300
+
+> Description: if kb_cbuf was not empty before it is
+> called, it returns immediately, without waiting \n
+> or cbuf to be full.
+
+AI notes:
+
+What changed:
+
+  +15 / -8 in kernel/char/tty.c. tty_read now
+  distinguishes "data present but line not yet
+  terminated" from "line complete".
+
+Context (from body):
+
+  Line-discipline bug: non-canonical early-return
+  broke interactive input. Fix matches standard
+  termios behaviour.
+
+--------------------------------------------------------------------------------
+
+## 95ebdbef -- [ringbuf] Use an internal is_empty(generic_ringbuf_
+   stat *) func
+
+Commit: 95ebdbef62...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 13:42:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -3 in ringbuf.c. Internal helper.
+
+Context (guess -- from subject):
+
+  Dedupe repeated `rb->read_pos == rb->write_pos`
+  check.
+
+--------------------------------------------------------------------------------
+
+## df7b7934 -- [ringbuf] Introduce ringbuf_write_elem_ex()
+
+Commit: df7b793426...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 13:49:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +25 lines across ringbuf.h (+1 decl) and ringbuf.c
+  (+24 impl). New _ex variant that also tells the
+  caller whether the buffer was empty before this
+  write.
+
+Context (guess -- from subject):
+
+  Term's enqueue path needs that info: if the buffer
+  was empty, the caller does the execute; otherwise
+  just enqueue.
+
+--------------------------------------------------------------------------------
+
+## d51177db -- [term] Re-write term_enqueue_or_execute_action()
+
+Commit: d51177dbbb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:04:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -15 in term.c. Simpler implementation using
+  ringbuf_write_elem_ex's "was empty" return value.
+
+Context (guess -- from subject):
+
+  Payoff of df7b7934: fewer atomic ops, cleaner
+  control flow.
+
+--------------------------------------------------------------------------------
+
+## 29a914af -- [term] Cosmetic renaming
+
+Commit: 29a914afe0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:05:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -6 in term.c. Rename some locals.
+
+Context (guess -- from subject):
+
+  Readability.
+
+--------------------------------------------------------------------------------
+
+## df69660e -- [term] Cosmetic improvements
+
+Commit: df69660e03...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:12:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -16 in term.c.
+
+Context (guess -- from subject):
+
+  More of the same.
+
+--------------------------------------------------------------------------------
+
+## eca24126 -- [term] Removing debug code
+
+Commit: eca24126aa...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:15:53 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -14 across term.c (-6) and shell_commands.c
+  (+2 / -8). Debug reproducer from 7e47a923
+  removed.
+
+Context (guess -- from subject):
+
+  Cleanup: scaffolding gone now that the feature is
+  proven.
+
+--------------------------------------------------------------------------------
+
+## a817f64e -- [misc] Remove useless call to
+   disable_interrupts_forced() before panic()
+
+Commit: a817f64e95...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:17:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -2 lines in kernel/misc.c. Redundant disable before
+  calling into panic_impl which already disables.
+
+Context (guess -- from subject):
+
+  Dead code. The double-disable was not harmful just
+  redundant.
+
+--------------------------------------------------------------------------------
+
+## 8c4eb685 -- Cosmetic changes
+
+Commit: 8c4eb685ed...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 14:40:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -16 across 6 files. Small per-file renames /
+  reformats.
+
+Context (guess -- from subject):
+
+  Assorted polish across several files.
+
+--------------------------------------------------------------------------------
+
+## 051ac1df -- [term] Make rows and cols to be parameters of
+   init_term()
+
+Commit: 051ac1dfea...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 15:40:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -8 across term.h (1 line), term.c (+7 / -4),
+  main.c (+3 / -3). init_term takes explicit
+  dimensions instead of hardcoding VGA 80x25.
+
+Context (guess -- from subject):
+
+  Needed for FB console where dimensions depend on
+  resolution / font size. Prep for 35c3d0d0.
+
+--------------------------------------------------------------------------------
+
+## 792bd4ed -- [fb_console] Add & link font.psf in the kernel and
+   dump its header
+
+Commit: 792bd4edf5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 18:24:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +73 / -2 across 4 files. New kernel/font.psf (PSF
+  bitmap font, 5456 bytes). New kernel/fb_console.c
+  (39 lines) parses the PSF header. kernel/arch/
+  CMakeLists.txt +29 links font.psf into the kernel
+  ELF. main.c +5 invokes the new parser.
+
+Context (guess -- from subject):
+
+  First step toward drawing text on the framebuffer.
+  PSF fonts are simple bitmap fonts used by the Linux
+  console.
+
+--------------------------------------------------------------------------------
+
+## 4ea92cef -- [fb_console] We're able to read a single glyph
+
+Commit: 4ea92cefac...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 20:30:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -3 in fb_console.c. Glyph indexing + byte-
+  extraction for a given character.
+
+Context (guess -- from subject):
+
+  Reading the correct bit pattern proves the font
+  layout is understood.
+
+--------------------------------------------------------------------------------
+
+## 35c3d0d0 -- [main][fb_console] Start to properly organize for the
+   fb_console support
+
+Commit: 35c3d0d0fd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 20:49:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +96 / -82 across 3 files. New fb_console.h (23
+  lines). fb_console.c +65 / -17 promoted from a
+  main.c inline prototype to a proper module. main.c
+  -68 net: FB setup code moves out.
+
+Context (guess -- from subject):
+
+  Crystallising fb_console as a sibling of term, with
+  its own public header.
+
+--------------------------------------------------------------------------------
+
+## d5c217fe -- [fb_console] We're able to draw the first letter
+   on-screen
+
+Commit: d5c217fecc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 21:05:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -6 in fb_console.c. Pixel-loop that writes
+  glyph bits to framebuffer addresses.
+
+Context (guess -- from subject):
+
+  Hello-world moment for the FB console.
+
+--------------------------------------------------------------------------------
+
+## 286106a5 -- [fb_console] It's possible to init term and use printk
+   (no scroll yet)
+
+Commit: 286106a578...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 21:47:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +108 / -68 across fb_console.c (+107 / -68) and
+  term.c (+1). fb_console implements the
+  term_execute_action handlers; term picks fb_console
+  as backend; printk now works in FB mode.
+
+Context (guess -- from subject):
+
+  Integration: fb_console is now a real term backend
+  interchangeable with textmode. Scrolling comes
+  later.
+
+--------------------------------------------------------------------------------
+
+## f1fa9cd7 -- [main][textmode_video] Introduce init_textmode_console()
+   and use it
+
+Commit: f1fa9cd7af...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 22:00:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -21 across 3 files. textmode_video.c +23:
+  encapsulates VGA text-mode init. main.c -22 net:
+  just calls init_textmode_console() or the fb
+  counterpart depending on what multiboot provided.
+  vga_textmode_defs.h +2 decls.
+
+Context (guess -- from subject):
+
+  Mirrors init_fb_console(). main.c no longer hard-
+  codes either backend.
+
+--------------------------------------------------------------------------------
+
+## e427ef73 -- [uefi] Fixing all problems preventing kernel to work
+   if booted with UEFI
+
+Commit: e427ef73c8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 23:37:01 2018 +0300
+
+> Mostly, it was about using irq_mask_clear() for all
+> IRQs and using a vaddr in kernel space for the
+> framebuffer.
+
+AI notes:
+
+What changed:
+
+  +11 / -6 across irq.c (+3 / -1) and fb_console.c
+  (+8 / -5). IRQ mask reset at boot; FB base mapped
+  into kernel VA space.
+
+Context (from body):
+
+  UEFI leaves the PIC masked differently from BIOS;
+  explicit unmask. And the FB physical address is
+  wherever UEFI placed it -- must be mapped in the
+  kernel page tables before the console can touch
+  it.
+
+--------------------------------------------------------------------------------
+
+## a6361f4d -- [efi bootloader] Add a temporary hack to speed-up the
+   loading
+
+Commit: a6361f4d98...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon May 14 23:40:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 lines in efimain.c. Likely skips a slow UEFI
+  call (e.g., reducing `Stall` waits).
+
+Context (guess -- from subject):
+
+  Dev-loop improvement; "[temporary hack]" flags it
+  for later revisit.
+
+--------------------------------------------------------------------------------
+
+## 843a0daa -- [fb_console] Implementing a cursor and fixing several
+   nasty bugs
+
+Commit: 843a0daa58...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 00:34:00 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +82 / -14 across efimain.c (+2 / -2) and
+  fb_console.c (+80 / -12). Software cursor:
+  save/XOR/restore cells under the cursor position.
+  Fixes around color handling, row/col indexing.
+
+Context (guess -- from subject):
+
+  FB consoles don't have a hardware cursor. Software
+  blink is standard.
+
+--------------------------------------------------------------------------------
+
+## 851dd6d0 -- [efi bootloader] Support only BGR PixelFormat (RGB in
+   little endian)
+
+Commit: 851dd6d00d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 11:30:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +2 / -3 in setup_graphics.c. Bootloader bails on any
+  pixel format other than BGR.
+
+Context (guess -- from subject):
+
+  Rather than handle every UEFI pixel layout, assert
+  BGR (what qemu/ovmf uses). Simpler; broader
+  support can come later.
+
+--------------------------------------------------------------------------------
+
+## e8526e02 -- [fb_console] Some optimizations
+
+Commit: e8526e0228...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 11:43:21 2018 +0300
+
+> BONUS: adding memset32
+
+AI notes:
+
+What changed:
+
+  +50 / -27 across asm_x86_strings.h (+16 new
+  memset32) and fb_console.c (+34 / -27 uses it).
+  Scrolling / clearing large regions uses 32-bit
+  stores.
+
+Context (from body):
+
+  Pixels are 32-bit BGRA; memset32 is the natural
+  primitive for filling color regions.
+
+--------------------------------------------------------------------------------
+
+## 404a3ba5 -- [fb_console] Support fb_offset_y
+
+Commit: 404a3ba56d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 12:28:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 / -30 in fb_console.c. Adds a vertical offset
+  so the console doesn't have to start at pixel row
+  0; useful when the top of the screen is reserved
+  for a logo or padding.
+
+Context (guess -- from subject):
+
+  Flexibility for layout; specific use case probably
+  centring or reserving top area.
+
+--------------------------------------------------------------------------------
+
+## 390b29b2 -- [fb_console] Move into a dedicated directory
+
+Commit: 390b29b21c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 12:32:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure move: kernel/fb_console.c -> kernel/fb/
+  fb_console.c. CMakeLists.txt +1 adds the new dir.
+
+Context (guess -- from subject):
+
+  fb_console is growing; future files will live
+  alongside it (font.psf moves next). Dedicated dir
+  follows the subsystem pattern.
+
+--------------------------------------------------------------------------------
+
+## 72d71b07 -- [fb_console] Move font.psf in kernel/fb
+
+Commit: 72d71b07b3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue May 15 12:34:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  Pure move: kernel/font.psf -> kernel/fb/font.psf.
+  kernel/arch/CMakeLists.txt 2-line path update.
+
+Context (guess -- from subject):
+
+  Co-locates the font with its only consumer.
+
+--------------------------------------------------------------------------------
