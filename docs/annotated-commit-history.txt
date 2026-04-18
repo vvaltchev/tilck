@@ -18607,3 +18607,2290 @@ Context (guess -- from subject):
   bisect point: everything up to here compiles and tests pass.
 
 --------------------------------------------------------------------------------
+
+## 8d3820c0 -- [threads][step 7] Polishing process.c's code
+
+Commit: 8d3820c096...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 4 12:15:24 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -8 across process.h, process.c, and sched.c. Net -1
+  line. Small re-organisation after step 6's sched.c cleanup.
+
+Context (guess -- from subject):
+
+  Mirror of step 6 but for process.c. Typical pattern: once the
+  sched API is stable, consumer files can be trimmed.
+
+--------------------------------------------------------------------------------
+
+## d5206a92 -- [threads][step 8] Sched: add tree_by_tid in task_info
+
+Commit: d5206a9272...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 4 19:47:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -9 across 5 files. sched.c +36 net: introduces an AVL
+  tree indexed by tid for O(log n) task lookup. task_info gains
+  a tree_by_tid node field. avl_bintree.c +8 (helper used by
+  sched), process32.c +7 / -0 (insert on task creation),
+  process.c +3 (insert after fork).
+
+Context (guess -- from subject):
+
+  Linear scan over tasks doesn't scale once multiple threads
+  per process exist. An AVL tree keyed on tid gives fast
+  lookups for signal delivery, waitpid, /proc, etc.
+
+--------------------------------------------------------------------------------
+
+## f4bbfa15 -- [threads][step 9] Sched: remove tasks_list
+
+Commit: f4bbfa15bf...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 4 19:54:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +10 / -18 across 5 files. Net -8 lines. The old linked list
+  of all tasks is ripped out now that the tid tree (step 8)
+  serves the same purpose.
+
+Context (guess -- from subject):
+
+  Finish the list -> tree migration. One data structure
+  instead of two.
+
+--------------------------------------------------------------------------------
+
+## efc1933e -- [avl_bintree] Introduce bintree_in_order_visit()
+
+Commit: efc1933e35...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 4 20:22:54 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +68 / -15 across 3 files. bintree.h +15 lines (API decl).
+  avl_bintree.c +34 (in-order traversal impl). Unit tests
+  updated (+34 / -15) to cover the new traversal.
+
+Context (guess -- from subject):
+
+  In-order visit enumerates tasks sorted by tid. Needed for
+  /proc-style listings and sequential signal-delivery loops
+  now that the list is gone.
+
+--------------------------------------------------------------------------------
+
+## ddbc1dec -- [threads][step 10] Minor changes in struct task_info
+
+Commit: ddbc1decc4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 13:59:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -11 across 3 files. process.h +13 net (field add /
+  reorder). sched.c -3 net. process32.c 1-line tweak.
+
+Context (guess -- from subject):
+
+  Preparatory reshape of task_info ahead of steps 11-13 which
+  split it into task_info + process_info.
+
+--------------------------------------------------------------------------------
+
+## 6bf2e072 -- [threads][step 11] Introduce allocate_new_process()
+   and use it
+
+Commit: 6bf2e072f8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 14:27:47 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -15 across 3 files. kernel/process.c +21 / -6: new
+  allocate_new_process() centralises task_info allocation +
+  initial population. process32.c drops its open-coded inline
+  version (-9 / +6).
+
+Context (guess -- from subject):
+
+  Factor the allocate + init boilerplate into one helper so
+  future callers (pthread_create, etc.) don't diverge.
+
+--------------------------------------------------------------------------------
+
+## d3602d9e -- [threads][step 12] Introduce free_task() and use it
+
+Commit: d3602d9e12...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 14:35:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -21 across 3 files. process.c +26 / -14: new
+  free_task() unifies task teardown. sched.c -1 net (drops its
+  open-coded teardown).
+
+Context (guess -- from subject):
+
+  Counterpart to allocate_new_process(): one function that
+  knows how to reclaim every resource owned by a task
+  (pdir, kernel stack, tree entry).
+
+--------------------------------------------------------------------------------
+
+## 631142b9 -- [threads][step 13] Introduce process_info
+
+Commit: 631142b94b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 15:57:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +70 / -47 across 4 files. process.h +23 net: new
+  process_info struct carrying per-process state (pid, pdir,
+  cwd, ...) that was previously stored per-task_info.
+  process.c +42 / -14 creates / initialises process_info on
+  fork. fs_syscalls.c switches to reading current->pi->cwd
+  etc. process32.c adjusts.
+
+Context (guess -- from subject):
+
+  The "real" payoff of steps 1-12: fields that belong to a
+  process (not a thread) move into a new struct shared by all
+  threads of the same process. Enables future clone()/
+  pthread_create() where multiple task_infos point at one
+  process_info.
+
+--------------------------------------------------------------------------------
+
+## 7a52f9e4 -- [elf] Use POINTER_ALIGN_MASK in load_elf_program()
+
+Commit: 7a52f9e4bd...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 16:02:14 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1-line change in kernel/elf.c. Replaces an ad-hoc alignment
+  expression with the POINTER_ALIGN_MASK macro.
+
+Context (guess -- from subject):
+
+  Cosmetic; consistent use of existing macro instead of raw
+  bitmath.
+
+--------------------------------------------------------------------------------
+
+## 471c4fbf -- [threads][step 14] Optimize allocate_new_process()
+
+Commit: 471c4fbfdb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 16:12:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 / -12 across 2 files. process.c -6 net; process.h +3
+  (maybe an inline helper). Likely merging two allocations
+  into one (task_info + process_info in a single kmalloc or
+  using a bump within the kernel stack).
+
+Context (guess -- from subject):
+
+  First micro-opt on the new allocator. Halving the allocs per
+  process creation is nice.
+
+--------------------------------------------------------------------------------
+
+## ee506509 -- [threads][step 15] Introduce the global task
+   kernel_process
+
+Commit: ee506509ba...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 16:35:26 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +18 / -8 across 4 files. sched.c +13 lines -- declares a
+  static kernel_process task_info representing the "kernel
+  context" when no user task is current. process32.c -4 net
+  (uses global instead of synthesizing). misc.c 1-line tweak.
+
+Context (guess -- from subject):
+
+  Before this, idle/boot code ran with current==NULL, forcing
+  every piece of code that dereferences current to NULL-check.
+  A singleton kernel_process lets current be always non-NULL.
+
+--------------------------------------------------------------------------------
+
+## 8b6fbc87 -- [threads][step 16] Introduce allocate_new_thread()
+
+Commit: 8b6fbc87ec...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 17:03:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +33 / -13 across 4 files. process.c +20 net: new
+  allocate_new_thread(process_info *) creates a task_info
+  attached to an existing process. Companion to
+  allocate_new_process().
+
+Context (guess -- from subject):
+
+  The piece that makes pthread_create buildable: a thread is
+  just a task_info sharing its parent's process_info. This
+  function encapsulates that exact construction.
+
+--------------------------------------------------------------------------------
+
+## 71116ea2 -- [threads][step 17] Make allocate_new_process() to set
+   the new PID
+
+Commit: 71116ea2d3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 17:16:21 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -12 across 3 files. allocate_new_process() now calls
+  create_new_pid() internally; callers no longer pass one in.
+
+Context (guess -- from subject):
+
+  Tightening the API: a new process always needs a new pid, so
+  the two operations are coupled. Removes a class of
+  "allocated with stale pid" bugs.
+
+--------------------------------------------------------------------------------
+
+## fcac4276 -- Fix build error
+
+Commit: fcac4276e2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 18:05:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +3 lines in unittests/generic_mocks.c. Host-side mock
+  updated for an API added/removed in the previous commit.
+
+Context (guess -- no body):
+
+  Drive-by fix to keep gtests building after the step-17
+  signature change.
+
+--------------------------------------------------------------------------------
+
+## c21265e7 -- [threads][step 18] Fix corner-case bugs and handle
+   new pid == -1
+
+Commit: c21265e7b5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 18:30:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -13 across 5 files. sched.c +10 / -6: create_new_pid
+  can now return -1 when the pid space is exhausted; callers
+  in process.c and process32.c propagate the failure (-ENOMEM
+  or equivalent). shell.c +5 lines exercises the failure
+  path.
+
+Context (guess -- from subject):
+
+  Real-world hardening: the cap-at-MAX_PID change from step 5
+  introduced the possibility of exhaustion; now the kernel
+  returns cleanly instead of asserting.
+
+--------------------------------------------------------------------------------
+
+## 04067bfe -- [avl_bintree] Implement bintree_in_order_visit_internal
+   without recursion
+
+Commit: 04067bfe7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 5 22:38:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +63 / -23 across 2 files. avl_bintree.c +49 net: in-order
+  traversal rewritten to use an explicit stack instead of
+  recursion (Morris or classic stack-based). kmalloc.c +8 /
+  -4: likely switches from its own recursive walk to using
+  the new iterative one.
+
+Context (guess -- from subject):
+
+  Kernel stacks are small (4-16KB typical); recursive tree
+  walks can blow the stack on deep imbalances. Iterative
+  version bounds stack use to O(log n) heap nodes.
+
+--------------------------------------------------------------------------------
+
+## bf26c3f2 -- [common] Introduce norec.h
+
+Commit: bf26c3f26b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 6 13:54:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +79 / -46 across 2 files. New header common/norec.h (67
+  lines): reusable explicit-stack traversal primitives.
+  avl_bintree.c shrinks by 46 lines (-12 net) as the in-order
+  logic moves into norec.h.
+
+Context (guess -- from subject):
+
+  After writing one iterative tree walk, Vlad extracts the
+  pattern so the next consumer (kmalloc's own binary
+  structure) can reuse it.
+
+--------------------------------------------------------------------------------
+
+## 593073db -- [kmalloc] Use common/norec.h to avoid recursion
+
+Commit: 593073db2a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 6 14:25:28 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -89 across 2 files. kernel/kmalloc.c -47 net: its
+  recursive buddy-tree walk deleted in favour of norec.h.
+  norec.h gets +4 net (small API polish).
+
+Context (guess -- from subject):
+
+  The buddy allocator's split/merge operations were recursive
+  walks of its buddy tree. With ~16KB kernel stacks, a deeply
+  fragmented allocator could blow up. Switching to the
+  explicit-stack walker makes kmalloc stack-safe.
+
+--------------------------------------------------------------------------------
+
+## d2aed0ca -- [threads][step 19] Implement create_new_pid() in a
+   more efficient way
+
+Commit: d2aed0caf3...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 6 18:05:08 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -9 across 2 files. sched.c +52 net: create_new_pid()
+  now uses a bitmap / AVL ordered by tid to find the first
+  free pid quickly instead of linear-scanning the task tree.
+  avl_bintree.c +3 (helper).
+
+Context (guess -- from subject):
+
+  Linear search for next free pid becomes O(n) as tasks
+  accumulate. Bitmap lookup (or tree gap-finding) is O(log n)
+  or amortised O(1).
+
+--------------------------------------------------------------------------------
+
+## bf5c5424 -- [gdt] Implement gdt_load() in a more flexible way
+
+Commit: bf5c5424bc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 16:53:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +31 / -63 across 2 files. entry.S -6 lines (the asm
+  gdt-load thunk). gdt.c -32 net: gdt_load rewritten to
+  accept arbitrary descriptor arrays rather than assuming
+  the hard-coded boot GDT.
+
+Context (guess -- from subject):
+
+  Opens the door to loading alternate GDTs at runtime (TLS
+  segments, per-CPU GDTs in future SMP). The pre-refactor
+  code had the boot GDT's layout baked in.
+
+--------------------------------------------------------------------------------
+
+## 1cbcb14d -- [gdt] Re-write flush_tss() -> load_tss() in C
+
+Commit: 1cbcb14d09...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 17:31:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +28 / -42 across hal.h, entry.S, gdt.c. Asm flush_tss (10
+  lines) deleted. gdt.c gets load_tss() as C + a single
+  `ltr` inline-asm. Net -14 lines, plus a clearer name.
+
+Context (guess -- from subject):
+
+  Same principle as the gdt_load rewrite: C with inline asm
+  is readable, asm stubs that only exist to execute one
+  instruction add noise.
+
+--------------------------------------------------------------------------------
+
+## 15e1c757 -- [gdt] Update gdt_set_entry()
+
+Commit: 15e1c757a1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 17:58:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -16 in gdt.c. gdt_set_entry() signature / internal
+  layout refreshed -- probably clearer parameter naming or
+  splitting base/limit into separate helpers.
+
+Context (guess -- from subject):
+
+  Part of the small GDT cleanup series. No behaviour change
+  expected.
+
+--------------------------------------------------------------------------------
+
+## d2007ecf -- [gdt] Working on the tss_entry
+
+Commit: d2007ecf76...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 18:19:39 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -25 in gdt.c. Net -5 lines. Refinements to the
+  per-task-state-segment descriptor initialisation.
+
+Context (guess -- from subject):
+
+  Work-in-progress commit title suggests this is a
+  checkpoint in the GDT/TSS overhaul; the TSS entry is
+  evolving but final shape not settled.
+
+--------------------------------------------------------------------------------
+
+## b7228949 -- [gdt] gdt_set_entry(): fix flags
+
+Commit: b72289490a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 18:38:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -9 in gdt.c. Flag-bit handling in gdt_set_entry()
+  corrected: the packing / shifting of the access byte and
+  granularity bits into the 8-byte descriptor was off.
+
+Context (guess -- from subject):
+
+  Bug fix, not cosmetic. GDT flag bits are fiddly (access
+  byte at offset 5, flags nibble at offset 6 upper nibble).
+  Easy to mis-shift.
+
+--------------------------------------------------------------------------------
+
+## 9b8df5de -- [gdt] Remove tss_init() and introduce
+   X86_SELECTOR()
+
+Commit: 9b8df5dee5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 19:08:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +19 / -15 across 2 files. gdt.c -15 (tss_init helper
+  deleted, its callers inline the minimal setup).
+  x86_utils.h +17: new X86_SELECTOR(index, ti, rpl) macro
+  assembling a segment selector.
+
+Context (guess -- from subject):
+
+  Hardcoded selector numbers (0x08, 0x10, 0x1B ...) are
+  cryptic; X86_SELECTOR(INDEX_KERNEL_CS, 0, 0) is
+  self-documenting.
+
+--------------------------------------------------------------------------------
+
+## 4cf6db83 -- [gdt] Introduce gdt_int.h
+
+Commit: 4cf6db8374...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 19:15:31 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +67 / -60 across 2 files. gdt.c -53 net: type/constant
+  defs relocate to new header gdt_int.h (59 lines).
+
+Context (guess -- from subject):
+
+  Private header for gdt.c. Hides the GDT struct layout
+  behind a header dedicated to it instead of polluting
+  public exos/hal.h or arch_utils.h.
+
+--------------------------------------------------------------------------------
+
+## 750e7e99 -- [process32] Use X86_SELECTOR() instead of
+   hard-coding selector numbers
+
+Commit: 750e7e9912...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 19:21:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -12 in process32.c. Hard-coded hex selectors replaced
+  by X86_SELECTOR() invocations.
+
+Context (guess -- from subject):
+
+  Follow-up to 9b8df5de. The new macro gets its first
+  consumer beyond gdt.c itself.
+
+--------------------------------------------------------------------------------
+
+## 7c6eb9fc -- [gdt] Add access flag defs in gdt_int.h
+
+Commit: 7c6eb9fc7a...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 19:44:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 lines in gdt_int.h. Symbolic defines for every
+  access-byte bit (PRESENT, DPL_SHIFT, TYPE_CODE, ...) and
+  flag-nibble bit (GRANULARITY, SIZE_32).
+
+Context (guess -- from subject):
+
+  Builds the vocabulary needed for the next commit's
+  readable descriptor construction.
+
+--------------------------------------------------------------------------------
+
+## bdab1485 -- [gdt] OR the new macro flags instead of using
+   pre-calculated integers
+
+Commit: bdab148515...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 21:45:25 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +55 / -26 across gdt.c (+28 net) and gdt_int.h (+1 net).
+  Descriptor construction in gdt.c now reads like
+  `access = DPL0 | TYPE_CODE | PRESENT`, replacing magic
+  0x9A / 0x92 / 0xFA / 0xF2 constants.
+
+Context (guess -- from subject):
+
+  Payoff of 7c6eb9fc: readable, auditable GDT entry
+  setup. When something breaks, the flag is obvious.
+
+--------------------------------------------------------------------------------
+
+## 269e2e6c -- [idt] Re-write idt_load() in C + inline assembly
+
+Commit: 269e2e6c32...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 21:54:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 / -15 across entry.S (-6) and idt.c (+9 net). Asm
+  idt_load stub deleted; idt.c calls `lidt` via inline asm.
+
+Context (guess -- from subject):
+
+  Sister commit to 1cbcb14d (tss) and bf5c5424 (gdt). All
+  three descriptor-table load instructions migrate from
+  entry.S to their respective .c files.
+
+--------------------------------------------------------------------------------
+
+## 3eadc193 -- [idt] Introduce idt_int.h and improve idt_load()
+
+Commit: 3eadc19345...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 22:10:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -49 across 2 files. Private header idt_int.h (16
+  lines) holds the IDT descriptor struct. idt.c -39 net.
+
+Context (guess -- from subject):
+
+  Same pattern as gdt_int.h (4cf6db83) -- layout types in a
+  private header. idt_load() polished along the way.
+
+--------------------------------------------------------------------------------
+
+## 945f39ba -- [idt] Rename idt_set_gate() to idt_set_entry()
+
+Commit: 945f39ba36...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 22:12:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +52 / -52 across idt.c and irq.c. Pure rename.
+
+Context (guess -- from subject):
+
+  Consistency: gdt uses gdt_set_entry; using the same verb
+  for both descriptor tables makes code greppable.
+
+--------------------------------------------------------------------------------
+
+## d73e4923 -- [idt] Improve isrs_install()
+
+Commit: d73e492310...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 22:26:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +12 / -39 in idt.c. Net -27 lines. Previously isrs_install()
+  had 32 explicit `idt_set_entry(0, isr0, ...); idt_set_entry
+  (1, isr1, ...);` lines; rewritten as a loop over an
+  ISR-address array.
+
+Context (guess -- from subject):
+
+  Enabled by step 734 (ex_entry_points_array): once the ISR
+  entry points live in an array, installation is a loop.
+
+--------------------------------------------------------------------------------
+
+## bca2ae55 -- [idt] Move ex_entry_points_array in isr_handlers.S
+
+Commit: bca2ae55d8...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 7 22:39:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +41 / -45 across idt.c (-45) and isr_handlers.S (+39). The
+  32-entry array of ISR stub addresses moves from C into the
+  asm file where the stubs themselves live.
+
+Context (guess -- from subject):
+
+  Cohesion: array and labels it points to belong together.
+  Bonus: no need to export each isrN label back up to C.
+
+--------------------------------------------------------------------------------
+
+## 4b1bdeb0 -- [idt] Use macro loop for isr_entry_points
+
+Commit: 4b1bdeb0f6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 11:25:22 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -46 across idt.c and isr_handlers.S. Net -30 lines.
+  isr_handlers.S uses an asm `%rep` or macro loop to emit the
+  32 ISR stubs instead of listing them explicitly.
+
+Context (guess -- from subject):
+
+  One of the all-time OS-dev cleanups: repetitive stub code
+  collapsed into a single macro. Much harder to typo.
+
+--------------------------------------------------------------------------------
+
+## 0560377e -- [irq] Introduce and use irq_entry_points
+
+Commit: 0560377e30...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 11:49:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +38 / -67 across 4 files. irq.c -38 net: same
+  array-plus-loop treatment applied to IRQ installation.
+  irq_handlers.S gets +29 / -19 (macro-emitted stubs).
+
+Context (guess -- from subject):
+
+  Applying the 4b1bdeb0 trick to the 16 IRQ stubs.
+
+--------------------------------------------------------------------------------
+
+## 577852e3 -- [interrupts] Use a separate code path for IRQs
+
+Commit: 577852e35d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 12:12:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +52 / -19 across entry.S, irq_handlers.S, isr_handlers.S,
+  interrupts.c. IRQ dispatch no longer funnels through the
+  shared ISR common stub; irq_handlers.S has its own common
+  tail that calls a specialised handle_irq() in the C code.
+
+Context (guess -- from subject):
+
+  Exception and IRQ flows have different responsibilities
+  (error codes vs PIC EOI) but were sharing a common prologue.
+  Splitting lets each path omit code the other needs, at the
+  cost of a touch of duplication.
+
+--------------------------------------------------------------------------------
+
+## 27355546 -- [entry] Rename isr128 to syscall_int80_entry
+
+Commit: 2735554661...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 12:21:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -9 across entry.S, idt.c, syscalls.c. Rename plus a
+  couple of comment tweaks clarifying the int 0x80 entry
+  point.
+
+Context (guess -- from subject):
+
+  "isr128" was true but opaque. "syscall_int80_entry" tells a
+  reader exactly what that handler is for.
+
+--------------------------------------------------------------------------------
+
+## 0b133573 -- Some renaming
+
+Commit: 0b1335737d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 18:27:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +50 / -58 across 28 files -- small touches on almost
+  everything. Pattern is mostly 2-line changes per file,
+  suggesting a global symbol/function rename (likely
+  `initialize_foo` -> `init_foo`, or a struct field
+  renaming).
+
+Context (guess -- from subject):
+
+  Batch rename pass. Usual hygiene.
+
+--------------------------------------------------------------------------------
+
+## 920b93b5 -- [idt] Improving idt.c by OR-ing macro flags instead
+   of using integers
+
+Commit: 920b93b524...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 20:05:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +49 / -37 across 2 files. idt.c -19 net / idt_int.h +27.
+  Same "named flags" treatment applied earlier to gdt
+  (bdab1485) now done on idt: magic descriptor-flag
+  constants replaced by OR-compositions of symbolic bits.
+
+Context (guess -- from subject):
+
+  Readable IDT entry construction. Closes the GDT/IDT
+  cleanup arc with consistency.
+
+--------------------------------------------------------------------------------
+
+## 0779e719 -- [x86] Add macros for the pre-defined kernel & user
+   selectors
+
+Commit: 0779e71936...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 8 20:12:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -6 across 4 files. x86_utils.h +5: KERNEL_CODE_SEL,
+  KERNEL_DATA_SEL, USER_CODE_SEL, USER_DATA_SEL constants.
+  gdt.c / idt.c / process32.c -2 net each using them.
+
+Context (guess -- from subject):
+
+  Names over numbers: KERNEL_CODE_SEL reads better than
+  X86_SELECTOR(1, 0, 0).
+
+--------------------------------------------------------------------------------
+
+## cc8e5f3d -- [x86_utils] Replace the impl of RDTSC() with
+   __builtin_ia32_rdtsc()
+
+Commit: cc8e5f3d85...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 9 19:12:03 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -12 in x86_utils.h. The hand-written inline-asm
+  `rdtsc; mov %eax,... %edx,...` becomes one line using
+  GCC's __builtin_ia32_rdtsc() intrinsic.
+
+Context (guess -- from subject):
+
+  Compiler intrinsic has the same performance but better
+  optimiser visibility. Simpler code.
+
+--------------------------------------------------------------------------------
+
+## 4027c7b6 -- [x86_utils] Cosmetic changes
+
+Commit: 4027c7b696...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 9 20:27:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -29 in x86_utils.h. Net -15 lines. Formatting and
+  comment trimming.
+
+Context (guess -- from subject):
+
+  Tidying after the recent additions (selectors, intrinsics).
+
+--------------------------------------------------------------------------------
+
+## 07dc17e1 -- Move syscalls.c in arch/i386
+
+Commit: 07dc17e180...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 9 20:56:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +30 / -28 across 6 files. kernel/syscalls.c -> kernel/arch/
+  i386/syscalls.c (+15 / -8 net for arch-specific tweaks).
+  hal.h -6 (decls pruned). main.c -1. idt/idt_int adjust.
+  x86_utils.h +5 (selector constants now also used here).
+
+Context (guess -- from subject):
+
+  The syscall entry/exit is inherently architecture-specific;
+  the file belongs in arch/i386/. Makes it easier to add a
+  parallel arch/x86_64/syscalls.c later.
+
+--------------------------------------------------------------------------------
+
+## a1a9328b -- [sysenter] Working on the support (incomplete)
+
+Commit: a1a9328b63...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Mon Apr 9 21:12:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +44 / -3 across 3 files. entry.S +40: sysenter entry stub
+  (sets up kernel stack, pushes fake iret frame, dispatches
+  to shared syscall handler). gdt.c +1 (selector slot).
+  syscalls.c +3 / -3.
+
+Context (guess -- from subject):
+
+  Adding SYSENTER (Intel's fast-syscall instruction,
+  faster than int 0x80) as an alternative entry point.
+  "Incomplete" flag indicates the MSR setup isn't done yet.
+
+--------------------------------------------------------------------------------
+
+## b1bd2dd8 -- [sysenter] Making sysenter to work with the linux
+   convention
+
+Commit: b1bd2dd851...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 15:54:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +37 / -9 across 4 files. entry.S +30 net: syscall
+  argument registers (ebx, ecx, edx, esi, edi, ebp) match
+  Linux's int $0x80/sysenter ABI. x86_utils.h +6 gains the
+  SYSENTER MSR writer helpers. build_toolchain -1.
+
+Context (guess -- from subject):
+
+  Linux-compatible syscall ABI is one of Tilck's core
+  goals (stated in CLAUDE.md). Matching the register
+  convention means musl/glibc binaries' vdso sysenter call
+  path works unchanged.
+
+--------------------------------------------------------------------------------
+
+## fca2449c -- [build_toolchain] Fix bugs in build_libmusl
+
+Commit: fca2449c68...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 19:24:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 / -14 in scripts/build_toolchain. Net -6. Tweaks to
+  the libmusl build recipe (configure flags, install paths).
+
+Context (guess -- from subject):
+
+  Follow-up to 21a2adc8; as Tilck actually exercises musl
+  (building user apps against it), real bugs surface.
+
+--------------------------------------------------------------------------------
+
+## 3473db9f -- [Makefile] Add the rebuild_img phony target
+
+Commit: 3473db9f79...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 19:36:11 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 lines in top-level Makefile. New PHONY target that
+  deletes the disk image and rebuilds only the image step.
+
+Context (guess -- from subject):
+
+  Speeds up iteration: when only initrd contents or boot
+  parameters change, no need for a full kernel rebuild.
+  Predecessor of the `make rem` target documented in
+  CLAUDE.md.
+
+--------------------------------------------------------------------------------
+
+## 64ba9f21 -- [set_thread_area] Add debug messages when the syscall
+   happens
+
+Commit: 64ba9f2186...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 19:55:49 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +43 / -1 across 2 files. New file kernel/arch/i386/ldt.c
+  (39 lines) with a debug stub for sys_set_thread_area
+  (syscall 243). syscalls.c wires it into the dispatch
+  table.
+
+Context (guess -- from subject):
+
+  set_thread_area is used by glibc/musl to set up TLS via
+  the GDT. Adding a debug-print implementation is the first
+  step toward real support.
+
+--------------------------------------------------------------------------------
+
+## e2afccac -- [gdt] Introduce gdt_add_entry() and gdt_expand()
+
+Commit: e2afccac35...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 21:09:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +80 / -25 across 3 files. gdt.c +74 net: gdt_add_entry(...)
+  finds a free slot or triggers gdt_expand() (grows the GDT
+  by reallocating, copies over entries, reloads via lgdt).
+  gdt_int.h exposes +5 lines of new decl. hal.h drops 1.
+
+Context (guess -- from subject):
+
+  Needed for TLS: each thread's set_thread_area wants a new
+  GDT slot. Fixed-size boot GDT can't accommodate that.
+
+--------------------------------------------------------------------------------
+
+## 699136ec -- [gdt] Add bitfields to gdt_entry
+
+Commit: 699136ec76...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Tue Apr 10 21:47:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +29 / -3 in gdt_int.h. gdt_entry struct gains explicit
+  bitfields for the access byte and flags nibble (present,
+  dpl, type, granularity, size, ...).
+
+Context (guess -- from subject):
+
+  Instead of constructing descriptors by bit-ORing into a
+  u64, callers can now write `e.present = 1; e.dpl = 0;`.
+  Complements the macro-flag work but catches more
+  mistakes at compile time.
+
+--------------------------------------------------------------------------------
+
+## e0b32a25 -- Introduce NODISCARD (warn_unused_result) and use it
+
+Commit: e0b32a2547...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 11:48:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -7 across 6 files. basic_defs.h +2: NODISCARD
+  macro wrapping __attribute__((warn_unused_result)).
+  Applied to functions whose return code must be checked:
+  tasklet enqueue, kb handlers, gdt_add_entry, fork
+  allocator entries.
+
+Context (guess -- from subject):
+
+  Compile-time enforcement of "you must not ignore this
+  return". Catches dropped -ENOMEM / -EBUSY returns.
+
+--------------------------------------------------------------------------------
+
+## 134e2865 -- [ldt] Preparations for LDT
+
+Commit: 134e2865c5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 13:10:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +86 / -5 across 8 files. process.h +7: task_info grows a
+  per-task LDT pointer. gdt.c +18 net; gdt_int.h +4 (LDT
+  descriptor support). ldt.c +16: LDT load/init. process32.c
+  +34: switch_to_task now loads per-task LDT. process.c +5
+  (init in allocate).
+
+Context (guess -- from subject):
+
+  LDT is x86's per-task descriptor table. The groundwork
+  lets set_thread_area populate an LDT so multiple threads
+  can have distinct TLS bases without fighting over GDT
+  slots.
+
+--------------------------------------------------------------------------------
+
+## 0a18c365 -- [interrupts] Don't validate stack ptr in case of
+   faults
+
+Commit: 0a18c36563...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 13:39:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  1 line in kernel/interrupts.c. The push_nested_interrupt
+  stack-pointer sanity check is skipped for exception
+  vectors (faults).
+
+Context (guess -- from subject):
+
+  Faults can fire with an unusual/corrupt stack (stack
+  overflow, bad pointer deref); asserting on ESP bounds
+  turns a recoverable fault into a double-panic. Fault
+  handlers must tolerate weirdness.
+
+--------------------------------------------------------------------------------
+
+## b0e87fce -- [ldt] Using load_ldt() in switch_to_task() does not
+   cause GPF anymore
+
+Commit: b0e87fce53...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 13:51:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +6 / -13 across 4 files. Small adjustments in gdt.c,
+  gdt_int.h, idt.c, process32.c. Exact fix probably
+  involves re-ordering lldt vs segment-register reloads.
+
+Context (guess -- from subject):
+
+  Previous commit's LDT-load caused #GP. Subject phrasing
+  ("does not cause GPF anymore") confirms this commit is
+  the fix. Typical cause: loading an LDT selector before
+  the LDT itself is installed, or DS/ES pointing into a
+  now-invalid descriptor.
+
+--------------------------------------------------------------------------------
+
+## 779bc831 -- [gtests] Fix build error
+
+Commit: 779bc831a6...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 13:55:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +4 / -61 across kernel/main.c (1 line) and
+  unittests/asm_mocks.c (-60). asm_mocks.c drops obsolete
+  stubs.
+
+Context (guess -- from subject):
+
+  Host test build had stale mocks for the asm routines
+  that were just deleted. Clear them out.
+
+--------------------------------------------------------------------------------
+
+## d474bdfc -- [interrupts] Make soft_interrupt_entry() symmetric
+
+Commit: d474bdfca0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 17:16:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -14 across 3 files. interrupts.c -6 net.
+  syscalls.c +2, idt.c +3. soft_interrupt_entry() and its
+  exit counterpart now mirror each other in the work they
+  do.
+
+Context (guess -- from subject):
+
+  "Symmetric" usually means push/pop semantics line up.
+  Simplifies reasoning about what state needs restoring.
+
+--------------------------------------------------------------------------------
+
+## 7051fe9a -- [set_thread_area] Making the syscall to finally work
+
+Commit: 7051fe9a27...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 15:46:48 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +157 / -80 across 5 files. gdt.c +105 net: full
+  set_thread_area support -- finds/reuses a per-task GDT
+  slot for the TLS segment, populates it with the
+  user-provided user_desc struct. gdt_int.h +36 net
+  (user_desc compat, new constants). ldt.c -38 (the
+  debug stub from 64ba9f21 superseded). process32.c -3
+  net (TLS selector reload).
+
+Context (guess -- from subject):
+
+  This is the commit where Linux-binary TLS support
+  becomes real. glibc/musl ELFs that call set_thread_area
+  early at start-up now get a working thread-pointer.
+
+--------------------------------------------------------------------------------
+
+## 3919dc8e -- [set_thread_area] Add critical checks preventing user
+   to crash the system
+
+Commit: 3919dc8edc...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 20:35:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +101 / -37 across 3 files. gdt.c +88 net: validation of
+  every user_desc field (limit, base, flags combo) before
+  installing into GDT. Rejects descriptors that would let
+  userspace peek into kernel memory or escalate
+  privilege. process32.c -0 net small refactor. process.h
+  +1 new field.
+
+Context (guess -- from subject):
+
+  Security hardening. An unchecked set_thread_area is a
+  textbook privilege-escalation primitive. Linux
+  set_thread_area has identical checks (see arch/x86/
+  kernel/tls.c in Linux).
+
+--------------------------------------------------------------------------------
+
+## 4413f56c -- [process32] Cosmetic changes
+
+Commit: 4413f56cc0...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 17:02:06 2018 +0300
+
+AI notes:
+
+What changed:
+
+  2-line cosmetic tweak in process32.c.
+
+Context (guess -- from subject):
+
+  Tiny polish commit.
+
+--------------------------------------------------------------------------------
+
+## a0b0c0ef -- [threads] Implement set_tid_address()
+
+Commit: a0b0c0ef6f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 17:49:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -1 across 3 files. process32.c +5: stores the
+  caller-provided clear_child_tid pointer. syscalls.c wires
+  syscall 258 into the dispatch. process.h +4 adds field.
+
+Context (guess -- from subject):
+
+  Linux syscall 258 (set_tid_address) is called by
+  pthread_create to tell the kernel where to write 0 when
+  a thread exits (futex wake). Tilck isn't multithreaded
+  yet but the hook is needed for glibc/musl to link.
+
+--------------------------------------------------------------------------------
+
+## 3b1359d8 -- [syscalls] Cosmetic changes
+
+Commit: 3b1359d88b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 17:29:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -25 in syscalls.c. Net -14 lines -- syscall table
+  consolidation or removal of duplicated debug-print
+  boilerplate.
+
+Context (guess -- from subject):
+
+  Dispatch table getting tidier as new syscalls land.
+
+--------------------------------------------------------------------------------
+
+## 5d237f5e -- [syscalls] Add stub sys_writev impl
+
+Commit: 5d237f5e9e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 18:12:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +8 lines in syscalls.c. A stub for writev that probably
+  logs and returns -ENOSYS.
+
+Context (guess -- from subject):
+
+  writev is syscall 146; heavily used by libc's
+  buffered I/O. Stub unblocks userspace link; real impl
+  follows in 845badb7.
+
+--------------------------------------------------------------------------------
+
+## 7cc2416e -- [set_thread_area] Handle the case where gdt_expand()
+   is necessary
+
+Commit: 7cc2416ea5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 21:19:09 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +11 / -4 in gdt.c. When the per-task GDT has no free
+  entry, set_thread_area now triggers gdt_expand() to grow
+  the table before adding.
+
+Context (guess -- from subject):
+
+  Completes what e2afccac started: if a process creates
+  enough TLS segments to exhaust the initial GDT, growth
+  kicks in automatically.
+
+--------------------------------------------------------------------------------
+
+## 845badb7 -- [fs_syscalls] Implement writev()
+
+Commit: 845badb75b...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 22:55:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +26 / -11 across 5 files. fs_syscalls.c +17 net:
+  real writev impl (loop over iovecs, call underlying
+  write per entry, aggregate byte count). exvfs.h +5:
+  struct iovec typedef. syscalls.c drops the stub.
+  gdt.c/exvfs.c small touches.
+
+Context (guess -- from subject):
+
+  Actual implementation replacing the stub. Simple
+  loop is fine until file-specific atomic writev matters.
+
+--------------------------------------------------------------------------------
+
+## a57a21a7 -- Fix build error (iovec redefinition in tests)
+
+Commit: a57a21a78f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 23:13:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -6 in exvfs.h, +5 in fs_syscalls.c. iovec typedef moved
+  from the header into the .c file (or guarded) to avoid
+  clashing with the host's sys/uio.h iovec in unit tests.
+
+Context (guess -- from subject):
+
+  Classic pain point: kernel defines its own iovec,
+  unit tests compile against host headers that also have
+  it. Simplest fix: don't export it from the header.
+
+--------------------------------------------------------------------------------
+
+## 21a7bbff -- [term] Remove term_write_string()
+
+Commit: 21a7bbff19...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 23:10:56 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +14 / -29 across 5 files. bootloader/basic_term.c -7
+  (strlen + term_write call replaces write_string).
+  string_util.c +14 / -8: printk helpers switch to
+  term_write(buf, len). basic_term.h / term.h drop the
+  prototype. term.c -12.
+
+Context (guess -- from subject):
+
+  Consolidation: term_write(buf, len) is strictly more
+  general than term_write_string(buf) (lengths explicit,
+  no strlen). Removing the convenience version forces
+  correctness.
+
+--------------------------------------------------------------------------------
+
+## c5689554 -- [printk] Make printk() add by default the [kernel]
+   prefix
+
+Commit: c5689554f2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Wed Apr 11 23:18:34 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -16 across 12 files. common/string_util.c +2:
+  printk() prepends "[kernel] " to every message. 11
+  callers drop their hand-typed "[kernel] " or
+  "[subsystem] " prefixes from format strings.
+
+Context (guess -- from subject):
+
+  Automated prefixing makes kernel messages visually
+  distinct from userspace in consoles where they
+  interleave. Future: per-module prefixes.
+
+--------------------------------------------------------------------------------
+
+## 37e09854 -- [itoa] Start working on the itoa test
+
+Commit: 37e09854e4...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 12:35:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +49 / -7 across 3 files. New unit test file itoa.cpp
+  (44 lines) exercising itoa's signed/unsigned/large/
+  small inputs. string_util.h +5 / -5: prototypes cleaned.
+  generic_mocks.c -2.
+
+Context (guess -- from subject):
+
+  itoa is printk's foundation; worth a dedicated test
+  suite. Sign of the project maturing beyond "does it
+  boot" into "what invariants does each util preserve".
+
+--------------------------------------------------------------------------------
+
+## 27173328 -- [string_util] Implement uitoa32[64]_hex
+
+Commit: 27173328a5...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 13:54:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +74 / -23 across 3 files. string_util.c +32 net:
+  dedicated unsigned-to-hex converters for 32-bit and
+  64-bit values. string_util.h +6. itoa.cpp +35 net tests
+  the new fns.
+
+Context (guess -- from subject):
+
+  Printing hex (kernel pointers, flags, error codes) is
+  the dominant case for itoa -- specialised, inlined
+  variants are both faster and produce smaller code than
+  the generic radix-based one.
+
+--------------------------------------------------------------------------------
+
+## bec8f7be -- [string_util] Implement uitoa32[64]_dec
+
+Commit: bec8f7be77...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 14:15:51 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +77 / -26 across 3 files. string_util.c +5 net:
+  dedicated decimal converters for 32/64-bit unsigned.
+  itoa.cpp +58 tests the new fns. header -1.
+
+Context (guess -- from subject):
+
+  Companion to 27173328. Decimal is hex's only sibling
+  in kernel printing; specialisation pays off for the
+  same reasons.
+
+--------------------------------------------------------------------------------
+
+## a6c53b4d -- [string_util] Introduce uitoa32[64]_hex_fixed
+
+Commit: a6c53b4d87...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 14:35:38 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +56 / -11 across 3 files. string_util.c +9 net: hex
+  writers that always emit the full width (8 chars for
+  u32, 16 for u64, zero-padded). Tests cover edge values.
+
+Context (guess -- from subject):
+
+  Fixed-width hex is needed for pointer printing (always
+  8 chars on i386) and register dumps where column
+  alignment matters.
+
+--------------------------------------------------------------------------------
+
+## 0f6786ec -- [gtests] Minor changes in itoa.cpp
+
+Commit: 0f6786ec48...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 14:42:05 2018 +0300
+
+AI notes:
+
+What changed:
+
+  -10 lines in unittests/itoa.cpp. Small cleanup.
+
+Context (guess -- from subject):
+
+  Removing duplicated assertions or deduplicated setup.
+
+--------------------------------------------------------------------------------
+
+## 4b32cdb5 -- [string_util] Using the generic uitoa for non-fixed
+   hex
+
+Commit: 4b32cdb592...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 14:53:40 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +22 / -39 in string_util.c. Net -17 lines. Non-fixed
+  hex writer now calls the generic uitoa with radix=16
+  instead of having its own bespoke loop.
+
+Context (guess -- from subject):
+
+  Reduce duplication: one shared code path, specialised
+  only where it pays (fixed-width hex for pointers).
+
+--------------------------------------------------------------------------------
+
+## b63fd682 -- [gtests] Add the u64_hex_fixed test
+
+Commit: b63fd68258...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 18:24:04 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +48 / -27 in unittests/itoa.cpp. Explicit test suite
+  for 64-bit fixed-width hex.
+
+Context (guess -- from subject):
+
+  Filling a coverage gap from the previous additions.
+
+--------------------------------------------------------------------------------
+
+## db9f20ac -- [string_util] Complete the re-implementation of
+   [u]itoa* functions
+
+Commit: db9f20aca1...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 19:36:45 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +98 / -45 across 3 files. string_util.c +14 net:
+  signed variants (itoa32/64) now wrap their unsigned
+  counterparts, handling negation cleanly. itoa.cpp +57
+  adds the signed-integer tests. header -2.
+
+Context (guess -- from subject):
+
+  Closes out the itoa rewrite with signed support. The
+  full family: {i,ui}toa{32,64}{,_hex,_hex_fixed}.
+
+--------------------------------------------------------------------------------
+
+## 8c62f077 -- [gtests] Using C++'s features to remove the macros
+
+Commit: 8c62f0772f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Thu Apr 12 20:50:36 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +157 / -130 in unittests/itoa.cpp. Net +27 but scope
+  is very different -- preprocessor macros (used to
+  generate per-type tests) replaced by C++ templates,
+  type_traits, snprintf-based golden comparisons.
+
+Context (guess -- from subject):
+
+  Macros in C++ tests are a smell: they lose type info,
+  confuse IDEs, and break debuggers. Templates
+  accomplish the same fan-out with type safety.
+
+--------------------------------------------------------------------------------
+
+## f11f1b3f -- [gtests] Minor improvements in the itoa test
+
+Commit: f11f1b3f0e...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 11:42:13 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +20 / -16 in unittests/itoa.cpp. Iterating on the
+  template-based design from 8c62f077.
+
+Context (guess -- from subject):
+
+  Normal "I've had time to think" follow-up. No logic
+  change.
+
+--------------------------------------------------------------------------------
+
+## 5cf03ff5 -- [gtests] Final polishing of the itoa gtest
+
+Commit: 5cf03ff593...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 12:21:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +78 / -149 in unittests/itoa.cpp. Net -71. Big
+  simplification -- the template machinery was
+  probably over-engineered and most of it collapses
+  into cleaner, fewer cases once the invariants are
+  clear.
+
+Context (guess -- from subject):
+
+  Wrap-up of the itoa test rewrite. Less code doing the
+  same checks is a strong signal of converging design.
+
+--------------------------------------------------------------------------------
+
+## 6ffa275c -- [printk] Copying (+fork) its code from common/ to
+   bootloader and kernel
+
+Commit: 6ffa275c80...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 12:57:43 2018 +0300
+
+> This change is necessary in order to extend the kernel
+> implementation of printk() without affecting the
+> minimal one used for the bootloader. Its the same
+> happened for 'term'.
+
+AI notes:
+
+What changed:
+
+  +183 / -95 across 5 files. common/string_util.c -94:
+  printk code leaves. New bootloader/basic_printk.c (97
+  lines) and kernel/printk.c (85 lines) each own a
+  copy. basic_term.h moves into the bootloader dir.
+  stage3.c 1-line include adjust.
+
+Context (from body):
+
+  The common-code "printk with weak linkage" trick
+  (commit 133dcb0b, step 6 of the header reorg) worked
+  but kept kernel and bootloader tied to one source.
+  Forking lets the kernel printk grow features (log
+  levels, ring buffer, lock) without bloating the
+  bootloader.
+
+--------------------------------------------------------------------------------
+
+## db641bbf -- [sys_writev] Make it run with preemption disabled
+
+Commit: db641bbfff...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 13:08:24 2018 +0300
+
+> At the moment there are still no filesystem locks in
+> exOS, therefore just preemption is disabled. Still,
+> sys_writev() needed the preemption to be disabled since
+> it has to behave like a single write(). No other writes
+> can interfere.
+
+AI notes:
+
+What changed:
+
+  +7 / -2 in fs_syscalls.c. sys_writev brackets its iovec
+  loop with disable_preemption / enable_preemption.
+
+Context (from body):
+
+  Atomicity: writev is supposed to be equivalent to a
+  single write of the concatenated buffers. Without FS
+  locks the only way to prevent interleaved writes from
+  other tasks is to keep preemption off for the duration.
+
+--------------------------------------------------------------------------------
+
+## 5c09225f -- [printk] Introduce snprintk() and vsnprintk() and use
+   them
+
+Commit: 5c09225f7c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 14:42:12 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +114 / -48 across 2 files. kernel/printk.c +105 net:
+  new snprintk/vsnprintk that format into a buffer
+  rather than emitting directly; printk now calls them
+  internally. string_util.h +4 / -4 decls.
+
+Context (guess -- from subject):
+
+  Separating formatting from output lets callers format
+  into their own buffers (needed for the ring buffer
+  approach coming two commits later).
+
+--------------------------------------------------------------------------------
+
+## 89bbcb28 -- [term] Introduce term_get_color()
+
+Commit: 89bbcb28f2...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 14:45:17 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +13 / -6 across exos/term.h and char/term.c. New
+  accessor returning the current fg/bg color byte.
+
+Context (guess -- from subject):
+
+  Caller (printk) needs to save the current color, set
+  a different one, print, and restore. Read-modify-write
+  requires an accessor.
+
+--------------------------------------------------------------------------------
+
+## b60efb0d -- [printk] Make kernel messages to have a different
+   color (red)
+
+Commit: b60efb0d81...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 14:53:10 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +7 lines in kernel/printk.c. printk() saves the
+  current term color, sets red, emits the "[kernel] ..."
+  message, restores.
+
+Context (guess -- from subject):
+
+  Visual distinction from user output. On VGA text mode,
+  red-on-black kernel messages pop.
+
+--------------------------------------------------------------------------------
+
+## 62c2fa5d -- [basic_term] Rename everywhere term_ with bt_ (bt =
+   basic term)
+
+Commit: 62c2fa5ded...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 14:58:28 2018 +0300
+
+> Purpose: avoiding confusion with kernel's term_*
+> functions, even when using grep to search to call-sites.
+
+AI notes:
+
+What changed:
+
+  +23 / -22 across 4 files in bootloader/. Pure rename:
+  term_* -> bt_*.
+
+Context (from body):
+
+  After forking basic_term / basic_printk into the
+  bootloader (6ffa275c), the name clash with kernel's
+  term_* was a grep nuisance. bt_ prefix disambiguates.
+
+--------------------------------------------------------------------------------
+
+## a56eb056 -- [printk] Make it use a ringbuffer in case of nested
+   [e.g. IRQ] calls
+
+Commit: a56eb0566f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 19:15:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +152 / -15 across 6 files. printk.c +113 net: adds a
+  ring buffer; when printk is called while another printk
+  is already executing (nested via IRQ), the new call
+  appends to the ringbuf and returns. The outer call's
+  flush step drains the ringbuf. interrupts.c +22:
+  hook to trigger drain on IRQ return. kb.c, timer_handler
+  emit marker prints to exercise the path. basic_defs.h
+  +5.
+
+Context (guess -- from subject):
+
+  The term_write path is not re-entrant (holds no lock
+  and manipulates cursor state). Without this, a printk
+  from an IRQ handler interleaving with a concurrent
+  printk would scramble the screen. Ringbuf defers the
+  nested print until it's safe to flush.
+
+--------------------------------------------------------------------------------
+
+## f084df2a -- [printk] Adding some comments
+
+Commit: f084df2a27...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Fri Apr 13 20:20:55 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +16 / -2 across printk.c (+11) and timer_handler.c (+5).
+  Explanatory comments on the ringbuf / drain flow.
+
+Context (guess -- from subject):
+
+  The re-entry logic is subtle; comments preserve the
+  reasoning for future readers.
+
+--------------------------------------------------------------------------------
+
+## 8fcce485 -- [printk] Some internal renaming
+
+Commit: 8fcce4851d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 11:09:57 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +17 / -18 in kernel/printk.c. Internal symbol/function
+  names adjusted for clarity.
+
+Context (guess -- from subject):
+
+  Polishing ring-buffer names after a day's sleep on the
+  design.
+
+--------------------------------------------------------------------------------
+
+## b68aca4e -- [printk] Fix a bug in printk_flush() by adding
+   minibuf
+
+Commit: b68aca4ece...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 11:48:41 2018 +0300
+
+> The problem: with the previous impl. we first claim in
+> the do-while loop that we have read the data from the
+> ringbuf and then we actually read it (while writing to
+> term). The problem with that approach is that if another
+> printk occurs (3rd nested call), it will find the used
+> field = 0 and so will use up to sizeof(printk_rbuf) for
+> appending its data, corrupting this way that the 2nd
+> nested call was about to read. The solution is to use
+> a minibuf in the do-while loop and, each time, copy the
+> data safely on the stack. In the worst case when the
+> loop has to iterate more then once, we'll just have to
+> re-read the data.
+>
+> BONUS: this commit also adds term_write_char2(c, color)
+> to term.h allowing its callers to write a char using a
+> specific color without changing the current color.
+
+AI notes:
+
+What changed:
+
+  +48 / -30 across 4 files. printk.c +27 net implements
+  the minibuf fix: copy to a small stack buffer first,
+  then write to term. term.c +10 net: new
+  term_write_char2(c, color). term.h +1 decl.
+  timer_handler.c 1-line adjust.
+
+Context (from body):
+
+  Classic TOCTOU on a single-producer/single-consumer
+  ring. Fix is to read-then-commit, not commit-then-read.
+  Commit message is a textbook example of capturing a
+  subtle concurrency bug.
+
+--------------------------------------------------------------------------------
+
+## 2761d3f5 -- [build] Fix kernel's dependency on elfhack
+
+Commit: 2761d3f592...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 13:13:46 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +1 / -2 across CMakeLists.txt (-1) and
+  kernel/arch/CMakeLists.txt (1-line move). Moves the
+  elfhack dependency to the right CMake target.
+
+Context (guess -- from subject):
+
+  Build-system bug: kernel link step needs elfhack, but
+  the dep was declared at wrong level causing
+  occasional parallel-build ordering failures.
+
+--------------------------------------------------------------------------------
+
+## 4763ea7d -- [shell] Add the 'invalid_read' command
+
+Commit: 4763ea7d67...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 13:26:20 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +15 lines in usermode_apps/shell.c. New shell command
+  that deliberately passes a bad (NULL / kernel-space)
+  pointer to a syscall.
+
+Context (guess -- from subject):
+
+  Test harness for the copy_from_user work starting in
+  the next commit. Lets Vlad verify the kernel rejects
+  bogus user pointers instead of crashing.
+
+--------------------------------------------------------------------------------
+
+## 170f5134 -- Introduce copy_from_user() and make it to work in
+   sys_write()
+
+Commit: 170f51341d...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 14:50:27 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +97 / -12 across 7 files. New header exos/user.h (14
+  lines) declaring copy_from_user / copy_to_user. New
+  kernel/arch/i386/user.c (39 lines) with the i386
+  impl that catches faults (probably via a fixup table
+  checked in page_fault_handler). paging.c +12 / -4:
+  page-fault handler recognises the fixup and returns
+  an error. fs_syscalls.c switches sys_write to use
+  copy_from_user. printk.c +4 / -2 likely uses it for
+  %s. debug_utils.c +3 / -1.
+
+Context (guess -- from subject):
+
+  Foundational security primitive: kernel must never
+  dereference user pointers without a mechanism to
+  handle bad addresses. copy_from_user is the standard
+  Unix idiom. This commit is the seed -- more syscalls
+  converted in the following commits.
+
+--------------------------------------------------------------------------------
+
+## 2ec124ce -- [sys_writev] Use copy_from_user() for iov
+
+Commit: 2ec124cecb...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 14:58:01 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -10 in fs_syscalls.c. sys_writev now copies the
+  iovec array into a kernel buffer via copy_from_user
+  before trusting the base/len fields; each base pointer
+  is also individually copy_from_user'd.
+
+Context (guess -- from subject):
+
+  Before: sys_writev read the iov struct directly from
+  the user pointer (easy bypass). After: every user
+  byte goes through copy_from_user.
+
+--------------------------------------------------------------------------------
+
+## 8a58408b -- [fs_syscalls] Some code polishing
+
+Commit: 8a58408b44...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 18:45:37 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +75 / -71 in fs_syscalls.c. Net +4. Reformat / rename /
+  extract-helper pass after the copy_from_user
+  refactors.
+
+Context (guess -- from subject):
+
+  Churn from the recent security hardening made the
+  syscalls file messy; cleanup pass.
+
+--------------------------------------------------------------------------------
+
+## 145ec0f8 -- [process] Make allocate_new_process/task() to
+   allocate the kernel stack
+
+Commit: 145ec0f8d7...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 19:33:30 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +21 / -9 across 2 files. process.c +20 net: kernel
+  stack allocation centralised into allocate_new_* .
+  process32.c -5 net (callers no longer allocate stack
+  themselves).
+
+Context (guess -- from subject):
+
+  Continuation of the step-11/12 allocator
+  centralisation: the last piece of bespoke task-creation
+  work done outside allocate_new_* moves in.
+
+--------------------------------------------------------------------------------
+
+## c271d968 -- [process] Introduce per-task copybufs and make write
+   and writev to use them
+
+Commit: c271d96828...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 19:46:18 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +32 / -11 across 3 files. process.h +4: task_info gains
+  a per-task kmalloc'd copy buffer. process.c +17 net
+  allocates/frees it with the task. fs_syscalls.c
+  switches sys_write / sys_writev to this buffer instead
+  of stack / per-call kmalloc.
+
+Context (guess -- from subject):
+
+  Performance: avoid kmalloc on every syscall, avoid
+  deep stack usage for user-copies. Per-task buffer is
+  a good compromise (no locking required, reused across
+  syscalls).
+
+--------------------------------------------------------------------------------
+
+## 15031434 -- [sys_open] Use copy_str_from_user()
+
+Commit: 1503143449...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 20:02:33 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 lines across 4 files. user.c +23: copy_str_from_user
+  impl (like strncpy_from_user in Linux -- copies until
+  NUL or max bytes). user.h +1 decl. fs_syscalls.c +7
+  wires sys_open to it. shell.c +4 test path.
+
+Context (guess -- from subject):
+
+  sys_open takes a user string (filename); needs the
+  null-terminated variant of copy_from_user because the
+  length isn't known up front.
+
+--------------------------------------------------------------------------------
+
+## 7c8be649 -- [sys_read] Use copy_to_user()
+
+Commit: 7c8be6494c...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sat Apr 14 20:14:29 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +35 / -3 across 3 files. user.c +7 / -1: companion
+  copy_to_user impl. fs_syscalls.c sys_read now
+  gathers into the per-task copybuf then copy_to_user's
+  the result. shell.c +16 new test case with invalid
+  user-provided read buffer.
+
+Context (guess -- from subject):
+
+  Mirror of copy_from_user, closing the loop: read
+  syscall is now hardened against bad destination
+  pointers too.
+
+--------------------------------------------------------------------------------
+
+## 51d76b0a -- [init] Removing unused code and other minor
+   improvements
+
+Commit: 51d76b0afe...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 11:05:42 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +24 / -73 in usermode_apps/init.c. Net -49 lines.
+  Dead code (old fork_test, unused includes, stale
+  helpers) removed.
+
+Context (guess -- from subject):
+
+  init.c has accumulated cruft across recent iterations
+  (fork_test moved out in 7a81d4ce, debug stubs no
+  longer needed). Cleanup.
+
+--------------------------------------------------------------------------------
+
+## 3a4c3d78 -- [shell] Some refactoring
+
+Commit: 3a4c3d788f...
+Author: Vladislav Valtchev <vladislav.valtchev@gmail.com>
+Date:   Sun Apr 15 11:19:07 2018 +0300
+
+AI notes:
+
+What changed:
+
+  +146 / -119 across 2 files. New
+  usermode_apps/shell_commands.c (144 lines) holds the
+  command implementations; shell.c -119 net keeps only
+  the shell loop / dispatch.
+
+Context (guess -- from subject):
+
+  shell.c has been growing every time a test command is
+  added (invalid_read, fork_test, ...). Splitting the
+  loop from the commands scales better.
+
+--------------------------------------------------------------------------------
