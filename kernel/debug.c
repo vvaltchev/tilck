@@ -21,7 +21,7 @@
  */
 static volatile bool sched_alive_thread_enabled = true;
 
-static void sched_alive_thread()
+static void sched_alive_thread(void *unused)
 {
    for (int counter = 0; ; counter++) {
 

@@ -30,7 +30,7 @@ static void kcond_thread_test(void *arg)
    printk("[thread %i]: exit\n", tn);
 }
 
-static void kcond_thread_wait_ticks()
+static void kcond_thread_wait_ticks(void *unused)
 {
    kmutex_lock(&cond_mutex);
    printk("[kcond wait ticks]: holding the lock, run wait()\n");
@@ -46,7 +46,7 @@ static void kcond_thread_wait_ticks()
 }
 
 
-static void kcond_thread_signal_generator()
+static void kcond_thread_signal_generator(void *unused)
 {
    int tid;
 

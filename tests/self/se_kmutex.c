@@ -130,7 +130,7 @@ static void test_kmutex_thread(void *arg)
    printk("%i) after lock\n", tn);
 }
 
-static void test_kmutex_thread_trylock()
+static void test_kmutex_thread_trylock(void *unused)
 {
    printk("3) before trylock\n");
 
@@ -319,7 +319,7 @@ end:
 }
 
 static void
-kmutex_ord_supervisor_thread()
+kmutex_ord_supervisor_thread(void *unused)
 {
    int time_ms = 0;
 

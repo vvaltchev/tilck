@@ -515,7 +515,7 @@ retry:
    enable_preemption();
 }
 
-static void clock_drift_adj()
+static void clock_drift_adj(void *unused)
 {
    /* Sleep 1 second after boot, in order to get a real value of `__time_ns` */
    kernel_sleep(KRN_TIMER_HZ);

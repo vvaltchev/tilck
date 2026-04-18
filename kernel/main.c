@@ -336,7 +336,7 @@ run_init_or_selftest(void)
    }
 }
 
-static void do_async_init()
+static void do_async_init(void *unused)
 {
    /* declare the show_hello_message() function */
    void show_hello_message(void);
