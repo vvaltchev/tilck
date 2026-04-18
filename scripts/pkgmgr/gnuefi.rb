@@ -121,7 +121,10 @@ class GnuefiPackage < Package
   def installed?(ver)
     list = get_install_list()
     archs_needed.all? do |arch|
-      list.any? { |x| x.ver == ver && x.arch == arch && !x.broken }
+      list.any? { |x|
+        x.ver == ver && x.arch == arch &&
+        x.compiler == arch.gcc_ver && !x.broken
+      }
     end
   end
 
