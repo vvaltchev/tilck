@@ -39953,3 +39953,1489 @@ AI notes:
   - e25701d1: rename a macro constant in x86_utils.h.
 
 --------------------------------------------------------------------------------
+
+## 2001-2011 debug/IRQ cleanup: remove TERM_PERF_METRICS; consolidate
+   (ada7b1c3..a09b710b, Jan 16-17 2019)
+
+  - ada7b1c3 / c85dec16: debug_show_task_list() column sizes;
+    drop debug_term_print_scroll_cycles() from Ctrl+Fn.
+
+  - **8b2c90ba [term][build][debug] Remove TERM_PERF_METRICS**
+    (-84 lines). Body: "the proven speed of Tilck's console"
+    makes the cludder not worth keeping; also frees a Ctrl+Fn
+    slot.
+
+  - 98ce1d9a / f3728b4b / 9ace830b: spurious-IRQ counter
+    exposed as a getter; debug_show_spurious_irq_count()
+    refactored and relocated to debug_utils.c.
+
+  - 8df89204 / ceefcaae: switch_to_task() and
+    timer_irq_handler() refactored.
+
+  - 5c3f0a09: multi-file cosmetic pass (13 files,
+    +77/-62) -- extracting helpers out of kmain().
+
+  - 192cd92f / a09b710b: new generic_x86/panic.c; scope of
+    UNIT_TEST_ENVIRONMENT ifdef reduced.
+
+--------------------------------------------------------------------------------
+
+## 2012-2018 [common][basic_defs] MIN/MAX, stdint-backed types, EFI -Wall
+   (1767f4fe..b8e0bf26, Jan 17-18 2019)
+
+  - **1767f4fe**: boot/efi now compiled with -Wall -Wextra
+    -Werror; new include/tilck/common/gfx.h centralizes the
+    framebuffer type previously duplicated in efi/legacy.
+
+  - **866a77b8**: double-evaluation-safe MIN/MAX macros
+    (replace the bare `(a < b ? a : b)` version). Touches 7
+    files where MIN/MAX were used.
+
+  - **9ffc4b55**: rebase `u8/u16/u32/u64` and `s8/.../s64`
+    onto `<stdint.h>` (`uint8_t` etc.) instead of raw typedefs;
+    adds CONCAT() macro.
+
+  - 58ec5922: MIN/MAX further hardened with __LINE__-based
+    unique varnames.
+
+  - e0fa6f84: devshell CMD_ENTRY() macro replaces hand-rolled
+    cmds_table entries (4 files touched).
+
+  - a7e16d2e: kmain() polished; tilck/kernel/self_tests.h flattened
+    (was self_tests/self_tests.h).
+
+  - b8e0bf26: Symtab/Strtab expanded to 32 KB; devshell printf
+    type bug drive-by fix.
+
+--------------------------------------------------------------------------------
+
+## 2019-2025 Serial console on COM1 + TTY alternate charsets + ESC FSM
+   (45754c96..c4b68649, Jan 18-20 2019)
+
+  - **45754c96 [serial] Support KB input through COM1 instead
+    of PS/2** (+143). New kernel/serial.c adds a COM1 receiver
+    path so kernel input can come from serial. kb8042 teaches
+    /dev/ttyN about the alternate path.
+
+  - **0010e125 [tty][serial] Actual support for serial console
+    on COM1**. serial_mode=2 kernel cmdline makes the tty filter
+    pass through raw chars (no cooking), which is what a serial
+    terminal wants.
+
+  - 25e6f73b: TERM_SERIAL_ECHO mode dropped (wasn't useful).
+
+  - **a9a2e470 [tty] Support alternate graphic charset
+    controlled by shift-out / shift-in** -- SO (0x0E) / SI (0x0F)
+    switch in/out of the DEC line-drawing set; ncapp gains a
+    demo page.
+
+  - 5a006f3f: ESC ( 0 and ESC ( B sequences (select G0 charset)
+    implemented alongside SO/SI.
+
+  - **42ef67a9 [tty] Refactor the ESC seq processing state
+    machine** (+130/-108). The ad-hoc switch-case is
+    replaced by a proper state enum with per-state handler
+    functions.
+
+  - c4b68649: switch-case in tty_term_write_filter() replaced
+    by function-pointer dispatch (follow-up to 42ef67a9).
+
+--------------------------------------------------------------------------------
+
+## 2026-2041 more tty/term + process/panic fixes before multi-TTY merge
+   (2e9bfe03..963d8239, Jan 20-23 2019)
+
+  - 2e9bfe03 / e33fc4ea / e3f282c5: alt_charset table
+    readability; CHAR_* renames; additional special chars.
+
+  - **b357f924 [process] Fix an issue with clang release
+    builds** -- switch_stack_free_mem_and_schedule() loses the
+    stack mid-function; fix frame-pointer handling. Also
+    adjusts switch_to_initial_kernel_stack().
+
+  - 60b93ce9 / 9f84d9f0: KERNEL_INITIAL_STACK_SIZE renamed to
+    KERNEL_STACK_SIZE; KTHREAD_STACK_SIZE collapsed into same.
+
+  - **cee1e4a5 [selftests] Fix selftest_fault_res_short() for
+    clang** -- clang UB-folds `*(int*)0 = x` at compile time, so
+    the fault never happens. Switched to bzero() (asm) to defeat
+    the optimizer.
+
+  - 050e8615: kthread_exit() was returning through a local
+    stack var (freed before use). Fix stores it in a reg.
+
+  - 011ad18e: printk() mishandled `%%` (double-advanced the
+    format ptr).
+
+  - f8b5941f / 573cb440: banner regression; debug_show_task_list()
+    uses full screen width (+66 lines).
+
+  - bea9ec4b: drop RELEASE row from Travis matrix.
+
+  - e7d33144: Symtab/Strtab bumped to 128K when KERNEL_GCOV=1
+    (coverage inflates stab size).
+
+  - 3bdf9c80 / 2274b19b / 963d8239: termtest getopt refactor
+    plus a '\n' term bug.
+
+--------------------------------------------------------------------------------
+
+## 2042 MERGE PR #57 - Multi-TTY support (ALT+F1/F2/...)
+   (8db8108a, Jan 26 2019, +2586/-1891, 46 files)
+
+Large refactor + feature merge. Body: "long series of patches
+implement support in Tilck for multiple TTYs, exactly like on
+Linux systems." Key items from the 59-commit branch:
+
+  - **Multi-instance term + tty**: `[term] Support multiple
+    instances [part 1..13]` (00cd2753..030a9d9d) and
+    `[tty] Support multiple instances [part 1..12]` -- term
+    and tty both go from one global struct to arrays indexed by
+    tty number.
+
+  - **File layout reorg**: kernel/char/term.c + tty*.c moved
+    into kernel/char/tty/ subdirectory (755f0132). New files:
+    term.c (763 lines new), term_action_wrappers.c.h,
+    tty_ctrl_handlers.c.h, tty_output_default_state.c.h,
+    tty_int.h, ttyaux.c. Old kernel/char/term.c (852 lines)
+    removed.
+
+  - **`/dev/tty` and `/dev/console`** added (c9985d75);
+    `/dev/tty0` special (46742d16); cmdline `-tty_count N` +
+    config TTY_COUNT (baedd8ff).
+
+  - **ALT+F1..F12 switch TTY** (aa3a52d5). init.c updated to
+    fork a devshell per tty (ec0e4c1e).
+
+  - **VWERASE / delete-word** (ad3784f0). Filter func can
+    alter the current char (f275cb77). handle_esc_seq() +
+    read_command() in devshell refactored (14cd08d7 / 0a030bab).
+
+  - Devfs can now use arbitrary major numbers (53921589).
+    tty + term creation handles OOM without panic (cb4352ee).
+
+--------------------------------------------------------------------------------
+
+## 2043-2044 post-merge term scroll fix + QEMU -device flag
+   (cba1a930..368a19f5, Jan 26 - Jan 29 2019)
+
+  - cba1a930: scroll regression from the term action refactor.
+  - 368a19f5: scripts switch to `-device` form for newer QEMU
+    to silence deprecation warnings.
+
+--------------------------------------------------------------------------------
+
+## 2045 MERGE branch 'warn' - -Wconversion clean across the kernel + CC=clang
+   (0684f1e0, Feb 1 2019, +1114/-990, 108 files)
+
+50-commit branch. Subject: "build the kernel with -Wconversion
+and CC=clang". Highlights:
+
+  - **[kernel] Build everything with -Wconversion [part 1..36]**:
+    a long mechanical series inserting explicit casts and type
+    widenings throughout the kernel; most parts touch 3-10 files
+    each.
+
+  - **01fe03b1 + 8f2118ea**: new CMake option `WCONV_CLANG` ->
+    renamed to `WCONV`, warns if WCONV && compiler != clang. The
+    conversion-warning build is effectively a clang-only stress
+    test.
+
+  - **703cf2de**: `KERNEL_USE_SYSTEM_CC` renamed to `KERNEL_SYSCC`
+    (shorter; this option was introduced in the earlier musl-gcc /
+    USE_SYSCC arc).
+
+  - **-Wshadow flip** (15b4fdcd): kernel now built with -Wshadow.
+
+  - **80424d23 MIN3/MAX3 + f3591b38 BOUND(val,min,max)**: new
+    macros to replace nested MIN/MAX chains found during the
+    -Wconversion sweep.
+
+  - **e0aceaca**: `kernel/pq.c` + pq.h removed (dead code found
+    during the audit). -114 lines of priority queue never used.
+
+  - 143cf37f: new `other/errors.cmake` centralizing CMake
+    diagnostic messages.
+
+  - 058fbe9d: WCONV scope narrowed to the kernel build only
+    (don't impose it on bootloader or userspace).
+
+  - Various small retyping commits: move_cursor / clear_row /
+    set_char_at / set_row take u16 args instead of int.
+
+--------------------------------------------------------------------------------
+
+## 2046-2050 signals: SIGSEGV / SIGILL / SIGFPE delivery + sys_*kill() stubs
+   (a4384e14..f13522ad, Feb 3-4 2019)
+
+  - a4384e14: devshell.h pulls in common/basic_defs.h so tests
+    can use the shared types.
+
+  - **23dca1d4 [signals] Introduce signal.c and handle non-cow
+    user page fault**. New kernel/signal.c (initial stub) and
+    signal.h. User page fault on a non-CoW address now goes
+    through signal path instead of panic.
+
+  - **5feb7878 [process] Handle non-CoW user {page, illegal
+    opcode} faults properly**. GPF and bad opcode faults now
+    terminate the offending user process cleanly. New
+    test_signals.c in devshell (+93).
+
+  - **03705995 [process] Send SIGFPE in case of div-by-zero and
+    coproc fault**. Divide-by-zero (int 0) and coproc error
+    (int 16) deliver SIGFPE; devshell test_signals.c exercises
+    both.
+
+  - **f13522ad [syscalls][process] Implement partial support
+    for sys_*kill()** (+62 in kernel/syscalls.c). First stubs
+    for kill()/tkill()/tgkill() that deliver synchronous
+    process-termination on SIGKILL.
+
+--------------------------------------------------------------------------------
+
+## 2051-2057 docs/syscalls.md + build_toolchain extraction
+   (26dc373d..1d922304, Feb 4 2019)
+
+  - 26dc373d: new docs/syscalls.md (+90) enumerating the
+    Linux syscalls Tilck supports / stubs / doesn't. Updated
+    4e9e8989 / 502ca28c.
+
+  - 8ba5c37f..7d70c452: `scripts/build_toolchain` is
+    decomposed. Shared helpers move to
+    `scripts/bash_includes/script_utils`, and the cmake +
+    gcc-cross fetchers move into `scripts/bash_includes/tc/`.
+    The driver shrinks from 65 lines of inline logic to calls
+    into those helpers -- the shape of today's toolchain/
+    layout first appears here.
+
+  - 1d922304: travis pre-caches mtools from the project's own
+    GitHub-Pages cache (faster + independent of apt mirrors).
+
+--------------------------------------------------------------------------------
+
+## 2058-2075 basic signal delivery: SIGINT via Ctrl+C, SIGQUIT via Ctrl+\
+   (07f07a95..edb7ec08, Feb 5-7 2019)
+
+Building on 2047-2050, this batch grows signal.c from a stub
+into something usable.
+
+  - **07f07a95**: zero-map user-stack pages with CoW when
+    MMAP_NO_COW=0 (prerequisite for test programs that actually
+    touch their stack after a signal).
+
+  - **33d25dad / 2adb509c / ebe7621d** `[signal]
+    Working on basic signal support [parts 1-3]`. Signal
+    delivery plumbing: per-task pending mask, `struct sigaction`,
+    sigprocmask(), sigaction(), sigreturn() skeleton. Grows
+    kernel/signal.c from 11 to ~240 lines across the three
+    parts.
+
+  - 2a0696b9: tty echoes special control chars (`^C`, `^\\`)
+    when ISIG is on.
+
+  - **f2fc5e4d / 7f4b896b**: Ctrl+C now sends SIGINT.
+    7f4b896b moves the kb/tty -> foreground-group dispatch
+    into tty_ctrl_handlers.c.h and records "Ctrl+C works for
+    the first time".
+
+  - **0fa2aadc**: expose `kernel_process_pi` so init_tty() can
+    assign ttys before init is created (previously circular).
+
+  - **d2f9140f**: minimal setsid() + TIOCSCTTY ioctl so init
+    can allocate a controlling tty per instance. init.c's
+    per-tty fork loop uses it.
+
+  - e3172945 / 04f23829 / a5cc1fd1: duplicate_user_argv() bug
+    -- copy_str_array_from_user() doesn't track `*written`
+    offsets the way callers expected. Fixed in user.c instead
+    of the call sites.
+
+  - 185bf88f / 4b53c206 / 5cd37007 / edb7ec08: devshell
+    shell-ignores SIGINT/SIGQUIT (423b69ba init too); ringbuf
+    gets a reset helper; tty resets kb input on Ctrl+C;
+    Ctrl+\ delivers SIGQUIT.
+
+  - bb1a90b1: cosmetic tweaks to count_lines_of_code.
+
+--------------------------------------------------------------------------------
+
+## 2076-2090 editor/devshell polish; `usermode_apps/` -> `userapps/`
+   (0dc48c22..8d7ceb3d, Feb 7-8 2019)
+
+  - 0dc48c22 / 3d60b570 / 90780bc0 / 8d7ceb3d: .vscode config
+    (c_cpp_properties.json, cmake-kits.json); cmake_run now
+    emits compile_commands.json.
+
+  - **a0400d2a [build] Rename usermode_apps/ to userapps/**:
+    the directory users/extenders work in gets a shorter name.
+    21 files renamed. Today's `userapps/` path starts here.
+
+  - 3b7fce14: userapps CMakeLists gets a USERAPPS_CFLAGS
+    variable so each userapp doesn't redefine its own flag set.
+
+  - **aebcc736 / 93738813 / 3b808b82 [devshell] Introduce
+    shellcmd 'runall'** + system_tests runner learns to invoke
+    it. CircleCI is switched to always use the compact
+    runall-based mode. Today's `run_all_tests -c` single-VM
+    mode descends from this.
+
+  - 74eb43f1 / 429d0e4b: runall improvements + per-test
+    durations.
+
+  - ba1bb2eb: read_timeval() was putting milliseconds in
+    tv_usec (should be microseconds).
+
+  - ff10d1e8 / 246808d5: VSCode-only includes; drop the old
+    MSVC #ifdef _MSC_VER branch from basic_defs.h (-53).
+
+--------------------------------------------------------------------------------
+
+## 2091-2100 sys_times() + syscall reorg; select() starts
+   (c99635dc..87f52085, Feb 8-13 2019)
+
+  - c99635dc: sys_*kill() implementations moved together.
+
+  - **d1d72d46 [syscalls] Introduce a minimal implementation
+    of sys_times()**: returns per-process user/sys tick
+    counters via struct tms.
+
+  - 8c540133: syscalls.md refreshed with signals + times.
+
+  - 80c22c4a / ac1dd9b4: tty micro-opts; banner moved to use
+    ANSI sequences so serial-console system tests see it as
+    plain text.
+
+  - **58ded4f3 [select] Start working on select(): debug print
+    its arguments**. New kernel/select.c (+68) that only
+    parses/prints fd_set, then early-returns. First step of
+    the select() implementation arc.
+
+  - **4a4b1681 / 40bc0e60 / f4b2f060 [kcond][select][wobj]
+    Working on the support for a multi_wait_obj**. New wobj.c
+    (+62 then +50 then +23), kmutex.c shrinks by 70. The
+    multi-object waiter is the primitive select() will stand
+    on; kmutex loses the multi-wait glue because wobj.c now
+    owns it. se_mobj_waiter.c self-test (+75) proves it.
+
+  - **87f52085 [vfs] Introduce vfs_read_ready() and
+    vfs_write_ready()**: the vfs-level poll primitive select()
+    will call for each monitored fd.
+
+--------------------------------------------------------------------------------
+
+## 2101-2115 select() implementation + TTY read-ready + temp-kernel-alloc
+   (df07d86e..ebf4d476, Feb 13-14 2019)
+
+  - df07d86e / 20181fb7 / e1efd1ca `[select] Working on a
+    select() implementation [part 1-2/2]`: full select() path
+    wired up. fd_set parsing, per-fd waiters registered via
+    multi_obj_waiter, sleep with optional timeout via the
+    timer-handler's expiration queue. +142 then +134 on
+    kernel/select.c.
+
+  - **d6d96bae [tty] Support read_ready()**: tty gets a
+    byte-available predicate so select() on /dev/tty can
+    wait for a complete input line without spinning.
+
+  - 0b9d8874 / 49b8fe95: termtest test probes
+    (sleep_then_read, sym_read) to exercise the select path.
+
+  - 1fa5a9a4: comment out the debug-print in select(); it was
+    only useful during bring-up.
+
+  - e1f030c4: TCSAFLUSH now actually drops pending input
+    (previously only toggled modes).
+
+  - 4fab6489: devshell -Wformat fixes.
+
+  - c6ac643e / 6f470ce1: select refactor; new select2 devshell
+    test; test_misc.c split out (+181).
+
+  - 7721acac: move a few process-related constants from
+    process.h into common/config.h (userapps can see them).
+
+  - edf5e037: generic bintree compare returns signed ptr
+    (sptr) instead of int, for future-proofing.
+
+  - **78d89d94 [process] Introduce task_temp_kernel_{alloc,
+    free}()**: a per-task arena tied to the task's lifetime.
+    When a task dies, everything it allocated here gets
+    released automatically. +79 kernel/process.c.
+
+  - ebf4d476: tty_kb_buf_reset() missed resetting
+    end_line_delim_count.
+
+--------------------------------------------------------------------------------
+
+## 2116-2125 mobj_waiter uses temp-alloc; sys_select() 6-part refactor
+   (d6edf0af..ae3f590c, Feb 14-15 2019)
+
+  - d6edf0af: allocate/free mobj_waiter() via
+    task_temp_kernel_alloc() instead of kmalloc -- it's
+    naturally per-task and per-call.
+
+  - b5a2f297: init the bintree node when the alloc comes from
+    the temp arena (zero-init isn't enough).
+
+  - **8d07db4a..93836123 `[select] Refactoring sys_select()
+    [parts 1-6/6]`**: structural rewrite of sys_select() into
+    helper functions (build waiter list, walk fds, poll each
+    fd_set, compute timeout, sleep, rebuild returned fd_set).
+    Net file size stays roughly the same (+79/-65, etc.) but
+    the function becomes composable.
+
+  - **7d6c5db3 [process] Free all temp kernel allocs in
+    terminate_process()**: ensures task_temp_kernel_* arena is
+    drained on exit.
+
+  - **ae3f590c [process] Fix a bug in terminate_process()
+    when ti != curr**: we were calling
+    set_page_directory(get_kernel_pdir()) unconditionally, so
+    a task calling sys_kill(other_pid) would swap its own
+    pdir to the kernel pdir and fault on return.
+
+--------------------------------------------------------------------------------
+
+## 2126-2135 count_lines_of_code rework + signal/SIG_IGN hack refinement
+   (b044d0df..81e0d4a7, Feb 15-18 2019)
+
+  - b044d0df..2a251644: seven-part rewrite of
+    scripts/dev/count_lines_of_code. The script ends up much
+    more structured -- per-language buckets, extensible table,
+    JSON-style output for README.
+
+  - **f752a8d2 [signal] Hack: silently replace custom sig.
+    handlers with SIG_IGN**: user-installed handlers not yet
+    supported, so accept them but install SIG_IGN under the
+    hood, so programs using signal() at least don't die.
+
+  - **81e0d4a7 [signal] Hack: treat custom handlers as
+    SIG_IGN but keep their value**. Body explains why: the
+    previous hack swapped the slot to SIG_IGN, but fork copies
+    SIG_IGN (stays ignored) while custom handlers should reset
+    to SIG_DFL in the child. Keeping the stored value preserves
+    that semantic.
+
+  - 75025704: syscalls.md minor update.
+
+--------------------------------------------------------------------------------
+
+## 2136-2145 TTY CSI rework: ESC ( / ESC ), per-CSI fn table, BOLD/reverse
+   (721a0c93..a7d3f64e, Feb 19-25 2019)
+
+  - 721a0c93: ESC [ n d (VPA -- cursor to row) plus misc
+    fixes discovered while working on ncapp demo.
+
+  - **c5dab400 [tty] Implement properly support for ESC(?,
+    ESC)? controlling transl tables** (+318 lines in
+    tty_output.c). G0/G1 selection, SI/SO toggling which
+    translation table is active, and per-tty translation state
+    stored in struct tty.
+
+  - f0d7fb56: ESC c (RIS) now actually resets the tty (was
+    a no-op).
+
+  - **5d0b8015 / cf2b312d**: BOLD/BRIGHT attribute actually
+    distinguishes intensity; reverse + bright composites
+    correctly (was colliding with the same bit).
+
+  - 31bc0c9a: chdir() returns -ENOTDIR when the target isn't
+    a directory (was silently succeeding).
+
+  - **4ed4169f..0a6f0e0d `[tty] Move CSI handlers from
+    switch-case to function pointer table [1-3]`**: the big
+    CSI switch in tty_output.c is replaced by a dispatch
+    table keyed by the final byte. Matches the pattern used
+    earlier for the ESC FSM.
+
+  - a7d3f64e: translation tables moved into
+    tty_output_default_state.c.h and compressed (-133).
+
+--------------------------------------------------------------------------------
+
+## 2146-2158 more TTY polish: CSI HPA, reset helper, \b / \t / \v / \f
+   (e8b0c6a3..78717ded, Feb 25-26 2019)
+
+  - e8b0c6a3: tty_default_trans_table made ~4x more compact
+    (-95).
+
+  - 05e094f3: Ctrl+[ now emits ^[ (ESC) and behaves as ESC.
+
+  - 12fb2dfe: Ctrl+O no longer intercepted -- lets user
+    programs receive raw shift-in.
+
+  - 5876c671 / 517d3b1c: `attrs` field moves from
+    twfilter_ctx to struct tty (tty-scoped, not
+    filter-scoped); KB_INPUT_BS relocated to config.h.
+
+  - **a63cc8b2 [tty] Allow ESC to restart seq and support
+    0x9B as CSI: ESC [**: receiving ESC mid-sequence restarts,
+    and 0x9B (8-bit CSI) is accepted as an alias for `ESC [`.
+
+  - 8f33f5c6: HPA (ESC [ n `) -- move to column, same row.
+
+  - a162b244 / c0d9653d: tty_reset_filter_ctx() helper;
+    `term_write_filter_ctx_t` -> `twfilter_ctx_t` (shorter).
+
+  - dc3fefc6: \b (backspace) was broken in the default-state
+    handler.
+
+  - f8bf898a: CSI ABCD (cursor move) `d[4]` array retyped
+    signed (int parameters can be negative).
+
+  - e3082b3b: \t was being handled in tty_input (wrong
+    layer); moved to default_state so output sees it.
+
+  - 78717ded: \v and \f now behave like raw linefeeds
+    (previously dropped).
+
+--------------------------------------------------------------------------------
+
+## 2159-2168 sys_poll() + unittest hermeticity
+   (fb75e948..d20914487, Feb 26-28 2019)
+
+  - **fb75e948 [poll] Working on sys_poll()**: new
+    kernel/poll.c (+283). Same multi_obj_waiter primitive
+    select() uses, plus `struct pollfd` mapping.
+
+  - a06dcd21 / f1380714: devshell test_poll.c (+97); poll()
+    returns the count of fds with ready events (not 1 per
+    ready-or-not).
+
+  - 231926fb / 79abeea17: CMakeLists gets a `gtest_error`
+    fake target when gtest isn't present (moved into
+    errors.cmake); the test sysroot moves from
+    `sysroot/testdir/` to `unittests/test_sysroot/testdir/`.
+
+  - **3fcd39ea [build] Introduce build_test_fatpart** (+50):
+    separate FAT32 image built just for unit tests, not
+    coupled to the kernel image.
+
+  - b040d0d6 / 6bd1c8f8 / c0a52559 / d2091448: fat32 +
+    vfs gtests switched onto test_fatpart; the gtests target
+    no longer depends on tilck_image (faster to build and
+    rebuild).
+
+--------------------------------------------------------------------------------
+
+## 2169-2175 serial console config; -sercon flag; serial_port_fwd
+   (f89864ff..d77a998c, Mar 12-14 2019)
+
+  - f89864ff: serial.c moved to kernel/char/ (alongside
+    tty/).
+
+  - e8c3eb1e: generic serial-port support start (still
+    COM1-centric but with the plumbing to add COM2/3/4).
+
+  - b8f59778: tty_handle_special_controls() no longer filters
+    on check_mods (worked for kb only; breaks for serial).
+
+  - 151bf1ab: VSCode launch.json -- debugger F5 starts
+    working.
+
+  - c881e0e6: `tty_count=1` forced when serial console is
+    active (multi-tty + single serial line makes no sense).
+
+  - **0564c170 [cmdline] Replace -serial_mode <mode> with
+    just a boolean -sercon flag**: the three-value serial_mode
+    is overkill -- there's only "on" and "off".
+
+  - **d77a998c [term] Accept serial_port_fwd param instead
+    of checking kopt_serial_console**: term/tty take an
+    explicit port parameter rather than peeking the cmdline.
+    Cleaner layering.
+
+--------------------------------------------------------------------------------
+
+## 2176-2195 /dev/ttyS0-3, serial backspace, busybox/ASH unblocks
+   (2e1bbaf4..a928f69e, Mar 14-17 2019)
+
+  - 2e1bbaf4: test_poll.c fixes.
+
+  - **9b4908d8 [tty][serial] Create /dev/ttyS{0,1,2,3}
+    devices** (+79). Four ttyS nodes in devfs, init spawns a
+    shell on ttyS0 when serial console is active.
+
+  - 34a8227e: term no longer allocates the scroll buffer when
+    `serial_port_fwd != 0` (output goes straight to the serial
+    port).
+
+  - **6e4f9a2c [tty] Making backspace to work in the serial
+    console**: tty write filter translates BS to `\b \b`
+    (three-char erase sequence xterm uses).
+
+  - 009e4352: poll/select path for /dev/tty{1..N} (via ttyaux)
+    was broken by the earlier ttyaux split.
+
+  - 8dcfccae / 4d1db997 / e78b35a3: refactor init_tty();
+    TTYS0_MINOR named constant.
+
+  - **c7f3e797 [main] Make init_drivers() to run with
+    preemption disabled**: drivers are not reentrant; move to
+    preempt-disabled init path.
+
+  - 8a039fe2: serial RX loop moved into the bottom-half
+    handler (was running in interrupt ctx).
+
+  - 8333a066 / c1e1ec91 / b58c3def: system tests VERBOSE=1;
+    se_mobj_waiter more robust; wobj bzero() length bug.
+
+  - **2f8d54bd [tty][serial] Fix support for ttyS{0,1,2,3}
+    devices** (-53 in serial.c, +25 in termtest). The ttyS
+    minor math was wrong; tty_input learns to route serial
+    input back through the tty layer.
+
+  - ba1f8ca7 / e6668797 / e9f1091a / 600dd2df: qemu multiboot
+    `-initrd` glue; busybox launch.json; termtest reproduces a
+    bug triggered by ASH; poll() gets a pre-sleep ready scan.
+
+  - **07fe6e48 [select] Two fixes: as poll: first check ready,
+    and no wait when {0,0} timeout**: aligns select() with
+    poll() + implements the specified POSIX behavior when
+    tv=={0,0} (non-blocking poll).
+
+  - **a928f69e [process32] Call arch_specific_free_task() in
+    create_usermode_task()** -- body is informative:
+    execve() must clear all GDT/LDT entries, otherwise ASH's
+    set_thread_area() returns -ESRCH because a stale entry is
+    still bound to an old process. Unblocks busybox ash.
+
+--------------------------------------------------------------------------------
+
+## 2196-2203 keyboard tasklet; cleanup long lines; NOTICE a20 code
+   (e75a9f2d..96da8ae7, Mar 17-18 2019)
+
+  - e75a9f2d: read all pending scancodes in the kb tasklet,
+    not in the interrupt handler (caps latency in hard IRQ
+    context).
+
+  - 31f8c22c: count_lines_of_code gains a `--long-lines`
+    mode.
+
+  - d5d41648: NOTICE gains an entry crediting osdev.org for
+    the A20 enable code (boot/legacy/boot_enable_a20.S).
+
+  - **f60f297d..96da8ae7 `[cosmetic] Fixing long lines
+    [part 1-5]`**: 80-col sweep across errno.h (262 lines
+    reformatted), boot/legacy, kmalloc_heaps_debug,
+    CMakeLists, etc. count_lines_of_code gets tooling to keep
+    this from regressing.
+
+--------------------------------------------------------------------------------
+
+## 2204-2217 ringbuf split: safe_ringbuf (reentrant) + simpler ringbuf
+   (94bea58a..642e754c, Mar 18 2019)
+
+This arc splits the old `ringbuf` into two variants: the
+reentrant one (kept for tasklet + term cross-ctx use) becomes
+`safe_ringbuf`, and a new simpler non-reentrant ringbuf is
+introduced for the single-owner cases.
+
+  - 94bea58a..ff387665 `[ringbuf] Rename ringbuf* ->
+    safe_ringbuf*` (header, .c, callers).
+
+  - **f42c181c [ringbuf] Introduce a simpler non-reentrant
+    ringbuf implementation** (+109 ringbuf.c, +36 header).
+
+  - c09ef9b0: elem-count replaces full-flag.
+
+  - **3e293c62 [ringbuf] Intr. a unit tests for ringbuf**
+    (+194 unittests/ringbuf_test.cpp) and fix a subtle
+    ringbuf_unwrite bug.
+
+  - 71c8b8d7: tty input switches from safe_ringbuf to plain
+    ringbuf (only the tty's own tasklet writes it).
+
+  - f7497c01: drop unwrite/reset from safe_ringbuf variant
+    (unused).
+
+  - 413aeab7 / 6996b1d8 / 1d3fd2f2 / 912dfa04 / 177ca2b8:
+    rename cascade -- kb_input_* -> input_*; KB_INPUT_BS ->
+    TTY_INPUT_BS.
+
+  - 642e754c: write_ex removed; read1/write1/reset inlined
+    in header.
+
+--------------------------------------------------------------------------------
+
+## 2218-2225 IRQ sharing + PIC split; init_drivers() back to preempt-enabled
+   (32b79e15..0667d8f7, Mar 19-20 2019)
+
+  - **32b79e15 [irq] Support IRQ sharing** (+120/-47). IRQs
+    get a handler list rather than a single function pointer;
+    serial.c + 8042 register onto it so multiple devices on
+    the same IRQ work. interrupts.h grows with the shared
+    return codes (`IRQ_HANDLED`, `IRQ_NOT_HANDLED`).
+
+  - 6c6595ce / 82f08acd: irq_handlers_list rename; new
+    `list_for_each_ro` macro for read-only list walks, used
+    in 6 places.
+
+  - **32d9a6cd [irq] Move PIC-specific stuff in a separate
+    .c.h file**: kernel/arch/i386/irq.c shrinks by 130 lines;
+    new `pic.c.h` holds 8259-specific code. Prep for APIC
+    support later.
+
+  - 8f2da85c: tweak RGB of the 16 fb-console colors
+    (readability on black background).
+
+  - **3e281217 [main] Create the first process (pid 1) in
+    SLEEPING state**: body explains: this lets init_drivers()
+    run preempt-enabled in a kernel thread without risking a
+    user process preempting driver init. Replaces the
+    c7f3e797 workaround with a cleaner solution.
+
+  - 986f5545 / 0667d8f7: kmain init path renames for
+    consistency (`init_X_drivers`, `init_X_subsys` pattern).
+
+--------------------------------------------------------------------------------
+
+## 2226-2239 execve error-code; no-VLA; sys_dup/dup2; sys_readlink stub
+   (e1e83494..f7305bc8, Mar 20 2019)
+
+  - e1e83494: create_usermode_task() returns int errno rather
+    than bool.
+
+  - **5c8c4f0d [build] Remove any VLA from the kernel**: -Wvla
+    as an error. process32.c's on-stack argv buffer moves to a
+    kmalloc; fat32_debug also cleaned.
+
+  - 18c33223 / 85eb8b70 / 98efbd4b: push_args_on_user_stack
+    uses u32; USER_STACK_PAGES printed in build_opts; new
+    USERMODE_STACK_MAX constant.
+
+  - **3779436d..5fea5f33**: new `bigargv` devshell test to
+    stress the execve argv-copy path.
+
+  - **d0be8ee3 [user] Fix a nasty bug in
+    internal_copy_str_array_from_user()**: the end-pointer
+    check counted 1 byte when it should have counted
+    sizeof(void*) (for the final NULL). Found by bigargv.
+
+  - c2cc5433 / d69bed8d: execve_get_path_and_args() split in
+    two + cosmetics.
+
+  - b5b5b8d6: NOTICE updated.
+
+  - **9142d75a [syscalls] Implement sys_readlink() as a
+    compliant stub returning -EINVAL**: required for musl's
+    argv[0] lookup.
+
+  - **f7305bc8 [syscalls] Implement sys_dup(), sys_dup2()
+    allowing `less` to work!** (+77 in fs_syscalls.c).
+
+--------------------------------------------------------------------------------
+
+## 2240-2254 IRQ action enum, FD_CLOEXEC, sys_clock_getres, SIGINT hack
+   (15e20cb0..a1d2fbeb, Mar 21-22 2019)
+
+  - 15e20cb0 / ab54c793: create_usermode_task renamed to
+    setup_usermode_task (doesn't create anymore, just fills
+    in).
+
+  - 500e1dd0 / b951ba15: kb cosmetics; soft-IRQ type renamed.
+
+  - **eeec5410 [irq] Introduce `enum irq_action` and refactor
+    handle_irq()**: handlers return enum value (HANDLED /
+    NOT_HANDLED / SPURIOUS) instead of raw bool.
+
+  - bb33959e: X86_PC_TIMER_IRQ named constant used in lieu of
+    literal 0.
+
+  - 888509b0: NOCOW config compile error in elf.c.
+
+  - **870d6730 [fcntl][vfs] Support the FD_CLOEXEC flag**
+    (+48). execve now closes fds flagged CLOEXEC; devshell
+    gains a cloexec test.
+
+  - 7d8e0d29: devshell error handling for waitpid().
+
+  - c625abe5 / ab3185a0: kb: missing NUMPAD keys when NumLock
+    off (arrow/home/end via numpad); layout fixes.
+
+  - **6d6ad348 [datetime][devshell] Introduce and use in
+    devshell a MONOTONIC clock** (+115 kernel/datetime.c).
+
+  - **31fcc543 [datetime] Implement sys_clock_getres()**:
+    reports clock resolution, required by various userspace.
+
+  - 2268c107: PIT command/flag macros (no magic numbers).
+
+  - **a1d2fbeb [signal] DIRTY HACK: treat SIGINT as SIG_DFL
+    when a custom handler is set**: see comment explaining
+    that without real signal-handler support, Busybox's
+    SIGINT handler deadlocks the shell. Escape hatch until
+    real signal delivery lands.
+
+--------------------------------------------------------------------------------
+
+## 2255-2266 fcntl F_DUPFD + FD_CLOEXEC split; open flags/mode; ctxswitch opt
+   (49608043..db683a80, Mar 22-23 2019)
+
+  - 49608043 / 465aeee1: vfs flags typed as int; fd_flags vs
+    fl_flags split (FD_CLOEXEC is per-descriptor, O_APPEND
+    etc are per-open-file).
+
+  - 99e4fd82: F_SETFL/F_GETFL moved from tty_ioctl into
+    generic sys_fcntl64() (applies to all fds).
+
+  - 15332af8: FS_HANDLE_BASE_FIELDS macro deduplicates the
+    common prefix in devfs/fat32/vfs handle structs.
+
+  - **e0da6bc0 [fcntl] Add support for F_DUPFD and
+    F_DUPFD_CLOEXEC** (+36).
+
+  - aa1eb019: vfs_open() gains `flags` and `mode` parameters
+    (previously implicit).
+
+  - c33aac20: `disable_preemption_count` moves from
+    timer_handler.c into sched.c (sched is the right TU).
+
+  - b26d6ccc: new helpers `get_irq_num(int)` and
+    `int_to_irq(int)`.
+
+  - **7c2547e9 [process32] Optimizing switch_to_task()**
+    (+99/-51): scheduler inner-loop hot path restructured
+    (avoid redundant TSS reloads, tighten register use).
+
+  - **e0b53948 / f93c60cc**: low-level context-switch asm
+    simplified; struct regs initialization collapsed into one
+    compound-literal so GCC can see the whole init and elide
+    redundant stores.
+
+  - **db683a80 [build] Use -O3 for RELEASE builds**: bump
+    from -O2.
+
+--------------------------------------------------------------------------------
+
+## 2267-2275 scripts/adv/gen_other_builds; build matrix scripts
+   (613fdf2b..a0a98d54, Mar 23-24 2019)
+
+  - 613fdf2b: gitignore tweaks.
+
+  - **f412c5e5 [scripts] Introduce `gen_other_builds`**
+    (+100): the matrix builder that generates
+    `other_builds/<name>/` trees. Today's CLAUDE.md mentions
+    this as the "extensive build validation" entry point.
+
+  - 4a1ce591 / 3faa3f5d: renames
+    KERNEL_TC_ISYSTEM_WITH_SYSTEM_CC ->
+    KERNEL_FORCE_TC_ISYSTEM; new config row in the matrix.
+
+  - **e62e62ff [scripts] Improve gen_other_builds and intr.
+    test_all_other_builds** (+69 new script): single driver
+    that builds all matrix entries in parallel.
+
+  - 84547a8a: common color helpers in
+    `bash_includes/script_utils`; used by gen_other_builds
+    and test_all_other_builds.
+
+  - **e5bb2ae8 [scripts] Move the 'advanced' scripts in a
+    dedicated directory**: scripts/gen_other_builds -> scripts/
+    adv/gen_other_builds etc. Present-day layout.
+
+  - cfada6f9 / a0a98d54: README updates.
+
+--------------------------------------------------------------------------------
+
+## 2276-2296 process_info split; panic hardening; fault_resumable asm bug
+   (2a25126f..c0f9d713, Mar 25-26 2019)
+
+A large rework of the task/process data model and panic path
+in the run-up to POSIX process-groups and sessions.
+
+  - 2a25126f / 36d45e9f: PS/2 kb driver bug; task_set_wait_obj
+    runs with preemption disabled.
+
+  - 8f13b422 / 44c5a4c9 / e496fa2b: devshell polish +
+    gen_other_builds tweaks.
+
+  - **c6e6517a [tty][syscalls] Preparations for process groups
+    and sessions support** (+64 tty_ioctl.c): stubs for
+    setpgid/getpgrp/setsid plumbing.
+
+  - 4b3147c7 / 2497725e / 7f0853a5 / 54e92ab6 / b3740692 /
+    725a7769 / 7d016128: **task_info / process_info struct
+    split work**. siblings_node, pid, and process-level fields
+    move from task_info to process_info. New helper
+    `is_main_thread(ti)`; `did_call_execve` flag for later use.
+    Reorders both structs to pack hot fields together.
+
+  - ddd9f99a: kthread_exit() sets `curr = kernel_process`
+    (safer for the next schedule).
+
+  - **476140bf / 638c9a7b**: ASSERT(curr != NULL) in both
+    switch_to_task_pop_nested_interrupts() and switch_to_task();
+    removes dead "curr might be null" branches.
+
+  - **56140e4f [process] Refactoring sys_fork()** (+59/-51):
+    splits into helpers so the happy-path is readable.
+
+  - **193c491a / 689b9770 [panic] Better handling of page
+    fault in panic state**: panic no longer crashes recursively
+    when it hits a bad pointer in an argv; also handles
+    curr == NULL and kernel_process == NULL (very early).
+
+  - 39aa3eb7: set_current_task() -> set_curr_task() rename.
+
+  - **c0f9d713 [panic] Further improving panic handling**
+    (+93/-73 panic.c, +42/-27 idt.c): reshapes panic() as a
+    state machine that can nest one level without looping.
+
+--------------------------------------------------------------------------------
+
+## 2297-2303 fault_resumable asm fix, panic varargs, CRLF sweep
+   (5a9bba78..d3a5663a, Mar 26 2019)
+
+  - 5a9bba78 / 43f5c2c9: fault_resumable selftest cosmetics;
+    vscode setting.
+
+  - **95f1e7d4 [fault_resumable] Fix a nasty bug in
+    fault_resumable_call [asm]**: the earlier `custom_flags`
+    field addition shifted struct regs offsets but the asm
+    wasn't updated. se_fault_resumable extended to catch this.
+
+  - **27acfac0 [panic] Make panic robust against bad pointers
+    in varargs** (+56): wraps printk() called from panic with
+    fault_resumable so a bad %s doesn't tail-spin.
+
+  - bd8ebe1c: another switch_to_task() bug -- was checking
+    `is_kernel_thread(ti)` when it should have been
+    `is_kernel_thread(curr)` for fpu save.
+
+  - **d2ac1b87 / d3a5663a [scripts/cosmetic] line-ending
+    check + CRLF fix across 6 files** (1086 lines of
+    process32.c rewritten with LF endings; also several
+    CMakeLists and process.h). count_lines_of_code -e
+    added to enforce.
+
+--------------------------------------------------------------------------------
+
+## 2304-2313 sys_mmap pg-count fix; partial munmap; restore KD_TEXT on die
+   (3dd53a7f..f2495b37, Mar 27 2019)
+
+  - **3dd53a7f [mm] Fix in sys_mmap_pgoff()**: was passing
+    byte count as `page_count` to process_add_user_mapping().
+    Could allow much more memory to be mapped than requested.
+
+  - 422b0cb7 / 206a7b8e: minor refactoring.
+
+  - **d52d3955 [signal][process] Make send_signal() to run
+    with preemption disabled**: body explains: to safely deref
+    a target pid (the process could exit between pid lookup
+    and access), send_signal() takes TID and acquires the
+    task_info* under preempt-disable.
+
+  - 370b0997: setsid()/getsid() move out of tty_ioctl into
+    process.c (not tty-specific).
+
+  - **89c118bf [process] Panic on init's termination**: init
+    dying used to silently loop; now BUG().
+
+  - aba3b349: terminate_process() refactored (+41/-20).
+
+  - **57adfbb5 [process_mm] Handle partial unmap in
+    sys_munmap()**: unmap within a larger mapping now splits
+    rather than failing.
+
+  - **787b5ca8 [process][vfs] Make vfs_close() to remove all
+    mappings to that handle**: close() of an mmap()ed fd now
+    tears the mapping down automatically.
+
+  - **f2495b37 [fbdev][tty] Restore TTY in KD_TEXT mode if
+    the last prog mapping fb dies**: if a fb client crashes
+    while tty is KD_GRAPHICS, the kernel flips back to KD_TEXT
+    so future output is visible.
+
+--------------------------------------------------------------------------------
+
+## 2314-2325 paging vocabulary rework; __current NON-atomic
+   (0968ead1..0d9f3ad4, Mar 29-31 2019)
+
+Follow-ups to the long "atomics" arc from 2018: reversing the
+over-cautious `atomic_*` use where Tilck's single-CPU model
+guarantees non-tearing.
+
+  - **0968ead1 [kmutex][kcond] Make global id counters
+    NON atomic**. Body: Tilck is UP, init_k{mutex,cond} never
+    runs in interrupt context, so relaxed atomic was overkill.
+
+  - **9b1fde7f [paging][x86_utils] Remove __curr_pdir by
+    reading directly CR3 instead**: `cpu_read_cr3()` helper is
+    cheaper than an atomic load of a mirror variable.
+
+  - 51774cd4: set_page_directory() -> set_curr_pdir() rename.
+
+  - efea7874: new still_using_orig_pdir() helper for
+    system_mmap.c.
+
+  - 4d804f33: unmmap_pages() moved into paging.c (belongs
+    there).
+
+  - **84c365f5 [paging] Rename page_directory_t to pdir_t**
+    (13 files). Shorter name, matches the `set_curr_pdir`
+    naming.
+
+  - **3ecd8854 [process][sched] Make `__current` NON-atomic**
+    with an explanation comment in get_curr_task(): single-CPU
+    invariant + a word-sized write is naturally atomic on
+    every arch Tilck targets.
+
+  - ac3b0cdc: comments in process32.c + timer_handler.
+
+  - ec1dd9dd: new `gcc_fast_rel` entry in
+    adv/gen_other_builds.
+
+  - 92b87242: cmake gets a PERMISSIVE env-var escape hatch
+    because CMake mangles CC paths non-deterministically,
+    breaking the "don't reconfigure with a different CC" check.
+
+  - 78290c25: `pid_t` replaced with plain `int` throughout
+    (avoided typedef-chasing).
+
+  - 0d9f3ad4: README update.
+
+--------------------------------------------------------------------------------
+
+## 2326-2341 kmutex/kcond polish; tests/ subdir reorg; devshell tests moved
+   (bed3aaac..8a0e4027, Apr 1-3 2019)
+
+  - bed3aaac: select() minor fix.
+
+  - **2d5a0ab4 [fat32_base] Make fat_search_entry() to never
+    use indirect recursion**. Body: deep hierarchies blew the
+    kernel stack; fixed by looping at the top-level caller
+    instead.
+
+  - f663e736 / e99a349e / a2c2bbe6 / b3862fde: kmutex +
+    kcond cleanup; unused `id` fields removed; new
+    selftest_kmutex_ord_med() (+160).
+
+  - **The tests/ subdir reorg**:
+    - 0ec4f9ff: `unittests/` -> `tests/unittests/`.
+    - 72ddd17c: `other/system_tests/` -> `tests/system_tests/`.
+    - 4418427e: `kernel/self_tests/` -> `tests/self_tests/`;
+      KERNEL_SELFTESTS CMake option.
+    - bfe36864: `tests/unittests/` -> `tests/unit/`.
+    - f6820c95: `tests/system_tests/` -> `tests/system/`.
+    - dc16fd5f: `tests/self_tests/` -> `tests/self/`.
+    - 2a7e1d4a: new README in each.
+    Present-day layout: `tests/{unit,system,self}/`.
+
+  - ad0871a3 / c0fc095d: devshell cloexec tests moved to
+    test_misc.c; command table moved to cmds_table.c.
+
+  - **8a0e4027 [build][devshell] Move
+    userapps/devshell/test_*.c in tests/system/**: each
+    `test_<suite>.c` lives with the tests, not with devshell.
+    Builds a shared linkable test archive.
+
+--------------------------------------------------------------------------------
+
+## 2342-2350 TID-returning kthread_create; preempt-safe get_task;
+              waitpid refactor; fbcon PSF + scroll-cursor fix
+   (dec3d891..be63a8d4, Apr 3-4 2019)
+
+  - **dec3d891 [process] Make kthread_create() to return a
+    TID, not a task_info* pointer**: returning a raw pointer
+    was unsafe once preemption is re-enabled.
+
+  - **78c65c69 [process][sched] Make get_task() callable
+    only with preemption disabled**. Body explains the
+    rationale: no ref-count, so the task can die while the
+    caller holds the pointer. All callers updated.
+
+  - **fad8c3f8 [process] Refactor sys_waitpid in a way to
+    avoid unsafe access to tasks** (+68/-50): same issue as
+    above -- waitpid now snapshots needed fields under
+    preempt-disable.
+
+  - bbe95d81: new `struct k_rusage` in sys_types.h.
+
+  - 0aaee5da / 8cc15c74: README + termtest polish.
+
+  - **5f3b44be [fb_console] Don't use struct psf2_header in
+    the code** (+93/-108): replace direct PSF2 struct use
+    with a font abstraction -> enables PSF1 support next.
+
+  - **36c33867 [handle_fault][panic] Call printk() in a safe
+    way in case of fault in panic**: uses the varargs-safe
+    wrapper from 27acfac0.
+
+  - **be63a8d4 [fb_console] Fix a long-lasting bug with
+    cursor movement**: term hides the cursor by moving it
+    off-screen; fb_console lacked OOB checks and crashed with
+    `termtest -p` at specific resolutions.
+
+--------------------------------------------------------------------------------
+
+## 2351-2366 fbcon: PSF1, async scanline pre-render, runtime-build opts
+   (b54269a1..bb78bb42, Apr 4 2019)
+
+  - b54269a1: README update.
+
+  - 85dd4612: build_toolchain retries if build_libmusl fails
+    (transient git.musl-libc.org issues).
+
+  - **78d843e1 [docs] Add docs/coverage.md** (+85): the
+    coverage-build walkthrough + kgcov dump explanation.
+
+  - **a24b1120 [fb_console] Support PSF1 console fonts**:
+    follows the PSF2 decoupling.
+
+  - **bda63f08**: drop the `(font_w % 8) == 0` constraint in
+    failsafe mode (supports non-power-of-8 widths now).
+
+  - 7f343dc9: fb_console functions static-ified.
+
+  - **d80cae3c [fb_console] Make pre-rendering of scanlines
+    async**: scanline cache is built on a kthread instead of
+    blocking the first character render.
+
+  - **bc41f050..9efa027c `[fb_console] Optimize
+    fb_draw_char_failsafe() [part 1-4]`**: failsafe draw path
+    optimized for speed (~4x according to a later commit body
+    -- verify from diff if needed).
+
+  - 060486f4 / 5d9a6663: new "runtime" section in
+    debug_show_build_opts() (shows fb resolution, font name,
+    etc.); rename to debug_show_opts.
+
+  - 918a617d / cc08de5a / bb78bb42: README + coverage docs
+    polish.
+
+--------------------------------------------------------------------------------
+
+## 2367-2375 clang-format prep pass + .clang-format landed
+   (1f8257cf..7b79fc5c, Apr 5 2019)
+
+  - 1f8257cf..3eddaf4d: manual prep -- reformats a bunch of
+    files so that a clang-format re-run produces near-zero
+    diff.
+
+  - **c9edf0e8 [clang-format] prepare the remaining files**:
+    trailing-comma added to multi-line array initializers
+    (body explains this is the trick that keeps clang-format
+    from collapsing them).
+
+  - **cc84a524 [clang-format] Add .clang-format to project's
+    root** (+137): the YAML config. Body is honest -- it's
+    an approximation, not exact, but useful as a guideline.
+
+  - 7b79fc5c: README update.
+
+--------------------------------------------------------------------------------
+
+## 2376-2392 primitives: ksem, rwlock (rp + wp); serious kmutex test
+   (26e03323..14d36ac5, Apr 5-8 2019)
+
+  - **26e03323 [ksem] Add a semaphore implementation in the
+    kernel** (+51 kernel/ksem.c + sync.h decls).
+
+  - **c0c73dde [rwlock] Introduce a read-preferring rwlock
+    implementation (rwlock_rp)** (+74).
+
+  - ea8030ad: se_kmutex.c gets a real stress test (+67).
+
+  - e5df8036 / eb1d50ac: new kthread_join_all() helper; used
+    in selftests.
+
+  - 459b71f1: rwlock_rp writer path uses a binary ksem.
+
+  - 0b0e9aa8 / **ab0e5974 [rwlock] Implement a
+    write-preferring rwlock** (+96). Now both rwlock_rp and
+    rwlock_wp are available.
+
+  - e9fc8c23: debug `ex_owner` field (only in debug builds).
+
+  - 46215a8b / 39e8f6ca / b5846fb3: rwlock selftests promoted
+    from "short" to "med"; retry logic for non-deterministic
+    expectations; iteration count tuned.
+
+  - **6b94aae0 [devfs] Use rwlock_wp, now that is finally
+    available**: devfs locking upgraded from kmutex.
+
+  - **57dd3a5f [fat32] Remove useless ex_mutex, since only
+    read-only access is supported**.
+
+  - 41817e13 / 96563ba9: vfs cosmetics; devfs_entry_type
+    typedef -> enum.
+
+  - 14d36ac5: don't GEN_KCOV_REPORT if a test already failed.
+
+--------------------------------------------------------------------------------
+
+## 2393-2406 ramfs born; FS ref-count; -ENOTDIR semantics
+   (ea92f5dc..d2e93934, Apr 7-8 2019)
+
+  - **ea92f5dc [ramfs] Working on filesystem's skeleton**
+    (+107 kernel/fs/ramfs.c).
+
+  - **17dfe2a7 [vfs][mp] Introduce a per-filesystem
+    ref-count**: fs/mp.c gains vfs_{inc,dec}_ref_count so
+    mounted filesystems can't be unmounted while in use.
+
+  - 3b31b3a0: vfs_dup() increments fs ref-count.
+
+  - a34902be: devfs + fat32 save open() flags; write() on
+    read-only handle returns -EBADF.
+
+  - 0d1705ee / c7ed8dab / 8e7e4f85 / 63b204c2 / c7d3627f /
+    1ea5cb25 / fa6c9340: ramfs incremental build: mount,
+    core structs, dir inodes, getdents64(), dup, file
+    inodes, multi-component paths like /a/b/c.
+
+  - **ec279da7 [vfs][fat32][devfs][ramfs] Return -ENOTDIR
+    when appropriate**: body explains the fix -- `f1/` used
+    to be treated as `f1`; now it correctly errors if `f1`
+    isn't a directory. Implemented in all four filesystems.
+
+  - 646d2548: compute_abs_path() returns proper errnos
+    (-ENOENT for empty path).
+
+  - **d2e93934 [elf] Enable preemption during VFS open() and
+    read() calls**: prep for the next arc.
+
+--------------------------------------------------------------------------------
+
+## 2407-2420 execve re-architected: load with preemption enabled
+   (eaef3379..<later>, Apr 8-9 2019)
+
+  - **eaef3379 [execve] Switch to the new task's image when
+    curr != kernel_process** (+36/-13): sets up the new pdir
+    before ELF load, not after.
+
+  - 12ac579d / f70694af: execve_prepare_process() split out;
+    new first_execve() for init (distinct code path without
+    killing a "caller" task).
+
+  - **654ad835 [elf] Refactoring load_elf_program()**
+    (+91/-70): reshape into phases.
+
+  - 689e100f: ELF loader stops writing into the new image's
+    vaddr space (temp-maps scratch pages instead).
+
+  - **1fca21c9 [execve][elf][process32] Run load_elf_program()
+    with preemption enabled**: the culmination of the arc --
+    ELF loading no longer blocks other tasks.
+
+  - d681e14d / 61d499b2: cosmetics.
+
+  - ed8341f8 / 4f70410b: scheduler uses `curr_int` (interrupt
+    context curr) instead of per-IRQ `curr_irq`;
+    switch_to_idle_task_outside_interrupt_context() replaced
+    by schedule_outside_interrupt_context().
+
+--------------------------------------------------------------------------------
+
+## 2417-2426 /sbin/init runs from init-drivers kthread; fslock; syscall int
+   (dca8b844..172e9231, Apr 9-10 2019)
+
+  - **dca8b844 [main][execve] Run /sbin/init after init
+    drivers**. Body is important: the prior approach ran init
+    directly in kmain(), which forced ELF-load with
+    preemption disabled. Moving init to a kthread after
+    driver init lets all VFS calls run with preemption on.
+    kmain.c shrinks by 53 lines.
+
+  - 916a1235: build_fatpart avoids duplicating /sbin/init in
+    /bin.
+
+  - 8318af0e / 125eafe3: STATIC_KMUTEX_INIT() /
+    STATIC_KSEM_INIT() / STATIC_KCOND_INIT() macros.
+
+  - **da4e437a [mp] Use a kmutex instead of disabling
+    preemption**: fine-grained mp-table lock replaces the
+    global preempt-disable.
+
+  - **1b03fc29 [process] Introduce process_info->fslock**
+    (+153/-101 fs_syscalls.c): per-process lock on the fd
+    table, replacing ad-hoc preempt-disable around FD ops.
+
+  - **f3064f83 / 30f73fe0 [syscalls] Use `int` as return
+    type for almost all the syscalls [part 1-2]**. Body
+    explains: Linux syscalls return values fitting in 32-bit
+    int even on 64-bit systems (read/write cap at
+    0x7ffff000); the exceptions are sys_brk and
+    sys_mmap_pgoff.
+
+  - 8fbaeefd: fds typed as int (not u32).
+
+  - **172e9231 [vfs] Make all VFS calls except dup and close
+    to require preemption enabled**: new NOT_IN_INT_HANDLER
+    assertion that catches regressions.
+
+--------------------------------------------------------------------------------
+
+## 2427-2445 fslock refactor + ramfs gets real: per-file locks, split, R/W
+   (8e47d173..6600b343, Apr 12-14 2019)
+
+  - 8e47d173 / 5cb3951f: mp_check_match() moved to mp.c;
+    open() holds mountpoint lock for less time.
+
+  - 62d5aa4f: ramfs cosmetics.
+
+  - **ce3efec2 [basic_defs] Introduce macros for ref-counted
+    objects** (REF_COUNTED_OBJECT etc.) used by ramfs inodes
+    and vfs filesystem handles.
+
+  - accc130b / 1e6d7688: fslock/per-handle lock types
+    unified; fs_syscalls minor tweaks.
+
+  - **5f81faef / 06306dfe [ramfs] Add per-file locks /
+    directory access locking**: per-inode rwlock; reader
+    lock for getdents.
+
+  - **aa71623c [ramfs][build] Split ramfs.c in multiple
+    .c.h files in kernel/fs/ramfs/** (+609/-617): split into
+    ramfs.c + dir_entries.c.h, getdents.c.h, inodes.c.h,
+    locking.c.h, open.c.h, stat.c.h, ramfs_int.h. Present-day
+    layout.
+
+  - 4ba87b4e / 4f3ecf08: mandatory fops get err-func
+    defaults in all three fs'es.
+
+  - **6daa679b [ramfs] Allow open() to create a file when
+    O_CREAT is used**.
+
+  - **15193674 [ramfs] Working on read/write operations**
+    (+139 rw_ops.c.h): actual data storage via 4-KB blocks
+    linked from inode.
+
+  - fa4ff786 / e194dbed / acae630c: O_CLOEXEC handling;
+    dup() no longer shares fd_flags; close_cloexec_handles()
+    only on execve() success.
+
+  - **d5c17b40 [ramfs][devshell] Working on a read/write
+    test** (+83 test_fs1.c).
+
+  - b1c4933b: ramfs llseek(); 6600b343: read-past-end
+    check.
+
+--------------------------------------------------------------------------------
+
+## 2446-2470 i686 build host, MULTIBOOT_VIDEO_MODE, fs ops refactor
+   (9a1a6624..cfd85748, Apr 16-20 2019)
+
+  - 9a1a6624: build_toolchain uses `uname -m` (not `-p`).
+
+  - **369d58b7 [build] Support building everything on a i686
+    host** (+303/-93 build_toolchain; 8 new i386-linux-* /
+    i686-linux-* wrappers in scripts/build_scripts/):
+    enables 32-bit hosts to build Tilck.
+
+  - d809c4ff / 6af11323 / 40451372: libmusl sequential-only
+    build + auto-build when HOST_ARCH != BUILD_ARCH.
+
+  - **55ae6d33 [start] Add MULTIBOOT_VIDEO_MODE**: advertises
+    framebuffer preference so GRUB boots Tilck in graphics
+    mode.
+
+  - a3b9a638: README.
+
+  - **545f1601 / e2a801e1 / 2d005eb1 [vfs] fops made
+    static + then pointer**: each file system provides a
+    `static const struct file_ops` and handles carry a
+    pointer, reducing per-handle size.
+
+  - **42f603c4 [vfs] Introduce fs_ops as a fs-level fops
+    analogue**: filesystem-level callbacks (mkdir, stat,
+    unlink) separated from per-file callbacks. Matches
+    Linux's super_operations vs file_operations split.
+
+  - 3d8b4155: more open() flag handling across fs's.
+
+  - 2fd7f149: devshell fs2 test.
+
+  - **4bb752e3 [ramfs] Support O_TRUNC in open()**.
+
+  - 7848ae7d: debug `is_holding_lock` predicate for rwlocks.
+
+  - 18f3dd9d / 579c4779: ramfs inode-rwlock acquired before
+    truncate; ramfs_file_write() bug (off-by-one); off_t
+    used for fsize/pos/offset (signed, matches llseek).
+
+  - 4e9f8066 / 5d7b19d7 / 40eb6efc: fat pos -> off_t;
+    bintree_find_internal param typed const.
+
+  - 70e0a2af: devshell DEVSHELL_ASSERT improved.
+
+  - 27d2f89a: ramfs collapses to a single file_ops struct
+    (not one per file vs dir).
+
+  - cfd85748: ramfs_resolve_path() extracted from
+    ramfs_open().
+
+--------------------------------------------------------------------------------
+
+## 2471-2489 stat as fs-op; unlink; bintree dir entries; vfork
+   (68d8d566..75dbf4f1, Apr 20-22 2019)
+
+  - 68d8d566 / f7f90794 / d0cf89bf: fat reuses handle's
+    `pos` for directory index; ramfs file ops renamed
+    (drop _file_); cosmetic brace placement.
+
+  - 3a17689a / **1227eeae [vfs] Implement stat() at the VFS
+    layer**: sys_stat() now opens + fstat + close rather
+    than each fs reimplementing path -> stat.
+
+  - **b953978a [fs_syscalls] Implement sys_fstat64()**.
+
+  - b8487e06 / 2cf4b0e6: ramfs inode nlink + inode leak on
+    final close().
+
+  - ba620c0f / acf11316: per-file lock no longer falls
+    back to fs-lock if NULL; ramfs_resolve_path fine-grained
+    locking removed (fs-lock is enough).
+
+  - fafec1e9: get_retained_fs_at() extracted from
+    vfs_open().
+
+  - 72ebcb78 / **da2d752c [vfs] Make `stat` to be an fs-op
+    instead of a file-op**. 280ca87d: devfs returns a
+    meaningful ino.
+
+  - fa25d3aa: ramfs_resolve_path bug fix.
+
+  - **d8a9d896 [ramfs] Support unlink()** (+37 ramfs.c).
+    First file-system mutation operation beyond create.
+
+  - b762b959: devshell fs_perf1 (creat + unlink perf).
+
+  - **75dbf4f1 [ramfs] Use bintree instead of list for dir
+    entries** (+138/-82): O(log n) directory lookups.
+
+--------------------------------------------------------------------------------
+
+## 2490-2500 vfork, clock-update kthread, mkdir(), sys_umask
+   (f5fe18ea..10d7a2e5, Apr 22-24 2019)
+
+  - **f5fe18ea [syscalls] Implement vfork() by just calling
+    fork()** (acceptable because Tilck doesn't have COW/MMU
+    pressure concerns vfork was designed to avoid).
+
+  - 143bfc4f: ramfs perf test in user mode (gtest).
+
+  - **92b4d76a [datetime] Introduce the clock update kernel
+    thread** (+98 datetime.c): periodic RTC resync.
+
+  - f45ac119: ctime/mtime switched from struct datetime_t
+    to unix timestamps.
+
+  - eaaa8a45: ramfs O_APPEND.
+
+  - 6ba39499: ramfs inode gains parent_dir pointer; dir
+    permission check path.
+
+  - 9c9da87b / ece2c1de: fs_perf1 accepts DEST_DIR; write
+    perf test.
+
+  - **bba48b66 [vfs][ramfs] Add support for mkdir() and
+    implement it in ramfs** (+32 ramfs.c, +32 vfs.c).
+
+  - 7149f1bb: README.
+
+  - **10d7a2e5 [syscalls] Implement sys_umask()**: new
+    process_info->umask field copied across fork/execve.
+
+--------------------------------------------------------------------------------
