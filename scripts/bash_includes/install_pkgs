@@ -178,6 +178,7 @@ function install_fedora {
    pkg_list+=(libffi-devel)
    pkg_list+=(pkgconf-pkg-config)
    pkg_list+=(autoconf)
+   pkg_list+=(patch)
    pkg_list+=(ruby)
    pkg_list+=(rubygem-power_assert)
    pkg_list+=(rubygem-minitest)
