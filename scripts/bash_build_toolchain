@@ -21,6 +21,16 @@ if [[ "$MAIN_DIR" == *" "* ]]; then
    exit 1
 fi
 
+# Force a UTF-8 locale. Minimal Docker images (e.g. ubuntu:24.04) ship with
+# LANG unset, which makes Ruby default to US-ASCII and File.read/gsub fail
+# on any byte > 0x7F in files like ncurses' `configure`.
+if [[ "$LANG" == "" || "$LANG" == "C" || "$LANG" == "POSIX" ]]; then
+   export LANG=C.UTF-8
+fi
+if [[ "$LC_ALL" == "C" || "$LC_ALL" == "POSIX" ]]; then
+   export LC_ALL=C.UTF-8
+fi
+
 if [[ "$OS" == "FreeBSD" || "$OS" == "Darwin" ]]; then
    # Prepend our gnu-wrap directory to the path, so that on systems with a
    # BSD userland (FreeBSD, macOS) we'll use the GNU tools instead of the
