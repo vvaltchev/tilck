@@ -180,6 +180,7 @@ function install_fedora {
    pkg_list+=(autoconf)
    pkg_list+=(ruby)
    pkg_list+=(rubygem-power_assert)
+   pkg_list+=(rubygem-minitest)
    pkg_list+=(dtc)
 
    if [[ "$fedoraVer" != "" && "$fedoraVer" -ge 41 ]]; then
@@ -343,16 +344,22 @@ function install_arch {
       echo "You are all set, no packages need to be installed."
    fi
 
-   # power_assert is not packaged in Arch's main repos but is required
-   # at runtime by scripts/pkgmgr/early_logic.rb. Install it via gem
-   # once Ruby is present.
-   if ! gem list -i power_assert &> /dev/null; then
+   # power_assert and minitest are not packaged in Arch's main repos
+   # but are required by scripts/pkgmgr/ (early_logic.rb and the unit
+   # test suite). Install them via gem once Ruby is present.
+   local missing_gems=()
+   for g in power_assert minitest; do
+      gem list -i "$g" &> /dev/null || missing_gems+=("$g")
+   done
+
+   if [ ${#missing_gems[@]} -ne 0 ]; then
+      local gems="${missing_gems[*]}"
       if [ "$RUNNING_IN_CI" == 1 ] || [[ "$EUID" -eq 0 ]]; then
-         run_command "gem install --no-document power_assert" || exit 1
+         run_command "gem install --no-document $gems" || exit 1
       elif which sudo &> /dev/null; then
-         run_command "sudo gem install --no-document power_assert" || exit 1
+         run_command "sudo gem install --no-document $gems" || exit 1
       else
-         run_command "su -c \"gem install --no-document power_assert\"" || exit 1
+         run_command "su -c \"gem install --no-document $gems\"" || exit 1
       fi
    fi
 }
