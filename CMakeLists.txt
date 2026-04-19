@@ -390,7 +390,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 # Shared options: exposed to the kernel + tests/unit sub-projects
 # via the _krn_forward_args forwarding block below (any KRN_* OR any
 # cache variable CMake considers a shared option). Migrated to
-# tilck_option() so they show up in scripts/run_config's menuconfig.
+# tilck_option() so they show up in the generated run_config's menuconfig.
 # =====================================================================
 
 # --- Graphics ---
@@ -1753,11 +1753,29 @@ endif()
 # same constraint is now expressed via each MOD_*'s DEPENDS clause.
 tilck_finalize_options_deps()
 
+# Generate scripts/run_config's actual executable file with all paths
+# baked in. The template in scripts/templates/run_config.in uses
+# @VAR@ placeholders; the generated script lives next to the build
+# (one per build dir for out-of-tree builds). Users invoke it as
+# `./build/run_config` (or the appropriate build-dir path).
+set(MAIN_DIR     "${CMAKE_SOURCE_DIR}")
+set(SIDECAR      "${CMAKE_BINARY_DIR}/tilck_options.json")
+set(KCFG_DIR     "${CMAKE_BINARY_DIR}/kconfig")
+set(GEN_KCONFIG  "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py")
+set(APPLY_CONFIG "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/apply_config.py")
+set(CMAKE_RUN    "${CMAKE_SOURCE_DIR}/scripts/cmake_run")
+set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/menuconfig")
+configure_file(
+   "${CMAKE_SOURCE_DIR}/scripts/templates/run_config.in"
+   "${CMAKE_BINARY_DIR}/run_config"
+   @ONLY
+)
+
 # Schema-validate the tilck_option() sidecar. Catches bad metadata
 # (unknown types, missing fields, ENUM default not in STRINGS, etc.)
 # at CMake configure time instead of surfacing only when someone runs
-# scripts/run_config. An empty sidecar (no tilck_option() migrated
-# yet) validates cleanly.
+# the generated run_config. An empty sidecar (no tilck_option()
+# migrated yet) validates cleanly.
 execute_process(
    COMMAND
       ${CMAKE_COMMAND} -E env python3

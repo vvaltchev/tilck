@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-2-Clause
+#
+# *** GENERATED FILE — DO NOT EDIT ***
+#
+# Generated from scripts/templates/run_config.in by CMake at configure
+# time. All paths below are hard-coded for THIS specific build dir.
+# Re-run cmake_run to regenerate.
+
+# --- Hard-coded paths (filled in by configure_file at configure time) ---
+
+MAIN_DIR='@MAIN_DIR@'
+BUILD_DIR='@BUILD_DIR@'
+SIDECAR='@SIDECAR@'
+KCFG_DIR='@KCFG_DIR@'
+GEN_KCONFIG='@GEN_KCONFIG@'
+APPLY_CONFIG='@APPLY_CONFIG@'
+CMAKE_RUN='@CMAKE_RUN@'
+MCONF_ROOT='@MCONF_ROOT@'
+
+# --- Error messages ---
+
+no_mconf_error() {
+   echo
+   echo "ERROR: host_menuconfig is not installed."
+   echo
+   echo "mconf comes from the host_menuconfig toolchain package — optional,"
+   echo "Tilck builds fine without it. Install with:"
+   echo
+   echo "   $MAIN_DIR/scripts/cmake_run --contrib   # contributor preset"
+   echo "   $MAIN_DIR/scripts/build_toolchain -s host_menuconfig"
+   echo
+   echo "Or fall back to ccmake:"
+   echo
+   echo "   $0 --ccmake"
+   echo
+}
+
+no_ccmake_error() {
+   echo
+   echo "ERROR: the ccmake tool has not been found on this system."
+   echo "Install it on your system before re-running this command."
+   echo "Hint: on Ubuntu/Debian systems, its package name is:"
+   echo "cmake-curses-gui."
+   echo
+}
+
+no_sidecar_error() {
+   echo
+   echo "ERROR: $SIDECAR is missing."
+   echo
+   echo "Re-run cmake_run once to regenerate it:"
+   echo
+   echo "   $CMAKE_RUN"
+   echo
+}
+
+usage() {
+   cat <<EOF
+Usage: $0 [--ccmake]
+
+Options:
+   --ccmake     Use the old ccmake UI instead of mconf.
+   -h, --help   Show this help.
+EOF
+}
+
+# --- Arg parsing ---
+
+USE_CCMAKE=0
+while [[ "$#" -gt 0 ]]; do
+   case "$1" in
+      --ccmake)     USE_CCMAKE=1 ;;
+      -h|--help)    usage; exit 0 ;;
+      *)            echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+   esac
+   shift
+done
+
+# --- --ccmake fallback ---
+
+if [ "$USE_CCMAKE" = 1 ]; then
+   if ! command -v ccmake >/dev/null 2>&1; then
+      no_ccmake_error
+      exit 1
+   fi
+   exec ccmake "$BUILD_DIR"
+fi
+
+# --- Main path: mconf ---
+
+if ! [ -d "$MCONF_ROOT" ]; then
+   no_mconf_error
+   exit 1
+fi
+
+# Pick the highest installed host_menuconfig version at runtime so
+# an upgrade after this script was generated still works.
+MCONF_VER="$(ls "$MCONF_ROOT" | sort -V | tail -n 1)"
+MCONF_BINDIR="$MCONF_ROOT/$MCONF_VER/install/bin"
+MCONF_BIN="$MCONF_BINDIR/mconf"
+
+if ! [ -x "$MCONF_BIN" ]; then
+   no_mconf_error
+   exit 1
+fi
+
+if ! [ -f "$SIDECAR" ]; then
+   no_sidecar_error
+   exit 1
+fi
+
+# --- Regenerate Kconfig + seeded .config ---
+
+rm -rf "$KCFG_DIR"
+if ! python3 "$GEN_KCONFIG" --sidecar "$SIDECAR" --out "$KCFG_DIR"; then
+   echo "ERROR: gen_kconfig.py failed" >&2
+   exit 1
+fi
+
+# mconf shells out to lxdialog via a HARDCODED relative path
+# (./scripts/kconfig/lxdialog/lxdialog, baked into mconf.c at build
+# time). Materialize that path under $KCFG_DIR so the exec resolves.
+mkdir -p "$KCFG_DIR/scripts/kconfig/lxdialog"
+ln -sf "$MCONF_BINDIR/lxdialog" \
+       "$KCFG_DIR/scripts/kconfig/lxdialog/lxdialog"
+
+# --- Run mconf ---
+
+( cd "$KCFG_DIR" && "$MCONF_BIN" Kconfig )
+MCONF_EXIT=$?
+if [ "$MCONF_EXIT" -ne 0 ]; then
+   echo "ERROR: mconf exited with status $MCONF_EXIT" >&2
+   exit 1
+fi
+
+if ! [ -f "$KCFG_DIR/.config" ]; then
+   echo "No changes to apply (mconf did not write .config)."
+   exit 0
+fi
+
+# --- Translate .config → -D args and re-run cmake ---
+
+mapfile -t DARGS < <( \
+   python3 "$APPLY_CONFIG" "$KCFG_DIR/.config" "$BUILD_DIR/CMakeCache.txt" \
+)
+
+if [ "${#DARGS[@]}" -eq 0 ]; then
+   echo "No options changed."
+   exit 0
+fi
+
+echo
+echo "Applying ${#DARGS[@]} option change(s):"
+for d in "${DARGS[@]}"; do
+   echo "   $d"
+done
+echo
+
+exec "$CMAKE_RUN" "${DARGS[@]}" "$BUILD_DIR"

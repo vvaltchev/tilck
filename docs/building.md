@@ -122,15 +122,19 @@ Running `ccmake` is simple as:
 
     ccmake ./build
 
-But, as for the `cmake_run` case, it's **highly recommended** to run its wrapper
-script called `run_config`:
+But, as for the `cmake_run` case, it's **highly recommended** to run the
+`run_config` helper instead. Since it needs to know the exact build
+directory, its paths, and where the `host_menuconfig` toolchain package is
+installed, CMake generates it automatically at configure time from the
+template at `scripts/templates/run_config.in`. The generated script lives
+next to the build, so for in-tree builds it is simply:
 
-    ./scripts/run_config
+    ./build/run_config
 
-It has additional error-checking and prevents trivial errors like running
-`ccmake .` (which will create an empty CMakeCache.txt in `.`) instead of
-`ccmake build/` in project's main directory. Of course, it supports out-of-tree
-builds as well: just pass the build directory as first argument.
+For out-of-tree builds, the file is created under the build directory you
+used (`<build_dir>/run_config`). It launches mconf against the Tilck
+Kconfig generated from the `tilck_option()` metadata; pass `--ccmake`
+to fall back to the classic ccmake UI.
 
 Finally, there is also a wrapper for people used with Kconfig too, working when
 the in-tree build directory is used (again, 99% of the time):
