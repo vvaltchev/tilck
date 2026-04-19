@@ -26,7 +26,7 @@
 
 tilck_option(KRN_USER_STACK_PAGES
    TYPE     UINT
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  16
    HELP     "User-process stack size (pages)"
 )
@@ -40,7 +40,7 @@ tilck_option(KRN_USER_STACK_PAGES
 # derived fallback; the hide/show is a Kconfig-level effect.
 tilck_option(KRN_KMALLOC_CUSTOM_FIRST_HEAP
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Custom first kmalloc heap size"
             "When OFF (the default), kmalloc's first heap is sized"
@@ -51,7 +51,7 @@ tilck_option(KRN_KMALLOC_CUSTOM_FIRST_HEAP
 
 tilck_option(KRN_KMALLOC_FIRST_HEAP_SIZE_KB
    TYPE     UINT
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  128
    DEPENDS  KRN_KMALLOC_CUSTOM_FIRST_HEAP
    HELP     "First kmalloc heap size (KB)"
@@ -62,35 +62,35 @@ tilck_option(KRN_KMALLOC_FIRST_HEAP_SIZE_KB
 
 tilck_option(KRN_BIG_IO_BUF
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Use a larger buffer for I/O"
 )
 
 tilck_option(KRN_KMALLOC_HEAVY_STATS
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Count allocations per distinct size (diagnostic)"
 )
 
 tilck_option(KRN_KMALLOC_FREE_MEM_POISONING
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Poison freed memory in kfree()"
 )
 
 tilck_option(KRN_KMALLOC_SUPPORT_DEBUG_LOG
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Compile-in kmalloc debug messages"
 )
 
 tilck_option(KRN_KMALLOC_SUPPORT_LEAK_DETECTOR
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "Compile-in kmalloc's leak detector"
 )
@@ -101,14 +101,14 @@ tilck_option(KRN_KMALLOC_SUPPORT_LEAK_DETECTOR
 
 tilck_option(KRN_TERM_SCROLL_LINES
    TYPE     UINT
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  5
    HELP     "Lines to scroll on Shift+PgUp / Shift+PgDown"
 )
 
 tilck_option(KRN_PRINTK_ON_CURR_TTY
    TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  ON
    HELP     "Always flush printk() on the current TTY"
 )
@@ -124,14 +124,14 @@ tilck_option(KRN_PRINTK_ON_CURR_TTY
 
 tilck_option(KRN_TRACK_NESTED_INTERR
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Track nested interrupts"
 )
 
 tilck_option(KRN_SYMBOLS
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Keep kernel symbol tables in the image"
             "Needed for readable backtraces and kernel self-tests."
@@ -139,21 +139,21 @@ tilck_option(KRN_SYMBOLS
 
 tilck_option(KRN_TRACE_PRINTK_ON_BOOT
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Enable trace_printk() from boot time"
 )
 
 tilck_option(KRN_PAGE_FAULT_PRINTK
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Print info when killing a process on page fault"
 )
 
 tilck_option(KRN_NO_SYS_WARN
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Warn on calls to not-implemented syscalls"
 )
@@ -171,35 +171,35 @@ tilck_option(KRN_NO_SYS_WARN
 
 tilck_option(KRN_TIMER_HZ
    TYPE     INT
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  250
    HELP     "Kernel timer frequency in Hz"
 )
 
 tilck_option(KRN_CLOCK_DRIFT_COMP
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  ON
    HELP     "Periodically compensate for clock drift"
 )
 
 tilck_option(KRN_MAX_HANDLES
    TYPE     UINT
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  16
    HELP     "Max open handles per process (keep small)"
 )
 
 tilck_option(KRN_RESCHED_ENABLE_PREEMPT
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Check need_resched in enable_preemption()"
 )
 
 tilck_option(KRN_MINIMAL_TIME_SLICE
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Use 1-tick time slice (stress test)"
             "Forces the scheduler's time slice to a single tick to"
@@ -209,7 +209,7 @@ tilck_option(KRN_MINIMAL_TIME_SLICE
 
 tilck_option(KRN_STACK_ISOLATION
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  ON
    HELP     "Isolate the kernel stack in high virtual memory"
 )
@@ -224,7 +224,7 @@ else()
 endif()
 tilck_option(KRN_SHOW_LOGO
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  ${_krn_show_logo_default}
    HELP     "Show Tilck's logo at boot"
 )
@@ -232,7 +232,7 @@ unset(_krn_show_logo_default)
 
 tilck_option(KRN_TINY_KERNEL
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Force minimal kernel size (advanced)"
             "Makes the Tilck kernel as small as possible. Incompatible"

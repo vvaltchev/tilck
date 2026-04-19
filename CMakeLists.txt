@@ -397,14 +397,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 
 tilck_option(PREFERRED_GFX_MODE_W
    TYPE     UINT
-   CATEGORY "Graphics"
+   CATEGORY "Misc"
    DEFAULT  800
    HELP     "Preferred video mode (width, pixels)"
 )
 
 tilck_option(PREFERRED_GFX_MODE_H
    TYPE     UINT
-   CATEGORY "Graphics"
+   CATEGORY "Misc"
    DEFAULT  600
    HELP     "Preferred video mode (height, pixels)"
 )
@@ -413,14 +413,14 @@ tilck_option(PREFERRED_GFX_MODE_H
 
 tilck_option(FATPART_CLUSTER_SIZE
    TYPE     UINT
-   CATEGORY "Filesystems"
+   CATEGORY "Misc"
    DEFAULT  8
    HELP     "FAT ramdisk cluster size (sectors)"
 )
 
 tilck_option(FAT_TEST_DIR
    TYPE     BOOL
-   CATEGORY "Filesystems"
+   CATEGORY "Misc"
    DEFAULT  OFF
    HELP     "Add a test dir with many files to the FAT32 initrd"
 )
@@ -505,28 +505,28 @@ tilck_option(USERAPPS_CFLAGS
 
 tilck_option(KERNEL_64BIT_OFFT
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  ON
    HELP     "Make off_t 64-bit even on 32-bit targets"
 )
 
 tilck_option(FORK_NO_COW
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "fork(): full memory copy instead of copy-on-write"
 )
 
 tilck_option(MMAP_NO_COW
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  OFF
    HELP     "mmap(): allocate real memory instead of zero-page + COW"
 )
 
 tilck_option(KRN32_LIN_VADDR
    TYPE     BOOL
-   CATEGORY "Kernel/Memory"
+   CATEGORY "Kernel Memory"
    DEFAULT  ON
    HELP     "Place the 32-bit kernel at the default linear mapping"
 )
@@ -535,14 +535,14 @@ tilck_option(KRN32_LIN_VADDR
 
 tilck_option(TTY_COUNT
    TYPE     UINT
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  2
    HELP     "Number of virtual TTYs"
 )
 
 tilck_option(TERM_BIG_SCROLL_BUF
    TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  OFF
    HELP     "Use a 4x larger scrollback buffer"
 )
@@ -552,14 +552,14 @@ tilck_option(TERM_BIG_SCROLL_BUF
 # additional console on /dev/ttyS0 alongside the video console.
 tilck_option(SERIAL_CON_IN_VIDEO_MODE
    TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  ON
    HELP     "Also open /dev/ttyS0 console in video mode"
 )
 
 tilck_option(KERNEL_SERCON
    TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
+   CATEGORY "Kernel Terminal"
    DEFAULT  OFF
    HELP     "Use serial as the only console"
             "Forces the kernel to boot with the serial console as the"
@@ -571,63 +571,63 @@ tilck_option(KERNEL_SERCON
 
 tilck_option(DEBUG_CHECKS
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Keep ASSERTs + debug checks in release builds"
 )
 
 tilck_option(KERNEL_SELFTESTS
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Compile-in the kernel's self-tests"
 )
 
 tilck_option(PANIC_SHOW_STACKTRACE
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  ON
    HELP     "Show the stacktrace on kernel panic"
 )
 
 tilck_option(PANIC_SHOW_REGS
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Show register contents on kernel panic"
 )
 
 tilck_option(KERNEL_UBSAN
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Enable UBSAN instrumentation in the kernel"
 )
 
 tilck_option(KERNEL_SAT
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Enable the sched-alive thread at boot (CI runs)"
 )
 
 tilck_option(PS2_DO_SELFTEST
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Run PS/2 controller selftests in init_kb()"
 )
 
 tilck_option(PS2_VERBOSE_DEBUG_LOG
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Enable verbose PS/2 debug logging (dev-only)"
 )
 
 tilck_option(INIT_REPORT_PROC_EXIT
    TYPE     BOOL
-   CATEGORY "Kernel/Debug"
+   CATEGORY "Kernel Debug"
    DEFAULT  OFF
    HELP     "Report child-process exits on init's TTY"
 )
@@ -636,14 +636,14 @@ tilck_option(INIT_REPORT_PROC_EXIT
 
 tilck_option(KERNEL_SYSCC
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Use system compiler instead of the toolchain's"
 )
 
 tilck_option(KERNEL_FORCE_TC_ISYSTEM
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Force toolchain sysroot with a system compiler (DANGEROUS)"
             "Only meant for static-analysis builds. Brutally forces the"
@@ -653,7 +653,7 @@ tilck_option(KERNEL_FORCE_TC_ISYSTEM
 
 tilck_option(WCONV
    TYPE     BOOL
-   CATEGORY "Kernel/Misc"
+   CATEGORY "Kernel Misc"
    DEFAULT  OFF
    HELP     "Compile with -Wconversion (clang only)"
 )

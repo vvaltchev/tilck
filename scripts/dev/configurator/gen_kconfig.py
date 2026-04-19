@@ -264,14 +264,18 @@ def generate(records: list[dict], outdir: Path) -> None:
 
     root_lines = ['mainmenu "Tilck Configuration"', ""]
     for top in sorted(by_top.keys()):
-        sub_path = outdir / f"Kconfig.{top.lower()}"
+        # Sanitise filename: spaces → underscores, lowercase. The
+        # in-menu title keeps the original casing + spacing; only
+        # the backing Kconfig.<stem> filename is normalised.
+        stem = top.lower().replace(" ", "_")
+        sub_path = outdir / f"Kconfig.{stem}"
         sub_lines = [f'menu "{top}"', ""]
         tree = _build_tree(by_top[top], skip_parts=1)
         _emit_tree(sub_lines, tree)
         sub_lines.append("endmenu")
         sub_lines.append("")
         sub_path.write_text("\n".join(sub_lines))
-        root_lines.append(f'source "Kconfig.{top.lower()}"')
+        root_lines.append(f'source "Kconfig.{stem}"')
     root_lines.append("")
     (outdir / "Kconfig").write_text("\n".join(root_lines))
 
