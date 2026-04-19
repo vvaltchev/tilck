@@ -156,24 +156,37 @@ module Main
   end
 
   # --- Fancy (human-friendly) mode ---
+  #
+  # Standard tree(1) geometry (K=4 cols per level) with two tweaks:
+  #   1. A 4-space leading indent before the whole tree.
+  #   2. The root uses a bare "┌ name" corner (no dash), so it sits
+  #      at the same column as the level-2 connectors — like tree(1)
+  #      does with the plain root name.
+  #
+  # Every subtree gets an extra trunk-only "…│" line before its
+  # first child and between siblings, so the vertical "│" connector
+  # is always visible (even when a subtree has only one child).
+
+  LEAD = "    "
 
   def dep_tree_root(name, graph, installed, show_installed, lines)
-    lines << "  ┌─ #{dep_tree_fmt(name, installed, show_installed)}"
+    lines << "#{LEAD}┌ #{dep_tree_fmt(name, installed, show_installed)}"
     deps = dep_tree_deps(name, graph, installed, show_installed)
 
     if deps.empty?
       if show_installed
-        lines << "  (no dependencies)"
+        lines << "#{LEAD}(no dependencies)"
       end
       return
     end
 
-    lines << "  │"
+    spacer = "#{LEAD}│"
+    lines << spacer
     deps.each_with_index do |dep, i|
       last = (i == deps.length - 1)
-      dep_tree_child(dep, graph, "  ", last, lines, installed,
+      dep_tree_child(dep, graph, LEAD, last, lines, installed,
                      show_installed, Set.new([name]))
-      lines << "  │" if !last
+      lines << spacer if !last
     end
   end
 
@@ -187,7 +200,7 @@ module Main
     return if deps.empty?
 
     child_prefix = prefix + (is_last ? "    " : "│   ")
-    spacer = child_prefix.rstrip
+    spacer = "#{child_prefix}│"
     lines << spacer
 
     new_visited = visited | [name]
