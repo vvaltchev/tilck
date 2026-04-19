@@ -96,13 +96,20 @@ macro(tilck_init_options_sidecar)
    set_property(GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS "")
 endmacro()
 
-# Enforce deferred BOOL DEPENDS checks recorded by tilck_option().
+# Resolve deferred BOOL DEPENDS checks recorded by tilck_option().
 # Call exactly once, at the end of the root CMakeLists.txt, after
 # every tilck_option() invocation has run (including in sub-
 # projects that re-include option files). Dep-names can refer to
 # other tilck_option()-defined options that didn't exist when the
 # dependent was defined — e.g. the MOD_* alphabetical-glob loop
 # where MOD_acpi comes before MOD_pci.
+#
+# Semantics: Kconfig-style `depends on`. When a BOOL option is
+# enabled but one of its deps is unmet, the option is force-
+# disabled (its cache value is reset to OFF) with a STATUS message.
+# This keeps presets maintainable: a preset that turns a module
+# off doesn't have to also toggle every sub-option declared in that
+# module's options.cmake.
 macro(tilck_finalize_options_deps)
 
    get_property(_pending GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS)
@@ -115,26 +122,32 @@ macro(tilck_finalize_options_deps)
       string(REPLACE "," ";" _deps "${_deps_csv}")
 
       if (NOT ${${_name}})
-         continue()   # option disabled — deps don't matter
+         continue()   # already OFF — no dep conflict possible
       endif()
 
+      set(_unmet "")
       foreach(_dep ${_deps})
          string(SUBSTRING "${_dep}" 0 1 _dep_first)
          if ("${_dep_first}" STREQUAL "!")
             string(SUBSTRING "${_dep}" 1 -1 _dep_name)
             if (${${_dep_name}})
-               message(FATAL_ERROR
-                  "tilck_option(${_name}) requires !${_dep_name} "
-                  "but ${_dep_name} is set")
+               set(_unmet "!${_dep_name}")
+               break()
             endif()
          else()
             if (NOT ${${_dep}})
-               message(FATAL_ERROR
-                  "tilck_option(${_name}) requires ${_dep} "
-                  "but ${_dep} is not set")
+               set(_unmet "${_dep}")
+               break()
             endif()
          endif()
       endforeach()
+
+      if (NOT "${_unmet}" STREQUAL "")
+         message(STATUS
+            "tilck_option(${_name}): forcing OFF (unmet dep: ${_unmet})")
+         set_property(CACHE ${_name} PROPERTY VALUE OFF)
+         set(${_name} OFF)
+      endif()
 
    endforeach()
 
@@ -273,14 +286,13 @@ macro(tilck_option NAME)
 
    # --- DEPENDS runtime check ---
    #
-   # For BOOL options, DEPENDS is a hard invariant: if the option is
-   # enabled but any dep is not, that's a configuration error. The
-   # check is DEFERRED to tilck_finalize_options_deps() (called at
-   # the end of the root CMakeLists.txt) because some option
-   # definitions reference OTHER tilck_option()-defined options
-   # that may not exist yet at call time — e.g. the MOD_* loop,
-   # where MOD_acpi is processed alphabetically before MOD_pci
-   # even though it DEPENDS on it.
+   # For BOOL options, DEPENDS is Kconfig-style: if the option is
+   # enabled but any dep is unmet, the option is force-disabled at
+   # finalize time (see tilck_finalize_options_deps). The check is
+   # DEFERRED because some deps reference OTHER tilck_option()-
+   # defined options that may not exist yet at call time — e.g.
+   # the MOD_* loop, where MOD_acpi is processed alphabetically
+   # before MOD_pci even though it DEPENDS on it.
    #
    # For non-BOOL options (INT/UINT/ADDR/STRING/ENUM) used as
    # conditional sub-options, DEPENDS controls VISIBILITY in mconf
