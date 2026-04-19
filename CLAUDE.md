@@ -301,6 +301,23 @@ FreeBSD is a supported build host alongside Linux. Key differences:
 Each commit must be self-contained, compile in all configs, and pass all tests
 (critical for `git bisect`)
 
+## No changes without testing
+Never commit changes that affect build logic, package installs, or runtime
+behavior without actually exercising the affected path. The pkgmgr unit test
+suite (`./scripts/build_toolchain -t`) uses `FakePackage` stubs with no real
+downloads or builds — passing it proves pkgmgr logic is sound, NOT that a real
+package installs correctly. For pkgmgr changes, run
+`./scripts/build_toolchain -s <pkg>` (or the relevant install) and check
+that `expected_files` are actually produced. For multi-arch changes, repeat
+with `-a <arch>` on each affected arch, or run `--system-tests -a ALL`. For
+dep-graph changes, run `--deps <pkg>` and confirm the tree, then
+force-reinstall a dependent to check ordering. For `config_impl` /
+interactive flows, at minimum verify the host tool binary links against the
+expected libraries (`ldd`, `strings`, or `V=1` build logs showing the right
+`-I`/`-L` paths). If a change is genuinely untestable in the current
+environment (e.g. requires a real TTY), say so explicitly and ask for an
+exception rather than committing blind.
+
 ## CI
 Azure DevOps Pipelines tests all commits across i386, riscv64, x86_64 with
 debug/release builds, unit tests, system tests, and coverage.
