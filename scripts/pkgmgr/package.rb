@@ -389,6 +389,40 @@ class Package
     final_ver_dir = final_pkg_dir / ver_dirname(ver)
 
     FileUtils.mkdir_p(final_pkg_dir)
+
+    # Guard against Ruby's FileUtils.mv falling back to POSIX "mv src
+    # existing_dir/" semantics, which silently nests staging INSIDE
+    # final_ver_dir (→ final_ver_dir/<ver>/...) instead of replacing
+    # it. We only reach this point if `installed?` returned false,
+    # so if final_ver_dir is present it's either:
+    #
+    #   - broken (failed check_install_dir — e.g. user ran
+    #     `make distclean` inside the install tree, or a partial
+    #     uninstall left dangling files). Self-heal: remove it and
+    #     proceed. A WARNING is emitted so the user knows the prior
+    #     install was clobbered.
+    #
+    #   - not broken — an inconsistent state that should not normally
+    #     happen (installed? should have caught it). Refuse rather
+    #     than silently overwrite a valid install. The user can clear
+    #     the ambiguity with `-f` (which pre-uninstalls through the
+    #     main CLI flow) or `-u <pkg>`.
+    if final_ver_dir.exist?
+      if check_install_dir(final_ver_dir)
+        error "#{name}: final install dir #{final_ver_dir} already " \
+              "exists and looks complete, but the package was not " \
+              "detected as installed. Refusing to overwrite. " \
+              "Use `-u #{name}` to remove it, or `-s #{name} -f` " \
+              "to force-reinstall."
+        return false
+      else
+        warning "#{name}: final install dir #{final_ver_dir} exists " \
+                "but is broken (expected files missing). Removing " \
+                "it before installing the fresh build."
+        FileUtils.rm_rf(final_ver_dir)
+      end
+    end
+
     FileUtils.mv(staging.to_s, final_ver_dir.to_s)
 
     # Clean up the empty staging/pkg_dirname/ directory
