@@ -729,9 +729,10 @@ foreach(modpath ${modules})
    unset(_mod_deps_file)
 
    # If the module ships an options.cmake, include it now. These
-   # files typically declare per-module tilck_option()s (category
-   # "Modules/<name>", DEPENDS MOD_<name>) that appear as a
-   # sub-menu under Modules and are hidden in mconf when the
+   # files typically declare per-module tilck_option()s with
+   # CATEGORY "Modules" + DEPENDS MOD_<name>. They show up in
+   # mconf directly after MOD_<name> (options are emitted in the
+   # order their tilck_option() calls run) and are hidden when the
    # module's compile-in toggle is off.
    set(_mod_opts_file "${PROJ_ROOT}/modules/${modname}/options.cmake")
    if (EXISTS ${_mod_opts_file})
