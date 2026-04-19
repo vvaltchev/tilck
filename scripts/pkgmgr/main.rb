@@ -170,8 +170,12 @@ module Main
   LEAD = "    "
 
   def dep_tree_root(name, graph, installed, show_installed, lines)
-    lines << "#{LEAD}┌ #{dep_tree_fmt(name, installed, show_installed)}"
     deps = dep_tree_deps(name, graph, installed, show_installed)
+
+    # Root with no visible subtree uses a bare "─ " bullet rather
+    # than the "┌ " corner — there is no trunk to open.
+    corner = deps.empty? ? "─" : "┌"
+    lines << "#{LEAD}#{corner} #{dep_tree_fmt(name, installed, show_installed)}"
 
     if deps.empty?
       if show_installed
