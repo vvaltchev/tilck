@@ -45,6 +45,15 @@ if [[ "$1" == "--contrib" ]]; then
    echo -e "   - CMAKE_ARGS=${LMAGENTA}'${CMAKE_ARGS}'${RATTRS}"
    echo
 
+   # Contributor preset pulls in host_menuconfig so `run_config`
+   # works out of the box. build_toolchain -s is idempotent: it
+   # skips if already installed, so repeated --contrib invocations
+   # are cheap.
+   "$MAIN_DIR/scripts/build_toolchain" -s host_menuconfig || {
+      echo "ERROR: failed to install host_menuconfig" >&2
+      exit 1
+   }
+
 elif [[ "$1" == "--intr" ]]; then
 
    shift
