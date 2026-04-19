@@ -386,119 +386,277 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 
 # Compile options
 
-# Shared non-boolean options
-set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
-set(FATPART_CLUSTER_SIZE  8 CACHE STRING
-    "Cluster size (in sectors) of the FAT ramdisk")
+# =====================================================================
+# Shared options: exposed to the kernel + tests/unit sub-projects
+# via the _krn_forward_args forwarding block below (any KRN_* OR any
+# cache variable CMake considers a shared option). Migrated to
+# tilck_option() so they show up in scripts/run_config's menuconfig.
+# =====================================================================
 
-set(PREFERRED_GFX_MODE_W "800" CACHE STRING
-    "Preferred video mode (width)")
+# --- Graphics ---
 
-set(PREFERRED_GFX_MODE_H "600" CACHE STRING
-    "Preferred video mode (height)")
-
-set(
-
-   USERAPPS_CFLAGS
-   "-ggdb -Os -Wall -Wno-unused-parameter"
-
-   CACHE STRING "Build flags for C/C++ user programs"
+tilck_option(PREFERRED_GFX_MODE_W
+   TYPE     UINT
+   CATEGORY "Graphics"
+   DEFAULT  800
+   HELP     "Preferred video mode (width, pixels)"
 )
 
-# Shared boolean options (enabled by default)
+tilck_option(PREFERRED_GFX_MODE_H
+   TYPE     UINT
+   CATEGORY "Graphics"
+   DEFAULT  600
+   HELP     "Preferred video mode (height, pixels)"
+)
 
-set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
-    "Show the stacktrace in case of a kernel panic")
+# --- Filesystems ---
 
-set(DEBUG_CHECKS ON CACHE BOOL
-    "Keep checking ASSERTs and other debug checks even in release builds")
+tilck_option(FATPART_CLUSTER_SIZE
+   TYPE     UINT
+   CATEGORY "Filesystems"
+   DEFAULT  8
+   HELP     "FAT ramdisk cluster size (sectors)"
+)
 
-set(KERNEL_64BIT_OFFT ON CACHE BOOL
-    "Make offt be 64-bit even on 32-bit systems")
+tilck_option(FAT_TEST_DIR
+   TYPE     BOOL
+   CATEGORY "Filesystems"
+   DEFAULT  OFF
+   HELP     "Add a test dir with many files to the FAT32 initrd"
+)
 
-set(FORK_NO_COW OFF CACHE BOOL
-    "Make fork() to perform a full-copy instead of using copy-on-write")
-
-set(MMAP_NO_COW OFF CACHE BOOL
-    "Make mmap() to allocate real memory instead mapping the zero-page + COW")
-
-set(KERNEL_SELFTESTS ON CACHE BOOL
-    "Compile-in self-tests in the kernel")
+# --- Bootloader (arch-dependent) ---
 
 if (${ARCH} STREQUAL "riscv64")
-   set(BOOTLOADER_U_BOOT ON CACHE BOOL
-       "Build the U-BOOT bootloader")
-else()
-   set(BOOTLOADER_LEGACY ON CACHE BOOL
-       "Build the legacy bootloader")
 
-   set(BOOTLOADER_EFI ON CACHE BOOL
-       "Build the EFI bootloader")
+   tilck_option(BOOTLOADER_U_BOOT
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the U-Boot bootloader"
+   )
+
+else()
+
+   tilck_option(BOOTLOADER_LEGACY
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the legacy BIOS bootloader"
+   )
+
+   tilck_option(BOOTLOADER_EFI
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the UEFI bootloader"
+   )
+
+   tilck_option(EFI_BOOTLOADER_DEBUG
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  OFF
+      DEPENDS  BOOTLOADER_EFI
+      HELP     "Early DEBUG dialog in EFI bootloader"
+               "See docs/debugging.md. Only meaningful when the EFI"
+               "bootloader is being built."
+   )
+
 endif()
 
-set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
-    "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
+tilck_option(BOOT_INTERACTIVE
+   TYPE     BOOL
+   CATEGORY "Bootloader"
+   DEFAULT  ON
+   HELP     "Enable interactive bootloader commands"
+)
 
-set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
-    "Include in Tilck's ramdisk some apps for testing the kernel")
+tilck_option(BOOTLOADER_POISON_MEMORY
+   TYPE     BOOL
+   CATEGORY "Bootloader"
+   DEFAULT  OFF
+   HELP     "Poison all available memory in the bootloader"
+)
 
-set(BOOT_INTERACTIVE ON CACHE BOOL
-    "Have user-interactive commands in the bootloaders")
+# --- Userapps ---
 
-set(KRN32_LIN_VADDR ON CACHE BOOL
-    "Place the 32-bit kernel in the default linear mapping")
+tilck_option(USERAPPS_busybox
+   TYPE     BOOL
+   CATEGORY "Userapps"
+   DEFAULT  ON
+   HELP     "Include BusyBox in the image (recommended)"
+)
 
-set(USERAPPS_busybox ON CACHE BOOL "Include BUSYBOX (recommended)")
+tilck_option(TYPICAL_DEVEL_USERAPPS
+   TYPE     BOOL
+   CATEGORY "Userapps"
+   DEFAULT  ON
+   HELP     "Include kernel-testing dev apps in the ramdisk"
+)
 
-# Shared boolean options (disabled by default)
+tilck_option(USERAPPS_CFLAGS
+   TYPE     STRING
+   CATEGORY "Userapps"
+   DEFAULT  "-ggdb -Os -Wall -Wno-unused-parameter"
+   HELP     "Build flags for C/C++ user programs"
+)
 
-set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
+# --- Kernel / Memory ---
 
-set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
-    "Use a 4x bigger scrollback buffer for the terminal")
+tilck_option(KERNEL_64BIT_OFFT
+   TYPE     BOOL
+   CATEGORY "Kernel/Memory"
+   DEFAULT  ON
+   HELP     "Make off_t 64-bit even on 32-bit targets"
+)
 
-set(KERNEL_SYSCC OFF CACHE BOOL
-    "Use system's compiler for the kernel instead of toolchain's one")
+tilck_option(FORK_NO_COW
+   TYPE     BOOL
+   CATEGORY "Kernel/Memory"
+   DEFAULT  OFF
+   HELP     "fork(): full memory copy instead of copy-on-write"
+)
 
-set(KERNEL_FORCE_TC_ISYSTEM OFF CACHE BOOL "\
-DANGEROUS. Do NOT use for other than static analysis builds. \
-BRUTALLY forces the build system to use tc's sysroot \
-for system headers even when a system compiler is used.\
-")
+tilck_option(MMAP_NO_COW
+   TYPE     BOOL
+   CATEGORY "Kernel/Memory"
+   DEFAULT  OFF
+   HELP     "mmap(): allocate real memory instead of zero-page + COW"
+)
 
-set(PANIC_SHOW_REGS OFF CACHE BOOL
-    "Show the content of the main registers in case of kernel panic")
+tilck_option(KRN32_LIN_VADDR
+   TYPE     BOOL
+   CATEGORY "Kernel/Memory"
+   DEFAULT  ON
+   HELP     "Place the 32-bit kernel at the default linear mapping"
+)
 
-set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
-    "Make the bootloader to poison all the available memory")
+# --- Kernel / Terminal ---
 
-set(WCONV OFF CACHE BOOL
-    "Compile with -Wconversion when clang is used")
+tilck_option(TTY_COUNT
+   TYPE     UINT
+   CATEGORY "Kernel/Terminal"
+   DEFAULT  2
+   HELP     "Number of virtual TTYs"
+)
 
-set(FAT_TEST_DIR OFF CACHE BOOL
-    "Create a test dir with many files in the FAT32 init ramdisk")
+tilck_option(TERM_BIG_SCROLL_BUF
+   TYPE     BOOL
+   CATEGORY "Kernel/Terminal"
+   DEFAULT  OFF
+   HELP     "Use a 4x larger scrollback buffer"
+)
 
-set(PS2_DO_SELFTEST OFF CACHE BOOL
-    "Do PS/2 controller selftests in init_kb()")
+# KERNEL_SERCON vs SERIAL_CON_IN_VIDEO_MODE: the first makes the
+# serial port the primary and ONLY console; the second enables an
+# additional console on /dev/ttyS0 alongside the video console.
+tilck_option(SERIAL_CON_IN_VIDEO_MODE
+   TYPE     BOOL
+   CATEGORY "Kernel/Terminal"
+   DEFAULT  ON
+   HELP     "Also open /dev/ttyS0 console in video mode"
+)
 
-set(PS2_VERBOSE_DEBUG_LOG OFF CACHE BOOL
-    "Enable developer-only verbose logging")
+tilck_option(KERNEL_SERCON
+   TYPE     BOOL
+   CATEGORY "Kernel/Terminal"
+   DEFAULT  OFF
+   HELP     "Use serial as the only console"
+            "Forces the kernel to boot with the serial console as the"
+            "primary (and only) console, even when a video console"
+            "module is available."
+)
 
-set(INIT_REPORT_PROC_EXIT OFF CACHE BOOL
-    "Make init to report on TTY when children (often acquired) exit")
+# --- Kernel / Debug ---
 
-set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
-    "Enable an early DEBUG dialog (see docs/debugging.md)")
+tilck_option(DEBUG_CHECKS
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  ON
+   HELP     "Keep ASSERTs + debug checks in release builds"
+)
 
-# KERNEL_SERCON is different than SERIAL_CON_IN_VIDEO_MODE because it makes
-# the serial console and primary and only console. SERIAL_CON_IN_VIDEO_MODE
-# simply enables _also_ the serial console even when booted in video mode,
-# as a second console.
-set(KERNEL_SERCON OFF CACHE BOOL
-    "Boot only using the serial console even if we have a console module")
+tilck_option(KERNEL_SELFTESTS
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  ON
+   HELP     "Compile-in the kernel's self-tests"
+)
 
-set(KERNEL_SAT OFF CACHE BOOL
-    "Enable the sched alive thread on boot (used for CI/CD runs)")
+tilck_option(PANIC_SHOW_STACKTRACE
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  ON
+   HELP     "Show the stacktrace on kernel panic"
+)
+
+tilck_option(PANIC_SHOW_REGS
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Show register contents on kernel panic"
+)
+
+tilck_option(KERNEL_UBSAN
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Enable UBSAN instrumentation in the kernel"
+)
+
+tilck_option(KERNEL_SAT
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Enable the sched-alive thread at boot (CI runs)"
+)
+
+tilck_option(PS2_DO_SELFTEST
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Run PS/2 controller selftests in init_kb()"
+)
+
+tilck_option(PS2_VERBOSE_DEBUG_LOG
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Enable verbose PS/2 debug logging (dev-only)"
+)
+
+tilck_option(INIT_REPORT_PROC_EXIT
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  OFF
+   HELP     "Report child-process exits on init's TTY"
+)
+
+# --- Kernel / Misc ---
+
+tilck_option(KERNEL_SYSCC
+   TYPE     BOOL
+   CATEGORY "Kernel/Misc"
+   DEFAULT  OFF
+   HELP     "Use system compiler instead of the toolchain's"
+)
+
+tilck_option(KERNEL_FORCE_TC_ISYSTEM
+   TYPE     BOOL
+   CATEGORY "Kernel/Misc"
+   DEFAULT  OFF
+   HELP     "Force toolchain sysroot with a system compiler (DANGEROUS)"
+            "Only meant for static-analysis builds. Brutally forces the"
+            "build system to use the toolchain sysroot for system"
+            "headers even when a system compiler is in use."
+)
+
+tilck_option(WCONV
+   TYPE     BOOL
+   CATEGORY "Kernel/Misc"
+   DEFAULT  OFF
+   HELP     "Compile with -Wconversion (clang only)"
+)
 
 list(
    APPEND no_arch_modules_whitelist
