@@ -31,6 +31,11 @@ VALID_TYPES = {"bool", "string", "enum", "int", "uint", "addr"}
 REQUIRED_FIELDS = {
     "name", "type", "category", "default", "current", "help", "depends",
 }
+# Comment records ({"type":"comment", "category":..., "text":...})
+# are rendered as Kconfig `comment "TEXT"` lines — non-interactive
+# menu separators shown as "--- TEXT ---" in mconf. They have no
+# cache variable and no name.
+COMMENT_FIELDS = {"type", "category", "text"}
 
 INT_RE = re.compile(r"^-?[0-9]+$")
 UINT_RE = re.compile(r"^[0-9]+$")
@@ -80,6 +85,16 @@ def validate(records: list[dict]) -> list[str]:
     for i, r in enumerate(records, start=1):
         if not isinstance(r, dict):
             errors.append(f"record #{i}: not a JSON object")
+            continue
+
+        # Comment records are validated separately: they have no
+        # name, default, current, etc. — only category + text.
+        if r.get("type") == "comment":
+            missing = COMMENT_FIELDS - r.keys()
+            if missing:
+                errors.append(
+                    f"<comment #{i}>: missing fields {sorted(missing)}"
+                )
             continue
 
         name = r.get("name", f"<record #{i}>")
@@ -155,7 +170,15 @@ def _truthy(val: str) -> bool:
 
 
 def _emit_record(lines: list[str], r: dict) -> None:
-    """Append Kconfig lines for a single option."""
+    """Append Kconfig lines for a single option or comment record."""
+    # Comment records render as "comment \"TEXT\"" — a non-
+    # interactive separator shown as "--- TEXT ---" in mconf. No
+    # cache var, no DEPENDS, no help block needed.
+    if r.get("type") == "comment":
+        lines.append(f'comment "{r["text"]}"')
+        lines.append("")
+        return
+
     name = r["name"]
     t = r["type"]
     help_all = _help_lines(r["help"])
@@ -279,7 +302,12 @@ def generate(records: list[dict], outdir: Path) -> None:
     root_lines.append("")
     (outdir / "Kconfig").write_text("\n".join(root_lines))
 
-    dotconfig = [_seed_config_line(r) for r in records]
+    # Seed .config from the option records' current values. Skip
+    # comment records — they have no CONFIG_ symbol.
+    dotconfig = [
+        _seed_config_line(r) for r in records
+        if r.get("type") != "comment"
+    ]
     (outdir / ".config").write_text("\n".join(dotconfig) + "\n")
 
 

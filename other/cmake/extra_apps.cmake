@@ -6,11 +6,44 @@ cmake_minimum_required(VERSION 3.22)
 # package has been installed (./scripts/build_toolchain -s <pkg>);
 # CMake never declares the option otherwise, so mconf's menu stays
 # clean for users who haven't opted into those tools.
+#
+# Shared category "Userapps" — the EXTRA_* options appear in the
+# same menu screen as the regular userapp toggles. A
+# tilck_option_comment() separator is emitted first so mconf shows
+# "--- Extra userapps ---" between the regular and extra groups.
+
+# Detect if any extra is installable at all. If nothing is installed,
+# skip the separator so the main Userapps menu isn't polluted with
+# a header that has nothing under it.
+set(_have_any_extra FALSE)
+foreach (_rel
+   "vim/${VER_VIM}"
+   "tcc/${VER_TCC}"
+   "fbdoom/${VER_FBDOOM}"
+   "micropython/${VER_MICROPYTHON}"
+   "treecmd/${VER_TREECMD}"
+   "lua/${VER_LUA}"
+)
+   if (EXISTS ${TCROOT_ARCH_DIR}/${_rel})
+      set(_have_any_extra TRUE)
+      break()
+   endif()
+endforeach()
+if (NOT _have_any_extra AND EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
+   set(_have_any_extra TRUE)
+endif()
+
+if (_have_any_extra)
+   tilck_option_comment("Extra userapps (require toolchain packages)"
+      CATEGORY "Userapps"
+   )
+endif()
+unset(_have_any_extra)
 
 if (EXISTS ${TCROOT_ARCH_DIR}/vim/${VER_VIM})
    tilck_option(EXTRA_VIM
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include the real VIM"
    )
@@ -20,7 +53,7 @@ endif()
 if (EXISTS ${TCROOT_ARCH_DIR}/tcc/${VER_TCC})
    tilck_option(EXTRA_TCC
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include the TinyCC compiler"
    )
@@ -31,7 +64,7 @@ if (EXISTS ${TCROOT_ARCH_DIR}/fbdoom/${VER_FBDOOM} AND
     EXISTS ${TCROOT_ARCH_DIR}/freedoom/${VER_FREEDOOM})
    tilck_option(EXTRA_FBDOOM
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include fbDOOM"
    )
@@ -41,7 +74,7 @@ endif()
 if (EXISTS ${TCROOT_ARCH_DIR}/micropython/${VER_MICROPYTHON})
    tilck_option(EXTRA_MICROPYTHON
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include MicroPython"
    )
@@ -51,7 +84,7 @@ endif()
 if (EXISTS ${TCROOT_ARCH_DIR}/treecmd/${VER_TREECMD})
    tilck_option(EXTRA_TREE_CMD
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include the tree(1) command"
    )
@@ -61,7 +94,7 @@ endif()
 if (EXISTS ${TCROOT_ARCH_DIR}/lua/${VER_LUA})
    tilck_option(EXTRA_LUA
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include LUA"
    )
@@ -71,7 +104,7 @@ endif()
 if (EXISTS ${TCROOT}/noarch/tfblib/${VER_TFBLIB})
    tilck_option(EXTRA_TFBLIB
       TYPE     BOOL
-      CATEGORY "Userapps/Extra"
+      CATEGORY "Userapps"
       DEFAULT  OFF
       HELP     "Include tfblib apps"
    )

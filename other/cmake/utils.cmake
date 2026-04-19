@@ -379,6 +379,40 @@ function(_tilck_option_emit_jsonl
 
 endfunction()
 
+# tilck_option_comment() — emit a non-interactive menu separator.
+#
+#   tilck_option_comment(<TEXT> CATEGORY <category>)
+#
+# Adds a sidecar record with type="comment" that the generator
+# renders as a Kconfig `comment "TEXT"` line. In mconf this shows
+# as `--- TEXT ---` in the menu — a lightweight way to group
+# related options on the same screen without nesting a sub-menu.
+# No cache variable is set; there is no value to store.
+macro(tilck_option_comment TEXT)
+
+   cmake_parse_arguments(TOC "" "CATEGORY" "" ${ARGN})
+
+   if (NOT TOC_CATEGORY)
+      message(FATAL_ERROR
+         "tilck_option_comment(${TEXT}): CATEGORY is required")
+   endif()
+
+   foreach(_check IN ITEMS "${TEXT}" "${TOC_CATEGORY}")
+      string(FIND "${_check}" "\\" _bs)
+      string(FIND "${_check}" "\"" _q)
+      if (NOT _bs EQUAL -1 OR NOT _q EQUAL -1)
+         message(FATAL_ERROR
+            "tilck_option_comment(${TEXT}): TEXT/CATEGORY may not "
+            "contain \\ or \".")
+      endif()
+   endforeach()
+
+   file(APPEND "${CMAKE_BINARY_DIR}/tilck_options.json"
+      "{\"type\":\"comment\",\"category\":\"${TOC_CATEGORY}\",\"text\":\"${TEXT}\"}\n"
+   )
+
+endmacro()
+
 macro(set_cross_compiler_internal)
 
    set(CMAKE_C_COMPILER ${ARGV0}/${ARGV1}-linux-gcc)

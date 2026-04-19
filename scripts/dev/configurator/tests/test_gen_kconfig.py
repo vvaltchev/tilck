@@ -256,6 +256,37 @@ class TestGenerate(unittest.TestCase):
         root = (d / "Kconfig").read_text()
         self.assertIn('mainmenu "Tilck Configuration"', root)
 
+    def test_comment_record_emits_kconfig_comment(self):
+        # type="comment" records have no cache var; they render as
+        # `comment "TEXT"` in Kconfig (= "--- TEXT ---" in mconf).
+        d = self._gen([
+            _rec(name="BEFORE", category="K"),
+            {"type": "comment", "category": "K",
+             "text": "Extra stuff"},
+            _rec(name="AFTER", category="K"),
+        ])
+        kcfg = (d / "Kconfig.k").read_text()
+        self.assertIn('comment "Extra stuff"', kcfg)
+        # Comment appears between the two options (insertion order).
+        before_idx = kcfg.index("config BEFORE")
+        comment_idx = kcfg.index('comment "Extra stuff"')
+        after_idx = kcfg.index("config AFTER")
+        self.assertLess(before_idx, comment_idx)
+        self.assertLess(comment_idx, after_idx)
+        # .config has NO entry for the comment (no cache var).
+        cfg = (d / ".config").read_text()
+        self.assertNotIn("Extra stuff", cfg)
+
+    def test_comment_validates_cleanly(self):
+        errs = gen_kconfig.validate([
+            {"type": "comment", "category": "K", "text": "hi"}
+        ])
+        self.assertEqual(errs, [])
+
+    def test_comment_missing_fields_flagged(self):
+        errs = gen_kconfig.validate([{"type": "comment"}])
+        self.assertTrue(any("missing fields" in e for e in errs))
+
     def test_help_multiline(self):
         d = self._gen([_rec(
             name="H", category="K",
