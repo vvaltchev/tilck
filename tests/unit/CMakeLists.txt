@@ -28,18 +28,20 @@ if (APPLE)
       "<CMAKE_RANLIB> -no_warning_for_no_symbols <TARGET>")
 endif()
 
-# Load kernel-private option defaults (KRN_*). The root project forwards any
-# user overrides via -DKRN_<option>=<value> on the cmake command line, which
-# take precedence over these CACHE defaults.
-include(${PROJ_ROOT}/other/cmake/kernel_options.cmake)
-
-# Load utility modules needed by the build
+# Load utility modules needed by the build. utils.cmake must come BEFORE
+# kernel_options.cmake because the latter uses tilck_option(), defined in
+# utils.cmake.
 include(${PROJ_ROOT}/other/cmake/utils.cmake)
 include(${PROJ_ROOT}/other/cmake/errors.cmake)
 include(${PROJ_ROOT}/other/cmake/compiler_flags.cmake)
 include(${PROJ_ROOT}/other/cmake/wrapped_syms.cmake)
 include(${PROJ_ROOT}/other/cmake/build_modules.cmake)
 include(${PROJ_ROOT}/kernel/sources.cmake)
+
+# Load kernel-private option defaults (KRN_*). The root project forwards any
+# user overrides via -DKRN_<option>=<value> on the cmake command line, which
+# take precedence over these CACHE defaults.
+include(${PROJ_ROOT}/other/cmake/kernel_options.cmake)
 
 # Generate kernel-private config headers (config_sched.h, config_userlim.h, etc.)
 # These contain KRN_* values needed by the kernel sources we compile.
