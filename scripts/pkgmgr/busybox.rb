@@ -27,7 +27,7 @@ class BusyBoxPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: ALL_ARCHS.values,
-      dep_list: [],
+      dep_list: [Dep('host_ncurses', true)],
       default: true,
     )
   end
@@ -50,7 +50,9 @@ class BusyBoxPackage < Package
   def configurable? = true
 
   def config_impl
-    ok = system("make", "menuconfig")
+    make_vars, env = host_ncurses_build_flags
+
+    ok = system(env, "make", *make_vars, "menuconfig")
     return false if !ok
 
     fix_config_file

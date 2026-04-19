@@ -377,13 +377,21 @@ if [[ "$1" == "-n" || $1 == "--skip-install-pkgs" ]]; then
    export SKIP_INSTALL_PACKAGES=1
 fi
 
-# --contrib and --only-system-deps are consumed here and not forwarded
-# to the Ruby pkgmgr. They can appear alongside other flags.
+# --contrib is handled on BOTH layers: here (bash) to trigger the
+# install of system packages that contributors need (e.g. clang,
+# extra dev libs), AND on the Ruby side, where it adds extra
+# toolchain packages (host_menuconfig, ...) to the default install
+# set. It must therefore be forwarded to the Ruby pkgmgr after being
+# observed here.
+#
+# --only-system-deps is consumed here and NOT forwarded — it's
+# bash-only (we exit before Ruby runs).
 ONLY_SYSTEM_DEPS=0
 new_args=()
 for arg in "$@"; do
    case "$arg" in
-      --contrib)          export CONTRIB_PACKAGES=1 ;;
+      --contrib)          export CONTRIB_PACKAGES=1
+                          new_args+=("$arg") ;;
       --only-system-deps) ONLY_SYSTEM_DEPS=1 ;;
       *)                  new_args+=("$arg") ;;
    esac

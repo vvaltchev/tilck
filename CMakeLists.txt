@@ -16,6 +16,22 @@ set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 include(other/cmake/utils.cmake)
 include(other/cmake/errors.cmake)
 
+# Truncate the tilck_option() JSONL sidecar exactly once per configure,
+# before any sub-project re-includes kernel_options.cmake (or anything
+# else that calls tilck_option()). The macro itself guards against
+# duplicate emission when called from multiple sub-projects.
+tilck_init_options_sidecar()
+
+# Include kernel_options.cmake at the ROOT level so tilck_option()
+# calls run during the top-level configure — the sub-projects (kernel,
+# gtests) are ExternalProjects configured at build time, so their own
+# include() of the same file runs too late to populate the sidecar
+# before the validator runs at the end of this file.  set(... CACHE ...)
+# is idempotent, so re-inclusion in sub-projects is a no-op for cache
+# vars; tilck_option()'s GLOBAL emission guard prevents duplicate
+# JSONL records within any single configure run.
+include(other/cmake/kernel_options.cmake)
+
 set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
@@ -370,119 +386,277 @@ set(CMAKE_CXX_FLAGS_RELEASE "")
 
 # Compile options
 
-# Shared non-boolean options
-set(TTY_COUNT             2 CACHE STRING "Number of TTYs (default)")
-set(FATPART_CLUSTER_SIZE  8 CACHE STRING
-    "Cluster size (in sectors) of the FAT ramdisk")
+# =====================================================================
+# Shared options: exposed to the kernel + tests/unit sub-projects
+# via the _krn_forward_args forwarding block below (any KRN_* OR any
+# cache variable CMake considers a shared option). Migrated to
+# tilck_option() so they show up in the generated run_config's menuconfig.
+# =====================================================================
 
-set(PREFERRED_GFX_MODE_W "800" CACHE STRING
-    "Preferred video mode (width)")
+# --- Graphics ---
 
-set(PREFERRED_GFX_MODE_H "600" CACHE STRING
-    "Preferred video mode (height)")
-
-set(
-
-   USERAPPS_CFLAGS
-   "-ggdb -Os -Wall -Wno-unused-parameter"
-
-   CACHE STRING "Build flags for C/C++ user programs"
+tilck_option(PREFERRED_GFX_MODE_W
+   TYPE     UINT
+   CATEGORY "Misc"
+   DEFAULT  800
+   HELP     "Preferred video mode (width, pixels)"
 )
 
-# Shared boolean options (enabled by default)
+tilck_option(PREFERRED_GFX_MODE_H
+   TYPE     UINT
+   CATEGORY "Misc"
+   DEFAULT  600
+   HELP     "Preferred video mode (height, pixels)"
+)
 
-set(PANIC_SHOW_STACKTRACE ON CACHE BOOL
-    "Show the stacktrace in case of a kernel panic")
+# --- Filesystems ---
 
-set(DEBUG_CHECKS ON CACHE BOOL
-    "Keep checking ASSERTs and other debug checks even in release builds")
+tilck_option(FATPART_CLUSTER_SIZE
+   TYPE     UINT
+   CATEGORY "Misc"
+   DEFAULT  8
+   HELP     "FAT ramdisk cluster size (sectors)"
+)
 
-set(KERNEL_64BIT_OFFT ON CACHE BOOL
-    "Make offt be 64-bit even on 32-bit systems")
+tilck_option(FAT_TEST_DIR
+   TYPE     BOOL
+   CATEGORY "Misc"
+   DEFAULT  OFF
+   HELP     "Add a test dir with many files to the FAT32 initrd"
+)
 
-set(FORK_NO_COW OFF CACHE BOOL
-    "Make fork() to perform a full-copy instead of using copy-on-write")
-
-set(MMAP_NO_COW OFF CACHE BOOL
-    "Make mmap() to allocate real memory instead mapping the zero-page + COW")
-
-set(KERNEL_SELFTESTS ON CACHE BOOL
-    "Compile-in self-tests in the kernel")
+# --- Bootloader (arch-dependent) ---
 
 if (${ARCH} STREQUAL "riscv64")
-   set(BOOTLOADER_U_BOOT ON CACHE BOOL
-       "Build the U-BOOT bootloader")
-else()
-   set(BOOTLOADER_LEGACY ON CACHE BOOL
-       "Build the legacy bootloader")
 
-   set(BOOTLOADER_EFI ON CACHE BOOL
-       "Build the EFI bootloader")
+   tilck_option(BOOTLOADER_U_BOOT
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the U-Boot bootloader"
+   )
+
+else()
+
+   tilck_option(BOOTLOADER_LEGACY
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the legacy BIOS bootloader"
+   )
+
+   tilck_option(BOOTLOADER_EFI
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  ON
+      HELP     "Build the UEFI bootloader"
+   )
+
+   tilck_option(EFI_BOOTLOADER_DEBUG
+      TYPE     BOOL
+      CATEGORY "Bootloader"
+      DEFAULT  OFF
+      DEPENDS  BOOTLOADER_EFI
+      HELP     "Early DEBUG dialog in EFI bootloader"
+               "See docs/debugging.md. Only meaningful when the EFI"
+               "bootloader is being built."
+   )
+
 endif()
 
-set(SERIAL_CON_IN_VIDEO_MODE ON CACHE BOOL
-    "Always open a console on /dev/ttyS0 even in video mode (w/o -sercon)")
+tilck_option(BOOT_INTERACTIVE
+   TYPE     BOOL
+   CATEGORY "Bootloader"
+   DEFAULT  ON
+   HELP     "Enable interactive bootloader commands"
+)
 
-set(TYPICAL_DEVEL_USERAPPS ON CACHE BOOL
-    "Include in Tilck's ramdisk some apps for testing the kernel")
+tilck_option(BOOTLOADER_POISON_MEMORY
+   TYPE     BOOL
+   CATEGORY "Bootloader"
+   DEFAULT  OFF
+   HELP     "Poison all available memory in the bootloader"
+)
 
-set(BOOT_INTERACTIVE ON CACHE BOOL
-    "Have user-interactive commands in the bootloaders")
+# --- Userapps ---
 
-set(KRN32_LIN_VADDR ON CACHE BOOL
-    "Place the 32-bit kernel in the default linear mapping")
+tilck_option(USERAPPS_busybox
+   TYPE     BOOL
+   CATEGORY "Userapps"
+   DEFAULT  ON
+   HELP     "Include BusyBox in the image (recommended)"
+)
 
-set(USERAPPS_busybox ON CACHE BOOL "Include BUSYBOX (recommended)")
+tilck_option(TYPICAL_DEVEL_USERAPPS
+   TYPE     BOOL
+   CATEGORY "Userapps"
+   DEFAULT  ON
+   HELP     "Include kernel-testing dev apps in the ramdisk"
+)
 
-# Shared boolean options (disabled by default)
+tilck_option(USERAPPS_CFLAGS
+   TYPE     STRING
+   CATEGORY "Userapps"
+   DEFAULT  "-ggdb -Os -Wall -Wno-unused-parameter"
+   HELP     "Build flags for C/C++ user programs"
+)
 
-set(KERNEL_UBSAN OFF CACHE BOOL "Turn on the UBSAN for the kernel")
+# --- Kernel / Memory ---
 
-set(TERM_BIG_SCROLL_BUF OFF CACHE BOOL
-    "Use a 4x bigger scrollback buffer for the terminal")
+tilck_option(KERNEL_64BIT_OFFT
+   TYPE     BOOL
+   CATEGORY "Kernel Memory"
+   DEFAULT  ON
+   HELP     "Make off_t 64-bit even on 32-bit targets"
+)
 
-set(KERNEL_SYSCC OFF CACHE BOOL
-    "Use system's compiler for the kernel instead of toolchain's one")
+tilck_option(FORK_NO_COW
+   TYPE     BOOL
+   CATEGORY "Kernel Memory"
+   DEFAULT  OFF
+   HELP     "fork(): full memory copy instead of copy-on-write"
+)
 
-set(KERNEL_FORCE_TC_ISYSTEM OFF CACHE BOOL "\
-DANGEROUS. Do NOT use for other than static analysis builds. \
-BRUTALLY forces the build system to use tc's sysroot \
-for system headers even when a system compiler is used.\
-")
+tilck_option(MMAP_NO_COW
+   TYPE     BOOL
+   CATEGORY "Kernel Memory"
+   DEFAULT  OFF
+   HELP     "mmap(): allocate real memory instead of zero-page + COW"
+)
 
-set(PANIC_SHOW_REGS OFF CACHE BOOL
-    "Show the content of the main registers in case of kernel panic")
+tilck_option(KRN32_LIN_VADDR
+   TYPE     BOOL
+   CATEGORY "Kernel Memory"
+   DEFAULT  ON
+   HELP     "Place the 32-bit kernel at the default linear mapping"
+)
 
-set(BOOTLOADER_POISON_MEMORY OFF CACHE BOOL
-    "Make the bootloader to poison all the available memory")
+# --- Kernel / Terminal ---
 
-set(WCONV OFF CACHE BOOL
-    "Compile with -Wconversion when clang is used")
+tilck_option(TTY_COUNT
+   TYPE     UINT
+   CATEGORY "Kernel Terminal"
+   DEFAULT  2
+   HELP     "Number of virtual TTYs"
+)
 
-set(FAT_TEST_DIR OFF CACHE BOOL
-    "Create a test dir with many files in the FAT32 init ramdisk")
+tilck_option(TERM_BIG_SCROLL_BUF
+   TYPE     BOOL
+   CATEGORY "Kernel Terminal"
+   DEFAULT  OFF
+   HELP     "Use a 4x larger scrollback buffer"
+)
 
-set(PS2_DO_SELFTEST OFF CACHE BOOL
-    "Do PS/2 controller selftests in init_kb()")
+# KERNEL_SERCON vs SERIAL_CON_IN_VIDEO_MODE: the first makes the
+# serial port the primary and ONLY console; the second enables an
+# additional console on /dev/ttyS0 alongside the video console.
+tilck_option(SERIAL_CON_IN_VIDEO_MODE
+   TYPE     BOOL
+   CATEGORY "Kernel Terminal"
+   DEFAULT  ON
+   HELP     "Also open /dev/ttyS0 console in video mode"
+)
 
-set(PS2_VERBOSE_DEBUG_LOG OFF CACHE BOOL
-    "Enable developer-only verbose logging")
+tilck_option(KERNEL_SERCON
+   TYPE     BOOL
+   CATEGORY "Kernel Terminal"
+   DEFAULT  OFF
+   HELP     "Use serial as the only console"
+            "Forces the kernel to boot with the serial console as the"
+            "primary (and only) console, even when a video console"
+            "module is available."
+)
 
-set(INIT_REPORT_PROC_EXIT OFF CACHE BOOL
-    "Make init to report on TTY when children (often acquired) exit")
+# --- Kernel / Debug ---
 
-set(EFI_BOOTLOADER_DEBUG OFF CACHE BOOL
-    "Enable an early DEBUG dialog (see docs/debugging.md)")
+tilck_option(DEBUG_CHECKS
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  ON
+   HELP     "Keep ASSERTs + debug checks in release builds"
+)
 
-# KERNEL_SERCON is different than SERIAL_CON_IN_VIDEO_MODE because it makes
-# the serial console and primary and only console. SERIAL_CON_IN_VIDEO_MODE
-# simply enables _also_ the serial console even when booted in video mode,
-# as a second console.
-set(KERNEL_SERCON OFF CACHE BOOL
-    "Boot only using the serial console even if we have a console module")
+tilck_option(KERNEL_SELFTESTS
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  ON
+   HELP     "Compile-in the kernel's self-tests"
+)
 
-set(KERNEL_SAT OFF CACHE BOOL
-    "Enable the sched alive thread on boot (used for CI/CD runs)")
+tilck_option(PANIC_SHOW_STACKTRACE
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  ON
+   HELP     "Show the stacktrace on kernel panic"
+)
+
+tilck_option(PANIC_SHOW_REGS
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Show register contents on kernel panic"
+)
+
+tilck_option(KERNEL_UBSAN
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Enable UBSAN instrumentation in the kernel"
+)
+
+tilck_option(KERNEL_SAT
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Enable the sched-alive thread at boot (CI runs)"
+)
+
+tilck_option(PS2_DO_SELFTEST
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Run PS/2 controller selftests in init_kb()"
+)
+
+tilck_option(PS2_VERBOSE_DEBUG_LOG
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Enable verbose PS/2 debug logging (dev-only)"
+)
+
+tilck_option(INIT_REPORT_PROC_EXIT
+   TYPE     BOOL
+   CATEGORY "Kernel Debug"
+   DEFAULT  OFF
+   HELP     "Report child-process exits on init's TTY"
+)
+
+# --- Kernel / Misc ---
+
+tilck_option(KERNEL_SYSCC
+   TYPE     BOOL
+   CATEGORY "Kernel Misc"
+   DEFAULT  OFF
+   HELP     "Use system compiler instead of the toolchain's"
+)
+
+tilck_option(KERNEL_FORCE_TC_ISYSTEM
+   TYPE     BOOL
+   CATEGORY "Kernel Misc"
+   DEFAULT  OFF
+   HELP     "Force toolchain sysroot with a system compiler (DANGEROUS)"
+            "Only meant for static-analysis builds. Brutally forces the"
+            "build system to use the toolchain sysroot for system"
+            "headers even when a system compiler is in use."
+)
+
+tilck_option(WCONV
+   TYPE     BOOL
+   CATEGORY "Kernel Misc"
+   DEFAULT  OFF
+   HELP     "Compile with -Wconversion (clang only)"
+)
 
 list(
    APPEND no_arch_modules_whitelist
@@ -525,10 +699,46 @@ foreach(modpath ${modules})
    list(FIND disabled_modules_list ${modname} _index)
 
    if (${_index} GREATER -1)
-      set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
+      set(_mod_default OFF)
    else()
-      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+      set(_mod_default ON)
    endif()
+
+   # Read modules/<mod>/module_deps (one dep per line, plain module
+   # names) and convert to the MOD_<name>-prefixed DEPENDS list. The
+   # file is optional; most modules have no deps.
+   set(_mod_deps "")
+   set(_mod_deps_file "${PROJ_ROOT}/modules/${modname}/module_deps")
+   if (EXISTS ${_mod_deps_file})
+      file(STRINGS ${_mod_deps_file} _mod_raw_deps)
+      foreach(_dep_name ${_mod_raw_deps})
+         list(APPEND _mod_deps "MOD_${_dep_name}")
+      endforeach()
+   endif()
+
+   tilck_option(MOD_${modname}
+      TYPE     BOOL
+      CATEGORY "Modules"
+      DEFAULT  ${_mod_default}
+      DEPENDS  ${_mod_deps}
+      HELP     "Compile-in the ${modname} module"
+   )
+
+   unset(_mod_default)
+   unset(_mod_deps)
+   unset(_mod_deps_file)
+
+   # If the module ships an options.cmake, include it now. These
+   # files typically declare per-module tilck_option()s with
+   # CATEGORY "Modules" + DEPENDS MOD_<name>. They show up in
+   # mconf directly after MOD_<name> (options are emitted in the
+   # order their tilck_option() calls run) and are hidden when the
+   # module's compile-in toggle is off.
+   set(_mod_opts_file "${PROJ_ROOT}/modules/${modname}/options.cmake")
+   if (EXISTS ${_mod_opts_file})
+      include(${_mod_opts_file})
+   endif()
+   unset(_mod_opts_file)
 
    set(MOD_HEADER_FILE ${PROJ_ROOT}/config/kernel/mod_${modname}.h)
    if (NOT EXISTS ${MOD_HEADER_FILE})
@@ -753,32 +963,16 @@ if (NOT ${MOD_console} AND NOT ${MOD_serial})
    message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
 endif()
 
+# Build the enabled-modules list for downstream consumers. The
+# inter-module DEPENDS enforcement that used to live in this loop
+# (reading modules/<mod>/module_deps and FATAL_ERROR'ing on unmet
+# deps) is now handled uniformly by tilck_finalize_options_deps()
+# via each MOD_*'s DEPENDS clause (see the MOD_* tilck_option loop
+# above, which reads the same module_deps file).
 foreach (mod ${modules_list})
-
-   set(deps_file "${PROJ_ROOT}/modules/${mod}/module_deps")
-
-   if (NOT ${MOD_${mod}})
-      continue() # Module not compiled-in: skip it.
+   if (${MOD_${mod}})
+      list(APPEND enabled_modules_list ${mod})
    endif()
-
-   list(APPEND enabled_modules_list ${mod})
-
-   if (NOT EXISTS ${deps_file})
-      continue() # No dependencies. Great!
-   endif()
-
-   # Read the dependencies in the `deps` list
-   file(STRINGS ${deps_file} deps)
-
-   foreach (d ${deps})
-      if (NOT ${MOD_${d}})
-         message(FATAL_ERROR "The module '${mod}' requires the module '${d}'")
-      endif()
-   endforeach()
-
-   unset(deps)
-   unset(deps_file)
-
 endforeach()
 
 JOIN("${enabled_modules_list}" ${SPACE} ENABLED_MODULES_LIST)
@@ -1125,6 +1319,7 @@ ExternalProject_Add(userapps
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
 )
 
@@ -1167,6 +1362,7 @@ ExternalProject_Add(kernel
    CMAKE_ARGS
       ${_kernel_tc_args}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
       ${_krn_forward_args}
 )
@@ -1289,6 +1485,7 @@ if (BOOTLOADER_LEGACY)
          -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
          -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
    )
 
@@ -1320,6 +1517,7 @@ if (BOOTLOADER_EFI)
          -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/x86_64-linux-gcc.cmake
          -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_x86_64}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
    )
 
@@ -1343,6 +1541,7 @@ if (BOOTLOADER_EFI)
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
             -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
             -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
       )
 
@@ -1529,6 +1728,7 @@ if (EXISTS ${GTEST_INSTALL_DIR})
          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
          ${_krn_forward_args}
    )
@@ -1552,3 +1752,87 @@ else()
    no_googletest_lib_fake_error_target()
 endif()
 
+# Merge each sub-project's compile_commands.json into the root one so that
+# clangd / LSP tooling sees a unified view of the whole codebase. The root
+# build dir only contains entries for scripts/build_apps/ by default; the
+# ExternalProject sub-builds (kernel, userapps, boot_legacy, efi_*, gtests)
+# each emit their own compile_commands.json, which the merge script walks
+# and concatenates.
+
+if (CMAKE_EXPORT_COMPILE_COMMANDS)
+
+   set(_cc_merge_deps userapps kernel)
+
+   if (BOOTLOADER_LEGACY)
+      list(APPEND _cc_merge_deps boot_legacy)
+   endif()
+
+   if (BOOTLOADER_EFI)
+      list(APPEND _cc_merge_deps ${efi_bootloader_deps})
+   endif()
+
+   add_custom_target(merge_compile_commands ALL
+      COMMAND ${CMAKE_COMMAND} -E env python3
+         ${CMAKE_SOURCE_DIR}/scripts/build_scripts/merge_compile_commands.py
+         ${CMAKE_BINARY_DIR}
+      DEPENDS ${_cc_merge_deps}
+      COMMENT "Merging compile_commands.json from sub-projects"
+   )
+
+   if (EXISTS ${GTEST_INSTALL_DIR})
+      ExternalProject_Add_Step(gtests merge_cc
+         DEPENDEES build
+         COMMAND ${CMAKE_COMMAND} -E env python3
+            ${CMAKE_SOURCE_DIR}/scripts/build_scripts/merge_compile_commands.py
+            ${CMAKE_BINARY_DIR}
+         ALWAYS 1
+      )
+   endif()
+
+endif()
+
+# Enforce deferred BOOL DEPENDS checks now that every tilck_option()
+# has run (including the dynamic MOD_* loop and any ExternalProject
+# sub-includes). This replaces the former CMakeLists.txt loop that
+# read modules/<mod>/module_deps and FATAL_ERROR'd directly — the
+# same constraint is now expressed via each MOD_*'s DEPENDS clause.
+tilck_finalize_options_deps()
+
+# Generate scripts/run_config's actual executable file with all paths
+# baked in. The template in scripts/templates/run_config.in uses
+# @VAR@ placeholders; the generated script lives next to the build
+# (one per build dir for out-of-tree builds). Users invoke it as
+# `./build/run_config` (or the appropriate build-dir path).
+set(MAIN_DIR     "${CMAKE_SOURCE_DIR}")
+set(SIDECAR      "${CMAKE_BINARY_DIR}/tilck_options.json")
+set(KCFG_DIR     "${CMAKE_BINARY_DIR}/kconfig")
+set(GEN_KCONFIG  "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py")
+set(APPLY_CONFIG "${CMAKE_SOURCE_DIR}/scripts/dev/configurator/apply_config.py")
+set(CMAKE_RUN    "${CMAKE_SOURCE_DIR}/scripts/cmake_run")
+set(MCONF_ROOT   "${TCROOT}/host/${HOST_OS}-${HOST_ARCH}/${HOST_DISTRO}/menuconfig")
+configure_file(
+   "${CMAKE_SOURCE_DIR}/scripts/templates/run_config.in"
+   "${CMAKE_BINARY_DIR}/run_config"
+   @ONLY
+)
+
+# Schema-validate the tilck_option() sidecar. Catches bad metadata
+# (unknown types, missing fields, ENUM default not in STRINGS, etc.)
+# at CMake configure time instead of surfacing only when someone runs
+# the generated run_config. An empty sidecar (no tilck_option()
+# migrated yet) validates cleanly.
+execute_process(
+   COMMAND
+      ${CMAKE_COMMAND} -E env python3
+      ${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py
+      --sidecar ${CMAKE_BINARY_DIR}/tilck_options.json
+      --validate
+   RESULT_VARIABLE _tilck_opts_validate_rc
+   OUTPUT_VARIABLE _tilck_opts_validate_out
+   ERROR_VARIABLE  _tilck_opts_validate_err
+)
+if (NOT _tilck_opts_validate_rc EQUAL 0)
+   message(FATAL_ERROR
+      "tilck_options.json failed validation:\n${_tilck_opts_validate_err}"
+   )
+endif()

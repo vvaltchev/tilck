@@ -85,6 +85,346 @@ macro(define_env_cache_bool_var)
 
 endmacro()
 
+# Truncate the tilck_option() sidecar at configure-time start. Call
+# once from the top-level CMakeLists.txt, before any tilck_option()
+# call. Subsequent tilck_option() calls (from sub-projects that re-
+# include kernel_options.cmake etc.) emit into this file exactly once
+# per option via an idempotency guard on a GLOBAL property.
+macro(tilck_init_options_sidecar)
+   file(WRITE "${CMAKE_BINARY_DIR}/tilck_options.json" "")
+   set_property(GLOBAL PROPERTY TILCK_OPTIONS_EMITTED "")
+   set_property(GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS "")
+endmacro()
+
+# Resolve deferred BOOL DEPENDS checks recorded by tilck_option().
+# Call exactly once, at the end of the root CMakeLists.txt, after
+# every tilck_option() invocation has run (including in sub-
+# projects that re-include option files). Dep-names can refer to
+# other tilck_option()-defined options that didn't exist when the
+# dependent was defined — e.g. the MOD_* alphabetical-glob loop
+# where MOD_acpi comes before MOD_pci.
+#
+# Semantics: Kconfig-style `depends on`. When a BOOL option is
+# enabled but one of its deps is unmet, the option is force-
+# disabled (its cache value is reset to OFF) with a STATUS message.
+# This keeps presets maintainable: a preset that turns a module
+# off doesn't have to also toggle every sub-option declared in that
+# module's options.cmake.
+macro(tilck_finalize_options_deps)
+
+   get_property(_pending GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS)
+   foreach(_entry ${_pending})
+
+      string(FIND "${_entry}" "|" _sep)
+      string(SUBSTRING "${_entry}" 0 ${_sep} _name)
+      math(EXPR _deps_start "${_sep} + 1")
+      string(SUBSTRING "${_entry}" ${_deps_start} -1 _deps_csv)
+      string(REPLACE "," ";" _deps "${_deps_csv}")
+
+      if (NOT ${${_name}})
+         continue()   # already OFF — no dep conflict possible
+      endif()
+
+      set(_unmet "")
+      foreach(_dep ${_deps})
+         string(SUBSTRING "${_dep}" 0 1 _dep_first)
+         if ("${_dep_first}" STREQUAL "!")
+            string(SUBSTRING "${_dep}" 1 -1 _dep_name)
+            if (${${_dep_name}})
+               set(_unmet "!${_dep_name}")
+               break()
+            endif()
+         else()
+            if (NOT ${${_dep}})
+               set(_unmet "${_dep}")
+               break()
+            endif()
+         endif()
+      endforeach()
+
+      if (NOT "${_unmet}" STREQUAL "")
+         message(STATUS
+            "tilck_option(${_name}): forcing OFF (unmet dep: ${_unmet})")
+         set_property(CACHE ${_name} PROPERTY VALUE OFF)
+         set(${_name} OFF)
+      endif()
+
+   endforeach()
+
+endmacro()
+
+# tilck_option() — declare a user-visible build option with metadata.
+#
+#   tilck_option(<NAME>
+#      TYPE     <BOOL|STRING|ENUM|INT|UINT|ADDR>
+#      CATEGORY <slash/path>    # e.g. "Kernel/Memory"
+#      DEFAULT  <value>
+#      [DEPENDS <expr> ...]     # names, optionally ! prefixed
+#      [STRINGS <v1> ...]       # ENUM only
+#      HELP     <line> [<line> ...]
+#   )
+#
+# Works like set(... CACHE ...) plus:
+#   - $ENV{NAME} override with drift check (same contract as
+#     define_env_cache_str_var).
+#   - DEFAULT validated against TYPE. Mismatch → FATAL_ERROR.
+#   - ENUM exposes STRINGS via set_property(CACHE PROPERTY STRINGS).
+#   - DEPENDS enforced at configure time (simple AND of truthiness,
+#     with optional leading ! for negation). Complex expressions
+#     (&& || parens) are passed through to the sidecar but not
+#     enforced by CMake.
+#   - Appends one JSONL record to build/tilck_options.json for the
+#     menuconfig-style configurator (see scripts/dev/configurator/).
+macro(tilck_option NAME)
+
+   cmake_parse_arguments(TO
+      ""
+      "TYPE;CATEGORY;DEFAULT"
+      "DEPENDS;STRINGS;HELP"
+      ${ARGN}
+   )
+
+   # --- Argument validation ---
+
+   if (NOT TO_TYPE)
+      message(FATAL_ERROR "tilck_option(${NAME}): TYPE is required")
+   endif()
+   if (NOT TO_CATEGORY)
+      message(FATAL_ERROR "tilck_option(${NAME}): CATEGORY is required")
+   endif()
+   if (NOT DEFINED TO_DEFAULT)
+      message(FATAL_ERROR "tilck_option(${NAME}): DEFAULT is required")
+   endif()
+   if (NOT TO_HELP)
+      message(FATAL_ERROR "tilck_option(${NAME}): HELP is required")
+   endif()
+
+   set(_tilck_valid_types BOOL STRING ENUM INT UINT ADDR)
+   list(FIND _tilck_valid_types "${TO_TYPE}" _tidx)
+   if (_tidx EQUAL -1)
+      message(FATAL_ERROR
+         "tilck_option(${NAME}): unknown TYPE '${TO_TYPE}'. "
+         "Valid: ${_tilck_valid_types}")
+   endif()
+
+   if ("${TO_TYPE}" STREQUAL "ENUM" AND NOT TO_STRINGS)
+      message(FATAL_ERROR "tilck_option(${NAME}): ENUM requires STRINGS")
+   endif()
+
+   # --- Env override + drift check (mirror define_env_cache_str_var) ---
+
+   if (NOT DEFINED ${NAME})
+      if (NOT "$ENV{${NAME}}" STREQUAL "")
+         set(_initial_value "$ENV{${NAME}}")
+      else()
+         set(_initial_value "${TO_DEFAULT}")
+      endif()
+   else()
+      set(_initial_value "${${NAME}}")
+      if ("$ENV{PERMISSIVE}" STREQUAL "")
+         if (NOT "$ENV{${NAME}}" STREQUAL "")
+            if (NOT "$ENV{${NAME}}" STREQUAL "${${NAME}}")
+               message(FATAL_ERROR
+                  "tilck_option(${NAME}): env var='$ENV{${NAME}}' "
+                  "differs from cached value='${${NAME}}'. "
+                  "Erase the build directory to change it.")
+            endif()
+         endif()
+      endif()
+   endif()
+
+   # --- Type-specific validation + normalisation ---
+
+   if ("${TO_TYPE}" STREQUAL "BOOL")
+      if (${_initial_value})
+         set(_initial_value "ON")
+      else()
+         set(_initial_value "OFF")
+      endif()
+   elseif ("${TO_TYPE}" STREQUAL "INT")
+      if (NOT "${_initial_value}" MATCHES "^-?[0-9]+$")
+         message(FATAL_ERROR
+            "tilck_option(${NAME}): INT value '${_initial_value}' "
+            "is not a valid integer")
+      endif()
+   elseif ("${TO_TYPE}" STREQUAL "UINT")
+      if (NOT "${_initial_value}" MATCHES "^[0-9]+$")
+         message(FATAL_ERROR
+            "tilck_option(${NAME}): UINT value '${_initial_value}' "
+            "is not a valid unsigned integer")
+      endif()
+   elseif ("${TO_TYPE}" STREQUAL "ADDR")
+      if (NOT "${_initial_value}" MATCHES "^0x[0-9a-fA-F]+$")
+         message(FATAL_ERROR
+            "tilck_option(${NAME}): ADDR value '${_initial_value}' "
+            "is not a valid 0x-prefixed hex value")
+      endif()
+   elseif ("${TO_TYPE}" STREQUAL "ENUM")
+      list(FIND TO_STRINGS "${_initial_value}" _sidx)
+      if (_sidx EQUAL -1)
+         message(FATAL_ERROR
+            "tilck_option(${NAME}): ENUM value '${_initial_value}' "
+            "not in STRINGS (${TO_STRINGS})")
+      endif()
+   endif()
+
+   # --- Set CACHE variable ---
+
+   if ("${TO_TYPE}" STREQUAL "BOOL")
+      set(_tilck_cmake_type "BOOL")
+   else()
+      set(_tilck_cmake_type "STRING")
+   endif()
+
+   list(GET TO_HELP 0 _tilck_help_summary)
+   set(${NAME} "${_initial_value}"
+       CACHE ${_tilck_cmake_type} "${_tilck_help_summary}")
+
+   if ("${TO_TYPE}" STREQUAL "ENUM")
+      set_property(CACHE ${NAME} PROPERTY STRINGS ${TO_STRINGS})
+   endif()
+
+   # --- DEPENDS runtime check ---
+   #
+   # For BOOL options, DEPENDS is Kconfig-style: if the option is
+   # enabled but any dep is unmet, the option is force-disabled at
+   # finalize time (see tilck_finalize_options_deps). The check is
+   # DEFERRED because some deps reference OTHER tilck_option()-
+   # defined options that may not exist yet at call time — e.g.
+   # the MOD_* loop, where MOD_acpi is processed alphabetically
+   # before MOD_pci even though it DEPENDS on it.
+   #
+   # For non-BOOL options (INT/UINT/ADDR/STRING/ENUM) used as
+   # conditional sub-options, DEPENDS controls VISIBILITY in mconf
+   # only — the cache always holds a valid value, and that value is
+   # simply "irrelevant" when the dep is false. CMake does not
+   # enforce the dep for these; Kconfig hides the option in the UI
+   # and the sidecar carries the DEPENDS through for the generator
+   # to emit.
+   if ("${TO_TYPE}" STREQUAL "BOOL" AND TO_DEPENDS)
+      # Pack (name, deps) into the global pending list using a
+      # pipe-separator that can't occur inside option names. The
+      # deps list itself stays semicolon-joined for list-rehydration
+      # by tilck_finalize_options_deps.
+      get_property(_pending GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS)
+      string(REPLACE ";" "," _deps_csv "${TO_DEPENDS}")
+      list(APPEND _pending "${NAME}|${_deps_csv}")
+      set_property(GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS "${_pending}")
+   endif()
+
+   # --- Emit JSONL record (once per option per configure) ---
+
+   get_property(_emitted GLOBAL PROPERTY TILCK_OPTIONS_EMITTED)
+   list(FIND _emitted "${NAME}" _eidx)
+   if (_eidx EQUAL -1)
+      list(APPEND _emitted "${NAME}")
+      set_property(GLOBAL PROPERTY TILCK_OPTIONS_EMITTED "${_emitted}")
+      _tilck_option_emit_jsonl(
+         "${NAME}" "${TO_TYPE}" "${TO_CATEGORY}"
+         "${TO_DEFAULT}" "${_initial_value}"
+         "${TO_DEPENDS}" "${TO_STRINGS}" "${TO_HELP}"
+      )
+   endif()
+
+endmacro()
+
+# Internal helper: emit one JSONL line to the sidecar. HELP (multi-
+# line) is joined with literal \n (backslash-n, JSON's newline escape).
+# HELP / CATEGORY / string values must not contain " or \ — detected
+# and reported via FATAL_ERROR, since full JSON escaping in CMake is
+# brittle and every existing option's help text scans clean.
+function(_tilck_option_emit_jsonl
+         NAME TYPE CATEGORY DFLT CURRENT DEPENDS_LIST STRINGS_LIST HELP_LIST)
+
+   string(TOLOWER "${TYPE}" _json_type)
+
+   foreach(_check_str IN LISTS HELP_LIST DEPENDS_LIST STRINGS_LIST)
+      string(FIND "${_check_str}" "\\" _bs)
+      string(FIND "${_check_str}" "\"" _q)
+      if (NOT _bs EQUAL -1 OR NOT _q EQUAL -1)
+         message(FATAL_ERROR
+            "tilck_option(${NAME}): HELP/DEPENDS/STRINGS values may "
+            "not contain \\ or \" (JSON-escape not implemented).")
+      endif()
+   endforeach()
+
+   string(REPLACE ";" "\\n" _help_json "${HELP_LIST}")
+
+   set(_deps_json "[")
+   set(_first TRUE)
+   foreach(_d ${DEPENDS_LIST})
+      if (_first)
+         set(_first FALSE)
+      else()
+         string(APPEND _deps_json ",")
+      endif()
+      string(APPEND _deps_json "\"${_d}\"")
+   endforeach()
+   string(APPEND _deps_json "]")
+
+   set(_strings_part "")
+   if (STRINGS_LIST)
+      set(_strings_json "[")
+      set(_first TRUE)
+      foreach(_s ${STRINGS_LIST})
+         if (_first)
+            set(_first FALSE)
+         else()
+            string(APPEND _strings_json ",")
+         endif()
+         string(APPEND _strings_json "\"${_s}\"")
+      endforeach()
+      string(APPEND _strings_json "]")
+      set(_strings_part ",\"strings\":${_strings_json}")
+   endif()
+
+   set(_line "{\"name\":\"${NAME}\"")
+   string(APPEND _line ",\"type\":\"${_json_type}\"")
+   string(APPEND _line ",\"category\":\"${CATEGORY}\"")
+   string(APPEND _line ",\"default\":\"${DFLT}\"")
+   string(APPEND _line ",\"current\":\"${CURRENT}\"")
+   string(APPEND _line ",\"depends\":${_deps_json}")
+   string(APPEND _line "${_strings_part}")
+   string(APPEND _line ",\"help\":\"${_help_json}\"}")
+
+   file(APPEND "${CMAKE_BINARY_DIR}/tilck_options.json" "${_line}\n")
+
+endfunction()
+
+# tilck_option_comment() — emit a non-interactive menu separator.
+#
+#   tilck_option_comment(<TEXT> CATEGORY <category>)
+#
+# Adds a sidecar record with type="comment" that the generator
+# renders as a Kconfig `comment "TEXT"` line. In mconf this shows
+# as `--- TEXT ---` in the menu — a lightweight way to group
+# related options on the same screen without nesting a sub-menu.
+# No cache variable is set; there is no value to store.
+macro(tilck_option_comment TEXT)
+
+   cmake_parse_arguments(TOC "" "CATEGORY" "" ${ARGN})
+
+   if (NOT TOC_CATEGORY)
+      message(FATAL_ERROR
+         "tilck_option_comment(${TEXT}): CATEGORY is required")
+   endif()
+
+   foreach(_check IN ITEMS "${TEXT}" "${TOC_CATEGORY}")
+      string(FIND "${_check}" "\\" _bs)
+      string(FIND "${_check}" "\"" _q)
+      if (NOT _bs EQUAL -1 OR NOT _q EQUAL -1)
+         message(FATAL_ERROR
+            "tilck_option_comment(${TEXT}): TEXT/CATEGORY may not "
+            "contain \\ or \".")
+      endif()
+   endforeach()
+
+   file(APPEND "${CMAKE_BINARY_DIR}/tilck_options.json"
+      "{\"type\":\"comment\",\"category\":\"${TOC_CATEGORY}\",\"text\":\"${TEXT}\"}\n"
+   )
+
+endmacro()
+
 macro(set_cross_compiler_internal)
 
    set(CMAKE_C_COMPILER ${ARGV0}/${ARGV1}-linux-gcc)

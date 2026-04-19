@@ -6,37 +6,37 @@ MAKEFLAGS += --no-print-directory
 
 TCROOT_PARENT ?= ./
 TCROOT ?= $(TCROOT_PARENT)/toolchain4
-
 PREREQUISITES := $(TCROOT) build/CMakeCache.txt
+BUILD_DIR = build
 
 all: $(PREREQUISITES)
-	@$(MAKE) -C build
+	@$(MAKE) -C $(BUILD_DIR)
 
 gtests: $(PREREQUISITES)
-	@$(MAKE) -C build gtests
+	@$(MAKE) -C $(BUILD_DIR) gtests
 
 clean: $(PREREQUISITES)
-	@$(MAKE) -C build clean
+	@$(MAKE) -C $(BUILD_DIR) clean
 
 # Rem is a shortcut for rebuild_img
 rem: $(PREREQUISITES)
-	@rm -rf ./build/fatpart ./build/tilck.img
-	@$(MAKE) -C build
+	@rm -rf ./$(BUILD_DIR)/fatpart ./$(BUILD_DIR)/tilck.img
+	@$(MAKE) -C $(BUILD_DIR)
 
 rebuild_img: $(PREREQUISITES)
-	@rm -rf ./build/fatpart ./build/tilck.img
-	@$(MAKE) -C build
+	@rm -rf ./$(BUILD_DIR)/fatpart ./$(BUILD_DIR)/tilck.img
+	@$(MAKE) -C $(BUILD_DIR)
 
 config: $(PREREQUISITES)
-	@./scripts/run_config
+	@./$(BUILD_DIR)/run_config
 
 menuconfig: $(PREREQUISITES)
-	@./scripts/run_config
+	@./$(BUILD_DIR)/run_config
 
 $(TCROOT):
 	$(error Before building Tilck, you need to build the toolchain by running ./scripts/build_toolchain)
 
-build/CMakeCache.txt:
+$(BUILD_DIR)/CMakeCache.txt:
 	@echo No CMakeCache.txt found: running CMake first.
 	@./scripts/cmake_run
 

@@ -30,7 +30,7 @@ class UbootPackage < Package
       on_host: false,
       is_compiler: false,
       arch_list: { "riscv64" => ALL_ARCHS["riscv64"] },
-      dep_list: [],
+      dep_list: [Dep('host_ncurses', true)],
       default: true,
       board_list: ["qemu-virt"],
     )
@@ -54,7 +54,9 @@ class UbootPackage < Package
   def configurable? = true
 
   def config_impl
-    ok = system("make", "menuconfig")
+    nc_vars, nc_env = host_ncurses_build_flags
+
+    ok = system(nc_env, "make", *nc_vars, "menuconfig")
     return false if !ok
 
     fix_config_file
@@ -67,7 +69,9 @@ class UbootPackage < Package
       info "Source file #{uboot_config} UPDATED"
     end
 
-    # Rebuild with the new configuration
+    # Rebuild with the new configuration. Uses make_argv (which carries
+    # the Darwin openssl workaround); ncurses is only needed for
+    # menuconfig itself.
     info "Rebuilding #{name}..."
     ok = run_command("build.log", make_argv)
     return false if !ok

@@ -35,6 +35,7 @@ require_relative 'zlib'
 require_relative 'acpica'
 require_relative 'mtools'
 require_relative 'busybox'
+require_relative 'menuconfig'
 require_relative 'gnuefi'
 require_relative 'gtest'
 require_relative 'ncurses'
@@ -63,6 +64,15 @@ module Main
   extend FileShortcuts
   extend FileUtilsShortcuts
   module_function
+
+  # Packages added on top of the normal default set when the user
+  # passes --contrib to `build_toolchain`. Intended for contributors
+  # — tools that aren't required to build or run Tilck, but make dev
+  # work smoother (e.g. host_menuconfig, which powers run_config).
+  # host_menuconfig transitively depends on host_ncurses via the
+  # package's dep_list, so the latter is pulled in automatically by
+  # the dep resolver.
+  CONTRIB_EXTRA_PACKAGES = %w[host_menuconfig].freeze
 
   def read_gcc_ver_defaults
     conf = MAIN_DIR / "other" / "gcc_tc_conf"
@@ -146,24 +156,41 @@ module Main
   end
 
   # --- Fancy (human-friendly) mode ---
+  #
+  # Standard tree(1) geometry (K=4 cols per level) with two tweaks:
+  #   1. A 4-space leading indent before the whole tree.
+  #   2. The root uses a bare "┌ name" corner (no dash), so it sits
+  #      at the same column as the level-2 connectors — like tree(1)
+  #      does with the plain root name.
+  #
+  # Every subtree gets an extra trunk-only "…│" line before its
+  # first child and between siblings, so the vertical "│" connector
+  # is always visible (even when a subtree has only one child).
+
+  LEAD = "    "
 
   def dep_tree_root(name, graph, installed, show_installed, lines)
-    lines << "  ┌─ #{dep_tree_fmt(name, installed, show_installed)}"
     deps = dep_tree_deps(name, graph, installed, show_installed)
+
+    # Root with no visible subtree uses a bare "─ " bullet rather
+    # than the "┌ " corner — there is no trunk to open.
+    corner = deps.empty? ? "─" : "┌"
+    lines << "#{LEAD}#{corner} #{dep_tree_fmt(name, installed, show_installed)}"
 
     if deps.empty?
       if show_installed
-        lines << "  (no dependencies)"
+        lines << "#{LEAD}(no dependencies)"
       end
       return
     end
 
-    lines << "  │"
+    spacer = "#{LEAD}│"
+    lines << spacer
     deps.each_with_index do |dep, i|
       last = (i == deps.length - 1)
-      dep_tree_child(dep, graph, "  ", last, lines, installed,
+      dep_tree_child(dep, graph, LEAD, last, lines, installed,
                      show_installed, Set.new([name]))
-      lines << "  │" if !last
+      lines << spacer if !last
     end
   end
 
@@ -177,7 +204,7 @@ module Main
     return if deps.empty?
 
     child_prefix = prefix + (is_last ? "    " : "│   ")
-    spacer = child_prefix.rstrip
+    spacer = "#{child_prefix}│"
     lines << spacer
 
     new_visited = visited | [name]
@@ -411,7 +438,8 @@ module Main
     p.on('--ascii',
          'Use plain-text indented output for dependency trees.',
          'Machine-friendly alternative to the fancy box-drawing',
-         'format. Applies to --deps and -s install plans. [FLAG]') {
+         'format. Applies to --deps, -s install plans, and the',
+         'default-install plan. [FLAG]') {
       opts[:ascii] = true
     }
 
@@ -574,6 +602,16 @@ module Main
       'is run on a *unsupported* Linux distribution or the user is experienced',
       'with Tilck\'s package manager and prepared to handle a failure. [FLAG]'
     ) { opts[:skip_install_pkgs] = true }
+
+    p.on(
+      '--contrib',
+      'When combined with the default install (no mode flag), also',
+      'install packages useful for contributors: host_menuconfig',
+      '(plus its host_ncurses dep). Intended to be run once, like:',
+      './scripts/build_toolchain --contrib. Packages listed in',
+      'CONTRIB_EXTRA_PACKAGES are appended to the normal default',
+      'set before the plan is resolved. [FLAG]'
+    ) { opts[:contrib] = true }
 
     p.parse!(argv)
     mods = opts.slice(*mode_opts)
@@ -942,6 +980,18 @@ module Main
     upgrades = pkgmgr.get_upgradable_packages
     all = (defaults + upgrades).uniq(&:name)
 
+    # --contrib: append the contributor-only extras (host_menuconfig)
+    # on top of the default set. Silently skip any that aren't
+    # registered — the list is under our control.
+    if options[:contrib]
+      CONTRIB_EXTRA_PACKAGES.each do |name|
+        pkg = pkgmgr.get(name)
+        next if pkg.nil?
+        next if all.any? { |p| p.name == name }
+        all << pkg
+      end
+    end
+
     plan = pkgmgr.resolve_install_plan(
       all.map { |p| [p.name, nil] }
     )
@@ -956,11 +1006,25 @@ module Main
       info "Packages to upgrade: #{upgrade_names.join(', ')}"
     end
 
-    dep_names = plan.map(&:first) - all.map(&:name)
-    if !dep_names.empty?
-      info "Dependencies to install: #{dep_names.join(', ')}"
-    end
-    info "Install order: #{plan.map(&:first).join(' -> ')}"
+    # Show the install plan as a dependency tree (same renderer as
+    # -s install plans). Roots are the top-level defaults/upgrades
+    # that actually have work to do — already-up-to-date packages
+    # drop out of the plan and thus also out of the root list, so
+    # the tree doesn't get cluttered with bare "no-op" roots.
+    graph = pkgmgr.build_dep_graph
+    installed = Set.new
+    pkgmgr.all_packages.each { |p|
+      installed.add(p.name) if p.installed?(p.default_ver)
+    }
+    plan_set = Set.new(plan.map(&:first))
+    root_names = all.map(&:name).select { |n| plan_set.include?(n) }
+    info "Install plan:"
+    lines = render_dep_trees(root_names, graph,
+                             installed: installed,
+                             show_installed: false,
+                             ascii: options[:ascii])
+    lines.each { |l| puts l }
+    puts if !options[:ascii]
 
     for name, ver in plan do
       if !pkgmgr.install(name, ver)

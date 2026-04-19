@@ -290,3 +290,119 @@ class TestInstallConstraints < Minitest::Test
     end
   end
 end
+
+# Guard around the atomic staging→final mv in Package#install_impl.
+#
+# Without the guard, Ruby's FileUtils.mv falls back to POSIX semantics
+# ("mv src existing_dir/" moves src INSIDE dst) when final_ver_dir
+# already exists, silently producing `final/<ver>/<ver>` corruption.
+# This happens any time installed? returns false while the install
+# dir is physically there — for example, after the user runs
+# `make distclean` inside an install tree, or after a partially-
+# failed uninstall.
+class TestInstallMvGuard < Minitest::Test
+  include TestHelper
+
+  # FakePackage variant that writes a real marker file in its install
+  # dir, so `check_install_dir` can be made to pass or fail by
+  # creating / deleting that file.
+  class FakePackageWithMarker < TestHelper::FakePackage
+    def expected_files = [["marker.txt", false]]
+
+    def install_impl_internal(install_dir)
+      super(install_dir)
+      File.write(install_dir / "marker.txt", "installed\n")
+      true
+    end
+  end
+
+  # Lets a test force installed?(ver) to return false even when the
+  # package's install dir is structurally complete on disk. Needed to
+  # exercise the defensive "final exists and is not broken" branch,
+  # which is hard to reach by any natural sequence of install actions
+  # (installed? short-circuits first in the normal flow).
+  class ForcedMissingFakePackage < FakePackageWithMarker
+    attr_accessor :pretend_not_installed
+
+    def installed?(ver)
+      return false if @pretend_not_installed
+      super
+    end
+  end
+
+  def setup
+    reset_pkgmgr!
+    FakePackage.clear_log!
+  end
+
+  def test_broken_final_dir_is_removed_before_mv
+    # Regression: a corrupted install (expected file deleted from
+    # final_ver_dir) was re-triggering install_impl, which then mv'd
+    # staging INSIDE the existing final dir — producing
+    # final/<ver>/<ver>/marker.txt nesting.
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg = FakePackageWithMarker.new("foo")
+        pkgmgr.register(pkg)
+        assert pkgmgr.install("foo")
+
+        gcc = FAKE_GCC_VER.to_s
+        final = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        assert (final / "marker.txt").file?
+        refute pkg.get_install_list.any?(&:broken)
+
+        # Simulate corruption (e.g. make distclean in the install dir).
+        FileUtils.rm(final / "marker.txt")
+        assert pkg.get_install_list.any?(&:broken),
+               "install should now look broken"
+
+        # Re-install: guard should remove the broken final dir and
+        # then mv staging in cleanly.
+        FakePackage.clear_log!
+        assert pkgmgr.install("foo")
+
+        assert_includes FakePackage.install_log, "foo"
+        assert (final / "marker.txt").file?,
+               "marker should be restored by the fresh install"
+        refute (final / "1.0.0").directory?,
+               "nested <ver>/<ver> must NOT exist"
+      end
+    end
+  end
+
+  def test_non_broken_final_dir_refuses_without_force
+    # Defensive branch: final_ver_dir exists with all expected files
+    # but installed? returned false. Without -f (which pre-uninstalls
+    # at the CLI layer), install_impl should refuse rather than
+    # silently clobber the valid install.
+    with_fake_tc do |tc|
+      with_stubbed_externals do
+        pkg = ForcedMissingFakePackage.new("foo")
+        pkgmgr.register(pkg)
+        assert pkgmgr.install("foo")
+
+        gcc = FAKE_GCC_VER.to_s
+        final = tc / "gcc-#{gcc}" / ARCH.name / "foo" / "1.0.0"
+        marker_mtime_before = File.mtime(final / "marker.txt")
+
+        # Force the bad state: pkgmgr sees the pkg as NOT installed
+        # even though the files on disk are intact.
+        pkg.pretend_not_installed = true
+        FakePackage.clear_log!
+
+        result = pkgmgr.install("foo")
+        assert_equal false, result,
+                     "install should refuse, not silently overwrite"
+        # The original install is untouched (marker still has its
+        # original content and mtime — the mv never happened). The
+        # staging build did run (install_impl_internal writes to
+        # staging before the guard kicks in at the mv step), but
+        # nothing reached final_ver_dir.
+        assert (final / "marker.txt").file?
+        assert_equal marker_mtime_before, File.mtime(final / "marker.txt")
+        refute (final / "1.0.0").directory?,
+               "nested <ver>/<ver> must NOT exist"
+      end
+    end
+  end
+end

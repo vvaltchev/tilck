@@ -1,0 +1,51 @@
+Skip the "Do you wish to save your new configuration?" dialog when
+the user hasn't toggled anything during the interactive session.
+
+Busybox 1.36.1's mconf (scripts/kconfig/mconf.c:1088) always prompts
+on exit, regardless of whether the user actually changed anything.
+Modern Linux mconf gates that same block on sym_change_count; port
+the check here.
+
+Subtle detail, also patched: conf_read() itself bumps
+sym_change_count via conf_unsaved when a loaded .config value
+differs from Kconfig's computed default (see confdata.c:297-326).
+For our flow that's pre-session noise: run_config seeds .config
+from the sidecar's current values, which are exactly what the
+user's cache already holds. Reset sym_change_count to zero after
+conf_read so the prompt truly reflects "user made changes in this
+session".
+
+--- a/scripts/kconfig/mconf.c
++++ b/scripts/kconfig/mconf.c
+@@ -1069,6 +1069,16 @@
+ 	conf_parse(av[1]);
+ 	conf_read(NULL);
+ 
++	/*
++	 * Tilck patch: conf_read() already bumps sym_change_count
++	 * via conf_unsaved when a loaded .config value differs from
++	 * Kconfig's computed default. For run_config's flow that is
++	 * pre-session noise (we seed .config from the sidecar every
++	 * launch), so reset here; the save-on-exit check below then
++	 * only reflects user-driven changes.
++	 */
++	sym_change_count = 0;
++
+ 	sym = sym_lookup("KERNELVERSION", 0);
+ 	sym_calc_value(sym);
+ 	sprintf(menu_backtitle, _("BusyBox %s Configuration"),
+@@ -1085,6 +1095,14 @@
+ 	init_wsize();
+ 	conf(&rootmenu);
+ 
++	/*
++	 * Tilck patch (see sym_change_count = 0 above): skip the
++	 * save dialog if the user did not toggle any option during
++	 * this interactive session.
++	 */
++	if (!sym_change_count)
++		return 0;
++
+ 	do {
+ 		cprint_init();
+ 		cprint("--yesno");

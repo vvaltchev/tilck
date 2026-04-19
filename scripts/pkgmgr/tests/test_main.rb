@@ -487,6 +487,37 @@ class TestMainIntegration < Minitest::Test
     end
   end
 
+  def test_default_install_plan_shows_tree_not_linear_order
+    # Regression: the default-install branch (no mode flag) used to
+    # print "Install order: a -> b" instead of the dependency tree.
+    # It should now use the same tree renderer as -s install plans.
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("dflt_root",
+          default: true,
+          dep_list: [Dep("dflt_dep", false)]))
+        pkgmgr.register(FakePackage.new("dflt_dep", default: true))
+
+        old = $stdout
+        $stdout = StringIO.new
+        begin
+          result = Main.main(["--ascii"])
+          out = $stdout.string
+        ensure
+          $stdout = old
+        end
+
+        assert_equal 0, result
+        assert_match(/Install plan:/, out)
+        # ASCII tree: root "dflt_root" with child "dflt_dep" indented.
+        assert_match(/^dflt_root$/, out)
+        assert_match(/^  dflt_dep$/, out)
+        # Old linear format must be gone.
+        refute_match(/Install order:/, out)
+      end
+    end
+  end
+
   def test_config_non_configurable
     with_fake_tc do
       with_stubbed_externals do
@@ -875,5 +906,88 @@ class TestInstallWithTargetArch < Minitest::Test
         assert_match(/^  gcc-riscv64-musl$/, out)
       end
     end
+  end
+end
+
+# ---------------------------------------------------------------
+# Tests for the fancy (non-ASCII) box-drawing dep tree renderer.
+# Unlike the other Main tests, these call render_dep_trees
+# directly with a hand-built graph — no FakePackage, no pkgmgr
+# setup — so they exercise the rendering logic in isolation.
+# ---------------------------------------------------------------
+
+class TestRenderDepTreesFancy < Minitest::Test
+
+  def render(roots, graph, installed: [], show_installed: false)
+    Main.render_dep_trees(roots, graph,
+                          installed: Set.new(installed),
+                          show_installed: show_installed,
+                          ascii: false)
+  end
+
+  def test_leaf_root_uses_dash_bullet_not_corner
+    # A root with no deps should render with "─ name" (bullet),
+    # not "┌ name" — there is no subtree trunk to open.
+    out = render(["foo"], {"foo" => []})
+    assert_equal ["    ─ foo"], out
+  end
+
+  def test_root_with_all_deps_installed_uses_dash_bullet
+    # In install-plan mode (show_installed: false), already-installed
+    # deps are filtered out. If ALL of a root's deps are installed,
+    # the root becomes effectively a leaf → "─ name".
+    out = render(["foo"],
+                 {"foo" => ["bar"], "bar" => []},
+                 installed: ["bar"])
+    assert_equal ["    ─ foo"], out
+  end
+
+  def test_root_with_unmet_deps_uses_corner
+    # A root that has visible deps should still use "┌ name".
+    out = render(["foo"], {"foo" => ["bar"], "bar" => []})
+    assert_equal [
+      "    ┌ foo",
+      "    │",
+      "    └── bar",
+    ], out
+  end
+
+  def test_leaf_root_in_deps_mode_shows_no_dependencies_line
+    # In --deps mode (show_installed: true), a genuine leaf root
+    # still gets the "─" bullet and the "(no dependencies)" hint.
+    out = render(["foo"], {"foo" => []}, show_installed: true)
+    assert_equal [
+      "    ─ foo",
+      "    (no dependencies)",
+    ], out
+  end
+
+  def test_grandchild_gets_pre_first_child_trunk_spacer
+    # Between a parent with children and its first child, there
+    # should be an extra "...│" line showing the inner trunk —
+    # so the vertical connector is visible even with one child.
+    out = render(["foo"],
+                 {"foo" => ["bar"], "bar" => ["baz"], "baz" => []})
+    assert_equal [
+      "    ┌ foo",
+      "    │",
+      "    └── bar",
+      "        │",
+      "        └── baz",
+    ], out
+  end
+
+  def test_multiple_roots_separated_by_blank_line
+    # Mixed: one leaf root + one subtree root. Two trees are
+    # separated by a blank line.
+    out = render(["a", "b"],
+                 {"a" => [], "b" => ["c"], "c" => []})
+    assert_equal [
+      "    ─ a",
+      "",
+      "    ┌ b",
+      "    │",
+      "    └── c",
+    ], out
   end
 end

@@ -389,6 +389,40 @@ class Package
     final_ver_dir = final_pkg_dir / ver_dirname(ver)
 
     FileUtils.mkdir_p(final_pkg_dir)
+
+    # Guard against Ruby's FileUtils.mv falling back to POSIX "mv src
+    # existing_dir/" semantics, which silently nests staging INSIDE
+    # final_ver_dir (→ final_ver_dir/<ver>/...) instead of replacing
+    # it. We only reach this point if `installed?` returned false,
+    # so if final_ver_dir is present it's either:
+    #
+    #   - broken (failed check_install_dir — e.g. user ran
+    #     `make distclean` inside the install tree, or a partial
+    #     uninstall left dangling files). Self-heal: remove it and
+    #     proceed. A WARNING is emitted so the user knows the prior
+    #     install was clobbered.
+    #
+    #   - not broken — an inconsistent state that should not normally
+    #     happen (installed? should have caught it). Refuse rather
+    #     than silently overwrite a valid install. The user can clear
+    #     the ambiguity with `-f` (which pre-uninstalls through the
+    #     main CLI flow) or `-u <pkg>`.
+    if final_ver_dir.exist?
+      if check_install_dir(final_ver_dir)
+        error "#{name}: final install dir #{final_ver_dir} already " \
+              "exists and looks complete, but the package was not " \
+              "detected as installed. Refusing to overwrite. " \
+              "Use `-u #{name}` to remove it, or `-s #{name} -f` " \
+              "to force-reinstall."
+        return false
+      else
+        warning "#{name}: final install dir #{final_ver_dir} exists " \
+                "but is broken (expected files missing). Removing " \
+                "it before installing the fresh build."
+        FileUtils.rm_rf(final_ver_dir)
+      end
+    end
+
     FileUtils.mv(staging.to_s, final_ver_dir.to_s)
 
     # Clean up the empty staging/pkg_dirname/ directory
@@ -451,6 +485,40 @@ class Package
     lines.map! { |x| x.rstrip }
     lines = stable_sort(lines) { |x, y| -(x.b <=> y.b) }
     File.write(path, lines.join("\n") + "\n")
+  end
+
+  # Locate the installed host_ncurses tree and return the make vars
+  # and environment needed to link kconfig's host tools (mconf, nconf)
+  # against it. Used by `-C` flows on packages that invoke `make
+  # menuconfig`.
+  #
+  # Returns [make_vars, env]. If host_ncurses is not installed, returns
+  # [[], {}] and emits a warning — the menuconfig invocation falls back
+  # to system ncurses (fine on Linux/FreeBSD hosts with libncurses-dev,
+  # broken on macOS where the system ncurses is ancient).
+  def host_ncurses_build_flags
+    pkg = pkgmgr.get("host_ncurses")
+    info = pkg&.get_install_list&.find { |x| !x.broken }
+    if !info
+      warning "host_ncurses is not installed; " \
+              "menuconfig will fall back to system ncurses"
+      warning "To fix: ./scripts/build_toolchain -s host_ncurses"
+      return [[], {}]
+    end
+    prefix = info.path / "install"
+    # With --enable-widec, ncurses installs headers under
+    # include/ncursesw/ (curses.h, term.h, etc.). The top-level
+    # include/ path covers consumers that include via
+    # `<ncursesw/curses.h>`. Consumers using pkg-config get the right
+    # flags from ncursesw.pc regardless.
+    make_vars = [
+      "HOSTCFLAGS=-I#{prefix}/include -I#{prefix}/include/ncursesw",
+      "HOSTLDFLAGS=-L#{prefix}/lib",
+    ]
+    env = {
+      "PKG_CONFIG_PATH" => "#{prefix}/lib/pkgconfig:#{ENV['PKG_CONFIG_PATH']}"
+    }
+    [make_vars, env]
   end
 
   # Interactive reconfiguration (e.g. `make menuconfig`). Only packages
