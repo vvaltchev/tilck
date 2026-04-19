@@ -168,10 +168,10 @@ tests/
   self/           Kernel self-tests
   runners/        Python test infrastructure
 scripts/          Build automation (build_toolchain, cmake_run, etc.)
-  pkgmgr/         Ruby package manager (exp-ruby branch)
-  pkgmgr/tests/   Package manager test suite (293 unit + system tests)
+  pkgmgr/         Ruby package manager (see docs/package_manager.md)
+  pkgmgr/tests/   Package manager test suite (300+ unit + system tests)
 other/cmake/      CMake build modules
-toolchain4/       Generated cross-compiler toolchain (not in repo; toolchain3/ on master)
+toolchain4/       Generated cross-compiler toolchain (not in repo)
 ```
 
 Key build artifacts in `build/`: `tilck` (kernel), `tilck_unstripped`,
@@ -180,89 +180,70 @@ Key build artifacts in `build/`: `tilck` (kernel), `tilck_unstripped`,
 
 ## Toolchain Management
 
-The toolchain lives in `toolchain3/` and is managed per-architecture.
+The toolchain is managed by a Ruby package manager at `scripts/pkgmgr/`,
+installed into `toolchain4/` (per-target-architecture subtrees). The entry
+point is `./scripts/build_toolchain`, which bootstraps Ruby (>= 3.2,
+auto-downloaded if needed) and execs into `scripts/pkgmgr/main.rb`.
 
-**On `master` (Bash package manager):**
+**For any non-trivial pkgmgr work, read `docs/package_manager.md` first.**
+That document is the authoritative overview — it covers architecture, the
+three-tier host layout, dependency resolution, atomic installs, resumable
+downloads, the `-C <pkg>` reconfiguration flow, how to add a new package,
+and the 300+ test suite. This CLAUDE.md section only surfaces the bare
+minimum needed when pkgmgr is incidental to another task.
+
+### Quick CLI reference
+
 ```bash
-./scripts/build_toolchain -l              # List all packages and install status
+./scripts/build_toolchain                 # Install default set for current ARCH
+./scripts/build_toolchain -l              # List packages and install status
 ./scripts/build_toolchain -s <pkg>        # Install a specific package
-./scripts/build_toolchain -d <pkg>        # Uninstall a specific package
+./scripts/build_toolchain -u <pkg>        # Uninstall a specific package
+./scripts/build_toolchain -S <arch>       # Install cross-compiler for an arch
+./scripts/build_toolchain -U <arch>       # Uninstall cross-compiler for an arch
+./scripts/build_toolchain -C <pkg>        # Reconfigure a package (e.g. busybox)
+./scripts/build_toolchain --upgrade       # Install new versions after a bump
+./scripts/build_toolchain -d              # Dry-run (preview actions)
+./scripts/build_toolchain -t              # Run pkgmgr's own test suite
+./scripts/build_toolchain -t --coverage   # Unit tests with coverage report
 ./scripts/build_toolchain --clean         # Remove all pkgs for current ARCH
-./scripts/build_toolchain -a --clean      # Remove all pkgs for ALL archs
 ./scripts/build_toolchain --clean-all     # Remove everything except cache
 ```
 
-**On `exp-ruby` branch (Ruby package manager):** The `exp-ruby` branch is
-reimplementing the toolchain/package management in Ruby. The entry point is
-the same (`./scripts/build_toolchain`) but the Bash bootstrap now sets up
-Ruby (>= 3.2, auto-downloaded if needed) and then `exec`s into
-`scripts/pkgmgr/main.rb`. Key CLI differences:
-```bash
-./scripts/build_toolchain -l              # Same: list packages
-./scripts/build_toolchain -s <pkg>        # Same: install
-./scripts/build_toolchain -u <pkg>        # Uninstall (was -d on master)
-./scripts/build_toolchain -S <arch>       # Install compiler for a specific arch
-./scripts/build_toolchain -U <arch>       # Uninstall compiler for a specific arch
-./scripts/build_toolchain -d              # Dry-run (was not available on master)
-./scripts/build_toolchain -c ALL -l       # List packages across all compilers
-./scripts/build_toolchain -g arch -l      # Group listed packages by arch
-```
+Package versions are declared in `other/pkg_versions`. Changing a version
+there and running `./scripts/build_toolchain --upgrade` installs the new
+version alongside the old. CMake detects stale packages at configure time
+(`other/pkg_versions` is a `CMAKE_CONFIGURE_DEPENDS`).
 
-**How to detect which package manager is active:** Check for the directory
-`scripts/pkgmgr/`. If it exists, you are on the Ruby package manager branch.
-If not, you are on master with the Bash package manager.
-
-**Migration status on `exp-ruby`:** All packages have been ported to Ruby
-(in `scripts/pkgmgr/*.rb`). The old Bash package scripts (`scripts/tc/pkgs/`)
-no longer exist on this branch. The Bash package scripts on master are still
-the **reference implementation** — use them to understand the original build
-logic when debugging Ruby package definitions.
-
-**Ruby package structure:** Each Ruby package is a class inheriting from
-`Package` (defined in `scripts/pkgmgr/package.rb`). It registers itself
-with `pkgmgr.register(MyPackage.new())` at file load time. Key methods to
-implement: `initialize` (name, url, arch_list, deps), `install_impl_internal`
-(build logic), `expected_files` (validation). The `PackageManager` singleton
-(`scripts/pkgmgr/package_manager.rb`) handles discovery, install/uninstall
-orchestration, and status reporting.
-
-Toolchain directory layout:
-
-On `master` the toolchain root is `toolchain3/`; on `exp-ruby` it is
-`toolchain4/` (the Ruby pkgmgr uses a different directory to avoid
-conflicts when switching branches).
+### Toolchain layout (summary — see docs/package_manager.md for full picture)
 
 ```
-toolchain4/                         # (toolchain3/ on master)
-  cache/                            # Downloaded tarballs (preserved across cleans)
-  noarch/                           # Arch-independent packages (acpica, gtest src)
-  gcc-<VER>/                        # Per-GCC-version cross-compiled packages
-    <arch>/                         # Per-target-arch (i386, x86_64, riscv64)
-  host/
-    <os>-<host_arch>/               # e.g. freebsd-x86_64, linux-x86_64
-      portable/                     # Tier 1: static, any distro (cross-compilers)
-      <distro>/                     # e.g. freebsd-15.0, ubuntu-22.04
-        <pkg>/<ver>/                # Tier 2: links distro libc, any CC (mtools)
-        ruby/<ver>/                 # Bootstrap Ruby (not a registered package)
-        <host-cc>/                  # e.g. gcc-14.2.0
-          <pkg>/<ver>/              # Tier 3: depends on host CC C++ ABI (gtest)
+toolchain4/
+  cache/                              # Downloaded tarballs (survive --clean)
+  staging/                            # In-progress builds (atomic install)
+  noarch/                             # Arch-independent (acpica, gnuefi src)
+  gcc-<ver>/<arch>/                   # Per-GCC-version, per-target-arch
+  host/<os>-<arch>/
+    portable/                         # Tier 1: static, any distro
+    <distro>/<pkg>/<ver>/             # Tier 2: distro libc, any host CC
+    <distro>/<host-cc>/<pkg>/<ver>/   # Tier 3: C++ ABI-dependent (gtest)
 ```
 
-Packages are downloaded to `cache/` and extracted/built into the appropriate
-directory. Downloaded tarballs survive `--clean` but not `--clean-all`.
+### Key concepts worth knowing before reading code
 
-**Ruby pkgmgr test suite (exp-ruby only):**
-```bash
-./scripts/build_toolchain -t                       # Run 293 unit tests
-./scripts/build_toolchain -t --system-tests        # + install all pkgs, build all archs
-./scripts/build_toolchain -t --system-tests -a i386  # Single arch (default: current)
-./scripts/build_toolchain -t --system-tests -a ALL   # All archs (i386, x86_64, riscv64)
-./scripts/build_toolchain -t --system-tests --test-packages-filter ncurses  # Filter optional pkgs
-./scripts/build_toolchain -t --system-tests --all-build-types   # Also test all cmake configs
-./scripts/build_toolchain -t --system-tests --run-also-tilck-tests  # Also run gtests + system tests
-./scripts/build_toolchain -t -F <regex>            # Filter unit tests by name
-./scripts/build_toolchain -t --coverage            # Unit tests with code coverage report
-```
+- **`Package` base class** (`scripts/pkgmgr/package.rb`): every package is a
+  Ruby class inheriting from this. Registers itself via
+  `pkgmgr.register(...)` at file-load time. Key methods: `initialize`,
+  `install_impl_internal`, `expected_files`, optionally `config_impl`
+  (for `-C` reconfiguration).
+- **`SourceRef`** (`scripts/pkgmgr/source_ref.rb`): decouples upstream
+  source fetch from package definition. Multiple `Package` classes can
+  share one `SourceRef` — the tarball is cached once, consumed N times.
+  Canonical example: `GNUEFI_SOURCE` backs both `gnuefi_src` (noarch
+  headers) and `gnuefi` (arch-specific built libs) in `gnuefi.rb`.
+- **`host_tier`** (`:portable` / `:distro` / `:compiler`) selects which
+  of the three host tiers a package installs into — see the table in
+  `docs/package_manager.md`.
 
 ## FreeBSD Build Host
 
