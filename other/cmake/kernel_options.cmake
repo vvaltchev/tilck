@@ -99,35 +99,11 @@ tilck_option(KRN_KMALLOC_SUPPORT_LEAK_DETECTOR
 # Kernel / Terminal
 # =====================================================================
 
-tilck_option(KRN_FBCON_BIGFONT_THR
-   TYPE     UINT
-   CATEGORY "Kernel/Terminal"
-   DEFAULT  160
-   HELP     "Cols threshold to switch to 16x32 fb_console font"
-            "When the screen has more columns than this threshold,"
-            "fb_console switches from the default 8x16 font to a"
-            "16x32 font."
-)
-
 tilck_option(KRN_TERM_SCROLL_LINES
    TYPE     UINT
    CATEGORY "Kernel/Terminal"
    DEFAULT  5
    HELP     "Lines to scroll on Shift+PgUp / Shift+PgDown"
-)
-
-tilck_option(KRN_FB_CONSOLE_BANNER
-   TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
-   DEFAULT  ON
-   HELP     "Show a banner at the top of fb_console"
-)
-
-tilck_option(KRN_FB_CONSOLE_CURSOR_BLINK
-   TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
-   DEFAULT  ON
-   HELP     "Enable cursor blinking in fb_console"
 )
 
 tilck_option(KRN_PRINTK_ON_CURR_TTY
@@ -137,19 +113,10 @@ tilck_option(KRN_PRINTK_ON_CURR_TTY
    HELP     "Always flush printk() on the current TTY"
 )
 
-tilck_option(KRN_FB_CONSOLE_USE_ALT_FONTS
-   TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
-   DEFAULT  OFF
-   HELP     "Use alternate fonts from other/alt_fonts/"
-)
-
-tilck_option(KRN_FB_CONSOLE_FAILSAFE_OPT
-   TYPE     BOOL
-   CATEGORY "Kernel/Terminal"
-   DEFAULT  OFF
-   HELP     "Optimize fb_console failsafe mode for old machines"
-)
+# KRN_FB_* options (fb_console banner / cursor / fonts / big-font
+# threshold / failsafe) live under Modules/fb now, declared in
+# modules/fb/options.cmake. They DEPEND on MOD_fb so mconf hides
+# them when the fb module is disabled.
 
 # =====================================================================
 # Kernel / Debug
@@ -191,12 +158,8 @@ tilck_option(KRN_NO_SYS_WARN
    HELP     "Warn on calls to not-implemented syscalls"
 )
 
-tilck_option(KRN_PCI_VENDORS_LIST
-   TYPE     BOOL
-   CATEGORY "Kernel/Debug"
-   DEFAULT  OFF
-   HELP     "Compile-in the full PCI vendors list"
-)
+# KRN_PCI_VENDORS_LIST moved to modules/pci/options.cmake (DEPENDS
+# MOD_pci) — only meaningful when the pci module is compiled-in.
 
 # =====================================================================
 # Kernel / Misc

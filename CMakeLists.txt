@@ -728,6 +728,17 @@ foreach(modpath ${modules})
    unset(_mod_deps)
    unset(_mod_deps_file)
 
+   # If the module ships an options.cmake, include it now. These
+   # files typically declare per-module tilck_option()s (category
+   # "Modules/<name>", DEPENDS MOD_<name>) that appear as a
+   # sub-menu under Modules and are hidden in mconf when the
+   # module's compile-in toggle is off.
+   set(_mod_opts_file "${PROJ_ROOT}/modules/${modname}/options.cmake")
+   if (EXISTS ${_mod_opts_file})
+      include(${_mod_opts_file})
+   endif()
+   unset(_mod_opts_file)
+
    set(MOD_HEADER_FILE ${PROJ_ROOT}/config/kernel/mod_${modname}.h)
    if (NOT EXISTS ${MOD_HEADER_FILE})
       message(FATAL_ERROR "Mod header ${MOD_HEADER_FILE} does not exist")
