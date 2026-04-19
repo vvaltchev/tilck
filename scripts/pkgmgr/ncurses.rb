@@ -182,11 +182,43 @@ class NcursesHostPackage < Package
 
     ncurses_patch_configure_locale
 
+    # At runtime, ncurses needs to find terminfo entries for the
+    # user's $TERM. The system ncurses on each host distro has its
+    # own set of search paths compiled in; ours used to only know
+    # about --datarootdir=/usr/share, which missed tmux-256color on
+    # Ubuntu (the entry lives at /lib/terminfo/t/tmux-256color, not
+    # /usr/share/terminfo).
+    #
+    # Bake in every standard terminfo location across Linux / FreeBSD
+    # / macOS so `initscr()` resolves $TERM regardless of where the
+    # distro puts its database. Non-existent dirs are silently
+    # skipped at lookup time.
+    #
+    #   Linux   : /etc/terminfo, /lib/terminfo, /usr/share/terminfo
+    #   FreeBSD : /usr/share/misc/terminfo (base),
+    #             /usr/local/share/terminfo (ports),
+    #             /usr/local/share/site-terminfo (per-port)
+    #   Darwin  : /usr/share/terminfo (old, usually missing newer
+    #             entries), /opt/homebrew/share/terminfo (AS),
+    #             /opt/homebrew/opt/ncurses/share/terminfo (keg-only),
+    #             /usr/local/share/terminfo (Intel Homebrew)
+    terminfo_dirs = [
+      "/etc/terminfo",
+      "/lib/terminfo",
+      "/usr/share/terminfo",
+      "/usr/share/misc/terminfo",
+      "/usr/local/share/terminfo",
+      "/usr/local/share/site-terminfo",
+      "/opt/homebrew/share/terminfo",
+      "/opt/homebrew/opt/ncurses/share/terminfo",
+    ].join(":")
+
     ok = run_command("configure.log", [
       "./configure",
       "--prefix=#{install_dir}/install",
       "--datarootdir=/usr/share",
       "--disable-db-install",
+      "--with-terminfo-dirs=#{terminfo_dirs}",
       # Wide-char ncurses: busybox/u-boot's kconfig prefers -lncursesw.
       "--enable-widec",
       # Split terminfo into a separately-named library so the kconfig

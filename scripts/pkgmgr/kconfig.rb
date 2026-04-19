@@ -84,10 +84,17 @@ class HostMenuconfigPackage < Package
     return false if !ok
 
     # menuconfig: compiles `mconf` + lxdialog, then tries to run
-    # mconf. Without a TTY, mconf prints a message and exits 0
-    # cleanly ("configuration changes were NOT saved"), so we don't
-    # need any redirection / tolerant-exit handling.
+    # mconf. We only want the binaries; the run step is an unwanted
+    # side effect. With a working TERM on a TTY-capable env, mconf
+    # would hang waiting for input. Clear TERM via `env TERM=`:
+    # ncurses' initscr() immediately errors out ("Error opening
+    # terminal: .") and calls exit(); lxdialog exits nonzero; mconf's
+    # main loop treats that as "user quit without saving" and exits
+    # with status 0 after printing "Your configuration changes were
+    # NOT saved". `make menuconfig` returns 0 cleanly, and the built
+    # mconf+lxdialog binaries are on disk ready to copy.
     ok = run_command("menuconfig.log", [
+      "env", "TERM=",
       "make", *make_vars,
       "-j#{BUILD_PAR}",
       "menuconfig",
