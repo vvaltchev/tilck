@@ -223,11 +223,17 @@ if ! python3 "$GEN" --sidecar "$SIDECAR" --out "$KCFG_DIR"; then
    exit 1
 fi
 
-# mconf shells out to lxdialog at runtime for dialog boxes; put the
-# install/bin dir at the front of PATH so it's found.
+# mconf shells out to lxdialog at runtime for dialog boxes, using a
+# HARDCODED relative path: ./scripts/kconfig/lxdialog/lxdialog
+# (baked into mconf.c at build time). Create that path under
+# $KCFG_DIR as a symlink to the installed binary so the exec
+# succeeds from mconf's cwd.
+mkdir -p "$KCFG_DIR/scripts/kconfig/lxdialog"
+ln -sf "$MCONF_BINDIR/lxdialog" \
+      "$KCFG_DIR/scripts/kconfig/lxdialog/lxdialog"
+
 (
-   cd "$KCFG_DIR" && \
-   PATH="$MCONF_BINDIR:$PATH" "$MCONF_BIN" Kconfig
+   cd "$KCFG_DIR" && "$MCONF_BIN" Kconfig
 )
 MCONF_EXIT=$?
 
