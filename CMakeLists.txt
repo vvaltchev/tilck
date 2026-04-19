@@ -1319,6 +1319,7 @@ ExternalProject_Add(userapps
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/${ARCH}-linux-gcc.cmake
       -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
 )
 
@@ -1361,6 +1362,7 @@ ExternalProject_Add(kernel
    CMAKE_ARGS
       ${_kernel_tc_args}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
       -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
       ${_krn_forward_args}
 )
@@ -1483,6 +1485,7 @@ if (BOOTLOADER_LEGACY)
          -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
          -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
    )
 
@@ -1514,6 +1517,7 @@ if (BOOTLOADER_EFI)
          -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/x86_64-linux-gcc.cmake
          -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_x86_64}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
    )
 
@@ -1537,6 +1541,7 @@ if (BOOTLOADER_EFI)
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_DIR}/i386-linux-gcc.cmake
             -DGCC_TOOLCHAIN_BIN=${GCC_TOOLCHAIN_i386}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
             -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
       )
 
@@ -1723,6 +1728,7 @@ if (EXISTS ${GTEST_INSTALL_DIR})
          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_EXPORT_COMPILE_COMMANDS=${CMAKE_EXPORT_COMPILE_COMMANDS}
          -DTILCK_CONFIG_FILE=${CMAKE_BINARY_DIR}/tilck_config.cmake
          ${_krn_forward_args}
    )
@@ -1744,6 +1750,45 @@ if (EXISTS ${GTEST_INSTALL_DIR})
 
 else()
    no_googletest_lib_fake_error_target()
+endif()
+
+# Merge each sub-project's compile_commands.json into the root one so that
+# clangd / LSP tooling sees a unified view of the whole codebase. The root
+# build dir only contains entries for scripts/build_apps/ by default; the
+# ExternalProject sub-builds (kernel, userapps, boot_legacy, efi_*, gtests)
+# each emit their own compile_commands.json, which the merge script walks
+# and concatenates.
+
+if (CMAKE_EXPORT_COMPILE_COMMANDS)
+
+   set(_cc_merge_deps userapps kernel)
+
+   if (BOOTLOADER_LEGACY)
+      list(APPEND _cc_merge_deps boot_legacy)
+   endif()
+
+   if (BOOTLOADER_EFI)
+      list(APPEND _cc_merge_deps ${efi_bootloader_deps})
+   endif()
+
+   add_custom_target(merge_compile_commands ALL
+      COMMAND ${CMAKE_COMMAND} -E env python3
+         ${CMAKE_SOURCE_DIR}/scripts/build_scripts/merge_compile_commands.py
+         ${CMAKE_BINARY_DIR}
+      DEPENDS ${_cc_merge_deps}
+      COMMENT "Merging compile_commands.json from sub-projects"
+   )
+
+   if (EXISTS ${GTEST_INSTALL_DIR})
+      ExternalProject_Add_Step(gtests merge_cc
+         DEPENDEES build
+         COMMAND ${CMAKE_COMMAND} -E env python3
+            ${CMAKE_SOURCE_DIR}/scripts/build_scripts/merge_compile_commands.py
+            ${CMAKE_BINARY_DIR}
+         ALWAYS 1
+      )
+   endif()
+
 endif()
 
 # Enforce deferred BOOL DEPENDS checks now that every tilck_option()

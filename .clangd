@@ -1,6 +1,6 @@
 CompileFlags:
   BuiltinHeaders: QueryDriver
-  CompilationDatabase: build
+  CompilationDatabase: build/compile_db
   Add:
     - -Ibuild/tilck_gen_headers
     - -DCLANGD
