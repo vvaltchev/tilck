@@ -16,6 +16,12 @@ set(GLOB_CONF_DEP CONFIGURE_DEPENDS)
 include(other/cmake/utils.cmake)
 include(other/cmake/errors.cmake)
 
+# Truncate the tilck_option() JSONL sidecar exactly once per configure,
+# before any sub-project re-includes kernel_options.cmake (or anything
+# else that calls tilck_option()). The macro itself guards against
+# duplicate emission when called from multiple sub-projects.
+tilck_init_options_sidecar()
+
 set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally
