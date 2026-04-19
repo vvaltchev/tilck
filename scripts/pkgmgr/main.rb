@@ -411,7 +411,8 @@ module Main
     p.on('--ascii',
          'Use plain-text indented output for dependency trees.',
          'Machine-friendly alternative to the fancy box-drawing',
-         'format. Applies to --deps and -s install plans. [FLAG]') {
+         'format. Applies to --deps, -s install plans, and the',
+         'default-install plan. [FLAG]') {
       opts[:ascii] = true
     }
 
@@ -956,11 +957,25 @@ module Main
       info "Packages to upgrade: #{upgrade_names.join(', ')}"
     end
 
-    dep_names = plan.map(&:first) - all.map(&:name)
-    if !dep_names.empty?
-      info "Dependencies to install: #{dep_names.join(', ')}"
-    end
-    info "Install order: #{plan.map(&:first).join(' -> ')}"
+    # Show the install plan as a dependency tree (same renderer as
+    # -s install plans). Roots are the top-level defaults/upgrades
+    # that actually have work to do — already-up-to-date packages
+    # drop out of the plan and thus also out of the root list, so
+    # the tree doesn't get cluttered with bare "no-op" roots.
+    graph = pkgmgr.build_dep_graph
+    installed = Set.new
+    pkgmgr.all_packages.each { |p|
+      installed.add(p.name) if p.installed?(p.default_ver)
+    }
+    plan_set = Set.new(plan.map(&:first))
+    root_names = all.map(&:name).select { |n| plan_set.include?(n) }
+    info "Install plan:"
+    lines = render_dep_trees(root_names, graph,
+                             installed: installed,
+                             show_installed: false,
+                             ascii: options[:ascii])
+    lines.each { |l| puts l }
+    puts if !options[:ascii]
 
     for name, ver in plan do
       if !pkgmgr.install(name, ver)

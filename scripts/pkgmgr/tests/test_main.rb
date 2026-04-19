@@ -487,6 +487,37 @@ class TestMainIntegration < Minitest::Test
     end
   end
 
+  def test_default_install_plan_shows_tree_not_linear_order
+    # Regression: the default-install branch (no mode flag) used to
+    # print "Install order: a -> b" instead of the dependency tree.
+    # It should now use the same tree renderer as -s install plans.
+    with_fake_tc do
+      with_stubbed_externals do
+        pkgmgr.register(FakePackage.new("dflt_root",
+          default: true,
+          dep_list: [Dep("dflt_dep", false)]))
+        pkgmgr.register(FakePackage.new("dflt_dep", default: true))
+
+        old = $stdout
+        $stdout = StringIO.new
+        begin
+          result = Main.main(["--ascii"])
+          out = $stdout.string
+        ensure
+          $stdout = old
+        end
+
+        assert_equal 0, result
+        assert_match(/Install plan:/, out)
+        # ASCII tree: root "dflt_root" with child "dflt_dep" indented.
+        assert_match(/^dflt_root$/, out)
+        assert_match(/^  dflt_dep$/, out)
+        # Old linear format must be gone.
+        refute_match(/Install order:/, out)
+      end
+    end
+  end
+
   def test_config_non_configurable
     with_fake_tc do
       with_stubbed_externals do
