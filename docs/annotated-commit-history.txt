@@ -46199,3 +46199,964 @@ parser is introduced; gtest bumped to 1.12.1.
     API.
 
 --------------------------------------------------------------------------------
+
+## Commits 4416-4450 -- gmock; symbol-weakening; elfhack for 32+64-bit ELF; fat32_debug into tests
+
+AI notes:
+
+What changed: gmock lands as part of the gtest toolchain package; a
+new weaken_syms tool + mocking infrastructure lets unit tests wrap
+functions defined in the same TU without the -Wl,--wrap hack;
+elfhack is rebuilt both for ELFCLASS32 and ELFCLASS64; and the
+devshell test table moves to a dedicated header that gets included
+twice.
+
+  - 7b28a85d: toolchain -- gmock library added to the gtest package.
+  - b36356ee: azure -- container bump for interactive_gcc84.
+  - f043de82: CMake -- bump oldest GCC supported 4.8.0 -> 6.4.0.
+  - 51efd203: replace TOOL_* with CMAKE_* in utils.cmake.
+  - **a5886366 [elfhack] Build the tool both for ELFCLASS32 and
+    ELFCLASS64** (+142/-29).
+  - b6f9e9ca: new elfhack --list-text-syms option.
+  - 822e2869: gtests -- always link gmock.
+  - **df78eb62 [gtests] Renaming *mock* files to *fake* or *stub***.
+    Body (kept): "Proper naming is important. Now that the gmock
+    library is being introduced, propers mocks shouldn't be confused
+    with fake or stub implementations."
+  - 6b8e50b6: gtests -- start playing with gmock; new
+    mock_experiments.cpp + exp_file2.c.
+  - **45f09b1d [gtests] Allow functions in the same TU to be
+    mocked**. Body (kept -- the key technology): new
+    scripts/templates/weaken_syms tool post-processes .o files to
+    weaken selected symbols so gmock can override them even within
+    the same translation unit.
+  - 6e5707a5: use weaken_syms everywhere instead of -Wl,--wrap.
+  - 3054c2b1: optimize weaken_syms with Bash 4 dictionaries.
+  - 21ae8234: gtests -- use symbol weakening to avoid #ifdefs
+    (+104/-105).
+  - 84245fd4: all wrapped funcs use the mocking singleton; new
+    mocking.h / mocking.cpp / misc_fake.c.
+  - fb96082e: mocking experiments use mocking.h.
+
+  - e0312d2c: coverage -- extend exclude list.
+  - **186ebf41 [cmake-configurator] global refactoring** (+206/-244).
+    cmake-configurator moves under scripts/configurator/.
+  - cd565b98: ci -- remove redundant codecov download.
+  - 575326cf: configurator -- extract cmake_var logic.
+  - 173783f0, d706b302 (4435-4436): azure exclude paths;
+    building.md update.
+  - b78610b8: gtests -- move kernel/fs/fat32_debug.c to tests/unit/.
+  - e1c85bbf: compile-out print_banner_line() and show_tilck_logo()
+    when KERNEL_SHOW_LOGO=0.
+  - a0716c03: configurator -- more type checking.
+
+  - **a45cae1c [devshell] De-dup the list of tests by using a
+    separate header file**. Body (kept): new cmds_table.h included
+    twice by cmds_table.c -- once for declarations, once for the
+    `_cmds_table` array. Replaces 186 lines of boilerplate with
+    97-line header.
+  - 24d0626a: docs -- fix tests/system/README.
+  - 937eec5a: selftests -- more diagnostic info on ksem failure.
+  - 17b8559d: sched -- extra yield at end of yield_until_last.
+  - 9b7b08b4: azure -- vmImage 18.04 -> 20.04.
+  - 46542632: issue templates -- feature_request.
+  - 552a1efe: configurator -- parser write_file() unit test.
+  - ec9cadbb, 62b52d70 (4447-4448): configurator CI --
+    path-triggered; only run unit tests (no coverage).
+  - **38e22982 [process32] Make switch_to_task() to fully support
+    ti == curr**. Body: pending-signal corner case where current
+    process is re-scheduled but must be set up for signal handling.
+  - 28694103: docs -- fix dead links in contributing.md.
+
+--------------------------------------------------------------------------------
+
+## Commits 4451-4485 -- tilck-ci-build dockerfile; x86_64 compile-only; kernel test headers
+
+AI notes:
+
+What changed: the CI container moves from vvaltchev/tilck_build (old)
+to tilck-ci-build (in-tree Dockerfile); Tilck is made to simply
+*compile* for x86_64 (no working code yet, mostly stubs); a new
+include/tilck/kernel/test/ directory hosts kernel-test headers so
+unit tests and kernel code share prototypes.
+
+  - e0e2206f: configurator -- metadata support.
+  - 1581ca07: toolchain -- hard-code vim version to v8.2.5056.
+  - 90a62670: type hinting in count_lines_of_code.
+  - 3c44b5a8: new docker/tilck-ci-build/Dockerfile for ubuntu 20.04.
+  - cdd3a2f6: azure -- build gmock/gmock_arch in
+    toolchain_builds.yml.
+  - 5d12a9ac: dockerfiles for toolchain_builds containers.
+  - **a3898ab2 [azure] Upgrade the main build container to
+    tilck-ci-build:v1**. The source-of-truth Dockerfile finally
+    lives in-tree.
+  - 40faafff, ae85a8ca, 13b703cf, eb1f26f5, d2954a26
+    (4458-4462): tilck-ci-build v2; azure switch; three follow-up
+    fixes.
+  - c7e42e3d: kmalloc_perf becomes a long test.
+
+  - **d209c2d0 [64-bit] Make Tilck to simply compile for x86_64**
+    (+2186/-809). New kernel/arch/x86_64/ with stubs for
+    CMakeLists.txt, arch_syscalls_x64.c, debug.c, double_fault.c,
+    fake_impl.c, fault_resumable.S, idt64.c, irq64.c, kernel_yield.S,
+    linker_script.ld, misc.S, paging64.c, process64.c, start.S.
+    Also moves kernel/arch/i386/pic.{c,h} to arch/generic_x86/.
+    Body kept: nothing really works (yet), but compiles.
+    Also renames $TCROOT/.gcc_tc_ver -> .gcc_tc_ver_$ARCH so
+    different archs can coexist.
+  - c00de3fe: docker -- tilck-ci-build prep for 64-bit.
+  - acdee7e3: azure -- bump to v3 + new gcc_8_4_x86_64 job.
+  - 844738455: gtests -- getuid() test.
+
+  - **0586e5e4 [interactive] Re-try once in case of test failure**.
+    Body: CI timing is flaky for tests like vim -- rather than
+    slowing down 99% of runs, re-run the failed test once with 2x
+    timeout.
+  - 7fbcebf3: README contributing section (#142).
+  - 8467744d: move musl-gcc / musl-g++ to scripts/templates/.
+  - bc72a6e2: gtest -- trigger fork_dup_all_handles error path.
+  - 36b91cba: interactive -- correct exit code for
+    IntTestScreenshotNoMatchFailure.
+  - 656ea995: README update.
+  - c2adcbe4: gtest -- tests for string_util (#145).
+
+  - **3f07294d [gtests] Intr. kernel test headers**. Body kept
+    (design explanation): new include/tilck/kernel/test/*.h shared
+    between kernel code and unit tests so STATIC function signatures
+    can't silently drift between the two.
+  - **94e95bc7 [64-bit] Make kernel_va != KERNEL_BASE_VA**. Long body
+    kept: on x86_64 the kernel can't live inside KERNEL_BASE_VA
+    linear mapping with -mcmodel=small (requires .text/.data in
+    the low 2 GB). Solution: map the kernel twice -- once at -2 GB
+    (0xFFFFFFFF80000000) for execution, once at the linear mapping
+    base for data/refcount.
+  - c1deac91: CMake -- patch weaken_syms against each module linked
+    to gtests (not just kernel_for_test); new
+    other/cmake/wrapped_syms.cmake.
+  - 022a31c6: CMake -- ignore MOD_* options in "noarch" (unit-test)
+    case.
+  - bf173146: gtests -- tracing_test.cpp for simple_wildcard_match
+    and set_traced_syscall_int.
+  - 43a495e3: more robust simple_wildcard_match testing.
+  - 8440c956, ad958fce, 4fa05790 (4481-4483): README updates;
+    qemu-system-gui only on Ubuntu 20.04+.
+  - 893dee22: new tracerTest.cpp with save_param_buffer test.
+  - 74d63e9a: new dump_param_buffer test.
+
+--------------------------------------------------------------------------------
+
+## Commits 4486-4520 -- aarch64 host; UEFI Runtime Services; ACPICA 20201217/20211217; elfhack sym ops
+
+AI notes:
+
+What changed: linux-aarch64 becomes a supported build host; EFI
+Runtime Services (GetTime, SetVirtualAddressMap) are called from
+the kernel; ACPICA is upgraded twice (2020-12-17, then 2021-12-17);
+elfhack gains symbol-manipulation options (--get-sym-info,
+--set-sym-bind, --set-sym-type, --undef-sym, --dump-sym already).
+
+  - 9ce5a7e8: tracerTest refactoring for robustness.
+  - 009fec57: user mmap heap alloc block = PAGE_SIZE.
+  - **3cc8447c Allow Tilck to build on Linux-aarch64** (+505/-119).
+    Big one -- introduces scripts/tc/pkgs/custom_gcc_cross_tc,
+    aarch64 host-arch path in build_toolchain, aarch64-compatible
+    nostdinc shims.
+  - 0d40c5ef: build_toolchain -- abort if $MAIN_DIR has spaces.
+
+  - **dc0b3562 [uefi] Add support for Runtime Services in the
+    kernel** (+267/-8). New kernel/uefi.c (+162);
+    include/tilck/common/boot.h + kernel/uefi.h; new struct
+    tilck_extra_boot_info passed via MBI's apm_table. Long body
+    kept: SetVirtualAddressMap requires the EFI Runtime code/data
+    to be identity-mapped at call time; readonly regions treated as
+    Code, rest as Data. 64-bit to come later.
+  - 9c3985f6: uefi -- GetTime via Runtime Services.
+  - 1ad710a4: selftests -- clock read-latency test (CMOS vs UEFI).
+  - 9c36dd25: misc -- coding style + kmalloc bug fix in uefi.c.
+  - b8d5f454: datetime -- drop `weekday` from struct datetime
+    (UEFI GetTime doesn't return it; computable when needed).
+  - 914cbfab: toolchain -- allow Tilck-x86_64 on linux-aarch64.
+  - 23abf8ce, 4275cdb3, 0da0880f, 41e07759 (4496-4499):
+    misc gnu-efi / OVMF / x86_64 EFI always-built unless ARCH=i386
+    / gnu-efi bump to 3.0.17.
+
+  - df4457f4: elfhack -- new --get-sym-info option.
+  - 68000d1a: elfhack -- new --set-sym-bind and --set-sym-type.
+  - 9021f53b: elfhack -- new --undef-sym.
+  - c5a22f29: toolchain -- fix get_efi_arch() (i386 -> ia32).
+  - 43e028c2: elfhack -- fix two printf fmt warnings.
+  - f1548ab4: allow ACPICA build with -Wno-error (ACPICA is from
+    2020, modern compilers warn).
+  - f63906cc: gitignore -- add 'tags'.
+  - **5c0120ae [acpi] Disable ACPICA auto-repair when not booting in
+    UEFI mode**. Body kept: BIOS maps ACPI tables as RESERVED (2)
+    instead of ACPI_RECLAIMABLE (3), so ACPICA auto-repair writes
+    (e.g. AcpiNsRepair_HID's TOUPPER) hit R/O memory. Workaround:
+    disable repair in BIOS boot; map ACPI_RECLAIMABLE as R/W.
+  - ce77477e: bump SYMTAB/STRTAB max size to 256 KB for GCOV.
+  - **f6f7b9fc [acpi] Upgrade ACPICA version to 20201217**
+    (+475/-194).
+  - **32b3e03b [acpica] Upgrade ACPICA to version 20211217** (huge
+    diff -- hundreds of files, header refresh + new exconcat, etc.).
+
+--------------------------------------------------------------------------------
+
+## Commits 4521-4555 -- x86_64 start.S polish; SPDX; KERNEL_STACK_PAGES=4; printk -> trace_printk mirror
+
+AI notes:
+
+What changed: a lot of small but meaningful improvements: x86_64
+start.S cleanup and dedicated PDPT for kernel mappings; SPDX license
+headers added to configurator; KERNEL_STACK_PAGES=4; fb_scroll
+disabled everywhere; a console_test gtest skeleton; TINY_KERNEL
+overrides removed; sys_getrusage lands; massive trace_printk()
+reliability work and the kernel's printk gets mirrored to the
+trace buffer.
+
+  - 79525711: x86_64 start.S +56/-86 (major cleanup).
+  - **7f812ceb [64-bit] Make the bootloader to offer only text-mode
+    for x86-64**. No fb console on x86_64 yet.
+  - 4f957dff: x86_64 -- dedicated PDPT for kernel mappings.
+  - 8d0e225b: fat32 -- typo fixes.
+  - 2bb686af: configurator -- SPDX-License-Identifier headers.
+  - **317e5dea [fb_console] Disable fb_scroll_one_line_up() even for
+    the hypervisor case**. Long body kept: nested virtualization on
+    WSL+KVM makes reading from the fb insanely slow; full-screen
+    redraw is faster or comparable elsewhere.
+  - **5efdf201 [gtests] Introduce the skeleton for the console_test**
+    (+319/-7). New tests/unit/console_test.cpp; new
+    include/tilck/kernel/test/tty_test.h.
+  - 82fbcaf7, f09794a5, a6724118, 7f1cabb4, 56180d4b, a01003dc,
+    b3f277bc, 6620112236 (4528-4538): contributing.md iterations;
+    pull_request_template.md introduced.
+
+  - **0e969dfe [cmake] Remove the option-overrides by the TINY_KERNEL
+    option** (+10/-36). TINY_KERNEL doesn't force-disable modules
+    anymore -- just enforces MinSizeRel + minimal config in build
+    generators.
+  - bac2968f: cmake+init -- allow USERAPPS_busybox=0.
+  - ac9808b3: pull_request_template.md update.
+  - **0d629eae [syscalls] Introduce sys_getrusage + devshell test**
+    (+211/-11). New modules/systests/systests.c + test_misc.c.
+  - 6915ca29, d4221c89, d2121224, 9766ebe0 (4540-4543): tilck_cmd
+    naming cleanup; sysfs functions renamed sys_ -> sysfs_.
+  - e9b5489d: drop stub sys_break().
+  - 81a8e367: print Tilck logo via term_write() instead of printk.
+  - 1ccd8e1d: tracing -- tolerate trace_printk() before init.
+  - 2d33798e: kmalloc -- debug log uses trace_printk.
+  - 4b3503e3: tracing -- comment in elf_symbol_cb.
+  - 91939be4: tracing -- metadata for getrusage + TILCK_CMD_SYSCALL.
+  - 931c717c: extract init_trace_printk() from init_tracing().
+  - 034f50d3: new TRACE_PRINTK_ENABLED_ON_BOOT CMake option.
+  - **b905bab8 [tracing] Replace the `tracing_lock` with IRQ
+    disabling** (+37/-20). Body kept: needed so trace_printk()
+    can be called from IRQ handlers, which is needed in turn to
+    mirror printk() there.
+  - **c175dfc3 [printk][tracing] Mirror the printk messages to
+    trace_printk()** (+104/-15).
+  - **412a426d [printk] Write to the trace_printk() buffer all the
+    early logs** (+123/-19).
+  - 61459f83: misc -- Tilck hello message in full lines (one
+    printk = one trace event).
+
+--------------------------------------------------------------------------------
+
+## Commits 4556-4590 -- trace_printk polish; USE_SYSCC fix; CMake 3.22; -Wno-warn-rwx; drop GCC 6/7
+
+AI notes:
+
+What changed: trace_printk line merging, signal/dp tracing polish, a
+big USE_SYSCC=1 refactor (x86_64 case finally fixed), CMake minimum
+bumped to 3.22, C++17 minimum, -Wl,--no-warn-rwx, and drop of GCC
+6.x and 7.x support.
+
+  - a5b774d5: pci -- pci_dump_device_info uses a single printk call.
+  - bca31aa2, 62f535c0, 4d8eec1f (4557-4559): dp_tracing polish --
+    bold "*** " logs, merge events without newlines, new `in_irq`
+    field in struct printk_event_data.
+  - c60d00ef: azure -- gcc_9_3 job + gcc 9.3 in docker.
+  - **6ef41c04 [toolchain] Fix support for USE_SYSCC=1 on
+    HOST_ARCH=x86_64** (+177/-157). Long body kept: uses cross-GCC
+    from toolchain but switches libc to Tilck's libmusl via specs.
+    Breaks were recurring across fixes for different use cases.
+  - 441e9fd4, c34ad803, 630d5f37, 4231d914, 13d1cc07, 70a224b0
+    (4562-4567): misc toolchain + docs touchups; run_all_tests
+    `getrusage` test retry limit; README updates.
+  - d2c38994, 4ada9e78 (4568-4569): update LICENSE year; drop
+    README screenshots.
+  - **520c41c7 [kmalloc] Improve the panic message when cs != us**.
+    Body: adds "Double free?" hint -- this mismatch is usually
+    just that.
+  - 8e74eff7: process_mm -- create_process_mmap_heap() handles
+    kmalloc_create_heap() failure.
+  - **1dd1b8e4 [process] Rework the management of the pi->mi object
+    for vforked children** (+80/-27).
+  - 8a28f744, e5da13fd (4573-4574): support GCC 11.3.0 + 12.3.0.
+  - **6aa711d3 [cmake][build] Drop support for GCC 6.x and 7.x**.
+    Body kept: sliding window of supported compilers (new in, old
+    out). Enables C++17 in unit tests.
+  - 23505c50: azure -- drop GCC 6.4/7.3, add GCC 10.3/11.3.
+  - 8eab40e5: bootloader -- refactor run_interactive_logic().
+  - **50ab2129 [cmdline] Move the kopts to dedicated include file**
+    (+87/-91). New include/tilck/common/cmdline_opts.h.
+  - ac3216b5: bootloader -- 'h' option to show all kopts.
+  - 27fce031: bootloader -- show default value of each kopt.
+  - 7f8d490e, d6c40387, 1ab3094c (4581-4583): -Warray-bounds
+    fix in test_signals; dp.c includes libgen.h; dump CFLAGS in
+    dump_cross_compiler_env.
+  - **2abc69ba [build] Add the ".note.GNU-stack" section in all
+    assembly-generated .o files**. Body: recent binutils warn when
+    missing; add across all .S files.
+  - **fb4a1b05 [cmake] Upgrade minimum required CMake version to
+    3.22**. Body kept: lists the features gained
+    (CONFIGURE_DEPENDS, rm vs remove, VERSION_LESS_EQUAL, 64-bit
+    MATH(), OUTPUT_FORMAT).
+  - 2645ebb5: drop dec2hex()/hex2dec() custom funcs.
+  - **ab969e50 [cmake] Link Tilck with -Wl,--no-warn-rwx**. Body:
+    Tilck's kernel ELF looks like it has executable stack to GCC,
+    but doesn't; added for GCC >= 12.0.0.
+  - f47b7fb8: bump required C++ standard to C++17.
+  - c7079b0d: remove special handling for compilers older than
+    GCC 8.4.0.
+  - eff26e35: gen_other_builds -- write output to file.
+
+--------------------------------------------------------------------------------
+
+## Commits 4591-4625 -- panic3 selftest; unaligned.h; riscv64 compile-only; riscv64 early init + FDT
+
+AI notes:
+
+What changed: a debug selftest that intentionally triggers a
+kernel page fault; unaligned.h collects READ_*/WRITE_* macros
+previously in basic_defs.h; and the major RISCV64 port lands --
+initially as compile-only, then growing FDT-based early init, paging,
+exception handling, IRQ infra, goldfish-rtc, ns16550 serial, and
+user FPU.
+
+  - 51eee6fd: new panic3 selftest.
+  - 022232f0: vscode -- drop deprecated python.linting.
+  - 2a3de209: runners -- run system tests with -pr.
+  - **7a9476f2 [process32] Improve the safety checks in
+    switch_to_task()** (+85/-6).
+  - 63ec0564: do_fork() -- a few ASSERTs.
+  - **b7c3a167 [cmake][sched] Intr. the KRN_MINIMAL_TIME_SLICE debug
+    option**.
+  - d647b933: panic -- show kernel stack ptr.
+  - 0f135ea6: set KERNEL_STACK_PAGES = 4.
+  - 5b25516b: save_current_task_state() sets EFLAGS_IF in IRQ ctx.
+  - d07d2950, f622f346 (4600-4601): README; build_fatpart
+    whitespace check (#184).
+  - db4b5a8d: README update.
+
+  - **4afb0fd2 [common] Intr. unaligned.h** (+44).
+  - a3f35854: syscalls -- indirect call in minimal dedicated
+    function.
+  - **067f16d4 [common] Move the READ_* WRITE_* macros to
+    unaligned.h** (+90/-95).
+  - **0aac3f45 [fork]Assign user_regs passed by do_fork()'s param to
+    child's state_regs**. Long body kept (subtle bug).
+  - e1ba388a: fault -- check running_in_kernel before
+    process_signals().
+  - 05a7f825: term -- disable preempt before
+    safe_ringbuf_write_elem.
+  - aaf64f14: interrupts -- disable IRQ if do_schedule() just
+    returned.
+
+  - **2ab1ac6d [riscv64] Make Tilck to simply compile for riscv64**
+    (+5087/-56). Initial RISCV64 port: toolchain support, u-boot,
+    riscv_utils.h, sbi.h, trap_entry.S, PLIC/INTC modules, fdt_rtc,
+    fdt_serial. Stubs everywhere for now.
+  - f7dfe73f: new struct task_and_process.
+  - **9ae5f039 [riscv64] early init code** (+1360/-6). Early FDT
+    parse, mapping setup, simple-fb param extraction, CPU features.
+  - 66edc3e5: riscv64 -- minor coding-style details.
+  - e254c576: riscv64 -- move tilck.map to ${CMAKE_BINARY_DIR}.
+  - **1ea30703 [riscv64] Implement exception handling and panic**
+    (+811/-18).
+  - cd9b76e0: riscv64 -- stackwalk32 rename (#197).
+  - **2de8eb96 [riscv64] Implement virtual memory management**
+    (+1199/-48). Sv-39 three-level page table.
+  - 1050a1cd: system_mmap -- fix case where memory not from 0.
+  - 91275b98: NOTICE -- add fdt_helper.c/h item.
+  - **efcb2d75 [riscv64] Introduce a simple irqchip framework**
+    (+907/-37). PLIC + INTC drivers.
+  - 31a5a86f, 856163132c (4621-4622): github devcontainer.json.
+  - 746d0262: riscv -- rename process.c -> process_riscv.c.
+  - **3d469af7 [process] Refactor user stack/args functions into
+    portable code** (+286/-221). Shared user.c/process.c.
+  - a0ab4742: move kthread_exit() to portable code.
+
+--------------------------------------------------------------------------------
+
+## Commits 4626-4660 -- riscv64 sys; cross-arch switch_to_task; tick-duration drift; gen_config tool
+
+AI notes:
+
+What changed: sys_rt_sigreturn and many other process functions move
+to portable code shared between i386/x86_64/riscv64; riscv64 gets its
+process switching, system timer, goldfish RTC, fdt serial (NS16550),
+user FPU; datetime gains a self-adjusting __tick_duration based on
+drift data; RISCV64 reaches a milestone where it can run all the
+system tests; QEMU scripts get flattened.
+
+  - 7e3907a7: move sys_rt_sigreturn to portable code.
+  - e06a793f: ci -- bump archlinux/opensuse containers.
+  - 832fd924: docker -- add GCC 12.3.0 for i386 + riscv64.
+  - 48adf9cd: docker -- opensuse uses tumbleweed.
+  - 698e34b5: install_pkgs -- pass -ci when running update.
+  - 5101c1d2: azure -- bump tilck-ci-build to v6 + riscv64
+    build-only job.
+
+  - **ef2154bd [riscv64] Implement process management on riscv**
+    (+573/-28).
+  - **97f3a56c [process][riscv] Share more code with x86** (+177/-253).
+    New kernel/switch.c + include/tilck/kernel/switch.h.
+  - 438f85a8, e19edef8, 84c7d10e, 19a80a95, 98e1e5a7, c00fff54,
+    342b985b (4634-4640): more shared code: switch_to_task_safety_
+    checks, push_args_on_user_stack, set_current_task_in_user_mode,
+    sys_set_tid_address, arch_specific task setup/free funcs; fix
+    USER_STACK_STRING_ALIGN; rename aligned_fpu_regs -> fpu_regs.
+  - a1fab033, cec2004c (4641-4642): opensuse package tweaks.
+  - b3d64179: riscv -- access regs_t via portable inline func.
+  - **37973539 [process][riscv] Share kthread_create2() with RISCV64**
+    (+85/-109).
+
+  - **6cd30548 [riscv] Implement system timer** (+61/-2).
+  - d5ca00d7: riscv -- goldfish RTC driver + simple FDT RTC
+    framework.
+  - **7b79b293 [riscv] Implement fdt based serial driver** (+517/-7).
+    New modules/serial/riscv/fdt_serial + ns16550.
+  - ff74a0ff: riscv -- user FPU support.
+  - 91cbf3c6: riscv -- misc (bogomips, reboot, poweroff); bump
+    SYSFS_ENTRY_SIZE 64 -> 128.
+  - **8168bf4b [sched] Improve running_in_kernel**. Body: make it
+    a bitfield (highest bit = syscall, lower bits = fault count).
+  - f5654eda, edc4c723 (4651-4652): riscv -- fix
+    fault_resumable_call a0 retrieval; fix NOCOW pdir_deep_clone.
+  - 5dc8cf99: docs -- contributing.md.
+  - **3e928526 [kmalloc] Fix corner case in
+    per_heap_kmalloc_unsafe()** (+206/-29). multi_step_alloc +
+    do_actual_alloc both true + valloc_and_map fail.
+  - **148174a6 [riscv64] Minimal support for riscv64 system calls**
+    (+881/-24). RISCV64 can now successfully complete all system
+    tests.
+  - 35ba4039: syscalls refactoring.
+  - fb0531f2: scripts -- fix run_nokvm_qemu for ARCH=x86_64.
+  - **c5d3d7d2 [scripts] Rename the *nokvm* QEMU scripts and remove
+    the other ones**. Body: `run_nokvm_qemu` -> `run_qemu` etc.;
+    drop duplicate KVM scripts (-enable-kvm is cheap to add
+    manually).
+  - 43543a57: multiboot/efi QEMU scripts only on x86.
+  - 5aad83c6: stop checking for WSL to pass -device sb16.
+
+--------------------------------------------------------------------------------
+
+## Commits 4661-4695 -- mod_riscv_* names; gen_config; BOARD var; poll/select race; riscv64 CI
+
+AI notes:
+
+What changed: RISCV64 modules get proper per-module config files; a
+new gen_config tool scans the source tree to generate the sysfs
+modules view automatically; BOARD env var; poll/select race fix;
+KERNEL_SAT / KERNEL_SERCON options; new `runall` selftest command
+replaces the old shell-script-driven runs; and a RISCV64 pipeline.
+
+  - **410b2794 [config][riscv] Rename the new RISCV modules and add
+    them to sysfs**. Body: each module needs a mod_<name>.h template
+    so it appears in /syst/modules.
+  - c4c75ab0: sysfs -- refactor sysfs_create_config_obj.
+  - 0ae7afdd: rename riscv_intc -> riscv_irq.
+  - **a692643a [toolchain] Drop hacks for the old $TC/.gcc_tc_ver
+    file**. Breaking change -- old toolchain2 dirs need manual
+    migration.
+  - **11873742 [config] Introduce the gen_config tool** (+174/-69).
+    New scripts/build_apps/gen_config.cpp -- scans modules/
+    directories and generates sysfs entries automatically.
+  - d1b573fb: gen_config generates ALL config sysfs objects.
+  - 3c65b76d: config -- use static arrays instead of
+    sysfs_create_custom_obj.
+  - 54717bf8: riscv/fdt_rtc -- default value if rtc absent.
+  - 98504f16: fdt_serial -- new clr_i member for clearing
+    pending IRQs.
+  - f3fcc75d: paging -- use ulong hw_flags (riscv64 needs high bits
+    54-63).
+  - 6fcf953f: riscv -- refactor init_early_mapping().
+  - ebbbfae7: new scripts/dev/run_ctags.
+  - 5548cfda: TC scripts show installed status for all archs;
+    kernel/uefi.c includes efi.h only on x86.
+  - **238c65d1 [riscv64] Refactor bsp framework**. Body: new BOARD
+    env var; move qemu-virt into its own dir.
+  - 2b0597bf: cmake -- arch-dependent default $BOARD.
+  - **9761b8b8 [riscv64][bsp] support sipeed licheerv-nano board**
+    (+267). First real-hardware target!
+  - 279a0f53: bsp -- fix PATH during licheerv-nano bootloader build.
+  - 9a5214ff: scripts -- add config/ to run_ctags.
+
+  - **be444506 [poll][select] Fix a race condition allowing both
+    syscalls to hang**. Long body kept: both check "ready" streams
+    at entry and return > 0 fast-path, but on the no-ready path they
+    disable preempt and go to sleep *without rechecking*, opening a
+    race where a stream becomes ready between first check and preempt-
+    disable. Fix: recheck after preempt disabled, before sleeping.
+  - 72e19443: kcond -- NULL check in kcond_signal_int.
+  - 8d12d752: systests -- poll2/select3 use dedicated pipe.
+  - 57baa33b: boot -- missing NULL check when VBE fails.
+  - **30af742f [boot] Boot directly and use the serial console if
+    there are no video modes**. Body: no modes = QEMU ran with
+    "-vga none"; skip prompt + use serial console.
+  - 9805c270: new KERNEL_SAT and KERNEL_SERCON CMake options.
+  - 1bae275d, d3c2b545 (4685-4686): coverage YAML fixes; coverage
+    trigger automatic.
+  - 6cefa336: runners -- read shellcmds table directly from header.
+  - 1d612618: runners -- work with both 32/64-bit struct self_test.
+  - **40d96ec0 [runners] Run tests without using QEMU's boot loader
+    (-kernel, -append)** (+121/-64). Big runner change -- tests
+    boot the real Tilck image.
+  - **1ea434b7 [selftests] Intr. the `runall` selftest command and
+    use it compact mode**.
+  - 6494b895, ec36f721 (4691-4692): atomics -- static_asserts for
+    GCC 12/13; drop old-compiler atomics hacks.
+  - 5c787c50: toolchain -- add GCC 13.3.0.
+  - 66ee19e2: install riscv64 packages only when ARCH=riscv64.
+  - 77e9e786: docker -- Dockerfile for tilck-riscv64.
+
+--------------------------------------------------------------------------------
+
+## Commits 4696-4730 -- per-arch Dockerfiles; i386+x86_64 pipelines; GCOV GCC 12+; zombie task free
+
+AI notes:
+
+What changed: Dockerfiles split per target arch
+(tilck-{i386,x86_64,riscv64}); per-arch CI pipelines; RISCV64 gets
+a full test pipeline; the old .azure-pipelines.yml + tilck-ci-build
+are retired; GCOV fixed for GCC >= 12.
+
+  - 3960027d: new DIV_ROUND_UP, ROUND_UP_AT, ROUND_DOWN_AT macros.
+  - 47fb301d: execve -- align hdr_stack at 8.
+  - 19edda55, 02102b8b, d916ce1d, 25c3953f, b6519dd4, 81af98b1
+    (4698-4703): small riscv64 fixes (uninitialized var in irqchip,
+    start.S cosmetic, irq_is_masked uninitialized, irq_bitmap
+    size, linux_image symbol, backtrace hex format).
+  - 3162ce1d: build_generators -- do nothing for ARCH != i386.
+  - 1b3dc418: devshell -- fix RISCV64 syscall wrappers.
+  - **3021f18d [docker] Intr. a Docker for tilck-i386** (+64). Separate
+    i386 container.
+  - **cbdaf32b [azure] Intr. a YAML file for testing Tilck on
+    riscv64** (+96). First riscv64 test pipeline.
+  - 350e15fd: azure -- move YAML files to other/ci/.
+  - e510bca8: azure -- new i386.yml (+225).
+  - 4160be96, 49949896, b0cb7991, 25520b19, 1148bbdb, b7fba343
+    (4710-4715): version commit bump; tilck-x86_64 Dockerfile
+    (+64); x86_64.yml pipeline (+72); temporary riscv64-build YAML;
+    YAML fixes.
+  - 6bc1d4c7: x86_64 -- add -fno-pic.
+  - **9023972 [toolchain] Bump the default GCC_TC_VER to 9.3.0** +
+    min-version checks. New other/min_gcc_tc_ver/ dir with per-arch
+    min-ver files.
+  - 157ccea7: README -- status badge table.
+  - 877f1330, cee25619, 180637ea (4719-4721): UBSAN NULL-ptr fix
+    (#227); use-after-free in free_process_int (#228); riscv64.yml
+    adds KMALLOC_FREE_MEM_POISONING=1.
+  - c872eea0: riscv64 -- remove -panic_kb from qemu-virt bootargs.
+  - 21a74e34: riscv64 -- fix C call-convention errors in asm_defs.h.
+  - 403ff76b: README updates.
+  - **a7e83130 [azure] Delete YAML files for the "Tilck" and "Tilck
+    riscv64 build" pipelines**. Transition to per-arch YAMLs
+    complete.
+  - 97e372d9: docker -- remove deprecated tilck-ci-build Dockerfile.
+  - aa618838: docker -- tilck-riscv64 v2 with lcov.
+  - **9a9e6b0a [gcov] Fix GCOV support for GCC >= 12.0** (+102/-24).
+  - ac9fd916: azure -- coverage job in riscv64.yml.
+  - 0518f46e: azure -- i386 coverage moves to Tilck-i386 pipeline.
+
+--------------------------------------------------------------------------------
+
+## Commits 4731-4765 -- zombie task freeing; cross-arch switch_to_task; dynamic drift; ramfb; gcc 10.3-12.3
+
+AI notes:
+
+What changed: zombie tasks are freed during task switch; a single
+generic switch_to_task() serves all archs; __tick_duration adapts
+based on measured drift; RISCV64 gets QEMU's ramfb for a real fb
+console; GCC 10.3/11.3/12.3 become default / supported; TinyCC is
+disabled due to musl incompatibility.
+
+  - **04f66eaa [process][sched] Free zombie tasks during task
+    switch** (+74/-47).
+  - 0a9cd296: sched -- always yield when curr == idle_task.
+  - b8cc6585: fork -- extra assert.
+  - e9615303: debug -- use READ_PTR() on ebp for stackwalk32.
+  - **fadcc466 [process] Merge switch_to_task() of i386 and riscv64
+    to a single generic impl** (+134/-151).
+  - **add09478 [datetime] Dynamically adjust __tick_duration based
+    on recent drift data** (+231/-43). Real-time keeps its own
+    drift-measured tick duration.
+  - ffa59532: tc -- remove unsupported pkgs for ARCH=riscv64.
+  - 3c59d926: uefi.c -- most compiled only for x86 (skips gtests).
+  - 04861ef1: toolchain -- RISCV64 on arch/fedora/opensuse.
+  - d55edacd, db1aadc9 (4740-4741): azure -- rename tc jobs by
+    ARCH; new toolchain_riscv64 pipeline.
+  - 90eacf2b, 7f508082 (4742-4743): README updates.
+  - 4ed4d645: riscv64 -- make MICROPYTHON work.
+  - **2a834861 [riscv64] Add support for qemu-ramfb and enable
+    framebuffer** (+228/-6). New modules/ramfb/riscv/ramfb.c.
+  - 1ebea191, 79e478a5 (4746-4747): FB size 640x480; show banner
+    stating KB input not supported.
+  - 671c2de8, 22a665bc (4748-4749): micropython build fix for
+    non-debian distros.
+  - **82a7654c [azure] Create a YAML file for each unique (distro,
+    ARCH) pair** (+478). tc-{arch,debian,fedora,opensuse}-{i386,
+    riscv64}.yml.
+  - 2f4e5edf, d56567ac (4751-4752): README CI table.
+  - 43d3f766: azure -- arch-i386 uses GCC 11.3.0; remove
+    micropython.
+  - 74ebd1e7: README -- RISCV64 support info.
+  - **e17f0f0b [riscv64] Implement a better way to force -sercon
+    when necessary**.
+  - 452007d1, 445f9e0e (4756-4757): azure TC yml -- skip
+    docs-only changes; fix broken yml.
+  - 736a9f58: README -- fix text still x86-only.
+  - 164516db: cmake+riscv64 -- -nographic when MOD_fb=0 and
+    MOD_ramfb=0.
+  - **53317aa0 [toolchain] Disable the TinyCC package**. Body:
+    doesn't work with newer musl toolchains; not worth blocking
+    compiler upgrades for a demo feature.
+  - **30be8fd7 Make GCC 10.3.0 be the default (and min) GCC ver for
+    x86**. Also updates micropython to 1.24.1 upstream (lib musl
+    1.2.2 has proc-less realpath).
+  - bebb9db3: make GCC 11.3.0 default/min.
+  - f6fb3a33: toolchain -- fix build_micropython_installed_status.
+  - 316a4068: fix VIM build with GCC 12.3.0.
+  - 965ec63c: docker -- add GCC 12.3; remove deprecated stuff.
+
+--------------------------------------------------------------------------------
+
+## Commits 4766-4800 -- Ubuntu 24.04; BusyBox 1.36.1; ACPICA separate pkg; toolchain Bash refactor
+
+AI notes:
+
+What changed: containers move to Ubuntu 24.04; BusyBox upgraded to
+1.36.1 (docker updates across the board); ACPICA is extracted as a
+separate toolchain source package; USE_CUSTOM_GCC_TC flag lets the
+custom toolchains be used on any host arch; build_toolchain is
+refactored by extracting functions into scripts/bash_includes/
+{arch_checks,arch_utils,cc_vars,compiler_checks}.
+
+  - 6e9164a9, 21230410 (4766-4767): container bumps.
+  - **2e193bd5 Drop support for ARCH_GTESTS**. Body: never worth
+    supporting i686-built unit tests.
+  - 37220fb3: configurator -- 24.04 + python bumps.
+  - d32d2560: fix stack pointer check with proper defines.
+  - 9f4beea8: containers to v3 + vmImage 24.04.
+  - 54bd2c9f: i386 + x86_64 tests with GCC 12.3.0.
+  - 1eed5e72: process -- improve stub sys_prctl.
+  - 1723c4d3, bc2f20b9 (4774-4775): gcc multilib for USE_SYSCC=1;
+    flatten TC pipelines.
+  - cb62c658: rename displayName of TC steps.
+  - 4f081b7a: USE_SYSCC=1 testing in tc-debian-i386.yml.
+  - 898bb11d: RUNNING_IN_CI instead of CI.
+  - 5ec37af9: bump libmusl 1.1.24 -> 1.2.5.
+  - 55fda0d6: rename download_gcc_toolchain -> download_gcc_musl.
+  - fbef7977: make GCC 12.3.0 default for i386/x86_64.
+  - 62c38d76, 5bcd399e (4782-4783): syscalls -- add params to
+    syscall_type; intr syscall_raw_regs; tilck_cmd func typedef.
+  - **b4e61fbf [toolchain] Bump the Busybox version 1.33.1 -> 1.36.1
+    and update docker files** (+137/-50).
+  - 85ac11c3: style -- fix long lines.
+  - 86216470: new other/gcc_tc_conf/<arch>/{default_ver,min_ver}
+    layout.
+  - ae4c1331: default GCC_TC_VER bumped to 12.3.0.
+  - **86ffc6b6 [toolchain] Extract ACPICA as a separate toolchain
+    source package**. Body: ACPICA sources move out of the main
+    tree into $TC; headers under include/3rd_party/acpi/
+    disappear. ~158 000 lines deleted + 100 inserted.
+  - 07d6a4ef, 7c268794, fabd5bdf (4789-4791): toolchain for
+    BUILD_HOST=aarch64; ACPICA bump to R2024_12_12; cmake_run
+    shift fix for --contrib.
+  - b009bb61: ACPICA -- -Wno-null-pointer-subtraction.
+  - **05494e86 [toolchain] Introduce the USE_CUSTOM_GCC_TC flag**
+    (+78/-79). Allows custom GCC toolchains on any host arch.
+  - **ecba3ad0 [toolchain] More refactoring** (+347/-340). Extract
+    into arch_checks, arch_utils, cc_vars, compiler_checks.
+  - be97ff9b: more refactoring 2.
+  - 86a5b402, ba6a185d, db0bebfb, 002a1915, 1a38b1d4 (4796-4800):
+    ARCH_* vars per architecture; reorder funcs; ALL_ARCH_LIST as
+    Bash array; set_gcc_tc_defaults + $x_GCC_TC_VER for each arch.
+
+--------------------------------------------------------------------------------
+
+## Commits 4801-4835 -- TC multi-arch refactor; musl-cross-make; toolchain v3 merge; clangd / Neovim LSP
+
+AI notes:
+
+What changed: the toolchain code is thoroughly multi-arch-ified;
+musl-cross-make configs are added for producing statically-linked
+cross-compiler bundles; the big toolchain v3 merge lands (4824 --
+switches from bootlin.com to custom-built GCC toolchains, reshapes
+the toolchain tree); a /dev/null + /dev/full + /dev/zero driver;
+and Neovim + clangd LSP support with a long campaign of making
+clangd understand the `.c.h` files Tilck uses.
+
+  - e5386fbc, 5a84cf7a, 5de0724a, 95843f18, 7cd025e4, 7bff7328,
+    fa9f41d6, 20efe6a5, 362c6781, 4d18ffb3, 083de5b6 (4801-4811):
+    many incremental toolchain refactors -- per-arch funcs, gcc_tc
+    pkg arg, show each ARCH we installed TC for; drop full func
+    names in favor of package names; new -j option and improved
+    help; per-libc/arch GCC funcs; print GCC toolchains separately.
+
+  - **56370315 [scripts] Introduce scripts/dev/package-gcc-tc**
+    (+372). Body kept: detects compiler version/host arch/target
+    arch/libc from a TC dir without running any binaries; packages
+    it as a .tar.bz2 named with Tilck's toolchain convention.
+  - 2827b45b, 3432478c (4813-4814): package-gcc-tc -- -d/-f flags;
+    treat no options as -h.
+  - **b1307f59 [scripts] Add musl-cross-make config scripts**
+    (+56). new scripts/musl-cross-configs/ with aarch64/i686/
+    riscv64/x86-64 x GCC 12.4/13.3 configs.
+  - **20f83404 [scripts] Introduce build_all_musl_toolchains**
+    (+94). New scripts/adv/build_all_musl_toolchains.
+  - d8346531, 38e087fa, eba91676, 4305dcbf, be0b633e, bf355738,
+    91a64933 (4817-4823): build_all_musl_toolchains improvements;
+    package-gcc-tc searches libc.a; no-objcopy path; static-link
+    musl configs; accept toolchain param; LINUX_VER set in configs.
+
+  - **82728b90 Upgrade the toolchain to v3 and switch to a
+    custom-built GCC tc** (merge #, +~1500/-~2100). Large merge
+    commit combining many items from the merge-branch. Body kept
+    (key facts):
+      - drops bootlin.com toolchains (x86_64-host only)
+      - new toolchains pre-compiled from musl-cross-make, distrib
+        via Github releases, statically-linked, ship with libmusl
+        debug info
+      - USE_SYSCC=1 is removed
+      - new toolchain3 tree structure: <COMP_VER>/<ARCH>/ at root
+        with noarch/ cache/ syscc/ peers; multiple GCC versions
+        can coexist
+      - package layout: every pkg lives at <ARCH>/<COMP>/<VER> so
+        re-install picks up a new version automatically
+      - new `-d <package>` option to delete a package; `-a` for
+        all architectures
+      - other/pkg_versions file pins versions
+    Merge branch includes 72 commits; notable branch tips:
+    01af72f5 (-Wl,--no-warn-rwx for stage3), 5d5a60f9 (always use
+    custom musl-cross-make tc), f02f7a1a (remove USE_SYSCC),
+    7003f46b (toolchain v3 tree restructure), a81b42ec (all pkg
+    versions in one file), a2e52d1c (gnu-efi dir rename to
+    gnuefi), 3345c505 (tree_cmd -> treecmd), 83de735f (musl ->
+    libmusl).
+
+  - f4def4dd: system_tests -- fix overrun in
+    generic_fs_dir_seek_test.
+  - 1a3bb265: CMake -- generated_configuration depends on
+    ALL_MODULES_LIST.
+  - **875050aa [null] Implement /dev/[full,null,zero]**. New
+    modules/null/null.c (+112). Major/minor numbers match Linux.
+  - 74fd8971, ff828132, 3f5d0cf4, 75c330a3, 7ba03a4a, 53dc88f4
+    (4828-4834): LSP bringup -- basic_defs in panic.h for clangd;
+    **.clangd + .nvim.lua for Neovim clangd**; tweaks; KERNEL_TEST
+    guard under __aarch64__; drop x86intrin.h in devshell.h for
+    CLANGD; same for termtest.c; new clangd dev scripts.
+  - **b0f5c1ac [LSP] Make clangd to understand all the .c.h files
+    in ramfs**. Body (kept): .c.h files are pieces of one
+    imaginary bigger C file; we add ramfs_int.h with all the
+    includes + fwd decls so clangd can open them independently.
+
+--------------------------------------------------------------------------------
+
+## Commits 4836-4870 -- clangd sweep; kernel/vfs; drop openSUSE; FreeBSD host prep; MY_ prefix ELF types
+
+AI notes:
+
+What changed: systematic campaign to make clangd understand every
+.c.h file in the tree (kb8042, pci, sysfs, console, kmalloc, bintree,
+vfs); kernel/fs/vfs moves to kernel/vfs; openSUSE support is
+dropped; FreeBSD support work begins; ELF types get a MY_ prefix to
+namespace them; a bugfix in build_bootpart forces FAT16+.
+
+  - 8db36275, ffa1a4e6, c22debf3, b97ace5b, 336ff09b (4836-4840):
+    more clangd understanding -- common/.c.h, tty_ctrl_handlers,
+    script improvements, vfs .c.h, bintree .c.h (+new
+    avl_int.h).
+  - **c364f914 [VFS] Move kernel/fs/vfs to kernel/vfs**. Rename.
+  - c11a8591, 23b793f2, 72d81be8, 0675c6b2, d064dbcc, f0c1fd42,
+    4b640e61 (4842-4848): clangd for kmalloc/kb8042/pci/sysfs
+    .c.h; clangd-run-all-files uses fd; clangd understands
+    modules/console .c.h; clangd-run-all-files works on all
+    headers.
+
+  - beb3af0a, 039b95f2 (4849-4850): drop openSUSE from CI table;
+    **[toolchain] Drop support for openSUSE**. Body: 1-2% user
+    base not worth the overhead.
+  - d1897c43, 3d2b8f92, 0501adc8 (4851-4853): more sys deps
+    (including Ruby); check user root in interactive mode;
+    dump_cross_compiler_env fix.
+  - cac7fbe2, 80cebb2a, 48de2261, 1b81998c (4854-4857): more
+    clangd -- base64.h; asm_x86_strings.h; i386+riscv headers;
+    ATOMIC(T) as T.
+  - **e5312e5b [LSP] Rename cpputils.h to cpputils.hpp to make
+    clangd happy**.
+  - 46673a46, 70262318, 9fb41cb8, 0d9f953e, 020b4510, 1ae3ee7b,
+    118f5935, a89f34ba (4859-4866): more clangd header tweaks
+    (x86_64 utils, atomics, arch_ints; clangd-run-all-files arch
+    allow list; CLANGD guard in basic_defs; boot.h; i386 build;
+    x86_64 build; skip RISCV* files; riscv64 build).
+  - 7246bcca: fix Debian-family version detection via
+    /etc/os-release.
+  - **36c19733 [cmake] Run qemu with -monitor none by default for
+    riscv64 [fixes #240]**. Body kept: Debian 12 QEMU 7.2.19 has a
+    ramfb/dma regression; work around by keeping -monitor none.
+
+  - **e96e36e1 [common] Add my_/MY_ prefix to ELF types to Tilck's
+    generic ELF types** (+176/-176). Prevents clashes with system
+    elf.h on FreeBSD / macOS hosts.
+  - **feb0c6c3 [scripts] Bugfix: force cluster size = 1 sector for
+    the bootpart**. Body: newer mtools could create FAT12 with
+    default cluster size, which our bootloader doesn't support.
+
+--------------------------------------------------------------------------------
+
+## Commits 4871-4895 -- FreeBSD host; gnu-wrap; mbrhack drops parted; multi-subproject CMake
+
+AI notes:
+
+What changed: FreeBSD becomes a supported build host (ulong typedef,
+gnu-wrap redirector scripts, install_freebsd, separate OVMF
+VARS/CODE); mbrhack is improved and finally replaces parted
+entirely; the big CMake split lands (4890 -- multi-subproject build
+so MacOS can build kernel + bootloaders + unit tests with different
+compilers); the old cmake-configurator is dropped; e1000 NIC driver
+lands from an external PR.
+
+  - 399b22b9, 395bac64 (4871-4872): Lua -- force platform=Linux;
+    == check for spaces in $MAIN_DIR.
+  - **71d0fd19 [basic_defs] Define ulong type on FreeBSD hosts**.
+  - 2a647d97: toolchain -- check exec status of default funcs.
+  - **463ba6bb [scripts] Make run_efi_qemu{32,64} use separate CODE
+    and VARS OVMF files**.
+  - 9b33474a: run_efi_qemu* work on FreeBSD.
+  - 922b8731: hide `vim` package on FreeBSD.
+  - **18da0d24 [toolchain] Add GNU wrapper scripts and use them on
+    FreeBSD** (+70/-9). New scripts/gnu-wrap/{awk,dd,diff,find,
+    grep,make,patch,sed,tar,xargs} that redirect to GNU versions
+    (g...). Prepended to PATH in the FreeBSD build path.
+  - 8832294b: remove broken ovmf package + helpers.
+  - aac7bf26, 0287a33f (4880-4881): package-gcc-tc adds OS suffix;
+    /usr/bin/env bash shebangs.
+  - f9bf90d9, 49a178e2, cf76a32d, 17dc8889 (4882-4885):
+    build_all_musl_toolchains -f; GCC TC autodownload on FreeBSD;
+    **/bin/sh bootstrap script for build_toolchain**
+    (build_toolchain renames to bash_build_toolchain + tiny sh
+    wrapper); install_freebsd().
+
+  - 5d3581cf, 8c602b93 (4886-4887): cmake -- log bootpart/initrd
+    info; fix ${DD} indent.
+  - **8b7f9a87 [mbrhack] Improve a bit the tool** (+67/-19).
+  - **77b85697 [cmake][mbrhack] Drop dependency on the parted tool**
+    (+153/-36). mbrhack now writes the MBR itself; parted is
+    removed from the system deps.
+
+  - **175b68fb [cmake] Split build system in multiple sub-projects**
+    (merge, +5395/-867). Big one. Body kept (terse): sub-projects
+    can use different compilers following CMake's native model;
+    enables native MacOS builds. New config/kernel/ subdir for
+    kernel-private config headers; per-toolchain CMake files
+    other/cmake/{i386,x86_64,riscv64}-linux-gcc.cmake. Branch
+    includes Darwin fixes (ulong typedef, elf.h, HOST_ARCH
+    translation, elfhack cast, cpputils.hpp for clang) and four
+    rounds of bugfixes.
+  - 485de7d8: **docs -- introduce CLAUDE.md** (+222).
+  - 735ed39c: README -- FAQ link about AI use (#243).
+  - 4d2cf14f: scripts -- always re-create fatpart (avoid mformat
+    FAT12).
+  - 1e09a53d, 8d5e7d5c (4894-4895): delete leftover config/mod_*.h
+    (now in config/kernel/); **drop the old configurator project**
+    (+1/-491).
+
+--------------------------------------------------------------------------------
+
+## Commits 4896-4910 -- e1000 driver PR; contribution policy; exp-ruby merge; annotation commits
+
+AI notes:
+
+What changed: the e1000 NIC driver merges from an external PR
+(with the usual review-round polish); contribution policy updated
+to reflect the "no external contributions" stance; the big exp-ruby
+merge lands (full Ruby rewrite of the package manager, toolchain v4,
+FreeBSD / macOS host support, comprehensive test suite); a new
+scripts/dev/annotate_commits helper script; and the annotation
+commits themselves for commits 1-1200 as the first portion of this
+very document.
+
+  - **615a42ae Merge pull request #241 from cozis/e1000_driver**
+    (+1010/-10). First network-driver work -- new modules/e1000/
+    with an e1000 NIC driver; new include/tilck/kernel/net.h;
+    new include/tilck/kernel/arch/generic_x86/mmio.h. Branch
+    includes cleanup review rounds (mmio barriers, global var
+    packing, shift vs div, style/bracing, 80-col folds, halt()
+    macro).
+  - **cbaaccaa [docs] Clarify contribution policy for external
+    contributors** (+1/-176). Body: external contributions not
+    currently accepted.
+
+  - **1d273659 Merge branch 'exp-ruby'** (+16469/-3430 across ~170
+    files). Big one. Body kept: "New package manager written in
+    Ruby" + "New toolchain structure (v4)". Branch covers:
+      - Ruby bootstrap via build_toolchain; rubygem deps
+      - complete Ruby rewrite of the package manager under
+        scripts/pkgmgr/ (package.rb, package_manager.rb,
+        cache.rb, source_ref.rb, version.rb, progress.rb,
+        dep_resolver.rb, coverage_reporter.rb, early_logic.rb,
+        term.rb)
+      - one .rb file per package (acpica, busybox, dtc, fbdoom,
+        freedoom, gcc, gnuefi, gtest, lcov, libmusl,
+        licheerv_nano_boot, lua, micropython, mtools, ncurses,
+        tcc, tfblib, treecmd, uboot, sophgo_tools, vim, zlib)
+      - toolchain v4 layout (toolchain3 -> toolchain4, three-tier
+        host layout: portable / distro / host-cc)
+      - macOS (Darwin) support: machohack.c, weaken_syms_macos,
+        musl-cross-configs-darwin/, gtest runs on macOS
+      - FreeBSD polish: shim headers under include/system_headers/
+        for Linux-only types (termbits, time, signal defs, fb,
+        kd, sched, auxvec, prctl, syscall, dirent, elf, features)
+      - comprehensive test suite under scripts/pkgmgr/tests/ (~30
+        test files, in-process HTTP server for cache tests, git
+        mock layer, 100% coverage on several classes)
+      - --dry-run, --check-for-updates, --upgrade, --config modes
+      - default/board_list attributes, dep resolver, automatic
+        compiler dep injection
+      - CI updates: Ubuntu 24.04 vmImage, per-distro/arch
+        pipelines, Fedora/Arch fixes, rubygem-minitest install
+      - docs: package_manager.md (+342)
+      - CLAUDE.md expanded with FreeBSD + exp-ruby progress notes
+    Branch-tip commits: 5ec61447 (mtools 4.0.49), 642bd2d1 (Ruby
+    download/build), 38fcaa71 (pkgmgr start), 2da138a6 (Acpica
+    port), 8b4acd42 (toolchain3 -> toolchain4), 44af9a29 (test
+    infra overhaul), 1f58d79a (gtest 1.12.1 -> 1.17.0), 348e2e20
+    (resumable HTTP downloads), 9e67cf6b (atomic installs via
+    staging area), a2b4c4f5 (FreeBSD gnuefi), 2c318e94 (host_gtest
+    with GCC on FreeBSD), cf408ac3 (three-tier host layout),
+    cf9c7d68 (SourceRef primitive), e465e44d (gtest_src folded
+    into host_gtest), 72d21038 (fbdoom + freedoom split),
+    9132cc46 (--contrib expansion).
+
+  - **82b8826d [scripts] Add annotate_commits helper for history
+    annotation** (+179). New scripts/dev/annotate_commits --
+    wraps the mechanical git/list/meta/diff/merge ops behind a
+    single permission pattern so the annotation workflow is
+    audit-friendly. **This is the tool used for this file**.
+
+  - **e1c7edc1 [docs] Annotate first 200 first-parent commits**
+    (+5953). First-annotation commit for this document.
+  - 8db333fc: annotate commits 201-300; adds era 5 marker.
+  - d11ad38a: annotate commits 301-400.
+  - 846dac1f: annotate commits 401-500.
+  - a6fda02d: annotate commits 501-600; adds era 6 marker.
+  - 01918d9e: annotate commits 601-700.
+  - ee5a1a81: annotate commits 701-800.
+  - d5d569d5: annotate commits 801-900.
+  - dd472325: annotate commits 901-1000.
+  - bd7c5604: annotate commits 1001-1100.
+  - **d6bc835f [docs] Annotate commits 1101-1200**. End of the
+    first-parent chain as of this snapshot (commit 4910).
+
+--------------------------------------------------------------------------------
