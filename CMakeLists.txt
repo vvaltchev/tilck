@@ -699,10 +699,34 @@ foreach(modpath ${modules})
    list(FIND disabled_modules_list ${modname} _index)
 
    if (${_index} GREATER -1)
-      set(MOD_${modname} OFF CACHE BOOL "Compile-in the ${modname} module")
+      set(_mod_default OFF)
    else()
-      set(MOD_${modname} ON CACHE BOOL "Compile-in the ${modname} module")
+      set(_mod_default ON)
    endif()
+
+   # Read modules/<mod>/module_deps (one dep per line, plain module
+   # names) and convert to the MOD_<name>-prefixed DEPENDS list. The
+   # file is optional; most modules have no deps.
+   set(_mod_deps "")
+   set(_mod_deps_file "${PROJ_ROOT}/modules/${modname}/module_deps")
+   if (EXISTS ${_mod_deps_file})
+      file(STRINGS ${_mod_deps_file} _mod_raw_deps)
+      foreach(_dep_name ${_mod_raw_deps})
+         list(APPEND _mod_deps "MOD_${_dep_name}")
+      endforeach()
+   endif()
+
+   tilck_option(MOD_${modname}
+      TYPE     BOOL
+      CATEGORY "Modules"
+      DEFAULT  ${_mod_default}
+      DEPENDS  ${_mod_deps}
+      HELP     "Compile-in the ${modname} module"
+   )
+
+   unset(_mod_default)
+   unset(_mod_deps)
+   unset(_mod_deps_file)
 
    set(MOD_HEADER_FILE ${PROJ_ROOT}/config/kernel/mod_${modname}.h)
    if (NOT EXISTS ${MOD_HEADER_FILE})
@@ -927,32 +951,16 @@ if (NOT ${MOD_console} AND NOT ${MOD_serial})
    message(FATAL_ERROR "Cannot disable both the `console` and `serial` mods")
 endif()
 
+# Build the enabled-modules list for downstream consumers. The
+# inter-module DEPENDS enforcement that used to live in this loop
+# (reading modules/<mod>/module_deps and FATAL_ERROR'ing on unmet
+# deps) is now handled uniformly by tilck_finalize_options_deps()
+# via each MOD_*'s DEPENDS clause (see the MOD_* tilck_option loop
+# above, which reads the same module_deps file).
 foreach (mod ${modules_list})
-
-   set(deps_file "${PROJ_ROOT}/modules/${mod}/module_deps")
-
-   if (NOT ${MOD_${mod}})
-      continue() # Module not compiled-in: skip it.
+   if (${MOD_${mod}})
+      list(APPEND enabled_modules_list ${mod})
    endif()
-
-   list(APPEND enabled_modules_list ${mod})
-
-   if (NOT EXISTS ${deps_file})
-      continue() # No dependencies. Great!
-   endif()
-
-   # Read the dependencies in the `deps` list
-   file(STRINGS ${deps_file} deps)
-
-   foreach (d ${deps})
-      if (NOT ${MOD_${d}})
-         message(FATAL_ERROR "The module '${mod}' requires the module '${d}'")
-      endif()
-   endforeach()
-
-   unset(deps)
-   unset(deps_file)
-
 endforeach()
 
 JOIN("${enabled_modules_list}" ${SPACE} ENABLED_MODULES_LIST)
@@ -1725,6 +1733,13 @@ if (EXISTS ${GTEST_INSTALL_DIR})
 else()
    no_googletest_lib_fake_error_target()
 endif()
+
+# Enforce deferred BOOL DEPENDS checks now that every tilck_option()
+# has run (including the dynamic MOD_* loop and any ExternalProject
+# sub-includes). This replaces the former CMakeLists.txt loop that
+# read modules/<mod>/module_deps and FATAL_ERROR'd directly — the
+# same constraint is now expressed via each MOD_*'s DEPENDS clause.
+tilck_finalize_options_deps()
 
 # Schema-validate the tilck_option() sidecar. Catches bad metadata
 # (unknown types, missing fields, ENUM default not in STRINGS, etc.)

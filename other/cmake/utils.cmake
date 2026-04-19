@@ -93,6 +93,51 @@ endmacro()
 macro(tilck_init_options_sidecar)
    file(WRITE "${CMAKE_BINARY_DIR}/tilck_options.json" "")
    set_property(GLOBAL PROPERTY TILCK_OPTIONS_EMITTED "")
+   set_property(GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS "")
+endmacro()
+
+# Enforce deferred BOOL DEPENDS checks recorded by tilck_option().
+# Call exactly once, at the end of the root CMakeLists.txt, after
+# every tilck_option() invocation has run (including in sub-
+# projects that re-include option files). Dep-names can refer to
+# other tilck_option()-defined options that didn't exist when the
+# dependent was defined — e.g. the MOD_* alphabetical-glob loop
+# where MOD_acpi comes before MOD_pci.
+macro(tilck_finalize_options_deps)
+
+   get_property(_pending GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS)
+   foreach(_entry ${_pending})
+
+      string(FIND "${_entry}" "|" _sep)
+      string(SUBSTRING "${_entry}" 0 ${_sep} _name)
+      math(EXPR _deps_start "${_sep} + 1")
+      string(SUBSTRING "${_entry}" ${_deps_start} -1 _deps_csv)
+      string(REPLACE "," ";" _deps "${_deps_csv}")
+
+      if (NOT ${${_name}})
+         continue()   # option disabled — deps don't matter
+      endif()
+
+      foreach(_dep ${_deps})
+         string(SUBSTRING "${_dep}" 0 1 _dep_first)
+         if ("${_dep_first}" STREQUAL "!")
+            string(SUBSTRING "${_dep}" 1 -1 _dep_name)
+            if (${${_dep_name}})
+               message(FATAL_ERROR
+                  "tilck_option(${_name}) requires !${_dep_name} "
+                  "but ${_dep_name} is set")
+            endif()
+         else()
+            if (NOT ${${_dep}})
+               message(FATAL_ERROR
+                  "tilck_option(${_name}) requires ${_dep} "
+                  "but ${_dep} is not set")
+            endif()
+         endif()
+      endforeach()
+
+   endforeach()
+
 endmacro()
 
 # tilck_option() — declare a user-visible build option with metadata.
@@ -226,37 +271,33 @@ macro(tilck_option NAME)
       set_property(CACHE ${NAME} PROPERTY STRINGS ${TO_STRINGS})
    endif()
 
-   # --- DEPENDS runtime check (BOOL-only, AND of truthiness) ---
+   # --- DEPENDS runtime check ---
    #
    # For BOOL options, DEPENDS is a hard invariant: if the option is
-   # enabled but any dep is not, it's a configuration error.
+   # enabled but any dep is not, that's a configuration error. The
+   # check is DEFERRED to tilck_finalize_options_deps() (called at
+   # the end of the root CMakeLists.txt) because some option
+   # definitions reference OTHER tilck_option()-defined options
+   # that may not exist yet at call time — e.g. the MOD_* loop,
+   # where MOD_acpi is processed alphabetically before MOD_pci
+   # even though it DEPENDS on it.
    #
    # For non-BOOL options (INT/UINT/ADDR/STRING/ENUM) used as
    # conditional sub-options, DEPENDS controls VISIBILITY in mconf
    # only — the cache always holds a valid value, and that value is
-   # simply "irrelevant" when the dep is false (the derived logic
-   # below should fall back to defaults in that case). CMake does
-   # not enforce the dep for these; Kconfig hides the option in
-   # the UI and the sidecar carries the DEPENDS through for the
-   # generator to emit.
-   if ("${TO_TYPE}" STREQUAL "BOOL" AND ${${NAME}})
-      foreach(_dep ${TO_DEPENDS})
-         string(SUBSTRING "${_dep}" 0 1 _dep_first)
-         if ("${_dep_first}" STREQUAL "!")
-            string(SUBSTRING "${_dep}" 1 -1 _dep_name)
-            if (${${_dep_name}})
-               message(FATAL_ERROR
-                  "tilck_option(${NAME}) requires !${_dep_name} "
-                  "but ${_dep_name} is set")
-            endif()
-         else()
-            if (NOT ${${_dep}})
-               message(FATAL_ERROR
-                  "tilck_option(${NAME}) requires ${_dep} "
-                  "but ${_dep} is not set")
-            endif()
-         endif()
-      endforeach()
+   # simply "irrelevant" when the dep is false. CMake does not
+   # enforce the dep for these; Kconfig hides the option in the UI
+   # and the sidecar carries the DEPENDS through for the generator
+   # to emit.
+   if ("${TO_TYPE}" STREQUAL "BOOL" AND TO_DEPENDS)
+      # Pack (name, deps) into the global pending list using a
+      # pipe-separator that can't occur inside option names. The
+      # deps list itself stays semicolon-joined for list-rehydration
+      # by tilck_finalize_options_deps.
+      get_property(_pending GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS)
+      string(REPLACE ";" "," _deps_csv "${TO_DEPENDS}")
+      list(APPEND _pending "${NAME}|${_deps_csv}")
+      set_property(GLOBAL PROPERTY TILCK_PENDING_DEP_CHECKS "${_pending}")
    endif()
 
    # --- Emit JSONL record (once per option per configure) ---
