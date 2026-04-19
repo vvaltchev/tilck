@@ -31,14 +31,33 @@ tilck_option(KRN_USER_STACK_PAGES
    HELP     "User-process stack size (pages)"
 )
 
-tilck_option(KRN_KMALLOC_FIRST_HEAP_SIZE_KB
-   TYPE     ENUM
+# Conditional sub-option pattern: a BOOL toggle controls the
+# visibility of a follow-on numeric option in mconf. When the toggle
+# is OFF, the sub-option is hidden and the derived value below
+# computes an "auto" heap size based on KRN_TINY_KERNEL. When the
+# toggle is ON, mconf exposes the KB input and the explicit value
+# wins. CMake only needs to know about the two cache vars and the
+# derived fallback; the hide/show is a Kconfig-level effect.
+tilck_option(KRN_KMALLOC_CUSTOM_FIRST_HEAP
+   TYPE     BOOL
    CATEGORY "Kernel/Memory"
-   DEFAULT  "auto"
-   STRINGS  auto 64 128 256 512
-   HELP     "Size of kmalloc's first heap (KB)"
-            "Must be a multiple of 64. 'auto' selects 64 for tiny"
-            "kernels, 128 otherwise."
+   DEFAULT  OFF
+   HELP     "Custom first kmalloc heap size"
+            "When OFF (the default), kmalloc's first heap is sized"
+            "automatically: 64 KB if KRN_TINY_KERNEL is ON, 128 KB"
+            "otherwise. Turn ON to set an explicit size via the"
+            "sub-option that appears below."
+)
+
+tilck_option(KRN_KMALLOC_FIRST_HEAP_SIZE_KB
+   TYPE     UINT
+   CATEGORY "Kernel/Memory"
+   DEFAULT  128
+   DEPENDS  KRN_KMALLOC_CUSTOM_FIRST_HEAP
+   HELP     "First kmalloc heap size (KB)"
+            "Must be a multiple of 64. Only used when"
+            "KRN_KMALLOC_CUSTOM_FIRST_HEAP is ON; otherwise the"
+            "derived 'auto' value applies."
 )
 
 tilck_option(KRN_BIG_IO_BUF
@@ -262,14 +281,11 @@ tilck_option(KRN_TINY_KERNEL
 # Derived value (runs after all options are defined)
 # =====================================================================
 
-if (KRN_KMALLOC_FIRST_HEAP_SIZE_KB STREQUAL "auto")
-
-   if (KRN_TINY_KERNEL)
-      set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL 64)
-   else()
-      set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL 128)
-   endif()
-
-else()
+if (KRN_KMALLOC_CUSTOM_FIRST_HEAP)
+   # Toggle ON: user set an explicit size via the menu / -D.
    set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL ${KRN_KMALLOC_FIRST_HEAP_SIZE_KB})
+elseif (KRN_TINY_KERNEL)
+   set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL 64)
+else()
+   set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB_VAL 128)
 endif()

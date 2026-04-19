@@ -226,9 +226,20 @@ macro(tilck_option NAME)
       set_property(CACHE ${NAME} PROPERTY STRINGS ${TO_STRINGS})
    endif()
 
-   # --- DEPENDS runtime check (AND of truthiness, with optional !) ---
-
-   if (${${NAME}})
+   # --- DEPENDS runtime check (BOOL-only, AND of truthiness) ---
+   #
+   # For BOOL options, DEPENDS is a hard invariant: if the option is
+   # enabled but any dep is not, it's a configuration error.
+   #
+   # For non-BOOL options (INT/UINT/ADDR/STRING/ENUM) used as
+   # conditional sub-options, DEPENDS controls VISIBILITY in mconf
+   # only — the cache always holds a valid value, and that value is
+   # simply "irrelevant" when the dep is false (the derived logic
+   # below should fall back to defaults in that case). CMake does
+   # not enforce the dep for these; Kconfig hides the option in
+   # the UI and the sidecar carries the DEPENDS through for the
+   # generator to emit.
+   if ("${TO_TYPE}" STREQUAL "BOOL" AND ${${NAME}})
       foreach(_dep ${TO_DEPENDS})
          string(SUBSTRING "${_dep}" 0 1 _dep_first)
          if ("${_dep_first}" STREQUAL "!")
