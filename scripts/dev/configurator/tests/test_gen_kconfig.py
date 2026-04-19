@@ -197,7 +197,7 @@ class TestGenerate(unittest.TestCase):
         ])
         kcfg = (d / "Kconfig.k").read_text()
         self.assertIn("int \"Demo option\"", kcfg)
-        self.assertIn("range 0 18446744073709551615", kcfg)
+        self.assertIn("range 0 2147483647", kcfg)
         self.assertIn("hex \"Demo option\"", kcfg)
         cfg = (d / ".config").read_text()
         self.assertIn("CONFIG_I=-5", cfg)

@@ -37,10 +37,15 @@ UINT_RE = re.compile(r"^[0-9]+$")
 ADDR_RE = re.compile(r"^0x[0-9a-fA-F]+$")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-# Kconfig's int type is ASCII-arbitrary-precision; this is just the
-# upper bound we advertise for UINT's `range` clause so mconf enforces
-# non-negative 64-bit input.
-UINT64_MAX = 18446744073709551615
+# Upper bound for the UINT Kconfig `range` clause. Busybox/Linux
+# kconfig's sym_get_range_val() returns `int` (32-bit) via strtol(),
+# so a literal 2^64-1 silently overflows and wraps to -1 — every
+# value then fails sym_validate_range() and gets rewritten to -1 in
+# .config. Cap at INT_MAX (2^31-1) so the bound parses cleanly; any
+# Tilck UINT option that legitimately needs larger values must be
+# set through `cmake -D` directly. CMake's tilck_option() still
+# validates DEFAULT against ^[0-9]+$ regardless of this cap.
+UINT_RANGE_MAX = 2147483647
 
 
 # ---------------------------------------------------------------------
@@ -176,7 +181,7 @@ def _emit_record(lines: list[str], r: dict) -> None:
     elif t == "uint":
         lines.append(f'\tint "{summary}"')
         lines.append(f'\tdefault {r["default"]}')
-        lines.append(f"\trange 0 {UINT64_MAX}")
+        lines.append(f"\trange 0 {UINT_RANGE_MAX}")
     elif t == "addr":
         lines.append(f'\thex "{summary}"')
         lines.append(f'\tdefault {r["default"]}')
