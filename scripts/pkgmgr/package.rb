@@ -453,6 +453,40 @@ class Package
     File.write(path, lines.join("\n") + "\n")
   end
 
+  # Locate the installed host_ncurses tree and return the make vars
+  # and environment needed to link kconfig's host tools (mconf, nconf)
+  # against it. Used by `-C` flows on packages that invoke `make
+  # menuconfig`.
+  #
+  # Returns [make_vars, env]. If host_ncurses is not installed, returns
+  # [[], {}] and emits a warning — the menuconfig invocation falls back
+  # to system ncurses (fine on Linux/FreeBSD hosts with libncurses-dev,
+  # broken on macOS where the system ncurses is ancient).
+  def host_ncurses_build_flags
+    pkg = pkgmgr.get("host_ncurses")
+    info = pkg&.get_install_list&.find { |x| !x.broken }
+    if !info
+      warning "host_ncurses is not installed; " \
+              "menuconfig will fall back to system ncurses"
+      warning "To fix: ./scripts/build_toolchain -s host_ncurses"
+      return [[], {}]
+    end
+    prefix = info.path / "install"
+    # With --enable-widec, ncurses installs headers under
+    # include/ncursesw/ (curses.h, term.h, etc.). The top-level
+    # include/ path covers consumers that include via
+    # `<ncursesw/curses.h>`. Consumers using pkg-config get the right
+    # flags from ncursesw.pc regardless.
+    make_vars = [
+      "HOSTCFLAGS=-I#{prefix}/include -I#{prefix}/include/ncursesw",
+      "HOSTLDFLAGS=-L#{prefix}/lib",
+    ]
+    env = {
+      "PKG_CONFIG_PATH" => "#{prefix}/lib/pkgconfig:#{ENV['PKG_CONFIG_PATH']}"
+    }
+    [make_vars, env]
+  end
+
   # Interactive reconfiguration (e.g. `make menuconfig`). Only packages
   # that override config_impl are configurable. The base class runs the
   # override inside the installed version's directory with the cross-
