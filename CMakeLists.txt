@@ -22,6 +22,16 @@ include(other/cmake/errors.cmake)
 # duplicate emission when called from multiple sub-projects.
 tilck_init_options_sidecar()
 
+# Include kernel_options.cmake at the ROOT level so tilck_option()
+# calls run during the top-level configure — the sub-projects (kernel,
+# gtests) are ExternalProjects configured at build time, so their own
+# include() of the same file runs too late to populate the sidecar
+# before the validator runs at the end of this file.  set(... CACHE ...)
+# is idempotent, so re-inclusion in sub-projects is a no-op for cache
+# vars; tilck_option()'s GLOBAL emission guard prevents duplicate
+# JSONL records within any single configure run.
+include(other/cmake/kernel_options.cmake)
+
 set(BUILD_SHARED_LIBRARIES off)           # disable shared libs globally
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)    # disable -rdynamic globally
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)  # disable -rdynamic globally

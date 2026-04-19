@@ -23,8 +23,12 @@ set(KRN_KMALLOC_FIRST_HEAP_SIZE_KB "auto" CACHE STRING
 
 # Boolean kernel options (enabled by default)
 
-set(KRN_TRACK_NESTED_INTERR ON CACHE BOOL
-    "Track the nested interrupts")
+tilck_option(KRN_TRACK_NESTED_INTERR
+   TYPE     BOOL
+   CATEGORY "Kernel/Debug"
+   DEFAULT  ON
+   HELP     "Track the nested interrupts"
+)
 
 set(KRN_STACK_ISOLATION ON CACHE BOOL
     "Put the kernel stack in hi the vmem in isolated pages")
