@@ -45262,3 +45262,940 @@ dependencies.
     honors this during build.
 
 --------------------------------------------------------------------------------
+
+## Commits 3916-3945 -- bootloader split into boot/common/; shared video-mode picker; PCI sysfs
+
+AI notes:
+
+What changed: the two bootloaders (legacy BIOS stage3 and EFI) start
+sharing code through a new boot/common/ directory plus a
+bootloader_intf abstraction (struct of function pointers) so the
+legacy-vs-EFI differences shrink to thin shims. Video-mode selection
+gains support for >10 modes and is moved to shared code.
+
+  - f238c8d3: pci.h -- add PCI class constants.
+  - 9e52923c: PCI -- basic sysfs view under /syst/pci.
+  - 756f2c87: strtol -- always set *error = 0.
+  - 8ae7f3a9: new ATTR_SECTION() macro.
+  - e8c0cd41: boot basic_term supports \b.
+  - 537908e0: itoa.cpp also compiled into the EFI bootloader.
+  - **fef5eb1c [boot][common] Support choice among more than 10 video
+    modes** (+295/-135). New boot/efi/utils and legacy setup_graphics
+    logic; common fields in include/tilck/common/gfx.h.
+  - 7bdd67f9: rename BOOT_ASK_VIDEO_MODE -> BOOT_INTERACTIVE.
+  - e2cb61c6: require CI builds with BOOT_INTERACTIVE=0.
+  - 55ec1d8a: refactor legacy video-mode selection.
+  - **f8711211 [boot] Move filter_video_modes() in common/ and share
+    it**. New common/gfx.c + include/tilck/common/gfx.h.
+  - 07f673f6: share do_get_user_video_mode_choice() via common/.
+  - **cd521284 [boot] Move code shared b/w bootloaders in boot/common**.
+    New include/tilck/boot/common.h.
+  - **792042f0 [boot] Intr. init_common_bootloader_code()** (+278/-246).
+    New boot/common/common_int.h; boot/efi/intf.c and
+    boot/legacy/stage3/intf.c as per-bootloader intf
+    implementations.
+  - 5512d49d: show_mode() implemented in boot/common/gfx.c.
+  - 8b5e8e3b: read_line() in common boot code.
+  - ad4ee33d: write_char() added to struct bootloader_intf; basic_printk
+    moved to boot/common/.
+  - 159a9284: EFI bootloader uses \n instead of \r\n.
+  - a51d54ff: refactor SetupGraphicMode() in EFI.
+  - ba297a0b: drop two funcs from gfx.h public interface.
+  - 7e0201af: new boot/efi/panic.c; stage3 utils.c -> panic.c.
+  - 582ce141: IsSupported() -> IsVideoModeSupported().
+  - 9ba9a71b: SetupGraphicMode() fills fb info in MBI.
+  - 7c84fffc: make gProt global in EFI bootloader.
+  - e20d3efe: split SetupGraphicMode().
+  - 7ac91a50: refactor FindGoodVideoMode().
+  - 0c631222: use filter_video_modes() in FindGoodVideoMode().
+  - 8d446d54: allow defmode to fallback to min video mode.
+  - 02c080cb: filter_video_modes param renamed text_mode.
+  - 09998d26: add `clear_screen` to struct bootloader_intf.
+
+--------------------------------------------------------------------------------
+
+## Commits 3946-3975 -- boot/common logic; interactive kernel+cmdline selection; tilck_build_info
+
+AI notes:
+
+What changed: the legacy bootloader loses most of main.c; the common
+bootloader logic now owns hello-message, kernel-image load, initrd
+load, and interactive menu. The kernel embeds a tilck_build_info
+struct in a dedicated ELF section so the bootloaders can display
+version + modules list. ASSERT name clash with gnu-efi is finally
+fixed.
+
+  - **28fbf297 [boot] Intr. common bootloader logic + refactoring**
+    (+672/-763). New boot/common/main_common_logic.c. Large
+    extraction: boot/legacy/stage3/main.c shrinks 308 -> small.
+  - **18b2a2ea [boot] Add load_kernel_file() to struct bootloader_intf**.
+  - **04a2f567 [boot] Allow to change the kernel file interactively**
+    (+141/-42).
+  - b5736364: move ELF checks into boot/common/.
+  - de1c070b: EFI -- ReserveMemAreaForKernelImage().
+  - 1aa29038: new void *load_kernel_image() in boot/common.h.
+
+  - 3a286a94, cd69db9c, ff661a09, 5416f36f (3952-3955): EFI --
+    make ramdisk_{paddr,size}, loaded_image, fileFsProt global;
+    add 'g' prefix to globals; instantiate globals in efimain.c TU.
+
+  - df1ee6b0: new write_bootloader_hello_msg().
+  - d126c227: new get_loaded_kernel_mem_sz().
+  - ae4fd64b: improve run_interactive_logic().
+  - d99fc78e, f8f7f6b8, 032646c5 (3959-3961): legacy --
+    initrd_{paddr,size} global; rename do_ramdisk_compact_clusters
+    -> rd_compact_clusters; **load the kernel file at the end of
+    usable mem**.
+  - **ffb63bcc [boot] Load initrd in the common code, after
+    interactive logic**.
+
+  - ed4a95cc: drop KERNEL_MAX_SIZE and everything related to it.
+  - **6e7d91ac [kernel][elfhack] Intr. tilck_build_info in a dedicated
+    section** (+88/-55). Commit hash + build date live in
+    .tilck_info.
+  - bc6f43d4: get_section() returns NULL if no such section.
+  - 6a14bab6: move get_section() to common/elf_get_section.c.h.
+  - b00bd413: rename get_section() -> elf_get_section().
+  - 525e6056: add modules_list to tilck_build_info; new
+    config/modules_list.h.
+  - **4b2a165f [boot] Display kernel build info in the bootloaders**
+    (+40/-8).
+  - ac9f2fd6: append build date to commit hash in tilck_build_info.
+  - **375844cd [kernel] Drop DEBUG_VALIDATE_STACK_PTR()**. Body:
+    KERNEL_STACK_ISOLATION (MMU-based stack-overflow detection)
+    makes this manual debug check obsolete.
+  - 36587122: move Tilck's hello-msg funcs to misc.c.
+  - e8e2502a: new extract_commit_hash_and_date() in common/misc.c.
+  - **70295735 [panic] Solve the ASSERT clashing problem with
+    gnu-efi** (+82/-72). New include/tilck/common/assert.h drops
+    failsafe_assert.h; both sides now agree on ASSERT's semantics.
+  - dde63b78: move kernel file from /EFI/BOOT to / (bootpart root).
+
+--------------------------------------------------------------------------------
+
+## Commits 3976-4005 -- boot TUI (modules + cmdline editing); ACPI enabled by default; Lua; README rewrite
+
+AI notes:
+
+What changed: the boot menu becomes a real TUI (module list with
+reflow, kernel cmdline editor, screen-clear + colors). ACPI becomes
+on-by-default. README is heavily rewritten. BusyBox upgraded to
+1.31.1. execve gains early-fail for wrong-arch and dynamic ELFs.
+
+  - **1a301b39 [boot] Parse modules_list and support reflow in the
+    TUI** (+75/-2).
+  - **88aede16 [cmdline] Don't panic on unknown cmdline opts**.
+  - **9a3865b6 [boot] Support kernel cmdline editing** (+194/-100).
+  - 8d223ae6: new -noacpi cmdline option.
+  - 3a530371: boot handles the MOD_console=0 and MOD_fb=0 cases
+    (+74/-13).
+
+  - 86a7a034, d955a518, db286369, 7e04cd62 (3981-3984): EFI --
+    clear screen without ClearScreen(); drop CurrConsoleRow from
+    ShowProgress; use ConOut->SetAttribute in efi_boot_set_color;
+    boot TUI uses more colors.
+
+  - **6ed55115 [acpi] Enable the ACPI module by default**. CI +
+    single_test_run updated.
+  - 11ad0334: move .tilck_info section to the RO segment.
+  - 21112a3b: support tags list in tilck_build_info.
+  - **240a7764 Merge PR #65 from vvaltchev/bugfix** --
+    [syscalls] Support NULL u_times param in sys_utimes().
+    Branch: 73ea8ce6 only.
+
+  - 74435e26: azure -- don't trigger toolchain_builds on PRs.
+  - 5a6501d8: scripts -- retry uploading to Codecov.
+  - a7832169: codecov -- disable automatic coverage builds on PRs.
+
+  - **bfe698f8 [toolchain] Add the Lua extra package (#66)**. New
+    scripts/bash_includes/tc/lua.
+  - 1943afb3: cmake -- add missing extra apps to config_fatpart.
+
+  - **51a1229b [execve][elf] Handle differently wrong-arch ELF
+    binaries**. Body: otherwise ASH (busybox) tries to interpret
+    the ELF as a shell script, which is weirdly confusing. Now we
+    fail with a clear -ENOEXEC diagnostic.
+  - **e5a69e34 [execve][elf] Handle with an error the case of
+    dynamic executables**. Body: Tilck has no dynamic loader; it
+    used to jump straight at ELF's entry and SIGSEGV on first
+    unresolved symbol. Now it fails early with a clear message.
+
+  - ca5b815c: toolchain -- don't run `make clean` in build_lua().
+  - d7dc6407: new {alloc,free}_kernel_stack() helpers.
+  - 385ef4eb: paging -- kill process on OOM during CoW page-fault.
+  - **40958fd4 [process] Set vforked=false in allocate_new_process()**.
+    Body (kept -- subtle fork+vfork interaction fix, reproducer
+    is `timeout -t 1 sleep 2` in busybox).
+  - 396f0a64: interactive -- max attempts to start vim.
+  - c8308e79: cmake -- better busybox config mismatch error.
+  - **b3c0cd5c [busybox] Upgrade busybox to version 1.31.1** (+63/-23).
+  - b24f4fcd: azure -- bump build container to v7.
+  - 7bee0418: README rewrite [1] (+107/-77).
+  - **319cb741 [docs] Update the list of syscalls** (+102/-85).
+
+--------------------------------------------------------------------------------
+
+## Commits 4006-4030 -- README/docs polish; MinSizeRel; .ctors.*; lcov 1.15; SB16 driver
+
+AI notes:
+
+What changed: mid-size mix -- docs work, build-type support for
+MinSizeRel, a GCC-7/-ftest-coverage .ctors.* bug fixed in the linker
+script, lcov upgraded, argparse refactors for test runners, and
+(biggest) the sb16 sound-card driver lands.
+
+  - e98f9771, 7a726a7c (4006-4007): README[2]; scripts/dev/run_config
+    moves to scripts/run_config.
+  - a7e3636a: CMake -- MinSizeRel build type.
+  - f188f9ae: TINY_KERNEL=1 requires MinSizeRel.
+  - 0c9829b2, e604325d (4010-4011): error messages; README[3] +
+    docs/building.md.
+
+  - **4eace423 [kernel] Merge all .ctors.* sections into .ctors**.
+    Body (kept -- explains the exact compiler behavior change):
+    "With GCC >= 7.0, when -fprofile-arcs is passed as option, the
+    per-TU ctors are placed in .ctors.NNN (where NNN is just a
+    number) instead of in .ctors as with older compilers. That made
+    Tilck's call_kernel_global_ctors() to stop calling those ctors
+    simply because the function just calls the function pointers
+    in the ".ctors" section and doesn't know about the other one."
+  - 4b64285f: kgcov -- set GCOV_COUNTERS for GCC >= 10.0.
+  - 76b0018d: --clean option for generate_coverage_report.
+  - 76ba696f: don't set TEST_GCOV/KERNEL_GCOV in cmake_run --intr.
+  - **fed7aacd [runners] Raise MED_TEST_TIMEOUT from 24 to 36
+    seconds**. Body: kmutex_med failure at ~97,800/100,000 iters
+    was a timeout, not a real bug.
+
+  - 6715d106: azure -- container v8.
+  - **4d445dce [lcov][toolchain] Upgrade lcov to version 1.15** --
+    needed for GCCs >= 9.0 (GCDA format change). New noarch/lcov-1.15
+    directory layout.
+  - 1380422c: docs/coverage.md.
+  - 6bc134e8: runners/scripts -- #!/usr/bin/env python3.
+  - **b8fd284a [start] Symlink busybox at /usr/bin/env**. Body:
+    portable scripts often `#!/usr/bin/env` -- symlink lets them
+    work on Tilck.
+  - 50c1be1e: new interactive test for the tracing module.
+  - 3912f820: system tests -- move extra script tests to
+    tests/system/scripts/.
+  - 019038bd: new simple sysfs script-test.
+  - **d82bb771 [runners] Use argparse for parsing options in
+    run_all_tests** (+114/-75). -r/-t/-T options now required.
+  - 8d87700d: new -L option; show manual tests with -t 0.
+  - a673919f: rename -r => -f; show 'runall' with -l -c.
+  - 6337b97b: devshell -- don't attempt <selftest>_manual.
+  - 7b4a393c: gdb -- fix list-tasks command.
+  - **037ac7f0 [process] Handle pending_signal in kthread_join()**.
+  - e4d3d265: kthread_join() returns -EINTR on signal.
+
+--------------------------------------------------------------------------------
+
+## Commits 4031-4065 -- kthread_join ignore_signals; self-tests interruption; EFI_DEBUG; DMA regions
+
+AI notes:
+
+What changed: self-tests gain clean interruption (SIGINT via devshell
+bubbles up through -EINTR in kthread_join() and sets stop_requested);
+kernel-cmdline boot debug; ACPI/PCI MOD_sysfs=0 fix; system_mmap DMA
+regions.
+
+  - 70dece32: kthread_join* gain ignore_signals param.
+  - 2277cf59: regular_self_test_end -> se_regular_end.
+  - **65cd7f7d [self_tests] Fix user interruption logic**. Body:
+    old approach used a special kb handler; new approach uses
+    kthread_join()'s -EINTR + stop_requested flag. Much cleaner.
+  - 9a8c11d0: fix se_find() bug with tests like kmutex_ord_med vs
+    kmutex_ord manual shorthand.
+  - **58e8bb13 [self_tests] Support stop request in several tests**
+    (+127/-15).
+  - 291054310: azure -- trigger block to skip readme / temp-* /
+    exp-* branches + doc-only changes.
+  - 7d5386b2, 9d064f3e, d3515a06, c9e954bb, c31654f5,
+    95b3afd6, 1bc6820e (4038-4044): run_interactive_test --
+    pySerial imported lazily; argparse; drop test regex filter;
+    g_before_run_func -> g_just_list; tot_timeout positional; hidden
+    qemu_kvm_version; align interface with single_test_run.
+  - **5e5257bd [runners] Support running interactive tests from
+    run_all_tests** (+61/-18). interactive tests run through the
+    unified runner.
+  - 7cd9d38e: allow string timeout values ("med", "long", ...).
+  - 62710c9e: TIMEOUTS table defines named timeouts.
+  - 8d7e0eb0: 'medlong' timeout used for interactive.
+  - 95698b5d: -j option to list timeout labels.
+  - 0a246b0e: -T accepts unambiguous abbreviations.
+  - dc6410ec: argparse in single_test_run.
+
+  - e017dda1, 5f6a7dfc, 769ad99b, 0a5d3e7d, 8b30c4ad,
+    1430d7f9, 1744ed32 (4052-4058): docs/building.md update,
+    coverage.md update, **new docs/testing.md (+361)**, gen_other_builds
+    fixes, README [4-6].
+  - f50475a4, 8197ef3c (4059-4060): EFI -- move commented debug
+    code; **new EFI_BOOTLOADER_DEBUG config option**.
+  - 645d49bb: README[7] + **new docs/debugging.md (+523)**.
+
+  - **70114589 [acpi][pci] Fix broken build in the case MOD_sysfs=0**.
+  - c2c9dfca: sysfs -- add missing reg. of sysfs_genp_obj.
+  - b61cf32a: build_fatpart -- fix broken fbdoom script (busybox
+    1.31.1's gzip behavior changed).
+  - **5f8279a3 [system_mmap] Intr. support for x86 DMA regions**
+    (+93/-14).
+
+--------------------------------------------------------------------------------
+
+## Commits 4066-4100 -- DMA heap; Sound Blaster 16 driver (play.c); memcpy hardening; overview.svg
+
+AI notes:
+
+What changed: DMA support is split out to generic_x86/mmap.c;
+KMALLOC_FL_DMA introduces a second heap for DMA-reachable memory; a
+full sb16 driver lands (Sound Blaster 16) with a user-space `play`
+program; string.h low-level ops are modernized.
+
+  - f9adb1d3: x86 mmap code moves to arch/generic_x86/mmap.c.
+  - 55686c1c: make the DMA memory amount configurable.
+  - **224d2ac2 [kmalloc] Intr. the KMALLOC_FL_DMA flag**. Callers
+    that need DMA-reachable memory pass this flag; allocator picks
+    the DMA heap.
+  - **515e4061 [task][exit] Intr. a list of on_exit callbacks, per
+    task** (+70).
+
+  - **de0eb63a [sb16] Intr. the sb16 module (empty)** -- new
+    modules/sb16/.
+  - **4892c809 [sb16] Impl. sb16, a driver for the Sound Blaster 16**
+    (+1441 lines). Includes
+    include/tilck/common/tilck_sound.h,
+    include/tilck/kernel/arch/generic_x86/dma.h,
+    modules/sb16/generic_x86/sb16.{c,h}, sb16_hw.c, and a user
+    application userapps/play.c (+571) to exercise it.
+
+  - **698a00a6 [docs] Intr. docs/figures/overview.svg** (+1711 lines).
+  - 133b8b68: README[8].
+  - e23a7c43: set default GCC_TC_VER to 7.3.0.
+  - f9068bc9, 94419d3b (4075-4076): drop
+    run_nokvm_qemu_with_usbdisk; run QEMU with -soundhw only on
+    Linux hosts.
+  - 9412a67f: README[9].
+
+  - 9d342ba8: fs -- return -EISDIR on read/write on a directory.
+  - **76410e29 [wobj] Make wake_up() tolerate RUNNABLE tasks**. The
+    wake path no longer ASSERTs state == SLEEPING.
+  - cb338b17, f0c728e7 (4080-4081): README[10]; README typo fix
+    (#70).
+
+  - b82fd272, b8fd284a: script_utils -- install_pkg_on_demand() +
+    get_32bit_libs_pkg().
+  - 4530fecc: stop creating $TC/.32bit_libs_pkg.
+  - 6e995a15, 2690f102: install_rpm2cpio on demand (ovmf).
+  - **97dd8a68 [x86_strings] Fix corner case in memcpy's ASSERT**.
+    Body: old ASSERT `dest < src || src+n <= dest` didn't handle
+    dest == src; replaced with `dest <= src || ...`. Also fixed
+    memcpy32 and memmove.
+  - 86c61837: kb -- don't panic if bottom half's queue is full.
+  - 8d30d36a: boot -- fix comment in switchmode.S.
+  - **57099a1d [string_util] Use builtin memcpy when 'n' is
+    compile-time const and <= 16** -- tiny fixed-size memcpys now
+    inline.
+  - **c51ba65d [basic_defs] Intr. SAFE_READ() and SAFE_WRITE()**
+    (+52). Helpers to avoid unaligned-access UB.
+  - **5cd4f0ee [build] Compile everything with -Wcast-align**
+    (+28/-23). Systematic cleanup.
+  - 71d9c004, 76301b0b (4093-4094): dump_all_syms -> dump_all_funcs;
+    new cmp_build_dirs / cmp_funcs_size scripts.
+  - **f796dd3c [printk] Don't use READ_U32() with the NO_PREFIX
+    string literal**. Body kept: with GCC 9.x the unit-test path's
+    empty NO_PREFIX string caused a -Werror=stringop-overflow on
+    __builtin_memcpy. Fix by byte-wise compare.
+
+  - 791f7474, 7bc2382b, 8219830e, 3baaad8f, e8836098 (4096-4100):
+    inline-asm improvements for memcpy / memset / bzero / strlen;
+    new MEM_CLOBBER() macro. Includes a strlen alternative impl. in
+    comments.
+
+--------------------------------------------------------------------------------
+
+## Commits 4101-4145 -- UBSAN support; alignment UB fixes; kallocs_tree_root bug; term actions refactor
+
+AI notes:
+
+What changed: basic UBSAN support is wired up (kernel/ubsan.c); a
+handful of unaligned-access / undefined-behavior bugs are fixed in
+kernel code; process32 has a nasty kallocs_tree_root double-pointer
+bug fix with a long, instructive commit message; the term actions
+engine is rewritten to use proper wrappers and clean identifiers.
+
+  - 3b02bab6: CMake -- bump version 0.1.0 -> 0.1.1.
+  - 65c0d39c: gen_other_builds -- run make with -j 4.
+  - d5047a30: term -- pass the right color to vi->move_cursor.
+  - **6aa3269c [start] Map the first 8 MB at KERNEL_BASE_VA in
+    start.S** -- needed because UBSAN swells kernel code past 4 MB.
+  - 575a7c74: new READ_PTR() / WRITE_PTR() macros.
+  - **2251465c [user] Avoid unaligned access UB in
+    internal_copy_str_array_from_user()**.
+  - 70691e98: same for vfs_getdents_cb().
+  - 77c741f7: same for setup_process().
+  - **eca2b466 [select] Fix a nasty bug in in select_read_user_tv()**.
+  - 0d811df0: align irq_entry_points and fault_entry_points in asm.
+  - **5e5ccc03 [ubsan] Intr. basic support for UBSAN** (+155/-3).
+    New kernel/ubsan.c; compile-time option KERNEL_UBSAN.
+  - 3ca78178: --contrib sets KERNEL_UBSAN=1.
+  - 0ef81200: CI -- container v9; test gcc 7.3 and 8.4.
+  - c2807429: cosmetic fixes in double_fault.c / X86_SELECTOR().
+
+  - 1b028854: set KERNEL_STACK_PAGES=2 unconditionally.
+  - 50e83b8a: process -- offset stack vaddr by PAGE_SIZE.
+  - **ac46033f [process] Bugfix: map isolated stack blocks in the
+    __kernel_pdir**. Body: was using process's pdir, which is freed
+    before kernel stack in exit path. Isolated-stack debug feature
+    now maps in the kernel pdir which is never destroyed.
+  - 853b0653: process -- release pi->cwd before the `pi` object.
+  - **12a258d3 [process] Bugfix: wrong ptr to &kallocs_tree_root in
+    task_temp_kernel_free()**. Long, educational commit body kept:
+    passed `&curr->kallocs_tree_root` (struct kernel_alloc **) to
+    bintree_find_ptr() which expected `struct kernel_alloc *`.
+    Worked only by accident because of the layout of following
+    flags (vfork_stopped/traced/timer_ready) plus bintree_node's
+    field order -- a perfect storm.
+  - 3b360013: rename 'arch_fields' to ti_arch / pi_arch.
+  - 6122d1f6: --contrib enables kmalloc free-mem poisoning.
+  - 0c522520: CI -- enable KMALLOC_FREE_MEM_POISONING.
+  - 16a7cef0, 3d77b2ec (4123-4124): README update; vfs cosmetic.
+  - 989a6525: CMake -- bump version 0.1.1 -> 0.1.2.
+
+  - 3c5ce09e: datetime -- convert ts<->ts64 via union.
+  - 7128f908: dp -- treat \b as backspace in dp_read_line.
+
+  - **62dff307 [term] Re-impl. the actions engine using
+    extra-compliant C code** (+466/-488). New
+    term_actions.c.h + term_action_wrappers.c.h; video_term.c
+    shrinks 512 -> 70-ish (w.r.t. actions).
+  - 421304226, 1004f88e, 27c1edb3, be0b2ccb (4129-4132): macros
+    prefix names with term_action_; reset/pause/restart as no-args;
+    rename a_dwrite_no_filter -> a_direct_write; allow a_none in
+    term_execute_action.
+  - **fb207339 ... 9e7172a8 (4133-4136): [term] Make
+    DEFINE_TERM_ACTION_* generate just wrappers [1/4..4/4]**.
+    Body kept: the macro-as-body approach made whole funcs appear
+    as one line in the debugger; wrappers fix that.
+  - 9109c412, 5a980373, 4897ae15, 81746cf6, 524fdc9a,
+    3dda1cf1, ac4cb8b6, fd545bbb, f6f6163d (4137-4145):
+    term_int_enable_cursor accepts bool; replace CALL_ACTION_FUNC_*
+    with direct calls; wrappers start with __; rename a_move_ch_*
+    -> a_move_cur_*; a_pause_video_output -> a_pause_output;
+    a_restart_video_output -> a_restart_output; cosmetic scroll
+    tidy-up; **support 16-bit cursor movement**.
+
+--------------------------------------------------------------------------------
+
+## Commits 4146-4175 -- tracing: trace_printk; signals+kill events; dp tracing mode; spam-free printk
+
+AI notes:
+
+What changed: syscall tracing is split off into its own file and
+grows tracing of signal delivery, kill events, and a trace_printk()
+primitive; dp gains a dedicated tracing screen with process-list +
+edit of traced tasks; the "syscall not implemented" and
+page-fault-killed printks are demoted to trace_printk() by default.
+
+  - **d96bb429 [dp][tracing] Move syscall tracing in a separate
+    file** (+247/-216). New modules/debugpanel/dp_tracing_sys.c +
+    dp_tracing_int.h.
+  - fcd3fbaa: extract syscall-tracing events data into a struct.
+  - **5a3cae85 [tracing][dp] Introduce trace_printk()** (+111/-11).
+  - **2cba5f23 [dp][tracing] Add support for tracing signal
+    delivery**.
+  - 151a889e: put curr->traced check in the trace funcs.
+  - **7b02582c [tracing][dp] Add support for tracing kill events**.
+  - dabed5a8: show signal name on te_signal_delivered.
+  - 63785639: allow tracing of SIGSTOP / SIGCONT.
+  - **766c3a58 [tracing] Intr. ptype_signum in order to display
+    human-friendly sig_name**.
+
+  - **aded9f27 [dp] Allow to enter directly in tracing mode using
+    the -t option**. Userspace `dp -t` now jumps straight into the
+    tracer.
+  - 9a8b89b5: use "k" to set trace_printk() level.
+  - 7a956db3: dump process list feature in the tracing screen.
+  - **ab43695d [dp] Allow to edit traced tasks list in the tracing
+    screen** (+145/-10).
+
+  - f5a50c15: comments update in tick_all_timers().
+  - 592bbf5c: CMake -- lowercase `uname -r`.
+  - df6fd5f3, f926d5a8 (4161-4162): new ALIGNED_MASK(n); usermode
+    stack aligned at 16 bytes.
+  - ecf55953: trace_printk() works also w/o args.
+  - b8ef5d0e: two more signals in sig_names[].
+  - a95c003f: include mod_tracing.h in tracing.h.
+
+  - 802adc7a: move get_first_{zero,set}_bit_index[64] into utils.h
+    (away from bithacks.h -- they're not Stanford bithacks tricks).
+  - 7e89b8db: append "32" to get_first_{zero,set}_bit_index.
+  - 1360140e: new get_first_{zero,set}_bit_index_l().
+  - 00dd1d06: gdb -- fix minor bug in regs printer.
+  - 7407abcf: build_generators forward extra args to cmake_run.
+  - 9b928f16: vscode -- python.analysis.extraPaths.
+
+  - **511dcc5a [config][syscalls] Set KRN_NO_SYS_WARN=OFF by default**.
+    Body: trace_printk() is now the preferred channel for "syscall
+    not implemented" spam.
+  - **a6830b47 [config][paging] Introduce KRN_PAGE_FAULT_PRINTK**.
+    Similar idea for "process killed on page fault".
+  - b0bdb12e: dp -- 'p' dumps only user tasks, 'P' dumps all.
+  - 3d80f494: improve trace_printk and signal messages.
+
+--------------------------------------------------------------------------------
+
+## Commits 4176-4217 -- real signal handling: custom handlers, sa_mask, sigaction/sigreturn via vdso
+
+AI notes:
+
+What changed: Tilck gets real POSIX signal-handling semantics --
+custom handlers, blocked-mask management, signal delivery into user
+code through a vdso trampoline, sigreturn, graceful init shutdown
+on SIGTERM/USR1/USR2. This is a 40-commit arc.
+
+  - 5fe88a08: wobj -- wait_obj_reset() handles wo->type == WOBJ_NONE.
+  - **179bd868 [reboot] Make halt to not poweroff the machine** --
+    user-visible fix.
+  - 2b8874ba: tty_write_int -- accept const char *.
+  - 2f91bbf1: new tty_write_on_all_ttys().
+  - 947299fd: new in_shutdown().
+  - d8afc974: printk -- write on all TTYs during kernel shutdown.
+
+  - **7dcc3ef9 [signal] Impl. sys_signal() with NOT_IMPLEMENTED()**
+    (stub that traces).
+  - 7a63ad50: explicitly ignore signum == 0 in do_send_signal().
+  - a70c23e4: allocate _NSIG-1 handlers instead of _NSIG.
+  - c5e71554: drop pi->sa_flags as they won't be used soon.
+  - **458b565b [signal] Impl. sys_rt_sigprocmask()** (+66/-7).
+    New tests/system/test_signals.c (+76).
+  - 61cd2172: always use pending_signals() to check for signals.
+  - **d4207665 [signal] Convert ti->pending_signal to
+    pending_signums[]** (+82). Multi-pending-signal support.
+  - f4a62a23: WEAK get_signal_name() in misc.c.
+  - d053b207: extract nested-IRQ adjust logic from switch_to_task.
+
+  - **cb1ffe58 [signal][process][sched] Prepare for signal handling
+    [part 1]**. +77/-28 across sched/signal/arch_syscalls.
+  - 652e2d1b: [part 2] +81/-42.
+  - f246c01b: skip masked signals in get_first_pending_sig().
+
+  - **f94c9d32 [vsdo][entry] Intr. a dedicated vsdo.S file, mapped at
+    USER_VDSO_VADDR**. Body kept: drops the vsdo_like_page 4k BSS
+    buffer and the asm_sysenter_setup() copy. New
+    kernel/arch/i386/vdso.S (+32). Prep for the signal trampoline.
+  - 3af4d638, b2041876 (4195-4196): drop_all_pending_signals();
+    reset_all_custom_signal_handlers().
+
+  - **0033cd68 [signal] Support custom signals handlers in limited
+    cases** (+284/-88). The big one -- ~14 files, kernel now
+    delivers signals via the vdso trampoline into user space.
+  - 6a4567da: drop pending signals on exit().
+  - ceddf21d: reset custom handlers on execve().
+  - a3e61c78: drop pending signals on fork().
+  - **77a80a6b [signal] Support signal delivery while running user
+    code** (+187/-71). Delivery during user execution (not just
+    entry to syscalls).
+  - f0aa662f, 680fff98 (4202-4203): move vdso declarations to their
+    own header; fix "trampline" -> "trampoline" typo everywhere.
+
+  - fc0211bd: move sa_mask to struct task.
+  - **b3d19649 [signal] Impl. sys_rt_sigpending()**.
+  - 42b7b383: pending_signums -> sa_pending.
+  - c193b4f4: use proper rt_sigreturn instead of restart_syscall.
+  - **592026d1 [signal] Align user ESP at 16-bytes boundary** -- the
+    signal handler enters with a 16-byte-aligned stack.
+  - 0b0cce8f: automatically ignore signals to TID 1 w/o custom
+    handlers.
+  - c87f7f75: make sys_kill(-1, sig) work as POSIX expects.
+  - 6dcf7b95: support sigsetsize > expected in sys_rt_sigaction.
+  - a191e0b5: fix signal masking support.
+  - 27a00c3e: move signal syscalls to signal.c.
+  - **e0bbe83e [tests] Add more tests for signals** (+507/-33).
+
+  - **f9c6353d [init] Handle SIGTERM, SIGUSR1 and SIGUSR2**. Init
+    can finally respond properly to reboot / halt / poweroff from
+    busybox.
+  - 04899cdf: init -- refactor fork_and_run_shell_on_tty.
+  - **e0d53307 [init] Intr. graceful shutdown logic** (+119/-12).
+
+--------------------------------------------------------------------------------
+
+## Commits 4218-4245 -- special syscalls flag; SIGCHLD; auto-reap; pread/pwrite prep; fork_oom test
+
+AI notes:
+
+What changed: a flags field is introduced next to each syscall
+function pointer (SYSFL_NO_TRACE / NO_SIG / NO_PREEMPT) so
+sys_rt_sigreturn and related can avoid trace/sig/preempt work
+uniformly. SIGCHLD to parent; automatic reaping when the parent
+ignores SIGCHLD; tests polishing; WSL fix; nanosleep `rem`.
+
+  - 74e8dc31: syscall_perf test improvement.
+  - **3d6aa34f [x86][syscalls] Intr. special syscalls** (+560/-483).
+    Large commit; arch_syscalls.c table is rewritten to include
+    flags.
+  - f0cea37c: mark rt_sigprocmask / rt_sigpending SYSFL_NO_PREEMPT.
+  - **22fc80c3 [signal] Impl. sys_rt_sigsuspend()** (+85/-10).
+
+  - **d738d397 [process] Send SIGCHLD to the parent when changing
+    state**.
+  - **6fcb8d29 [process] Support automatic reaping**. Body kept
+    in full elsewhere; key point: if parent explicitly sets
+    SIGCHLD to SIG_IGN, dying children never hold on as zombies.
+
+  - 8dec0056, 2dcb4edd, 9cfd7d0b, cc3681aa (4224-4227): syscalls.md
+    update; README touchups; debugging.md polish.
+  - **3cde30be [scripts] Fix WSL detection via uname**.
+  - 6903396f: utils -- div_round_up().
+  - 3607faa4, 9b3f7bbd (4230-4231): ticks_to_timespec();
+    timespec_to_ticks().
+  - **18381962 [nanosleep] Set the `rem` param when != NULL**
+    (+32/-15). POSIX-correct behavior when nanosleep is
+    interrupted.
+  - 80cb4f9a, 36fe4eef (4233-4234): tty -- reset termios in
+    panic; make panic messages red.
+  - e43a45b6, acf4bdd6 (4235-4236): dp tracing bug fix; chmod
+    fix for the lua package script.
+  - 8878fdfa: "unzip" required pkg for all distros.
+  - 103800e9: add i386-size wrapper.
+  - **6ad2b541 [toolchain] Fix the build on i686 host for several
+    apps** -- vim, lua, tree_cmd. Long body explaining i686 host
+    unofficial-support intricacies.
+  - e1f9c24a, ee77d071, 078ecbc8, af4074bb (4240-4243): azure
+    archlinux v3; gtest v1.8.1 compile with GCC 11.x (2 patches);
+    BUILD_PAR env var for userapp make -j.
+  - a1868dc6, e18d198f (4244-4245): **vfs_handle_fault() accepts
+    struct user_mapping ***; fops->handle_fault() gets `um`
+    instead of `um->h`.
+
+--------------------------------------------------------------------------------
+
+## Commits 4246-4275 -- munmap-through-um; shutdown-stops-users; pipe5 test; E820 fallback; BusyBox 1.33.1
+
+AI notes:
+
+What changed: the fs_op signature follow-up to the handle_fault
+change; on shutdown the kernel stops all user tasks before poweroff
+(so poweroff can keep preempt enabled); a subtle
+loops_per_us==0-on-slow-emus fix; boot-time fallback to INT 15h AX=88h
+if E820 doesn't work; BusyBox upgrade.
+
+  - ffad1497: vfs_munmap() accepts struct user_mapping *.
+  - 67b040a7: fops->munmap() gets `um`.
+  - **ec3e4002 [tss] While setting the main TSS, call load_tss() with
+    RPL=0**.
+  - dfd358a0: extract sched_should_return_immediately() from
+    schedule().
+  - **ae6401d3 [shutdown] Stop all (remaining) user tasks on
+    shutdown** (+21).
+  - **ad769b85 [x86/misc] Don't disable the preemption in poweroff()
+    or reboot()**. Body: acpi_poweroff() may sleep; preempt must
+    stay enabled; all user tasks are already stopped.
+  - f61721bd: acpi -- fix acpi_battery_get_basic_info() to always
+    set bi->has_BIX.
+  - de605184: **raise default TIMER_HZ to 250**.
+
+  - **625092cd [tests] Intr. the pipe5 system test** (+171).
+  - 3c6a70f0: pipe -- improve pipe_read() and pipe_write() (+92/-95).
+  - 73ffb436: kcond -- signal_one / signal_all as separate funcs.
+  - ecd9e0b2: README.
+  - **2d2cf5a1 [timer] Calculate loops_per_ms and handle
+    loops_per_us == 0** (+17/-6). Body kept: on slow emus,
+    delay_us could spin forever because
+    `us * loops_per_us = 0` triggered a wrap-around.
+  - 65c7ca6f: KVM detection via `lsmod | grep kvm`.
+  - e25bd923: don't allow build_toolchain -s if $TC doesn't exist.
+  - 63f3cfd3, **7b5046b4 [x86/boot] Fallback to INT 15h, AX=88h if
+    AX=E820 doesn't work** (+107 lines).
+  - **071300a4 [x86/boot] Do checks against data corruption while
+    loading FAT images** (+73).
+  - cd0ff035, b87ba8cb (4264-4265): README updates.
+  - **4c325418 [x86] Add some comments in misc.S about the bogoMIPS
+    calculation**.
+  - 708aa962, b70f925a (4266-4268): VSDO -> VDSO typos; README.
+  - 6ff5f081: devshell -- build error with GCC 10.3 syscc.
+  - c1c9d262: tests -- don't skip start script for shellcmd.
+  - ad67d593: toolchain -- relative symlink for $TC/host.
+  - **5b7d4468 [toolchain] Upgrade BusyBox 1.31.1 -> 1.33.1**.
+  - 59c7ae92: support GCC_TC_VER=9.3.0 in scripts.
+  - a5d52b7e: TinyCC build fix.
+  - 028adafb: runners -- don't try to detect KVM if running in CI.
+
+--------------------------------------------------------------------------------
+
+## Commits 4276-4310 -- Linux 5.15-rc2 syscall sync; struct k_stat64; wait4; schedule() rewrite
+
+AI notes:
+
+What changed: syscall tables synced with Linux 5.15-rc2; migration
+to libmusl 1.2 forces a proper `struct k_stat64` instead of reusing
+libmusl's `struct stat`; kmutex_ord gains a supervisor thread; the
+classic timer race in kernel_sleep() is finally pinned to preempt
+disable; schedule() is refactored into do_schedule() with an
+approximate vruntime.
+
+  - 0e85df6e: azure debian container v3.
+  - 0a113050: define SYS_gettimeofday in common/syscalls.h.
+  - 99ee56d0: new struct k_timeval.
+  - 89bea096: sys_utime -> sys_utime32; new struct k_utimbuf.
+  - **8576d9c9 [syscalls] Sync with Linux 5.15-rc2** (+165/-130).
+    syscalls.md + kernel tables aligned to upstream numbering.
+  - 8a1041e1: sys_types comments.
+  - **1eb056ad [process] Intr. full support for wait4()**.
+  - **6286ac3f [selftests] Intr. a supervisor thread for the
+    kmutex_ord test** (+67/-11).
+
+  - **8b9f0756 [timer] Fix race condition in kernel_sleep()**
+    (+24/-21). Body kept: even with timer_ready, if the task is
+    still RUNNABLE when the timer fires and then is set SLEEPING
+    afterwards, the scheduler won't wake it. Fix: disable preempt,
+    change state to SLEEPING, set timer, yield -- atomic w.r.t.
+    the timer IRQ.
+
+  - **3df3c2e5 [sys_types] Switch to struct k_stat64** (+113/-85).
+    Body kept: moving to libmusl 1.2 breaks "reuse libmusl's stat"
+    approach; define our own k_stat64 and always copy.
+  - 4937826, f8892f1a, 0f2d6bea (4286-4288): azure -- v10 for
+    several jobs; coverage uses v10.
+  - b86f6938: fix build_gtest_arch().
+  - 857a6091: run_interactive_test -- error reporting.
+  - 7ebe07cf: fix expectations of the 'tracing' interactive test.
+  - 9cc030f5: CMake -- bump 0.1.2 -> 0.1.3.
+  - cceeec86: switch default GCC toolchain to 8.4.0.
+  - 92349c39: sched -- TIME_SLICE_TICKS = TIMER_HZ/25.
+  - ef7c4826: sched_account_ticks() more readable.
+  - **92163d98 [sched] Refactor the schedule() function** (+46/-38).
+    Skip two task_change_state() calls in the already-runnable case.
+  - 1813e45f: drop unused sleeping / zombie task lists.
+  - **c25fe22e [sched] Update the algorithm to use a brutal approx.
+    of vruntime** (+51/-28).
+  - 8b9c952a, a73b4cd0 (4299-4300): polish schedule(); move
+    !stopped check to the selected != curr case.
+  - b4f07bcb: x86/boot -- skip temp. gdtr_base_X entering PM32.
+  - **9063d82a, 10ed7d20, 42555f27** (4302-4304): schedule() ->
+    do_schedule(); asm_kernel_yield -> asm_save_regs_and_schedule;
+    __kernel_yield -> save_regs_and_schedule.
+  - **2cb8148f [sched] Make do_schedule() to not yield by default**.
+    Body kept: separate kernel_yield (force switch) from schedule
+    (fair-scheduled, only yields when need_resched).
+  - a2a25e7f: make __need_resched ATOMIC(int) for speed.
+  - 95a6bdff: new schedule_preempt_disabled().
+  - 2936f40e: force task switch when curr->stopped is true.
+  - 281bc98e: BUMP gnu-efi 3.0.10 -> 3.0.14.
+  - 8b5350be: BUMP vvaltchev/archlinux v3 -> v4.
+
+--------------------------------------------------------------------------------
+
+## Commits 4311-4345 -- Code of Conduct; pread/pwrite; 64-bit offt; HW-fault signals; panic preempt fix
+
+AI notes:
+
+What changed: community files (CODE_OF_CONDUCT / contributing.md /
+issue templates); `struct fs` renamed `struct mnt_fs`; pread/pwrite
+plumbed through VFS; 64-bit offt throughout; signals for HW faults
+(SIGSEGV / SIGBUS / SIGFPE on page faults etc.); clock-drift
+compensation CMake option; AcpiOsWaitSemaphore timeout-unit fix.
+
+  - d700499e, 860f8719 (4311-4312): README.
+  - ba07c759, dba3c631, c6761bc1 (4313-4315): **CODE_OF_CONDUCT.md**
+    + rename to lowercase + **contributing.md**.
+  - d8af05b7, 2e022405 (4316-4317): issue templates.
+  - ea2c4dd1: CMake -- skip some UBSAN features with older GCCs.
+
+  - **94f6400b [vfs] Rename struct fs to struct mnt_fs** (+230/-204).
+    Rationale in body: disambiguates from struct fs_type.
+  - **a72253f9 [vfs] Prepare filesystems to support pread() and
+    pwrite()** (+117/-110). read/write ops accept an offt*; vfs
+    passes &hb->h_fpos by default.
+  - a6e992c0: vfs -- 64-bit offt.
+  - **c3b390ff [config] Intr. KERNEL_64BIT_OFFT and enable it by
+    default**. New gcc_small_offt / clang_small_offt build gens
+    for testing the 32-bit-offt path.
+  - **8da4e307 [vfs] Add support for pread64() and pwrite64()**
+    (+136/-16).
+  - **fd333c6c [gtests] Intr. the vfs_ramfs tests (with tests for
+    pread and pwrite)** (+263).
+
+  - **483a16f0 [panic] Force enable preemption in the panic state**.
+    Body: disable-preemption count is undefined in panic (we may
+    have just tripped its ASSERT); reset to sane state.
+  - **99cc60c8 [sched] Schedule() on enable preemption only if
+    interrupts are enabled** -- KRN_RESCHED_ENABLE_PREEMPT debug
+    feature was calling schedule() with IRQs disabled.
+
+  - 248f82a1: new fork_oom test.
+  - **3638dfbe [signal] Support handling of signals generated by HW
+    faults** (+228/-117). Big commit; test_signals.c expanded.
+  - de52e3f3: introduce sa_fault_pending, postpone
+    terminate_process().
+  - **a1cf3153 [interrupts] Separate the C entry point for syscalls
+    and faults** (+68/-86). Shared entry had too many branches.
+  - 981e2d2c: new Tilck logo in README (#96).
+  - 66b19a56: CMake -- use -mgeneral-regs-only when possible.
+  - c2d1418f, 546114b2 (4333-4334): move code_of_conduct.md and
+    contributing.md under docs/; **new docs/ancient_commits.md
+    (+268)**.
+  - **d5564ddc [acpi] Bugfix in AcpiOsWaitSemaphore(): convert
+    Timeout to ticks** -- OSL timeout param is ms, ksem_wait wants
+    ticks; they're different on most TIMER_HZ values.
+  - d29e12b1: sync -- wait_obj's extra becomes 32-bit.
+  - **70481829 [ksem] Optimize ksem_signal()** (+15/-37).
+  - 49aaa17a: new ksem_short selftest (+150).
+
+  - 5539849e, b1d576dc, 839fa730 (4339-4341): -fb_no_opt cmdline
+    option (disable fb pre-render); -fb_no_wc; paging no-panic for
+    user mappings; -no_fpu_memcpy cmdline option.
+  - e5169416: QEMU -- pass `-device sb16` instead of `-soundhw sb16`
+    (deprecated in QEMU 6.x).
+  - **d1dc6a38 [tests] Make the fork_oom test to estimate the
+    amount of memory** (+143). No longer assumes 128 MB.
+  - **6b1228f8 [clock] Intr. the KRN_CLOCK_DRIFT_COMP CMake option**.
+  - 833b72ae: update contributing.md.
+
+--------------------------------------------------------------------------------
+
+## Commits 4346-4380 -- FB_CONSOLE_FAILSAFE_OPT; tc pkgs moved; cmdline redesign (kopts); panic debugger
+
+AI notes:
+
+What changed: mostly polish + a couple of milestones -- the
+toolchain package scripts move out of scripts/bash_includes/tc/
+into scripts/tc/pkgs/; the kernel cmdline parser is redesigned to
+be data-driven (kopts array) so new options are one line instead of
+bespoke code; a mini-debugger for post-panic inspection lands.
+
+  - a4471a53: sig3/sig4 tests.
+  - 4bc5fd42: new FB_CONSOLE_FAILSAFE_OPT -- loop unrolling in
+    failsafe renderer is now compile-time-selectable.
+  - e655b88e: improve debug_dump_glyph() for non-%8 font widths.
+  - 45445e54, 5beb83a5 (4349-4350): download_git_repo_in_cache()
+    corner case; save ref info in pkgs missing .git.
+  - a6c7ea7d: termtest -- improve console perf test.
+  - 966b42b4: vscode -- drop intelliSenseMode.
+  - 7adf1f90: dp -- refactor the user tool.
+  - **28002f8a [dp] Introduce a simple `ps` tool as part of the
+    debug panel** (+64/-19). Process list printable on current TTY.
+  - caa06966: all tilck_cmds return a value (avoids 499 syscall UB).
+  - bfd3c9c7: fb -- rename fb_draw_char_optimized_row ->
+    fb_draw_row_optimized.
+  - **7fa52e91 [boot] Drop is_optimal_video_mode()** -- fb console
+    no longer needs width %8 == 0.
+  - 3749806a, **22911cef [paging] Make pageframes_refcount use
+    32-bit integers**. Body kept: zero_page on >256 MB machines can
+    wrap a 16-bit refcount with catastrophic results.
+  - 4011e306, 701121fd (4360-4361): fork_oom polish;
+    mm_estimate_usable_mem() caches its result.
+  - 2d713a2e: toolchain -- fbdoom saves games in /tmp.
+  - **579fe235 [toolchain][scripts] Move tc package scripts to
+    scripts/tc/pkgs**. Large rename. Body: "confusing to look for
+    those scripts under scripts/bash_includes/tc".
+  - **7198eb94 [toolchain] Show installed status for each package in
+    the help** (+338/-24). Each pkg script now exports metadata
+    consumed by the top-level listing.
+  - 1353b589: CI -- v11; switch arch build to archlinux:latest.
+  - 204f56b1, c46923d3 (4366-4367): GCC 12.1 datetime fix;
+    norec.h warning suppression.
+  - e5dcf3ab: toolchain -- define {NAME}_VER at top of each pkg.
+  - **0194fe8f [tracing] Fix save_param_buffer() in the case a C
+    string buf faults**. Body: C-string path used strlen on a
+    possibly-bad buffer; switch to copy_str_from_user().
+  - 0ddb95ec: ksem_do_wait -- maybe-uninit false positive fix.
+  - 35445142: cmake -- fix USE_SYSCC=1 + GCC 9.4.0 build (disable
+    _FORTIFY_SOURCE).
+  - 65e90d8d, 4400f7e6, 7b4ea57a, cd976c7d (4372-4375):
+    qemu-ui-gtk required pkg; python3 when !TC_MINIMAL; cpio on
+    demand; ovmf for Arch (rpm-tools gives correct rpm2cpio).
+  - 7ed3df90: sched -- check ZOMBIE in
+    sched_should_return_immediately().
+
+  - **a215961b [cmdline] Re-design the support for kernel cmdline
+    options** (+282/-130). Body kept: options are now defined
+    declaratively in a kopts[] array with name/type/ptr;
+    hand-written per-option code is gone.
+  - **51463de5 [cmdline][panic] Intr. the -panic_kb cmdline option**
+    -- keyboard-driven panic action.
+  - 8634b94e: debug-only validation of the kopts array.
+  - **62d8f88e [term][fb] Handle the cols > 80 case with the
+    failsafe buffer** (+12/-3). Body: early panics with the failsafe
+    buffer used hard-coded 80x25; now cols/rows come from
+    fb_term_{cols,rows}.
+
+--------------------------------------------------------------------------------
+
+## Commits 4381-4415 -- mini-debugger in panic; cmake-configurator scaffolding; gtest 1.12.1
+
+AI notes:
+
+What changed: a full post-panic mini-debugger (modules/debugpanel/
+dp_debugger.c) is added; several -panic_* cmdline options + `mmap`
+cmd inside the debugger; #98/#100 bugs fixed (get_phys_mem_size()
+>4 GB wrap, AcpiOsStall very-large `us`); self-test name suffixes
+are dropped thanks to elfhack --dump-sym; a cmake-configurator Py
+parser is introduced; gtest bumped to 1.12.1.
+
+  - aa0716dd: cmdline -- -big_scroll_buf option.
+  - **44557963 [shutdown] Make stop_all_user_tasks() to skip the
+    current task**. Body: `reboot -f` / `poweroff -f` bypass init;
+    currently-running caller must live to the end.
+  - c31d05fc: runners -- re-run tests failing with
+    shell_unknown_exit_code once more (interleaved "sched alive"
+    message parses as a false-positive failure).
+  - dc90fec1: allow KERNEL_STACK_PAGES in {1,2,4}.
+  - 5b531970: -ps2_log and -ps2_selftest cmdline options.
+  - **e54e79c3 [signal] Handle corner case: setting up user stack
+    faults**.
+
+  - **3caed2f5 [dp][panic] Implement a mini-debugger runnable after
+    panic()** (+554/-22). New modules/debugpanel/dp_debugger.c
+    (+380). Accepts interactive commands over serial or keyboard
+    after a panic -- extremely useful for post-mortem on real HW.
+  - f63ac72e, c0fc4bc7, 50555129 (4388-4390): -panic_nobt / -panic_regs
+    / -panic_mmap cmdline options.
+  - 9d788b56: dp -- new `mmap` command in the panic debugger.
+
+  - **2debb0fc [paging][mm] Fix issue #98**. On systems with > 4 GB
+    usable, 32-bit Tilck's get_phys_mem_size() wrapped around;
+    switch to u64; also clamp to LINEAR_MAPPING_SIZE (~896 MB) in
+    init_paging() to save refcount heap.
+  - **ec36f7e2 [timer][acpi] Fix issue #100**. AcpiOsStall() was
+    called with up to 10s by ACPICA; delay_us() wraps after
+    ~100 000 us; ASSERT + re-impl. AcpiOsStall to comply.
+
+  - 4cc582c7: ArtixLinux support in install_pkgs.
+  - 0a75604b: typo in PM1x register print.
+  - **7581df1e [docs] Replace `make -j` with `make` in the docs**
+    (issue #101 -- OOM killer on low-RAM boxes with unbounded `-j`).
+
+  - **6344aa2c [gtests] Intr. a simple benchmark for the AVL
+    bintree** (+97/-3).
+  - 93c53539: new MyTrivialAllocator for STD containers in BM.
+  - **82fa016c [elfhack] Intr. the --dump-sym option** (+30). Dumps
+    a symbol's raw bytes from an ELF.
+  - **55650f9c [runners] Make run_all_tests to read se test `kind`
+    from struct self_test** -- using --dump-sym. Kills the old
+    _short / _med / _long / _manual name-parsing logic.
+  - **e5bb9c6b [selftests] Drop the ugly timeout-related suffixed
+    from the test names**.
+  - 01fd6ba5: drop 'DECLARE_AND_' from DECLARE_AND_REGISTER_SELF_TEST
+    (just REGISTER_SELF_TEST now).
+  - 86eacd0e: runners -- --allow-manual and lint fixes.
+  - 23d169cc: vscode settings.json fixes.
+  - cd524c07: CMake -- bump 0.1.3 -> 0.1.4.
+  - dfcf4592, df865abf, 8fa47d84, 36626daa (4406-4410): contributing.md
+    link polish; azure exclude docs/ and cmake-configurator from
+    build triggers; contributing.md nits; remove coverage from the
+    cmake-configurator YML.
+
+  - **8451f56c [cmake-configurator] First steps: introduce the
+    parser**. New scripts/cmake-configurator/parser/ with a
+    CMake-variables parser and tests. Future-oriented -- a TUI
+    config tool eventually replaces run_config/ccmake.
+  - 1e02926b, 82f1f74c (4411-4412): integrate cmake-configurator in
+    coverage build; fix label names.
+  - f31fc3da, 81344958 (4413-4414): typo "toolchian"; coverage
+    report updated.
+  - **957b9dcb [toolchain][cmake] Upgrade gtest version 1.8.1 ->
+    1.12.1**. vfs_test.cpp + mem_regions.cpp ported to the newer
+    API.
+
+--------------------------------------------------------------------------------
