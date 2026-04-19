@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# scripts/dev/annotate_commits -- helper for docs/annotated-commit-history.md.
+# scripts/dev/claude/annotate_commits -- helper for docs/annotated-commit-history.md.
 #
 # Bundles the mechanical git / shell operations used to research commits
 # and append annotation entries to docs/annotated-commit-history.md, so
 # the operator only has to approve one permission pattern
-# (Bash(./scripts/dev/annotate_commits:*)) instead of each underlying
+# (Bash(./scripts/dev/claude/annotate_commits:*)) instead of each underlying
 # git log / show / sed / awk / loop.
 #
 # Dev-only: never called from the build system.
@@ -21,7 +21,7 @@ DEFAULT_BRANCH=master
 
 usage() {
    cat <<'USAGE'
-Usage: scripts/dev/annotate_commits <subcommand> [args]
+Usage: scripts/dev/claude/annotate_commits <subcommand> [args]
 
 Subcommands:
 

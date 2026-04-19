@@ -11,6 +11,53 @@ binary level. It runs on i386 (primary), riscv64, and x86_64. It implements
 Micropython, Lua) without custom rewrites. ~13,300 lines of kernel code.
 Licensed BSD 2-Clause.
 
+## Working with Git History
+
+**Always check `docs/annotated-commit-history.txt` before reading actual
+diffs.** Any task that requires digging into the project's history —
+understanding why a subsystem was introduced, when a refactor happened, what
+a commit was trying to fix, where a feature came from — should consult the
+annotated file *first*, and fall through to `git log` / `git show` /
+`git blame` only if the annotation is too shallow. The purpose of this
+file is to build context *fast*: skim the relevant arc, and only pay the
+cost of reading the actual diff for the specific commits that matter.
+
+The file is a plain-text, 80-col, ASCII walk of every first-parent commit
+on master (~4,900 commits, March 2016 through today). Each entry has its
+verbatim git log header plus an "AI notes:" section that summarizes what
+changed mechanically from the diff and, when non-obvious, flags inferred
+intent as a guess. Large refactors and PR-merge branches are grouped into
+multi-commit arcs so broad themes show up at a glance. Read it with
+`less docs/annotated-commit-history.txt`; pattern-search (`/`) for
+subsystem names, commit hashes, or specific terms.
+
+`scripts/dev/claude/annotate_commits` is the helper used to build and
+extend this file — use it when adding new annotations. It wraps git log /
+show / meta-range / merges / merge-log / append behind sub-commands so the
+whole workflow sits behind a single permission pattern.
+
+## Your Dedicated Tools Directory: `scripts/dev/claude/`
+
+`scripts/dev/claude/` is *your* directory — a dedicated home for helper
+scripts that Claude Code writes to make its own work more efficient. When
+a task needs many related shell operations (git plumbing, file scans,
+repeated pipelines, mechanical tooling), write a small dispatcher script
+under `scripts/dev/claude/` with sub-commands instead of running each
+underlying command one at a time. The user grants permission once for
+`Bash(scripts/dev/claude/<tool>:*)` rather than approving each git / sed /
+awk / find invocation, and the resulting workflow is auditable afterwards
+by reading the script itself.
+
+If you find yourself about to emit a long sequence of shell commands the
+user would have to approve individually, stop and write the helper here
+first.
+
+`scripts/dev/claude/annotate_commits` is the canonical example — a Bash
+dispatcher with sub-commands (regen-list, meta-range, merges, merge-log,
+append, show-head, sha-meta). Follow the same pattern for new tools:
+argument-parsed sub-commands, single permission pattern, dev-only (never
+called from the build system).
+
 ## Build Commands
 
 ### First-time setup (for each target architecture)
