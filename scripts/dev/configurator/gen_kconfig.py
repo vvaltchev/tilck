@@ -189,10 +189,21 @@ def _emit_record(lines: list[str], r: dict) -> None:
     for dep in r.get("depends", []):
         lines.append(f"\tdepends on {dep}")
 
+    # Kconfig `help` block. The first HELP element is already the
+    # prompt (emitted above as `bool "..."`); repeat it as the
+    # first help line so F1/? shows a consistent title, then add a
+    # visually-blank separator, then the body.  CMake drops empty
+    # list elements inside `cmake_parse_arguments`, so an in-source
+    # `""` HELP separator never survives to the sidecar; inserting
+    # the blank here keeps the author's CMake side clean.
     lines.append("\thelp")
-    for hl in help_all:
-        lines.append(f"\t  {hl}")
+    lines.append(f"\t  {help_all[0]}")
+    if len(help_all) > 1:
+        lines.append("\t  ")  # visual separator between summary and body
+        for hl in help_all[1:]:
+            lines.append(f"\t  {hl}")
     if t == "enum":
+        lines.append("\t  ")
         lines.append(f"\t  Valid values: {', '.join(r['strings'])}")
 
     lines.append("")
