@@ -1558,3 +1558,23 @@ else()
    no_googletest_lib_fake_error_target()
 endif()
 
+# Schema-validate the tilck_option() sidecar. Catches bad metadata
+# (unknown types, missing fields, ENUM default not in STRINGS, etc.)
+# at CMake configure time instead of surfacing only when someone runs
+# scripts/run_config. An empty sidecar (no tilck_option() migrated
+# yet) validates cleanly.
+execute_process(
+   COMMAND
+      ${CMAKE_COMMAND} -E env python3
+      ${CMAKE_SOURCE_DIR}/scripts/dev/configurator/gen_kconfig.py
+      --sidecar ${CMAKE_BINARY_DIR}/tilck_options.json
+      --validate
+   RESULT_VARIABLE _tilck_opts_validate_rc
+   OUTPUT_VARIABLE _tilck_opts_validate_out
+   ERROR_VARIABLE  _tilck_opts_validate_err
+)
+if (NOT _tilck_opts_validate_rc EQUAL 0)
+   message(FATAL_ERROR
+      "tilck_options.json failed validation:\n${_tilck_opts_validate_err}"
+   )
+endif()
