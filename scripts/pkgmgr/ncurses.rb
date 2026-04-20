@@ -42,6 +42,38 @@ def ncurses_patch_configure_locale
   File.write("configure", data)
 end
 
+# On darwin*, ncurses 6.5's configure unconditionally sets
+# `cf_cv_shlib_version_infix=yes` (macOS uses ABI-versioned dylib names
+# like libfoo.1.dylib). The per-model library-naming block then keys off
+# that flag WITHOUT checking whether the current model is actually shared,
+# so it rewrites cf_libname/cf_dir_suffix for the NORMAL (static .a) and
+# DEBUG (_g.a) models too.
+#
+# With --enable-widec --with-termlib=tinfo this produces a self-inconsistent
+# ncurses/Makefile:
+#
+#   LIBRARIES = ../lib/libtinfo.a ../lib/libtinfo_g.a ...   (from Libs_To_Make)
+#   ../lib/libtinfow.a : ...                                (from mk-1st.awk)
+#
+# ...because Libs_To_Make renames `ncursesw→tinfo` (no `w`), but mk-1st.awk
+# is invoked with name=${cf_libname}${cf_dir_suffix}=tinfo+w=tinfow. make
+# then fails with: No rule to make target '../lib/libtinfo.a'.
+#
+# Linux dodges it because cf_cv_shlib_version_infix defaults to "no" there,
+# so the whole block is a no-op for static-only builds. Narrow the guard
+# so the block runs only when actually building the shared model — the
+# naming it enforces is *about* shared libs (ABI version infix in the file
+# name), irrelevant to .a archives.
+def ncurses_patch_configure_shlib_infix_static
+  data = File.read("configure")
+  data.sub!(
+    /^( \t\t\t)if test "\$cf_cv_shlib_version_infix" = yes ; then$/,
+    "\\1if test \"$cf_cv_shlib_version_infix\" = yes && " \
+    "test \"$cf_item\" = shared ; then"
+  )
+  File.write("configure", data)
+end
+
 class NcursesPackage < Package
 
   include FileShortcuts
@@ -181,6 +213,7 @@ class NcursesHostPackage < Package
     File.delete("INSTALL") if File.exist?("INSTALL")
 
     ncurses_patch_configure_locale
+    ncurses_patch_configure_shlib_infix_static
 
     # At runtime, ncurses needs to find terminfo entries for the
     # user's $TERM. The system ncurses on each host distro has its
