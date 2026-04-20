@@ -74,7 +74,7 @@ class HostMenuconfigPackage < Package
     # it — so just drop it to free the name.
     File.delete("INSTALL") if File.exist?("INSTALL")
 
-    make_vars, _env = host_ncurses_build_flags
+    make_vars, env = host_ncurses_build_flags
 
     # Seed .config from the one busybox.rb uses for its own build —
     # content doesn't matter, we just need a file so silentoldconfig
@@ -91,6 +91,16 @@ class HostMenuconfigPackage < Package
     ])
     return false if !ok
 
+    # busybox's scripts/kconfig/lxdialog/check-lxdialog.sh discovers
+    # ncurses via `pkg-config --libs ncursesw`. Export PKG_CONFIG_PATH
+    # so it resolves to our pinned host_ncurses, not the system one —
+    # the whole reason host_ncurses exists is to stop relying on system
+    # ncurses-dev (which is unreliable on macOS, where libncursesw
+    # simply isn't available, so -lncursesw falls through to system
+    # libncurses via $cc -print-file-name, which has no curses.h or
+    # wide-char headers).
+    env_args = env.map { |k, v| "#{k}=#{v}" }
+
     # menuconfig: compiles `mconf` + lxdialog, then tries to run
     # mconf. We only want the binaries; the run step is an unwanted
     # side effect. With a working TERM on a TTY-capable env, mconf
@@ -102,7 +112,7 @@ class HostMenuconfigPackage < Package
     # NOT saved". `make menuconfig` returns 0 cleanly, and the built
     # mconf+lxdialog binaries are on disk ready to copy.
     ok = run_command("menuconfig.log", [
-      "env", "TERM=",
+      "env", "TERM=", *env_args,
       "make", *make_vars,
       "-j#{BUILD_PAR}",
       "menuconfig",
