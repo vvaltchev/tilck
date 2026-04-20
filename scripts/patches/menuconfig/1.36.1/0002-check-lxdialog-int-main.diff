@@ -1,0 +1,37 @@
+check-lxdialog.sh: give its probe program an explicit `int main(void)`.
+
+Busybox 1.36.1's scripts/kconfig/lxdialog/check-lxdialog.sh ships the
+classic K&R probe:
+
+    #include CURSES_LOC
+    main() {}
+
+This is also what Linux's kconfig carried for years and it compiles
+fine on GCC up through 13-ish: the implicit-int return type is a
+warning, not an error. Clang 16+ (including Apple clang) promotes
+`-Wimplicit-int` to an error by default, so on macOS hosts the probe
+now fails with
+
+    error: type specifier missing, defaults to 'int' [-Wimplicit-int]
+
+...even when ncurses itself is perfectly discoverable via pkg-config.
+The Makefile then rejects the menuconfig build with the misleading
+"Unable to find the ncurses libraries" banner, which sends the user
+chasing a ghost (libncursesw is installed, headers are visible, the
+real .o files link fine with the same flags — only the probe is broken).
+
+Give the probe an explicit prototype so it compiles cleanly under
+both GCC and modern clang. Strictly additive (adds `int` / `void` /
+`return 0;`) and does not alter what the probe actually tests.
+
+--- a/scripts/kconfig/lxdialog/check-lxdialog.sh
++++ b/scripts/kconfig/lxdialog/check-lxdialog.sh
+@@ -47,7 +47,7 @@
+ check() {
+         $cc -x c - -o $tmp 2>/dev/null <<'EOF'
+ #include CURSES_LOC
+-main() {}
++int main(void) { return 0; }
+ EOF
+ 	if [ $? != 0 ]; then
+ 	    echo " *** Unable to find the ncurses libraries or the"       1>&2
