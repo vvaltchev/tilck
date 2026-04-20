@@ -66,6 +66,14 @@ class HostMenuconfigPackage < Package
 
   def install_impl_internal(install_dir)
 
+    # The busybox tarball ships an `INSTALL` file at the top level. On
+    # case-insensitive filesystems (e.g. APFS on macOS) this collides
+    # with the `install/` prefix directory we create below to hold the
+    # packaged binaries, so `mkdir_p install/bin` fails with EEXIST.
+    # The file is user documentation — nothing in the build references
+    # it — so just drop it to free the name.
+    File.delete("INSTALL") if File.exist?("INSTALL")
+
     make_vars, _env = host_ncurses_build_flags
 
     # Seed .config from the one busybox.rb uses for its own build —
