@@ -628,6 +628,46 @@ TEST_F(console_test, csi_vpa_d)
    )");
 }
 
+TEST_F(console_test, csi_cpl_F_at_top_clamps)
+{
+   /*
+    * CPL (F) should clamp at row 0 when already at the top. Used to wrap
+    * to the bottom row because the helper used unsigned arithmetic on a
+    * negative delta.
+    */
+   set_cursor_to(0, 5);
+   console_write("\033[F");
+   console_write("X");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |X$                  |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
+TEST_F(console_test, csi_cpl_F_partial_clamp)
+{
+   /*
+    * Cursor at row 2, CPL 5 (more than rows above): clamp at row 0.
+    */
+   set_cursor_to(2, 7);
+   console_write("\033[5F");
+   console_write("Y");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |Y$                  |
+      |                    |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
+
 TEST_F(console_test, csi_cnl_cpl_EF)
 {
    /* CNL(E) moves down N and col=0; CPL(F) moves up N and col=0. */
