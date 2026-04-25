@@ -1155,6 +1155,30 @@ TEST_F(console_test, esc_D_IND_default_onlcr)
    )");
 }
 
+TEST_F(console_test, esc_D_IND_in_scroll_region_preserves_col)
+{
+   /*
+    * IND at the last row of an active scroll region should scroll the
+    * region up by one and leave the column unchanged. incr_row used to
+    * call term_int_move_cur(t, t->r, 0) inside the scroll-region branch,
+    * which clobbered the column.
+    */
+   fill_screen_pattern();
+   console_write("\033[1;3r");      /* scroll region rows 0..2 */
+   console_write("\033[3;6H");      /* cursor at (2, 5), last row of region */
+   console_write("\033D");          /* IND: scroll region up by one */
+   console_write("X");              /* X at (2, 5) */
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |UVWXYZABCDEFGHIJKLMN|
+      |OPQRSTUVWXYZABCDEFGH|
+      |     X$             |
+      |IJKLMNOPQRSTUVWXYZAB|
+      |CDEFGHIJKLMNOPQRSTU |
+      +--------------------+
+   )");
+}
+
 TEST_F(console_test, esc_D_IND_no_onlcr_preserves_col)
 {
    /* Same as above but with ONLCR cleared: behavior is identical. */
