@@ -1023,6 +1023,24 @@ TEST_F(console_test, sgr_reverse_7)
    check_color_at(0, 0, make_color(COLOR_BLACK, COLOR_WHITE));
 }
 
+TEST_F(console_test, sgr_clear_bold_22)
+{
+   /* Bold then 22: bold cleared, fg back to non-bright. */
+   console_write("\033[1;31mA");           /* bold + red */
+   check_color_at(0, 0, make_color(COLOR_BRIGHT_RED, COLOR_BLACK));
+   console_write("\033[22mB");             /* clear bold; red stays */
+   check_color_at(0, 1, make_color(COLOR_RED, COLOR_BLACK));
+}
+
+TEST_F(console_test, sgr_clear_reverse_27)
+{
+   /* Reverse on, then 27: fg/bg back to normal. */
+   console_write("\033[7;31;42mA");        /* reverse + red on green */
+   check_color_at(0, 0, make_color(COLOR_GREEN, COLOR_RED));
+   console_write("\033[27mB");             /* clear reverse */
+   check_color_at(0, 1, make_color(COLOR_RED, COLOR_GREEN));
+}
+
 TEST_F(console_test, sgr_fg_colors_30_to_37)
 {
    /* Expected fg after each SGR ESC[Nm for N in 30..37. */

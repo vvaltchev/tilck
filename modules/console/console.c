@@ -120,6 +120,16 @@ tty_csi_m_handler_param(u32 p, u8 *color, struct twfilter_ctx *ctx)
          cd->attrs |= TTY_ATTR_REVERSE;
          goto set_color;
 
+      case 22:
+         /* Reset intensity: clear bold (and faint, when supported) */
+         cd->attrs &= (u8) ~TTY_ATTR_BOLD;
+         goto set_color;
+
+      case 27:
+         /* Reset reverse video */
+         cd->attrs &= (u8) ~TTY_ATTR_REVERSE;
+         goto set_color;
+
       default:
          /* fall-through */
          break;
