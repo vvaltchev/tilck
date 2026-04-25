@@ -771,9 +771,16 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
          tty_set_state(ctx, &tty_state_esc2_par1);
          break;
 
-      case 'D': /* linefeed */
+      case 'D': /* IND: index (cursor down, no CR) */
          tty_set_state(ctx, &tty_state_default);
-         return tty_def_state_lf(c, color, a, ctx_arg);
+         /*
+          * IND must bypass termios OPOST|ONLCR processing -- it is a
+          * pure cursor-down with the column preserved. Going through
+          * tty_def_state_lf would either inject an extra CR (with
+          * OPOST|ONLCR) or write the literal byte 'D' (without).
+          */
+         *c = '\n';
+         return TERM_FILTER_WRITE_C;
 
       case 'M': /* reverse linefeed */
          tty_set_state(ctx, &tty_state_default);

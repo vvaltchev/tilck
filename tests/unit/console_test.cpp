@@ -1097,9 +1097,9 @@ TEST_F(console_test, esc_c_RIS_full_reset)
 TEST_F(console_test, esc_D_IND_default_onlcr)
 {
    /*
-    * ESC D (IND) is routed through tty_def_state_lf. With the default
-    * OPOST|ONLCR, the effect is a direct write of "\n\r" — cursor goes
-    * to col 0 of the next row.
+    * ESC D (IND) is index: cursor goes one line down, column preserved.
+    * OPOST|ONLCR is termios output processing for raw '\n' bytes; IND
+    * must bypass it.
     */
    console_write("ab");
    console_write("\033D");
@@ -1107,7 +1107,7 @@ TEST_F(console_test, esc_D_IND_default_onlcr)
    check_screen_vs_expected(R"(
       +--------------------+
       |ab                  |
-      |X$                  |
+      |  X$                |
       |                    |
       |                    |
       |                    |
@@ -1115,12 +1115,23 @@ TEST_F(console_test, esc_D_IND_default_onlcr)
    )");
 }
 
-/*
- * NOTE: ESC D with OPOST|ONLCR cleared is not safely handled by the current
- * kernel. tty_def_state_lf returns TERM_FILTER_WRITE_C in that case, causing
- * the literal 'D' to be emitted to the screen. Test only covers the default
- * OPOST|ONLCR path (above).
- */
+TEST_F(console_test, esc_D_IND_no_onlcr_preserves_col)
+{
+   /* Same as above but with ONLCR cleared: behavior is identical. */
+   t->c_term.c_oflag &= ~(tcflag_t)(OPOST | ONLCR);
+   console_write("ab");
+   console_write("\033D");
+   console_write("X");
+   check_screen_vs_expected(R"(
+      +--------------------+
+      |ab                  |
+      |  X$                |
+      |                    |
+      |                    |
+      |                    |
+      +--------------------+
+   )");
+}
 
 TEST_F(console_test, esc_M_RI_middle_moves_cursor_up)
 {
