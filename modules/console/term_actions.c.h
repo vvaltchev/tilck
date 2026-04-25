@@ -345,7 +345,7 @@ term_action_del_chars_in_line(struct vterm *const t, u16 n)
 
    memmove(&buf_row[t->c], &buf_row[t->c + maxN], 2 * cN);
 
-   for (u16 c = t->c + cN; c < MIN(t->c + cN + n - maxN, t->cols); c++)
+   for (u16 c = t->c + cN; c < t->cols; c++)
       buf_row[c] = make_vgaentry(' ', vgaentry_get_color(buf_row[c]));
 
    for (u16 c = t->c; c < t->cols; c++)

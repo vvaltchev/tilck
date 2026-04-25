@@ -828,14 +828,14 @@ TEST_F(console_test, csi_dch_P_deletes_chars)
    console_write("\033[2;5H");
    console_write("\033[3P");
    /*
-    * DCH here shifts cols 7..19 left by 3 but doesn't blank the tail — the
-    * original chars at cols 17..19 (L, M, N) remain. Test matches observed
-    * (non-ANSI-strict) kernel behavior.
+    * Row 1 starts as "UVWXYZABCDEFGHIJKLMN". Cursor at col 4 (Y).
+    * DCH 3 deletes 3 chars at cursor: drop YZA, shift BCD..MN left, blank
+    * the trailing 3 cells (cols 17..19).
     */
    check_screen_vs_expected(R"(
       +--------------------+
       |ABCDEFGHIJKLMNOPQRST|
-      |UVWX$CDEFGHIJKLMNLMN|
+      |UVWX$CDEFGHIJKLMN   |
       |OPQRSTUVWXYZABCDEFGH|
       |IJKLMNOPQRSTUVWXYZAB|
       |CDEFGHIJKLMNOPQRSTU |
