@@ -120,6 +120,16 @@ tty_csi_m_handler_param(u32 p, u8 *color, struct twfilter_ctx *ctx)
          cd->attrs |= TTY_ATTR_REVERSE;
          goto set_color;
 
+      case 22:
+         /* Reset intensity: clear bold (and faint, when supported) */
+         cd->attrs &= (u8) ~TTY_ATTR_BOLD;
+         goto set_color;
+
+      case 27:
+         /* Reset reverse video */
+         cd->attrs &= (u8) ~TTY_ATTR_REVERSE;
+         goto set_color;
+
       default:
          /* fall-through */
          break;
@@ -176,13 +186,13 @@ tty_csi_m_handler(u32 *params,
 }
 
 static inline void
-tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, u32 row)
+tty_move_cursor_begin_nth_row(struct tty *t, struct term_action *a, int delta)
 {
-   const u32 new_row = MIN(
-      vterm_get_curr_row(t->tstate) + row, t->tparams.rows - 1u
-   );
+   const int curr = (int)vterm_get_curr_row(t->tstate);
+   const int max_row = (int)t->tparams.rows - 1;
+   const int target = CLAMP(curr + delta, 0, max_row);
 
-   term_make_action_move_cursor(a, new_row, 0);
+   term_make_action_move_cursor(a, (u32)target, 0);
 }
 
 static void
@@ -194,17 +204,18 @@ tty_csi_EF_handler(u32 *params,
                    struct twfilter_ctx *ctx)
 {
    struct tty *const t = ctx->t;
+   const int n = (int)MAX(1u, params[0]);
    ASSERT(c == 'E' || c == 'F');
 
    if (c == 'E') {
 
       /* Move the cursor 'n' lines down and set col = 0 */
-      tty_move_cursor_begin_nth_row(t, a, MAX(1u, params[0]));
+      tty_move_cursor_begin_nth_row(t, a, n);
 
    } else {
 
       /* Move the cursor 'n' lines up and set col = 0 */
-      tty_move_cursor_begin_nth_row(t, a, -MAX(1u, params[0]));
+      tty_move_cursor_begin_nth_row(t, a, -n);
    }
 }
 
@@ -771,9 +782,16 @@ tty_state_esc1(u8 *c, u8 *color, struct term_action *a, void *ctx_arg)
          tty_set_state(ctx, &tty_state_esc2_par1);
          break;
 
-      case 'D': /* linefeed */
+      case 'D': /* IND: index (cursor down, no CR) */
          tty_set_state(ctx, &tty_state_default);
-         return tty_def_state_lf(c, color, a, ctx_arg);
+         /*
+          * IND must bypass termios OPOST|ONLCR processing -- it is a
+          * pure cursor-down with the column preserved. Going through
+          * tty_def_state_lf would either inject an extra CR (with
+          * OPOST|ONLCR) or write the literal byte 'D' (without).
+          */
+         *c = '\n';
+         return TERM_FILTER_WRITE_C;
 
       case 'M': /* reverse linefeed */
          tty_set_state(ctx, &tty_state_default);

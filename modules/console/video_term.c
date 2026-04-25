@@ -251,8 +251,6 @@ static void term_internal_incr_row(struct vterm *t)
 
    if (sR || eR < t->rows) {
 
-      term_int_move_cur(t, t->r, 0);
-
       if (t->r == eR - 1)
          term_internal_non_buf_scroll_up(t, 1);
       else if (t->r < t->rows - 1)
