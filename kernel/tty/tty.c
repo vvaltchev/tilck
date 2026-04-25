@@ -266,7 +266,13 @@ allocate_and_init_tty(u16 minor, u16 serial_port_fwd, int rows_buf)
    init_tty_struct(t, minor, serial_port_fwd);
    new_term_intf = serial_port_fwd ? serial_term_intf : video_term_intf;
 
-   if (minor != 1 && !kopt_sercon) {
+   /*
+    * The first TTY (tty1 in video mode, ttyS0 under -sercon) reuses the
+    * boot-time global term that was set up for early printk. Every other
+    * TTY gets its own per-port term, otherwise multiple ttyS devices would
+    * end up sharing the singleton serial term that's hard-wired to COM1.
+    */
+   if (minor != 1 && !(kopt_sercon && minor == TTYS0_MINOR)) {
 
       new_term =
          serial_port_fwd
