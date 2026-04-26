@@ -755,6 +755,16 @@ void do_schedule(void)
 
    } else {
 
+      /*
+       * A timer IRQ may have woken curr in tick_all_timers() while we
+       * were iterating the runnable list: curr would now be in the list
+       * with state RUNNABLE and timer_ready set, and the iteration
+       * picked it. Normalize here so a later sleep doesn't short-circuit
+       * via sched_should_return_immediately().
+       */
+      task_change_state_idempotent(curr, TASK_STATE_RUNNING);
+      curr->timer_ready = false;
+
       if (LIKELY(!pending_signals())) {
 
          /* Just reset the current timeslice */
