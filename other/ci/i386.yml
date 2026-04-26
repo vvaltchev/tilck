@@ -47,6 +47,9 @@ jobs:
         -DPREFERRED_GFX_MODE_W=640
         -DPREFERRED_GFX_MODE_H=480
         -DKRN_KMALLOC_FREE_MEM_POISONING=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
     steps:
       - script: printenv
         displayName: Dump env
@@ -77,6 +80,9 @@ jobs:
         -DKERNEL_UBSAN=1
         -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_SAT=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
