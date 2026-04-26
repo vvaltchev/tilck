@@ -207,6 +207,22 @@ tilck_option(KRN_MINIMAL_TIME_SLICE
             "production builds."
 )
 
+tilck_option(KRN_HANG_DETECTION
+   TYPE     BOOL
+   CATEGORY "Kernel Misc"
+   DEFAULT  OFF
+   HELP     "Compile in the hang detector and per-task state dumper"
+            "Adds a forward-progress watchdog inside the optional"
+            "sched-alive thread (see -sat / KERNEL_SAT). When the"
+            "scheduler stops doing context switches for an interval,"
+            "the watchdog dumps every task's state, the wait object"
+            "each one is parked on, the open pipe fds, and a per-pipe"
+            "ring of recent dup/close events. Useful for diagnosing"
+            "stress-test hangs (lost wakeups, missed broadcasts,"
+            "scheduler wedges); off by default because of the small"
+            "but always-on per-pipe accounting cost."
+)
+
 tilck_option(KRN_STACK_ISOLATION
    TYPE     BOOL
    CATEGORY "Kernel Misc"

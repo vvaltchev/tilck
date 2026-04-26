@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/config_debug.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/atomics.h>
+#include <tilck/common/printk.h>
 
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/fs/vfs.h>
@@ -11,6 +14,31 @@
 #include <tilck/kernel/ringbuf.h>
 #include <tilck/kernel/sync.h>
 #include <tilck/kernel/sched.h>
+
+#if KRN_HANG_DETECTION
+   #include <tilck/kernel/list.h>
+   #include <tilck/kernel/timer.h>
+
+/*
+ * Per-pipe ring of recent {init, dup, close} events. The hang detector
+ * dumps this alongside the pipe's read/write handle counts when a stuck
+ * task is found waiting on the pipe's not_empty/not_full cond — it
+ * makes the "who closed which end and when" picture obvious without
+ * needing to interleave a bunch of per-syscall printks. 32 entries is
+ * enough to cover a typical pipeline lifecycle plus fork-inheritance
+ * noise.
+ */
+#define PIPE_HISTORY 32
+
+struct pipe_event {
+   u64 ts;                       /* tick counter when the op happened    */
+   int tid;                      /* tid that performed the op            */
+   char op;                      /* 'I'=init, 'D'=dup, 'C'=close         */
+   bool is_write;                /* RD vs WR end                         */
+   u16 read_handles_after;       /* counters as observed AFTER the op,   */
+   u16 write_handles_after;      /* so the trail is self-explaining      */
+};
+#endif /* KRN_HANG_DETECTION */
 
 struct pipe {
 
@@ -25,7 +53,49 @@ struct pipe {
 
    ATOMIC(int) read_handles;
    ATOMIC(int) write_handles;
+
+#if KRN_HANG_DETECTION
+   /* Hang-detector bookkeeping. Off the fast path; only touched
+    * inside dup/close hooks and walked by the dump helper. */
+   struct list_node all_pipes_node;
+   struct pipe_event history[PIPE_HISTORY];
+   u8 history_idx;
+#endif
 };
+
+#if KRN_HANG_DETECTION
+/*
+ * Global registry of every live pipe. Walked by
+ * debug_dump_pipe_state_for_obj() to find a pipe by one of its cond /
+ * mutex pointers when a stuck task is waiting on it. Mutation
+ * (add / remove on create / destroy) is protected by disable_preemption,
+ * which is enough because Tilck is single-CPU and the readers (dump)
+ * also run preempt-disabled.
+ */
+static struct list all_pipes = STATIC_LIST_INIT(all_pipes);
+
+/*
+ * Append one entry to the pipe's ring buffer. Caller MUST already hold
+ * p->mutex *or* be operating during pipe construction (no concurrent
+ * access yet). The dup-side caller is the one exception: it cannot
+ * take the mutex (see comment in pipe_on_handle_dup) so its snapshot
+ * may race slightly with a concurrent close — accepted as a debug-only
+ * inaccuracy.
+ */
+static void
+record_pipe_event(struct pipe *p, char op, bool is_write)
+{
+   struct pipe_event *ev = &p->history[p->history_idx % PIPE_HISTORY];
+
+   ev->ts = get_ticks();
+   ev->tid = get_curr_tid();
+   ev->op = op;
+   ev->is_write = is_write;
+   ev->read_handles_after = (u16)p->read_handles;
+   ev->write_handles_after = (u16)p->write_handles;
+   p->history_idx++;
+}
+#endif /* KRN_HANG_DETECTION */
 
 static ssize_t pipe_read(fs_handle h, char *buf, size_t size, offt *pos)
 {
@@ -239,6 +309,14 @@ static const struct file_ops static_ops_pipe_write_end =
 
 void destroy_pipe(struct pipe *p)
 {
+#if KRN_HANG_DETECTION
+   disable_preemption();
+   {
+      list_remove(&p->all_pipes_node);
+   }
+   enable_preemption();
+#endif
+
    kcond_destroy(&p->err_cond);
    kcond_destroy(&p->not_empty_cond);
    kcond_destroy(&p->not_full_cond);
@@ -247,6 +325,81 @@ void destroy_pipe(struct pipe *p)
    kfree2(p->buf, PIPE_BUF_SIZE);
    kfree_obj(p, struct pipe);
 }
+
+#if KRN_HANG_DETECTION
+
+struct pipe *debug_get_pipe_for_handle(fs_handle h, bool *is_write_end)
+{
+   struct fs_handle_base *hb = h;
+   struct kfs_handle *kh;
+
+   if (!h)
+      return NULL;
+
+   /* Discriminate by file_ops pointer comparison: kfs_handle is shared
+    * across all kernelfs object kinds, but the fops table is unique
+    * per pipe end. Pipes are the only kernelfs consumer today; if
+    * another one shows up, this stays correct because we explicitly
+    * test against pipe-specific fops only. */
+   if (hb->fops == &static_ops_pipe_read_end) {
+      *is_write_end = false;
+   } else if (hb->fops == &static_ops_pipe_write_end) {
+      *is_write_end = true;
+   } else {
+      return NULL;
+   }
+
+   kh = (void *)h;
+   return (struct pipe *)kh->kobj;
+}
+
+void debug_dump_pipe_state_for_obj(void *obj)
+{
+   struct pipe *p;
+
+   ASSERT(!is_preemption_enabled());
+
+   list_for_each_ro(p, &all_pipes, all_pipes_node) {
+
+      if (obj != &p->not_empty_cond &&
+          obj != &p->not_full_cond  &&
+          obj != &p->err_cond       &&
+          obj != &p->mutex)
+      {
+         continue;
+      }
+
+      const char *which =
+         obj == &p->not_empty_cond ? "not_empty_cond" :
+         obj == &p->not_full_cond  ? "not_full_cond"  :
+         obj == &p->err_cond       ? "err_cond"       :
+                                     "mutex";
+
+      printk(NO_PREFIX "    pipe(%p) [%s]: read_handles=%d write_handles=%d "
+             "rb_used=%zu/%u\n",
+             p, which,
+             p->read_handles, p->write_handles,
+             ringbuf_get_elems(&p->rb), (unsigned)PIPE_BUF_SIZE);
+
+      /* Replay the per-pipe event ring in chronological order
+       * (oldest first). Empty slots (op == 0) are pre-recording
+       * leftovers from kzalloc; skip them. */
+      for (int i = 0; i < PIPE_HISTORY; i++) {
+         u8 idx = (u8)((p->history_idx + i) % PIPE_HISTORY);
+         struct pipe_event *ev = &p->history[idx];
+         if (ev->op == 0)
+            continue;
+         printk(NO_PREFIX
+                "      ts=%llu tid=%d op=%c %s -> r=%u w=%u\n",
+                (unsigned long long)ev->ts, ev->tid, ev->op,
+                ev->is_write ? "WR" : "RD",
+                (unsigned)ev->read_handles_after,
+                (unsigned)ev->write_handles_after);
+      }
+   }
+}
+
+#endif /* KRN_HANG_DETECTION */
 
 static void pipe_on_handle_close(fs_handle h)
 {
@@ -275,6 +428,10 @@ static void pipe_on_handle_close(fs_handle h)
 
       ASSERT(old > 0);
 
+#if KRN_HANG_DETECTION
+      record_pipe_event(p, 'C', !!(kh->fl_flags & O_WRONLY));
+#endif
+
       if (old == 1) {
          kcond_signal_all(&p->not_full_cond);
          kcond_signal_all(&p->not_empty_cond);
@@ -288,12 +445,29 @@ static void pipe_on_handle_dup(fs_handle h)
 {
    struct kfs_handle *kh = h;
    struct pipe *p = (void *)kh->kobj;
+   bool is_write = !!(kh->fl_flags & O_WRONLY);
 
-   if (kh->fl_flags & O_WRONLY) {
+   /*
+    * MUST NOT take p->mutex here. This callback runs inside fork's
+    * fork_dup_all_handles(), which executes with preemption disabled
+    * (do_fork holds disable_preemption around the whole handle copy).
+    * kmutex_lock() can block, and a blocking call from a preempt-disabled
+    * context trips ASSERT(get_preempt_disable_count()==1) inside
+    * save_regs_and_schedule().
+    *
+    * The atomic increment is correct on its own; the per-pipe history
+    * snapshot below races slightly with a concurrent close (the recorded
+    * read_handles/write_handles snapshot may be off by a concurrent
+    * decrement) but that's acceptable for a debug aid.
+    */
+   if (is_write)
       atomic_fetch_add_explicit(&p->write_handles, 1, mo_relaxed);
-   } else {
+   else
       atomic_fetch_add_explicit(&p->read_handles, 1, mo_relaxed);
-   }
+
+#if KRN_HANG_DETECTION
+   record_pipe_event(p, 'D', is_write);
+#endif
 }
 
 struct pipe *create_pipe(void)
@@ -316,6 +490,21 @@ struct pipe *create_pipe(void)
    kcond_init(&p->not_full_cond);
    kcond_init(&p->not_empty_cond);
    kcond_init(&p->err_cond);
+
+#if KRN_HANG_DETECTION
+   /* history[] zero-initialized by kzalloc_obj; history_idx starts at 0 */
+   list_node_init(&p->all_pipes_node);
+
+   /* Record creation event (no concurrent access yet, no need for mutex) */
+   record_pipe_event(p, 'I', false);
+
+   disable_preemption();
+   {
+      list_add_tail(&all_pipes, &p->all_pipes_node);
+   }
+   enable_preemption();
+#endif
+
    return p;
 }
 
