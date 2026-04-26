@@ -541,7 +541,27 @@ tty_read_int(struct tty *t, struct devfs_handle *h, char *buf, size_t size)
 
       while (tty_inbuf_is_empty(t)) {
 
-         kcond_wait(&t->input_cond, NULL, KCOND_WAIT_FOREVER);
+         /*
+          * Use a finite timeout instead of KCOND_WAIT_FOREVER: this loop
+          * checks tty_inbuf_is_empty() with no lock held, so a writer
+          * (the kb_worker_thread bottom half) that signals input_cond
+          * between our predicate check and our entry into kcond_wait()
+          * will hit an empty wait_list and the wakeup is lost. The
+          * outer while() re-checks the predicate, so a wakeup arriving
+          * via timeout instead of signal is handled correctly; worst-
+          * case latency on a missed signal becomes the timeout.
+          *
+          * The timeout is intentionally not TIME_SLICE_TICKS: under the
+          * stress config (KRN_MINIMAL_TIME_SLICE) that's 1 tick, which
+          * makes every blocked tty reader add itself to the wakeup-timer
+          * list every tick and forces tick_all_timers() to walk it on
+          * each interrupt. That's enough scheduler pressure to perturb
+          * boot timing on slow emulators (riscv64 without KVM hangs at
+          * the first shell prompt with TIME_SLICE_TICKS here). 250ms is
+          * still imperceptible for interactive input but keeps the
+          * timer-list churn bounded.
+          */
+         kcond_wait(&t->input_cond, NULL, KRN_TIMER_HZ / 4);
 
          if (pending_signals())
             return -EINTR;
