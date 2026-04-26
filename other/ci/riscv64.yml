@@ -49,6 +49,9 @@ jobs:
         -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_UBSAN=1
         -DKERNEL_SAT=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
@@ -90,6 +93,9 @@ jobs:
         -DKRN_KMALLOC_FREE_MEM_POISONING=1
         -DKERNEL_UBSAN=1
         -DKERNEL_SAT=1
+        -DKRN_MINIMAL_TIME_SLICE=1
+        -DKRN_RESCHED_ENABLE_PREEMPT=1
+        -DTIMER_HZ=500
     strategy:
       matrix:
         debug:
