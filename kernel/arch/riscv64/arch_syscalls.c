@@ -421,6 +421,39 @@ do_syscall_int(syscall_type fptr, regs_t *r, bool raw_regs)
    }
 }
 
+/*
+ * On riscv64 we deliberately do NOT call process_signals(sig_pre_syscall)
+ * here, unlike i386 / x86_64. The reason is the riscv64 syscall ABI: the
+ * first argument register (a0) is also the syscall return register, and
+ * setup_sig_handler() overwrites a0 with the signal number to pass it
+ * to the handler. If process_signals fired pre-syscall and set up a
+ * handler, the upcoming do_syscall_int() would invoke fptr(a0=signum,
+ * ...) — e.g. a pending close(pip[1]=5) would silently turn into
+ * close(SIGCHLD=17), return -EBADF, and the original close would never
+ * happen. The classic symptom is a pipe whose write end never gets
+ * closed by the parent shell right after a child it forked exited.
+ *
+ * Skipping pre-syscall delivery is safe because:
+ *
+ *   - Non-blocking syscalls always run to completion, then their result
+ *     is delivered to the caller. The pending signal is then delivered
+ *     by the post-syscall process_signals(sig_in_syscall) call below;
+ *     userspace sees the syscall return value correctly and the
+ *     handler runs immediately afterwards.
+ *
+ *   - Blocking syscalls (pipe_read, pipe_write, kcond_wait, etc.) all
+ *     check pending_signals() after each wake-up and return -EINTR
+ *     themselves when a signal is pending. signal_wakeup_task() also
+ *     wakes a sleeping waiter (unless it's parked on a mutex/sem) so
+ *     a signal arriving mid-block doesn't get stuck waiting for an
+ *     unrelated event. Net effect: the syscall returns -EINTR to the
+ *     caller and the post-syscall path delivers the handler.
+ *
+ * i386 / x86_64 don't hit this because their first arg register (ebx /
+ * rdi) is distinct from the return register; setup_sig_handler() only
+ * touches the return register so the syscall args survive.
+ */
+
 static void do_special_syscall(regs_t *r)
 {
    struct task *curr = get_curr_task();
@@ -431,9 +464,6 @@ static void do_special_syscall(regs_t *r)
    const bool preemptable = ~fl & SYSFL_NO_PREEMPT;
    const bool traceable = ~fl & SYSFL_NO_TRACE;
    const bool raw_regs = fl & SYSFL_RAW_REGS;
-
-   if (signals)
-      process_signals(curr, sig_pre_syscall, r);
 
    if (preemptable)
       enable_preemption();
@@ -459,7 +489,6 @@ static void do_syscall(regs_t *r)
    const u32 sn = r->a7;
    const syscall_type fptr = syscalls[sn].fptr;
 
-   process_signals(curr, sig_pre_syscall, r);
    enable_preemption();
    {
       trace_sys_enter(sn,r->a0,r->a1,r->a2,r->a3,r->a4,r->a5);
