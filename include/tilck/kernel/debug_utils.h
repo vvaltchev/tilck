@@ -2,6 +2,7 @@
 
 #pragma once
 #include <tilck_gen_headers/config_global.h>
+#include <tilck_gen_headers/config_debug.h>
 
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/hal.h>
@@ -16,6 +17,26 @@ int debug_qemu_turn_off_machine(void);
 void kmain_early_checks(void);
 void init_extra_debug_features(void);
 int set_sched_alive_thread_enabled(bool enabled);
+
+#if KRN_HANG_DETECTION
+/*
+ * Forward-progress watchdog (a.k.a. hang detector). Both pieces are
+ * compiled in only when KRN_HANG_DETECTION is set, and only fire at
+ * runtime when the kernel was booted with -sat (or KERNEL_SAT made
+ * that the default). See kernel/debug.c.
+ */
+
+/* Total context switches since boot. Single-CPU, so plain u64 increment
+ * is safe. The watchdog samples this once per interval. */
+extern volatile u64 g_total_task_switches;
+
+/* Walks every task and prints state, wait-object, open pipe fds, etc.
+ * Caller MUST run with preemption enabled; the function disables it
+ * internally so the snapshot is consistent. Safe to call from a normal
+ * kernel-thread context. */
+void debug_dump_all_tasks_state(void);
+#endif
+
 void register_tilck_cmd(int cmd_n, void *func);
 void *get_syscall_func_ptr(u32 n);
 int get_syscall_num(void *func);

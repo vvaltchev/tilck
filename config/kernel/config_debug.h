@@ -22,6 +22,9 @@
 #cmakedefine01 KRN_STACK_ISOLATION
 #cmakedefine01 KRN_SYMBOLS
 
+/* opt-in debug features */
+#cmakedefine01 KRN_HANG_DETECTION
+
 /*
  * --------------------------------------------------------------------------
  *                  Hard-coded global & derived constants

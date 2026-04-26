@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/config_mm.h>
+#include <tilck_gen_headers/config_debug.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/string_util.h>
@@ -16,6 +17,19 @@
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/vdso.h>
 #include <tilck/kernel/hal.h>
+
+#if KRN_HANG_DETECTION
+/*
+ * Total number of context switches since boot. Single-CPU, so a plain
+ * non-atomic increment is fine. Read by the hang detector in
+ * sched_alive_thread() to tell "kernel is alive but nothing is making
+ * progress" apart from "kernel is busy" — when the delta over an
+ * interval is near zero, the watchdog assumes the system is wedged and
+ * dumps every task's state. The variable is `volatile` so the compiler
+ * doesn't fold the read in the watchdog into a pre-loop value.
+ */
+volatile u64 g_total_task_switches;
+#endif
 
 void save_current_task_state(regs_t *r,  bool irq)
 {
@@ -332,6 +346,11 @@ switch_to_task(struct task *ti)
    const bool zombie = (curr->state == TASK_STATE_ZOMBIE);
 
    ASSERT(curr != NULL);
+
+#if KRN_HANG_DETECTION
+   if (ti != curr)
+      g_total_task_switches++;
+#endif
 
    if (UNLIKELY(ti != curr)) {
       ASSERT(curr->state != TASK_STATE_RUNNING);
