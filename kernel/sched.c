@@ -389,8 +389,17 @@ void yield_until_last(void)
 {
    ASSERT(is_preemption_enabled());
 
-   do { kernel_yield(); } while (runnable_tasks_count > 2);
-   kernel_yield();
+   /*
+    * Idle is always RUNNABLE while curr is RUNNING (it never blocks,
+    * just halt()s in a loop), so runnable_tasks_count >= 1. Therefore
+    * count > 1 means at least one non-idle task is RUNNABLE — which
+    * includes a task that was just preempted mid-work. Keep yielding
+    * until every other task has reached a stopping point (SLEEPING via
+    * a wait primitive, or ZOMBIE via kthread_exit), so a caller that
+    * inspects shared state next sees the result of all in-flight work.
+    */
+   while (runnable_tasks_count > 1)
+      kernel_yield();
 }
 
 __attribute__((constructor))
