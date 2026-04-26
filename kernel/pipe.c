@@ -254,19 +254,34 @@ static void pipe_on_handle_close(fs_handle h)
    struct pipe *p = (void *)kh->kobj;
    int old;
 
-   old = atomic_fetch_sub_explicit(
-      (kh->fl_flags & O_WRONLY) ? &p->write_handles : &p->read_handles,
-      1,
-      mo_relaxed
-   );
+   /*
+    * Take p->mutex around BOTH the handle-count decrement and the wakeup
+    * broadcast. Every reader/writer in pipe_read()/pipe_write() checks
+    * read_handles/write_handles inside this same mutex right before deciding
+    * to call kcond_wait(). If we decremented and signalled outside the
+    * mutex, a reader that had just observed write_handles > 0 and was about
+    * to enter kcond_wait could be preempted between the predicate check and
+    * the wait; this close path would then signal an empty wait_list, and
+    * the reader would later sleep forever (lost wakeup -> tid stuck waiting
+    * on an EOF that nobody will ever broadcast).
+    */
+   kmutex_lock(&p->mutex);
+   {
+      old = atomic_fetch_sub_explicit(
+         (kh->fl_flags & O_WRONLY) ? &p->write_handles : &p->read_handles,
+         1,
+         mo_relaxed
+      );
 
-   ASSERT(old > 0);
+      ASSERT(old > 0);
 
-   if (old == 1) {
-      kcond_signal_all(&p->not_full_cond);
-      kcond_signal_all(&p->not_empty_cond);
-      kcond_signal_all(&p->err_cond);
+      if (old == 1) {
+         kcond_signal_all(&p->not_full_cond);
+         kcond_signal_all(&p->not_empty_cond);
+         kcond_signal_all(&p->err_cond);
+      }
    }
+   kmutex_unlock(&p->mutex);
 }
 
 static void pipe_on_handle_dup(fs_handle h)
