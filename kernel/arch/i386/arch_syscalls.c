@@ -566,9 +566,6 @@ static void do_special_syscall(regs_t *r)
    const bool traceable = ~fl & SYSFL_NO_TRACE;
    const bool raw_regs = fl & SYSFL_RAW_REGS;
 
-   if (signals)
-      process_signals(curr, sig_pre_syscall, r);
-
    if (preemptable)
       enable_preemption();
 
@@ -593,7 +590,6 @@ static void do_syscall(regs_t *r)
    const u32 sn = r->eax;
    const syscall_type fptr = syscalls[sn].fptr;
 
-   process_signals(curr, sig_pre_syscall, r);
    enable_preemption();
    {
       trace_sys_enter(sn,r->ebx,r->ecx,r->edx,r->esi,r->edi,r->ebp);

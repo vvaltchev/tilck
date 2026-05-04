@@ -13,7 +13,6 @@
 enum sig_state {
 
    sig_none = 0,
-   sig_pre_syscall = 1,
    sig_in_syscall = 2,
    sig_in_usermode = 3,
    sig_in_return = 4,

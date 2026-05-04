@@ -74,7 +74,6 @@ set_kernel_stack(ulong addr)
 
 int
 setup_sig_handler(struct task *ti,
-                  enum sig_state sig_state,
                   regs_t *r,
                   ulong user_func,
                   int signum)

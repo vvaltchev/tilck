@@ -38,7 +38,6 @@ STATIC_ASSERT(
 STATIC_ASSERT(sizeof(struct task_and_process) <= 2048);
 
 int setup_sig_handler(struct task *ti,
-                      enum sig_state sig_state,
                       regs_t *r,
                       ulong user_func,
                       int signum)
@@ -46,9 +45,6 @@ int setup_sig_handler(struct task *ti,
    if (ti->nested_sig_handlers == 0) {
 
       int rc;
-
-      if (sig_state == sig_pre_syscall)
-         set_return_register(r, -EINTR);
 
       if ((rc = save_regs_on_user_stack(r)) < 0)
          return rc;

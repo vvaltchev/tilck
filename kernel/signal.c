@@ -84,7 +84,7 @@ static bool is_sig_masked(struct task *ti, int signum)
    return __is_sig_set(ti->sa_mask, signum);
 }
 
-static int get_first_pending_sig(struct task *ti, enum sig_state sig_state)
+static int get_first_pending_sig(struct task *ti)
 {
    for (u32 i = 0; i < K_SIGACTION_MASK_WORDS; i++) {
 
@@ -128,10 +128,7 @@ void reset_all_custom_signal_handlers(void *__curr)
 }
 
 static void
-kill_task_now_or_later(struct task *ti,
-                       void *regs,
-                       int signum,
-                       enum sig_state sig_state)
+kill_task_now_or_later(struct task *ti, void *regs, int signum)
 {
    if (ti == get_curr_task()) {
 
@@ -147,6 +144,46 @@ kill_task_now_or_later(struct task *ti,
    }
 }
 
+/*
+ * Try to deliver a pending signal to `ti`.
+ *
+ * Called from four code paths, identified by `sig_state`:
+ *
+ *   - sig_in_syscall: from do_syscall / do_special_syscall after the
+ *     syscall body has run (eax/a0 already holds the syscall return
+ *     value, which setup_sig_handler() will preserve in the saved
+ *     sigframe so sigreturn restores it correctly).
+ *
+ *   - sig_in_usermode: from arch_usermode_task_switch just before
+ *     resuming a user task that wasn't running in the kernel.
+ *
+ *   - sig_in_fault: from fault_entry on a fault that didn't originate
+ *     inside a syscall (so we deliver any HW-fault signal directly).
+ *
+ *   - sig_in_return: from sys_rt_sigreturn, to chain another pending
+ *     signal's handler instead of restoring user regs immediately.
+ *
+ * If a custom handler is installed, setup_sig_handler() saves the
+ * current `regs` to a sigframe on the user stack and rewrites `regs`
+ * to redirect user-mode resumption into the handler. Returns true.
+ * For default-action-terminate (or SIGKILL on the current task),
+ * kill_task_now_or_later() runs terminate_process() which is NORETURN.
+ *
+ * History note: an older sig_pre_syscall hook used to fire from the
+ * syscall dispatcher BEFORE the body ran, intending "signal arrived
+ * between userspace and kernel — return -EINTR before doing the work".
+ * It produced two distinct bugs (i386: body ran with the right args
+ * and the right side effect, but userspace saw -EINTR via sigreturn,
+ * causing silent duplicate operations when userspace retried; riscv64:
+ * setup_sig_handler() overwrote a0 with the signum so the body's
+ * fptr(a0=signum, ...) silently turned close(5) into close(SIGCHLD=17),
+ * and the intended close never happened — easy to reproduce as a hung
+ * pipe). Both shared the same root cause: a syscall body running with
+ * regs the signal-delivery code had already clobbered. The fix was to
+ * drop pre-syscall delivery entirely (matching Linux semantics): the
+ * body always runs to completion, then signals are delivered at
+ * sig_in_syscall with the real return value preserved.
+ */
 bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 {
    ASSERT(!is_preemption_enabled());
@@ -168,7 +205,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
        * a custom signal handler.
        */
 
-      kill_task_now_or_later(ti, regs, SIGKILL, sig_state);
+      kill_task_now_or_later(ti, regs, SIGKILL);
       return true;
    }
 
@@ -181,7 +218,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
       return false;
    }
 
-   sig = get_first_pending_sig(ti, sig_state);
+   sig = get_first_pending_sig(ti);
 
    if (sig < 0)
       return false;
@@ -196,11 +233,11 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
 
       del_pending_sig(ti, sig);
 
-      if (setup_sig_handler(ti, sig_state, regs, (ulong)handler, sig) < 0) {
+      if (setup_sig_handler(ti, regs, (ulong)handler, sig) < 0) {
 
          /* We got a FAULT while trying to setup the user stack */
          printk("WARNING: can't setup stack for task %d: kill\n", ti->tid);
-         kill_task_now_or_later(ti, regs, SIGKILL, sig_state);
+         kill_task_now_or_later(ti, regs, SIGKILL);
       }
 
    } else {
@@ -211,7 +248,7 @@ bool process_signals(void *__ti, enum sig_state sig_state, void *regs)
        * the signal is terminate.
        */
 
-      kill_task_now_or_later(ti, regs, sig, sig_state);
+      kill_task_now_or_later(ti, regs, sig);
    }
 
    return true;
