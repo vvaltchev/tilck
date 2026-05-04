@@ -170,6 +170,24 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
       return ready_fds_cnt;
    }
 
+   /*
+    * Disable preemption BEFORE arming the wakeup timer.
+    *
+    * If task_set_wakeup_timer() ran with preemption enabled, the timer
+    * could fire (counter -> 0, timer_ready = true) while we're still
+    * in the RUNNING state, between this and the upcoming
+    * prepare_to_wait_on_multi_obj() call. The IRQ exit path
+    * (irq_resched -> do_schedule -> sched_should_return_immediately)
+    * would then "consume" timer_ready before we ever entered the sleep,
+    * and we'd later go to sleep on the multi-obj waiter with the timer
+    * already removed from the wakeup list — a permanent hang. With
+    * preemption disabled here, irq_resched skips its do_schedule call
+    * (it requires preempt_disable_count == 1, and inside the IRQ it
+    * becomes >= 2), so timer_ready survives to be consumed by our own
+    * enter_sleep_wait_state() path. Same reasoning as kcond_wait().
+    */
+   disable_preemption();
+
    if (timeout > 0) {
       u32 ticks = MAX((u32)timeout / (1000 / KRN_TIMER_HZ), 1u);
       task_set_wakeup_timer(curr, ticks);
@@ -177,14 +195,14 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 
    while (true) {
 
-      disable_preemption();
-
       /*
-       * Even if we already checked for READY streams, we need to check that
-       * again here, after disabling the preemption since the situation might
-       * have changed in the meanwhile. Without this change, we could go to
-       * sleep while a stream is ready and hang forever waiting for an event
-       * that has already come.
+       * preempt is disabled at the top of every iteration:
+       *   - first iteration: from the disable_preemption() above.
+       *   - subsequent iterations: re-disabled in the !ready_fds_cnt
+       *     `continue` branches below.
+       *
+       * Re-check for ready streams under preempt disabled (a wake-up
+       * could have made one ready between an earlier check and now).
        */
       ready_fds_cnt = poll_count_ready_fds(fds, nfds);
       if (ready_fds_cnt > 0) {
@@ -194,6 +212,7 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
 
       prepare_to_wait_on_multi_obj(waiter);
       enter_sleep_wait_state();
+      /* enter_sleep_wait_state() leaves preemption enabled */
 
       if (pending_signals())
          break;
@@ -213,22 +232,26 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
              * streams. We have to check that.
              */
 
+            disable_preemption();
             ready_fds_cnt = poll_count_ready_fds(fds, nfds);
 
             if (!ready_fds_cnt)
-               continue; /* No ready streams, we have to wait again. */
+               continue; /* No ready streams, wait again (preempt disabled). */
 
             task_cancel_wakeup_timer(curr);
+            enable_preemption();
          }
 
       } else {
 
          /* No timeout: we woke-up because of a kcond was signaled */
 
+         disable_preemption();
          ready_fds_cnt = poll_count_ready_fds(fds, nfds);
 
          if (!ready_fds_cnt)
-            continue; /* No ready streams, we have to wait again. */
+            continue; /* No ready streams, wait again (preempt disabled). */
+         enable_preemption();
       }
 
       break;

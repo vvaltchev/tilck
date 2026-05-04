@@ -245,6 +245,15 @@ select_wait_on_cond(struct select_ctx *c)
          goto out;
    }
 
+   /*
+    * Disable preemption BEFORE arming the wakeup timer, so a timer that
+    * fires between task_set_wakeup_timer() and the upcoming sleep can't
+    * have its wakeup eaten by an irq_resched() -> do_schedule() call.
+    * See the matching comment in poll_wait_on_cond() for the full
+    * explanation; same race, same fix.
+    */
+   disable_preemption();
+
    if (c->tv) {
       ASSERT(c->timeout_ticks > 0);
       task_set_wakeup_timer(curr, c->timeout_ticks);
@@ -252,14 +261,11 @@ select_wait_on_cond(struct select_ctx *c)
 
    while (true) {
 
-      disable_preemption();
-
       /*
-       * Even if we already checked for READY streams, we need to check that
-       * again here, after disabling the preemption since the situation might
-       * have changed in the meanwhile. Without this change, we could go to
-       * sleep while a stream is ready and hang forever waiting for an event
-       * that has already come.
+       * preempt is disabled at the top of every iteration:
+       *   - first iteration: from the disable_preemption() above.
+       *   - subsequent iterations: re-disabled in the !ready
+       *     `continue` branches below.
        */
       if (count_ready_streams(c->nfds, c->sets) > 0) {
          rc = select_write_user_sets(c);
@@ -269,6 +275,7 @@ select_wait_on_cond(struct select_ctx *c)
 
       prepare_to_wait_on_multi_obj(waiter);
       enter_sleep_wait_state();
+      /* enter_sleep_wait_state() leaves preemption enabled */
 
       if (pending_signals())
          break;
@@ -290,20 +297,24 @@ select_wait_on_cond(struct select_ctx *c)
              * streams. We have to check that.
              */
 
+            disable_preemption();
             if (!count_ready_streams(c->nfds, c->sets))
-               continue; /* No ready streams, we have to wait again. */
+               continue; /* No ready streams, wait again (preempt disabled). */
 
             u32 rem = task_cancel_wakeup_timer(curr);
             c->tv->tv_sec = rem / KRN_TIMER_HZ;
             c->tv->tv_usec = (rem % KRN_TIMER_HZ) * (1000000 / KRN_TIMER_HZ);
+            enable_preemption();
          }
 
       } else {
 
          /* No timeout: we woke-up because of a kcond was signaled */
 
+         disable_preemption();
          if (!count_ready_streams(c->nfds, c->sets))
-            continue; /* No ready streams, we have to wait again. */
+            continue; /* No ready streams, wait again (preempt disabled). */
+         enable_preemption();
       }
 
       /* count_ready_streams() returned > 0 */
