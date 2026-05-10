@@ -49,3 +49,6 @@ enum kb_handler_action dp_tracing_screen(void);
 void dp_dump_task_list(bool kernel_tasks, bool plain_text);
 void handle_set_blocking(fs_handle h, bool blocking);
 int dp_mini_debugger_tool();
+
+/* In dp_data.c: registers all TILCK_CMD_DP_* sub-commands. */
+void dp_data_register(void);

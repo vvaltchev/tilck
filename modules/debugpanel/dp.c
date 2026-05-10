@@ -374,6 +374,10 @@ static void dp_init(void)
    if (MOD_tracing)
       register_tilck_cmd(TILCK_CMD_TRACING_TOOL, dp_direct_tracing_mode_entry);
 
+   /* Install the TILCK_CMD_DP_* data-collection sub-commands used by the
+    * userspace `dp` tool. See modules/debugpanel/dp_data.c. */
+   dp_data_register();
+
    list_for_each_ro(pos, &dp_screens_list, node) {
 
       if (pos->first_setup)
