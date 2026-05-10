@@ -101,3 +101,7 @@ void dp_term_restore(void);
 int  dp_read_ke_from_tty(struct key_event *ke);
 int  dp_read_line(char *buf, int buf_size);
 void dp_set_input_blocking(bool blocking);
+
+/* Screen registry + main loop (dp_main.c). */
+void dp_register_screen(struct dp_screen *screen);
+int  dp_run_panel(void);

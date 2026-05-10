@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <libgen.h>
 
+#include "dp_int.h"
+
 static int tracer_tool(int argc, char **argv)
 {
    if (argc > 0) {
@@ -16,6 +18,11 @@ static int tracer_tool(int argc, char **argv)
       return 1;
    }
 
+   /*
+    * Tracer mode is still served by the in-kernel TUI for now; Phase 8
+    * replaces this with a userspace tracer panel that reads
+    * /syst/tracing/events.
+    */
    int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_TRACING_TOOL);
 
    if (rc < 0)
@@ -31,6 +38,11 @@ static int ps_tool(int argc, char **argv)
       return 1;
    }
 
+   /*
+    * ps mode is still served by the in-kernel TUI for now; Phase 7
+    * (next commit in this phase) replaces this with a userspace
+    * Tasks-renderer call.
+    */
    int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_PS_TOOL);
 
    if (rc < 0)
@@ -50,12 +62,12 @@ static int debug_panel(int argc, char **argv)
       return 1;
    }
 
-   int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_DEBUG_PANEL);
-
-   if (rc < 0)
-      printf("ERROR: debug panel not compiled-in\n");
-
-   return rc;
+   /*
+    * Plain `dp` runs the userspace TUI: it pulls kernel state via the
+    * TILCK_CMD_DP_GET_* sub-commands and the /syst/* sysfs trees, then
+    * renders panels with the local termutil/dp_input infrastructure.
+    */
+   return dp_run_panel();
 }
 
 int main(int argc, char **argv)

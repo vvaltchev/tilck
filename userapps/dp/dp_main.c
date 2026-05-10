@@ -1,0 +1,242 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
+
+/*
+ * Userspace screen registry + main event loop, mirroring the kernel's
+ * modules/debugpanel/dp.c (the dp_register_screen / redraw_screen /
+ * dp_main_handle_keypress / dp_main_body code). The kernel's
+ * dp_common_entry — which set up the TTY in raw mode and drove the
+ * read-key/redraw loop — is split across here and dp_screen.c
+ * (dp_term_setup / dp_term_restore handle the termios + alt-buffer
+ * dance).
+ *
+ * Screens register themselves at program startup via
+ * __attribute__((constructor)) — same pattern as the kernel module
+ * (only the call site is the C runtime instead of REGISTER_MODULE).
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "termutil.h"
+#include "dp_int.h"
+
+static struct dp_screen *dp_screens_head;
+static bool skip_next_keypress;
+
+void dp_register_screen(struct dp_screen *screen)
+{
+   /* Insert in ascending `index` order. */
+   struct dp_screen **pp = &dp_screens_head;
+
+   while (*pp && (*pp)->index < screen->index)
+      pp = &(*pp)->next;
+
+   if (*pp && (*pp)->index == screen->index) {
+
+      fprintf(stderr,
+              "dp: index conflict at %d between %s and %s\n",
+              screen->index, screen->label, (*pp)->label);
+      exit(1);
+   }
+
+   screen->next = *pp;
+   *pp = screen;
+}
+
+static void dp_enter(void)
+{
+   struct dp_screen *p;
+
+   dp_init_layout();
+   dp_term_setup();
+
+   for (p = dp_screens_head; p; p = p->next) {
+
+      p->row_off = 0;
+      p->row_max = 0;
+
+      if (p->first_setup)
+         p->first_setup();
+
+      if (p->on_dp_enter)
+         p->on_dp_enter();
+   }
+}
+
+static void dp_exit(void)
+{
+   struct dp_screen *p;
+
+   for (p = dp_screens_head; p; p = p->next) {
+
+      if (p->on_dp_exit)
+         p->on_dp_exit();
+   }
+
+   dp_term_restore();
+}
+
+static void
+dp_write_header(int i, const char *s, bool selected)
+{
+   if (selected) {
+
+      dp_write_raw(
+         E_COLOR_BR_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
+         i, s
+      );
+
+   } else {
+
+      dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
+   }
+}
+
+static void redraw_screen(void)
+{
+   char buf[64];
+   struct dp_screen *p;
+   int rc;
+   int row_to;
+
+   dp_clear();
+   dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
+
+   for (p = dp_screens_head; p; p = p->next)
+      dp_write_header(p->index + 1, p->label, p == dp_ctx);
+
+   dp_write_raw("q[Quit]" RESET_ATTRS " ");
+
+   if (dp_ctx && dp_ctx->draw_func)
+      dp_ctx->draw_func();
+
+   dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
+   dp_move_cursor(dp_start_row, dp_start_col + 2);
+   dp_write_raw(E_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
+
+   row_to = dp_ctx->row_off + dp_screen_rows;
+   if (row_to > dp_ctx->row_max)
+      row_to = dp_ctx->row_max;
+
+   rc = snprintf(buf, sizeof(buf),
+                 "[rows %02d - %02d of %02d]",
+                 dp_ctx->row_off + 1,
+                 row_to + 1,
+                 dp_ctx->row_max + 1);
+
+   dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
+   dp_write_raw(E_COLOR_BR_RED "%s" RESET_ATTRS, buf);
+   dp_move_cursor(dp_rows, 1);
+   ui_need_update = false;
+}
+
+static void
+dp_main_handle_keypress(struct key_event ke)
+{
+   struct dp_screen *p;
+   int idx;
+
+   if ('0' <= ke.print_char && ke.print_char <= '9') {
+
+      idx = ke.print_char - '0' - 1;
+
+      for (p = dp_screens_head; p; p = p->next) {
+
+         if (p->index == idx && p != dp_ctx) {
+            dp_ctx = p;
+            ui_need_update = true;
+            break;
+         }
+      }
+
+   } else if (!strcmp(ke.seq, DP_KEY_PAGE_DOWN)) {
+
+      if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
+         dp_ctx->row_off++;
+         ui_need_update = true;
+      }
+
+   } else if (!strcmp(ke.seq, DP_KEY_PAGE_UP)) {
+
+      if (dp_ctx->row_off > 0) {
+         dp_ctx->row_off--;
+         ui_need_update = true;
+      }
+   }
+}
+
+static int
+dp_main_body(struct key_event ke)
+{
+   bool dp_screen_key_handled = false;
+   int rc;
+
+   if (!skip_next_keypress) {
+
+      dp_main_handle_keypress(ke);
+
+      if (!ui_need_update && dp_ctx && dp_ctx->on_keypress_func) {
+
+         rc = dp_ctx->on_keypress_func(ke);
+
+         if (rc == dp_kb_handler_ok_and_stop)
+            return 1; /* skip redraw_screen() */
+
+         if (rc != dp_kb_handler_nak)
+            dp_screen_key_handled = true;
+      }
+
+   } else {
+
+      skip_next_keypress = false;
+      ui_need_update = true;
+   }
+
+   if (ui_need_update || modal_msg) {
+
+      redraw_screen();
+
+      if (modal_msg) {
+         dp_show_modal_msg(modal_msg);
+         modal_msg = NULL;
+         skip_next_keypress = true;
+      }
+   }
+
+   return dp_screen_key_handled;
+}
+
+int dp_run_panel(void)
+{
+   struct key_event ke;
+   int rc;
+
+   if (!dp_screens_head) {
+      fprintf(stderr, "dp: no screens registered\n");
+      return 1;
+   }
+
+   dp_ctx = dp_screens_head;
+   dp_enter();
+
+   memset(&ke, 0, sizeof(ke));
+   ui_need_update = true;
+
+   while (1) {
+
+      rc = dp_main_body(ke);
+
+      if (!rc && ke.print_char == 'q')
+         break;
+
+      if (dp_read_ke_from_tty(&ke) < 0)
+         break;
+
+      if (ke.print_char == DP_KEY_CTRL_C)
+         break;
+   }
+
+   dp_exit();
+   return 0;
+}
