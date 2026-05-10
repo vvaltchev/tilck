@@ -41,6 +41,14 @@ static bool need_chrome;
 static bool need_buffer;
 static bool need_paint;
 
+void dp_force_full_redraw(void)
+{
+   need_chrome = true;
+   need_buffer = true;
+   need_paint  = true;
+   ui_need_update = true;
+}
+
 void dp_register_screen(struct dp_screen *screen)
 {
    /* Insert in ascending `index` order. */

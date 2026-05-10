@@ -125,8 +125,33 @@ void dp_set_input_blocking(bool blocking);
 void dp_register_screen(struct dp_screen *screen);
 int  dp_run_panel(void);
 
+/*
+ * Tell the main loop that an overlay (modal, sub-screen) has trampled
+ * over the chrome and panel content; the next iteration must repaint
+ * everything from scratch. Used by the tracer screen on exit (which
+ * ran a full-screen text dump on top of the panel).
+ */
+void dp_force_full_redraw(void);
+
 /* One-shot ps mode (screen_tasks.c). */
 int  dp_run_ps(void);
 
+/*
+ * Plain-text dump of the task list. Used by the tracer 'p' / 'P'
+ * commands and by ps mode. Refreshes the cached task table first.
+ *   kernel_tasks=true → also include kthreads (master's 'P').
+ *   kernel_tasks=false → user processes only (master's 'p').
+ */
+void dp_dump_task_list_plain(bool kernel_tasks);
+
 /* Tracer mode (screen_tracing.c). */
 int  dp_run_tracer(void);
+
+/*
+ * Tracer screen invoked while dp_run_panel() is already running (i.e.
+ * the user pressed Ctrl+T from the Tasks panel). Same UI as
+ * dp_run_tracer, but doesn't touch the surrounding terminal state —
+ * the panel loop is responsible for the alt-buffer / raw-mode setup.
+ * Returns to the panel when the user presses 'q'.
+ */
+void dp_run_tracer_screen(void);

@@ -373,7 +373,8 @@ static void show_actions_menu(void)
 
       dp_writeln(
          E_COLOR_BR_WHITE "<ENTER>" RESET_ATTRS ": select mode " TERM_VLINE " "
-         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh"
+         E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode"
       );
       dp_writeln(" ");
 
@@ -382,6 +383,7 @@ static void show_actions_menu(void)
       dp_writeln(
          E_COLOR_BR_WHITE "ESC" RESET_ATTRS ": exit select " TERM_VLINE " "
          E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh " TERM_VLINE " "
+         E_COLOR_BR_WHITE "Ctrl+T" RESET_ATTRS ": tracing mode " TERM_VLINE " "
          E_COLOR_BR_WHITE "t" RESET_ATTRS ": trace task"
       );
       dp_writeln(
@@ -550,6 +552,11 @@ sel_keypress(struct key_event ke)
          }
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
+
+      case DP_KEY_CTRL_T:
+         dp_run_tracer_screen();
+         ui_need_update = true;
+         return dp_kb_handler_ok_and_continue;
    }
 
    return dp_kb_handler_nak;
@@ -567,6 +574,12 @@ default_keypress(struct key_event ke)
    if (ke.print_char == DP_KEY_ENTER) {
       mode = tm_sel;
       sel_scroll_into_view();   /* in case user PAGE-scrolled past tasks */
+      ui_need_update = true;
+      return dp_kb_handler_ok_and_continue;
+   }
+
+   if (ke.print_char == DP_KEY_CTRL_T) {
+      dp_run_tracer_screen();
       ui_need_update = true;
       return dp_kb_handler_ok_and_continue;
    }
@@ -609,4 +622,24 @@ int dp_run_ps(void)
    dump_task_list(false, true);
    write(STDOUT_FILENO, "\r\n", 2);
    return 0;
+}
+
+/*
+ * Public plain-text task dump used by the tracer ('p' / 'P' keys).
+ * Refreshes the cached task table first; the tracer wants the latest
+ * state, not whatever was in dp_tasks_buf from the last panel render.
+ */
+void dp_dump_task_list_plain(bool kernel_tasks)
+{
+   const __typeof__(mode) saved = mode;
+
+   if (dp_tasks_refresh() < 0)
+      return;
+
+   /* The selection highlight only makes sense inside the panel
+    * render path; while we render plain text for the tracer, force
+    * default mode so the dump skips the highlight branch. */
+   mode = tm_default;
+   dump_task_list(kernel_tasks, true);
+   mode = saved;
 }
