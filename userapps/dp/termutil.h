@@ -55,8 +55,6 @@ void dp_draw_rect(const char *label,
 /* WARNING: dirty macro expecting both `row` and `col` to be defined */
 #define dp_writeln2(...) dp_write(row++, col, __VA_ARGS__)
 
-void dp_reverse_colors(void);
-void dp_reset_attrs(void);
 void dp_move_right(int n);
 void dp_move_left(int n);
 void dp_move_to_col(int n);
@@ -66,6 +64,20 @@ void dp_set_cursor_enabled(bool enabled);
 void dp_switch_to_alt_buffer(void);
 void dp_switch_to_default_buffer(void);
 void dp_show_modal_msg(const char *msg);
+
+/*
+ * Buffered-emit helpers. The panel's draw_func calls dp_write /
+ * dp_writeln (which append to an in-memory line buffer); dp_main.c
+ * resets the buffer via dp_buf_reset() before each draw_func, then
+ * paints the visible window onto the panel content area via
+ * dp_buf_paint().
+ */
+void dp_buf_reset(void);
+void dp_buf_paint(int row_off,
+                  int screen_rows,
+                  int term_first_row,
+                  int panel_left_col,
+                  int panel_w);
 
 static inline const char *
 dp_sign_value_esc_color(long val)

@@ -223,31 +223,38 @@ render_one_task(const struct dp_task_info *t, struct render_opts opts)
 
    state_to_str(state_str, t->state, t->stopped, t->traced);
 
-   bool selected = false;
-
-   if (!opts.plain_text && mode == tm_sel) {
-
-      if (sel_tid > 0 && t->tid == sel_tid) {
-
-         dp_reverse_colors();
-         selected = true;
-      }
-   }
-
    if (opts.plain_text) {
 
       dp_write_raw(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
                    state_str, t->tty, path);
       dp_write_raw("\r\n");
+      return;
+   }
+
+   /*
+    * In selection mode, wrap the row in REVERSE_VIDEO/RESET_ATTRS so
+    * the selected line is highlighted. The escapes are baked into the
+    * format string rather than emitted around the dp_writeln call,
+    * because dp_writeln now appends to a row buffer (no notion of
+    * "current attrs" outside of a single call).
+    */
+   const bool selected = (mode == tm_sel) &&
+                         (sel_tid > 0) &&
+                         (t->tid == sel_tid);
+
+   if (selected) {
+
+      char rev_fmt[256];
+      snprintf(rev_fmt, sizeof(rev_fmt),
+               REVERSE_VIDEO "%s" RESET_ATTRS, fmt);
+      dp_writeln(rev_fmt, t->tid, t->pgid, t->sid, t->parent_pid,
+                 state_str, t->tty, path);
 
    } else {
 
       dp_writeln(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
                  state_str, t->tty, path);
    }
-
-   if (selected)
-      dp_reset_attrs();
 }
 
 static void

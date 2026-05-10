@@ -24,6 +24,23 @@
 static struct dp_screen *dp_screens_head;
 static bool skip_next_keypress;
 
+/*
+ * Three-phase redraw state. A scroll keypress only flips need_paint;
+ * a panel-content change (selection move, data refresh, etc.) flips
+ * need_buffer + need_paint; a panel switch (or a modal overlay needing
+ * cleanup) flips all three.
+ *
+ *   need_chrome — clear the screen, redraw the panel-tabs header, the
+ *                 outer border, and the title.
+ *   need_buffer — call dp_ctx->draw_func() to refill the in-memory line
+ *                 buffer with the panel's full content.
+ *   need_paint  — emit the visible window of the buffer onto the panel
+ *                 content area + redraw the "rows X-Y of Z" footer.
+ */
+static bool need_chrome;
+static bool need_buffer;
+static bool need_paint;
+
 void dp_register_screen(struct dp_screen *screen)
 {
    /* Insert in ascending `index` order. */
@@ -93,12 +110,9 @@ dp_write_header(int i, const char *s, bool selected)
    }
 }
 
-static void redraw_screen(void)
+static void paint_chrome(void)
 {
-   char buf[64];
    struct dp_screen *p;
-   int rc;
-   int row_to;
 
    dp_clear();
    dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
@@ -108,14 +122,39 @@ static void redraw_screen(void)
 
    dp_write_raw("q[Quit]" RESET_ATTRS " ");
 
-   if (dp_ctx && dp_ctx->draw_func)
-      dp_ctx->draw_func();
-
    dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
    dp_move_cursor(dp_start_row, dp_start_col + 2);
    dp_write_raw(E_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
+}
 
-   row_to = dp_ctx->row_off + dp_screen_rows;
+static void rebuild_buffer(void)
+{
+   dp_buf_reset();
+   dp_ctx->row_max = 0;
+
+   if (dp_ctx->draw_func)
+      dp_ctx->draw_func();
+}
+
+static void paint_panel(void)
+{
+   /*
+    * Visible content rows: dp_screen_start_row .. dp_end_row-2
+    * (inclusive). screen_rows is already the count of those.
+    */
+   dp_buf_paint(dp_ctx->row_off,
+                dp_screen_rows,
+                dp_screen_start_row,
+                dp_start_col,
+                DP_W);
+}
+
+static void paint_footer(void)
+{
+   char buf[64];
+   int rc;
+   int row_to = dp_ctx->row_off + dp_screen_rows;
+
    if (row_to > dp_ctx->row_max)
       row_to = dp_ctx->row_max;
 
@@ -125,8 +164,32 @@ static void redraw_screen(void)
                  row_to + 1,
                  dp_ctx->row_max + 1);
 
+   /* Sit on the bottom border line, near the right edge. */
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
    dp_write_raw(E_COLOR_BR_RED "%s" RESET_ATTRS, buf);
+}
+
+static void redraw_screen(void)
+{
+   if (need_chrome) {
+      paint_chrome();
+      need_chrome = false;
+      need_paint = true;       /* chrome paint clears the screen */
+   }
+
+   if (need_buffer) {
+      rebuild_buffer();
+      need_buffer = false;
+      need_paint = true;
+   }
+
+   if (need_paint) {
+      paint_panel();
+      paint_footer();
+      need_paint = false;
+   }
+
+   /* Park the cursor below the panel so it is inconspicuous. */
    dp_move_cursor(dp_rows, 1);
    ui_need_update = false;
 }
@@ -145,6 +208,11 @@ dp_main_handle_keypress(struct key_event ke)
 
          if (p->index == idx && p != dp_ctx) {
             dp_ctx = p;
+            /* Switching panel: redraw chrome (selected tab moves) +
+             * rebuild this panel's buffer + paint everything. */
+            need_chrome = true;
+            need_buffer = true;
+            need_paint  = true;
             ui_need_update = true;
             break;
          }
@@ -154,6 +222,8 @@ dp_main_handle_keypress(struct key_event ke)
 
       if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
          dp_ctx->row_off++;
+         /* Pure scroll: same buffer, just re-clip the viewport. */
+         need_paint = true;
          ui_need_update = true;
       }
 
@@ -161,6 +231,7 @@ dp_main_handle_keypress(struct key_event ke)
 
       if (dp_ctx->row_off > 0) {
          dp_ctx->row_off--;
+         need_paint = true;
          ui_need_update = true;
       }
    }
@@ -180,6 +251,17 @@ dp_main_body(struct key_event ke)
 
          rc = dp_ctx->on_keypress_func(ke);
 
+         /*
+          * A panel handler signaling "something changed" (ui_need_update)
+          * means the panel content itself is different — selection
+          * cursor moved, data was refreshed, sort order changed. Default
+          * to a buffer rebuild + repaint; the chrome stays untouched.
+          */
+         if (ui_need_update) {
+            need_buffer = true;
+            need_paint  = true;
+         }
+
          if (rc == dp_kb_handler_ok_and_stop)
             return 1; /* skip redraw_screen() */
 
@@ -189,7 +271,16 @@ dp_main_body(struct key_event ke)
 
    } else {
 
+      /*
+       * The previous iteration painted a modal overlay on top of the
+       * panel and asked for the next keypress to be eaten. Now we
+       * unwind the overlay: chrome may have been overlapped, panel
+       * content may have been overwritten — repaint the lot. The
+       * buffer is still valid (the overlay didn't go through it).
+       */
       skip_next_keypress = false;
+      need_chrome = true;
+      need_paint  = true;
       ui_need_update = true;
    }
 
@@ -222,6 +313,9 @@ int dp_run_panel(void)
 
    memset(&ke, 0, sizeof(ke));
    ui_need_update = true;
+   need_chrome = true;
+   need_buffer = true;
+   need_paint  = true;
 
    while (1) {
 
