@@ -213,6 +213,16 @@ sysfs_file_read(fs_handle h, char *buf, size_t len, offt *pos)
          memcpy(buf, sh->file.data + *pos, (size_t)rc);
          *pos += rc;
          break;
+
+      case SYSFS_BUF_STREAM:
+
+         /*
+          * Stream mode: call load() afresh on every read(), don't
+          * advance *pos, never report EOF. The load() implementation
+          * may block.
+          */
+         rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, 0);
+         break;
    }
 
    return (ssize_t)rc;
@@ -274,6 +284,12 @@ sysfs_file_write(fs_handle h, char *buf, size_t len, offt *pos)
          enable_preemption();
          break;
 
+      case SYSFS_BUF_STREAM:
+
+         /* Stream mode: store() called once per write(), no buffering. */
+         rc = sysfs_call_store(obj, prop, pd, buf, (offt)len);
+         break;
+
       default:
          rc = -EINVAL;
          break;
@@ -292,8 +308,12 @@ static offt
 sysfs_file_seek(fs_handle h, offt target_off, int whence)
 {
    struct sysfs_handle *sh = h;
+   struct sysobj_prop *prop = sh->inode->file.prop;
    const offt len = sh->file.data_max_len;
    offt new_pos = sh->h_fpos;
+
+   if (prop->type && prop->type->buf_type == SYSFS_BUF_STREAM)
+      return -ESPIPE;
 
    switch (whence) {
 

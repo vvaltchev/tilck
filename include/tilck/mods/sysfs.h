@@ -46,6 +46,20 @@ enum sysfs_buf_type {
     * (the total size of the immutable region).
     */
    SYSFS_BUF_IMMUTABLE,
+
+   /*
+    * Stream semantics: load() is called once per read() (and store()
+    * once per write()), there is no buffering, no EOF while the file
+    * is open, no seek, no mmap. The load() implementation is allowed
+    * to block (e.g. via kcond_wait) until data is available, mirroring
+    * POSIX read() semantics on a pipe or socket. seek() returns
+    * -ESPIPE.
+    *
+    * `get_buf_sz` is ignored and may be NULL.
+    *
+    * Example application: tracer event stream at /syst/tracing/events.
+    */
+   SYSFS_BUF_STREAM,
 };
 
 struct sysobj_prop_type {
