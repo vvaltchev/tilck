@@ -148,6 +148,61 @@ Four test types exist:
 ./build/st/run_all_tests -T selftest -f kcond # Run a single self-test
 ```
 
+## Fast iteration loop under QEMU (Darwin)
+
+Booting through Tilck's interactive bootloader and the framebuffer
+console is too slow for a tight code/test cycle, and the bootloader
+menu is awkward to drive over `tmux send-keys`. The right setup is:
+
+1. **Configure the kernel for headless text-mode boot**:
+
+   ```bash
+   ./scripts/cmake_run -DBOOT_INTERACTIVE=0 -DMOD_fb=0
+   make -j
+   ```
+
+   `BOOT_INTERACTIVE=0` makes the bootloader auto-boot with no
+   prompt; `MOD_fb=0` drops the framebuffer module so the kernel
+   stays in VGA text mode the whole way through. That mode is what
+   QEMU's `-display curses` knows how to render into a tmux pane.
+
+2. **Run via `build/run_multiboot_qemu` instead of `run_qemu`**.
+   `run_multiboot_qemu` passes the kernel directly to QEMU via
+   `-kernel`, skipping the Tilck bootloader entirely:
+
+   ```bash
+   bash build/run_multiboot_qemu -display curses
+   bash build/run_multiboot_qemu -display curses -append "-sercon"
+   ```
+
+   Anything after the script name is forwarded to `qemu-system-i386`,
+   so `-append "<kernel cmdline>"` can be used to set kopts (e.g.
+   `-sercon`, `-pk`, `-selftest <name>`, `-ttys 4`).
+
+3. **Drive it from tmux**:
+
+   ```bash
+   tmux new-session -d -s tilck -x 100 -y 35
+   tmux send-keys -t tilck "bash build/run_multiboot_qemu -display curses" Enter
+   until tmux capture-pane -t tilck -p | grep -q 'root@tilck:/#'; do sleep 1; done
+   tmux send-keys -t tilck "<command>" Enter
+   tmux capture-pane -t tilck:0 -p
+   ```
+
+   With this setup, `boot → shell prompt` is a few seconds rather than
+   tens.
+
+For tests that need a second TTY in parallel (e.g. running `tracer`
+on tty1 while a victim shell runs syscalls on tty2), the user
+typically uses `Alt-F1` / `Alt-F2` to switch between virtual
+consoles. With `-display curses` in tmux, those are sent via
+`tmux send-keys M-F2` etc. Alternatively, use a real QEMU window for
+the video console plus a serial tty for the second session.
+
+`tmux send-keys -l "<text>"` sends literal text and is needed for
+arguments that start with `-`; `tmux send-keys "<key>"` (or
+`Enter`, `BSpace`, `M-F2`, `C-c`) sends keys.
+
 ## Architecture
 
 ```
