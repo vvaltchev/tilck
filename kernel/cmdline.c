@@ -2,6 +2,7 @@
 
 #include <tilck_gen_headers/mod_console.h>
 #include <tilck_gen_headers/mod_kb8042.h>
+#include <tilck_gen_headers/mod_sysfs.h>
 #include <tilck_gen_headers/config_debug.h>
 #include <tilck_gen_headers/config_kernel.h>
 
@@ -15,8 +16,10 @@
 #include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/test/cmdline.h>
 
-#include <tilck/mods/sysfs.h>
-#include <tilck/mods/sysfs_utils.h>
+#if MOD_sysfs
+   #include <tilck/mods/sysfs.h>
+   #include <tilck/mods/sysfs_utils.h>
+#endif
 
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
@@ -341,6 +344,8 @@ static void debug_check_all_kopts(void)
    }
 }
 
+#if MOD_sysfs
+
 /*
  * Map a kopt's runtime type to the matching read-only sysfs property
  * type. Returns NULL for unknown types.
@@ -377,38 +382,39 @@ kopt_sysfs_prop_type(enum kopt_type t)
 void register_kopts_sysfs(void)
 {
    const u32 n = ARRAY_SIZE(all_kopts);
-   struct sysobj *obj;
-   struct sysobj_type *type;
-   struct sysobj_prop **props;
-   void **prop_data;
+   struct sysobj *obj = NULL;
+   struct sysobj_type *type = NULL;
+   struct sysobj_prop **props = NULL;
+   void **prop_data = NULL;
+   const char *fail_msg = "out of memory";
 
    if (!(obj = kzalloc_obj(struct sysobj)))
-      goto oom;
+      goto fail;
 
    if (!(type = kzalloc_obj(struct sysobj_type)))
-      goto oom;
+      goto fail;
 
    if (!(props = kzalloc_array_obj(struct sysobj_prop *, n + 1)))
-      goto oom;
+      goto fail;
 
    if (!(prop_data = kzalloc_array_obj(void *, n)))
-      goto oom;
+      goto fail;
 
    for (u32 i = 0; i < n; i++) {
 
-      struct sysobj_prop *p = kzalloc_obj(struct sysobj_prop);
+      const struct sysobj_prop_type *pt;
+      struct sysobj_prop *p;
 
-      if (!p)
-         goto oom;
+      pt = kopt_sysfs_prop_type(all_kopts[i].type);
+
+      if (!pt)
+         continue;       /* skip kopts of unhandled types */
+
+      if (!(p = kzalloc_obj(struct sysobj_prop)))
+         goto fail;
 
       p->name = all_kopts[i].name;
-      p->type = kopt_sysfs_prop_type(all_kopts[i].type);
-
-      if (!p->type) {
-         kfree_obj(p, struct sysobj_prop);
-         continue;       /* skip kopts of unhandled types */
-      }
-
+      p->type = pt;
       props[i] = p;
 
       if (all_kopts[i].type == KOPT_TYPE_wordstr) {
@@ -427,20 +433,50 @@ void register_kopts_sysfs(void)
    }
 
    props[n] = NULL;
-
    type->name = "kopts";
    type->properties = props;
 
    sysobj_init(obj, type, NULL, prop_data);
 
-   if (sysfs_register_obj(NULL, &sysfs_root_obj, "kopts", obj) < 0)
-      printk("WARNING: failed to register /syst/kopts\n");
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, "kopts", obj) < 0) {
+      fail_msg = "sysfs_register_obj() failed";
+      goto fail;
+   }
 
+   /*
+    * Success: sysfs holds the registration but does not take ownership
+    * of obj/type/props/prop_data (sysobj_init contract). Since
+    * registered objects are never destroyed, these allocations are
+    * intentionally retained for the kernel's lifetime.
+    */
    return;
 
-oom:
-   printk("WARNING: out of memory while registering /syst/kopts\n");
+fail:
+   printk("WARNING: /syst/kopts not registered: %s\n", fail_msg);
+
+   if (props) {
+      for (u32 i = 0; i < n; i++) {
+         if (props[i])
+            kfree_obj(props[i], struct sysobj_prop);
+      }
+      kfree_array_obj(props, struct sysobj_prop *, n + 1);
+   }
+
+   if (prop_data)
+      kfree_array_obj(prop_data, void *, n);
+
+   if (type)
+      kfree_obj(type, struct sysobj_type);
+
+   if (obj)
+      kfree_obj(obj, struct sysobj);
 }
+
+#else  /* !MOD_sysfs */
+
+void register_kopts_sysfs(void) { /* no-op */ }
+
+#endif
 
 void parse_kernel_cmdline(const char *cmdline)
 {

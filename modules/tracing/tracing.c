@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
+#include <tilck_gen_headers/mod_sysfs.h>
+
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
 #include <tilck/common/string_util.h>
@@ -18,8 +20,11 @@
 #include <tilck/kernel/errno.h>
 
 #include <tilck/mods/tracing.h>
-#include <tilck/mods/sysfs.h>
-#include <tilck/mods/sysfs_utils.h>
+
+#if MOD_sysfs
+   #include <tilck/mods/sysfs.h>
+   #include <tilck/mods/sysfs_utils.h>
+#endif
 
 #define TRACE_BUF_SIZE                       (128 * KB)
 
@@ -865,6 +870,8 @@ tracing_init_oom_panic(const char *buf_name)
 
 /* ----------------- /syst/tracing/events stream file ------------------- */
 
+#if MOD_sysfs
+
 static offt
 tracing_events_load(struct sysobj *obj, void *data,
                     void *buf, offt sz, offt off)
@@ -917,6 +924,12 @@ register_tracing_sysfs_obj(void)
    if (sysfs_register_obj(NULL, dir, "events", events) < 0)
       sysfs_destroy_unregistered_obj(events);
 }
+
+#else  /* !MOD_sysfs */
+
+static void register_tracing_sysfs_obj(void) { /* no-op */ }
+
+#endif
 
 void
 init_trace_printk(void)
