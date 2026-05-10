@@ -352,6 +352,42 @@ FreeBSD is a supported build host alongside Linux. Key differences:
 - Add blank line after `if (...) {` / `for (...) {` when the header is long relative to the body's first line (prevents "hiding" effect)
 - Nested `#ifdef` blocks are indented when small in scope
 
+## Porting expectations
+
+When asked to port a feature from one backend to another (kernel →
+userspace, framework A → framework B, language A → language B, etc.),
+**feature parity and visual fidelity are hard requirements**, not
+stretch goals. The user wants the implementation swapped, not the
+surface — every keybinding, menu item, color, modal flow, and
+interaction must survive the move. An MVP-grade port that "covers the
+main features" will be sent back as a regression.
+
+Expected workflow:
+
+1. **Read the original exhaustively first.** Walk every source file
+   of the feature being replaced, list every key, every menu, every
+   non-obvious code path. Save this as a spec file (e.g.
+   `docs/<thing>-feature-spec.md`) so it survives the conversation
+   and serves as a reviewable checklist.
+2. **Boot the original.** Build and run the pre-port version, walk
+   every UI path, capture screen transcripts. Keep them for direct
+   diff against the new version.
+3. **Track the gap explicitly.** Append a "gap list" to the spec; tick
+   each item as you close it. The user wants to see the list shrink
+   to zero before you declare done.
+4. **Reuse logic where you can.** If the original logic is mostly
+   data-flow (e.g. metadata-driven rendering), keep that code intact
+   and only change its output target. This keeps results
+   byte-identical and avoids a metadata mirror that drifts.
+5. **Diff at the end.** Run both old and new in the same harness
+   (e.g. QEMU side-by-side), capture each screen, `diff` them. Any
+   non-runtime difference is a regression to close before reporting
+   complete.
+
+The first time the user has to point out a missing feature is a
+failure of step 1; the first time they have to point out a visual
+divergence is a failure of step 5.
+
 ## Commit Style
 Each commit must be self-contained, compile in all configs, and pass all tests
 (critical for `git bisect`)
