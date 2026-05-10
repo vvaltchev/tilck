@@ -49,8 +49,23 @@ include_directories(${ZLIB_DIR}/install/include)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
    add_usermode_app(play)
-   add_usermode_app(dp)
 # [/simple apps]
+
+# [dp]
+   file(
+      GLOB
+      DP_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "dp/*.c"
+   )
+
+   if (USERAPPS_dp)
+      add_executable(dp ${DP_SOURCES})
+      target_include_directories(dp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dp)
+      register_usermode_app(dp)
+   endif()
+# [/dp]
 
 # [filedump]
    file(
