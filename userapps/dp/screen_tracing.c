@@ -44,6 +44,7 @@
 
 #include "termutil.h"
 #include "dp_int.h"
+#include "tr.h"
 
 #define EVENTS_PATH       "/syst/tracing/events"
 #define RENDER_BUF_SZ     1024
@@ -139,15 +140,14 @@ dp_cmd_set_task_traced(int tid, int enabled)
                   (long)tid, (long)enabled, 0L, 0L);
 }
 
-static long
-dp_cmd_render_event(const struct dp_trace_event *e,
-                    char *out, unsigned long out_sz,
-                    struct dp_render_ctx *ctx)
-{
-   return syscall(TILCK_CMD_SYSCALL,
-                  TILCK_CMD_DP_TRACE_RENDER_EVENT,
-                  (long)e, (long)out, (long)out_sz, (long)ctx);
-}
+/*
+ * Trace events are now rendered locally by tr_render_event()
+ * (userapps/dp/tr_render.c) using metadata read from
+ * /syst/tracing/metadata. The kernel-side renderer the wrapper used
+ * to call (TILCK_CMD_DP_TRACE_RENDER_EVENT) is being removed in a
+ * follow-up cleanup commit; the slot is still defined as a
+ * deprecated NULL.
+ */
 
 static long
 dp_cmd_get_sys_name(unsigned sys_n, char *buf, unsigned long buf_sz)
@@ -172,6 +172,17 @@ static void show_banner(void)
                    RESET_ATTRS, errno);
       return;
    }
+
+   /*
+    * Mirror the kernel-side toggles into the userspace renderer's
+    * local state. The renderer reads these flags when deciding
+    * whether to render the ENTER event for non-blocking syscalls
+    * (`force_exp_block`) and whether to truncate large buffers
+    * (`dump_big_bufs`). Pushing them after every banner refresh
+    * keeps the renderer in sync without needing its own polling.
+    */
+   tr_set_force_exp_block(st.force_exp_block ? true : false);
+   tr_set_dump_big_bufs(st.dump_big_bufs ? true : false);
 
    filter_buf[0] = '\0';
    rc = dp_cmd_get_filter(filter_buf, sizeof(filter_buf));
@@ -476,7 +487,7 @@ trace_live_loop(int events_fd)
 
       if (n == (ssize_t)sizeof(ev)) {
 
-         long rc = dp_cmd_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
+         long rc = tr_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
 
          if (rc > 0)
             dp_write_raw_int(rbuf, (int)rc);
@@ -553,7 +564,7 @@ static int dump_remaining_events(int events_fd)
 
          if (c == 'n' || c == 'N') {
 
-            long rc = dp_cmd_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
+            long rc = tr_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
 
             if (rc > 0)
                dp_write_raw_int(rbuf, (int)rc);
@@ -710,6 +721,7 @@ void dp_run_tracer_screen(void)
     * raw mode, alt buffer if video, cursor hidden, stdin
     * non-blocking. We just take over the entire content area.
     */
+   tr_meta_init();
    dp_set_cursor_enabled(true);
    dp_clear();
    dp_move_cursor(1, 1);
@@ -730,6 +742,7 @@ void dp_run_tracer_screen(void)
 
 int dp_run_tracer(void)
 {
+   tr_meta_init();
    dp_init_layout();
    dp_term_setup();
 
