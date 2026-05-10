@@ -231,10 +231,14 @@ render_one_task(const struct dp_task_info *t, struct render_opts opts)
 
    state_to_str(state_str, t->state, t->stopped, t->traced);
 
+   /* Master rendered tty=0 for kernel threads (kthreads have no
+    * controlling tty). Mirror that here. */
+   const int ttynum = t->is_kthread ? 0 : t->tty;
+
    if (opts.plain_text) {
 
       dp_write_raw(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
-                   state_str, t->tty, path);
+                   state_str, ttynum, path);
       dp_write_raw("\r\n");
       return;
    }
@@ -256,12 +260,12 @@ render_one_task(const struct dp_task_info *t, struct render_opts opts)
       snprintf(rev_fmt, sizeof(rev_fmt),
                REVERSE_VIDEO "%s" RESET_ATTRS, fmt);
       dp_writeln(rev_fmt, t->tid, t->pgid, t->sid, t->parent_pid,
-                 state_str, t->tty, path);
+                 state_str, ttynum, path);
 
    } else {
 
       dp_writeln(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
-                 state_str, t->tty, path);
+                 state_str, ttynum, path);
    }
 }
 
@@ -597,7 +601,7 @@ dp_tasks_keypress(struct key_event ke)
 }
 
 static struct dp_screen dp_tasks_screen = {
-   .index = 1,
+   .index = 3,
    .label = "Tasks",
    .draw_func = dp_show_tasks,
    .on_dp_enter = dp_tasks_enter,

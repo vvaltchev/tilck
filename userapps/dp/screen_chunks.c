@@ -228,7 +228,7 @@ static void dp_show_chunks(void)
 }
 
 static struct dp_screen dp_chunks_screen = {
-   .index = 3,
+   .index = 5,
    .label = "MemChunks",
    .draw_func = dp_show_chunks,
    .on_dp_enter = dp_chunks_on_enter,

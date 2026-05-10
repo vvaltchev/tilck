@@ -42,22 +42,27 @@ static int row;
  * known bits in a way that matches what mem_region_extra_to_str()
  * used to print. If the kernel adds new bits, we render them as hex.
  */
-#define MEM_REG_EXTRA_RAMDISK   (1u << 0)
-#define MEM_REG_EXTRA_KERNEL    (1u << 1)
-#define MEM_REG_EXTRA_LOWMEM    (1u << 2)
-#define MEM_REG_EXTRA_FRAMEBUF  (1u << 3)
+#define MEM_REG_EXTRA_RAMDISK     (1u << 0)
+#define MEM_REG_EXTRA_KERNEL      (1u << 1)
+#define MEM_REG_EXTRA_LOWMEM      (1u << 2)
+#define MEM_REG_EXTRA_FRAMEBUFFER (1u << 3)
+#define MEM_REG_EXTRA_DMA         (1u << 4)
 
+/* Mirrors kernel/mm/system_mmap.c::mem_region_extra_to_str. Strings
+ * are 4 chars to keep MemMap rows column-aligned with the kernel's
+ * dp_sys_mmap.c output. Multi-bit combos render as MIXD. */
 static const char *
 extra_to_str(unsigned extra)
 {
    switch (extra) {
-      case 0:                      return "    ";
-      case MEM_REG_EXTRA_RAMDISK:  return "RD  ";
-      case MEM_REG_EXTRA_KERNEL:   return "KRN ";
-      case MEM_REG_EXTRA_LOWMEM:   return "LOW ";
-      case MEM_REG_EXTRA_FRAMEBUF: return "FB  ";
+      case 0:                          return "    ";
+      case MEM_REG_EXTRA_RAMDISK:      return "RDSK";
+      case MEM_REG_EXTRA_KERNEL:       return "KRNL";
+      case MEM_REG_EXTRA_LOWMEM:       return "LMRS";
+      case MEM_REG_EXTRA_FRAMEBUFFER:  return "FBUF";
+      case MEM_REG_EXTRA_DMA:          return "DMA ";
    }
-   return "????";
+   return "MIXD";
 }
 
 /* Mirrors x86's MEM_TYPE_* (UC, WC, R1, R2, WT, WP, WB, UC-). */
@@ -189,7 +194,7 @@ static void dp_show_mmap(void)
 }
 
 static struct dp_screen dp_mmap_screen = {
-   .index = 5,
+   .index = 1,
    .label = "MemMap",
    .draw_func = dp_show_mmap,
    .on_dp_enter = dp_mmap_on_enter,

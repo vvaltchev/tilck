@@ -83,10 +83,13 @@ static void dp_show_irqs(void)
       return;
    }
 
-   if (stats.slow_timer_count) {
-      dp_writeln("   Slow timer irq handler counter: %u",
-                 stats.slow_timer_count);
-   }
+   /*
+    * Always render this line; master gates it on KRN_TRACK_NESTED_INTERR
+    * (compile-time), but the counter is set to 0 when that's off, so
+    * showing it unconditionally costs nothing and saves a kopt lookup.
+    */
+   dp_writeln("   Slow timer irq handler counter: %u",
+              stats.slow_timer_count);
 
    if (stats.ticks_at_snapshot > timer_hz) {
       const unsigned long secs =
@@ -120,18 +123,27 @@ static void dp_show_irqs(void)
       }
    }
 
-   /* Unmasked legacy IRQs (0..15) */
-   dp_writeln(" ");
-   dp_writeln("Unmasked IRQs:");
-   row--;          /* keep the next prints on the same line as the header */
-   dp_write_raw(" ");
+   /* Unmasked legacy IRQs (0..15). Build the whole line in a single
+    * dp_writeln so it lands in the buffer; the previous version mixed
+    * dp_write_raw (direct VT100) with dp_writeln (buffered) and the
+    * unmasked-IRQ list ended up painted over the panel's title bar
+    * instead of on its own line. */
+   {
+      char line[80];
+      char *p = line;
+      char *end = line + sizeof(line);
 
-   for (int i = 0; i < 16; i++) {
-      if (stats.unmasked_mask_lo16 & (1u << i))
-         dp_write_raw("#%d ", i);
+      p += snprintf(p, (size_t)(end - p), "Unmasked IRQs: ");
+
+      for (int i = 0; i < 16 && p < end; i++) {
+
+         if (stats.unmasked_mask_lo16 & (1u << i))
+            p += snprintf(p, (size_t)(end - p), "#%d ", i);
+      }
+
+      dp_writeln(" ");
+      dp_writeln("%s", line);
    }
-
-   dp_writeln(" ");
 }
 
 static struct dp_screen dp_irqs_screen = {
