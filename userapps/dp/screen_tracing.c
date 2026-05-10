@@ -733,6 +733,17 @@ int dp_run_tracer(void)
    dp_init_layout();
    dp_term_setup();
 
+   /*
+    * dp_term_setup hides the cursor (the panel UI doesn't want one),
+    * but the tracer's banner ends with a "> " prompt and several
+    * commands ('e', 'k', 't') drop into a line editor — those need
+    * the cursor visible so the user can see what they're typing.
+    * Master called dp_set_cursor_enabled(true) on entry to
+    * dp_tracing_screen for the same reason; mirror that here.
+    * dp_term_restore at exit re-enables it for the host shell.
+    */
+   dp_set_cursor_enabled(true);
+
    dp_clear();
    dp_move_cursor(1, 1);
    show_banner();
