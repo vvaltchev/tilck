@@ -357,8 +357,12 @@ dump_task_list(bool kernel_tasks, bool plain_text)
    for (int i = 0; i < dp_tasks_count; i++)
       render_one_task(&dp_tasks_buf[i], opts);
 
-   if (!plain_text)
-      dp_writeln(" ");
+   /*
+    * No trailing dp_writeln(" "). The painter naturally clears
+    * unused rows below the last task, so a buffered blank line would
+    * just inflate row_max (and therefore the "rows X-Y of Z" counter)
+    * without any visual effect.
+    */
 }
 
 /* ---------------------------- panel API ------------------------------ */

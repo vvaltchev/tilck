@@ -231,7 +231,14 @@ dp_main_handle_keypress(struct key_event ke)
 
    } else if (!strcmp(ke.seq, DP_KEY_PAGE_DOWN)) {
 
-      if (dp_ctx->row_off + dp_screen_rows < dp_ctx->row_max) {
+      /*
+       * Scroll one row down if there is any unviewed content below
+       * the viewport. Last visible relrow is row_off + screen_rows -
+       * 1, so unviewed content exists when that's strictly less than
+       * row_max — equivalently, row_off + screen_rows <= row_max.
+       * Strict `<` was off by one and stranded the last row.
+       */
+      if (dp_ctx->row_off + dp_screen_rows <= dp_ctx->row_max) {
          dp_ctx->row_off++;
          /* Pure scroll: same buffer, just re-clip the viewport. */
          need_paint = true;
