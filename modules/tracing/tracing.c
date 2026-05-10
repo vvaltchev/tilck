@@ -15,8 +15,11 @@
 #include <tilck/kernel/syscalls.h>
 #include <tilck/kernel/debug_utils.h>
 #include <tilck/kernel/interrupts.h>
+#include <tilck/kernel/errno.h>
 
 #include <tilck/mods/tracing.h>
+#include <tilck/mods/sysfs.h>
+#include <tilck/mods/sysfs_utils.h>
 
 #define TRACE_BUF_SIZE                       (128 * KB)
 
@@ -860,6 +863,61 @@ tracing_init_oom_panic(const char *buf_name)
    panic("Unable to allocate %s in init_tracing()", buf_name);
 }
 
+/* ----------------- /syst/tracing/events stream file ------------------- */
+
+static offt
+tracing_events_load(struct sysobj *obj, void *data,
+                    void *buf, offt sz, offt off)
+{
+   if (sz < (offt)sizeof(struct trace_event))
+      return -EINVAL;
+
+   while (true) {
+
+      if (read_trace_event_noblock((struct trace_event *)buf))
+         return (offt)sizeof(struct trace_event);
+
+      if (pending_signals())
+         return -EINTR;
+
+      kcond_wait(&tracing_cond, NULL, KCOND_WAIT_FOREVER);
+   }
+}
+
+static const struct sysobj_prop_type tracing_events_prop_type = {
+   .buf_type = SYSFS_BUF_STREAM,
+   .load     = &tracing_events_load,
+};
+
+DEF_STATIC_SYSOBJ_PROP(events, &tracing_events_prop_type);
+
+DEF_STATIC_SYSOBJ_TYPE(tracing_events_sysobj_type,
+                       &prop_events,
+                       NULL);
+
+static void
+register_tracing_sysfs_obj(void)
+{
+   struct sysobj *dir = sysfs_create_empty_obj();
+
+   if (!dir)
+      return;
+
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, "tracing", dir) < 0) {
+      sysfs_destroy_unregistered_obj(dir);
+      return;
+   }
+
+   struct sysobj *events =
+      sysfs_create_obj(&tracing_events_sysobj_type, NULL, NULL);
+
+   if (!events)
+      return;       /* dir stays registered as an empty directory */
+
+   if (sysfs_register_obj(NULL, dir, "events", events) < 0)
+      sysfs_destroy_unregistered_obj(events);
+}
+
 void
 init_trace_printk(void)
 {
@@ -907,6 +965,10 @@ init_tracing(void)
    tracing_allocate_slots_for_params();
 
    set_traced_syscalls("*");
+
+   /* Expose /syst/tracing/events for the userspace `dp` tool. */
+   register_tracing_sysfs_obj();
+
    __tracing_initialized = true;
 }
 
