@@ -36,6 +36,19 @@
 
 #if MOD_tracing
 #include <tilck/mods/tracing.h>
+
+/*
+ * The userspace dp_trace_event mirror in <tilck/common/dp_abi.h>
+ * MUST stay byte-compatible with the kernel struct trace_event,
+ * because the kernel emits trace_event-sized records straight into
+ * /syst/tracing/events and userspace reads them as dp_trace_events.
+ * Catch any drift at build time.
+ */
+STATIC_ASSERT(sizeof(struct dp_trace_event) == sizeof(struct trace_event));
+STATIC_ASSERT(sizeof(struct dp_syscall_event_data) ==
+              sizeof(struct syscall_event_data));
+STATIC_ASSERT(sizeof(struct dp_printk_event_data) ==
+              sizeof(struct printk_event_data));
 #endif
 
 #ifdef arch_x86_family
@@ -602,6 +615,69 @@ tilck_sys_dp_task_set_traced(ulong tid, ulong enabled, ulong _3, ulong _4)
    return rc;
 }
 
+static int
+tilck_sys_dp_trace_get_stats(ulong u_out, ulong _2, ulong _3, ulong _4)
+{
+   struct dp_trace_stats out = {
+      .force_exp_block    = tracing_is_force_exp_block_enabled() ? 1 : 0,
+      .dump_big_bufs      = tracing_are_dump_big_bufs_on() ? 1 : 0,
+      .enabled            = tracing_is_enabled() ? 1 : 0,
+      .printk_lvl         = tracing_get_printk_lvl(),
+      .sys_traced_count   = get_traced_syscalls_count(),
+      .tasks_traced_count = get_traced_tasks_count(),
+   };
+
+   if (user_out_of_range((void *)u_out, sizeof(out)))
+      return -EFAULT;
+
+   if (copy_to_user((void *)u_out, &out, sizeof(out)))
+      return -EFAULT;
+
+   return 0;
+}
+
+static int
+tilck_sys_dp_trace_get_sys_name(ulong sys_n, ulong u_buf,
+                                ulong buf_sz, ulong _4)
+{
+   const char *name;
+   size_t len, cap;
+
+   if (buf_sz == 0)
+      return -EINVAL;
+
+   if (user_out_of_range((void *)u_buf, buf_sz))
+      return -EFAULT;
+
+   name = tracing_get_syscall_name((u32)sys_n);
+
+   if (!name)
+      return -ENOENT;
+
+   len = strlen(name);
+   cap = (len + 1 < buf_sz) ? len + 1 : buf_sz;
+
+   if (copy_to_user((void *)u_buf, name, cap))
+      return -EFAULT;
+
+   /* Force NUL termination at the last byte if the name had to be
+    * truncated. */
+   if (cap == buf_sz) {
+      char zero = '\0';
+      if (copy_to_user((char *)u_buf + buf_sz - 1, &zero, 1))
+         return -EFAULT;
+   }
+
+   return (int)(cap - 1);   /* length excluding the trailing NUL */
+}
+
+static int
+tilck_sys_dp_trace_set_enabled(ulong enabled, ulong _2, ulong _3, ulong _4)
+{
+   tracing_set_enabled(enabled ? true : false);
+   return 0;
+}
+
 #else  /* !MOD_tracing */
 
 static int
@@ -618,6 +694,24 @@ tilck_sys_dp_trace_get_filter(ulong _1, ulong _2, ulong _3, ulong _4)
 
 static int
 tilck_sys_dp_task_set_traced(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_get_stats(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_get_sys_name(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_set_enabled(ulong _1, ulong _2, ulong _3, ulong _4)
 {
    return -EOPNOTSUPP;
 }
@@ -648,4 +742,10 @@ void dp_data_register(void)
                       tilck_sys_dp_trace_get_filter);
    register_tilck_cmd(TILCK_CMD_DP_TASK_SET_TRACED,
                       tilck_sys_dp_task_set_traced);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_GET_STATS,
+                      tilck_sys_dp_trace_get_stats);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_GET_SYS_NAME,
+                      tilck_sys_dp_trace_get_sys_name);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_ENABLED,
+                      tilck_sys_dp_trace_set_enabled);
 }

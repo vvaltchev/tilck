@@ -127,3 +127,6 @@ int  dp_run_panel(void);
 
 /* One-shot ps mode (screen_tasks.c). */
 int  dp_run_ps(void);
+
+/* Tracer mode (screen_tracing.c). */
+int  dp_run_tracer(void);

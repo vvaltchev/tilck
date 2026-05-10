@@ -19,16 +19,12 @@ static int tracer_tool(int argc, char **argv)
    }
 
    /*
-    * Tracer mode is still served by the in-kernel TUI for now; Phase 8
-    * replaces this with a userspace tracer panel that reads
-    * /syst/tracing/events.
+    * Tracer mode is now a userspace TUI: dp_run_tracer() drives the
+    * banner + key dispatch, talks to the kernel via the TILCK_CMD_DP_
+    * TRACE_* sub-commands, and reads events from /syst/tracing/events
+    * while the user has tracing enabled.
     */
-   int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_TRACING_TOOL);
-
-   if (rc < 0)
-      printf("ERROR: tracing not compiled-in\n");
-
-   return rc;
+   return dp_run_tracer();
 }
 
 static int ps_tool(int argc, char **argv)
@@ -57,9 +53,9 @@ static int debug_panel(int argc, char **argv)
    }
 
    /*
-    * Plain `dp` runs the userspace TUI: it pulls kernel state via the
-    * TILCK_CMD_DP_GET_* sub-commands and the /syst/* sysfs trees, then
-    * renders panels with the local termutil/dp_input infrastructure.
+    * Plain `dp` runs the userspace TUI: it pulls kernel state via
+    * the TILCK_CMD_DP_GET_  sub-commands and the /syst/  sysfs trees,
+    * then renders panels with the local termutil/dp_input layer.
     */
    return dp_run_panel();
 }

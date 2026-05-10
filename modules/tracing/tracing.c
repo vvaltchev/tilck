@@ -905,24 +905,21 @@ DEF_STATIC_SYSOBJ_TYPE(tracing_events_sysobj_type,
 static void
 register_tracing_sysfs_obj(void)
 {
-   struct sysobj *dir = sysfs_create_empty_obj();
-
-   if (!dir)
-      return;
-
-   if (sysfs_register_obj(NULL, &sysfs_root_obj, "tracing", dir) < 0) {
-      sysfs_destroy_unregistered_obj(dir);
-      return;
-   }
-
-   struct sysobj *events =
+   /*
+    * The `tracing` object IS a directory (every sysobj is), and the
+    * `events` prop on it becomes the file /syst/tracing/events. The
+    * earlier shape — an empty `tracing` dir holding a separate
+    * `events` child object — produced /syst/tracing/events/events,
+    * which made open("/syst/tracing/events") return EISDIR.
+    */
+   struct sysobj *tracing_obj =
       sysfs_create_obj(&tracing_events_sysobj_type, NULL, NULL);
 
-   if (!events)
-      return;       /* dir stays registered as an empty directory */
+   if (!tracing_obj)
+      return;
 
-   if (sysfs_register_obj(NULL, dir, "events", events) < 0)
-      sysfs_destroy_unregistered_obj(events);
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, "tracing", tracing_obj) < 0)
+      sysfs_destroy_unregistered_obj(tracing_obj);
 }
 
 #else  /* !MOD_sysfs */

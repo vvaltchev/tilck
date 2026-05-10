@@ -45,9 +45,12 @@ enum tilck_cmd {
    TILCK_CMD_DP_TRACE_SET_FILTER       = 20,
    TILCK_CMD_DP_TRACE_GET_FILTER       = 21,
    TILCK_CMD_DP_TASK_SET_TRACED        = 22,
+   TILCK_CMD_DP_TRACE_GET_STATS        = 23,
+   TILCK_CMD_DP_TRACE_GET_SYS_NAME     = 24,
+   TILCK_CMD_DP_TRACE_SET_ENABLED      = 25,
 
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 23,
+   TILCK_CMD_COUNT               = 26,
 };
 
 #if defined(__x86_64__)

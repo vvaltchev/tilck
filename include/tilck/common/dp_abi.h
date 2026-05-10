@@ -16,7 +16,84 @@
 
 #define DP_TASK_NAME_MAX     32
 #define DP_TRACE_FILTER_MAX  256
+
+/*
+ * Userspace mirror of <tilck/mods/tracing.h>'s trace_event ABI. The
+ * kernel emits these directly into /syst/tracing/events, so the
+ * struct layouts here MUST stay byte-compatible with the kernel
+ * versions. dp_data.c sanity-checks this with STATIC_ASSERTs.
+ *
+ * The userspace dp tool reads one struct dp_trace_event per read()
+ * from /syst/tracing/events. DP_PRINTK_BUF_SIZE matches the kernel's
+ * struct printk_event_data.buf size; DP_KERNEL_FMT0_SIZE matches the
+ * kernel's anonymous fmt0 union (64 + 64 + 32 + 16) inside struct
+ * syscall_event_data — that's where the kernel stashes IN-direction
+ * parameter previews. We don't render parameters in this MVP and
+ * just expose the storage as an opaque blob.
+ */
+#define DP_PRINTK_BUF_SIZE       192
+#define DP_KERNEL_FMT0_SIZE      176
+
+enum dp_trace_event_type {
+   dp_te_invalid           = 0,
+   dp_te_sys_enter         = 1,
+   dp_te_sys_exit          = 2,
+   dp_te_printk            = 3,
+   dp_te_signal_delivered  = 4,
+   dp_te_killed            = 5,
+};
+
+struct dp_syscall_event_data {
+
+   u32   sys;
+   long  retval;
+   ulong args[6];
+
+   char  saved_params[DP_KERNEL_FMT0_SIZE];
+};
+
+struct dp_printk_event_data {
+   short level;
+   u8    in_irq;
+   u8    _pad;
+   char  buf[DP_PRINTK_BUF_SIZE];
+};
+
+struct dp_signal_event_data {
+   int signum;
+};
+
+struct dp_trace_event {
+
+   int  type;          /* enum dp_trace_event_type */
+   int  tid;
+   u64  sys_time;
+
+   union {
+      struct dp_syscall_event_data sys_ev;
+      struct dp_printk_event_data  p_ev;
+      struct dp_signal_event_data  sig_ev;
+   };
+};
+
+/*
+ * Aggregate snapshot of the tracing module's runtime state — counts
+ * + a couple of toggles + the printk-cutoff level. The userspace
+ * tracer panel reads this once per refresh to populate the stats
+ * banner.
+ */
+struct dp_trace_stats {
+
+   u8   force_exp_block;     /* 0/1 — "always ENTER+EXIT" mode */
+   u8   dump_big_bufs;       /* 0/1 — "Big bufs" toggle */
+   u8   enabled;             /* 0/1 — global tracing on/off */
+   u8   reserved;
+   s32  printk_lvl;          /* trace_printk verbosity threshold */
+   s32  sys_traced_count;    /* number of syscalls in the filter */
+   s32  tasks_traced_count;  /* number of tasks with .traced=true */
+};
 #define DP_IRQ_VECTORS       256
+#define DP_SYS_NAME_MAX      48
 
 /*
  * One row in the Tasks panel.
