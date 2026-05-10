@@ -146,23 +146,34 @@ static void paint_panel(void)
                 dp_screen_rows,
                 dp_screen_start_row,
                 dp_start_col,
-                DP_W);
+                DP_W,
+                dp_ctx->static_rows);
 }
 
 static void paint_footer(void)
 {
    char buf[64];
    int rc;
-   int row_to = dp_ctx->row_off + dp_screen_rows;
 
-   if (row_to > dp_ctx->row_max)
-      row_to = dp_ctx->row_max;
+   /*
+    * The "rows X - Y of Z" footer reflects the SCROLLABLE region
+    * only; the static area at the top is always visible and not part
+    * of the scroll counter. With static_rows=0 the math degenerates
+    * to the original buffer-relative numbers.
+    */
+   const int scroll_rows  = dp_screen_rows - dp_ctx->static_rows;
+   const int scroll_total = dp_ctx->row_max - dp_ctx->static_rows + 1;
+
+   int row_to = dp_ctx->row_off + scroll_rows;
+
+   if (row_to > scroll_total)
+      row_to = scroll_total;
 
    rc = snprintf(buf, sizeof(buf),
                  "[rows %02d - %02d of %02d]",
                  dp_ctx->row_off + 1,
-                 row_to + 1,
-                 dp_ctx->row_max + 1);
+                 row_to,
+                 scroll_total);
 
    /* Sit on the bottom border line, near the right edge. */
    dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);

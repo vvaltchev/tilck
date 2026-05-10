@@ -68,8 +68,27 @@ struct dp_screen {
    int index;
    const char *label;
 
-   /* Scroll / overflow state, used by termutil's dp_write(). */
+   /*
+    * Number of rows at the top of the panel that are pinned in place.
+    * The painter draws buffer rows [0, static_rows) at fixed positions
+    * and the scrollable region (rows >= static_rows) is offset by
+    * row_off. Default 0 means "everything scrolls", which is what the
+    * non-Tasks panels want; Tasks sets it to the relrow of the first
+    * task so the action menu + table header stay anchored as the user
+    * scrolls through tasks.
+    */
+   int static_rows;
+
+   /*
+    * Scroll offset within the SCROLLABLE region (i.e., rows
+    * [static_rows, row_max]). row_off=0 means the first scrollable
+    * row sits just below the static area; row_off=K means K rows of
+    * the scrollable region have been scrolled past the top of the
+    * scrollable viewport. The static area is unaffected.
+    */
    int row_off;
+
+   /* Highest panel-local relrow ever written by draw_func. */
    int row_max;
 
    void (*first_setup)(void);

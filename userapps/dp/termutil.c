@@ -220,27 +220,31 @@ void dp_write(int row, int col, const char *fmt, ...)
 }
 
 /*
- * Paint dp_buf onto the terminal. Each line of the panel content area
- * (from term_first_row downwards, screen_rows lines) gets cleared with
- * `panel_w` spaces (preserves the right border, which `\033[K` would
- * wipe), then any chunks for that row are emitted at their stored
- * column.
+ * Paint dp_buf onto the terminal. Splits the panel content area into
+ * two regions:
  *
- * Lines beyond the buffer (panel content shorter than the viewport, or
- * scrolled past the end) are emitted as the bare clearing-spaces row.
+ *   Static region — panel rows [0, static_rows). These map directly
+ *   onto buffer rows [0, static_rows) regardless of row_off, so any
+ *   "header" content the screen wrote into the first few rows stays
+ *   pinned at the top while the user scrolls.
+ *
+ *   Scrollable region — panel rows [static_rows, screen_rows). These
+ *   map onto buffer rows [static_rows + row_off, …]. row_off advances
+ *   the scrollable view but leaves the static region alone.
+ *
+ *   Default static_rows == 0 means "everything scrolls" — the original
+ *   behavior, used by every screen that doesn't opt in.
+ *
+ * Each line is cleared with panel_w-2 spaces before its chunks are
+ * emitted (preserves the right border, which `\033[K` would wipe).
  */
 void dp_buf_paint(int row_off,
                   int screen_rows,
                   int term_first_row,
                   int panel_left_col,
-                  int panel_w)
+                  int panel_w,
+                  int static_rows)
 {
-   /*
-    * Build the clearing string once. panel_w is the panel rectangle
-    * width; we want to clear from panel_left_col + 1 (just after the
-    * left border) up to panel_left_col + panel_w - 1 (just before the
-    * right border) — that is, panel_w - 2 spaces.
-    */
    char spaces[DP_W];
    const int clear_len = panel_w - 2 < (int)sizeof(spaces)
                          ? panel_w - 2
@@ -249,8 +253,8 @@ void dp_buf_paint(int row_off,
 
    for (int i = 0; i < screen_rows; i++) {
 
-      const int relrow = row_off + i;
       const int term_row = term_first_row + i;
+      const int relrow = (i < static_rows) ? i : i + row_off;
 
       /* Position to start of content area and overwrite with spaces. */
       dp_move_cursor(term_row, panel_left_col + 1);

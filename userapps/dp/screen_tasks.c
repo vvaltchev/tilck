@@ -51,6 +51,14 @@ static int dp_tasks_count;
  */
 static int row;
 
+/*
+ * Panel-local row of the first task in the table. Captured during the
+ * (panel-mode) render pass so sel_keypress can translate sel_index
+ * into the buffer relrow of the highlighted line and decide whether
+ * a row_off bump is needed to keep it visible.
+ */
+static int first_task_relrow;
+
 /* Selection-mode state. */
 static enum {
    tm_default,
@@ -326,6 +334,26 @@ dump_task_list(bool kernel_tasks, bool plain_text)
       }
    }
 
+   if (!plain_text) {
+
+      /* About to render the first task at this row. Capture the
+       * panel-local relrow so sel_keypress can later translate
+       * sel_index → buffer position and scroll-on-edge.
+       *
+       * (In plain-text ps mode there's no scrolling viewport, so we
+       * skip the capture; first_task_relrow is unused there.)
+       */
+      first_task_relrow = row - dp_screen_start_row;
+
+      /*
+       * Pin the action menu + table header + hr separator (everything
+       * above the first task row) to the top of the panel: those rows
+       * shouldn't slide out of view when the user scrolls through a
+       * long task list.
+       */
+      dp_ctx->static_rows = first_task_relrow;
+   }
+
    for (int i = 0; i < dp_tasks_count; i++)
       render_one_task(&dp_tasks_buf[i], opts);
 
@@ -378,21 +406,77 @@ static void dp_tasks_enter(void)
    dp_tasks_refresh();
 }
 
+/*
+ * If the highlighted task's buffer row falls outside the SCROLLABLE
+ * viewport (panel rows [static_rows, screen_rows)), scroll by the
+ * minimum amount that brings it back inside. Called whenever
+ * sel_index changes (UP/DOWN arrows) or when entering select mode
+ * (ENTER).
+ *
+ * The row_off semantic is the offset within the scrollable region —
+ * the static rows above (action menu + table header + hr) stay
+ * pinned regardless. So sel is visible iff
+ *   sel_relrow - row_off ∈ [static_rows, screen_rows - 1]
+ * and we clamp row_off to that interval.
+ *
+ * Uses the previous render's first_task_relrow / static_rows; that's
+ * safe because the table layout in this screen doesn't change between
+ * renders.
+ */
+static void sel_scroll_into_view(void)
+{
+   const int sel_relrow = first_task_relrow + sel_index;
+   const int static_rows = dp_ctx->static_rows;
+
+   if (sel_relrow - dp_ctx->row_off < static_rows)
+      dp_ctx->row_off = sel_relrow - static_rows;
+
+   if (sel_relrow - dp_ctx->row_off > dp_screen_rows - 1)
+      dp_ctx->row_off = sel_relrow - dp_screen_rows + 1;
+
+   if (dp_ctx->row_off < 0)
+      dp_ctx->row_off = 0;
+}
+
+/*
+ * Cursor-step UP/DOWN. Move sel by one task and let
+ * sel_scroll_into_view() pull the viewport along iff sel would now
+ * fall outside it. Inside the viewport sel moves freely without
+ * disturbing row_off — so e.g. UP from the last-visible row just
+ * walks the highlight up through the viewport (no scroll), and only
+ * an UP from the first-visible row triggers a one-row scroll.
+ */
+static void sel_step(int direction)
+{
+   sel_tid = -1;
+
+   if (direction < 0) {
+
+      if (sel_index > 0)
+         sel_index--;
+
+   } else {
+
+      if (sel_index < max_idx)
+         sel_index++;
+   }
+
+   sel_scroll_into_view();
+}
+
 static enum dp_kb_handler_action
 sel_keypress(struct key_event ke)
 {
    if (!ke.print_char) {
 
       if (!strcmp(ke.seq, DP_KEY_UP)) {
-         sel_tid = -1;
-         if (sel_index > 0) sel_index--;
+         sel_step(-1);
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
       }
 
       if (!strcmp(ke.seq, DP_KEY_DOWN)) {
-         sel_tid = -1;
-         if (sel_index < max_idx) sel_index++;
+         sel_step(+1);
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
       }
@@ -478,6 +562,7 @@ default_keypress(struct key_event ke)
 
    if (ke.print_char == DP_KEY_ENTER) {
       mode = tm_sel;
+      sel_scroll_into_view();   /* in case user PAGE-scrolled past tasks */
       ui_need_update = true;
       return dp_kb_handler_ok_and_continue;
    }

@@ -77,7 +77,8 @@ void dp_buf_paint(int row_off,
                   int screen_rows,
                   int term_first_row,
                   int panel_left_col,
-                  int panel_w);
+                  int panel_w,
+                  int static_rows);
 
 static inline const char *
 dp_sign_value_esc_color(long val)
