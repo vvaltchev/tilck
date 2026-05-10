@@ -76,6 +76,16 @@ enum sys_param_ui_type {
    ui_type_string,
 };
 
+/*
+ * Per-parameter "type" descriptor. The kernel only needs the bits
+ * required at trace-emit time (the `save` callback that copies user-
+ * pointer data into a saved-params slot, plus the slot_size used by
+ * the slot allocator) and at metadata-export time (name + ui_type,
+ * shipped to userspace via /syst/tracing/metadata). The dump
+ * callbacks that turn saved bytes back into colored ANSI strings now
+ * live in userspace dp (userapps/dp/tr_dump.c), dispatched by the
+ * stable enum tr_ptype_id.
+ */
 struct sys_param_type {
 
    const char *name;
@@ -83,14 +93,11 @@ struct sys_param_type {
 
    enum sys_param_ui_type ui_type;
 
-   /* Returns false if buf_size is too small */
+   /* Save callback: runs at trace-emit time (inside the syscall),
+    * copy_from_user's user-pointer data into the saved-params
+    * slot. NULL for ptypes whose entire value fits in the original
+    * arg register (e.g. ptype_int, ptype_oct, ptype_signum, ...). */
    bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
-
-   /* Returns false if dest_buf_size is too small */
-   bool (*dump)(ulong orig, char *b, long bs, long hlp, char *dst, size_t d_bs);
-
-   /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_val)(ulong val, long hlp, char *dest, size_t dest_buf_size);
 };
 
 enum sys_param_kind {
@@ -208,9 +215,11 @@ tracing_get_slot(struct trace_event *e,
 int
 tracing_get_param_idx(const struct syscall_info *si, const char *name);
 
-const char *
-get_errno_name(int errno);
-
+/* The errno-name lookup that used to live next to this declaration
+ * (modules/tracing/errno_names.c) was deleted along with the rest of
+ * the kernel-side renderer; userspace dp owns its own table now.
+ * The signal-name lookup stays — it's still called from
+ * kernel/exit.c and kernel/signal.c for plain printk debug output. */
 const char *
 get_signal_name(int signum);
 

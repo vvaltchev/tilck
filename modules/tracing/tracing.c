@@ -28,6 +28,10 @@
    #include <tilck/mods/sysfs_utils.h>
 #endif
 
+/* Defined in tracing_cmd.c; registers the TILCK_CMD_DP_TRACE_* /
+ * DP_TASK_* sub-commands the userspace tracer uses. */
+void tracing_register_dp_cmd_handlers(void);
+
 #define TRACE_BUF_SIZE                       (128 * KB)
 
 struct symbol_node {
@@ -1209,6 +1213,11 @@ init_tracing(void)
     * tool. MOD_tracing has a hard dep on MOD_sysfs (declared in
     * modules/tracing/module_deps), so this is unconditional. */
    register_tracing_sysfs_obj();
+
+   /* Register the TILCK_CMD_DP_TRACE_* / DP_TASK_* sub-commands the
+    * userspace tracer uses. They live in tracing_cmd.c so dp -t
+    * keeps working even when MOD_debugpanel is compiled out. */
+   tracing_register_dp_cmd_handlers();
 
    __tracing_initialized = true;
 }
