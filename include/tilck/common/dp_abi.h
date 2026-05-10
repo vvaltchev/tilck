@@ -92,6 +92,25 @@ struct dp_trace_stats {
    s32  sys_traced_count;    /* number of syscalls in the filter */
    s32  tasks_traced_count;  /* number of tasks with .traced=true */
 };
+
+/*
+ * Continuation context the kernel-side event renderer reads + updates
+ * across calls. The userspace tracer holds one of these per live loop
+ * and passes it by pointer to TILCK_CMD_DP_TRACE_RENDER_EVENT.
+ *
+ * The rendering of trace_printk events depends on the previous event
+ * to decide if the current line is a continuation of an incomplete
+ * line (same tid + sys_time + in_irq). This struct carries that state
+ * across events.
+ */
+struct dp_render_ctx {
+
+   u8   last_tp_incomplete_line;
+   u8   last_tp_in_irq;
+   u8   reserved[2];
+   s32  last_tp_tid;
+   u64  last_tp_sys_time;
+};
 #define DP_IRQ_VECTORS       256
 #define DP_SYS_NAME_MAX      48
 
@@ -268,4 +287,12 @@ struct dp_mtrr_info {
  *   a1 = ulong tid
  *   a2 = ulong enabled (0 or 1)
  *   returns: 0, or -ESRCH if no such task, -EPERM for kthreads/self
+ *
+ * TRACE_RENDER_EVENT:
+ *   a1 = const struct dp_trace_event __user *event
+ *   a2 = char __user *out
+ *   a3 = ulong out_sz
+ *   a4 = struct dp_render_ctx __user *ctx (read+updated; NULL allowed)
+ *   returns: number of bytes written to `out` (excluding any trailing
+ *   NUL the kernel may add), or -errno
  */

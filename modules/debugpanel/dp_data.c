@@ -678,6 +678,241 @@ tilck_sys_dp_trace_set_enabled(ulong enabled, ulong _2, ulong _3, ulong _4)
    return 0;
 }
 
+static int
+tilck_sys_dp_trace_set_force_exp_block(ulong v, ulong _2, ulong _3, ulong _4)
+{
+   tracing_set_force_exp_block(v ? true : false);
+   return 0;
+}
+
+static int
+tilck_sys_dp_trace_set_dump_big_bufs(ulong v, ulong _2, ulong _3, ulong _4)
+{
+   tracing_set_dump_big_bufs_opt(v ? true : false);
+   return 0;
+}
+
+static int
+tilck_sys_dp_trace_set_printk_lvl(ulong lvl, ulong _2, ulong _3, ulong _4)
+{
+   if ((long)lvl < 0 || (long)lvl > 100)
+      return -EINVAL;
+
+   tracing_set_printk_lvl((int)lvl);
+   return 0;
+}
+
+/*
+ * Returns a per-syscall 0/1 byte bitmap (1 byte per syscall, value 0
+ * or 1) up to MIN(buf_sz, MAX_SYSCALLS) bytes. The userspace tracer
+ * uses this to render the "Traced syscalls list" ('l' command).
+ */
+static int
+tilck_sys_dp_trace_get_traced_bitmap(ulong u_buf, ulong buf_sz,
+                                     ulong _3, ulong _4)
+{
+   u8 tmp[64];
+   ulong copied = 0;
+   ulong remaining;
+
+   if (!buf_sz)
+      return -EINVAL;
+
+   if (user_out_of_range((void *)u_buf, buf_sz))
+      return -EFAULT;
+
+   remaining = MIN(buf_sz, (ulong)MAX_SYSCALLS);
+
+   for (u32 i = 0; copied < remaining; ) {
+
+      ulong chunk = MIN(sizeof(tmp), remaining - copied);
+
+      for (ulong k = 0; k < chunk; k++, i++)
+         tmp[k] = tracing_is_enabled_on_sys(i) ? 1 : 0;
+
+      if (copy_to_user((u8 *)u_buf + copied, tmp, chunk))
+         return -EFAULT;
+
+      copied += chunk;
+   }
+
+   return (int)copied;
+}
+
+static int
+tilck_sys_dp_trace_get_in_buf_count(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return tracing_get_in_buffer_events_count();
+}
+
+/*
+ * Userspace-facing version of master's
+ * `dp_tracing_get_traced_list_str_cb` flow: walk every task, and for
+ * each `task.traced == true` task: write its tid into the user buffer
+ * AND clear the traced flag in-kernel atomically.
+ *
+ * The clear is required for parity with master's edit-traced-PIDs
+ * flow: the user is about to type a new comma-separated list of TIDs;
+ * we want the new list to fully replace the old one. Doing the clear
+ * here (under disable_preemption) makes the swap race-free.
+ *
+ * Returns the number of TIDs written to the buffer (which may be less
+ * than the actual traced count if max was too small — extra are still
+ * cleared).
+ */
+static int
+tilck_sys_dp_task_get_traced_tids_and_clear_cb(void *obj, void *arg)
+{
+   struct task *ti = obj;
+   struct {
+      s32 *buf;
+      ulong max;
+      ulong written;
+   } *ctx = arg;
+
+   if (!ti->traced)
+      return 0;
+
+   if (ctx->written < ctx->max) {
+
+      /*
+       * Stage into a kernel-side scratch s32 first; the caller will
+       * copy_to_user the whole array at once after the iteration ends.
+       */
+      ctx->buf[ctx->written] = ti->tid;
+      ctx->written++;
+   }
+
+   ti->traced = false;
+   return 0;
+}
+
+/*
+ * Render a single trace_event as a colored ANSI string for the
+ * userspace tracer. Defined in dp_trace_render.c — kept separate so
+ * the renderer (and the rend_bufs[] global it owns) lives in one
+ * file, while this dispatcher just marshals user pointers and
+ * forwards.
+ */
+int
+dp_trace_render_event(struct trace_event *e,
+                      char *out,
+                      size_t out_sz,
+                      struct dp_render_ctx *ctx);
+
+void dp_trace_render_init(void);
+
+static int
+tilck_sys_dp_trace_render_event(ulong u_event, ulong u_out,
+                                ulong out_sz, ulong u_ctx)
+{
+   struct trace_event ev;
+   struct dp_render_ctx ctx;
+   char *kbuf;
+   int rc;
+
+   if (!out_sz || out_sz > 4096)
+      return -EINVAL;
+
+   if (user_out_of_range((void *)u_event, sizeof(ev)))
+      return -EFAULT;
+
+   if (user_out_of_range((void *)u_out, out_sz))
+      return -EFAULT;
+
+   if (u_ctx) {
+
+      if (user_out_of_range((void *)u_ctx, sizeof(ctx)))
+         return -EFAULT;
+
+      if (copy_from_user(&ctx, (void *)u_ctx, sizeof(ctx)))
+         return -EFAULT;
+
+   } else {
+
+      bzero(&ctx, sizeof(ctx));
+   }
+
+   if (copy_from_user(&ev, (void *)u_event, sizeof(ev)))
+      return -EFAULT;
+
+   kbuf = kzmalloc(out_sz);
+
+   if (!kbuf)
+      return -ENOMEM;
+
+   rc = dp_trace_render_event(&ev, kbuf, out_sz, &ctx);
+
+   if (rc < 0)
+      goto out;
+
+   if (copy_to_user((void *)u_out, kbuf, (size_t)rc + 1)) {
+      rc = -EFAULT;
+      goto out;
+   }
+
+   if (u_ctx) {
+      if (copy_to_user((void *)u_ctx, &ctx, sizeof(ctx))) {
+         rc = -EFAULT;
+         goto out;
+      }
+   }
+
+out:
+   kfree2(kbuf, out_sz);
+   return rc;
+}
+
+static int
+tilck_sys_dp_task_get_traced_tids_and_clear(ulong u_buf, ulong max,
+                                            ulong _3, ulong _4)
+{
+   s32 *kbuf;
+   ulong sz;
+   int rc = 0;
+   struct {
+      s32 *buf;
+      ulong max;
+      ulong written;
+   } ctx;
+
+   if (!max || max > 1024)
+      return -EINVAL;
+
+   sz = max * sizeof(s32);
+
+   if (user_out_of_range((void *)u_buf, sz))
+      return -EFAULT;
+
+   kbuf = kzmalloc(sz);
+
+   if (!kbuf)
+      return -ENOMEM;
+
+   ctx.buf = kbuf;
+   ctx.max = max;
+   ctx.written = 0;
+
+   disable_preemption();
+   {
+      iterate_over_tasks(tilck_sys_dp_task_get_traced_tids_and_clear_cb, &ctx);
+   }
+   enable_preemption();
+
+   if (ctx.written) {
+      if (copy_to_user((void *)u_buf, kbuf, ctx.written * sizeof(s32))) {
+         rc = -EFAULT;
+         goto out;
+      }
+   }
+
+   rc = (int)ctx.written;
+
+out:
+   kfree2(kbuf, sz);
+   return rc;
+}
+
 #else  /* !MOD_tracing */
 
 static int
@@ -716,6 +951,50 @@ tilck_sys_dp_trace_set_enabled(ulong _1, ulong _2, ulong _3, ulong _4)
    return -EOPNOTSUPP;
 }
 
+static int
+tilck_sys_dp_trace_set_force_exp_block(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_set_dump_big_bufs(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_set_printk_lvl(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_get_traced_bitmap(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_get_in_buf_count(ulong _1, ulong _2, ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_task_get_traced_tids_and_clear(ulong _1, ulong _2,
+                                            ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
+static int
+tilck_sys_dp_trace_render_event(ulong _1, ulong _2,
+                                ulong _3, ulong _4)
+{
+   return -EOPNOTSUPP;
+}
+
 #endif
 
 /* ---------------------------- REGISTRATION -------------------------- */
@@ -748,4 +1027,22 @@ void dp_data_register(void)
                       tilck_sys_dp_trace_get_sys_name);
    register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_ENABLED,
                       tilck_sys_dp_trace_set_enabled);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_FORCE_EXP_BLOCK,
+                      tilck_sys_dp_trace_set_force_exp_block);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_DUMP_BIG_BUFS,
+                      tilck_sys_dp_trace_set_dump_big_bufs);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_PRINTK_LVL,
+                      tilck_sys_dp_trace_set_printk_lvl);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_GET_TRACED_BITMAP,
+                      tilck_sys_dp_trace_get_traced_bitmap);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_GET_IN_BUF_COUNT,
+                      tilck_sys_dp_trace_get_in_buf_count);
+   register_tilck_cmd(TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR,
+                      tilck_sys_dp_task_get_traced_tids_and_clear);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_RENDER_EVENT,
+                      tilck_sys_dp_trace_render_event);
+
+#if MOD_tracing
+   dp_trace_render_init();
+#endif
 }
