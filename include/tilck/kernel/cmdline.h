@@ -18,3 +18,10 @@ extern void (*self_test_to_run)(void);
     { #name, #alias, KOPT_TYPE_##type, &kopt_##name },
 
 void parse_kernel_cmdline(const char *cmdline);
+
+/*
+ * Register one read-only sysfs property per kopt under /syst/kopts/<name>.
+ * Must be called after parse_kernel_cmdline() and after init_sysfs() has
+ * created the root sysfs object. Implemented in kernel/cmdline.c.
+ */
+void register_kopts_sysfs(void);

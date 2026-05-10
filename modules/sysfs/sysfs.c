@@ -15,6 +15,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/sort.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "sysfs_int.h"
 #include "dents.c.h"
@@ -755,6 +756,7 @@ init_sysfs(void)
       panic("Unable to create default objects");
 
    sysfs_create_config_obj();
+   register_kopts_sysfs();
 }
 
 static struct module sysfs_module = {

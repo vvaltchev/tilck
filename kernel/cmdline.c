@@ -12,7 +12,11 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/elf_utils.h>
 #include <tilck/kernel/cmdline.h>
+#include <tilck/kernel/kmalloc.h>
 #include <tilck/kernel/test/cmdline.h>
+
+#include <tilck/mods/sysfs.h>
+#include <tilck/mods/sysfs_utils.h>
 
 const char *cmd_args[MAX_CMD_ARGS] = { "/initrd/bin/init", [1 ... 15] = NULL };
 void (*self_test_to_run)(void);
@@ -335,6 +339,107 @@ static void debug_check_all_kopts(void)
          panic("Cannot use 'cmd' as name or alias for kopt[%u]", i);
       }
    }
+}
+
+/*
+ * Map a kopt's runtime type to the matching read-only sysfs property
+ * type. Returns NULL for unknown types.
+ */
+static const struct sysobj_prop_type *
+kopt_sysfs_prop_type(enum kopt_type t)
+{
+   switch (t) {
+
+      case KOPT_TYPE_bool:
+         return &sysobj_ptype_ro_bool;
+
+      case KOPT_TYPE_long:
+         return &sysobj_ptype_ro_long;
+
+      case KOPT_TYPE_ulong:
+         return &sysobj_ptype_ro_ulong;
+
+      case KOPT_TYPE_wordstr:
+         /*
+          * The string-literal load() callback expects `data` to be the
+          * string itself, not a pointer to it. The wordstr value is
+          * fixed at boot (kopt_handle_wordstr stashes it in args_buf
+          * and never moves it), so capturing the dereferenced pointer
+          * at registration time is stable for the kernel's lifetime.
+          */
+         return &sysobj_ptype_ro_string_literal;
+
+      default:
+         return NULL;
+   }
+}
+
+void register_kopts_sysfs(void)
+{
+   const u32 n = ARRAY_SIZE(all_kopts);
+   struct sysobj *obj;
+   struct sysobj_type *type;
+   struct sysobj_prop **props;
+   void **prop_data;
+
+   if (!(obj = kzalloc_obj(struct sysobj)))
+      goto oom;
+
+   if (!(type = kzalloc_obj(struct sysobj_type)))
+      goto oom;
+
+   if (!(props = kzalloc_array_obj(struct sysobj_prop *, n + 1)))
+      goto oom;
+
+   if (!(prop_data = kzalloc_array_obj(void *, n)))
+      goto oom;
+
+   for (u32 i = 0; i < n; i++) {
+
+      struct sysobj_prop *p = kzalloc_obj(struct sysobj_prop);
+
+      if (!p)
+         goto oom;
+
+      p->name = all_kopts[i].name;
+      p->type = kopt_sysfs_prop_type(all_kopts[i].type);
+
+      if (!p->type) {
+         kfree_obj(p, struct sysobj_prop);
+         continue;       /* skip kopts of unhandled types */
+      }
+
+      props[i] = p;
+
+      if (all_kopts[i].type == KOPT_TYPE_wordstr) {
+
+         /*
+          * `data` field of all_kopts is &kopt_<name>, where kopt_<name>
+          * is a (const char *). Deref one level so the prop_data is
+          * the string itself, matching ro_string_literal's contract.
+          */
+         prop_data[i] = *(void **)all_kopts[i].data;
+
+      } else {
+
+         prop_data[i] = all_kopts[i].data;
+      }
+   }
+
+   props[n] = NULL;
+
+   type->name = "kopts";
+   type->properties = props;
+
+   sysobj_init(obj, type, NULL, prop_data);
+
+   if (sysfs_register_obj(NULL, &sysfs_root_obj, "kopts", obj) < 0)
+      printk("WARNING: failed to register /syst/kopts\n");
+
+   return;
+
+oom:
+   printk("WARNING: out of memory while registering /syst/kopts\n");
 }
 
 void parse_kernel_cmdline(const char *cmdline)
