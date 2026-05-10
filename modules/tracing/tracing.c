@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck_gen_headers/mod_sysfs.h>
+#include <tilck_gen_headers/config_kernel.h>
 
 #include <tilck/common/basic_defs.h>
 #include <tilck/common/printk.h>
@@ -879,16 +880,36 @@ tracing_events_load(struct sysobj *obj, void *data,
    if (sz < (offt)sizeof(struct trace_event))
       return -EINVAL;
 
-   while (true) {
+   if (read_trace_event_noblock((struct trace_event *)buf))
+      return (offt)sizeof(struct trace_event);
 
+   if (pending_signals())
+      return -EINTR;
+
+   /*
+    * Park for up to 100ms waiting for an event. Returning -EAGAIN on
+    * timeout (rather than looping back to a fresh kcond_wait) is the
+    * key to a responsive userspace tracer: the dp tool's live loop
+    * polls stdin between events, but the events read parks here in
+    * the kernel — without a bounded wait, a 'q' / Enter keypress
+    * sits in stdin until the next event arrives. With this 100ms
+    * cap, the read returns -EAGAIN ten times a second when idle, the
+    * userspace loop continues, picks up the keypress, and exits.
+    *
+    * Mirrors the cadence the in-kernel modules/debugpanel/dp_tracing.c
+    * TUI used (read_trace_event(&e, KRN_TIMER_HZ / 10)).
+    */
+   if (kcond_wait(&tracing_cond, NULL, KRN_TIMER_HZ / 10)) {
+
+      /* Woken by an event — try the noblock read once more. */
       if (read_trace_event_noblock((struct trace_event *)buf))
          return (offt)sizeof(struct trace_event);
-
-      if (pending_signals())
-         return -EINTR;
-
-      kcond_wait(&tracing_cond, NULL, KCOND_WAIT_FOREVER);
    }
+
+   if (pending_signals())
+      return -EINTR;
+
+   return -EAGAIN;
 }
 
 static const struct sysobj_prop_type tracing_events_prop_type = {
