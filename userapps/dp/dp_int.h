@@ -15,7 +15,7 @@
 #define DP_W   76
 #define DP_H   23
 
-/* Single-byte keys (raw byte values, same as the kernel uses). */
+/* Single-byte keys (raw byte values). */
 #define DP_KEY_BACKSPACE   0x7f
 #define DP_KEY_ESC         0x1b
 #define DP_KEY_ENTER       0x0d
@@ -23,26 +23,29 @@
 #define DP_KEY_CTRL_T      0x14
 
 /*
- * Multi-byte / function-key codes used after parsing an ESC sequence.
- * The numeric values are dp-private — they need not match anything in
- * the kernel because dp_input.c here defines them and the screens read
- * them. Prefixed DP_ to avoid colliding with linux/input.h's KEY_*.
+ * Multi-byte function keys: the actual canonical ESC sequences emitted
+ * by VT100/xterm-compatible terminals. dp_read_ke_from_tty() puts the
+ * raw bytes into key_event.seq verbatim (after normalizing a couple of
+ * variant forms — see dp_input.c), and screens compare them with these
+ * macros via strcmp. There is no symbolic enum in between: stdin
+ * already speaks the standard, so we use it directly.
  */
-#define DP_KEY_UP          1001
-#define DP_KEY_DOWN        1002
-#define DP_KEY_RIGHT       1003
-#define DP_KEY_LEFT        1004
-#define DP_KEY_HOME        1005
-#define DP_KEY_INS         1006
-#define DP_KEY_DEL         1007
-#define DP_KEY_END         1008
-#define DP_KEY_PAGE_UP     1009
-#define DP_KEY_PAGE_DOWN   1010
+#define DP_KEY_UP          "\x1b[A"
+#define DP_KEY_DOWN        "\x1b[B"
+#define DP_KEY_RIGHT       "\x1b[C"
+#define DP_KEY_LEFT        "\x1b[D"
+#define DP_KEY_HOME        "\x1b[H"
+#define DP_KEY_END         "\x1b[F"
+#define DP_KEY_INS         "\x1b[2~"
+#define DP_KEY_DEL         "\x1b[3~"
+#define DP_KEY_PAGE_UP     "\x1b[5~"
+#define DP_KEY_PAGE_DOWN   "\x1b[6~"
+
+#define DP_KEY_SEQ_MAX     8
 
 struct key_event {
-   bool pressed;
-   unsigned key;        /* one of DP_KEY_* (multi-byte), 0 if printable */
-   char print_char;     /* set if a printable single-byte char was typed */
+   char print_char;             /* single-byte char, 0 if ESC sequence */
+   char seq[DP_KEY_SEQ_MAX];    /* NUL-terminated raw ESC seq, "" if char */
 };
 
 enum dp_kb_handler_action {

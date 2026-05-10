@@ -92,82 +92,57 @@ read_single_byte(char *buf, int len)
    return 1; /* continue reading */
 }
 
+/*
+ * Translate the raw bytes in `buf` (terminated by the parser when an
+ * ESC sequence ends) into a key_event. For printable single bytes we
+ * set `print_char`; for ESC sequences we copy the raw bytes verbatim
+ * into `ke.seq`, with two normalizations so callers only need to
+ * compare against one canonical form per key:
+ *
+ *   ESC[1~ → ESC[H   (HOME)
+ *   ESC[4~ → ESC[F   (END)
+ *
+ * Bare ESC (the user pressed Escape and nothing followed) is handled
+ * the same way as a printable byte, with print_char = 0x1b.
+ */
 static void
-convert_seq_to_key(char *buf, struct key_event *ke)
+convert_seq_to_key(const char *buf, int len, struct key_event *ke)
 {
-   /* ESC [ <n> ~ */
-   static const unsigned helper_keys[6] = {
-      DP_KEY_HOME, DP_KEY_INS, DP_KEY_DEL,
-      DP_KEY_END, DP_KEY_PAGE_UP, DP_KEY_PAGE_DOWN,
-   };
+   if (len <= 0)
+      return;        /* leave ke zeroed */
 
-   if ((buf[0] >= 32 && buf[0] <= 127) || (buf[0] >= 1 && buf[0] <= 26)) {
+   if (len == 1 && (unsigned char)buf[0] >= 1 && (unsigned char)buf[0] <= 127) {
 
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = buf[0],
-         .key = 0,
-      };
-
-   } else if (buf[0] == DP_KEY_ESC && !buf[1]) {
-
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = buf[0],
-         .key = 0,
-      };
-
-   } else if (buf[0] == DP_KEY_ESC && buf[1] == '[') {
-
-      unsigned key = 0;
-
-      switch (buf[2]) {
-
-         case 'A':
-            key = DP_KEY_UP;
-            break;
-
-         case 'B':
-            key = DP_KEY_DOWN;
-            break;
-
-         case 'C':
-            key = DP_KEY_RIGHT;
-            break;
-
-         case 'D':
-            key = DP_KEY_LEFT;
-            break;
-
-         case '1':
-         case '2':
-         case '3':
-         case '4':
-         case '5':
-         case '6':
-
-            if (buf[3] == '~' && buf[2] >= '1' && buf[2] <= '6')
-               key = helper_keys[buf[2] - '1'];
-
-            break;
-
-         /* Compatibility keys, for TERM != linux */
-         case 'H':
-            key = DP_KEY_HOME;
-            break;
-
-         case 'F':
-            key = DP_KEY_END;
-            break;
-      }
-
-      *ke = (struct key_event) {
-         .pressed = true,
-         .print_char = 0,
-         .key = key,
-      };
+      ke->print_char = buf[0];
+      return;
    }
-   /* else: unknown ESC sequence — leave `ke` zeroed */
+
+   if (buf[0] != DP_KEY_ESC)
+      return;        /* unknown non-ESC multi-byte: drop */
+
+   if (len == 1) {
+
+      /* Bare ESC keypress. */
+      ke->print_char = DP_KEY_ESC;
+      return;
+   }
+
+   /* Normalize the two variant forms before copying. */
+   if (len == 4 && buf[1] == '[' && buf[3] == '~' &&
+       (buf[2] == '1' || buf[2] == '4'))
+   {
+      ke->seq[0] = '\x1b';
+      ke->seq[1] = '[';
+      ke->seq[2] = (buf[2] == '1') ? 'H' : 'F';
+      ke->seq[3] = '\0';
+      return;
+   }
+
+   if (len >= (int)sizeof(ke->seq))
+      return;        /* sequence too long to represent — drop */
+
+   memcpy(ke->seq, buf, (size_t)len);
+   ke->seq[len] = '\0';
 }
 
 int
@@ -176,6 +151,7 @@ dp_read_ke_from_tty(struct key_event *ke)
    char c, buf[16];
    int rc;
    int len;
+   int final_len = 0;
 
    enum {
 
@@ -196,8 +172,10 @@ dp_read_ke_from_tty(struct key_event *ke)
       if (rc < 0 || (!rc && !len))
          return rc;
 
-      if (!rc)
+      if (!rc) {
+         final_len = len;
          break;
+      }
 
       c = buf[len];
 
@@ -245,10 +223,11 @@ dp_read_ke_from_tty(struct key_event *ke)
             break; /* switch (state) */
       }
 
+      final_len = len + 1;
       break; /* for (len = 0; len < sizeof(buf); len++) */
    }
 
-   convert_seq_to_key(buf, ke);
+   convert_seq_to_key(buf, final_len, ke);
    return 0;
 }
 
@@ -316,32 +295,20 @@ handle_seq_right(char *buf, int bs)
 }
 
 static void
-handle_esc_seq(unsigned key, char *buf, int buf_size)
+handle_esc_seq(const char *seq, char *buf, int buf_size)
 {
    key_handler_type func = NULL;
 
-   switch (key) {
-
-      case DP_KEY_LEFT:
-         func = handle_seq_left;
-         break;
-
-      case DP_KEY_RIGHT:
-         func = handle_seq_right;
-         break;
-
-      case DP_KEY_HOME:
-         func = handle_seq_home;
-         break;
-
-      case DP_KEY_END:
-         func = handle_seq_end;
-         break;
-
-      case DP_KEY_DEL:
-         func = handle_seq_delete;
-         break;
-   }
+   if (!strcmp(seq, DP_KEY_LEFT))
+      func = handle_seq_left;
+   else if (!strcmp(seq, DP_KEY_RIGHT))
+      func = handle_seq_right;
+   else if (!strcmp(seq, DP_KEY_HOME))
+      func = handle_seq_home;
+   else if (!strcmp(seq, DP_KEY_END))
+      func = handle_seq_end;
+   else if (!strcmp(seq, DP_KEY_DEL))
+      func = handle_seq_delete;
 
    if (func)
       func(buf, buf_size);
@@ -438,9 +405,9 @@ int dp_read_line(char *buf, int buf_size)
 
             handle_backspace(buf, buf_size);
 
-         } else if (!c && ke.key) {
+         } else if (!c && ke.seq[0]) {
 
-            handle_esc_seq(ke.key, buf, buf_size);
+            handle_esc_seq(ke.seq, buf, buf_size);
 
          } else if (isprint((unsigned char)c) || c == '\r' || c == '\n') {
 
