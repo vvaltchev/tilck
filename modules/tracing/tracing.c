@@ -21,6 +21,7 @@
 #include <tilck/kernel/errno.h>
 
 #include <tilck/mods/tracing.h>
+#include <tilck/common/tracing/wire.h>
 
 #if MOD_sysfs
    #include <tilck/mods/sysfs.h>
@@ -919,22 +920,216 @@ static const struct sysobj_prop_type tracing_events_prop_type = {
 
 DEF_STATIC_SYSOBJ_PROP(events, &tracing_events_prop_type);
 
-DEF_STATIC_SYSOBJ_TYPE(tracing_events_sysobj_type,
+/* ----------------- /syst/tracing/metadata immutable blob -------------- */
+
+/*
+ * Static metadata describing every traced syscall, exposed to userspace
+ * as a single immutable read-only file. Built once at module init from
+ * the in-memory tracing_metadata + slot allocation tables and never
+ * mutated afterwards. Wire format defined in <tilck/common/tracing/wire.h>.
+ *
+ * The userspace tracer (dp -t / tracer) mmaps or read()s this file once
+ * on startup and uses it to render trace events without needing any of
+ * the kernel's struct sys_param_type / struct syscall_info layouts.
+ */
+
+static char *tracing_meta_blob;
+static size_t tracing_meta_blob_size;
+
+/*
+ * Map a kernel `&ptype_X` pointer to its stable wire enum value. Single
+ * source of truth lives here; userspace mirrors only the integer ids.
+ */
+static u8 tracing_ptype_to_id(const struct sys_param_type *t)
+{
+   if (t == &ptype_int)           return TR_PT_INT;
+   if (t == &ptype_voidp)         return TR_PT_VOIDP;
+   if (t == &ptype_oct)           return TR_PT_OCT;
+   if (t == &ptype_errno_or_val)  return TR_PT_ERRNO_OR_VAL;
+   if (t == &ptype_errno_or_ptr)  return TR_PT_ERRNO_OR_PTR;
+   if (t == &ptype_open_flags)    return TR_PT_OPEN_FLAGS;
+   if (t == &ptype_doff64)        return TR_PT_DOFF64;
+   if (t == &ptype_whence)        return TR_PT_WHENCE;
+   if (t == &ptype_int32_pair)    return TR_PT_INT32_PAIR;
+   if (t == &ptype_u64_ptr)       return TR_PT_U64_PTR;
+   if (t == &ptype_signum)        return TR_PT_SIGNUM;
+   if (t == &ptype_buffer)        return TR_PT_BUFFER;
+   if (t == &ptype_big_buf)       return TR_PT_BIG_BUF;
+   if (t == &ptype_path)          return TR_PT_PATH;
+   if (t == &ptype_iov_in)        return TR_PT_IOV_IN;
+   if (t == &ptype_iov_out)       return TR_PT_IOV_OUT;
+   return TR_PT_NONE;
+}
+
+static void
+tracing_fill_param(struct tr_wire_param *out,
+                   const struct syscall_info *si,
+                   const struct sys_param_info *pi)
+{
+   bzero(out, sizeof(*out));
+
+   out->type_id        = pi->type ? tracing_ptype_to_id(pi->type)
+                                  : TR_PT_NONE;
+   out->kind           = (u8)pi->kind;
+   out->invisible      = pi->invisible      ? 1 : 0;
+   out->real_sz_in_ret = pi->real_sz_in_ret ? 1 : 0;
+   out->helper_idx     = pi->helper_param_name
+                          ? (s8)tracing_get_param_idx(si, pi->helper_param_name)
+                          : -1;
+
+   if (pi->name) {
+      strncpy(out->name, pi->name, TR_PNAME_MAX - 1);
+      out->name[TR_PNAME_MAX - 1] = '\0';
+   }
+}
+
+static void
+tracing_init_meta_blob(void)
+{
+   const u32 n_ptype = TR_PT_COUNT;
+
+   /* Fixed mapping: index = enum tr_ptype_id value. */
+   const struct sys_param_type *ptable[TR_PT_COUNT] = {
+      [TR_PT_INT]            = &ptype_int,
+      [TR_PT_VOIDP]          = &ptype_voidp,
+      [TR_PT_OCT]            = &ptype_oct,
+      [TR_PT_ERRNO_OR_VAL]   = &ptype_errno_or_val,
+      [TR_PT_ERRNO_OR_PTR]   = &ptype_errno_or_ptr,
+      [TR_PT_OPEN_FLAGS]     = &ptype_open_flags,
+      [TR_PT_DOFF64]         = &ptype_doff64,
+      [TR_PT_WHENCE]         = &ptype_whence,
+      [TR_PT_INT32_PAIR]     = &ptype_int32_pair,
+      [TR_PT_U64_PTR]        = &ptype_u64_ptr,
+      [TR_PT_SIGNUM]         = &ptype_signum,
+      [TR_PT_BUFFER]         = &ptype_buffer,
+      [TR_PT_BIG_BUF]        = &ptype_big_buf,
+      [TR_PT_PATH]           = &ptype_path,
+      [TR_PT_IOV_IN]         = &ptype_iov_in,
+      [TR_PT_IOV_OUT]        = &ptype_iov_out,
+   };
+
+   /* Count syscalls for which we have metadata (non-NULL entry in
+    * syscalls_info, populated by tracing_populate_syscalls_info). */
+   u32 n_sys = 0;
+   for (u32 i = 0; i < MAX_SYSCALLS; i++)
+      if (syscalls_info[i])
+         n_sys++;
+
+   tracing_meta_blob_size =
+      sizeof(struct tr_wire_header)
+      + n_ptype * sizeof(struct tr_wire_ptype_info)
+      + n_sys   * sizeof(struct tr_wire_syscall);
+
+   tracing_meta_blob = kzmalloc(tracing_meta_blob_size);
+
+   if (!tracing_meta_blob)
+      tracing_init_oom_panic("tracing_meta_blob");
+
+   /* Header. */
+   struct tr_wire_header *h = (void *)tracing_meta_blob;
+   *h = (struct tr_wire_header) {
+      .magic         = TR_WIRE_MAGIC,
+      .version       = TR_WIRE_VERSION,
+      .ptype_count   = (u16)n_ptype,
+      .syscall_count = n_sys,
+   };
+
+   /* ptype info table. */
+   struct tr_wire_ptype_info *pt = (void *)(h + 1);
+   for (u32 i = 0; i < n_ptype; i++) {
+
+      const struct sys_param_type *t = ptable[i];
+
+      if (!t)
+         continue; /* shouldn't happen given the static init above */
+
+      pt[i].ui_type   = (u8)t->ui_type;
+      pt[i].slot_size = (u8)t->slot_size;
+
+      if (t->name) {
+         strncpy(pt[i].name, t->name, sizeof(pt[i].name) - 1);
+         pt[i].name[sizeof(pt[i].name) - 1] = '\0';
+      }
+   }
+
+   /* Syscall table. */
+   struct tr_wire_syscall *out = (void *)(pt + n_ptype);
+   for (u32 sn = 0; sn < MAX_SYSCALLS; sn++) {
+
+      const struct syscall_info *si = syscalls_info[sn];
+
+      if (!si)
+         continue;
+
+      bzero(out, sizeof(*out));
+      out->sys_n        = sn;
+      out->n_params     = si->n_params;
+      out->exp_block    = si->exp_block ? 1 : 0;
+      out->ret_type_id  = si->ret_type ? tracing_ptype_to_id(si->ret_type)
+                                       : TR_PT_NONE;
+      out->fmt          = (u8)syscalls_fmts[sn];
+
+      for (int p = 0; p < TR_MAX_PARAMS; p++) {
+         out->slots[p] = (*params_slots)[sn][p];
+         tracing_fill_param(&out->params[p], si, &si->params[p]);
+      }
+
+      out++;
+   }
+}
+
+static offt
+tracing_meta_get_buf_sz(struct sysobj *obj, void *data)
+{
+   return (offt)tracing_meta_blob_size;
+}
+
+static offt
+tracing_meta_load(struct sysobj *obj, void *data,
+                  void *buf, offt sz, offt off)
+{
+   if (off < 0 || (size_t)off > tracing_meta_blob_size)
+      return -EINVAL;
+
+   const size_t remaining = tracing_meta_blob_size - (size_t)off;
+   const size_t to_copy   = MIN((size_t)sz, remaining);
+
+   memcpy(buf, tracing_meta_blob + off, to_copy);
+   return (offt)to_copy;
+}
+
+static void *
+tracing_meta_get_data_ptr(struct sysobj *obj, void *data)
+{
+   return tracing_meta_blob;
+}
+
+static const struct sysobj_prop_type tracing_meta_prop_type = {
+   .buf_type     = SYSFS_BUF_IMMUTABLE,
+   .get_buf_sz   = &tracing_meta_get_buf_sz,
+   .load         = &tracing_meta_load,
+   .get_data_ptr = &tracing_meta_get_data_ptr,
+};
+
+DEF_STATIC_SYSOBJ_PROP(metadata, &tracing_meta_prop_type);
+
+DEF_STATIC_SYSOBJ_TYPE(tracing_sysobj_type,
                        &prop_events,
+                       &prop_metadata,
                        NULL);
 
 static void
 register_tracing_sysfs_obj(void)
 {
    /*
-    * The `tracing` object IS a directory (every sysobj is), and the
-    * `events` prop on it becomes the file /syst/tracing/events. The
-    * earlier shape — an empty `tracing` dir holding a separate
-    * `events` child object — produced /syst/tracing/events/events,
-    * which made open("/syst/tracing/events") return EISDIR.
+    * The `tracing` object IS a directory (every sysobj is); each prop
+    * registered on its type becomes a file under /syst/tracing/. We
+    * expose two:
+    *   /syst/tracing/events    -- streaming live trace events
+    *   /syst/tracing/metadata  -- immutable blob, syscall metadata
     */
    struct sysobj *tracing_obj =
-      sysfs_create_obj(&tracing_events_sysobj_type, NULL, NULL);
+      sysfs_create_obj(&tracing_sysobj_type, NULL, NULL);
 
    if (!tracing_obj)
       return;
@@ -945,6 +1140,14 @@ register_tracing_sysfs_obj(void)
 
 #else  /* !MOD_sysfs */
 
+/*
+ * Defensive stubs: in practice MOD_tracing has a hard dep on MOD_sysfs
+ * (modules/tracing/module_deps), so this branch is unreachable when
+ * the tracing module is being compiled in. The stubs let the file
+ * still compile if someone forces a build matrix where MOD_tracing=1
+ * and MOD_sysfs=0 (which CMake will reject at configure time anyway).
+ */
+static void tracing_init_meta_blob(void) { /* no-op */ }
 static void register_tracing_sysfs_obj(void) { /* no-op */ }
 
 #endif
@@ -997,7 +1200,14 @@ init_tracing(void)
 
    set_traced_syscalls("*");
 
-   /* Expose /syst/tracing/events for the userspace `dp` tool. */
+   /* Build the immutable /syst/tracing/metadata blob from the now-
+    * populated syscalls_info + params_slots + syscalls_fmts. After
+    * this point the metadata is read-only by construction. */
+   tracing_init_meta_blob();
+
+   /* Expose /syst/tracing/{events,metadata} for the userspace `dp`
+    * tool. MOD_tracing has a hard dep on MOD_sysfs (declared in
+    * modules/tracing/module_deps), so this is unconditional. */
    register_tracing_sysfs_obj();
 
    __tracing_initialized = true;
