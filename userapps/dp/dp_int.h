@@ -105,3 +105,6 @@ void dp_set_input_blocking(bool blocking);
 /* Screen registry + main loop (dp_main.c). */
 void dp_register_screen(struct dp_screen *screen);
 int  dp_run_panel(void);
+
+/* One-shot ps mode (screen_tasks.c). */
+int  dp_run_ps(void);

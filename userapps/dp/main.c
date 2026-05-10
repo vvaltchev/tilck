@@ -39,16 +39,10 @@ static int ps_tool(int argc, char **argv)
    }
 
    /*
-    * ps mode is still served by the in-kernel TUI for now; Phase 7
-    * (next commit in this phase) replaces this with a userspace
-    * Tasks-renderer call.
+    * ps mode renders the same task table as the Tasks panel, but
+    * once and as plain text. Implementation lives in screen_tasks.c.
     */
-   int rc = syscall(TILCK_CMD_SYSCALL, TILCK_CMD_PS_TOOL);
-
-   if (rc < 0)
-      printf("ERROR: the ps tool is not compiled-in\n");
-
-   return rc;
+   return dp_run_ps();
 }
 
 static int debug_panel(int argc, char **argv)
