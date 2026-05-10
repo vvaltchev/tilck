@@ -200,7 +200,7 @@ static void
 render_one_task(const struct dp_task_info *t, struct render_opts opts)
 {
    const char *fmt = task_dump_str(TDS_ROW_FMT);
-   char path[64] = {0};
+   char path[80] = {0};
    char path2[64] = {0};
    char state_str[4];
 
@@ -323,7 +323,7 @@ dump_task_list(bool kernel_tasks, bool plain_text)
       render_one_task(&dp_tasks_buf[i], opts);
 
    if (!plain_text)
-      dp_writeln("");
+      dp_writeln(" ");
 }
 
 /* ---------------------------- panel API ------------------------------ */
@@ -336,7 +336,7 @@ static void show_actions_menu(void)
          E_COLOR_BR_WHITE "<ENTER>" RESET_ATTRS ": select mode " TERM_VLINE " "
          E_COLOR_BR_WHITE "r" RESET_ATTRS ": refresh"
       );
-      dp_writeln("");
+      dp_writeln(" ");
 
    } else {
 
@@ -352,7 +352,7 @@ static void show_actions_menu(void)
       );
    }
 
-   dp_writeln("");
+   dp_writeln(" ");
 }
 
 static void dp_show_tasks(void)
