@@ -54,7 +54,16 @@ enum tilck_cmd {
    TILCK_CMD_DP_TRACE_GET_TRACED_BITMAP = 29,
    TILCK_CMD_DP_TRACE_GET_IN_BUF_COUNT = 30,
    TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR = 31,
-   TILCK_CMD_DP_TRACE_RENDER_EVENT     = 32,
+
+   /*
+    * Slot 32 was previously TILCK_CMD_DP_TRACE_RENDER_EVENT — a
+    * kernel-side renderer used while we were still moving the
+    * tracer TUI to userspace. Rendering now lives entirely in the
+    * userspace `dp` tool; the kernel exposes the static metadata
+    * via /syst/tracing/metadata instead. The slot remains so
+    * subsequent ids don't shift; the handler stays NULL → -EINVAL.
+    */
+   TILCK_CMD_DP_TRACE_RENDER_EVENT     = 32,    /* deprecated */
 
    /* Number of elements in the enum */
    TILCK_CMD_COUNT               = 33,

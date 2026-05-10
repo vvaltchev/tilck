@@ -787,82 +787,6 @@ tilck_sys_dp_task_get_traced_tids_and_clear_cb(void *obj, void *arg)
    return 0;
 }
 
-/*
- * Render a single trace_event as a colored ANSI string for the
- * userspace tracer. Defined in dp_trace_render.c — kept separate so
- * the renderer (and the rend_bufs[] global it owns) lives in one
- * file, while this dispatcher just marshals user pointers and
- * forwards.
- */
-int
-dp_trace_render_event(struct trace_event *e,
-                      char *out,
-                      size_t out_sz,
-                      struct dp_render_ctx *ctx);
-
-void dp_trace_render_init(void);
-
-static int
-tilck_sys_dp_trace_render_event(ulong u_event, ulong u_out,
-                                ulong out_sz, ulong u_ctx)
-{
-   struct trace_event ev;
-   struct dp_render_ctx ctx;
-   char *kbuf;
-   int rc;
-
-   if (!out_sz || out_sz > 4096)
-      return -EINVAL;
-
-   if (user_out_of_range((void *)u_event, sizeof(ev)))
-      return -EFAULT;
-
-   if (user_out_of_range((void *)u_out, out_sz))
-      return -EFAULT;
-
-   if (u_ctx) {
-
-      if (user_out_of_range((void *)u_ctx, sizeof(ctx)))
-         return -EFAULT;
-
-      if (copy_from_user(&ctx, (void *)u_ctx, sizeof(ctx)))
-         return -EFAULT;
-
-   } else {
-
-      bzero(&ctx, sizeof(ctx));
-   }
-
-   if (copy_from_user(&ev, (void *)u_event, sizeof(ev)))
-      return -EFAULT;
-
-   kbuf = kzmalloc(out_sz);
-
-   if (!kbuf)
-      return -ENOMEM;
-
-   rc = dp_trace_render_event(&ev, kbuf, out_sz, &ctx);
-
-   if (rc < 0)
-      goto out;
-
-   if (copy_to_user((void *)u_out, kbuf, (size_t)rc + 1)) {
-      rc = -EFAULT;
-      goto out;
-   }
-
-   if (u_ctx) {
-      if (copy_to_user((void *)u_ctx, &ctx, sizeof(ctx))) {
-         rc = -EFAULT;
-         goto out;
-      }
-   }
-
-out:
-   kfree2(kbuf, out_sz);
-   return rc;
-}
-
 static int
 tilck_sys_dp_task_get_traced_tids_and_clear(ulong u_buf, ulong max,
                                             ulong _3, ulong _4)
@@ -988,13 +912,6 @@ tilck_sys_dp_task_get_traced_tids_and_clear(ulong _1, ulong _2,
    return -EOPNOTSUPP;
 }
 
-static int
-tilck_sys_dp_trace_render_event(ulong _1, ulong _2,
-                                ulong _3, ulong _4)
-{
-   return -EOPNOTSUPP;
-}
-
 #endif
 
 /* ---------------------------- REGISTRATION -------------------------- */
@@ -1039,10 +956,4 @@ void dp_data_register(void)
                       tilck_sys_dp_trace_get_in_buf_count);
    register_tilck_cmd(TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR,
                       tilck_sys_dp_task_get_traced_tids_and_clear);
-   register_tilck_cmd(TILCK_CMD_DP_TRACE_RENDER_EVENT,
-                      tilck_sys_dp_trace_render_event);
-
-#if MOD_tracing
-   dp_trace_render_init();
-#endif
 }
