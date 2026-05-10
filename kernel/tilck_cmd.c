@@ -33,6 +33,18 @@ static void *tilck_cmds[TILCK_CMD_COUNT] = {
    [TILCK_CMD_CALL_FUNC_0] = NULL,
    [TILCK_CMD_GET_VAR_LONG] = NULL,
    [TILCK_CMD_BUSY_WAIT] = NULL,
+
+   /* Installed by the debugpanel module on load (NULL otherwise). */
+   [TILCK_CMD_DP_GET_TASKS] = NULL,
+   [TILCK_CMD_DP_GET_HEAPS] = NULL,
+   [TILCK_CMD_DP_GET_KMALLOC_CHUNKS] = NULL,
+   [TILCK_CMD_DP_GET_IRQ_STATS] = NULL,
+   [TILCK_CMD_DP_GET_MEM_MAP] = NULL,
+   [TILCK_CMD_DP_GET_MEM_GLOBAL_STATS] = NULL,
+   [TILCK_CMD_DP_GET_MTRRS] = NULL,
+   [TILCK_CMD_DP_TRACE_SET_FILTER] = NULL,
+   [TILCK_CMD_DP_TRACE_GET_FILTER] = NULL,
+   [TILCK_CMD_DP_TASK_SET_TRACED] = NULL,
 };
 
 void register_tilck_cmd(int cmd_n, void *func)
