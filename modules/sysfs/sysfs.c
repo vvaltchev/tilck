@@ -94,9 +94,8 @@ sysfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
                statbuf->st_mode |= 0200;
 
             if (pt->get_buf_sz) {
-               statbuf->st_size = (typeof(statbuf->st_size)) ABS(
-                  pt->get_buf_sz(inode->file.obj, inode->file.prop_data)
-               );
+               statbuf->st_size = (typeof(statbuf->st_size))
+                  pt->get_buf_sz(inode->file.obj, inode->file.prop_data);
             }
          }
 

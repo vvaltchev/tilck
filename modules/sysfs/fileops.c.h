@@ -157,8 +157,9 @@ static int
 sysfs_fsync(fs_handle h)
 {
    struct sysfs_handle *sh = h;
+   struct sysobj_prop *prop = sh->inode->file.prop;
 
-   if (sh->file.data_max_len > 0) {
+   if (prop->type && prop->type->buf_type == SYSFS_BUF_BUFFERED) {
 
       if (sh->file.data)
          sysfs_flush_data(sh);
@@ -175,40 +176,43 @@ sysfs_file_read(fs_handle h, char *buf, size_t len, offt *pos)
    struct sysobj_prop *prop = i->file.prop;
    struct sysobj *obj = i->file.obj;
    void *pd = i->file.prop_data;
-   offt rc, rem;
+   offt rc = 0, rem;
 
    if (!prop->type || !prop->type->load)
       return 0;
 
-   if (LIKELY(sh->file.data_max_len == 0)) {
+   switch (prop->type->buf_type) {
 
-      if (*pos == 0) {
-         rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, 0);
-         *pos = LONG_MAX;
-      } else {
-         rc = 0;
-      }
+      case SYSFS_BUF_ONESHOT:
 
-   } else if (sh->file.data_max_len < 0) {
+         if (*pos == 0) {
+            rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, 0);
+            *pos = LONG_MAX;
+         }
+         break;
 
-      rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, *pos);
+      case SYSFS_BUF_IMMUTABLE:
 
-      if (rc > 0)
+         rc = sysfs_call_load(obj, prop, pd, buf, (offt)len, *pos);
+
+         if (rc > 0)
+            *pos += rc;
+         break;
+
+      case SYSFS_BUF_BUFFERED:
+
+         if (!sh->file.data) {
+            if (sysfs_load_data(sh))
+               return 0;   /* no memory for the per-handle buffer */
+         }
+
+         rem = sh->file.data_len - *pos;
+         ASSERT(rem >= 0);
+
+         rc = CLAMP(rem, 0, (offt)len);
+         memcpy(buf, sh->file.data + *pos, (size_t)rc);
          *pos += rc;
-
-   } else {
-
-      if (!sh->file.data) {
-         if ((rc = sysfs_load_data(sh)))
-            return 0;   /* no memory for the per-handle buffer */
-      }
-
-      rem = sh->file.data_len - *pos;
-      ASSERT(rem >= 0);
-
-      rc = CLAMP(rem, 0, (offt)len);
-      memcpy(buf, sh->file.data + *pos, (size_t)rc);
-      *pos += rc;
+         break;
    }
 
    return (ssize_t)rc;
@@ -228,42 +232,51 @@ sysfs_file_write(fs_handle h, char *buf, size_t len, offt *pos)
    if (!prop->type || !prop->type->store)
       return -EINVAL;
 
-   if (LIKELY(sh->file.data_max_len == 0)) {
+   switch (prop->type->buf_type) {
 
-      rc = sysfs_call_store(obj, prop, pd, buf, (offt)len);
+      case SYSFS_BUF_ONESHOT:
 
-   } else if (UNLIKELY(sh->file.data_max_len < 0)) {
+         rc = sysfs_call_store(obj, prop, pd, buf, (offt)len);
+         break;
 
-      /*
-       * In this case there should be NO store function at all. But, it's worth
-       * keeping this else-if case in allow any kind of weird sharing of
-       * property types across properties and because of the symmetry with
-       * the read case above.
-       */
-      rc = -EINVAL;
+      case SYSFS_BUF_IMMUTABLE:
 
-   } else {
+         /*
+          * Immutable types should not define a store callback at all,
+          * but if one slips through (e.g. a shared prop_type), we
+          * explicitly reject the write here for the symmetry with the
+          * read path.
+          */
+         rc = -EINVAL;
+         break;
 
-      if (!sh->file.data) {
-         if ((rc = sysfs_load_data(sh)))
-            return -ENOSPC;   /* no memory for the per-handle buffer */
-      }
+      case SYSFS_BUF_BUFFERED:
 
-      rem = sh->file.data_max_len - *pos;
-      ASSERT(rem >= 0);
+         if (!sh->file.data) {
+            if (sysfs_load_data(sh))
+               return -ENOSPC;   /* no memory for the per-handle buffer */
+         }
 
-      rc = CLAMP(rem, 0, (offt)len);
-      memcpy(sh->file.data + *pos, buf, (size_t)rc);
-      *pos += rc;
+         rem = sh->file.data_max_len - *pos;
+         ASSERT(rem >= 0);
 
-      disable_preemption();
-      {
-         if (*pos > sh->file.data_len)
-            sh->file.data_len = *pos;
+         rc = CLAMP(rem, 0, (offt)len);
+         memcpy(sh->file.data + *pos, buf, (size_t)rc);
+         *pos += rc;
 
-         list_add_tail(&d->dirty_handles, &sh->file.dirty_node);
-      }
-      enable_preemption();
+         disable_preemption();
+         {
+            if (*pos > sh->file.data_len)
+               sh->file.data_len = *pos;
+
+            list_add_tail(&d->dirty_handles, &sh->file.dirty_node);
+         }
+         enable_preemption();
+         break;
+
+      default:
+         rc = -EINVAL;
+         break;
    }
 
    return (ssize_t)rc;
@@ -279,7 +292,7 @@ static offt
 sysfs_file_seek(fs_handle h, offt target_off, int whence)
 {
    struct sysfs_handle *sh = h;
-   const offt len = ABS(sh->file.data_max_len);
+   const offt len = sh->file.data_max_len;
    offt new_pos = sh->h_fpos;
 
    switch (whence) {
@@ -311,11 +324,16 @@ static void
 sysfs_on_close(fs_handle h)
 {
    struct sysfs_handle *sh = h;
+   struct sysobj_prop *prop;
 
    if (sh->type != VFS_FILE)
       return;
 
-   if (sh->file.data_max_len > 0 && sh->file.data) {
+   prop = sh->inode->file.prop;
+
+   if (prop->type && prop->type->buf_type == SYSFS_BUF_BUFFERED &&
+       sh->file.data)
+   {
       sysfs_flush_and_free_data(sh);
    }
 }
@@ -331,7 +349,7 @@ sysfs_on_dup(fs_handle new_h)
    if (!h2->inode->file.prop->type)
       return 0;
 
-   if (h2->file.data_max_len > 0) {
+   if (h2->inode->file.prop->type->buf_type == SYSFS_BUF_BUFFERED) {
 
       if (h2->file.data) {
 
@@ -371,12 +389,12 @@ int sysfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
    if (flags & VFS_MM_DONT_MMAP)
       return 0;
 
-   if (sh->file.data_max_len >= 0)
-      return -EACCES; /* Do not support mmap in the = 0 and > 0 cases */
+   if (!pt || pt->buf_type != SYSFS_BUF_IMMUTABLE)
+      return -EACCES; /* mmap only supported on immutable backing data */
 
-   buf_sz = (size_t)ABS(sh->file.data_max_len);
+   buf_sz = (size_t)sh->file.data_max_len;
 
-   if (!pt || !pt->get_data_ptr)
+   if (!pt->get_data_ptr)
       return -EACCES;
 
    data = pt->get_data_ptr(inode->file.obj, inode->file.prop_data);
@@ -404,12 +422,13 @@ int sysfs_mmap(struct user_mapping *um, pdir_t *pdir, int flags)
 int sysfs_munmap(struct user_mapping *um, void *vaddrp, size_t len)
 {
    struct sysfs_handle *sh = um->h;
+   struct sysobj_prop *prop = sh->inode->file.prop;
 
    if (sh->type != VFS_FILE)
       return -EACCES;
 
-   if (sh->file.data_max_len >= 0)
-      return -EACCES; /* Do not support mmap in the = 0 and > 0 cases */
+   if (!prop->type || prop->type->buf_type != SYSFS_BUF_IMMUTABLE)
+      return -EACCES;
 
    return generic_fs_munmap(um, vaddrp, len);
 }
@@ -433,10 +452,18 @@ sysfs_open_file(struct mnt_fs *fs, struct sysfs_inode *pos, fs_handle *out)
    struct sysobj_prop *prop = pos->file.prop;
    void *prop_data = pos->file.prop_data;
    offt buf_sz = 0, rc;
+   enum sysfs_buf_type bt = SYSFS_BUF_ONESHOT;
 
    if (prop->type) {
-      if (prop->type->get_buf_sz)
+
+      bt = prop->type->buf_type;
+
+      if (bt == SYSFS_BUF_BUFFERED || bt == SYSFS_BUF_IMMUTABLE) {
+
+         ASSERT(prop->type->get_buf_sz != NULL);
          buf_sz = prop->type->get_buf_sz(pos->file.obj, prop_data);
+         ASSERT(buf_sz > 0);
+      }
    }
 
    if (!(h = vfs_create_new_handle(fs, &static_ops_file_sysfs)))
@@ -451,7 +478,7 @@ sysfs_open_file(struct mnt_fs *fs, struct sysfs_inode *pos, fs_handle *out)
    list_node_init(&h->file.dirty_node);
    retain_obj(pos);
 
-   if (h->file.data_max_len > 0) {
+   if (bt == SYSFS_BUF_BUFFERED) {
       if ((rc = sysfs_load_data(h))) {
          vfs_close(h);
          return (int)rc;
