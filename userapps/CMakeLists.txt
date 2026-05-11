@@ -67,6 +67,38 @@ include_directories(${ZLIB_DIR}/install/include)
    endif()
 # [/dp]
 
+# [tracer]
+   #
+   # The `tracer` binary shares the dp termutil/input/screen
+   # infrastructure (so the trace screen looks and behaves like a dp
+   # panel — banner + key dispatch + line editor + alt buffer), but
+   # the trace-rendering code (~1.5 KLOC of tr_*.c) ships in its own
+   # binary so dp itself stays slim and the tracer can run in builds
+   # where MOD_debugpanel is off.
+   #
+   file(
+      GLOB
+      TRACER_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "tracer/*.c"
+      "dp/dp_input.c"
+      "dp/dp_screen.c"
+      "dp/termutil.c"
+      "dp/task_dump.c"
+   )
+
+   if (USERAPPS_dp)
+      add_executable(tracer ${TRACER_SOURCES})
+      target_include_directories(
+         tracer PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/tracer
+            ${CMAKE_CURRENT_SOURCE_DIR}/dp
+      )
+      register_usermode_app(tracer)
+   endif()
+# [/tracer]
+
 # [filedump]
    file(
       GLOB

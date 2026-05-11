@@ -1,17 +1,15 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Userspace tracer screen — full-screen mode entered via `tracer`
- * (TILCK_CMD_TRACING_TOOL → dp_run_tracer) or via Ctrl+T from the
- * Tasks panel (dp_run_tracer_screen).
+ * Userspace tracer screen — full-screen mode entered via the
+ * `tracer` binary's main(). Ctrl+T in the dp Tasks panel reaches
+ * this code via fork+exec of /usr/bin/tracer (see screen_tasks.c).
  *
  * Master implemented this entirely in the kernel (modules/debugpanel/
- * dp_tracing.c + dp_tracing_sys.c). Here we keep the kernel-side
- * event renderer (now in modules/debugpanel/dp_trace_render.c) and
- * call it via TILCK_CMD_DP_TRACE_RENDER_EVENT — that way the
- * rendering of syscall enter/exit/CALL events with parameter names
- * + types + colors stays byte-for-byte identical to master, without
- * mirroring the entire tracing metadata in userspace.
+ * dp_tracing.c + dp_tracing_sys.c). After the userspace move the
+ * rendering lives in tr_render.c / tr_dump*.c and is driven by
+ * metadata fetched from /syst/tracing/metadata; events are streamed
+ * via /syst/tracing/events.
  *
  * Everything else — banner, help, key dispatch, filter prompts,
  * traced-PID list editor, "discard remaining events?" prompt — is
@@ -712,33 +710,14 @@ static bool tracer_handle_one_key(int events_fd_unused)
    return true;
 }
 
-/* ----------- panel-embedded entry: Ctrl+T from Tasks panel ----------- */
-
-void dp_run_tracer_screen(void)
-{
-   /*
-    * Caller (dp_main.c via Ctrl+T) already set up the terminal:
-    * raw mode, alt buffer if video, cursor hidden, stdin
-    * non-blocking. We just take over the entire content area.
-    */
-   tr_meta_init();
-   dp_set_cursor_enabled(true);
-   dp_clear();
-   dp_move_cursor(1, 1);
-   show_banner();
-
-   while (tracer_handle_one_key(-1))
-      ; /* loop */
-
-   /*
-    * The tracer's full-screen output trampled the panel's chrome and
-    * content; tell the main loop to repaint everything from scratch.
-    */
-   dp_set_cursor_enabled(false);
-   dp_force_full_redraw();
-}
-
-/* -------------------- standalone entry point ------------------------- */
+/* -------------------- standalone entry point ------------------------- *
+ *
+ * Previously the tracer also exposed dp_run_tracer_screen(), an
+ * in-process entry point dp's Ctrl+T handler called directly.
+ * After the tracer was split into its own binary that path was
+ * dropped — dp now fork+execs /usr/bin/tracer instead, which lands
+ * here.
+ */
 
 int dp_run_tracer(void)
 {

@@ -144,14 +144,11 @@ int  dp_run_ps(void);
  */
 void dp_dump_task_list_plain(bool kernel_tasks);
 
-/* Tracer mode (screen_tracing.c). */
-int  dp_run_tracer(void);
-
 /*
- * Tracer screen invoked while dp_run_panel() is already running (i.e.
- * the user pressed Ctrl+T from the Tasks panel). Same UI as
- * dp_run_tracer, but doesn't touch the surrounding terminal state —
- * the panel loop is responsible for the alt-buffer / raw-mode setup.
- * Returns to the panel when the user presses 'q'.
+ * Tracer entry point (lives in userapps/tracer/screen_tracing.c, built
+ * into the `tracer` binary). Declared here because dp_run_tracer is
+ * the standalone entry called by tracer/main.c — both binaries share
+ * this header. dp itself doesn't call it: Ctrl+T in the Tasks panel
+ * fork+execs /usr/bin/tracer.
  */
-void dp_run_tracer_screen(void);
+int  dp_run_tracer(void);

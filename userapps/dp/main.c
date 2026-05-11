@@ -11,22 +11,6 @@
 
 #include "dp_int.h"
 
-static int tracer_tool(int argc, char **argv)
-{
-   if (argc > 0) {
-      printf("ERROR: unknown option '%s'\n", argv[0]);
-      return 1;
-   }
-
-   /*
-    * Tracer mode is now a userspace TUI: dp_run_tracer() drives the
-    * banner + key dispatch, talks to the kernel via the TILCK_CMD_DP_
-    * TRACE_* sub-commands, and reads events from /syst/tracing/events
-    * while the user has tracing enabled.
-    */
-   return dp_run_tracer();
-}
-
 static int ps_tool(int argc, char **argv)
 {
    if (argc > 0) {
@@ -44,10 +28,6 @@ static int ps_tool(int argc, char **argv)
 static int debug_panel(int argc, char **argv)
 {
    if (argc > 0) {
-
-      if (!strcmp(argv[0], "-t"))
-         return tracer_tool(argc-1, argv+1);
-
       printf("ERROR: unknown option '%s'\n", argv[0]);
       return 1;
    }
@@ -81,10 +61,6 @@ int main(int argc, char **argv)
    if (!strcmp(prog_name, "dp")) {
 
       rc = debug_panel(argc-1, argv+1);
-
-   } else if (!strcmp(prog_name, "tracer")) {
-
-      rc = tracer_tool(argc-1, argv+1);
 
    } else if (!strcmp(prog_name, "ps")) {
 

@@ -4,15 +4,18 @@
  * Tasks panel. Pulls the task table from the kernel via
  * TILCK_CMD_DP_GET_TASKS (struct dp_task_info, see
  * <tilck/common/dp_abi.h>) and renders it the same way the in-kernel
- * dp_tasks.c did.
+ * dp_tasks.c did. The buffer + the column-format helpers + the
+ * plain-text dump live in task_dump.[ch] (shared with the standalone
+ * `tracer` binary); this file owns the panel-mode UI — selection,
+ * scroll geometry, action keys.
  *
  * Selection mode (ENTER toggles): k/s/c send SIGKILL/SIGSTOP/SIGCONT
  * via the regular kill(2) syscall, t toggles per-task tracing via
  * TILCK_CMD_DP_TASK_SET_TRACED. UP/DOWN move the cursor. ESC exits
- * selection mode.
+ * selection mode. Ctrl+T forks /usr/bin/tracer.
  *
  * ps mode (run via /usr/bin/ps): the same render but plain-text via
- * dp_write_raw, no border, no UI loop.
+ * dp_dump_task_list_plain (task_dump.c), no border, no UI loop.
  */
 
 #include <errno.h>
@@ -22,26 +25,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 
 #include <tilck/common/syscalls.h>
 #include <tilck/common/dp_abi.h>
 
 #include "termutil.h"
 #include "dp_int.h"
-
-#define MAX_EXEC_PATH_LEN     34
-#define MAX_DP_TASKS         512
-
-/* Task state bytes stored in dp_task_info.state — values from
- * <tilck/kernel/sched.h> (TASK_STATE_*). */
-#define TS_INVALID    0
-#define TS_RUNNABLE   1
-#define TS_RUNNING    2
-#define TS_SLEEPING   3
-#define TS_ZOMBIE     4
-
-static struct dp_task_info dp_tasks_buf[MAX_DP_TASKS];
-static int dp_tasks_count;
+#include "task_dump.h"
 
 /*
  * File-scope row counter used by the dp_writeln() macro defined in
@@ -53,9 +44,9 @@ static int row;
 
 /*
  * Panel-local row of the first task in the table. Captured during the
- * (panel-mode) render pass so sel_keypress can translate sel_index
- * into the buffer relrow of the highlighted line and decide whether
- * a row_off bump is needed to keep it visible.
+ * render pass so sel_keypress can translate sel_index into the buffer
+ * relrow of the highlighted line and decide whether a row_off bump is
+ * needed to keep it visible.
  */
 static int first_task_relrow;
 
@@ -72,108 +63,11 @@ static bool sel_tid_found;
 
 /* ------------------------------ helpers ------------------------------ */
 
-static long dp_cmd_get_tasks(struct dp_task_info *buf, unsigned long max)
-{
-   return syscall(TILCK_CMD_SYSCALL,
-                  TILCK_CMD_DP_GET_TASKS,
-                  (long)buf, (long)max, 0L, 0L);
-}
-
 static long dp_cmd_set_traced(int tid, int enabled)
 {
    return syscall(TILCK_CMD_SYSCALL,
                   TILCK_CMD_DP_TASK_SET_TRACED,
                   (long)tid, (long)enabled, 0L, 0L);
-}
-
-static void
-state_to_str(char *out, unsigned char state, bool stopped, bool traced)
-{
-   char *p = out;
-
-   switch (state) {
-      case TS_INVALID:   *p++ = '?'; break;
-      case TS_RUNNABLE:  *p++ = 'r'; break;
-      case TS_RUNNING:   *p++ = 'R'; break;
-      case TS_SLEEPING:  *p++ = 's'; break;
-      case TS_ZOMBIE:    *p++ = 'Z'; break;
-      default:           *p++ = '?'; break;
-   }
-
-   if (stopped) *p++ = 'S';
-   if (traced)  *p++ = 't';
-   *p = 0;
-}
-
-enum task_dump_str_t {
-   TDS_HEADER,
-   TDS_ROW_FMT,
-   TDS_HLINE,
-};
-
-static const char *
-task_dump_str(enum task_dump_str_t t)
-{
-   static bool initialized;
-   static char fmt[120];
-   static char hfmt[120];
-   static char header[120];
-   static char hline_sep[120] = "qqqqqqqnqqqqqqnqqqqqqnqqqqqqnqqqqqnqqqqqn";
-
-   if (!initialized) {
-
-      const int path_field_len = (DP_W - 80) + MAX_EXEC_PATH_LEN;
-
-      snprintf(fmt, sizeof(fmt),
-               " %%-5d "
-               TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-4d "
-               TERM_VLINE " %%-3s "
-               TERM_VLINE "  %%-2d "
-               TERM_VLINE " %%-%ds",
-               path_field_len);
-
-      snprintf(hfmt, sizeof(hfmt),
-               " %%-5s "
-               TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-4s "
-               TERM_VLINE " %%-3s "
-               TERM_VLINE " %%-3s "
-               TERM_VLINE " %%-%ds",
-               path_field_len);
-
-      snprintf(header, sizeof(header), hfmt,
-               "pid", "pgid", "sid", "ppid", "S", "tty", "cmdline");
-
-      char *p = hline_sep + strlen(hline_sep);
-      char *end = hline_sep + sizeof(hline_sep);
-
-      for (int i = 0; i < path_field_len + 2 && p < end; i++, p++)
-         *p = 'q';
-
-      initialized = true;
-   }
-
-   switch (t) {
-      case TDS_HEADER:  return header;
-      case TDS_ROW_FMT: return fmt;
-      case TDS_HLINE:   return hline_sep;
-   }
-
-   return "";
-}
-
-static int dp_tasks_refresh(void)
-{
-   long n = dp_cmd_get_tasks(dp_tasks_buf, MAX_DP_TASKS);
-
-   if (n < 0)
-      return -1;
-
-   dp_tasks_count = (int)n;
-   return 0;
 }
 
 static bool is_tid_off_limits(int tid)
@@ -197,22 +91,17 @@ static bool is_tid_off_limits(int tid)
    return true;
 }
 
-/* ----------------------- rendering / dumping ------------------------- */
-
-struct render_opts {
-   bool kernel_tasks;
-   bool plain_text;
-};
+/* ----------------------- panel-mode rendering ------------------------ */
 
 static void
-render_one_task(const struct dp_task_info *t, struct render_opts opts)
+render_one_task(const struct dp_task_info *t, bool kernel_tasks)
 {
    const char *fmt = task_dump_str(TDS_ROW_FMT);
    char path[80] = {0};
    char path2[64] = {0};
    char state_str[4];
 
-   if (t->is_kthread && !opts.kernel_tasks)
+   if (t->is_kthread && !kernel_tasks)
       return;
 
    /* Build the path/cmdline display for the last column */
@@ -234,14 +123,6 @@ render_one_task(const struct dp_task_info *t, struct render_opts opts)
    /* Master rendered tty=0 for kernel threads (kthreads have no
     * controlling tty). Mirror that here. */
    const int ttynum = t->is_kthread ? 0 : t->tty;
-
-   if (opts.plain_text) {
-
-      dp_write_raw(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
-                   state_str, ttynum, path);
-      dp_write_raw("\r\n");
-      return;
-   }
 
    /*
     * In selection mode, wrap the row in REVERSE_VIDEO/RESET_ATTRS so
@@ -269,31 +150,10 @@ render_one_task(const struct dp_task_info *t, struct render_opts opts)
    }
 }
 
-static void
-dump_table_hr(bool plain_text)
+static void dump_task_list_panel(bool kernel_tasks)
 {
-   const char *hr = task_dump_str(TDS_HLINE);
-
-   if (plain_text)
-      dp_write_raw(GFX_ON "%s" GFX_OFF "\r\n", hr);
-   else
-      dp_writeln(GFX_ON "%s" GFX_OFF, hr);
-}
-
-static void
-dump_task_list(bool kernel_tasks, bool plain_text)
-{
-   struct render_opts opts = {
-      .kernel_tasks = kernel_tasks,
-      .plain_text = plain_text,
-   };
-
-   if (plain_text)
-      dp_write_raw("\r\n%s\r\n", task_dump_str(TDS_HEADER));
-   else
-      dp_writeln("%s", task_dump_str(TDS_HEADER));
-
-   dump_table_hr(plain_text);
+   dp_writeln("%s", task_dump_str(TDS_HEADER));
+   dp_writeln(GFX_ON "%s" GFX_OFF, task_dump_str(TDS_HLINE));
 
    /* Validate sel_tid before rendering: it might have died since the
     * last refresh. */
@@ -338,28 +198,23 @@ dump_task_list(bool kernel_tasks, bool plain_text)
       }
    }
 
-   if (!plain_text) {
+   /*
+    * About to render the first task at this row. Capture the
+    * panel-local relrow so sel_keypress can later translate
+    * sel_index → buffer position and scroll-on-edge.
+    */
+   first_task_relrow = row - dp_screen_start_row;
 
-      /* About to render the first task at this row. Capture the
-       * panel-local relrow so sel_keypress can later translate
-       * sel_index → buffer position and scroll-on-edge.
-       *
-       * (In plain-text ps mode there's no scrolling viewport, so we
-       * skip the capture; first_task_relrow is unused there.)
-       */
-      first_task_relrow = row - dp_screen_start_row;
-
-      /*
-       * Pin the action menu + table header + hr separator (everything
-       * above the first task row) to the top of the panel: those rows
-       * shouldn't slide out of view when the user scrolls through a
-       * long task list.
-       */
-      dp_ctx->static_rows = first_task_relrow;
-   }
+   /*
+    * Pin the action menu + table header + hr separator (everything
+    * above the first task row) to the top of the panel: those rows
+    * shouldn't slide out of view when the user scrolls through a
+    * long task list.
+    */
+   dp_ctx->static_rows = first_task_relrow;
 
    for (int i = 0; i < dp_tasks_count; i++)
-      render_one_task(&dp_tasks_buf[i], opts);
+      render_one_task(&dp_tasks_buf[i], kernel_tasks);
 
    /*
     * No trailing dp_writeln(" "). The painter naturally clears
@@ -405,7 +260,7 @@ static void dp_show_tasks(void)
    row = dp_screen_start_row;
 
    show_actions_menu();
-   dump_task_list(true, false);
+   dump_task_list_panel(true);
 }
 
 static void dp_tasks_enter(void)
@@ -472,6 +327,46 @@ static void sel_step(int direction)
    }
 
    sel_scroll_into_view();
+}
+
+/* ---------------------- tracer subprocess launch -------------------- *
+ *
+ * Ctrl+T from this panel used to run the tracer in-process. The
+ * tracer is its own binary now, so we fork+execve /usr/bin/tracer,
+ * wait for it to exit, and tell the panel main loop to repaint
+ * from scratch — the tracer's dp_term_restore swung the terminal
+ * back to the default buffer + canonical mode, which we need to
+ * undo before drawing the panel again.
+ *
+ * The per-task .traced flags + the syscall filter live entirely
+ * in the kernel, so there's nothing to pass through argv.
+ */
+static void dp_run_tracer_subprocess(void)
+{
+   pid_t pid = fork();
+
+   if (pid < 0)
+      return;
+
+   if (pid == 0) {
+
+      char *const argv[] = { (char *)"tracer", NULL };
+      char *const envp[] = { (char *)"TILCK=1", NULL };
+      execve("/initrd/usr/bin/tracer", argv, envp);
+
+      /* exec failed — exit so the parent's waitpid completes. */
+      _exit(127);
+   }
+
+   int status;
+   while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+      continue;
+
+   /* Re-take the terminal: tracer's dp_term_restore reset alt
+    * buffer + termios + cursor visibility. The panel's main loop
+    * does not re-run dp_term_setup on its own. */
+   dp_term_setup();
+   dp_force_full_redraw();
 }
 
 static enum dp_kb_handler_action
@@ -558,7 +453,7 @@ sel_keypress(struct key_event ke)
          return dp_kb_handler_ok_and_continue;
 
       case DP_KEY_CTRL_T:
-         dp_run_tracer_screen();
+         dp_run_tracer_subprocess();
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
    }
@@ -583,7 +478,7 @@ default_keypress(struct key_event ke)
    }
 
    if (ke.print_char == DP_KEY_CTRL_T) {
-      dp_run_tracer_screen();
+      dp_run_tracer_subprocess();
       ui_need_update = true;
       return dp_kb_handler_ok_and_continue;
    }
@@ -618,32 +513,7 @@ static void dp_tasks_register(void)
 
 int dp_run_ps(void)
 {
-   if (dp_tasks_refresh() < 0) {
-      fprintf(stderr, "ps: TILCK_CMD_DP_GET_TASKS failed (errno=%d)\n", errno);
-      return 1;
-   }
-
-   dump_task_list(false, true);
+   dp_dump_task_list_plain(false);
    write(STDOUT_FILENO, "\r\n", 2);
    return 0;
-}
-
-/*
- * Public plain-text task dump used by the tracer ('p' / 'P' keys).
- * Refreshes the cached task table first; the tracer wants the latest
- * state, not whatever was in dp_tasks_buf from the last panel render.
- */
-void dp_dump_task_list_plain(bool kernel_tasks)
-{
-   const __typeof__(mode) saved = mode;
-
-   if (dp_tasks_refresh() < 0)
-      return;
-
-   /* The selection highlight only makes sense inside the panel
-    * render path; while we render plain text for the tracer, force
-    * default mode so the dump skips the highlight branch. */
-   mode = tm_default;
-   dump_task_list(kernel_tasks, true);
-   mode = saved;
 }
