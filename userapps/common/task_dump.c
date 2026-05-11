@@ -142,9 +142,9 @@ render_task_row_plain(const struct dp_task_info *t, bool kernel_tasks)
     * controlling tty). Mirror that here. */
    const int ttynum = t->is_kthread ? 0 : t->tty;
 
-   dp_write_raw(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
+   term_write(fmt, t->tid, t->pgid, t->sid, t->parent_pid,
                 state_str, ttynum, path);
-   dp_write_raw("\r\n");
+   term_write("\r\n");
 }
 
 /*
@@ -158,8 +158,8 @@ void dp_dump_task_list_plain(bool kernel_tasks)
    if (dp_tasks_refresh() < 0)
       return;
 
-   dp_write_raw("\r\n%s\r\n", task_dump_str(TDS_HEADER));
-   dp_write_raw(GFX_ON "%s" GFX_OFF "\r\n", task_dump_str(TDS_HLINE));
+   term_write("\r\n%s\r\n", task_dump_str(TDS_HEADER));
+   term_write(GFX_ON "%s" GFX_OFF "\r\n", task_dump_str(TDS_HLINE));
 
    for (int i = 0; i < dp_tasks_count; i++)
       render_task_row_plain(&dp_tasks_buf[i], kernel_tasks);

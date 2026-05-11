@@ -42,27 +42,27 @@
 #define USE_DEF_BUF              "\033[?1049l"
 
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
-#define DP_ESC_COLOR             E_COLOR_WHITE
+#define TERM_DEFAULT_COLOR             E_COLOR_WHITE
 
 /* Direct-emit functions (write to STDOUT_FILENO immediately). */
-void dp_write_raw(const char *fmt, ...)
+void term_write(const char *fmt, ...)
    __attribute__((format(printf, 1, 2)));
 
-void dp_write_raw_int(const char *buf, int len);
+void term_write_n(const char *buf, int len);
 
-void dp_move_right(int n);
-void dp_move_left(int n);
-void dp_move_to_col(int n);
-void dp_move_cursor(int row, int col);
-void dp_clear(void);
-void dp_set_cursor_enabled(bool enabled);
-void dp_switch_to_alt_buffer(void);
-void dp_switch_to_default_buffer(void);
+void term_move_right(int n);
+void term_move_left(int n);
+void term_move_to_col(int n);
+void term_move_cursor(int row, int col);
+void term_clear(void);
+void term_cursor_enable(bool enabled);
+void term_alt_buffer_enter(void);
+void term_alt_buffer_exit(void);
 
 /* Box drawing (direct-emit). */
-void dp_draw_rect_raw(int row, int col, int h, int w);
+void term_draw_rect_raw(int row, int col, int h, int w);
 
-void dp_draw_rect(const char *label,
+void term_draw_rect_labeled(const char *label,
                   const char *esc_label_color,
                   int row,
                   int col,
@@ -70,14 +70,14 @@ void dp_draw_rect(const char *label,
                   int w);
 
 static inline const char *
-dp_sign_value_esc_color(long val)
+term_sign_color(long val)
 {
    return val > 0
             ? E_COLOR_GREEN
-            : val < 0 ? E_COLOR_BR_RED : DP_ESC_COLOR;
+            : val < 0 ? E_COLOR_BR_RED : TERM_DEFAULT_COLOR;
 }
 
-static inline long dp_int_abs(long val)
+static inline long term_int_abs(long val)
 {
    return val >= 0 ? val : -val;
 }

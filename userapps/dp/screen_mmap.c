@@ -187,7 +187,7 @@ static void dump_mtrrs(void)
 
 static void dp_show_mmap(void)
 {
-   row = dp_screen_start_row;
+   row = tui_screen_start_row;
 
    dump_global_stats();
    dump_regions();

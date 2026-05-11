@@ -206,7 +206,7 @@ static void dump_task_list_panel(bool kernel_tasks)
     * panel-local relrow so sel_keypress can later translate
     * sel_index → buffer position and scroll-on-edge.
     */
-   first_task_relrow = row - dp_screen_start_row;
+   first_task_relrow = row - tui_screen_start_row;
 
    /*
     * Pin the action menu + table header + hr separator (everything
@@ -260,7 +260,7 @@ static void show_actions_menu(void)
 
 static void dp_show_tasks(void)
 {
-   row = dp_screen_start_row;
+   row = tui_screen_start_row;
 
    show_actions_menu();
    dump_task_list_panel(true);
@@ -299,8 +299,8 @@ static void sel_scroll_into_view(void)
    if (sel_relrow - dp_ctx->row_off < static_rows)
       dp_ctx->row_off = sel_relrow - static_rows;
 
-   if (sel_relrow - dp_ctx->row_off > dp_screen_rows - 1)
-      dp_ctx->row_off = sel_relrow - dp_screen_rows + 1;
+   if (sel_relrow - dp_ctx->row_off > tui_screen_rows - 1)
+      dp_ctx->row_off = sel_relrow - tui_screen_rows + 1;
 
    if (dp_ctx->row_off < 0)
       dp_ctx->row_off = 0;
@@ -337,7 +337,7 @@ static void sel_step(int direction)
  * Ctrl+T from this panel used to run the tracer in-process. The
  * tracer is its own binary now, so we fork+execve /usr/bin/tracer,
  * wait for it to exit, and tell the panel main loop to repaint
- * from scratch — the tracer's dp_term_restore swung the terminal
+ * from scratch — the tracer's tui_term_restore swung the terminal
  * back to the default buffer + canonical mode, which we need to
  * undo before drawing the panel again.
  *
@@ -365,10 +365,10 @@ static void dp_run_tracer_subprocess(void)
    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
       continue;
 
-   /* Re-take the terminal: tracer's dp_term_restore reset alt
+   /* Re-take the terminal: tracer's tui_term_restore reset alt
     * buffer + termios + cursor visibility. The panel's main loop
-    * does not re-run dp_term_setup on its own. */
-   dp_term_setup();
+    * does not re-run tui_term_setup on its own. */
+   tui_term_setup();
    dp_force_full_redraw();
 }
 
@@ -377,13 +377,13 @@ sel_keypress(struct key_event ke)
 {
    if (!ke.print_char) {
 
-      if (!strcmp(ke.seq, DP_KEY_UP)) {
+      if (!strcmp(ke.seq, TUI_KEY_UP)) {
          sel_step(-1);
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
       }
 
-      if (!strcmp(ke.seq, DP_KEY_DOWN)) {
+      if (!strcmp(ke.seq, TUI_KEY_DOWN)) {
          sel_step(+1);
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
@@ -394,7 +394,7 @@ sel_keypress(struct key_event ke)
 
    switch (ke.print_char) {
 
-      case DP_KEY_ESC:
+      case TUI_KEY_ESC:
          mode = tm_default;
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
@@ -455,7 +455,7 @@ sel_keypress(struct key_event ke)
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
 
-      case DP_KEY_CTRL_T:
+      case TUI_KEY_CTRL_T:
          dp_run_tracer_subprocess();
          ui_need_update = true;
          return dp_kb_handler_ok_and_continue;
@@ -473,14 +473,14 @@ default_keypress(struct key_event ke)
       return dp_kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == DP_KEY_ENTER) {
+   if (ke.print_char == TUI_KEY_ENTER) {
       mode = tm_sel;
       sel_scroll_into_view();   /* in case user PAGE-scrolled past tasks */
       ui_need_update = true;
       return dp_kb_handler_ok_and_continue;
    }
 
-   if (ke.print_char == DP_KEY_CTRL_T) {
+   if (ke.print_char == TUI_KEY_CTRL_T) {
       dp_run_tracer_subprocess();
       ui_need_update = true;
       return dp_kb_handler_ok_and_continue;

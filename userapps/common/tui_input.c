@@ -12,9 +12,9 @@
  *   - Sleep replaced with usleep(40_000) (~25 Hz, matching the kernel's
  *     KRN_TIMER_HZ / 25 cadence).
  *
- *   - Multi-byte key constants are dp-private DP_KEY_*; no scancodes.
+ *   - Multi-byte key constants are tui_*-private TUI_KEY_*; no scancodes.
  *
- *   - dp_set_input_blocking() flips the O_NONBLOCK flag on stdin via
+ *   - tui_set_input_blocking() flips the O_NONBLOCK flag on stdin via
  *     fcntl().
  */
 
@@ -33,7 +33,7 @@ static char line[72];
 
 typedef void (*key_handler_type)(char *, int);
 
-void dp_set_input_blocking(bool blocking)
+void tui_set_input_blocking(bool blocking)
 {
    int fl = fcntl(STDIN_FILENO, F_GETFL, 0);
 
@@ -61,7 +61,7 @@ read_single_byte(char *buf, int len)
 
       if (rc < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 
-         if (len > 0 && buf[0] == DP_KEY_ESC) {
+         if (len > 0 && buf[0] == TUI_KEY_ESC) {
 
             /*
              * We hit a non-terminated escape sequence: wait for one
@@ -117,13 +117,13 @@ convert_seq_to_key(const char *buf, int len, struct key_event *ke)
       return;
    }
 
-   if (buf[0] != DP_KEY_ESC)
+   if (buf[0] != TUI_KEY_ESC)
       return;        /* unknown non-ESC multi-byte: drop */
 
    if (len == 1) {
 
       /* Bare ESC keypress. */
-      ke->print_char = DP_KEY_ESC;
+      ke->print_char = TUI_KEY_ESC;
       return;
    }
 
@@ -146,7 +146,7 @@ convert_seq_to_key(const char *buf, int len, struct key_event *ke)
 }
 
 int
-dp_read_ke_from_tty(struct key_event *ke)
+tui_read_ke(struct key_event *ke)
 {
    char c, buf[16];
    int rc;
@@ -231,16 +231,16 @@ dp_read_ke_from_tty(struct key_event *ke)
    return 0;
 }
 
-static inline void dp_erase_last(void)
+static inline void tui_erase_last(void)
 {
-   dp_write_raw("\033[D \033[D");
+   term_write("\033[D \033[D");
 }
 
 static void
 handle_seq_home(char *buf, int bs)
 {
    (void)buf; (void)bs;
-   dp_move_left(line_pos);
+   term_move_left(line_pos);
    line_pos = 0;
 }
 
@@ -248,7 +248,7 @@ static void
 handle_seq_end(char *buf, int bs)
 {
    (void)buf; (void)bs;
-   dp_move_right(line_len - line_pos);
+   term_move_right(line_len - line_pos);
    line_pos = line_len;
 }
 
@@ -266,8 +266,8 @@ handle_seq_delete(char *buf, int bs)
       buf[i] = buf[i + 1];
 
    buf[line_len] = ' ';
-   dp_write_raw_int(buf + line_pos, line_len - line_pos + 1);
-   dp_move_left(line_len - line_pos + 1);
+   term_write_n(buf + line_pos, line_len - line_pos + 1);
+   term_move_left(line_len - line_pos + 1);
 }
 
 static void
@@ -278,7 +278,7 @@ handle_seq_left(char *buf, int bs)
    if (!line_pos)
       return;
 
-   dp_move_left(1);
+   term_move_left(1);
    line_pos--;
 }
 
@@ -290,7 +290,7 @@ handle_seq_right(char *buf, int bs)
    if (line_pos >= line_len)
       return;
 
-   dp_move_right(1);
+   term_move_right(1);
    line_pos++;
 }
 
@@ -299,15 +299,15 @@ handle_esc_seq(const char *seq, char *buf, int buf_size)
 {
    key_handler_type func = NULL;
 
-   if (!strcmp(seq, DP_KEY_LEFT))
+   if (!strcmp(seq, TUI_KEY_LEFT))
       func = handle_seq_left;
-   else if (!strcmp(seq, DP_KEY_RIGHT))
+   else if (!strcmp(seq, TUI_KEY_RIGHT))
       func = handle_seq_right;
-   else if (!strcmp(seq, DP_KEY_HOME))
+   else if (!strcmp(seq, TUI_KEY_HOME))
       func = handle_seq_home;
-   else if (!strcmp(seq, DP_KEY_END))
+   else if (!strcmp(seq, TUI_KEY_END))
       func = handle_seq_end;
-   else if (!strcmp(seq, DP_KEY_DEL))
+   else if (!strcmp(seq, TUI_KEY_DEL))
       func = handle_seq_delete;
 
    if (func)
@@ -324,7 +324,7 @@ handle_backspace(char *buf, int buf_size)
 
    line_len--;
    line_pos--;
-   dp_erase_last();
+   tui_erase_last();
 
    if (line_pos == line_len)
       return;
@@ -334,8 +334,8 @@ handle_backspace(char *buf, int buf_size)
       buf[i] = buf[i+1];
 
    buf[line_len] = ' ';
-   dp_write_raw_int(buf + line_pos, line_len - line_pos + 1);
-   dp_move_left(line_len - line_pos + 1);
+   term_write_n(buf + line_pos, line_len - line_pos + 1);
+   term_move_left(line_len - line_pos + 1);
 }
 
 static bool
@@ -343,7 +343,7 @@ handle_regular_char(char c, char *buf, int bs)
 {
    (void)bs;
 
-   dp_write_raw_int(&c, 1);
+   term_write_n(&c, 1);
 
    if (c == '\r' || c == '\n')
       return false;
@@ -360,17 +360,17 @@ handle_regular_char(char c, char *buf, int bs)
 
       buf[line_pos] = c;
 
-      dp_write_raw_int(buf + line_pos + 1, line_len - line_pos);
+      term_write_n(buf + line_pos + 1, line_len - line_pos);
       line_pos++;
 
-      dp_move_left(line_len - line_pos + 1);
+      term_move_left(line_len - line_pos + 1);
    }
 
    line_len++;
    return true;
 }
 
-int dp_read_line(char *buf, int buf_size)
+int tui_read_line(char *buf, int buf_size)
 {
    int rc;
    char c;
@@ -386,11 +386,11 @@ int dp_read_line(char *buf, int buf_size)
    memcpy(line, buf, (size_t)max_line_len);
    line[line_len] = 0;
 
-   dp_write_raw("%s", line);
+   term_write("%s", line);
 
    while (1) {
 
-      rc = dp_read_ke_from_tty(&ke);
+      rc = tui_read_ke(&ke);
 
       if (rc < 0) {
          line_len = rc;
@@ -401,7 +401,7 @@ int dp_read_line(char *buf, int buf_size)
 
       if (line_len < max_line_len) {
 
-         if (c == DP_KEY_BACKSPACE || c == '\b') {
+         if (c == TUI_KEY_BACKSPACE || c == '\b') {
 
             handle_backspace(buf, buf_size);
 
@@ -419,13 +419,13 @@ int dp_read_line(char *buf, int buf_size)
 
          /* line_len == max_line_len */
 
-         if (c == DP_KEY_BACKSPACE) {
+         if (c == TUI_KEY_BACKSPACE) {
 
             handle_backspace(buf, buf_size);
 
          } else if (c == '\r' || c == '\n') {
 
-            dp_write_raw("\r\n");
+            term_write("\r\n");
             break;
          }
       }

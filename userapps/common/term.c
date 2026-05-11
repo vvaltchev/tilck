@@ -17,7 +17,7 @@
 
 #include "term.h"
 
-void dp_write_raw_int(const char *buf, int len)
+void term_write_n(const char *buf, int len)
 {
    ssize_t off = 0;
 
@@ -32,7 +32,7 @@ void dp_write_raw_int(const char *buf, int len)
    }
 }
 
-void dp_write_raw(const char *fmt, ...)
+void term_write(const char *fmt, ...)
 {
    char buf[256];
    va_list args;
@@ -48,74 +48,74 @@ void dp_write_raw(const char *fmt, ...)
    if ((size_t)rc >= sizeof(buf))
       rc = (int)sizeof(buf) - 1;
 
-   dp_write_raw_int(buf, rc);
+   term_write_n(buf, rc);
 }
 
-void dp_move_right(int n)         { dp_write_raw("\033[%dC", n); }
-void dp_move_left(int n)          { dp_write_raw("\033[%dD", n); }
-void dp_move_to_col(int n)        { dp_write_raw("\033[%dG", n); }
-void dp_clear(void)               { dp_write_raw(ERASE_DISPLAY); }
-void dp_move_cursor(int row, int col) { dp_write_raw("\033[%d;%dH", row, col); }
+void term_move_right(int n)         { term_write("\033[%dC", n); }
+void term_move_left(int n)          { term_write("\033[%dD", n); }
+void term_move_to_col(int n)        { term_write("\033[%dG", n); }
+void term_clear(void)               { term_write(ERASE_DISPLAY); }
+void term_move_cursor(int row, int col) { term_write("\033[%d;%dH", row, col); }
 
-void dp_set_cursor_enabled(bool enabled)
+void term_cursor_enable(bool enabled)
 {
-   dp_write_raw("%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
+   term_write("%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
 }
 
-void dp_switch_to_alt_buffer(void)
+void term_alt_buffer_enter(void)
 {
-   dp_write_raw("%s", USE_ALT_BUF);
+   term_write("%s", USE_ALT_BUF);
 }
 
-void dp_switch_to_default_buffer(void)
+void term_alt_buffer_exit(void)
 {
-   dp_write_raw("%s", USE_DEF_BUF);
+   term_write("%s", USE_DEF_BUF);
 }
 
-void dp_draw_rect_raw(int row, int col, int h, int w)
+void term_draw_rect_raw(int row, int col, int h, int w)
 {
    if (w < 2 || h < 2)
       return;
 
-   dp_write_raw(GFX_ON);
-   dp_move_cursor(row, col);
-   dp_write_raw("l");
+   term_write(GFX_ON);
+   term_move_cursor(row, col);
+   term_write("l");
 
    for (int i = 0; i < w-2; i++)
-      dp_write_raw("q");
+      term_write("q");
 
-   dp_write_raw("k");
+   term_write("k");
 
    for (int i = 1; i < h-1; i++) {
 
-      dp_move_cursor(row+i, col);
-      dp_write_raw("x");
+      term_move_cursor(row+i, col);
+      term_write("x");
 
-      dp_move_cursor(row+i, col+w-1);
-      dp_write_raw("x");
+      term_move_cursor(row+i, col+w-1);
+      term_write("x");
    }
 
-   dp_move_cursor(row+h-1, col);
-   dp_write_raw("m");
+   term_move_cursor(row+h-1, col);
+   term_write("m");
 
    for (int i = 0; i < w-2; i++)
-      dp_write_raw("q");
+      term_write("q");
 
-   dp_write_raw("j");
-   dp_write_raw(GFX_OFF);
+   term_write("j");
+   term_write(GFX_OFF);
 }
 
-void dp_draw_rect(const char *label,
+void term_draw_rect_labeled(const char *label,
                   const char *esc_label_color,
                   int row,
                   int col,
                   int h,
                   int w)
 {
-   dp_draw_rect_raw(row, col, h, w);
+   term_draw_rect_raw(row, col, h, w);
 
    if (label) {
-      dp_move_cursor(row, col + 2);
-      dp_write_raw("%s[ %s ]" RESET_ATTRS, esc_label_color, label);
+      term_move_cursor(row, col + 2);
+      term_write("%s[ %s ]" RESET_ATTRS, esc_label_color, label);
    }
 }

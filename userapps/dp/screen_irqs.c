@@ -74,7 +74,7 @@ static void dp_irqs_on_enter(void)
 
 static void dp_show_irqs(void)
 {
-   row = dp_screen_start_row;
+   row = tui_screen_start_row;
 
    dp_writeln("Kernel IRQ-related counters");
 
@@ -127,7 +127,7 @@ static void dp_show_irqs(void)
 
    /* Unmasked legacy IRQs (0..15). Build the whole line in a single
     * dp_writeln so it lands in the buffer; the previous version mixed
-    * dp_write_raw (direct VT100) with dp_writeln (buffered) and the
+    * term_write (direct VT100) with dp_writeln (buffered) and the
     * unmasked-IRQ list ended up painted over the panel's title bar
     * instead of on its own line. */
    {

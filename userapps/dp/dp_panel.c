@@ -109,7 +109,7 @@ void dp_write(int row, int col, const char *fmt, ...)
    char buf[DP_BUF_CHUNK_SZ];
    va_list args;
    int rc;
-   const int relrow = row - dp_screen_start_row;
+   const int relrow = row - tui_screen_start_row;
 
    if (relrow < 0)
       return;        /* above the panel area; not addressable */
@@ -168,8 +168,8 @@ void dp_buf_paint(int row_off,
       const int relrow = (i < static_rows) ? i : i + row_off;
 
       /* Position to start of content area and overwrite with spaces. */
-      dp_move_cursor(term_row, panel_left_col + 1);
-      dp_write_raw_int(spaces, clear_len);
+      term_move_cursor(term_row, panel_left_col + 1);
+      term_write_n(spaces, clear_len);
 
       if (relrow >= dp_buf_lines)
          continue;       /* row already cleared, no chunks to emit */
@@ -181,8 +181,8 @@ void dp_buf_paint(int row_off,
          const struct dp_buf_chunk *C = &L->chunks[c];
          const int term_col = (C->col == 0) ? panel_left_col + 2 : C->col;
 
-         dp_move_cursor(term_row, term_col);
-         dp_write_raw_int(C->text, C->text_len);
+         term_move_cursor(term_row, term_col);
+         term_write_n(C->text, C->text_len);
       }
    }
 }
@@ -200,8 +200,8 @@ void dp_show_modal_msg(const char *msg)
       row_len = (int)sizeof(common_msg) - 1;
    row_len += 2;
 
-   const int srow = dp_start_row + DP_H / 2 - 5 / 2;
-   const int scol = dp_cols / 2 - row_len / 2;
+   const int srow = tui_start_row + DP_H / 2 - 5 / 2;
+   const int scol = tui_cols / 2 - row_len / 2;
 
    char clear_buf[DP_W+1];
 
@@ -213,20 +213,20 @@ void dp_show_modal_msg(const char *msg)
 
    /* Clear the rectangle area first (overwrite whatever was there). */
    for (int i = 0; i < 3; i++) {
-      dp_move_cursor(srow + i, scol);
-      dp_write_raw("%s", clear_buf);
+      term_move_cursor(srow + i, scol);
+      term_write("%s", clear_buf);
    }
 
    /* Draw the alert rectangle border + label. */
-   dp_draw_rect("Alert", E_COLOR_BR_RED,
+   term_draw_rect_labeled("Alert", E_COLOR_BR_RED,
                 srow - 1, scol - 1, 5, row_len + 2);
 
    /* The message itself. */
-   dp_move_cursor(srow, scol);
-   dp_write_raw(" %s", msg);
+   term_move_cursor(srow, scol);
+   term_write(" %s", msg);
 
    /* The "Press ANY key" hint. */
-   dp_move_cursor(srow + 2,
-                  dp_cols / 2 - ((int)sizeof(common_msg)-1) / 2);
-   dp_write_raw(E_COLOR_YELLOW "%s" RESET_ATTRS, common_msg);
+   term_move_cursor(srow + 2,
+                  tui_cols / 2 - ((int)sizeof(common_msg)-1) / 2);
+   term_write(E_COLOR_YELLOW "%s" RESET_ATTRS, common_msg);
 }

@@ -12,7 +12,7 @@
  * other's UI.
  *
  * The plain-text dump (`dp_dump_task_list_plain`) is implemented
- * here too — it uses dp_write_raw only and so doesn't depend on the
+ * here too — it uses term_write only and so doesn't depend on the
  * dp panel's row-counter macro (dp_writeln). The panel-mode render
  * with selection highlighting + scroll geometry stays in
  * screen_tasks.c, where its own static `row` lives.
@@ -59,7 +59,7 @@ void state_to_str(char *out, unsigned char state, bool stopped, bool traced);
 const char *task_dump_str(enum task_dump_str_t t);
 
 /*
- * Plain-text dump of the task list to stdout via dp_write_raw.
+ * Plain-text dump of the task list to stdout via term_write.
  * Used by dp's `ps` mode and by the tracer's 'p' / 'P' keys.
  * Refreshes the task table first.
  *   kernel_tasks=true  → also include kthreads (tracer 'P').

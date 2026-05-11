@@ -140,7 +140,7 @@ dp_chunks_keypress(struct key_event ke)
 
 static void dp_show_chunks(void)
 {
-   row = dp_screen_start_row;
+   row = tui_screen_start_row;
 
    if (!got_data) {
 

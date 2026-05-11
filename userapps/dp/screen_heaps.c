@@ -79,8 +79,8 @@ static void dp_heaps_on_exit(void)
 
 static void dp_show_heaps(void)
 {
-   const int col = dp_start_col + 40;
-   row = dp_screen_start_row;
+   const int col = tui_start_col + 40;
+   row = tui_screen_start_row;
 
    dp_writeln2("[      Small heaps      ]");
    dp_writeln2("count:    %3d [peak: %3d]",
@@ -88,7 +88,7 @@ static void dp_show_heaps(void)
    dp_writeln2("non-full: %3d [peak: %3d]",
                sh_stats.not_full_count, sh_stats.peak_not_full_count);
 
-   row = dp_screen_start_row;
+   row = tui_screen_start_row;
 
    if (heap_count == 0) {
       dp_writeln(E_COLOR_BR_RED
@@ -103,7 +103,7 @@ static void dp_show_heaps(void)
    dp_writeln("Usable:  %6lu KB", tot_usable_kb);
    dp_writeln("Used:    %6lu KB (%lu%%)", tot_used_kb, pct);
    dp_writeln("Diff:   %s%s%6ld KB" RESET_ATTRS " [%ld B]",
-              dp_sign_value_esc_color(tot_diff),
+              term_sign_color(tot_diff),
               tot_diff > 0 ? "+" : " ",
               tot_diff / (long)KB_,
               tot_diff);
@@ -161,8 +161,8 @@ static void dp_show_heaps(void)
          pct1k % 10,
          h->min_block_size,
          diff > 0 ? "+" : " ",
-         dp_int_abs(diff) < 4096 ? diff : diff / 1024,
-         dp_int_abs(diff) < 4096 ? "B " : "KB"
+         term_int_abs(diff) < 4096 ? diff : diff / 1024,
+         term_int_abs(diff) < 4096 ? "B " : "KB"
       );
    }
 

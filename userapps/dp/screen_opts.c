@@ -73,9 +73,9 @@ val_color(const char *val)
       return E_COLOR_GREEN;
 
    if (val[0] == '0' && val[1] == '\0')
-      return DP_ESC_COLOR;
+      return TERM_DEFAULT_COLOR;
 
-   return DP_ESC_COLOR;
+   return TERM_DEFAULT_COLOR;
 }
 
 static void
@@ -117,8 +117,8 @@ render_section(const char *dir_path, const char *label, int *row, int col)
 
 static void dp_show_opts(void)
 {
-   int row = dp_screen_start_row + 1;
-   const int col = dp_start_col + 3;
+   int row = tui_screen_start_row + 1;
+   const int col = tui_start_col + 3;
    const size_t n = sizeof(sections) / sizeof(sections[0]);
 
    for (size_t i = 0; i < n; i++)

@@ -60,7 +60,7 @@ int  dp_run_panel(void);
  * Tell the main loop that an overlay (modal, sub-screen) has trampled
  * over the chrome and panel content; the next iteration must repaint
  * everything from scratch. Used by the Tasks panel after the tracer
- * subprocess returns (the tracer's dp_term_restore reset alt buffer +
+ * subprocess returns (the tracer's tui_term_restore reset alt buffer +
  * cursor + termios).
  */
 void dp_force_full_redraw(void);

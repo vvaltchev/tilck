@@ -6,7 +6,7 @@
  * dp_main_handle_keypress / dp_main_body code). The kernel's
  * dp_common_entry — which set up the TTY in raw mode and drove the
  * read-key/redraw loop — is split across here and dp_screen.c
- * (dp_term_setup / dp_term_restore handle the termios + alt-buffer
+ * (tui_term_setup / tui_term_restore handle the termios + alt-buffer
  * dance).
  *
  * Screens register themselves at program startup via
@@ -76,8 +76,8 @@ static void dp_enter(void)
 {
    struct dp_screen *p;
 
-   dp_init_layout();
-   dp_term_setup();
+   tui_init_layout();
+   tui_term_setup();
 
    for (p = dp_screens_head; p; p = p->next) {
 
@@ -102,7 +102,7 @@ static void dp_exit(void)
          p->on_dp_exit();
    }
 
-   dp_term_restore();
+   tui_term_restore();
 }
 
 static void
@@ -110,14 +110,14 @@ dp_write_header(int i, const char *s, bool selected)
 {
    if (selected) {
 
-      dp_write_raw(
+      term_write(
          E_COLOR_BR_WHITE "%d" REVERSE_VIDEO "[%s]" RESET_ATTRS " ",
          i, s
       );
 
    } else {
 
-      dp_write_raw("%d[%s]" RESET_ATTRS " ", i, s);
+      term_write("%d[%s]" RESET_ATTRS " ", i, s);
    }
 }
 
@@ -125,17 +125,17 @@ static void paint_chrome(void)
 {
    struct dp_screen *p;
 
-   dp_clear();
-   dp_move_cursor(dp_start_row + 1, dp_start_col + 2);
+   term_clear();
+   term_move_cursor(tui_start_row + 1, tui_start_col + 2);
 
    for (p = dp_screens_head; p; p = p->next)
       dp_write_header(p->index + 1, p->label, p == dp_ctx);
 
-   dp_write_raw("q[Quit]" RESET_ATTRS " ");
+   term_write("q[Quit]" RESET_ATTRS " ");
 
-   dp_draw_rect_raw(dp_start_row, dp_start_col, DP_H, DP_W);
-   dp_move_cursor(dp_start_row, dp_start_col + 2);
-   dp_write_raw(E_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
+   term_draw_rect_raw(tui_start_row, tui_start_col, DP_H, DP_W);
+   term_move_cursor(tui_start_row, tui_start_col + 2);
+   term_write(E_COLOR_YELLOW "[ TilckDebugPanel ]" RESET_ATTRS);
 }
 
 static void rebuild_buffer(void)
@@ -150,13 +150,13 @@ static void rebuild_buffer(void)
 static void paint_panel(void)
 {
    /*
-    * Visible content rows: dp_screen_start_row .. dp_end_row-2
+    * Visible content rows: tui_screen_start_row .. tui_end_row-2
     * (inclusive). screen_rows is already the count of those.
     */
    dp_buf_paint(dp_ctx->row_off,
-                dp_screen_rows,
-                dp_screen_start_row,
-                dp_start_col,
+                tui_screen_rows,
+                tui_screen_start_row,
+                tui_start_col,
                 DP_W,
                 dp_ctx->static_rows);
 }
@@ -172,7 +172,7 @@ static void paint_footer(void)
     * of the scroll counter. With static_rows=0 the math degenerates
     * to the original buffer-relative numbers.
     */
-   const int scroll_rows  = dp_screen_rows - dp_ctx->static_rows;
+   const int scroll_rows  = tui_screen_rows - dp_ctx->static_rows;
    const int scroll_total = dp_ctx->row_max - dp_ctx->static_rows + 1;
 
    int row_to = dp_ctx->row_off + scroll_rows;
@@ -187,8 +187,8 @@ static void paint_footer(void)
                  scroll_total);
 
    /* Sit on the bottom border line, near the right edge. */
-   dp_move_cursor(dp_end_row - 1, dp_start_col + DP_W - rc - 2);
-   dp_write_raw(E_COLOR_BR_RED "%s" RESET_ATTRS, buf);
+   term_move_cursor(tui_end_row - 1, tui_start_col + DP_W - rc - 2);
+   term_write(E_COLOR_BR_RED "%s" RESET_ATTRS, buf);
 }
 
 static void redraw_screen(void)
@@ -212,7 +212,7 @@ static void redraw_screen(void)
    }
 
    /* Park the cursor below the panel so it is inconspicuous. */
-   dp_move_cursor(dp_rows, 1);
+   term_move_cursor(tui_rows, 1);
    ui_need_update = false;
 }
 
@@ -240,7 +240,7 @@ dp_main_handle_keypress(struct key_event ke)
          }
       }
 
-   } else if (!strcmp(ke.seq, DP_KEY_PAGE_DOWN)) {
+   } else if (!strcmp(ke.seq, TUI_KEY_PAGE_DOWN)) {
 
       /*
        * Scroll one row down if there is any unviewed content below
@@ -249,14 +249,14 @@ dp_main_handle_keypress(struct key_event ke)
        * row_max — equivalently, row_off + screen_rows <= row_max.
        * Strict `<` was off by one and stranded the last row.
        */
-      if (dp_ctx->row_off + dp_screen_rows <= dp_ctx->row_max) {
+      if (dp_ctx->row_off + tui_screen_rows <= dp_ctx->row_max) {
          dp_ctx->row_off++;
          /* Pure scroll: same buffer, just re-clip the viewport. */
          need_paint = true;
          ui_need_update = true;
       }
 
-   } else if (!strcmp(ke.seq, DP_KEY_PAGE_UP)) {
+   } else if (!strcmp(ke.seq, TUI_KEY_PAGE_UP)) {
 
       if (dp_ctx->row_off > 0) {
          dp_ctx->row_off--;
@@ -353,10 +353,10 @@ int dp_run_panel(void)
       if (!rc && ke.print_char == 'q')
          break;
 
-      if (dp_read_ke_from_tty(&ke) < 0)
+      if (tui_read_ke(&ke) < 0)
          break;
 
-      if (ke.print_char == DP_KEY_CTRL_C)
+      if (ke.print_char == TUI_KEY_CTRL_C)
          break;
    }
 

@@ -167,7 +167,7 @@ static void show_banner(void)
    long rc;
 
    if (dp_cmd_get_stats(&st) < 0) {
-      dp_write_raw(E_COLOR_BR_RED
+      term_write(E_COLOR_BR_RED
                    "TILCK_CMD_DP_TRACE_GET_STATS failed (errno=%d)\r\n"
                    RESET_ATTRS, errno);
       return;
@@ -189,11 +189,11 @@ static void show_banner(void)
    if (rc < 0)
       strcpy(filter_buf, "?");
 
-   dp_write_raw(E_COLOR_YELLOW
+   term_write(E_COLOR_YELLOW
                 "Tilck syscall tracing (h: help)\r\n"
                 RESET_ATTRS);
 
-   dp_write_raw(
+   term_write(
       TERM_VLINE " Always ENTER+EXIT: %s "
       TERM_VLINE " Big bufs: %s  "
       TERM_VLINE " #Sys traced: " E_COLOR_BR_BLUE "%d" RESET_ATTRS " "
@@ -209,49 +209,49 @@ static void show_banner(void)
       st.tasks_traced_count,
       st.printk_lvl);
 
-   dp_write_raw(TERM_VLINE " Trace expr: " E_COLOR_YELLOW "%s" RESET_ATTRS,
+   term_write(TERM_VLINE " Trace expr: " E_COLOR_YELLOW "%s" RESET_ATTRS,
                 filter_buf);
 
-   dp_write_raw("\r\n");
-   dp_write_raw(E_COLOR_YELLOW "> " RESET_ATTRS);
+   term_write("\r\n");
+   term_write(E_COLOR_YELLOW "> " RESET_ATTRS);
 }
 
 static void show_help(void)
 {
-   dp_write_raw("\r\n\r\n");
-   dp_write_raw(E_COLOR_YELLOW "Tracing mode help" RESET_ATTRS "\r\n");
+   term_write("\r\n\r\n");
+   term_write(E_COLOR_YELLOW "Tracing mode help" RESET_ATTRS "\r\n");
 
-   dp_write_raw("  " E_COLOR_YELLOW "o" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "o" RESET_ATTRS
                 "     : Toggle always enter + exit\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "b" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "b" RESET_ATTRS
                 "     : Toggle dump big buffers\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "e" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "e" RESET_ATTRS
                 "     : Edit syscalls wildcard expr "
                 E_COLOR_RED "[1]" RESET_ATTRS "\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "k" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "k" RESET_ATTRS
                 "     : Set trace_printk() level\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "l" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "l" RESET_ATTRS
                 "     : List traced syscalls\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "p" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "p" RESET_ATTRS
                 "     : Dump user tasks list\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "P" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "P" RESET_ATTRS
                 "     : Dump full task list\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "t" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "t" RESET_ATTRS
                 "     : Edit list of traced PIDs\r\n");
-   dp_write_raw("  " E_COLOR_YELLOW "q" RESET_ATTRS
+   term_write("  " E_COLOR_YELLOW "q" RESET_ATTRS
                 "     : Back to the debug panel\r\n");
-   dp_write_raw("  " "ENTER" RESET_ATTRS " : Start / stop tracing\r\n");
+   term_write("  " "ENTER" RESET_ATTRS " : Start / stop tracing\r\n");
 
-   dp_write_raw("\r\n" E_COLOR_RED "[1]" RESET_ATTRS " ");
-   dp_write_raw("In the wildcard expr the " E_COLOR_BR_WHITE "*" RESET_ATTRS
+   term_write("\r\n" E_COLOR_RED "[1]" RESET_ATTRS " ");
+   term_write("In the wildcard expr the " E_COLOR_BR_WHITE "*" RESET_ATTRS
                 " character is allowed only once, at the end.\r\n");
-   dp_write_raw("The " E_COLOR_BR_WHITE "!" RESET_ATTRS " character can be "
+   term_write("The " E_COLOR_BR_WHITE "!" RESET_ATTRS " character can be "
                 "used, at the beginning of each sub-expr, to negate it.\r\n");
-   dp_write_raw("Single sub-expressions are separated by comma or space. "
+   term_write("Single sub-expressions are separated by comma or space. "
                 "The " E_COLOR_BR_WHITE "?" RESET_ATTRS " character is\r\n");
-   dp_write_raw("supported and has the usual meaning "
+   term_write("supported and has the usual meaning "
                 "(matches 1 single char, any).\r\n");
-   dp_write_raw(E_COLOR_BR_WHITE "Example: " RESET_ATTRS
+   term_write(E_COLOR_BR_WHITE "Example: " RESET_ATTRS
                 "read*,write*,!readlink* \r\n");
 }
 
@@ -262,14 +262,14 @@ static void list_traced_syscalls(void)
    unsigned char bitmap[MAX_SYSCALLS];
    long n;
 
-   dp_write_raw("\r\n\r\n");
-   dp_write_raw(E_COLOR_YELLOW "Traced syscalls list" RESET_ATTRS);
-   dp_write_raw("\r\n");
+   term_write("\r\n\r\n");
+   term_write(E_COLOR_YELLOW "Traced syscalls list" RESET_ATTRS);
+   term_write("\r\n");
 
    n = dp_cmd_get_traced_bitmap(bitmap, sizeof(bitmap));
 
    if (n < 0) {
-      dp_write_raw(E_COLOR_RED "Failed to retrieve traced syscalls "
+      term_write(E_COLOR_RED "Failed to retrieve traced syscalls "
                    "(errno=%d)\r\n" RESET_ATTRS, errno);
       return;
    }
@@ -291,10 +291,10 @@ static void list_traced_syscalls(void)
       if (!strncmp(p, "sys_", 4))
          p += 4;
 
-      dp_write_raw("%s ", p);
+      term_write("%s ", p);
    }
 
-   dp_write_raw("\r\n");
+   term_write("\r\n");
 }
 
 /* ----------------------- 'e' edit filter expr ------------------------ */
@@ -306,14 +306,14 @@ static void edit_filter(void)
 
    dp_cmd_get_filter(buf, sizeof(buf));
 
-   dp_move_left(2);
-   dp_write_raw(E_COLOR_YELLOW "expr> " RESET_ATTRS);
-   dp_set_input_blocking(true);
-   dp_read_line(buf, sizeof(buf));
-   dp_set_input_blocking(false);
+   term_move_left(2);
+   term_write(E_COLOR_YELLOW "expr> " RESET_ATTRS);
+   tui_set_input_blocking(true);
+   tui_read_line(buf, sizeof(buf));
+   tui_set_input_blocking(false);
 
    if (dp_cmd_set_filter(buf) < 0)
-      dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+      term_write(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
 }
 
 /* ----------------------- 'k' edit printk level ----------------------- */
@@ -323,11 +323,11 @@ static void edit_printk_level(void)
    char buf[16];
    buf[0] = '\0';
 
-   dp_move_left(2);
-   dp_write_raw(E_COLOR_YELLOW "Level [0, 100]: " RESET_ATTRS);
-   dp_set_input_blocking(true);
-   dp_read_line(buf, sizeof(buf));
-   dp_set_input_blocking(false);
+   term_move_left(2);
+   term_write(E_COLOR_YELLOW "Level [0, 100]: " RESET_ATTRS);
+   tui_set_input_blocking(true);
+   tui_read_line(buf, sizeof(buf));
+   tui_set_input_blocking(false);
 
    char *endp = NULL;
    long val = strtol(buf, &endp, 10);
@@ -335,8 +335,8 @@ static void edit_printk_level(void)
    if (!buf[0] || endp == buf || (*endp && *endp != '\0') ||
        val < 0 || val > 100)
    {
-      dp_write_raw("\r\n");
-      dp_write_raw(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
+      term_write("\r\n");
+      term_write(E_COLOR_RED "Invalid input\r\n" RESET_ATTRS);
       return;
    }
 
@@ -422,20 +422,20 @@ static void edit_traced_pids(void)
       }
    }
 
-   dp_move_left(2);
-   dp_write_raw(E_COLOR_YELLOW "PIDs> " RESET_ATTRS);
-   dp_set_input_blocking(true);
-   dp_read_line(buf, sizeof(buf));
-   dp_set_input_blocking(false);
+   term_move_left(2);
+   term_write(E_COLOR_YELLOW "PIDs> " RESET_ATTRS);
+   tui_set_input_blocking(true);
+   tui_read_line(buf, sizeof(buf));
+   tui_set_input_blocking(false);
 
-   dp_write_raw("\r\n");
+   term_write("\r\n");
 
    int set = parse_and_set_traced_pids(buf);
 
    if (set < 0)
-      dp_write_raw("Invalid input\r\n");
+      term_write("Invalid input\r\n");
    else
-      dp_write_raw("Tracing %d tasks\r\n", set);
+      term_write("Tracing %d tasks\r\n", set);
 }
 
 /* ------------------------ live tracing loop -------------------------- */
@@ -471,10 +471,10 @@ trace_live_loop(int events_fd)
 
       if (n == 1) {
 
-         if (c == 'q' || c == DP_KEY_CTRL_C)
+         if (c == 'q' || c == TUI_KEY_CTRL_C)
             break;
 
-         if (c == DP_KEY_ENTER) {
+         if (c == TUI_KEY_ENTER) {
             keep_banner = true;
             break;
          }
@@ -490,7 +490,7 @@ trace_live_loop(int events_fd)
          long rc = tr_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
 
          if (rc > 0)
-            dp_write_raw_int(rbuf, (int)rc);
+            term_write_n(rbuf, (int)rc);
 
          continue;
       }
@@ -508,7 +508,7 @@ trace_live_loop(int events_fd)
    }
 
    if (ctx.last_tp_incomplete_line)
-      dp_write_raw("\r\n");
+      term_write("\r\n");
 
    return keep_banner;
 }
@@ -526,7 +526,7 @@ static int dump_remaining_events(int events_fd)
    if (rem <= 0)
       return 0;
 
-   dp_write_raw("Discard remaining %ld events in the buf? [Y/n] ",
+   term_write("Discard remaining %ld events in the buf? [Y/n] ",
                 rem);
 
    /* Read a single key; loop until we accept it. */
@@ -547,8 +547,8 @@ static int dump_remaining_events(int events_fd)
    if (c == '\r' || c == 'Y')
       c = 'y';
 
-   dp_write_raw_int(&c, 1);
-   dp_write_raw("\r\n");
+   term_write_n(&c, 1);
+   term_write("\r\n");
 
    /* Drain. The events fd's kernel-side read is non-blocking-friendly
     * (returns -EAGAIN when empty), so loop until we hit that or EOF. */
@@ -567,7 +567,7 @@ static int dump_remaining_events(int events_fd)
             long rc = tr_render_event(&ev, rbuf, sizeof(rbuf), &ctx);
 
             if (rc > 0)
-               dp_write_raw_int(rbuf, (int)rc);
+               term_write_n(rbuf, (int)rc);
          }
 
          continue;
@@ -583,7 +583,7 @@ static int dump_remaining_events(int events_fd)
    }
 
    if (ctx.last_tp_incomplete_line)
-      dp_write_raw("\r\n");
+      term_write("\r\n");
 
    return 1;
 }
@@ -602,25 +602,25 @@ static bool tracer_handle_one_key(int events_fd_unused)
 
    (void)events_fd_unused;
 
-   dp_set_input_blocking(true);
+   tui_set_input_blocking(true);
    rc = read(STDIN_FILENO, &c, 1);
-   dp_set_input_blocking(false);
+   tui_set_input_blocking(false);
 
    if (rc <= 0)
       return false;
 
-   if (c == 'q' || c == DP_KEY_CTRL_C)
+   if (c == 'q' || c == TUI_KEY_CTRL_C)
       return false;
 
    switch (c) {
 
       case 'h':
-         dp_write_raw("%c", c);
+         term_write("%c", c);
          show_help();
          break;
 
       case 'o':
-         dp_write_raw("%c", c);
+         term_write("%c", c);
          {
             struct dp_trace_stats st = {0};
             dp_cmd_get_stats(&st);
@@ -629,7 +629,7 @@ static bool tracer_handle_one_key(int events_fd_unused)
          break;
 
       case 'b':
-         dp_write_raw("%c", c);
+         term_write("%c", c);
          {
             struct dp_trace_stats st = {0};
             dp_cmd_get_stats(&st);
@@ -646,19 +646,19 @@ static bool tracer_handle_one_key(int events_fd_unused)
          break;
 
       case 'l':
-         dp_write_raw("%c", c);
+         term_write("%c", c);
          list_traced_syscalls();
          break;
 
       case 'p':
-         dp_write_raw("%c", c);
-         dp_write_raw("\r\n");
+         term_write("%c", c);
+         term_write("\r\n");
          dp_dump_task_list_plain(false);
          break;
 
       case 'P':
-         dp_write_raw("%c", c);
-         dp_write_raw("\r\n");
+         term_write("%c", c);
+         term_write("\r\n");
          dp_dump_task_list_plain(true);
          break;
 
@@ -666,19 +666,19 @@ static bool tracer_handle_one_key(int events_fd_unused)
          edit_traced_pids();
          break;
 
-      case DP_KEY_ENTER: {
+      case TUI_KEY_ENTER: {
 
          int events_fd = open(EVENTS_PATH, O_RDONLY | O_NONBLOCK);
 
          if (events_fd < 0) {
-            dp_write_raw(E_COLOR_BR_RED
+            term_write(E_COLOR_BR_RED
                          "open(%s) failed: errno=%d\r\n"
                          RESET_ATTRS, EVENTS_PATH, errno);
             break;
          }
 
-         dp_write_raw("\r\n");
-         dp_write_raw(E_COLOR_GREEN "-- Tracing active --"
+         term_write("\r\n");
+         term_write(E_COLOR_GREEN "-- Tracing active --"
                       RESET_ATTRS "\r\n\r\n");
 
          dp_cmd_set_enabled(1);
@@ -690,7 +690,7 @@ static bool tracer_handle_one_key(int events_fd_unused)
             return false;     /* clean exit (q or Ctrl+C) */
          }
 
-         dp_write_raw(E_COLOR_RED "-- Tracing stopped --"
+         term_write(E_COLOR_RED "-- Tracing stopped --"
                       RESET_ATTRS "\r\n");
 
          if (dump_remaining_events(events_fd) < 0) {
@@ -707,7 +707,7 @@ static bool tracer_handle_one_key(int events_fd_unused)
          return true;
    }
 
-   dp_write_raw("\r\n\r\n");
+   term_write("\r\n\r\n");
    show_banner();
    return true;
 }
@@ -724,28 +724,28 @@ static bool tracer_handle_one_key(int events_fd_unused)
 int dp_run_tracer(void)
 {
    tr_meta_init();
-   dp_init_layout();
-   dp_term_setup();
+   tui_init_layout();
+   tui_term_setup();
 
    /*
-    * dp_term_setup hides the cursor (the panel UI doesn't want one),
+    * tui_term_setup hides the cursor (the panel UI doesn't want one),
     * but the tracer's banner ends with a "> " prompt and several
     * commands ('e', 'k', 't') drop into a line editor — those need
     * the cursor visible so the user can see what they're typing.
-    * Master called dp_set_cursor_enabled(true) on entry to
+    * Master called term_cursor_enable(true) on entry to
     * dp_tracing_screen for the same reason; mirror that here.
-    * dp_term_restore at exit re-enables it for the host shell.
+    * tui_term_restore at exit re-enables it for the host shell.
     */
-   dp_set_cursor_enabled(true);
+   term_cursor_enable(true);
 
-   dp_clear();
-   dp_move_cursor(1, 1);
+   term_clear();
+   term_move_cursor(1, 1);
    show_banner();
 
    while (tracer_handle_one_key(-1))
       ; /* loop */
 
    dp_cmd_set_enabled(0);
-   dp_term_restore();
+   tui_term_restore();
    return 0;
 }
