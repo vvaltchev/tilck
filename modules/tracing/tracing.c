@@ -976,6 +976,10 @@ static u8 tracing_ptype_to_id(const struct sys_param_type *t)
    if (t == &ptype_mount_flags)      return TR_PT_MOUNT_FLAGS;
    if (t == &ptype_madvise_advice)   return TR_PT_MADVISE_ADVICE;
 
+   /* Layer 2 — context-dependent struct ptrs. */
+   if (t == &ptype_ioctl_argp)       return TR_PT_IOCTL_ARGP;
+   if (t == &ptype_fcntl_arg)        return TR_PT_FCNTL_ARG;
+
    return TR_PT_NONE;
 }
 
@@ -1035,6 +1039,8 @@ tracing_init_meta_blob(void)
       [TR_PT_CLONE_FLAGS]     = &ptype_clone_flags,
       [TR_PT_MOUNT_FLAGS]     = &ptype_mount_flags,
       [TR_PT_MADVISE_ADVICE]  = &ptype_madvise_advice,
+      [TR_PT_IOCTL_ARGP]      = &ptype_ioctl_argp,
+      [TR_PT_FCNTL_ARG]       = &ptype_fcntl_arg,
    };
 
    /* Count syscalls for which we have metadata (non-NULL entry in

@@ -995,6 +995,12 @@ bool tr_dump_from_val(unsigned type_id,
       case TR_PT_MOUNT_FLAGS:      return dump_mount_flags(val, helper, dst, bs);
       case TR_PT_MADVISE_ADVICE:   return dump_madvise_advice(val, helper, dst, bs);
 
+      /* Layer 2 — fcntl_arg. ptype_fcntl_arg has slot_size=0
+       * (no struct capture), so the renderer reaches it here
+       * rather than via tr_dump. Forward with empty data. */
+      case TR_PT_FCNTL_ARG:        return tr_dump_fcntl_arg(val, NULL, 0,
+                                                            helper, dst, bs);
+
       /* These ptypes only have a `dump` (with-data) variant in the
        * kernel — no dump_from_val. Mirror that. */
       case TR_PT_INT32_PAIR:
@@ -1038,6 +1044,17 @@ bool tr_dump(unsigned type_id,
       case TR_PT_IOV_OUT:
          return dump_iov_out_with_data(orig, data, data_size, helper,
                                        dst, bs);
+
+      /* Layer 2 — context-dependent struct argp/arg. The dump
+       * functions live in tr_dump_ioctl.c; helper is the cmd /
+       * request value from the sibling param. */
+      case TR_PT_IOCTL_ARGP:
+         return tr_dump_ioctl_argp(orig, data, data_size, helper,
+                                   dst, bs);
+
+      case TR_PT_FCNTL_ARG:
+         return tr_dump_fcntl_arg(orig, data, data_size, helper,
+                                  dst, bs);
 
       /* These ptypes have only dump_from_val — no with-data path.
        * Mirror that. */

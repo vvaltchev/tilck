@@ -270,6 +270,13 @@ extern const struct sys_param_type ptype_clone_flags;
 extern const struct sys_param_type ptype_mount_flags;
 extern const struct sys_param_type ptype_madvise_advice;
 
+/* Layer 2 — context-dependent struct argp/arg. The save callback's
+ * `hlp` argument carries the sibling cmd/request value (set via
+ * COMPLEX_PARAM's helper_param_name); the callback switches on it
+ * to copy the right struct bytes from user space. */
+extern const struct sys_param_type ptype_ioctl_argp;
+extern const struct sys_param_type ptype_fcntl_arg;
+
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
 {

@@ -255,7 +255,13 @@ static const struct syscall_info __tracing_metadata[] =
       .params = {
          SIMPLE_PARAM("fd",      &ptype_int,        sys_param_in),
          SIMPLE_PARAM("request", &ptype_ioctl_cmd,  sys_param_in),
-         SIMPLE_PARAM("argp",    &ptype_voidp,      sys_param_in),
+         /* argp is context-dependent: its pointee struct (termios,
+          * winsize, int, ...) is determined by `request`. The save
+          * callback (ptype_argp.c) switches on the helper value to
+          * copy the right bytes; userspace dump dispatches by
+          * `request` too. */
+         COMPLEX_PARAM("argp",   &ptype_ioctl_argp,
+                       sys_param_in_out, "request"),
       },
    },
 
@@ -265,9 +271,12 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("fd",  &ptype_int,        sys_param_in),
-         SIMPLE_PARAM("cmd", &ptype_fcntl_cmd,  sys_param_in),
-         SIMPLE_PARAM("arg", &ptype_voidp,      sys_param_in),
+         SIMPLE_PARAM("fd",  &ptype_int,       sys_param_in),
+         SIMPLE_PARAM("cmd", &ptype_fcntl_cmd, sys_param_in),
+         /* arg semantics depend on cmd: an int for F_DUPFD /
+          * F_SETFD / F_SETFL / F_DUPFD_CLOEXEC; unused for
+          * F_GETFD / F_GETFL. Userspace dispatch by helper. */
+         COMPLEX_PARAM("arg", &ptype_fcntl_arg, sys_param_in, "cmd"),
       },
    },
 

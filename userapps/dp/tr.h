@@ -84,6 +84,19 @@ bool tr_dump(unsigned type_id,
 const char *tr_get_errno_name(int err);
 const char *tr_get_signal_name(int signum);
 
+/* Layer 2 — context-dependent struct argp/arg dump callbacks
+ * (defined in tr_dump_ioctl.c). The helper carries the cmd /
+ * request value selected by the metadata's COMPLEX_PARAM. */
+bool tr_dump_ioctl_argp(unsigned long orig,
+                        char *data, long data_size,
+                        long helper,
+                        char *dst, size_t dst_size);
+
+bool tr_dump_fcntl_arg(unsigned long orig,
+                       char *data, long data_size,
+                       long helper,
+                       char *dst, size_t dst_size);
+
 /* ----------------------------- render ------------------------------- */
 
 /*

@@ -68,6 +68,13 @@ enum tr_ptype_id {
    TR_PT_MOUNT_FLAGS      = 25,  /* MS_RDONLY|MS_NOSUID|...     */
    TR_PT_MADVISE_ADVICE   = 26,  /* MADV_NORMAL / MADV_DONTNEED / ... */
 
+   /* Layer 2 — context-dependent struct pointers. The save callback
+    * takes the helper value as the cmd/request and copies the right
+    * bytes from user space; the dump callback interprets bytes as
+    * the cmd-specific struct (termios, winsize, etc.). */
+   TR_PT_IOCTL_ARGP       = 27,
+   TR_PT_FCNTL_ARG        = 28,
+
    TR_PT_COUNT,                  /* not a real id; sentinel for the table */
    TR_PT_NONE            = 0xff,
 };
