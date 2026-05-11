@@ -104,19 +104,12 @@ const struct sys_param_type ptype_ioctl_argp = {
 /* fcntl: only F_SETLK / F_SETLKW / F_GETLK take a struct flock*;
  * Tilck currently doesn't implement any of those (kernel rejects
  * them). For F_DUPFD / F_SETFD / F_SETFL / F_DUPFD_CLOEXEC the
- * arg is an immediate int — no copy needed; the userspace dump
- * renders it from the raw arg value. So today this save callback
- * has nothing to do, but the slot is reserved for the day flock
- * support lands. */
-static bool
-save_param_fcntl_arg(void *data, long hlp, char *dest_buf, size_t dest_bs)
-{
-   (void)data; (void)hlp; (void)dest_buf; (void)dest_bs;
-   return true;
-}
-
+ * arg is an immediate int — no copy needed; userspace renders
+ * straight from the raw arg value. So this ptype is effectively a
+ * register-value type (slot_size=0, no save). The day Tilck
+ * gains flock support we add the save callback + bump slot_size. */
 const struct sys_param_type ptype_fcntl_arg = {
    .name      = "fcntl_arg",
-   .slot_size = 0,           /* no struct capture today */
-   .save      = save_param_fcntl_arg,
+   .slot_size = 0,
+   .save      = NULL,
 };
