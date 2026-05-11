@@ -399,6 +399,312 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+   /* ---------------- Layer 0a: file-system syscalls ----------------
+    * Coverage additions for syscalls that Tilck implements but the
+    * tracer didn't have metadata for. Args use existing ptypes — a
+    * later layer (Layer 1) will swap in symbolic ptypes for the
+    * flag/option args (e.g. dup3.flags, fchmodat.flags), and Layer
+    * 3 will add struct-aware capture for fstatat64.statbuf etc. */
+
+   /* sync family — single fd in, errno out */
+   SYSCALL_TYPE_1(SYS_fsync,     "fd"),
+   SYSCALL_TYPE_1(SYS_fdatasync, "fd"),
+   SYSCALL_TYPE_1(SYS_syncfs,    "fd"),
+
+   /* fd-mode pair (mode is octal) */
+   {
+      .sys_n = SYS_fchmod,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd",   &ptype_int, sys_param_in),
+         SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
+      },
+   },
+
+   /* dup variants */
+   {
+      .sys_n = SYS_dup3,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("oldfd", &ptype_int,         sys_param_in),
+         SIMPLE_PARAM("newfd", &ptype_int,         sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_open_flags,  sys_param_in),
+      },
+   },
+
+   /* lseek (32-bit offset; the 64-bit form is SYS_llseek above) */
+   {
+      .sys_n = SYS_lseek,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd",     &ptype_int,    sys_param_in),
+         SIMPLE_PARAM("offset", &ptype_int,    sys_param_in),
+         SIMPLE_PARAM("whence", &ptype_whence, sys_param_in),
+      },
+   },
+
+   /* pread / pwrite — read/write at an explicit file offset */
+   {
+      .sys_n = SYS_pread64,
+      .n_params = 4,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in_out),
+         BUFFER_PARAM("buf", &ptype_big_buf, sys_param_out, "count"),
+         SIMPLE_PARAM("count",  &ptype_int, sys_param_in),
+         SIMPLE_PARAM("offset", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_pwrite64,
+      .n_params = 4,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd", &ptype_int, sys_param_in_out),
+         BUFFER_PARAM("buf", &ptype_big_buf, sys_param_in, "count"),
+         SIMPLE_PARAM("count",  &ptype_int, sys_param_in),
+         SIMPLE_PARAM("offset", &ptype_int, sys_param_in),
+      },
+   },
+
+   /* getdents64: read directory entries */
+   {
+      .sys_n = SYS_getdents64,
+      .n_params = 3,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd",    &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("dirp",  &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("count", &ptype_int,   sys_param_in),
+      },
+   },
+
+   /* readlink / readlinkat — out buffer with size limit */
+   {
+      .sys_n = SYS_readlink,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path", &ptype_path, sys_param_in),
+         BUFFER_PARAM("buf",  &ptype_buffer, sys_param_out, "bufsiz"),
+         SIMPLE_PARAM("bufsiz", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_readlinkat,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         BUFFER_PARAM("buf",   &ptype_buffer, sys_param_out, "bufsiz"),
+         SIMPLE_PARAM("bufsiz", &ptype_int, sys_param_in),
+      },
+   },
+
+   /* mount / umount (the modern umount; the legacy oldumount is
+    * stubbed in Tilck and isn't traced). umount on i386 is at slot
+    * 52, takes (target, flags). */
+   {
+      .sys_n = SYS_umount2,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("target", &ptype_path, sys_param_in),
+         SIMPLE_PARAM("flags",  &ptype_int,  sys_param_in),
+      },
+   },
+
+   /* mount: source + target are paths (64-byte slots). fstype is
+    * always short ("tmpfs", "ext4", ...) so it shares the smaller
+    * 32-byte ptype_buffer slot. The two path slots fill fmt0's
+    * d0/d1; fstype lands in d2; that leaves the d3 16-byte slot
+    * unused (data is voidp, no save). */
+   {
+      .sys_n = SYS_mount,
+      .n_params = 5,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("source",  &ptype_path,   sys_param_in),
+         SIMPLE_PARAM("target",  &ptype_path,   sys_param_in),
+         SIMPLE_PARAM("fstype",  &ptype_buffer, sys_param_in),
+         SIMPLE_PARAM("flags",   &ptype_int,    sys_param_in),
+         SIMPLE_PARAM("data",    &ptype_voidp,  sys_param_in),
+      },
+   },
+
+   /* *at variants — the dirfd-relative versions of the path syscalls
+    * that already have plain entries above. Tilck wires real
+    * implementations for these. */
+   {
+      .sys_n = SYS_openat,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,        sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path,       sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_open_flags, sys_param_in),
+         SIMPLE_PARAM("mode",  &ptype_oct,        sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_faccessat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("mode",  &ptype_int,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_mkdirat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("mode",  &ptype_oct,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_unlinkat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_int,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_linkat,
+      .n_params = 5,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("olddirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("oldpath",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("newdirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("newpath",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("flags",    &ptype_int,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_symlinkat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("target",   &ptype_path, sys_param_in),
+         SIMPLE_PARAM("newdirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("linkpath", &ptype_path, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_renameat2,
+      .n_params = 5,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("olddirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("oldpath",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("newdirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("newpath",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("flags",    &ptype_int,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_fchmodat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("mode",  &ptype_oct,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_fchownat,
+      .n_params = 5,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
+         SIMPLE_PARAM("owner", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("group", &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_int,  sys_param_in),
+      },
+   },
+
+#ifdef __i386__
+   /* i386-only: 64-bit truncate / fstatat64 (x86_64 has them under
+    * different names). */
+   {
+      .sys_n = SYS_truncate64,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path",   &ptype_path, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_ftruncate64,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd",     &ptype_int, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_fstatat64,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd",   &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("path",    &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("statbuf", &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("flags",   &ptype_int,   sys_param_in),
+      },
+   },
+#endif
+
 #else
 
 /*
