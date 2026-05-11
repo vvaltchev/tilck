@@ -707,6 +707,38 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+   /* ---------------- Layer 0c: memory-mgmt syscalls -------------------
+    * Tilck implements only munmap and madvise as real memory-mgmt
+    * calls — mprotect, mlock, mremap, msync, mincore etc. are all
+    * stubs returning -ENOSYS, so they have nothing useful to
+    * trace. brk and mmap_pgoff (the i386 mmap2 entry) were already
+    * covered. */
+   {
+      .sys_n = SYS_munmap,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("addr",   &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int,   sys_param_in),
+      },
+   },
+
+   /* madvise: advice is an enum (MADV_NORMAL / MADV_DONTNEED /
+    * MADV_FREE / ...). Layer 1 will swap ptype_int for
+    * ptype_madvise_advice for symbolic rendering. */
+   {
+      .sys_n = SYS_madvise,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("addr",   &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("advice", &ptype_int,   sys_param_in),
+      },
+   },
+
    /* (Legacy 16-bit setuid/setgid handlers exist in the Tilck
     * kernel for ABI compat with very old binaries — slot 23/46 —
     * but glibc's SYS_setuid16/SYS_setgid16 macros aren't exposed
