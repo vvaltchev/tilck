@@ -556,6 +556,413 @@ static bool dump_iov_out_with_data(unsigned long orig,
    return dump_iov_inner(orig, data, u_iovcnt, real_sz, dst, bs);
 }
 
+/* ============================ Layer 1 — symbolic ptypes ===========
+ * Each callback formats a register-value integer as a symbolic
+ * bitmask or enum string. Falls back to "0xNNNN" for unknown
+ * values so the trace stays useful when the kernel adds new
+ * values that userspace hasn't been updated for.
+ *
+ * Pattern matches the existing dump_open_flags / dump_signum /
+ * dump_whence helpers earlier in the file.
+ * ================================================================== */
+
+#include <sys/mman.h>     /* PROT_*, MAP_* */
+#include <sys/wait.h>     /* WNOHANG, WUNTRACED, WCONTINUED */
+#include <sys/mount.h>    /* MS_* */
+
+/* For ioctl/fcntl cmds we use small inline tables of (value, name)
+ * pairs. Generic helper: scan a table, return the matching name or
+ * NULL on miss. */
+struct enum_pair { unsigned long value; const char *name; };
+
+static const char *enum_lookup(const struct enum_pair *t, unsigned long v)
+{
+   for (; t->name; t++)
+      if (t->value == v)
+         return t->name;
+   return NULL;
+}
+
+/* Bitmask helper. Walks a table, appends "NAME|" to dst for each
+ * matching bit. Returns true if everything fit. */
+static bool
+bitmask_dump(const struct enum_pair *t, unsigned long v,
+             char *dst, size_t bs)
+{
+   int used = 0, rem = (int)bs;
+   bool any = false;
+   unsigned long matched = 0;
+
+   if (v == 0) {
+      const int rc = snprintf(dst, bs, "0");
+      return rc >= 0 && (size_t)rc < bs;
+   }
+
+   for (; t->name; t++) {
+
+      if (t->value && (v & t->value) == t->value && !(matched & t->value)) {
+
+         if (!buf_append(dst, &used, &rem, t->name))
+            return false;
+         if (!buf_append(dst, &used, &rem, "|"))
+            return false;
+         matched |= t->value;
+         any = true;
+      }
+   }
+
+   /* Any leftover bits not matched by the table → render as hex
+    * trailing (e.g. "MAP_PRIVATE|MAP_ANONYMOUS|0x100000"). */
+   const unsigned long rest = v & ~matched;
+   if (rest) {
+      char hex[16];
+      snprintf(hex, sizeof(hex), "0x%lx", rest);
+      if (!buf_append(dst, &used, &rem, hex))
+         return false;
+      any = true;
+   } else if (any) {
+      /* Drop the trailing '|' */
+      if (used > 0 && dst[used - 1] == '|')
+         dst[used - 1] = '\0';
+   }
+
+   return true;
+}
+
+/* ----- mmap.prot ------------------------------------------------- */
+static const struct enum_pair tab_mmap_prot[] = {
+#ifdef PROT_READ
+   { PROT_READ,  "PROT_READ"  },
+#endif
+#ifdef PROT_WRITE
+   { PROT_WRITE, "PROT_WRITE" },
+#endif
+#ifdef PROT_EXEC
+   { PROT_EXEC,  "PROT_EXEC"  },
+#endif
+   { 0, NULL }
+};
+
+static bool dump_mmap_prot(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   if (v == 0) {
+      int rc = snprintf(dst, bs, "PROT_NONE");
+      return rc >= 0 && (size_t)rc < bs;
+   }
+   return bitmask_dump(tab_mmap_prot, v, dst, bs);
+}
+
+/* ----- mmap.flags ------------------------------------------------ */
+static const struct enum_pair tab_mmap_flags[] = {
+#ifdef MAP_SHARED
+   { MAP_SHARED,     "MAP_SHARED"     },
+#endif
+#ifdef MAP_PRIVATE
+   { MAP_PRIVATE,    "MAP_PRIVATE"    },
+#endif
+#ifdef MAP_FIXED
+   { MAP_FIXED,      "MAP_FIXED"      },
+#endif
+#ifdef MAP_ANONYMOUS
+   { MAP_ANONYMOUS,  "MAP_ANONYMOUS"  },
+#endif
+#ifdef MAP_GROWSDOWN
+   { MAP_GROWSDOWN,  "MAP_GROWSDOWN"  },
+#endif
+#ifdef MAP_DENYWRITE
+   { MAP_DENYWRITE,  "MAP_DENYWRITE"  },
+#endif
+#ifdef MAP_EXECUTABLE
+   { MAP_EXECUTABLE, "MAP_EXECUTABLE" },
+#endif
+#ifdef MAP_LOCKED
+   { MAP_LOCKED,     "MAP_LOCKED"     },
+#endif
+#ifdef MAP_NORESERVE
+   { MAP_NORESERVE,  "MAP_NORESERVE"  },
+#endif
+#ifdef MAP_POPULATE
+   { MAP_POPULATE,   "MAP_POPULATE"   },
+#endif
+#ifdef MAP_NONBLOCK
+   { MAP_NONBLOCK,   "MAP_NONBLOCK"   },
+#endif
+#ifdef MAP_STACK
+   { MAP_STACK,      "MAP_STACK"      },
+#endif
+#ifdef MAP_HUGETLB
+   { MAP_HUGETLB,    "MAP_HUGETLB"    },
+#endif
+   { 0, NULL }
+};
+
+static bool dump_mmap_flags(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   return bitmask_dump(tab_mmap_flags, v, dst, bs);
+}
+
+/* ----- waitpid options ------------------------------------------ */
+static const struct enum_pair tab_wait_options[] = {
+#ifdef WNOHANG
+   { WNOHANG,    "WNOHANG"    },
+#endif
+#ifdef WUNTRACED
+   { WUNTRACED,  "WUNTRACED"  },
+#endif
+#ifdef WCONTINUED
+   { WCONTINUED, "WCONTINUED" },
+#endif
+   { 0, NULL }
+};
+
+static bool dump_wait_options(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   return bitmask_dump(tab_wait_options, v, dst, bs);
+}
+
+/* ----- access.mode (R_OK | W_OK | X_OK | F_OK) ------------------ */
+static const struct enum_pair tab_access_mode[] = {
+   { 4 /* R_OK */, "R_OK" },
+   { 2 /* W_OK */, "W_OK" },
+   { 1 /* X_OK */, "X_OK" },
+   { 0, NULL }
+};
+
+static bool dump_access_mode(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   if (v == 0) {
+      int rc = snprintf(dst, bs, "F_OK");
+      return rc >= 0 && (size_t)rc < bs;
+   }
+   return bitmask_dump(tab_access_mode, v, dst, bs);
+}
+
+/* ----- ioctl.request --------------------------------------------- *
+ * Tilck implements only a tty-shaped subset (see
+ * kernel/tty/tty_ioctl.c). For unknown values we fall back to
+ * "0xNNNN". Layer 2 will attach a struct-aware argp to this so
+ * the renderer also dumps the pointee. */
+static const struct enum_pair tab_ioctl_cmd[] = {
+   { 0x5401, "TCGETS"      },
+   { 0x5402, "TCSETS"      },
+   { 0x5403, "TCSETSW"     },
+   { 0x5404, "TCSETSF"     },
+   { 0x540E, "TIOCSCTTY"   },
+   { 0x540F, "TIOCGPGRP"   },
+   { 0x5410, "TIOCSPGRP"   },
+   { 0x5413, "TIOCGWINSZ"  },
+   { 0x5414, "TIOCSWINSZ"  },
+   { 0x5422, "TIOCNOTTY"   },
+   { 0x4B33, "KDGKBTYPE"   },
+   { 0x4B3A, "KDSETMODE"   },
+   { 0x4B44, "KDGKBMODE"   },
+   { 0x4B45, "KDSKBMODE"   },
+   { 0, NULL }
+};
+
+static bool dump_ioctl_cmd(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   const char *name = enum_lookup(tab_ioctl_cmd, v);
+   const int rc = name
+      ? snprintf(dst, bs, "%s (0x%lx)", name, v)
+      : snprintf(dst, bs, "0x%lx", v);
+   return rc >= 0 && (size_t)rc < bs;
+}
+
+/* ----- fcntl.cmd -------------------------------------------------- */
+static const struct enum_pair tab_fcntl_cmd[] = {
+   { 0,  "F_DUPFD"          },
+   { 1,  "F_GETFD"          },
+   { 2,  "F_SETFD"          },
+   { 3,  "F_GETFL"          },
+   { 4,  "F_SETFL"          },
+   { 5,  "F_GETLK"          },
+   { 6,  "F_SETLK"          },
+   { 7,  "F_SETLKW"         },
+   { 1030, "F_DUPFD_CLOEXEC"},   /* musl numeric value */
+   { 0, NULL }
+};
+
+static bool dump_fcntl_cmd(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   const char *name = enum_lookup(tab_fcntl_cmd, v);
+   const int rc = name
+      ? snprintf(dst, bs, "%s", name)
+      : snprintf(dst, bs, "%lu", v);
+   return rc >= 0 && (size_t)rc < bs;
+}
+
+/* ----- sigprocmask.how ------------------------------------------- */
+static bool dump_sigprocmask_how(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   const char *name;
+   switch (v) {
+      case 0: name = "SIG_BLOCK";   break;
+      case 1: name = "SIG_UNBLOCK"; break;
+      case 2: name = "SIG_SETMASK"; break;
+      default: name = NULL;
+   }
+   const int rc = name
+      ? snprintf(dst, bs, "%s", name)
+      : snprintf(dst, bs, "%lu", v);
+   return rc >= 0 && (size_t)rc < bs;
+}
+
+/* ----- prctl.option ---------------------------------------------- */
+static const struct enum_pair tab_prctl_option[] = {
+   { 1,  "PR_SET_PDEATHSIG"   },
+   { 2,  "PR_GET_PDEATHSIG"   },
+   { 3,  "PR_GET_DUMPABLE"    },
+   { 4,  "PR_SET_DUMPABLE"    },
+   { 15, "PR_SET_NAME"        },
+   { 16, "PR_GET_NAME"        },
+   { 36, "PR_SET_CHILD_SUBREAPER" },
+   { 37, "PR_GET_CHILD_SUBREAPER" },
+   { 0, NULL }
+};
+
+static bool dump_prctl_option(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   const char *name = enum_lookup(tab_prctl_option, v);
+   const int rc = name
+      ? snprintf(dst, bs, "%s", name)
+      : snprintf(dst, bs, "%lu", v);
+   return rc >= 0 && (size_t)rc < bs;
+}
+
+/* ----- clone.flags ----------------------------------------------- */
+static const struct enum_pair tab_clone_flags[] = {
+   { 0x00000100, "CLONE_VM"        },
+   { 0x00000200, "CLONE_FS"        },
+   { 0x00000400, "CLONE_FILES"     },
+   { 0x00000800, "CLONE_SIGHAND"   },
+   { 0x00001000, "CLONE_PIDFD"     },
+   { 0x00002000, "CLONE_PTRACE"    },
+   { 0x00004000, "CLONE_VFORK"     },
+   { 0x00008000, "CLONE_PARENT"    },
+   { 0x00010000, "CLONE_THREAD"    },
+   { 0x00020000, "CLONE_NEWNS"     },
+   { 0x00040000, "CLONE_SYSVSEM"   },
+   { 0x00080000, "CLONE_SETTLS"    },
+   { 0x00100000, "CLONE_PARENT_SETTID" },
+   { 0x00200000, "CLONE_CHILD_CLEARTID" },
+   { 0x00400000, "CLONE_DETACHED"  },
+   { 0x00800000, "CLONE_UNTRACED"  },
+   { 0x01000000, "CLONE_CHILD_SETTID" },
+   { 0, NULL }
+};
+
+static bool dump_clone_flags(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+
+   /* The low byte of clone flags is actually the exit_signal sent
+    * to the parent on child exit (e.g. SIGCHLD = 17). Render that
+    * separately from the flag bits. */
+   const unsigned long sig = v & 0xff;
+   const unsigned long flags = v & ~0xfful;
+   int used = 0, rem = (int)bs;
+
+   if (sig) {
+      char buf[24];
+      snprintf(buf, sizeof(buf), "exit_signal=%lu", sig);
+      if (!buf_append(dst, &used, &rem, buf))
+         return false;
+   }
+
+   if (flags) {
+
+      if (used && !buf_append(dst, &used, &rem, "|"))
+         return false;
+
+      char tmp[256];
+      if (!bitmask_dump(tab_clone_flags, flags, tmp, sizeof(tmp)))
+         return false;
+      if (!buf_append(dst, &used, &rem, tmp))
+         return false;
+   }
+
+   if (!used) {
+      const int rc = snprintf(dst, bs, "0");
+      return rc >= 0 && (size_t)rc < bs;
+   }
+
+   return true;
+}
+
+/* ----- mount.flags (MS_* bitmask) -------------------------------- */
+static const struct enum_pair tab_mount_flags[] = {
+#ifdef MS_RDONLY
+   { MS_RDONLY,      "MS_RDONLY"      },
+#endif
+#ifdef MS_NOSUID
+   { MS_NOSUID,      "MS_NOSUID"      },
+#endif
+#ifdef MS_NODEV
+   { MS_NODEV,       "MS_NODEV"       },
+#endif
+#ifdef MS_NOEXEC
+   { MS_NOEXEC,      "MS_NOEXEC"      },
+#endif
+#ifdef MS_SYNCHRONOUS
+   { MS_SYNCHRONOUS, "MS_SYNCHRONOUS" },
+#endif
+#ifdef MS_REMOUNT
+   { MS_REMOUNT,     "MS_REMOUNT"     },
+#endif
+#ifdef MS_MANDLOCK
+   { MS_MANDLOCK,    "MS_MANDLOCK"    },
+#endif
+#ifdef MS_NOATIME
+   { MS_NOATIME,     "MS_NOATIME"     },
+#endif
+#ifdef MS_NODIRATIME
+   { MS_NODIRATIME,  "MS_NODIRATIME"  },
+#endif
+#ifdef MS_BIND
+   { MS_BIND,        "MS_BIND"        },
+#endif
+   { 0, NULL }
+};
+
+static bool dump_mount_flags(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   return bitmask_dump(tab_mount_flags, v, dst, bs);
+}
+
+/* ----- madvise.advice -------------------------------------------- */
+static const struct enum_pair tab_madvise_advice[] = {
+   { 0,  "MADV_NORMAL"     },
+   { 1,  "MADV_RANDOM"     },
+   { 2,  "MADV_SEQUENTIAL" },
+   { 3,  "MADV_WILLNEED"   },
+   { 4,  "MADV_DONTNEED"   },
+   { 8,  "MADV_FREE"       },
+   { 9,  "MADV_REMOVE"     },
+   { 10, "MADV_DONTFORK"   },
+   { 11, "MADV_DOFORK"     },
+   { 0, NULL }
+};
+
+static bool dump_madvise_advice(unsigned long v, long h, char *dst, size_t bs)
+{
+   (void)h;
+   const char *name = enum_lookup(tab_madvise_advice, v);
+   const int rc = name
+      ? snprintf(dst, bs, "%s", name)
+      : snprintf(dst, bs, "%lu", v);
+   return rc >= 0 && (size_t)rc < bs;
+}
+
 /* ============================ dispatch ============================ */
 
 bool tr_dump_from_val(unsigned type_id,
@@ -574,6 +981,19 @@ bool tr_dump_from_val(unsigned type_id,
       case TR_PT_DOFF64:        return dump_doff64(val, helper, dst, bs);
       case TR_PT_WHENCE:        return dump_whence(val, helper, dst, bs);
       case TR_PT_SIGNUM:        return dump_signum(val, helper, dst, bs);
+
+      /* Layer 1 — symbolic register-value ptypes. */
+      case TR_PT_MMAP_PROT:        return dump_mmap_prot(val, helper, dst, bs);
+      case TR_PT_MMAP_FLAGS:       return dump_mmap_flags(val, helper, dst, bs);
+      case TR_PT_WAIT_OPTIONS:     return dump_wait_options(val, helper, dst, bs);
+      case TR_PT_ACCESS_MODE:      return dump_access_mode(val, helper, dst, bs);
+      case TR_PT_IOCTL_CMD:        return dump_ioctl_cmd(val, helper, dst, bs);
+      case TR_PT_FCNTL_CMD:        return dump_fcntl_cmd(val, helper, dst, bs);
+      case TR_PT_SIGPROCMASK_HOW:  return dump_sigprocmask_how(val, helper, dst, bs);
+      case TR_PT_PRCTL_OPTION:     return dump_prctl_option(val, helper, dst, bs);
+      case TR_PT_CLONE_FLAGS:      return dump_clone_flags(val, helper, dst, bs);
+      case TR_PT_MOUNT_FLAGS:      return dump_mount_flags(val, helper, dst, bs);
+      case TR_PT_MADVISE_ADVICE:   return dump_madvise_advice(val, helper, dst, bs);
 
       /* These ptypes only have a `dump` (with-data) variant in the
        * kernel — no dump_from_val. Mirror that. */

@@ -256,6 +256,20 @@ extern const struct sys_param_type ptype_whence;
 extern const struct sys_param_type ptype_u64_ptr;
 extern const struct sys_param_type ptype_signum;
 
+/* Layer 1 — symbolic register-value ptypes (no save callback;
+ * userspace dp dispatches the dump by enum tr_ptype_id). */
+extern const struct sys_param_type ptype_mmap_prot;
+extern const struct sys_param_type ptype_mmap_flags;
+extern const struct sys_param_type ptype_wait_options;
+extern const struct sys_param_type ptype_access_mode;
+extern const struct sys_param_type ptype_ioctl_cmd;
+extern const struct sys_param_type ptype_fcntl_cmd;
+extern const struct sys_param_type ptype_sigprocmask_how;
+extern const struct sys_param_type ptype_prctl_option;
+extern const struct sys_param_type ptype_clone_flags;
+extern const struct sys_param_type ptype_mount_flags;
+extern const struct sys_param_type ptype_madvise_advice;
+
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
 {

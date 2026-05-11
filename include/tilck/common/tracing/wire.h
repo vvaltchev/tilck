@@ -24,7 +24,7 @@
 #include <tilck/common/basic_defs.h>
 
 #define TR_WIRE_MAGIC      0x54524d44u   /* 'T' 'R' 'M' 'D' (LE on disk) */
-#define TR_WIRE_VERSION    1u
+#define TR_WIRE_VERSION    2u
 #define TR_MAX_PARAMS      6
 #define TR_PNAME_MAX       16
 
@@ -54,6 +54,19 @@ enum tr_ptype_id {
    TR_PT_PATH            = 13,
    TR_PT_IOV_IN          = 14,
    TR_PT_IOV_OUT         = 15,
+
+   /* Layer 1 — symbolic register-value ptypes (added in v2 wire). */
+   TR_PT_MMAP_PROT        = 16,  /* PROT_READ|PROT_WRITE|...    */
+   TR_PT_MMAP_FLAGS       = 17,  /* MAP_PRIVATE|MAP_ANONYMOUS|... */
+   TR_PT_WAIT_OPTIONS     = 18,  /* WNOHANG|WUNTRACED|...       */
+   TR_PT_ACCESS_MODE      = 19,  /* R_OK|W_OK|X_OK|F_OK         */
+   TR_PT_IOCTL_CMD        = 20,  /* TCGETS / TIOCGWINSZ / ...   */
+   TR_PT_FCNTL_CMD        = 21,  /* F_DUPFD / F_GETFL / ...     */
+   TR_PT_SIGPROCMASK_HOW  = 22,  /* SIG_BLOCK / SIG_UNBLOCK / SIG_SETMASK */
+   TR_PT_PRCTL_OPTION     = 23,  /* PR_SET_NAME / ...           */
+   TR_PT_CLONE_FLAGS      = 24,  /* CLONE_VM|CLONE_FS|...       */
+   TR_PT_MOUNT_FLAGS      = 25,  /* MS_RDONLY|MS_NOSUID|...     */
+   TR_PT_MADVISE_ADVICE   = 26,  /* MADV_NORMAL / MADV_DONTNEED / ... */
 
    TR_PT_COUNT,                  /* not a real id; sentinel for the table */
    TR_PT_NONE            = 0xff,

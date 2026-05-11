@@ -129,3 +129,46 @@ const struct sys_param_type ptype_signum = {
    .slot_size = 0,
    .save      = NULL,
 };
+
+/* ------------------------------------------------------------------
+ * Layer 1 — symbolic register-value ptypes
+ *
+ * No save callback (slot_size=0). The kernel only needs the instance
+ * here so the metadata blob picks up the right enum tr_ptype_id at
+ * /syst/tracing/metadata build time; the actual flag→string
+ * formatting lives in userspace dp's tr_dump.c.
+ * ------------------------------------------------------------------ */
+
+const struct sys_param_type ptype_mmap_prot = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_mmap_flags = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_wait_options = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_access_mode = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_ioctl_cmd = {
+   .name = "ioctl_cmd", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_fcntl_cmd = {
+   .name = "fcntl_cmd", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_sigprocmask_how = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_prctl_option = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_clone_flags = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_mount_flags = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};
+const struct sys_param_type ptype_madvise_advice = {
+   .name = "int", .slot_size = 0, .save = NULL,
+};

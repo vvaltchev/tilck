@@ -37,7 +37,18 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_2(SYS_creat, "path", "mode"),
    SYSCALL_TYPE_2(SYS_chmod, "path", "mode"),
    SYSCALL_TYPE_2(SYS_mkdir, "path", "mode"),
-   SYSCALL_TYPE_2(SYS_access, "path", "mode"),
+   /* access: mode is the R_OK|W_OK|X_OK|F_OK bitmask, not an octal
+    * file mode — render via ptype_access_mode. */
+   {
+      .sys_n = SYS_access,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path", &ptype_path,         sys_param_in),
+         SIMPLE_PARAM("mode", &ptype_access_mode,  sys_param_in),
+      },
+   },
 
    SYSCALL_TYPE_3(SYS_unlink, "path"),
    SYSCALL_TYPE_3(SYS_rmdir, "path"),
@@ -205,9 +216,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("wstatus", &ptype_voidp, sys_param_out),
-         SIMPLE_PARAM("options", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("pid",     &ptype_int,           sys_param_in),
+         SIMPLE_PARAM("wstatus", &ptype_voidp,         sys_param_out),
+         SIMPLE_PARAM("options", &ptype_wait_options,  sys_param_in),
       }
    },
 
@@ -219,10 +230,10 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("pid", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("wstatus", &ptype_voidp, sys_param_out),
-         SIMPLE_PARAM("options", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("rusage", &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("pid",     &ptype_int,          sys_param_in),
+         SIMPLE_PARAM("wstatus", &ptype_voidp,        sys_param_out),
+         SIMPLE_PARAM("options", &ptype_wait_options, sys_param_in),
+         SIMPLE_PARAM("rusage",  &ptype_voidp,        sys_param_out),
       }
    },
 
@@ -242,9 +253,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("request", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("argp", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("fd",      &ptype_int,        sys_param_in),
+         SIMPLE_PARAM("request", &ptype_ioctl_cmd,  sys_param_in),
+         SIMPLE_PARAM("argp",    &ptype_voidp,      sys_param_in),
       },
    },
 
@@ -254,9 +265,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("cmd", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("arg", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("fd",  &ptype_int,        sys_param_in),
+         SIMPLE_PARAM("cmd", &ptype_fcntl_cmd,  sys_param_in),
+         SIMPLE_PARAM("arg", &ptype_voidp,      sys_param_in),
       },
    },
 
@@ -289,10 +300,10 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("how", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("set", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("oldset", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("sigsetsize", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("how",        &ptype_sigprocmask_how, sys_param_in),
+         SIMPLE_PARAM("set",        &ptype_voidp,           sys_param_in),
+         SIMPLE_PARAM("oldset",     &ptype_voidp,           sys_param_in),
+         SIMPLE_PARAM("sigsetsize", &ptype_int,             sys_param_in),
       },
    },
 
@@ -333,7 +344,7 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("option", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("option", &ptype_prctl_option, sys_param_in),
       }
    },
 
@@ -343,12 +354,12 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_ptr,
       .params = {
-         SIMPLE_PARAM("addr", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("len", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("prot", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("flags", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("fd", &ptype_int, sys_param_in),
-         SIMPLE_PARAM("pgoffset", &ptype_int, sys_param_in),
+         SIMPLE_PARAM("addr",     &ptype_voidp,      sys_param_in),
+         SIMPLE_PARAM("len",      &ptype_int,        sys_param_in),
+         SIMPLE_PARAM("prot",     &ptype_mmap_prot,  sys_param_in),
+         SIMPLE_PARAM("flags",    &ptype_mmap_flags, sys_param_in),
+         SIMPLE_PARAM("fd",       &ptype_int,        sys_param_in),
+         SIMPLE_PARAM("pgoffset", &ptype_int,        sys_param_in),
       }
    },
 
@@ -524,8 +535,8 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("target", &ptype_path, sys_param_in),
-         SIMPLE_PARAM("flags",  &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("target", &ptype_path,        sys_param_in),
+         SIMPLE_PARAM("flags",  &ptype_mount_flags, sys_param_in),
       },
    },
 
@@ -540,11 +551,11 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("source",  &ptype_path,   sys_param_in),
-         SIMPLE_PARAM("target",  &ptype_path,   sys_param_in),
-         SIMPLE_PARAM("fstype",  &ptype_buffer, sys_param_in),
-         SIMPLE_PARAM("flags",   &ptype_int,    sys_param_in),
-         SIMPLE_PARAM("data",    &ptype_voidp,  sys_param_in),
+         SIMPLE_PARAM("source",  &ptype_path,        sys_param_in),
+         SIMPLE_PARAM("target",  &ptype_path,        sys_param_in),
+         SIMPLE_PARAM("fstype",  &ptype_buffer,      sys_param_in),
+         SIMPLE_PARAM("flags",   &ptype_mount_flags, sys_param_in),
+         SIMPLE_PARAM("data",    &ptype_voidp,       sys_param_in),
       },
    },
 
@@ -570,9 +581,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("dirfd", &ptype_int,  sys_param_in),
-         SIMPLE_PARAM("path",  &ptype_path, sys_param_in),
-         SIMPLE_PARAM("mode",  &ptype_int,  sys_param_in),
+         SIMPLE_PARAM("dirfd", &ptype_int,         sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path,        sys_param_in),
+         SIMPLE_PARAM("mode",  &ptype_access_mode, sys_param_in),
       },
    },
 
@@ -699,11 +710,11 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = true,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("flags",       &ptype_int,   sys_param_in),
-         SIMPLE_PARAM("child_stack", &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("ptid",        &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("tls",         &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("ctid",        &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("flags",       &ptype_clone_flags, sys_param_in),
+         SIMPLE_PARAM("child_stack", &ptype_voidp,       sys_param_in),
+         SIMPLE_PARAM("ptid",        &ptype_voidp,       sys_param_in),
+         SIMPLE_PARAM("tls",         &ptype_voidp,       sys_param_in),
+         SIMPLE_PARAM("ctid",        &ptype_voidp,       sys_param_in),
       },
    },
 
@@ -733,9 +744,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("addr",   &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("length", &ptype_int,   sys_param_in),
-         SIMPLE_PARAM("advice", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("addr",   &ptype_voidp,           sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int,             sys_param_in),
+         SIMPLE_PARAM("advice", &ptype_madvise_advice,  sys_param_in),
       },
    },
 
@@ -784,9 +795,9 @@ static const struct syscall_info __tracing_metadata[] =
       .exp_block = false,
       .ret_type = &ptype_errno_or_val,
       .params = {
-         SIMPLE_PARAM("how",    &ptype_int,   sys_param_in),
-         SIMPLE_PARAM("set",    &ptype_voidp, sys_param_in),
-         SIMPLE_PARAM("oldset", &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("how",    &ptype_sigprocmask_how, sys_param_in),
+         SIMPLE_PARAM("set",    &ptype_voidp,           sys_param_in),
+         SIMPLE_PARAM("oldset", &ptype_voidp,           sys_param_out),
       },
    },
 #endif

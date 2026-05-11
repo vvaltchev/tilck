@@ -962,6 +962,20 @@ static u8 tracing_ptype_to_id(const struct sys_param_type *t)
    if (t == &ptype_path)          return TR_PT_PATH;
    if (t == &ptype_iov_in)        return TR_PT_IOV_IN;
    if (t == &ptype_iov_out)       return TR_PT_IOV_OUT;
+
+   /* Layer 1 — symbolic register-value ptypes. */
+   if (t == &ptype_mmap_prot)        return TR_PT_MMAP_PROT;
+   if (t == &ptype_mmap_flags)       return TR_PT_MMAP_FLAGS;
+   if (t == &ptype_wait_options)     return TR_PT_WAIT_OPTIONS;
+   if (t == &ptype_access_mode)      return TR_PT_ACCESS_MODE;
+   if (t == &ptype_ioctl_cmd)        return TR_PT_IOCTL_CMD;
+   if (t == &ptype_fcntl_cmd)        return TR_PT_FCNTL_CMD;
+   if (t == &ptype_sigprocmask_how)  return TR_PT_SIGPROCMASK_HOW;
+   if (t == &ptype_prctl_option)     return TR_PT_PRCTL_OPTION;
+   if (t == &ptype_clone_flags)      return TR_PT_CLONE_FLAGS;
+   if (t == &ptype_mount_flags)      return TR_PT_MOUNT_FLAGS;
+   if (t == &ptype_madvise_advice)   return TR_PT_MADVISE_ADVICE;
+
    return TR_PT_NONE;
 }
 
@@ -1010,6 +1024,17 @@ tracing_init_meta_blob(void)
       [TR_PT_PATH]           = &ptype_path,
       [TR_PT_IOV_IN]         = &ptype_iov_in,
       [TR_PT_IOV_OUT]        = &ptype_iov_out,
+      [TR_PT_MMAP_PROT]       = &ptype_mmap_prot,
+      [TR_PT_MMAP_FLAGS]      = &ptype_mmap_flags,
+      [TR_PT_WAIT_OPTIONS]    = &ptype_wait_options,
+      [TR_PT_ACCESS_MODE]     = &ptype_access_mode,
+      [TR_PT_IOCTL_CMD]       = &ptype_ioctl_cmd,
+      [TR_PT_FCNTL_CMD]       = &ptype_fcntl_cmd,
+      [TR_PT_SIGPROCMASK_HOW] = &ptype_sigprocmask_how,
+      [TR_PT_PRCTL_OPTION]    = &ptype_prctl_option,
+      [TR_PT_CLONE_FLAGS]     = &ptype_clone_flags,
+      [TR_PT_MOUNT_FLAGS]     = &ptype_mount_flags,
+      [TR_PT_MADVISE_ADVICE]  = &ptype_madvise_advice,
    };
 
    /* Count syscalls for which we have metadata (non-NULL entry in
