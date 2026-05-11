@@ -217,7 +217,7 @@ static const struct syscall_info __tracing_metadata[] =
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("pid",     &ptype_int,           sys_param_in),
-         SIMPLE_PARAM("wstatus", &ptype_voidp,         sys_param_out),
+         SIMPLE_PARAM("wstatus", &ptype_wstatus,       sys_param_out),
          SIMPLE_PARAM("options", &ptype_wait_options,  sys_param_in),
       }
    },
@@ -231,7 +231,7 @@ static const struct syscall_info __tracing_metadata[] =
       .ret_type = &ptype_errno_or_val,
       .params = {
          SIMPLE_PARAM("pid",     &ptype_int,          sys_param_in),
-         SIMPLE_PARAM("wstatus", &ptype_voidp,        sys_param_out),
+         SIMPLE_PARAM("wstatus", &ptype_wstatus,      sys_param_out),
          SIMPLE_PARAM("options", &ptype_wait_options, sys_param_in),
          SIMPLE_PARAM("rusage",  &ptype_voidp,        sys_param_out),
       }

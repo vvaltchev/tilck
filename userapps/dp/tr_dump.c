@@ -1056,6 +1056,50 @@ bool tr_dump(unsigned type_id,
          return tr_dump_fcntl_arg(orig, data, data_size, helper,
                                   dst, bs);
 
+      /* Layer 3 — wstatus int decoded via the W*() macros. */
+      case TR_PT_WSTATUS: {
+
+         (void)data_size; (void)helper;
+
+         if (!orig) {
+            int rc = snprintf(dst, bs, "NULL");
+            return rc >= 0 && (size_t)rc < bs;
+         }
+
+         const int s = *(const int *)data;
+         char body[80] = {0};
+
+         if (WIFEXITED(s)) {
+
+            snprintf(body, sizeof(body),
+                     "WIFEXITED, WEXITSTATUS=%d", WEXITSTATUS(s));
+
+         } else if (WIFSIGNALED(s)) {
+
+            snprintf(body, sizeof(body),
+                     "WIFSIGNALED, WTERMSIG=%s[%d]",
+                     tr_get_signal_name(WTERMSIG(s)), WTERMSIG(s));
+
+         } else if (WIFSTOPPED(s)) {
+
+            snprintf(body, sizeof(body),
+                     "WIFSTOPPED, WSTOPSIG=%s[%d]",
+                     tr_get_signal_name(WSTOPSIG(s)), WSTOPSIG(s));
+
+#ifdef WIFCONTINUED
+         } else if (WIFCONTINUED(s)) {
+
+            snprintf(body, sizeof(body), "WIFCONTINUED");
+#endif
+         } else {
+
+            snprintf(body, sizeof(body), "raw");
+         }
+
+         int rc = snprintf(dst, bs, "0x%04x [%s]", s, body);
+         return rc >= 0 && (size_t)rc < bs;
+      }
+
       /* These ptypes have only dump_from_val — no with-data path.
        * Mirror that. */
       case TR_PT_INT:

@@ -75,6 +75,9 @@ enum tr_ptype_id {
    TR_PT_IOCTL_ARGP       = 27,
    TR_PT_FCNTL_ARG        = 28,
 
+   /* Layer 3 — fixed struct pointers. */
+   TR_PT_WSTATUS          = 29,  /* int * — wait4 / waitpid status */
+
    TR_PT_COUNT,                  /* not a real id; sentinel for the table */
    TR_PT_NONE            = 0xff,
 };

@@ -277,6 +277,9 @@ extern const struct sys_param_type ptype_madvise_advice;
 extern const struct sys_param_type ptype_ioctl_argp;
 extern const struct sys_param_type ptype_fcntl_arg;
 
+/* Layer 3 — fixed struct pointers. */
+extern const struct sys_param_type ptype_wstatus;
+
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
 {

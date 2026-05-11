@@ -172,3 +172,29 @@ const struct sys_param_type ptype_mount_flags = {
 const struct sys_param_type ptype_madvise_advice = {
    .name = "int", .slot_size = 0, .save = NULL,
 };
+
+/* ------------------------------------------------------------------
+ * Layer 3 — fixed-struct ptypes.
+ *
+ * `wstatus` is the int * out-param of waitpid / wait4. Output
+ * params get saved on syscall EXIT (see tracing.c's save dispatch)
+ * — we just copy_from_user the 4 bytes. Userspace decodes via the
+ * WIFEXITED / WEXITSTATUS / WIFSIGNALED / ... macros.
+ * ------------------------------------------------------------------ */
+
+static bool
+save_param_wstatus(void *data, long unused, char *dest_buf, size_t dest_bs)
+{
+   ASSERT(dest_bs >= 4);
+
+   if (copy_from_user(dest_buf, data, 4))
+      memcpy(dest_buf, "\xff\xff\xff\xff", 4);   /* marker */
+
+   return true;
+}
+
+const struct sys_param_type ptype_wstatus = {
+   .name      = "wstatus",
+   .slot_size = 4,
+   .save      = save_param_wstatus,
+};
