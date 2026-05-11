@@ -955,6 +955,102 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+   /* ---------------- Layer 0e: misc / poll / select / socket ---------- */
+
+   /* poll / ppoll: pollfd array sits behind the fds pointer.
+    * Capturing the array contents would need a struct-aware ptype;
+    * for now the pointer renders as voidp. */
+   {
+      .sys_n = SYS_poll,
+      .n_params = 3,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fds",     &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("nfds",    &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("timeout", &ptype_int,   sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_ppoll,
+      .n_params = 5,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fds",        &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("nfds",       &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("tmo_p",      &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigmask",    &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigsetsize", &ptype_int,   sys_param_in),
+      },
+   },
+
+   /* select / pselect6: the fd_set bitmasks render as voidp until
+    * a struct-aware fd_set ptype lands. */
+   {
+      .sys_n = SYS_select,
+      .n_params = 5,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("nfds",      &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("readfds",   &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("writefds",  &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("exceptfds", &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("timeout",   &ptype_voidp, sys_param_in_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_pselect6,
+      .n_params = 6,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("nfds",      &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("readfds",   &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("writefds",  &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("exceptfds", &ptype_voidp, sys_param_in_out),
+         SIMPLE_PARAM("timeout",   &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigmask",   &ptype_voidp, sys_param_in),
+      },
+   },
+
+   /* reboot: 4-arg LINUX_REBOOT_CMD_* style. cmd is an enum
+    * (HALT/POWER_OFF/RESTART/...) — Layer 1 will add a symbolic
+    * ptype_reboot_cmd if it turns out to matter. */
+   {
+      .sys_n = SYS_reboot,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("magic1", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("magic2", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("cmd",    &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("arg",    &ptype_voidp, sys_param_in),
+      },
+   },
+
+   /* socketcall: i386's BSD-socket multiplexer. `call` is the
+    * sub-call number (SYS_SOCKET, SYS_BIND, SYS_CONNECT, ...);
+    * `args` is a pointer to a vararg-style array of arg words.
+    * Layer 1 could add ptype_socketcall_op for symbolic rendering
+    * of the sub-call name. */
+#ifdef __i386__
+   {
+      .sys_n = SYS_socketcall,
+      .n_params = 2,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("call", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("args", &ptype_voidp, sys_param_in),
+      },
+   },
+#endif
+
    /* (Legacy 16-bit setuid/setgid handlers exist in the Tilck
     * kernel for ABI compat with very old binaries — slot 23/46 —
     * but glibc's SYS_setuid16/SYS_setgid16 macros aren't exposed
