@@ -147,7 +147,6 @@ bool tr_dump_fcntl_arg(unsigned long orig,
                        long helper,
                        char *dst, size_t bs)
 {
-   (void)data; (void)data_size;
    const unsigned long cmd = (unsigned long)helper;
    int rc;
 

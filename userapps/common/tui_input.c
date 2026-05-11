@@ -45,7 +45,7 @@ void tui_set_input_blocking(bool blocking)
    else
       fl |= O_NONBLOCK;
 
-   (void)fcntl(STDIN_FILENO, F_SETFL, fl);
+   fcntl(STDIN_FILENO, F_SETFL, fl);
 }
 
 static int
@@ -239,7 +239,6 @@ static inline void tui_erase_last(void)
 static void
 handle_seq_home(char *buf, int bs)
 {
-   (void)buf; (void)bs;
    term_move_left(line_pos);
    line_pos = 0;
 }
@@ -247,7 +246,6 @@ handle_seq_home(char *buf, int bs)
 static void
 handle_seq_end(char *buf, int bs)
 {
-   (void)buf; (void)bs;
    term_move_right(line_len - line_pos);
    line_pos = line_len;
 }
@@ -255,8 +253,6 @@ handle_seq_end(char *buf, int bs)
 static void
 handle_seq_delete(char *buf, int bs)
 {
-   (void)bs;
-
    if (!line_len || line_pos == line_len)
       return;
 
@@ -273,8 +269,6 @@ handle_seq_delete(char *buf, int bs)
 static void
 handle_seq_left(char *buf, int bs)
 {
-   (void)buf; (void)bs;
-
    if (!line_pos)
       return;
 
@@ -285,8 +279,6 @@ handle_seq_left(char *buf, int bs)
 static void
 handle_seq_right(char *buf, int bs)
 {
-   (void)buf; (void)bs;
-
    if (line_pos >= line_len)
       return;
 
@@ -317,8 +309,6 @@ handle_esc_seq(const char *seq, char *buf, int buf_size)
 static void
 handle_backspace(char *buf, int buf_size)
 {
-   (void)buf_size;
-
    if (!line_len || !line_pos)
       return;
 
@@ -341,8 +331,6 @@ handle_backspace(char *buf, int buf_size)
 static bool
 handle_regular_char(char c, char *buf, int bs)
 {
-   (void)bs;
-
    term_write_n(&c, 1);
 
    if (c == '\r' || c == '\n')

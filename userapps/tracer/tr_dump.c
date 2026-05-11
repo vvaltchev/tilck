@@ -170,33 +170,30 @@ const char *tr_get_signal_name(int signum)
 
 /* ------------------------- simple integer ------------------------- */
 
-static bool dump_int(unsigned long uval, long h, char *dst, size_t bs)
+static bool dump_int(unsigned long uval, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const long val = (long)uval;
    const int rc = snprintf(dst, bs, "%ld", val);
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_voidp(unsigned long val, long h, char *dst, size_t bs)
+static bool dump_voidp(unsigned long val, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const int rc = (val != 0)
       ? snprintf(dst, bs, "%p", (void *)val)
       : snprintf(dst, bs, "NULL");
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_oct(unsigned long val, long h, char *dst, size_t bs)
+static bool dump_oct(unsigned long val, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const int rc = snprintf(dst, bs, "0%03o", (int)val);
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_errno_or_val(unsigned long uval, long h, char *dst, size_t bs)
+static bool
+dump_errno_or_val(unsigned long uval, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const int val = (int)uval;
    const int rc = (val >= 0)
       ? snprintf(dst, bs, "%d", val)
@@ -204,9 +201,9 @@ static bool dump_errno_or_val(unsigned long uval, long h, char *dst, size_t bs)
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_errno_or_ptr(unsigned long uval, long h, char *dst, size_t bs)
+static bool
+dump_errno_or_ptr(unsigned long uval, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const long val = (long)uval;
    const int rc = (val >= 0 || val < -500 /* smallest errno */)
       ? snprintf(dst, bs, "%p", (void *)uval)
@@ -238,9 +235,8 @@ static bool buf_append(char *dst, int *used, int *rem, const char *str)
             return false;                                    \
    } while (0)
 
-static bool dump_open_flags(unsigned long fl, long h, char *dst, size_t bs)
+static bool dump_open_flags(unsigned long fl, long unused, char *dst, size_t bs)
 {
-   (void)h;
    int rem = (int)bs;
    int used = 0;
 
@@ -290,18 +286,17 @@ static bool dump_open_flags(unsigned long fl, long h, char *dst, size_t bs)
 
 /* ------------------------- doff64 / whence / int_pair / u64_ptr --- */
 
-static bool dump_doff64(unsigned long hi, long h, char *dst, size_t bs)
+static bool dump_doff64(unsigned long hi, long hlp, char *dst, size_t bs)
 {
-   const unsigned long low = (unsigned long)h;
+   const unsigned long low = (unsigned long)hlp;
    const unsigned long long val = ((unsigned long long)hi << 32) |
                                   (unsigned long long)low;
    const int rc = snprintf(dst, bs, "%llu", val);
    return rc >= 0 && (size_t)rc < bs;
 }
 
-static bool dump_whence(unsigned long val, long h, char *dst, size_t bs)
+static bool dump_whence(unsigned long val, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *s;
 
    switch ((int)val) {
@@ -331,7 +326,6 @@ static bool dump_int_pair_with_data(unsigned long orig,
                                     long unused2,
                                     char *dst, size_t bs)
 {
-   (void)orig; (void)unused1; (void)unused2;
    const struct tr_saved_int_pair *d = (const void *)data;
 
    const int rc = !d->valid
@@ -348,8 +342,6 @@ static bool dump_u64_ptr_with_data(unsigned long orig,
                                    long unused2,
                                    char *dst, size_t bs)
 {
-   (void)orig; (void)unused1; (void)unused2;
-
    const size_t len = strnlen(data, bs);
 
    if (len + 1 >= bs)
@@ -361,9 +353,8 @@ static bool dump_u64_ptr_with_data(unsigned long orig,
 
 /* ------------------------- signum --------------------------------- */
 
-static bool dump_signum(unsigned long val, long h, char *dst, size_t bs)
+static bool dump_signum(unsigned long val, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const int signum = (int)val;
    const int rc = snprintf(dst, bs, "%d [%s]",
                            signum, tr_get_signal_name(signum));
@@ -399,7 +390,8 @@ static bool dump_buffer_with_data(unsigned long orig,
 
    char minibuf[8];
    const char *s;
-   const char *data_end = data + (real_sz < 0 ? data_bs : MIN(real_sz, data_bs));
+   const long nbytes = real_sz < 0 ? data_bs : MIN(real_sz, data_bs);
+   const char *data_end = data + nbytes;
    char *dest_end = dst + bs;
 
    *dst++ = '\"';
@@ -472,7 +464,6 @@ static bool dump_iov_inner(unsigned long orig,
                            long maybe_tot_data_size,
                            char *dst, size_t bs)
 {
-   (void)orig;
    int used = 0, rem = (int)bs;
    long iovcnt = MIN(u_iovcnt, 4);
    long tot_rem = maybe_tot_data_size >= 0 ? maybe_tot_data_size : 16;
@@ -543,7 +534,6 @@ static bool dump_iov_in_with_data(unsigned long orig,
                                   long unused,
                                   char *dst, size_t bs)
 {
-   (void)unused;
    return dump_iov_inner(orig, data, u_iovcnt, -1, dst, bs);
 }
 
@@ -643,9 +633,8 @@ static const struct enum_pair tab_mmap_prot[] = {
    { 0, NULL }
 };
 
-static bool dump_mmap_prot(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_mmap_prot(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    if (v == 0) {
       int rc = snprintf(dst, bs, "PROT_NONE");
       return rc >= 0 && (size_t)rc < bs;
@@ -697,9 +686,8 @@ static const struct enum_pair tab_mmap_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_mmap_flags(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_mmap_flags(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    return bitmask_dump(tab_mmap_flags, v, dst, bs);
 }
 
@@ -717,9 +705,9 @@ static const struct enum_pair tab_wait_options[] = {
    { 0, NULL }
 };
 
-static bool dump_wait_options(unsigned long v, long h, char *dst, size_t bs)
+static bool
+dump_wait_options(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    return bitmask_dump(tab_wait_options, v, dst, bs);
 }
 
@@ -731,9 +719,8 @@ static const struct enum_pair tab_access_mode[] = {
    { 0, NULL }
 };
 
-static bool dump_access_mode(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_access_mode(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    if (v == 0) {
       int rc = snprintf(dst, bs, "F_OK");
       return rc >= 0 && (size_t)rc < bs;
@@ -764,9 +751,8 @@ static const struct enum_pair tab_ioctl_cmd[] = {
    { 0, NULL }
 };
 
-static bool dump_ioctl_cmd(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_ioctl_cmd(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *name = enum_lookup(tab_ioctl_cmd, v);
    const int rc = name
       ? snprintf(dst, bs, "%s (0x%lx)", name, v)
@@ -788,9 +774,8 @@ static const struct enum_pair tab_fcntl_cmd[] = {
    { 0, NULL }
 };
 
-static bool dump_fcntl_cmd(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_fcntl_cmd(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *name = enum_lookup(tab_fcntl_cmd, v);
    const int rc = name
       ? snprintf(dst, bs, "%s", name)
@@ -799,9 +784,9 @@ static bool dump_fcntl_cmd(unsigned long v, long h, char *dst, size_t bs)
 }
 
 /* ----- sigprocmask.how ------------------------------------------- */
-static bool dump_sigprocmask_how(unsigned long v, long h, char *dst, size_t bs)
+static bool
+dump_sigprocmask_how(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *name;
    switch (v) {
       case 0: name = "SIG_BLOCK";   break;
@@ -828,9 +813,9 @@ static const struct enum_pair tab_prctl_option[] = {
    { 0, NULL }
 };
 
-static bool dump_prctl_option(unsigned long v, long h, char *dst, size_t bs)
+static bool
+dump_prctl_option(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *name = enum_lookup(tab_prctl_option, v);
    const int rc = name
       ? snprintf(dst, bs, "%s", name)
@@ -860,10 +845,8 @@ static const struct enum_pair tab_clone_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_clone_flags(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_clone_flags(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
-
    /* The low byte of clone flags is actually the exit_signal sent
     * to the parent on child exit (e.g. SIGCHLD = 17). Render that
     * separately from the flag bits. */
@@ -933,9 +916,8 @@ static const struct enum_pair tab_mount_flags[] = {
    { 0, NULL }
 };
 
-static bool dump_mount_flags(unsigned long v, long h, char *dst, size_t bs)
+static bool dump_mount_flags(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    return bitmask_dump(tab_mount_flags, v, dst, bs);
 }
 
@@ -953,9 +935,9 @@ static const struct enum_pair tab_madvise_advice[] = {
    { 0, NULL }
 };
 
-static bool dump_madvise_advice(unsigned long v, long h, char *dst, size_t bs)
+static bool
+dump_madvise_advice(unsigned long v, long unused, char *dst, size_t bs)
 {
-   (void)h;
    const char *name = enum_lookup(tab_madvise_advice, v);
    const int rc = name
       ? snprintf(dst, bs, "%s", name)
@@ -972,34 +954,54 @@ bool tr_dump_from_val(unsigned type_id,
 {
    switch (type_id) {
 
-      case TR_PT_INT:           return dump_int(val, helper, dst, bs);
-      case TR_PT_VOIDP:         return dump_voidp(val, helper, dst, bs);
-      case TR_PT_OCT:           return dump_oct(val, helper, dst, bs);
-      case TR_PT_ERRNO_OR_VAL:  return dump_errno_or_val(val, helper, dst, bs);
-      case TR_PT_ERRNO_OR_PTR:  return dump_errno_or_ptr(val, helper, dst, bs);
-      case TR_PT_OPEN_FLAGS:    return dump_open_flags(val, helper, dst, bs);
-      case TR_PT_DOFF64:        return dump_doff64(val, helper, dst, bs);
-      case TR_PT_WHENCE:        return dump_whence(val, helper, dst, bs);
-      case TR_PT_SIGNUM:        return dump_signum(val, helper, dst, bs);
+      case TR_PT_INT:
+         return dump_int(val, helper, dst, bs);
+      case TR_PT_VOIDP:
+         return dump_voidp(val, helper, dst, bs);
+      case TR_PT_OCT:
+         return dump_oct(val, helper, dst, bs);
+      case TR_PT_ERRNO_OR_VAL:
+         return dump_errno_or_val(val, helper, dst, bs);
+      case TR_PT_ERRNO_OR_PTR:
+         return dump_errno_or_ptr(val, helper, dst, bs);
+      case TR_PT_OPEN_FLAGS:
+         return dump_open_flags(val, helper, dst, bs);
+      case TR_PT_DOFF64:
+         return dump_doff64(val, helper, dst, bs);
+      case TR_PT_WHENCE:
+         return dump_whence(val, helper, dst, bs);
+      case TR_PT_SIGNUM:
+         return dump_signum(val, helper, dst, bs);
 
       /* Layer 1 — symbolic register-value ptypes. */
-      case TR_PT_MMAP_PROT:        return dump_mmap_prot(val, helper, dst, bs);
-      case TR_PT_MMAP_FLAGS:       return dump_mmap_flags(val, helper, dst, bs);
-      case TR_PT_WAIT_OPTIONS:     return dump_wait_options(val, helper, dst, bs);
-      case TR_PT_ACCESS_MODE:      return dump_access_mode(val, helper, dst, bs);
-      case TR_PT_IOCTL_CMD:        return dump_ioctl_cmd(val, helper, dst, bs);
-      case TR_PT_FCNTL_CMD:        return dump_fcntl_cmd(val, helper, dst, bs);
-      case TR_PT_SIGPROCMASK_HOW:  return dump_sigprocmask_how(val, helper, dst, bs);
-      case TR_PT_PRCTL_OPTION:     return dump_prctl_option(val, helper, dst, bs);
-      case TR_PT_CLONE_FLAGS:      return dump_clone_flags(val, helper, dst, bs);
-      case TR_PT_MOUNT_FLAGS:      return dump_mount_flags(val, helper, dst, bs);
-      case TR_PT_MADVISE_ADVICE:   return dump_madvise_advice(val, helper, dst, bs);
+      case TR_PT_MMAP_PROT:
+         return dump_mmap_prot(val, helper, dst, bs);
+      case TR_PT_MMAP_FLAGS:
+         return dump_mmap_flags(val, helper, dst, bs);
+      case TR_PT_WAIT_OPTIONS:
+         return dump_wait_options(val, helper, dst, bs);
+      case TR_PT_ACCESS_MODE:
+         return dump_access_mode(val, helper, dst, bs);
+      case TR_PT_IOCTL_CMD:
+         return dump_ioctl_cmd(val, helper, dst, bs);
+      case TR_PT_FCNTL_CMD:
+         return dump_fcntl_cmd(val, helper, dst, bs);
+      case TR_PT_SIGPROCMASK_HOW:
+         return dump_sigprocmask_how(val, helper, dst, bs);
+      case TR_PT_PRCTL_OPTION:
+         return dump_prctl_option(val, helper, dst, bs);
+      case TR_PT_CLONE_FLAGS:
+         return dump_clone_flags(val, helper, dst, bs);
+      case TR_PT_MOUNT_FLAGS:
+         return dump_mount_flags(val, helper, dst, bs);
+      case TR_PT_MADVISE_ADVICE:
+         return dump_madvise_advice(val, helper, dst, bs);
 
       /* Layer 2 — fcntl_arg. ptype_fcntl_arg has slot_size=0
        * (no struct capture), so the renderer reaches it here
        * rather than via tr_dump. Forward with empty data. */
-      case TR_PT_FCNTL_ARG:        return tr_dump_fcntl_arg(val, NULL, 0,
-                                                            helper, dst, bs);
+      case TR_PT_FCNTL_ARG:
+         return tr_dump_fcntl_arg(val, NULL, 0, helper, dst, bs);
 
       /* These ptypes only have a `dump` (with-data) variant in the
        * kernel — no dump_from_val. Mirror that. */
@@ -1059,7 +1061,6 @@ bool tr_dump(unsigned type_id,
       /* Layer 3 — wstatus int decoded via the W*() macros. */
       case TR_PT_WSTATUS: {
 
-         (void)data_size; (void)helper;
 
          if (!orig) {
             int rc = snprintf(dst, bs, "NULL");

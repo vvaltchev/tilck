@@ -595,12 +595,10 @@ static int dump_remaining_events(int events_fd)
  * run the matching action, return whether to keep looping. Shared
  * between the panel-mode and the standalone tracer entry points.
  */
-static bool tracer_handle_one_key(int events_fd_unused)
+static bool tracer_handle_one_key(int unused)
 {
    char c;
    ssize_t rc;
-
-   (void)events_fd_unused;
 
    tui_set_input_blocking(true);
    rc = read(STDIN_FILENO, &c, 1);
