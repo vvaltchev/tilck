@@ -666,6 +666,54 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+   /* ---------------- Layer 0b: process / scheduling syscalls ----------
+    * Coverage additions for process-control syscalls Tilck implements
+    * but the tracer didn't have metadata for. */
+
+   SYSCALL_TYPE_0(SYS_getpid),
+
+   SYSCALL_TYPE_1(SYS_setuid, "uid"),
+   SYSCALL_TYPE_1(SYS_setgid, "gid"),
+
+   /* `times()` returns clock_t and writes a struct tms (utime,
+    * stime, cutime, cstime) — one user-pointer arg, voidp until
+    * Layer 3 adds struct ptypes. */
+   {
+      .sys_n = SYS_times,
+      .n_params = 1,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("buf", &ptype_voidp, sys_param_out),
+      },
+   },
+
+   /* clone(): the workhorse process/thread creator. The kernel's
+    * impl in Tilck handles a small subset (no full namespaces,
+    * etc.) but the userland call is real. Args: flags, child_stack,
+    * ptid, tls, ctid. flags is a bitmask (CLONE_VM, CLONE_FS, ...);
+    * Layer 1 will add ptype_clone_flags for symbolic rendering. */
+   {
+      .sys_n = SYS_clone,
+      .n_params = 5,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("flags",       &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("child_stack", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("ptid",        &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("tls",         &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("ctid",        &ptype_voidp, sys_param_in),
+      },
+   },
+
+   /* (Legacy 16-bit setuid/setgid handlers exist in the Tilck
+    * kernel for ABI compat with very old binaries — slot 23/46 —
+    * but glibc's SYS_setuid16/SYS_setgid16 macros aren't exposed
+    * on i386, so there's no constant to reference here. Modern
+    * libc programs hit slot 213/214 via SYS_setuid / SYS_setgid
+    * above; that's what we trace.) */
+
 #ifdef __i386__
    /* i386-only: 64-bit truncate / fstatat64 (x86_64 has them under
     * different names). */
