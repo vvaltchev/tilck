@@ -18,8 +18,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "termutil.h"
+#include "term.h"
+#include "tui_input.h"
+#include "tui_layout.h"
 #include "dp_int.h"
+#include "dp_panel.h"
 
 static struct dp_screen *dp_screens_head;
 static bool skip_next_keypress;

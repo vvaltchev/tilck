@@ -15,8 +15,10 @@
 #include <tilck/common/syscalls.h>
 #include <tilck/common/dp_abi.h>
 
-#include "termutil.h"
+#include "term.h"
+#include "tui_layout.h"
 #include "dp_int.h"
+#include "dp_panel.h"
 
 #define KB_  1024UL
 #define MB_  (1024UL * 1024UL)

@@ -19,8 +19,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "termutil.h"
+#include "term.h"
+#include "tui_layout.h"
 #include "dp_int.h"
+#include "dp_panel.h"
 
 #define OPT_VAL_MAX  64
 

@@ -110,3 +110,12 @@ int tr_render_event(const struct dp_trace_event *e,
                     char *out,
                     size_t out_sz,
                     struct dp_render_ctx *ctx);
+
+/* ----------------------------- entry -------------------------------- */
+
+/*
+ * Standalone entry point for the tracer binary — implemented in
+ * screen_tracing.c, called by main.c. Sets up the terminal, reads
+ * trace events, renders them; returns when the user presses 'q'.
+ */
+int dp_run_tracer(void);

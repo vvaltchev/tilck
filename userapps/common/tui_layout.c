@@ -1,27 +1,27 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Layout globals + terminal setup/teardown for the userspace `dp`
- * tool. Matches the kernel-side counterparts in modules/debugpanel/dp.c
- * (the dp_enter / dp_exit code that initializes dp_rows/dp_cols/...
- * and toggles the alt buffer / cursor / raw mode).
+ * Layout globals + terminal-mode lifecycle for userspace TUIs.
  *
- * Phase 6 leaves the screen registry empty: the only `struct dp_screen`
- * in scope is dp_default_ctx, which is what dp_ctx points at by default
- * so termutil's dp_write() can compile and run without any caller
- * needing to push a real screen onto the stack. Phase 7 will replace
- * dp_ctx per-screen and add the registry plumbing.
+ * dp_init_layout measures the terminal via TIOCGWINSZ and populates
+ * the globals so callers can paint a centered 76x23 panel area.
+ * dp_term_setup switches the terminal into raw mode + alt buffer +
+ * hidden cursor; dp_term_restore reverses all three.
+ *
+ * No panel state lives here — the dp panel context (dp_default_ctx /
+ * dp_ctx) is in userapps/dp/dp_panel.c, since it exists for the
+ * buffered-emit layer that doesn't ship in tools like the tracer.
  */
 
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include "termutil.h"
-#include "dp_int.h"
+#include "term.h"
+#include "tui_input.h"
+#include "tui_layout.h"
 
 int dp_rows;
 int dp_cols;
@@ -30,20 +30,6 @@ int dp_end_row;
 int dp_start_col;
 int dp_screen_start_row;
 int dp_screen_rows;
-bool ui_need_update;
-const char *modal_msg;
-
-/*
- * Default panel context. row_max is set wide so dp_write's clipping
- * never trims a write before any real screen has been pushed. Phase 7
- * will swap dp_ctx out for an actual struct dp_screen on each panel
- * switch.
- */
-static struct dp_screen dp_default_ctx = {
-   .row_max = INT_MAX,
-};
-
-struct dp_screen *dp_ctx = &dp_default_ctx;
 
 void dp_init_layout(void)
 {

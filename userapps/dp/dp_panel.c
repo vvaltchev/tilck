@@ -1,144 +1,55 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * VT100 primitives split into two layers:
+ * Panel context + buffered-emit + modal overlay — the panel-aware
+ * bits that used to live mixed inside dp/dp_screen.c and
+ * dp/termutil.c. Lives in the dp binary only; the tracer (and any
+ * future tool that only uses the direct-emit layer in common/term.h)
+ * does not link this file.
  *
- *   Direct-emit (dp_write_raw, dp_move_cursor, dp_clear, dp_draw_rect_raw,
- *   dp_show_modal_msg, …) — write to STDOUT_FILENO immediately. Used by
- *   the chrome (border, panel-tabs header, footer, modal overlays) and
- *   by terminal-lifecycle helpers.
+ * Three pieces:
  *
- *   Buffered-emit (dp_write / dp_writeln / dp_writeln2) — append to an
- *   in-memory line buffer keyed by panel-local row. Used by every panel's
- *   draw_func. After draw_func returns, the buffer is painted onto the
- *   panel content area by dp_buf_paint(); the chrome is preserved across
- *   the paint, so scrolling does not flicker the border or re-issue the
- *   panel-tabs header.
+ *   1. The "current panel" pointer dp_ctx and its default backing
+ *      struct dp_default_ctx, plus the small ui_need_update / modal_msg
+ *      globals consulted by dp_main's main loop.
  *
- * The buffer is cleared by dp_buf_reset() before each call to the active
- * panel's draw_func. PAGE_UP/PAGE_DOWN scrolling repaints the same
- * buffer at a different row_off (no re-execution of draw_func, no
- * re-issuing of any data syscalls).
+ *   2. dp_write / dp_writeln / dp_buf_reset / dp_buf_paint — the
+ *      row-keyed in-memory buffer panels write into during their
+ *      draw_func; dp_main repaints from this buffer at a given
+ *      row_off for free scrolling without re-running draw_func.
+ *
+ *   3. dp_show_modal_msg — centered alert overlay; paints straight
+ *      to the TTY (direct-emit), so callers must trigger a redraw
+ *      to bring the panel content back underneath.
  */
 
+#include <limits.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
-#include "termutil.h"
+#include "term.h"
+#include "tui_layout.h"
 #include "dp_int.h"
+#include "dp_panel.h"
 
-/* ------------------------- direct-emit layer ------------------------- */
+/* --------------------------- panel context --------------------------- */
 
-void dp_write_raw_int(const char *buf, int len)
-{
-   ssize_t off = 0;
-
-   while (off < len) {
-
-      ssize_t rc = write(STDOUT_FILENO, buf + off, (size_t)(len - off));
-
-      if (rc < 0)
-         return;       /* give up; nothing useful to report */
-
-      off += rc;
-   }
-}
-
-void dp_write_raw(const char *fmt, ...)
-{
-   char buf[256];
-   va_list args;
-   int rc;
-
-   va_start(args, fmt);
-   rc = vsnprintf(buf, sizeof(buf), fmt, args);
-   va_end(args);
-
-   if (rc <= 0)
-      return;
-
-   if ((size_t)rc >= sizeof(buf))
-      rc = (int)sizeof(buf) - 1;
-
-   dp_write_raw_int(buf, rc);
-}
-
-void dp_move_right(int n)         { dp_write_raw("\033[%dC", n); }
-void dp_move_left(int n)          { dp_write_raw("\033[%dD", n); }
-void dp_move_to_col(int n)        { dp_write_raw("\033[%dG", n); }
-void dp_clear(void)               { dp_write_raw(ERASE_DISPLAY); }
-void dp_move_cursor(int row, int col) { dp_write_raw("\033[%d;%dH", row, col); }
-
-void dp_set_cursor_enabled(bool enabled)
-{
-   dp_write_raw("%s", enabled ? SHOW_CURSOR : HIDE_CURSOR);
-}
-
-void dp_switch_to_alt_buffer(void)
-{
-   dp_write_raw("%s", USE_ALT_BUF);
-}
-
-void dp_switch_to_default_buffer(void)
-{
-   dp_write_raw("%s", USE_DEF_BUF);
-}
-
-void dp_draw_rect_raw(int row, int col, int h, int w)
-{
-   if (w < 2 || h < 2)
-      return;
-
-   dp_write_raw(GFX_ON);
-   dp_move_cursor(row, col);
-   dp_write_raw("l");
-
-   for (int i = 0; i < w-2; i++)
-      dp_write_raw("q");
-
-   dp_write_raw("k");
-
-   for (int i = 1; i < h-1; i++) {
-
-      dp_move_cursor(row+i, col);
-      dp_write_raw("x");
-
-      dp_move_cursor(row+i, col+w-1);
-      dp_write_raw("x");
-   }
-
-   dp_move_cursor(row+h-1, col);
-   dp_write_raw("m");
-
-   for (int i = 0; i < w-2; i++)
-      dp_write_raw("q");
-
-   dp_write_raw("j");
-   dp_write_raw(GFX_OFF);
-}
+bool ui_need_update;
+const char *modal_msg;
 
 /*
- * Direct-emit version of dp_draw_rect: same shape as dp_draw_rect_raw
- * but with an optional label. Used by the modal overlay (which paints
- * outside the buffered panel content) and by anyone wanting a labeled
- * rectangle drawn straight to the TTY.
+ * Default panel context. row_max is set wide so dp_write's clipping
+ * never trims a write before any real screen has been pushed. The
+ * registry in dp_main.c swaps dp_ctx out for an actual struct dp_screen
+ * on each panel switch.
  */
-void dp_draw_rect(const char *label,
-                  const char *esc_label_color,
-                  int row,
-                  int col,
-                  int h,
-                  int w)
-{
-   dp_draw_rect_raw(row, col, h, w);
+static struct dp_screen dp_default_ctx = {
+   .row_max = INT_MAX,
+};
 
-   if (label) {
-      dp_move_cursor(row, col + 2);
-      dp_write_raw("%s[ %s ]" RESET_ATTRS, esc_label_color, label);
-   }
-}
+struct dp_screen *dp_ctx = &dp_default_ctx;
 
 /* ------------------------ buffered-emit layer ------------------------ */
 

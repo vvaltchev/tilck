@@ -17,8 +17,10 @@
 #include <tilck/common/syscalls.h>
 #include <tilck/common/dp_abi.h>
 
-#include "termutil.h"
+#include "term.h"
+#include "tui_layout.h"
 #include "dp_int.h"
+#include "dp_panel.h"
 
 static struct dp_irq_stats stats;
 static int got_stats;

@@ -57,3 +57,12 @@ void state_to_str(char *out, unsigned char state, bool stopped, bool traced);
 
 /* Get one of the table format strings (lazily built on first call). */
 const char *task_dump_str(enum task_dump_str_t t);
+
+/*
+ * Plain-text dump of the task list to stdout via dp_write_raw.
+ * Used by dp's `ps` mode and by the tracer's 'p' / 'P' keys.
+ * Refreshes the task table first.
+ *   kernel_tasks=true  → also include kthreads (tracer 'P').
+ *   kernel_tasks=false → user processes only (tracer 'p' or ps).
+ */
+void dp_dump_task_list_plain(bool kernel_tasks);

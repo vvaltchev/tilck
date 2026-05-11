@@ -32,7 +32,7 @@
 #include <tilck/common/tracing/wire.h>
 #include <tilck/common/dp_abi.h>
 
-#include "termutil.h"
+#include "term.h"
 #include "tr.h"
 
 #ifndef MIN

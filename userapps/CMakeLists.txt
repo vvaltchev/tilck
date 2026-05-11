@@ -51,6 +51,24 @@ include_directories(${ZLIB_DIR}/install/include)
    add_usermode_app(play)
 # [/simple apps]
 
+# [common userapps sources]
+   #
+   # Shared TUI + kernel-ABI helpers used by dp, tracer, and any future
+   # interactive userspace tool. Globbed into each consuming binary
+   # (no static library — Tilck userapps are -static and we only have a
+   # handful of consumers; lift to add_library when that changes).
+   #
+   file(
+      GLOB
+      USERAPPS_COMMON_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "common/*.c"
+   )
+
+   set(USERAPPS_COMMON_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
+# [/common userapps sources]
+
 # [dp]
    file(
       GLOB
@@ -61,20 +79,22 @@ include_directories(${ZLIB_DIR}/install/include)
    )
 
    if (USERAPPS_dp)
-      add_executable(dp ${DP_SOURCES})
-      target_include_directories(dp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/dp)
+      add_executable(dp ${DP_SOURCES} ${USERAPPS_COMMON_SOURCES})
+      target_include_directories(dp PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/dp
+         ${USERAPPS_COMMON_INCLUDE_DIR})
       register_usermode_app(dp)
    endif()
 # [/dp]
 
 # [tracer]
    #
-   # The `tracer` binary shares the dp termutil/input/screen
-   # infrastructure (so the trace screen looks and behaves like a dp
-   # panel — banner + key dispatch + line editor + alt buffer), but
-   # the trace-rendering code (~1.5 KLOC of tr_*.c) ships in its own
-   # binary so dp itself stays slim and the tracer can run in builds
-   # where MOD_debugpanel is off.
+   # The `tracer` binary shares userapps/common/ with dp (key input,
+   # terminal lifecycle, raw VT100 emit, task table dump) but has no
+   # cross-reach into userapps/dp/. The trace-rendering code (~1.5
+   # KLOC of tr_*.c) is tracer-private; the dp panel doesn't pay for
+   # it, and the tracer is usable on builds where MOD_debugpanel is
+   # off.
    #
    file(
       GLOB
@@ -82,19 +102,13 @@ include_directories(${ZLIB_DIR}/install/include)
       ${GLOB_CONF_DEP}
 
       "tracer/*.c"
-      "dp/dp_input.c"
-      "dp/dp_screen.c"
-      "dp/termutil.c"
-      "dp/task_dump.c"
    )
 
    if (USERAPPS_dp)
-      add_executable(tracer ${TRACER_SOURCES})
-      target_include_directories(
-         tracer PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/tracer
-            ${CMAKE_CURRENT_SOURCE_DIR}/dp
-      )
+      add_executable(tracer ${TRACER_SOURCES} ${USERAPPS_COMMON_SOURCES})
+      target_include_directories(tracer PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/tracer
+         ${USERAPPS_COMMON_INCLUDE_DIR})
       register_usermode_app(tracer)
    endif()
 # [/tracer]

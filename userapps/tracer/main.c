@@ -20,7 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "dp_int.h"     /* declares dp_run_tracer (in screen_tracing.c) */
+#include "tr.h"         /* declares dp_run_tracer (in screen_tracing.c) */
 
 int main(int argc, char **argv)
 {

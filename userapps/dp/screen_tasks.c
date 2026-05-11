@@ -30,13 +30,16 @@
 #include <tilck/common/syscalls.h>
 #include <tilck/common/dp_abi.h>
 
-#include "termutil.h"
-#include "dp_int.h"
+#include "term.h"
+#include "tui_input.h"
+#include "tui_layout.h"
 #include "task_dump.h"
+#include "dp_int.h"
+#include "dp_panel.h"
 
 /*
  * File-scope row counter used by the dp_writeln() macro defined in
- * termutil.h. Reset at the top of dp_show_tasks(); incremented by
+ * dp_panel.h. Reset at the top of dp_show_tasks(); incremented by
  * every dp_writeln call (and via dump_task_list / show_actions_menu /
  * render_one_task on the rendering path).
  */

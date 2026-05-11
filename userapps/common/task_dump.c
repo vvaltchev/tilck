@@ -13,8 +13,8 @@
 #include <tilck/common/syscalls.h>
 #include <tilck/common/dp_abi.h>
 
-#include "termutil.h"
-#include "dp_int.h"
+#include "term.h"
+#include "tui_layout.h"
 #include "task_dump.h"
 
 struct dp_task_info dp_tasks_buf[MAX_DP_TASKS];

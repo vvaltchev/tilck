@@ -1,15 +1,20 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Userspace counterpart of modules/debugpanel/termutil.h. The set of
- * VT100 escape sequences and the public API are identical; the
- * implementation in termutil.c writes directly to STDOUT_FILENO instead
- * of going through a kernel TTY handle.
+ * Direct-emit terminal primitives — VT100/xterm escape macros plus the
+ * functions that write straight to STDOUT_FILENO (no in-memory buffer,
+ * no panel-state dependency). Reusable by any userspace TUI; lives in
+ * userapps/common/ alongside the other generic infrastructure.
+ *
+ * The matching buffered-emit layer (dp_write / dp_writeln / dp_buf_*,
+ * which paint into a row-keyed buffer and depend on the dp panel
+ * context) is in userapps/dp/dp_panel.h — do NOT include it from this
+ * directory.
  */
 
 #pragma once
 
-#include "dp_int.h"
+#include <stdbool.h>
 
 #define ERASE_DISPLAY            "\033[2J"
 #define REVERSE_VIDEO            "\033[7m"
@@ -39,8 +44,23 @@
 #define TERM_VLINE               GFX_ON "x" GFX_OFF
 #define DP_ESC_COLOR             E_COLOR_WHITE
 
-void dp_write(int row, int col, const char *fmt, ...)
-   __attribute__((format(printf, 3, 4)));
+/* Direct-emit functions (write to STDOUT_FILENO immediately). */
+void dp_write_raw(const char *fmt, ...)
+   __attribute__((format(printf, 1, 2)));
+
+void dp_write_raw_int(const char *buf, int len);
+
+void dp_move_right(int n);
+void dp_move_left(int n);
+void dp_move_to_col(int n);
+void dp_move_cursor(int row, int col);
+void dp_clear(void);
+void dp_set_cursor_enabled(bool enabled);
+void dp_switch_to_alt_buffer(void);
+void dp_switch_to_default_buffer(void);
+
+/* Box drawing (direct-emit). */
+void dp_draw_rect_raw(int row, int col, int h, int w);
 
 void dp_draw_rect(const char *label,
                   const char *esc_label_color,
@@ -48,37 +68,6 @@ void dp_draw_rect(const char *label,
                   int col,
                   int h,
                   int w);
-
-/* WARNING: dirty macro expecting a local `row` variable to be defined */
-#define dp_writeln(...)  dp_write(row++, 0, __VA_ARGS__)
-
-/* WARNING: dirty macro expecting both `row` and `col` to be defined */
-#define dp_writeln2(...) dp_write(row++, col, __VA_ARGS__)
-
-void dp_move_right(int n);
-void dp_move_left(int n);
-void dp_move_to_col(int n);
-void dp_clear(void);
-void dp_move_cursor(int row, int col);
-void dp_set_cursor_enabled(bool enabled);
-void dp_switch_to_alt_buffer(void);
-void dp_switch_to_default_buffer(void);
-void dp_show_modal_msg(const char *msg);
-
-/*
- * Buffered-emit helpers. The panel's draw_func calls dp_write /
- * dp_writeln (which append to an in-memory line buffer); dp_main.c
- * resets the buffer via dp_buf_reset() before each draw_func, then
- * paints the visible window onto the panel content area via
- * dp_buf_paint().
- */
-void dp_buf_reset(void);
-void dp_buf_paint(int row_off,
-                  int screen_rows,
-                  int term_first_row,
-                  int panel_left_col,
-                  int panel_w,
-                  int static_rows);
 
 static inline const char *
 dp_sign_value_esc_color(long val)
@@ -92,10 +81,3 @@ static inline long dp_int_abs(long val)
 {
    return val >= 0 ? val : -val;
 }
-
-/* raw functions, avoid using when possible */
-void dp_write_raw(const char *fmt, ...)
-   __attribute__((format(printf, 1, 2)));
-
-void dp_draw_rect_raw(int row, int col, int h, int w);
-void dp_write_raw_int(const char *buf, int len);

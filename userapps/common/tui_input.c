@@ -24,8 +24,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "termutil.h"
-#include "dp_int.h"
+#include "term.h"
+#include "tui_input.h"
 
 static int line_pos;
 static int line_len;
