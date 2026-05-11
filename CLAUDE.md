@@ -337,10 +337,36 @@ FreeBSD is a supported build host alongside Linux. Key differences:
 
 ## Coding Style
 
+**Style matters as much as functionality.** The user will reject a
+diff that solves the problem if the formatting is wrong, and ask for
+a rewrite. Treat the style audit as part of "is this done?", not a
+polish step.
+
+### Workflow before writing C code
+
+1. **Read `docs/contributing.md` end-to-end.** It is the authoritative
+   reference for the documented rules. The summary below is a digest,
+   not a substitute.
+2. **Sample the kernel.** Read a few well-styled kernel files
+   (`kernel/poll.c`, `kernel/execve.c`, `kernel/sched.c`,
+   `kernel/exit.c`, `kernel/elf.c`) to absorb conventions that
+   `contributing.md` doesn't spell out. Newer files reflect the
+   current preferred style; older files have a small amount of legacy
+   drift — emulate the newer ones.
+3. **After drafting, grep your code against the kernel.** Before
+   asking the user to review, pick patterns you used and confirm they
+   appear in `kernel/*.c`. Patterns absent from the kernel are
+   probably wrong, even if they compile and look "fine" by general C
+   convention. The user has well-formed opinions on syntax that other
+   codebases don't share.
+
+### Summary of explicit rules (from contributing.md)
+
 - **3 spaces** indentation (not tabs)
 - **80 columns** strict line limit (no exceptions)
 - **snake_case** everywhere
-- Opening brace on same line for control flow, **new line for functions and array initializers**
+- Opening brace on same line for control flow, **new line for
+  functions and array initializers**
 - Multi-line `if` conditions: opening brace on its own line
 - Omit braces for single-statement blocks unless confusing
 - Null checks without NULL: `if (ptr)` / `if (!ptr)`
@@ -349,8 +375,66 @@ FreeBSD is a supported build host alongside Linux. Key differences:
 - Struct init: `*ctx = (struct foo) { .field = val };`
 - `#define` values column-aligned
 - Comments: `/* ... */` style, multi-line with ` * ` prefix per line
-- Add blank line after `if (...) {` / `for (...) {` when the header is long relative to the body's first line (prevents "hiding" effect)
+- Add blank line after `if (...) {` / `for (...) {` when the header
+  is **longer** than the body's first line (prevents the "hiding"
+  effect). When the header is shorter, no blank line — body extends
+  past the header anyway.
 - Nested `#ifdef` blocks are indented when small in scope
+
+### Additional rules inferred from reading kernel/
+
+These aren't in `contributing.md` but are consistently applied across
+recently-touched kernel files. Failing to follow them gets the diff
+rejected just as quickly as breaking the documented rules.
+
+- **`sizeof(X)` always, never `sizeof X` without parens.** Even when
+  the operand is a single identifier. Verify with
+  `grep -nE 'sizeof [a-z]' kernel/` — the only hits are casts like
+  `(ssize_t)sizeof(...)`, never the bare-operand form.
+- **Empty loop body uses `{ }`, never `;`.** A bare semicolon on its
+  own line as a loop body is rejected as ugly. Write
+  `while (cond) { }`, not `while (cond)\n   ;`.
+- **No `(void)expr` casts.** The kernel never uses them
+  (`grep -nE '\(void\)[a-z_]' kernel/` returns nothing). Reasons:
+  - `-Wno-unused-parameter` is enabled in `USERAPPS_CFLAGS` and on
+    kernel builds, so unused parameters don't warn.
+  - musl on i386 doesn't put `warn_unused_result` on `read` / `write` /
+    `getpid` / etc., so discarded syscall returns don't warn.
+- **Unused callback parameters: name them `unused`, not `_ctx` or
+  `_param`.** See `kernel/sched.c` (`static void idle(void *unused)`),
+  `kernel/main.c` (`do_async_init(void *unused)`),
+  `kernel/datetime.c` (`clock_drift_adj(void *unused)`).
+- **One statement per line.** Don't pack `close(a); close(b);` onto
+  one line — split. Even for cleanup sequences.
+- **Static function definitions: type/modifiers on their own line.**
+  `contributing.md` documents this only for "long signatures", but
+  `kernel/poll.c` and `kernel/execve.c` apply it uniformly — even to
+  short ones like `static void idle(void *unused)`. Match the recent
+  convention: split type for every static function definition.
+- **`{` placement is non-linear** and depends on context beyond what
+  `contributing.md` spells out:
+  - **Same line** for: ordinary control flow whose condition fits on
+    one line (`if (x) {`, `for (...) {`, `while (...) {`).
+  - **Own line** for: function bodies (always), array initializers,
+    multi-line `if` conditions where the closing `)` is at the end of
+    a wrapped line (see `kernel/elf.c` ELF header check), and
+    lock-scope blocks
+    (`disable_preemption(); { ... } enable_preemption();` — see
+    `kernel/sched.c`, `kernel/execve.c`).
+- **Em-dashes in comments are accepted.** They appear in recent
+  dp/tracer code and in `kernel/poll.c`. Use them where prose flows
+  naturally; don't sprinkle.
+
+### Reference files to consult
+
+| Pattern | Look at |
+|---------|---------|
+| Static fn defs + multi-arg alignment | `kernel/poll.c`, `kernel/execve.c` |
+| Lock-scope `{ ... }` blocks | `kernel/sched.c`, `kernel/execve.c` |
+| Multi-line `if` with brace-on-own-line | `kernel/elf.c` (`e_ident` validation) |
+| Struct init with designators | `kernel/sched.c` (`create_pid_visit_ctx`) |
+| Userspace static fn style | `userapps/tracer/screen_tracing.c`, `userapps/dp/dp_main.c` |
+| Comment header for a non-trivial file | the prologues of any of the above |
 
 ## Porting expectations
 
