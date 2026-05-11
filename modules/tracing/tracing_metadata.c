@@ -739,6 +739,222 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+   /* ---------------- Layer 0d: signals + timers -----------------------
+    * Legacy signal API + clock/timer/utime syscalls. The struct
+    * args (struct sigaction, struct timespec, struct timeval, ...)
+    * render as bare voidp until Layer 3 adds struct ptypes — for
+    * now the goal is just getting the syscall NAMED in the trace. */
+
+   /*
+    * legacy signal API (the rt_* variants were already covered) —
+    * SYS_signal / SYS_sigaction / SYS_sigprocmask exist only on i386
+    * in musl. On x86_64 they're not in <sys/syscall.h> at all
+    * (replaced by SYS_rt_sigaction / SYS_rt_sigprocmask). Wrap each
+    * entry in `#ifdef __i386__` so the file still builds when this
+    * outer block is being compiled for x86_64 (or for the gtests
+    * host build on a Linux x86_64 runner).
+    */
+#ifdef __i386__
+   {
+      .sys_n = SYS_signal,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_voidp,        /* returns prev handler */
+      .params = {
+         SIMPLE_PARAM("signum",  &ptype_signum, sys_param_in),
+         SIMPLE_PARAM("handler", &ptype_voidp,  sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_sigaction,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("signum", &ptype_signum, sys_param_in),
+         SIMPLE_PARAM("act",    &ptype_voidp,  sys_param_in),
+         SIMPLE_PARAM("oldact", &ptype_voidp,  sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_sigprocmask,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("how",    &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("set",    &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("oldset", &ptype_voidp, sys_param_out),
+      },
+   },
+#endif
+
+   {
+      .sys_n = SYS_rt_sigpending,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("set",        &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("sigsetsize", &ptype_int,   sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_rt_sigsuspend,
+      .n_params = 2,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("mask",       &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("sigsetsize", &ptype_int,   sys_param_in),
+      },
+   },
+
+   /* tgkill: targeted thread-group kill (signum gets ptype_signum). */
+   {
+      .sys_n = SYS_tgkill,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("tgid",  &ptype_int,    sys_param_in),
+         SIMPLE_PARAM("tid",   &ptype_int,    sys_param_in),
+         SIMPLE_PARAM("signo", &ptype_signum, sys_param_in),
+      },
+   },
+
+   /* time-getter / time-setter syscalls. The clock/timer ABI on
+    * i386 has both 32-bit (legacy) and 64-bit (time64) slots; we
+    * trace the legacy slots — that's what userland on i386 calls
+    * by default. */
+   {
+      .sys_n = SYS_gettimeofday,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("tv", &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("tz", &ptype_voidp, sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_nanosleep,
+      .n_params = 2,
+      .exp_block = true,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("req", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("rem", &ptype_voidp, sys_param_out),
+      },
+   },
+
+   /*
+    * Clock syscalls. On i386 the kernel implements both the legacy
+    * (_time32) and modern (_time64) variants at separate slots.
+    * musl's syscall.h only exposes the suffixed names on i386 — on
+    * x86_64 they don't exist at all (the canonical entry is plain
+    * SYS_clock_gettime). Wrap in `#ifdef __i386__` so the file
+    * builds for x86_64 (where SYS_clock_gettime32/64 are undefined).
+    */
+#ifdef __i386__
+   {
+      .sys_n = SYS_clock_gettime32,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("tp",      &ptype_voidp, sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_clock_gettime64,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("tp",      &ptype_voidp, sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_clock_getres_time32,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("res",     &ptype_voidp, sys_param_out),
+      },
+   },
+
+   {
+      .sys_n = SYS_clock_getres_time64,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("res",     &ptype_voidp, sys_param_out),
+      },
+   },
+#endif
+
+   /* utime / utimes / utimensat / futimesat: file timestamp
+    * setters. Pointer-to-times is voidp until Layer 3. */
+   {
+      .sys_n = SYS_utime,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path",  &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("times", &ptype_voidp, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_utimes,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path", &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("tvp",  &ptype_voidp, sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_utimensat,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("times", &ptype_voidp, sys_param_in),
+         SIMPLE_PARAM("flags", &ptype_int,   sys_param_in),
+      },
+   },
+
+   {
+      .sys_n = SYS_futimesat,
+      .n_params = 3,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("path",  &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("tvp",   &ptype_voidp, sys_param_in),
+      },
+   },
+
    /* (Legacy 16-bit setuid/setgid handlers exist in the Tilck
     * kernel for ABI compat with very old binaries — slot 23/46 —
     * but glibc's SYS_setuid16/SYS_setgid16 macros aren't exposed
