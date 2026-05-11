@@ -13,6 +13,9 @@
  * via TILCK_CMD_DP_TASK_SET_TRACED / TRACE_SET_FILTER. So Ctrl+T
  * from the dp Tasks panel just fork+execs this binary — no state
  * needs to flow through argv.
+ *
+ *   tracer           — full-screen interactive UI (dp_run_tracer)
+ *   tracer --test    — non-interactive self-test mode (see test_live.c)
  */
 
 #include <stdio.h>
@@ -20,16 +23,17 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "tr.h"         /* declares dp_run_tracer (in screen_tracing.c) */
+#include "tr.h"
 
 int main(int argc, char **argv)
 {
-   (void)argc; (void)argv;
-
    if (!getenv("TILCK")) {
       printf("ERROR: the tracer exists only on Tilck!\n");
       return 1;
    }
+
+   if (argc > 1 && !strcmp(argv[1], "--test"))
+      return tr_run_tier1_tests();
 
    return dp_run_tracer();
 }

@@ -119,3 +119,12 @@ int tr_render_event(const struct dp_trace_event *e,
  * trace events, renders them; returns when the user presses 'q'.
  */
 int dp_run_tracer(void);
+
+/*
+ * `tracer --test` mode — non-interactive Tier 1 (live-syscall) self
+ * test. Marks itself as traced, issues a curated sequence of real
+ * syscalls, drains /syst/tracing/events, asserts each event has the
+ * expected sys_n + a sane rendered string. Exit status 0 on all PASS,
+ * non-zero on any FAIL. Implementation in test_live.c.
+ */
+int tr_run_tier1_tests(void);
