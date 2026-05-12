@@ -121,23 +121,37 @@ drain_ring(void)
 }
 
 /*
- * Read all available events into cap->events[]. Stops at MAX_CAPTURED
- * or on EAGAIN/EOF. Called by parent after the traced child exits.
+ * Read all available events from the ring into cap->events[], keeping
+ * only those that match cap->child_tid. Stops at MAX_CAPTURED or on
+ * EAGAIN/EOF. Called by parent after the traced child exits.
+ *
+ * Why the tid filter: trace_printk() is gated only by
+ * __tracing_printk_lvl (default 10), not by the global tracing-enabled
+ * flag, so the kernel can emit unrelated printks into the ring during
+ * a test — e.g. the hang-detector's task-state dump (~30 lines per
+ * cycle) under stress configurations (KRN_MINIMAL_TIME_SLICE=1,
+ * TIMER_HZ=500). Without the filter those eat the MAX_CAPTURED budget
+ * before the child's syscalls land, and find_event() returns NULL
+ * even though the event was in the ring.
  */
 static void
 drain_into(struct capture *cap)
 {
+   struct dp_trace_event tmp;
+
    cap->count = 0;
 
    while (cap->count < MAX_CAPTURED) {
 
-      ssize_t n = read(events_fd, &cap->events[cap->count],
-                       sizeof(struct dp_trace_event));
+      ssize_t n = read(events_fd, &tmp, sizeof(tmp));
 
-      if (n != (ssize_t)sizeof(struct dp_trace_event))
+      if (n != (ssize_t)sizeof(tmp))
          break;
 
-      cap->count++;
+      if (tmp.tid != cap->child_tid)
+         continue;
+
+      cap->events[cap->count++] = tmp;
    }
 }
 

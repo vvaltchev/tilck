@@ -145,38 +145,55 @@ slot_offset(unsigned sys_n, int param_idx)
 }
 
 /*
- * Push `e` into the ring, read one event back, copy it into `out`.
- * Returns 0 on success, -1 on failure (the caller already called
- * test_fail in that case).
+ * Push `e` into the ring, read events back until we hit one with a
+ * test-sentinel tid (INJ_TID / INJ_TID2), copy it into `out`. Returns
+ * 0 on success, -1 on failure (the caller already called test_fail
+ * in that case).
+ *
+ * Why the loop: cmd_set_enabled is OFF during Tier 2, so the global
+ * syscall-trace gate doesn't produce events. trace_printk(), however,
+ * is gated only by __tracing_printk_lvl (default 10) — not by the
+ * global enabled flag — so a kernel printk from e.g. clock_drift_adj
+ * can race in between drain_ring() and our read() and end up in the
+ * ring ahead of our injected event. Skip past anything whose tid
+ * isn't one of our sentinels (90001/90002, well outside real task
+ * and worker-thread tid ranges).
  */
 static int
 inject_and_read(const char *name,
                 const struct dp_trace_event *e,
                 struct dp_trace_event *out)
 {
+   char r[80];
+
    drain_ring();
 
    if (cmd_inject_event(e) < 0) {
-      char r[80];
       snprintf(r, sizeof(r), "cmd_inject_event failed (errno=%d)", errno);
       goto fail;
    }
 
-   ssize_t n = read(events_fd, out, sizeof(*out));
+   for (;;) {
 
-   if (n != (ssize_t)sizeof(*out)) {
-      char r[80];
-      snprintf(r, sizeof(r), "read after inject failed (n=%ld, errno=%d)",
-               (long)n, errno);
-      goto fail;
+      ssize_t n = read(events_fd, out, sizeof(*out));
+
+      if (n != (ssize_t)sizeof(*out)) {
+         snprintf(r, sizeof(r),
+                  "read after inject failed (n=%ld, errno=%d)",
+                  (long)n, errno);
+         goto fail;
+      }
+
+      if (out->tid == INJ_TID || out->tid == INJ_TID2)
+         return 0;
+
+      /* Kernel-side event raced in — skip and keep reading. */
    }
-
-   return 0;
 
 fail:
    n_failed++;
    /* test_fail clones the reason buffer; we re-emit it here. */
-   printf("  [FAIL] %s: see above\n", name);
+   printf("  [FAIL] %s: %s\n", name, r);
    return -1;
 }
 
