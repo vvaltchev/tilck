@@ -1,0 +1,19 @@
+#!/initrd/bin/busybox ash
+
+set -e
+
+if ! [ -x /initrd/usr/bin/tracer ]; then
+   echo "No /initrd/usr/bin/tracer: skipping the test"
+   exit 0
+fi
+
+if ! [ -e /syst/tracing/events ]; then
+   echo "No /syst/tracing/events (MOD_tracing off?): skipping the test"
+   exit 0
+fi
+
+echo "Running tracer --test ..."
+/initrd/usr/bin/tracer --test
+
+echo "Done."
+exit 0
