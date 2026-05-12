@@ -18,6 +18,7 @@
  *   tracer --test         — Tier 1 + Tier 2 self-tests
  *   tracer --test --stress
  *                         — ring-buffer overrun stress test
+ *   tracer -h, --help     — show usage and exit
  */
 
 #include <stdio.h>
@@ -27,12 +28,38 @@
 
 #include "tr.h"
 
+static bool is_help_opt(const char *s)
+{
+   return !strcmp(s, "-h") || !strcmp(s, "--help");
+}
+
+static void show_help_and_exit(void)
+{
+   printf("Tilck tracer -- kernel syscall + printk tracer.\n\n");
+   printf("Usage:\n");
+   printf("  tracer                  Run the interactive tracer (banner,\n");
+   printf("                          live event stream, key dispatch).\n");
+   printf("                          'h' shows in-app help; 'q' exits.\n");
+   printf("  tracer --test           Run the self-tests:\n");
+   printf("                            Tier 1 -- live syscall integration\n");
+   printf("                            Tier 2 -- synthetic event injection\n");
+   printf("                          Exits 0 if all PASS, 1 otherwise.\n");
+   printf("  tracer --test --stress  Inject 10000 events into the ring\n");
+   printf("                          buffer and verify the surviving\n");
+   printf("                          events round-trip correctly.\n");
+   printf("  tracer -h, --help       Show this help and exit.\n");
+   exit(0);
+}
+
 int main(int argc, char **argv)
 {
    if (!getenv("TILCK")) {
       printf("ERROR: the tracer exists only on Tilck!\n");
       return 1;
    }
+
+   if (argc > 1 && is_help_opt(argv[1]))
+      show_help_and_exit();
 
    if (argc > 1 && !strcmp(argv[1], "--test")) {
 

@@ -11,9 +11,41 @@
 
 #include "dp_int.h"
 
+static bool is_help_opt(const char *s)
+{
+   return !strcmp(s, "-h") || !strcmp(s, "--help");
+}
+
+static void show_dp_help_and_exit(void)
+{
+   printf("Tilck debug panel -- interactive kernel state inspector.\n\n");
+   printf("Usage:\n");
+   printf("  dp                   Run the interactive panel (tabs for\n");
+   printf("                       tasks, heaps, IRQs, memory map, etc.).\n");
+   printf("                       Switch tabs with the digit keys; ENTER\n");
+   printf("                       enters select mode on Tasks; Ctrl+T\n");
+   printf("                       launches the tracer; 'q' exits.\n");
+   printf("  dp -h, --help        Show this help and exit.\n");
+   exit(0);
+}
+
+static void show_ps_help_and_exit(void)
+{
+   printf("Tilck ps -- plain-text dump of the kernel task table.\n\n");
+   printf("Usage:\n");
+   printf("  ps                   Print the task table once and exit.\n");
+   printf("                       Same columns as dp's Tasks panel.\n");
+   printf("  ps -h, --help        Show this help and exit.\n");
+   exit(0);
+}
+
 static int ps_tool(int argc, char **argv)
 {
    if (argc > 0) {
+
+      if (is_help_opt(argv[0]))
+         show_ps_help_and_exit();
+
       printf("ERROR: unknown option '%s'\n", argv[0]);
       return 1;
    }
@@ -28,6 +60,10 @@ static int ps_tool(int argc, char **argv)
 static int debug_panel(int argc, char **argv)
 {
    if (argc > 0) {
+
+      if (is_help_opt(argv[0]))
+         show_dp_help_and_exit();
+
       printf("ERROR: unknown option '%s'\n", argv[0]);
       return 1;
    }
