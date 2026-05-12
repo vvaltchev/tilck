@@ -46,7 +46,28 @@ kernelfs_on_close_last_handle(fs_handle h)
 int
 kernelfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
 {
-   NOT_IMPLEMENTED();
+   /*
+    * Today kernelfs only backs pipes (see the file header), so every
+    * inode we're asked about is one. Report S_IFIFO so callers can
+    * tell — e.g. busybox `tail` fstats stdin to decide between
+    * seekable and streaming mode, and without an answer here any
+    * `cmd | tail` pipeline panics on NOT_IMPLEMENTED.
+    *
+    * st_ino is derived from the kobj pointer: stable while the pipe
+    * exists (which is all stat consumers need) and unique within the
+    * mount.
+    */
+   struct kobj_base *kobj = i;
+
+   bzero(statbuf, sizeof(*statbuf));
+
+   statbuf->st_dev = fs->device_id;
+   statbuf->st_ino = (typeof(statbuf->st_ino)) (ulong) kobj;
+   statbuf->st_mode = S_IFIFO | 0600;
+   statbuf->st_nlink = 1;
+   statbuf->st_blksize = PAGE_SIZE;
+
+   return 0;
 }
 
 static int
