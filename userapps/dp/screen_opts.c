@@ -1,15 +1,17 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 /*
- * Options panel.
+ * Config panel.
  *
  * Where the kernel-side dp_opts.c expanded specific config #defines
- * and runtime helpers (process_term_read_info, fb_console_get_info,
- * clock_get_resync_stats, etc.) into a curated two-column view, this
- * port walks the sysfs trees the kernel already populates and lists
- * everything it finds. Less hand-curated, but self-maintaining: any
- * new kernel option that lands under /syst/{config,modules,kernel}
- * or any new kopt under /syst/kopts shows up automatically.
+ * into a curated build-time view, this port walks the sysfs trees the
+ * kernel already populates and lists everything it finds. Less hand-
+ * curated, but self-maintaining: any new kernel option that lands
+ * under /syst/{config,modules,kernel} or any new kopt under
+ * /syst/kopts shows up automatically.
+ *
+ * Run-time stats moved to a dedicated panel (see screen_runtime.c) so
+ * each panel stays focused on one source of data.
  */
 
 #include <dirent.h>
@@ -25,16 +27,6 @@
 #include "dp_panel.h"
 
 #define OPT_VAL_MAX  64
-
-static const struct {
-   const char *path;
-   const char *label;
-} sections[] = {
-   { "/syst/config",  "Build config"  },
-   { "/syst/modules", "Modules"       },
-   { "/syst/kernel",  "Kernel options"},
-   { "/syst/kopts",   "Runtime kopts" },
-};
 
 static int
 read_sysfs_value(const char *path, char *out, size_t out_sz)
@@ -119,15 +111,16 @@ static void dp_show_opts(void)
 {
    int row = tui_screen_start_row + 1;
    const int col = tui_start_col + 3;
-   const size_t n = sizeof(sections) / sizeof(sections[0]);
 
-   for (size_t i = 0; i < n; i++)
-      render_section(sections[i].path, sections[i].label, &row, col);
+   render_section("/syst/config",  "Build config",   &row, col);
+   render_section("/syst/modules", "Modules",        &row, col);
+   render_section("/syst/kernel",  "Kernel options", &row, col);
+   render_section("/syst/kopts",   "Runtime kopts",  &row, col);
 }
 
 static struct dp_screen dp_opts_screen = {
    .index = 0,
-   .label = "Options",
+   .label = "Config",
    .draw_func = dp_show_opts,
 };
 

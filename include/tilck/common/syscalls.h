@@ -76,8 +76,15 @@ enum tilck_cmd {
    TILCK_CMD_DP_TRACE_SET_TEST_MODE    = 33,
    TILCK_CMD_DP_TRACE_INJECT_EVENT     = 34,
 
+   /*
+    * Runtime snapshot for the dp Options panel's Run-time section
+    * (hypervisor flag, framebuffer info, tty count, clock-resync
+    * stats). Fed by debugpanel/dp_data.c.
+    */
+   TILCK_CMD_DP_GET_RUNTIME_INFO       = 35,
+
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 35,
+   TILCK_CMD_COUNT               = 36,
 };
 
 #if defined(__x86_64__)

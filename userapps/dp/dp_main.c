@@ -131,7 +131,11 @@ static void paint_chrome(void)
    for (p = dp_screens_head; p; p = p->next)
       dp_write_header(p->index + 1, p->label, p == dp_ctx);
 
-   term_write("q[Quit]" RESET_ATTRS " ");
+   /*
+    * No "q[Quit]" tab in the header: adding the Runtime screen pushed
+    * the tabs row past the panel's inner width on 80-col terminals.
+    * 'q' still quits — the keypress handler matches the bare char.
+    */
 
    term_draw_rect_raw(tui_start_row, tui_start_col, DP_H, DP_W);
    term_move_cursor(tui_start_row, tui_start_col + 2);

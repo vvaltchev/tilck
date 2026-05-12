@@ -30,8 +30,12 @@
 #include <tilck/kernel/system_mmap.h>
 #include <tilck/kernel/irq.h>
 #include <tilck/kernel/timer.h>
+#include <tilck/kernel/cmdline.h>         /* kopt_ttys */
+#include <tilck/kernel/datetime.h>        /* clock_*resync* */
 #include <tilck/kernel/debug_utils.h>     /* register_tilck_cmd */
 #include <tilck/kernel/modules.h>         /* REGISTER_MODULE */
+
+#include <tilck/mods/fb_console.h>        /* use_framebuffer + fb_* */
 
 #if MOD_tracing
 #include <tilck/mods/tracing.h>
@@ -546,6 +550,50 @@ tilck_sys_dp_get_mtrrs(ulong u_buf, ulong max_count, ulong u_info, ulong _4)
 
 #endif
 
+/* ---------------------------- RUNTIME INFO -------------------------- */
+
+static int
+tilck_sys_dp_get_runtime_info(ulong u_out, ulong _2, ulong _3, ulong _4)
+{
+   struct dp_runtime_info out = {0};
+   struct clock_resync_stats cstats;
+
+   if (user_out_of_range((void *)u_out, sizeof(out)))
+      return -EFAULT;
+
+   out.hypervisor      = (u8)in_hypervisor();
+   out.use_framebuffer = (u8)use_framebuffer();
+   out.tty_count       = (u32)kopt_ttys;
+
+   if (MOD_fb && use_framebuffer()) {
+
+      struct fb_console_info fbi;
+      fb_console_get_info(&fbi);
+
+      out.fb_opt_funcs = (u8)fb_is_using_opt_funcs();
+      out.fb_res_x     = fbi.res_x;
+      out.fb_res_y     = fbi.res_y;
+      out.fb_bpp       = fbi.bpp;
+      out.fb_font_w    = fbi.font_w;
+      out.fb_font_h    = fbi.font_h;
+   }
+
+   out.clk_in_resync      = (u8)clock_in_resync();
+   out.clk_in_full_resync = (u8)clock_in_full_resync();
+
+   clock_get_resync_stats(&cstats);
+   out.clk_full_resync_count          = cstats.full_resync_count;
+   out.clk_full_resync_fail_count     = cstats.full_resync_fail_count;
+   out.clk_full_resync_success_count  = cstats.full_resync_success_count;
+   out.clk_full_resync_abs_drift_gt_1 = cstats.full_resync_abs_drift_gt_1;
+   out.clk_multi_second_resync_count  = cstats.multi_second_resync_count;
+
+   if (copy_to_user((void *)u_out, &out, sizeof(out)))
+      return -EFAULT;
+
+   return 0;
+}
+
 /* ---------------------------- TRACING ------------------------------- */
 
 /*
@@ -574,6 +622,8 @@ static void dp_data_register(void)
                       tilck_sys_dp_get_mem_global_stats);
    register_tilck_cmd(TILCK_CMD_DP_GET_MTRRS,
                       tilck_sys_dp_get_mtrrs);
+   register_tilck_cmd(TILCK_CMD_DP_GET_RUNTIME_INFO,
+                      tilck_sys_dp_get_runtime_info);
 
    /* The TILCK_CMD_DP_TRACE_* and DP_TASK_* sub-commands are
     * registered by MOD_tracing (modules/tracing/tracing_cmd.c) so

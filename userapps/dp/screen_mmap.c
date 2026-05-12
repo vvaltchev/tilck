@@ -196,7 +196,7 @@ static void dp_show_mmap(void)
 }
 
 static struct dp_screen dp_mmap_screen = {
-   .index = 1,
+   .index = 2,
    .label = "MemMap",
    .draw_func = dp_show_mmap,
    .on_dp_enter = dp_mmap_on_enter,

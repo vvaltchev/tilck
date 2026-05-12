@@ -506,7 +506,7 @@ dp_tasks_keypress(struct key_event ke)
 }
 
 static struct dp_screen dp_tasks_screen = {
-   .index = 3,
+   .index = 4,
    .label = "Tasks",
    .draw_func = dp_show_tasks,
    .on_dp_enter = dp_tasks_enter,

@@ -149,7 +149,7 @@ static void dp_show_irqs(void)
 }
 
 static struct dp_screen dp_irqs_screen = {
-   .index = 4,
+   .index = 5,
    .label = "IRQs",
    .draw_func = dp_show_irqs,
    .first_setup = dp_irqs_first_setup,

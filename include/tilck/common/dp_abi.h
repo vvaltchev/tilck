@@ -235,6 +235,35 @@ struct dp_mtrr_info {
    u8   reserved[6];
 };
 
+/*
+ * Run-time snapshot shown in the dp Options panel under the "Run-time"
+ * section. Mirrors what the master kernel-side dp_opts.c had in its
+ * right-hand column. All framebuffer fields are zero when MOD_fb is
+ * compiled out or use_framebuffer is false — the userspace renderer
+ * hides the fb_* rows in that case.
+ */
+struct dp_runtime_info {
+
+   u8   hypervisor;                       /* in_hypervisor() */
+   u8   use_framebuffer;                  /* use_framebuffer() */
+   u8   fb_opt_funcs;                     /* fb_is_using_opt_funcs() */
+   u8   clk_in_resync;                    /* clock_in_resync() */
+   u8   clk_in_full_resync;               /* clock_in_full_resync() */
+   u8   reserved[3];
+
+   u32  fb_res_x;
+   u32  fb_res_y;
+   u32  fb_bpp;
+   u32  fb_font_w;
+   u32  fb_font_h;
+   u32  tty_count;                        /* kopt_ttys */
+   u32  clk_full_resync_count;
+   u32  clk_full_resync_fail_count;
+   u32  clk_full_resync_success_count;
+   u32  clk_full_resync_abs_drift_gt_1;
+   u32  clk_multi_second_resync_count;
+};
+
 /* ----------------- sub-command argument conventions -----------------
  *
  * sys_tilck_cmd(int cmd_n, ulong a1, ulong a2, ulong a3, ulong a4)
@@ -273,6 +302,10 @@ struct dp_mtrr_info {
  *   a2 = ulong max_count
  *   a3 = struct dp_mtrr_info __user *info  (NULL allowed)
  *   returns: count, or -ENOTSUP on non-x86
+ *
+ * GET_RUNTIME_INFO:
+ *   a1 = struct dp_runtime_info __user *out
+ *   returns: 0, or -errno
  *
  * TRACE_SET_FILTER:
  *   a1 = const char __user *expr   (NUL-terminated, ≤ DP_TRACE_FILTER_MAX)

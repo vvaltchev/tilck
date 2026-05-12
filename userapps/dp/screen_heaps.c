@@ -170,7 +170,7 @@ static void dp_show_heaps(void)
 }
 
 static struct dp_screen dp_heaps_screen = {
-   .index = 2,
+   .index = 3,
    .label = "Heaps",
    .draw_func = dp_show_heaps,
    .on_dp_enter = dp_heaps_on_enter,
