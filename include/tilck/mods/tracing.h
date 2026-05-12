@@ -169,6 +169,16 @@ read_trace_event(struct trace_event *e, u32 timeout_ticks);
 bool
 read_trace_event_noblock(struct trace_event *e);
 
+/*
+ * Push a fully-formed event into the ring buffer. Used only by the
+ * test-mode TILCK_CMD_DP_TRACE_INJECT_EVENT handler — bypasses the
+ * normal save logic, so the caller is responsible for filling
+ * saved_params correctly. No per-task .traced or per-syscall filter
+ * check either: the caller controls exactly what hits the ring.
+ */
+void
+tracing_inject_event(struct trace_event *e);
+
 void
 trace_syscall_enter_int(u32 sys,
                         ulong a1,

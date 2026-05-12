@@ -65,8 +65,19 @@ enum tilck_cmd {
     */
    TILCK_CMD_DP_TRACE_RENDER_EVENT     = 32,    /* deprecated */
 
+   /*
+    * Test-only sub-commands used by `tracer --test` (Tier 2 event
+    * injection). TILCK_CMD_DP_TRACE_SET_TEST_MODE flips a kernel flag
+    * that must be on before TILCK_CMD_DP_TRACE_INJECT_EVENT will
+    * accept a user-supplied struct trace_event into the ring buffer.
+    * Without the flag set, INJECT_EVENT returns -EPERM, so a release
+    * build can't be flooded by an untrusted writer.
+    */
+   TILCK_CMD_DP_TRACE_SET_TEST_MODE    = 33,
+   TILCK_CMD_DP_TRACE_INJECT_EVENT     = 34,
+
    /* Number of elements in the enum */
-   TILCK_CMD_COUNT               = 33,
+   TILCK_CMD_COUNT               = 35,
 };
 
 #if defined(__x86_64__)

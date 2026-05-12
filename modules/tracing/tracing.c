@@ -285,6 +285,18 @@ enqueue_trace_event(struct trace_event *e)
    }
 }
 
+/*
+ * Public injection wrapper used by the TILCK_CMD_DP_TRACE_INJECT_EVENT
+ * handler (gated by __tracing_test_mode in tracing_cmd.c). Bypasses
+ * the per-task .traced / per-syscall filter / save logic: the caller
+ * controls every byte of the event.
+ */
+void
+tracing_inject_event(struct trace_event *e)
+{
+   enqueue_trace_event(e);
+}
+
 void
 trace_syscall_enter_int(u32 sys,
                         ulong a1,

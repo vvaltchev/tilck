@@ -128,3 +128,23 @@ int dp_run_tracer(void);
  * non-zero on any FAIL. Implementation in test_live.c.
  */
 int tr_run_tier1_tests(void);
+
+/*
+ * `tracer --test` Tier 2 — synthetic event injection. Flips a kernel
+ * test-mode flag (TILCK_CMD_DP_TRACE_SET_TEST_MODE) that gates a
+ * second TILCK_CMD (DP_TRACE_INJECT_EVENT), then builds events in
+ * userspace, pushes them through the ring buffer verbatim, reads
+ * them back, and asserts on the rendered output. Bypasses the live
+ * syscall path entirely — exercises only the ring + renderer.
+ * Implementation in test_inject.c.
+ */
+int tr_run_tier2_tests(void);
+
+/*
+ * `tracer --test --stress` — inject 10000 events in a tight loop
+ * with no draining between, then read whatever survived the ring
+ * overrun and check each event has a valid sys_n / tid in the
+ * expected range. Exercises ring-buffer write under producer
+ * pressure. Implementation in test_inject.c.
+ */
+int tr_run_stress_test(void);

@@ -14,8 +14,10 @@
  * from the dp Tasks panel just fork+execs this binary — no state
  * needs to flow through argv.
  *
- *   tracer           — full-screen interactive UI (dp_run_tracer)
- *   tracer --test    — non-interactive self-test mode (see test_live.c)
+ *   tracer                — full-screen interactive UI (dp_run_tracer)
+ *   tracer --test         — Tier 1 + Tier 2 self-tests
+ *   tracer --test --stress
+ *                         — ring-buffer overrun stress test
  */
 
 #include <stdio.h>
@@ -32,8 +34,15 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   if (argc > 1 && !strcmp(argv[1], "--test"))
-      return tr_run_tier1_tests();
+   if (argc > 1 && !strcmp(argv[1], "--test")) {
+
+      if (argc > 2 && !strcmp(argv[2], "--stress"))
+         return tr_run_stress_test();
+
+      int rc1 = tr_run_tier1_tests();
+      int rc2 = tr_run_tier2_tests();
+      return rc1 == 0 && rc2 == 0 ? 0 : 1;
+   }
 
    return dp_run_tracer();
 }

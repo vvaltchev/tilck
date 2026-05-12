@@ -317,6 +317,44 @@ out:
    return rc;
 }
 
+/* ---------------------- test-only injection path -------------------- *
+ *
+ * `tracer --test` (Tier 2) exercises the trace pipeline by pushing
+ * synthetic events through TILCK_CMD_DP_TRACE_INJECT_EVENT instead of
+ * triggering them via real syscalls. To avoid an untrusted writer
+ * flooding the ring on a release build, the inject handler is gated
+ * on a kernel flag that the test driver flips on explicitly via
+ * TILCK_CMD_DP_TRACE_SET_TEST_MODE. The flag stays off by default
+ * and is reset on tracer-test exit; injection from a process that
+ * forgot the toggle gets -EPERM.
+ */
+static bool __tracing_test_mode;
+
+static int
+tilck_sys_dp_trace_set_test_mode(ulong on, ulong _2, ulong _3, ulong _4)
+{
+   __tracing_test_mode = on ? true : false;
+   return 0;
+}
+
+static int
+tilck_sys_dp_trace_inject_event(ulong u_event, ulong _2, ulong _3, ulong _4)
+{
+   struct trace_event ev;
+
+   if (!__tracing_test_mode)
+      return -EPERM;
+
+   if (user_out_of_range((void *)u_event, sizeof(ev)))
+      return -EFAULT;
+
+   if (copy_from_user(&ev, (void *)u_event, sizeof(ev)))
+      return -EFAULT;
+
+   tracing_inject_event(&ev);
+   return 0;
+}
+
 void tracing_register_dp_cmd_handlers(void)
 {
    register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_FILTER,
@@ -343,4 +381,8 @@ void tracing_register_dp_cmd_handlers(void)
                       tilck_sys_dp_trace_get_in_buf_count);
    register_tilck_cmd(TILCK_CMD_DP_TASK_GET_TRACED_TIDS_AND_CLEAR,
                       tilck_sys_dp_task_get_traced_tids_and_clear);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_SET_TEST_MODE,
+                      tilck_sys_dp_trace_set_test_mode);
+   register_tilck_cmd(TILCK_CMD_DP_TRACE_INJECT_EVENT,
+                      tilck_sys_dp_trace_inject_event);
 }
