@@ -101,7 +101,6 @@ render_one_task(const struct dp_task_info *t, bool kernel_tasks)
 {
    const char *fmt = task_dump_str(TDS_ROW_FMT);
    char path[80] = {0};
-   char path2[64] = {0};
    char state_str[4];
 
    if (t->is_kthread && !kernel_tasks)
@@ -116,8 +115,16 @@ render_one_task(const struct dp_task_info *t, bool kernel_tasks)
       if ((int)strlen(src) < MAX_EXEC_PATH_LEN - 2) {
          snprintf(path, sizeof(path), "%s", src);
       } else {
-         snprintf(path2, MAX_EXEC_PATH_LEN + 1 - 6, "%s", src);
-         snprintf(path, sizeof(path), "%s...", path2);
+         /*
+          * Truncate to "<first N chars>..." so the row stays inside
+          * the column. %.*s caps the copy length directly — gcc's
+          * -Wformat-truncation gets confused by the previous two-
+          * snprintf scheme (it sees a 31-byte t->name flowing into a
+          * 29-byte intermediate buffer and warns even though the
+          * outer if rules that path out).
+          */
+         snprintf(path, sizeof(path), "%.*s...",
+                  MAX_EXEC_PATH_LEN - 6, src);
       }
    }
 
