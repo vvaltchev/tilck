@@ -22,6 +22,7 @@ void kmutex_init(struct kmutex *m, u32 flags)
 
 void kmutex_destroy(struct kmutex *m)
 {
+   ASSERT(list_is_empty(&m->wait_list));
    bzero(m, sizeof(struct kmutex));
 }
 

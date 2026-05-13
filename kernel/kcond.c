@@ -180,5 +180,6 @@ void kcond_signal_all(struct kcond *c)
 
 void kcond_destroy(struct kcond *c)
 {
+   ASSERT(list_is_empty(&c->wait_list));
    bzero(c, sizeof(struct kcond));
 }
