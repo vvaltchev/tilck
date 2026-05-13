@@ -33,15 +33,16 @@
  * version. tr_meta_init does the validation already; we just check
  * its return code.
  *
- * i386-only: many tests reference SYS_open / SYS_mmap2 / SYS_fcntl64
- * / SYS__llseek — i386-specific syscall numbers that don't exist in
- * x86_64 / riscv64 musl. To keep the tracer binary building on those
- * archs, the whole file is wrapped in `#ifdef __i386__`; on other
- * arches tr_run_tier2_tests / tr_run_stress_test are stubs. Tier 2
- * coverage on x86_64 / riscv64 is a future refactor.
+ * Each test picks a syscall whose metadata exists on every arch:
+ * SYS_chdir for ptype_path / fault_marker (path at slot 0 on every
+ * arch), SYS_pipe2 for ptype_open_flags (flags at args[1] on every
+ * arch), MMAP_SYSCALL_N for mmap prot/flags (resolves to SYS_mmap2
+ * on i386, SYS_mmap on riscv64 / x86_64), SYS_lseek for ptype_whence
+ * (universal), FCNTL_SYSCALL_N for ptype_fcntl_cmd (SYS_fcntl64 on
+ * i386, SYS_fcntl on riscv64 / x86_64), SYS_rt_sigprocmask for
+ * sigprocmask_how (universal). No i386-only references remain in
+ * the test bodies.
  */
-
-#ifdef __i386__
 
 #include <errno.h>
 #include <fcntl.h>
@@ -324,7 +325,7 @@ test_inj_sys_exit_errno(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_exit, INJ_TID);
-   ev.sys_ev.sys = SYS_open;
+   ev.sys_ev.sys = SYS_chdir;
    ev.sys_ev.retval = -ENOENT;
 
    if (inject_and_read(name, &ev, &back) < 0)
@@ -434,8 +435,8 @@ test_inj_ptype_signum(void)
 }
 
 /*
- * 08: ptype_open_flags — sys_open with O_RDONLY|O_NONBLOCK in args[1].
- * Path slot is intentionally blank; we only assert on the flag.
+ * 08: ptype_open_flags — driven through SYS_pipe2, where flags sits
+ * at args[1] (universal across arches; SYS_open isn't on riscv64).
  */
 static void
 test_inj_ptype_open_flags(void)
@@ -444,7 +445,7 @@ test_inj_ptype_open_flags(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_open;
+   ev.sys_ev.sys = SYS_pipe2;
    ev.sys_ev.args[1] = O_RDONLY | O_NONBLOCK;
 
    if (inject_and_read(name, &ev, &back) < 0)
@@ -458,7 +459,8 @@ test_inj_ptype_open_flags(void)
    test_pass(name);
 }
 
-/* 09: ptype_mmap_prot — mmap2 args[2]. */
+/* 09: ptype_mmap_prot — driven through MMAP_SYSCALL_N (SYS_mmap2 on
+ * i386, SYS_mmap on riscv64 / x86_64). prot at args[2]. */
 static void
 test_inj_ptype_mmap_prot(void)
 {
@@ -466,7 +468,7 @@ test_inj_ptype_mmap_prot(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_mmap2;
+   ev.sys_ev.sys = MMAP_SYSCALL_N;
    ev.sys_ev.args[2] = PROT_READ | PROT_WRITE;
    ev.sys_ev.args[3] = MAP_PRIVATE | MAP_ANONYMOUS;
 
@@ -489,7 +491,7 @@ test_inj_ptype_mmap_flags(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_mmap2;
+   ev.sys_ev.sys = MMAP_SYSCALL_N;
    ev.sys_ev.args[2] = PROT_READ;
    ev.sys_ev.args[3] = MAP_PRIVATE | MAP_ANONYMOUS;
 
@@ -509,7 +511,9 @@ test_inj_ptype_mmap_flags(void)
    test_pass(name);
 }
 
-/* 11: ptype_whence — lseek args[2]. */
+/* 11: ptype_whence — SYS_lseek args[2] (universal: (fd, offset,
+ * whence)). i386's SYS__llseek has whence at a different slot, but
+ * SYS_lseek is in every arch's metadata after Layer 0a. */
 static void
 test_inj_ptype_whence(void)
 {
@@ -517,18 +521,8 @@ test_inj_ptype_whence(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS__llseek;
-   ev.sys_ev.args[3] = SEEK_END;     /* llseek: whence is args[4] on i386 */
-   ev.sys_ev.args[4] = SEEK_END;     /* try both for robustness */
-
-   /*
-    * On i386 SYS__llseek's whence position depends on the metadata's
-    * slot layout, but the renderer reads from the register-value
-    * position the metadata declares. We don't try to be clever —
-    * just stuff SEEK_END in a couple of slots so at least one matches.
-    * If the renderer ever changes which slot holds whence the test
-    * will need updating.
-    */
+   ev.sys_ev.sys = SYS_lseek;
+   ev.sys_ev.args[2] = SEEK_END;
 
    if (inject_and_read(name, &ev, &back) < 0)
       return;
@@ -564,9 +558,11 @@ test_inj_ptype_sigprocmask_how(void)
 }
 
 /*
- * 13: ptype_path — sys_open with a path string in saved_params slot 0
- * (fmt0 layout: slot 0 starts at offset 0, max 64 bytes). The buffer
- * dump renderer reads up to the slot size and treats it as a string.
+ * 13: ptype_path — SYS_chdir with a path string in saved_params slot
+ * 0 (fmt0 layout: slot 0 starts at offset 0, max 64 bytes). The
+ * buffer dump renderer reads up to the slot size and treats it as a
+ * string. chdir was picked because its single argument is a path
+ * at slot 0 on every arch (universal asm-generic).
  */
 static void
 test_inj_ptype_path(void)
@@ -574,16 +570,15 @@ test_inj_ptype_path(void)
    const char *name = "inj_ptype_path";
    struct dp_trace_event ev, back;
 
-   /* Path is sys_open's first param. */
-   int off = slot_offset(SYS_open, 0);
+   int off = slot_offset(SYS_chdir, 0);
 
    if (off < 0) {
-      test_fail(name, "no slot for SYS_open param 0");
+      test_fail(name, "no slot for SYS_chdir param 0");
       return;
    }
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_open;
+   ev.sys_ev.sys = SYS_chdir;
    ev.sys_ev.args[0] = 0xdeadbeef;   /* would-be user ptr */
 
    const char path[] = "/tmp/injected_path";
@@ -603,7 +598,8 @@ test_inj_ptype_path(void)
 /*
  * 14: "<fault>" marker — when copy_from_user fails the kernel writes
  * literal "<fault>" into the slot. The renderer should propagate
- * that string verbatim into the dumped output.
+ * that string verbatim into the dumped output. SYS_chdir (single
+ * path arg at slot 0) is universal across arches.
  */
 static void
 test_inj_fault_marker(void)
@@ -611,15 +607,15 @@ test_inj_fault_marker(void)
    const char *name = "inj_fault_marker";
    struct dp_trace_event ev, back;
 
-   int off = slot_offset(SYS_open, 0);
+   int off = slot_offset(SYS_chdir, 0);
 
    if (off < 0) {
-      test_fail(name, "no slot for SYS_open param 0");
+      test_fail(name, "no slot for SYS_chdir param 0");
       return;
    }
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_open;
+   ev.sys_ev.sys = SYS_chdir;
    ev.sys_ev.args[0] = 0xdeadbeef;        /* would-be user ptr */
    memcpy(&ev.sys_ev.saved_params[off], "<fault>", 8);
 
@@ -724,7 +720,7 @@ test_inj_fcntl_cmd(void)
    struct dp_trace_event ev, back;
 
    mkev(&ev, dp_te_sys_enter, INJ_TID);
-   ev.sys_ev.sys = SYS_fcntl64;
+   ev.sys_ev.sys = FCNTL_SYSCALL_N;        /* SYS_fcntl64 / SYS_fcntl */
    ev.sys_ev.args[1] = 4;                  /* F_SETFL */
    ev.sys_ev.args[2] = O_NONBLOCK;         /* the fcntl_arg */
 
@@ -1035,24 +1031,3 @@ tr_run_stress_test(void)
    printf("  [PASS] stress test\n");
    return 0;
 }
-
-#else  /* !__i386__ */
-
-#include <stdio.h>
-#include "tr.h"
-
-int
-tr_run_tier2_tests(void)
-{
-   printf("tracer --test: Tier 2 event-injection tests are i386-only\n");
-   return 0;
-}
-
-int
-tr_run_stress_test(void)
-{
-   printf("tracer --test --stress is i386-only\n");
-   return 0;
-}
-
-#endif /* __i386__ */
