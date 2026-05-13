@@ -44,6 +44,8 @@ cd /usr/bin
 ln -s devshell runall
 ln -s devshell selftest
 
-# Create a symlink for the debug-panel tools
-ln -s /initrd/usr/bin/dp tracer
+# `tracer` is its own binary in /initrd/usr/bin/, so the dir-walking
+# loop above already linked /usr/bin/tracer for us. `ps` is a sub-mode
+# of `dp` invoked via argv[0] — it has no /initrd/usr/bin/ entry, so
+# we add the symlink explicitly here.
 ln -s /initrd/usr/bin/dp ps

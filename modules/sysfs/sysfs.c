@@ -15,6 +15,7 @@
 #include <tilck/kernel/process_mm.h>
 #include <tilck/kernel/modules.h>
 #include <tilck/kernel/sort.h>
+#include <tilck/kernel/cmdline.h>
 
 #include "sysfs_int.h"
 #include "dents.c.h"
@@ -94,9 +95,8 @@ sysfs_stat(struct mnt_fs *fs, vfs_inode_ptr_t i, struct k_stat64 *statbuf)
                statbuf->st_mode |= 0200;
 
             if (pt->get_buf_sz) {
-               statbuf->st_size = (typeof(statbuf->st_size)) ABS(
-                  pt->get_buf_sz(inode->file.obj, inode->file.prop_data)
-               );
+               statbuf->st_size = (typeof(statbuf->st_size))
+                  pt->get_buf_sz(inode->file.obj, inode->file.prop_data);
             }
          }
 
@@ -756,6 +756,7 @@ init_sysfs(void)
       panic("Unable to create default objects");
 
    sysfs_create_config_obj();
+   register_kopts_sysfs();
 }
 
 static struct module sysfs_module = {

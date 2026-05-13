@@ -13,12 +13,14 @@ send_to_vm_and_find_text(r"{ret}", True, [])
 # Enter in the debug panel
 send_to_vm_and_find_text(r"dp{ret}", True, [
    "TilckDebugPanel",
-   "TERM_ROWS",
-   "DEBUG_CHECKS",
+   "Config",
+   "debugchecks",
 ])
 
-# Select the tasks tab
-send_to_vm_and_find_text(r"4", True, [
+# Select the tasks tab (the Runtime panel landed at index 1 so the
+# Tasks tab is now '5'; sysfs-style 'debugchecks' replaced the old
+# CMake-style DEBUG_CHECKS in the Config screen).
+send_to_vm_and_find_text(r"5", True, [
    "pid",
    "tty",
    "cmdline",

@@ -1,12 +1,15 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
 
 #include <tilck/common/basic_defs.h>
+#include <tilck/common/color_defs.h>
 #include <tilck/common/printk.h>
+#include <tilck/common/string_util.h>
 #include <tilck/common/syscalls.h>
 
 #include <tilck/kernel/tty.h>
 #include <tilck/kernel/errno.h>
 #include <tilck/kernel/fs/vfs.h>
+#include <tilck/kernel/fs/vfs_base.h>
 #include <tilck/kernel/tty_struct.h>
 #include <tilck/kernel/sched.h>
 #include <tilck/kernel/fs/devfs.h>
@@ -14,9 +17,62 @@
 #include <tilck/kernel/paging.h>
 #include <tilck/kernel/paging_hw.h>
 #include <tilck/kernel/system_mmap.h>
+#include <tilck/kernel/sys_types.h>      /* O_NONBLOCK */
 
-#include "termutil.h"
-#include "dp_int.h"
+/*
+ * The debugger's text output is always plain (no color, no reverse
+ * video, no VT100 cursor moves) — so we get away with two tiny
+ * helpers instead of pulling in the old kernel TUI's termutil.c.
+ */
+
+static void
+dbg_write_raw_int(const char *buf, int len)
+{
+   struct tty *t = get_curr_process_tty();
+   t->tintf->write(t->tstate, buf, (size_t)len, DEFAULT_COLOR16);
+}
+
+/*
+ * Note: no ATTR_PRINTF_LIKE here. The debugger's `print` command
+ * formats integer registers with `%lx` / `%ld` / `%lu` regardless
+ * of the actual width of the value (it casts via *(uN *)&val), and
+ * vsnprintk handles those without complaint. Adding the gcc format
+ * attribute would flag those lines as mismatched against u64/s64
+ * even though the runtime behavior is correct.
+ */
+static void
+dp_write_raw(const char *fmt, ...)
+{
+   char buf[256];
+   va_list args;
+   int rc;
+
+   va_start(args, fmt);
+   rc = vsnprintk(buf, sizeof(buf), fmt, args);
+   va_end(args);
+
+   dbg_write_raw_int(buf, rc);
+}
+
+/*
+ * Used by the debugger to drain the tty input buffer non-blocking-ly
+ * before going into its prompt loop. Pulled out of the now-deleted
+ * dp.c — only this one caller remains.
+ */
+static void
+handle_set_blocking(fs_handle h, bool blocking)
+{
+   struct fs_handle_base *hb = h;
+
+   disable_preemption();
+   {
+      if (blocking)
+         hb->fl_flags &= ~O_NONBLOCK;
+      else
+         hb->fl_flags |= O_NONBLOCK;
+   }
+   enable_preemption();
+}
 
 struct debugger_cmd {
 

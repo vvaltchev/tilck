@@ -7,36 +7,77 @@ struct sysfs_inode;
 struct sysfs_entry;
 struct sysobj;
 
+/*
+ * What kind of file is backed by a given property type.
+ *
+ * Defaults to SYSFS_BUF_ONESHOT (value 0), which is the most common case
+ * (small scalar properties like bool/int/string config options), so a
+ * static initializer that omits `.buf_type` gets the right behavior.
+ */
+enum sysfs_buf_type {
+
+   /*
+    * No buffer. read() and write() call load()/store() directly each
+    * time. read() returns the data once and then EOF for the rest of
+    * the open. No seek(). Typical use: scalar config options.
+    *
+    * `get_buf_sz` is ignored and may be NULL.
+    */
+   SYSFS_BUF_ONESHOT = 0,
+
+   /*
+    * Large mutable buffer. The file backed by this property supports
+    * seek(); its contents are loaded once on open() (via load()) and
+    * stored once on close() (via store()). Suitable for big blobs of
+    * MUTABLE data. Example: kernel coverage files.
+    *
+    * `get_buf_sz` MUST be non-NULL and MUST return a positive value
+    * (the buffer size in bytes).
+    */
+   SYSFS_BUF_BUFFERED,
+
+   /*
+    * Immutable seekable buffer. No per-handle buffer is allocated;
+    * load() is called with an offset on every read(). Backing data is
+    * assumed to be immutable for the lifetime of the sysobj. Allows
+    * mmap() (via get_data_ptr). Example: kernel symbol table.
+    *
+    * `get_buf_sz` MUST be non-NULL and MUST return a positive value
+    * (the total size of the immutable region).
+    */
+   SYSFS_BUF_IMMUTABLE,
+
+   /*
+    * Stream semantics: load() is called once per read() (and store()
+    * once per write()), there is no buffering, no EOF while the file
+    * is open, no seek, no mmap. The load() implementation is allowed
+    * to block (e.g. via kcond_wait) until data is available, mirroring
+    * POSIX read() semantics on a pipe or socket. seek() returns
+    * -ESPIPE.
+    *
+    * `get_buf_sz` is ignored and may be NULL.
+    *
+    * Example application: tracer event stream at /syst/tracing/events.
+    */
+   SYSFS_BUF_STREAM,
+};
+
 struct sysobj_prop_type {
+
+   /* See enum sysfs_buf_type. */
+   enum sysfs_buf_type buf_type;
 
    /*
     * Get the size of a buffer able to contain all the data returned by load().
-    * This function can return values in the whole domain of `offt` (long).
-    *
-    *    > 0: means simply "buffer_size". In this case, the file backed by this
-    *         property type will support seek(), but the contents of the file
-    *         will be loaded only once, during open() and will be stored only
-    *         once, during close(). This is suitable for big blobs of MUTABLE
-    *         data. Example application: kernel coverage files.
-    *
-    *    = 0: means there's no buffer. In this case, read() and write(0 on the
-    *         file backed by this property type will call directly load() and
-    *         store(), every time. No seek() support whatsoever. This is the
-    *         typical case for small properties like boolean or integer config
-    *         options. Very common. Example application: kernel config flags.
-    *
-    *    < 0: means "- buffer_size", but does NOT require the allocation of a
-    *         dedicated buffer during open(). It allows seek() though, because
-    *         the backing data is assumed to be completely IMMUTABLE, once the
-    *         sysobj is created. Example application: kernel symbol table.
+    * Required (and must return a positive value) for SYSFS_BUF_BUFFERED and
+    * SYSFS_BUF_IMMUTABLE; ignored (may be NULL) for SYSFS_BUF_ONESHOT.
     */
    offt (*get_buf_sz)(struct sysobj *obj, void *data);
 
    /*
     * Load the property data at offset `off` into the `buf` buffer, assumed to
-    * be at least `sz` bytes large. Note: the `off` argument can be > 0
-    * only when get_buf_sz() returned a value < 0. In all the other cases, it
-    * must be 0.
+    * be at least `sz` bytes large. The `off` argument can be > 0 only for
+    * SYSFS_BUF_IMMUTABLE; it is always 0 in the other cases.
     *
     * Returns the number of bytes loaded into `buf` or an error in case the
     * value is < 0.
@@ -54,7 +95,7 @@ struct sysobj_prop_type {
 
    /*
     * Get the underlying data pointer (allows mmap to work).
-    * At the moment, that is supported only when get_buf_sz() returns < 0.
+    * At the moment, that is supported only for SYSFS_BUF_IMMUTABLE.
     */
    void *(*get_data_ptr)(struct sysobj *obj, void *data);
 };

@@ -284,6 +284,7 @@ static const char *extra_test_scripts[] = {
    "tcc",
    "tar",
    "sysfs",
+   "tracer-test",
 };
 
 static int run_extra_test(const char *name)

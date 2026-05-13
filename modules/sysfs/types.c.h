@@ -246,7 +246,7 @@ offt
 sysobj_imm_data_get_buf_sz(struct sysobj *obj, void *prop_data)
 {
    struct sysfs_buffer *buf = prop_data;
-   return -(offt)buf->buf_sz;
+   return (offt)buf->buf_sz;
 }
 
 void *
@@ -267,8 +267,7 @@ sysfs_imm_data_load(struct sysobj *obj,
    offt to_read;
 
    /*
-    * This is the only case where `off` is allowed to be > 0.
-    * Note: we're returning -size in our get_buf_sz() func.
+    * IMMUTABLE is the only buf_type where `off` is allowed to be > 0.
     */
 
    off = CLAMP(off, 0, (offt)databuf->buf_sz);
@@ -278,6 +277,7 @@ sysfs_imm_data_load(struct sysobj *obj,
 }
 
 const struct sysobj_prop_type sysobj_ptype_imm_data = {
+   .buf_type = SYSFS_BUF_IMMUTABLE,
    .get_buf_sz = &sysobj_imm_data_get_buf_sz,
    .load = &sysfs_imm_data_load,
    .get_data_ptr = &sysobj_imm_data_get_data_ptr,
@@ -322,6 +322,7 @@ sysfs_databuf_store(struct sysobj *obj,
 }
 
 const struct sysobj_prop_type sysobj_ptype_databuf = {
+   .buf_type = SYSFS_BUF_BUFFERED,
    .get_buf_sz = &sysobj_databuf_get_buf_sz,
    .load = &sysfs_databuf_load,
    .store = &sysfs_databuf_store,

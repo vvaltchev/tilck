@@ -49,8 +49,69 @@ include_directories(${ZLIB_DIR}/install/include)
    add_usermode_app(termtest)
    add_usermode_app(fbtest)
    add_usermode_app(play)
-   add_usermode_app(dp)
 # [/simple apps]
+
+# [common userapps sources]
+   #
+   # Shared TUI + kernel-ABI helpers used by dp, tracer, and any future
+   # interactive userspace tool. Globbed into each consuming binary
+   # (no static library — Tilck userapps are -static and we only have a
+   # handful of consumers; lift to add_library when that changes).
+   #
+   file(
+      GLOB
+      USERAPPS_COMMON_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "common/*.c"
+   )
+
+   set(USERAPPS_COMMON_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
+# [/common userapps sources]
+
+# [dp]
+   file(
+      GLOB
+      DP_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "dp/*.c"
+   )
+
+   if (USERAPPS_dp)
+      add_executable(dp ${DP_SOURCES} ${USERAPPS_COMMON_SOURCES})
+      target_include_directories(dp PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/dp
+         ${USERAPPS_COMMON_INCLUDE_DIR})
+      register_usermode_app(dp)
+   endif()
+# [/dp]
+
+# [tracer]
+   #
+   # The `tracer` binary shares userapps/common/ with dp (key input,
+   # terminal lifecycle, raw VT100 emit, task table dump) but has no
+   # cross-reach into userapps/dp/. The trace-rendering code (~1.5
+   # KLOC of tr_*.c) is tracer-private; the dp panel doesn't pay for
+   # it, and the tracer is usable on builds where MOD_debugpanel is
+   # off.
+   #
+   file(
+      GLOB
+      TRACER_SOURCES
+      ${GLOB_CONF_DEP}
+
+      "tracer/*.c"
+   )
+
+   if (USERAPPS_dp)
+      add_executable(tracer ${TRACER_SOURCES} ${USERAPPS_COMMON_SOURCES})
+      target_include_directories(tracer PRIVATE
+         ${CMAKE_CURRENT_SOURCE_DIR}/tracer
+         ${USERAPPS_COMMON_INCLUDE_DIR})
+      register_usermode_app(tracer)
+   endif()
+# [/tracer]
 
 # [filedump]
    file(

@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#
+# rename_userapps_symbols
+#
+# Mechanical rename pass for Commit B of the userapps/common/
+# refactor. Renames the generic dp_*/DP_KEY_* identifiers (that were
+# moved into userapps/common/ in Commit A) to neutral tui_*/term_*
+# prefixes. Symbols that stay dp_*:
+#
+#   - panel-only: struct dp_screen, dp_keypress_func,
+#     dp_kb_handler_action, dp_ctx, dp_default_ctx, dp_register_screen,
+#     dp_run_panel, dp_run_ps, dp_run_tracer, dp_force_full_redraw,
+#     dp_write, dp_writeln, dp_writeln2, dp_buf_*, dp_show_modal_msg,
+#     ui_need_update, modal_msg.
+#   - kernel ABI prefix: dp_task_info, dp_abi.h, TILCK_CMD_DP_*,
+#     dp_dump_task_list_plain, dp_tasks_buf, dp_tasks_count,
+#     dp_tasks_refresh.
+#   - DP_W / DP_H panel-area constants (still describe the dp panel
+#     size, kept for now).
+#
+# Usage: scripts/dev/claude/rename_userapps_symbols
+#
+# Uses perl -pi -e with \b word boundaries — substring overlaps
+# (dp_write_raw vs dp_write_raw_int, dp_draw_rect vs dp_draw_rect_raw,
+# dp_screen vs dp_screen_start_row) are handled by the word boundary,
+# not by ordering.
+
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+FILES=( $(find userapps/common userapps/dp userapps/tracer \
+            -type f \( -name '*.c' -o -name '*.h' \)) )
+
+declare -a PAIRS=(
+   # function renames
+   "dp_init_layout"            "tui_init_layout"
+   "dp_term_setup"             "tui_term_setup"
+   "dp_term_restore"           "tui_term_restore"
+   "dp_read_ke_from_tty"       "tui_read_ke"
+   "dp_read_line"              "tui_read_line"
+   "dp_set_input_blocking"     "tui_set_input_blocking"
+
+   # global layout variables
+   "dp_rows"                   "tui_rows"
+   "dp_cols"                   "tui_cols"
+   "dp_start_row"              "tui_start_row"
+   "dp_end_row"                "tui_end_row"
+   "dp_start_col"              "tui_start_col"
+   "dp_screen_start_row"       "tui_screen_start_row"
+   "dp_screen_rows"            "tui_screen_rows"
+
+   # direct-emit terminal functions
+   "dp_write_raw_int"          "term_write_n"
+   "dp_write_raw"              "term_write"
+   "dp_move_right"             "term_move_right"
+   "dp_move_left"              "term_move_left"
+   "dp_move_to_col"            "term_move_to_col"
+   "dp_move_cursor"            "term_move_cursor"
+   "dp_clear"                  "term_clear"
+   "dp_set_cursor_enabled"     "term_cursor_enable"
+   "dp_switch_to_alt_buffer"   "term_alt_buffer_enter"
+   "dp_switch_to_default_buffer" "term_alt_buffer_exit"
+   "dp_draw_rect_raw"          "term_draw_rect_raw"
+   "dp_draw_rect"              "term_draw_rect_labeled"
+
+   # inline helpers
+   "dp_int_abs"                "term_int_abs"
+   "dp_sign_value_esc_color"   "term_sign_color"
+
+   # key event macros
+   "DP_KEY_SEQ_MAX"            "TUI_KEY_SEQ_MAX"
+   "DP_KEY_BACKSPACE"          "TUI_KEY_BACKSPACE"
+   "DP_KEY_ESC"                "TUI_KEY_ESC"
+   "DP_KEY_ENTER"              "TUI_KEY_ENTER"
+   "DP_KEY_CTRL_C"             "TUI_KEY_CTRL_C"
+   "DP_KEY_CTRL_T"             "TUI_KEY_CTRL_T"
+   "DP_KEY_PAGE_UP"            "TUI_KEY_PAGE_UP"
+   "DP_KEY_PAGE_DOWN"          "TUI_KEY_PAGE_DOWN"
+   "DP_KEY_UP"                 "TUI_KEY_UP"
+   "DP_KEY_DOWN"               "TUI_KEY_DOWN"
+   "DP_KEY_RIGHT"              "TUI_KEY_RIGHT"
+   "DP_KEY_LEFT"               "TUI_KEY_LEFT"
+   "DP_KEY_HOME"               "TUI_KEY_HOME"
+   "DP_KEY_END"                "TUI_KEY_END"
+   "DP_KEY_INS"                "TUI_KEY_INS"
+   "DP_KEY_DEL"                "TUI_KEY_DEL"
+)
+
+for ((i = 0; i < ${#PAIRS[@]}; i += 2)); do
+   old="${PAIRS[i]}"
+   new="${PAIRS[i+1]}"
+   echo "  ${old} -> ${new}"
+   perl -pi -e "s/\\b${old}\\b/${new}/g" "${FILES[@]}"
+done
+
+echo
+echo "Done. Verify: grep -rn '\\bdp_' userapps/common/ should show only:"
+echo "  - dp_task_info / dp_abi.h / TILCK_CMD_DP_* (kernel ABI prefix)"
+echo "  - dp_dump_task_list_plain / dp_tasks_* (kernel-side ABI names)"

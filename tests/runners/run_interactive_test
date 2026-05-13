@@ -64,6 +64,12 @@ g_matching_list = None
 g_passed_list = []
 g_just_list = False
 
+# ImageMagick CLI tool name. Picked once by detect_imagemagick() at
+# startup: `magick` on IMv7+, `convert` on v6. IMv7 deprecated the
+# `convert` entry point — it still works but emits a stderr warning on
+# every call, which floods the runner's output.
+g_im_convert = None
+
 def set_once_qemu_process(p):
    global g_process
    assert(g_process is None)
@@ -220,7 +226,7 @@ def delete_old_screenshots():
 
 def img_convert(img, newtype):
 
-   cmd = ["convert"]
+   cmd = [g_im_convert]
 
    if newtype == "pbm":
       cmd += [
@@ -819,17 +825,50 @@ def check_tool_works(tool, help_opt, keyword):
 
    return found, exTrace
 
-def check_imagemagick_installed():
+def detect_imagemagick():
+   """
+   Probe ImageMagick's version once and pick `magick` (v7+) or
+   `convert` (v6) for the rest of the run.
 
-   found, exTrace = check_tool_works("convert", "-h", "ImageMagick")
+   IMv7 deprecated the `convert` entry point: every invocation leaks
+   a "deprecated" warning to stderr, plus a spurious "missing required
+   argument" error on `-h`. `magick` is the v7 replacement and only
+   ships on v7, so the choice is a simple version switch.
 
-   if not found:
-      msg_print("ERROR: ImageMagick (convert tool) not found on the system")
-      msg_print("Exception:\n{}".format(exTrace))
-      sys.exit(Fail.invalid_system_config.value)
+   For the probe we capture stderr — v7's deprecation warning would
+   otherwise leak before we've picked the right tool. We try
+   `magick -version` first (clean v7 path) and fall back to
+   `convert -version` for v6 hosts that don't ship `magick`.
+   """
+   global g_im_convert
+
+   for tool in ("magick", "convert"):
+
+      try:
+         res = subprocess.run(
+            [tool, "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+         )
+      except FileNotFoundError:
+         continue
+
+      m = re.search(r"Version: ImageMagick (\d+)\.",
+                    res.stdout.decode("utf-8"))
+
+      if res.returncode != 0 or not m:
+         continue
+
+      major = int(m.group(1))
+      g_im_convert = "magick" if major >= 7 else "convert"
+      return
+
+   msg_print("ERROR: ImageMagick not found on the system "
+             "(no `magick` or `convert` binary)")
+   sys.exit(Fail.invalid_system_config.value)
 
 def check_system_config():
-   check_imagemagick_installed()
+   detect_imagemagick()
 
 def check_pnm2text():
 

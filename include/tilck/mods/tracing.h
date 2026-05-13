@@ -76,6 +76,16 @@ enum sys_param_ui_type {
    ui_type_string,
 };
 
+/*
+ * Per-parameter "type" descriptor. The kernel only needs the bits
+ * required at trace-emit time (the `save` callback that copies user-
+ * pointer data into a saved-params slot, plus the slot_size used by
+ * the slot allocator) and at metadata-export time (name + ui_type,
+ * shipped to userspace via /syst/tracing/metadata). The dump
+ * callbacks that turn saved bytes back into colored ANSI strings now
+ * live in userspace dp (userapps/dp/tr_dump.c), dispatched by the
+ * stable enum tr_ptype_id.
+ */
 struct sys_param_type {
 
    const char *name;
@@ -83,14 +93,11 @@ struct sys_param_type {
 
    enum sys_param_ui_type ui_type;
 
-   /* Returns false if buf_size is too small */
+   /* Save callback: runs at trace-emit time (inside the syscall),
+    * copy_from_user's user-pointer data into the saved-params
+    * slot. NULL for ptypes whose entire value fits in the original
+    * arg register (e.g. ptype_int, ptype_oct, ptype_signum, ...). */
    bool (*save)(void *ptr, long size, char *buf, size_t buf_size);
-
-   /* Returns false if dest_buf_size is too small */
-   bool (*dump)(ulong orig, char *b, long bs, long hlp, char *dst, size_t d_bs);
-
-   /* Returns false if dest_buf_size is too small */
-   bool (*dump_from_val)(ulong val, long hlp, char *dest, size_t dest_buf_size);
 };
 
 enum sys_param_kind {
@@ -162,6 +169,16 @@ read_trace_event(struct trace_event *e, u32 timeout_ticks);
 bool
 read_trace_event_noblock(struct trace_event *e);
 
+/*
+ * Push a fully-formed event into the ring buffer. Used only by the
+ * test-mode TILCK_CMD_DP_TRACE_INJECT_EVENT handler — bypasses the
+ * normal save logic, so the caller is responsible for filling
+ * saved_params correctly. No per-task .traced or per-syscall filter
+ * check either: the caller controls exactly what hits the ring.
+ */
+void
+tracing_inject_event(struct trace_event *e);
+
 void
 trace_syscall_enter_int(u32 sys,
                         ulong a1,
@@ -208,9 +225,11 @@ tracing_get_slot(struct trace_event *e,
 int
 tracing_get_param_idx(const struct syscall_info *si, const char *name);
 
-const char *
-get_errno_name(int errno);
-
+/* The errno-name lookup that used to live next to this declaration
+ * (modules/tracing/errno_names.c) was deleted along with the rest of
+ * the kernel-side renderer; userspace dp owns its own table now.
+ * The signal-name lookup stays — it's still called from
+ * kernel/exit.c and kernel/signal.c for plain printk debug output. */
 const char *
 get_signal_name(int signum);
 
@@ -246,6 +265,30 @@ extern const struct sys_param_type ptype_doff64;
 extern const struct sys_param_type ptype_whence;
 extern const struct sys_param_type ptype_u64_ptr;
 extern const struct sys_param_type ptype_signum;
+
+/* Layer 1 — symbolic register-value ptypes (no save callback;
+ * userspace dp dispatches the dump by enum tr_ptype_id). */
+extern const struct sys_param_type ptype_mmap_prot;
+extern const struct sys_param_type ptype_mmap_flags;
+extern const struct sys_param_type ptype_wait_options;
+extern const struct sys_param_type ptype_access_mode;
+extern const struct sys_param_type ptype_ioctl_cmd;
+extern const struct sys_param_type ptype_fcntl_cmd;
+extern const struct sys_param_type ptype_sigprocmask_how;
+extern const struct sys_param_type ptype_prctl_option;
+extern const struct sys_param_type ptype_clone_flags;
+extern const struct sys_param_type ptype_mount_flags;
+extern const struct sys_param_type ptype_madvise_advice;
+
+/* Layer 2 — context-dependent struct argp/arg. The save callback's
+ * `hlp` argument carries the sibling cmd/request value (set via
+ * COMPLEX_PARAM's helper_param_name); the callback switches on it
+ * to copy the right struct bytes from user space. */
+extern const struct sys_param_type ptype_ioctl_argp;
+extern const struct sys_param_type ptype_fcntl_arg;
+
+/* Layer 3 — fixed struct pointers. */
+extern const struct sys_param_type ptype_wstatus;
 
 static ALWAYS_INLINE bool
 tracing_is_enabled_on_sys(u32 sys_n)
