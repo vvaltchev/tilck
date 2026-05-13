@@ -5,17 +5,31 @@
 
 #include "syscall_types.h"
 
+/*
+ * Each entry below gates on `#ifdef SYS_<name>` where the syscall
+ * isn't universal across Tilck's architectures: i386 has a long
+ * legacy tail (fork, open, pipe, *stat, mmap2, llseek, the old
+ * signal API, 16-bit uid/gid, time-32, socketcall, ...) that
+ * riscv64's asm-generic ABI doesn't carry. Tilck's
+ * <tilck/common/syscalls.h> also synthesizes a few SYS_* macros
+ * that musl doesn't expose (e.g. SYS_gettimeofday on i386), so by
+ * the time we reach this table the gates reflect Tilck's
+ * effective syscall set, not just musl's.
+ */
 static const struct syscall_info __tracing_metadata[] =
 {
-#if defined(__i386__) || defined(__x86_64)
+#ifdef SYS_fork
    SYSCALL_TYPE_0(SYS_fork),
+#endif
+#ifdef SYS_pause
    SYSCALL_TYPE_0(SYS_pause),
+#endif
    SYSCALL_TYPE_0(SYS_getuid),
    SYSCALL_TYPE_0(SYS_getgid),
    SYSCALL_TYPE_0(SYS_geteuid),
    SYSCALL_TYPE_0(SYS_getegid),
 
-#if defined(__i386__)
+#ifdef SYS_getuid16
    SYSCALL_TYPE_0(SYS_getuid16),
    SYSCALL_TYPE_0(SYS_getgid16),
    SYSCALL_TYPE_0(SYS_geteuid16),
@@ -26,7 +40,9 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_0(SYS_setsid),
    SYSCALL_TYPE_0(SYS_sync),
    SYSCALL_TYPE_0(SYS_getppid),
+#ifdef SYS_getpgrp
    SYSCALL_TYPE_0(SYS_getpgrp),
+#endif
    SYSCALL_TYPE_0(SYS_sched_yield),
 
    SYSCALL_TYPE_1(SYS_close, "fd"),
@@ -34,9 +50,16 @@ static const struct syscall_info __tracing_metadata[] =
    SYSCALL_TYPE_1(SYS_getpgid, "pid"),
    SYSCALL_TYPE_1(SYS_getsid, "pid"),
 
+#ifdef SYS_creat
    SYSCALL_TYPE_2(SYS_creat, "path", "mode"),
+#endif
+#ifdef SYS_chmod
    SYSCALL_TYPE_2(SYS_chmod, "path", "mode"),
+#endif
+#ifdef SYS_mkdir
    SYSCALL_TYPE_2(SYS_mkdir, "path", "mode"),
+#endif
+#ifdef SYS_access
    /* access: mode is the R_OK|W_OK|X_OK|F_OK bitmask, not an octal
     * file mode — render via ptype_access_mode. */
    {
@@ -49,27 +72,42 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("mode", &ptype_access_mode,  sys_param_in),
       },
    },
+#endif
 
+#ifdef SYS_unlink
    SYSCALL_TYPE_3(SYS_unlink, "path"),
+#endif
+#ifdef SYS_rmdir
    SYSCALL_TYPE_3(SYS_rmdir, "path"),
+#endif
    SYSCALL_TYPE_3(SYS_chdir, "path"),
 
+#ifdef SYS_link
    SYSCALL_TYPE_4(SYS_link, "oldpath", "newpath"),
+#endif
+#ifdef SYS_symlink
    SYSCALL_TYPE_4(SYS_symlink, "target", "linkpath"),
+#endif
+#ifdef SYS_rename
    SYSCALL_TYPE_4(SYS_rename, "oldpath", "newpath"),
+#endif
 
    SYSCALL_TYPE_5(SYS_setpgid, "pid", "pgid"),
+#ifdef SYS_dup2
    SYSCALL_TYPE_5(SYS_dup2, "oldfd", "newfd"),
+#endif
 
-#if defined(__i386__)
+#ifdef SYS_chown16
    SYSCALL_TYPE_6(SYS_chown16, "path", "owner", "group"),
    SYSCALL_TYPE_6(SYS_lchown16, "path", "owner", "group"),
 
    SYSCALL_TYPE_7(SYS_fchown16, "fd", "owner", "group"),
 #endif
 
+#ifdef SYS_chown
    SYSCALL_TYPE_6(SYS_chown, "path", "owner", "group"),
    SYSCALL_TYPE_6(SYS_lchown, "path", "owner", "group"),
+#endif
 
    SYSCALL_TYPE_7(SYS_fchown, "fd", "owner", "group"),
 
@@ -120,6 +158,7 @@ static const struct syscall_info __tracing_metadata[] =
       }
    },
 
+#ifdef SYS_vfork
    {
       .sys_n = SYS_vfork,
       .n_params = 0,
@@ -127,6 +166,7 @@ static const struct syscall_info __tracing_metadata[] =
       .ret_type = &ptype_errno_or_val,
       .params = { }
    },
+#endif
 
    {
       .sys_n = SYS_getcwd,
@@ -139,6 +179,7 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+#ifdef SYS_open
    {
       .sys_n = SYS_open,
       .n_params = 3,
@@ -150,7 +191,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("mode", &ptype_oct, sys_param_in),
       }
    },
+#endif
 
+#ifdef STAT_SYSCALL_N
    {
       .sys_n = STAT_SYSCALL_N,
       .n_params = 2,
@@ -161,7 +204,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("statbuf", &ptype_voidp, sys_param_out),
       },
    },
+#endif
 
+#ifdef LSTAT_SYSCALL_N
    {
       .sys_n = LSTAT_SYSCALL_N,
       .n_params = 2,
@@ -172,6 +217,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("statbuf", &ptype_voidp, sys_param_out),
       },
    },
+#endif
 
    {
       .sys_n = FSTAT_SYSCALL_N,
@@ -206,9 +252,10 @@ static const struct syscall_info __tracing_metadata[] =
       }
    },
 
-#ifdef __i386__
+#ifdef SYS_waitpid
 
-   /* waitpid is old and has been supported on amd64. Replacement: wait4 */
+   /* waitpid is i386-only legacy; the universal replacement is
+    * SYS_wait4, traced separately below. */
 
    {
       .sys_n = SYS_waitpid,
@@ -316,6 +363,7 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+#ifdef SYS_pipe
    {
       .sys_n = SYS_pipe,
       .n_params = 1,
@@ -325,6 +373,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("pipefd", &ptype_int32_pair, sys_param_out),
       }
    },
+#endif
 
    {
       .sys_n = SYS_pipe2,
@@ -337,6 +386,7 @@ static const struct syscall_info __tracing_metadata[] =
       }
    },
 
+#ifdef SYS_set_thread_area
    {
       .sys_n = SYS_set_thread_area,
       .n_params = 1,
@@ -346,6 +396,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("u_info", &ptype_voidp, sys_param_in),
       }
    },
+#endif
 
    {
       .sys_n = SYS_prctl,
@@ -382,7 +433,7 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
-#ifdef __i386__
+#ifdef SYS_llseek
    {
       .sys_n = SYS_llseek,
       .n_params = 5,
@@ -509,7 +560,9 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
-   /* readlink / readlinkat — out buffer with size limit */
+   /* readlink / readlinkat — out buffer with size limit. riscv64
+    * only has the *at variant. */
+#ifdef SYS_readlink
    {
       .sys_n = SYS_readlink,
       .n_params = 3,
@@ -521,6 +574,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("bufsiz", &ptype_int, sys_param_in),
       },
    },
+#endif
 
    {
       .sys_n = SYS_readlinkat,
@@ -767,14 +821,13 @@ static const struct syscall_info __tracing_metadata[] =
 
    /*
     * legacy signal API (the rt_* variants were already covered) —
-    * SYS_signal / SYS_sigaction / SYS_sigprocmask exist only on i386
-    * in musl. On x86_64 they're not in <sys/syscall.h> at all
-    * (replaced by SYS_rt_sigaction / SYS_rt_sigprocmask). Wrap each
-    * entry in `#ifdef __i386__` so the file still builds when this
-    * outer block is being compiled for x86_64 (or for the gtests
-    * host build on a Linux x86_64 runner).
+    * SYS_signal / SYS_sigaction / SYS_sigprocmask are i386-only in
+    * musl. On x86_64 / riscv64 they're not in <sys/syscall.h> at
+    * all (replaced by SYS_rt_sigaction / SYS_rt_sigprocmask). Gate
+    * each entry on its own SYS_* so the file builds on every arch
+    * without naming any.
     */
-#ifdef __i386__
+#ifdef SYS_signal
    {
       .sys_n = SYS_signal,
       .n_params = 2,
@@ -785,7 +838,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("handler", &ptype_voidp,  sys_param_in),
       },
    },
+#endif
 
+#ifdef SYS_sigaction
    {
       .sys_n = SYS_sigaction,
       .n_params = 3,
@@ -797,7 +852,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("oldact", &ptype_voidp,  sys_param_out),
       },
    },
+#endif
 
+#ifdef SYS_sigprocmask
    {
       .sys_n = SYS_sigprocmask,
       .n_params = 3,
@@ -875,12 +932,11 @@ static const struct syscall_info __tracing_metadata[] =
    /*
     * Clock syscalls. On i386 the kernel implements both the legacy
     * (_time32) and modern (_time64) variants at separate slots.
-    * musl's syscall.h only exposes the suffixed names on i386 — on
-    * x86_64 they don't exist at all (the canonical entry is plain
-    * SYS_clock_gettime). Wrap in `#ifdef __i386__` so the file
-    * builds for x86_64 (where SYS_clock_gettime32/64 are undefined).
+    * musl exposes the suffixed names only on i386; x86_64 / riscv64
+    * have just the plain SYS_clock_gettime / SYS_clock_getres. Gate
+    * each entry on its own SYS_*.
     */
-#ifdef __i386__
+#ifdef SYS_clock_gettime32
    {
       .sys_n = SYS_clock_gettime32,
       .n_params = 2,
@@ -891,7 +947,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("tp",      &ptype_voidp, sys_param_out),
       },
    },
+#endif
 
+#ifdef SYS_clock_gettime64
    {
       .sys_n = SYS_clock_gettime64,
       .n_params = 2,
@@ -902,7 +960,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("tp",      &ptype_voidp, sys_param_out),
       },
    },
+#endif
 
+#ifdef SYS_clock_getres_time32
    {
       .sys_n = SYS_clock_getres_time32,
       .n_params = 2,
@@ -913,7 +973,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("res",     &ptype_voidp, sys_param_out),
       },
    },
+#endif
 
+#ifdef SYS_clock_getres_time64
    {
       .sys_n = SYS_clock_getres_time64,
       .n_params = 2,
@@ -926,8 +988,40 @@ static const struct syscall_info __tracing_metadata[] =
    },
 #endif
 
+   /* Modern (suffix-free) clock_gettime / clock_getres — present on
+    * x86_64 / riscv64, absent on i386 (which uses the *_time32 /
+    * *_time64 split above). */
+#ifdef SYS_clock_gettime
+   {
+      .sys_n = SYS_clock_gettime,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("tp",      &ptype_voidp, sys_param_out),
+      },
+   },
+#endif
+
+#ifdef SYS_clock_getres
+   {
+      .sys_n = SYS_clock_getres,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("clockid", &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("res",     &ptype_voidp, sys_param_out),
+      },
+   },
+#endif
+
    /* utime / utimes / utimensat / futimesat: file timestamp
-    * setters. Pointer-to-times is voidp until Layer 3. */
+    * setters. Pointer-to-times is voidp until Layer 3. The three
+    * path-based variants are i386-only; riscv64's only filestamp
+    * syscall is utimensat. */
+#ifdef SYS_utime
    {
       .sys_n = SYS_utime,
       .n_params = 2,
@@ -938,7 +1032,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("times", &ptype_voidp, sys_param_in),
       },
    },
+#endif
 
+#ifdef SYS_utimes
    {
       .sys_n = SYS_utimes,
       .n_params = 2,
@@ -949,6 +1045,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("tvp",  &ptype_voidp, sys_param_in),
       },
    },
+#endif
 
    {
       .sys_n = SYS_utimensat,
@@ -963,6 +1060,7 @@ static const struct syscall_info __tracing_metadata[] =
       },
    },
 
+#ifdef SYS_futimesat
    {
       .sys_n = SYS_futimesat,
       .n_params = 3,
@@ -974,12 +1072,14 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("tvp",   &ptype_voidp, sys_param_in),
       },
    },
+#endif
 
    /* ---------------- Layer 0e: misc / poll / select / socket ---------- */
 
    /* poll / ppoll: pollfd array sits behind the fds pointer.
     * Capturing the array contents would need a struct-aware ptype;
-    * for now the pointer renders as voidp. */
+    * for now the pointer renders as voidp. riscv64 only has ppoll. */
+#ifdef SYS_poll
    {
       .sys_n = SYS_poll,
       .n_params = 3,
@@ -991,6 +1091,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("timeout", &ptype_int,   sys_param_in),
       },
    },
+#endif
 
    {
       .sys_n = SYS_ppoll,
@@ -1007,7 +1108,8 @@ static const struct syscall_info __tracing_metadata[] =
    },
 
    /* select / pselect6: the fd_set bitmasks render as voidp until
-    * a struct-aware fd_set ptype lands. */
+    * a struct-aware fd_set ptype lands. riscv64 only has pselect6. */
+#ifdef SYS_select
    {
       .sys_n = SYS_select,
       .n_params = 5,
@@ -1021,6 +1123,7 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("timeout",   &ptype_voidp, sys_param_in_out),
       },
    },
+#endif
 
    {
       .sys_n = SYS_pselect6,
@@ -1058,7 +1161,7 @@ static const struct syscall_info __tracing_metadata[] =
     * `args` is a pointer to a vararg-style array of arg words.
     * Layer 1 could add ptype_socketcall_op for symbolic rendering
     * of the sub-call name. */
-#ifdef __i386__
+#ifdef SYS_socketcall
    {
       .sys_n = SYS_socketcall,
       .n_params = 2,
@@ -1078,9 +1181,10 @@ static const struct syscall_info __tracing_metadata[] =
     * libc programs hit slot 213/214 via SYS_setuid / SYS_setgid
     * above; that's what we trace.) */
 
-#ifdef __i386__
-   /* i386-only: 64-bit truncate / fstatat64 (x86_64 has them under
-    * different names). */
+   /* i386-only: 64-bit truncate / fstatat64. x86_64 / riscv64 have
+    * these under different names (plain SYS_truncate, SYS_ftruncate,
+    * SYS_newfstatat — covered separately below). */
+#ifdef SYS_truncate64
    {
       .sys_n = SYS_truncate64,
       .n_params = 2,
@@ -1091,7 +1195,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("length", &ptype_int,  sys_param_in),
       },
    },
+#endif
 
+#ifdef SYS_ftruncate64
    {
       .sys_n = SYS_ftruncate64,
       .n_params = 2,
@@ -1102,7 +1208,9 @@ static const struct syscall_info __tracing_metadata[] =
          SIMPLE_PARAM("length", &ptype_int, sys_param_in),
       },
    },
+#endif
 
+#ifdef SYS_fstatat64
    {
       .sys_n = SYS_fstatat64,
       .n_params = 4,
@@ -1117,12 +1225,49 @@ static const struct syscall_info __tracing_metadata[] =
    },
 #endif
 
-#else
+   /* riscv64's path-based stat-family replacement. Same 4-arg
+    * signature as i386's fstatat64; the name is the only diff. */
+#ifdef SYS_newfstatat
+   {
+      .sys_n = SYS_newfstatat,
+      .n_params = 4,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("dirfd",   &ptype_int,   sys_param_in),
+         SIMPLE_PARAM("path",    &ptype_path,  sys_param_in),
+         SIMPLE_PARAM("statbuf", &ptype_voidp, sys_param_out),
+         SIMPLE_PARAM("flags",   &ptype_int,   sys_param_in),
+      },
+   },
+#endif
 
-/*
- * TODO: add tracing metadata for AARCH64
- */
+   /* Suffix-free truncate / ftruncate — x86_64 / riscv64 have these
+    * as plain 64-bit syscalls. */
+#ifdef SYS_truncate
+   {
+      .sys_n = SYS_truncate,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("path",   &ptype_path, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int,  sys_param_in),
+      },
+   },
+#endif
 
+#ifdef SYS_ftruncate
+   {
+      .sys_n = SYS_ftruncate,
+      .n_params = 2,
+      .exp_block = false,
+      .ret_type = &ptype_errno_or_val,
+      .params = {
+         SIMPLE_PARAM("fd",     &ptype_int, sys_param_in),
+         SIMPLE_PARAM("length", &ptype_int, sys_param_in),
+      },
+   },
 #endif
 
    { .sys_n = INVALID_SYSCALL },
