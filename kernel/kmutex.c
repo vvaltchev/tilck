@@ -132,6 +132,8 @@ bool kmutex_trylock(struct kmutex *m)
             m->lock_count++;
             success = true;
          }
+      } else {
+         ASSERT(!kmutex_is_curr_task_holding_lock(m));
       }
    }
 
