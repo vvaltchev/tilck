@@ -14,8 +14,10 @@ fileTypes = [
    "C++ (source)",
    "Assembly",
    "Python",
+   "Ruby",
    "CMake",
-   "Shell script"
+   "Shell script",
+   "YAML",
 ]
 
 extToType = {
@@ -25,10 +27,12 @@ extToType = {
    ".cc": "C++ (source)",
    ".cxx": "C++ (source)",
    ".py": "Python",
+   ".rb": "Ruby",
    ".asm": "Assembly",
    ".S": "Assembly",
    ".cmake": "CMake",
-   ".sh": "Shell script"
+   ".sh": "Shell script",
+   ".yml": "YAML",
 }
 
 excludedDirs = [
