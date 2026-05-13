@@ -28,6 +28,15 @@ bool kcond_wait(struct kcond *c, struct kmutex *m, u32 timeout_ticks)
 {
    DEBUG_ONLY(check_not_in_irq_handler());
    ASSERT(!m || kmutex_is_curr_task_holding_lock(m));
+
+   /*
+    * On a recursive mutex held more than once, the single kmutex_unlock(m)
+    * below only decrements lock_count and keeps the mutex held — the
+    * signaler can't acquire m to update the predicate, and we'd deadlock.
+    * Reject the configuration up front (POSIX leaves it undefined too).
+    */
+   ASSERT(!m || !(m->flags & KMUTEX_FL_RECURSIVE) || m->lock_count == 1);
+
    struct task *curr = get_curr_task();
    bool ret;
 
