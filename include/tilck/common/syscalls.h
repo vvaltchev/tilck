@@ -141,7 +141,25 @@ enum tilck_cmd {
 
 #elif defined(__riscv)
 
-   /* TODO */
+   /*
+    * riscv64 uses the asm-generic syscall ABI: all stat / fcntl /
+    * mmap / clock_* syscalls are 64-bit by default, so there's no
+    * "<name>64" suffix variant. The macros below are used by the
+    * tracing metadata table to pin the same metadata row regardless
+    * of which arch-specific syscall slot it lands on.
+    *
+    * STAT_SYSCALL_N / LSTAT_SYSCALL_N are intentionally left
+    * undefined: riscv64 has no path-based stat or lstat syscall.
+    * Both go through SYS_newfstatat (with AT_FDCWD as base) instead,
+    * which has a different signature (dirfd, path, statbuf, flags)
+    * and gets its own metadata entry. The stat/lstat metadata
+    * entries in tracing_metadata.c are gated by `#ifdef
+    * STAT_SYSCALL_N` / `#ifdef LSTAT_SYSCALL_N` so they only land
+    * on arches that actually have those syscalls.
+    */
+   #define FSTAT_SYSCALL_N     SYS_fstat
+   #define FCNTL_SYSCALL_N     SYS_fcntl
+   #define MMAP_SYSCALL_N      SYS_mmap
 
 #else
 

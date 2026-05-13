@@ -28,17 +28,21 @@
  * push synthetic events into the ring) lands in a follow-up commit;
  * this file deliberately does not anticipate it.
  *
- * i386-only: the test syscalls below reference SYS_open / SYS_fcntl64
- * / SYS__llseek / SYS_mmap2 / SYS_sigprocmask / SYS_poll / SYS_dup2
- * — these are the i386 syscall numbers. On x86_64 and riscv64 musl
- * those constants don't exist (the kernel uses openat / fcntl /
- * lseek / mmap / rt_sigprocmask / ppoll / dup3). Rather than
- * conditionally renaming every test, the whole file is wrapped in
- * `#ifdef __i386__`; on other arches tr_run_tier1_tests is a stub.
- * Tier 1 coverage on x86_64 / riscv64 is a future refactor.
+ * Each test calls C wrappers (`open`, `fcntl`, ...) so the syscall
+ * number the kernel sees follows whatever musl picks for the arch:
+ *   - i386 keeps the legacy compat tail: SYS_open / SYS_fcntl64 /
+ *     SYS__llseek / SYS_mmap2 / SYS_poll / SYS_dup2 — and
+ *     SYS_sigprocmask is the i386 fallback for the rt_sigprocmask
+ *     test below.
+ *   - riscv64 and x86_64 hit the asm-generic counterparts:
+ *     SYS_openat / SYS_fcntl / SYS_lseek / SYS_mmap / SYS_ppoll /
+ *     SYS_dup3, with the legacy slots absent from musl entirely.
+ *
+ * `find_event` is therefore called for every plausible syscall
+ * number in turn until it lands a hit. Each reference is gated on
+ * `#ifdef SYS_<name>` so the file builds wherever the compiler can
+ * see the SYS_* constant at all.
  */
-
-#ifdef __i386__
 
 #include <errno.h>
 #include <fcntl.h>
@@ -390,10 +394,16 @@ test_open_close(void)
       return;
    }
 
-   e = find_event(&cap, dp_te_sys_enter, SYS_open);
+   e = NULL;
+#ifdef SYS_open
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_open);
+#endif
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_openat);
 
    if (!e) {
-      test_fail(name, "no sys_enter for SYS_open");
+      test_fail(name, "no sys_enter for open/openat");
       return;
    }
 
@@ -541,8 +551,11 @@ test_fcntl_getfl(void)
 
    close(fd);
 
-   e = find_event(&cap, dp_te_sys_enter, SYS_fcntl64);
-
+   e = NULL;
+#ifdef SYS_fcntl64
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_fcntl64);
+#endif
    if (!e)
       e = find_event(&cap, dp_te_sys_enter, SYS_fcntl);
 
@@ -592,8 +605,11 @@ test_fcntl_setfl(void)
    close(pipefd[0]);
    close(pipefd[1]);
 
-   e = find_event(&cap, dp_te_sys_enter, SYS_fcntl64);
-
+   e = NULL;
+#ifdef SYS_fcntl64
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_fcntl64);
+#endif
    if (!e)
       e = find_event(&cap, dp_te_sys_enter, SYS_fcntl);
 
@@ -648,8 +664,11 @@ test_lseek(void)
 
    close(fd);
 
-   e = find_event(&cap, dp_te_sys_enter, SYS__llseek);
-
+   e = NULL;
+#ifdef SYS__llseek
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS__llseek);
+#endif
    if (!e)
       e = find_event(&cap, dp_te_sys_enter, SYS_lseek);
 
@@ -692,8 +711,11 @@ test_mmap(void)
       return;
    }
 
-   e = find_event(&cap, dp_te_sys_enter, SYS_mmap2);
-
+   e = NULL;
+#ifdef SYS_mmap2
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_mmap2);
+#endif
    if (!e)
       e = find_event(&cap, dp_te_sys_enter, SYS_mmap);
 
@@ -852,10 +874,13 @@ test_rt_sigprocmask(void)
       return;
    }
 
-   e = find_event(&cap, dp_te_sys_enter, SYS_rt_sigprocmask);
-
+   e = NULL;
+   if (!e)
+      e = find_event(&cap, dp_te_sys_enter, SYS_rt_sigprocmask);
+#ifdef SYS_sigprocmask
    if (!e)
       e = find_event(&cap, dp_te_sys_enter, SYS_sigprocmask);
+#endif
 
    if (!e) {
       test_fail(name, "no sys_enter for rt_sigprocmask/sigprocmask");
@@ -893,7 +918,7 @@ test_poll(void)
       return;
    }
 
-   if (run_traced(act_poll, &pipefd[0], "poll", &cap) < 0) {
+   if (run_traced(act_poll, &pipefd[0], "poll,ppoll", &cap) < 0) {
       close(pipefd[0]);
       close(pipefd[1]);
       test_fail(name, "harness failed");
@@ -903,9 +928,19 @@ test_poll(void)
    close(pipefd[0]);
    close(pipefd[1]);
 
-   if (!find_event(&cap, dp_te_sys_enter, SYS_poll)) {
-      test_fail(name, "no sys_enter for SYS_poll");
-      return;
+   {
+      const struct dp_trace_event *e = NULL;
+#ifdef SYS_poll
+      if (!e)
+         e = find_event(&cap, dp_te_sys_enter, SYS_poll);
+#endif
+      if (!e)
+         e = find_event(&cap, dp_te_sys_enter, SYS_ppoll);
+
+      if (!e) {
+         test_fail(name, "no sys_enter for poll/ppoll");
+         return;
+      }
    }
 
    test_pass(name);
@@ -972,7 +1007,7 @@ test_dup2(void)
       return;
    }
 
-   if (run_traced(act_dup2, &fd, "dup2", &cap) < 0) {
+   if (run_traced(act_dup2, &fd, "dup2,dup3", &cap) < 0) {
       close(fd);
       test_fail(name, "harness failed");
       return;
@@ -980,9 +1015,19 @@ test_dup2(void)
 
    close(fd);
 
-   if (!find_event(&cap, dp_te_sys_enter, SYS_dup2)) {
-      test_fail(name, "no sys_enter for SYS_dup2");
-      return;
+   {
+      const struct dp_trace_event *e = NULL;
+#ifdef SYS_dup2
+      if (!e)
+         e = find_event(&cap, dp_te_sys_enter, SYS_dup2);
+#endif
+      if (!e)
+         e = find_event(&cap, dp_te_sys_enter, SYS_dup3);
+
+      if (!e) {
+         test_fail(name, "no sys_enter for dup2/dup3");
+         return;
+      }
    }
 
    test_pass(name);
@@ -1040,19 +1085,3 @@ tr_run_tier1_tests(void)
    printf("\n%d/%d PASS\n", n_passed, n_passed + n_failed);
    return n_failed == 0 ? 0 : 1;
 }
-
-#else  /* !__i386__ */
-
-#include <stdio.h>
-#include "tr.h"
-
-int
-tr_run_tier1_tests(void)
-{
-   printf("tracer --test: Tier 1 live-syscall tests are i386-only\n");
-   printf("               (the test syscalls use i386 syscall numbers\n");
-   printf("                that don't exist in x86_64 / riscv64 musl)\n");
-   return 0;
-}
-
-#endif /* __i386__ */
