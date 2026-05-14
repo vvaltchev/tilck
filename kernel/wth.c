@@ -94,7 +94,7 @@ wth_enqueue_anywhere(int lowest_prio, void (*func)(void *), void *arg)
 {
    struct worker_thread *wth;
 
-   if (lowest_prio == 0) /* optimization for highest prio case */
+   if (lowest_prio == WTH_PRIO_HIGHEST) /* shortcut: take the init worker */
       return wth_enqueue_on(worker_threads[0], func, arg);
 
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
@@ -119,7 +119,7 @@ wth_find_worker(int lowest_prio)
 {
    struct worker_thread *wth;
 
-   if (lowest_prio == 0) /* optimization for highest prio case */
+   if (lowest_prio == WTH_PRIO_HIGHEST) /* shortcut: take the init worker */
       return worker_threads[0];
 
    for (int i = worker_threads_cnt-1; i >= 0; i--) {
@@ -226,6 +226,17 @@ wth_create_thread(const char *name, int priority, u16 queue_size)
    ASSERT(!is_preemption_enabled());
    DEBUG_ONLY(check_not_in_irq_handler());
 
+   ASSERT(priority >= WTH_PRIO_HIGHEST && priority <= WTH_PRIO_LOWEST);
+
+   /*
+    * Only the singleton init-time worker (the first to call this) may
+    * occupy WTH_PRIO_HIGHEST. Every later caller must pass a strictly
+    * lower priority (= numerically higher), so worker_threads[0] stays
+    * the init worker — the fast paths of wth_enqueue_anywhere() and
+    * wth_find_worker() rely on this.
+    */
+   ASSERT(worker_threads_cnt == 0 || priority > WTH_PRIO_HIGHEST);
+
    if (worker_threads_cnt >= ARRAY_SIZE(worker_threads))
       return NULL; /* too many worker threads */
 
@@ -285,5 +296,5 @@ init_wth_create_worker_or_die(int prio, u16 queue_size)
 void init_worker_threads(void)
 {
    worker_threads_cnt = 0;
-   init_wth_create_worker_or_die(0, WTH_MAX_PRIO_QUEUE_SIZE);
+   init_wth_create_worker_or_die(WTH_PRIO_HIGHEST, WTH_MAX_PRIO_QUEUE_SIZE);
 }
