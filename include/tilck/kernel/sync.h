@@ -43,6 +43,8 @@ struct wait_obj {
    struct list_node wait_list_node;  /* node in waited object's waiting list */
 };
 
+struct multi_obj_waiter;
+
 /*
  * Struct used as element in `multi_obj_waiter` using `wait_obj` through
  * composition.
@@ -50,23 +52,37 @@ struct wait_obj {
 struct mwobj_elem {
 
    struct wait_obj wobj;
-   struct task *ti;         /* Task owning this wait obj */
-   enum wo_type type;       /* Actual object type. NOTE: wobj.type cannot be
-                             * used because it have to be equal to
-                             * WOBJ_MULTI_ELEM. */
+   struct task *ti;                    /* Task owning this wait obj */
+   struct multi_obj_waiter *waiter;    /* Back-ptr to the containing waiter.
+                                        * Needed by the signaler so it can
+                                        * splice us into waiter->signaled_list
+                                        * without scanning all elems. */
+   struct list_node signaled_node;     /* Link in waiter->signaled_list when
+                                        * a signal has fired on this elem. */
+   void *saved_ptr;                    /* Original wobj.__ptr (the waited
+                                        * kcond) — wait_obj_reset() on signal
+                                        * clears wobj.__ptr, so we stash it
+                                        * here to allow a clean re-arm. */
+   struct list *saved_wait_list;       /* Original wait_list, same reason. */
+   enum wo_type type;                  /* Actual object type. NOTE: wobj.type
+                                        * cannot be used because it have to be
+                                        * equal to WOBJ_MULTI_ELEM. */
 };
 
 /*
  * Heap-allocated object on which struct task->wobj "waits" when the task is
  * waiting on multiple objects.
  *
- * How it works
- * ---------------
- *
+ * The `signaled_list` is the index of elems that have fired since the last
+ * re-arm — populated by kcond_signal_int() and drained by either
+ * mobj_waiter_rearm_signaled() (on a poll/select re-sleep) or by
+ * mobj_waiter_reset() (on cleanup). Without it, the wakee would have to scan
+ * the whole elems[] array to figure out which kcond(s) fired.
  */
 struct multi_obj_waiter {
 
    int count;                    /* number of `struct mwobj_elem` elements */
+   struct list signaled_list;    /* elems on which a signal has fired */
    struct mwobj_elem elems[];    /* variable-size array */
 };
 
@@ -106,6 +122,8 @@ void mobj_waiter_set(struct multi_obj_waiter *w,
                      enum wo_type type,
                      void *ptr,
                      struct list *wait_list);
+
+void mobj_waiter_rearm_signaled(struct multi_obj_waiter *w);
 
 void prepare_to_wait_on_multi_obj(struct multi_obj_waiter *w);
 

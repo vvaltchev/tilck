@@ -135,23 +135,42 @@ kcond_signal_int(struct kcond *c, struct wait_obj *wo)
       return;
    }
 
-   if (!ti || ti->state != TASK_STATE_SLEEPING) {
+   if (wo->type == WOBJ_MWO_ELEM) {
 
-      /* the signal is lost, that's typical for conditions */
+      /*
+       * Multi-obj path (poll/select). Always remove the elem from c->wait_list
+       * via wait_obj_reset() and stash it in waiter->signaled_list, so the
+       * wakee can later identify which kcond(s) fired in O(num_signaled)
+       * instead of scanning the whole elems[] array.
+       *
+       * Recording the signal is unconditional: even if `ti` is no longer
+       * SLEEPING (e.g. the timer already woke it, or a previous signal did),
+       * the waiter may choose to re-sleep when it discovers nothing is ready
+       * — in that case mobj_waiter_rearm_signaled() will drain signaled_list
+       * and re-attach the elems. wake_up() itself is only called when the
+       * task is still SLEEPING, since otherwise it's a no-op anyway.
+       */
 
-      if (wo->type == WOBJ_MWO_ELEM)
-         wait_obj_reset(wo);
+      struct mwobj_elem *e = CONTAINER_OF(wo, struct mwobj_elem, wobj);
+      ASSERT(e->type == WOBJ_KCOND);
+
+      wait_obj_reset(wo);
+      list_add_tail(&e->waiter->signaled_list, &e->signaled_node);
+
+      if (ti && ti->state == TASK_STATE_SLEEPING)
+         wake_up(ti);
 
       return;
    }
 
-   if (wo->type != WOBJ_MWO_ELEM) {
-      ASSERT(wo->type == WOBJ_KCOND);
-      task_cancel_wakeup_timer(ti);
-   } else {
-      ASSERT(CONTAINER_OF(wo, struct mwobj_elem, wobj)->type == WOBJ_KCOND);
+   /* Single-obj path: traditional kcond wait. */
+   if (!ti || ti->state != TASK_STATE_SLEEPING) {
+      /* the signal is lost, that's typical for conditions */
+      return;
    }
 
+   ASSERT(wo->type == WOBJ_KCOND);
+   task_cancel_wakeup_timer(ti);
    wait_obj_reset(wo);
    wake_up(ti);
 }
