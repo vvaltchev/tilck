@@ -29,6 +29,18 @@ enum wo_type {
 /*
  * wait_obj is used internally in struct task for referring to an object that
  * is blocking that task (keeping it in a sleep state).
+ *
+ * `type` is the "is the wobj live?" gate: WOBJ_NONE means the wobj is reset,
+ * anything else means it's currently waiting on something. Atomic ops on it
+ * (used by wait_obj_set / wait_obj_reset) cast the address through
+ * `ATOMIC(u32) *` so the field itself can stay a plain enum — same pattern
+ * used by `struct task::state` (see get_curr_task_state() in sched.h).
+ *
+ * The gate lives on `type` (not on `__ptr` as in earlier versions) because
+ * `__ptr` can legitimately be NULL for some wo_type values — most notably
+ * WOBJ_TASK with tid==0, used by sys_wait4 to wait for any child in the
+ * caller's pgid. Using `type` keeps the "is set / is reset" question
+ * independent of the value being stored.
  */
 
 struct wait_obj {

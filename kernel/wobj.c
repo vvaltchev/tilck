@@ -13,43 +13,74 @@ void wait_obj_set(struct wait_obj *wo,
                   u32 extra,
                   struct list *wait_list)
 {
-   atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
+   STATIC_ASSERT(sizeof(wo->type) == sizeof(u32));
+   ASSERT(type != WOBJ_NONE);
 
    disable_preemption();
    {
+      /*
+       * Caller must hand us a reset wobj. Checking via `type` works for
+       * every wo_type, including those whose `ptr` may legitimately be
+       * NULL (e.g. WOBJ_TASK with tid==0).
+       */
+      ASSERT(wo->type == WOBJ_NONE);
       ASSERT(list_node_is_null(&wo->wait_list_node) ||
              list_node_is_empty(&wo->wait_list_node));
 
-      wo->type = type;
+      atomic_store_explicit(&wo->__ptr, ptr, mo_relaxed);
       wo->extra = extra;
       list_node_init(&wo->wait_list_node);
 
       if (wait_list)
          list_add_tail(wait_list, &wo->wait_list_node);
+
+      /*
+       * Publish: this store makes the wobj "live". A signaler walking
+       * a wait_list and reading wo->type must see a fully initialized
+       * wobj, so the type write goes last. Cast through ATOMIC(u32) *
+       * to use atomic ops on a plain-enum field — same trick as in
+       * get_curr_task_state().
+       */
+      atomic_store_explicit(
+         (ATOMIC(u32) *)&wo->type, (u32)type, mo_relaxed
+      );
    }
    enable_preemption();
 }
 
 void *wait_obj_reset(struct wait_obj *wo)
 {
-   void *oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
+   enum wo_type old_type;
+   void *oldp = NULL;
+
+   STATIC_ASSERT(sizeof(wo->type) == sizeof(u32));
+
    disable_preemption();
    {
-      if (oldp) {
+      /*
+       * Atomic-exchange `type` to claim the cleanup: whoever swaps a
+       * non-NONE value out is the one who tears the wobj down. The
+       * exchange runs inside the preempt-disabled section so a
+       * concurrent signaler iterating a wait_list never observes the
+       * intermediate state (type==WOBJ_NONE while the node is still
+       * linked) — which would corrupt the dispatch in kcond_signal_int.
+       */
+      old_type = (enum wo_type) atomic_exchange_explicit(
+         (ATOMIC(u32) *)&wo->type, (u32)WOBJ_NONE, mo_relaxed
+      );
 
-         wo->type = WOBJ_NONE;
+      if (old_type != WOBJ_NONE) {
+
+         oldp = atomic_exchange_explicit(&wo->__ptr, NULL, mo_relaxed);
 
          if (list_is_node_in_list(&wo->wait_list_node))
             list_remove(&wo->wait_list_node);
 
          list_node_init(&wo->wait_list_node);
-
-      } else {
-
-         ASSERT(wo->type == WOBJ_NONE);
       }
    }
    enable_preemption();
+
    return oldp;
 }
 
