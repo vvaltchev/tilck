@@ -498,3 +498,134 @@ int cmd_pollhup(int argc, char **argv)
 {
    return common_pollerr_pollhup_test(false);
 }
+
+/*
+ * Regression test for the multi-obj waiter "deafness on re-sleep" bug
+ * that poll() and select() shared. The child writes one byte, drains
+ * it itself, yields long enough to let the parent re-check the pipe
+ * (finding it empty) and re-sleep, then writes again. Before the
+ * signaled_list / rearm fix in wobj.c, the parent's mwobj_elem stayed
+ * deregistered after the first signal — so the 2nd write fell on an
+ * empty kcond wait_list and the parent slept until the poll/select
+ * timeout fired. After the fix, the rearm helper puts the elem back
+ * before the parent re-sleeps; the 2nd write reaches it.
+ *
+ * The single-CPU ordering is what makes this deterministic: on Tilck,
+ * after the kernel's write() path signals the kcond and flips the
+ * parent to RUNNABLE, the child keeps running until it itself yields.
+ * So the read() that drains the byte happens before the parent's
+ * re-check, and the parent's re-check happens before the child's 2nd
+ * write (because the child is asleep in usleep at that point).
+ */
+void rearm_poll_or_select_on_pipe_child(int rfd, int wfd)
+{
+   char buf;
+   int rc;
+
+   printf(STR_CHILD "1st write\n");
+   rc = write(wfd, "a", 1);
+
+   if (rc != 1) {
+      printf(STR_CHILD "ERR: 1st write returned %d -> %s\n",
+             rc, strerror(errno));
+      exit(1);
+   }
+
+   /*
+    * Drain the byte ourselves. On single-CPU Tilck, the parent is now
+    * RUNNABLE but won't get the CPU until we yield — so by the time
+    * the parent's poll loop re-checks the pipe, it'll be empty.
+    */
+
+   printf(STR_CHILD "drain the byte we just wrote\n");
+   rc = read(rfd, &buf, 1);
+
+   if (rc != 1) {
+      printf(STR_CHILD "ERR: read returned %d -> %s\n",
+             rc, strerror(errno));
+      exit(1);
+   }
+
+   /*
+    * Yield: lets the parent run its re-check (finds nothing) and
+    * re-sleep. The bug, if any, manifests on this very re-sleep.
+    */
+
+   printf(STR_CHILD "usleep 100ms\n");
+   usleep(100 * 1000);
+
+   printf(STR_CHILD "2nd write\n");
+   rc = write(wfd, "b", 1);
+
+   if (rc != 1) {
+      printf(STR_CHILD "ERR: 2nd write returned %d -> %s\n",
+             rc, strerror(errno));
+      exit(1);
+   }
+
+   printf(STR_CHILD "exit(0)\n");
+   exit(0);
+}
+
+int cmd_poll4(int argc, char **argv)
+{
+   struct pollfd fds[1];
+   int pipefd[2];
+   int wstatus;
+   int rc;
+   pid_t childpid;
+
+   printf(STR_PARENT "Calling pipe()\n");
+   rc = pipe(pipefd);
+
+   if (rc < 0) {
+      printf(STR_PARENT "pipe() failed. Error: %s\n", strerror(errno));
+      return 1;
+   }
+
+   printf(STR_PARENT "fork()..\n");
+   childpid = fork();
+   DEVSHELL_CMD_ASSERT(childpid >= 0);
+
+   if (!childpid)
+      rearm_poll_or_select_on_pipe_child(pipefd[0], pipefd[1]);
+
+   fds[0] = (struct pollfd) {
+      .fd = pipefd[0],
+      .events = POLLIN
+   };
+
+   /*
+    * The child's yield is 100ms. A 2s timeout makes the failure mode
+    * unambiguous: if poll returns 0, the bug ate our 2nd write — not
+    * "the test didn't wait long enough".
+    */
+
+   printf(STR_PARENT "poll([rfd], 2000ms)..\n");
+
+   do {
+      rc = poll(fds, 1, 2000);
+   } while (rc < 0 && errno == EINTR);
+
+   waitpid(childpid, &wstatus, 0);
+   close(pipefd[0]);
+   close(pipefd[1]);
+
+   if (rc < 0) {
+      printf(STR_PARENT "ERROR: poll() failed with: %s\n", strerror(errno));
+      return 1;
+   }
+
+   if (rc == 0) {
+      printf(STR_PARENT "FAIL: poll() timed out — 2nd write was lost\n");
+      return 1;
+   }
+
+   if (!(fds[0].revents & POLLIN)) {
+      printf(STR_PARENT "FAIL: poll() returned %d but no POLLIN\n", rc);
+      return 1;
+   }
+
+   printf(STR_PARENT "poll() correctly woke on the 2nd write\n");
+   return 0;
+}
