@@ -175,14 +175,28 @@ void wth_run(void *arg)
          if (safe_ringbuf_is_empty(&t->rb)) {
             t->task->state = TASK_STATE_SLEEPING;
             t->waiting_for_jobs = true;
+
+            /*
+             * Signal completion waiters from inside the IRQ-disabled
+             * region. Doing this after enable_interrupts_forced() races
+             * with an IRQ-driven wth_wakeup() that would clear
+             * waiting_for_jobs in the same window — the signal would
+             * then be skipped and wth_wait_for_completion() would have
+             * to ride out its kcond_wait() timeout instead.
+             */
+            kcond_signal_all(&t->completion);
          }
       }
       enable_interrupts_forced();
 
-      if (t->waiting_for_jobs) {
-         kcond_signal_all(&t->completion);
+      /*
+       * Still guarded by waiting_for_jobs: if an IRQ-driven wakeup
+       * cleared it between here and the block above, we shouldn't
+       * sleep — there's a fresh job in the queue, just loop back and
+       * drain it.
+       */
+      if (t->waiting_for_jobs)
          schedule();
-      }
    }
 }
 
