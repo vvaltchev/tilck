@@ -235,8 +235,17 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
             disable_preemption();
             ready_fds_cnt = poll_count_ready_fds(fds, nfds);
 
-            if (!ready_fds_cnt)
-               continue; /* No ready streams, wait again (preempt disabled). */
+            if (!ready_fds_cnt) {
+               /*
+                * Signal woke us but nothing is ready (a faster reader drained
+                * the data between wake and check). The fired elem was removed
+                * from its kcond wait_list and parked in waiter->signaled_list;
+                * re-arm it before sleeping again, otherwise the next signal
+                * on that same kcond would miss us entirely.
+                */
+               mobj_waiter_rearm_signaled(waiter);
+               continue; /* preempt still disabled */
+            }
 
             task_cancel_wakeup_timer(curr);
             enable_preemption();
@@ -249,8 +258,11 @@ poll_wait_on_cond(struct pollfd *fds, nfds_t nfds, int timeout, int cond_cnt)
          disable_preemption();
          ready_fds_cnt = poll_count_ready_fds(fds, nfds);
 
-         if (!ready_fds_cnt)
-            continue; /* No ready streams, wait again (preempt disabled). */
+         if (!ready_fds_cnt) {
+            /* See the matching comment above. */
+            mobj_waiter_rearm_signaled(waiter);
+            continue; /* preempt still disabled */
+         }
          enable_preemption();
       }
 
