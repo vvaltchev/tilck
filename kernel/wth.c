@@ -189,14 +189,31 @@ void wth_run(void *arg)
       }
       enable_interrupts_forced();
 
-      /*
-       * Still guarded by waiting_for_jobs: if an IRQ-driven wakeup
-       * cleared it between here and the block above, we shouldn't
-       * sleep — there's a fresh job in the queue, just loop back and
-       * drain it.
-       */
-      if (t->waiting_for_jobs)
+      if (t->waiting_for_jobs) {
          schedule();
+      } else if (t->task->state == TASK_STATE_RUNNABLE) {
+         /*
+          * Race wakeup: an IRQ-driven wth_wakeup() between the
+          * IRQ-disabled region above and here cleared
+          * waiting_for_jobs and CASed our state SLEEPING -> RUNNABLE.
+          * Normalize back to RUNNING before we loop to drain — the
+          * scheduler's "curr is RUNNING" invariant is otherwise
+          * violated, and sched_account_ticks() would keep setting
+          * need_resched on every timer tick until the next
+          * do_schedule() fixed it via the selected==curr branch.
+          *
+          * Note: doing the SLEEPING -> RUNNING transition in
+          * wth_wakeup() instead — i.e. CASing to RUNNING when the
+          * wakeup catches the worker as curr — would race with
+          * do_schedule(), which has already captured curr_state into
+          * a local: it would skip the RUNNING -> RUNNABLE downgrade
+          * and switch_to_task() would assert curr->state != RUNNING.
+          * Handling it here, in the worker, sidesteps that.
+          */
+         disable_interrupts_forced();
+         task_change_state_unsafe(t->task, TASK_STATE_RUNNING);
+         enable_interrupts_forced();
+      }
    }
 }
 
