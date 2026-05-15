@@ -26,10 +26,15 @@ struct list runnable_tasks_list;
 /* Static variables */
 static struct task *tree_by_tid_root;
 static u64 idle_ticks;
-static volatile int runnable_tasks_count;
+static ATOMIC(int) runnable_tasks_count;     /* see docs/atomics.md */
 static int current_max_pid = -1;
 static int current_max_kernel_tid = -1;
 struct task *idle_task;
+
+static ALWAYS_INLINE int get_runnable_tasks_count(void)
+{
+   return atomic_load_explicit(&runnable_tasks_count, mo_relaxed);
+}
 
 const char *const task_state_str[5] = {
    [TASK_STATE_INVALID]  = "invalid",
@@ -380,7 +385,7 @@ static void idle(void *unused)
       idle_ticks++;
       halt();
 
-      if (need_reschedule() || runnable_tasks_count > 1)
+      if (need_reschedule() || get_runnable_tasks_count() > 1)
          schedule();
    }
 }
@@ -398,7 +403,7 @@ void yield_until_last(void)
     * a wait primitive, or ZOMBIE via kthread_exit), so a caller that
     * inspects shared state next sees the result of all in-flight work.
     */
-   while (runnable_tasks_count > 1)
+   while (get_runnable_tasks_count() > 1)
       kernel_yield();
 }
 
@@ -482,7 +487,7 @@ static void task_add_to_state_list(struct task *ti)
 
       case TASK_STATE_RUNNABLE:
          list_add_tail(&runnable_tasks_list, &ti->runnable_node);
-         runnable_tasks_count++;
+         atomic_fetch_add_explicit(&runnable_tasks_count, 1, mo_relaxed);
          break;
 
       case TASK_STATE_SLEEPING:
@@ -509,11 +514,23 @@ static void task_remove_from_state_list(struct task *ti)
 
    switch (atomic_load_explicit(&ti->state, mo_relaxed)) {
 
-      case TASK_STATE_RUNNABLE:
+      case TASK_STATE_RUNNABLE: {
+         /*
+          * prev is debug-only so it doesn't trip
+          * -Werror=unused-but-set-variable in release builds, where
+          * ASSERT() expands to do {} while (0) and never reads it.
+          * DEBUG_ONLY_UNSAFE() expands to nothing in release, so the
+          * partial-wrap on the assignment leaves the atomic_fetch_sub
+          * unconditional while only capturing its return into `prev`
+          * in debug.
+          */
+         DEBUG_ONLY(int prev);
          list_remove(&ti->runnable_node);
-         runnable_tasks_count--;
-         ASSERT(runnable_tasks_count >= 0);
+         DEBUG_ONLY_UNSAFE(prev =)
+            atomic_fetch_sub_explicit(&runnable_tasks_count, 1, mo_relaxed);
+         ASSERT(prev >= 1);
          break;
+      }
 
       case TASK_STATE_SLEEPING:
          /* no dedicated list */
@@ -638,7 +655,7 @@ void sched_account_ticks(void)
        * tasks that that consumed 100% of the CPU when no other task was
        * runnable won't be so much penalized.
        */
-      t->vruntime += (u64)(runnable_tasks_count - 1);
+      t->vruntime += (u64)(get_runnable_tasks_count() - 1);
    }
 
    /*
